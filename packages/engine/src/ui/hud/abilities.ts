@@ -52,7 +52,7 @@ export function abilitySlot(id: string, desc: Api.AbilitySlotDesc = {}): Api.Res
  * passes its slots' `size` already resolved, so it is never scaled twice;
  * an ultimate is drawn 1.15 times it, its charge a ring round the art.
  */
-function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc.size)): Api.Response {
+export function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc.size), keyCorner = false): Api.Response {
   const size = desc.ultimate != null ? Math.round(base * 1.15) : base;
   const { radius, corner } = shapeOf("slot");
   // The style's slot corner, kept to a frame's few pixels however large the slot grows.
@@ -224,6 +224,18 @@ function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc.size))
         }, absolute({ end: line + 1, bottom: line + 1 }));
       }
     }
+    // A command card's key: printed in the cell's top-left corner, small, over a soft shadow (StarCraft II's grid keys).
+    if (keyCorner) {
+      const k = desc.hotkey || (desc.action ? kit.frameGlyph(desc.action)?.text ?? "" : "");
+      if (k) {
+        // A small cap at any text size (about a fifth of the cell), so it never meets the cooldown's centred numeral.
+        const kStep = ts(10, true);
+        const kPx = Math.min(stepSize(kStep).size, size * 0.2);
+        const kk = Math.min(1, kPx / stepSize(kStep).size);
+        text("Key", k, { step: kStep, font: "display", color: token("inkMuted", locked ? 0.6 : 1), nowrap: true, soft: true },
+          absolute({ start: line + Math.max(2, u(3)), top: line + Math.max(1, u(2)) }, kk < 1 ? { transform: { scaleX: kk, scaleY: kk, pivotX: 0, pivotY: 0 } } : {}));
+      }
+    }
     // Active or an ultimate ready: a thin accent edge inside the frame, over the art.
     if (accent) {
       leaf("Edge", { width: pct(1), height: pct(1), part: sel("AbilitySlot", "edge", desc.active ? "active" : "ultimate") }, {
@@ -265,11 +277,11 @@ function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc.size))
       const p = clamp01(desc.chargeProgress ?? 0);
       box("Recharge", { width: px(Math.round(size * 0.56)), height: px(pipH), part: sel("AbilitySlot", "recharge") }, { shape: { kind: "rect", radii: [1, 1, 1, 1] }, fills: [solid(token("shadow", 0.7))], strokes: [stroke(1, token("line"))] }, () => {
         leaf("Fill", { width: pct(p), height: pct(1) }, { shape: { kind: "rect", radii: [1, 1, 1, 1] }, fills: [solid(lit(role("gold")))], effects: [glow(3, lit(role("gold"), 0.45))] });
-      }, absolute({ centerX: true, top: size + 1 + (maxLevel > 0 ? pipH + u(2) : 0) }, { overlaps: [path.slice(0, path.lastIndexOf("/"))] }));
+      }, absolute({ centerX: true, top: keyCorner ? size - pipH - line - Math.max(2, u(3)) : size + 1 + (maxLevel > 0 ? pipH + u(2) : 0) }, { overlaps: [path.slice(0, path.lastIndexOf("/"))] }));
     }
     // The hotkey: a small, quiet label under the slot, else the action's glyph on the device used last.
-    const glyph = !desc.hotkey && desc.action ? kit.frameGlyph(desc.action) : null;
-    const keyText = desc.hotkey || glyph?.text || "";
+    const glyph = !keyCorner && !desc.hotkey && desc.action ? kit.frameGlyph(desc.action) : null;
+    const keyText = keyCorner ? "" : desc.hotkey || glyph?.text || "";
     const keyIcon = glyph && glyph.device !== "keyboardMouse" && kit.hasIcon(glyph.icon) ? glyph.icon : "";
     if (keyText || keyIcon) {
       const keyStep = ts(10);

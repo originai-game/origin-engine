@@ -737,6 +737,24 @@ module ui {
 | [`og.ui.lapTimer`](#fn-lapTimer) | function | A lap and split block to the bar of Forza, Gran Turismo and F1: the place and the lap as large tabular numerals over their totals (the lap's caption turns to the final lap's, in gold, on the last), then the current lap running in tabular digits, the best and last laps, and the split against the best lap signed and coloured (ahead in success, behind in danger) that pops when it changes; a last lap that sets the best shows in the personal-best colour. On a phone it keeps the place, the lap and the split. |
 | [`RearViewDesc`](#type-RearViewDesc) | desc struct | A rear-view mirror. |
 | [`og.ui.rearView`](#fn-rearView) | function | A rear-view mirror to the bar of Forza's and Need for Speed's cockpit HUDs: a render target shown in the UI, flipped as a mirror, square-on in a dark bezel with rounded corners, a faint sheen and a bright hairline along the glass's top edge, and a soft drop so it sits over the road. |
+| [`SelectedUnit`](#type-SelectedUnit) | desc struct | A unit or building in an RTS selection. |
+| [`UnitStat`](#type-UnitStat) | desc struct | A line of the focused unit's stats. |
+| [`ControlGroup`](#type-ControlGroup) | desc struct | A control group's tab over the selection. |
+| [`QueueItem`](#type-QueueItem) | desc struct | Something in a production queue. |
+| [`ProductionQueueDesc`](#type-ProductionQueueDesc) | desc struct | A building's production queue. |
+| [`ProductionQueueResult`](#type-ProductionQueueResult) | struct | What a production queue answered. |
+| [`og.ui.productionQueue`](#fn-productionQueue) | function | A production queue to the bar of StarCraft II and Age of Empires IV: the item being built large, its art with a gold progress bar under it and the seconds left, the queued items smaller after it in order with a count on a stacked slot, empty slots as dim sockets; paused, the bar and its time turn warn and say so; pressing an item cancels it. |
+| [`SelectionPanelDesc`](#type-SelectionPanelDesc) | desc struct | An RTS selection panel. |
+| [`SelectionPanelResult`](#type-SelectionPanelResult) | struct | What a selection panel answered. |
+| [`og.ui.selectionPanel`](#fn-selectionPanel) | function | A selection panel to the bar of StarCraft II, Age of Empires IV and Company of Heroes: control group tabs over one panel of the style's HUD glass; the selection as a grid of portrait tiles, each with its health (green to amber to red as it falls), shield and energy as slim bars under its art and a gold progress line when it builds; the focused tile outlined; a selection larger than the grid pages, a count of what is left in the last tile; beside it a unit card for the focused unit (its portrait at full height, its name at the heading step and its type muted, its health numeral over a bar, its stats in rows of icon, label and tabular value, and its attributes in a muted line at the foot); a building with a queue shows the queue as a row of small slots above the card. Built in place (anchor null, as rtsConsole does) it draws no panel of its own. A phone drops the unit card to a single line under the tiles. |
+| [`CommandCardDesc`](#type-CommandCardDesc) | desc struct | An RTS command card. |
+| [`og.ui.commandCard`](#fn-commandCard) | function | A command card to the bar of StarCraft II and Age of Empires IV: a grid of ability slots (abilitySlot, with its cooldowns, costs, charges and states) on one panel of the style's HUD glass (none when built in place), each with its hotkey a small muted letter in its top-left corner as grid layouts print it, empty cells the panel's well so the grid's places stay fixed. |
+| [`RtsConsoleDesc`](#type-RtsConsoleDesc) | desc struct | An RTS bottom console. |
+| [`RtsConsoleResult`](#type-RtsConsoleResult) | struct | What an RTS console answered. |
+| [`og.ui.rtsConsole`](#fn-rtsConsole) | function | An RTS bottom console to the bar of StarCraft II and Age of Empires IV: one continuous panel of the style's HUD glass along the bottom with four zones divided by hairlines, the minimap (minimapView, without its own bezel), the selection with its control group tabs over it, the focused unit's card with a building's queue above it (selectionPanel), and the command card (commandCard); every zone the same height. A screen too narrow for the four (a phone) drops the unit card to its line and the minimap to the game's corner, then stacks the command card over the selection. |
+| [`DragSelectDesc`](#type-DragSelectDesc) | desc struct | An RTS drag selection. |
+| [`DragSelectResult`](#type-DragSelectResult) | struct | What a drag selection answered. |
+| [`og.ui.dragSelect`](#fn-dragSelect) | function | A drag-selection box to the bar of StarCraft II and Age of Empires IV: a thin bright edge over a faint fill of the style's highlight with small corner ticks, drawn from the press to the pointer once it travels past the threshold, answered as a rectangle the tick it is let go. A press on a HUD element is the element's, never a selection. |
 | [`DamageHit`](#type-DamageHit) | desc struct | A hit from a direction. |
 | [`DamageDirectionDesc`](#type-DamageDirectionDesc) | desc struct | Damage direction indicators. |
 | [`og.ui.damageDirection`](#fn-damageDirection) | function | Damage direction to the bar of Call of Duty and Apex: a curved wedge round the centre toward each hit's source, wider and brighter for a harder hit, flaring in and fading over its time; the newest hits over the older. |
@@ -7928,7 +7946,7 @@ fn judgement {
 
 A resource bar to the bar of strategy and management games (StarCraft II, Civilization, Factorio): each resource's icon and amount counting to its value, its rate in success or danger with an up or down mark, a capacity shown as amount / cap that warns near it and flashes at it.
 
-Parts: ResourceBar.frame, ResourceBar.item[capped|near], ResourceBar.amount, ResourceBar.rate[up|down]. Accessibility: list named Resources; each item text named name with its amount and rate. Probe ids: <id>/<key>, its Amount and Rate.
+Parts: ResourceBar.frame, ResourceBar.item[capped|near], ResourceBar.amount, ResourceBar.rate[up|down], ResourceBar.rule (before the clock). Accessibility: list named Resources; each item text named name with its amount and rate. Probe ids: <id>/<key>, its Amount (Count/Amount and Count/Cap with a capacity) and Rate; <id>/Clock.
 
 ```ts
 og.ui.resourceBar(id: string, desc?: ResourceBarDesc): void
@@ -7946,7 +7964,7 @@ Implemented by the TypeScript runtime over the members of this module: no bindin
 ```ogt
 fn resourceBar {
   doc "A resource bar to the bar of strategy and management games (StarCraft II, Civilization, Factorio): each resource's icon and amount counting to its value, its rate in success or danger with an up or down mark, a capacity shown as amount / cap that warns near it and flashes at it."
-  doc "Parts: ResourceBar.frame, ResourceBar.item[capped|near], ResourceBar.amount, ResourceBar.rate[up|down]. Accessibility: list named Resources; each item text named name with its amount and rate. Probe ids: <id>/<key>, its Amount and Rate."
+  doc "Parts: ResourceBar.frame, ResourceBar.item[capped|near], ResourceBar.amount, ResourceBar.rate[up|down], ResourceBar.rule (before the clock). Accessibility: list named Resources; each item text named name with its amount and rate. Probe ids: <id>/<key>, its Amount (Count/Amount and Count/Cap with a capacity) and Rate; <id>/Clock."
   host false
   param id String "Its id."
   param desc ResourceBarDesc "The resources."
@@ -7954,7 +7972,7 @@ fn resourceBar {
 }
 ```
 
-<sub>`api.ogt` line 22464</sub>
+<sub>`api.ogt` line 22467</sub>
 
 <a id="fn-turnOrder"></a>
 
@@ -7988,7 +8006,7 @@ fn turnOrder {
 }
 ```
 
-<sub>`api.ogt` line 22508</sub>
+<sub>`api.ogt` line 22511</sub>
 
 <a id="fn-speedometer"></a>
 
@@ -8022,7 +8040,7 @@ fn speedometer {
 }
 ```
 
-<sub>`api.ogt` line 22554</sub>
+<sub>`api.ogt` line 22557</sub>
 
 <a id="fn-scorebug"></a>
 
@@ -8056,7 +8074,7 @@ fn scorebug {
 }
 ```
 
-<sub>`api.ogt` line 22589</sub>
+<sub>`api.ogt` line 22592</sub>
 
 <a id="fn-flightHud"></a>
 
@@ -8090,7 +8108,7 @@ fn flightHud {
 }
 ```
 
-<sub>`api.ogt` line 22635</sub>
+<sub>`api.ogt` line 22638</sub>
 
 <a id="fn-standingsTower"></a>
 
@@ -8124,7 +8142,7 @@ fn standingsTower {
 }
 ```
 
-<sub>`api.ogt` line 22684</sub>
+<sub>`api.ogt` line 22687</sub>
 
 <a id="fn-lapTimer"></a>
 
@@ -8158,7 +8176,7 @@ fn lapTimer {
 }
 ```
 
-<sub>`api.ogt` line 22739</sub>
+<sub>`api.ogt` line 22742</sub>
 
 <a id="fn-rearView"></a>
 
@@ -8192,7 +8210,177 @@ fn rearView {
 }
 ```
 
-<sub>`api.ogt` line 22771</sub>
+<sub>`api.ogt` line 22774</sub>
+
+<a id="fn-productionQueue"></a>
+
+### `og.ui.productionQueue`
+
+A production queue to the bar of StarCraft II and Age of Empires IV: the item being built large, its art with a gold progress bar under it and the seconds left, the queued items smaller after it in order with a count on a stacked slot, empty slots as dim sockets; paused, the bar and its time turn warn and say so; pressing an item cancels it.
+
+Parts: ProductionQueue.frame, ProductionQueue.current, ProductionQueue.bar[paused], ProductionQueue.time, ProductionQueue.item, ProductionQueue.count, ProductionQueue.empty. State groups: queue (idle, building, paused). Sounds: success when the first item completes (leaves the queue). Accessibility: list named Production queue, each item a button named by its name, the first with its seconds left. Probe ids: <id>, <id>/Current/Time, <id>/<key>, <id>/<key>/Count.
+
+```ts
+og.ui.productionQueue(id: string, desc?: ProductionQueueDesc): ProductionQueueResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `ProductionQueueDesc` | yes | What it builds. |
+
+**Returns** `ProductionQueueResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn productionQueue {
+  doc "A production queue to the bar of StarCraft II and Age of Empires IV: the item being built large, its art with a gold progress bar under it and the seconds left, the queued items smaller after it in order with a count on a stacked slot, empty slots as dim sockets; paused, the bar and its time turn warn and say so; pressing an item cancels it."
+  doc "Parts: ProductionQueue.frame, ProductionQueue.current, ProductionQueue.bar[paused], ProductionQueue.time, ProductionQueue.item, ProductionQueue.count, ProductionQueue.empty. State groups: queue (idle, building, paused). Sounds: success when the first item completes (leaves the queue). Accessibility: list named Production queue, each item a button named by its name, the first with its seconds left. Probe ids: <id>, <id>/Current/Time, <id>/<key>, <id>/<key>/Count."
+  host false
+  param id String "Its id."
+  param desc ProductionQueueDesc "What it builds."
+  returns ProductionQueueResult
+}
+```
+
+<sub>`api.ogt` line 22870</sub>
+
+<a id="fn-selectionPanel"></a>
+
+### `og.ui.selectionPanel`
+
+A selection panel to the bar of StarCraft II, Age of Empires IV and Company of Heroes: control group tabs over one panel of the style's HUD glass; the selection as a grid of portrait tiles, each with its health (green to amber to red as it falls), shield and energy as slim bars under its art and a gold progress line when it builds; the focused tile outlined; a selection larger than the grid pages, a count of what is left in the last tile; beside it a unit card for the focused unit (its portrait at full height, its name at the heading step and its type muted, its health numeral over a bar, its stats in rows of icon, label and tabular value, and its attributes in a muted line at the foot); a building with a queue shows the queue as a row of small slots above the card. Built in place (anchor null, as rtsConsole does) it draws no panel of its own. A phone drops the unit card to a single line under the tiles.
+
+Parts: SelectionPanel.frame, SelectionPanel.tab[current][empty], SelectionPanel.tile[focused], SelectionPanel.health[low|critical], SelectionPanel.shield, SelectionPanel.energy, SelectionPanel.progress, SelectionPanel.more, SelectionPanel.detail, SelectionPanel.portrait, SelectionPanel.name, SelectionPanel.kind, SelectionPanel.stat, SelectionPanel.tags, SelectionPanel.rule. State groups: selection (empty, single, many) on the panel. Accessibility: group named Selection; each tile a button named by its unit with its health; each tab a tab with its count. Probe ids: <id>, <id>/Tabs/<key>, <id>/Body/Tiles/<key>, <id>/Body/Detail/Name, <id>/Body/Detail/Health/Value, <id>/Body/Detail/Stats/<key>/Value.
+
+```ts
+og.ui.selectionPanel(id: string, desc?: SelectionPanelDesc): SelectionPanelResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `SelectionPanelDesc` | yes | The selection. |
+
+**Returns** `SelectionPanelResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn selectionPanel {
+  doc "A selection panel to the bar of StarCraft II, Age of Empires IV and Company of Heroes: control group tabs over one panel of the style's HUD glass; the selection as a grid of portrait tiles, each with its health (green to amber to red as it falls), shield and energy as slim bars under its art and a gold progress line when it builds; the focused tile outlined; a selection larger than the grid pages, a count of what is left in the last tile; beside it a unit card for the focused unit (its portrait at full height, its name at the heading step and its type muted, its health numeral over a bar, its stats in rows of icon, label and tabular value, and its attributes in a muted line at the foot); a building with a queue shows the queue as a row of small slots above the card. Built in place (anchor null, as rtsConsole does) it draws no panel of its own. A phone drops the unit card to a single line under the tiles."
+  doc "Parts: SelectionPanel.frame, SelectionPanel.tab[current][empty], SelectionPanel.tile[focused], SelectionPanel.health[low|critical], SelectionPanel.shield, SelectionPanel.energy, SelectionPanel.progress, SelectionPanel.more, SelectionPanel.detail, SelectionPanel.portrait, SelectionPanel.name, SelectionPanel.kind, SelectionPanel.stat, SelectionPanel.tags, SelectionPanel.rule. State groups: selection (empty, single, many) on the panel. Accessibility: group named Selection; each tile a button named by its unit with its health; each tab a tab with its count. Probe ids: <id>, <id>/Tabs/<key>, <id>/Body/Tiles/<key>, <id>/Body/Detail/Name, <id>/Body/Detail/Health/Value, <id>/Body/Detail/Stats/<key>/Value."
+  host false
+  param id String "Its id."
+  param desc SelectionPanelDesc "The selection."
+  returns SelectionPanelResult
+}
+```
+
+<sub>`api.ogt` line 22904</sub>
+
+<a id="fn-commandCard"></a>
+
+### `og.ui.commandCard`
+
+A command card to the bar of StarCraft II and Age of Empires IV: a grid of ability slots (abilitySlot, with its cooldowns, costs, charges and states) on one panel of the style's HUD glass (none when built in place), each with its hotkey a small muted letter in its top-left corner as grid layouts print it, empty cells the panel's well so the grid's places stay fixed.
+
+Parts: CommandCard.frame, CommandCard.empty, CommandCard.key and each slot's. Accessibility: group named Commands. Probe ids: <id>, <id>/<key>, <id>/<key>/Slot/Key.
+
+```ts
+og.ui.commandCard(id: string, desc?: CommandCardDesc): AbilityBarResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `CommandCardDesc` | yes | The commands. |
+
+**Returns** `AbilityBarResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn commandCard {
+  doc "A command card to the bar of StarCraft II and Age of Empires IV: a grid of ability slots (abilitySlot, with its cooldowns, costs, charges and states) on one panel of the style's HUD glass (none when built in place), each with its hotkey a small muted letter in its top-left corner as grid layouts print it, empty cells the panel's well so the grid's places stay fixed."
+  doc "Parts: CommandCard.frame, CommandCard.empty, CommandCard.key and each slot's. Accessibility: group named Commands. Probe ids: <id>, <id>/<key>, <id>/<key>/Slot/Key."
+  host false
+  param id String "Its id."
+  param desc CommandCardDesc "The commands."
+  returns AbilityBarResult
+}
+```
+
+<sub>`api.ogt` line 22927</sub>
+
+<a id="fn-rtsConsole"></a>
+
+### `og.ui.rtsConsole`
+
+An RTS bottom console to the bar of StarCraft II and Age of Empires IV: one continuous panel of the style's HUD glass along the bottom with four zones divided by hairlines, the minimap (minimapView, without its own bezel), the selection with its control group tabs over it, the focused unit's card with a building's queue above it (selectionPanel), and the command card (commandCard); every zone the same height. A screen too narrow for the four (a phone) drops the unit card to its line and the minimap to the game's corner, then stacks the command card over the selection.
+
+Parts: RtsConsole.frame, RtsConsole.rule, and each zone's. Accessibility: group named Console. Probe ids: <id>, <id>/Map (the minimap's ids under it), <id>/Selection (selectionPanel's), <id>/Commands (commandCard's).
+
+```ts
+og.ui.rtsConsole(id: string, desc?: RtsConsoleDesc): RtsConsoleResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `RtsConsoleDesc` | yes | Its zones. |
+
+**Returns** `RtsConsoleResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn rtsConsole {
+  doc "An RTS bottom console to the bar of StarCraft II and Age of Empires IV: one continuous panel of the style's HUD glass along the bottom with four zones divided by hairlines, the minimap (minimapView, without its own bezel), the selection with its control group tabs over it, the focused unit's card with a building's queue above it (selectionPanel), and the command card (commandCard); every zone the same height. A screen too narrow for the four (a phone) drops the unit card to its line and the minimap to the game's corner, then stacks the command card over the selection."
+  doc "Parts: RtsConsole.frame, RtsConsole.rule, and each zone's. Accessibility: group named Console. Probe ids: <id>, <id>/Map (the minimap's ids under it), <id>/Selection (selectionPanel's), <id>/Commands (commandCard's)."
+  host false
+  param id String "Its id."
+  param desc RtsConsoleDesc "Its zones."
+  returns RtsConsoleResult
+}
+```
+
+<sub>`api.ogt` line 22957</sub>
+
+<a id="fn-dragSelect"></a>
+
+### `og.ui.dragSelect`
+
+A drag-selection box to the bar of StarCraft II and Age of Empires IV: a thin bright edge over a faint fill of the style's highlight with small corner ticks, drawn from the press to the pointer once it travels past the threshold, answered as a rectangle the tick it is let go. A press on a HUD element is the element's, never a selection.
+
+Parts: DragSelect.box, DragSelect.corner. Accessibility: none (the selection it makes is the game's). Probe ids: <id>.
+
+```ts
+og.ui.dragSelect(id: string, desc?: DragSelectDesc): DragSelectResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `DragSelectDesc` | yes | Where it follows from. |
+
+**Returns** `DragSelectResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn dragSelect {
+  doc "A drag-selection box to the bar of StarCraft II and Age of Empires IV: a thin bright edge over a faint fill of the style's highlight with small corner ticks, drawn from the press to the pointer once it travels past the threshold, answered as a rectangle the tick it is let go. A press on a HUD element is the element's, never a selection."
+  doc "Parts: DragSelect.box, DragSelect.corner. Accessibility: none (the selection it makes is the game's). Probe ids: <id>."
+  host false
+  param id String "Its id."
+  param desc DragSelectDesc "Where it follows from."
+  returns DragSelectResult
+}
+```
+
+<sub>`api.ogt` line 23001</sub>
 
 <a id="fn-damageDirection"></a>
 
@@ -8226,7 +8414,7 @@ fn damageDirection {
 }
 ```
 
-<sub>`api.ogt` line 22808</sub>
+<sub>`api.ogt` line 23038</sub>
 
 <a id="fn-lowHealthVignette"></a>
 
@@ -8260,7 +8448,7 @@ fn lowHealthVignette {
 }
 ```
 
-<sub>`api.ogt` line 22831</sub>
+<sub>`api.ogt` line 23061</sub>
 
 <a id="fn-nameplate"></a>
 
@@ -8294,7 +8482,7 @@ fn nameplate {
 }
 ```
 
-<sub>`api.ogt` line 22893</sub>
+<sub>`api.ogt` line 23123</sub>
 
 <a id="fn-overheadBars"></a>
 
@@ -8328,7 +8516,7 @@ fn overheadBars {
 }
 ```
 
-<sub>`api.ogt` line 22934</sub>
+<sub>`api.ogt` line 23164</sub>
 
 <a id="fn-damageNumbers"></a>
 
@@ -8362,7 +8550,7 @@ fn damageNumbers {
 }
 ```
 
-<sub>`api.ogt` line 22983</sub>
+<sub>`api.ogt` line 23213</sub>
 
 <a id="fn-interactionPrompt"></a>
 
@@ -8398,7 +8586,7 @@ fn interactionPrompt {
 }
 ```
 
-<sub>`api.ogt` line 23014</sub>
+<sub>`api.ogt` line 23244</sub>
 
 <a id="fn-waypoint"></a>
 
@@ -8432,7 +8620,7 @@ fn waypoint {
 }
 ```
 
-<sub>`api.ogt` line 23062</sub>
+<sub>`api.ogt` line 23292</sub>
 
 <a id="fn-selectionRing"></a>
 
@@ -8468,7 +8656,7 @@ fn selectionRing {
 }
 ```
 
-<sub>`api.ogt` line 23116</sub>
+<sub>`api.ogt` line 23346</sub>
 
 <a id="fn-telegraph"></a>
 
@@ -8504,7 +8692,7 @@ fn telegraph {
 }
 ```
 
-<sub>`api.ogt` line 23170</sub>
+<sub>`api.ogt` line 23400</sub>
 
 <a id="fn-pathLine"></a>
 
@@ -8540,7 +8728,7 @@ fn pathLine {
 }
 ```
 
-<sub>`api.ogt` line 23201</sub>
+<sub>`api.ogt` line 23431</sub>
 
 <a id="fn-placementGhost"></a>
 
@@ -8576,7 +8764,7 @@ fn placementGhost {
 }
 ```
 
-<sub>`api.ogt` line 23242</sub>
+<sub>`api.ogt` line 23472</sub>
 
 <a id="fn-lootLabel"></a>
 
@@ -8610,7 +8798,7 @@ fn lootLabel {
 }
 ```
 
-<sub>`api.ogt` line 23280</sub>
+<sub>`api.ogt` line 23510</sub>
 
 <a id="fn-speechBubble"></a>
 
@@ -8644,7 +8832,7 @@ fn speechBubble {
 }
 ```
 
-<sub>`api.ogt` line 23317</sub>
+<sub>`api.ogt` line 23547</sub>
 
 <a id="fn-semantics"></a>
 
@@ -8672,7 +8860,7 @@ fn semantics {
 }
 ```
 
-<sub>`api.ogt` line 23793</sub>
+<sub>`api.ogt` line 24023</sub>
 
 <a id="fn-partAttr"></a>
 
@@ -8702,7 +8890,7 @@ fn partAttr {
 }
 ```
 
-<sub>`api.ogt` line 23799</sub>
+<sub>`api.ogt` line 24029</sub>
 
 <a id="fn-setDraw"></a>
 
@@ -8730,7 +8918,7 @@ fn setDraw {
 }
 ```
 
-<sub>`api.ogt` line 23806</sub>
+<sub>`api.ogt` line 24036</sub>
 
 <a id="fn-openWorldAnchor"></a>
 
@@ -8760,7 +8948,7 @@ fn openWorldAnchor {
 }
 ```
 
-<sub>`api.ogt` line 23937</sub>
+<sub>`api.ogt` line 24167</sub>
 
 <a id="fn-openWorldPanel"></a>
 
@@ -8790,7 +8978,7 @@ fn openWorldPanel {
 }
 ```
 
-<sub>`api.ogt` line 23992</sub>
+<sub>`api.ogt` line 24222</sub>
 
 <a id="fn-defineMass"></a>
 
@@ -8820,7 +9008,7 @@ fn defineMass {
 }
 ```
 
-<sub>`api.ogt` line 24137</sub>
+<sub>`api.ogt` line 24367</sub>
 
 <a id="fn-spawnMass"></a>
 
@@ -8850,7 +9038,7 @@ fn spawnMass {
 }
 ```
 
-<sub>`api.ogt` line 24144</sub>
+<sub>`api.ogt` line 24374</sub>
 
 <a id="fn-pushMass"></a>
 
@@ -8880,7 +9068,7 @@ fn pushMass {
 }
 ```
 
-<sub>`api.ogt` line 24151</sub>
+<sub>`api.ogt` line 24381</sub>
 
 <a id="fn-massCount"></a>
 
@@ -8908,7 +9096,7 @@ fn massCount {
 }
 ```
 
-<sub>`api.ogt` line 24158</sub>
+<sub>`api.ogt` line 24388</sub>
 
 <a id="fn-particles"></a>
 
@@ -8936,7 +9124,7 @@ fn particles {
 }
 ```
 
-<sub>`api.ogt` line 24231</sub>
+<sub>`api.ogt` line 24461</sub>
 
 <a id="fn-meta"></a>
 
@@ -8966,7 +9154,7 @@ fn meta {
 }
 ```
 
-<sub>`api.ogt` line 24281</sub>
+<sub>`api.ogt` line 24511</sub>
 
 <a id="fn-sceneViewport"></a>
 
@@ -8996,7 +9184,7 @@ fn sceneViewport {
 }
 ```
 
-<sub>`api.ogt` line 24332</sub>
+<sub>`api.ogt` line 24562</sub>
 
 <a id="fn-screen"></a>
 
@@ -9028,7 +9216,7 @@ fn screen {
 }
 ```
 
-<sub>`api.ogt` line 24422</sub>
+<sub>`api.ogt` line 24652</sub>
 
 <a id="fn-component"></a>
 
@@ -9062,7 +9250,7 @@ fn component {
 }
 ```
 
-<sub>`api.ogt` line 24431</sub>
+<sub>`api.ogt` line 24661</sub>
 
 <a id="fn-openSlot"></a>
 
@@ -9090,7 +9278,7 @@ fn openSlot {
 }
 ```
 
-<sub>`api.ogt` line 24441</sub>
+<sub>`api.ogt` line 24671</sub>
 
 <a id="fn-push"></a>
 
@@ -9124,7 +9312,7 @@ fn push {
 }
 ```
 
-<sub>`api.ogt` line 24447</sub>
+<sub>`api.ogt` line 24677</sub>
 
 <a id="fn-pop"></a>
 
@@ -9152,7 +9340,7 @@ fn pop {
 }
 ```
 
-<sub>`api.ogt` line 24457</sub>
+<sub>`api.ogt` line 24687</sub>
 
 <a id="fn-replace"></a>
 
@@ -9186,7 +9374,7 @@ fn replace {
 }
 ```
 
-<sub>`api.ogt` line 24463</sub>
+<sub>`api.ogt` line 24693</sub>
 
 <a id="fn-clear"></a>
 
@@ -9214,7 +9402,7 @@ fn clear {
 }
 ```
 
-<sub>`api.ogt` line 24473</sub>
+<sub>`api.ogt` line 24703</sub>
 
 <a id="fn-layers"></a>
 
@@ -9242,7 +9430,7 @@ fn layers {
 }
 ```
 
-<sub>`api.ogt` line 24479</sub>
+<sub>`api.ogt` line 24709</sub>
 
 <a id="fn-screenVm"></a>
 
@@ -9272,7 +9460,7 @@ fn screenVm {
 }
 ```
 
-<sub>`api.ogt` line 24485</sub>
+<sub>`api.ogt` line 24715</sub>
 
 <a id="fn-docEvents"></a>
 
@@ -9300,7 +9488,7 @@ fn docEvents {
 }
 ```
 
-<sub>`api.ogt` line 24492</sub>
+<sub>`api.ogt` line 24722</sub>
 
 <a id="fn-gameInput"></a>
 
@@ -9328,7 +9516,7 @@ fn gameInput {
 }
 ```
 
-<sub>`api.ogt` line 24498</sub>
+<sub>`api.ogt` line 24728</sub>
 
 <a id="fn-paused"></a>
 
@@ -9356,7 +9544,7 @@ fn paused {
 }
 ```
 
-<sub>`api.ogt` line 24504</sub>
+<sub>`api.ogt` line 24734</sub>
 
 <a id="fn-defineAction"></a>
 
@@ -9386,7 +9574,7 @@ fn defineAction {
 }
 ```
 
-<sub>`api.ogt` line 24510</sub>
+<sub>`api.ogt` line 24740</sub>
 
 <a id="fn-action"></a>
 
@@ -9414,7 +9602,7 @@ fn action {
 }
 ```
 
-<sub>`api.ogt` line 24517</sub>
+<sub>`api.ogt` line 24747</sub>
 
 <a id="fn-actionHeld"></a>
 
@@ -9442,7 +9630,7 @@ fn actionHeld {
 }
 ```
 
-<sub>`api.ogt` line 24523</sub>
+<sub>`api.ogt` line 24753</sub>
 
 <a id="fn-glyph"></a>
 
@@ -9472,7 +9660,7 @@ fn glyph {
 }
 ```
 
-<sub>`api.ogt` line 24529</sub>
+<sub>`api.ogt` line 24759</sub>
 
 <a id="fn-frameGlyph"></a>
 
@@ -9500,7 +9688,7 @@ fn frameGlyph {
 }
 ```
 
-<sub>`api.ogt` line 24536</sub>
+<sub>`api.ogt` line 24766</sub>
 
 <a id="fn-device"></a>
 
@@ -9528,7 +9716,7 @@ fn device {
 }
 ```
 
-<sub>`api.ogt` line 24542</sub>
+<sub>`api.ogt` line 24772</sub>
 
 <a id="fn-setDevice"></a>
 
@@ -9558,7 +9746,7 @@ fn setDevice {
 }
 ```
 
-<sub>`api.ogt` line 24548</sub>
+<sub>`api.ogt` line 24778</sub>
 
 <a id="fn-actionBar"></a>
 
@@ -9586,7 +9774,7 @@ fn actionBar {
 }
 ```
 
-<sub>`api.ogt` line 24555</sub>
+<sub>`api.ogt` line 24785</sub>
 
 <a id="fn-documentSchema"></a>
 
@@ -9609,7 +9797,7 @@ fn documentSchema {
 }
 ```
 
-<sub>`api.ogt` line 24561</sub>
+<sub>`api.ogt` line 24791</sub>
 
 <a id="fn-setProp"></a>
 
@@ -9643,7 +9831,7 @@ fn setProp {
 }
 ```
 
-<sub>`api.ogt` line 24566</sub>
+<sub>`api.ogt` line 24796</sub>
 
 <a id="fn-saveEdits"></a>
 
@@ -9671,7 +9859,7 @@ fn saveEdits {
 }
 ```
 
-<sub>`api.ogt` line 24575</sub>
+<sub>`api.ogt` line 24805</sub>
 
 ## Types
 
@@ -25929,6 +26117,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 |---|---|---|---|---|---|---|
 | `items` | `readonly ResourceItem[]` | `[]` | — | — | — | The resources. |
 | `rates` | `boolean` | `true` | — | — | — | Show rates (the default). |
+| `clock` | `number \| null` | `null` | — | `s` | — | A game clock at the plate's end, in mono (12:34), after a hairline; null is none. |
 | `anchor` | `Anchor \| null` | `"top"` | — | — | — | Opens its own anchored group there; null builds it in place. |
 
 ```ogt
@@ -25938,6 +26127,9 @@ struct ResourceBarDesc {
   field items List.ResourceItem "The resources."
   field rates bool "Show rates (the default)." {
     default true
+  }
+  field clock Option.f32 "A game clock at the plate's end, in mono (12:34), after a hairline; null is none." {
+    unit s
   }
   field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
     default top
@@ -25983,7 +26175,7 @@ struct TurnUnit {
 }
 ```
 
-<sub>`api.ogt` line 22473</sub>
+<sub>`api.ogt` line 22476</sub>
 
 <a id="type-TurnOrderDesc"></a>
 
@@ -26024,7 +26216,7 @@ struct TurnOrderDesc {
 }
 ```
 
-<sub>`api.ogt` line 22488</sub>
+<sub>`api.ogt` line 22491</sub>
 
 <a id="type-SpeedoStyle"></a>
 
@@ -26047,7 +26239,7 @@ enum SpeedoStyle {
 }
 ```
 
-<sub>`api.ogt` line 22517</sub>
+<sub>`api.ogt` line 22520</sub>
 
 <a id="type-SpeedometerDesc"></a>
 
@@ -26103,7 +26295,7 @@ struct SpeedometerDesc {
 }
 ```
 
-<sub>`api.ogt` line 22523</sub>
+<sub>`api.ogt` line 22526</sub>
 
 <a id="type-ScorebugTeam"></a>
 
@@ -26137,7 +26329,7 @@ struct ScorebugTeam {
 }
 ```
 
-<sub>`api.ogt` line 22563</sub>
+<sub>`api.ogt` line 22566</sub>
 
 <a id="type-ScorebugDesc"></a>
 
@@ -26173,7 +26365,7 @@ struct ScorebugDesc {
 }
 ```
 
-<sub>`api.ogt` line 22575</sub>
+<sub>`api.ogt` line 22578</sub>
 
 <a id="type-FlightHudDesc"></a>
 
@@ -26238,7 +26430,7 @@ struct FlightHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 22598</sub>
+<sub>`api.ogt` line 22601</sub>
 
 <a id="type-StandingsEntry"></a>
 
@@ -26280,7 +26472,7 @@ struct StandingsEntry {
 }
 ```
 
-<sub>`api.ogt` line 22644</sub>
+<sub>`api.ogt` line 22647</sub>
 
 <a id="type-StandingsTowerDesc"></a>
 
@@ -26326,7 +26518,7 @@ struct StandingsTowerDesc {
 }
 ```
 
-<sub>`api.ogt` line 22661</sub>
+<sub>`api.ogt` line 22664</sub>
 
 <a id="type-LapTimerDesc"></a>
 
@@ -26403,7 +26595,7 @@ struct LapTimerDesc {
 }
 ```
 
-<sub>`api.ogt` line 22693</sub>
+<sub>`api.ogt` line 22696</sub>
 
 <a id="type-RearViewDesc"></a>
 
@@ -26447,7 +26639,449 @@ struct RearViewDesc {
 }
 ```
 
-<sub>`api.ogt` line 22748</sub>
+<sub>`api.ogt` line 22751</sub>
+
+<a id="type-SelectedUnit"></a>
+
+### `SelectedUnit` (desc struct)
+
+A unit or building in an RTS selection.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `key` | `string` | `""` | — | — | — | Its key (its probe id). |
+| `name` | `string` | `""` | — | — | — | Its name (Vanguard Marine). |
+| `kind` | `string` | `""` | — | — | — | Its type line under the name (Infantry). |
+| `icon` | `string` | `""` | — | — | — | An icon of the atlas when it has no art. |
+| `image` | `Texture \| null` | `null` | — | — | — | Its portrait (art kind portrait, 1:1); null draws the icon on a gradient in a hue of its own. |
+| `health` | `number` | `0` | ≥ 0 | — | — | Its health. |
+| `healthMax` | `number` | `0` | ≥ 0 | — | — | Its most health; 0 hides the bar. |
+| `shield` | `number` | `0` | ≥ 0 | — | — | Its shield, over the health as a thin blue bar. |
+| `shieldMax` | `number` | `0` | ≥ 0 | — | — | Its most shield; 0 is none. |
+| `energy` | `number` | `0` | ≥ 0 | — | — | Its energy, a thin violet bar under the health. |
+| `energyMax` | `number` | `0` | ≥ 0 | — | — | Its most energy; 0 is none. |
+| `progress` | `number \| null` | `null` | — | `ratio` | — | Something it builds or researches, 0 to 1: a thin gold bar along the tile's foot; null is none. |
+
+```ogt
+struct SelectedUnit {
+  doc "A unit or building in an RTS selection."
+  desc true
+  field key String "Its key (its probe id)."
+  field name String "Its name (Vanguard Marine)."
+  field kind String "Its type line under the name (Infantry)."
+  field icon String "An icon of the atlas when it has no art."
+  field image Option.Texture "Its portrait (art kind portrait, 1:1); null draws the icon on a gradient in a hue of its own."
+  field health f32 "Its health." {
+    min 0
+  }
+  field healthMax f32 "Its most health; 0 hides the bar." {
+    min 0
+  }
+  field shield f32 "Its shield, over the health as a thin blue bar." {
+    min 0
+  }
+  field shieldMax f32 "Its most shield; 0 is none." {
+    min 0
+  }
+  field energy f32 "Its energy, a thin violet bar under the health." {
+    min 0
+  }
+  field energyMax f32 "Its most energy; 0 is none." {
+    min 0
+  }
+  field progress Option.f32 "Something it builds or researches, 0 to 1: a thin gold bar along the tile's foot; null is none." {
+    unit ratio
+  }
+}
+```
+
+<sub>`api.ogt` line 22783</sub>
+
+<a id="type-UnitStat"></a>
+
+### `UnitStat` (desc struct)
+
+A line of the focused unit's stats.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `key` | `string` | `""` | — | — | — | Its key (its probe id). |
+| `icon` | `string` | `""` | — | — | — | An icon of the atlas before the label; empty is none. |
+| `label` | `string` | `""` | — | — | — | What it is (Armour). |
+| `value` | `string` | `""` | — | — | — | Its value as the game words it (8 - 10). |
+
+```ogt
+struct UnitStat {
+  doc "A line of the focused unit's stats."
+  desc true
+  field key String "Its key (its probe id)."
+  field icon String "An icon of the atlas before the label; empty is none."
+  field label String "What it is (Armour)."
+  field value String "Its value as the game words it (8 - 10)."
+}
+```
+
+<sub>`api.ogt` line 22814</sub>
+
+<a id="type-ControlGroup"></a>
+
+### `ControlGroup` (desc struct)
+
+A control group's tab over the selection.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `key` | `string` | `""` | — | — | — | Its key (its probe id). |
+| `label` | `string` | `""` | — | — | — | What its tab says (1). |
+| `count` | `number` | `0` | — | — | — | Units in it; 0 draws an empty tab. |
+
+```ogt
+struct ControlGroup {
+  doc "A control group's tab over the selection."
+  desc true
+  field key String "Its key (its probe id)."
+  field label String "What its tab says (1)."
+  field count u32 "Units in it; 0 draws an empty tab."
+}
+```
+
+<sub>`api.ogt` line 22823</sub>
+
+<a id="type-QueueItem"></a>
+
+### `QueueItem` (desc struct)
+
+Something in a production queue.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `key` | `string` | `""` | — | — | — | Its key (its probe id). |
+| `name` | `string` | `""` | — | — | — | What it makes (Vanguard Marine). |
+| `icon` | `string` | `""` | — | — | — | An icon of the atlas when it has no art. |
+| `image` | `Texture \| null` | `null` | — | — | — | Its art (art kind portrait or ability, 1:1). |
+| `remaining` | `number` | `0` | ≥ 0 | `s` | — | Seconds left; only the first item counts down. |
+| `duration` | `number` | `0` | ≥ 0 | `s` | — | Its build time; the first item's bar shows remaining over it. |
+| `count` | `number` | `0` | — | — | — | How many of it are queued in this slot; over 1 shows a small count. |
+
+```ogt
+struct QueueItem {
+  doc "Something in a production queue."
+  desc true
+  field key String "Its key (its probe id)."
+  field name String "What it makes (Vanguard Marine)."
+  field icon String "An icon of the atlas when it has no art."
+  field image Option.Texture "Its art (art kind portrait or ability, 1:1)."
+  field remaining f32 "Seconds left; only the first item counts down." {
+    min 0
+    unit s
+  }
+  field duration f32 "Its build time; the first item's bar shows remaining over it." {
+    min 0
+    unit s
+  }
+  field count u32 "How many of it are queued in this slot; over 1 shows a small count."
+}
+```
+
+<sub>`api.ogt` line 22831</sub>
+
+<a id="type-ProductionQueueDesc"></a>
+
+### `ProductionQueueDesc` (desc struct)
+
+A building's production queue.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `items` | `readonly QueueItem[]` | `[]` | — | — | — | In build order, the one being built first. |
+| `slots` | `number` | `0` | — | — | — | Slots shown (empty ones dim); 0 is 5. |
+| `paused` | `boolean` | `false` | — | — | — | Production is held (no supply, no power): the bar and its time in warn. |
+| `pausedLabel` | `string` | `"Paused"` | — | — | — | What the held bar says. |
+| `size` | `number` | `0` | ≥ 0 | `cssPx` | — | A queued slot's side; 0 is 40 (36 on a phone). |
+| `anchor` | `Anchor \| null` | `null` | — | — | — | Opens its own anchored group there; null builds it in place (inside a selection panel). |
+
+```ogt
+struct ProductionQueueDesc {
+  doc "A building's production queue."
+  desc true
+  field items List.QueueItem "In build order, the one being built first."
+  field slots u32 "Slots shown (empty ones dim); 0 is 5."
+  field paused bool "Production is held (no supply, no power): the bar and its time in warn."
+  field pausedLabel String "What the held bar says." {
+    default "Paused"
+  }
+  field size f32 "A queued slot's side; 0 is 40 (36 on a phone)." {
+    min 0
+    unit cssPx
+  }
+  field anchor Option.Anchor "Opens its own anchored group there; null builds it in place (inside a selection panel)."
+}
+```
+
+<sub>`api.ogt` line 22849</sub>
+
+<a id="type-ProductionQueueResult"></a>
+
+### `ProductionQueueResult` (struct)
+
+What a production queue answered.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `cancelled` | `string \| null` | `null` | — | — | — | The item pressed this tick to cancel it (its key). |
+
+```ogt
+struct ProductionQueueResult {
+  doc "What a production queue answered."
+  field cancelled Option.String "The item pressed this tick to cancel it (its key)."
+}
+```
+
+<sub>`api.ogt` line 22865</sub>
+
+<a id="type-SelectionPanelDesc"></a>
+
+### `SelectionPanelDesc` (desc struct)
+
+An RTS selection panel.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `units` | `readonly SelectedUnit[]` | `[]` | — | — | — | The selection, in its order. |
+| `focus` | `string` | `""` | — | — | — | The unit the detail card shows (its key); empty is the first. Its tile is outlined. |
+| `groups` | `readonly ControlGroup[]` | `[]` | — | — | — | Control group tabs over the panel; empty draws none. |
+| `group` | `string` | `""` | — | — | — | The current group's key. |
+| `stats` | `readonly UnitStat[]` | `[]` | — | — | — | The focused unit's stats in the detail card. |
+| `tags` | `readonly string[]` | `[]` | — | — | — | Its attributes, a quiet line at the card's foot (Biological, Light). |
+| `queue` | `ProductionQueueDesc \| null` | `null` | — | — | — | A building's queue, a row of small slots above the unit card while it has items (a building selected). |
+| `columns` | `number` | `0` | — | — | — | Tiles per row; 0 fits the panel (6 on a desktop, 4 on a phone). |
+| `rows` | `number` | `0` | — | — | — | Rows before the selection pages; 0 is 2. |
+| `page` | `number` | `0` | — | — | — | The page shown, from 0. |
+| `anchor` | `Anchor \| null` | `"bottom"` | — | — | — | Opens its own anchored group there; null builds it in place. |
+
+```ogt
+struct SelectionPanelDesc {
+  doc "An RTS selection panel."
+  desc true
+  field units List.SelectedUnit "The selection, in its order."
+  field focus String "The unit the detail card shows (its key); empty is the first. Its tile is outlined."
+  field groups List.ControlGroup "Control group tabs over the panel; empty draws none."
+  field group String "The current group's key."
+  field stats List.UnitStat "The focused unit's stats in the detail card."
+  field tags List.String "Its attributes, a quiet line at the card's foot (Biological, Light)."
+  field queue Option.ProductionQueueDesc "A building's queue, a row of small slots above the unit card while it has items (a building selected)."
+  field columns u32 "Tiles per row; 0 fits the panel (6 on a desktop, 4 on a phone)."
+  field rows u32 "Rows before the selection pages; 0 is 2."
+  field page u32 "The page shown, from 0."
+  field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
+    default bottom
+  }
+}
+```
+
+<sub>`api.ogt` line 22879</sub>
+
+<a id="type-SelectionPanelResult"></a>
+
+### `SelectionPanelResult` (struct)
+
+What a selection panel answered.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `clicked` | `string \| null` | `null` | — | — | — | A unit's tile pressed this tick (its key): the game focuses it, or selects only it. |
+| `group` | `string \| null` | `null` | — | — | — | A control group's tab pressed this tick (its key). |
+| `cancelled` | `string \| null` | `null` | — | — | — | A queue item pressed this tick (its key). |
+
+```ogt
+struct SelectionPanelResult {
+  doc "What a selection panel answered."
+  field clicked Option.String "A unit's tile pressed this tick (its key): the game focuses it, or selects only it."
+  field group Option.String "A control group's tab pressed this tick (its key)."
+  field cancelled Option.String "A queue item pressed this tick (its key)."
+}
+```
+
+<sub>`api.ogt` line 22897</sub>
+
+<a id="type-CommandCardDesc"></a>
+
+### `CommandCardDesc` (desc struct)
+
+An RTS command card.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `commands` | `readonly AbilitySlotDesc[]` | `[]` | — | — | — | The commands in reading order, each one's key its id; an empty key leaves its cell empty. |
+| `columns` | `number` | `0` | — | — | — | Columns; 0 is 5. |
+| `size` | `number` | `0` | ≥ 0 | `cssPx` | — | A cell's side; 0 is 56 (48 on a phone). |
+| `anchor` | `Anchor \| null` | `"bottomRight"` | — | — | — | Opens its own anchored group there; null builds it in place. |
+
+```ogt
+struct CommandCardDesc {
+  doc "An RTS command card."
+  desc true
+  field commands List.AbilitySlotDesc "The commands in reading order, each one's key its id; an empty key leaves its cell empty."
+  field columns u32 "Columns; 0 is 5."
+  field size f32 "A cell's side; 0 is 56 (48 on a phone)." {
+    min 0
+    unit cssPx
+  }
+  field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
+    default bottomRight
+  }
+}
+```
+
+<sub>`api.ogt` line 22913</sub>
+
+<a id="type-RtsConsoleDesc"></a>
+
+### `RtsConsoleDesc` (desc struct)
+
+An RTS bottom console.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `map` | `MinimapViewDesc \| null` | `null` | — | — | — | The minimap zone at its start; null is none. |
+| `selection` | `SelectionPanelDesc` | `{}` | — | — | — | The selection and unit card zones (its anchor is ignored). |
+| `commands` | `CommandCardDesc` | `{}` | — | — | — | The command card zone at its end (its anchor is ignored). |
+| `anchor` | `Anchor \| null` | `"bottom"` | — | — | — | Opens its own anchored group there; null builds it in place. |
+
+```ogt
+struct RtsConsoleDesc {
+  doc "An RTS bottom console."
+  desc true
+  field map Option.MinimapViewDesc "The minimap zone at its start; null is none."
+  field selection SelectionPanelDesc "The selection and unit card zones (its anchor is ignored)."
+  field commands CommandCardDesc "The command card zone at its end (its anchor is ignored)."
+  field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
+    default bottom
+  }
+}
+```
+
+<sub>`api.ogt` line 22936</sub>
+
+<a id="type-RtsConsoleResult"></a>
+
+### `RtsConsoleResult` (struct)
+
+What an RTS console answered.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `mapClicked` | `boolean` | `false` | — | — | — | The minimap was pressed this tick (MinimapResult.clicked). |
+| `clicked` | `string \| null` | `null` | — | — | — | A unit's tile pressed this tick (its key). |
+| `group` | `string \| null` | `null` | — | — | — | A control group's tab pressed this tick (its key). |
+| `cancelled` | `string \| null` | `null` | — | — | — | A queue item pressed this tick (its key). |
+| `command` | `string \| null` | `null` | — | — | — | A command pressed and released this tick (its key). |
+| `pressed` | `readonly string[]` | `[]` | — | — | — | The commands held. |
+
+```ogt
+struct RtsConsoleResult {
+  doc "What an RTS console answered."
+  field mapClicked bool "The minimap was pressed this tick (MinimapResult.clicked)."
+  field clicked Option.String "A unit's tile pressed this tick (its key)."
+  field group Option.String "A control group's tab pressed this tick (its key)."
+  field cancelled Option.String "A queue item pressed this tick (its key)."
+  field command Option.String "A command pressed and released this tick (its key)."
+  field pressed List.String "The commands held."
+}
+```
+
+<sub>`api.ogt` line 22947</sub>
+
+<a id="type-DragSelectDesc"></a>
+
+### `DragSelectDesc` (desc struct)
+
+An RTS drag selection.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `enabled` | `boolean` | `true` | — | — | — | It follows the pointer: a press on the scene and a drag past the threshold draws the box. |
+| `from` | `Vector2 \| null` | `null` | — | — | — | Where the box starts, in the surface's pixels, instead of the press (a scripted or pad selection). |
+| `to` | `Vector2 \| null` | `null` | — | — | — | Where it ends, with from. |
+| `threshold` | `number` | `6` | ≥ 0 | `cssPx` | — | How far a press travels before it is a drag, not a click. |
+| `color` | `Paint \| null` | `null` | — | — | — | Its colour; null is the style's highlight. |
+| `exclude` | `readonly string[]` | `[]` | — | — | — | Element paths (HUD roots such as ConsoleHud) a press inside which is theirs, never the start of a box. |
+
+```ogt
+struct DragSelectDesc {
+  doc "An RTS drag selection."
+  desc true
+  field enabled bool "It follows the pointer: a press on the scene and a drag past the threshold draws the box." {
+    default true
+  }
+  field from Option.Vector2 "Where the box starts, in the surface's pixels, instead of the press (a scripted or pad selection)."
+  field to Option.Vector2 "Where it ends, with from."
+  field threshold f32 "How far a press travels before it is a drag, not a click." {
+    default 6
+    min 0
+    unit cssPx
+  }
+  field color Option.Paint "Its colour; null is the style's highlight."
+  field exclude List.String "Element paths (HUD roots such as ConsoleHud) a press inside which is theirs, never the start of a box."
+}
+```
+
+<sub>`api.ogt` line 22966</sub>
+
+<a id="type-DragSelectResult"></a>
+
+### `DragSelectResult` (struct)
+
+What a drag selection answered.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `dragging` | `boolean` | `false` | — | — | — | The box is drawn this tick. |
+| `released` | `boolean` | `false` | — | — | — | The box was let go this tick: select what lies inside x, y, width and height. |
+| `x` | `number` | `0` | — | `cssPx` | — | The box's left. |
+| `y` | `number` | `0` | — | `cssPx` | — | Its top. |
+| `width` | `number` | `0` | — | `cssPx` | — | Its width. |
+| `height` | `number` | `0` | — | `cssPx` | — | Its height. |
+
+```ogt
+struct DragSelectResult {
+  doc "What a drag selection answered."
+  field dragging bool "The box is drawn this tick."
+  field released bool "The box was let go this tick: select what lies inside x, y, width and height."
+  field x f32 "The box's left." {
+    unit cssPx
+  }
+  field y f32 "Its top." {
+    unit cssPx
+  }
+  field width f32 "Its width." {
+    unit cssPx
+  }
+  field height f32 "Its height." {
+    unit cssPx
+  }
+}
+```
+
+<sub>`api.ogt` line 22983</sub>
 
 <a id="type-DamageHit"></a>
 
@@ -26478,7 +27112,7 @@ struct DamageHit {
 }
 ```
 
-<sub>`api.ogt` line 22780</sub>
+<sub>`api.ogt` line 23010</sub>
 
 <a id="type-DamageDirectionDesc"></a>
 
@@ -26512,7 +27146,7 @@ struct DamageDirectionDesc {
 }
 ```
 
-<sub>`api.ogt` line 22793</sub>
+<sub>`api.ogt` line 23023</sub>
 
 <a id="type-LowHealthDesc"></a>
 
@@ -26545,7 +27179,7 @@ struct LowHealthDesc {
 }
 ```
 
-<sub>`api.ogt` line 22817</sub>
+<sub>`api.ogt` line 23047</sub>
 
 <a id="type-Reaction"></a>
 
@@ -26574,7 +27208,7 @@ enum Reaction {
 }
 ```
 
-<sub>`api.ogt` line 22850</sub>
+<sub>`api.ogt` line 23080</sub>
 
 <a id="type-NameplateDesc"></a>
 
@@ -26640,7 +27274,7 @@ struct NameplateDesc {
 }
 ```
 
-<sub>`api.ogt` line 22859</sub>
+<sub>`api.ogt` line 23089</sub>
 
 <a id="type-OverheadBar"></a>
 
@@ -26672,7 +27306,7 @@ struct OverheadBar {
 }
 ```
 
-<sub>`api.ogt` line 22902</sub>
+<sub>`api.ogt` line 23132</sub>
 
 <a id="type-OverheadBarsDesc"></a>
 
@@ -26712,7 +27346,7 @@ struct OverheadBarsDesc {
 }
 ```
 
-<sub>`api.ogt` line 22914</sub>
+<sub>`api.ogt` line 23144</sub>
 
 <a id="type-DamageKind"></a>
 
@@ -26745,7 +27379,7 @@ enum DamageKind {
 }
 ```
 
-<sub>`api.ogt` line 22943</sub>
+<sub>`api.ogt` line 23173</sub>
 
 <a id="type-DamageHitDesc"></a>
 
@@ -26777,7 +27411,7 @@ struct DamageHitDesc {
 }
 ```
 
-<sub>`api.ogt` line 22954</sub>
+<sub>`api.ogt` line 23184</sub>
 
 <a id="type-DamageNumbersDesc"></a>
 
@@ -26814,7 +27448,7 @@ struct DamageNumbersDesc {
 }
 ```
 
-<sub>`api.ogt` line 22965</sub>
+<sub>`api.ogt` line 23195</sub>
 
 <a id="type-InteractionPromptDesc"></a>
 
@@ -26860,7 +27494,7 @@ struct InteractionPromptDesc {
 }
 ```
 
-<sub>`api.ogt` line 22992</sub>
+<sub>`api.ogt` line 23222</sub>
 
 <a id="type-WaypointKind"></a>
 
@@ -26891,7 +27525,7 @@ enum WaypointKind {
 }
 ```
 
-<sub>`api.ogt` line 23024</sub>
+<sub>`api.ogt` line 23254</sub>
 
 <a id="type-WaypointDesc"></a>
 
@@ -26946,7 +27580,7 @@ struct WaypointDesc {
 }
 ```
 
-<sub>`api.ogt` line 23034</sub>
+<sub>`api.ogt` line 23264</sub>
 
 <a id="type-GroundDesc"></a>
 
@@ -26997,7 +27631,7 @@ struct GroundDesc {
 }
 ```
 
-<sub>`api.ogt` line 23071</sub>
+<sub>`api.ogt` line 23301</sub>
 
 <a id="type-SelectionRingDesc"></a>
 
@@ -27039,7 +27673,7 @@ struct SelectionRingDesc {
 }
 ```
 
-<sub>`api.ogt` line 23097</sub>
+<sub>`api.ogt` line 23327</sub>
 
 <a id="type-TelegraphShape"></a>
 
@@ -27066,7 +27700,7 @@ enum TelegraphShape {
 }
 ```
 
-<sub>`api.ogt` line 23126</sub>
+<sub>`api.ogt` line 23356</sub>
 
 <a id="type-TelegraphDesc"></a>
 
@@ -27128,7 +27762,7 @@ struct TelegraphDesc {
 }
 ```
 
-<sub>`api.ogt` line 23134</sub>
+<sub>`api.ogt` line 23364</sub>
 
 <a id="type-PathLineDesc"></a>
 
@@ -27172,7 +27806,7 @@ struct PathLineDesc {
 }
 ```
 
-<sub>`api.ogt` line 23180</sub>
+<sub>`api.ogt` line 23410</sub>
 
 <a id="type-PlacementGhostDesc"></a>
 
@@ -27227,7 +27861,7 @@ struct PlacementGhostDesc {
 }
 ```
 
-<sub>`api.ogt` line 23211</sub>
+<sub>`api.ogt` line 23441</sub>
 
 <a id="type-LootLabelDesc"></a>
 
@@ -27271,7 +27905,7 @@ struct LootLabelDesc {
 }
 ```
 
-<sub>`api.ogt` line 23252</sub>
+<sub>`api.ogt` line 23482</sub>
 
 <a id="type-LootLabelResult"></a>
 
@@ -27294,7 +27928,7 @@ struct LootLabelResult {
 }
 ```
 
-<sub>`api.ogt` line 23273</sub>
+<sub>`api.ogt` line 23503</sub>
 
 <a id="type-SpeechBubbleDesc"></a>
 
@@ -27348,7 +27982,7 @@ struct SpeechBubbleDesc {
 }
 ```
 
-<sub>`api.ogt` line 23289</sub>
+<sub>`api.ogt` line 23519</sub>
 
 <a id="type-VectorArt"></a>
 
@@ -27362,7 +27996,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle VectorArt "A cooked vector (an `.ogt` of `type vector`: an SVG subset) from og.load.vector, drawn by a VectorFill."
 ```
 
-<sub>`api.ogt` line 23328</sub>
+<sub>`api.ogt` line 23558</sub>
 
 <a id="type-UiMaterial"></a>
 
@@ -27376,7 +28010,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle UiMaterial "A custom UI material (an `.ogt` of `type ui-material`) from og.load.uiMaterial, which a LayerDesc composites through."
 ```
 
-<sub>`api.ogt` line 23329</sub>
+<sub>`api.ogt` line 23559</sub>
 
 <a id="type-ShapeType"></a>
 
@@ -27405,7 +28039,7 @@ enum ShapeType {
 }
 ```
 
-<sub>`api.ogt` line 23345</sub>
+<sub>`api.ogt` line 23575</sub>
 
 <a id="type-CornerShape"></a>
 
@@ -27432,7 +28066,7 @@ enum CornerShape {
 }
 ```
 
-<sub>`api.ogt` line 23354</sub>
+<sub>`api.ogt` line 23584</sub>
 
 <a id="type-LineCap"></a>
 
@@ -27457,7 +28091,7 @@ enum LineCap {
 }
 ```
 
-<sub>`api.ogt` line 23362</sub>
+<sub>`api.ogt` line 23592</sub>
 
 <a id="type-LineJoin"></a>
 
@@ -27482,7 +28116,7 @@ enum LineJoin {
 }
 ```
 
-<sub>`api.ogt` line 23369</sub>
+<sub>`api.ogt` line 23599</sub>
 
 <a id="type-DrawShape"></a>
 
@@ -27570,7 +28204,7 @@ struct DrawShape {
 }
 ```
 
-<sub>`api.ogt` line 23376</sub>
+<sub>`api.ogt` line 23606</sub>
 
 <a id="type-GradientType"></a>
 
@@ -27597,7 +28231,7 @@ enum GradientType {
 }
 ```
 
-<sub>`api.ogt` line 23431</sub>
+<sub>`api.ogt` line 23661</sub>
 
 <a id="type-GradientSpread"></a>
 
@@ -27622,7 +28256,7 @@ enum GradientSpread {
 }
 ```
 
-<sub>`api.ogt` line 23439</sub>
+<sub>`api.ogt` line 23669</sub>
 
 <a id="type-GradientStop"></a>
 
@@ -27650,7 +28284,7 @@ struct GradientStop {
 }
 ```
 
-<sub>`api.ogt` line 23446</sub>
+<sub>`api.ogt` line 23676</sub>
 
 <a id="type-Gradient"></a>
 
@@ -27687,7 +28321,7 @@ struct Gradient {
 }
 ```
 
-<sub>`api.ogt` line 23457</sub>
+<sub>`api.ogt` line 23687</sub>
 
 <a id="type-ImageFit"></a>
 
@@ -27718,7 +28352,7 @@ enum ImageFit {
 }
 ```
 
-<sub>`api.ogt` line 23473</sub>
+<sub>`api.ogt` line 23703</sub>
 
 <a id="type-SliceEdges"></a>
 
@@ -27743,7 +28377,7 @@ enum SliceEdges {
 }
 ```
 
-<sub>`api.ogt` line 23483</sub>
+<sub>`api.ogt` line 23713</sub>
 
 <a id="type-SolidFill"></a>
 
@@ -27765,7 +28399,7 @@ struct SolidFill {
 }
 ```
 
-<sub>`api.ogt` line 23490</sub>
+<sub>`api.ogt` line 23720</sub>
 
 <a id="type-ImageFill"></a>
 
@@ -27824,7 +28458,7 @@ struct ImageFill {
 }
 ```
 
-<sub>`api.ogt` line 23496</sub>
+<sub>`api.ogt` line 23726</sub>
 
 <a id="type-VectorFill"></a>
 
@@ -27848,7 +28482,7 @@ struct VectorFill {
 }
 ```
 
-<sub>`api.ogt` line 23526</sub>
+<sub>`api.ogt` line 23756</sub>
 
 <a id="type-Fill"></a>
 
@@ -27876,7 +28510,7 @@ union Fill {
 }
 ```
 
-<sub>`api.ogt` line 23533</sub>
+<sub>`api.ogt` line 23763</sub>
 
 <a id="type-StrokeAlign"></a>
 
@@ -27901,7 +28535,7 @@ enum StrokeAlign {
 }
 ```
 
-<sub>`api.ogt` line 23542</sub>
+<sub>`api.ogt` line 23772</sub>
 
 <a id="type-Stroke"></a>
 
@@ -27947,7 +28581,7 @@ struct Stroke {
 }
 ```
 
-<sub>`api.ogt` line 23549</sub>
+<sub>`api.ogt` line 23779</sub>
 
 <a id="type-ShadowEffect"></a>
 
@@ -27984,7 +28618,7 @@ struct ShadowEffect {
 }
 ```
 
-<sub>`api.ogt` line 23573</sub>
+<sub>`api.ogt` line 23803</sub>
 
 <a id="type-GlowEffect"></a>
 
@@ -28016,7 +28650,7 @@ struct GlowEffect {
 }
 ```
 
-<sub>`api.ogt` line 23591</sub>
+<sub>`api.ogt` line 23821</sub>
 
 <a id="type-BlurEffect"></a>
 
@@ -28042,7 +28676,7 @@ struct BlurEffect {
 }
 ```
 
-<sub>`api.ogt` line 23605</sub>
+<sub>`api.ogt` line 23835</sub>
 
 <a id="type-BackdropEffect"></a>
 
@@ -28097,7 +28731,7 @@ struct BackdropEffect {
 }
 ```
 
-<sub>`api.ogt` line 23615</sub>
+<sub>`api.ogt` line 23845</sub>
 
 <a id="type-GlassWeight"></a>
 
@@ -28124,7 +28758,7 @@ enum GlassWeight {
 }
 ```
 
-<sub>`api.ogt` line 23645</sub>
+<sub>`api.ogt` line 23875</sub>
 
 <a id="type-Elevation"></a>
 
@@ -28151,7 +28785,7 @@ enum Elevation {
 }
 ```
 
-<sub>`api.ogt` line 23653</sub>
+<sub>`api.ogt` line 23883</sub>
 
 <a id="type-Effect"></a>
 
@@ -28183,7 +28817,7 @@ union Effect {
 }
 ```
 
-<sub>`api.ogt` line 23661</sub>
+<sub>`api.ogt` line 23891</sub>
 
 <a id="type-ClipMode"></a>
 
@@ -28208,7 +28842,7 @@ enum ClipMode {
 }
 ```
 
-<sub>`api.ogt` line 23672</sub>
+<sub>`api.ogt` line 23902</sub>
 
 <a id="type-MaskDesc"></a>
 
@@ -28234,7 +28868,7 @@ struct MaskDesc {
 }
 ```
 
-<sub>`api.ogt` line 23679</sub>
+<sub>`api.ogt` line 23909</sub>
 
 <a id="type-MaterialName"></a>
 
@@ -28275,7 +28909,7 @@ enum MaterialName {
 }
 ```
 
-<sub>`api.ogt` line 23687</sub>
+<sub>`api.ogt` line 23917</sub>
 
 <a id="type-LayerDesc"></a>
 
@@ -28301,7 +28935,7 @@ struct LayerDesc {
 }
 ```
 
-<sub>`api.ogt` line 23702</sub>
+<sub>`api.ogt` line 23932</sub>
 
 <a id="type-TextShadowDesc"></a>
 
@@ -28334,7 +28968,7 @@ struct TextShadowDesc {
 }
 ```
 
-<sub>`api.ogt` line 23710</sub>
+<sub>`api.ogt` line 23940</sub>
 
 <a id="type-TextOutlineDesc"></a>
 
@@ -28364,7 +28998,7 @@ struct TextOutlineDesc {
 }
 ```
 
-<sub>`api.ogt` line 23725</sub>
+<sub>`api.ogt` line 23955</sub>
 
 <a id="type-TextEffectsDesc"></a>
 
@@ -28390,7 +29024,7 @@ struct TextEffectsDesc {
 }
 ```
 
-<sub>`api.ogt` line 23737</sub>
+<sub>`api.ogt` line 23967</sub>
 
 <a id="type-DrawDesc"></a>
 
@@ -28436,7 +29070,7 @@ struct DrawDesc {
 }
 ```
 
-<sub>`api.ogt` line 23745</sub>
+<sub>`api.ogt` line 23975</sub>
 
 <a id="type-BlendMode"></a>
 
@@ -28469,7 +29103,7 @@ enum BlendMode {
 }
 ```
 
-<sub>`api.ogt` line 23765</sub>
+<sub>`api.ogt` line 23995</sub>
 
 <a id="type-SemanticsDesc"></a>
 
@@ -28513,7 +29147,7 @@ struct SemanticsDesc {
 }
 ```
 
-<sub>`api.ogt` line 23776</sub>
+<sub>`api.ogt` line 24006</sub>
 
 <a id="type-WorldTarget"></a>
 
@@ -28537,7 +29171,7 @@ struct WorldTarget {
 }
 ```
 
-<sub>`api.ogt` line 23814</sub>
+<sub>`api.ogt` line 24044</sub>
 
 <a id="type-AnchorScaleMode"></a>
 
@@ -28560,7 +29194,7 @@ enum AnchorScaleMode {
 }
 ```
 
-<sub>`api.ogt` line 23821</sub>
+<sub>`api.ogt` line 24051</sub>
 
 <a id="type-WorldOcclusion"></a>
 
@@ -28585,7 +29219,7 @@ enum WorldOcclusion {
 }
 ```
 
-<sub>`api.ogt` line 23827</sub>
+<sub>`api.ogt` line 24057</sub>
 
 <a id="type-Declutter"></a>
 
@@ -28612,7 +29246,7 @@ enum Declutter {
 }
 ```
 
-<sub>`api.ogt` line 23834</sub>
+<sub>`api.ogt` line 24064</sub>
 
 <a id="type-EdgeClampDesc"></a>
 
@@ -28646,7 +29280,7 @@ struct EdgeClampDesc {
 }
 ```
 
-<sub>`api.ogt` line 23842</sub>
+<sub>`api.ogt` line 24072</sub>
 
 <a id="type-WorldAnchorDesc"></a>
 
@@ -28741,7 +29375,7 @@ struct WorldAnchorDesc {
 }
 ```
 
-<sub>`api.ogt` line 23858</sub>
+<sub>`api.ogt` line 24088</sub>
 
 <a id="type-AnchorInfo"></a>
 
@@ -28788,7 +29422,7 @@ struct AnchorInfo {
 }
 ```
 
-<sub>`api.ogt` line 23913</sub>
+<sub>`api.ogt` line 24143</sub>
 
 <a id="type-WorldPanelDesc"></a>
 
@@ -28848,7 +29482,7 @@ struct WorldPanelDesc {
 }
 ```
 
-<sub>`api.ogt` line 23944</sub>
+<sub>`api.ogt` line 24174</sub>
 
 <a id="type-PanelInfo"></a>
 
@@ -28879,7 +29513,7 @@ struct PanelInfo {
 }
 ```
 
-<sub>`api.ogt` line 23978</sub>
+<sub>`api.ogt` line 24208</sub>
 
 <a id="type-MassKind"></a>
 
@@ -28908,7 +29542,7 @@ enum MassKind {
 }
 ```
 
-<sub>`api.ogt` line 23999</sub>
+<sub>`api.ogt` line 24229</sub>
 
 <a id="type-MassEase"></a>
 
@@ -28937,7 +29571,7 @@ enum MassEase {
 }
 ```
 
-<sub>`api.ogt` line 24008</sub>
+<sub>`api.ogt` line 24238</sub>
 
 <a id="type-MassSpace"></a>
 
@@ -28960,7 +29594,7 @@ enum MassSpace {
 }
 ```
 
-<sub>`api.ogt` line 24017</sub>
+<sub>`api.ogt` line 24247</sub>
 
 <a id="type-ParticleShape"></a>
 
@@ -28985,7 +29619,7 @@ enum ParticleShape {
 }
 ```
 
-<sub>`api.ogt` line 24023</sub>
+<sub>`api.ogt` line 24253</sub>
 
 <a id="type-MassKey"></a>
 
@@ -29032,7 +29666,7 @@ struct MassKey {
 }
 ```
 
-<sub>`api.ogt` line 24030</sub>
+<sub>`api.ogt` line 24260</sub>
 
 <a id="type-MassTemplateDesc"></a>
 
@@ -29132,7 +29766,7 @@ struct MassTemplateDesc {
 }
 ```
 
-<sub>`api.ogt` line 24056</sub>
+<sub>`api.ogt` line 24286</sub>
 
 <a id="type-MassInstance"></a>
 
@@ -29179,7 +29813,7 @@ struct MassInstance {
 }
 ```
 
-<sub>`api.ogt` line 24114</sub>
+<sub>`api.ogt` line 24344</sub>
 
 <a id="type-EmitFrom"></a>
 
@@ -29204,7 +29838,7 @@ enum EmitFrom {
 }
 ```
 
-<sub>`api.ogt` line 24164</sub>
+<sub>`api.ogt` line 24394</sub>
 
 <a id="type-ParticlesDesc"></a>
 
@@ -29298,7 +29932,7 @@ struct ParticlesDesc {
 }
 ```
 
-<sub>`api.ogt` line 24171</sub>
+<sub>`api.ogt` line 24401</sub>
 
 <a id="type-MetaKind"></a>
 
@@ -29323,7 +29957,7 @@ enum MetaKind {
 }
 ```
 
-<sub>`api.ogt` line 24237</sub>
+<sub>`api.ogt` line 24467</sub>
 
 <a id="type-MetaDesc"></a>
 
@@ -29385,7 +30019,7 @@ struct MetaDesc {
 }
 ```
 
-<sub>`api.ogt` line 24244</sub>
+<sub>`api.ogt` line 24474</sub>
 
 <a id="type-SceneViewportDesc"></a>
 
@@ -29433,7 +30067,7 @@ struct SceneViewportDesc {
 }
 ```
 
-<sub>`api.ogt` line 24288</sub>
+<sub>`api.ogt` line 24518</sub>
 
 <a id="type-SceneViewportInfo"></a>
 
@@ -29478,7 +30112,7 @@ struct SceneViewportInfo {
 }
 ```
 
-<sub>`api.ogt` line 24311</sub>
+<sub>`api.ogt` line 24541</sub>
 
 <a id="type-UiDocEvent"></a>
 
@@ -29505,7 +30139,7 @@ struct UiDocEvent {
 }
 ```
 
-<sub>`api.ogt` line 24340</sub>
+<sub>`api.ogt` line 24570</sub>
 
 <a id="type-UiDocResponse"></a>
 
@@ -29528,7 +30162,7 @@ struct UiDocResponse {
 }
 ```
 
-<sub>`api.ogt` line 24349</sub>
+<sub>`api.ogt` line 24579</sub>
 
 <a id="type-UiLayer"></a>
 
@@ -29571,7 +30205,7 @@ struct UiLayer {
 }
 ```
 
-<sub>`api.ogt` line 24356</sub>
+<sub>`api.ogt` line 24586</sub>
 
 <a id="type-UiActionTrigger"></a>
 
@@ -29596,7 +30230,7 @@ enum UiActionTrigger {
 }
 ```
 
-<sub>`api.ogt` line 24373</sub>
+<sub>`api.ogt` line 24603</sub>
 
 <a id="type-UiActionDesc"></a>
 
@@ -29633,7 +30267,7 @@ struct UiActionDesc {
 }
 ```
 
-<sub>`api.ogt` line 24380</sub>
+<sub>`api.ogt` line 24610</sub>
 
 <a id="type-UiDevice"></a>
 
@@ -29664,7 +30298,7 @@ enum UiDevice {
 }
 ```
 
-<sub>`api.ogt` line 24396</sub>
+<sub>`api.ogt` line 24626</sub>
 
 <a id="type-UiGlyph"></a>
 
@@ -29687,7 +30321,7 @@ struct UiGlyph {
 }
 ```
 
-<sub>`api.ogt` line 24406</sub>
+<sub>`api.ogt` line 24636</sub>
 
 <a id="type-UiActionHint"></a>
 
@@ -29714,7 +30348,7 @@ struct UiActionHint {
 }
 ```
 
-<sub>`api.ogt` line 24413</sub>
+<sub>`api.ogt` line 24643</sub>
 
 ## Column kinds
 
@@ -29734,7 +30368,7 @@ column VectorArt {
 }
 ```
 
-<sub>`api.ogt` line 23331</sub>
+<sub>`api.ogt` line 23561</sub>
 
 ```ogt
 column UiMaterial {
@@ -29745,4 +30379,4 @@ column UiMaterial {
 }
 ```
 
-<sub>`api.ogt` line 23338</sub>
+<sub>`api.ogt` line 23568</sub>

@@ -67,7 +67,8 @@ function mark(id: string, kind: Api.MarkerKind, ink: Rgba, s: number, heading: n
   }
 }
 
-export function minimapView(id: string, desc: Api.MinimapViewDesc = {}): Api.MinimapResult {
+/** `bare`: a zone of a panel that frames it (rtsConsole): no bezel of its own. */
+export function minimapView(id: string, desc: Api.MinimapViewDesc = {}, bare = false): Api.MinimapResult {
   const size = u(desc.size || (bp().phone ? 144 : 200));
   const shape: Api.MapShape = desc.shape ?? "circle";
   const zoom = Math.max(0.01, desc.zoom ?? 0.3);
@@ -80,7 +81,7 @@ export function minimapView(id: string, desc: Api.MinimapViewDesc = {}): Api.Min
   let result: Api.MinimapResult = { clicked: false };
   // A dark bezel round the map, the rear mirror's family: rounded, a soft drop under it. A square map's caption sits
   // in the bezel as a bottom plate; a round one's under it, outlined over the scene.
-  const bezel = Math.max(5, u(7));
+  const bezel = bare ? 0 : Math.max(5, u(7));
   const plate = shape !== "circle" && !!desc.zone;
   const capStep = ts(11);
   // The north badge straddles the bezel's top edge, a tenth of the map across.
@@ -91,7 +92,7 @@ export function minimapView(id: string, desc: Api.MinimapViewDesc = {}): Api.Min
       const { radius, corner } = shapeOf("hud");
       const outline: Api.DrawShape = shape === "circle" ? ellipseShape() : { kind: "rect", radii: [radius, radius, radius, radius], corner };
       const ro = radius + bezel;
-      box("Bezel", { direction: "column", gap: 0, cross: "center", width: px(size + bezel * 2), padding: { left: bezel, right: bezel, top: bezel, bottom: plate ? 0 : bezel }, part: sel("Minimap", "bezel") }, {
+      box("Bezel", { direction: "column", gap: 0, cross: "center", width: px(size + bezel * 2), padding: { left: bezel, right: bezel, top: bezel, bottom: plate ? 0 : bezel }, part: sel("Minimap", "bezel") }, bare ? undefined : {
         shape: shape === "circle" ? ellipseShape() : { kind: "rect", radii: [ro, ro, ro, ro], corner },
         fills: [solid(lit({ r: 0.043, g: 0.05, b: 0.063, a: 1 }, 0.96)), vgrad([[0, lit(WHITE, 0.07)], [0.5, lit(WHITE, 0)]])],
         strokes: [stroke(1, lit(WHITE, 0.08)), stroke(1, lit({ r: 0, g: 0, b: 0, a: 1 }, 0.6), "outside")],

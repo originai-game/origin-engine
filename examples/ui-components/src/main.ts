@@ -7,7 +7,7 @@
 //   show:<feedback|meters|abilities|frames|shooter|strategy|racing|flight|world>
 //   viewport:<desktop|ultrawide|tablet|phone|landscape>  (og.ui.previewViewport; render at the matching --size)
 //   lang:<en|ar|pseudo>     ar lays out right to left; pseudo is 40 % longer, accented and bracketed
-//   style:<prototype|scifi|fantasy|pixel|tactical|broadcast>
+//   style:<prototype|scifi|fantasy|pixel|tactical|broadcast|storybook>
 //   text:<percent>          the player's text size, 100 to 200 (§15.2 holds every screen to 200)
 //   act:<hit|crit|heal|ready|empty|reload|interrupt|ping|say|complete|combo|score|break|place>
 //   reset   every act forgotten, the clock of the screen started again
@@ -20,11 +20,13 @@
 // desktop film also runs each screen in Arabic and under the pseudo-locale.
 
 import { og, defineSystem, SHAPE_BOX } from "@origingame/engine";
-import type { DamageHitDesc, KillfeedEntry, Texture, UnitFrameDesc, Viewport, World } from "@origingame/engine";
+import type { AbilitySlotDesc, DamageHitDesc, KillfeedEntry, Texture, UnitFrameDesc, Viewport, World } from "@origingame/engine";
 
-const SCREENS = ["feedback", "meters", "abilities", "frames", "shooter", "strategy", "racing", "flight", "world"] as const;
+type UnitCommand = AbilitySlotDesc;
+
+const SCREENS = ["feedback", "meters", "abilities", "frames", "shooter", "strategy", "racing", "flight", "world", "rts"] as const;
 type Screen = (typeof SCREENS)[number];
-const STYLES = ["prototype", "scifi", "fantasy", "pixel", "tactical", "broadcast"] as const;
+const STYLES = ["prototype", "scifi", "fantasy", "pixel", "tactical", "broadcast", "storybook"] as const;
 
 const VIEWPORTS: Record<string, Viewport> = {
   desktop: { width: 1920, height: 1080, dpr: 1, safeArea: { left: 0, top: 0, right: 0, bottom: 0 }, coarsePointer: false, breakpoint: "desktop" },
@@ -472,6 +474,103 @@ function racingScreen(world: World): void {
   og.ui.speedometer("Speedo", { speed: 118 + rpm * 120, maxSpeed: 320, rpm, gear: rpm > 0.85 ? "5" : "4", boost: 0.66 });
 }
 
+// ── rts ───────────────────────────────────────────────────────────────
+
+/**
+ * B-rts-hud: the resources plate top-end, one bottom console (minimap, the selection under its control groups,
+ * the focused unit's card, the command card) and the drag box. act:place selects the barracks with its queue;
+ * act:hit hurts the squad; act:score draws a drag box over the field; act:complete finishes the first queued unit.
+ */
+function rtsScreen(world: World): void {
+  const s = seconds();
+  const tr = (key: string, en: string) => (state.locale === "ar" ? og.i18n.t(world, `rts.${key}`) : L(en));
+  const art = (k: string): Texture | null => state.art[k] ?? null;
+  const hurt = did("hit");
+  const building = did("place");
+  og.ui.resourceBar("Res", {
+    anchor: "topRight", rates: false, clock: 754 + s,
+    items: [
+      { key: "ore", icon: "gem", name: tr("ore", "Ore"), amount: 1250 + Math.floor(s) * 5 },
+      { key: "gas", icon: "drop", name: tr("gas", "Gas"), amount: 480 },
+      { key: "sup", icon: "user", name: tr("supply", "Supply"), amount: building ? 48 : 46, capacity: 80 },
+    ],
+  });
+  const faces = ["aria", "kael", "mira", "aria-vell", "cultist"];
+  const squad = Array.from({ length: 11 }, (_, i) => {
+    const max = i % 5 === 3 ? 200 : 150;
+    const hp = hurt ? [150, 62, 141, 120, 28, 150, 99, 150, 9, 150, 113][i]! : max;
+    return {
+      key: `u${i}`, name: i % 5 === 3 ? tr("warden", "Iron Warden") : tr("vanguard", "Vanguard"), kind: tr("infantry", "Infantry"),
+      image: art(faces[i % faces.length]!), icon: "user", health: Math.min(hp, max), healthMax: max,
+      ...(i % 5 === 3 ? { shield: 60, shieldMax: 80 } : {}), ...(i === 2 ? { energy: 70, energyMax: 200 } : {}),
+    };
+  });
+  const barracks = { key: "barracks", name: tr("barracks", "Barracks"), kind: tr("structure", "Structure"), icon: "home", health: 1000, healthMax: 1000, progress: null };
+  const done = did("complete");
+  const queue = {
+    items: [
+      ...(done ? [] : [{ key: "q0", name: tr("vanguard", "Vanguard"), image: art("aria"), icon: "user", remaining: Math.max(0, 8.3 - s * 0.2), duration: 18 }]),
+      { key: "q1", name: tr("vanguard", "Vanguard"), image: art("aria"), icon: "user", count: 2, ...(done ? { remaining: 18, duration: 18 } : {}) },
+      { key: "q2", name: tr("warden", "Iron Warden"), image: art("aria-vell"), icon: "user" },
+    ],
+    slots: 5,
+  };
+  const ability = (key: string, name: string, image: string, hotkey: string, more: Partial<UnitCommand> = {}): UnitCommand => ({ key, name: tr(`cmd.${key}`, name), image: art(image), icon: "star", hotkey, ...more });
+  const commands: UnitCommand[] = building
+    ? [
+        ability("train", "Train Vanguard", "aria", "Q", { cost: "50" }),
+        ability("warden", "Train Iron Warden", "aria-vell", "W", { cost: "125" }),
+        ability("rally", "Set Rally Point", "star", "E"),
+        { key: "" }, { key: "" },
+        ability("armour", "Plating", "rune-shield", "A", { locked: true }),
+        ability("drill", "Combat Drill", "flame-blade", "S", { cooldown: Math.max(0, 8.3 - s), cooldownMax: 20 }),
+        { key: "" }, { key: "" }, { key: "" },
+      ]
+    : [
+        ability("attack", "Attack", "flame-blade", "Q"),
+        ability("move", "Move", "blink", "W"),
+        ability("hold", "Hold Position", "rune-shield", "E"),
+        ability("patrol", "Patrol", "thunder-strike", "R"),
+        ability("stop", "Stop", "broken-chain", "T"),
+        ability("stim", "Stim", "fireball", "A", { cost: "10", active: true }),
+        ability("nova", "Shock Nova", "frost-nova", "S", { cooldown: Math.max(0, 8.3 - s), cooldownMax: 12 }),
+        ability("heal", "Field Medic", "titan-heart", "D", { maxCharges: 3, charges: 2, chargeProgress: 0.4 }),
+        ability("hex", "Hex Grenade", "hex", "F", { unaffordable: true, cost: "75" }),
+        ability("rune", "Siege Mode", "rune-of-power", "G", { locked: true }),
+        { key: "" }, { key: "" }, { key: "" }, { key: "" }, { key: "" },
+      ];
+  const sel = building ? [barracks] : squad;
+  og.ui.rtsConsole("Console", {
+    map: {
+      shape: "square", zoom: 1, centerX: 0.5, centerY: 0.5, zone: "",
+      markers: [
+        { key: "me", kind: "player", x: 0.42, y: 0.55, heading: 0.6 },
+        ...[0.38, 0.44, 0.47].map((x, i) => ({ key: `a${i}`, kind: "ally" as const, x, y: 0.5 + i * 0.04 })),
+        { key: "e0", kind: "enemy", x: 0.78, y: 0.22 }, { key: "e1", kind: "enemy", x: 0.82, y: 0.27 },
+        { key: "p", kind: "ping", x: 0.2, y: 0.78 },
+        { key: "o", kind: "objective", x: 0.66, y: 0.12 },
+      ],
+    },
+    selection: {
+      units: sel, focus: building ? "barracks" : "u0",
+      groups: [1, 2, 3, 4, 5].map((n) => ({ key: `g${n}`, label: String(n), count: n === 1 ? sel.length : n === 4 ? 0 : n * 2 })), group: "g1",
+      stats: building ? [{ key: "armour", icon: "shield", label: tr("armour", "Armour"), value: "1" }] : [
+        { key: "armour", icon: "shield", label: tr("armour", "Armour"), value: "1" },
+        { key: "damage", icon: "flash", label: tr("damage", "Damage"), value: "8 – 10" },
+        { key: "speed", icon: "walking", label: tr("speed", "Move speed"), value: "3.1" },
+      ],
+      tags: building ? [tr("armoured", "Armoured"), tr("structure", "Structure")] : [tr("biological", "Biological"), tr("light", "Light"), tr("infantry", "Infantry")],
+      ...(building ? { queue } : {}),
+    },
+    commands: { commands, columns: 5 },
+  });
+  // The drag box: scripted over the squad's part of the field.
+  if (did("score") && !building) {
+    const vp = og.ui.frameViewport();
+    og.ui.dragSelect("Drag", { from: { x: vp.width * 0.28, y: vp.height * 0.3 }, to: { x: vp.width * 0.46, y: vp.height * 0.52 } });
+  }
+}
+
 function flightScreen(): void {
   const s = seconds();
   og.ui.flightHud("Flight", { pitch: 0.12 + 0.06 * Math.sin(s), roll: 0.35 * Math.sin(s * 0.6), heading: 1.4 + s * 0.05, speed: 412, altitude: 12450 + s * 30, verticalSpeed: 1800, pathX: 0.02, pathY: -0.04 });
@@ -562,6 +661,7 @@ const Stage = defineSystem("Stage", { reads: [og.Camera] }, (_q, _t, world) => {
     case "racing": racingScreen(world); break;
     case "flight": flightScreen(); break;
     case "world": worldScreen(world); break;
+    case "rts": rtsScreen(world); break;
   }
 });
 
