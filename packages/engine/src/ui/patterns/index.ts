@@ -8,6 +8,9 @@ import { inventoryGrid, paperdoll } from "./inventory.ts";
 import { rewardChoice } from "./rewards.ts";
 import { gachaBanner, pullSequence } from "./gacha.ts";
 import { heroButton } from "./core.ts";
+import { sagaMap } from "./saga.ts";
+import { goalChips, starBar } from "./goals.ts";
+import { idleGenerator, prestigePanel } from "./idle.ts";
 
 export const patterns = Object.freeze({
   cardHand,
@@ -17,4 +20,9 @@ export const patterns = Object.freeze({
   rewardChoice,
   gachaBanner,
   pullSequence,
+  sagaMap,
+  starBar,
+  goalChips,
+  idleGenerator,
+  prestigePanel,
 });

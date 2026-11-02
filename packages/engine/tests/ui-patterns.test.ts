@@ -752,3 +752,139 @@ test("cardHand: on a phone, a refused drag leaves no card standing; the cursor's
   const standing = elements(h.engine).filter((e) => /Fan\/[a-z]+$/.test(e.path) && e.states.includes("selected"));
   expect(standing.map((e) => e.id)).toEqual([]);
 });
+
+// ── saga map ────────────────────────────────────────────────────────────
+
+const LEVELS: Api.SagaNode[] = Array.from({ length: 30 }, (_, i) => ({
+  key: `l${i + 1}`, label: `${i + 1}`, stars: i < 20 ? 3 - (i % 3) : 0, locked: i > 20, boss: i === 24,
+}));
+
+function saga(viewport?: Partial<Api.Viewport>) {
+  const results: Api.SagaMapResult[] = [];
+  const engine = run(() => {
+    og.ui.column("Box", { width: { kind: "fixed", px: viewport ? 360 : 1100 }, height: { kind: "fixed", px: viewport ? 640 : 520 } } as never, () => {
+      results.push(og.ui.sagaMap("Saga", { nodes: LEVELS, current: "l21" }));
+    });
+  }, viewport);
+  engine.advance(6);
+  return { engine, results };
+}
+
+test("sagaMap: it opens with the current level in view, far down the path", () => {
+  // Wrong: the map opening at its first level, with the player's level off screen.
+  for (const vp of [undefined, { width: 390, height: 844, breakpoint: "phonePortrait", coarsePointer: true }] as const) {
+    const s = saga(vp as Partial<Api.Viewport> | undefined);
+    const view = byPath(s.engine, "Saga/View")!;
+    const cur = byPath(s.engine, "Path/l21")!;
+    expect(cur.x).toBeGreaterThanOrEqual(view.x - 1);
+    expect(cur.x + cur.width).toBeLessThanOrEqual(view.x + view.width + 1);
+    expect(cur.y).toBeGreaterThanOrEqual(view.y - 1);
+    expect(cur.y + cur.height).toBeLessThanOrEqual(view.y + view.height + 1);
+    expect(cur.name).toContain("You are here");
+    // The first level is far behind it, scrolled out of the view (the probe lists only what the view shows).
+    expect(byPath(s.engine, "Path/l1") === undefined).toBeTrue();
+  }
+});
+
+test("sagaMap: an open level is picked; a locked one is refused and said locked; stars are said", () => {
+  const s = saga();
+  const tapOn = (end: string) => {
+    s.engine.probe.commands(`0:touch_move:${centre(byPath(s.engine, end)!)};0.05:touch_start;0.1:touch_end`);
+    s.engine.advance(14);
+  };
+  tapOn("Path/l20");
+  expect(s.results.some((r) => r.picked === "l20")).toBeTrue();
+  tapOn("Path/l22");
+  expect(s.results.some((r) => r.picked === "l22")).toBeFalse();
+  expect(s.results.some((r) => r.refused === "l22")).toBeTrue();
+  expect(byPath(s.engine, "Path/l22")!.name).toContain("Locked");
+  expect(byPath(s.engine, "Path/l20")!.name).toContain("2 of 3 stars");
+});
+
+// ── puzzle goals ────────────────────────────────────────────────────────
+
+test("starBar: a star is earned at its threshold and reported crossed once, not every tick after", () => {
+  // Wrong: crossed reported on every tick while over the line (the game's fanfare looping), or a star lit below it.
+  let score = 900;
+  const results: Api.StarBarResult[] = [];
+  const engine = run(() => {
+    results.push(og.ui.starBar("Stars", { value: score, thresholds: [1000, 2000, 3000], label: "Score" }));
+  });
+  expect(results.at(-1)!.earned).toBe(0);
+  score = 2100;
+  engine.advance(10);
+  expect(results.at(-1)!.earned).toBe(2);
+  expect(results.reduce((n, r) => n + r.crossed, 0)).toBe(2);
+  const meter = elements(engine).find((e) => e.role === "meter" && e.path.endsWith("Stars"))!;
+  expect(meter.name).toBe("Score");
+  expect(meter.value).toBe("2,100");
+});
+
+test("goalChips: a goal met says done; its count never shows past the need", () => {
+  const engine = run(() => {
+    og.ui.goalChips("Goals", { goals: [{ key: "blue", label: "Blue Gems", have: 14, need: 20 }, { key: "ice", label: "Ice", have: 7, need: 6 }] });
+  });
+  expect(byPath(engine, "Goals/blue")!.name).toBe("Blue Gems, 14 of 20");
+  expect(byPath(engine, "Goals/ice")!.name).toBe("Ice, 6 of 6, Done");
+  expect(elements(engine).some((e) => e.text === "7 / 6")).toBeFalse();
+});
+
+// ── idle ────────────────────────────────────────────────────────────────
+
+function generator(affordable: () => boolean) {
+  const results: Api.IdleGeneratorResult[] = [];
+  const engine = run(() => {
+    results.push(og.ui.idleGenerator("Solar", { name: "Solar Array", level: 125, ownedText: "348", rateText: "+1.24 M / sec", cycle: 0.4, cycleSeconds: 2, costText: "12.4 M", affordable: affordable() }));
+  });
+  return { engine, results, bought: () => results.filter((r) => r.bought).length };
+}
+
+test("idleGenerator: a press buys when the purse pays; short, it is refused and said so", () => {
+  let can = true;
+  const g = generator(() => can);
+  const buy = centre(byPath(g.engine, "Solar/Buy")!);
+  g.engine.probe.commands(`0:touch_move:${buy};0.05:touch_start;0.1:touch_end`);
+  g.engine.advance(14);
+  expect(g.bought()).toBe(1);
+  can = false;
+  g.engine.advance(2);
+  g.engine.probe.commands(`0:touch_move:${buy};0.05:touch_start;0.1:touch_end`);
+  g.engine.advance(14);
+  expect(g.bought()).toBe(1);
+  expect(g.results.some((r) => r.short)).toBeTrue();
+  expect(byPath(g.engine, "Solar/Buy")!.name).toContain("short");
+});
+
+test("idleGenerator: Buy held repeats after a beat while the purse pays", () => {
+  // Wrong: a hold that buys once, or one that buys every tick from the first.
+  const g = generator(() => true);
+  const buy = centre(byPath(g.engine, "Solar/Buy")!);
+  g.engine.probe.commands(`0:touch_move:${buy};0.05:touch_start`);
+  g.engine.advance(12);
+  expect(g.bought()).toBe(0);
+  g.engine.advance(60);
+  const held = g.bought();
+  expect(held).toBeGreaterThanOrEqual(4);
+  expect(held).toBeLessThanOrEqual(12);
+});
+
+test("prestigePanel: a tap does not reset the run; a full hold does; unavailable it cannot be held", () => {
+  // Wrong: a reset on a press (a slip throws a run away), or one taken while nothing would be gained.
+  let available = false;
+  const results: Api.PrestigeResult[] = [];
+  const engine = run(() => {
+    results.push(og.ui.prestigePanel("Prestige", { lead: "Ascend for", rewardText: "+128 Shards", points: ["Resets generators"], available, holdMs: 600 }));
+  }, { width: 1280, height: 720 });
+  const at = () => centre(byPath(engine, "Action/Button")!);
+  engine.probe.commands(`0:touch_move:${at()};0.05:touch_start;1.2:touch_end`);
+  engine.advance(80);
+  expect(results.some((r) => r.confirmed)).toBeFalse();
+  available = true;
+  engine.advance(2);
+  engine.probe.commands(`0:touch_move:${at()};0.05:touch_start;0.15:touch_end`);
+  engine.advance(14);
+  expect(results.some((r) => r.confirmed)).toBeFalse();
+  engine.probe.commands(`0:touch_move:${at()};0.05:touch_start;1.0:touch_end`);
+  engine.advance(70);
+  expect(results.filter((r) => r.confirmed).length).toBe(1);
+});

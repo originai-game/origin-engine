@@ -29300,6 +29300,490 @@ export interface PullSequenceResult {
 
 
 /**
+ * One level on a saga map, as the game's viewmodel holds it.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SagaNode {
+  /**
+   * Its key, stable for the run: its element id, so its probe path is <id>/View/Path/<key>.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * What its badge reads (47); empty is its place counted from 1.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Stars earned on it, 0 to maxStars.
+   *
+   * @default 0
+   */
+  readonly stars?: number;
+  /**
+   * Stars it can give; 0 shows none (a boss gives none).
+   *
+   * @default 3
+   */
+  readonly maxStars?: number;
+  /**
+   * Not reached yet: dimmed with a lock, and a press shakes and is refused.
+   *
+   * @default false
+   */
+  readonly locked?: boolean;
+  /**
+   * A boss level: a larger badge in the danger ink, its portrait inside.
+   *
+   * @default false
+   */
+  readonly boss?: boolean;
+  /**
+   * A boss's portrait (art kind portrait); null draws a crown.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * Where it sits across the path, -1 to 1 (the map's art decides); 0 lets the map wind it.
+   *
+   * @default 0
+   * @range -1..1
+   */
+  readonly lane?: number;
+}
+
+/**
+ * A saga map: its levels in order, where the player stands, and its art.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SagaMapDesc {
+  /**
+   * The levels, first to last.
+   *
+   * @default []
+   */
+  readonly nodes?: readonly SagaNode[];
+  /**
+   * The level the player stands on: the avatar's pin over it, lit, the path lit up to it; the map opens centred on it.
+   *
+   * @default ""
+   */
+  readonly current?: string;
+  /**
+   * The player's avatar in the pin (art kind avatar); null draws a figure.
+   *
+   * @default null
+   */
+  readonly avatar?: Texture | null;
+  /**
+   * The map's painted art behind the path, across the whole scroll (art kind map); null draws a dusk gradient.
+   *
+   * @default null
+   */
+  readonly backdrop?: Texture | null;
+  /**
+   * Space between levels along the path; 0 is 150 (scaled with the screen).
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly spacing?: number;
+  /**
+   * What a screen reader calls the map.
+   *
+   * @default "Levels"
+   */
+  readonly label?: string;
+  /**
+   * A level's name to a screen reader ({label} is its badge).
+   *
+   * @default "Level {label}"
+   */
+  readonly levelLabel?: string;
+  /**
+   * A boss level's name to a screen reader ({label} is its badge).
+   *
+   * @default "Boss, level {label}"
+   */
+  readonly bossLabel?: string;
+  /**
+   * Its stars to a screen reader ({n} earned of {max}).
+   *
+   * @default "{n} of {max} stars"
+   */
+  readonly starsLabel?: string;
+  /**
+   * What a locked level adds.
+   *
+   * @default "Locked"
+   */
+  readonly lockedLabel?: string;
+  /**
+   * What the current level adds.
+   *
+   * @default "You are here"
+   */
+  readonly currentLabel?: string;
+}
+
+/** What the map did this tick. */
+export interface SagaMapResult {
+  /** A level pressed that is open: start it (or show its goals first). */
+  readonly picked: string | null;
+  /** A locked level pressed: it shook. */
+  readonly refused: string | null;
+  /** The level under the pointer or the focus. */
+  readonly hovered: string | null;
+}
+
+
+/**
+ * A level's score toward its stars.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface StarBarDesc {
+  /**
+   * The score.
+   *
+   * @default 0
+   */
+  readonly value?: number;
+  /**
+   * The score that fills the bar; 0 is the last threshold.
+   *
+   * @default 0
+   */
+  readonly max?: number;
+  /**
+   * The scores for each star, low to high; empty is a third, two thirds and all of max.
+   *
+   * @default []
+   */
+  readonly thresholds?: readonly number[];
+  /**
+   * The caption over the score (Score); empty is none.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * The score as written (18,450); empty writes value grouped.
+   *
+   * @default ""
+   */
+  readonly valueText?: string;
+  /**
+   * One line: the score beside the bar (a phone's top strip).
+   *
+   * @default false
+   */
+  readonly compact?: boolean;
+  /**
+   * Its stars to a screen reader ({n} earned of {max}).
+   *
+   * @default "{n} of {max} stars"
+   */
+  readonly starsLabel?: string;
+}
+
+/** What the bar showed this tick. */
+export interface StarBarResult {
+  /** Stars earned at this score. */
+  readonly earned: number;
+  /**
+   * Stars earned this tick (a threshold crossed): play the game's own fanfare if it has one.
+   */
+  readonly crossed: number;
+}
+
+
+/**
+ * One goal of a level (collect 20 blue gems, break 6 ice tiles).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LevelGoal {
+  /**
+   * Its key: its element id, <id>/<key>.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * What to do (Collect Blue Gems).
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * How many are done.
+   *
+   * @default 0
+   */
+  readonly have?: number;
+  /**
+   * How many it takes.
+   *
+   * @default 0
+   */
+  readonly need?: number;
+  /**
+   * Its piece's art (art kind item); null draws icon or a gem.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * An icon of the style's set for it when it has no art.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+}
+
+/**
+ * A level's goals.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface GoalChipsDesc {
+  /**
+   * The goals, in the order the level states them.
+   *
+   * @default []
+   */
+  readonly goals?: readonly LevelGoal[];
+  /**
+   * Counts only, as a row of icons with a number each (a phone's top strip): the label goes to a screen reader.
+   *
+   * @default false
+   */
+  readonly compact?: boolean;
+  /**
+   * What a screen reader calls them.
+   *
+   * @default "Goals"
+   */
+  readonly label?: string;
+  /**
+   * A goal's count to a screen reader ({have} of {need}).
+   *
+   * @default "{have} of {need}"
+   */
+  readonly progressLabel?: string;
+  /**
+   * What a goal met adds.
+   *
+   * @default "Done"
+   */
+  readonly doneLabel?: string;
+}
+
+
+/**
+ * A generator of an idle game, as the game's viewmodel holds it. The game writes its numbers (og.ui.formatNumber, idle letters), so they read in its notation and language.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface IdleGeneratorDesc {
+  /**
+   * What it is (Solar Array).
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Its art (art kind item); null draws icon or a bolt.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * An icon of the style's set for it when it has no art.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * Its level.
+   *
+   * @default 0
+   */
+  readonly level?: number;
+  /**
+   * How many the player owns, as written (348); empty hides it.
+   *
+   * @default ""
+   */
+  readonly ownedText?: string;
+  /**
+   * What it makes, as written (+1.24 M / sec); empty hides it.
+   *
+   * @default ""
+   */
+  readonly rateText?: string;
+  /**
+   * How far its current cycle is, 0 to 1.
+   *
+   * @default 0
+   * @range 0..1
+   */
+  readonly cycle?: number;
+  /**
+   * How long a cycle takes: under a quarter second the bar stays full and shimmers (too fast to read as a fill). 0 hides the bar.
+   *
+   * @default 0
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly cycleSeconds?: number;
+  /**
+   * What the next purchase costs, as written (12.4 M).
+   *
+   * @default ""
+   */
+  readonly costText?: string;
+  /**
+   * The currency's art beside the cost; null draws a coin.
+   *
+   * @default null
+   */
+  readonly currencyIcon?: Texture | null;
+  /**
+   * The purse pays the purchase: the buy button lights.
+   *
+   * @default false
+   */
+  readonly affordable?: boolean;
+  /**
+   * The buy button's label ({n} is buyCount).
+   *
+   * @default "Buy ×{n}"
+   */
+  readonly buyLabel?: string;
+  /**
+   * How many a press buys (×1, ×10, the most the purse pays).
+   *
+   * @default 1
+   */
+  readonly buyCount?: number;
+  /**
+   * The level badge ({level}).
+   *
+   * @default "Lv. {level}"
+   */
+  readonly levelLabel?: string;
+  /**
+   * The owned line ({owned} is ownedText).
+   *
+   * @default "Owned: {owned}"
+   */
+  readonly ownedLabel?: string;
+  /**
+   * Not unlocked yet: dimmed with a lock and lockedHint in place of its numbers; it cannot be bought.
+   *
+   * @default false
+   */
+  readonly locked?: boolean;
+  /**
+   * What unlocks it (Reach 1 B energy).
+   *
+   * @default ""
+   */
+  readonly lockedHint?: string;
+}
+
+/** What the generator's row did this tick. */
+export interface IdleGeneratorResult {
+  /** Buy was pressed, or held long enough to repeat, and the purse pays: buy buyCount. */
+  readonly bought: boolean;
+  /** Buy was pressed without the purse to pay: say so (it shook). */
+  readonly short: boolean;
+  /** Buy is being held: it repeats every few ticks while the purse pays. */
+  readonly held: boolean;
+}
+
+
+/**
+ * An idle game's prestige: what a reset gives and what it costs.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PrestigeDesc {
+  /**
+   * The panel's heading (Prestige).
+   *
+   * @default "Prestige"
+   */
+  readonly title?: string;
+  /**
+   * The line over the reward (Ascend for).
+   *
+   * @default ""
+   */
+  readonly lead?: string;
+  /**
+   * What a reset gives, as written (+128 Shards): the panel's display line.
+   *
+   * @default ""
+   */
+  readonly rewardText?: string;
+  /**
+   * What a reset does, one line each with a tick (Resets generators, Permanent progression).
+   *
+   * @default []
+   */
+  readonly points?: readonly string[];
+  /**
+   * Its emblem (art kind emblem); null draws a crown.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * The hold-to-confirm button's label (Ascend).
+   *
+   * @default "Ascend"
+   */
+  readonly actionLabel?: string;
+  /**
+   * A reset gives something now: the button can be held.
+   *
+   * @default false
+   */
+  readonly available?: boolean;
+  /**
+   * Why not yet, under the button while unavailable (Reach 1 Qa energy).
+   *
+   * @default ""
+   */
+  readonly lockedHint?: string;
+  /**
+   * How long the button is held to confirm: a reset is not taken by a slip.
+   *
+   * @default 1200
+   * @unit ms (milliseconds)
+   */
+  readonly holdMs?: number;
+}
+
+/** What the prestige panel did this tick. */
+export interface PrestigeResult {
+  /** The hold completed: reset the run and grant the reward. */
+  readonly confirmed: boolean;
+  /** The button is being held. */
+  readonly holding: boolean;
+}
+
+
+/**
  * A template's action, by its id (a menu item, `buy:<item>`, `share`).
  *
  * @param action The action's id.
@@ -46573,6 +47057,46 @@ export declare namespace og {
      * @param desc The pull.
      */
     function pullSequence(id: string, desc?: PullSequenceDesc): PullSequenceResult;
+    /**
+     * A saga map (Candy Crush Saga, Royal Match, Gardenscapes): the run's levels as badges along a painted path that scrolls, sideways on a desktop and a phone on its side (start to end, mirrored right to left) and upward on a phone in portrait (the first level at the foot). Each badge reads its number with its stars under it; the path is lit up to the level the player stands on, where the avatar's pin floats and a soft ring breathes; locked levels lie dim behind a lock; a boss stands larger in danger ink with its portrait. It opens centred on the current level (og.ui.scrollIntoView) and keeps it in view when current changes. A press on an open level picks it; on a locked one it shakes and is refused. Keys and pads walk the badges in path order.
+     * Parts: Saga.map, Saga.path[lit], Saga.node[done|current|open|locked][boss][selected], Saga.badge, Saga.label, Saga.stars, Saga.lock, Saga.pin, Saga.avatar. Slots: the backdrop (art kind map), each boss's portrait (art kind portrait), the avatar (art kind avatar). States: on each node, group progress (done, current, open, locked). Motion: the pin bobs and the current ring breathes (still under reduced motion); hover lifts a badge on the ui spring; a refused press shakes it. Sounds: hover, confirm on a pick, error on a locked level. Accessibility: a list named by label; each level a button named by its level or boss label, its stars, locked and current, said disabled when locked. Probe ids: <id>/View/Path/<key>, <id>/View/Path/Pin.
+     *
+     * @param id Its id.
+     * @param desc The levels, the current one and the art.
+     */
+    function sagaMap(id: string, desc?: SagaMapDesc): SagaMapResult;
+    /**
+     * A level's score toward its stars (Candy Crush, Homescapes, Angry Birds): the score in the display face over a bar that fills in a warm gold, a star standing on the bar at each threshold, lit as the score passes it with a pop and the success sound, an outline until then. The bar runs start to end, mirrored right to left.
+     * Parts: StarBar.frame[compact], StarBar.label, StarBar.value, StarBar.track, StarBar.fill, StarBar.star[lit]. States: on each star, group lit (off, on). Motion: the fill eases to the score on the ui spring; a star crossed pops on the emphasis spring (still under reduced motion). Sounds: success on each star crossed. Accessibility: a meter named by label with the score as its value and its stars as its description. Probe ids: <id>/Bar/Track, <id>/Bar/Stars/Star#i, <id>/Value.
+     *
+     * @param id Its id.
+     * @param desc The score and its thresholds.
+     */
+    function starBar(id: string, desc?: StarBarDesc): StarBarResult;
+    /**
+     * A level's goals as chips (Candy Crush's orders, Royal Match's targets): each its piece's art, what to do, have / need and a thin bar; one met turns to the success ink with a tick. A count that rises pops; a goal met plays success.
+     * Parts: Goals.frame[compact], Goals.chip[done], Goals.art, Goals.label, Goals.count, Goals.track, Goals.fill, Goals.check. States: on each chip, group goal (open, done). Motion: a count that rises pops on the emphasis spring (still under reduced motion). Sounds: success when a goal is met. Accessibility: a list named by label; each goal a list item named by its label and count, done when met. Probe ids: <id>/<key>, <id>/<key>/Count.
+     *
+     * @param id Its id.
+     * @param desc The goals.
+     */
+    function goalChips(id: string, desc?: GoalChipsDesc): void;
+    /**
+     * One generator of an idle game (AdVenture Capitalist, Cookie Clicker, Idle Miner): its art, name, level, owned count, the cycle's bar filling toward its next payout, what it makes, and a buy button with its cost, lit when the purse pays and glass when it does not. Held, Buy repeats (after a beat, every few ticks) as long as the purse pays. A locked generator lies dim with what unlocks it. One row; a game stacks them in a scrolling list with the buy amount chosen above (og.ui.segmented).
+     * Parts: Idle.generator[locked][affordable], Idle.art, Idle.name, Idle.level, Idle.owned, Idle.cycle[fast], Idle.cycleFill, Idle.rate, Idle.buy[affordable|short], Idle.cost, Idle.lock. Slots: its art (art kind item), the currency's icon. States: group purse (afford, short) on the buy button; group cycle (slow, fast) on the bar. Motion: a fast cycle's shimmer and a purchase's pop (still under reduced motion); the buy button lifts and sinks as a raised button. Sounds: the style's press on a purchase, error when short. Accessibility: a group named by name; the bar a meter; Buy a button named by its label, cost and short when the purse cannot pay. Probe ids: <id>, <id>/Info/Name, <id>/Info/Cycle, <id>/Buy.
+     *
+     * @param id Its id.
+     * @param desc The generator.
+     */
+    function idleGenerator(id: string, desc?: IdleGeneratorDesc): IdleGeneratorResult;
+    /**
+     * An idle game's prestige (AdVenture Capitalist's angels, Cookie Clicker's ascension): its emblem, the line over what a reset gives in the display face, what a reset does with a tick each, and a premium hold-to-confirm button (og.ui.holdButton), so a run is never reset by a slip. Until a reset gives something, the button lies flat with why.
+     * Parts: Prestige.frame[available], Prestige.emblem, Prestige.title, Prestige.lead, Prestige.reward, Prestige.point, Prestige.action, Prestige.hint. Slots: the emblem (art kind emblem). States: group availability (ready, waiting) on the frame. Motion: the hold fills the button from its start edge; the emblem glows while ready (still under reduced motion). Sounds: the hold button's rising ticks and confirm. Accessibility: a region named by title; the reward and points as text; the button a button whose value is the hold's progress. Probe ids: <id>, <id>/Body/Reward, <id>/Action (og.ui.holdButton's, its own /Button within).
+     *
+     * @param id Its id.
+     * @param desc What a reset gives.
+     */
+    function prestigePanel(id: string, desc?: PrestigeDesc): PrestigeResult;
     /**
      * The title screen template. Returns the item chosen this tick.
      *

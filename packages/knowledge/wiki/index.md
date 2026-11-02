@@ -160,7 +160,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2042 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2058 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -542,6 +542,7 @@ Field units the docs and Tune use.
 | [`GlowEffect`](ui.md#type-GlowEffect) | desc struct | ui | — |
 | [`GltfDesc`](load.md#type-GltfDesc) | desc struct | load | — |
 | [`GltfInfo`](load.md#type-GltfInfo) | struct | load | — |
+| [`GoalChipsDesc`](ui.md#type-GoalChipsDesc) | desc struct | ui | — |
 | [`GpuMemory`](render.md#type-GpuMemory) | struct | render | — |
 | [`Gradient`](ui.md#type-Gradient) | desc struct | ui | — |
 | [`GradientSpread`](ui.md#type-GradientSpread) | enum | ui | — |
@@ -587,6 +588,8 @@ Field units the docs and Tune use.
 | [`IconDesc`](ui.md#type-IconDesc) | desc struct | ui | — |
 | [`IconMarkDesc`](ui.md#type-IconMarkDesc) | desc struct | ui | — |
 | [`IconPlate`](ui.md#type-IconPlate) | enum | ui | — |
+| [`IdleGeneratorDesc`](ui.md#type-IdleGeneratorDesc) | desc struct | ui | — |
+| [`IdleGeneratorResult`](ui.md#type-IdleGeneratorResult) | struct | ui | — |
 | [`IdleHudDesc`](ui.md#type-IdleHudDesc) | desc struct | ui | — |
 | [`IkSolver`](anim.md#type-IkSolver) | enum | anim | — |
 | [`IkSolver()`](anim.md#column-IkSolver) | column kind | anim | — |
@@ -658,6 +661,7 @@ Field units the docs and Tune use.
 | [`LeaderboardQueryDesc`](platform.md#type-LeaderboardQueryDesc) | desc struct | platform | — |
 | [`LeaderboardResult`](ui.md#type-LeaderboardResult) | struct | ui | — |
 | [`LeaderboardSubmitDesc`](platform.md#type-LeaderboardSubmitDesc) | desc struct | platform | — |
+| [`LevelGoal`](ui.md#type-LevelGoal) | desc struct | ui | — |
 | [`LevelInfo`](ui.md#type-LevelInfo) | desc struct | ui | — |
 | [`LevelSelectDesc`](ui.md#type-LevelSelectDesc) | desc struct | ui | — |
 | [`LevelSelectResult`](ui.md#type-LevelSelectResult) | struct | ui | — |
@@ -1305,6 +1309,7 @@ Field units the docs and Tune use.
 | [`og.ui.gameInput`](ui.md#fn-gameInput) | function | ui | `og_ui_game_input` |
 | [`og.ui.gesture`](ui.md#fn-gesture) | function | ui | `og_ui_gesture` |
 | [`og.ui.glyph`](ui.md#fn-glyph) | function | ui | `og_ui_glyph` |
+| [`og.ui.goalChips`](ui.md#fn-goalChips) | function | ui | — |
 | [`og.ui.grid`](ui.md#fn-grid) | function | ui | — |
 | [`og.ui.gridItem`](ui.md#fn-gridItem) | function | ui | `og_ui_grid_item` |
 | [`og.ui.hasIcon`](ui.md#fn-hasIcon) | function | ui | `og_ui_has_icon` |
@@ -1315,6 +1320,7 @@ Field units the docs and Tune use.
 | [`og.ui.iconButton`](ui.md#fn-iconButton) | function | ui | — |
 | [`og.ui.iconMark`](ui.md#fn-iconMark) | function | ui | — |
 | [`og.ui.idi`](ui.md#fn-idi) | function | ui | — |
+| [`og.ui.idleGenerator`](ui.md#fn-idleGenerator) | function | ui | — |
 | [`og.ui.idleHud`](ui.md#fn-idleHud) | function | ui | — |
 | [`og.ui.image`](ui.md#fn-image) | function | ui | `og_ui_image` |
 | [`og.ui.inputArea`](ui.md#fn-inputArea) | function | ui | — |
@@ -1388,6 +1394,7 @@ Field units the docs and Tune use.
 | [`og.ui.playTimeline`](ui.md#fn-playTimeline) | function | ui | `og_ui_play_timeline` |
 | [`og.ui.pop`](ui.md#fn-pop) | function | ui | `og_ui_pop` |
 | [`og.ui.popover`](ui.md#fn-popover) | function | ui | — |
+| [`og.ui.prestigePanel`](ui.md#fn-prestigePanel) | function | ui | — |
 | [`og.ui.previewViewport`](ui.md#fn-previewViewport) | function | ui | `og_ui_preview_viewport` |
 | [`og.ui.progress`](ui.md#fn-progress) | function | ui | `og_ui_progress` |
 | [`og.ui.progressBar`](ui.md#fn-progressBar) | function | ui | — |
@@ -1416,6 +1423,7 @@ Field units the docs and Tune use.
 | [`og.ui.ribbon`](ui.md#fn-ribbon) | function | ui | — |
 | [`og.ui.richText`](ui.md#fn-richText) | function | ui | `og_ui_rich_text` |
 | [`og.ui.row`](ui.md#fn-row) | function | ui | — |
+| [`og.ui.sagaMap`](ui.md#fn-sagaMap) | function | ui | — |
 | [`og.ui.saveEdits`](ui.md#fn-saveEdits) | function | ui | `og_ui_save_edits` |
 | [`og.ui.sceneViewport`](ui.md#fn-sceneViewport) | function | ui | `og_ui_scene_viewport` |
 | [`og.ui.scoreboard`](ui.md#fn-scoreboard) | function | ui | — |
@@ -1458,6 +1466,7 @@ Field units the docs and Tune use.
 | [`og.ui.spinner`](ui.md#fn-spinner) | function | ui | `og_ui_spinner` |
 | [`og.ui.splitView`](ui.md#fn-splitView) | function | ui | — |
 | [`og.ui.spotlight`](ui.md#fn-spotlight) | function | ui | `og_ui_spotlight` |
+| [`og.ui.starBar`](ui.md#fn-starBar) | function | ui | — |
 | [`og.ui.starRating`](ui.md#fn-starRating) | function | ui | — |
 | [`og.ui.statBar`](ui.md#fn-statBar) | function | ui | — |
 | [`og.ui.statCompare`](ui.md#fn-statCompare) | function | ui | — |
@@ -1611,6 +1620,8 @@ Field units the docs and Tune use.
 | [`PowerPreference`](render.md#type-PowerPreference) | enum | render | — |
 | [`Presence`](ui.md#type-Presence) | struct | ui | — |
 | [`PresenceSpec`](ui.md#type-PresenceSpec) | desc struct | ui | — |
+| [`PrestigeDesc`](ui.md#type-PrestigeDesc) | desc struct | ui | — |
+| [`PrestigeResult`](ui.md#type-PrestigeResult) | struct | ui | — |
 | [`PROBE_GLOBAL`](probe.md#const-PROBE_GLOBAL) | constant | probe | — |
 | [`PROBE_PROGRAM_MAX_OPERATIONS`](probe.md#const-PROBE_PROGRAM_MAX_OPERATIONS) | constant | probe | — |
 | [`PROBE_VERSION`](probe.md#const-PROBE_VERSION) | constant | probe | — |
@@ -1767,6 +1778,9 @@ Field units the docs and Tune use.
 | [`RuntimeProbe.state`](probe.md#member-RuntimeProbe-state) | method | probe | `og_runtime_probe_state` |
 | [`RuntimeProbe.tick`](probe.md#member-RuntimeProbe-tick) | method | probe | `og_runtime_probe_tick` |
 | [`RuntimeProbe.version`](probe.md#member-RuntimeProbe-version) | property | probe | `og_runtime_probe_get_version` |
+| [`SagaMapDesc`](ui.md#type-SagaMapDesc) | desc struct | ui | — |
+| [`SagaMapResult`](ui.md#type-SagaMapResult) | struct | ui | — |
+| [`SagaNode`](ui.md#type-SagaNode) | desc struct | ui | — |
 | [`SavedScene`](probe.md#type-SavedScene) | struct | probe | — |
 | [`SavedSceneFile`](probe.md#type-SavedSceneFile) | struct | probe | — |
 | [`SaveEdit`](world.md#type-SaveEdit) | interface | world | — |
@@ -1927,6 +1941,8 @@ Field units the docs and Tune use.
 | [`SpriteFacing()`](render.md#column-SpriteFacing) | column kind | render | — |
 | [`SquashDesc`](tween.md#type-SquashDesc) | desc struct | tween | — |
 | [`StandardMaterialDesc`](render.md#type-StandardMaterialDesc) | desc struct | render | — |
+| [`StarBarDesc`](ui.md#type-StarBarDesc) | desc struct | ui | — |
+| [`StarBarResult`](ui.md#type-StarBarResult) | struct | ui | — |
 | [`StarRatingDesc`](ui.md#type-StarRatingDesc) | desc struct | ui | — |
 | [`StartFn`](game.md#type-StartFn) | callback | game | — |
 | [`StatBarDesc`](ui.md#type-StatBarDesc) | desc struct | ui | — |
