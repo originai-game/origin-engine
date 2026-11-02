@@ -1440,7 +1440,7 @@ test("worldMap: a pin opens its detail; a fast-travel point travels, another pla
   expect(byPath(engine, "Pins/mill")).toBeDefined();
   st.hidden = ["shop"];
   engine.advance(2);
-  expect(byPath(engine, "Pins/mill")).toBeUndefined();
+  expect(byPath(engine, "Pins/mill") === undefined).toBeTrue();
   key(engine, "Escape");
   expect(st.selected).toBe("");
 });
