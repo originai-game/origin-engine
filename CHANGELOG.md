@@ -40,6 +40,14 @@ is one line here, written at the merge that changes
   camera loads cells, refused in an og.net session. `dump_stream` lists
   the cells. The four records are lazy: a world without cells hashes and
   saves as before.
+- **Auto-rigged 2D characters from layered art (G3-1).** A `type rig2d`
+  file may name `parts "hero.psd"` (a layered PSD) or `parts "hero/"` (a
+  folder of canvas-sized PNG parts) and `template humanoid-side`: the
+  cook reads each part's pixels and alpha, puts each joint where the part
+  overlaps its parent, builds the template's bones and leg IK, and packs
+  the parts into an atlas texture (`<rig>#atlas`), into the same rig
+  og.Skeleton2D plays. Optional `pivot <part> x y`, `unit` and `filter`.
+  No IDL member changes.
 - **FBX and OBJ models (G3-1).** The cook takes `.fbx` (binary and ASCII)
   and `.obj` with its `.mtl` as models, read by ufbx into a glTF binary,
   so they cook to the same model and `#anim` blobs and load with

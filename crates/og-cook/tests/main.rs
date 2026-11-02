@@ -5,6 +5,7 @@
 
 mod anim_compress;
 mod animation;
+mod autorig;
 mod behaviour;
 mod compressed;
 mod conform_2d;

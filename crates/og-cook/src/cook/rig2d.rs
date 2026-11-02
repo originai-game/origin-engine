@@ -2,7 +2,8 @@
 //! `rig2d.rs` documents every line) or naming a DragonBones export
 //! (`dragonbones "hero_ske.json"`, with `atlas "hero_tex.json"`, its texture
 //! atlas), into the canonical rig text (`og_anim::Rig2dAsset::to_text`)
-//! with the texture's id and size filled in.
+//! with the texture's id and size filled in, or naming layered art
+//! (`parts "hero.psd"` and a `template`), which `autorig.rs` rigs.
 //!
 //! The DragonBones 5.5 mapping: y runs down there and up here, so every y
 //! and every angle changes sign; a transform's `skY` (or `rotate`) is the
@@ -68,11 +69,13 @@ pub(super) fn dependency_hashes(s: &Source) -> String {
         return String::new();
     };
     let root = super::flipbook::assets_root(s);
+    let parts = super::autorig::part_files(&s.rel, &root, &String::from_utf8_lossy(&s.bytes));
     ["texture", "dragonbones", "atlas"]
         .iter()
         .filter_map(|k| string_of(&doc, k))
-        .map(|p| {
-            let id = super::flipbook::resolve(s, &p);
+        .map(|p| super::flipbook::resolve(s, &p))
+        .chain(parts)
+        .map(|id| {
             let h = std::fs::read(root.join(&id))
                 .map(|b| super::hash_bytes(&b))
                 .unwrap_or(0);
@@ -87,6 +90,10 @@ pub(super) fn rig(s: &Source) -> Result<(Rig2dAsset, Vec<String>), String> {
     let text = std::str::from_utf8(&s.bytes).map_err(|_| "a 2D rig is text (UTF-8)".to_string())?;
     let mut doc = Document::parse(text).map_err(|e| e.reason().to_string())?;
     let root = super::flipbook::assets_root(s);
+    if super::autorig::is_autorig(&doc) {
+        let (rig, _, notes) = super::autorig::build(s, &doc)?;
+        return Ok((rig, notes));
+    }
     let mut notes = Vec::new();
     let read = |p: &str| -> Result<(String, Vec<u8>), String> {
         let id = super::flipbook::resolve(s, p);
@@ -158,6 +165,23 @@ pub(super) fn rig(s: &Source) -> Result<(Rig2dAsset, Vec<String>), String> {
     rig.texture = texture_id;
     rig.size = [w, h];
     Ok((rig, notes))
+}
+
+/// The atlas texture of a rig that names `parts`.
+pub(super) fn cook_atlas(
+    s: &Source,
+    opts: &super::TextureOptions,
+    stamp: u64,
+) -> Result<Vec<u8>, CookError> {
+    let text =
+        std::str::from_utf8(&s.bytes).map_err(|_| CookError("a 2D rig is text (UTF-8)".into()))?;
+    let doc = Document::parse(text).map_err(|e| CookError(e.reason().to_string()))?;
+    let (rig, image, _) = super::autorig::build(s, &doc).map_err(CookError)?;
+    let kind = match rig.filter {
+        SheetFilter::Nearest => format::kind::PIXEL,
+        SheetFilter::Linear => format::kind::COLOR,
+    };
+    super::texture::cook(&image, kind, opts, stamp)
 }
 
 pub(super) fn cook(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {

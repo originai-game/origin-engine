@@ -12,6 +12,7 @@
 
 pub mod anim;
 pub mod audio;
+mod autorig;
 pub mod bc6h;
 pub mod conform;
 pub use conform::{ConformAction, ConformEntry};
@@ -227,6 +228,7 @@ enum Work<'a> {
     FlipbookArray(&'a Source, Box<og_anim::FlipbookSheet>),
     FlipbookLayer(&'a Source, Box<og_anim::FlipbookSheet>, usize),
     Rig2d(&'a Source),
+    Rig2dAtlas(&'a Source),
     Shader(&'a Source),
     Post(&'a Source),
     UiMaterial(&'a Source),
@@ -441,6 +443,13 @@ pub fn cook_project_with_texture_cache(
     for s in &sources {
         if s.kind == Kind::Terrain {
             consumed.extend(terrain::terrain_files(
+                &s.rel,
+                &assets_dir,
+                &String::from_utf8_lossy(&s.bytes),
+            ));
+        }
+        if s.kind == Kind::Rig2d {
+            consumed.extend(autorig::part_files(
                 &s.rel,
                 &assets_dir,
                 &String::from_utf8_lossy(&s.bytes),
@@ -979,6 +988,18 @@ pub fn cook_project_with_texture_cache(
                 let deps = rig2d::dependency_hashes(s);
                 let st = stamp(&[b"rig2d", &hash, deps.as_bytes()]);
                 outs.push((s.rel.clone(), format::Rig2D::NAME, st, Work::Rig2d(s)));
+                // Rigged from layered art: its parts packed into a texture beside it.
+                if Document::parse(&String::from_utf8_lossy(&s.bytes))
+                    .is_ok_and(|d| autorig::is_autorig(&d))
+                {
+                    let st = stamp(&[b"rig2d atlas", tex_desc.as_bytes(), &hash, deps.as_bytes()]);
+                    outs.push((
+                        autorig::atlas_id(&s.rel),
+                        format::Texture::NAME,
+                        st,
+                        Work::Rig2dAtlas(s),
+                    ));
+                }
             }
             Kind::Flipbook => {
                 let deps = flipbook::dependency_hashes(s);

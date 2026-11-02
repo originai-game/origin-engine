@@ -12,6 +12,9 @@
 
 use super::texture::Image;
 
+pub(super) mod layers;
+pub use layers::{LayerKind, layers};
+
 struct Reader<'a> {
     b: &'a [u8],
     at: usize,

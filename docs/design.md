@@ -1056,7 +1056,15 @@ later.
   `clockwise` turns (accumulated as DragonBones' parser does) and the
   sine `tweenEasing` (above 1: Hermite segments of a `curve`, within 1e-7
   of the sine) come across, and a frame without `tweenEasing` holds as DragonBones holds
-  it. Spine's format is not imported (its licence); the module docs of
+  it. Or the cook rigs it from layered art (`parts "x.psd"`, or a
+  folder `parts "x/"` of PNG parts, and a `template`; `cook/autorig.rs`):
+  each layer named for a part of the template, the joints where the
+  parts overlap near their joint ends, the template's bones through
+  them, two-bone IK on the legs, the parts packed into an atlas cooked
+  beside the rig as `<rig>#atlas`, so the setup pose draws the art as
+  drawn; a layer whose pixels Photoshop would show otherwise (effects,
+  blend modes, clipping, adjustments) or that fits no part is refused,
+  naming the layer, the file and the fix. Spine's format is not imported (its licence); the module docs of
   `rig2d.rs` give the mapping a converter follows. `og.load.rig2d`
   registers a rig and its texture (`og.anim.rig2dInfo` reads it back;
   `og.anim.clip` finds a clip by name). `og.Skeleton2D` (`rig`, `clip`,
