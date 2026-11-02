@@ -131,9 +131,10 @@ and the platformer controller are og-physics, 2D skeletons og-anim §6,
   (pointy- or flat-top), from its `orientation` line or its Tiled map;
   `cellAt`, `cellCenter` and `og.tilemap.neighbours` (4 or 6 cells)
   follow it, an iso tile taller than its diamond stands up from the
-  cell's bottom, and iso and hex solids collide one diamond or hexagon per
-  cell (keep big iso and hex collision layers sparse: a collider per solid
-  cell). `og.tilemap.create` makes an empty map in code (size, tile
+  cell's bottom, and iso and hex solids collide as one collider per
+  connected solid region, its outline (hollow in 2D: a body placed inside
+  a solid region stays there), or one diamond or hexagon per cell for a
+  layer with `cellColliders true`. `og.tilemap.create` makes an empty map in code (size, tile
   pixels, orientation, tileset ids, layers) and `og.tilemap.resize` grows
   or crops one, moving its cells and edits by (x, y); both are world state
   that saves restore (`og api show tilemap`). `og.tilemap.fill` writes a
@@ -292,6 +293,7 @@ layer walls {
   collision true           # its tiles' collision becomes static colliders (default false)
   colliderLayers 4         # those colliders' og.Collider.layers bits (default: og.Tilemap.colliderLayers)
   colliderMask 3           # the layers they collide with, og.Collider.mask bits (default: every layer)
+  cellColliders true       # iso and hex maps: one collider per solid cell (default false: one per connected solid region)
   lit false                # the layer takes no 2D light (og.Lighting2D); default true: lit like a sprite in the lit range
   repeat x                 # x, y or both: tile the layer endlessly (a background)
   terrain wall             # a terrain layer: cells are 1 (filled) or 0, the terrain picks the tiles
@@ -328,6 +330,7 @@ cook reads of a layer and an object:
 | `autotile` | tile layer custom property (string) | the layer is a terrain layer of that terrain of its tileset; any tile in a cell marks it filled, the terrain picks the drawn tile |
 | `collision` | tile layer custom property (bool) | the layer's tile collision becomes static colliders |
 | `colliderLayers`, `colliderMask` | tile layer custom properties (int) | the og.Collider `layers` and `mask` bits of that layer's colliders (default: og.Tilemap.colliderLayers, every layer) |
+| `cellColliders` | tile layer custom property (bool) | on an iso or hex map, one collider per solid cell instead of one per connected solid region |
 | `lit` | tile layer custom property (bool) | false keeps the layer out of og.Lighting2D (a sky or window layer); default true |
 | `z` | tile layer custom property (int) | the sprite layer offset from og.Tilemap.layer (default: the layer's index among the tile layers) |
 | `repeatx`, `repeaty` | tile layer custom properties (bool), or Tiled's own layer fields | the layer repeats along x or y (`repeat` is not a name the cook reads) |

@@ -206,6 +206,9 @@ pub(crate) struct TileShared {
     /// Maps made or resized at run time (og.tilemap.create, resize): saved
     /// whole in the og.tilemap block's trailer (G2-6).
     pub runtime: BTreeSet<u64>,
+    /// The generated physics meshes of merged solid regions this engine
+    /// registered (not world state: a collider's shape is saved with it).
+    pub generated: BTreeSet<u64>,
     /// og.tilemap.create's last handle number (world state, saved with them).
     pub next_runtime: u64,
     /// A resized loaded map's map as loaded, for a restore of a save made
@@ -454,11 +457,14 @@ pub(crate) fn install_middle(
     engine_id: u32,
     feel: &Feel,
     r: &Records,
+    physics: &og_physics::PhysicsSystem,
+    profile: u32,
 ) -> Result<(), String> {
     let names =
         |ids: &[&(SchemaId, Layout)]| ids.iter().map(|x| x.1.schema.clone()).collect::<Vec<_>>();
     let tiles = feel.tiles.clone();
     let rec = r.clone();
+    let physics = physics.clone();
     world
         .add_system(
             SystemDesc {
@@ -471,7 +477,7 @@ pub(crate) fn install_middle(
                 }],
                 ..Default::default()
             },
-            move |ctx| tilemap_system(ctx, &tiles, &rec),
+            move |ctx| tilemap_system(ctx, &tiles, &rec, &physics, profile),
         )
         .map_err(err)?;
     world

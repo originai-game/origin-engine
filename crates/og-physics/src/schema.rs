@@ -172,7 +172,10 @@ pub const SHAPE_CAPSULE: u32 = 2;
 pub const SHAPE_CYLINDER: u32 = 3;
 /// `Collider.shape`: the convex hull of the vertices of `mesh` (3D), or of their xy (a convex polygon, 2D).
 pub const SHAPE_CONVEX: u32 = 4;
-/// `Collider.shape`: the triangles of `mesh` (3D only; for static and kinematic bodies).
+/// `Collider.shape`: the triangles of `mesh` (for static and kinematic
+/// bodies). In 2D the outline of their xy (the edges no two triangles
+/// share, [`crate::outline`]) as a polyline: hollow, so it stops what
+/// comes from outside.
 pub const SHAPE_TRIMESH: u32 = 5;
 /// `Collider.shape`: the height field registered as `mesh` (3D only; a
 /// terrain, static), centred on the entity
@@ -212,7 +215,7 @@ pub(crate) fn polygon(shape: u32, hx: f32, hy: f32) -> Vec<[f32; 2]> {
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
 #[reflect(name = "og.Collider")]
 pub struct Collider {
-    /// 0 box, 1 sphere (circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (polygon in 2D), 5 triangle mesh of `mesh` (3D), 6 the height field `mesh` (3D: a terrain), 7 a diamond and 8 a hexagon in `size` (both).
+    /// 0 box, 1 sphere (circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (polygon in 2D), 5 triangle mesh of `mesh` (its outline in 2D), 6 the height field `mesh` (3D: a terrain), 7 a diamond and 8 a hexagon in `size` (both).
     #[reflect(min = 0, max = 8, label = "Shape")]
     pub shape: u32,
     /// Full extents of a box, as three.js BoxGeometry(width, height, depth).

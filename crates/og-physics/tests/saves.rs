@@ -158,3 +158,106 @@ fn a_snapshot_carries_mesh_colliders_by_their_asset_and_restores_to_the_same_wor
     );
     assert_eq!(bare.world_hash(), before);
 }
+
+/// A 3 × 3 block of unit squares (two triangles each) without its centre,
+/// its corners on whole numbers from (0, 0) to (3, 3): a ring with a hole.
+fn ring() -> MeshDesc {
+    let mut positions = Vec::new();
+    let mut indices = Vec::new();
+    for y in 0..3 {
+        for x in 0..3 {
+            if (x, y) == (1, 1) {
+                continue;
+            }
+            let a = positions.len() as u32;
+            for (dx, dy) in [(0, 0), (1, 0), (1, 1), (0, 1)] {
+                positions.push(Vec3::new((x + dx) as f32, (y + dy) as f32, 0.0));
+            }
+            indices.push([a, a + 1, a + 2]);
+            indices.push([a, a + 2, a + 3]);
+        }
+    }
+    MeshDesc { positions, indices }
+}
+
+#[test]
+fn a_generated_2d_outline_collides_and_restores_without_its_mesh() {
+    // G2-6: a tilemap's merged solid region is a generated mesh, a 2D
+    // triangle mesh colliding as its outline, its shape saved with the
+    // world. On the old code a 2D triangle mesh is refused; a restore that
+    // still needed the mesh would be refused in the fresh engine below.
+    let mesh = GENERATED_MESH | 5;
+    let (mut w, p) = world(Physics::profile_2d(), 1);
+    p.set_mesh(mesh, ring()).unwrap();
+    spawn_static(&mut w, at(0.0, 0.0, 0.0), Collider::trimesh(mesh));
+    // One ball dropped on the ring's top edge (y = 3), one in its hole.
+    let top = spawn_body(
+        &mut w,
+        at(0.5, 5.0, 0.0),
+        RigidBody::dynamic(),
+        Collider::sphere(0.3),
+    );
+    let held = spawn_body(
+        &mut w,
+        at(1.5, 1.5, 0.0),
+        RigidBody::dynamic(),
+        Collider::sphere(0.3),
+    );
+    for _ in 0..60 {
+        w.step().unwrap();
+    }
+    let saved = w.snapshot();
+    let hash = w.world_hash();
+    for _ in 0..120 {
+        w.step().unwrap();
+    }
+    let rest = transform(&w, top).position;
+    assert!(
+        (rest.y - 3.3).abs() < 0.02 && (rest.x - 0.5).abs() < 0.05,
+        "{rest}"
+    );
+    let h = transform(&w, held).position;
+    assert!(
+        (h.y - 1.3).abs() < 0.02 && h.x > 1.0 && h.x < 2.0,
+        "the hole holds it: {h}"
+    );
+
+    // A fresh engine with no mesh registered restores and runs the same.
+    let (mut r, _) = world(Physics::profile_2d(), 2);
+    r.restore(&saved).unwrap();
+    assert_eq!(r.world_hash(), hash);
+    for _ in 0..120 {
+        r.step().unwrap();
+    }
+    assert_eq!(r.world_hash(), w.world_hash());
+
+    // In 3D (a region's prism) a generated triangle mesh is saved whole,
+    // where an asset's is left for the restore to rebuild.
+    let ground = GENERATED_MESH | 6;
+    let (mut w, p) = world(Physics::default(), 1);
+    p.set_mesh(ground, ground_mesh()).unwrap();
+    spawn_static(&mut w, at(0.0, 0.0, 0.0), Collider::trimesh(ground));
+    let ball = spawn_body(
+        &mut w,
+        at(3.0, 2.0, 1.0),
+        RigidBody::dynamic(),
+        Collider::sphere(0.5),
+    );
+    for _ in 0..40 {
+        w.step().unwrap();
+    }
+    let saved = w.snapshot();
+    let hash = w.world_hash();
+    for _ in 0..120 {
+        w.step().unwrap();
+    }
+    let (mut r, _) = world(Physics::default(), 2);
+    r.restore(&saved).unwrap();
+    assert_eq!(r.world_hash(), hash);
+    for _ in 0..120 {
+        r.step().unwrap();
+    }
+    assert_eq!(r.world_hash(), w.world_hash());
+    let y = transform(&r, ball).position.y;
+    assert!(y > 0.0 && y < 1.0, "the ball is at {y}");
+}

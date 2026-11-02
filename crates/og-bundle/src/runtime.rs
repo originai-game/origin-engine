@@ -1095,6 +1095,7 @@ fn decode_tilemap(blob: &Blob) -> Result<og_tilemap::TilemapAsset, LoadError> {
             collision: l.flags & fl::COLLISION != 0,
             collider_layers: l.collider_layers,
             collider_mask: l.collider_mask,
+            cell_colliders: l.flags & fl::CELL_COLLIDERS != 0,
             repeat_x: l.flags & fl::REPEAT_X != 0,
             repeat_y: l.flags & fl::REPEAT_Y != 0,
             z: l.z,

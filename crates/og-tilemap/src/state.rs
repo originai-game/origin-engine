@@ -1,7 +1,9 @@
 //! A placed map's current cells: terrain resolution, deterministic edits,
 //! snapshots, collision rectangles and draw chunks.
 
-use crate::map::{FLIP_X, FLIP_Y, Orientation, TILE_MASK, TilemapAsset, cell_center};
+use crate::map::{
+    FLIP_X, FLIP_Y, Orientation, TILE_MASK, TilemapAsset, cell_center, each_neighbour,
+};
 use crate::tileset::{Collision, Terrain, Tileset};
 use glam::Vec2;
 use og_core::{Error, ErrorKind, Result};
@@ -554,7 +556,7 @@ impl MapState {
 /// bounding box of its [`map_colliders`] shape), row by row.
 pub fn collision_rects(state: &MapState, layer: usize) -> Vec<Rect> {
     if state.asset.orientation != Orientation::Orthogonal {
-        return cell_shapes(state, layer)
+        return cell_shapes(state, layer, true)
             .into_iter()
             .map(|(r, _)| r)
             .collect();
@@ -716,7 +718,7 @@ pub struct MapCollider {
 /// a solid tile is its cell's diamond or hexagon, a tile's collision
 /// rectangle a box in its drawn image (as [`chunk_quads`] places it), row
 /// by row; the layer's offset included.
-fn cell_shapes(state: &MapState, layer: usize) -> Vec<(Rect, MapShape)> {
+fn cell_shapes(state: &MapState, layer: usize, full: bool) -> Vec<(Rect, MapShape)> {
     let Some(ts) = state.tileset(layer).cloned() else {
         return Vec::new();
     };
@@ -736,7 +738,7 @@ fn cell_shapes(state: &MapState, layer: usize) -> Vec<(Rect, MapShape)> {
             };
             let c = cell_center(&state.asset, x, y) + off;
             match ts.collision(t) {
-                Some(Collision::Full) => out.push((
+                Some(Collision::Full) if full => out.push((
                     Rect {
                         min: c - size * 0.5,
                         max: c + size * 0.5,
@@ -762,8 +764,155 @@ fn cell_shapes(state: &MapState, layer: usize) -> Vec<(Rect, MapShape)> {
                         MapShape::Box,
                     ));
                 }
-                None => {}
+                _ => {}
             }
+        }
+    }
+    out
+}
+
+/// One merged collider of a collision layer off the orthogonal grid: a
+/// connected region of solid cells (sharing sides), as triangles whose
+/// outline is the region's (holes included).
+#[derive(Clone, Debug, PartialEq)]
+pub struct MapRegion {
+    /// The point the positions are relative to, map-local with the layer's
+    /// offset: the region's lowest-left corner of the quarter-tile lattice.
+    pub origin: Vec2,
+    /// The cells' corners, each once, relative to `origin`: whole
+    /// quarter-tiles, so cells that share a corner give it the same
+    /// coordinates, and two regions of one shape the same positions.
+    pub positions: Vec<Vec2>,
+    /// Every cell as a fan of triangles over `positions`,
+    /// counter-clockwise (y up), cell by cell in fill order.
+    pub triangles: Vec<[u32; 3]>,
+    /// How many cells it merges.
+    pub cells: u32,
+    pub layers: u32,
+    pub mask: u32,
+}
+
+/// The merged solid regions of every collision layer off the orthogonal
+/// grid without `cell_colliders` (each region one collider, its outline:
+/// a static map then costs physics per region, not per cell), layer by
+/// layer, each layer's in row-major order of their first cell. A region
+/// takes the full-tile solid cells connected through
+/// [`neighbours`](crate::neighbours); partial collision rectangles stay
+/// boxes ([`map_colliders`]). Empty on an orthogonal map, whose solid cells
+/// merge into rectangles instead.
+pub fn map_regions(state: &MapState, default_layers: u32) -> Vec<MapRegion> {
+    let asset = &state.asset;
+    if asset.orientation == Orientation::Orthogonal {
+        return Vec::new();
+    }
+    let (w, h) = (asset.width, asset.height);
+    let step = asset.tile_size() * 0.25;
+    // Each corner of a cell, from its centre, in whole lattice steps: the
+    // cells' centres and corners all lie on the quarter-tile lattice.
+    let corners: &[(i64, i64)] = match asset.orientation {
+        Orientation::Hexagonal { flat: false } => {
+            &[(0, 2), (-2, 1), (-2, -1), (0, -2), (2, -1), (2, 1)]
+        }
+        Orientation::Hexagonal { flat: true } => {
+            &[(2, 0), (1, 2), (-1, 2), (-2, 0), (-1, -2), (1, -2)]
+        }
+        _ => &[(2, 0), (0, 2), (-2, 0), (0, -2)],
+    };
+    let n = corners.len();
+    let centre = |x: u32, y: u32| {
+        let c = cell_center(asset, x, y);
+        ((c.x / step.x).round() as i64, (c.y / step.y).round() as i64)
+    };
+    let mut out = Vec::new();
+    for (i, l) in asset.layers.iter().enumerate() {
+        if !l.collision || l.cell_colliders {
+            continue;
+        }
+        let Some(ts) = state.tileset(i).cloned() else {
+            continue;
+        };
+        let solid: Vec<bool> = (0..w * h)
+            .map(|k| {
+                state
+                    .tile(i, k % w, k / w)
+                    .is_some_and(|(t, _, _)| ts.collision(t) == Some(Collision::Full))
+            })
+            .collect();
+        let layers = if l.collider_layers != 0 {
+            l.collider_layers
+        } else {
+            default_layers
+        };
+        let mask = if l.collider_mask != 0 {
+            l.collider_mask
+        } else {
+            u32::MAX
+        };
+        let mut seen = vec![false; (w * h) as usize];
+        // A lattice point's id in the region being built (0: none yet),
+        // over the region's bounding box; reused, cleared after each.
+        let mut ids: Vec<u32> = Vec::new();
+        for start in 0..(w * h) as usize {
+            if seen[start] || !solid[start] {
+                continue;
+            }
+            // The region's cells, breadth first from the first.
+            seen[start] = true;
+            let mut cells = vec![(start as u32 % w, start as u32 / w)];
+            let mut next = 0;
+            while next < cells.len() {
+                let (x, y) = cells[next];
+                next += 1;
+                each_neighbour(asset, x, y, |nx, ny| {
+                    let k = (ny * w + nx) as usize;
+                    if !seen[k] && solid[k] {
+                        seen[k] = true;
+                        cells.push((nx, ny));
+                    }
+                });
+            }
+            let centres: Vec<(i64, i64)> = cells.iter().map(|&(x, y)| centre(x, y)).collect();
+            let (mut lo, mut hi) = ((i64::MAX, i64::MAX), (i64::MIN, i64::MIN));
+            for &(cx, cy) in &centres {
+                lo = (lo.0.min(cx - 2), lo.1.min(cy - 2));
+                hi = (hi.0.max(cx + 2), hi.1.max(cy + 2));
+            }
+            let span = (hi.0 - lo.0 + 1) as usize;
+            ids.clear();
+            ids.resize(span * (hi.1 - lo.1 + 1) as usize, 0);
+            // Corners in the order the cells first reach them.
+            let mut points: Vec<(i64, i64)> = Vec::new();
+            let mut triangles = Vec::with_capacity(cells.len() * (n - 2));
+            let mut cell = vec![0u32; n];
+            for &(cx, cy) in &centres {
+                for (k, &(dx, dy)) in corners.iter().enumerate() {
+                    let (px, py) = (cx + dx, cy + dy);
+                    let slot = &mut ids[(py - lo.1) as usize * span + (px - lo.0) as usize];
+                    if *slot == 0 {
+                        points.push((px, py));
+                        *slot = points.len() as u32;
+                    }
+                    cell[k] = *slot - 1;
+                }
+                for k in 1..n - 1 {
+                    triangles.push([cell[0], cell[k], cell[k + 1]]);
+                }
+            }
+            let ox = points.iter().map(|p| p.0).min().unwrap_or(0);
+            let oy = points.iter().map(|p| p.1).min().unwrap_or(0);
+            out.push(MapRegion {
+                origin: Vec2::new(ox as f32 * step.x, oy as f32 * step.y) + l.offset,
+                positions: points
+                    .iter()
+                    .map(|&(px, py)| {
+                        Vec2::new((px - ox) as f32 * step.x, (py - oy) as f32 * step.y)
+                    })
+                    .collect(),
+                triangles,
+                cells: cells.len() as u32,
+                layers,
+                mask,
+            });
         }
     }
     out
@@ -800,8 +949,9 @@ pub fn map_colliders(state: &MapState, default_layers: u32) -> Vec<MapCollider> 
                     }),
             );
         } else {
+            // Merged layers' solid cells are their regions (map_regions).
             out.extend(
-                cell_shapes(state, i)
+                cell_shapes(state, i, l.cell_colliders)
                     .into_iter()
                     .map(|(rect, shape)| MapCollider {
                         rect,

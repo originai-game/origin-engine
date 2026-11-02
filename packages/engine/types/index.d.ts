@@ -11319,7 +11319,9 @@ export declare const SHAPE_CYLINDER: 3;
  */
 export declare const SHAPE_CONVEX: 4;
 
-/** Collider.shape: the triangles of `mesh` (3D only; for static and kinematic bodies). */
+/**
+ * Collider.shape: the triangles of `mesh` (for static and kinematic bodies); in 2D the outline of their xy (the edges no two triangles share) as a hollow polyline, which stops what comes from outside.
+ */
 export declare const SHAPE_TRIMESH: 5;
 
 /**
@@ -11428,7 +11430,7 @@ export interface RigidBody {
  */
 export interface Collider {
   /**
-   * One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (3D), 6 the height field `mesh` (3D: a terrain), 7 a diamond and 8 a hexagon in `size` (both).
+   * One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (its outline in 2D), 6 the height field `mesh` (3D: a terrain), 7 a diamond and 8 a hexagon in `size` (both).
    *
    * @range 0..8
    * @label Shape
@@ -16639,7 +16641,7 @@ export interface FlashDesc {
 // Layers draw through the sprite batch in 16x16-tile chunks culled to the view, each at the map's sprite layer plus its z, scrolled by its parallax; solid tiles become static og-physics colliders merged into rectangles. Runtime edits (og.tilemap.setTile, re-auto-tiling the neighbourhood) are world state (the og.tilemap state block), and the colliders follow them.
 // With og.Lighting2D enabled, a layer whose sprite layer (the map's layer plus its z) lies in minLayer to maxLayer is lit as the sprites there are: multiplied by the ambient plus every Light2D reaching it, with the shadows of Occluder2Ds and castShadow sprites, so a dark cave lit by torches is the map, its lights and its occluders. A layer that should stay as authored in the lit range (a sky, a far parallax backdrop) opts out: a bool custom property `lit` set to false on the Tiled layer, or a `lit false` line in a tilemap `.ogt`'s layer block (TileLayerInfo.lit reports it).
 // Cells count from the top-left corner, x right and y down (Tiled's); the map's top-left corner is at the entity's position.
-// Orientations: a map is orthogonal, isometric (diamonds on a turned grid), staggered (diamonds in rows) or hexagonal (pointy- or flat-top), from its `orientation` line or its Tiled map. cellAt, cellCenter and neighbours follow it; an isometric or staggered tile's image stands up from its cell's bottom (taller tiles overlap the ones behind, drawn back to front); solid tiles off the orthogonal grid collide as one diamond or hexagon per cell. Terrain layers need a square grid (orthogonal or isometric).
+// Orientations: a map is orthogonal, isometric (diamonds on a turned grid), staggered (diamonds in rows) or hexagonal (pointy- or flat-top), from its `orientation` line or its Tiled map. cellAt, cellCenter and neighbours follow it; an isometric or staggered tile's image stands up from its cell's bottom (taller tiles overlap the ones behind, drawn back to front); solid tiles off the orthogonal grid collide as one collider per connected solid region, its outline (a hollow polyline in 2D, a prism in 3D; a layer's cellColliders makes it one diamond or hexagon per cell). Terrain layers need a square grid (orthogonal or isometric).
 // Run-time maps: og.tilemap.create makes a map from a desc and og.tilemap.resize changes a map's size, both in game code. A map made or resized is world state: the og.tilemap state block saves it whole (its tilesets by asset id), so a save restores it in a session that never made it.
 
 /**
@@ -16750,6 +16752,10 @@ export interface TileLayerInfo {
    * The layers its colliders collide with (og.Collider.mask bits), from its `colliderMask` line or Tiled int property; 0 (unset) is every layer.
    */
   readonly colliderMask: number;
+  /**
+   * Off the orthogonal grid, whether each solid cell collides on its own (a diamond or hexagon per cell, from its `cellColliders` line or Tiled bool property) rather than each connected solid region as one collider, its outline (the default: a static map costs physics per region, not per cell).
+   */
+  readonly cellColliders: boolean;
   /**
    * The auto-tiling terrain of a terrain layer (its cells are 1 filled or 0 empty); empty for a tile layer.
    */
@@ -16868,6 +16874,12 @@ export interface TileLayerDesc {
    * @default 0
    */
   readonly colliderMask?: number;
+  /**
+   * Off the orthogonal grid, one collider per solid cell (a diamond or hexagon) instead of one per connected solid region (its outline, the default).
+   *
+   * @default false
+   */
+  readonly cellColliders?: boolean;
   /**
    * Whether it is drawn.
    *
@@ -43133,7 +43145,7 @@ export declare namespace og {
    * Layers draw through the sprite batch in 16x16-tile chunks culled to the view, each at the map's sprite layer plus its z, scrolled by its parallax; solid tiles become static og-physics colliders merged into rectangles. Runtime edits (og.tilemap.setTile, re-auto-tiling the neighbourhood) are world state (the og.tilemap state block), and the colliders follow them.
    * With og.Lighting2D enabled, a layer whose sprite layer (the map's layer plus its z) lies in minLayer to maxLayer is lit as the sprites there are: multiplied by the ambient plus every Light2D reaching it, with the shadows of Occluder2Ds and castShadow sprites, so a dark cave lit by torches is the map, its lights and its occluders. A layer that should stay as authored in the lit range (a sky, a far parallax backdrop) opts out: a bool custom property `lit` set to false on the Tiled layer, or a `lit false` line in a tilemap `.ogt`'s layer block (TileLayerInfo.lit reports it).
    * Cells count from the top-left corner, x right and y down (Tiled's); the map's top-left corner is at the entity's position.
-   * Orientations: a map is orthogonal, isometric (diamonds on a turned grid), staggered (diamonds in rows) or hexagonal (pointy- or flat-top), from its `orientation` line or its Tiled map. cellAt, cellCenter and neighbours follow it; an isometric or staggered tile's image stands up from its cell's bottom (taller tiles overlap the ones behind, drawn back to front); solid tiles off the orthogonal grid collide as one diamond or hexagon per cell. Terrain layers need a square grid (orthogonal or isometric).
+   * Orientations: a map is orthogonal, isometric (diamonds on a turned grid), staggered (diamonds in rows) or hexagonal (pointy- or flat-top), from its `orientation` line or its Tiled map. cellAt, cellCenter and neighbours follow it; an isometric or staggered tile's image stands up from its cell's bottom (taller tiles overlap the ones behind, drawn back to front); solid tiles off the orthogonal grid collide as one collider per connected solid region, its outline (a hollow polyline in 2D, a prism in 3D; a layer's cellColliders makes it one diamond or hexagon per cell). Terrain layers need a square grid (orthogonal or isometric).
    * Run-time maps: og.tilemap.create makes a map from a desc and og.tilemap.resize changes a map's size, both in game code. A map made or resized is world state: the og.tilemap state block saves it whole (its tilesets by asset id), so a save restores it in a session that never made it.
    */
   namespace tilemap {

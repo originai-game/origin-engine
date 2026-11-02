@@ -10,7 +10,7 @@ With og.Lighting2D enabled, a layer whose sprite layer (the map's layer plus its
 
 Cells count from the top-left corner, x right and y down (Tiled's); the map's top-left corner is at the entity's position.
 
-Orientations: a map is orthogonal, isometric (diamonds on a turned grid), staggered (diamonds in rows) or hexagonal (pointy- or flat-top), from its `orientation` line or its Tiled map. cellAt, cellCenter and neighbours follow it; an isometric or staggered tile's image stands up from its cell's bottom (taller tiles overlap the ones behind, drawn back to front); solid tiles off the orthogonal grid collide as one diamond or hexagon per cell. Terrain layers need a square grid (orthogonal or isometric).
+Orientations: a map is orthogonal, isometric (diamonds on a turned grid), staggered (diamonds in rows) or hexagonal (pointy- or flat-top), from its `orientation` line or its Tiled map. cellAt, cellCenter and neighbours follow it; an isometric or staggered tile's image stands up from its cell's bottom (taller tiles overlap the ones behind, drawn back to front); solid tiles off the orthogonal grid collide as one collider per connected solid region, its outline (a hollow polyline in 2D, a prism in 3D; a layer's cellColliders makes it one diamond or hexagon per cell). Terrain layers need a square grid (orthogonal or isometric).
 
 Run-time maps: og.tilemap.create makes a map from a desc and og.tilemap.resize changes a map's size, both in game code. A map made or resized is world state: the og.tilemap state block saves it whole (its tilesets by asset id), so a save restores it in a session that never made it.
 
@@ -82,7 +82,7 @@ fn setTile {
 }
 ```
 
-<sub>`api.ogt` line 11062</sub>
+<sub>`api.ogt` line 11064</sub>
 
 <a id="fn-fill"></a>
 
@@ -112,7 +112,7 @@ fn fill {
 }
 ```
 
-<sub>`api.ogt` line 11080</sub>
+<sub>`api.ogt` line 11082</sub>
 
 <a id="fn-create"></a>
 
@@ -142,7 +142,7 @@ fn create {
 }
 ```
 
-<sub>`api.ogt` line 11087</sub>
+<sub>`api.ogt` line 11089</sub>
 
 <a id="fn-resize"></a>
 
@@ -172,7 +172,7 @@ fn resize {
 }
 ```
 
-<sub>`api.ogt` line 11094</sub>
+<sub>`api.ogt` line 11096</sub>
 
 <a id="fn-neighbours"></a>
 
@@ -206,7 +206,7 @@ fn neighbours {
 }
 ```
 
-<sub>`api.ogt` line 11101</sub>
+<sub>`api.ogt` line 11103</sub>
 
 <a id="fn-getTile"></a>
 
@@ -242,7 +242,7 @@ fn getTile {
 }
 ```
 
-<sub>`api.ogt` line 11110</sub>
+<sub>`api.ogt` line 11112</sub>
 
 <a id="fn-cellAt"></a>
 
@@ -274,7 +274,7 @@ fn cellAt {
 }
 ```
 
-<sub>`api.ogt` line 11120</sub>
+<sub>`api.ogt` line 11122</sub>
 
 <a id="fn-cellCenter"></a>
 
@@ -308,7 +308,7 @@ fn cellCenter {
 }
 ```
 
-<sub>`api.ogt` line 11128</sub>
+<sub>`api.ogt` line 11130</sub>
 
 ## Components, resources and events
 
@@ -429,6 +429,7 @@ One layer of a map.
 | `collision` | `boolean` | `false` | — | — | — | Its solid tiles collide. |
 | `colliderLayers` | `number` | `0` | — | — | — | The collision layers (og.Collider.layers bits) of its colliders, from its `colliderLayers` line or Tiled int property; 0 (unset) takes Tilemap.colliderLayers. |
 | `colliderMask` | `number` | `0` | — | — | — | The layers its colliders collide with (og.Collider.mask bits), from its `colliderMask` line or Tiled int property; 0 (unset) is every layer. |
+| `cellColliders` | `boolean` | `false` | — | — | — | Off the orthogonal grid, whether each solid cell collides on its own (a diamond or hexagon per cell, from its `cellColliders` line or Tiled bool property) rather than each connected solid region as one collider, its outline (the default: a static map costs physics per region, not per cell). |
 | `terrain` | `string` | `""` | — | — | — | The auto-tiling terrain of a terrain layer (its cells are 1 filled or 0 empty); empty for a tile layer. |
 | `visible` | `boolean` | `false` | — | — | — | Whether it is drawn. |
 | `lit` | `boolean` | `false` | — | — | — | Whether og.Lighting2D lights it when its sprite layer is in the lit range (true unless the Tiled layer's bool property `lit` or the `.ogt` layer's `lit` line says false). |
@@ -443,6 +444,7 @@ struct TileLayerInfo {
   field collision bool "Its solid tiles collide."
   field colliderLayers u32 "The collision layers (og.Collider.layers bits) of its colliders, from its `colliderLayers` line or Tiled int property; 0 (unset) takes Tilemap.colliderLayers."
   field colliderMask u32 "The layers its colliders collide with (og.Collider.mask bits), from its `colliderMask` line or Tiled int property; 0 (unset) is every layer."
+  field cellColliders bool "Off the orthogonal grid, whether each solid cell collides on its own (a diamond or hexagon per cell, from its `cellColliders` line or Tiled bool property) rather than each connected solid region as one collider, its outline (the default: a static map costs physics per region, not per cell)."
   field terrain String "The auto-tiling terrain of a terrain layer (its cells are 1 filled or 0 empty); empty for a tile layer."
   field visible bool "Whether it is drawn."
   field lit bool "Whether og.Lighting2D lights it when its sprite layer is in the lit range (true unless the Tiled layer's bool property `lit` or the `.ogt` layer's `lit` line says false)."
@@ -484,7 +486,7 @@ struct TileObject {
 }
 ```
 
-<sub>`api.ogt` line 10953</sub>
+<sub>`api.ogt` line 10954</sub>
 
 <a id="type-TilemapInfo"></a>
 
@@ -521,7 +523,7 @@ struct TilemapInfo {
 }
 ```
 
-<sub>`api.ogt` line 10969</sub>
+<sub>`api.ogt` line 10970</sub>
 
 <a id="type-TileLayerDesc"></a>
 
@@ -540,6 +542,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `collision` | `boolean` | `false` | — | — | — | Its solid tiles collide. |
 | `colliderLayers` | `number` | `0` | — | — | — | Its colliders' collision layers (0: Tilemap.colliderLayers). |
 | `colliderMask` | `number` | `0` | — | — | — | The layers its colliders collide with (0: every layer). |
+| `cellColliders` | `boolean` | `false` | — | — | — | Off the orthogonal grid, one collider per solid cell (a diamond or hexagon) instead of one per connected solid region (its outline, the default). |
 | `visible` | `boolean` | `true` | — | — | — | Whether it is drawn. |
 
 ```ogt
@@ -553,13 +556,14 @@ struct TileLayerDesc {
   field collision bool "Its solid tiles collide."
   field colliderLayers u32 "Its colliders' collision layers (0: Tilemap.colliderLayers)."
   field colliderMask u32 "The layers its colliders collide with (0: every layer)."
+  field cellColliders bool "Off the orthogonal grid, one collider per solid cell (a diamond or hexagon) instead of one per connected solid region (its outline, the default)."
   field visible bool "Whether it is drawn." {
     default true
   }
 }
 ```
 
-<sub>`api.ogt` line 10985</sub>
+<sub>`api.ogt` line 10986</sub>
 
 <a id="type-TilemapDesc"></a>
 
@@ -609,7 +613,7 @@ struct TilemapDesc {
 }
 ```
 
-<sub>`api.ogt` line 11000</sub>
+<sub>`api.ogt` line 11002</sub>
 
 <a id="type-ResizeDesc"></a>
 
@@ -645,7 +649,7 @@ struct ResizeDesc {
 }
 ```
 
-<sub>`api.ogt` line 11027</sub>
+<sub>`api.ogt` line 11029</sub>
 
 <a id="type-SetTileDesc"></a>
 
@@ -677,7 +681,7 @@ struct SetTileDesc {
 }
 ```
 
-<sub>`api.ogt` line 11043</sub>
+<sub>`api.ogt` line 11045</sub>
 
 <a id="type-TileCell"></a>
 
@@ -700,7 +704,7 @@ struct TileCell {
 }
 ```
 
-<sub>`api.ogt` line 11055</sub>
+<sub>`api.ogt` line 11057</sub>
 
 <a id="type-FillDesc"></a>
 
@@ -732,7 +736,7 @@ struct FillDesc {
 }
 ```
 
-<sub>`api.ogt` line 11069</sub>
+<sub>`api.ogt` line 11071</sub>
 
 ## Column kinds
 

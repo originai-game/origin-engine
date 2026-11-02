@@ -4,7 +4,7 @@ module tilemap {
   doc "Layers draw through the sprite batch in 16x16-tile chunks culled to the view, each at the map's sprite layer plus its z, scrolled by its parallax; solid tiles become static og-physics colliders merged into rectangles. Runtime edits (og.tilemap.setTile, re-auto-tiling the neighbourhood) are world state (the og.tilemap state block), and the colliders follow them."
   doc "With og.Lighting2D enabled, a layer whose sprite layer (the map's layer plus its z) lies in minLayer to maxLayer is lit as the sprites there are: multiplied by the ambient plus every Light2D reaching it, with the shadows of Occluder2Ds and castShadow sprites, so a dark cave lit by torches is the map, its lights and its occluders. A layer that should stay as authored in the lit range (a sky, a far parallax backdrop) opts out: a bool custom property `lit` set to false on the Tiled layer, or a `lit false` line in a tilemap `.ogt`'s layer block (TileLayerInfo.lit reports it)."
   doc "Cells count from the top-left corner, x right and y down (Tiled's); the map's top-left corner is at the entity's position."
-  doc "Orientations: a map is orthogonal, isometric (diamonds on a turned grid), staggered (diamonds in rows) or hexagonal (pointy- or flat-top), from its `orientation` line or its Tiled map. cellAt, cellCenter and neighbours follow it; an isometric or staggered tile's image stands up from its cell's bottom (taller tiles overlap the ones behind, drawn back to front); solid tiles off the orthogonal grid collide as one diamond or hexagon per cell. Terrain layers need a square grid (orthogonal or isometric)."
+  doc "Orientations: a map is orthogonal, isometric (diamonds on a turned grid), staggered (diamonds in rows) or hexagonal (pointy- or flat-top), from its `orientation` line or its Tiled map. cellAt, cellCenter and neighbours follow it; an isometric or staggered tile's image stands up from its cell's bottom (taller tiles overlap the ones behind, drawn back to front); solid tiles off the orthogonal grid collide as one collider per connected solid region, its outline (a hollow polyline in 2D, a prism in 3D; a layer's cellColliders makes it one diamond or hexagon per cell). Terrain layers need a square grid (orthogonal or isometric)."
   doc "Run-time maps: og.tilemap.create makes a map from a desc and og.tilemap.resize changes a map's size, both in game code. A map made or resized is world state: the og.tilemap state block saves it whole (its tilesets by asset id), so a save restores it in a session that never made it."
 
   handle TilemapAsset "A loaded map: its layers, tilesets and objects."
@@ -66,6 +66,7 @@ module tilemap {
     field collision bool "Its solid tiles collide."
     field colliderLayers u32 "The collision layers (og.Collider.layers bits) of its colliders, from its `colliderLayers` line or Tiled int property; 0 (unset) takes Tilemap.colliderLayers."
     field colliderMask u32 "The layers its colliders collide with (og.Collider.mask bits), from its `colliderMask` line or Tiled int property; 0 (unset) is every layer."
+    field cellColliders bool "Off the orthogonal grid, whether each solid cell collides on its own (a diamond or hexagon per cell, from its `cellColliders` line or Tiled bool property) rather than each connected solid region as one collider, its outline (the default: a static map costs physics per region, not per cell)."
     field terrain String "The auto-tiling terrain of a terrain layer (its cells are 1 filled or 0 empty); empty for a tile layer."
     field visible bool "Whether it is drawn."
     field lit bool "Whether og.Lighting2D lights it when its sprite layer is in the lit range (true unless the Tiled layer's bool property `lit` or the `.ogt` layer's `lit` line says false)."
@@ -113,6 +114,7 @@ module tilemap {
     field collision bool "Its solid tiles collide."
     field colliderLayers u32 "Its colliders' collision layers (0: Tilemap.colliderLayers)."
     field colliderMask u32 "The layers its colliders collide with (0: every layer)."
+    field cellColliders bool "Off the orthogonal grid, one collider per solid cell (a diamond or hexagon) instead of one per connected solid region (its outline, the default)."
     field visible bool "Whether it is drawn." {
       default true
     }

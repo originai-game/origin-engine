@@ -251,3 +251,36 @@ fn diamond_and_hexagon_colliders_are_their_polygons_in_both_profiles() {
         }
     }
 }
+
+#[test]
+fn a_flat_mesh_s_outline_is_its_loops_with_straight_runs_merged() {
+    // A 3 × 3 block of unit squares without its centre: the shared edges
+    // cancel, the outer square runs counter-clockwise and the hole
+    // clockwise, each four corners (the cells' corners on a straight side
+    // merged away).
+    let mut positions = Vec::new();
+    let mut indices = Vec::new();
+    for y in 0..3 {
+        for x in 0..3 {
+            if (x, y) == (1, 1) {
+                continue;
+            }
+            let a = positions.len() as u32;
+            for (dx, dy) in [(0, 0), (1, 0), (1, 1), (0, 1)] {
+                positions.push(Vec3::new((x + dx) as f32, (y + dy) as f32, 0.0));
+            }
+            // One clockwise triangle per cell: the outline turns it.
+            indices.push([a, a + 2, a + 1]);
+            indices.push([a, a + 2, a + 3]);
+        }
+    }
+    let mesh = MeshDesc { positions, indices };
+    let loops = outline(&mesh);
+    let area = |l: &Vec<u32>| {
+        let p = |k: usize| mesh.positions[l[k % l.len()] as usize].truncate();
+        (0..l.len()).map(|i| p(i).perp_dot(p(i + 1))).sum::<f32>() * 0.5
+    };
+    let mut got: Vec<(usize, f32)> = loops.iter().map(|l| (l.len(), area(l))).collect();
+    got.sort_by(|a, b| a.1.total_cmp(&b.1));
+    assert_eq!(got, vec![(4, -1.0), (4, 9.0)]);
+}

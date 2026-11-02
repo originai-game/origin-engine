@@ -401,7 +401,7 @@ fn a_tiled_custom_property_the_importer_does_not_read_is_a_warning_naming_it() {
         "a warning fails nothing: {:?}",
         report.errors()
     );
-    let known = "it reads autotile, collision, colliderLayers, colliderMask, lit, z, repeatx, repeaty; og-game §8";
+    let known = "it reads autotile, collision, colliderLayers, colliderMask, cellColliders, lit, z, repeatx, repeaty; og-game §8";
     assert_eq!(
         report.warnings,
         vec![

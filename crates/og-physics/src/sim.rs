@@ -1777,6 +1777,7 @@ pub(crate) fn apply_pushes(sim: &mut Sim, handles: &Handles<'_>, pushes: &[crate
 /// height field), so a save carries its key instead of its geometry.
 fn from_asset(c: &Collider) -> bool {
     matches!(c.shape, SHAPE_CONVEX | SHAPE_TRIMESH | SHAPE_HEIGHTFIELD)
+        && c.mesh & crate::GENERATED_MESH == 0
 }
 
 fn asset_key(c: &Collider, scale: Vec3) -> ShapeKey {

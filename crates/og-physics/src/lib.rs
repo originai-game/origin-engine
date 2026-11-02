@@ -59,6 +59,7 @@ mod fluid;
 mod fluid3d;
 mod gather;
 mod lanes;
+mod outline;
 mod schema;
 mod schema_ext;
 mod softbody;
@@ -72,6 +73,7 @@ mod dim2;
 mod dim3;
 
 pub use lanes::{Grains, grains, pool_bodies, set_grains};
+pub use outline::outline;
 pub use schema::*;
 pub use schema_ext::*;
 pub use stats::{Phase, PhaseStats, PhysicsStats, set_clock};
@@ -99,6 +101,13 @@ pub struct MeshDesc {
     /// Triangles as indices into `positions` (a convex hull ignores them).
     pub indices: Vec<[u32; 3]>,
 }
+
+/// The bit of a mesh handle that marks a mesh generated from world state
+/// (a tilemap's merged solid regions, G2-6) rather than loaded as an asset:
+/// the shapes of colliders naming one are saved with the world, so a save
+/// restores without the mesh registered. Asset handles never set it, and
+/// a handle with it still fits a JavaScript number (below 2^53).
+pub const GENERATED_MESH: u64 = 1 << 52;
 
 /// A height field for [`SHAPE_HEIGHTFIELD`] colliders, registered under the
 /// handle the colliders name ([`Collider::mesh`]): `columns` × `rows`

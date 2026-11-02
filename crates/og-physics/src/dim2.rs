@@ -92,12 +92,12 @@ pub(crate) fn primitive(c: &Collider, s: Vec3) -> Result<Option<rp::SharedShape>
                 .collect();
             rp::SharedShape::convex_polyline(points).ok_or_else(|| degenerate(c))?
         }
-        SHAPE_CONVEX => return Ok(None),
-        SHAPE_CYLINDER | SHAPE_TRIMESH | SHAPE_HEIGHTFIELD => {
+        SHAPE_CONVEX | SHAPE_TRIMESH => return Ok(None),
+        SHAPE_CYLINDER | SHAPE_HEIGHTFIELD => {
             return Err(Error::new(
                 ErrorKind::Invalid,
                 format!(
-                    "og.Collider.shape {} is 3D only; the 2D profile has 0 box, 1 circle, 2 capsule, 4 polygon",
+                    "og.Collider.shape {} is 3D only; the 2D profile has 0 box, 1 circle, 2 capsule, 4 polygon, 5 outline, 7 diamond, 8 hexagon",
                     c.shape
                 ),
             ));
@@ -106,7 +106,7 @@ pub(crate) fn primitive(c: &Collider, s: Vec3) -> Result<Option<rp::SharedShape>
             return Err(Error::new(
                 ErrorKind::Invalid,
                 format!(
-                    "og.Collider.shape {other} is not a shape (2D: 0 box, 1 circle, 2 capsule, 4 polygon, 7 diamond, 8 hexagon)"
+                    "og.Collider.shape {other} is not a shape (2D: 0 box, 1 circle, 2 capsule, 4 polygon, 5 outline, 7 diamond, 8 hexagon)"
                 ),
             ));
         }
@@ -132,7 +132,10 @@ pub(crate) fn from_heightfield(_f: &crate::HeightfieldDesc, _s: Vec3) -> Result<
     ))
 }
 
-pub(crate) fn from_mesh(_shape: u32, mesh: &crate::MeshDesc, s: Vec3) -> Result<rp::SharedShape> {
+pub(crate) fn from_mesh(shape: u32, mesh: &crate::MeshDesc, s: Vec3) -> Result<rp::SharedShape> {
+    if shape == SHAPE_TRIMESH {
+        return outline_shape(mesh, s);
+    }
     let points: Vec<rp::Vector> = mesh.positions.iter().map(|p| v(*p * s)).collect();
     rp::SharedShape::convex_hull(&points).ok_or_else(|| {
         Error::new(
@@ -140,6 +143,30 @@ pub(crate) fn from_mesh(_shape: u32, mesh: &crate::MeshDesc, s: Vec3) -> Result<
             "the mesh's convex polygon is degenerate (its xy are collinear or a single point)",
         )
     })
+}
+
+/// A 2D triangle mesh: the polyline of its outline ([`crate::outline`]),
+/// one closed chain per loop, scaled.
+fn outline_shape(mesh: &crate::MeshDesc, s: Vec3) -> Result<rp::SharedShape> {
+    let scaled = crate::MeshDesc {
+        positions: mesh.positions.iter().map(|p| *p * s).collect(),
+        indices: mesh.indices.clone(),
+    };
+    let mut points = Vec::new();
+    let mut segments = Vec::new();
+    for l in crate::outline::outline(&scaled) {
+        let start = points.len() as u32;
+        let n = l.len() as u32;
+        points.extend(l.iter().map(|&i| v(scaled.positions[i as usize])));
+        segments.extend((0..n).map(|i| [start + i, start + (i + 1) % n]));
+    }
+    if segments.is_empty() {
+        return Err(Error::new(
+            ErrorKind::Invalid,
+            "the mesh has no outline in the xy plane (no triangle of non-zero area there)",
+        ));
+    }
+    Ok(rp::SharedShape::polyline(points, Some(segments)))
 }
 
 /// The profile's dimensions.

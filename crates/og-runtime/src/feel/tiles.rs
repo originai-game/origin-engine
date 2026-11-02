@@ -148,6 +148,7 @@ fn map_info(handle: u64, asset: &TilemapAsset) -> Value {
                 "collision": l.collision, "terrain": l.terrain.clone().unwrap_or_default(), "visible": l.visible,
                 "lit": l.lit,
                 "colliderLayers": l.collider_layers, "colliderMask": l.collider_mask,
+                "cellColliders": l.cell_colliders,
             })
         })
         .collect();
@@ -352,6 +353,7 @@ fn desc_map(d: &Value) -> Result<TilemapAsset, String> {
         layer.collision = l["collision"].as_bool().unwrap_or(false);
         layer.collider_layers = u32_at(l, "colliderLayers", 0);
         layer.collider_mask = u32_at(l, "colliderMask", 0);
+        layer.cell_colliders = l["cellColliders"].as_bool().unwrap_or(false);
         layer.visible = l["visible"].as_bool().unwrap_or(true);
         layers.push(layer);
     }
@@ -492,13 +494,72 @@ pub fn og_tilemap_cell_center(world: u32, entity: f64, x: u32, y: u32) -> String
 
 // ── the og.tilemap system ──────────────────────────────────────────────────
 
+fn encode_value(l: &Layout, v: &Value) -> og_core::Result<Vec<u8>> {
+    l.encode(None, Some(v))
+        .map_err(|e| Error::new(ErrorKind::Invalid, e))
+}
+
 /// A collider entity's packed components.
 type Spawn = Vec<(SchemaId, Vec<u8>)>;
+
+/// The physics mesh of a merged solid region (og_tilemap::map_regions): in
+/// 2D its triangles (a 2D triangle mesh collides as its outline), in 3D the
+/// closed prism over them, 1 deep about the map's z (caps, and walls along
+/// the outline). Its handle is generated ([`og_physics::GENERATED_MESH`])
+/// from the geometry, so equal regions share one mesh and a replay or a
+/// restore names the same handle.
+fn region_mesh(region: og_tilemap::MapRegion, profile: u32) -> (u64, og_physics::MeshDesc) {
+    let flat = og_physics::MeshDesc {
+        positions: region
+            .positions
+            .iter()
+            .map(|p| Vec3::new(p.x, p.y, 0.0))
+            .collect(),
+        indices: region.triangles,
+    };
+    let mesh = if profile == og_physics::PROFILE_3D {
+        let mut positions = Vec::with_capacity(region.positions.len() * 2);
+        for p in &region.positions {
+            positions.push(Vec3::new(p.x, p.y, -0.5));
+            positions.push(Vec3::new(p.x, p.y, 0.5));
+        }
+        let mut indices = Vec::new();
+        for &[a, b, c] in &flat.indices {
+            indices.push([2 * a + 1, 2 * b + 1, 2 * c + 1]);
+            indices.push([2 * a, 2 * c, 2 * b]);
+        }
+        for ids in og_physics::outline(&flat) {
+            for k in 0..ids.len() {
+                let (a, b) = (ids[k], ids[(k + 1) % ids.len()]);
+                indices.push([2 * a, 2 * b, 2 * b + 1]);
+                indices.push([2 * a, 2 * b + 1, 2 * a + 1]);
+            }
+        }
+        og_physics::MeshDesc { positions, indices }
+    } else {
+        flat
+    };
+    // FNV-1a over the geometry's 32-bit words.
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    let mut eat = |x: u32| {
+        h = (h ^ x as u64).wrapping_mul(0x0000_0100_0000_01b3);
+    };
+    for c in mesh.positions.iter().flat_map(|p| p.to_array()) {
+        eat(c.to_bits());
+    }
+    for &i in mesh.indices.iter().flatten() {
+        eat(i);
+    }
+    let handle = og_physics::GENERATED_MESH | (h & (og_physics::GENERATED_MESH - 1));
+    (handle, mesh)
+}
 
 pub(super) fn tilemap_system(
     ctx: &mut SystemContext<'_>,
     tiles: &Mutex<TileShared>,
     r: &Records,
+    physics: &og_physics::PhysicsSystem,
+    profile: u32,
 ) -> og_core::Result<()> {
     let mut rows = Vec::new();
     for a in ctx.query(0)? {
@@ -562,11 +623,32 @@ pub(super) fn tilemap_system(
         gone.extend(t.live.remove(&k).map(|l| l.colliders).unwrap_or_default());
     }
     let mut spawns: Vec<(u64, Spawn)> = Vec::new();
+    // The generated meshes the colliders built now name.
+    let mut meshes: BTreeSet<u64> = BTreeSet::new();
+    let rebuilt = t.live.values().any(|l| l.dirty) || !gone.is_empty();
     for (&key, live) in t.live.iter_mut().filter(|(_, l)| l.dirty) {
         live.dirty = false;
         gone.append(&mut live.colliders);
         if !live.collision {
             continue;
+        }
+        for region in og_tilemap::map_regions(&live.state, live.layers) {
+            let (p, layers, mask) = (region.origin, region.layers, region.mask);
+            let (handle, mesh) = region_mesh(region, profile);
+            physics.set_mesh(handle, mesh)?;
+            meshes.insert(handle);
+            let tj = json!({ "position": { "x": live.origin.x + p.x, "y": live.origin.y + p.y, "z": live.origin.z } });
+            let cj = json!({
+                "shape": og_physics::SHAPE_TRIMESH, "mesh": handle,
+                "friction": live.friction, "layers": layers, "mask": mask,
+            });
+            spawns.push((
+                key,
+                vec![
+                    (r.transform.0, encode_value(&r.transform.1, &tj)?),
+                    (r.collider.0, encode_value(&r.collider.1, &cj)?),
+                ],
+            ));
         }
         for mc in og_tilemap::map_colliders(&live.state, live.layers) {
             let rect = mc.rect;
@@ -594,18 +676,37 @@ pub(super) fn tilemap_system(
                 "shape": shape, "size": { "x": size.x, "y": size.y, "z": 1.0 },
                 "friction": live.friction, "layers": mc.layers, "mask": mc.mask,
             });
-            let enc = |l: &Layout, v: &Value| {
-                l.encode(None, Some(v))
-                    .map_err(|e| Error::new(ErrorKind::Invalid, e))
-            };
             spawns.push((
                 key,
                 vec![
-                    (r.transform.0, enc(&r.transform.1, &tj)?),
-                    (r.collider.0, enc(&r.collider.1, &cj)?),
+                    (r.transform.0, encode_value(&r.transform.1, &tj)?),
+                    (r.collider.0, encode_value(&r.collider.1, &cj)?),
                 ],
             ));
         }
+    }
+    if rebuilt {
+        // Generated meshes no collider names any more leave physics: those
+        // of the colliders that stay (a map not rebuilt, or restored) are
+        // read from their og.Collider, the rest were just built.
+        let gone_set: BTreeSet<u64> = gone.iter().copied().collect();
+        for live in t.live.values() {
+            for &c in &live.colliders {
+                let e = Entity::from_bits(c);
+                if gone_set.contains(&c) || !ctx.is_alive(e) {
+                    continue;
+                }
+                let v = r.collider.1.decode(&ctx.get_bytes(e, r.collider.0)?);
+                let mesh = bits(&v["mesh"]);
+                if mesh & og_physics::GENERATED_MESH != 0 {
+                    meshes.insert(mesh);
+                }
+            }
+        }
+        for unused in t.generated.difference(&meshes).copied().collect::<Vec<_>>() {
+            physics.remove_mesh(unused);
+        }
+        t.generated = meshes;
     }
     for g in gone {
         let e = Entity::from_bits(g);

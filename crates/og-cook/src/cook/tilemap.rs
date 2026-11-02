@@ -263,6 +263,7 @@ pub fn encode(map: &TilemapAsset, stamp: u64) -> Vec<u8> {
             (l.repeat_y, layer_flag::REPEAT_Y),
             (l.terrain.is_some(), layer_flag::TERRAIN),
             (!l.lit, layer_flag::UNLIT),
+            (l.cell_colliders, layer_flag::CELL_COLLIDERS),
         ] {
             if on {
                 flags |= bit;
@@ -802,6 +803,13 @@ fn walk_tiled(
                         layer.collider_mask = bits;
                     }
                 }
+                if let Some(c) = props.get("cellColliders") {
+                    layer.cell_colliders = c.as_bool().ok_or_else(|| {
+                        format!(
+                            "layer '{name}': the property cellColliders is a bool (true or false)"
+                        )
+                    })?;
+                }
                 if let Some(lit) = props.get("lit") {
                     layer.lit = lit.as_bool().ok_or_else(|| {
                         format!("layer '{name}': the property lit is a bool (true or false)")
@@ -858,6 +866,7 @@ const TILED_LAYER_PROPS: &[(&str, &str)] = &[
     ("collision", "bool"),
     ("colliderLayers", "int"),
     ("colliderMask", "int"),
+    ("cellColliders", "bool"),
     ("lit", "bool"),
     ("z", "int"),
     ("repeatx", "bool"),

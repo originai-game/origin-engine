@@ -12,7 +12,7 @@ use crate::support;
 use glam::Vec2;
 use og_tilemap::{
     Layer, MapObject, MapShape, MapState, Orientation, TilemapAsset, TilesetRef, cell_center,
-    chunk_quads, map_colliders, neighbours, world_to_cell,
+    chunk_quads, map_colliders, map_regions, neighbours, world_to_cell,
 };
 use support::*;
 
@@ -190,7 +190,7 @@ fn neighbours_are_mutual_and_share_an_edge() {
 }
 
 #[test]
-fn hex_and_iso_solids_collide_as_their_cell_shapes() {
+fn hex_and_iso_solids_collide_as_their_cell_shapes_when_a_layer_asks() {
     for (o, shape) in [
         (Orientation::Isometric, MapShape::Diamond),
         (
@@ -202,11 +202,13 @@ fn hex_and_iso_solids_collide_as_their_cell_shapes() {
             MapShape::Hexagon { flat: true },
         ),
     ] {
-        let m = flat_map(o, 5, 4);
+        let mut m = flat_map(o, 5, 4);
+        m.layers[0].cell_colliders = true;
         let mut s = MapState::new(&m, &[tileset("filled")]).unwrap();
         s.set(0, 1, 1, 60).unwrap();
         s.set(0, 2, 1, 60).unwrap();
         s.set(0, 3, 2, 61).unwrap();
+        assert!(map_regions(&s, 1).is_empty());
         let c = map_colliders(&s, 1);
         assert_eq!(
             c.len(),
@@ -319,4 +321,102 @@ fn a_map_saved_whole_reads_back_equal_and_hex_terrain_is_refused() {
     a.orientation = Orientation::Hexagonal { flat: false };
     let e = a.validate().unwrap_err();
     assert!(e.to_string().contains("terrain layer"), "{e}");
+}
+
+/// A side by its two corners' coordinates (bits), lower first.
+type Side = ((u32, u32), (u32, u32));
+
+#[test]
+fn solid_regions_merge_into_one_collider_each_their_shared_sides_cancelling() {
+    // A ring of solid cells around an empty one, and two lone cells: two
+    // ring regions would mean the sides did not connect, a ring with as
+    // many outline edges as its cells have sides would mean the shared
+    // corners did not land on the same coordinates.
+    for (o, ring, sides, area) in [
+        // The 8 cells around (3, 3): 12 outer sides and the hole's 4.
+        (
+            Orientation::Isometric,
+            vec![
+                (2, 2),
+                (3, 2),
+                (4, 2),
+                (2, 3),
+                (4, 3),
+                (2, 4),
+                (3, 4),
+                (4, 4),
+            ],
+            16,
+            0.5,
+        ),
+        // The 6 neighbours of (3, 3): 18 outer sides and the hole's 6.
+        (Orientation::Hexagonal { flat: false }, vec![], 24, 0.75),
+        (Orientation::Hexagonal { flat: true }, vec![], 24, 0.75),
+    ] {
+        let m = flat_map(o, 9, 9);
+        let mut s = MapState::new(&m, &[tileset("filled")]).unwrap();
+        let ring = if ring.is_empty() {
+            neighbours(&m, 3, 3)
+        } else {
+            ring
+        };
+        for &(x, y) in &ring {
+            s.set(0, x, y, 60).unwrap();
+        }
+        s.set(0, 7, 7, 60).unwrap();
+        s.set(0, 6, 0, 60).unwrap();
+        let r = map_regions(&s, 1);
+        assert_eq!(
+            r.iter().map(|r| r.cells).collect::<Vec<_>>(),
+            vec![1, ring.len() as u32, 1],
+            "{o:?}: regions in row-major order of their first cell"
+        );
+        assert!(map_colliders(&s, 1).is_empty(), "{o:?}: no per-cell shapes");
+        let ring_region = &r[1];
+        // Edges no other triangle shares, by exact coordinates.
+        let mut count: std::collections::BTreeMap<Side, i32> = Default::default();
+        let mut total = 0.0;
+        for t in &ring_region.triangles {
+            let p = t.map(|i| ring_region.positions[i as usize]);
+            total += (p[1] - p[0]).perp_dot(p[2] - p[0]) * 0.5;
+            assert!(
+                (p[1] - p[0]).perp_dot(p[2] - p[0]) > 0.0,
+                "{o:?}: counter-clockwise"
+            );
+            for k in 0..3 {
+                let (a, b) = (p[k], p[(k + 1) % 3]);
+                let (ka, kb) = (
+                    (a.x.to_bits(), a.y.to_bits()),
+                    (b.x.to_bits(), b.y.to_bits()),
+                );
+                *count
+                    .entry(if ka < kb { (ka, kb) } else { (kb, ka) })
+                    .or_default() += 1;
+            }
+        }
+        // A cell's fan has (corners - 3) inner diagonals, each counted twice.
+        let outline = count.values().filter(|&&n| n == 1).count();
+        assert_eq!(outline, sides, "{o:?}");
+        let t = m.tile_size();
+        assert!(
+            (total - ring.len() as f32 * area * t.x * t.y).abs() < 1e-3,
+            "{o:?}: {total}"
+        );
+        // Its origin and positions put the cells where they are drawn.
+        let first = ring_region.triangles[0]
+            .map(|i| ring_region.positions[i as usize] + ring_region.origin);
+        let c = (first[0] + first[1] + first[2]) / 3.0;
+        assert!(
+            ring.iter()
+                .any(|&(x, y)| (cell_center(&m, x, y) - c).length() < t.x * 0.5),
+            "{o:?}: {c}"
+        );
+        // Two lone cells are the same mesh at two origins.
+        assert_eq!(
+            (&r[0].positions, &r[0].triangles),
+            (&r[2].positions, &r[2].triangles),
+            "{o:?}"
+        );
+        assert_ne!(r[0].origin, r[2].origin);
+    }
 }

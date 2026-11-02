@@ -24,6 +24,11 @@ is one line here, written at the merge that changes
   crops one; both are world state saved in the og.tilemap block's trailer
   only once used. The orientation is an optional blob section: orthogonal
   maps cook byte for byte as before under the same type hash.
+  Solid cells off the orthogonal grid merge: each connected region is one
+  static collider, its outline (a hollow polyline in 2D, a prism in 3D),
+  saved with the world; a layer's `cellColliders` keeps one shape per
+  cell. A 256 × 256 hex map, half solid, steps in 0.26 ms instead of
+  3.9 ms (release). `SHAPE_TRIMESH` works in 2D as a mesh's outline.
 - **Procedural generation (G2-6, batch 1).** `og.procgen`: Perlin and
   simplex noise in 2D and 3D with fractal octaves (`noise`, `noiseGrid`),
   Poisson-disk points (`poissonDisk`), BSP rooms with corridors (`bsp`)

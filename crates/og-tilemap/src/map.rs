@@ -50,6 +50,11 @@ pub struct Layer {
     /// The layers (bits) this layer's colliders collide with
     /// (og.Collider.mask); 0 is every layer, og.Collider's default.
     pub collider_mask: u32,
+    /// Off the orthogonal grid, each solid cell collides as its own diamond
+    /// or hexagon (`cellColliders true`), as a game that tells cells apart
+    /// by their colliders needs; by default each connected solid region is
+    /// one collider, its outline (G2-6).
+    pub cell_colliders: bool,
     pub repeat_x: bool,
     pub repeat_y: bool,
     /// The sprite layer offset it draws at (the owner's base plus this).
@@ -76,6 +81,7 @@ impl Layer {
             collision: false,
             collider_layers: 0,
             collider_mask: 0,
+            cell_colliders: false,
             repeat_x: false,
             repeat_y: false,
             z,
@@ -413,6 +419,7 @@ impl TilemapAsset {
                 l.repeat_y,
                 l.lit,
                 l.terrain.is_some(),
+                l.cell_colliders,
             ]
             .iter()
             .enumerate()
@@ -505,6 +512,7 @@ impl TilemapAsset {
             (l.visible, l.collision, l.repeat_x, l.repeat_y, l.lit) =
                 (bit(0), bit(1), bit(2), bit(3), bit(4));
             l.terrain = bit(5).then_some(terrain);
+            l.cell_colliders = bit(6);
             l.collider_layers = r.u()?;
             l.collider_mask = r.u()?;
             l.z = r.u()? as i32;
@@ -736,6 +744,13 @@ fn parse_layer(e: &Entry, m: &TilemapAsset, index: i32) -> Result<Layer> {
             }
             "colliderLayers" => l.collider_layers = uint(p, 0)?,
             "colliderMask" => l.collider_mask = uint(p, 0)?,
+            "cellColliders" => {
+                l.cell_colliders = p
+                    .values
+                    .first()
+                    .and_then(|v| v.as_bool())
+                    .ok_or_else(|| err(p.line, "cellColliders is true or false"))?
+            }
             "lit" => {
                 l.lit = p
                     .values
@@ -780,11 +795,11 @@ fn parse_layer(e: &Entry, m: &TilemapAsset, index: i32) -> Result<Layer> {
             }
         }
     }
-    if (l.collider_layers != 0 || l.collider_mask != 0) && !l.collision {
+    if (l.collider_layers != 0 || l.collider_mask != 0 || l.cell_colliders) && !l.collision {
         return Err(err(
             e.line,
             format!(
-                "layer '{}' names colliderLayers or colliderMask without `collision true`",
+                "layer '{}' names colliderLayers, colliderMask or cellColliders without `collision true`",
                 l.name
             ),
         ));
@@ -945,37 +960,51 @@ pub fn cell_center(asset: &TilemapAsset, x: u32, y: u32) -> Vec2 {
 /// (orthogonal, isometric), the four sides of a staggered diamond, the six
 /// of a hexagon.
 pub fn neighbours(asset: &TilemapAsset, x: u32, y: u32) -> Vec<(u32, u32)> {
+    let mut out = Vec::with_capacity(6);
+    each_neighbour(asset, x, y, |nx, ny| out.push((nx, ny)));
+    out
+}
+
+/// [`neighbours`] without the list: `f` takes each in turn.
+pub(crate) fn each_neighbour(asset: &TilemapAsset, x: u32, y: u32, mut f: impl FnMut(u32, u32)) {
     let (x, y) = (x as i64, y as i64);
     let ox = (y.rem_euclid(2) == 1) as i64;
     let oy = (x.rem_euclid(2) == 1) as i64;
-    let steps: Vec<(i64, i64)> = match asset.orientation {
-        Orientation::Orthogonal | Orientation::Isometric => {
-            vec![(0, -1), (1, 0), (0, 1), (-1, 0)]
+    let four;
+    let six;
+    let steps: &[(i64, i64)] = match asset.orientation {
+        Orientation::Orthogonal | Orientation::Isometric => &[(0, -1), (1, 0), (0, 1), (-1, 0)],
+        Orientation::Staggered => {
+            four = [(ox, -1), (ox, 1), (ox - 1, 1), (ox - 1, -1)];
+            &four
         }
-        Orientation::Staggered => vec![(ox, -1), (ox, 1), (ox - 1, 1), (ox - 1, -1)],
-        Orientation::Hexagonal { flat: false } => vec![
-            (ox, -1),
-            (1, 0),
-            (ox, 1),
-            (ox - 1, 1),
-            (-1, 0),
-            (ox - 1, -1),
-        ],
-        Orientation::Hexagonal { flat: true } => vec![
-            (0, -1),
-            (1, oy - 1),
-            (1, oy),
-            (0, 1),
-            (-1, oy),
-            (-1, oy - 1),
-        ],
+        Orientation::Hexagonal { flat: false } => {
+            six = [
+                (ox, -1),
+                (1, 0),
+                (ox, 1),
+                (ox - 1, 1),
+                (-1, 0),
+                (ox - 1, -1),
+            ];
+            &six
+        }
+        Orientation::Hexagonal { flat: true } => {
+            six = [
+                (0, -1),
+                (1, oy - 1),
+                (1, oy),
+                (0, 1),
+                (-1, oy),
+                (-1, oy - 1),
+            ];
+            &six
+        }
     };
-    steps
-        .into_iter()
-        .map(|(dx, dy)| (x + dx, y + dy))
-        .filter(|&(nx, ny)| {
-            nx >= 0 && ny >= 0 && nx < asset.width as i64 && ny < asset.height as i64
-        })
-        .map(|(nx, ny)| (nx as u32, ny as u32))
-        .collect()
+    for &(dx, dy) in steps {
+        let (nx, ny) = (x + dx, y + dy);
+        if nx >= 0 && ny >= 0 && nx < asset.width as i64 && ny < asset.height as i64 {
+            f(nx as u32, ny as u32);
+        }
+    }
 }

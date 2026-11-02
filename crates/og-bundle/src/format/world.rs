@@ -48,6 +48,10 @@ pub mod layer_flag {
     /// Kept out of 2D lighting (`og_tilemap::Layer::lit` false). A clear
     /// bit is lit, so blobs cooked before it light their layers.
     pub const UNLIT: u32 = 32;
+    /// One collider per solid cell off the orthogonal grid
+    /// (`og_tilemap::Layer::cell_colliders`, G2-6). A clear bit merges
+    /// them, so blobs cooked before it keep their bytes.
+    pub const CELL_COLLIDERS: u32 = 64;
 }
 
 row!(
