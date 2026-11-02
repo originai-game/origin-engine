@@ -16,14 +16,24 @@
 //!
 //! Messages: `{name}` (an argument), `{n, number}`, `{n, plural, =0 {..}
 //! one {..} few {..} many {..} other {..}}` with `#` for the number,
-//! `{g, select, a {..} other {..}}`, `''` for a quote and `'{'` to escape.
+//! `{g, select, a {..} other {..}}`, `''` for a quote and `'{'` to escape;
+//! `{n, number, compact}`, `{n, number, currency/EUR}`, `{d, date, short}`
+//! and `{t, time}` write from the CLDR subset in `format`.
 
+// Generated (scripts/cldr.ts), one record per line: rustfmt leaves it as written.
+#[rustfmt::skip]
+mod cldr;
+pub mod format;
 pub mod locale;
 pub mod message;
 pub mod plural;
 pub mod table;
 pub mod text;
 
+pub use format::{
+    DateStyle, TimeStyle, format_compact, format_currency, format_date, format_duration,
+    format_locales, format_time,
+};
 pub use locale::{Direction, direction_of_locale, negotiate};
 pub use message::{Arg, Message, MessageError};
 pub use plural::{PluralCategory, format_ordinal, plural_category};

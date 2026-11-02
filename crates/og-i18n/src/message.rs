@@ -1,10 +1,16 @@
-//! A subset of ICU MessageFormat: literal text, `{name}`, `{n, number}`,
+//! A subset of ICU MessageFormat: literal text, `{name}`, `{n, number}`
+//! (styles `compact` and `currency/EUR`), `{d, date[, full|long|medium|
+//! short]}` and `{t, time[, medium|short]}` (seconds since 1970-01-01 UTC),
 //! `{n, plural, [offset:k] =N {..} zero|one|two|few|many|other {..}}` (with
 //! `#`, the number less the offset, inside), `{key, select, word {..}
 //! other {..}}`, and apostrophe quoting (`''` is a quote; `'{` starts a
 //! quoted run up to the next lone apostrophe). Parsed once, formatted
 //! against named arguments.
 
+use crate::format::{
+    DateStyle, TimeStyle, format_compact, format_currency, format_date, format_time,
+};
+use crate::locale::language;
 use crate::plural::plural_category;
 use std::collections::BTreeMap;
 
@@ -37,11 +43,22 @@ impl std::fmt::Display for MessageError {
     }
 }
 
+/// How a `{n, number, style}` writes its number.
+#[derive(Clone, Debug, PartialEq)]
+enum NumberStyle {
+    Plain,
+    Compact,
+    /// An ISO 4217 code.
+    Currency(String),
+}
+
 #[derive(Clone, Debug, PartialEq)]
 enum Part {
     Text(String),
     Arg(String),
-    Number(String),
+    Number(String, NumberStyle),
+    Date(String, DateStyle),
+    Time(String, TimeStyle),
     /// The plural's number, `#`.
     Hash,
     Plural {
@@ -174,18 +191,65 @@ impl Parser<'_> {
                 self.skip_ws();
                 match kind.as_str() {
                     "number" => {
+                        let mut style = NumberStyle::Plain;
                         if self.peek() == Some(',') {
-                            // A style (integer, percent) is accepted and ignored.
+                            // compact, currency/CODE; integer and percent
+                            // are accepted and written plain.
                             self.at += 1;
                             self.skip_ws();
-                            self.word();
+                            let word = self.word();
+                            if word == "compact" {
+                                style = NumberStyle::Compact;
+                            } else if word == "currency" {
+                                if self.peek() != Some('/') {
+                                    return self.err(format!(
+                                        "'{{{name}, number, currency' needs its code: currency/EUR"
+                                    ));
+                                }
+                                self.at += 1;
+                                let code = self.word();
+                                if code.len() != 3 || !code.chars().all(|c| c.is_ascii_alphabetic())
+                                {
+                                    return self.err(format!(
+                                        "'{code}' is not a currency code (ISO 4217, such as EUR)"
+                                    ));
+                                }
+                                style = NumberStyle::Currency(code.to_ascii_uppercase());
+                            }
                             self.skip_ws();
                         }
                         if self.peek() != Some('}') {
                             return self.err(format!("'{{{name}, number' needs a closing '}}'"));
                         }
                         self.at += 1;
-                        Ok(Part::Number(name))
+                        Ok(Part::Number(name, style))
+                    }
+                    "date" | "time" => {
+                        let mut word = "medium".to_string();
+                        if self.peek() == Some(',') {
+                            self.at += 1;
+                            self.skip_ws();
+                            word = self.word();
+                            self.skip_ws();
+                        }
+                        let part = if kind == "date" {
+                            DateStyle::named(&word).map(|s| Part::Date(name.clone(), s))
+                        } else {
+                            TimeStyle::named(&word).map(|s| Part::Time(name.clone(), s))
+                        };
+                        let Some(part) = part else {
+                            let styles = if kind == "date" {
+                                "full, long, medium or short"
+                            } else {
+                                "medium or short"
+                            };
+                            return self.err(format!("'{word}' is not a {kind} style: {styles}"));
+                        };
+                        if self.peek() != Some('}') {
+                            return self.err(format!("'{{{name}, {kind}' needs a closing '}}'"));
+                        }
+                        self.at += 1;
+                        Ok(part)
                     }
                     "plural" | "select" => {
                         if self.peek() != Some(',') {
@@ -257,11 +321,13 @@ impl Parser<'_> {
                         })
                     }
                     other => self.err(format!(
-                        "'{other}' is not an argument type: number, plural or select"
+                        "'{other}' is not an argument type: number, date, time, plural or select"
                     )),
                 }
             }
-            _ => self.err(format!("'{{{name}' needs '}}' or ', number|plural|select'")),
+            _ => self.err(format!(
+                "'{{{name}' needs '}}' or ', number|date|time|plural|select'"
+            )),
         }
     }
 }
@@ -322,7 +388,9 @@ impl Message {
         fn walk(parts: &[Part], out: &mut Vec<String>) {
             for p in parts {
                 match p {
-                    Part::Arg(n) | Part::Number(n) => out.push(n.clone()),
+                    Part::Arg(n) | Part::Number(n, _) | Part::Date(n, _) | Part::Time(n, _) => {
+                        out.push(n.clone())
+                    }
                     Part::Plural { name, cases, .. } | Part::Select { name, cases } => {
                         out.push(name.clone());
                         for (_, c) in cases {
@@ -340,17 +408,20 @@ impl Message {
         out
     }
 
-    /// The text for `args` in `language` (its plural rules and numbers). A
-    /// missing argument shows as `{name}`.
-    pub fn format(&self, language: &str, args: &BTreeMap<String, Arg>) -> String {
+    /// The text for `args` in `locale` (a BCP 47 tag or a bare language: its
+    /// plural rules, numbers, currencies and dates). A missing argument shows
+    /// as `{name}`.
+    pub fn format(&self, locale: &str, args: &BTreeMap<String, Arg>) -> String {
         let mut out = String::new();
-        self.format_into(&self.parts, language, args, None, &mut out);
+        let lang = language(locale);
+        self.format_into(&self.parts, locale, &lang, args, None, &mut out);
         out
     }
 
     fn format_into(
         &self,
         parts: &[Part],
+        locale: &str,
         lang: &str,
         args: &BTreeMap<String, Arg>,
         hash: Option<f64>,
@@ -368,8 +439,24 @@ impl Message {
                         out.push('}');
                     }
                 },
-                Part::Number(n) => match args.get(n).and_then(Arg::as_num) {
-                    Some(v) => out.push_str(&format_number(v, lang)),
+                Part::Number(n, style) => match args.get(n).and_then(Arg::as_num) {
+                    Some(v) => out.push_str(&match style {
+                        NumberStyle::Plain => format_number(v, lang),
+                        NumberStyle::Compact => format_compact(v, locale),
+                        NumberStyle::Currency(code) => format_currency(v, code, locale),
+                    }),
+                    None => {
+                        out.push('{');
+                        out.push_str(n);
+                        out.push('}');
+                    }
+                },
+                Part::Date(n, _) | Part::Time(n, _) => match args.get(n).and_then(Arg::as_num) {
+                    Some(v) => out.push_str(&match p {
+                        Part::Date(_, s) => format_date(v, 0, *s, locale),
+                        Part::Time(_, s) => format_time(v, 0, *s, locale),
+                        _ => unreachable!(),
+                    }),
                     None => {
                         out.push('{');
                         out.push_str(n);
@@ -404,7 +491,7 @@ impl Message {
                         })
                         .or_else(|| cases.iter().find(|(s, _)| s == "other"));
                     if let Some((_, body)) = case {
-                        self.format_into(body, lang, args, Some(v - offset), out);
+                        self.format_into(body, locale, lang, args, Some(v - offset), out);
                     }
                 }
                 Part::Select { name, cases } => {
@@ -418,7 +505,7 @@ impl Message {
                         .find(|(s, _)| *s == key)
                         .or_else(|| cases.iter().find(|(s, _)| s == "other"));
                     if let Some((_, body)) = case {
-                        self.format_into(body, lang, args, hash, out);
+                        self.format_into(body, locale, lang, args, hash, out);
                     }
                 }
             }

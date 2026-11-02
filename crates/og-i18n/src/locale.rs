@@ -45,7 +45,7 @@ pub fn language(tag: &str) -> String {
 }
 
 /// The script a Chinese tag implies: Hant for TW, HK, MO, Hant; else Hans.
-fn chinese_script(tag: &str) -> &'static str {
+pub(crate) fn chinese_script(tag: &str) -> &'static str {
     let t = canonical(tag);
     if ["-Hant", "-TW", "-HK", "-MO"].iter().any(|s| t.contains(s)) {
         "Hant"

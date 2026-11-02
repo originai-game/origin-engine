@@ -118,6 +118,39 @@ fn messages_format_selects_numbers_quotes_and_missing_arguments() {
 }
 
 #[test]
+fn messages_write_compact_numbers_currencies_dates_and_times() {
+    let m = Message::parse(
+        "{n, number, compact} · {p, number, currency/eur} · {d, date, short} {d, time, short} · {d, date}",
+    )
+    .unwrap();
+    // 2026-11-02 15:05:09 UTC.
+    let a = args(&[
+        ("n", n(1_234_567.0)),
+        ("p", n(1234.5)),
+        ("d", n(1_793_631_909.0)),
+    ]);
+    assert_eq!(
+        m.format("de", &a),
+        "1,2\u{a0}Mio. · 1.234,50\u{a0}€ · 02.11.26 15:05 · 02.11.2026"
+    );
+    assert_eq!(
+        m.format("en-GB", &a),
+        "1.2M · €1,234.50 · 11/2/26 3:05\u{202f}PM · Nov 2, 2026"
+    );
+    // A table's full tag reaches the formatter: zh-TW writes Traditional.
+    let c = Message::parse("{n, number, compact}").unwrap();
+    assert_eq!(
+        c.format("zh-TW", &args(&[("n", n(123_456_789.0))])),
+        "1.2億"
+    );
+    assert_eq!(c.format("zh", &args(&[("n", n(123_456_789.0))])), "1.2亿");
+    assert_eq!(m.arguments(), vec!["d", "n", "p"]);
+    // A plain number keeps its old form.
+    let plain = Message::parse("{n, number, integer}").unwrap();
+    assert_eq!(plain.format("de", &args(&[("n", n(1234.0))])), "1.234");
+}
+
+#[test]
 fn malformed_messages_and_tables_are_refused_with_where() {
     let e = Message::parse("Hello {name").unwrap_err();
     assert!(e.reason.contains("needs '}'"), "{e}");
@@ -125,8 +158,16 @@ fn malformed_messages_and_tables_are_refused_with_where() {
     assert!(e.reason.contains("needs an 'other' case"), "{e}");
     let e = Message::parse("{n, plural, lots {x} other {y}}").unwrap_err();
     assert!(e.reason.contains("'lots' is not a plural case"), "{e}");
-    let e = Message::parse("{n, date}").unwrap_err();
+    let e = Message::parse("{n, spellout}").unwrap_err();
     assert!(e.reason.contains("not an argument type"), "{e}");
+    let e = Message::parse("{p, number, currency}").unwrap_err();
+    assert!(e.reason.contains("needs its code"), "{e}");
+    let e = Message::parse("{p, number, currency/EU}").unwrap_err();
+    assert!(e.reason.contains("'EU' is not a currency code"), "{e}");
+    let e = Message::parse("{d, date, tiny}").unwrap_err();
+    assert!(e.reason.contains("'tiny' is not a date style"), "{e}");
+    let e = Message::parse("{d, time, full}").unwrap_err();
+    assert!(e.reason.contains("'full' is not a time style"), "{e}");
     let e = Message::parse("a } b").unwrap_err();
     assert_eq!(e.at, 2);
     let t =

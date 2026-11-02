@@ -2,7 +2,7 @@
 //! game's tables make: the active locale, its fallback chain, `t`, and the
 //! cook's check that every locale has every key with the same arguments.
 
-use crate::locale::{Direction, canonical, direction_of_locale, language, negotiate};
+use crate::locale::{Direction, canonical, direction_of_locale, negotiate};
 use crate::message::{Arg, Message};
 use og_core::ogt::{Document, Value};
 use std::collections::BTreeMap;
@@ -243,7 +243,7 @@ impl Catalog {
     pub fn t(&self, key: &str, args: &BTreeMap<String, Arg>) -> Option<String> {
         for t in self.chain() {
             if let Some((_, m)) = t.entries.get(key) {
-                return Some(m.format(&language(&t.locale), args));
+                return Some(m.format(&t.locale, args));
             }
         }
         None
