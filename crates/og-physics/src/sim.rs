@@ -4,7 +4,7 @@
 //! (`v`, `pose`, `unpose`, `angvel`, ...) defined beside it.
 
 use super::{
-    PROFILE_NAME, ShapeCastOptions, angvel, cache, flat, from_heightfield, from_mesh, pose,
+    PROFILE_NAME, ShapeCastOptions, angvel, baked, cache, flat, from_heightfield, from_mesh, pose,
     primitive, rp, unangvel, unpose, unv, v,
 };
 use super::{VehicleState, ext};
@@ -112,7 +112,10 @@ fn shape(c: &Collider, scale: Vec3, shared: &mut Shared) -> Result<rp::SharedSha
             ),
         )
     })?;
-    let built = from_mesh(c.shape, &mesh, s).map_err(|e| e.context(format!("mesh {}", c.mesh)))?;
+    let built = match baked(shared, c, s, &mesh) {
+        Some(b) => b,
+        None => from_mesh(c.shape, &mesh, s).map_err(|e| e.context(format!("mesh {}", c.mesh)))?,
+    };
     let cached = cache(shared);
     if cached.len() >= SHAPE_CACHE_LIMIT {
         cached.clear();

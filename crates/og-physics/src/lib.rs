@@ -341,6 +341,11 @@ pub(crate) struct Shared {
     pub shapes3: BTreeMap<ShapeKey, rapier3d::prelude::SharedShape>,
     #[cfg(feature = "physics2d")]
     pub shapes2: BTreeMap<ShapeKey, rapier2d::prelude::SharedShape>,
+    /// Triangle-mesh shapes the cook baked over a mesh at scale 1, by mesh
+    /// handle ([`PhysicsSystem::set_baked_trimesh`]): taken instead of a
+    /// build when the mesh is exactly the one baked.
+    #[cfg(feature = "physics3d")]
+    pub baked3: IdMap<u64, rapier3d::prelude::SharedShape>,
     /// The colliders [`PhysicsSystem::query_system`] recorded this tick, and
     /// the query view built from them on the first query that asked.
     pub recorded: Option<(Physics, Scene)>,
@@ -469,6 +474,15 @@ enum Saved {
     D2(Box<dim2::Sim>, Vec<Push>),
 }
 
+/// A SHAPE_TRIMESH collider's shape over `mesh` at scale 1, as a collider
+/// naming the mesh builds it (rapier's triangle mesh with its BVH), in
+/// bytes for the cook to put beside the mesh: [`PhysicsSystem::set_baked_trimesh`]
+/// takes it back without building anything. 3D only.
+#[cfg(feature = "physics3d")]
+pub fn bake_trimesh(mesh: &MeshDesc) -> Result<Vec<u8>> {
+    dim3::bake(mesh)
+}
+
 fn codec() -> impl bincode::Options {
     use bincode::Options;
     bincode::DefaultOptions::new().reject_trailing_bytes()
@@ -485,6 +499,13 @@ pub(crate) fn encode<T: serde::Serialize + ?Sized>(
 ) -> bincode::Result<()> {
     use bincode::Options;
     codec().serialize_into(out, value)
+}
+
+/// A value [`encode`] wrote, alone in `bytes`.
+#[cfg(feature = "physics3d")]
+pub(crate) fn decode<T: serde::de::DeserializeOwned>(bytes: &[u8]) -> bincode::Result<T> {
+    use bincode::Options;
+    codec().deserialize(bytes)
 }
 
 /// What follows the profile tag in a saved `og.physics` block: the pushes
@@ -851,6 +872,19 @@ impl PhysicsSystem {
         Ok(())
     }
 
+    /// A triangle-mesh shape [`bake_trimesh`] baked for mesh `handle`,
+    /// decoded now (between ticks, not in the step that first needs it): a
+    /// SHAPE_TRIMESH collider at scale 1 naming the mesh takes it instead of
+    /// building one, while the mesh's positions and triangles are exactly
+    /// the ones baked (a build over them is the same shape, bit for bit).
+    /// Refused for bytes another bake format wrote. 3D only.
+    #[cfg(feature = "physics3d")]
+    pub fn set_baked_trimesh(&self, handle: u64, bytes: &[u8]) -> Result<()> {
+        let shape = dim3::unbake(bytes)?;
+        lock(&self.shared).baked3.insert(handle, shape);
+        Ok(())
+    }
+
     /// What a convex or triangle-mesh collider whose `mesh` was never given
     /// to [`set_mesh`](Self::set_mesh) is built from: the host's geometry
     /// under that handle, asked for once, when a collider first needs it
@@ -972,6 +1006,8 @@ impl PhysicsSystem {
     pub fn remove_mesh(&self, handle: u64) {
         let mut shared = lock(&self.shared);
         shared.meshes.remove(&handle);
+        #[cfg(feature = "physics3d")]
+        shared.baked3.remove(&handle);
         shared.heightfields.remove(&handle);
         shared.stale_meshes.insert(handle);
         #[cfg(feature = "physics3d")]

@@ -107,3 +107,38 @@ fn raycast_false_cooks_no_bvh() {
     let report = cook_project(&root, &CookOptions::default()).unwrap();
     assert!(!report.ok());
 }
+
+/// A primitive's LOD 0 as physics takes a loaded geometry (og-runtime's
+/// `modules::mesh_of` over the render mesh `mesh(0)` adds).
+fn physics_mesh(p: &og_cook::runtime::CookedPrimitive) -> og_physics::MeshDesc {
+    let m = p.mesh(0);
+    og_physics::MeshDesc {
+        positions: m.vertices.iter().map(|v| Vec3::from(v.position)).collect(),
+        indices: m.indices.chunks(3).map(|t| [t[0], t[1], t[2]]).collect(),
+    }
+}
+
+#[test]
+fn collider_true_bakes_the_trimesh_physics_would_build_over_the_loaded_mesh() {
+    let root = project(
+        "og-cook-collider-bake",
+        Some("type import\nversion 1\n---\nmodel {\n  collider true\n}\n"),
+    );
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let model = bundle.load_model("models/dropship.glb").unwrap();
+    for (i, p) in model.primitives.iter().enumerate() {
+        let baked = p
+            .collider
+            .as_ref()
+            .unwrap_or_else(|| panic!("primitive {i} has no baked collider"));
+        // Over the positions the runtime decodes, bit for bit: what a
+        // build over the registered geometry makes.
+        let want = og_physics::bake_trimesh(&physics_mesh(p)).unwrap();
+        assert!(baked == &want, "primitive {i}");
+    }
+    // Off by default: the default cook bakes none.
+    let plain = project("og-cook-collider-off", None);
+    let bundle = Bundle::open(&plain.join("cooked")).unwrap();
+    let model = bundle.load_model("models/dropship.glb").unwrap();
+    assert!(model.primitives.iter().all(|p| p.collider.is_none()));
+}

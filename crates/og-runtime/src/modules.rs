@@ -653,6 +653,23 @@ pub(crate) fn set_mesh(eng: &Engine, handle: u64, mesh: MeshDesc) -> Result<(), 
     Ok(())
 }
 
+/// Gives the engine's physics a triangle-mesh collider the cook baked for
+/// geometry `handle`, and remembers it, so a hot reload's new physics gets
+/// it too. Without 3D physics (a 2D build) there is nothing to take it.
+pub(crate) fn set_baked_trimesh(eng: &Engine, handle: u64, bytes: Vec<u8>) -> Result<(), String> {
+    #[cfg(feature = "physics3d")]
+    {
+        let Some(physics) = eng.state.borrow().physics.clone() else {
+            return Ok(());
+        };
+        physics.set_baked_trimesh(handle, &bytes).map_err(err)?;
+        eng.state.borrow_mut().physics_baked.insert(handle, bytes);
+    }
+    #[cfg(not(feature = "physics3d"))]
+    let _ = (eng, handle, bytes);
+    Ok(())
+}
+
 pub fn og_physics_set_mesh(world: u32, mesh: f64, desc: Option<String>) -> String {
     let answer = (|| -> Result<_, String> {
         let eng = engine(world)?;

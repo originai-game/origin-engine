@@ -28,6 +28,9 @@ og-anim = { path = "../og-anim" }
 # The cook validates UI skins with og-ui's parser (the runtime only reads their text).
 og-ui = { path = "../og-ui", optional = true }
 og-tilemap = { path = "../og-tilemap" }
+# `model { collider true }`: each primitive's triangle-mesh collider baked
+# by the physics that loads it.
+og-physics = { path = "../og-physics", default-features = false, features = ["physics3d"] }
 # `type model`: the cook builds its parts with og-geom's generators.
 og-geom = { path = "../og-geom", optional = true }
 # A streamed `type video`: the IVF ffmpeg writes is read into units, and its

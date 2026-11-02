@@ -476,8 +476,21 @@ a run that never waited has at that tick, apart from og.StreamEvent,
 which is world state: the ticks that deliver a group's events hash them,
 streamed or not. Its models, textures and sounds draw their stand-ins
 until the group is resident, as any grouped asset does, and physics only
-ever reads colliders from components and proxies. Later batches:
-colliders baked by the cook, and texture mip streaming.
+ever reads colliders from components and proxies.
+
+**Baked colliders.** A cell's ground is usually a triangle-mesh collider
+over a model's geometry, and building that shape (parry's mesh and its
+BVH) in the step that first meets it is the cell's worst tick (131,072
+triangles: 49 ms). A model cooked with `model { collider true }` carries
+each primitive's shape baked over LOD 0 exactly as the runtime decodes the
+blob (the proxy's level for a streamed model, the geometry physics
+registers), in its `colliders` section; the runtime gives it to physics as
+the model loads (decoded there, 18 ms for that mesh), and a SHAPE_TRIMESH
+collider at scale 1 naming the geometry takes it while the mesh is
+bit-for-bit the one baked, so the shape is the one a build would make and
+nothing a tick computes changes (that step: 9 ms). A scaled collider, a
+convex hull and the 2D profile build as before. It is opt-in: about 90
+bytes a triangle. Texture mip streaming is the next batch.
 
 ### 2.6 Renderer **(D)**
 

@@ -481,6 +481,13 @@ impl Reloader for RuntimeReloader {
                     .set_mesh(handle, mesh.clone())
                     .map_err(|e| e.reason().to_string())?;
             }
+            #[cfg(feature = "physics3d")]
+            for (&handle, bytes) in &st.physics_baked {
+                a.mounted
+                    .physics
+                    .set_baked_trimesh(handle, bytes)
+                    .map_err(|e| e.reason().to_string())?;
+            }
             for (&handle, field) in &st.physics_heightfields {
                 a.mounted
                     .physics

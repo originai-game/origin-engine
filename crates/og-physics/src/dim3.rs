@@ -132,6 +132,56 @@ pub(crate) fn from_mesh(shape: u32, mesh: &crate::MeshDesc, s: Vec3) -> Result<r
     }
 }
 
+/// What starts a baked triangle mesh's bytes: the format and its version,
+/// moved with any rapier or parry update that changes `TriMesh`'s
+/// serialisation (`a_baked_trimesh_is_the_build_bit_for_bit` pins a bake).
+const BAKED: &[u8; 8] = b"OGTM\x01\x00\x00\x00";
+
+/// [`crate::bake_trimesh`].
+pub(crate) fn bake(mesh: &crate::MeshDesc) -> Result<Vec<u8>> {
+    let shape = from_mesh(SHAPE_TRIMESH, mesh, Vec3::ONE)?;
+    let mesh = shape.as_trimesh().expect("a triangle mesh");
+    let mut out = BAKED.to_vec();
+    crate::encode(&mut out, mesh)
+        .map_err(|e| Error::new(ErrorKind::Invalid, format!("baking a triangle mesh: {e}")))?;
+    Ok(out)
+}
+
+/// A [`bake`]'s shape.
+pub(crate) fn unbake(bytes: &[u8]) -> Result<rp::SharedShape> {
+    let body = bytes.strip_prefix(BAKED.as_slice()).ok_or_else(|| {
+        Error::new(
+            ErrorKind::Invalid,
+            "not a baked triangle mesh of this engine's format (cook the model again)",
+        )
+    })?;
+    let mesh: rp::TriMesh = crate::decode(body)
+        .map_err(|e| Error::new(ErrorKind::Invalid, format!("a baked triangle mesh: {e}")))?;
+    Ok(rp::SharedShape::new(mesh))
+}
+
+/// The baked shape of a SHAPE_TRIMESH collider at scale 1 whose mesh is
+/// exactly the one baked (else `None`: it is built as before).
+pub(crate) fn baked(
+    shared: &Shared,
+    c: &Collider,
+    s: Vec3,
+    mesh: &crate::MeshDesc,
+) -> Option<rp::SharedShape> {
+    if c.shape != SHAPE_TRIMESH || s != Vec3::ONE {
+        return None;
+    }
+    let shape = shared.baked3.get(&c.mesh)?;
+    let tri = shape.as_trimesh()?;
+    let same =
+        tri.indices() == mesh.indices.as_slice()
+            && tri.vertices().len() == mesh.positions.len()
+            && tri.vertices().iter().zip(&mesh.positions).all(|(a, b)| {
+                unv(*a).to_array().map(f32::to_bits) == b.to_array().map(f32::to_bits)
+            });
+    same.then(|| shape.clone())
+}
+
 /// The profile's dimensions.
 pub(crate) const DIM: usize = 3;
 
@@ -290,3 +340,84 @@ pub(crate) use vehicle::{VehicleState, vehicles, wheels};
 #[path = "ragdoll.rs"]
 mod ragdoll;
 pub(crate) use ragdoll::{RagdollState, pose_of as ragdoll_pose};
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A bumpy grid of `n` × `n` cells, two triangles each.
+    fn grid(n: u32) -> crate::MeshDesc {
+        let w = n + 1;
+        let positions = (0..w * w)
+            .map(|i| {
+                let (x, z) = ((i % w) as f32, (i / w) as f32);
+                Vec3::new(
+                    x,
+                    og_core::math::sin(x * 0.37) + og_core::math::cos(z * 0.21),
+                    z,
+                )
+            })
+            .collect();
+        let indices = (0..n * n)
+            .flat_map(|c| {
+                let a = (c / n) * w + c % n;
+                [[a, a + 1, a + w], [a + 1, a + w + 1, a + w]]
+            })
+            .collect();
+        crate::MeshDesc { positions, indices }
+    }
+
+    #[test]
+    fn a_baked_trimesh_is_the_build_bit_for_bit() {
+        let mesh = grid(16);
+        let built = from_mesh(SHAPE_TRIMESH, &mesh, Vec3::ONE).unwrap();
+        let mut want = BAKED.to_vec();
+        crate::encode(&mut want, built.as_trimesh().unwrap()).unwrap();
+        let bytes = bake(&mesh).unwrap();
+        assert_eq!(bytes, want);
+        // Decoded, it serialises back to the same bytes: the same BVH.
+        let back = unbake(&bytes).unwrap();
+        let mut again = BAKED.to_vec();
+        crate::encode(&mut again, back.as_trimesh().unwrap()).unwrap();
+        assert_eq!(again, bytes);
+        // The format is pinned: a rapier or parry update that moves it
+        // moves BAKED's version with it.
+        assert_eq!(
+            og_core::hash::hash_bytes(&bake(&grid(2)).unwrap()),
+            2732637514586692152,
+            "the bake of a 2 x 2 grid"
+        );
+        assert!(unbake(&bytes[1..]).is_err());
+    }
+
+    #[test]
+    fn a_collider_takes_the_bake_only_over_the_mesh_it_was_baked_from() {
+        let mesh = grid(4);
+        let mut shared = Shared::default();
+        shared
+            .baked3
+            .insert(9, unbake(&bake(&mesh).unwrap()).unwrap());
+        let c = Collider {
+            shape: SHAPE_TRIMESH,
+            mesh: 9,
+            ..Collider::default()
+        };
+        let got = baked(&shared, &c, Vec3::ONE, &mesh).expect("the bake");
+        assert!(std::sync::Arc::ptr_eq(&got.0, &shared.baked3[&9].0));
+        assert!(
+            baked(&shared, &c, Vec3::splat(2.0), &mesh).is_none(),
+            "scaled"
+        );
+        let mut moved = mesh.clone();
+        moved.positions[3].y += 1e-6;
+        assert!(
+            baked(&shared, &c, Vec3::ONE, &moved).is_none(),
+            "another mesh"
+        );
+        let convex = Collider {
+            shape: SHAPE_CONVEX,
+            ..c
+        };
+        assert!(baked(&shared, &convex, Vec3::ONE, &mesh).is_none());
+    }
+}

@@ -586,6 +586,19 @@ impl Bundle {
         Ok(Blob::open(bytes, &format!("cooked/{}", out.file), &expect)?)
     }
 
+    /// Decodes a model blob the cook has just written (no manifest yet:
+    /// its type and schema version are checked, not its stamp). 16-aligned
+    /// `bytes`.
+    pub fn decode_model(id: &str, bytes: &[u8]) -> Result<CookedModel, LoadError> {
+        let expect = Expect {
+            type_hash: format::Model::type_hash(),
+            schema_version: format::Model::schema_version(),
+            stamp: None,
+        };
+        let blob = Blob::open(bytes, id, &expect)?;
+        CookedModel::decode(asset_id(id), &blob)
+    }
+
     /// Decodes a model blob.
     pub fn model(&self, id: &str, bytes: &[u8]) -> Result<CookedModel, LoadError> {
         let blob = self.blob::<format::Model>(id, bytes)?;

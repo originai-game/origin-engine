@@ -64,3 +64,64 @@ at 541 with 9, and cell-4 never loaded.
   refused naming the chain, and a `scene` line that names no scene.
 - `prefabs.rs`'s `BY_HAND_HASH` is unmoved: a world without cells hashes
   as before.
+
+# Batch 2: persisted cells, the spawn budget, cell asset groups, the hold gate, baked colliders
+
+No frame moves: batch 2 is world state, fetching and physics build time.
+Measured on an orb (x64, the `dev` profile, its heavy crates optimised as
+`Cargo.toml` sets them), no GPU.
+
+## The spawn budget (`StreamCell.budget`)
+
+A 5,000-entity cell (og-bundle's scene lookup by binary search, `6f4849d8`
+on the old branch): its one-tick load 237 ms before the lookup fix, 153 ms
+after. With a budget the worst tick is 41 / 28 / 19 ms at 1000 / 500 / 250
+entities a tick, against a 7 ms steady tick.
+
+## Cell asset groups and the hold gate
+
+- `crates/og-runtime/tests/cells.rs`:
+  `a_cell_group_is_read_ahead_of_its_anchor_and_a_native_run_never_holds`
+  (the group is resident 15 m from the box, past `load` 10 and within
+  `load` + 2 s × `maxSpeed` 10; a scripted walk with the sub-scene in the
+  boot bundle and in the group spawns the same ids every tick and hashes
+  the same on every tick but the two that deliver og.StreamEvent; no hold),
+  `a_tick_the_gate_reads_for_does_not_wait_natively` (the camera moved by a
+  command step after the frame's boundary: only the gate can read the
+  pack, and the cell loads that tick), and
+  `a_tick_that_needs_a_pack_still_on_its_way_is_held_then_goes_on_as_if_it_never_waited`
+  (a host answering the pack `Pending`: no tick runs, `dump_stream`'s
+  `hold` names the cell, the group and `loading`; once it lands the tick
+  runs, the log has the hold, `holds.count` is 1, and the hash is a
+  never-held run's at that tick). With the gate disabled the last two fail.
+- `crates/og-cook/tests/subscene.rs`: a cell group packs the sub-scene's
+  blob (its output names the group, the placing scene stays at boot), and
+  is refused for a scene nothing places or with a distance trigger.
+- Pins: `cells.rs` END_HASH af7faee87b6dea25 -> 650a952979688aa8
+  (StreamCell's layout and the og.cells block) -> e2675326923827b4
+  (StreamAnchor.maxSpeed); the ids are unmoved.
+
+## Baked colliders (`model { collider true }`)
+
+A bumpy grid as one SHAPE_TRIMESH static collider at scale 1, the first
+physics step that meets it (built: the shape is made there; baked: decoded
+as the model loads):
+
+| triangles | built: first step | baked: first step | baked: decode at load | bytes baked |
+|---|---|---|---|---|
+| 8,192 | 3.2 ms | 0.7 ms | 1.2 ms | 0.70 MB (86 B/tri) |
+| 131,072 | 49.3 ms | 8.7 ms | 18.1 ms | 11.9 MB (91 B/tri) |
+| 262,088 | 107.6 ms | 17.4 ms | 36.4 ms | 25.0 MB (96 B/tri) |
+| 524,288 | 198.1 ms | 34.3 ms | 83.3 ms | 51.3 MB (98 B/tri) |
+
+The steady step is unchanged (60 µs at 131,072). What remains of the
+baked first step is rapier inserting the collider (its bounds over every
+vertex) and the check that the mesh is bit for bit the one baked.
+
+- `crates/og-physics/src/dim3.rs`: a bake is the build's bytes, decodes to
+  the same bytes, its format is pinned by the bake of a 2 x 2 grid, and a
+  collider takes it only at scale 1 over the exact mesh (not scaled, not a
+  moved vertex, not a convex hull).
+- `crates/og-cook/tests/raycast_bvh.rs`: the dropship cooked with
+  `collider true` carries, for every primitive, the bake over `mesh(0)` as
+  the runtime decodes it (the geometry physics registers); off by default.

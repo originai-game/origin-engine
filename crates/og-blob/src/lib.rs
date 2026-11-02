@@ -477,6 +477,7 @@ impl<'a> Blob<'a> {
     }
 }
 
+#[derive(Clone)]
 struct Pending {
     name: String,
     bytes: Vec<u8>,
@@ -488,6 +489,7 @@ struct Pending {
 /// Builds a blob. Sections are written in the order they were added, each at
 /// the next offset aligned to its alignment, with zero padding: the same
 /// calls give byte-identical output.
+#[derive(Clone)]
 pub struct BlobWriter {
     type_hash: u64,
     schema_version: u32,

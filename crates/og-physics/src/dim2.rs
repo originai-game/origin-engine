@@ -75,6 +75,16 @@ pub(crate) fn cache(shared: &mut Shared) -> &mut BTreeMap<ShapeKey, rp::SharedSh
     &mut shared.shapes2
 }
 
+/// No shape is baked for the 2D profile (its meshes are outlines).
+pub(crate) fn baked(
+    _shared: &Shared,
+    _c: &Collider,
+    _s: Vec3,
+    _mesh: &crate::MeshDesc,
+) -> Option<rp::SharedShape> {
+    None
+}
+
 /// A primitive shape, or `None` for the mesh shapes.
 pub(crate) fn primitive(c: &Collider, s: Vec3) -> Result<Option<rp::SharedShape>> {
     Ok(Some(match c.shape {

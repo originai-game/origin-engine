@@ -164,6 +164,10 @@ pub(crate) struct State {
     pub actions: Option<og_input::SharedActions>,
     /// Every mesh registered with physics, replayed into a reload's physics.
     pub physics_meshes: IdMap<u64, og_physics::MeshDesc>,
+    /// The triangle-mesh colliders the cook baked, by Geometry handle
+    /// (`modules::set_baked_trimesh`), given again to a rebuilt physics.
+    #[cfg(feature = "physics3d")]
+    pub physics_baked: IdMap<u64, Vec<u8>>,
     /// Every terrain's height field registered with physics, likewise.
     #[cfg_attr(all(feature = "publish", feature = "profile2d"), allow(dead_code))]
     pub physics_heightfields: IdMap<u64, og_physics::HeightfieldDesc>,

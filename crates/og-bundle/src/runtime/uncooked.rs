@@ -749,6 +749,7 @@ impl UncookedGltf {
             min,
             max,
             bvh_parts: None,
+            collider: None,
         })
     }
 

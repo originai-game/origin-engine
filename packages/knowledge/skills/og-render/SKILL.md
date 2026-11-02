@@ -1080,6 +1080,15 @@ Turn it off for a large model that is only scenery (templates/game's
 at run time (`bufferGeometry`, the primitives) build theirs when made or
 updated.
 
+A model whose geometries are triangle-mesh colliders (a level, a cell's
+ground) can have the collider shapes baked too, with `collider true` in the
+same `model { }` block: the cook bakes each primitive's (the proxy's for a
+streamed model) and it is decoded as the model loads, so the physics step
+that first meets an `og.Collider { shape: SHAPE_TRIMESH, mesh }` at scale 1
+builds nothing (a 131,072-triangle mesh: 49 ms in that step, 9 ms baked,
+plus 18 ms decoding at load). It costs about 90 bytes a triangle, so it is
+off by default; a scaled collider still builds its own shape.
+
 **Debug draw.** `og.debug.line`, `box`, `sphere`, `arrow`, `axes` and
 `text` (a label above a world point, in the UI's body font; every field is
 in `og api show debug`) each take

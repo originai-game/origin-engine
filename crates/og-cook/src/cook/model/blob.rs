@@ -570,13 +570,60 @@ pub fn cook(
         "raycast false: no BVH cooked; the first og.render.raycast that reaches it builds one"
             .into()
     });
+    let bytes = if opts.collider {
+        let (section, baked) = colliders(&w.clone().finish())?;
+        notes.push(format!(
+            "collider: {baked} triangle mesh(es) baked, {} bytes (`model {{ collider false }}` leaves them out)",
+            section.len()
+        ));
+        w.raw("colliders", section, 4);
+        w.finish()
+    } else {
+        w.finish()
+    };
     let vertices = prims.iter().map(|p| p.vertex_count as usize).sum();
     Ok((
-        w.finish(),
+        bytes,
         ModelNotes {
             notes,
             triangles: tris,
             vertices,
         },
     ))
+}
+
+/// The `colliders` section of a model blob written without one (`blob`),
+/// and how many it baked: each primitive's triangle-mesh collider baked
+/// over LOD 0 as the runtime decodes the blob (og-bundle's
+/// `CookedPrimitive::mesh(0)`, the geometry physics registers), so
+/// physics takes it where a build would make the same shape. The section
+/// is the primitive count, each one's offset and length after the header
+/// (0: none), then the bytes.
+fn colliders(blob: &[u8]) -> Result<(Vec<u8>, usize), CookError> {
+    let words = og_blob::AlignedBytes::from_slice(blob);
+    let model = crate::runtime::Bundle::decode_model("model", words.as_slice())
+        .map_err(|e| CookError(format!("collider: {e}")))?;
+    let mut baked = Vec::new();
+    for (i, p) in model.primitives.iter().enumerate() {
+        let m = p.mesh(0);
+        let mesh = og_physics::MeshDesc {
+            positions: m.vertices.iter().map(|v| Vec3::from(v.position)).collect(),
+            indices: m.indices.chunks(3).map(|t| [t[0], t[1], t[2]]).collect(),
+        };
+        baked.push(
+            og_physics::bake_trimesh(&mesh)
+                .map_err(|e| CookError(format!("primitive {i}: collider: {}", e.reason())))?,
+        );
+    }
+    let mut section = (baked.len() as u32).to_le_bytes().to_vec();
+    let mut at = 0u32;
+    for c in &baked {
+        section.extend(at.to_le_bytes());
+        section.extend((c.len() as u32).to_le_bytes());
+        at += c.len() as u32;
+    }
+    for c in &baked {
+        section.extend_from_slice(c);
+    }
+    Ok((section, baked.len()))
 }

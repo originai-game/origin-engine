@@ -29,6 +29,10 @@ pub struct CookedPrimitive {
     /// `raycast false`, or a blob of a cook before it): put together over
     /// [`CookedPrimitive::mesh`]`(0)` by [`CookedPrimitive::bvh`].
     pub bvh_parts: Option<(Vec<og_render::geometry::BvhNode>, Vec<u32>)>,
+    /// The triangle-mesh collider the cook baked over [`Self::mesh`]`(0)`
+    /// (`model { collider true }`): og-physics' `bake_trimesh` bytes, for
+    /// `PhysicsSystem::set_baked_trimesh`. `None`: none was baked.
+    pub collider: Option<Vec<u8>>,
 }
 
 impl CookedPrimitive {
@@ -277,6 +281,33 @@ impl CookedModel {
         let tri_bytes = inflate("bvh_tris", tri_rows * 4)?;
         let bvh_nodes: Vec<BvhNodeRow> = bytemuck::pod_collect_to_vec(&node_bytes);
         let bvh_tris: Vec<u32> = bytemuck::pod_collect_to_vec(&tri_bytes);
+        // Baked colliders (optional): the count, each one's offset and
+        // length after the header, then the bytes.
+        let colliders: Vec<Option<Vec<u8>>> = match blob.raw("colliders") {
+            Err(_) => Vec::new(),
+            Ok(c) => {
+                let word = |i: usize| -> Result<usize, LoadError> {
+                    c.get(i * 4..i * 4 + 4)
+                        .map(|b| u32::from_le_bytes(b.try_into().expect("4 bytes")) as usize)
+                        .ok_or_else(|| bad("colliders: header out of range".into()))
+                };
+                let n = word(0)?;
+                let data = 4 + n * 8;
+                let mut out = Vec::with_capacity(n);
+                for i in 0..n {
+                    let (at, len) = (word(1 + 2 * i)?, word(2 + 2 * i)?);
+                    out.push(match len {
+                        0 => None,
+                        _ => Some(
+                            c.get(data + at..data + at + len)
+                                .ok_or_else(|| bad("colliders: bytes out of range".into()))?
+                                .to_vec(),
+                        ),
+                    });
+                }
+                out
+            }
+        };
         let s = |o: u32, l: u32| {
             pool_str(strings, o, l)
                 .map(str::to_string)
@@ -364,6 +395,7 @@ impl CookedModel {
             };
             primitives.push(CookedPrimitive {
                 bvh_parts,
+                collider: colliders.get(i).cloned().flatten(),
                 material: p.material as usize,
                 vertices: verts,
                 tangents,

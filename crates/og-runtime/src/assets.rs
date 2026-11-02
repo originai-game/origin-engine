@@ -585,6 +585,8 @@ pub(crate) fn insert_model(
     });
     let mut geometries = Vec::new();
     let mut materials = Vec::new();
+    // The colliders the cook baked (`collider true`), by Geometry handle.
+    let mut baked: Vec<(u64, Vec<u8>)> = Vec::new();
     for &(mesh, material, _) in &parts.parts {
         if !rs.geometries.contains(&mesh) {
             rs.geometries.push(mesh);
@@ -600,6 +602,10 @@ pub(crate) fn insert_model(
             .unwrap_or(0);
         if !geometries.contains(&handle(g)) {
             geometries.push(handle(g));
+            let bake = (0..model.primitives.len())
+                .find(|&p| rs.scene.mesh_handle(base + p) == Some(mesh))
+                .and_then(|p| model.primitives[p].collider.clone());
+            baked.extend(bake.map(|b| (handle(g), b)));
         }
         if !materials.contains(&handle(m)) {
             materials.push(handle(m));
@@ -662,6 +668,12 @@ pub(crate) fn insert_model(
         if !eng.state.borrow().physics_meshes.contains_key(&h) {
             let _ = super::modules::set_mesh(eng, h, mesh);
         }
+    }
+    // Decoded now, between ticks: the step that first needs one builds
+    // nothing.
+    for (h, bytes) in baked {
+        super::modules::set_baked_trimesh(eng, h, bytes)
+            .map_err(|e| format!("{id}: geometry {h}: {e}"))?;
     }
     // Physics keeps the proxy's meshes; the renderer's take the full model
     // whenever its group is resident.
