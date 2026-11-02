@@ -163,11 +163,14 @@ fn a_crowd_shares_one_baked_clip_at_its_own_frames() {
     // before, and they differ.
     let then: Vec<_> = before.poses.iter().map(|p| p.unwrap().1).collect();
     assert_eq!(then.len(), poses.len());
-    let mut moved = 0;
+    // A tick (1/60 s) at speed 1 moves a member half a frame of the
+    // walk's 30 a second (its 2 s baked into 61 frames), wrapping at the
+    // clip's end.
+    let span = (frames - 1) as f32;
     for (now, was) in poses.iter().zip(&then) {
         assert_eq!(now.3, *was);
         assert_eq!(now.2, now.0);
-        moved += usize::from(now.1 != *was);
+        let step = (now.1 - was).rem_euclid(span);
+        assert!((step - 0.5).abs() < 1e-3, "a tick moved {step} frames");
     }
-    assert!(moved > MEMBERS / 2, "{moved} members played on");
 }
