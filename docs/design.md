@@ -336,7 +336,9 @@ cut to a reduced one. The WebGL2 tier (wgpu's GL backend, CPU culling and
 particles, a CPU-built forward tile table, a joint palette in a texture)
 was removed with that decision; the CPU culling and CPU particle paths
 remain as options on every device (`Culling::Cpu`, small frames under
-`Culling::Auto`, `ParticleSimulation::Cpu`).
+`Culling::Auto`, `ParticleSimulation::Cpu`). The engine is GPU only on
+every host (the owner, 2026-11-02): a player's device without a GPU is
+not supported, and no feature adds a CPU fallback for one.
 
 - Forward+ (clustered), with a depth-normal prepass when an effect reads
   depth or normals (on every frame it cost the 20,000-sphere field two
@@ -893,7 +895,12 @@ later.
   teacher or trained on licensed motion, since the target poses of the
   public release are evaluation-only), the intent API, and the crate
   boundary (inference beside og-render's device, not inside og-anim's
-  tick).
+  tick). The model runs on the GPU only, with no CPU inference path:
+  the engine targets devices with a GPU and does not natively support
+  devices without one (the owner, 2026-11-02). Its weights (35 MB in
+  f16) ship inside `@origingame/engine`; a game that uses `og.motion`
+  cooks them as an optional pack, fetched on first use and never in the
+  boot bundle (the owner, 2026-11-02).
 - **Physics**: rapier3d (and rapier2d for 2D projects), fixed-tick stepping
   inside the engine tick, a kinematic character controller, vehicle later.
   A kinematic body with an `og.Velocity` moves by it each tick and its
