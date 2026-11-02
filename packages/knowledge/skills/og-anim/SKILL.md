@@ -62,6 +62,13 @@ must(world.insert(knee, og.JointLimit, { skeleton: body, joint: SHIN_L, axis: { 
 // each tick, from a system that writes og.LookAt: world.set(look, og.LookAt, { target: playerPosition })
 ```
 
+Generated motion is the other way to move a humanoid: instead of clips,
+`og.motion` (`og api show motion`) runs the engine's motion model on the GPU
+between the goals a game queues for an entity with an og.Skeleton and an
+og.MotionAgent: a pose of its library (`og.motion.poses`: idle, walk, run,
+jump, crouch, wave, cheer), a pose at a place, a heading, or a walk or run
+to a point. The pose is presentation only; the world's hash never reads it.
+
 ## 2. Foot locking and spring bones
 
 **Foot locking.** `og.FootLock { skeleton, foot }` on its own entity, one
