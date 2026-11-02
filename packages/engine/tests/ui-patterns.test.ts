@@ -1347,6 +1347,27 @@ test("characterSelect: a taken or locked tile is refused, an open one picked; th
   expect(s.results.some((r) => r.cancelled)).toBeTrue();
 });
 
+test("a screen-filling pattern given less than the safe area (under a game's header) lays out within its box, its action inside", () => {
+  // Wrong: the pattern sizes its parts from its first guess (the whole safe area), its box grows to fit them, and the
+  // grown box is kept as its room from then on, so its foot stands past the parent's on every tick (the kit's phone
+  // character select had Lock in 42 px under the safe area).
+  const phone = { width: 390, height: 844, dpr: 3, coarsePointer: true, breakpoint: "phonePortrait", safeArea: { left: 0, top: 47, right: 0, bottom: 34 } } as const;
+  const songs: Api.SongEntry[] = ["a", "b", "c", "d", "e", "f"].map((k) => ({ key: k, title: `Song ${k}`, artist: "Artist", difficulties: [{ key: "easy", name: "Easy", level: 3 }] }));
+  const cases: Array<[string, () => void]> = [
+    ["Foot/Lock", () => og.ui.characterSelect("Sel", { roster: [...ROSTER, ...ROSTER.map((e) => ({ ...e, key: `${e.key}2` }))], cursors: [{ key: "p1", name: "P1", entry: "kael", you: true, team: 0 }] })],
+    ["Bar/Action", () => og.ui.lobby("Lobby", { members: [{ key: "a", name: "Aria", you: true }, { key: "b", name: "Kael" }, { key: "c", name: "Mira" }], slots: 5, mode: { name: "Ranked" } })],
+    ["Play", () => og.ui.songSelect("Songs", { songs, selected: "c", difficulty: "easy", preview: {} })],
+  ];
+  for (const [action, build] of cases) {
+    const engine = run(() => og.ui.column("Box", { width: { kind: "fixed", px: 374 }, height: { kind: "fixed", px: 600 } }, build), phone);
+    engine.advance(20);
+    const box = byPath(engine, "Root/Box")!;
+    const a = elements(engine).find((e) => e.path.endsWith(action) && e.role === "button")!;
+    expect(a).toBeDefined();
+    expect(a.y + a.height).toBeLessThanOrEqual(box.y + box.height + 0.5);
+  }
+});
+
 test("versus: both sides named in one region; confirm skips only once the sides have landed", () => {
   // Wrong: a skip answered the first tick (the press that opened it skips it at once), or a side left unnamed.
   const results: Api.VersusResult[] = [];

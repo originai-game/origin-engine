@@ -10,7 +10,7 @@
 import type * as Api from "@origingame/engine";
 import {
   artSlot, btn, clamp, eyebrow, fill, flags, frame, glow, grow, inkOn, keyHash, kit, lastInteraction, line, mix, over, paint, pointer, px, recallPath, rememberPath,
-  role, rtl, scrimFill, shadow, spring, st, still, surface, symbol, teamColor, text, timerRing, token, u, vgrad, vstate, xy, safeHeight, safeWidth, type Mut, type Rgba,
+  rememberRoom, role, rtl, scrimFill, shadow, spring, st, still, surface, symbol, teamColor, text, timerRing, token, u, vgrad, vstate, xy, safeHeight, safeWidth, type Mut, type Rgba,
 } from "./core.ts";
 
 /** What a character card shows: its art, its name and the lines under it, how it stands. */
@@ -117,8 +117,9 @@ export function lobby(id: string, desc: Api.LobbyDesc): Api.LobbyResult {
 
   kit.open(id, { direction: "column", width: grow(), height: grow(), gap: u(phone ? 14 : 24), part: "Lobby.frame", partClass: "panel" });
 
-  // The head: the title in the display face; the search chip beside it while in queue.
-  kit.row("Head", { width: grow(), gap: u(16), cross: "center", wrap: true }, () => {
+  // The head: the title in the display face; the search chip beside it while in queue. Without either (the game titles
+  // the screen itself) there is none, so the lineup takes its room.
+  if (desc.title || desc.searching) kit.row("Head", { width: grow(), gap: u(16), cross: "center", wrap: true }, () => {
     if (desc.title) text("Title", desc.title, { step: phone ? "xl3" : "xl5", heading: true, font: "display", nowrap: true, ellipsis: true, width: grow() });
     if (desc.searching) {
       // On a phone the chip takes the head's width and its estimate wraps under the count.
@@ -143,7 +144,9 @@ export function lobby(id: string, desc: Api.LobbyDesc): Api.LobbyResult {
   const lineH = laidH > 0 ? laidH : H - footH - u(phone ? 60 : 96);
   const roomH = Math.max(u(120), (lineH - u(8) - (rows - 1) * gap) / rows / (me && !portrait ? 1.12 : 1));
   const maxW = portrait ? (W - gap) / 2 : Math.min(u(250), (W - gap * (cols - 1)) / (cols + (me ? 0.12 : 0)));
-  const cw = Math.floor(Math.min(maxW, roomH / (portrait ? 1.25 : 1.75)));
+  // On a phone in portrait the cards take the column's width and stand as tall as the rows allow (a squarer card, its
+  // face over the plate), rather than narrowing to keep their aspect and leaving a gutter at each side.
+  const cw = Math.floor(portrait ? maxW : Math.min(maxW, roomH / 1.75));
   const ch = Math.floor(Math.min(roomH, cw * (portrait ? 1.25 : 1.75)));
   const big = (m: Api.LobbyMember | null): number => (m?.you && !portrait ? 1.12 : 1);
   kit.open("Lineup", { direction: "row", width: grow(), height: grow(), gap, wrap: portrait, align: "center", cross: portrait ? "start" : "end", part: "Lobby.lineup", partClass: "panel" });
@@ -174,7 +177,10 @@ export function lobby(id: string, desc: Api.LobbyDesc): Api.LobbyResult {
         state: [{ group: "ready", state: m.ready ? "ready" : "waiting" }],
       },
     }, () => {
-      figureCard({ texture: m.portrait, name: m.name ?? "", sub, width: w, height: h, lit: !!m.you, hot: ix.hovered || ix.focused, dim: false, part: "Lobby.member" }, () => {
+      // A card too short for its plate at a large text size keeps the name and the ready word (names win over marks);
+      // the level and title stay in its spoken name.
+      const tight = h < u(110) * ts;
+      figureCard({ texture: m.portrait, name: m.name ?? "", sub: tight ? "" : sub, width: w, height: h, lit: !!m.you, hot: ix.hovered || ix.focused, dim: false, part: "Lobby.member" }, () => {
         // The ready foot: a tick in success and the word, or the muted word (a status in its place).
         kit.row("Foot", { width: grow(), gap: u(6), cross: "center", padding: { left: 0, right: 0, top: u(6), bottom: 0 }, part: `Lobby.foot${flags(m.ready && "ready")}`, partClass: "badge" }, () => {
           if (m.ready && !m.status) symbol("Tick", "check", u(14), role("success"));
@@ -340,11 +346,7 @@ export function lobby(id: string, desc: Api.LobbyDesc): Api.LobbyResult {
     kit.remember("~l.all", 0);
   }
   kit.close();
-  const self = kit.bounds(kit.lastPath());
-  if (self && self.width > 0 && self.height > 0) {
-    kit.remember(`~l.w.${id}`, Math.round(self.width));
-    kit.remember(`~l.h.${id}`, Math.round(self.height));
-  }
+  rememberRoom("l", id);
   return out;
 }
 
@@ -623,11 +625,7 @@ export function characterSelect(id: string, desc: Api.CharacterSelectDesc): Api.
     kit.feedback("back", -1);
   }
   kit.close();
-  const self = kit.bounds(kit.lastPath());
-  if (self && self.width > 0 && self.height > 0) {
-    kit.remember(`~s.w.${id}`, Math.round(self.width));
-    kit.remember(`~s.h.${id}`, Math.round(self.height));
-  }
+  rememberRoom("s", id);
   return out;
 }
 
@@ -722,11 +720,7 @@ export function versus(id: string, desc: Api.VersusDesc): Api.VersusResult {
   }
   kit.close();
   kit.semantics({ role: "region", name: `${desc.left?.character ?? ""} ${desc.versusLabel ?? "VS"} ${desc.right?.character ?? ""}` });
-  const self = kit.bounds(kit.lastPath());
-  if (self && self.width > 0 && self.height > 0) {
-    kit.remember(`~v.w.${id}`, Math.round(self.width));
-    kit.remember(`~v.h.${id}`, Math.round(self.height));
-  }
+  rememberRoom("v", id);
   return out;
 }
 
@@ -956,10 +950,6 @@ export function draft(id: string, desc: Api.DraftDesc): Api.DraftResult {
   kit.close();
   if (!portrait) teamColumn("End", teams[1], true);
   kit.close();
-  const self = kit.bounds(kit.lastPath());
-  if (self && self.width > 0 && self.height > 0) {
-    kit.remember(`~d.w.${id}`, Math.round(self.width));
-    kit.remember(`~d.h.${id}`, Math.round(self.height));
-  }
+  rememberRoom("d", id);
   return out;
 }
