@@ -84,7 +84,8 @@ export function songSelect(id: string, desc: Api.SongSelectDesc): Api.SongSelect
       }
       // The waveform: a bar per peak, lit up to where the preview is.
       const peaks = prev.peaks ?? [];
-      const waveW = bw - u(44) - u(14) * 2 - u(24) - u(70);
+      // The time beside it is set in the mono face: its width grows with the player's text size.
+      const waveW = bw - u(44) - u(14) * 2 - u(24) - Math.ceil(u(70) * Math.max(1, frame().theme.textScale ?? 1));
       const n = Math.max(1, peaks.length);
       const bwid = Math.max(1, Math.floor(waveW / n) - 1);
       const wh = u(40);
@@ -243,7 +244,9 @@ export function songSelect(id: string, desc: Api.SongSelectDesc): Api.SongSelect
   const rowH = u(phone ? 64 : 84);
   const big = Math.round(rowH * (portrait ? 1 : 1.22));
   const gap = u(phone ? 6 : 10);
-  const reach = Math.max(1, Math.floor((wh / 2 - big / 2) / (rowH + gap)) + 1);
+  // Whole rows only: a row the wheel's edge would cut stays unbuilt (the wheel does not clip, so a cut row would stand
+  // over the head or the detail).
+  const reach = Math.max(0, Math.floor((wh / 2 - big / 2) / (rowH + gap)));
   kit.open("Wheel", { width: px(ww), height: grow(), part: "Songs.wheel", partClass: "panel" });
   for (let k = Math.max(0, si - reach); k <= Math.min(songs.length - 1, si + reach); k++) {
     const s = songs[k]!;

@@ -758,17 +758,44 @@ export function draft(id: string, desc: Api.DraftDesc): Api.DraftResult {
 
   kit.open(id, { direction: portrait ? "column" : "row", width: grow(), height: grow(), gap: u(phone ? 10 : 20), part: "Draft.frame", partClass: "panel" });
 
-  // A team's column (a row of portraits on a phone in portrait): its picks, then its bans.
+  // A team's column: its picks, then its bans (on a phone in portrait a row of portraits under its name, the bans beside the name).
   const teamColumn = (key: "Start" | "End", tm: Api.DraftTeam | undefined, end: boolean): void => {
     if (!tm) return;
     const team = teamColor(tm.team ?? (end ? 1 : 0));
     const picks = tm.picks ?? [];
     const colW = portrait ? W : Math.round(Math.min(u(300), W * 0.24));
+    // Its bans: small tiles struck through, the ones to come empty wells.
+    const bans = tm.bans ?? [];
+    const banRow = (): void => {
+      if (bans.length === 0) return;
+      kit.row("Bans", { gap: u(6), cross: "center", align: end && !portrait ? "end" : "start", width: portrait ? null : grow(), part: "Draft.bans", partClass: "badge" }, () => {
+        if (!portrait) text("Label", (desc.bansLabel ?? "Bans").toLocaleUpperCase(), { step: "caption", font: "display", color: "inkMuted", nowrap: true });
+        const bw = u(phone ? 34 : 40);
+        bans.forEach((b, i) => {
+          const e = b ? byKey.get(b) : undefined;
+          kit.open(kit.idi("Ban", i), { width: px(bw), height: px(bw), part: `Draft.ban${flags(!e && "empty")}`, partClass: "slot" });
+          const rr = Math.max(3, t.small - 2);
+          kit.setDraw({ shape: { kind: "rect", radii: [rr, rr, rr, rr] }, fills: [{ kind: "solid", color: token("shadow", 0.5) }], strokes: [line(1, token("ink", e ? 0.1 : 0.18), "inside", e ? {} : { dash: u(4), gap: u(3) })] });
+          if (e) {
+            artSlot("Art", "Draft.banArt", { texture: e.portrait ?? null, kind: "portrait", width: px(bw), height: px(bw), radius: rr, focal: { x: 0.5, y: 0.3 } }, () => {
+              kit.open("Dim", { width: grow(), height: grow() });
+              kit.setDraw({ shape: { kind: "rect", radii: [rr, rr, rr, rr] }, fills: [{ kind: "solid", color: token("shadow", 0.45) }] });
+              kit.close();
+            });
+            slash("Slash", bw, bw);
+          }
+          kit.close();
+          kit.semantics({ role: "status", name: e ? `${desc.bannedLabel ?? "Banned"}: ${e.name ?? b}` : desc.bansLabel ?? "Bans" });
+        });
+      });
+    };
     kit.open(key, { direction: "column", width: px(colW), height: portrait ? null : grow(), gap: u(phone ? 6 : 8), cross: end && !portrait ? "end" : "stretch", part: `Draft.team${flags(end ? "end" : "start")}`, partClass: "panel" });
+    // On a phone in portrait the bans stand at the end of the team's name row, so both teams leave the roster its room.
     kit.row("Name", { width: grow(), gap: u(8), cross: "center", align: end && !portrait ? "end" : "start" }, () => {
       kit.open("Bar", { width: px(u(4)), height: px(u(18)), radius: 2, background: paint(team) });
       kit.close();
-      text("Text", tm.name ?? "", { step: st(16), font: "display", nowrap: true, ellipsis: true, color: mix(team, role("ink"), 0.55) });
+      text("Text", tm.name ?? "", { step: st(16), font: "display", nowrap: true, ellipsis: true, color: mix(team, role("ink"), 0.55), ...(portrait ? { width: grow() } : {}) });
+      if (portrait) banRow();
     });
     const slotH = portrait ? 0 : Math.max(u(64), Math.min(u(104), (H - u(120)) / Math.max(1, picks.length) - u(8)));
     kit.open("Picks", { direction: portrait ? "row" : "column", width: grow(), gap: u(phone ? 6 : 8) });
@@ -779,7 +806,8 @@ export function draft(id: string, desc: Api.DraftDesc): Api.DraftResult {
       kit.remember(`~d.l.${key}.${i}`, p.locked ? 1 : 0);
       const landed = !!p.locked && was === 0 && !still();
       const sw = portrait ? Math.floor((W - u(6) * (picks.length - 1)) / Math.max(1, picks.length)) : colW;
-      const sh = portrait ? Math.round(sw * 1.2) : slotH;
+      // A phone's slots are wider than tall: the face over the character's name, two teams over the roster.
+      const sh = portrait ? Math.round(sw * 0.72) : slotH;
       const rr = Math.max(4, t.small);
       const radii: [number, number, number, number] = [rr, rr, rr, rr];
       kit.open(kit.idi("Slot", i), { direction: "column", width: px(sw), height: px(sh), part: `Draft.slot${flags(p.active && "active", p.locked && "locked", p.you && "you")}`, partClass: "card" });
@@ -827,30 +855,7 @@ export function draft(id: string, desc: Api.DraftDesc): Api.DraftResult {
     });
     kit.close();
     kit.semantics({ role: "list", name: tm.name ?? "" });
-    // Its bans: small tiles struck through, the ones to come empty wells.
-    const bans = tm.bans ?? [];
-    if (bans.length > 0) {
-      kit.row("Bans", { gap: u(6), cross: "center", align: end && !portrait ? "end" : "start", width: grow(), part: "Draft.bans", partClass: "badge" }, () => {
-        if (!portrait) text("Label", (desc.bansLabel ?? "Bans").toLocaleUpperCase(), { step: "caption", font: "display", color: "inkMuted", nowrap: true });
-        const bw = u(phone ? 34 : 40);
-        bans.forEach((b, i) => {
-          const e = b ? byKey.get(b) : undefined;
-          kit.open(kit.idi("Ban", i), { width: px(bw), height: px(bw), part: `Draft.ban${flags(!e && "empty")}`, partClass: "slot" });
-          const rr = Math.max(3, t.small - 2);
-          kit.setDraw({ shape: { kind: "rect", radii: [rr, rr, rr, rr] }, fills: [{ kind: "solid", color: token("shadow", 0.5) }], strokes: [line(1, token("ink", e ? 0.1 : 0.18), "inside", e ? {} : { dash: u(4), gap: u(3) })] });
-          if (e) {
-            artSlot("Art", "Draft.banArt", { texture: e.portrait ?? null, kind: "portrait", width: px(bw), height: px(bw), radius: rr, focal: { x: 0.5, y: 0.3 } }, () => {
-              kit.open("Dim", { width: grow(), height: grow() });
-              kit.setDraw({ shape: { kind: "rect", radii: [rr, rr, rr, rr] }, fills: [{ kind: "solid", color: token("shadow", 0.45) }] });
-              kit.close();
-            });
-            slash("Slash", bw, bw);
-          }
-          kit.close();
-          kit.semantics({ role: "status", name: e ? `${desc.bannedLabel ?? "Banned"}: ${e.name ?? b}` : desc.bansLabel ?? "Bans" });
-        });
-      });
-    }
+    if (!portrait) banRow();
     kit.close();
   };
   if (!portrait) teamColumn("Start", teams[0], false);

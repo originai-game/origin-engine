@@ -92,15 +92,28 @@ export function worldMap(id: string, desc: Api.WorldMapDesc): Api.WorldMapResult
     kit.close();
     over({ insets: { start: c.x - rad, top: c.y - rad }, inert: true, z: 1 });
   }
-  // Region names across the map, fading as it zooms in.
+  // Region names across the map, fading as it zooms in. A name that would cross one already set (a small map, a phone's,
+  // zoomed out) waits until the zoom parts them: discovered regions first, then the game's order. Each name's size is
+  // kept from when it was last set, so a name held back stays held back rather than flickering.
   if (regionA > 0.02) {
-    for (const r of regions) {
+    const placed: Array<{ x0: number; y0: number; x1: number; y1: number }> = [];
+    for (const r of [...regions.filter((g) => g.discovered), ...regions.filter((g) => !g.discovered)]) {
       const c = at(r.x ?? 0.5, r.y ?? 0.5);
       if (!onScreen(c, u(200))) continue;
+      const nw = kit.memory(`~w.rw.${r.key}`, 0);
+      const nh = kit.memory(`~w.rh.${r.key}`, 0);
+      const box = { x0: c.x - nw / 2 - u(6), y0: c.y - u(14), x1: c.x + nw / 2 + u(6), y1: c.y - u(14) + nh };
+      if (nw > 0 && placed.some((b) => box.x0 < b.x1 && b.x0 < box.x1 && box.y0 < b.y1 && b.y0 < box.y1)) continue;
+      placed.push(box);
       const name = r.discovered ? r.name ?? "" : desc.undiscoveredLabel ?? "???";
       kit.open(`Region${r.key}`, { direction: "column", cross: "center", width: px(u(320)), part: `WorldMap.region${flags(r.discovered && "discovered")}`, partClass: "badge" });
       text("Name", name.toLocaleUpperCase(), { step: st(phone ? 15 : 22), font: "display", nowrap: true, color: r.discovered ? "ink" : "inkMuted" });
+      const nb = kit.bounds(kit.lastPath());
       kit.close();
+      if (nb && nb.width > 0) {
+        kit.remember(`~w.rw.${r.key}`, Math.round(nb.width));
+        kit.remember(`~w.rh.${r.key}`, Math.round(nb.height));
+      }
       over({ insets: { start: c.x - u(160), top: c.y - u(14) }, inert: true, z: 2, opacity: regionA });
     }
   }
@@ -185,17 +198,23 @@ export function worldMap(id: string, desc: Api.WorldMapDesc): Api.WorldMapResult
   over({ insets: { start: 0, top: 0 } });
   kit.close();
 
-  // The side: the legend and, under it, the open place's detail (on a phone: chips at the top, the detail at the foot).
+  // The side: the legend, or the open place's detail (on a phone: the chips at the top, the detail at the foot).
   const kinds: string[] = [];
   for (const m of markers) if (!kinds.includes(m.kind ?? "poi")) kinds.push(m.kind ?? "poi");
   const sideW = phone ? W - u(16) : Math.min(u(340), Math.round(W * 0.3));
   kit.open("Side", { direction: "column", width: px(sideW), height: phone ? px(H - u(16)) : null, gap: u(12) });
-  kit.open("Legend", { direction: phone ? "row" : "column", width: grow(), gap: u(phone ? 6 : 4), wrap: phone, padding: phone ? xy(0, 0) : xy(u(14), u(14)), part: "WorldMap.legend", partClass: "panel" });
-  if (!phone) {
+  // On a phone the legend is one row of chips that scrolls sideways, so it never stands over the map in rows. On a
+  // desktop an open place's detail takes the side in the legend's place (both would run past the screen's foot).
+  const legend = phone || !sel;
+  if (phone) {
+    kit.openScroll("Legend", { width: grow(), gap: 0, padding: xy(0, 0), axes: "horizontal", part: "WorldMap.legend", partClass: "panel" } as never);
+    kit.open("Chips", { direction: "row", gap: u(6) });
+  } else if (legend) kit.open("Legend", { direction: "column", width: grow(), gap: u(4), padding: xy(u(14), u(14)), part: "WorldMap.legend", partClass: "panel" });
+  if (!phone && legend) {
     kit.setDraw({ shape: { kind: "rect", radii: [t.panel, t.panel, t.panel, t.panel] }, fills: [{ kind: "solid", color: token("panel", 0.9) }, vgrad([[0, token("sheen", 0.06)], [1, token("sheen", 0)]])], effects: [shadow(u(8), u(24), 0.5)] });
     if (desc.title) text("Title", desc.title, { step: st(24), font: "display", heading: true, nowrap: true, ellipsis: true, width: grow() });
   }
-  for (const k of kinds) {
+  if (legend) for (const k of kinds) {
     const on = !hidden.has(k);
     const mk = kindMark(k);
     const n = markers.filter((m) => (m.kind ?? "poi") === k).length;
@@ -224,8 +243,11 @@ export function worldMap(id: string, desc: Api.WorldMapDesc): Api.WorldMapResult
       kit.feedback("select", -1);
     }
   }
-  kit.close();
-  kit.semantics({ role: "list", name: desc.title || "Legend" });
+  if (phone) kit.close();
+  if (legend) {
+    kit.close();
+    kit.semantics({ role: "list", name: desc.title || "Legend" });
+  }
   if (phone) kit.spacer("Gap", grow());
   if (sel) {
     const fresh = kit.memory("~w.sel", 0) !== keyHash(sel.key ?? "");
