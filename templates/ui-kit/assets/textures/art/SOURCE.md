@@ -57,3 +57,16 @@ the shop's merchant, so each style's screens sit on their own scene:
 | File | Kind | Origin |
 |---|---|---|
 | `figures/mira.png` | fullBody, cut out (a conversation's speaker, waist up, 2:3) | Painter (transparent background), from `portraits/mira.jpg` as the identity reference, in the same direction; 640×960. The kit's dialogue and visual-novel screens stand it at the speaker's side. |
+
+## Starship screens (2026-11-02, holo's screens as kit screens)
+
+The five screens the holo pack carried (ship status, turn order, ability
+cards, sector map, hangar) are kit screens styled by the active pack. Their
+art is new and ours; the holo concept crops (ui-art/0cccb255873a,
+ui-art/11d3db9b1c45) were layout references only.
+
+| File | Kind | Origin |
+|---|---|---|
+| `ships/*.png` (11: valiant, aegis, kestrel, sentinel, vanguard, carrier, module allied; dreadnought, ravager, marauder, skirmisher hostile) | unitPortrait, cut out | origin MCP `generate_image` (gpt-image-2.5-sunburst, transparent): grounded near-future spaceflight (allies white with a blue stripe facing right, hostiles graphite with red lights facing left), no text, insignia or registries; `module` returned on a flat magenta ground, keyed out (flood fill from the corners, edge eroded 2 px, feathered); trimmed, 400 px (vanguard, the hangar's hero, 640 px) |
+| `space/*.jpg` (kinetic-strike, deflector-screen, squadron-launch, repair-drones, gravity-well, overcharge) | cardArt | origin MCP `generate_image`, the same direction, 512² |
+| `scenes/vanguard-orbit.jpg` | keyArt (the hangar's detail) | origin MCP `generate_image`: the frigate above Earth's limb at dawn, 960 px |
