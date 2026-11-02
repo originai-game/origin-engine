@@ -255,7 +255,7 @@
         ""
       ],
       "file": "art/button-primary.png",
-      "hash": "c0611890c1021a24",
+      "hash": "5c34e82890185cba",
       "insets": [
         0.188,
         0.318,
@@ -264,7 +264,7 @@
       ],
       "kind": "styleButton",
       "name": "fantasy/button-primary",
-      "note": "The primary button, as the shop's BUY button: a bright, even golden-amber face, light enough that dark brown lettering reads on it, lit warmly and evenly across, framed by a thin ornate antique-gold border with small filigree at the corners; no text, no icon. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.",
+      "note": "The primary button, as the shop's BUY button: a flat, light golden face of one even colour, about #E0A646 (between #D99A3A and #E8B14A), across the whole centre with no darker band, gradient, scratches or vignette, so dark near-black lettering reads on it at a glance; a thin antique-gold border, a hair darker than the face, with small filigree at the corners; no text, no icon. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.",
       "pixels": [
         1440,
         132

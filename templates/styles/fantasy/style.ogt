@@ -24,7 +24,7 @@ palette {
   primaryHover "#e0a84a"
   primaryActive "#b9802a"
   onPrimary "#1c1106"
-  primarySoft "#d4993a3d"
+  primarySoft "#d4993a29"
   highlight "#e6b85e"
   focus "#f2c86c"
   knob "#5a4328"
@@ -34,7 +34,7 @@ palette {
   sheen "#ffffff2e"
   success "#7cc265"
   warn "#e0a240"
-  danger "#e0604a"
+  danger "#ec7860"
   info "#78a6e0"
   health "#d0483a"
   mana "#4a8ae8"
@@ -312,18 +312,18 @@ dress "Button.base[secondary][disabled]" {
   tone 0.007 0.007 0.006 0.99
 }
 dress "Button.base[primary]" {
-  slice 158 401 166 44 12 14 12 14 authored
-  tone 0.497 0.139 0.007 0.99
+  slice 158 401 168 44 12 14 12 14 authored
+  tone 0.752 0.338 0.025 0.99
 }
 dress "Button.base[primary][hover]" {
-  slice 326 401 166 44 12 14 12 14 authored
-  tone 0.555 0.206 0.035 0.99
+  slice 328 401 168 44 12 14 12 14 authored
+  tone 0.783 0.408 0.068 0.99
 }
 dress "Button.base[primary][pressed]" {
-  slice 1 447 166 44 12 14 12 14 authored
-  tone 0.303 0.088 0.005 0.99
+  slice 1 447 168 44 12 14 12 14 authored
+  tone 0.456 0.208 0.017 0.99
 }
 dress "Button.base[primary][disabled]" {
-  slice 169 447 166 44 12 14 12 14 authored
-  tone 0.174 0.123 0.081 0.99
+  slice 171 447 168 44 12 14 12 14 authored
+  tone 0.317 0.255 0.169 0.99
 }
