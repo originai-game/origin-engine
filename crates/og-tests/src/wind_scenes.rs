@@ -53,10 +53,25 @@ pub fn wind_scene(blowing: bool, tick: u64) -> RenderScene {
         grey,
         Mat4::from_translation(Vec3::new(0.0, -0.1, -1.0)),
     );
-    // A column with its root at its origin (the wind moves what is above).
-    let mut column = shapes::cuboid(Vec3::new(0.5, COLUMN, 0.5));
-    for v in &mut column.vertices {
-        v.position[1] += COLUMN * 0.5;
+    // A column with its root at its origin (the wind moves what is above),
+    // stacked from 24 blocks so it has vertices all the way up to bend at
+    // (a single box's eight corners would only shear it straight).
+    const BLOCKS: usize = 24;
+    let step = COLUMN / BLOCKS as f32;
+    let mut column = og_render::MeshData {
+        vertices: Vec::new(),
+        indices: Vec::new(),
+    };
+    for k in 0..BLOCKS {
+        let mut block = shapes::cuboid(Vec3::new(0.5, step, 0.5));
+        let base = column.vertices.len() as u32;
+        for v in &mut block.vertices {
+            v.position[1] += step * (k as f32 + 0.5);
+        }
+        column.vertices.extend(block.vertices);
+        column
+            .indices
+            .extend(block.indices.iter().map(|i| i + base));
     }
     let column = scene.add_mesh(column);
     let red = scene.add_standard_material(StandardMaterial {
