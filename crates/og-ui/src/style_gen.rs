@@ -187,6 +187,14 @@ pub struct StyleChoices {
     /// Labels set in capitals with this tracking (em): tactical, broadcast.
     pub label_tracking: f32,
     pub sound: SoundKit,
+    /// Dialogs, panels and toasts enter with a glitch of this strength
+    /// (0: the motion personality's own entrances): cyber.
+    pub glitch: f32,
+    /// The hue danger and health take (`None`: the scheme's red and
+    /// green), held to the status bar like them: cyber's signal red.
+    pub danger: Option<Srgba>,
+    /// The hue info takes (`None`: the scheme's blue): cyber's cyan.
+    pub info: Option<Srgba>,
 }
 
 /// A generated style: its `style.ogt` and the sound files it names.
@@ -373,8 +381,7 @@ pub fn palette(c: &StyleChoices) -> crate::theme::Palette {
         best.expect("a wash")
     };
     let focus = readable_on_all(accent, &[ground, panel], 3.2);
-    let status = |hue: f32, sat: f32| {
-        let base = from_hsl(hue, sat, if dark { 0.62 } else { 0.32 });
+    let status_at = |base: Srgba, bar: f32| {
         readable_on_all(
             base,
             &[
@@ -384,9 +391,15 @@ pub fn palette(c: &StyleChoices) -> crate::theme::Palette {
                 base.fade(0.16).over(ground),
                 base.fade(0.16).over(panel),
             ],
-            5.6,
+            bar,
         )
     };
+    let status =
+        |hue: f32, sat: f32| status_at(from_hsl(hue, sat, if dark { 0.62 } else { 0.32 }), 5.6);
+    // A chosen hue keeps as much of itself as a label on its tint allows
+    // (4.5:1, pack_contrast's bar for a danger button).
+    let status_of = |base: Srgba| status_at(base, 4.6);
+    let danger = c.danger.map_or_else(|| status(2.0, 0.7), status_of);
     let shadow = if dark {
         k.fade(0.55)
     } else {
@@ -420,9 +433,9 @@ pub fn palette(c: &StyleChoices) -> crate::theme::Palette {
         sheen: w.fade(if dark { 0.22 } else { 0.5 }),
         success: status(142.0, 0.55),
         warn: status(36.0, 0.85),
-        danger: status(2.0, 0.7),
-        info: status(212.0, 0.7),
-        health: status(130.0, 0.6),
+        danger,
+        info: c.info.map_or_else(|| status(212.0, 0.7), status_of),
+        health: c.danger.map_or_else(|| status(130.0, 0.6), |_| danger),
         mana: status(214.0, 0.85),
         xp: status(276.0, 0.6),
         gold: status(44.0, 0.85),
@@ -710,11 +723,17 @@ fn v1_text(c: &StyleChoices, p: &crate::theme::Palette, m: &MotionSet) -> String
         num(m.hover.0),
         num(m.hover.1)
     ));
+    let (enter, toast) = if c.glitch > 0.0 {
+        let g = format!("glitch {}", num(c.glitch));
+        (g.clone(), g)
+    } else {
+        (m.enter.to_string(), m.toast.to_string())
+    };
     s.push_str(&format!(
         "motion {{\n  enter {}\n  stagger {}\n  toast {}\n  progress {}\n  shake {}\n  pop {}\n}}\n",
-        m.enter,
+        enter,
         num(m.stagger),
-        m.toast,
+        toast,
         num(d[3]),
         num(m.shake),
         num(m.pop)
@@ -1850,6 +1869,9 @@ fn seed(
         body,
         label_tracking,
         sound,
+        glitch: 0.0,
+        danger: None,
+        info: None,
     }
 }
 
@@ -2006,39 +2028,45 @@ pub fn seeds() -> Vec<StyleChoices> {
         ),
         // The owner's approved sheet (ui-art-2 59079f25d): acid yellow,
         // signal red and cyan on near-black, 45° cuts, bold condensed type
-        // and dense data text; no magenta, no glow.
-        seed(
-            "cyber",
-            "cyberpunk signal",
-            "a street-level heist game of black-market chrome and data runs in a megacity",
-            Dark,
-            (0xf5e60c, 0x0a0a0c, Some(0x2bf0ff)),
-            S::Cut,
-            O::Light,
-            M::Snappy,
-            F::Flat,
-            fonts(
-                "shared/ChakraPetch-SemiBold.ttf",
-                "shared/Rajdhani-Bold.ttf",
-                "scifi/JetBrainsMono-Regular.ttf",
-                "NotoSansSC-Bold.ttf",
-                "NotoSansSC-Bold.ttf",
-            ),
-            "shared/glow-icons.png",
-            15.0,
-            0.08,
-            kit(
-                ("laser", 11, 1.4),
-                ("powerup", 9, 1.3),
-                ("back", 8, 1.3),
-                ("whoosh", 10, 1.6),
-                ("error", 6, 1.3),
-                ("levelup", 7, 1.2),
-                0.6,
-                true,
-                0.06,
-            ),
-        ),
+        // and dense data text; no magenta, no glow; a glitch on
+        // transitions only.
+        StyleChoices {
+            glitch: 0.8,
+            danger: Some(rgb(0xff3b3b)),
+            info: Some(rgb(0x2de2e6)),
+            ..seed(
+                "cyber",
+                "cyberpunk signal",
+                "a street-level heist game of black-market chrome and data runs in a megacity",
+                Dark,
+                (0xf5e60c, 0x0a0a0c, Some(0x2bf0ff)),
+                S::Cut,
+                O::Light,
+                M::Snappy,
+                F::Flat,
+                fonts(
+                    "shared/ChakraPetch-SemiBold.ttf",
+                    "shared/Rajdhani-Bold.ttf",
+                    "scifi/JetBrainsMono-Regular.ttf",
+                    "NotoSansSC-Bold.ttf",
+                    "NotoSansSC-Bold.ttf",
+                ),
+                "shared/glow-icons.png",
+                15.0,
+                0.08,
+                kit(
+                    ("laser", 11, 1.4),
+                    ("powerup", 9, 1.3),
+                    ("back", 8, 1.3),
+                    ("whoosh", 10, 1.6),
+                    ("error", 6, 1.3),
+                    ("levelup", 7, 1.2),
+                    0.6,
+                    true,
+                    0.06,
+                ),
+            )
+        },
         // Concept C: navy ink on ivory, not ink of the gold's hue.
         StyleChoices {
             ink: Some(rgb(0x1d2a4e)),

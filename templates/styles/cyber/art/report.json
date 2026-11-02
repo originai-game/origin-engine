@@ -1,7 +1,7 @@
 {
   "atlas": [
     512,
-    287
+    262
   ],
   "base": [
     0,
@@ -12,7 +12,9 @@
     2,
     3
   ],
-  "pending": [],
+  "pending": [
+    "cyber/field"
+  ],
   "resample": "smooth",
   "slots": [
     {
@@ -26,15 +28,15 @@
       ],
       "provenance": {
         "date": "2026-11-02",
-        "generation": 1793629583,
+        "generation": 1793631994,
         "model": "gpt-image-2.5-sunburst",
-        "prompt": "A UI frame of the panel of the cyber UI style for a street-level heist game of black-market chrome and data runs in a megacity: a panel's border and ground, its centre plain so text reads on it.\nStyle: Neon vector lines. Thin glowing lines, grids and bright particles on dark fields, like a vector display. Luminous lines on black, grids for space, particle bursts, bloom as the material.\nPalette: at most 5 distinct colours in this asset; black plus 2 to 4 saturated hues; each hue one meaning (player, enemy, pickup); white only for the hottest centres.\nNine-slice: the corners (25% left, 25% top, 25% right, 25% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: the line is the shape.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: filled shaded surfaces; grey backgrounds; too many hues; a background or ground shadow; text, letters or watermarks.\nShape: one single panel only, centred, filling the image across its width, 1.00 times as wide as it is tall (96 x 96 proportions); nothing else in the image.\nArt direction: A cyberpunk interface panel, completely opaque and solid everywhere including its centre (no hole, no transparency, no vignette): a flat near-black #0d0e10 ground, its top-left and bottom-right corners cut at 45° (about 14 px at this size), a crisp 1.5 px acid-yellow (#f5e60c) line along its edge that follows the cuts, and one short thicker yellow tab on the top-left cut. No glow, no scanlines, no magenta. As the panels of the concept's settings and shop. Everything outside its cut corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "prompt": "A UI frame of the panel of the cyber UI style for a street-level heist game of black-market chrome and data runs in a megacity: a panel's border and ground, its centre plain so text reads on it.\nStyle: Neon vector lines. Thin glowing lines, grids and bright particles on dark fields, like a vector display. Luminous lines on black, grids for space, particle bursts, bloom as the material.\nPalette: at most 5 distinct colours in this asset; black plus 2 to 4 saturated hues; each hue one meaning (player, enemy, pickup); white only for the hottest centres.\nNine-slice: the corners (25% left, 25% top, 25% right, 25% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: the line is the shape.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: filled shaded surfaces; grey backgrounds; too many hues; a background or ground shadow; text, letters or watermarks.\nShape: one single panel only, centred, filling the image across its width, 1.00 times as wide as it is tall (96 x 96 proportions); nothing else in the image.\nArt direction: A cyberpunk interface panel, completely opaque and solid everywhere including its centre (no hole, no transparency, no vignette): a flat near-black #0d0e10 ground, its top-left and bottom-right corners cut off at 45°, a crisp 1.5 px acid-yellow (#f5e60c) line along its whole edge that follows the cuts, and one short thicker yellow tab along the top-left cut. No glow, no scanlines, no magenta, no rivets or circuit marks. As the panels of the concept's settings and shop. Everything outside its cut corners is fully transparent. The cut corners are hard straight 45° diagonals, about one sixth of the piece's height (about 16 px at this size): crisp, never rounded or bevelled softly; every other corner is a perfectly square 90° corner with radius 0. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
         "references": [
           "tests/evidence/ui-art/concepts/v2/cyber-settings.jpg",
           "tests/evidence/ui-art/concepts/v2/cyber-shop.jpg",
           "tests/evidence/ui-art/concepts/v2/cyber-hud.jpg"
         ],
-        "request": "0b36854e4dc880c5"
+        "request": "be749d8ea8a7b6aa"
       },
       "size": [
         96,
@@ -42,7 +44,7 @@
       ],
       "slot": "cyber/panel",
       "source": [
-        389,
+        397,
         384
       ],
       "to": [
@@ -60,15 +62,15 @@
       ],
       "provenance": {
         "date": "2026-11-02",
-        "generation": 1793629683,
+        "generation": 1793632152,
         "model": "gpt-image-2.5-sunburst",
-        "prompt": "A UI frame of the card of the cyber UI style for a street-level heist game of black-market chrome and data runs in a megacity: a panel's border and ground, its centre plain so text reads on it.\nStyle: Neon vector lines. Thin glowing lines, grids and bright particles on dark fields, like a vector display. Luminous lines on black, grids for space, particle bursts, bloom as the material.\nPalette: at most 5 distinct colours in this asset; black plus 2 to 4 saturated hues; each hue one meaning (player, enemy, pickup); white only for the hottest centres.\nNine-slice: the corners (21% left, 21% top, 21% right, 21% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: the line is the shape.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: filled shaded surfaces; grey backgrounds; too many hues; a background or ground shadow; text, letters or watermarks.\nShape: one single card only, centred, filling the image across its width, 1.00 times as wide as it is tall (96 x 96 proportions); nothing else in the image.\nArt direction: A shop item card, one of many repeated side by side: a near-black #121316 rectangle with its top-left corner cut at 45° (about 10 px), a 1 px dim grey (#3a3b3f) edge line that follows the cut; no yellow anywhere (yellow marks only the selected card, which the game draws itself). Completely plain otherwise: no tags, text, icons, glow or ornaments, only the edge line. As the item cases' cards in the concept's shop. Everything outside its cut corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "prompt": "A UI frame of the card of the cyber UI style for a street-level heist game of black-market chrome and data runs in a megacity: a panel's border and ground, its centre plain so text reads on it.\nStyle: Neon vector lines. Thin glowing lines, grids and bright particles on dark fields, like a vector display. Luminous lines on black, grids for space, particle bursts, bloom as the material.\nPalette: at most 5 distinct colours in this asset; black plus 2 to 4 saturated hues; each hue one meaning (player, enemy, pickup); white only for the hottest centres.\nNine-slice: the corners (21% left, 21% top, 21% right, 21% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: the line is the shape.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: filled shaded surfaces; grey backgrounds; too many hues; a background or ground shadow; text, letters or watermarks.\nShape: one single card only, centred, filling the image across its width, 1.00 times as wide as it is tall (96 x 96 proportions); nothing else in the image.\nArt direction: A shop item card, one of many repeated side by side: a near-black #121316 rectangle with its top-left corner cut off at 45°, a 1 px neutral dim grey (#3a3b3f) edge line that follows the cut, the same grey all round; no yellow, cyan or any other colour anywhere, and no marks, dots or brackets in its corners (yellow marks only the selected card, which the game draws itself). Completely plain otherwise: no tags, text, icons, glow or ornaments. Everything outside its cut corner is fully transparent. The cut corners are hard straight 45° diagonals, about one sixth of the piece's height (about 16 px at this size): crisp, never rounded or bevelled softly; every other corner is a perfectly square 90° corner with radius 0. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
         "references": [
           "tests/evidence/ui-art/concepts/v2/cyber-settings.jpg",
           "tests/evidence/ui-art/concepts/v2/cyber-shop.jpg",
           "tests/evidence/ui-art/concepts/v2/cyber-hud.jpg"
         ],
-        "request": "c90803b7cc82475f"
+        "request": "c42dde7e7d5e2256"
       },
       "size": [
         96,
@@ -76,45 +78,11 @@
       ],
       "slot": "cyber/card",
       "source": [
-        385,
+        398,
         384
       ],
       "to": [
         "Card.frame"
-      ]
-    },
-    {
-      "derived": [],
-      "from": "art/field.png",
-      "insets": [
-        20,
-        12,
-        20,
-        12
-      ],
-      "provenance": {
-        "date": "2026-11-02",
-        "generation": 1793629572,
-        "model": "gpt-image-2.5-sunburst",
-        "prompt": "A UI frame of the field of the cyber UI style for a street-level heist game of black-market chrome and data runs in a megacity: a panel's border and ground, its centre plain so text reads on it.\nStyle: Neon vector lines. Thin glowing lines, grids and bright particles on dark fields, like a vector display. Luminous lines on black, grids for space, particle bursts, bloom as the material.\nPalette: at most 5 distinct colours in this asset; black plus 2 to 4 saturated hues; each hue one meaning (player, enemy, pickup); white only for the hottest centres.\nNine-slice: the corners (21% left, 30% top, 21% right, 30% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: the line is the shape.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: filled shaded surfaces; grey backgrounds; too many hues; a background or ground shadow; text, letters or watermarks.\nShape: one single field only, centred, filling the image across its width, 2.40 times as wide as it is tall (96 x 40 proportions); nothing else in the image.\nArt direction: A text field or dropdown: a fully opaque near-black #0c0d0f rectangle with square corners, a 1 px mid-grey (#4a4b50) edge line; the centre plain so light text reads on it. As the Output Device dropdown of the concept. No ornaments anywhere. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
-        "references": [
-          "tests/evidence/ui-art/concepts/v2/cyber-settings.jpg",
-          "tests/evidence/ui-art/concepts/v2/cyber-shop.jpg",
-          "tests/evidence/ui-art/concepts/v2/cyber-hud.jpg"
-        ],
-        "request": "f13143c22441dd98"
-      },
-      "size": [
-        170,
-        40
-      ],
-      "slot": "cyber/field",
-      "source": [
-        679,
-        160
-      ],
-      "to": [
-        "Field.frame"
       ]
     },
     {
@@ -128,15 +96,15 @@
       ],
       "provenance": {
         "date": "2026-11-02",
-        "generation": 1793629572,
+        "generation": 1793631993,
         "model": "gpt-image-2.5-sunburst",
-        "prompt": "A UI frame of the slot of the cyber UI style for a street-level heist game of black-market chrome and data runs in a megacity: a panel's border and ground, its centre plain so text reads on it.\nStyle: Neon vector lines. Thin glowing lines, grids and bright particles on dark fields, like a vector display. Luminous lines on black, grids for space, particle bursts, bloom as the material.\nPalette: at most 5 distinct colours in this asset; black plus 2 to 4 saturated hues; each hue one meaning (player, enemy, pickup); white only for the hottest centres.\nNine-slice: the corners (25% left, 25% top, 25% right, 25% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: the line is the shape.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: filled shaded surfaces; grey backgrounds; too many hues; a background or ground shadow; text, letters or watermarks.\nShape: one single slot only, centred, filling the image across its width, 1.00 times as wide as it is tall (64 x 64 proportions); nothing else in the image.\nArt direction: An inventory slot, repeated many times in a grid: a near-black #0f1012 square with its top-left corner cut at 45° (about 8 px), a 1 px dim grey (#3a3b3f) edge line following the cut, and a very faint darker inner well. No ornament, glow or text. Everything outside its cut corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "prompt": "A UI frame of the slot of the cyber UI style for a street-level heist game of black-market chrome and data runs in a megacity: a panel's border and ground, its centre plain so text reads on it.\nStyle: Neon vector lines. Thin glowing lines, grids and bright particles on dark fields, like a vector display. Luminous lines on black, grids for space, particle bursts, bloom as the material.\nPalette: at most 5 distinct colours in this asset; black plus 2 to 4 saturated hues; each hue one meaning (player, enemy, pickup); white only for the hottest centres.\nNine-slice: the corners (25% left, 25% top, 25% right, 25% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: the line is the shape.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: filled shaded surfaces; grey backgrounds; too many hues; a background or ground shadow; text, letters or watermarks.\nShape: one single slot only, centred, filling the image across its width, 1.00 times as wide as it is tall (64 x 64 proportions); nothing else in the image.\nArt direction: An inventory slot, repeated many times in a grid: a near-black #0f1012 square with its top-left corner cut off at 45°, a 1 px dim grey (#3a3b3f) edge line following the cut, and a very faint darker inner well. No ornament, glow or text. Everything outside its cut corner is fully transparent. The cut corners are hard straight 45° diagonals, about one sixth of the piece's height (about 16 px at this size): crisp, never rounded or bevelled softly; every other corner is a perfectly square 90° corner with radius 0. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
         "references": [
           "tests/evidence/ui-art/concepts/v2/cyber-settings.jpg",
           "tests/evidence/ui-art/concepts/v2/cyber-shop.jpg",
           "tests/evidence/ui-art/concepts/v2/cyber-hud.jpg"
         ],
-        "request": "a969a932844600ef"
+        "request": "8e2cee45e8b4517b"
       },
       "size": [
         64,
@@ -144,7 +112,7 @@
       ],
       "slot": "cyber/slot",
       "source": [
-        268,
+        256,
         256
       ],
       "to": [
@@ -162,23 +130,23 @@
       ],
       "provenance": {
         "date": "2026-11-02",
-        "generation": 1793629570,
+        "generation": 1793631990,
         "model": "gpt-image-2.5-sunburst",
-        "prompt": "A UI frame of the tooltip of the cyber UI style for a street-level heist game of black-market chrome and data runs in a megacity: a panel's border and ground, its centre plain so text reads on it.\nStyle: Neon vector lines. Thin glowing lines, grids and bright particles on dark fields, like a vector display. Luminous lines on black, grids for space, particle bursts, bloom as the material.\nPalette: at most 5 distinct colours in this asset; black plus 2 to 4 saturated hues; each hue one meaning (player, enemy, pickup); white only for the hottest centres.\nNine-slice: the corners (19% left, 25% top, 19% right, 25% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: the line is the shape.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: filled shaded surfaces; grey backgrounds; too many hues; a background or ground shadow; text, letters or watermarks.\nShape: one single tooltip only, centred, filling the image across its width, 1.33 times as wide as it is tall (64 x 48 proportions); nothing else in the image.\nArt direction: A small tooltip: a fully opaque black (#08090a) rectangle with its top-left corner cut at 45° (about 6 px) and a 1 px acid-yellow (#f5e60c) edge line following the cut; the centre plain black so light text reads on it. No glow or ornaments. Everything outside its cut corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "prompt": "A UI frame of the tooltip of the cyber UI style for a street-level heist game of black-market chrome and data runs in a megacity: a panel's border and ground, its centre plain so text reads on it.\nStyle: Neon vector lines. Thin glowing lines, grids and bright particles on dark fields, like a vector display. Luminous lines on black, grids for space, particle bursts, bloom as the material.\nPalette: at most 5 distinct colours in this asset; black plus 2 to 4 saturated hues; each hue one meaning (player, enemy, pickup); white only for the hottest centres.\nNine-slice: the corners (19% left, 25% top, 19% right, 25% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: the line is the shape.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: filled shaded surfaces; grey backgrounds; too many hues; a background or ground shadow; text, letters or watermarks.\nShape: one single tooltip only, centred, filling the image across its width, 1.33 times as wide as it is tall (64 x 48 proportions); nothing else in the image.\nArt direction: A small tooltip: a fully opaque black (#08090a) rectangle with its top-left corner cut off at 45° and a 1 px cyan (#2de2e6) edge line following the cut; the centre plain black so light text reads on it. No glow or ornaments. Everything outside its cut corner is fully transparent. The cut corners are hard straight 45° diagonals, about one sixth of the piece's height (about 16 px at this size): crisp, never rounded or bevelled softly; every other corner is a perfectly square 90° corner with radius 0. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
         "references": [
           "tests/evidence/ui-art/concepts/v2/cyber-settings.jpg",
           "tests/evidence/ui-art/concepts/v2/cyber-shop.jpg",
           "tests/evidence/ui-art/concepts/v2/cyber-hud.jpg"
         ],
-        "request": "f0dd35a535e8e09d"
+        "request": "9b8a197c12d58dcf"
       },
       "size": [
-        105,
+        135,
         48
       ],
       "slot": "cyber/tooltip",
       "source": [
-        421,
+        538,
         192
       ],
       "to": [
@@ -196,23 +164,23 @@
       ],
       "provenance": {
         "date": "2026-11-02",
-        "generation": 1793629573,
+        "generation": 1793631996,
         "model": "gpt-image-2.5-sunburst",
-        "prompt": "A UI frame of the hud of the cyber UI style for a street-level heist game of black-market chrome and data runs in a megacity: a panel's border and ground, its centre plain so text reads on it.\nStyle: Neon vector lines. Thin glowing lines, grids and bright particles on dark fields, like a vector display. Luminous lines on black, grids for space, particle bursts, bloom as the material.\nPalette: at most 5 distinct colours in this asset; black plus 2 to 4 saturated hues; each hue one meaning (player, enemy, pickup); white only for the hottest centres.\nNine-slice: the corners (22% left, 30% top, 22% right, 30% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: the line is the shape.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: filled shaded surfaces; grey backgrounds; too many hues; a background or ground shadow; text, letters or watermarks.\nShape: one single hud only, centred, filling the image across its width, 1.60 times as wide as it is tall (64 x 40 proportions); nothing else in the image.\nArt direction: A HUD readout capsule laid over a game scene: a near-black (#0b0c0e) rectangle, slightly translucent, its top-left and bottom-right corners cut at 45° (about 8 px), a 1.5 px acid-yellow (#f5e60c) edge line following the cuts. As the ammo, objective and timer readouts of the concept's HUD. No glow, no scanlines. Everything outside its cut corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "prompt": "A UI frame of the hud of the cyber UI style for a street-level heist game of black-market chrome and data runs in a megacity: a panel's border and ground, its centre plain so text reads on it.\nStyle: Neon vector lines. Thin glowing lines, grids and bright particles on dark fields, like a vector display. Luminous lines on black, grids for space, particle bursts, bloom as the material.\nPalette: at most 5 distinct colours in this asset; black plus 2 to 4 saturated hues; each hue one meaning (player, enemy, pickup); white only for the hottest centres.\nNine-slice: the corners (22% left, 30% top, 22% right, 30% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: the line is the shape.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: filled shaded surfaces; grey backgrounds; too many hues; a background or ground shadow; text, letters or watermarks.\nShape: one single hud only, centred, filling the image across its width, 1.60 times as wide as it is tall (64 x 40 proportions); nothing else in the image.\nArt direction: A HUD readout capsule laid over a game scene: a near-black (#0b0c0e) rectangle, slightly translucent, its top-left and bottom-right corners cut off at 45°, a 1.5 px acid-yellow (#f5e60c) edge line following the cuts. As the ammo, objective and timer readouts of the concept's HUD. No glow, no scanlines. Everything outside its cut corners is fully transparent. The cut corners are hard straight 45° diagonals, about one sixth of the piece's height (about 16 px at this size): crisp, never rounded or bevelled softly; every other corner is a perfectly square 90° corner with radius 0. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
         "references": [
           "tests/evidence/ui-art/concepts/v2/cyber-settings.jpg",
           "tests/evidence/ui-art/concepts/v2/cyber-shop.jpg",
           "tests/evidence/ui-art/concepts/v2/cyber-hud.jpg"
         ],
-        "request": "305cbead914d4c73"
+        "request": "64cf652e05b11910"
       },
       "size": [
-        105,
+        90,
         40
       ],
       "slot": "cyber/hud",
       "source": [
-        420,
+        359,
         160
       ],
       "to": [
@@ -235,23 +203,23 @@
       ],
       "provenance": {
         "date": "2026-11-02",
-        "generation": 1793629568,
+        "generation": 1793631986,
         "model": "gpt-image-2.5-sunburst",
-        "prompt": "A UI button of the button of the cyber UI style for a street-level heist game of black-market chrome and data runs in a megacity: its border and face, its centre plain so a label reads on it.\nStyle: Neon vector lines. Thin glowing lines, grids and bright particles on dark fields, like a vector display. Luminous lines on black, grids for space, particle bursts, bloom as the material.\nPalette: at most 5 distinct colours in this asset; black plus 2 to 4 saturated hues; each hue one meaning (player, enemy, pickup); white only for the hottest centres.\nNine-slice: the corners (23% left, 32% top, 23% right, 32% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: the line is the shape.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: filled shaded surfaces; grey backgrounds; too many hues; a background or ground shadow; text, letters or watermarks.\nShape: one single button only, centred, filling the image across its width, 2.18 times as wide as it is tall (96 x 44 proportions); nothing else in the image.\nArt direction: A secondary button in its states: a near-black (#0d0e10) rectangle with its bottom-right corner cut at 45° (about 8 px) and a 1.5 px acid-yellow (#f5e60c) edge line following the cut; the label area flat near-black so light text reads on it. Hovered: the edge brighter and the ground one step lighter. As the Back and Reset to Default keys of the concept. Everything outside its cut corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge. The cut end is plain too, so it reads cleanly when short.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "prompt": "A UI button of the button of the cyber UI style for a street-level heist game of black-market chrome and data runs in a megacity: its border and face, its centre plain so a label reads on it.\nStyle: Neon vector lines. Thin glowing lines, grids and bright particles on dark fields, like a vector display. Luminous lines on black, grids for space, particle bursts, bloom as the material.\nPalette: at most 5 distinct colours in this asset; black plus 2 to 4 saturated hues; each hue one meaning (player, enemy, pickup); white only for the hottest centres.\nNine-slice: the corners (23% left, 32% top, 23% right, 32% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: the line is the shape.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: filled shaded surfaces; grey backgrounds; too many hues; a background or ground shadow; text, letters or watermarks.\nShape: one single button only, centred, filling the image across its width, 2.18 times as wide as it is tall (96 x 44 proportions); nothing else in the image.\nArt direction: A secondary button in its states: a near-black (#0d0e10) rectangle with its top-left and bottom-right corners cut off at 45° and a 1.5 px acid-yellow (#f5e60c) edge line following the cuts; the label area flat near-black so light text reads on it. Hovered: the edge brighter and the ground one step lighter. No dots, rivets or marks inside its corners. As the Back and Reset to Default keys of the concept. Everything outside its cut corners is fully transparent. The cut corners are hard straight 45° diagonals, about one sixth of the piece's height (about 16 px at this size): crisp, never rounded or bevelled softly; every other corner is a perfectly square 90° corner with radius 0. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge. The cut ends are plain too, so it reads cleanly when short.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
         "references": [
           "tests/evidence/ui-art/concepts/v2/cyber-settings.jpg",
           "tests/evidence/ui-art/concepts/v2/cyber-shop.jpg",
           "tests/evidence/ui-art/concepts/v2/cyber-hud.jpg"
         ],
-        "request": "b7647a636045c709"
+        "request": "879887c4a65c4d6e"
       },
       "size": [
-        179,
+        143,
         44
       ],
       "slot": "cyber/button",
       "source": [
-        718,
+        570,
         176
       ],
       "to": [
@@ -277,23 +245,23 @@
       ],
       "provenance": {
         "date": "2026-11-02",
-        "generation": 1793629566,
+        "generation": 1793631984,
         "model": "gpt-image-2.5-sunburst",
-        "prompt": "A UI button of the button primary of the cyber UI style for a street-level heist game of black-market chrome and data runs in a megacity: its border and face, its centre plain so a label reads on it.\nStyle: Neon vector lines. Thin glowing lines, grids and bright particles on dark fields, like a vector display. Luminous lines on black, grids for space, particle bursts, bloom as the material.\nPalette: at most 5 distinct colours in this asset; black plus 2 to 4 saturated hues; each hue one meaning (player, enemy, pickup); white only for the hottest centres.\nNine-slice: the corners (23% left, 32% top, 23% right, 32% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: the line is the shape.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: filled shaded surfaces; grey backgrounds; too many hues; a background or ground shadow; text, letters or watermarks.\nShape: one single button-primary only, centred, filling the image across its width, 2.18 times as wide as it is tall (96 x 44 proportions); nothing else in the image.\nArt direction: The primary button in its states: a solid flat acid-yellow (#f5e60c) slab with its bottom-right corner cut at 45° (about 8 px) and a thin darker yellow (#c9bc00) edge; the label area flat yellow so black text reads on it. No gradient, glow or sheen. As the BUY & FIT button of the concept. Everything outside its cut corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge. No arrow, chevron or text on it.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "prompt": "A UI button of the button primary of the cyber UI style for a street-level heist game of black-market chrome and data runs in a megacity: its border and face, its centre plain so a label reads on it.\nStyle: Neon vector lines. Thin glowing lines, grids and bright particles on dark fields, like a vector display. Luminous lines on black, grids for space, particle bursts, bloom as the material.\nPalette: at most 5 distinct colours in this asset; black plus 2 to 4 saturated hues; each hue one meaning (player, enemy, pickup); white only for the hottest centres.\nNine-slice: the corners (23% left, 32% top, 23% right, 32% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: the line is the shape.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: filled shaded surfaces; grey backgrounds; too many hues; a background or ground shadow; text, letters or watermarks.\nShape: one single button-primary only, centred, filling the image across its width, 2.18 times as wide as it is tall (96 x 44 proportions); nothing else in the image.\nArt direction: The primary button in its states: a solid flat acid-yellow (#f5e60c) slab filling the whole piece from top to bottom, its top-left and bottom-right corners cut off at 45°, with a thin darker yellow (#c9bc00) edge; the label area flat yellow so black text reads on it. No gradient, glow, sheen, dots or marks inside its corners. As the BUY & FIT button of the concept. Everything outside its cut corners is fully transparent. The cut corners are hard straight 45° diagonals, about one sixth of the piece's height (about 16 px at this size): crisp, never rounded or bevelled softly; every other corner is a perfectly square 90° corner with radius 0. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge. No arrow, chevron or text on it.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
         "references": [
           "tests/evidence/ui-art/concepts/v2/cyber-settings.jpg",
           "tests/evidence/ui-art/concepts/v2/cyber-shop.jpg",
           "tests/evidence/ui-art/concepts/v2/cyber-hud.jpg"
         ],
-        "request": "ecb326a9e1d7b75d"
+        "request": "659c417c343eac60"
       },
       "size": [
-        146,
+        157,
         44
       ],
       "slot": "cyber/button-primary",
       "source": [
-        585,
+        628,
         176
       ],
       "to": [
@@ -348,24 +316,24 @@
       ],
       "provenance": {
         "date": "2026-11-02",
-        "generation": 1793629563,
+        "generation": 1793631982,
         "model": "gpt-image-2.5-sunburst",
-        "prompt": "A UI ornament of the divider of the cyber UI style for a street-level heist game of black-market chrome and data runs in a megacity: a corner, flourish or divider, on a clear background.\nStyle: Neon vector lines. Thin glowing lines, grids and bright particles on dark fields, like a vector display. Luminous lines on black, grids for space, particle bursts, bloom as the material.\nPalette: at most 5 distinct colours in this asset; black plus 2 to 4 saturated hues; each hue one meaning (player, enemy, pickup); white only for the hottest centres.\nBackground: fully transparent, nothing outside the subject.\nLine: the line is the shape.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: filled shaded surfaces; grey backgrounds; too many hues; a background or ground shadow; text, letters or watermarks.\nShape: one single divider only, centred, filling the image across its width, 12.00 times as wide as it is tall (192 x 16 proportions); nothing else in the image.\nArt direction: A horizontal divider: a plain 1 px dim grey (#3a3b3f) line with a short 2 px acid-yellow segment at its left end only, on a clear background. No dots, diamonds or ornament at its centre.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "prompt": "A UI ornament of the divider of the cyber UI style for a street-level heist game of black-market chrome and data runs in a megacity: a corner, flourish or divider, on a clear background.\nStyle: Neon vector lines. Thin glowing lines, grids and bright particles on dark fields, like a vector display. Luminous lines on black, grids for space, particle bursts, bloom as the material.\nPalette: at most 5 distinct colours in this asset; black plus 2 to 4 saturated hues; each hue one meaning (player, enemy, pickup); white only for the hottest centres.\nBackground: fully transparent, nothing outside the subject.\nLine: the line is the shape.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: filled shaded surfaces; grey backgrounds; too many hues; a background or ground shadow; text, letters or watermarks.\nShape: one single divider only, centred, filling the image across its width, 12.00 times as wide as it is tall (192 x 16 proportions); nothing else in the image.\nArt direction: A horizontal divider: one plain 1 px dim grey (#3a3b3f) line of even weight from end to end, on a clear background. Nothing else: no tick, dot, diamond, segment or colour anywhere on it.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
         "references": [
           "tests/evidence/ui-art/concepts/v2/cyber-settings.jpg",
           "tests/evidence/ui-art/concepts/v2/cyber-shop.jpg",
           "tests/evidence/ui-art/concepts/v2/cyber-hud.jpg"
         ],
-        "request": "e7167ad053ae4cb3"
+        "request": "c2f2fdb77aa802f4"
       },
       "size": [
         192,
-        7
+        1
       ],
       "slot": "cyber/divider",
       "source": [
-        1506,
-        58
+        1514,
+        5
       ],
       "to": [
         "divider"
@@ -416,24 +384,24 @@
       ],
       "provenance": {
         "date": "2026-11-02",
-        "generation": 1793629568,
+        "generation": 1793631990,
         "model": "gpt-image-2.5-sunburst",
-        "prompt": "A UI ornament of the thumb of the cyber UI style for a street-level heist game of black-market chrome and data runs in a megacity: a corner, flourish or divider, on a clear background.\nStyle: Neon vector lines. Thin glowing lines, grids and bright particles on dark fields, like a vector display. Luminous lines on black, grids for space, particle bursts, bloom as the material.\nPalette: at most 5 distinct colours in this asset; black plus 2 to 4 saturated hues; each hue one meaning (player, enemy, pickup); white only for the hottest centres.\nBackground: fully transparent, nothing outside the subject.\nLine: the line is the shape.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: filled shaded surfaces; grey backgrounds; too many hues; a background or ground shadow; text, letters or watermarks.\nShape: one single thumb only, centred, filling the image across its width, 1.00 times as wide as it is tall (24 x 24 proportions); nothing else in the image.\nArt direction: A slider's thumb: a small acid-yellow (#f5e60c) upright rectangle with a black 1 px edge, about half as wide as it is tall, flat with no glow. Nothing else: no track.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "prompt": "A UI ornament of the thumb of the cyber UI style for a street-level heist game of black-market chrome and data runs in a megacity: a corner, flourish or divider, on a clear background.\nStyle: Neon vector lines. Thin glowing lines, grids and bright particles on dark fields, like a vector display. Luminous lines on black, grids for space, particle bursts, bloom as the material.\nPalette: at most 5 distinct colours in this asset; black plus 2 to 4 saturated hues; each hue one meaning (player, enemy, pickup); white only for the hottest centres.\nBackground: fully transparent, nothing outside the subject.\nLine: the line is the shape.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: filled shaded surfaces; grey backgrounds; too many hues; a background or ground shadow; text, letters or watermarks.\nShape: one single thumb only, centred, filling the image across its width, 1.00 times as wide as it is tall (24 x 24 proportions); nothing else in the image.\nArt direction: A slider's thumb: one narrow upright bar centred in a square image, as tall as the image and about a third as wide (8 of 24), solid acid yellow (#f5e60c) with a crisp 1 px near-black (#0a0a0c) edge all round, square corners, flat, no glow. Fully transparent to the bar's left and right. Nothing else: no track.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
         "references": [
           "tests/evidence/ui-art/concepts/v2/cyber-settings.jpg",
           "tests/evidence/ui-art/concepts/v2/cyber-shop.jpg",
           "tests/evidence/ui-art/concepts/v2/cyber-hud.jpg"
         ],
-        "request": "b5fc57d6928a66fd"
+        "request": "41eb4992c0f0a622"
       },
       "size": [
-        20,
+        5,
         24
       ],
       "slot": "cyber/thumb",
       "source": [
         96,
-        111
+        509
       ],
       "to": [
         "Slider.knob"

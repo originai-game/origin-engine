@@ -42,7 +42,7 @@
         0.5,
         0.5
       ],
-      "hash": "0b36854e4dc880c5",
+      "hash": "be749d8ea8a7b6aa",
       "insets": [
         0.25,
         0.25,
@@ -51,7 +51,7 @@
       ],
       "kind": "styleFrame",
       "name": "cyber/panel",
-      "note": "A cyberpunk interface panel, completely opaque and solid everywhere including its centre (no hole, no transparency, no vignette): a flat near-black #0d0e10 ground, its top-left and bottom-right corners cut at 45° (about 14 px at this size), a crisp 1.5 px acid-yellow (#f5e60c) line along its edge that follows the cuts, and one short thicker yellow tab on the top-left cut. No glow, no scanlines, no magenta. As the panels of the concept's settings and shop. Everything outside its cut corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
+      "note": "A cyberpunk interface panel, completely opaque and solid everywhere including its centre (no hole, no transparency, no vignette): a flat near-black #0d0e10 ground, its top-left and bottom-right corners cut off at 45°, a crisp 1.5 px acid-yellow (#f5e60c) line along its whole edge that follows the cuts, and one short thicker yellow tab along the top-left cut. No glow, no scanlines, no magenta, no rivets or circuit marks. As the panels of the concept's settings and shop. Everything outside its cut corners is fully transparent. The cut corners are hard straight 45° diagonals, about one sixth of the piece's height (about 16 px at this size): crisp, never rounded or bevelled softly; every other corner is a perfectly square 90° corner with radius 0. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
       "opaque": "#0d0e10",
       "pixels": [
         288,
@@ -77,7 +77,7 @@
         0.5,
         0.5
       ],
-      "hash": "c90803b7cc82475f",
+      "hash": "c42dde7e7d5e2256",
       "insets": [
         0.208,
         0.208,
@@ -86,7 +86,7 @@
       ],
       "kind": "styleFrame",
       "name": "cyber/card",
-      "note": "A shop item card, one of many repeated side by side: a near-black #121316 rectangle with its top-left corner cut at 45° (about 10 px), a 1 px dim grey (#3a3b3f) edge line that follows the cut; no yellow anywhere (yellow marks only the selected card, which the game draws itself). Completely plain otherwise: no tags, text, icons, glow or ornaments, only the edge line. As the item cases' cards in the concept's shop. Everything outside its cut corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
+      "note": "A shop item card, one of many repeated side by side: a near-black #121316 rectangle with its top-left corner cut off at 45°, a 1 px neutral dim grey (#3a3b3f) edge line that follows the cut, the same grey all round; no yellow, cyan or any other colour anywhere, and no marks, dots or brackets in its corners (yellow marks only the selected card, which the game draws itself). Completely plain otherwise: no tags, text, icons, glow or ornaments. Everything outside its cut corner is fully transparent. The cut corners are hard straight 45° diagonals, about one sixth of the piece's height (about 16 px at this size): crisp, never rounded or bevelled softly; every other corner is a perfectly square 90° corner with radius 0. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
       "opaque": "#121316",
       "pixels": [
         288,
@@ -112,7 +112,7 @@
         0.5,
         0.5
       ],
-      "hash": "f13143c22441dd98",
+      "hash": "1c574592ec209650",
       "insets": [
         0.208,
         0.3,
@@ -121,7 +121,7 @@
       ],
       "kind": "styleFrame",
       "name": "cyber/field",
-      "note": "A text field or dropdown: a fully opaque near-black #0c0d0f rectangle with square corners, a 1 px mid-grey (#4a4b50) edge line; the centre plain so light text reads on it. As the Output Device dropdown of the concept. No ornaments anywhere. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
+      "note": "A completely plain input box: a solid near-black #0c0d0f rectangle with a single uniform 1 px mid-grey (#4a4b50) outline of the same weight and colour on all four sides, square 90° corners. Absolutely nothing else: no yellow, no brackets, no corner accents, no ticks, no dots, no tab, no text. The four corners look exactly like each other and like any point of the edges. Its top, bottom, left and right edges are plain and even along their whole length (they stretch).",
       "opaque": "#0c0d0f",
       "pixels": [
         288,
@@ -147,7 +147,7 @@
         0.5,
         0.5
       ],
-      "hash": "a969a932844600ef",
+      "hash": "8e2cee45e8b4517b",
       "insets": [
         0.25,
         0.25,
@@ -156,7 +156,7 @@
       ],
       "kind": "styleFrame",
       "name": "cyber/slot",
-      "note": "An inventory slot, repeated many times in a grid: a near-black #0f1012 square with its top-left corner cut at 45° (about 8 px), a 1 px dim grey (#3a3b3f) edge line following the cut, and a very faint darker inner well. No ornament, glow or text. Everything outside its cut corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
+      "note": "An inventory slot, repeated many times in a grid: a near-black #0f1012 square with its top-left corner cut off at 45°, a 1 px dim grey (#3a3b3f) edge line following the cut, and a very faint darker inner well. No ornament, glow or text. Everything outside its cut corner is fully transparent. The cut corners are hard straight 45° diagonals, about one sixth of the piece's height (about 16 px at this size): crisp, never rounded or bevelled softly; every other corner is a perfectly square 90° corner with radius 0. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
       "opaque": "#0f1012",
       "pixels": [
         192,
@@ -182,7 +182,7 @@
         0.5,
         0.5
       ],
-      "hash": "f0dd35a535e8e09d",
+      "hash": "9b8a197c12d58dcf",
       "insets": [
         0.188,
         0.25,
@@ -191,7 +191,7 @@
       ],
       "kind": "styleFrame",
       "name": "cyber/tooltip",
-      "note": "A small tooltip: a fully opaque black (#08090a) rectangle with its top-left corner cut at 45° (about 6 px) and a 1 px acid-yellow (#f5e60c) edge line following the cut; the centre plain black so light text reads on it. No glow or ornaments. Everything outside its cut corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
+      "note": "A small tooltip: a fully opaque black (#08090a) rectangle with its top-left corner cut off at 45° and a 1 px cyan (#2de2e6) edge line following the cut; the centre plain black so light text reads on it. No glow or ornaments. Everything outside its cut corner is fully transparent. The cut corners are hard straight 45° diagonals, about one sixth of the piece's height (about 16 px at this size): crisp, never rounded or bevelled softly; every other corner is a perfectly square 90° corner with radius 0. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
       "pixels": [
         192,
         144
@@ -216,7 +216,7 @@
         0.5,
         0.5
       ],
-      "hash": "305cbead914d4c73",
+      "hash": "64cf652e05b11910",
       "insets": [
         0.219,
         0.3,
@@ -225,7 +225,7 @@
       ],
       "kind": "styleFrame",
       "name": "cyber/hud",
-      "note": "A HUD readout capsule laid over a game scene: a near-black (#0b0c0e) rectangle, slightly translucent, its top-left and bottom-right corners cut at 45° (about 8 px), a 1.5 px acid-yellow (#f5e60c) edge line following the cuts. As the ammo, objective and timer readouts of the concept's HUD. No glow, no scanlines. Everything outside its cut corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
+      "note": "A HUD readout capsule laid over a game scene: a near-black (#0b0c0e) rectangle, slightly translucent, its top-left and bottom-right corners cut off at 45°, a 1.5 px acid-yellow (#f5e60c) edge line following the cuts. As the ammo, objective and timer readouts of the concept's HUD. No glow, no scanlines. Everything outside its cut corners is fully transparent. The cut corners are hard straight 45° diagonals, about one sixth of the piece's height (about 16 px at this size): crisp, never rounded or bevelled softly; every other corner is a perfectly square 90° corner with radius 0. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
       "pixels": [
         192,
         120
@@ -254,7 +254,7 @@
         0.5,
         0.5
       ],
-      "hash": "b7647a636045c709",
+      "hash": "879887c4a65c4d6e",
       "insets": [
         0.229,
         0.318,
@@ -263,7 +263,7 @@
       ],
       "kind": "styleButton",
       "name": "cyber/button",
-      "note": "A secondary button in its states: a near-black (#0d0e10) rectangle with its bottom-right corner cut at 45° (about 8 px) and a 1.5 px acid-yellow (#f5e60c) edge line following the cut; the label area flat near-black so light text reads on it. Hovered: the edge brighter and the ground one step lighter. As the Back and Reset to Default keys of the concept. Everything outside its cut corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge. The cut end is plain too, so it reads cleanly when short.",
+      "note": "A secondary button in its states: a near-black (#0d0e10) rectangle with its top-left and bottom-right corners cut off at 45° and a 1.5 px acid-yellow (#f5e60c) edge line following the cuts; the label area flat near-black so light text reads on it. Hovered: the edge brighter and the ground one step lighter. No dots, rivets or marks inside its corners. As the Back and Reset to Default keys of the concept. Everything outside its cut corners is fully transparent. The cut corners are hard straight 45° diagonals, about one sixth of the piece's height (about 16 px at this size): crisp, never rounded or bevelled softly; every other corner is a perfectly square 90° corner with radius 0. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge. The cut ends are plain too, so it reads cleanly when short.",
       "pixels": [
         1440,
         132
@@ -296,7 +296,7 @@
         0.5,
         0.5
       ],
-      "hash": "ecb326a9e1d7b75d",
+      "hash": "659c417c343eac60",
       "insets": [
         0.229,
         0.318,
@@ -305,7 +305,7 @@
       ],
       "kind": "styleButton",
       "name": "cyber/button-primary",
-      "note": "The primary button in its states: a solid flat acid-yellow (#f5e60c) slab with its bottom-right corner cut at 45° (about 8 px) and a thin darker yellow (#c9bc00) edge; the label area flat yellow so black text reads on it. No gradient, glow or sheen. As the BUY & FIT button of the concept. Everything outside its cut corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge. No arrow, chevron or text on it.",
+      "note": "The primary button in its states: a solid flat acid-yellow (#f5e60c) slab filling the whole piece from top to bottom, its top-left and bottom-right corners cut off at 45°, with a thin darker yellow (#c9bc00) edge; the label area flat yellow so black text reads on it. No gradient, glow, sheen, dots or marks inside its corners. As the BUY & FIT button of the concept. Everything outside its cut corners is fully transparent. The cut corners are hard straight 45° diagonals, about one sixth of the piece's height (about 16 px at this size): crisp, never rounded or bevelled softly; every other corner is a perfectly square 90° corner with radius 0. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge. No arrow, chevron or text on it.",
       "pixels": [
         1440,
         132
@@ -362,10 +362,10 @@
         0.5,
         0.5
       ],
-      "hash": "e7167ad053ae4cb3",
+      "hash": "c2f2fdb77aa802f4",
       "kind": "ornament",
       "name": "cyber/divider",
-      "note": "A horizontal divider: a plain 1 px dim grey (#3a3b3f) line with a short 2 px acid-yellow segment at its left end only, on a clear background. No dots, diamonds or ornament at its centre.",
+      "note": "A horizontal divider: one plain 1 px dim grey (#3a3b3f) line of even weight from end to end, on a clear background. Nothing else: no tick, dot, diamond, segment or colour anywhere on it.",
       "pixels": [
         576,
         48
@@ -426,10 +426,10 @@
         "Slider.knob"
       ],
       "file": "art/thumb.png",
-      "hash": "b5fc57d6928a66fd",
+      "hash": "41eb4992c0f0a622",
       "kind": "ornament",
       "name": "cyber/thumb",
-      "note": "A slider's thumb: a small acid-yellow (#f5e60c) upright rectangle with a black 1 px edge, about half as wide as it is tall, flat with no glow. Nothing else: no track.",
+      "note": "A slider's thumb: one narrow upright bar centred in a square image, as tall as the image and about a third as wide (8 of 24), solid acid yellow (#f5e60c) with a crisp 1 px near-black (#0a0a0c) edge all round, square corners, flat, no glow. Fully transparent to the bar's left and right. Nothing else: no track.",
       "pixels": [
         72,
         72
