@@ -174,14 +174,24 @@ Read on the Mac satellite (metal):
 - `d-global-half.png` (tick 420): "global x 0.5"; both columns slower.
 - `timegroups.mp4` (8 s): the whole schedule.
 
-Known gap, not this sample's: CLDR writes en's time as `3:09:09 PM` with a
-narrow no-break space (U+202F), and fr groups with one. No font in the
-repository has U+202F, and og-ui and og-render give a missing glyph no
-width, so the frames read `3:09:09PM`. The fix belongs in the font cook
-(map a missing Unicode space to the font's space advance), which re-cooks
-every font, so it is left for a decision.
+Under each column a fountain of sparks (og.ParticleSystem, `fx/sparks2d.ogt`)
+plays; the right one has og.TimeGroup { group: 1 }, so its sparks rise,
+fall and fade at the group's pace. Measured on the clip (pixels changed
+by more than 6 % between frames, each half of the frame below the title):
 
-Hashes (orb, `OG_RENDERER=none`, 480 ticks): d60046cefb17078a twice.
+| interval | left (global pace) | right (group 1) |
+|---|---|---|
+| frames 60 to 66, both at 1 | 18,799 | 11,415 |
+| frames 95 to 96, group 1 at 0.25 | 7,134 | 3,045 |
+| frames 128 to 134, group 1 frozen | 18,372 | 211 |
+
+`sparks-quarter-pair.png` crops the two quarter-pace frames: the left
+sparks move, the right ones barely.
+
+The U+202F gap is closed: the font cook now adds the Unicode spaces a
+font lacks, so the frames read `3:05:10 PM` (en) and `1 234,50 €` (fr).
+
+Hashes (orb, `OG_RENDERER=none`, 480 ticks): c0a9f858736f1ded twice, with the sparks (d60046cefb17078a before them).
 
 ## The CLDR subset's size
 

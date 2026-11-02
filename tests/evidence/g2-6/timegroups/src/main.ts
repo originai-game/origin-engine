@@ -2,8 +2,9 @@
 // tests/evidence/g2-6/NOTES.md has the commands and what each frame shows.
 //
 // Two columns of five squares bob and pulse on looping tweens, each a
-// little behind the one above, so a column reads as a wave. The right
-// column has og.TimeGroup { group: 1 }:
+// little behind the one above, so a column reads as a wave, and a fountain
+// of sparks (og.ParticleSystem) plays under each. The right column and its
+// sparks have og.TimeGroup { group: 1 }:
 // - 0-2 s: group 1 at 1, both columns move alike;
 // - 2-4 s: og.time.setGroupScale(world, 1, 0.25): the right column at a quarter pace;
 // - 4-5.5 s: scale 0, the right column frozen mid-wave;
@@ -109,6 +110,12 @@ export default og.game({
     for (let k = 0; k < 5; k++) {
       square(world, -4, 4 - k * 1.6, k, false);
       square(world, 4, 4 - k * 1.6, k, true);
+    }
+    const sparks = must(og.load.emitter(world, "fx/sparks2d.ogt"));
+    for (const [x, group] of [[-4, false], [4, true]] as const) {
+      const e = must(world.spawn({ name: group ? "sparks-r" : "sparks-l", position: { x, y: -4.4, z: 0 } }));
+      must(world.insert(e, og.ParticleSystem, { emitter: sparks, seed: 3 }));
+      if (group) must(world.insert(e, og.TimeGroup, { group: 1 }));
     }
     must(world.insert(must(world.spawn({ name: "show" })), Show));
   },
