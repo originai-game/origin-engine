@@ -39609,6 +39609,13 @@ export interface ResourceBarDesc {
    */
   readonly rates?: boolean;
   /**
+   * A game clock at the plate's end, in mono (12:34), after a hairline; null is none.
+   *
+   * @default null
+   * @unit s (seconds of simulation time)
+   */
+  readonly clock?: number | null;
+  /**
    * Opens its own anchored group there; null builds it in place.
    *
    * @default "top"
@@ -40278,6 +40285,506 @@ export interface RearViewDesc {
    * @default "top"
    */
   readonly anchor?: Anchor | null;
+}
+
+
+/**
+ * A unit or building in an RTS selection.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SelectedUnit {
+  /**
+   * Its key (its probe id).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its name (Vanguard Marine).
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Its type line under the name (Infantry).
+   *
+   * @default ""
+   */
+  readonly kind?: string;
+  /**
+   * An icon of the atlas when it has no art.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * Its portrait (art kind portrait, 1:1); null draws the icon on a gradient in a hue of its own.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * Its health.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly health?: number;
+  /**
+   * Its most health; 0 hides the bar.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly healthMax?: number;
+  /**
+   * Its shield, over the health as a thin blue bar.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly shield?: number;
+  /**
+   * Its most shield; 0 is none.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly shieldMax?: number;
+  /**
+   * Its energy, a thin violet bar under the health.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly energy?: number;
+  /**
+   * Its most energy; 0 is none.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly energyMax?: number;
+  /**
+   * Something it builds or researches, 0 to 1: a thin gold bar along the tile's foot; null is none.
+   *
+   * @default null
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly progress?: number | null;
+}
+
+/**
+ * A line of the focused unit's stats.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface UnitStat {
+  /**
+   * Its key (its probe id).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * An icon of the atlas before the label; empty is none.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * What it is (Armour).
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Its value as the game words it (8 - 10).
+   *
+   * @default ""
+   */
+  readonly value?: string;
+}
+
+/**
+ * A control group's tab over the selection.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ControlGroup {
+  /**
+   * Its key (its probe id).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * What its tab says (1).
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Units in it; 0 draws an empty tab.
+   *
+   * @default 0
+   */
+  readonly count?: number;
+}
+
+/**
+ * Something in a production queue.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface QueueItem {
+  /**
+   * Its key (its probe id).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * What it makes (Vanguard Marine).
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * An icon of the atlas when it has no art.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * Its art (art kind portrait or ability, 1:1).
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * Seconds left; only the first item counts down.
+   *
+   * @default 0
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly remaining?: number;
+  /**
+   * Its build time; the first item's bar shows remaining over it.
+   *
+   * @default 0
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly duration?: number;
+  /**
+   * How many of it are queued in this slot; over 1 shows a small count.
+   *
+   * @default 0
+   */
+  readonly count?: number;
+}
+
+/**
+ * A building's production queue.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ProductionQueueDesc {
+  /**
+   * In build order, the one being built first.
+   *
+   * @default []
+   */
+  readonly items?: readonly QueueItem[];
+  /**
+   * Slots shown (empty ones dim); 0 is 5.
+   *
+   * @default 0
+   */
+  readonly slots?: number;
+  /**
+   * Production is held (no supply, no power): the bar and its time in warn.
+   *
+   * @default false
+   */
+  readonly paused?: boolean;
+  /**
+   * What the held bar says.
+   *
+   * @default "Paused"
+   */
+  readonly pausedLabel?: string;
+  /**
+   * A queued slot's side; 0 is 40 (36 on a phone).
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly size?: number;
+  /**
+   * Opens its own anchored group there; null builds it in place (inside a selection panel).
+   *
+   * @default null
+   */
+  readonly anchor?: Anchor | null;
+}
+
+/** What a production queue answered. */
+export interface ProductionQueueResult {
+  /** The item pressed this tick to cancel it (its key). */
+  readonly cancelled: string | null;
+}
+
+
+/**
+ * An RTS selection panel.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SelectionPanelDesc {
+  /**
+   * The selection, in its order.
+   *
+   * @default []
+   */
+  readonly units?: readonly SelectedUnit[];
+  /**
+   * The unit the detail card shows (its key); empty is the first. Its tile is outlined.
+   *
+   * @default ""
+   */
+  readonly focus?: string;
+  /**
+   * Control group tabs over the panel; empty draws none.
+   *
+   * @default []
+   */
+  readonly groups?: readonly ControlGroup[];
+  /**
+   * The current group's key.
+   *
+   * @default ""
+   */
+  readonly group?: string;
+  /**
+   * The focused unit's stats in the detail card.
+   *
+   * @default []
+   */
+  readonly stats?: readonly UnitStat[];
+  /**
+   * Its attributes, a quiet line at the card's foot (Biological, Light).
+   *
+   * @default []
+   */
+  readonly tags?: readonly string[];
+  /**
+   * A building's queue, a row of small slots above the unit card while it has items (a building selected).
+   *
+   * @default null
+   */
+  readonly queue?: ProductionQueueDesc | null;
+  /**
+   * Tiles per row; 0 fits the panel (6 on a desktop, 4 on a phone).
+   *
+   * @default 0
+   */
+  readonly columns?: number;
+  /**
+   * Rows before the selection pages; 0 is 2.
+   *
+   * @default 0
+   */
+  readonly rows?: number;
+  /**
+   * The page shown, from 0.
+   *
+   * @default 0
+   */
+  readonly page?: number;
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default "bottom"
+   */
+  readonly anchor?: Anchor | null;
+}
+
+/** What a selection panel answered. */
+export interface SelectionPanelResult {
+  /** A unit's tile pressed this tick (its key): the game focuses it, or selects only it. */
+  readonly clicked: string | null;
+  /** A control group's tab pressed this tick (its key). */
+  readonly group: string | null;
+  /** A queue item pressed this tick (its key). */
+  readonly cancelled: string | null;
+}
+
+
+/**
+ * An RTS command card.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface CommandCardDesc {
+  /**
+   * The commands in reading order, each one's key its id; an empty key leaves its cell empty.
+   *
+   * @default []
+   */
+  readonly commands?: readonly AbilitySlotDesc[];
+  /**
+   * Columns; 0 is 5.
+   *
+   * @default 0
+   */
+  readonly columns?: number;
+  /**
+   * A cell's side; 0 is 56 (48 on a phone).
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly size?: number;
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default "bottomRight"
+   */
+  readonly anchor?: Anchor | null;
+}
+
+
+/**
+ * An RTS bottom console.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RtsConsoleDesc {
+  /**
+   * The minimap zone at its start; null is none.
+   *
+   * @default null
+   */
+  readonly map?: MinimapViewDesc | null;
+  /**
+   * The selection and unit card zones (its anchor is ignored).
+   *
+   * @default {}
+   */
+  readonly selection?: SelectionPanelDesc;
+  /**
+   * The command card zone at its end (its anchor is ignored).
+   *
+   * @default {}
+   */
+  readonly commands?: CommandCardDesc;
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default "bottom"
+   */
+  readonly anchor?: Anchor | null;
+}
+
+/** What an RTS console answered. */
+export interface RtsConsoleResult {
+  /** The minimap was pressed this tick (MinimapResult.clicked). */
+  readonly mapClicked: boolean;
+  /** A unit's tile pressed this tick (its key). */
+  readonly clicked: string | null;
+  /** A control group's tab pressed this tick (its key). */
+  readonly group: string | null;
+  /** A queue item pressed this tick (its key). */
+  readonly cancelled: string | null;
+  /** A command pressed and released this tick (its key). */
+  readonly command: string | null;
+  /** The commands held. */
+  readonly pressed: readonly string[];
+}
+
+
+/**
+ * An RTS drag selection.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DragSelectDesc {
+  /**
+   * It follows the pointer: a press on the scene and a drag past the threshold draws the box.
+   *
+   * @default true
+   */
+  readonly enabled?: boolean;
+  /**
+   * Where the box starts, in the surface's pixels, instead of the press (a scripted or pad selection).
+   *
+   * @default null
+   */
+  readonly from?: Vector2 | null;
+  /**
+   * Where it ends, with from.
+   *
+   * @default null
+   */
+  readonly to?: Vector2 | null;
+  /**
+   * How far a press travels before it is a drag, not a click.
+   *
+   * @default 6
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly threshold?: number;
+  /**
+   * Its colour; null is the style's highlight.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+  /**
+   * Element paths (HUD roots such as ConsoleHud) a press inside which is theirs, never the start of a box.
+   *
+   * @default []
+   */
+  readonly exclude?: readonly string[];
+}
+
+/** What a drag selection answered. */
+export interface DragSelectResult {
+  /** The box is drawn this tick. */
+  readonly dragging: boolean;
+  /** The box was let go this tick: select what lies inside x, y, width and height. */
+  readonly released: boolean;
+  /**
+   * The box's left.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly x: number;
+  /**
+   * Its top.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly y: number;
+  /**
+   * Its width.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly width: number;
+  /**
+   * Its height.
+   *
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly height: number;
 }
 
 
@@ -51746,7 +52253,7 @@ export declare namespace og {
     function judgement(id: string, desc?: JudgementDesc): void;
     /**
      * A resource bar to the bar of strategy and management games (StarCraft II, Civilization, Factorio): each resource's icon and amount counting to its value, its rate in success or danger with an up or down mark, a capacity shown as amount / cap that warns near it and flashes at it.
-     * Parts: ResourceBar.frame, ResourceBar.item[capped|near], ResourceBar.amount, ResourceBar.rate[up|down]. Accessibility: list named Resources; each item text named name with its amount and rate. Probe ids: <id>/<key>, its Amount and Rate.
+     * Parts: ResourceBar.frame, ResourceBar.item[capped|near], ResourceBar.amount, ResourceBar.rate[up|down], ResourceBar.rule (before the clock). Accessibility: list named Resources; each item text named name with its amount and rate. Probe ids: <id>/<key>, its Amount (Count/Amount and Count/Cap with a capacity) and Rate; <id>/Clock.
      *
      * @param id Its id.
      * @param desc The resources.
@@ -51808,6 +52315,46 @@ export declare namespace og {
      * @param desc What it shows and its size.
      */
     function rearView(id: string, desc?: RearViewDesc): void;
+    /**
+     * A production queue to the bar of StarCraft II and Age of Empires IV: the item being built large, its art with a gold progress bar under it and the seconds left, the queued items smaller after it in order with a count on a stacked slot, empty slots as dim sockets; paused, the bar and its time turn warn and say so; pressing an item cancels it.
+     * Parts: ProductionQueue.frame, ProductionQueue.current, ProductionQueue.bar[paused], ProductionQueue.time, ProductionQueue.item, ProductionQueue.count, ProductionQueue.empty. State groups: queue (idle, building, paused). Sounds: success when the first item completes (leaves the queue). Accessibility: list named Production queue, each item a button named by its name, the first with its seconds left. Probe ids: <id>, <id>/Current/Time, <id>/<key>, <id>/<key>/Count.
+     *
+     * @param id Its id.
+     * @param desc What it builds.
+     */
+    function productionQueue(id: string, desc?: ProductionQueueDesc): ProductionQueueResult;
+    /**
+     * A selection panel to the bar of StarCraft II, Age of Empires IV and Company of Heroes: control group tabs over one panel of the style's HUD glass; the selection as a grid of portrait tiles, each with its health (green to amber to red as it falls), shield and energy as slim bars under its art and a gold progress line when it builds; the focused tile outlined; a selection larger than the grid pages, a count of what is left in the last tile; beside it a unit card for the focused unit (its portrait at full height, its name at the heading step and its type muted, its health numeral over a bar, its stats in rows of icon, label and tabular value, and its attributes in a muted line at the foot); a building with a queue shows the queue as a row of small slots above the card. Built in place (anchor null, as rtsConsole does) it draws no panel of its own. A phone drops the unit card to a single line under the tiles.
+     * Parts: SelectionPanel.frame, SelectionPanel.tab[current][empty], SelectionPanel.tile[focused], SelectionPanel.health[low|critical], SelectionPanel.shield, SelectionPanel.energy, SelectionPanel.progress, SelectionPanel.more, SelectionPanel.detail, SelectionPanel.portrait, SelectionPanel.name, SelectionPanel.kind, SelectionPanel.stat, SelectionPanel.tags, SelectionPanel.rule. State groups: selection (empty, single, many) on the panel. Accessibility: group named Selection; each tile a button named by its unit with its health; each tab a tab with its count. Probe ids: <id>, <id>/Tabs/<key>, <id>/Body/Tiles/<key>, <id>/Body/Detail/Name, <id>/Body/Detail/Health/Value, <id>/Body/Detail/Stats/<key>/Value.
+     *
+     * @param id Its id.
+     * @param desc The selection.
+     */
+    function selectionPanel(id: string, desc?: SelectionPanelDesc): SelectionPanelResult;
+    /**
+     * A command card to the bar of StarCraft II and Age of Empires IV: a grid of ability slots (abilitySlot, with its cooldowns, costs, charges and states) on one panel of the style's HUD glass (none when built in place), each with its hotkey a small muted letter in its top-left corner as grid layouts print it, empty cells the panel's well so the grid's places stay fixed.
+     * Parts: CommandCard.frame, CommandCard.empty, CommandCard.key and each slot's. Accessibility: group named Commands. Probe ids: <id>, <id>/<key>, <id>/<key>/Slot/Key.
+     *
+     * @param id Its id.
+     * @param desc The commands.
+     */
+    function commandCard(id: string, desc?: CommandCardDesc): AbilityBarResult;
+    /**
+     * An RTS bottom console to the bar of StarCraft II and Age of Empires IV: one continuous panel of the style's HUD glass along the bottom with four zones divided by hairlines, the minimap (minimapView, without its own bezel), the selection with its control group tabs over it, the focused unit's card with a building's queue above it (selectionPanel), and the command card (commandCard); every zone the same height. A screen too narrow for the four (a phone) drops the unit card to its line and the minimap to the game's corner, then stacks the command card over the selection.
+     * Parts: RtsConsole.frame, RtsConsole.rule, and each zone's. Accessibility: group named Console. Probe ids: <id>, <id>/Map (the minimap's ids under it), <id>/Selection (selectionPanel's), <id>/Commands (commandCard's).
+     *
+     * @param id Its id.
+     * @param desc Its zones.
+     */
+    function rtsConsole(id: string, desc?: RtsConsoleDesc): RtsConsoleResult;
+    /**
+     * A drag-selection box to the bar of StarCraft II and Age of Empires IV: a thin bright edge over a faint fill of the style's highlight with small corner ticks, drawn from the press to the pointer once it travels past the threshold, answered as a rectangle the tick it is let go. A press on a HUD element is the element's, never a selection.
+     * Parts: DragSelect.box, DragSelect.corner. Accessibility: none (the selection it makes is the game's). Probe ids: <id>.
+     *
+     * @param id Its id.
+     * @param desc Where it follows from.
+     */
+    function dragSelect(id: string, desc?: DragSelectDesc): DragSelectResult;
     /**
      * Damage direction to the bar of Call of Duty and Apex: a curved wedge round the centre toward each hit's source, wider and brighter for a harder hit, flaring in and fading over its time; the newest hits over the older.
      * Parts: DamageDirection.wedge. Accessibility: none (the game announces damage). Probe ids: <id>, <id>/Hit#i.

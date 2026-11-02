@@ -11664,6 +11664,19 @@
         "StandingsTowerDesc",
         "LapTimerDesc",
         "RearViewDesc",
+        "SelectedUnit",
+        "UnitStat",
+        "ControlGroup",
+        "QueueItem",
+        "ProductionQueueDesc",
+        "ProductionQueueResult",
+        "SelectionPanelDesc",
+        "SelectionPanelResult",
+        "CommandCardDesc",
+        "RtsConsoleDesc",
+        "RtsConsoleResult",
+        "DragSelectDesc",
+        "DragSelectResult",
         "DamageHit",
         "DamageDirectionDesc",
         "LowHealthDesc",
@@ -16717,7 +16730,7 @@
         },
         {
           "name": "resourceBar",
-          "doc": "A resource bar to the bar of strategy and management games (StarCraft II, Civilization, Factorio): each resource's icon and amount counting to its value, its rate in success or danger with an up or down mark, a capacity shown as amount / cap that warns near it and flashes at it.\nParts: ResourceBar.frame, ResourceBar.item[capped|near], ResourceBar.amount, ResourceBar.rate[up|down]. Accessibility: list named Resources; each item text named name with its amount and rate. Probe ids: <id>/<key>, its Amount and Rate.",
+          "doc": "A resource bar to the bar of strategy and management games (StarCraft II, Civilization, Factorio): each resource's icon and amount counting to its value, its rate in success or danger with an up or down mark, a capacity shown as amount / cap that warns near it and flashes at it.\nParts: ResourceBar.frame, ResourceBar.item[capped|near], ResourceBar.amount, ResourceBar.rate[up|down], ResourceBar.rule (before the clock). Accessibility: list named Resources; each item text named name with its amount and rate. Probe ids: <id>/<key>, its Amount (Count/Amount and Count/Cap with a capacity) and Rate; <id>/Clock.",
           "params": [
             {
               "name": "id",
@@ -16880,6 +16893,111 @@
             }
           ],
           "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "productionQueue",
+          "doc": "A production queue to the bar of StarCraft II and Age of Empires IV: the item being built large, its art with a gold progress bar under it and the seconds left, the queued items smaller after it in order with a count on a stacked slot, empty slots as dim sockets; paused, the bar and its time turn warn and say so; pressing an item cancels it.\nParts: ProductionQueue.frame, ProductionQueue.current, ProductionQueue.bar[paused], ProductionQueue.time, ProductionQueue.item, ProductionQueue.count, ProductionQueue.empty. State groups: queue (idle, building, paused). Sounds: success when the first item completes (leaves the queue). Accessibility: list named Production queue, each item a button named by its name, the first with its seconds left. Probe ids: <id>, <id>/Current/Time, <id>/<key>, <id>/<key>/Count.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "ProductionQueueDesc",
+              "optional": true,
+              "doc": "What it builds."
+            }
+          ],
+          "returns": "ProductionQueueResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "selectionPanel",
+          "doc": "A selection panel to the bar of StarCraft II, Age of Empires IV and Company of Heroes: control group tabs over one panel of the style's HUD glass; the selection as a grid of portrait tiles, each with its health (green to amber to red as it falls), shield and energy as slim bars under its art and a gold progress line when it builds; the focused tile outlined; a selection larger than the grid pages, a count of what is left in the last tile; beside it a unit card for the focused unit (its portrait at full height, its name at the heading step and its type muted, its health numeral over a bar, its stats in rows of icon, label and tabular value, and its attributes in a muted line at the foot); a building with a queue shows the queue as a row of small slots above the card. Built in place (anchor null, as rtsConsole does) it draws no panel of its own. A phone drops the unit card to a single line under the tiles.\nParts: SelectionPanel.frame, SelectionPanel.tab[current][empty], SelectionPanel.tile[focused], SelectionPanel.health[low|critical], SelectionPanel.shield, SelectionPanel.energy, SelectionPanel.progress, SelectionPanel.more, SelectionPanel.detail, SelectionPanel.portrait, SelectionPanel.name, SelectionPanel.kind, SelectionPanel.stat, SelectionPanel.tags, SelectionPanel.rule. State groups: selection (empty, single, many) on the panel. Accessibility: group named Selection; each tile a button named by its unit with its health; each tab a tab with its count. Probe ids: <id>, <id>/Tabs/<key>, <id>/Body/Tiles/<key>, <id>/Body/Detail/Name, <id>/Body/Detail/Health/Value, <id>/Body/Detail/Stats/<key>/Value.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "SelectionPanelDesc",
+              "optional": true,
+              "doc": "The selection."
+            }
+          ],
+          "returns": "SelectionPanelResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "commandCard",
+          "doc": "A command card to the bar of StarCraft II and Age of Empires IV: a grid of ability slots (abilitySlot, with its cooldowns, costs, charges and states) on one panel of the style's HUD glass (none when built in place), each with its hotkey a small muted letter in its top-left corner as grid layouts print it, empty cells the panel's well so the grid's places stay fixed.\nParts: CommandCard.frame, CommandCard.empty, CommandCard.key and each slot's. Accessibility: group named Commands. Probe ids: <id>, <id>/<key>, <id>/<key>/Slot/Key.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "CommandCardDesc",
+              "optional": true,
+              "doc": "The commands."
+            }
+          ],
+          "returns": "AbilityBarResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "rtsConsole",
+          "doc": "An RTS bottom console to the bar of StarCraft II and Age of Empires IV: one continuous panel of the style's HUD glass along the bottom with four zones divided by hairlines, the minimap (minimapView, without its own bezel), the selection with its control group tabs over it, the focused unit's card with a building's queue above it (selectionPanel), and the command card (commandCard); every zone the same height. A screen too narrow for the four (a phone) drops the unit card to its line and the minimap to the game's corner, then stacks the command card over the selection.\nParts: RtsConsole.frame, RtsConsole.rule, and each zone's. Accessibility: group named Console. Probe ids: <id>, <id>/Map (the minimap's ids under it), <id>/Selection (selectionPanel's), <id>/Commands (commandCard's).",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "RtsConsoleDesc",
+              "optional": true,
+              "doc": "Its zones."
+            }
+          ],
+          "returns": "RtsConsoleResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "dragSelect",
+          "doc": "A drag-selection box to the bar of StarCraft II and Age of Empires IV: a thin bright edge over a faint fill of the style's highlight with small corner ticks, drawn from the press to the pointer once it travels past the threshold, answered as a rectangle the tick it is let go. A press on a HUD element is the element's, never a selection.\nParts: DragSelect.box, DragSelect.corner. Accessibility: none (the selection it makes is the game's). Probe ids: <id>.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "DragSelectDesc",
+              "optional": true,
+              "doc": "Where it follows from."
+            }
+          ],
+          "returns": "DragSelectResult",
           "publish": true,
           "host": false
         },
@@ -67810,6 +67928,19 @@
           "description": "Show rates (the default).",
           "default": true
         },
+        "clock": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A game clock at the plate's end, in mono (12:34), after a hairline; null is none.",
+          "default": null,
+          "x-og-unit": "s"
+        },
         "anchor": {
           "anyOf": [
             {
@@ -68555,6 +68686,695 @@
           "default": "top"
         }
       },
+      "additionalProperties": false
+    },
+    "SelectedUnit": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A unit or building in an RTS selection.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key (its probe id).",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name (Vanguard Marine).",
+          "default": ""
+        },
+        "kind": {
+          "type": "string",
+          "description": "Its type line under the name (Infantry).",
+          "default": ""
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon of the atlas when it has no art.",
+          "default": ""
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its portrait (art kind portrait, 1:1); null draws the icon on a gradient in a hue of its own.",
+          "default": null
+        },
+        "health": {
+          "type": "number",
+          "description": "Its health.",
+          "default": 0,
+          "minimum": 0
+        },
+        "healthMax": {
+          "type": "number",
+          "description": "Its most health; 0 hides the bar.",
+          "default": 0,
+          "minimum": 0
+        },
+        "shield": {
+          "type": "number",
+          "description": "Its shield, over the health as a thin blue bar.",
+          "default": 0,
+          "minimum": 0
+        },
+        "shieldMax": {
+          "type": "number",
+          "description": "Its most shield; 0 is none.",
+          "default": 0,
+          "minimum": 0
+        },
+        "energy": {
+          "type": "number",
+          "description": "Its energy, a thin violet bar under the health.",
+          "default": 0,
+          "minimum": 0
+        },
+        "energyMax": {
+          "type": "number",
+          "description": "Its most energy; 0 is none.",
+          "default": 0,
+          "minimum": 0
+        },
+        "progress": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Something it builds or researches, 0 to 1: a thin gold bar along the tile's foot; null is none.",
+          "default": null,
+          "x-og-unit": "ratio"
+        }
+      },
+      "additionalProperties": false
+    },
+    "UnitStat": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A line of the focused unit's stats.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key (its probe id).",
+          "default": ""
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon of the atlas before the label; empty is none.",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "What it is (Armour).",
+          "default": ""
+        },
+        "value": {
+          "type": "string",
+          "description": "Its value as the game words it (8 - 10).",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "ControlGroup": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A control group's tab over the selection.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key (its probe id).",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "What its tab says (1).",
+          "default": ""
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Units in it; 0 draws an empty tab.",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "QueueItem": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "Something in a production queue.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key (its probe id).",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "What it makes (Vanguard Marine).",
+          "default": ""
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon of the atlas when it has no art.",
+          "default": ""
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its art (art kind portrait or ability, 1:1).",
+          "default": null
+        },
+        "remaining": {
+          "type": "number",
+          "description": "Seconds left; only the first item counts down.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "duration": {
+          "type": "number",
+          "description": "Its build time; the first item's bar shows remaining over it.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many of it are queued in this slot; over 1 shows a small count.",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "ProductionQueueDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A building's production queue.",
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/QueueItem"
+          },
+          "description": "In build order, the one being built first.",
+          "default": []
+        },
+        "slots": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Slots shown (empty ones dim); 0 is 5.",
+          "default": 0
+        },
+        "paused": {
+          "type": "boolean",
+          "description": "Production is held (no supply, no power): the bar and its time in warn.",
+          "default": false
+        },
+        "pausedLabel": {
+          "type": "string",
+          "description": "What the held bar says.",
+          "default": "Paused"
+        },
+        "size": {
+          "type": "number",
+          "description": "A queued slot's side; 0 is 40 (36 on a phone).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place (inside a selection panel).",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "ProductionQueueResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What a production queue answered.",
+      "type": "object",
+      "properties": {
+        "cancelled": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The item pressed this tick to cancel it (its key)."
+        }
+      },
+      "required": [
+        "cancelled"
+      ],
+      "additionalProperties": false
+    },
+    "SelectionPanelDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An RTS selection panel.",
+      "type": "object",
+      "properties": {
+        "units": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SelectedUnit"
+          },
+          "description": "The selection, in its order.",
+          "default": []
+        },
+        "focus": {
+          "type": "string",
+          "description": "The unit the detail card shows (its key); empty is the first. Its tile is outlined.",
+          "default": ""
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ControlGroup"
+          },
+          "description": "Control group tabs over the panel; empty draws none.",
+          "default": []
+        },
+        "group": {
+          "type": "string",
+          "description": "The current group's key.",
+          "default": ""
+        },
+        "stats": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/UnitStat"
+          },
+          "description": "The focused unit's stats in the detail card.",
+          "default": []
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Its attributes, a quiet line at the card's foot (Biological, Light).",
+          "default": []
+        },
+        "queue": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProductionQueueDesc"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A building's queue, a row of small slots above the unit card while it has items (a building selected).",
+          "default": null
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Tiles per row; 0 fits the panel (6 on a desktop, 4 on a phone).",
+          "default": 0
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Rows before the selection pages; 0 is 2.",
+          "default": 0
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The page shown, from 0.",
+          "default": 0
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": "bottom"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SelectionPanelResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What a selection panel answered.",
+      "type": "object",
+      "properties": {
+        "clicked": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A unit's tile pressed this tick (its key): the game focuses it, or selects only it."
+        },
+        "group": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A control group's tab pressed this tick (its key)."
+        },
+        "cancelled": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A queue item pressed this tick (its key)."
+        }
+      },
+      "required": [
+        "clicked",
+        "group",
+        "cancelled"
+      ],
+      "additionalProperties": false
+    },
+    "CommandCardDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An RTS command card.",
+      "type": "object",
+      "properties": {
+        "commands": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AbilitySlotDesc"
+          },
+          "description": "The commands in reading order, each one's key its id; an empty key leaves its cell empty.",
+          "default": []
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Columns; 0 is 5.",
+          "default": 0
+        },
+        "size": {
+          "type": "number",
+          "description": "A cell's side; 0 is 56 (48 on a phone).",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": "bottomRight"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RtsConsoleDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An RTS bottom console.",
+      "type": "object",
+      "properties": {
+        "map": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MinimapViewDesc"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The minimap zone at its start; null is none.",
+          "default": null
+        },
+        "selection": {
+          "$ref": "#/$defs/SelectionPanelDesc",
+          "description": "The selection and unit card zones (its anchor is ignored).",
+          "default": {}
+        },
+        "commands": {
+          "$ref": "#/$defs/CommandCardDesc",
+          "description": "The command card zone at its end (its anchor is ignored).",
+          "default": {}
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": "bottom"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RtsConsoleResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What an RTS console answered.",
+      "type": "object",
+      "properties": {
+        "mapClicked": {
+          "type": "boolean",
+          "description": "The minimap was pressed this tick (MinimapResult.clicked)."
+        },
+        "clicked": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A unit's tile pressed this tick (its key)."
+        },
+        "group": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A control group's tab pressed this tick (its key)."
+        },
+        "cancelled": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A queue item pressed this tick (its key)."
+        },
+        "command": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A command pressed and released this tick (its key)."
+        },
+        "pressed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The commands held."
+        }
+      },
+      "required": [
+        "mapClicked",
+        "clicked",
+        "group",
+        "cancelled",
+        "command",
+        "pressed"
+      ],
+      "additionalProperties": false
+    },
+    "DragSelectDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "An RTS drag selection.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "It follows the pointer: a press on the scene and a drag past the threshold draws the box.",
+          "default": true
+        },
+        "from": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Vector2"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Where the box starts, in the surface's pixels, instead of the press (a scripted or pad selection).",
+          "default": null
+        },
+        "to": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Vector2"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Where it ends, with from.",
+          "default": null
+        },
+        "threshold": {
+          "type": "number",
+          "description": "How far a press travels before it is a drag, not a click.",
+          "default": 6,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its colour; null is the style's highlight.",
+          "default": null
+        },
+        "exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Element paths (HUD roots such as ConsoleHud) a press inside which is theirs, never the start of a box.",
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "DragSelectResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What a drag selection answered.",
+      "type": "object",
+      "properties": {
+        "dragging": {
+          "type": "boolean",
+          "description": "The box is drawn this tick."
+        },
+        "released": {
+          "type": "boolean",
+          "description": "The box was let go this tick: select what lies inside x, y, width and height."
+        },
+        "x": {
+          "type": "number",
+          "description": "The box's left.",
+          "x-og-unit": "cssPx"
+        },
+        "y": {
+          "type": "number",
+          "description": "Its top.",
+          "x-og-unit": "cssPx"
+        },
+        "width": {
+          "type": "number",
+          "description": "Its width.",
+          "x-og-unit": "cssPx"
+        },
+        "height": {
+          "type": "number",
+          "description": "Its height.",
+          "x-og-unit": "cssPx"
+        }
+      },
+      "required": [
+        "dragging",
+        "released",
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
       "additionalProperties": false
     },
     "DamageHit": {

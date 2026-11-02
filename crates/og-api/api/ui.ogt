@@ -8744,6 +8744,9 @@ module ui {
     field rates bool "Show rates (the default)." {
       default true
     }
+    field clock Option.f32 "A game clock at the plate's end, in mono (12:34), after a hairline; null is none." {
+      unit s
+    }
     field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
       default top
     }
@@ -8751,7 +8754,7 @@ module ui {
 
   fn resourceBar {
     doc "A resource bar to the bar of strategy and management games (StarCraft II, Civilization, Factorio): each resource's icon and amount counting to its value, its rate in success or danger with an up or down mark, a capacity shown as amount / cap that warns near it and flashes at it."
-    doc "Parts: ResourceBar.frame, ResourceBar.item[capped|near], ResourceBar.amount, ResourceBar.rate[up|down]. Accessibility: list named Resources; each item text named name with its amount and rate. Probe ids: <id>/<key>, its Amount and Rate."
+    doc "Parts: ResourceBar.frame, ResourceBar.item[capped|near], ResourceBar.amount, ResourceBar.rate[up|down], ResourceBar.rule (before the clock). Accessibility: list named Resources; each item text named name with its amount and rate. Probe ids: <id>/<key>, its Amount (Count/Amount and Count/Cap with a capacity) and Rate; <id>/Clock."
     host false
     param id String "Its id."
     param desc ResourceBarDesc "The resources."
@@ -9063,6 +9066,233 @@ module ui {
     param id String "Its id."
     param desc RearViewDesc "What it shows and its size."
     returns Void
+  }
+
+  struct SelectedUnit {
+    doc "A unit or building in an RTS selection."
+    desc true
+    field key String "Its key (its probe id)."
+    field name String "Its name (Vanguard Marine)."
+    field kind String "Its type line under the name (Infantry)."
+    field icon String "An icon of the atlas when it has no art."
+    field image Option.Texture "Its portrait (art kind portrait, 1:1); null draws the icon on a gradient in a hue of its own."
+    field health f32 "Its health." {
+      min 0
+    }
+    field healthMax f32 "Its most health; 0 hides the bar." {
+      min 0
+    }
+    field shield f32 "Its shield, over the health as a thin blue bar." {
+      min 0
+    }
+    field shieldMax f32 "Its most shield; 0 is none." {
+      min 0
+    }
+    field energy f32 "Its energy, a thin violet bar under the health." {
+      min 0
+    }
+    field energyMax f32 "Its most energy; 0 is none." {
+      min 0
+    }
+    field progress Option.f32 "Something it builds or researches, 0 to 1: a thin gold bar along the tile's foot; null is none." {
+      unit ratio
+    }
+  }
+
+  struct UnitStat {
+    doc "A line of the focused unit's stats."
+    desc true
+    field key String "Its key (its probe id)."
+    field icon String "An icon of the atlas before the label; empty is none."
+    field label String "What it is (Armour)."
+    field value String "Its value as the game words it (8 - 10)."
+  }
+
+  struct ControlGroup {
+    doc "A control group's tab over the selection."
+    desc true
+    field key String "Its key (its probe id)."
+    field label String "What its tab says (1)."
+    field count u32 "Units in it; 0 draws an empty tab."
+  }
+
+  struct QueueItem {
+    doc "Something in a production queue."
+    desc true
+    field key String "Its key (its probe id)."
+    field name String "What it makes (Vanguard Marine)."
+    field icon String "An icon of the atlas when it has no art."
+    field image Option.Texture "Its art (art kind portrait or ability, 1:1)."
+    field remaining f32 "Seconds left; only the first item counts down." {
+      min 0
+      unit s
+    }
+    field duration f32 "Its build time; the first item's bar shows remaining over it." {
+      min 0
+      unit s
+    }
+    field count u32 "How many of it are queued in this slot; over 1 shows a small count."
+  }
+
+  struct ProductionQueueDesc {
+    doc "A building's production queue."
+    desc true
+    field items List.QueueItem "In build order, the one being built first."
+    field slots u32 "Slots shown (empty ones dim); 0 is 5."
+    field paused bool "Production is held (no supply, no power): the bar and its time in warn."
+    field pausedLabel String "What the held bar says." {
+      default "Paused"
+    }
+    field size f32 "A queued slot's side; 0 is 40 (36 on a phone)." {
+      min 0
+      unit cssPx
+    }
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place (inside a selection panel)."
+  }
+
+  struct ProductionQueueResult {
+    doc "What a production queue answered."
+    field cancelled Option.String "The item pressed this tick to cancel it (its key)."
+  }
+
+  fn productionQueue {
+    doc "A production queue to the bar of StarCraft II and Age of Empires IV: the item being built large, its art with a gold progress bar under it and the seconds left, the queued items smaller after it in order with a count on a stacked slot, empty slots as dim sockets; paused, the bar and its time turn warn and say so; pressing an item cancels it."
+    doc "Parts: ProductionQueue.frame, ProductionQueue.current, ProductionQueue.bar[paused], ProductionQueue.time, ProductionQueue.item, ProductionQueue.count, ProductionQueue.empty. State groups: queue (idle, building, paused). Sounds: success when the first item completes (leaves the queue). Accessibility: list named Production queue, each item a button named by its name, the first with its seconds left. Probe ids: <id>, <id>/Current/Time, <id>/<key>, <id>/<key>/Count."
+    host false
+    param id String "Its id."
+    param desc ProductionQueueDesc "What it builds."
+    returns ProductionQueueResult
+  }
+
+  struct SelectionPanelDesc {
+    doc "An RTS selection panel."
+    desc true
+    field units List.SelectedUnit "The selection, in its order."
+    field focus String "The unit the detail card shows (its key); empty is the first. Its tile is outlined."
+    field groups List.ControlGroup "Control group tabs over the panel; empty draws none."
+    field group String "The current group's key."
+    field stats List.UnitStat "The focused unit's stats in the detail card."
+    field tags List.String "Its attributes, a quiet line at the card's foot (Biological, Light)."
+    field queue Option.ProductionQueueDesc "A building's queue, a row of small slots above the unit card while it has items (a building selected)."
+    field columns u32 "Tiles per row; 0 fits the panel (6 on a desktop, 4 on a phone)."
+    field rows u32 "Rows before the selection pages; 0 is 2."
+    field page u32 "The page shown, from 0."
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
+      default bottom
+    }
+  }
+
+  struct SelectionPanelResult {
+    doc "What a selection panel answered."
+    field clicked Option.String "A unit's tile pressed this tick (its key): the game focuses it, or selects only it."
+    field group Option.String "A control group's tab pressed this tick (its key)."
+    field cancelled Option.String "A queue item pressed this tick (its key)."
+  }
+
+  fn selectionPanel {
+    doc "A selection panel to the bar of StarCraft II, Age of Empires IV and Company of Heroes: control group tabs over one panel of the style's HUD glass; the selection as a grid of portrait tiles, each with its health (green to amber to red as it falls), shield and energy as slim bars under its art and a gold progress line when it builds; the focused tile outlined; a selection larger than the grid pages, a count of what is left in the last tile; beside it a unit card for the focused unit (its portrait at full height, its name at the heading step and its type muted, its health numeral over a bar, its stats in rows of icon, label and tabular value, and its attributes in a muted line at the foot); a building with a queue shows the queue as a row of small slots above the card. Built in place (anchor null, as rtsConsole does) it draws no panel of its own. A phone drops the unit card to a single line under the tiles."
+    doc "Parts: SelectionPanel.frame, SelectionPanel.tab[current][empty], SelectionPanel.tile[focused], SelectionPanel.health[low|critical], SelectionPanel.shield, SelectionPanel.energy, SelectionPanel.progress, SelectionPanel.more, SelectionPanel.detail, SelectionPanel.portrait, SelectionPanel.name, SelectionPanel.kind, SelectionPanel.stat, SelectionPanel.tags, SelectionPanel.rule. State groups: selection (empty, single, many) on the panel. Accessibility: group named Selection; each tile a button named by its unit with its health; each tab a tab with its count. Probe ids: <id>, <id>/Tabs/<key>, <id>/Body/Tiles/<key>, <id>/Body/Detail/Name, <id>/Body/Detail/Health/Value, <id>/Body/Detail/Stats/<key>/Value."
+    host false
+    param id String "Its id."
+    param desc SelectionPanelDesc "The selection."
+    returns SelectionPanelResult
+  }
+
+  struct CommandCardDesc {
+    doc "An RTS command card."
+    desc true
+    field commands List.AbilitySlotDesc "The commands in reading order, each one's key its id; an empty key leaves its cell empty."
+    field columns u32 "Columns; 0 is 5."
+    field size f32 "A cell's side; 0 is 56 (48 on a phone)." {
+      min 0
+      unit cssPx
+    }
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
+      default bottomRight
+    }
+  }
+
+  fn commandCard {
+    doc "A command card to the bar of StarCraft II and Age of Empires IV: a grid of ability slots (abilitySlot, with its cooldowns, costs, charges and states) on one panel of the style's HUD glass (none when built in place), each with its hotkey a small muted letter in its top-left corner as grid layouts print it, empty cells the panel's well so the grid's places stay fixed."
+    doc "Parts: CommandCard.frame, CommandCard.empty, CommandCard.key and each slot's. Accessibility: group named Commands. Probe ids: <id>, <id>/<key>, <id>/<key>/Slot/Key."
+    host false
+    param id String "Its id."
+    param desc CommandCardDesc "The commands."
+    returns AbilityBarResult
+  }
+
+  struct RtsConsoleDesc {
+    doc "An RTS bottom console."
+    desc true
+    field map Option.MinimapViewDesc "The minimap zone at its start; null is none."
+    field selection SelectionPanelDesc "The selection and unit card zones (its anchor is ignored)."
+    field commands CommandCardDesc "The command card zone at its end (its anchor is ignored)."
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
+      default bottom
+    }
+  }
+
+  struct RtsConsoleResult {
+    doc "What an RTS console answered."
+    field mapClicked bool "The minimap was pressed this tick (MinimapResult.clicked)."
+    field clicked Option.String "A unit's tile pressed this tick (its key)."
+    field group Option.String "A control group's tab pressed this tick (its key)."
+    field cancelled Option.String "A queue item pressed this tick (its key)."
+    field command Option.String "A command pressed and released this tick (its key)."
+    field pressed List.String "The commands held."
+  }
+
+  fn rtsConsole {
+    doc "An RTS bottom console to the bar of StarCraft II and Age of Empires IV: one continuous panel of the style's HUD glass along the bottom with four zones divided by hairlines, the minimap (minimapView, without its own bezel), the selection with its control group tabs over it, the focused unit's card with a building's queue above it (selectionPanel), and the command card (commandCard); every zone the same height. A screen too narrow for the four (a phone) drops the unit card to its line and the minimap to the game's corner, then stacks the command card over the selection."
+    doc "Parts: RtsConsole.frame, RtsConsole.rule, and each zone's. Accessibility: group named Console. Probe ids: <id>, <id>/Map (the minimap's ids under it), <id>/Selection (selectionPanel's), <id>/Commands (commandCard's)."
+    host false
+    param id String "Its id."
+    param desc RtsConsoleDesc "Its zones."
+    returns RtsConsoleResult
+  }
+
+  struct DragSelectDesc {
+    doc "An RTS drag selection."
+    desc true
+    field enabled bool "It follows the pointer: a press on the scene and a drag past the threshold draws the box." {
+      default true
+    }
+    field from Option.Vector2 "Where the box starts, in the surface's pixels, instead of the press (a scripted or pad selection)."
+    field to Option.Vector2 "Where it ends, with from."
+    field threshold f32 "How far a press travels before it is a drag, not a click." {
+      default 6
+      min 0
+      unit cssPx
+    }
+    field color Option.Paint "Its colour; null is the style's highlight."
+    field exclude List.String "Element paths (HUD roots such as ConsoleHud) a press inside which is theirs, never the start of a box."
+  }
+
+  struct DragSelectResult {
+    doc "What a drag selection answered."
+    field dragging bool "The box is drawn this tick."
+    field released bool "The box was let go this tick: select what lies inside x, y, width and height."
+    field x f32 "The box's left." {
+      unit cssPx
+    }
+    field y f32 "Its top." {
+      unit cssPx
+    }
+    field width f32 "Its width." {
+      unit cssPx
+    }
+    field height f32 "Its height." {
+      unit cssPx
+    }
+  }
+
+  fn dragSelect {
+    doc "A drag-selection box to the bar of StarCraft II and Age of Empires IV: a thin bright edge over a faint fill of the style's highlight with small corner ticks, drawn from the press to the pointer once it travels past the threshold, answered as a rectangle the tick it is let go. A press on a HUD element is the element's, never a selection."
+    doc "Parts: DragSelect.box, DragSelect.corner. Accessibility: none (the selection it makes is the game's). Probe ids: <id>."
+    host false
+    param id String "Its id."
+    param desc DragSelectDesc "Where it follows from."
+    returns DragSelectResult
   }
 
   struct DamageHit {
