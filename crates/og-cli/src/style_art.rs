@@ -75,9 +75,13 @@ enum Target {
     Button(&'static str),
     /// An ornament line of the style (`corner`, `divider`, `flourish`).
     Ornament(&'static str),
+    /// A widget's piece drawn whole in its box (a slider's thumb, a
+    /// switch's knob): painted on a clear ground like an ornament, packed
+    /// as its dressing's slice with one-px corners, so it scales as one.
+    Piece(&'static str),
 }
 
-const DEFAULTS: [Default; 13] = [
+const DEFAULTS: [Default; 16] = [
     Default {
         part: "panel",
         target: Target::Frame("Panel.frame"),
@@ -157,6 +161,27 @@ const DEFAULTS: [Default; 13] = [
         target: Target::Ornament("edge"),
         size: [16, 64],
         insets: [0; 4],
+    },
+    // A slider's thumb and a switch's knob, on and off: a non-text graphic
+    // at 3:1 against its track and the panel, in its own colours (not the
+    // `knob` a segmented control's selected tab shares).
+    Default {
+        part: "thumb",
+        target: Target::Piece("Slider.knob"),
+        size: [24, 24],
+        insets: [1, 1, 1, 1],
+    },
+    Default {
+        part: "knob",
+        target: Target::Piece("Toggle.knob[on]"),
+        size: [24, 24],
+        insets: [1, 1, 1, 1],
+    },
+    Default {
+        part: "knob-off",
+        target: Target::Piece("Toggle.knob[off]"),
+        size: [24, 24],
+        insets: [1, 1, 1, 1],
     },
 ];
 
@@ -543,7 +568,7 @@ fn complete_requests(old: &Json, name: &str, doc: &Document) -> (Json, Vec<Slot>
             let kind = match d.target {
                 Target::Frame(_) => "styleFrame",
                 Target::Button(_) => "styleButton",
-                Target::Ornament(_) => "ornament",
+                Target::Ornament(_) | Target::Piece(_) => "ornament",
             };
             list.push(json!({ "name": named, "kind": kind }));
         }
@@ -609,7 +634,7 @@ fn complete_requests(old: &Json, name: &str, doc: &Document) -> (Json, Vec<Slot>
                 .filter(|(_, v)| !v.is_empty())
                 .collect(),
             None => match d.target {
-                Target::Frame(sel) => vec![(0, sel.to_string())],
+                Target::Frame(sel) | Target::Piece(sel) => vec![(0, sel.to_string())],
                 Target::Button(sel) => BUTTON_STATES
                     .iter()
                     .enumerate()
@@ -625,7 +650,8 @@ fn complete_requests(old: &Json, name: &str, doc: &Document) -> (Json, Vec<Slot>
         let file = format!("art/{part}.png");
         o.insert("file".into(), json!(file));
         o.insert("size".into(), json!(size));
-        if !matches!(d.target, Target::Ornament(_)) {
+        // A piece is painted whole: its brief carries no nine-slice.
+        if matches!(d.target, Target::Frame(_) | Target::Button(_)) {
             o.insert("insets".into(), json!(insets));
         }
         o.insert("states".into(), json!(states));
@@ -717,7 +743,7 @@ fn convert(
     let [w, h] = s.size;
     let size = if (got / cell_aspect - 1.0).abs() <= 0.12 {
         s.size
-    } else if matches!(s.target, Target::Ornament(_)) == (got > cell_aspect) {
+    } else if matches!(s.target, Target::Ornament(_) | Target::Piece(_)) == (got > cell_aspect) {
         [w, ((f64::from(w) / got).round() as u32).max(1)]
     } else {
         [((f64::from(h) * got).round() as u32).max(1), h]
@@ -1030,7 +1056,7 @@ fn packed_style(mut doc: Document, pieces: &[Piece], slots: &[Slot], size: (u32,
                     }
                 }
             }
-            Target::Frame(_) | Target::Button(_) => {
+            Target::Frame(_) | Target::Button(_) | Target::Piece(_) => {
                 let i = match body.entries.iter().position(|e| {
                     e.key == "dress" && e.values.first().and_then(Value::as_str) == Some(&p.to)
                 }) {
