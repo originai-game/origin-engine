@@ -18,8 +18,8 @@
 //   project: { id, entry, bundleSha256 }, seed, clock, locale, commands,
 //   ticks, startTick, table, hashes, keyframes: [{ tick, save }] }. `table`
 //   is every type with its fields the run registered: the hash's domain.
-//   `bundleSha256` is the bundle's with the machine's paths left out
-//   (bundleHash): a change of it is a change of the game, not the engine.
+//   `bundleSha256` is the bundle's with the machine left out
+//   (bundle-hash.ts): a change of it is a change of the game, not the engine.
 // - --compare replays the trace's script, seed, clock and locale and hashes
 //   each tick within the trace's table, so what a newer engine added is left
 //   out and what it removed differs. At the first keyframe at or after the
@@ -33,11 +33,11 @@
 // a usage error.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve, sep } from "node:path";
-import { createHash } from "node:crypto";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { loadNativeHost, native } from "./index.ts";
 import { openAudio } from "./audio.ts";
+import { bundleHash } from "./bundle-hash.ts";
 import { nativePlatform } from "./platform.ts";
 import { createEngine, fixedClock, type Engine, type GameToken } from "../runtime.ts";
 
@@ -145,17 +145,6 @@ const extras = native();
  * imports spell the path as a string literal: on Windows each `\` is doubled,
  * and the rest of the path to the closing quote takes `/` as on POSIX.
  */
-function bundleHash(file: string): string {
-  const pkg = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
-  const text = readFileSync(file, "utf8")
-    .split(JSON.stringify(pkg + sep).slice(1, -1))
-    .map((part, i) => (i === 0 ? part : part.replace(/^[^"]*/, (rest) => rest.replaceAll("\\\\", "/"))))
-    .join("@origingame/engine/")
-    .split("\n")
-    .filter((line) => !line.startsWith("// "))
-    .join("\n");
-  return createHash("sha256").update(text).digest("hex");
-}
 const bundleSha256 = bundleHash(entry);
 const mod = (await import(pathToFileURL(resolve(entry)).href)) as { default?: GameToken };
 if (!mod.default) fail(`${entry} has no default export: export default og.game({ ... })`);
