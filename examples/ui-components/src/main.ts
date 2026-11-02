@@ -411,13 +411,59 @@ function strategyScreen(): void {
   }
 }
 
+// A circuit in map space (0 to 1): the minimap's spline track mode.
+const CIRCUIT = [[0.2, 0.62], [0.16, 0.42], [0.28, 0.24], [0.48, 0.2], [0.58, 0.32], [0.72, 0.22], [0.86, 0.3], [0.84, 0.5], [0.74, 0.62], [0.8, 0.78], [0.62, 0.86], [0.42, 0.78], [0.32, 0.84]].map(([x, y]) => ({ x: x!, y: y! }));
+
 function racingScreen(): void {
   const s = seconds();
   const rpm = 0.45 + 0.5 * Math.abs(Math.sin(s * 0.8));
+  const vp = og.ui.frameViewport();
+  // act:score overtakes Chen for P2; act:complete closes a lap that sets a new best and turns the split ahead.
+  const passed = did("score");
+  const best = did("complete");
+  const grid = [
+    { key: "moreno", name: "K. Moreno", gap: 0, change: 1, fastest: !best },
+    { key: "chen", name: "L. Chen", gap: passed ? 0.42 : 0.31, change: passed ? -1 : 0 },
+    { key: "you", name: L("You"), gap: passed ? 0.31 : 0.42, change: passed ? 3 : 2, player: true, fastest: best },
+    { key: "tanaka", name: "R. Tanaka", gap: 1.17, change: -1 },
+    { key: "ross", name: "M. Ross", gap: 2.06 },
+    { key: "alvarez", name: "S. Alvarez", gap: 2.84, pit: true },
+    { key: "kim", name: "D. Kim", gap: 3.91, change: -2 },
+    { key: "okafor", name: "T. Okafor", gap: 12.4 },
+    { key: "nova", name: "P. Nova", gap: 0, lapsDown: 1 },
+    { key: "brandt", name: "J. Brandt", gap: 0, out: true },
+  ];
+  if (passed) [grid[1], grid[2]] = [grid[2]!, grid[1]!];
+  const place = grid.findIndex((g) => g.player) + 1;
+  og.ui.lapTimer("LapTime", {
+    position: place, positionTotal: grid.length, lap: 2, lapTotal: 3, currentMs: 72384 + s * 1000,
+    bestMs: best ? 99812 : 101226, lastMs: best ? 99812 : 102450, deltaMs: best ? -420 : 180,
+    positionLabel: L("Position"), lapLabel: L("Lap"), currentLabel: L("Current lap"), bestLabel: L("Best lap"), lastLabel: L("Last lap"), splitLabel: L("Split"),
+  });
+  // Upright phone: the tower mid-left, the circuit bottom-left, the dial bottom-right, so nothing shares a corner at 200 %.
+  // Elsewhere the tower stacks under the lap block at the top-left corner.
+  const upright = vp.breakpoint === "phonePortrait";
+  og.ui.standingsTower("Tower", { entries: grid, rows: upright ? 4 : small() ? 3 : 10, leaderLabel: L("Leader"), anchor: upright ? "left" : small() ? "bottomLeft" : "topLeft" });
+  // Rivals on the circuit as dots in their colours, the player's arrow along the track.
+  const along = (k: number) => {
+    const t = (((k % 1) + 1) % 1) * CIRCUIT.length;
+    const a = CIRCUIT[Math.floor(t)]!;
+    const b = CIRCUIT[(Math.floor(t) + 1) % CIRCUIT.length]!;
+    return { x: a.x + (b.x - a.x) * (t % 1), y: a.y + (b.y - a.y) * (t % 1) };
+  };
+  og.ui.minimapView("Circuit", {
+    track: CIRCUIT, zoom: 1, centerX: 0.5, centerY: 0.5, shape: "square", size: small() ? 120 : 180, zone: L("Monaco Ridge"), anchor: upright ? "bottomLeft" : "topRight",
+    markers: [
+      { key: "me", kind: "player", ...along(0.34 + s * 0.01), heading: 2.2 },
+      { key: "a", kind: "poi", ...along(0.42 + s * 0.01), color: { color: { r: 0.9, g: 0.25, b: 0.2 } } },
+      { key: "b", kind: "poi", ...along(0.27 + s * 0.01), color: { color: { r: 0.95, g: 0.6, b: 0.15 } } },
+    ],
+  });
+  // The mirror needs the top band's middle: an upright phone has none, and a small screen at large text gives it to the lap block.
+  if (vp.breakpoint !== "phonePortrait" && !(small() && state.textScale >= 1.5)) og.ui.rearView("Mirror", { texture: state.art.rear ?? null });
   og.ui.speedometer("Speedo", { speed: 118 + rpm * 120, maxSpeed: 320, rpm, gear: rpm > 0.85 ? "5" : "4", boost: 0.66 });
-  // On a phone held upright the two dials do not fit side by side: the digital one sits on the left side.
-  og.ui.speedometer("Digital", { speed: 287, maxSpeed: 320, rpm: 0.93, gear: "6", style: "digital", anchor: og.ui.frameViewport().breakpoint === "phonePortrait" ? "left" : "bottomLeft" });
-  og.ui.hudTimer("Lap", { seconds: 83.4 + s, mode: "stopwatch", label: L("Lap 2/3") });
+  // The second dial only where the left side has room under the lap block and the tower.
+  if (!small() && tall()) og.ui.speedometer("Digital", { speed: 287, maxSpeed: 320, rpm: 0.93, gear: "6", style: "digital", anchor: "bottomLeft" });
 }
 
 function flightScreen(): void {
@@ -569,6 +615,14 @@ export default og.game({
     if (rampGeo.ok && stone.ok && ramp.ok) {
       world.insert(ramp.value, og.Mesh, { geometry: rampGeo.value, material: stone.value, castShadow: true, receiveShadow: true });
       world.insert(ramp.value, og.Collider, { shape: SHAPE_BOX, size: { x: 5, y: 0.6, z: 5 } });
+    }
+    // The racing screen's mirror: a camera behind the field looking back at it, drawn into a target the UI shows.
+    const rear = og.render.renderTarget(world, { width: 672, height: 160 });
+    if (rear.ok) {
+      const at = { x: 0, y: 1.6, z: -9 };
+      const cam = world.spawn({ name: "rear-camera", position: at, quaternion: og.transform.lookAt(at, { x: 0, y: 0.8, z: 2 }) });
+      if (cam.ok) world.insert(cam.value, og.CameraView, { target: rear.value.target, fov: 40, every: 2 });
+      state.art.rear = rear.value.texture;
     }
     const sun = world.spawn({ name: "sun", quaternion: og.transform.lookAt({ x: 0, y: 0, z: 0 }, { x: 0.4, y: -0.7, z: -0.5 }) });
     if (sun.ok) world.insert(sun.value, og.DirectionalLight, { intensity: 3, castShadow: true });
