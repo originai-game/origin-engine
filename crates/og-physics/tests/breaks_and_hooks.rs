@@ -27,6 +27,13 @@ use og_ecs::{Entity, World};
 use og_physics::*;
 use support::*;
 
+/// A world with physics and G2-3's lazy types registered (a game naming them).
+fn world(settings: Physics, seed: u32) -> (World, PhysicsSystem) {
+    let (mut w, p) = support::world(settings, seed);
+    support::enable_lazy(&mut w);
+    (w, p)
+}
+
 fn broken_events(w: &World) -> Vec<JointBroken> {
     w.pending_events::<JointBroken>().unwrap()
 }
@@ -400,4 +407,48 @@ fn hooks_replay_from_a_restore() {
     let (mut b, _pb) = build();
     b.restore(&saved).unwrap();
     assert_eq!(hashes(&mut b), first);
+}
+
+#[test]
+fn a_world_naming_none_of_g2_3s_types_registers_none_and_still_sleeps_and_breaks() {
+    // G2-3's events and og.ContactHook are lazy: unregistered until a game
+    // names them, so an older world's type table and hash stay as they
+    // were. The features that write components work without them.
+    let (mut w, _p) = support::world(
+        Physics {
+            sleep_ticks: 30,
+            ..Physics::default()
+        },
+        1,
+    );
+    floor(&mut w);
+    let resting = spawn_body(
+        &mut w,
+        at(-3.0, 0.5, 0.0),
+        RigidBody::dynamic(),
+        Collider::cuboid(Vec3::ONE),
+    );
+    let heavy = hang(&mut w, 30.0, 200.0);
+    run(&mut w, 240);
+    for name in og_physics::LAZY {
+        assert!(w.id_by_name(name).is_err(), "{name} was registered");
+    }
+    assert!(w.get::<RigidBody>(resting).unwrap().sleeping);
+    assert!(w.get::<Joint>(heavy).unwrap().broken);
+    // Named later, they are sent from then on, and hooks are read.
+    support::enable_lazy(&mut w);
+    w.insert(
+        heavy,
+        Joint {
+            broken: false,
+            ..w.get::<Joint>(heavy).unwrap()
+        },
+    )
+    .unwrap();
+    let mut sent = 0;
+    for _ in 0..120 {
+        w.step().unwrap();
+        sent += broken_events(&w).len();
+    }
+    assert_eq!(sent, 1);
 }

@@ -259,8 +259,10 @@ fn hashes_are_pinned_without_prefabs_and_stable_across_a_re_cook_with_them() {
 /// og.Physics at version 2 with their new fields, og.BodySlept and
 /// og.BodyWoke registered, all in the type table every world hashes; then
 /// G2-3's breaking joints and contact hooks from 88fa067dd437beb0: og.Joint
-/// at version 2, og.JointBroken and og.ContactHook registered).
-const BY_HAND_HASH: &str = "8321f6acb96a66be";
+/// at version 2, og.JointBroken and og.ContactHook registered; then from
+/// 8321f6acb96a66be when those four types became lazy, registered only
+/// once a game names them, so only the version-2 layouts remain).
+const BY_HAND_HASH: &str = "8c463e75e426e15b";
 
 #[test]
 fn apply_back_and_revert_round_trip_in_the_text() {

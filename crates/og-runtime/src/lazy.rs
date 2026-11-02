@@ -50,6 +50,24 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: "og.NavLinkReached",
         enable: og_nav::enable_links,
     },
+    // G2-3: og.physics sends them and reads the hooks once a game names
+    // them; a world that never does keeps its type table and hash.
+    Lazy {
+        name: "og.BodySlept",
+        enable: |w| og_physics::enable(w, "og.BodySlept"),
+    },
+    Lazy {
+        name: "og.BodyWoke",
+        enable: |w| og_physics::enable(w, "og.BodyWoke"),
+    },
+    Lazy {
+        name: "og.JointBroken",
+        enable: |w| og_physics::enable(w, "og.JointBroken"),
+    },
+    Lazy {
+        name: "og.ContactHook",
+        enable: |w| og_physics::enable(w, "og.ContactHook"),
+    },
 ];
 
 /// Whether engine record `name` is registered lazily.

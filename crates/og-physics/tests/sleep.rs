@@ -24,6 +24,13 @@ use og_ecs::{Entity, World};
 use og_physics::*;
 use support::*;
 
+/// A world with physics and G2-3's lazy types registered (a game naming them).
+fn world(settings: Physics, seed: u32) -> (World, PhysicsSystem) {
+    let (mut w, p) = support::world(settings, seed);
+    support::enable_lazy(&mut w);
+    (w, p)
+}
+
 const SLEEP: Physics = Physics {
     profile: PROFILE_3D,
     gravity: Vec3::new(0.0, -9.81, 0.0),
@@ -278,6 +285,7 @@ fn a_pen_sleeps_deterministically_and_restores_mid_sleep() {
     // pile it touches awake, as it should).
     let pen = || {
         let (mut w, p) = support::pile::pen(80, 5);
+        support::enable_lazy(&mut w);
         *w.resource_mut::<Physics>().unwrap() = Physics {
             sleep_ticks: 30,
             ..Physics::default()

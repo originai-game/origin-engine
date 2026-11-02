@@ -60,3 +60,11 @@ pub fn run(w: &mut World, ticks: u32) {
         w.step().unwrap();
     }
 }
+
+/// Registers G2-3's lazily registered types ([`og_physics::LAZY`]), as a
+/// host does once a game names them.
+pub fn enable_lazy(w: &mut World) {
+    for name in og_physics::LAZY {
+        og_physics::enable(w, name).unwrap();
+    }
+}

@@ -72,13 +72,12 @@ const Q_LINES: usize = 14;
 const Q_RAGDOLLS: usize = 15;
 const Q_FLUIDS3: usize = 16;
 const Q_PARENTS: usize = 17;
-const Q_HOOKS: usize = 18;
 
 const CHARACTER: &str = CharacterController::NAME;
 const PLATFORMER: &str = PlatformerController::NAME;
 
 /// The system's queries, by index.
-pub(crate) const QUERIES: [QuerySpec; 19] = [
+pub(crate) const QUERIES: [QuerySpec; 18] = [
     // Q_BODIES: every body, its transform written back.
     QuerySpec {
         read: &[RigidBody::NAME],
@@ -188,12 +187,6 @@ pub(crate) const QUERIES: [QuerySpec; 19] = [
         write: &[],
         without: &[],
     },
-    // Q_HOOKS: the colliders' contact hooks (G2-3).
-    QuerySpec {
-        read: &[ContactHook::NAME],
-        write: &[],
-        without: &[],
-    },
 ];
 
 /// The components a step writes back besides transforms and velocities
@@ -208,7 +201,7 @@ pub(crate) const WRITTEN: [&str; 5] = [
 ];
 
 /// Every component of physics beyond rigid bodies, which its systems read.
-pub(crate) const READ: [&str; 13] = [
+pub(crate) const READ: [&str; 12] = [
     CHARACTER,
     PLATFORMER,
     Joint::NAME,
@@ -221,7 +214,6 @@ pub(crate) const READ: [&str; 13] = [
     Ragdoll::NAME,
     Fluid3D::NAME,
     Parent::NAME,
-    ContactHook::NAME,
 ];
 
 /// The fields and layout of one reflected component, for decoding rows.
@@ -265,7 +257,7 @@ pub(crate) struct Ids {
     line: Rows,
     ragdoll: Rows,
     fluid3: Rows,
-    hook: Rows,
+    hook_layout: Layout,
 }
 
 fn fields_of<T: Reflect>(world: &World) -> Result<(Vec<FieldRef>, Layout)> {
@@ -305,10 +297,6 @@ impl Ids {
         world.register::<crate::Splash>()?;
         world.register::<Fluid3D>()?;
         world.register::<Parent>()?;
-        world.register::<crate::BodySlept>()?;
-        world.register::<crate::BodyWoke>()?;
-        world.register::<crate::JointBroken>()?;
-        world.register::<ContactHook>()?;
         let (body_fields, body_layout) = fields_of::<RigidBody>(world)?;
         let (collider_fields, collider_layout) = fields_of::<Collider>(world)?;
         Ok(Ids {
@@ -335,7 +323,7 @@ impl Ids {
             line: Rows::of::<WaterLine>(world)?,
             ragdoll: Rows::of::<Ragdoll>(world)?,
             fluid3: Rows::of::<Fluid3D>(world)?,
-            hook: Rows::of::<ContactHook>(world)?,
+            hook_layout: Layout::of(&ContactHook::schema()),
         })
     }
 }
@@ -553,6 +541,7 @@ fn ancestor_body(
 pub(crate) fn gather<'w>(
     q: &dyn Fn(usize) -> Result<QueryIter<'w>>,
     get: GetBytes<'_>,
+    hook: Option<SchemaId>,
     ids: &Ids,
 ) -> Result<Scene> {
     let mut colliders = ByEntity::new();
@@ -714,10 +703,20 @@ pub(crate) fn gather<'w>(
             }
         }
     }
-    for a in q(Q_HOOKS)? {
-        let rows: Vec<ContactHook> = ids.hook.read(&a)?;
-        for (e, h) in a.entities().iter().zip(rows) {
-            scene.hooks.insert(e.to_bits(), h);
+    // og.ContactHook is registered only once a game uses it (lazy): read
+    // then, per collider entity, as the step needs it by entity.
+    if let Some(id) = hook {
+        let colliders = scene
+            .bodies
+            .iter()
+            .flat_map(|b| std::iter::once(b.entity).chain(b.children.iter().map(|c| c.entity)))
+            .chain(scene.statics.iter().map(|s| s.entity));
+        for e in colliders {
+            if let Ok(bytes) = get(e, id) {
+                scene
+                    .hooks
+                    .insert(e.to_bits(), ids.hook_layout.decode::<ContactHook>(&bytes)?);
+            }
         }
     }
     for a in q(Q_JOINTS)? {

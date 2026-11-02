@@ -75,6 +75,7 @@ pub use stats::{Phase, PhaseStats, PhysicsStats, set_clock};
 
 pub use gather::world_pose;
 use gather::{Ids, QUERIES, Scene};
+use og_core::Reflect as _;
 use og_core::glam::{Quat, Vec2, Vec3};
 use og_core::{Error, ErrorKind, IdMap, Result};
 use og_ecs::{Entity, StateBlock, SystemContext, SystemDesc, World};
@@ -591,6 +592,43 @@ pub fn install(world: &mut World, settings: Physics) -> Result<PhysicsSystem> {
 /// The name of the system [`PhysicsSystem::query_system`] returns.
 pub const QUERY_SYSTEM_NAME: &str = "og.physics.queries";
 
+/// The physics types registered only once a game uses them, so a world
+/// that never does keeps the type table, saves and hash it had before
+/// G2-3 added them: [`install`] leaves them out and [`enable`] adds one.
+pub const LAZY: [&str; 4] = [
+    BodySlept::NAME,
+    BodyWoke::NAME,
+    JointBroken::NAME,
+    ContactHook::NAME,
+];
+
+/// Registers lazy physics type `name` (one of [`LAZY`]) and grants it to
+/// the physics systems: `og.physics` sends the events and reads the
+/// hooks, the query system (when scheduled) reads the hooks. A host calls
+/// it when a game first names the type; registering it again is a no-op.
+pub fn enable(world: &mut World, name: &str) -> Result<()> {
+    match name {
+        BodySlept::NAME => world.register::<BodySlept>().map(drop)?,
+        BodyWoke::NAME => world.register::<BodyWoke>().map(drop)?,
+        JointBroken::NAME => world.register::<JointBroken>().map(drop)?,
+        ContactHook::NAME => world.register::<ContactHook>().map(drop)?,
+        other => {
+            return Err(Error::new(
+                ErrorKind::NotFound,
+                format!("{other} is not a lazily registered physics type"),
+            ));
+        }
+    }
+    world.grant(SYSTEM_NAME, &[name])?;
+    if name == ContactHook::NAME {
+        match world.grant(QUERY_SYSTEM_NAME, &[name]) {
+            Err(e) if e.kind() == ErrorKind::NotFound && !e.reason().contains("type") => {}
+            r => r?,
+        }
+    }
+    Ok(())
+}
+
 impl PhysicsSystem {
     /// The first half of [`install`]: registers the types and inserts
     /// `settings` as `og.Physics`, scheduling nothing. A host that runs
@@ -640,7 +678,9 @@ impl PhysicsSystem {
         let (shared, ids) = (self.shared.clone(), self.ids.clone());
         let run = move |ctx: &mut SystemContext<'_>| {
             let settings = *ctx.resource::<Physics>()?;
-            let scene = gather::gather(&|i| ctx.query(i), &|e, id| ctx.get_bytes(e, id), &ids)?;
+            let hook = ctx.id_by_name(ContactHook::NAME).ok();
+            let scene =
+                gather::gather(&|i| ctx.query(i), &|e, id| ctx.get_bytes(e, id), hook, &ids)?;
             let mut shared = lock(&shared);
             shared.recorded = Some((settings, scene));
             shared.recorded_query = None;
@@ -696,10 +736,7 @@ fn schedule(world: &mut World, shared: &Arc<Mutex<Shared>>, ids: &Arc<Ids>) -> R
         .write::<SensorEntered>()
         .write::<SensorExited>()
         .write::<CharacterEvent>()
-        .write::<Splash>()
-        .write::<BodySlept>()
-        .write::<BodyWoke>()
-        .write::<JointBroken>();
+        .write::<Splash>();
     desc.writes.push(gather::TRANSFORM.to_string());
     for name in gather::WRITTEN {
         desc.writes.push(name.to_string());
@@ -926,6 +963,7 @@ impl PhysicsSystem {
         let scene = gather::gather(
             &|i| world.query(&QUERIES[i].desc(false)),
             &|e, id| world.get_bytes(e, id),
+            world.id_by_name(ContactHook::NAME).ok(),
             &self.ids,
         )?;
         let inner = Arc::new(QueryInner::build_outside(
@@ -1345,7 +1383,8 @@ fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> Result
     }
     let started = stats::now_ms();
     let mut laps = stats::Laps::start();
-    let scene: Scene = gather::gather(&|i| ctx.query(i), &|e, id| ctx.get_bytes(e, id), ids)?;
+    let hook = ctx.id_by_name(ContactHook::NAME).ok();
+    let scene: Scene = gather::gather(&|i| ctx.query(i), &|e, id| ctx.get_bytes(e, id), hook, ids)?;
     laps.lap(stats::Phase::Gather);
     let tick = ctx.time().tick;
     let threads = og_lanes::threads();
@@ -1405,14 +1444,23 @@ fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> Result
     for (e, b) in &out.sleep.writes {
         ctx.set(*e, *b)?;
     }
-    for b in &out.broken {
-        ctx.send(*b)?;
+    // G2-3's events are registered only once a game names them (LAZY):
+    // a world that does not keeps its type table, and nothing could read
+    // them, so they are not sent.
+    if ctx.id_by_name(JointBroken::NAME).is_ok() {
+        for b in &out.broken {
+            ctx.send(*b)?;
+        }
     }
-    for &entity in &out.sleep.slept {
-        ctx.send(BodySlept { entity })?;
+    if ctx.id_by_name(BodySlept::NAME).is_ok() {
+        for &entity in &out.sleep.slept {
+            ctx.send(BodySlept { entity })?;
+        }
     }
-    for &entity in &out.sleep.woke {
-        ctx.send(BodyWoke { entity })?;
+    if ctx.id_by_name(BodyWoke::NAME).is_ok() {
+        for &entity in &out.sleep.woke {
+            ctx.send(BodyWoke { entity })?;
+        }
     }
 
     // Started/Ended from the pairs the previous step carried over.

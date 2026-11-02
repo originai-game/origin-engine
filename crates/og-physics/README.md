@@ -53,6 +53,13 @@ are `u32` constants in `src/schema.rs`.
 | `og.BodySlept`, `og.BodyWoke` | event | `entity`; in entity order (G2-3 sleep) |
 | `og.Contact` | event | `a`, `b`, `sensor` (bit 0: a is a sensor, bit 1: b); every touching pair, each tick |
 
+`og.ContactHook`, `og.BodySlept`, `og.BodyWoke` and `og.JointBroken` are
+lazy ([`LAZY`]): `install` does not register them, and [`enable`]
+registers one and grants it to `og.physics` (and the query system), as a
+host does once a game names it (og-runtime's `lazy.rs`). Until then the
+events are not sent and no hooks are read, so a world that never uses
+them keeps the type table, saves and hash it had before G2-3.
+
 A collider without a `RigidBody` is static at its transform, unless its
 entity's `og.Parent` chain reaches a `RigidBody`: then it is a compound
 child of the nearest such body (G2-3, `gather::ancestor_body`), placed at
@@ -507,7 +514,7 @@ skipped by `sync_joints` until its component says otherwise. The new
 fields are `#[serde(skip)]` in `TrackedJoint`, so the block's bytes do
 not move.
 
-`og.ContactHook` is read into `Scene::hooks`; `sim::sync_hooks` turns
+`og.ContactHook`, once registered, is read into `Scene::hooks` per collider entity (`get_bytes`, not a query, since the system's queries are fixed at install); `sim::sync_hooks` turns
 rapier's active hooks on for the colliders of hooked entities (and off
 again, `SimExt::hooked`), and the step runs `step_with_events` with
 `sim::Hooks`, a read-only table: `filter_contact_pair` and
