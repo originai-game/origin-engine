@@ -4,6 +4,8 @@ module tilemap {
   doc "Layers draw through the sprite batch in 16x16-tile chunks culled to the view, each at the map's sprite layer plus its z, scrolled by its parallax; solid tiles become static og-physics colliders merged into rectangles. Runtime edits (og.tilemap.setTile, re-auto-tiling the neighbourhood) are world state (the og.tilemap state block), and the colliders follow them."
   doc "With og.Lighting2D enabled, a layer whose sprite layer (the map's layer plus its z) lies in minLayer to maxLayer is lit as the sprites there are: multiplied by the ambient plus every Light2D reaching it, with the shadows of Occluder2Ds and castShadow sprites, so a dark cave lit by torches is the map, its lights and its occluders. A layer that should stay as authored in the lit range (a sky, a far parallax backdrop) opts out: a bool custom property `lit` set to false on the Tiled layer, or a `lit false` line in a tilemap `.ogt`'s layer block (TileLayerInfo.lit reports it)."
   doc "Cells count from the top-left corner, x right and y down (Tiled's); the map's top-left corner is at the entity's position."
+  doc "Orientations: a map is orthogonal, isometric (diamonds on a turned grid), staggered (diamonds in rows) or hexagonal (pointy- or flat-top), from its `orientation` line or its Tiled map. cellAt, cellCenter and neighbours follow it; an isometric or staggered tile's image stands up from its cell's bottom (taller tiles overlap the ones behind, drawn back to front); solid tiles off the orthogonal grid collide as one diamond or hexagon per cell. Terrain layers need a square grid (orthogonal or isometric)."
+  doc "Run-time maps: og.tilemap.create makes a map from a desc and og.tilemap.resize changes a map's size, both in game code. A map made or resized is world state: the og.tilemap state block saves it whole (its tilesets by asset id), so a save restores it in a session that never made it."
 
   handle TilemapAsset "A loaded map: its layers, tilesets and objects."
 
@@ -44,6 +46,15 @@ module tilemap {
     }
     field palette Texture "A palette swap of every layer (og.Sprite.palette): the tile sets' index textures (the cook's `<id>#index`) drawn through row paletteRow of this texture of N rows; 0 is none."
     field paletteRow u32 "The row of `palette` drawn (past the last, the last)."
+  }
+
+  enum TileOrientation {
+    doc "How a map's cells are laid out (Tiled's orientations)."
+    variant orthogonal "Rectangles in rows and columns."
+    variant isometric "Diamonds on a turned grid: x runs down to the right, y down to the left, cell 0 0 at the top."
+    variant staggered "Diamonds in rows half a tile apart, every odd row shifted right half a tile (Tiled's staggered, odd rows)."
+    variant hex "Pointy-top hexagons with corners at a quarter of the tile, rows 3/4 of a tile apart, every odd row shifted right half a tile (Tiled's hexagonal, stagger axis y, odd, side half the tile's height)."
+    variant hexFlat "Flat-top hexagons, columns 3/4 of a tile apart, every odd column shifted down half a tile (stagger axis x)."
   }
 
   struct TileLayerInfo {
@@ -89,6 +100,65 @@ module tilemap {
     }
     field layers List.TileLayerInfo "Its layers, drawing order."
     field objects List.TileObject "Its objects."
+    field orientation TileOrientation "How its cells are laid out."
+  }
+
+  struct TileLayerDesc {
+    doc "One layer of a map og.tilemap.create makes (empty)."
+    desc true
+    field name String "Its name (unique in the map)."
+    field tileset u32 "The index of its tileset in TilemapDesc.tilesets."
+    field terrain String "An auto-tiling terrain of that tileset: a terrain layer (cells 1 or 0); empty for a tile layer."
+    field z i32 "Its sprite-layer offset from Tilemap.layer."
+    field collision bool "Its solid tiles collide."
+    field colliderLayers u32 "Its colliders' collision layers (0: Tilemap.colliderLayers)."
+    field colliderMask u32 "The layers its colliders collide with (0: every layer)."
+    field visible bool "Whether it is drawn." {
+      default true
+    }
+  }
+
+  struct TilemapDesc {
+    doc "A map to make at run time: empty layers on tilesets the bundle cooked."
+    desc true
+    field width u32 "Cells across." {
+      default 16
+      min 1
+    }
+    field height u32 "Cells down." {
+      default 16
+      min 1
+    }
+    field tileWidth u32 "A tile's width in pixels (its cell's)." {
+      default 16
+      min 1
+    }
+    field tileHeight u32 "A tile's height in pixels (its cell's; half the width for the usual isometric diamond)." {
+      default 16
+      min 1
+    }
+    field unit f32 "World units per tile width." {
+      default 1
+    }
+    field orientation TileOrientation "How the cells are laid out."
+    field tilesets List.String "The tilesets' asset ids (tileset `.ogt` files, such as `tiles/dungeon.ogt`)."
+    field layers List.TileLayerDesc "The layers, drawing order."
+  }
+
+  struct ResizeDesc {
+    doc "A new size for a map, and where its cells go."
+    desc true
+    field map TilemapAsset "The map: og.load.tilemap's or og.tilemap.create's."
+    field width u32 "Cells across." {
+      default 16
+      min 1
+    }
+    field height u32 "Cells down." {
+      default 16
+      min 1
+    }
+    field x i32 "Where the old cell 0 0 lands: columns added on the left (negative crops them)."
+    field y i32 "Rows added at the top (negative crops them)."
   }
 
   struct SetTileDesc {
@@ -133,6 +203,29 @@ module tilemap {
     param world World "The world."
     param desc FillDesc "The map, the layer, where and the cells."
     returns Result.Void "Refused for an entity whose map is not adopted yet, an unknown layer, a width of 0 or not dividing the cells, or a tile the tileset lacks (nothing is written then)."
+  }
+
+  fn create {
+    doc "Make an empty map in game code: draw it and edit it as a loaded one (an og.Tilemap with its `map`, then setTile and fill). Its handle comes from the world's own counter, so equal calls in equal order give equal handles, in a replay and after a restore. A world that makes none saves and hashes as before."
+    param world World "The world."
+    param desc TilemapDesc "Its size, tiles, orientation, tilesets and layers."
+    returns Result.TilemapInfo "Refused for a size of 0 or past 16,777,216 cells, a tileset the bundle lacks, a layer naming a tileset index or terrain that does not exist, two layers of one name, or a terrain layer on a staggered or hex map."
+  }
+
+  fn resize {
+    doc "Change a map's size (a loaded one too: from then on it is a run-time map, saved whole). Every og.Tilemap showing it keeps its edits, moved with the cells by (x, y); cells past the new edges are dropped, new ones are empty, terrain re-tiles, colliders rebuild at the og.tilemap system and its objects (TilemapInfo.objects) move with the cells."
+    param world World "The world."
+    param desc ResizeDesc "The map, its new size and the shift."
+    returns Result.Void "Refused for an unknown map, a size of 0 or past 16,777,216 cells, or an odd shift along a staggered or hex map's shifted axis (it would change which rows are shifted)."
+  }
+
+  fn neighbours {
+    doc "The cells next to a cell, clockwise from the top (or the top right): 4 on an orthogonal or isometric grid (the sides), 4 on a staggered one (the diagonal sides), 6 on a hex one; cells off the map are left out."
+    param world World "The world."
+    param map TilemapAsset "The map."
+    param x u32 "The column."
+    param y u32 "The row."
+    returns List.TileCell
   }
 
   fn getTile {

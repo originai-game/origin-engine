@@ -6747,6 +6747,18 @@
           "doc": "Collider.shape: the height field registered as `mesh`, centred on the entity (3D only; a terrain: og.terrain.load's TerrainInfo.geometry)."
         },
         {
+          "name": "SHAPE_DIAMOND",
+          "type": "u32",
+          "value": 7,
+          "doc": "Collider.shape: a rhombus whose diagonals are size.x (along x) and size.y (along y), an isometric tile's diamond; in 3D a prism size.z deep (both profiles)."
+        },
+        {
+          "name": "SHAPE_HEXAGON",
+          "type": "u32",
+          "value": 8,
+          "doc": "Collider.shape: a pointy-top hexagon in the box size.x by size.y, corners at the top and bottom middles and a quarter down each side, a hex tile's (turn it a quarter about z for a flat-top one); in 3D a prism size.z deep (both profiles)."
+        },
+        {
           "name": "PROFILE_2D",
           "type": "u32",
           "value": 2,
@@ -7941,16 +7953,20 @@
     },
     {
       "name": "tilemap",
-      "doc": "Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component.\nLayers draw through the sprite batch in 16x16-tile chunks culled to the view, each at the map's sprite layer plus its z, scrolled by its parallax; solid tiles become static og-physics colliders merged into rectangles. Runtime edits (og.tilemap.setTile, re-auto-tiling the neighbourhood) are world state (the og.tilemap state block), and the colliders follow them.\nWith og.Lighting2D enabled, a layer whose sprite layer (the map's layer plus its z) lies in minLayer to maxLayer is lit as the sprites there are: multiplied by the ambient plus every Light2D reaching it, with the shadows of Occluder2Ds and castShadow sprites, so a dark cave lit by torches is the map, its lights and its occluders. A layer that should stay as authored in the lit range (a sky, a far parallax backdrop) opts out: a bool custom property `lit` set to false on the Tiled layer, or a `lit false` line in a tilemap `.ogt`'s layer block (TileLayerInfo.lit reports it).\nCells count from the top-left corner, x right and y down (Tiled's); the map's top-left corner is at the entity's position.",
+      "doc": "Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component.\nLayers draw through the sprite batch in 16x16-tile chunks culled to the view, each at the map's sprite layer plus its z, scrolled by its parallax; solid tiles become static og-physics colliders merged into rectangles. Runtime edits (og.tilemap.setTile, re-auto-tiling the neighbourhood) are world state (the og.tilemap state block), and the colliders follow them.\nWith og.Lighting2D enabled, a layer whose sprite layer (the map's layer plus its z) lies in minLayer to maxLayer is lit as the sprites there are: multiplied by the ambient plus every Light2D reaching it, with the shadows of Occluder2Ds and castShadow sprites, so a dark cave lit by torches is the map, its lights and its occluders. A layer that should stay as authored in the lit range (a sky, a far parallax backdrop) opts out: a bool custom property `lit` set to false on the Tiled layer, or a `lit false` line in a tilemap `.ogt`'s layer block (TileLayerInfo.lit reports it).\nCells count from the top-left corner, x right and y down (Tiled's); the map's top-left corner is at the entity's position.\nOrientations: a map is orthogonal, isometric (diamonds on a turned grid), staggered (diamonds in rows) or hexagonal (pointy- or flat-top), from its `orientation` line or its Tiled map. cellAt, cellCenter and neighbours follow it; an isometric or staggered tile's image stands up from its cell's bottom (taller tiles overlap the ones behind, drawn back to front); solid tiles off the orthogonal grid collide as one diamond or hexagon per cell. Terrain layers need a square grid (orthogonal or isometric).\nRun-time maps: og.tilemap.create makes a map from a desc and og.tilemap.resize changes a map's size, both in game code. A map made or resized is world state: the og.tilemap state block saves it whole (its tilesets by asset id), so a save restores it in a session that never made it.",
       "place": "namespace",
       "publish": true,
       "types": [
         "TilemapAsset",
         "TilemapAsset",
         "Tilemap",
+        "TileOrientation",
         "TileLayerInfo",
         "TileObject",
         "TilemapInfo",
+        "TileLayerDesc",
+        "TilemapDesc",
+        "ResizeDesc",
         "SetTileDesc",
         "TileCell",
         "FillDesc"
@@ -7997,6 +8013,80 @@
           ],
           "returns": "Result<Void>",
           "returnsDoc": "Refused for an entity whose map is not adopted yet, an unknown layer, a width of 0 or not dividing the cells, or a tile the tileset lacks (nothing is written then).",
+          "publish": true
+        },
+        {
+          "name": "create",
+          "doc": "Make an empty map in game code: draw it and edit it as a loaded one (an og.Tilemap with its `map`, then setTile and fill). Its handle comes from the world's own counter, so equal calls in equal order give equal handles, in a replay and after a restore. A world that makes none saves and hashes as before.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "TilemapDesc",
+              "optional": true,
+              "doc": "Its size, tiles, orientation, tilesets and layers."
+            }
+          ],
+          "returns": "Result<TilemapInfo>",
+          "returnsDoc": "Refused for a size of 0 or past 16,777,216 cells, a tileset the bundle lacks, a layer naming a tileset index or terrain that does not exist, two layers of one name, or a terrain layer on a staggered or hex map.",
+          "publish": true
+        },
+        {
+          "name": "resize",
+          "doc": "Change a map's size (a loaded one too: from then on it is a run-time map, saved whole). Every og.Tilemap showing it keeps its edits, moved with the cells by (x, y); cells past the new edges are dropped, new ones are empty, terrain re-tiles, colliders rebuild at the og.tilemap system and its objects (TilemapInfo.objects) move with the cells.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "ResizeDesc",
+              "optional": true,
+              "doc": "The map, its new size and the shift."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an unknown map, a size of 0 or past 16,777,216 cells, or an odd shift along a staggered or hex map's shifted axis (it would change which rows are shifted).",
+          "publish": true
+        },
+        {
+          "name": "neighbours",
+          "doc": "The cells next to a cell, clockwise from the top (or the top right): 4 on an orthogonal or isometric grid (the sides), 4 on a staggered one (the diagonal sides), 6 on a hex one; cells off the map are left out.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "map",
+              "type": "TilemapAsset",
+              "optional": false,
+              "doc": "The map."
+            },
+            {
+              "name": "x",
+              "type": "u32",
+              "optional": false,
+              "doc": "The column."
+            },
+            {
+              "name": "y",
+              "type": "u32",
+              "optional": false,
+              "doc": "The row."
+            }
+          ],
+          "returns": "List<TileCell>",
           "publish": true
         },
         {
@@ -29459,10 +29549,10 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (3D), 6 the height field `mesh` (3D: a terrain).",
+          "description": "One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (3D), 6 the height field `mesh` (3D: a terrain), 7 a diamond and 8 a hexagon in `size` (both).",
           "default": 0,
           "minimum": 0,
-          "maximum": 6,
+          "maximum": 8,
           "x-og-label": "Shape"
         },
         "size": {
@@ -35581,6 +35671,26 @@
       },
       "additionalProperties": false
     },
+    "TileOrientation": {
+      "x-og-kind": "enum",
+      "x-og-module": "tilemap",
+      "description": "How a map's cells are laid out (Tiled's orientations).",
+      "type": "string",
+      "enum": [
+        "orthogonal",
+        "isometric",
+        "staggered",
+        "hex",
+        "hexFlat"
+      ],
+      "x-og-variants": {
+        "orthogonal": "Rectangles in rows and columns.",
+        "isometric": "Diamonds on a turned grid: x runs down to the right, y down to the left, cell 0 0 at the top.",
+        "staggered": "Diamonds in rows half a tile apart, every odd row shifted right half a tile (Tiled's staggered, odd rows).",
+        "hex": "Pointy-top hexagons with corners at a quarter of the tile, rows 3/4 of a tile apart, every odd row shifted right half a tile (Tiled's hexagonal, stagger axis y, odd, side half the tile's height).",
+        "hexFlat": "Flat-top hexagons, columns 3/4 of a tile apart, every odd column shifted down half a tile (stagger axis x)."
+      }
+    },
     "TileLayerInfo": {
       "x-og-kind": "struct",
       "x-og-module": "tilemap",
@@ -35742,6 +35852,10 @@
             "$ref": "#/$defs/TileObject"
           },
           "description": "Its objects."
+        },
+        "orientation": {
+          "$ref": "#/$defs/TileOrientation",
+          "description": "How its cells are laid out."
         }
       },
       "required": [
@@ -35751,8 +35865,177 @@
         "tileWidth",
         "tileHeight",
         "layers",
-        "objects"
+        "objects",
+        "orientation"
       ],
+      "additionalProperties": false
+    },
+    "TileLayerDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "tilemap",
+      "description": "One layer of a map og.tilemap.create makes (empty).",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Its name (unique in the map).",
+          "default": ""
+        },
+        "tileset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The index of its tileset in TilemapDesc.tilesets.",
+          "default": 0
+        },
+        "terrain": {
+          "type": "string",
+          "description": "An auto-tiling terrain of that tileset: a terrain layer (cells 1 or 0); empty for a tile layer.",
+          "default": ""
+        },
+        "z": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Its sprite-layer offset from Tilemap.layer.",
+          "default": 0
+        },
+        "collision": {
+          "type": "boolean",
+          "description": "Its solid tiles collide.",
+          "default": false
+        },
+        "colliderLayers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its colliders' collision layers (0: Tilemap.colliderLayers).",
+          "default": 0
+        },
+        "colliderMask": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The layers its colliders collide with (0: every layer).",
+          "default": 0
+        },
+        "visible": {
+          "type": "boolean",
+          "description": "Whether it is drawn.",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "TilemapDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "tilemap",
+      "description": "A map to make at run time: empty layers on tilesets the bundle cooked.",
+      "type": "object",
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Cells across.",
+          "default": 16,
+          "minimum": 1
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Cells down.",
+          "default": 16,
+          "minimum": 1
+        },
+        "tileWidth": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "A tile's width in pixels (its cell's).",
+          "default": 16,
+          "minimum": 1
+        },
+        "tileHeight": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "A tile's height in pixels (its cell's; half the width for the usual isometric diamond).",
+          "default": 16,
+          "minimum": 1
+        },
+        "unit": {
+          "type": "number",
+          "description": "World units per tile width.",
+          "default": 1
+        },
+        "orientation": {
+          "$ref": "#/$defs/TileOrientation",
+          "description": "How the cells are laid out.",
+          "default": "orthogonal"
+        },
+        "tilesets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The tilesets' asset ids (tileset `.ogt` files, such as `tiles/dungeon.ogt`).",
+          "default": []
+        },
+        "layers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TileLayerDesc"
+          },
+          "description": "The layers, drawing order.",
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "ResizeDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "tilemap",
+      "description": "A new size for a map, and where its cells go.",
+      "type": "object",
+      "properties": {
+        "map": {
+          "$ref": "#/$defs/TilemapAsset",
+          "description": "The map: og.load.tilemap's or og.tilemap.create's.",
+          "default": 0
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Cells across.",
+          "default": 16,
+          "minimum": 1
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Cells down.",
+          "default": 16,
+          "minimum": 1
+        },
+        "x": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Where the old cell 0 0 lands: columns added on the left (negative crops them).",
+          "default": 0
+        },
+        "y": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Rows added at the top (negative crops them).",
+          "default": 0
+        }
+      },
       "additionalProperties": false
     },
     "SetTileDesc": {

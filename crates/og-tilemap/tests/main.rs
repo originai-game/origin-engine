@@ -6,6 +6,7 @@
 mod autotile;
 mod chunks;
 mod collision;
+mod orientations;
 mod state;
 mod support;
 mod text;

@@ -14,12 +14,12 @@ pub mod state;
 pub mod tileset;
 
 pub use map::{
-    FLIP_DIAGONAL, FLIP_X, FLIP_Y, Layer, MapObject, TILE_MASK, TilemapAsset, TilesetRef,
-    cell_center, world_to_cell,
+    FLIP_DIAGONAL, FLIP_X, FLIP_Y, Layer, MapObject, Orientation, TILE_MASK, TilemapAsset,
+    TilesetRef, cell_center, neighbours, world_to_cell,
 };
 pub use state::{
-    AnimatedQuad, CHUNK, ChunkQuads, MapCollider, MapState, Rect, TileQuad, animated_frame,
-    chunk_quads, chunks_in, collision_rects, collision_rects_all, map_colliders,
+    AnimatedQuad, CHUNK, ChunkQuads, MapCollider, MapShape, MapState, Rect, TileQuad,
+    animated_frame, chunk_quads, chunks_in, collision_rects, collision_rects_all, map_colliders,
 };
 pub use tileset::{
     Collision, Filter, Terrain, TerrainMode, TileAnim, TileDef, Tileset, mask, reduce_blob,

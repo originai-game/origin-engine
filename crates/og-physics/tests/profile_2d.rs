@@ -205,3 +205,49 @@ fn a_world_switches_profile_at_run_time_and_back() {
     assert_eq!(transform(&w3, ball).position, end);
     assert_eq!(w3.world_hash(), w.world_hash());
 }
+
+/// A diamond and a hexagon are their polygons, not their boxes: a ray down
+/// at a quarter of the width meets the slanted top edge, in 2D and as 3D
+/// prisms. Ways this could fail: the code falls back to a box (the hit is
+/// at the box's top), the corners are halved twice, or the hexagon's
+/// shoulders sit at the wrong height.
+#[test]
+fn diamond_and_hexagon_colliders_are_their_polygons_in_both_profiles() {
+    // A 4 x 2 shape: half extents (2, 1). At x = 1 the diamond's top is at
+    // y = 0.5; the hexagon's (corners at y 1 and 0.5) at y = 0.75.
+    for (settings, name) in [(Physics::profile_2d(), "2D"), (Physics::default(), "3D")] {
+        for (shape, top) in [(SHAPE_DIAMOND, 0.5f32), (SHAPE_HEXAGON, 0.75)] {
+            let (mut w, physics) = world(settings, 1);
+            spawn_static(
+                &mut w,
+                at(0.0, 0.0, 0.0),
+                Collider {
+                    shape,
+                    ..Collider::cuboid(Vec3::new(4.0, 2.0, 1.0))
+                },
+            );
+            run(&mut w, 1);
+            let q = physics.query(&w).unwrap();
+            let down = |x: f32| {
+                q.raycast(&RaycastDesc {
+                    origin: Vec3::new(x, 5.0, 0.0),
+                    direction: -Vec3::Y,
+                    ..RaycastDesc::default()
+                })
+                .unwrap()
+                .map(|h| h.point.y)
+            };
+            let at_quarter = down(1.0).expect("hits");
+            assert!(
+                (at_quarter - top).abs() < 1e-4,
+                "{name} shape {shape}: {at_quarter}"
+            );
+            let at_middle = down(0.0).expect("hits");
+            assert!(
+                (at_middle - 1.0).abs() < 1e-4,
+                "{name} shape {shape}: {at_middle}"
+            );
+            assert_eq!(down(2.1), None, "{name} shape {shape}: past the corner");
+        }
+    }
+}

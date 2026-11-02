@@ -43,6 +43,7 @@ fn equal_edits_give_equal_states_and_bytes_and_decode_restores_them() {
 #[test]
 fn an_untouched_256x256_four_layer_map_snapshots_in_a_few_bytes() {
     let mut a = TilemapAsset {
+        orientation: Default::default(),
         width: 256,
         height: 256,
         tile_width_px: 16,

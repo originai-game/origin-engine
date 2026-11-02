@@ -1,7 +1,7 @@
 //! A placed map's current cells: terrain resolution, deterministic edits,
 //! snapshots, collision rectangles and draw chunks.
 
-use crate::map::{FLIP_X, FLIP_Y, TILE_MASK, TilemapAsset};
+use crate::map::{FLIP_X, FLIP_Y, Orientation, TILE_MASK, TilemapAsset, cell_center};
 use crate::tileset::{Collision, Terrain, Tileset};
 use glam::Vec2;
 use og_core::{Error, ErrorKind, Result};
@@ -168,6 +168,63 @@ impl MapState {
                         s.resolve(i, x, y);
                     }
                 }
+            }
+        }
+        Ok(s)
+    }
+
+    /// This state on `asset`, a [`TilemapAsset::resized`] copy of its own
+    /// moved by (dx, dy): every cell as set (edits included) moves with the
+    /// asset's, terrain layers re-tile, and every chunk's version moves past
+    /// any it had, so whatever was drawn from it is redrawn.
+    pub fn resize(&self, asset: &TilemapAsset, dx: i32, dy: i32) -> Result<MapState> {
+        if asset.layers.len() != self.layers.len() {
+            return Err(invalid("a resized map keeps its layers"));
+        }
+        let mut s = MapState::new(asset, &self.tilesets)?;
+        let (ow, oh, nw, nh) = (
+            self.asset.width as i64,
+            self.asset.height as i64,
+            asset.width as i64,
+            asset.height as i64,
+        );
+        for (l, old) in s.layers.iter_mut().zip(&self.layers) {
+            l.cells.fill(0);
+            for y in 0..oh {
+                let ny = y + dy as i64;
+                if !(0..nh).contains(&ny) {
+                    continue;
+                }
+                for x in 0..ow {
+                    let nx = x + dx as i64;
+                    if (0..nw).contains(&nx) {
+                        l.cells[(ny * nw + nx) as usize] = old.cells[(y * ow + x) as usize];
+                    }
+                }
+            }
+            if l.terrain.is_none() {
+                l.resolved.clone_from(&l.cells);
+            }
+            l.version = old.version + 1;
+            l.chunk_versions.fill(l.version);
+        }
+        for i in 0..s.layers.len() {
+            if s.layers[i].terrain.is_some() {
+                s.layers[i].resolved.fill(0);
+                for y in 0..asset.height {
+                    for x in 0..asset.width {
+                        s.resolve(i, x, y);
+                    }
+                }
+                // Resolving bumped some chunks again; keep them all equal.
+                let v = s.layers[i]
+                    .chunk_versions
+                    .iter()
+                    .copied()
+                    .max()
+                    .unwrap_or(0);
+                s.layers[i].version = v;
+                s.layers[i].chunk_versions.fill(v);
             }
         }
         Ok(s)
@@ -492,7 +549,16 @@ impl MapState {
 /// rectangles (runs along rows, then equal runs of consecutive rows),
 /// partial rectangles one per tile (identical full-width neighbours on a
 /// row merged). Ordered top to bottom, then left to right.
+///
+/// On an isometric, staggered or hex map: each solid cell's box (the
+/// bounding box of its [`map_colliders`] shape), row by row.
 pub fn collision_rects(state: &MapState, layer: usize) -> Vec<Rect> {
+    if state.asset.orientation != Orientation::Orthogonal {
+        return cell_shapes(state, layer)
+            .into_iter()
+            .map(|(r, _)| r)
+            .collect();
+    }
     let Some(ts) = state.tileset(layer).cloned() else {
         return Vec::new();
     };
@@ -623,13 +689,84 @@ pub fn collision_rects_all(state: &MapState) -> Vec<Rect> {
         .collect()
 }
 
-/// One static collider of a placed map: its rectangle and the collision
-/// layers and mask (og.Collider's bits) its map layer gives it.
+/// The shape of a [`MapCollider`] in its rectangle.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MapShape {
+    /// The rectangle itself.
+    Box,
+    /// The diamond whose corners are the rectangle's edge middles (an
+    /// isometric or staggered cell).
+    Diamond,
+    /// The hexagon of a hex cell in the rectangle: pointy-top, or flat-top.
+    Hexagon { flat: bool },
+}
+
+/// One static collider of a placed map: its rectangle, its shape there,
+/// and the collision layers and mask (og.Collider's bits) its map layer
+/// gives it.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct MapCollider {
     pub rect: Rect,
+    pub shape: MapShape,
     pub layers: u32,
     pub mask: u32,
+}
+
+/// The collision shapes of `layer` on an isometric, staggered or hex map:
+/// a solid tile is its cell's diamond or hexagon, a tile's collision
+/// rectangle a box in its drawn image (as [`chunk_quads`] places it), row
+/// by row; the layer's offset included.
+fn cell_shapes(state: &MapState, layer: usize) -> Vec<(Rect, MapShape)> {
+    let Some(ts) = state.tileset(layer).cloned() else {
+        return Vec::new();
+    };
+    let size = state.asset.tile_size();
+    let off = state.asset.layers[layer].offset;
+    let shape = match state.asset.orientation {
+        Orientation::Hexagonal { flat } => MapShape::Hexagon { flat },
+        _ => MapShape::Diamond,
+    };
+    let px = state.asset.unit / state.asset.tile_width_px.max(1) as f32;
+    let image = Vec2::new(ts.tile_width as f32, ts.tile_height as f32) * px;
+    let mut out = Vec::new();
+    for y in 0..state.asset.height {
+        for x in 0..state.asset.width {
+            let Some((t, fx, fy)) = state.tile(layer, x, y) else {
+                continue;
+            };
+            let c = cell_center(&state.asset, x, y) + off;
+            match ts.collision(t) {
+                Some(Collision::Full) => out.push((
+                    Rect {
+                        min: c - size * 0.5,
+                        max: c + size * 0.5,
+                    },
+                    shape,
+                )),
+                Some(Collision::Rect {
+                    x: rx,
+                    y: ry,
+                    w: rw,
+                    h: rh,
+                }) => {
+                    let (tw, th) = (ts.tile_width as f32, ts.tile_height as f32);
+                    let rx = if fx { tw - rx - rw } else { rx };
+                    let ry = if fy { th - ry - rh } else { ry };
+                    let left = c.x - image.x * 0.5 + rx * px;
+                    let top = c.y - size.y * 0.5 + image.y - ry * px;
+                    out.push((
+                        Rect {
+                            min: Vec2::new(left, top - rh * px),
+                            max: Vec2::new(left + rw * px, top),
+                        },
+                        MapShape::Box,
+                    ));
+                }
+                None => {}
+            }
+        }
+    }
+    out
 }
 
 /// [`collision_rects_all`] with each rectangle's layers and mask: its map
@@ -651,11 +788,29 @@ pub fn map_colliders(state: &MapState, default_layers: u32) -> Vec<MapCollider> 
         } else {
             u32::MAX
         };
-        out.extend(
-            collision_rects(state, i)
-                .into_iter()
-                .map(|rect| MapCollider { rect, layers, mask }),
-        );
+        if state.asset.orientation == Orientation::Orthogonal {
+            out.extend(
+                collision_rects(state, i)
+                    .into_iter()
+                    .map(|rect| MapCollider {
+                        rect,
+                        shape: MapShape::Box,
+                        layers,
+                        mask,
+                    }),
+            );
+        } else {
+            out.extend(
+                cell_shapes(state, i)
+                    .into_iter()
+                    .map(|(rect, shape)| MapCollider {
+                        rect,
+                        shape,
+                        layers,
+                        mask,
+                    }),
+            );
+        }
     }
     out
 }
@@ -686,6 +841,12 @@ pub fn chunk_quads(
         return out;
     };
     let size = state.asset.tile_size();
+    // Off the orthogonal grid a tile's image is drawn at its own size (a
+    // taller one stands up from its cell), centred on the cell and resting
+    // on its bottom.
+    let ortho = state.asset.orientation == Orientation::Orthogonal;
+    let px = state.asset.unit / state.asset.tile_width_px.max(1) as f32;
+    let image = Vec2::new(ts.tile_width as f32, ts.tile_height as f32) * px;
     type Frames = (Arc<[[f32; 4]]>, Arc<[f32]>);
     let mut anims: BTreeMap<(u32, bool, bool), Frames> = BTreeMap::new();
     let (w, h) = (state.asset.width, state.asset.height);
@@ -696,8 +857,13 @@ pub fn chunk_quads(
             };
             let index = out.quads.len() as u32;
             out.quads.push(TileQuad {
-                min: Vec2::new(x as f32 * size.x, -((y + 1) as f32) * size.y),
-                size,
+                min: if ortho {
+                    Vec2::new(x as f32 * size.x, -((y + 1) as f32) * size.y)
+                } else {
+                    let c = cell_center(&state.asset, x, y);
+                    Vec2::new(c.x - image.x * 0.5, c.y - size.y * 0.5)
+                },
+                size: if ortho { size } else { image },
                 uv: flipped(ts.uv(t, texture_w, texture_h), fx, fy),
             });
             if let Some(a) = ts.tiles.get(&t).and_then(|d| d.anim.as_ref()) {

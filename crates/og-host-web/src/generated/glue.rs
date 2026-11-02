@@ -1439,6 +1439,21 @@ pub fn og_tilemap_fill(world: u32, desc: Option<String>) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_tilemap_create(world: u32, desc: Option<String>) -> String {
+    <Host as TilemapApi>::og_tilemap_create(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_tilemap_resize(world: u32, desc: Option<String>) -> String {
+    <Host as TilemapApi>::og_tilemap_resize(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_tilemap_neighbours(world: u32, map: f64, x: u32, y: u32) -> String {
+    <Host as TilemapApi>::og_tilemap_neighbours(&Host, world, map, x, y)
+}
+
+#[wasm_bindgen]
 pub fn og_tilemap_get_tile(world: u32, entity: f64, layer: String, x: u32, y: u32) -> i32 {
     <Host as TilemapApi>::og_tilemap_get_tile(&Host, world, entity, layer, x, y)
 }

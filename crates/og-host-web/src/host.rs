@@ -893,6 +893,15 @@ impl TilemapApi for WebHost {
     fn og_tilemap_fill(&self, world: u32, desc: Option<String>) -> String {
         rt::og_tilemap_fill(world, desc)
     }
+    fn og_tilemap_create(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_tilemap_create(world, desc)
+    }
+    fn og_tilemap_resize(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_tilemap_resize(world, desc)
+    }
+    fn og_tilemap_neighbours(&self, world: u32, map: f64, x: u32, y: u32) -> String {
+        rt::og_tilemap_neighbours(world, map, x, y)
+    }
     fn og_tilemap_get_tile(&self, world: u32, entity: f64, layer: String, x: u32, y: u32) -> i32 {
         rt::og_tilemap_get_tile(world, entity, layer, x, y)
     }

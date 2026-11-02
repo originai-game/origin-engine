@@ -579,6 +579,12 @@ export interface HostAbi<A, V> {
   og_tilemap_set_tile(world: number, desc: string | undefined): string;
   /** `og.tilemap.fill` */
   og_tilemap_fill(world: number, desc: string | undefined): string;
+  /** `og.tilemap.create` */
+  og_tilemap_create(world: number, desc: string | undefined): string;
+  /** `og.tilemap.resize` */
+  og_tilemap_resize(world: number, desc: string | undefined): string;
+  /** `og.tilemap.neighbours` */
+  og_tilemap_neighbours(world: number, map: number, x: number, y: number): string;
   /** `og.tilemap.getTile` */
   og_tilemap_get_tile(world: number, entity: number, layer: string, x: number, y: number): number;
   /** `og.tilemap.cellAt` */
@@ -1363,6 +1369,9 @@ export const SYMBOLS: readonly string[] = [
   "og_tween_flash",
   "og_tilemap_set_tile",
   "og_tilemap_fill",
+  "og_tilemap_create",
+  "og_tilemap_resize",
+  "og_tilemap_neighbours",
   "og_tilemap_get_tile",
   "og_tilemap_cell_at",
   "og_tilemap_cell_center",

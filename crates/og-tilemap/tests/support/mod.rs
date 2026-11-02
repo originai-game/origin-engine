@@ -45,6 +45,7 @@ pub fn map(w: u32, h: u32) -> TilemapAsset {
     let mut terrain = Layer::new("walls", w, h, 1);
     terrain.terrain = Some("wall".into());
     TilemapAsset {
+        orientation: Default::default(),
         width: w,
         height: h,
         tile_width_px: 16,

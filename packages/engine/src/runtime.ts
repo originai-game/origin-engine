@@ -1812,6 +1812,10 @@ export const tween = Object.freeze({
 export const tilemap = Object.freeze({
   setTile: (world: WorldImpl, desc?: unknown) => parse(abi().og_tilemap_set_tile(world.id, json(desc))),
   fill: (world: WorldImpl, desc?: unknown) => parse(abi().og_tilemap_fill(world.id, json(desc))),
+  create: (world: WorldImpl, desc?: unknown) => parse(abi().og_tilemap_create(world.id, json(desc))),
+  resize: (world: WorldImpl, desc?: unknown) => parse(abi().og_tilemap_resize(world.id, json(desc))),
+  neighbours: (world: WorldImpl, map: number, x: number, y: number) =>
+    parse(abi().og_tilemap_neighbours(world.id, map, x, y)),
   getTile: (world: WorldImpl, entity: number, layer: string, x: number, y: number) =>
     abi().og_tilemap_get_tile(world.id, entity, layer, x, y),
   cellAt: (world: WorldImpl, entity: number, point: unknown) =>

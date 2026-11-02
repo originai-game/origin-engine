@@ -203,6 +203,14 @@ pub(crate) struct LiveMap {
 pub(crate) struct TileShared {
     pub maps: IdMap<u64, Arc<MapAsset>>,
     pub live: IdMap<u64, LiveMap>,
+    /// Maps made or resized at run time (og.tilemap.create, resize): saved
+    /// whole in the og.tilemap block's trailer (G2-6).
+    pub runtime: BTreeSet<u64>,
+    /// og.tilemap.create's last handle number (world state, saved with them).
+    pub next_runtime: u64,
+    /// A resized loaded map's map as loaded, for a restore of a save made
+    /// before the resize.
+    pub originals: IdMap<u64, Arc<MapAsset>>,
 }
 
 /// The feel modules of one world.
@@ -467,7 +475,10 @@ pub(crate) fn install_middle(
         )
         .map_err(err)?;
     world
-        .add_state_block(TILEMAP_SYSTEM, Box::new(TileBlock(feel.tiles.clone())))
+        .add_state_block(
+            TILEMAP_SYSTEM,
+            Box::new(TileBlock(feel.tiles.clone(), engine_id)),
+        )
         .map_err(err)?;
     let shared = feel.shared.clone();
     let rec = r.clone();
@@ -962,6 +973,12 @@ impl<'a> Reader<'a> {
     pub fn bytes(&mut self) -> og_core::Result<&'a [u8]> {
         let n = self.u32()? as usize;
         self.take(n)
+    }
+    /// The bytes not read yet (a block's trailer), taken.
+    pub fn rest(&mut self) -> &'a [u8] {
+        let r = &self.bytes[self.at..];
+        self.at = self.bytes.len();
+        r
     }
     pub fn end(&self) -> og_core::Result<()> {
         if self.at == self.bytes.len() {

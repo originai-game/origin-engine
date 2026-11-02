@@ -1038,7 +1038,18 @@ fn decode_tilemap(blob: &Blob) -> Result<og_tilemap::TilemapAsset, LoadError> {
             .ok_or_else(|| invalid(blob, "a string is out of range"))
     };
     let n = (meta.width as usize) * (meta.height as usize);
+    // G2-6: absent in an orthogonal map's blob.
+    let orientation = match blob.raw_opt("orientation") {
+        None => og_tilemap::Orientation::Orthogonal,
+        Some(b) => b
+            .get(..4)
+            .and_then(|b| {
+                og_tilemap::Orientation::from_code(u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+            })
+            .ok_or_else(|| invalid(blob, "the orientation section holds no known orientation"))?,
+    };
     let mut map = og_tilemap::TilemapAsset {
+        orientation,
         width: meta.width,
         height: meta.height,
         tile_width_px: meta.tile_width_px,

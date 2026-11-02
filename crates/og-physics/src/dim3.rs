@@ -59,12 +59,28 @@ pub(crate) fn primitive(c: &Collider, s: Vec3) -> Result<Option<rp::SharedShape>
         SHAPE_SPHERE => rp::SharedShape::ball(c.radius * s.max_element()),
         SHAPE_CAPSULE => rp::SharedShape::capsule_y(c.height * 0.5 * s.y, c.radius * s.x.max(s.z)),
         SHAPE_CYLINDER => rp::SharedShape::cylinder(c.height * 0.5 * s.y, c.radius * s.x.max(s.z)),
+        SHAPE_DIAMOND | SHAPE_HEXAGON => {
+            let h = c.size * s * 0.5;
+            let points: Vec<rp::Vector> = polygon(c.shape, h.x, h.y)
+                .into_iter()
+                .flat_map(|[x, y]| [rp::Vector::new(x, y, -h.z), rp::Vector::new(x, y, h.z)])
+                .collect();
+            rp::SharedShape::convex_hull(&points).ok_or_else(|| {
+                Error::new(
+                    ErrorKind::Invalid,
+                    format!(
+                        "og.Collider.shape {} needs size.x, size.y and size.z above 0, got {}",
+                        c.shape, c.size
+                    ),
+                )
+            })?
+        }
         SHAPE_CONVEX | SHAPE_TRIMESH | SHAPE_HEIGHTFIELD => return Ok(None),
         other => {
             return Err(Error::new(
                 ErrorKind::Invalid,
                 format!(
-                    "og.Collider.shape {other} is not a shape (0 box, 1 sphere, 2 capsule, 3 cylinder, 4 convex, 5 trimesh, 6 height field)"
+                    "og.Collider.shape {other} is not a shape (0 box, 1 sphere, 2 capsule, 3 cylinder, 4 convex, 5 trimesh, 6 height field, 7 diamond, 8 hexagon)"
                 ),
             ));
         }

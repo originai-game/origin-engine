@@ -1725,6 +1725,24 @@ pub fn og_tilemap_fill(env: Env, world: u32, desc: Option<String>) -> String {
     <Host as TilemapApi>::og_tilemap_fill(&Host, world, desc)
 }
 
+#[napi(js_name = "og_tilemap_create")]
+pub fn og_tilemap_create(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TilemapApi>::og_tilemap_create(&Host, world, desc)
+}
+
+#[napi(js_name = "og_tilemap_resize")]
+pub fn og_tilemap_resize(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TilemapApi>::og_tilemap_resize(&Host, world, desc)
+}
+
+#[napi(js_name = "og_tilemap_neighbours")]
+pub fn og_tilemap_neighbours(env: Env, world: u32, map: f64, x: u32, y: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TilemapApi>::og_tilemap_neighbours(&Host, world, map, x, y)
+}
+
 #[napi(js_name = "og_tilemap_get_tile")]
 pub fn og_tilemap_get_tile(env: Env, world: u32, entity: f64, layer: String, x: u32, y: u32) -> i32 {
     let _env = crate::EnvScope::enter(&env);

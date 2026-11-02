@@ -426,3 +426,67 @@ fn a_tiled_custom_property_the_importer_does_not_read_is_a_warning_naming_it() {
     let again = cook_project(&root, &CookOptions::default()).unwrap();
     assert_eq!(again.warnings, report.warnings);
 }
+
+/// FNV-1a of a blob's bytes.
+fn fnv(bytes: &[u8]) -> u64 {
+    bytes.iter().fold(0xcbf2_9ce4_8422_2325, |h, &b| {
+        (h ^ b as u64).wrapping_mul(0x0100_0000_01b3)
+    })
+}
+
+/// G2-6 put the orientation in an optional section: an orthogonal map's
+/// blob is byte for byte what it was before (pinned on the code before
+/// it), under the same type hash, so no project re-cooks.
+#[test]
+fn an_orthogonal_map_cooks_to_the_bytes_and_type_hash_it_had_before_orientations() {
+    use og_cook::format::BlobKind;
+    let blob = og_cook::cook::tilemap::encode(&TilemapAsset::parse(ROOM).unwrap(), 7);
+    assert_eq!(
+        (
+            format!("{:016x}", fnv(&blob)),
+            format!("{:016x}", og_cook::format::Tilemap::type_hash()),
+            og_cook::format::Tilemap::schema_version()
+        ),
+        ("763127aa1245ac16".into(), "de1c87bf01d277e7".into(), 1)
+    );
+}
+
+/// Isometric and hex maps, hand-written and from Tiled, keep their
+/// orientation through the blob; a Tiled hex layout the engine does not
+/// draw is refused naming what to change.
+#[test]
+fn isometric_and_hex_maps_cook_with_their_orientation_and_bad_hex_layouts_are_refused() {
+    use og_tilemap::Orientation;
+    let iso = ROOM.replace("size 4 2\n", "orientation isometric\nsize 4 2\n");
+    let hex = ROOM.replace("size 4 2\n", "orientation hex flat\nsize 4 2\n");
+    let tiled_hex = TILED
+        .replace(r#""orientation": "orthogonal""#, r#""orientation": "hexagonal", "staggeraxis": "y", "staggerindex": "odd", "hexsidelength": 8"#)
+        .replace(r#"{ "name": "autotile", "type": "string", "value": "wall" }"#, r#"{ "name": "z", "type": "int", "value": 1 }"#);
+    let mut f = files();
+    f.push(("maps/iso.ogt", iso.clone().into_bytes()));
+    f.push(("maps/hex.ogt", hex.into_bytes()));
+    f.push(("maps/hex.tmj", tiled_hex.clone().into_bytes()));
+    let root = project("orient", &f);
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let m = bundle.load_tilemap("maps/iso.ogt").unwrap();
+    assert_eq!(m.orientation, Orientation::Isometric);
+    assert_eq!(m, TilemapAsset::parse(&iso).unwrap());
+    let m = bundle.load_tilemap("maps/hex.ogt").unwrap();
+    assert_eq!(m.orientation, Orientation::Hexagonal { flat: true });
+    let m = bundle.load_tilemap("maps/hex.tmj").unwrap();
+    assert_eq!(m.orientation, Orientation::Hexagonal { flat: false });
+    assert_eq!(
+        bundle.load_tilemap("maps/room.ogt").unwrap().orientation,
+        Orientation::Orthogonal
+    );
+
+    let even = tiled_hex.replace(r#""staggerindex": "odd""#, r#""staggerindex": "even""#);
+    let mut f = files();
+    f.push(("maps/even.tmj", even.into_bytes()));
+    let root = project("orient-even", &f);
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    let errors = format!("{:?}", report.errors());
+    assert!(errors.contains("stagger the odd rows"), "{errors}");
+}

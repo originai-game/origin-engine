@@ -160,7 +160,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1990 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1999 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -1165,8 +1165,11 @@ Field units the docs and Tune use.
 | [`og.Tilemap`](tilemap.md#record-Tilemap) | component | tilemap | — |
 | [`og.tilemap.cellAt`](tilemap.md#fn-cellAt) | function | tilemap | `og_tilemap_cell_at` |
 | [`og.tilemap.cellCenter`](tilemap.md#fn-cellCenter) | function | tilemap | `og_tilemap_cell_center` |
+| [`og.tilemap.create`](tilemap.md#fn-create) | function | tilemap | `og_tilemap_create` |
 | [`og.tilemap.fill`](tilemap.md#fn-fill) | function | tilemap | `og_tilemap_fill` |
 | [`og.tilemap.getTile`](tilemap.md#fn-getTile) | function | tilemap | `og_tilemap_get_tile` |
+| [`og.tilemap.neighbours`](tilemap.md#fn-neighbours) | function | tilemap | `og_tilemap_neighbours` |
+| [`og.tilemap.resize`](tilemap.md#fn-resize) | function | tilemap | `og_tilemap_resize` |
 | [`og.tilemap.setTile`](tilemap.md#fn-setTile) | function | tilemap | `og_tilemap_set_tile` |
 | [`og.Time`](time.md#record-Time) | resource | time | — |
 | [`og.time.hitStop`](time.md#fn-hitStop) | function | time | `og_time_hit_stop` |
@@ -1665,6 +1668,7 @@ Field units the docs and Tune use.
 | [`RenderTier`](render.md#type-RenderTier) | enum | render | — |
 | [`Repeat`](ui.md#type-Repeat) | enum | ui | — |
 | [`REPLAY_SEED_PARAM`](probe.md#const-REPLAY_SEED_PARAM) | constant | probe | — |
+| [`ResizeDesc`](tilemap.md#type-ResizeDesc) | desc struct | tilemap | — |
 | [`ResourceBarDesc`](ui.md#type-ResourceBarDesc) | desc struct | ui | — |
 | [`ResourceItem`](ui.md#type-ResourceItem) | desc struct | ui | — |
 | [`Response`](ui.md#type-Response) | struct | ui | — |
@@ -1786,7 +1790,9 @@ Field units the docs and Tune use.
 | [`SHAPE_CAPSULE`](physics.md#const-SHAPE_CAPSULE) | constant | physics | — |
 | [`SHAPE_CONVEX`](physics.md#const-SHAPE_CONVEX) | constant | physics | — |
 | [`SHAPE_CYLINDER`](physics.md#const-SHAPE_CYLINDER) | constant | physics | — |
+| [`SHAPE_DIAMOND`](physics.md#const-SHAPE_DIAMOND) | constant | physics | — |
 | [`SHAPE_HEIGHTFIELD`](physics.md#const-SHAPE_HEIGHTFIELD) | constant | physics | — |
+| [`SHAPE_HEXAGON`](physics.md#const-SHAPE_HEXAGON) | constant | physics | — |
 | [`SHAPE_SPHERE`](physics.md#const-SHAPE_SPHERE) | constant | physics | — |
 | [`SHAPE_TRIMESH`](physics.md#const-SHAPE_TRIMESH) | constant | physics | — |
 | [`ShapeBoxDesc`](ui.md#type-ShapeBoxDesc) | desc struct | ui | — |
@@ -1972,12 +1978,15 @@ Field units the docs and Tune use.
 | [`TextureArrayInfo`](load.md#type-TextureArrayInfo) | struct | load | — |
 | [`ThemeColor`](ui.md#type-ThemeColor) | enum | ui | — |
 | [`TileCell`](tilemap.md#type-TileCell) | struct | tilemap | — |
+| [`TileLayerDesc`](tilemap.md#type-TileLayerDesc) | desc struct | tilemap | — |
 | [`TileLayerInfo`](tilemap.md#type-TileLayerInfo) | struct | tilemap | — |
 | [`TilemapAsset`](tilemap.md#type-TilemapAsset) | handle | tilemap | — |
 | [`TilemapAsset()`](tilemap.md#column-TilemapAsset) | column kind | tilemap | — |
+| [`TilemapDesc`](tilemap.md#type-TilemapDesc) | desc struct | tilemap | — |
 | [`TilemapGridDesc`](nav.md#type-TilemapGridDesc) | desc struct | nav | — |
 | [`TilemapInfo`](tilemap.md#type-TilemapInfo) | struct | tilemap | — |
 | [`TileObject`](tilemap.md#type-TileObject) | struct | tilemap | — |
+| [`TileOrientation`](tilemap.md#type-TileOrientation) | enum | tilemap | — |
 | [`TimelineAction`](ui.md#type-TimelineAction) | union | ui | — |
 | [`TimelineAsset`](timeline.md#type-TimelineAsset) | handle | timeline | — |
 | [`TimelineAsset()`](timeline.md#column-TimelineAsset) | column kind | timeline | — |

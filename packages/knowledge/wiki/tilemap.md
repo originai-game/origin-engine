@@ -10,6 +10,10 @@ With og.Lighting2D enabled, a layer whose sprite layer (the map's layer plus its
 
 Cells count from the top-left corner, x right and y down (Tiled's); the map's top-left corner is at the entity's position.
 
+Orientations: a map is orthogonal, isometric (diamonds on a turned grid), staggered (diamonds in rows) or hexagonal (pointy- or flat-top), from its `orientation` line or its Tiled map. cellAt, cellCenter and neighbours follow it; an isometric or staggered tile's image stands up from its cell's bottom (taller tiles overlap the ones behind, drawn back to front); solid tiles off the orthogonal grid collide as one diamond or hexagon per cell. Terrain layers need a square grid (orthogonal or isometric).
+
+Run-time maps: og.tilemap.create makes a map from a desc and og.tilemap.resize changes a map's size, both in game code. A map made or resized is world state: the og.tilemap state block saves it whole (its tilesets by asset id), so a save restores it in a session that never made it.
+
 - **TypeScript**: functions are the namespace `og.tilemap`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
 - **Skill**: `og-2d`, which teaches the module (how much of it to use, and how to prove it).
@@ -20,7 +24,7 @@ module tilemap {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 10878</sub>
+<sub>`api.ogt` line 10880</sub>
 
 ## Contents
 
@@ -29,14 +33,21 @@ module tilemap {
 | [`TilemapAsset`](#type-TilemapAsset) | handle | A loaded map: its layers, tilesets and objects. |
 | [`TilemapAsset()`](#column-TilemapAsset) | column kind | A TilemapAsset handle field. |
 | [`og.Tilemap`](#record-Tilemap) | component | Draws a loaded map with its top-left corner at the entity's position (z included) and gives its collision layers static colliders. The og.tilemap system adopts it in the first tick it exists: from then on og.tilemap.setTile and getTile reach it. |
+| [`TileOrientation`](#type-TileOrientation) | enum | How a map's cells are laid out (Tiled's orientations). |
 | [`TileLayerInfo`](#type-TileLayerInfo) | struct | One layer of a map. |
 | [`TileObject`](#type-TileObject) | struct | An object of a map (a Tiled object, an LDtk entity, an `object` block): spawn points, doors, triggers. |
 | [`TilemapInfo`](#type-TilemapInfo) | struct | What og.load.tilemap loaded. |
+| [`TileLayerDesc`](#type-TileLayerDesc) | desc struct | One layer of a map og.tilemap.create makes (empty). |
+| [`TilemapDesc`](#type-TilemapDesc) | desc struct | A map to make at run time: empty layers on tilesets the bundle cooked. |
+| [`ResizeDesc`](#type-ResizeDesc) | desc struct | A new size for a map, and where its cells go. |
 | [`SetTileDesc`](#type-SetTileDesc) | desc struct | One cell to change. |
 | [`TileCell`](#type-TileCell) | struct | A cell of a map. |
 | [`og.tilemap.setTile`](#fn-setTile) | function | Change a cell. It applies at once to getTile, and to drawing and colliders at the og.tilemap system (this tick when called before it). Deterministic: equal edits in equal order give equal maps. |
 | [`FillDesc`](#type-FillDesc) | desc struct | A block of cells to write at once: a generated grid (og.procgen's BSP cells or WFC tiles mapped to tile ids). |
 | [`og.tilemap.fill`](#fn-fill) | function | Write a block of cells, as setTile on each (row by row) but re-tiling a terrain layer and rebuilding the colliders once. Cells past the map's edge are skipped. |
+| [`og.tilemap.create`](#fn-create) | function | Make an empty map in game code: draw it and edit it as a loaded one (an og.Tilemap with its `map`, then setTile and fill). Its handle comes from the world's own counter, so equal calls in equal order give equal handles, in a replay and after a restore. A world that makes none saves and hashes as before. |
+| [`og.tilemap.resize`](#fn-resize) | function | Change a map's size (a loaded one too: from then on it is a run-time map, saved whole). Every og.Tilemap showing it keeps its edits, moved with the cells by (x, y); cells past the new edges are dropped, new ones are empty, terrain re-tiles, colliders rebuild at the og.tilemap system and its objects (TilemapInfo.objects) move with the cells. |
+| [`og.tilemap.neighbours`](#fn-neighbours) | function | The cells next to a cell, clockwise from the top (or the top right): 4 on an orthogonal or isometric grid (the sides), 4 on a staggered one (the diagonal sides), 6 on a hex one; cells off the map are left out. |
 | [`og.tilemap.getTile`](#fn-getTile) | function | A cell's tile id, -1 when empty: on a terrain layer the tile auto-tiling resolved from the neighbours (setTile writes 1 or 0 there; the id changes with them). -1 outside the map or before the map is adopted. |
 | [`og.tilemap.cellAt`](#fn-cellAt) | function | The cell under a world point (its xy), for a map at its entity's position. |
 | [`og.tilemap.cellCenter`](#fn-cellCenter) | function | A cell's centre in world coordinates (z of the map). |
@@ -71,7 +82,7 @@ fn setTile {
 }
 ```
 
-<sub>`api.ogt` line 10990</sub>
+<sub>`api.ogt` line 11062</sub>
 
 <a id="fn-fill"></a>
 
@@ -101,7 +112,101 @@ fn fill {
 }
 ```
 
-<sub>`api.ogt` line 11008</sub>
+<sub>`api.ogt` line 11080</sub>
+
+<a id="fn-create"></a>
+
+### `og.tilemap.create`
+
+Make an empty map in game code: draw it and edit it as a loaded one (an og.Tilemap with its `map`, then setTile and fill). Its handle comes from the world's own counter, so equal calls in equal order give equal handles, in a replay and after a restore. A world that makes none saves and hashes as before.
+
+```ts
+og.tilemap.create(world: World, desc?: TilemapDesc): Result<TilemapInfo>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `desc` | `TilemapDesc` | yes | Its size, tiles, orientation, tilesets and layers. |
+
+**Returns** `Result<TilemapInfo>`: Refused for a size of 0 or past 16,777,216 cells, a tileset the bundle lacks, a layer naming a tileset index or terrain that does not exist, two layers of one name, or a terrain layer on a staggered or hex map.
+
+Binding symbol `og_tilemap_create` · publish builds: kept
+
+```ogt
+fn create {
+  doc "Make an empty map in game code: draw it and edit it as a loaded one (an og.Tilemap with its `map`, then setTile and fill). Its handle comes from the world's own counter, so equal calls in equal order give equal handles, in a replay and after a restore. A world that makes none saves and hashes as before."
+  param world World "The world."
+  param desc TilemapDesc "Its size, tiles, orientation, tilesets and layers."
+  returns Result.TilemapInfo "Refused for a size of 0 or past 16,777,216 cells, a tileset the bundle lacks, a layer naming a tileset index or terrain that does not exist, two layers of one name, or a terrain layer on a staggered or hex map."
+}
+```
+
+<sub>`api.ogt` line 11087</sub>
+
+<a id="fn-resize"></a>
+
+### `og.tilemap.resize`
+
+Change a map's size (a loaded one too: from then on it is a run-time map, saved whole). Every og.Tilemap showing it keeps its edits, moved with the cells by (x, y); cells past the new edges are dropped, new ones are empty, terrain re-tiles, colliders rebuild at the og.tilemap system and its objects (TilemapInfo.objects) move with the cells.
+
+```ts
+og.tilemap.resize(world: World, desc?: ResizeDesc): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `desc` | `ResizeDesc` | yes | The map, its new size and the shift. |
+
+**Returns** `Result<void>`: Refused for an unknown map, a size of 0 or past 16,777,216 cells, or an odd shift along a staggered or hex map's shifted axis (it would change which rows are shifted).
+
+Binding symbol `og_tilemap_resize` · publish builds: kept
+
+```ogt
+fn resize {
+  doc "Change a map's size (a loaded one too: from then on it is a run-time map, saved whole). Every og.Tilemap showing it keeps its edits, moved with the cells by (x, y); cells past the new edges are dropped, new ones are empty, terrain re-tiles, colliders rebuild at the og.tilemap system and its objects (TilemapInfo.objects) move with the cells."
+  param world World "The world."
+  param desc ResizeDesc "The map, its new size and the shift."
+  returns Result.Void "Refused for an unknown map, a size of 0 or past 16,777,216 cells, or an odd shift along a staggered or hex map's shifted axis (it would change which rows are shifted)."
+}
+```
+
+<sub>`api.ogt` line 11094</sub>
+
+<a id="fn-neighbours"></a>
+
+### `og.tilemap.neighbours`
+
+The cells next to a cell, clockwise from the top (or the top right): 4 on an orthogonal or isometric grid (the sides), 4 on a staggered one (the diagonal sides), 6 on a hex one; cells off the map are left out.
+
+```ts
+og.tilemap.neighbours(world: World, map: TilemapAsset, x: number, y: number): readonly TileCell[]
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `map` | `TilemapAsset` | no | The map. |
+| `x` | `number` | no | The column. |
+| `y` | `number` | no | The row. |
+
+**Returns** `readonly TileCell[]`.
+
+Binding symbol `og_tilemap_neighbours` · publish builds: kept
+
+```ogt
+fn neighbours {
+  doc "The cells next to a cell, clockwise from the top (or the top right): 4 on an orthogonal or isometric grid (the sides), 4 on a staggered one (the diagonal sides), 6 on a hex one; cells off the map are left out."
+  param world World "The world."
+  param map TilemapAsset "The map."
+  param x u32 "The column."
+  param y u32 "The row."
+  returns List.TileCell
+}
+```
+
+<sub>`api.ogt` line 11101</sub>
 
 <a id="fn-getTile"></a>
 
@@ -137,7 +242,7 @@ fn getTile {
 }
 ```
 
-<sub>`api.ogt` line 11015</sub>
+<sub>`api.ogt` line 11110</sub>
 
 <a id="fn-cellAt"></a>
 
@@ -169,7 +274,7 @@ fn cellAt {
 }
 ```
 
-<sub>`api.ogt` line 11025</sub>
+<sub>`api.ogt` line 11120</sub>
 
 <a id="fn-cellCenter"></a>
 
@@ -203,7 +308,7 @@ fn cellCenter {
 }
 ```
 
-<sub>`api.ogt` line 11033</sub>
+<sub>`api.ogt` line 11128</sub>
 
 ## Components, resources and events
 
@@ -262,7 +367,7 @@ component Tilemap {
 }
 ```
 
-<sub>`api.ogt` line 10894</sub>
+<sub>`api.ogt` line 10898</sub>
 
 ## Types
 
@@ -278,7 +383,36 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TilemapAsset "A loaded map: its layers, tilesets and objects."
 ```
 
-<sub>`api.ogt` line 10885</sub>
+<sub>`api.ogt` line 10889</sub>
+
+<a id="type-TileOrientation"></a>
+
+### `TileOrientation` (enum)
+
+How a map's cells are laid out (Tiled's orientations).
+
+A string: one of the variants below. The zero value is `"orthogonal"`.
+
+| Variant | Doc |
+|---|---|
+| `"orthogonal"` | Rectangles in rows and columns. |
+| `"isometric"` | Diamonds on a turned grid: x runs down to the right, y down to the left, cell 0 0 at the top. |
+| `"staggered"` | Diamonds in rows half a tile apart, every odd row shifted right half a tile (Tiled's staggered, odd rows). |
+| `"hex"` | Pointy-top hexagons with corners at a quarter of the tile, rows 3/4 of a tile apart, every odd row shifted right half a tile (Tiled's hexagonal, stagger axis y, odd, side half the tile's height). |
+| `"hexFlat"` | Flat-top hexagons, columns 3/4 of a tile apart, every odd column shifted down half a tile (stagger axis x). |
+
+```ogt
+enum TileOrientation {
+  doc "How a map's cells are laid out (Tiled's orientations)."
+  variant orthogonal "Rectangles in rows and columns."
+  variant isometric "Diamonds on a turned grid: x runs down to the right, y down to the left, cell 0 0 at the top."
+  variant staggered "Diamonds in rows half a tile apart, every odd row shifted right half a tile (Tiled's staggered, odd rows)."
+  variant hex "Pointy-top hexagons with corners at a quarter of the tile, rows 3/4 of a tile apart, every odd row shifted right half a tile (Tiled's hexagonal, stagger axis y, odd, side half the tile's height)."
+  variant hexFlat "Flat-top hexagons, columns 3/4 of a tile apart, every odd column shifted down half a tile (stagger axis x)."
+}
+```
+
+<sub>`api.ogt` line 10930</sub>
 
 <a id="type-TileLayerInfo"></a>
 
@@ -315,7 +449,7 @@ struct TileLayerInfo {
 }
 ```
 
-<sub>`api.ogt` line 10926</sub>
+<sub>`api.ogt` line 10939</sub>
 
 <a id="type-TileObject"></a>
 
@@ -350,7 +484,7 @@ struct TileObject {
 }
 ```
 
-<sub>`api.ogt` line 10940</sub>
+<sub>`api.ogt` line 10953</sub>
 
 <a id="type-TilemapInfo"></a>
 
@@ -367,6 +501,7 @@ What og.load.tilemap loaded.
 | `tileHeight` | `number` | `0` | — | `m` | — | A cell's height in world units. |
 | `layers` | `readonly TileLayerInfo[]` | `[]` | — | — | — | Its layers, drawing order. |
 | `objects` | `readonly TileObject[]` | `[]` | — | — | — | Its objects. |
+| `orientation` | `TileOrientation` | `"orthogonal"` | — | — | — | How its cells are laid out. |
 
 ```ogt
 struct TilemapInfo {
@@ -382,10 +517,135 @@ struct TilemapInfo {
   }
   field layers List.TileLayerInfo "Its layers, drawing order."
   field objects List.TileObject "Its objects."
+  field orientation TileOrientation "How its cells are laid out."
 }
 ```
 
-<sub>`api.ogt` line 10956</sub>
+<sub>`api.ogt` line 10969</sub>
+
+<a id="type-TileLayerDesc"></a>
+
+### `TileLayerDesc` (desc struct)
+
+One layer of a map og.tilemap.create makes (empty).
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `name` | `string` | `""` | — | — | — | Its name (unique in the map). |
+| `tileset` | `number` | `0` | — | — | — | The index of its tileset in TilemapDesc.tilesets. |
+| `terrain` | `string` | `""` | — | — | — | An auto-tiling terrain of that tileset: a terrain layer (cells 1 or 0); empty for a tile layer. |
+| `z` | `number` | `0` | — | — | — | Its sprite-layer offset from Tilemap.layer. |
+| `collision` | `boolean` | `false` | — | — | — | Its solid tiles collide. |
+| `colliderLayers` | `number` | `0` | — | — | — | Its colliders' collision layers (0: Tilemap.colliderLayers). |
+| `colliderMask` | `number` | `0` | — | — | — | The layers its colliders collide with (0: every layer). |
+| `visible` | `boolean` | `true` | — | — | — | Whether it is drawn. |
+
+```ogt
+struct TileLayerDesc {
+  doc "One layer of a map og.tilemap.create makes (empty)."
+  desc true
+  field name String "Its name (unique in the map)."
+  field tileset u32 "The index of its tileset in TilemapDesc.tilesets."
+  field terrain String "An auto-tiling terrain of that tileset: a terrain layer (cells 1 or 0); empty for a tile layer."
+  field z i32 "Its sprite-layer offset from Tilemap.layer."
+  field collision bool "Its solid tiles collide."
+  field colliderLayers u32 "Its colliders' collision layers (0: Tilemap.colliderLayers)."
+  field colliderMask u32 "The layers its colliders collide with (0: every layer)."
+  field visible bool "Whether it is drawn." {
+    default true
+  }
+}
+```
+
+<sub>`api.ogt` line 10985</sub>
+
+<a id="type-TilemapDesc"></a>
+
+### `TilemapDesc` (desc struct)
+
+A map to make at run time: empty layers on tilesets the bundle cooked.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `width` | `number` | `16` | ≥ 1 | — | — | Cells across. |
+| `height` | `number` | `16` | ≥ 1 | — | — | Cells down. |
+| `tileWidth` | `number` | `16` | ≥ 1 | — | — | A tile's width in pixels (its cell's). |
+| `tileHeight` | `number` | `16` | ≥ 1 | — | — | A tile's height in pixels (its cell's; half the width for the usual isometric diamond). |
+| `unit` | `number` | `1` | — | — | — | World units per tile width. |
+| `orientation` | `TileOrientation` | `"orthogonal"` | — | — | — | How the cells are laid out. |
+| `tilesets` | `readonly string[]` | `[]` | — | — | — | The tilesets' asset ids (tileset `.ogt` files, such as `tiles/dungeon.ogt`). |
+| `layers` | `readonly TileLayerDesc[]` | `[]` | — | — | — | The layers, drawing order. |
+
+```ogt
+struct TilemapDesc {
+  doc "A map to make at run time: empty layers on tilesets the bundle cooked."
+  desc true
+  field width u32 "Cells across." {
+    default 16
+    min 1
+  }
+  field height u32 "Cells down." {
+    default 16
+    min 1
+  }
+  field tileWidth u32 "A tile's width in pixels (its cell's)." {
+    default 16
+    min 1
+  }
+  field tileHeight u32 "A tile's height in pixels (its cell's; half the width for the usual isometric diamond)." {
+    default 16
+    min 1
+  }
+  field unit f32 "World units per tile width." {
+    default 1
+  }
+  field orientation TileOrientation "How the cells are laid out."
+  field tilesets List.String "The tilesets' asset ids (tileset `.ogt` files, such as `tiles/dungeon.ogt`)."
+  field layers List.TileLayerDesc "The layers, drawing order."
+}
+```
+
+<sub>`api.ogt` line 11000</sub>
+
+<a id="type-ResizeDesc"></a>
+
+### `ResizeDesc` (desc struct)
+
+A new size for a map, and where its cells go.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `map` | `TilemapAsset` | `0` | — | — | — | The map: og.load.tilemap's or og.tilemap.create's. |
+| `width` | `number` | `16` | ≥ 1 | — | — | Cells across. |
+| `height` | `number` | `16` | ≥ 1 | — | — | Cells down. |
+| `x` | `number` | `0` | — | — | — | Where the old cell 0 0 lands: columns added on the left (negative crops them). |
+| `y` | `number` | `0` | — | — | — | Rows added at the top (negative crops them). |
+
+```ogt
+struct ResizeDesc {
+  doc "A new size for a map, and where its cells go."
+  desc true
+  field map TilemapAsset "The map: og.load.tilemap's or og.tilemap.create's."
+  field width u32 "Cells across." {
+    default 16
+    min 1
+  }
+  field height u32 "Cells down." {
+    default 16
+    min 1
+  }
+  field x i32 "Where the old cell 0 0 lands: columns added on the left (negative crops them)."
+  field y i32 "Rows added at the top (negative crops them)."
+}
+```
+
+<sub>`api.ogt` line 11027</sub>
 
 <a id="type-SetTileDesc"></a>
 
@@ -417,7 +677,7 @@ struct SetTileDesc {
 }
 ```
 
-<sub>`api.ogt` line 10971</sub>
+<sub>`api.ogt` line 11043</sub>
 
 <a id="type-TileCell"></a>
 
@@ -440,7 +700,7 @@ struct TileCell {
 }
 ```
 
-<sub>`api.ogt` line 10983</sub>
+<sub>`api.ogt` line 11055</sub>
 
 <a id="type-FillDesc"></a>
 
@@ -472,7 +732,7 @@ struct FillDesc {
 }
 ```
 
-<sub>`api.ogt` line 10997</sub>
+<sub>`api.ogt` line 11069</sub>
 
 ## Column kinds
 
@@ -491,4 +751,4 @@ column TilemapAsset {
 }
 ```
 
-<sub>`api.ogt` line 10887</sub>
+<sub>`api.ogt` line 10891</sub>

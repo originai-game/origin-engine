@@ -12,8 +12,8 @@ use og_blob::BlobWriter;
 use og_core::IdMap;
 use og_core::ogt::Block;
 use og_tilemap::{
-    Collision, FLIP_DIAGONAL, FLIP_X, FLIP_Y, Filter, Layer, MapObject, TILE_MASK, TileAnim,
-    TileDef, TilemapAsset, Tileset, TilesetRef,
+    Collision, FLIP_DIAGONAL, FLIP_X, FLIP_Y, Filter, Layer, MapObject, Orientation, TILE_MASK,
+    TileAnim, TileDef, TilemapAsset, Tileset, TilesetRef,
 };
 use serde_json::Value;
 use std::cell::RefCell;
@@ -364,7 +364,61 @@ pub fn encode(map: &TilemapAsset, stamp: u64) -> Vec<u8> {
         .table("props", &props, row_hash::<MapPropRow>())
         .table("tilesets", &tilesets, row_hash::<MapTilesetRow>())
         .raw("strings", strings, 4);
+    // G2-6: an optional section, so an orthogonal map cooks as before and
+    // the type hash is unchanged.
+    if map.orientation != Orientation::Orthogonal {
+        w.raw(
+            "orientation",
+            map.orientation.code().to_le_bytes().to_vec(),
+            4,
+        );
+    }
     w.finish()
+}
+
+/// A Tiled map's orientation, refused where the engine's layout differs.
+fn tiled_orientation(j: &Value) -> Result<Orientation, String> {
+    let o = st(j, "orientation");
+    match o {
+        "orthogonal" => Ok(Orientation::Orthogonal),
+        "isometric" => Ok(Orientation::Isometric),
+        "staggered" if st(j, "staggeraxis") == "y" && st(j, "staggerindex") == "odd" => {
+            Ok(Orientation::Staggered)
+        }
+        "staggered" => Err(format!(
+            "the staggered map staggers the {} {}: the engine's staggered maps stagger the odd rows (stagger axis y, index odd); set them in Map > Map Properties",
+            st(j, "staggerindex"),
+            if st(j, "staggeraxis") == "x" {
+                "columns"
+            } else {
+                "rows"
+            }
+        )),
+        "hexagonal" => {
+            let flat = st(j, "staggeraxis") == "x";
+            let side = u(j, "hexsidelength").unwrap_or(0);
+            let across = if flat {
+                u(j, "tilewidth")
+            } else {
+                u(j, "tileheight")
+            }
+            .unwrap_or(0);
+            if st(j, "staggerindex") != "odd" || side * 2 != across {
+                return Err(format!(
+                    "the hexagonal map staggers {} {} with sides of {side} px: the engine's hex maps stagger the odd {} with sides half the tile's {} ({} px); set them in Map > Map Properties",
+                    st(j, "staggerindex"),
+                    if flat { "columns" } else { "rows" },
+                    if flat { "columns" } else { "rows" },
+                    if flat { "width" } else { "height" },
+                    across / 2
+                ));
+            }
+            Ok(Orientation::Hexagonal { flat })
+        }
+        _ => Err(format!(
+            "the map's orientation is '{o}': orthogonal, isometric, staggered and hexagonal Tiled maps are supported"
+        )),
+    }
 }
 
 // ── JSON helpers ─────────────────────────────────────────────────────────
@@ -541,7 +595,9 @@ fn tiled_embedded(rel: &str, t: &Value, name: &str) -> Result<Tileset, String> {
     Ok(ts)
 }
 
-/// A Tiled JSON map (`.tmj`, orthogonal, finite, uncompressed layer data).
+/// A Tiled JSON map (`.tmj`: orthogonal, isometric, staggered with odd
+/// rows shifted, or hexagonal with odd rows or columns shifted and sides
+/// half a tile; finite, uncompressed layer data).
 pub fn import_tiled(
     rel: &str,
     text: &str,
@@ -549,12 +605,7 @@ pub fn import_tiled(
     known: &dyn Fn(&str) -> bool,
 ) -> Result<TilemapAsset, String> {
     let j: Value = serde_json::from_str(text).map_err(|e| format!("Tiled JSON: {e}"))?;
-    if st(&j, "orientation") != "orthogonal" {
-        return Err(format!(
-            "the map's orientation is '{}': only orthogonal Tiled maps are supported",
-            st(&j, "orientation")
-        ));
-    }
+    let orientation = tiled_orientation(&j)?;
     if j.get("infinite").and_then(Value::as_bool) == Some(true) {
         return Err(
             "the map is infinite: untick Map > Map Properties > Infinite in Tiled and save again"
@@ -568,6 +619,7 @@ pub fn import_tiled(
     let unit = settings.unit.unwrap_or(1.0);
     let px = unit / tw.max(1) as f32; // world units per pixel
     let mut map = TilemapAsset {
+        orientation,
         width,
         height,
         tile_width_px: tw,
@@ -1023,6 +1075,7 @@ pub fn import_ldtk(
         .map(|a| a.iter().collect())
         .unwrap_or_default();
     let mut map = TilemapAsset {
+        orientation: Default::default(),
         width,
         height,
         tile_width_px: grid,

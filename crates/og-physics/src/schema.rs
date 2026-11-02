@@ -178,6 +178,33 @@ pub const SHAPE_TRIMESH: u32 = 5;
 /// terrain, static), centred on the entity
 /// ([`crate::PhysicsSystem::set_heightfield`]).
 pub const SHAPE_HEIGHTFIELD: u32 = 6;
+/// `Collider.shape`: a rhombus whose diagonals are `size.x` (along x) and
+/// `size.y` (along y): an isometric tile's diamond. In 3D a prism `size.z`
+/// deep (both profiles).
+pub const SHAPE_DIAMOND: u32 = 7;
+/// `Collider.shape`: a pointy-top hexagon in the box `size.x` × `size.y`,
+/// its corners at the top and bottom middles and at a quarter and three
+/// quarters down each side: a hex tile (turn it a quarter about z for a
+/// flat-top one). In 3D a prism `size.z` deep (both profiles).
+pub const SHAPE_HEXAGON: u32 = 8;
+
+/// The xy corners of a [`SHAPE_DIAMOND`] or [`SHAPE_HEXAGON`] of half
+/// extents (hx, hy), counter-clockwise from the right (or the top).
+pub(crate) fn polygon(shape: u32, hx: f32, hy: f32) -> Vec<[f32; 2]> {
+    if shape == SHAPE_DIAMOND {
+        vec![[hx, 0.0], [0.0, hy], [-hx, 0.0], [0.0, -hy]]
+    } else {
+        let q = hy * 0.5;
+        vec![
+            [0.0, hy],
+            [-hx, q],
+            [-hx, -q],
+            [0.0, -hy],
+            [hx, -q],
+            [hx, q],
+        ]
+    }
+}
 
 /// The shape an entity collides with, attached to its RigidBody (or, with
 /// no RigidBody, a static collider at its Transform). Sizes are scaled by
@@ -185,8 +212,8 @@ pub const SHAPE_HEIGHTFIELD: u32 = 6;
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
 #[reflect(name = "og.Collider")]
 pub struct Collider {
-    /// 0 box, 1 sphere (circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (polygon in 2D), 5 triangle mesh of `mesh` (3D), 6 the height field `mesh` (3D: a terrain).
-    #[reflect(min = 0, max = 6, label = "Shape")]
+    /// 0 box, 1 sphere (circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (polygon in 2D), 5 triangle mesh of `mesh` (3D), 6 the height field `mesh` (3D: a terrain), 7 a diamond and 8 a hexagon in `size` (both).
+    #[reflect(min = 0, max = 8, label = "Shape")]
     pub shape: u32,
     /// Full extents of a box, as three.js BoxGeometry(width, height, depth).
     #[reflect(min = 0, unit = "m", default = [1, 1, 1], tunable)]

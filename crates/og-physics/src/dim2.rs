@@ -84,6 +84,14 @@ pub(crate) fn primitive(c: &Collider, s: Vec3) -> Result<Option<rp::SharedShape>
         }
         SHAPE_SPHERE => rp::SharedShape::ball(c.radius * s.x.max(s.y)),
         SHAPE_CAPSULE => rp::SharedShape::capsule_y(c.height * 0.5 * s.y, c.radius * s.x),
+        SHAPE_DIAMOND | SHAPE_HEXAGON => {
+            let h = c.size * s * 0.5;
+            let points: Vec<rp::Vector> = polygon(c.shape, h.x, h.y)
+                .into_iter()
+                .map(|[x, y]| rp::Vector::new(x, y))
+                .collect();
+            rp::SharedShape::convex_polyline(points).ok_or_else(|| degenerate(c))?
+        }
         SHAPE_CONVEX => return Ok(None),
         SHAPE_CYLINDER | SHAPE_TRIMESH | SHAPE_HEIGHTFIELD => {
             return Err(Error::new(
@@ -98,11 +106,21 @@ pub(crate) fn primitive(c: &Collider, s: Vec3) -> Result<Option<rp::SharedShape>
             return Err(Error::new(
                 ErrorKind::Invalid,
                 format!(
-                    "og.Collider.shape {other} is not a shape (2D: 0 box, 1 circle, 2 capsule, 4 polygon)"
+                    "og.Collider.shape {other} is not a shape (2D: 0 box, 1 circle, 2 capsule, 4 polygon, 7 diamond, 8 hexagon)"
                 ),
             ));
         }
     }))
+}
+
+fn degenerate(c: &Collider) -> Error {
+    Error::new(
+        ErrorKind::Invalid,
+        format!(
+            "og.Collider.shape {} needs size.x and size.y above 0, got {} x {}",
+            c.shape, c.size.x, c.size.y
+        ),
+    )
 }
 
 /// The convex polygon of a registered mesh's xy, scaled.

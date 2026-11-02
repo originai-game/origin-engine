@@ -665,6 +665,12 @@ pub trait TilemapApi: Wire {
     fn og_tilemap_set_tile(&self, world: u32, desc: Option<String>) -> String;
     /// `og.tilemap.fill`
     fn og_tilemap_fill(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.tilemap.create`
+    fn og_tilemap_create(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.tilemap.resize`
+    fn og_tilemap_resize(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.tilemap.neighbours`
+    fn og_tilemap_neighbours(&self, world: u32, map: f64, x: u32, y: u32) -> String;
     /// `og.tilemap.getTile`
     fn og_tilemap_get_tile(&self, world: u32, entity: f64, layer: String, x: u32, y: u32) -> i32;
     /// `og.tilemap.cellAt`
@@ -1510,6 +1516,9 @@ pub const SYMBOLS: &[&str] = &[
     "og_tween_flash",
     "og_tilemap_set_tile",
     "og_tilemap_fill",
+    "og_tilemap_create",
+    "og_tilemap_resize",
+    "og_tilemap_neighbours",
     "og_tilemap_get_tile",
     "og_tilemap_cell_at",
     "og_tilemap_cell_center",

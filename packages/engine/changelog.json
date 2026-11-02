@@ -216,6 +216,14 @@
       {
         "member": "og run: confirmedHash",
         "summary": "og run's summary gives the confirmed (final) hash of its last tick in a room; in rollback the run continues past --ticks until that tick is final and acknowledged by every peer."
+      },
+      {
+        "member": "TileOrientation, TilemapInfo.orientation, SHAPE_DIAMOND, SHAPE_HEXAGON, og.tilemap.neighbours",
+        "summary": "Tilemap orientations (G2-6): a map is orthogonal, isometric, staggered (odd rows shifted) or hexagonal (pointy- or flat-top, odd rows or columns shifted, sides half a tile), from a tilemap `.ogt`'s `orientation` line or a Tiled map (Tiled's isometric, staggered and hexagonal maps in that layout now cook; another stagger is refused naming the Map Properties to change). cellAt, cellCenter and the new neighbours follow it; an isometric or staggered tile's image stands on its cell's bottom (taller tiles overlap those behind, drawn back to front); solid tiles off the orthogonal grid collide as one diamond or hexagon per cell (new Collider shapes 7 and 8, both profiles, also for game code); terrain layers need an orthogonal or isometric map. Cook: the orientation is an optional `orientation` section of the og.Tilemap blob, so an orthogonal map cooks to the same bytes under the same type hash and nothing re-cooks (pinned)."
+      },
+      {
+        "member": "og.tilemap.create, og.tilemap.resize, TilemapDesc, TileLayerDesc, ResizeDesc",
+        "summary": "Run-time tilemaps (G2-6): create makes an empty map in code (size, tile pixels, unit, orientation, tileset asset ids, layers), with a handle from the world's own counter; resize grows or crops a map (a loaded one too), moving its cells, every placed copy's edits and its objects by (x, y), refusing an odd shift along a staggered or hex map's shifted axis. Both are world state: the og.tilemap block's og_ecs::trailer holds the maps made or resized whole (section 1, tilesets by asset id) and the counter (section 2), written only once a map was made or resized, so a world that only loads maps saves and hashes as before (pinned: tests/tilemap_runtime.rs). A save restores them in a session that never made them; an earlier save puts a resized loaded map back as loaded."
       }
     ],
     "fixed": [

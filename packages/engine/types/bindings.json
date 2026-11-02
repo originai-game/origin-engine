@@ -16121,6 +16121,82 @@
     {
       "id": 266,
       "kind": "fn",
+      "path": "og.tilemap.create",
+      "symbol": "og_tilemap_create",
+      "module": "tilemap",
+      "name": "create",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "TilemapDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<TilemapInfo>",
+      "publish": true
+    },
+    {
+      "id": 267,
+      "kind": "fn",
+      "path": "og.tilemap.resize",
+      "symbol": "og_tilemap_resize",
+      "module": "tilemap",
+      "name": "resize",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "ResizeDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 268,
+      "kind": "fn",
+      "path": "og.tilemap.neighbours",
+      "symbol": "og_tilemap_neighbours",
+      "module": "tilemap",
+      "name": "neighbours",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "map",
+          "type": "TilemapAsset",
+          "optional": false
+        },
+        {
+          "name": "x",
+          "type": "u32",
+          "optional": false
+        },
+        {
+          "name": "y",
+          "type": "u32",
+          "optional": false
+        }
+      ],
+      "returns": "List<TileCell>",
+      "publish": true
+    },
+    {
+      "id": 269,
+      "kind": "fn",
       "path": "og.tilemap.getTile",
       "symbol": "og_tilemap_get_tile",
       "module": "tilemap",
@@ -16156,7 +16232,7 @@
       "publish": true
     },
     {
-      "id": 267,
+      "id": 270,
       "kind": "fn",
       "path": "og.tilemap.cellAt",
       "symbol": "og_tilemap_cell_at",
@@ -16183,7 +16259,7 @@
       "publish": true
     },
     {
-      "id": 268,
+      "id": 271,
       "kind": "fn",
       "path": "og.tilemap.cellCenter",
       "symbol": "og_tilemap_cell_center",
@@ -16215,7 +16291,7 @@
       "publish": true
     },
     {
-      "id": 269,
+      "id": 272,
       "kind": "fn",
       "path": "og.audio.createSound",
       "symbol": "og_audio_create_sound",
@@ -16237,7 +16313,7 @@
       "publish": true
     },
     {
-      "id": 270,
+      "id": 273,
       "kind": "fn",
       "path": "og.audio.outputLatency",
       "symbol": "og_audio_output_latency",
@@ -16254,7 +16330,7 @@
       "publish": true
     },
     {
-      "id": 271,
+      "id": 274,
       "kind": "fn",
       "path": "og.nav.grid",
       "symbol": "og_nav_grid",
@@ -16276,7 +16352,7 @@
       "publish": true
     },
     {
-      "id": 272,
+      "id": 275,
       "kind": "fn",
       "path": "og.nav.gridFromTilemap",
       "symbol": "og_nav_grid_from_tilemap",
@@ -16298,7 +16374,7 @@
       "publish": true
     },
     {
-      "id": 273,
+      "id": 276,
       "kind": "fn",
       "path": "og.nav.setCost",
       "symbol": "og_nav_set_cost",
@@ -16335,7 +16411,7 @@
       "publish": true
     },
     {
-      "id": 274,
+      "id": 277,
       "kind": "fn",
       "path": "og.nav.cellAt",
       "symbol": "og_nav_cell_at",
@@ -16362,7 +16438,7 @@
       "publish": true
     },
     {
-      "id": 275,
+      "id": 278,
       "kind": "fn",
       "path": "og.nav.findPath",
       "symbol": "og_nav_find_path",
@@ -16384,7 +16460,7 @@
       "publish": true
     },
     {
-      "id": 276,
+      "id": 279,
       "kind": "fn",
       "path": "og.nav.flowField",
       "symbol": "og_nav_flow_field",
@@ -16406,7 +16482,7 @@
       "publish": true
     },
     {
-      "id": 277,
+      "id": 280,
       "kind": "fn",
       "path": "og.nav.setFlowTargets",
       "symbol": "og_nav_set_flow_targets",
@@ -16433,7 +16509,7 @@
       "publish": true
     },
     {
-      "id": 278,
+      "id": 281,
       "kind": "fn",
       "path": "og.nav.flowAt",
       "symbol": "og_nav_flow_at",
@@ -16460,7 +16536,7 @@
       "publish": true
     },
     {
-      "id": 279,
+      "id": 282,
       "kind": "fn",
       "path": "og.nav.load",
       "symbol": "og_nav_load",
@@ -16487,7 +16563,7 @@
       "publish": true
     },
     {
-      "id": 280,
+      "id": 283,
       "kind": "fn",
       "path": "og.nav.build",
       "symbol": "og_nav_build",
@@ -16509,7 +16585,7 @@
       "publish": true
     },
     {
-      "id": 281,
+      "id": 284,
       "kind": "fn",
       "path": "og.nav.setObstacle",
       "symbol": "og_nav_set_obstacle",
@@ -16541,7 +16617,7 @@
       "publish": true
     },
     {
-      "id": 282,
+      "id": 285,
       "kind": "fn",
       "path": "og.nav.carve",
       "symbol": "og_nav_carve",
@@ -16573,7 +16649,7 @@
       "publish": true
     },
     {
-      "id": 283,
+      "id": 286,
       "kind": "fn",
       "path": "og.nav.setArea",
       "symbol": "og_nav_set_area",
@@ -16605,7 +16681,7 @@
       "publish": true
     },
     {
-      "id": 284,
+      "id": 287,
       "kind": "fn",
       "path": "og.nav.setLink",
       "symbol": "og_nav_set_link",
@@ -16637,7 +16713,7 @@
       "publish": true
     },
     {
-      "id": 285,
+      "id": 288,
       "kind": "fn",
       "path": "og.nav.setLinkOpen",
       "symbol": "og_nav_set_link_open",
@@ -16669,7 +16745,7 @@
       "publish": true
     },
     {
-      "id": 286,
+      "id": 289,
       "kind": "fn",
       "path": "og.nav.finishLink",
       "symbol": "og_nav_finish_link",
@@ -16691,7 +16767,7 @@
       "publish": true
     },
     {
-      "id": 287,
+      "id": 290,
       "kind": "fn",
       "path": "og.nav.nearest",
       "symbol": "og_nav_nearest",
@@ -16723,7 +16799,7 @@
       "publish": true
     },
     {
-      "id": 288,
+      "id": 291,
       "kind": "fn",
       "path": "og.nav.pathOf",
       "symbol": "og_nav_path_of",
@@ -16745,7 +16821,7 @@
       "publish": true
     },
     {
-      "id": 289,
+      "id": 292,
       "kind": "fn",
       "path": "og.ai.load",
       "symbol": "og_ai_load",
@@ -16767,7 +16843,7 @@
       "publish": true
     },
     {
-      "id": 290,
+      "id": 293,
       "kind": "fn",
       "path": "og.ai.parse",
       "symbol": "og_ai_parse",
@@ -16789,7 +16865,7 @@
       "publish": true
     },
     {
-      "id": 291,
+      "id": 294,
       "kind": "fn",
       "path": "og.ai.get",
       "symbol": "og_ai_get",
@@ -16816,7 +16892,7 @@
       "publish": true
     },
     {
-      "id": 292,
+      "id": 295,
       "kind": "fn",
       "path": "og.ai.set",
       "symbol": "og_ai_set",
@@ -16848,7 +16924,7 @@
       "publish": true
     },
     {
-      "id": 293,
+      "id": 296,
       "kind": "fn",
       "path": "og.ai.restart",
       "symbol": "og_ai_restart",
@@ -16870,7 +16946,7 @@
       "publish": true
     },
     {
-      "id": 294,
+      "id": 297,
       "kind": "fn",
       "path": "og.ai.finish",
       "symbol": "og_ai_finish",
@@ -16902,7 +16978,7 @@
       "publish": true
     },
     {
-      "id": 295,
+      "id": 298,
       "kind": "fn",
       "path": "og.ai.noise",
       "symbol": "og_ai_noise",
@@ -16924,7 +17000,7 @@
       "publish": true
     },
     {
-      "id": 296,
+      "id": 299,
       "kind": "fn",
       "path": "og.ai.describe",
       "symbol": "og_ai_describe",
@@ -16946,7 +17022,7 @@
       "publish": true
     },
     {
-      "id": 297,
+      "id": 300,
       "kind": "fn",
       "path": "og.platform.storeGet",
       "symbol": "og_platform_store_get",
@@ -16968,7 +17044,7 @@
       "publish": true
     },
     {
-      "id": 298,
+      "id": 301,
       "kind": "fn",
       "path": "og.platform.storeSet",
       "symbol": "og_platform_store_set",
@@ -16990,7 +17066,7 @@
       "publish": true
     },
     {
-      "id": 299,
+      "id": 302,
       "kind": "fn",
       "path": "og.platform.storeList",
       "symbol": "og_platform_store_list",
@@ -17007,7 +17083,7 @@
       "publish": true
     },
     {
-      "id": 300,
+      "id": 303,
       "kind": "fn",
       "path": "og.platform.leaderboardSubmit",
       "symbol": "og_platform_leaderboard_submit",
@@ -17029,7 +17105,7 @@
       "publish": true
     },
     {
-      "id": 301,
+      "id": 304,
       "kind": "fn",
       "path": "og.platform.leaderboardTop",
       "symbol": "og_platform_leaderboard_top",
@@ -17051,7 +17127,7 @@
       "publish": true
     },
     {
-      "id": 302,
+      "id": 305,
       "kind": "fn",
       "path": "og.platform.leaderboardAround",
       "symbol": "og_platform_leaderboard_around",
@@ -17073,7 +17149,7 @@
       "publish": true
     },
     {
-      "id": 303,
+      "id": 306,
       "kind": "fn",
       "path": "og.platform.telemetry",
       "symbol": "og_platform_telemetry",
@@ -17100,7 +17176,7 @@
       "publish": true
     },
     {
-      "id": 304,
+      "id": 307,
       "kind": "fn",
       "path": "og.platform.point",
       "symbol": "og_platform_point",
@@ -17122,7 +17198,7 @@
       "publish": true
     },
     {
-      "id": 305,
+      "id": 308,
       "kind": "fn",
       "path": "og.platform.aiMark",
       "symbol": "og_platform_ai_mark",
@@ -17144,7 +17220,7 @@
       "publish": true
     },
     {
-      "id": 306,
+      "id": 309,
       "kind": "fn",
       "path": "og.platform.loadSettings",
       "symbol": "og_platform_load_settings",
@@ -17161,7 +17237,7 @@
       "publish": true
     },
     {
-      "id": 307,
+      "id": 310,
       "kind": "fn",
       "path": "og.platform.saveSettings",
       "symbol": "og_platform_save_settings",
@@ -17183,7 +17259,7 @@
       "publish": true
     },
     {
-      "id": 308,
+      "id": 311,
       "kind": "fn",
       "path": "og.platform.saveSlot",
       "symbol": "og_platform_save_slot",
@@ -17205,7 +17281,7 @@
       "publish": true
     },
     {
-      "id": 309,
+      "id": 312,
       "kind": "fn",
       "path": "og.platform.loadSlot",
       "symbol": "og_platform_load_slot",
@@ -17227,7 +17303,7 @@
       "publish": true
     },
     {
-      "id": 310,
+      "id": 313,
       "kind": "fn",
       "path": "og.platform.result",
       "symbol": "og_platform_result",
@@ -17249,7 +17325,7 @@
       "publish": true
     },
     {
-      "id": 311,
+      "id": 314,
       "kind": "fn",
       "path": "og.platform.info",
       "symbol": "og_platform_info",
@@ -17266,7 +17342,7 @@
       "publish": true
     },
     {
-      "id": 312,
+      "id": 315,
       "kind": "fn",
       "path": "og.platform.now",
       "symbol": "og_platform_now",
@@ -17283,7 +17359,7 @@
       "publish": true
     },
     {
-      "id": 313,
+      "id": 316,
       "kind": "fn",
       "path": "og.platform.roomCreate",
       "symbol": "og_platform_room_create",
@@ -17305,7 +17381,7 @@
       "publish": true
     },
     {
-      "id": 314,
+      "id": 317,
       "kind": "fn",
       "path": "og.platform.roomJoin",
       "symbol": "og_platform_room_join",
@@ -17327,7 +17403,7 @@
       "publish": true
     },
     {
-      "id": 315,
+      "id": 318,
       "kind": "fn",
       "path": "og.platform.roomLeave",
       "symbol": "og_platform_room_leave",
@@ -17344,7 +17420,7 @@
       "publish": true
     },
     {
-      "id": 316,
+      "id": 319,
       "kind": "fn",
       "path": "og.platform.roomSend",
       "symbol": "og_platform_room_send",
@@ -17371,7 +17447,7 @@
       "publish": true
     },
     {
-      "id": 317,
+      "id": 320,
       "kind": "fn",
       "path": "og.platform.roomPeers",
       "symbol": "og_platform_room_peers",
@@ -17388,7 +17464,7 @@
       "publish": true
     },
     {
-      "id": 318,
+      "id": 321,
       "kind": "fn",
       "path": "og.platform.roomInfo",
       "symbol": "og_platform_room_info",
@@ -17405,7 +17481,7 @@
       "publish": true
     },
     {
-      "id": 319,
+      "id": 322,
       "kind": "fn",
       "path": "og.platform.roomMessage",
       "symbol": "og_platform_room_message",
@@ -17427,7 +17503,7 @@
       "publish": true
     },
     {
-      "id": 320,
+      "id": 323,
       "kind": "fn",
       "path": "og.i18n.load",
       "symbol": "og_i18n_load",
@@ -17449,7 +17525,7 @@
       "publish": true
     },
     {
-      "id": 321,
+      "id": 324,
       "kind": "fn",
       "path": "og.i18n.setLocale",
       "symbol": "og_i18n_set_locale",
@@ -17471,7 +17547,7 @@
       "publish": true
     },
     {
-      "id": 322,
+      "id": 325,
       "kind": "fn",
       "path": "og.i18n.locale",
       "symbol": "og_i18n_locale",
@@ -17488,7 +17564,7 @@
       "publish": true
     },
     {
-      "id": 323,
+      "id": 326,
       "kind": "fn",
       "path": "og.i18n.t",
       "symbol": "og_i18n_t",
@@ -17515,7 +17591,7 @@
       "publish": true
     },
     {
-      "id": 324,
+      "id": 327,
       "kind": "fn",
       "path": "og.i18n.has",
       "symbol": "og_i18n_has",
@@ -17537,7 +17613,7 @@
       "publish": true
     },
     {
-      "id": 325,
+      "id": 328,
       "kind": "fn",
       "path": "og.ui.configure",
       "symbol": "og_ui_configure",
@@ -17559,7 +17635,7 @@
       "publish": true
     },
     {
-      "id": 326,
+      "id": 329,
       "kind": "fn",
       "path": "og.ui.viewport",
       "symbol": "og_ui_viewport",
@@ -17576,7 +17652,7 @@
       "publish": true
     },
     {
-      "id": 327,
+      "id": 330,
       "kind": "fn",
       "path": "og.ui.theme",
       "symbol": "og_ui_theme",
@@ -17593,7 +17669,7 @@
       "publish": true
     },
     {
-      "id": 328,
+      "id": 331,
       "kind": "fn",
       "path": "og.ui.open",
       "symbol": "og_ui_open",
@@ -17615,7 +17691,7 @@
       "publish": true
     },
     {
-      "id": 329,
+      "id": 332,
       "kind": "fn",
       "path": "og.ui.openPanel",
       "symbol": "og_ui_open_panel",
@@ -17637,7 +17713,7 @@
       "publish": true
     },
     {
-      "id": 330,
+      "id": 333,
       "kind": "fn",
       "path": "og.ui.openScroll",
       "symbol": "og_ui_open_scroll",
@@ -17659,7 +17735,7 @@
       "publish": true
     },
     {
-      "id": 331,
+      "id": 334,
       "kind": "fn",
       "path": "og.ui.close",
       "symbol": "og_ui_close",
@@ -17670,7 +17746,7 @@
       "publish": true
     },
     {
-      "id": 332,
+      "id": 335,
       "kind": "fn",
       "path": "og.ui.richText",
       "symbol": "og_ui_rich_text",
@@ -17697,7 +17773,7 @@
       "publish": true
     },
     {
-      "id": 333,
+      "id": 336,
       "kind": "fn",
       "path": "og.ui.label",
       "symbol": "og_ui_label",
@@ -17724,7 +17800,7 @@
       "publish": true
     },
     {
-      "id": 334,
+      "id": 337,
       "kind": "fn",
       "path": "og.ui.button",
       "symbol": "og_ui_button",
@@ -17751,7 +17827,7 @@
       "publish": true
     },
     {
-      "id": 335,
+      "id": 338,
       "kind": "fn",
       "path": "og.ui.image",
       "symbol": "og_ui_image",
@@ -17773,7 +17849,7 @@
       "publish": true
     },
     {
-      "id": 336,
+      "id": 339,
       "kind": "fn",
       "path": "og.ui.zoomView",
       "symbol": "og_ui_zoom_view",
@@ -17795,7 +17871,7 @@
       "publish": true
     },
     {
-      "id": 337,
+      "id": 340,
       "kind": "fn",
       "path": "og.ui.progress",
       "symbol": "og_ui_progress",
@@ -17822,7 +17898,7 @@
       "publish": true
     },
     {
-      "id": 338,
+      "id": 341,
       "kind": "fn",
       "path": "og.ui.slider",
       "symbol": "og_ui_slider",
@@ -17849,7 +17925,7 @@
       "publish": true
     },
     {
-      "id": 339,
+      "id": 342,
       "kind": "fn",
       "path": "og.ui.toggle",
       "symbol": "og_ui_toggle",
@@ -17876,7 +17952,7 @@
       "publish": true
     },
     {
-      "id": 340,
+      "id": 343,
       "kind": "fn",
       "path": "og.ui.textField",
       "symbol": "og_ui_text_field",
@@ -17903,7 +17979,7 @@
       "publish": true
     },
     {
-      "id": 341,
+      "id": 344,
       "kind": "fn",
       "path": "og.ui.textArea",
       "symbol": "og_ui_text_area",
@@ -17930,7 +18006,7 @@
       "publish": true
     },
     {
-      "id": 342,
+      "id": 345,
       "kind": "fn",
       "path": "og.ui.tooltip",
       "symbol": "og_ui_tooltip",
@@ -17947,7 +18023,7 @@
       "publish": true
     },
     {
-      "id": 343,
+      "id": 346,
       "kind": "fn",
       "path": "og.ui.breakpoint",
       "symbol": "og_ui_breakpoint",
@@ -17958,7 +18034,7 @@
       "publish": true
     },
     {
-      "id": 344,
+      "id": 347,
       "kind": "fn",
       "path": "og.ui.framePointer",
       "symbol": "og_ui_frame_pointer",
@@ -17969,7 +18045,7 @@
       "publish": true
     },
     {
-      "id": 345,
+      "id": 348,
       "kind": "fn",
       "path": "og.ui.frameViewport",
       "symbol": "og_ui_frame_viewport",
@@ -17980,7 +18056,7 @@
       "publish": true
     },
     {
-      "id": 346,
+      "id": 349,
       "kind": "fn",
       "path": "og.ui.hasIcon",
       "symbol": "og_ui_has_icon",
@@ -17997,7 +18073,7 @@
       "publish": true
     },
     {
-      "id": 347,
+      "id": 350,
       "kind": "fn",
       "path": "og.ui.seconds",
       "symbol": "og_ui_seconds",
@@ -18008,7 +18084,7 @@
       "publish": true
     },
     {
-      "id": 348,
+      "id": 351,
       "kind": "fn",
       "path": "og.ui.lastPath",
       "symbol": "og_ui_last_path",
@@ -18019,7 +18095,7 @@
       "publish": true
     },
     {
-      "id": 349,
+      "id": 352,
       "kind": "fn",
       "path": "og.ui.setFocus",
       "symbol": "og_ui_set_focus",
@@ -18036,7 +18112,7 @@
       "publish": true
     },
     {
-      "id": 350,
+      "id": 353,
       "kind": "fn",
       "path": "og.ui.frameDirection",
       "symbol": "og_ui_frame_direction",
@@ -18047,7 +18123,7 @@
       "publish": true
     },
     {
-      "id": 351,
+      "id": 354,
       "kind": "fn",
       "path": "og.ui.frameTheme",
       "symbol": "og_ui_frame_theme",
@@ -18058,7 +18134,7 @@
       "publish": true
     },
     {
-      "id": 352,
+      "id": 355,
       "kind": "fn",
       "path": "og.ui.openAnchor",
       "symbol": "og_ui_open_anchor",
@@ -18080,7 +18156,7 @@
       "publish": true
     },
     {
-      "id": 353,
+      "id": 356,
       "kind": "fn",
       "path": "og.ui.openTransition",
       "symbol": "og_ui_open_transition",
@@ -18107,7 +18183,7 @@
       "publish": true
     },
     {
-      "id": 354,
+      "id": 357,
       "kind": "fn",
       "path": "og.ui.openModal",
       "symbol": "og_ui_open_modal",
@@ -18134,7 +18210,7 @@
       "publish": true
     },
     {
-      "id": 355,
+      "id": 358,
       "kind": "fn",
       "path": "og.ui.closeModal",
       "symbol": "og_ui_close_modal",
@@ -18145,7 +18221,7 @@
       "publish": true
     },
     {
-      "id": 356,
+      "id": 359,
       "kind": "fn",
       "path": "og.ui.spotlight",
       "symbol": "og_ui_spotlight",
@@ -18172,7 +18248,7 @@
       "publish": true
     },
     {
-      "id": 357,
+      "id": 360,
       "kind": "fn",
       "path": "og.ui.bounds",
       "symbol": "og_ui_bounds",
@@ -18189,7 +18265,7 @@
       "publish": true
     },
     {
-      "id": 358,
+      "id": 361,
       "kind": "fn",
       "path": "og.ui.openList",
       "symbol": "og_ui_open_list",
@@ -18211,7 +18287,7 @@
       "publish": true
     },
     {
-      "id": 359,
+      "id": 362,
       "kind": "fn",
       "path": "og.ui.openGrid",
       "symbol": "og_ui_open_grid",
@@ -18233,7 +18309,7 @@
       "publish": true
     },
     {
-      "id": 360,
+      "id": 363,
       "kind": "fn",
       "path": "og.ui.listItem",
       "symbol": "og_ui_list_item",
@@ -18255,7 +18331,7 @@
       "publish": true
     },
     {
-      "id": 361,
+      "id": 364,
       "kind": "fn",
       "path": "og.ui.gridItem",
       "symbol": "og_ui_grid_item",
@@ -18277,7 +18353,7 @@
       "publish": true
     },
     {
-      "id": 362,
+      "id": 365,
       "kind": "fn",
       "path": "og.ui.closeList",
       "symbol": "og_ui_close_list",
@@ -18288,7 +18364,7 @@
       "publish": true
     },
     {
-      "id": 363,
+      "id": 366,
       "kind": "fn",
       "path": "og.ui.dragging",
       "symbol": "og_ui_dragging",
@@ -18305,7 +18381,7 @@
       "publish": true
     },
     {
-      "id": 364,
+      "id": 367,
       "kind": "fn",
       "path": "og.ui.tabs",
       "symbol": "og_ui_tabs",
@@ -18337,7 +18413,7 @@
       "publish": true
     },
     {
-      "id": 365,
+      "id": 368,
       "kind": "fn",
       "path": "og.ui.select",
       "symbol": "og_ui_select",
@@ -18369,7 +18445,7 @@
       "publish": true
     },
     {
-      "id": 366,
+      "id": 369,
       "kind": "fn",
       "path": "og.ui.stepper",
       "symbol": "og_ui_stepper",
@@ -18396,7 +18472,7 @@
       "publish": true
     },
     {
-      "id": 367,
+      "id": 370,
       "kind": "fn",
       "path": "og.ui.radio",
       "symbol": "og_ui_radio",
@@ -18428,7 +18504,7 @@
       "publish": true
     },
     {
-      "id": 368,
+      "id": 371,
       "kind": "fn",
       "path": "og.ui.checkbox",
       "symbol": "og_ui_checkbox",
@@ -18455,7 +18531,7 @@
       "publish": true
     },
     {
-      "id": 369,
+      "id": 372,
       "kind": "fn",
       "path": "og.ui.checkboxList",
       "symbol": "og_ui_checkbox_list",
@@ -18482,7 +18558,7 @@
       "publish": true
     },
     {
-      "id": 370,
+      "id": 373,
       "kind": "fn",
       "path": "og.ui.chip",
       "symbol": "og_ui_chip",
@@ -18509,7 +18585,7 @@
       "publish": true
     },
     {
-      "id": 371,
+      "id": 374,
       "kind": "fn",
       "path": "og.ui.badge",
       "symbol": "og_ui_badge",
@@ -18536,7 +18612,7 @@
       "publish": true
     },
     {
-      "id": 372,
+      "id": 375,
       "kind": "fn",
       "path": "og.ui.divider",
       "symbol": "og_ui_divider",
@@ -18558,7 +18634,7 @@
       "publish": true
     },
     {
-      "id": 373,
+      "id": 376,
       "kind": "fn",
       "path": "og.ui.spacer",
       "symbol": "og_ui_spacer",
@@ -18580,7 +18656,7 @@
       "publish": true
     },
     {
-      "id": 374,
+      "id": 377,
       "kind": "fn",
       "path": "og.ui.keyValue",
       "symbol": "og_ui_key_value",
@@ -18612,7 +18688,7 @@
       "publish": true
     },
     {
-      "id": 375,
+      "id": 378,
       "kind": "fn",
       "path": "og.ui.skeleton",
       "symbol": "og_ui_skeleton",
@@ -18634,7 +18710,7 @@
       "publish": true
     },
     {
-      "id": 376,
+      "id": 379,
       "kind": "fn",
       "path": "og.ui.spinner",
       "symbol": "og_ui_spinner",
@@ -18656,7 +18732,7 @@
       "publish": true
     },
     {
-      "id": 377,
+      "id": 380,
       "kind": "fn",
       "path": "og.ui.icon",
       "symbol": "og_ui_icon",
@@ -18683,7 +18759,7 @@
       "publish": true
     },
     {
-      "id": 378,
+      "id": 381,
       "kind": "fn",
       "path": "og.ui.meter",
       "symbol": "og_ui_meter",
@@ -18715,7 +18791,7 @@
       "publish": true
     },
     {
-      "id": 379,
+      "id": 382,
       "kind": "fn",
       "path": "og.ui.cooldown",
       "symbol": "og_ui_cooldown",
@@ -18742,7 +18818,7 @@
       "publish": true
     },
     {
-      "id": 380,
+      "id": 383,
       "kind": "fn",
       "path": "og.ui.minimap",
       "symbol": "og_ui_minimap",
@@ -18764,7 +18840,7 @@
       "publish": true
     },
     {
-      "id": 381,
+      "id": 384,
       "kind": "fn",
       "path": "og.ui.dialogue",
       "symbol": "og_ui_dialogue",
@@ -18786,7 +18862,7 @@
       "publish": true
     },
     {
-      "id": 382,
+      "id": 385,
       "kind": "fn",
       "path": "og.ui.joystick",
       "symbol": "og_ui_joystick",
@@ -18808,7 +18884,7 @@
       "publish": true
     },
     {
-      "id": 383,
+      "id": 386,
       "kind": "fn",
       "path": "og.ui.dpad",
       "symbol": "og_ui_dpad",
@@ -18830,7 +18906,7 @@
       "publish": true
     },
     {
-      "id": 384,
+      "id": 387,
       "kind": "fn",
       "path": "og.ui.actionButton",
       "symbol": "og_ui_action_button",
@@ -18857,7 +18933,7 @@
       "publish": true
     },
     {
-      "id": 385,
+      "id": 388,
       "kind": "fn",
       "path": "og.ui.toast",
       "symbol": "og_ui_toast",
@@ -18884,7 +18960,7 @@
       "publish": true
     },
     {
-      "id": 386,
+      "id": 389,
       "kind": "fn",
       "path": "og.ui.dismissToast",
       "symbol": "og_ui_dismiss_toast",
@@ -18906,7 +18982,7 @@
       "publish": true
     },
     {
-      "id": 387,
+      "id": 390,
       "kind": "fn",
       "path": "og.ui.navigate",
       "symbol": "og_ui_navigate",
@@ -18928,7 +19004,7 @@
       "publish": true
     },
     {
-      "id": 388,
+      "id": 391,
       "kind": "fn",
       "path": "og.ui.back",
       "symbol": "og_ui_back",
@@ -18939,7 +19015,7 @@
       "publish": true
     },
     {
-      "id": 389,
+      "id": 392,
       "kind": "fn",
       "path": "og.ui.setPlayers",
       "symbol": "og_ui_set_players",
@@ -18956,7 +19032,7 @@
       "publish": true
     },
     {
-      "id": 390,
+      "id": 393,
       "kind": "fn",
       "path": "og.ui.focus",
       "symbol": "og_ui_focus",
@@ -18973,7 +19049,7 @@
       "publish": true
     },
     {
-      "id": 391,
+      "id": 394,
       "kind": "fn",
       "path": "og.ui.a11y",
       "symbol": "og_ui_a11y",
@@ -18984,7 +19060,7 @@
       "publish": true
     },
     {
-      "id": 392,
+      "id": 395,
       "kind": "fn",
       "path": "og.ui.feedback",
       "symbol": "og_ui_feedback",
@@ -19006,7 +19082,7 @@
       "publish": true
     },
     {
-      "id": 393,
+      "id": 396,
       "kind": "fn",
       "path": "og.ui.setHaptics",
       "symbol": "og_ui_set_haptics",
@@ -19023,7 +19099,7 @@
       "publish": true
     },
     {
-      "id": 394,
+      "id": 397,
       "kind": "fn",
       "path": "og.ui.setNavigation",
       "symbol": "og_ui_set_navigation",
@@ -19040,7 +19116,7 @@
       "publish": true
     },
     {
-      "id": 395,
+      "id": 398,
       "kind": "fn",
       "path": "og.ui.memory",
       "symbol": "og_ui_memory",
@@ -19062,7 +19138,7 @@
       "publish": true
     },
     {
-      "id": 396,
+      "id": 399,
       "kind": "fn",
       "path": "og.ui.remember",
       "symbol": "og_ui_remember",
@@ -19084,7 +19160,7 @@
       "publish": true
     },
     {
-      "id": 397,
+      "id": 400,
       "kind": "fn",
       "path": "og.ui.tick",
       "symbol": "og_ui_tick",
@@ -19095,7 +19171,7 @@
       "publish": true
     },
     {
-      "id": 398,
+      "id": 401,
       "kind": "fn",
       "path": "og.ui.counter",
       "symbol": "og_ui_counter",
@@ -19122,7 +19198,7 @@
       "publish": true
     },
     {
-      "id": 399,
+      "id": 402,
       "kind": "fn",
       "path": "og.ui.burst",
       "symbol": "og_ui_burst",
@@ -19139,7 +19215,7 @@
       "publish": true
     },
     {
-      "id": 400,
+      "id": 403,
       "kind": "fn",
       "path": "og.ui.shake",
       "symbol": "og_ui_shake",
@@ -19156,7 +19232,7 @@
       "publish": true
     },
     {
-      "id": 401,
+      "id": 404,
       "kind": "fn",
       "path": "og.ui.screenTransition",
       "symbol": "og_ui_screen_transition",
@@ -19183,7 +19259,7 @@
       "publish": true
     },
     {
-      "id": 402,
+      "id": 405,
       "kind": "fn",
       "path": "og.ui.previewViewport",
       "symbol": "og_ui_preview_viewport",
@@ -19205,7 +19281,7 @@
       "publish": true
     },
     {
-      "id": 403,
+      "id": 406,
       "kind": "fn",
       "path": "og.ui.props",
       "symbol": "og_ui_props",
@@ -19222,7 +19298,7 @@
       "publish": true
     },
     {
-      "id": 404,
+      "id": 407,
       "kind": "fn",
       "path": "og.ui.defineTimeline",
       "symbol": "og_ui_define_timeline",
@@ -19244,7 +19320,7 @@
       "publish": true
     },
     {
-      "id": 405,
+      "id": 408,
       "kind": "fn",
       "path": "og.ui.play",
       "symbol": "og_ui_play",
@@ -19271,7 +19347,7 @@
       "publish": true
     },
     {
-      "id": 406,
+      "id": 409,
       "kind": "fn",
       "path": "og.ui.playTimeline",
       "symbol": "og_ui_play_timeline",
@@ -19298,7 +19374,7 @@
       "publish": true
     },
     {
-      "id": 407,
+      "id": 410,
       "kind": "fn",
       "path": "og.ui.seek",
       "symbol": "og_ui_seek",
@@ -19320,7 +19396,7 @@
       "publish": true
     },
     {
-      "id": 408,
+      "id": 411,
       "kind": "fn",
       "path": "og.ui.pause",
       "symbol": "og_ui_pause",
@@ -19337,7 +19413,7 @@
       "publish": true
     },
     {
-      "id": 409,
+      "id": 412,
       "kind": "fn",
       "path": "og.ui.resume",
       "symbol": "og_ui_resume",
@@ -19354,7 +19430,7 @@
       "publish": true
     },
     {
-      "id": 410,
+      "id": 413,
       "kind": "fn",
       "path": "og.ui.reverse",
       "symbol": "og_ui_reverse",
@@ -19371,7 +19447,7 @@
       "publish": true
     },
     {
-      "id": 411,
+      "id": 414,
       "kind": "fn",
       "path": "og.ui.stop",
       "symbol": "og_ui_stop",
@@ -19388,7 +19464,7 @@
       "publish": true
     },
     {
-      "id": 412,
+      "id": 415,
       "kind": "fn",
       "path": "og.ui.playInfo",
       "symbol": "og_ui_play_info",
@@ -19405,7 +19481,7 @@
       "publish": true
     },
     {
-      "id": 413,
+      "id": 416,
       "kind": "fn",
       "path": "og.ui.forceState",
       "symbol": "og_ui_force_state",
@@ -19432,7 +19508,7 @@
       "publish": true
     },
     {
-      "id": 414,
+      "id": 417,
       "kind": "fn",
       "path": "og.ui.openPath",
       "symbol": "og_ui_open_path",
@@ -19443,7 +19519,7 @@
       "publish": true
     },
     {
-      "id": 415,
+      "id": 418,
       "kind": "fn",
       "path": "og.ui.visualState",
       "symbol": "og_ui_visual_state",
@@ -19465,7 +19541,7 @@
       "publish": true
     },
     {
-      "id": 416,
+      "id": 419,
       "kind": "fn",
       "path": "og.ui.animate",
       "symbol": "og_ui_animate",
@@ -19492,7 +19568,7 @@
       "publish": true
     },
     {
-      "id": 417,
+      "id": 420,
       "kind": "fn",
       "path": "og.ui.gesture",
       "symbol": "og_ui_gesture",
@@ -19509,7 +19585,7 @@
       "publish": true
     },
     {
-      "id": 418,
+      "id": 421,
       "kind": "fn",
       "path": "og.ui.motionEvents",
       "symbol": "og_ui_motion_events",
@@ -19520,7 +19596,7 @@
       "publish": true
     },
     {
-      "id": 419,
+      "id": 422,
       "kind": "fn",
       "path": "og.ui.overlaps",
       "symbol": "og_ui_overlaps",
@@ -19531,7 +19607,7 @@
       "publish": true
     },
     {
-      "id": 420,
+      "id": 423,
       "kind": "fn",
       "path": "og.ui.layoutStats",
       "symbol": "og_ui_layout_stats",
@@ -19542,7 +19618,7 @@
       "publish": true
     },
     {
-      "id": 421,
+      "id": 424,
       "kind": "fn",
       "path": "og.ui.semantics",
       "symbol": "og_ui_semantics",
@@ -19559,7 +19635,7 @@
       "publish": true
     },
     {
-      "id": 422,
+      "id": 425,
       "kind": "fn",
       "path": "og.ui.setDraw",
       "symbol": "og_ui_set_draw",
@@ -19576,7 +19652,7 @@
       "publish": true
     },
     {
-      "id": 423,
+      "id": 426,
       "kind": "fn",
       "path": "og.ui.openWorldAnchor",
       "symbol": "og_ui_open_world_anchor",
@@ -19598,7 +19674,7 @@
       "publish": true
     },
     {
-      "id": 424,
+      "id": 427,
       "kind": "fn",
       "path": "og.ui.openWorldPanel",
       "symbol": "og_ui_open_world_panel",
@@ -19620,7 +19696,7 @@
       "publish": true
     },
     {
-      "id": 425,
+      "id": 428,
       "kind": "fn",
       "path": "og.ui.defineMass",
       "symbol": "og_ui_define_mass",
@@ -19642,7 +19718,7 @@
       "publish": true
     },
     {
-      "id": 426,
+      "id": 429,
       "kind": "fn",
       "path": "og.ui.spawnMass",
       "symbol": "og_ui_spawn_mass",
@@ -19664,7 +19740,7 @@
       "publish": true
     },
     {
-      "id": 427,
+      "id": 430,
       "kind": "fn",
       "path": "og.ui.pushMass",
       "symbol": "og_ui_push_mass",
@@ -19686,7 +19762,7 @@
       "publish": true
     },
     {
-      "id": 428,
+      "id": 431,
       "kind": "fn",
       "path": "og.ui.massCount",
       "symbol": "og_ui_mass_count",
@@ -19703,7 +19779,7 @@
       "publish": true
     },
     {
-      "id": 429,
+      "id": 432,
       "kind": "fn",
       "path": "og.ui.particles",
       "symbol": "og_ui_particles",
@@ -19720,7 +19796,7 @@
       "publish": true
     },
     {
-      "id": 430,
+      "id": 433,
       "kind": "fn",
       "path": "og.ui.meta",
       "symbol": "og_ui_meta",
@@ -19742,7 +19818,7 @@
       "publish": true
     },
     {
-      "id": 431,
+      "id": 434,
       "kind": "fn",
       "path": "og.ui.sceneViewport",
       "symbol": "og_ui_scene_viewport",
@@ -19764,7 +19840,7 @@
       "publish": true
     },
     {
-      "id": 432,
+      "id": 435,
       "kind": "fn",
       "path": "og.ui.screen",
       "symbol": "og_ui_screen",
@@ -19786,7 +19862,7 @@
       "publish": true
     },
     {
-      "id": 433,
+      "id": 436,
       "kind": "fn",
       "path": "og.ui.component",
       "symbol": "og_ui_component",
@@ -19813,7 +19889,7 @@
       "publish": true
     },
     {
-      "id": 434,
+      "id": 437,
       "kind": "fn",
       "path": "og.ui.openSlot",
       "symbol": "og_ui_open_slot",
@@ -19830,7 +19906,7 @@
       "publish": true
     },
     {
-      "id": 435,
+      "id": 438,
       "kind": "fn",
       "path": "og.ui.push",
       "symbol": "og_ui_push",
@@ -19857,7 +19933,7 @@
       "publish": true
     },
     {
-      "id": 436,
+      "id": 439,
       "kind": "fn",
       "path": "og.ui.pop",
       "symbol": "og_ui_pop",
@@ -19874,7 +19950,7 @@
       "publish": true
     },
     {
-      "id": 437,
+      "id": 440,
       "kind": "fn",
       "path": "og.ui.replace",
       "symbol": "og_ui_replace",
@@ -19901,7 +19977,7 @@
       "publish": true
     },
     {
-      "id": 438,
+      "id": 441,
       "kind": "fn",
       "path": "og.ui.clear",
       "symbol": "og_ui_clear",
@@ -19918,7 +19994,7 @@
       "publish": true
     },
     {
-      "id": 439,
+      "id": 442,
       "kind": "fn",
       "path": "og.ui.layers",
       "symbol": "og_ui_layers",
@@ -19935,7 +20011,7 @@
       "publish": true
     },
     {
-      "id": 440,
+      "id": 443,
       "kind": "fn",
       "path": "og.ui.screenVm",
       "symbol": "og_ui_screen_vm",
@@ -19957,7 +20033,7 @@
       "publish": true
     },
     {
-      "id": 441,
+      "id": 444,
       "kind": "fn",
       "path": "og.ui.docEvents",
       "symbol": "og_ui_doc_events",
@@ -19974,7 +20050,7 @@
       "publish": true
     },
     {
-      "id": 442,
+      "id": 445,
       "kind": "fn",
       "path": "og.ui.gameInput",
       "symbol": "og_ui_game_input",
@@ -19991,7 +20067,7 @@
       "publish": true
     },
     {
-      "id": 443,
+      "id": 446,
       "kind": "fn",
       "path": "og.ui.paused",
       "symbol": "og_ui_paused",
@@ -20008,7 +20084,7 @@
       "publish": true
     },
     {
-      "id": 444,
+      "id": 447,
       "kind": "fn",
       "path": "og.ui.defineAction",
       "symbol": "og_ui_define_action",
@@ -20030,7 +20106,7 @@
       "publish": true
     },
     {
-      "id": 445,
+      "id": 448,
       "kind": "fn",
       "path": "og.ui.action",
       "symbol": "og_ui_action",
@@ -20047,7 +20123,7 @@
       "publish": true
     },
     {
-      "id": 446,
+      "id": 449,
       "kind": "fn",
       "path": "og.ui.actionHeld",
       "symbol": "og_ui_action_held",
@@ -20064,7 +20140,7 @@
       "publish": true
     },
     {
-      "id": 447,
+      "id": 450,
       "kind": "fn",
       "path": "og.ui.glyph",
       "symbol": "og_ui_glyph",
@@ -20086,7 +20162,7 @@
       "publish": true
     },
     {
-      "id": 448,
+      "id": 451,
       "kind": "fn",
       "path": "og.ui.frameGlyph",
       "symbol": "og_ui_frame_glyph",
@@ -20103,7 +20179,7 @@
       "publish": true
     },
     {
-      "id": 449,
+      "id": 452,
       "kind": "fn",
       "path": "og.ui.device",
       "symbol": "og_ui_device",
@@ -20120,7 +20196,7 @@
       "publish": true
     },
     {
-      "id": 450,
+      "id": 453,
       "kind": "fn",
       "path": "og.ui.setDevice",
       "symbol": "og_ui_set_device",
@@ -20142,7 +20218,7 @@
       "publish": true
     },
     {
-      "id": 451,
+      "id": 454,
       "kind": "fn",
       "path": "og.ui.actionBar",
       "symbol": "og_ui_action_bar",
@@ -20159,7 +20235,7 @@
       "publish": true
     },
     {
-      "id": 452,
+      "id": 455,
       "kind": "fn",
       "path": "og.ui.documentSchema",
       "symbol": "og_ui_document_schema",
@@ -20170,7 +20246,7 @@
       "publish": true
     },
     {
-      "id": 453,
+      "id": 456,
       "kind": "fn",
       "path": "og.ui.setProp",
       "symbol": "og_ui_set_prop",
@@ -20202,7 +20278,7 @@
       "publish": true
     },
     {
-      "id": 454,
+      "id": 457,
       "kind": "fn",
       "path": "og.ui.saveEdits",
       "symbol": "og_ui_save_edits",
@@ -20219,7 +20295,7 @@
       "publish": true
     },
     {
-      "id": 455,
+      "id": 458,
       "kind": "fn",
       "path": "og.commands.register",
       "symbol": "og_commands_register",
@@ -20246,7 +20322,7 @@
       "publish": false
     },
     {
-      "id": 456,
+      "id": 459,
       "kind": "fn",
       "path": "og.commands.parse",
       "symbol": "og_commands_parse",
@@ -20263,7 +20339,7 @@
       "publish": false
     },
     {
-      "id": 457,
+      "id": 460,
       "kind": "fn",
       "path": "og.commands.help",
       "symbol": "og_commands_help",
@@ -20280,7 +20356,7 @@
       "publish": false
     },
     {
-      "id": 458,
+      "id": 461,
       "kind": "fn",
       "path": "og.commands.schedule",
       "symbol": "og_commands_schedule",
@@ -20302,7 +20378,7 @@
       "publish": false
     },
     {
-      "id": 459,
+      "id": 462,
       "kind": "prop",
       "path": "RuntimeProbe.version",
       "symbol": "og_runtime_probe_get_version",
@@ -20313,7 +20389,7 @@
       "publish": true
     },
     {
-      "id": 460,
+      "id": 463,
       "kind": "method",
       "path": "RuntimeProbe.tick",
       "symbol": "og_runtime_probe_tick",
@@ -20325,7 +20401,7 @@
       "publish": true
     },
     {
-      "id": 461,
+      "id": 464,
       "kind": "method",
       "path": "RuntimeProbe.state",
       "symbol": "og_runtime_probe_state",
@@ -20337,7 +20413,7 @@
       "publish": true
     },
     {
-      "id": 462,
+      "id": 465,
       "kind": "method",
       "path": "RuntimeProbe.advance",
       "symbol": "og_runtime_probe_advance",
@@ -20355,7 +20431,7 @@
       "publish": false
     },
     {
-      "id": 463,
+      "id": 466,
       "kind": "method",
       "path": "RuntimeProbe.pause",
       "symbol": "og_runtime_probe_pause",
@@ -20367,7 +20443,7 @@
       "publish": false
     },
     {
-      "id": 464,
+      "id": 467,
       "kind": "method",
       "path": "RuntimeProbe.resume",
       "symbol": "og_runtime_probe_resume",
@@ -20379,7 +20455,7 @@
       "publish": false
     },
     {
-      "id": 465,
+      "id": 468,
       "kind": "method",
       "path": "RuntimeProbe.input",
       "symbol": "og_runtime_probe_input",
@@ -20397,7 +20473,7 @@
       "publish": true
     },
     {
-      "id": 466,
+      "id": 469,
       "kind": "method",
       "path": "RuntimeProbe.accepted",
       "symbol": "og_runtime_probe_accepted",
@@ -20409,7 +20485,7 @@
       "publish": false
     },
     {
-      "id": 467,
+      "id": 470,
       "kind": "method",
       "path": "RuntimeProbe.pick",
       "symbol": "og_runtime_probe_pick",
@@ -20432,7 +20508,7 @@
       "publish": true
     },
     {
-      "id": 468,
+      "id": 471,
       "kind": "method",
       "path": "RuntimeProbe.entity",
       "symbol": "og_runtime_probe_entity",
@@ -20450,7 +20526,7 @@
       "publish": true
     },
     {
-      "id": 469,
+      "id": 472,
       "kind": "method",
       "path": "RuntimeProbe.bounds",
       "symbol": "og_runtime_probe_bounds",
@@ -20468,7 +20544,7 @@
       "publish": false
     },
     {
-      "id": 470,
+      "id": 473,
       "kind": "method",
       "path": "RuntimeProbe.patch",
       "symbol": "og_runtime_probe_patch",
@@ -20496,7 +20572,7 @@
       "publish": false
     },
     {
-      "id": 471,
+      "id": 474,
       "kind": "method",
       "path": "RuntimeProbe.run",
       "symbol": "og_runtime_probe_run",
@@ -20514,7 +20590,7 @@
       "publish": false
     },
     {
-      "id": 472,
+      "id": 475,
       "kind": "method",
       "path": "EngineProbe.hello",
       "symbol": "og_engine_probe_hello",
@@ -20526,7 +20602,7 @@
       "publish": true
     },
     {
-      "id": 473,
+      "id": 476,
       "kind": "method",
       "path": "EngineProbe.capture",
       "symbol": "og_engine_probe_capture",
@@ -20551,7 +20627,7 @@
       "publish": true
     },
     {
-      "id": 474,
+      "id": 477,
       "kind": "method",
       "path": "EngineProbe.sweep",
       "symbol": "og_engine_probe_sweep",
@@ -20570,7 +20646,7 @@
       "publish": false
     },
     {
-      "id": 475,
+      "id": 478,
       "kind": "method",
       "path": "EngineProbe.reload",
       "symbol": "og_engine_probe_reload",
@@ -20582,7 +20658,7 @@
       "publish": false
     },
     {
-      "id": 476,
+      "id": 479,
       "kind": "method",
       "path": "EngineProbe.snapshot",
       "symbol": "og_engine_probe_snapshot",
@@ -20594,7 +20670,7 @@
       "publish": false
     },
     {
-      "id": 477,
+      "id": 480,
       "kind": "method",
       "path": "EngineProbe.restore",
       "symbol": "og_engine_probe_restore",
@@ -20612,7 +20688,7 @@
       "publish": false
     },
     {
-      "id": 478,
+      "id": 481,
       "kind": "method",
       "path": "EngineProbe.dump",
       "symbol": "og_engine_probe_dump",
@@ -20631,7 +20707,7 @@
       "publish": false
     },
     {
-      "id": 479,
+      "id": 482,
       "kind": "method",
       "path": "EngineProbe.commands",
       "symbol": "og_engine_probe_commands",
@@ -20649,7 +20725,7 @@
       "publish": false
     },
     {
-      "id": 480,
+      "id": 483,
       "kind": "method",
       "path": "EngineProbe.listen",
       "symbol": "og_engine_probe_listen",
@@ -20668,7 +20744,7 @@
       "publish": false
     },
     {
-      "id": 481,
+      "id": 484,
       "kind": "method",
       "path": "EngineProbe.memory",
       "symbol": "og_engine_probe_memory",
@@ -20680,7 +20756,7 @@
       "publish": false
     },
     {
-      "id": 482,
+      "id": 485,
       "kind": "method",
       "path": "EngineProbe.describe",
       "symbol": "og_engine_probe_describe",
@@ -20692,7 +20768,7 @@
       "publish": false
     },
     {
-      "id": 483,
+      "id": 486,
       "kind": "method",
       "path": "EngineProbe.expect",
       "symbol": "og_engine_probe_expect",
@@ -20710,7 +20786,7 @@
       "publish": false
     },
     {
-      "id": 484,
+      "id": 487,
       "kind": "method",
       "path": "EngineProbe.expectations",
       "symbol": "og_engine_probe_expectations",
@@ -20722,7 +20798,7 @@
       "publish": false
     },
     {
-      "id": 485,
+      "id": 488,
       "kind": "method",
       "path": "EngineProbe.saveScene",
       "symbol": "og_engine_probe_save_scene",
@@ -20747,7 +20823,7 @@
       "publish": false
     },
     {
-      "id": 486,
+      "id": 489,
       "kind": "fn",
       "path": "og.terrain.load",
       "symbol": "og_terrain_load",
@@ -20769,7 +20845,7 @@
       "publish": true
     },
     {
-      "id": 487,
+      "id": 490,
       "kind": "fn",
       "path": "og.terrain.sample",
       "symbol": "og_terrain_sample",
@@ -20791,7 +20867,7 @@
       "publish": true
     },
     {
-      "id": 488,
+      "id": 491,
       "kind": "fn",
       "path": "og.terrain.bounds",
       "symbol": "og_terrain_bounds",
@@ -20828,7 +20904,7 @@
       "publish": true
     },
     {
-      "id": 489,
+      "id": 492,
       "kind": "fn",
       "path": "og.terrain.edit",
       "symbol": "og_terrain_edit",
@@ -20855,7 +20931,7 @@
       "publish": true
     },
     {
-      "id": 490,
+      "id": 493,
       "kind": "fn",
       "path": "og.terrain.layer",
       "symbol": "og_terrain_layer",
@@ -20882,7 +20958,7 @@
       "publish": true
     },
     {
-      "id": 491,
+      "id": 494,
       "kind": "fn",
       "path": "og.terrain.setLayer",
       "symbol": "og_terrain_set_layer",
@@ -20914,7 +20990,7 @@
       "publish": true
     },
     {
-      "id": 492,
+      "id": 495,
       "kind": "fn",
       "path": "og.stream.status",
       "symbol": "og_stream_status",
@@ -20936,7 +21012,7 @@
       "publish": true
     },
     {
-      "id": 493,
+      "id": 496,
       "kind": "fn",
       "path": "og.stream.request",
       "symbol": "og_stream_request",
@@ -20958,7 +21034,7 @@
       "publish": true
     },
     {
-      "id": 494,
+      "id": 497,
       "kind": "fn",
       "path": "og.stream.release",
       "symbol": "og_stream_release",
@@ -20980,7 +21056,7 @@
       "publish": true
     },
     {
-      "id": 495,
+      "id": 498,
       "kind": "fn",
       "path": "og.stream.budget",
       "symbol": "og_stream_budget",
@@ -20997,7 +21073,7 @@
       "publish": true
     },
     {
-      "id": 496,
+      "id": 499,
       "kind": "fn",
       "path": "og.stream.setBudget",
       "symbol": "og_stream_set_budget",
@@ -21019,7 +21095,7 @@
       "publish": true
     },
     {
-      "id": 497,
+      "id": 500,
       "kind": "fn",
       "path": "og.debug.line",
       "symbol": "og_debug_line",
@@ -21051,7 +21127,7 @@
       "publish": false
     },
     {
-      "id": 498,
+      "id": 501,
       "kind": "fn",
       "path": "og.debug.box",
       "symbol": "og_debug_box",
@@ -21083,7 +21159,7 @@
       "publish": false
     },
     {
-      "id": 499,
+      "id": 502,
       "kind": "fn",
       "path": "og.debug.sphere",
       "symbol": "og_debug_sphere",
@@ -21115,7 +21191,7 @@
       "publish": false
     },
     {
-      "id": 500,
+      "id": 503,
       "kind": "fn",
       "path": "og.debug.arrow",
       "symbol": "og_debug_arrow",
@@ -21147,7 +21223,7 @@
       "publish": false
     },
     {
-      "id": 501,
+      "id": 504,
       "kind": "fn",
       "path": "og.debug.axes",
       "symbol": "og_debug_axes",
@@ -21179,7 +21255,7 @@
       "publish": false
     },
     {
-      "id": 502,
+      "id": 505,
       "kind": "fn",
       "path": "og.debug.text",
       "symbol": "og_debug_text",
@@ -21211,7 +21287,7 @@
       "publish": false
     },
     {
-      "id": 503,
+      "id": 506,
       "kind": "fn",
       "path": "og.debug.clear",
       "symbol": "og_debug_clear",
@@ -21228,7 +21304,7 @@
       "publish": false
     },
     {
-      "id": 504,
+      "id": 507,
       "kind": "fn",
       "path": "og.debug.setView",
       "symbol": "og_debug_set_view",
@@ -21250,7 +21326,7 @@
       "publish": false
     },
     {
-      "id": 505,
+      "id": 508,
       "kind": "fn",
       "path": "og.debug.view",
       "symbol": "og_debug_view",
@@ -21267,7 +21343,7 @@
       "publish": false
     },
     {
-      "id": 506,
+      "id": 509,
       "kind": "fn",
       "path": "og.debug.setEnabled",
       "symbol": "og_debug_set_enabled",
@@ -21289,7 +21365,7 @@
       "publish": false
     },
     {
-      "id": 507,
+      "id": 510,
       "kind": "fn",
       "path": "og.debug.enabled",
       "symbol": "og_debug_enabled",
@@ -21306,7 +21382,7 @@
       "publish": false
     },
     {
-      "id": 508,
+      "id": 511,
       "kind": "fn",
       "path": "og.path.create",
       "symbol": "og_path_create",
@@ -21328,7 +21404,7 @@
       "publish": true
     },
     {
-      "id": 509,
+      "id": 512,
       "kind": "fn",
       "path": "og.path.find",
       "symbol": "og_path_find",
@@ -21350,7 +21426,7 @@
       "publish": true
     },
     {
-      "id": 510,
+      "id": 513,
       "kind": "fn",
       "path": "og.path.sample",
       "symbol": "og_path_sample",
@@ -21377,7 +21453,7 @@
       "publish": true
     },
     {
-      "id": 511,
+      "id": 514,
       "kind": "fn",
       "path": "og.path.length",
       "symbol": "og_path_length",
@@ -21399,7 +21475,7 @@
       "publish": true
     },
     {
-      "id": 512,
+      "id": 515,
       "kind": "fn",
       "path": "og.path.nearest",
       "symbol": "og_path_nearest",
@@ -21426,7 +21502,7 @@
       "publish": true
     },
     {
-      "id": 513,
+      "id": 516,
       "kind": "fn",
       "path": "og.timeline.info",
       "symbol": "og_timeline_info",
@@ -21448,7 +21524,7 @@
       "publish": true
     },
     {
-      "id": 514,
+      "id": 517,
       "kind": "fn",
       "path": "og.timeline.play",
       "symbol": "og_timeline_play",
@@ -21470,7 +21546,7 @@
       "publish": true
     },
     {
-      "id": 515,
+      "id": 518,
       "kind": "fn",
       "path": "og.timeline.pause",
       "symbol": "og_timeline_pause",
@@ -21492,7 +21568,7 @@
       "publish": true
     },
     {
-      "id": 516,
+      "id": 519,
       "kind": "fn",
       "path": "og.timeline.seek",
       "symbol": "og_timeline_seek",
@@ -21519,7 +21595,7 @@
       "publish": true
     },
     {
-      "id": 517,
+      "id": 520,
       "kind": "fn",
       "path": "og.timeline.stop",
       "symbol": "og_timeline_stop",
@@ -21541,7 +21617,7 @@
       "publish": true
     },
     {
-      "id": 518,
+      "id": 521,
       "kind": "fn",
       "path": "og.net.submit",
       "symbol": "og_net_submit",
@@ -21563,7 +21639,7 @@
       "publish": true
     },
     {
-      "id": 519,
+      "id": 522,
       "kind": "fn",
       "path": "og.net.status",
       "symbol": "og_net_status",
@@ -21580,7 +21656,7 @@
       "publish": true
     },
     {
-      "id": 520,
+      "id": 523,
       "kind": "fn",
       "path": "og.net.resimulating",
       "symbol": "og_net_resimulating",
@@ -21597,7 +21673,7 @@
       "publish": true
     },
     {
-      "id": 521,
+      "id": 524,
       "kind": "fn",
       "path": "og.net.finalHash",
       "symbol": "og_net_final_hash",
@@ -21619,7 +21695,7 @@
       "publish": true
     },
     {
-      "id": 522,
+      "id": 525,
       "kind": "fn",
       "path": "og.net.hash",
       "symbol": "og_net_hash",

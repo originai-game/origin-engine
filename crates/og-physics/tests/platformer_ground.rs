@@ -150,6 +150,7 @@ fn tilemap(w: &mut World) {
     let mut rock = Layer::new("rock", cols, rows, 0);
     rock.collision = true;
     let asset = TilemapAsset {
+        orientation: Default::default(),
         width: cols,
         height: rows,
         tile_width_px: 16,

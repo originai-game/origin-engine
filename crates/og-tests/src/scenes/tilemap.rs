@@ -51,6 +51,7 @@ pub fn tilemap_256() -> RenderScene {
         layers.push(layer);
     }
     let asset = TilemapAsset {
+        orientation: Default::default(),
         width: n,
         height: n,
         tile_width_px: 32,

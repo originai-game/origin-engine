@@ -126,6 +126,18 @@ and the platformer controller are og-physics, 2D skeletons og-anim §6,
   `repeat x` tiles a background (`og api show tilemap`). Every line of a
   tileset and a map, and what the cook reads of a Tiled map, is the
   grammar of §3 and §4.
+- **Orientations and run-time maps**: a map is orthogonal, `isometric`
+  (diamonds on a turned grid), `staggered` (diamonds in rows) or `hex`
+  (pointy- or flat-top), from its `orientation` line or its Tiled map;
+  `cellAt`, `cellCenter` and `og.tilemap.neighbours` (4 or 6 cells)
+  follow it, an iso tile taller than its diamond stands up from the
+  cell's bottom, and iso and hex solids collide one diamond or hexagon per
+  cell (keep big iso and hex collision layers sparse: a collider per solid
+  cell). `og.tilemap.create` makes an empty map in code (size, tile
+  pixels, orientation, tileset ids, layers) and `og.tilemap.resize` grows
+  or crops one, moving its cells and edits by (x, y); both are world state
+  that saves restore (`og api show tilemap`). `og.tilemap.fill` writes a
+  generated grid (procgen is og-core's skill).
 
 How many frames, how fast, which layer and how much parallax is og-feel
 §9–§11. `templates/archetypes/topdown` (a Zelda-like dungeon: a Tiled map
@@ -267,6 +279,8 @@ version 1
 size 32 18                 # cells across and down (required)
 tile 16 16                 # a tile's pixels (required)
 unit 1                     # world units per tile width (default 1)
+orientation isometric      # orthogonal (default), isometric, staggered, hex (pointy-top) or hex flat;
+                           # terrain layers need orthogonal or isometric
 tileset "tiles/dungeon.ogt"   # one line per tileset, indexed from 0 (at least one)
 layer walls {
   tileset 0                # which tileset (default 0)
@@ -292,7 +306,10 @@ object door {
 }
 ```
 
-**Tiled** (`.tmj`, saved as JSON): orthogonal and finite maps, layer data
+**Tiled** (`.tmj`, saved as JSON): finite orthogonal, isometric,
+staggered (odd rows shifted) and hexagonal maps (odd rows or columns
+shifted, side length half the tile, the engine's layout; another stagger
+is refused naming the Map Properties to change), layer data
 as CSV or uncompressed Base64 (a compressed layer is refused with the menu
 to change), horizontal and vertical flips kept (a rotated tile is
 refused), group layers flattened, one tileset per layer. An external

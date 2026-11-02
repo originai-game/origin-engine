@@ -11327,6 +11327,16 @@ export declare const SHAPE_TRIMESH: 5;
  */
 export declare const SHAPE_HEIGHTFIELD: 6;
 
+/**
+ * Collider.shape: a rhombus whose diagonals are size.x (along x) and size.y (along y), an isometric tile's diamond; in 3D a prism size.z deep (both profiles).
+ */
+export declare const SHAPE_DIAMOND: 7;
+
+/**
+ * Collider.shape: a pointy-top hexagon in the box size.x by size.y, corners at the top and bottom middles and a quarter down each side, a hex tile's (turn it a quarter about z for a flat-top one); in 3D a prism size.z deep (both profiles).
+ */
+export declare const SHAPE_HEXAGON: 8;
+
 /** Physics.profile: rapier2d, bodies in the xy plane rotating about z. */
 export declare const PROFILE_2D: 2;
 
@@ -11418,9 +11428,9 @@ export interface RigidBody {
  */
 export interface Collider {
   /**
-   * One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (3D), 6 the height field `mesh` (3D: a terrain).
+   * One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (3D), 6 the height field `mesh` (3D: a terrain), 7 a diamond and 8 a hexagon in `size` (both).
    *
-   * @range 0..6
+   * @range 0..8
    * @label Shape
    */
   shape: number;
@@ -16629,6 +16639,8 @@ export interface FlashDesc {
 // Layers draw through the sprite batch in 16x16-tile chunks culled to the view, each at the map's sprite layer plus its z, scrolled by its parallax; solid tiles become static og-physics colliders merged into rectangles. Runtime edits (og.tilemap.setTile, re-auto-tiling the neighbourhood) are world state (the og.tilemap state block), and the colliders follow them.
 // With og.Lighting2D enabled, a layer whose sprite layer (the map's layer plus its z) lies in minLayer to maxLayer is lit as the sprites there are: multiplied by the ambient plus every Light2D reaching it, with the shadows of Occluder2Ds and castShadow sprites, so a dark cave lit by torches is the map, its lights and its occluders. A layer that should stay as authored in the lit range (a sky, a far parallax backdrop) opts out: a bool custom property `lit` set to false on the Tiled layer, or a `lit false` line in a tilemap `.ogt`'s layer block (TileLayerInfo.lit reports it).
 // Cells count from the top-left corner, x right and y down (Tiled's); the map's top-left corner is at the entity's position.
+// Orientations: a map is orthogonal, isometric (diamonds on a turned grid), staggered (diamonds in rows) or hexagonal (pointy- or flat-top), from its `orientation` line or its Tiled map. cellAt, cellCenter and neighbours follow it; an isometric or staggered tile's image stands up from its cell's bottom (taller tiles overlap the ones behind, drawn back to front); solid tiles off the orthogonal grid collide as one diamond or hexagon per cell. Terrain layers need a square grid (orthogonal or isometric).
+// Run-time maps: og.tilemap.create makes a map from a desc and og.tilemap.resize changes a map's size, both in game code. A map made or resized is world state: the og.tilemap state block saves it whole (its tilesets by asset id), so a save restores it in a session that never made it.
 
 /**
  * A loaded map: its layers, tilesets and objects.
@@ -16705,6 +16717,16 @@ export interface Tilemap {
   /** The row of `palette` drawn (past the last, the last). */
   paletteRow: number;
 }
+
+/**
+ * How a map's cells are laid out (Tiled's orientations).
+ * - `"orthogonal"`: Rectangles in rows and columns.
+ * - `"isometric"`: Diamonds on a turned grid: x runs down to the right, y down to the left, cell 0 0 at the top.
+ * - `"staggered"`: Diamonds in rows half a tile apart, every odd row shifted right half a tile (Tiled's staggered, odd rows).
+ * - `"hex"`: Pointy-top hexagons with corners at a quarter of the tile, rows 3/4 of a tile apart, every odd row shifted right half a tile (Tiled's hexagonal, stagger axis y, odd, side half the tile's height).
+ * - `"hexFlat"`: Flat-top hexagons, columns 3/4 of a tile apart, every odd column shifted down half a tile (stagger axis x).
+ */
+export type TileOrientation = "orthogonal" | "isometric" | "staggered" | "hex" | "hexFlat";
 
 /** One layer of a map. */
 export interface TileLayerInfo {
@@ -16794,6 +16816,164 @@ export interface TilemapInfo {
   readonly layers: readonly TileLayerInfo[];
   /** Its objects. */
   readonly objects: readonly TileObject[];
+  /** How its cells are laid out. */
+  readonly orientation: TileOrientation;
+}
+
+/**
+ * One layer of a map og.tilemap.create makes (empty).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TileLayerDesc {
+  /**
+   * Its name (unique in the map).
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * The index of its tileset in TilemapDesc.tilesets.
+   *
+   * @default 0
+   */
+  readonly tileset?: number;
+  /**
+   * An auto-tiling terrain of that tileset: a terrain layer (cells 1 or 0); empty for a tile layer.
+   *
+   * @default ""
+   */
+  readonly terrain?: string;
+  /**
+   * Its sprite-layer offset from Tilemap.layer.
+   *
+   * @default 0
+   */
+  readonly z?: number;
+  /**
+   * Its solid tiles collide.
+   *
+   * @default false
+   */
+  readonly collision?: boolean;
+  /**
+   * Its colliders' collision layers (0: Tilemap.colliderLayers).
+   *
+   * @default 0
+   */
+  readonly colliderLayers?: number;
+  /**
+   * The layers its colliders collide with (0: every layer).
+   *
+   * @default 0
+   */
+  readonly colliderMask?: number;
+  /**
+   * Whether it is drawn.
+   *
+   * @default true
+   */
+  readonly visible?: boolean;
+}
+
+/**
+ * A map to make at run time: empty layers on tilesets the bundle cooked.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TilemapDesc {
+  /**
+   * Cells across.
+   *
+   * @default 16
+   * @range 1..
+   */
+  readonly width?: number;
+  /**
+   * Cells down.
+   *
+   * @default 16
+   * @range 1..
+   */
+  readonly height?: number;
+  /**
+   * A tile's width in pixels (its cell's).
+   *
+   * @default 16
+   * @range 1..
+   */
+  readonly tileWidth?: number;
+  /**
+   * A tile's height in pixels (its cell's; half the width for the usual isometric diamond).
+   *
+   * @default 16
+   * @range 1..
+   */
+  readonly tileHeight?: number;
+  /**
+   * World units per tile width.
+   *
+   * @default 1
+   */
+  readonly unit?: number;
+  /**
+   * How the cells are laid out.
+   *
+   * @default "orthogonal"
+   */
+  readonly orientation?: TileOrientation;
+  /**
+   * The tilesets' asset ids (tileset `.ogt` files, such as `tiles/dungeon.ogt`).
+   *
+   * @default []
+   */
+  readonly tilesets?: readonly string[];
+  /**
+   * The layers, drawing order.
+   *
+   * @default []
+   */
+  readonly layers?: readonly TileLayerDesc[];
+}
+
+/**
+ * A new size for a map, and where its cells go.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ResizeDesc {
+  /**
+   * The map: og.load.tilemap's or og.tilemap.create's.
+   *
+   * @default 0
+   */
+  readonly map?: TilemapAsset;
+  /**
+   * Cells across.
+   *
+   * @default 16
+   * @range 1..
+   */
+  readonly width?: number;
+  /**
+   * Cells down.
+   *
+   * @default 16
+   * @range 1..
+   */
+  readonly height?: number;
+  /**
+   * Where the old cell 0 0 lands: columns added on the left (negative crops them).
+   *
+   * @default 0
+   */
+  readonly x?: number;
+  /**
+   * Rows added at the top (negative crops them).
+   *
+   * @default 0
+   */
+  readonly y?: number;
 }
 
 /**
@@ -16889,6 +17069,9 @@ export interface FillDesc {
    */
   readonly tiles?: readonly number[];
 }
+
+
+
 
 
 
@@ -42950,6 +43133,8 @@ export declare namespace og {
    * Layers draw through the sprite batch in 16x16-tile chunks culled to the view, each at the map's sprite layer plus its z, scrolled by its parallax; solid tiles become static og-physics colliders merged into rectangles. Runtime edits (og.tilemap.setTile, re-auto-tiling the neighbourhood) are world state (the og.tilemap state block), and the colliders follow them.
    * With og.Lighting2D enabled, a layer whose sprite layer (the map's layer plus its z) lies in minLayer to maxLayer is lit as the sprites there are: multiplied by the ambient plus every Light2D reaching it, with the shadows of Occluder2Ds and castShadow sprites, so a dark cave lit by torches is the map, its lights and its occluders. A layer that should stay as authored in the lit range (a sky, a far parallax backdrop) opts out: a bool custom property `lit` set to false on the Tiled layer, or a `lit false` line in a tilemap `.ogt`'s layer block (TileLayerInfo.lit reports it).
    * Cells count from the top-left corner, x right and y down (Tiled's); the map's top-left corner is at the entity's position.
+   * Orientations: a map is orthogonal, isometric (diamonds on a turned grid), staggered (diamonds in rows) or hexagonal (pointy- or flat-top), from its `orientation` line or its Tiled map. cellAt, cellCenter and neighbours follow it; an isometric or staggered tile's image stands up from its cell's bottom (taller tiles overlap the ones behind, drawn back to front); solid tiles off the orthogonal grid collide as one diamond or hexagon per cell. Terrain layers need a square grid (orthogonal or isometric).
+   * Run-time maps: og.tilemap.create makes a map from a desc and og.tilemap.resize changes a map's size, both in game code. A map made or resized is world state: the og.tilemap state block saves it whole (its tilesets by asset id), so a save restores it in a session that never made it.
    */
   namespace tilemap {
     /**
@@ -42968,6 +43153,31 @@ export declare namespace og {
      * @returns Refused for an entity whose map is not adopted yet, an unknown layer, a width of 0 or not dividing the cells, or a tile the tileset lacks (nothing is written then).
      */
     function fill(world: World, desc?: FillDesc): Result<void>;
+    /**
+     * Make an empty map in game code: draw it and edit it as a loaded one (an og.Tilemap with its `map`, then setTile and fill). Its handle comes from the world's own counter, so equal calls in equal order give equal handles, in a replay and after a restore. A world that makes none saves and hashes as before.
+     *
+     * @param world The world.
+     * @param desc Its size, tiles, orientation, tilesets and layers.
+     * @returns Refused for a size of 0 or past 16,777,216 cells, a tileset the bundle lacks, a layer naming a tileset index or terrain that does not exist, two layers of one name, or a terrain layer on a staggered or hex map.
+     */
+    function create(world: World, desc?: TilemapDesc): Result<TilemapInfo>;
+    /**
+     * Change a map's size (a loaded one too: from then on it is a run-time map, saved whole). Every og.Tilemap showing it keeps its edits, moved with the cells by (x, y); cells past the new edges are dropped, new ones are empty, terrain re-tiles, colliders rebuild at the og.tilemap system and its objects (TilemapInfo.objects) move with the cells.
+     *
+     * @param world The world.
+     * @param desc The map, its new size and the shift.
+     * @returns Refused for an unknown map, a size of 0 or past 16,777,216 cells, or an odd shift along a staggered or hex map's shifted axis (it would change which rows are shifted).
+     */
+    function resize(world: World, desc?: ResizeDesc): Result<void>;
+    /**
+     * The cells next to a cell, clockwise from the top (or the top right): 4 on an orthogonal or isometric grid (the sides), 4 on a staggered one (the diagonal sides), 6 on a hex one; cells off the map are left out.
+     *
+     * @param world The world.
+     * @param map The map.
+     * @param x The column.
+     * @param y The row.
+     */
+    function neighbours(world: World, map: TilemapAsset, x: number, y: number): readonly TileCell[];
     /**
      * A cell's tile id, -1 when empty: on a terrain layer the tile auto-tiling resolved from the neighbours (setTile writes 1 or 0 there; the id changes with them). -1 outside the map or before the map is adopted.
      *

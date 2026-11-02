@@ -15,6 +15,15 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Tilemap orientations and run-time maps (G2-6, batch 2).** Maps are
+  orthogonal, isometric, staggered or hex (pointy- or flat-top), from a
+  `.ogt` `orientation` line or Tiled's isometric, staggered and hexagonal
+  maps; picking, centres, `og.tilemap.neighbours`, drawing order and
+  colliders (new Collider shapes 7 diamond and 8 hexagon) follow it.
+  `og.tilemap.create` makes a map in code and `og.tilemap.resize` grows or
+  crops one; both are world state saved in the og.tilemap block's trailer
+  only once used. The orientation is an optional blob section: orthogonal
+  maps cook byte for byte as before under the same type hash.
 - **Procedural generation (G2-6, batch 1).** `og.procgen`: Perlin and
   simplex noise in 2D and 3D with fractal octaves (`noise`, `noiseGrid`),
   Poisson-disk points (`poissonDisk`), BSP rooms with corridors (`bsp`)

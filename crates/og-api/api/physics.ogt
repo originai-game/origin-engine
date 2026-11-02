@@ -21,6 +21,8 @@ module physics {
   const SHAPE_CONVEX u32 4 "Collider.shape: the convex hull of the vertices of `mesh` (3D), or of their xy (a convex polygon, 2D)."
   const SHAPE_TRIMESH u32 5 "Collider.shape: the triangles of `mesh` (3D only; for static and kinematic bodies)."
   const SHAPE_HEIGHTFIELD u32 6 "Collider.shape: the height field registered as `mesh`, centred on the entity (3D only; a terrain: og.terrain.load's TerrainInfo.geometry)."
+  const SHAPE_DIAMOND u32 7 "Collider.shape: a rhombus whose diagonals are size.x (along x) and size.y (along y), an isometric tile's diamond; in 3D a prism size.z deep (both profiles)."
+  const SHAPE_HEXAGON u32 8 "Collider.shape: a pointy-top hexagon in the box size.x by size.y, corners at the top and bottom middles and a quarter down each side, a hex tile's (turn it a quarter about z for a flat-top one); in 3D a prism size.z deep (both profiles)."
   const PROFILE_2D u32 2 "Physics.profile: rapier2d, bodies in the xy plane rotating about z."
   const PROFILE_3D u32 3 "Physics.profile: rapier3d."
 
@@ -76,9 +78,9 @@ module physics {
   component Collider {
     doc "The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). Sizes are scaled by og.Transform.scale."
     doc "Compound colliders: a Collider without a RigidBody on a child entity whose og.Parent chain reaches a RigidBody is part of that body (the nearest such ancestor), placed at its transform relative to the body (the transforms between them composed, the body's scale applied): a table of a top and four legs, a ship of a hull and a mast, are one body. Its mass adds to the body's from its density, or the body's RigidBody.mass is shared among its colliders by theirs; its friction, restitution, layers and sensor flag are its own. Children join in entity order, whatever the query order. Changing a child (its collider, or its transform relative to the body) rebuilds the body, which loses its contacts' warm starts. Events and queries name the collider's entity; RaycastHit.body and PointProjection.body name the body. A controller's body takes no children; a collider whose chain reaches no body stays static at its world transform."
-    field shape u32 "One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (3D), 6 the height field `mesh` (3D: a terrain)." {
+    field shape u32 "One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (3D), 6 the height field `mesh` (3D: a terrain), 7 a diamond and 8 a hexagon in `size` (both)." {
       min 0
-      max 6
+      max 8
       label "Shape"
     }
     field size Vector3 "Full extents of a box, as three.js BoxGeometry(width, height, depth)." {
