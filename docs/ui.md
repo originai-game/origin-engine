@@ -242,6 +242,12 @@ glass is not the cause, most fail on solid glass too):
   strong over dark glass (a white current item over a bright sky fell to
   3.60). About 5 % draws as CSS's 13 % does there; the palette should
   state its translucent fills for the engine's blending.
+- Dark dims are the reverse case: a black fill at alpha `a` over bright
+  art leaves `1 - a` of its linear light, which the eye reads as far more
+  than `1 - a` of its brightness. A 60 % black sweep over pale ice art
+  read as barely darker (U6c, 2026-11-02); 90 % reads as the 55–65 %
+  darkening the art bar asks of a cooldown (§15.5), and 75 % as about
+  half. State a dim by how it reads and measure it on bright art.
 
 ### 5.4 Masks and layers
 
