@@ -27,7 +27,7 @@ pub mod cpu;
 pub mod glue;
 pub mod gpu;
 
-pub use bundle::{Bundle, BundleError, Config, DecoderConfig, StudentConfig};
+pub use bundle::{Bundle, BundleError, Config, DecoderConfig, StudentConfig, read_safetensors};
 pub use contract::{Alignment, Inputs, Pose, Request, decode_frame, encode, valid_frames};
 pub use glue::StudentOutput;
 

@@ -9,7 +9,7 @@
 use std::time::Instant;
 
 use og_motion::contract::{FRAMES, MOTION_FEATURES};
-use og_motion::glue::{Statics, decoder_inputs, finish, student_inputs};
+use og_motion::glue::{Statics, decoder_inputs, student_inputs};
 use og_motion::gpu::Gpu;
 use og_motion::{Bundle, Inputs, Model, valid_frames};
 
@@ -68,11 +68,8 @@ fn main() {
         None => panic!("a case file is needed for inputs"),
     };
     let generate = |inputs: &Inputs| {
-        let student = pollster::block_on(gpu.student(&student_inputs(&statics, inputs))).unwrap();
-        let local =
-            pollster::block_on(gpu.decoder(&decoder_inputs(&statics, inputs, &student))).unwrap();
-        let motion = finish(&statics, inputs, &student, &local);
-        (student, motion)
+        let g = pollster::block_on(gpu.generate(inputs)).unwrap();
+        (g.student, g.motion)
     };
     if let Some(c) = &case {
         let (student, motion) = generate(&base);

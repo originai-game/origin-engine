@@ -127,21 +127,7 @@ pub fn f16_to_f32(bits: u16) -> f32 {
 impl Bundle {
     /// Parses a safetensors file (F32 or F16 tensors) and its `config` metadata.
     pub fn from_safetensors(bytes: &[u8]) -> Result<Bundle, BundleError> {
-        let header_len = u64::from_le_bytes(
-            bytes
-                .get(..8)
-                .ok_or(BundleError::Truncated)?
-                .try_into()
-                .unwrap(),
-        ) as usize;
-        let header = bytes.get(8..8 + header_len).ok_or(BundleError::Truncated)?;
-        let data = &bytes[8 + header_len..];
-        let mut header: HashMap<String, serde_json::Value> =
-            serde_json::from_slice(header).map_err(|e| BundleError::Header(e.to_string()))?;
-        let metadata: HashMap<String, String> = match header.remove("__metadata__") {
-            Some(m) => serde_json::from_value(m).map_err(|e| BundleError::Header(e.to_string()))?,
-            None => HashMap::new(),
-        };
+        let (tensors, metadata) = read_safetensors(bytes)?;
         let config: Config = serde_json::from_str(
             metadata
                 .get("config")
@@ -150,44 +136,6 @@ impl Bundle {
         .map_err(|e| BundleError::Header(format!("config: {e}")))?;
         if config.format != FORMAT {
             return Err(BundleError::Format(config.format));
-        }
-        let mut tensors = HashMap::with_capacity(header.len());
-        for (name, value) in header {
-            let entry: Entry = serde_json::from_value(value)
-                .map_err(|e| BundleError::Header(format!("{name}: {e}")))?;
-            let raw = data
-                .get(entry.data_offsets[0]..entry.data_offsets[1])
-                .ok_or(BundleError::Truncated)?;
-            let values: Vec<f32> = match entry.dtype.as_str() {
-                "F32" => raw
-                    .as_chunks::<4>()
-                    .0
-                    .iter()
-                    .map(|c| f32::from_le_bytes(*c))
-                    .collect(),
-                "F16" => raw
-                    .as_chunks::<2>()
-                    .0
-                    .iter()
-                    .map(|c| f16_to_f32(u16::from_le_bytes(*c)))
-                    .collect(),
-                other => {
-                    return Err(BundleError::Dtype {
-                        name,
-                        dtype: other.into(),
-                    });
-                }
-            };
-            if values.len() != entry.shape.iter().product::<usize>() {
-                return Err(BundleError::Truncated);
-            }
-            tensors.insert(
-                name,
-                Tensor {
-                    shape: entry.shape,
-                    data: values,
-                },
-            );
         }
         Ok(Bundle {
             config,
@@ -226,6 +174,75 @@ impl Bundle {
             .map(|(_, t)| t.data.len())
             .sum()
     }
+}
+
+/// Every tensor of a safetensors file as f32 (F32, F16 or I32 on disk) and
+/// its metadata: what [`Bundle::from_safetensors`] reads, and what tools read
+/// case files with.
+#[allow(clippy::type_complexity)]
+pub fn read_safetensors(
+    bytes: &[u8],
+) -> Result<(HashMap<String, Tensor>, HashMap<String, String>), BundleError> {
+    let header_len = u64::from_le_bytes(
+        bytes
+            .get(..8)
+            .ok_or(BundleError::Truncated)?
+            .try_into()
+            .unwrap(),
+    ) as usize;
+    let header = bytes.get(8..8 + header_len).ok_or(BundleError::Truncated)?;
+    let data = &bytes[8 + header_len..];
+    let mut header: HashMap<String, serde_json::Value> =
+        serde_json::from_slice(header).map_err(|e| BundleError::Header(e.to_string()))?;
+    let metadata: HashMap<String, String> = match header.remove("__metadata__") {
+        Some(m) => serde_json::from_value(m).map_err(|e| BundleError::Header(e.to_string()))?,
+        None => HashMap::new(),
+    };
+    let mut tensors = HashMap::with_capacity(header.len());
+    for (name, value) in header {
+        let entry: Entry = serde_json::from_value(value)
+            .map_err(|e| BundleError::Header(format!("{name}: {e}")))?;
+        let raw = data
+            .get(entry.data_offsets[0]..entry.data_offsets[1])
+            .ok_or(BundleError::Truncated)?;
+        let values: Vec<f32> = match entry.dtype.as_str() {
+            "F32" => raw
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .map(|c| f32::from_le_bytes(*c))
+                .collect(),
+            "F16" => raw
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .map(|c| f16_to_f32(u16::from_le_bytes(*c)))
+                .collect(),
+            "I32" => raw
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .map(|c| i32::from_le_bytes(*c) as f32)
+                .collect(),
+            other => {
+                return Err(BundleError::Dtype {
+                    name,
+                    dtype: other.into(),
+                });
+            }
+        };
+        if values.len() != entry.shape.iter().product::<usize>() {
+            return Err(BundleError::Truncated);
+        }
+        tensors.insert(
+            name,
+            Tensor {
+                shape: entry.shape,
+                data: values,
+            },
+        );
+    }
+    Ok((tensors, metadata))
 }
 
 #[cfg(test)]
