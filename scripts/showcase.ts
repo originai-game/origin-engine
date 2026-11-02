@@ -1,6 +1,7 @@
 // The showcase archive: every screenshot, film, benchmark and measurement a
 // stream produces, kept for a later web showcase of the engine's features.
-// The files live in the private Cloudflare R2 bucket origin-engine-showcase,
+// The files live in the private S3 bucket origin-engine-showcase (OVHcloud
+// Object Storage, region BHS),
 // content-addressed by sha256 (sha256/<2 hex>/<64 hex>.<ext>, so a file is
 // stored once however often it is added); git holds only
 // showcase/manifest.jsonl, one entry per artifact (docs/ci.md §Showcase).
@@ -30,11 +31,13 @@
 // later add or backfill of the same bytes from anywhere is refused. index
 // and serve leave excluded entries out.
 //
-// The bucket is reached through the Cloudflare API with CLOUDFLARE_API_TOKEN
-// (R2 object read and write) and CLOUDFLARE_ACCOUNT_ID; OG_SHOWCASE_BUCKET
-// overrides the bucket. Dimensions and durations come from the PNG header,
+// The bucket is reached over S3 with OG_SHOWCASE_S3_ACCESS_KEY and
+// OG_SHOWCASE_S3_SECRET_KEY (a user that can put, get and list in that bucket
+// alone; Amp secrets); OG_SHOWCASE_BUCKET, OG_SHOWCASE_S3_ENDPOINT and
+// OG_SHOWCASE_S3_REGION override the bucket, endpoint and region. Dimensions and durations come from the PNG header,
 // else ffprobe when it is installed.
 
+import { S3Client } from "bun";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync } from "node:fs";
@@ -49,6 +52,8 @@ export const MANIFEST = join(ROOT, "showcase/manifest.jsonl");
 const INDEX = join(ROOT, "showcase/index.html");
 const CACHE = join(ROOT, "target/showcase-cache");
 const BUCKET = process.env.OG_SHOWCASE_BUCKET ?? "origin-engine-showcase";
+const ENDPOINT = process.env.OG_SHOWCASE_S3_ENDPOINT ?? "https://s3.bhs.io.cloud.ovh.net";
+const REGION = process.env.OG_SHOWCASE_S3_REGION ?? "bhs";
 const KINDS = ["frame", "film", "before-after", "benchmark", "concept"] as const;
 export type Kind = (typeof KINDS)[number];
 
@@ -118,58 +123,54 @@ function fail(why: string): never {
 
 // ── The bucket ──────────────────────────────────────────────────────────────
 
-function api(path: string): string {
-  const account = process.env.CLOUDFLARE_ACCOUNT_ID;
-  if (!account || !process.env.CLOUDFLARE_API_TOKEN) fail("set CLOUDFLARE_API_TOKEN (R2 read and write) and CLOUDFLARE_ACCOUNT_ID");
-  return `https://api.cloudflare.com/client/v4/accounts/${account}/r2/buckets/${BUCKET}/${path}`;
+let client: S3Client | undefined;
+
+/** The bucket's S3 client, from OG_SHOWCASE_S3_ACCESS_KEY and OG_SHOWCASE_S3_SECRET_KEY. */
+function s3(): S3Client {
+  if (client) return client;
+  const accessKeyId = process.env.OG_SHOWCASE_S3_ACCESS_KEY;
+  const secretAccessKey = process.env.OG_SHOWCASE_S3_SECRET_KEY;
+  if (!accessKeyId || !secretAccessKey) fail("set OG_SHOWCASE_S3_ACCESS_KEY and OG_SHOWCASE_S3_SECRET_KEY (the showcase bucket's S3 user; docs/ci.md §Showcase)");
+  client = new S3Client({ accessKeyId, secretAccessKey, endpoint: ENDPOINT, region: REGION, bucket: BUCKET });
+  return client;
 }
 
-async function request(method: string, path: string, body?: Uint8Array, type?: string): Promise<Response> {
-  const headers: Record<string, string> = { Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}` };
-  if (type) headers["Content-Type"] = type;
+/** Runs `f`, retrying throttling (503 SlowDown) and dropped connections with backoff, up to ~5 min. */
+async function retry<T>(what: string, f: () => Promise<T>): Promise<T> {
   for (let attempt = 0; ; attempt++) {
-    const r = await fetch(api(path), { method, headers, body });
-    // The API rate-limits bursts (429: 1,200 requests in 5 minutes a token)
-    // and has the odd 5xx: wait as it asks, else back off, for up to ~5 min.
-    if ((r.status === 429 || r.status >= 500) && attempt < 10) {
-      const after = Number(r.headers.get("retry-after"));
-      await new Promise((ok) => setTimeout(ok, Number.isFinite(after) && after > 0 ? after * 1000 : Math.min(60_000, 1000 * 2 ** attempt)));
-      continue;
+    try {
+      return await f();
+    } catch (e) {
+      const code = String((e as { code?: string }).code ?? "");
+      if (code === "NoSuchKey" || code === "AccessDenied" || attempt >= 10) fail(`${what}: ${code || e}`);
+      await new Promise((ok) => setTimeout(ok, Math.min(60_000, 1000 * 2 ** attempt)));
     }
-    return r;
   }
 }
 
 /** Every object in the bucket: key → size in bytes. */
 export async function objects(): Promise<Map<string, number>> {
   const out = new Map<string, number>();
-  let cursor = "";
+  let continuationToken: string | undefined;
   for (;;) {
-    const r = await request("GET", `objects?per_page=1000${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`);
-    const j = (await r.json()) as { success: boolean; errors: unknown; result: { key: string; size: number | string }[]; result_info?: { cursor?: string; is_truncated?: boolean | string } };
-    if (!j.success) fail(`listing ${BUCKET}: ${JSON.stringify(j.errors)}`);
-    for (const o of j.result) out.set(o.key, Number(o.size));
-    const info = j.result_info;
-    if (!info?.cursor || String(info.is_truncated) !== "true") return out;
-    cursor = info.cursor;
+    const page = await retry(`listing ${BUCKET}`, () => s3().list({ maxKeys: 1000, ...(continuationToken ? { continuationToken } : {}) }));
+    for (const o of page.contents ?? []) out.set(o.key, Number(o.size));
+    if (!page.isTruncated || !page.nextContinuationToken) return out;
+    continuationToken = page.nextContinuationToken;
   }
 }
 
 async function exists(key: string, bytes: number): Promise<boolean> {
-  const r = await request("GET", `objects?prefix=${encodeURIComponent(key)}&per_page=1`);
-  const j = (await r.json()) as { result?: { key: string; size: number | string }[] };
-  return (j.result ?? []).some((o) => o.key === key && Number(o.size) === bytes);
+  if (!(await retry(`checking ${key}`, () => s3().exists(key)))) return false;
+  return (await retry(`checking ${key}`, () => s3().stat(key))).size === bytes;
 }
 
 async function upload(key: string, bytes: Uint8Array, type: string): Promise<void> {
-  const r = await request("PUT", `objects/${key}`, bytes, type);
-  if (!r.ok) fail(`uploading ${key}: HTTP ${r.status} ${(await r.text()).slice(0, 300)}`);
+  await retry(`uploading ${key}`, () => s3().write(key, bytes, { type }));
 }
 
 async function download(key: string): Promise<Uint8Array> {
-  const r = await request("GET", `objects/${key}`);
-  if (!r.ok) fail(`reading ${key}: HTTP ${r.status}`);
-  return new Uint8Array(await r.arrayBuffer());
+  return retry(`reading ${key}`, async () => new Uint8Array(await s3().file(key).arrayBuffer()));
 }
 
 // ── The manifest ────────────────────────────────────────────────────────────

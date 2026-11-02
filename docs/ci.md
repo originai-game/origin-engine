@@ -1055,9 +1055,12 @@ Every frame a stream reads, every film it records and every number it
 measures (gate timings, size-gate figures, perf runs, replay results and
 hashes) goes into the showcase archive, from which a web showcase of the
 engine's features is built later (the owner, 2026-11-02). The files are not
-in git, which is already near a gigabyte. They live in the private Cloudflare
-R2 bucket `origin-engine-showcase`, under `sha256/<2 hex>/<sha256>.<ext>`, so
-a file is stored once however often it is added. Git holds only
+in git, which is already near a gigabyte. They live in the private S3 bucket
+`origin-engine-showcase` on OVHcloud Object Storage (the originai Public
+Cloud project, region BHS, endpoint `https://s3.bhs.io.cloud.ovh.net`; the
+owner's choice of 2026-11-02 over Cloudflare R2), under
+`sha256/<2 hex>/<sha256>.<ext>`, so a file is stored once however often it
+is added. Git holds only
 `showcase/manifest.jsonl`, one JSON entry per line:
 
 | Field | What it is |
@@ -1083,14 +1086,18 @@ bun scripts/showcase.ts list [--feature U6c] [--kind film] [--json]
 bun scripts/showcase.ts exclude <id|file|sha256> --reason "…"   # withdraw it (below)
 bun scripts/showcase.ts verify                          # every live entry's key is in the bucket at its size
 bun scripts/showcase.ts index                           # showcase/index.html from the manifest
-bun scripts/showcase.ts serve                           # the index on localhost:8780, files proxied from R2
+bun scripts/showcase.ts serve                           # the index on localhost:8780, files proxied from the bucket
 ```
 
 `add` defaults `--commit` to HEAD, `--date` to today (UTC) and `--thread` to
 `$AMP_THREAD_ID`; it uploads only bytes the bucket does not hold and never
 repeats an entry of the same file, feature and title. It reaches the bucket
-through the Cloudflare API with `CLOUDFLARE_API_TOKEN` (R2 read and write)
-and `CLOUDFLARE_ACCOUNT_ID`, both orb secrets; widths and heights come from
+over S3 as the user `origin-engine-showcase-s3`, whose policy allows put,
+get and list in this bucket alone (no delete, no other bucket), with
+`OG_SHOWCASE_S3_ACCESS_KEY` and `OG_SHOWCASE_S3_SECRET_KEY`: secrets of the
+origingame/origin-engine Amp project, which orbs and the runners (macrunner,
+studio-win) receive (`OG_SHOWCASE_BUCKET`, `OG_SHOWCASE_S3_ENDPOINT` and
+`OG_SHOWCASE_S3_REGION` override the defaults); widths and heights come from
 the PNG header, else `ffprobe`. Commit the manifest lines with the change
 they show; `showcase/index.html` is regenerated with them. The first backfill
 (2026-11-02) took every attachment and artifact of that day's streams, the
