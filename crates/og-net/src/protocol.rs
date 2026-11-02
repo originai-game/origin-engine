@@ -7,7 +7,7 @@
 //! { op: "create", name?, capacity? }      a new room; joined (or error) answers
 //! { op: "join", room, name? }             an existing room (the relay makes it on first join)
 //! { op: "leave" }                         left answers
-//! { op: "send", to?, channel?, data? | bytes? }   to one peer, or every other peer
+//! { op: "send", to?, channel?, data? | bytes?, unreliable? }   to one peer, or every other peer
 //! ```
 //!
 //! Events, from the host to the engine (`og_room_deliver`), and from the
@@ -27,7 +27,9 @@
 //! after the last of them: lockstep's agreement on a leaver's last input
 //! rests on it. `bytes` is base64. A `channel` starting with `og.` is the
 //! engine's own (lockstep's `og.lockstep`): its messages never reach the
-//! game as og.RoomMessage.
+//! game as og.RoomMessage. A `send` marked `unreliable` may be dropped or
+//! overtake others (lockstep's inputs, which the next message repeats); a
+//! host free to deliver it reliably may.
 
 use crate::base64;
 use serde_json::{Value, json};

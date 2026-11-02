@@ -14,6 +14,14 @@
 //! queue, so a peer's messages reach every other peer in the order sent,
 //! and its departure (`peer_left`, when its socket closes or it leaves)
 //! after the last of them.
+//!
+//! [`Shaping`] (`og relay --latency MS --jitter MS --loss PCT --seed N`)
+//! makes the relay a bad network, to test netcode against one: every frame
+//! to a peer is held `latency` plus up to `jitter` milliseconds, still in
+//! order; a `send` op marked `unreliable` (lockstep's inputs, which the next
+//! one repeats) is dropped `loss` times in a hundred and keeps no order, so
+//! it may overtake others. The draws come from `seed`, one sequence for the
+//! whole relay.
 
 use crate::protocol::{
     self, Event, LOCKSTEP_CHANNEL, MAX_CAPACITY, MAX_ENGINE_MESSAGE, MAX_MESSAGE,
@@ -27,7 +35,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tungstenite::Message;
 use tungstenite::handshake::server::{ErrorResponse, Request, Response};
 
@@ -38,9 +46,70 @@ const JOIN_CAPACITY: u32 = MAX_CAPACITY;
 /// The capacity of a room `create` makes without one.
 const CREATE_CAPACITY: u32 = 8;
 
+/// The network a relay plays (all zero: a good one).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Shaping {
+    /// Milliseconds every frame to a peer is held.
+    pub latency_ms: u32,
+    /// Up to this many milliseconds more, drawn per frame.
+    pub jitter_ms: u32,
+    /// Unreliable messages dropped per hundred.
+    pub loss_percent: u32,
+    /// The draws' seed.
+    pub seed: u64,
+}
+
+/// A frame for a peer, written once `due`; `seq` orders frames due together.
+type Queued = (Instant, u64, String);
+
 struct PeerConn {
     name: String,
-    tx: Sender<String>,
+    tx: Sender<Queued>,
+    /// The last reliable frame's due time: the next one is not earlier.
+    last_due: Instant,
+}
+
+/// When a frame to `to` is due, or `None` when it is lost.
+fn due(rooms: &mut Rooms, to: &mut PeerConn, lossy: bool) -> Option<Instant> {
+    let sh = rooms.shaping;
+    let now = Instant::now();
+    let mut draw = || {
+        // xorshift64*
+        let r = &mut rooms.rng;
+        *r ^= *r >> 12;
+        *r ^= *r << 25;
+        *r ^= *r >> 27;
+        r.wrapping_mul(0x2545_f491_4f6c_dd1d)
+    };
+    if lossy && sh.loss_percent > 0 && draw() % 100 < u64::from(sh.loss_percent) {
+        return None;
+    }
+    let jitter = if sh.jitter_ms > 0 {
+        draw() % (u64::from(sh.jitter_ms) + 1)
+    } else {
+        0
+    };
+    let at = now + Duration::from_millis(u64::from(sh.latency_ms) + jitter);
+    if lossy {
+        return Some(at);
+    }
+    to.last_due = to.last_due.max(at);
+    Some(to.last_due)
+}
+
+/// Hands `frame` to `to` as the shaping says.
+fn post(rooms: &mut Rooms, to: u32, room: &str, frame: String, lossy: bool) {
+    let mut conn = match rooms.rooms.get_mut(room).and_then(|r| r.peers.remove(&to)) {
+        Some(c) => c,
+        None => return,
+    };
+    if let Some(at) = due(rooms, &mut conn, lossy) {
+        rooms.seq += 1;
+        let _ = conn.tx.send((at, rooms.seq, frame));
+    }
+    if let Some(r) = rooms.rooms.get_mut(room) {
+        r.peers.insert(to, conn);
+    }
 }
 
 struct Room {
@@ -53,6 +122,9 @@ struct Room {
 struct Rooms {
     rooms: BTreeMap<String, Room>,
     next_room: u64,
+    shaping: Shaping,
+    rng: u64,
+    seq: u64,
 }
 
 type Shared = Arc<Mutex<Rooms>>;
@@ -69,12 +141,21 @@ pub struct Relay {
 impl Relay {
     /// Serve on `addr` (port 0 picks a free one).
     pub fn bind(addr: SocketAddr) -> io::Result<Relay> {
+        Relay::bind_shaped(addr, Shaping::default())
+    }
+
+    /// Serve on `addr` as a network shaped by `shaping`.
+    pub fn bind_shaped(addr: SocketAddr, shaping: Shaping) -> io::Result<Relay> {
         let listener = TcpListener::bind(addr)?;
         listener.set_nonblocking(true)?;
         let port = listener.local_addr()?.port();
         let stop = Arc::new(AtomicBool::new(false));
         let (log_tx, log) = mpsc::channel();
-        let rooms: Shared = Arc::default();
+        let rooms: Shared = Arc::new(Mutex::new(Rooms {
+            shaping,
+            rng: shaping.seed | 1,
+            ..Rooms::default()
+        }));
         let (s, r) = (stop.clone(), rooms.clone());
         thread::Builder::new()
             .name("og-relay-accept".into())
@@ -132,7 +213,7 @@ fn accept(listener: TcpListener, rooms: Shared, stop: Arc<AtomicBool>, log: Send
 
 /// One peer's connection: its room and number while it is in one.
 struct Peer {
-    tx: Sender<String>,
+    tx: Sender<Queued>,
     at: Option<(String, u32)>,
     rooms: Shared,
     log: Sender<String>,
@@ -149,8 +230,22 @@ fn error(op: &str, code: &str, message: impl Into<String>) -> String {
 }
 
 impl Peer {
+    /// A frame to this peer itself, at once and in order with the rest.
     fn reply(&self, frame: String) {
-        let _ = self.tx.send(frame);
+        let mut rooms = self.rooms.lock().unwrap_or_else(|p| p.into_inner());
+        if let Some((room, me)) = &self.at
+            && rooms
+                .rooms
+                .get(room)
+                .is_some_and(|r| r.peers.contains_key(me))
+        {
+            let shaping = std::mem::take(&mut rooms.shaping);
+            post(&mut rooms, *me, room, frame, false);
+            rooms.shaping = shaping;
+            return;
+        }
+        rooms.seq += 1;
+        let _ = self.tx.send((Instant::now(), rooms.seq, frame));
     }
 
     fn join(&mut self, op: &str, room: &str, name: &str, make: Option<u32>) {
@@ -178,12 +273,13 @@ impl Peer {
         }
         let peer = state.next_peer;
         state.next_peer += 1;
-        let others: Vec<Sender<String>> = state.peers.values().map(|p| p.tx.clone()).collect();
+        let others: Vec<u32> = state.peers.keys().copied().collect();
         state.peers.insert(
             peer,
             PeerConn {
                 name: name.to_string(),
                 tx: self.tx.clone(),
+                last_due: Instant::now(),
             },
         );
         let peers: Vec<(u32, String)> = state
@@ -193,23 +289,23 @@ impl Peer {
             .collect();
         let count = peers.len();
         // Under the lock, so every peer hears joins and messages in one order.
-        self.reply(
-            Event::Joined {
-                room: room.to_string(),
-                peer,
-                peers,
-            }
-            .to_json()
-            .to_string(),
-        );
+        let joined = Event::Joined {
+            room: room.to_string(),
+            peer,
+            peers,
+        }
+        .to_json()
+        .to_string();
+        rooms.seq += 1;
+        let _ = self.tx.send((Instant::now(), rooms.seq, joined));
         let joined = Event::PeerJoined {
             peer,
             name: name.to_string(),
         }
         .to_json()
         .to_string();
-        for tx in others {
-            let _ = tx.send(joined.clone());
+        for p in others {
+            post(&mut rooms, p, room, joined.clone(), false);
         }
         drop(rooms);
         self.at = Some((room.to_string(), peer));
@@ -227,12 +323,14 @@ impl Peer {
         if let Some(state) = rooms.rooms.get_mut(&room) {
             state.peers.remove(&peer);
             let gone = Event::PeerLeft { peer }.to_json().to_string();
-            for p in state.peers.values() {
-                let _ = p.tx.send(gone.clone());
-            }
-            left = state.peers.len();
-            if state.peers.is_empty() {
+            let others: Vec<u32> = state.peers.keys().copied().collect();
+            left = others.len();
+            if others.is_empty() {
                 rooms.rooms.remove(&room);
+            }
+            // Reliable, so after every message it sent.
+            for p in others {
+                post(&mut rooms, p, &room, gone.clone(), false);
             }
         }
         drop(rooms);
@@ -334,32 +432,26 @@ impl Peer {
         .to_json()
         .to_string();
         let to = v["to"].as_u64().map(|t| t as u32);
-        let rooms = self.rooms.lock().unwrap_or_else(|p| p.into_inner());
+        let lossy = v["unreliable"] == json!(true);
+        let mut rooms = self.rooms.lock().unwrap_or_else(|p| p.into_inner());
         let Some(state) = rooms.rooms.get(room) else {
             return;
         };
-        match to {
-            Some(t) => match state.peers.get(&t) {
-                Some(p) => {
-                    let _ = p.tx.send(frame);
-                }
-                None if v["channel"] == json!(LOCKSTEP_CHANNEL) => {}
-                None => {
-                    drop(rooms);
-                    self.reply(error(
-                        "send",
-                        "not_found",
-                        format!("no peer {t} in room '{room}'"),
-                    ));
-                }
-            },
-            None => {
-                for (p, c) in &state.peers {
-                    if p != from {
-                        let _ = c.tx.send(frame.clone());
-                    }
-                }
+        let targets: Vec<u32> = match to {
+            Some(t) if state.peers.contains_key(&t) => vec![t],
+            Some(_) if v["channel"] == json!(LOCKSTEP_CHANNEL) => Vec::new(),
+            Some(t) => {
+                drop(rooms);
+                return self.reply(error(
+                    "send",
+                    "not_found",
+                    format!("no peer {t} in room '{room}'"),
+                ));
             }
+            None => state.peers.keys().copied().filter(|p| p != from).collect(),
+        };
+        for t in targets {
+            post(&mut rooms, t, room, frame.clone(), lossy);
         }
     }
 }
@@ -381,7 +473,9 @@ fn connection(stream: TcpStream, rooms: Shared, stop: Arc<AtomicBool>, log: Send
     let _ = socket
         .get_ref()
         .set_read_timeout(Some(Duration::from_millis(1)));
-    let (tx, rx) = mpsc::channel::<String>();
+    let (tx, rx) = mpsc::channel::<Queued>();
+    // Frames held until due (a shaped relay's latency), by due time.
+    let mut held: Vec<Queued> = Vec::new();
     let mut peer = Peer {
         tx,
         at: None,
@@ -405,7 +499,11 @@ fn connection(stream: TcpStream, rooms: Shared, stop: Arc<AtomicBool>, log: Send
             break "the relay stopped";
         }
         let mut wrote = false;
-        while let Ok(frame) = rx.try_recv() {
+        held.extend(rx.try_iter());
+        held.sort_by_key(|q| (q.0, q.1));
+        let now = Instant::now();
+        let due = held.iter().take_while(|q| q.0 <= now).count();
+        for (_, _, frame) in held.drain(..due) {
             if socket.write(Message::text(frame)).is_err() {
                 break;
             }

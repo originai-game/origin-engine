@@ -1044,7 +1044,9 @@ Each host carries rooms its own way:
   default port is 47900) serves rooms by URL path. `og run --room
   ws://127.0.0.1:P/<room>` connects through og-net's client on a thread of
   its own and joins `<room>` before the first tick. The run pumps the link
-  around every frame.
+  around every frame. `--latency MS --jitter MS --loss PCT --seed N` make
+  the relay a bad network (every frame held, unreliable sends dropped and
+  reordered), so netcode is tested against latency and loss locally.
 - **On the web.** The Worker posts the engine's ops to the page and
   delivers the page's events. The shell's `RoomHost` maps them onto the
   Player's `room.*` (docs/platform-asks.md #16, open). A Player whose

@@ -86,12 +86,12 @@ fn with<T>(engine: u32, f: impl FnOnce(&mut Net) -> T) -> T {
 
 /// Lockstep's messages become `send` ops; its notes go to the engine's log.
 fn flush(engine: u32, n: &mut Net, tick: u64) {
-    for (to, data) in n.ls.take_out() {
-        n.outbox.push(protocol::send(
-            to,
-            Some(LOCKSTEP_CHANNEL),
-            &Payload::Json(data),
-        ));
+    for (to, data, unreliable) in n.ls.take_out() {
+        let mut op = protocol::send(to, Some(LOCKSTEP_CHANNEL), &Payload::Json(data));
+        if unreliable {
+            op["unreliable"] = json!(true);
+        }
+        n.outbox.push(op);
     }
     let notes = n.ls.take_notes();
     if notes.is_empty() {
@@ -530,6 +530,7 @@ fn config(eng: &Engine, world: &World) -> Config {
         players: u("players", 2).clamp(1, 16),
         input_delay: u("inputDelay", 2).clamp(1, 30),
         hash_every: u("hashEvery", 10),
+        ..Config::default()
     }
 }
 
@@ -552,7 +553,9 @@ pub(crate) fn gate(engine: u32, world: &mut World) -> bool {
         match gate {
             Gate::Go => return true,
             Gate::Wait => return false,
-            Gate::Restore { snapshot, .. } => {
+            // Nothing turns rollback on yet (og.Lockstep's `mode` comes
+            // with the runtime's rewind ring), so no rewind is asked for.
+            Gate::Restore { snapshot, .. } | Gate::Rewind { snapshot, .. } => {
                 if let Err(e) = super::save::restore_session(&eng, world, &snapshot, &[LOCKSTEP]) {
                     eng.state.borrow_mut().log.push(json!({
                         "tick": tick, "warning": true,

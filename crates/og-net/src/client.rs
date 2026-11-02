@@ -225,4 +225,74 @@ mod tests {
         d.send(&protocol::join(room, "d"));
         assert!(matches!(&until(&d, 1)[0], Event::Error { code, .. } if code == "full"));
     }
+
+    #[test]
+    fn a_shaped_relay_holds_frames_drops_only_unreliable_ones_and_keeps_reliable_order() {
+        use crate::relay::Shaping;
+        let shaping = Shaping {
+            latency_ms: 40,
+            jitter_ms: 20,
+            loss_percent: 50,
+            seed: 9,
+        };
+        let relay =
+            Relay::bind_shaped(SocketAddr::from((Ipv4Addr::LOCALHOST, 0)), shaping).unwrap();
+        let url = format!("ws://127.0.0.1:{}/lag", relay.port());
+        let a = RelayClient::connect(&url).unwrap();
+        until(&a, 1);
+        let b = RelayClient::connect(&url).unwrap();
+        until(&b, 1);
+        until(&a, 1);
+        let sent = std::time::Instant::now();
+        for i in 0..300 {
+            let mut op = protocol::send(None, None, &Payload::Json(serde_json::json!(i)));
+            if i % 3 != 0 {
+                op["unreliable"] = serde_json::json!(true);
+            }
+            a.send(&op);
+        }
+        let first = until(&b, 1);
+        assert!(
+            sent.elapsed() >= Duration::from_millis(40),
+            "a frame arrived {:?} after sending, under the 40 ms latency",
+            sent.elapsed()
+        );
+        drop(a);
+        let mut got = first;
+        for _ in 0..3000 {
+            got.extend(b.poll().iter().map(|v| Event::parse(v).expect("an event")));
+            if got.last() == Some(&Event::PeerLeft { peer: 0 }) {
+                break;
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+        assert_eq!(got.last(), Some(&Event::PeerLeft { peer: 0 }), "{got:?}");
+        let values: Vec<i64> = got
+            .iter()
+            .filter_map(|e| match e {
+                Event::Message {
+                    payload: Payload::Json(v),
+                    ..
+                } => v.as_i64(),
+                _ => None,
+            })
+            .collect();
+        // Every reliable message arrives, in order, and the departure after
+        // the last of them.
+        let reliable: Vec<i64> = values.iter().copied().filter(|v| v % 3 == 0).collect();
+        assert_eq!(
+            reliable,
+            (0..300).filter(|v| v % 3 == 0).collect::<Vec<_>>()
+        );
+        // About half the unreliable ones are lost; the rest arrive once.
+        let mut lossy: Vec<i64> = values.iter().copied().filter(|v| v % 3 != 0).collect();
+        let n = lossy.len();
+        assert!(
+            (50..150).contains(&n),
+            "{n} of 200 unreliable messages arrived"
+        );
+        lossy.sort();
+        lossy.dedup();
+        assert_eq!(lossy.len(), n, "none twice");
+    }
 }

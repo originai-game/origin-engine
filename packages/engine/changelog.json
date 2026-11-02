@@ -192,6 +192,10 @@
       {
         "member": "og.tilemap.fill, FillDesc",
         "summary": "Writes a row-major block of cells at once (a generated grid mapped to tile ids): checked whole before any cell is written, a terrain layer re-tiled and the colliders rebuilt once, cells past the map's edge skipped."
+      },
+      {
+        "member": "og relay --latency, --jitter, --loss, --seed",
+        "summary": "`og relay` can play a bad network to test netcode against (G2-7): every frame to a peer held the latency plus up to the jitter in milliseconds, in order, and a send marked unreliable (lockstep's inputs) dropped the loss percentage of the time and free to overtake others, the draws from one seed."
       }
     ],
     "fixed": [
@@ -234,6 +238,10 @@
       {
         "member": "og.render.setDisplay autoQuality",
         "summary": "Automatic quality no longer cycles between two rungs on the GPU-time path: a rung that falls back within VERIFY_FRAMES waits twice as long before it is tried again and is given up after MAX_FAILURES, and the rung above is predicted with the measured spread added (meridian-loop at 2560x1600 stepped 1.6 to 1.7 and back every 30 s in Chrome and Edge)."
+      },
+      {
+        "member": "og.Lockstep (rooms)",
+        "summary": "A lockstep room no longer stalls for good when the room loses an input message: every input message carries all of the sender's inputs its peers have not acknowledged (each carries the sender's confirmed tick) and a peer waiting at a boundary sends them again. The lockstep wire version is 2: a peer on an older engine has its start refused with the reason instead of desyncing (G2-7)."
       }
     ]
   },
