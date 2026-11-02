@@ -1,143 +1,411 @@
 {
   "choices": {
-    "finish": "neon",
+    "finish": "flat",
     "motion": "snappy",
     "ornament": "light",
     "scheme": "dark",
-    "seed": "#ff2bd6",
-    "shape": "notch"
+    "seed": "#f5e60c",
+    "shape": "cut"
   },
-  "look": "cyberpunk neon",
+  "concepts": [
+    "tests/evidence/ui-art/concepts/v2/cyber-settings.jpg",
+    "tests/evidence/ui-art/concepts/v2/cyber-shop.jpg",
+    "tests/evidence/ui-art/concepts/v2/cyber-hud.jpg"
+  ],
+  "densities": [
+    1,
+    2,
+    3
+  ],
+  "look": "cyberpunk signal",
+  "lookPreset": "neon-vector",
   "palette": {
-    "backdrop": "#0b0613",
-    "highlight": "#49f2ff",
-    "ink": "#fff2fd",
-    "line": "#4b3f4f",
-    "panel": "#231829",
-    "primary": "#ff7ce6"
+    "backdrop": "#0a0a0c",
+    "highlight": "#eefeff",
+    "ink": "#fefef0",
+    "line": "#4a4942",
+    "panel": "#22211c",
+    "primary": "#f5e60c"
   },
-  "premise": "a neon-soaked heist game in a rain-slick megacity",
+  "premise": "a street-level heist game of black-market chrome and data runs in a megacity",
+  "resample": "smooth",
   "slots": [
     {
       "aspect": "free",
+      "dress": [
+        "Panel.frame"
+      ],
+      "file": "art/panel.png",
       "fit": "nineSlice",
+      "flat": 0.08,
       "focal": [
         0.5,
         0.5
+      ],
+      "hash": "0b36854e4dc880c5",
+      "insets": [
+        0.25,
+        0.25,
+        0.25,
+        0.25
       ],
       "kind": "styleFrame",
       "name": "cyber/panel",
-      "safe": null
+      "note": "A cyberpunk interface panel, completely opaque and solid everywhere including its centre (no hole, no transparency, no vignette): a flat near-black #0d0e10 ground, its top-left and bottom-right corners cut at 45° (about 14 px at this size), a crisp 1.5 px acid-yellow (#f5e60c) line along its edge that follows the cuts, and one short thicker yellow tab on the top-left cut. No glow, no scanlines, no magenta. As the panels of the concept's settings and shop. Everything outside its cut corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
+      "opaque": "#0d0e10",
+      "pixels": [
+        288,
+        288
+      ],
+      "safe": null,
+      "size": [
+        96,
+        96
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "Card.frame"
+      ],
+      "file": "art/card.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
+      ],
+      "hash": "c90803b7cc82475f",
+      "insets": [
+        0.208,
+        0.208,
+        0.208,
+        0.208
       ],
       "kind": "styleFrame",
       "name": "cyber/card",
-      "safe": null
+      "note": "A shop item card, one of many repeated side by side: a near-black #121316 rectangle with its top-left corner cut at 45° (about 10 px), a 1 px dim grey (#3a3b3f) edge line that follows the cut; no yellow anywhere (yellow marks only the selected card, which the game draws itself). Completely plain otherwise: no tags, text, icons, glow or ornaments, only the edge line. As the item cases' cards in the concept's shop. Everything outside its cut corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
+      "opaque": "#121316",
+      "pixels": [
+        288,
+        288
+      ],
+      "safe": null,
+      "size": [
+        96,
+        96
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "Field.frame"
+      ],
+      "file": "art/field.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
+      ],
+      "hash": "f13143c22441dd98",
+      "insets": [
+        0.208,
+        0.3,
+        0.208,
+        0.3
       ],
       "kind": "styleFrame",
       "name": "cyber/field",
-      "safe": null
+      "note": "A text field or dropdown: a fully opaque near-black #0c0d0f rectangle with square corners, a 1 px mid-grey (#4a4b50) edge line; the centre plain so light text reads on it. As the Output Device dropdown of the concept. No ornaments anywhere. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
+      "opaque": "#0c0d0f",
+      "pixels": [
+        288,
+        120
+      ],
+      "safe": null,
+      "size": [
+        96,
+        40
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "Slot.frame"
+      ],
+      "file": "art/slot.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
+      ],
+      "hash": "a969a932844600ef",
+      "insets": [
+        0.25,
+        0.25,
+        0.25,
+        0.25
       ],
       "kind": "styleFrame",
       "name": "cyber/slot",
-      "safe": null
+      "note": "An inventory slot, repeated many times in a grid: a near-black #0f1012 square with its top-left corner cut at 45° (about 8 px), a 1 px dim grey (#3a3b3f) edge line following the cut, and a very faint darker inner well. No ornament, glow or text. Everything outside its cut corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
+      "opaque": "#0f1012",
+      "pixels": [
+        192,
+        192
+      ],
+      "safe": null,
+      "size": [
+        64,
+        64
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "Tooltip.frame"
+      ],
+      "file": "art/tooltip.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
+      ],
+      "hash": "f0dd35a535e8e09d",
+      "insets": [
+        0.188,
+        0.25,
+        0.188,
+        0.25
       ],
       "kind": "styleFrame",
       "name": "cyber/tooltip",
-      "safe": null
+      "note": "A small tooltip: a fully opaque black (#08090a) rectangle with its top-left corner cut at 45° (about 6 px) and a 1 px acid-yellow (#f5e60c) edge line following the cut; the centre plain black so light text reads on it. No glow or ornaments. Everything outside its cut corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
+      "pixels": [
+        192,
+        144
+      ],
+      "safe": null,
+      "size": [
+        64,
+        48
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "Hud.frame"
+      ],
+      "file": "art/hud.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
+      ],
+      "hash": "305cbead914d4c73",
+      "insets": [
+        0.219,
+        0.3,
+        0.219,
+        0.3
       ],
       "kind": "styleFrame",
       "name": "cyber/hud",
-      "safe": null
+      "note": "A HUD readout capsule laid over a game scene: a near-black (#0b0c0e) rectangle, slightly translucent, its top-left and bottom-right corners cut at 45° (about 8 px), a 1.5 px acid-yellow (#f5e60c) edge line following the cuts. As the ammo, objective and timer readouts of the concept's HUD. No glow, no scanlines. Everything outside its cut corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge.",
+      "pixels": [
+        192,
+        120
+      ],
+      "safe": null,
+      "size": [
+        64,
+        40
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "Button.base[secondary]",
+        "Button.base[secondary][hover]",
+        "Button.base[secondary][pressed]",
+        "Button.base[secondary][disabled]",
+        ""
+      ],
+      "file": "art/button.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
+      ],
+      "hash": "b7647a636045c709",
+      "insets": [
+        0.229,
+        0.318,
+        0.229,
+        0.318
       ],
       "kind": "styleButton",
       "name": "cyber/button",
-      "safe": null
+      "note": "A secondary button in its states: a near-black (#0d0e10) rectangle with its bottom-right corner cut at 45° (about 8 px) and a 1.5 px acid-yellow (#f5e60c) edge line following the cut; the label area flat near-black so light text reads on it. Hovered: the edge brighter and the ground one step lighter. As the Back and Reset to Default keys of the concept. Everything outside its cut corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge. The cut end is plain too, so it reads cleanly when short.",
+      "pixels": [
+        1440,
+        132
+      ],
+      "safe": null,
+      "size": [
+        96,
+        44
+      ],
+      "states": [
+        "normal",
+        "hover",
+        "pressed",
+        "disabled",
+        "focused"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "Button.base[primary]",
+        "Button.base[primary][hover]",
+        "Button.base[primary][pressed]",
+        "Button.base[primary][disabled]",
+        ""
+      ],
+      "file": "art/button-primary.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
       ],
+      "hash": "ecb326a9e1d7b75d",
+      "insets": [
+        0.229,
+        0.318,
+        0.229,
+        0.318
+      ],
       "kind": "styleButton",
       "name": "cyber/button-primary",
-      "safe": null
+      "note": "The primary button in its states: a solid flat acid-yellow (#f5e60c) slab with its bottom-right corner cut at 45° (about 8 px) and a thin darker yellow (#c9bc00) edge; the label area flat yellow so black text reads on it. No gradient, glow or sheen. As the BUY & FIT button of the concept. Everything outside its cut corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any detail sits in the four corners, none at the middle of an edge. No arrow, chevron or text on it.",
+      "pixels": [
+        1440,
+        132
+      ],
+      "safe": null,
+      "size": [
+        96,
+        44
+      ],
+      "states": [
+        "normal",
+        "hover",
+        "pressed",
+        "disabled",
+        "focused"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "corner"
+      ],
+      "file": "art/corner.png",
       "fit": "contain",
       "focal": [
         0.5,
         0.5
       ],
+      "hash": "72ba916d6539492a",
       "kind": "ornament",
       "name": "cyber/corner",
-      "safe": null
+      "note": "A small corner mark: a short acid-yellow (#f5e60c) right-angle bracket, two 2 px strokes about 10 px long meeting at the top-left, on a clear background. As the corner ticks on the concept's settings frame. Nothing else.",
+      "pixels": [
+        96,
+        96
+      ],
+      "safe": null,
+      "size": [
+        32,
+        32
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "divider"
+      ],
+      "file": "art/divider.png",
       "fit": "contain",
       "focal": [
         0.5,
         0.5
       ],
+      "hash": "e7167ad053ae4cb3",
       "kind": "ornament",
       "name": "cyber/divider",
-      "safe": null
+      "note": "A horizontal divider: a plain 1 px dim grey (#3a3b3f) line with a short 2 px acid-yellow segment at its left end only, on a clear background. No dots, diamonds or ornament at its centre.",
+      "pixels": [
+        576,
+        48
+      ],
+      "safe": null,
+      "size": [
+        192,
+        16
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "flourish"
+      ],
+      "file": "art/flourish.png",
       "fit": "contain",
       "focal": [
         0.5,
         0.5
       ],
+      "hash": "9c245d5b78837f7d",
       "kind": "ornament",
       "name": "cyber/flourish",
-      "safe": null
+      "note": "A heading accent: three small acid-yellow (#f5e60c) forward slashes in a row (like '///'), each about 2 px thick, on a clear background. Small and flat, no glow.",
+      "pixels": [
+        192,
+        72
+      ],
+      "safe": null,
+      "size": [
+        64,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": [
@@ -152,6 +420,69 @@
       "kind": "iconSet",
       "name": "cyber/icons",
       "safe": null
+    },
+    {
+      "dress": [
+        "Slider.knob"
+      ],
+      "file": "art/thumb.png",
+      "hash": "b5fc57d6928a66fd",
+      "kind": "ornament",
+      "name": "cyber/thumb",
+      "note": "A slider's thumb: a small acid-yellow (#f5e60c) upright rectangle with a black 1 px edge, about half as wide as it is tall, flat with no glow. Nothing else: no track.",
+      "pixels": [
+        72,
+        72
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "dress": [
+        "Toggle.knob[on]"
+      ],
+      "file": "art/knob.png",
+      "hash": "02f1e9d5fdbdc814",
+      "kind": "ornament",
+      "name": "cyber/knob",
+      "note": "Only the sliding knob of a toggle switch, not the switch: one small solid acid-yellow (#f5e60c) square, as tall as it is wide, with a 1 px black edge, flat, no glow. No track, no capsule, no second shape: a single yellow square filling the image.",
+      "pixels": [
+        72,
+        72
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "dress": [
+        "Toggle.knob[off]"
+      ],
+      "file": "art/knob-off.png",
+      "hash": "8dbd20a41e0c04f2",
+      "kind": "ornament",
+      "name": "cyber/knob-off",
+      "note": "Only the sliding knob of a toggle switch, not the switch: one small solid mid-grey (#6b6c70) square, as tall as it is wide, with a 1 px black edge, flat. No track, no capsule, no second shape: a single grey square filling the image.",
+      "pixels": [
+        72,
+        72
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
     }
   ],
   "style": "cyber"

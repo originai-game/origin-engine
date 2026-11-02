@@ -77,7 +77,7 @@ only looks:
 | `fantasy` | RPGs, card battlers, quest and dungeon games | parchment, gold corners and flourishes, a serif display | `illuminated-manuscript` |
 | `scifi` | space, strategy, simulation, mech | flat near-black glass, 1 px hairlines, one ice-blue accent, a thin sans, mono telemetry | `cinematic-realism` |
 | `storybook` | narrative, visual novels, puzzle, cosy, mystery, word games | soft paper sheets, ink lines, ornaments, floaty motion | `pencil-hatching` |
-| `cyber` | racing, rhythm, cyberpunk, hacking | notched frames on black, hot accents, dense data, snappy motion | `neon-vector` |
+| `cyber` | racing, rhythm, cyberpunk, hacking | 45° cut frames on black, acid yellow with signal red and cyan, bold condensed type, dense data, snappy motion | `neon-vector` |
 
 ```text
 ui "fantasy"                     # in the game's look: a built-in style by slug
