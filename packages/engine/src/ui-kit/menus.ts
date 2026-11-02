@@ -4,6 +4,7 @@
 import type * as Api from "@origingame/engine";
 import { kit } from "./bind.ts";
 import { all, clock, fmt, frame, iconOr, lapTime, menuItems, px, grow, token } from "./util.ts";
+import { artOr, cornerCount } from "./store.ts";
 
 /** The buttons of a menu in a column; answers the chosen id. With `autofocus` its first enabled item takes the focus when the menu appears (og-ui §4: what opens takes the focus). */
 function menuColumn(id: string, items: ReturnType<typeof menuItems>, width: Api.Size, autofocus = false): string | null {
@@ -29,8 +30,12 @@ export function mainMenu(id: string, desc: Api.MainMenuDesc = {}): Api.MenuResul
   const { t, phone } = frame();
   const items = menuItems(desc.items, [["play", "Play"]]);
   let chosen: string | null = null;
+  // At the start or end edge the key art behind keeps the rest of the screen (the layout mirrors it right to left).
+  const align = desc.align ?? "center";
+  const edge = align === "start" ? "left" : align === "end" ? "right" : null;
   kit.anchor(id, {
-    anchor: phone ? "bottom" : "center",
+    anchor: phone ? "bottom" : edge ?? "center",
+    margin: phone || !edge ? null : t.xxl,
     direction: "column",
     gap: t.xl,
     cross: "center",
@@ -172,6 +177,23 @@ export function resultsScreen(id: string, desc: Api.ResultsDesc = {}): Api.MenuR
     if (stats.length > 0) {
       kit.column("Stats", { width: grow(), gap: 0 }, () => {
         stats.forEach((s, i) => kit.keyValue(kit.idi("Stat", i), s.label ?? "", s.value ?? "", true));
+      });
+    }
+    const rewards = desc.rewards ?? [];
+    if (rewards.length > 0) {
+      // What the run earned: each reward's art on a tile, its count on a plate in the corner.
+      kit.column("Rewards", { width: grow(), gap: t.xs }, () => {
+        kit.label("Caption", desc.rewardsLabel ?? "Rewards", { step: "meta", color: token("inkMuted"), nowrap: true });
+        kit.row("Tiles", { width: grow(), gap: t.sm, wrap: true }, () => {
+          rewards.forEach((r, i) => {
+            const size = phone ? 52 : 60;
+            const n = r.count ?? 0;
+            kit.column(kit.idi("Reward", i), { width: px(size), height: px(size), align: "center", cross: "center" }, () => {
+              artOr("Art", r.image, r.icon, r.name ?? "", size, size * 0.5, n > 1 ? `${r.name ?? ""} × ${n}` : (r.name ?? ""));
+              if (n > 1) cornerCount("Count", n);
+            });
+          });
+        });
       });
     }
     kit.row("Actions", { width: grow(), gap: t.sm, wrap: phone }, () => {

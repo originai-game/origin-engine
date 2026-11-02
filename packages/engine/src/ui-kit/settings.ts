@@ -43,6 +43,8 @@ export function settingsWithDefaults(s: Api.GameSettings = {}): Settings {
     language: s.language ?? "en",
     bindings: [...(s.bindings ?? [])],
     rawMouse: s.rawMouse ?? true,
+    uiVolume: s.uiVolume ?? 1,
+    subtitles: s.subtitles ?? true,
     display: s.display ? { ...s.display } : null,
   };
 }
@@ -81,7 +83,12 @@ export function settingsScreen(id: string, desc: Api.SettingsDesc = {}): Api.Set
   let tab = Math.min(kit.memory(`${id}.tab`, 0), tabs.length - 1);
   let dirty = kit.memory(`${id}.dirty`, 0) !== 0;
   let closed = false;
-  const width = phone ? grow() : px(Math.min(600, frame().viewport.width - 48));
+  // The rows' lines (SettingsDesc.help): a pane beside the rows on a wide surface names the focused one.
+  const help = desc.help ?? {};
+  const helping = !phone && Object.keys(help).length > 0;
+  const rows: Array<[id: string, label: string]> = [];
+  const note = (rid: string, label: string): void => void rows.push([rid, label]);
+  const width = phone ? grow() : px(Math.min(helping ? 880 : 600, frame().viewport.width - 48));
   const m = kit.modal(id, desc.open ?? false, { title: desc.title ?? "Settings", width, ignoreBackdrop: true }, () => {
     // Tabs on a wide surface, a select on a phone (one selection grammar).
     // The groups' names are the desc's too: a screen reader hears them in the game's language.
@@ -98,22 +105,37 @@ export function settingsScreen(id: string, desc: Api.SettingsDesc = {}): Api.Set
     // keeps the rows' values clear of the scroll bar (xs wide, xxs in).
     const floor = frame().viewport.height >= 600 ? (phone ? 300 : 260) : 0;
     const bar = t.xs + 2 * t.xxs;
-    kit.scroll("Body", { width: grow(), height: fit(floor), gap: t.sm, padding: { left: 0, top: 0, bottom: 0, right: bar } }, () => {
+    const body = (): unknown => kit.scroll("Body", { width: grow(), height: fit(floor), gap: t.sm, padding: { left: 0, top: 0, bottom: 0, right: bar } }, () => {
       const pct = (v: number): string => `${Math.round(v * 100)}%`;
       switch (tabs[tab]?.[0]) {
         case "audio": {
-          s.masterVolume = sliderRow("Master", desc.masterLabel ?? "Master", s.masterVolume, { step: 0.05 }, pct(s.masterVolume));
-          s.musicVolume = sliderRow("Music", desc.musicLabel ?? "Music", s.musicVolume, { step: 0.05 }, pct(s.musicVolume));
-          s.sfxVolume = sliderRow("Effects", desc.effectsLabel ?? "Effects", s.sfxVolume, { step: 0.05 }, pct(s.sfxVolume));
+          kit.label("VolumeLabel", desc.volumeLabel ?? "Volume", { step: "meta", color: token("inkMuted") });
+          const volume = (rid: string, label: string, value: number): number => {
+            note(rid, label);
+            return sliderRow(rid, label, value, { step: 0.05 }, pct(value));
+          };
+          s.masterVolume = volume("Master", desc.masterLabel ?? "Master", s.masterVolume);
+          s.musicVolume = volume("Music", desc.musicLabel ?? "Music", s.musicVolume);
+          s.sfxVolume = volume("Effects", desc.effectsLabel ?? "Effects", s.sfxVolume);
+          s.uiVolume = volume("Interface", desc.uiLabel ?? "Interface", s.uiVolume);
+          kit.divider("AudioRule", false);
+          note("Mute", desc.muteLabel ?? "Mute everything");
           s.muted = (kit.toggle("Mute", s.muted, desc.muteLabel ?? "Mute everything") as Api.ToggleResult).on;
+          note("Subtitles", desc.subtitlesLabel ?? "Subtitles");
+          s.subtitles = (kit.toggle("Subtitles", s.subtitles, desc.subtitlesLabel ?? "Subtitles") as Api.ToggleResult).on;
           break;
         }
         case "graphics": {
           if (s.display) {
-            graphicsPage(s, s.display, desc, phone);
+            graphicsPage(s, s.display, desc, phone, note);
             break;
           }
           const quality = desc.qualityLabel ?? "Quality";
+          note("Quality", quality);
+          note("Fps", desc.fpsLabel ?? "Show frame rate");
+          note("Motion", desc.motionLabel ?? "Reduce motion");
+          note("Contrast", desc.contrastLabel ?? "High contrast");
+          note("TextSize", desc.textSizeLabel ?? "Text size");
           kit.label("QualityLabel", quality, { step: "meta", color: token("inkMuted") });
           const levels = [desc.lowLabel ?? "Low", desc.mediumLabel ?? "Medium", desc.highLabel ?? "High"];
           const q = kit.radio("Quality", levels, QUALITIES.indexOf(s.quality), { horizontal: !phone, label: quality });
@@ -125,6 +147,10 @@ export function settingsScreen(id: string, desc: Api.SettingsDesc = {}): Api.Set
           break;
         }
         case "controls": {
+          note("Sensitivity", desc.sensitivityLabel ?? "Sensitivity");
+          note("Invert", desc.invertLabel ?? "Invert vertical look");
+          note("Raw", desc.rawMouseLabel ?? "Raw mouse input");
+          note("Vibration", desc.vibrationLabel ?? "Vibration");
           s.sensitivity = sliderRow("Sensitivity", desc.sensitivityLabel ?? "Sensitivity", s.sensitivity, { min: 0.1, max: 3, step: 0.1 }, s.sensitivity.toFixed(1));
           s.invertY = kit.checkbox("Invert", s.invertY, desc.invertLabel ?? "Invert vertical look").on;
           s.rawMouse = (kit.toggle("Raw", s.rawMouse, desc.rawMouseLabel ?? "Raw mouse input") as Api.ToggleResult).on;
@@ -140,6 +166,7 @@ export function settingsScreen(id: string, desc: Api.SettingsDesc = {}): Api.Set
           break;
         }
         case "language": {
+          note("Languages", desc.languagesLabel ?? "Languages");
           const at = Math.max(0, languages.findIndex((l) => l.code === s.language));
           const r = kit.radio("Languages", languages.map((l) => l.label ?? l.code ?? ""), at, { label: desc.languagesLabel ?? "Languages" });
           s.language = languages[r.selected]?.code ?? s.language;
@@ -147,6 +174,22 @@ export function settingsScreen(id: string, desc: Api.SettingsDesc = {}): Api.Set
         }
       }
     });
+    if (helping) {
+      kit.row("Columns", { width: grow(), gap: t.lg }, () => {
+        body();
+        kit.divider("HelpRule", true);
+        // The focused row's name and line; the tab's first row with a line until one is focused.
+        const focus = kit.focus(0);
+        const at = rows.find(([rid]) => focus.includes(`/${rid}/`) || focus.endsWith(`/${rid}`)) ?? rows.find(([rid]) => help[rid]);
+        kit.column("Help", { width: px(220), gap: t.sm, padding: { left: 0, top: t.xs, right: 0, bottom: 0 } }, () => {
+          if (!at) return;
+          kit.label("Name", at[1], { step: "lg", font: "display", width: grow() });
+          if (help[at[0]]) kit.label("Line", help[at[0]]!, { color: token("inkMuted"), width: grow() });
+        });
+      });
+    } else {
+      body();
+    }
     // Done stands in a footer under a rule: the body keeps its height between tabs, and the space above reads as the body's.
     kit.divider("FooterRule", false);
     kit.row("Footer", { width: grow(), align: "end" }, () => {
@@ -200,7 +243,13 @@ export function settingsScreen(id: string, desc: Api.SettingsDesc = {}): Api.Set
  * answers for this device (V-Sync, the GPU the page loaded with) beside the
  * player's choices. Its rows are the body's, which scrolls past the safe area.
  */
-function graphicsPage(s: Settings, d: Api.DisplaySettings, desc: Api.SettingsDesc, phone: boolean): void {
+function graphicsPage(s: Settings, d: Api.DisplaySettings, desc: Api.SettingsDesc, phone: boolean, note: (id: string, label: string) => void): void {
+  for (const [rid, label] of [
+    ["Quality", desc.qualityLabel ?? "Quality"], ["Scale", desc.renderScaleLabel ?? "Render scale"], ["Cap", desc.frameCapLabel ?? "Frame rate limit"],
+    ["Auto", desc.autoQualityLabel ?? "Adapt quality to hold the frame rate"], ["Battery", desc.batteryLabel ?? "Battery saver"], ["Fullscreen", desc.fullscreenLabel ?? "Fullscreen"],
+    ["Power", desc.powerLabel ?? "Graphics processor"], ["Fps", desc.fpsLabel ?? "Show frame rate"], ["Motion", desc.motionLabel ?? "Reduce motion"],
+    ["Contrast", desc.contrastLabel ?? "High contrast"], ["TextSize", desc.textSizeLabel ?? "Text size"],
+  ] as const) note(rid, label);
   const { t } = frame();
   const info = desc.world ? (render.display(desc.world as unknown as World) as Api.DisplayInfo) : null;
   const display = d as { -readonly [K in keyof Api.DisplaySettings]: Api.DisplaySettings[K] };

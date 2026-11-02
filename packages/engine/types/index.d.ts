@@ -29970,6 +29970,12 @@ export interface MainMenuDesc {
    * @default false
    */
   readonly instant?: boolean;
+  /**
+   * Where the card stands on desktop and tablet: center (the default) or start, at the start edge so the key art behind it keeps the rest of the screen (end mirrors it). A phone keeps it at the bottom.
+   *
+   * @default "center"
+   */
+  readonly align?: Align;
 }
 
 /**
@@ -30144,6 +30150,20 @@ export interface GameSettings {
    */
   readonly rawMouse?: boolean;
   /**
+   * The interface bus (the UI's own sounds).
+   *
+   * @default 1
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly uiVolume?: number;
+  /**
+   * Subtitles for speech (XAG 104).
+   *
+   * @default true
+   */
+  readonly subtitles?: boolean;
+  /**
    * The player's graphics settings (og.render.display(world).settings, kept here so they are saved with the rest): with them the Graphics tab is the PC graphics page (the preset, render scale, frame-rate limit, V-Sync as the browser fixes it, adaptive quality, battery saver, fullscreen and the GPU's power preference, which says it applies after a restart) and the screen applies each change with og.render.setDisplay(SettingsDesc.world, display). Null: the Graphics tab shows the preset alone, applied with og.render.applyQuality as before.
    *
    * @default null
@@ -30265,6 +30285,30 @@ export interface SettingsDesc {
    * @default "Mute everything"
    */
   readonly muteLabel?: string;
+  /**
+   * The interface volume's slider.
+   *
+   * @default "Interface"
+   */
+  readonly uiLabel?: string;
+  /**
+   * The subtitles toggle.
+   *
+   * @default "Subtitles"
+   */
+  readonly subtitlesLabel?: string;
+  /**
+   * The Audio tab's heading over the volume sliders.
+   *
+   * @default "Volume"
+   */
+  readonly volumeLabel?: string;
+  /**
+   * A line about each row, by its id (Master, Music, Effects, Interface, Mute, Subtitles, Quality, Fps, Motion, Contrast, TextSize, Sensitivity, Invert, Raw, Vibration, Languages, and the graphics page's Scale, Cap, Auto, Battery, Fullscreen, Power): on a desktop or tablet a pane beside the rows shows the focused row's name and line (the tab's first row with a line until one is focused). Empty hides the pane.
+   *
+   * @default {}
+   */
+  readonly help?: Readonly<Record<string, string>>;
   /**
    * The graphics preset's heading, also the presets' group's accessible name.
    *
@@ -31163,6 +31207,12 @@ export interface ShopItem {
    */
   readonly icon?: string;
   /**
+   * Its art (an item icon, og.load.texture): it fills its cell and heads the detail panel, in place of the icon. Null shows the icon.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
    * Its category tab; empty is the first.
    *
    * @default ""
@@ -31254,6 +31304,24 @@ export interface ShopDesc {
    * @default "Nothing for sale here"
    */
   readonly emptyLabel?: string;
+  /**
+   * The merchant's portrait: on a desktop or tablet a column at the start with merchantName and merchantLine under it, on a phone a row over the items. Null is no merchant.
+   *
+   * @default null
+   */
+  readonly merchant?: Texture | null;
+  /**
+   * The merchant's name and trade (Brann, Smith).
+   *
+   * @default ""
+   */
+  readonly merchantName?: string;
+  /**
+   * What the merchant says.
+   *
+   * @default ""
+   */
+  readonly merchantLine?: string;
 }
 
 /** A shop's answer this tick. */
@@ -31304,6 +31372,12 @@ export interface InventoryItem {
    * @default ""
    */
   readonly icon?: string;
+  /**
+   * Its art (an item icon, og.load.texture): it fills its slot and heads the detail panel, in place of the icon. Null shows the icon.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
   /**
    * A line about it.
    *
@@ -31360,6 +31434,30 @@ export interface InventoryDesc {
    * @default "Count"
    */
   readonly countLabel?: string;
+  /**
+   * The character's art (a full-body picture, 2:3): on a desktop or tablet a pane at the start with characterName, characterTitle and stats under it, on a phone a row over the slots. Null is no pane.
+   *
+   * @default null
+   */
+  readonly character?: Texture | null;
+  /**
+   * The character's name.
+   *
+   * @default ""
+   */
+  readonly characterName?: string;
+  /**
+   * A line under it (Level 42 Paladin).
+   *
+   * @default ""
+   */
+  readonly characterTitle?: string;
+  /**
+   * The character's attributes, under the art.
+   *
+   * @default []
+   */
+  readonly stats?: readonly StatRow[];
 }
 
 /** An item dragged from one slot to another. */
@@ -31597,6 +31695,50 @@ export interface ResultsDesc {
    * @default "Share"
    */
   readonly shareLabel?: string;
+  /**
+   * What the run earned: a row of tiles under the stats, each its art (or icon) with its count in a corner.
+   *
+   * @default []
+   */
+  readonly rewards?: readonly Reward[];
+  /**
+   * The caption over the rewards.
+   *
+   * @default "Rewards"
+   */
+  readonly rewardsLabel?: string;
+}
+
+/**
+ * Something a results screen shows the run earned.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface Reward {
+  /**
+   * Its name (what a screen reader hears, with the count).
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * How many; 0 or 1 hides the count.
+   *
+   * @default 0
+   */
+  readonly count?: number;
+  /**
+   * Its art (og.load.texture); null shows the icon.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * An icon of the atlas, when there is no art.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
 }
 
 /**

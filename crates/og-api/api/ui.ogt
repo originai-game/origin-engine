@@ -4916,6 +4916,9 @@ module ui {
     field footer String "A line at the bottom (a version, credits); empty is none."
     field onSelect Option.UiAction "Called with the chosen item's id."
     field instant bool "Shown settled the first time it is built (AnchorDesc.instant): pass it while the title is the screen the game opens on, so the frame behind the web's play gate is the whole title; a title the player comes back to enters with the style."
+    field align Align "Where the card stands on desktop and tablet: center (the default) or start, at the start edge so the key art behind it keeps the rest of the screen (end mirrors it). A phone keeps it at the bottom." {
+      default center
+    }
   }
 
   struct PauseMenuDesc {
@@ -4988,6 +4991,15 @@ module ui {
     field rawMouse bool "Raw mouse input while the pointer is locked (og.input.setMouse: no OS acceleration where the browser grants unadjustedMovement)." {
       default true
     }
+    field uiVolume f32 "The interface bus (the UI's own sounds)." {
+      default 1
+      min 0
+      max 1
+      unit ratio
+    }
+    field subtitles bool "Subtitles for speech (XAG 104)." {
+      default true
+    }
     field display Option.DisplaySettings "The player's graphics settings (og.render.display(world).settings, kept here so they are saved with the rest): with them the Graphics tab is the PC graphics page (the preset, render scale, frame-rate limit, V-Sync as the browser fixes it, adaptive quality, battery saver, fullscreen and the GPU's power preference, which says it applies after a restart) and the screen applies each change with og.render.setDisplay(SettingsDesc.world, display). Null: the Graphics tab shows the preset alone, applied with og.render.applyQuality as before."
     field language String "The language code." {
       default "en"
@@ -5032,6 +5044,16 @@ module ui {
     field muteLabel String "The mute toggle." {
       default "Mute everything"
     }
+    field uiLabel String "The interface volume's slider." {
+      default "Interface"
+    }
+    field subtitlesLabel String "The subtitles toggle." {
+      default "Subtitles"
+    }
+    field volumeLabel String "The Audio tab's heading over the volume sliders." {
+      default "Volume"
+    }
+    field help Map.String "A line about each row, by its id (Master, Music, Effects, Interface, Mute, Subtitles, Quality, Fps, Motion, Contrast, TextSize, Sensitivity, Invert, Raw, Vibration, Languages, and the graphics page's Scale, Cap, Auto, Battery, Fullscreen, Power): on a desktop or tablet a pane beside the rows shows the focused row's name and line (the tab's first row with a line until one is focused). Empty hides the pane."
     field qualityLabel String "The graphics preset's heading, also the presets' group's accessible name." {
       default "Quality"
     }
@@ -5372,6 +5394,7 @@ module ui {
     field price f64 "Its price in the shop's currency."
     field description String "A line about it."
     field icon String "An icon of the atlas; empty is none."
+    field image Option.Texture "Its art (an item icon, og.load.texture): it fills its cell and heads the detail panel, in place of the icon. Null shows the icon."
     field category String "Its category tab; empty is the first."
     field owned bool "Already owned (one-off items): shown, not for sale."
   }
@@ -5405,6 +5428,9 @@ module ui {
     field emptyLabel String "The detail panel when the category has no items." {
       default "Nothing for sale here"
     }
+    field merchant Option.Texture "The merchant's portrait: on a desktop or tablet a column at the start with merchantName and merchantLine under it, on a phone a row over the items. Null is no merchant."
+    field merchantName String "The merchant's name and trade (Brann, Smith)."
+    field merchantLine String "What the merchant says."
   }
 
   struct ShopResult {
@@ -5422,6 +5448,7 @@ module ui {
     field name String "Its name."
     field count u32 "How many (stacks); 0 or 1 hides the count."
     field icon String "An icon of the atlas; empty is its initial."
+    field image Option.Texture "Its art (an item icon, og.load.texture): it fills its slot and heads the detail panel, in place of the icon. Null shows the icon."
     field description String "A line about it."
   }
 
@@ -5445,6 +5472,10 @@ module ui {
     field countLabel String "The detail panel's count line, beside a stacked item's count." {
       default "Count"
     }
+    field character Option.Texture "The character's art (a full-body picture, 2:3): on a desktop or tablet a pane at the start with characterName, characterTitle and stats under it, on a phone a row over the slots. Null is no pane."
+    field characterName String "The character's name."
+    field characterTitle String "A line under it (Level 42 Paladin)."
+    field stats List.StatRow "The character's attributes, under the art."
   }
 
   struct SlotMove {
@@ -5537,6 +5568,19 @@ module ui {
     field shareLabel String "The Share button's label." {
       default "Share"
     }
+    field rewards List.Reward "What the run earned: a row of tiles under the stats, each its art (or icon) with its count in a corner."
+    field rewardsLabel String "The caption over the rewards." {
+      default "Rewards"
+    }
+  }
+
+  struct Reward {
+    doc "Something a results screen shows the run earned."
+    desc true
+    field name String "Its name (what a screen reader hears, with the count)."
+    field count u32 "How many; 0 or 1 hides the count."
+    field image Option.Texture "Its art (og.load.texture); null shows the icon."
+    field icon String "An icon of the atlas, when there is no art."
   }
 
   struct LeaderboardEntry {

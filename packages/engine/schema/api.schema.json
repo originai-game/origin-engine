@@ -10181,6 +10181,7 @@
         "StatRow",
         "ScoreFormat",
         "ResultsDesc",
+        "Reward",
         "LeaderboardEntry",
         "LeaderboardDesc",
         "LeaderboardResult",
@@ -53379,6 +53380,11 @@
           "type": "boolean",
           "description": "Shown settled the first time it is built (AnchorDesc.instant): pass it while the title is the screen the game opens on, so the frame behind the web's play gate is the whole title; a title the player comes back to enters with the style.",
           "default": false
+        },
+        "align": {
+          "$ref": "#/$defs/Align",
+          "description": "Where the card stands on desktop and tablet: center (the default) or start, at the start edge so the key art behind it keeps the rest of the screen (end mirrors it). A phone keeps it at the bottom.",
+          "default": "center"
         }
       },
       "additionalProperties": false
@@ -53550,6 +53556,19 @@
           "description": "Raw mouse input while the pointer is locked (og.input.setMouse: no OS acceleration where the browser grants unadjustedMovement).",
           "default": true
         },
+        "uiVolume": {
+          "type": "number",
+          "description": "The interface bus (the UI's own sounds).",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio"
+        },
+        "subtitles": {
+          "type": "boolean",
+          "description": "Subtitles for speech (XAG 104).",
+          "default": true
+        },
         "display": {
           "anyOf": [
             {
@@ -53687,6 +53706,29 @@
           "type": "string",
           "description": "The mute toggle.",
           "default": "Mute everything"
+        },
+        "uiLabel": {
+          "type": "string",
+          "description": "The interface volume's slider.",
+          "default": "Interface"
+        },
+        "subtitlesLabel": {
+          "type": "string",
+          "description": "The subtitles toggle.",
+          "default": "Subtitles"
+        },
+        "volumeLabel": {
+          "type": "string",
+          "description": "The Audio tab's heading over the volume sliders.",
+          "default": "Volume"
+        },
+        "help": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "A line about each row, by its id (Master, Music, Effects, Interface, Mute, Subtitles, Quality, Fps, Motion, Contrast, TextSize, Sensitivity, Invert, Raw, Vibration, Languages, and the graphics page's Scale, Cap, Auto, Battery, Fullscreen, Power): on a desktop or tablet a pane beside the rows shows the focused row's name and line (the tab's first row with a line until one is focused). Empty hides the pane.",
+          "default": {}
         },
         "qualityLabel": {
           "type": "string",
@@ -54679,6 +54721,18 @@
           "description": "An icon of the atlas; empty is none.",
           "default": ""
         },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its art (an item icon, og.load.texture): it fills its cell and heads the detail panel, in place of the icon. Null shows the icon.",
+          "default": null
+        },
         "category": {
           "type": "string",
           "description": "Its category tab; empty is the first.",
@@ -54770,6 +54824,28 @@
           "type": "string",
           "description": "The detail panel when the category has no items.",
           "default": "Nothing for sale here"
+        },
+        "merchant": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The merchant's portrait: on a desktop or tablet a column at the start with merchantName and merchantLine under it, on a phone a row over the items. Null is no merchant.",
+          "default": null
+        },
+        "merchantName": {
+          "type": "string",
+          "description": "The merchant's name and trade (Brann, Smith).",
+          "default": ""
+        },
+        "merchantLine": {
+          "type": "string",
+          "description": "What the merchant says.",
+          "default": ""
         }
       },
       "additionalProperties": false
@@ -54849,6 +54925,18 @@
           "description": "An icon of the atlas; empty is its initial.",
           "default": ""
         },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its art (an item icon, og.load.texture): it fills its slot and heads the detail panel, in place of the icon. Null shows the icon.",
+          "default": null
+        },
         "description": {
           "type": "string",
           "description": "A line about it.",
@@ -54904,6 +54992,36 @@
           "type": "string",
           "description": "The detail panel's count line, beside a stacked item's count.",
           "default": "Count"
+        },
+        "character": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The character's art (a full-body picture, 2:3): on a desktop or tablet a pane at the start with characterName, characterTitle and stats under it, on a phone a row over the slots. Null is no pane.",
+          "default": null
+        },
+        "characterName": {
+          "type": "string",
+          "description": "The character's name.",
+          "default": ""
+        },
+        "characterTitle": {
+          "type": "string",
+          "description": "A line under it (Level 42 Paladin).",
+          "default": ""
+        },
+        "stats": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StatRow"
+          },
+          "description": "The character's attributes, under the art.",
+          "default": []
         }
       },
       "additionalProperties": false
@@ -55227,6 +55345,57 @@
           "type": "string",
           "description": "The Share button's label.",
           "default": "Share"
+        },
+        "rewards": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Reward"
+          },
+          "description": "What the run earned: a row of tiles under the stats, each its art (or icon) with its count in a corner.",
+          "default": []
+        },
+        "rewardsLabel": {
+          "type": "string",
+          "description": "The caption over the rewards.",
+          "default": "Rewards"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Reward": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "Something a results screen shows the run earned.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Its name (what a screen reader hears, with the count).",
+          "default": ""
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many; 0 or 1 hides the count.",
+          "default": 0
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its art (og.load.texture); null shows the icon.",
+          "default": null
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon of the atlas, when there is no art.",
+          "default": ""
         }
       },
       "additionalProperties": false

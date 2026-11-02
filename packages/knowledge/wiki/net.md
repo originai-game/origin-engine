@@ -22,7 +22,7 @@ module net {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 25081</sub>
+<sub>`api.ogt` line 25125</sub>
 
 ## Contents
 
@@ -75,7 +75,7 @@ fn submit {
 }
 ```
 
-<sub>`api.ogt` line 25260</sub>
+<sub>`api.ogt` line 25304</sub>
 
 <a id="fn-status"></a>
 
@@ -103,7 +103,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 25267</sub>
+<sub>`api.ogt` line 25311</sub>
 
 <a id="fn-resimulating"></a>
 
@@ -131,7 +131,7 @@ fn resimulating {
 }
 ```
 
-<sub>`api.ogt` line 25273</sub>
+<sub>`api.ogt` line 25317</sub>
 
 <a id="fn-finalHash"></a>
 
@@ -161,7 +161,7 @@ fn finalHash {
 }
 ```
 
-<sub>`api.ogt` line 25279</sub>
+<sub>`api.ogt` line 25323</sub>
 
 <a id="fn-hash"></a>
 
@@ -189,7 +189,7 @@ fn hash {
 }
 ```
 
-<sub>`api.ogt` line 25286</sub>
+<sub>`api.ogt` line 25330</sub>
 
 ## Components, resources and events
 
@@ -260,7 +260,7 @@ resource Lockstep {
 }
 ```
 
-<sub>`api.ogt` line 25102</sub>
+<sub>`api.ogt` line 25146</sub>
 
 <a id="record-PlayerInput"></a>
 
@@ -301,7 +301,7 @@ component PlayerInput {
 }
 ```
 
-<sub>`api.ogt` line 25146</sub>
+<sub>`api.ogt` line 25190</sub>
 
 <a id="record-Desync"></a>
 
@@ -326,7 +326,7 @@ event Desync {
 }
 ```
 
-<sub>`api.ogt` line 25165</sub>
+<sub>`api.ogt` line 25209</sub>
 
 <a id="record-SeatDropped"></a>
 
@@ -353,7 +353,7 @@ event SeatDropped {
 }
 ```
 
-<sub>`api.ogt` line 25172</sub>
+<sub>`api.ogt` line 25216</sub>
 
 <a id="record-SeatRejoined"></a>
 
@@ -378,7 +378,7 @@ event SeatRejoined {
 }
 ```
 
-<sub>`api.ogt` line 25180</sub>
+<sub>`api.ogt` line 25224</sub>
 
 <a id="record-PeerStalled"></a>
 
@@ -405,7 +405,7 @@ event PeerStalled {
 }
 ```
 
-<sub>`api.ogt` line 25187</sub>
+<sub>`api.ogt` line 25231</sub>
 
 ## Types
 
@@ -430,7 +430,7 @@ enum NetMode {
 }
 ```
 
-<sub>`api.ogt` line 25089</sub>
+<sub>`api.ogt` line 25133</sub>
 
 <a id="type-InputDesc"></a>
 
@@ -460,7 +460,7 @@ struct InputDesc {
 }
 ```
 
-<sub>`api.ogt` line 25196</sub>
+<sub>`api.ogt` line 25240</sub>
 
 <a id="type-LockstepSeat"></a>
 
@@ -491,7 +491,7 @@ struct LockstepSeat {
 }
 ```
 
-<sub>`api.ogt` line 25206</sub>
+<sub>`api.ogt` line 25250</sub>
 
 <a id="type-LockstepStatus"></a>
 
@@ -566,7 +566,7 @@ struct LockstepStatus {
 }
 ```
 
-<sub>`api.ogt` line 25219</sub>
+<sub>`api.ogt` line 25263</sub>
 
 ## Column kinds
 
@@ -585,4 +585,4 @@ column NetMode {
 }
 ```
 
-<sub>`api.ogt` line 25095</sub>
+<sub>`api.ogt` line 25139</sub>
