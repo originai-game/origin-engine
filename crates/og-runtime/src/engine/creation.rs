@@ -113,13 +113,14 @@ pub(crate) fn assemble(
     previous: Option<(&og_ui::SharedUi, og_audio::AudioLink)>,
 ) -> Result<Assembled, String> {
     bump_layout_epoch();
-    let (decl, records, errors, all_systems, commands) = DECL.with(|d| {
+    let (decl, records, errors, all_systems, all_hooks, commands) = DECL.with(|d| {
         let d = d.borrow();
         (
             d.games.get(game as usize).cloned(),
             d.records.clone(),
             d.errors.clone(),
             d.systems.clone(),
+            d.hooks.clone(),
             d.commands.clone(),
         )
     });
@@ -265,6 +266,10 @@ pub(crate) fn assemble(
     super::terrain::mount(&mut world, engine_id)?;
     super::e6::mount_front(&mut world, engine_id, profile, &physics, &record_names)?;
 
+    // State machines, before the systems bound to them.
+    for state in &game.states {
+        world.add_state(state.clone()).map_err(err)?;
+    }
     // Systems: the game's, ordered.
     let mut systems_decl = Vec::new();
     for &s in &game.systems {
@@ -290,6 +295,16 @@ pub(crate) fn assemble(
             }
         }
         q.without = s.without.clone();
+        // Change filters: changed and added components are read (and so
+        // required); removed ones are only matched against.
+        for name in s.changed.iter().chain(&s.added) {
+            if !q.write.contains(name) && !q.read.contains(name) {
+                q.read.push(name.clone());
+            }
+        }
+        q.changed = s.changed.clone();
+        q.added = s.added.clone();
+        q.removed = s.removed.clone();
         for (names, writable) in [(&q.write, true), (&q.read, false)] {
             for name in names {
                 let layout = layouts.get(name).ok_or_else(|| {
@@ -309,22 +324,71 @@ pub(crate) fn assemble(
             }
         }
         let names = |ts: &[Token]| ts.iter().map(|t| t.name.clone()).collect::<Vec<_>>();
+        let mut reads = names(&s.reads);
+        for name in s.changed.iter().chain(&s.added).chain(&s.removed) {
+            if !reads.contains(name) {
+                reads.push(name.clone());
+            }
+        }
         let desc = SystemDesc {
             name: s.name.clone(),
-            reads: names(&s.reads),
+            reads: reads.clone(),
             writes: names(&s.writes),
             queries: vec![q],
+            state: (!s.state.is_empty()).then(|| og_ecs::StateRun {
+                state: s.state.clone(),
+                value: s.value.clone(),
+                when: s.when,
+            }),
         };
         let index = systems.len();
-        world
-            .add_system(desc, move |ctx| run_system(engine_id, index, ctx))
-            .map_err(err)?;
+        let added = match s.condition {
+            Some(_) => world.add_system_if(
+                desc,
+                move |ctx| run_condition(engine_id, index, ctx),
+                move |ctx| run_system(engine_id, index, ctx),
+            ),
+            None => world.add_system(desc, move |ctx| run_system(engine_id, index, ctx)),
+        };
+        added.map_err(err)?;
         systems.push(SystemEntry {
             name: s.name.clone(),
             callback: s.run,
-            reads: names(&s.reads),
+            condition: s.condition,
+            reads,
             writes: names(&s.writes),
             columns,
+            matched: 0,
+            ms: 0.0,
+        });
+    }
+    // Hooks, in GameDesc.hooks' order: their entries follow the systems'.
+    for &h in &game.hooks {
+        let hook = all_hooks
+            .get(h as usize)
+            .cloned()
+            .ok_or_else(|| format!("the game lists hook {h}, which was never declared"))?;
+        let names = |ts: &[Token]| ts.iter().map(|t| t.name.clone()).collect::<Vec<_>>();
+        let index = systems.len();
+        world
+            .add_hook(
+                og_ecs::HookDesc {
+                    name: hook.name.clone(),
+                    component: hook.component.clone(),
+                    on: hook.on,
+                    reads: names(&hook.reads),
+                    writes: names(&hook.writes),
+                },
+                move |ctx, e| run_hook(engine_id, index, ctx, e),
+            )
+            .map_err(err)?;
+        systems.push(SystemEntry {
+            name: hook.name.clone(),
+            callback: hook.run,
+            condition: None,
+            reads: names(&hook.reads),
+            writes: names(&hook.writes),
+            columns: Vec::new(),
             matched: 0,
             ms: 0.0,
         });

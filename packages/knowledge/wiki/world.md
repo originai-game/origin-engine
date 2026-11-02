@@ -38,7 +38,10 @@ module world {
 | [`SaveMigration`](#type-SaveMigration) | struct | A game's save migration step (GameDesc.migrations): run on a save of version `from` on its way to GameDesc.saveVersion, after the engine's own migrations. |
 | [`SaveEdit`](#type-SaveEdit) | interface | A save opened for editing (world.openSave), as a migration sees it: the engine's own migrations already applied, every type with its saved fields. Each edit changes the save, not the world; world.restore takes the result. An edit refused changes nothing. Entity ids are the saved world's. |
 | [`og.WorldRestored`](#record-WorldRestored) | event | A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not (og-game §8), so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did. |
-| [`QueryDesc`](#type-QueryDesc) | desc struct | Which entities a query matches. |
+| [`QueryDesc`](#type-QueryDesc) | desc struct | Which entities a query matches. The change filters (changed, added, removed) narrow an archetype's rows to those that pass every filter (ArchetypeView.rows) and read what happened since the last tick began; a component is tracked once a system filters on it (SystemDesc.changed, added, removed), and filtering on one no system tracks is refused. |
+| [`SpatialDesc`](#type-SpatialDesc) | desc struct | Which entities world.spatial places: every live entity with an og.Transform (and every component of `with`, none of `without`), at its og.Transform.position (relative to its parent, for a child). |
+| [`Neighbour`](#type-Neighbour) | struct | One entity a spatial query found. |
+| [`SpatialIndex`](#type-SpatialIndex) | interface | A spatial hash of entities' positions as they were when world.spatial built it: it does not follow later moves (build it again after they move). Answers are ordered by distance, then by entity, so equal distances come out alike on every run and host. Valid for the system call or the call outside systems it was built in. |
 | [`World`](#type-World) | interface | The world a system, a command or a game callback is handed. Game code never holds a world beyond the call it was passed to. |
 | [`Query`](#type-Query) | interface | A set of matched archetypes. Iterate archetypes, never entities one by one. |
 | [`ArchetypeView`](#type-ArchetypeView) | interface | One archetype's columns for this tick. Views are invalidated by structural changes; using a stale view throws with the tick and the system it belonged to. |
@@ -444,6 +447,98 @@ fn close {
 
 <sub>`api.ogt` line 955</sub>
 
+<a id="type-SpatialIndex"></a>
+
+### `SpatialIndex` (interface)
+
+A spatial hash of entities' positions as they were when world.spatial built it: it does not follow later moves (build it again after they move). Answers are ordered by distance, then by entity, so equal distances come out alike on every run and host. Valid for the system call or the call outside systems it was built in.
+
+```ogt
+interface SpatialIndex {
+  doc "A spatial hash of entities' positions as they were when world.spatial built it: it does not follow later moves (build it again after they move). Answers are ordered by distance, then by entity, so equal distances come out alike on every run and host. Valid for the system call or the call outside systems it was built in."
+  # members follow, each quoted below
+```
+
+<sub>`api.ogt` line 1000</sub>
+
+<a id="member-SpatialIndex-count"></a>
+
+#### `SpatialIndex.count` (property)
+
+The entities it holds.
+
+```ts
+readonly count: number
+```
+
+Binding symbol `og_spatial_index_get_count` · publish builds: kept
+
+```ogt
+prop count u32 "The entities it holds."
+```
+
+<sub>`api.ogt` line 1002</sub>
+
+<a id="member-SpatialIndex-within"></a>
+
+#### `SpatialIndex.within`
+
+Every entity at most `radius` from `center`, nearest first.
+
+```ts
+SpatialIndex.within(center: Vector3, radius: number): readonly Neighbour[]
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `center` | `Vector3` | no | The centre. |
+| `radius` | `number` | no | The radius in metres; a negative one finds nothing. |
+
+**Returns** `readonly Neighbour[]`.
+
+Binding symbol `og_spatial_index_within` · publish builds: kept
+
+```ogt
+fn within {
+  doc "Every entity at most `radius` from `center`, nearest first."
+  param center Vector3 "The centre."
+  param radius f32 "The radius in metres; a negative one finds nothing."
+  returns List.Neighbour
+}
+```
+
+<sub>`api.ogt` line 1003</sub>
+
+<a id="member-SpatialIndex-nearest"></a>
+
+#### `SpatialIndex.nearest`
+
+The `count` entities nearest `center`, nearest first; fewer when it holds fewer.
+
+```ts
+SpatialIndex.nearest(center: Vector3, count: number): readonly Neighbour[]
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `center` | `Vector3` | no | The centre. |
+| `count` | `number` | no | How many. |
+
+**Returns** `readonly Neighbour[]`.
+
+Binding symbol `og_spatial_index_nearest` · publish builds: kept
+
+```ogt
+fn nearest {
+  doc "The `count` entities nearest `center`, nearest first; fewer when it holds fewer."
+  param center Vector3 "The centre."
+  param count u32 "How many."
+  returns List.Neighbour
+}
+```
+
+<sub>`api.ogt` line 1009</sub>
+
 <a id="type-World"></a>
 
 ### `World` (interface)
@@ -456,7 +551,7 @@ interface World {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 978</sub>
+<sub>`api.ogt` line 1017</sub>
 
 <a id="member-World-tick"></a>
 
@@ -474,7 +569,7 @@ Binding symbol `og_world_get_tick` · publish builds: kept
 prop tick u32 "Fixed steps taken since the world was created."
 ```
 
-<sub>`api.ogt` line 981</sub>
+<sub>`api.ogt` line 1020</sub>
 
 <a id="member-World-spawn"></a>
 
@@ -502,7 +597,7 @@ fn spawn {
 }
 ```
 
-<sub>`api.ogt` line 983</sub>
+<sub>`api.ogt` line 1022</sub>
 
 <a id="member-World-despawn"></a>
 
@@ -530,7 +625,7 @@ fn despawn {
 }
 ```
 
-<sub>`api.ogt` line 989</sub>
+<sub>`api.ogt` line 1028</sub>
 
 <a id="member-World-alive"></a>
 
@@ -558,7 +653,7 @@ fn alive {
 }
 ```
 
-<sub>`api.ogt` line 995</sub>
+<sub>`api.ogt` line 1034</sub>
 
 <a id="member-World-has"></a>
 
@@ -589,7 +684,7 @@ fn has {
 }
 ```
 
-<sub>`api.ogt` line 1001</sub>
+<sub>`api.ogt` line 1040</sub>
 
 <a id="member-World-insert"></a>
 
@@ -624,7 +719,7 @@ fn insert {
 }
 ```
 
-<sub>`api.ogt` line 1009</sub>
+<sub>`api.ogt` line 1048</sub>
 
 <a id="member-World-remove"></a>
 
@@ -655,7 +750,7 @@ fn remove {
 }
 ```
 
-<sub>`api.ogt` line 1020</sub>
+<sub>`api.ogt` line 1059</sub>
 
 <a id="member-World-get"></a>
 
@@ -686,7 +781,7 @@ fn get {
 }
 ```
 
-<sub>`api.ogt` line 1028</sub>
+<sub>`api.ogt` line 1067</sub>
 
 <a id="member-World-set"></a>
 
@@ -719,7 +814,7 @@ fn set {
 }
 ```
 
-<sub>`api.ogt` line 1036</sub>
+<sub>`api.ogt` line 1075</sub>
 
 <a id="member-World-resource"></a>
 
@@ -748,7 +843,152 @@ fn resource {
 }
 ```
 
-<sub>`api.ogt` line 1045</sub>
+<sub>`api.ogt` line 1084</sub>
+
+<a id="member-World-children"></a>
+
+#### `World.children`
+
+The entities whose og.Parent is `entity`, in entity order (index, then generation). Any system may ask: it reads only the hierarchy.
+
+```ts
+World.children(entity: Entity): readonly Entity[]
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `entity` | `Entity` | no | The parent. |
+
+**Returns** `readonly Entity[]`: Empty for a dead entity or one without children.
+
+Binding symbol `og_world_children` · publish builds: kept
+
+```ogt
+fn children {
+  doc "The entities whose og.Parent is `entity`, in entity order (index, then generation). Any system may ask: it reads only the hierarchy."
+  param entity Entity "The parent."
+  returns List.Entity "Empty for a dead entity or one without children."
+}
+```
+
+<sub>`api.ogt` line 1091</sub>
+
+<a id="member-World-removed"></a>
+
+#### `World.removed`
+
+Entities that lost a component: removed from them, or despawned with it. Inside a system, since the system last ran (the component among its reads or writes); between ticks, since the last tick began. The world keeps a tick's removals through the next tick. The component must be tracked (a system filters on it: SystemDesc.changed, added or removed).
+
+```ts
+World.removed<C extends AnyComponent>(component: C): Result<readonly Entity[]>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `component` | `C` | no | The component token. |
+
+**Returns** `Result<readonly Entity[]>`: In entity order; refused for a component no system tracks.
+
+Binding symbol `og_world_removed` · publish builds: kept
+
+```ogt
+fn removed {
+  doc "Entities that lost a component: removed from them, or despawned with it. Inside a system, since the system last ran (the component among its reads or writes); between ticks, since the last tick began. The world keeps a tick's removals through the next tick. The component must be tracked (a system filters on it: SystemDesc.changed, added or removed)."
+  generic C AnyComponent
+  param component C "The component token."
+  returns Result.List.Entity "In entity order; refused for a component no system tracks."
+}
+```
+
+<sub>`api.ogt` line 1097</sub>
+
+<a id="member-World-spatial"></a>
+
+#### `World.spatial`
+
+A spatial hash of the entities SpatialDesc selects, for radius and k-nearest queries on entities without colliders (og.physics answers those with). Inside a system, og.Transform must be among its reads or writes; the index holds the positions as the system sees them when it is built.
+
+```ts
+World.spatial(desc?: SpatialDesc): Result<SpatialIndex>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `desc` | `SpatialDesc` | yes | Which entities, and the cell size. |
+
+**Returns** `Result<SpatialIndex>`.
+
+Binding symbol `og_world_spatial` · publish builds: kept
+
+```ogt
+fn spatial {
+  doc "A spatial hash of the entities SpatialDesc selects, for radius and k-nearest queries on entities without colliders (og.physics answers those with). Inside a system, og.Transform must be among its reads or writes; the index holds the positions as the system sees them when it is built."
+  param desc SpatialDesc "Which entities, and the cell size." {
+    optional true
+  }
+  returns Result.SpatialIndex
+}
+```
+
+<sub>`api.ogt` line 1104</sub>
+
+<a id="member-World-state"></a>
+
+#### `World.state`
+
+A state machine's current value (GameDesc.states).
+
+```ts
+World.state(name: string): string | null
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `name` | `string` | no | The state machine. |
+
+**Returns** `string | null`: Null for a name GameDesc.states does not declare.
+
+Binding symbol `og_world_state` · publish builds: kept
+
+```ogt
+fn state {
+  doc "A state machine's current value (GameDesc.states)."
+  param name String "The state machine."
+  returns Option.String "Null for a name GameDesc.states does not declare."
+}
+```
+
+<sub>`api.ogt` line 1112</sub>
+
+<a id="member-World-setState"></a>
+
+#### `World.setState`
+
+Ask a state machine to move to a value as the next tick begins: that tick runs the systems leaving the old value (SystemDesc.when exit), then those entering the new one (enter), then its systems, those bound to a value (during) only while the machine holds it. The last ask before the tick wins; asking for the value it holds cancels one asked for. Any system may ask.
+
+```ts
+World.setState(name: string, value: string): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `name` | `string` | no | The state machine. |
+| `value` | `string` | no | One of its values. |
+
+**Returns** `Result<void>`: Refused for an unknown state machine or value.
+
+Binding symbol `og_world_set_state` · publish builds: kept
+
+```ogt
+fn setState {
+  doc "Ask a state machine to move to a value as the next tick begins: that tick runs the systems leaving the old value (SystemDesc.when exit), then those entering the new one (enter), then its systems, those bound to a value (during) only while the machine holds it. The last ask before the tick wins; asking for the value it holds cancels one asked for. Any system may ask."
+  param name String "The state machine."
+  param value String "One of its values."
+  returns Result.Void "Refused for an unknown state machine or value."
+}
+```
+
+<sub>`api.ogt` line 1118</sub>
 
 <a id="member-World-find"></a>
 
@@ -776,7 +1016,7 @@ fn find {
 }
 ```
 
-<sub>`api.ogt` line 1052</sub>
+<sub>`api.ogt` line 1125</sub>
 
 <a id="member-World-nameOf"></a>
 
@@ -804,7 +1044,7 @@ fn nameOf {
 }
 ```
 
-<sub>`api.ogt` line 1058</sub>
+<sub>`api.ogt` line 1131</sub>
 
 <a id="member-World-query"></a>
 
@@ -832,7 +1072,7 @@ fn query {
 }
 ```
 
-<sub>`api.ogt` line 1064</sub>
+<sub>`api.ogt` line 1137</sub>
 
 <a id="member-World-events"></a>
 
@@ -861,7 +1101,7 @@ fn events {
 }
 ```
 
-<sub>`api.ogt` line 1070</sub>
+<sub>`api.ogt` line 1143</sub>
 
 <a id="member-World-emit"></a>
 
@@ -892,7 +1132,7 @@ fn emit {
 }
 ```
 
-<sub>`api.ogt` line 1077</sub>
+<sub>`api.ogt` line 1150</sub>
 
 <a id="member-World-instantiate"></a>
 
@@ -925,7 +1165,7 @@ fn instantiate {
 }
 ```
 
-<sub>`api.ogt` line 1085</sub>
+<sub>`api.ogt` line 1158</sub>
 
 <a id="member-World-snapshot"></a>
 
@@ -955,7 +1195,7 @@ fn snapshot {
 }
 ```
 
-<sub>`api.ogt` line 1093</sub>
+<sub>`api.ogt` line 1166</sub>
 
 <a id="member-World-openSave"></a>
 
@@ -983,7 +1223,7 @@ fn openSave {
 }
 ```
 
-<sub>`api.ogt` line 1101</sub>
+<sub>`api.ogt` line 1174</sub>
 
 <a id="member-World-restore"></a>
 
@@ -1013,7 +1253,7 @@ fn restore {
 }
 ```
 
-<sub>`api.ogt` line 1107</sub>
+<sub>`api.ogt` line 1180</sub>
 
 <a id="type-Query"></a>
 
@@ -1027,7 +1267,7 @@ interface Query {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1115</sub>
+<sub>`api.ogt` line 1188</sub>
 
 <a id="member-Query-archetypes"></a>
 
@@ -1050,7 +1290,7 @@ fn archetypes {
 }
 ```
 
-<sub>`api.ogt` line 1117</sub>
+<sub>`api.ogt` line 1190</sub>
 
 <a id="member-Query-count"></a>
 
@@ -1073,7 +1313,7 @@ fn count {
 }
 ```
 
-<sub>`api.ogt` line 1121</sub>
+<sub>`api.ogt` line 1194</sub>
 
 <a id="type-ArchetypeView"></a>
 
@@ -1087,7 +1327,7 @@ interface ArchetypeView {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1127</sub>
+<sub>`api.ogt` line 1200</sub>
 
 <a id="member-ArchetypeView-count"></a>
 
@@ -1105,7 +1345,7 @@ Binding symbol `og_archetype_view_get_count` · publish builds: kept
 prop count u32 "The number of entities in the archetype."
 ```
 
-<sub>`api.ogt` line 1129</sub>
+<sub>`api.ogt` line 1202</sub>
 
 <a id="member-ArchetypeView-tick"></a>
 
@@ -1123,7 +1363,7 @@ Binding symbol `og_archetype_view_get_tick` · publish builds: kept
 prop tick u32 "The tick this view belongs to."
 ```
 
-<sub>`api.ogt` line 1130</sub>
+<sub>`api.ogt` line 1203</sub>
 
 <a id="member-ArchetypeView-entities"></a>
 
@@ -1141,7 +1381,25 @@ Binding symbol `og_archetype_view_get_entities` · publish builds: kept
 prop entities Uint32Array "The entities as (index, generation) pairs: entity i is at 2i and 2i + 1. These are not handles: for a handle use entity(i) (world.despawn, get, set, insert and remove refuse a bare index, naming the call)."
 ```
 
-<sub>`api.ogt` line 1131</sub>
+<sub>`api.ogt` line 1204</sub>
+
+<a id="member-ArchetypeView-rows"></a>
+
+#### `ArchetypeView.rows` (property)
+
+The rows the query's change filters pass (SystemDesc.changed, added, removed; QueryDesc's), in row order; every row, 0 to count - 1, for a query without them. Columns still hold every row: loop over rows and index the columns with them.
+
+```ts
+readonly rows: Uint32Array
+```
+
+Binding symbol `og_archetype_view_get_rows` · publish builds: kept
+
+```ogt
+prop rows Uint32Array "The rows the query's change filters pass (SystemDesc.changed, added, removed; QueryDesc's), in row order; every row, 0 to count - 1, for a query without them. Columns still hold every row: loop over rows and index the columns with them."
+```
+
+<sub>`api.ogt` line 1205</sub>
 
 <a id="member-ArchetypeView-entity"></a>
 
@@ -1169,7 +1427,7 @@ fn entity {
 }
 ```
 
-<sub>`api.ogt` line 1132</sub>
+<sub>`api.ogt` line 1206</sub>
 
 <a id="member-ArchetypeView-has"></a>
 
@@ -1198,7 +1456,7 @@ fn has {
 }
 ```
 
-<sub>`api.ogt` line 1137</sub>
+<sub>`api.ogt` line 1211</sub>
 
 <a id="member-ArchetypeView-column"></a>
 
@@ -1230,7 +1488,7 @@ fn column {
 }
 ```
 
-<sub>`api.ogt` line 1143</sub>
+<sub>`api.ogt` line 1217</sub>
 
 ## Types
 
@@ -1556,7 +1814,7 @@ struct SaveMigration {
 
 ### `QueryDesc` (desc struct)
 
-Which entities a query matches.
+Which entities a query matches. The change filters (changed, added, removed) narrow an archetype's rows to those that pass every filter (ArchetypeView.rows) and read what happened since the last tick began; a component is tracked once a system filters on it (SystemDesc.changed, added, removed), and filtering on one no system tracks is refused.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -1564,17 +1822,75 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 |---|---|---|---|---|---|---|
 | `with` | `readonly AnyComponent[]` | `[]` | — | — | — | Components an entity must have. |
 | `without` | `readonly AnyComponent[]` | `[]` | — | — | — | Components an entity must not have. |
+| `changed` | `readonly AnyComponent[]` | `[]` | — | — | — | Components (required, as `with`) whose value changed: a write that leaves a value as it was is not a change. |
+| `added` | `readonly AnyComponent[]` | `[]` | — | — | — | Components (required, as `with`) added: spawned with, or inserted into an entity without them. |
+| `removed` | `readonly AnyComponent[]` | `[]` | — | — | — | Components the entity lost (removed; a despawned entity is in no archetype, so it is in world.removed only). |
 
 ```ogt
 struct QueryDesc {
-  doc "Which entities a query matches."
+  doc "Which entities a query matches. The change filters (changed, added, removed) narrow an archetype's rows to those that pass every filter (ArchetypeView.rows) and read what happened since the last tick began; a component is tracked once a system filters on it (SystemDesc.changed, added, removed), and filtering on one no system tracks is refused."
   desc true
   field with List.AnyComponent "Components an entity must have."
   field without List.AnyComponent "Components an entity must not have."
+  field changed List.AnyComponent "Components (required, as `with`) whose value changed: a write that leaves a value as it was is not a change."
+  field added List.AnyComponent "Components (required, as `with`) added: spawned with, or inserted into an entity without them."
+  field removed List.AnyComponent "Components the entity lost (removed; a despawned entity is in no archetype, so it is in world.removed only)."
 }
 ```
 
 <sub>`api.ogt` line 971</sub>
+
+<a id="type-SpatialDesc"></a>
+
+### `SpatialDesc` (desc struct)
+
+Which entities world.spatial places: every live entity with an og.Transform (and every component of `with`, none of `without`), at its og.Transform.position (relative to its parent, for a child).
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `with` | `readonly AnyComponent[]` | `[]` | — | — | — | Components an entity must have to be placed. |
+| `without` | `readonly AnyComponent[]` | `[]` | — | — | — | Components an entity must not have. |
+| `cell` | `number` | `0` | ≥ 0 | `m` | — | The hash's cell size; 0 picks one from the entities' spread. Answers never depend on it, only speed. |
+
+```ogt
+struct SpatialDesc {
+  doc "Which entities world.spatial places: every live entity with an og.Transform (and every component of `with`, none of `without`), at its og.Transform.position (relative to its parent, for a child)."
+  desc true
+  field with List.AnyComponent "Components an entity must have to be placed."
+  field without List.AnyComponent "Components an entity must not have."
+  field cell f32 "The hash's cell size; 0 picks one from the entities' spread. Answers never depend on it, only speed." {
+    unit m
+    min 0
+  }
+}
+```
+
+<sub>`api.ogt` line 981</sub>
+
+<a id="type-Neighbour"></a>
+
+### `Neighbour` (struct)
+
+One entity a spatial query found.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `entity` | `Entity` | `0` | — | — | — | The entity. |
+| `distance` | `number` | `0` | — | `m` | — | Its distance from the query's centre. |
+
+```ogt
+struct Neighbour {
+  doc "One entity a spatial query found."
+  field entity Entity "The entity."
+  field distance f64 "Its distance from the query's centre." {
+    unit m
+  }
+}
+```
+
+<sub>`api.ogt` line 992</sub>
 
 ## Column kinds
 

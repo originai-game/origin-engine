@@ -15,6 +15,18 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **A reactive ECS with spatial queries (G2-2).** Added to the IDL:
+  `SystemDesc.changed`, `added`, `removed`, `state`, `value`, `when`
+  (`StateWhen`) and `runIf` (`RunCondition`); `QueryDesc.changed`,
+  `added`, `removed`; `ArchetypeView.rows`; `og.defineHook` (`HookDesc`,
+  `HookEvent`, `HookRun`, `Hook`) and `GameDesc.hooks`; `GameDesc.states`
+  (`StateDesc`); `World.children`, `removed`, `spatial`, `state`,
+  `setState`; `SpatialDesc`, `SpatialIndex`, `Neighbour`. Change ticks
+  count system runs (never a clock) and travel in the save as an `og.ecs`
+  state block, with the state machines; a world that uses none of this
+  writes no such block and saves and hashes as before, so no save
+  migration is needed (an older save restores with nothing tracked yet).
+
 - Fixed: a save holds the names given since the last tick began. An
   entity named by `world.spawn` between ticks or by an earlier system
   in the same tick restores with its name; a name given in a system goes

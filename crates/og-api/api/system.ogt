@@ -6,6 +6,26 @@ module system {
   doc "Resources and events it reaches through the world must be declared too: in a dev or release build (og run, og test) an undeclared read or write throws with the system's name and the record and fails the tick; a publish build refuses it and logs it once per system in the engine log, and the game keeps running. og.Rng among the reads may fork (a fork reads the seed only and leaves the stream as it is); a draw moves the stream, so it needs og.Rng among the writes."
   place top
 
+  enum StateWhen {
+    doc "When a system bound to a state machine's value runs."
+    variant during "Every tick while the state machine holds the value."
+    variant enter "Once, as the tick begins, when the machine enters the value (the first tick, for its initial value)."
+    variant exit "Once, as the tick begins, when the machine leaves the value."
+  }
+
+  struct StateDesc {
+    doc "A state machine (GameDesc.states): a name and the values it moves between; it holds one at a time, and world.setState moves it as the next tick begins. Its value is world state: saves, the hash and replays carry it."
+    field name String "Its unique name."
+    field values List.String "Its values, at least one, each unique."
+    field initial String "The value it starts in; empty: the first."
+  }
+
+  callback RunCondition {
+    doc "Whether a system runs this tick: called before its run, after the systems before it, with the system's reads and writes as read-only access. It may not change the world."
+    param world World "The world, read only."
+    returns bool
+  }
+
   struct SystemDesc {
     doc "A system's declared access and order."
     desc true
@@ -14,6 +34,48 @@ module system {
     field without List.AnyComponent "Components a matched entity must not have."
     field after List.String "Names of systems that must run before this one."
     field before List.String "Names of systems that must run after this one."
+    field changed List.AnyComponent "Change filters on the query: components (required, as reads) whose value changed since this system last ran. A change is a value that differs from the one last compared, compared after each system and hook for what it writes and as each tick begins for what was written between ticks: counted in system runs, never by a clock, so saves and replays carry it. The archetypes the query hands carry the rows that pass every filter (ArchetypeView.rows)."
+    field added List.AnyComponent "Components (required, as reads) added since this system last ran: spawned with, or inserted into an entity without them."
+    field removed List.AnyComponent "Components the entity lost since this system last ran (a despawned entity: world.removed)."
+    field state String "A state machine (GameDesc.states) the system is bound to; empty: none."
+    field value String "The value of `state` it is bound to."
+    field when StateWhen "When it runs: during the value, or once on entering or leaving it."
+    field runIf Option.RunCondition "A run condition: the system runs only on ticks it answers true. A skipped tick is not a run: the change filters keep reading from the last one."
+  }
+
+  enum HookEvent {
+    doc "What a hook reacts to."
+    variant add "The component was added (spawned with, or inserted into an entity without it): the hook runs after it is in place."
+    variant remove "The component is being removed (removed, or its entity despawned): the hook runs before it goes, and reads it."
+  }
+
+  struct HookDesc {
+    doc "A hook's event and declared access."
+    desc true
+    field on HookEvent "Add or remove."
+    field reads List.OneOf.AnyReflected.AnyEvent "What it reads, as a system declares it."
+    field writes List.OneOf.AnyReflected.AnyEvent "What it writes, as a system declares it."
+  }
+
+  callback HookRun {
+    doc "A hook's body: called once per entity the component is added to or removed from, wherever the change came from (a system's structural changes as they apply when it returns, or a call between ticks), in the order hooks are listed in GameDesc.hooks. Its own structural changes apply when it returns and may run hooks in turn (16 deep at most). A restore runs none."
+    param world World "The world, as a system's."
+    param entity Entity "The entity."
+  }
+
+  interface Hook {
+    doc "A declared hook."
+    prop name String "The hook's unique name."
+  }
+
+  fn defineHook {
+    doc "Declare a hook on a component; list it in GameDesc.hooks."
+    generic C AnyComponent
+    param name String "The hook's unique name."
+    param component C "The component it reacts to."
+    param desc HookDesc "Add or remove, and its access."
+    param run HookRun "The body."
+    returns Hook
   }
 
   callback SystemRun {

@@ -137,6 +137,30 @@ impl WorldApi for WebHost {
     fn og_world_find(&self, world: u32, name: String) -> String {
         rt::og_world_find(world, name)
     }
+    fn og_spatial_index_get_count(&self, spatial_index: u32) -> u32 {
+        rt::og_spatial_index_get_count(spatial_index)
+    }
+    fn og_spatial_index_within(&self, spatial_index: u32, center: String, radius: f64) -> String {
+        rt::og_spatial_index_within(spatial_index, center, radius)
+    }
+    fn og_spatial_index_nearest(&self, spatial_index: u32, center: String, count: u32) -> String {
+        rt::og_spatial_index_nearest(spatial_index, center, count)
+    }
+    fn og_world_children(&self, world: u32, entity: f64) -> String {
+        rt::og_world_children(world, entity)
+    }
+    fn og_world_removed(&self, world: u32, component: String) -> String {
+        rt::og_world_removed(world, component)
+    }
+    fn og_world_spatial(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_world_spatial(world, desc)
+    }
+    fn og_world_state(&self, world: u32, name: String) -> String {
+        rt::og_world_state(world, name)
+    }
+    fn og_world_set_state(&self, world: u32, name: String, value: String) -> String {
+        rt::og_world_set_state(world, name, value)
+    }
     fn og_world_name_of(&self, world: u32, entity: f64) -> String {
         rt::og_world_name_of(world, entity)
     }
@@ -217,6 +241,9 @@ impl WorldApi for WebHost {
     fn og_archetype_view_get_entities(&self, archetype_view: u32) -> Self::Array {
         rt::view_entities(archetype_view)
     }
+    fn og_archetype_view_get_rows(&self, archetype_view: u32) -> Self::Array {
+        rt::view_rows(archetype_view)
+    }
     fn og_archetype_view_entity(&self, archetype_view: u32, index: u32) -> f64 {
         rt::og_archetype_view_entity(archetype_view, index)
     }
@@ -241,6 +268,18 @@ impl SystemApi for WebHost {
     }
     fn og_system_get_writes(&self, system: u32) -> String {
         rt::og_system_get_writes(system)
+    }
+    fn og_hook_get_name(&self, hook: u32) -> String {
+        rt::og_hook_get_name(hook)
+    }
+    fn og_system_define_hook(
+        &self,
+        name: String,
+        component: String,
+        desc: String,
+        run: u32,
+    ) -> u32 {
+        rt::og_system_define_hook(name, component, desc, run)
     }
     fn og_system_define_system(&self, name: String, desc: String, run: u32) -> u32 {
         rt::og_system_define_system(name, desc, run)

@@ -20,18 +20,61 @@ module system {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1155</sub>
+<sub>`api.ogt` line 1229</sub>
 
 ## Contents
 
 | Name | Kind | Summary |
 |---|---|---|
+| [`StateWhen`](#type-StateWhen) | enum | When a system bound to a state machine's value runs. |
+| [`StateDesc`](#type-StateDesc) | struct | A state machine (GameDesc.states): a name and the values it moves between; it holds one at a time, and world.setState moves it as the next tick begins. Its value is world state: saves, the hash and replays carry it. |
+| [`RunCondition`](#type-RunCondition) | callback | Whether a system runs this tick: called before its run, after the systems before it, with the system's reads and writes as read-only access. It may not change the world. |
 | [`SystemDesc`](#type-SystemDesc) | desc struct | A system's declared access and order. |
+| [`HookEvent`](#type-HookEvent) | enum | What a hook reacts to. |
+| [`HookDesc`](#type-HookDesc) | desc struct | A hook's event and declared access. |
+| [`HookRun`](#type-HookRun) | callback | A hook's body: called once per entity the component is added to or removed from, wherever the change came from (a system's structural changes as they apply when it returns, or a call between ticks), in the order hooks are listed in GameDesc.hooks. Its own structural changes apply when it returns and may run hooks in turn (16 deep at most). A restore runs none. |
+| [`Hook`](#type-Hook) | interface | A declared hook. |
+| [`defineHook`](#fn-defineHook) | function | Declare a hook on a component; list it in GameDesc.hooks. |
 | [`SystemRun`](#type-SystemRun) | callback | A system's body. It is called once per tick; loop over `q.archetypes()`, then over rows. |
 | [`System`](#type-System) | interface | A registered system. |
 | [`defineSystem`](#fn-defineSystem) | function | Declare a system. |
 
 ## Functions
+
+<a id="fn-defineHook"></a>
+
+### `defineHook`
+
+Declare a hook on a component; list it in GameDesc.hooks.
+
+```ts
+defineHook<C extends AnyComponent>(name: string, component: C, desc: HookDesc, run: HookRun): Hook
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `name` | `string` | no | The hook's unique name. |
+| `component` | `C` | no | The component it reacts to. |
+| `desc` | `HookDesc` | no | Add or remove, and its access. |
+| `run` | `HookRun` | no | The body. |
+
+**Returns** `Hook`.
+
+Binding symbol `og_system_define_hook` · publish builds: kept
+
+```ogt
+fn defineHook {
+  doc "Declare a hook on a component; list it in GameDesc.hooks."
+  generic C AnyComponent
+  param name String "The hook's unique name."
+  param component C "The component it reacts to."
+  param desc HookDesc "Add or remove, and its access."
+  param run HookRun "The body."
+  returns Hook
+}
+```
+
+<sub>`api.ogt` line 1299</sub>
 
 <a id="fn-defineSystem"></a>
 
@@ -63,9 +106,41 @@ fn defineSystem {
 }
 ```
 
-<sub>`api.ogt` line 1187</sub>
+<sub>`api.ogt` line 1323</sub>
 
 ## Interfaces
+
+<a id="type-Hook"></a>
+
+### `Hook` (interface)
+
+A declared hook.
+
+```ogt
+interface Hook {
+  doc "A declared hook."
+  # members follow, each quoted below
+```
+
+<sub>`api.ogt` line 1294</sub>
+
+<a id="member-Hook-name"></a>
+
+#### `Hook.name` (property)
+
+The hook's unique name.
+
+```ts
+readonly name: string
+```
+
+Binding symbol `og_hook_get_name` · publish builds: kept
+
+```ogt
+prop name String "The hook's unique name."
+```
+
+<sub>`api.ogt` line 1296</sub>
 
 <a id="type-System"></a>
 
@@ -79,7 +154,7 @@ interface System {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1180</sub>
+<sub>`api.ogt` line 1316</sub>
 
 <a id="member-System-name"></a>
 
@@ -97,7 +172,7 @@ Binding symbol `og_system_get_name` · publish builds: kept
 prop name String "The system's unique name."
 ```
 
-<sub>`api.ogt` line 1182</sub>
+<sub>`api.ogt` line 1318</sub>
 
 <a id="member-System-reads"></a>
 
@@ -115,7 +190,7 @@ Binding symbol `og_system_get_reads` · publish builds: kept
 prop reads List.AnyReflected "What it reads."
 ```
 
-<sub>`api.ogt` line 1183</sub>
+<sub>`api.ogt` line 1319</sub>
 
 <a id="member-System-writes"></a>
 
@@ -133,9 +208,83 @@ Binding symbol `og_system_get_writes` · publish builds: kept
 prop writes List.AnyReflected "What it writes."
 ```
 
-<sub>`api.ogt` line 1184</sub>
+<sub>`api.ogt` line 1320</sub>
 
 ## Types
+
+<a id="type-StateWhen"></a>
+
+### `StateWhen` (enum)
+
+When a system bound to a state machine's value runs.
+
+A string: one of the variants below. The zero value is `"during"`.
+
+| Variant | Doc |
+|---|---|
+| `"during"` | Every tick while the state machine holds the value. |
+| `"enter"` | Once, as the tick begins, when the machine enters the value (the first tick, for its initial value). |
+| `"exit"` | Once, as the tick begins, when the machine leaves the value. |
+
+```ogt
+enum StateWhen {
+  doc "When a system bound to a state machine's value runs."
+  variant during "Every tick while the state machine holds the value."
+  variant enter "Once, as the tick begins, when the machine enters the value (the first tick, for its initial value)."
+  variant exit "Once, as the tick begins, when the machine leaves the value."
+}
+```
+
+<sub>`api.ogt` line 1237</sub>
+
+<a id="type-StateDesc"></a>
+
+### `StateDesc` (struct)
+
+A state machine (GameDesc.states): a name and the values it moves between; it holds one at a time, and world.setState moves it as the next tick begins. Its value is world state: saves, the hash and replays carry it.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `name` | `string` | `""` | — | — | — | Its unique name. |
+| `values` | `readonly string[]` | `[]` | — | — | — | Its values, at least one, each unique. |
+| `initial` | `string` | `""` | — | — | — | The value it starts in; empty: the first. |
+
+```ogt
+struct StateDesc {
+  doc "A state machine (GameDesc.states): a name and the values it moves between; it holds one at a time, and world.setState moves it as the next tick begins. Its value is world state: saves, the hash and replays carry it."
+  field name String "Its unique name."
+  field values List.String "Its values, at least one, each unique."
+  field initial String "The value it starts in; empty: the first."
+}
+```
+
+<sub>`api.ogt` line 1244</sub>
+
+<a id="type-RunCondition"></a>
+
+### `RunCondition` (callback)
+
+Whether a system runs this tick: called before its run, after the systems before it, with the system's reads and writes as read-only access. It may not change the world.
+
+Game code supplies this function.
+
+```ts
+type RunCondition = (world: World) => boolean
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world, read only. |
+
+```ogt
+callback RunCondition {
+  doc "Whether a system runs this tick: called before its run, after the systems before it, with the system's reads and writes as read-only access. It may not change the world."
+  param world World "The world, read only."
+  returns bool
+}
+```
+
+<sub>`api.ogt` line 1251</sub>
 
 <a id="type-SystemDesc"></a>
 
@@ -152,6 +301,13 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `without` | `readonly AnyComponent[]` | `[]` | — | — | — | Components a matched entity must not have. |
 | `after` | `readonly string[]` | `[]` | — | — | — | Names of systems that must run before this one. |
 | `before` | `readonly string[]` | `[]` | — | — | — | Names of systems that must run after this one. |
+| `changed` | `readonly AnyComponent[]` | `[]` | — | — | — | Change filters on the query: components (required, as reads) whose value changed since this system last ran. A change is a value that differs from the one last compared, compared after each system and hook for what it writes and as each tick begins for what was written between ticks: counted in system runs, never by a clock, so saves and replays carry it. The archetypes the query hands carry the rows that pass every filter (ArchetypeView.rows). |
+| `added` | `readonly AnyComponent[]` | `[]` | — | — | — | Components (required, as reads) added since this system last ran: spawned with, or inserted into an entity without them. |
+| `removed` | `readonly AnyComponent[]` | `[]` | — | — | — | Components the entity lost since this system last ran (a despawned entity: world.removed). |
+| `state` | `string` | `""` | — | — | — | A state machine (GameDesc.states) the system is bound to; empty: none. |
+| `value` | `string` | `""` | — | — | — | The value of `state` it is bound to. |
+| `when` | `StateWhen` | `"during"` | — | — | — | When it runs: during the value, or once on entering or leaving it. |
+| `runIf` | `RunCondition \| null` | `null` | — | — | — | A run condition: the system runs only on ticks it answers true. A skipped tick is not a run: the change filters keep reading from the last one. |
 
 ```ogt
 struct SystemDesc {
@@ -162,10 +318,93 @@ struct SystemDesc {
   field without List.AnyComponent "Components a matched entity must not have."
   field after List.String "Names of systems that must run before this one."
   field before List.String "Names of systems that must run after this one."
+  field changed List.AnyComponent "Change filters on the query: components (required, as reads) whose value changed since this system last ran. A change is a value that differs from the one last compared, compared after each system and hook for what it writes and as each tick begins for what was written between ticks: counted in system runs, never by a clock, so saves and replays carry it. The archetypes the query hands carry the rows that pass every filter (ArchetypeView.rows)."
+  field added List.AnyComponent "Components (required, as reads) added since this system last ran: spawned with, or inserted into an entity without them."
+  field removed List.AnyComponent "Components the entity lost since this system last ran (a despawned entity: world.removed)."
+  field state String "A state machine (GameDesc.states) the system is bound to; empty: none."
+  field value String "The value of `state` it is bound to."
+  field when StateWhen "When it runs: during the value, or once on entering or leaving it."
+  field runIf Option.RunCondition "A run condition: the system runs only on ticks it answers true. A skipped tick is not a run: the change filters keep reading from the last one."
 }
 ```
 
-<sub>`api.ogt` line 1163</sub>
+<sub>`api.ogt` line 1257</sub>
+
+<a id="type-HookEvent"></a>
+
+### `HookEvent` (enum)
+
+What a hook reacts to.
+
+A string: one of the variants below. The zero value is `"add"`.
+
+| Variant | Doc |
+|---|---|
+| `"add"` | The component was added (spawned with, or inserted into an entity without it): the hook runs after it is in place. |
+| `"remove"` | The component is being removed (removed, or its entity despawned): the hook runs before it goes, and reads it. |
+
+```ogt
+enum HookEvent {
+  doc "What a hook reacts to."
+  variant add "The component was added (spawned with, or inserted into an entity without it): the hook runs after it is in place."
+  variant remove "The component is being removed (removed, or its entity despawned): the hook runs before it goes, and reads it."
+}
+```
+
+<sub>`api.ogt` line 1274</sub>
+
+<a id="type-HookDesc"></a>
+
+### `HookDesc` (desc struct)
+
+A hook's event and declared access.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `on` | `HookEvent` | `"add"` | — | — | — | Add or remove. |
+| `reads` | `readonly (AnyReflected \| AnyEvent)[]` | `[]` | — | — | — | What it reads, as a system declares it. |
+| `writes` | `readonly (AnyReflected \| AnyEvent)[]` | `[]` | — | — | — | What it writes, as a system declares it. |
+
+```ogt
+struct HookDesc {
+  doc "A hook's event and declared access."
+  desc true
+  field on HookEvent "Add or remove."
+  field reads List.OneOf.AnyReflected.AnyEvent "What it reads, as a system declares it."
+  field writes List.OneOf.AnyReflected.AnyEvent "What it writes, as a system declares it."
+}
+```
+
+<sub>`api.ogt` line 1280</sub>
+
+<a id="type-HookRun"></a>
+
+### `HookRun` (callback)
+
+A hook's body: called once per entity the component is added to or removed from, wherever the change came from (a system's structural changes as they apply when it returns, or a call between ticks), in the order hooks are listed in GameDesc.hooks. Its own structural changes apply when it returns and may run hooks in turn (16 deep at most). A restore runs none.
+
+Game code supplies this function.
+
+```ts
+type HookRun = (world: World, entity: Entity) => void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world, as a system's. |
+| `entity` | `Entity` | no | The entity. |
+
+```ogt
+callback HookRun {
+  doc "A hook's body: called once per entity the component is added to or removed from, wherever the change came from (a system's structural changes as they apply when it returns, or a call between ticks), in the order hooks are listed in GameDesc.hooks. Its own structural changes apply when it returns and may run hooks in turn (16 deep at most). A restore runs none."
+  param world World "The world, as a system's."
+  param entity Entity "The entity."
+}
+```
+
+<sub>`api.ogt` line 1288</sub>
 
 <a id="type-SystemRun"></a>
 
@@ -194,4 +433,4 @@ callback SystemRun {
 }
 ```
 
-<sub>`api.ogt` line 1173</sub>
+<sub>`api.ogt` line 1309</sub>

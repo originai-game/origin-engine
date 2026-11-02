@@ -74,6 +74,7 @@ fn a_system_reads_and_writes_host_layouts_as_bytes() {
         reads: vec!["Hit".into()],
         writes: vec!["Hp".into(), "Tagged".into(), "Score".into(), "Hit".into()],
         queries: vec![],
+        ..Default::default()
     };
     w.add_system(desc, move |ctx| {
         let hits = ctx.events_bytes(hit)?;

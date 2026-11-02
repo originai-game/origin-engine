@@ -40,6 +40,7 @@ impl QuerySpec {
                 read,
                 write,
                 without: names(self.without),
+                ..Default::default()
             }
         } else {
             read.extend(write);
@@ -47,6 +48,7 @@ impl QuerySpec {
                 read,
                 write: Vec::new(),
                 without: names(self.without),
+                ..Default::default()
             }
         }
     }

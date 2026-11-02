@@ -117,9 +117,9 @@ impl Writer {
     }
 }
 
-struct Reader<'a> {
-    buf: &'a [u8],
-    pos: usize,
+pub(crate) struct Reader<'a> {
+    pub(crate) buf: &'a [u8],
+    pub(crate) pos: usize,
 }
 
 pub(crate) fn bad(reason: impl Into<String>) -> Error {
@@ -127,7 +127,7 @@ pub(crate) fn bad(reason: impl Into<String>) -> Error {
 }
 
 impl<'a> Reader<'a> {
-    fn take(&mut self, n: usize) -> Result<&'a [u8]> {
+    pub(crate) fn take(&mut self, n: usize) -> Result<&'a [u8]> {
         let end = self
             .pos
             .checked_add(n)
@@ -137,19 +137,19 @@ impl<'a> Reader<'a> {
         self.pos = end;
         Ok(out)
     }
-    fn u8(&mut self) -> Result<u8> {
+    pub(crate) fn u8(&mut self) -> Result<u8> {
         Ok(self.take(1)?[0])
     }
-    fn u32(&mut self) -> Result<usize> {
+    pub(crate) fn u32(&mut self) -> Result<usize> {
         Ok(u32::from_le_bytes(self.take(4)?.try_into().expect("4 bytes")) as usize)
     }
-    fn u64(&mut self) -> Result<u64> {
+    pub(crate) fn u64(&mut self) -> Result<u64> {
         Ok(u64::from_le_bytes(
             self.take(8)?.try_into().expect("8 bytes"),
         ))
     }
     /// A count of items at least `min_item` bytes each, checked against what is left.
-    fn count(&mut self, min_item: usize) -> Result<usize> {
+    pub(crate) fn count(&mut self, min_item: usize) -> Result<usize> {
         let n = self.u32()?;
         if n.saturating_mul(min_item) > self.buf.len() - self.pos {
             return Err(bad(format!(
@@ -159,11 +159,11 @@ impl<'a> Reader<'a> {
         }
         Ok(n)
     }
-    fn sized(&mut self) -> Result<&'a [u8]> {
+    pub(crate) fn sized(&mut self) -> Result<&'a [u8]> {
         let n = self.u32()?;
         self.take(n)
     }
-    fn str(&mut self, what: &str) -> Result<&'a str> {
+    pub(crate) fn str(&mut self, what: &str) -> Result<&'a str> {
         std::str::from_utf8(self.sized()?).map_err(|_| bad(format!("{what} is not UTF-8")))
     }
 }
@@ -785,7 +785,7 @@ fn decode_blocks(
     mut report: Option<&mut MigrationReport>,
 ) -> Result<Vec<Option<Box<dyn Any + Send>>>> {
     for (name, _) in saved {
-        if !blocks.iter().any(|b| b.name == *name) {
+        if *name != crate::reactive::BLOCK && !blocks.iter().any(|b| b.name == *name) {
             match report.as_deref_mut() {
                 Some(r) => r.dropped.push(format!("state block {name}")),
                 None => {
@@ -1095,6 +1095,8 @@ struct State {
     names: Vec<(Entity, String)>,
     /// Per state block, in added order.
     blocks: Vec<Option<Box<dyn Any + Send>>>,
+    /// The reactive block (`reactive`), when the snapshot had one.
+    reactive: Option<crate::reactive::SavedReactive>,
     /// The system the next step starts at (a mid-tick snapshot).
     resume: Option<usize>,
 }
@@ -1119,7 +1121,9 @@ impl World {
         });
         let mut w = Writer(Vec::new());
         w.bytes(MAGIC);
-        let format = match (state, self.blocks.is_empty(), resume.is_some()) {
+        let reactive = self.reactive.enabled();
+        let no_blocks = self.blocks.is_empty() && !reactive;
+        let format = match (state, no_blocks, resume.is_some()) {
             (true, ..) => FORMAT_STATE,
             (false, _, true) => FORMAT_RESUME,
             (false, true, false) => FORMAT,
@@ -1247,17 +1251,21 @@ impl World {
             }
         }
 
-        if !self.blocks.is_empty() || (!state && resume.is_some()) {
+        if !no_blocks || (!state && resume.is_some()) {
             if state {
                 w.bytes(BLOCKS_TAG);
             }
-            w.u32(self.blocks.len());
+            w.u32(self.blocks.len() + usize::from(reactive));
             let mut saved = Vec::new();
             for b in &self.blocks {
                 saved.clear();
                 b.block.save(&mut saved);
                 w.sized(b.name.as_bytes());
                 w.sized(&saved);
+            }
+            if reactive {
+                w.sized(crate::reactive::BLOCK.as_bytes());
+                w.sized(&self.save_reactive(unguarded));
             }
         }
 
@@ -1315,6 +1323,7 @@ impl World {
                 }
             }
             decode_blocks(&self.blocks, &parsed.blocks, Some(&mut report))?;
+            self.saved_reactive(&parsed, Some(&mut report))?;
             return Ok(!report.is_exact());
         }
         resume_at(self, parsed.resume, None)?;
@@ -1361,6 +1370,7 @@ impl World {
             }
         }
         decode_blocks(&self.blocks, &parsed.blocks, None)?;
+        self.saved_reactive(&parsed, None)?;
         Ok(differs)
     }
 
@@ -1446,6 +1456,7 @@ impl World {
             queue.pending = pending.iter().map(|b| b.to_vec()).collect();
         }
         let blocks = decode_blocks(&self.blocks, &parsed.blocks, None)?;
+        let reactive = self.saved_reactive(&parsed, None)?;
         let resume = resume_at(self, parsed.resume, None)?;
 
         self.commit(State {
@@ -1457,6 +1468,7 @@ impl World {
             events,
             names: parsed.names,
             blocks,
+            reactive,
             resume,
         });
         Ok(())
@@ -1583,6 +1595,7 @@ impl World {
         }
 
         let blocks = decode_blocks(&self.blocks, &parsed.blocks, Some(&mut report))?;
+        let reactive = self.saved_reactive(&parsed, Some(&mut report))?;
         let resume = resume_at(self, parsed.resume, Some(&mut report))?;
 
         // Nothing below fails.
@@ -1598,6 +1611,7 @@ impl World {
             events,
             names: parsed.names,
             blocks,
+            reactive,
             resume,
         });
         Ok(report)
@@ -1618,6 +1632,21 @@ impl World {
             b.block.apply(decoded);
         }
         self.resume = state.resume;
+        self.apply_reactive(state.reactive);
         self.structural += 1;
+    }
+
+    /// The snapshot's reactive block, decoded against this world.
+    fn saved_reactive(
+        &self,
+        parsed: &Parsed<'_>,
+        report: Option<&mut MigrationReport>,
+    ) -> Result<Option<crate::reactive::SavedReactive>> {
+        parsed
+            .blocks
+            .iter()
+            .find(|(n, _)| *n == crate::reactive::BLOCK)
+            .map(|(_, bytes)| self.decode_reactive(bytes, report))
+            .transpose()
     }
 }

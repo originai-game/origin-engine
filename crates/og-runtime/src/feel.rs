@@ -461,6 +461,7 @@ pub(crate) fn install_middle(
                     read: names(&[&r.tilemap, &r.transform]),
                     ..QueryDesc::default()
                 }],
+                ..Default::default()
             },
             move |ctx| tilemap_system(ctx, &tiles, &rec),
         )
@@ -490,6 +491,7 @@ pub(crate) fn install_middle(
                         ..QueryDesc::default()
                     },
                 ],
+                ..Default::default()
             },
             move |ctx| camera_system(ctx, engine_id, &shared, &rec),
         )
@@ -516,6 +518,7 @@ pub(crate) fn install_back(world: &mut World, feel: &Feel, r: &Records) -> Resul
                     read: names(&[&r.afterimage, &r.sprite, &r.transform]),
                     ..QueryDesc::default()
                 }],
+                ..Default::default()
             },
             move |ctx| sprite_system(ctx, &shared, &rec),
         )

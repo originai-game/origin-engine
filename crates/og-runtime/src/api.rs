@@ -18,6 +18,7 @@ mod actions;
 mod commands;
 mod controls;
 mod loading;
+mod reactive;
 mod render;
 
 use super::{engine, environment, extract, feel, fx, look, modules, views};
@@ -26,6 +27,7 @@ pub use commands::*;
 use controls::vec3;
 pub use controls::*;
 pub use loading::*;
+pub use reactive::*;
 pub use render::*;
 
 fn err(e: og_core::Error) -> String {
@@ -726,10 +728,23 @@ pub fn og_world_query(world: u32, desc: Option<String>) -> String {
             read: Vec::new(),
             write: names(&desc["with"]),
             without: names(&desc["without"]),
+            changed: names(&desc["changed"]),
+            added: names(&desc["added"]),
+            removed: names(&desc["removed"]),
         };
-        for n in q.write.iter().chain(&q.without) {
+        for n in q
+            .write
+            .iter()
+            .chain(&q.without)
+            .chain(&q.changed)
+            .chain(&q.added)
+            .chain(&q.removed)
+        {
             component(&eng, n)?;
         }
+        // Refusals (a filter on an untracked component) now, not as an
+        // empty list later.
+        eng.world()?.query(&q).map_err(err)?;
         let h = HANDLES.with(|t| {
             t.borrow_mut()
                 .world_queries

@@ -91,6 +91,7 @@ pub(crate) fn install(
                     write: vec![PLAYER.into()],
                     ..QueryDesc::default()
                 }],
+                ..Default::default()
             },
             move |ctx| run(ctx, engine_id, &shared, &player, &audio),
         )

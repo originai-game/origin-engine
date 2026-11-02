@@ -425,6 +425,7 @@ pub(crate) fn world_query_views(eng: &Engine, desc: &QueryDesc) -> Result<Vec<u3
             entities: a.entities().as_ptr(),
             columns: cols,
             types,
+            rows: a.filtered().then(|| a.rows()),
             lazy: None,
         };
         out.push(HANDLES.with(|t| t.borrow_mut().views.push((eng.id, rec))));

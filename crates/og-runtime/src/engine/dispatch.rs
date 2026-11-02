@@ -6,6 +6,8 @@ use super::*;
 pub(crate) struct SystemEntry {
     pub name: String,
     pub callback: u32,
+    /// Its run condition's callback (SystemDesc.runIf).
+    pub condition: Option<u32>,
     pub reads: Vec<String>,
     pub writes: Vec<String>,
     pub columns: Vec<QueryColumn>,
@@ -30,6 +32,8 @@ pub(crate) struct ViewRecord {
     /// when the view is made.
     pub columns: Vec<(String, ColumnPtr)>,
     pub types: Vec<String>,
+    /// The rows the query's change filters pass; `None`: every row.
+    pub rows: Option<Vec<u32>>,
     /// A running system's view: its archetype's place among the system's
     /// matched archetypes, and the columns it may borrow from it.
     pub lazy: Option<(usize, Vec<QueryColumn>)>,
@@ -298,6 +302,7 @@ pub(crate) fn invalidate(moving: bool) {
         let mut t = t.borrow_mut();
         t.views.clear();
         t.frame_queries.clear();
+        t.spatial.clear();
     });
 }
 
@@ -349,6 +354,7 @@ pub(super) fn run_system(
             entities: a.entities().as_ptr(),
             columns: Vec::new(),
             types,
+            rows: a.filtered().then(|| a.rows()),
             lazy: Some((k, columns.clone())),
         });
     }
@@ -398,6 +404,72 @@ pub(super) fn run_system(
     // writable views back (`invalidate`).
     frame.held.borrow_mut().clear();
     result.map(|_| ()).map_err(fail)
+}
+
+/// Calls game code with `ctx` published as the running frame of entry
+/// `index` (a run condition, kind 3, under its system's entry; a hook,
+/// kind 4, under its own), as [`run_system`] does without views.
+fn run_frame(
+    engine_id: u32,
+    index: usize,
+    ctx: &mut SystemContext<'_>,
+    kind: u32,
+    payload: String,
+) -> og_core::Result<String> {
+    let fail = |m: String| Error::new(ErrorKind::Invalid, m);
+    let eng = engine(engine_id).map_err(fail)?;
+    let callback = match kind {
+        3 => eng.state.borrow().systems[index].condition,
+        _ => Some(eng.state.borrow().systems[index].callback),
+    }
+    .ok_or_else(|| fail("no callback".into()))?;
+    let time = ctx.time();
+    let frame = Frame {
+        engine: engine_id,
+        system: index,
+        ctx: ctx as *mut SystemContext<'_> as *mut (),
+        held: RefCell::new(Vec::new()),
+    };
+    let prev = FRAME.with(|f| f.replace(&frame));
+    let was_stepping = eng.stepping.replace(true);
+    let result = match hooks() {
+        Some(h) => h.dispatch(&Dispatch {
+            kind,
+            engine: engine_id,
+            id: callback,
+            query: 0,
+            tick: time.tick as f64,
+            dt: f64::from(time.dt),
+            elapsed: time.elapsed,
+            payload,
+        }),
+        None => Err("no dispatcher is installed (og_host_set_dispatcher)".into()),
+    };
+    FRAME.with(|f| f.set(prev));
+    eng.stepping.set(was_stepping);
+    invalidate(QUEUED.with(|q| q.replace(false)));
+    frame.held.borrow_mut().clear();
+    result.map_err(fail)
+}
+
+/// A system's run condition (SystemDesc.runIf): whether it runs.
+pub(super) fn run_condition(
+    engine_id: u32,
+    index: usize,
+    ctx: &mut SystemContext<'_>,
+) -> og_core::Result<bool> {
+    let answer = run_frame(engine_id, index, ctx, 3, String::new())?;
+    Ok(answer == "true")
+}
+
+/// A hook (og.defineHook) on entity `e`.
+pub(super) fn run_hook(
+    engine_id: u32,
+    index: usize,
+    ctx: &mut SystemContext<'_>,
+    e: Entity,
+) -> og_core::Result<()> {
+    run_frame(engine_id, index, ctx, 4, e.to_bits().to_string()).map(|_| ())
 }
 
 /// Calls a command handler (or the facts function) between ticks.

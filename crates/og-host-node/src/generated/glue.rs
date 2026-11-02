@@ -201,6 +201,24 @@ pub fn og_save_edit_close(env: Env, save_edit: u32) {
     <Host as WorldApi>::og_save_edit_close(&Host, save_edit)
 }
 
+#[napi(js_name = "og_spatial_index_get_count")]
+pub fn og_spatial_index_get_count(env: Env, spatial_index: u32) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as WorldApi>::og_spatial_index_get_count(&Host, spatial_index)
+}
+
+#[napi(js_name = "og_spatial_index_within")]
+pub fn og_spatial_index_within(env: Env, spatial_index: u32, center: String, radius: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as WorldApi>::og_spatial_index_within(&Host, spatial_index, center, radius)
+}
+
+#[napi(js_name = "og_spatial_index_nearest")]
+pub fn og_spatial_index_nearest(env: Env, spatial_index: u32, center: String, count: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as WorldApi>::og_spatial_index_nearest(&Host, spatial_index, center, count)
+}
+
 #[napi(js_name = "og_world_get_tick")]
 pub fn og_world_get_tick(env: Env, world: u32) -> u32 {
     let _env = crate::EnvScope::enter(&env);
@@ -259,6 +277,36 @@ pub fn og_world_set(env: Env, world: u32, entity: f64, component: String, value:
 pub fn og_world_resource(env: Env, world: u32, resource: String) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as WorldApi>::og_world_resource(&Host, world, resource)
+}
+
+#[napi(js_name = "og_world_children")]
+pub fn og_world_children(env: Env, world: u32, entity: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as WorldApi>::og_world_children(&Host, world, entity)
+}
+
+#[napi(js_name = "og_world_removed")]
+pub fn og_world_removed(env: Env, world: u32, component: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as WorldApi>::og_world_removed(&Host, world, component)
+}
+
+#[napi(js_name = "og_world_spatial")]
+pub fn og_world_spatial(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as WorldApi>::og_world_spatial(&Host, world, desc)
+}
+
+#[napi(js_name = "og_world_state")]
+pub fn og_world_state(env: Env, world: u32, name: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as WorldApi>::og_world_state(&Host, world, name)
+}
+
+#[napi(js_name = "og_world_set_state")]
+pub fn og_world_set_state(env: Env, world: u32, name: String, value: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as WorldApi>::og_world_set_state(&Host, world, name, value)
 }
 
 #[napi(js_name = "og_world_find")]
@@ -345,6 +393,12 @@ pub fn og_archetype_view_get_entities(env: Env, archetype_view: u32) -> crate::N
     <Host as WorldApi>::og_archetype_view_get_entities(&Host, archetype_view)
 }
 
+#[napi(js_name = "og_archetype_view_get_rows")]
+pub fn og_archetype_view_get_rows(env: Env, archetype_view: u32) -> crate::NodeArray {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as WorldApi>::og_archetype_view_get_rows(&Host, archetype_view)
+}
+
 #[napi(js_name = "og_archetype_view_entity")]
 pub fn og_archetype_view_entity(env: Env, archetype_view: u32, index: u32) -> f64 {
     let _env = crate::EnvScope::enter(&env);
@@ -361,6 +415,18 @@ pub fn og_archetype_view_has(env: Env, archetype_view: u32, component: String) -
 pub fn og_archetype_view_column(env: Env, archetype_view: u32, component: String) -> crate::NodeViews {
     let _env = crate::EnvScope::enter(&env);
     <Host as WorldApi>::og_archetype_view_column(&Host, archetype_view, component)
+}
+
+#[napi(js_name = "og_hook_get_name")]
+pub fn og_hook_get_name(env: Env, hook: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as SystemApi>::og_hook_get_name(&Host, hook)
+}
+
+#[napi(js_name = "og_system_define_hook")]
+pub fn og_system_define_hook(env: Env, name: String, component: String, desc: String, run: u32) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as SystemApi>::og_system_define_hook(&Host, name, component, desc, run)
 }
 
 #[napi(js_name = "og_system_get_name")]

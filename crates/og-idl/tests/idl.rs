@@ -194,7 +194,7 @@ fn the_repository_idl_is_valid_and_covers_the_design() {
         );
     }
     assert_eq!(fns("reflect"), ["defineComponent", "defineResource"]);
-    assert_eq!(fns("system"), ["defineSystem"]);
+    assert_eq!(fns("system"), ["defineHook", "defineSystem"]);
     assert_eq!(fns("game"), ["game"]);
     assert!(fns("commands").contains(&"register".to_string()));
     assert!(fns("commands").contains(&"schedule".to_string()));

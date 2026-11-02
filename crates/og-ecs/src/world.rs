@@ -3,8 +3,10 @@
 
 use crate::entity::Entity;
 use crate::query::{QueryAccess, QueryDesc, QueryIter};
+use crate::reactive::{HookEvent, Slot};
 use crate::registry::{FieldRef, Registry, SchemaId};
 use crate::schedule::{Command, System, SystemContext, SystemDesc, SystemInfo};
+use crate::spatial::{SpatialDesc, SpatialHash};
 use crate::state::{Block, StateBlock};
 use crate::storage::Archetype;
 use og_core::handle::HandleAllocator;
@@ -120,6 +122,8 @@ pub struct World {
     /// Restored from a snapshot taken mid-tick: the system the next step
     /// starts at, completing that tick (world state: a snapshot carries it).
     pub(crate) resume: Option<usize>,
+    /// Change detection, hooks and state machines (`reactive`).
+    pub(crate) reactive: crate::reactive::Reactive,
 }
 
 fn two_mut<T>(v: &mut [T], a: usize, b: usize) -> (&mut T, &mut T) {
@@ -159,6 +163,7 @@ impl World {
             blocks: Vec::new(),
             clock: None,
             resume: None,
+            reactive: Default::default(),
         };
         world.archetype_for(Vec::new());
         world.time_id = world.register::<Time>()?;
@@ -250,6 +255,7 @@ impl World {
         self.archetypes
             .push(Archetype::new(types.clone(), &self.registry));
         self.archetype_by_types.insert(types, id);
+        self.track_archetype(id as usize);
         id
     }
 
@@ -295,10 +301,11 @@ impl World {
     }
 
     /// Places a live entity with no location into the archetype of
-    /// [`Self::prepare`]d components.
+    /// [`Self::prepare`]d components (its tracked components added now).
     pub(crate) fn place(&mut self, e: Entity, components: Vec<(SchemaId, Vec<u8>)>) {
         let types = components.iter().map(|(id, _)| *id).collect();
         let a = self.archetype_for(types);
+        let stamp = self.stamp();
         let arch = &mut self.archetypes[a as usize];
         for (position, (id, bytes)) in components.iter().enumerate() {
             let layout = &self.registry.info(*id).layout;
@@ -307,6 +314,9 @@ impl World {
             }
         }
         arch.entities.push(e);
+        for position in 0..components.len() {
+            arch.push_ticks(position, None, stamp);
+        }
         let row = arch.len() - 1;
         self.set_location(e, a, row);
         self.structural += 1;
@@ -318,17 +328,41 @@ impl World {
         self.spawn_bytes(components)
     }
 
-    /// Spawns an entity from packed component bytes (the host form of [`Self::spawn`]).
+    /// Spawns an entity from packed component bytes (the host form of
+    /// [`Self::spawn`]), then runs the add hooks of its components; a hook's
+    /// refusal is returned, and the entity stays.
     pub fn spawn_bytes(&mut self, components: Vec<(SchemaId, Vec<u8>)>) -> Result<Entity> {
+        let e = self.spawn_quiet(components)?;
+        let types = self.components_of(e)?;
+        self.fire(HookEvent::Add, e, &types)?;
+        Ok(e)
+    }
+
+    /// [`Self::spawn_bytes`] without hooks (a restore's spawns).
+    pub(crate) fn spawn_quiet(&mut self, components: Vec<(SchemaId, Vec<u8>)>) -> Result<Entity> {
         let components = self.prepare(components)?;
         let e = self.entities.get_mut().reserve();
         self.place(e, components);
         Ok(e)
     }
 
-    /// Removes an entity and all its components. Its id is dead from now on.
+    /// Removes an entity and all its components, running their remove hooks
+    /// first (a hook's refusal is returned, and the entity stays). Its id is
+    /// dead from now on.
     pub fn despawn(&mut self, e: Entity) -> Result<()> {
+        let types = self.components_of(e)?;
+        self.fire(HookEvent::Remove, e, &types)?;
+        if !self.is_alive(e) {
+            return Ok(()); // a hook despawned it
+        }
+        self.despawn_quiet(e)
+    }
+
+    /// [`Self::despawn`] without hooks.
+    pub(crate) fn despawn_quiet(&mut self, e: Entity) -> Result<()> {
         let loc = self.location(e)?;
+        let types = self.archetypes[loc.archetype as usize].types.clone();
+        self.log_removed(e, &types);
         if let Some(moved) = self.archetypes[loc.archetype as usize].swap_remove(loc.row as usize) {
             self.set_location(moved, loc.archetype, loc.row as usize);
         }
@@ -378,14 +412,26 @@ impl World {
         self.insert_bytes(e, id, &bytes)
     }
 
-    /// Adds (or overwrites) component `id` from packed bytes.
+    /// Adds (or overwrites) component `id` from packed bytes. An add runs
+    /// the component's add hooks; a hook's refusal is returned, and the
+    /// component stays.
     pub fn insert_bytes(&mut self, e: Entity, id: SchemaId, bytes: &[u8]) -> Result<()> {
+        if self.insert_quiet(e, id, bytes)? {
+            self.fire(HookEvent::Add, e, &[id])?;
+        }
+        Ok(())
+    }
+
+    /// [`Self::insert_bytes`] without hooks: whether it added the component
+    /// (rather than overwriting it).
+    pub(crate) fn insert_quiet(&mut self, e: Entity, id: SchemaId, bytes: &[u8]) -> Result<bool> {
         self.registry.check(id)?;
         self.registry.check_value(id, bytes)?;
         let loc = self.location(e)?;
         let src = loc.archetype as usize;
         let row = loc.row as usize;
         let layout = &self.registry.info(id).layout;
+        let stamp = self.stamp();
         if let Some(position) = self.archetypes[src].position(id) {
             let arch = &mut self.archetypes[src];
             for (k, c) in arch.columns_of(position).enumerate() {
@@ -393,7 +439,8 @@ impl World {
                     .get_mut()
                     .set_row(row, &bytes[layout.range(k)]);
             }
-            return Ok(());
+            arch.diff_row(position, row, stamp);
+            return Ok(false);
         }
         let mut types = self.archetypes[src].types.clone();
         let at = types.binary_search(&id).unwrap_err();
@@ -401,6 +448,7 @@ impl World {
         let dst = self.archetype_for(types) as usize;
         let layout = &self.registry.info(id).layout;
         let (s, d) = two_mut(&mut self.archetypes, src, dst);
+        let mut carried = Vec::with_capacity(d.types.len());
         for (position, &ty) in d.types.iter().enumerate() {
             let dst_cols = d.columns_of(position);
             match s.position(ty) {
@@ -410,15 +458,20 @@ impl World {
                             .get_mut()
                             .push(s.columns[sc].get_mut().row(row));
                     }
+                    carried.push(s.take_row_ticks(sp, row));
                 }
                 None => {
                     for (k, dc) in dst_cols.enumerate() {
                         d.columns[dc].get_mut().push(&bytes[layout.range(k)]);
                     }
+                    carried.push(None);
                 }
             }
         }
         d.entities.push(e);
+        for (position, from) in carried.into_iter().enumerate() {
+            d.push_ticks(position, from, stamp);
+        }
         let new_row = d.len() - 1;
         let moved = s.swap_remove(row);
         if let Some(moved) = moved {
@@ -426,7 +479,7 @@ impl World {
         }
         self.set_location(e, dst as u32, new_row);
         self.structural += 1;
-        Ok(())
+        Ok(true)
     }
 
     /// Removes component `T` from `e`. Refused if `e` does not have it.
@@ -435,8 +488,22 @@ impl World {
         self.remove_id(e, id)
     }
 
-    /// Removes component `id` from `e`.
+    /// Removes component `id` from `e`, running its remove hooks first (a
+    /// hook's refusal is returned, and the component stays).
     pub fn remove_id(&mut self, e: Entity, id: SchemaId) -> Result<()> {
+        self.registry.check(id)?;
+        let loc = self.location(e)?;
+        if self.archetypes[loc.archetype as usize].has(id) {
+            self.fire(HookEvent::Remove, e, &[id])?;
+            if !self.is_alive(e) || !self.archetypes[self.location(e)?.archetype as usize].has(id) {
+                return Ok(()); // a hook took it away
+            }
+        }
+        self.remove_quiet(e, id)
+    }
+
+    /// [`Self::remove_id`] without hooks.
+    pub(crate) fn remove_quiet(&mut self, e: Entity, id: SchemaId) -> Result<()> {
         self.registry.check(id)?;
         let loc = self.location(e)?;
         let src = loc.archetype as usize;
@@ -449,8 +516,11 @@ impl World {
             ));
         };
         types.remove(at);
+        self.log_removed(e, &[id]);
         let dst = self.archetype_for(types) as usize;
+        let stamp = self.stamp();
         let (s, d) = two_mut(&mut self.archetypes, src, dst);
+        let mut carried = Vec::with_capacity(d.types.len());
         for (position, &ty) in d.types.iter().enumerate() {
             let sp = s.position(ty).expect("subset of the source archetype");
             for (sc, dc) in s.columns_of(sp).zip(d.columns_of(position)) {
@@ -458,8 +528,12 @@ impl World {
                     .get_mut()
                     .push(s.columns[sc].get_mut().row(row));
             }
+            carried.push(s.take_row_ticks(sp, row));
         }
         d.entities.push(e);
+        for (position, from) in carried.into_iter().enumerate() {
+            d.push_ticks(position, from, stamp);
+        }
         let new_row = d.len() - 1;
         if let Some(moved) = s.swap_remove(row) {
             self.set_location(moved, src as u32, row);
@@ -530,7 +604,36 @@ impl World {
     /// exactly the read and write access `desc` lists.
     pub fn query(&self, desc: &QueryDesc) -> Result<QueryIter<'_>> {
         let access = QueryAccess::resolve(&self.registry, desc, "world query")?;
-        Ok(QueryIter::new(self, Arc::new(access)))
+        for id in access
+            .changed
+            .iter()
+            .chain(&access.added)
+            .chain(&access.removed)
+        {
+            if !self.is_tracked(*id) {
+                return Err(Error::new(
+                    ErrorKind::Invalid,
+                    format!(
+                        "world query: '{}' is not tracked, so it has no changes to filter by (a system filtering on it, or World::track, tracks it)",
+                        self.registry.name(*id)
+                    ),
+                ));
+            }
+        }
+        Ok(QueryIter::new(self, Arc::new(access), self.world_since()))
+    }
+
+    /// The entities whose `field` (a `u64` entity link, such as a parent)
+    /// holds `target`, in entity order (index, then generation).
+    pub fn referencing(&self, field: FieldRef, target: Entity) -> Result<Vec<Entity>> {
+        referencing(self, field, target, true)
+    }
+
+    /// A spatial index of the entities `desc` selects, placed at their
+    /// `desc.field` value as it is now ([`crate::spatial`]). Refused for a
+    /// field that is not a `vec3` or `vec2`, or an unknown type.
+    pub fn spatial(&self, desc: &SpatialDesc) -> Result<SpatialHash> {
+        spatial_points(self, desc, true)
     }
 
     // ---- resources --------------------------------------------------------
@@ -788,7 +891,7 @@ impl World {
                 format!("a state block name is 1 to {MAX_NAME} bytes, got '{name}'"),
             ));
         }
-        if self.blocks.iter().any(|b| b.name == name) {
+        if self.blocks.iter().any(|b| b.name == name) || name == crate::reactive::BLOCK {
             return Err(Error::new(
                 ErrorKind::Invalid,
                 format!("the state block '{name}' is already added"),
@@ -823,7 +926,47 @@ impl World {
     where
         F: Fn(&mut SystemContext<'_>) -> Result<()> + Send + 'static,
     {
-        let system = System::resolve(self, desc, Box::new(run))?;
+        self.push_system(desc, Box::new(run), None)
+    }
+
+    /// [`Self::add_system`] with a run condition: before each tick's run
+    /// (after the systems before it, so it sees what they wrote) `condition`
+    /// is called with the system's declarations as read-only access, and the
+    /// system runs only when it answers true. A skipped run is not a run:
+    /// change filters keep reading from the last one.
+    pub fn add_system_if<C, F>(&mut self, desc: SystemDesc, condition: C, run: F) -> Result<()>
+    where
+        C: Fn(&mut SystemContext<'_>) -> Result<bool> + Send + 'static,
+        F: Fn(&mut SystemContext<'_>) -> Result<()> + Send + 'static,
+    {
+        self.push_system(desc, Box::new(run), Some(Box::new(condition)))
+    }
+
+    fn push_system(
+        &mut self,
+        desc: SystemDesc,
+        run: crate::schedule::SystemFn,
+        condition: Option<crate::reactive::ConditionFn>,
+    ) -> Result<()> {
+        let filters: Vec<String> = desc
+            .queries
+            .iter()
+            .flat_map(|q| q.changed.iter().chain(&q.added).chain(&q.removed).cloned())
+            .collect();
+        let read_only = SystemDesc {
+            name: desc.name.clone(),
+            reads: desc.reads.iter().chain(&desc.writes).cloned().collect(),
+            ..SystemDesc::default()
+        };
+        let mut system = System::resolve(self, desc, run)?;
+        if let Some(condition) = condition {
+            let access = System::resolve(self, read_only, Box::new(|_| Ok(())))?;
+            system.condition = Some(Box::new((access, condition)));
+        }
+        for name in filters {
+            let id = self.registry.id_by_name(&name)?;
+            self.track(id)?;
+        }
         self.systems.push(system);
         Ok(())
     }
@@ -909,20 +1052,70 @@ impl World {
     /// the one that took it, with the tick's events as they were, then
     /// advances `Time`, as the tick that saved went on.
     pub fn step(&mut self) -> Result<()> {
-        let first = match self.resume.take() {
-            Some(k) => k.min(self.systems.len()),
-            None => {
-                for queue in &mut self.events {
-                    let queue = queue.get_mut();
-                    queue.current = std::mem::take(&mut queue.pending);
-                }
-                0
+        let resumed = self.resume.take();
+        if resumed.is_none() {
+            for queue in &mut self.events {
+                let queue = queue.get_mut();
+                queue.current = std::mem::take(&mut queue.pending);
             }
-        };
+            self.begin_tick_changes();
+            self.begin_transitions();
+        }
         let tick = self.time().tick;
         LAST_TICK.store(tick, std::sync::atomic::Ordering::Relaxed);
+        let slots = self.slots();
+        let mut first = 0;
+        if let Some(k) = resumed {
+            // The saver returned: its writes are compared and its run
+            // recorded as its return would have.
+            first = slots.len();
+            if let Some(saver) = k.checked_sub(1).filter(|&i| i < self.systems.len()) {
+                let writes = std::mem::take(&mut self.systems[saver].writes);
+                self.diff(Some(&writes), self.reactive.change_tick);
+                self.systems[saver].writes = writes;
+                self.systems[saver].last_run = self.reactive.change_tick;
+                if let Some(p) = slots.iter().position(|s| *s == Slot::Run(saver)) {
+                    first = p + 1;
+                }
+            }
+        }
+        self.reactive.in_step = true;
+        let ran = self.run_slots(&slots[first..], tick);
+        self.reactive.in_step = false;
+        ran?;
+        self.reactive.transitions.clear();
+        let time = self.time();
+        if let Ok(scale) = self.resource_mut::<TimeScale>() {
+            scale.end_tick(&time);
+        }
+        self.resource_mut::<Time>()?.advance();
+        Ok(())
+    }
+
+    /// Runs a tick's steps in order (see [`crate::reactive`]).
+    fn run_slots(&mut self, slots: &[Slot], tick: u64) -> Result<()> {
         let mut commands = Vec::new();
-        for i in first..self.systems.len() {
+        for slot in slots {
+            let i = match *slot {
+                Slot::Set(k) => {
+                    let t = self.reactive.transitions[k];
+                    self.reactive.states[t.state].current = t.to;
+                    continue;
+                }
+                Slot::Run(i) => i,
+            };
+            if !self.in_its_state(i) {
+                continue;
+            }
+            let holds = self.condition_holds(i).map_err(|err| {
+                err.context(format!(
+                    "tick {tick}, run condition of system '{}'",
+                    self.systems[i].name
+                ))
+            })?;
+            if !holds {
+                continue;
+            }
             // Archetype sizes change only with a structural change: the
             // counts of a tick without one are the last tick's.
             if self.systems[i].matched_at != Some(self.structural) {
@@ -931,12 +1124,18 @@ impl World {
                 self.systems[i].matched_at = Some(self.structural);
             }
             self.systems[i].last_tick = Some(tick);
+            self.reactive.change_tick += 1;
+            let this_run = self.reactive.change_tick;
             let t0 = self.clock.map(|now| now());
             let result = {
                 let system = &self.systems[i];
                 let mut ctx = SystemContext::new(self, system, &mut commands);
                 (system.run)(&mut ctx)
             };
+            let writes = std::mem::take(&mut self.systems[i].writes);
+            self.diff(Some(&writes), this_run);
+            self.systems[i].writes = writes;
+            self.systems[i].last_run = this_run;
             let failed = match result {
                 Err(err) => Some(err),
                 Ok(()) => self.apply(&mut commands).err(),
@@ -955,22 +1154,19 @@ impl World {
                 return Err(err);
             }
         }
-        let time = self.time();
-        if let Ok(scale) = self.resource_mut::<TimeScale>() {
-            scale.end_tick(&time);
-        }
-        self.resource_mut::<Time>()?.advance();
         Ok(())
     }
 
-    /// Applies a system's commands in order; on error the rest stay in `commands`.
-    fn apply(&mut self, commands: &mut Vec<Command>) -> Result<()> {
+    /// Applies a system's (or a hook's) commands in order, running the
+    /// hooks they set off; on error the rest stay in `commands`.
+    pub(crate) fn apply(&mut self, commands: &mut Vec<Command>) -> Result<()> {
         let mut drained = std::mem::take(commands).into_iter();
         while let Some(command) = drained.next() {
             let result = match command {
                 Command::Spawn(e, components) => {
+                    let types: Vec<SchemaId> = components.iter().map(|(id, _)| *id).collect();
                     self.place(e, components);
-                    Ok(())
+                    self.fire(HookEvent::Add, e, &types)
                 }
                 Command::Insert(e, id, bytes) => self.insert_bytes(e, id, &bytes),
                 Command::Remove(e, id) => self.remove_id(e, id),
@@ -978,6 +1174,11 @@ impl World {
                     // As a name given between ticks: refused (taken, or
                     // the entity gone), it is not given.
                     let _ = self.set_name(e, &name);
+                    Ok(())
+                }
+                Command::State(state, value) => {
+                    let s = &mut self.reactive.states[state];
+                    s.pending = (value != s.current).then_some(value);
                     Ok(())
                 }
                 Command::Despawn(e) => {
@@ -997,7 +1198,7 @@ impl World {
     }
 
     /// Drops unapplied commands, freeing entities they reserved.
-    fn discard(&mut self, commands: &mut Vec<Command>) {
+    pub(crate) fn discard(&mut self, commands: &mut Vec<Command>) {
         for command in commands.drain(..) {
             if let Command::Spawn(e, _) = command {
                 let entities = self.entities.get_mut();
@@ -1132,4 +1333,102 @@ pub(crate) fn check_scale(scale: f32) -> Result<f32> {
             ),
         ))
     }
+}
+
+/// The points of `desc` in `world` (`guarded`: refuse a borrowed column,
+/// else read it in place, as a running system's snapshot does).
+pub(crate) fn spatial_points(
+    world: &World,
+    desc: &SpatialDesc,
+    guarded: bool,
+) -> Result<SpatialHash> {
+    let field = desc.field;
+    world.registry.check_field(field)?;
+    for id in desc.with.iter().chain(&desc.without) {
+        world.registry.check(*id)?;
+    }
+    if !matches!(
+        field.ty,
+        og_core::reflect::FieldType::Vec3 | og_core::reflect::FieldType::Vec2
+    ) {
+        return Err(Error::new(
+            ErrorKind::Invalid,
+            format!(
+                "a spatial index places entities by a vec3 or vec2 field; {} is {}",
+                world.registry.field_name(field),
+                field.ty.name()
+            ),
+        ));
+    }
+    let mut points = Vec::new();
+    for arch in &world.archetypes {
+        if !arch.has(field.component)
+            || !desc.with.iter().all(|id| arch.has(*id))
+            || desc.without.iter().any(|id| arch.has(*id))
+            || arch.entities.is_empty()
+        {
+            continue;
+        }
+        let c = arch
+            .column_index(field.component, field.field)
+            .expect("the archetype has the component");
+        let mut read = |bytes: &[u8]| {
+            let size = bytes.len() / arch.len();
+            for (row, e) in arch.entities.iter().enumerate() {
+                if let Some(p) =
+                    crate::spatial::position(field.ty, &bytes[row * size..(row + 1) * size])
+                {
+                    points.push((*e, p));
+                }
+            }
+        };
+        match arch.columns[c].try_borrow() {
+            Ok(col) => read(col.bytes()),
+            Err(_) if !guarded => {
+                // SAFETY: as in `World::write_columns`: only the running
+                // system holds a column mutably, blocked in this call.
+                read(unsafe { &*arch.columns[c].as_ptr() }.bytes())
+            }
+            Err(_) => return Err(busy(&world.registry.field_name(field))),
+        }
+    }
+    SpatialHash::new(points, desc.cell)
+}
+
+/// [`World::referencing`] (`guarded` as in [`spatial_points`]).
+pub(crate) fn referencing(
+    world: &World,
+    field: FieldRef,
+    target: Entity,
+    guarded: bool,
+) -> Result<Vec<Entity>> {
+    world.registry.check_field(field)?;
+    if field.ty != og_core::reflect::FieldType::U64 {
+        return Err(Error::new(
+            ErrorKind::Invalid,
+            format!("{} is not an entity link", world.registry.field_name(field)),
+        ));
+    }
+    let want = target.to_bits().to_le_bytes();
+    let mut out = Vec::new();
+    for arch in &world.archetypes {
+        let Some(c) = arch.column_index(field.component, field.field) else {
+            continue;
+        };
+        let mut scan = |bytes: &[u8]| {
+            for (row, e) in arch.entities.iter().enumerate() {
+                if bytes[row * 8..row * 8 + 8] == want {
+                    out.push(*e);
+                }
+            }
+        };
+        match arch.columns[c].try_borrow() {
+            Ok(col) => scan(col.bytes()),
+            // SAFETY: as in `World::write_columns`.
+            Err(_) if !guarded => scan(unsafe { &*arch.columns[c].as_ptr() }.bytes()),
+            Err(_) => return Err(busy(&world.registry.field_name(field))),
+        }
+    }
+    og_core::sort::sort(&mut out);
+    Ok(out)
 }

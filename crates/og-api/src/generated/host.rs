@@ -97,6 +97,12 @@ pub trait WorldApi: Wire {
     fn og_save_edit_text(&self, save_edit: u32) -> String;
     /// `SaveEdit.close`
     fn og_save_edit_close(&self, save_edit: u32);
+    /// `SpatialIndex.count`
+    fn og_spatial_index_get_count(&self, spatial_index: u32) -> u32;
+    /// `SpatialIndex.within`
+    fn og_spatial_index_within(&self, spatial_index: u32, center: String, radius: f64) -> String;
+    /// `SpatialIndex.nearest`
+    fn og_spatial_index_nearest(&self, spatial_index: u32, center: String, count: u32) -> String;
     /// `World.tick`
     fn og_world_get_tick(&self, world: u32) -> u32;
     /// `World.spawn`
@@ -117,6 +123,16 @@ pub trait WorldApi: Wire {
     fn og_world_set(&self, world: u32, entity: f64, component: String, value: String) -> String;
     /// `World.resource`
     fn og_world_resource(&self, world: u32, resource: String) -> String;
+    /// `World.children`
+    fn og_world_children(&self, world: u32, entity: f64) -> String;
+    /// `World.removed`
+    fn og_world_removed(&self, world: u32, component: String) -> String;
+    /// `World.spatial`
+    fn og_world_spatial(&self, world: u32, desc: Option<String>) -> String;
+    /// `World.state`
+    fn og_world_state(&self, world: u32, name: String) -> String;
+    /// `World.setState`
+    fn og_world_set_state(&self, world: u32, name: String, value: String) -> String;
     /// `World.find`
     fn og_world_find(&self, world: u32, name: String) -> String;
     /// `World.nameOf`
@@ -145,6 +161,8 @@ pub trait WorldApi: Wire {
     fn og_archetype_view_get_tick(&self, archetype_view: u32) -> u32;
     /// `ArchetypeView.entities`
     fn og_archetype_view_get_entities(&self, archetype_view: u32) -> Self::Array;
+    /// `ArchetypeView.rows`
+    fn og_archetype_view_get_rows(&self, archetype_view: u32) -> Self::Array;
     /// `ArchetypeView.entity`
     fn og_archetype_view_entity(&self, archetype_view: u32, index: u32) -> f64;
     /// `ArchetypeView.has`
@@ -155,6 +173,10 @@ pub trait WorldApi: Wire {
 
 /// `system`: packages/knowledge/wiki/system.md.
 pub trait SystemApi: Wire {
+    /// `Hook.name`
+    fn og_hook_get_name(&self, hook: u32) -> String;
+    /// `defineHook`
+    fn og_system_define_hook(&self, name: String, component: String, desc: String, run: u32) -> u32;
     /// `System.name`
     fn og_system_get_name(&self, system: u32) -> String;
     /// `System.reads`
@@ -1180,6 +1202,9 @@ pub const SYMBOLS: &[&str] = &[
     "og_save_edit_spawn",
     "og_save_edit_text",
     "og_save_edit_close",
+    "og_spatial_index_get_count",
+    "og_spatial_index_within",
+    "og_spatial_index_nearest",
     "og_world_get_tick",
     "og_world_spawn",
     "og_world_despawn",
@@ -1190,6 +1215,11 @@ pub const SYMBOLS: &[&str] = &[
     "og_world_get",
     "og_world_set",
     "og_world_resource",
+    "og_world_children",
+    "og_world_removed",
+    "og_world_spatial",
+    "og_world_state",
+    "og_world_set_state",
     "og_world_find",
     "og_world_name_of",
     "og_world_query",
@@ -1204,9 +1234,12 @@ pub const SYMBOLS: &[&str] = &[
     "og_archetype_view_get_count",
     "og_archetype_view_get_tick",
     "og_archetype_view_get_entities",
+    "og_archetype_view_get_rows",
     "og_archetype_view_entity",
     "og_archetype_view_has",
     "og_archetype_view_column",
+    "og_hook_get_name",
+    "og_system_define_hook",
     "og_system_get_name",
     "og_system_get_reads",
     "og_system_get_writes",

@@ -185,10 +185,49 @@ module world {
   }
 
   struct QueryDesc {
-    doc "Which entities a query matches."
+    doc "Which entities a query matches. The change filters (changed, added, removed) narrow an archetype's rows to those that pass every filter (ArchetypeView.rows) and read what happened since the last tick began; a component is tracked once a system filters on it (SystemDesc.changed, added, removed), and filtering on one no system tracks is refused."
     desc true
     field with List.AnyComponent "Components an entity must have."
     field without List.AnyComponent "Components an entity must not have."
+    field changed List.AnyComponent "Components (required, as `with`) whose value changed: a write that leaves a value as it was is not a change."
+    field added List.AnyComponent "Components (required, as `with`) added: spawned with, or inserted into an entity without them."
+    field removed List.AnyComponent "Components the entity lost (removed; a despawned entity is in no archetype, so it is in world.removed only)."
+  }
+
+  struct SpatialDesc {
+    doc "Which entities world.spatial places: every live entity with an og.Transform (and every component of `with`, none of `without`), at its og.Transform.position (relative to its parent, for a child)."
+    desc true
+    field with List.AnyComponent "Components an entity must have to be placed."
+    field without List.AnyComponent "Components an entity must not have."
+    field cell f32 "The hash's cell size; 0 picks one from the entities' spread. Answers never depend on it, only speed." {
+      unit m
+      min 0
+    }
+  }
+
+  struct Neighbour {
+    doc "One entity a spatial query found."
+    field entity Entity "The entity."
+    field distance f64 "Its distance from the query's centre." {
+      unit m
+    }
+  }
+
+  interface SpatialIndex {
+    doc "A spatial hash of entities' positions as they were when world.spatial built it: it does not follow later moves (build it again after they move). Answers are ordered by distance, then by entity, so equal distances come out alike on every run and host. Valid for the system call or the call outside systems it was built in."
+    prop count u32 "The entities it holds."
+    fn within {
+      doc "Every entity at most `radius` from `center`, nearest first."
+      param center Vector3 "The centre."
+      param radius f32 "The radius in metres; a negative one finds nothing."
+      returns List.Neighbour
+    }
+    fn nearest {
+      doc "The `count` entities nearest `center`, nearest first; fewer when it holds fewer."
+      param center Vector3 "The centre."
+      param count u32 "How many."
+      returns List.Neighbour
+    }
   }
 
   interface World {
@@ -263,6 +302,40 @@ module world {
       generic R AnyResource
       param resource R "The resource token."
       returns Result.Value.R "Refused for an unregistered resource (or, in a publish build, one the running system did not declare)."
+    }
+
+    fn children {
+      doc "The entities whose og.Parent is `entity`, in entity order (index, then generation). Any system may ask: it reads only the hierarchy."
+      param entity Entity "The parent."
+      returns List.Entity "Empty for a dead entity or one without children."
+    }
+
+    fn removed {
+      doc "Entities that lost a component: removed from them, or despawned with it. Inside a system, since the system last ran (the component among its reads or writes); between ticks, since the last tick began. The world keeps a tick's removals through the next tick. The component must be tracked (a system filters on it: SystemDesc.changed, added or removed)."
+      generic C AnyComponent
+      param component C "The component token."
+      returns Result.List.Entity "In entity order; refused for a component no system tracks."
+    }
+
+    fn spatial {
+      doc "A spatial hash of the entities SpatialDesc selects, for radius and k-nearest queries on entities without colliders (og.physics answers those with). Inside a system, og.Transform must be among its reads or writes; the index holds the positions as the system sees them when it is built."
+      param desc SpatialDesc "Which entities, and the cell size." {
+        optional true
+      }
+      returns Result.SpatialIndex
+    }
+
+    fn state {
+      doc "A state machine's current value (GameDesc.states)."
+      param name String "The state machine."
+      returns Option.String "Null for a name GameDesc.states does not declare."
+    }
+
+    fn setState {
+      doc "Ask a state machine to move to a value as the next tick begins: that tick runs the systems leaving the old value (SystemDesc.when exit), then those entering the new one (enter), then its systems, those bound to a value (during) only while the machine holds it. The last ask before the tick wins; asking for the value it holds cancels one asked for. Any system may ask."
+      param name String "The state machine."
+      param value String "One of its values."
+      returns Result.Void "Refused for an unknown state machine or value."
     }
 
     fn find {
@@ -345,6 +418,7 @@ module world {
     prop count u32 "The number of entities in the archetype."
     prop tick u32 "The tick this view belongs to."
     prop entities Uint32Array "The entities as (index, generation) pairs: entity i is at 2i and 2i + 1. These are not handles: for a handle use entity(i) (world.despawn, get, set, insert and remove refuse a bare index, naming the call)."
+    prop rows Uint32Array "The rows the query's change filters pass (SystemDesc.changed, added, removed; QueryDesc's), in row order; every row, 0 to count - 1, for a query without them. Columns still hold every row: loop over rows and index the columns with them."
     fn entity {
       doc "The handle of entity i."
       param index u32 "The row, from 0 to count - 1."

@@ -8,6 +8,26 @@
       {
         "member": "BackdropEffect.glass, BackdropEffect.elevation, BackdropEffect.edge, BackdropEffect.edgeColor, BackdropEffect.solid, BackdropEffect.cssMix, GlassWeight, Elevation",
         "summary": "Flat glass (docs/ui.md §5.3): a backdrop effect takes one of three weights (thin 10 px, regular 22 px, thick 32 px of CSS blur, 200 % saturation, a light tint in the theme's scheme, a 0.5 px hairline inside the edge, mixed as CSS mixes), an elevation (raised, float, lift: soft shadows outside the shape only), its own hairline width and colour, solid (the tint opaque, nothing under it read) and cssMix. Under reduced transparency a weighted glass is the solid raised surface; under high contrast solid with a strong 1 px edge. Thin glass carries icons and play discs only, never text; regular and thick hold the scheme's text at 4.5:1. A style writes `effect backdrop … glass thick elevation lift`. Backdrops without these draw as before."
+},
+        {
+        "member": "SystemDesc.changed, SystemDesc.added, SystemDesc.removed, ArchetypeView.rows, QueryDesc.changed, QueryDesc.added, QueryDesc.removed, World.removed",
+        "summary": "Change detection: a system's change filters narrow its query to the rows whose component changed or was added since the system last ran (ArchetypeView.rows; columns still hold every row), and world.removed lists the entities that lost one. A change is a value that differs from the one last compared, compared after each system and hook for what it writes and as each tick begins for what was written between ticks; a write of the same value is not one. Change ticks count system runs, never a clock, and are world state: saves, the hash and replays carry them, so a restored world filters tick for tick as the original. A component is tracked once a system filters on it; a world that tracks nothing and has no state machine saves and hashes exactly as before."
+      },
+      {
+        "member": "og.defineHook, HookDesc, HookEvent, HookRun, Hook, GameDesc.hooks",
+        "summary": "Add and remove hooks per component: a hook runs after its component is added to an entity (spawned with, or inserted) and before it is removed (removed, or despawned, so it reads it), wherever the change comes from (a system's structural changes as they apply, a call between ticks), in GameDesc.hooks order; its own changes apply when it returns and may run hooks in turn, 16 deep at most. Restores run none."
+      },
+      {
+        "member": "GameDesc.states, StateDesc, SystemDesc.state, SystemDesc.value, SystemDesc.when, StateWhen, SystemDesc.runIf, RunCondition, World.state, World.setState",
+        "summary": "Game states and run conditions: a state machine (GameDesc.states) holds one of its values; world.setState moves it as the next tick begins, which runs the systems leaving the old value (when: exit), then those entering the new one (enter), each exactly once, then the tick's systems, those bound to a value (during) only while it holds. The first tick enters each initial value. A run condition (runIf) is asked before each run with the system's access read only; a skipped tick is not a run. The states are world state, saved and restored with it."
+      },
+      {
+        "member": "World.children",
+        "summary": "world.children(entity) lists the entities whose og.Parent is it, in entity order; any system may ask."
+      },
+      {
+        "member": "World.spatial, SpatialDesc, SpatialIndex, Neighbour",
+        "summary": "A spatial hash for entities without colliders: world.spatial({ with, without, cell }) places every entity with an og.Transform at its position, and the index answers within(center, radius) and nearest(center, count), nearest first with equal distances in entity order, the same on both hosts (positions read as stored, distances in f64)."
       },
       {
         "member": "GameDesc.saveVersion, GameDesc.migrations, SaveMigration, World.openSave, SaveEdit, SaveType",

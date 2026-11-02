@@ -71,6 +71,12 @@ export interface HostAbi<A, V> {
   og_save_edit_text(save_edit: number): string;
   /** `SaveEdit.close` */
   og_save_edit_close(save_edit: number): void;
+  /** `SpatialIndex.count` */
+  og_spatial_index_get_count(spatial_index: number): number;
+  /** `SpatialIndex.within` */
+  og_spatial_index_within(spatial_index: number, center: string, radius: number): string;
+  /** `SpatialIndex.nearest` */
+  og_spatial_index_nearest(spatial_index: number, center: string, count: number): string;
   /** `World.tick` */
   og_world_get_tick(world: number): number;
   /** `World.spawn` */
@@ -91,6 +97,16 @@ export interface HostAbi<A, V> {
   og_world_set(world: number, entity: number, component: string, value: string): string;
   /** `World.resource` */
   og_world_resource(world: number, resource: string): string;
+  /** `World.children` */
+  og_world_children(world: number, entity: number): string;
+  /** `World.removed` */
+  og_world_removed(world: number, component: string): string;
+  /** `World.spatial` */
+  og_world_spatial(world: number, desc: string | undefined): string;
+  /** `World.state` */
+  og_world_state(world: number, name: string): string;
+  /** `World.setState` */
+  og_world_set_state(world: number, name: string, value: string): string;
   /** `World.find` */
   og_world_find(world: number, name: string): string;
   /** `World.nameOf` */
@@ -119,12 +135,18 @@ export interface HostAbi<A, V> {
   og_archetype_view_get_tick(archetype_view: number): number;
   /** `ArchetypeView.entities` */
   og_archetype_view_get_entities(archetype_view: number): A;
+  /** `ArchetypeView.rows` */
+  og_archetype_view_get_rows(archetype_view: number): A;
   /** `ArchetypeView.entity` */
   og_archetype_view_entity(archetype_view: number, index: number): number;
   /** `ArchetypeView.has` */
   og_archetype_view_has(archetype_view: number, component: string): boolean;
   /** `ArchetypeView.column` */
   og_archetype_view_column(archetype_view: number, component: string): V;
+  /** `Hook.name` */
+  og_hook_get_name(hook: number): string;
+  /** `defineHook` */
+  og_system_define_hook(name: string, component: string, desc: string, run: number): number;
   /** `System.name` */
   og_system_get_name(system: number): string;
   /** `System.reads` */
@@ -1037,6 +1059,9 @@ export const SYMBOLS: readonly string[] = [
   "og_save_edit_spawn",
   "og_save_edit_text",
   "og_save_edit_close",
+  "og_spatial_index_get_count",
+  "og_spatial_index_within",
+  "og_spatial_index_nearest",
   "og_world_get_tick",
   "og_world_spawn",
   "og_world_despawn",
@@ -1047,6 +1072,11 @@ export const SYMBOLS: readonly string[] = [
   "og_world_get",
   "og_world_set",
   "og_world_resource",
+  "og_world_children",
+  "og_world_removed",
+  "og_world_spatial",
+  "og_world_state",
+  "og_world_set_state",
   "og_world_find",
   "og_world_name_of",
   "og_world_query",
@@ -1061,9 +1091,12 @@ export const SYMBOLS: readonly string[] = [
   "og_archetype_view_get_count",
   "og_archetype_view_get_tick",
   "og_archetype_view_get_entities",
+  "og_archetype_view_get_rows",
   "og_archetype_view_entity",
   "og_archetype_view_has",
   "og_archetype_view_column",
+  "og_hook_get_name",
+  "og_system_define_hook",
   "og_system_get_name",
   "og_system_get_reads",
   "og_system_get_writes",
@@ -1576,6 +1609,10 @@ export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {
     og_world_set(world: number, entity: number, component: string, value: string) {
       if (typeof entity !== "number") notEntity("world.set", "entity", entity);
       return abi.og_world_set(world, entity, component, value);
+    },
+    og_world_children(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("world.children", "entity", entity);
+      return abi.og_world_children(world, entity);
     },
     og_world_name_of(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("world.nameOf", "entity", entity);

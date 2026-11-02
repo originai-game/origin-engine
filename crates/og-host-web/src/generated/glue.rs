@@ -169,6 +169,21 @@ pub fn og_save_edit_close(save_edit: u32) {
 }
 
 #[wasm_bindgen]
+pub fn og_spatial_index_get_count(spatial_index: u32) -> u32 {
+    <Host as WorldApi>::og_spatial_index_get_count(&Host, spatial_index)
+}
+
+#[wasm_bindgen]
+pub fn og_spatial_index_within(spatial_index: u32, center: String, radius: f64) -> String {
+    <Host as WorldApi>::og_spatial_index_within(&Host, spatial_index, center, radius)
+}
+
+#[wasm_bindgen]
+pub fn og_spatial_index_nearest(spatial_index: u32, center: String, count: u32) -> String {
+    <Host as WorldApi>::og_spatial_index_nearest(&Host, spatial_index, center, count)
+}
+
+#[wasm_bindgen]
 pub fn og_world_get_tick(world: u32) -> u32 {
     <Host as WorldApi>::og_world_get_tick(&Host, world)
 }
@@ -216,6 +231,31 @@ pub fn og_world_set(world: u32, entity: f64, component: String, value: String) -
 #[wasm_bindgen]
 pub fn og_world_resource(world: u32, resource: String) -> String {
     <Host as WorldApi>::og_world_resource(&Host, world, resource)
+}
+
+#[wasm_bindgen]
+pub fn og_world_children(world: u32, entity: f64) -> String {
+    <Host as WorldApi>::og_world_children(&Host, world, entity)
+}
+
+#[wasm_bindgen]
+pub fn og_world_removed(world: u32, component: String) -> String {
+    <Host as WorldApi>::og_world_removed(&Host, world, component)
+}
+
+#[wasm_bindgen]
+pub fn og_world_spatial(world: u32, desc: Option<String>) -> String {
+    <Host as WorldApi>::og_world_spatial(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_world_state(world: u32, name: String) -> String {
+    <Host as WorldApi>::og_world_state(&Host, world, name)
+}
+
+#[wasm_bindgen]
+pub fn og_world_set_state(world: u32, name: String, value: String) -> String {
+    <Host as WorldApi>::og_world_set_state(&Host, world, name, value)
 }
 
 #[wasm_bindgen]
@@ -289,6 +329,11 @@ pub fn og_archetype_view_get_entities(archetype_view: u32) -> Vec<u32> {
 }
 
 #[wasm_bindgen]
+pub fn og_archetype_view_get_rows(archetype_view: u32) -> Vec<u32> {
+    <Host as WorldApi>::og_archetype_view_get_rows(&Host, archetype_view)
+}
+
+#[wasm_bindgen]
 pub fn og_archetype_view_entity(archetype_view: u32, index: u32) -> f64 {
     <Host as WorldApi>::og_archetype_view_entity(&Host, archetype_view, index)
 }
@@ -301,6 +346,16 @@ pub fn og_archetype_view_has(archetype_view: u32, component: String) -> bool {
 #[wasm_bindgen]
 pub fn og_archetype_view_column(archetype_view: u32, component: String) -> Vec<u32> {
     <Host as WorldApi>::og_archetype_view_column(&Host, archetype_view, component)
+}
+
+#[wasm_bindgen]
+pub fn og_hook_get_name(hook: u32) -> String {
+    <Host as SystemApi>::og_hook_get_name(&Host, hook)
+}
+
+#[wasm_bindgen]
+pub fn og_system_define_hook(name: String, component: String, desc: String, run: u32) -> u32 {
+    <Host as SystemApi>::og_system_define_hook(&Host, name, component, desc, run)
 }
 
 #[wasm_bindgen]

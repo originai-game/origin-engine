@@ -1480,7 +1480,7 @@ export interface WorldRestored {
 }
 
 /**
- * Which entities a query matches.
+ * Which entities a query matches. The change filters (changed, added, removed) narrow an archetype's rows to those that pass every filter (ArchetypeView.rows) and read what happened since the last tick began; a component is tracked once a system filters on it (SystemDesc.changed, added, removed), and filtering on one no system tracks is refused.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -1497,6 +1497,86 @@ export interface QueryDesc {
    * @default []
    */
   readonly without?: readonly AnyComponent[];
+  /**
+   * Components (required, as `with`) whose value changed: a write that leaves a value as it was is not a change.
+   *
+   * @default []
+   */
+  readonly changed?: readonly AnyComponent[];
+  /**
+   * Components (required, as `with`) added: spawned with, or inserted into an entity without them.
+   *
+   * @default []
+   */
+  readonly added?: readonly AnyComponent[];
+  /**
+   * Components the entity lost (removed; a despawned entity is in no archetype, so it is in world.removed only).
+   *
+   * @default []
+   */
+  readonly removed?: readonly AnyComponent[];
+}
+
+/**
+ * Which entities world.spatial places: every live entity with an og.Transform (and every component of `with`, none of `without`), at its og.Transform.position (relative to its parent, for a child).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SpatialDesc {
+  /**
+   * Components an entity must have to be placed.
+   *
+   * @default []
+   */
+  readonly with?: readonly AnyComponent[];
+  /**
+   * Components an entity must not have.
+   *
+   * @default []
+   */
+  readonly without?: readonly AnyComponent[];
+  /**
+   * The hash's cell size; 0 picks one from the entities' spread. Answers never depend on it, only speed.
+   *
+   * @default 0
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly cell?: number;
+}
+
+/** One entity a spatial query found. */
+export interface Neighbour {
+  /** The entity. */
+  readonly entity: Entity;
+  /**
+   * Its distance from the query's centre.
+   *
+   * @unit m (metres)
+   */
+  readonly distance: number;
+}
+
+/**
+ * A spatial hash of entities' positions as they were when world.spatial built it: it does not follow later moves (build it again after they move). Answers are ordered by distance, then by entity, so equal distances come out alike on every run and host. Valid for the system call or the call outside systems it was built in.
+ */
+export interface SpatialIndex {
+  /** The entities it holds. */
+  readonly count: number;
+  /**
+   * Every entity at most `radius` from `center`, nearest first.
+   *
+   * @param center The centre.
+   * @param radius The radius in metres; a negative one finds nothing.
+   */
+  within(center: Vector3, radius: number): readonly Neighbour[];
+  /**
+   * The `count` entities nearest `center`, nearest first; fewer when it holds fewer.
+   *
+   * @param center The centre.
+   * @param count How many.
+   */
+  nearest(center: Vector3, count: number): readonly Neighbour[];
 }
 
 /**
@@ -1572,6 +1652,41 @@ export interface World {
    * @returns Refused for an unregistered resource (or, in a publish build, one the running system did not declare).
    */
   resource<R extends AnyResource>(resource: R): Result<Value<R>>;
+  /**
+   * The entities whose og.Parent is `entity`, in entity order (index, then generation). Any system may ask: it reads only the hierarchy.
+   *
+   * @param entity The parent.
+   * @returns Empty for a dead entity or one without children.
+   */
+  children(entity: Entity): readonly Entity[];
+  /**
+   * Entities that lost a component: removed from them, or despawned with it. Inside a system, since the system last ran (the component among its reads or writes); between ticks, since the last tick began. The world keeps a tick's removals through the next tick. The component must be tracked (a system filters on it: SystemDesc.changed, added or removed).
+   *
+   * @param component The component token.
+   * @returns In entity order; refused for a component no system tracks.
+   */
+  removed<C extends AnyComponent>(component: C): Result<readonly Entity[]>;
+  /**
+   * A spatial hash of the entities SpatialDesc selects, for radius and k-nearest queries on entities without colliders (og.physics answers those with). Inside a system, og.Transform must be among its reads or writes; the index holds the positions as the system sees them when it is built.
+   *
+   * @param desc Which entities, and the cell size.
+   */
+  spatial(desc?: SpatialDesc): Result<SpatialIndex>;
+  /**
+   * A state machine's current value (GameDesc.states).
+   *
+   * @param name The state machine.
+   * @returns Null for a name GameDesc.states does not declare.
+   */
+  state(name: string): string | null;
+  /**
+   * Ask a state machine to move to a value as the next tick begins: that tick runs the systems leaving the old value (SystemDesc.when exit), then those entering the new one (enter), then its systems, those bound to a value (during) only while the machine holds it. The last ask before the tick wins; asking for the value it holds cancels one asked for. Any system may ask.
+   *
+   * @param name The state machine.
+   * @param value One of its values.
+   * @returns Refused for an unknown state machine or value.
+   */
+  setState(name: string, value: string): Result<void>;
   /**
    * The entity with a name.
    *
@@ -1659,6 +1774,10 @@ export interface ArchetypeView {
    */
   readonly entities: Uint32Array;
   /**
+   * The rows the query's change filters pass (SystemDesc.changed, added, removed; QueryDesc's), in row order; every row, 0 to count - 1, for a query without them. Columns still hold every row: loop over rows and index the columns with them.
+   */
+  readonly rows: Uint32Array;
+  /**
    * The handle of entity i.
    *
    * @param index The row, from 0 to count - 1.
@@ -1684,6 +1803,33 @@ export interface ArchetypeView {
 // A system declares what it reads and writes; a write to an undeclared component is refused at registration with the field name.
 // Its query is every component of its reads and writes together: an entity matches only when it has all of them (and none of `without`). A component declared to read one entity with world.get (the player's car) therefore narrows the loop to entities that have it too, often to none, silently. world.query is refused inside a system, by design (a system reaches only what it declared, so its access is known before it runs): loop over each archetype in a system of its own, declaring only that archetype's components, and carry what crosses between systems in a resource.
 // Resources and events it reaches through the world must be declared too: in a dev or release build (og run, og test) an undeclared read or write throws with the system's name and the record and fails the tick; a publish build refuses it and logs it once per system in the engine log, and the game keeps running. og.Rng among the reads may fork (a fork reads the seed only and leaves the stream as it is); a draw moves the stream, so it needs og.Rng among the writes.
+
+/**
+ * When a system bound to a state machine's value runs.
+ * - `"during"`: Every tick while the state machine holds the value.
+ * - `"enter"`: Once, as the tick begins, when the machine enters the value (the first tick, for its initial value).
+ * - `"exit"`: Once, as the tick begins, when the machine leaves the value.
+ */
+export type StateWhen = "during" | "enter" | "exit";
+
+/**
+ * A state machine (GameDesc.states): a name and the values it moves between; it holds one at a time, and world.setState moves it as the next tick begins. Its value is world state: saves, the hash and replays carry it.
+ */
+export interface StateDesc {
+  /** Its unique name. */
+  readonly name: string;
+  /** Its values, at least one, each unique. */
+  readonly values: readonly string[];
+  /** The value it starts in; empty: the first. */
+  readonly initial: string;
+}
+
+/**
+ * Whether a system runs this tick: called before its run, after the systems before it, with the system's reads and writes as read-only access. It may not change the world.
+ *
+ * @param world The world, read only.
+ */
+export type RunCondition = (world: World) => boolean;
 
 /**
  * A system's declared access and order.
@@ -1721,7 +1867,106 @@ export interface SystemDesc {
    * @default []
    */
   readonly before?: readonly string[];
+  /**
+   * Change filters on the query: components (required, as reads) whose value changed since this system last ran. A change is a value that differs from the one last compared, compared after each system and hook for what it writes and as each tick begins for what was written between ticks: counted in system runs, never by a clock, so saves and replays carry it. The archetypes the query hands carry the rows that pass every filter (ArchetypeView.rows).
+   *
+   * @default []
+   */
+  readonly changed?: readonly AnyComponent[];
+  /**
+   * Components (required, as reads) added since this system last ran: spawned with, or inserted into an entity without them.
+   *
+   * @default []
+   */
+  readonly added?: readonly AnyComponent[];
+  /**
+   * Components the entity lost since this system last ran (a despawned entity: world.removed).
+   *
+   * @default []
+   */
+  readonly removed?: readonly AnyComponent[];
+  /**
+   * A state machine (GameDesc.states) the system is bound to; empty: none.
+   *
+   * @default ""
+   */
+  readonly state?: string;
+  /**
+   * The value of `state` it is bound to.
+   *
+   * @default ""
+   */
+  readonly value?: string;
+  /**
+   * When it runs: during the value, or once on entering or leaving it.
+   *
+   * @default "during"
+   */
+  readonly when?: StateWhen;
+  /**
+   * A run condition: the system runs only on ticks it answers true. A skipped tick is not a run: the change filters keep reading from the last one.
+   *
+   * @default null
+   */
+  readonly runIf?: RunCondition | null;
 }
+
+/**
+ * What a hook reacts to.
+ * - `"add"`: The component was added (spawned with, or inserted into an entity without it): the hook runs after it is in place.
+ * - `"remove"`: The component is being removed (removed, or its entity despawned): the hook runs before it goes, and reads it.
+ */
+export type HookEvent = "add" | "remove";
+
+/**
+ * A hook's event and declared access.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface HookDesc {
+  /**
+   * Add or remove.
+   *
+   * @default "add"
+   */
+  readonly on?: HookEvent;
+  /**
+   * What it reads, as a system declares it.
+   *
+   * @default []
+   */
+  readonly reads?: readonly (AnyReflected | AnyEvent)[];
+  /**
+   * What it writes, as a system declares it.
+   *
+   * @default []
+   */
+  readonly writes?: readonly (AnyReflected | AnyEvent)[];
+}
+
+/**
+ * A hook's body: called once per entity the component is added to or removed from, wherever the change came from (a system's structural changes as they apply when it returns, or a call between ticks), in the order hooks are listed in GameDesc.hooks. Its own structural changes apply when it returns and may run hooks in turn (16 deep at most). A restore runs none.
+ *
+ * @param world The world, as a system's.
+ * @param entity The entity.
+ */
+export type HookRun = (world: World, entity: Entity) => void;
+
+/** A declared hook. */
+export interface Hook {
+  /** The hook's unique name. */
+  readonly name: string;
+}
+
+/**
+ * Declare a hook on a component; list it in GameDesc.hooks.
+ *
+ * @param name The hook's unique name.
+ * @param component The component it reacts to.
+ * @param desc Add or remove, and its access.
+ * @param run The body.
+ */
+export declare function defineHook<C extends AnyComponent>(name: string, component: C, desc: HookDesc, run: HookRun): Hook;
 
 /**
  * A system's body. It is called once per tick; loop over `q.archetypes()`, then over rows.
@@ -1806,6 +2051,18 @@ export interface GameDesc {
    * @default []
    */
   readonly systems?: readonly System[];
+  /**
+   * The hooks (og.defineHook), in the order they run.
+   *
+   * @default []
+   */
+  readonly hooks?: readonly Hook[];
+  /**
+   * The state machines systems bind to (SystemDesc.state).
+   *
+   * @default []
+   */
+  readonly states?: readonly StateDesc[];
   /**
    * The game's own resources, created at their defaults.
    *

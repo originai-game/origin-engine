@@ -29,6 +29,8 @@ module game {
       default "main"
     }
     field systems List.System "The systems, in declaration order before `after`/`before` constraints apply."
+    field hooks List.Hook "The hooks (og.defineHook), in the order they run."
+    field states List.StateDesc "The state machines systems bind to (SystemDesc.state)."
     field resources List.AnyResource "The game's own resources, created at their defaults."
     field commands Map.CommandHandler "Game actions registered into the command channel, by action name."
     field commandHelp Map.CommandDesc "Each game action's argument form and one sentence, by its name in commands, for `help`: `{ place: { usage: \"<x>:<y>\", doc: \"Move the hero there.\" } }`. An action without an entry is listed by name alone."

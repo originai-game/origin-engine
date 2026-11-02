@@ -96,6 +96,9 @@ function owners(): Record<string, object> {
     Shape: new og.Shape(),
     // A save opened for a migration's edits (world.openSave).
     SaveEdit: must(world.openSave(must(world.snapshot()))),
+    // A spatial hash of the world's entities (world.spatial), and a hook token.
+    SpatialIndex: must(world.spatial()),
+    Hook: engineExports.defineHook("SurfaceHook", Marker, {}, () => {}),
   };
 }
 

@@ -10,13 +10,13 @@ pub use creation::{
 };
 use creation::{boot_scene, err, run_start};
 mod dispatch;
-use dispatch::run_system;
 pub(crate) use dispatch::{
     Engine, Frame, Held, QueryColumn, QueryRec, SceneInstance, State, SystemEntry, Table,
     ViewRecord, before_structural, call, clear_world_queries, engine, engine_ids, invalidate,
     queued_structural, running,
 };
 pub use dispatch::{begin_bundle, command};
+use dispatch::{run_condition, run_hook, run_system};
 mod tick;
 pub use tick::{advance, answer_call, call_rpc, frame, take_log, take_outputs};
 mod resources;
@@ -49,7 +49,8 @@ use std::rc::Rc;
 /// One call into game code.
 #[derive(Clone, Debug)]
 pub struct Dispatch {
-    /// 0 system, 1 command, 2 facts.
+    /// 0 system, 1 command, 2 facts, 3 a run condition (answers `=true`
+    /// or `=false`), 4 a hook (payload: the entity).
     pub kind: u32,
     pub engine: u32,
     /// The callback id the runtime's table holds the function under.
@@ -145,6 +146,8 @@ pub(crate) struct Handles {
     pub frame_queries: Table<(u32, QueryRec)>,
     pub world_queries: Table<(u32, QueryRec)>,
     pub streams: Table<(u32, Rng)>,
+    /// Spatial indexes (world.spatial), retired with the views.
+    pub spatial: Table<(u32, og_ecs::SpatialHash)>,
 }
 
 thread_local! {
@@ -184,6 +187,27 @@ pub(crate) struct SystemDecl {
     pub after: Vec<String>,
     pub before: Vec<String>,
     pub run: u32,
+    /// Change filters on its query (SystemDesc.changed, added, removed).
+    pub changed: Vec<String>,
+    pub added: Vec<String>,
+    pub removed: Vec<String>,
+    /// SystemDesc.state, value and when: the state binding.
+    pub state: String,
+    pub value: String,
+    pub when: og_ecs::StateWhen,
+    /// SystemDesc.runIf's callback.
+    pub condition: Option<u32>,
+}
+
+/// A hook as declared (og.defineHook).
+#[derive(Clone, Debug)]
+pub(crate) struct HookDecl {
+    pub name: String,
+    pub component: String,
+    pub on: og_ecs::HookEvent,
+    pub reads: Vec<Token>,
+    pub writes: Vec<Token>,
+    pub run: u32,
 }
 
 #[derive(Clone, Debug)]
@@ -191,6 +215,10 @@ pub(crate) struct GameDecl {
     pub tick: u32,
     pub seed: u32,
     pub systems: Vec<u32>,
+    /// GameDesc.hooks, by declaration handle.
+    pub hooks: Vec<u32>,
+    /// GameDesc.states.
+    pub states: Vec<og_ecs::StateDesc>,
     pub resources: Vec<String>,
     pub commands: Vec<(String, u32)>,
     /// GameDesc.commandHelp: each action's usage and doc.
@@ -406,6 +434,7 @@ pub(crate) struct Declarations {
     /// Declarations that were refused; an engine will not start with them.
     pub errors: Vec<String>,
     pub systems: Vec<SystemDecl>,
+    pub hooks: Vec<HookDecl>,
     pub games: Vec<GameDecl>,
     pub commands: BTreeMap<String, CommandDecl>,
 }
@@ -447,11 +476,47 @@ pub(crate) fn declare_system(name: String, desc: &Value, run: u32) -> u32 {
         after: strings(&desc["after"]),
         before: strings(&desc["before"]),
         run,
+        changed: tokens(&desc["changed"])
+            .into_iter()
+            .map(|t| t.name)
+            .collect(),
+        added: tokens(&desc["added"]).into_iter().map(|t| t.name).collect(),
+        removed: tokens(&desc["removed"])
+            .into_iter()
+            .map(|t| t.name)
+            .collect(),
+        state: desc["state"].as_str().unwrap_or_default().to_string(),
+        value: desc["value"].as_str().unwrap_or_default().to_string(),
+        when: match desc["when"].as_str() {
+            Some("enter") => og_ecs::StateWhen::Enter,
+            Some("exit") => og_ecs::StateWhen::Exit,
+            _ => og_ecs::StateWhen::During,
+        },
+        condition: desc["runIf"].as_u64().map(|n| n as u32),
     };
     DECL.with(|d| {
         let mut d = d.borrow_mut();
         d.systems.push(decl);
         d.systems.len() as u32 - 1
+    })
+}
+
+pub(crate) fn declare_hook(name: String, component: String, desc: &Value, run: u32) -> u32 {
+    let decl = HookDecl {
+        name,
+        component,
+        on: match desc["on"].as_str() {
+            Some("remove") => og_ecs::HookEvent::Remove,
+            _ => og_ecs::HookEvent::Add,
+        },
+        reads: tokens(&desc["reads"]),
+        writes: tokens(&desc["writes"]),
+        run,
+    };
+    DECL.with(|d| {
+        let mut d = d.borrow_mut();
+        d.hooks.push(decl);
+        d.hooks.len() as u32 - 1
     })
 }
 
@@ -465,6 +530,26 @@ pub(crate) fn declare_game(desc: &Value) -> u32 {
             .map(|a| {
                 a.iter()
                     .filter_map(|s| s.as_u64().map(|n| n as u32))
+                    .collect()
+            })
+            .unwrap_or_default(),
+        hooks: desc["hooks"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .filter_map(|s| s.as_u64().map(|n| n as u32))
+                    .collect()
+            })
+            .unwrap_or_default(),
+        states: desc["states"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .map(|s| og_ecs::StateDesc {
+                        name: s["name"].as_str().unwrap_or_default().to_string(),
+                        values: strings(&s["values"]),
+                        initial: s["initial"].as_str().unwrap_or_default().to_string(),
+                    })
                     .collect()
             })
             .unwrap_or_default(),

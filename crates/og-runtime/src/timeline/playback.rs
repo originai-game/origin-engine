@@ -324,6 +324,7 @@ pub(crate) fn install(
                     write: names(&[&r.follower, &r.transform]),
                     ..QueryDesc::default()
                 }],
+                ..Default::default()
             },
             move |ctx| path_system(ctx, engine_id, &rec),
         )
@@ -352,6 +353,7 @@ pub(crate) fn install(
                     write: names(&[&r.timeline]),
                     ..QueryDesc::default()
                 }],
+                ..Default::default()
             },
             move |ctx| timeline_system(ctx, engine_id, &state, &rec, &ui),
         )

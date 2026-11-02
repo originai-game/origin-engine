@@ -11,6 +11,7 @@
 
 use crate::entity::Entity;
 use crate::query::{QueryAccess, QueryDesc, QueryIter};
+use crate::reactive::{ConditionFn, StateRun, StateWhen};
 use crate::registry::SchemaId;
 use crate::world::{Bundle, ResourceValue, World, busy, dead, encode_bundle, typed_ref};
 use og_core::reflect::Reflect;
@@ -28,6 +29,9 @@ pub struct SystemDesc {
     pub writes: Vec<String>,
     /// Queries the system iterates, by index, through [`SystemContext::query`].
     pub queries: Vec<QueryDesc>,
+    /// Bound to a state machine's value: it runs only while the state holds
+    /// it, or once on entering or leaving it ([`crate::reactive`]).
+    pub state: Option<StateRun>,
 }
 
 impl SystemDesc {
@@ -50,6 +54,36 @@ impl SystemDesc {
 
     pub fn query(mut self, query: QueryDesc) -> SystemDesc {
         self.queries.push(query);
+        self
+    }
+
+    /// Runs only while state machine `state` holds `value`.
+    pub fn in_state(mut self, state: &str, value: &str) -> SystemDesc {
+        self.state = Some(StateRun {
+            state: state.into(),
+            value: value.into(),
+            when: StateWhen::During,
+        });
+        self
+    }
+
+    /// Runs once, as a tick begins, when `state` enters `value`.
+    pub fn on_enter(mut self, state: &str, value: &str) -> SystemDesc {
+        self.state = Some(StateRun {
+            state: state.into(),
+            value: value.into(),
+            when: StateWhen::Enter,
+        });
+        self
+    }
+
+    /// Runs once, as a tick begins, when `state` leaves `value`.
+    pub fn on_exit(mut self, state: &str, value: &str) -> SystemDesc {
+        self.state = Some(StateRun {
+            state: state.into(),
+            value: value.into(),
+            when: StateWhen::Exit,
+        });
         self
     }
 }
@@ -79,6 +113,13 @@ pub(crate) struct System {
     pub total_ms: f64,
     pub runs: u64,
     pub run: SystemFn,
+    /// The change tick of its last run (0 before it ran): its queries'
+    /// change filters read what came after (world state).
+    pub last_run: u64,
+    /// Its state binding: (state machine, value, when).
+    pub state: Option<(usize, u32, StateWhen)>,
+    /// Its run condition, with its reads as read-only access.
+    pub condition: Option<Box<(System, ConditionFn)>>,
 }
 
 /// What [`crate::World::system_info`] reports about one system.
@@ -187,10 +228,25 @@ impl System {
             }
             queries.push(Arc::new(access));
         }
+        let state = match &desc.state {
+            None => None,
+            Some(run) => {
+                let state = world
+                    .state_index(&run.state)
+                    .map_err(|e| e.context(format!("system '{name}'")))?;
+                let value = world
+                    .state_value(state, &run.value)
+                    .map_err(|e| e.context(format!("system '{name}'")))?;
+                Some((state, value, run.when))
+            }
+        };
         Ok(System {
             name,
             reads,
             writes,
+            last_run: 0,
+            state,
+            condition: None,
             matched: vec![0; queries.len()],
             matched_at: None,
             queries,
@@ -213,6 +269,8 @@ pub(crate) enum Command {
     /// A name for an entity, given (to one this batch spawns, or a live one)
     /// when the system returns.
     Name(Entity, String),
+    /// A state transition asked for (state machine, value).
+    State(usize, u32),
 }
 
 /// What a running system can see and do: exactly what it declared.
@@ -360,7 +418,9 @@ impl<'w> SystemContext<'w> {
         ))
     }
 
-    /// The archetypes of declared query `index`.
+    /// The archetypes of declared query `index`. A query with change
+    /// filters reads what changed since this system last ran, and hands
+    /// each archetype's matching rows ([`crate::ArchetypeView::rows`]).
     pub fn query(&self, index: usize) -> Result<QueryIter<'w>> {
         let access = self.system.queries.get(index).ok_or_else(|| {
             Error::new(
@@ -373,7 +433,64 @@ impl<'w> SystemContext<'w> {
                 ),
             )
         })?;
-        Ok(QueryIter::new(self.world, access.clone()))
+        Ok(QueryIter::new(
+            self.world,
+            access.clone(),
+            self.system.last_run,
+        ))
+    }
+
+    /// The change tick of this system's last run (0 before it ran).
+    pub fn last_run(&self) -> u64 {
+        self.system.last_run
+    }
+
+    /// Entities that lost component `id` since this system last ran
+    /// (removed, or despawned), in entity order, from the removals the world
+    /// keeps (a tick's and the next's): `id` must be tracked and declared
+    /// read.
+    pub fn removed(&self, id: SchemaId) -> Result<Vec<Entity>> {
+        self.world.registry.check(id)?;
+        self.require(id, false)?;
+        if !self.world.is_tracked(id) {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!(
+                    "'{}' is not tracked: a system filtering on it (or World::track) tracks it",
+                    self.world.registry.name(id)
+                ),
+            ));
+        }
+        Ok(self.world.removed_since(id, self.system.last_run))
+    }
+
+    /// A spatial index of the entities `desc` selects, at their
+    /// `desc.field` value as this system sees it now (its own writes
+    /// included): `desc.field`'s component must be declared read.
+    pub fn spatial(&self, desc: &crate::SpatialDesc) -> Result<crate::SpatialHash> {
+        self.world.registry.check(desc.field.component)?;
+        self.require(desc.field.component, false)?;
+        crate::world::spatial_points(self.world, desc, false)
+    }
+
+    /// [`World::referencing`] as this system sees the world: entity links
+    /// are structure, readable by every system (as [`Self::components_of`]).
+    pub fn referencing(&self, field: crate::FieldRef, target: Entity) -> Result<Vec<Entity>> {
+        crate::world::referencing(self.world, field, target, false)
+    }
+
+    /// A state machine's current value (any system may read it).
+    pub fn state(&self, name: &str) -> Result<&'w str> {
+        self.world.state(name)
+    }
+
+    /// Asks state machine `name` to move to `value` as the next tick
+    /// begins, when the system returns (any system may).
+    pub fn set_state(&mut self, name: &str, value: &str) -> Result<()> {
+        let state = self.world.state_index(name)?;
+        let value = self.world.state_value(state, value)?;
+        self.commands.push(Command::State(state, value));
+        Ok(())
     }
 
     pub fn resource<T: Reflect>(&self) -> Result<Ref<'w, T>> {

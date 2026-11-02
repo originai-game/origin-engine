@@ -994,13 +994,13 @@ impl World {
         }
         // Validated: nothing below is refused.
         for e in &replaced {
-            self.despawn(*e)?;
+            self.despawn_quiet(*e)?;
         }
         report.despawned = replaced.len();
         let mut map: BTreeMap<u64, u64> = BTreeMap::new();
         let mut spawned = Vec::with_capacity(rows.len());
         for (saved, components) in &rows {
-            let e = self.spawn_bytes(components.clone())?;
+            let e = self.spawn_quiet(components.clone())?;
             map.insert(saved.to_bits(), e.to_bits());
             spawned.push((*saved, e));
         }
@@ -1026,7 +1026,7 @@ impl World {
                     }
                 }
                 if changed {
-                    self.insert_bytes(*e, *id, &value)?;
+                    self.insert_quiet(*e, *id, &value)?;
                 }
             }
         }

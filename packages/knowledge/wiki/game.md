@@ -14,7 +14,7 @@ module game {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1198</sub>
+<sub>`api.ogt` line 1334</sub>
 
 ## Contents
 
@@ -54,7 +54,7 @@ fn game {
 }
 ```
 
-<sub>`api.ogt` line 1255</sub>
+<sub>`api.ogt` line 1393</sub>
 
 ## Interfaces
 
@@ -70,7 +70,7 @@ interface Game {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1249</sub>
+<sub>`api.ogt` line 1387</sub>
 
 <a id="member-Game-tick"></a>
 
@@ -88,7 +88,7 @@ Binding symbol `og_game_get_tick` · publish builds: kept
 prop tick u32 "GameDesc.tick, or 60 when it is unset (the engine then runs at project.ogt's `tick` when the host passes the project, as og run and og build do)."
 ```
 
-<sub>`api.ogt` line 1251</sub>
+<sub>`api.ogt` line 1389</sub>
 
 <a id="member-Game-systems"></a>
 
@@ -106,7 +106,7 @@ Binding symbol `og_game_get_systems` · publish builds: kept
 prop systems List.System "The systems in declaration order."
 ```
 
-<sub>`api.ogt` line 1252</sub>
+<sub>`api.ogt` line 1390</sub>
 
 ## Types
 
@@ -134,7 +134,7 @@ callback FactsFn {
 }
 ```
 
-<sub>`api.ogt` line 1203</sub>
+<sub>`api.ogt` line 1339</sub>
 
 <a id="type-StartFn"></a>
 
@@ -159,7 +159,7 @@ callback StartFn {
 }
 ```
 
-<sub>`api.ogt` line 1209</sub>
+<sub>`api.ogt` line 1345</sub>
 
 <a id="type-GameDesc"></a>
 
@@ -176,6 +176,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `scenes` | `Readonly<Record<string, string>>` | `{}` | — | — | — | Scene names to `.ogt` paths, as `{ main: "scenes/main.ogt" }`; left unset, project.ogt's `scenes` block. |
 | `scene` | `string` | `"main"` | — | — | — | The scene loaded first; left unset, project.ogt's `scene` (else main). |
 | `systems` | `readonly System[]` | `[]` | — | — | — | The systems, in declaration order before `after`/`before` constraints apply. |
+| `hooks` | `readonly Hook[]` | `[]` | — | — | — | The hooks (og.defineHook), in the order they run. |
+| `states` | `readonly StateDesc[]` | `[]` | — | — | — | The state machines systems bind to (SystemDesc.state). |
 | `resources` | `readonly AnyResource[]` | `[]` | — | — | — | The game's own resources, created at their defaults. |
 | `commands` | `Readonly<Record<string, CommandHandler>>` | `{}` | — | — | — | Game actions registered into the command channel, by action name. |
 | `commandHelp` | `Readonly<Record<string, CommandDesc>>` | `{}` | — | — | — | Each game action's argument form and one sentence, by its name in commands, for `help`: `{ place: { usage: "<x>:<y>", doc: "Move the hero there." } }`. An action without an entry is listed by name alone. |
@@ -203,6 +205,8 @@ struct GameDesc {
     default "main"
   }
   field systems List.System "The systems, in declaration order before `after`/`before` constraints apply."
+  field hooks List.Hook "The hooks (og.defineHook), in the order they run."
+  field states List.StateDesc "The state machines systems bind to (SystemDesc.state)."
   field resources List.AnyResource "The game's own resources, created at their defaults."
   field commands Map.CommandHandler "Game actions registered into the command channel, by action name."
   field commandHelp Map.CommandDesc "Each game action's argument form and one sentence, by its name in commands, for `help`: `{ place: { usage: \"<x>:<y>\", doc: \"Move the hero there.\" } }`. An action without an entry is listed by name alone."
@@ -224,4 +228,4 @@ struct GameDesc {
 }
 ```
 
-<sub>`api.ogt` line 1214</sub>
+<sub>`api.ogt` line 1350</sub>

@@ -209,6 +209,40 @@ export interface SystemDescIn {
   readonly without?: readonly Token[];
   readonly after?: readonly string[];
   readonly before?: readonly string[];
+  readonly changed?: readonly Token[];
+  readonly added?: readonly Token[];
+  readonly removed?: readonly Token[];
+  readonly state?: string;
+  readonly value?: string;
+  readonly when?: "during" | "enter" | "exit";
+  readonly runIf?: Function | null;
+}
+
+/** Run conditions by callback id, with the system they gate. */
+const conditions = new Map<number, SystemEntry>();
+/** Hooks by callback id. */
+const hookEntries = new Map<number, SystemEntry>();
+const hookHandles = new WeakMap<object, number>();
+
+export interface HookToken {
+  readonly name: string;
+}
+
+export interface HookDescIn {
+  readonly on?: "add" | "remove";
+  readonly reads?: readonly Token[];
+  readonly writes?: readonly Token[];
+}
+
+export function defineHook(name: string, component: Token, desc: HookDescIn, run: Function): HookToken {
+  const reads = [...(desc.reads ?? [])];
+  const writes = [...(desc.writes ?? [])];
+  const id = callback(run);
+  hookEntries.set(id, { name, reads: new Set(reads.map((t) => t.name)), writes: new Set(writes.map((t) => t.name)) });
+  const wire = JSON.stringify({ on: desc.on ?? "add", reads: reads.map(tokenRef), writes: writes.map(tokenRef) });
+  const token = Object.freeze({ name });
+  declare((a) => hookHandles.set(token, a.og_system_define_hook(name, component.name, wire, id)));
+  return token;
 }
 
 const tokenRef = (t: Token) => ({ kind: t.kind, name: t.name });
@@ -216,18 +250,30 @@ const tokenRef = (t: Token) => ({ kind: t.kind, name: t.name });
 export function defineSystem(name: string, desc: SystemDescIn, run: Function): SystemToken {
   const reads = [...(desc.reads ?? [])];
   const writes = [...(desc.writes ?? [])];
+  const filters = [...(desc.changed ?? []), ...(desc.added ?? []), ...(desc.removed ?? [])];
   const id = callback(run);
-  systems.set(id, {
+  // The change filters' components are read (the engine declares them so).
+  const entry: SystemEntry = {
     name,
-    reads: new Set(reads.map((t) => t.name)),
+    reads: new Set([...reads, ...filters].map((t) => t.name)),
     writes: new Set(writes.map((t) => t.name)),
-  });
+  };
+  systems.set(id, entry);
+  const runIf = desc.runIf ? callback(desc.runIf) : null;
+  if (runIf !== null) conditions.set(runIf, entry);
   const wire = JSON.stringify({
     reads: reads.map(tokenRef),
     writes: writes.map(tokenRef),
     without: (desc.without ?? []).map(tokenRef),
     after: desc.after ?? [],
     before: desc.before ?? [],
+    changed: (desc.changed ?? []).map(tokenRef),
+    added: (desc.added ?? []).map(tokenRef),
+    removed: (desc.removed ?? []).map(tokenRef),
+    state: desc.state ?? "",
+    value: desc.value ?? "",
+    when: desc.when ?? "during",
+    runIf,
   });
   const token = Object.freeze({ name, reads: Object.freeze(reads), writes: Object.freeze(writes) });
   declare((a) => systemHandles.set(token, a.og_system_define_system(name, wire, id)));
@@ -247,6 +293,8 @@ export interface GameDescIn {
   readonly scenes?: Readonly<Record<string, string>>;
   readonly scene?: string;
   readonly systems?: readonly SystemToken[];
+  readonly hooks?: readonly HookToken[];
+  readonly states?: readonly { readonly name?: string; readonly values?: readonly string[]; readonly initial?: string }[];
   readonly resources?: readonly Token[];
   readonly commands?: Readonly<Record<string, Function>>;
   readonly commandHelp?: Readonly<Record<string, { readonly usage?: string; readonly doc?: string }>>;
@@ -288,6 +336,8 @@ export function defineGame(desc: GameDescIn = {}): GameToken {
       scenes: desc.scenes ?? null,
       scene: desc.scene ?? null,
       systems: list.map((s) => systemHandles.get(s) ?? -1),
+      hooks: (desc.hooks ?? []).map((h) => hookHandles.get(h) ?? -1),
+      states: (desc.states ?? []).map((s) => ({ name: s.name ?? "", values: [...(s.values ?? [])], initial: s.initial ?? "" })),
       resources: (desc.resources ?? []).map((r) => r.name),
       commands,
       commandHelp: desc.commandHelp ?? {},
@@ -406,6 +456,14 @@ class ArchetypeViewImpl {
   get entities(): Uint32Array {
     this.#check();
     return (this.#entities ??= abi().og_archetype_view_get_entities(this.#info.view));
+  }
+
+  #rows: Uint32Array | null = null;
+
+  /** The rows the query's change filters pass (every row without filters). */
+  get rows(): Uint32Array {
+    this.#check();
+    return (this.#rows ??= abi().og_archetype_view_get_rows(this.#info.view));
   }
 
   entity(index: number): number {
@@ -1061,8 +1119,33 @@ export class WorldImpl {
     return parse(abi().og_world_name_of(this.id, entity));
   }
 
-  query(desc?: { with?: readonly Token[]; without?: readonly Token[] }): Result<QueryImpl> {
-    const wire = desc && { with: (desc.with ?? []).map((t) => t.name), without: (desc.without ?? []).map((t) => t.name) };
+  children(entity: number): number[] {
+    return parse(abi().og_world_children(this.id, entity));
+  }
+
+  removed(component: Token): Result<number[]> {
+    checkAccess("read", component.name);
+    return parse(abi().og_world_removed(this.id, component.name));
+  }
+
+  spatial(desc?: { with?: readonly Token[]; without?: readonly Token[]; cell?: number }): Result<SpatialIndexImpl> {
+    const wire = desc && { with: (desc.with ?? []).map((t) => t.name), without: (desc.without ?? []).map((t) => t.name), cell: desc.cell ?? 0 };
+    const answer = parse<Result<number>>(abi().og_world_spatial(this.id, json(wire)));
+    if (!answer.ok) return answer;
+    return { ok: true, value: new SpatialIndexImpl(answer.value) };
+  }
+
+  state(name: string): string | null {
+    return parse(abi().og_world_state(this.id, name));
+  }
+
+  setState(name: string, value: string): Result<void> {
+    return parse(abi().og_world_set_state(this.id, name, value));
+  }
+
+  query(desc?: { with?: readonly Token[]; without?: readonly Token[]; changed?: readonly Token[]; added?: readonly Token[]; removed?: readonly Token[] }): Result<QueryImpl> {
+    const names = (l?: readonly Token[]) => (l ?? []).map((t) => t.name);
+    const wire = desc && { with: names(desc.with), without: names(desc.without), changed: names(desc.changed), added: names(desc.added), removed: names(desc.removed) };
     const answer = parse<Result<number>>(abi().og_world_query(this.id, json(wire)));
     if (!answer.ok) return answer;
     return { ok: true, value: new QueryImpl(answer.value, null) };
@@ -1080,6 +1163,27 @@ export class WorldImpl {
 
   instantiate(asset: number, desc?: unknown): Result<number> {
     return structural(parse(abi().og_world_instantiate(this.id, asset, json(desc))));
+  }
+}
+
+/** A spatial hash of entities' positions (World.spatial, SpatialIndex). */
+export class SpatialIndexImpl {
+  readonly #id: number;
+
+  constructor(id: number) {
+    this.#id = id;
+  }
+
+  get count(): number {
+    return abi().og_spatial_index_get_count(this.#id);
+  }
+
+  within(center: { x: number; y: number; z: number }, radius: number): { entity: number; distance: number }[] {
+    return parse(abi().og_spatial_index_within(this.#id, JSON.stringify(center), radius));
+  }
+
+  nearest(center: { x: number; y: number; z: number }, count: number): { entity: number; distance: number }[] {
+    return parse(abi().og_spatial_index_nearest(this.#id, JSON.stringify(center), count));
   }
 }
 
@@ -1202,7 +1306,7 @@ function message(e: unknown): string {
   return text.startsWith("=") ? ` ${text}` : text;
 }
 
-/** What the engine calls: kind 0 a system, 1 a command, 2 the facts function. */
+/** What the engine calls: kind 0 a system, 1 a command, 2 the facts function, 3 a run condition, 4 a hook. */
 const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed, payload) => {
   const fn = callbacks[id];
   const world = worldFor(engine);
@@ -1225,6 +1329,19 @@ const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed, payloa
       return "";
     }
     if (!fn) return `the dispatcher has no callback with id ${id}`;
+    if (kind === 3 || kind === 4) {
+      const entry = (kind === 3 ? conditions : hookEntries).get(id);
+      if (!entry) return `the dispatcher has no ${kind === 3 ? "run condition" : "hook"} with callback id ${id}`;
+      running = { system: entry, tick };
+      if (kind === 3) {
+        const holds = fn(world) === true;
+        flushRecords();
+        return holds ? "=true" : "=false";
+      }
+      fn(world, Number(payload));
+      flushRecords();
+      return "";
+    }
     if (kind === 1) {
       fn(world, Object.freeze(JSON.parse(payload || "[]")));
       flushRecords();

@@ -11,6 +11,7 @@ import {
   defineGame,
   defineRecord,
   defineSystem as defineSystemImpl,
+  defineHook as defineHookImpl,
   load,
   physics,
   atmosphere,
@@ -135,6 +136,9 @@ export const defineResource: typeof Api.defineResource = (name, fields) =>
 
 export const defineSystem: typeof Api.defineSystem = (name, desc, run) =>
   defineSystemImpl(name, desc as never, run) as never;
+
+export const defineHook: typeof Api.defineHook = (name, component, desc, run) =>
+  defineHookImpl(name, component as never, desc as never, run) as never;
 
 export const PROBE_GLOBAL: typeof Api.PROBE_GLOBAL = "__runtime_probe__";
 export const PROBE_VERSION: typeof Api.PROBE_VERSION = 5;
