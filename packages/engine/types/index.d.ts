@@ -229,6 +229,8 @@ export interface ColumnKinds {
   Rig2D: { readonly array: Uint32Array; readonly stride: 2; readonly value: Rig2D };
   /** A Tween handle field. */
   Tween: { readonly array: Uint32Array; readonly stride: 2; readonly value: Tween };
+  /** An Ease field: the variant's index. */
+  Ease: { readonly array: Uint32Array; readonly stride: 1; readonly value: Ease };
   /** A TilemapAsset handle field. */
   TilemapAsset: { readonly array: Uint32Array; readonly stride: 2; readonly value: TilemapAsset };
   /** An AudioBus field: the variant's index. */
@@ -5049,6 +5051,309 @@ export interface CameraRail {
    * A path (og.path.create, or a scene's `path` by og.path.find) the rail follows instead of p0 to p(points - 1): any number of points, catmullRom, bezier or linear, closed or not. 0 uses the points.
    */
   path: Path;
+}
+
+/**
+ * A shot og.Camera can take, as Cinemachine's virtual cameras: a position (its own entity's, or following another entity), what it looks at, a field of view, roll and focus. The engine's og.camera system (og.CameraBrain) makes the enabled one with the highest priority live and writes its pose into og.Camera, blending from the previous shot over the incoming one's blendTime by its blendEase. This is the way to drive the camera in a new 3D game: a vcam with `follow` and `collide` replaces og.FollowCamera, and a cutscene or a dialogue switches shots by priority or og.CameraBrain.solo.
+ * Registered when a game first names it, with og.CameraBrain and og.CameraCut: a world without virtual cameras keeps its hash. Its pose is tick state on every host, drawing on no randomness; it changes only og.Camera (and og.PostEffects' depth of field for a vcam with focus), which the simulation reads only if the game does. While a timeline's camera track plays, the timeline drives og.Camera and the brain waits. A vcam drives og.Camera after the game's systems, so do not also give the game an og.OrbitCamera or og.FollowCamera.
+ *
+ * The value of the `VirtualCamera` component (token `og.VirtualCamera`).
+ */
+export interface VirtualCamera {
+  /**
+   * Of the enabled virtual cameras the highest priority is live; of equal ones, the one enabled last (`activated`), then the first in query order.
+   *
+   * @tunable
+   */
+  priority: number;
+  /**
+   * Takes part in the brain's pick. Disabling the live camera blends to the next one.
+   *
+   * @default true
+   */
+  enabled: boolean;
+  /**
+   * The entity it follows: it sits at followOffset from it, easing by smoothTime. 0: it sits at its own entity's og.Transform position.
+   */
+  follow: Entity;
+  /**
+   * Where it sits relative to the followed entity: in that entity's own axes with followRotation, else in world axes.
+   *
+   * @default { x: 0, y: 2, z: 6 }
+   * @unit m (metres)
+   * @tunable
+   */
+  followOffset: Vector3;
+  /** Turn followOffset with the followed entity's rotation, so it stays behind it. */
+  followRotation: boolean;
+  /**
+   * Roughly how long it takes to catch up with the followed entity; 0 snaps every tick. It snaps when it is enabled.
+   *
+   * @default 0.25
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  smoothTime: number;
+  /**
+   * The entity it looks at, at lookOffset from its position. 0: it keeps its own entity's og.Transform rotation.
+   */
+  lookAt: Entity;
+  /**
+   * The point it looks at, relative to the lookAt entity's position (and the point collision keeps clear from).
+   *
+   * @default { x: 0, y: 1, z: 0 }
+   * @unit m (metres)
+   * @tunable
+   */
+  lookOffset: Vector3;
+  /**
+   * The vertical field of view it gives og.Camera.
+   *
+   * @default 50
+   * @range 1..179
+   * @unit deg (degrees)
+   * @tunable
+   */
+  fov: number;
+  /**
+   * A turn about the view direction, applied after the look (a Dutch angle).
+   *
+   * @unit deg (degrees)
+   * @tunable
+   */
+  roll: number;
+  /**
+   * Depth of field: the focus distance it gives og.PostEffects (depthOfField on), handed back when no live camera has one. 0 leaves og.PostEffects alone.
+   *
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  focus: number;
+  /**
+   * Depth of field: the range around the focus distance that stays sharp.
+   *
+   * @default 1
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  focusRange: number;
+  /**
+   * Seconds the brain takes to blend to it when it goes live (0 cuts); below 0 uses og.CameraBrain's blendTime and blendEase.
+   *
+   * @default -1
+   * @unit s (seconds of simulation time)
+   */
+  blendTime: number;
+  /**
+   * The curve of the blend to it: position lerped, rotation slerped, fov, roll and focus lerped by the curve's value at the blend's time.
+   *
+   * @default "cubicInOut"
+   */
+  blendEase: Ease;
+  /**
+   * Keep a sphere of `radius` clear of colliders between the look point and where it sits: it pulls in towards the look point at once and eases back out over damping. Against the colliders as the tick started (og.physics' query view): it never moves a body.
+   */
+  collide: boolean;
+  /**
+   * The sphere collision keeps clear.
+   *
+   * @default 0.2
+   * @range 0..
+   * @unit m (metres)
+   */
+  radius: number;
+  /**
+   * Roughly how long it takes to ease back out once the way is clear; 0 snaps.
+   *
+   * @default 0.4
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  damping: number;
+  /**
+   * The physics layers collision considers (a collider counts when its layers meet these); 0 every layer.
+   */
+  collisionLayers: number;
+  /**
+   * Controller state: the followed point after smoothing, before collision.
+   *
+   * @unit m (metres)
+   * @readonly written by the engine
+   */
+  readonly eased: Vector3;
+  /**
+   * Controller state: how far collision has pulled it in towards the look point.
+   *
+   * @unit m (metres)
+   * @readonly written by the engine
+   */
+  readonly pull: number;
+  /**
+   * Controller state: og.CameraBrain.activations when it was last enabled (the later wins a priority tie).
+   *
+   * @readonly written by the engine
+   */
+  readonly activated: number;
+  /**
+   * Controller state: it was evaluated last tick (enabled, live or blended from); one that was not snaps to its goal and, if enabled, takes the next activation.
+   *
+   * @readonly written by the engine
+   */
+  readonly primed: boolean;
+}
+
+/**
+ * Picks the live og.VirtualCamera every tick and blends og.Camera to it, as Cinemachine's brain: the solo shot if one is set, else the enabled one with the highest priority. A change of live camera blends from the previous camera (still moving) over the incoming one's blendTime by its blendEase; a change during a blend starts from the blended pose, so the view never jumps. The first live camera of a world cuts. With no live camera og.Camera is left where it is.
+ * Registered with og.VirtualCamera. Its state fields are world state, saved and restored with the world, so a replay or a restore mid-blend continues the same blend.
+ *
+ * The `CameraBrain` resource (token `og.CameraBrain`).
+ */
+export interface CameraBrain {
+  /**
+   * Drive og.Camera; false leaves it to the game (the vcams' state still updates).
+   *
+   * @default true
+   */
+  enabled: boolean;
+  /**
+   * Seconds of a blend to a camera whose blendTime is below 0.
+   *
+   * @default 1
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  blendTime: number;
+  /**
+   * The curve of those blends.
+   *
+   * @default "cubicInOut"
+   */
+  blendEase: Ease;
+  /**
+   * A shot that outranks every priority while it is set (a cutscene or a dialogue close-up): an entity with an og.VirtualCamera, live even when it is not enabled; 0 releases it and the brain blends back to the highest priority. Anything else is ignored.
+   */
+  solo: Entity;
+  /**
+   * The live camera (0: none).
+   *
+   * @readonly written by the engine
+   */
+  readonly live: Entity;
+  /**
+   * The camera being blended from; 0 when the blend starts from a held pose (an interrupted blend).
+   *
+   * @readonly written by the engine
+   */
+  readonly from: Entity;
+  /**
+   * How far the blend has come, 0 to 1 (1: settled on the live camera); the weight is the curve at this time.
+   *
+   * @default 1
+   * @readonly written by the engine
+   */
+  readonly blend: number;
+  /**
+   * The current blend's length.
+   *
+   * @unit s (seconds of simulation time)
+   * @readonly written by the engine
+   */
+  readonly blendDuration: number;
+  /**
+   * The current blend's curve.
+   *
+   * @readonly written by the engine
+   */
+  readonly blendCurve: Ease;
+  /**
+   * A held pose to blend from: its position.
+   *
+   * @unit m (metres)
+   * @readonly written by the engine
+   */
+  readonly fromPosition: Vector3;
+  /**
+   * Its rotation.
+   *
+   * @readonly written by the engine
+   */
+  readonly fromQuaternion: Quaternion;
+  /**
+   * Its field of view.
+   *
+   * @unit deg (degrees)
+   * @readonly written by the engine
+   */
+  readonly fromFov: number;
+  /**
+   * Its focus distance (0: none).
+   *
+   * @unit m (metres)
+   * @readonly written by the engine
+   */
+  readonly fromFocus: number;
+  /**
+   * Its focus range.
+   *
+   * @unit m (metres)
+   * @readonly written by the engine
+   */
+  readonly fromFocusRange: number;
+  /**
+   * How many times a virtual camera has been enabled (og.VirtualCamera.activated).
+   *
+   * @readonly written by the engine
+   */
+  readonly activations: number;
+  /**
+   * The brain is driving og.PostEffects' depth of field and holds what it found: heldDepthOfField, heldFocusDistance and heldFocusRange, handed back when no live camera has focus.
+   *
+   * @readonly written by the engine
+   */
+  readonly focusHeld: boolean;
+  /**
+   * og.PostEffects.depthOfField as the brain found it.
+   *
+   * @readonly written by the engine
+   */
+  readonly heldDepthOfField: boolean;
+  /**
+   * og.PostEffects.dofFocusDistance as the brain found it.
+   *
+   * @unit m (metres)
+   * @readonly written by the engine
+   */
+  readonly heldFocusDistance: number;
+  /**
+   * og.PostEffects.dofFocusRange as the brain found it.
+   *
+   * @unit m (metres)
+   * @readonly written by the engine
+   */
+  readonly heldFocusRange: number;
+}
+
+/**
+ * The live virtual camera changed (sent by the og.camera system; read the tick after).
+ *
+ * The payload of the `CameraCut` event (token `og.CameraCut`).
+ */
+export interface CameraCut {
+  /** The camera that was live (0: none). */
+  readonly from: Entity;
+  /** The camera now live (0: none). */
+  readonly to: Entity;
+  /**
+   * The blend's length in seconds (0: a cut).
+   *
+   * @unit s (seconds of simulation time)
+   */
+  readonly blend: number;
 }
 
 
@@ -16557,6 +16862,15 @@ export declare function Tween(value?: Tween, options?: FieldOptions): FieldSpec<
  * - `"bounceInOut"`: Bounces at both ends.
  */
 export type Ease = "quadOut" | "linear" | "quadIn" | "quadInOut" | "cubicIn" | "cubicOut" | "cubicInOut" | "quartIn" | "quartOut" | "quartInOut" | "expoIn" | "expoOut" | "expoInOut" | "backIn" | "backOut" | "backInOut" | "elasticIn" | "elasticOut" | "elasticInOut" | "bounceIn" | "bounceOut" | "bounceInOut";
+
+/**
+ * An Ease field: the variant's index.
+ *
+ * A `Ease` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function Ease(value?: Ease, options?: FieldOptions): FieldSpec<"Ease">;
 
 /**
  * One tween of one field.
@@ -46277,6 +46591,18 @@ export declare namespace og {
    * Moves og.Camera along a spline through p0 to p(points - 1) (Catmull-Rom, through every point) to the point nearest the entity carrying it, easing by smoothTime: a corridor, a side-scroller's track, a 3D chase on rails. A perspective camera looks at the entity; an orthographic one keeps its z and rotation. Applied by the engine's og.camera system after the game's systems.
    */
   const CameraRail: ComponentType<{ readonly points: FieldSpec<"u32">; readonly p0: FieldSpec<"Vector3">; readonly p1: FieldSpec<"Vector3">; readonly p2: FieldSpec<"Vector3">; readonly p3: FieldSpec<"Vector3">; readonly p4: FieldSpec<"Vector3">; readonly p5: FieldSpec<"Vector3">; readonly p6: FieldSpec<"Vector3">; readonly p7: FieldSpec<"Vector3">; readonly smoothTime: FieldSpec<"f32">; readonly path: FieldSpec<"Path"> }, CameraRail>;
+  /**
+   * A shot og.Camera can take, as Cinemachine's virtual cameras: a position (its own entity's, or following another entity), what it looks at, a field of view, roll and focus. The engine's og.camera system (og.CameraBrain) makes the enabled one with the highest priority live and writes its pose into og.Camera, blending from the previous shot over the incoming one's blendTime by its blendEase. This is the way to drive the camera in a new 3D game: a vcam with `follow` and `collide` replaces og.FollowCamera, and a cutscene or a dialogue switches shots by priority or og.CameraBrain.solo.
+   * Registered when a game first names it, with og.CameraBrain and og.CameraCut: a world without virtual cameras keeps its hash. Its pose is tick state on every host, drawing on no randomness; it changes only og.Camera (and og.PostEffects' depth of field for a vcam with focus), which the simulation reads only if the game does. While a timeline's camera track plays, the timeline drives og.Camera and the brain waits. A vcam drives og.Camera after the game's systems, so do not also give the game an og.OrbitCamera or og.FollowCamera.
+   */
+  const VirtualCamera: ComponentType<{ readonly priority: FieldSpec<"i32">; readonly enabled: FieldSpec<"bool">; readonly follow: FieldSpec<"Entity">; readonly followOffset: FieldSpec<"Vector3">; readonly followRotation: FieldSpec<"bool">; readonly smoothTime: FieldSpec<"f32">; readonly lookAt: FieldSpec<"Entity">; readonly lookOffset: FieldSpec<"Vector3">; readonly fov: FieldSpec<"f32">; readonly roll: FieldSpec<"f32">; readonly focus: FieldSpec<"f32">; readonly focusRange: FieldSpec<"f32">; readonly blendTime: FieldSpec<"f32">; readonly blendEase: FieldSpec<"Ease">; readonly collide: FieldSpec<"bool">; readonly radius: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly collisionLayers: FieldSpec<"u32">; readonly eased: FieldSpec<"Vector3">; readonly pull: FieldSpec<"f32">; readonly activated: FieldSpec<"u32">; readonly primed: FieldSpec<"bool"> }, VirtualCamera>;
+  /**
+   * Picks the live og.VirtualCamera every tick and blends og.Camera to it, as Cinemachine's brain: the solo shot if one is set, else the enabled one with the highest priority. A change of live camera blends from the previous camera (still moving) over the incoming one's blendTime by its blendEase; a change during a blend starts from the blended pose, so the view never jumps. The first live camera of a world cuts. With no live camera og.Camera is left where it is.
+   * Registered with og.VirtualCamera. Its state fields are world state, saved and restored with the world, so a replay or a restore mid-blend continues the same blend.
+   */
+  const CameraBrain: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly blendTime: FieldSpec<"f32">; readonly blendEase: FieldSpec<"Ease">; readonly solo: FieldSpec<"Entity">; readonly live: FieldSpec<"Entity">; readonly from: FieldSpec<"Entity">; readonly blend: FieldSpec<"f32">; readonly blendDuration: FieldSpec<"f32">; readonly blendCurve: FieldSpec<"Ease">; readonly fromPosition: FieldSpec<"Vector3">; readonly fromQuaternion: FieldSpec<"Quaternion">; readonly fromFov: FieldSpec<"f32">; readonly fromFocus: FieldSpec<"f32">; readonly fromFocusRange: FieldSpec<"f32">; readonly activations: FieldSpec<"u32">; readonly focusHeld: FieldSpec<"bool">; readonly heldDepthOfField: FieldSpec<"bool">; readonly heldFocusDistance: FieldSpec<"f32">; readonly heldFocusRange: FieldSpec<"f32"> }, CameraBrain>;
+  /** The live virtual camera changed (sent by the og.camera system; read the tick after). */
+  const CameraCut: EventType<CameraCut>;
   /**
    * The main camera, as a resource with three.js PerspectiveCamera and OrthographicCamera parameter names.
    * Camera controllers are components (OrbitCamera, FollowCamera, Follow2D) on the entity the camera orbits or follows; the systems that drive them ship in TypeScript as og.systems.cameras.

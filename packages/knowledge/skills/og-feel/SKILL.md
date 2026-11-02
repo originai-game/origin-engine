@@ -215,9 +215,20 @@ floating text: it is screen text where the og.Camera resource's
   `zoneScroll` says how far a transition has come.
 - `og.CameraRail` for corridors and set pieces: the camera rides a
   Catmull-Rom spline to the point nearest the player.
-- 3D: `og.OrbitCamera` (drag to turn, wheel to zoom) and `og.FollowCamera`
-  on the entity the camera orbits or follows, driven by
-  `og.systems.cameras` listed in `GameDesc.systems`.
+- 3D, a new game: an `og.VirtualCamera` with `follow` and `lookAt` on the
+  player (`followOffset` 0 2–3 5–7 behind, `smoothTime` 0.15–0.3 s,
+  `lookOffset` at the chest or head) and `collide` on (`radius` 0.2–0.3,
+  `damping` 0.3–0.5 s): it pulls in at once when a wall comes between the
+  player and the camera and eases back out, so the player is never hidden.
+  Other shots (a lock-on, an aim view, a cutscene angle) are more vcams:
+  raise one's `priority` or set `og.CameraBrain.solo` to it, and the brain
+  blends over its `blendTime` (0.3–0.6 s `cubicInOut` for gameplay
+  changes, 0 to cut). `world.resource(og.CameraBrain)` says which is live
+  and how far a blend has come; og.CameraCut reports each change.
+- `og.OrbitCamera` (drag to turn, wheel to zoom) and `og.FollowCamera`
+  remain for existing games, driven by `og.systems.cameras` listed in
+  `GameDesc.systems`; do not mix them with virtual cameras (the brain runs
+  after the game's systems and wins).
 - Mouse-look: turn by `og.Pointers.movement` while `og.PointerLock.locked`
   (og-game §7), about 0.002–0.003 rad per CSS px, pitch clamped short of
   straight up and down, no smoothing on the raw turn (smoothing it reads

@@ -174,12 +174,27 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: crate::video::PLAYER,
         enable: |w, _| w.grant(crate::video::VIDEO_SYSTEM, &[crate::video::PLAYER]),
     },
+    // R10: virtual cameras; og.camera's brain writes them (and
+    // og.PostEffects, for a shot's focus). Naming one registers all three.
+    Lazy {
+        name: crate::feel::vcam::VCAM,
+        enable: |w, _| crate::feel::vcam::enable(w, crate::feel::vcam::VCAM),
+    },
+    Lazy {
+        name: crate::feel::vcam::BRAIN,
+        enable: |w, _| crate::feel::vcam::enable(w, crate::feel::vcam::BRAIN),
+    },
+    Lazy {
+        name: crate::feel::vcam::CUT,
+        enable: |w, _| crate::feel::vcam::enable(w, crate::feel::vcam::CUT),
+    },
 ];
 
 /// Lazy records registered together: naming one registers the rest.
 const TOGETHER: &[&[&str]] = &[
     &["og.TimeGroup", "og.TimeGroups"],
     &crate::story::RECORDS,
+    &crate::feel::vcam::RECORDS,
     &[
         crate::stream::cells::CELL,
         crate::stream::cells::MEMBER,

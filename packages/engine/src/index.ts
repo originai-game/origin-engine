@@ -109,6 +109,7 @@ export const ClipAsset = ((value = 0 as Api.ClipAsset, options) => spec("ClipAss
 export const GraphAsset = ((value = 0 as Api.GraphAsset, options) => spec("GraphAsset", value, options)) as typeof Api.GraphAsset;
 export const FlipbookSheet = ((value = 0 as Api.FlipbookSheet, options) => spec("FlipbookSheet", value, options)) as typeof Api.FlipbookSheet;
 export const Tween = ((value = 0 as Api.Tween, options) => spec("Tween", value, options)) as typeof Api.Tween;
+export const Ease = ((value = "quadOut" as Api.Ease, options) => spec("Ease", value, options)) as typeof Api.Ease;
 export const Video = ((value = 0 as Api.Video, options) => spec("Video", value, options)) as typeof Api.Video;
 export const Path = ((value = 0 as Api.Path, options) => spec("Path", value, options)) as typeof Api.Path;
 export const PathKind = ((value = "catmullRom" as Api.PathKind, options) => spec("PathKind", value, options)) as typeof Api.PathKind;

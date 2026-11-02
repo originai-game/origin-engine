@@ -485,6 +485,15 @@ fn needs(eng: &Engine, lt: &Loaded, out: &mut std::collections::BTreeSet<String>
     }
 }
 
+/// Whether a timeline's camera track holds og.Camera (the brain of the
+/// virtual cameras waits while one does).
+pub(crate) fn owns_camera(engine: u32) -> bool {
+    lock(&playback::shared(engine))
+        .runs
+        .values()
+        .any(|r| r.camera.is_some())
+}
+
 /// Whether og.timeline was granted `record` (a field track writes only those).
 pub(super) fn granted(engine: u32, record: &str) -> bool {
     lock(&registry(engine)).granted.contains(record)

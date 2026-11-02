@@ -47,6 +47,20 @@ is one line here, written at the merge that changes
   og.Timeline blob is unchanged (text payload, same version and type
   hash; older timelines cook to the same bytes). Load timelines in setup:
   loading grants og.timeline the records its tracks write.
+- **Virtual cameras (R10, batch 2).** `og.VirtualCamera` is a shot:
+  its own position or `follow` an entity (`followOffset`, `smoothTime`),
+  `lookAt` one, `fov`, `roll`, `focus`, and `collide` (a sphere of
+  `radius` kept clear of colliders between the look point and the camera,
+  pulled in at once and eased out over `damping`). The resource
+  `og.CameraBrain` makes the solo shot (`solo`), else the enabled one with
+  the highest priority (ties: the later enabled), live and blends
+  og.Camera to it over the incoming shot's `blendTime` by its `blendEase`
+  (position lerped, rotation slerped, fov and focus lerped); a change
+  mid-blend starts from the blended pose. `og.CameraCut` reports each
+  change. All three are registered only when a game names one, so other
+  worlds hash as before; the brain's state is record fields, so a restore
+  mid-blend continues it. A timeline's camera track still owns og.Camera
+  while it plays. The column `Ease` lets records hold og.tween's curves.
 - **Removed: six built-in styles, folded into the sixteen the owner settled**
   (2026-11-02): `bubbly` into `cartoon`, `arcade` into `pixel`, `paper`
   into `storybook`, `inkwash` into `jade` (a new pack, coming), `neon`

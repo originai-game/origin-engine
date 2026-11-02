@@ -35,6 +35,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 mod draw;
 mod tiles;
 mod tweens;
+pub(crate) mod vcam;
 
 use super::{art, assets, codec};
 use draw::facing_byte;
@@ -306,6 +307,9 @@ pub(crate) struct Records {
     pub afterimage: (SchemaId, Layout),
     pub zone: (SchemaId, Layout),
     pub follow: (SchemaId, Layout),
+    /// og.VirtualCamera, og.CameraBrain and og.CameraCut (lazy), and
+    /// og.PostEffects for a shot's focus.
+    pub vcams: vcam::Layouts,
     /// The fields extraction reads of each sprite, flipbook, afterimage
     /// and tile layer row, resolved once against their layouts.
     pub slots: Slots,
@@ -446,6 +450,7 @@ impl Records {
             afterimage,
             zone: get("og.CameraZone")?,
             follow: get("og.Follow2D")?,
+            vcams: vcam::Layouts::of(layouts),
             slots,
         })
     }
@@ -464,6 +469,7 @@ pub(crate) fn install_middle(
         |ids: &[&(SchemaId, Layout)]| ids.iter().map(|x| x.1.schema.clone()).collect::<Vec<_>>();
     let tiles = feel.tiles.clone();
     let rec = r.clone();
+    let camera_physics = physics.clone();
     let physics = physics.clone();
     world
         .add_system(
@@ -510,7 +516,7 @@ pub(crate) fn install_middle(
                 ],
                 ..Default::default()
             },
-            move |ctx| camera_system(ctx, engine_id, &shared, &rec),
+            move |ctx| camera_system(ctx, engine_id, &shared, &rec, &camera_physics),
         )
         .map_err(err)?;
     world
@@ -702,13 +708,15 @@ pub fn og_camera_kick(world: u32, direction: String, distance: f64) -> String {
     )
 }
 
-/// Applies the queued ops, decays trauma, punch and kick, and moves the
-/// camera along a rail.
+/// Applies the queued ops, decays trauma, punch and kick, moves the
+/// camera along a rail, then lets the brain blend it to the live virtual
+/// camera (vcam).
 fn camera_system(
     ctx: &mut SystemContext<'_>,
     engine_id: u32,
     shared: &Mutex<FeelShared>,
     r: &Records,
+    physics: &og_physics::PhysicsSystem,
 ) -> og_core::Result<()> {
     let (cid, layout) = &r.camera;
     let ops = std::mem::take(&mut lock(shared).camera_ops);
@@ -784,6 +792,7 @@ fn camera_system(
             cam["quaternion"] = json!({ "x": q.x, "y": q.y, "z": q.z, "w": q.w });
         }
     }
+    vcam::brain(ctx, engine_id, r, physics, &mut cam, dt)?;
     let out = layout
         .encode(Some(&bytes), Some(&cam))
         .map_err(|e| Error::new(ErrorKind::Invalid, e))?;
