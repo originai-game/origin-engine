@@ -204,7 +204,9 @@ pub fn storm(strike: bool) -> RenderScene {
     );
     scene.camera.target = Vec3::new(-1.0, 8.0, -30.0);
     if strike {
-        let at = Vec3::new(-25.0, 0.0, -160.0);
+        // 1.5 km out, so the bolt's root in the deck (35° up) is in frame
+        // and the glow about it reads.
+        let at = Vec3::new(-150.0, 0.0, -1500.0);
         og_render::add_lightning(&mut scene, at, 900.0, 3, 0.03);
     }
     scene
@@ -272,6 +274,16 @@ pub fn sky_scene(name: &str) -> RenderScene {
             canopy(&mut scene, false);
             scene
         }
+        // clouds-fair without its clouds (no reference; the cumulus check
+        // compares against it).
+        "clouds-fair-clear" => clouded(
+            physical_sky_scene(11.0, earth, false),
+            Clouds {
+                coverage: 0.0,
+                layer: 0.0,
+                ..Clouds::default()
+            },
+        ),
         "clouds-fair" => clouded(
             physical_sky_scene(11.0, earth, false),
             Clouds {

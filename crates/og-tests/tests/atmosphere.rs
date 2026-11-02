@@ -621,10 +621,10 @@ fn cloud_scenes_match_their_references_and_read_as_clouds() {
     for scene in SKY_SCENES.iter().filter(|s| s.starts_with("clouds-")) {
         check(scene);
     }
-    let clear = frame(&sky_scene("sky-physical-noon"));
+    let clear = frame(&sky_scene("clouds-fair-clear"));
     let fair = frame(&sky_scene("clouds-fair"));
-    // The upper sky above the colonnade (y 0–320): flat-based cumulus sit
-    // in its lower part, at 15–35° up, not overhead.
+    // The upper sky (y 0–320) against the same frame without clouds:
+    // flat-based cumulus sit in its lower part, at 15–35° up.
     assert!(
         contrast(&fair, 120, 0, 1160, 320) > 2.0 * contrast(&clear, 120, 0, 1160, 320),
         "cumulus break up the sky: {} vs {}",

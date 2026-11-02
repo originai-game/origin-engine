@@ -384,13 +384,14 @@ pub fn add_lightning(
     scene.environment.intensity *= 1.0 + 6.0 * flash;
     // The bolt lights the land like a low sun for the flash's length, with
     // hard shadows away from it: the scene's directional light turns to the
-    // channel's lower part (150 m up) while the flash outshines it.
-    let channel = at + Vec3::Y * 150.0;
+    // channel's middle (half the cloud base up; the whole channel shines)
+    // while the flash outshines it.
+    let channel = at + Vec3::Y * (0.5 * top).max(150.0);
     let toward = (channel - scene.camera.position).normalize_or(Vec3::Y);
     let bolt_light = 2.0 * flash;
     // The cloud over the root glows from inside (the clouds' own flash).
     if let Some(c) = scene.clouds.as_mut() {
-        c.flash = Vec3::new(at.x, top + 150.0, at.z).extend(100.0 * flash);
+        c.flash = Vec3::new(at.x, top + 150.0, at.z).extend(60.0 * flash);
     }
     let own = scene.light.intensity * scene.light.color.max_element();
     if bolt_light > own {

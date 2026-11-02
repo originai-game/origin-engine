@@ -292,12 +292,11 @@ fn clouds_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f3
       }
       if (flash.w > 0.0) {
         // The flash lights the cloud from inside about the root: falling
-        // off over two kilometres (a strike lights the deck for miles) and
-        // dimmed by the cloud between, scattered evenly (it has bounced many
-        // times), no streaks.
+        // off over 600 m and dimmed by the cloud between, scattered evenly
+        // (it has bounced many times), no streaks.
         let to = flash_at - p;
         let dist2 = dot(to, to);
-        sun += vec3<f32>(0.75, 0.82, 1.0) * flash.w * 0.0795775 * exp(-sqrt(dist2) * c[0].y * 0.01) / (1.0 + dist2 / 4.0e6);
+        sun += vec3<f32>(0.75, 0.82, 1.0) * flash.w * 0.0795775 * exp(-sqrt(dist2) * c[0].y * 0.03) / (1.0 + dist2 / 3.6e5);
       }
       let hf = clamp((h - c[0].z) / c[0].w, 0.0, 1.0);
       var ambient = mix(sky_side * 0.6, sky_top, hf) * (0.35 + 0.65 * hf);
