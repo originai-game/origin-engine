@@ -90,7 +90,7 @@ export function scrimFill(edge: "bottom" | "top" | "start" | "end", strength = 0
 export type SymbolKind =
   | "lock" | "star" | "starOutline" | "coin" | "gem" | "crown" | "check" | "cross" | "plus" | "minus" | "dot" | "ring"
   | "clock" | "heart" | "shield" | "sword" | "flag" | "pin" | "eye" | "rotate" | "split" | "chat" | "speaker" | "camera" | "grid" | "bolt"
-  | "swap" | "ban" | "helm" | "amulet" | "glove" | "gemRing" | "boot" | "armor";
+  | "swap" | "ban" | "helm" | "amulet" | "glove" | "gemRing" | "boot" | "armor" | "arrowUp";
 
 /**
  * A symbol drawn as shapes, `size` square, in `color`: what a style's icon
@@ -154,6 +154,9 @@ export function symbol(id: string, kind: SymbolKind, size: number, color: Rgba, 
       break;
     case "minus":
       kit.setDraw({ shape: path([p(0.2, 0.5), p(0.8, 0.5)]), fills: fill });
+      break;
+    case "arrowUp":
+      kit.setDraw({ shape: path([p(0.22, 0.48), p(0.5, 0.18), p(0.78, 0.48), p(0.5, 0.18), p(0.5, 0.84)]), fills: fill });
       break;
     case "dot":
       kit.setDraw({ shape: { kind: "ellipse" }, fills: fill });
@@ -764,9 +767,13 @@ function glassFace(_base: Rgba, radius: number, hot: boolean, down: boolean): vo
   kit.open("Face", { width: grow(), height: grow(), part: "Pattern.buttonFace[glass]", partClass: "button" });
   kit.setDraw({
     shape: { kind: "rect", radii: [radius, radius, radius, radius] },
-    fills: [vgrad([[0, paint(white, down ? 0.04 : hot ? 0.24 : 0.16)], [0.5, paint(white, hot && !down ? 0.08 : 0.04)], [1, paint(white, 0.02)]])],
-    strokes: [line(1, paint(white, hot ? 0.6 : 0.4))],
-    effects: [{ kind: "dropShadow", offset: { x: 0, y: down ? 2 : u(6) }, blur: u(down ? 6 : 14), spread: 0, color: token("shadow", 0.4) }],
+    fills: [vgrad([[0, paint(white, down ? 0.05 : hot ? 0.26 : 0.18)], [0.5, paint(white, hot && !down ? 0.09 : 0.05)], [1, paint(white, 0.03)]])],
+    // The rim: bright along the top where the light falls, dimmer down the sides.
+    strokes: [{ width: hot ? 1.5 : 1.25, align: "inside", paint: { kind: "gradient", type: "linear", from: { x: 0.5, y: 0 }, to: { x: 0.5, y: 1 }, stops: [{ offset: 0, color: paint(white, hot ? 0.85 : 0.65) }, { offset: 1, color: paint(white, hot ? 0.45 : 0.28) }] } }],
+    effects: [
+      { kind: "innerShadow", offset: { x: 0, y: down ? 0 : 1 }, blur: 0, spread: 0, color: paint(white, down ? 0 : 0.22) },
+      { kind: "dropShadow", offset: { x: 0, y: down ? 2 : u(6) }, blur: u(down ? 6 : 14), spread: 0, color: token("shadow", 0.45) },
+    ],
   } as Api.DrawDesc);
   kit.close();
   over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true });
@@ -788,12 +795,15 @@ export function btn(id: string, label: string, d: { variant?: BtnVariant; part?:
   const fillRole: Api.ThemeColor | null = v === "primary" ? "primary" : v === "danger" ? "danger" : v === "premium" ? "gold" : v === "secondary" ? "control" : null;
   const inkRole: Api.ThemeColor = v === "primary" || v === "danger" ? "onPrimary" : "ink";
   const ink = v === "premium" ? hex("#1d1406") : v === "primary" && !d.disabled && d.selected === undefined ? inkOn(accent()) : role(inkRole);
-  // Glass: a dark pane the scene shows through, for the second action beside a primary or premium one (Wish ×1).
+  // Glass: a dark pane the scene shows through with a bright rim, for the second action beside a primary or premium
+  // one (Wish ×1, Reroll, Banish): every secondary button at rest wears it, so the pair reads as one family.
   const accentRaised = v === "primary" && !d.disabled && d.selected === undefined;
-  const base = v === "glass" ? { ...mix(role("panel"), role("shadow"), 0.4), a: 0.62 } : accentRaised ? opaque(accent()) : fillRole ? opaque(fillRole === "control" ? mix(role("panelRaised"), role("ink"), 0.12) : role(fillRole)) : null;
+  // A toggle not set (Banish unarmed) is glass too; set, it takes its selected fill.
+  const glassy = v === "glass" || (v === "secondary" && !d.disabled && !d.selected);
+  const base = glassy ? { ...mix(role("panel"), role("shadow"), 0.45), a: 0.74 } : accentRaised ? opaque(accent()) : fillRole ? opaque(fillRole === "control" ? mix(role("panelRaised"), role("ink"), 0.12) : role(fillRole)) : null;
   // A call to action stands out of its screen (End turn, Wish, Done): a raised face over a ledge, lifting under the
   // pointer and sinking when pressed. Disabled it lies flat, which reads as inert.
-  const raised = !!base && !d.disabled && d.selected === undefined && (v === "primary" || v === "premium" || v === "danger" || v === "glass" || !!d.raised);
+  const raised = !!base && !d.disabled && ((d.selected === undefined && (v === "primary" || v === "premium" || v === "danger" || !!d.raised)) || glassy);
   const was = lastInteraction(id);
   const hot = raised && (was.hovered || was.focused) && !was.pressed;
   const down = raised && was.pressed;
@@ -819,7 +829,7 @@ export function btn(id: string, label: string, d: { variant?: BtnVariant; part?:
     // A toggle (Banish armed) is said selected as it is drawn: the tree has no pressed state.
     semantics: { role: "button", name: d.name ?? label, ...(d.selected === undefined ? {} : { selected: d.selected }) },
   }, () => {
-    if (raised) (v === "glass" ? glassFace : raisedFace)(base!, t.control, hot, down);
+    if (raised) (glassy ? glassFace : raisedFace)(base!, t.control, hot, down);
     if (d.sym) symbol("Sym", d.sym, u(size === "sm" ? 14 : 18), ink);
     d.before?.();
     if (label) text("Label", label, { step: st(size === "lg" ? 16 : size === "sm" ? 13 : 14), color: d.disabled ? "inkFaint" : ink, nowrap: true, font: "display" });

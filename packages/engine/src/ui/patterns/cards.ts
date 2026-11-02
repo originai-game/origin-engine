@@ -73,6 +73,15 @@ interface FaceOpts {
   focused?: boolean;
   /** How much of its width shows from its start edge (the next card in the fan covers the rest); unset: all of it. */
   shows?: number;
+  /** How much of its width a lifted card covers from its start edge; unset: none. */
+  hides?: number;
+}
+
+/** A name's width in em, by its letters' rough widths (narrow i, l, f; wide m, w; capitals). */
+function emWidth(s: string): number {
+  let em = 0;
+  for (const ch of s) em += /[ilIjft.,'!|:; ]/.test(ch) ? 0.3 : /[mwMW]/.test(ch) ? 0.85 : /[A-Z]/.test(ch) ? 0.64 : ch.charCodeAt(0) > 0x2e80 ? 1 : 0.54;
+  return em;
 }
 
 /**
@@ -106,14 +115,30 @@ function cardFace(c: Api.HandCard, cw: number, ch: number, o: FaceOpts): void {
   const nameW = cw - pad * 2 - Math.round(pad * 2.4);
   const base = o.big ? 18 : cw >= u(180) ? 15 : 13;
   const sizeOf = (step: Api.TypeStepName) => frame().theme.typeRamp[step]?.size ?? 13;
-  const widthAt = (step: Api.TypeStepName) => [...(c.name ?? "")].length * sizeOf(step) * 0.58;
-  // Overlapped in the fan, every card still shows its name: in the strip that shows, from its start, its step fitted
-  // down to it (to 10 px at the reference scale) rather than cut to a stub.
-  const strip = (o.shows ?? cw) - pad * 2 - Math.round(pad * 1.2);
-  const covered = o.shows !== undefined && cw / 2 + widthAt(fitStep(c.name ?? "", nameW, base)) / 2 > o.shows - pad;
-  const nameStep = covered ? fitStep(c.name ?? "", strip, base, 10) : fitStep(c.name ?? "", nameW, base);
-  const nameFits = !covered || widthAt(nameStep) <= strip + 2;
-  if (nameFits) text("Text", c.name ?? "", { step: nameStep, maxLines: covered ? 1 : 2, nowrap: covered, width: grow(), align: covered ? "start" : "center", font: "display", heading: true });
+  const widthAt = (step: Api.TypeStepName) => emWidth(c.name ?? "") * sizeOf(step);
+  // Overlapped in the fan, every card still shows its name, the one beside a lifted card included: in the strip
+  // that shows (from what a lifted card covers at its start to where the next card covers its end), its step
+  // fitted down to it (to 10 px at the reference scale), always drawn: at worst its tail runs under the next card.
+  const hides = Math.max(0, Math.min(o.hides ?? 0, cw - pad * 4));
+  const strip = (o.shows ?? cw) - hides - pad * 2 - Math.round(pad * 1.2);
+  const fitted = fitStep(c.name ?? "", nameW, base);
+  const covered = hides > 0 || (o.shows !== undefined && cw / 2 + widthAt(fitted) / 2 > o.shows - pad);
+  let nameStep = fitted;
+  if (covered) {
+    // The largest step down to the floor whose width fits the strip.
+    nameStep = fitStep(c.name ?? "", strip, base, 10);
+    for (let px = base; px >= 10; px--) {
+      if (widthAt(st(px)) <= strip) {
+        nameStep = sizeOf(st(px)) >= sizeOf(nameStep) ? st(px) : nameStep;
+        break;
+      }
+    }
+  }
+  if (hides > 0) {
+    kit.open("Hidden", { width: px(Math.max(0, hides - Math.round(pad * 1.2))), height: px(1) });
+    kit.close();
+  }
+  text("Text", c.name ?? "", { step: nameStep, maxLines: covered ? 1 : 2, nowrap: covered, width: grow(), align: covered ? "start" : "center", font: "display", heading: true });
   kit.close();
   if (o.rules) {
     kit.row("Type", { width: grow(), gap: u(6), cross: "center", align: "center", part: "Card.type", partClass: "panel" }, () => {
@@ -333,12 +358,26 @@ export function cardHand(id: string, desc: Api.CardHandDesc): Api.CardHandResult
   const L = lifted ? keys.indexOf(lifted) : -1;
   const push = L >= 0 ? clamp((liftW - step) * 0.45, 0, w * 0.6) : 0;
   const mid = (n - 1) / 2;
+  // Parted around a lifted card, each side moves aside as one, and closes up (to half a step at least) only where it
+  // meets the fan's edge, so the cards beside the lifted one keep their strip and their names.
+  const lo = Math.min(swingX, x0);
+  const hi = Math.max(fanW - swingX - w, x0 + (n - 1) * step);
+  const xAt = (i: number): number => {
+    if (L < 0 || i === L) return x0 + i * step;
+    if (i > L) {
+      const m = n - 1 - L;
+      const first = Math.min(x0 + (L + 1) * step + push, hi - (m - 1) * step * 0.5);
+      const s = m > 1 ? Math.min(step, (hi - first) / (m - 1)) : 0;
+      return clamp(first + (i - L - 1) * s, lo, hi);
+    }
+    const last = Math.max(x0 + (L - 1) * step - push, lo + (L - 1) * step * 0.5);
+    const s = L > 1 ? Math.min(step, (last - lo) / (L - 1)) : 0;
+    return clamp(last - (L - 1 - i) * s, lo, hi);
+  };
   const places: Place[] = cards.map((_, i) => {
     const off = i - mid;
     const dip = mid > 0 ? Math.round(u(14) * (off / mid) ** 2) : 0;
-    const part = L < 0 || i === L ? 0 : (i < L ? -push : push) / Math.abs(i - L) ** 0.6;
-    // Parted, a card stays inside the fan with room for its turned corners.
-    return { x: clamp(x0 + i * step + part, Math.min(swingX, x0), Math.max(fanW - swingX - w, x0 + i * step)), y: topRoom + dip, w, h: ch, rot: off * per, z: i, mode: "rest" };
+    return { x: xAt(i), y: topRoom + dip, w, h: ch, rot: off * per, z: i, mode: "rest" };
   });
   if (L >= 0) {
     const pl = places[L]!;
@@ -361,6 +400,17 @@ export function cardHand(id: string, desc: Api.CardHandDesc): Api.CardHandResult
       Object.assign(pl, { x: clamp(cx - liftW / 2, 0, Math.max(0, fanW - liftW)), y: H - liftH - u(8), w: liftW, h: liftH, rot: 0, z: 100, mode: aiming ? "aiming" : "lifted" });
     }
   }
+
+  // What of a resting card shows: its end under the next card or a lifted card after it, its start under a lifted
+  // card before it.
+  const up = L >= 0 && places[L]!.mode !== "held" ? places[L]! : null;
+  const cover = (i: number): { shows?: number; hides?: number } => {
+    const pl = places[i]!;
+    const ends = [places[i + 1]?.mode === "rest" ? places[i + 1]!.x : Infinity, up && L > i ? up.x : Infinity];
+    const end = Math.min(...ends);
+    const hides = up && L < i ? Math.max(0, up.x + up.w - pl.x) : 0;
+    return { ...(end < Infinity ? { shows: Math.max(0, end - pl.x) } : {}), ...(hides > 0 ? { hides } : {}) };
+  };
 
   // ── the cards ──
   for (let i = 0; i < n; i++) {
@@ -410,7 +460,7 @@ export function cardHand(id: string, desc: Api.CardHandDesc): Api.CardHandResult
       rules: pl.w >= u(140) && pl.mode !== "rest",
       big: pl.mode !== "rest" && pl.w >= u(200),
       focused: fanIx.focused && focusVisible && i === h.cur,
-      ...(pl.mode === "rest" && places[i + 1]?.mode === "rest" ? { shows: Math.max(0, places[i + 1]!.x - pl.x) } : {}),
+      ...(pl.mode === "rest" ? cover(i) : {}),
     }));
     kit.semantics({
       role: "option",
