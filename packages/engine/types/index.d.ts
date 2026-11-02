@@ -29237,11 +29237,17 @@ export interface PullSequenceDesc {
    */
   readonly skipLabel?: string;
   /**
-   * What the reveal says to go on (a pad's confirm glyph beside it).
+   * What the reveal says to go on on a touch screen.
    *
    * @default "Tap to continue"
    */
   readonly tapLabel?: string;
+  /**
+   * What it says after the confirm glyph when a key or a pad was used last (one hint for the device in hand, never both).
+   *
+   * @default "Continue"
+   */
+  readonly continueLabel?: string;
 }
 
 /**

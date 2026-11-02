@@ -112,7 +112,7 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
         semantics: { role: "tab", name: b.name ?? b.key ?? "", selected: on },
       }, () => {
         // The current banner: an accent rim with a glow, lifted on its shadow (a white outline reads as a debug box).
-        // Every tab a chip of the same dark glass over the art, a light falling across it and a faint rim; the current
+        // Every tab a chip of the same dark glass over the art, a light falling across it, no outline; the current
         // one lit: the accent laid into its glass, its rim in the accent with a glow, lifted on its shadow.
         const white = hex("#ffffff");
         kit.setDraw({
@@ -122,7 +122,8 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
             ...(on ? [{ kind: "solid", color: paint(accent(), 0.3) } as Api.Fill] : []),
             vgrad([[0, paint(white, on ? 0.2 : 0.14)], [0.5, paint(white, 0.05)], [1, paint(white, 0.02)]]),
           ],
-          strokes: [line(on ? 1.5 : 1, on ? paint(accent()) : paint(white, 0.3))],
+          // Only the current tab has a rim: the others are glass with no outline.
+          strokes: on ? [line(1.5, paint(accent()))] : [],
           effects: on ? [glow(u(12), paint(accent(), 0.5)), shadow(u(4), u(10), 0.5)] : [shadow(u(2), u(6), 0.3)],
         });
         if (!phone && !short) artSlot("Thumb", "Gacha.thumb", { texture: b.image ?? null, kind: "banner", width: px(u(44)), height: px(u(44)), radius: t.small });
@@ -382,7 +383,7 @@ export function pullSequence(id: string, desc: Api.PullSequenceDesc): Api.PullSe
       if (phase === 1) charge(top, tick - t0, W, H);
       else if (phase === 2) {
         const it = items[clamp(idx, 0, n - 1)]!;
-        reveal(it, idx, n, tick - t0, W, H, desc.tapLabel ?? "Tap to continue");
+        reveal(it, idx, n, tick - t0, W, H, desc.tapLabel ?? "Tap to continue", desc.continueLabel ?? "Continue");
       } else if (phase === 3) summary(items, desc, W, H, (again) => {
         if (again) out.again = true;
         else out.done = true;
@@ -456,7 +457,7 @@ function charge(top: Api.PullItem | null, dt: number, W: number, H: number): voi
 }
 
 /** One result large: its art, then its name, kind and stars landing one by one, a burst from legendary. */
-function reveal(it: Api.PullItem, idx: number, n: number, dt: number, W: number, H: number, tap: string): void {
+function reveal(it: Api.PullItem, idx: number, n: number, dt: number, W: number, H: number, tap: string, go: string): void {
   const { phone } = frame();
   const ink = tierInk(it.rarity);
   const landscape = W > H;
@@ -477,28 +478,28 @@ function reveal(it: Api.PullItem, idx: number, n: number, dt: number, W: number,
   kit.close();
   over({ insets: centred, inert: true, overlaps: ["*"] });
   if (pipsN >= 3) {
-    // Rays: two soft fans turning against each other, each ray thin, lit at the card and fading out with distance.
-    const rayInk = mix(ink, hex("#ffffff"), 0.25);
-    const a = pipsN >= 5 ? 0.42 : 0.26;
-    const turn = still() ? 0 : (dt / 60) * 0.1;
-    for (const [rid, sides, inner, k, rot] of [["Rays", pipsN >= 5 ? 16 : 12, 0.03, 1, turn], ["RaysFine", pipsN >= 5 ? 22 : 16, 0.015, 0.55, -turn * 0.7 + 0.11]] as const) {
-      kit.open(rid, { width: px(rayD), height: px(rayD), part: "Pull.rays", partClass: "badge" });
-      kit.setDraw({ shape: { kind: "polygon", sides, inner, rotation: 0 }, blend: "add", fills: [radial([[0, paint(rayInk, a * k)], [0.3, paint(rayInk, a * k * 0.55)], [0.62, paint(rayInk, a * k * 0.14)], [0.92, paint(rayInk, 0)]])] } as Api.DrawDesc);
-      kit.close();
-      over({ insets: centred, inert: true, overlaps: ["*"], transform: { rotate: rot } });
-    }
-    // Motes: a few sparks round the card, twinkling (still, they hold their light).
-    const motes = pipsN >= 5 ? 14 : pipsN >= 4 ? 9 : 5;
+    // A second, wider bloom in the tier's light (soft, no rays), and motes drifting up through it, twinkling.
+    kit.open("Bloom", { width: px(rayD), height: px(rayD), part: "Pull.bloom", partClass: "badge" });
+    const b0 = pipsN >= 5 ? 0.34 : pipsN >= 4 ? 0.24 : 0.14;
+    kit.setDraw({ shape: { kind: "ellipse" }, blend: "add", fills: [radial([[0, paint(mix(ink, hex("#ffffff"), 0.3), b0)], [0.3, paint(ink, b0 * 0.5)], [0.65, paint(ink, b0 * 0.12)], [1, paint(ink, 0)]], 0.5, 0.5, 0.5, 0.5)] } as Api.DrawDesc);
+    kit.close();
+    over({ insets: centred, inert: true, overlaps: ["*"] });
+    const moteInk = mix(ink, hex("#ffffff"), 0.35);
+    const motes = pipsN >= 5 ? 12 : pipsN >= 4 ? 8 : 5;
+    const t = still() ? 0 : dt / 60;
     for (let m = 0; m < motes; m++) {
       const h = (keyHash(`${it.key ?? it.name ?? ""}~${m}`) % 1000) / 1000;
-      const ang = (m / motes) * Math.PI * 2 + h * 0.9;
-      const rr = rayD * (0.24 + 0.2 * ((m * 37) % 11) / 11);
-      const sz = Math.round(u(5 + ((m * 13) % 7)));
-      const tw = still() ? 0.8 : 0.45 + 0.55 * Math.abs(Math.sin(dt * 0.07 + m * 1.7));
+      // Each rises slowly from below the card and fades in and out over its climb, then starts again.
+      const period = 5 + 3 * h;
+      const life = ((t / period + h) % 1 + 1) % 1;
+      const x = artW / 2 + (h - 0.5) * rayD * 0.7 + Math.sin((t + m) * 0.6) * u(10);
+      const y = artH * (1.05 - 1.2 * life);
+      const sz = Math.round(u(3 + ((m * 13) % 4)));
+      const a = still() ? 0.6 : Math.sin(life * Math.PI);
       kit.open(kit.idi("Mote", m), { width: px(sz), height: px(sz), part: "Pull.mote", partClass: "badge" });
-      kit.setDraw({ shape: { kind: "polygon", sides: 4, inner: 0.28, rotation: 0 }, blend: "add", fills: [{ kind: "solid", color: paint(rayInk, 0.95 * tw) }], effects: [glow(sz, paint(ink, 0.7 * tw), 0)] } as Api.DrawDesc);
+      kit.setDraw({ shape: { kind: "ellipse" }, blend: "add", fills: [{ kind: "solid", color: paint(moteInk, 0.9 * a) }], effects: [glow(sz * 2, paint(ink, 0.6 * a), 0)] } as Api.DrawDesc);
       kit.close();
-      over({ insets: { start: Math.round(artW / 2 + Math.cos(ang) * rr - sz / 2), top: Math.round(artH / 2 + Math.sin(ang) * rr * 0.8 - sz / 2) }, inert: true, overlaps: ["*"] });
+      over({ insets: { start: Math.round(x - sz / 2), top: Math.round(y - sz / 2) }, inert: true, overlaps: ["*"] });
     }
   }
   kit.open("Card", { width: px(artW), height: px(artH), part: "Pull.card", partClass: "card" });
@@ -531,9 +532,15 @@ function reveal(it: Api.PullItem, idx: number, n: number, dt: number, W: number,
     // A pill on the stage, no outline: a hint, not a control.
     kit.setDraw({ shape: { kind: "rect", radii: [999, 999, 999, 999] }, fills: [{ kind: "solid", color: token("shadow", 0.6) }] });
     text("Count", `${idx + 1} / ${n}`, { step: st(14), font: "mono", color: "inkMuted", nowrap: true });
-    const g = kit.frameGlyph("confirm") as Api.UiGlyph | null;
-    if (g && !frame().touch) text("Glyph", g.text, { step: st(13), font: "mono", nowrap: true });
-    text("Text", tap, { step: st(14), nowrap: true });
+    // The hint for the device in hand only: the confirm key or button in a keycap and Continue, else Tap to continue.
+    const g = frame().touch ? null : (kit.frameGlyph("confirm") as Api.UiGlyph | null);
+    if (g) {
+      kit.open("Glyph", { direction: "row", align: "center", cross: "center", padding: xy(u(6), 0), height: px(u(22)), radius: u(4), part: "Pull.keycap", partClass: "badge" });
+      kit.setDraw({ shape: { kind: "rect", radii: [u(4), u(4), u(4), u(4)] }, fills: [{ kind: "solid", color: token("ink", 0.12) }], strokes: [line(1, token("ink", 0.5))] });
+      text("Text", g.text, { step: st(12), font: "mono", nowrap: true });
+      kit.close();
+    }
+    text("Text", g ? go : tap, { step: st(14), nowrap: true });
   });
   over({ insets: { centerX: true, bottom: u(18) }, inert: true });
   void dt;
