@@ -105,6 +105,10 @@ pub static STYLE_LICENCES: &[(&str, &[u8])] = &[
         include_bytes!("../../../../templates/styles/gilded/LICENSES.md"),
     ),
     (
+        "@styles/fantasy/art-requests.json",
+        include_bytes!("../../../../templates/styles/fantasy/art-requests.json"),
+    ),
+    (
         "@styles/gilded/art-requests.json",
         include_bytes!("../../../../templates/styles/gilded/art-requests.json"),
     ),

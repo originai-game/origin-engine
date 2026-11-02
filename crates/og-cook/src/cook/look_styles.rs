@@ -107,6 +107,22 @@ pub static STYLES: &[(&str, &[u8])] = &[
         include_bytes!("../../../../templates/styles/fantasy/atlas.png.ogt"),
     ),
     (
+        "@styles/fantasy/atlas@2x.png",
+        include_bytes!("../../../../templates/styles/fantasy/atlas@2x.png"),
+    ),
+    (
+        "@styles/fantasy/atlas@2x.png.ogt",
+        include_bytes!("../../../../templates/styles/fantasy/atlas@2x.png.ogt"),
+    ),
+    (
+        "@styles/fantasy/atlas@3x.png",
+        include_bytes!("../../../../templates/styles/fantasy/atlas@3x.png"),
+    ),
+    (
+        "@styles/fantasy/atlas@3x.png.ogt",
+        include_bytes!("../../../../templates/styles/fantasy/atlas@3x.png.ogt"),
+    ),
+    (
         "@styles/fantasy/icons.png",
         include_bytes!("../../../../templates/styles/fantasy/icons.png"),
     ),
