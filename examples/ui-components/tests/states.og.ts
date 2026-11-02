@@ -102,7 +102,8 @@ export default playtest({
     t.ok(player.every((e) => e.x >= 0 && e.x + e.width <= 390.5), "the player's frame lies across the phone, none of it past the edge");
     // Each frame's name and class line holds on the scene behind it (a pale green ground here): the glyphs' ink
     // (the 99th percentile of the box's relative luminance) against the ground they sit on (its median, with the
-    // frame's scrim and the text's shadow). Live names 4.5:1, a dead or offline name and the class line 3:1.
+    // frame's scrim and the text's shadow). Live text under 3:1 is an error (docs/ui.md §15.4); dimmed names, class lines
+    // and other text over the scene are judged by eye, not by a number.
     for (const [shot, dump] of [["framesDesktop.png", "framesDesktop.json"], ["framesPhone200.png", "framesPhone200.json"]] as const) {
       t.frame(shot, () => {
         const img = run.pixels(shot);
@@ -110,7 +111,7 @@ export default playtest({
         const k = shot.startsWith("framesPhone") ? img.height / 844 : img.width / 1920;
         const lin = (v: number) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
         const lum = (i: number) => 0.2126 * lin(img.rgba[i]! / 255) + 0.7152 * lin(img.rgba[i + 1]! / 255) + 0.0722 * lin(img.rgba[i + 2]! / 255);
-        const labels = els(run, dump).filter((e) => /^(PlayerHud|TargetHud|PartyHud)\/.*\/(Name|Title)$/.test(e.path) && e.text && e.width > 4);
+        const labels = els(run, dump).filter((e) => /^(PlayerHud|TargetHud|PartyHud)\/.*\/Name$/.test(e.path) && !/\/(dead|off)\//.test(e.path) && e.text && e.width > 4);
         t.ok(labels.length >= 3, `${shot}: the frames' names are on screen`);
         for (const el of labels) {
           // The glyphs' own run (a label's box spans the bars): its text's width at the box's start (its end in RTL).
@@ -125,10 +126,16 @@ export default playtest({
           const ink = ls[Math.floor(ls.length * 0.98)] ?? 0;
           const ground = ls[Math.floor(ls.length * 0.5)] ?? 0;
           const ratio = (Math.max(ink, ground) + 0.05) / (Math.min(ink, ground) + 0.05);
-          const floor = /\/Title$/.test(e.path) || /\/(dead|off)\//.test(e.path) ? 3 : 4.5;
+          const floor = 3;
           t.ok(ratio >= floor, `${shot}: "${e.text}" reads at ${ratio.toFixed(2)}:1 on its ground (at least ${floor}:1)`);
         }
       });
+    }
+    // A boss's name band and its cast label's band never overlap (stacked, the overlap would read as a darker step).
+    for (const dump of ["framesDesktop.json", "framesPhone200.json"]) {
+      const nb = at(run, dump, "TargetHud/Target/Scrim");
+      const cb = at(run, dump, "TargetHud/Target/CastScrim");
+      t.ok(!!nb && !!cb && !meet(nb, cb), `${dump}: the boss's name band and cast band do not overlap`);
     }
     const party = parts("framesDesktop200.json", "PartyHud");
     t.ok(party.length > 0 && party.every((e) => e.y >= 0 && e.y + e.height <= 1080.5), "on a desktop at 200 % the party lies on screen, its last member too");

@@ -140,8 +140,11 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
       const tb = kit.bounds(`${path}/Bars/TitleRow`);
       const nameSize = stepSize(ts(m.name)).size;
       const titleSize = Math.min(stepSize(ts(11)).size, nameSize * 0.74);
+      // A ribbon, not a slab: a long horizontal fade (24 px, 48 px at 200 % text) and a short vertical one (a third of the
+      // name's line) that ends before the first bar's track.
       const feather = Math.round(u(24) * Math.min(2, Math.max(1, textScale())));
-      const pad = u(6);
+      const fy = Math.max(2, Math.round(stepSize(ts(m.name)).line * 0.35));
+      const pad = Math.round(fy / 2);
       // Caps sit about a fifth of a line below its top, the baseline about a fifth above its foot.
       const coreTop = hb.y - fb.y + (hb.height - nameSize) / 2 + nameSize * 0.12 - pad;
       const last = tb ?? hb;
@@ -158,12 +161,12 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
       const rtl = portraitStart === !!desc.reverse;
       const barsStart = rtl ? fb.width - hx - hb.width : hx;
       const band = (bid: string, top: number, foot: number, w: number) => {
-        const startAt = desc.reverse ? barsStart - u(16) : from;
-        const coreW = desc.reverse ? w + u(32) : gap + w + u(16);
+        const startAt = desc.reverse ? barsStart - u(8) : from;
+        const coreW = desc.reverse ? w + u(16) : gap + w + u(8);
         // No style part: an undressed part takes a card's hairline, corners and raised shadow (the slot is the texture).
-        leaf(bid, { width: px(Math.max(0, coreW) + 2 * feather), height: px(Math.max(0, foot - top) + 2 * feather) }, {
-          fills: [{ kind: "image", texture: desc.scrim!, fit: "nineSlice", slice: [64, 64, 64, 64], border: [feather, feather, feather, feather], edges: "stretch" }],
-        }, absolute({ start: startAt - feather, top: top - feather }));
+        leaf(bid, { width: px(Math.max(0, coreW) + 2 * feather), height: px(Math.max(0, foot - top) + 2 * fy) }, {
+          fills: [{ kind: "image", texture: desc.scrim!, fit: "nineSlice", slice: [64, 64, 64, 64], border: [feather, fy, feather, fy], edges: "stretch" }],
+        }, absolute({ start: startAt - feather, top: top - fy }));
       };
       band("Scrim", coreTop, coreFoot, textW);
       // A boss's cast label sits on the scene above its bar, not on the track: it gets a band of its own.
@@ -171,7 +174,9 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
       if (cb) {
         const cs = cb.height / 1.3;
         const ct = cb.y - fb.y + (cb.height - cs) / 2 + cs * 0.12 - pad;
-        band("CastScrim", ct, ct + cs * 0.8 + 2 * pad, Math.min(cb.width, (desc.castName ?? "").length * cs * 0.56));
+        // Never under the name band: a stacked overlap reads as a darker step, so its feather starts where the name's ends.
+        const cf = ct + cs * 0.8 + 2 * pad;
+        band("CastScrim", Math.min(cf, Math.max(ct, coreFoot + 2 * fy)), cf, Math.min(cb.width, (desc.castName ?? "").length * cs * 0.56));
       }
     }
     // The placeholder's ground: the unit's hue, or plain slate when it is dead or offline (never a tinted state).
@@ -254,7 +259,24 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
     if (!desc.reverse) portrait();
     kit.column("Bars", { gap: u(3), width: { kind: "grow" } }, () => {
       kit.row("Head", { gap: tk.xs, cross: "center", width: { kind: "grow" } }, () => {
-        text("Name", name, { step: ts(m.name), font: "display", color: dead || offline ? token("ink", 0.84) : hostile ? lit(mix(role("danger"), WHITE, 0.45)) : token("ink"), nowrap: true, ellipsis: true, width: { kind: "grow" }, soft: true });
+        const nameInk = dead || offline ? token("ink", 0.84) : hostile ? lit(mix(role("danger"), WHITE, 0.45)) : token("ink");
+        // A long name (a boss's) first shrinks, to four fifths of its step at most, to keep its whole identity; past that
+        // it is cut. The display face runs about 0.56 em a glyph.
+        const nStep = ts(m.name);
+        const nSize = stepSize(nStep).size;
+        const room = barsW - (desc.combat ? u(14) + tk.xs : 0);
+        const k = Math.max(0.8, Math.min(1, room / Math.max(1, name.length * nSize * 0.56)));
+        if (k < 1) {
+          const fit = shrunk(nStep, nSize * k, stepSize(nStep).line);
+          const tw = Math.max(0, room / fit.k);
+          const tl = stepSize(nStep).line;
+          box("NameFit", { height: px(Math.ceil(tl * fit.k)), width: { kind: "grow" }, cross: "start" }, undefined, () => {
+            text("Name", name, { step: nStep, font: "display", color: nameInk, nowrap: true, ellipsis: true, width: px(tw), soft: true },
+              absolute(desc.reverse ? { end: 0, top: 0 } : { start: 0, top: 0 }, fit.transform ? { transform: { scaleX: fit.k, scaleY: fit.k, x: (desc.reverse ? 1 : -1) * ((1 - fit.k) * tw) / 2, y: -((1 - fit.k) * tl) / 2 } } : {}));
+          });
+        } else {
+          text("Name", name, { step: nStep, font: "display", color: nameInk, nowrap: true, ellipsis: true, width: { kind: "grow" }, soft: true });
+        }
         if (desc.combat) icon("Combat", "crossed-swords", u(14), lit(role("danger")), "In combat");
       });
       if (desc.title && size !== "small") {
@@ -508,10 +530,14 @@ function cast(id: string, desc: Api.CastBarDesc, compact: boolean, healthH = 0):
     }, undefined, () => {
       if (compact) {
         kit.column("Body", { gap: u(2), width: { kind: "grow" } }, () => {
+          // On a narrow HUD (a phone) the label goes under the bar, as FFXIV's enemy casts do, so the boss's health and cast
+          // bars part its name from the cast's label rather than stacking text on text.
+          const under = hudRoom() < u(600);
+          if (under) bar();
           kit.row("Head", { width: { kind: "grow" } }, () => {
             text("Name", label, { step: nameStep, font: "display", color: bad ? lit(mix(role("danger"), WHITE, 0.25)) : token("ink"), nowrap: true, ellipsis: true, width: { kind: "grow" }, soft: true });
           });
-          bar();
+          if (!under) bar();
         });
         return;
       }
