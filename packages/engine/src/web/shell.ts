@@ -124,6 +124,8 @@ export interface ShellOptions {
   readonly telemetry?: boolean;
   /** A file of the bundle did not arrive, at the boot or later: its path under `cooked/` and why (`http_<status>`, `timeout`, `network`). */
   readonly onLoadFailure?: (failure: { readonly file: string; readonly reason: string }) => void;
+  /** The inspector saved scenes on this page, which writes no files (development builds): each one's source and whole new text. */
+  readonly onScenesSaved?: (scenes: readonly { readonly source: string; readonly text: string }[]) => void;
   /**
    * Ask the browser for the low-power GPU adapter (og.render's PowerPreference
    * lowPower). Omitted: what the player chose last on this page
@@ -324,6 +326,7 @@ export class Shell {
   #onCrash: ShellOptions["onCrash"];
   #onFirstFrame: ShellOptions["onFirstFrame"];
   #onLoadFailure: ShellOptions["onLoadFailure"];
+  #onScenesSaved: ShellOptions["onScenesSaved"];
   #next = 1;
   #rpcNext = 1;
   #pumping = false;
@@ -406,6 +409,10 @@ export class Shell {
       }
       if (m.type === "rumble") {
         playRumble((m as unknown as { rumble: RumbleRequest[] }).rumble);
+        return;
+      }
+      if (m.type === "saved") {
+        this.#onScenesSaved?.((m as unknown as { scenes: { source: string; text: string }[] }).scenes);
         return;
       }
       if (m.type === "copy") {
@@ -569,6 +576,7 @@ export class Shell {
     shell.#onCrash = options.onCrash;
     shell.#onFirstFrame = options.onFirstFrame;
     shell.#onLoadFailure = options.onLoadFailure;
+    shell.#onScenesSaved = options.onScenesSaved;
     shell.#playing = options.autoplay ?? true;
     shell.#viewport = { width: canvas.clientWidth || canvas.width / dpr, height: canvas.clientHeight || canvas.height / dpr, dpr, coarsePointer: globalThis.matchMedia?.("(pointer: coarse)").matches ?? false };
     shell.#layout = { width: shell.#viewport["width"] as number, height: shell.#viewport["height"] as number };

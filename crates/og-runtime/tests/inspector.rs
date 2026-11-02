@@ -54,8 +54,11 @@ fn cook(root: &Path) {
 }
 
 fn project() -> PathBuf {
+    // One directory a call: the tests run beside each other.
+    static NEXT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
-        .join(format!("og-runtime-inspector-{}", std::process::id()));
+        .join(format!("og-runtime-inspector-{}-{n}", std::process::id()));
     let _ = std::fs::remove_dir_all(&root);
     std::fs::create_dir_all(root.join("assets/scenes")).unwrap();
     std::fs::write(root.join("assets/scenes/yard.ogt"), YARD).unwrap();
@@ -364,5 +367,166 @@ fn the_gizmo_turns_and_scales_with_its_handles() {
     assert_eq!(
         p["dirty"],
         json!(["crate.og.Transform.quaternion", "crate.og.Transform.scale"])
+    );
+}
+
+/// The text a panel element shows.
+fn text_of(p: &Value, path: &str) -> Option<String> {
+    p["elements"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|e| e["path"] == json!(path))
+        .and_then(|e| e["text"].as_str().map(str::to_string))
+}
+
+#[test]
+fn a_prefab_instances_overrides_revert_and_apply_from_the_panel() {
+    use super::prefabs::{CRATE, YARD, hp, placed, project};
+    let root = project("inspector", YARD);
+    let scene = || std::fs::read_to_string(root.join("assets/scenes/yard.ogt")).unwrap();
+    let prefab = || std::fs::read_to_string(root.join("assets/prefabs/crate.ogt")).unwrap();
+    let e = placed(&root);
+    commands(e, "0:inspect:crate1/lid", 3);
+    let p = panel(e);
+    assert_eq!(
+        text_of(&p, "Inspector/Detail/Prefab/Of").as_deref(),
+        Some("Prefab prefabs/crate.ogt · lid"),
+        "{}",
+        p["status"]
+    );
+    // The scene's override of the lid's hp, reverted: the line goes and
+    // the live value is the prefab's.
+    assert_eq!(
+        text_of(&p, "Inspector/Detail/O:Health.hp/Field").as_deref(),
+        Some("Health.hp")
+    );
+    click(e, &p, "Inspector/Detail/O:Health.hp/Revert");
+    assert_eq!(hp(e, "crate1/lid"), 10.0);
+    assert_eq!(
+        scene(),
+        YARD.replace(
+            "  override \"lid\" {\n    Health {\n      hp 40\n    }\n  }\n",
+            ""
+        )
+    );
+    let p = panel(e);
+    assert!(
+        text_of(&p, "Inspector/Detail/O:Health.hp/Field").is_none(),
+        "no override left"
+    );
+    // An unsaved edit of the field shows as an override; Apply writes it
+    // into the prefab's lid and leaves the scene as it is.
+    // og.Transform folded, so Health's rows are in view (a `/` in an id
+    // is a `_` in a path).
+    click(e, &p, "Inspector/Detail/S:og.Transform");
+    let p = panel(e);
+    click(e, &p, "Inspector/Detail/F:crate1_lid.Health.hp/P0");
+    commands(
+        e,
+        "0:key_down:End;0.02:key_up:End;0.04:key_down:Backspace;0.06:key_up:Backspace;0.08:key_down:Backspace;0.1:key_up:Backspace;0.15:type:33;0.35:key_down:Enter;0.38:key_up:Enter",
+        30,
+    );
+    let p = panel(e);
+    assert_eq!(
+        p["dirty"],
+        json!(["crate1/lid.Health.hp"]),
+        "{}",
+        p["status"]
+    );
+    assert_eq!(
+        text_of(&p, "Inspector/Detail/O:Health.hp/Field").as_deref(),
+        Some("Health.hp (unsaved)")
+    );
+    let before = scene();
+    click(e, &p, "Inspector/Detail/O:Health.hp/Apply");
+    let p = panel(e);
+    assert_eq!(p["dirty"], json!([]), "{}", p["status"]);
+    assert_eq!(
+        prefab(),
+        CRATE.replace(
+            "    Health {\n      hp 10\n    }\n  }",
+            "    Health {\n      hp 33\n    }\n  }"
+        )
+    );
+    assert_eq!(scene(), before, "the instance keeps no override of it");
+}
+
+const BOARD: &str = "type scene
+version 1
+---
+name \"Board\"
+resource Score {
+  best 1 # the record
+}
+entity \"post\" {
+  Health {
+    hp 7
+  }
+}
+";
+
+#[test]
+fn a_resource_edited_in_its_tab_saves_as_its_one_line() {
+    use og_core::reflect::{FieldSchema, FieldType, Schema};
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("og-runtime-inspector-res-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(root.join("assets/scenes")).unwrap();
+    std::fs::write(root.join("assets/scenes/board.ogt"), BOARD).unwrap();
+    let schema = |name: &str, field: &str| Schema {
+        name: name.into(),
+        version: 1,
+        doc: String::new(),
+        fields: vec![FieldSchema::new(field, FieldType::F32)],
+    };
+    let report = og_cook::cook_project(
+        &root,
+        &og_cook::CookOptions {
+            threads: 1,
+            schemas: vec![schema("Health", "hp"), schema("Score", "best")],
+            ..og_cook::CookOptions::default()
+        },
+    )
+    .unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    set_hooks(Rc::new(Disk));
+    og_host_begin_bundle();
+    for (name, field, resource) in [("Health", "hp", false), ("Score", "best", true)] {
+        let fields =
+            json!([{ "name": field, "kind": "f32", "default": 0, "options": {} }]).to_string();
+        value(if resource {
+            og_runtime::og_reflect_define_resource(name.into(), fields)
+        } else {
+            og_reflect_define_component(name.into(), fields)
+        });
+    }
+    let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+    let options = json!({ "root": root.to_str().unwrap() }).to_string();
+    let e = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
+    let scene = value(og_load_scene(e, "scenes/board.ogt".into()));
+    value(og_world_instantiate(e, scene.as_f64().unwrap(), None));
+    step(e, 2);
+    commands(e, "0:inspect:on", 3);
+    let p = panel(e);
+    click(e, &p, "Inspector/View/Tab#1");
+    let p = panel(e);
+    click(e, &p, "Inspector/Detail/S:Score");
+    let p = panel(e);
+    click(e, &p, "Inspector/Detail/F:Score.best/P0");
+    commands(
+        e,
+        "0:key_down:End;0.02:key_up:End;0.04:key_down:Backspace;0.06:key_up:Backspace;0.15:type:9;0.3:key_down:Enter;0.33:key_up:Enter",
+        25,
+    );
+    let p = panel(e);
+    assert_eq!(p["dirty"], json!(["Score.best"]), "{}", p["status"]);
+    click(e, &p, "Inspector/Bar/Save");
+    let p = panel(e);
+    assert_eq!(p["dirty"], json!([]), "{}", p["status"]);
+    let saved = std::fs::read_to_string(root.join("assets/scenes/board.ogt")).unwrap();
+    assert_eq!(
+        saved,
+        BOARD.replacen("  best 1 # the record\n", "  best 9 # the record\n", 1)
     );
 }

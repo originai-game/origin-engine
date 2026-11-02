@@ -24,7 +24,7 @@ use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-const CRATE: &str = "type prefab
+pub(crate) const CRATE: &str = "type prefab
 version 1
 ---
 entity \"crate\" {
@@ -39,7 +39,7 @@ entity \"crate\" {
 }
 ";
 
-const YARD: &str = "type scene
+pub(crate) const YARD: &str = "type scene
 version 1
 ---
 name \"Yard\"
@@ -101,7 +101,7 @@ fn cook(root: &Path) {
 }
 
 /// A project with `scene` at scenes/yard.ogt and the crate prefab, cooked.
-fn project(name: &str, scene: &str) -> PathBuf {
+pub(crate) fn project(name: &str, scene: &str) -> PathBuf {
     let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
         .join(format!("og-runtime-prefabs-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&root);
@@ -151,7 +151,7 @@ fn engine(root: &Path) -> u32 {
 }
 
 /// An engine with the yard instantiated.
-fn placed(root: &Path) -> u32 {
+pub(crate) fn placed(root: &Path) -> u32 {
     let e = engine(root);
     let scene = value(og_load_scene(e, "scenes/yard.ogt".into()));
     value(og_world_instantiate(e, scene.as_f64().unwrap(), None));
@@ -176,7 +176,7 @@ fn find(e: u32, name: &str) -> f64 {
         .unwrap_or_else(|| panic!("no entity '{name}'"))
 }
 
-fn hp(e: u32, name: &str) -> f64 {
+pub(crate) fn hp(e: u32, name: &str) -> f64 {
     value(og_world_get(e, find(e, name), "Health".into()))["hp"]
         .as_f64()
         .unwrap()

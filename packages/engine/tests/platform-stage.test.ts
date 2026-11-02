@@ -256,3 +256,31 @@ test("precedence: framed speaks to the parent; __OG_GAME, another Stage origin o
   restore?.();
   restore = null;
 });
+
+// The inspector's Save on a page (G3-7, docs/platform-asks.md #22): a Stage
+// whose hello lists scene_saved takes the texts as events of at most 64
+// scenes; a scene it would refuse, and every scene for any other host, is a
+// download named by its file.
+test("a saved scene goes to a scene_saved Stage, or downloads", async () => {
+  const { routeSavedScenes, SCENE_SAVED_MAX_SCENES } = await import("../shell/wire.ts");
+  const scenes = Array.from({ length: SCENE_SAVED_MAX_SCENES + 2 }, (_, i) => ({ source: `assets/scenes/s${i}.ogt`, text: `type scene\n# ${i}\n` }));
+  const odd = [
+    { source: "src/main.ts", text: "x" },
+    { source: "assets/../project.ogt", text: "x" },
+    { source: "assets/big.ogt", text: "a".repeat((1 << 20) + 1) },
+  ];
+  const pushed: Msg[] = [];
+  const downloads: string[] = [];
+  const r = routeSavedScenes([...scenes, ...odd], { capable: true, push: (m) => pushed.push(m), download: (name) => downloads.push(name) });
+  expect(r).toEqual({ sent: scenes.length, downloaded: 3 });
+  expect(pushed.map((m) => m["kind"])).toEqual(["scene_saved", "scene_saved"]);
+  expect(pushed.map((m) => (m["scenes"] as unknown[]).length)).toEqual([SCENE_SAVED_MAX_SCENES, 2]);
+  expect((pushed[1]!["scenes"] as Msg[])[1]).toEqual({ source: `assets/scenes/s${SCENE_SAVED_MAX_SCENES + 1}.ogt`, text: `type scene\n# ${SCENE_SAVED_MAX_SCENES + 1}\n` });
+  expect(downloads).toEqual(["main.ts", "project.ogt", "big.ogt"]);
+  // A host without the capability: every scene a download, nothing pushed.
+  const none: Msg[] = [];
+  const names: string[] = [];
+  expect(routeSavedScenes(scenes.slice(0, 2), { capable: false, push: (m) => none.push(m), download: (n) => names.push(n) })).toEqual({ sent: 0, downloaded: 2 });
+  expect(none).toEqual([]);
+  expect(names).toEqual(["s0.ogt", "s1.ogt"]);
+});

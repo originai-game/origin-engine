@@ -872,18 +872,23 @@ impl Probe {
         {
             out["render"] = r;
         }
-        if let Some(mut p) = self
-            .scene_writer
-            .as_ref()
-            .and_then(|w| w.entity_prefab(world, e))
-        {
-            // The instance's root by its probe id.
-            if let Some(bits) = p["root"].as_f64() {
-                p["root"] = json!(self.names.id_of(world, Entity::from_bits(bits as u64)));
-            }
+        if let Some(p) = self.entity_prefab(world, e) {
             out["prefab"] = p;
         }
         out
+    }
+
+    /// Where an entity placed from a prefab came from, as `dump_entity`'s
+    /// `prefab`: `{prefab, node, root, overrides}` (the root by its probe
+    /// id, the overrides its instance's lines in the scene's text as
+    /// `Component.field`); none for another entity or a host without
+    /// scene write-back.
+    pub fn entity_prefab(&self, world: &World, e: Entity) -> Option<Value> {
+        let mut p = self.scene_writer.as_ref()?.entity_prefab(world, e)?;
+        if let Some(bits) = p["root"].as_f64() {
+            p["root"] = json!(self.names.id_of(world, Entity::from_bits(bits as u64)));
+        }
+        Some(p)
     }
 
     /// The UI tree in draw order; empty without a UI module.

@@ -26,6 +26,9 @@ pub(super) struct Ctx<'a> {
     /// What a handle field names: its sound's or asset's id, by handle.
     pub sounds: &'a BTreeMap<u64, String>,
     pub assets: &'a BTreeMap<u64, String>,
+    /// The selected entity's prefab, when it was placed from one
+    /// (`Probe::entity_prefab`).
+    pub prefab: Option<&'a serde_json::Value>,
 }
 
 /// The panel's width in CSS pixels at the og-ui unit.
@@ -150,6 +153,7 @@ pub(super) fn build(ins: &mut Inspector, cx: &Ctx) {
         ins,
         editing: false,
         escape,
+        overridden: Default::default(),
     };
     ui.open_panel(
         "Inspector",
@@ -218,6 +222,8 @@ struct State<'a> {
     editing: bool,
     /// Escape this frame: a field being typed in is left unchanged.
     escape: bool,
+    /// The selected prefab instance's overridden fields, by `set` target.
+    overridden: std::collections::BTreeSet<String>,
 }
 
 fn toolbar(ui: &mut Ui, s: &mut State, cx: &Ctx) {
@@ -518,6 +524,135 @@ fn entities(ui: &mut Ui, s: &mut State, cx: &Ctx) {
     );
 }
 
+/// A prefab instance's field as `apply_prefab` names it: `Component.field`
+/// with the engine's `og.` dropped (`og.Transform.position` is
+/// `Transform.position`, as the scene's text writes it).
+pub(super) fn prefab_field(component_field: &str) -> String {
+    component_field
+        .strip_prefix("og.")
+        .unwrap_or(component_field)
+        .to_string()
+}
+
+/// The prefab an entity was placed from, and what its instance overrides:
+/// the scene's override lines and this session's unsaved edits, each with
+/// Apply (into the prefab) and Revert (back to it), and both for all.
+fn prefab(ui: &mut Ui, s: &mut State, e: Entity, id: &str, info: &serde_json::Value) {
+    let t = *ui.theme();
+    let p = t.palette;
+    let name = info["prefab"].as_str().unwrap_or("");
+    let node = info["node"].as_str().unwrap_or("");
+    // The fields it overrides: saved lines, then unsaved edits.
+    let mut fields: Vec<(String, bool)> = info["overrides"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|v| v.as_str())
+        .map(|f| (prefab_field(f), true))
+        .collect();
+    let prefix = format!("{id}.");
+    for target in &s.ins.dirty {
+        if let Some(rest) = target.strip_prefix(&prefix) {
+            let f = prefab_field(rest);
+            if !fields.iter().any(|(g, _)| *g == f) {
+                fields.push((f, false));
+            }
+        }
+    }
+    // The `set` targets they show under (og.Transform's with its og.).
+    for (f, _) in &fields {
+        let (c, field) = f.split_once('.').unwrap_or((f, ""));
+        for comp in [c.to_string(), format!("og.{c}")] {
+            s.overridden.insert(format!("{id}.{comp}.{field}"));
+        }
+    }
+    let row = Element {
+        direction: Direction::Row,
+        width: Size::grow(),
+        cross: Cross::Center,
+        gap: t.space.xs,
+        ..Element::default()
+    };
+    ui.row("Prefab", row, |ui| {
+        let what = if node.is_empty() {
+            format!("Prefab {name}")
+        } else {
+            format!("Prefab {name} · {node}")
+        };
+        label(ui, "Of", &what, p.info, true, Size::grow());
+        let none = fields.is_empty();
+        let apply = ui.button(
+            "ApplyAll",
+            "Apply all",
+            ButtonDesc {
+                disabled: none,
+                ..small(ButtonVariant::Secondary)
+            },
+        );
+        if apply.clicked {
+            s.ins.requests.push(Request::Prefab {
+                entity: e,
+                target: None,
+                fields: fields.iter().map(|(f, _)| f.clone()).collect(),
+                apply: true,
+            });
+        }
+        ui.tooltip("Write every override into the prefab's file: every instance takes it");
+        let revert = ui.button(
+            "RevertAll",
+            "Revert all",
+            ButtonDesc {
+                disabled: none,
+                ..small(ButtonVariant::Quiet)
+            },
+        );
+        if revert.clicked {
+            s.ins.requests.push(Request::Prefab {
+                entity: e,
+                target: None,
+                fields: fields.iter().map(|(f, _)| f.clone()).collect(),
+                apply: false,
+            });
+        }
+        ui.tooltip("Take every override back to the prefab's value");
+    });
+    for (f, saved) in &fields {
+        ui.row(format!("O:{f}"), row, |ui| {
+            ui.spacer("Indent", Some(Size::Fixed(6.0 + t.space.xs)));
+            let text = if *saved {
+                f.clone()
+            } else {
+                format!("{f} (unsaved)")
+            };
+            label(ui, "Field", &text, p.ink_muted, true, Size::grow());
+            if ui
+                .button("Apply", "Apply", small(ButtonVariant::Quiet))
+                .clicked
+            {
+                s.ins.requests.push(Request::Prefab {
+                    entity: e,
+                    target: Some(f.clone()),
+                    fields: vec![f.clone()],
+                    apply: true,
+                });
+            }
+            ui.tooltip("Write this value into the prefab");
+            if ui
+                .button("Revert", "Revert", small(ButtonVariant::Quiet))
+                .clicked
+            {
+                s.ins.requests.push(Request::Prefab {
+                    entity: e,
+                    target: Some(f.clone()),
+                    fields: vec![f.clone()],
+                    apply: false,
+                });
+            }
+            ui.tooltip("Back to the prefab's value");
+        });
+    }
+}
+
 /// The components of an entity, og.Transform first, then by name.
 fn components(world: &World, e: Entity) -> Vec<Schema> {
     let mut out: Vec<Schema> = world
@@ -556,6 +691,10 @@ fn entity(ui: &mut Ui, s: &mut State, cx: &Ctx, e: Entity) {
             }
         },
     );
+    s.overridden.clear();
+    if let Some(info) = cx.prefab {
+        prefab(ui, s, e, &id, info);
+    }
     for schema in components(world, e) {
         let key = format!("C:{}", schema.name);
         let open = !s.ins.folded.contains(&key);
@@ -830,7 +969,13 @@ fn field_row(
                 },
             );
             ui.close();
-            let ink = if flashing { p.warn } else { p.ink_muted };
+            let ink = if flashing {
+                p.warn
+            } else if s.overridden.contains(target) {
+                p.info
+            } else {
+                p.ink_muted
+            };
             label(ui, "Name", &name, ink, true, Size::Fixed(NAME));
             editors(ui, s, target, f, editor, shown, current);
         },

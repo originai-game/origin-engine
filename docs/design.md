@@ -1775,7 +1775,23 @@ reflected schema and writes only through the probe:
   checked against the schema, applied between ticks, kept for undo (a
   drag folded into one step), marked unsaved, and flagged when the game
   writes the value back. Save is `save_scene`, which writes each tuned
-  field into its line of the scene text.
+  field into its line of the scene text; a resource's field into its
+  `resource` block.
+- **Prefab overrides.** An entity placed from a prefab shows its prefab and
+  node, and what its instance overrides: the scene's override lines and
+  the session's unsaved edits, the overridden fields' names tinted. Each
+  override, or all of them, is applied into the prefab's file
+  (`apply_prefab`: every instance takes it) or reverted to the prefab's
+  value (`revert_prefab`); either clears the fields' unsaved marks.
+- **Where Save goes.** Natively the engine writes the files. A web page
+  writes none: the save answers the texts, the frame answer carries them
+  (`saved: {scenes: [{source, text}]}`), and the shell sends them to a
+  Stage whose hello lists `scene_saved` as that event on the og-probe wire
+  (at most 64 scenes an event; a scene outside `assets/`, not `.ogt` or
+  past 1 MiB is not sent) and downloads each one otherwise
+  (`shell/wire.ts` `routeSavedScenes`; `docs/platform-asks.md` #22). A
+  prefab's Apply and Revert read the prefab's source file, so they work
+  only where the engine reads the project's files.
 - **Gizmos.** On the selected entity's og.Transform: translate (an arrow per
   axis, a square per plane, the centre in the view's plane), rotate (a
   ring per axis and one facing the view) and scale (a bar per own axis,

@@ -34,7 +34,7 @@
 import { Shell, webGpuMissing } from "../src/web/shell.ts";
 import { AudioShell } from "../src/web/audio.ts";
 import { pollGamepads } from "../src/web/gamepad.ts";
-import { mountWire } from "./wire.ts";
+import { mountWire, routeSavedScenes, SCENE_SAVED_CAPABILITY, type SavedScene } from "./wire.ts";
 import { connectPlayer } from "./player.ts";
 import { connectPage, pageGame, type PageConnection, type PageInfo } from "./transport.ts";
 import { deferredPlatform, HELLO_WAIT_MS, playerPlatform, playerRooms, storagePersistence } from "./platform.ts";
@@ -267,6 +267,24 @@ export async function play(): Promise<PlayHandle> {
   let lastMemory: MemoryInfo | null = null;
   const failures: Array<{ file: string; reason: string }> = [];
   let failuresSeen = 0;
+  // The inspector's Save writes no file here (development builds): to a Stage whose hello
+  // lists scene_saved, the texts over the og-probe wire; otherwise a download each
+  // (docs/platform-asks.md #22).
+  let wire: { push(message: Record<string, unknown>): void } | null = null;
+  const download = (name: string, text: string) => {
+    const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  const onScenesSaved = (scenes: readonly SavedScene[]) => {
+    const push = wire?.push;
+    routeSavedScenes(scenes, { capable: !!push && player.capabilities.includes(SCENE_SAVED_CAPABILITY), push: (m) => push?.(m), download });
+  };
   const onLoadFailure = (f: { file: string; reason: string }) => {
     if (!telemetry || failuresSeen >= FAILURES_MAX) return;
     failuresSeen++;
@@ -603,6 +621,7 @@ export async function play(): Promise<PlayHandle> {
       onCrash: (message, error) => void fail(readied ? T.stopped : T.startFailed, message, readied, true, error),
       telemetry,
       onLoadFailure,
+      onScenesSaved,
       onFirstFrame: () => {
         firstFrameAt = performance.now();
         performance.mark?.("og:first-frame");
@@ -657,7 +676,7 @@ export async function play(): Promise<PlayHandle> {
   (globalThis as Record<string, unknown>)[PROBE_GLOBAL] = Object.freeze(probe);
   // The played frames' display intervals and engine work, ms (`og run --device` reads them; `true` resets).
   (globalThis as Record<string, unknown>)[TIMINGS_GLOBAL] = (reset?: boolean) => shell.call("timings", reset === true);
-  mountWire({
+  wire = mountWire({
     probe: () => (method, params) => shell.probe(method, params ?? {}),
     targetSize: () => ({ width: canvas.width || Math.round(box.width * Math.min(devicePixelRatio || 1, config.dprCap)), height: canvas.height || Math.round(box.height * Math.min(devicePixelRatio || 1, config.dprCap)) }),
     canvas: () => canvas,

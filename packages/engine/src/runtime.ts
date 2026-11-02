@@ -1586,6 +1586,8 @@ export class Engine {
     lowPower?: boolean;
     /** Ask pointer lock for raw mouse movement (og.input.setMouse's `raw`: unadjustedMovement). */
     rawMouse?: boolean;
+    /** The scene texts the inspector's Save (or a prefab Apply or Revert) made on a host that writes no files (development builds): the web shell routes them. */
+    saved?: { scenes: { source: string; text: string }[] };
   } {
     this.pumpPlatform();
     const answer = parse<{ ok: boolean; ticks?: number }>(abi().og_engine_frame(this.id, elapsedMs));
