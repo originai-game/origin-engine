@@ -15,7 +15,7 @@ import { storeFront } from "./store.ts";
 import { battlePass } from "./pass.ts";
 import { backlog, barks, conversation } from "./story.ts";
 import { questLog, questTracker } from "./quests.ts";
-import { characterSelect, lobby, versus } from "./roster.ts";
+import { characterSelect, draft, lobby, versus } from "./roster.ts";
 
 export const patterns = Object.freeze({
   cardHand,
@@ -40,4 +40,5 @@ export const patterns = Object.freeze({
   lobby,
   characterSelect,
   versus,
+  draft,
 });

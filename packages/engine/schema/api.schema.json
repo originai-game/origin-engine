@@ -11471,6 +11471,10 @@
         "VersusSide",
         "VersusDesc",
         "VersusResult",
+        "DraftSlot",
+        "DraftTeam",
+        "DraftDesc",
+        "DraftResult",
         "MenuItem",
         "MenuResult",
         "MainMenuDesc",
@@ -15407,7 +15411,7 @@
         },
         {
           "name": "characterSelect",
-          "doc": "A character select (Street Fighter 6, Valorant, Overwatch, Smash): the local player's character standing large on the start side, its splash art filling that half over a scrim with its role in the eyebrow, its name in the display face and a line of description; with two players the other's on the end side, mirrored, each tagged in its team's colour; the roster under or beside them as a grid of portrait tiles in whole rows, each cursor a rim in its player's team colour with the player's tag at the tile's corner (two on one tile split the corner), a confirmed pick a tick, a locked tile dark behind a lock, a taken one dimmed. Lock in in the accent at the foot (Locked in, quiet, once confirmed); a timer when the game gives one. Keys and pads walk the tiles (the focus is the local cursor), confirm locks in, Back unlocks. On a phone in portrait the splash takes the top and the grid scrolls under it.\nParts: Select.frame, Select.stage, Select.splash[you|rival][confirmed], Select.name, Select.roster, Select.tile[cursor][confirmed][locked][taken], Select.tag, Select.lock, Select.confirm[on], Select.timer. Slots: each entry's portrait (art kind portrait) and splash (art kind splash). States: on each tile, group pick (open, cursor, confirmed, locked, taken). Motion: a new character's splash slides in from its side on the panel spring; a confirmed pick flashes its tile and its splash's name pops on the emphasis spring (still under reduced motion); a refused tile shakes. Sounds: hover as the cursor moves, confirm on a pick, error on a refused one, back on Back. Accessibility: the roster a grid of buttons named name, role, locked or taken and whose cursor is on it; each splash a region named the player and the character. Probe ids: <id>/Roster/<key>, <id>/Roster/Random, <id>/Stage/Start, <id>/Stage/End, <id>/Foot/Lock.",
+          "doc": "A character select (Street Fighter 6, Valorant, Overwatch, Smash): the local player's character standing large on the start side, its splash art filling that half over a scrim with its role in the eyebrow, its name in the display face and a line of description; with two players the other's on the end side, mirrored, each tagged in its team's colour; the roster under or beside them as a grid of portrait tiles in whole rows, each cursor a rim in its player's team colour with the player's tag at the tile's corner (two on one tile split the corner), a confirmed pick a tick, a locked tile dark behind a lock, a taken one dimmed. Lock in in the accent at the foot (Locked in, quiet, once confirmed); a timer when the game gives one. Keys and pads walk the tiles (the focus is the local cursor), confirm locks in, Back unlocks. On a phone in portrait the splash takes the top and the grid scrolls under it.\nParts: Select.frame, Select.stage, Select.splash[you|rival][confirmed], Select.name, Select.roster, Select.tile[cursor][confirmed][locked][taken], Select.tag, Select.lock, Select.confirm[on], Select.timer. Slots: each entry's portrait (art kind portrait) and splash (art kind splash). States: on each tile, group pick (open, cursor, confirmed, locked, taken). Motion: a new character's splash slides in from its side on the panel spring; a confirmed pick flashes its tile and its splash's name pops on the emphasis spring (still under reduced motion); a refused tile shakes. Sounds: hover as the cursor moves, confirm on a pick, error on a refused one, back on Back. Accessibility: the roster a grid of buttons named name, role, locked or taken and whose cursor is on it; each splash a region named the player and the character. Probe ids: <id>/Stage/Roster/Row#<r>/<key>, <id>/Stage/Roster/Row#<r>/Random, <id>/Stage/Start, <id>/Stage/End, <id>/Foot/Lock.",
           "params": [
             {
               "name": "id",
@@ -15444,6 +15448,27 @@
             }
           ],
           "returns": "VersusResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "draft",
+          "doc": "A draft with bans (League of Legends, Dota 2, Marvel Snap's draft mode, a sports draft): the two teams in columns at the sides, each pick a wide slot with the character's art across it (dimmed while only hovered), the player's name and the character's, the slot that picks now lit in its team's colour with a light running along it; each team's bans a row of small tiles under its picks, struck through in danger, the bans to come empty. In the middle the phase banner (ban in danger, pick in the accent) with a bar that runs down with the turn's time and the seconds, the roster as a grid of portrait tiles in whole rows (banned ones struck and dark, picked ones dimmed, the hovered one rimmed in the local team's colour), and under it one action: Ban in danger or Lock in in the accent in the local player's turn, Waiting otherwise. On a phone in portrait the teams stand as two rows of portraits above the roster.\nParts: Draft.frame, Draft.team[start|end], Draft.slot[active][locked][you], Draft.slotArt, Draft.bans, Draft.ban[empty], Draft.banner[ban|pick], Draft.timer, Draft.roster, Draft.tile[cursor][banned][taken], Draft.action[ban|pick|waiting]. Slots: each slot's and tile's art (the entry's splash or portrait, art kind portrait). States: on each tile, group pick (open, cursor, taken, banned); on each slot, group slot (empty, hovered, locked). Motion: a pick locking in flashes its slot and slides its art in on the panel spring; the active slot's light sweeps along it; a ban's slash draws across (still under reduced motion); a refused tile shakes. Sounds: hover as the hover moves, confirm on a pick, error on a refused tile, alert in the last five seconds of the local player's turn. Accessibility: each team a list named its name of slots named player, character and state; the roster a grid of buttons named name and banned or picked; the timer a timer. Probe ids: <id>/Start/Picks/Slot#<i>, <id>/End/Picks/Slot#<i>, <id>/Start/Bans/Ban#<i>, <id>/Middle/Room/Roster/Row#<r>/<key>, <id>/Middle/Banner, <id>/Middle/Foot/Action (on a phone in portrait the teams are under <id>/Teams/Wrap).",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "DraftDesc",
+              "optional": true,
+              "doc": "The teams, the roster, the phase and the words."
+            }
+          ],
+          "returns": "DraftResult",
           "publish": true,
           "host": false
         },
@@ -59131,7 +59156,7 @@
       "properties": {
         "key": {
           "type": "string",
-          "description": "Its key: its tile's element id, so its probe path is <id>/Roster/<key>.",
+          "description": "Its key: its tile's element id, so its probe path is <id>/Stage/Roster/Row#<r>/<key>.",
           "default": ""
         },
         "name": {
@@ -59448,6 +59473,220 @@
       },
       "required": [
         "skipped"
+      ],
+      "additionalProperties": false
+    },
+    "DraftSlot": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One pick of a team in a draft.",
+      "type": "object",
+      "properties": {
+        "player": {
+          "type": "string",
+          "description": "The player's name.",
+          "default": ""
+        },
+        "entry": {
+          "type": "string",
+          "description": "The roster key picked or hovered (empty: none yet).",
+          "default": ""
+        },
+        "locked": {
+          "type": "boolean",
+          "description": "The pick is locked in: the slot shows the character whole; else a hover shows it dimmed.",
+          "default": false
+        },
+        "active": {
+          "type": "boolean",
+          "description": "This slot picks now: lit, with the timer's light along it.",
+          "default": false
+        },
+        "you": {
+          "type": "boolean",
+          "description": "The local player's slot.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "DraftTeam": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One side of a draft.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The team's name (Blue side).",
+          "default": ""
+        },
+        "team": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its team, for its colour.",
+          "default": 0
+        },
+        "picks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DraftSlot"
+          },
+          "description": "Its picks, in pick order.",
+          "default": []
+        },
+        "bans": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Its bans, roster keys in ban order; an empty key is a ban still to come.",
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "DraftDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A draft: two teams' picks and bans, the roster, the phase and its timer.",
+      "type": "object",
+      "properties": {
+        "teams": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DraftTeam"
+          },
+          "description": "The two teams, the local player's first (it stands on the start side).",
+          "default": []
+        },
+        "roster": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RosterEntry"
+          },
+          "description": "The roster: taken (picked by anyone) and banned characters are told by the teams' lists.",
+          "default": []
+        },
+        "phase": {
+          "type": "string",
+          "description": "ban, pick or done: what the active slot does (Ban in danger, Lock in in the accent).",
+          "default": ""
+        },
+        "phaseLabel": {
+          "type": "string",
+          "description": "The banner over the roster (Ban phase · Blue bans 2).",
+          "default": ""
+        },
+        "secondsLeft": {
+          "type": "number",
+          "description": "Time left in this turn.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "seconds": {
+          "type": "number",
+          "description": "The turn's whole time, for the bar; 0 is 30.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "yourTurn": {
+          "type": "boolean",
+          "description": "The local player acts now: the roster takes presses and the action is live.",
+          "default": false
+        },
+        "hovered": {
+          "type": "string",
+          "description": "The roster key the local player has hovered (its slot shows it dimmed, its tile is rimmed).",
+          "default": ""
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Tiles a row; 0 fits 88 px tiles.",
+          "default": 0
+        },
+        "lockLabel": {
+          "type": "string",
+          "description": "The pick action.",
+          "default": "Lock in"
+        },
+        "banLabel": {
+          "type": "string",
+          "description": "The ban action.",
+          "default": "Ban"
+        },
+        "waitingLabel": {
+          "type": "string",
+          "description": "The action while it is not the local player's turn.",
+          "default": "Waiting"
+        },
+        "bansLabel": {
+          "type": "string",
+          "description": "The bans row's label.",
+          "default": "Bans"
+        },
+        "bannedLabel": {
+          "type": "string",
+          "description": "A banned character, to a screen reader.",
+          "default": "Banned"
+        },
+        "pickedLabel": {
+          "type": "string",
+          "description": "A picked character, to a screen reader.",
+          "default": "Picked"
+        }
+      },
+      "additionalProperties": false
+    },
+    "DraftResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What the local player asked for this tick, for the game to apply.",
+      "type": "object",
+      "properties": {
+        "hovered": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An open character pressed or focused in the local player's turn: hover it (its slot shows it)."
+        },
+        "locked": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The action, or confirm, on the hovered character: lock it in (a pick or a ban by the phase)."
+        },
+        "refused": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A banned or picked character pressed: it shook."
+        }
+      },
+      "required": [
+        "hovered",
+        "locked",
+        "refused"
       ],
       "additionalProperties": false
     },

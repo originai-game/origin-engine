@@ -357,6 +357,97 @@ function playerTag(id: string, name: string, team: Rgba, big = false): void {
   kit.close();
 }
 
+/** How a roster tile stands: who is on it, whether a press is refused, whether it is banned. */
+interface TileState {
+  /** The pattern's part prefix (Select, Draft). */
+  part: string;
+  width: number;
+  height: number;
+  state: string;
+  blocked: boolean;
+  banned: boolean;
+  tags: Array<{ name: string; team: number; confirmed: boolean }>;
+  shake: number;
+  name: string;
+}
+
+/**
+ * A roster tile: the portrait filling it, the name on a scrim at its foot,
+ * a cursor's rim and glow in its player's team colour with the player's tag
+ * at the top end, a confirmed pick's tick at the top start; locked, the art
+ * dark behind a lock; taken, dimmed; banned, dark under a slash in danger.
+ */
+function rosterTile(k: string, e: Api.RosterEntry, d: TileState): Api.Response {
+  const { t } = frame();
+  const ix = lastInteraction(k);
+  const rim = d.tags[0] ? teamColor(d.tags[0].team) : null;
+  return surface(k, {
+    part: `${d.part}.tile`,
+    cls: "slot",
+    flags: [d.state === "open" ? "" : d.state],
+    fill: null,
+    direction: "column",
+    width: px(d.width),
+    height: px(d.height),
+    radius: Math.max(4, t.small),
+    lift: d.blocked ? 0 : -u(3),
+    semantics: { role: "button", name: d.name, disabled: d.blocked },
+    props: {
+      transform: { x: d.shake },
+      states: [{ name: "pick", states: [vstate("open"), vstate("cursor"), vstate("confirmed"), vstate("locked"), vstate("taken"), vstate("banned")], transitions: [] }],
+      state: [{ group: "pick", state: d.state }],
+    },
+  }, () => {
+    const rr = Math.max(4, t.small);
+    const radii: [number, number, number, number] = [rr, rr, rr, rr];
+    kit.setDraw({
+      shape: { kind: "rect", radii },
+      fills: [vgrad([[0, token("panelRaised")], [1, token("panel")]])],
+      strokes: rim ? [line(u(3), paint(rim))] : (ix.hovered || ix.focused) && !d.blocked ? [line(u(1.5), paint(mix(role("focus"), role("ink"), 0.4)))] : [line(1, token("shadow", 0.55), "outside")],
+      effects: [shadow(u(3), u(8), 0.45), ...(rim ? [glow(u(7), paint(rim, 0.5), 0)] : [])],
+    });
+    artSlot("Art", `${d.part}.art`, { texture: e.portrait ?? null, kind: "portrait", width: px(d.width), height: px(d.height), radius: radii, focal: { x: 0.5, y: 0.3 } }, () => {
+      if (d.blocked) {
+        kit.open("Dim", { width: grow(), height: grow() });
+        kit.setDraw({ shape: { kind: "rect", radii }, fills: [{ kind: "solid", color: paint(mix(role("well"), role("inkMuted"), 0.2), 0.6) }, { kind: "solid", color: token("shadow", e.locked || d.banned ? 0.45 : 0.3) }] });
+        kit.close();
+      }
+    });
+    over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true });
+    kit.open("Shade", { width: grow(), height: grow() });
+    kit.setDraw({ shape: { kind: "rect", radii }, fills: [scrimFill("bottom", 0.85)] });
+    kit.close();
+    over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true });
+    text("Name", e.name ?? k, { step: st(d.width >= u(110) ? 14 : 12), font: "display", nowrap: true, ellipsis: true, width: px(d.width - u(12)), align: "center", color: d.blocked ? "inkMuted" : "ink" });
+    over({ insets: { centerX: true, bottom: u(6) }, inert: true, z: 2 });
+    if (e.locked) {
+      symbol("Lock", "lock", u(22), role("ink"), { icon: "lock" });
+      over({ insets: { centerX: true, centerY: true }, inert: true, z: 2 });
+    }
+    if (d.banned) slash("Ban", d.width, d.height);
+    if (d.tags.length > 0) {
+      // The cursors' tags at the top end; a confirmed pick's tick at the top start.
+      kit.row("Tags", { gap: u(2) }, () => d.tags.forEach((c, i) => playerTag(kit.idi("Tag", i), c.name, teamColor(c.team))));
+      over({ insets: { end: u(4), top: u(4) }, inert: true, z: 3 });
+      if (d.tags.some((c) => c.confirmed)) {
+        kit.open("Tick", { width: px(u(22)), height: px(u(22)), align: "center", cross: "center" });
+        kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "solid", color: token("success") }], strokes: [line(1.5, token("shadow", 0.6), "outside")] });
+        symbol("Mark", "check", u(13), inkOn(role("success")));
+        kit.close();
+        over({ insets: { start: u(4), top: u(4) }, inert: true, z: 3 });
+      }
+    }
+  });
+}
+
+/** A ban's slash across a tile, corner to corner, in danger with a dark edge. */
+function slash(id: string, w: number, h: number): void {
+  kit.open(id, { width: px(w), height: px(h) });
+  kit.setDraw({ shape: { kind: "path", points: [{ x: w * 0.18, y: h * 0.82 }, { x: w * 0.82, y: h * 0.18 }], width: Math.max(3, u(4)), cap: "round" }, fills: [{ kind: "solid", color: token("danger") }], effects: [{ kind: "dropShadow", offset: { x: 0, y: 0 }, blur: 0, spread: u(1.5), color: token("shadow", 0.8) }] } as Api.DrawDesc);
+  kit.close();
+  over({ insets: { start: 0, top: 0 }, inert: true, z: 2 });
+}
+
 /** A side's splash: the character's art filling it, a scrim at its foot under the role, the name and the description. */
 function splashPanel(id: string, e: Api.RosterEntry | null, c: Api.SelectCursor, side: "start" | "end", width: number, height: number, desc: Api.CharacterSelectDesc): void {
   const { t } = frame();
@@ -477,64 +568,18 @@ export function characterSelect(id: string, desc: Api.CharacterSelectDesc): Api.
         const mine = !!me && me.entry === k;
         const blocked = !!e.locked || (!!e.taken && !mine);
         const state = e.locked ? "locked" : e.taken && !mine ? "taken" : on.some((c) => c.confirmed) ? "confirmed" : on.length > 0 ? "cursor" : "open";
-        const rim = on[0] ? teamColor(on[0].team ?? 0) : null;
-        const shaking = rt > 0 && tick - rt < 18 && rk === keyHash(k) && !still();
+        const shaking = rt > 0 && tick - rt < 18 && rk === keyHash(k) && !still() ? Math.sin((tick - rt) * 1.6) * (18 - (tick - rt)) * 0.5 : 0;
         const ix = lastInteraction(k);
-        const r = surface(k, {
-          part: "Select.tile",
-          cls: "slot",
-          flags: [state === "open" ? "" : state],
-          fill: null,
-          direction: "column",
-          width: px(tw),
-          height: px(th),
-          radius: Math.max(4, t.small),
-          lift: -u(3),
-          semantics: { role: "button", name: [e.name ?? k, e.role ?? "", e.locked ? e.lockedHint || "locked" : e.taken && !mine ? desc.takenLabel ?? "Taken" : "", ...on.map((c) => c.name ?? c.key ?? "")].filter(Boolean).join(", "), disabled: blocked },
-          props: {
-            transform: { x: shaking ? Math.sin((tick - rt) * 1.6) * (18 - (tick - rt)) * 0.5 : 0 },
-            states: [{ name: "pick", states: [vstate("open"), vstate("cursor"), vstate("confirmed"), vstate("locked"), vstate("taken")], transitions: [] }],
-            state: [{ group: "pick", state }],
-          },
-        }, () => {
-          const rr = Math.max(4, t.small);
-          const radii: [number, number, number, number] = [rr, rr, rr, rr];
-          kit.setDraw({
-            shape: { kind: "rect", radii },
-            fills: [vgrad([[0, token("panelRaised")], [1, token("panel")]])],
-            strokes: rim ? [line(u(3), paint(rim))] : ix.hovered || ix.focused ? [line(u(1.5), paint(mix(role("focus"), role("ink"), 0.4)))] : [line(1, token("shadow", 0.55), "outside")],
-            effects: [shadow(u(3), u(8), 0.45), ...(rim ? [glow(u(7), paint(rim, 0.5), 0)] : [])],
-          });
-          artSlot("Art", "Select.art", { texture: e.portrait ?? null, kind: "portrait", width: px(tw), height: px(th), radius: radii, focal: { x: 0.5, y: 0.3 } }, () => {
-            if (blocked) {
-              kit.open("Dim", { width: grow(), height: grow() });
-              kit.setDraw({ shape: { kind: "rect", radii }, fills: [{ kind: "solid", color: paint(mix(role("well"), role("inkMuted"), 0.2), 0.6) }, { kind: "solid", color: token("shadow", e.locked ? 0.45 : 0.3) }] });
-              kit.close();
-            }
-          });
-          over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true });
-          kit.open("Shade", { width: grow(), height: grow() });
-          kit.setDraw({ shape: { kind: "rect", radii }, fills: [scrimFill("bottom", 0.85)] });
-          kit.close();
-          over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true });
-          text("Name", e.name ?? k, { step: st(tw >= u(110) ? 14 : 12), font: "display", nowrap: true, ellipsis: true, width: px(tw - u(12)), align: "center", color: blocked ? "inkMuted" : "ink" });
-          over({ insets: { centerX: true, bottom: u(6) }, inert: true, z: 2 });
-          if (e.locked) {
-            symbol("Lock", "lock", u(22), role("ink"), { icon: "lock" });
-            over({ insets: { centerX: true, centerY: true }, inert: true, z: 2 });
-          }
-          if (on.length > 0) {
-            // The cursors' tags at the top end; a confirmed pick's tick at the top start.
-            kit.row("Tags", { gap: u(2) }, () => on.forEach((c, i) => playerTag(kit.idi("Tag", i), c.name ?? c.key ?? "", teamColor(c.team ?? 0))));
-            over({ insets: { end: u(4), top: u(4) }, inert: true, z: 3 });
-            if (on.some((c) => c.confirmed)) {
-              kit.open("Tick", { width: px(u(22)), height: px(u(22)), align: "center", cross: "center" });
-              kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "solid", color: token("success") }], strokes: [line(1.5, token("shadow", 0.6), "outside")] });
-              symbol("Mark", "check", u(13), inkOn(role("success")));
-              kit.close();
-              over({ insets: { start: u(4), top: u(4) }, inert: true, z: 3 });
-            }
-          }
+        const r = rosterTile(k, e, {
+          part: "Select",
+          width: tw,
+          height: th,
+          state,
+          blocked,
+          banned: false,
+          tags: on.map((c) => ({ name: c.name ?? c.key ?? "", team: c.team ?? 0, confirmed: !!c.confirmed })),
+          shake: shaking,
+          name: [e.name ?? k, e.role ?? "", e.locked ? e.lockedHint || "locked" : e.taken && !mine ? desc.takenLabel ?? "Taken" : "", ...on.map((c) => c.name ?? c.key ?? "")].filter(Boolean).join(", "),
         });
         if ((ix.hovered || ix.focused) && !me?.confirmed && me?.entry !== k) out.hovered = k;
         if (r.clicked) {
@@ -681,6 +726,240 @@ export function versus(id: string, desc: Api.VersusDesc): Api.VersusResult {
   if (self && self.width > 0 && self.height > 0) {
     kit.remember(`~v.w.${id}`, Math.round(self.width));
     kit.remember(`~v.h.${id}`, Math.round(self.height));
+  }
+  return out;
+}
+
+/**
+ * A draft with bans (League of Legends, Dota 2): see `fn draft` in
+ * crates/og-api/api/ui.ogt.
+ */
+export function draft(id: string, desc: Api.DraftDesc): Api.DraftResult {
+  const out: Mut<Api.DraftResult> = { hovered: null, locked: null, refused: null };
+  const { viewport: vp, t, phone } = frame();
+  const portrait = vp.breakpoint === "phonePortrait";
+  const tick = kit.tick();
+  const teams = desc.teams ?? [];
+  const roster = desc.roster ?? [];
+  const byKey = new Map(roster.map((e) => [e.key ?? "", e]));
+  const banned = new Set(teams.flatMap((tm) => (tm.bans ?? []).filter(Boolean)));
+  const picked = new Map<string, number>();
+  teams.forEach((tm, i) => (tm.picks ?? []).forEach((p) => p.locked && p.entry && picked.set(p.entry, tm.team ?? i)));
+  const mine = teams[0];
+  const myTeam = mine?.team ?? 0;
+  const W = kit.memory(`~d.w.${id}`, 0) || safeWidth();
+  const H = kit.memory(`~d.h.${id}`, 0) || safeHeight();
+  const rt = kit.memory("~d.rt", 0);
+  const rk = kit.memory("~d.rk", 0);
+  const ban = desc.phase === "ban";
+  const total = (desc.seconds ?? 0) > 0 ? desc.seconds! : 30;
+  const left = clamp(desc.secondsLeft ?? 0, 0, total);
+  const urgent = !!desc.yourTurn && left <= 5;
+  const secs = Math.ceil(left);
+  if (urgent && kit.memory("~d.alert", -1) !== secs) {
+    kit.remember("~d.alert", secs);
+    kit.feedback("alert", -1);
+  }
+  const hov = desc.hovered ?? "";
+
+  kit.open(id, { direction: portrait ? "column" : "row", width: grow(), height: grow(), gap: u(phone ? 10 : 20), part: "Draft.frame", partClass: "panel" });
+
+  // A team's column (a row of portraits on a phone in portrait): its picks, then its bans.
+  const teamColumn = (key: "Start" | "End", tm: Api.DraftTeam | undefined, end: boolean): void => {
+    if (!tm) return;
+    const team = teamColor(tm.team ?? (end ? 1 : 0));
+    const picks = tm.picks ?? [];
+    const colW = portrait ? W : Math.round(Math.min(u(300), W * 0.24));
+    kit.open(key, { direction: "column", width: px(colW), height: portrait ? null : grow(), gap: u(phone ? 6 : 8), cross: end && !portrait ? "end" : "stretch", part: `Draft.team${flags(end ? "end" : "start")}`, partClass: "panel" });
+    kit.row("Name", { width: grow(), gap: u(8), cross: "center", align: end && !portrait ? "end" : "start" }, () => {
+      kit.open("Bar", { width: px(u(4)), height: px(u(18)), radius: 2, background: paint(team) });
+      kit.close();
+      text("Text", tm.name ?? "", { step: st(16), font: "display", nowrap: true, ellipsis: true, color: mix(team, role("ink"), 0.55) });
+    });
+    const slotH = portrait ? 0 : Math.max(u(64), Math.min(u(104), (H - u(120)) / Math.max(1, picks.length) - u(8)));
+    kit.open("Picks", { direction: portrait ? "row" : "column", width: grow(), gap: u(phone ? 6 : 8) });
+    picks.forEach((p, i) => {
+      const e = p.entry ? byKey.get(p.entry) : undefined;
+      const state = p.locked && e ? "locked" : e ? "hovered" : "empty";
+      const was = kit.memory(`~d.l.${key}.${i}`, 0);
+      kit.remember(`~d.l.${key}.${i}`, p.locked ? 1 : 0);
+      const landed = !!p.locked && was === 0 && !still();
+      const sw = portrait ? Math.floor((W - u(6) * (picks.length - 1)) / Math.max(1, picks.length)) : colW;
+      const sh = portrait ? Math.round(sw * 1.2) : slotH;
+      const rr = Math.max(4, t.small);
+      const radii: [number, number, number, number] = [rr, rr, rr, rr];
+      kit.open(kit.idi("Slot", i), { direction: "column", width: px(sw), height: px(sh), part: `Draft.slot${flags(p.active && "active", p.locked && "locked", p.you && "you")}`, partClass: "card" });
+      kit.setDraw({
+        shape: { kind: "rect", radii },
+        fills: [vgrad([[0, paint(mix(role("panel"), team, 0.18))], [1, token("panel")]])],
+        strokes: p.active ? [line(u(2.5), paint(team))] : [line(1, token("shadow", 0.55), "outside")],
+        effects: [shadow(u(3), u(10), 0.45), ...(p.active ? [glow(u(8), paint(team, 0.5), 0)] : [])],
+      });
+      if (e) {
+        artSlot("Art", "Draft.slotArt", { texture: e.splash ?? e.portrait ?? null, kind: "portrait", width: px(sw), height: px(sh), radius: radii, focal: { x: 0.5, y: portrait ? 0.3 : 0.25 } }, () => {
+          if (!p.locked) {
+            // Only hovered: the art at half its light, so a lock reads as the character arriving.
+            kit.open("Dim", { width: grow(), height: grow() });
+            kit.setDraw({ shape: { kind: "rect", radii }, fills: [{ kind: "solid", color: token("shadow", 0.55) }] });
+            kit.close();
+          }
+        });
+        over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, ...(landed ? { enter: { values: [{ prop: "opacity", value: 0.2 }, { prop: "x", value: end ? u(30) : -u(30) }], transition: spring("panel") } } : {}) });
+      }
+      kit.open("Shade", { width: grow(), height: grow() });
+      kit.setDraw({ shape: { kind: "rect", radii }, fills: [portrait ? scrimFill("bottom", 0.9) : scrimFill(end ? "end" : "start", 0.88)] });
+      kit.close();
+      over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true });
+      if (p.active && !still()) {
+        // The active slot's light sweeping along it.
+        const f = (tick % 90) / 90;
+        kit.open("Light", { width: grow(), height: grow() });
+        kit.setDraw({ shape: { kind: "rect", radii }, clip: "shape" } as Api.DrawDesc);
+        kit.open("Sweep", { width: px(Math.round(sw * 0.35)), height: grow() });
+        kit.setDraw({ shape: { kind: "rect" }, fills: [vgrad([[0, paint(team, 0)], [0.5, paint(team, 0.28)], [1, paint(team, 0)]], 90)] });
+        kit.close();
+        over({ insets: { start: Math.round(sw * 1.35 * f - sw * 0.35), top: 0, bottom: 0 }, inert: true });
+        kit.close();
+        over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true });
+      }
+      kit.column("Words", { gap: 0, width: grow(), padding: xy(u(portrait ? 4 : 12), u(portrait ? 4 : 8)), cross: end && !portrait ? "end" : "start" }, () => {
+        if (!portrait || e) text("Character", e?.name ?? "", { step: st(portrait ? 11 : 17), font: "display", nowrap: true, ellipsis: true, width: grow(), align: end && !portrait ? "end" : "start", color: p.locked ? "ink" : "inkMuted" });
+        if (!portrait) text("Player", p.player ?? "", { step: st(13), color: p.you ? mix(team, role("ink"), 0.5) : "inkMuted", nowrap: true, ellipsis: true, width: grow(), align: end ? "end" : "start" });
+      });
+      over(portrait ? { insets: { start: 0, end: 0, bottom: 0 }, inert: true, z: 2 } : { insets: { start: 0, end: 0, centerY: true }, inert: true, z: 2 });
+      kit.close();
+      kit.props({ states: [{ name: "slot", states: [vstate("empty"), vstate("hovered"), vstate("locked")], transitions: [] }], state: [{ group: "slot", state }], ...(landed ? { enter: { values: [{ prop: "scale", value: 1.06 }], transition: spring("emphasis") } } : {}) });
+      kit.semantics({ role: "listitem", name: [p.player ?? "", e?.name ?? "", state].filter(Boolean).join(", ") });
+    });
+    kit.close();
+    kit.semantics({ role: "list", name: tm.name ?? "" });
+    // Its bans: small tiles struck through, the ones to come empty wells.
+    const bans = tm.bans ?? [];
+    if (bans.length > 0) {
+      kit.row("Bans", { gap: u(6), cross: "center", align: end && !portrait ? "end" : "start", width: grow(), part: "Draft.bans", partClass: "badge" }, () => {
+        if (!portrait) text("Label", (desc.bansLabel ?? "Bans").toLocaleUpperCase(), { step: "caption", font: "display", color: "inkMuted", nowrap: true });
+        const bw = u(phone ? 34 : 40);
+        bans.forEach((b, i) => {
+          const e = b ? byKey.get(b) : undefined;
+          kit.open(kit.idi("Ban", i), { width: px(bw), height: px(bw), part: `Draft.ban${flags(!e && "empty")}`, partClass: "slot" });
+          const rr = Math.max(3, t.small - 2);
+          kit.setDraw({ shape: { kind: "rect", radii: [rr, rr, rr, rr] }, fills: [{ kind: "solid", color: token("shadow", 0.5) }], strokes: [line(1, token("ink", e ? 0.1 : 0.18), "inside", e ? {} : { dash: u(4), gap: u(3) })] });
+          if (e) {
+            artSlot("Art", "Draft.banArt", { texture: e.portrait ?? null, kind: "portrait", width: px(bw), height: px(bw), radius: rr, focal: { x: 0.5, y: 0.3 } }, () => {
+              kit.open("Dim", { width: grow(), height: grow() });
+              kit.setDraw({ shape: { kind: "rect", radii: [rr, rr, rr, rr] }, fills: [{ kind: "solid", color: token("shadow", 0.45) }] });
+              kit.close();
+            });
+            slash("Slash", bw, bw);
+          }
+          kit.close();
+          kit.semantics({ role: "status", name: e ? `${desc.bannedLabel ?? "Banned"}: ${e.name ?? b}` : desc.bansLabel ?? "Bans" });
+        });
+      });
+    }
+    kit.close();
+  };
+  if (!portrait) teamColumn("Start", teams[0], false);
+  else {
+    kit.row("Teams", { width: grow(), gap: u(10) }, () => {
+      kit.column("Wrap", { width: grow(), gap: u(8) }, () => {
+        teamColumn("Start", teams[0], false);
+        teamColumn("End", teams[1], true);
+      });
+    });
+  }
+
+  // The middle: the phase banner and its timer, the roster, the action.
+  kit.open("Middle", { direction: "column", width: grow(), height: grow(), gap: u(phone ? 8 : 14), cross: "stretch" });
+  const bannerInk = ban ? role("danger") : role("ink");
+  kit.column("Banner", { width: grow(), gap: u(8), padding: xy(u(16), u(12)), part: `Draft.banner${flags(ban ? "ban" : "pick")}`, partClass: "panel" }, () => {
+    kit.setDraw({ shape: { kind: "rect", radii: [t.panel, t.panel, t.panel, t.panel] }, fills: [{ kind: "solid", color: token("shadow", 0.55) }, vgrad([[0, paint(bannerInk, ban ? 0.18 : 0.06)], [1, paint(bannerInk, 0)]])], effects: [shadow(u(3), u(10), 0.4)] });
+    kit.row("Top", { width: grow(), gap: u(12), cross: "center" }, () => {
+      text("Phase", desc.phaseLabel ?? "", { step: st(phone ? 17 : 22), font: "display", heading: true, maxLines: 2, width: grow(), color: ban ? mix(role("danger"), role("ink"), 0.35) : "ink" });
+      text("Time", String(secs), { step: st(phone ? 20 : 28), font: "mono", nowrap: true, color: urgent ? "danger" : "ink" });
+      kit.semantics({ role: "timer", name: String(secs) });
+    });
+    const f = left / total;
+    kit.open("Track", { width: grow(), height: px(u(4)), part: "Draft.timer", partClass: "bar" });
+    kit.setDraw({ shape: { kind: "rect", radii: [2, 2, 2, 2] }, fills: [{ kind: "solid", color: token("ink", 0.12) }] });
+    kit.open("Fill", { width: { kind: "percent", value: f * 100 } as never, height: grow() });
+    kit.setDraw({ shape: { kind: "rect", radii: [2, 2, 2, 2] }, fills: [{ kind: "solid", color: urgent ? token("danger") : paint(teamColor(myTeam)) }], ...(urgent ? { effects: [glow(u(8), token("danger", 0.6), 0)] } : {}) });
+    kit.close();
+    kit.close();
+  });
+  const gridW = portrait ? W : W - 2 * Math.round(Math.min(u(300), W * 0.24)) - 2 * u(20);
+  const gap = u(phone ? 6 : 8);
+  const cols = desc.columns && desc.columns > 0 ? desc.columns : Math.max(4, Math.floor((gridW - u(12) + gap) / (u(88) + gap)));
+  const tw = Math.floor((gridW - u(12) - gap * (cols - 1)) / cols);
+  const th = Math.round(tw * 1.15);
+  const rows = Math.ceil(roster.length / cols);
+  // Whole rows: the room the roster was given last tick, cut to the rows it holds whole.
+  const room = kit.bounds(recallPath(`${id}~room`))?.height ?? th * 3;
+  const fitRows = Math.max(1, Math.floor((room - u(12) + gap) / (th + gap)));
+  // A room under one row (a phone at 200 % text) shows the row it can, cut: still the grid, never pushing the action off.
+  const viewH = Math.min(rows, fitRows) * (th + gap) - gap + u(12);
+  kit.open("Room", { direction: "column", width: grow(), height: grow() });
+  kit.openScroll("Roster", { width: grow(), height: px(viewH), gap, padding: xy(u(6), u(6)), part: "Draft.roster" } as never);
+  for (let row = 0; row < rows; row++) {
+    kit.row(kit.idi("Row", row), { gap, width: grow() }, () => {
+      for (let c = 0; c < cols; c++) {
+        const e = roster[row * cols + c];
+        if (!e) break;
+        const k = e.key ?? "";
+        const isBanned = banned.has(k);
+        const isPicked = picked.has(k);
+        const blocked = isBanned || isPicked || !!e.locked;
+        const isHov = hov === k && !blocked;
+        const state = isBanned ? "banned" : isPicked ? "taken" : isHov ? "cursor" : "open";
+        const shake = rt > 0 && tick - rt < 18 && rk === keyHash(k) && !still() ? Math.sin((tick - rt) * 1.6) * (18 - (tick - rt)) * 0.5 : 0;
+        const ix = lastInteraction(k);
+        const r = rosterTile(k, e, {
+          part: "Draft",
+          width: tw,
+          height: th,
+          state,
+          blocked,
+          banned: isBanned,
+          tags: isHov ? [{ name: mine?.picks?.find((p) => p.you)?.player ?? "", team: myTeam, confirmed: false }].filter((x) => x.name) : [],
+          shake,
+          name: [e.name ?? k, isBanned ? desc.bannedLabel ?? "Banned" : isPicked ? desc.pickedLabel ?? "Picked" : ""].filter(Boolean).join(", "),
+        });
+        if ((ix.focused || r.clicked) && desc.yourTurn && !blocked && hov !== k) out.hovered = k;
+        if (r.clicked) {
+          if (blocked) {
+            out.refused = k;
+            kit.feedback("error", -1);
+          } else if (desc.yourTurn) kit.feedback("hover", -1);
+        }
+      }
+    });
+  }
+  kit.close();
+  kit.semantics({ role: "grid", name: desc.phaseLabel ?? "Roster" });
+  // Laid over its room, so the room is what the column leaves it, never what the rows ask.
+  over({ insets: { start: 0, top: 0, end: 0 } });
+  kit.close();
+  rememberPath(`${id}~room`, kit.lastPath());
+  if (out.refused) {
+    kit.remember("~d.rt", tick);
+    kit.remember("~d.rk", keyHash(out.refused));
+  }
+  kit.row("Foot", { width: grow(), cross: "center", align: "center" }, () => {
+    const live = !!desc.yourTurn && !!hov && !banned.has(hov) && !picked.has(hov) && desc.phase !== "done";
+    const label = !desc.yourTurn || desc.phase === "done" ? desc.waitingLabel ?? "Waiting" : ban ? desc.banLabel ?? "Ban" : desc.lockLabel ?? "Lock in";
+    const r = btn("Action", label, { variant: !desc.yourTurn ? "secondary" : ban ? "danger" : "primary", size: "lg", width: portrait ? grow() : px(u(300)), disabled: !live, part: `Draft.action${flags(!desc.yourTurn ? "waiting" : ban ? "ban" : "pick")}`, ...(desc.yourTurn ? { raised: true } : {}), ...(ban && desc.yourTurn ? { sym: "ban" as const } : {}) });
+    if (r.clicked && live) {
+      out.locked = hov;
+      kit.feedback("confirm", -1);
+    }
+  });
+  kit.close();
+  if (!portrait) teamColumn("End", teams[1], true);
+  kit.close();
+  const self = kit.bounds(kit.lastPath());
+  if (self && self.width > 0 && self.height > 0) {
+    kit.remember(`~d.w.${id}`, Math.round(self.width));
+    kit.remember(`~d.h.${id}`, Math.round(self.height));
   }
   return out;
 }
