@@ -170,13 +170,19 @@ function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc.size))
       }, absolute({ start: 0, top: 0 }));
     }
     if (disabled) {
-      // A red slash corner to corner over the washed art.
-      const m = artSide * 0.16;
-      leaf("Slash", { ...cover, part: sel("AbilitySlot", "slash") }, {
-        shape: { kind: "path", points: [{ x: artSide - m, y: m }, { x: m, y: artSide - m }], width: Math.max(2.5, size / 16), cap: "round" },
-        fills: [solid(lit(role("danger")))],
-        effects: [glow(5, lit(role("danger"), 0.75))],
-      }, full());
+      // Silenced or unusable: the washed art keeps the slot, a small prohibition badge in its top end corner says why
+      // (a full-slot slash read as a debug line).
+      const b = Math.round(Math.max(14, size * 0.3));
+      const bt = Math.max(1.5, b / 9);
+      box("Slash", { width: px(b), height: px(b), part: sel("AbilitySlot", "slash") }, {
+        shape: { kind: "ellipse" },
+        fills: [solid(lit(BLACK, 0.82))],
+        strokes: [stroke(bt, lit(role("danger")))],
+        effects: [drop(1, 3, lit(BLACK, 0.7))],
+      }, () => {
+        const q = b * 0.27;
+        leaf("Bar", { width: px(b), height: px(b) }, { shape: { kind: "path", points: [{ x: b - q, y: q }, { x: q, y: b - q }], width: bt, cap: "butt" }, fills: [solid(lit(role("danger")))] }, absolute({ start: 0, top: 0 }));
+      }, absolute({ end: line + u(2), top: line + u(2) }));
     }
     // One centred numeral: the seconds left while cooling.
     if (cooling && !locked) {
@@ -202,12 +208,7 @@ function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc.size))
       pill("Cost", desc.cost, desc.unaffordable ? lit(role("danger")) : token("ink"), size, line, 0, ["drop", "droplet"].find((n) => kit.hasIcon(n)), desc.unaffordable ? lit(role("danger")) : lit(mix(role("mana"), WHITE, 0.35)), sel("AbilitySlot", "cost", desc.unaffordable ? "unaffordable" : null));
     }
     if (charged) {
-      if (charges < maxCharges) {
-        const p = clamp01(desc.chargeProgress ?? 0);
-        box("Recharge", { width: px(artSide), height: px(Math.max(2, Math.round(size / 20))), part: sel("AbilitySlot", "recharge") }, { fills: [solid(token("shadow", 0.7))] }, () => {
-          leaf("Fill", { width: pct(p), height: pct(1) }, { fills: [solid(lit(role("gold")))] });
-        }, absolute({ start: line, bottom: line }));
-      }
+
       // Charges in a small badge at the bottom right corner, sized by its numeral so it stays a badge at any text size.
       // With none left the slot is cooling and its seconds say so: a "0" beside them would be a second numeral.
       if (charges > 0) {
@@ -220,7 +221,7 @@ function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc.size))
           strokes: [stroke(1, token("lineStrong", 0.9))],
         }, () => {
           text("Charges", String(charges), { step: badgeStep, font: "display", color: token("ink"), nowrap: true }, absolute({ centerX: true, centerY: true }, fit.transform ? { transform: { ...fit.transform, y: 0 } } : {}));
-        }, absolute({ end: line + 1, bottom: line + 1 + (charges < maxCharges ? Math.max(2, Math.round(size / 20)) : 0) }));
+        }, absolute({ end: line + 1, bottom: line + 1 }));
       }
     }
     // Active or an ultimate ready: a thin accent edge inside the frame, over the art.
@@ -259,6 +260,13 @@ function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc.size))
       // Out of the flow, just under the slot's bottom edge: a slot with ranks keeps the row's bottom line and its hotkey's.
       apply(absolute({ centerX: true, top: size + 1 }, { overlaps: [path.slice(0, path.lastIndexOf("/"))] }));
     }
+    // The next charge recharging: a slim bar in the same row under the slot (under the ranks when it has both).
+    if (charged && charges < maxCharges) {
+      const p = clamp01(desc.chargeProgress ?? 0);
+      box("Recharge", { width: px(Math.round(size * 0.56)), height: px(pipH), part: sel("AbilitySlot", "recharge") }, { shape: { kind: "rect", radii: [1, 1, 1, 1] }, fills: [solid(token("shadow", 0.7))], strokes: [stroke(1, token("line"))] }, () => {
+        leaf("Fill", { width: pct(p), height: pct(1) }, { shape: { kind: "rect", radii: [1, 1, 1, 1] }, fills: [solid(lit(role("gold")))], effects: [glow(3, lit(role("gold"), 0.45))] });
+      }, absolute({ centerX: true, top: size + 1 + (maxLevel > 0 ? pipH + u(2) : 0) }, { overlaps: [path.slice(0, path.lastIndexOf("/"))] }));
+    }
     // The hotkey: a small, quiet label under the slot, else the action's glyph on the device used last.
     const glyph = !desc.hotkey && desc.action ? kit.frameGlyph(desc.action) : null;
     const keyText = desc.hotkey || glyph?.text || "";
@@ -268,11 +276,14 @@ function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc.size))
       // One neutral ink at full strength: quiet means small, not faint (it reads at 4.5:1 on a light scene with its shadow);
       // state lives on the slot (the tints, the glow), never on the key's label.
       const capInk = token("ink");
-      box("Hotkey", { height: px(Math.ceil(stepSize(keyStep).size)), cross: "center", align: "center", part: sel("AbilitySlot", "hotkey") }, undefined, () => {
-        if (keyIcon) icon("Glyph", keyIcon, Math.round(stepSize(keyStep).size * 1.1), capInk);
+      // At most about a quarter of the slot's height, so at 200 % text the key stays a quiet label and the art leads.
+      const keyPx = Math.min(stepSize(keyStep).size, size * 0.26);
+      const fit = shrunk(keyStep, keyPx, stepSize(keyStep).line);
+      box("Hotkey", { height: px(Math.ceil(keyPx * 1.05)), width: px(Math.ceil(Math.max(keyPx, keyText.length * keyPx * 0.72) + 4)), cross: "center", align: "center", part: sel("AbilitySlot", "hotkey") }, undefined, () => {
+        if (keyIcon) icon("Glyph", keyIcon, Math.round(keyPx * 1.1), capInk);
         else {
           // No outline (at 200 % one makes the letters look hollow): a soft shadow holds them on a bright scene.
-          text("Key", keyText, { step: keyStep, font: "display", color: capInk, nowrap: true, soft: true });
+          text("Key", keyText, { step: keyStep, font: "display", color: capInk, nowrap: true, soft: true }, absolute({ centerX: true, centerY: true }, fit.transform ? { transform: { scaleX: fit.k, scaleY: fit.k } } : {}));
         }
       }, { overlaps: [path] });
     }
@@ -394,12 +405,14 @@ export function statusGrid(id: string, desc: Api.StatusGridDesc = {}): Api.Statu
 }
 
 /** A tile's timer text and the width it takes with a gutter, so neighbouring timers read apart ("5m 6m", never "5m6m"). */
-function timeOf(fx: Api.StatusEffect, base: number, timers: boolean): { text: string; step: Api.TypeStepName; width: number } {
+function timeOf(fx: Api.StatusEffect, base: number, timers: boolean): { text: string; step: Api.TypeStepName; px: number; width: number } {
   const size = fx.mine ? base : Math.round(base * 0.85);
   const remaining = fx.remaining ?? 0;
   const step = tsFit(11, size * 0.3);
+  // About half the tile's height at most, whatever the text size: a secondary figure under the art, never its rival.
+  const px0 = Math.min(stepSize(step).size, size * 0.46);
   const text = timers && remaining > 0 ? shortTime(remaining, false) : "";
-  return { text, step, width: text ? Math.ceil(text.length * stepSize(step).size * 0.62) + frame().t.sm + 4 : 0 };
+  return { text, step, px: px0, width: text ? Math.ceil(text.length * px0 * 0.62) + frame().t.sm + 4 : 0 };
 }
 
 function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean, col = base): Api.Response {
@@ -414,8 +427,10 @@ function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean, c
   const r = Math.min(shapeOf("slot").radius, size / 5);
   let res: Api.Response | null = null;
   // The column is the row's (as wide as its widest timer): every tile in it centred, its timer centred under it.
-  const { text: timeText, step: timeStep } = timeOf(fx, base, timers);
-  kit.column(id, { gap: 0, cross: "center", width: px(Math.max(size, base, col)) }, () => {
+  const { text: timeText, step: timeStep, px: timePx } = timeOf(fx, base, timers);
+  const timeFit = shrunk(timeStep, timePx, stepSize(timeStep).line);
+  const timeH = timeText ? Math.ceil(timePx * 1.25) : 0;
+  kit.column(id, { gap: 0, cross: "center", width: px(Math.max(size, base, col)), height: px(size + timeH) }, () => {
     // A debuff's rim carries its dispel type; a buff's is a dark hairline under the socket's top light,
     // so type colour belongs to debuffs alone (WoW's and Diablo IV's auras).
     const rim = fx.debuff ? Math.max(1.5, Math.round(size / 18)) : 1;
@@ -443,7 +458,10 @@ function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean, c
     }
     socketRim("Rim", art, Math.max(0, r - rim), undefined, 1, absolute({ start: rim, top: rim }), 0.35);
     if ((fx.stacks ?? 0) >= 2) {
-      text("Stacks", String(fx.stacks), { step: tsFit(12, size * 0.5, true), font: "display", color: token("ink"), nowrap: true, outline: 1.6 }, absolute({ end: rim + 1, bottom: 0 }));
+      // Small in the bottom end corner (as a charge badge is): the art stays the tile's one large thing.
+      const sStep = tsFit(10, size * 0.4, true);
+      const sFit = shrunk(sStep, size * 0.36, stepSize(sStep).line);
+      text("Stacks", String(fx.stacks), { step: sStep, font: "display", color: token("ink"), nowrap: true, outline: 1.2 }, absolute({ end: rim + 1, bottom: 0 }, sFit.transform ? { transform: { ...sFit.transform, x: ((1 - sFit.k) * String(fx.stacks).length * stepSize(sStep).size * 0.3) } } : {}));
     }
     res = close({
       opacity: blink,
@@ -451,7 +469,8 @@ function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean, c
       ...groups({ time }, { time: ["lasting", "running", "expiring"] }),
     });
     if (timers && !lasting) {
-      text("Time", timeText, { step: timeStep, font: "display", color: expiring ? lit(role("warn")) : token("ink"), nowrap: true, soft: true });
+      // One ink: expiring is said by the tile's blink, not by a second colour.
+      text("Time", timeText, { step: timeStep, font: "display", color: token("ink"), nowrap: true, soft: true }, absolute({ centerX: true, top: size + (timeH - stepSize(timeStep).line) / 2 }, timeFit.transform ? { transform: { scaleX: timeFit.k, scaleY: timeFit.k } } : {}));
     }
   });
   return res ?? ({ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0 } as Api.Response);

@@ -184,7 +184,8 @@ test("og.ui.unitFrame, raidFrames and castBar: health and states read, raids in 
   const value = at(els, "BossHud/Boss/Bars/Health/Main/Track/Value/Text");
   const track = at(els, "BossHud/Boss/Bars/Health/Main/Track")!;
   expect(value?.text).toBe("800K / 1.25M");
-  expect(track.width).toBeCloseTo(at(els, "BossHud/Boss/Bars")!.width, 0);
+  // (the bars' column less its scrim's 4 px padding at each side)
+  expect(track.width).toBeCloseTo(at(els, "BossHud/Boss/Bars")!.width - 8, 0);
   expect(value!.x + value!.width).toBeLessThanOrEqual(track.x + track.width + 0.5);
   // The absorb lies on the health bar, not on a row of its own.
   expect(at(els, "BossHud/Boss/Bars/Health/Main/Track/Absorb")).toBeDefined();
@@ -206,10 +207,14 @@ test("og.ui.unitFrame, raidFrames and castBar: health and states read, raids in 
   expect(states(at(dump(e), "TargetHud/Target")).hurt).toBe("none");
   // The portrait at the end when reversed.
   const portrait = at(els, "TargetHud/Target/Avatar/Portrait");
-  // The level badge stays centred on its portrait's foot.
+  // The level badge: a disc seated on the portrait's rim, below its middle, on the side toward the bars.
   const badge = at(els, "TargetHud/Target/Avatar/Level")!;
-  expect(badge.x + badge.width / 2).toBeCloseTo(portrait!.x + portrait!.width / 2, 0);
-  expect(badge.y).toBeGreaterThan(portrait!.y + portrait!.height / 2);
+  const [bx, by] = [badge.x + badge.width / 2, badge.y + badge.height / 2];
+  const [cx, cy, pr] = [portrait!.x + portrait!.width / 2, portrait!.y + portrait!.height / 2, portrait!.width / 2];
+  expect(badge.width).toBeCloseTo(badge.height, 0);
+  expect(Math.hypot(bx - cx, by - cy)).toBeCloseTo(pr, -0.3);
+  expect(by).toBeGreaterThan(cy);
+  expect(bx).toBeLessThan(cx);
   const bars = at(els, "TargetHud/Target/Bars");
   expect(portrait && bars && portrait.x > bars.x).toBe(true);
   const groupsOf = below(els, "RaidHud/Raid").filter((x) => /^Group#\d+$/.test(x.id));

@@ -267,7 +267,7 @@ function framesScreen(): void {
   og.ui.partyFrames("Party", {
     anchor: small() ? "bottomLeft" : "left",
     members: ([
-      { key: "tank", name: L("Borin"), portrait: art("aria"), level: "60", icon: "shield", health: 82, resource: 40, resourceKind: "primary" },
+      { key: "tank", name: L("Borin"), portrait: art("aria"), level: "60", icon: "shield", health: 82, resource: 40, resourceColor: { color: { r: 0.86, g: 0.22, b: 0.18 } } },
       { key: "heal", name: L("Seraphine"), portrait: art("mira"), level: "60", icon: "plus", health: 34, resource: 12, leader: false, effects: [{ key: "p", debuff: true, type: "magic", image: art("curse"), remaining: 5, duration: 8 }] },
       { key: "dead", name: L("Kael"), portrait: art("kael"), level: "59", health: 0, dead: true },
       { key: "off", name: L("Nyx"), level: "60", health: 100, offline: true },

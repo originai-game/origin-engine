@@ -135,11 +135,13 @@ function track(parent: string, desc: Api.StatBarDesc, frac: number, level: Level
     const paint = (a: number): Api.Fill[] => [solid(lit({ r: 0.78, g: 0.9, b: 1, a: 1 }, a)), vgrad([[0, lit(WHITE, 0.35)], [0.5, lit(WHITE, 0)]])];
     if (past > 0) leaf("Absorb", { width: pct(past), height: pct(1), part: sel("StatBar", "absorb"), partClass: "bar" }, { fills: paint(0.62) }, side(shown, past));
     if (over > 0.001) {
+      // Its seam only with the value outside the track: inside, a bright line would cross the figures.
+      const seam = !(desc.showValue && desc.valueInside);
       leaf("Overabsorb", { width: pct(over), height: pct(1), part: sel("StatBar", "absorb", "over"), partClass: "bar" }, {
         fills: paint(0.5),
         strokes: [],
       }, side(shown - over, over));
-      leaf("Seam", { width: px(2), height: pct(1) }, { fills: [solid(lit(WHITE, 0.9))], effects: [glow(4, lit({ r: 0.7, g: 0.88, b: 1, a: 1 }, 0.8))] }, side(shown - over, 1));
+      if (seam) leaf("Seam", { width: px(2), height: pct(1) }, { fills: [solid(lit(WHITE, 0.9))], effects: [glow(4, lit({ r: 0.7, g: 0.88, b: 1, a: 1 }, 0.8))] }, side(shown - over, 1));
     }
   }
   // Blocks: a dark notch at every segment's end (Overwatch), only when they stay readable.
@@ -158,13 +160,8 @@ function track(parent: string, desc: Api.StatBarDesc, frac: number, level: Level
     fills: [vgrad([[0, token("sheen", 0.22)], [1, token("sheen", 0)]])],
   }, absolute({ start: 0, top: 0 }));
   if (inside) {
-    // The value over the fill at the track's end, in the HUD's outline so it reads over any fill or the empty track.
-    // A soft scrim under the numerals, darkest at the track's end (80 % black, which reads as about half in linear light): a fill's edge, the ghost or the absorb's seam under them
-    // falls behind it, so no line crosses the figures and they read over the fill and the empty track alike.
-    const tw = inside.text.length * stepSize(inside.step).size * 0.62 + u(12);
-    leaf("Scrim", { width: px(Math.min(w, tw + u(18))), height: pct(1), part: sel("StatBar", "scrim") }, {
-      fills: [vgrad([[0, lit(BLACK, 0)], [Math.min(0.6, u(18) / Math.max(1, tw + u(18))), lit(BLACK, 0.68)], [1, lit(BLACK, 0.8)]], desc.reverse ? 270 : 90)],
-    }, absolute(desc.reverse ? { start: 0, top: 0 } : { end: 0, top: 0 }));
+    // The value over the fill at the track's end, in the HUD's outline and its soft halo, so it reads over any fill or
+    // the empty track with no box behind it (a scrim there read as the fill darkening toward its end).
     box("Value", { width: pct(1), height: pct(1), direction: "row", align: desc.reverse ? "start" : "end", cross: "center", padding: { left: u(6), right: u(6), top: 0, bottom: 0 } }, undefined, () => {
       text("Text", inside.text, { step: inside.step, font: "mono", color: inside.critical ? lit(mix(role("danger"), WHITE, 0.35)) : token("ink"), nowrap: true, outline: 1 });
     }, absolute({ start: 0, top: 0 }));

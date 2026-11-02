@@ -68,7 +68,8 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
   const name = desc.name ?? "";
   const health = desc.health ?? 0;
   const healthMax = desc.healthMax ?? 100;
-  const ringInk = cls === "elite" || cls === "boss" ? role("gold") : cls === "rare" ? { r: 0.82, g: 0.86, b: 0.92, a: 1 } : hostile ? role("danger") : role("lineStrong");
+  // Chrome is neutral; hue only where it means something: a hostile unit's ring in danger, an elite's or a friendly boss's in gold.
+  const ringInk = hostile ? role("danger") : cls === "elite" || cls === "boss" ? role("gold") : cls === "rare" ? { r: 0.82, g: 0.86, b: 0.92, a: 1 } : role("lineStrong");
   const anchor = anchorOf(desc, null);
   // A frame at a corner shares its edge with the opposite corner's stack (a player's frame and a target's):
   // it takes at most half the band while that corner holds something (last tick), else the frame's own width.
@@ -94,21 +95,23 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
     const hurtAge = now() - kit.memory(`${id}:hurtAt`, -1e9);
     const hurt = hurtAge < msToTicks(450) ? 1 - hurtAge / msToTicks(450) : 0;
     // No plate behind the frame (§15.5.6): the portrait, the name and the bars float on their own shadows.
-    // Targeted lights the portrait's ring with the highlight and a glow; a hit flashes it danger.
-    const ring = desc.targeted ? role("highlight") : ringInk;
-    // The level badge at most 40 % of the portrait, seated on its rim; its figure shrunk to fit at any text size.
-    const badgeH = Math.round(Math.min(pd * 0.4, Math.max(14, pd * 0.3) * textScale()));
+    // Targeted keeps the ring's own (semantic) colour, a step thicker, with a neutral light glow; a hit flashes it danger.
+    const ring = ringInk;
+    // The level badge: a circle at most 40 % of the portrait, seated on its rim at the bottom inner side (45°),
+    // its figure shrunk to fit at any text size.
+    const badgeH = Math.round(Math.min(pd * 0.4, Math.max(16, pd * 0.32) * textScale()));
+    const badgeHang = Math.max(0, Math.round(badgeH / 2 - pd * 0.146));
     const frameW = Math.min(u(m.width) + pd, shared ? (hudRoom() - tk.sm) / 2 : hudRoom());
     // The buffs under the bars in as many columns as fit the bars' width, so they never widen the frame.
-    const auraSize = size === "large" ? 22 : 18;
-    const barsW = frameW - pd - u(6) - tk.md - tk.sm;
+    const auraSize = size === "large" ? 28 : 18;
+    const barsW = frameW - pd - u(6) - tk.md - tk.sm - u(8);
     const auraColumns = Math.max(1, Math.min(8, Math.floor((barsW + u(4)) / (u(auraSize) + u(4)))));
     open(id, {
       direction: "row",
       gap: tk.sm,
       cross: "start",
       interactive: true,
-      padding: { left: u(6), right: tk.md, top: u(6), bottom: u(6) + (desc.level ? Math.round(badgeH * 0.5) : 0) },
+      padding: { left: u(6), right: tk.md, top: u(6), bottom: u(6) + (desc.level ? badgeHang : 0) },
       // At a top or bottom corner a frame takes at most half the HUD band, so a player's and a target's frames sit side by side.
       width: px(frameW),
       part: sel("UnitFrame", "frame", size, hostile ? "hostile" : null, desc.targeted ? "targeted" : null, dead ? "dead" : null),
@@ -125,8 +128,8 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
       strokes: [stroke(Math.max(2, pd / 18) + (desc.targeted ? 1 : 0), lit(hurt > 0 ? mix(ring, role("danger"), hurt) : ring)), stroke(1, lit(BLACK, 0.8), "outside")],
       effects: [
         drop(u(2), u(8), lit(BLACK, 0.55)),
-        ...(cls === "boss" || cls === "elite" ? [glow(u(5), lit(ringInk, 0.5))] : []),
-        ...(desc.targeted ? [glow(u(7), lit(role("highlight"), 0.55))] : []),
+        ...(cls === "boss" || cls === "elite" ? [glow(u(5), lit(ringInk, 0.45))] : []),
+        ...(desc.targeted ? [glow(u(7), lit(WHITE, 0.45))] : []),
         ...(hurt > 0 ? [glow(u(10) * hurt, lit(role("danger"), 0.75 * hurt))] : []),
       ],
       clip: "shape",
@@ -146,41 +149,56 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
       if (hurt > 0 && !reduced()) {
         leaf("Hurt", { width: pct(1), height: pct(1) }, { fills: [solid(lit(role("danger"), 0.5 * hurt))] }, absolute({ start: 0, top: 0 }));
       }
-      if (dead) {
+      if (dead || offline) {
         // Dead: the portrait itself, its colour taken by a neutral grey and its light to about 40 %, a small skull on it.
         leaf("Grey", { width: pct(1), height: pct(1), part: sel("UnitFrame", "dead") }, { fills: [solid(lit({ r: 0.2, g: 0.2, b: 0.21, a: 1 }, 0.72))] }, absolute({ start: 0, top: 0 }));
         leaf("Dim", { width: pct(1), height: pct(1) }, { fills: [solid(lit({ r: 0.55, g: 0.55, b: 0.56, a: 1 }))], blend: "multiply" }, absolute({ start: 0, top: 0 }));
-        box("Dead", { width: pct(1), height: pct(1), align: "center", cross: "center" }, undefined, () => {
+        if (dead) box("Dead", { width: pct(1), height: pct(1), align: "center", cross: "center" }, undefined, () => {
           skull(Math.round(pd * 0.32));
         }, absolute({ start: 0, top: 0 }));
       }
     });
     const portraitPath = `${kit.openPath()}/Portrait`;
     if (desc.level) {
-      box("Level", { padding: { left: Math.round(badgeH * 0.25), right: Math.round(badgeH * 0.25), top: 0, bottom: 0 }, height: px(badgeH), align: "center", cross: "center", part: sel("UnitFrame", "level"), partClass: "badge" }, {
-        shape: { kind: "rect", radii: [999, 999, 999, 999] },
-        fills: [solid(token("hud", 0.98))],
-        strokes: [stroke(1.5, lit(ringInk))],
+      // One ink on a dark disc: the figure in danger for a hostile unit, else the HUD's; a neutral hairline, never a second hue.
+      const at = Math.round(pd * 0.146 - badgeH / 2);
+      box("Level", { width: px(badgeH), height: px(badgeH), align: "center", cross: "center", part: sel("UnitFrame", "level"), partClass: "badge" }, {
+        shape: ellipseShape(),
+        fills: [solid(lit({ r: 0.06, g: 0.065, b: 0.08, a: 1 }, 0.96))],
+        strokes: [stroke(1, lit(WHITE, 0.22))],
+        effects: [drop(1, 3, lit(BLACK, 0.6))],
       }, () => {
         const step = ts(11);
-        const fit = shrunk(step, badgeH * 0.62, stepSize(step).line);
-        text("Text", desc.level ?? "", { step, font: "display", color: hostile ? lit(role("danger")) : token("ink"), nowrap: true }, fit.transform ? { transform: { ...fit.transform, y: 0 } } : undefined);
-      }, absolute({ centerX: true, bottom: -Math.round(badgeH / 2) }, { z: 2, overlaps: [portraitPath] }));
+        const chars = Math.max(2, (desc.level ?? "").length);
+        const fit = shrunk(step, Math.min(badgeH * 0.56, (badgeH * 0.78) / (chars * 0.6)), stepSize(step).line);
+        text("Text", desc.level ?? "", { step, font: "display", color: hostile ? lit(mix(role("danger"), WHITE, 0.15)) : token("ink"), nowrap: true }, absolute({ centerX: true, centerY: true }, fit.transform ? { transform: { ...fit.transform, y: 0 } } : {}));
+      }, absolute(desc.reverse ? { start: at, bottom: at } : { end: at, bottom: at }, { z: 2, overlaps: [portraitPath] }));
     }
     if (desc.leader) {
       // Seated on the rim at its upper outer corner (45°), sized by the portrait.
       const cs = Math.round(pd * 0.34);
       const at = Math.round(pd * 0.146 - cs / 2);
-      box("Crown", { width: px(cs), height: px(cs), align: "center", cross: "center", part: sel("UnitFrame", "crown") }, undefined, () => {
-        icon("Mark", "crown", Math.round(cs * 0.9), lit(role("gold")));
+      // A filled crown drawn from its outline (three points on a band), gold with a dark edge, on its own shadow.
+      const pts = [[0.06, 0.84], [0.06, 0.34], [0.3, 0.58], [0.5, 0.16], [0.7, 0.58], [0.94, 0.34], [0.94, 0.84]].map(([x, y]) => ({ x: x! * cs, y: y! * cs }));
+      leaf("Crown", { width: px(cs), height: px(cs), part: sel("UnitFrame", "crown") }, {
+        shape: { kind: "path", points: pts, closed: true, filled: true, join: "round" },
+        fills: [vgrad([[0, lit(mix(role("gold"), WHITE, 0.35))], [1, lit(mix(role("gold"), BLACK, 0.2))]])],
+        strokes: [stroke(Math.max(1, cs / 14), lit(mix(role("gold"), BLACK, 0.6)))],
+        effects: [drop(1, 3, lit(BLACK, 0.7))],
       }, absolute(desc.reverse ? { end: at, top: at } : { start: at, top: at }, { z: 2, overlaps: [portraitPath] }));
     }
     close(hurt > 0 && !reduced() ? { transform: { x: Math.sin(hurtAge * 1.9) * u(3) * hurt } } : undefined);
     };
     if (!desc.reverse) portrait();
-    kit.column("Bars", { gap: u(3), width: { kind: "grow" } }, () => {
+    // A faint dark scrim under the name and bars (party frames carry one), so their text holds 3:1 or better on a
+    // bright scene: a soft cloud feathered past its edges by a glow of its own tone, a shadow rather than a plate.
+    box("Bars", { direction: "column", gap: u(3), width: { kind: "grow" }, padding: { left: u(4), right: u(4), top: u(2), bottom: u(3) } }, {
+      shape: { kind: "rect", radii: [u(8), u(8), u(8), u(8)] },
+      fills: [solid(lit(BLACK, 0.4))],
+      effects: [glow(u(10), lit(BLACK, 0.4))],
+    }, () => {
       kit.row("Head", { gap: tk.xs, cross: "center", width: { kind: "grow" } }, () => {
-        text("Name", name, { step: ts(m.name), font: "display", color: dead || offline ? token("inkMuted") : hostile ? lit(mix(role("danger"), WHITE, 0.15)) : token("ink"), nowrap: true, ellipsis: true, width: { kind: "grow" }, soft: true });
+        text("Name", name, { step: ts(m.name), font: "display", color: dead || offline ? token("ink", 0.62) : hostile ? lit(mix(role("danger"), WHITE, 0.15)) : token("ink"), nowrap: true, ellipsis: true, width: { kind: "grow" }, soft: true });
         if (desc.combat) icon("Combat", "crossed-swords", u(14), lit(role("danger")), "In combat");
       });
       if (desc.title && size !== "small") text("Title", desc.title, { step: ts(11), color: token("ink", 0.9), nowrap: true, ellipsis: true, width: { kind: "grow" }, soft: true });
@@ -188,7 +206,8 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
         value: dead ? 0 : health,
         max: healthMax,
         kind: "health",
-        ...(hostile ? { color: token("danger") } : {}),
+        // Offline: the bar greyed (the portrait is too), the name kept at a readable ink rather than the whole frame faded.
+        ...(offline ? { color: { color: { r: 0.42, g: 0.44, b: 0.47 } } } : hostile ? { color: token("danger") } : {}),
         // The absorb lies on the health as a white-blue overlay (World of Warcraft, Diablo IV), never a bar of its own.
         absorb: dead ? 0 : desc.shield ?? 0,
         // Health is the frame's dominant bar: full length, the tallest, its numerals inside its end.
@@ -202,16 +221,16 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
         anchor: null,
       });
       if (desc.resource !== null && desc.resource !== undefined && !dead) {
-        statBar("Resource", { value: desc.resource, max: desc.resourceMax ?? 100, kind: desc.resourceKind ?? "mana", thickness: Math.max(5, Math.round(m.bar * 0.55)), width: { kind: "grow" }, ghost: false, name: `${name} resource`, anchor: null });
+        statBar("Resource", { value: desc.resource, max: desc.resourceMax ?? 100, kind: desc.resourceKind ?? "mana", color: desc.resourceColor ?? null, thickness: Math.max(5, Math.round(m.bar * 0.55)), width: { kind: "grow" }, ghost: false, name: `${name} resource`, anchor: null });
       }
       if (desc.castName && size !== "small") {
-        cast("Cast", { name: desc.castName, progress: desc.castProgress ?? 0, width: { kind: "grow" } }, true);
+        cast("Cast", { name: desc.castName, progress: desc.castProgress ?? 0, width: { kind: "grow" } }, true, size === "large" ? Math.max(u(m.bar), Math.ceil(stepSize(ts(11)).size * 1.3)) : u(m.bar));
       }
       if ((desc.effects ?? []).length > 0 && size !== "small") statusGrid("Effects", { effects: desc.effects ?? [], size: auraSize, columns: auraColumns, timers: false, split: false, anchor: null });
     });
     if (desc.reverse) portrait();
     res = close({
-      opacity: offline ? 0.5 : 1,
+      opacity: 1,
       a11y: a11y("button", name, { value: dead ? "Dead" : offline ? "Offline" : `${desc.level ? `Level ${desc.level}, ` : ""}${Math.round((health / Math.max(1, healthMax)) * 100)}% health`, selected: !!desc.targeted }),
       ...groups({ life, selection: desc.targeted ? "targeted" : "none", hurt: hurt > 0 ? "hit" : "none" }, { life: ["alive", "dead", "offline"], selection: ["none", "targeted"], hurt: ["none", "hit"] }),
     });
@@ -257,53 +276,63 @@ export function raidFrames(id: string, desc: Api.RaidFramesDesc = {}): Api.Frame
 
 function cell(id: string, m: Api.RaidMember, w: number, h: number): Api.Response {
   const max = Math.max(1, m.healthMax ?? 100);
-  const hp = m.dead || m.offline ? 0 : clamp01((m.health ?? 0) / max);
-  const absorb = clamp01((m.absorb ?? 0) / max);
-  const heal = clamp01((m.incomingHeal ?? 0) / max);
-  const base = paintRgba(m.classColor, role("health"));
-  // The name's ink by the cell's luminance: a pale class colour (a priest's white) under the name takes dark ink;
-  // where the name runs past a pale fill onto the dark track, the fill is deepened so the light ink reads on both.
-  const pale = 0.2126 * base.r + 0.7152 * base.g + 0.0722 * base.b > 0.75;
-  // Where the name's glyphs end, as a fraction of the cell (its box grows to the cell's end, so it is estimated from its letters).
-  const nameEnd = (u(5) + (ROLE_ICON[m.role ?? "none"] ? Math.max(10, Math.round(h * 0.34)) + u(3) : 0) + (m.name ?? "").length * stepSize(ts(11)).size * 0.58) / Math.max(1, w);
-  const darkInk = pale && !m.dead && !m.offline && clamp01((m.health ?? 0) / Math.max(1, m.healthMax ?? 100)) >= nameEnd;
-  const cls = pale && !darkInk ? mix(base, BLACK, 0.5) : base;
+  const out = !!(m.dead || m.offline);
+  const hp = out ? 0 : clamp01((m.health ?? 0) / max);
+  const absorb = out ? 0 : clamp01((m.absorb ?? 0) / max);
+  const heal = out ? 0 : clamp01((m.incomingHeal ?? 0) / max);
+  const cls = paintRgba(m.classColor, role("health"));
   const low = hp < 0.35 && hp > 0;
   const state = m.dead ? "dead" : m.offline ? "offline" : m.outOfRange ? "outOfRange" : null;
   const dispel = m.dispel ? DISPEL[m.dispel] ?? role("danger") : null;
-  const border = m.selected ? role("highlight") : m.aggro ? role("danger") : dispel;
+  const border = m.selected ? WHITE : m.aggro ? role("danger") : dispel;
+  // A dark cell (World of Warcraft's and FFXIV's compact frames): health one muted green, the class a stripe at its
+  // start, the missing health the dark track. Low health warms the fill toward danger.
+  const fillInk = low ? mix(mix(role("health"), role("danger"), 0.75), BLACK, 0.15) : mix(mix(role("health"), { r: 0.45, g: 0.5, b: 0.48, a: 1 }, 0.35), BLACK, 0.3);
+  const stripe = Math.max(3, u(3));
   open(id, {
     width: px(w), height: px(h), interactive: true, cross: "center",
     part: sel("RaidFrames", "cell", state, m.aggro ? "aggro" : null, m.dispel ? ["dispel", m.dispel] : null, m.selected ? "selected" : null),
     partClass: "bar",
   }, {
     ...trackDraw(3),
-    strokes: border ? [stroke(m.selected ? 2 : 1.5, lit(border, dispel && !m.selected && !m.aggro ? 0.6 + 0.4 * (0.5 + 0.5 * Math.cos(kit.seconds() * 6)) : 1))] : [stroke(1, token("shadow", 0.9), "outside")],
+    // Near-opaque: a scene behind a raid cell never tints its missing health.
+    fills: [solid(lit({ r: 0.05, g: 0.055, b: 0.065, a: 1 }, 0.94)), vgrad([[0, lit(BLACK, 0.25)], [0.6, lit(BLACK, 0)], [1, lit(WHITE, 0.05)]])],
+    strokes: border ? [stroke(m.selected ? 2 : 1.5, lit(border, dispel && !m.selected && !m.aggro ? 0.6 + 0.4 * (0.5 + 0.5 * Math.cos(kit.seconds() * 6)) : m.selected ? 0.9 : 1))] : [stroke(1, token("shadow", 0.9), "outside")],
     effects: dispel ? [glow(4, lit(dispel, 0.6))] : [],
   });
-  if (hp > 0) leaf("Fill", { width: pct(hp), height: pct(1), part: sel("RaidFrames", "fill", low ? "low" : null) }, fillDraw(cls, 2), absolute({ start: 0, top: 0 }));
-  if (heal > 0 && hp < 1) leaf("Heal", { width: pct(Math.min(heal, 1 - hp)), height: pct(1), part: sel("RaidFrames", "heal") }, { fills: [solid(lit(role("success"), 0.42))] }, absolute({ start: hp * w, top: 0 }));
+  const room = Math.max(0, w - stripe);
+  const at = (f: number) => stripe + f * room;
+  if (hp > 0) leaf("Fill", { width: px(hp * room), height: pct(1), part: sel("RaidFrames", "fill", low ? "low" : null) }, fillDraw(fillInk, 2), absolute({ start: stripe, top: 0 }));
+  // An incoming heal: a translucent extension at the fill's end, under the name.
+  const hw = Math.min(heal, 1 - hp);
+  if (hw > 0) leaf("Heal", { width: px(hw * room), height: pct(1), part: sel("RaidFrames", "heal") }, { fills: [solid(lit(role("success"), 0.2))] }, absolute({ start: at(hp), top: 0 }));
   if (absorb > 0) {
-    // The absorb: a white sheen over the end of the health it covers (WoW's), striped so it reads without colour.
-    leaf("Absorb", { width: pct(Math.min(absorb, 1)), height: pct(1), part: sel("RaidFrames", "absorb") }, {
-      fills: [solid(token("sheen", 0.35))],
-      strokes: [stroke(1, token("sheen", 0.65))],
-    }, absolute({ start: Math.max(0, Math.min(hp + heal, 1) - absorb) * w, top: 0 }));
+    // The absorb: the player frame's white-blue overlay past the health (and heal); what overflows lies back over the fill's end.
+    const past = Math.min(absorb, 1 - hp - hw);
+    const over = Math.min(hp, absorb - past);
+    const paint = (a: number): Api.Fill[] => [solid(lit({ r: 0.78, g: 0.9, b: 1, a: 1 }, a)), vgrad([[0, lit(WHITE, 0.25)], [0.5, lit(WHITE, 0)]])];
+    if (past > 0) leaf("Absorb", { width: px(past * room), height: pct(1), part: sel("RaidFrames", "absorb") }, { fills: paint(0.3) }, absolute({ start: at(hp + hw), top: 0 }));
+    if (over > 0.001) leaf("Overabsorb", { width: px(over * room), height: pct(1), part: sel("RaidFrames", "absorb", "over") }, { fills: paint(0.24) }, absolute({ start: at(hp - over), top: 0 }));
   }
-  const ink = m.dead || m.offline ? token("inkMuted") : darkInk ? lit({ r: 0.07, g: 0.08, b: 0.1, a: 1 }) : token("ink");
-  kit.row("Label", { gap: u(3), cross: "center", padding: { left: u(5), right: u(4), top: 0, bottom: 0 }, width: pct(1) }, () => {
+  leaf("Class", { width: px(stripe), height: pct(1), part: sel("RaidFrames", "class") }, {
+    shape: { kind: "rect", radii: [3, 0, 0, 3] },
+    fills: [solid(lit(cls, out ? 0.4 : 1))],
+  }, absolute({ start: 0, top: 0 }));
+  // The name keeps its place first; dead or offline says so small under it, never cutting it.
+  const ink = out ? token("ink", 0.62) : token("ink");
+  kit.row("Label", { gap: u(3), cross: "center", padding: { left: stripe + u(4), right: u(4), top: 0, bottom: 0 }, width: pct(1) }, () => {
     const roleName = ROLE_ICON[m.role ?? "none"];
-    if (roleName) icon("Role", roleName, Math.max(10, Math.round(h * 0.34)), darkInk ? ink : token("ink"), m.role ?? "");
-    // At a large text size the status takes its own line under the name, so neither is cut to nothing.
-    const stacked = textScale() >= 1.5 && !!(m.dead || m.offline);
-    if (stacked) open("Names", { direction: "column", gap: 0, width: { kind: "grow" } });
-    text("Name", m.name ?? "", { step: ts(11), color: ink, nowrap: true, ellipsis: true, width: { kind: "grow" }, soft: !darkInk });
-    if (m.dead || m.offline) text("Status", m.dead ? "Dead" : "Offline", { step: ts(10), color: token("inkMuted"), nowrap: true, ellipsis: stacked });
-    if (stacked) close();
+    if (roleName) icon("Role", roleName, Math.max(10, Math.round(h * 0.3)), token("ink", out ? 0.62 : 0.85), m.role ?? "");
+    if (out) open("Names", { direction: "column", gap: 0, width: { kind: "grow" } });
+    text("Name", m.name ?? "", { step: ts(11), color: ink, nowrap: true, ellipsis: true, width: { kind: "grow" }, soft: true });
+    if (out) {
+      text("Status", m.dead ? "Dead" : "Offline", { step: ts(9), color: token("ink", 0.62), nowrap: true, ellipsis: true, soft: true });
+      close();
+    }
   });
   apply(absolute({ start: 0, top: 0, bottom: 0 }));
   return close({
-    opacity: m.outOfRange ? 0.42 : 1,
+    opacity: m.outOfRange ? 0.5 : 1,
     a11y: a11y("button", m.name ?? "", { value: m.dead ? "Dead" : m.offline ? "Offline" : `${Math.round(hp * 100)}%`, selected: !!m.selected }),
   });
 }
@@ -320,7 +349,7 @@ export function castBar(id: string, desc: Api.CastBarDesc = {}): void {
 }
 
 /** A cast bar; compact is the thin one under a unit frame's bars. */
-function cast(id: string, desc: Api.CastBarDesc, compact: boolean): void {
+function cast(id: string, desc: Api.CastBarDesc, compact: boolean, healthH = 0): void {
   const tk = frame().t;
   const state: Api.CastState = desc.state ?? "casting";
   const t = now();
@@ -335,24 +364,23 @@ function cast(id: string, desc: Api.CastBarDesc, compact: boolean): void {
   const alpha = ended ? 1 - clamp01((since - hold) / fade) : 1;
   const p = clamp01(desc.progress ?? 0);
   const bad = state === "interrupted" || state === "failed";
-  const ink = bad ? role("danger") : state === "success" ? role("success") : desc.uninterruptible ? { r: 0.62, g: 0.64, b: 0.68, a: 1 } : desc.channel ? role("info") : role("gold");
-  // Compact (under a unit frame): the name inside a bar as tall as its line. Full: the name and seconds on a line
+  const gold = compact ? mix(role("gold"), BLACK, 0.3) : role("gold");
+  const ink = bad ? role("danger") : state === "success" ? role("success") : desc.uninterruptible ? { r: 0.62, g: 0.64, b: 0.68, a: 1 } : desc.channel ? role("info") : gold;
+  // Compact (under a unit frame): a slim bar about 60 % of the health bar's height in a darker amber, its name a step
+  // smaller on a line over it, so the health stays the frame's dominant bar. Full: the name and seconds on a line
   // of their own over a slim bar, the spell's art beside both (Diablo IV, Destiny 2, WoW's modern cast bar).
-  const nameStep = compact ? ts(10) : ts(14);
-  const h = compact ? Math.max(u(10), stepSize(nameStep).line) : Math.max(u(8), Math.round(stepSize(nameStep).size * 0.55));
+  const nameStep = compact ? ts(9) : ts(14);
+  const h = compact ? Math.max(3, Math.round((healthH || u(12)) * 0.6)) : Math.max(u(8), Math.round(stepSize(nameStep).size * 0.55));
   const label = state === "interrupted" ? desc.interruptedLabel ?? "Interrupted" : state === "failed" ? desc.failedLabel ?? "Failed" : desc.name ?? "";
   const shown = bad ? 1 : state === "success" ? 1 : desc.channel ? 1 - p : p;
-  const bar = (withText: boolean) => {
+  const bar = () => {
     const trackPath = open("Track", { width: { kind: "grow" }, height: px(h), cross: "center", part: sel("CastBar", "track"), partClass: "bar" }, {
       ...trackDraw(Math.min(h / 2, u(3))),
       ...(desc.uninterruptible ? { strokes: [stroke(1.5, token("inkMuted"), "outside")] } : {}),
-      // Compact, the name sits inside the bar: the bar clips it (an ellipsis first), so no text leaves its box.
-      ...(withText ? { clip: "shape" as const } : {}),
     });
     const w = kit.bounds(trackPath)?.width ?? u(240);
     leaf("Fill", { width: pct(shown), height: pct(1), part: sel("CastBar", "fill") }, fillDraw(ink, Math.min(h / 2, u(3))), absolute({ start: 0, top: 0 }));
-    // Compact, the name fills the bar: no edge line at all (any line crosses the letters somewhere); the fill's end reads alone.
-    if (!ended && shown > 0.01 && shown < 0.995 && !withText) {
+    if (!ended && shown > 0.01 && shown < 0.995) {
       // The spark at the leading edge.
       leaf("Spark", { width: px(u(10)), height: pct(1.8), part: sel("CastBar", "spark") }, {
         shape: ellipseShape(),
@@ -371,12 +399,6 @@ function cast(id: string, desc: Api.CastBarDesc, compact: boolean): void {
     if (state === "success" && since < hold) {
       leaf("Flash", { width: pct(1), height: pct(1) }, { fills: [solid(lit(WHITE, 0.6 * (1 - since / hold)))] }, absolute({ start: 0, top: 0 }));
     }
-    if (withText) {
-      kit.row("Text", { gap: tk.xs, cross: "center", padding: { left: u(6), right: u(6), top: 0, bottom: 0 }, width: pct(1) }, () => {
-        text("Name", label, { step: nameStep, font: "display", color: token("ink"), nowrap: true, ellipsis: true, width: { kind: "grow" }, outline: 1.2 });
-      });
-      apply(absolute({ start: 0, top: 0, bottom: 0 }));
-    }
     close();
   };
   hudPlace(id, anchorOf(desc, null), () => {
@@ -386,7 +408,12 @@ function cast(id: string, desc: Api.CastBarDesc, compact: boolean): void {
       partClass: "hud",
     }, undefined, () => {
       if (compact) {
-        bar(true);
+        kit.column("Body", { gap: u(2), width: { kind: "grow" } }, () => {
+          kit.row("Head", { width: { kind: "grow" } }, () => {
+            text("Name", label, { step: nameStep, font: "display", color: bad ? lit(mix(role("danger"), WHITE, 0.25)) : token("ink"), nowrap: true, ellipsis: true, width: { kind: "grow" }, soft: true });
+          });
+          bar();
+        });
         return;
       }
       if (desc.icon || desc.image) {
@@ -415,7 +442,7 @@ function cast(id: string, desc: Api.CastBarDesc, compact: boolean): void {
           text("Name", label, { step: nameStep, font: "display", color: bad ? lit(mix(role("danger"), WHITE, 0.25)) : token("ink"), nowrap: true, ellipsis: true, width: { kind: "grow" }, outline: 1.4 });
           if (!ended && (desc.remaining ?? 0) > 0) text("Time", (desc.remaining ?? 0).toFixed(1), { step: ts(12), font: "display", color: token("ink"), nowrap: true, outline: 1.4 });
         });
-        bar(false);
+        bar();
       });
     }, {
       opacity: alpha,
