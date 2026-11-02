@@ -119,7 +119,7 @@ impl CookedTerrain {
             (0, _) => None,
             (_, Some(c)) => {
                 let side = self.layout.control_side() as usize;
-                if c.len() != side * side * 4 {
+                if c.len() != side * side * 4 * self.layout.pages.max(1) as usize {
                     return Err(
                         self.bad(format!("tile {index}'s control texels are the wrong size"))
                     );
@@ -142,11 +142,11 @@ impl CookedTerrain {
             None => None,
             Some(c) => {
                 let side = self.layout.control_side() as usize;
+                let bytes = side * side * 4 * self.layout.pages.max(1) as usize;
                 Some(
-                    miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(c, side * side * 4)
-                        .map_err(|_| {
-                            self.bad(format!("tile {index}'s control does not inflate"))
-                        })?,
+                    miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(c, bytes).map_err(
+                        |_| self.bad(format!("tile {index}'s control does not inflate")),
+                    )?,
                 )
             }
         };
@@ -178,7 +178,8 @@ impl CookedTerrain {
         let c = l.control as usize;
         let cside = l.control_side() as usize;
         let (cw, ch) = (c * tx as usize, c * tz as usize);
-        let mut rgba = vec![0u8; cw * ch * 4];
+        let pages = l.pages.max(1) as usize;
+        let mut rgba = vec![0u8; cw * ch * 4 * pages];
         for z in 0..tz as usize {
             for x in 0..tx as usize {
                 let index = l.index(0, x as u32, z as u32);
@@ -202,11 +203,13 @@ impl CookedTerrain {
                     }
                 }
                 if let Some(cz) = cz {
-                    for j in 0..c {
-                        for i in 0..c {
-                            let src = ((j + 1) * cside + i + 1) * 4;
-                            let dst = ((z * c + j) * cw + x * c + i) * 4;
-                            rgba[dst..dst + 4].copy_from_slice(&cz[src..src + 4]);
+                    for p in 0..pages {
+                        for j in 0..c {
+                            for i in 0..c {
+                                let src = p * cside * cside * 4 + ((j + 1) * cside + i + 1) * 4;
+                                let dst = p * cw * ch * 4 + ((z * c + j) * cw + x * c + i) * 4;
+                                rgba[dst..dst + 4].copy_from_slice(&cz[src..src + 4]);
+                            }
                         }
                     }
                 }
@@ -219,25 +222,27 @@ impl CookedTerrain {
             let per = c as f32 / t as f32;
             let w = ((quads.0 * per).round() as usize).max(1);
             let hgt = ((quads.1 * per).round() as usize).max(1);
-            let texel = |x: i64, y: i64, k: usize| {
+            let texel = |p: usize, x: i64, y: i64, k: usize| {
                 let x = x.clamp(0, cw as i64 - 1) as usize;
                 let y = y.clamp(0, ch as i64 - 1) as usize;
-                rgba[(y * cw + x) * 4 + k] as f32
+                rgba[p * cw * ch * 4 + (y * cw + x) * 4 + k] as f32
             };
-            let mut out = vec![0u8; w * hgt * 4];
-            for j in 0..hgt {
-                for i in 0..w {
-                    let gx = (i as f32 + 0.5) / w as f32 * quads.0 * per - 0.5;
-                    let gy = (j as f32 + 0.5) / hgt as f32 * quads.1 * per - 0.5;
-                    let (x0, y0) = (gx.floor(), gy.floor());
-                    let (fx, fy) = (gx - x0, gy - y0);
-                    let (x0, y0) = (x0 as i64, y0 as i64);
-                    for k in 0..4 {
-                        let a = texel(x0, y0, k) + (texel(x0 + 1, y0, k) - texel(x0, y0, k)) * fx;
-                        let b = texel(x0, y0 + 1, k)
-                            + (texel(x0 + 1, y0 + 1, k) - texel(x0, y0 + 1, k)) * fx;
-                        out[(j * w + i) * 4 + k] =
-                            (a + (b - a) * fy).round().clamp(0.0, 255.0) as u8;
+            let mut out = vec![0u8; w * hgt * 4 * pages];
+            for p in 0..pages {
+                for j in 0..hgt {
+                    for i in 0..w {
+                        let gx = (i as f32 + 0.5) / w as f32 * quads.0 * per - 0.5;
+                        let gy = (j as f32 + 0.5) / hgt as f32 * quads.1 * per - 0.5;
+                        let (x0, y0) = (gx.floor(), gy.floor());
+                        let (fx, fy) = (gx - x0, gy - y0);
+                        let (x0, y0) = (x0 as i64, y0 as i64);
+                        for k in 0..4 {
+                            let t = |x, y| texel(p, x, y, k);
+                            let a = t(x0, y0) + (t(x0 + 1, y0) - t(x0, y0)) * fx;
+                            let b = t(x0, y0 + 1) + (t(x0 + 1, y0 + 1) - t(x0, y0 + 1)) * fx;
+                            out[p * w * hgt * 4 + (j * w + i) * 4 + k] =
+                                (a + (b - a) * fy).round().clamp(0.0, 255.0) as u8;
+                        }
                     }
                 }
             }
@@ -281,6 +286,7 @@ impl Bundle {
         )
         .map_err(|e| invalid(&blob, e))?;
         layout.holes = m.holes > 0;
+        layout.pages = m.control_pages.max(1);
         if layout.control != m.control || layout.levels != m.levels {
             return Err(invalid(&blob, "the tile layout does not match its cook"));
         }

@@ -351,7 +351,7 @@ pub fn parse(entry: &Entry) -> Result<Generate, String> {
         check_keys(r, &BIOME_KEYS, "biome")?;
         if r.get("layer").is_none() {
             return Err(format!(
-                "line {}: a biome names the layer it writes: layer <0 to 3>",
+                "line {}: a biome names the layer it writes: layer <0 to 15>",
                 e.line
             ));
         }
@@ -393,7 +393,9 @@ pub fn parse(entry: &Entry) -> Result<Generate, String> {
 pub struct Generated {
     /// Metres above the origin, row-major from -z to +z and -x to +x.
     pub heights: Vec<f32>,
-    /// The biomes' control map (`columns` × `rows` RGBA8), with biomes.
+    /// The biomes' control map (`columns` × `rows` RGBA8 per page of four
+    /// layers, enough pages for the highest layer a biome writes), with
+    /// biomes.
     pub control: Option<Vec<u8>>,
     /// The samples rivers run through, in index order (with rivers).
     #[cfg_attr(
@@ -1016,7 +1018,14 @@ fn biomes(
     longer: f32,
 ) -> Vec<u8> {
     let m = &g.moisture;
-    let mut out = vec![0u8; cols * rows * 4];
+    let channels = 4 * g
+        .biomes
+        .iter()
+        .map(|b| b.layer as usize / 4 + 1)
+        .max()
+        .unwrap_or(1);
+    let page = cols * rows * 4;
+    let mut out = vec![0u8; page * channels / 4];
     for r in 0..rows {
         for c in 0..cols {
             let i = r * cols + c;
@@ -1038,7 +1047,7 @@ fn biomes(
             } else {
                 0.0
             };
-            let mut ch = [0.0f32; 4];
+            let mut ch = [0.0f32; og_render::MAX_TERRAIN_LAYERS];
             for b in &g.biomes {
                 let w = b.weight
                     * band(h[i], b.altitude, b.altitude_fade)
@@ -1047,8 +1056,9 @@ fn biomes(
                 let k = b.layer as usize;
                 ch[k] = ch[k].max(w);
             }
-            for k in 0..4 {
-                out[i * 4 + k] = (ch[k] * 255.0 + 0.5).floor().clamp(0.0, 255.0) as u8;
+            for (k, v) in ch.iter().enumerate().take(channels) {
+                out[(k / 4) * page + i * 4 + k % 4] =
+                    (v * 255.0 + 0.5).floor().clamp(0.0, 255.0) as u8;
             }
         }
     }

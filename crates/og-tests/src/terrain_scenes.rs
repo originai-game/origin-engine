@@ -660,3 +660,71 @@ pub fn holes_scene() -> RenderScene {
     scene.camera = camera_at(c + Vec3::new(0.0, 30.0, 24.0), c);
     scene
 }
+
+/// Where `terrain-layers` paints its four extra layers (world x, z), each
+/// a disc of [`LAYER_DISC`] metres, and their tints: clay, heather, mud
+/// and gold flowers.
+pub const LAYER_SPOTS: [(f32, f32); 4] = [
+    (-92.0, 122.0),
+    (-112.0, 104.0),
+    (-82.0, 96.0),
+    (-122.0, 132.0),
+];
+pub const LAYER_DISC: f32 = 9.0;
+pub const LAYER_TINTS: [[f32; 3]; 4] = [
+    [1.6, 0.55, 0.3],
+    [1.0, 0.45, 1.3],
+    [0.45, 0.32, 0.22],
+    [1.8, 1.5, 0.25],
+];
+
+/// The island's near view with eight layers: its four with their maps in
+/// texture arrays, and four more (layers 4 to 7, the grass texture tinted
+/// clay, heather, mud and gold) on the control map's second page, each
+/// painted in a disc on the meadow ([`LAYER_SPOTS`]) where the first page
+/// gives the grass nothing. `painted` false leaves the second page 0: the
+/// extra layers show nowhere.
+pub fn layers_scene(painted: bool) -> RenderScene {
+    let mut scene = with_layer_arrays(island_view("near"));
+    let handle = scene.terrains[0].terrain;
+    let mut data = scene.terrain(handle).expect("the island").clone();
+    // Both pages at 512 texels (4 m): the first resampled from the island's.
+    let m = 512u32;
+    let page = (m * m * 4) as usize;
+    let mut rgba = vec![0u8; page * 2];
+    for y in 0..m {
+        for x in 0..m {
+            let p =
+                (Vec2::new(x as f32, y as f32) + 0.5) / m as f32 * ISLAND_SIZE - ISLAND_SIZE * 0.5;
+            let c = data.control_at(p);
+            let at = ((y * m + x) * 4) as usize;
+            let spot = LAYER_SPOTS
+                .iter()
+                .position(|s| (p - Vec2::new(s.0, s.1)).length() < LAYER_DISC);
+            for k in 0..4 {
+                rgba[at + k] = (c[k] * 255.0).round() as u8;
+            }
+            if let (true, Some(i)) = (painted, spot) {
+                rgba[at] = 0;
+                rgba[at + 2] = 0;
+                rgba[page + at + i] = 255;
+            }
+        }
+    }
+    data.control = Some(TerrainControl {
+        width: m,
+        height: m,
+        rgba: Arc::from(rgba),
+    });
+    assert!(scene.set_terrain(handle, data));
+    let t = &mut scene.terrains[0];
+    let grass = t.layers[0];
+    for tint in LAYER_TINTS {
+        t.layers.push(TerrainLayer {
+            color: Vec3::from(tint),
+            roughness: 0.9,
+            ..grass
+        });
+    }
+    scene
+}

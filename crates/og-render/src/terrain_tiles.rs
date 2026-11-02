@@ -52,6 +52,9 @@ pub struct TerrainLayout {
     /// The terrain has holes: each tile height's lowest bit is the hole
     /// flag of the cell at that sample ([`mark_holes`]).
     pub holes: bool,
+    /// The control map's pages of four channels (1 to 4; one per four
+    /// layers): each tile's control texels hold them one after the other.
+    pub pages: u32,
 }
 
 fn ceil_log2(n: u32) -> u32 {
@@ -97,6 +100,7 @@ impl TerrainLayout {
             control,
             levels: levels.min(MAX_TERRAIN_PYRAMID),
             holes: false,
+            pages: 1,
         };
         if levels > MAX_TERRAIN_PYRAMID || layout.tile_count() > MAX_TERRAIN_TILES {
             return Err(format!(
@@ -202,6 +206,15 @@ impl TerrainLayout {
         self.tile + 1
     }
 
+    /// A tile's control bytes per page: every mip of `control_side()`.
+    pub fn control_page_bytes(&self) -> usize {
+        if self.control == 0 {
+            0
+        } else {
+            mip_texels(self.control_side()) as usize * 4
+        }
+    }
+
     /// Control texels per tile side with the border (0 without a map).
     pub fn control_side(&self) -> u32 {
         if self.control == 0 {
@@ -219,7 +232,7 @@ impl TerrainLayout {
         let c = if self.control == 0 {
             0
         } else {
-            mip_texels(self.control_side())
+            mip_texels(self.control_side()) * self.pages.max(1) as u64
         };
         h * h * 4 + n * 4 + c * 4
     }
@@ -334,8 +347,8 @@ pub fn mark_holes(layout: &TerrainLayout, index: u32, heights: &mut [f32], holes
 
 /// One tile ready to draw: its heights (metres, `(tile + 3)²`, the border
 /// included), its normal map's x and z as half floats (`(tile + 1)²` and
-/// every mip after it), its control texels (`(control + 2)²` RGBA8 and its
-/// mips) and the range of its heights.
+/// every mip after it), its control texels (per page, `(control + 2)²`
+/// RGBA8 and its mips) and the range of its heights.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TerrainTile {
     pub heights: Arc<[f32]>,
@@ -388,7 +401,7 @@ impl TerrainTile {
         let h = layout.heights_side() as u64;
         let control_ok = match &self.control {
             Some(c) if layout.control != 0 => {
-                c.len() as u64 == mip_texels(layout.control_side()) * 4
+                c.len() == layout.control_page_bytes() * layout.pages.max(1) as usize
             }
             _ => true,
         };
@@ -469,31 +482,35 @@ impl TerrainTile {
             level = next;
             s = d;
         }
+        // Each page's texels and its mips, page after page.
         let control = control.map(|c| {
             let cs = layout.control_side() as usize;
-            let mut out = c.clone();
-            let mut level = c;
-            let mut s = cs;
-            while s > 1 {
-                let d = (s / 2).max(1);
-                let mut next = vec![0u8; d * d * 4];
-                for y in 0..d {
-                    for x in 0..d {
-                        for ch in 0..4 {
-                            let mut sum = 0u32;
-                            for (ox, oy) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
-                                sum += level[((2 * y + oy).min(s - 1) * s
-                                    + (2 * x + ox).min(s - 1))
-                                    * 4
-                                    + ch] as u32;
+            let mut out = Vec::with_capacity(layout.control_page_bytes() * layout.pages as usize);
+            for page in c.chunks(cs * cs * 4) {
+                out.extend_from_slice(page);
+                let mut level = page.to_vec();
+                let mut s = cs;
+                while s > 1 {
+                    let d = (s / 2).max(1);
+                    let mut next = vec![0u8; d * d * 4];
+                    for y in 0..d {
+                        for x in 0..d {
+                            for ch in 0..4 {
+                                let mut sum = 0u32;
+                                for (ox, oy) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
+                                    sum += level[((2 * y + oy).min(s - 1) * s
+                                        + (2 * x + ox).min(s - 1))
+                                        * 4
+                                        + ch] as u32;
+                                }
+                                next[(y * d + x) * 4 + ch] = ((sum + 2) / 4) as u8;
                             }
-                            next[(y * d + x) * 4 + ch] = ((sum + 2) / 4) as u8;
                         }
                     }
+                    out.extend_from_slice(&next);
+                    level = next;
+                    s = d;
                 }
-                out.extend_from_slice(&next);
-                level = next;
-                s = d;
             }
             Arc::from(out)
         });
@@ -508,11 +525,12 @@ impl TerrainTile {
 
 /// A terrain's control map resampled for its tiles: level 0 at
 /// `control` texels per tile (bilinear between the map's texel centres),
-/// each level after it halved (2 × 2 means, rounded).
+/// each level after it halved (2 × 2 means, rounded); one such pyramid per
+/// page of four channels.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ControlPyramid {
-    /// (width, height, RGBA8) per level.
-    pub levels: Vec<(u32, u32, Vec<u8>)>,
+    /// Per page, (width, height, RGBA8) per level.
+    pub pages: Vec<Vec<(u32, u32, Vec<u8>)>>,
 }
 
 impl ControlPyramid {
@@ -521,6 +539,14 @@ impl ControlPyramid {
         if layout.control == 0 {
             return None;
         }
+        let pages = (0..map.pages())
+            .map(|p| Self::page_levels(layout, &map.page(p)))
+            .collect();
+        Some(ControlPyramid { pages })
+    }
+
+    /// One page's levels.
+    fn page_levels(layout: &TerrainLayout, map: &TerrainControl) -> Vec<(u32, u32, Vec<u8>)> {
         let c = layout.control;
         let (tx, tz) = layout.tiles(0);
         let (w, h) = (c * tx, c * tz);
@@ -574,23 +600,25 @@ impl ControlPyramid {
             }
             levels.push((w, h, next));
         }
-        Some(ControlPyramid { levels })
+        levels
     }
 
     /// The `(control + 2)²` texels of a tile (its texels and a border of
-    /// one, clamped at the map's edge).
+    /// one, clamped at the map's edge), page after page.
     pub fn tile(&self, layout: &TerrainLayout, index: u32) -> Vec<u8> {
         let (k, tx, tz) = layout.locate(index).unwrap_or((0, 0, 0));
-        let (w, h, px) = &self.levels[k as usize];
         let c = layout.control as i64;
         let side = layout.control_side() as usize;
-        let mut out = Vec::with_capacity(side * side * 4);
-        for j in -1..=c {
-            for i in -1..=c {
-                let x = (tx as i64 * c + i).clamp(0, *w as i64 - 1) as usize;
-                let y = (tz as i64 * c + j).clamp(0, *h as i64 - 1) as usize;
-                let at = (y * *w as usize + x) * 4;
-                out.extend_from_slice(&px[at..at + 4]);
+        let mut out = Vec::with_capacity(side * side * 4 * self.pages.len());
+        for page in &self.pages {
+            let (w, h, px) = &page[k as usize];
+            for j in -1..=c {
+                for i in -1..=c {
+                    let x = (tx as i64 * c + i).clamp(0, *w as i64 - 1) as usize;
+                    let y = (tz as i64 * c + j).clamp(0, *h as i64 - 1) as usize;
+                    let at = (y * *w as usize + x) * 4;
+                    out.extend_from_slice(&px[at..at + 4]);
+                }
             }
         }
         out
@@ -608,6 +636,7 @@ impl TerrainData {
             self.control.as_ref().map(|c| (c.width, c.height)),
         )?;
         layout.holes = self.holes.is_some();
+        layout.pages = self.control.as_ref().map_or(1, TerrainControl::pages);
         Ok(layout)
     }
 

@@ -312,13 +312,13 @@ impl TerrainRenderer {
     ) -> GpuData {
         // `capacity` slots.
         let layers = capacity;
-        let array = |label, side: u32, mips: u32, format| {
+        let array = |label, side: u32, mips: u32, format, pages: u32| {
             let t = device.create_texture(&wgpu::TextureDescriptor {
                 label: Some(label),
                 size: wgpu::Extent3d {
                     width: side,
                     height: side,
-                    depth_or_array_layers: layers,
+                    depth_or_array_layers: layers * pages,
                 },
                 mip_level_count: mips,
                 sample_count: 1,
@@ -338,6 +338,7 @@ impl TerrainRenderer {
             layout.heights_side(),
             1,
             wgpu::TextureFormat::R32Float,
+            1,
         );
         let ns = layout.normals_side();
         let (normals, normals_view) = array(
@@ -345,7 +346,9 @@ impl TerrainRenderer {
             ns,
             crate::mips::mip_count(ns, ns),
             NORMALS_FORMAT,
+            1,
         );
+        // Slot s's page p is layer s · pages + p.
         let control = (layout.control > 0).then(|| {
             let cs = layout.control_side();
             array(
@@ -353,6 +356,7 @@ impl TerrainRenderer {
                 cs,
                 crate::mips::mip_count(cs, cs),
                 wgpu::TextureFormat::Rgba8Unorm,
+                layout.pages.max(1),
             )
         });
         let table = device.create_buffer(&wgpu::BufferDescriptor {
@@ -432,21 +436,24 @@ impl TerrainRenderer {
             at += n;
         }
         if let (Some((texture, _)), Some(control)) = (&gpu.control, &tile.control) {
+            let pages = gpu.layout.pages.max(1);
             let mut at = 0usize;
-            for (mip, side) in crate::terrain_tiles::mip_sides(gpu.layout.control_side())
-                .into_iter()
-                .enumerate()
-            {
-                let n = (side * side * 4) as usize;
-                if let Some(texels) = control.get(at..at + n) {
-                    queue.write_texture(
-                        layer(texture, mip as u32, slot),
-                        texels,
-                        row(side, 4),
-                        size(side),
-                    );
+            for page in 0..pages {
+                for (mip, side) in crate::terrain_tiles::mip_sides(gpu.layout.control_side())
+                    .into_iter()
+                    .enumerate()
+                {
+                    let n = (side * side * 4) as usize;
+                    if let Some(texels) = control.get(at..at + n) {
+                        queue.write_texture(
+                            layer(texture, mip as u32, slot * pages + page),
+                            texels,
+                            row(side, 4),
+                            size(side),
+                        );
+                    }
+                    at += n;
                 }
-                at += n;
             }
         }
     }
@@ -748,7 +755,7 @@ impl TerrainRenderer {
                 continue;
             }
             let mut layers = [LayerGpu::default(); MAX_TERRAIN_LAYERS];
-            let mut handles = [None; 2 * MAX_TERRAIN_LAYERS];
+            let mut handles = [None; 2 * TERRAIN_TEXTURED_LAYERS];
             let count = t.layers.len().min(MAX_TERRAIN_LAYERS);
             let arrayed = t.layer_arrays.any();
             for (k, h) in [t.layer_arrays.albedo, t.layer_arrays.normal]
@@ -792,7 +799,14 @@ impl TerrainRenderer {
                     };
                     continue;
                 }
-                for (k, h) in [(i, l.albedo), (MAX_TERRAIN_LAYERS + i, l.normal)] {
+                // Past the fourth, a layer without arrays has no texture
+                // binding: its colour alone.
+                let (albedo, normal) = if i < TERRAIN_TEXTURED_LAYERS {
+                    (l.albedo, l.normal)
+                } else {
+                    (None, None)
+                };
+                for (k, h) in [(i, albedo), (TERRAIN_TEXTURED_LAYERS + i, normal)] {
                     if let Some(h) = h {
                         if textures(h).is_none() {
                             return Err(crate::RenderError::InvalidHandle(format!(
@@ -803,7 +817,7 @@ impl TerrainRenderer {
                         handles[k] = Some(h);
                     }
                 }
-                let bits = u32::from(l.albedo.is_some()) | (u32::from(l.normal.is_some()) << 1);
+                let bits = u32::from(albedo.is_some()) | (u32::from(normal.is_some()) << 1);
                 layers[i] = LayerGpu {
                     color: l.color.extend(l.roughness.clamp(0.04, 1.0)).to_array(),
                     mapping: [
@@ -840,7 +854,12 @@ impl TerrainRenderer {
                     f32::from(lay.holes),
                     0.0,
                 ],
-                tiles: [lay.tile as f32, lay.control as f32, lay.levels as f32, 0.0],
+                tiles: [
+                    lay.tile as f32,
+                    lay.control as f32,
+                    lay.levels as f32,
+                    lay.pages.max(1) as f32,
+                ],
                 view_proj: view_proj.to_cols_array_2d(),
                 prev_view_proj: prev_view_proj.to_cols_array_2d(),
                 pyramid,
@@ -980,10 +999,10 @@ impl TerrainRenderer {
                     wgpu::BindingResource::TextureView(&data.normals_view),
                     wgpu::BindingResource::TextureView(control),
                 ];
-                for h in &handles[..MAX_TERRAIN_LAYERS] {
+                for h in &handles[..TERRAIN_TEXTURED_LAYERS] {
                     resources.push(wgpu::BindingResource::TextureView(view(*h, white)));
                 }
-                for h in &handles[MAX_TERRAIN_LAYERS..] {
+                for h in &handles[TERRAIN_TEXTURED_LAYERS..] {
                     resources.push(wgpu::BindingResource::TextureView(view(*h, flat)));
                 }
                 resources.push(wgpu::BindingResource::Sampler(&self.layer_sampler));

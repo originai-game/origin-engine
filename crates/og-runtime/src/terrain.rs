@@ -759,7 +759,9 @@ pub(crate) fn apply(t: &mut LoadedTerrain, brush: &Value) -> Result<u32, String>
     }
     if mode == 4 {
         let layer = u(brush, "layer", 0);
-        if layer as usize >= t.layers.len().max(1) || layer > 3 {
+        if layer as usize >= t.layers.len().max(1)
+            || layer as usize >= og_render::MAX_TERRAIN_LAYERS
+        {
             return Err(format!(
                 "TerrainBrush.layer {layer}: the terrain has {} layer(s)",
                 t.layers.len()
@@ -772,6 +774,7 @@ pub(crate) fn apply(t: &mut LoadedTerrain, brush: &Value) -> Result<u32, String>
             falloff,
             strength.min(1.0),
             layer as usize,
+            t.layers.len().div_ceil(4).max(1),
         ));
     }
     if mode >= 5 {
@@ -851,7 +854,8 @@ fn cut(d: &mut TerrainData, c: Vec2, radius: f32, falloff: f32, strength: f32, h
 
 /// Paints `layer` into the control map (made all first-layer when the
 /// terrain has none): the layer's channel raised towards 1 and the others
-/// lowered, keeping their sum.
+/// lowered, keeping their sum. The map first grows to `pages` pages of
+/// four layers, a new page all 1 (what a layer past the pages read).
 fn paint(
     d: &mut TerrainData,
     c: Vec2,
@@ -859,6 +863,7 @@ fn paint(
     falloff: f32,
     strength: f32,
     layer: usize,
+    pages: usize,
 ) -> u32 {
     let control = d.control.get_or_insert_with(|| {
         let (w, h) = (d.columns.clamp(2, 1024), d.rows.clamp(2, 1024));
@@ -873,6 +878,9 @@ fn paint(
         }
     });
     let mut rgba = control.rgba.to_vec();
+    let page = (control.width * control.height * 4) as usize;
+    let pages = pages.max(control.pages() as usize);
+    rgba.resize(page * pages, 255);
     let px = d.size / Vec2::new(control.width as f32, control.height as f32);
     let half = d.size * 0.5;
     let mut touched = 0;
@@ -884,10 +892,11 @@ fn paint(
                 continue;
             }
             let k = ((y * control.width + x) * 4) as usize;
-            for ch in 0..4 {
-                let v = rgba[k + ch] as f32 / 255.0;
+            for ch in 0..4 * pages {
+                let at = (ch / 4) * page + k + ch % 4;
+                let v = rgba[at] as f32 / 255.0;
                 let to = if ch == layer { 1.0 } else { 0.0 };
-                rgba[k + ch] = ((v + (to - v) * w) * 255.0).round().clamp(0.0, 255.0) as u8;
+                rgba[at] = ((v + (to - v) * w) * 255.0).round().clamp(0.0, 255.0) as u8;
             }
             touched += 1;
         }

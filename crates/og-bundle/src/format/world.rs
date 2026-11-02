@@ -452,7 +452,7 @@ impl BlobKind for Lightmap {
 
 row!(
     /// The root of a terrain blob (an `.ogt` of `type terrain`).
-    TerrainMeta, "og.Terrain", 5 {
+    TerrainMeta, "og.Terrain", 6 {
         /// Extent along x and z in metres, centred on the terrain's origin.
         size_x: f32,
         size_z: f32,
@@ -498,6 +498,10 @@ row!(
         /// height's lowest bit is its sample's cell's hole flag on the
         /// tile's level (og-render's `mark_holes`).
         holes: u32,
+        /// The control map's pages of four channels (one per four
+        /// layers; each tile's control texels hold them one after the
+        /// other).
+        control_pages: u32,
     }
 );
 

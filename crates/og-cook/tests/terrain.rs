@@ -520,10 +520,10 @@ fn refusals_name_the_fix() {
     assert!(e.contains("line 5: 'width' is not a terrain entry"), "{e}");
     let five = format!(
         "type terrain\nversion 1\n---\nheightmap \"h.png\"\n{}",
-        "layer {\n  tile 2\n}\n".repeat(5)
+        "layer {\n  tile 2\n}\n".repeat(17)
     );
-    let e = cook_err("five", &five, &[("t/h.png", &height)]);
-    assert!(e.contains("at most 4 layers"), "{e}");
+    let e = cook_err("seventeen", &five, &[("t/h.png", &height)]);
+    assert!(e.contains("at most 16 layers"), "{e}");
     let e = cook_err(
         "texture",
         "type terrain\nversion 1\n---\nheightmap \"h.png\"\nlayer {\n  albedo \"textures/none.png\"\n}\n",
@@ -871,5 +871,112 @@ fn a_holes_map_cuts_cells_out() {
         let want = (x * 300 + y * 70) as f32 / 65535.0 * 100.0;
         let got = data.heights[(y * 129 + x) as usize];
         assert!((got - want).abs() <= step, "({x}, {y}): {got} vs {want}");
+    }
+}
+
+/// Six layers from texture arrays, their weights in two control maps (the
+/// second page's red and green are layers 4 and 5): the cook keeps both
+/// pages, every tile carries them one after the other, and the field read
+/// back answers each layer's channel where its map paints it, the second
+/// page's unpainted channels 0 (not 1: a page that exists is read). A
+/// fifth layer naming its own albedo, or a third control map for six
+/// layers, is refused with the fix.
+#[test]
+fn six_layers_take_two_control_pages() {
+    let height = png16(65, 65, |x, y| (x * 500 + y * 200) as u16);
+    let tile = |c: [u8; 4]| rgba(8, 8, move |_, _| c);
+    // Page 0: layer 0 left half, layer 1 right half. Page 1: layer 4 in
+    // the top quarter rows, layer 5 in the bottom quarter.
+    let page0 = rgba(32, 32, |x, _| {
+        if x < 16 {
+            [255, 0, 0, 0]
+        } else {
+            [0, 255, 0, 0]
+        }
+    });
+    let page1 = rgba(32, 32, |_, y| {
+        if y < 8 {
+            [255, 0, 0, 0]
+        } else if y >= 24 {
+            [0, 255, 0, 0]
+        } else {
+            [0, 0, 0, 0]
+        }
+    });
+    let mut text = String::from(
+        "type terrain\nversion 1\n---\nheightmap \"h.png\"\nsize 64 64\ntile 32\nlayers \"tiles.ogt\"\ncontrol \"c0.png\" \"c1.png\"\n",
+    );
+    for i in 0..6 {
+        text.push_str(&format!(
+            "layer {{\n  albedoLayer {}\n  tile {}\n}}\n",
+            i % 3,
+            i + 2
+        ));
+    }
+    let files: Vec<(&str, Vec<u8>)> = vec![
+        ("t/six.ogt", text.into_bytes()),
+        ("t/h.png", height),
+        ("t/c0.png", page0),
+        ("t/c1.png", page1),
+        ("t/a.png", tile([40, 160, 40, 255])),
+        ("t/b.png", tile([120, 120, 120, 255])),
+        ("t/c.png", tile([200, 190, 150, 255])),
+        (
+            "t/tiles.ogt",
+            b"type texture-array\nversion 1\n---\nlayer \"a.png\"\nlayer \"b.png\"\nlayer \"c.png\"\n".to_vec(),
+        ),
+    ];
+    let borrowed: Vec<(&str, &[u8])> = files.iter().map(|(p, b)| (*p, b.as_slice())).collect();
+    let root = project("six-layers", &borrowed);
+    let report = cook(&root);
+    let notes: Vec<String> = report.assets.iter().flat_map(|a| a.notes.clone()).collect();
+    assert!(
+        notes
+            .iter()
+            .any(|n| n.contains("6 layer(s)") && n.contains("2 page(s)")),
+        "{notes:?}"
+    );
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let t = bundle.load_terrain("t/six.ogt").unwrap();
+    assert_eq!(t.layers.len(), 6);
+    assert_eq!(t.layers[5].layer.tile, 7.0);
+    assert_eq!(t.layout.pages, 2);
+    let tile = t.tile(0).unwrap();
+    let side = t.layout.control_side() as usize;
+    assert_eq!(
+        tile.control.as_ref().unwrap().len(),
+        t.layout.control_page_bytes() * 2,
+        "{side}² texels and mips, twice"
+    );
+    let data = t.field().unwrap();
+    assert_eq!(data.control.as_ref().unwrap().pages(), 2);
+    let at = |x: f32, z: f32| data.control_at(glam::Vec2::new(x - 32.0, z - 32.0));
+    let (tl, br) = (at(8.0, 4.0), at(56.0, 60.0));
+    assert!(
+        tl[0] > 0.9 && tl[1] < 0.1 && tl[4] > 0.9 && tl[5] < 0.1,
+        "{tl:?}"
+    );
+    assert!(
+        br[0] < 0.1 && br[1] > 0.9 && br[4] < 0.1 && br[5] > 0.9,
+        "{br:?}"
+    );
+    let mid = at(8.0, 32.0);
+    assert!(mid[4] < 0.1 && mid[5] < 0.1 && mid[6] < 0.1, "{mid:?}");
+    assert!(mid[8] == 1.0, "a channel past the pages reads 1: {mid:?}");
+
+    // Refusals: a fifth layer's own texture; three maps for two pages.
+    let own = "type terrain\nversion 1\n---\nheightmap \"h.png\"\nlayer {\n}\nlayer {\n}\nlayer {\n}\nlayer {\n}\nlayer {\n  albedo \"a.png\"\n}\n";
+    let pages = "type terrain\nversion 1\n---\nheightmap \"h.png\"\ncontrol \"c0.png\" \"c1.png\" \"c0.png\"\nlayers \"tiles.ogt\"\nlayer {\n}\nlayer {\n}\nlayer {\n}\nlayer {\n}\nlayer {\n}\n";
+    for (name, text, want) in [
+        ("own", own, "layer arrays"),
+        ("pages", pages, "one map per four layers"),
+    ] {
+        let mut files = files.clone();
+        files[0] = ("t/six.ogt", text.as_bytes().to_vec());
+        let borrowed: Vec<(&str, &[u8])> = files.iter().map(|(p, b)| (*p, b.as_slice())).collect();
+        let root = project(&format!("six-refused-{name}"), &borrowed);
+        let report = cook_project(&root, &CookOptions::default()).expect("cook");
+        let errors = format!("{:?}", report.errors());
+        assert!(errors.contains(want), "{name}: {errors}");
     }
 }

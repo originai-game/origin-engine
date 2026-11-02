@@ -4,8 +4,9 @@
 // Holes (terrain.wgsl terrain_hole) are discarded in every pass.
 //
 // Shading: the normal from the terrain's normal map (built from the
-// heights on the GPU, mipmapped), up to four layers weighted by the
-// control map's channels times each layer's slope and altitude rule,
+// heights on the GPU, mipmapped), up to sixteen layers weighted by the
+// control map's channels times each layer's slope and altitude rule, the
+// four strongest at each pixel blended (all of them with four or fewer),
 // optionally sharpened by the layers' heights (their albedo's alpha),
 // each layer sampled by world xz (UV-scaled) or triplanar, lit like a
 // StandardMaterial (cascaded shadows, local lights, image-based light),
@@ -37,7 +38,7 @@ fn vs(@builtin(vertex_index) vi: u32) -> TerrainOut {
 // control map's channels, from the finest resident tile.
 struct TerrainPoint {
   normal: vec3<f32>,
-  control: vec4<f32>,
+  control: array<vec4<f32>, 4>,
 };
 
 fn terrain_point(local: vec3<f32>) -> TerrainPoint {
@@ -126,27 +127,69 @@ fn sample_layer(i: u32, p: vec3<f32>, n: vec3<f32>, dpx: vec3<f32>, dpy: vec3<f3
   return s;
 }
 
-// The layers' weights at a point (summing to 1): control map times the
-// slope and altitude rules, sharpened by the layers' heights. `p` and `n`
-// are in the world, `c` the control map's channels there.
-fn layer_weights(p: vec3<f32>, n: vec3<f32>, c: vec4<f32>, heights_of: vec4<f32>) -> vec4<f32> {
-  let count = u32(terrain.origin.w);
+// The four layers a pixel blends: the strongest raw weights (control map
+// times the slope and altitude rules), ties to the lower layer, and those
+// weights; with four layers or fewer, every layer. Where nothing shows
+// (no weight past the height blend's floor, or a sum near 0), the first
+// layer alone (`fallback`).
+struct LayerPick {
+  ids: vec4<u32>,
+  w: vec4<f32>,
+  n: u32,
+  fallback: bool,
+};
+
+fn pick_layers(p: vec3<f32>, n: vec3<f32>, c: array<vec4<f32>, 4>) -> LayerPick {
+  let count = min(u32(terrain.origin.w), 16u);
   let angle = degrees(acos(clamp(n.y, -1.0, 1.0)));
   let altitude = p.y - terrain.origin.y;
-  var w = vec4<f32>(0.0);
-  for (var i = 0u; i < 4u; i++) {
-    if (i >= count) { break; }
+  var pick: LayerPick;
+  pick.ids = vec4<u32>(0u, 1u, 2u, 3u);
+  pick.w = vec4<f32>(-1.0);
+  var top = 0.0;
+  var sum = 0.0;
+  for (var i = 0u; i < count; i++) {
     let l = terrain.layers[i];
-    w[i] = c[i] * band(angle, l.slope.x, l.slope.y, l.slope.z) * band(altitude, l.altitude.x, l.altitude.y, l.altitude.z);
+    let w = c[i / 4u][i % 4u] * band(angle, l.slope.x, l.slope.y, l.slope.z) * band(altitude, l.altitude.x, l.altitude.y, l.altitude.z);
+    top = max(top, w);
+    sum += w;
+    // Insert below every weight at least as large (ties keep the lower layer first).
+    var at = 4u;
+    for (var k = 0u; k < 4u; k++) {
+      if (at == 4u && w > pick.w[k]) { at = k; }
+    }
+    if (at < 4u) {
+      for (var k = 3u; k > at; k--) {
+        pick.w[k] = pick.w[k - 1u];
+        pick.ids[k] = pick.ids[k - 1u];
+      }
+      pick.w[at] = w;
+      pick.ids[at] = i;
+    }
   }
+  pick.n = min(count, 4u);
+  pick.w = max(pick.w, vec4<f32>(0.0));
   let hb = terrain.params.x;
-  if (hb > 0.0) {
+  pick.fallback = select((sum < 1e-4), (top <= 1e-3), (hb > 0.0));
+  if (pick.fallback) {
+    pick.ids = vec4<u32>(0u, 1u, 2u, 3u);
+    pick.w = vec4<f32>(1.0, 0.0, 0.0, 0.0);
+    pick.n = min(count, 1u);
+  }
+  return pick;
+}
+
+// The picked layers' weights (summing to 1), sharpened by their heights.
+fn blend_weights(pick: LayerPick, heights_of: vec4<f32>) -> vec4<f32> {
+  var w = pick.w;
+  let hb = terrain.params.x;
+  if (hb > 0.0 && !pick.fallback) {
     var ha = vec4<f32>(-1e9);
     var top = -1e9;
-    for (var i = 0u; i < 4u; i++) {
-      if (w[i] > 1e-3) {
-        ha[i] = w[i] + heights_of[i] * hb;
-        top = max(top, ha[i]);
+    for (var k = 0u; k < 4u; k++) {
+      if (k < pick.n && w[k] > 1e-3) {
+        ha[k] = w[k] + heights_of[k] * hb;
+        top = max(top, ha[k]);
       }
     }
     w = max(ha - vec4<f32>(top - 0.15), vec4<f32>(0.0));
@@ -167,25 +210,26 @@ fn terrain_look(in: TerrainOut, point: TerrainPoint, dpx: vec3<f32>, dpy: vec3<f
   let p = in.world;
   let n_geo = point.normal;
   let count = u32(terrain.origin.w);
-  // Each layer's colour and normal (layers of weight 0 skip their maps).
+  let pick = pick_layers(p, n_geo, point.control);
+  // The picked layers' colours and normals (a layer of weight 0 skips its maps).
   var samples: array<LayerSample, 4>;
   var heights_of = vec4<f32>(1.0);
-  for (var i = 0u; i < 4u; i++) {
-    if (i < count) {
-      samples[i] = sample_layer(i, p, n_geo, dpx, dpy);
-      heights_of[i] = samples[i].albedo.a;
+  for (var k = 0u; k < 4u; k++) {
+    if (k < pick.n && (pick.w[k] > 0.0 || k == 0u)) {
+      samples[k] = sample_layer(pick.ids[k], p, n_geo, dpx, dpy);
+      heights_of[k] = samples[k].albedo.a;
     }
   }
-  let w = layer_weights(p, n_geo, point.control, heights_of);
+  let w = blend_weights(pick, heights_of);
   var albedo = vec3<f32>(0.0);
   var normal = vec3<f32>(0.0);
   var roughness = 0.0;
-  for (var i = 0u; i < 4u; i++) {
-    if (i < count && w[i] > 0.0) {
-      let l = terrain.layers[i];
-      albedo += samples[i].albedo.rgb * l.color.rgb * w[i];
-      normal += samples[i].normal * w[i];
-      roughness += l.color.w * w[i];
+  for (var k = 0u; k < 4u; k++) {
+    if (k < pick.n && w[k] > 0.0) {
+      let l = terrain.layers[pick.ids[k]];
+      albedo += samples[k].albedo.rgb * l.color.rgb * w[k];
+      normal += samples[k].normal * w[k];
+      roughness += l.color.w * w[k];
     }
   }
   if (count == 0u) {

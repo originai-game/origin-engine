@@ -23,12 +23,16 @@
 //! map (built from the heights on the GPU, mipmapped) and the control map
 //! are filtered per pixel.
 //!
-//! **Layers.** Each layer's weight is the control map's channel (1 without
-//! a map) times its slope rule (degrees from flat) times its altitude rule
+//! **Layers.** Up to sixteen (past four, their maps are layers of the
+//! layer arrays and the control map has a page of four channels per four
+//! layers, the pages layers of the control array after their tile's
+//! slot: no binding of their own). Each layer's weight is the control
+//! map's channel (1 without a map, or past its pages) times its slope rule (degrees from flat) times its altitude rule
 //! (metres above the origin), each a band with soft edges; with
 //! `height_blend` > 0 the albedo's alpha (the layer's height map) sharpens
-//! the transitions. Weights are normalised; where every weight is 0 the
-//! first layer shows. A layer is sampled over world xz every `tile` metres
+//! the transitions. Each pixel blends its four strongest layers (all of
+//! them with four or fewer). Weights are normalised; where every weight
+//! is 0 the first layer shows. A layer is sampled over world xz every `tile` metres
 //! or triplanar (cliffs), with an optional normal map.
 //!
 //! **Holes.** [`TerrainData::holes`] cuts cells out (a cave mouth, a
@@ -63,18 +67,45 @@ use std::rc::Rc;
 pub use crate::scatter::{MAX_SCATTER_INSTANCES, TerrainScatter};
 use std::sync::Arc;
 
-/// The most layers a [`Terrain`] blends.
-pub const MAX_TERRAIN_LAYERS: usize = 4;
+/// The most layers a [`Terrain`] has: up to four with textures of their
+/// own, up to sixteen whose maps are layers of [`Terrain::layer_arrays`].
+pub const MAX_TERRAIN_LAYERS: usize = 16;
+/// The most layers with textures of their own (four albedo and four
+/// normal bindings), and the most a pixel blends: each pixel blends its
+/// four strongest layers.
+pub const TERRAIN_TEXTURED_LAYERS: usize = 4;
 /// The most clipmap levels a terrain draws.
 pub const MAX_TERRAIN_LEVELS: usize = 16;
 
 /// A terrain's layer weights: RGBA8, one channel per layer (linear), rows
-/// from -z to +z, columns from -x to +x, stretched over the terrain.
+/// from -z to +z, columns from -x to +x, stretched over the terrain. Past
+/// four layers it holds more pages of four channels, one after the other
+/// (`rgba` is `width × height × 4` bytes per page: page `p` the layers
+/// `4p` to `4p + 3`); a layer past its pages reads 1.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TerrainControl {
     pub width: u32,
     pub height: u32,
     pub rgba: Arc<[u8]>,
+}
+
+impl TerrainControl {
+    /// Its pages of four channels (1 to 4).
+    pub fn pages(&self) -> u32 {
+        let page = (self.width as usize * self.height as usize * 4).max(1);
+        (self.rgba.len() / page).max(1) as u32
+    }
+
+    /// Page `p` alone: a four-channel map.
+    pub fn page(&self, p: u32) -> TerrainControl {
+        let n = self.width as usize * self.height as usize * 4;
+        let at = (p as usize * n).min(self.rgba.len());
+        TerrainControl {
+            width: self.width,
+            height: self.height,
+            rgba: Arc::from(&self.rgba[at..(at + n).min(self.rgba.len())]),
+        }
+    }
 }
 
 /// A terrain's geometry: `columns` × `rows` heights in metres over a
@@ -171,16 +202,21 @@ impl TerrainData {
                 ));
             }
         }
-        if let Some(c) = &self.control
-            && (c.width == 0 || c.height == 0 || c.rgba.len() != (c.width * c.height * 4) as usize)
-        {
-            return Err(format!(
-                "a {} × {} control map needs {} bytes, got {}",
-                c.width,
-                c.height,
-                c.width * c.height * 4,
-                c.rgba.len()
-            ));
+        if let Some(c) = &self.control {
+            let page = (c.width * c.height * 4) as usize;
+            let pages = MAX_TERRAIN_LAYERS / 4;
+            if c.width == 0
+                || c.height == 0
+                || c.rgba.len() % page != 0
+                || !(1..=pages).contains(&(c.rgba.len() / page))
+            {
+                return Err(format!(
+                    "a {} × {} control map needs {page} bytes per page of four layers, 1 to {pages} pages, got {}",
+                    c.width,
+                    c.height,
+                    c.rgba.len()
+                ));
+            }
         }
         Ok(())
     }
@@ -424,7 +460,9 @@ pub struct Terrain {
     /// Rotation, scale and translation of the height field (identity: centred
     /// on the world origin along world x and z).
     pub transform: Mat4,
-    /// Up to [`MAX_TERRAIN_LAYERS`] layers (more are ignored).
+    /// Up to [`MAX_TERRAIN_LAYERS`] layers (more are ignored); without
+    /// `layer_arrays` only the first [`TERRAIN_TEXTURED_LAYERS`] read
+    /// their textures. Each pixel blends its four strongest layers.
     pub layers: Vec<TerrainLayer>,
     /// The texture arrays the layers' maps come from (none: each layer's
     /// own textures).
@@ -701,7 +739,7 @@ struct Slot {
 type GroupKey = (
     usize,
     u64,
-    [Option<TextureHandle>; 2 * MAX_TERRAIN_LAYERS],
+    [Option<TextureHandle>; 2 * TERRAIN_TEXTURED_LAYERS],
     TerrainLayerArrays,
 );
 

@@ -33,11 +33,11 @@ struct TerrainUniform {
   origin: vec4<f32>,    // xyz: the terrain's centre in the world, w: layers
   extent: vec4<f32>,    // xy: size along x and z (m), zw: samples along x and z
   params: vec4<f32>,    // x: height blend, y: 1 with a control map, z: 1 with holes
-  tiles: vec4<f32>,     // x: quads per tile, y: control texels per tile, z: pyramid levels
+  tiles: vec4<f32>,     // x: quads per tile, y: control texels per tile, z: pyramid levels, w: control pages (four layers each)
   view_proj: mat4x4<f32>,       // unjittered (prepass velocity)
   prev_view_proj: mat4x4<f32>,
   pyramid: array<vec4<f32>, 16>,  // per level: x its first tile, y tiles along x, z along z
-  layers: array<TerrainLayerGpu, 4>,
+  layers: array<TerrainLayerGpu, 16>,
 };
 
 // Positions are in grid units of the finest level's spacing from the
@@ -203,8 +203,13 @@ fn terrain_world(local: vec3<f32>) -> vec3<f32> {
 
 struct TerrainMaps {
   normal: vec3<f32>,    // in the terrain's space
-  control: vec4<f32>,   // the layers' channels (1 without a control map)
+  // The layers' channels, four to a page (1 without a control map, or past its pages).
+  control: array<vec4<f32>, 4>,
 };
+
+fn no_control() -> array<vec4<f32>, 4> {
+  return array<vec4<f32>, 4>(vec4<f32>(1.0), vec4<f32>(1.0), vec4<f32>(1.0), vec4<f32>(1.0));
+}
 
 // A resident tile's normal map and control texels at level coordinates
 // `u`; `gx`, `gy` are the field coordinates' screen derivatives.
@@ -216,11 +221,17 @@ fn tile_maps(lvl: u32, r: TileRef, u: vec2<f32>, gx: vec2<f32>, gy: vec2<f32>) -
   let xz = textureSampleGrad(terrain_normals, map_sampler, (l + 0.5) / (t + 1.0), i32(r.slot), gx * k, gy * k).rg;
   var m: TerrainMaps;
   m.normal = vec3<f32>(xz.x, sqrt(max(1.0 - dot(xz, xz), 0.0)), xz.y);
-  m.control = vec4<f32>(1.0);
+  m.control = no_control();
   if (terrain.params.y > 0.5) {
     let c = terrain.tiles.y;
     let ck = c / (t * step * (c + 2.0));
-    m.control = textureSampleGrad(control_map, map_sampler, (l / t * c + 1.0) / (c + 2.0), i32(r.slot), gx * ck, gy * ck);
+    let uv = (l / t * c + 1.0) / (c + 2.0);
+    // Page p of slot s is layer s · pages + p; only the pages the layers use.
+    let pages = u32(terrain.tiles.w);
+    let used = (u32(terrain.origin.w) + 3u) / 4u;
+    for (var p = 0u; p < min(pages, used); p++) {
+      m.control[p] = textureSampleGrad(control_map, map_sampler, uv, i32(r.slot * f32(pages) + f32(p)), gx * ck, gy * ck);
+    }
   }
   return m;
 }
@@ -233,7 +244,7 @@ fn terrain_maps_at(s: vec2<f32>, gx: vec2<f32>, gy: vec2<f32>) -> TerrainMaps {
   if (o.r.slot < 0.0) {
     var none: TerrainMaps;
     none.normal = vec3<f32>(0.0, 1.0, 0.0);
-    none.control = vec4<f32>(1.0);
+    none.control = no_control();
     return none;
   }
   var m = tile_maps(o.lvl, o.r, o.u, gx, gy);
@@ -242,7 +253,9 @@ fn terrain_maps_at(s: vec2<f32>, gx: vec2<f32>, gy: vec2<f32>) -> TerrainMaps {
     if (p.r.slot >= 0.0) {
       let q = tile_maps(p.lvl, p.r, p.u, gx, gy);
       m.normal = mix(q.normal, m.normal, o.r.fade);
-      m.control = mix(q.control, m.control, o.r.fade);
+      for (var p = 0u; p < 4u; p++) {
+        m.control[p] = mix(q.control[p], m.control[p], o.r.fade);
+      }
     }
   }
   m.normal = normalize(m.normal);

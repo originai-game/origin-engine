@@ -494,12 +494,19 @@ pub fn write_terrain_maps(report: &mut Value, cooked: &Path, dir: &Path) -> Resu
             .map_err(|e| format!("{height}: {e}"))?;
         let mut written = vec![json!(height)];
         if let Some(c) = &field.control {
-            let control = format!("terrain-maps/{stem}.control.png");
-            image::RgbaImage::from_raw(c.width, c.height, c.rgba.to_vec())
-                .ok_or("the control map's size")?
-                .save(dir.join(&control))
-                .map_err(|e| format!("{control}: {e}"))?;
-            written.push(json!(control));
+            // One PNG per page of four layers: `.control.png`, then `.control-1.png`, ...
+            for p in 0..c.pages() {
+                let control = if p == 0 {
+                    format!("terrain-maps/{stem}.control.png")
+                } else {
+                    format!("terrain-maps/{stem}.control-{p}.png")
+                };
+                image::RgbaImage::from_raw(c.width, c.height, c.page(p).rgba.to_vec())
+                    .ok_or("the control map's size")?
+                    .save(dir.join(&control))
+                    .map_err(|e| format!("{control}: {e}"))?;
+                written.push(json!(control));
+            }
         }
         a["terrain"]["generated"]["maps"] = Value::Array(written);
     }

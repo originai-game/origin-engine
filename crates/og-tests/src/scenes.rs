@@ -152,6 +152,7 @@ pub const SCENES: &[&str] = &[
     "post-lens",
     "terrain-grass-wind",
     "terrain-holes",
+    "terrain-layers",
     "post-blur",
     "ui-shapes",
     "ui-paints",
@@ -1111,6 +1112,14 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // round it unbroken.
         "terrain-holes" => |g, _| {
             g.scene = crate::terrain_scenes::holes_scene();
+            Ok(())
+        },
+        // R6: the island's near view with eight layers (texture arrays):
+        // four discs on the meadow ahead painted with layers 4 to 7 on the
+        // control map's second page (clay, heather, mud, gold), each
+        // blended with the rock and sand as the first four are.
+        "terrain-layers" => |g, _| {
+            g.scene = crate::terrain_scenes::layers_scene(true);
             Ok(())
         },
         // The bloom scene through a zoom blur towards a point left of and

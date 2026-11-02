@@ -17,7 +17,8 @@
 //! heightmap "island-height.png"   # 16-bit (or 8-bit) grey PNG, or an EXR (its first channel)
 //! height 0 320                    # the metres black and white stand for (EXR: 0 1, metres as stored)
 //! size 2048 2048                  # metres along x and z (default: one metre per sample)
-//! control "island-control.png"    # optional: RGBA, one channel per layer
+//! control "island-control.png"    # optional: RGBA, one channel per layer (past four layers,
+//!                                 # one more map per four: control "a.png" "b.png")
 //! holes "island-holes.png"        # optional: black (or transparent) cuts the cell out
 //! tile 128                        # quads per tile side (16 to 1024)
 //! heightBlend 0.6
@@ -131,7 +132,10 @@
 //!
 //! With `layers` (and `layerNormals`) the layers' maps are layers of two
 //! texture arrays, cooked on their own: the terrain samples two textures
-//! instead of up to eight. A layer then names no `albedo` or `normal` of
+//! instead of up to eight. Up to sixteen layers; past four, their maps
+//! come from the arrays (a fifth layer naming its own `albedo` is
+//! refused), the control map takes one image per four layers (all of one
+//! size), and each pixel blends its four strongest layers. A layer then names no `albedo` or `normal` of
 //! its own; `albedoLayer` and `normalLayer` pick its layers. Rows of the heightmap run from -z (the image's
 //! top) to +z, columns from -x to +x.
 
@@ -143,7 +147,7 @@ use std::path::{Path, PathBuf};
 
 pub(super) const TERRAIN_TYPE: &str = "terrain";
 
-/// The most layers a terrain blends (og-render's `MAX_TERRAIN_LAYERS`).
+/// The most layers a terrain has (og-render's `MAX_TERRAIN_LAYERS`).
 const MAX_LAYERS: usize = og_render::MAX_TERRAIN_LAYERS;
 
 fn assets_root(s: &Source) -> PathBuf {
@@ -175,6 +179,19 @@ fn string_of(b: &Block, key: &str) -> Option<String> {
         .and_then(|e| e.values.first())
         .and_then(|v| v.as_str())
         .map(str::to_string)
+}
+
+/// Every string value of `key` (none when absent).
+fn strings_of(b: &Block, key: &str) -> Vec<String> {
+    b.get(key)
+        .map(|e| {
+            e.values
+                .iter()
+                .filter_map(|v| v.as_str())
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 fn numbers(b: &Block, key: &str) -> Option<Vec<f32>> {
@@ -219,7 +236,7 @@ pub(super) fn terrain_files(rel: &str, root: &Path, text: &str) -> Vec<String> {
     };
     ["heightmap", "control", "holes"]
         .iter()
-        .filter_map(|k| string_of(&doc.body, k))
+        .flat_map(|k| strings_of(&doc.body, k))
         .map(|n| resolve(rel, root, &n))
         .collect()
 }
@@ -304,7 +321,8 @@ pub(super) struct TerrainDoc {
     /// The heightmap (an asset path), or none: `generate` makes the field.
     pub heightmap: Option<String>,
     pub generate: Option<super::terrain_generate::Generate>,
-    pub control: Option<String>,
+    /// The control maps (asset paths), one per four layers.
+    pub control: Vec<String>,
     /// The hole map (an asset path).
     pub holes: Option<String>,
     pub height: [f32; 2],
@@ -466,6 +484,18 @@ pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, St
                 }
             }
         };
+        if !arrayed
+            && layers.len() >= og_render::TERRAIN_TEXTURED_LAYERS
+            && let Some(k) = b.get("albedo").or_else(|| b.get("normal"))
+        {
+            return Err(format!(
+                "line {}: layer {} names its own '{}', but only the first {} layers have textures of their own: give the terrain layer arrays (layers \"<array>.ogt\", layerNormals) and the layers albedoLayer and normalLayer",
+                k.line,
+                layers.len(),
+                k.key,
+                og_render::TERRAIN_TEXTURED_LAYERS
+            ));
+        }
         if arrayed && let Some(k) = b.get("albedo").or_else(|| b.get("normal")) {
             return Err(format!(
                 "line {}: with layer arrays (layers, layerNormals) a layer's maps are their layers: albedoLayer and normalLayer, not '{}'",
@@ -491,8 +521,23 @@ pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, St
     }
     if layers.len() > MAX_LAYERS {
         return Err(format!(
-            "a terrain blends at most {MAX_LAYERS} layers, this one has {}",
+            "a terrain has at most {MAX_LAYERS} layers, this one has {}",
             layers.len()
+        ));
+    }
+    let control: Vec<String> = strings_of(body, "control")
+        .iter()
+        .map(|c| resolve(rel, root, c))
+        .collect();
+    let pages = layers.len().div_ceil(4).max(1);
+    if let Some(e) = body.get("control")
+        && (control.is_empty() || control.len() > pages)
+    {
+        return Err(format!(
+            "line {}: 'control' names one map per four layers (this terrain's {} layer(s) take {pages}), got {}",
+            e.line,
+            layers.len(),
+            control.len()
         ));
     }
     if let Some(g) = &generate {
@@ -514,7 +559,7 @@ pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, St
     Ok(TerrainDoc {
         heightmap: heightmap.map(|h| resolve(rel, root, &h)),
         generate,
-        control: string_of(body, "control").map(|c| resolve(rel, root, &c)),
+        control,
         holes: string_of(body, "holes").map(|c| resolve(rel, root, &c)),
         height,
         size,
@@ -555,19 +600,30 @@ pub(super) fn field(doc: &TerrainDoc, root: &Path) -> Result<Field, String> {
             format!("the {what} '{rel}' does not exist beside the terrain or under assets/")
         })
     };
+    // The control maps, one page each, all of the first's size.
     let control = || -> Result<Option<og_render::TerrainControl>, String> {
-        match &doc.control {
-            None => Ok(None),
-            Some(c) => {
-                let img = super::texture::decode(&read(c, "control map")?)
-                    .map_err(|e| format!("{c}: {e}"))?;
-                Ok(Some(og_render::TerrainControl {
-                    width: img.width,
-                    height: img.height,
-                    rgba: img.rgba.into(),
-                }))
+        let mut out: Option<(u32, u32, Vec<u8>)> = None;
+        for c in &doc.control {
+            let img = super::texture::decode(&read(c, "control map")?)
+                .map_err(|e| format!("{c}: {e}"))?;
+            match &mut out {
+                None => out = Some((img.width, img.height, img.rgba)),
+                Some((w, h, rgba)) => {
+                    if (img.width, img.height) != (*w, *h) {
+                        return Err(format!(
+                            "{c} is {} × {}: every control map of a terrain is the first's size, {w} × {h}",
+                            img.width, img.height
+                        ));
+                    }
+                    rgba.extend_from_slice(&img.rgba);
+                }
             }
         }
+        Ok(out.map(|(width, height, rgba)| og_render::TerrainControl {
+            width,
+            height,
+            rgba: rgba.into(),
+        }))
     };
     // Each cell a hole where the map is black or transparent at its centre.
     let holes = |columns: u32, rows: u32| -> Result<Option<Vec<u8>>, String> {
@@ -596,12 +652,18 @@ pub(super) fn field(doc: &TerrainDoc, root: &Path) -> Result<Field, String> {
     if let Some(g) = &doc.generate {
         let size = size_of(g.columns, g.rows);
         let made = super::terrain_generate::generate(g, size, doc.height);
+        // The biomes' pages, then empty ones up to the layers'.
         let control = match made.control {
-            Some(rgba) => Some(og_render::TerrainControl {
-                width: g.columns,
-                height: g.rows,
-                rgba: rgba.into(),
-            }),
+            Some(mut rgba) => {
+                let page = (g.columns * g.rows * 4) as usize;
+                let pages = doc.layers.len().div_ceil(4).max(rgba.len() / page);
+                rgba.resize(page * pages, 0);
+                Some(og_render::TerrainControl {
+                    width: g.columns,
+                    height: g.rows,
+                    rgba: rgba.into(),
+                })
+            }
             None => control()?,
         };
         return Ok(Field {
@@ -806,6 +868,7 @@ pub(super) fn cook_terrain(
         sea_level: sea.unwrap_or(0.0),
         river_length,
         holes: hole_cells,
+        control_pages: layout.pages,
     };
     let mut w = BlobWriter::new(
         format::Terrain::type_hash(),
@@ -835,7 +898,10 @@ pub(super) fn cook_terrain(
         layout.levels,
         layers.len(),
         if control_w > 0 {
-            format!(", control map {control_w} × {control_h}")
+            format!(
+                ", control map {control_w} × {control_h} ({} page(s))",
+                layout.pages
+            )
         } else {
             String::new()
         }

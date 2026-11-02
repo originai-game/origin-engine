@@ -443,6 +443,55 @@ fn holes_cut_the_drawn_surface_and_its_shadow() {
     );
 }
 
+/// R6's layers past four: each of the four discs painted with layers 4
+/// to 7 shows its tint (clay and gold redder than the meadow, heather
+/// bluer, mud darker), and with the second page left 0 the eight-layer
+/// terrain draws as the four-layer one (the four strongest picked per
+/// pixel are the same four, in the same order).
+#[test]
+fn layers_past_four_come_from_the_second_control_page() {
+    let painted = ts::layers_scene(true);
+    let (img, _) = render(&painted);
+    keep("layers-8", &img);
+    let at = |i: usize| {
+        let (x, z) = ts::LAYER_SPOTS[i];
+        color_at(
+            &img,
+            project(&painted.camera, Vec3::new(x, ts::island_height(x, z), z)),
+        )
+    };
+    let meadow = {
+        let (x, z) = (-100.0, 115.0);
+        color_at(
+            &img,
+            project(&painted.camera, Vec3::new(x, ts::island_height(x, z), z)),
+        )
+    };
+    let (clay, heather, mud, gold) = (at(0), at(1), at(2), at(3));
+    let red = |c: [f32; 3]| c[0] / c[1].max(1.0);
+    assert!(
+        red(clay) > red(meadow) * 1.6,
+        "clay {clay:?} vs meadow {meadow:?}"
+    );
+    assert!(heather[2] > heather[1], "heather {heather:?}");
+    assert!(
+        luma(mud) < luma(meadow) * 0.75,
+        "mud {mud:?} vs meadow {meadow:?}"
+    );
+    assert!(
+        red(gold) > red(meadow) * 1.2 && gold[2] < gold[1] * 0.6,
+        "gold {gold:?}"
+    );
+
+    let (eight, _) = render(&ts::layers_scene(false));
+    let mut four = ts::layers_scene(false);
+    four.terrains[0].layers.truncate(4);
+    let (four, _) = render(&four);
+    keep("layers-8-unpainted", &eight);
+    let e = rmse(&eight, &four);
+    assert!(e < 0.005, "eight unpainted layers vs four: rmse {e}");
+}
+
 /// A tall red post stands in a lake whose top is above the frame: the
 /// planar reflection mirrors it in the water below; screen-space
 /// reflection (the default) cannot, the post's top being off screen. A
