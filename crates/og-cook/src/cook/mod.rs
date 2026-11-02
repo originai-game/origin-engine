@@ -181,8 +181,14 @@ impl Source {
     fn encoded(&self, per_chunk: Option<u32>) -> Result<std::sync::Arc<audio::Encoded>, CookError> {
         self.encoded
             .get_or_init(|| {
+                let settings = audio::SoundSettings::parse(settings_block(self, "sound"))?;
                 audio::decode(&self.rel, &self.bytes)
-                    .and_then(|pcm| audio::encode(&pcm, per_chunk))
+                    .and_then(|pcm| match settings.codec {
+                        audio::Codec::Opus => {
+                            audio::encode_opus(&pcm, settings.opus_bitrate(pcm.channels))
+                        }
+                        audio::Codec::Qoa => audio::encode(&pcm, per_chunk),
+                    })
                     .map(std::sync::Arc::new)
             })
             .clone()

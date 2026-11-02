@@ -174,6 +174,10 @@ pub(super) fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
                             )
                             .map_err(|e| e.reason().to_string())?;
                         chunked.push(*sound);
+                    } else if sound.is_opus() {
+                        l.bank()
+                            .replace_opus(*handle, id, &sound.opus)
+                            .map_err(|e| e.reason().to_string())?;
                     } else {
                         l.bank()
                             .replace_qoa(*handle, id, &sound.qoa)
@@ -600,6 +604,7 @@ pub(crate) fn add_sound(eng: &Engine, group: &str, id: &str) -> Result<(CookedSo
             ..Default::default()
         },
         qoa: Vec::new(),
+        opus: Vec::new(),
     };
     Ok((sound, handle))
 }

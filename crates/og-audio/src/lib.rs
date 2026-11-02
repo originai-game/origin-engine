@@ -46,6 +46,7 @@
 pub mod command;
 pub mod decode;
 pub mod dsp;
+pub mod events;
 pub mod listen;
 pub mod mixer;
 pub mod music;
@@ -61,14 +62,21 @@ pub mod system;
 #[path = "../../og-bundle/src/qoa.rs"]
 pub mod qoa;
 
+/// Opus sounds: og-bundle's `src/opus.rs` (Opus packets in self-contained
+/// blocks, over the opus-pure codec), compiled into this crate as QOA is.
+#[path = "../../og-bundle/src/opus.rs"]
+pub mod opus;
+
 pub use command::{COMMAND_BYTES, Command, Op, TickPacket};
 pub use decode::{DECODE_AHEAD_FRAMES, DECODE_AHEAD_SECONDS, DecodeJob, DecodeStats};
+pub use events::EVENTS_SYSTEM;
 pub use listen::Listen;
 pub use mixer::{Clock, MixStats, Mixer, MixerDesc};
 pub use music::{MUSIC_SYSTEM, next_times};
 pub use schema::{
-    Audio, AudioBusFx, AudioListener, AudioPlayback, AudioSource, AudioStream, Bus, Music,
-    MusicBeat, Parent, ReverbZone, SoundEnded, SoundStarted, Transform, end_reason,
+    Audio, AudioBusFx, AudioBusNode, AudioEvent, AudioEventVoice, AudioListener, AudioMix,
+    AudioPlayback, AudioSnapshot, AudioSource, AudioStream, Bus, MAX_BUSES, Music, MusicBeat,
+    Parent, ReverbZone, SoundEnded, SoundStarted, Transform, end_reason, event_order,
 };
 pub use sink::{HeadlessMode, HeadlessSink, SinkStats, wav};
 pub use sound::{
@@ -76,5 +84,5 @@ pub use sound::{
     chunks_wanted,
 };
 pub use system::{
-    AudioDesc, AudioLink, Occluder, SYSTEM_NAME, install, link, publish_link, retire_link,
+    AudioDesc, AudioLink, Occluder, SYSTEM_NAME, install, link, publish_link, restored, retire_link,
 };

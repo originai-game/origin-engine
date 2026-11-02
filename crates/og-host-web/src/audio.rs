@@ -12,6 +12,13 @@
 //! Worker and answers each (`og_web_audio_put_decoded`). A frame the mixer
 //! reaches before its answer is decoded here, to the same samples.
 //!
+//! Opus blocks are decoded here instead (the decoder Worker's decoder is
+//! QOA's), but never in a tick: each pump, after the frame's ticks and
+//! their PCM, decodes at most [`OPUS_PACKETS_PER_PUMP`] queued packets
+//! (`SoundBank::decode_opus_step`), a block spread over several frames,
+//! so a long track costs a fraction of a millisecond a frame and the
+//! mixer finds its next block decoded.
+//!
 //! Every member answers wire JSON except `og_web_audio_pump` (a
 //! Float32Array of interleaved stereo frames, empty when nothing is due),
 //! `og_web_audio_close` (whether a mixer was open),
@@ -34,6 +41,10 @@ struct WebAudio {
 thread_local! {
     static OUTPUTS: RefCell<IdMap<u32, WebAudio>> = const { RefCell::new(IdMap::new()) };
 }
+
+/// Opus packets (20 ms of a track each) a pump decodes ahead: 80 ms of
+/// audio a frame, nearly five times real time at 60 frames a second.
+const OPUS_PACKETS_PER_PUMP: usize = 4;
 
 /// The most audio the mixer may lag the world before it skips ahead (250 ms).
 const MAX_BACKLOG_MS: u64 = 250;
@@ -120,6 +131,7 @@ pub fn og_web_audio_pump(engine: u32, max_frames: u32) -> js_sys::Float32Array {
         out.pcm.clear();
         out.mixer
             .render_until_tick(tick, max_frames as usize, &mut out.pcm);
+        out.link.bank().decode_opus_step(OPUS_PACKETS_PER_PUMP);
         js_sys::Float32Array::from(&out.pcm[..])
     })
 }

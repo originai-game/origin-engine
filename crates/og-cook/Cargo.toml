@@ -13,7 +13,7 @@ default = ["cook", "basis", "transcode"]
 # og-render (og-bundle's `transcode`).
 transcode = ["og-bundle/transcode"]
 # The cook itself (native only): importers, encoders, the incremental manifest.
-cook = ["og-render/bake", "dep:og-ai", "dep:og-i18n", "og-nav/bake", "dep:gltf", "og-render/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:hound", "dep:symphonia", "dep:ruzstd", "dep:serde_json", "dep:nalgebra", "dep:og-ui", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-geom"]
+cook = ["og-render/bake", "dep:og-ai", "dep:og-i18n", "og-nav/bake", "dep:gltf", "og-render/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde_json", "dep:nalgebra", "dep:og-ui", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-geom"]
 # Encode textures with the basis-universal crate (a default). Without it the
 # cook looks for KTX-Software's `toktx` on PATH.
 basis = ["og-bundle/basis", "dep:basis-universal", "dep:ruzstd"]
@@ -65,6 +65,9 @@ hound = { version = "3.5.1", optional = true }
 # Compressed sound sources (MP3, Ogg Vorbis, FLAC) decode to PCM at cook
 # time, pure Rust; the cook only, never the runtime or the wasm.
 symphonia = { version = "0.6.1", default-features = false, features = ["mp3", "ogg", "vorbis", "flac", "id3v2"], optional = true }
+# Ogg Opus sources (`.opus`, and an `.ogg` holding Opus): read with the
+# Opus codec og-bundle's `opus` encodes with.
+opus-pure = { workspace = true, optional = true }
 serde_json = { version = "1", optional = true }
 nalgebra = { version = "0.34.1", optional = true }
 # The cook compiles material shaders for every back end (WGSL in; SPIR-V

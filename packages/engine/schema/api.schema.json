@@ -7801,6 +7801,12 @@
         "AudioListener",
         "Audio",
         "AudioBusFx",
+        "AudioBusNode",
+        "AudioSnapshot",
+        "AudioEventOrder",
+        "AudioEventOrder",
+        "AudioEvent",
+        "SoundDesc",
         "ReverbZone",
         "Music",
         "MusicBeat",
@@ -7846,6 +7852,27 @@
         }
       ],
       "functions": [
+        {
+          "name": "createSound",
+          "doc": "Make a sound from PCM the game computed: it plays, loops and pitches as a loaded one (AudioSource.sound, AudioEvent.sounds), always resident, stored as 16-bit PCM, and og.load.soundInfo reports it. Between ticks or inside a system alike; the handle is the next one the bank gives, so a game that makes its sounds in the same order on every launch (in GameDesc.start) names the same handles in its saves.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world that owns the sound."
+            },
+            {
+              "name": "desc",
+              "type": "SoundDesc",
+              "optional": true,
+              "doc": "The samples and their format."
+            }
+          ],
+          "returns": "Result<Sound>",
+          "returnsDoc": "Refused for no samples, a length that is not whole frames, a rate or channel count out of range, or a number that is not finite.",
+          "publish": true
+        },
         {
           "name": "outputLatency",
           "doc": "How long after its world time a sample leaves the speaker, as the host reports it: on the web the AudioContext's baseLatency and outputLatency and the worklet ring's buffer, natively the device's latency (cpal's playback less callback instant) and the mixer's buffer; 0 headless (the null and capture sinks are driven to the tick). Host input, written to og.Audio between ticks, so a replay carries it. A rhythm game hears a note at its time plus this: judge a press against the note's time plus the latency, then a calibrated rest (the display, the hand).\nInside a system og.Audio must be among its reads or writes.",
@@ -33000,6 +33027,15 @@
           "type": "boolean",
           "description": "Set true to start the sound again from the top (its startOffset, its startAt) this tick, playing or not, without a level change on `playing`: the voice playing ends (SOUND_RETRIGGERED) and a new one starts in the same tick. The engine sets it back to false and `playing` true.",
           "default": false
+        },
+        "userBus": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "A user bus of the bus graph (4 to 15, declared by an og.AudioBusNode) it plays into instead of `bus`; 0, or an index no node declares, plays on `bus`.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 15
         }
       },
       "additionalProperties": false
@@ -33265,6 +33301,438 @@
           "maximum": 5,
           "x-og-unit": "s",
           "x-og-tunable": true
+        },
+        "userBus": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "A user bus (4 to 15, an og.AudioBusNode) these effects are on instead of `bus`; 0 uses `bus`.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 15
+        },
+        "eqLow": {
+          "type": "number",
+          "description": "The equaliser's low shelf (RBJ, 12 dB/octave): its gain below eqLowFreq; 0 dB is flat.",
+          "default": 0,
+          "minimum": -24,
+          "maximum": 24,
+          "x-og-unit": "db",
+          "x-og-tunable": true
+        },
+        "eqLowFreq": {
+          "type": "number",
+          "description": "The low shelf's corner frequency.",
+          "default": 200,
+          "minimum": 20,
+          "maximum": 2000,
+          "x-og-unit": "hz",
+          "x-og-tunable": true
+        },
+        "eqMid": {
+          "type": "number",
+          "description": "The equaliser's mid band (a peak, or a notch below 0 dB): its gain at eqMidFreq; 0 dB is flat.",
+          "default": 0,
+          "minimum": -24,
+          "maximum": 24,
+          "x-og-unit": "db",
+          "x-og-tunable": true
+        },
+        "eqMidFreq": {
+          "type": "number",
+          "description": "The mid band's centre frequency.",
+          "default": 1000,
+          "minimum": 40,
+          "maximum": 16000,
+          "x-og-unit": "hz",
+          "x-og-tunable": true
+        },
+        "eqMidQ": {
+          "type": "number",
+          "description": "The mid band's Q: higher is narrower.",
+          "default": 0.7,
+          "minimum": 0.1,
+          "maximum": 10,
+          "x-og-tunable": true
+        },
+        "eqHigh": {
+          "type": "number",
+          "description": "The equaliser's high shelf: its gain above eqHighFreq; 0 dB is flat.",
+          "default": 0,
+          "minimum": -24,
+          "maximum": 24,
+          "x-og-unit": "db",
+          "x-og-tunable": true
+        },
+        "eqHighFreq": {
+          "type": "number",
+          "description": "The high shelf's corner frequency.",
+          "default": 5000,
+          "minimum": 1000,
+          "maximum": 20000,
+          "x-og-unit": "hz",
+          "x-og-tunable": true
+        },
+        "delay": {
+          "type": "number",
+          "description": "An echo after the compressor: the delay's time, to the sample; 0 is off.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 2,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "delayFeedback": {
+          "type": "number",
+          "description": "How much of each echo feeds the next.",
+          "default": 0.35,
+          "minimum": 0,
+          "maximum": 0.95,
+          "x-og-tunable": true
+        },
+        "delayMix": {
+          "type": "number",
+          "description": "How loud the echoes are, added to the dry bus.",
+          "default": 0.35,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "distortion": {
+          "type": "number",
+          "description": "A tanh waveshaper after the equaliser: its drive, 0 (off) to 1 (heavy: 20x into the curve), scaled so a full-scale input stays at full scale.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "distortionMix": {
+          "type": "number",
+          "description": "How much of the distorted signal replaces the clean one.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "AudioBusNode": {
+      "x-og-kind": "component",
+      "x-og-module": "audio",
+      "description": "A user bus of the bus graph: bus `index` (4 to 15) sums the sources whose AudioSource.userBus (or AudioEvent.userBus) names it, runs its og.AudioBusFx (the one whose userBus is the index), and plays into its `parent`: a built-in bus or a user bus of a lower index, so the graph has no cycles (any other parent is master). Its volume is multiplied down the chain to master, so a footsteps bus under sfx is turned down with sfx. The first node in query order for an index counts; a removed node's sources play on their `bus`.\nThe graph reaches the mixer as commands in the stream (only what changed each tick), so it is deterministic and in the world hash.",
+      "type": "object",
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The bus's index, 4 to 15.",
+          "default": 4,
+          "minimum": 4,
+          "maximum": 15
+        },
+        "parent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The bus it plays into: 0 master, 1 music, 2 sfx, 3 ui, or a user bus below `index`.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 15
+        },
+        "volume": {
+          "type": "number",
+          "description": "The bus's gain.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 2,
+          "x-og-tunable": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "AudioSnapshot": {
+      "x-og-kind": "component",
+      "x-og-module": "audio",
+      "description": "A mixer snapshot (combat, underwater, paused): per-bus volumes and filters the mix blends towards while `active`, and back from when not, over `fade` seconds. Each tick og.audio moves `weight` by tickDuration / fade towards 1 or 0 and sends the blend in the stream; the bus gains ramp linearly across each tick, so a blend is a straight line to the sample, not a staircase.\nAt weight w a bus's gain is multiplied by 1 + w * (volume - 1); its low-pass moves from 20 kHz and its high-pass from 20 Hz towards the snapshot's cutoffs in octaves (log2-linear in w). Several snapshots multiply their volumes and take the lowest low-pass and the highest high-pass. Audio's bus volumes and the AudioBusFx filters stay what the game set: the snapshot gain multiplies them, and of its cutoffs and the AudioBusFx's the lower low-pass and the higher high-pass count.",
+      "type": "object",
+      "properties": {
+        "active": {
+          "type": "boolean",
+          "description": "Blends in while true, out while false.",
+          "default": false
+        },
+        "fade": {
+          "type": "number",
+          "description": "Seconds a full blend in or out takes; 0 is at once.",
+          "default": 0.5,
+          "minimum": 0,
+          "maximum": 30,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "weight": {
+          "type": "number",
+          "description": "How far it is blended in, 0 to 1 (written by og.audio each tick).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "readOnly": true
+        },
+        "volume": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 16,
+          "description": "Per bus, by index (master, music, sfx, ui, then user buses 4 to 15), the gain it multiplies in at full weight; buses past the list's length keep 1: `{ volume: [1, 0.3] }` turns the music down.",
+          "default": []
+        },
+        "lowpass": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 16,
+          "description": "Per bus, a low-pass cutoff in Hz at full weight; 0 or past the list's length is none: `{ lowpass: [0, 0, 600] }` muffles sfx (underwater).",
+          "default": []
+        },
+        "highpass": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 16,
+          "description": "Per bus, a high-pass cutoff in Hz at full weight; 0 or past the list's length is none.",
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "AudioEventOrder": {
+      "x-og-kind": "enum",
+      "x-og-module": "audio",
+      "description": "How a AudioEvent chooses its next sound.",
+      "type": "string",
+      "enum": [
+        "random",
+        "roundRobin",
+        "shuffle"
+      ],
+      "x-og-variants": {
+        "random": "A weighted random pick each time (AudioEvent.weights), drawn from the engine's seeded stream.",
+        "roundRobin": "The sounds in turn, from the first.",
+        "shuffle": "Random, every sound once before any repeats (and never the last one twice in a row across rounds)."
+      }
+    },
+    "AudioEvent": {
+      "x-og-kind": "component",
+      "x-og-module": "audio",
+      "description": "An audio event: one of a set of sounds played on each trigger, with pitch and volume jitter, a cooldown and a voice limit (footsteps, impacts, gunshots). Set `trigger` to play it; the engine sets it back to false.\nThe og.audioEvents system (before og.audio) picks the sound and the jitter from the engine's own random stream, forked from og.Rng's seed with the label og.audio and kept in the world (never Math.random), so the same seed and the same triggers play the same sounds at the same pitches on every host and every replay. Each play spawns a voice entity (an og.AudioSource, parented to this entity with og.Parent, so a spatial event is heard where its entity is) that is despawned when it ends; nothing of a voice feeds back into the simulation but `played`, `last`, `index`, `bag` and `voices`.",
+      "type": "object",
+      "properties": {
+        "sounds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Sound"
+          },
+          "maxItems": 8,
+          "description": "The variations (og.load.sound or og.audio.createSound); 0s are skipped.",
+          "default": []
+        },
+        "weights": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 8,
+          "description": "Weights of a random pick, by position in `sounds`; past the list's length 1.",
+          "default": []
+        },
+        "order": {
+          "$ref": "#/$defs/AudioEventOrder",
+          "description": "How the next sound is chosen.",
+          "default": "random"
+        },
+        "volume": {
+          "type": "number",
+          "description": "Linear gain.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 4,
+          "x-og-tunable": true
+        },
+        "volumeJitter": {
+          "type": "number",
+          "description": "Each play's volume varies uniformly by up to this many dB either way.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 24,
+          "x-og-unit": "db",
+          "x-og-tunable": true
+        },
+        "pitch": {
+          "type": "number",
+          "description": "Playback rate.",
+          "default": 1,
+          "minimum": 0.0625,
+          "maximum": 16,
+          "x-og-tunable": true
+        },
+        "pitchJitter": {
+          "type": "number",
+          "description": "Each play's pitch varies uniformly by up to this many semitones either way.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 24,
+          "x-og-tunable": true
+        },
+        "cooldown": {
+          "type": "number",
+          "description": "A trigger sooner than this after the last play is ignored (and still reset).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 60,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "maxVoices": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most voices of this event at once; 0 is no limit.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 64
+        },
+        "steal": {
+          "type": "boolean",
+          "description": "At maxVoices, the oldest voice is stopped (SOUND_STOPPED) for the new one; false ignores the trigger instead.",
+          "default": true
+        },
+        "bus": {
+          "$ref": "#/$defs/AudioBus",
+          "description": "The bus its voices play on.",
+          "default": "sfx"
+        },
+        "userBus": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "A user bus its voices play into instead (AudioSource.userBus).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 15
+        },
+        "spatial": {
+          "type": "boolean",
+          "description": "Its voices are spatial, heard at this entity's world transform.",
+          "default": false
+        },
+        "refDistance": {
+          "type": "number",
+          "description": "AudioSource.refDistance of its voices.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "maxDistance": {
+          "type": "number",
+          "description": "AudioSource.maxDistance of its voices.",
+          "default": 100,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "AudioSource.priority of its voices.",
+          "default": 128,
+          "minimum": 0,
+          "maximum": 255
+        },
+        "trigger": {
+          "type": "boolean",
+          "description": "Set true to play it this tick; the engine sets it back to false.",
+          "default": false
+        },
+        "played": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Plays so far (written by og.audioEvents).",
+          "default": 0,
+          "readOnly": true
+        },
+        "last": {
+          "type": "number",
+          "description": "The world time of the last play (written by og.audioEvents).",
+          "default": 0,
+          "x-og-unit": "s",
+          "readOnly": true
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The position in `sounds` played last (written by og.audioEvents).",
+          "default": 0,
+          "readOnly": true
+        },
+        "bag": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "A shuffle's sounds already played this round, one bit each (written by og.audioEvents).",
+          "default": 0,
+          "readOnly": true
+        },
+        "voices": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its voices playing now (written by og.audioEvents).",
+          "default": 0,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "SoundDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "audio",
+      "description": "PCM a game made itself (og.audio.createSound): a tone, a procedural effect, a recording it synthesised.",
+      "type": "object",
+      "properties": {
+        "samples": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "The samples, -1 to 1 (clamped), interleaved by channel: frames * channels values; at least one frame."
+        },
+        "rate": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Samples per second per channel.",
+          "default": 48000,
+          "minimum": 8000,
+          "maximum": 192000,
+          "x-og-unit": "hz"
+        },
+        "channels": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Interleaved channels, 1 or 2.",
+          "default": 1,
+          "minimum": 1,
+          "maximum": 2
         }
       },
       "additionalProperties": false

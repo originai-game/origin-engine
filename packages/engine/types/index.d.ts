@@ -237,6 +237,8 @@ export interface ColumnKinds {
   AudioResampler: { readonly array: Uint32Array; readonly stride: 1; readonly value: AudioResampler };
   /** A PanningModel field: the variant's index. */
   PanningModel: { readonly array: Uint32Array; readonly stride: 1; readonly value: PanningModel };
+  /** A AudioEventOrder field: the variant's index. */
+  AudioEventOrder: { readonly array: Uint32Array; readonly stride: 1; readonly value: AudioEventOrder };
   /** A Navigation handle field. */
   Navigation: { readonly array: Uint32Array; readonly stride: 2; readonly value: Navigation };
   /** A Behaviour handle field. */
@@ -16071,6 +16073,12 @@ export interface AudioSource {
    * Set true to start the sound again from the top (its startOffset, its startAt) this tick, playing or not, without a level change on `playing`: the voice playing ends (SOUND_RETRIGGERED) and a new one starts in the same tick. The engine sets it back to false and `playing` true.
    */
   retrigger: boolean;
+  /**
+   * A user bus of the bus graph (4 to 15, declared by an og.AudioBusNode) it plays into instead of `bus`; 0, or an index no node declares, plays on `bus`.
+   *
+   * @range 0..15
+   */
+  userBus: number;
 }
 
 /**
@@ -16328,6 +16336,379 @@ export interface AudioBusFx {
    * @tunable
    */
   duckRelease: number;
+  /**
+   * A user bus (4 to 15, an og.AudioBusNode) these effects are on instead of `bus`; 0 uses `bus`.
+   *
+   * @range 0..15
+   */
+  userBus: number;
+  /**
+   * The equaliser's low shelf (RBJ, 12 dB/octave): its gain below eqLowFreq; 0 dB is flat.
+   *
+   * @range -24..24
+   * @unit db (decibels)
+   * @tunable
+   */
+  eqLow: number;
+  /**
+   * The low shelf's corner frequency.
+   *
+   * @default 200
+   * @range 20..2000
+   * @unit hz (ticks or cycles per second)
+   * @tunable
+   */
+  eqLowFreq: number;
+  /**
+   * The equaliser's mid band (a peak, or a notch below 0 dB): its gain at eqMidFreq; 0 dB is flat.
+   *
+   * @range -24..24
+   * @unit db (decibels)
+   * @tunable
+   */
+  eqMid: number;
+  /**
+   * The mid band's centre frequency.
+   *
+   * @default 1000
+   * @range 40..16000
+   * @unit hz (ticks or cycles per second)
+   * @tunable
+   */
+  eqMidFreq: number;
+  /**
+   * The mid band's Q: higher is narrower.
+   *
+   * @default 0.7
+   * @range 0.1..10
+   * @tunable
+   */
+  eqMidQ: number;
+  /**
+   * The equaliser's high shelf: its gain above eqHighFreq; 0 dB is flat.
+   *
+   * @range -24..24
+   * @unit db (decibels)
+   * @tunable
+   */
+  eqHigh: number;
+  /**
+   * The high shelf's corner frequency.
+   *
+   * @default 5000
+   * @range 1000..20000
+   * @unit hz (ticks or cycles per second)
+   * @tunable
+   */
+  eqHighFreq: number;
+  /**
+   * An echo after the compressor: the delay's time, to the sample; 0 is off.
+   *
+   * @range 0..2
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  delay: number;
+  /**
+   * How much of each echo feeds the next.
+   *
+   * @default 0.35
+   * @range 0..0.95
+   * @tunable
+   */
+  delayFeedback: number;
+  /**
+   * How loud the echoes are, added to the dry bus.
+   *
+   * @default 0.35
+   * @range 0..1
+   * @tunable
+   */
+  delayMix: number;
+  /**
+   * A tanh waveshaper after the equaliser: its drive, 0 (off) to 1 (heavy: 20x into the curve), scaled so a full-scale input stays at full scale.
+   *
+   * @range 0..1
+   * @tunable
+   */
+  distortion: number;
+  /**
+   * How much of the distorted signal replaces the clean one.
+   *
+   * @default 1
+   * @range 0..1
+   * @tunable
+   */
+  distortionMix: number;
+}
+
+/**
+ * A user bus of the bus graph: bus `index` (4 to 15) sums the sources whose AudioSource.userBus (or AudioEvent.userBus) names it, runs its og.AudioBusFx (the one whose userBus is the index), and plays into its `parent`: a built-in bus or a user bus of a lower index, so the graph has no cycles (any other parent is master). Its volume is multiplied down the chain to master, so a footsteps bus under sfx is turned down with sfx. The first node in query order for an index counts; a removed node's sources play on their `bus`.
+ * The graph reaches the mixer as commands in the stream (only what changed each tick), so it is deterministic and in the world hash.
+ *
+ * The value of the `AudioBusNode` component (token `og.AudioBusNode`).
+ */
+export interface AudioBusNode {
+  /**
+   * The bus's index, 4 to 15.
+   *
+   * @default 4
+   * @range 4..15
+   */
+  index: number;
+  /**
+   * The bus it plays into: 0 master, 1 music, 2 sfx, 3 ui, or a user bus below `index`.
+   *
+   * @range 0..15
+   */
+  parent: number;
+  /**
+   * The bus's gain.
+   *
+   * @default 1
+   * @range 0..2
+   * @tunable
+   */
+  volume: number;
+}
+
+/**
+ * A mixer snapshot (combat, underwater, paused): per-bus volumes and filters the mix blends towards while `active`, and back from when not, over `fade` seconds. Each tick og.audio moves `weight` by tickDuration / fade towards 1 or 0 and sends the blend in the stream; the bus gains ramp linearly across each tick, so a blend is a straight line to the sample, not a staircase.
+ * At weight w a bus's gain is multiplied by 1 + w * (volume - 1); its low-pass moves from 20 kHz and its high-pass from 20 Hz towards the snapshot's cutoffs in octaves (log2-linear in w). Several snapshots multiply their volumes and take the lowest low-pass and the highest high-pass. Audio's bus volumes and the AudioBusFx filters stay what the game set: the snapshot gain multiplies them, and of its cutoffs and the AudioBusFx's the lower low-pass and the higher high-pass count.
+ *
+ * The value of the `AudioSnapshot` component (token `og.AudioSnapshot`).
+ */
+export interface AudioSnapshot {
+  /** Blends in while true, out while false. */
+  active: boolean;
+  /**
+   * Seconds a full blend in or out takes; 0 is at once.
+   *
+   * @default 0.5
+   * @range 0..30
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  fade: number;
+  /**
+   * How far it is blended in, 0 to 1 (written by og.audio each tick).
+   *
+   * @range 0..1
+   * @readonly written by the engine
+   */
+  readonly weight: number;
+  /**
+   * Per bus, by index (master, music, sfx, ui, then user buses 4 to 15), the gain it multiplies in at full weight; buses past the list's length keep 1: `{ volume: [1, 0.3] }` turns the music down.
+   *
+   * @capacity 16 elements (List.f32.16): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  volume: readonly number[];
+  /**
+   * Per bus, a low-pass cutoff in Hz at full weight; 0 or past the list's length is none: `{ lowpass: [0, 0, 600] }` muffles sfx (underwater).
+   *
+   * @capacity 16 elements (List.f32.16): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  lowpass: readonly number[];
+  /**
+   * Per bus, a high-pass cutoff in Hz at full weight; 0 or past the list's length is none.
+   *
+   * @capacity 16 elements (List.f32.16): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  highpass: readonly number[];
+}
+
+/**
+ * How a AudioEvent chooses its next sound.
+ * - `"random"`: A weighted random pick each time (AudioEvent.weights), drawn from the engine's seeded stream.
+ * - `"roundRobin"`: The sounds in turn, from the first.
+ * - `"shuffle"`: Random, every sound once before any repeats (and never the last one twice in a row across rounds).
+ */
+export type AudioEventOrder = "random" | "roundRobin" | "shuffle";
+
+/**
+ * A AudioEventOrder field: the variant's index.
+ *
+ * A `AudioEventOrder` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function AudioEventOrder(value?: AudioEventOrder, options?: FieldOptions): FieldSpec<"AudioEventOrder">;
+
+/**
+ * An audio event: one of a set of sounds played on each trigger, with pitch and volume jitter, a cooldown and a voice limit (footsteps, impacts, gunshots). Set `trigger` to play it; the engine sets it back to false.
+ * The og.audioEvents system (before og.audio) picks the sound and the jitter from the engine's own random stream, forked from og.Rng's seed with the label og.audio and kept in the world (never Math.random), so the same seed and the same triggers play the same sounds at the same pitches on every host and every replay. Each play spawns a voice entity (an og.AudioSource, parented to this entity with og.Parent, so a spatial event is heard where its entity is) that is despawned when it ends; nothing of a voice feeds back into the simulation but `played`, `last`, `index`, `bag` and `voices`.
+ *
+ * The value of the `AudioEvent` component (token `og.AudioEvent`).
+ */
+export interface AudioEvent {
+  /**
+   * The variations (og.load.sound or og.audio.createSound); 0s are skipped.
+   *
+   * @capacity 8 elements (List.Sound.8): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  sounds: readonly Sound[];
+  /**
+   * Weights of a random pick, by position in `sounds`; past the list's length 1.
+   *
+   * @capacity 8 elements (List.f32.8): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  weights: readonly number[];
+  /**
+   * How the next sound is chosen.
+   *
+   * @default "random"
+   */
+  order: AudioEventOrder;
+  /**
+   * Linear gain.
+   *
+   * @default 1
+   * @range 0..4
+   * @tunable
+   */
+  volume: number;
+  /**
+   * Each play's volume varies uniformly by up to this many dB either way.
+   *
+   * @range 0..24
+   * @unit db (decibels)
+   * @tunable
+   */
+  volumeJitter: number;
+  /**
+   * Playback rate.
+   *
+   * @default 1
+   * @range 0.0625..16
+   * @tunable
+   */
+  pitch: number;
+  /**
+   * Each play's pitch varies uniformly by up to this many semitones either way.
+   *
+   * @range 0..24
+   * @tunable
+   */
+  pitchJitter: number;
+  /**
+   * A trigger sooner than this after the last play is ignored (and still reset).
+   *
+   * @range 0..60
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  cooldown: number;
+  /**
+   * The most voices of this event at once; 0 is no limit.
+   *
+   * @range 0..64
+   */
+  maxVoices: number;
+  /**
+   * At maxVoices, the oldest voice is stopped (SOUND_STOPPED) for the new one; false ignores the trigger instead.
+   *
+   * @default true
+   */
+  steal: boolean;
+  /**
+   * The bus its voices play on.
+   *
+   * @default "sfx"
+   */
+  bus: AudioBus;
+  /**
+   * A user bus its voices play into instead (AudioSource.userBus).
+   *
+   * @range 0..15
+   */
+  userBus: number;
+  /** Its voices are spatial, heard at this entity's world transform. */
+  spatial: boolean;
+  /**
+   * AudioSource.refDistance of its voices.
+   *
+   * @default 1
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  refDistance: number;
+  /**
+   * AudioSource.maxDistance of its voices.
+   *
+   * @default 100
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  maxDistance: number;
+  /**
+   * AudioSource.priority of its voices.
+   *
+   * @default 128
+   * @range 0..255
+   */
+  priority: number;
+  /** Set true to play it this tick; the engine sets it back to false. */
+  trigger: boolean;
+  /**
+   * Plays so far (written by og.audioEvents).
+   *
+   * @readonly written by the engine
+   */
+  readonly played: number;
+  /**
+   * The world time of the last play (written by og.audioEvents).
+   *
+   * @unit s (seconds of simulation time)
+   * @readonly written by the engine
+   */
+  readonly last: number;
+  /**
+   * The position in `sounds` played last (written by og.audioEvents).
+   *
+   * @readonly written by the engine
+   */
+  readonly index: number;
+  /**
+   * A shuffle's sounds already played this round, one bit each (written by og.audioEvents).
+   *
+   * @readonly written by the engine
+   */
+  readonly bag: number;
+  /**
+   * Its voices playing now (written by og.audioEvents).
+   *
+   * @readonly written by the engine
+   */
+  readonly voices: number;
+}
+
+/**
+ * PCM a game made itself (og.audio.createSound): a tone, a procedural effect, a recording it synthesised.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SoundDesc {
+  /**
+   * The samples, -1 to 1 (clamped), interleaved by channel: frames * channels values; at least one frame.
+   */
+  readonly samples?: Float32Array;
+  /**
+   * Samples per second per channel.
+   *
+   * @default 48000
+   * @range 8000..192000
+   * @unit hz (ticks or cycles per second)
+   */
+  readonly rate?: number;
+  /**
+   * Interleaved channels, 1 or 2.
+   *
+   * @default 1
+   * @range 1..2
+   */
+  readonly channels?: number;
 }
 
 /**
@@ -16504,6 +16885,7 @@ export interface SoundEnded {
    */
   readonly reason: number;
 }
+
 
 
 // ── nav ─────────────────────────────────────────────────────────
@@ -35991,7 +36373,7 @@ export declare namespace og {
    * A sound an entity plays. Level-triggered: while `playing` is true it plays (inserting a source plays it), setting it false stops it, and a one-shot that reaches its end sets it back to false and sends og.SoundEnded.
    * A one-shot of F frames at rate R and pitch p started in tick S ends in tick S + ceil(F * tickRate / (R * p)) - 1. A despawned entity's voice is silenced without an event.
    */
-  const AudioSource: ComponentType<{ readonly sound: FieldSpec<"Sound">; readonly bus: FieldSpec<"AudioBus">; readonly volume: FieldSpec<"f32">; readonly pitch: FieldSpec<"f32">; readonly pan: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly loopStart: FieldSpec<"f32">; readonly loopEnd: FieldSpec<"f32">; readonly spatial: FieldSpec<"bool">; readonly refDistance: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly rolloffFactor: FieldSpec<"f32">; readonly playing: FieldSpec<"bool">; readonly priority: FieldSpec<"u32">; readonly lowpass: FieldSpec<"f32">; readonly occlude: FieldSpec<"bool">; readonly distanceCutoff: FieldSpec<"f32">; readonly startAt: FieldSpec<"f64">; readonly startOffset: FieldSpec<"f64">; readonly fade: FieldSpec<"f32">; readonly dopplerFactor: FieldSpec<"f32">; readonly coneInnerAngle: FieldSpec<"f32">; readonly coneOuterAngle: FieldSpec<"f32">; readonly coneOuterGain: FieldSpec<"f32">; readonly virtualize: FieldSpec<"bool">; readonly retrigger: FieldSpec<"bool"> }, AudioSource>;
+  const AudioSource: ComponentType<{ readonly sound: FieldSpec<"Sound">; readonly bus: FieldSpec<"AudioBus">; readonly volume: FieldSpec<"f32">; readonly pitch: FieldSpec<"f32">; readonly pan: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly loopStart: FieldSpec<"f32">; readonly loopEnd: FieldSpec<"f32">; readonly spatial: FieldSpec<"bool">; readonly refDistance: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly rolloffFactor: FieldSpec<"f32">; readonly playing: FieldSpec<"bool">; readonly priority: FieldSpec<"u32">; readonly lowpass: FieldSpec<"f32">; readonly occlude: FieldSpec<"bool">; readonly distanceCutoff: FieldSpec<"f32">; readonly startAt: FieldSpec<"f64">; readonly startOffset: FieldSpec<"f64">; readonly fade: FieldSpec<"f32">; readonly dopplerFactor: FieldSpec<"f32">; readonly coneInnerAngle: FieldSpec<"f32">; readonly coneOuterAngle: FieldSpec<"f32">; readonly coneOuterGain: FieldSpec<"f32">; readonly virtualize: FieldSpec<"bool">; readonly retrigger: FieldSpec<"bool">; readonly userBus: FieldSpec<"u32"> }, AudioSource>;
   /**
    * Where spatial sources are heard from: the entity's world transform (its og.Transform down og.Parent, so a listener under a camera rig hears from the rig), looking down its -Z with +X to the right. The first listener in query order is used.
    */
@@ -36002,7 +36384,22 @@ export declare namespace og {
    * A bus's insert effects: a high- and low-pass (12 dB/octave), a compressor, side-chain ducking by another bus, and a send to the shared reverb, whose return joins master. One entity per bus (the first in query order counts); without one a bus passes straight through.
    * Changes reach the mixer through the command stream, so they are deterministic and in the world hash; the PCM is the mixer's.
    */
-  const AudioBusFx: ComponentType<{ readonly bus: FieldSpec<"AudioBus">; readonly lowpass: FieldSpec<"f32">; readonly highpass: FieldSpec<"f32">; readonly reverb: FieldSpec<"f32">; readonly threshold: FieldSpec<"f32">; readonly ratio: FieldSpec<"f32">; readonly attack: FieldSpec<"f32">; readonly release: FieldSpec<"f32">; readonly makeup: FieldSpec<"f32">; readonly duck: FieldSpec<"bool">; readonly duckBus: FieldSpec<"AudioBus">; readonly duckDepth: FieldSpec<"f32">; readonly duckThreshold: FieldSpec<"f32">; readonly duckAttack: FieldSpec<"f32">; readonly duckRelease: FieldSpec<"f32"> }, AudioBusFx>;
+  const AudioBusFx: ComponentType<{ readonly bus: FieldSpec<"AudioBus">; readonly lowpass: FieldSpec<"f32">; readonly highpass: FieldSpec<"f32">; readonly reverb: FieldSpec<"f32">; readonly threshold: FieldSpec<"f32">; readonly ratio: FieldSpec<"f32">; readonly attack: FieldSpec<"f32">; readonly release: FieldSpec<"f32">; readonly makeup: FieldSpec<"f32">; readonly duck: FieldSpec<"bool">; readonly duckBus: FieldSpec<"AudioBus">; readonly duckDepth: FieldSpec<"f32">; readonly duckThreshold: FieldSpec<"f32">; readonly duckAttack: FieldSpec<"f32">; readonly duckRelease: FieldSpec<"f32">; readonly userBus: FieldSpec<"u32">; readonly eqLow: FieldSpec<"f32">; readonly eqLowFreq: FieldSpec<"f32">; readonly eqMid: FieldSpec<"f32">; readonly eqMidFreq: FieldSpec<"f32">; readonly eqMidQ: FieldSpec<"f32">; readonly eqHigh: FieldSpec<"f32">; readonly eqHighFreq: FieldSpec<"f32">; readonly delay: FieldSpec<"f32">; readonly delayFeedback: FieldSpec<"f32">; readonly delayMix: FieldSpec<"f32">; readonly distortion: FieldSpec<"f32">; readonly distortionMix: FieldSpec<"f32"> }, AudioBusFx>;
+  /**
+   * A user bus of the bus graph: bus `index` (4 to 15) sums the sources whose AudioSource.userBus (or AudioEvent.userBus) names it, runs its og.AudioBusFx (the one whose userBus is the index), and plays into its `parent`: a built-in bus or a user bus of a lower index, so the graph has no cycles (any other parent is master). Its volume is multiplied down the chain to master, so a footsteps bus under sfx is turned down with sfx. The first node in query order for an index counts; a removed node's sources play on their `bus`.
+   * The graph reaches the mixer as commands in the stream (only what changed each tick), so it is deterministic and in the world hash.
+   */
+  const AudioBusNode: ComponentType<{ readonly index: FieldSpec<"u32">; readonly parent: FieldSpec<"u32">; readonly volume: FieldSpec<"f32"> }, AudioBusNode>;
+  /**
+   * A mixer snapshot (combat, underwater, paused): per-bus volumes and filters the mix blends towards while `active`, and back from when not, over `fade` seconds. Each tick og.audio moves `weight` by tickDuration / fade towards 1 or 0 and sends the blend in the stream; the bus gains ramp linearly across each tick, so a blend is a straight line to the sample, not a staircase.
+   * At weight w a bus's gain is multiplied by 1 + w * (volume - 1); its low-pass moves from 20 kHz and its high-pass from 20 Hz towards the snapshot's cutoffs in octaves (log2-linear in w). Several snapshots multiply their volumes and take the lowest low-pass and the highest high-pass. Audio's bus volumes and the AudioBusFx filters stay what the game set: the snapshot gain multiplies them, and of its cutoffs and the AudioBusFx's the lower low-pass and the higher high-pass count.
+   */
+  const AudioSnapshot: ComponentType<{ readonly active: FieldSpec<"bool">; readonly fade: FieldSpec<"f32">; readonly weight: FieldSpec<"f32">; readonly volume: ListSpec<"f32">; readonly lowpass: ListSpec<"f32">; readonly highpass: ListSpec<"f32"> }, AudioSnapshot>;
+  /**
+   * An audio event: one of a set of sounds played on each trigger, with pitch and volume jitter, a cooldown and a voice limit (footsteps, impacts, gunshots). Set `trigger` to play it; the engine sets it back to false.
+   * The og.audioEvents system (before og.audio) picks the sound and the jitter from the engine's own random stream, forked from og.Rng's seed with the label og.audio and kept in the world (never Math.random), so the same seed and the same triggers play the same sounds at the same pitches on every host and every replay. Each play spawns a voice entity (an og.AudioSource, parented to this entity with og.Parent, so a spatial event is heard where its entity is) that is despawned when it ends; nothing of a voice feeds back into the simulation but `played`, `last`, `index`, `bag` and `voices`.
+   */
+  const AudioEvent: ComponentType<{ readonly sounds: ListSpec<"Sound">; readonly weights: ListSpec<"f32">; readonly order: FieldSpec<"AudioEventOrder">; readonly volume: FieldSpec<"f32">; readonly volumeJitter: FieldSpec<"f32">; readonly pitch: FieldSpec<"f32">; readonly pitchJitter: FieldSpec<"f32">; readonly cooldown: FieldSpec<"f32">; readonly maxVoices: FieldSpec<"u32">; readonly steal: FieldSpec<"bool">; readonly bus: FieldSpec<"AudioBus">; readonly userBus: FieldSpec<"u32">; readonly spatial: FieldSpec<"bool">; readonly refDistance: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly priority: FieldSpec<"u32">; readonly trigger: FieldSpec<"bool">; readonly played: FieldSpec<"u32">; readonly last: FieldSpec<"f64">; readonly index: FieldSpec<"u32">; readonly bag: FieldSpec<"u32">; readonly voices: FieldSpec<"u32"> }, AudioEvent>;
   /**
    * A reverb zone: a box (or a sphere) where the shared reverb sounds like this room. While the og.AudioListener is inside, og.audio eases the reverb's room size and damping, and one bus's send to it, towards the zone's; past the volume's surface it fades out linearly over `fade` metres, so walking in through a door the room grows around the listener.
    * Deterministic: each tick the listener's weight in every zone is a function of its position (written to `weight`), the strongest zone wins (ties to the first in query order), and the eased values reach the mixer as fx commands in the stream and the world hash. Audio.reverbRoom, Audio.reverbDamping and the bus's AudioBusFx.reverb stay the open air's: the zone never writes them. The listener and the zone are placed at their world transforms (og.Transform down og.Parent): a zone on a child of a moving room moves with it.
@@ -36027,6 +36424,14 @@ export declare namespace og {
    * Propagation, all in the tick and so in the stream: a spatial source or listener that moves shifts the pitch (Doppler, from their tick velocities: AudioSource.dopplerFactor, AudioListener.dopplerFactor, Audio.speedOfSound), a source with a cone is turned down away from its +Z (coneInnerAngle, coneOuterAngle, coneOuterGain, as three.js's setDirectionalCone), and a listener whose panningModel is hrtf places sources for headphones (interaural delay and head shadow) instead of the stereo panner.
    */
   namespace audio {
+    /**
+     * Make a sound from PCM the game computed: it plays, loops and pitches as a loaded one (AudioSource.sound, AudioEvent.sounds), always resident, stored as 16-bit PCM, and og.load.soundInfo reports it. Between ticks or inside a system alike; the handle is the next one the bank gives, so a game that makes its sounds in the same order on every launch (in GameDesc.start) names the same handles in its saves.
+     *
+     * @param world The world that owns the sound.
+     * @param desc The samples and their format.
+     * @returns Refused for no samples, a length that is not whole frames, a rate or channel count out of range, or a number that is not finite.
+     */
+    function createSound(world: World, desc?: SoundDesc): Result<Sound>;
     /**
      * How long after its world time a sample leaves the speaker, as the host reports it: on the web the AudioContext's baseLatency and outputLatency and the worklet ring's buffer, natively the device's latency (cpal's playback less callback instant) and the mixer's buffer; 0 headless (the null and capture sinks are driven to the tick). Host input, written to og.Audio between ticks, so a replay carries it. A rhythm game hears a note at its time plus this: judge a press against the note's time plus the latency, then a calibrated rest (the display, the hand).
      * Inside a system og.Audio must be among its reads or writes.

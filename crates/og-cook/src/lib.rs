@@ -15,7 +15,8 @@
 //! the importers and encoders.
 
 pub use og_bundle::{
-    anim_codec, format, fx, ktx2, lightmap, look, meshopt_codec, qoa, runtime, scene_text, shader,
+    anim_codec, format, fx, ktx2, lightmap, look, meshopt_codec, opus, qoa, runtime, scene_text,
+    shader,
 };
 
 #[cfg(feature = "cook")]

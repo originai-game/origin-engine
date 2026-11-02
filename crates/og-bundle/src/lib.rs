@@ -10,6 +10,7 @@
 //! | [`ktx2`] | KTX2 parsing, lossless RGBA8 textures; `.basis` ↔ KTX2 with `basis`/`transcode` |
 //! | [`meshopt_codec`] | pure-Rust meshoptimizer vertex and index decoders |
 //! | [`qoa`] | the QOA audio codec |
+//! | [`opus`] | Opus sounds: Opus packets in self-contained blocks (music and long sounds) |
 //! | [`lightmap`] | a scene's baked lighting (`<scene>.lightmap.ogt` and its KTX2 pages) |
 //! | [`fx`] | particle emitter files (`.ogt` of `type particles`) and `.cube` colour tables |
 //! | [`look`] | looks (`.ogt` of `type look`): the text, merging over a base, hex colours, `.hex`/`.gpl` palettes |
@@ -27,6 +28,7 @@ pub mod ktx2;
 pub mod lightmap;
 pub mod look;
 pub mod meshopt_codec;
+pub mod opus;
 pub mod qoa;
 pub mod runtime;
 pub mod scene_text;

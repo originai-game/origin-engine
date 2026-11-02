@@ -1846,6 +1846,14 @@ export const physics = Object.freeze({
 
 export const audio = Object.freeze({
   outputLatency: (world: WorldImpl) => (checkAccess("read", "og.Audio"), abi().og_audio_output_latency(world.id)),
+  createSound: (world: WorldImpl, desc?: unknown) => {
+    const d = desc !== null && typeof desc === "object" ? { ...(desc as Record<string, unknown>) } : desc;
+    if (d !== null && typeof d === "object" && ArrayBuffer.isView((d as Record<string, unknown>).samples)) {
+      const r = d as Record<string, unknown>;
+      r.samples = Array.from(r.samples as ArrayLike<number>);
+    }
+    return parse(abi().og_audio_create_sound(world.id, json(d)));
+  },
 });
 
 export const atmosphere = Object.freeze({

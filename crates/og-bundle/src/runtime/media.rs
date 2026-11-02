@@ -191,9 +191,11 @@ impl CookedTexture {
 pub struct CookedSound {
     pub id: String,
     pub meta: SoundMeta,
-    /// The QOA file; of a sound cooked in chunks (`meta.chunk_count` > 0),
-    /// its header and first chunk only.
+    /// The QOA file (`meta.codec` QOA; empty for Opus); of a sound cooked
+    /// in chunks (`meta.chunk_count` > 0), its header and first chunk only.
     pub qoa: Vec<u8>,
+    /// The Opus sound (`meta.codec` Opus, `crate::opus`; empty for QOA).
+    pub opus: Vec<u8>,
 }
 
 /// A sound chunk blob's index and QOA frames, read from its file's bytes
@@ -250,19 +252,30 @@ impl CookedSound {
         self.meta.chunk_count > 0
     }
 
-    /// Interleaved 16-bit PCM (of a sound cooked in chunks: refused, its
-    /// samples are not all here).
+    /// Whether it is an Opus sound (else QOA).
+    pub fn is_opus(&self) -> bool {
+        self.meta.codec == crate::format::sound_codec::OPUS
+    }
+
+    /// Interleaved 16-bit PCM, whichever its codec (of a sound cooked in
+    /// chunks: refused, its samples are not all here).
     pub fn decode(&self) -> Result<qoa::Decoded, LoadError> {
-        if self.chunked() {
-            return Err(LoadError::Invalid {
-                path: self.id.clone(),
-                reason: "cooked in chunks: decode it chunk by chunk".into(),
-            });
-        }
-        qoa::decode(&self.qoa).map_err(|reason| LoadError::Invalid {
+        let bad = |reason: String| LoadError::Invalid {
             path: self.id.clone(),
             reason,
-        })
+        };
+        if self.chunked() {
+            return Err(bad("cooked in chunks: decode it chunk by chunk".into()));
+        }
+        if self.is_opus() {
+            let d = crate::opus::decode(&self.opus).map_err(bad)?;
+            return Ok(qoa::Decoded {
+                channels: d.channels,
+                sample_rate: d.sample_rate,
+                samples: d.samples,
+            });
+        }
+        qoa::decode(&self.qoa).map_err(bad)
     }
 }
 

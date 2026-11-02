@@ -61,6 +61,9 @@ impl AudioApi for NodeHost {
     fn og_audio_output_latency(&self, world: u32) -> f64 {
         rt::og_audio_output_latency(world)
     }
+    fn og_audio_create_sound(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_audio_create_sound(world, desc)
+    }
 }
 
 impl PathApi for NodeHost {

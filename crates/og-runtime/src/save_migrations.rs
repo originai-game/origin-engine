@@ -76,6 +76,22 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         note: "0.7.7 and earlier: four pads, now eight (G1-2); a session record, so the host's value replaces the saved one",
         run: None,
     },
+    Migration {
+        target: Target::Record,
+        name: "og.AudioSource",
+        from: 1,
+        to: 2,
+        note: "0.7.7 and earlier: gained userBus (G2-5, the bus graph); the restore takes it at 0, the source's own bus",
+        run: None,
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.AudioBusFx",
+        from: 1,
+        to: 2,
+        note: "0.7.7 and earlier: gained userBus, the equaliser, the echo and the waveshaper (G2-5); the restore takes them at their defaults, all off",
+        run: None,
+    },
 ];
 
 fn ui_9_to_11(edit: &mut SnapshotEdit) -> Result<(), String> {

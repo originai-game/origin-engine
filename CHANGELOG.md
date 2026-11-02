@@ -27,6 +27,21 @@ is one line here, written at the merge that changes
   writes no such block and saves and hashes as before, so no save
   migration is needed (an older save restores with nothing tracked yet).
 
+- Added (audio, G2-5): `og.AudioBusNode` and `AudioSource.userBus`, a
+  bus graph of user buses 4 to 15 under the built-ins; `og.AudioSnapshot`,
+  mixer snapshots that blend over `fade` seconds, linear to the sample;
+  `AudioBusFx.userBus` and its equaliser (`eqLow`, `eqLowFreq`, `eqMid`,
+  `eqMidFreq`, `eqMidQ`, `eqHigh`, `eqHighFreq`), echo (`delay`,
+  `delayFeedback`, `delayMix`) and waveshaper (`distortion`,
+  `distortionMix`); `og.AudioEvent` and `AudioEventOrder`, sounds chosen
+  per trigger from the engine's seeded stream with jitter, a cooldown and
+  a voice limit; `og.audio.createSound` and `SoundDesc`, PCM from
+  TypeScript; Opus sounds (`sound { codec opus bitrate 96 }`, `.opus`
+  sources), decoded beside the tick and streamed on both hosts. The
+  `og.Sound` blob is version 3: cooked bundles re-cook.
+  `og.AudioSource` and `og.AudioBusFx` are version 2: a save of 0.7.7
+  restores with the new fields at their defaults.
+
 - Fixed: a save holds the names given since the last tick began. An
   entity named by `world.spawn` between ticks or by an earlier system
   in the same tick restores with its name; a name given in a system goes

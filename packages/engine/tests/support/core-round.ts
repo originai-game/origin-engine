@@ -21,7 +21,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { og, defineResource, defineSystem, defineComponent, f64, u32 } from "@origingame/engine";
+import { og, defineResource, defineSystem, defineComponent, f64, u32, type Sound } from "@origingame/engine";
 import { createEngine, fixedClock, type Engine, type GameToken } from "../../src/runtime.ts";
 import { localPlatform, memoryPersistence } from "../../src/platform-local.ts";
 
@@ -208,6 +208,42 @@ if (which === "rng") {
     // until it is terminated.
     attached.value.close();
   }
+} else if (which === "audioEvents") {
+  // og.audio.createSound and og.AudioEvent: four tones made from TypeScript,
+  // an event triggered every fourth tick, its picks recorded per play; run
+  // with --seed (the world's seed).
+  const seed = Number(opt("--seed") || "1");
+  const engine = start(og.game({ tick: 60, seed }));
+  const w = engine.world;
+  const sounds: Sound[] = [];
+  for (let k = 0; k < 4; k++) {
+    const samples = new Float32Array(2400);
+    for (let i = 0; i < samples.length; i++) samples[i] = 0.2 * Math.sin((2 * Math.PI * (300 + 100 * k) * i) / 48000);
+    const s = og.audio.createSound(w, { samples, rate: 48000, channels: 1 });
+    if (!s.ok) throw new Error(s.reason);
+    sounds.push(s.value);
+  }
+  out.info = og.load.soundInfo(w, sounds[0]!);
+  out.refused = og.audio.createSound(w, { samples: new Float32Array(3), channels: 2 });
+  const e = w.spawn({ name: "steps" });
+  if (!e.ok) throw new Error(e.reason);
+  const ins = w.insert(e.value, og.AudioEvent, { sounds, weights: [1, 2, 1, 0.5], pitchJitter: 2, volumeJitter: 3, cooldown: 0.05 });
+  if (!ins.ok) throw new Error(ins.reason);
+  const picks: number[] = [];
+  for (let t = 1; t <= 120; t++) {
+    if (t % 2 === 1) {
+      const ev = w.get(e.value, og.AudioEvent);
+      if (!ev.ok) throw new Error(ev.reason);
+      w.set(e.value, og.AudioEvent, { ...(ev.value as object), trigger: true });
+    }
+    const before = (w.get(e.value, og.AudioEvent) as { value: { played: number } }).value.played;
+    engine.advance(1);
+    const ev = (w.get(e.value, og.AudioEvent) as { value: { played: number; index: number; trigger: boolean } }).value;
+    if (ev.trigger) throw new Error("the trigger was not cleared");
+    if (ev.played !== before) picks.push(ev.index);
+  }
+  out.picks = picks;
+  out.hash = engine.hash();
 } else {
   throw new Error(`unknown --case ${which}`);
 }

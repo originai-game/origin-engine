@@ -5,8 +5,9 @@
 
 use crate::command::{Command, FLAG_LOOP, FLAG_SPATIAL, Op, TickPacket, encode, fx};
 use crate::schema::{
-    Audio, AudioBusFx, AudioListener, AudioPlayback, AudioSource, AudioStream, BUS_COUNT, Parent,
-    ReverbZone, SoundEnded, SoundStarted, Transform, end_reason, panning_model,
+    Audio, AudioBusFx, AudioBusNode, AudioEvent, AudioEventVoice, AudioListener, AudioMix,
+    AudioPlayback, AudioSnapshot, AudioSource, AudioStream, BUS_COUNT, GRAPH_LEN, GRAPH_STRIDE,
+    MAX_BUSES, Parent, ReverbZone, SoundEnded, SoundStarted, Transform, end_reason, panning_model,
 };
 use crate::sound::SoundBank;
 use og_core::IdMap;
@@ -212,10 +213,16 @@ pub fn install(world: &mut World, desc: &AudioDesc) -> Result<AudioLink> {
     world.register::<AudioStream>()?;
     world.register::<AudioBusFx>()?;
     world.register::<ReverbZone>()?;
+    world.register::<AudioBusNode>()?;
+    world.register::<AudioSnapshot>()?;
+    world.register::<AudioEvent>()?;
+    world.register::<AudioEventVoice>()?;
+    world.register::<AudioMix>()?;
     crate::music::register(world)?;
     if !world.has_resource::<Audio>() {
         world.insert_resource(Audio::default())?;
     }
+    world.insert_resource(fresh_mix(world))?;
     let dt = world.time().dt;
     let tick_rate = (1.0 / f64::from(dt)).round().max(1.0) as u32;
     world.insert_resource(AudioStream {
@@ -243,6 +250,7 @@ pub fn install(world: &mut World, desc: &AudioDesc) -> Result<AudioLink> {
         },
     };
     crate::music::install(world)?;
+    crate::events::install(world)?;
     let system_link = link.clone();
     let occluder = desc.occluder.clone();
     world.add_system(
@@ -252,6 +260,9 @@ pub fn install(world: &mut World, desc: &AudioDesc) -> Result<AudioLink> {
             .read::<Transform>()
             .read::<Parent>()
             .read::<AudioBusFx>()
+            .read::<AudioBusNode>()
+            .write::<AudioSnapshot>()
+            .write::<AudioMix>()
             .write::<ReverbZone>()
             .write::<AudioSource>()
             .write::<AudioPlayback>()
@@ -282,7 +293,10 @@ pub fn install(world: &mut World, desc: &AudioDesc) -> Result<AudioLink> {
             .query(QueryDesc::new().write::<ReverbZone>().read::<Transform>())
             // 6: child entities, whose sources, listeners and zones are
             // placed down the og.Parent chain.
-            .query(QueryDesc::new().read::<Parent>()),
+            .query(QueryDesc::new().read::<Parent>())
+            // 7: user buses, 8: mixer snapshots.
+            .query(QueryDesc::new().read::<AudioBusNode>())
+            .query(QueryDesc::new().write::<AudioSnapshot>()),
         move |ctx| run(ctx, &system_link, occluder.as_ref()),
     )?;
     Ok(link)
@@ -348,6 +362,8 @@ struct Ear {
     doppler: f32,
     /// The listener's panning model is the HRTF.
     hrtf: bool,
+    /// The user buses an og.AudioBusNode declares, one bit per index.
+    user_buses: u32,
 }
 
 /// A tick velocity in m/s: the change of a world position over one tick. A
@@ -545,11 +561,16 @@ fn wanted(
         loop_end = frames as u32;
     }
     let loop_start = loop_start.min(loop_end.saturating_sub(1));
+    let declared = s.user_bus < MAX_BUSES as u32 && ear.user_buses & (1 << s.user_bus) != 0;
     Wanted {
         gain,
         pan,
         pitch,
-        bus: s.bus.min(BUS_COUNT as u32 - 1),
+        bus: if declared {
+            s.user_bus
+        } else {
+            s.bus.min(BUS_COUNT as u32 - 1)
+        },
         flags,
         loop_start,
         loop_end,
@@ -622,8 +643,217 @@ fn ended(ctx: &SystemContext<'_>, e: Entity, p: &AudioPlayback, reason: u32) -> 
     })
 }
 
-/// Every bus's effect parameters as the mixer takes them ([`fx`] ids),
-/// with the shared reverb's room and damping on master.
+/// A bus's first-version effect parameters ([`fx`] 1 to 13) as the mixer
+/// takes them.
+fn first_params(f: &AudioBusFx) -> [(u32, f32); 13] {
+    let duck_key = if f.duck {
+        f.duck_bus.min(BUS_COUNT as u32 - 1) + 1
+    } else {
+        0
+    };
+    [
+        (fx::LOWPASS, f.lowpass.max(0.0)),
+        (fx::HIGHPASS, f.highpass.max(0.0)),
+        (fx::REVERB, f.reverb.clamp(0.0, 1.0)),
+        (fx::THRESHOLD, f.threshold.min(0.0)),
+        (fx::RATIO, f.ratio.max(1.0)),
+        (fx::ATTACK, f.attack.max(0.0)),
+        (fx::RELEASE, f.release.max(0.0)),
+        (fx::MAKEUP, f.makeup),
+        (fx::DUCK_KEY, duck_key as f32),
+        (fx::DUCK_DEPTH, f.duck_depth.max(0.0)),
+        (fx::DUCK_THRESHOLD, f.duck_threshold),
+        (fx::DUCK_ATTACK, f.duck_attack.max(0.0)),
+        (fx::DUCK_RELEASE, f.duck_release.max(0.0)),
+    ]
+}
+
+/// A bus's equaliser, echo and waveshaper ([`fx`] 31 to 42).
+fn graph_params(f: &AudioBusFx) -> [(u32, f32); 12] {
+    [
+        (fx::EQ_LOW, f.eq_low.clamp(-24.0, 24.0)),
+        (fx::EQ_LOW_FREQ, f.eq_low_freq.clamp(20.0, 20_000.0)),
+        (fx::EQ_MID, f.eq_mid.clamp(-24.0, 24.0)),
+        (fx::EQ_MID_FREQ, f.eq_mid_freq.clamp(20.0, 20_000.0)),
+        (fx::EQ_MID_Q, f.eq_mid_q.clamp(0.1, 10.0)),
+        (fx::EQ_HIGH, f.eq_high.clamp(-24.0, 24.0)),
+        (fx::EQ_HIGH_FREQ, f.eq_high_freq.clamp(20.0, 20_000.0)),
+        (fx::DELAY, f.delay.clamp(0.0, 2.0)),
+        (fx::DELAY_FEEDBACK, f.delay_feedback.clamp(0.0, 0.95)),
+        (fx::DELAY_MIX, f.delay_mix.clamp(0.0, 1.0)),
+        (fx::DISTORTION, f.distortion.clamp(0.0, 1.0)),
+        (fx::DISTORTION_MIX, f.distortion_mix.clamp(0.0, 1.0)),
+    ]
+}
+
+/// The bus graph's parameters ([`GRAPH_STRIDE`] per bus): a user bus's
+/// gain (its node's volume times the snapshots'), parent and every effect;
+/// a built-in bus's equaliser, echo and waveshaper (its gain and
+/// first-version effects go as before: constants here).
+fn graph_state(
+    chosen: &[Option<AudioBusFx>; MAX_BUSES],
+    nodes: &[Option<AudioBusNode>; MAX_BUSES],
+    snap: &SnapMix,
+) -> Vec<f32> {
+    let mut out = Vec::with_capacity(GRAPH_LEN);
+    for b in 0..MAX_BUSES {
+        let f = chosen[b].unwrap_or_default();
+        let user = b >= BUS_COUNT;
+        let (gain, parent) = match (user, nodes[b]) {
+            (true, Some(n)) => (
+                n.volume.max(0.0) * snap.gain[b],
+                if (n.parent as usize) < b { n.parent } else { 0 },
+            ),
+            _ => (1.0, 0),
+        };
+        out.push(gain);
+        out.push(parent as f32);
+        let first = if user {
+            let mut f = f;
+            f.lowpass = min_cutoff(f.lowpass.max(0.0), snap.lowpass[b]);
+            f.highpass = f.highpass.max(snap.highpass[b]);
+            f
+        } else {
+            AudioBusFx::default()
+        };
+        out.extend(first_params(&first).iter().map(|p| p.1));
+        out.extend(graph_params(&f).iter().map(|p| p.1));
+    }
+    out
+}
+
+/// og.AudioMix as install makes it: the default graph, and the audio
+/// events' stream forked from the world's og.Rng.
+fn fresh_mix(world: &World) -> AudioMix {
+    let rng = world
+        .resource::<og_core::Rng>()
+        .map(|r| r.fork(crate::events::RNG_LABEL))
+        .unwrap_or_default();
+    AudioMix {
+        sent: graph_list(&default_graph()),
+        rng: rng.save(),
+    }
+}
+
+/// After a restore: a save written before og.AudioMix existed holds none,
+/// so it is made as install makes it (from the restored og.Rng's seed, so
+/// every restore of that save makes the same one). A restored world that
+/// has one keeps it.
+pub fn restored(world: &mut World) -> Result<()> {
+    if world.id::<AudioMix>().is_ok() && !world.has_resource::<AudioMix>() {
+        world.insert_resource(fresh_mix(world))?;
+    }
+    Ok(())
+}
+
+/// The graph of a world with no user bus, effect or snapshot.
+fn default_graph() -> Vec<f32> {
+    graph_state(&[None; MAX_BUSES], &[None; MAX_BUSES], &SnapMix::default())
+}
+
+fn graph_list(v: &[f32]) -> og_core::List<f32, 512> {
+    og_core::List::from_slice(v).expect("the graph fits its list")
+}
+
+/// The command that sends entry `i` of the graph's state.
+fn graph_command(i: usize, v: f32, tick: u64, ramp: f64) -> Option<Command> {
+    let (b, k) = (i / GRAPH_STRIDE, i % GRAPH_STRIDE);
+    let user = b >= BUS_COUNT;
+    let param = match k {
+        0 if user => {
+            let mut c = Command::new(Op::Bus, tick);
+            c.bus = b as u8;
+            c.gain = v;
+            c.position = ramp;
+            return Some(c);
+        }
+        1 if user => fx::PARENT,
+        2..15 if user => (k - 1) as u32,
+        15.. => fx::EQ_LOW + (k - 15) as u32,
+        _ => return None,
+    };
+    let mut c = Command::new(Op::Fx, tick);
+    c.bus = b as u8;
+    c.voice = param;
+    c.gain = v;
+    Some(c)
+}
+
+/// What the mixer snapshots add up to this tick, per bus.
+#[derive(Clone, Copy)]
+struct SnapMix {
+    gain: [f32; MAX_BUSES],
+    /// Cutoffs in Hz, 0 none.
+    lowpass: [f32; MAX_BUSES],
+    highpass: [f32; MAX_BUSES],
+    /// A weight moved this tick: gains ramp across it.
+    moving: bool,
+}
+
+impl Default for SnapMix {
+    fn default() -> Self {
+        SnapMix {
+            gain: [1.0; MAX_BUSES],
+            lowpass: [0.0; MAX_BUSES],
+            highpass: [0.0; MAX_BUSES],
+            moving: false,
+        }
+    }
+}
+
+/// Moves every snapshot's weight a tick towards its target (written
+/// back) and adds up their effect at the new weights.
+fn snapshots(ctx: &SystemContext<'_>, tick_rate: u32) -> Result<SnapMix> {
+    let mut mix = SnapMix::default();
+    let entities: Vec<Entity> = ctx.query(8)?.flat_map(|a| a.entities().to_vec()).collect();
+    let (top, bottom) = (og_core::math::ln(20_000.0), og_core::math::ln(20.0));
+    for e in entities {
+        let mut s = ctx.get::<AudioSnapshot>(e)?;
+        let target = if s.active { 1.0f32 } else { 0.0 };
+        let was = s.weight.clamp(0.0, 1.0);
+        let w = if s.fade <= 0.0 {
+            target
+        } else {
+            let step = 1.0 / (s.fade * tick_rate as f32);
+            if target > was {
+                (was + step).min(target)
+            } else {
+                (was - step).max(target)
+            }
+        };
+        if w.to_bits() != s.weight.to_bits() {
+            s.weight = w;
+            ctx.set(e, s)?;
+        }
+        mix.moving |= w != was;
+        if w <= 0.0 {
+            continue;
+        }
+        for (b, &v) in s.volume.as_slice().iter().enumerate().take(MAX_BUSES) {
+            mix.gain[b] *= 1.0 + (v.max(0.0) - 1.0) * w;
+        }
+        for (b, &c) in s.lowpass.as_slice().iter().enumerate().take(MAX_BUSES) {
+            if c > 0.0 {
+                let c = og_core::math::exp(
+                    top + (og_core::math::ln(c.clamp(20.0, 20_000.0)) - top) * w,
+                );
+                mix.lowpass[b] = min_cutoff(mix.lowpass[b], c);
+            }
+        }
+        for (b, &c) in s.highpass.as_slice().iter().enumerate().take(MAX_BUSES) {
+            if c > 0.0 {
+                let c = og_core::math::exp(
+                    bottom + (og_core::math::ln(c.clamp(20.0, 20_000.0)) - bottom) * w,
+                );
+                mix.highpass[b] = mix.highpass[b].max(c);
+            }
+        }
+    }
+    Ok(mix)
+}
+
+/// Every built-in bus's effect parameters as the mixer takes them ([`fx`]
+/// ids), with the shared reverb's room and damping on master.
 pub(crate) fn fx_state(
     chosen: &[Option<AudioBusFx>; BUS_COUNT],
     audio: &Audio,
@@ -631,27 +861,7 @@ pub(crate) fn fx_state(
     let mut out = Vec::with_capacity(BUS_COUNT * 13 + 3);
     for (b, f) in chosen.iter().enumerate() {
         let f = f.unwrap_or_default();
-        let b = b as u8;
-        let duck_key = if f.duck {
-            f.duck_bus.min(BUS_COUNT as u32 - 1) + 1
-        } else {
-            0
-        };
-        out.extend_from_slice(&[
-            (b, fx::LOWPASS, f.lowpass.max(0.0)),
-            (b, fx::HIGHPASS, f.highpass.max(0.0)),
-            (b, fx::REVERB, f.reverb.clamp(0.0, 1.0)),
-            (b, fx::THRESHOLD, f.threshold.min(0.0)),
-            (b, fx::RATIO, f.ratio.max(1.0)),
-            (b, fx::ATTACK, f.attack.max(0.0)),
-            (b, fx::RELEASE, f.release.max(0.0)),
-            (b, fx::MAKEUP, f.makeup),
-            (b, fx::DUCK_KEY, duck_key as f32),
-            (b, fx::DUCK_DEPTH, f.duck_depth.max(0.0)),
-            (b, fx::DUCK_THRESHOLD, f.duck_threshold),
-            (b, fx::DUCK_ATTACK, f.duck_attack.max(0.0)),
-            (b, fx::DUCK_RELEASE, f.duck_release.max(0.0)),
-        ]);
+        out.extend(first_params(&f).iter().map(|&(k, v)| (b as u8, k, v)));
     }
     out.push((0, fx::ROOM, audio.reverb_room.clamp(0.0, 1.0)));
     out.push((0, fx::DAMPING, audio.reverb_damping.clamp(0.0, 1.0)));
@@ -722,7 +932,7 @@ fn zones(
     ctx: &SystemContext<'_>,
     places: &Places,
     ear: Vec3,
-    chosen: &mut [Option<AudioBusFx>; BUS_COUNT],
+    chosen: &mut [Option<AudioBusFx>; MAX_BUSES],
     room: &mut Audio,
 ) -> Result<()> {
     let entities: Vec<Entity> = ctx.query(5)?.flat_map(|a| a.entities().to_vec()).collect();
@@ -797,14 +1007,21 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
     let mut snapshot: Vec<Command> = Vec::new();
     let mut live: Vec<u32> = Vec::new();
 
-    // Bus gains.
-    let gains = audio.gains();
+    // Mixer snapshots, then the built-in buses' gains (a snapshot's blend
+    // ramps them across the tick).
+    let snap = snapshots(ctx, tick_rate)?;
+    let ramp = if snap.moving { -1.0 } else { 0.0 };
+    let mut gains = audio.gains();
+    for (b, g) in gains.iter_mut().enumerate() {
+        *g = g.max(0.0) * snap.gain[b];
+    }
     let sent = stream.bus_sent.to_array();
     for (b, (&g, &was)) in gains.iter().zip(sent.iter()).enumerate() {
         if g != was {
             let mut c = Command::new(Op::Bus, tick);
             c.bus = b as u8;
             c.gain = g.max(0.0);
+            c.position = ramp;
             commands.push(c);
         }
     }
@@ -818,7 +1035,18 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
         velocity: Vec3::ZERO,
         doppler: 1.0,
         hrtf: false,
+        user_buses: 0,
     };
+    let mut nodes: [Option<AudioBusNode>; MAX_BUSES] = [None; MAX_BUSES];
+    let node_entities: Vec<Entity> = ctx.query(7)?.flat_map(|a| a.entities().to_vec()).collect();
+    for e in node_entities {
+        let n = ctx.get::<AudioBusNode>(e)?;
+        let i = n.index as usize;
+        if (BUS_COUNT..MAX_BUSES).contains(&i) && nodes[i].is_none() {
+            nodes[i] = Some(n);
+            ear.user_buses |= 1 << i;
+        }
+    }
     let places = Places::read(ctx)?;
     let listener = ctx.query(3)?.flat_map(|a| a.entities().to_vec()).next();
     if let Some(e) = listener {
@@ -845,22 +1073,61 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
     }
 
     // Bus effects: every parameter again when any changed.
-    let mut chosen: [Option<AudioBusFx>; BUS_COUNT] = [None; BUS_COUNT];
+    let mut chosen: [Option<AudioBusFx>; MAX_BUSES] = [None; MAX_BUSES];
     let fx_entities: Vec<Entity> = ctx.query(4)?.flat_map(|a| a.entities().to_vec()).collect();
     for e in fx_entities {
         let f = ctx.get::<AudioBusFx>(e)?;
-        let b = f.bus.min(BUS_COUNT as u32 - 1) as usize;
+        let b = if (BUS_COUNT as u32..MAX_BUSES as u32).contains(&f.user_bus) {
+            f.user_bus as usize
+        } else {
+            f.bus.min(BUS_COUNT as u32 - 1) as usize
+        };
         if chosen[b].is_none() {
             chosen[b] = Some(f);
         }
     }
     let mut room = audio;
     zones(ctx, &places, ear.position, &mut chosen, &mut room)?;
-    let fx_now = fx_state(&chosen, &room);
+    // A snapshot's filters on the built-in buses ride their first-version
+    // effects (unchanged at weight 0).
+    for (b, slot) in chosen.iter_mut().enumerate().take(BUS_COUNT) {
+        if snap.lowpass[b] > 0.0 || snap.highpass[b] > 0.0 {
+            let mut f = slot.unwrap_or(AudioBusFx {
+                bus: b as u32,
+                ..AudioBusFx::default()
+            });
+            f.lowpass = min_cutoff(f.lowpass.max(0.0), snap.lowpass[b]);
+            f.highpass = f.highpass.max(snap.highpass[b]);
+            *slot = Some(f);
+        }
+    }
+    let builtin: [Option<AudioBusFx>; BUS_COUNT] = [chosen[0], chosen[1], chosen[2], chosen[3]];
+    let fx_now = fx_state(&builtin, &room);
     let fx_now_hash = fx_hash(&fx_now);
     if fx_now_hash != stream.fx {
         commands.extend(fx_commands(&fx_now, tick));
         stream.fx = fx_now_hash;
+    }
+    // The bus graph: what changed since it was last sent.
+    let graph = graph_state(&chosen, &nodes, &snap);
+    let mut mix = *ctx.resource::<AudioMix>()?;
+    let defaults;
+    let was: &[f32] = if mix.sent.len() == GRAPH_LEN {
+        mix.sent.as_slice()
+    } else {
+        defaults = default_graph();
+        &defaults
+    };
+    let mut graph_changed = false;
+    for (i, (&v, &w)) in graph.iter().zip(was).enumerate() {
+        if v.to_bits() != w.to_bits() {
+            graph_changed = true;
+            commands.extend(graph_command(i, v, tick, ramp));
+        }
+    }
+    if graph_changed || mix.sent.len() != GRAPH_LEN {
+        mix.sent = graph_list(&graph);
+        *ctx.resource_mut::<AudioMix>()? = mix;
     }
 
     // Playheads whose AudioSource was removed.
@@ -1285,6 +1552,12 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
             all.push(c);
         }
         all.extend(fx_commands(&fx_now, tick));
+        all.extend(
+            graph
+                .iter()
+                .enumerate()
+                .filter_map(|(i, &v)| graph_command(i, v, tick, 0.0)),
+        );
         all.extend(snapshot);
         TickPacket {
             tick,

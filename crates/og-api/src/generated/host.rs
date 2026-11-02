@@ -641,6 +641,8 @@ pub trait TilemapApi: Wire {
 
 /// `audio`: packages/knowledge/wiki/audio.md.
 pub trait AudioApi: Wire {
+    /// `og.audio.createSound`
+    fn og_audio_create_sound(&self, world: u32, desc: Option<String>) -> String;
     /// `og.audio.outputLatency`
     fn og_audio_output_latency(&self, world: u32) -> f64;
 }
@@ -1444,6 +1446,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_tilemap_get_tile",
     "og_tilemap_cell_at",
     "og_tilemap_cell_center",
+    "og_audio_create_sound",
     "og_audio_output_latency",
     "og_nav_grid",
     "og_nav_grid_from_tilemap",

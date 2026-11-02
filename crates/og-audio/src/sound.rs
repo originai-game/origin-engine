@@ -1,5 +1,7 @@
-//! Sounds the mixer plays: a bank of generational handles over QOA files
-//! (or 16-bit PCM) and the QOA frames decoded from them.
+//! Sounds the mixer plays: a bank of generational handles over QOA files,
+//! Opus sounds (or 16-bit PCM) and the blocks decoded from them: a QOA
+//! frame (5120 samples per channel) or an Opus block (23,040 at 48 kHz,
+//! `opus.rs`), each decoding on its own to the same samples.
 //!
 //! Nothing is decoded at insert. A QOA file is indexed (its frame table)
 //! and its QOA frames (5120 samples per channel, independent of each
@@ -18,7 +20,7 @@
 //! chunk's frames decode exactly as the same frames of the whole file.
 
 use crate::decode::Decoding;
-use crate::qoa;
+use crate::{opus, qoa};
 use og_core::IdMap;
 use og_core::{Error, ErrorKind, Handle, Pool, Result};
 use std::collections::BTreeSet;
@@ -46,6 +48,38 @@ enum Storage {
     /// Cooked in chunks of `per_chunk` QOA frames: the first always
     /// resident, the others while the host keeps them there.
     Chunked(Chunked),
+    /// An Opus sound (`opus.rs`) and the byte range of each of its blocks,
+    /// decoded into the sound's frame cache like a QOA file's frames.
+    Opus {
+        bytes: Vec<u8>,
+        blocks: Vec<(usize, usize)>,
+    },
+}
+
+/// What a decoder beside the tick decodes for one block of a sound.
+pub(crate) enum BlockFile {
+    /// A one-frame QOA file.
+    Qoa(Vec<u8>),
+    /// An Opus block's packets, and its samples per channel.
+    Opus {
+        bytes: Vec<u8>,
+        channels: usize,
+        len: u64,
+    },
+}
+
+impl BlockFile {
+    /// Decodes it: interleaved samples.
+    pub(crate) fn decode(&self) -> Option<Vec<i16>> {
+        match self {
+            BlockFile::Qoa(file) => qoa::decode(file).ok().map(|d| d.samples),
+            BlockFile::Opus {
+                bytes,
+                channels,
+                len,
+            } => opus::decode_block(bytes, *channels, *len).ok(),
+        }
+    }
 }
 
 /// The QOA frames of one chunk: its bytes and each frame's byte range.
@@ -77,9 +111,10 @@ impl Chunked {
     }
 }
 
-/// The decoded QOA frames of a QOA or chunked sound.
+/// The decoded blocks (QOA frames, Opus blocks) of a QOA, chunked or Opus
+/// sound.
 pub(crate) struct FrameCache {
-    /// Per QOA frame, its interleaved samples once decoded.
+    /// Per block, its interleaved samples once decoded.
     pub(crate) slots: Mutex<Vec<Option<Arc<[i16]>>>>,
     /// Every frame stays once decoded (a short sound, as one decoded at
     /// insert used to); otherwise only the first does, and the others while
@@ -156,22 +191,39 @@ impl std::fmt::Debug for SoundData {
 }
 
 impl SoundData {
-    /// Whether it streams: a long QOA or chunked sound, whose frames are
-    /// decoded as the playheads near them and dropped behind them (a short
-    /// one's stay decoded once decoded).
+    /// Whether it streams: a long QOA, chunked or Opus sound, whose blocks
+    /// are decoded as the playheads near them and dropped behind them (a
+    /// short one's stay decoded once decoded).
     pub fn streamed(&self) -> bool {
         match &self.storage {
-            Storage::Qoa { .. } => self.cache.as_ref().is_some_and(|c| !c.pinned),
+            Storage::Qoa { .. } | Storage::Opus { .. } => {
+                self.cache.as_ref().is_some_and(|c| !c.pinned)
+            }
             Storage::Chunked(_) => true,
             _ => false,
         }
     }
 
-    /// QOA frames in the sound (0 for PCM or a silent stand-in).
-    pub(crate) fn qoa_frames(&self) -> usize {
+    /// Whether it is an Opus sound.
+    pub fn is_opus(&self) -> bool {
+        matches!(self.storage, Storage::Opus { .. })
+    }
+
+    /// Samples per channel in one of its blocks: a QOA frame's 5120, an
+    /// Opus block's 23,040.
+    pub fn block_len(&self) -> u64 {
         match &self.storage {
-            Storage::Qoa { .. } | Storage::Chunked(_) => {
-                self.frames.div_ceil(QOA_FRAME_LEN) as usize
+            Storage::Opus { .. } => opus::BLOCK_FRAMES,
+            _ => QOA_FRAME_LEN,
+        }
+    }
+
+    /// Blocks in the sound (QOA frames or Opus blocks; 0 for PCM or a
+    /// silent stand-in).
+    pub(crate) fn blocks(&self) -> usize {
+        match &self.storage {
+            Storage::Qoa { .. } | Storage::Chunked(_) | Storage::Opus { .. } => {
+                self.frames.div_ceil(self.block_len()) as usize
             }
             _ => 0,
         }
@@ -208,6 +260,7 @@ impl SoundData {
         let held = match &self.storage {
             Storage::Resident(s) => s.len() * 2,
             Storage::Qoa { qoa, .. } => qoa.len(),
+            Storage::Opus { bytes, .. } => bytes.len(),
             Storage::Silent(_) => 0,
             Storage::Chunked(c) => c
                 .slots
@@ -226,9 +279,10 @@ impl SoundData {
         self.frames as f64 / f64::from(self.sample_rate.max(1))
     }
 
-    /// QOA frame `k` as a one-frame QOA file, for a decoder beside the
-    /// tick; None when its chunk is not resident (nor read by its loader).
-    pub(crate) fn frame_file(&self, k: usize) -> Option<Vec<u8>> {
+    /// Block `k` as a decoder beside the tick takes it (a one-frame QOA
+    /// file, an Opus block's packets); None when its chunk is not resident
+    /// (nor read by its loader).
+    pub(crate) fn frame_file(&self, k: usize) -> Option<BlockFile> {
         let chunk;
         let (qoa, &(offset, size)) = match &self.storage {
             Storage::Qoa { qoa, frames } => (qoa, frames.get(k)?),
@@ -237,14 +291,36 @@ impl SoundData {
                 chunk = c.chunk(at).or_else(|| self.load_chunk(c, at))?;
                 (&chunk.bytes, chunk.frames.get(k % c.per_chunk)?)
             }
+            Storage::Opus { bytes, blocks } => {
+                let &(a, b) = blocks.get(k)?;
+                return Some(BlockFile::Opus {
+                    bytes: bytes[a..b].to_vec(),
+                    channels: self.channels,
+                    len: self.frame_len(k),
+                });
+            }
             _ => return None,
         };
-        Some(self.one_frame_file(k, &qoa[offset..offset + size]))
+        Some(BlockFile::Qoa(
+            self.one_frame_file(k, &qoa[offset..offset + size]),
+        ))
     }
 
-    /// Samples per channel in QOA frame `k`.
+    /// An Opus sound's block `k`: its packets and samples per channel.
+    pub(crate) fn opus_block(&self, k: usize) -> Option<(&[u8], u64)> {
+        match &self.storage {
+            Storage::Opus { bytes, blocks } => {
+                let &(a, b) = blocks.get(k)?;
+                Some((&bytes[a..b], self.frame_len(k)))
+            }
+            _ => None,
+        }
+    }
+
+    /// Samples per channel in block `k`.
     pub(crate) fn frame_len(&self, k: usize) -> u64 {
-        (self.frames.saturating_sub(k as u64 * QOA_FRAME_LEN)).min(QOA_FRAME_LEN)
+        let n = self.block_len();
+        (self.frames.saturating_sub(k as u64 * n)).min(n)
     }
 
     /// A QOA frame is self-contained (its own LMS state), so one frame
@@ -258,11 +334,15 @@ impl SoundData {
         file
     }
 
-    /// Decodes QOA frame `k` (interleaved samples) where it is read; None
-    /// when it is not resident (a chunk the host has not put there yet).
+    /// Decodes block `k` (interleaved samples) where it is read; None when
+    /// it is not resident (a chunk the host has not put there yet).
     fn decode_frame(&self, k: usize, held: &mut Vec<(usize, Arc<Chunk>)>) -> Option<Vec<i16>> {
         let chunk;
         let (qoa, &(offset, size)) = match &self.storage {
+            Storage::Opus { .. } => {
+                let (block, len) = self.opus_block(k)?;
+                return opus::decode_block(block, self.channels, len).ok();
+            }
             Storage::Qoa { qoa, frames } => (qoa, frames.get(k)?),
             Storage::Chunked(c) => {
                 let at = k / c.per_chunk;
@@ -477,10 +557,10 @@ impl SoundBank {
         self.inner.read().expect("sound bank lock").decoding.clone()
     }
 
-    /// A frame cache for a QOA or chunked sound of `frames` samples.
-    fn cache(&self, frames: u64, pinned: bool) -> Option<FrameCache> {
+    /// A frame cache for a sound of `frames` samples in blocks of `block`.
+    fn cache(&self, frames: u64, block: u64, pinned: bool) -> Option<FrameCache> {
         Some(FrameCache {
-            slots: Mutex::new(vec![None; frames.div_ceil(QOA_FRAME_LEN) as usize]),
+            slots: Mutex::new(vec![None; frames.div_ceil(block) as usize]),
             pinned,
             decoding: self.decoding(),
         })
@@ -623,7 +703,63 @@ impl SoundBank {
                 qoa: bytes.to_vec(),
                 frames: index,
             },
-            cache: self.cache(frames, pinned),
+            cache: self.cache(frames, QOA_FRAME_LEN, pinned),
+        })
+    }
+
+    /// Adds an Opus sound: a cooked sound's `opus` section
+    /// (`og_bundle::opus`). Indexed, not decoded: its blocks are decoded
+    /// beside the tick as QOA frames are. Returns its handle (never 0).
+    pub fn insert_opus(&self, id: &str, bytes: &[u8]) -> Result<u64> {
+        let data = self.opus_data(id, bytes)?;
+        Ok(self.put(data))
+    }
+
+    /// Puts an Opus sound behind an existing handle (its streaming group
+    /// loaded), as [`SoundBank::replace_qoa`] does a QOA file. False for a
+    /// handle not in the bank.
+    pub fn replace_opus(&self, handle: u64, id: &str, bytes: &[u8]) -> Result<bool> {
+        let Some(old) = self.get(handle) else {
+            return Ok(false);
+        };
+        let data = self.opus_data(id, bytes)?;
+        if (data.sample_rate, data.channels, data.frames)
+            != (old.sample_rate, old.channels, old.frames)
+        {
+            return Err(invalid(
+                id,
+                format!(
+                    "{} Hz x{} for {} frames replaces {} Hz x{} for {}",
+                    data.sample_rate,
+                    data.channels,
+                    data.frames,
+                    old.sample_rate,
+                    old.channels,
+                    old.frames
+                ),
+            ));
+        }
+        let data = Arc::new(data);
+        if let Storage::Silent(cell) = &old.storage {
+            let _ = cell.set(data.clone());
+        }
+        Ok(self.swap(handle, data))
+    }
+
+    fn opus_data(&self, id: &str, bytes: &[u8]) -> Result<SoundData> {
+        let ix = opus::index(bytes).map_err(|e| invalid(id, e))?;
+        let resident_seconds = self.inner.read().expect("sound bank lock").resident_seconds;
+        let pinned = ix.frames as f64 <= resident_seconds * f64::from(opus::RATE);
+        Ok(SoundData {
+            id: id.to_string(),
+            sample_rate: opus::RATE,
+            channels: ix.channels,
+            frames: ix.frames,
+            cache: self.cache(ix.frames, opus::BLOCK_FRAMES, pinned),
+            storage: Storage::Opus {
+                bytes: bytes.to_vec(),
+                blocks: ix.blocks,
+            },
         })
     }
 
@@ -732,7 +868,7 @@ impl SoundBank {
                 slots: RwLock::new(slots),
                 loader: RwLock::new(None),
             }),
-            cache: self.cache(total, false),
+            cache: self.cache(total, QOA_FRAME_LEN, false),
         })
     }
 
@@ -851,6 +987,8 @@ impl SoundBank {
 /// time from the sound's frame cache, decoding one nobody decoded yet.
 pub(crate) struct Reader {
     data: Arc<SoundData>,
+    /// Samples per channel in one of the sound's blocks.
+    block: u64,
     slots: [(usize, Arc<[i16]>); 2],
     evict: usize,
     /// A chunked sound's chunk being read and the next.
@@ -863,6 +1001,7 @@ const SCALE: f32 = 1.0 / 32768.0;
 impl Reader {
     pub fn new(data: Arc<SoundData>) -> Reader {
         Reader {
+            block: data.block_len(),
             data,
             slots: [(EMPTY, Arc::from([])), (EMPTY, Arc::from([]))],
             evict: 0,
@@ -881,15 +1020,16 @@ impl Reader {
             Storage::Resident(s) => (s, i as usize * ch),
             Storage::Silent(cell) => match cell.get() {
                 Some(real) => {
+                    self.block = real.block_len();
                     self.data = real.clone();
                     self.slots = [(EMPTY, Arc::from([])), (EMPTY, Arc::from([]))];
                     return self.frame(i);
                 }
                 None => return (0.0, 0.0),
             },
-            Storage::Qoa { .. } | Storage::Chunked(_) => {
-                let k = (i / QOA_FRAME_LEN) as usize;
-                let off = (i % QOA_FRAME_LEN) as usize * ch;
+            Storage::Qoa { .. } | Storage::Chunked(_) | Storage::Opus { .. } => {
+                let k = (i / self.block) as usize;
+                let off = (i % self.block) as usize * ch;
                 let slot = if self.slots[0].0 == k {
                     0
                 } else if self.slots[1].0 == k {

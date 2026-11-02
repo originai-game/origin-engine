@@ -555,6 +555,8 @@ export interface HostAbi<A, V> {
   og_tilemap_cell_at(world: number, entity: number, point: string): string;
   /** `og.tilemap.cellCenter` */
   og_tilemap_cell_center(world: number, entity: number, x: number, y: number): string;
+  /** `og.audio.createSound` */
+  og_audio_create_sound(world: number, desc: string | undefined): string;
   /** `og.audio.outputLatency` */
   og_audio_output_latency(world: number): number;
   /** `og.nav.grid` */
@@ -1301,6 +1303,7 @@ export const SYMBOLS: readonly string[] = [
   "og_tilemap_get_tile",
   "og_tilemap_cell_at",
   "og_tilemap_cell_center",
+  "og_audio_create_sound",
   "og_audio_output_latency",
   "og_nav_grid",
   "og_nav_grid_from_tilemap",

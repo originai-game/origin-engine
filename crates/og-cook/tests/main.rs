@@ -30,6 +30,7 @@ mod sfx;
 mod shader;
 mod sound_chunks;
 mod sound_formats;
+mod sound_opus;
 mod stream;
 mod strings;
 mod support;

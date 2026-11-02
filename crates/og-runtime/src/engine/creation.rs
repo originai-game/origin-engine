@@ -100,6 +100,20 @@ const REGISTERED_BY_MODULES: &[&str] = &[
     "og.PointerLock",
 ];
 
+/// An engine record's schema at the version its module registers, so the
+/// module adopts the IDL's record: a record whose fields changed since
+/// saves held it is at a later version (og-audio's og.AudioSource and
+/// og.AudioBusFx, version 2: the bus graph and the bus effects).
+fn versioned(mut schema: og_core::Schema) -> og_core::Schema {
+    use og_core::Reflect;
+    schema.version = match schema.name.as_str() {
+        "og.AudioSource" => og_audio::AudioSource::schema().version,
+        "og.AudioBusFx" => og_audio::AudioBusFx::schema().version,
+        _ => return schema,
+    };
+    schema
+}
+
 /// Builds a world from game `game` and every declaration so far: the
 /// engine's records (IDL order), the game's records (declaration order), the
 /// probe (which registers `og.Input`), then the systems (declared order with
@@ -165,7 +179,7 @@ pub(crate) fn assemble(
             continue;
         }
         match Layout::from_decl(decl).and_then(|l| {
-            world.register_schema(l.schema()).map_err(err)?;
+            world.register_schema(versioned(l.schema())).map_err(err)?;
             Ok(l)
         }) {
             Ok(layout) => {

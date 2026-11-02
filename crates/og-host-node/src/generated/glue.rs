@@ -1653,6 +1653,12 @@ pub fn og_tilemap_cell_center(env: Env, world: u32, entity: f64, x: u32, y: u32)
     <Host as TilemapApi>::og_tilemap_cell_center(&Host, world, entity, x, y)
 }
 
+#[napi(js_name = "og_audio_create_sound")]
+pub fn og_audio_create_sound(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as AudioApi>::og_audio_create_sound(&Host, world, desc)
+}
+
 #[napi(js_name = "og_audio_output_latency")]
 pub fn og_audio_output_latency(env: Env, world: u32) -> f64 {
     let _env = crate::EnvScope::enter(&env);

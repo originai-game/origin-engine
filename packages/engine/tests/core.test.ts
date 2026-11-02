@@ -190,3 +190,27 @@ test.skipIf(STALE_WASM)("og.audio.outputLatency is 0 headless and the web host's
   expect(web.expected).toBeCloseTo(0.012 + 2048 / 48000, 9);
   expect(web.moved).toBeCloseTo(web.expectedMoved!, 9);
 }, 120_000);
+
+type Events = { info: unknown; refused: { ok: boolean; reason: string }; picks: number[]; hash: string };
+
+function audioEvents(host: string, seed: number): Events {
+  const r = Bun.spawnSync(["bun", "tests/support/core-round.ts", "--host", host, "--case", "audioEvents", "--seed", String(seed)], { cwd: pkg });
+  const out = new TextDecoder().decode(r.stdout);
+  if (r.exitCode !== 0) throw new Error(`${host} audioEvents: ${new TextDecoder().decode(r.stderr)}${out}`);
+  return JSON.parse(out.trim().split("\n").pop()!) as Events;
+}
+
+test("og.audio.createSound makes sounds from TypeScript and an og.AudioEvent picks among them by the world's seed", () => {
+  const a = audioEvents("node", 5);
+  const b = audioEvents("node", 5);
+  const c = audioEvents("node", 6);
+  expect(a.info).toMatchObject({ ok: true, value: { rate: 48000, channels: 1, frames: 2400, chunks: 0 } });
+  expect(a.refused.ok).toBeFalse();
+  expect(a.refused.reason).toContain("whole frames");
+  // A trigger every other tick and a 0.05 s cooldown (3 ticks): every fourth tick plays.
+  expect(a.picks.length).toBe(30);
+  expect(new Set(a.picks).size).toBe(4);
+  expect(b.picks).toEqual(a.picks);
+  expect(b.hash).toBe(a.hash);
+  expect(c.picks).not.toEqual(a.picks);
+}, 120_000);

@@ -92,6 +92,30 @@
       {
         "member": "web shell: device pixel ratio",
         "summary": "A window moved to a monitor of another scale (or a page zoom) resizes the canvas and og-ui before the next frame, through a (resolution: <dpr>dppx) query re-armed at each ratio, so no frame is drawn blurry."
+      },
+      {
+        "member": "og.AudioBusNode, AudioSource.userBus, AudioBusFx.userBus",
+        "summary": "A bus graph: user buses 4 to 15, each an og.AudioBusNode with a parent (a built-in bus or a lower user bus) and a volume multiplied down the chain to master, so a footsteps bus under sfx is turned down with sfx. AudioSource.userBus routes a source into one; an og.AudioBusFx with userBus puts effects on it. The graph reaches the mixer as commands in the stream, only what changed, so it is in the world hash."
+      },
+      {
+        "member": "og.AudioSnapshot",
+        "summary": "Mixer snapshots (combat, underwater, paused): per-bus volumes, low-passes and high-passes the mix blends towards while `active` and back from when not, over `fade` seconds; `weight` is written each tick, and the gains ramp linearly across each tick, so a blend is a straight line to the sample. Several snapshots multiply their volumes and take the lowest low-pass and highest high-pass."
+      },
+      {
+        "member": "AudioBusFx.eqLow, eqLowFreq, eqMid, eqMidFreq, eqMidQ, eqHigh, eqHighFreq, delay, delayFeedback, delayMix, distortion, distortionMix",
+        "summary": "Bus effects: a three-band equaliser (low shelf, peak, high shelf), an echo with feedback and mix (its delay to the sample) and a tanh waveshaper, on any bus, built-in or user."
+      },
+      {
+        "member": "og.AudioEvent, AudioEventOrder",
+        "summary": "Audio events: one of up to eight sounds per trigger, chosen weighted-random, round-robin or shuffled, with volume (dB) and pitch (semitone) jitter, a cooldown and a voice limit that steals the oldest voice or ignores the trigger. The og.audioEvents system draws on the engine's seeded stream for audio (forked from og.Rng's seed, kept in the world, never Math.random), so a seed and the same triggers play the same sounds at the same pitches on every host and replay, and the game's og.Rng never moves for a sound. Each play is a voice entity parented to the event's, despawned when it ends."
+      },
+      {
+        "member": "og.audio.createSound, SoundDesc",
+        "summary": "PCM a game computes in TypeScript (a Float32Array of interleaved samples, its rate and 1 or 2 channels) becomes a sound that plays, loops and pitches as a loaded one; og.load.soundInfo reports it."
+      },
+      {
+        "member": "og cook: sound { codec opus; bitrate }, .opus sources",
+        "summary": "Opus beside QOA for music and long sounds: `sound { codec opus bitrate 96 }` in a sound's import settings cooks it to Opus at 48 kHz (about 40 dB SNR at 96 kbit/s, 40 % of QOA's size), and .opus files (and Opus in .ogg) are sources. The blob is og.Sound version 3 (a `codec` field; cooked bundles re-cook). The runtime decodes its 0.48 s blocks beside the tick on both hosts and streams a long track through the frame cache, sample for sample its whole decode; on the web the engine Worker decodes a few packets after each frame's audio, never inside a tick. The decoder adds about 82 KB brotli to the wasm."
       }
     ],
     "fixed": [

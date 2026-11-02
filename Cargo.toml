@@ -18,6 +18,9 @@ image = { version = "0.25.10", default-features = false, features = ["png", "jpe
 bytemuck = { version = "1.25.2", features = ["derive"] }
 pollster = "1.0.1"
 log = "0.4"
+# The Opus codec (RFC 6716), pure Rust and no dependencies (BSD-3-Clause):
+# og-bundle's `opus` (the cook encodes, og-audio decodes).
+opus-pure = "0.2.2"
 
 # No debuginfo in dev. On macOS, debuginfo stays in the object files
 # (split-debuginfo unpacked) and rustc never removes an incremental unit's
@@ -143,6 +146,11 @@ opt-level = 3
 [profile.dev.package.basis-universal]
 opt-level = 3
 [profile.dev.package.meshopt]
+opt-level = 3
+# The Opus codec: the cook encodes every Opus sound and the mixer decodes
+# its blocks as voices reach them; at -O0 a packet costs about 20 times
+# its optimised 56 us and a 3-minute track's test minutes.
+[profile.dev.package.opus-pure]
 opt-level = 3
 [profile.dev.package.fdsm]
 opt-level = 3

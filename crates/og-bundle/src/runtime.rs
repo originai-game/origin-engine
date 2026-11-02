@@ -749,13 +749,21 @@ impl Bundle {
             .map_err(|_| invalid(&blob, "the document text is not UTF-8"))
     }
 
-    /// Decodes a sound blob (the QOA stays encoded until [`CookedSound::decode`]).
+    /// Decodes a sound blob (the QOA or Opus stays encoded until
+    /// [`CookedSound::decode`]).
     pub fn sound(&self, id: &str, bytes: &[u8]) -> Result<CookedSound, LoadError> {
         let blob = self.blob::<format::Sound>(id, bytes)?;
+        let meta = one::<SoundMeta>(&blob)?;
+        let (qoa, opus) = match meta.codec {
+            format::sound_codec::QOA => (blob.raw("qoa")?.to_vec(), Vec::new()),
+            format::sound_codec::OPUS => (Vec::new(), blob.raw("opus")?.to_vec()),
+            c => return Err(invalid(&blob, format!("unknown sound codec {c}"))),
+        };
         Ok(CookedSound {
             id: asset_id(id).to_string(),
-            meta: one::<SoundMeta>(&blob)?,
-            qoa: blob.raw("qoa")?.to_vec(),
+            meta,
+            qoa,
+            opus,
         })
     }
 

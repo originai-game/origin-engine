@@ -26,11 +26,13 @@ ordinary dependency).
 
 | Module | Entry points |
 |---|---|
-| `system` | `install(&mut World, &AudioDesc) -> AudioLink`, `AudioLink` (`bank`, `attach`, `detach`, `drain`, `next_tick`, `dropped`), `publish_link`/`link`/`retire_link` (engine id → link), `SYSTEM_NAME` = `og.audio` |
-| `schema` | `AudioSource`, `AudioListener`, `Audio`, `ReverbZone` (`weight_at`), `SoundStarted`, `SoundEnded`, `end_reason`, `panning_model`, engine-owned `AudioPlayback`, `AudioStream`, the `og.Transform` mirror, `Bus` |
+| `system` | `install(&mut World, &AudioDesc) -> AudioLink`, `restored(&mut World)` (after a restore: makes og.AudioMix for a save without one), `AudioLink` (`bank`, `attach`, `detach`, `drain`, `next_tick`, `dropped`), `publish_link`/`link`/`retire_link` (engine id → link), `SYSTEM_NAME` = `og.audio` |
+| `schema` | `AudioSource`, `AudioListener`, `Audio`, `ReverbZone` (`weight_at`), `AudioBusFx`, `AudioBusNode`, `AudioSnapshot`, `AudioEvent` (`event_order`), `SoundStarted`, `SoundEnded`, `end_reason`, `panning_model`, engine-owned `AudioPlayback`, `AudioStream`, `AudioMix`, `AudioEventVoice`, the `og.Transform` mirror, `Bus`, `MAX_BUSES` |
+| `events` | the `og.audioEvents` system (`EVENTS_SYSTEM`), before `og.audio` (§Bus graph, snapshots, audio events, Opus) |
+| `opus` | og-bundle's `src/opus.rs` by path: `encode`, `index`, `decode_block`, `BlockDecoder`, `decode` |
 | `command` | `Command`, `Op`, `encode`/`decode` (56-byte records), `TickPacket` |
-| `sound` | `SoundBank` (`insert_qoa`, `insert_pcm`, `insert_chunked`, `put_chunk`, `keep_chunks`, `set_chunk_loader`, `resident_bytes`, `get`, `info`, `remove`; `with_resident_seconds`), `SoundData` (`chunking`, `resident_chunks`, `resident_bytes`), `chunks_wanted` (§Chunked sounds) |
-| `decode` | `SoundBank::start_decode_thread`, `take_decode_jobs` → `DecodeJob` (`key`, `frame`, `qoa`, `decode`), `put_decoded`, `decode_queued`, `decode_stats` → `DecodeStats`; `DECODE_AHEAD_SECONDS`, `DECODE_AHEAD_FRAMES` (§Decoding beside the tick) |
+| `sound` | `SoundBank` (`insert_qoa`, `insert_opus`, `replace_opus`, `insert_pcm`, `insert_chunked`, `put_chunk`, `keep_chunks`, `set_chunk_loader`, `resident_bytes`, `get`, `info`, `remove`; `with_resident_seconds`), `SoundData` (`chunking`, `resident_chunks`, `resident_bytes`), `chunks_wanted` (§Chunked sounds) |
+| `decode` | `SoundBank::start_decode_thread`, `take_decode_jobs` → `DecodeJob` (`key`, `frame`, `qoa`, `decode`), `put_decoded`, `decode_queued`, `decode_opus_step`, `decode_stats` → `DecodeStats`; `DECODE_AHEAD_SECONDS`, `DECODE_AHEAD_FRAMES` (§Decoding beside the tick) |
 | `resample` | the windowed sinc's constants (`SINC_ZEROS`, `SINC_TAPS`, `SINC_BETA`, `SINC_PHASES`, `SINC_MAX_SPREAD`, `WIDE_PHASES`) |
 | `mixer` | `Mixer::new(MixerDesc, SoundBank)` / `Mixer::for_link`, `push`, `pump`, `render`, `render_until_tick`, `frames_until_tick`, `skip`, `stats`; `Clock::{Driven, Free}` |
 | `sink` | `HeadlessSink` (`Null` / `Capture`), `wav(pcm, channels, rate)` |
@@ -617,6 +619,73 @@ hosts files):
    `--audio out.wav`, `device` when asked) and pumps after each step.
 5. `hello`/capabilities: `modules` lists `audio`.
 
+## Bus graph, snapshots, audio events, Opus (G2-5)
+
+**The bus graph.** Sixteen buses (`MAX_BUSES`): the four built-ins and
+user buses 4 to 15, each declared by an `og.AudioBusNode { index, parent,
+volume }`. A parent is a built-in or a lower user bus (anything else is
+master), so the graph is a tree processed from the highest index down:
+each user bus sums its voices, runs its `og.AudioBusFx` (the one whose
+`userBus` is its index) and adds into its parent. A voice's gain carries
+its bus chain (`Mixer::chain`: the bus gains multiplied down to master),
+so a user bus is turned down with its parents. `AudioSource.userBus`
+(`AudioEvent.userBus`) routes a source; 0 or an undeclared index plays on
+`bus`. The graph travels as `fx` commands (`PARENT` 30, `EQ_*` 31 to 37,
+`DELAY*` 38 to 40, `DISTORTION*` 41 and 42) and `Bus` commands for user
+buses, and only what changed: `og.AudioMix.sent` holds the last values
+sent (`GRAPH_STRIDE` 27 per bus), in every snapshot and the world hash; a
+resync sends the whole graph.
+
+**Effects.** A bus's chain is high-pass, low-pass, the equaliser (RBJ low
+shelf, peak, high shelf: `Biquad::set_band`), the tanh waveshaper
+(`Drive`: `tanh(k x) / tanh(k)`, `k = 1 + 19 amount`, mixed by
+`distortionMix`), the compressor, the echo (`Delay`: `y = x + mix · w[n-D]`,
+`w = x + feedback · w[n-D]`, D to the sample) and ducking, then the reverb
+send. The built-in buses take the new effects through the same commands.
+
+**Snapshots.** `og.AudioSnapshot { active, fade, weight, volume[16],
+lowpass[16], highpass[16] }`. Each tick og.audio moves `weight` by
+`1 / (fade · tickRate)` towards 1 or 0 (written back) and blends: a bus's
+gain times `1 + w (volume - 1)`, cutoffs log-interpolated from 20 kHz
+(low-pass) and 20 Hz (high-pass); several snapshots multiply their gains
+and take the lowest low-pass and the highest high-pass. While a weight
+moves, the bus commands carry a negative `position`, which the mixer
+ramps linearly across the whole tick (frame `i` of `T` at `(i + 1) / T`
+of the way): a blend is a straight line to the sample.
+
+**Audio events.** `og.AudioEvent` (`sounds` up to 8, `weights`, `order`
+random / roundRobin / shuffle, `volume` and `volumeJitter` dB, `pitch` and
+`pitchJitter` semitones, `cooldown`, `maxVoices` with `steal`, bus,
+spatial settings, `trigger`; written: `played`, `last`, `index`, `bag`,
+`voices`). The `og.audioEvents` system runs before og.audio: a trigger
+inside the cooldown is dropped; at `maxVoices` the oldest voice (lowest
+`og.AudioEventVoice.play`) is stopped, or the trigger dropped without
+`steal`; the pick and the jitter draw on `og.AudioMix.rng`, an
+`og_core::Rng` forked from the world's `og.Rng` with the label `og.audio`
+at install (so the game's own sequence never moves for a sound), and the
+voice is an entity with `og.AudioSource`, `og.AudioEventVoice`,
+`og.Parent` (the event's entity) and an identity `og.Transform`,
+despawned the tick after it stops.
+
+**PCM from TypeScript.** `og.audio.createSound(world, { samples, rate,
+channels })` (og-runtime) clamps the floats to 16 bits and calls
+`SoundBank::insert_pcm`; the sound is listed with the loaded ones, so
+`og.load.soundInfo` answers for it.
+
+**Opus.** A cooked sound's `opus` section (`og.Sound` version 3, `codec`
+1) is og-bundle's ogop format: 48 kHz, mono or stereo, self-contained
+blocks of 24 packets of 20 ms (23,040 frames, 0.48 s), each preceded by 2
+pre-roll packets so a block decodes alone and its seam is clean.
+`insert_opus` indexes it (`Storage::Opus`); its blocks go through the
+frame cache as QOA frames do: pinned up to the bank's resident seconds,
+streamed past them (the decode-ahead plans them; a block a voice reaches
+first is decoded there, to the same samples). Natively the decode thread
+takes both codecs; on the web the decoder Worker takes QOA only
+(`take_decode_jobs`), and the engine Worker's pump decodes four Opus
+packets after each frame's PCM (`decode_opus_step`), never inside a tick.
+opus-pure (pure Rust, BSD-3-Clause) is the codec; at opt-level s it adds
+about 235 KB raw, 82 KB brotli, to the wasm.
+
 ## Tests
 
 `cargo test -p og-audio` (`tests/audio.rs`, sounds synthesised and QOA-encoded
@@ -635,6 +704,7 @@ in `tests/support/`). Each was broken once and failed, then restored:
 | `the_scripted_scene_renders_to_a_wav` | 2.5 s of the scene, sound from frame 0, no sample above 1.0; writes `audio-scene.wav` and its waveform | — |
 | `tests/parented.rs`: `a_source_on_a_child_follows_its_moving_parent` | a source 2 m ahead of a cart moving x −10 to 10 sends, every tick, the same gain, pan and cutoff bits as a source placed there itself, the same stream hash, twice | each entity's own `Transform` again (`Places::world`) |
 | `a_listener_under_a_rig_hears_from_the_rig` | a listener under a rig at x 10 turned +90° about Y hears a source at (10, 0, 3) hard left at gain 1/3; the rig moved and turned back, 6 m right and 3 m behind | the same |
+| `tests/graph.rs` (G2-5) | the bus graph's routing and a snapshot's blend, sample for sample against an offline render; the equaliser's bands, the echo's frames and the waveshaper's harmonics; audio events' choices identical for one seed and different for another, og.Rng untouched, round-robin and shuffle orders; cooldowns, voice limits with and without stealing, despawned voices; an Opus round trip above 30 dB through the mixer; a 40 s Opus track streamed sample-identical to its whole decode with every helper schedule | — |
 | `a_zone_under_a_parent_is_where_its_parent_puts_it` | a radius-1 zone under a hall at x 20 scaled 2: weight 0 at the origin, 1 at 1.5 m from the hall; the hall moved to the origin takes its zone | the same |
 
 Measured on an M4 Pro: 1 s of the 32-voice mix renders in 17.5 ms

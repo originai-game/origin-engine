@@ -43,6 +43,12 @@ fn idl_schema(decl: &RecordDecl, version: u32) -> Schema {
                         ),
                     }
                 };
+                // A list column's `column` is its element's kind.
+                let ty = if f.list > 0 {
+                    FieldType::list(ty.scalar(), f.list as usize).expect("a list of numbers")
+                } else {
+                    ty
+                };
                 let mut s = FieldSchema::new(f.name, ty);
                 s.variants = f.variants.iter().map(|v| v.to_string()).collect();
                 s
@@ -62,8 +68,12 @@ const VERSIONS: &[(&str, u32, u64)] = &[
     ("og.AnimationGraph", 1, 0x14f7a654994eb4b2),
     ("og.AnimationPlayer", 1, 0x2bec5d121d54fe87),
     ("og.Audio", 1, 0xc68086afae021f9b),
+    ("og.AudioBusFx", 2, 0x55dfec49f19793bb),
+    ("og.AudioBusNode", 1, 0xd5fe02e154cb1de2),
+    ("og.AudioEvent", 1, 0x40a0bb866463cafa),
     ("og.AudioListener", 1, 0x51f48da421d73dc2),
-    ("og.AudioSource", 1, 0xdc2f317c2877fa94),
+    ("og.AudioSnapshot", 1, 0x515c0d8ddf345f37),
+    ("og.AudioSource", 2, 0x35081d41554c04b2),
     ("og.Blendshapes", 1, 0xbc3663f9e80b3bc0),
     ("og.Collider", 1, 0xe83c74a0520778bc),
     ("og.CollisionEnded", 1, 0x4e62d2a73639aeb5),
@@ -159,6 +169,10 @@ fn physics_audio_animation_and_input_records_have_the_idl_layouts() {
     check::<og_audio::Audio>(&mut failures);
     check::<og_audio::SoundStarted>(&mut failures);
     check::<og_audio::SoundEnded>(&mut failures);
+    check::<og_audio::AudioBusFx>(&mut failures);
+    check::<og_audio::AudioBusNode>(&mut failures);
+    check::<og_audio::AudioSnapshot>(&mut failures);
+    check::<og_audio::AudioEvent>(&mut failures);
     check::<og_anim::Transform>(&mut failures);
     check::<og_anim::Skeleton>(&mut failures);
     check::<og_anim::AnimationPlayer>(&mut failures);

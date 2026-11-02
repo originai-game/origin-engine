@@ -42,14 +42,51 @@ module audio {
 | [`og.AudioListener`](#record-AudioListener) | component | Where spatial sources are heard from: the entity's world transform (its og.Transform down og.Parent, so a listener under a camera rig hears from the rig), looking down its -Z with +X to the right. The first listener in query order is used. |
 | [`og.Audio`](#record-Audio) | resource | Bus volumes; master scales every bus. A change ramps over 256 frames in the mixer. |
 | [`og.AudioBusFx`](#record-AudioBusFx) | component | A bus's insert effects: a high- and low-pass (12 dB/octave), a compressor, side-chain ducking by another bus, and a send to the shared reverb, whose return joins master. One entity per bus (the first in query order counts); without one a bus passes straight through. |
+| [`og.AudioBusNode`](#record-AudioBusNode) | component | A user bus of the bus graph: bus `index` (4 to 15) sums the sources whose AudioSource.userBus (or AudioEvent.userBus) names it, runs its og.AudioBusFx (the one whose userBus is the index), and plays into its `parent`: a built-in bus or a user bus of a lower index, so the graph has no cycles (any other parent is master). Its volume is multiplied down the chain to master, so a footsteps bus under sfx is turned down with sfx. The first node in query order for an index counts; a removed node's sources play on their `bus`. |
+| [`og.AudioSnapshot`](#record-AudioSnapshot) | component | A mixer snapshot (combat, underwater, paused): per-bus volumes and filters the mix blends towards while `active`, and back from when not, over `fade` seconds. Each tick og.audio moves `weight` by tickDuration / fade towards 1 or 0 and sends the blend in the stream; the bus gains ramp linearly across each tick, so a blend is a straight line to the sample, not a staircase. |
+| [`AudioEventOrder`](#type-AudioEventOrder) | enum | How a AudioEvent chooses its next sound. |
+| [`AudioEventOrder()`](#column-AudioEventOrder) | column kind | A AudioEventOrder field: the variant's index. |
+| [`og.AudioEvent`](#record-AudioEvent) | component | An audio event: one of a set of sounds played on each trigger, with pitch and volume jitter, a cooldown and a voice limit (footsteps, impacts, gunshots). Set `trigger` to play it; the engine sets it back to false. |
+| [`SoundDesc`](#type-SoundDesc) | desc struct | PCM a game made itself (og.audio.createSound): a tone, a procedural effect, a recording it synthesised. |
 | [`og.ReverbZone`](#record-ReverbZone) | component | A reverb zone: a box (or a sphere) where the shared reverb sounds like this room. While the og.AudioListener is inside, og.audio eases the reverb's room size and damping, and one bus's send to it, towards the zone's; past the volume's surface it fades out linearly over `fade` metres, so walking in through a door the room grows around the listener. |
 | [`og.Music`](#record-Music) | component | A musical clock: tempo, metre and where bar 1 starts. The og.music system (before og.audio) writes the bar and beat and the times of the next beat and bar line every tick, and sends MusicBeat for every beat; an AudioSource whose startAt is nextBar starts on the bar line to the sample, so stems started together stay in step and a stinger lands on the downbeat. |
 | [`og.MusicBeat`](#record-MusicBeat) | event | A beat of a Music clock, sent in the tick whose interval holds it (systems read it the tick after). |
 | [`og.SoundStarted`](#record-SoundStarted) | event | A source started, sent in the tick it happens (systems read it the tick after). |
 | [`og.SoundEnded`](#record-SoundEnded) | event | A sound ended, sent in the tick it happens (systems read it the tick after). |
+| [`og.audio.createSound`](#fn-createSound) | function | Make a sound from PCM the game computed: it plays, loops and pitches as a loaded one (AudioSource.sound, AudioEvent.sounds), always resident, stored as 16-bit PCM, and og.load.soundInfo reports it. Between ticks or inside a system alike; the handle is the next one the bank gives, so a game that makes its sounds in the same order on every launch (in GameDesc.start) names the same handles in its saves. |
 | [`og.audio.outputLatency`](#fn-outputLatency) | function | How long after its world time a sample leaves the speaker, as the host reports it: on the web the AudioContext's baseLatency and outputLatency and the worklet ring's buffer, natively the device's latency (cpal's playback less callback instant) and the mixer's buffer; 0 headless (the null and capture sinks are driven to the tick). Host input, written to og.Audio between ticks, so a replay carries it. A rhythm game hears a note at its time plus this: judge a press against the note's time plus the latency, then a calibrated rest (the display, the hand). |
 
 ## Functions
+
+<a id="fn-createSound"></a>
+
+### `og.audio.createSound`
+
+Make a sound from PCM the game computed: it plays, loops and pitches as a loaded one (AudioSource.sound, AudioEvent.sounds), always resident, stored as 16-bit PCM, and og.load.soundInfo reports it. Between ticks or inside a system alike; the handle is the next one the bank gives, so a game that makes its sounds in the same order on every launch (in GameDesc.start) names the same handles in its saves.
+
+```ts
+og.audio.createSound(world: World, desc?: SoundDesc): Result<Sound>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world that owns the sound. |
+| `desc` | `SoundDesc` | yes | The samples and their format. |
+
+**Returns** `Result<Sound>`: Refused for no samples, a length that is not whole frames, a rate or channel count out of range, or a number that is not finite.
+
+Binding symbol `og_audio_create_sound` · publish builds: kept
+
+```ogt
+fn createSound {
+  doc "Make a sound from PCM the game computed: it plays, loops and pitches as a loaded one (AudioSource.sound, AudioEvent.sounds), always resident, stored as 16-bit PCM, and og.load.soundInfo reports it. Between ticks or inside a system alike; the handle is the next one the bank gives, so a game that makes its sounds in the same order on every launch (in GameDesc.start) names the same handles in its saves."
+  param world World "The world that owns the sound."
+  param desc SoundDesc "The samples and their format."
+  returns Result.Sound "Refused for no samples, a length that is not whole frames, a rate or channel count out of range, or a number that is not finite."
+}
+```
+
+<sub>`api.ogt` line 11075</sub>
 
 <a id="fn-outputLatency"></a>
 
@@ -80,7 +117,7 @@ fn outputLatency {
 }
 ```
 
-<sub>`api.ogt` line 10833</sub>
+<sub>`api.ogt` line 11082</sub>
 
 ## Components, resources and events
 
@@ -122,6 +159,7 @@ Token `og.AudioSource`, registered under the schema name `og.AudioSource`; its v
 | `coneOuterGain` | `number` | `0` | 0 … 1 | — | tunable | The gain outside coneOuterAngle. |
 | `virtualize` | `boolean` | `false` | — | — | — | Past Audio.maxVoices it goes virtual instead of being culled: silent, its playhead running on (a one-shot still ends on its tick), and heard again from where it would be, fading in, once it stands within the cap. Without it the source is culled (SOUND_CULLED, playing false). |
 | `retrigger` | `boolean` | `false` | — | — | — | Set true to start the sound again from the top (its startOffset, its startAt) this tick, playing or not, without a level change on `playing`: the voice playing ends (SOUND_RETRIGGERED) and a new one starts in the same tick. The engine sets it back to false and `playing` true. |
+| `userBus` | `number` | `0` | 0 … 15 | — | — | A user bus of the bus graph (4 to 15, declared by an og.AudioBusNode) it plays into instead of `bus`; 0, or an index no node declares, plays on `bus`. |
 
 ```ogt
 component AudioSource {
@@ -237,6 +275,10 @@ component AudioSource {
   }
   field virtualize bool "Past Audio.maxVoices it goes virtual instead of being culled: silent, its playhead running on (a one-shot still ends on its tick), and heard again from where it would be, fading in, once it stands within the cap. Without it the source is culled (SOUND_CULLED, playing false)."
   field retrigger bool "Set true to start the sound again from the top (its startOffset, its startAt) this tick, playing or not, without a level change on `playing`: the voice playing ends (SOUND_RETRIGGERED) and a new one starts in the same tick. The engine sets it back to false and `playing` true."
+  field userBus u32 "A user bus of the bus graph (4 to 15, declared by an og.AudioBusNode) it plays into instead of `bus`; 0, or an index no node declares, plays on `bus`." {
+    min 0
+    max 15
+  }
 }
 ```
 
@@ -277,7 +319,7 @@ component AudioListener {
 }
 ```
 
-<sub>`api.ogt` line 10549</sub>
+<sub>`api.ogt` line 10553</sub>
 
 <a id="record-Audio"></a>
 
@@ -377,7 +419,7 @@ resource Audio {
 }
 ```
 
-<sub>`api.ogt` line 10568</sub>
+<sub>`api.ogt` line 10572</sub>
 
 <a id="record-AudioBusFx"></a>
 
@@ -406,6 +448,19 @@ Token `og.AudioBusFx`, registered under the schema name `og.AudioBusFx`; its val
 | `duckThreshold` | `number` | `-36` | -80 … 0 | `db` | tunable | How loud the key bus must be. |
 | `duckAttack` | `number` | `0.02` | 0 … 2 | `s` | tunable | How fast it goes down. |
 | `duckRelease` | `number` | `0.4` | 0 … 5 | `s` | tunable | How fast it comes back. |
+| `userBus` | `number` | `0` | 0 … 15 | — | — | A user bus (4 to 15, an og.AudioBusNode) these effects are on instead of `bus`; 0 uses `bus`. |
+| `eqLow` | `number` | `0` | -24 … 24 | `db` | tunable | The equaliser's low shelf (RBJ, 12 dB/octave): its gain below eqLowFreq; 0 dB is flat. |
+| `eqLowFreq` | `number` | `200` | 20 … 2000 | `hz` | tunable | The low shelf's corner frequency. |
+| `eqMid` | `number` | `0` | -24 … 24 | `db` | tunable | The equaliser's mid band (a peak, or a notch below 0 dB): its gain at eqMidFreq; 0 dB is flat. |
+| `eqMidFreq` | `number` | `1000` | 40 … 16000 | `hz` | tunable | The mid band's centre frequency. |
+| `eqMidQ` | `number` | `0.7` | 0.1 … 10 | — | tunable | The mid band's Q: higher is narrower. |
+| `eqHigh` | `number` | `0` | -24 … 24 | `db` | tunable | The equaliser's high shelf: its gain above eqHighFreq; 0 dB is flat. |
+| `eqHighFreq` | `number` | `5000` | 1000 … 20000 | `hz` | tunable | The high shelf's corner frequency. |
+| `delay` | `number` | `0` | 0 … 2 | `s` | tunable | An echo after the compressor: the delay's time, to the sample; 0 is off. |
+| `delayFeedback` | `number` | `0.35` | 0 … 0.95 | — | tunable | How much of each echo feeds the next. |
+| `delayMix` | `number` | `0.35` | 0 … 1 | — | tunable | How loud the echoes are, added to the dry bus. |
+| `distortion` | `number` | `0` | 0 … 1 | — | tunable | A tanh waveshaper after the equaliser: its drive, 0 (off) to 1 (heavy: 20x into the curve), scaled so a full-scale input stays at full scale. |
+| `distortionMix` | `number` | `1` | 0 … 1 | — | tunable | How much of the distorted signal replaces the clean one. |
 
 ```ogt
 component AudioBusFx {
@@ -495,10 +550,299 @@ component AudioBusFx {
     unit s
     tunable true
   }
+  field userBus u32 "A user bus (4 to 15, an og.AudioBusNode) these effects are on instead of `bus`; 0 uses `bus`." {
+    min 0
+    max 15
+  }
+  field eqLow f32 "The equaliser's low shelf (RBJ, 12 dB/octave): its gain below eqLowFreq; 0 dB is flat." {
+    min -24
+    max 24
+    unit db
+    tunable true
+  }
+  field eqLowFreq f32 "The low shelf's corner frequency." {
+    default 200
+    min 20
+    max 2000
+    unit hz
+    tunable true
+  }
+  field eqMid f32 "The equaliser's mid band (a peak, or a notch below 0 dB): its gain at eqMidFreq; 0 dB is flat." {
+    min -24
+    max 24
+    unit db
+    tunable true
+  }
+  field eqMidFreq f32 "The mid band's centre frequency." {
+    default 1000
+    min 40
+    max 16000
+    unit hz
+    tunable true
+  }
+  field eqMidQ f32 "The mid band's Q: higher is narrower." {
+    default 0.7
+    min 0.1
+    max 10
+    tunable true
+  }
+  field eqHigh f32 "The equaliser's high shelf: its gain above eqHighFreq; 0 dB is flat." {
+    min -24
+    max 24
+    unit db
+    tunable true
+  }
+  field eqHighFreq f32 "The high shelf's corner frequency." {
+    default 5000
+    min 1000
+    max 20000
+    unit hz
+    tunable true
+  }
+  field delay f32 "An echo after the compressor: the delay's time, to the sample; 0 is off." {
+    min 0
+    max 2
+    unit s
+    tunable true
+  }
+  field delayFeedback f32 "How much of each echo feeds the next." {
+    default 0.35
+    min 0
+    max 0.95
+    tunable true
+  }
+  field delayMix f32 "How loud the echoes are, added to the dry bus." {
+    default 0.35
+    min 0
+    max 1
+    tunable true
+  }
+  field distortion f32 "A tanh waveshaper after the equaliser: its drive, 0 (off) to 1 (heavy: 20x into the curve), scaled so a full-scale input stays at full scale." {
+    min 0
+    max 1
+    tunable true
+  }
+  field distortionMix f32 "How much of the distorted signal replaces the clean one." {
+    default 1
+    min 0
+    max 1
+    tunable true
+  }
 }
 ```
 
-<sub>`api.ogt` line 10641</sub>
+<sub>`api.ogt` line 10645</sub>
+
+<a id="record-AudioBusNode"></a>
+
+### `og.AudioBusNode` (component)
+
+A user bus of the bus graph: bus `index` (4 to 15) sums the sources whose AudioSource.userBus (or AudioEvent.userBus) names it, runs its og.AudioBusFx (the one whose userBus is the index), and plays into its `parent`: a built-in bus or a user bus of a lower index, so the graph has no cycles (any other parent is master). Its volume is multiplied down the chain to master, so a footsteps bus under sfx is turned down with sfx. The first node in query order for an index counts; a removed node's sources play on their `bus`.
+
+The graph reaches the mixer as commands in the stream (only what changed each tick), so it is deterministic and in the world hash.
+
+Token `og.AudioBusNode`, registered under the schema name `og.AudioBusNode`; its value type is `AudioBusNode`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `index` | `number` | `4` | 4 … 15 | — | — | The bus's index, 4 to 15. |
+| `parent` | `number` | `0` | 0 … 15 | — | — | The bus it plays into: 0 master, 1 music, 2 sfx, 3 ui, or a user bus below `index`. |
+| `volume` | `number` | `1` | 0 … 2 | — | tunable | The bus's gain. |
+
+```ogt
+component AudioBusNode {
+  doc "A user bus of the bus graph: bus `index` (4 to 15) sums the sources whose AudioSource.userBus (or AudioEvent.userBus) names it, runs its og.AudioBusFx (the one whose userBus is the index), and plays into its `parent`: a built-in bus or a user bus of a lower index, so the graph has no cycles (any other parent is master). Its volume is multiplied down the chain to master, so a footsteps bus under sfx is turned down with sfx. The first node in query order for an index counts; a removed node's sources play on their `bus`."
+  doc "The graph reaches the mixer as commands in the stream (only what changed each tick), so it is deterministic and in the world hash."
+  field index u32 "The bus's index, 4 to 15." {
+    default 4
+    min 4
+    max 15
+  }
+  field parent u32 "The bus it plays into: 0 master, 1 music, 2 sfx, 3 ui, or a user bus below `index`." {
+    min 0
+    max 15
+  }
+  field volume f32 "The bus's gain." {
+    default 1
+    min 0
+    max 2
+    tunable true
+  }
+}
+```
+
+<sub>`api.ogt` line 10812</sub>
+
+<a id="record-AudioSnapshot"></a>
+
+### `og.AudioSnapshot` (component)
+
+A mixer snapshot (combat, underwater, paused): per-bus volumes and filters the mix blends towards while `active`, and back from when not, over `fade` seconds. Each tick og.audio moves `weight` by tickDuration / fade towards 1 or 0 and sends the blend in the stream; the bus gains ramp linearly across each tick, so a blend is a straight line to the sample, not a staircase.
+
+At weight w a bus's gain is multiplied by 1 + w * (volume - 1); its low-pass moves from 20 kHz and its high-pass from 20 Hz towards the snapshot's cutoffs in octaves (log2-linear in w). Several snapshots multiply their volumes and take the lowest low-pass and the highest high-pass. Audio's bus volumes and the AudioBusFx filters stay what the game set: the snapshot gain multiplies them, and of its cutoffs and the AudioBusFx's the lower low-pass and the higher high-pass count.
+
+Token `og.AudioSnapshot`, registered under the schema name `og.AudioSnapshot`; its value type is `AudioSnapshot`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `active` | `boolean` | `false` | — | — | — | Blends in while true, out while false. |
+| `fade` | `number` | `0.5` | 0 … 30 | `s` | tunable | Seconds a full blend in or out takes; 0 is at once. |
+| `weight` | `number` | `0` | 0 … 1 | — | read only | How far it is blended in, 0 to 1 (written by og.audio each tick). |
+| `volume` | `readonly number[]` | `[]` | — | — | a list of at most 16 `f32` (`List.f32.16`): reads a frozen copy, writes a whole array | Per bus, by index (master, music, sfx, ui, then user buses 4 to 15), the gain it multiplies in at full weight; buses past the list's length keep 1: `{ volume: [1, 0.3] }` turns the music down. |
+| `lowpass` | `readonly number[]` | `[]` | — | — | a list of at most 16 `f32` (`List.f32.16`): reads a frozen copy, writes a whole array | Per bus, a low-pass cutoff in Hz at full weight; 0 or past the list's length is none: `{ lowpass: [0, 0, 600] }` muffles sfx (underwater). |
+| `highpass` | `readonly number[]` | `[]` | — | — | a list of at most 16 `f32` (`List.f32.16`): reads a frozen copy, writes a whole array | Per bus, a high-pass cutoff in Hz at full weight; 0 or past the list's length is none. |
+
+```ogt
+component AudioSnapshot {
+  doc "A mixer snapshot (combat, underwater, paused): per-bus volumes and filters the mix blends towards while `active`, and back from when not, over `fade` seconds. Each tick og.audio moves `weight` by tickDuration / fade towards 1 or 0 and sends the blend in the stream; the bus gains ramp linearly across each tick, so a blend is a straight line to the sample, not a staircase."
+  doc "At weight w a bus's gain is multiplied by 1 + w * (volume - 1); its low-pass moves from 20 kHz and its high-pass from 20 Hz towards the snapshot's cutoffs in octaves (log2-linear in w). Several snapshots multiply their volumes and take the lowest low-pass and the highest high-pass. Audio's bus volumes and the AudioBusFx filters stay what the game set: the snapshot gain multiplies them, and of its cutoffs and the AudioBusFx's the lower low-pass and the higher high-pass count."
+  field active bool "Blends in while true, out while false."
+  field fade f32 "Seconds a full blend in or out takes; 0 is at once." {
+    default 0.5
+    min 0
+    max 30
+    unit s
+    tunable true
+  }
+  field weight f32 "How far it is blended in, 0 to 1 (written by og.audio each tick)." {
+    min 0
+    max 1
+    readonly true
+  }
+  field volume List.f32.16 "Per bus, by index (master, music, sfx, ui, then user buses 4 to 15), the gain it multiplies in at full weight; buses past the list's length keep 1: `{ volume: [1, 0.3] }` turns the music down."
+  field lowpass List.f32.16 "Per bus, a low-pass cutoff in Hz at full weight; 0 or past the list's length is none: `{ lowpass: [0, 0, 600] }` muffles sfx (underwater)."
+  field highpass List.f32.16 "Per bus, a high-pass cutoff in Hz at full weight; 0 or past the list's length is none."
+}
+```
+
+<sub>`api.ogt` line 10832</sub>
+
+<a id="record-AudioEvent"></a>
+
+### `og.AudioEvent` (component)
+
+An audio event: one of a set of sounds played on each trigger, with pitch and volume jitter, a cooldown and a voice limit (footsteps, impacts, gunshots). Set `trigger` to play it; the engine sets it back to false.
+
+The og.audioEvents system (before og.audio) picks the sound and the jitter from the engine's own random stream, forked from og.Rng's seed with the label og.audio and kept in the world (never Math.random), so the same seed and the same triggers play the same sounds at the same pitches on every host and every replay. Each play spawns a voice entity (an og.AudioSource, parented to this entity with og.Parent, so a spatial event is heard where its entity is) that is despawned when it ends; nothing of a voice feeds back into the simulation but `played`, `last`, `index`, `bag` and `voices`.
+
+Token `og.AudioEvent`, registered under the schema name `og.AudioEvent`; its value type is `AudioEvent`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `sounds` | `readonly Sound[]` | `[]` | — | — | a list of at most 8 `Sound` (`List.Sound.8`): reads a frozen copy, writes a whole array | The variations (og.load.sound or og.audio.createSound); 0s are skipped. |
+| `weights` | `readonly number[]` | `[]` | — | — | a list of at most 8 `f32` (`List.f32.8`): reads a frozen copy, writes a whole array | Weights of a random pick, by position in `sounds`; past the list's length 1. |
+| `order` | `AudioEventOrder` | `"random"` | — | — | — | How the next sound is chosen. |
+| `volume` | `number` | `1` | 0 … 4 | — | tunable | Linear gain. |
+| `volumeJitter` | `number` | `0` | 0 … 24 | `db` | tunable | Each play's volume varies uniformly by up to this many dB either way. |
+| `pitch` | `number` | `1` | 0.0625 … 16 | — | tunable | Playback rate. |
+| `pitchJitter` | `number` | `0` | 0 … 24 | — | tunable | Each play's pitch varies uniformly by up to this many semitones either way. |
+| `cooldown` | `number` | `0` | 0 … 60 | `s` | tunable | A trigger sooner than this after the last play is ignored (and still reset). |
+| `maxVoices` | `number` | `0` | 0 … 64 | — | — | The most voices of this event at once; 0 is no limit. |
+| `steal` | `boolean` | `true` | — | — | — | At maxVoices, the oldest voice is stopped (SOUND_STOPPED) for the new one; false ignores the trigger instead. |
+| `bus` | `AudioBus` | `"sfx"` | — | — | — | The bus its voices play on. |
+| `userBus` | `number` | `0` | 0 … 15 | — | — | A user bus its voices play into instead (AudioSource.userBus). |
+| `spatial` | `boolean` | `false` | — | — | — | Its voices are spatial, heard at this entity's world transform. |
+| `refDistance` | `number` | `1` | ≥ 0 | `m` | tunable | AudioSource.refDistance of its voices. |
+| `maxDistance` | `number` | `100` | ≥ 0 | `m` | tunable | AudioSource.maxDistance of its voices. |
+| `priority` | `number` | `128` | 0 … 255 | — | — | AudioSource.priority of its voices. |
+| `trigger` | `boolean` | `false` | — | — | — | Set true to play it this tick; the engine sets it back to false. |
+| `played` | `number` | `0` | — | — | read only | Plays so far (written by og.audioEvents). |
+| `last` | `number` | `0` | — | `s` | read only | The world time of the last play (written by og.audioEvents). |
+| `index` | `number` | `0` | — | — | read only | The position in `sounds` played last (written by og.audioEvents). |
+| `bag` | `number` | `0` | — | — | read only | A shuffle's sounds already played this round, one bit each (written by og.audioEvents). |
+| `voices` | `number` | `0` | — | — | read only | Its voices playing now (written by og.audioEvents). |
+
+```ogt
+component AudioEvent {
+  doc "An audio event: one of a set of sounds played on each trigger, with pitch and volume jitter, a cooldown and a voice limit (footsteps, impacts, gunshots). Set `trigger` to play it; the engine sets it back to false."
+  doc "The og.audioEvents system (before og.audio) picks the sound and the jitter from the engine's own random stream, forked from og.Rng's seed with the label og.audio and kept in the world (never Math.random), so the same seed and the same triggers play the same sounds at the same pitches on every host and every replay. Each play spawns a voice entity (an og.AudioSource, parented to this entity with og.Parent, so a spatial event is heard where its entity is) that is despawned when it ends; nothing of a voice feeds back into the simulation but `played`, `last`, `index`, `bag` and `voices`."
+  field sounds List.Sound.8 "The variations (og.load.sound or og.audio.createSound); 0s are skipped."
+  field weights List.f32.8 "Weights of a random pick, by position in `sounds`; past the list's length 1."
+  field order AudioEventOrder "How the next sound is chosen." {
+    default random
+  }
+  field volume f32 "Linear gain." {
+    default 1
+    min 0
+    max 4
+    tunable true
+  }
+  field volumeJitter f32 "Each play's volume varies uniformly by up to this many dB either way." {
+    min 0
+    max 24
+    unit db
+    tunable true
+  }
+  field pitch f32 "Playback rate." {
+    default 1
+    min 0.0625
+    max 16
+    tunable true
+  }
+  field pitchJitter f32 "Each play's pitch varies uniformly by up to this many semitones either way." {
+    min 0
+    max 24
+    tunable true
+  }
+  field cooldown f32 "A trigger sooner than this after the last play is ignored (and still reset)." {
+    min 0
+    max 60
+    unit s
+    tunable true
+  }
+  field maxVoices u32 "The most voices of this event at once; 0 is no limit." {
+    min 0
+    max 64
+  }
+  field steal bool "At maxVoices, the oldest voice is stopped (SOUND_STOPPED) for the new one; false ignores the trigger instead." {
+    default true
+  }
+  field bus AudioBus "The bus its voices play on." {
+    default sfx
+  }
+  field userBus u32 "A user bus its voices play into instead (AudioSource.userBus)." {
+    min 0
+    max 15
+  }
+  field spatial bool "Its voices are spatial, heard at this entity's world transform."
+  field refDistance f32 "AudioSource.refDistance of its voices." {
+    default 1
+    min 0
+    unit m
+    tunable true
+  }
+  field maxDistance f32 "AudioSource.maxDistance of its voices." {
+    default 100
+    min 0
+    unit m
+    tunable true
+  }
+  field priority u32 "AudioSource.priority of its voices." {
+    default 128
+    min 0
+    max 255
+  }
+  field trigger bool "Set true to play it this tick; the engine sets it back to false."
+  field played u32 "Plays so far (written by og.audioEvents)." {
+    readonly true
+  }
+  field last f64 "The world time of the last play (written by og.audioEvents)." {
+    unit s
+    readonly true
+  }
+  field index u32 "The position in `sounds` played last (written by og.audioEvents)." {
+    readonly true
+  }
+  field bag u32 "A shuffle's sounds already played this round, one bit each (written by og.audioEvents)." {
+    readonly true
+  }
+  field voices u32 "Its voices playing now (written by og.audioEvents)." {
+    readonly true
+  }
+}
+```
+
+<sub>`api.ogt` line 10867</sub>
 
 <a id="record-ReverbZone"></a>
 
@@ -569,7 +913,7 @@ component ReverbZone {
 }
 ```
 
-<sub>`api.ogt` line 10730</sub>
+<sub>`api.ogt` line 10972</sub>
 
 <a id="record-Music"></a>
 
@@ -625,7 +969,7 @@ component Music {
 }
 ```
 
-<sub>`api.ogt` line 10776</sub>
+<sub>`api.ogt` line 11018</sub>
 
 <a id="record-MusicBeat"></a>
 
@@ -652,7 +996,7 @@ event MusicBeat {
 }
 ```
 
-<sub>`api.ogt` line 10810</sub>
+<sub>`api.ogt` line 11052</sub>
 
 <a id="record-SoundStarted"></a>
 
@@ -677,7 +1021,7 @@ event SoundStarted {
 }
 ```
 
-<sub>`api.ogt` line 10818</sub>
+<sub>`api.ogt` line 11060</sub>
 
 <a id="record-SoundEnded"></a>
 
@@ -704,7 +1048,7 @@ event SoundEnded {
 }
 ```
 
-<sub>`api.ogt` line 10825</sub>
+<sub>`api.ogt` line 11067</sub>
 
 ## Types
 
@@ -781,6 +1125,66 @@ enum AudioResampler {
 
 <sub>`api.ogt` line 10414</sub>
 
+<a id="type-AudioEventOrder"></a>
+
+### `AudioEventOrder` (enum)
+
+How a AudioEvent chooses its next sound.
+
+A string: one of the variants below. The zero value is `"random"`.
+
+| Variant | Doc |
+|---|---|
+| `"random"` | A weighted random pick each time (AudioEvent.weights), drawn from the engine's seeded stream. |
+| `"roundRobin"` | The sounds in turn, from the first. |
+| `"shuffle"` | Random, every sound once before any repeats (and never the last one twice in a row across rounds). |
+
+```ogt
+enum AudioEventOrder {
+  doc "How a AudioEvent chooses its next sound."
+  variant random "A weighted random pick each time (AudioEvent.weights), drawn from the engine's seeded stream."
+  variant roundRobin "The sounds in turn, from the first."
+  variant shuffle "Random, every sound once before any repeats (and never the last one twice in a row across rounds)."
+}
+```
+
+<sub>`api.ogt` line 10853</sub>
+
+<a id="type-SoundDesc"></a>
+
+### `SoundDesc` (desc struct)
+
+PCM a game made itself (og.audio.createSound): a tone, a procedural effect, a recording it synthesised.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `samples` | `Float32Array` | — | — | — | — | The samples, -1 to 1 (clamped), interleaved by channel: frames * channels values; at least one frame. |
+| `rate` | `number` | `48000` | 8000 … 192000 | `hz` | — | Samples per second per channel. |
+| `channels` | `number` | `1` | 1 … 2 | — | — | Interleaved channels, 1 or 2. |
+
+```ogt
+struct SoundDesc {
+  doc "PCM a game made itself (og.audio.createSound): a tone, a procedural effect, a recording it synthesised."
+  desc true
+  field samples Float32Array "The samples, -1 to 1 (clamped), interleaved by channel: frames * channels values; at least one frame."
+  field rate u32 "Samples per second per channel." {
+    default 48000
+    min 8000
+    max 192000
+    unit hz
+  }
+  field channels u32 "Interleaved channels, 1 or 2." {
+    default 1
+    min 1
+    max 2
+  }
+}
+```
+
+<sub>`api.ogt` line 10955</sub>
+
 ## Column kinds
 
 Each is a factory, `AudioBus(value?, options?)`, that makes one field of a component or resource layout.
@@ -790,6 +1194,7 @@ Each is a factory, `AudioBus(value?, options?)`, that makes one field of a compo
 | <a id="column-AudioBus"></a>`AudioBus` | `AudioBus` | `Uint32Array` | 1 | An AudioBus field: the variant's index. |
 | <a id="column-AudioResampler"></a>`AudioResampler` | `AudioResampler` | `Uint32Array` | 1 | An AudioResampler field: the variant's index. |
 | <a id="column-PanningModel"></a>`PanningModel` | `PanningModel` | `Uint32Array` | 1 | A PanningModel field: the variant's index. |
+| <a id="column-AudioEventOrder"></a>`AudioEventOrder` | `AudioEventOrder` | `Uint32Array` | 1 | A AudioEventOrder field: the variant's index. |
 
 ```ogt
 column AudioBus {
@@ -823,6 +1228,17 @@ column PanningModel {
 ```
 
 <sub>`api.ogt` line 10427</sub>
+
+```ogt
+column AudioEventOrder {
+  doc "A AudioEventOrder field: the variant's index."
+  array Uint32Array
+  stride 1
+  value AudioEventOrder
+}
+```
+
+<sub>`api.ogt` line 10860</sub>
 
 ## Constants
 

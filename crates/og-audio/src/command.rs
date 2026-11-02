@@ -7,7 +7,7 @@
 //! |---:|---|---|---|
 //! | 0 | u8 | `op` | 1 play, 2 stop, 3 params, 4 bus, 5 stop-all, 6 fx, 7 cue, 8 hrtf |
 //! | 1 | u8 | `flags` | bit 0 loop, bit 1 spatial |
-//! | 2 | u8 | `bus` | 0 master, 1 music, 2 sfx, 3 ui (the bus a `bus` or `fx` op sets) |
+//! | 2 | u8 | `bus` | 0 master, 1 music, 2 sfx, 3 ui, 4..15 user buses (the bus a voice plays on, or a `bus` or `fx` op sets) |
 //! | 3 | u8 | reserved | 0 |
 //! | 4 | u32 | `voice` | the voice id (0 for `bus`, `stop-all`; the parameter for `fx`, [`fx`]) |
 //! | 8 | u64 | `tick` | the tick whose start the command takes effect at |
@@ -18,7 +18,7 @@
 //! | 36 | u32 | `loop_start` | loop start, frames of the sound |
 //! | 40 | u32 | `loop_end` | loop end (exclusive), frames; 0 = the sound's end |
 //! | 44 | f32 | `lowpass` | the voice's low-pass cutoff in Hz (play, params); 0 open |
-//! | 48 | f64 | `position` | `play`: where it starts, frames of the sound (negative: starts that many frames later, sample-accurately); `cue`: the frame of the sound it starts from once that delay is over (`AudioSource.startOffset`); `params`, `stop`: the ramp in seconds (0: the default 256 frames) |
+//! | 48 | f64 | `position` | `play`: where it starts, frames of the sound (negative: starts that many frames later, sample-accurately); `cue`: the frame of the sound it starts from once that delay is over (`AudioSource.startOffset`); `params`, `stop`: the ramp in seconds (0: the default 256 frames); `bus`: 0 the default ramp, negative a linear ramp across the whole tick (a snapshot's blend) |
 
 /// What a command does.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -29,7 +29,8 @@ pub enum Op {
     Stop = 2,
     /// Change `voice`'s gain, pitch, pan, bus, flags and loop region.
     Params = 3,
-    /// Set bus `bus`'s gain.
+    /// Set bus `bus`'s gain (`position` negative: ramping linearly across
+    /// the tick, a mixer snapshot's blend).
     Bus = 4,
     /// Stop every voice (a resync's first command; never in the hashed stream).
     StopAll = 5,
@@ -79,6 +80,26 @@ pub mod fx {
     /// The voices' resampler (any bus): 1 the windowed sinc, 0 linear
     /// interpolation (`og.Audio.resampler`).
     pub const RESAMPLER: u32 = 22;
+    /// The bus a user bus (4 to 15) plays into: its index.
+    pub const PARENT: u32 = 30;
+    /// The equaliser: low shelf gain (dB) and corner (Hz), mid band gain
+    /// (dB), centre (Hz) and Q, high shelf gain (dB) and corner (Hz).
+    pub const EQ_LOW: u32 = 31;
+    pub const EQ_LOW_FREQ: u32 = 32;
+    pub const EQ_MID: u32 = 33;
+    pub const EQ_MID_FREQ: u32 = 34;
+    pub const EQ_MID_Q: u32 = 35;
+    pub const EQ_HIGH: u32 = 36;
+    pub const EQ_HIGH_FREQ: u32 = 37;
+    /// The echo: its time (s, 0 off), feedback and mix.
+    pub const DELAY: u32 = 38;
+    pub const DELAY_FEEDBACK: u32 = 39;
+    pub const DELAY_MIX: u32 = 40;
+    /// The waveshaper: its drive (0 off .. 1) and mix.
+    pub const DISTORTION: u32 = 41;
+    pub const DISTORTION_MIX: u32 = 42;
+    /// Parameters a bus's chain keeps (ids below this).
+    pub const COUNT: usize = 43;
 }
 
 impl Op {

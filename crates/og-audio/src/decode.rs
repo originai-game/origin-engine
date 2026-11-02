@@ -1,8 +1,11 @@
-//! Decoding beside the tick: the QOA frames voices will read are decoded
-//! before they read them, by a helper the host runs off the engine thread
-//! (natively a thread of this crate, [`SoundBank::start_decode_thread`];
-//! on the web a decoder Worker the engine Worker feeds through
-//! [`SoundBank::take_decode_jobs`] and [`SoundBank::put_decoded`]).
+//! Decoding beside the tick: the blocks voices will read (QOA frames, Opus
+//! blocks) are decoded before they read them, by a helper the host runs
+//! off the tick (natively a thread of this crate,
+//! [`SoundBank::start_decode_thread`], for both codecs; on the web a
+//! decoder Worker the engine Worker feeds QOA frames through
+//! [`SoundBank::take_decode_jobs`] and [`SoundBank::put_decoded`], and the
+//! engine Worker's pump, after the frame's ticks, a few Opus packets at a
+//! time through [`SoundBank::decode_opus_step`]).
 //!
 //! What is decoded is planned, never timed:
 //!
@@ -26,8 +29,9 @@
 //! and the world are the same whatever the helper did; only where the
 //! decoding ran differs, and [`DecodeStats`] counts it.
 
+use crate::opus::BlockDecoder;
 use crate::qoa;
-use crate::sound::{QOA_FRAME_LEN, SoundBank, SoundData};
+use crate::sound::{BlockFile, SoundBank, SoundData};
 use og_core::IdMap;
 use std::collections::{BTreeSet, VecDeque};
 #[cfg(not(target_arch = "wasm32"))]
@@ -91,6 +95,26 @@ impl Entry {
     }
 }
 
+/// Which queued jobs a helper takes.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Codec {
+    Any,
+    /// QOA frames (the web's TypeScript decoder).
+    Qoa,
+    /// Opus blocks.
+    Opus,
+}
+
+/// An Opus block a stepping helper is part way through.
+struct OpusPending {
+    key: u32,
+    data: Arc<SoundData>,
+    frame: usize,
+    decoder: BlockDecoder,
+    /// Bytes of the block decoded so far.
+    done: usize,
+}
+
 #[derive(Default)]
 struct State {
     /// This tick's decode-ahead, soonest first.
@@ -108,10 +132,17 @@ struct State {
     closed: bool,
 }
 
+/// The stepping Opus helper's block in progress (the web's pump).
+#[derive(Default)]
+struct Stepping {
+    pending: Option<OpusPending>,
+}
+
 /// A bank's decoding: its queue, the jobs helpers hold, and its counters.
 #[derive(Default)]
 pub(crate) struct Decoding {
     state: Mutex<State>,
+    stepping: Mutex<Stepping>,
     wake: Condvar,
     misses: AtomicU64,
     /// Whether the decode thread runs.
@@ -149,9 +180,9 @@ impl Decoding {
     pub(crate) fn pin(&self, data: &Arc<SoundData>) {
         let Some(cache) = &data.cache else { return };
         let n = if cache.pinned {
-            data.qoa_frames()
+            data.blocks()
         } else {
-            data.qoa_frames().min(1)
+            data.blocks().min(1)
         };
         let mut s = self.state();
         for frame in 0..n {
@@ -173,21 +204,22 @@ impl Decoding {
             if h.sound.cache.is_none() {
                 continue;
             }
-            let total = h.sound.qoa_frames() as u64;
+            let total = h.sound.blocks() as u64;
             if total == 0 {
                 continue;
             }
+            let block = h.sound.block_len();
             let speed = f64::from(h.sound.sample_rate.max(1))
                 * f64::from(crate::system::clamp_pitch(h.pitch));
             let cursor = h.cursor.max(0.0);
             let reach = DECODE_AHEAD_SECONDS * speed;
             let mut want = |from: f64, to: f64, offset: f64| {
-                let a = from as u64 / QOA_FRAME_LEN;
-                let b = (to as u64 / QOA_FRAME_LEN)
+                let a = from as u64 / block;
+                let b = (to as u64 / block)
                     .min(a + DECODE_AHEAD_FRAMES)
                     .min(total - 1);
                 for k in a..=b.max(a).min(total - 1) {
-                    let at = ((k * QOA_FRAME_LEN) as f64 - from).max(0.0);
+                    let at = ((k * block) as f64 - from).max(0.0);
                     wanted.push((
                         offset + at / speed,
                         Entry {
@@ -260,13 +292,22 @@ impl Decoding {
         self.wake.notify_all();
     }
 
-    /// The next job, marked in flight; None when nothing is queued.
-    fn take(&self) -> Option<(u32, Arc<SoundData>, usize)> {
+    /// The next job of `codec`, marked in flight; None when none is queued.
+    /// Jobs of another codec stay queued in their order.
+    fn take(&self, codec: Codec) -> Option<(u32, Arc<SoundData>, usize)> {
         let mut s = self.state();
+        let wanted = |e: &Entry| match codec {
+            Codec::Any => true,
+            // A sound the bank dropped is taken (and skipped) by anyone.
+            Codec::Qoa => e.sound.upgrade().is_none_or(|d| !d.is_opus()),
+            Codec::Opus => e.sound.upgrade().is_none_or(|d| d.is_opus()),
+        };
         loop {
-            let e = match s.ahead.pop_front() {
-                Some(e) => e,
-                None => s.pins.pop_front()?,
+            let e = if let Some(i) = s.ahead.iter().position(wanted) {
+                s.ahead.remove(i).expect("position is in the queue")
+            } else {
+                let i = s.pins.iter().position(wanted)?;
+                s.pins.remove(i).expect("position is in the queue")
             };
             let Some(data) = e.sound.upgrade() else {
                 continue;
@@ -313,6 +354,62 @@ impl Decoding {
         true
     }
 
+    /// Decodes up to `max_packets` Opus packets of the queued Opus blocks,
+    /// going on with the block a previous call left part way; returns the
+    /// packets decoded. A block finished here answers its job as any
+    /// helper's would.
+    fn opus_step(&self, max_packets: usize) -> usize {
+        let mut stepping = self.stepping.lock().expect("audio decoding");
+        let mut left = max_packets;
+        while left > 0 {
+            let mut p = match stepping.pending.take() {
+                Some(p) => p,
+                None => {
+                    let Some((key, data, frame)) = self.take(Codec::Opus) else {
+                        break;
+                    };
+                    let Some((_, len)) = data.opus_block(frame) else {
+                        self.finish(key, None);
+                        continue;
+                    };
+                    let Ok(decoder) = BlockDecoder::new(data.channels, len) else {
+                        self.finish(key, None);
+                        continue;
+                    };
+                    OpusPending {
+                        key,
+                        data,
+                        frame,
+                        decoder,
+                        done: 0,
+                    }
+                }
+            };
+            let Some((block, _)) = p.data.opus_block(p.frame) else {
+                self.finish(p.key, None);
+                continue;
+            };
+            let mut rest = &block[p.done..];
+            let (bytes, packets) = (rest.len(), p.decoder.packets());
+            let step = p.decoder.step(&mut rest, left);
+            p.done += bytes - rest.len();
+            left -= (p.decoder.packets() - packets).clamp(1, left);
+            match step {
+                Ok(Some(samples)) => {
+                    self.finish(p.key, Some(Arc::from(samples)));
+                }
+                Ok(None) if rest.is_empty() => {
+                    self.finish(p.key, None);
+                }
+                Ok(None) => stepping.pending = Some(p),
+                Err(_) => {
+                    self.finish(p.key, None);
+                }
+            }
+        }
+        max_packets - left
+    }
+
     /// Takes the next job, waiting for one; None once the bank is gone.
     #[cfg(not(target_arch = "wasm32"))]
     fn take_waiting(&self) -> Option<(u32, Arc<SoundData>, usize)> {
@@ -327,7 +424,7 @@ impl Decoding {
                     continue;
                 }
             }
-            if let Some(job) = self.take() {
+            if let Some(job) = self.take(Codec::Any) {
                 return Some(job);
             }
         }
@@ -356,35 +453,47 @@ fn decoded(e: &Entry) -> bool {
 fn run(d: &Decoding, key: u32, data: &SoundData, frame: usize) {
     let samples = data
         .frame_file(frame)
-        .and_then(|file| qoa::decode(&file).ok())
-        .map(|x| Arc::<[i16]>::from(x.samples));
+        .and_then(|file| file.decode())
+        .map(Arc::<[i16]>::from);
     d.finish(key, samples);
 }
 
 impl SoundBank {
-    /// Up to `max` queued frames as jobs for a helper off the engine
-    /// thread (the web host's decoder Worker), soonest needed first; each
-    /// answered with [`SoundBank::put_decoded`]. A frame whose chunk is not
-    /// resident is skipped (planned again next tick).
+    /// Up to `max` queued QOA frames as jobs for a helper off the engine
+    /// thread (the web host's decoder Worker, whose decoder is QOA's),
+    /// soonest needed first; each answered with [`SoundBank::put_decoded`].
+    /// A frame whose chunk is not resident is skipped (planned again next
+    /// tick). Opus blocks stay queued for [`SoundBank::decode_opus_step`].
     pub fn take_decode_jobs(&self, max: usize) -> Vec<DecodeJob> {
         let d = self.decoding();
         let mut jobs = Vec::new();
         while jobs.len() < max {
-            let Some((key, data, frame)) = d.take() else {
+            let Some((key, data, frame)) = d.take(Codec::Qoa) else {
                 break;
             };
             match data.frame_file(frame) {
-                Some(qoa) => jobs.push(DecodeJob {
+                Some(BlockFile::Qoa(qoa)) => jobs.push(DecodeJob {
                     key,
                     frame: frame as u32,
                     qoa,
                 }),
-                None => {
+                _ => {
                     d.finish(key, None);
                 }
             }
         }
         jobs
+    }
+
+    /// Decodes up to `max_packets` Opus packets (20 ms each) of the queued
+    /// Opus blocks on the calling thread, a block left part way going on at
+    /// the next call; returns the packets decoded. The web host calls it in
+    /// each pump, after the frame's ticks, so an Opus track's decoding is
+    /// spread a few packets a frame rather than a block at once; the
+    /// samples are the block's own decode ([`crate::opus::decode_block`]),
+    /// so a voice reaching a block first decodes the same.
+    pub fn decode_opus_step(&self, max_packets: usize) -> usize {
+        self.decoding().opus_step(max_packets)
     }
 
     /// A helper's answer to job `key`: the frame's interleaved samples. True
@@ -402,7 +511,7 @@ impl SoundBank {
         let d = self.decoding();
         let mut n = 0;
         while n < max {
-            let Some((key, data, frame)) = d.take() else {
+            let Some((key, data, frame)) = d.take(Codec::Any) else {
                 break;
             };
             run(&d, key, &data, frame);

@@ -843,6 +843,7 @@ fn apply_keeping(
     for (id, bytes) in kept {
         let _ = world.insert_resource_bytes(id, &bytes);
     }
+    og_audio::restored(world).map_err(|e| e.reason().to_string())?;
     if let (Some(a), Some(map)) = (actions, kept_actions) {
         og_input::actions::lock(&a).keep_player(&map);
     }

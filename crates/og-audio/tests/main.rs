@@ -6,6 +6,7 @@
 
 mod chunks;
 mod decode;
+mod graph;
 mod mix;
 mod parented;
 mod propagation;

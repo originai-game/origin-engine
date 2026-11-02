@@ -131,6 +131,156 @@ impl Biquad {
     }
 }
 
+/// The shapes of an equaliser band ([`Biquad::set_band`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Band {
+    /// A low shelf (RBJ, slope 1): gain below the corner.
+    LowShelf,
+    /// A peak or notch (RBJ peaking EQ) of a given Q at the centre.
+    Peak,
+    /// A high shelf (RBJ, slope 1): gain above the corner.
+    HighShelf,
+}
+
+impl Biquad {
+    /// An equaliser band (Robert Bristow-Johnson's cookbook): `gain_db` at
+    /// `freq` Hz (a shelf's corner, a peak's centre, with `q` for a peak);
+    /// 0 dB bypasses.
+    pub fn set_band(&mut self, band: Band, freq: f32, gain_db: f32, q: f32, rate: f32) {
+        if gain_db == 0.0 || freq <= 0.0 {
+            self.on = false;
+            self.l = [0.0; 4];
+            self.r = [0.0; 4];
+            return;
+        }
+        let a = 10f32.powf(gain_db / 40.0);
+        let w = 2.0 * PI * clamp_cutoff(freq, rate) / rate;
+        let (s, c) = w.sin_cos();
+        let (b0, b1, b2, a0, a1, a2) = match band {
+            Band::Peak => {
+                let alpha = s / (2.0 * q.max(0.05));
+                (
+                    1.0 + alpha * a,
+                    -2.0 * c,
+                    1.0 - alpha * a,
+                    1.0 + alpha / a,
+                    -2.0 * c,
+                    1.0 - alpha / a,
+                )
+            }
+            Band::LowShelf | Band::HighShelf => {
+                // Slope S = 1: alpha = sin(w)/2 * sqrt(2).
+                let alpha = s / 2.0 * std::f32::consts::SQRT_2;
+                let k = 2.0 * a.sqrt() * alpha;
+                if band == Band::LowShelf {
+                    (
+                        a * ((a + 1.0) - (a - 1.0) * c + k),
+                        2.0 * a * ((a - 1.0) - (a + 1.0) * c),
+                        a * ((a + 1.0) - (a - 1.0) * c - k),
+                        (a + 1.0) + (a - 1.0) * c + k,
+                        -2.0 * ((a - 1.0) + (a + 1.0) * c),
+                        (a + 1.0) + (a - 1.0) * c - k,
+                    )
+                } else {
+                    (
+                        a * ((a + 1.0) + (a - 1.0) * c + k),
+                        -2.0 * a * ((a - 1.0) + (a + 1.0) * c),
+                        a * ((a + 1.0) + (a - 1.0) * c - k),
+                        (a + 1.0) - (a - 1.0) * c + k,
+                        2.0 * ((a - 1.0) - (a + 1.0) * c),
+                        (a + 1.0) - (a - 1.0) * c - k,
+                    )
+                }
+            }
+        };
+        self.b = [b0 / a0, b1 / a0, b2 / a0];
+        self.a = [a1 / a0, a2 / a0];
+        self.on = true;
+    }
+
+    /// Whether it filters (else it passes its input through).
+    pub fn on(&self) -> bool {
+        self.on
+    }
+}
+
+/// A stereo echo: each frame adds `mix` × what went in `frames` ago, and
+/// what goes in is the input plus `feedback` × that echo. With feedback 0
+/// the output is `x[n] + mix·x[n − frames]`.
+#[derive(Clone, Debug, Default)]
+pub struct Delay {
+    buf: Vec<[f32; 2]>,
+    at: usize,
+    feedback: f32,
+    mix: f32,
+}
+
+impl Delay {
+    /// `seconds` of delay (0: off; at most 2 s), its feedback and mix.
+    pub fn set(&mut self, seconds: f32, feedback: f32, mix: f32, rate: f32) {
+        let frames = (seconds.clamp(0.0, 2.0) * rate).round() as usize;
+        if frames != self.buf.len() {
+            self.buf = vec![[0.0; 2]; frames];
+            self.at = 0;
+        }
+        self.feedback = feedback.clamp(0.0, 0.95);
+        self.mix = mix.clamp(0.0, 1.0);
+    }
+
+    pub fn on(&self) -> bool {
+        !self.buf.is_empty() && self.mix > 0.0
+    }
+
+    #[inline]
+    pub fn process(&mut self, l: f32, r: f32) -> (f32, f32) {
+        if self.buf.is_empty() {
+            return (l, r);
+        }
+        let [wl, wr] = self.buf[self.at];
+        self.buf[self.at] = [l + self.feedback * wl, r + self.feedback * wr];
+        self.at += 1;
+        if self.at == self.buf.len() {
+            self.at = 0;
+        }
+        (l + self.mix * wl, r + self.mix * wr)
+    }
+}
+
+/// A tanh waveshaper: `y = tanh(k·x) / tanh(k)` with `k = 1 + 19·amount`,
+/// mixed with the clean signal by `mix`. Amount 0 bypasses.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Drive {
+    k: f32,
+    norm: f32,
+    mix: f32,
+}
+
+impl Drive {
+    pub fn set(&mut self, amount: f32, mix: f32) {
+        let amount = amount.clamp(0.0, 1.0);
+        if amount <= 0.0 {
+            self.k = 0.0;
+            return;
+        }
+        self.k = 1.0 + 19.0 * amount;
+        self.norm = 1.0 / self.k.tanh();
+        self.mix = mix.clamp(0.0, 1.0);
+    }
+
+    pub fn on(&self) -> bool {
+        self.k > 0.0
+    }
+
+    #[inline]
+    pub fn process(&mut self, l: f32, r: f32) -> (f32, f32) {
+        if self.k <= 0.0 {
+            return (l, r);
+        }
+        let shape = |x: f32| x + ((self.k * x).tanh() * self.norm - x) * self.mix;
+        (shape(l), shape(r))
+    }
+}
+
 /// A smoothing coefficient for a time constant in seconds.
 pub fn time_coefficient(seconds: f32, rate: f32) -> f32 {
     if seconds <= 0.0 {

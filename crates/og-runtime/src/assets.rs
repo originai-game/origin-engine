@@ -1162,6 +1162,10 @@ pub(crate) fn load_sound(eng: &Engine, path: &str) -> Result<usize, String> {
                 sound.meta.chunk_count,
             )
             .map_err(|e| e.reason().to_string())?,
+        Some(link) if sound.is_opus() => link
+            .bank()
+            .insert_opus(&sound.id, &sound.opus)
+            .map_err(|e| e.reason().to_string())?,
         Some(link) => link
             .bank()
             .insert_qoa(&sound.id, &sound.qoa)

@@ -15,7 +15,7 @@
 //! | texture (`og.Texture`; a PNG, JPEG, KTX2, WebP, TGA, PSD or DDS source, a glTF's image, a texture array's layer) | [`TextureMeta`] | `ktx2` (a KTX2 file) |
 //! | texture array (`og.TextureArray`, an `.ogt` of `type texture-array`) | [`TextureArrayMeta`] | `layers` [`ArrayLayerRow`] (each layer's `og.Texture` id, `<id>#layer<n>`), `strings` |
 //! | video (`og.Video`, an `.ogt` of `type video` cooked by ffmpeg) | [`VideoMeta`] | none: its frames are the texture array `<id>#frames`, its sound `<id>#audio` |
-//! | sound (`og.Sound`; a `.wav`, `.mp3`, `.ogg` (Vorbis) or `.flac`, or a procedural preset: an `.ogt` of `type sfx` synthesised by the cook) | [`SoundMeta`] | `qoa` (a QOA file; of a sound cooked in chunks, the header and the first chunk's frames) |
+//! | sound (`og.Sound`; a `.wav`, `.mp3`, `.ogg` (Vorbis), `.flac` or `.opus`, or a procedural preset: an `.ogt` of `type sfx` synthesised by the cook) | [`SoundMeta`] | `qoa` (`codec` QOA: a QOA file; of a sound cooked in chunks, the header and the first chunk's frames) or `opus` (`codec` Opus: an Opus sound, `crate::opus`) |
 //! | sound chunk (`og.SoundChunk`, `<id>#chunk<n>` of a sound cooked in chunks) | [`SoundChunkMeta`] | `qoa` (the chunk's QOA frames) |
 //! | font (`og.Font`) | [`FontMeta`] | `glyphs` [`GlyphRow`], `kerning` [`KernRow`] (sorted by left, right), `atlas.<n>` (KTX2 RGBA8, zlib), `ttf` (the font file, when shaped or `runtime`) |
 //! | scene (`og.Scene`) | [`SceneMeta`] | `entities` [`EntityRow`], `refs` [`RefRow`], `components` [`ComponentRow`], `strings`, per component `c.<Type>` rows and `s.<Type>` its schema JSON |
@@ -558,12 +558,23 @@ impl BlobKind for Texture {
 
 // ── sound ────────────────────────────────────────────────────────────────
 
+/// `SoundMeta::codec` values.
+pub mod sound_codec {
+    /// QOA: the `qoa` section.
+    pub const QOA: u32 = 0;
+    /// Opus (`crate::opus`): the `opus` section, never chunked.
+    pub const OPUS: u32 = 1;
+}
+
 row!(
-    /// The root of a sound blob; the `qoa` section is a QOA file. A sound
-    /// cooked in chunks (`chunk_count` > 0) holds the file's header (the
-    /// whole length) and its first `chunk_frames` QOA frames only; chunk
-    /// `n` (1..chunk_count) is the blob `<id>#chunk<n>` ([`SoundChunkMeta`]).
-    SoundMeta, "og.Sound", 2 {
+    /// The root of a sound blob. With `codec` QOA the `qoa` section is a QOA
+    /// file; a sound cooked in chunks (`chunk_count` > 0) holds the file's
+    /// header (the whole length) and its first `chunk_frames` QOA frames
+    /// only, and chunk `n` (1..chunk_count) is the blob `<id>#chunk<n>`
+    /// ([`SoundChunkMeta`]). With `codec` Opus the `opus` section is an Opus
+    /// sound (`crate::opus`: self-contained blocks of 0.48 s at 48 kHz),
+    /// whole. Version 3 added `codec`.
+    SoundMeta, "og.Sound", 3 {
         sample_rate: u32,
         channels: u32,
         /// Samples per channel.
@@ -572,6 +583,8 @@ row!(
         chunk_frames: u32,
         /// Chunks, the first included; 0: not chunked.
         chunk_count: u32,
+        /// [`sound_codec`]: QOA (0) or Opus (1).
+        codec: u32,
     }
 );
 

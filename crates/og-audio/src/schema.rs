@@ -2,8 +2,8 @@
 //! types are the layout (`og_core::reflect`); `crates/og-audio/README.md`
 //! lists them for the IDL (`crates/og-api/api/audio.ogt`).
 
-use og_core::Reflect;
 use og_core::glam::{Quat, Vec3};
+use og_core::{List, Reflect};
 
 /// The buses a source can play on. `Master` is also the gain every bus
 /// passes through.
@@ -15,8 +15,12 @@ pub enum Bus {
     Ui = 3,
 }
 
-/// How many buses there are.
+/// How many built-in buses there are (master, music, sfx, ui).
 pub const BUS_COUNT: usize = 4;
+
+/// How many buses the graph holds: the four built-ins and the user buses
+/// 4 to 15 (`og.AudioBusNode`).
+pub const MAX_BUSES: usize = 16;
 
 impl Bus {
     /// The bus of a stored index; an index past the last bus is `Sfx`.
@@ -34,7 +38,7 @@ impl Bus {
 /// plays; setting `playing` to false stops it; a one-shot that reaches its
 /// end sets `playing` back to false and emits `og.SoundEnded`.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.AudioSource")]
+#[reflect(name = "og.AudioSource", version = 2)]
 pub struct AudioSource {
     /// The sound to play (a Sound handle); 0 plays nothing. A handle not yet in the bank waits and starts on the first tick it is there.
     pub sound: u64,
@@ -123,6 +127,9 @@ pub struct AudioSource {
     pub virtualize: bool,
     /// Set true to start the sound again from the top (its startOffset, its startAt) this tick, playing or not, without touching `playing`; the engine sets it back to false (and `playing` true). The voice it replaces ends with SoundEnded reason SOUND_RETRIGGERED.
     pub retrigger: bool,
+    /// A user bus (4 to 15, declared by an og.AudioBusNode) it plays into instead of `bus`; 0 (or a bus no node declares) plays on `bus`.
+    #[reflect(name = "userBus", min = 0, max = 15)]
+    pub user_bus: u32,
 }
 
 impl Default for AudioSource {
@@ -154,6 +161,7 @@ impl Default for AudioSource {
             cone_outer_gain: 0.0,
             virtualize: false,
             retrigger: false,
+            user_bus: 0,
         }
     }
 }
@@ -446,7 +454,7 @@ impl Transform {
 /// bus (the first in query order counts); changes reach the mixer as `fx`
 /// commands in the stream.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.AudioBusFx")]
+#[reflect(name = "og.AudioBusFx", version = 2)]
 pub struct AudioBusFx {
     /// The bus these effects are on.
     #[reflect(variants = ["master", "music", "sfx", "ui"], default = 1)]
@@ -513,6 +521,66 @@ pub struct AudioBusFx {
         tunable
     )]
     pub duck_release: f32,
+    /// A user bus (4 to 15, an og.AudioBusNode) these effects are on instead of `bus`; 0 uses `bus`.
+    #[reflect(name = "userBus", min = 0, max = 15)]
+    pub user_bus: u32,
+    /// The equaliser's low shelf gain below eqLowFreq; 0 dB is flat.
+    #[reflect(name = "eqLow", min = -24, max = 24, unit = "db", tunable)]
+    pub eq_low: f32,
+    /// The low shelf's corner frequency.
+    #[reflect(
+        name = "eqLowFreq",
+        min = 20,
+        max = 2000,
+        default = 200,
+        unit = "hz",
+        tunable
+    )]
+    pub eq_low_freq: f32,
+    /// The equaliser's mid band (a peak or notch) gain at eqMidFreq; 0 dB is flat.
+    #[reflect(name = "eqMid", min = -24, max = 24, unit = "db", tunable)]
+    pub eq_mid: f32,
+    /// The mid band's centre frequency.
+    #[reflect(
+        name = "eqMidFreq",
+        min = 40,
+        max = 16000,
+        default = 1000,
+        unit = "hz",
+        tunable
+    )]
+    pub eq_mid_freq: f32,
+    /// The mid band's Q: higher is narrower.
+    #[reflect(name = "eqMidQ", min = 0.1, max = 10, default = 0.7, tunable)]
+    pub eq_mid_q: f32,
+    /// The equaliser's high shelf gain above eqHighFreq; 0 dB is flat.
+    #[reflect(name = "eqHigh", min = -24, max = 24, unit = "db", tunable)]
+    pub eq_high: f32,
+    /// The high shelf's corner frequency.
+    #[reflect(
+        name = "eqHighFreq",
+        min = 1000,
+        max = 20000,
+        default = 5000,
+        unit = "hz",
+        tunable
+    )]
+    pub eq_high_freq: f32,
+    /// An echo: the delay's time; 0 is off.
+    #[reflect(min = 0, max = 2, unit = "s", tunable)]
+    pub delay: f32,
+    /// How much of each echo feeds the next.
+    #[reflect(name = "delayFeedback", min = 0, max = 0.95, default = 0.35, tunable)]
+    pub delay_feedback: f32,
+    /// How loud the echoes are, added to the dry bus.
+    #[reflect(name = "delayMix", min = 0, max = 1, default = 0.35, tunable)]
+    pub delay_mix: f32,
+    /// A tanh waveshaper's drive, 0 (off) to 1 (heavy: 20x into the curve).
+    #[reflect(min = 0, max = 1, tunable)]
+    pub distortion: f32,
+    /// How much of the distorted signal replaces the clean one.
+    #[reflect(name = "distortionMix", min = 0, max = 1, default = 1, tunable)]
+    pub distortion_mix: f32,
 }
 
 impl Default for AudioBusFx {
@@ -533,6 +601,19 @@ impl Default for AudioBusFx {
             duck_threshold: -36.0,
             duck_attack: 0.02,
             duck_release: 0.4,
+            user_bus: 0,
+            eq_low: 0.0,
+            eq_low_freq: 200.0,
+            eq_mid: 0.0,
+            eq_mid_freq: 1000.0,
+            eq_mid_q: 0.7,
+            eq_high: 0.0,
+            eq_high_freq: 5000.0,
+            delay: 0.0,
+            delay_feedback: 0.35,
+            delay_mix: 0.35,
+            distortion: 0.0,
+            distortion_mix: 1.0,
         }
     }
 }
@@ -672,4 +753,226 @@ pub struct MusicBeat {
     pub beat: u32,
     /// Its world time in seconds.
     pub time: f64,
+}
+
+/// A user bus of the bus graph: bus `index` (4 to 15) sums the sources
+/// whose `userBus` names it, runs its og.AudioBusFx (`userBus` = index),
+/// and plays into its `parent` bus (a built-in or a user bus of a lower
+/// index, so the graph has no cycles; any other parent is master). Its
+/// volume is multiplied down the chain to master. The first node in query
+/// order for an index counts.
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+#[reflect(name = "og.AudioBusNode")]
+pub struct AudioBusNode {
+    /// The bus's index, 4 to 15.
+    #[reflect(min = 4, max = 15, default = 4)]
+    pub index: u32,
+    /// The bus it plays into: 0 master, 1 music, 2 sfx, 3 ui, or a user bus below `index`.
+    #[reflect(min = 0, max = 15)]
+    pub parent: u32,
+    /// The bus's gain.
+    #[reflect(min = 0, max = 2, default = 1, tunable)]
+    pub volume: f32,
+}
+
+impl Default for AudioBusNode {
+    fn default() -> Self {
+        AudioBusNode {
+            index: 4,
+            parent: 0,
+            volume: 1.0,
+        }
+    }
+}
+
+/// A mixer snapshot (combat, underwater, paused): per-bus volume and
+/// filter settings the mix blends towards while `active`, and away from
+/// when not, over `fade` seconds. og.audio moves `weight` towards 1 or 0
+/// each tick and sends the blend in the stream, the gains ramping
+/// linearly across each tick so the blend is a straight line to the
+/// sample. Several snapshots multiply their volumes and take the lowest
+/// low-pass and the highest high-pass.
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+#[reflect(name = "og.AudioSnapshot")]
+pub struct AudioSnapshot {
+    /// Blends in while true, out while false.
+    pub active: bool,
+    /// Seconds a full blend in or out takes; 0 is at once.
+    #[reflect(min = 0, max = 30, default = 0.5, unit = "s", tunable)]
+    pub fade: f32,
+    /// How far it is blended in, 0 to 1 (written by og.audio each tick).
+    #[reflect(min = 0, max = 1)]
+    pub weight: f32,
+    /// Per bus (by index: master, music, sfx, ui, then user buses 4 to 15), the gain it multiplies in at full weight; buses past the list's length are 1.
+    pub volume: List<f32, 16>,
+    /// Per bus, a low-pass cutoff in Hz at full weight (blended from 20 kHz in octaves); 0 or past the list's length is none.
+    pub lowpass: List<f32, 16>,
+    /// Per bus, a high-pass cutoff in Hz at full weight (blended from 20 Hz in octaves); 0 or past the list's length is none.
+    pub highpass: List<f32, 16>,
+}
+
+impl Default for AudioSnapshot {
+    fn default() -> Self {
+        AudioSnapshot {
+            active: false,
+            fade: 0.5,
+            weight: 0.0,
+            volume: List::new(),
+            lowpass: List::new(),
+            highpass: List::new(),
+        }
+    }
+}
+
+/// `og.AudioEvent.order` values.
+pub mod event_order {
+    /// A weighted random pick each time.
+    pub const RANDOM: u32 = 0;
+    /// The sounds in turn.
+    pub const ROUND_ROBIN: u32 = 1;
+    /// Random, every sound once before any repeats.
+    pub const SHUFFLE: u32 = 2;
+}
+
+/// An audio event: one of a set of sounds played on each trigger, with
+/// pitch and volume jitter, a cooldown and a voice limit. Setting
+/// `trigger` plays it (the engine sets it back to false): og.audioEvents,
+/// before og.audio, picks a sound with the engine's seeded random stream
+/// (world state, never Math.random), and spawns a voice entity (an
+/// og.AudioSource and og.AudioEventVoice, parented to this entity, so a
+/// spatial event is heard where its entity is), despawned when it ends.
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+#[reflect(name = "og.AudioEvent")]
+pub struct AudioEvent {
+    /// The variations (og.load.sound or og.audio.createSound handles); 0s are skipped.
+    pub sounds: List<u64, 8>,
+    /// Weights of a random pick, by position in `sounds`; past the list's length 1.
+    pub weights: List<f32, 8>,
+    /// How the next sound is chosen.
+    #[reflect(variants = ["random", "roundRobin", "shuffle"])]
+    pub order: u32,
+    /// Linear gain.
+    #[reflect(min = 0, max = 4, default = 1, tunable)]
+    pub volume: f32,
+    /// Each play's volume varies by up to this many dB either way.
+    #[reflect(name = "volumeJitter", min = 0, max = 24, unit = "db", tunable)]
+    pub volume_jitter: f32,
+    /// Playback rate.
+    #[reflect(min = 0.0625, max = 16, default = 1, tunable)]
+    pub pitch: f32,
+    /// Each play's pitch varies by up to this many semitones either way.
+    #[reflect(name = "pitchJitter", min = 0, max = 24, tunable)]
+    pub pitch_jitter: f32,
+    /// A trigger this soon after the last play is ignored.
+    #[reflect(min = 0, max = 60, unit = "s", tunable)]
+    pub cooldown: f32,
+    /// The most voices of this event at once; 0 is no limit.
+    #[reflect(name = "maxVoices", min = 0, max = 64)]
+    pub max_voices: u32,
+    /// At maxVoices, the oldest voice is stopped for the new one; false ignores the trigger instead.
+    #[reflect(default = 1)]
+    pub steal: bool,
+    /// The bus its voices play on.
+    #[reflect(variants = ["master", "music", "sfx", "ui"], default = 2)]
+    pub bus: u32,
+    /// A user bus its voices play into instead (og.AudioSource.userBus).
+    #[reflect(name = "userBus", min = 0, max = 15)]
+    pub user_bus: u32,
+    /// Its voices are spatial, at this entity's world transform.
+    pub spatial: bool,
+    /// og.AudioSource.refDistance of its voices.
+    #[reflect(name = "refDistance", min = 0, default = 1, unit = "m", tunable)]
+    pub ref_distance: f32,
+    /// og.AudioSource.maxDistance of its voices.
+    #[reflect(name = "maxDistance", min = 0, default = 100, unit = "m", tunable)]
+    pub max_distance: f32,
+    /// og.AudioSource.priority of its voices.
+    #[reflect(min = 0, max = 255, default = 128)]
+    pub priority: u32,
+    /// Set true to play it this tick; the engine sets it back to false.
+    pub trigger: bool,
+    /// Plays so far (written by og.audioEvents).
+    pub played: u32,
+    /// The world time of the last play (written by og.audioEvents).
+    #[reflect(unit = "s")]
+    pub last: f64,
+    /// The position in `sounds` played last (written by og.audioEvents).
+    pub index: u32,
+    /// A shuffle's sounds already played this round, one bit each (written by og.audioEvents).
+    pub bag: u32,
+    /// Its voices playing now (written by og.audioEvents).
+    pub voices: u32,
+}
+
+impl Default for AudioEvent {
+    fn default() -> Self {
+        AudioEvent {
+            sounds: List::new(),
+            weights: List::new(),
+            order: event_order::RANDOM,
+            volume: 1.0,
+            volume_jitter: 0.0,
+            pitch: 1.0,
+            pitch_jitter: 0.0,
+            cooldown: 0.0,
+            max_voices: 0,
+            steal: true,
+            bus: Bus::Sfx as u32,
+            user_bus: 0,
+            spatial: false,
+            ref_distance: 1.0,
+            max_distance: 100.0,
+            priority: 128,
+            trigger: false,
+            played: 0,
+            last: 0.0,
+            index: 0,
+            bag: 0,
+            voices: 0,
+        }
+    }
+}
+
+/// Engine-owned: a voice an audio event spawned (beside its og.AudioSource
+/// and an og.Parent to the event's entity). Despawned when it ends.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
+#[reflect(name = "og.AudioEventVoice")]
+pub struct AudioEventVoice {
+    /// The og.AudioEvent's entity.
+    pub event: u64,
+    /// The sound it plays.
+    pub sound: u64,
+    /// The play it is, counting from 1 (the oldest is stolen first).
+    pub play: u32,
+}
+
+/// Values per bus in [`AudioMix::sent`]: its gain, its parent, the 13
+/// parameters of og.AudioBusFx's first version, and the equaliser, echo
+/// and waveshaper's 12.
+pub const GRAPH_STRIDE: usize = 27;
+/// Values in [`AudioMix::sent`].
+pub const GRAPH_LEN: usize = GRAPH_STRIDE * MAX_BUSES;
+
+/// Engine-owned: what the bus graph last told the mixer, and the sound
+/// events' random stream. A resource, so in every snapshot and the world
+/// hash.
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+#[reflect(name = "og.AudioMix")]
+pub struct AudioMix {
+    /// The graph's parameters last sent, [`GRAPH_STRIDE`] per bus (the
+    /// built-in buses' gains and their first-version effects travel as
+    /// before and hold constants here).
+    pub sent: List<f32, 512>,
+    /// The audio events' random state (an og_core::Rng's, forked from the
+    /// world's seed at install).
+    pub rng: u32,
+}
+
+impl Default for AudioMix {
+    fn default() -> Self {
+        AudioMix {
+            sent: List::new(),
+            rng: 1,
+        }
+    }
 }

@@ -157,7 +157,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1757 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1764 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -227,6 +227,8 @@ Field units the docs and Tune use.
 | [`Asset()`](load.md#column-Asset) | column kind | load | — |
 | [`AudioBus`](audio.md#type-AudioBus) | enum | audio | — |
 | [`AudioBus()`](audio.md#column-AudioBus) | column kind | audio | — |
+| [`AudioEventOrder`](audio.md#type-AudioEventOrder) | enum | audio | — |
+| [`AudioEventOrder()`](audio.md#column-AudioEventOrder) | column kind | audio | — |
 | [`AudioResampler`](audio.md#type-AudioResampler) | enum | audio | — |
 | [`AudioResampler()`](audio.md#column-AudioResampler) | column kind | audio | — |
 | [`BackdropEffect`](ui.md#type-BackdropEffect) | desc struct | ui | — |
@@ -733,9 +735,13 @@ Field units the docs and Tune use.
 | [`og.AssetReady`](load.md#record-AssetReady) | event | load | — |
 | [`og.atmosphere.timeOfDay`](atmosphere.md#fn-timeOfDay) | function | atmosphere | `og_atmosphere_time_of_day` |
 | [`og.Audio`](audio.md#record-Audio) | resource | audio | — |
+| [`og.audio.createSound`](audio.md#fn-createSound) | function | audio | `og_audio_create_sound` |
 | [`og.audio.outputLatency`](audio.md#fn-outputLatency) | function | audio | `og_audio_output_latency` |
 | [`og.AudioBusFx`](audio.md#record-AudioBusFx) | component | audio | — |
+| [`og.AudioBusNode`](audio.md#record-AudioBusNode) | component | audio | — |
+| [`og.AudioEvent`](audio.md#record-AudioEvent) | component | audio | — |
 | [`og.AudioListener`](audio.md#record-AudioListener) | component | audio | — |
+| [`og.AudioSnapshot`](audio.md#record-AudioSnapshot) | component | audio | — |
 | [`og.AudioSource`](audio.md#record-AudioSource) | component | audio | — |
 | [`og.Beam`](render.md#record-Beam) | component | render | — |
 | [`og.Blendshapes`](anim.md#record-Blendshapes) | component | anim | — |
@@ -1637,6 +1643,7 @@ Field units the docs and Tune use.
 | [`SOUND_REPLACED`](audio.md#const-SOUND_REPLACED) | constant | audio | — |
 | [`SOUND_RETRIGGERED`](audio.md#const-SOUND_RETRIGGERED) | constant | audio | — |
 | [`SOUND_STOPPED`](audio.md#const-SOUND_STOPPED) | constant | audio | — |
+| [`SoundDesc`](audio.md#type-SoundDesc) | desc struct | audio | — |
 | [`SoundEvent`](ui.md#type-SoundEvent) | struct | ui | — |
 | [`SoundInfo`](load.md#type-SoundInfo) | struct | load | — |
 | [`SpaceDesc`](ui.md#type-SpaceDesc) | desc struct | ui | — |

@@ -8,12 +8,16 @@ description = "Origin Engine audio: the tick-side command stream (sources, liste
 autotests = false
 
 # Pure Rust, no renderer: builds for wasm32-unknown-unknown
-# (`cargo check --target wasm32-unknown-unknown -p og-audio`). The QOA codec
-# is og-bundle's own source file (src/lib.rs `mod qoa`), compiled here so audio
-# does not depend on og-bundle's og-render dependency.
+# (`cargo check --target wasm32-unknown-unknown -p og-audio`). The QOA and
+# Opus codecs are og-bundle's own source files (src/lib.rs `mod qoa`, `mod
+# opus`), compiled here so audio does not depend on og-bundle's og-render
+# dependency.
 [dependencies]
 og-core = { path = "../og-core" }
 og-ecs = { path = "../og-ecs" }
+# Opus sounds' blocks decode with og-bundle's `src/opus.rs`, compiled here
+# by path (`og_audio::opus`), over this codec (pure Rust, no dependencies).
+opus-pure = { workspace = true }
 
 [dev-dependencies]
 image = { workspace = true }

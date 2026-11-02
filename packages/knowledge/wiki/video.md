@@ -16,7 +16,7 @@ module video {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 20129</sub>
+<sub>`api.ogt` line 20378</sub>
 
 ## Contents
 
@@ -78,7 +78,7 @@ component VideoPlayer {
 }
 ```
 
-<sub>`api.ogt` line 20161</sub>
+<sub>`api.ogt` line 20410</sub>
 
 ## Types
 
@@ -94,7 +94,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Video "Cooked footage: its frames as a texture array, its sound (og.load.video)."
 ```
 
-<sub>`api.ogt` line 20134</sub>
+<sub>`api.ogt` line 20383</sub>
 
 <a id="type-VideoInfo"></a>
 
@@ -135,7 +135,7 @@ struct VideoInfo {
 }
 ```
 
-<sub>`api.ogt` line 20143</sub>
+<sub>`api.ogt` line 20392</sub>
 
 ## Column kinds
 
@@ -154,4 +154,4 @@ column Video {
 }
 ```
 
-<sub>`api.ogt` line 20136</sub>
+<sub>`api.ogt` line 20385</sub>

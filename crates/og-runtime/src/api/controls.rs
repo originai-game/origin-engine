@@ -237,6 +237,63 @@ pub fn og_audio_output_latency(world: u32) -> f64 {
         .unwrap_or(0.0)
 }
 
+/// `og.audio.createSound`: PCM from the game, clamped to 16 bits and put in
+/// the bank resident, and listed among the loaded sounds so soundInfo,
+/// timelines and themes find it by handle.
+pub fn og_audio_create_sound(world: u32, desc: Option<String>) -> String {
+    result((|| {
+        let eng = engine(world)?;
+        let d = parse(desc.as_deref())?;
+        let rate = d["rate"].as_u64().unwrap_or(48_000);
+        let channels = d["channels"].as_u64().unwrap_or(1);
+        if !(8_000..=192_000).contains(&rate) {
+            return Err(format!("rate {rate} is out of range: 8000 to 192000"));
+        }
+        if !(1..=2).contains(&channels) {
+            return Err(format!("channels {channels} is out of range: 1 or 2"));
+        }
+        let Value::Array(values) = &d["samples"] else {
+            return Err("samples is not an array of numbers".into());
+        };
+        let mut pcm = Vec::with_capacity(values.len());
+        for v in values {
+            let x = v
+                .as_f64()
+                .filter(|x| x.is_finite())
+                .ok_or("samples holds something that is not a finite number")?;
+            pcm.push((x.clamp(-1.0, 1.0) * 32767.0).round() as i16);
+        }
+        if pcm.is_empty() || !pcm.len().is_multiple_of(channels as usize) {
+            return Err(format!(
+                "samples holds {} values: at least one frame of {channels} channel(s), whole frames",
+                pcm.len()
+            ));
+        }
+        let link = og_audio::link(eng.id).ok_or("this engine has no audio")?;
+        let id = format!("og.audio.createSound#{}", eng.assets.borrow().sounds.len());
+        let handle = link
+            .bank()
+            .insert_pcm(&id, rate as u32, channels as usize, &pcm)
+            .map_err(|e| e.reason().to_string())?;
+        let mut a = eng.assets.borrow_mut();
+        a.sounds.push(og_bundle::runtime::CookedSound {
+            id,
+            meta: og_bundle::format::SoundMeta {
+                sample_rate: rate as u32,
+                channels: channels as u32,
+                frames: (pcm.len() / channels as usize) as u32,
+                chunk_frames: 0,
+                chunk_count: 0,
+                codec: og_bundle::format::sound_codec::QOA,
+            },
+            qoa: Vec::new(),
+            opus: Vec::new(),
+        });
+        a.sound_handles.push(handle);
+        Ok(json!(handle as f64))
+    })())
+}
+
 /// The host's sink reports its output latency (seconds from a sample's world
 /// time to the speaker: the device's own and the buffering in front of it),
 /// between ticks; it is host input, written to og.Audio like an input event.
