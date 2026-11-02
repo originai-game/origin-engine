@@ -89,6 +89,7 @@ mod light2d;
 mod lightmap;
 mod lines;
 pub mod lod;
+pub mod meshlet;
 mod probe_content;
 mod probe_select;
 mod probes;

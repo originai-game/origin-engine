@@ -3,13 +3,16 @@
 use super::*;
 
 /// One level of detail of a [`CookedPrimitive`].
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Lod {
     pub first: usize,
     pub count: usize,
     /// The level's largest distance from the full mesh, both ways, in the
     /// model's units (0 for LOD 0).
     pub error: f32,
+    /// Its range of [`CookedPrimitive::clusters`] (count 0: none).
+    pub cluster_first: usize,
+    pub cluster_count: usize,
 }
 
 /// A decoded mesh primitive: every LOD shares the vertices.
@@ -22,6 +25,9 @@ pub struct CookedPrimitive {
     /// All LODs' triangles, LOD 0 first.
     pub indices: Vec<u32>,
     pub lods: Vec<Lod>,
+    /// Every level's clusters (og-render's `meshlet`), each a range of
+    /// `indices`; empty for a primitive made without them.
+    pub clusters: Vec<og_render::meshlet::Cluster>,
     /// Exact local bounds of the source positions.
     pub min: Vec3,
     pub max: Vec3,
@@ -53,6 +59,36 @@ impl CookedPrimitive {
         MeshData {
             vertices: self.vertices.clone(),
             indices: self.indices[l.first..l.first + l.count].to_vec(),
+        }
+    }
+
+    /// Every level with its clusters, over [`Self::indices`] whole (the
+    /// mesh [`Self::mesh_all`] makes); `None` when a level has none.
+    pub fn mesh_clusters(&self) -> Option<og_render::meshlet::MeshClusters> {
+        let levels = self
+            .lods
+            .iter()
+            .map(|l| {
+                (l.cluster_count > 0).then(|| og_render::meshlet::ClusterLevel {
+                    first: l.first as u32,
+                    count: l.count as u32,
+                    error: l.error,
+                    clusters: l.cluster_first as u32..(l.cluster_first + l.cluster_count) as u32,
+                })
+            })
+            .collect::<Option<Vec<_>>>()?;
+        Some(og_render::meshlet::MeshClusters {
+            levels,
+            clusters: self.clusters.clone(),
+        })
+    }
+
+    /// Every level's triangles in one mesh, level 0 first: the indices
+    /// [`Self::mesh_clusters`]' ranges address.
+    pub fn mesh_all(&self) -> MeshData {
+        MeshData {
+            vertices: self.vertices.clone(),
+            indices: self.indices.clone(),
         }
     }
 
@@ -242,6 +278,7 @@ impl CookedModel {
         let meta = one::<ModelMeta>(blob)?;
         let prims = table::<PrimitiveRow>(blob, "primitives")?;
         let lods = table::<LodRow>(blob, "lods")?;
+        let cluster_rows = table::<ClusterRow>(blob, "clusters")?;
         let meshes = table::<MeshRow>(blob, "meshes")?;
         let materials = table::<MaterialRow>(blob, "materials")?;
         let textures = table::<TextureRefRow>(blob, "textures")?;
@@ -343,15 +380,34 @@ impl CookedModel {
                 .get(p.lod_first as usize..(p.lod_first + p.lod_count) as usize)
                 .ok_or_else(|| bad(format!("primitive {i}: LOD range out of range")))?;
             let mut prim_lods = Vec::new();
+            let mut prim_clusters = Vec::new();
             for l in lod_rows {
                 if (l.index_first + l.index_count) as usize > idx.len() || l.index_count % 3 != 0 {
                     return Err(bad(format!("primitive {i}: LOD indices out of range")));
+                }
+                if (l.cluster_first + l.cluster_count) as usize > cluster_rows.len() {
+                    return Err(bad(format!("primitive {i}: clusters out of range")));
                 }
                 prim_lods.push(Lod {
                     first: l.index_first as usize,
                     count: l.index_count as usize,
                     error: l.error,
+                    cluster_first: prim_clusters.len(),
+                    cluster_count: l.cluster_count as usize,
                 });
+                prim_clusters.extend(
+                    cluster_rows
+                        [l.cluster_first as usize..(l.cluster_first + l.cluster_count) as usize]
+                        .iter()
+                        .map(|c| og_render::meshlet::Cluster {
+                            first: c.index_first,
+                            triangles: c.triangle_count,
+                            center: Vec3::new(c.center_x, c.center_y, c.center_z),
+                            radius: c.radius,
+                            cone_axis: Vec3::new(c.cone_x, c.cone_y, c.cone_z),
+                            cone_cutoff: c.cone_cutoff,
+                        }),
+                );
             }
             if prim_lods.is_empty() {
                 return Err(bad(format!("primitive {i} has no LOD")));
@@ -401,6 +457,7 @@ impl CookedModel {
                 tangents,
                 indices: idx,
                 lods: prim_lods,
+                clusters: prim_clusters,
                 min,
                 max: min + Vec3::new(p.pos_scale_x, p.pos_scale_y, p.pos_scale_z),
             });

@@ -254,3 +254,109 @@ fn msft_lod_levels_are_kept_as_the_gltf_gives_them() {
     // The level's node is not drawn as a part of its own.
     assert_eq!(model.scene_nodes(model.default_scene.unwrap()).len(), 1);
 }
+
+/// A UV sphere of radius 1, `n` segments around and `n / 2` rings, wound
+/// counter-clockwise seen from outside (glTF's front).
+fn sphere(n: u32) -> (Vec<[f32; 3]>, Vec<u32>) {
+    let rings = n / 2;
+    let mut p = Vec::new();
+    for j in 0..=rings {
+        let (st, ct) = (std::f32::consts::PI * j as f32 / rings as f32).sin_cos();
+        for i in 0..=n {
+            let (sp, cp) = (std::f32::consts::TAU * i as f32 / n as f32).sin_cos();
+            p.push([st * cp, ct, st * sp]);
+        }
+    }
+    let mut idx = Vec::new();
+    let w = n + 1;
+    for j in 0..rings {
+        for i in 0..n {
+            let a = j * w + i;
+            idx.extend([a, a + 1, a + w, a + 1, a + w + 1, a + w]);
+        }
+    }
+    (p, idx)
+}
+
+/// Clusters (og-render's `meshlet`): every level is cut into clusters of at
+/// most 64 triangles that cover it in order, each sphere holds its
+/// triangles, and the normal cone culls a cluster only when every one of
+/// its triangles faces away from the eye.
+///
+/// Ways this could fail: a level's indices kept in their old order while
+/// the cluster ranges assume the new one (a cluster draws another's
+/// triangles); a coarse level's clusters numbered from the primitive's
+/// first cluster instead of the level's; the cone written in the winding's
+/// opposite sense (front faces culled); clusters cut far below 64 (the
+/// vertex cap at 64 on a faceted mesh).
+#[test]
+fn every_level_is_cut_into_clusters_that_bound_and_face_their_triangles() {
+    use og_render::meshlet::{CLUSTER_TRIANGLES, backfacing};
+    let s = sphere(96);
+    let full = s.1.len() / 3;
+    let root = project(
+        "og-cook-lod-clusters",
+        &[("models/ball.glb", &glb(&[s], false))],
+    );
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let (model, _) = bundle.load_model_with_textures("models/ball.glb").unwrap();
+    let p = &model.primitives[0];
+    assert_eq!(p.triangle_count(0), full);
+    let mc = p.mesh_clusters().expect("every level has clusters");
+    assert_eq!(mc.levels.len(), p.lods.len());
+    mc.validate(p.indices.len() as u32).unwrap();
+    // Level 0's clusters are nearly full: 9216 triangles in at most 160.
+    let l0 = &mc.levels[0];
+    let n0 = (l0.clusters.end - l0.clusters.start) as usize;
+    assert!(
+        n0 * CLUSTER_TRIANGLES < full * 11 / 10,
+        "{n0} clusters for {full}"
+    );
+    let pos = |i: u32| glam::Vec3::from(p.vertices[i as usize].position);
+    let eyes: Vec<glam::Vec3> = (0..64)
+        .map(|k| {
+            let (a, b) = (k as f32 * 2.4, (k as f32 / 64.0) * 2.0 - 1.0);
+            let r = (1.0 - b * b).sqrt();
+            glam::Vec3::new(r * a.cos(), b, r * a.sin()) * (1.5 + (k % 5) as f32)
+        })
+        .collect();
+    let mut culled = 0;
+    for level in &mc.levels {
+        for c in &mc.clusters[level.clusters.start as usize..level.clusters.end as usize] {
+            let tris = &p.indices[c.first as usize..(c.first + c.triangles * 3) as usize];
+            for tri in tris.chunks(3) {
+                for &i in tri {
+                    assert!(
+                        pos(i).distance(c.center) <= c.radius * 1.001 + 1e-5,
+                        "a vertex outside its cluster's sphere: {} > {} ({:?}, level at {})",
+                        pos(i).distance(c.center),
+                        c.radius,
+                        c,
+                        level.first
+                    );
+                }
+            }
+            for &eye in &eyes {
+                if !backfacing(c.center, c.radius, c.cone_axis, c.cone_cutoff, eye) {
+                    continue;
+                }
+                culled += 1;
+                for tri in tris.chunks(3) {
+                    let [a, b, d] = [pos(tri[0]), pos(tri[1]), pos(tri[2])];
+                    let n = (b - a).cross(d - a);
+                    assert!(
+                        n.dot(eye - a) <= 1e-6,
+                        "a triangle facing the eye in a cluster its cone culled"
+                    );
+                }
+            }
+        }
+    }
+    // Seen from outside, about half of a sphere's clusters face away.
+    assert!(
+        culled > 64 * n0 / 4,
+        "the cone culled {culled} cluster views"
+    );
+}

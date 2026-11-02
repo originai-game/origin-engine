@@ -11,7 +11,7 @@
 //!
 //! | blob | root | sections |
 //! |---|---|---|
-//! | model (`og.Model`) | [`ModelMeta`] | `primitives` [`PrimitiveRow`], `lods` [`LodRow`], `meshes` [`MeshRow`], `materials` [`MaterialRow`], `textures` [`TextureRefRow`], `nodes` [`NodeRow`], `scenes` [`SceneRow`], `roots` (u32 node indices), `strings`, `vertices`, `indices`, `bvh_nodes` ([`BvhNodeRow`] rows, zlib) and `bvh_tris` (u32, zlib): each primitive's raycast BVH, og-render's `Bvh`, unless `raycast false`; `colliders` (optional, `collider true`: the primitive count, each one's u32 offset and length after the header, then og-physics' `bake_trimesh` bytes over LOD 0); `lights` [`LightRow`] (`KHR_lights_punctual`), `instances` [`InstanceRow`] (`EXT_mesh_gpu_instancing`), `variants` [`VariantRow`] and `variant_mappings` [`VariantMappingRow`] (`KHR_materials_variants`) |
+//! | model (`og.Model`) | [`ModelMeta`] | `primitives` [`PrimitiveRow`], `lods` [`LodRow`], `clusters` [`ClusterRow`] (each level's meshlets), `meshes` [`MeshRow`], `materials` [`MaterialRow`], `textures` [`TextureRefRow`], `nodes` [`NodeRow`], `scenes` [`SceneRow`], `roots` (u32 node indices), `strings`, `vertices`, `indices`, `bvh_nodes` ([`BvhNodeRow`] rows, zlib) and `bvh_tris` (u32, zlib): each primitive's raycast BVH, og-render's `Bvh`, unless `raycast false`; `colliders` (optional, `collider true`: the primitive count, each one's u32 offset and length after the header, then og-physics' `bake_trimesh` bytes over LOD 0); `lights` [`LightRow`] (`KHR_lights_punctual`), `instances` [`InstanceRow`] (`EXT_mesh_gpu_instancing`), `variants` [`VariantRow`] and `variant_mappings` [`VariantMappingRow`] (`KHR_materials_variants`) |
 //! | texture (`og.Texture`; a PNG, JPEG, KTX2, WebP, TGA, PSD or DDS source, a glTF's image, a texture array's layer) | [`TextureMeta`] | `ktx2` (a KTX2 file) |
 //! | texture array (`og.TextureArray`, an `.ogt` of `type texture-array`) | [`TextureArrayMeta`] | `layers` [`ArrayLayerRow`] (each layer's `og.Texture` id, `<id>#layer<n>`), `strings` |
 //! | video (`og.Video`, an `.ogt` of `type video` cooked by ffmpeg) | [`VideoMeta`] | none: a clip's frames are the texture array `<id>#frames`, a stream's the `og.VideoStream` `<id>#stream` with its poster `<id>#poster`; its sound `<id>#audio` |
@@ -48,7 +48,7 @@ use og_core::{Reflect, Schema};
 
 /// Changes whenever the bytes the cook writes for the same input change.
 /// Part of every cook stamp, so a new cooker re-cooks everything.
-pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r7");
+pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r8");
 
 /// "None" in a u32 index field.
 pub const NONE: u32 = u32::MAX;
@@ -240,13 +240,37 @@ row!(
 
 row!(
     /// One level of detail: a range of a primitive's decoded indices.
-    LodRow, "og.ModelLod", 2 {
+    LodRow, "og.ModelLod", 3 {
         index_first: u32,
         index_count: u32,
         /// The level's largest distance from the full mesh, both ways, in
         /// the model's units (0 for LOD 0): og-render's `lod` draws the
         /// level while it projects to less than a pixel.
         error: f32,
+        /// The level's clusters: a range of `clusters`, which together
+        /// cover its index range in order (og-render's `meshlet`).
+        cluster_first: u32,
+        cluster_count: u32,
+    }
+);
+
+row!(
+    /// One cluster (meshlet) of a level: at most
+    /// `og_render::meshlet::CLUSTER_TRIANGLES` triangles, a contiguous
+    /// range of the primitive's decoded indices, with its bounding sphere
+    /// and normal cone in the model's units (meshoptimizer's
+    /// `meshopt_computeMeshletBounds`). The GPU culls each cluster on its
+    /// own: the sphere against the frustum and the depth pyramid, the cone
+    /// against the eye (every triangle faces away when
+    /// `dot(normalize(center - eye), cone_axis) >= cone_cutoff + radius /
+    /// distance`; a `cone_cutoff` of 1 never culls).
+    ClusterRow, "og.ModelCluster", 1 {
+        index_first: u32,
+        triangle_count: u32,
+        center_x: f32, center_y: f32, center_z: f32,
+        radius: f32,
+        cone_x: f32, cone_y: f32, cone_z: f32,
+        cone_cutoff: f32,
     }
 );
 
@@ -449,6 +473,7 @@ impl BlobKind for Model {
             InstanceRow::schema(),
             VariantRow::schema(),
             VariantMappingRow::schema(),
+            ClusterRow::schema(),
         ]
     }
 }

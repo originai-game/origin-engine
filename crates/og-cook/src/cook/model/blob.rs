@@ -216,6 +216,7 @@ pub fn cook(
     let mut prims: Vec<PrimitiveRow> = Vec::new();
     let mut mappings: Vec<VariantMappingRow> = Vec::new();
     let mut lods: Vec<LodRow> = Vec::new();
+    let mut clusters: Vec<ClusterRow> = Vec::new();
     let mut meshes: Vec<MeshRow> = Vec::new();
     let mut vertices: Vec<u8> = Vec::new();
     let mut indices: Vec<u8> = Vec::new();
@@ -277,7 +278,12 @@ pub fn cook(
                     bvh_tris.extend_from_slice(&c.bvh_tris);
                     vertices.extend_from_slice(&c.vertices);
                     indices.extend_from_slice(&c.indices);
-                    lods.extend_from_slice(&c.lods);
+                    let cluster_base = clusters.len() as u32;
+                    lods.extend(c.lods.iter().map(|l| LodRow {
+                        cluster_first: l.cluster_first + cluster_base,
+                        ..*l
+                    }));
+                    clusters.extend_from_slice(&c.clusters);
                     changes.extend(c.conformed.take());
                     hulls.extend((c.hull.len() as u32).to_le_bytes());
                     hulls.extend(c.hull.iter().flatten().flat_map(|x| x.to_le_bytes()));
@@ -506,6 +512,7 @@ pub fn cook(
     w.table("meta", &[meta], row_hash::<ModelMeta>())
         .table("primitives", &prims, row_hash::<PrimitiveRow>())
         .table("lods", &lods, row_hash::<LodRow>())
+        .table("clusters", &clusters, row_hash::<ClusterRow>())
         .table("meshes", &meshes, row_hash::<MeshRow>())
         .table("materials", &materials, row_hash::<MaterialRow>())
         .table("textures", &texture_refs, row_hash::<TextureRefRow>())

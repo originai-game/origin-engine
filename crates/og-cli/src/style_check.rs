@@ -1370,7 +1370,9 @@ mod tests {
                     first: 0,
                     count,
                     error: 0.0,
+                    ..Default::default()
                 }],
+                clusters: Vec::new(),
                 min: glam::Vec3::ZERO,
                 max: glam::Vec3::ONE,
                 bvh_parts: None,

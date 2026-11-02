@@ -173,6 +173,10 @@ pub(crate) fn encode_vertices(
 pub(crate) struct CookedPrimitive {
     pub(super) row: PrimitiveRow,
     pub(super) lods: Vec<LodRow>,
+    /// Every level's clusters, `index_first` relative to the primitive's
+    /// indices; each [`LodRow`] names its range of them (relative here,
+    /// made absolute when the blob's table is written).
+    pub(super) clusters: Vec<ClusterRow>,
     pub(super) vertices: Vec<u8>,
     pub(super) indices: Vec<u8>,
     /// The raycast BVH over LOD 0 (empty with `raycast false`): its nodes,
@@ -283,6 +287,51 @@ pub(crate) fn level_error(pos: &[[f32; 3]], full: &[u32], level: &[u32]) -> f32 
         og_render::geometry::Bvh::build(&mesh(level)),
     );
     farthest(level, &full_bvh).max(farthest(full, &level_bvh))
+}
+
+/// One level's triangles cut into clusters of at most
+/// `og_render::meshlet::CLUSTER_TRIANGLES` (meshoptimizer's
+/// `buildMeshlets`, a quarter of the weight on keeping their normal cones
+/// tight, as three.js's `MeshletGeometryUtils`): the level's indices in
+/// cluster order, and each cluster's range of them (from 0) with its
+/// bounding sphere and normal cone over `pos`.
+pub(crate) fn clusterize(pos: &[[f32; 3]], level: &[u32]) -> (Vec<u32>, Vec<ClusterRow>) {
+    use og_render::meshlet::{CLUSTER_TRIANGLES, CLUSTER_VERTICES};
+    if level.is_empty() {
+        return (Vec::new(), Vec::new());
+    }
+    let adapter = positions_adapter(pos);
+    let meshlets =
+        meshopt::build_meshlets(level, &adapter, CLUSTER_VERTICES, CLUSTER_TRIANGLES, 0.25);
+    let mut indices = Vec::with_capacity(level.len());
+    let mut rows = Vec::with_capacity(meshlets.len());
+    for m in meshlets.iter() {
+        let b = meshopt::compute_meshlet_bounds(m, &adapter);
+        // meshoptimizer's sphere is approximate (a vertex can lie a few
+        // tenths of a percent outside it): widened to the farthest vertex,
+        // so the culling never drops a cluster that reaches into view. A
+        // wider sphere only makes the cone test more conservative.
+        let center = Vec3::from(b.center);
+        let radius = m
+            .vertices
+            .iter()
+            .map(|&v| Vec3::from(pos[v as usize]).distance(center))
+            .fold(b.radius, f32::max);
+        rows.push(ClusterRow {
+            index_first: indices.len() as u32,
+            triangle_count: (m.triangles.len() / 3) as u32,
+            center_x: b.center[0],
+            center_y: b.center[1],
+            center_z: b.center[2],
+            radius,
+            cone_x: b.cone_axis[0],
+            cone_y: b.cone_axis[1],
+            cone_z: b.cone_axis[2],
+            cone_cutoff: b.cone_cutoff,
+        });
+        indices.extend(m.triangles.iter().map(|&t| m.vertices[t as usize]));
+    }
+    (indices, rows)
 }
 
 /// Cooks a primitive's levels (MSFT_lod: the first is the full mesh).
@@ -658,15 +707,26 @@ pub(crate) fn cook_primitive(
     if coarsest && let Some((last, _)) = levels.pop() {
         levels = vec![(last, 0.0)];
     }
+    // Every level cut into clusters (og-render's `meshlet`): its indices
+    // reordered so each cluster is a range of them.
     let mut all: Vec<u32> = Vec::new();
     let mut lods = Vec::new();
+    let mut clusters = Vec::new();
     for (l, error) in &levels {
+        let (ordered, mut cut) = clusterize(&pos_all, l);
+        let first = all.len() as u32;
+        for c in &mut cut {
+            c.index_first += first;
+        }
         lods.push(LodRow {
-            index_first: all.len() as u32,
-            index_count: l.len() as u32,
+            index_first: first,
+            index_count: ordered.len() as u32,
             error: *error,
+            cluster_first: clusters.len() as u32,
+            cluster_count: cut.len() as u32,
         });
-        all.extend_from_slice(l);
+        clusters.extend(cut);
+        all.extend_from_slice(&ordered);
     }
     // Reorder vertices for fetch locality (LOD 0 first decides the order).
     let mut remap = vec![0u32; q.len()];
@@ -770,6 +830,7 @@ pub(crate) fn cook_primitive(
             ..Default::default()
         },
         lods,
+        clusters,
         vertices,
         indices: index_bytes,
         bvh_nodes,
