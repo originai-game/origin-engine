@@ -113,7 +113,9 @@ pub(crate) fn light_at(point: Vec2, mask: u32, lights: &[Light], occluders: &[Oc
         if dist >= r {
             continue;
         }
-        let mut atten = og_core::math::pow(1.0 - dist / r, l.falloff.max(0.01));
+        // Faded to zero slope over the last tenth (light2d.wgsl does the same).
+        let mut atten = og_core::math::pow(1.0 - dist / r, l.falloff.max(0.01))
+            * (1.0 - smoothstep(0.9, 1.0, dist / r));
         if l.kind == 1 {
             let outer = l
                 .outer_angle
@@ -417,6 +419,21 @@ mod tests {
         let lights = [point(Vec2::new(0.0, 4.0))];
         assert!(light_at(Vec2::new(0.0, 1.0), 1, &lights, std::slice::from_ref(&u)).x > 0.0);
         assert_eq!(light_at(Vec2::new(0.0, -0.5), 1, &lights, &[u]), Vec3::ZERO);
+    }
+
+    #[test]
+    fn a_light_ends_at_its_radius_without_a_rim() {
+        // falloff 0.5 alone is still 0.07 a hair inside the radius (sqrt of
+        // 0.005); faded over the last tenth it is near 0 there, and whole
+        // short of the fade.
+        let soft = [Light {
+            falloff: 0.5,
+            color: Vec3::ONE,
+            ..point(Vec2::ZERO)
+        }];
+        assert!(light_at(Vec2::new(5.97, 0.0), 1, &soft, &[]).x < 0.001);
+        let inside = light_at(Vec2::new(3.0, 0.0), 1, &soft, &[]).x;
+        assert!((inside - 0.5f32.sqrt()).abs() < 1e-6, "{inside}");
     }
 
     #[test]

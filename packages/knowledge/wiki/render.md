@@ -87,7 +87,7 @@ module render {
 | [`og.Lighting2D`](#record-Lighting2D) | resource | 2D lighting of the sprite layers minLayer to maxLayer (sprites, 2D particles and og.Tilemap layers there, a map layer unless its `lit` property is false): their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default. |
 | [`Light2DKind`](#type-Light2DKind) | enum | What shape of light a Light2D is. |
 | [`Light2DKind()`](#column-Light2DKind) | column kind | A Light2DKind field: the variant's index. |
-| [`og.Light2D`](#record-Light2D) | component | A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff, shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn. |
+| [`og.Light2D`](#record-Light2D) | component | A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff (faded over its last tenth, so even a falloff below 1 ends without a rim), shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn. |
 | [`og.Occluder2D`](#record-Occluder2D) | component | A shape that blocks 2D light (walls, crates, characters), centred on the entity's position and turned and scaled with it about z: a width by height rectangle, or the polygon `points` gives. Pixels inside it are not shadowed by it. At most 128 are drawn. |
 | [`og.LightMask2D`](#record-LightMask2D) | component | The light layers that light the entity's sprite, flipbook, 2D rig or tilemap: a Light2D lights it when their `layers` share a bit. Without one an entity is on layer 0 (bit 1). At most four different masks are lit in one frame; any further mask is lit as layer 0. |
 | [`og.Decal`](#record-Decal) | component | A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one). At most 32 are drawn. |
@@ -3068,7 +3068,7 @@ resource Lighting2D {
 
 ### `og.Light2D` (component)
 
-A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff, shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn.
+A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff (faded over its last tenth, so even a falloff below 1 ends without a rim), shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn.
 
 Token `og.Light2D`, registered under the schema name `og.Light2D`; its value type is `Light2D`.
 
@@ -3088,7 +3088,7 @@ Token `og.Light2D`, registered under the schema name `og.Light2D`; its value typ
 
 ```ogt
 component Light2D {
-  doc "A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff, shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn."
+  doc "A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff (faded over its last tenth, so even a falloff below 1 ends without a rim), shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn."
   field color Color "The light's linear colour." {
     default 1 1 1
   }

@@ -1481,7 +1481,7 @@ module render {
   }
 
   component Light2D {
-    doc "A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff, shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn."
+    doc "A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff (faded over its last tenth, so even a falloff below 1 ends without a rim), shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn."
     field color Color "The light's linear colour." {
       default 1 1 1
     }

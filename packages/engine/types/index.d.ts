@@ -8123,7 +8123,7 @@ export type Light2DKind = "point" | "spot" | "global";
 export declare function Light2DKind(value?: Light2DKind, options?: FieldOptions): FieldSpec<"Light2DKind">;
 
 /**
- * A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff, shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn.
+ * A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff (faded over its last tenth, so even a falloff below 1 ends without a rim), shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn.
  *
  * The value of the `Light2D` component (token `og.Light2D`).
  */
@@ -49055,7 +49055,7 @@ export declare namespace og {
    */
   const Lighting2D: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly ambient: FieldSpec<"Color">; readonly minLayer: FieldSpec<"i32">; readonly maxLayer: FieldSpec<"i32">; readonly resolution: FieldSpec<"f32">; readonly shadowAngles: FieldSpec<"u32"> }, Lighting2D>;
   /**
-   * A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff, shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn.
+   * A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff (faded over its last tenth, so even a falloff below 1 ends without a rim), shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn.
    */
   const Light2D: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly falloff: FieldSpec<"f32">; readonly sourceRadius: FieldSpec<"f32">; readonly castShadows: FieldSpec<"bool">; readonly kind: FieldSpec<"Light2DKind">; readonly innerAngle: FieldSpec<"f32">; readonly outerAngle: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly layers: FieldSpec<"u32"> }, Light2D>;
   /**

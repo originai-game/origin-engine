@@ -1,6 +1,6 @@
 // 2D lighting: the light map the lit sprite layers multiply with. Cleared to
 // the ambient light; each light adds an instanced quad over its radius,
-// `(1 - d/r)^falloff`, times its visibility from its row of the polar
+// `(1 - d/r)^falloff` (faded to zero over its last tenth), times its visibility from its row of the polar
 // shadow map (light2d_shadow.wgsl): the fraction of a few rays about the
 // pixel's angle that reach it, spread over the penumbra a light of radius
 // `source` gives at the blocker's distance (PCSS), so penumbrae widen away
@@ -113,7 +113,9 @@ fn fs(in: LightOut) -> @location(0) vec4<f32> {
   let dist = length(to_light);
   let r = in.light.z;
   if (dist >= r) { discard; }
-  var atten = pow(1.0 - dist / r, max(in.light.w, 0.01));
+  // Faded to zero slope over the last tenth of the radius: a falloff
+  // below 1 would otherwise end on a hard rim (light2d_at.rs does the same).
+  var atten = pow(1.0 - dist / r, max(in.light.w, 0.01)) * (1.0 - smoothstep(0.9, 1.0, dist / r));
   if (in.flags.y > 0.5) {
     // A spot: the cosine of the pixel's angle off the axis.
     let c = select(1.0, dot(-to_light / dist, in.direction.xy), dist > 1e-4);
