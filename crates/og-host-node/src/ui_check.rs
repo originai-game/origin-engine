@@ -82,6 +82,7 @@ fn frame(engine: u32) -> Value {
         "overlaps": f.overlaps.iter().map(|o| json!({
             "path": o.path, "other": o.other, "rect": rect(&o.rect), "inFlow": o.in_flow,
         })).collect::<Vec<_>>(),
+        "dense": f.dense,
         "stats": {
             "elements": f.stats.elements, "rebuilt": f.stats.rebuilt,
             "laidOut": f.stats.laid_out, "keptCommands": f.stats.kept_commands,

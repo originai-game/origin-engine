@@ -315,6 +315,7 @@ pub(crate) fn props(d: &Value) -> Props {
         container: d["container"].as_bool().unwrap_or(false),
         variants: list(&d["variants"]).iter().map(variant).collect(),
         overlaps: strings(&d["overlaps"]),
+        dense: d["dense"].as_bool().unwrap_or(false),
         match_key: string(&d["match"]),
         drag: drag(&d["drag"]),
         pinch: d["pinch"].is_object().then(|| PinchSpec {

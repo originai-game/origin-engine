@@ -650,6 +650,12 @@ pub struct Props {
     /// Paths of elements it overlaps on purpose (an ancestor path covers its
     /// subtree): undeclared overlap is reported ([`crate::UiFrame::overlaps`]).
     pub overlaps: Vec<String>,
+    /// Its text and its subtree's are a dense HUD's readouts (docs/ui.md
+    /// §15.2: strategy, MMO, simulation): `og ui check` holds them to 12 px
+    /// at 1080p instead of 18, still growing with the player's text scale
+    /// and passing the contrast rule. Menus, body text and controls never
+    /// take it.
+    pub dense: bool,
     /// A shared-element key: the element with the same key on the screen
     /// being left morphs into this one.
     pub match_key: String,
@@ -692,6 +698,7 @@ impl Default for Props {
             container: false,
             variants: Vec::new(),
             overlaps: Vec::new(),
+            dense: false,
             match_key: String::new(),
             drag: None,
             pinch: None,

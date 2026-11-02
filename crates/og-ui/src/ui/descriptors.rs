@@ -398,6 +398,10 @@ pub struct UiFrame {
     pub text_input: Option<TextTarget>,
     /// Overlaps no element declared (docs/ui.md §6.2), for `og ui check`.
     pub overlaps: Vec<Overlap>,
+    /// The paths of the elements whose props say dense (a dense HUD's
+    /// readouts, docs/ui.md §15.2), each covering its subtree, for `og ui
+    /// check`.
+    pub dense: Vec<String>,
     /// What motion did this frame: timeline events (sounds, haptics,
     /// callbacks), plays that ended, swipes, snaps and drops.
     pub events: Vec<UiEvent>,

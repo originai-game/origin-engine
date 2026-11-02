@@ -5342,6 +5342,7 @@ module ui {
     field container bool "Its container queries read its own width."
     field variants List.UiVariant "Prop overrides by breakpoint, orientation and width; later ones win."
     field overlaps List.String "Paths of elements it overlaps on purpose (an ancestor path covers its subtree). Undeclared overlaps are reported (og.ui.overlaps)."
+    field dense bool "Its text and its subtree's are a dense HUD's readouts (strategy, MMO, simulation: docs/ui.md §15.2): og ui check holds them to 12 px at 1080p instead of 18, still growing with the player's text scale and passing the contrast rule. Never for menus, body text or controls."
     field match String "A shared-element key: the element with the same key on the screen being left morphs into this one."
     field drag Option.DragSpec "It moves with a drag."
     field pinch Option.PinchSpec "Two touches scale and turn it."

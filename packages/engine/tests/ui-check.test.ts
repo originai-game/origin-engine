@@ -153,6 +153,17 @@ test("text under the minimum size: 10 px on a phone, 14 px at 1080p desktop", ()
   const desk = { coarsePointer: false, width: 1920, height: 1080, safeArea: [0, 0, 0, 0] as [number, number, number, number] };
   expect(rules(frame({ elements: els, texts: t(14) }, desk))).toContain("text-size");
   expect(rules(frame({ elements: els, texts: t(18) }, desk))).not.toContain("text-size");
+  // A dense HUD's readouts (ElementProps.dense, on an ancestor) go to 12 px
+  // at 1080p, never below, and the floor grows with the text scale; a
+  // sibling outside the dense group keeps 18.
+  const hud = [el("Hud", "", "panel", "", [0, 0, 400, 200]), el("Small", "Hud", "label", "text", [10, 100, 40, 14], { text: "Small" })];
+  const dense = (size: number, d = ["Hud"]) => frame({ elements: hud, texts: t(size), dense: d }, desk);
+  expect(rules(dense(12))).not.toContain("text-size");
+  expect(rules(dense(11))).toContain("text-size");
+  expect(rules(dense(12, ["Hu"]))).toContain("text-size");
+  expect(rules(dense(12, []))).toContain("text-size");
+  expect(rules(dense(18), { ...cell, scale: 200 })).toContain("text-size");
+  expect(rules(dense(24), { ...cell, scale: 200 })).not.toContain("text-size");
 });
 
 test("pad reach: a control stacked on another is unreachable from the default focus; a non-focusable button too", () => {

@@ -770,9 +770,10 @@ stay, and the bar rises to the Xbox Accessibility Guidelines:
 - text scale to 200 % without loss of content; minimum text 18 px at 1080p
   on desktop and phone-equivalent sizes on touch, for menus, body text and
   controls. A dense HUD (strategy, MMO, simulation readouts) may declare
-  its text dense and go smaller, down to 12 px at 1080p, provided it grows
-  with the player's text scale and passes the contrast rule (the owner,
-  2026-11-02);
+  its text dense (`ElementProps.dense` on the readouts' group) and go
+  smaller, down to 12 px at 1080p, provided it grows with the player's
+  text scale and passes the contrast rule (the owner, 2026-11-02; `og ui
+  check` holds a dense subtree to 12 px at 1080p times the text scale);
   og-ui reaches the floor by its unit (`UiDesc.unitScale`, `UiTheme.unit`):
   on a mouse or pad surface the UI lays out in units of its 1080p-equivalent
   height over 720 CSS px, 1 to 2, and draws them at that size, so the whole

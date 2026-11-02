@@ -30033,6 +30033,12 @@ export interface ElementProps {
    */
   readonly overlaps?: readonly string[];
   /**
+   * Its text and its subtree's are a dense HUD's readouts (strategy, MMO, simulation: docs/ui.md §15.2): og ui check holds them to 12 px at 1080p instead of 18, still growing with the player's text scale and passing the contrast rule. Never for menus, body text or controls.
+   *
+   * @default false
+   */
+  readonly dense?: boolean;
+  /**
    * A shared-element key: the element with the same key on the screen being left morphs into this one.
    *
    * @default ""

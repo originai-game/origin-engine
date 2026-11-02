@@ -74,6 +74,8 @@ export interface UiFrameSnapshot {
   primary: number[][];
   elements: UiElementDump[];
   overlaps: Array<{ path: string; other: string; rect: Rect4; inFlow: boolean }>;
+  /** Paths of the elements whose props say dense (a dense HUD's readouts, §15.2), each covering its subtree. */
+  dense?: string[];
   stats: { elements: number; rebuilt: number; laidOut: number; keptCommands: number };
   draws: number;
   /** Every drawn line of text: the string as drawn, its size and line box, and its clip. */
@@ -142,7 +144,7 @@ export const RULES: readonly UiRule[] = [
   { id: "covered", title: "elements under the shell's covered region", status: "checked" },
   { id: "touch-target", title: "touch targets under 44 CSS px on a coarse pointer", status: "checked", note: "an element's hitSlop is not in the frame: a small control with slop enough is still reported; a link inside a rich text's sentence is exempt (WCAG 2.5.8)" },
   { id: "contrast", title: "contrast under 4.5:1 (7:1 in high contrast), on pixels as og polish measures it", status: "checked" },
-  { id: "text-size", title: "text under the minimum size", status: "checked" },
+  { id: "text-size", title: "text under the minimum size", status: "checked", note: "18 px at 1080p; a dense HUD's readouts (ElementProps.dense) 12 px at 1080p times the text scale" },
   { id: "focus-reach", title: "an interactive element unreachable by pad from the default focus", status: "checked" },
   { id: "focus-trap", title: "a focus trap: a control the pad cannot leave back to the default focus", status: "partial", note: "the pad graph is walked both ways, but og-ui's direction rule (nearest, wrapping) leaves no geometric trap (none in 600,000 random layouts); the real trap, a scope Back does not close, needs U3's layer stack" },
   { id: "layer-back", title: "a layer without Back", status: "not checkable yet", note: "the layer stack and its input modes are U3's (§8.1); a frame has no layers yet" },
@@ -172,6 +174,18 @@ const CONTAINERS = new Set(["anchor", "row", "column", "panel", "scroll", "space
 export function minTextSize(v: UiFrameSnapshot["viewport"]): number {
   if (v.coarsePointer) return 12;
   return Math.max(12, Math.round((18 * Math.min(v.width, v.height * (16 / 9))) / 1920 * 10) / 10);
+}
+
+/**
+ * The minimum text of a dense HUD's readouts (ElementProps.dense: strategy,
+ * MMO, simulation), CSS px: §15.2's 12 px at 1080p on desktop, times the
+ * player's text scale (`scale`, percent), so it grows with it. Touch takes
+ * no allowance: its 12 px is already a phone's floor.
+ */
+export function denseTextSize(v: UiFrameSnapshot["viewport"], scale = 100): number {
+  if (v.coarsePointer) return minTextSize(v);
+  const at1080 = Math.round((12 * Math.min(v.width, v.height * (16 / 9))) / 1920 * 10) / 10;
+  return Math.max(8, Math.round(at1080 * (scale / 100) * 10) / 10);
 }
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
@@ -356,6 +370,9 @@ export function checkFrame(f: UiFrameSnapshot, cell: UiCell, opts: CheckOptions 
 
   // Text: cut by its clip, drawn past its box, truncated.
   const minSize = minTextSize(v);
+  const denseSize = denseTextSize(v, cell.scale);
+  const dense = f.dense ?? [];
+  const isDense = (path: string) => dense.some((d) => path === d || path.startsWith(`${d}/`));
   for (const t of f.texts) {
     if (!/[\p{L}\p{N}]/u.test(t.text)) continue;
     const [, , w, h] = t.bounds;
@@ -402,13 +419,18 @@ export function checkFrame(f: UiFrameSnapshot, cell: UiCell, opts: CheckOptions 
         fix: "give it a tooltip (og.ui.tooltip right after the control) or room for the whole text; a tooltip cannot be seen in the frame data yet, so check that one exists",
       });
     }
-    if (t.size + 0.01 < minSize) {
+    const inDense = i >= 0 && isDense(path);
+    if (t.size + 0.01 < (inDense ? denseSize : minSize)) {
       add("text-size", {
         paths: [path],
-        measured: `${r1(t.size)} CSS px "${t.text.slice(0, 32)}"`,
-        limit: `${minSize} CSS px at ${v.width}×${v.height}${v.coarsePointer ? " on touch" : " (18 px at 1080p)"}`,
+        measured: `${r1(t.size)} CSS px "${t.text.slice(0, 32)}"${inDense ? " (dense)" : ""}`,
+        limit: inDense
+          ? `${denseSize} CSS px at ${v.width}×${v.height} at ${cell.scale} % text (a dense HUD: 12 px at 1080p, growing with the text scale)`
+          : `${minSize} CSS px at ${v.width}×${v.height}${v.coarsePointer ? " on touch" : " (18 px at 1080p)"}`,
         prop: `${path}: step (the type ramp's step, \`xs\` and \`meta\` are the smallest)`,
-        fix: "use the ramp's body step or larger for anything read in play (§15.2)",
+        fix: inDense
+          ? "a dense readout may go to 12 px at 1080p, never below, and grows with UiDesc.textScale (§15.2)"
+          : "use the ramp's body step or larger for anything read in play (§15.2); a dense HUD's readouts (strategy, MMO, simulation) may declare `dense: true` in og.ui.props and go to 12 px at 1080p",
       });
     }
   }
