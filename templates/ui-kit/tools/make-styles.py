@@ -73,6 +73,12 @@ LAYOUT = {
     "tile": (204, 172, 64, 64),
     "crest": (272, 172, 64, 32),
     "edge": (344, 172, 16, 64),
+    # A pack whose secondary buttons differ from its tinted primary (scifi:
+    # the ground plus a hairline beside a flat accent slab).
+    "buttonSecondary": (4, 204, 40, 40),
+    "buttonSecondaryHover": (48, 204, 40, 40),
+    "buttonSecondaryPressed": (92, 204, 40, 40),
+    "buttonSecondaryDisabled": (136, 204, 40, 40),
 }
 SS = 4  # supersampling of smooth art
 
@@ -606,13 +612,19 @@ def scifi_pack():
         return frame(w, h, r=r, outline=1.0, outline_c=grey(1.0), fill=(grey(body), grey(body)))
 
     p["panel"] = flat(96, 96, 4, 0.45)
-    p["card"] = flat(64, 64, 4, 0.55)
+    p["card"] = flat(64, 64, 4, 0.4)
     p["button"] = flat(48, 48, 3, 0.9)
     p["buttonHover"] = flat(48, 48, 3, 1.0)
     p["buttonPressed"] = flat(48, 48, 3, 0.78)
     p["buttonDisabled"] = flat(48, 48, 3, 0.6)
-    p["field"] = flat(48, 48, 3, 0.5)
-    p["slot"] = flat(48, 48, 3, 0.5)
+    p["field"] = flat(48, 48, 3, 0.4)
+    p["slot"] = flat(48, 48, 3, 0.4)
+    # Secondaries are the ground plus their hairline (the sheet's HOLD and
+    # RETREAT); the primary keeps the flat ice slab above.
+    p["buttonSecondary"] = flat(40, 40, 3, 0.3)
+    p["buttonSecondaryHover"] = flat(40, 40, 3, 0.45)
+    p["buttonSecondaryPressed"] = flat(40, 40, 3, 0.24)
+    p["buttonSecondaryDisabled"] = flat(40, 40, 3, 0.24)
     p["tooltip"] = flat(32, 32, 3, 0.6)
     p["hud"] = flat(32, 32, 3, 0.55)
     p["track"] = frame(32, 16, r=1.5, fill=(grey(1.0), grey(1.0)))
@@ -632,10 +644,10 @@ def scifi_pack():
     style = dict(
         name="scifi", base="dark",
         palette=dict(
-            backdrop="#05080c", well="#0a0e13", panel="#252d36", panelHover="#2c3540", panelRaised="#29323c", line="#2a323c",
-            lineStrong="#46525f", ink="#eef2f6", inkMuted="#a8b2bd", inkFaint="#808b97", inkInverse="#0a0e13", control="#2f3842",
-            controlStrong="#3c4652", primary="#9ccdf5", primaryHover="#b5dbf9", primaryActive="#86bdea", onPrimary="#0b1520",
-            primarySoft="#9ccdf526", highlight="#9ccdf5", focus="#d2e8fb", knob="#9ccdf5", hud="#0f1318e6", scrim="#000000b3",
+            backdrop="#05080c", well="#080b0f", panel="#0d1217", panelHover="#161d25", panelRaised="#121820", line="#ffffff1f",
+            lineStrong="#46525f", ink="#eef2f6", inkMuted="#a8b2bd", inkFaint="#808b97", inkInverse="#0a0e13", control="#1a222b",
+            controlStrong="#2a3440", primary="#9ccdf5", primaryHover="#b5dbf9", primaryActive="#86bdea", onPrimary="#0b1520",
+            primarySoft="#9ccdf526", highlight="#9ccdf5", focus="#d2e8fb", knob="#9ccdf5", hud="#0d1217e6", scrim="#000000b3",
             shadow="#000000aa", sheen="#ffffff1f", success="#5fd38a", warn="#e8b84a", danger="#ea6b5f", info="#9ccdf5",
             health="#5fd38a", mana="#6aa8ff", xp="#b49cf0", gold="#e8c46a",
         ),
@@ -645,19 +657,23 @@ def scifi_pack():
         durations=dict(instant=90, fast=140, base=220, slow=360),
         fonts=dict(body="IBMPlexSans-Regular.ttf", display="IBMPlexSans-Light.ttf", numeric="IBMPlexMono-Regular.ttf", cjk="NotoSansSC-Regular.ttf", cjkDisplay="NotoSansSC-Regular.ttf"),
         slices=dict(panel=(8,), card=(8,), button=(8,), buttonHover=(8,), buttonPressed=(8,), buttonDisabled=(8,),
-                    field=(6,), slot=(6,), tooltip=(6,), hud=(6,), track=(4,), fill=(4,)),
+                    field=(6,), slot=(6,), tooltip=(6,), hud=(6,), track=(4,), fill=(4,),
+                    buttonSecondary=(8,), buttonSecondaryHover=(8,), buttonSecondaryPressed=(8,),
+                    buttonSecondaryDisabled=(8,)),
         scale=1, divider=(128, 24, "line"),
         tile=None,
         shadows=dict(panel=(0, 12, 32, 0, "#00000080")),
         # Glass: the scene behind blurred 20 px under a near-opaque panel.
-        glass=dict(panel=(20, 0.92, 0.1)),
+        glass=dict(panel=(20, 0.9, 0.1)),
         text=dict(),
         press=(0.98, 0.98, 0), hover=(0, 1.0),
         motion=dict(enter="fade", stagger=30, toast="slideLeft", progress=300, shake=4, pop=0.06),
         icons="scifi",
         # The sheet's toggles: a white knob on the ice track, a grey one off;
         # slider thumbs and the selected segment keep `knob`'s ice.
-        dresses={"Toggle.knob[on]": ['fill "#f4f7fa"'], "Toggle.knob[off]": ['fill "#8e98a3"']},
+        # Slider thumbs white on the ice fill (the sheet's 0.80 sliders).
+        dresses={"Toggle.knob[on]": ['fill "#f4f7fa"'], "Toggle.knob[off]": ['fill "#8e98a3"'],
+                 "Slider.knob": ['fill "#f4f7fa"']},
     )
     return p, style
 
@@ -829,8 +845,9 @@ TOKENS = {
                 ("#e8d06a", 'icon "bolt"'), ("#9fd36a", "pattern dots"), ("#f4ecc8", 'icon "star"'),
                 ("#a896f0", "pattern grid"), ("#e88ab8", "pattern diamonds")],
         series=["#9ccdf5", "#e8c46a", "#d0584c", "#5fd38a", "#b49cf0", "#e89a5a", "#6ad6c8", "#a8b2bd"],
-        weights=dict(display=300, title=300, heading=400, body=400, label=400, caption=400, numeric=400),
-        tracking=dict(display=0.0, title=0.0, heading=0.01, label=0.08, caption=0.04),
+        # Telemetry labels: small, tracked, a step heavier than the body.
+        weights=dict(display=300, title=300, heading=400, body=400, label=500, caption=500, numeric=400),
+        tracking=dict(display=0.0, title=0.0, heading=0.01, label=0.08, caption=0.08),
         sizes=dict(xs=16, sm=24, md=32, lg=48, xl=64, xxl=96, touch=44),
         radius=dict(xs=1, sm=2, md=3, lg=4, xl=6, pill=9999),
         stroke=dict(hairline=1, thin=1, regular=1.5, thick=2, focus=2),
@@ -953,7 +970,10 @@ def region(name):
 # The version 1 parts as version 2 dressings (og-ui's StylePart::selector).
 SELECTORS = dict(panel="Panel.frame", card="Card.frame", button="Button.base", buttonHover="Button.base[hover]",
                  buttonPressed="Button.base[pressed]", buttonDisabled="Button.base[disabled]", field="Field.frame",
-                 slot="Slot.frame", tooltip="Tooltip.frame", hud="Hud.frame", track="Meter.track", fill="Meter.fill")
+                 slot="Slot.frame", tooltip="Tooltip.frame", hud="Hud.frame", track="Meter.track", fill="Meter.fill",
+                 buttonSecondary="Button.base[secondary]", buttonSecondaryHover="Button.base[secondary][hover]",
+                 buttonSecondaryPressed="Button.base[secondary][pressed]",
+                 buttonSecondaryDisabled="Button.base[secondary][disabled]")
 
 
 def style_text(s, d, parts=None):

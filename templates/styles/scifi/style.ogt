@@ -8,18 +8,18 @@ atlas "atlas.png" 384 256
 scale 1
 palette {
   backdrop "#05080c"
-  well "#0a0e13"
-  panel "#252d36"
-  panelHover "#2c3540"
-  panelRaised "#29323c"
-  line "#2a323c"
+  well "#080b0f"
+  panel "#0d1217"
+  panelHover "#161d25"
+  panelRaised "#121820"
+  line "#ffffff1f"
   lineStrong "#46525f"
   ink "#eef2f6"
   inkMuted "#a8b2bd"
   inkFaint "#808b97"
   inkInverse "#0a0e13"
-  control "#2f3842"
-  controlStrong "#3c4652"
+  control "#1a222b"
+  controlStrong "#2a3440"
   primary "#9ccdf5"
   primaryHover "#b5dbf9"
   primaryActive "#86bdea"
@@ -28,7 +28,7 @@ palette {
   highlight "#9ccdf5"
   focus "#d2e8fb"
   knob "#9ccdf5"
-  hud "#0f1318e6"
+  hud "#0d1217e6"
   scrim "#000000b3"
   shadow "#000000aa"
   sheen "#ffffff1f"
@@ -88,8 +88,8 @@ typography {
   }
   heading 19 26 0.01 400 display
   body 14 20 0 400 body
-  label 14 20 0.08 400 body
-  caption 12 16 0.04 400 body
+  label 14 20 0.08 500 body
+  caption 12 16 0.08 500 body
   numeric 17 24 0 400 numeric
 }
 space {
@@ -236,11 +236,11 @@ dress "Panel.frame" {
   slice 4 4 96 96 8 tint
   tone 0.171 0.171 0.171 1.00
   shadow 0 12 32 0 "#00000080"
-  glass 20 0.92 0.1
+  glass 20 0.9 0.1
 }
 dress "Card.frame" {
   slice 104 4 64 64 8 tint
-  tone 0.262 0.262 0.262 1.00
+  tone 0.133 0.133 0.133 1.00
 }
 dress "Button.base" {
   slice 172 4 48 48 8 tint
@@ -261,11 +261,11 @@ dress "Button.base[disabled]" {
 }
 dress "Field.frame" {
   slice 4 104 48 48 6 tint
-  tone 0.216 0.216 0.216 1.00
+  tone 0.133 0.133 0.133 1.00
 }
 dress "Slot.frame" {
   slice 56 104 48 48 6 tint
-  tone 0.216 0.216 0.216 1.00
+  tone 0.133 0.133 0.133 1.00
 }
 dress "Tooltip.frame" {
   slice 108 104 32 32 6 tint
@@ -281,9 +281,28 @@ dress "Meter.track" {
 dress "Meter.fill" {
   slice 216 104 32 16 4 tint
 }
+dress "Button.base[secondary]" {
+  slice 4 204 40 40 8 tint
+  tone 0.072 0.072 0.072 1.00
+}
+dress "Button.base[secondary][hover]" {
+  slice 48 204 40 40 8 tint
+  tone 0.171 0.171 0.171 1.00
+}
+dress "Button.base[secondary][pressed]" {
+  slice 92 204 40 40 8 tint
+  tone 0.047 0.047 0.047 1.00
+}
+dress "Button.base[secondary][disabled]" {
+  slice 136 204 40 40 8 tint
+  tone 0.047 0.047 0.047 1.00
+}
 dress "Toggle.knob[on]" {
   fill "#f4f7fa"
 }
 dress "Toggle.knob[off]" {
   fill "#8e98a3"
+}
+dress "Slider.knob" {
+  fill "#f4f7fa"
 }
