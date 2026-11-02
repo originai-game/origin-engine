@@ -82,6 +82,13 @@ is one line here, written at the merge that changes
   the parts into an atlas texture (`<rig>#atlas`), into the same rig
   og.Skeleton2D plays. Optional `pivot <part> x y`, `unit` and `filter`.
   No IDL member changes.
+- **The auto-rig's clip library (G3-1).** A rig made from layered art
+  with `template humanoid-side` carries ten clips: idle, walk, run,
+  jump, attack, hit, die, wave, cheer and nod, keyed by hand and scaled
+  to the rig's leg length. The feet are placed by the legs' IK (walk and
+  run plant them from contact), a held weapon keeps its line, and a
+  cape, a tail or hair lags through its chain. `step`, `takeoff`,
+  `land`, `hit` and `fall` events mark the moments a game reacts to.
 - **FBX and OBJ models (G3-1).** The cook takes `.fbx` (binary and ASCII)
   and `.obj` with its `.mtl` as models, read by ufbx into a glTF binary,
   so they cook to the same model and `#anim` blobs and load with

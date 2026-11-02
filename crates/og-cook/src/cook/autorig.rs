@@ -32,8 +32,10 @@ use og_core::ogt::Document;
 use std::path::Path;
 
 mod atlas;
+mod clips;
 mod mesh;
 mod parts;
+mod side;
 mod skeleton;
 mod template;
 #[cfg(test)]
@@ -176,11 +178,18 @@ pub(super) fn build(
     if doc.body.get("filter").and_then(|e| e.word(0).ok()) == Some("nearest") {
         rig.filter = SheetFilter::Nearest;
     }
+    // The template's clip library, scaled to this rig.
+    let measure = clips::measure(&rig, template.legs, art.drawn_height());
+    rig.clips = match template.name {
+        "humanoid-side" => side::clips(&rig, &measure),
+        _ => Vec::new(),
+    };
     notes.push(format!(
-        "auto-rigged {} as {}: {} parts, a {}x{} atlas",
+        "auto-rigged {} as {}: {} parts, {} clips, a {}x{} atlas",
         art.label,
         template.name,
         art.parts.len(),
+        rig.clips.len(),
         packed.image.width,
         packed.image.height
     ));

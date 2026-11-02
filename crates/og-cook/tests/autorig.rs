@@ -428,3 +428,83 @@ fn an_elbow_bends_through_its_joint_instead_of_hinging() {
         "the upper arm's end moved {end:?} of a hinge"
     );
 }
+
+/// Every drawn vertex of a pose, rig pixels.
+fn drawn(rig: &Rig2dAsset, pose: &og_anim::Pose2d) -> Vec<[f32; 2]> {
+    rig.triangles(pose)
+        .0
+        .iter()
+        .map(|v| [v.position[0] * rig.unit, v.position[1] * rig.unit])
+        .collect()
+}
+
+#[test]
+fn the_clip_library_plants_its_feet_loops_cleanly_and_dies_on_the_ground() {
+    let root = project("clips", &[("stick.ogt", &rig_text("stick/"))], |_| {});
+    let rig = cooked(&root).load_rig2d("chars/stick.ogt").unwrap();
+    let names: Vec<_> = rig.clips.iter().map(|c| c.name.as_str()).collect();
+    assert_eq!(
+        names,
+        [
+            "idle", "walk", "run", "jump", "attack", "hit", "die", "wave", "cheer", "nod"
+        ]
+    );
+    let clip = |n: &str| &rig.clips[rig.clip(n).unwrap() as usize];
+    // A looping clip ends where it starts.
+    for c in rig.clips.iter().filter(|c| c.looping) {
+        let (a, b) = (
+            rig.pose(Some(c), 0.0, &[]),
+            rig.pose(Some(c), c.duration, &[]),
+        );
+        for (p, q) in drawn(&rig, &a).iter().zip(drawn(&rig, &b)) {
+            assert!(
+                near(*p, q, 0.05),
+                "{} does not loop: {p:?} then {q:?}",
+                c.name
+            );
+        }
+    }
+    // Walking and running, each foot reaches its IK target (the hips are
+    // low enough for the stride) and stands on the ground while planted:
+    // a walk's from contact to toe-off, a run's to mid-stance.
+    for (name, stance) in [("walk", 0.5), ("run", 0.18)] {
+        let c = clip(name);
+        let ankle = rig.bone("foot-r").unwrap();
+        let ground = origin(&rig, "foot-r")[1];
+        for i in 0..=40 {
+            let t = c.duration * i as f32 / 40.0;
+            let pose = rig.pose(Some(c), t, &[]);
+            assert!(
+                pose.ik_error.iter().all(|e| *e < 0.5),
+                "{name} at {t}: a foot misses its target by {:?}",
+                pose.ik_error
+            );
+            if t / c.duration <= stance {
+                let y = pose.world[ankle].apply(0.0, 0.0)[1];
+                assert!(
+                    (y - ground).abs() < 0.5,
+                    "{name} at {t}: the planted foot is at {y}, not {ground}"
+                );
+            }
+        }
+        // A footstep event at each contact.
+        let steps: Vec<f32> = c
+            .events
+            .iter()
+            .filter(|e| e.1 == "step")
+            .map(|e| e.0)
+            .collect();
+        assert_eq!(steps, [0.0, c.duration / 2.0], "{name}");
+    }
+    // Dead, it lies on its back on the ground: flat, nothing below it.
+    let die = clip("die");
+    assert!(!die.looping);
+    let lying = drawn(&rig, &rig.pose(Some(die), die.duration, &[]));
+    let low = lying.iter().map(|p| p[1]).fold(f32::MAX, f32::min);
+    let high = lying.iter().map(|p| p[1]).fold(f32::MIN, f32::max);
+    assert!(
+        low > -3.0 && low < 6.0,
+        "the body's lowest point is at {low}"
+    );
+    assert!(high < 0.4 * 182.0, "the body still reaches {high} up");
+}
