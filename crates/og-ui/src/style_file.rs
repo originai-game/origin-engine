@@ -49,6 +49,12 @@ pub struct StyleFile {
     pub theme: Theme,
     /// The atlas texture's asset id.
     pub atlas: Option<String>,
+    /// The atlas at 2× and 3× its texels, when the `atlas` line names
+    /// those densities (`atlas "atlas.png" 384 256 2 3`): the same layout
+    /// at that many texels per CSS px, `atlas@2x.png` and `atlas@3x.png`
+    /// beside it. The UI draws from the one nearest at or above its device
+    /// pixels per CSS px ([`Art::atlas_for`]).
+    pub atlas_dense: [Option<String>; 2],
     /// Font asset ids: body, display, numeric (the mono role), fallback
     /// (characters the others lack, a last resort), cjk and cjkDisplay (the
     /// style's own Simplified Chinese faces beside body and display: see
@@ -71,6 +77,7 @@ impl StyleFile {
     pub fn references(&self) -> Vec<String> {
         let mut out: Vec<String> = Vec::new();
         out.extend(self.atlas.clone());
+        out.extend(self.atlas_dense.iter().flatten().cloned());
         out.extend(self.fonts.iter().flatten().cloned());
         out.extend(self.icons.as_ref().map(|i| i.0.clone()));
         out.extend(self.sounds.iter().flatten().cloned());
@@ -165,6 +172,9 @@ impl StyleFile {
         if let Some(a) = self.atlas.as_mut() {
             at(a);
         }
+        for a in self.atlas_dense.iter_mut().flatten() {
+            at(a);
+        }
         for f in self.fonts.iter_mut().flatten() {
             at(f);
         }
@@ -184,7 +194,8 @@ impl StyleFile {
         }
     }
 
-    /// The theme with the loaded atlas and sound handles.
+    /// The theme with the loaded atlas and sound handles (the denser
+    /// atlases join with [`Theme::with_dense_atlases`]).
     pub fn theme(&self, atlas: Option<TextureHandle>, sounds: [u64; 6]) -> Theme {
         let mut t = self.theme;
         t.art.atlas = atlas;
@@ -761,4 +772,4 @@ fn copy_into(out: &mut Vec<Entry>, body: &og_core::ogt::Block, key: &str) {
 mod art;
 mod parse;
 pub use art::*;
-pub use parse::parse_style;
+pub use parse::{dense_name, parse_style};

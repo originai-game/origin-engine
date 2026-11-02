@@ -68,7 +68,7 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
                     .ok_or_else(|| format!("style: style {h} is not alive"))?;
                 Some((
                     s.file.clone(),
-                    s.atlas,
+                    (s.atlas, s.atlas_dense),
                     s.fonts,
                     s.icons,
                     s.sounds,
@@ -82,11 +82,9 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
             _ => Scheme::Dark,
         };
         let mut theme = match &style {
-            Some((file, atlas, _, _, sounds, feedback)) => {
-                file.theme_with_feedback(*atlas, *sounds, |id| {
-                    feedback.get(id).copied().unwrap_or(0)
-                })
-            }
+            Some((file, (atlas, dense), _, _, sounds, feedback)) => file
+                .theme_with_feedback(*atlas, *sounds, |id| feedback.get(id).copied().unwrap_or(0))
+                .with_dense_atlases(*dense),
             None => Theme::new(scheme),
         };
         if d["contrast"].as_str() == Some("high") {
@@ -291,6 +289,8 @@ pub(crate) struct LoadedStyle {
     pub id: String,
     pub file: og_ui::StyleFile,
     pub atlas: Option<og_render::TextureHandle>,
+    /// The atlas at 2× and 3× (`og_ui::StyleFile::atlas_dense`).
+    pub atlas_dense: [Option<og_render::TextureHandle>; 2],
     /// Font asset handles: body, display, numeric, fallback, cjk, cjkDisplay.
     pub fonts: [Option<f64>; 6],
     pub icons: Option<og_render::TextureHandle>,
@@ -339,6 +339,10 @@ pub(crate) fn load_style(eng: &Engine, path: &str) -> Result<usize, String> {
                 .ok_or_else(|| format!("{id}: the texture {p} did not load"))
         };
         let atlas = file.atlas.as_deref().map(texture).transpose()?;
+        let atlas_dense = [
+            file.atlas_dense[0].as_deref().map(texture).transpose()?,
+            file.atlas_dense[1].as_deref().map(texture).transpose()?,
+        ];
         let icons = file.icons.as_ref().map(|i| texture(&i.0)).transpose()?;
         let mut fonts = [None; 6];
         for (k, p) in file.fonts.iter().enumerate() {
@@ -379,6 +383,7 @@ pub(crate) fn load_style(eng: &Engine, path: &str) -> Result<usize, String> {
             id,
             file,
             atlas,
+            atlas_dense,
             fonts,
             icons,
             sounds,

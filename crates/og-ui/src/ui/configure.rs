@@ -452,6 +452,8 @@ impl Ui {
         }
         self.viewport = viewport;
         self.theme = effective_theme(self.configured, &viewport).to_unit(unit);
+        // The style's atlas at the density this surface draws at.
+        self.theme.art.atlas = self.configured.art.atlas_for(viewport.dpr());
         // Last frame's nodes are kept to compare against (docs/ui.md §6.3).
         if !self.building {
             std::mem::swap(&mut self.kept.prev, &mut self.nodes);

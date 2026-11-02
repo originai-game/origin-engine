@@ -1874,3 +1874,79 @@ fn a_style_declares_its_own_colour_roles_read_by_name_and_held_to_3_to_1() {
         "has 'sanity', which is not a paint: a colour (a palette role, a role the style declares",
     );
 }
+
+#[test]
+fn a_style_with_denser_atlases_draws_from_the_one_at_or_above_the_surface_density() {
+    // Wrong: one atlas at every density (blurred art on a phone), the
+    // densest everywhere (wasted samples), or the copy below the density.
+    let text = STYLE.replace(
+        "atlas \"styles/test/atlas.png\" 128 64",
+        "atlas \"styles/test/atlas.png\" 128 64 2 3",
+    );
+    assert_ne!(text, STYLE, "the test style has the atlas line it replaces");
+    let file = parse_style(&text).expect("the style parses");
+    assert_eq!(
+        file.atlas_dense,
+        [
+            Some("styles/test/atlas@2x.png".to_string()),
+            Some("styles/test/atlas@3x.png".to_string())
+        ]
+    );
+    assert!(
+        file.references()
+            .contains(&"styles/test/atlas@3x.png".to_string())
+    );
+    let mut scene = RenderScene::new();
+    let mut tex = || {
+        scene.add_texture(TextureData {
+            width: 2,
+            height: 2,
+            rgba: vec![255; 16],
+            color_space: ColorSpace::Srgb,
+            mips: Mips::None,
+        })
+    };
+    let (x1, x2, x3) = (tex(), tex(), tex());
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.set_theme(
+        file.theme(Some(x1), [0; 6])
+            .with_dense_atlases([Some(x2), Some(x3)]),
+    );
+    for (dpr, want, name) in [
+        (1.0, x1, "1×"),
+        (1.5, x2, "2×"),
+        (2.0, x2, "2×"),
+        (3.0, x3, "3×"),
+    ] {
+        for _ in 0..3 {
+            ui.begin(
+                InputFrame::default(),
+                Viewport {
+                    dpr,
+                    ..Viewport::new(800.0, 600.0)
+                },
+            );
+            screen(&mut ui, false);
+            ui.end();
+        }
+        let drawn: Vec<TextureHandle> = [x1, x2, x3]
+            .into_iter()
+            .filter(|t| !images(&ui, *t).is_empty())
+            .collect();
+        assert_eq!(
+            drawn,
+            vec![want],
+            "at dpr {dpr} the panel draws from the {name} atlas"
+        );
+    }
+    // Without the denser copies every density draws the one atlas.
+    let art = Art {
+        atlas: Some(x1),
+        ..Art::default()
+    };
+    assert_eq!(art.atlas_for(3.0), Some(x1));
+    assert_eq!(
+        og_ui::style_file::dense_name("styles/a.b/atlas.png", 2),
+        "styles/a.b/atlas@2x.png"
+    );
+}

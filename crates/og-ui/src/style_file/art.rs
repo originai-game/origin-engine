@@ -415,6 +415,11 @@ impl UiSound {
 pub struct Art {
     /// The atlas the slices, ornaments and tiles cut from; `None` dresses nothing.
     pub atlas: Option<TextureHandle>,
+    /// The same atlas at 2× and 3× its texels (`atlas … 2 3`): a frame
+    /// draws from the one nearest at or above its device pixels per CSS
+    /// px ([`Art::atlas_for`]), so painted art stays sharp on a phone and
+    /// a 4K screen without changing a region or an inset.
+    pub atlas_dense: [Option<TextureHandle>; 2],
     pub slices: [Option<Slice>; PARTS],
     /// A blurred white rectangle: soft shadows and glows.
     pub soft: Option<Slice>,
@@ -450,6 +455,21 @@ pub struct Art {
 }
 
 impl Art {
+    /// The atlas to draw at `dpr` device pixels per CSS px: the nearest
+    /// density at or above it (1 up to 1×, 2 up to 2×, 3 beyond), else the
+    /// densest there is below it.
+    pub fn atlas_for(&self, dpr: f32) -> Option<TextureHandle> {
+        let base = self.atlas?;
+        let [x2, x3] = self.atlas_dense;
+        Some(if dpr <= 1.0 {
+            base
+        } else if dpr <= 2.0 {
+            x2.or(x3).unwrap_or(base)
+        } else {
+            x3.or(x2).unwrap_or(base)
+        })
+    }
+
     /// The slice that draws `part`: its own, else the plain button's for a
     /// button state.
     pub fn slice(&self, part: StylePart) -> Option<Slice> {

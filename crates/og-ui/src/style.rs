@@ -649,6 +649,13 @@ impl Theme {
         t
     }
 
+    /// This theme with its style's atlas at 2× and 3× its texels
+    /// ([`crate::Art::atlas_dense`]; `None` where the style has none).
+    pub fn with_dense_atlases(mut self, dense: [Option<og_render::TextureHandle>; 2]) -> Theme {
+        self.art.atlas_dense = dense;
+        self
+    }
+
     /// This theme with a game's own primary colour: its hover and active
     /// tones 15 % towards either end of the scale (a dark primary lightens
     /// hovered and darkens pressed, a light one the other way),

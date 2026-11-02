@@ -117,6 +117,7 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
         version: doc.version,
         theme,
         atlas: None,
+        atlas_dense: Default::default(),
         fonts: Default::default(),
         icons: None,
         sounds: Default::default(),
@@ -130,6 +131,17 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
         size = (p.num(1)?, p.num(2)?);
         if size.0 < 1.0 || size.1 < 1.0 {
             return Err(p.err("takes the atlas width and height in texels"));
+        }
+        // Then the denser copies it has: 2, 3 or both.
+        for i in 3..e.values.len() {
+            let n = p.num(i)?;
+            let k = match n {
+                2.0 => 0,
+                3.0 => 1,
+                _ => return Err(p.err("names its denser copies by density: 2, 3 or both")),
+            };
+            let base = p.string(0)?;
+            file.atlas_dense[k] = Some(dense_name(base, n as u32));
         }
     }
     let mut scale = 1.0f32;
@@ -811,4 +823,13 @@ fn parse_roles(p: &P) -> Result<crate::style::Roles, String> {
         return Err(p.err("declares no role: leave the block out"));
     }
     Ok(roles)
+}
+
+/// The file name of an atlas's copy at `density`: `atlas.png` at 2 is
+/// `atlas@2x.png`.
+pub fn dense_name(base: &str, density: u32) -> String {
+    match base.rfind('.').filter(|&i| !base[i..].contains('/')) {
+        Some(i) => format!("{}@{density}x{}", &base[..i], &base[i..]),
+        None => format!("{base}@{density}x"),
+    }
 }
