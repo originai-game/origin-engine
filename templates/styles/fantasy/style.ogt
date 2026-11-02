@@ -4,7 +4,7 @@ version 2
 # The fantasy style pack: dark fantasy, the approved concept A (tests/evidence/ui-art/concepts/A-*.jpg). Its frames, buttons and ornaments are painted (art/, with art/provenance.json) and packed by og style art; its meters, soft shadow and icons come from make-styles.py (CC0); OFL fonts (LICENSES.md).
 name "fantasy"
 scheme dark
-atlas "atlas.png" 512 544 2 3
+atlas "atlas.png" 512 557 2 3
 scale 1
 palette {
   backdrop "#0d0a08"
@@ -82,13 +82,13 @@ typography {
     phonePortrait 34 38
     phoneLandscape 38 43
   }
-  title 28 34 0.05 700 display {
+  title 28 34 0.06 700 display {
     phonePortrait 24 30
     phoneLandscape 26 32
   }
-  heading 22 28 0.03 700 display
+  heading 22 28 0.06 700 display
   body 15 22 0 500 body
-  label 15 22 0 500 body
+  label 15 22 0.06 700 display
   caption 13 18 0 500 body
   numeric 19 26 0.02 700 numeric
 }
@@ -180,9 +180,9 @@ icons "icons.png" 8 4 {
 }
 soft 252 104 64 64 24
 corner 337 493 32 32 40 40 authored 8
-divider 1 535 128 8 106.7 6.7 authored
-flourish 437 493 64 12 48 9 authored 0
-crest 371 493 64 21 56 18.4 authored 12
+divider 133 535 128 8 106.7 6.7 authored
+flourish 67 535 64 12 48 9 authored 0
+crest 1 535 64 21 56 18.4 authored 12
 edge 263 257 10 64 8.8 56 authored 7
 tile 204 172 64 64 64 64 0.5 6
 motion {
@@ -326,4 +326,16 @@ dress "Button.base[primary][pressed]" {
 dress "Button.base[primary][disabled]" {
   slice 171 447 168 44 12 14 12 14 authored
   tone 0.317 0.255 0.169 0.99
+}
+dress "Slider.knob" {
+  slice 371 493 24 24 1 1 1 1 authored
+  tone 0.231 0.117 0.036 0.99
+}
+dress "Toggle.knob[on]" {
+  slice 397 493 24 24 1 1 1 1 authored
+  tone 0.643 0.273 0.031 0.99
+}
+dress "Toggle.knob[off]" {
+  slice 423 493 24 24 1 1 1 1 authored
+  tone 0.168 0.084 0.031 0.99
 }

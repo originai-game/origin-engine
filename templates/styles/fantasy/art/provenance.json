@@ -131,6 +131,30 @@
     "generation": 1793611383,
     "date": "2026-11-02"
   },
+  "fantasy/knob": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI ornament of the knob of the fantasy UI style for a dark fantasy action RPG of forges, ruins and old gold: a corner, flourish or divider, on a clear background.\nStyle: Lush opaque painting. Opaque, weighty colour masses with selective brushwork and rich warm-cool contrast build dense painted environments. Opaque painting with weight, warm light and cool shadow, brushwork saved for focal areas, rich layered detail.\nPalette: free, organised by warm light and cool shadow; saturation highest at the light's edge; value grouping in three planes.\nBackground: fully transparent, nothing outside the subject.\nLine: none to 1.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: transparent washes; photo textures; noise-like detail everywhere; a background or ground shadow; text, letters or watermarks.\nShape: one single knob only, centred, filling the image across its width, 1.00 times as wide as it is tall (24 x 24 proportions); nothing else in the image.\nArt direction: A switch's knob when it is on: one round polished antique-gold orb, warm amber at its centre, a dark gold rim and a small soft white highlight at its upper left; as the lit knob of the concept's Subtitles switch. Perfectly circular and filling its square. Nothing else: no track.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "7e69ce0485a92432",
+    "references": [
+      "tests/evidence/ui-art/concepts/A-shop.jpg",
+      "tests/evidence/ui-art/concepts/A-settings.jpg",
+      "tests/evidence/ui-art/concepts/A-hud.jpg"
+    ],
+    "generation": 1793620021,
+    "date": "2026-11-02"
+  },
+  "fantasy/knob-off": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI ornament of the knob off of the fantasy UI style for a dark fantasy action RPG of forges, ruins and old gold: a corner, flourish or divider, on a clear background.\nStyle: Lush opaque painting. Opaque, weighty colour masses with selective brushwork and rich warm-cool contrast build dense painted environments. Opaque painting with weight, warm light and cool shadow, brushwork saved for focal areas, rich layered detail.\nPalette: free, organised by warm light and cool shadow; saturation highest at the light's edge; value grouping in three planes.\nBackground: fully transparent, nothing outside the subject.\nLine: none to 1.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: transparent washes; photo textures; noise-like detail everywhere; a background or ground shadow; text, letters or watermarks.\nShape: one single knob-off only, centred, filling the image across its width, 1.00 times as wide as it is tall (24 x 24 proportions); nothing else in the image.\nArt direction: A switch's knob when it is off: one round worn-bronze orb, muted but clearly lighter than a dark charcoal track (3:1 or better against it), a darker bronze rim and a small soft highlight at its upper left; as the unlit knob of the concept's Mute everything switch. Perfectly circular and filling its square. Nothing else: no track.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "1615e564f871df74",
+    "references": [
+      "tests/evidence/ui-art/concepts/A-shop.jpg",
+      "tests/evidence/ui-art/concepts/A-settings.jpg",
+      "tests/evidence/ui-art/concepts/A-hud.jpg"
+    ],
+    "generation": 1793620023,
+    "date": "2026-11-02"
+  },
   "fantasy/panel": {
     "model": "gpt-image-2.5-sunburst",
     "prompt": "A UI frame of the panel of the fantasy UI style for a dark fantasy action RPG of forges, ruins and old gold: a panel's border and ground, its centre plain so text reads on it.\nStyle: Lush opaque painting. Opaque, weighty colour masses with selective brushwork and rich warm-cool contrast build dense painted environments. Opaque painting with weight, warm light and cool shadow, brushwork saved for focal areas, rich layered detail.\nPalette: free, organised by warm light and cool shadow; saturation highest at the light's edge; value grouping in three planes.\nNine-slice: the corners (25% left, 25% top, 25% right, 25% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nBackground: fully transparent, nothing outside the subject.\nLine: none to 1.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: transparent washes; photo textures; noise-like detail everywhere; a background or ground shadow; text, letters or watermarks.\nShape: one single panel only, centred, filling the image across its width, 1.00 times as wide as it is tall (96 x 96 proportions); nothing else in the image.\nArt direction: A dark charcoal-brown slab with a faint worn, mottled painted texture, darkest in the middle; a thin double border of antique gold a few pixels inside its edge, with a little gold scrollwork at each corner; the centre plain and dark so light text reads on it. As the frame of the concept's settings and shop panels. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
@@ -153,6 +177,18 @@
       "tests/evidence/ui-art/concepts/A-hud.jpg"
     ],
     "generation": 1793611382,
+    "date": "2026-11-02"
+  },
+  "fantasy/thumb": {
+    "model": "gpt-image-2.5-sunburst",
+    "prompt": "A UI ornament of the thumb of the fantasy UI style for a dark fantasy action RPG of forges, ruins and old gold: a corner, flourish or divider, on a clear background.\nStyle: Lush opaque painting. Opaque, weighty colour masses with selective brushwork and rich warm-cool contrast build dense painted environments. Opaque painting with weight, warm light and cool shadow, brushwork saved for focal areas, rich layered detail.\nPalette: free, organised by warm light and cool shadow; saturation highest at the light's edge; value grouping in three planes.\nBackground: fully transparent, nothing outside the subject.\nLine: none to 1.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: transparent washes; photo textures; noise-like detail everywhere; a background or ground shadow; text, letters or watermarks.\nShape: one single thumb only, centred, filling the image across its width, 1.00 times as wide as it is tall (24 x 24 proportions); nothing else in the image.\nArt direction: A slider's thumb: one antique-gold diamond (a square standing on its point, as tall as it is wide), its four facets bevelled, a dark charcoal core at its centre and a 1 px bright gold highlight along its upper edges; as the gold diamond knobs on the concept's volume sliders. It must read at 3:1 or better against a dark brown track and the dark panel. Nothing else: no track, no glow beyond its edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+    "request": "f2de517a9f38c8da",
+    "references": [
+      "tests/evidence/ui-art/concepts/A-shop.jpg",
+      "tests/evidence/ui-art/concepts/A-settings.jpg",
+      "tests/evidence/ui-art/concepts/A-hud.jpg"
+    ],
+    "generation": 1793620018,
     "date": "2026-11-02"
   },
   "fantasy/tooltip": {

@@ -385,6 +385,69 @@
       "states": [
         "normal"
       ]
+    },
+    {
+      "dress": [
+        "Slider.knob"
+      ],
+      "file": "art/thumb.png",
+      "hash": "f2de517a9f38c8da",
+      "kind": "ornament",
+      "name": "fantasy/thumb",
+      "note": "A slider's thumb: one antique-gold diamond (a square standing on its point, as tall as it is wide), its four facets bevelled, a dark charcoal core at its centre and a 1 px bright gold highlight along its upper edges; as the gold diamond knobs on the concept's volume sliders. It must read at 3:1 or better against a dark brown track and the dark panel. Nothing else: no track, no glow beyond its edge.",
+      "pixels": [
+        72,
+        72
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "dress": [
+        "Toggle.knob[on]"
+      ],
+      "file": "art/knob.png",
+      "hash": "7e69ce0485a92432",
+      "kind": "ornament",
+      "name": "fantasy/knob",
+      "note": "A switch's knob when it is on: one round polished antique-gold orb, warm amber at its centre, a dark gold rim and a small soft white highlight at its upper left; as the lit knob of the concept's Subtitles switch. Perfectly circular and filling its square. Nothing else: no track.",
+      "pixels": [
+        72,
+        72
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "dress": [
+        "Toggle.knob[off]"
+      ],
+      "file": "art/knob-off.png",
+      "hash": "1615e564f871df74",
+      "kind": "ornament",
+      "name": "fantasy/knob-off",
+      "note": "A switch's knob when it is off: one round worn-bronze orb, muted but clearly lighter than a dark charcoal track (3:1 or better against it), a darker bronze rim and a small soft highlight at its upper left; as the unlit knob of the concept's Mute everything switch. Perfectly circular and filling its square. Nothing else: no track.",
+      "pixels": [
+        72,
+        72
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
     }
   ],
   "style": "fantasy"

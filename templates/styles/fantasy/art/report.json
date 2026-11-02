@@ -1,7 +1,7 @@
 {
   "atlas": [
     512,
-    544
+    557
   ],
   "base": [
     384,
@@ -483,6 +483,108 @@
       ],
       "to": [
         "edge"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/thumb.png",
+      "insets": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "provenance": {
+        "date": "2026-11-02",
+        "generation": 1793620018,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI ornament of the thumb of the fantasy UI style for a dark fantasy action RPG of forges, ruins and old gold: a corner, flourish or divider, on a clear background.\nStyle: Lush opaque painting. Opaque, weighty colour masses with selective brushwork and rich warm-cool contrast build dense painted environments. Opaque painting with weight, warm light and cool shadow, brushwork saved for focal areas, rich layered detail.\nPalette: free, organised by warm light and cool shadow; saturation highest at the light's edge; value grouping in three planes.\nBackground: fully transparent, nothing outside the subject.\nLine: none to 1.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: transparent washes; photo textures; noise-like detail everywhere; a background or ground shadow; text, letters or watermarks.\nShape: one single thumb only, centred, filling the image across its width, 1.00 times as wide as it is tall (24 x 24 proportions); nothing else in the image.\nArt direction: A slider's thumb: one antique-gold diamond (a square standing on its point, as tall as it is wide), its four facets bevelled, a dark charcoal core at its centre and a 1 px bright gold highlight along its upper edges; as the gold diamond knobs on the concept's volume sliders. It must read at 3:1 or better against a dark brown track and the dark panel. Nothing else: no track, no glow beyond its edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "tests/evidence/ui-art/concepts/A-shop.jpg",
+          "tests/evidence/ui-art/concepts/A-settings.jpg",
+          "tests/evidence/ui-art/concepts/A-hud.jpg"
+        ],
+        "request": "f2de517a9f38c8da"
+      },
+      "size": [
+        24,
+        24
+      ],
+      "slot": "fantasy/thumb",
+      "source": [
+        97,
+        96
+      ],
+      "to": [
+        "Slider.knob"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/knob.png",
+      "insets": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "provenance": {
+        "date": "2026-11-02",
+        "generation": 1793620021,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI ornament of the knob of the fantasy UI style for a dark fantasy action RPG of forges, ruins and old gold: a corner, flourish or divider, on a clear background.\nStyle: Lush opaque painting. Opaque, weighty colour masses with selective brushwork and rich warm-cool contrast build dense painted environments. Opaque painting with weight, warm light and cool shadow, brushwork saved for focal areas, rich layered detail.\nPalette: free, organised by warm light and cool shadow; saturation highest at the light's edge; value grouping in three planes.\nBackground: fully transparent, nothing outside the subject.\nLine: none to 1.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: transparent washes; photo textures; noise-like detail everywhere; a background or ground shadow; text, letters or watermarks.\nShape: one single knob only, centred, filling the image across its width, 1.00 times as wide as it is tall (24 x 24 proportions); nothing else in the image.\nArt direction: A switch's knob when it is on: one round polished antique-gold orb, warm amber at its centre, a dark gold rim and a small soft white highlight at its upper left; as the lit knob of the concept's Subtitles switch. Perfectly circular and filling its square. Nothing else: no track.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "tests/evidence/ui-art/concepts/A-shop.jpg",
+          "tests/evidence/ui-art/concepts/A-settings.jpg",
+          "tests/evidence/ui-art/concepts/A-hud.jpg"
+        ],
+        "request": "7e69ce0485a92432"
+      },
+      "size": [
+        24,
+        24
+      ],
+      "slot": "fantasy/knob",
+      "source": [
+        97,
+        96
+      ],
+      "to": [
+        "Toggle.knob[on]"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/knob-off.png",
+      "insets": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "provenance": {
+        "date": "2026-11-02",
+        "generation": 1793620023,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI ornament of the knob off of the fantasy UI style for a dark fantasy action RPG of forges, ruins and old gold: a corner, flourish or divider, on a clear background.\nStyle: Lush opaque painting. Opaque, weighty colour masses with selective brushwork and rich warm-cool contrast build dense painted environments. Opaque painting with weight, warm light and cool shadow, brushwork saved for focal areas, rich layered detail.\nPalette: free, organised by warm light and cool shadow; saturation highest at the light's edge; value grouping in three planes.\nBackground: fully transparent, nothing outside the subject.\nLine: none to 1.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: transparent washes; photo textures; noise-like detail everywhere; a background or ground shadow; text, letters or watermarks.\nShape: one single knob-off only, centred, filling the image across its width, 1.00 times as wide as it is tall (24 x 24 proportions); nothing else in the image.\nArt direction: A switch's knob when it is off: one round worn-bronze orb, muted but clearly lighter than a dark charcoal track (3:1 or better against it), a darker bronze rim and a small soft highlight at its upper left; as the unlit knob of the concept's Mute everything switch. Perfectly circular and filling its square. Nothing else: no track.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "tests/evidence/ui-art/concepts/A-shop.jpg",
+          "tests/evidence/ui-art/concepts/A-settings.jpg",
+          "tests/evidence/ui-art/concepts/A-hud.jpg"
+        ],
+        "request": "1615e564f871df74"
+      },
+      "size": [
+        24,
+        24
+      ],
+      "slot": "fantasy/knob-off",
+      "source": [
+        96,
+        96
+      ],
+      "to": [
+        "Toggle.knob[off]"
       ]
     }
   ],
