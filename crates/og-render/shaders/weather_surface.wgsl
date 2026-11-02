@@ -107,16 +107,17 @@ fn weather_surface(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: vec3
 
   // (The surface's f0 is kept where the water and snow leave it: a
 // physical material's comes from its index of refraction.)
-// Wet: porous (rough, dielectric) surfaces darken as their pores fill and
-  // only then gain a sheen (Lagarde 2013: the film forms last); faces
-  // turned away from the sky get less. A soaked rough surface keeps a
-  // satin roughness: mirror-smooth water is the puddles' (a glossier film
-  // reflected the bright sky at grazing angles and read brighter than
-  // the dry ground).
+// Wet: porous (rough, dielectric) surfaces darken as their pores fill
+  // and keep their roughness, so their reflection is the dry surface's and
+  // wet porous ground is darker than dry at every angle (any film glossier
+  // than the dry surface reflected the bright horizon at grazing angles
+  // and read brighter than dry ground); the standing water's gloss is the
+  // puddles'. Sealed surfaces (smooth or metal: no pores to fill) gain a
+  // sheen instead. Faces turned away from the sky get less.
   let wet = w.x * mix(0.55, 1.0, up) * (1.0 - snow);
   let porosity = (1.0 - o.s.metallic) * smoothstep(0.15, 0.85, o.s.roughness);
   o.s.albedo *= mix(1.0, 0.3, wet * porosity);
-  o.s.roughness = mix(o.s.roughness, max(o.s.roughness * 0.75, 0.45), wet * wet);
+  o.s.roughness = mix(o.s.roughness, max(o.s.roughness * 0.5, 0.1), wet * wet * (1.0 - porosity));
 
   // Puddles: in the hollows of the noise on level ground, mirror-smooth
   // dark water over the surface, rippled by the rain.

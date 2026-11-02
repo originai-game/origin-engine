@@ -2255,7 +2255,8 @@ cover dims the sun and the sky, which the runtime applies. Frames:
 wets, puddles and snows every standard, physical (lean included) and
 terrain surface from two vec4s of the frame uniform: no binding is added
 to the lit stages (their storage buffers are spoken for after R7's
-decals). Wet porous surfaces darken and every surface gains a sheen
+decals). Wet porous surfaces darken at their own roughness (darker
+than dry at every angle) and sealed ones, smooth or metal, gain a sheen
 (Lagarde 2013); puddles fill the hollows of a world-space noise on level
 ground, mirror-smooth, rippled by raindrop rings while it rains; snow
 settles on what faces up, deeper cover reaching steeper faces, its edge
