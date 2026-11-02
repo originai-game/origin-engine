@@ -63,7 +63,6 @@ function writeHand(h: Hand): void {
   for (const k of HAND_KEYS) kit.remember(`~h.${k}`, h[k]);
 }
 
-const LONG_PRESS = 30;
 const DOUBLE = 20;
 
 /** Pointer travel before a press becomes a drag. */
@@ -512,7 +511,8 @@ export function inventoryGrid(id: string, desc: Api.InventoryGridDesc): Api.Inve
         height: px(hpx),
         radius: frame().t.small,
         semantics: { role: "gridcell", name: itemName(it, desc), selected },
-        layer: { insets: { start: f.x * cs, top: f.y * cs }, transform: { x: shake }, ...itemStates(lifted, hl) },
+        // The long press (the item's menu) is og-ui's recogniser: its timing and slop, shared with every element.
+        layer: { insets: { start: f.x * cs, top: f.y * cs }, transform: { x: shake }, gestures: { longPress: true }, ...itemStates(lifted, hl) },
       }, () => tile(it, wpx, hpx, cs, { lifted, dim: hl === "dim", lit: hl === "lit", selected }));
       const path = kit.lastPath();
       const ix = lastInteraction(key);
@@ -530,6 +530,12 @@ export function inventoryGrid(id: string, desc: Api.InventoryGridDesc): Api.Inve
         h.menu = 0;
         h.cx = f.x;
         h.cy = f.y;
+      }
+      if (r.longPressed && !carrying && h.pk === keyHash(key) && !h.menu && h.pt) {
+        out.menu = key;
+        out.menuAt = { x: p.x, y: p.y };
+        h.menu = 1;
+        h.pt = 0;
       }
       if (r.clicked && !carrying) {
         if (p.shift) out.quick = key;
@@ -670,11 +676,6 @@ export function inventoryGrid(id: string, desc: Api.InventoryGridDesc): Api.Inve
         h.gy = g ? clamp(g.cy - f.y, 0, f.h - 1) : 0;
         kit.feedback("select", -1);
       }
-      h.pt = 0;
-    } else if (!h.menu && tick - h.pt >= LONG_PRESS) {
-      out.menu = held;
-      out.menuAt = { x: p.x, y: p.y };
-      h.menu = 1;
       h.pt = 0;
     }
   }
