@@ -813,6 +813,7 @@ pub fn og_story_view(world: u32, conversation: u32) -> String {
             args: Vec::new(),
             voice: String::new(),
             expression: String::new(),
+            shot: String::new(),
             seq: 0,
             seen: false,
             chosen: None,

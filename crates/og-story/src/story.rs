@@ -63,6 +63,9 @@ pub struct Shown {
     pub args: Vec<(String, Val)>,
     pub voice: String,
     pub expression: String,
+    /// The camera shot it is shown in (its own, else its node's; empty:
+    /// none).
+    pub shot: String,
     pub seq: u32,
     /// It had been read before it was shown.
     pub seen: bool,
@@ -199,6 +202,10 @@ pub struct Story {
     /// The voices playing: `c<conversation>` or `b<entity>` to the line's
     /// seq and the entity playing it (the runtime's).
     pub voices: BTreeMap<String, (u32, u64)>,
+    /// While a line's shot is og.CameraBrain's solo: the solo the story
+    /// found (handed back when no line has a shot) and the one it wrote,
+    /// as entity bits (the runtime's).
+    pub camera: Option<(u64, u64)>,
     /// The tick the og.story system last ran (not saved: it is the world's).
     pub tick: u32,
     /// Warnings not yet logged (not saved).
@@ -226,9 +233,24 @@ impl Story {
             bark_cycle: BTreeMap::new(),
             bark_once: BTreeSet::new(),
             voices: BTreeMap::new(),
+            camera: None,
             tick: 0,
             warnings: Vec::new(),
         }
+    }
+
+    /// The shot the camera should show: the current line's of the newest
+    /// conversation still running (none when that line has none), with the
+    /// conversation's id.
+    pub fn shot(&self) -> Option<(u32, &str)> {
+        self.convs
+            .iter()
+            .rev()
+            .find(|(_, c)| c.wait != Wait::Ended)
+            .and_then(|(id, c)| {
+                let l = c.history.last()?;
+                (!l.shot.is_empty()).then_some((*id, l.shot.as_str()))
+            })
     }
 
     /// A new playthrough: variables, seen nodes, conversations and quests
@@ -670,6 +692,11 @@ impl Story {
             args,
             voice: l.voice.clone(),
             expression: l.expression.clone(),
+            shot: match l.shot.as_str() {
+                "none" => String::new(),
+                "" => node.shot.clone(),
+                own => own.to_string(),
+            },
             seq: self.seq,
             seen,
             chosen: None,

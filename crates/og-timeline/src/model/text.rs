@@ -183,6 +183,7 @@ fn track_end(t: &Track) -> f32 {
         Track::Marker(c) => max(&mut c.iter().map(|k| k.time)),
         Track::Fields(f) => max(&mut f.keys.iter().map(|k| k.time)),
         Track::Timeline(c) => max(&mut c.iter().map(|k| k.time)),
+        Track::Shot(c) => max(&mut c.iter().map(|k| k.time)),
     }
 }
 
@@ -297,6 +298,21 @@ fn write_track(tr: &Track) -> Entry {
                 kb.push(Entry::new("speed").with(num(k.speed)));
                 kb.push(Entry::new("blendIn").with(num(k.blend_in)));
                 kb.push(Entry::new("loop").with(boolean(k.looping)));
+                b.push(key_entry(k.time, kb));
+            }
+        }
+        Track::Shot(ks) => {
+            for k in ks {
+                let mut kb = Block::new();
+                if k.camera.is_empty() {
+                    kb.push(Entry::new("none"));
+                } else {
+                    kb.push(Entry::new("camera").with(Value::String(k.camera.clone())));
+                }
+                if k.blend >= 0.0 {
+                    kb.push(Entry::new("blend").with(num(k.blend)));
+                }
+                ease_entry(&mut kb, k.ease);
                 b.push(key_entry(k.time, kb));
             }
         }

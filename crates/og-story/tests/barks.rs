@@ -271,7 +271,8 @@ fn voices_time_their_lines_and_saves_keep_barks() {
     v1.globals.insert("x".into(), Val::Num(1.0));
     let mut bytes = Vec::new();
     v1.save(&mut bytes);
-    let cut = bytes.len() - 8 * 4; // the eight empty version-2 sections
+    // The eight empty version-2 sections and version 3's empty camera.
+    let cut = bytes.len() - 8 * 4 - 1;
     let mut old = bytes[..cut].to_vec();
     old[4] = 1;
     assert_eq!(Story::load(&old).unwrap().globals["x"], Val::Num(1.0));

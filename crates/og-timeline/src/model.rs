@@ -406,6 +406,19 @@ pub struct NestedKey {
     pub looping: bool,
 }
 
+/// A key of a `shot` track: from its time (until the next key), the
+/// virtual camera named `camera` (an entity's name; empty: none) is
+/// og.CameraBrain's solo shot, blended to over `blend` seconds by `ease`
+/// (linear unless given; `blend` below 0: the camera's own blendTime and
+/// blendEase).
+#[derive(Clone, Debug, PartialEq)]
+pub struct ShotKey {
+    pub time: f32,
+    pub camera: String,
+    pub blend: f32,
+    pub ease: Ease,
+}
+
 /// How deep timelines nest (a timeline's own tracks are depth 0).
 pub const NEST_DEPTH: usize = 4;
 
@@ -425,10 +438,12 @@ pub enum Track {
     Fields(FieldsTrack),
     /// Nested timelines.
     Timeline(Vec<NestedKey>),
+    /// Virtual camera shots.
+    Shot(Vec<ShotKey>),
 }
 
 /// Every track kind the file may name, for the refusal of another.
-pub const TRACK_KINDS: &str = "camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material or timeline";
+pub const TRACK_KINDS: &str = "camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material, timeline or shot";
 
 impl Track {
     /// The track's kind as the file names it.
@@ -445,6 +460,7 @@ impl Track {
             Track::Marker(_) => "marker",
             Track::Fields(f) => f.kind.name(),
             Track::Timeline(_) => "timeline",
+            Track::Shot(_) => "shot",
         }
     }
 
@@ -462,6 +478,7 @@ impl Track {
             Track::Marker(c) => c.iter().map(|k| k.time).collect(),
             Track::Fields(f) => f.keys.iter().map(|k| k.time).collect(),
             Track::Timeline(c) => c.iter().map(|k| k.time).collect(),
+            Track::Shot(c) => c.iter().map(|k| k.time).collect(),
         }
     }
 
@@ -493,6 +510,7 @@ impl Track {
             Track::Marker(k) => k.len(),
             Track::Fields(f) => f.keys.len(),
             Track::Timeline(k) => k.len(),
+            Track::Shot(k) => k.len(),
         }
     }
 }
