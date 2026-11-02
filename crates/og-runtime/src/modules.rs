@@ -52,7 +52,7 @@ pub use game_widgets::{
     og_ui_cooldown, og_ui_dialogue, og_ui_dismiss_toast, og_ui_divider, og_ui_dpad, og_ui_dragging,
     og_ui_feedback, og_ui_focus, og_ui_grid_item, og_ui_icon, og_ui_joystick, og_ui_key_value,
     og_ui_list_item, og_ui_memory, og_ui_meter, og_ui_minimap, og_ui_navigate, og_ui_open_anchor,
-    og_ui_open_grid, og_ui_open_list, og_ui_open_modal, og_ui_open_transition,
+    og_ui_open_grid, og_ui_open_list, og_ui_open_modal, og_ui_open_transition, og_ui_part_attr,
     og_ui_preview_viewport, og_ui_radio, og_ui_remember, og_ui_select, og_ui_set_haptics,
     og_ui_set_navigation, og_ui_set_players, og_ui_skeleton, og_ui_spacer, og_ui_spinner,
     og_ui_spotlight, og_ui_stepper, og_ui_tabs, og_ui_tick, og_ui_toast,

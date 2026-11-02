@@ -1362,6 +1362,9 @@ impl UiApi for NodeHost {
     fn og_ui_feedback(&self, event: String, rise: f64) {
         rt::og_ui_feedback(event, rise)
     }
+    fn og_ui_part_attr(&self, key: String, value: String) -> bool {
+        rt::og_ui_part_attr(key, value)
+    }
     fn og_ui_set_haptics(&self, intensity: f64) {
         rt::og_ui_set_haptics(intensity)
     }

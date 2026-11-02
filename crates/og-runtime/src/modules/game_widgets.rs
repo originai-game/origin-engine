@@ -543,6 +543,10 @@ pub fn og_ui_set_haptics(intensity: f64) {
     with_ui("og.ui.setHaptics", |ui| ui.set_haptics(intensity as f32));
 }
 
+pub fn og_ui_part_attr(key: String, value: String) -> bool {
+    with_ui("og.ui.partAttr", |ui| ui.part_attr(&key, &value)).unwrap_or(false)
+}
+
 pub fn og_ui_set_navigation(on: bool) {
     with_ui("og.ui.setNavigation", |ui| ui.set_navigation(on));
 }

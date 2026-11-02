@@ -338,18 +338,22 @@ impl Ui {
     /// selector attribute its style dresses by: `ui.part_attr("rarity",
     /// "epic")` in a bag's cell makes it `Slot.frame[rarity=epic]`. An
     /// element without a part takes its version 1 frame's (a plain one, an
-    /// `Element.base`).
-    pub fn part_attr(&mut self, key: &str, value: &str) {
+    /// `Element.base`). Answers whether the style dresses the part by that
+    /// attribute (for any of its values), so a caller draws its own mark
+    /// only where the style tells the values apart with none.
+    pub fn part_attr(&mut self, key: &str, value: &str) -> bool {
         let Some(&i) = self.stack.last() else {
-            return;
+            return false;
         };
         let el = &mut self.nodes[i].el;
         let part = el
             .part
             .or_else(|| el.frame.map(StylePart::part_ref))
             .unwrap_or_default();
-        el.part = Some(part.attr(crate::dress::intern(key), crate::dress::intern(value)));
+        let tagged = part.attr(crate::dress::intern(key), crate::dress::intern(value));
+        el.part = Some(tagged);
         el.frame = None;
+        self.dress.dresses_key(&tagged, key)
     }
 
     /// The player's haptic strength: 0 turns haptics off, 1 plays the

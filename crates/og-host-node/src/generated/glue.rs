@@ -2991,6 +2991,12 @@ pub fn og_ui_semantics(env: Env, desc: Option<String>) -> bool {
     <Host as UiApi>::og_ui_semantics(&Host, desc)
 }
 
+#[napi(js_name = "og_ui_part_attr")]
+pub fn og_ui_part_attr(env: Env, key: String, value: String) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_part_attr(&Host, key, value)
+}
+
 #[napi(js_name = "og_ui_set_draw")]
 pub fn og_ui_set_draw(env: Env, desc: Option<String>) {
     let _env = crate::EnvScope::enter(&env);

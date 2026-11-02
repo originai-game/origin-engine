@@ -597,6 +597,17 @@ impl DressSet {
     }
 
     /// Every dressing of `part` merged, the more specific over the less.
+    /// Whether some dressing of `part`'s component and part is qualified by
+    /// the attribute `key` (any value): the style tells that attribute's
+    /// values apart itself (a gilded slot recolours its frame per tier).
+    pub fn dresses_key(&self, part: &PartRef, key: &str) -> bool {
+        self.list.iter().any(|d| {
+            d.selector.component == part.component
+                && d.selector.part == part.part
+                && d.selector.attrs.iter().any(|(k, _)| k == key)
+        })
+    }
+
     pub fn resolve(&self, part: &PartRef) -> Resolved {
         let mut r = Resolved::default();
         for d in self.list.iter().filter(|d| part.matched_by(&d.selector)) {

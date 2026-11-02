@@ -131,6 +131,37 @@ fn a_games_attribute_dresses_only_the_cells_that_carry_it() {
 }
 
 #[test]
+fn part_attr_answers_whether_the_style_tells_the_attribute_apart() {
+    // The style dresses one tier: every tier answers true (its frame carries
+    // the tier, so a caller adds no second stroke); an attribute it never
+    // dresses answers false (the caller draws its own mark).
+    let mut ui = dressed("dress \"Slot.frame[rarity=epic]\" {\n  fill \"#a335ee\"\n}\n");
+    ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+    let range = ui.open_grid(
+        "Bag",
+        GridDesc {
+            count: 3,
+            cell_width: 64.0,
+            columns: 3,
+            ..GridDesc::default()
+        },
+    );
+    let mut answers = Vec::new();
+    for i in range.first..range.last {
+        ui.grid_item(i, false);
+        answers.push(match i {
+            0 => ui.part_attr("rarity", "epic"),
+            1 => ui.part_attr("rarity", "rare"),
+            _ => ui.part_attr("team", "red"),
+        });
+        ui.close();
+    }
+    ui.close_list();
+    ui.end();
+    assert_eq!(answers, [true, true, false]);
+}
+
+#[test]
 fn an_undressed_panel_draws_its_line_and_elevation_from_the_tokens() {
     let mut ui = ui_with_font(test_font_metrics());
     // No dressings at all (the default style dresses cards flat).

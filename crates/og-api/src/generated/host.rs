@@ -1115,6 +1115,8 @@ pub trait UiApi: Wire {
     fn og_ui_layout_stats(&self) -> String;
     /// `og.ui.semantics`
     fn og_ui_semantics(&self, desc: Option<String>) -> bool;
+    /// `og.ui.partAttr`
+    fn og_ui_part_attr(&self, key: String, value: String) -> bool;
     /// `og.ui.setDraw`
     fn og_ui_set_draw(&self, desc: Option<String>);
     /// `og.ui.openWorldAnchor`
@@ -1860,6 +1862,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_overlaps",
     "og_ui_layout_stats",
     "og_ui_semantics",
+    "og_ui_part_attr",
     "og_ui_set_draw",
     "og_ui_open_world_anchor",
     "og_ui_open_world_panel",

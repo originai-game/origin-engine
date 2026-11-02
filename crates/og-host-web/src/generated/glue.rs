@@ -2494,6 +2494,11 @@ pub fn og_ui_semantics(desc: Option<String>) -> bool {
 }
 
 #[wasm_bindgen]
+pub fn og_ui_part_attr(key: String, value: String) -> bool {
+    <Host as UiApi>::og_ui_part_attr(&Host, key, value)
+}
+
+#[wasm_bindgen]
 pub fn og_ui_set_draw(desc: Option<String>) {
     <Host as UiApi>::og_ui_set_draw(&Host, desc)
 }

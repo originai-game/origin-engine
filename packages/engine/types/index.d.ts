@@ -40806,6 +40806,7 @@ export interface SemanticsDesc {
 
 
 
+
 /**
  * What an anchored element or a world panel is placed on: an entity (its world pose, down og.Parent) or a world point.
  *
@@ -50169,6 +50170,14 @@ export declare namespace og {
      * @param desc Its role, name, value and states.
      */
     function semantics(desc?: SemanticsDesc): boolean;
+    /**
+     * Gives the element open now (a grid's cell, a panel, a card) a selector attribute its style dresses by: partAttr("rarity", "epic") in a bag's cell makes it `Slot.frame[rarity=epic]`, so a style that dresses the tier recolours the cell's own frame (one stroke, never a second). Call it right after the element opens, inside it.
+     *
+     * @param key The attribute's name (rarity, tone, team).
+     * @param value Its value (epic, success).
+     * @returns Whether the style dresses this part by the attribute (for any of its values, `Slot.frame[rarity=rare]` answers for every tier): false, its values draw alike, and a caller that wants a mark draws its own.
+     */
+    function partAttr(key: string, value: string): boolean;
     /**
      * Draws the element added last (a container just opened, or the last control) with desc: shapes beyond rectangles, layered gradient, image and vector fills, strokes with their own paints, shadows, glows, glass, clipping to its shape, masks, blend modes and materials (docs/ui.md §5). Call it right after the element's open or control; immediate mode, so every tick it is drawn.
      *

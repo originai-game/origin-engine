@@ -804,6 +804,7 @@ module ui {
 | [`BlendMode`](#type-BlendMode) | enum | How a paint mixes with what is under it. |
 | [`SemanticsDesc`](#type-SemanticsDesc) | desc struct | What a component tells the accessibility tree about an element it built from containers (docs/ui.md §11): a role other than its kind's, a name, a value and states. Absent fields leave what the element's kind gives it. |
 | [`og.ui.semantics`](#fn-semantics) | function | Give the element built just before (a container just closed, or a widget) a role, a name, a value and states for the accessibility tree and the probe's dump (dump_ui's role, name, value, states). Components built from containers call it so a screen reader meets a menu, a tree or a table, not rows of buttons. Answers false, with a frame warning, when no element was built before it or the role is unknown. |
+| [`og.ui.partAttr`](#fn-partAttr) | function | Gives the element open now (a grid's cell, a panel, a card) a selector attribute its style dresses by: partAttr("rarity", "epic") in a bag's cell makes it `Slot.frame[rarity=epic]`, so a style that dresses the tier recolours the cell's own frame (one stroke, never a second). Call it right after the element opens, inside it. |
 | [`og.ui.setDraw`](#fn-setDraw) | function | Draws the element added last (a container just opened, or the last control) with desc: shapes beyond rectangles, layered gradient, image and vector fills, strokes with their own paints, shadows, glows, glass, clipping to its shape, masks, blend modes and materials (docs/ui.md §5). Call it right after the element's open or control; immediate mode, so every tick it is drawn. |
 | [`WorldTarget`](#type-WorldTarget) | desc struct | What an anchored element or a world panel is placed on: an entity (its world pose, down og.Parent) or a world point. |
 | [`AnchorScaleMode`](#type-AnchorScaleMode) | enum | How an anchored element's size follows its distance from the camera. |
@@ -8564,6 +8565,36 @@ fn semantics {
 
 <sub>`api.ogt` line 23550</sub>
 
+<a id="fn-partAttr"></a>
+
+### `og.ui.partAttr`
+
+Gives the element open now (a grid's cell, a panel, a card) a selector attribute its style dresses by: partAttr("rarity", "epic") in a bag's cell makes it `Slot.frame[rarity=epic]`, so a style that dresses the tier recolours the cell's own frame (one stroke, never a second). Call it right after the element opens, inside it.
+
+```ts
+og.ui.partAttr(key: string, value: string): boolean
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `key` | `string` | no | The attribute's name (rarity, tone, team). |
+| `value` | `string` | no | Its value (epic, success). |
+
+**Returns** `boolean`: Whether the style dresses this part by the attribute (for any of its values, `Slot.frame[rarity=rare]` answers for every tier): false, its values draw alike, and a caller that wants a mark draws its own.
+
+Binding symbol `og_ui_part_attr` · publish builds: kept
+
+```ogt
+fn partAttr {
+  doc "Gives the element open now (a grid's cell, a panel, a card) a selector attribute its style dresses by: partAttr(\"rarity\", \"epic\") in a bag's cell makes it `Slot.frame[rarity=epic]`, so a style that dresses the tier recolours the cell's own frame (one stroke, never a second). Call it right after the element opens, inside it."
+  param key String "The attribute's name (rarity, tone, team)."
+  param value String "Its value (epic, success)."
+  returns bool "Whether the style dresses this part by the attribute (for any of its values, `Slot.frame[rarity=rare]` answers for every tier): false, its values draw alike, and a caller that wants a mark draws its own."
+}
+```
+
+<sub>`api.ogt` line 23556</sub>
+
 <a id="fn-setDraw"></a>
 
 ### `og.ui.setDraw`
@@ -8590,7 +8621,7 @@ fn setDraw {
 }
 ```
 
-<sub>`api.ogt` line 23556</sub>
+<sub>`api.ogt` line 23563</sub>
 
 <a id="fn-openWorldAnchor"></a>
 
@@ -8620,7 +8651,7 @@ fn openWorldAnchor {
 }
 ```
 
-<sub>`api.ogt` line 23687</sub>
+<sub>`api.ogt` line 23694</sub>
 
 <a id="fn-openWorldPanel"></a>
 
@@ -8650,7 +8681,7 @@ fn openWorldPanel {
 }
 ```
 
-<sub>`api.ogt` line 23742</sub>
+<sub>`api.ogt` line 23749</sub>
 
 <a id="fn-defineMass"></a>
 
@@ -8680,7 +8711,7 @@ fn defineMass {
 }
 ```
 
-<sub>`api.ogt` line 23887</sub>
+<sub>`api.ogt` line 23894</sub>
 
 <a id="fn-spawnMass"></a>
 
@@ -8710,7 +8741,7 @@ fn spawnMass {
 }
 ```
 
-<sub>`api.ogt` line 23894</sub>
+<sub>`api.ogt` line 23901</sub>
 
 <a id="fn-pushMass"></a>
 
@@ -8740,7 +8771,7 @@ fn pushMass {
 }
 ```
 
-<sub>`api.ogt` line 23901</sub>
+<sub>`api.ogt` line 23908</sub>
 
 <a id="fn-massCount"></a>
 
@@ -8768,7 +8799,7 @@ fn massCount {
 }
 ```
 
-<sub>`api.ogt` line 23908</sub>
+<sub>`api.ogt` line 23915</sub>
 
 <a id="fn-particles"></a>
 
@@ -8796,7 +8827,7 @@ fn particles {
 }
 ```
 
-<sub>`api.ogt` line 23981</sub>
+<sub>`api.ogt` line 23988</sub>
 
 <a id="fn-meta"></a>
 
@@ -8826,7 +8857,7 @@ fn meta {
 }
 ```
 
-<sub>`api.ogt` line 24031</sub>
+<sub>`api.ogt` line 24038</sub>
 
 <a id="fn-sceneViewport"></a>
 
@@ -8856,7 +8887,7 @@ fn sceneViewport {
 }
 ```
 
-<sub>`api.ogt` line 24082</sub>
+<sub>`api.ogt` line 24089</sub>
 
 <a id="fn-screen"></a>
 
@@ -8888,7 +8919,7 @@ fn screen {
 }
 ```
 
-<sub>`api.ogt` line 24172</sub>
+<sub>`api.ogt` line 24179</sub>
 
 <a id="fn-component"></a>
 
@@ -8922,7 +8953,7 @@ fn component {
 }
 ```
 
-<sub>`api.ogt` line 24181</sub>
+<sub>`api.ogt` line 24188</sub>
 
 <a id="fn-openSlot"></a>
 
@@ -8950,7 +8981,7 @@ fn openSlot {
 }
 ```
 
-<sub>`api.ogt` line 24191</sub>
+<sub>`api.ogt` line 24198</sub>
 
 <a id="fn-push"></a>
 
@@ -8984,7 +9015,7 @@ fn push {
 }
 ```
 
-<sub>`api.ogt` line 24197</sub>
+<sub>`api.ogt` line 24204</sub>
 
 <a id="fn-pop"></a>
 
@@ -9012,7 +9043,7 @@ fn pop {
 }
 ```
 
-<sub>`api.ogt` line 24207</sub>
+<sub>`api.ogt` line 24214</sub>
 
 <a id="fn-replace"></a>
 
@@ -9046,7 +9077,7 @@ fn replace {
 }
 ```
 
-<sub>`api.ogt` line 24213</sub>
+<sub>`api.ogt` line 24220</sub>
 
 <a id="fn-clear"></a>
 
@@ -9074,7 +9105,7 @@ fn clear {
 }
 ```
 
-<sub>`api.ogt` line 24223</sub>
+<sub>`api.ogt` line 24230</sub>
 
 <a id="fn-layers"></a>
 
@@ -9102,7 +9133,7 @@ fn layers {
 }
 ```
 
-<sub>`api.ogt` line 24229</sub>
+<sub>`api.ogt` line 24236</sub>
 
 <a id="fn-screenVm"></a>
 
@@ -9132,7 +9163,7 @@ fn screenVm {
 }
 ```
 
-<sub>`api.ogt` line 24235</sub>
+<sub>`api.ogt` line 24242</sub>
 
 <a id="fn-docEvents"></a>
 
@@ -9160,7 +9191,7 @@ fn docEvents {
 }
 ```
 
-<sub>`api.ogt` line 24242</sub>
+<sub>`api.ogt` line 24249</sub>
 
 <a id="fn-gameInput"></a>
 
@@ -9188,7 +9219,7 @@ fn gameInput {
 }
 ```
 
-<sub>`api.ogt` line 24248</sub>
+<sub>`api.ogt` line 24255</sub>
 
 <a id="fn-paused"></a>
 
@@ -9216,7 +9247,7 @@ fn paused {
 }
 ```
 
-<sub>`api.ogt` line 24254</sub>
+<sub>`api.ogt` line 24261</sub>
 
 <a id="fn-defineAction"></a>
 
@@ -9246,7 +9277,7 @@ fn defineAction {
 }
 ```
 
-<sub>`api.ogt` line 24260</sub>
+<sub>`api.ogt` line 24267</sub>
 
 <a id="fn-action"></a>
 
@@ -9274,7 +9305,7 @@ fn action {
 }
 ```
 
-<sub>`api.ogt` line 24267</sub>
+<sub>`api.ogt` line 24274</sub>
 
 <a id="fn-actionHeld"></a>
 
@@ -9302,7 +9333,7 @@ fn actionHeld {
 }
 ```
 
-<sub>`api.ogt` line 24273</sub>
+<sub>`api.ogt` line 24280</sub>
 
 <a id="fn-glyph"></a>
 
@@ -9332,7 +9363,7 @@ fn glyph {
 }
 ```
 
-<sub>`api.ogt` line 24279</sub>
+<sub>`api.ogt` line 24286</sub>
 
 <a id="fn-frameGlyph"></a>
 
@@ -9360,7 +9391,7 @@ fn frameGlyph {
 }
 ```
 
-<sub>`api.ogt` line 24286</sub>
+<sub>`api.ogt` line 24293</sub>
 
 <a id="fn-device"></a>
 
@@ -9388,7 +9419,7 @@ fn device {
 }
 ```
 
-<sub>`api.ogt` line 24292</sub>
+<sub>`api.ogt` line 24299</sub>
 
 <a id="fn-setDevice"></a>
 
@@ -9418,7 +9449,7 @@ fn setDevice {
 }
 ```
 
-<sub>`api.ogt` line 24298</sub>
+<sub>`api.ogt` line 24305</sub>
 
 <a id="fn-actionBar"></a>
 
@@ -9446,7 +9477,7 @@ fn actionBar {
 }
 ```
 
-<sub>`api.ogt` line 24305</sub>
+<sub>`api.ogt` line 24312</sub>
 
 <a id="fn-documentSchema"></a>
 
@@ -9469,7 +9500,7 @@ fn documentSchema {
 }
 ```
 
-<sub>`api.ogt` line 24311</sub>
+<sub>`api.ogt` line 24318</sub>
 
 <a id="fn-setProp"></a>
 
@@ -9503,7 +9534,7 @@ fn setProp {
 }
 ```
 
-<sub>`api.ogt` line 24316</sub>
+<sub>`api.ogt` line 24323</sub>
 
 <a id="fn-saveEdits"></a>
 
@@ -9531,7 +9562,7 @@ fn saveEdits {
 }
 ```
 
-<sub>`api.ogt` line 24325</sub>
+<sub>`api.ogt` line 24332</sub>
 
 ## Types
 
@@ -28184,7 +28215,7 @@ struct WorldTarget {
 }
 ```
 
-<sub>`api.ogt` line 23564</sub>
+<sub>`api.ogt` line 23571</sub>
 
 <a id="type-AnchorScaleMode"></a>
 
@@ -28207,7 +28238,7 @@ enum AnchorScaleMode {
 }
 ```
 
-<sub>`api.ogt` line 23571</sub>
+<sub>`api.ogt` line 23578</sub>
 
 <a id="type-WorldOcclusion"></a>
 
@@ -28232,7 +28263,7 @@ enum WorldOcclusion {
 }
 ```
 
-<sub>`api.ogt` line 23577</sub>
+<sub>`api.ogt` line 23584</sub>
 
 <a id="type-Declutter"></a>
 
@@ -28259,7 +28290,7 @@ enum Declutter {
 }
 ```
 
-<sub>`api.ogt` line 23584</sub>
+<sub>`api.ogt` line 23591</sub>
 
 <a id="type-EdgeClampDesc"></a>
 
@@ -28293,7 +28324,7 @@ struct EdgeClampDesc {
 }
 ```
 
-<sub>`api.ogt` line 23592</sub>
+<sub>`api.ogt` line 23599</sub>
 
 <a id="type-WorldAnchorDesc"></a>
 
@@ -28388,7 +28419,7 @@ struct WorldAnchorDesc {
 }
 ```
 
-<sub>`api.ogt` line 23608</sub>
+<sub>`api.ogt` line 23615</sub>
 
 <a id="type-AnchorInfo"></a>
 
@@ -28435,7 +28466,7 @@ struct AnchorInfo {
 }
 ```
 
-<sub>`api.ogt` line 23663</sub>
+<sub>`api.ogt` line 23670</sub>
 
 <a id="type-WorldPanelDesc"></a>
 
@@ -28495,7 +28526,7 @@ struct WorldPanelDesc {
 }
 ```
 
-<sub>`api.ogt` line 23694</sub>
+<sub>`api.ogt` line 23701</sub>
 
 <a id="type-PanelInfo"></a>
 
@@ -28526,7 +28557,7 @@ struct PanelInfo {
 }
 ```
 
-<sub>`api.ogt` line 23728</sub>
+<sub>`api.ogt` line 23735</sub>
 
 <a id="type-MassKind"></a>
 
@@ -28555,7 +28586,7 @@ enum MassKind {
 }
 ```
 
-<sub>`api.ogt` line 23749</sub>
+<sub>`api.ogt` line 23756</sub>
 
 <a id="type-MassEase"></a>
 
@@ -28584,7 +28615,7 @@ enum MassEase {
 }
 ```
 
-<sub>`api.ogt` line 23758</sub>
+<sub>`api.ogt` line 23765</sub>
 
 <a id="type-MassSpace"></a>
 
@@ -28607,7 +28638,7 @@ enum MassSpace {
 }
 ```
 
-<sub>`api.ogt` line 23767</sub>
+<sub>`api.ogt` line 23774</sub>
 
 <a id="type-ParticleShape"></a>
 
@@ -28632,7 +28663,7 @@ enum ParticleShape {
 }
 ```
 
-<sub>`api.ogt` line 23773</sub>
+<sub>`api.ogt` line 23780</sub>
 
 <a id="type-MassKey"></a>
 
@@ -28679,7 +28710,7 @@ struct MassKey {
 }
 ```
 
-<sub>`api.ogt` line 23780</sub>
+<sub>`api.ogt` line 23787</sub>
 
 <a id="type-MassTemplateDesc"></a>
 
@@ -28779,7 +28810,7 @@ struct MassTemplateDesc {
 }
 ```
 
-<sub>`api.ogt` line 23806</sub>
+<sub>`api.ogt` line 23813</sub>
 
 <a id="type-MassInstance"></a>
 
@@ -28826,7 +28857,7 @@ struct MassInstance {
 }
 ```
 
-<sub>`api.ogt` line 23864</sub>
+<sub>`api.ogt` line 23871</sub>
 
 <a id="type-EmitFrom"></a>
 
@@ -28851,7 +28882,7 @@ enum EmitFrom {
 }
 ```
 
-<sub>`api.ogt` line 23914</sub>
+<sub>`api.ogt` line 23921</sub>
 
 <a id="type-ParticlesDesc"></a>
 
@@ -28945,7 +28976,7 @@ struct ParticlesDesc {
 }
 ```
 
-<sub>`api.ogt` line 23921</sub>
+<sub>`api.ogt` line 23928</sub>
 
 <a id="type-MetaKind"></a>
 
@@ -28970,7 +29001,7 @@ enum MetaKind {
 }
 ```
 
-<sub>`api.ogt` line 23987</sub>
+<sub>`api.ogt` line 23994</sub>
 
 <a id="type-MetaDesc"></a>
 
@@ -29032,7 +29063,7 @@ struct MetaDesc {
 }
 ```
 
-<sub>`api.ogt` line 23994</sub>
+<sub>`api.ogt` line 24001</sub>
 
 <a id="type-SceneViewportDesc"></a>
 
@@ -29080,7 +29111,7 @@ struct SceneViewportDesc {
 }
 ```
 
-<sub>`api.ogt` line 24038</sub>
+<sub>`api.ogt` line 24045</sub>
 
 <a id="type-SceneViewportInfo"></a>
 
@@ -29125,7 +29156,7 @@ struct SceneViewportInfo {
 }
 ```
 
-<sub>`api.ogt` line 24061</sub>
+<sub>`api.ogt` line 24068</sub>
 
 <a id="type-UiDocEvent"></a>
 
@@ -29152,7 +29183,7 @@ struct UiDocEvent {
 }
 ```
 
-<sub>`api.ogt` line 24090</sub>
+<sub>`api.ogt` line 24097</sub>
 
 <a id="type-UiDocResponse"></a>
 
@@ -29175,7 +29206,7 @@ struct UiDocResponse {
 }
 ```
 
-<sub>`api.ogt` line 24099</sub>
+<sub>`api.ogt` line 24106</sub>
 
 <a id="type-UiLayer"></a>
 
@@ -29218,7 +29249,7 @@ struct UiLayer {
 }
 ```
 
-<sub>`api.ogt` line 24106</sub>
+<sub>`api.ogt` line 24113</sub>
 
 <a id="type-UiActionTrigger"></a>
 
@@ -29243,7 +29274,7 @@ enum UiActionTrigger {
 }
 ```
 
-<sub>`api.ogt` line 24123</sub>
+<sub>`api.ogt` line 24130</sub>
 
 <a id="type-UiActionDesc"></a>
 
@@ -29280,7 +29311,7 @@ struct UiActionDesc {
 }
 ```
 
-<sub>`api.ogt` line 24130</sub>
+<sub>`api.ogt` line 24137</sub>
 
 <a id="type-UiDevice"></a>
 
@@ -29311,7 +29342,7 @@ enum UiDevice {
 }
 ```
 
-<sub>`api.ogt` line 24146</sub>
+<sub>`api.ogt` line 24153</sub>
 
 <a id="type-UiGlyph"></a>
 
@@ -29334,7 +29365,7 @@ struct UiGlyph {
 }
 ```
 
-<sub>`api.ogt` line 24156</sub>
+<sub>`api.ogt` line 24163</sub>
 
 <a id="type-UiActionHint"></a>
 
@@ -29361,7 +29392,7 @@ struct UiActionHint {
 }
 ```
 
-<sub>`api.ogt` line 24163</sub>
+<sub>`api.ogt` line 24170</sub>
 
 ## Column kinds
 

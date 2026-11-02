@@ -1923,6 +1923,7 @@ export const ui = Object.freeze({
   open: (id: string, desc?: unknown) => abi().og_ui_open(id, json(desc)),
   openPanel: (id: string, desc?: unknown) => abi().og_ui_open_panel(id, json(desc)),
   setDraw: (desc?: unknown) => abi().og_ui_set_draw(json(desc)),
+  partAttr: (key: string, value: string): boolean => abi().og_ui_part_attr(key, value),
   semantics: (desc?: unknown): boolean => abi().og_ui_semantics(json(desc)),
   frameDirection: (): "ltr" | "rtl" => abi().og_ui_frame_direction() as "ltr" | "rtl",
   lastPath: (): string => abi().og_ui_last_path(),
