@@ -268,7 +268,7 @@ pub struct Ornament {
     pub w: f32,
     pub h: f32,
     pub ink: Ink,
-    /// Moves it outwards (corners) or apart (flourishes), CSS px.
+    /// Moves it outwards (corners, crests, edges) or apart (flourishes), CSS px.
     pub offset: f32,
 }
 
@@ -423,6 +423,11 @@ pub struct Art {
     pub corner_parts: u32,
     pub divider: Option<Ornament>,
     pub flourish: Option<Ornament>,
+    /// Drawn at a part's top centre, as authored (a dressing's `crest`).
+    pub crest: Option<Ornament>,
+    /// Drawn at the middle of a part's left edge as authored and of its
+    /// right edge mirrored (a dressing's `edges`).
+    pub edge: Option<Ornament>,
     pub tile: Option<Tile>,
     pub shadows: [Option<Shadow>; PARTS],
     pub glows: [Option<Glow>; PARTS],

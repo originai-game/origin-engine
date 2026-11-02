@@ -182,6 +182,8 @@ soft 252 104 64 64 24
 corner 320 104 32 32 28 28 authored 6
 divider 4 172 128 24 112 20 authored
 flourish 136 172 64 24 48 18 authored 0
+crest 272 172 64 32 56 28 authored 12
+edge 344 172 16 64 14 56 authored 7
 tile 204 172 64 64 64 64 0.5 6
 motion {
   enter scale
@@ -241,6 +243,8 @@ dress "Panel.frame" {
   tone 0.861 0.736 0.478 1.00
   shadow 0 10 18 2 "#000000b3"
   corners
+  crest
+  edges
   tile
 }
 dress "Card.frame" {

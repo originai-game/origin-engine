@@ -339,7 +339,7 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                 })?;
                 slice.tone = tone_at(&p, 1)?;
             }
-            "corner" | "divider" | "flourish" => {
+            "corner" | "divider" | "flourish" | "crest" | "edge" => {
                 needs_atlas()?;
                 let (uv, _) = region(&p, 0, size)?;
                 let ink = match e.values.get(6) {
@@ -356,6 +356,8 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                 match key {
                     "corner" => theme.art.corner = Some(o),
                     "divider" => theme.art.divider = Some(o),
+                    "crest" => theme.art.crest = Some(o),
+                    "edge" => theme.art.edge = Some(o),
                     _ => theme.art.flourish = Some(o),
                 }
             }
@@ -575,6 +577,8 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                         "glow" => d.frame.glow = Some(glow_at(&q, 0)?),
                         "glass" => d.frame.glass = Some(glass_at(&q, 0)?),
                         "corners" => d.frame.corners = bare()?,
+                        "crest" => d.frame.crest = bare()?,
+                        "edges" => d.frame.edges = bare()?,
                         "tile" => d.frame.tile = bare()?,
                         "shape" => {
                             let radius = v.radius.as_ref().ok_or_else(|| {
@@ -587,7 +591,7 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                         k if DRAW_KEYS.contains(&k) => d.draw.apply(c, &atlas, &mut seen)?,
                         _ => {
                             return Err(q.err(&format!(
-                                "is not a dressing setting: slice, tone, shadow, glow, glass, corners, tile, shape, press, hover, or (for the UI pass) {}",
+                                "is not a dressing setting: slice, tone, shadow, glow, glass, corners, crest, edges, tile, shape, press, hover, or (for the UI pass) {}",
                                 DRAW_KEYS.join(", ")
                             )));
                         }
@@ -608,6 +612,12 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                 });
         if tile_parts != 0 && theme.art.tile.is_none() {
             return Err("a dressing says `tile`, but the style has no `tile` line".into());
+        }
+        if dressings.iter().any(|d| d.frame.crest) && theme.art.crest.is_none() {
+            return Err("a dressing says `crest`, but the style has no `crest` line".into());
+        }
+        if dressings.iter().any(|d| d.frame.edges) && theme.art.edge.is_none() {
+            return Err("a dressing says `edges`, but the style has no `edge` line".into());
         }
         if let Some(t) = theme.art.tile.as_mut() {
             t.parts = tile_parts;

@@ -11,7 +11,8 @@ templates/styles/<name>/ (the cook compiles them in; a look names one with
 - atlas.png: the nine-slice frames (panel, card, button and its hover,
   pressed and disabled states, field, slot, tooltip, capsule, progress track
   and fill), a soft blurred rectangle for shadows and glows, the ornaments
-  (corner, divider, heading flourish) and a tile, each with a 4 px gutter
+  (corner, divider, heading flourish, and for fantasy a top-centre crest
+  and a mid-edge filigree) and a tile, each with a 4 px gutter
   whose texels repeat the region's edge (so filtering never bleeds a
   neighbour in). Frames meant to take the palette are drawn in white and
   greys (og-ui multiplies them by the element's colour); "authored" ones
@@ -67,6 +68,8 @@ LAYOUT = {
     "divider": (4, 172, 128, 24),
     "flourish": (136, 172, 64, 24),
     "tile": (204, 172, 64, 64),
+    "crest": (272, 172, 64, 32),
+    "edge": (344, 172, 16, 64),
 }
 SS = 4  # supersampling of smooth art
 
@@ -511,9 +514,46 @@ def fantasy_pack():
         disc(cv, 13, 13, 2.4, GOLD_DARK)
         diamond(cv, 58, 13, 3.5, GOLD)
 
+    def crest(cv):
+        # A crest for a panel's top centre: a gem in a gold mount between
+        # two scrolled wings, the band's line running out to each side.
+        t = np.clip(1 - np.abs(cv.px - 32) / 31, 0, 1)
+        cv.paint(cv.inside(np.abs(cv.py - 20) - 1.0) * t, GOLD_DARK)
+        for sx in (-1, 1):
+            r = np.hypot(cv.px - (32 + sx * 15), cv.py - 16)
+            cv.paint(cv.inside(np.abs(r - 6) - 1.4) * (cv.py < 19), GOLD_DARK)
+            disc(cv, 32 + sx * 21, 17, 2.2, GOLD_DARK)
+            disc(cv, 32 + sx * 26, 20, 1.6, GOLD)
+        diamond(cv, 32, 16, 13, GOLD_DARK)
+        diamond(cv, 32, 16, 10.5, GOLD)
+        diamond(cv, 32, 16, 6.5, hexc("#6e1b10"))
+        diamond(cv, 30.5, 14.5, 2.2, hexc("#c94a36"))
+        disc(cv, 32, 3.5, 2.4, GOLD_DARK)
+        disc(cv, 32, 3.5, 1.4, GOLD)
+
+    def edge(cv):
+        # Filigree for the middle of a panel's left edge (mirrored on the
+        # right): a gold rule with a diamond boss and a curl above and below.
+        t = np.clip(1 - np.abs(cv.py - 32) / 31, 0, 1)
+        cv.paint(cv.inside(np.abs(cv.px - 6) - 1.0) * t, GOLD_DARK)
+        for sy in (-1, 1):
+            # Two leaves on each side of the boss, leaning away from it.
+            for k, (cx, cy) in enumerate([(9.5, 32 + sy * 12), (9.0, 32 + sy * 20)]):
+                ang = math.radians(sy * (55 if k == 0 else 40))
+                u = (cv.px - cx) * math.cos(ang) + (cv.py - cy) * math.sin(ang)
+                v = -(cv.px - cx) * math.sin(ang) + (cv.py - cy) * math.cos(ang)
+                ax, ay = (4.6, 1.9) if k == 0 else (3.6, 1.5)
+                cv.paint(cv.inside(np.hypot(u / ax, v / ay) - 1.0), GOLD_DARK)
+                cv.paint(cv.inside(np.hypot(u / (ax - 1.1), v / max(ay - 0.8, 0.6)) - 1.0), GOLD)
+            disc(cv, 6, 32 + sy * 27, 1.8, GOLD)
+        diamond(cv, 6, 32, 6.5, GOLD_DARK)
+        diamond(cv, 6, 32, 4.5, GOLD)
+
     p["corner"] = ornament(32, 32, corner)
     p["divider"] = ornament(128, 24, divider)
     p["flourish"] = ornament(64, 24, flourish)
+    p["crest"] = ornament(64, 32, crest)
+    p["edge"] = ornament(16, 64, edge)
     n = noise(64, 64, 11, 1)
     fib = noise(64, 64, 12, 4)
     tile = np.zeros((64, 64, 4))
@@ -538,6 +578,7 @@ def fantasy_pack():
         slices=dict(panel=(16, "authored"), card=(10, "authored"), button=(10,), buttonHover=(10,), buttonPressed=(10,),
                     buttonDisabled=(10,), field=(8,), slot=(10,), tooltip=(8,), hud=(12,), track=(6,), fill=(6,)),
         scale=1, corner=(28, 28, "authored", 6), corners=["panel"], divider=(112, 20, "authored"), flourish=(48, 18, "authored", 0),
+        crest=(56, 28, "authored", 12), edge=(14, 56, "authored", 7), crests=["panel"], edges=["panel"],
         tile=(64, 64, 0.5, 6, ["panel", "card"]),
         shadows=dict(panel=(0, 10, 18, 2, "#000000b3"), card=(0, 4, 8, 0, "#00000066"), button=(0, 3, 4, 0, "#00000073"),
                      hud=(0, 3, 6, 0, "#00000080")),
@@ -1141,6 +1182,8 @@ def to8(img):
 def build_atlas(parts):
     atlas = np.zeros((ATLAS_H, ATLAS_W, 4), dtype=np.uint8)
     for name, (x, y, w, h) in LAYOUT.items():
+        if name not in parts:
+            continue  # a pack without that ornament leaves its region empty
         img = to8(parts[name])
         assert img.shape[:2] == (h, w), (name, img.shape, (w, h))
         # Edge texels repeat 2 px into the gutter (no neighbour bleeds in).
@@ -1200,6 +1243,12 @@ def style_text(s, d, parts=None):
     if s.get("flourish"):
         w, h, ink, off = s["flourish"]
         L.append(f"flourish {region('flourish')} {w} {h} {ink} {off}")
+    if s.get("crest"):
+        w, h, ink, off = s["crest"]
+        L.append(f"crest {region('crest')} {w} {h} {ink} {off}")
+    if s.get("edge"):
+        w, h, ink, off = s["edge"]
+        L.append(f"edge {region('edge')} {w} {h} {ink} {off}")
     tiled = []
     if s.get("tile"):
         w, h, a, inset, tiled = s["tile"]
@@ -1240,6 +1289,10 @@ def style_text(s, d, parts=None):
             D.append(f"  glass {blur} {fill} {tint}")
         if s.get("corner") and part in s.get("corners", []):
             D.append("  corners")
+        if s.get("crest") and part in s.get("crests", []):
+            D.append("  crest")
+        if s.get("edge") and part in s.get("edges", []):
+            D.append("  edges")
         if part in tiled:
             D.append("  tile")
         if part == "button":
