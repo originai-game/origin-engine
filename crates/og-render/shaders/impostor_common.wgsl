@@ -153,16 +153,20 @@ fn imp_inside(uv: vec2<f32>) -> f32 {
   return select(0.0, 1.0, all(abs(uv) <= vec2<f32>(1.0)));
 }
 
-// One parallax step: where frame `f` sees the surface the eye's ray
-// through the card's point meets, from its image `uv` of the card's point
-// moved by the depth it holds there (`par`: imp_frame_par).
-// The depth is read two levels coarser than the colour (smooth where it
-// falls steeply at the silhouette), and the moved point is kept in the
-// frame's square: a step past it (a model filling its sphere touches the
-// square's edge) would cut the rim in steps.
+// Where frame `f` sees the surface the eye's ray through the card's point
+// meets, from its image `uv` of the card's point moved by the depth it
+// holds (`par`: imp_frame_par of that ray; `pd`: imp_depths). The depth is
+// read two levels coarser than the colour, smooth where it falls steeply
+// at the silhouette; a point moved past the frame's square is uncovered.
 fn imp_parallax(f: u32, uv: vec2<f32>, par: vec2<f32>, pd: f32) -> vec2<f32> {
-  let depth = textureSampleLevel(normal_tex, material_sampler, imp_atlas(f, uv), imp_level + 2.0).a * 2.0 - 1.0;
-  return clamp(uv + par * (depth - pd), vec2<f32>(-1.0), vec2<f32>(1.0));
+  // Two fixed-point steps: the depth read where the last step landed (one
+  // step read it at the card's own image, off by the depth's slope).
+  var at = uv;
+  for (var k = 0; k < 2; k++) {
+    let depth = textureSampleLevel(normal_tex, material_sampler, imp_atlas(f, at), imp_level + 2.0).a * 2.0 - 1.0;
+    at = uv + par * (depth - pd);
+  }
+  return at;
 }
 
 // The frames' images of the card's point, each moved by one parallax step.

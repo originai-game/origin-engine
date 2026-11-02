@@ -29,10 +29,8 @@ struct ImpostorOut {
   @location(9) @interpolate(flat) m1: vec3<f32>,
   @location(10) @interpolate(flat) m2: vec3<f32>,
   @location(11) @interpolate(flat) extent: f32,
-  @location(12) @interpolate(flat) par01: vec4<f32>,
-  @location(13) @interpolate(flat) par2: vec2<f32>,
   // The model's sphere's centre in the world.
-  @location(14) @interpolate(flat) centre: vec3<f32>,
+  @location(12) @interpolate(flat) centre: vec3<f32>,
 };
 
 @vertex
@@ -45,8 +43,6 @@ fn vs_impostor(@builtin(vertex_index) vertex: u32, i: ScatterInstance) -> Impost
   o.world = card.world.xyz;
   o.uv01 = card.uv01;
   o.uv2 = card.uv2;
-  o.par01 = card.par01;
-  o.par2 = card.par2;
   o.frames = card.frames;
   o.weights = card.weights;
   o.cur_clip = mul_point(scatter.view_proj, card.world);
@@ -81,9 +77,14 @@ fn imp_surface(in: ImpostorOut) -> ImpSurface {
   // The card's point and the eye in the model's space (as imp_card has
   // them; the turn's columns are normalised, so its transpose undoes it).
   let m3 = mat3x3<f32>(in.m0, in.m1, in.m2);
-  let toward = normalize(frame.view_pos.xyz - in.centre);
-  let dd = imp_depths(transpose(m3) * (in.world - in.centre) / in.extent, transpose(m3) * toward, in.frames);
-  let uvs = imp_uvs(in.uv01, in.uv2, in.par01, in.par2, in.frames, dd.pd);
+  // The pixel's own eye ray, not the card centre's (the card's vertex
+  // stage faces it to the centre): at a few metres they part by several
+  // degrees, which tilted every sample's normal towards the rim.
+  let toward = select(normalize(frame.view_pos.xyz - in.world), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
+  let ray = transpose(m3) * toward;
+  let dd = imp_depths(transpose(m3) * (in.world - in.centre) / in.extent, ray, in.frames);
+  let par01 = vec4<f32>(imp_frame_par(ray, in.frames.x), imp_frame_par(ray, in.frames.y));
+  let uvs = imp_uvs(in.uv01, in.uv2, par01, imp_frame_par(ray, in.frames.z), in.frames, dd.pd);
   let c = imp_coverage(uvs.uv01, uvs.uv2, in.frames, in.weights);
   let total = max(c.wa.x + c.wa.y + c.wa.z, 1e-5);
   let rgb = textureSampleLevel(base_color_tex, material_sampler, c.a0, imp_level).rgb * c.wa.x
