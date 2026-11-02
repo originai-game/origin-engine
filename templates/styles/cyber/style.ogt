@@ -172,13 +172,13 @@ ramp {
   displayLg 50 55
 }
 fonts {
-  body "@styles/neon/Rajdhani-Bold.ttf"
-  display "@styles/neon/ChakraPetch-BoldItalic.ttf"
-  numeric "@styles/neon/ChakraPetch-SemiBold.ttf"
+  body "@styles/shared/Rajdhani-Bold.ttf"
+  display "@styles/shared/ChakraPetch-BoldItalic.ttf"
+  numeric "@styles/shared/ChakraPetch-SemiBold.ttf"
   cjk "@styles/cjk/NotoSansSC-Bold.ttf"
   cjkDisplay "@styles/cjk/NotoSansSC-Bold.ttf"
 }
-icons "@styles/neon/icons.png" 8 4 {
+icons "@styles/shared/glow-icons.png" 8 4 {
   names "heart" "star" "coin" "lock" "pause" "gear" "sword" "shield" "potion" "gem" "key" "map" "bolt" "clock" "trophy" "home" "plus" "close" "check" "play" "back" "bag" "bomb" "crown" "flag" "apple" "leaf" "fire" "drop" "skull" "music" "person"
 }
 textGlow display 1.4 primary 0.45

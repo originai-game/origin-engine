@@ -15,6 +15,17 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Removed: six built-in styles, folded into the sixteen the owner settled**
+  (2026-11-02): `bubbly` into `cartoon`, `arcade` into `pixel`, `paper`
+  into `storybook`, `inkwash` into `jade` (a new pack, coming), `neon`
+  into `cyber`, `holo` into `scifi`. Their `@styles/<name>/` packs, kit
+  looks, playtests and sheets are gone and a look naming one no longer
+  cooks. The look presets that named `paper` name `storybook`, those that
+  named `neon` name `cyber`. The fonts and icons the seed styles shared
+  with paper and neon moved to `@styles/shared/` (`ink-icons.png`,
+  `glow-icons.png`, Instrument Sans, Newsreader SemiBold, PT Mono, Chakra
+  Petch, Rajdhani). `og style new` still starts from the folded seeds'
+  choices for their look families.
 - **Removed: the built-in `minimal` style** (the owner, 2026-11-02). No
   `@styles/minimal/` pack ships and `og style list` no longer names it; a
   look with `ui "minimal"` no longer cooks. `og style new` still starts

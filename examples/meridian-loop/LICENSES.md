@@ -3,7 +3,7 @@
 Every asset of this game is made by code here (`tools/make-assets.ts` and
 the modules it imports: deterministic, seeded, nothing downloaded) or
 written by hand, except the UI style's art and fonts, which are the
-engine's own neon style pack, copied by the same script.
+engine's former neon style pack, copied once and committed.
 
 | File | Licence | Origin |
 |---|---|---|
@@ -14,5 +14,5 @@ engine's own neon style pack, copied by the same script.
 | `assets/music/meridian.wav` (not committed) | CC0 1.0 | self-made: "Meridian", synthesised by `tools/audio.ts` |
 | `assets/fx/*.ogt`, `assets/looks/*.ogt` | CC0 1.0 | self-made: the emitters and the look, `tools/make-assets.ts` |
 | `assets/strings/*.ogt`, `assets/scenes/*.ogt`, every other `.ogt` | CC0 1.0 | self-made, written by hand |
-| `assets/styles/meridian/*` (the PNGs and TTFs not committed) | CC0 1.0 art, SIL OFL 1.1 fonts (Chakra Petch, Rajdhani) | a copy of the engine's neon style pack (`templates/styles/neon`), its `style.ogt` retinted by `tools/make-assets.ts`; `assets/styles/meridian/LICENSES.md` |
+| `assets/styles/meridian/*` | CC0 1.0 art, SIL OFL 1.1 fonts (Chakra Petch, Rajdhani) | a copy of the engine's former neon style pack (folded into cyber, 2026-11-02), its `style.ogt` retinted; `assets/styles/meridian/LICENSES.md` |
 | `references/*/*.png` | CC0 1.0 | frames of this game recorded by `tests/frames.og.ts` and `tests/published.og.ts` |

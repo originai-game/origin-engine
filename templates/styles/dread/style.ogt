@@ -173,8 +173,8 @@ ramp {
 }
 fonts {
   body "@styles/fantasy/Newsreader-Medium.ttf"
-  display "@styles/paper/Newsreader-SemiBold.ttf"
-  numeric "@styles/paper/PTMono-Regular.ttf"
+  display "@styles/shared/Newsreader-SemiBold.ttf"
+  numeric "@styles/shared/PTMono-Regular.ttf"
   cjk "@styles/cjk/NotoSerifSC-SemiBold.ttf"
   cjkDisplay "@styles/cjk/NotoSerifSC-SemiBold.ttf"
 }

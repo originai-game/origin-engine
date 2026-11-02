@@ -172,8 +172,8 @@ ramp {
   displayLg 50 55
 }
 fonts {
-  body "@styles/neon/Rajdhani-Bold.ttf"
-  display "@styles/neon/ChakraPetch-SemiBold.ttf"
+  body "@styles/shared/Rajdhani-Bold.ttf"
+  display "@styles/shared/ChakraPetch-SemiBold.ttf"
   numeric "@styles/scifi/JetBrainsMono-Regular.ttf"
   cjk "@styles/cjk/NotoSansSC-Regular.ttf"
   cjkDisplay "@styles/cjk/NotoSansSC-Bold.ttf"

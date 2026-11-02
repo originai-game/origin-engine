@@ -239,7 +239,7 @@ fn a_2d_publish_build_refuses_the_3d_world_by_scene_and_line() {
     assert_eq!((code, exported), (Some(1), false), "{t}");
     assert!(t.contains("still draws its UI in the default style"), "{t}");
     assert!(t.contains("assets/looks/main.ogt"), "{t}");
-    look("ui \"@styles/paper/style.ogt\"\n");
+    look("ui \"@styles/storybook/style.ogt\"\n");
     let (code, t, exported) = build(&["build", "--publish"]);
     assert_eq!((code, exported), (Some(0), true), "{t}");
     // A 2D project without them publishes as before.

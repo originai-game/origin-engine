@@ -6,7 +6,7 @@
 //! and a badge in every tone, as og-ui draws them with a style, read against
 //! what is really under them: the frame's draw commands composited in
 //! linear light, a styled piece as the mean of its atlas texels (the
-//! style's `atlas.png`) times its tint. Styles: the six packs of
+//! style's `atlas.png`) times its tint. Styles: the four atlas packs of
 //! templates/ui-kit, Ember Vale's copy of the fantasy pack
 //! (templates/archetypes/third-person, `ember`), the archetypes' sparkorb,
 //! lampdive, lanebeat and pathguard and the examples' hollowbell, lantern
@@ -76,7 +76,7 @@ const LABEL_BAR: f32 = 4.5;
 
 fn packs() -> Vec<(String, PathBuf)> {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../templates");
-    let mut out: Vec<(String, PathBuf)> = ["pixel", "cartoon", "fantasy", "scifi", "paper", "neon"]
+    let mut out: Vec<(String, PathBuf)> = ["pixel", "cartoon", "fantasy", "scifi"]
         .iter()
         .map(|n| (n.to_string(), root.join("styles").join(n)))
         .collect();

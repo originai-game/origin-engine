@@ -314,7 +314,7 @@ def atlas():
     night's violet (hue 300 to 262), the rest untouched."""
     src = os.path.join(root, "..", "..", "styles", "neon", "atlas.png")
     if not os.path.exists(src):
-        print("atlas recolour skipped (no templates/ui-kit here); the committed atlas stays")
+        print("atlas recolour skipped (the neon pack is gone, folded into cyber); the committed atlas stays")
         return None
     w, h, rows = read_png(src)
     out = []

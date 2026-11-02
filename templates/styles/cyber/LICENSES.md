@@ -9,7 +9,7 @@ It draws with built-in fonts and icons, which stay where they are and
 keep their licences (each pack's `LICENSES.md` and `OFL.txt`):
 
 - `@styles/cjk/NotoSansSC-Bold.ttf`
-- `@styles/neon/ChakraPetch-BoldItalic.ttf`
-- `@styles/neon/ChakraPetch-SemiBold.ttf`
-- `@styles/neon/Rajdhani-Bold.ttf`
-- `@styles/neon/icons.png`
+- `@styles/shared/ChakraPetch-BoldItalic.ttf`
+- `@styles/shared/ChakraPetch-SemiBold.ttf`
+- `@styles/shared/Rajdhani-Bold.ttf`
+- `@styles/shared/glow-icons.png`

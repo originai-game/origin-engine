@@ -54,7 +54,7 @@ const SHEETS: Record<string, { factor: number; cols: number }> = {
   "1280x720": { factor: 2, cols: 7 },
   "1170x2532": { factor: 3, cols: 10 },
 };
-const PACKS = ["cartoon", "fantasy", "neon", "paper", "pixel", "scifi"];
+const PACKS = ["cartoon", "fantasy", "pixel", "scifi"];
 /** Every reference playtest of the kit. */
 const SET = [...Object.keys(PREFIX), ...PACKS.flatMap((p) => [`style-${p}`, `style-${p}-phone`])];
 

@@ -3,7 +3,8 @@
 The palette and the body size in `style.ogt` are this
 game's edits by hand; `atlas.png` is the pack's atlas with its magenta
 frames turned violet by `tools/make-assets.py`; the rest is the pack as
-`templates/styles/neon` ships it.
+`templates/styles/neon` shipped it, before the pack was folded into cyber
+(2026-11-02).
 
 | File | Licence | Origin |
 |---|---|---|

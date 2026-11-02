@@ -11,5 +11,5 @@ keep their licences (each pack's `LICENSES.md` and `OFL.txt`):
 - `@styles/cjk/NotoSerifSC-SemiBold.ttf`
 - `@styles/fantasy/Newsreader-Medium.ttf`
 - `@styles/fantasy/icons.png`
-- `@styles/paper/Newsreader-SemiBold.ttf`
-- `@styles/paper/PTMono-Regular.ttf`
+- `@styles/shared/Newsreader-SemiBold.ttf`
+- `@styles/shared/PTMono-Regular.ttf`

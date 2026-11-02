@@ -11,6 +11,6 @@ keep their licences (each pack's `LICENSES.md` and `OFL.txt`):
 - `@styles/cartoon/LilitaOne-Regular.ttf`
 - `@styles/cjk/NotoSansSC-Regular.ttf`
 - `@styles/cjk/ZCOOLKuaiLe-Regular.ttf`
-- `@styles/paper/InstrumentSans-Regular.ttf`
-- `@styles/paper/PTMono-Regular.ttf`
-- `@styles/paper/icons.png`
+- `@styles/shared/InstrumentSans-Regular.ttf`
+- `@styles/shared/PTMono-Regular.ttf`
+- `@styles/shared/ink-icons.png`

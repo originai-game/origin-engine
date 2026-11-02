@@ -1,7 +1,0 @@
-type look
-version 1
----
-# Names the built-in inkwash style (a seed og style new generated), so the cook puts it in the bundle (@styles/inkwash/);
-# the kit loads the style itself and never applies this look.
-name "kit inkwash"
-ui "inkwash"

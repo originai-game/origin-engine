@@ -7,44 +7,36 @@
 /// wins over the built-in of that slug.
 pub static STYLES: &[(&str, &[u8])] = &[
     (
-        "@styles/cjk/FusionPixel12-zhHans.ttf",
-        include_bytes!("../../../../templates/styles/cjk/FusionPixel12-zhHans.ttf"),
+        "@styles/broadcast/sfx-back.ogt",
+        include_bytes!("../../../../templates/styles/broadcast/sfx-back.ogt"),
     ),
     (
-        "@styles/cjk/FusionPixel12-zhHans.ttf.ogt",
-        include_bytes!("../../../../templates/styles/cjk/FusionPixel12-zhHans.ttf.ogt"),
+        "@styles/broadcast/sfx-confirm.ogt",
+        include_bytes!("../../../../templates/styles/broadcast/sfx-confirm.ogt"),
     ),
     (
-        "@styles/cjk/NotoSansSC-Bold.ttf",
-        include_bytes!("../../../../templates/styles/cjk/NotoSansSC-Bold.ttf"),
+        "@styles/broadcast/sfx-error.ogt",
+        include_bytes!("../../../../templates/styles/broadcast/sfx-error.ogt"),
     ),
     (
-        "@styles/cjk/NotoSansSC-Bold.ttf.ogt",
-        include_bytes!("../../../../templates/styles/cjk/NotoSansSC-Bold.ttf.ogt"),
+        "@styles/broadcast/sfx-open.ogt",
+        include_bytes!("../../../../templates/styles/broadcast/sfx-open.ogt"),
     ),
     (
-        "@styles/cjk/NotoSansSC-Regular.ttf",
-        include_bytes!("../../../../templates/styles/cjk/NotoSansSC-Regular.ttf"),
+        "@styles/broadcast/sfx-reward.ogt",
+        include_bytes!("../../../../templates/styles/broadcast/sfx-reward.ogt"),
     ),
     (
-        "@styles/cjk/NotoSansSC-Regular.ttf.ogt",
-        include_bytes!("../../../../templates/styles/cjk/NotoSansSC-Regular.ttf.ogt"),
+        "@styles/broadcast/sfx-tap.ogt",
+        include_bytes!("../../../../templates/styles/broadcast/sfx-tap.ogt"),
     ),
     (
-        "@styles/cjk/NotoSerifSC-SemiBold.ttf",
-        include_bytes!("../../../../templates/styles/cjk/NotoSerifSC-SemiBold.ttf"),
+        "@styles/broadcast/sfx-tap2.ogt",
+        include_bytes!("../../../../templates/styles/broadcast/sfx-tap2.ogt"),
     ),
     (
-        "@styles/cjk/NotoSerifSC-SemiBold.ttf.ogt",
-        include_bytes!("../../../../templates/styles/cjk/NotoSerifSC-SemiBold.ttf.ogt"),
-    ),
-    (
-        "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
-        include_bytes!("../../../../templates/styles/cjk/ZCOOLKuaiLe-Regular.ttf"),
-    ),
-    (
-        "@styles/cjk/ZCOOLKuaiLe-Regular.ttf.ogt",
-        include_bytes!("../../../../templates/styles/cjk/ZCOOLKuaiLe-Regular.ttf.ogt"),
+        "@styles/broadcast/style.ogt",
+        include_bytes!("../../../../templates/styles/broadcast/style.ogt"),
     ),
     (
         "@styles/cartoon/Fredoka-SemiBold.ttf",
@@ -83,312 +75,44 @@ pub static STYLES: &[(&str, &[u8])] = &[
         include_bytes!("../../../../templates/styles/cartoon/style.ogt"),
     ),
     (
-        "@styles/fantasy/Cinzel-Bold.ttf",
-        include_bytes!("../../../../templates/styles/fantasy/Cinzel-Bold.ttf"),
+        "@styles/cjk/FusionPixel12-zhHans.ttf",
+        include_bytes!("../../../../templates/styles/cjk/FusionPixel12-zhHans.ttf"),
     ),
     (
-        "@styles/fantasy/Cinzel-Bold.ttf.ogt",
-        include_bytes!("../../../../templates/styles/fantasy/Cinzel-Bold.ttf.ogt"),
+        "@styles/cjk/FusionPixel12-zhHans.ttf.ogt",
+        include_bytes!("../../../../templates/styles/cjk/FusionPixel12-zhHans.ttf.ogt"),
     ),
     (
-        "@styles/fantasy/Newsreader-Medium.ttf",
-        include_bytes!("../../../../templates/styles/fantasy/Newsreader-Medium.ttf"),
+        "@styles/cjk/NotoSansSC-Bold.ttf",
+        include_bytes!("../../../../templates/styles/cjk/NotoSansSC-Bold.ttf"),
     ),
     (
-        "@styles/fantasy/Newsreader-Medium.ttf.ogt",
-        include_bytes!("../../../../templates/styles/fantasy/Newsreader-Medium.ttf.ogt"),
+        "@styles/cjk/NotoSansSC-Bold.ttf.ogt",
+        include_bytes!("../../../../templates/styles/cjk/NotoSansSC-Bold.ttf.ogt"),
     ),
     (
-        "@styles/fantasy/atlas.png",
-        include_bytes!("../../../../templates/styles/fantasy/atlas.png"),
+        "@styles/cjk/NotoSansSC-Regular.ttf",
+        include_bytes!("../../../../templates/styles/cjk/NotoSansSC-Regular.ttf"),
     ),
     (
-        "@styles/fantasy/atlas.png.ogt",
-        include_bytes!("../../../../templates/styles/fantasy/atlas.png.ogt"),
+        "@styles/cjk/NotoSansSC-Regular.ttf.ogt",
+        include_bytes!("../../../../templates/styles/cjk/NotoSansSC-Regular.ttf.ogt"),
     ),
     (
-        "@styles/fantasy/atlas@2x.png",
-        include_bytes!("../../../../templates/styles/fantasy/atlas@2x.png"),
+        "@styles/cjk/NotoSerifSC-SemiBold.ttf",
+        include_bytes!("../../../../templates/styles/cjk/NotoSerifSC-SemiBold.ttf"),
     ),
     (
-        "@styles/fantasy/atlas@2x.png.ogt",
-        include_bytes!("../../../../templates/styles/fantasy/atlas@2x.png.ogt"),
+        "@styles/cjk/NotoSerifSC-SemiBold.ttf.ogt",
+        include_bytes!("../../../../templates/styles/cjk/NotoSerifSC-SemiBold.ttf.ogt"),
     ),
     (
-        "@styles/fantasy/atlas@3x.png",
-        include_bytes!("../../../../templates/styles/fantasy/atlas@3x.png"),
+        "@styles/cjk/ZCOOLKuaiLe-Regular.ttf",
+        include_bytes!("../../../../templates/styles/cjk/ZCOOLKuaiLe-Regular.ttf"),
     ),
     (
-        "@styles/fantasy/atlas@3x.png.ogt",
-        include_bytes!("../../../../templates/styles/fantasy/atlas@3x.png.ogt"),
-    ),
-    (
-        "@styles/fantasy/icons.png",
-        include_bytes!("../../../../templates/styles/fantasy/icons.png"),
-    ),
-    (
-        "@styles/fantasy/icons.png.ogt",
-        include_bytes!("../../../../templates/styles/fantasy/icons.png.ogt"),
-    ),
-    (
-        "@styles/fantasy/style.ogt",
-        include_bytes!("../../../../templates/styles/fantasy/style.ogt"),
-    ),
-    (
-        "@styles/neon/ChakraPetch-BoldItalic.ttf",
-        include_bytes!("../../../../templates/styles/neon/ChakraPetch-BoldItalic.ttf"),
-    ),
-    (
-        "@styles/neon/ChakraPetch-BoldItalic.ttf.ogt",
-        include_bytes!("../../../../templates/styles/neon/ChakraPetch-BoldItalic.ttf.ogt"),
-    ),
-    (
-        "@styles/neon/ChakraPetch-SemiBold.ttf",
-        include_bytes!("../../../../templates/styles/neon/ChakraPetch-SemiBold.ttf"),
-    ),
-    (
-        "@styles/neon/ChakraPetch-SemiBold.ttf.ogt",
-        include_bytes!("../../../../templates/styles/neon/ChakraPetch-SemiBold.ttf.ogt"),
-    ),
-    (
-        "@styles/neon/Rajdhani-Bold.ttf",
-        include_bytes!("../../../../templates/styles/neon/Rajdhani-Bold.ttf"),
-    ),
-    (
-        "@styles/neon/Rajdhani-Bold.ttf.ogt",
-        include_bytes!("../../../../templates/styles/neon/Rajdhani-Bold.ttf.ogt"),
-    ),
-    (
-        "@styles/neon/atlas.png",
-        include_bytes!("../../../../templates/styles/neon/atlas.png"),
-    ),
-    (
-        "@styles/neon/atlas.png.ogt",
-        include_bytes!("../../../../templates/styles/neon/atlas.png.ogt"),
-    ),
-    (
-        "@styles/neon/icons.png",
-        include_bytes!("../../../../templates/styles/neon/icons.png"),
-    ),
-    (
-        "@styles/neon/icons.png.ogt",
-        include_bytes!("../../../../templates/styles/neon/icons.png.ogt"),
-    ),
-    (
-        "@styles/neon/style.ogt",
-        include_bytes!("../../../../templates/styles/neon/style.ogt"),
-    ),
-    (
-        "@styles/paper/InstrumentSans-Regular.ttf",
-        include_bytes!("../../../../templates/styles/paper/InstrumentSans-Regular.ttf"),
-    ),
-    (
-        "@styles/paper/InstrumentSans-Regular.ttf.ogt",
-        include_bytes!("../../../../templates/styles/paper/InstrumentSans-Regular.ttf.ogt"),
-    ),
-    (
-        "@styles/paper/Newsreader-SemiBold.ttf",
-        include_bytes!("../../../../templates/styles/paper/Newsreader-SemiBold.ttf"),
-    ),
-    (
-        "@styles/paper/Newsreader-SemiBold.ttf.ogt",
-        include_bytes!("../../../../templates/styles/paper/Newsreader-SemiBold.ttf.ogt"),
-    ),
-    (
-        "@styles/paper/PTMono-Regular.ttf",
-        include_bytes!("../../../../templates/styles/paper/PTMono-Regular.ttf"),
-    ),
-    (
-        "@styles/paper/PTMono-Regular.ttf.ogt",
-        include_bytes!("../../../../templates/styles/paper/PTMono-Regular.ttf.ogt"),
-    ),
-    (
-        "@styles/paper/atlas.png",
-        include_bytes!("../../../../templates/styles/paper/atlas.png"),
-    ),
-    (
-        "@styles/paper/atlas.png.ogt",
-        include_bytes!("../../../../templates/styles/paper/atlas.png.ogt"),
-    ),
-    (
-        "@styles/paper/icons.png",
-        include_bytes!("../../../../templates/styles/paper/icons.png"),
-    ),
-    (
-        "@styles/paper/icons.png.ogt",
-        include_bytes!("../../../../templates/styles/paper/icons.png.ogt"),
-    ),
-    (
-        "@styles/paper/style.ogt",
-        include_bytes!("../../../../templates/styles/paper/style.ogt"),
-    ),
-    (
-        "@styles/pixel/DotGothic16-Regular.ttf",
-        include_bytes!("../../../../templates/styles/pixel/DotGothic16-Regular.ttf"),
-    ),
-    (
-        "@styles/pixel/DotGothic16-Regular.ttf.ogt",
-        include_bytes!("../../../../templates/styles/pixel/DotGothic16-Regular.ttf.ogt"),
-    ),
-    (
-        "@styles/pixel/atlas.png",
-        include_bytes!("../../../../templates/styles/pixel/atlas.png"),
-    ),
-    (
-        "@styles/pixel/atlas.png.ogt",
-        include_bytes!("../../../../templates/styles/pixel/atlas.png.ogt"),
-    ),
-    (
-        "@styles/pixel/icons.png",
-        include_bytes!("../../../../templates/styles/pixel/icons.png"),
-    ),
-    (
-        "@styles/pixel/icons.png.ogt",
-        include_bytes!("../../../../templates/styles/pixel/icons.png.ogt"),
-    ),
-    (
-        "@styles/pixel/style.ogt",
-        include_bytes!("../../../../templates/styles/pixel/style.ogt"),
-    ),
-    (
-        "@styles/scifi/ChakraPetch-Medium.ttf",
-        include_bytes!("../../../../templates/styles/scifi/ChakraPetch-Medium.ttf"),
-    ),
-    (
-        "@styles/scifi/ChakraPetch-Medium.ttf.ogt",
-        include_bytes!("../../../../templates/styles/scifi/ChakraPetch-Medium.ttf.ogt"),
-    ),
-    (
-        "@styles/scifi/JetBrainsMono-Regular.ttf",
-        include_bytes!("../../../../templates/styles/scifi/JetBrainsMono-Regular.ttf"),
-    ),
-    (
-        "@styles/scifi/JetBrainsMono-Regular.ttf.ogt",
-        include_bytes!("../../../../templates/styles/scifi/JetBrainsMono-Regular.ttf.ogt"),
-    ),
-    (
-        "@styles/scifi/Orbitron-Bold.ttf",
-        include_bytes!("../../../../templates/styles/scifi/Orbitron-Bold.ttf"),
-    ),
-    (
-        "@styles/scifi/Orbitron-Bold.ttf.ogt",
-        include_bytes!("../../../../templates/styles/scifi/Orbitron-Bold.ttf.ogt"),
-    ),
-    (
-        "@styles/scifi/atlas.png",
-        include_bytes!("../../../../templates/styles/scifi/atlas.png"),
-    ),
-    (
-        "@styles/scifi/atlas.png.ogt",
-        include_bytes!("../../../../templates/styles/scifi/atlas.png.ogt"),
-    ),
-    (
-        "@styles/scifi/icons.png",
-        include_bytes!("../../../../templates/styles/scifi/icons.png"),
-    ),
-    (
-        "@styles/scifi/icons.png.ogt",
-        include_bytes!("../../../../templates/styles/scifi/icons.png.ogt"),
-    ),
-    (
-        "@styles/scifi/style.ogt",
-        include_bytes!("../../../../templates/styles/scifi/style.ogt"),
-    ),
-    (
-        "@styles/arcade/sfx-back.ogt",
-        include_bytes!("../../../../templates/styles/arcade/sfx-back.ogt"),
-    ),
-    (
-        "@styles/arcade/sfx-confirm.ogt",
-        include_bytes!("../../../../templates/styles/arcade/sfx-confirm.ogt"),
-    ),
-    (
-        "@styles/arcade/sfx-error.ogt",
-        include_bytes!("../../../../templates/styles/arcade/sfx-error.ogt"),
-    ),
-    (
-        "@styles/arcade/sfx-open.ogt",
-        include_bytes!("../../../../templates/styles/arcade/sfx-open.ogt"),
-    ),
-    (
-        "@styles/arcade/sfx-reward.ogt",
-        include_bytes!("../../../../templates/styles/arcade/sfx-reward.ogt"),
-    ),
-    (
-        "@styles/arcade/sfx-tap.ogt",
-        include_bytes!("../../../../templates/styles/arcade/sfx-tap.ogt"),
-    ),
-    (
-        "@styles/arcade/sfx-tap2.ogt",
-        include_bytes!("../../../../templates/styles/arcade/sfx-tap2.ogt"),
-    ),
-    (
-        "@styles/arcade/style.ogt",
-        include_bytes!("../../../../templates/styles/arcade/style.ogt"),
-    ),
-    (
-        "@styles/broadcast/sfx-back.ogt",
-        include_bytes!("../../../../templates/styles/broadcast/sfx-back.ogt"),
-    ),
-    (
-        "@styles/broadcast/sfx-confirm.ogt",
-        include_bytes!("../../../../templates/styles/broadcast/sfx-confirm.ogt"),
-    ),
-    (
-        "@styles/broadcast/sfx-error.ogt",
-        include_bytes!("../../../../templates/styles/broadcast/sfx-error.ogt"),
-    ),
-    (
-        "@styles/broadcast/sfx-open.ogt",
-        include_bytes!("../../../../templates/styles/broadcast/sfx-open.ogt"),
-    ),
-    (
-        "@styles/broadcast/sfx-reward.ogt",
-        include_bytes!("../../../../templates/styles/broadcast/sfx-reward.ogt"),
-    ),
-    (
-        "@styles/broadcast/sfx-tap.ogt",
-        include_bytes!("../../../../templates/styles/broadcast/sfx-tap.ogt"),
-    ),
-    (
-        "@styles/broadcast/sfx-tap2.ogt",
-        include_bytes!("../../../../templates/styles/broadcast/sfx-tap2.ogt"),
-    ),
-    (
-        "@styles/broadcast/style.ogt",
-        include_bytes!("../../../../templates/styles/broadcast/style.ogt"),
-    ),
-    (
-        "@styles/bubbly/sfx-back.ogt",
-        include_bytes!("../../../../templates/styles/bubbly/sfx-back.ogt"),
-    ),
-    (
-        "@styles/bubbly/sfx-confirm.ogt",
-        include_bytes!("../../../../templates/styles/bubbly/sfx-confirm.ogt"),
-    ),
-    (
-        "@styles/bubbly/sfx-error.ogt",
-        include_bytes!("../../../../templates/styles/bubbly/sfx-error.ogt"),
-    ),
-    (
-        "@styles/bubbly/sfx-open.ogt",
-        include_bytes!("../../../../templates/styles/bubbly/sfx-open.ogt"),
-    ),
-    (
-        "@styles/bubbly/sfx-reward.ogt",
-        include_bytes!("../../../../templates/styles/bubbly/sfx-reward.ogt"),
-    ),
-    (
-        "@styles/bubbly/sfx-tap.ogt",
-        include_bytes!("../../../../templates/styles/bubbly/sfx-tap.ogt"),
-    ),
-    (
-        "@styles/bubbly/sfx-tap2.ogt",
-        include_bytes!("../../../../templates/styles/bubbly/sfx-tap2.ogt"),
-    ),
-    (
-        "@styles/bubbly/style.ogt",
-        include_bytes!("../../../../templates/styles/bubbly/style.ogt"),
+        "@styles/cjk/ZCOOLKuaiLe-Regular.ttf.ogt",
+        include_bytes!("../../../../templates/styles/cjk/ZCOOLKuaiLe-Regular.ttf.ogt"),
     ),
     (
         "@styles/craft/sfx-back.ogt",
@@ -487,6 +211,58 @@ pub static STYLES: &[(&str, &[u8])] = &[
         include_bytes!("../../../../templates/styles/dread/style.ogt"),
     ),
     (
+        "@styles/fantasy/Cinzel-Bold.ttf",
+        include_bytes!("../../../../templates/styles/fantasy/Cinzel-Bold.ttf"),
+    ),
+    (
+        "@styles/fantasy/Cinzel-Bold.ttf.ogt",
+        include_bytes!("../../../../templates/styles/fantasy/Cinzel-Bold.ttf.ogt"),
+    ),
+    (
+        "@styles/fantasy/Newsreader-Medium.ttf",
+        include_bytes!("../../../../templates/styles/fantasy/Newsreader-Medium.ttf"),
+    ),
+    (
+        "@styles/fantasy/Newsreader-Medium.ttf.ogt",
+        include_bytes!("../../../../templates/styles/fantasy/Newsreader-Medium.ttf.ogt"),
+    ),
+    (
+        "@styles/fantasy/atlas.png",
+        include_bytes!("../../../../templates/styles/fantasy/atlas.png"),
+    ),
+    (
+        "@styles/fantasy/atlas.png.ogt",
+        include_bytes!("../../../../templates/styles/fantasy/atlas.png.ogt"),
+    ),
+    (
+        "@styles/fantasy/atlas@2x.png",
+        include_bytes!("../../../../templates/styles/fantasy/atlas@2x.png"),
+    ),
+    (
+        "@styles/fantasy/atlas@2x.png.ogt",
+        include_bytes!("../../../../templates/styles/fantasy/atlas@2x.png.ogt"),
+    ),
+    (
+        "@styles/fantasy/atlas@3x.png",
+        include_bytes!("../../../../templates/styles/fantasy/atlas@3x.png"),
+    ),
+    (
+        "@styles/fantasy/atlas@3x.png.ogt",
+        include_bytes!("../../../../templates/styles/fantasy/atlas@3x.png.ogt"),
+    ),
+    (
+        "@styles/fantasy/icons.png",
+        include_bytes!("../../../../templates/styles/fantasy/icons.png"),
+    ),
+    (
+        "@styles/fantasy/icons.png.ogt",
+        include_bytes!("../../../../templates/styles/fantasy/icons.png.ogt"),
+    ),
+    (
+        "@styles/fantasy/style.ogt",
+        include_bytes!("../../../../templates/styles/fantasy/style.ogt"),
+    ),
+    (
         "@styles/gilded/sfx-back.ogt",
         include_bytes!("../../../../templates/styles/gilded/sfx-back.ogt"),
     ),
@@ -519,70 +295,6 @@ pub static STYLES: &[(&str, &[u8])] = &[
         include_bytes!("../../../../templates/styles/gilded/style.ogt"),
     ),
     (
-        "@styles/holo/sfx-back.ogt",
-        include_bytes!("../../../../templates/styles/holo/sfx-back.ogt"),
-    ),
-    (
-        "@styles/holo/sfx-confirm.ogt",
-        include_bytes!("../../../../templates/styles/holo/sfx-confirm.ogt"),
-    ),
-    (
-        "@styles/holo/sfx-error.ogt",
-        include_bytes!("../../../../templates/styles/holo/sfx-error.ogt"),
-    ),
-    (
-        "@styles/holo/sfx-open.ogt",
-        include_bytes!("../../../../templates/styles/holo/sfx-open.ogt"),
-    ),
-    (
-        "@styles/holo/sfx-reward.ogt",
-        include_bytes!("../../../../templates/styles/holo/sfx-reward.ogt"),
-    ),
-    (
-        "@styles/holo/sfx-tap.ogt",
-        include_bytes!("../../../../templates/styles/holo/sfx-tap.ogt"),
-    ),
-    (
-        "@styles/holo/sfx-tap2.ogt",
-        include_bytes!("../../../../templates/styles/holo/sfx-tap2.ogt"),
-    ),
-    (
-        "@styles/holo/style.ogt",
-        include_bytes!("../../../../templates/styles/holo/style.ogt"),
-    ),
-    (
-        "@styles/inkwash/sfx-back.ogt",
-        include_bytes!("../../../../templates/styles/inkwash/sfx-back.ogt"),
-    ),
-    (
-        "@styles/inkwash/sfx-confirm.ogt",
-        include_bytes!("../../../../templates/styles/inkwash/sfx-confirm.ogt"),
-    ),
-    (
-        "@styles/inkwash/sfx-error.ogt",
-        include_bytes!("../../../../templates/styles/inkwash/sfx-error.ogt"),
-    ),
-    (
-        "@styles/inkwash/sfx-open.ogt",
-        include_bytes!("../../../../templates/styles/inkwash/sfx-open.ogt"),
-    ),
-    (
-        "@styles/inkwash/sfx-reward.ogt",
-        include_bytes!("../../../../templates/styles/inkwash/sfx-reward.ogt"),
-    ),
-    (
-        "@styles/inkwash/sfx-tap.ogt",
-        include_bytes!("../../../../templates/styles/inkwash/sfx-tap.ogt"),
-    ),
-    (
-        "@styles/inkwash/sfx-tap2.ogt",
-        include_bytes!("../../../../templates/styles/inkwash/sfx-tap2.ogt"),
-    ),
-    (
-        "@styles/inkwash/style.ogt",
-        include_bytes!("../../../../templates/styles/inkwash/style.ogt"),
-    ),
-    (
         "@styles/kawaii/sfx-back.ogt",
         include_bytes!("../../../../templates/styles/kawaii/sfx-back.ogt"),
     ),
@@ -613,6 +325,142 @@ pub static STYLES: &[(&str, &[u8])] = &[
     (
         "@styles/kawaii/style.ogt",
         include_bytes!("../../../../templates/styles/kawaii/style.ogt"),
+    ),
+    (
+        "@styles/pixel/DotGothic16-Regular.ttf",
+        include_bytes!("../../../../templates/styles/pixel/DotGothic16-Regular.ttf"),
+    ),
+    (
+        "@styles/pixel/DotGothic16-Regular.ttf.ogt",
+        include_bytes!("../../../../templates/styles/pixel/DotGothic16-Regular.ttf.ogt"),
+    ),
+    (
+        "@styles/pixel/atlas.png",
+        include_bytes!("../../../../templates/styles/pixel/atlas.png"),
+    ),
+    (
+        "@styles/pixel/atlas.png.ogt",
+        include_bytes!("../../../../templates/styles/pixel/atlas.png.ogt"),
+    ),
+    (
+        "@styles/pixel/icons.png",
+        include_bytes!("../../../../templates/styles/pixel/icons.png"),
+    ),
+    (
+        "@styles/pixel/icons.png.ogt",
+        include_bytes!("../../../../templates/styles/pixel/icons.png.ogt"),
+    ),
+    (
+        "@styles/pixel/style.ogt",
+        include_bytes!("../../../../templates/styles/pixel/style.ogt"),
+    ),
+    (
+        "@styles/scifi/ChakraPetch-Medium.ttf",
+        include_bytes!("../../../../templates/styles/scifi/ChakraPetch-Medium.ttf"),
+    ),
+    (
+        "@styles/scifi/ChakraPetch-Medium.ttf.ogt",
+        include_bytes!("../../../../templates/styles/scifi/ChakraPetch-Medium.ttf.ogt"),
+    ),
+    (
+        "@styles/scifi/JetBrainsMono-Regular.ttf",
+        include_bytes!("../../../../templates/styles/scifi/JetBrainsMono-Regular.ttf"),
+    ),
+    (
+        "@styles/scifi/JetBrainsMono-Regular.ttf.ogt",
+        include_bytes!("../../../../templates/styles/scifi/JetBrainsMono-Regular.ttf.ogt"),
+    ),
+    (
+        "@styles/scifi/Orbitron-Bold.ttf",
+        include_bytes!("../../../../templates/styles/scifi/Orbitron-Bold.ttf"),
+    ),
+    (
+        "@styles/scifi/Orbitron-Bold.ttf.ogt",
+        include_bytes!("../../../../templates/styles/scifi/Orbitron-Bold.ttf.ogt"),
+    ),
+    (
+        "@styles/scifi/atlas.png",
+        include_bytes!("../../../../templates/styles/scifi/atlas.png"),
+    ),
+    (
+        "@styles/scifi/atlas.png.ogt",
+        include_bytes!("../../../../templates/styles/scifi/atlas.png.ogt"),
+    ),
+    (
+        "@styles/scifi/icons.png",
+        include_bytes!("../../../../templates/styles/scifi/icons.png"),
+    ),
+    (
+        "@styles/scifi/icons.png.ogt",
+        include_bytes!("../../../../templates/styles/scifi/icons.png.ogt"),
+    ),
+    (
+        "@styles/scifi/style.ogt",
+        include_bytes!("../../../../templates/styles/scifi/style.ogt"),
+    ),
+    (
+        "@styles/shared/ChakraPetch-BoldItalic.ttf",
+        include_bytes!("../../../../templates/styles/shared/ChakraPetch-BoldItalic.ttf"),
+    ),
+    (
+        "@styles/shared/ChakraPetch-BoldItalic.ttf.ogt",
+        include_bytes!("../../../../templates/styles/shared/ChakraPetch-BoldItalic.ttf.ogt"),
+    ),
+    (
+        "@styles/shared/ChakraPetch-SemiBold.ttf",
+        include_bytes!("../../../../templates/styles/shared/ChakraPetch-SemiBold.ttf"),
+    ),
+    (
+        "@styles/shared/ChakraPetch-SemiBold.ttf.ogt",
+        include_bytes!("../../../../templates/styles/shared/ChakraPetch-SemiBold.ttf.ogt"),
+    ),
+    (
+        "@styles/shared/InstrumentSans-Regular.ttf",
+        include_bytes!("../../../../templates/styles/shared/InstrumentSans-Regular.ttf"),
+    ),
+    (
+        "@styles/shared/InstrumentSans-Regular.ttf.ogt",
+        include_bytes!("../../../../templates/styles/shared/InstrumentSans-Regular.ttf.ogt"),
+    ),
+    (
+        "@styles/shared/Newsreader-SemiBold.ttf",
+        include_bytes!("../../../../templates/styles/shared/Newsreader-SemiBold.ttf"),
+    ),
+    (
+        "@styles/shared/Newsreader-SemiBold.ttf.ogt",
+        include_bytes!("../../../../templates/styles/shared/Newsreader-SemiBold.ttf.ogt"),
+    ),
+    (
+        "@styles/shared/PTMono-Regular.ttf",
+        include_bytes!("../../../../templates/styles/shared/PTMono-Regular.ttf"),
+    ),
+    (
+        "@styles/shared/PTMono-Regular.ttf.ogt",
+        include_bytes!("../../../../templates/styles/shared/PTMono-Regular.ttf.ogt"),
+    ),
+    (
+        "@styles/shared/Rajdhani-Bold.ttf",
+        include_bytes!("../../../../templates/styles/shared/Rajdhani-Bold.ttf"),
+    ),
+    (
+        "@styles/shared/Rajdhani-Bold.ttf.ogt",
+        include_bytes!("../../../../templates/styles/shared/Rajdhani-Bold.ttf.ogt"),
+    ),
+    (
+        "@styles/shared/glow-icons.png",
+        include_bytes!("../../../../templates/styles/shared/glow-icons.png"),
+    ),
+    (
+        "@styles/shared/glow-icons.png.ogt",
+        include_bytes!("../../../../templates/styles/shared/glow-icons.png.ogt"),
+    ),
+    (
+        "@styles/shared/ink-icons.png",
+        include_bytes!("../../../../templates/styles/shared/ink-icons.png"),
+    ),
+    (
+        "@styles/shared/ink-icons.png.ogt",
+        include_bytes!("../../../../templates/styles/shared/ink-icons.png.ogt"),
     ),
     (
         "@styles/storybook/sfx-back.ogt",

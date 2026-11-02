@@ -10,6 +10,6 @@ keep their licences (each pack's `LICENSES.md` and `OFL.txt`):
 
 - `@styles/cjk/NotoSansSC-Regular.ttf`
 - `@styles/cjk/NotoSerifSC-SemiBold.ttf`
-- `@styles/paper/InstrumentSans-Regular.ttf`
-- `@styles/paper/Newsreader-SemiBold.ttf`
-- `@styles/paper/icons.png`
+- `@styles/shared/InstrumentSans-Regular.ttf`
+- `@styles/shared/Newsreader-SemiBold.ttf`
+- `@styles/shared/ink-icons.png`

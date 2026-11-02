@@ -11,6 +11,25 @@
         "find": [
           "ui \"minimal\""
         ]
+      },
+      {
+        "member": "the built-in styles bubbly, arcade, paper, inkwash, neon and holo",
+        "change": "Six built-in styles are folded into the sixteen packs the owner settled (2026-11-02): bubbly into cartoon, arcade into pixel, paper into storybook, inkwash into jade (a new pack, coming), neon into cyber, holo into scifi. Their @styles/<name>/ packs are gone, og style list no longer names them, and a look with ui \"bubbly\", \"arcade\", \"paper\", \"inkwash\", \"neon\" or \"holo\" no longer cooks. The look presets that named paper now name storybook, and those that named neon name cyber, so a game extending one of them draws in the successor. The fonts and icon sheets the seed styles shared with paper and neon moved to @styles/shared/ (@styles/paper/icons.png is @styles/shared/ink-icons.png, @styles/neon/icons.png is @styles/shared/glow-icons.png). og style new still starts from the folded seeds' choices for their look families. The engine is pre-release, so nothing migrates.",
+        "fix": "Name the successor in the look's ui line: bubbly → cartoon, arcade → pixel, paper → storybook, inkwash → jade once it ships (storybook until then), neon → cyber, holo → scifi. A game's own style that names @styles/paper/ or @styles/neon/ fonts or icons names @styles/shared/ instead. To keep a folded pack as it was, eject it from an earlier engine first (og style eject <name>) and name the game's own copy.",
+        "find": [
+          "ui \"bubbly\"",
+          "ui \"arcade\"",
+          "ui \"paper\"",
+          "ui \"inkwash\"",
+          "ui \"neon\"",
+          "ui \"holo\"",
+          "@styles/paper/",
+          "@styles/neon/",
+          "@styles/bubbly/",
+          "@styles/arcade/",
+          "@styles/inkwash/",
+          "@styles/holo/"
+        ]
       }
     ],
     "added": [

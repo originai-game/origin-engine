@@ -7,4 +7,4 @@ version 1
 # style). The floor, the fighters and the coin are the sprites
 # start places in their own inks.
 name "Coin Duel"
-ui "@styles/neon/style.ogt"
+ui "cyber"

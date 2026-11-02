@@ -431,7 +431,10 @@ fn every_built_in_style_file_is_compiled_in() {
 /// does not carry megabytes of outlines it never draws.
 #[test]
 fn a_styles_chinese_companions_ride_with_a_chinese_game_only() {
-    let look = ("looks/x.ogt", "type look\nversion 1\n---\nui \"paper\"\n");
+    let look = (
+        "looks/x.ogt",
+        "type look\nversion 1\n---\nui \"storybook\"\n",
+    );
     let cjk = |files: &[(&str, &str)]| -> Vec<&'static str> {
         let root = project(files);
         builtin_files(look.0, look.1, &root)

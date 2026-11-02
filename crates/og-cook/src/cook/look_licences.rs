@@ -5,62 +5,6 @@
 /// travels with its licence.
 pub static STYLE_LICENCES: &[(&str, &[u8])] = &[
     (
-        "@styles/cartoon/LICENSES.md",
-        include_bytes!("../../../../templates/styles/cartoon/LICENSES.md"),
-    ),
-    (
-        "@styles/cartoon/OFL.txt",
-        include_bytes!("../../../../templates/styles/cartoon/OFL.txt"),
-    ),
-    (
-        "@styles/fantasy/LICENSES.md",
-        include_bytes!("../../../../templates/styles/fantasy/LICENSES.md"),
-    ),
-    (
-        "@styles/fantasy/OFL.txt",
-        include_bytes!("../../../../templates/styles/fantasy/OFL.txt"),
-    ),
-    (
-        "@styles/neon/LICENSES.md",
-        include_bytes!("../../../../templates/styles/neon/LICENSES.md"),
-    ),
-    (
-        "@styles/neon/OFL.txt",
-        include_bytes!("../../../../templates/styles/neon/OFL.txt"),
-    ),
-    (
-        "@styles/paper/LICENSES.md",
-        include_bytes!("../../../../templates/styles/paper/LICENSES.md"),
-    ),
-    (
-        "@styles/paper/OFL.txt",
-        include_bytes!("../../../../templates/styles/paper/OFL.txt"),
-    ),
-    (
-        "@styles/pixel/LICENSES.md",
-        include_bytes!("../../../../templates/styles/pixel/LICENSES.md"),
-    ),
-    (
-        "@styles/pixel/OFL.txt",
-        include_bytes!("../../../../templates/styles/pixel/OFL.txt"),
-    ),
-    (
-        "@styles/scifi/LICENSES.md",
-        include_bytes!("../../../../templates/styles/scifi/LICENSES.md"),
-    ),
-    (
-        "@styles/scifi/OFL.txt",
-        include_bytes!("../../../../templates/styles/scifi/OFL.txt"),
-    ),
-    (
-        "@styles/arcade/LICENSES.md",
-        include_bytes!("../../../../templates/styles/arcade/LICENSES.md"),
-    ),
-    (
-        "@styles/arcade/art-requests.json",
-        include_bytes!("../../../../templates/styles/arcade/art-requests.json"),
-    ),
-    (
         "@styles/broadcast/LICENSES.md",
         include_bytes!("../../../../templates/styles/broadcast/LICENSES.md"),
     ),
@@ -69,12 +13,32 @@ pub static STYLE_LICENCES: &[(&str, &[u8])] = &[
         include_bytes!("../../../../templates/styles/broadcast/art-requests.json"),
     ),
     (
-        "@styles/bubbly/LICENSES.md",
-        include_bytes!("../../../../templates/styles/bubbly/LICENSES.md"),
+        "@styles/cartoon/LICENSES.md",
+        include_bytes!("../../../../templates/styles/cartoon/LICENSES.md"),
     ),
     (
-        "@styles/bubbly/art-requests.json",
-        include_bytes!("../../../../templates/styles/bubbly/art-requests.json"),
+        "@styles/cartoon/OFL.txt",
+        include_bytes!("../../../../templates/styles/cartoon/OFL.txt"),
+    ),
+    (
+        "@styles/cjk/LICENSES.md",
+        include_bytes!("../../../../templates/styles/cjk/LICENSES.md"),
+    ),
+    (
+        "@styles/cjk/OFL-FusionPixel.txt",
+        include_bytes!("../../../../templates/styles/cjk/OFL-FusionPixel.txt"),
+    ),
+    (
+        "@styles/cjk/OFL-NotoSansSC.txt",
+        include_bytes!("../../../../templates/styles/cjk/OFL-NotoSansSC.txt"),
+    ),
+    (
+        "@styles/cjk/OFL-NotoSerifSC.txt",
+        include_bytes!("../../../../templates/styles/cjk/OFL-NotoSerifSC.txt"),
+    ),
+    (
+        "@styles/cjk/OFL-ZCOOLKuaiLe.txt",
+        include_bytes!("../../../../templates/styles/cjk/OFL-ZCOOLKuaiLe.txt"),
     ),
     (
         "@styles/craft/LICENSES.md",
@@ -101,32 +65,24 @@ pub static STYLE_LICENCES: &[(&str, &[u8])] = &[
         include_bytes!("../../../../templates/styles/dread/art-requests.json"),
     ),
     (
-        "@styles/gilded/LICENSES.md",
-        include_bytes!("../../../../templates/styles/gilded/LICENSES.md"),
+        "@styles/fantasy/LICENSES.md",
+        include_bytes!("../../../../templates/styles/fantasy/LICENSES.md"),
+    ),
+    (
+        "@styles/fantasy/OFL.txt",
+        include_bytes!("../../../../templates/styles/fantasy/OFL.txt"),
     ),
     (
         "@styles/fantasy/art-requests.json",
         include_bytes!("../../../../templates/styles/fantasy/art-requests.json"),
     ),
     (
+        "@styles/gilded/LICENSES.md",
+        include_bytes!("../../../../templates/styles/gilded/LICENSES.md"),
+    ),
+    (
         "@styles/gilded/art-requests.json",
         include_bytes!("../../../../templates/styles/gilded/art-requests.json"),
-    ),
-    (
-        "@styles/holo/LICENSES.md",
-        include_bytes!("../../../../templates/styles/holo/LICENSES.md"),
-    ),
-    (
-        "@styles/holo/art-requests.json",
-        include_bytes!("../../../../templates/styles/holo/art-requests.json"),
-    ),
-    (
-        "@styles/inkwash/LICENSES.md",
-        include_bytes!("../../../../templates/styles/inkwash/LICENSES.md"),
-    ),
-    (
-        "@styles/inkwash/art-requests.json",
-        include_bytes!("../../../../templates/styles/inkwash/art-requests.json"),
     ),
     (
         "@styles/kawaii/LICENSES.md",
@@ -135,6 +91,30 @@ pub static STYLE_LICENCES: &[(&str, &[u8])] = &[
     (
         "@styles/kawaii/art-requests.json",
         include_bytes!("../../../../templates/styles/kawaii/art-requests.json"),
+    ),
+    (
+        "@styles/pixel/LICENSES.md",
+        include_bytes!("../../../../templates/styles/pixel/LICENSES.md"),
+    ),
+    (
+        "@styles/pixel/OFL.txt",
+        include_bytes!("../../../../templates/styles/pixel/OFL.txt"),
+    ),
+    (
+        "@styles/scifi/LICENSES.md",
+        include_bytes!("../../../../templates/styles/scifi/LICENSES.md"),
+    ),
+    (
+        "@styles/scifi/OFL.txt",
+        include_bytes!("../../../../templates/styles/scifi/OFL.txt"),
+    ),
+    (
+        "@styles/shared/LICENSES.md",
+        include_bytes!("../../../../templates/styles/shared/LICENSES.md"),
+    ),
+    (
+        "@styles/shared/OFL.txt",
+        include_bytes!("../../../../templates/styles/shared/OFL.txt"),
     ),
     (
         "@styles/storybook/LICENSES.md",

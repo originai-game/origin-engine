@@ -22,9 +22,10 @@
 //   crypt's drip, the imps' chitter and the summit bell, synthesised here.
 // - music/stair.wav: "The Kestrel Stair", 2 minutes 40 at 84 bpm, cooked in
 //   4-second chunks (music/stair.wav.ogt). About 15 MB: not committed.
-// - styles/kestrel/: the engine's paper style pack, copied and retinted.
+// - styles/kestrel/ is committed as the game's own (the paper pack it was
+//   copied from was folded into storybook, 2026-11-02).
 
-import { copyFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { FOES } from "../src/layout.ts";
 import { behaviour, level, navmesh } from "./level.ts";
@@ -33,7 +34,6 @@ import { character, library, wardenRig } from "./rig.ts";
 
 const ROOT = resolve(import.meta.dir ?? ".", "..");
 const ASSETS = join(ROOT, "assets");
-const ENGINE = resolve(ROOT, "..", "..");
 
 function write(rel: string, data: Uint8Array | string): void {
   const p = join(ASSETS, rel);
@@ -467,25 +467,10 @@ function music(): Uint8Array {
 
 // --------------------------------------------------------------------- style
 
-/**
- * The paper style pack's art and fonts (templates/styles/paper), copied as
- * styles/kestrel. The style itself, `styles/kestrel/style.ogt`, is the
- * game's own: the pack retinted (the accent the courier's cape red, the
- * ground a warmer paper, the CJK fallback the game's own Japanese subset,
- * og-taste §1) and upgraded to version 2 by `og style upgrade`; this
- * script no longer writes it.
- */
-function style(): void {
-  const from = join(ENGINE, "templates", "styles", "paper");
-  const to = join(ASSETS, "styles", "kestrel");
-  mkdirSync(to, { recursive: true });
-  for (const f of readdirSync(from)) if (f !== "style.ogt" && f !== "LICENSES.md") copyFileSync(join(from, f), join(to, f));
-  // The copy's licences: the pack's, its fallback named as this game's.
-  let lic = readFileSync(join(from, "LICENSES.md"), "utf8");
-  lic = lic.replace("# The paper style pack: licences", "# The Kestrel Stair's style (the engine's paper style pack, retinted): licences");
-  lic = lic.replace(/Characters these fonts lack[\s\S]*$/, "Characters these fonts lack (the Japanese table's) are drawn with the\nstyle's `fallback` font, `fonts/NotoSansJP-kestrel.otf` (Noto Sans JP subset\nto the string tables, OFL 1.1, `assets/fonts/OFL.txt`).\n");
-  writeFileSync(join(to, "LICENSES.md"), lic);
-}
+// styles/kestrel/ is committed as the game's own: the engine's paper style
+// pack's art and fonts, copied once and retinted (og-taste §1). The paper
+// pack was folded into storybook (the owner, 2026-11-02), so nothing here
+// copies it again.
 
 // --------------------------------------------------------------------- main
 
@@ -504,7 +489,6 @@ environment();
 effects();
 presets();
 synthSounds();
-style();
 if (!process.argv.includes("--no-music")) write("music/stair.wav", music());
 write("music/stair.wav.ogt", `type import\nversion 1\n---\n# "The Kestrel Stair" (tools/make-assets.ts): cooked in 4-second chunks and\n# streamed, never resident whole (og-audio §5).\nsound {\n  stream true\n  chunk 4\n}\n`);
 console.log(`made The Kestrel Stair's assets under ${ASSETS}`);

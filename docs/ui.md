@@ -697,6 +697,13 @@ diegetic horror, sports broadcast, ink and eastern brush); the list is
 settled with the owner in phase U4. The minimal modern seed was dropped
 (the owner, 2026-11-02): its quiet light choices remain `og style new`'s
 start when a look matches no family, but no built-in pack ships them.
+The same day the owner settled sixteen packs (fantasy, jade, kawaii,
+cartoon, midcore, storybook, craft, pixel, gilded, tactical, wasteland,
+dread, scifi, cyber, foundry, broadcast) and folded six into them: bubbly
+into cartoon, arcade into pixel, paper into storybook, inkwash into jade,
+neon into cyber, holo into scifi. The folded packs' fonts and icon sheets
+that seeds draw with live in `templates/styles/shared/`; the folded seeds'
+choices stay `og style new`'s start for their look families.
 
 A **style generator** (`og style new`) makes a game its own style from the
 look, the premise and a few choices (palette seed, shape language,

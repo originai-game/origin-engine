@@ -172,13 +172,13 @@ ramp {
   displayLg 50 55
 }
 fonts {
-  body "@styles/paper/InstrumentSans-Regular.ttf"
+  body "@styles/shared/InstrumentSans-Regular.ttf"
   display "@styles/cartoon/LilitaOne-Regular.ttf"
-  numeric "@styles/paper/PTMono-Regular.ttf"
+  numeric "@styles/shared/PTMono-Regular.ttf"
   cjk "@styles/cjk/NotoSansSC-Regular.ttf"
   cjkDisplay "@styles/cjk/ZCOOLKuaiLe-Regular.ttf"
 }
-icons "@styles/paper/icons.png" 8 4 {
+icons "@styles/shared/ink-icons.png" 8 4 {
   names "heart" "star" "coin" "lock" "pause" "gear" "sword" "shield" "potion" "gem" "key" "map" "bolt" "clock" "trophy" "home" "plus" "close" "check" "play" "back" "bag" "bomb" "crown" "flag" "apple" "leaf" "fire" "drop" "skull" "music" "person"
 }
 motion {

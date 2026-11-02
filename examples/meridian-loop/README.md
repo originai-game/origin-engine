@@ -47,8 +47,8 @@ the same bytes on every run: the circuit (road, walls, embankments, neon
 tubes, gantry and gates, skyline and ridges) from the centre line in
 `src/track.ts`, the ground grid, the car, its ghost and the wheels, the
 mini-map, the smoke and skid textures, the emitters, the look, every sound
-and the music. The UI style is the engine's neon pack, copied from
-`templates/ui-kit` by the same script and retinted.
+and the music. The UI style is the engine's former neon pack (folded into cyber,
+2026-11-02), copied and retinted, and committed as the game's own.
 
 ## What it exercises
 

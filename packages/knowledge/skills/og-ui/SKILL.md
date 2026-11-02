@@ -469,7 +469,7 @@ shape {
 }
 fonts {
   body "Rajdhani-Bold.ttf"
-  display "@styles/neon/ChakraPetch-BoldItalic.ttf"
+  display "@styles/shared/ChakraPetch-BoldItalic.ttf"
   cjk "@styles/cjk/NotoSansSC-Bold.ttf"
 }
 motion {
@@ -548,9 +548,9 @@ which the art brief's `styleArtBriefs` turns into prompts) and prints the
 The usual way in is the game's look (og-taste §12): its `ui` line names
 the style, and every catalogue preset already names one. `ui "pixel"` is a
 built-in style by slug (`og style list`: the atlas packs `pixel`, `cartoon`,
-`fantasy`, `scifi`, `paper`, `neon`, and the generated seeds `gilded`,
-`storybook`, `tactical`, `holo`, `cyber`, `bubbly`, `kawaii`, `arcade`,
-`craft`, `dread`, `broadcast`, `inkwash`, one per look family;
+`fantasy`, `scifi`, and the generated seeds `gilded`, `storybook`,
+`tactical`, `cyber`, `kawaii`, `craft`, `dread`, `broadcast`, one per look
+family;
 `og cook` bundles the one a look names and the fonts and icons it shares). `ui
 "styles/<name>/style.ogt"` is the game's own, and a game's
 `assets/styles/<slug>/style.ogt` wins over the built-in of that slug.

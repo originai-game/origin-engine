@@ -7,7 +7,7 @@
 //   show:<feedback|meters|abilities|frames|shooter|strategy|racing|flight|world>
 //   viewport:<desktop|ultrawide|tablet|phone|landscape>  (og.ui.previewViewport; render at the matching --size)
 //   lang:<en|ar|pseudo>     ar lays out right to left; pseudo is 40 % longer, accented and bracketed
-//   style:<prototype|scifi|fantasy|arcade|tactical|broadcast>
+//   style:<prototype|scifi|fantasy|pixel|tactical|broadcast>
 //   text:<percent>          the player's text size, 100 to 200 (§15.2 holds every screen to 200)
 //   act:<hit|crit|heal|ready|empty|reload|interrupt|ping|say|complete|combo|score|break|place>
 //   reset   every act forgotten, the clock of the screen started again
@@ -24,7 +24,7 @@ import type { DamageHitDesc, KillfeedEntry, Texture, UnitFrameDesc, Viewport, Wo
 
 const SCREENS = ["feedback", "meters", "abilities", "frames", "shooter", "strategy", "racing", "flight", "world"] as const;
 type Screen = (typeof SCREENS)[number];
-const STYLES = ["prototype", "scifi", "fantasy", "arcade", "tactical", "broadcast"] as const;
+const STYLES = ["prototype", "scifi", "fantasy", "pixel", "tactical", "broadcast"] as const;
 
 const VIEWPORTS: Record<string, Viewport> = {
   desktop: { width: 1920, height: 1080, dpr: 1, safeArea: { left: 0, top: 0, right: 0, bottom: 0 }, coarsePointer: false, breakpoint: "desktop" },

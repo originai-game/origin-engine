@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-"""Regenerates the engine's six built-in UI styles (CC0 art), byte for byte,
-and the UI kit's UI sounds:
+"""Regenerates the engine's four atlas UI styles (CC0 art), byte for byte,
+the icon sheets the seed styles share, and the UI kit's UI sounds:
 
     python3 templates/ui-kit/tools/make-styles.py templates/ui-kit/assets
 
-For each of pixel, cartoon, fantasy, scifi, paper and neon it writes
-templates/styles/<name>/ (the cook compiles them in; a look names one with
-`ui "<name>"`):
+For each of pixel, cartoon, fantasy and scifi it writes
+templates/styles/<name>/ (og's cook reads them from there or from the
+engine package's styles/; a look names one with `ui "<name>"`), and it
+writes templates/styles/shared/ink-icons.png and glow-icons.png, the
+seed styles' icons (the paper and neon packs' before they were folded into
+storybook and cyber, 2026-11-02):
 
 - atlas.png: the nine-slice frames (panel, card, button and its hover,
   pressed and disabled states, field, slot, tooltip, capsule, progress track
@@ -679,181 +682,7 @@ def scifi_pack():
     return p, style
 
 
-def paper_pack():
-    p = {}
-    INK = grey(0.1)
-
-    def sheet(w, h, r, ink=1.6, wobble=0.6, seed=0, fill=(grey(1.0), grey(0.97)), fill_a=1.0):
-        cv = Canvas(w, h)
-        ang = np.arctan2(cv.py - h / 2, cv.px - w / 2)
-        jitter = wobble * (np.sin(ang * 5 + seed) * 0.6 + np.sin(ang * 11 + seed * 2.1) * 0.4)
-        d = sd_box(cv.px, cv.py, 1, 1, w - 1, h - 1, r) + jitter
-        cv.paint(cv.inside(d), INK)
-        cv.paint(cv.inside(d + ink), vgrad(cv, fill[0], fill[1]), fill_a)
-        return cv.image()
-
-    p["panel"] = sheet(96, 96, 8, ink=1.4, wobble=0.5, seed=1)
-    p["card"] = sheet(64, 64, 6, ink=1.3, wobble=0.45, seed=2)
-    p["button"] = sheet(48, 48, 8, ink=1.6, wobble=0.5, seed=3)
-    p["buttonHover"] = sheet(48, 48, 8, ink=2.2, wobble=0.5, seed=3)
-    p["buttonPressed"] = sheet(48, 48, 8, ink=2.2, wobble=0.5, seed=4, fill=(grey(0.9), grey(0.96)))
-    p["buttonDisabled"] = sheet(48, 48, 8, ink=1.0, wobble=0.4, seed=5, fill=(grey(0.96), grey(0.96)))
-    p["field"] = sheet(48, 48, 4, ink=1.2, wobble=0.3, seed=6)
-    p["slot"] = sheet(48, 48, 5, ink=1.1, wobble=0.35, seed=7, fill=(grey(0.97), grey(0.94)))
-    p["tooltip"] = sheet(32, 32, 4, ink=1.2, wobble=0.3, seed=8)
-    p["hud"] = sheet(32, 32, 14, ink=1.3, wobble=0.35, seed=9)
-    p["track"] = sheet(32, 16, 7, ink=1.1, wobble=0.25, seed=10)
-    p["fill"] = sheet(32, 16, 7, ink=1.1, wobble=0.25, seed=11)
-    p["soft"] = soft_rect(64, 64, 20)
-
-    def divider(cv):
-        # A brush stroke: thick in the middle, tapering, slightly wavy.
-        t = (cv.px - 4) / 120
-        thick = 2.6 * np.sin(np.clip(t, 0, 1) * math.pi) ** 0.7
-        y = 12 + 1.2 * np.sin(t * 7)
-        cv.paint(cv.inside(np.abs(cv.py - y) - thick / 2) * (t >= 0) * (t <= 1), grey(1.0))
-
-    def flourish(cv):
-        bars(cv, [(30, 12, 54, 12)], 2.2)
-
-    p["divider"] = ornament(128, 24, divider)
-    p["flourish"] = ornament(64, 24, flourish)
-    p["corner"] = np.zeros((32, 32, 4))
-    n = noise(64, 64, 21, 1)
-    tile = np.zeros((64, 64, 4))
-    tile[..., :3] = hexc("#7a6a50")
-    tile[..., 3] = np.clip((n - 0.62) * 0.7, 0, 1)
-    p["tile"] = tile
-    style = dict(
-        name="paper", base="light",
-        palette=dict(
-            backdrop="#e8e2d4", well="#ded7c6", panel="#fbf8f0", panelHover="#f3eee2", panelRaised="#fbf8f0", line="#cfc6b2",
-            lineStrong="#1c1a17", ink="#1c1a17", inkMuted="#57524a", inkFaint="#68635a", inkInverse="#fbf8f0", control="#efe9dc",
-            controlStrong="#e2dac8", primary="#a02b1a", primaryHover="#942717", primaryActive="#85220f", onPrimary="#fffaf3",
-            primarySoft="#a02b1a26", highlight="#a8321f", focus="#2b5cc8", knob="#fbf8f0", hud="#fbf8f0f5", scrim="#2a261f73",
-            shadow="#2a261f40", sheen="#ffffff52", success="#1a6034", warn="#7b4802", danger="#8e1d16", info="#1c4bb6",
-            health="#1a6034", mana="#007aff", xp="#af52de", gold="#a02b1a",
-        ),
-        radius=dict(small=4, control=4, bar=4, panel=6),
-        ramp=dict(body=(15, 22), meta=(13, 18), caption=(13, 18), reading=(16, 25), lg=(19, 26), xl=(22, 30),
-                  xl2=(26, 32), xl3=(30, 36), displaySm=(30, 36), displayMd=(38, 44), displayLg=(48, 54)),
-        durations=dict(fast=180, base=260, slow=420),
-        fonts=dict(body="InstrumentSans-Regular.ttf", display="Newsreader-SemiBold.ttf", numeric="PTMono-Regular.ttf", cjk="NotoSansSC-Regular.ttf", cjkDisplay="NotoSerifSC-SemiBold.ttf"),
-        slices=dict(panel=(12,), card=(10,), button=(12,), buttonHover=(12,), buttonPressed=(12,), buttonDisabled=(12,),
-                    field=(8,), slot=(8,), tooltip=(8,), hud=(14,), track=(7,), fill=(7,)),
-        scale=1, divider=(120, 18, "ink"), flourish=(22, 10, "primary", 2),
-        tile=(64, 64, 0.6, 4, ["panel", "card"]),
-        shadows=dict(panel=(0, 6, 16, 0, "#2a261f3a"), card=(0, 3, 8, 0, "#2a261f2e"), button=(0, 2, 4, 0, "#2a261f33"),
-                     hud=(0, 2, 6, 0, "#2a261f33"), tooltip=(0, 2, 6, 0, "#2a261f33")),
-        text=dict(),
-        press=(0.98, 0.98, 1), hover=(-1, 1.0),
-        motion=dict(enter="slideUp", stagger=40, toast="slideUp", progress=380, shake=5, pop=0.08),
-        icons="paper",
-    )
-    return p, style
-
-
-MAGENTA = hexc("#ff3df2")
-CYAN = hexc("#36e8ff")
-
-
-def neon_pack():
-    p = {}
-
-    def tube(w, h, r, line=2.0, halo=4.0, body=0.16, body_a=0.9, rgb=grey(1.0), inset=None):
-        """A glowing tube around a dark body (white: takes the tint)."""
-        cv = Canvas(w, h)
-        m = halo + 1 if inset is None else inset
-        d = sd_box(cv.px, cv.py, m, m, w - m, h - m, r)
-        inside = cv.inside(d + line / 2)
-        for c in range(3):
-            cv.rgba[..., c] = body * (rgb[c] if isinstance(rgb, tuple) else 1)
-        cv.rgba[..., 3] = inside * body_a
-        ring = np.abs(d)
-        # A tube's halo stays near its line: neon marks the edge, it does
-        # not wash the screen (the catalogue's "avoid glow on everything").
-        glow = np.where(ring < line / 2, 1.0, np.exp(-((ring - line / 2) / halo) ** 2) * 0.5)
-        cv.paint(glow, rgb)
-        return cv.image()
-
-    def two_tone(w, h, r):
-        # The panel, authored: a magenta tube outside, a thin cyan one inside.
-        cv = Canvas(w, h)
-        m = 6
-        d = sd_box(cv.px, cv.py, m, m, w - m, h - m, r)
-        cv.paint(cv.inside(d), hexc("#120a24"), 0.93)
-        ring = np.abs(d)
-        cv.paint(np.where(ring < 1.0, 0.85, np.exp(-((ring - 1.0) / 2.5) ** 2) * 0.4), MAGENTA)
-        d2 = sd_box(cv.px, cv.py, m + 5, m + 5, w - m - 5, h - m - 5, max(0, r - 4))
-        cv.paint(cv.inside(np.abs(d2) - 0.5), CYAN, 0.35)
-        return cv.image()
-
-    p["panel"] = two_tone(96, 96, 14)
-    p["card"] = tube(64, 64, 10, line=1.6, halo=3.0, body=0.1, body_a=0.86)
-    p["button"] = tube(48, 48, 12, line=1.8, halo=2.2, body=0.22, body_a=0.9)
-    p["buttonHover"] = tube(48, 48, 12, line=2.2, halo=3.0, body=0.32, body_a=0.94)
-    p["buttonPressed"] = tube(48, 48, 12, line=2.6, halo=3.2, body=0.55, body_a=1.0)
-    p["buttonDisabled"] = tube(48, 48, 12, line=1.2, halo=1.5, body=0.18, body_a=0.8)
-    p["field"] = tube(48, 48, 6, line=1.4, halo=2.5, body=0.08, body_a=0.94)
-    p["slot"] = tube(48, 48, 8, line=1.4, halo=2.5, body=0.12, body_a=0.88)
-    p["tooltip"] = tube(32, 32, 6, line=1.4, halo=2.5, body=0.12, body_a=0.94)
-    p["hud"] = tube(32, 32, 10, line=1.6, halo=3.0, body=0.12, body_a=0.9)
-    p["track"] = tube(32, 16, 4, line=1.2, halo=1.5, body=0.2, body_a=0.9, inset=2.5)
-    p["fill"] = tube(32, 16, 4, line=1.6, halo=1.5, body=0.9, body_a=1.0, inset=2.5)
-    p["soft"] = soft_rect(64, 64, 20)
-
-    def divider(cv):
-        glow_line(cv, [(6, 12, 122, 12)], 1.6, 3)
-        diamond(cv, 64, 12, 4.5)
-
-    def flourish(cv):
-        glow_line(cv, [(34, 7, 54, 7), (30, 12, 54, 12), (38, 17, 54, 17)], 1.6, 2.2)
-
-    p["divider"] = ornament(128, 24, divider)
-    p["flourish"] = ornament(64, 24, flourish)
-
-    def corner(cv):
-        glow_line(cv, [(5, 5, 5, 16), (5, 5, 16, 5)], 2.0, 2.5)
-
-    p["corner"] = ornament(32, 32, corner)
-    tile = np.zeros((64, 64, 4))
-    ys, xs = np.mgrid[0:64, 0:64]
-    tile[..., :3] = MAGENTA
-    tile[..., 3] = (((xs % 16) == 0) | ((ys % 16) == 0)) * 0.35
-    p["tile"] = tile
-    style = dict(
-        name="neon", base="dark",
-        palette=dict(
-            backdrop="#07020f", well="#0e0520", panel="#1b0f36", panelHover="#26164a", panelRaised="#1b0f36", line="#4a2f86",
-            lineStrong="#b18cff", ink="#fbefff", inkMuted="#cdb6ea", inkFaint="#8d76ad", inkInverse="#07020f", control="#7a4fe6",
-            controlStrong="#7650d8", primary="#c81ebc", primaryHover="#d42ac8", primaryActive="#b018a6", onPrimary="#fbefff",
-            primarySoft="#c81ebc40", highlight="#ff8af8", focus="#36e8ff", knob="#5a3aa6", hud="#1b0f36", scrim="#030008cc",
-            shadow="#000000aa", sheen="#ffffff52", success="#3dffb0", warn="#ffd23d", danger="#ff3d6e", info="#36e8ff",
-            health="#3dffb0", mana="#0a84ff", xp="#bf5af2", gold="#c81ebc",
-        ),
-        radius=dict(small=6, control=6, bar=6, panel=10),
-        ramp=dict(body=(15, 20), meta=(13, 18), caption=(13, 18), lg=(19, 24), xl=(22, 28), xl2=(26, 30), xl3=(30, 34),
-                  displaySm=(32, 36), displayMd=(40, 44), displayLg=(50, 54)),
-        durations=dict(instant=90, fast=140, base=220, slow=380),
-        fonts=dict(body="Rajdhani-Bold.ttf", display="ChakraPetch-BoldItalic.ttf", numeric="ChakraPetch-SemiBold.ttf", cjk="NotoSansSC-Bold.ttf", cjkDisplay="NotoSansSC-Bold.ttf"),
-        slices=dict(panel=(22, "authored"), card=(14,), button=(16,), buttonHover=(16,), buttonPressed=(16,), buttonDisabled=(16,),
-                    field=(10,), slot=(12,), tooltip=(10,), hud=(14,), track=(6,), fill=(6,)),
-        scale=1, corner=(20, 20, "primary", 2), corners=["card"], divider=(128, 24, "primary"), flourish=(36, 16, "primary", 0),
-        # Glow marks what is lit, not everything (the catalogue's "avoid glow
-        # on everything"): the primary button and the display title glow;
-        # panels, the HUD and numbers stay crisp, the grid tile a whisper.
-        tile=(48, 48, 0.05, 10, ["panel"]),
-        shadows=dict(panel=(0, 6, 18, 0, "#000000a0")),
-        glows=dict(button=(4, "primary", 0.22), slot=(3, "focus", 0.16)),
-        text=dict(textGlow=[("display", 1.4, "primary", 0.45)]),
-        press=(0.96, 0.96, 0), hover=(0, 1.04),
-        motion=dict(enter="pop", stagger=35, toast="slideLeft", progress=260, shake=7, pop=0.16),
-        icons="neon",
-    )
-    return p, style
-
-
-PACKS = [pixel_pack, cartoon_pack, fantasy_pack, scifi_pack, paper_pack, neon_pack]
+PACKS = [pixel_pack, cartoon_pack, fantasy_pack, scifi_pack]
 
 
 # ── version 2 tokens (docs/ui.md §12.2) ────────────────────────────────────
@@ -1037,61 +866,6 @@ TOKENS = {
         stagger_cap=240, overshoot=0.02,
         haptics=dict(HAPTICS, focus="tick", scrollTick="tick", typewriter="tick", counterTick="tick"),
         sounds=dict(focus="volume 0.5 0.6", typewriter="volume 0.4 0.5 pitch 0.95 1.05", counterTick="pitch 1 1.4"),
-    ),
-    "paper": dict(
-        # Inks on paper: muted, printable, the red of the style kept for danger.
-        status=dict(success='icon "check"', warn='icon "flag"', danger='icon "close"', info="pattern hatch"),
-        rarity=[("#8a857a", "pips 1"), ("#3a7a3a", "pips 2"), ("#2b5cc8", "pips 3"), ("#6a3aa8", "pips 4"),
-                ("#b8781a", "pips 5"), ("#a02b1a", "pips 6")],
-        teams=["#2b5cc8", "#a02b1a", "#3a7a3a", "#a87a10", "#6a3aa8", "#c0601a", "#1f7f7a", "#a83a7a"],
-        damage=[("#6a655a", 'icon "sword"'), ("#c0461a", 'icon "fire"'), ("#2f7fb0", 'icon "drop"'),
-                ("#a8861a", 'icon "bolt"'), ("#4f7a1f", "pattern dots"), ("#a8861a", 'icon "star"'),
-                ("#3a2a5a", "pattern crosshatch"), ("#8a2a9a", "pattern waves")],
-        series=["#2b5cc8", "#c0601a", "#a02b1a", "#3a7a3a", "#6a3aa8", "#a87a10", "#1f7f7a", "#68635a"],
-        weights=dict(display=600, title=600, heading=600, body=400, label=500, caption=400, numeric=400),
-        tracking=dict(display=-0.01, title=-0.005, label=0.01),
-        sizes=dict(xs=16, sm=24, md=32, lg=48, xl=64, xxl=96, touch=44),
-        radius=dict(xs=2, sm=4, md=6, lg=8, xl=12, pill=9999),
-        stroke=dict(hairline=1, thin=1.2, regular=1.6, thick=2.2, focus=2),
-        elevation=dict(raised=[(0, 3, 8, 0, "#2a261f2e")], floating=[(0, 2, 6, 0, "#2a261f33")],
-                       overlay=[(0, 6, 16, 0, "#2a261f3a"), (0, 1, 2, 0, "#2a261f26")],
-                       top=[(0, 10, 24, 0, "#2a261f40"), (0, 1, 3, 0, "#2a261f26")]),
-        shape=dict(panel="round 6", dialog="round 8", card="round 6", tooltip="round 4", button="round 4",
-                   field="round 4", chip="round pill", badge="round pill", tab="round 4", slot="round 4",
-                   bar="round 4", hud="round pill", avatar="round pill"),
-        springs=dict(ui=(200, 0), panel=(320, 0.05), emphasis=(440, 0.12), playful=(520, 0.2)),
-        eases=dict(standard="0.25 0.1 0.25 1", enter="0.22 1 0.36 1", exit="0.55 0 1 0.45", emphasis="0.3 1.3 0.5 1"),
-        stagger_cap=360, overshoot=0.03,
-        haptics=dict(HAPTICS, reward="tap", revealMythic="thud"),
-        sounds=dict(typewriter="volume 0.5 0.7 pitch 0.9 1.1", counterTick="pitch 1 1.2"),
-    ),
-    "neon": dict(
-        # Tube colours on a dark street; each tier glows a step hotter.
-        status=dict(success='icon "check"', warn="pattern stripes", danger="pattern chevrons", info="pattern waves"),
-        rarity=[("#9a8ab8", "pips 1"), ("#3dffb0", "pips 2"), ("#36e8ff", "pips 3"), ("#c86bff", "pips 4"),
-                ("#ffd23d", "pips 5"), ("#ff3d6e", "pips 6")],
-        teams=["#36e8ff", "#ff3d6e", "#3dffb0", "#ffd23d", "#c86bff", "#ff8a3d", "#5cfff0", "#ff6af2"],
-        damage=[("#cdb6ea", "pattern hatch"), ("#ff6a3d", 'icon "fire"'), ("#7ff4ff", 'icon "drop"'),
-                ("#fff03d", 'icon "bolt"'), ("#9dff5c", "pattern dots"), ("#fff4d0", 'icon "star"'),
-                ("#9a6aff", "pattern grid"), ("#ff6af2", "pattern diamonds")],
-        series=["#36e8ff", "#ff3df2", "#ffd23d", "#3dffb0", "#c86bff", "#ff8a3d", "#5cfff0", "#ff3d6e"],
-        weights=dict(display=700, title=700, heading=700, body=700, label=700, caption=700, numeric=600),
-        tracking=dict(display=0.02, title=0.02, label=0.04, numeric=0.02),
-        sizes=dict(xs=16, sm=24, md=32, lg=48, xl=64, xxl=96, touch=44),
-        radius=dict(xs=3, sm=6, md=10, lg=14, xl=20, pill=9999),
-        stroke=dict(hairline=1, thin=1.6, regular=2, thick=2.6, focus=2),
-        # A dark drop and a magenta bloom.
-        elevation=dict(raised=[(0, 4, 12, 0, "#00000080")], floating=[(0, 4, 14, 0, "#00000099"), (0, 0, 8, 0, "#c81ebc33")],
-                       overlay=[(0, 6, 18, 0, "#000000a0"), (0, 0, 14, 0, "#c81ebc40")],
-                       top=[(0, 8, 24, 0, "#000000b0"), (0, 0, 18, 0, "#c81ebc4d")]),
-        shape=dict(panel="round 10", dialog="round 14", card="round 10", tooltip="round 6", button="squircle 6",
-                   field="round 6", chip="round pill", badge="round pill", tab="squircle 6", slot="round 6",
-                   bar="round 6", hud="round 10", avatar="round pill"),
-        springs=dict(ui=(140, 0.1), panel=(260, 0.15), emphasis=(380, 0.3), playful=(460, 0.4)),
-        eases=dict(standard="0.3 0 0.1 1", enter="0.12 1 0.3 1", exit="0.5 0 0.9 0.3", emphasis="0.3 1.6 0.6 1"),
-        stagger_cap=280, overshoot=0.12,
-        haptics=dict(HAPTICS, hover="tick", reward="0 30 0.3 0.8 60 30 0.3 0.8 120 60 0.6 1"),
-        sounds=dict(hover="volume 0.4 0.5 pitch 0.98 1.04", counterTick="pitch 1 1.5", reward="pitch 1 1.3"),
     ),
 }
 
@@ -1357,7 +1131,7 @@ def ui_sounds(out):
             w.writeframes(pcm.tobytes())
 
 
-# The built-in styles live beside the templates, compiled into the cook.
+# The built-in styles live beside the templates.
 STYLES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "styles")
 
 
@@ -1394,6 +1168,12 @@ def main():
             with open(os.path.join(d, name + ".ogt"), "w") as f:
                 f.write(font_import(os.path.join(d, name), display, name in glowing, name in weighted))
         print("wrote", d)
+    # The icon sheets the seed styles share (templates/styles/shared), from
+    # the paper and neon packs folded into storybook and cyber (2026-11-02).
+    shared = os.path.join(STYLES, "shared")
+    for variant, name in (("paper", "ink-icons.png"), ("neon", "glow-icons.png")):
+        icon_sheet(variant).save(os.path.join(shared, name), optimize=True)
+        print("wrote", os.path.join(shared, name))
 
 
 if __name__ == "__main__":

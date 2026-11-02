@@ -144,27 +144,19 @@ pub fn run(args: &[&str]) -> ExitCode {
 const ABOUT: &[(&str, &str)] = &[
     (
         "cartoon",
-        "thick outlines, cream panels, squash on press, pops (casual, match-3, party, idle)",
+        "thick outlines, cream panels, squash on press, pops (casual, match-3, party, idle, store bundles)",
     ),
     (
         "fantasy",
         "parchment, gold corners and flourishes, a serif display (RPGs, card battlers, quests)",
     ),
     (
-        "neon",
-        "dark glass, glowing tubes, italic display (arcade, rhythm, racing, synthwave)",
-    ),
-    (
-        "paper",
-        "off-white sheets, ink outlines, soft shadows, one red (narrative, puzzle, cosy, word games)",
-    ),
-    (
         "pixel",
-        "square frames, 2 px bevels, hard shadows, a bitmap face (platformers, roguelikes, retro)",
+        "square frames, 2 px bevels, hard shadows, a bitmap face (platformers, roguelikes, retro, arcade)",
     ),
     (
         "scifi",
-        "hairlines, cut corners, brackets, scanlines, mono numerals (space, tactics, hacking, mech)",
+        "hairlines, cut corners, brackets, scanlines, mono numerals (space, ship status, tactics, hacking, mech, RTS)",
     ),
     // The seed styles og style new generated (no atlas: tokens and
     // procedural dressings), by look family.
@@ -174,31 +166,19 @@ const ABOUT: &[(&str, &str)] = &[
     ),
     (
         "storybook",
-        "storybook: soft paper sheets, ink lines, ornaments, floaty motion",
+        "storybook: soft paper sheets, ink lines, ornaments, floaty motion (narrative, visual novels, mysteries)",
     ),
     (
         "tactical",
         "tactical military: cut corners, flat olive, tracked capitals, mechanical motion",
     ),
     (
-        "holo",
-        "sci-fi holographic: cut glowing frames, inner glow, snappy motion",
-    ),
-    (
         "cyber",
-        "cyberpunk neon: notched neon tubes on black, snappy motion",
-    ),
-    (
-        "bubbly",
-        "casual cartoon: chunky round buttons, lit gradients, hard shadows, bouncy motion",
+        "cyberpunk: notched frames on black, snappy motion (racing, rhythm, hacking)",
     ),
     (
         "kawaii",
         "kawaii gacha: pastel capsules, frosted glass, bouncy motion",
-    ),
-    (
-        "arcade",
-        "pixel retro: square bevels, 2 px lines, mechanical motion",
     ),
     (
         "craft",
@@ -211,10 +191,6 @@ const ABOUT: &[(&str, &str)] = &[
     (
         "broadcast",
         "sports broadcast: sharp lit bars, tracked capitals, snappy motion",
-    ),
-    (
-        "inkwash",
-        "ink and eastern brush: soft washes, brush lines, calm motion",
     ),
 ];
 

@@ -34,11 +34,11 @@ export type Screen = (typeof SCREENS)[number];
 
 /** The engine's built-in UI styles (templates/styles, in the bundle as
  * `@styles/<name>/` because assets/looks/kit-<name>.ogt names each): the
- * six atlas packs, then the seed styles og style new generated;
+ * atlas packs, then the seed styles og style new generated;
  * "default" is the engine's default style (the design language's, for prototypes). */
 export const STYLES = [
-  "default", "pixel", "cartoon", "fantasy", "scifi", "paper", "neon",
-  "gilded", "storybook", "tactical", "holo", "cyber", "bubbly", "kawaii", "arcade", "craft", "dread", "broadcast", "inkwash",
+  "default", "pixel", "cartoon", "fantasy", "scifi",
+  "gilded", "storybook", "tactical", "cyber", "kawaii", "craft", "dread", "broadcast",
 ] as const;
 const WIPES = ["none", "fade", "wipe", "iris", "dissolve", "slide"] as const;
 const UI_SOUNDS = ["hover", "press", "open", "close", "success", "error"] as const;
@@ -1478,7 +1478,7 @@ export default og.game({
     toast: { usage: "<text>", doc: "Queue a toast." },
     damage: { usage: "<hp>", doc: "Take hit points off the HUDs' health." },
     heal: { usage: "<hp>", doc: "Give hit points back." },
-    style: { usage: "<default|pixel|cartoon|fantasy|scifi|paper|neon|gilded|storybook|tactical|holo|cyber|bubbly|kawaii|arcade|craft|dread|broadcast|inkwash>", doc: "Dress every screen in a built-in style." },
+    style: { usage: "<default|pixel|cartoon|fantasy|scifi|gilded|storybook|tactical|cyber|kawaii|craft|dread|broadcast>", doc: "Dress every screen in a built-in style." },
     transition: { usage: "<none|fade|wipe|iris|dissolve|slide>", doc: "Send screen changes through og.ui.screenTransition." },
     sounds: { usage: "<on|off>", doc: "Hand the UI's event sounds their blips (on by default)." },
     mixed: { usage: "<on|off>", doc: "Show a label mixing CJK, Latin and Arabic (menu.mixed) under the menu, pause and confirm screens." },

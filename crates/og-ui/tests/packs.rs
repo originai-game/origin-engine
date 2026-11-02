@@ -16,7 +16,7 @@ use std::path::PathBuf;
 /// Where, the fill a template gives it, the frame, the inks on it.
 type Check = (&'static str, Srgba, StylePart, Vec<(&'static str, Srgba)>);
 
-const PACKS: [&str; 6] = ["pixel", "cartoon", "fantasy", "scifi", "paper", "neon"];
+const PACKS: [&str; 4] = ["pixel", "cartoon", "fantasy", "scifi"];
 
 fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../templates/ui-kit/assets")
@@ -270,7 +270,7 @@ fn every_built_in_style_is_version_2_with_colour_tokens_that_read_on_its_panels(
 fn every_seed_style_is_what_og_style_new_writes_from_its_choices() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../templates/styles");
     let seeds = og_ui::style_gen::seeds();
-    assert!(seeds.len() >= 12, "{} seeds", seeds.len());
+    assert!(seeds.len() >= 8, "{} seeds", seeds.len());
     let mut signatures = Vec::new();
     for c in &seeds {
         let dir = root.join(&c.name);

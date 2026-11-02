@@ -67,7 +67,7 @@ fn style_new_generates_a_style_the_game_cooks() {
     assert!(style.contains("  button round pill\n"), "{style}");
     assert!(style.contains("  press 1.06 0.9 3\n"), "{style}");
     assert!(
-        style.contains("@styles/neon/ChakraPetch-BoldItalic.ttf"),
+        style.contains("@styles/shared/ChakraPetch-BoldItalic.ttf"),
         "{style}"
     );
     for sounds in &file.feedback_sounds {
@@ -93,7 +93,7 @@ fn style_new_generates_a_style_the_game_cooks() {
     let bundle = og_cook::runtime::Bundle::open(&dir.join("cooked")).unwrap();
     assert!(
         bundle
-            .output("@styles/neon/ChakraPetch-BoldItalic.ttf")
+            .output("@styles/shared/ChakraPetch-BoldItalic.ttf")
             .is_ok()
     );
 

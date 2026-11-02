@@ -189,7 +189,7 @@ string "results.time" "タイム {time}"
   to `chars`. The engine's log says so on the tick a character is first
   drawn, once per character, naming it, the font's asset and what its atlas
   holds (`WARN tick 2603 a frame drew "−" U+2212, which font
-  styles/neon/ChakraPetch-BoldItalic.ttf lacks (its atlas holds charset
+  styles/shared/ChakraPetch-BoldItalic.ttf lacks (its atlas holds charset
   latin punct)`): the packs cook `latin punct`, which has the hyphen-minus
   `-` but not the minus sign U+2212 nor the arrows U+2190 to U+2193. One
   label is drawn in one font, so the font that covers a

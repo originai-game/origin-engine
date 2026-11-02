@@ -35,7 +35,7 @@ Write the premise in one line, then answer four questions:
 |---|---|
 | **Genre**: what does the player do most? | action and arcade → bold, high contrast, fast motion; puzzle and idle → soft, readable, gentle motion; strategy and RPG → dense, ornamented, calm |
 | **Mood**: how should a session feel? | tense → dark ground, one hot accent; cosy → warm light ground, rounded; eerie → desaturated, thin type |
-| **Era or world**: when and where is it set? | 8- and 16-bit nostalgia → pixel; myth, castles, quests → fantasy; space, hacking, mechs → sci-fi; city nights, synthwave, rhythm → neon; everyday, notebooks, mysteries → paper |
+| **Era or world**: when and where is it set? | 8- and 16-bit nostalgia → pixel; myth, castles, quests → fantasy; space, hacking, mechs → sci-fi; city nights, racing, rhythm → cyber; storybooks, notebooks, mysteries → storybook |
 | **Audience**: who plays, on what? | children and casual phone players → cartoon (big targets, bright, bouncy); core desktop players → any, but denser |
 
 Then choose the **look** from the style catalogue (§12): match the four
@@ -66,18 +66,18 @@ its preset carries (the look's `ui` line, §12), so a game that extends a
 preset is dressed by it from the first frame. The game's UI follows the
 game's art, never the Origin platform's: without a style it draws in the
 engine's default style (for prototypes only), `og polish` warns when a
-game is in it and `og build --publish` refuses it. The six built-in
+game is in it and `og build --publish` refuses it. The built-in
 styles (`og style list`) are starting points, not the
 only looks:
 
 | Style | Premises it fits | Signature | Start look (§12) |
 |---|---|---|---|
-| `pixel` | platformers, roguelikes, retro shooters, jam games | square frames, 2 px bevels, hard shadows, a bitmap face | `16bit-pixel` |
+| `pixel` | platformers, roguelikes, retro and arcade shooters, jam games | square frames, 2 px bevels, hard shadows, a bitmap face | `16bit-pixel` |
 | `cartoon` | casual, match-3, party, kids, idle | thick outlines, cream panels, squash on press, pops | `bold-comic-illustration` |
 | `fantasy` | RPGs, card battlers, quest and dungeon games | parchment, gold corners and flourishes, a serif display | `illuminated-manuscript` |
 | `scifi` | space, tactics, hacking, mech | hairlines, cut corners, brackets, scanlines, mono numerals | `cinematic-realism` |
-| `paper` | narrative, puzzle, cosy, mystery, word games | off-white sheets, ink outlines, soft shadows, one red | `pencil-hatching` |
-| `neon` | arcade, rhythm, racing, synthwave | dark glass, glowing tubes, italic display | `neon-vector` |
+| `storybook` | narrative, visual novels, puzzle, cosy, mystery, word games | soft paper sheets, ink lines, ornaments, floaty motion | `pencil-hatching` |
+| `cyber` | racing, rhythm, cyberpunk, hacking | notched frames on black, hot accents, dense data, snappy motion | `neon-vector` |
 
 ```text
 ui "fantasy"                     # in the game's look: a built-in style by slug
@@ -100,7 +100,7 @@ table's `fonts` line, og-i18n). For a quick re-colour without a copy,
 `og.ui.configure(world, { primaryColor })` derives the primary's hover,
 pressed and soft tones and the ink on it. The art direction of the world
 (sprites, backgrounds) and the style must agree: a pixel-art world in a
-neon UI reads as two games.
+cyber UI reads as two games.
 
 **The look is the contract.** Once chosen, the look is more than the
 frame: its art blocks (§12) say what every asset of the game is (the
@@ -609,41 +609,41 @@ entry's three checks handed to the critic that reads the frames.
 
 | Slug | Family | Style | Support | UI |
 |---|---|---|---|---|
-| `expressionist-painting` | Paint and line | Expressionist paint | content | `paper` |
+| `expressionist-painting` | Paint and line | Expressionist paint | content | `storybook` |
 | `bold-comic-illustration` | Paint and line | Bold comic illustration | full | `fantasy` |
-| `watercolor-wash` | Paint and line | Watercolour wash | full | `paper` |
+| `watercolor-wash` | Paint and line | Watercolour wash | full | `storybook` |
 | `pixel-3d-hybrid` | Pixel and retro | Pixel sprites in 3D sets | full | `fantasy` |
-| `faceted-low-poly` | 3D rendering | Faceted low poly | full | `paper` |
+| `faceted-low-poly` | 3D rendering | Faceted low poly | full | `storybook` |
 | `sculpted-clay` | 3D rendering | Sculpted clay | content | `cartoon` |
 | `8bit-pixel` | Pixel and retro | Early console pixels | full | `pixel` |
 | `voxel-worlds` | 3D rendering | Voxel worlds | full | `pixel` |
-| `illuminated-manuscript` | Paint and line | Manuscript page | content | `paper` |
+| `illuminated-manuscript` | Paint and line | Manuscript page | content | `storybook` |
 | `rubber-hose-animation` | Paint and line | Rubber-hose cartoon | content | `cartoon` |
-| `pencil-hatching` | Paint and line | Pencil and hatching | full | `paper` |
+| `pencil-hatching` | Paint and line | Pencil and hatching | full | `storybook` |
 | `gothic-contour` | Paint and line | Gothic ornament | content | `fantasy` |
 | `lush-painted-worlds` | Paint and line | Lush opaque painting | content | `fantasy` |
 | `decorative-storybook` | Paint and line | Storybook ornament | content | `cartoon` |
-| `classical-painting-collage` | Paint and line | Old-master collage | content | `paper` |
-| `detailed-doodle` | Paint and line | Fine-line doodle worlds | content | `paper` |
+| `classical-painting-collage` | Paint and line | Old-master collage | content | `storybook` |
+| `detailed-doodle` | Paint and line | Fine-line doodle worlds | content | `storybook` |
 | `black-figure-pottery` | Paint and line | Black-figure pottery | content | `fantasy` |
 | `heavy-ink-shadows` | Paint and line | Heavy ink and shadow | full | `fantasy` |
 | `monochrome-pixel` | Pixel and retro | One-ink pixels | full | `pixel` |
 | `16bit-pixel` | Pixel and retro | Late console pixels | full | `pixel` |
 | `detailed-pixel` | Pixel and retro | Dense illustrative pixels | full | `fantasy` |
-| `luminous-pixel` | Pixel and retro | Glowing pixels on dark ground | full | `neon` |
+| `luminous-pixel` | Pixel and retro | Glowing pixels on dark ground | full | `cyber` |
 | `topdown-tile-pixel` | Pixel and retro | Top-down tile worlds | full | `fantasy` |
 | `low-resolution-3d` | 3D rendering | Low-resolution 3D | full | `scifi` |
 | `coarse-pixel` | Pixel and retro | Minimal low-count pixels | full | `pixel` |
-| `anime-cel-3d` | 3D rendering | Anime cel-shaded 3D | full | `neon` |
+| `anime-cel-3d` | 3D rendering | Anime cel-shaded 3D | full | `cyber` |
 | `inked-comic-3d` | 3D rendering | Inked comic 3D | full | `scifi` |
-| `paper-craft` | Shape and material | Paper craft | content | `paper` |
+| `paper-craft` | Shape and material | Paper craft | content | `storybook` |
 | `miniature-diorama` | 3D rendering | Miniature diorama | content | `cartoon` |
 | `painterly-3d` | 3D rendering | Painterly 3D | content | `fantasy` |
 | `cinematic-realism` | 3D rendering | Cinematic realism | full | `scifi` |
 | `muted-cinematic-3d` | 3D rendering | Muted theatrical light | full | `scifi` |
-| `layered-silhouette` | Shape and material | Layered silhouettes | full | `neon` |
-| `minimal-geometric` | Shape and material | Minimal geometry | full | `neon` |
-| `neon-vector` | Shape and material | Neon vector lines | full | `neon` |
+| `layered-silhouette` | Shape and material | Layered silhouettes | full | `cyber` |
+| `minimal-geometric` | Shape and material | Minimal geometry | full | `cyber` |
+| `neon-vector` | Shape and material | Neon vector lines | full | `cyber` |
 | `monochrome-dither-3d` | 3D rendering | Monochrome dithered 3D | full | `pixel` |
 | `luminous-layered-painting` | 3D rendering | Luminous layered depths | content | `fantasy` |
 

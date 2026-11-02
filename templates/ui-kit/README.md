@@ -18,7 +18,7 @@ Commands: `show:<screen>`, `viewport:<desktop|tablet|phone|landscape>`
 (lays the UI out for that surface through `og.ui.previewViewport`; render at
 `--size 1170x2532` for the 390×844@3 phone), `pad:<up|down|left|right|next|prev|activate|back>`
 (a gamepad, through `og.ui.navigate`), `toast:<text>`, `damage:<hp>`, `heal:<hp>`.
-`style:<default|pixel|cartoon|fantasy|scifi|paper|neon>` dresses every screen
+`style:<default|pixel|cartoon|fantasy|scifi|gilded|storybook|tactical|cyber|kawaii|craft|dread|broadcast>` dresses every screen
 in the engine's placeholder or a built-in style (`assets/looks/kit-<style>.ogt`,
 whose `ui "<style>"` the cook resolves to `@styles/<style>/style.ogt`),
 Each style draws on its own backdrop (`STYLE_BACKDROPS` in `src/main.ts`:
@@ -110,8 +110,12 @@ prototypes only (`og build --publish` refuses it).
 | `cartoon` | casual: cream panels, thick dark outlines, glossy buttons with modest corners, squash on press, pops, Lilita One and Fredoka |
 | `fantasy` | parchment panels, gold filigree corners and flourishes, Cinzel display over Newsreader |
 | `scifi` | HUD: hairline frames with cut corners, corner brackets, scanlines, cyan glow, Orbitron, Chakra Petch, JetBrains Mono numerals |
-| `paper` | minimal: off-white sheets, hand-drawn ink outlines, soft shadows, a vermilion primary, Newsreader and Instrument Sans |
-| `neon` | arcade: dark glass, glowing magenta and cyan tubes, italic Chakra Petch display, Orbitron numerals |
+
+The seed styles `og style new` generated (gilded, storybook, tactical,
+cyber, kawaii, craft, dread, broadcast) draw from tokens and procedural
+dressings with the fonts and icons of `templates/styles/shared/`. The
+paper, neon, bubbly, arcade, inkwash and holo packs were folded into
+storybook, cyber, cartoon, pixel, jade and scifi (the owner, 2026-11-02).
 
 ## Locales
 
