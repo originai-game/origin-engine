@@ -825,6 +825,28 @@ approved concept is read against the nearest one. The concept sets the
 bar for hierarchy, material and art, not pixel positions: the layout may
 differ where the engine's components or the breakpoint require it.
 
+**Approved directions (owner, 2026-11-02).** B, clean sci-fi, is the
+target of the engine's default style and of the UI kit's own frames; A,
+dark fantasy, of the fantasy seed style; C, bright stylised anime, of the
+anime seed style. Each is approved for every screen it was drawn for:
+
+| Screen | Default style and kit | Fantasy seed | Anime seed |
+| --- | --- | --- | --- |
+| HUD (abilities, vitals, resources, minimap, buffs) | `B-hud` | `A-hud` | `C-hud` |
+| Main menu | `B-menu` | `A-menu` | `C-menu` |
+| Gacha banner | `B-gacha` | `A-gacha` | `C-gacha` |
+| Shop | `B-shop` | `A-shop` | `C-shop` |
+| Inventory and paperdoll | `B-inventory` | `A-inventory` | `C-inventory` |
+| Settings | `B-settings` | `A-settings` | `C-settings` |
+| Dialogue | `B-dialogue` | `A-dialogue` | `C-dialogue` |
+
+B sets the default's hierarchy, frames, material and art; its colour
+values stay the design language's (`packages/design`), so the default
+draws B in the tokens' primary, not the concept's cyan. The kit's art
+stays painted, and the showcase frames wear the seed styles with the
+default as one column beside them. The concepts' README lists every
+approved image and the genre sheets that extend the set.
+
 The checklist:
 
 1. **Hierarchy.** Each screen has one dominant element (the key art and
