@@ -59,6 +59,43 @@ impl Probe {
             .map_err(|e| e.reason().to_owned())
     }
 
+    /// A Tune write, as the command channel's `set` does it: `target` is
+    /// `<entity>.<Component>.<field>` or `<Resource>.<field>` and `text`
+    /// its value as a command writes it (`1,2.5,0`, `true`, a variant
+    /// name). The field is written through its schema and remembered as
+    /// tuned, so `save_scene` writes it back.
+    pub fn tune(&mut self, world: &mut World, target: &str, text: &str) -> Result<(), String> {
+        let usage = "set:<entity>.<component>.<field>=<value> or set:<Resource>.<field>=<value>";
+        let value = match Self::set_target_field(world, target) {
+            Some(field) => value::command_value(&field, text)?,
+            None => value::text_json(text)?,
+        };
+        if let Some((resource, field)) = Self::resource_target(world, target) {
+            Self::write_resource_field(world, resource, &field, &value)?;
+            self.tuned.insert(target.to_owned());
+            return Ok(());
+        }
+        let (entity, parameter) = match target.strip_prefix('#') {
+            Some(rest) => {
+                let mut parts = rest.splitn(3, '.');
+                match (parts.next(), parts.next(), parts.next()) {
+                    (Some(i), Some(g), Some(p)) => (format!("#{i}.{g}"), p.to_owned()),
+                    _ => return Err(format!("write `{usage}`")),
+                }
+            }
+            None => {
+                let (entity, parameter) = target
+                    .split_once('.')
+                    .ok_or_else(|| format!("write `{usage}`"))?;
+                (entity.to_owned(), parameter.to_owned())
+            }
+        };
+        let e = self.entity_of(world, &entity)?;
+        self.write_field(world, e, &parameter, &value, false)?;
+        self.tuned.insert(format!("{entity}.{parameter}"));
+        Ok(())
+    }
+
     /// `Resource.field` when the part before the last dot names a resource
     /// the world holds (resource names may themselves hold dots: `og.Camera`).
     pub(super) fn resource_target(world: &World, target: &str) -> Option<(SchemaId, String)> {

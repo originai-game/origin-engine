@@ -7,6 +7,8 @@
 mod ao_resolution;
 mod armed_emitters;
 mod art_contract;
+// It reads the frame recorder, which a publish build has not.
+#[cfg(not(feature = "publish"))]
 mod baked_scenes;
 mod billboards;
 mod camera_projection;
@@ -16,6 +18,8 @@ mod cookie_cap;
 mod display;
 mod drop_shadows;
 mod geometry_uv_repeat;
+#[cfg(not(feature = "publish"))]
+mod inspector;
 mod material_arrays;
 mod mesh_flash;
 mod mid_tick_save;
@@ -27,6 +31,7 @@ mod nav_profiles;
 mod no_renderer;
 mod prefabs;
 mod profile2d;
+mod publish;
 mod raycast_record_cost;
 mod render_interpolation;
 mod render_origin;

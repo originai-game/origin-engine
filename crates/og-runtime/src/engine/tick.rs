@@ -30,7 +30,7 @@ fn step_ms(eng: &Engine, t0: f64) -> f64 {
 
 /// Up to `steps` ticks through the probe (due command steps run on the
 /// way). `Err` names the tick and the failing system.
-fn advance_probe(eng: &Engine, steps: u64) -> Result<u64, String> {
+pub(crate) fn advance_probe(eng: &Engine, steps: u64) -> Result<u64, String> {
     tick_boundary(eng)?;
     eng.render.borrow_mut().capture_ms = 0.0;
     let t0 = rprobe::now_ms();
@@ -108,6 +108,10 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     if ticks > 0 {
         eng.state.borrow_mut().step_ms = step_ms(&eng, t0) / f64::from(ticks);
     }
+    // The inspector's panel, built between the ticks and the frame: its
+    // edits land between ticks (development builds).
+    #[cfg(not(feature = "publish"))]
+    crate::inspector::frame(&eng);
     // Drawn between the last two ticks by the accumulator's fraction
     // (RenderSettings.interpolate), or at the tick on a tick boundary.
     let after = eng.state.borrow().accumulator_ms;

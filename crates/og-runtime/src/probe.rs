@@ -263,6 +263,7 @@ pub(crate) const MODULE_ACTIONS: &[&str] = &[
     "debug",
     "dump_ai",
     "dump_desync",
+    "dump_inspector",
     "dump_lanes",
     "dump_motion",
     "dump_memory",
@@ -273,6 +274,7 @@ pub(crate) const MODULE_ACTIONS: &[&str] = &[
     "dump_room",
     "dump_story",
     "dump_stream",
+    "inspect",
     "lanes",
     "locale",
     "terrain_stream",
@@ -384,6 +386,11 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
     // build serves no save_scene).
     #[cfg(not(feature = "publish"))]
     probe.set_scene_writer(Box::new(super::scene_save::RuntimeWriter { engine: id }));
+    // The inspector takes the input over its panel (development builds).
+    #[cfg(not(feature = "publish"))]
+    probe.set_input_filter(Box::new(move |world, event| {
+        super::inspector::filter(id, world, event)
+    }));
     for (name, usage, doc) in commands {
         register_one(&mut probe, id, &name, &usage, &doc)?;
     }

@@ -46,6 +46,8 @@ mod fx;
 mod geometry;
 mod glyphs;
 mod i18n;
+#[cfg(not(feature = "publish"))]
+mod inspector;
 mod interpolate;
 mod lanes;
 mod lazy;

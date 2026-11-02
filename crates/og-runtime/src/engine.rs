@@ -18,6 +18,8 @@ pub(crate) use dispatch::{
 pub use dispatch::{begin_bundle, command};
 use dispatch::{run_condition, run_hook, run_system};
 mod tick;
+#[cfg(not(feature = "publish"))]
+pub(crate) use tick::advance_probe;
 pub use tick::{advance, answer_call, call_rpc, frame, take_log, take_outputs};
 mod resources;
 use crate::{
@@ -690,6 +692,8 @@ pub(crate) fn register_module_actions(probe: &mut og_probe::Probe, engine_id: u3
     super::modules::docs::register_commands(probe, engine_id);
     super::probe::register_render_dump(probe, engine_id);
     super::probes::register_bake_dump(probe, engine_id);
+    #[cfg(not(feature = "publish"))]
+    super::inspector::register(probe, engine_id);
 }
 
 #[cfg(test)]

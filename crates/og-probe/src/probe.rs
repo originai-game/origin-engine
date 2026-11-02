@@ -265,6 +265,8 @@ pub struct Probe {
     before_tick: Option<AfterTickFn>,
     /// The host's tick gate ([`Probe::set_gate`]).
     gate: Option<GateFn>,
+    /// The host's input filter ([`Probe::set_input_filter`]).
+    filter: Option<InputFilterFn>,
     /// After a rollback's rewind (the gate moved `Time` back): the tick the
     /// world had reached. The ticks below it run again: they take no share
     /// of a frame's ticks, and the input's edges, which belong to the
@@ -279,6 +281,13 @@ pub struct Probe {
 /// clock it moves to is the one every peer shares, so the scheduled steps
 /// stay on their ticks ([`Probe::step`]), unlike a game's own restore.
 pub type GateFn = Box<dyn FnMut(&mut World) -> bool>;
+
+/// The host's input filter: asked for every input event before the world
+/// sees it (the host's own and a script's alike); true takes the event,
+/// so the world never receives it (a development tool drawn over the game,
+/// the inspector, taking the pointer over its panel). A taken event counts
+/// as accepted.
+pub type InputFilterFn = Box<dyn FnMut(&World, &InjectedInput) -> bool>;
 
 /// The host's end-of-tick hook: called after every tick the probe takes,
 /// with the world between ticks (a game's deferred restore lands here).
@@ -499,6 +508,7 @@ impl Probe {
             after_tick: None,
             before_tick: None,
             gate: None,
+            filter: None,
             replay_until: 0,
         })
     }
@@ -572,6 +582,12 @@ impl Probe {
     /// `advance` stops, while it holds.
     pub fn set_gate(&mut self, gate: GateFn) {
         self.gate = Some(gate);
+    }
+
+    /// The host's input filter ([`InputFilterFn`]): an event it takes never
+    /// reaches the world.
+    pub fn set_input_filter(&mut self, filter: InputFilterFn) {
+        self.filter = Some(filter);
     }
 
     /// Whether the gate holds the next tick. A gate that moved `Time`
@@ -1084,7 +1100,8 @@ impl Probe {
     }
 
     fn deliver(&mut self, world: &mut World, event: &InjectedInput) -> bool {
-        let accepted = self.input.inject_at(world, event, self.stamp);
+        let taken = self.filter.as_mut().is_some_and(|f| f(world, event));
+        let accepted = taken || self.input.inject_at(world, event, self.stamp);
         if accepted {
             match event {
                 InjectedInput::Pointer { x, y, id: 0, .. } | InjectedInput::Wheel { x, y, .. } => {

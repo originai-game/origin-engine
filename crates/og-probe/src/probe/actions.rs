@@ -646,39 +646,11 @@ impl Probe {
                 Ok(())
             }
             "set" => {
-                let usage =
-                    "set:<entity>.<component>.<field>=<value> or set:<Resource>.<field>=<value>";
-                let (target, text) = joined
-                    .split_once('=')
-                    .ok_or_else(|| format!("write `{usage}`"))?;
-                let value = match Self::set_target_field(world, target) {
-                    Some(field) => value::command_value(&field, text)?,
-                    None => value::text_json(text)?,
-                };
-                if let Some((resource, field)) = Self::resource_target(world, target) {
-                    Self::write_resource_field(world, resource, &field, &value)?;
-                    self.tuned.insert(target.to_owned());
-                    return Ok(());
-                }
-                let (entity, parameter) = match target.strip_prefix('#') {
-                    Some(rest) => {
-                        let mut parts = rest.splitn(3, '.');
-                        match (parts.next(), parts.next(), parts.next()) {
-                            (Some(i), Some(g), Some(p)) => (format!("#{i}.{g}"), p.to_owned()),
-                            _ => return Err(format!("write `{usage}`")),
-                        }
-                    }
-                    None => {
-                        let (entity, parameter) = target
-                            .split_once('.')
-                            .ok_or_else(|| format!("write `{usage}`"))?;
-                        (entity.to_owned(), parameter.to_owned())
-                    }
-                };
-                let e = self.entity_of(world, &entity)?;
-                self.write_field(world, e, &parameter, &value, false)?;
-                self.tuned.insert(format!("{entity}.{parameter}"));
-                Ok(())
+                let (target, text) = joined.split_once('=').ok_or_else(|| {
+                    "write `set:<entity>.<component>.<field>=<value> or set:<Resource>.<field>=<value>`"
+                        .to_string()
+                })?;
+                self.tune(world, target, text)
             }
             #[cfg(not(feature = "publish"))]
             "get" => {

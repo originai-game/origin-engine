@@ -610,6 +610,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     // Anchored UI moved with its entity's drawn place (`super::interpolate`).
     let shifts = super::interpolate::ui_shifts(rs, &mut h, camera.as_deref());
     super::modules::emit(rs, &shifts);
+    // The inspector's panel over everything (development builds).
+    #[cfg(not(feature = "publish"))]
+    crate::inspector::emit(rs);
     super::interpolate::end(rs, &mut h);
     rebase(&mut rs.scene, origin, look_along);
     rs.hierarchy = h;

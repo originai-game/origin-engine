@@ -310,6 +310,10 @@ pub(crate) struct RenderState {
     /// Each (font, character) a text drew, judged once a run: in the
     /// font, or warned of on the tick it was first drawn (`super::glyphs`).
     pub glyphs_judged: std::collections::BTreeSet<(FontHandle, char)>,
+    /// The inspector (development builds): its panel is drawn over the
+    /// frame, above the game's UI.
+    #[cfg(not(feature = "publish"))]
+    pub inspector: Option<Box<super::inspector::Inspector>>,
     /// The feel modules' drawing state (`super::feel`).
     pub feel: super::feel::FeelRender,
     /// The atmosphere's and the physics extras' drawing state (`super::atmosphere`).
@@ -376,6 +380,8 @@ impl RenderState {
             runtime_fonts: IdMap::new(),
             notes: Vec::new(),
             glyphs_judged: Default::default(),
+            #[cfg(not(feature = "publish"))]
+            inspector: None,
             feel: Default::default(),
             atmo: Default::default(),
             env: Default::default(),
