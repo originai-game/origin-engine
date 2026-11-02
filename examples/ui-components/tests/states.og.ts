@@ -86,8 +86,7 @@ export default playtest({
       t.ok(roots.every((a, i) => roots.every((b, j) => i >= j || !overlap(a, b))), `${file}: none covers another`);
     }
     // The player's and the boss's frames never share space on a phone at 200 %: every part of one clear of every part of the other.
-    // The frames' scrims are soft shadows that bleed past them by design; what must not meet is their content.
-    const parts = (file: string, root: string) => els(run, file).filter((e) => e.path.startsWith(`${root}/`) && !/\/Scrim/.test(e.path) && e.width > 0 && e.height > 0);
+    const parts = (file: string, root: string) => els(run, file).filter((e) => e.path.startsWith(`${root}/`) && e.width > 0 && e.height > 0);
     const meet = (a: El, b: El) => a.x < b.x + b.width - 0.5 && b.x < a.x + a.width - 0.5 && a.y < b.y + b.height - 0.5 && b.y < a.y + a.height - 0.5;
     const player = parts("framesPhone200.json", "PlayerHud");
     const boss = parts("framesPhone200.json", "TargetHud");

@@ -29,8 +29,6 @@ function nameHue(name: string): Rgba {
 }
 
 const SLATE: Rgba = { r: 0.36, g: 0.4, b: 0.47, a: 1 };
-/** The HUD's dark neutral (#0B0D10): scrims and wells, never glass. */
-const INK_DARK: Rgba = { r: 0.043, g: 0.051, b: 0.063, a: 1 };
 
 /** A skull drawn from shapes (cranium, jaw, eyes), the same in every style whatever its icon set has. */
 function skull(side: number): void {
@@ -119,27 +117,6 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
       part: sel("UnitFrame", "frame", size, hostile ? "hostile" : null, desc.targeted ? "targeted" : null, dead ? "dead" : null),
       partClass: "hud",
     });
-    // Under the name and bars, from the portrait's centre: a dark neutral ramp (not glass, no blur of the scene),
-    // strongest at the portrait and falling to nothing past the bars' end, with no edge to read as a card. It holds
-    // their text at 3:1 or better on a white ground (og-ui blends in linear light, so 72 % reads as about 45 %).
-    const from = u(6) + pd / 2;
-    // A horizontal ramp that fades in under the portrait and out past the bars, feathered above and below by thin
-    // strips of falling alpha: no edge reads anywhere, and it carries no blur of the scene.
-    const bleed = u(12);
-    const rh = kit.bounds(`${kit.openPath()}`)?.height ?? u(m.portrait) + u(12);
-    const sw = Math.max(0, frameW - u(6));
-    const inAt = Math.min(0.4, pd / Math.max(1, sw));
-    const ramp = (k: number): Api.Fill => vgrad([[0, lit(INK_DARK, 0)], [inAt, lit(INK_DARK, 0.78 * k)], [0.7, lit(INK_DARK, 0.66 * k)], [1, lit(INK_DARK, 0)]], desc.reverse ? 270 : 90);
-    const side = (top: number) => absolute(desc.reverse ? { end: u(6), top } : { start: u(6), top });
-    const feather = 6;
-    const fh = bleed / feather;
-    leaf("Scrim", { width: px(sw), height: px(rh), part: sel("UnitFrame", "scrim") }, { fills: [ramp(1)] }, side(0));
-    for (let i = 0; i < feather; i++) {
-      const t = (i + 0.5) / feather;
-      const k = 1 - t * t * (3 - 2 * t);
-      leaf(kit.idi("ScrimTop", i), { width: px(sw), height: px(fh) }, { fills: [ramp(k)] }, side(-fh * (i + 1)));
-      leaf(kit.idi("ScrimBottom", i), { width: px(sw), height: px(fh) }, { fills: [ramp(k)] }, side(rh + fh * i));
-    }
     // The placeholder's ground: the unit's hue, or plain slate when it is dead or offline (never a tinted state).
     const ground = dead || offline ? SLATE : nameHue(name);
     const portrait = () => {
@@ -220,7 +197,7 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
     if (!desc.reverse) portrait();
     kit.column("Bars", { gap: u(3), width: { kind: "grow" } }, () => {
       kit.row("Head", { gap: tk.xs, cross: "center", width: { kind: "grow" } }, () => {
-        text("Name", name, { step: ts(m.name), font: "display", color: dead || offline ? token("ink", 0.62) : hostile ? lit(mix(role("danger"), WHITE, 0.15)) : token("ink"), nowrap: true, ellipsis: true, width: { kind: "grow" }, soft: true });
+        text("Name", name, { step: ts(m.name), font: "display", color: dead || offline ? token("ink", 0.84) : hostile ? lit(mix(role("danger"), WHITE, 0.15)) : token("ink"), nowrap: true, ellipsis: true, width: { kind: "grow" }, soft: true });
         if (desc.combat) icon("Combat", "crossed-swords", u(14), lit(role("danger")), "In combat");
       });
       if (desc.title && size !== "small") {
@@ -233,7 +210,7 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
         const tl = stepSize(tStep).line;
         box("TitleRow", { height: px(Math.ceil(want * 1.25)), width: { kind: "grow" }, cross: "start" }, undefined, () => {
           // Scaled about its own centre, then moved back so it keeps the name's start and sits at the row's top.
-          text("Title", desc.title ?? "", { step: tStep, color: token("ink", 0.72), nowrap: true, ellipsis: true, width: px(tw), soft: true },
+          text("Title", desc.title ?? "", { step: tStep, color: token("ink", 0.86), nowrap: true, ellipsis: true, width: px(tw), soft: true },
             absolute(desc.reverse ? { end: 0, top: 0 } : { start: 0, top: 0 }, fit.transform ? { transform: { scaleX: fit.k, scaleY: fit.k, x: (desc.reverse ? 1 : -1) * ((1 - fit.k) * tw) / 2, y: -((1 - fit.k) * tl) / 2 } } : {}));
         });
       }
@@ -346,7 +323,7 @@ function cell(id: string, m: Api.RaidMember, w: number, h: number): Api.Response
   if (hp > 0) leaf("Fill", { width: px(hp * room), height: pct(1), part: sel("RaidFrames", "fill", low ? "low" : null) }, fillDraw(fillInk, 2), absolute({ start: stripe, top: 0 }));
   // An incoming heal: a translucent extension at the fill's end, under the name.
   const hw = Math.min(heal, 1 - hp);
-  if (hw > 0) leaf("Heal", { width: px(hw * room), height: pct(1), part: sel("RaidFrames", "heal") }, { fills: [solid(lit(mix(fillInk, WHITE, 0.3), 0.4))] }, absolute({ start: at(hp), top: 0 }));
+  if (hw > 0) leaf("Heal", { width: px(hw * room), height: pct(1), part: sel("RaidFrames", "heal") }, { fills: [solid(lit(mix(fillInk, WHITE, 0.6), 0.5))] }, absolute({ start: at(hp), top: 0 }));
   if (absorb > 0) {
     // The absorb: the player frame's white-blue overlay past the health (and heal); what overflows lies back over the fill's end.
     const past = Math.min(absorb, 1 - hp - hw);
@@ -354,6 +331,13 @@ function cell(id: string, m: Api.RaidMember, w: number, h: number): Api.Response
     const paint = (a: number): Api.Fill[] => [solid(lit({ r: 0.82, g: 0.93, b: 1, a: 1 }, a)), vgrad([[0, lit(WHITE, 0.45)], [0.5, lit(WHITE, 0.1)]])];
     if (past > 0) leaf("Absorb", { width: px(past * room), height: pct(1), part: sel("RaidFrames", "absorb") }, { fills: paint(0.62) }, absolute({ start: at(hp + hw), top: 0 }));
     if (over > 0.001) leaf("Overabsorb", { width: px(over * room), height: pct(1), part: sel("RaidFrames", "absorb", "over") }, { fills: paint(0.45) }, absolute({ start: at(hp - over), top: 0 }));
+  }
+  // Where a pale absorb or heal lies under the name, a short soft band (as a bar's inside value has) keeps its ink.
+  const nameEnd = (u(4) + (ROLE_ICON[m.role ?? "none"] ? Math.max(10, Math.round(h * 0.3)) + u(3) : 0) + (m.name ?? "").length * stepSize(ts(11)).size * 0.6) / Math.max(1, room);
+  if ((absorb > 0 || hw > 0) && hp + (absorb > 0 ? 0 : hw) < nameEnd + 0.04) {
+    leaf("NameBand", { width: px(Math.min(room, nameEnd * room + u(16))), height: pct(1), part: sel("RaidFrames", "band") }, {
+      fills: [vgrad([[0, lit(BLACK, 0.55)], [0.8, lit(BLACK, 0.5)], [1, lit(BLACK, 0)]], 90)],
+    }, absolute({ start: stripe, top: 0 }));
   }
   leaf("Class", { width: px(stripe), height: pct(1), part: sel("RaidFrames", "class") }, {
     shape: { kind: "rect", radii: [3, 0, 0, 3] },
@@ -365,9 +349,9 @@ function cell(id: string, m: Api.RaidMember, w: number, h: number): Api.Response
     const roleName = ROLE_ICON[m.role ?? "none"];
     if (roleName) icon("Role", roleName, Math.max(10, Math.round(h * 0.3)), token("ink", out ? 0.62 : 0.85), m.role ?? "");
     // The name first; the status takes what room is left at the cell's end and is cut before the name is.
-    const nameW = Math.ceil((m.name ?? "").length * stepSize(ts(11)).size * 0.6) + 2;
-    text("Name", m.name ?? "", { step: ts(11), color: ink, nowrap: true, ellipsis: true, width: out ? px(nameW) : { kind: "grow" }, soft: true });
-    if (out) text("Status", m.dead ? "Dead" : "Offline", { step: ts(9), color: token("ink", 0.62), nowrap: true, ellipsis: true, align: "end", width: { kind: "grow" }, soft: true });
+    // A status word is never cut: it keeps its width and the name is shortened first.
+    text("Name", m.name ?? "", { step: ts(11), color: ink, nowrap: true, ellipsis: true, width: { kind: "grow" }, soft: true });
+    if (out) text("Status", m.dead ? "Dead" : "Offline", { step: ts(9), color: token("ink", 0.62), nowrap: true, soft: true });
   });
   apply(absolute({ start: 0, top: 0, bottom: 0 }));
   return close({
