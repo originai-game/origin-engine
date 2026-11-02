@@ -77,7 +77,7 @@ enum Target {
     Ornament(&'static str),
 }
 
-const DEFAULTS: [Default; 11] = [
+const DEFAULTS: [Default; 13] = [
     Default {
         part: "panel",
         target: Target::Frame("Panel.frame"),
@@ -144,6 +144,18 @@ const DEFAULTS: [Default; 11] = [
         part: "flourish",
         target: Target::Ornament("flourish"),
         size: [64, 24],
+        insets: [0; 4],
+    },
+    Default {
+        part: "crest",
+        target: Target::Ornament("crest"),
+        size: [64, 32],
+        insets: [0; 4],
+    },
+    Default {
+        part: "edge",
+        target: Target::Ornament("edge"),
+        size: [16, 64],
         insets: [0; 4],
     },
 ];
@@ -287,7 +299,7 @@ pub fn run(args: &[&str]) -> Result<(), String> {
     }
     for s in &stale {
         println!(
-            "og style art: {s} was painted for an older request (its size, insets or dressings changed): repaint it or update its provenance"
+            "og style art: {s} was painted for an older request (its size, insets, dressings or note changed): repaint it or update its provenance"
         );
     }
     if !pending.is_empty() {
@@ -333,7 +345,9 @@ pub fn run(args: &[&str]) -> Result<(), String> {
                 [v[0], v[1], v[2], v[3]]
             })
             .unwrap_or(s.insets);
-        let (cells, derived) = convert(s, img, pixel)?;
+        let (cells, derived, size) = convert(s, img, pixel)?;
+        // The insets are the requested cell's (corners keep their CSS px
+        // when the art's middle is longer or shorter).
         let px = |f: f64, len: u32| (f * f64::from(len)).round() as u32;
         let mut ins = [
             px(insets[0], s.size[0]),
@@ -346,8 +360,10 @@ pub fn run(args: &[&str]) -> Result<(), String> {
             for v in &mut ins {
                 *v = (*v).max(1);
             }
-            ins[2] = ins[2].min(s.size[0].saturating_sub(ins[0] + 1)).max(1);
-            ins[3] = ins[3].min(s.size[1].saturating_sub(ins[1] + 1)).max(1);
+            ins[0] = ins[0].min(size[0].saturating_sub(3) / 2).max(1);
+            ins[1] = ins[1].min(size[1].saturating_sub(3) / 2).max(1);
+            ins[2] = ins[2].min(size[0].saturating_sub(ins[0] + 1)).max(1);
+            ins[3] = ins[3].min(size[1].saturating_sub(ins[1] + 1)).max(1);
         }
         let mut tos = Vec::new();
         for (cell, images) in cells {
@@ -372,7 +388,7 @@ pub fn run(args: &[&str]) -> Result<(), String> {
             "slot": s.name,
             "from": s.file,
             "source": [img.width(), img.height()],
-            "size": s.size,
+            "size": size,
             "insets": ins,
             "to": tos,
             "derived": derived,
@@ -443,7 +459,20 @@ pub fn run(args: &[&str]) -> Result<(), String> {
                 .map_err(|e| format!("{}: {e}", settings.display()))?;
         }
     }
-    let text = packed_style(doc, &pieces, &slots, (w, h));
+    let mut text = packed_style(doc, &pieces, &slots, (w, h));
+    // The style's leading comments (what it is, where its art comes from)
+    // stay: the text format's writer keeps none.
+    let comments: Vec<&str> = style_text
+        .lines()
+        .skip_while(|l| *l != "---")
+        .skip(1)
+        .take_while(|l| l.trim_start().starts_with('#'))
+        .collect();
+    if !comments.is_empty()
+        && let Some(at) = text.find("---\n")
+    {
+        text.insert_str(at + 4, &(comments.join("\n") + "\n"));
+    }
     og_ui::parse_style(&text).map_err(|e| format!("the packed style does not parse: {e}"))?;
     std::fs::write(&style_path, &text).map_err(|e| format!("{}: {e}", style_path.display()))?;
     let sheet = review_sheet(&pieces);
@@ -535,10 +564,20 @@ fn complete_requests(old: &Json, name: &str, doc: &Document) -> (Json, Vec<Slot>
             continue;
         };
         let o = s.as_object_mut().expect("a slot is an object");
+        // An ornament the style already cuts keeps its region's size, so the
+        // size its line draws at keeps its proportions.
+        let region = match d.target {
+            Target::Ornament(key) => doc.body.get(key).and_then(|e| {
+                let n = |i: usize| e.values.get(i)?.as_number().map(|n| n.as_f64() as u32);
+                Some([n(2)?, n(3)?])
+            }),
+            _ => None,
+        };
         let size = o
             .get("size")
             .and_then(Json::as_array)
             .and_then(|a| Some([a.first()?.as_u64()? as u32, a.get(1)?.as_u64()? as u32]))
+            .or(region)
             .unwrap_or(d.size);
         let mut px = d.insets;
         if pill && matches!(d.target, Target::Button(_)) || pill && d.part == "field" {
@@ -630,14 +669,14 @@ fn load(path: &Path) -> Result<RgbaImage, String> {
         .map_err(|e| format!("{}: {e}", path.display()))
 }
 
-/// The slot's cells at each density, by cell index, and the states derived
-/// (a button delivered as one cell).
+/// The slot's cells at each density, by cell index, the states derived (a
+/// button delivered as one cell) and the cell's size in CSS px.
 #[allow(clippy::type_complexity)]
 fn convert(
     s: &Slot,
     img: &RgbaImage,
     pixel: bool,
-) -> Result<(Vec<(usize, [RgbaImage; 3])>, Vec<&'static str>), String> {
+) -> Result<(Vec<(usize, [RgbaImage; 3])>, Vec<&'static str>, [u32; 2]), String> {
     let states = match s.target {
         Target::Button(_) => BUTTON_STATES.len() as u32,
         _ => 1,
@@ -671,16 +710,27 @@ fn convert(
         .iter()
         .map(|c| image::imageops::crop_imm(c, x0, y0, x1 - x0, y1 - y0).to_image())
         .collect();
+    // The art keeps its own proportions: a nine-slice keeps its corners'
+    // CSS px and its middle takes the difference, along the side it is
+    // longer on; an ornament fits inside its box.
     let got = f64::from(x1 - x0) / f64::from(y1 - y0);
-    if (got / cell_aspect - 1.0).abs() > 0.12 {
+    let [w, h] = s.size;
+    let size = if (got / cell_aspect - 1.0).abs() <= 0.12 {
+        s.size
+    } else if matches!(s.target, Target::Ornament(_)) == (got > cell_aspect) {
+        [w, ((f64::from(w) / got).round() as u32).max(1)]
+    } else {
+        [((f64::from(h) * got).round() as u32).max(1), h]
+    };
+    if size != s.size {
         println!(
-            "og style art: {} is {:.2}:1 where its cell is {:.2}:1; its corners are stretched to fit: paint it at the requested size",
-            s.name, got, cell_aspect
+            "og style art: {} is {:.2}:1 where its cell is {:.2}:1: packed at {}×{} CSS px",
+            s.name, got, cell_aspect, size[0], size[1]
         );
     }
     let mut out = Vec::new();
     for (i, c) in trimmed.iter().enumerate() {
-        out.push((i, densities(c, s.size, pixel)));
+        out.push((i, densities(c, size, pixel)));
     }
     let mut derived = Vec::new();
     if states > 1 && n == 1 {
@@ -691,7 +741,7 @@ fn convert(
             derived.push(*state);
         }
     }
-    Ok((out, derived))
+    Ok((out, derived, size))
 }
 
 /// The box of pixels above a faint alpha: x0, y0, x1, y1 (exclusive).
@@ -878,9 +928,9 @@ fn put(atlas: &mut RgbaImage, img: &RgbaImage, at: (u32, u32), e: u32) {
     }
 }
 
-/// The mean of a piece's centre (between its insets) in linear light over
-/// its coverage, and its mean alpha: the `tone` a widget reads its label
-/// ink against.
+/// The mean of a piece's centre (the middle half of what lies between its
+/// insets) in linear light over its coverage, and its mean alpha: the
+/// `tone` a widget reads its label ink against.
 fn tone(img: &RgbaImage, insets: [u32; 4]) -> [f32; 4] {
     let lin = |v: f32| {
         if v <= 0.04045 {
@@ -894,6 +944,15 @@ fn tone(img: &RgbaImage, insets: [u32; 4]) -> [f32; 4] {
     let (x1, y1) = (
         w.saturating_sub(insets[2]).max(x0 + 1),
         h.saturating_sub(insets[3]).max(y0 + 1),
+    );
+    // The central half of the middle, each way: where a label sits, not the
+    // bevels and shading along the middle's own edges.
+    let (qx, qy) = ((x1 - x0) / 4, (y1 - y0) / 4);
+    let (x0, y0, x1, y1) = (
+        x0 + qx,
+        y0 + qy,
+        (x1 - qx).max(x0 + qx + 1),
+        (y1 - qy).max(y0 + qy + 1),
     );
     let (mut rgb, mut alpha, mut n) = ([0.0f64; 3], 0.0f64, 0.0f64);
     for y in y0..y1 {
@@ -941,7 +1000,21 @@ fn packed_style(mut doc: Document, pieces: &[Piece], slots: &[Slot], size: (u32,
                 let (w, h) = p.images[0].dimensions();
                 match body.entries.iter_mut().find(|e| e.key == key) {
                     Some(e) => {
-                        let rest: Vec<Value> = e.values.iter().skip(4).cloned().collect();
+                        // The size it draws at keeps the scale it had to its region,
+                        // in the new region's proportions.
+                        let n = |i: usize| {
+                            e.values
+                                .get(i)
+                                .and_then(Value::as_number)
+                                .map(Number::as_f64)
+                        };
+                        let mut rest: Vec<Value> = e.values.iter().skip(4).cloned().collect();
+                        if let (Some(rw), Some(rh), Some(dw), Some(dh)) = (n(2), n(3), n(4), n(5)) {
+                            let k = (dw / rw).min(dh / rh);
+                            let r = |v: u32| num((f64::from(v) * k * 10.0).round() / 10.0);
+                            rest[0] = r(w);
+                            rest[1] = r(h);
+                        }
                         e.values = region(p).to_vec();
                         e.values.extend(rest);
                     }
