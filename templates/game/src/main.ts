@@ -198,6 +198,8 @@ export default og.game({
     // Facing east (+X), towards the wall: its view cone is 120° around the way it faces until it moves.
     world.set(guard, og.Transform, { quaternion: { x: 0, y: Math.SQRT1_2, z: 0, w: Math.SQRT1_2 } });
     world.insert(guard, og.NavAgent, { nav: yard.mesh, speed: 1.5, acceleration: 12, radius: 0.4, faceMovement: true, turnSpeed: 8 });
+    // og.Crowd: ORCA avoidance, so the guards you add pass each other and keep off the navmesh's edges (og-ai §2).
+    world.insert(guard, og.Crowd, {});
     world.insert(guard, og.AiAgent, { behaviour: mind.behaviour });
     world.insert(guard, og.Perception, { sight: 9, fov: 120, eyeHeight: 1.6, team: 2 });
     world.insert(guard, Alarm);

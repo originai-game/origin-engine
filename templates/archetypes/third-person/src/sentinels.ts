@@ -41,6 +41,8 @@ export function spawnSentinels(world: World): void {
     const at = { x: first.x, y: ground(world, g, first.x, first.z).height, z: first.z };
     const s = must(world.spawn({ name: `sentinel-${i}`, position: at }));
     must(world.insert(s, og.NavAgent, { nav: g.nav as never, target: at, seeking: false, speed: 1.6, acceleration: 12, radius: 0.45, stopDistance: 0.3, faceMovement: true, turnSpeed: 6 }));
+    // ORCA: sentinels whose rounds cross pass each other instead of pushing through (og-ai §2).
+    must(world.insert(s, og.Crowd, {}));
     must(world.insert(s, og.AiAgent, { behaviour: mind.behaviour, active: true, thinkEvery: 2 }));
     must(world.insert(s, og.Perception, { sight: 13, fov: 120, eyeHeight: 1.6, occlude: true, team: 2, memory: 3 }));
     must(world.insert(s, Sentinel, { index: i }));

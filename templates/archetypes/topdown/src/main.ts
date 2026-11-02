@@ -108,6 +108,8 @@ function start(world: World): void {
         must(world.insert(s, Slime, { bob: clip(sheets.slime, "bob"), hurt: clip(sheets.slime, "hurt") }));
         // og.nav walks it (writing its velocity), og.ai decides where; it sees the hero all round, not through walls.
         must(world.insert(s, og.NavAgent, { nav: grid, speed: 1.6, acceleration: 30, radius: 0.35, stopDistance: 0.1, repathTicks: 20 }));
+        // ORCA: slimes closing on the hero together spread round it instead of stacking (og-ai §2).
+        must(world.insert(s, og.Crowd, {}));
         must(world.insert(s, og.AiAgent, { behaviour: mind.behaviour }));
         must(world.insert(s, og.Perception, { sight: 5, fov: 360, eyeHeight: 0, occluders: WALLS, team: 2, memory: 3 }));
         game.enemyHp = must(world.get(s, Slime)).hp;
