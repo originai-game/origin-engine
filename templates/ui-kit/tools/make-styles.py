@@ -1368,6 +1368,14 @@ def main():
         parts, s = pack()
         d = os.path.join(STYLES, s["name"])
         os.makedirs(d, exist_ok=True)
+        # A painted pack (art/, docs/art.md §2.7) is og style art's: its
+        # procedural atlas becomes the base the painted pieces pack below,
+        # and `og style art <pack>` rewrites its atlases and style file.
+        if os.path.isdir(os.path.join(d, "art")):
+            build_atlas(parts).save(os.path.join(d, "art", "base.png"), optimize=True)
+            icon_sheet(s["icons"]).save(os.path.join(d, "icons.png"), optimize=True)
+            print("wrote", os.path.join(d, "art", "base.png"), "(painted: now og style art", d + ")")
+            continue
         build_atlas(parts).save(os.path.join(d, "atlas.png"), optimize=True)
         icon_sheet(s["icons"]).save(os.path.join(d, "icons.png"), optimize=True)
         with open(os.path.join(d, "style.ogt"), "w") as f:

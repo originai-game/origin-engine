@@ -6,3 +6,4 @@ tests/install/node_modules/
 .DS_Store
 .amp/portals/*
 /dist/
+templates/styles/*/art/sheet.png
