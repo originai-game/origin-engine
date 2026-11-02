@@ -275,8 +275,10 @@ fn hashes_are_pinned_without_prefabs_and_stable_across_a_re_cook_with_them() {
 /// 1069aa19a26d8691; then version 15 from e83b148c0f38efb5; then R9's
 /// og.Blendshapes version 2 (`influences`) from 46cc8d6517681608, then
 /// R6's og.TerrainScatter impostor fields from 5136c2039d7ed9ec and
-/// og.Model.sway from c9cc80ca8f3b2c20).
-const BY_HAND_HASH: &str = "e1f4faa4b95c9f64";
+/// og.Model.sway from c9cc80ca8f3b2c20, then R5's lazy og.Water from
+/// e1f4faa4b95c9f64: a world without water no longer has the type, so the
+/// sea's fields leave this hash alone).
+const BY_HAND_HASH: &str = "f075e6bd81233636";
 
 #[test]
 fn apply_back_and_revert_round_trip_in_the_text() {

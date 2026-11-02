@@ -11,6 +11,11 @@
 // outside it). Drawn after the opaque scene and the sky, before
 // transparent meshes, writing depth. Prepended by frame.wgsl and
 // lighting.wgsl.
+//
+// R5: a sea (Water::wind) displaces the grid by og_core::ocean's Gerstner
+// waves over the absolute world's xz, the vertices taking the waves the
+// grid can hold and the fragments every wave's normal, whitecaps where the
+// crests bunch; a flow map (Water::flow_map) turns the flow per point.
 
 struct WaterUniform {
   model: mat4x4<f32>,
@@ -24,8 +29,11 @@ struct WaterUniform {
   extra: vec4<f32>,       // x: shadows, y: 1 with the planar reflection, z: F0, w: reflection bias
   under: vec4<f32>,       // rgb: the underwater colour, w: three.js Water's glint (0: the half-vector highlight)
   normals: vec4<f32>,     // x: the normal map's repeats, yz: its flow (0: the lake's layers), w: 1 with a normal map
-  ao: vec4<f32>,          // x: PostEffects.aoDirect, how much the screen AO darkens the reflection and the body (0: not at all)
+  ao: vec4<f32>,          // x: PostEffects.aoDirect, how much the screen AO darkens the reflection and the body (0: not at all), y: 1 with a flow map, z: 1 over a mesh
   layers: array<vec4<f32>, 2>,  // the lake's four layers' uv at the frame's origin, whole repeats dropped (xy, zw; origin.rs)
+  ocean: vec4<f32>,       // x: 1 with a sea, y: the grid's cell (m), z: its choppiness
+  // Per wave: (k d.x, k d.z, amplitude, phase at the frame's origin), (lean d.x, lean d.z, k lean, 0) (water.rs ocean_gpu).
+  swell: array<vec4<f32>, 32>,
 };
 
 @group(1) @binding(0) var<uniform> water: WaterUniform;
@@ -41,6 +49,8 @@ struct WaterUniform {
 @group(1) @binding(7) var ripple_sampler: sampler;
 // The frame's screen-space AO (white without one).
 @group(1) @binding(8) var ao_tex: texture_2d<f32>;
+// The flow map (Water::flow_map): rg the flow's direction * 0.5 + 0.5.
+@group(1) @binding(9) var flow_tex: texture_2d<f32>;
 
 struct WaterOut {
   @builtin(position) clip: vec4<f32>,
@@ -50,7 +60,41 @@ struct WaterOut {
   @location(3) slope: f32,
   // Where the normal map is read: the mesh's uv, or the grid's metres.
   @location(4) uv: vec2<f32>,
+  // The sea's rest point (frame xz) the displaced vertex came from.
+  @location(5) rest: vec2<f32>,
 };
+
+// The sea's displacement (x, height, z) at rest point p (frame xz): the
+// waves at least four cells long (`cell`; 0: every wave), the shorter
+// left to the fragments' normals.
+fn ocean_displace(p: vec2<f32>, cell: f32) -> vec3<f32> {
+  var d = vec3<f32>(0.0);
+  for (var i = 0u; i < 16u; i++) {
+    let a = water.swell[2u * i];
+    let b = water.swell[2u * i + 1u];
+    let keep = 1.0 - smoothstep(0.785, 1.571, length(a.xy) * cell);
+    let th = dot(a.xy, p) + a.w;
+    d += vec3<f32>(b.x * cos(th), a.z * sin(th), b.y * cos(th)) * keep;
+  }
+  return d;
+}
+
+// The sea's normal at rest point p (frame xz; Gerstner's, GPU Gems 1 §1)
+// and, as w, how far its crests bunch there (1 - Σ k lean sin: the
+// surface's area left, whitecaps under about a half), each wave faded
+// where it is shorter than four of the pixel's `footprint` (m).
+fn ocean_normal(p: vec2<f32>, footprint: f32) -> vec4<f32> {
+  var n = vec3<f32>(0.0, 1.0, 0.0);
+  for (var i = 0u; i < 16u; i++) {
+    let a = water.swell[2u * i];
+    let b = water.swell[2u * i + 1u];
+    let keep = 1.0 - smoothstep(0.785, 1.571, length(a.xy) * footprint);
+    let th = dot(a.xy, p) + a.w;
+    let c = cos(th) * a.z * keep;
+    n -= vec3<f32>(a.x * c, b.z * sin(th) * keep, a.y * c);
+  }
+  return vec4<f32>(normalize(n), n.y);
+}
 
 // The height field at local point (x, z) of the surface, bilinear.
 fn height_at(local: vec2<f32>) -> f32 {
@@ -83,10 +127,15 @@ fn vs(@builtin(vertex_index) vi: u32) -> WaterOut {
   let hx = height_at(local + vec2<f32>(e, 0.0)) - height_at(local - vec2<f32>(e, 0.0));
   let hz = height_at(local + vec2<f32>(0.0, e)) - height_at(local - vec2<f32>(0.0, e));
   let n_local = normalize(vec3<f32>(-hx / (2.0 * e), 1.0, -hz / (2.0 * e)));
-  let world = water.model * vec4<f32>(local.x, h, local.y, 1.0);
+  var world = water.model * vec4<f32>(local.x, h, local.y, 1.0);
+  let rest = world.xz;
+  if (water.ocean.x > 0.5) {
+    world = vec4<f32>(world.xyz + ocean_displace(rest, water.ocean.y), 1.0);
+  }
   var o: WaterOut;
   o.clip = frame.view_proj * world;
   o.world = world.xyz;
+  o.rest = rest;
   o.normal = normalize((water.model * vec4<f32>(n_local, 0.0)).xyz);
   o.local = local;
   o.slope = length(vec2<f32>(hx, hz)) / (2.0 * e);
@@ -106,6 +155,7 @@ fn vs_mesh(@location(0) position: vec3<f32>, @location(1) normal: vec3<f32>, @lo
   o.local = position.xz;
   o.slope = 0.0;
   o.uv = uv;
+  o.rest = world.xz;
   return o;
 }
 
@@ -155,7 +205,11 @@ fn map_slope(world: vec2<f32>, uv: vec2<f32>, t: f32) -> vec2<f32> {
     n = normalize(vec3<f32>(noise.x * 1.5, noise.z, noise.y * 1.5));
   } else {
     let speed = length(flow);
-    let dir = flow / speed * vec2<f32>(-1.0, 1.0);
+    var dir = flow / speed * vec2<f32>(-1.0, 1.0);
+    if (water.ao.y > 0.5) {
+      // Water2's flow map: the direction (not unit) per point, read where three.js reads it (v up the image).
+      dir = flow_at(uv) * vec2<f32>(-1.0, 1.0);
+    }
     let cycle = 0.15;
     let half_cycle = cycle * 0.5;
     let o0 = (t * speed) % cycle;
@@ -171,6 +225,28 @@ fn map_slope(world: vec2<f32>, uv: vec2<f32>, t: f32) -> vec2<f32> {
     n = normalize(vec3<f32>(c.r * 2.0 - 1.0, c.b, c.g * 2.0 - 1.0));
   }
   return -n.xz / max(n.y, 0.05) * water.waves.z;
+}
+
+// The flow map's direction at the mesh's uv, or at the grid's metres (u along x and v along z from the -x -z
+// corner): rg * 2 - 1, the image's top at v 1 (three.js' flipY).
+fn flow_at(uv: vec2<f32>) -> vec2<f32> {
+  var at = uv;
+  if (water.ao.z < 0.5) { at = uv / max(water.size.xy, vec2<f32>(1e-3)) + 0.5; }
+  return textureSampleLevel(flow_tex, water_sampler, vec2<f32>(at.x, 1.0 - at.y), 0.0).rg * 2.0 - 1.0;
+}
+
+// The travelling waves carried by the flow (Water::flow, metres a second; per point with a flow map), as Water2
+// carries its layers: two copies sliding along it, each restarting every two seconds half a period apart and
+// cross-faded so neither restart shows.
+fn flowed_slope(p: vec2<f32>, uv: vec2<f32>, t: f32) -> vec2<f32> {
+  var f = water.normals.yz;
+  if (water.ao.y > 0.5) { f = flow_at(uv) * length(water.normals.yz); }
+  let period = 2.0;
+  let ph0 = fract(t / period);
+  let ph1 = fract(t / period + 0.5);
+  let s0 = wave_slope(p - f * ph0 * period, t);
+  let s1 = wave_slope(p - f * ph1 * period, t);
+  return mix(s0, s1, abs(ph0 - 0.5) * 2.0);
 }
 
 fn value_hash(p: vec2<f32>) -> f32 {
@@ -248,10 +324,21 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   var slope = wave_slope(in.local, t);
   if (water.normals.w > 0.5) {
     slope = map_slope(in.world.xz, in.uv, t);
+  } else if (dot(water.normals.yz, water.normals.yz) >= 1e-12) {
+    slope = flowed_slope(in.local, in.uv, t);
   }
   let tangent_x = normalize((water.model * vec4<f32>(1.0, 0.0, 0.0, 0.0)).xyz);
   let tangent_z = normalize((water.model * vec4<f32>(0.0, 0.0, 1.0, 0.0)).xyz);
-  var n = normalize(in.normal - tangent_x * slope.x - tangent_z * slope.y);
+  // The sea's own normal under the detail (a level surface: its waves are the world's), and its whitecaps.
+  var base = in.normal;
+  var whitecap = 0.0;
+  if (water.ocean.x > 0.5) {
+    let footprint = max(length(dpdx(in.rest)), length(dpdy(in.rest)));
+    let sea = ocean_normal(in.rest, footprint);
+    base = sea.xyz;
+    whitecap = smoothstep(0.62, 0.3, sea.w) * water.ocean.z;
+  }
+  var n = normalize(base - tangent_x * slope.x - tangent_z * slope.y);
   let v = select(normalize(frame.view_pos.xyz - in.world), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
   // Seen from below: the camera is under the surface.
   let below_view = dot(in.normal, v) < 0.0;
@@ -366,7 +453,7 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   // Foam: a band where the water meets geometry, broken up by noise, and on steep crests.
   let edge = 1.0 - clamp(thickness / max(water.foam.w, 1e-3), 0.0, 1.0);
   let noise = foam_noise(in.local * 6.0 + vec2<f32>(t * 0.3, -t * 0.2));
-  let crest = clamp((in.slope - 0.35) * 3.0, 0.0, 1.0);
+  let crest = max(clamp((in.slope - 0.35) * 3.0, 0.0, 1.0), whitecap);
   let foam = clamp(edge * edge * (0.55 + 0.6 * noise) + crest * noise, 0.0, 1.0);
   let lit = max(dot(in.normal, l), 0.0) * frame.light_color.rgb * sun + vec3<f32>(frame.params.x * 0.6);
   color = mix(color, water.foam.rgb * lit, foam * step(0.001, water.foam.w));

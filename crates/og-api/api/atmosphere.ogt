@@ -620,8 +620,28 @@ module atmosphere {
       min 0
       tunable true
     }
-    field flow Vector2 "Water2's flow: its direction in the mesh's uv (or the grid's x, z) and, as its length, the uv it slides per second. 0 0: the lake's four drifting layers." {
+    field flow Vector2 "Water2's flow: its direction in the mesh's uv (or the grid's x, z) and, as its length, the uv it slides per second. 0 0: the lake's four drifting layers. Without a normalMap a flow carries the travelling waves, in metres a second: a river." {
       default 0 0
+      tunable true
+    }
+    field flowMap Texture "three.js Water2's flowMap: the flow's direction per point as rg * 2 - 1 (linear; the image's top at v 1), over the mesh's uv or the grid from its -x -z corner (u along x, v along z). With it flow's length is the speed (three.js' flowSpeed; 0 0: its 0.03) and the map the direction, for the normal map's two layers or, without one, the travelling waves: a stream that bends round rocks. 0: the flow alone."
+    field wind Vector2 "The wind over an open sea, its direction in the world's xz and its speed in m/s as its length: the grid rises in a sum of Gerstner waves of a fully developed sea for that wind (Pierson–Moskowitz; at 10 m/s waves about 80 m long and a significant height of 2.1 m), over the world's xz (a sea that follows the camera keeps its waves where they are; a level surface), with og.physics.waterHeight reading the same surface in the tick. A mesh surface has none. Set size and segments for the waves: a cell under a quarter of a wave's length leaves it to the shading. 0 0: no sea." {
+      default 0 0
+      unit mps
+      tunable true
+    }
+    field swell f32 "The sea's height, as a fraction of a fully developed sea's for the wind." {
+      default 1
+      min 0
+      max 4
+      unit ratio
+      tunable true
+    }
+    field choppiness f32 "How far the sea's crests lean and sharpen (Gerstner steepness): 0 round swell, 1 the most that never folds over. Whitecaps foam where the crests bunch, by as much." {
+      default 0.6
+      min 0
+      max 1
+      unit ratio
       tunable true
     }
   }

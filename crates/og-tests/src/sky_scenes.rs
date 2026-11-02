@@ -36,6 +36,27 @@ pub const SKY_SCENES: &[&str] = &[
 pub fn physical_sky_scene(hours: f32, air: PhysicalAtmosphere, into_sun: bool) -> RenderScene {
     let mut scene = RenderScene::new();
     colonnade(&mut scene);
+    let look = physical_light(&mut scene, hours, air);
+    scene.camera = colonnade_camera();
+    if into_sun {
+        let s = look.sun_direction;
+        let bearing = Vec3::new(s.x, 0.0, s.z).normalize_or(Vec3::NEG_Z);
+        // Tilted up with the sun (a 15° pitch at most), so a sun up to
+        // about 40° high stands in the frame with its glow.
+        let lift = (s.y.max(0.0).asin() - 0.05).clamp(0.07, 0.26).tan();
+        scene.camera.target = scene.camera.position + bearing * 40.0 + Vec3::Y * 40.0 * lift;
+    }
+    scene
+}
+
+/// `scene` lit at `hours` under the physical sky of `air` as
+/// [`physical_sky_scene`] lights the colonnade: the light, the sky and its
+/// ambient, a light fog of the sky's colour, bloom. Returns the look.
+pub fn physical_light(
+    scene: &mut RenderScene,
+    hours: f32,
+    air: PhysicalAtmosphere,
+) -> og_render::DayNightLook {
     let look = day_night(hours, 25.0, -20.0).with_atmosphere(&air);
     scene.light = DirectionalLight {
         direction_to_light: look.light_direction,
@@ -64,16 +85,7 @@ pub fn physical_sky_scene(hours: f32, air: PhysicalAtmosphere, into_sun: bool) -
         ..Default::default()
     });
     scene.post.bloom = Some(Bloom::default());
-    scene.camera = colonnade_camera();
-    if into_sun {
-        let s = look.sun_direction;
-        let bearing = Vec3::new(s.x, 0.0, s.z).normalize_or(Vec3::NEG_Z);
-        // Tilted up with the sun (a 15° pitch at most), so a sun up to
-        // about 40° high stands in the frame with its glow.
-        let lift = (s.y.max(0.0).asin() - 0.05).clamp(0.07, 0.26).tan();
-        scene.camera.target = scene.camera.position + bearing * 40.0 + Vec3::Y * 40.0 * lift;
-    }
-    scene
+    look
 }
 
 /// `scene` under `clouds`, the light dimmed by their cover as the runtime

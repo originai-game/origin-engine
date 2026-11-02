@@ -133,7 +133,7 @@ module physics {
 | [`og.physics.softBodyPoints`](#fn-softBodyPoints) | function | An og.SoftBody's points and the triangles of its surface after the last step (none before its first step). The engine draws visible soft bodies itself; this is for game logic (where it touches, how squashed it is) and custom drawing. |
 | [`og.physics.fluidParticles`](#fn-fluidParticles) | function | An og.Fluid2D's particle positions after the last step, in world space. |
 | [`og.physics.fluid3dParticles`](#fn-fluid3dParticles) | function | An og.Fluid3D's particle positions after the last step, in world space (emitted particles last, in the order they appeared). |
-| [`og.physics.waterHeight`](#fn-waterHeight) | function | The surface height of an og.WaterSurface (world y) or an og.WaterLine (world y at `x`; `z` ignored) at a point, as the last step left it: for boats that bob and spray that starts on the surface. |
+| [`og.physics.waterHeight`](#fn-waterHeight) | function | The surface height of an og.WaterSurface (world y) or an og.WaterLine (world y at `x`; `z` ignored) at a point, as the last step left it, plus an og.Water's sea (og.Water.wind) at this tick, the surface it draws: for boats that bob and spray that starts on the surface. |
 | [`og.physics.vehicleWheels`](#fn-vehicleWheels) | function | An og.Vehicle's wheels after the last step (front left, front right, rear left, rear right; or its og.VehicleWheel children in entity order), for drawing wheel models. |
 | [`og.physics.ragdollRigFromSkeleton`](#fn-ragdollRigFromSkeleton) | function | A ragdoll rig from a loaded skeleton (og.load.animation's `skeleton`): a bone per joint of its first skin, parents first, each from its joint's rest pose to its first child joint, every bone naming its joint and the rig naming the skeleton. Pass it to og.physics.setRagdollRig, edited or not. |
 | [`og.physics.setRagdollRig`](#fn-setRagdollRig) | function | Give an entity with an og.Ragdoll its bones (and, from og.physics.ragdollRigFromSkeleton, the skeleton they stand for: its og.Model is then drawn blended from the animation towards the bones by og.Ragdoll.blend). While weight is 0 the bones follow the rig's rest pose at the entity. Rigs are assets, not world state: kept by the engine and given again to a reloaded world. |
@@ -646,7 +646,7 @@ fn fluid3dParticles {
 
 ### `og.physics.waterHeight`
 
-The surface height of an og.WaterSurface (world y) or an og.WaterLine (world y at `x`; `z` ignored) at a point, as the last step left it: for boats that bob and spray that starts on the surface.
+The surface height of an og.WaterSurface (world y) or an og.WaterLine (world y at `x`; `z` ignored) at a point, as the last step left it, plus an og.Water's sea (og.Water.wind) at this tick, the surface it draws: for boats that bob and spray that starts on the surface.
 
 ```ts
 og.physics.waterHeight(world: World, entity: Entity, x: number, z: number): Result<number>
@@ -665,7 +665,7 @@ Binding symbol `og_physics_water_height` · publish builds: kept
 
 ```ogt
 fn waterHeight {
-  doc "The surface height of an og.WaterSurface (world y) or an og.WaterLine (world y at `x`; `z` ignored) at a point, as the last step left it: for boats that bob and spray that starts on the surface."
+  doc "The surface height of an og.WaterSurface (world y) or an og.WaterLine (world y at `x`; `z` ignored) at a point, as the last step left it, plus an og.Water's sea (og.Water.wind) at this tick, the surface it draws: for boats that bob and spray that starts on the surface."
   param world World "The world."
   param entity Entity "The water's entity."
   param x f32 "World x, in metres."

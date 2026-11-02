@@ -1778,6 +1778,50 @@ island of `og_tests::terrain_scenes` from 2 m, 150 m and 700 m), and
 `water-planar`, `water-shadows`, `water-underwater`; each test was broken
 once (`tests/evidence/P2/terrain-water/break-and-restore.md`).
 
+## R5: the sea and flow maps
+
+Each off by default on `Water` (every earlier water frame is unchanged):
+
+- **Sea** (`wind`, `swell`, `choppiness`; og.Water.wind): the grid is
+  displaced by `og_core::ocean`'s sixteen Gerstner waves of a fully
+  developed Pierson–Moskowitz sea for the wind (peak `0.877 g / U`,
+  significant height `0.21 U² / g × swell`, wavelengths 1.6 to 1/40 of the
+  peak's, deep-water dispersion, spread about the wind more the shorter they
+  are, fixed phases; each wave's steepness `choppiness / 16`, so the sum
+  never folds). The waves lie over the absolute world's xz: the uniform
+  holds each wave's phase at the scene's origin, `(φ - ω t + k d · origin)
+  mod 2π`, computed in f64 from the tick (`water::seconds`), so the pattern
+  stays put as the origin or the surface moves and long games keep their
+  precision. The vertices take the waves at least four grid cells long;
+  the fragments take every wave's analytic normal (each faded where it is
+  under four of the pixel's footprint), under the detail ripples, and foam
+  whitecaps where the crests bunch (Gerstner's `1 - Σ k Q a sin`, by
+  `choppiness`). The simulation reads the same surface:
+  `og.physics.waterHeight` evaluates `og_core::ocean::Ocean::height` (the
+  rest point found by fixed-point steps, then its height) at the tick, in
+  the absolute world (og.WorldOrigin's zero added), never the GPU. The
+  underwater view tests the eye against it too. A level surface only; a
+  surface over a mesh has none. Test `water::tests` (the drawn
+  displacement is og_core's at the same absolute point, at two origins);
+  `og_core::ocean::tests`; the bun test `r5-sea.test.ts`.
+- **Flow map** (`flow_map`; three.js Water2's flowMap): rg × 2 - 1 is the
+  flow's direction per point over the mesh's uv or the grid from its -x -z
+  corner (the image's top at +z), `flow`'s length the speed (zero: 0.03),
+  for the normal map's two layers (Water2's look) or, without a normal map,
+  the travelling waves: two copies sliding along the flow, restarting every
+  two seconds half a period apart and cross-faded (without a map, a
+  `flow` alone now carries them too). Binding 9 of the water group.
+
+og.Water is lazy from R5 (`og-runtime/src/lazy.rs`): a world without water
+keeps its type table and hash as the surface grows.
+
+Tests and frames (`og-tests/tests/ocean.rs`, `og_tests::ocean_scenes`):
+`water-ocean` (a 9 m/s breeze in the afternoon), `water-ocean-storm` (a
+17 m/s gale at full choppiness under an overcast, whitecaps),
+`water-ocean-sunset` (a 6 m/s breeze into the low sun: the glitter path),
+`water-flow-map` (a stream parting round a boulder). Sample:
+`tests/evidence/r5-water/` (buoys set on `waterHeight`).
+
 ## Phase 2: 3D fluids
 
 `Scene::fluids_3d` (`src/fluid3d.rs`, `shaders/fluid3d.wgsl`,

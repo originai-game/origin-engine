@@ -253,6 +253,13 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: "og.Clouds",
         enable: |_, _| Ok(()),
     },
+    // R5: the 3D water surface, read by extraction (and og.physics.waterHeight's
+    // sea) alone: a world without water keeps its type table and hash as the
+    // surface grows (the sea, the flow map).
+    Lazy {
+        name: "og.Water",
+        enable: |_, _| Ok(()),
+    },
     // R4: the weather's simulated state and its strikes; og.weather writes
     // and sends them. Naming either registers both.
     Lazy {

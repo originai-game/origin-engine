@@ -115,6 +115,24 @@ pub struct Water {
     /// the body is Water.js's too: `deep` is its waterColor, scattered by
     /// N·V, plus its sun diffuse (sunColor = light × glint / 2), shadowed.
     pub glint: f32,
+    /// R5: three.js Water2's flow map (rg: the flow's direction per point,
+    /// `* 2 - 1`; linear), over the mesh's uv or the grid from its -x -z
+    /// corner (u along x, v along z, the image's top at +z). With it the
+    /// flow's length is the speed (three.js' flowSpeed; zero: its 0.03) and
+    /// the map the direction, for the normal map's two layers and, without
+    /// a normal map, the travelling waves (in metres a second).
+    pub flow_map: Option<crate::TextureHandle>,
+    /// R5: the wind over an open sea, its direction in the world's xz and
+    /// its speed (m/s) as its length: the grid is displaced by
+    /// `og_core::ocean`'s Gerstner waves of a Pierson–Moskowitz sea for it,
+    /// over the absolute world's xz (a level surface; a mesh surface has
+    /// none). Zero: no sea.
+    pub wind: Vec2,
+    /// The sea's height, times a fully developed sea's for the wind (1).
+    pub swell: f32,
+    /// How far its crests lean and sharpen, 0 (round swell) to 1 (the most
+    /// that never folds), whitecaps foaming where they bunch.
+    pub choppiness: f32,
 }
 
 impl Default for Water {
@@ -148,6 +166,10 @@ impl Default for Water {
             normal_scale: 1.0,
             flow: Vec2::ZERO,
             glint: 0.0,
+            flow_map: None,
+            wind: Vec2::ZERO,
+            swell: 1.0,
+            choppiness: 0.6,
         }
     }
 }
@@ -214,11 +236,64 @@ struct WaterGpu {
     normals: [f32; 4],
     /// x: PostEffects.aoDirect, how much the frame's screen AO darkens the
     /// reflection and the body (0: not at all, as the opaque surfaces'
-    /// direct light); yzw: unused.
+    /// direct light); y: 1 with a flow map; z: 1 drawn over a mesh; w:
+    /// unused.
     ao: [f32; 4],
     /// The lake's four normal-map layers' uv at the scene's origin, whole
     /// repeats dropped (`origin.rs`): their pattern stays put when it moves.
     layers: [[f32; 4]; 2],
+    /// The sea ([`Water::wind`]): x 1 with one, y the grid's cell (m, below
+    /// which a wave is left to the fragments), z its choppiness; then per
+    /// wave (k d.x, k d.z, amplitude, phase at the origin) and (lean d.x,
+    /// lean d.z, k lean, unused) ([`ocean_gpu`]).
+    ocean: [f32; 4],
+    swell: [[f32; 4]; 2 * og_core::ocean::OCEAN_WAVES],
+}
+
+/// The scene's clock for the sea, in f64 seconds: its tick over its rate,
+/// as the simulation's `og.physics.waterHeight` reads it.
+pub(crate) fn seconds(scene: &crate::RenderScene) -> f64 {
+    let rate = if scene.tick_rate > 0.0 {
+        scene.tick_rate
+    } else {
+        60.0
+    };
+    scene.tick as f64 / f64::from(rate)
+}
+
+/// The surface's sea, if any (a grid with a wind: [`Water::wind`]).
+pub(crate) fn ocean(water: &Water) -> Option<og_core::ocean::Ocean> {
+    if water.mesh.is_some() {
+        return None;
+    }
+    og_core::ocean::Ocean::new(water.wind, water.swell, water.choppiness)
+}
+
+/// The sea's block of [`WaterGpu`] at `seconds` and the scene's `origin`:
+/// the header and the waves, their phases at the origin in f64 so the
+/// pattern stays put in the world as the origin moves.
+fn ocean_gpu(
+    water: &Water,
+    segments: u32,
+    seconds: f64,
+    origin: Vec3,
+) -> ([f32; 4], [[f32; 4]; 2 * og_core::ocean::OCEAN_WAVES]) {
+    let mut swell = [[0.0; 4]; 2 * og_core::ocean::OCEAN_WAVES];
+    let Some(sea) = ocean(water) else {
+        return ([0.0; 4], swell);
+    };
+    let phases = sea.phases(
+        seconds,
+        glam::DVec2::new(f64::from(origin.x), f64::from(origin.z)),
+    );
+    for (i, (w, phase)) in sea.waves.iter().zip(phases).enumerate() {
+        let k = w.direction * w.k;
+        let lean = w.direction * w.lean;
+        swell[2 * i] = [k.x, k.y, w.amplitude, phase];
+        swell[2 * i + 1] = [lean.x, lean.y, w.k * w.lean, 0.0];
+    }
+    let cell = water.size.max_element().max(0.0) / segments.max(1) as f32;
+    ([1.0, cell, water.choppiness.clamp(0.0, 1.0), 0.0], swell)
 }
 
 /// The most grid cells per side (256² cells, 131,072 triangles per
@@ -341,6 +416,8 @@ impl WaterRenderer {
                 // The frame's screen-space AO (white without): the reflection is darkened by it as
                 // the scene behind already is (water.wgsl).
                 tex(8, true),
+                // The flow map (Water::flow_map; the fallback without).
+                tex(9, true),
             ],
         });
         let module =
@@ -482,6 +559,7 @@ impl WaterRenderer {
         ao: &wgpu::TextureView,
         ao_direct: f32,
         origin: Vec3,
+        seconds: f64,
         fallback: &wgpu::TextureView,
         mesh_buffers: &dyn Fn(
             crate::scene::MeshHandle,
@@ -533,6 +611,15 @@ impl WaterRenderer {
                 );
             }
             let normal_view = water.normal_map.and_then(textures);
+            let flow_view = water.flow_map.and_then(textures);
+            // With a flow map the flow's length is the speed: three.js'
+            // flowSpeed 0.03 for a zero flow.
+            let flow = if flow_view.is_some() && water.flow.length_squared() < 1e-12 {
+                Vec2::new(0.03, 0.0)
+            } else {
+                water.flow
+            };
+            let (ocean, swell) = ocean_gpu(water, segments, seconds, origin);
             let gpu = WaterGpu {
                 model: water.transform.to_cols_array_2d(),
                 size: [
@@ -570,12 +657,19 @@ impl WaterRenderer {
                     .to_array(),
                 normals: [
                     water.normal_scale.max(0.0),
-                    water.flow.x,
-                    water.flow.y,
+                    flow.x,
+                    flow.y,
                     f32::from(normal_view.is_some()),
                 ],
-                ao: [ao_direct.clamp(0.0, 1.0), 0.0, 0.0, 0.0],
+                ao: [
+                    ao_direct.clamp(0.0, 1.0),
+                    f32::from(flow_view.is_some()),
+                    f32::from(mesh.is_some()),
+                    0.0,
+                ],
                 layers: lake_layers(origin, water.normal_scale.max(0.0)),
+                ocean,
+                swell,
             };
             queue.write_buffer(&slot.uniform, 0, bytemuck::bytes_of(&gpu));
             // A probe face has no planar reflection of its own (that would be
@@ -631,6 +725,10 @@ impl WaterRenderer {
                     wgpu::BindGroupEntry {
                         binding: 8,
                         resource: wgpu::BindingResource::TextureView(ao),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 9,
+                        resource: wgpu::BindingResource::TextureView(flow_view.unwrap_or(fallback)),
                     },
                 ],
             });
@@ -693,6 +791,7 @@ impl WaterRenderer {
                     tex(water.normal_map.and_then(textures).unwrap_or(white)),
                     wgpu::BindingResource::Sampler(&self.ripple_sampler),
                     tex(white),
+                    tex(water.flow_map.and_then(textures).unwrap_or(white)),
                 ];
                 let entries: Vec<wgpu::BindGroupEntry> = entries
                     .into_iter()
@@ -860,15 +959,20 @@ fn local_height(water: &Water, local: Vec2) -> f32 {
 
 /// The surface the camera at `eye` is below (inside its extent, under its
 /// waves), if any, among those with an underwater view.
-pub(crate) fn underwater(waters: &[Water], eye: Vec3) -> Option<usize> {
+/// `seconds` and the scene's `origin` place the sea's waves ([`Water::wind`]).
+pub(crate) fn underwater(waters: &[Water], eye: Vec3, seconds: f64, origin: Vec3) -> Option<usize> {
     waters.iter().position(|w| {
         if w.underwater_density.is_nan() || w.underwater_density <= 0.0 {
             return false;
         }
         let local = w.transform.inverse().transform_point3(eye);
+        let sea = ocean(w).map_or(0.0, |sea| {
+            let at = (eye + origin).as_dvec3();
+            sea.height(glam::DVec2::new(at.x, at.z), seconds)
+        });
         local.x.abs() <= w.size.x * 0.5
             && local.z.abs() <= w.size.y * 0.5
-            && local.y < local_height(w, Vec2::new(local.x, local.z))
+            && local.y < local_height(w, Vec2::new(local.x, local.z)) + sea
     })
 }
 
@@ -1049,4 +1153,62 @@ fn lake_layers(origin: Vec3, repeats: f32) -> [[f32; 4]; 2] {
         [at(x, 103.0), at(z, 103.0), at(x, 107.0), at(z, 107.0)],
         [at(x, 8907.0), at(z, 9803.0), at(x, 1091.0), at(z, 1027.0)],
     ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// water.wgsl's `ocean_displace` with every wave kept, on the CPU.
+    fn drawn(swell: &[[f32; 4]], frame_xz: Vec2) -> Vec3 {
+        let mut d = Vec3::ZERO;
+        for w in swell.chunks(2) {
+            let (a, b) = (w[0], w[1]);
+            let th = a[0] * frame_xz.x + a[1] * frame_xz.y + a[3];
+            d += Vec3::new(b[0] * th.cos(), a[2] * th.sin(), b[1] * th.cos());
+        }
+        d
+    }
+
+    /// The sea the shader draws at a frame point is og_core's at the same
+    /// place in the absolute world (frame + the scene's origin) and the
+    /// same tick, wherever the origin has moved to: what the simulation's
+    /// height query floats a boat on.
+    #[test]
+    fn the_drawn_sea_is_the_simulations_wherever_the_origin_is() {
+        let water = Water {
+            size: Vec2::splat(800.0),
+            wind: Vec2::new(3.0, -8.0),
+            choppiness: 0.8,
+            ..Default::default()
+        };
+        let sea = ocean(&water).expect("a sea");
+        let seconds = 4321.25;
+        for origin in [Vec3::ZERO, Vec3::new(51_200.0, 0.0, -25_600.0)] {
+            let (head, swell) = ocean_gpu(&water, 256, seconds, origin);
+            assert_eq!(head[0], 1.0);
+            assert!((head[1] - 800.0 / 256.0).abs() < 1e-6);
+            for p in [
+                Vec2::new(0.0, 0.0),
+                Vec2::new(37.5, -120.0),
+                Vec2::new(-210.0, 66.0),
+            ] {
+                let at = glam::DVec2::new(
+                    f64::from(origin.x) + f64::from(p.x),
+                    f64::from(origin.z) + f64::from(p.y),
+                );
+                let phases = sea.phases(seconds, at);
+                let want = sea.displacement(Vec2::ZERO, &phases);
+                let got = drawn(&swell, p);
+                assert!(
+                    (got - want).length() < 2e-3,
+                    "{origin} {p}: {got} vs {want}"
+                );
+            }
+        }
+        // A surface over a mesh, or without a wind, has no sea.
+        let mut calm = water.clone();
+        calm.wind = Vec2::ZERO;
+        assert_eq!(ocean_gpu(&calm, 256, seconds, Vec3::ZERO).0, [0.0; 4]);
+    }
 }

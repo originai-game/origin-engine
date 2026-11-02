@@ -1,0 +1,15 @@
+type project
+version 1
+---
+# The R5 sea sample (batch 1): an og.Water raised by a 9 m/s wind
+# (og.Water.wind, Gerstner waves) under the physical sky, with five buoys
+# a system floats on og.physics.waterHeight each tick: the tick's own sea,
+# the surface the renderer draws. tests/evidence/r5-water/NOTES.md has the
+# commands and what each frame shows.
+name "R5 sea"
+id "r5-sea"
+engine "0.7.7"
+entry "src/main.ts"
+profile "3d"
+tick 60
+seed 1

@@ -358,6 +358,14 @@
       {
         "member": "og.CrowdAnimation",
         "summary": "Plays a clip on a model on the GPU from a shared baked clip, for crowds (R9)."
+      },
+      {
+        "member": "og.Water.wind",
+        "summary": "An open sea: Gerstner waves of a fully developed sea for the wind, with swell and choppiness, whitecaps on the crests; og.physics.waterHeight reads the same surface in the tick (R5)."
+      },
+      {
+        "member": "og.Water.flowMap",
+        "summary": "three.js Water2's flow map: the flow's direction per point, for the normal map's layers or the travelling waves (R5)."
       }
     ],
     "fixed": [

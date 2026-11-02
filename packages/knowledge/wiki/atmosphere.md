@@ -68,7 +68,7 @@ fn timeOfDay {
 }
 ```
 
-<sub>`api.ogt` line 10754</sub>
+<sub>`api.ogt` line 10774</sub>
 
 ## Components, resources and events
 
@@ -824,7 +824,11 @@ Token `og.Water`, registered under the schema name `og.Water`; its value type is
 | `normalMap` | `Texture` | `0` | — | — | — | Ripples from a tangent-space normal map (linear; red along +x, green along +z, blue up, as three.js' water normals) instead of the travelling waves: with flow 0, four layers drifting at three.js Water's rates over the world's xz times normalScale (its getNoise); with a flow, two layers sliding along it over the mesh's uv (or the grid's metres), cross-faded each 0.15 of a cycle (three.js Water2: then refraction 1 shifts the scene behind by N.xz · 0.05 of the screen, the reflection is tinted by shallow too, and there is no sun highlight). waveStrength scales the slopes (1: as the map), waveSpeed the lake's clock. 0: the travelling waves. |
 | `normalScale` | `number` | `1` | ≥ 0 | — | tunable | The normal map's repeats per metre (the lake) or per uv unit (a flow). |
 | `glint` | `number` | `0` | ≥ 0 | — | tunable | three.js Water's sun glint: pow(eye . reflect(-sun, normal), 100) times the sun's light times this, on the reflected image, through the Fresnel term (three.js: spec × sunColor over the light's intensity). With glint the surface is three.js Water.js throughout: deep is its waterColor, the body (sunColor · max(L·N, 0) · sunColor · 0.15 + waterColor · max(N·V, 0)) shaded by the ripples and the shadows, sunColor = the light × glint / 2. 0: the default half-vector highlight and depth colour. |
-| `flow` | `Vector2` | `{ x: 0, y: 0 }` | — | — | tunable | Water2's flow: its direction in the mesh's uv (or the grid's x, z) and, as its length, the uv it slides per second. 0 0: the lake's four drifting layers. |
+| `flow` | `Vector2` | `{ x: 0, y: 0 }` | — | — | tunable | Water2's flow: its direction in the mesh's uv (or the grid's x, z) and, as its length, the uv it slides per second. 0 0: the lake's four drifting layers. Without a normalMap a flow carries the travelling waves, in metres a second: a river. |
+| `flowMap` | `Texture` | `0` | — | — | — | three.js Water2's flowMap: the flow's direction per point as rg * 2 - 1 (linear; the image's top at v 1), over the mesh's uv or the grid from its -x -z corner (u along x, v along z). With it flow's length is the speed (three.js' flowSpeed; 0 0: its 0.03) and the map the direction, for the normal map's two layers or, without one, the travelling waves: a stream that bends round rocks. 0: the flow alone. |
+| `wind` | `Vector2` | `{ x: 0, y: 0 }` | — | `mps` | tunable | The wind over an open sea, its direction in the world's xz and its speed in m/s as its length: the grid rises in a sum of Gerstner waves of a fully developed sea for that wind (Pierson–Moskowitz; at 10 m/s waves about 80 m long and a significant height of 2.1 m), over the world's xz (a sea that follows the camera keeps its waves where they are; a level surface), with og.physics.waterHeight reading the same surface in the tick. A mesh surface has none. Set size and segments for the waves: a cell under a quarter of a wave's length leaves it to the shading. 0 0: no sea. |
+| `swell` | `number` | `1` | 0 … 4 | `ratio` | tunable | The sea's height, as a fraction of a fully developed sea's for the wind. |
+| `choppiness` | `number` | `0.6` | 0 … 1 | `ratio` | tunable | How far the sea's crests lean and sharpen (Gerstner steepness): 0 round swell, 1 the most that never folds over. Whitecaps foam where the crests bunch, by as much. |
 
 ```ogt
 component Water {
@@ -949,8 +953,28 @@ component Water {
     min 0
     tunable true
   }
-  field flow Vector2 "Water2's flow: its direction in the mesh's uv (or the grid's x, z) and, as its length, the uv it slides per second. 0 0: the lake's four drifting layers." {
+  field flow Vector2 "Water2's flow: its direction in the mesh's uv (or the grid's x, z) and, as its length, the uv it slides per second. 0 0: the lake's four drifting layers. Without a normalMap a flow carries the travelling waves, in metres a second: a river." {
     default 0 0
+    tunable true
+  }
+  field flowMap Texture "three.js Water2's flowMap: the flow's direction per point as rg * 2 - 1 (linear; the image's top at v 1), over the mesh's uv or the grid from its -x -z corner (u along x, v along z). With it flow's length is the speed (three.js' flowSpeed; 0 0: its 0.03) and the map the direction, for the normal map's two layers or, without one, the travelling waves: a stream that bends round rocks. 0: the flow alone."
+  field wind Vector2 "The wind over an open sea, its direction in the world's xz and its speed in m/s as its length: the grid rises in a sum of Gerstner waves of a fully developed sea for that wind (Pierson–Moskowitz; at 10 m/s waves about 80 m long and a significant height of 2.1 m), over the world's xz (a sea that follows the camera keeps its waves where they are; a level surface), with og.physics.waterHeight reading the same surface in the tick. A mesh surface has none. Set size and segments for the waves: a cell under a quarter of a wave's length leaves it to the shading. 0 0: no sea." {
+    default 0 0
+    unit mps
+    tunable true
+  }
+  field swell f32 "The sea's height, as a fraction of a fully developed sea's for the wind." {
+    default 1
+    min 0
+    max 4
+    unit ratio
+    tunable true
+  }
+  field choppiness f32 "How far the sea's crests lean and sharpen (Gerstner steepness): 0 round swell, 1 the most that never folds over. Whitecaps foam where the crests bunch, by as much." {
+    default 0.6
+    min 0
+    max 1
+    unit ratio
     tunable true
   }
 }
@@ -1010,7 +1034,7 @@ component Water2D {
 }
 ```
 
-<sub>`api.ogt` line 10722</sub>
+<sub>`api.ogt` line 10742</sub>
 
 ## Constants
 

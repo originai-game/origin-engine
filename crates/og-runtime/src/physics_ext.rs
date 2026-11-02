@@ -291,12 +291,65 @@ fn position_of(eng: &Engine, e: Entity) -> Result<Vec3, String> {
     Ok(at)
 }
 
+/// An og.Water's sea (og.Water.wind, `og_core::ocean`) at world point
+/// (`x`, `z`) this tick: its height over the water's rest level, inside the
+/// surface's size around `at` (0 outside); `None` without an og.Water with
+/// a wind. The waves are the absolute world's (og.WorldOrigin's zero added),
+/// at the tick over its rate, as the renderer draws them.
+fn sea_height(eng: &Engine, e: Entity, at: Vec3, x: f64, z: f64) -> Result<Option<f32>, String> {
+    let layout = eng.state.borrow().layouts.get("og.Water").cloned();
+    let w = eng.world()?;
+    let Some((_, v)) = rows(w, layout.as_ref())
+        .into_iter()
+        .find(|(id, _)| *id == e.to_bits())
+    else {
+        return Ok(None);
+    };
+    let pair = |k: &str, d: f32| super::fx::vec2(&v[k], glam::Vec2::splat(d));
+    // A surface over a mesh has no sea (og.Water.wind).
+    if v["geometry"].as_f64().unwrap_or(0.0) as u64 != 0 {
+        return Ok(None);
+    }
+    let Some(sea) = og_core::ocean::Ocean::new(
+        pair("wind", 0.0),
+        f(&v, "swell", 1.0),
+        f(&v, "choppiness", 0.6),
+    ) else {
+        return Ok(None);
+    };
+    let half = pair("size", 16.0) * 0.5;
+    if (x - f64::from(at.x)).abs() > f64::from(half.x)
+        || (z - f64::from(at.z)).abs() > f64::from(half.y)
+    {
+        return Ok(Some(0.0));
+    }
+    let origin = eng
+        .state
+        .borrow()
+        .layouts
+        .get(crate::origin::RESOURCE)
+        .cloned();
+    let zero = crate::origin::zero(w, origin.as_ref());
+    let time = w.time();
+    let rate = if time.dt > 0.0 { 1.0 / time.dt } else { 60.0 };
+    let seconds = time.tick as f64 / f64::from(rate);
+    Ok(Some(
+        sea.height(glam::DVec2::new(x + zero.x, z + zero.z), seconds),
+    ))
+}
+
 pub fn og_physics_water_height(world: u32, e: f64, x: f64, z: f64) -> String {
     answer((|| {
         let eng = engine(world)?;
-        let p = physics(&eng)?;
         let e = entity(e)?;
         let at = position_of(&eng, e)?;
+        let sea = sea_height(&eng, e, at, x, z)?;
+        let p = match (physics(&eng), sea) {
+            (Ok(p), _) => p,
+            (Err(_), Some(h)) => return Ok(json!(at.y + h)),
+            (Err(why), None) => return Err(why),
+        };
+        let at = at + Vec3::Y * sea.unwrap_or(0.0);
         let (x, z) = (x as f32, z as f32);
         if let Some(w) = p.water_heights(e) {
             let n = w.resolution as usize;
@@ -332,8 +385,11 @@ pub fn og_physics_water_height(world: u32, e: f64, x: f64, z: f64) -> String {
             let t = g - i as f32;
             return Ok(json!(at.y + line[i] + (line[i + 1] - line[i]) * t));
         }
+        if sea.is_some() {
+            return Ok(json!(at.y));
+        }
         Err(format!(
-            "entity {} has no og.WaterSurface or og.WaterLine (or it has not stepped yet)",
+            "entity {} has no og.WaterSurface or og.WaterLine (or it has not stepped yet) nor an og.Water with a wind",
             e.to_bits()
         ))
     })())

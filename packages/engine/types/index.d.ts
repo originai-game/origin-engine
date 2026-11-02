@@ -16305,12 +16305,42 @@ export interface Water {
    */
   glint: number;
   /**
-   * Water2's flow: its direction in the mesh's uv (or the grid's x, z) and, as its length, the uv it slides per second. 0 0: the lake's four drifting layers.
+   * Water2's flow: its direction in the mesh's uv (or the grid's x, z) and, as its length, the uv it slides per second. 0 0: the lake's four drifting layers. Without a normalMap a flow carries the travelling waves, in metres a second: a river.
    *
    * @default { x: 0, y: 0 }
    * @tunable
    */
   flow: Vector2;
+  /**
+   * three.js Water2's flowMap: the flow's direction per point as rg * 2 - 1 (linear; the image's top at v 1), over the mesh's uv or the grid from its -x -z corner (u along x, v along z). With it flow's length is the speed (three.js' flowSpeed; 0 0: its 0.03) and the map the direction, for the normal map's two layers or, without one, the travelling waves: a stream that bends round rocks. 0: the flow alone.
+   */
+  flowMap: Texture;
+  /**
+   * The wind over an open sea, its direction in the world's xz and its speed in m/s as its length: the grid rises in a sum of Gerstner waves of a fully developed sea for that wind (Pierson–Moskowitz; at 10 m/s waves about 80 m long and a significant height of 2.1 m), over the world's xz (a sea that follows the camera keeps its waves where they are; a level surface), with og.physics.waterHeight reading the same surface in the tick. A mesh surface has none. Set size and segments for the waves: a cell under a quarter of a wave's length leaves it to the shading. 0 0: no sea.
+   *
+   * @default { x: 0, y: 0 }
+   * @unit mps (metres per second)
+   * @tunable
+   */
+  wind: Vector2;
+  /**
+   * The sea's height, as a fraction of a fully developed sea's for the wind.
+   *
+   * @default 1
+   * @range 0..4
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  swell: number;
+  /**
+   * How far the sea's crests lean and sharpen (Gerstner steepness): 0 round swell, 1 the most that never folds over. Whitecaps foam where the crests bunch, by as much.
+   *
+   * @default 0.6
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  choppiness: number;
 }
 
 /**
@@ -54959,7 +54989,7 @@ export declare namespace og {
      */
     function fluid3dParticles(world: World, entity: Entity): Result<readonly Vector3[]>;
     /**
-     * The surface height of an og.WaterSurface (world y) or an og.WaterLine (world y at `x`; `z` ignored) at a point, as the last step left it: for boats that bob and spray that starts on the surface.
+     * The surface height of an og.WaterSurface (world y) or an og.WaterLine (world y at `x`; `z` ignored) at a point, as the last step left it, plus an og.Water's sea (og.Water.wind) at this tick, the surface it draws: for boats that bob and spray that starts on the surface.
      *
      * @param world The world.
      * @param entity The water's entity.
@@ -55048,7 +55078,7 @@ export declare namespace og {
   /**
    * A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space, the sky's cubemap where that misses, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated).
    */
-  const Water: ComponentType<{ readonly size: FieldSpec<"Vector2">; readonly geometry: FieldSpec<"Geometry">; readonly segments: FieldSpec<"u32">; readonly shallow: FieldSpec<"Color">; readonly deep: FieldSpec<"Color">; readonly depthFade: FieldSpec<"f32">; readonly opacity: FieldSpec<"f32">; readonly foam: FieldSpec<"Color">; readonly foamWidth: FieldSpec<"f32">; readonly waveScale: FieldSpec<"f32">; readonly waveSpeed: FieldSpec<"f32">; readonly waveStrength: FieldSpec<"f32">; readonly refraction: FieldSpec<"f32">; readonly reflectivity: FieldSpec<"f32">; readonly planarReflection: FieldSpec<"f32">; readonly shadows: FieldSpec<"f32">; readonly f0: FieldSpec<"f32">; readonly reflectionBias: FieldSpec<"f32">; readonly underwaterColor: FieldSpec<"Color">; readonly underwaterDensity: FieldSpec<"f32">; readonly caustics: FieldSpec<"f32">; readonly causticsScale: FieldSpec<"f32">; readonly normalMap: FieldSpec<"Texture">; readonly normalScale: FieldSpec<"f32">; readonly glint: FieldSpec<"f32">; readonly flow: FieldSpec<"Vector2"> }, Water>;
+  const Water: ComponentType<{ readonly size: FieldSpec<"Vector2">; readonly geometry: FieldSpec<"Geometry">; readonly segments: FieldSpec<"u32">; readonly shallow: FieldSpec<"Color">; readonly deep: FieldSpec<"Color">; readonly depthFade: FieldSpec<"f32">; readonly opacity: FieldSpec<"f32">; readonly foam: FieldSpec<"Color">; readonly foamWidth: FieldSpec<"f32">; readonly waveScale: FieldSpec<"f32">; readonly waveSpeed: FieldSpec<"f32">; readonly waveStrength: FieldSpec<"f32">; readonly refraction: FieldSpec<"f32">; readonly reflectivity: FieldSpec<"f32">; readonly planarReflection: FieldSpec<"f32">; readonly shadows: FieldSpec<"f32">; readonly f0: FieldSpec<"f32">; readonly reflectionBias: FieldSpec<"f32">; readonly underwaterColor: FieldSpec<"Color">; readonly underwaterDensity: FieldSpec<"f32">; readonly caustics: FieldSpec<"f32">; readonly causticsScale: FieldSpec<"f32">; readonly normalMap: FieldSpec<"Texture">; readonly normalScale: FieldSpec<"f32">; readonly glint: FieldSpec<"f32">; readonly flow: FieldSpec<"Vector2">; readonly flowMap: FieldSpec<"Texture">; readonly wind: FieldSpec<"Vector2">; readonly swell: FieldSpec<"f32">; readonly choppiness: FieldSpec<"f32"> }, Water>;
   /**
    * Draws the og.WaterLine on the same entity in the sprite order: the body from its surface down, a gradient from the top colour to the bottom one, and a bright lip along the surface.
    */

@@ -574,6 +574,10 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             normal_scale: f(&v, "normalScale", 1.0).max(0.0),
             flow: vec2(&v["flow"], Vec2::ZERO),
             glint: f(&v, "glint", 0.0).max(0.0),
+            flow_map: super::fx::handle_index(&v["flowMap"]).and_then(|i| textures.get(i).copied()),
+            wind: vec2(&v["wind"], Vec2::ZERO),
+            swell: f(&v, "swell", 1.0),
+            choppiness: f(&v, "choppiness", 0.6),
         });
     }
     // 2D water over its spring line.

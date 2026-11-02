@@ -4593,6 +4593,32 @@
             "y": 0
           },
           "tunable": true
+        },
+        {
+          "name": "flowMap",
+          "column": "Texture",
+          "default": 0
+        },
+        {
+          "name": "wind",
+          "column": "Vector2",
+          "default": {
+            "x": 0,
+            "y": 0
+          },
+          "tunable": true
+        },
+        {
+          "name": "swell",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "choppiness",
+          "column": "f32",
+          "default": 0.6,
+          "tunable": true
         }
       ]
     },
