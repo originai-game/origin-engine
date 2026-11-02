@@ -465,56 +465,6 @@ pub(crate) fn encode<T: serde::Serialize + ?Sized>(
     codec().serialize_into(out, value)
 }
 
-/// The extension trailer of a saved `og.physics` block, after its first
-/// form's bytes (G2-3): `OGX` and a format byte (1), then sections of a
-/// `u16` tag, a `u32` length and that many bytes, all little-endian.
-/// Written only when a section is non-empty, so a world using no
-/// extension saves (and hashes) byte for byte as before; a decoder skips
-/// a tag it does not know, so a later extension adds a tag, not a format.
-const EXT_MAGIC: [u8; 4] = *b"OGX\x01";
-
-fn write_sections(out: &mut Vec<u8>, sections: &[(u16, Vec<u8>)]) {
-    if sections.is_empty() {
-        return;
-    }
-    out.extend_from_slice(&EXT_MAGIC);
-    for (tag, bytes) in sections {
-        out.extend_from_slice(&tag.to_le_bytes());
-        out.extend_from_slice(&(bytes.len() as u32).to_le_bytes());
-        out.extend_from_slice(bytes);
-    }
-}
-
-fn read_sections(mut rest: &[u8]) -> Result<Vec<(u16, &[u8])>> {
-    let bad = |why: &str| {
-        Error::new(
-            ErrorKind::Parse,
-            format!("the physics block's extension trailer {why}"),
-        )
-    };
-    let mut out = Vec::new();
-    if rest.is_empty() {
-        return Ok(out);
-    }
-    rest = rest
-        .strip_prefix(&EXT_MAGIC)
-        .ok_or_else(|| bad("does not start with OGX 1"))?;
-    while !rest.is_empty() {
-        if rest.len() < 6 {
-            return Err(bad("ends inside a section header"));
-        }
-        let tag = u16::from_le_bytes([rest[0], rest[1]]);
-        let len = u32::from_le_bytes([rest[2], rest[3], rest[4], rest[5]]) as usize;
-        rest = &rest[6..];
-        if rest.len() < len {
-            return Err(bad("ends inside a section"));
-        }
-        out.push((tag, &rest[..len]));
-        rest = &rest[len..];
-    }
-    Ok(out)
-}
-
 /// What follows the profile tag in a saved `og.physics` block: the pushes
 /// not yet applied, then the simulation's bytes without its asset shapes
 /// and where they go (empty with tag 0, no simulation yet).
@@ -546,7 +496,7 @@ impl StateBlock for PhysicsState {
         if let Some((tag, block)) = block {
             out.push(tag);
             encode(out, &block).expect("a physics world always serializes into memory");
-            write_sections(out, &sections);
+            og_ecs::trailer::write(out, &sections);
         }
     }
 
@@ -566,7 +516,7 @@ impl StateBlock for PhysicsState {
             .allow_trailing_bytes()
             .deserialize_from(&mut reader)
             .map_err(parse)?;
-        let sections = read_sections(reader)?;
+        let sections = og_ecs::trailer::read("og.physics", reader)?;
         // The asset shapes are rebuilt from the registered meshes, as a
         // step builds them (outside the step, like a query view).
         let saved = match tag as u32 {

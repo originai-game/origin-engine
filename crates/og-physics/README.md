@@ -120,9 +120,10 @@ one that is not is refused, naming it.
 What G2-3 keeps beyond the first form of the simulation (compound
 children's built poses; sleep, joint breaking, the drivetrain and soft
 volumes to come) is not in `Sim`'s bincode but in a trailer after the
-block: `OGX` and a format byte 1, then sections of a little-endian `u16`
-tag, `u32` length and bytes (`write_sections`, `read_sections`,
-`sim::SimExt`). It is written only when a section is non-empty, so a world
+block, in og-ecs's shared state-block format (`og_ecs::trailer`, which
+`og.nav` and `og.ai` use too): `OGXT`, a format byte 1, then sections of
+a little-endian `u16` tag, `u32` length and bytes, tags ascending
+(`sim::SimExt`). It is written only when a section is non-empty, so a world
 using none of it saves and hashes byte for byte as before
 (`tests/unchanged.rs` pins the beyond scenario's hashes from cb1d65bf), and
 a decoder skips a tag it does not know: a later extension adds a tag.
