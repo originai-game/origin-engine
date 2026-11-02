@@ -141,6 +141,7 @@ const SCENES: Record<string, [ArtName, { x: number; y: number }]> = {
   draft: ["scenes/gothic-halls", { x: 0.5, y: 0.6 }],
   garage: ["scenes/garage", { x: 0.5, y: 0.55 }],
   ledger: ["scenes/city", { x: 0.5, y: 0.6 }],
+  chat: ["scenes/gothic-halls", { x: 0.45, y: 0.5 }],
 };
 
 /** The pattern screen's painted scene, built before anything over it (the kit's Gallery button among them). */

@@ -758,9 +758,29 @@ function genres2(b: ReturnType<typeof builder>, phone: boolean): void {
   b.seq((at) => tap(at, "Row/power"), 0.3);
   b.shot("citymap-off", 0.5);
   b.cmd("pat:ledger:reset");
+  // The chat: every channel with links and a mention of the player, an @word's suggestions, the name written and sent,
+  // the party's tab, then the HUD's chat over the game and opened to type.
+  b.cmd("show:chat");
+  b.shot("chat-idle", 1.0);
+  b.dump("chat");
+  b.cmd("pat:chat:draft:gg_@Ri");
+  b.shot("chat-mention", 0.5);
+  b.dump("chat-mention");
+  b.seq((at) => tap(at, "Suggest/riven"), 0.3);
+  b.seq((at) => tap(at, "Input/Send"), 0.4);
+  b.shot("chat-sent", 0.6);
+  b.dump("chat-sent");
+  b.seq((at) => tap(at, "Tabs/Row/party"), 0.3);
+  b.shot("chat-party", 0.6);
+  b.cmd("pat:chat:reset");
+  b.cmd("pat:chat:hud:on");
+  b.shot("chat-hud", 0.8);
+  b.cmd("pat:chat:typing:on");
+  b.shot("chat-hud-typing", 0.6);
+  b.cmd("pat:chat:reset");
 }
 
-const GENRE2_SCREENS = ["garage", "ledger", "cityMap"] as const;
+const GENRE2_SCREENS = ["garage", "ledger", "cityMap", "chat"] as const;
 
 /** The systems games' previews in their states, then each screen right to left, in Japanese, and at 200 % text. */
 export function genres2Script(phone: boolean): Script {

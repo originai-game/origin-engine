@@ -1,7 +1,8 @@
 // The systems games' previews at desktop size (1280×720 CSS px at 1×): the
 // garage (a part previewed, one refused, one bought, the livery's layers,
 // a layer moved up), the ledger (a service underfunded, sorted, the year)
-// and the city's overlays (traffic, power, none); then each right to left, in Japanese and at 200 %
+// the city's overlays (traffic, power, none) and the chat (links and a
+// mention, a mention suggested and sent, the party's tab, the HUD's chat); then each right to left, in Japanese and at 200 %
 // text, each frame compared with
 // crates/og-ui/references/<tier>/kit-genres2-<file>.
 import { playtest } from "@origingame/engine/playtest";
@@ -25,6 +26,10 @@ export default playtest({
     t.ok(rows("ledger-sorted.json")[0]?.startsWith("Education"), "Amount sorted the services high to low: the dearest first");
     t.ok(rows("ledger-underfunded.json").some((n) => n.startsWith("Fire") && n.includes("60%")), "fire's budget at 60 % is in its row");
     t.ok(ui(run, "citymap-power.json").some((e) => e.role === "status" && e.name.startsWith("Power")), "a press on Power showed its legend");
+    t.ok(ui(run, "chat.json").some((e) => e.role === "tab" && e.name.startsWith("Party") && e.name.endsWith("mentioned")), "the party's tab counts its unread messages and says the player is mentioned there");
+    t.ok(ui(run, "chat.json").some((e) => e.role === "listitem" && e.name.includes("[Ashbringer]")), "an item link stands in its message in brackets");
+    t.ok(ui(run, "chat-mention.json").some((e) => e.role === "option" && e.name === "Riven"), "@Ri offers Riven");
+    t.ok(ui(run, "chat-sent.json").some((e) => e.role === "listitem" && e.name.endsWith("Lumen: gg @Riven")), "the suggestion wrote the name and Send posted it");
     t.frame(script.files, () => {
       for (const f of script.files) t.equal(run.png(f).width, 1280, `${f} is 1280 wide`);
     });

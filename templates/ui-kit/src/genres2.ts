@@ -9,7 +9,7 @@
 import { og } from "@origingame/engine";
 import { art, L, type ArtName } from "./patterns.ts";
 import { frame } from "./genres.ts";
-import type { ChartSeries, GarageCategory, GaragePart, GarageStat, LedgerLine, LiveryLayer, MapOverlay, PickedColor, Size } from "@origingame/engine";
+import type { ChartSeries, ChatMessage, GarageCategory, GaragePart, GarageStat, LedgerLine, LiveryLayer, MapOverlay, PickedColor, Size } from "@origingame/engine";
 
 const grow: Size = { kind: "grow" };
 const px = (n: number): Size => ({ kind: "fixed", px: n });
@@ -283,7 +283,96 @@ function hexRgb(s: string): { r: number; g: number; b: number } {
   return { r: n(0), g: n(2), b: n(4) };
 }
 
-/** The previews' commands: `pat:<garage|ledger>:<key>:<value>`; false when the area is not one of these. */
+// ── chat: channels, links and mentions ─────────────────────────────────
+
+/** Who speaks: invented names and the kit's portraits. */
+const SPEAKERS: Record<string, { name: string; art: ArtName }> = {
+  lumen: { name: "Lumen", art: "portraits/aria" },
+  riven: { name: "Riven", art: "portraits/kael" },
+  juno: { name: "Juno", art: "portraits/mira" },
+  sable: { name: "Sable", art: "portraits/wren" },
+  vesper: { name: "Vesper", art: "portraits/vesper" },
+  torvin: { name: "Torvin", art: "portraits/torvin" },
+  maren: { name: "Maren", art: "portraits/maren" },
+};
+const CHAT_CHANNELS = [["all", "", true], ["party", "info"], ["guild", "success"], ["trade", "warn"], ["whisper", "#e58cff"], ["system", "inkMuted"]] as const;
+/** The log as the game holds it: who, where, when, the line's words (keyed: chat.msg.<n>) and its links. */
+const CHAT_LOG: Array<{ who: string; ch: string; time: string; n: number; links?: Array<[string, string, ArtName | null, string]>; system?: boolean }> = [
+  { who: "", ch: "system", time: "20:58", n: 1, system: true },
+  { who: "torvin", ch: "guild", time: "20:59", n: 2 },
+  { who: "maren", ch: "trade", time: "21:00", n: 3, links: [["ember-ring", "chat.link.ember", "items/ember-ring", "epic"]] },
+  { who: "riven", ch: "party", time: "21:01", n: 4, links: [["amberhold", "chat.link.amberhold", null, "none"]] },
+  { who: "juno", ch: "party", time: "21:01", n: 5 },
+  { who: "vesper", ch: "whisper", time: "21:02", n: 6 },
+  { who: "sable", ch: "party", time: "21:03", n: 7, links: [["ashbringer", "chat.link.ashbringer", "items/ashbringer", "legendary"]] },
+  { who: "torvin", ch: "guild", time: "21:03", n: 8 },
+  { who: "riven", ch: "party", time: "21:04", n: 9 },
+];
+const ct0 = () => ({ channel: "all", draft: "", sendTo: "party", hud: false, typing: false, sent: [] as Array<{ ch: string; text: string }>, read: new Set<string>(["all"]) });
+let ct = ct0();
+
+/** A chat window (World of Warcraft, Final Fantasy XIV): channel tabs, the log with links and mentions, the input. */
+export function chatScreen(): void {
+  const messages: ChatMessage[] = [
+    ...CHAT_LOG.map((m, i) => ({
+      key: `m${i + 1}`,
+      channel: m.ch,
+      author: m.who ? SPEAKERS[m.who]!.name : "",
+      authorKey: m.who,
+      avatar: m.who ? art(SPEAKERS[m.who]!.art) : null,
+      text: L(`chat.msg.${m.n}`),
+      links: (m.links ?? []).map(([key, label, , rarity]) => ({ key, label: L(label), kind: rarity === "none" ? "place" : "item", rarity: rarity as never })),
+      time: m.time,
+      system: !!m.system,
+    })),
+    ...ct.sent.map((m, i) => ({ key: `own${i}`, channel: m.ch, author: "Lumen", authorKey: "lumen", avatar: art("portraits/aria"), text: m.text, time: "21:05", own: true })),
+  ];
+  const unread = (ch: string): number => (ct.read.has(ch) ? 0 : messages.filter((m) => m.channel === ch).length);
+  const mentions = (ch: string): number => (ct.read.has(ch) ? 0 : messages.filter((m) => m.channel === ch && /@Lumen\b/.test(m.text ?? "")).length);
+  const build = (): void => {
+    const r = og.ui.chat("Chat", {
+      channels: CHAT_CHANNELS.map(([k, c, a]) => ({ key: k, name: L(`chat.ch.${k}`), color: c, all: !!a, readOnly: k === "system", unread: unread(k), mentions: mentions(k) })),
+      channel: ct.channel,
+      messages,
+      me: "Lumen",
+      members: Object.entries(SPEAKERS).map(([k, v]) => ({ key: k, name: v.name, avatar: art(v.art) })),
+      draft: ct.draft,
+      sendTo: ct.sendTo,
+      hud: ct.hud,
+      typing: ct.typing,
+      placeholder: L("chat.placeholder"),
+      sendLabel: L("chat.send"),
+      newLabel: L("chat.new"),
+      channelLabel: L("chat.channel"),
+    });
+    if (r.channel !== null) {
+      ct.channel = r.channel;
+      ct.read.add(r.channel);
+      if (r.channel !== "all" && r.channel !== "system") ct.sendTo = r.channel;
+    }
+    if (r.sendTo !== null) ct.sendTo = r.sendTo;
+    if (r.draft !== null) ct.draft = r.draft;
+    if (r.send !== null) {
+      ct.sent.push({ ch: r.send.channel, text: r.send.text });
+      ct.draft = "";
+    }
+    if (r.author !== null && r.author !== "lumen") {
+      ct.sendTo = "whisper";
+      ct.draft = `@${SPEAKERS[r.author]?.name ?? ""} `;
+    }
+    if (r.closed) ct.typing = false;
+  };
+  if (ct.hud) {
+    // The HUD's chat over the game at the bottom start, as an MMO keeps it.
+    frame("ChatHud", "", () => {
+      og.ui.column("Corner", { width: grow, height: grow, align: "end", padding: { left: 16, top: 16, right: 16, bottom: 16 } }, () => {
+        og.ui.column("Box", { width: px(Math.min(520, og.ui.frameViewport().width - 32)), height: px(Math.min(320, og.ui.frameViewport().height * 0.45)) }, build);
+      });
+    }, [], true);
+  } else frame("Chats", L("chat.title"), build, [{ action: "confirm", hint: L("chat.send") }, { action: "back", hint: L("hint.back") }]);
+}
+
+/** The previews' commands: `pat:<garage|ledger|chat>:<key>:<value>`; false when the area is not one of these. */
 export function genres2Command(area: string, key: string, value: string): boolean {
   if (area === "garage") {
     if (key === "category") {
@@ -305,6 +394,15 @@ export function genres2Command(area: string, key: string, value: string): boolea
     } else if (key === "overlay") ld.overlay = value;
     else if (key === "reset") ld = ld0();
     else return false;
+  } else if (area === "chat") {
+    if (key === "channel") {
+      ct.channel = value;
+      ct.read.add(value);
+    } else if (key === "draft") ct.draft = value.replace(/_/g, " ");
+    else if (key === "hud") ct.hud = value !== "off";
+    else if (key === "typing") ct.typing = value !== "off";
+    else if (key === "reset") ct = ct0();
+    else return false;
   } else return false;
   return true;
 }
@@ -313,4 +411,5 @@ export function genres2Command(area: string, key: string, value: string): boolea
 export function resetGenres2(): void {
   ga = ga0();
   ld = ld0();
+  ct = ct0();
 }
