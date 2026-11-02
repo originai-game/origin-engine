@@ -19,6 +19,7 @@
 import { og, defineComponent, defineResource, defineSystem, bool, f32, f64, str, u32 } from "@origingame/engine";
 import type { Entity, GameSettings, Viewport, World } from "@origingame/engine";
 import { dialogueScreen, loadStory, questsScreen, vnScreen } from "./story.ts";
+import { charactersScreen, draftScreen, lobbyScreen, mapScreen, songsScreen, versusScreen } from "./genres.ts";
 import { art, boardScreen, cardsScreen, gachaScreen, gearScreen, generatorsScreen, loadPatternArt, passScreen, patternScene, patternsCommand, rewardsScreen, sagaScreen, storeScreen } from "./patterns.ts";
 import { chartsScreen, containersScreen, dataScreen, demoCommand, graphScreen, navigationScreen, overlaysScreen } from "./components.ts";
 import { bindingsScreen, controlsDemo, controlsScreen, fieldsScreen, foundationsScreen, rangesScreen } from "./controls.ts";
@@ -33,6 +34,7 @@ export const SCREENS = [
   "gear", "cards", "rewards", "gacha", "saga", "board", "generators", "store", "pass",
   "dialogue", "vn", "quests",
   "shipStatus", "turnOrder", "abilityCards", "sectorMap", "hangar",
+  "lobby", "select", "versus", "draft", "worldMap", "songs",
 ] as const;
 export type Screen = (typeof SCREENS)[number];
 
@@ -101,6 +103,12 @@ const BLURBS: Record<Screen, string> = {
   abilityCards: "A hand of six ability cards: number, name, art, effect, cost, hotkey; End turn",
   sectorMap: "A sector map: allied triangles and hostile diamonds, the current system ringed",
   hangar: "A hangar: ship classes, the hero ship's stats and upgrades, its detail and Commission",
+  lobby: "A party lobby: the lineup, the mode, Ready up, Find match, the queue and the ready check",
+  select: "A character select: the roster, both players' fighters, Lock in and Random",
+  versus: "A versus screen: two fighters on a slant, the mark, the stage and the load",
+  draft: "A draft with bans: both teams' picks and bans, the roster, the turn's timer",
+  worldMap: "A world map: regions under fog, places by kind, the legend, fast travel and waypoints",
+  songs: "A song select: the wheel of jackets, the charts, the best score, the preview's waveform",
 };
 
 /** The demo's state: one entity named "demo" (dump_entity:demo reads it). */
@@ -741,7 +749,7 @@ function materialsScreen(d: DemoState): void {
 }
 
 /** The genre patterns' preview screens (patterns.ts). */
-const PATTERN_SCREENS: ReadonlySet<string> = new Set(["gear", "cards", "rewards", "gacha", "saga", "board", "generators", "store", "pass", "dialogue", "vn", "quests"]);
+const PATTERN_SCREENS: ReadonlySet<string> = new Set(["gear", "cards", "rewards", "gacha", "saga", "board", "generators", "store", "pass", "dialogue", "vn", "quests", "lobby", "select", "versus", "draft", "worldMap", "songs"]);
 /** The starship screens (starship.ts): over the style's backdrop, the Gallery button in a pattern screen's corner on a phone. */
 const STARSHIP_SCREENS: ReadonlySet<string> = new Set(["shipStatus", "turnOrder", "abilityCards", "sectorMap", "hangar"]);
 
@@ -779,6 +787,9 @@ function galleryButton(world: World, d: DemoState): void {
   // In a cutscene it is film chrome: in the top bar's end corner, centred in the bar, at every size (built after the
   // bars, over them; the picture and its Skip below stay clear).
   const film = SCREENS[d.screen] === "cutscene";
+  // On a versus screen the corners carry the fighters' names and the Skip: the button stands at the top middle over the
+  // seam on a desktop, and at the start edge's middle beside the mark on a phone.
+  const versus = SCREENS[d.screen] === "versus";
   const barH = Math.round((vp.height - vp.safeArea.top - vp.safeArea.bottom) * 0.1);
   const inBar = Math.max(0, Math.round((barH - (og.ui.bounds("Back")?.height ?? 40)) / 2));
   // A tablet's or a desktop's top edge is the HUD's (timers, wallets, scores), so where touch controls took the
@@ -789,8 +800,8 @@ function galleryButton(world: World, d: DemoState): void {
   const bar = og.ui.bounds("Hints");
   const lift = !top && bar && bar.y + bar.height >= vp.height - 1 && bar.width >= vp.width - 1 ? vp.height - bar.y : 0;
   og.ui.anchor("Back", {
-    anchor: film || corner ? "topRight" : top ? "top" : taken ? "left" : "bottomLeft",
-    offsetY: film ? inBar : corner ? 0 : bp === "phonePortrait" ? 52 : taken ? 0 : -lift,
+    anchor: versus ? (phone ? "left" : "top") : film || corner ? "topRight" : top ? "top" : taken ? "left" : "bottomLeft",
+    offsetY: versus ? 0 : film ? inBar : corner ? 0 : bp === "phonePortrait" ? 52 : taken ? 0 : -lift,
   }, () => {
     // The medium size: its label at the body's 16 px at 1080p, never under it.
     if (og.ui.button("Gallery", tr(world, "gallery.button"), { variant: "secondary" }).clicked) d.screen = 0;
@@ -1410,6 +1421,33 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       questsScreen(world);
       back = og.ui.back();
       break;
+    case "lobby":
+      // Back declines a ready check first (the lobby takes it).
+      lobbyScreen();
+      back = og.ui.back();
+      break;
+    case "select":
+      // Back unlocks a locked-in pick first (the select takes it).
+      charactersScreen();
+      back = og.ui.back();
+      break;
+    case "versus":
+      // Back is the versus screen's skip.
+      versusScreen();
+      break;
+    case "draft":
+      draftScreen();
+      back = og.ui.back();
+      break;
+    case "worldMap":
+      // Back closes a place's detail first (the map takes it).
+      mapScreen();
+      back = og.ui.back();
+      break;
+    case "songs":
+      songsScreen();
+      back = og.ui.back();
+      break;
     case "gacha":
       // Back skips or closes a pull first (the sequence takes it).
       gachaScreen(d.backdrop as number);
@@ -1585,7 +1623,7 @@ export default og.game({
     sounds: { usage: "<on|off>", doc: "Hand the UI's event sounds their blips (on by default)." },
     mixed: { usage: "<on|off>", doc: "Show a label mixing CJK, Latin and Arabic (menu.mixed) under the menu, pause and confirm screens." },
     demo: { usage: "<overlay|data|aim|text|device|reset|keyboard|controls>:<value>", doc: "A component preview's state: demo:overlay:menu (menu, submenu, context, popover, dialog, confirm, sheet, sideSheet, radial, none), demo:data:loading (rows, loading, empty, error), demo:aim:0.7,-0.7 (the radial wheel's stick), demo:text:200 (the player's text size, 100 to 200 %), demo:device:playstation (the device prompts are drawn for, and the key-binding rows': keyboardMouse, xbox, playstation, switch), demo:keyboard:kana (letters, symbols, numeric, kana, none: the on-screen keyboard on the bindings screen), demo:controls:reset (the controls previews' state)." },
-    pat: { usage: "<pick|highlight|select|inspect|turn|energy|draw|picks|rselect|balance|banner|pull|ship|reset>:<value>", doc: "A genre pattern preview's state: pat:pick:helm (an item in the hand), pat:highlight:potion (a tag lit), pat:select:<item>, pat:inspect:bash (a card shown large), pat:turn:off (not the player's turn), pat:energy:1 (energy left), pat:draw:strike (a card drawn), pat:picks:2 (a two-pick reward), pat:rselect:thunder,vigor (rewards selected), pat:balance:100 (the gacha purse), pat:banner:weapon, pat:pull:10 (a pull resolved, its reveal started), pat:reset; the starship screens' pat:ship:card:<n> (the card selected, -1 none), pat:ship:class:<n> (the hangar's class), pat:ship:reset." },
+    pat: { usage: "<pick|highlight|select|inspect|turn|energy|draw|picks|rselect|balance|banner|pull|ship|reset>:<value>", doc: "A genre pattern preview's state: pat:pick:helm (an item in the hand), pat:highlight:potion (a tag lit), pat:select:<item>, pat:inspect:bash (a card shown large), pat:turn:off (not the player's turn), pat:energy:1 (energy left), pat:draw:strike (a card drawn), pat:picks:2 (a two-pick reward), pat:rselect:thunder,vigor (rewards selected), pat:balance:100 (the gacha purse), pat:banner:weapon, pat:pull:10 (a pull resolved, its reveal started), pat:lobby:found (the lobby's ready check; ready, search, reset), pat:chars:hover:kael (the select's cursor; lock), pat:vs:progress:0.9, pat:draft:phase:ban (hover, lock), pat:map:select:sela (a place's detail; hide:shop,poi), pat:song:select:phoenix (chart:master, playing:off), pat:reset; the starship screens' pat:ship:card:<n> (the card selected, -1 none), pat:ship:class:<n> (the hangar's class), pat:ship:reset." },
     offline: { usage: "<on|off>", doc: "The leaderboard's rows fail to load: its error message and Retry (which loads again)." },
   },
   facts: (world) => {

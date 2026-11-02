@@ -10,6 +10,7 @@
 
 import { og } from "@origingame/engine";
 import { storyCommand } from "./story.ts";
+import { genreScene, genresCommand, resetGenres } from "./genres.ts";
 import type { CardTarget, GridItem, HandCard, InventoryCarry, InventoryMove, PaperdollSlot, PullItem, RewardOption, Size, StoreOffer, UiRect, World } from "@origingame/engine";
 
 /** A fixture the preview changes: its readonly fields writable. */
@@ -20,7 +21,7 @@ type Slot = Mut<PaperdollSlot>;
 const grow: Size = { kind: "grow" };
 const px = (n: number): Size => ({ kind: "fixed", px: n });
 
-function phone(): boolean {
+export function phone(): boolean {
   const b = og.ui.frameViewport().breakpoint;
   return b === "phonePortrait" || b === "phoneLandscape";
 }
@@ -73,9 +74,11 @@ const ART_FILES = [
   "items/gauntlets", "items/knight-helm",
   "boons/thunder-strike", "boons/titan-heart", "boons/crown-of-ages", "boons/frost", "boons/gold", "boons/flame-blade", "boons/crystal",
   "boons/star", "boons/rune-shield", "boons/mana",
-  "figures/mira", "figures/aria",
+  "figures/mira", "figures/aria", "figures/kael",
+  "portraits/wren", "portraits/vesper", "portraits/maren", "portraits/torvin", "portraits/brann", "scenes/gothic-halls", "maps/world",
+  "songs/neon-moon", "songs/sakura-wind", "songs/stormbreak", "songs/desert-drum", "songs/crystal-echo", "songs/phoenix",
 ] as const;
-type ArtName = (typeof ART_FILES)[number];
+export type ArtName = (typeof ART_FILES)[number];
 const ART: Partial<Record<ArtName, number>> = {};
 let artOn = true;
 
@@ -124,11 +127,14 @@ const SCENES: Record<string, [ArtName, { x: number; y: number }]> = {
   dialogue: ["scenes/storybook-vale", { x: 0.5, y: 0.45 }],
   vn: ["scenes/golden-valley", { x: 0.5, y: 0.5 }],
   quests: ["scenes/storybook-vale", { x: 0.35, y: 0.5 }],
+  lobby: ["scenes/title", { x: 0.55, y: 0.45 }],
+  select: ["scenes/gothic-halls", { x: 0.5, y: 0.4 }],
+  draft: ["scenes/gothic-halls", { x: 0.5, y: 0.6 }],
 };
 
 /** The pattern screen's painted scene, built before anything over it (the kit's Gallery button among them). */
 export function patternScene(screen: string): void {
-  const sc = SCENES[screen];
+  const sc = genreScene(screen) ?? SCENES[screen];
   if (sc) scene(sc[0], sc[1]);
 }
 
@@ -675,6 +681,7 @@ export function gachaScreen(backdrop = 0): void {
 export function patternsCommand(world: World, args: readonly string[]): void {
   const [key, value = ""] = args;
   if ((key === "dlg" || key === "quest") && storyCommand(world, key, value, args[2] ?? "")) return;
+  if (key && genresCommand(key, value, args[2] ?? "")) return;
   if (key === "pick") p.pick = { key: value, count: 0 };
   else if (key === "highlight") p.highlight = value;
   else if (key === "select") p.selected = value;
@@ -741,6 +748,7 @@ export function patternsCommand(world: World, args: readonly string[]): void {
     ig.gens = GEN0.map((x) => ({ ...x }));
     sto = st0();
     ps = pass0();
+    resetGenres();
   }
 }
 
