@@ -45,16 +45,21 @@ export function rarityGround(id: string, rarity: Api.Rarity | undefined, line = 
 }
 
 /**
- * The selected tile (docs/ui.md §15.5): a soft rim 2 px outside the slot's
- * edge and a glow round it to 8 px, over the lift og-ui's grid already gives
- * it. Outside, so a pack's own frame stays whole and the selection adds to
- * it, in every style. Its ink is never a tier hue: white at 55 % on a dark
- * panel, warmed toward the style's focus where the slot has a frame of its
- * own (`framed`: gilded's gold reads as the frame lit up, not a second
- * border); the style's ink at 60 % on a light panel, where white vanishes.
+ * The selected tile (docs/ui.md §15.5): a soft glow round the slot's edge,
+ * over the lift og-ui's grid already gives it, and no rim: a hard line round
+ * a tile picked with the pointer reads as keyboard focus, which og-ui's own
+ * ring shows when the focus is visible. Outside, so a pack's own frame stays
+ * whole and the selection adds to it, in every style. Its reach is 8 px on
+ * the inventory's 72 px slot and grows with the cell (`cell`, its shorter
+ * side: a shop's 128 px card glows as far for its size). Its ink is never a
+ * tier hue: white on a dark panel, warmed toward the style's focus where the
+ * slot has a frame of its own (`framed`: gilded's gold reads as the frame lit
+ * up, not a second border); the style's ink on a light panel, where white
+ * vanishes.
  */
-function selectedRim(id: string, framed: boolean): void {
-  const r = frame().t.small + RIM;
+function selectedRim(id: string, framed: boolean, cell: number): void {
+  const r = frame().t.small;
+  const k = glowScale(cell);
   const dark = luminance(role("panel")) < 0.36;
   const white = { r: 1, g: 1, b: 1, a: 1 };
   const c = !dark ? role("ink") : framed ? mix(white, role("focus"), 0.25) : white;
@@ -62,16 +67,24 @@ function selectedRim(id: string, framed: boolean): void {
   kit.open(id, { width: grow(), height: grow() });
   kit.setDraw({
     shape: { kind: "rect", radii: [r, r, r, r] },
-    // The glow as rings outside the rim, fading out to 8 px from the slot: an
-    // outerGlow is a blurred copy of the whole shape and would veil the art.
-    strokes: [
-      ...[[8 - RIM, dark ? 0.05 : 0.04], [5, 0.07], [2.5, dark ? 0.1 : 0.12]].map(([width, alpha]) => ({ width, align: "outside", paint: { kind: "solid", color: ink(alpha!) } })),
-      { width: 1.5, align: "inside", paint: { kind: "solid", color: ink(dark ? 0.55 : 0.6) } },
-    ],
+    // The glow as rings outside the edge, fading out: an outerGlow is a
+    // blurred copy of the whole shape and would veil the art.
+    strokes: [[GLOW, dark ? 0.06 : 0.05], [GLOW * 0.6, 0.09], [GLOW * 0.3, dark ? 0.14 : 0.16]].map(([width, alpha]) => ({ width: width! * k, align: "outside", paint: { kind: "solid", color: ink(alpha!) } })),
   } as Api.DrawDesc);
   kit.close();
-  over({ insets: { start: -RIM, top: -RIM, end: -RIM, bottom: -RIM }, inert: true, z: 3 });
+  over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, z: 3 });
 }
+
+/** How far the selection's glow reaches on the inventory's slot. */
+const GLOW = 8;
+/** The inventory's desktop slot, the size the glow is drawn for. */
+const SLOT = 72;
+/** The glow's scale for a cell whose shorter side is `cell`: 1 up to the slot, then with the cell. */
+const glowScale = (cell: number): number => Math.max(1, cell / SLOT);
+/** A grid's padding, so the selection round an edge cell is not cut by the grid's clip (the inventory's, fitted to its columns). */
+const EDGE = 4;
+/** A shop's grid padding for cells of `cell`: the whole reach of the selection's glow. */
+const edgeFor = (cell: number): number => Math.ceil(GLOW * glowScale(cell));
 
 /**
  * A grid's height in whole rows: every row when they fit under `limit`, else
@@ -88,10 +101,6 @@ function rowsView(count: number, columns: number, cell: number, gap: number, lim
   return { height: whole * stride + cell / 3, more: true };
 }
 
-/** How far outside the slot the selected rim's outer edge sits (2 px clear of the frame, the rim 1.5 px). */
-const RIM = 3.5;
-/** A grid's padding, so the selected rim of an edge cell is not cut by the grid's clip. */
-const EDGE = 4;
 
 /** The scrollbar's gutter beside a grid with more rows than it shows: its bar's width and a margin either side, no more (a phone's bag keeps six touch-sized slots a row). */
 const gutterOf = (t: { xs: number; xxs: number }): number => t.xs + 2 * t.xxs;
@@ -244,13 +253,14 @@ export function shopScreen(id: string, desc: Api.ShopDesc = {}): Api.ShopResult 
       // Whole rows only: two rows of three show a category whole; more fade under a scrim, the scrollbar in its own gutter.
       const view = rowsView(items.length, 3, ch, t.sm, phone ? 330 : 352);
       const gutter = view.more ? gutterOf(t) : 0;
-      const gw = 3 * (cw + t.sm) - t.sm + 2 * EDGE + gutter;
+      const edge = edgeFor(Math.min(cw, ch));
+      const gw = 3 * (cw + t.sm) - t.sm + 2 * edge + gutter;
       let g: Api.ListResult = {} as Api.ListResult;
       gridView("ItemsView", view.more, wide ? fit() : grow(), () => {
-      g = kit.grid("Items", { count: items.length, cellWidth: cw, cellHeight: ch, columns: 3, height: px(view.height + 2 * EDGE), width: wide ? px(gw) : grow(), padding: { left: EDGE, top: EDGE, right: EDGE + gutter, bottom: EDGE }, selected: sel }, (i) => {
+      g = kit.grid("Items", { count: items.length, cellWidth: cw, cellHeight: ch, columns: 3, height: px(view.height + 2 * edge), width: wide ? px(gw) : grow(), padding: { left: edge, top: edge, right: edge + gutter, bottom: edge }, selected: sel }, (i) => {
         const it = items[i]!;
         const framed = rarityGround("Ground", it.rarity);
-        if (i === sel) selectedRim("Selected", framed);
+        if (i === sel) selectedRim("Selected", framed, Math.min(cw, ch));
         artOr("Picture", it.image, it.icon, it.name ?? "", phone ? 64 : 84, 36);
         // A product's name is never cut: two lines, a step smaller on a phone.
         kit.label("Name", it.name ?? "", { step: phone ? "meta" : "base", maxLines: 2, width: px(cw - 12), align: "center" });
@@ -349,7 +359,7 @@ export function inventoryScreen(id: string, desc: Api.InventoryDesc = {}): Api.I
       g = kit.grid("Slots", { count: slots, cellWidth: cell, cellHeight: cell, columns, height: px(view.height + 2 * EDGE), width: grow(), gap, padding: { left: EDGE, top: EDGE, right: EDGE + gutter, bottom: EDGE }, selected: sel >= 0 ? sel : null }, (i) => {
         const it = bySlot.get(i);
         const framed = rarityGround("Ground", it?.rarity);
-        if (i === sel) selectedRim("Selected", framed);
+        if (i === sel) selectedRim("Selected", framed, cell);
         if (!it) return;
         if (it.image) {
           // The cut-out stands on the slot's ground; a stack's count sits on a plate in its corner.
