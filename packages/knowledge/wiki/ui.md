@@ -757,7 +757,7 @@ module ui {
 | [`LapTimerDesc`](#type-LapTimerDesc) | desc struct | A racing lap and split block. |
 | [`og.ui.lapTimer`](#fn-lapTimer) | function | A lap and split block to the bar of Forza, Gran Turismo and F1: the place and the lap as large tabular numerals over their totals (the lap's caption turns to the final lap's, in gold, on the last), then the current lap running in tabular digits, the best and last laps, and the split against the best lap signed and coloured (ahead in success, behind in danger) that pops when it changes; a last lap that sets the best shows in the personal-best colour. On a phone it keeps the place, the lap and the split. |
 | [`RearViewDesc`](#type-RearViewDesc) | desc struct | A rear-view mirror. |
-| [`og.ui.rearView`](#fn-rearView) | function | A rear-view mirror to the bar of Forza's and Need for Speed's cockpit HUDs: a render target shown in the UI, flipped as a mirror, in a wide frame whose sides slant in towards the foot, with a dark rim, a soft glass glare across its top and a drop so it sits over the road. |
+| [`og.ui.rearView`](#fn-rearView) | function | A rear-view mirror to the bar of Forza's and Need for Speed's cockpit HUDs: a render target shown in the UI, flipped as a mirror, square-on in a dark bezel with rounded corners, a faint sheen and a bright hairline along the glass's top edge, and a soft drop so it sits over the road. |
 | [`DamageHit`](#type-DamageHit) | desc struct | A hit from a direction. |
 | [`DamageDirectionDesc`](#type-DamageDirectionDesc) | desc struct | Damage direction indicators. |
 | [`og.ui.damageDirection`](#fn-damageDirection) | function | Damage direction to the bar of Call of Duty and Apex: a curved wedge round the centre toward each hit's source, wider and brighter for a harder hit, flaring in and fading over its time; the newest hits over the older. |
@@ -7870,7 +7870,7 @@ fn ammoCounter {
 
 A minimap to the bar of MOBAs, shooters and open worlds: the map in a round or square frame, centred on the player and zoomed, fixed with north up and the player's arrow turning or turning with the player; markers for allies (their arrows), enemies, loot by rarity, points of interest, objectives and pings, which stay on the frame's edge pointing out when out of range; pings pulse; a north mark on the rim, the zone under it; a press answers clicked (click to move reads the press's position against the map's bounds).
 
-Parts: Minimap.bezel (a dark rounded bezel with a soft drop), Minimap.frame[<shape>] (the map's glass inside it), Minimap.map, Minimap.track, Minimap.start, Minimap.marker[<kind>][clamped], Minimap.north (straddling the bezel's top edge, over nothing on the map), Minimap.plate (a square map's caption plate at the bezel's foot; a round map's caption sits under it with the HUD name treatment), Minimap.ping. Slots: texture (art kind map). Accessibility: image named by the zone; markers images named by their labels. Probe ids: <id>, <id>/Bezel/Map/<key>, <id>/Bezel/Plate/Zone (square) or <id>/Zone (round).
+Parts: Minimap.bezel (a dark rounded bezel with a soft drop), Minimap.frame[<shape>] (the map's glass inside it), Minimap.map, Minimap.track, Minimap.start, Minimap.marker[<kind>][clamped], Minimap.north (straddling the bezel's top edge, over nothing on the map), Minimap.plate (a square map's caption plate at the bezel's foot; a round map's caption is the same plate as a pill centred under the ring), Minimap.ping. Slots: texture (art kind map). Accessibility: image named by the zone; markers images named by their labels. Probe ids: <id>, <id>/Bezel/Map/<key>, <id>/Bezel/Plate/Zone (square) or <id>/ZonePlate/Zone (round).
 
 ```ts
 og.ui.minimapView(id: string, desc?: MinimapViewDesc): MinimapResult
@@ -7888,7 +7888,7 @@ Implemented by the TypeScript runtime over the members of this module: no bindin
 ```ogt
 fn minimapView {
   doc "A minimap to the bar of MOBAs, shooters and open worlds: the map in a round or square frame, centred on the player and zoomed, fixed with north up and the player's arrow turning or turning with the player; markers for allies (their arrows), enemies, loot by rarity, points of interest, objectives and pings, which stay on the frame's edge pointing out when out of range; pings pulse; a north mark on the rim, the zone under it; a press answers clicked (click to move reads the press's position against the map's bounds)."
-  doc "Parts: Minimap.bezel (a dark rounded bezel with a soft drop), Minimap.frame[<shape>] (the map's glass inside it), Minimap.map, Minimap.track, Minimap.start, Minimap.marker[<kind>][clamped], Minimap.north (straddling the bezel's top edge, over nothing on the map), Minimap.plate (a square map's caption plate at the bezel's foot; a round map's caption sits under it with the HUD name treatment), Minimap.ping. Slots: texture (art kind map). Accessibility: image named by the zone; markers images named by their labels. Probe ids: <id>, <id>/Bezel/Map/<key>, <id>/Bezel/Plate/Zone (square) or <id>/Zone (round)."
+  doc "Parts: Minimap.bezel (a dark rounded bezel with a soft drop), Minimap.frame[<shape>] (the map's glass inside it), Minimap.map, Minimap.track, Minimap.start, Minimap.marker[<kind>][clamped], Minimap.north (straddling the bezel's top edge, over nothing on the map), Minimap.plate (a square map's caption plate at the bezel's foot; a round map's caption is the same plate as a pill centred under the ring), Minimap.ping. Slots: texture (art kind map). Accessibility: image named by the zone; markers images named by their labels. Probe ids: <id>, <id>/Bezel/Map/<key>, <id>/Bezel/Plate/Zone (square) or <id>/ZonePlate/Zone (round)."
   host false
   param id String "Its id."
   param desc MinimapViewDesc "The map and its markers."
@@ -8378,9 +8378,9 @@ fn lapTimer {
 
 ### `og.ui.rearView`
 
-A rear-view mirror to the bar of Forza's and Need for Speed's cockpit HUDs: a render target shown in the UI, flipped as a mirror, in a wide frame whose sides slant in towards the foot, with a dark rim, a soft glass glare across its top and a drop so it sits over the road.
+A rear-view mirror to the bar of Forza's and Need for Speed's cockpit HUDs: a render target shown in the UI, flipped as a mirror, square-on in a dark bezel with rounded corners, a faint sheen and a bright hairline along the glass's top edge, and a soft drop so it sits over the road.
 
-Parts: RearView.frame, RearView.view, RearView.glare. Slots: texture (a render target's colour). Accessibility: image named by its label. Probe ids: <id>, <id>/View.
+Parts: RearView.frame (the bezel), RearView.glass, RearView.view, RearView.glare. Slots: texture (a render target's colour). Accessibility: image named by its label. Probe ids: <id>, <id>/Glass/View.
 
 ```ts
 og.ui.rearView(id: string, desc?: RearViewDesc): void
@@ -8397,8 +8397,8 @@ Implemented by the TypeScript runtime over the members of this module: no bindin
 
 ```ogt
 fn rearView {
-  doc "A rear-view mirror to the bar of Forza's and Need for Speed's cockpit HUDs: a render target shown in the UI, flipped as a mirror, in a wide frame whose sides slant in towards the foot, with a dark rim, a soft glass glare across its top and a drop so it sits over the road."
-  doc "Parts: RearView.frame, RearView.view, RearView.glare. Slots: texture (a render target's colour). Accessibility: image named by its label. Probe ids: <id>, <id>/View."
+  doc "A rear-view mirror to the bar of Forza's and Need for Speed's cockpit HUDs: a render target shown in the UI, flipped as a mirror, square-on in a dark bezel with rounded corners, a faint sheen and a bright hairline along the glass's top edge, and a soft drop so it sits over the road."
+  doc "Parts: RearView.frame (the bezel), RearView.glass, RearView.view, RearView.glare. Slots: texture (a render target's colour). Accessibility: image named by its label. Probe ids: <id>, <id>/Glass/View."
   host false
   param id String "Its id."
   param desc RearViewDesc "What it shows and its size."

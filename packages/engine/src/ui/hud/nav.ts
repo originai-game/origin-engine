@@ -84,7 +84,8 @@ export function minimapView(id: string, desc: Api.MinimapViewDesc = {}): Api.Min
   const plate = shape !== "circle" && !!desc.zone;
   const capStep = ts(11);
   // The north badge straddles the bezel's top edge, a tenth of the map across.
-  const nb = Math.max(u(14), Math.round(size * 0.1));
+  // It grows with the text: at least the caption step's cap height and its padding, so the letter never shrinks to a dot.
+  const nb = Math.max(u(14), Math.round(size * 0.1), Math.ceil(stepSize(capStep).size * 0.72) + u(8));
   hudPlace(id, anchorOf(desc, "topRight"), () => {
     kit.column(id, { gap: u(4), cross: "center", padding: { top: Math.ceil(nb / 2), bottom: 0, left: 0, right: 0 } }, () => {
       const { radius, corner } = shapeOf("hud");
@@ -207,7 +208,15 @@ export function minimapView(id: string, desc: Api.MinimapViewDesc = {}): Api.Min
       }, () => text("Letter", desc.north ?? "N", { step: nStep, font: "display", color: lit(role("danger")), nowrap: true }, fitK < 1 ? { transform: { scaleX: fitK, scaleY: fitK } } : undefined),
         fixed({ start: bezel + R + Math.cos(nAng) * ring - nb / 2, top: bezel + R + Math.sin(nAng) * ring - nb / 2 }));
       });
-      if (desc.zone && !plate) text("Zone", desc.zone, { step: capStep, font: "display", color: token("ink"), nowrap: true, name: true });
+      // A round map's caption: the square map's plate as a pill centred under the ring, so it reads on any ground.
+      if (desc.zone && !plate) {
+        box("ZonePlate", { padding: { left: u(10), right: u(10), top: u(3), bottom: u(3) }, align: "center", cross: "center", part: sel("Minimap", "plate") }, {
+          shape: { kind: "rect", radii: [999, 999, 999, 999] },
+          fills: [solid(lit({ r: 0.043, g: 0.05, b: 0.063, a: 1 }, 0.92))],
+          strokes: [stroke(1, lit(WHITE, 0.08))],
+          effects: [drop(u(2), u(8), token("shadow", 0.45))],
+        }, () => text("Zone", desc.zone ?? "", { step: capStep, font: "display", color: token("ink", 0.92), nowrap: true }));
+      }
     });
   });
   return result;
