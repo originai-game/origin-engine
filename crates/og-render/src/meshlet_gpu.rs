@@ -33,7 +33,7 @@
 
 use crate::meshlet::{CLUSTER_TRIANGLES, MeshClusters};
 use crate::{Batch, RenderScene, Side};
-use glam::{Mat4, Vec4};
+use glam::{Mat4, Vec3, Vec4};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -63,6 +63,9 @@ pub(crate) fn shadow_source() -> String {
 /// a cascade's frustum is its box and the camera slice it sweeps, at most
 /// cull_gpu.rs's 12.
 pub(crate) const VIEW_PLANES: usize = 12;
+/// Rows per view in the view table: its planes, its eye and pixels per
+/// unit, its projection (`meshlet_cull.wgsl` `VIEW_ROWS`).
+const VIEW_ROWS: usize = VIEW_PLANES + 2;
 
 /// vec4 rows per mesh in the mesh table: its sphere, its level count, then
 /// one per level (`meshlet_cull.wgsl` `MESH_ROWS`).
@@ -80,7 +83,6 @@ const WORKGROUPS_PER_ROW: u32 = 65535;
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct Params {
     view_proj: [[f32; 4]; 4],
-    eye: [f32; 4],
     lod: [f32; 4],
     sizes: [u32; 4],
     phase: [u32; 4],
@@ -110,6 +112,8 @@ pub(crate) struct MeshletDraw {
     pub batch: u32,
     /// The view it is drawn in (0: the camera).
     pub view: u32,
+    /// Whether that view is drawn lit (not a shadow pass).
+    pub lit: bool,
     /// Its row in the batch table: its draw's offset in `draws`.
     pub row: u32,
     pub first_item: u32,
@@ -128,30 +132,91 @@ pub(crate) fn takes(scene: &RenderScene, b: &Batch, clustered: bool, lightmapped
         && !lightmapped
 }
 
-/// One view of the frame's dispatch: its planes and the batches it takes
-/// (indices into the frame's batches). The first is the camera's.
+/// One view of the frame's dispatch: its planes, the batches it takes
+/// (indices into the frame's batches) and the eye its levels are picked
+/// from. The first is the camera's; a shadow view (not `lit`) carries the
+/// camera's eye and never culls by the normal cone.
+#[derive(Clone, Debug)]
 pub(crate) struct MeshletView {
     pub planes: Vec<Vec4>,
     pub taken: Vec<u32>,
+    pub eye: Vec3,
+    /// Pixels per unit of length at distance 1 (perspective) or anywhere
+    /// (orthographic).
+    pub per_unit: f32,
+    pub perspective: bool,
+    /// Drawn lit (the camera, a reflection, a view, a probe face), not a
+    /// shadow pass.
+    pub lit: bool,
+}
+
+impl MeshletView {
+    /// The camera's view: its pixels per unit from its projection and
+    /// the frame's `height` in pixels (lod.rs `pixels_per_unit`).
+    pub fn camera(camera: &crate::Camera, planes: &[Vec4], taken: Vec<u32>, height: u32) -> Self {
+        let (perspective, per_unit) = match camera.projection {
+            crate::Projection::Perspective { fov_y_degrees } => (
+                true,
+                height as f32 / (2.0 * (fov_y_degrees.to_radians() * 0.5).tan().max(1e-6)),
+            ),
+            crate::Projection::Orthographic { height: h } => (false, height as f32 / h.max(1e-6)),
+        };
+        MeshletView {
+            planes: planes.to_vec(),
+            taken,
+            eye: camera.position,
+            per_unit,
+            perspective,
+            lit: true,
+        }
+    }
+
+    /// A secondary view seen from `eye` through `view_proj` (a rigid view
+    /// times a projection, a mirror's or an oblique one included) into a
+    /// target `height` pixels high: half the height times the length of
+    /// its clip y row is the pixels per unit at distance 1 for a
+    /// perspective projection, and anywhere for an orthographic one.
+    pub fn seen(planes: &[Vec4], taken: Vec<u32>, eye: Vec3, view_proj: Mat4, height: u32) -> Self {
+        MeshletView {
+            planes: planes.to_vec(),
+            taken,
+            eye,
+            per_unit: 0.5 * height as f32 * view_proj.row(1).truncate().length(),
+            perspective: view_proj.row(3).truncate().length() > 1e-6,
+            lit: true,
+        }
+    }
+
+    /// A shadow pass's view of `taken` within `planes`, its levels the
+    /// camera's (`camera` the camera's view).
+    pub fn shadow(camera: &MeshletView, planes: &[Vec4], taken: Vec<u32>) -> Self {
+        MeshletView {
+            planes: planes.to_vec(),
+            taken,
+            lit: false,
+            ..camera.clone()
+        }
+    }
 }
 
 /// The frame's batch table and the work its dispatch covers, from each
 /// view's clustered batches' instances (their range of the sorted
 /// instances) and their meshes' most clusters at any level: (rows, draws,
-/// items, workgroups). Only the camera's rows (view 0) may cull by `cone`.
+/// items, workgroups). Only the rows of lit views (`true` beside their
+/// batches) may cull by `cone`.
 pub(crate) fn plan<'a>(
     batches: &[Batch],
-    views: impl IntoIterator<Item = &'a [u32]>,
+    views: impl IntoIterator<Item = (&'a [u32], bool)>,
     slot: impl Fn(usize) -> Option<(u32, u32)>,
     cone: impl Fn(&Batch) -> bool,
 ) -> (Vec<BatchRow>, Vec<MeshletDraw>, u32, u32) {
     let mut rows = Vec::new();
     let mut draws = Vec::new();
     let (mut items, mut workgroups) = (0u32, 0u32);
-    for (view, &b) in views
+    for (view, lit, &b) in views
         .into_iter()
         .enumerate()
-        .flat_map(|(v, taken)| taken.iter().map(move |b| (v as u32, b)))
+        .flat_map(|(v, (taken, lit))| taken.iter().map(move |b| (v as u32, lit, b)))
     {
         let batch = &batches[b as usize];
         let Some((mesh_slot, most)) = slot(batch.mesh) else {
@@ -167,13 +232,14 @@ pub(crate) fn plan<'a>(
             instances: batch.count,
             first_item,
             first_workgroup: workgroups,
-            flags: (view == 0 && cone(batch)) as u32,
+            flags: (lit && cone(batch)) as u32,
             view,
             most,
         });
         draws.push(MeshletDraw {
             batch: b,
             view,
+            lit,
             row: rows.len() as u32 - 1,
             first_item,
         });
@@ -596,7 +662,7 @@ impl MeshletGpu {
         prepass: bool,
         samples: u32,
     ) {
-        let camera = || self.frame.iter().filter(|d| d.view == 0);
+        let camera = || self.frame.iter().filter(|d| d.lit);
         let missing = camera().any(|d| {
             let b = &batches[d.batch as usize];
             !self.lit.contains_key(&(b.side, b.effects))
@@ -615,7 +681,7 @@ impl MeshletGpu {
             ],
             immediate_size: 0,
         });
-        for d in self.frame.iter().filter(|d| d.view == 0) {
+        for d in self.frame.iter().filter(|d| d.lit) {
             let b = &batches[d.batch as usize];
             self.lit.entry((b.side, b.effects)).or_insert_with(|| {
                 crate::hdr_pipeline_with(
@@ -666,7 +732,7 @@ impl MeshletGpu {
             let b = &batches[d.batch as usize];
             (b.side, b.dissolve)
         };
-        let shadows = || self.frame.iter().filter(|d| d.view > 0);
+        let shadows = || self.frame.iter().filter(|d| !d.lit);
         if shadows().all(|d| self.shadow.contains_key(&key(d))) {
             return;
         }
@@ -681,7 +747,7 @@ impl MeshletGpu {
             bind_group_layouts: &[Some(pass), Some(material), None, Some(&self.draw_layout)],
             immediate_size: 0,
         });
-        let keys: Vec<(Side, bool)> = self.frame.iter().filter(|d| d.view > 0).map(key).collect();
+        let keys: Vec<(Side, bool)> = self.frame.iter().filter(|d| !d.lit).map(key).collect();
         for k in keys {
             self.shadow.entry(k).or_insert_with(|| {
                 crate::meshlet_shadow_pipeline(device, &layout, module, k.0, k.1)
@@ -696,7 +762,7 @@ impl MeshletGpu {
         let pools = self.pools.as_ref()?;
         let (_, _, items, _) = plan(
             batches,
-            [taken],
+            [(taken, false)],
             |m| pools.slots.get(&m).copied(),
             |_| false,
         );
@@ -739,7 +805,7 @@ impl MeshletGpu {
         let pools = self.pools.as_ref()?;
         let (rows, draws, items, workgroups) = plan(
             batches,
-            views.iter().map(|v| v.taken.as_slice()),
+            views.iter().map(|v| (v.taken.as_slice(), v.lit)),
             |m| pools.slots.get(&m).copied(),
             |b| b.side == Side::Front,
         );
@@ -783,14 +849,14 @@ impl MeshletGpu {
         } else {
             (0, half)
         };
-        let mut planes = vec![[0.0f32; 4]; views.len() * VIEW_PLANES];
+        let mut planes = vec![[0.0f32; 4]; views.len() * VIEW_ROWS];
         for (v, view) in views.iter().enumerate() {
-            for (row, p) in planes[v * VIEW_PLANES..]
-                .iter_mut()
-                .zip(view.planes.iter().take(VIEW_PLANES))
-            {
+            let rows = &mut planes[v * VIEW_ROWS..(v + 1) * VIEW_ROWS];
+            for (row, p) in rows.iter_mut().zip(view.planes.iter().take(VIEW_PLANES)) {
                 *row = p.to_array();
             }
+            rows[VIEW_PLANES] = view.eye.extend(view.per_unit).to_array();
+            rows[VIEW_PLANES + 1] = [view.perspective as u32 as f32, 0.0, 0.0, 0.0];
         }
         grow(
             device,
@@ -806,26 +872,12 @@ impl MeshletGpu {
             .map(|_| [(CLUSTER_TRIANGLES * 3) as u32, 0, 0, 0])
             .collect();
         queue.write_buffer(&self.draws, 0, bytemuck::cast_slice(&draw_args));
-        let camera = &scene.camera;
-        let (perspective, per_unit) = match camera.projection {
-            crate::Projection::Perspective { fov_y_degrees } => (
-                1.0,
-                height as f32 / (2.0 * (fov_y_degrees.to_radians() * 0.5).tan().max(1e-6)),
-            ),
-            crate::Projection::Orthographic { height: h } => (0.0, height as f32 / h.max(1e-6)),
-        };
         // Two phases with the pyramid and its depth, one without.
         let pyramid = gc.pyramid();
         let depth = gc.occluder_depth().filter(|_| pyramid.is_some());
         let params = |phase: u32| Params {
             view_proj: view_proj.to_cols_array_2d(),
-            eye: [
-                camera.position.x,
-                camera.position.y,
-                camera.position.z,
-                perspective,
-            ],
-            lod: [per_unit, scene.lod_bias.max(0.0), 0.0, 0.0],
+            lod: [scene.lod_bias.max(0.0), 0.0, 0.0, 0.0],
             sizes: [width, height, pyramid.map_or(0, |p| p.1), rows.len() as u32],
             phase: [phase, read as u32, write as u32, 0],
         };
@@ -1060,20 +1112,23 @@ impl MeshletGpu {
         }
     }
 
-    /// Draws the frame's clustered batches into `pass` (the lit pass, or
-    /// the prepass with `prepass`): groups 0 and 2 are bound by the
-    /// caller; `material(b)` is batch `b`'s material group; `probe(pass,
-    /// b)` binds its reflection probe. Returns the draws made.
+    /// Draws the frame's clustered batches of lit view `view` (0 the
+    /// camera) into `pass` (the camera's lit pass, or its prepass with
+    /// `prepass`; a reflection's, a view's or a probe face's lit pass):
+    /// groups 0 and 2 are bound by the caller; `material(b)` is batch `b`'s
+    /// material group; `probe(pass, b)` binds its reflection probe.
+    /// Returns the draws made.
     pub fn draw<'m>(
         &self,
         pass: &mut wgpu::RenderPass<'_>,
         batches: &[Batch],
+        view: u32,
         prepass: bool,
         material: impl Fn(&Batch) -> &'m wgpu::BindGroup,
         mut probe: impl FnMut(&mut wgpu::RenderPass<'_>, &Batch),
     ) -> u32 {
         let mut n = 0;
-        for d in self.frame.iter().filter(|d| d.view == 0) {
+        for d in self.frame.iter().filter(|d| d.view == view && d.lit) {
             let b = &batches[d.batch as usize];
             let pipeline = if prepass {
                 self.prepass.get(&b.side)
@@ -1176,7 +1231,8 @@ mod tests {
             5 => Some((2, 1)),
             _ => None,
         };
-        let (rows, draws, items, workgroups) = plan(&batches, [&[0, 1, 2, 3][..]], slot, |_| true);
+        let (rows, draws, items, workgroups) =
+            plan(&batches, [(&[0, 1, 2, 3][..], true)], slot, |_| true);
         assert_eq!(rows.len(), 2);
         assert_eq!(
             draws
@@ -1196,17 +1252,22 @@ mod tests {
     }
 
     #[test]
-    fn shadow_views_get_rows_of_their_own_that_never_cull_by_the_cone() {
+    fn each_view_gets_rows_of_its_own_and_only_lit_views_cull_by_the_cone() {
         let batches = [batch(0, 0, 3), batch(1, 3, 10)];
         let slot = |m: usize| Some((m as u32, if m == 0 { 7 } else { 40 }));
-        // The camera takes both; two shadow views take batch 1 only.
-        let views: [&[u32]; 3] = [&[0, 1], &[1], &[1]];
+        // The camera takes both; a reflection (lit) and a shadow view take
+        // batch 1 only.
+        let views: [(&[u32], bool); 3] = [(&[0, 1], true), (&[1], true), (&[1], false)];
         let (rows, draws, items, workgroups) = plan(&batches, views, slot, |_| true);
         assert_eq!(
             rows.iter()
                 .map(|r| (r.view, r.flags, r.first_instance))
                 .collect::<Vec<_>>(),
-            [(0, 1, 0), (0, 1, 3), (1, 0, 3), (2, 0, 3)]
+            [(0, 1, 0), (0, 1, 3), (1, 1, 3), (2, 0, 3)]
+        );
+        assert_eq!(
+            draws.iter().map(|d| d.lit).collect::<Vec<_>>(),
+            [true, true, true, false]
         );
         // Each view's batch has its own items and draw, each from a
         // multiple of 32: 21 from 0, then 400 from 32, 448 and 864.
@@ -1220,6 +1281,48 @@ mod tests {
         assert_eq!(items, 1264);
         assert_eq!(workgroups, 3 + 10 * 3);
         assert_eq!(rows[3].first_workgroup, 23);
+    }
+
+    /// A secondary view's pixels per unit, from its view-projection
+    /// alone, are the camera's from its projection: perspective and
+    /// orthographic, seen directly or in a mirror (a reflected view).
+    #[test]
+    fn a_view_seen_through_its_matrix_picks_levels_as_the_camera_would() {
+        let mirror = Mat4::from_scale(Vec3::new(1.0, -1.0, 1.0));
+        for projection in [
+            crate::Projection::Perspective {
+                fov_y_degrees: 50.0,
+            },
+            crate::Projection::Orthographic { height: 12.0 },
+        ] {
+            let cam = crate::Camera {
+                position: Vec3::new(3.0, 2.0, 9.0),
+                target: Vec3::new(-1.0, 0.5, -4.0),
+                projection,
+                ..Default::default()
+            };
+            let frame = crate::frame::camera_frame(&cam, 16.0 / 9.0, glam::Vec2::ZERO);
+            let camera = MeshletView::camera(&cam, &[], Vec::new(), 720);
+            for view_proj in [frame.view_proj, frame.view_proj * mirror] {
+                let seen = MeshletView::seen(&[], Vec::new(), cam.position, view_proj, 720);
+                assert_eq!(seen.perspective, camera.perspective, "{projection:?}");
+                assert!(
+                    (seen.per_unit - camera.per_unit).abs() <= 1e-3 * camera.per_unit,
+                    "{projection:?}: {} against {}",
+                    seen.per_unit,
+                    camera.per_unit
+                );
+            }
+        }
+        // A shadow view keeps the camera's eye and levels, drawn unlit.
+        let cam = crate::Camera::default();
+        let camera = MeshletView::camera(&cam, &[], vec![1], 720);
+        let shadow = MeshletView::shadow(&camera, &[Vec4::X], vec![2]);
+        assert_eq!(
+            (shadow.eye, shadow.per_unit, shadow.lit),
+            (camera.eye, camera.per_unit, false)
+        );
+        assert_eq!((shadow.planes, shadow.taken), (vec![Vec4::X], vec![2]));
     }
 
     #[test]

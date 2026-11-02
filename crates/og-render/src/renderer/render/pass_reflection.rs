@@ -20,6 +20,10 @@ pub(super) struct ReflectionPassInputs<'a, F0, F1> {
     pub(super) terrain_draws: &'a [terrain::TerrainDraw],
     pub(super) sky_group: &'a wgpu::BindGroup,
     pub(super) reflection_blended: &'a [DrawList],
+    /// Each pass's view of the meshlet dispatch (0: none), and the
+    /// frame's batches it draws.
+    pub(super) meshlet_views: &'a [u32],
+    pub(super) batches: &'a [Batch],
 }
 
 impl Renderer {
@@ -42,6 +46,8 @@ impl Renderer {
             terrain_draws,
             sky_group,
             reflection_blended,
+            meshlet_views,
+            batches,
         }: ReflectionPassInputs<
             '_,
             impl Fn(
@@ -136,6 +142,9 @@ impl Renderer {
         );
         stats.draw_calls += list.ranges.len() as u32;
         stats.reflection_draws += list.ranges.len() as u32;
+        let n = self.draw_meshlets(&mut pass, batches, meshlet_views[k]);
+        stats.draw_calls += n;
+        stats.reflection_draws += n;
         let n = draw_skinned(
             &mut pass,
             skinned_visible,

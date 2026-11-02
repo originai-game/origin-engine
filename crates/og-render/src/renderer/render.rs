@@ -674,9 +674,27 @@ impl Renderer {
             .copied()
             .filter(|&b| batches[b as usize].cast)
             .collect();
-        let meshlet_caster_items = match self.meshlet.as_ref() {
-            Some(m) if !meshlet_casters.is_empty() => m.items(&batches, &meshlet_casters),
-            _ => None,
+        // Every batch the path takes, on any layer: each lit view takes
+        // those on its layers. A list leaves out a batch its view draws
+        // (`in_meshlet`, by its instances' first slot).
+        let meshlet_all = meshlet_taken.clone();
+        let meshlet_firsts: Vec<u32> = {
+            let mut f: Vec<u32> = meshlet_all
+                .iter()
+                .map(|&b| &batches[b as usize])
+                .filter(|b| b.count > 0)
+                .map(|b| b.first)
+                .collect();
+            f.sort_unstable();
+            f
+        };
+        let in_meshlet = |b: &Batch| b.count > 0 && meshlet_firsts.binary_search(&b.first).is_ok();
+        let on_layers = |mask: u32| -> Vec<u32> {
+            meshlet_all
+                .iter()
+                .copied()
+                .filter(|&b| batches[b as usize].layers & mask != 0)
+                .collect()
         };
         let mut cull_passes: Vec<cull_gpu::CullPass> = Vec::new();
         let mut gpu_pass = |kind, frustum: &Frustum| {
@@ -731,24 +749,40 @@ impl Renderer {
                 |b| !b.transparent && b.layers & mask != 0,
             )
         };
-        // The meshlet dispatch's views: the camera's, then a shadow view
-        // per shadow pass that fits (`shadow_view`: its index, 0 none).
-        let mut meshlet_views = vec![meshlet_gpu::MeshletView {
-            planes: view_frustum.planes().to_vec(),
-            taken: std::mem::take(&mut meshlet_taken),
-        }];
-        let mut shadow_view = |f: &Frustum| -> u32 {
-            match meshlet_caster_items {
+        // The meshlet dispatch's views: the camera's, then one per
+        // reflection, view, probe face and shadow pass that fits
+        // (`meshlet_view`: its index, 0 none: that pass keeps its list).
+        let mut meshlet_views = vec![meshlet_gpu::MeshletView::camera(
+            &scene.camera,
+            view_frustum.planes(),
+            std::mem::take(&mut meshlet_taken),
+            self.height,
+        )];
+        let camera_seen = meshlet_gpu::MeshletView {
+            taken: Vec::new(),
+            ..meshlet_views[0].clone()
+        };
+        let meshlet_gpu = self.meshlet.as_ref();
+        let mut meshlet_view = |v: meshlet_gpu::MeshletView| -> u32 {
+            if v.taken.is_empty() {
+                return 0;
+            }
+            match meshlet_gpu.and_then(|m| m.items(&batches, &v.taken)) {
                 Some(n) if meshlet_items + n <= meshlet_max => {
                     meshlet_items += n;
-                    meshlet_views.push(meshlet_gpu::MeshletView {
-                        planes: f.planes().to_vec(),
-                        taken: meshlet_casters.clone(),
-                    });
+                    meshlet_views.push(v);
                     meshlet_views.len() as u32 - 1
                 }
                 _ => 0,
             }
+        };
+        let shadow_view = |meshlet_view: &mut dyn FnMut(meshlet_gpu::MeshletView) -> u32,
+                           f: &Frustum| {
+            meshlet_view(meshlet_gpu::MeshletView::shadow(
+                &camera_seen,
+                f.planes(),
+                meshlet_casters.clone(),
+            ))
         };
         let (mut blended_list, blended_culled) = self.sort_transparent(
             &batches,
@@ -765,13 +799,22 @@ impl Renderer {
         culled += blended_culled + skinned_culled;
         // (The GPU culling has one reflection pass: the second slot is culled here.)
         let mut reflection_list = Vec::new();
+        let mut reflection_meshlets: Vec<u32> = Vec::new();
         for (k, r) in reflections.iter().enumerate() {
             let frustum = Frustum::from_view_proj(r.3);
+            let view = meshlet_view(meshlet_gpu::MeshletView::seen(
+                frustum.planes(),
+                on_layers(mask),
+                r.1.position,
+                r.3,
+                r.4.1,
+            ));
+            reflection_meshlets.push(view);
+            let include =
+                |b: &Batch| !b.transparent && b.layers & mask != 0 && !(view > 0 && in_meshlet(b));
             reflection_list.push(if gpu_cull && k == 0 {
                 let g = gpu_pass(cull_gpu::PassKind::Reflection, &frustum);
-                indirect_list(&batches, sorted, g, |b| {
-                    !b.transparent && b.layers & mask != 0
-                })
+                indirect_list(&batches, sorted, g, include)
             } else {
                 self.cull(
                     &batches,
@@ -784,7 +827,7 @@ impl Renderer {
                     // culling's: append, never draw a batch whole (the
                     // shift below would wrap).
                     !gpu_cull,
-                    |b| !b.transparent && b.layers & mask != 0,
+                    include,
                 )
                 .0
             });
@@ -814,10 +857,26 @@ impl Renderer {
         // transparent meshes sorted back to front from the probe (probes.rs).
         let mut probe_lists: Vec<DrawList> = Vec::new();
         let mut probe_blended: Vec<DrawList> = Vec::new();
+        let mut probe_views: Vec<u32> = Vec::new();
         for (d, cams) in probe_faces.iter().enumerate() {
-            let eye = active_probes[probe_frame.due[d].1].position;
+            let probe = &active_probes[probe_frame.due[d].1];
+            let eye = probe.position;
             for (face, f) in cams.iter().enumerate() {
                 let frustum = Frustum::from_view_proj(f.view_proj);
+                // A face with a depth prepass keeps its list (the prepass
+                // draws it).
+                let view = if face_depth {
+                    0
+                } else {
+                    meshlet_view(meshlet_gpu::MeshletView::seen(
+                        frustum.planes(),
+                        meshlet_all.clone(),
+                        eye,
+                        f.view_proj,
+                        probe.face_size(),
+                    ))
+                };
+                probe_views.push(view);
                 probe_lists.push(
                     self.cull(
                         &batches,
@@ -827,7 +886,7 @@ impl Renderer {
                         &mut cull_inside,
                         &frustum,
                         !gpu_cull,
-                        |b| !b.transparent,
+                        |b| !b.transparent && !(view > 0 && in_meshlet(b)),
                     )
                     .0,
                 );
@@ -873,9 +932,26 @@ impl Renderer {
         // Each view's opaque meshes on its layers, culled on the CPU (the
         // main camera, its shadows and reflection keep GPU culling: under
         // it these lists append every instance they draw).
+        let mut view_views: Vec<u32> = Vec::new();
         let mut view_lists: Vec<DrawList> = view_plans
             .iter()
             .map(|p| {
+                // A view with a depth prepass (a depth texture, soft
+                // particles: views.rs `write`) keeps its list.
+                let depth = particle_frame.soft
+                    || matches!(p.dest, views::Dest::Texture { depth: Some(_), .. });
+                let view = if depth {
+                    0
+                } else {
+                    meshlet_view(meshlet_gpu::MeshletView::seen(
+                        Frustum::from_view_proj(p.frame.view_proj).planes(),
+                        on_layers(p.layers),
+                        p.position,
+                        p.frame.view_proj,
+                        p.size.1,
+                    ))
+                };
+                view_views.push(view);
                 self.cull(
                     &batches,
                     &spheres,
@@ -884,7 +960,7 @@ impl Renderer {
                     &mut cull_inside,
                     &Frustum::from_view_proj(p.frame.view_proj),
                     !gpu_cull,
-                    |b| !b.transparent && b.layers & p.layers != 0,
+                    |b| !b.transparent && b.layers & p.layers != 0 && !(view > 0 && in_meshlet(b)),
                 )
                 .0
             })
@@ -1028,7 +1104,7 @@ impl Renderer {
             .map(|c| {
                 if gpu_cull {
                     let g = gpu_pass(cull_gpu::PassKind::Shadow, &c.frustum);
-                    let view = shadow_view(&c.frustum);
+                    let view = shadow_view(&mut meshlet_view, &c.frustum);
                     cascade_views.push(view);
                     caster_list(g, view)
                 } else {
@@ -1155,7 +1231,7 @@ impl Renderer {
                 local_frustums[ls.layer + face] = Some(f.clone());
                 let list = if gpu_cull {
                     let g = gpu_pass(cull_gpu::PassKind::Shadow, f);
-                    let view = shadow_view(f);
+                    let view = shadow_view(&mut meshlet_view, f);
                     local_views[ls.layer + face] = view;
                     caster_list(g, view)
                 } else {
@@ -3047,6 +3123,8 @@ impl Renderer {
                     stats.draw_calls += (lights_2d > 0) as u32;
                 }
                 FramePass::Probes => self.encode_probes(ProbesPassInputs {
+                    meshlet_views: &probe_views,
+                    batches: &batches,
                     scene,
                     probe_frame: &probe_frame,
                     face_depth,
@@ -3081,6 +3159,8 @@ impl Renderer {
                     face_sprites: &face_sprites,
                 }),
                 FramePass::Reflection(k) => self.encode_reflection(ReflectionPassInputs {
+                    meshlet_views: &reflection_meshlets,
+                    batches: &batches,
                     k,
                     scene,
                     encoder: &mut encoder,
@@ -3099,6 +3179,8 @@ impl Renderer {
                     reflection_blended: &reflection_blended,
                 }),
                 FramePass::View(i) => self.encode_view(ViewPassInputs {
+                    meshlet_views: &view_views,
+                    batches: &batches,
                     i,
                     scene,
                     view_plans: &view_plans,

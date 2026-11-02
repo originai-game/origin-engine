@@ -712,10 +712,15 @@ shape it is drawn with; they are drawn by vertex pulling in the shadow
 pipeline's state (`meshlet_shadow.wgsl`; alpha-tested and dissolving
 casters with their material). A view whose work would pass the
 device's storage binding limit keeps the per-instance casters. The
-cascades' setup, splits and maps are unchanged. Next, the planar
-reflection, views and probes go through the same culling with their own
-planes (they draw level 0 per instance until then); then a visibility
-buffer: the clusters write instance and
+cascades' setup, splits and maps are unchanged. The planar
+reflections, views and reflection probe faces are views of the same
+dispatch too, each with its planes, its eye and its pixels per unit (half
+its height times the length of its view-projection's clip y row, which
+holds for perspective, orthographic, mirrored and oblique projections),
+so each picks its own levels and culls by the cone from its own eye; only
+the camera tests the pyramid. A view or a probe face with a depth prepass
+(a depth texture, soft particles) keeps the per-instance path, as does
+any view past the storage binding limit. Then a visibility buffer: the clusters write instance and
 triangle ids, small triangles are rasterised in compute, and one
 material pass shades the buffer. The CPU statement of every test is
 `meshlet.rs`, whose unit tests check it.

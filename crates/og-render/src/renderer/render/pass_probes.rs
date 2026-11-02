@@ -35,6 +35,10 @@ pub(super) struct ProbesPassInputs<'a, F0, F1, F2, F3, F4, F5, F6> {
     pub(super) face_line_groups: &'a [wgpu::BindGroup],
     pub(super) draw_sprites: &'a F6,
     pub(super) face_sprites: &'a [Vec<sprites::SpriteRun>],
+    /// Each pass's view of the meshlet dispatch (0: none), and the
+    /// frame's batches it draws.
+    pub(super) meshlet_views: &'a [u32],
+    pub(super) batches: &'a [Batch],
 }
 
 impl Renderer {
@@ -73,6 +77,8 @@ impl Renderer {
             face_line_groups,
             draw_sprites,
             face_sprites,
+            meshlet_views,
+            batches,
         }: ProbesPassInputs<
             '_,
             impl Fn(
@@ -255,6 +261,7 @@ impl Renderer {
                     Some(fx_group),
                 );
                 stats.draw_calls += list.ranges.len() as u32;
+                stats.draw_calls += self.draw_meshlets(&mut pass, batches, meshlet_views[k]);
                 // Skinned meshes in their pose, terrain and
                 // scattered copies, as the main pass draws them.
                 let skinned: Vec<&wgpu::RenderPipeline> = probe_skinned[k]

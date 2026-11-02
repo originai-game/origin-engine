@@ -8,10 +8,13 @@
 // threads test the level's clusters (frustum, normal cone, the pyramid)
 // and append the visible ones as work items (instance, cluster) to the
 // batch's draw, whose instance count is the batch's visible clusters.
-// A row is one batch in one view: view 0 is the camera, the others are
-// shadow passes (a cascade's or a local light's face), whose rows test
-// their own planes, never the cone or the pyramid, and draw the level the
-// camera picks (so a caster's shadow is the shape it is drawn with).
+// A row is one batch in one view: view 0 is the camera, the others the
+// planar reflections, views and reflection probe faces (their own eye,
+// planes and level) and the shadow passes (a cascade's or a local light's
+// face), whose rows test their own planes, never the cone, and draw the
+// level the camera picks (their view rows hold the camera's eye: a
+// caster's shadow is the shape it is drawn with). Only the camera's rows
+// test the pyramid.
 //
 // The camera's occlusion runs in two phases (meshlet_gpu.rs), each a
 // dispatch of this entry point: the early phase draws the clusters
@@ -26,11 +29,7 @@
 struct Params {
   // The camera's (the pyramid's projection).
   view_proj: mat4x4<f32>,
-  // xyz: the eye; w: 1 for a perspective camera, 0 orthographic.
-  eye: vec4<f32>,
-  // x: pixels per unit of length at distance 1 (perspective: the view's
-  // height over 2 tan(fov / 2); orthographic: its height over the view's
-  // height in units), y: the scene's LOD bias.
+  // x: the scene's LOD bias.
   lod: vec4<f32>,
   // xy: the screen's size, z: the pyramid's levels (0: no occlusion
   // test), w: the batches.
@@ -50,9 +49,12 @@ struct BatchRow {
 
 @group(0) @binding(0) var<uniform> params: Params;
 @group(0) @binding(1) var<storage, read> instances: array<vec4<f32>>;
-// Per view VIEW_PLANES planes (frame.rs `Frustum`: a cascade's box and
-// its swept camera slice; zero rows past them never cull), view 0 the
-// camera's.
+// Per view VIEW_ROWS rows, view 0 the camera's: VIEW_PLANES planes
+// (frame.rs `Frustum`: a cascade's box and its swept camera slice; zero
+// rows past them never cull), then (the eye, pixels per unit of length at
+// distance 1: perspective, the view's height over 2 tan(fov / 2);
+// orthographic, its height over the view's height in units), then (1 for
+// a perspective view, 0 orthographic; 0, 0, 0).
 @group(0) @binding(2) var<storage, read> views: array<vec4<f32>>;
 @group(0) @binding(3) var<storage, read> batches: array<BatchRow>;
 // Per mesh slot 10 x vec4: its sphere, (levels, 0, 0, 0), then per level
@@ -71,6 +73,7 @@ struct BatchRow {
 const WG: u32 = 64u;
 // meshlet_gpu.rs VIEW_PLANES (cull_gpu.rs MAX_PLANES).
 const VIEW_PLANES: u32 = 12u;
+const VIEW_ROWS: u32 = VIEW_PLANES + 2u;
 const MESH_ROWS: u32 = 10u;
 // lod.rs LOD_PIXEL_ERROR.
 const PIXEL_ERROR: f32 = 1.0;
@@ -78,7 +81,7 @@ const PIXEL_ERROR: f32 = 1.0;
 // meshlet.rs `outside`.
 fn outside(view: u32, c: vec3<f32>, r: f32) -> bool {
   for (var i = 0u; i < VIEW_PLANES; i++) {
-    let p = views[view * VIEW_PLANES + i];
+    let p = views[view * VIEW_ROWS + i];
     if (dot(p.xyz, c) + p.w < -r * length(p.xyz)) { return true; }
   }
   return false;
@@ -163,16 +166,19 @@ fn cull_clusters(@builtin(workgroup_id) wid: vec3<u32>,
   let sphere = bitcast<vec4<f32>>(meshes[mesh]);
   let center = (m * vec4<f32>(sphere.xyz, 1.0)).xyz;
   let radius = sphere.w * scale;
+  let view = row.b.z;
+  let seen = views[view * VIEW_ROWS + VIEW_PLANES];
+  let eye = seen.xyz;
   // lod.rs `pixels_per_unit` at the sphere's near side, then `select`.
-  let perspective = params.eye.w > 0.5;
-  var per_unit = params.lod.x;
+  let perspective = views[view * VIEW_ROWS + VIEW_PLANES + 1u].x > 0.5;
+  var per_unit = seen.w;
   var inside = false;
   if (perspective) {
-    let d = length(center - params.eye.xyz) - radius;
-    if (d <= 1e-6) { inside = true; } else { per_unit = params.lod.x / d; }
+    let d = length(center - eye) - radius;
+    if (d <= 1e-6) { inside = true; } else { per_unit = seen.w / d; }
   }
   let levels = meshes[mesh + 1u].x;
-  let bias = params.lod.y;
+  let bias = params.lod.x;
   var level = 0u;
   if (!inside && bias > 0.0) {
     var error = 0.0;
@@ -181,7 +187,6 @@ fn cull_clusters(@builtin(workgroup_id) wid: vec3<u32>,
       if (error * per_unit * scale * bias < PIXEL_ERROR) { level = k; } else { break; }
     }
   }
-  let view = row.b.z;
   let phase = params.phase.x;
   // The late phase is the camera's.
   if (phase == 2u && view != 0u) { return; }
@@ -202,7 +207,7 @@ fn cull_clusters(@builtin(workgroup_id) wid: vec3<u32>,
       let k = bitcast<vec4<f32>>(clusters[ci * 3u + 2u]);
       if (k.w < 1.0) {
         let axis = normalize((m * vec4<f32>(k.xyz, 0.0)).xyz);
-        let to = wc - params.eye.xyz;
+        let to = wc - eye;
         if (dot(to, axis) >= k.w * length(to) + wr) { continue; }
       }
     }

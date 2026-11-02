@@ -140,3 +140,35 @@ fn meshlet_shadows_match_the_regular_path() {
     c.check(&Tolerance::default())
         .unwrap_or_else(|e| panic!("meshlet shadows against the regular path: {e}"));
 }
+
+/// `meshlet-views` (reference `meshlet-views.png`): the forest, a view
+/// from above on the right half and a chrome ball in a reflection probe,
+/// each tinted by the level its own view picked.
+#[test]
+fn meshlet_views_match_their_reference() {
+    check("meshlet-views");
+}
+
+/// The view from above and the probe's faces draw their clusters as the
+/// regular path draws the same instances (every level 0, bias 0): a view
+/// row with the camera's planes or eye, or a pass that drew a batch twice
+/// or not at all, fails the comparison.
+#[test]
+fn meshlet_views_match_the_regular_path() {
+    let render = |meshlets: bool| {
+        let mut g = og_tests_cooked::scenes::build("meshlet-views").expect("built");
+        g.scene = og_tests_cooked::meshlet_scenes::views_scene(meshlets, 0.0).expect("the forest");
+        og_tests::gfx::render_built(&mut g).expect("render")
+    };
+    let (on, off) = (render(true), render(false));
+    let c = compare(
+        &on.image.pixels,
+        &off.image.pixels,
+        on.image.width,
+        on.image.height,
+        &Tolerance::default(),
+    )
+    .expect("same size");
+    c.check(&Tolerance::default())
+        .unwrap_or_else(|e| panic!("meshlet views against the regular path: {e}"));
+}

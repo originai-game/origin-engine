@@ -164,6 +164,7 @@ impl Renderer {
             stats.prepass_draws += m.draw(
                 &mut p,
                 batches,
+                0,
                 true,
                 |b| &self.cache.materials[b.material].bind_group,
                 |_, _| {},

@@ -70,3 +70,17 @@ again, and the rest are tested against it (`docs/design.md` §2.6).
   `meshlet_occlusion_matches_the_regular_path` compares it with the
   regular path at the default tolerance, so a cluster neither phase draws
   fails as a hole.
+
+## Batch 3c: reflections, views and probes through the meshlet path
+
+Each planar reflection, view and reflection probe face is a lit view of
+the meshlet dispatch: its own planes, eye and level per instance, its
+clusters culled (frustum, cone) and drawn by vertex pulling in its pass.
+
+- `meshlet-views` (2 frames): the forest from the camera, tinted by
+  level (near rows green, farther yellow and orange); over the right half
+  a view from high above, its trees coarser (mostly yellow and orange);
+  a chrome ball among the near trees reflecting them through a
+  reflection probe (green: the probe is among them). No tree missing in
+  any of the three. `meshlet_views_match_the_regular_path` compares it at
+  LOD bias 0 (every level 0) with the regular path.

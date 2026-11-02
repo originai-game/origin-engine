@@ -34,6 +34,10 @@ pub(super) struct ViewPassInputs<'a, F0, F1, F2, F3, F4, F5, F6> {
     pub(super) draw_glow: &'a F6,
     pub(super) view_glow_runs: &'a [Vec<sprites::SpriteRun>],
     pub(super) post_fx: &'a PostEffects,
+    /// Each pass's view of the meshlet dispatch (0: none), and the
+    /// frame's batches it draws.
+    pub(super) meshlet_views: &'a [u32],
+    pub(super) batches: &'a [Batch],
 }
 
 impl Renderer {
@@ -71,6 +75,8 @@ impl Renderer {
             draw_glow,
             view_glow_runs,
             post_fx,
+            meshlet_views,
+            batches,
         }: ViewPassInputs<
             '_,
             impl Fn(
@@ -180,6 +186,7 @@ impl Renderer {
                 Some(&view_groups[i].1),
             );
             stats.draw_calls += view_lists[i].ranges.len() as u32;
+            stats.draw_calls += self.draw_meshlets(&mut pass, batches, meshlet_views[i]);
             let pipelines: Vec<&wgpu::RenderPipeline> = view_skinned[i]
                 .iter()
                 .map(|b| self.lit_pipeline_of(b, true, false))

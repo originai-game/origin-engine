@@ -43,6 +43,29 @@ pub(super) struct MainPassInputs<'a, F0, F1, F2, F3, F4, F5, F6> {
 }
 
 impl Renderer {
+    /// The clustered batches lit view `view` of the meshlet dispatch
+    /// draws (meshlet_gpu.rs; 0: none) into a reflection's, a view's or a
+    /// probe face's lit pass, whose groups 0 and 2 are bound. Returns the
+    /// draws made.
+    pub(super) fn draw_meshlets(
+        &self,
+        pass: &mut wgpu::RenderPass<'_>,
+        batches: &[Batch],
+        view: u32,
+    ) -> u32 {
+        match self.meshlet.as_ref() {
+            Some(m) if view > 0 => m.draw(
+                pass,
+                batches,
+                view,
+                false,
+                |b| &self.cache.materials[b.material].bind_group,
+                |_, _| {},
+            ),
+            _ => 0,
+        }
+    }
+
     pub(super) fn encode_main<'r>(
         &self,
         MainPassInputs {
@@ -226,6 +249,7 @@ impl Renderer {
             stats.draw_calls += m.draw(
                 &mut pass,
                 batches,
+                0,
                 false,
                 |b| &self.cache.materials[b.material].bind_group,
                 |p, b| binder.bind(p, b.probe),

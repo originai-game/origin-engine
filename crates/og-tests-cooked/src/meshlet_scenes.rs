@@ -24,12 +24,20 @@
 //!   ground: the casters go through the meshlet path's shadow views (each
 //!   cascade's and the spot's face), and `shadow_scene(false)` draws the
 //!   same frame through the regular path; the two match.
+//! - `meshlet-views`: the forest from the camera, with a view from high
+//!   above over the right half of the frame and a chrome ball inside a
+//!   reflection probe's box among the near trees, each tinted by the level
+//!   its own view picked: the main view's near rows green, the view from
+//!   above coarser (yellow, orange), the ball's reflection of the trees
+//!   around it green (the probe is among them). `views_scene(false, 0)`
+//!   and `views_scene(true, 0)` draw it with every level 0 (bias 0)
+//!   through the regular and the meshlet path; the two match.
 
 use glam::{Mat4, Quat, Vec3};
 use og_cook::runtime::Bundle;
 use og_render::{
-    Camera, DirectionalLight, Exposure, Light, LightKind, MaterialHandle, MeshHandle, RenderScene,
-    StandardMaterial, shapes,
+    Camera, DirectionalLight, Exposure, Light, LightKind, MaterialHandle, MeshHandle,
+    ReflectionProbe, RenderScene, StandardMaterial, View, ViewTarget, shapes,
 };
 
 /// A model's parts: each mesh, its material and its place in the model.
@@ -166,5 +174,49 @@ pub fn shadow_scene(meshlets: bool) -> Result<RenderScene, String> {
     scene.camera.position = Vec3::new(0.0, 9.0, 2.0);
     scene.camera.target = Vec3::new(0.0, 0.0, -18.0);
     scene.meshlets = meshlets;
+    Ok(scene)
+}
+
+/// `meshlet-views` (module docs), through the meshlet path when
+/// `meshlets`, at LOD bias `bias` (0: every level 0), tinted by level when
+/// `bias` is positive.
+pub fn views_scene(meshlets: bool, bias: f32) -> Result<RenderScene, String> {
+    let (mut scene, parts) = base()?;
+    plant_forest(&mut scene, &parts);
+    let chrome = scene.add_standard_material(StandardMaterial {
+        color: Vec3::splat(0.95),
+        metalness: 1.0,
+        roughness: 0.05,
+        ..Default::default()
+    });
+    let ball = scene.add_mesh(shapes::sphere(32, 16));
+    scene.add_instance(
+        ball,
+        chrome,
+        Mat4::from_scale_rotation_translation(
+            // 0.8 m across the unit sphere's 0.5.
+            Vec3::splat(1.6),
+            Quat::IDENTITY,
+            Vec3::new(2.5, 1.2, -9.0),
+        ),
+    );
+    scene.reflection_probes.push(ReflectionProbe::new(
+        1,
+        Vec3::new(2.5, 1.6, -9.0),
+        Vec3::new(14.0, 6.0, 14.0),
+    ));
+    scene.views.push(View {
+        camera: Camera {
+            position: Vec3::new(0.0, 70.0, -30.0),
+            target: Vec3::new(0.0, 0.0, -62.0),
+            exposure: Exposure::linear(0.8),
+            ..Default::default()
+        },
+        target: ViewTarget::Viewport([0.5, 0.0, 0.5, 1.0]),
+        ..Default::default()
+    });
+    scene.meshlets = meshlets;
+    scene.lod_bias = bias;
+    scene.lod_debug = bias > 0.0;
     Ok(scene)
 }
