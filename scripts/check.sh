@@ -731,7 +731,7 @@ step_ui_styles() {
 step_ui_kit() {
   if skip_unchanged ui-kit "ui-kit" "$(rule_ui_styles)"; then return $SKIP; fi
   OG_GATE=1 sh packages/engine/scripts/build.sh --native || return 1
-  "$OG_TARGET_DIR/debug/og" test templates/ui-kit --skip tests/style- --jobs "${OG_UI_KIT_JOBS:-3}"
+  "$OG_TARGET_DIR/debug/og" test templates/ui-kit --skip tests/style- --jobs "${OG_UI_KIT_JOBS:-4}"
 }
 
 # The packages that need no native build.
