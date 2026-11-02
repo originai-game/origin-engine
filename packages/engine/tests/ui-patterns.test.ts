@@ -1248,3 +1248,59 @@ test("questTracker: a tracked quest that completes flashes Complete instead of v
   engine.advance(6);
   expect(elements(engine).some((e) => e.text === "Complete")).toBeTrue();
 });
+
+// ── lobby ───────────────────────────────────────────────────────────────
+
+/** A party of three in four seats, the local player second in the game's order; the game applying what it is asked. */
+function party(ready = false) {
+  const results: Api.LobbyResult[] = [];
+  const state = { check: false, accepted: false, ready };
+  const engine = run(() => {
+    const members: Api.LobbyMember[] = [
+      { key: "kael", name: "Kael", level: 42, ready: true, accepted: state.check },
+      { key: "me", name: "Aria", level: 37, you: true, ready: state.ready, accepted: state.accepted },
+      { key: "mira", name: "Mira", level: 18 },
+    ];
+    let r = {} as Api.LobbyResult;
+    og.ui.column("Box", { width: { kind: "fixed", px: 1232 }, height: { kind: "fixed", px: 672 } }, () => {
+      r = og.ui.lobby("Lobby", { title: "Play", members, slots: 4, mode: { name: "Ranked" }, ...(state.check ? { readyCheck: { secondsLeft: 8, seconds: 10 } } : {}) });
+    });
+    results.push(r);
+    if (r.ready) state.ready = !state.ready;
+    if (r.accept) state.accepted = true;
+  });
+  return { engine, results, state };
+}
+const tapOn = (engine: Engine, el: Element): void => {
+  engine.probe.commands(`0:touch_move:${centre(el)};0.05:touch_start;0.1:touch_end`);
+  engine.advance(10);
+};
+
+test("lobby: the local player's card stands first and larger; a seat answers its place; the toggle asks to flip ready", () => {
+  // Wrong: the party drawn in the game's order (the local player second), a seat answering its index among all cards, or ready flipped by the component.
+  const p = party();
+  const cards = elements(p.engine).filter((e) => /Lineup\/(kael|me|mira)$/.test(e.path)).sort((a, b) => a.x - b.x);
+  expect(cards.map((c) => c.path.split("/").at(-1))).toEqual(["me", "kael", "mira"]);
+  expect(cards[0]!.height).toBeGreaterThan(cards[1]!.height);
+  // The cards rise in one after another: pressed once they stand.
+  p.engine.advance(30);
+  tapOn(p.engine, byPath(p.engine, "Lineup/Seat#0")!);
+  expect(p.results.some((r) => r.invite === 0)).toBeTrue();
+  expect(byPath(p.engine, "Bar/Action/Label")!.text).toBe("Ready up");
+  tapOn(p.engine, byPath(p.engine, "Bar/Action")!);
+  expect(p.results.filter((r) => r.ready).length).toBe(1);
+  expect(byPath(p.engine, "Bar/Action/Label")!.text).toBe("Ready");
+});
+
+test("lobby: a ready check is accepted by confirm whatever has the focus, once; Back declines only before accepting", () => {
+  // Wrong: the check answering only its button (a pad's A does nothing), accept answered every tick, or Back declining after accepting.
+  const p = party(true);
+  p.state.check = true;
+  p.engine.advance(4);
+  expect(byPath(p.engine, "Check/Panel/Title")!.text).toBe("Match found");
+  key(p.engine, "Enter");
+  expect(p.results.filter((r) => r.accept).length).toBe(1);
+  expect(byPath(p.engine, "Check/Panel/Actions/Accept/Label")!.text).toBe("Accepted");
+  key(p.engine, "Escape");
+  expect(p.results.some((r) => r.decline)).toBeFalse();
+});

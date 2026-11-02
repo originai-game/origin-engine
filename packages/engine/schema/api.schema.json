@@ -11527,6 +11527,11 @@
         "QuestLogDesc",
         "QuestLogResult",
         "QuestTrackerDesc",
+        "LobbyMember",
+        "LobbyMode",
+        "ReadyCheckView",
+        "LobbyDesc",
+        "LobbyResult",
         "MenuItem",
         "MenuResult",
         "MainMenuDesc",
@@ -15596,6 +15601,27 @@
             }
           ],
           "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "lobby",
+          "doc": "A party lobby (Valorant, Fortnite, Rocket League, Overwatch): the party stands as a lineup of tall cards, each the player's character art with a scrim at its foot carrying the name in the display face, the level and a title, and a ready foot lit in success with a tick (not ready muted; a status line in its place); the local player's card first and larger, the leader's crown at its corner, each empty seat an Invite. At the foot, the mode card (its art, name and detail) at the start and one primary action at the end: Ready up and Ready for a member, Find match for the leader, Cancel while searching with a chip counting the time in queue and the estimate. A ready check rises over everything on a scrim: Match found in the display face, a ring that runs out with the seconds left, a pip per player lit as each accepts (danger for a decline), and Accept large in the accent beside Decline. On a phone in portrait the lineup is two columns of shorter cards and the foot docks at the thumb.\nParts: Lobby.frame, Lobby.lineup, Lobby.member[you][leader][ready], Lobby.art, Lobby.plate, Lobby.foot[ready], Lobby.crown, Lobby.seat, Lobby.bar, Lobby.mode, Lobby.action, Lobby.search, Lobby.check, Lobby.pip[accepted|declined], Lobby.accept, Lobby.decline. Slots: each member's portrait (art kind character), the mode's image (art kind thumbnail). States: on each member, group ready (waiting, ready); on the check's pips, group answer (pending, accepted, declined). Motion: the cards rise in one after another on the panel spring; a card turning ready pops its foot; the search chip's dot breathes; the check scales in on the emphasis spring and its ring runs down (still under reduced motion). Sounds: select on a card or seat, confirm on ready, start and accept, back on cancel and decline, open when the check rises, success when every player has accepted. Accessibility: the lineup a list; each card a button named its name, level, title, leader and ready word; each seat a button named the invite word; the check a dialog named the found word with the time left as a timer. Probe ids: <id>/Lineup/<key>, <id>/Lineup/Seat#<i>, <id>/Bar/Mode, <id>/Bar/Action, <id>/Bar/Search, <id>/Check/Accept, <id>/Check/Decline.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "LobbyDesc",
+              "optional": true,
+              "doc": "The party, the mode, matchmaking and the ready check."
+            }
+          ],
+          "returns": "LobbyResult",
           "publish": true,
           "host": false
         },
@@ -60074,6 +60100,345 @@
           "default": "right"
         }
       },
+      "additionalProperties": false
+    },
+    "LobbyMember": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One player in the party, as the game's viewmodel holds it.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key, stable while it is in the party: its element id, so its probe path is <id>/Lineup/<key>.",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "The player's name: the card's reading, set in the display face.",
+          "default": ""
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The player's level; 0 shows none.",
+          "default": 0
+        },
+        "title": {
+          "type": "string",
+          "description": "A line under the name: a rank, a class, a club (empty: none).",
+          "default": ""
+        },
+        "portrait": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its character or avatar (art kind character), filling the card; null draws the style's placeholder figure.",
+          "default": null
+        },
+        "ready": {
+          "type": "boolean",
+          "description": "Ready: the card's foot lit in success with a tick and the ready word.",
+          "default": false
+        },
+        "leader": {
+          "type": "boolean",
+          "description": "The party's leader: a crown at the card's top start.",
+          "default": false
+        },
+        "you": {
+          "type": "boolean",
+          "description": "The local player: its card stands larger and first, its foot reads the ready toggle's state.",
+          "default": false
+        },
+        "status": {
+          "type": "string",
+          "description": "A line in place of the ready word (In a match, Away); empty is ready or not ready.",
+          "default": ""
+        },
+        "accepted": {
+          "type": "boolean",
+          "description": "In a ready check: has accepted.",
+          "default": false
+        },
+        "declined": {
+          "type": "boolean",
+          "description": "In a ready check: has declined.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "LobbyMode": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "The mode the party queues for.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Its name (Ranked, Duos, Grand Prix).",
+          "default": ""
+        },
+        "detail": {
+          "type": "string",
+          "description": "A line under it (5v5 · Summoner's Rift; 4 players).",
+          "default": ""
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its art (art kind thumbnail), 16:9; null draws the style's placeholder.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "ReadyCheckView": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A match found, waiting for every player to accept.",
+      "type": "object",
+      "properties": {
+        "secondsLeft": {
+          "type": "number",
+          "description": "Seconds left to accept.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "seconds": {
+          "type": "number",
+          "description": "The whole time to accept, for the ring; 0 is 10.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        }
+      },
+      "additionalProperties": false
+    },
+    "LobbyDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A party lobby: who is in it, the mode, matchmaking and the ready check.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The screen's title (Play, Party, Lobby).",
+          "default": ""
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LobbyMember"
+          },
+          "description": "The party, the local player among them, in the game's order (the local player's card is drawn first).",
+          "default": []
+        },
+        "slots": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The party's size: the places past the members are empty seats, each an Invite; 0 is the members' count.",
+          "default": 0
+        },
+        "mode": {
+          "$ref": "#/$defs/LobbyMode",
+          "description": "The mode the party queues for: a card at the foot's start, pressed to change it (LobbyResult.mode).",
+          "default": {}
+        },
+        "searching": {
+          "type": "boolean",
+          "description": "Matchmaking: the foot's action becomes Cancel and a chip counts the time in queue.",
+          "default": false
+        },
+        "searchSeconds": {
+          "type": "number",
+          "description": "Seconds in queue.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "estimateSeconds": {
+          "type": "number",
+          "description": "The estimated wait, said beside the count; 0 says none.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "canStart": {
+          "type": "boolean",
+          "description": "The local player may start matchmaking (the leader, with the party ready): the foot's action is Find match; else it is the ready toggle.",
+          "default": false
+        },
+        "readyCheck": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReadyCheckView"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A match found: the ready check stands over the lobby until the game clears it.",
+          "default": null
+        },
+        "readyLabel": {
+          "type": "string",
+          "description": "The ready word on a card, and the toggle once ready.",
+          "default": "Ready"
+        },
+        "notReadyLabel": {
+          "type": "string",
+          "description": "The word on a card not ready.",
+          "default": "Not ready"
+        },
+        "readyUpLabel": {
+          "type": "string",
+          "description": "The toggle while not ready.",
+          "default": "Ready up"
+        },
+        "startLabel": {
+          "type": "string",
+          "description": "The leader's action.",
+          "default": "Find match"
+        },
+        "cancelLabel": {
+          "type": "string",
+          "description": "The action while searching.",
+          "default": "Cancel"
+        },
+        "searchingLabel": {
+          "type": "string",
+          "description": "The chip's word while searching.",
+          "default": "Searching"
+        },
+        "estimateLabel": {
+          "type": "string",
+          "description": "The estimate beside the count ({time}).",
+          "default": "Est. {time}"
+        },
+        "inviteLabel": {
+          "type": "string",
+          "description": "An empty seat's word.",
+          "default": "Invite"
+        },
+        "levelLabel": {
+          "type": "string",
+          "description": "A level ({level}).",
+          "default": "Lv {level}"
+        },
+        "leaderLabel": {
+          "type": "string",
+          "description": "The leader, to a screen reader.",
+          "default": "Party leader"
+        },
+        "matchFoundLabel": {
+          "type": "string",
+          "description": "The ready check's title.",
+          "default": "Match found"
+        },
+        "acceptLabel": {
+          "type": "string",
+          "description": "The ready check's accept.",
+          "default": "Accept"
+        },
+        "acceptedLabel": {
+          "type": "string",
+          "description": "Accept once pressed.",
+          "default": "Accepted"
+        },
+        "declineLabel": {
+          "type": "string",
+          "description": "The ready check's decline.",
+          "default": "Decline"
+        },
+        "modeLabel": {
+          "type": "string",
+          "description": "The mode card's eyebrow.",
+          "default": "Mode"
+        }
+      },
+      "additionalProperties": false
+    },
+    "LobbyResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What the lobby was asked this tick, for the game to do.",
+      "type": "object",
+      "properties": {
+        "ready": {
+          "type": "boolean",
+          "description": "The ready toggle was pressed: flip the local player's ready."
+        },
+        "start": {
+          "type": "boolean",
+          "description": "Find match was pressed."
+        },
+        "cancel": {
+          "type": "boolean",
+          "description": "Cancel was pressed while searching."
+        },
+        "invite": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An empty seat was pressed: its place, from 0 at the first empty seat."
+        },
+        "member": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A member's card was pressed: the game's menu for it (profile, promote, kick)."
+        },
+        "mode": {
+          "type": "boolean",
+          "description": "The mode card was pressed: open the mode select."
+        },
+        "accept": {
+          "type": "boolean",
+          "description": "The ready check was accepted (its button, or confirm)."
+        },
+        "decline": {
+          "type": "boolean",
+          "description": "The ready check was declined (its button, or Back)."
+        }
+      },
+      "required": [
+        "ready",
+        "start",
+        "cancel",
+        "invite",
+        "member",
+        "mode",
+        "accept",
+        "decline"
+      ],
       "additionalProperties": false
     },
     "MenuItem": {

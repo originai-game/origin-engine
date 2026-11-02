@@ -33348,6 +33348,307 @@ export interface QuestTrackerDesc {
 
 
 /**
+ * One player in the party, as the game's viewmodel holds it.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LobbyMember {
+  /**
+   * Its key, stable while it is in the party: its element id, so its probe path is <id>/Lineup/<key>.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * The player's name: the card's reading, set in the display face.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * The player's level; 0 shows none.
+   *
+   * @default 0
+   */
+  readonly level?: number;
+  /**
+   * A line under the name: a rank, a class, a club (empty: none).
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * Its character or avatar (art kind character), filling the card; null draws the style's placeholder figure.
+   *
+   * @default null
+   */
+  readonly portrait?: Texture | null;
+  /**
+   * Ready: the card's foot lit in success with a tick and the ready word.
+   *
+   * @default false
+   */
+  readonly ready?: boolean;
+  /**
+   * The party's leader: a crown at the card's top start.
+   *
+   * @default false
+   */
+  readonly leader?: boolean;
+  /**
+   * The local player: its card stands larger and first, its foot reads the ready toggle's state.
+   *
+   * @default false
+   */
+  readonly you?: boolean;
+  /**
+   * A line in place of the ready word (In a match, Away); empty is ready or not ready.
+   *
+   * @default ""
+   */
+  readonly status?: string;
+  /**
+   * In a ready check: has accepted.
+   *
+   * @default false
+   */
+  readonly accepted?: boolean;
+  /**
+   * In a ready check: has declined.
+   *
+   * @default false
+   */
+  readonly declined?: boolean;
+}
+
+/**
+ * The mode the party queues for.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LobbyMode {
+  /**
+   * Its name (Ranked, Duos, Grand Prix).
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * A line under it (5v5 · Summoner's Rift; 4 players).
+   *
+   * @default ""
+   */
+  readonly detail?: string;
+  /**
+   * Its art (art kind thumbnail), 16:9; null draws the style's placeholder.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+}
+
+/**
+ * A match found, waiting for every player to accept.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ReadyCheckView {
+  /**
+   * Seconds left to accept.
+   *
+   * @default 0
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly secondsLeft?: number;
+  /**
+   * The whole time to accept, for the ring; 0 is 10.
+   *
+   * @default 0
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly seconds?: number;
+}
+
+/**
+ * A party lobby: who is in it, the mode, matchmaking and the ready check.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LobbyDesc {
+  /**
+   * The screen's title (Play, Party, Lobby).
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * The party, the local player among them, in the game's order (the local player's card is drawn first).
+   *
+   * @default []
+   */
+  readonly members?: readonly LobbyMember[];
+  /**
+   * The party's size: the places past the members are empty seats, each an Invite; 0 is the members' count.
+   *
+   * @default 0
+   */
+  readonly slots?: number;
+  /**
+   * The mode the party queues for: a card at the foot's start, pressed to change it (LobbyResult.mode).
+   *
+   * @default {}
+   */
+  readonly mode?: LobbyMode;
+  /**
+   * Matchmaking: the foot's action becomes Cancel and a chip counts the time in queue.
+   *
+   * @default false
+   */
+  readonly searching?: boolean;
+  /**
+   * Seconds in queue.
+   *
+   * @default 0
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly searchSeconds?: number;
+  /**
+   * The estimated wait, said beside the count; 0 says none.
+   *
+   * @default 0
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly estimateSeconds?: number;
+  /**
+   * The local player may start matchmaking (the leader, with the party ready): the foot's action is Find match; else it is the ready toggle.
+   *
+   * @default false
+   */
+  readonly canStart?: boolean;
+  /**
+   * A match found: the ready check stands over the lobby until the game clears it.
+   *
+   * @default null
+   */
+  readonly readyCheck?: ReadyCheckView | null;
+  /**
+   * The ready word on a card, and the toggle once ready.
+   *
+   * @default "Ready"
+   */
+  readonly readyLabel?: string;
+  /**
+   * The word on a card not ready.
+   *
+   * @default "Not ready"
+   */
+  readonly notReadyLabel?: string;
+  /**
+   * The toggle while not ready.
+   *
+   * @default "Ready up"
+   */
+  readonly readyUpLabel?: string;
+  /**
+   * The leader's action.
+   *
+   * @default "Find match"
+   */
+  readonly startLabel?: string;
+  /**
+   * The action while searching.
+   *
+   * @default "Cancel"
+   */
+  readonly cancelLabel?: string;
+  /**
+   * The chip's word while searching.
+   *
+   * @default "Searching"
+   */
+  readonly searchingLabel?: string;
+  /**
+   * The estimate beside the count ({time}).
+   *
+   * @default "Est. {time}"
+   */
+  readonly estimateLabel?: string;
+  /**
+   * An empty seat's word.
+   *
+   * @default "Invite"
+   */
+  readonly inviteLabel?: string;
+  /**
+   * A level ({level}).
+   *
+   * @default "Lv {level}"
+   */
+  readonly levelLabel?: string;
+  /**
+   * The leader, to a screen reader.
+   *
+   * @default "Party leader"
+   */
+  readonly leaderLabel?: string;
+  /**
+   * The ready check's title.
+   *
+   * @default "Match found"
+   */
+  readonly matchFoundLabel?: string;
+  /**
+   * The ready check's accept.
+   *
+   * @default "Accept"
+   */
+  readonly acceptLabel?: string;
+  /**
+   * Accept once pressed.
+   *
+   * @default "Accepted"
+   */
+  readonly acceptedLabel?: string;
+  /**
+   * The ready check's decline.
+   *
+   * @default "Decline"
+   */
+  readonly declineLabel?: string;
+  /**
+   * The mode card's eyebrow.
+   *
+   * @default "Mode"
+   */
+  readonly modeLabel?: string;
+}
+
+/** What the lobby was asked this tick, for the game to do. */
+export interface LobbyResult {
+  /** The ready toggle was pressed: flip the local player's ready. */
+  readonly ready: boolean;
+  /** Find match was pressed. */
+  readonly start: boolean;
+  /** Cancel was pressed while searching. */
+  readonly cancel: boolean;
+  /** An empty seat was pressed: its place, from 0 at the first empty seat. */
+  readonly invite: number | null;
+  /** A member's card was pressed: the game's menu for it (profile, promote, kick). */
+  readonly member: string | null;
+  /** The mode card was pressed: open the mode select. */
+  readonly mode: boolean;
+  /** The ready check was accepted (its button, or confirm). */
+  readonly accept: boolean;
+  /** The ready check was declined (its button, or Back). */
+  readonly decline: boolean;
+}
+
+
+/**
  * A template's action, by its id (a menu item, `buy:<item>`, `share`).
  *
  * @param action The action's id.
@@ -53503,6 +53804,14 @@ export declare namespace og {
      * @param desc The quests.
      */
     function questTracker(id: string, desc?: QuestTrackerDesc): void;
+    /**
+     * A party lobby (Valorant, Fortnite, Rocket League, Overwatch): the party stands as a lineup of tall cards, each the player's character art with a scrim at its foot carrying the name in the display face, the level and a title, and a ready foot lit in success with a tick (not ready muted; a status line in its place); the local player's card first and larger, the leader's crown at its corner, each empty seat an Invite. At the foot, the mode card (its art, name and detail) at the start and one primary action at the end: Ready up and Ready for a member, Find match for the leader, Cancel while searching with a chip counting the time in queue and the estimate. A ready check rises over everything on a scrim: Match found in the display face, a ring that runs out with the seconds left, a pip per player lit as each accepts (danger for a decline), and Accept large in the accent beside Decline. On a phone in portrait the lineup is two columns of shorter cards and the foot docks at the thumb.
+     * Parts: Lobby.frame, Lobby.lineup, Lobby.member[you][leader][ready], Lobby.art, Lobby.plate, Lobby.foot[ready], Lobby.crown, Lobby.seat, Lobby.bar, Lobby.mode, Lobby.action, Lobby.search, Lobby.check, Lobby.pip[accepted|declined], Lobby.accept, Lobby.decline. Slots: each member's portrait (art kind character), the mode's image (art kind thumbnail). States: on each member, group ready (waiting, ready); on the check's pips, group answer (pending, accepted, declined). Motion: the cards rise in one after another on the panel spring; a card turning ready pops its foot; the search chip's dot breathes; the check scales in on the emphasis spring and its ring runs down (still under reduced motion). Sounds: select on a card or seat, confirm on ready, start and accept, back on cancel and decline, open when the check rises, success when every player has accepted. Accessibility: the lineup a list; each card a button named its name, level, title, leader and ready word; each seat a button named the invite word; the check a dialog named the found word with the time left as a timer. Probe ids: <id>/Lineup/<key>, <id>/Lineup/Seat#<i>, <id>/Bar/Mode, <id>/Bar/Action, <id>/Bar/Search, <id>/Check/Accept, <id>/Check/Decline.
+     *
+     * @param id Its id.
+     * @param desc The party, the mode, matchmaking and the ready check.
+     */
+    function lobby(id: string, desc?: LobbyDesc): LobbyResult;
     /**
      * The title screen template. Returns the item chosen this tick.
      *

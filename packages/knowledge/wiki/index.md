@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2324 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2330 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -733,6 +733,10 @@ Field units the docs and Tune use.
 | [`LoadingDesc`](ui.md#type-LoadingDesc) | desc struct | ui | — |
 | [`LoadSlotDesc`](platform.md#type-LoadSlotDesc) | desc struct | platform | — |
 | [`LoadStatus`](load.md#type-LoadStatus) | enum | load | — |
+| [`LobbyDesc`](ui.md#type-LobbyDesc) | desc struct | ui | — |
+| [`LobbyMember`](ui.md#type-LobbyMember) | desc struct | ui | — |
+| [`LobbyMode`](ui.md#type-LobbyMode) | desc struct | ui | — |
+| [`LobbyResult`](ui.md#type-LobbyResult) | struct | ui | — |
 | [`LocaleInfo`](i18n.md#type-LocaleInfo) | struct | i18n | — |
 | [`LOCK_ROTATION_X`](physics.md#const-LOCK_ROTATION_X) | constant | physics | — |
 | [`LOCK_ROTATION_Y`](physics.md#const-LOCK_ROTATION_Y) | constant | physics | — |
@@ -1526,6 +1530,7 @@ Field units the docs and Tune use.
 | [`og.ui.list`](ui.md#fn-list) | function | ui | — |
 | [`og.ui.listItem`](ui.md#fn-listItem) | function | ui | `og_ui_list_item` |
 | [`og.ui.loadingScreen`](ui.md#fn-loadingScreen) | function | ui | — |
+| [`og.ui.lobby`](ui.md#fn-lobby) | function | ui | — |
 | [`og.ui.lootLabel`](ui.md#fn-lootLabel) | function | ui | — |
 | [`og.ui.lowHealthVignette`](ui.md#fn-lowHealthVignette) | function | ui | — |
 | [`og.ui.mainMenu`](ui.md#fn-mainMenu) | function | ui | — |
@@ -1926,6 +1931,7 @@ Field units the docs and Tune use.
 | [`RayMath.intersectSphere`](math.md#member-RayMath-intersectSphere) | method | math | — |
 | [`RayMath.intersectTriangle`](math.md#member-RayMath-intersectTriangle) | method | math | — |
 | [`Reaction`](ui.md#type-Reaction) | enum | ui | — |
+| [`ReadyCheckView`](ui.md#type-ReadyCheckView) | desc struct | ui | — |
 | [`RearViewDesc`](ui.md#type-RearViewDesc) | desc struct | ui | — |
 | [`RebindAnswer`](input.md#type-RebindAnswer) | struct | input | — |
 | [`RebindDesc`](input.md#type-RebindDesc) | desc struct | input | — |
