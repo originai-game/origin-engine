@@ -88,7 +88,9 @@ a number and a sound (taste 98, feel 79).
    visual approval: record and compare frames on the retained reference
    tier, and run visual polish with a renderer.
 
-   Where there is no renderer (`OG_RENDERER=none`, or no usable adapter: `og run --json` says
+   A run whose adapter request fails stops with the adapter's error:
+   the engine draws on a GPU only. Only `OG_RENDERER=none` runs without
+   one. Where there is no renderer (`OG_RENDERER=none`: `og run --json` says
    `"tier": "none"`, `og doctor` says the renderer is `none`), the run is
    the same run: the same ticks, dumps and world hash. A `screenshot`
    writes no PNG and logs "no renderer, frame unchecked" with the file it

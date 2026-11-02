@@ -329,6 +329,12 @@ pub fn og_render_text(world: u32, desc: Option<String>) -> String {
         let mut rs = eng.render.borrow_mut();
         new_frame(&mut rs, tick);
         let text = d["text"].as_str().unwrap_or_default().to_string();
+        // Its missing glyphs warned of now, on the CPU, renderer or not.
+        if let Some(missing) = crate::glyphs::lacking(&mut rs, render, &text) {
+            drop(rs);
+            crate::glyphs::warn_missing(&eng, tick, vec![missing]);
+            rs = eng.render.borrow_mut();
+        }
         let size = num(&d, "size", 1.0);
         let rotation = num(&d, "rotation", 0.0);
         let position = vec3(&d["position"]);

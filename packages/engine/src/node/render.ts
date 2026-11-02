@@ -33,7 +33,7 @@ import { mkdirSync, readFileSync, writeFileSync, writeSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
-import { loadNativeHost, native } from "./index.ts";
+import { attachRenderer, loadNativeHost, native } from "./index.ts";
 import { openAudio } from "./audio.ts";
 import { nativePlatform } from "./platform.ts";
 import { createEngine, fixedClock, type Engine, type GameToken } from "../runtime.ts";
@@ -176,9 +176,10 @@ const warmTick = (i: number): number => Math.max(0, tickOf(i) - warmup * step);
 
 // The renderer: the leader attaches one too, so GameDesc.start sees the same
 // play surface (og.render.capabilities) in every process of the render.
-const attached = JSON.parse(extras.og_node_attach_offscreen(engine.id, size.width, size.height)) as { ok: boolean; value?: string; reason?: string };
-if (!attached.ok && !leader) fail(`no renderer (${attached.reason}): og render needs a headless renderer (og doctor)`);
-const tier = attached.ok ? attached.value! : "none";
+const attached = attachRenderer(engine.id, size.width, size.height);
+if (!attached.ok) fail(attached.reason);
+const tier = attached.value;
+if (tier === "none" && !leader) fail("no renderer (OG_RENDERER=none): og render needs a headless renderer (og doctor)");
 const started = engine.advance(0);
 if (!started.ok) fail(started.reason);
 

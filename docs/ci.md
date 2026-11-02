@@ -772,10 +772,15 @@ which runs `OG_RELEASE=1 build.sh` with its own arguments first, packs only
 - `OG_RENDERER=none` takes the renderer away natively: og-render's
   `Renderer::new` and `with_surface` answer `NoAdapter` ("OG_RENDERER=none:
   this process runs without a renderer", `og_render::renderer_disabled`),
-  as on a machine with no usable adapter. That is the platform's `engine`
-  and `probe` sandboxes (docs/design.md §5: they carry no renderer), and the
-  switch makes the path testable on a machine with a GPU. Without a
-  renderer the run is the same run: the simulation, the probe, `dump_*`,
+  as on a machine with no usable adapter. The platform's `engine` and
+  `probe` sandboxes set it (docs/design.md §5: they carry no renderer), and
+  the switch makes the path testable on a machine with a GPU. It is the
+  only way to run without a renderer: the engine draws on a GPU only
+  (docs/design.md §2.6), so a native run whose adapter request fails
+  without the switch fails, naming the adapter's error, and never goes on
+  as tier `none` (`attachRenderer`, packages/engine's node/index.ts; until
+  2026-11-02 it went on, and a playtest passed with its frames unchecked
+  and its warnings unread). Without a renderer the run is the same run: the simulation, the probe, `dump_*`,
   snapshots and the world hash are identical (rendering never feeds back
   into simulation; the native host keeps the play surface at `--size`); a
   `screenshot` step writes no PNG and logs, not as a warning, `<t>s

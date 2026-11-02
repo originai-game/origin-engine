@@ -29,7 +29,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { bundleGame } from "./build.ts";
-import { loadNativeHost, native } from "./index.ts";
+import { attachRenderer, loadNativeHost, native } from "./index.ts";
 import { openAudio } from "./audio.ts";
 import { nativePlatform } from "./platform.ts";
 import { decodePng, encodePng, half, type Image } from "./png.ts";
@@ -159,8 +159,9 @@ async function runOne(file: string, entry: string, root: string, out: string): P
   const opened = openAudio(engine.id, "capture");
   if (!opened.ok) fail(`audio: ${opened.reason}`);
   const sink = opened.value;
-  const attached = JSON.parse(extras.og_node_attach_offscreen(engine.id, size.width, size.height)) as { ok: boolean; value?: string; reason?: string };
-  const tier = attached.ok ? attached.value! : "none";
+  const attached = attachRenderer(engine.id, size.width, size.height);
+  if (!attached.ok) fail(attached.reason);
+  const tier = attached.value;
   const started = engine.advance(0);
   if (!started.ok) fail(started.reason);
 

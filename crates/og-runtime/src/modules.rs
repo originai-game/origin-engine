@@ -214,16 +214,25 @@ pub(crate) fn mount_back(
     let feed = ui_world::Feed::of(world);
     world
         .add_system(feed.desc(UI_END), move |ctx| {
-            let warnings = {
+            let (warnings, missing) = {
                 let mut ui = shared.lock();
                 docs::end_of_frame(engine_id, &mut ui, ctx);
                 // The tick's camera and anchored entities (docs/ui.md §14).
                 feed.before_end(ctx, &mut ui);
                 BUILDING.with(|b| b.set(None));
-                ui.end().warnings.clone()
+                let frame = ui.end();
+                (frame.warnings.clone(), frame.missing_glyphs.clone())
             };
             if !warnings.is_empty() {
                 note_warnings(engine_id, warnings);
+            }
+            // The characters the frame's texts draw that their faces lack,
+            // found by og-ui on the CPU: the same with a renderer or none.
+            if !missing.is_empty()
+                && let Ok(eng) = engine(engine_id)
+            {
+                let missing = crate::glyphs::unjudged(&mut eng.render.borrow_mut(), &missing);
+                crate::glyphs::warn_missing(&eng, ctx.time().tick, missing);
             }
             Ok(())
         })

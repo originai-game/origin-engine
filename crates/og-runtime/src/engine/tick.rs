@@ -287,19 +287,6 @@ fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
             passes = b.pass_timings();
             gpu = b.gpu_timings(false);
             triangles = b.triangles();
-            if b.missing_glyphs() > 0 {
-                let assets = eng.assets.borrow();
-                let named = |handle: og_render::FontHandle| {
-                    let at = rs.fonts.iter().position(|f| f.pages.contains(&handle))?;
-                    assets
-                        .fonts
-                        .iter()
-                        .find(|f| f.render == at)
-                        .map(|f| f.id.clone())
-                };
-                let new = missing_glyph_notes(&rs.scene, &mut rs.missing_warned, named);
-                rs.notes.extend(new);
-            }
         }
         std::mem::take(&mut rs.notes)
     };
@@ -323,72 +310,6 @@ fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
         }
     }
     Ok(true)
-}
-
-/// The missing-glyph warnings of a frame: per font, the characters its
-/// texts draw that the font lacks and no earlier frame warned of (each is
-/// named once, on the tick it is first drawn: a split's minus sign at the
-/// second lap is still named), with the font's asset and what its atlas
-/// holds (the charset words its glyphs show, og_bundle::format::charset_words).
-fn missing_glyph_notes(
-    scene: &og_render::RenderScene,
-    warned: &mut std::collections::BTreeSet<char>,
-    name: impl Fn(og_render::FontHandle) -> Option<String>,
-) -> Vec<String> {
-    let mut by_font: Vec<(og_render::FontHandle, Vec<char>)> = Vec::new();
-    let texts = scene
-        .texts
-        .iter()
-        .chain(scene.overlay.iter().flat_map(|o| o.texts.iter()));
-    for t in texts {
-        let Some(font) = scene.font(t.font) else {
-            continue;
-        };
-        for c in t.text.chars() {
-            if c.is_whitespace()
-                || warned.contains(&c)
-                || font.glyphs.iter().any(|g| g.codepoint == c)
-            {
-                continue;
-            }
-            warned.insert(c);
-            match by_font.iter_mut().find(|(f, _)| *f == t.font) {
-                Some((_, cs)) => cs.push(c),
-                None => by_font.push((t.font, vec![c])),
-            }
-        }
-    }
-    by_font
-        .into_iter()
-        .map(|(handle, chars)| {
-            let which = chars
-                .iter()
-                .take(8)
-                .map(|c| format!("\"{c}\" U+{:04X}", *c as u32))
-                .collect::<Vec<_>>()
-                .join(", ");
-            let more = if chars.len() > 8 {
-                format!(" and {} more", chars.len() - 8)
-            } else {
-                String::new()
-            };
-            let font = scene.font(handle);
-            let cps: Vec<u32> = font.map_or(Vec::new(), |f| {
-                f.glyphs.iter().map(|g| g.codepoint as u32).collect()
-            });
-            let (words, extra) = og_bundle::format::charset_words(&cps);
-            let holds = match (words.is_empty(), extra) {
-                (true, _) => format!("{} characters", cps.len()),
-                (false, 0) => format!("charset {}", words.join(" ")),
-                (false, n) => format!("charset {} and {n} more characters", words.join(" ")),
-            };
-            let font = name(handle).map_or("a font".to_owned(), |id| format!("font {id}"));
-            let chars_arg: String = chars.iter().collect();
-            format!(
-                "a frame drew {which}{more}, which {font} lacks (its atlas holds {holds}): add them to its .ogt (`font {{ chars {chars_arg:?} }}`), draw a character it holds, or ship the font file (`font {{ runtime true }}`)"
-            )
-        })
-        .collect()
 }
 
 /// `og_engine_call`: the probe's JSON-RPC entry.

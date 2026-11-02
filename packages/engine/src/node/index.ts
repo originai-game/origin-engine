@@ -113,6 +113,29 @@ export function native(): NativeExtras {
   return extras!;
 }
 
+/**
+ * Attaches the headless renderer a native run draws with and answers its
+ * tier. The engine draws on a GPU only (docs/design.md §2.6): when the
+ * adapter request fails, the answer is a refusal naming the adapter's
+ * error, and the run that asked for a renderer fails with it, never going
+ * on as tier `none`. Only `OG_RENDERER=none` runs without one, on purpose
+ * (docs/ci.md §Switches): then the tier is `none`.
+ */
+export function attachRenderer(
+  engine: number,
+  width: number,
+  height: number,
+  attach: (engine: number, width: number, height: number) => string = (e, w, h) => native().og_node_attach_offscreen(e, w, h),
+): Result<string> {
+  const attached = JSON.parse(attach(engine, width, height)) as { ok: boolean; value?: string; reason?: string };
+  if (attached.ok) return { ok: true, value: attached.value! };
+  if (process.env.OG_RENDERER?.trim().toLowerCase() === "none") return { ok: true, value: "none" };
+  return {
+    ok: false,
+    reason: `no renderer: ${attached.reason}. The engine draws on a GPU only (docs/design.md §2.6); set OG_RENDERER=none to run without one on purpose`,
+  };
+}
+
 /** Import a game bundle (its default export is `og.game(...)`) and assemble its engine (`options.root`: the project whose cooked/ it opens). */
 export async function loadGame(entry: string, options: CreateOptions = {}): Promise<Result<Engine>> {
   loadNativeHost();

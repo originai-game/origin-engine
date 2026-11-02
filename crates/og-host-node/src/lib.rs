@@ -477,8 +477,6 @@ struct OffscreenBackend {
     engine: u32,
     renderer: og_render::Renderer,
     tier: String,
-    /// The last frame's `FrameStats::missing_glyphs`.
-    missing: u32,
     /// The last frame's `FrameStats::triangles`.
     triangles: u64,
     /// Devices lost and the renderer made again on a new one.
@@ -501,7 +499,6 @@ impl OffscreenBackend {
         self.renderer
             .render(scene, &og_render::RenderTarget::Offscreen)
             .map(|s| {
-                self.missing = s.missing_glyphs;
                 self.triangles = s.triangles;
             })
             .map_err(|e| e.to_string())
@@ -569,9 +566,6 @@ impl RenderBackend for OffscreenBackend {
             frames.present(&self.renderer);
         }
         Ok(())
-    }
-    fn missing_glyphs(&self) -> u32 {
-        self.missing
     }
     fn set_clock(&mut self, clock: Option<fn() -> f64>) {
         self.renderer.set_clock(clock);
@@ -655,12 +649,14 @@ impl RenderBackend for OffscreenBackend {
 /// Give an engine a headless renderer of `width`×`height` (Metal or Vulkan),
 /// created with the game's RenderOptions. A Result of the tier.
 ///
-/// Without a renderer (no usable adapter, as in the platform's `engine` and
-/// `probe` sandboxes, or `OG_RENDERER=none`) the answer is a refusal naming
-/// why, and the engine runs on without one: its play surface is still
-/// `width`×`height` (the viewport a renderer of that size would give, so
-/// the UI lays out and the simulation runs exactly as with one), a
-/// `screenshot` step notes its frame unchecked, and `capture` answers null.
+/// Without a renderer (no usable adapter, or `OG_RENDERER=none`) the answer
+/// is a refusal naming why, and the play surface is still `width`×`height`
+/// (the viewport a renderer of that size would give, so the UI lays out and
+/// the simulation runs exactly as with one). The engine draws on a GPU only
+/// (docs/design.md §2.6): a run that asked for a renderer fails on a
+/// refused adapter (`attachRenderer` in packages/engine's node/index.ts);
+/// only `OG_RENDERER=none` runs on without one, where a `screenshot` step
+/// notes its frame unchecked and `capture` answers null.
 #[napi(js_name = "og_node_attach_offscreen")]
 pub fn og_node_attach_offscreen(env: Env, engine: u32, width: u32, height: u32) -> String {
     let _env = EnvScope::enter(&env);
@@ -715,7 +711,6 @@ pub fn og_node_attach_offscreen(env: Env, engine: u32, width: u32, height: u32) 
                     engine,
                     renderer,
                     tier: tier.clone(),
-                    missing: 0,
                     triangles: 0,
                     losses: 0,
                     capture_error: None,

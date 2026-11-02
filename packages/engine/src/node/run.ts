@@ -25,11 +25,12 @@
 //   rooms, og.net's lockstep), the link pumped around every frame, and the run
 //   takes frames (never one big advance), so a tick lockstep holds waits for
 //   the other players' inputs; it ends at `quit`, --ticks or the script's end.
-// - Without a renderer (no usable adapter, as in the platform's engine and
-//   probe sandboxes, or OG_RENDERER=none) the run is the same run: the play
-//   surface keeps --size, a `screenshot` writes no PNG and is listed in
-//   --json's `unchecked` ("no renderer, frame unchecked"), the tier is
-//   `none`, and the exit status does not change.
+// - Without a renderer (OG_RENDERER=none, as the platform's engine and probe
+//   sandboxes set) the run is the same run: the play surface keeps --size, a
+//   `screenshot` writes no PNG and is listed in --json's `unchecked` ("no
+//   renderer, frame unchecked"), the tier is `none`, and the exit status does
+//   not change. A refused adapter without the switch fails the run, naming
+//   the adapter's error (`attachRenderer`, docs/design.md §2.6).
 // - With --trace: the run in the Chrome trace format (src/trace.ts and
 //   crates/og-runtime/src/trace.rs have the threads): each tick with its
 //   systems, each frame with its render passes' CPU encoding and their GPU
@@ -48,7 +49,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, 
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
-import { loadNativeHost, native } from "./index.ts";
+import { attachRenderer, loadNativeHost, native } from "./index.ts";
 import { openAudio, type AudioSink } from "./audio.ts";
 import { nativePlatform, readFake } from "./platform.ts";
 import { Trace, unixMs, type TraceDocument } from "../trace.ts";
@@ -260,9 +261,10 @@ function drain(): void {
 
 let tier = "none";
 if (deferStart) {
-  const attached = JSON.parse(extras.og_node_attach_offscreen(engine.id, size.width, size.height)) as { ok: boolean; value?: string; reason?: string };
-  if (attached.ok) tier = attached.value!;
-  else process.stderr.write(`INFO no renderer (${attached.reason}): the run is the same, a screenshot writes no frame and reports it unchecked, capture answers null\n`);
+  const attached = attachRenderer(engine.id, size.width, size.height);
+  if (!attached.ok) fail(attached.reason);
+  tier = attached.value;
+  if (tier === "none") process.stderr.write(`INFO no renderer (OG_RENDERER=none): the run is the same, a screenshot writes no frame and reports it unchecked, capture answers null\n`);
   // The first tick boundary: GameDesc.start, with the surface in place.
   const started = engine.advance(0);
   if (!started.ok) fail(started.reason);

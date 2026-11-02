@@ -68,11 +68,6 @@ pub trait RenderBackend {
     }
     /// Draw one frame of the scene to the display target.
     fn render(&mut self, scene: &RenderScene) -> Result<(), String>;
-    /// The last frame's text characters its fonts lack (og-render's
-    /// `FrameStats::missing_glyphs`).
-    fn missing_glyphs(&self) -> u32 {
-        0
-    }
     /// Times each render-graph pass's encoding with `clock` (og-render's
     /// `Renderer::set_clock`); a backend without passes ignores it.
     fn set_clock(&mut self, _clock: Option<fn() -> f64>) {}
@@ -312,9 +307,9 @@ pub(crate) struct RenderState {
     pub runtime_fonts: IdMap<usize, super::glyphs::RuntimeFont>,
     /// Warnings of the last extraction, for the engine's log.
     pub notes: Vec<String>,
-    /// The characters a frame drew that their fonts lack, each warned of
-    /// once, on the tick it was first drawn.
-    pub missing_warned: std::collections::BTreeSet<char>,
+    /// Each (font, character) a text drew, judged once a run: in the
+    /// font, or warned of on the tick it was first drawn (`super::glyphs`).
+    pub glyphs_judged: std::collections::BTreeSet<(FontHandle, char)>,
     /// The feel modules' drawing state (`super::feel`).
     pub feel: super::feel::FeelRender,
     /// The atmosphere's and the physics extras' drawing state (`super::atmosphere`).
@@ -380,7 +375,7 @@ impl RenderState {
             ui_pages: BTreeMap::new(),
             runtime_fonts: IdMap::new(),
             notes: Vec::new(),
-            missing_warned: Default::default(),
+            glyphs_judged: Default::default(),
             feel: Default::default(),
             atmo: Default::default(),
             env: Default::default(),

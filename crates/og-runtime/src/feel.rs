@@ -1067,6 +1067,17 @@ pub fn og_render_floating_text(world: u32, desc: Option<String>) -> String {
             }
         };
         let elapsed = with_world(&eng, |c| Ok(c.time_scale().elapsed), |w| Ok(w.time_scale().elapsed))?;
+        // Its missing glyphs warned of now, on the CPU, renderer or not.
+        let tick = with_world(&eng, |c| Ok(c.time().tick), |w| Ok(w.time().tick))?;
+        let missing = {
+            let mut rs = eng.render.borrow_mut();
+            if font == u32::MAX {
+                crate::glyphs::ui_lacking(&mut rs, &text)
+            } else {
+                crate::glyphs::lacking(&mut rs, font as usize, &text).into_iter().collect()
+            }
+        };
+        crate::glyphs::warn_missing(&eng, tick, missing);
         let crit = on(&d, "crit", false);
         let scale = if crit { f(&d, "critScale", 1.6).max(1.0) } else { 1.0 };
         let feel = feel_of(&eng)?;

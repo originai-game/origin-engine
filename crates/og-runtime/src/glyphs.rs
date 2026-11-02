@@ -238,3 +238,145 @@ pub(crate) fn generate(rs: &mut RenderState) -> usize {
     }
     rendered
 }
+
+/// The characters of `text` that font `render` (an index into
+/// `RenderState::fonts`) lacks, in its atlas and in the file it renders
+/// from at run time, with its first page; each (font, character) is judged
+/// once a run (`RenderState::glyphs_judged`). Read on the CPU when the text
+/// is queued, so a run with no renderer warns as one with a GPU does.
+pub(crate) fn lacking(
+    rs: &mut RenderState,
+    render: usize,
+    text: &str,
+) -> Option<(FontHandle, Vec<char>)> {
+    let first = *rs.fonts.get(render)?.pages.first()?;
+    let font = rs.scene.font(first)?;
+    let file = rs.runtime_fonts.get(&render).map(|f| f.file.clone());
+    let mut lacks = Vec::new();
+    for c in text.chars() {
+        if c.is_whitespace() || c.is_control() || !rs.glyphs_judged.insert((first, c)) {
+            continue;
+        }
+        if !font.glyphs.iter().any(|g| g.codepoint == c)
+            && !file.as_ref().is_some_and(|f| f.covers(c))
+        {
+            lacks.push(c);
+        }
+    }
+    (!lacks.is_empty()).then_some((first, lacks))
+}
+
+/// Logs the missing-glyph warnings of `missing` (per font, the characters
+/// its texts draw that it lacks) on `tick`: each character named once per
+/// font, with the font's asset and what its atlas holds (the charset words
+/// its glyphs show, og_bundle::format::charset_words).
+pub(crate) fn warn_missing(
+    eng: &crate::engine::Engine,
+    tick: u64,
+    missing: Vec<(FontHandle, Vec<char>)>,
+) {
+    if missing.is_empty() {
+        return;
+    }
+    let notes: Vec<String> = {
+        let (rs, assets) = (eng.render.borrow(), eng.assets.borrow());
+        missing
+            .iter()
+            .map(|(handle, chars)| note(&rs, &assets, *handle, chars))
+            .collect()
+    };
+    let mut st = eng.state.borrow_mut();
+    for n in notes {
+        if st.ui_warned.insert(n.clone()) {
+            st.log
+                .push(serde_json::json!({ "tick": tick, "warning": true, "text": n }));
+        }
+    }
+}
+
+/// Of what og-ui's frame found missing (`og_ui::UiFrame::missing_glyphs`),
+/// the (font, character) pairs no queued text has judged yet, judged now.
+pub(crate) fn unjudged(
+    rs: &mut RenderState,
+    missing: &[(FontHandle, Vec<char>)],
+) -> Vec<(FontHandle, Vec<char>)> {
+    missing
+        .iter()
+        .filter_map(|(handle, chars)| {
+            let chars: Vec<char> = chars
+                .iter()
+                .copied()
+                .filter(|&c| rs.glyphs_judged.insert((*handle, c)))
+                .collect();
+            (!chars.is_empty()).then_some((*handle, chars))
+        })
+        .collect()
+}
+
+/// One font's warning: the characters (the first eight), the font's
+/// asset, what its atlas holds and the three ways to fix it.
+fn note(
+    rs: &RenderState,
+    assets: &crate::assets::Assets,
+    handle: FontHandle,
+    chars: &[char],
+) -> String {
+    let which = chars
+        .iter()
+        .take(8)
+        .map(|c| format!("\"{c}\" U+{:04X}", *c as u32))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let more = if chars.len() > 8 {
+        format!(" and {} more", chars.len() - 8)
+    } else {
+        String::new()
+    };
+    let cps: Vec<u32> = rs.scene.font(handle).map_or(Vec::new(), |f| {
+        f.glyphs.iter().map(|g| g.codepoint as u32).collect()
+    });
+    let (words, extra) = og_bundle::format::charset_words(&cps);
+    let holds = match (words.is_empty(), extra) {
+        (true, _) => format!("{} characters", cps.len()),
+        (false, 0) => format!("charset {}", words.join(" ")),
+        (false, n) => format!("charset {} and {n} more characters", words.join(" ")),
+    };
+    let font = rs
+        .fonts
+        .iter()
+        .position(|f| f.pages.contains(&handle))
+        .and_then(|at| assets.fonts.iter().find(|f| f.render == at))
+        .map_or("a font".to_owned(), |f| format!("font {}", f.id));
+    let chars_arg: String = chars.iter().collect();
+    format!(
+        "a frame drew {which}{more}, which {font} lacks (its atlas holds {holds}): add them to its .ogt (`font {{ chars {chars_arg:?} }}`), draw a character it holds, or ship the font file (`font {{ runtime true }}`)"
+    )
+}
+
+/// What a text in the UI's body face lacks (a floating text with no font
+/// of its own): per piece, the characters its face has neither in its atlas
+/// nor in its file, judged as [`unjudged`] judges og-ui's.
+pub(crate) fn ui_lacking(rs: &mut RenderState, text: &str) -> Vec<(FontHandle, Vec<char>)> {
+    let Some(ui) = rs.ui.clone() else {
+        return Vec::new();
+    };
+    let found: Vec<(FontHandle, Vec<char>)> = {
+        let u = ui.lock();
+        let fonts = u.fonts();
+        let font = fonts.for_text(og_ui::FontRole::Body, text);
+        og_ui::pieces(font, text, u.direction(), 0.0)
+            .into_iter()
+            .filter_map(|p| {
+                let h = p.font?;
+                let face = fonts.face(h)?;
+                let lacks: Vec<char> = p
+                    .text
+                    .chars()
+                    .filter(|&c| !c.is_whitespace() && !c.is_control() && !face.metrics.has(c))
+                    .collect();
+                (!lacks.is_empty()).then_some((h, lacks))
+            })
+            .collect()
+    };
+    unjudged(rs, &found)
+}

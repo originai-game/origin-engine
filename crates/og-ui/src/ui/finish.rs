@@ -785,6 +785,7 @@ impl Ui {
             cmds.extend(cover.into_iter().map(|c| (c, Affine::IDENTITY)));
         }
         let cmds: Vec<(DrawCmd, Affine)> = cmds.into_iter().map(|(c, m)| bake(c, m)).collect();
+        let missing_glyphs = self.missing_glyphs(&cmds);
         let motion_dump = self.motion_dump(&order);
         let mut focus_paths: [String; 4] = Default::default();
         let focused = [
@@ -812,6 +813,7 @@ impl Ui {
             elements,
             items: crate::draw::zoom_items(assign_levels(cmds), self.unit),
             warnings: std::mem::take(&mut self.warnings),
+            missing_glyphs,
             focus_paths,
             a11y,
             text_input: self.text_target.take(),
@@ -826,5 +828,41 @@ impl Ui {
             unit: self.unit,
         };
         &self.frame
+    }
+
+    /// [`UiFrame::missing_glyphs`] of a frame's commands: read from each
+    /// face's metrics on the CPU, so a run with no renderer warns as one
+    /// with a GPU does.
+    fn missing_glyphs(
+        &mut self,
+        cmds: &[(DrawCmd, Affine)],
+    ) -> Vec<(og_render::FontHandle, Vec<char>)> {
+        let mut out: Vec<(og_render::FontHandle, Vec<char>)> = Vec::new();
+        for (c, _) in cmds {
+            let c = match c {
+                DrawCmd::StyledText { text, .. } => &**text,
+                c => c,
+            };
+            let DrawCmd::Text { font, text, .. } = c else {
+                continue;
+            };
+            let Some(face) = self.fonts.face(*font) else {
+                continue;
+            };
+            for ch in text.chars() {
+                if ch.is_whitespace()
+                    || ch.is_control()
+                    || face.metrics.has(ch)
+                    || !self.glyphs_missed.insert((*font, ch))
+                {
+                    continue;
+                }
+                match out.iter_mut().find(|(f, _)| f == font) {
+                    Some((_, chars)) => chars.push(ch),
+                    None => out.push((*font, vec![ch])),
+                }
+            }
+        }
+        out
     }
 }

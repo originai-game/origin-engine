@@ -1034,8 +1034,6 @@ mod canvas {
         /// Captures in flight: one per size, at most [`MAX_CAPTURES`],
         /// oldest first.
         pending: Vec<Pending>,
-        /// The last frame's `FrameStats::missing_glyphs`.
-        missing: u32,
         /// The last frame's `FrameStats::triangles`.
         triangles: u64,
         /// Display frames drawn so far.
@@ -1172,7 +1170,6 @@ mod canvas {
             });
             match self.renderer.render(scene, &RenderTarget::Surface) {
                 Ok(s) => {
-                    self.missing = s.missing_glyphs;
                     self.triangles = s.triangles;
                 }
                 // Lost while drawing: recovered from the next frame on.
@@ -1209,9 +1206,6 @@ mod canvas {
             k.req = None;
             k.image = Some(image.clone());
             Some(image)
-        }
-        fn missing_glyphs(&self) -> u32 {
-            self.missing
         }
         fn set_clock(&mut self, clock: Option<fn() -> f64>) {
             self.renderer.set_clock(clock);
@@ -1381,7 +1375,6 @@ mod canvas {
                 pending: Vec::new(),
                 drawn: 0,
                 kept: None,
-                missing: 0,
                 triangles: 0,
                 canvas: canvas_kept,
                 losses: 0,

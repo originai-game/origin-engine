@@ -12,7 +12,9 @@
 // tier is `none` and lists the unchecked frame; `og polish` says "no
 // renderer" in its frame-time rows.
 //
-// Ways this could fail (each did before the change): a screenshot without
+// Ways this could fail (each did before the change): a run with the
+// switch off whose adapter request failed went on as tier none and passed;
+// a screenshot without
 // a renderer warned, so "the script ran without warnings" failed; the
 // smoke playtest's run.png threw and failed it; og test exited 1; the UI
 // laid out on 1280x720 whatever the playtest's size; og polish scored a
@@ -23,6 +25,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ogBin } from "./support/og-bin.ts";
+import { attachRenderer } from "../src/node/index.ts";
 
 declare const Bun: {
   spawnSync(
@@ -145,22 +148,23 @@ test("og test without a renderer passes, counts its unchecked frames and runs th
     surface: ["world.json", "ui.json"].map((f) => dump(surfaceOut, f)),
   };
 
-  // With a renderer (where this machine has one): the same hashes and dumps,
-  // and the same checks plus the frame checks.
+  // With a renderer: the same hashes and dumps, and the same checks plus
+  // the frame checks. The engine draws on a GPU only (docs/design.md
+  // §2.6), so a machine whose adapter request fails fails here, never
+  // passing as tier none.
   const lit = results(run([ogBin(), "test", game, "--json"], true).stdout);
   expect([...lit.keys()].sort()).toEqual(["guard", "intro", "smoke", "surface"]);
   for (const [name, r] of lit) {
     const b = blind.get(name)!;
     expect(r.failures).toEqual([]);
+    expect({ name, tier: r.tier === "none" ? "none" : "a GPU" }).toEqual({ name, tier: "a GPU" });
     expect({ name, hash: r.hash, hashes: r.hashes }).toEqual({ name, hash: b.hash, hashes: b.hashes });
     expect({ name, checks: r.checks - r.frameChecks }).toEqual({ name, checks: b.checks });
-    if (r.tier !== "none") expect({ name, unchecked: r.unchecked }).toEqual({ name, unchecked: [] });
+    expect({ name, unchecked: r.unchecked }).toEqual({ name, unchecked: [] });
   }
-  if (lit.get("smoke")!.tier !== "none") {
-    expect(lit.get("smoke")!.frameChecks).toBe(1);
-    expect(lit.get("surface")!.frameChecks).toBe(1);
-    expect(existsSync(join(smokeOut, "smoke.png"))).toBeTrue();
-  }
+  expect(lit.get("smoke")!.frameChecks).toBe(1);
+  expect(lit.get("surface")!.frameChecks).toBe(1);
+  expect(existsSync(join(smokeOut, "smoke.png"))).toBeTrue();
   expect(["world.json", "ui.json", "trickster.json", "crate.json"].map((f) => dump(smokeOut, f))).toEqual(blindDumps.smoke);
   expect(["world.json", "ui.json"].map((f) => dump(surfaceOut, f))).toEqual(blindDumps.surface);
 
@@ -186,3 +190,30 @@ test("og test without a renderer passes, counts its unchecked frames and runs th
   expect(polish.scores["frameTime"]).toBeNull();
   expect(polish.findings.filter((f) => f.measure === "frame time")).toEqual([]);
 }, 600_000);
+
+// A run that asked for a renderer and whose adapter request failed fails,
+// naming the adapter's error: it never goes on as tier none, where a
+// screenshot is "unchecked" and a playtest passes having drawn nothing
+// (before, og run printed "INFO no renderer" and went on). Only
+// OG_RENDERER=none runs without one. The refusal is the addon's answer when
+// wgpu finds no adapter, given here so any machine takes the path.
+test("a refused adapter fails the run that asked for a renderer; only OG_RENDERER=none runs without one", () => {
+  const refused = () => JSON.stringify({ ok: false, reason: "no GPU adapter: Auto: no suitable adapter found" });
+  const granted = () => JSON.stringify({ ok: true, value: "metal" });
+  const saved = process.env.OG_RENDERER;
+  try {
+    delete process.env.OG_RENDERER;
+    const failed = attachRenderer(1, 64, 64, refused);
+    expect(failed.ok).toBeFalse();
+    expect(failed.ok ? "" : failed.reason).toContain("no GPU adapter: Auto: no suitable adapter found");
+    expect(failed.ok ? "" : failed.reason).toContain("OG_RENDERER=none");
+    process.env.OG_RENDERER = "vulkan";
+    expect(attachRenderer(1, 64, 64, refused).ok).toBeFalse();
+    process.env.OG_RENDERER = "none";
+    expect(attachRenderer(1, 64, 64, refused)).toEqual({ ok: true, value: "none" });
+    expect(attachRenderer(1, 64, 64, granted)).toEqual({ ok: true, value: "metal" });
+  } finally {
+    if (saved === undefined) delete process.env.OG_RENDERER;
+    else process.env.OG_RENDERER = saved;
+  }
+});

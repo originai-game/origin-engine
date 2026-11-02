@@ -317,6 +317,25 @@ impl Fonts {
         }
     }
 
+    /// The face drawn as `handle`: a role's, a companion, the locale's or
+    /// a fallback.
+    pub fn face(&self, handle: og_render::FontHandle) -> Option<&UiFont> {
+        [
+            Some(&self.body),
+            self.display.as_ref(),
+            self.mono.as_ref(),
+            self.rounded.as_ref(),
+            self.fallback.as_ref(),
+            self.cjk.as_ref(),
+            self.cjk_display.as_ref(),
+        ]
+        .into_iter()
+        .flatten()
+        .chain(&self.chain)
+        .chain(&self.fallbacks)
+        .find(|f| f.handle == Some(handle))
+    }
+
     /// The style's Chinese companion of `role` ([`Fonts::cjk`]).
     pub fn companion(&self, role: FontRole) -> Option<&UiFont> {
         match role {
@@ -388,6 +407,11 @@ pub struct UiFrame {
     pub items: Vec<DrawItem>,
     /// Problems in this frame's tree (duplicate ids, unclosed elements), each naming the fix.
     pub warnings: Vec<String>,
+    /// Characters this frame's texts draw that their face lacks, in its
+    /// atlas and in the file it renders from at run time: per face, in the
+    /// order first drawn, each (face, character) once in the UI's life. The
+    /// host names the face and warns ([`Fonts::face`] has its metrics).
+    pub missing_glyphs: Vec<(og_render::FontHandle, Vec<char>)>,
     /// The path of the control each pad's focus is on (pad 0: the shared
     /// focus), or empty.
     pub focus_paths: [String; 4],

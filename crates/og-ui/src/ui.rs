@@ -313,6 +313,8 @@ pub struct Ui {
     pub(crate) floating: Vec<usize>,
     pub(crate) last_closed: usize,
     pub(crate) warnings: Vec<String>,
+    /// The (face, character) pairs [`UiFrame::missing_glyphs`] named.
+    pub(crate) glyphs_missed: std::collections::BTreeSet<(og_render::FontHandle, char)>,
     pub(crate) building: bool,
     pub(crate) state: State,
     pub(crate) frame: UiFrame,

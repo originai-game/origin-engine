@@ -25,6 +25,7 @@ impl Ui {
             floating: Vec::new(),
             last_closed: NONE,
             warnings: Vec::new(),
+            glyphs_missed: Default::default(),
             building: false,
             state: State::default(),
             frame: UiFrame::default(),

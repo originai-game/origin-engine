@@ -23,7 +23,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { loadNativeHost, native } from "./index.ts";
+import { attachRenderer, loadNativeHost, native } from "./index.ts";
 import { nativePlatform } from "./platform.ts";
 import { bundleGame } from "./build.ts";
 import { decodePng, encodePng, type Image } from "./png.ts";
@@ -119,7 +119,7 @@ async function main(): Promise<void> {
   const highContrast = argv.includes("--high-contrast");
 
   loadNativeHost();
-  const extras = native() as unknown as { og_node_ui_frame(id: number): string; og_node_attach_offscreen(id: number, w: number, h: number): string };
+  const extras = native() as unknown as { og_node_ui_frame(id: number): string };
   if (typeof extras.og_node_ui_frame !== "function") fail("this native addon has no og_node_ui_frame: rebuild it (packages/engine/scripts/build.sh)");
   const game = ((await import(pathToFileURL(resolve(entry!)).href)) as { default?: GameToken }).default;
   if (!game) fail(`${entry} has no default export`);
@@ -138,7 +138,8 @@ async function main(): Promise<void> {
     const images = new Map<string, Image>();
     try {
       engine.attachPlatform(nativePlatform());
-      extras.og_node_attach_offscreen(engine.id, vp.width, vp.height);
+      const attached = attachRenderer(engine.id, vp.width, vp.height);
+      if (!attached.ok) fail(attached.reason);
       const started = engine.advance(0);
       if (!started.ok) fail(started.reason);
       // The player's text size: configure keeps it through the game's own
