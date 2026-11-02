@@ -597,18 +597,18 @@ module ui {
 | [`StatusEffect`](#type-StatusEffect) | desc struct | A buff or debuff on a unit. |
 | [`StatusGridDesc`](#type-StatusGridDesc) | desc struct | A grid of buffs and debuffs. |
 | [`StatusGridResult`](#type-StatusGridResult) | struct | What a status grid answered. |
-| [`og.ui.statusGrid`](#fn-statusGrid) | function | Buffs and debuffs to the bar of MMOs: icons in rows, a sweep darkening each as it runs out, the time left under it (12m, 45, 4.2), blinking in its last five seconds, stacks at its corner, debuffs in their own row bordered by their type's colour and notched so their kind is not told by colour alone, more than max folding into a +n tile. |
+| [`og.ui.statusGrid`](#fn-statusGrid) | function | Buffs and debuffs to the bar of MMOs: icons in rows, a sweep darkening each as it runs out, the time left under it (12m, 45, 4.2), blinking in its last five seconds, stacks at its corner, debuffs in their own row bordered by their type's colour and notched so their kind is not told by colour alone, more than max folding into a +n tile; the columns as wide as the row's widest timer, so the tiles stay evenly spaced and each time overhangs its tile centred (WoW's auras). |
 | [`UnitClass`](#type-UnitClass) | enum | A unit's standing, which dresses its frame. |
 | [`UnitFrameSize`](#type-UnitFrameSize) | enum | A unit frame's size. |
 | [`UnitFrameDesc`](#type-UnitFrameDesc) | desc struct | A unit's frame: portrait, name, bars. |
-| [`og.ui.unitFrame`](#fn-unitFrame) | function | A unit frame to the bar of World of Warcraft and Final Fantasy XIV: a round portrait (an art slot, else a bust silhouette on a slate ground) ringed by the style and floating on its own shadow with no plate behind the frame, the level on a badge at most 40 % of it seated on its rim, an elite or boss dressing, the name on one line over the dominant health bar (its absorb as an overlay, its ghost, its numerals inside its end) and a resource bar, the cast under them, small buffs, and states for the target, dead (the portrait greyed to about 40 %, a small skull), offline (dim), in combat and the leader's crown. A press selects it. |
+| [`og.ui.unitFrame`](#fn-unitFrame) | function | A unit frame to the bar of World of Warcraft and Final Fantasy XIV: a round portrait (an art slot, else a bust silhouette on a slate ground) ringed by the style and floating on its own shadow with no plate behind the frame, the level on a badge at most 40 % of it seated on its rim, an elite or boss dressing, the name on one line over the dominant health bar (its absorb as an overlay, its ghost, its numerals inside its end) and a resource bar, the cast under them (compact: its name clipped inside the bar, no edge line across it), small buffs, and states for the target, dead (the portrait greyed to about 40 %, a small skull), offline (dim), in combat and the leader's crown. A frame at a top or bottom corner takes half the HUD band beside the opposite corner's stack; where that leaves its bars too narrow (a phone at 200 % text) the later-built frame steps under the other onto its own row, so the two never share space. A press selects it. |
 | [`PartyFramesDesc`](#type-PartyFramesDesc) | desc struct | The party's frames. |
 | [`FramesResult`](#type-FramesResult) | struct | What a set of frames answered. |
 | [`og.ui.partyFrames`](#fn-partyFrames) | function | Party frames: a column of medium unit frames, the leader crowned, each pressable to target. |
 | [`RaidRole`](#type-RaidRole) | enum | A raid member's role. |
 | [`RaidMember`](#type-RaidMember) | desc struct | One cell of raid frames. |
 | [`RaidFramesDesc`](#type-RaidFramesDesc) | desc struct | Raid frames: a grid of compact cells. |
-| [`og.ui.raidFrames`](#fn-raidFrames) | function | Raid frames to the bar of World of Warcraft's: up to 40 compact cells in columns of five, each a health fill in the class colour with its absorb and incoming heal, the name cut to fit, a role mark, dead and offline states, faded out of range, a danger border on aggro, a dispellable debuff glowing in its type's colour, the target outlined. A press targets. |
+| [`og.ui.raidFrames`](#fn-raidFrames) | function | Raid frames to the bar of World of Warcraft's: up to 40 compact cells in columns of five, each a health fill in the class colour with its absorb and incoming heal, the name cut to fit, a role mark, dead and offline states, faded out of range, a danger border on aggro, a dispellable debuff glowing in its type's colour, the target outlined, the name's ink chosen by the cell's luminance (dark on a pale class colour that covers it; past it, the pale fill deepened under light ink). A press targets. |
 | [`CastState`](#type-CastState) | enum | Where a cast is. |
 | [`CastBarDesc`](#type-CastBarDesc) | desc struct | A cast or channel bar. |
 | [`og.ui.castBar`](#fn-castBar) | function | A cast bar to the bar of MMOs (Diablo IV, Destiny 2, WoW): the spell's art in a framed socket, its name in the display face and the seconds left on a line over a slim dark well, a fill with a bright leading edge, the seconds left, a channel draining with its tick marks, the latency zone, an uninterruptible shield, a success flash and an interrupted state in danger that fade out. |
@@ -6659,7 +6659,7 @@ fn subtitles {
 
 A health or resource bar to the bar of action games: blocks (segment), a ghost chunk that holds after a hit and then drains (Dark Souls, fighting games), a heal preview, an absorb overlay (World of Warcraft's white-blue), grey recoverable damage, the value inside its end or after it, a row of shield cells in their tier's colour over it (Apex Legends), low and critical states (warn, then danger pulsing), a mirrored fill for the right player, flat, slanted or pill ends. A drop is instant, a rise moves on the ui spring.
 
-Parts: StatBar.frame[<style>][<level>], StatBar.track, StatBar.fill[<kind>][<level>], StatBar.ghost, StatBar.heal, StatBar.absorb[over], StatBar.recoverable, StatBar.block[filled], StatBar.cell[filled][<tier>], StatBar.label, StatBar.value, StatBar.icon. States: group level (normal, low, critical, empty). Sounds: warning on crossing into critical. Accessibility: meter named by name, valueNow the value, valueMax max. Probe ids: <id>, <id>/Track, <id>/Track/Fill, <id>/Track/Ghost, <id>/Track/Block#i, <id>/Shield/Cell#i, <id>/Value (inside: <id>/Main/Track/Value/Text).
+Parts: StatBar.frame[<style>][<level>], StatBar.track, StatBar.fill[<kind>][<level>], StatBar.ghost, StatBar.heal, StatBar.absorb[over], StatBar.recoverable, StatBar.block[filled], StatBar.cell[filled][<tier>], StatBar.label, StatBar.value, StatBar.icon. States: group level (normal, low, critical, empty). Sounds: warning on crossing into critical. Accessibility: meter named by name, valueNow the value, valueMax max. Probe ids: <id>, <id>/Track, <id>/Track/Fill, <id>/Track/Ghost, <id>/Track/Block#i, <id>/Shield/Cell#i, <id>/Value (inside: <id>/Main/Track/Value/Text, over a soft scrim, StatBar.scrim, that keeps any edge under the figures).
 
 ```ts
 og.ui.statBar(id: string, desc?: StatBarDesc): void
@@ -6677,7 +6677,7 @@ Implemented by the TypeScript runtime over the members of this module: no bindin
 ```ogt
 fn statBar {
   doc "A health or resource bar to the bar of action games: blocks (segment), a ghost chunk that holds after a hit and then drains (Dark Souls, fighting games), a heal preview, an absorb overlay (World of Warcraft's white-blue), grey recoverable damage, the value inside its end or after it, a row of shield cells in their tier's colour over it (Apex Legends), low and critical states (warn, then danger pulsing), a mirrored fill for the right player, flat, slanted or pill ends. A drop is instant, a rise moves on the ui spring."
-  doc "Parts: StatBar.frame[<style>][<level>], StatBar.track, StatBar.fill[<kind>][<level>], StatBar.ghost, StatBar.heal, StatBar.absorb[over], StatBar.recoverable, StatBar.block[filled], StatBar.cell[filled][<tier>], StatBar.label, StatBar.value, StatBar.icon. States: group level (normal, low, critical, empty). Sounds: warning on crossing into critical. Accessibility: meter named by name, valueNow the value, valueMax max. Probe ids: <id>, <id>/Track, <id>/Track/Fill, <id>/Track/Ghost, <id>/Track/Block#i, <id>/Shield/Cell#i, <id>/Value (inside: <id>/Main/Track/Value/Text)."
+  doc "Parts: StatBar.frame[<style>][<level>], StatBar.track, StatBar.fill[<kind>][<level>], StatBar.ghost, StatBar.heal, StatBar.absorb[over], StatBar.recoverable, StatBar.block[filled], StatBar.cell[filled][<tier>], StatBar.label, StatBar.value, StatBar.icon. States: group level (normal, low, critical, empty). Sounds: warning on crossing into critical. Accessibility: meter named by name, valueNow the value, valueMax max. Probe ids: <id>, <id>/Track, <id>/Track/Fill, <id>/Track/Ghost, <id>/Track/Block#i, <id>/Shield/Cell#i, <id>/Value (inside: <id>/Main/Track/Value/Text, over a soft scrim, StatBar.scrim, that keeps any edge under the figures)."
   host false
   param id String "Its id."
   param desc StatBarDesc "The value and the look."
@@ -6827,9 +6827,9 @@ fn abilityBar {
 
 ### `og.ui.statusGrid`
 
-Buffs and debuffs to the bar of MMOs: icons in rows, a sweep darkening each as it runs out, the time left under it (12m, 45, 4.2), blinking in its last five seconds, stacks at its corner, debuffs in their own row bordered by their type's colour and notched so their kind is not told by colour alone, more than max folding into a +n tile.
+Buffs and debuffs to the bar of MMOs: icons in rows, a sweep darkening each as it runs out, the time left under it (12m, 45, 4.2), blinking in its last five seconds, stacks at its corner, debuffs in their own row bordered by their type's colour and notched so their kind is not told by colour alone, more than max folding into a +n tile; the columns as wide as the row's widest timer, so the tiles stay evenly spaced and each time overhangs its tile centred (WoW's auras).
 
-Parts: StatusGrid.tile[buff|debuff][type=<type>][expiring], StatusGrid.icon, StatusGrid.sweep, StatusGrid.time, StatusGrid.stacks, StatusGrid.more. States: on each tile, group time (lasting, running, expiring). Accessibility: list named Buffs and Debuffs; each tile an image named name, stacks and seconds. Probe ids: <id>/Buffs/<key>, <id>/Debuffs/<key>, their Time and Stacks.
+Parts: StatusGrid.tile[buff|debuff][type=<type>][expiring], StatusGrid.icon, StatusGrid.sweep, StatusGrid.time, StatusGrid.stacks, StatusGrid.more. States: on each tile, group time (lasting, running, expiring). Accessibility: list named Buffs and Debuffs; each tile an image named name, stacks and seconds. Probe ids: <id>/Buffs/<key>, <id>/Debuffs/<key>, their Time and Stacks, <id>/Buffs/More/Tile/Count.
 
 ```ts
 og.ui.statusGrid(id: string, desc?: StatusGridDesc): StatusGridResult
@@ -6846,8 +6846,8 @@ Implemented by the TypeScript runtime over the members of this module: no bindin
 
 ```ogt
 fn statusGrid {
-  doc "Buffs and debuffs to the bar of MMOs: icons in rows, a sweep darkening each as it runs out, the time left under it (12m, 45, 4.2), blinking in its last five seconds, stacks at its corner, debuffs in their own row bordered by their type's colour and notched so their kind is not told by colour alone, more than max folding into a +n tile."
-  doc "Parts: StatusGrid.tile[buff|debuff][type=<type>][expiring], StatusGrid.icon, StatusGrid.sweep, StatusGrid.time, StatusGrid.stacks, StatusGrid.more. States: on each tile, group time (lasting, running, expiring). Accessibility: list named Buffs and Debuffs; each tile an image named name, stacks and seconds. Probe ids: <id>/Buffs/<key>, <id>/Debuffs/<key>, their Time and Stacks."
+  doc "Buffs and debuffs to the bar of MMOs: icons in rows, a sweep darkening each as it runs out, the time left under it (12m, 45, 4.2), blinking in its last five seconds, stacks at its corner, debuffs in their own row bordered by their type's colour and notched so their kind is not told by colour alone, more than max folding into a +n tile; the columns as wide as the row's widest timer, so the tiles stay evenly spaced and each time overhangs its tile centred (WoW's auras)."
+  doc "Parts: StatusGrid.tile[buff|debuff][type=<type>][expiring], StatusGrid.icon, StatusGrid.sweep, StatusGrid.time, StatusGrid.stacks, StatusGrid.more. States: on each tile, group time (lasting, running, expiring). Accessibility: list named Buffs and Debuffs; each tile an image named name, stacks and seconds. Probe ids: <id>/Buffs/<key>, <id>/Debuffs/<key>, their Time and Stacks, <id>/Buffs/More/Tile/Count."
   host false
   param id String "Its id."
   param desc StatusGridDesc "The effects."
@@ -6861,7 +6861,7 @@ fn statusGrid {
 
 ### `og.ui.unitFrame`
 
-A unit frame to the bar of World of Warcraft and Final Fantasy XIV: a round portrait (an art slot, else a bust silhouette on a slate ground) ringed by the style and floating on its own shadow with no plate behind the frame, the level on a badge at most 40 % of it seated on its rim, an elite or boss dressing, the name on one line over the dominant health bar (its absorb as an overlay, its ghost, its numerals inside its end) and a resource bar, the cast under them, small buffs, and states for the target, dead (the portrait greyed to about 40 %, a small skull), offline (dim), in combat and the leader's crown. A press selects it.
+A unit frame to the bar of World of Warcraft and Final Fantasy XIV: a round portrait (an art slot, else a bust silhouette on a slate ground) ringed by the style and floating on its own shadow with no plate behind the frame, the level on a badge at most 40 % of it seated on its rim, an elite or boss dressing, the name on one line over the dominant health bar (its absorb as an overlay, its ghost, its numerals inside its end) and a resource bar, the cast under them (compact: its name clipped inside the bar, no edge line across it), small buffs, and states for the target, dead (the portrait greyed to about 40 %, a small skull), offline (dim), in combat and the leader's crown. A frame at a top or bottom corner takes half the HUD band beside the opposite corner's stack; where that leaves its bars too narrow (a phone at 200 % text) the later-built frame steps under the other onto its own row, so the two never share space. A press selects it.
 
 Parts: UnitFrame.frame[<size>][hostile][targeted][dead], UnitFrame.portrait[<class>], UnitFrame.level, UnitFrame.name, UnitFrame.title, UnitFrame.health (a StatBar), UnitFrame.resource, UnitFrame.cast, UnitFrame.crown, UnitFrame.combat. Slots: portrait (art kind portrait). States: group life (alive, dead, offline), group selection (none, targeted). Accessibility: button named name, level and health. Probe ids: <id>, <id>/Avatar/Portrait, <id>/Avatar/Level, <id>/Bars/Head/Name, <id>/Bars/Health, <id>/Bars/Resource, <id>/Bars/Cast.
 
@@ -6880,7 +6880,7 @@ Implemented by the TypeScript runtime over the members of this module: no bindin
 
 ```ogt
 fn unitFrame {
-  doc "A unit frame to the bar of World of Warcraft and Final Fantasy XIV: a round portrait (an art slot, else a bust silhouette on a slate ground) ringed by the style and floating on its own shadow with no plate behind the frame, the level on a badge at most 40 % of it seated on its rim, an elite or boss dressing, the name on one line over the dominant health bar (its absorb as an overlay, its ghost, its numerals inside its end) and a resource bar, the cast under them, small buffs, and states for the target, dead (the portrait greyed to about 40 %, a small skull), offline (dim), in combat and the leader's crown. A press selects it."
+  doc "A unit frame to the bar of World of Warcraft and Final Fantasy XIV: a round portrait (an art slot, else a bust silhouette on a slate ground) ringed by the style and floating on its own shadow with no plate behind the frame, the level on a badge at most 40 % of it seated on its rim, an elite or boss dressing, the name on one line over the dominant health bar (its absorb as an overlay, its ghost, its numerals inside its end) and a resource bar, the cast under them (compact: its name clipped inside the bar, no edge line across it), small buffs, and states for the target, dead (the portrait greyed to about 40 %, a small skull), offline (dim), in combat and the leader's crown. A frame at a top or bottom corner takes half the HUD band beside the opposite corner's stack; where that leaves its bars too narrow (a phone at 200 % text) the later-built frame steps under the other onto its own row, so the two never share space. A press selects it."
   doc "Parts: UnitFrame.frame[<size>][hostile][targeted][dead], UnitFrame.portrait[<class>], UnitFrame.level, UnitFrame.name, UnitFrame.title, UnitFrame.health (a StatBar), UnitFrame.resource, UnitFrame.cast, UnitFrame.crown, UnitFrame.combat. Slots: portrait (art kind portrait). States: group life (alive, dead, offline), group selection (none, targeted). Accessibility: button named name, level and health. Probe ids: <id>, <id>/Avatar/Portrait, <id>/Avatar/Level, <id>/Bars/Head/Name, <id>/Bars/Health, <id>/Bars/Resource, <id>/Bars/Cast."
   host false
   param id String "Its id."
@@ -6929,7 +6929,7 @@ fn partyFrames {
 
 ### `og.ui.raidFrames`
 
-Raid frames to the bar of World of Warcraft's: up to 40 compact cells in columns of five, each a health fill in the class colour with its absorb and incoming heal, the name cut to fit, a role mark, dead and offline states, faded out of range, a danger border on aggro, a dispellable debuff glowing in its type's colour, the target outlined. A press targets.
+Raid frames to the bar of World of Warcraft's: up to 40 compact cells in columns of five, each a health fill in the class colour with its absorb and incoming heal, the name cut to fit, a role mark, dead and offline states, faded out of range, a danger border on aggro, a dispellable debuff glowing in its type's colour, the target outlined, the name's ink chosen by the cell's luminance (dark on a pale class colour that covers it; past it, the pale fill deepened under light ink). A press targets.
 
 Parts: RaidFrames.cell[dead|offline|outOfRange][aggro][dispel=<type>][selected], RaidFrames.fill, RaidFrames.absorb, RaidFrames.heal, RaidFrames.name, RaidFrames.role. Accessibility: grid of buttons named name and health. Probe ids: <id>/<key>, its Name.
 
@@ -6948,7 +6948,7 @@ Implemented by the TypeScript runtime over the members of this module: no bindin
 
 ```ogt
 fn raidFrames {
-  doc "Raid frames to the bar of World of Warcraft's: up to 40 compact cells in columns of five, each a health fill in the class colour with its absorb and incoming heal, the name cut to fit, a role mark, dead and offline states, faded out of range, a danger border on aggro, a dispellable debuff glowing in its type's colour, the target outlined. A press targets."
+  doc "Raid frames to the bar of World of Warcraft's: up to 40 compact cells in columns of five, each a health fill in the class colour with its absorb and incoming heal, the name cut to fit, a role mark, dead and offline states, faded out of range, a danger border on aggro, a dispellable debuff glowing in its type's colour, the target outlined, the name's ink chosen by the cell's luminance (dark on a pale class colour that covers it; past it, the pale fill deepened under light ink). A press targets."
   doc "Parts: RaidFrames.cell[dead|offline|outOfRange][aggro][dispel=<type>][selected], RaidFrames.fill, RaidFrames.absorb, RaidFrames.heal, RaidFrames.name, RaidFrames.role. Accessibility: grid of buttons named name and health. Probe ids: <id>/<key>, its Name."
   host false
   param id String "Its id."
