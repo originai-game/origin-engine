@@ -272,6 +272,10 @@ pub struct DayNightLook {
     pub ambient: f32,
     /// A fog colour that matches the horizon.
     pub fog_color: Vec3,
+    /// The fog's colour looking into the sun (`Fog::sun_color`), when the
+    /// look knows it: the physical sky's horizon under the sun (dim and red
+    /// once the sun has set). `None`: the fog keeps its own.
+    pub fog_sun: Option<Vec3>,
 }
 
 impl DayNightLook {
@@ -319,6 +323,11 @@ impl DayNightLook {
         }
         let horizon = sum / weight;
         self.fog_color = (horizon * white * 1.1 + air.night).max(Vec3::splat(1e-4));
+        // Looking into the sun the fog takes the sky's glow on the horizon
+        // under it, not a fixed warm white: after sunset that is dim and
+        // red, so the fog no longer shines over the darkened land.
+        let glow = air.radiance(air.altitude, (toward + Vec3::Y * 0.05).normalize(), s, 12);
+        self.fog_sun = Some((glow * white + air.night).max(Vec3::splat(1e-4)));
         self
     }
 }
@@ -410,6 +419,7 @@ pub fn day_night(hours: f32, tilt: f32, azimuth: f32) -> DayNightLook {
         sun_color,
         ambient: 0.12 + 0.88 * (0.25 * golden + 0.75 * day),
         fog_color: horizon * (0.8 + 0.2 * day),
+        fog_sun: None,
     }
 }
 

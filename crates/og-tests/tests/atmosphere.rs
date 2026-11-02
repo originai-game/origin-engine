@@ -683,8 +683,9 @@ fn weather_surface_scenes_match_their_references_and_read_as_weather() {
 /// R4's shelter: the ground under the canopy stays free of snow and dry.
 /// With the weather occlusion map turned off (shelter 0) the snow lies
 /// under it too, so the frame's lower half is brighter; with it the ground
-/// under the canopy is darker than the open snow, and the wet frame is
-/// lighter under the canopy than without the map (dry ground, no puddles).
+/// under the canopy is darker than the open snow; and in the rain (its
+/// puddles and ripples off in both frames) the ground under the canopy is
+/// lighter with the map than without it: dry, not soaked.
 #[test]
 fn a_canopy_keeps_the_snow_and_the_rain_off_the_ground_under_it() {
     use og_tests::sky_scenes::sky_scene;
@@ -704,12 +705,26 @@ fn a_canopy_keeps_the_snow_and_the_rain_off_the_ground_under_it() {
         lower(&snow),
         lower(&snowed_under)
     );
-    let rain = frame(&sky_scene("weather-shelter-rain"));
-    let soaked = open("weather-shelter-rain");
+    // The ground under the canopy, with and without the map, the puddles
+    // and ripples left out of both (mirrors of the sky, brighter than any
+    // ground): dry there is lighter than soaked.
+    let damp = |shelter: bool| {
+        let mut s = sky_scene("weather-shelter-rain");
+        if let Some(w) = s.surface_weather.as_mut() {
+            w.puddles = 0.0;
+            w.rain = 0.0;
+            if !shelter {
+                w.shelter = 0.0;
+            }
+        }
+        frame(&s)
+    };
+    let under = |img: &RgbaImage| mean(img, 300, 435, 900, 495);
+    let (dry, soaked) = (damp(true), damp(false));
     assert!(
-        lower(&rain) > 1.02 * lower(&soaked),
+        under(&dry) > 1.1 * under(&soaked),
         "the canopy keeps the ground under it dry: {} vs {}",
-        lower(&rain),
-        lower(&soaked)
+        under(&dry),
+        under(&soaked)
     );
 }

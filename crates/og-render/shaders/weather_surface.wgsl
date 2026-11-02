@@ -115,8 +115,8 @@ fn weather_surface(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: vec3
   // the dry ground).
   let wet = w.x * mix(0.55, 1.0, up) * (1.0 - snow);
   let porosity = (1.0 - o.s.metallic) * smoothstep(0.15, 0.85, o.s.roughness);
-  o.s.albedo *= mix(1.0, 0.4, wet * porosity);
-  o.s.roughness = mix(o.s.roughness, max(o.s.roughness * 0.6, 0.35), wet * wet);
+  o.s.albedo *= mix(1.0, 0.3, wet * porosity);
+  o.s.roughness = mix(o.s.roughness, max(o.s.roughness * 0.75, 0.45), wet * wet);
 
   // Puddles: in the hollows of the noise on level ground, mirror-smooth
   // dark water over the surface, rippled by the rain.

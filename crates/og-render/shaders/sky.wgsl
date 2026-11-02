@@ -61,12 +61,17 @@ fn sky_physical_look(d: vec3<f32>) -> vec3<f32> {
   let light = frame.sky_glow.yzw;
   let sky = (physical_sky(d, sun, h0, 24u) * light + frame.sky_scatter[5].rgb) * frame.sky_horizon.w;
   // The disc keeps the hue of the sunlight through the air (orange-red at
-  // sunset) at a brightness capped where the tone curve would bleach it
-  // white: the colour divided by its largest channel, times at most 1.5.
+  // sunset): it replaces the glow under it, at least as bright as that
+  // glow, its hue the colour over its largest channel, saturated (pow 1.6)
+  // because the tone curve compresses a bright red channel and would
+  // leave a physically hued disc yellow-white. Gone once the sun has set.
   let through = physical_sun(d, h0);
-  let peak = max(max(through.r, through.g), max(through.b, 1e-6));
+  let peak = max(max(through.r, through.g), through.b);
+  let hue = pow(through / max(peak, 1e-6), vec3<f32>(1.6));
   let strength = min(dot(through, vec3<f32>(0.2126, 0.7152, 0.0722)) * frame.sky_sun.z, 1.5);
-  var color = sky + light * (through / peak) * strength * smoothstep(frame.sky_sun.x, frame.sky_sun.y, dot(d, sun));
+  let glow = max(max(sky.r, sky.g), sky.b) * 1.1;
+  let disc = smoothstep(frame.sky_sun.x, frame.sky_sun.y, dot(d, sun)) * smoothstep(0.0, 1e-3, peak) * min(frame.sky_sun.z, 1.0);
+  var color = mix(sky, light * hue * max(strength, glow), disc);
   let moon = moon_at(d, up);
   if (frame.sky_ground.w > 0.0 && up > 0.0) {
     let g = d * 220.0;

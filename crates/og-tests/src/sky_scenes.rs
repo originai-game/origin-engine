@@ -56,6 +56,7 @@ pub fn physical_sky_scene(hours: f32, air: PhysicalAtmosphere, into_sun: bool) -
     };
     scene.fog = Some(Fog {
         color: look.fog_color,
+        sun_color: look.fog_sun.unwrap_or(Fog::default().sun_color),
         density: 0.0015,
         start: 12.0,
         sky: 0.0,

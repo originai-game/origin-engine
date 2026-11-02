@@ -356,7 +356,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             sun_color: look.sun_color,
         };
         if on(&d, "tintFog", true) {
-            fog_tint = Some(look.fog_color);
+            fog_tint = Some((look.fog_color, look.fog_sun));
         }
     }
 
@@ -407,8 +407,11 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             max_opacity: f(&v, "maxOpacity", 1.0),
             sky: f(&v, "sky", 1.0),
         };
-        if let Some(t) = fog_tint {
+        if let Some((t, sun)) = fog_tint {
             fog.color = fog.color.lerp(t, 0.75);
+            if let Some(sun) = sun {
+                fog.sun_color = sun;
+            }
         }
         // Fog.volumetric: the same medium lit (og-render's volumetric.rs),
         // which replaces the plain fog where the renderer draws it.
@@ -442,8 +445,11 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         if scene.fog.is_none()
             && let Some(mut fog) = look.fog
         {
-            if let Some(t) = fog_tint {
+            if let Some((t, sun)) = fog_tint {
                 fog.color = fog.color.lerp(t, 0.5);
+                if let Some(sun) = sun {
+                    fog.sun_color = sun;
+                }
             }
             scene.fog = Some(fog);
         }
