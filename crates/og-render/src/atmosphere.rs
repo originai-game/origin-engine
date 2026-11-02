@@ -179,6 +179,8 @@ pub(crate) struct AtmosphereGpu {
     pub scatter: [[f32; 4]; crate::sky_physical::SCATTER_VEC4S],
     /// The clouds' block (`Clouds::gpu`; zero: none), `frame.clouds`.
     pub clouds: [[f32; 4]; crate::clouds::CLOUD_VEC4S],
+    /// Weather on the lit surfaces (`SurfaceWeather::gpu`; zero: dry).
+    pub weather: [[f32; 4]; 2],
 }
 
 impl AtmosphereGpu {
@@ -187,6 +189,7 @@ impl AtmosphereGpu {
         fog: Option<&Fog>,
         sky: Option<(&SkyLook, Vec3, Vec3)>,
         clouds: Option<&crate::Clouds>,
+        weather: Option<&crate::SurfaceWeather>,
         tick: u64,
         rate: f32,
     ) -> AtmosphereGpu {
@@ -225,6 +228,9 @@ impl AtmosphereGpu {
             }
         }
         let rate = if rate > 0.0 { rate } else { 60.0 };
+        if let Some(w) = weather {
+            a.weather = w.gpu();
+        }
         // Clouds belong to the procedural sky the sky pass draws per pixel.
         if let (Some(c), Some((look, ..))) = (clouds, sky) {
             let radius = look

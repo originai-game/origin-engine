@@ -251,3 +251,169 @@ impl WeatherLook {
         position + self.offset + level * self.ahead
     }
 }
+
+/// Weather on the lit surfaces (`shaders/weather_surface.wgsl`): how wet
+/// they are, how much standing water lies on level ground and how much
+/// snow covers what faces up. The runtime takes these from og.Weather's
+/// state, simulated in the tick; the renderer only draws them. Every lit
+/// surface takes them (standard, physical and terrain materials), placed
+/// by its world position and geometric normal.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SurfaceWeather {
+    /// 0 dry to 1 soaked: porous surfaces darken, all of them gain a sheen.
+    pub wetness: f32,
+    /// 0 none to 1: how far puddles spread over level ground.
+    pub puddles: f32,
+    /// 0 none to 1: snow from the flattest faces (a dusting) to steep ones.
+    pub snow: f32,
+    /// How hard it is raining now, which ripples the puddles (0: still).
+    pub rain: f32,
+    /// Linear snow colour.
+    pub snow_color: Vec3,
+    /// The size of the puddles' pattern, in metres.
+    pub puddle_size: f32,
+}
+
+impl Default for SurfaceWeather {
+    fn default() -> Self {
+        SurfaceWeather {
+            wetness: 0.0,
+            puddles: 0.0,
+            snow: 0.0,
+            rain: 0.0,
+            snow_color: Vec3::new(0.9, 0.93, 0.97),
+            puddle_size: 3.0,
+        }
+    }
+}
+
+impl SurfaceWeather {
+    /// The frame uniform's two rows (`frame.weather`, `frame.weather_look`).
+    pub(crate) fn gpu(&self) -> [[f32; 4]; 2] {
+        [
+            [
+                self.wetness.clamp(0.0, 1.0),
+                self.puddles.clamp(0.0, 1.0),
+                self.snow.clamp(0.0, 1.0),
+                self.rain.clamp(0.0, 2.0),
+            ],
+            self.snow_color
+                .max(Vec3::ZERO)
+                .extend(self.puddle_size.max(0.05))
+                .to_array(),
+        ]
+    }
+}
+
+/// How bright a strike is `t` seconds after it: a sharp first stroke, a
+/// dip, a second return stroke, then a fade (0 from 0.6 s).
+pub fn lightning_flash(t: f32) -> f32 {
+    let pulse = |c: f32, w: f32| (1.0 - ((t - c) / w).abs()).max(0.0);
+    (pulse(0.03, 0.05)
+        + 0.8 * pulse(0.17, 0.07)
+        + 0.35 * (1.0 - t / 0.6).max(0.0) * f32::from(t > 0.05))
+    .min(1.0)
+        * f32::from(t < 0.6)
+}
+
+/// The bolt of strike number `strike`: a jagged line from (at.x, top, at.z)
+/// down to `at` by midpoint displacement from a generator seeded by the
+/// strike, so the same strike draws the same bolt. (point, width) pairs.
+pub fn lightning_bolt(at: Vec3, top: f32, strike: u32) -> Vec<(Vec3, f32)> {
+    // A xorshift stream seeded by the strike.
+    let mut state = strike.wrapping_mul(0x9e37_79b9) ^ 0x4c49_4748 | 1;
+    let mut draw = move |r: f32| {
+        state ^= state << 13;
+        state ^= state >> 17;
+        state ^= state << 5;
+        (state as f32 / u32::MAX as f32 * 2.0 - 1.0) * r
+    };
+    let mut pts = vec![Vec3::new(at.x, top, at.z), at];
+    let mut jag = (top - at.y) * 0.18;
+    for _ in 0..6 {
+        let mut next = Vec::with_capacity(pts.len() * 2);
+        for pair in pts.windows(2) {
+            let mid = (pair[0] + pair[1]) * 0.5 + Vec3::new(draw(jag), 0.0, draw(jag));
+            next.push(pair[0]);
+            next.push(mid);
+        }
+        next.push(*pts.last().unwrap_or(&at));
+        pts = next;
+        jag *= 0.55;
+    }
+    let n = pts.len() as f32;
+    pts.into_iter()
+        .enumerate()
+        .map(|(i, p)| (p, 1.6 + 1.2 * i as f32 / n))
+        .collect()
+}
+
+/// A lightning strike `seconds` after it struck `at`, from a cloud base at
+/// height `top`, added to `scene` (nothing from 0.6 s): the double flash
+/// brightens the sky's light, a bright blue-white light hangs 40 m over the
+/// strike, and for 0.35 s the bolt of strike number `strike`
+/// ([`lightning_bolt`]) is drawn as an additive strip that blooms.
+pub fn add_lightning(
+    scene: &mut crate::RenderScene,
+    at: Vec3,
+    top: f32,
+    strike: u32,
+    seconds: f32,
+) {
+    let flash = lightning_flash(seconds);
+    if flash <= 0.0 {
+        return;
+    }
+    scene.environment.intensity *= 1.0 + 6.0 * flash;
+    scene.lights.push(crate::Light {
+        kind: crate::LightKind::Point,
+        position: at + Vec3::Y * 40.0,
+        color: Vec3::new(0.75, 0.82, 1.0),
+        intensity: 3.0e4 * flash,
+        range: 600.0,
+        cast_shadows: false,
+    });
+    if seconds < 0.35 {
+        let c = [
+            3.0 + 30.0 * flash,
+            3.5 + 32.0 * flash,
+            6.0 + 40.0 * flash,
+            1.0,
+        ];
+        scene.ribbons.push(crate::Ribbon {
+            points: lightning_bolt(at, top, strike)
+                .into_iter()
+                .map(|(position, width)| crate::RibbonPoint {
+                    position,
+                    width,
+                    color: c,
+                })
+                .collect(),
+            texture: None,
+            uv: crate::RibbonUv::Stretch,
+            blend: ParticleBlend::Additive,
+        });
+    }
+}
+
+#[cfg(test)]
+mod lightning_tests {
+    use super::*;
+
+    /// The flash: bright at once, a second stroke after the dip, dark from
+    /// 0.6 s. The bolt runs from the cloud to the strike, the same for the
+    /// same strike and different for the next.
+    #[test]
+    fn a_strike_flashes_twice_and_draws_its_own_bolt() {
+        assert!(lightning_flash(0.03) > 0.9);
+        assert!(lightning_flash(0.17) > lightning_flash(0.11));
+        assert_eq!(lightning_flash(0.6), 0.0);
+        let at = Vec3::new(10.0, 2.0, -40.0);
+        let a = lightning_bolt(at, 602.0, 3);
+        assert_eq!(a.first().unwrap().0, Vec3::new(10.0, 602.0, -40.0));
+        assert_eq!(a.last().unwrap().0, at);
+        assert_eq!(a.len(), 65);
+        assert_eq!(a, lightning_bolt(at, 602.0, 3));
+        assert_ne!(a, lightning_bolt(at, 602.0, 4));
+    }
+}

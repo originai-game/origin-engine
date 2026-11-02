@@ -971,7 +971,8 @@ const TERRAIN_WGSL: &str = wgsl3d!("terrain.wgsl");
 /// The terrain's lit module after the frame group, the light tables and the lighting.
 pub(crate) fn terrain_lit_source(frame: &str, tables: &str, lighting: &str) -> String {
     format!(
-        "{frame}{tables}{lighting}{}{TERRAIN_WGSL}{}",
+        "{frame}{tables}{lighting}{}{}{TERRAIN_WGSL}{}",
+        crate::WEATHER_SURFACE_WGSL,
         crate::AREA_WGSL,
         wgsl3d!("terrain_lit.wgsl")
     )

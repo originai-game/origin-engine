@@ -223,6 +223,16 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: crate::feel::vcam::CUT,
         enable: |w, _| crate::feel::vcam::enable(w, crate::feel::vcam::CUT),
     },
+    // R4: the weather's simulated state and its strikes; og.weather writes
+    // and sends them. Naming either registers both.
+    Lazy {
+        name: crate::weather::STATE,
+        enable: |w, _| crate::weather::enable(w, crate::weather::STATE),
+    },
+    Lazy {
+        name: crate::weather::STRIKE,
+        enable: |w, _| crate::weather::enable(w, crate::weather::STRIKE),
+    },
 ];
 
 /// Lazy records registered together: naming one registers the rest.
@@ -231,6 +241,7 @@ const TOGETHER: &[&[&str]] = &[
     &[crate::origin::RESOURCE, crate::origin::EVENT],
     &crate::story::RECORDS,
     &crate::feel::vcam::RECORDS,
+    &crate::weather::RECORDS,
     &[
         crate::stream::cells::CELL,
         crate::stream::cells::MEMBER,

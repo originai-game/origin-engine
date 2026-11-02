@@ -420,6 +420,14 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
             super::atmosphere::derive(world, &st.layouts, entity, name, fields);
         }
     }));
+    // `set` of a lazy record's field names it (super::lazy).
+    probe.set_register(Box::new(move |world, name| {
+        if let Ok(eng) = engine(id)
+            && super::lazy::is_lazy(name)
+        {
+            let _ = super::lazy::ensure(&eng, world, name);
+        }
+    }));
     if facts.is_some() {
         probe.set_facts(move |_world| {
             let Ok(eng) = engine(id) else {

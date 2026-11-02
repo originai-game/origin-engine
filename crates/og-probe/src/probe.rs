@@ -252,6 +252,7 @@ pub struct Probe {
     shot: Option<Shot>,
     sweeping: Option<SweepJob>,
     derive: Option<DeriveFn>,
+    register: Option<RegisterFn>,
     /// The tick of the last unnamed `get` and how many it has had, so a
     /// second one on the same tick writes `get-<tick>-2.json`.
     gets: (u64, u32),
@@ -299,6 +300,12 @@ pub type AfterTickFn = Box<dyn FnMut(&mut World)>;
 /// and the stored fields, and may replace or add fields. It reads the world
 /// only, as a pure function of it.
 pub type DeriveFn = Box<dyn Fn(&World, Option<Entity>, &str, &mut Map<String, Value>)>;
+
+/// Registers an engine record the world has not registered yet because no
+/// game has named it (the runtime's lazy records): `set` names the record
+/// its target starts with, as a game's write would, so a script can set a
+/// lazy resource's field. Unknown names are left alone.
+pub type RegisterFn = Box<dyn Fn(&mut World, &str)>;
 
 /// What the host's mixer rendered last, for `listen`: the last `seconds`
 /// as a 16-bit stereo WAV and its rate, frames, peak and RMS.
@@ -503,6 +510,7 @@ impl Probe {
             shot: None,
             sweeping: None,
             derive: None,
+            register: None,
             gets: (u64::MAX, 0),
             written: BTreeMap::new(),
             after_tick: None,
@@ -561,6 +569,11 @@ impl Probe {
     /// ([`DeriveFn`]).
     pub fn set_derive(&mut self, derive: DeriveFn) {
         self.derive = Some(derive);
+    }
+
+    /// How `set` registers a lazy record it names ([`RegisterFn`]).
+    pub fn set_register(&mut self, register: RegisterFn) {
+        self.register = Some(register);
     }
 
     /// Work the host does after every tick, between ticks ([`AfterTickFn`]).

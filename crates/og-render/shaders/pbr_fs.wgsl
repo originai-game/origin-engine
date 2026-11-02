@@ -158,6 +158,10 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     n = select(n, normalize(bumped), dot(bumped, bumped) > 1e-30);
     s.f0 = mix(vec3<f32>(0.04), s.albedo, s.metallic);
   }
+  // Rain, puddles and snow (weather_surface.wgsl): the frame's uniforms only.
+  let weathered = weather_surface(s, n, normalize(n_vertex * face), in.world_pos);
+  s = weathered.s;
+  n = weathered.n;
   s.coat = material.coat.x;
   s.coat_roughness = clamp(material.coat.y, 0.04, 1.0);
   s.coat_normal = n_vertex * face;

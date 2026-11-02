@@ -1,12 +1,13 @@
 //! The realism wave's sky and weather scenes (R4): the physical sky over
 //! the colonnade at noon, at sunset looking into the sun, in twilight after
-//! it has set, and on a hazy afternoon.
+//! it has set, and on a hazy afternoon; clouds; wet ground with puddles,
+//! lying snow and a lightning strike.
 
 use crate::atmo_scenes::{colonnade, colonnade_camera};
 use glam::Vec3;
 use og_render::{
     Background, Bloom, Clouds, DirectionalLight, Environment, Fog, PhysicalAtmosphere,
-    ProceduralSky, RenderScene, day_night,
+    ProceduralSky, RenderScene, SurfaceWeather, day_night,
 };
 
 /// The scenes of this module, in `SCENES` order.
@@ -19,6 +20,9 @@ pub const SKY_SCENES: &[&str] = &[
     "clouds-overcast",
     "clouds-sunset",
     "clouds-gradient",
+    "weather-wet",
+    "weather-snow-cover",
+    "weather-lightning",
 ];
 
 /// The colonnade at `hours` under the physical sky of `air`, lit by the
@@ -75,10 +79,60 @@ fn clouded(mut scene: RenderScene, clouds: Clouds) -> RenderScene {
     scene
 }
 
+/// The colonnade under a grey overcast at `hours` with `weather` on its
+/// surfaces, the camera lowered to look along the ground.
+fn weathered(hours: f32, weather: SurfaceWeather) -> RenderScene {
+    let mut scene = clouded(
+        physical_sky_scene(hours, PhysicalAtmosphere::EARTH, false),
+        Clouds {
+            coverage: 0.9,
+            color: Vec3::splat(0.75),
+            base: 900.0,
+            layer: 0.0,
+            ..Clouds::default()
+        },
+    );
+    scene.surface_weather = Some(weather);
+    scene.camera.position = Vec3::new(1.5, 1.6, 4.0);
+    scene.camera.target = Vec3::new(-1.0, 0.2, -30.0);
+    scene
+}
+
 /// The scene called `name` of [`SKY_SCENES`].
 pub fn sky_scene(name: &str) -> RenderScene {
     let earth = PhysicalAtmosphere::EARTH;
     match name {
+        "weather-wet" => weathered(
+            11.0,
+            SurfaceWeather {
+                wetness: 1.0,
+                puddles: 0.7,
+                rain: 1.0,
+                ..SurfaceWeather::default()
+            },
+        ),
+        "weather-snow-cover" => weathered(
+            11.0,
+            SurfaceWeather {
+                snow: 0.6,
+                ..SurfaceWeather::default()
+            },
+        ),
+        "weather-lightning" => {
+            let mut scene = weathered(
+                22.5,
+                SurfaceWeather {
+                    wetness: 1.0,
+                    puddles: 0.5,
+                    rain: 1.0,
+                    ..SurfaceWeather::default()
+                },
+            );
+            scene.camera.target = Vec3::new(-1.0, 8.0, -30.0);
+            let at = Vec3::new(-25.0, 0.0, -160.0);
+            og_render::add_lightning(&mut scene, at, 900.0, 3, 0.03);
+            scene
+        }
         "clouds-fair" => clouded(
             physical_sky_scene(11.0, earth, false),
             Clouds {

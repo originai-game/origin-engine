@@ -258,6 +258,9 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   s.metallic = 0.0;
   s.roughness = clamp(roughness, 0.04, 1.0);
   s.f0 = vec3<f32>(0.04);
+  let weathered = weather_surface(s, n, n_geo, p);
+  s = weathered.s;
+  n = weathered.n;
   let v = select(normalize(frame.view_pos.xyz - p), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
 
   let l = normalize(frame.light_dir.xyz);

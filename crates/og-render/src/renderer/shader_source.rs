@@ -18,6 +18,9 @@ const PHYSICAL_WGSL: &str = wgsl!("physical.wgsl");
 pub(crate) const INSTANCE_WGSL: &str = wgsl!("instance.wgsl");
 /// The BRDF and the shadow lookups the lit passes share (pbr, terrain, water).
 pub(crate) const LIGHTING_WGSL: &str = wgsl!("lighting.wgsl");
+/// Rain, puddles and snow on lit surfaces (weather.rs), after
+/// lighting.wgsl, in the standard, physical and terrain lit modules.
+pub(crate) const WEATHER_SURFACE_WGSL: &str = wgsl!("weather_surface.wgsl");
 /// Rect lights and cookies (area.rs), after lighting.wgsl.
 pub(crate) const AREA_WGSL: &str = wgsl!("area.wgsl");
 /// The lightmap pages at group 3 and their lookup (lightmap.rs), in the
@@ -83,7 +86,7 @@ pub(crate) fn fx_layout_entries(planar: bool) -> Vec<wgpu::BindGroupLayoutEntry>
 /// else it is [`PLANAR_STUB`].
 pub(crate) fn lit_source_with(hooks: &str, planar: bool) -> String {
     format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{}{SCREEN_AO_WGSL}{PBR_FS_WGSL}{PBR_PREPASS_WGSL}{PBR_LEAN_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_WGSL}",
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{WEATHER_SURFACE_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{}{SCREEN_AO_WGSL}{PBR_FS_WGSL}{PBR_PREPASS_WGSL}{PBR_LEAN_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_WGSL}",
         clusters::wgsl(),
         particles_gpu::NOISE_WGSL,
         skin::palette_wgsl(3),
@@ -96,7 +99,7 @@ pub(crate) fn lit_source_with(hooks: &str, planar: bool) -> String {
 /// with the physical material group and fragment shader.
 pub(crate) fn physical_source(hooks: &str) -> String {
     format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_PHYSICAL_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{PLANAR_STUB}{SCREEN_AO_WGSL}{PHYSICAL_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_PHYSICAL_WGSL}",
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_PHYSICAL_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{WEATHER_SURFACE_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{PLANAR_STUB}{SCREEN_AO_WGSL}{PHYSICAL_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_PHYSICAL_WGSL}",
         clusters::wgsl(),
         particles_gpu::NOISE_WGSL,
         skin::palette_wgsl(3),

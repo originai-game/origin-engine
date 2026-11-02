@@ -7854,6 +7854,8 @@
         "DayNight",
         "PhysicalSky",
         "Clouds",
+        "WeatherState",
+        "LightningStrike",
         "Weather",
         "Wind",
         "Water",
@@ -37088,6 +37090,180 @@
           "maximum": 256
         }
       },
+      "additionalProperties": false
+    },
+    "WeatherState": {
+      "x-og-kind": "resource",
+      "x-og-module": "atmosphere",
+      "description": "The weather's effect on the world, simulated in the tick from og.Weather (its kind and intensity) so gameplay can read it: how wet the ground is, how much standing water and snow lie on it, and the lightning strikes, drawn from a random stream the engine forks from og.Rng (`fork(\"og.weather\")`) and keeps here, so a replay, a restore and every host strike at the same ticks in the same places. Registered the first time a game names it: a world that never does keeps its type table and hash. The renderer draws the same values: lit surfaces darken and shine when wet, puddles spread on level ground and ripple in the rain, snow settles on what faces up (deeper snow on steeper faces), and a strike flashes the scene with a bolt at strikePosition. Rendering never writes it.",
+      "type": "object",
+      "properties": {
+        "soakTime": {
+          "type": "number",
+          "description": "Seconds of rain at intensity 1 to soak dry ground (wetness 0 to 1).",
+          "default": 60,
+          "minimum": 0.1,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "dryTime": {
+          "type": "number",
+          "description": "Seconds for soaked ground to dry once the rain stops.",
+          "default": 300,
+          "minimum": 0.1,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "puddleTime": {
+          "type": "number",
+          "description": "Seconds of rain at intensity 1 on soaked ground to fill the puddles (puddles 0 to 1).",
+          "default": 120,
+          "minimum": 0.1,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "drainTime": {
+          "type": "number",
+          "description": "Seconds for full puddles to drain once the rain stops.",
+          "default": 600,
+          "minimum": 0.1,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "snowfall": {
+          "type": "number",
+          "description": "How much snow settles per minute of snowfall at intensity 1.",
+          "default": 0.01,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "melt": {
+          "type": "number",
+          "description": "How much snow melts per minute when none falls (three times as fast in rain).",
+          "default": 0.004,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "snowCover": {
+          "type": "number",
+          "description": "The snow depth at which it covers everything that can hold it (the renderer's full cover).",
+          "default": 0.08,
+          "minimum": 0.001,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "lightning": {
+          "type": "number",
+          "description": "Lightning strikes per minute on average, at random ticks (0: none), whatever the kind of weather.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 600,
+          "x-og-tunable": true
+        },
+        "lightningCenter": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The centre of the area strikes land in (its y is the ground's height there).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
+        },
+        "lightningRadius": {
+          "type": "number",
+          "description": "The radius of that area: strikes land evenly over the disc.",
+          "default": 300,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "wetness": {
+          "type": "number",
+          "description": "How wet the ground is, 0 dry to 1 soaked (written by og.weather).",
+          "default": 0,
+          "x-og-unit": "ratio",
+          "readOnly": true
+        },
+        "puddles": {
+          "type": "number",
+          "description": "How far standing water has spread, 0 none to 1 (written by og.weather).",
+          "default": 0,
+          "x-og-unit": "ratio",
+          "readOnly": true
+        },
+        "snowDepth": {
+          "type": "number",
+          "description": "The depth of lying snow (written by og.weather).",
+          "default": 0,
+          "x-og-unit": "m",
+          "readOnly": true
+        },
+        "strikes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Lightning strikes so far (written by og.weather).",
+          "default": 0,
+          "readOnly": true
+        },
+        "lastStrike": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick of the latest strike (0 before the first; written by og.weather).",
+          "default": 0,
+          "readOnly": true
+        },
+        "strikePosition": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where the latest strike landed (written by og.weather).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m",
+          "x-og-worldspace": "world",
+          "readOnly": true
+        },
+        "stream": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The lightning's random state, forked from og.Rng the first tick (written by og.weather).",
+          "default": 0,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "LightningStrike": {
+      "x-og-kind": "event",
+      "x-og-module": "atmosphere",
+      "description": "Lightning struck, in the tick og.weather drew it (og.WeatherState.lightning): read in the systems after og.weather that tick, or the next tick's first.",
+      "type": "object",
+      "properties": {
+        "position": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where it landed: in the disc of og.WeatherState.lightningRadius around lightningCenter, at its height.",
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
+        },
+        "strike": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Which strike it is, counting from 1 (og.WeatherState.strikes after it)."
+        }
+      },
+      "required": [
+        "position",
+        "strike"
+      ],
       "additionalProperties": false
     },
     "Weather": {

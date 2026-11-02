@@ -15656,6 +15656,164 @@ export interface Clouds {
 }
 
 /**
+ * The weather's effect on the world, simulated in the tick from og.Weather (its kind and intensity) so gameplay can read it: how wet the ground is, how much standing water and snow lie on it, and the lightning strikes, drawn from a random stream the engine forks from og.Rng (`fork("og.weather")`) and keeps here, so a replay, a restore and every host strike at the same ticks in the same places. Registered the first time a game names it: a world that never does keeps its type table and hash. The renderer draws the same values: lit surfaces darken and shine when wet, puddles spread on level ground and ripple in the rain, snow settles on what faces up (deeper snow on steeper faces), and a strike flashes the scene with a bolt at strikePosition. Rendering never writes it.
+ *
+ * The `WeatherState` resource (token `og.WeatherState`).
+ */
+export interface WeatherState {
+  /**
+   * Seconds of rain at intensity 1 to soak dry ground (wetness 0 to 1).
+   *
+   * @default 60
+   * @range 0.1..
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  soakTime: number;
+  /**
+   * Seconds for soaked ground to dry once the rain stops.
+   *
+   * @default 300
+   * @range 0.1..
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  dryTime: number;
+  /**
+   * Seconds of rain at intensity 1 on soaked ground to fill the puddles (puddles 0 to 1).
+   *
+   * @default 120
+   * @range 0.1..
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  puddleTime: number;
+  /**
+   * Seconds for full puddles to drain once the rain stops.
+   *
+   * @default 600
+   * @range 0.1..
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  drainTime: number;
+  /**
+   * How much snow settles per minute of snowfall at intensity 1.
+   *
+   * @default 0.01
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  snowfall: number;
+  /**
+   * How much snow melts per minute when none falls (three times as fast in rain).
+   *
+   * @default 0.004
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  melt: number;
+  /**
+   * The snow depth at which it covers everything that can hold it (the renderer's full cover).
+   *
+   * @default 0.08
+   * @range 0.001..
+   * @unit m (metres)
+   * @tunable
+   */
+  snowCover: number;
+  /**
+   * Lightning strikes per minute on average, at random ticks (0: none), whatever the kind of weather.
+   *
+   * @range 0..600
+   * @tunable
+   */
+  lightning: number;
+  /**
+   * The centre of the area strikes land in (its y is the ground's height there).
+   *
+   * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
+   */
+  lightningCenter: Vector3;
+  /**
+   * The radius of that area: strikes land evenly over the disc.
+   *
+   * @default 300
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  lightningRadius: number;
+  /**
+   * How wet the ground is, 0 dry to 1 soaked (written by og.weather).
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   * @readonly written by the engine
+   */
+  readonly wetness: number;
+  /**
+   * How far standing water has spread, 0 none to 1 (written by og.weather).
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   * @readonly written by the engine
+   */
+  readonly puddles: number;
+  /**
+   * The depth of lying snow (written by og.weather).
+   *
+   * @unit m (metres)
+   * @readonly written by the engine
+   */
+  readonly snowDepth: number;
+  /**
+   * Lightning strikes so far (written by og.weather).
+   *
+   * @readonly written by the engine
+   */
+  readonly strikes: number;
+  /**
+   * The tick of the latest strike (0 before the first; written by og.weather).
+   *
+   * @readonly written by the engine
+   */
+  readonly lastStrike: number;
+  /**
+   * Where the latest strike landed (written by og.weather).
+   *
+   * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
+   * @readonly written by the engine
+   */
+  readonly strikePosition: Vector3;
+  /**
+   * The lightning's random state, forked from og.Rng the first tick (written by og.weather).
+   *
+   * @readonly written by the engine
+   */
+  readonly stream: number;
+}
+
+/**
+ * Lightning struck, in the tick og.weather drew it (og.WeatherState.lightning): read in the systems after og.weather that tick, or the next tick's first.
+ *
+ * The payload of the `LightningStrike` event (token `og.LightningStrike`).
+ */
+export interface LightningStrike {
+  /**
+   * Where it landed: in the disc of og.WeatherState.lightningRadius around lightningCenter, at its height.
+   *
+   * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
+   */
+  readonly position: Vector3;
+  /** Which strike it is, counting from 1 (og.WeatherState.strikes after it). */
+  readonly strike: number;
+}
+
+/**
  * A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence) and dimmed sunlight. Particles are simulated by the renderer from the tick, so they look the same on every run; they never touch the simulation.
  *
  * The `Weather` resource (token `og.Weather`).
@@ -50422,6 +50580,14 @@ export declare namespace og {
    * Clouds in the procedural sky: a volumetric layer of cumulus raymarched through a curved shell over the planet, lit by the first DirectionalLight (shadowed within themselves, with multiple scattering: bright tops, dark bases, silver edges against the sun) and the sky's light, faded into the sky with distance; and a thin, streaked high layer (cirrus) above. The wind carries them with the tick's clock, so they look the same on every run and after a restore. They are drawn over the procedural sky (og.Sky, og.DayNight or og.PhysicalSky; alone they bring the built-in procedural sky with them) and dim the sun and the sky's light by their cover (an overcast sky lets a fifth of the sun through). Visual only: nothing in the simulation reads them.
    */
   const Clouds: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly coverage: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly base: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly scale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly color: FieldSpec<"Color">; readonly detail: FieldSpec<"f32">; readonly layer: FieldSpec<"f32">; readonly layerAltitude: FieldSpec<"f32">; readonly steps: FieldSpec<"u32"> }, Clouds>;
+  /**
+   * The weather's effect on the world, simulated in the tick from og.Weather (its kind and intensity) so gameplay can read it: how wet the ground is, how much standing water and snow lie on it, and the lightning strikes, drawn from a random stream the engine forks from og.Rng (`fork("og.weather")`) and keeps here, so a replay, a restore and every host strike at the same ticks in the same places. Registered the first time a game names it: a world that never does keeps its type table and hash. The renderer draws the same values: lit surfaces darken and shine when wet, puddles spread on level ground and ripple in the rain, snow settles on what faces up (deeper snow on steeper faces), and a strike flashes the scene with a bolt at strikePosition. Rendering never writes it.
+   */
+  const WeatherState: ResourceType<{ readonly soakTime: FieldSpec<"f32">; readonly dryTime: FieldSpec<"f32">; readonly puddleTime: FieldSpec<"f32">; readonly drainTime: FieldSpec<"f32">; readonly snowfall: FieldSpec<"f32">; readonly melt: FieldSpec<"f32">; readonly snowCover: FieldSpec<"f32">; readonly lightning: FieldSpec<"f32">; readonly lightningCenter: FieldSpec<"Vector3">; readonly lightningRadius: FieldSpec<"f32">; readonly wetness: FieldSpec<"f32">; readonly puddles: FieldSpec<"f32">; readonly snowDepth: FieldSpec<"f32">; readonly strikes: FieldSpec<"u32">; readonly lastStrike: FieldSpec<"u32">; readonly strikePosition: FieldSpec<"Vector3">; readonly stream: FieldSpec<"u32"> }, WeatherState>;
+  /**
+   * Lightning struck, in the tick og.weather drew it (og.WeatherState.lightning): read in the systems after og.weather that tick, or the next tick's first.
+   */
+  const LightningStrike: EventType<LightningStrike>;
   /**
    * A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence) and dimmed sunlight. Particles are simulated by the renderer from the tick, so they look the same on every run; they never touch the simulation.
    */

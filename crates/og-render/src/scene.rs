@@ -180,6 +180,8 @@ pub struct RenderScene {
     /// Clouds in the procedural sky (`clouds.rs`; `None`: none). Drawn
     /// only with [`crate::Background::Procedural`].
     pub clouds: Option<crate::Clouds>,
+    /// Rain, puddles and snow on the lit surfaces (`None`: dry).
+    pub surface_weather: Option<crate::SurfaceWeather>,
     /// Fog lit as a participating medium (`volumetric.rs`; `None`: none).
     /// It replaces [`RenderScene::fog`] over the frame while it is set
     /// (and [`crate::RenderQuality::volumetric_fog`] lets it).

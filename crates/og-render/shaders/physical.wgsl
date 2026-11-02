@@ -382,6 +382,9 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   n = surface_normal(hook, params, n);
   // The decals' normal maps over the surface's own (apply_decals).
   if (decal_normal.w > 0.0) { n = normalize(mix(n, decal_normal.xyz, decal_normal.w)); }
+  let weathered = weather_surface(s, n, normalize(n_vertex * face), in.world_pos);
+  s = weathered.s;
+  n = weathered.n;
   s.coat = material.coat.x * coat_maps.r;
   s.coat_roughness = clamp(material.coat.y * coat_maps.g, 0.04, 1.0);
   s.coat_normal = n_vertex * face;

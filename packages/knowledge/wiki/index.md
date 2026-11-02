@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2316 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2320 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -931,6 +931,7 @@ Field units the docs and Tune use.
 | [`og.CharacterController`](physics.md#record-CharacterController) | component | physics | — |
 | [`og.CharacterEvent`](physics.md#record-CharacterEvent) | event | physics | — |
 | [`og.Cloth`](physics.md#record-Cloth) | component | physics | — |
+| [`og.Clouds`](atmosphere.md#record-Clouds) | resource | atmosphere | — |
 | [`og.Collider`](physics.md#record-Collider) | component | physics | — |
 | [`og.CollisionEnded`](physics.md#record-CollisionEnded) | event | physics | — |
 | [`og.CollisionStarted`](physics.md#record-CollisionStarted) | event | physics | — |
@@ -1026,6 +1027,7 @@ Field units the docs and Tune use.
 | [`og.Light2D`](render.md#record-Light2D) | component | render | — |
 | [`og.Lighting2D`](render.md#record-Lighting2D) | resource | render | — |
 | [`og.LightMask2D`](render.md#record-LightMask2D) | component | render | — |
+| [`og.LightningStrike`](atmosphere.md#record-LightningStrike) | event | atmosphere | — |
 | [`og.LightVolume`](render.md#record-LightVolume) | component | render | — |
 | [`og.Lines`](render.md#record-Lines) | component | render | — |
 | [`og.load.animation`](load.md#fn-animation) | function | load | `og_load_animation` |
@@ -1133,6 +1135,7 @@ Field units the docs and Tune use.
 | [`og.PeerStalled`](net.md#record-PeerStalled) | event | net | — |
 | [`og.Perceivable`](ai.md#record-Perceivable) | component | ai | — |
 | [`og.Perception`](ai.md#record-Perception) | component | ai | — |
+| [`og.PhysicalSky`](atmosphere.md#record-PhysicalSky) | resource | atmosphere | — |
 | [`og.Physics`](physics.md#record-Physics) | resource | physics | — |
 | [`og.physics.applyForce`](physics.md#fn-applyForce) | function | physics | `og_physics_apply_force` |
 | [`og.physics.applyImpulse`](physics.md#fn-applyImpulse) | function | physics | `og_physics_apply_impulse` |
@@ -1704,6 +1707,7 @@ Field units the docs and Tune use.
 | [`og.WaterLine`](physics.md#record-WaterLine) | component | physics | — |
 | [`og.WaterSurface`](physics.md#record-WaterSurface) | component | physics | — |
 | [`og.Weather`](atmosphere.md#record-Weather) | resource | atmosphere | — |
+| [`og.WeatherState`](atmosphere.md#record-WeatherState) | resource | atmosphere | — |
 | [`og.Wheel`](input.md#record-Wheel) | event | input | — |
 | [`og.Wind`](atmosphere.md#record-Wind) | resource | atmosphere | — |
 | [`og.WorldOrigin`](transform.md#record-WorldOrigin) | resource | transform | — |

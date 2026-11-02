@@ -632,3 +632,41 @@ fn cloud_scenes_match_their_references_and_read_as_clouds() {
     let warm = px(&sunset, 640, 200);
     assert!(warm[0] > warm[2], "the sunset clouds are warm: {warm:?}");
 }
+
+/// R4's weather on surfaces: each frame matches its reference. The wet
+/// ground is darker than the same ground dry; snow makes it much brighter
+/// and whiter; the lightning frame is brighter than the same night
+/// without the strike, with the bolt (a bright, blue-white column) in view.
+#[test]
+fn weather_surface_scenes_match_their_references_and_read_as_weather() {
+    use og_tests::sky_scenes::{SKY_SCENES, sky_scene};
+    for scene in SKY_SCENES.iter().filter(|s| s.starts_with("weather-")) {
+        check(scene);
+    }
+    let dry = {
+        let mut s = sky_scene("weather-wet");
+        s.surface_weather = None;
+        frame(&s)
+    };
+    let wet = frame(&sky_scene("weather-wet"));
+    let ground = |img: &RgbaImage| mean(img, 200, 560, 1080, 720);
+    assert!(
+        ground(&wet) < 0.85 * ground(&dry),
+        "wet ground is darker: {} vs {}",
+        ground(&wet),
+        ground(&dry)
+    );
+    let snow = frame(&sky_scene("weather-snow-cover"));
+    assert!(ground(&snow) > 1.4 * ground(&dry), "snow is bright");
+    let p = px(&snow, 640, 650);
+    assert!((p[0] - p[2]).abs() < 30.0, "and white: {p:?}");
+    let storm = frame(&sky_scene("weather-lightning"));
+    let calm = {
+        let mut s = sky_scene("weather-lightning");
+        s.lights.pop();
+        s.ribbons.clear();
+        s.environment.intensity /= 1.0 + 6.0 * og_render::lightning_flash(0.03);
+        frame(&s)
+    };
+    assert!(mean(&storm, 0, 0, 1280, 720) > 1.3 * mean(&calm, 0, 0, 1280, 720));
+}

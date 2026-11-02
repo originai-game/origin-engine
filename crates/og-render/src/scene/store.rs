@@ -102,6 +102,7 @@ impl RenderScene {
             overlay: None,
             fog: None,
             clouds: None,
+            surface_weather: None,
             volumetric_fog: None,
             quality: crate::RenderQuality::default(),
             baked: crate::BakedLighting::default(),

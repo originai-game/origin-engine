@@ -1584,6 +1584,7 @@ impl Renderer {
                     _ => None,
                 },
                 scene.clouds.as_ref(),
+                scene.surface_weather.as_ref(),
                 scene.tick,
                 scene.tick_rate,
             ),

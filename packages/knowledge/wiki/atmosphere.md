@@ -30,6 +30,10 @@ module atmosphere {
 | [`og.Fog`](#record-Fog) | resource | Distance and height fog over the 3D scene and world sprites: distance fog, measured from the camera, thickens exponentially by density per metre past start and, when end > start, also by a linear ramp from start to full fog at end; the two apply together, and density defaults to 0.02, so setting only end still adds exponential fog (set density 0 for the ramp alone). Height fog is densest below height and thins by falloff per metre above it; looking into the sun it turns towards sunColor. The overlay is never fogged. |
 | [`og.Sky`](#record-Sky) | resource | A procedural sky of chosen colours, drawn behind the scene per pixel and lighting it (the image-based light follows it). Without it, RenderSettings.sky draws the built-in sky. A DayNight that is enabled sets the sky itself. |
 | [`og.DayNight`](#record-DayNight) | resource | A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given. The probe's `get` answers what is drawn, a pure function of the tick: `get:og.DayNight` adds `hours`, `toSun`, `toLight` (towards the sun by day, the moon by night), `lightColor` and `lightIntensity`, and `get:<sun>.og.DirectionalLight` on the driven light answers the drawn `color` and `intensity` with `toLight` and `drivenBy`. |
+| [`og.PhysicalSky`](#record-PhysicalSky) | resource | A physical sky: sunlight scattered by the air (Rayleigh: the blue overhead, the red sunsets) and by haze (Mie: the white glow around the sun), with ozone keeping the twilight zenith blue, in a spherical atmosphere of Earth's proportions with multiple scattering (Hillaire 2020). It replaces the gradient of og.Sky and og.DayNight, and the image-based light follows it. With og.DayNight enabled the cycle also takes its light from it: the sun's colour is the light that crosses the air (white at noon, orange then red as it sets, gone below the horizon), the ambient light the scattered sky, and the fog's colour the sky's horizon; `get:og.DayNight` answers those. With og.Sky enabled, og.Sky's sun direction, disc, stars, moon and brightness are drawn through the air. Alone it draws the sky towards the first DirectionalLight. Visual only: drawn from the tick, never written to the world. |
+| [`og.Clouds`](#record-Clouds) | resource | Clouds in the procedural sky: a volumetric layer of cumulus raymarched through a curved shell over the planet, lit by the first DirectionalLight (shadowed within themselves, with multiple scattering: bright tops, dark bases, silver edges against the sun) and the sky's light, faded into the sky with distance; and a thin, streaked high layer (cirrus) above. The wind carries them with the tick's clock, so they look the same on every run and after a restore. They are drawn over the procedural sky (og.Sky, og.DayNight or og.PhysicalSky; alone they bring the built-in procedural sky with them) and dim the sun and the sky's light by their cover (an overcast sky lets a fifth of the sun through). Visual only: nothing in the simulation reads them. |
+| [`og.WeatherState`](#record-WeatherState) | resource | The weather's effect on the world, simulated in the tick from og.Weather (its kind and intensity) so gameplay can read it: how wet the ground is, how much standing water and snow lie on it, and the lightning strikes, drawn from a random stream the engine forks from og.Rng (`fork("og.weather")`) and keeps here, so a replay, a restore and every host strike at the same ticks in the same places. Registered the first time a game names it: a world that never does keeps its type table and hash. The renderer draws the same values: lit surfaces darken and shine when wet, puddles spread on level ground and ripple in the rain, snow settles on what faces up (deeper snow on steeper faces), and a strike flashes the scene with a bolt at strikePosition. Rendering never writes it. |
+| [`og.LightningStrike`](#record-LightningStrike) | event | Lightning struck, in the tick og.weather drew it (og.WeatherState.lightning): read in the systems after og.weather that tick, or the next tick's first. |
 | [`og.Weather`](#record-Weather) | resource | A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence) and dimmed sunlight. Particles are simulated by the renderer from the tick, so they look the same on every run; they never touch the simulation. |
 | [`og.Wind`](#record-Wind) | resource | The wind the renderer sways vegetation with: og.TerrainScatter copies lean downwind and sway in gusts that sweep across the field, each vertex moved by its height (the root stays put, the tip moves furthest). Off at strength 0. Visual only: drawn from the tick, so it sways the same on every run and after a restore, and nothing in the simulation reads it (og.Rope, og.Cloth and og.Weather keep their own wind). |
 | [`og.Water`](#record-Water) | component | A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space, the sky's cubemap where that misses, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated). |
@@ -64,7 +68,7 @@ fn timeOfDay {
 }
 ```
 
-<sub>`api.ogt` line 10415</sub>
+<sub>`api.ogt` line 10616</sub>
 
 ## Components, resources and events
 
@@ -370,6 +374,305 @@ resource DayNight {
 
 <sub>`api.ogt` line 10131</sub>
 
+<a id="record-PhysicalSky"></a>
+
+### `og.PhysicalSky` (resource)
+
+A physical sky: sunlight scattered by the air (Rayleigh: the blue overhead, the red sunsets) and by haze (Mie: the white glow around the sun), with ozone keeping the twilight zenith blue, in a spherical atmosphere of Earth's proportions with multiple scattering (Hillaire 2020). It replaces the gradient of og.Sky and og.DayNight, and the image-based light follows it. With og.DayNight enabled the cycle also takes its light from it: the sun's colour is the light that crosses the air (white at noon, orange then red as it sets, gone below the horizon), the ambient light the scattered sky, and the fog's colour the sky's horizon; `get:og.DayNight` answers those. With og.Sky enabled, og.Sky's sun direction, disc, stars, moon and brightness are drawn through the air. Alone it draws the sky towards the first DirectionalLight. Visual only: drawn from the tick, never written to the world.
+
+Token `og.PhysicalSky`, registered under the schema name `og.PhysicalSky`; its value type is `PhysicalSky`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `enabled` | `boolean` | `false` | — | — | — | Draw the sky by scattering. |
+| `haze` | `number` | `1` | 0 … 40 | — | tunable | How much haze the air holds, a multiplier on Earth's aerosols (1: a clear day; 0: pure air; 5 to 10: a hazy or smoggy day, a whiter sky and a wider glow round the sun). |
+| `airDensity` | `number` | `1` | 0 … 10 | — | tunable | A multiplier on the air's scattering (1: Earth; above 1 a deeper blue and redder sunsets, below 1 a thinner, darker sky). |
+| `ozone` | `number` | `1` | 0 … 10 | — | tunable | A multiplier on ozone's absorption, which keeps the sky blue overhead at twilight (0: none, the twilight sky turns grey and yellow). |
+| `groundAlbedo` | `Color` | `{ r: 0.3, g: 0.3, b: 0.3 }` | — | — | — | The ground's colour as the air sees it from below: it lights the haze and the sky below the horizon. |
+| `altitude` | `number` | `0` | 0 … 100000 | `m` | tunable | The height above sea level of the world's y 0 (the camera's height is added): from high up the sky darkens overhead and the sun stays up longer. |
+| `night` | `Color` | `{ r: 0.0006, g: 0.0009, b: 0.0024 }` | — | — | — | The sky's light with the sun far below the horizon (airglow and starlight), so a night is dark blue rather than black. |
+
+```ogt
+resource PhysicalSky {
+  doc "A physical sky: sunlight scattered by the air (Rayleigh: the blue overhead, the red sunsets) and by haze (Mie: the white glow around the sun), with ozone keeping the twilight zenith blue, in a spherical atmosphere of Earth's proportions with multiple scattering (Hillaire 2020). It replaces the gradient of og.Sky and og.DayNight, and the image-based light follows it. With og.DayNight enabled the cycle also takes its light from it: the sun's colour is the light that crosses the air (white at noon, orange then red as it sets, gone below the horizon), the ambient light the scattered sky, and the fog's colour the sky's horizon; `get:og.DayNight` answers those. With og.Sky enabled, og.Sky's sun direction, disc, stars, moon and brightness are drawn through the air. Alone it draws the sky towards the first DirectionalLight. Visual only: drawn from the tick, never written to the world."
+  field enabled bool "Draw the sky by scattering."
+  field haze f32 "How much haze the air holds, a multiplier on Earth's aerosols (1: a clear day; 0: pure air; 5 to 10: a hazy or smoggy day, a whiter sky and a wider glow round the sun)." {
+    default 1
+    min 0
+    max 40
+    tunable true
+  }
+  field airDensity f32 "A multiplier on the air's scattering (1: Earth; above 1 a deeper blue and redder sunsets, below 1 a thinner, darker sky)." {
+    default 1
+    min 0
+    max 10
+    tunable true
+  }
+  field ozone f32 "A multiplier on ozone's absorption, which keeps the sky blue overhead at twilight (0: none, the twilight sky turns grey and yellow)." {
+    default 1
+    min 0
+    max 10
+    tunable true
+  }
+  field groundAlbedo Color "The ground's colour as the air sees it from below: it lights the haze and the sky below the horizon." {
+    default 0.3 0.3 0.3
+  }
+  field altitude f32 "The height above sea level of the world's y 0 (the camera's height is added): from high up the sky darkens overhead and the sun stays up longer." {
+    min 0
+    max 100000
+    unit m
+    tunable true
+  }
+  field night Color "The sky's light with the sun far below the horizon (airglow and starlight), so a night is dark blue rather than black." {
+    default 0.0006 0.0009 0.0024
+  }
+}
+```
+
+<sub>`api.ogt` line 10188</sub>
+
+<a id="record-Clouds"></a>
+
+### `og.Clouds` (resource)
+
+Clouds in the procedural sky: a volumetric layer of cumulus raymarched through a curved shell over the planet, lit by the first DirectionalLight (shadowed within themselves, with multiple scattering: bright tops, dark bases, silver edges against the sun) and the sky's light, faded into the sky with distance; and a thin, streaked high layer (cirrus) above. The wind carries them with the tick's clock, so they look the same on every run and after a restore. They are drawn over the procedural sky (og.Sky, og.DayNight or og.PhysicalSky; alone they bring the built-in procedural sky with them) and dim the sun and the sky's light by their cover (an overcast sky lets a fifth of the sun through). Visual only: nothing in the simulation reads them.
+
+Token `og.Clouds`, registered under the schema name `og.Clouds`; its value type is `Clouds`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `enabled` | `boolean` | `false` | — | — | — | Draw the clouds. |
+| `coverage` | `number` | `0.45` | 0 … 1 | `ratio` | tunable | How much of the sky the cumulus covers: 0 none, 0.3 fair weather, 0.6 broken, 1 overcast. |
+| `density` | `number` | `0.04` | 0 … 0.5 | — | tunable | How thick they are per metre (0.04: cumulus; 0.01: thin and translucent; 0.08: dense storm cloud). |
+| `base` | `number` | `1500` | ≥ 0 | `m` | tunable | The height of the cloud base above the world's y 0. |
+| `thickness` | `number` | `1800` | ≥ 0 | `m` | tunable | How tall the layer is (0: no cumulus, only the high layer). |
+| `scale` | `number` | `9000` | 500 … 200000 | `m` | tunable | The size of the largest cloud shapes. |
+| `wind` | `Vector3` | `{ x: 12, y: 0.4, z: 4 }` | — | `mps` | tunable | How fast the wind carries them (x and z; y slowly turns their shapes over). |
+| `color` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | Their albedo: white for fair-weather clouds, a grey for rain clouds. |
+| `detail` | `number` | `0.35` | 0 … 1 | `ratio` | tunable | How much fine noise erodes their edges (0: smooth blobs, 1: wispy). |
+| `layer` | `number` | `0.3` | 0 … 1 | `ratio` | tunable | The high thin layer's cover (0: none). |
+| `layerAltitude` | `number` | `8000` | ≥ 0 | `m` | tunable | The high layer's height (kept above the cumulus). |
+| `steps` | `number` | `48` | 8 … 256 | — | — | Samples along each view ray through the cumulus: more is smoother and costs more. |
+
+```ogt
+resource Clouds {
+  doc "Clouds in the procedural sky: a volumetric layer of cumulus raymarched through a curved shell over the planet, lit by the first DirectionalLight (shadowed within themselves, with multiple scattering: bright tops, dark bases, silver edges against the sun) and the sky's light, faded into the sky with distance; and a thin, streaked high layer (cirrus) above. The wind carries them with the tick's clock, so they look the same on every run and after a restore. They are drawn over the procedural sky (og.Sky, og.DayNight or og.PhysicalSky; alone they bring the built-in procedural sky with them) and dim the sun and the sky's light by their cover (an overcast sky lets a fifth of the sun through). Visual only: nothing in the simulation reads them."
+  field enabled bool "Draw the clouds."
+  field coverage f32 "How much of the sky the cumulus covers: 0 none, 0.3 fair weather, 0.6 broken, 1 overcast." {
+    default 0.45
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+  field density f32 "How thick they are per metre (0.04: cumulus; 0.01: thin and translucent; 0.08: dense storm cloud)." {
+    default 0.04
+    min 0
+    max 0.5
+    tunable true
+  }
+  field base f32 "The height of the cloud base above the world's y 0." {
+    default 1500
+    min 0
+    unit m
+    tunable true
+  }
+  field thickness f32 "How tall the layer is (0: no cumulus, only the high layer)." {
+    default 1800
+    min 0
+    unit m
+    tunable true
+  }
+  field scale f32 "The size of the largest cloud shapes." {
+    default 9000
+    min 500
+    max 200000
+    unit m
+    tunable true
+  }
+  field wind Vector3 "How fast the wind carries them (x and z; y slowly turns their shapes over)." {
+    default 12 0.4 4
+    unit mps
+    tunable true
+  }
+  field color Color "Their albedo: white for fair-weather clouds, a grey for rain clouds." {
+    default 1 1 1
+  }
+  field detail f32 "How much fine noise erodes their edges (0: smooth blobs, 1: wispy)." {
+    default 0.35
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+  field layer f32 "The high thin layer's cover (0: none)." {
+    default 0.3
+    min 0
+    max 1
+    unit ratio
+    tunable true
+  }
+  field layerAltitude f32 "The high layer's height (kept above the cumulus)." {
+    default 8000
+    min 0
+    unit m
+    tunable true
+  }
+  field steps u32 "Samples along each view ray through the cumulus: more is smoother and costs more." {
+    default 48
+    min 8
+    max 256
+  }
+}
+```
+
+<sub>`api.ogt` line 10223</sub>
+
+<a id="record-WeatherState"></a>
+
+### `og.WeatherState` (resource)
+
+The weather's effect on the world, simulated in the tick from og.Weather (its kind and intensity) so gameplay can read it: how wet the ground is, how much standing water and snow lie on it, and the lightning strikes, drawn from a random stream the engine forks from og.Rng (`fork("og.weather")`) and keeps here, so a replay, a restore and every host strike at the same ticks in the same places. Registered the first time a game names it: a world that never does keeps its type table and hash. The renderer draws the same values: lit surfaces darken and shine when wet, puddles spread on level ground and ripple in the rain, snow settles on what faces up (deeper snow on steeper faces), and a strike flashes the scene with a bolt at strikePosition. Rendering never writes it.
+
+Token `og.WeatherState`, registered under the schema name `og.WeatherState`; its value type is `WeatherState`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `soakTime` | `number` | `60` | ≥ 0.1 | `s` | tunable | Seconds of rain at intensity 1 to soak dry ground (wetness 0 to 1). |
+| `dryTime` | `number` | `300` | ≥ 0.1 | `s` | tunable | Seconds for soaked ground to dry once the rain stops. |
+| `puddleTime` | `number` | `120` | ≥ 0.1 | `s` | tunable | Seconds of rain at intensity 1 on soaked ground to fill the puddles (puddles 0 to 1). |
+| `drainTime` | `number` | `600` | ≥ 0.1 | `s` | tunable | Seconds for full puddles to drain once the rain stops. |
+| `snowfall` | `number` | `0.01` | ≥ 0 | `m` | tunable | How much snow settles per minute of snowfall at intensity 1. |
+| `melt` | `number` | `0.004` | ≥ 0 | `m` | tunable | How much snow melts per minute when none falls (three times as fast in rain). |
+| `snowCover` | `number` | `0.08` | ≥ 0.001 | `m` | tunable | The snow depth at which it covers everything that can hold it (the renderer's full cover). |
+| `lightning` | `number` | `0` | 0 … 600 | — | tunable | Lightning strikes per minute on average, at random ticks (0: none), whatever the kind of weather. |
+| `lightningCenter` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `world` | The centre of the area strikes land in (its y is the ground's height there). |
+| `lightningRadius` | `number` | `300` | ≥ 0 | `m` | tunable | The radius of that area: strikes land evenly over the disc. |
+| `wetness` | `number` | `0` | — | `ratio` | read only | How wet the ground is, 0 dry to 1 soaked (written by og.weather). |
+| `puddles` | `number` | `0` | — | `ratio` | read only | How far standing water has spread, 0 none to 1 (written by og.weather). |
+| `snowDepth` | `number` | `0` | — | `m` | read only | The depth of lying snow (written by og.weather). |
+| `strikes` | `number` | `0` | — | — | read only | Lightning strikes so far (written by og.weather). |
+| `lastStrike` | `number` | `0` | — | — | read only | The tick of the latest strike (0 before the first; written by og.weather). |
+| `strikePosition` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | read only, worldspace `world` | Where the latest strike landed (written by og.weather). |
+| `stream` | `number` | `0` | — | — | read only | The lightning's random state, forked from og.Rng the first tick (written by og.weather). |
+
+```ogt
+resource WeatherState {
+  doc "The weather's effect on the world, simulated in the tick from og.Weather (its kind and intensity) so gameplay can read it: how wet the ground is, how much standing water and snow lie on it, and the lightning strikes, drawn from a random stream the engine forks from og.Rng (`fork(\"og.weather\")`) and keeps here, so a replay, a restore and every host strike at the same ticks in the same places. Registered the first time a game names it: a world that never does keeps its type table and hash. The renderer draws the same values: lit surfaces darken and shine when wet, puddles spread on level ground and ripple in the rain, snow settles on what faces up (deeper snow on steeper faces), and a strike flashes the scene with a bolt at strikePosition. Rendering never writes it."
+  field soakTime f32 "Seconds of rain at intensity 1 to soak dry ground (wetness 0 to 1)." {
+    default 60
+    min 0.1
+    unit s
+    tunable true
+  }
+  field dryTime f32 "Seconds for soaked ground to dry once the rain stops." {
+    default 300
+    min 0.1
+    unit s
+    tunable true
+  }
+  field puddleTime f32 "Seconds of rain at intensity 1 on soaked ground to fill the puddles (puddles 0 to 1)." {
+    default 120
+    min 0.1
+    unit s
+    tunable true
+  }
+  field drainTime f32 "Seconds for full puddles to drain once the rain stops." {
+    default 600
+    min 0.1
+    unit s
+    tunable true
+  }
+  field snowfall f32 "How much snow settles per minute of snowfall at intensity 1." {
+    default 0.01
+    min 0
+    unit m
+    tunable true
+  }
+  field melt f32 "How much snow melts per minute when none falls (three times as fast in rain)." {
+    default 0.004
+    min 0
+    unit m
+    tunable true
+  }
+  field snowCover f32 "The snow depth at which it covers everything that can hold it (the renderer's full cover)." {
+    default 0.08
+    min 0.001
+    unit m
+    tunable true
+  }
+  field lightning f32 "Lightning strikes per minute on average, at random ticks (0: none), whatever the kind of weather." {
+    min 0
+    max 600
+    tunable true
+  }
+  field lightningCenter Vector3 "The centre of the area strikes land in (its y is the ground's height there)." {
+    worldspace world
+    unit m
+  }
+  field lightningRadius f32 "The radius of that area: strikes land evenly over the disc." {
+    default 300
+    min 0
+    unit m
+    tunable true
+  }
+  field wetness f32 "How wet the ground is, 0 dry to 1 soaked (written by og.weather)." {
+    readonly true
+    unit ratio
+  }
+  field puddles f32 "How far standing water has spread, 0 none to 1 (written by og.weather)." {
+    readonly true
+    unit ratio
+  }
+  field snowDepth f32 "The depth of lying snow (written by og.weather)." {
+    readonly true
+    unit m
+  }
+  field strikes u32 "Lightning strikes so far (written by og.weather)." {
+    readonly true
+  }
+  field lastStrike u32 "The tick of the latest strike (0 before the first; written by og.weather)." {
+    readonly true
+  }
+  field strikePosition Vector3 "Where the latest strike landed (written by og.weather)." {
+    worldspace world
+    readonly true
+    unit m
+  }
+  field stream u32 "The lightning's random state, forked from og.Rng the first tick (written by og.weather)." {
+    readonly true
+  }
+}
+```
+
+<sub>`api.ogt` line 10293</sub>
+
+<a id="record-LightningStrike"></a>
+
+### `og.LightningStrike` (event)
+
+Lightning struck, in the tick og.weather drew it (og.WeatherState.lightning): read in the systems after og.weather that tick, or the next tick's first.
+
+Token `og.LightningStrike`, registered under the schema name `og.LightningStrike`; its value type is `LightningStrike`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `position` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `world` | Where it landed: in the disc of og.WeatherState.lightningRadius around lightningCenter, at its height. |
+| `strike` | `number` | `0` | — | — | — | Which strike it is, counting from 1 (og.WeatherState.strikes after it). |
+
+```ogt
+event LightningStrike {
+  doc "Lightning struck, in the tick og.weather drew it (og.WeatherState.lightning): read in the systems after og.weather that tick, or the next tick's first."
+  field position Vector3 "Where it landed: in the disc of og.WeatherState.lightningRadius around lightningCenter, at its height." {
+    worldspace world
+    unit m
+  }
+  field strike u32 "Which strike it is, counting from 1 (og.WeatherState.strikes after it)."
+}
+```
+
+<sub>`api.ogt` line 10380</sub>
+
 <a id="record-Weather"></a>
 
 ### `og.Weather` (resource)
@@ -430,7 +733,7 @@ resource Weather {
 }
 ```
 
-<sub>`api.ogt` line 10188</sub>
+<sub>`api.ogt` line 10389</sub>
 
 <a id="record-Wind"></a>
 
@@ -476,7 +779,7 @@ resource Wind {
 }
 ```
 
-<sub>`api.ogt` line 10228</sub>
+<sub>`api.ogt` line 10429</sub>
 
 <a id="record-Water"></a>
 
@@ -645,7 +948,7 @@ component Water {
 }
 ```
 
-<sub>`api.ogt` line 10255</sub>
+<sub>`api.ogt` line 10456</sub>
 
 <a id="record-Water2D"></a>
 
@@ -699,7 +1002,7 @@ component Water2D {
 }
 ```
 
-<sub>`api.ogt` line 10383</sub>
+<sub>`api.ogt` line 10584</sub>
 
 ## Constants
 

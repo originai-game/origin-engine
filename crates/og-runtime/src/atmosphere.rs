@@ -35,6 +35,7 @@ pub(crate) struct AtmoLayouts {
     clouds: Option<Layout>,
     day_night: Option<Layout>,
     weather: Option<Layout>,
+    weather_state: Option<Layout>,
     wind: Option<Layout>,
     water: Option<Layout>,
     water_2d: Option<Layout>,
@@ -60,6 +61,7 @@ impl AtmoLayouts {
             clouds: get("og.Clouds"),
             day_night: get("og.DayNight"),
             weather: get("og.Weather"),
+            weather_state: get("og.WeatherState"),
             wind: get("og.Wind"),
             water: get("og.Water"),
             water_2d: get("og.Water2D"),
@@ -496,6 +498,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         }
     }
 
+    lightning_and_surfaces(world, scene, layouts, tick);
+
     // Ragdolls blended into their models' palettes.
     super::physics_ext::draw_ragdolls(world, rs, &mut |e| h.world_of(e));
     let RenderState {
@@ -786,6 +790,41 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         keys.push((e, u32::MAX));
     }
     keys
+}
+
+/// og.WeatherState drawn: the lit surfaces' wetness, puddles and snow,
+/// and the latest lightning strike for 0.6 s after its tick (a double
+/// flash of the sky's light, a bolt from the cloud base to the ground and
+/// a bright light where it lands). A pure function of the world's state.
+fn lightning_and_surfaces(
+    world: &World,
+    scene: &mut og_render::RenderScene,
+    layouts: &AtmoLayouts,
+    tick: u64,
+) {
+    scene.surface_weather = None;
+    let Some(st) = resource(world, layouts.weather_state.as_ref()) else {
+        return;
+    };
+    let rain = resource(world, layouts.weather.as_ref())
+        .filter(|w| u(w, "kind", 0) == og_render::WEATHER_RAIN)
+        .map_or(0.0, |w| f(&w, "intensity", 1.0));
+    scene.surface_weather = Some(og_render::SurfaceWeather {
+        wetness: f(&st, "wetness", 0.0),
+        puddles: f(&st, "puddles", 0.0),
+        snow: f(&st, "snowDepth", 0.0) / f(&st, "snowCover", 0.08).max(1e-3),
+        rain,
+        ..Default::default()
+    });
+    let strikes = u(&st, "strikes", 0);
+    if strikes == 0 {
+        return;
+    }
+    let rate = f64::from(world.time().dt).recip();
+    let since = (tick.saturating_sub(u64::from(u(&st, "lastStrike", 0)))) as f64 / rate;
+    let at = super::fx::vec3(&st["strikePosition"]);
+    let base = scene.clouds.map_or(600.0, |c| c.base.max(50.0));
+    og_render::add_lightning(scene, at, at.y + base, strikes, since as f32);
 }
 
 /// The mesh of a soft volume's surface: its world points with normals

@@ -66,6 +66,13 @@ impl Probe {
     /// tuned, so `save_scene` writes it back.
     pub fn tune(&mut self, world: &mut World, target: &str, text: &str) -> Result<(), String> {
         let usage = "set:<entity>.<component>.<field>=<value> or set:<Resource>.<field>=<value>";
+        // `<Resource>.<field>` names the resource, as a game's write would:
+        // a lazy one is registered first ([`super::RegisterFn`]).
+        if let (Some(register), Some((name, _))) = (&self.register, target.rsplit_once('.'))
+            && world.id_by_name(name).is_err()
+        {
+            register(world, name);
+        }
         let value = match Self::set_target_field(world, target) {
             Some(field) => value::command_value(&field, text)?,
             None => value::text_json(text)?,

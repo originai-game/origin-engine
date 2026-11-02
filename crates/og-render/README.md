@@ -2250,6 +2250,23 @@ They are not in the image-based light; `Clouds::light` is how much their
 cover dims the sun and the sky, which the runtime applies. Frames:
 `clouds-fair`, `-overcast`, `-sunset`, `-gradient`.
 
+**Weather on surfaces and lightning** (`weather.rs` `SurfaceWeather`,
+`add_lightning`; `shaders/weather_surface.wgsl`): `RenderScene::surface_weather`
+wets, puddles and snows every standard, physical (lean included) and
+terrain surface from two vec4s of the frame uniform: no binding is added
+to the lit stages (their storage buffers are spoken for after R7's
+decals). Wet porous surfaces darken and every surface gains a sheen
+(Lagarde 2013); puddles fill the hollows of a world-space noise on level
+ground, mirror-smooth, rippled by raindrop rings while it rains; snow
+settles on what faces up, deeper cover reaching steeper faces, its edge
+broken by noise. The masks follow the world position and the geometric
+normal (a normal map shades the cover without moving it); nothing
+shelters a surface from the sky yet. A strike (`add_lightning`) is a
+double flash of the sky's light, a light over the strike and a bolt by
+midpoint displacement seeded by the strike's number. The state they draw
+is the runtime's og.WeatherState, simulated in the tick (og-runtime
+`weather.rs`). Frames: `weather-wet`, `-snow-cover`, `-lightning`.
+
 ## Reflection probe faces
 
 A due capture draws six faces (`probes.rs`, `lib.rs`'s probe pass; the
