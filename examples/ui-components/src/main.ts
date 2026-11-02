@@ -457,7 +457,8 @@ function racingScreen(world: World): void {
     return { x: a.x + (b.x - a.x) * (t % 1), y: a.y + (b.y - a.y) * (t % 1) };
   };
   og.ui.minimapView("Circuit", {
-    track: CIRCUIT, zoom: 1, centerX: 0.5, centerY: 0.5, shape: "square", size: small() ? 120 : 180, anchor: upright ? "bottomLeft" : "topRight",
+    track: CIRCUIT, zoom: 1, centerX: 0.5, centerY: 0.5, // A phone held sideways at large text: a step smaller, so the section gap holds between the map and the dial under it.
+    shape: "square", size: small() ? (vp.breakpoint === "phoneLandscape" && state.textScale >= 1.5 ? 92 : 120) : 180, anchor: upright ? "bottomLeft" : "topRight",
     // A phone held sideways at large text has no height for the caption plate above the dial: the map alone.
     ...(vp.breakpoint === "phoneLandscape" && state.textScale >= 1.5 ? {} : { zone: tr("track", "Saltmarsh Ring") }),
     markers: [
