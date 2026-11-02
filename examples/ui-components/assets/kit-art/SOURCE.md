@@ -7,3 +7,7 @@ UI art review with the OriginGame platform's image tool (origin MCP
 `generate_image`, model gpt-image-2.5-sunburst) for this repository:
 original work, no third-party art, released CC0 1.0. See the kit's
 SOURCE.md for the whole set.
+
+`buildings/barracks.jpg` (the RTS screen's selected building) was generated
+on 2026-11-02 for this repository the same way (origin MCP `generate_image`,
+gpt-image-2.5-sunburst), original work, CC0 1.0.

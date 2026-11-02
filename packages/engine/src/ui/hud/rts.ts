@@ -60,21 +60,26 @@ function well(r: number): Api.DrawDesc {
 
 // ── production queue ──────────────────────────────────────────────────
 
-/** The queue's row, in place (no panel): the first item with its progress sweeping and seconds left, then the rest, then wells. */
-function queueRow(id: string, desc: Api.ProductionQueueDesc, side: number): Api.ProductionQueueResult {
+/**
+ * The queue's row, in place (no panel): the first item with its progress sweeping and seconds left, then the rest,
+ * then wells. `from` and `to` draw a range of the slots (a building's zone draws the first one large, the rest after it).
+ */
+function queueRow(id: string, desc: Api.ProductionQueueDesc, side: number, from = 0, to = Infinity): Api.ProductionQueueResult {
   const items = desc.items ?? [];
-  const slots = Math.max(items.length, desc.slots || 5);
+  const slots = Math.min(to, Math.max(items.length, desc.slots || 5));
   const gap = Math.max(2, u(3));
   const r = Math.min(shapeOf("slot").radius, Math.max(3, side / 8));
   const paused = !!desc.paused;
   let cancelled: string | null = null;
   const first = items[0];
-  const e = edge(`${id}~first`, first ? hash(first.key ?? first.name ?? "") : -1);
-  sound("success", e.changed && e.prev !== -1 && items.length >= 0 && kit.memory(`${id}~seen`, 0) > 0);
-  kit.remember(`${id}~seen`, 1);
+  if (from === 0) {
+    const e = edge(`${id}~first`, first ? hash(first.key ?? first.name ?? "") : -1);
+    sound("success", e.changed && e.prev !== -1 && kit.memory(`${id}~seen`, 0) > 0);
+    kit.remember(`${id}~seen`, 1);
+  }
   const state = items.length === 0 ? "idle" : paused ? "paused" : "building";
   box(id, { direction: "row", gap, cross: "center", part: sel("ProductionQueue", "frame"), partClass: "hud" }, undefined, () => {
-    for (let i = 0; i < slots; i++) {
+    for (let i = from; i < slots; i++) {
       const it = items[i];
       if (!it) {
         leaf(kit.idi("Empty", i), { width: px(side), height: px(side), part: sel("ProductionQueue", "empty") }, well(r));
@@ -135,6 +140,11 @@ export function productionQueue(id: string, desc: Api.ProductionQueueDesc = {}):
 
 // ── selection ─────────────────────────────────────────────────────────
 
+/** A tab's height: the label's at the text size, but never more than a fifth of the zone it stands on (200 % text). */
+function tabHeight(zone: number): number {
+  return Math.max(u(20), Math.min(ut(26), Math.round(zone * 0.22)));
+}
+
 /** The control group tabs: the current one lit on the panel's own ground, the others a step back. */
 function tabs(desc: Api.SelectionPanelDesc, tabH: number, onClick: (k: string) => void): void {
   const list = desc.groups ?? [];
@@ -155,7 +165,7 @@ function tabs(desc: Api.SelectionPanelDesc, tabH: number, onClick: (k: string) =
       });
       // The lit tab's accent sits along its top edge only (the stroke above is clipped to it by the bar).
       if (cur) leaf("Lit", { width: pct(1), height: px(2) }, { fills: [solid(token("highlight"))] }, absolute({ start: 0, top: 0 }));
-      text("Label", g.label ?? "", { step: ts(12, true), font: "display", color: cur ? token("ink") : token("inkMuted"), nowrap: true });
+      text("Label", g.label ?? "", { step: tsFit(12, tabH * 0.62, true), font: "display", color: cur ? token("ink") : token("inkMuted"), nowrap: true });
       const res = close({ opacity: empty ? 0.55 : 1, a11y: a11y("tab", g.label ?? "", { value: `${g.count ?? 0}`, selected: cur }) });
       if (res.clicked) onClick(g.key ?? "");
     }
@@ -312,6 +322,42 @@ function unitLine(un: Api.SelectedUnit, w: number): void {
   });
 }
 
+/**
+ * A building's production beside its card (StarCraft II's single selection): the item being built large, its name
+ * over a progress bar with the time left, then the rest of the queue as small slots under it.
+ */
+function queueZone(desc: Api.ProductionQueueDesc, h: number, w: number, small: number): Api.ProductionQueueResult {
+  const tk = frame().t;
+  const items = desc.items ?? [];
+  const first = items[0];
+  const gap = u(6);
+  const big = Math.max(small, Math.min(Math.round(h - small - gap), Math.round(w * 0.3)));
+  let cancelled: string | null = null;
+  kit.column("Production", { gap, width: px(w), height: px(h), part: sel("ProductionQueue", "zone") }, () => {
+    kit.row("Current", { gap: tk.md, cross: "center", width: pct(1) }, () => {
+      const r = queueRow("Queue", desc, big, 0, 1);
+      if (r.cancelled) cancelled = r.cancelled;
+      if (!first) return;
+      const dur = Math.max(1e-3, first.duration ?? 0);
+      const done = (first.duration ?? 0) > 0 ? clamp01(1 - (first.remaining ?? 0) / dur) : 0;
+      const paused = !!desc.paused;
+      const barH = Math.max(4, u(5));
+      kit.column("Info", { gap: u(4), width: { kind: "grow" } }, () => {
+        text("Name", first.name ?? "", { step: ts(13, true), font: "display", color: token("ink"), nowrap: true, ellipsis: true, width: pct(1) });
+        kit.row("Progress", { gap: u(6), cross: "center", width: pct(1) }, () => {
+          box("Bar", { width: { kind: "grow" }, height: px(barH), part: sel("ProductionQueue", "bar", paused ? "paused" : null) }, { shape: { kind: "rect", radii: [2, 2, 2, 2] }, fills: [solid(lit(BLACK, 0.7))] }, () => {
+            if (done > 0) leaf("Fill", { width: pct(done), height: pct(1) }, fillDraw(paused ? lit(role("warn")) : role("gold"), 2));
+          });
+          text("Left", paused ? (desc.pausedLabel ?? "Paused") : countdown(first.remaining ?? 0, false), { step: ts(11), font: "mono", color: paused ? lit(role("warn")) : token("inkMuted"), nowrap: true });
+        });
+      });
+    });
+    const r = queueRow("Next", desc, small, 1);
+    if (r.cancelled) cancelled = r.cancelled;
+  });
+  return { cancelled };
+}
+
 interface SelLayout { side: number; cols: number; rows: number; card: number; compact: boolean; queueSide: number }
 
 /** The selection's zones in place (tiles, a rule, the card with its queue above), with no panel and no tabs. */
@@ -322,25 +368,40 @@ function selectionBody(desc: Api.SelectionPanelDesc, h: number, lay: SelLayout, 
   const focused = units.find((x) => (x.key ?? "") === focus) ?? units[0];
   const queue = desc.queue && (desc.queue.items ?? []).length > 0 ? desc.queue : null;
   // One unit or building: no grid of one, the card takes the selection zone's whole width (StarCraft II's single selection).
-  const single = units.length === 1 && !lay.compact;
-  const gridW = lay.cols * lay.side + (lay.cols - 1) * Math.max(2, u(4));
+  const single = units.length === 1;
+  const gap = Math.max(2, u(4));
+  const gridW = lay.cols * lay.side + (lay.cols - 1) * gap;
+  if (single && focused && !lay.compact) {
+    // The card at its own width; a building's production takes the grid's zone, a unit's card spans both.
+    kit.row("Body", { gap: tk.md, cross: "start", width: px(gridW + tk.md * 2 + 1 + lay.card) }, () => {
+      if (queue) {
+        kit.column("Card", { width: px(lay.card) }, () => unitCard(desc, focused, h, lay.card));
+        rule("QueueRule", h);
+        const q = queueZone(queue, h, gridW, lay.queueSide);
+        if (q.cancelled) res.cancelled = q.cancelled;
+      } else kit.column("Card", { width: pct(1) }, () => unitCard(desc, focused, h, gridW + tk.md * 2 + 1 + lay.card));
+    });
+    return;
+  }
   if (single && focused) {
-    kit.column("Body", { gap: u(6), width: px(gridW + tk.md * 2 + 1 + lay.card) }, () => {
-      kit.column("Card", { gap: u(6), width: pct(1) }, () => {
-        let ch = h;
+    // Compact: the one tile, its line and its queue beside it, so no grid of empty rows stands under a single tile.
+    kit.row("Body", { gap: tk.md, cross: "start", width: px(gridW) }, () => {
+      kit.column("Grid", {}, () => tiles(desc, lay.side, 1, 1, focus, (k) => { res.clicked = k; }));
+      kit.column("Card", { gap: u(6), width: px(Math.max(0, gridW - lay.side - tk.md)) }, () => {
+        unitLine(focused, Math.max(0, gridW - lay.side - tk.md));
         if (queue) {
           const q = queueRow("Queue", queue, lay.queueSide);
           if (q.cancelled) res.cancelled = q.cancelled;
-          ch -= lay.queueSide + u(6);
         }
-        unitCard(desc, focused, ch, gridW + tk.md * 2 + 1 + lay.card);
       });
     });
     return;
   }
+  // A grid no taller than its units need (a phone's two rows hold a squad of three in one).
+  const rows = lay.compact ? Math.max(1, Math.min(lay.rows, Math.ceil(units.length / lay.cols))) : lay.rows;
   kit.row("Body", { gap: tk.md, cross: "start" }, () => {
     kit.column("Grid", { gap: u(6) }, () => {
-      tiles(desc, lay.side, lay.cols, lay.rows, focus, (k) => { res.clicked = k; });
+      tiles(desc, lay.side, lay.cols, rows, focus, (k) => { res.clicked = k; });
       if (lay.compact && focused) unitLine(focused, lay.cols * lay.side + (lay.cols - 1) * Math.max(2, u(4)));
       if (lay.compact && queue) {
         const q = queueRow("Queue", queue, lay.queueSide);
@@ -391,7 +452,7 @@ export function selectionPanel(id: string, desc: Api.SelectionPanelDesc = {}): A
   const n = (desc.units ?? []).length;
   hudPlace(id, anchor, (inAnchor) => {
     kit.column(id, { gap: 0, cross: "start" }, () => {
-      tabs(desc, ut(26), (k) => { res.group = k; });
+      tabs(desc, tabHeight(h), (k) => { res.group = k; });
       if (inAnchor) {
         box("Panel", { padding: { left: tk.md, right: tk.md, top: tk.md, bottom: tk.md }, part: sel("SelectionPanel", "frame"), partClass: "hud" }, panelDraw(), () => selectionBody(desc, h, lay, res));
       } else selectionBody(desc, h, lay, res);
@@ -489,19 +550,27 @@ export function rtsConsole(id: string, desc: Api.RtsConsoleDesc = {}): Api.RtsCo
   const stacked = wide(lay, withMap) > room;
   if (stacked) lay = selLayout(sd, Math.round(h * 0.82), room - pad * 2, true);
   if (desc.map && !withMap) {
-    // Out in the corner, no larger than the height left above the console and the corner's stack (last tick's).
+    // Out of the console: beside it at the bottom start where the band leaves it the width (a phone held sideways,
+    // as an RTS keeps its map in that corner), else in the top end corner, no larger than the height left above the
+    // console and the corner's stack (last tick's sizes).
     const vp = frame().viewport;
-    const consoleH = kit.bounds(`${id}Hud`)?.height ?? 0;
-    const above = kit.memory("~hudStack/topRight/total", 0);
+    const console = kit.bounds(`${id}Hud`);
+    const consoleH = console?.height ?? 0;
     const k = u(100) / 100;
-    const fitPx = vp.height - vp.safeArea.top - vp.safeArea.bottom - consoleH - above - tk.gutter * 2 - tk.sm * 2 - u(28);
-    const size = Math.min(desc.map.size || (bp().phone ? 144 : 200), Math.floor(fitPx / k));
+    const want = desc.map.size || (bp().phone ? 144 : 200);
+    const chrome = tk.sm * 2 + u(28);
+    const besidePx = Math.min((room - (console?.width ?? room)) / 2 - tk.gutter, consoleH) - chrome;
+    const above = kit.memory("~hudStack/topRight/total", 0);
+    const topPx = vp.height - vp.safeArea.top - vp.safeArea.bottom - consoleH - above - tk.gutter * 2 - chrome;
+    const beside = Math.min(want, Math.floor(besidePx / k));
+    const top = Math.min(want, Math.floor(topPx / k));
+    const [size, anchor] = beside >= 64 && beside >= top ? [beside, "bottomLeft" as const] : [top, "topRight" as const];
     if (size >= 64) {
-      const m = minimapView(`${id}Map`, { ...desc.map, size, anchor: "topRight" });
+      const m = minimapView(`${id}Map`, { ...desc.map, size, anchor });
       out.mapClicked = m.clicked;
     }
   }
-  const tabH = ut(26);
+  const tabH = tabHeight(h);
   const sres: Mut<Api.SelectionPanelResult> = { clicked: null, group: null, cancelled: null };
   hudPlace(id, anchorOf(desc, "bottom"), () => {
     kit.column(id, { gap: 0, cross: "start" }, () => {
