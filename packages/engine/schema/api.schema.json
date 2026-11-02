@@ -9156,6 +9156,523 @@
       "callbacks": []
     },
     {
+      "name": "story",
+      "doc": "Dialogue and quests as data: dialogues in `.ogt` files of `type dialogue` (speakers, nodes of lines, choices with conditions, reasons and checks, variables, weighted picks, timers) and quests in `type quest` files (stages of objectives, rewards, conditions), validated by og cook, which names each mistake's line and the fix. Text is never inline: every line, choice, reason, name and title is an og.i18n key, and og.story resolves it in the active locale when it is read, so a locale switch re-translates the line on screen. og-story §1 has every line of both formats.\nog.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view in your UI each frame (the line in full, its speaker, its choices; the dialogue box paces its own reveal), and call og.story.advance or og.story.choose. Quests start from a dialogue (`quest start rescue`) or og.story.startQuest, count with og.story.progress and advance their stages themselves; og.story.quests lists them for a quest log.\nEverything is world state: the story's variables, the nodes seen, the lines read, conversations and quests are in saves, snapshots and the world hash, saved by their ids (dialogue, node, line, quest, stage, objective), so a save survives any edit that keeps those ids. Renaming a node, stage or objective a save stands on is the one breaking edit: og.story warns, naming the id, and falls back (a conversation to its dialogue's start, a quest to its first stage) instead of landing elsewhere. Deterministic: `pick` and active checks draw from the story's own stream (og.Rng's fork \"story\"), timers count ticks, and arithmetic is plain f64. A world that never loads a dialogue or quest keeps its saves and hash: og.Story and the story's events join it at the first og.story.load.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "Story",
+        "DialogueShown",
+        "DialogueEnded",
+        "DialogueCheck",
+        "QuestUpdated",
+        "StoryEvent",
+        "StoryAsset",
+        "StartDesc",
+        "SpeakerView",
+        "CheckView",
+        "ChoiceView",
+        "TimerView",
+        "RollView",
+        "DialogueView",
+        "ChosenView",
+        "StoryLine",
+        "MarkerDesc",
+        "MarkerView",
+        "RewardView",
+        "ObjectiveView",
+        "QuestView"
+      ],
+      "consts": [],
+      "functions": [
+        {
+          "name": "load",
+          "doc": "A cooked dialogue or quest (an `.ogt` of `type dialogue` or `type quest`, validated by og cook). Loading again replaces it, so a live edit takes effect at the conversation's next step. The first load registers og.Story and the story's events, so call it in setup: inside a system it is refused until one load has run outside one.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The asset, such as `story/smith.ogt`."
+            }
+          ],
+          "returns": "Result<StoryAsset>",
+          "returnsDoc": "Refused for a path that is not a cooked dialogue or quest.",
+          "publish": true
+        },
+        {
+          "name": "parse",
+          "doc": "A dialogue or quest from text, now (tests and generated content; assets go through og cook). Registers og.Story as load does.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "text",
+              "type": "String",
+              "optional": false,
+              "doc": "The `.ogt` text."
+            }
+          ],
+          "returns": "Result<StoryAsset>",
+          "returnsDoc": "Refused with the first error's line and the fix.",
+          "publish": true
+        },
+        {
+          "name": "start",
+          "doc": "Start a conversation: it runs to its first line (or its choices) now, and og.DialogueShown is sent the next tick. Several may run at once.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "StartDesc",
+              "optional": true,
+              "doc": "The dialogue, and optionally the node, cast and starting variables."
+            }
+          ],
+          "returns": "Result<u32>",
+          "returnsDoc": "The conversation, or why not: an unloaded dialogue, an unknown node, speaker or variable.",
+          "publish": true
+        },
+        {
+          "name": "view",
+          "doc": "What a conversation shows now, resolved in the active locale.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "conversation",
+              "type": "u32",
+              "optional": false,
+              "doc": "The conversation."
+            }
+          ],
+          "returns": "Option<DialogueView>",
+          "returnsDoc": "Null for a conversation that does not exist (never started, or stopped).",
+          "publish": true
+        },
+        {
+          "name": "history",
+          "doc": "A conversation's lines so far, oldest first, with the choice made on each (a VN backlog).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "conversation",
+              "type": "u32",
+              "optional": false,
+              "doc": "The conversation."
+            }
+          ],
+          "returns": "List<StoryLine>",
+          "returnsDoc": "Empty for an unknown conversation.",
+          "publish": true
+        },
+        {
+          "name": "conversations",
+          "doc": "The conversations that exist (started and not stopped), oldest first.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "List<u32>",
+          "publish": true
+        },
+        {
+          "name": "advance",
+          "doc": "Move a conversation past its line: it runs to the next line, its choices or its end.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "conversation",
+              "type": "u32",
+              "optional": false,
+              "doc": "The conversation."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused while it waits on choices, after it ended, or for an unknown conversation.",
+          "publish": true
+        },
+        {
+          "name": "choose",
+          "doc": "Take a choice: its `set`, `emit` and `quest` steps run, an active check rolls (og.DialogueCheck), and the conversation goes to its `goto` (or `fail` on a missed roll), or ends without one.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "conversation",
+              "type": "u32",
+              "optional": false,
+              "doc": "The conversation."
+            },
+            {
+              "name": "index",
+              "type": "u32",
+              "optional": false,
+              "doc": "ChoiceView.index."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for a hidden or disabled choice, a conversation showing a line, or an unknown one.",
+          "publish": true
+        },
+        {
+          "name": "stop",
+          "doc": "End a conversation now (og.DialogueEnded if it was running) and forget it. An ended conversation stays viewable until it is stopped.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "conversation",
+              "type": "u32",
+              "optional": false,
+              "doc": "The conversation."
+            }
+          ],
+          "returns": "bool",
+          "returnsDoc": "False for an unknown conversation.",
+          "publish": true
+        },
+        {
+          "name": "get",
+          "doc": "A story variable (a `global` of any loaded dialogue or quest): its value, else its declared default.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "The variable."
+            }
+          ],
+          "returns": "Json",
+          "returnsDoc": "A number, a boolean, a string, or null for one nothing declares.",
+          "publish": true
+        },
+        {
+          "name": "set",
+          "doc": "Set a story variable; quests whose conditions now hold advance.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "The variable."
+            },
+            {
+              "name": "value",
+              "type": "Json",
+              "optional": false,
+              "doc": "A number, a boolean or a string."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for another kind of value or a world without a loaded story.",
+          "publish": true
+        },
+        {
+          "name": "reset",
+          "doc": "A new playthrough: the story's variables, seen nodes, conversations and quests are cleared. Lines read stay read (DialogueView.seen), so a second playthrough can skip them.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "startQuest",
+          "doc": "Start a loaded quest at its first stage.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "The quest's id."
+            }
+          ],
+          "returns": "Result<bool>",
+          "returnsDoc": "False when it had started before. Refused for a quest not loaded.",
+          "publish": true
+        },
+        {
+          "name": "progress",
+          "doc": "Count toward an objective of an active quest's current stage (a wolf killed, a herb picked); the stage advances when its objectives are done.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "quest",
+              "type": "String",
+              "optional": false,
+              "doc": "The quest's id."
+            },
+            {
+              "name": "objective",
+              "type": "String",
+              "optional": false,
+              "doc": "The objective's id."
+            },
+            {
+              "name": "amount",
+              "type": "u32",
+              "optional": true,
+              "doc": "How many (default 1)."
+            }
+          ],
+          "returns": "bool",
+          "returnsDoc": "False when the quest is not active or its stage has no such objective.",
+          "publish": true
+        },
+        {
+          "name": "setStage",
+          "doc": "Move an active quest to a stage, its counts cleared.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "quest",
+              "type": "String",
+              "optional": false,
+              "doc": "The quest's id."
+            },
+            {
+              "name": "stage",
+              "type": "String",
+              "optional": false,
+              "doc": "The stage's id."
+            }
+          ],
+          "returns": "Result<bool>",
+          "returnsDoc": "False when it is not active or already there. Refused for an unknown quest or stage.",
+          "publish": true
+        },
+        {
+          "name": "completeQuest",
+          "doc": "Complete an active quest now.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "quest",
+              "type": "String",
+              "optional": false,
+              "doc": "The quest's id."
+            }
+          ],
+          "returns": "Result<bool>",
+          "returnsDoc": "False when it is not active. Refused for a quest not loaded.",
+          "publish": true
+        },
+        {
+          "name": "failQuest",
+          "doc": "Fail an active quest now: its undone objectives are marked failed.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "quest",
+              "type": "String",
+              "optional": false,
+              "doc": "The quest's id."
+            }
+          ],
+          "returns": "Result<bool>",
+          "returnsDoc": "False when it is not active. Refused for a quest not loaded.",
+          "publish": true
+        },
+        {
+          "name": "quest",
+          "doc": "A started quest as the log shows it.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "The quest's id."
+            }
+          ],
+          "returns": "Option<QuestView>",
+          "returnsDoc": "Null for a quest not started.",
+          "publish": true
+        },
+        {
+          "name": "quests",
+          "doc": "Every started quest, in the order they started (a quest log).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "List<QuestView>",
+          "publish": true
+        },
+        {
+          "name": "track",
+          "doc": "Show a quest in the HUD tracker, or stop showing it.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "The quest's id."
+            },
+            {
+              "name": "on",
+              "type": "bool",
+              "optional": false,
+              "doc": "Tracked."
+            }
+          ],
+          "returns": "bool",
+          "returnsDoc": "False for a quest not started.",
+          "publish": true
+        },
+        {
+          "name": "markSeen",
+          "doc": "The player looked at a quest: clear QuestView.isNew and updated.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "The quest's id."
+            }
+          ],
+          "returns": "bool",
+          "returnsDoc": "False for a quest not started.",
+          "publish": true
+        },
+        {
+          "name": "mark",
+          "doc": "Point a quest at an entity or a point (the map, compass and tracker read QuestView.marker), over its objectives' own markers.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "The quest's id."
+            },
+            {
+              "name": "desc",
+              "type": "MarkerDesc",
+              "optional": true,
+              "doc": "The entity or point; both zero clears it."
+            }
+          ],
+          "returns": "bool",
+          "returnsDoc": "False for a quest not started.",
+          "publish": true
+        }
+      ],
+      "interfaces": [],
+      "callbacks": []
+    },
+    {
       "name": "platform",
       "doc": "Platform services as host capabilities (docs/design.md §2.8): cloud store, leaderboards, telemetry, Origin Point and AI marks. Game code names a method and its arguments, never a credential, a URL or a cookie: the host owns them. On the web the shell forwards each call to the Player through origin-checked postMessage (Player protocol 2, docs/web-export.md); natively the host answers from a local JSON store (`og run --platform-store`, default `<project>/.og/platform.json`).\nCalls are asynchronous: each returns a request number at once, and the answer arrives at the start of a later tick, when og.platform sends PlatformAnswered; read it with og.platform.result. Answers are host input, like key presses: the probe's `dump_platform` lists every call, its arguments, its answer and the ticks.\nErrors carry the Player's stable codes: offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable, failed; retryable is true for offline, timeout, unavailable and rate_limited.\nRooms (roomCreate, roomJoin, roomSend, ...) put this engine with other players' engines: the host carries them (natively `og relay` with `og run --room`, on the web the platform's rooms through the shell, docs/platform-asks.md) and its answers and the other peers' messages arrive as events at the start of a tick (og.RoomJoined, og.RoomPeerJoined, og.RoomPeerLeft, og.RoomMessage), host input like key presses. Deterministic play over a room is og.net's lockstep.",
       "place": "namespace",
@@ -39517,6 +40034,874 @@
         "blackboard",
         "sees",
         "target"
+      ],
+      "additionalProperties": false
+    },
+    "Story": {
+      "x-og-kind": "resource",
+      "x-og-module": "story",
+      "description": "The story's counters (written by og.story; the story itself is a state block). Registered at the first og.story.load.",
+      "type": "object",
+      "properties": {
+        "lines": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Lines shown so far (DialogueView.seq of the latest).",
+          "default": 0,
+          "readOnly": true
+        },
+        "conversations": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Conversations not yet ended.",
+          "default": 0,
+          "readOnly": true
+        },
+        "activeQuests": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Quests started and not yet completed or failed.",
+          "default": 0,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "DialogueShown": {
+      "x-og-kind": "event",
+      "x-og-module": "story",
+      "description": "A conversation shows a new line (start the voice, reset the reveal). Sent before the game's systems, the tick after the call that moved it.",
+      "type": "object",
+      "properties": {
+        "conversation": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The conversation."
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The line's DialogueView.seq."
+        }
+      },
+      "required": [
+        "conversation",
+        "seq"
+      ],
+      "additionalProperties": false
+    },
+    "DialogueEnded": {
+      "x-og-kind": "event",
+      "x-og-module": "story",
+      "description": "A conversation ended: its dialogue ran out, reached `end`, took a choice without `goto`, or og.story.stop stopped it. Sent the tick after.",
+      "type": "object",
+      "properties": {
+        "conversation": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The conversation."
+        }
+      },
+      "required": [
+        "conversation"
+      ],
+      "additionalProperties": false
+    },
+    "DialogueCheck": {
+      "x-og-kind": "event",
+      "x-og-module": "story",
+      "description": "An active check was rolled (d20 plus the stat against the target): reveal the roll. Sent the tick after.",
+      "type": "object",
+      "properties": {
+        "conversation": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The conversation."
+        },
+        "stat": {
+          "type": "string",
+          "description": "The variable read as the stat."
+        },
+        "target": {
+          "type": "number",
+          "description": "What the roll plus the stat had to reach."
+        },
+        "roll": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The d20, 1 to 20."
+        },
+        "passed": {
+          "type": "boolean",
+          "description": "Whether roll + stat reached the target."
+        }
+      },
+      "required": [
+        "conversation",
+        "stat",
+        "target",
+        "roll",
+        "passed"
+      ],
+      "additionalProperties": false
+    },
+    "QuestUpdated": {
+      "x-og-kind": "event",
+      "x-og-module": "story",
+      "description": "A quest started, counted, changed stage, completed or failed. Sent the tick after.",
+      "type": "object",
+      "properties": {
+        "quest": {
+          "type": "string",
+          "description": "The quest's id."
+        },
+        "status": {
+          "type": "string",
+          "description": "active, completed or failed."
+        }
+      },
+      "required": [
+        "quest",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "StoryEvent": {
+      "x-og-kind": "event",
+      "x-og-module": "story",
+      "description": "A dialogue's `emit name \"arg\"`: open the shop, give the sword, play the cutscene. Sent the tick after.",
+      "type": "object",
+      "properties": {
+        "conversation": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The conversation that emitted it."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name written after emit."
+        },
+        "arg": {
+          "type": "string",
+          "description": "Its argument, evaluated and written as text (empty without one)."
+        }
+      },
+      "required": [
+        "conversation",
+        "name",
+        "arg"
+      ],
+      "additionalProperties": false
+    },
+    "StoryAsset": {
+      "x-og-kind": "struct",
+      "x-og-module": "story",
+      "description": "A loaded dialogue or quest.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "dialogue or quest."
+        },
+        "name": {
+          "type": "string",
+          "description": "A dialogue's name or a quest's id: what og.story.start and og.story.startQuest take."
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A dialogue's nodes, in order (a quest: its stages)."
+        },
+        "speakers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A dialogue's speakers (a quest: none)."
+        },
+        "variables": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The variables it declares (var: the conversation's; global: the story's)."
+        }
+      },
+      "required": [
+        "kind",
+        "name",
+        "nodes",
+        "speakers",
+        "variables"
+      ],
+      "additionalProperties": false
+    },
+    "StartDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "story",
+      "description": "A conversation to start.",
+      "type": "object",
+      "properties": {
+        "dialogue": {
+          "type": "string",
+          "description": "The dialogue's name (StoryAsset.name).",
+          "default": ""
+        },
+        "node": {
+          "type": "string",
+          "description": "The node to start at (empty: the dialogue's `start`).",
+          "default": ""
+        },
+        "cast": {
+          "description": "Speaker ids to the entities playing them, `{ smith: entity }`: SpeakerView.entity (for a speech bubble or a camera).",
+          "default": null
+        },
+        "vars": {
+          "description": "Starting values for the dialogue's own `var`s, `{ mood: 2 }`.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "SpeakerView": {
+      "x-og-kind": "struct",
+      "x-og-module": "story",
+      "description": "Who speaks a line.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The speaker's id (`narrator` for the narrator)."
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name, resolved in the active locale (empty for the narrator)."
+        },
+        "entity": {
+          "$ref": "#/$defs/Entity",
+          "description": "The entity playing it (StartDesc.cast; 0: none)."
+        },
+        "portrait": {
+          "type": "string",
+          "description": "A portrait image's asset path (empty: none)."
+        },
+        "expression": {
+          "type": "string",
+          "description": "The portrait's variant: the line's `expression`, else the speaker's."
+        },
+        "side": {
+          "type": "string",
+          "description": "left, right or center (VN staging)."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "entity",
+        "portrait",
+        "expression",
+        "side"
+      ],
+      "additionalProperties": false
+    },
+    "CheckView": {
+      "x-og-kind": "struct",
+      "x-og-module": "story",
+      "description": "A choice's check.",
+      "type": "object",
+      "properties": {
+        "stat": {
+          "type": "string",
+          "description": "The variable read as the stat."
+        },
+        "target": {
+          "type": "number",
+          "description": "What the stat (passive) or a d20 plus the stat (active) must reach."
+        },
+        "chance": {
+          "type": "number",
+          "description": "The chance it passes, 0 to 1: an active check's share of the d20's faces that pass; a passive one's 1 or 0."
+        },
+        "kind": {
+          "type": "string",
+          "description": "passive (a threshold that enables the choice) or active (rolled when chosen)."
+        }
+      },
+      "required": [
+        "stat",
+        "target",
+        "chance",
+        "kind"
+      ],
+      "additionalProperties": false
+    },
+    "ChoiceView": {
+      "x-og-kind": "struct",
+      "x-og-module": "story",
+      "description": "A choice the node offers (hidden ones are left out).",
+      "type": "object",
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "What og.story.choose takes: its place among the node's choices, hidden ones counted."
+        },
+        "id": {
+          "type": "string",
+          "description": "Its id within the node."
+        },
+        "text": {
+          "type": "string",
+          "description": "Its text, resolved in the active locale."
+        },
+        "key": {
+          "type": "string",
+          "description": "Its i18n key."
+        },
+        "args": {
+          "description": "The arguments its text was resolved with."
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether it can be chosen now (its `if` holds and a passive check passes)."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why it is disabled, resolved in the active locale (empty without a `reason`)."
+        },
+        "reasonKey": {
+          "type": "string",
+          "description": "The reason's i18n key."
+        },
+        "reasonArgs": {
+          "description": "The arguments the reason was resolved with."
+        },
+        "visited": {
+          "type": "boolean",
+          "description": "Chosen before in this conversation (drawn muted)."
+        },
+        "kind": {
+          "type": "string",
+          "description": "The game's word for its icon: leave, trade, attack, lie..."
+        },
+        "check": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CheckView"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its check, if it has one."
+        }
+      },
+      "required": [
+        "index",
+        "id",
+        "text",
+        "key",
+        "args",
+        "enabled",
+        "reason",
+        "reasonKey",
+        "reasonArgs",
+        "visited",
+        "kind",
+        "check"
+      ],
+      "additionalProperties": false
+    },
+    "TimerView": {
+      "x-og-kind": "struct",
+      "x-og-module": "story",
+      "description": "A node's choice timer.",
+      "type": "object",
+      "properties": {
+        "ticksLeft": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Ticks until it runs out."
+        },
+        "ticksTotal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its length in ticks."
+        },
+        "defaultChoice": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The ChoiceView.index taken when it runs out."
+        }
+      },
+      "required": [
+        "ticksLeft",
+        "ticksTotal",
+        "defaultChoice"
+      ],
+      "additionalProperties": false
+    },
+    "RollView": {
+      "x-og-kind": "struct",
+      "x-og-module": "story",
+      "description": "An active check's roll.",
+      "type": "object",
+      "properties": {
+        "stat": {
+          "type": "string",
+          "description": "The variable read as the stat."
+        },
+        "target": {
+          "type": "number",
+          "description": "What the roll plus the stat had to reach."
+        },
+        "roll": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The d20, 1 to 20."
+        },
+        "passed": {
+          "type": "boolean",
+          "description": "Whether it passed."
+        }
+      },
+      "required": [
+        "stat",
+        "target",
+        "roll",
+        "passed"
+      ],
+      "additionalProperties": false
+    },
+    "DialogueView": {
+      "x-og-kind": "struct",
+      "x-og-module": "story",
+      "description": "What a conversation shows now: the line in full (the dialogue box paces its own reveal), its speaker and the choices, if it waits on them.",
+      "type": "object",
+      "properties": {
+        "conversation": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The conversation."
+        },
+        "node": {
+          "type": "string",
+          "description": "The node it is in."
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Counts lines shown across the story: a new number is a new line, even when a node repeats."
+        },
+        "seen": {
+          "type": "boolean",
+          "description": "The line had been read before it was shown (skip-read, a dimmed backlog); og.story.reset keeps what was read."
+        },
+        "key": {
+          "type": "string",
+          "description": "The line's i18n key."
+        },
+        "args": {
+          "description": "The arguments it was resolved with (evaluated when it was shown)."
+        },
+        "text": {
+          "type": "string",
+          "description": "The line, resolved in the active locale."
+        },
+        "voice": {
+          "type": "string",
+          "description": "Its voice clip's asset path (empty: none)."
+        },
+        "speaker": {
+          "$ref": "#/$defs/SpeakerView",
+          "description": "Who says it."
+        },
+        "choices": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ChoiceView"
+          },
+          "description": "The choices, when it waits on them; empty while a line waits for og.story.advance."
+        },
+        "timer": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TimerView"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The choice timer, while it runs."
+        },
+        "lastCheck": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RollView"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The last active check this conversation rolled."
+        },
+        "ended": {
+          "type": "boolean",
+          "description": "The conversation has ended (the view keeps its last line)."
+        }
+      },
+      "required": [
+        "conversation",
+        "node",
+        "seq",
+        "seen",
+        "key",
+        "args",
+        "text",
+        "voice",
+        "speaker",
+        "choices",
+        "timer",
+        "lastCheck",
+        "ended"
+      ],
+      "additionalProperties": false
+    },
+    "ChosenView": {
+      "x-og-kind": "struct",
+      "x-og-module": "story",
+      "description": "The choice made while a line was shown.",
+      "type": "object",
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its ChoiceView.index."
+        },
+        "text": {
+          "type": "string",
+          "description": "Its text, resolved in the active locale."
+        }
+      },
+      "required": [
+        "index",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "StoryLine": {
+      "x-og-kind": "struct",
+      "x-og-module": "story",
+      "description": "A line of a conversation's backlog.",
+      "type": "object",
+      "properties": {
+        "seq": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its DialogueView.seq."
+        },
+        "node": {
+          "type": "string",
+          "description": "Its node."
+        },
+        "speaker": {
+          "$ref": "#/$defs/SpeakerView",
+          "description": "Who said it."
+        },
+        "key": {
+          "type": "string",
+          "description": "Its i18n key."
+        },
+        "args": {
+          "description": "Its arguments."
+        },
+        "text": {
+          "type": "string",
+          "description": "The line, resolved in the active locale."
+        },
+        "voice": {
+          "type": "string",
+          "description": "Its voice clip (empty: none)."
+        },
+        "seen": {
+          "type": "boolean",
+          "description": "It had been read before it was shown."
+        },
+        "chosen": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ChosenView"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The choice made on it, if any."
+        }
+      },
+      "required": [
+        "seq",
+        "node",
+        "speaker",
+        "key",
+        "args",
+        "text",
+        "voice",
+        "seen",
+        "chosen"
+      ],
+      "additionalProperties": false
+    },
+    "MarkerDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "story",
+      "description": "Where a quest's objective is, for the map, compass and tracker.",
+      "type": "object",
+      "properties": {
+        "entity": {
+          "$ref": "#/$defs/Entity",
+          "description": "An entity to point at (0: none).",
+          "default": 0
+        },
+        "position": {
+          "$ref": "#/$defs/Vector3",
+          "description": "A point to point at, when there is no entity.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        }
+      },
+      "additionalProperties": false
+    },
+    "MarkerView": {
+      "x-og-kind": "struct",
+      "x-og-module": "story",
+      "description": "Where a quest points: the marker og.story.mark set, else the current stage's first undone objective's `marker`.",
+      "type": "object",
+      "properties": {
+        "entity": {
+          "$ref": "#/$defs/Entity",
+          "description": "An entity (0: none)."
+        },
+        "position": {
+          "$ref": "#/$defs/Vector3",
+          "description": "A point.",
+          "x-og-unit": "m"
+        }
+      },
+      "required": [
+        "entity",
+        "position"
+      ],
+      "additionalProperties": false
+    },
+    "RewardView": {
+      "x-og-kind": "struct",
+      "x-og-module": "story",
+      "description": "A quest's reward.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Its name, resolved in the active locale."
+        },
+        "amount": {
+          "type": "number",
+          "description": "How many."
+        },
+        "image": {
+          "type": "string",
+          "description": "Its image's asset path (empty: none)."
+        },
+        "rarity": {
+          "type": "string",
+          "description": "The game's rarity word (empty: none)."
+        }
+      },
+      "required": [
+        "name",
+        "amount",
+        "image",
+        "rarity"
+      ],
+      "additionalProperties": false
+    },
+    "ObjectiveView": {
+      "x-og-kind": "struct",
+      "x-og-module": "story",
+      "description": "An objective of a quest's current stage.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Its id."
+        },
+        "text": {
+          "type": "string",
+          "description": "Its text, resolved in the active locale with `count` and `target` among its arguments."
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Counted so far."
+        },
+        "target": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Counts needed."
+        },
+        "done": {
+          "type": "boolean",
+          "description": "count reached target."
+        },
+        "failed": {
+          "type": "boolean",
+          "description": "Left undone when the quest failed."
+        },
+        "optional": {
+          "type": "boolean",
+          "description": "Not needed to finish the stage."
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "Not revealed yet: declared hidden and not yet counted (the log leaves it out or shows ???)."
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "count",
+        "target",
+        "done",
+        "failed",
+        "optional",
+        "hidden"
+      ],
+      "additionalProperties": false
+    },
+    "QuestView": {
+      "x-og-kind": "struct",
+      "x-og-module": "story",
+      "description": "A quest as a quest log shows it.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Its id."
+        },
+        "title": {
+          "type": "string",
+          "description": "Its title, resolved in the active locale."
+        },
+        "summary": {
+          "type": "string",
+          "description": "The current stage's summary, else the quest's, resolved."
+        },
+        "category": {
+          "type": "string",
+          "description": "main, side, daily... (the log's tabs)."
+        },
+        "stage": {
+          "type": "string",
+          "description": "The current stage's id."
+        },
+        "status": {
+          "type": "string",
+          "description": "active, completed or failed."
+        },
+        "tracked": {
+          "type": "boolean",
+          "description": "Shown in the HUD tracker (og.story.track; the first quest started is tracked)."
+        },
+        "isNew": {
+          "type": "boolean",
+          "description": "Not looked at since it started (og.story.markSeen clears it)."
+        },
+        "updated": {
+          "type": "boolean",
+          "description": "Changed since it was last looked at (og.story.markSeen clears it)."
+        },
+        "updatedTick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick it last changed (sort the log by recent)."
+        },
+        "giver": {
+          "type": "string",
+          "description": "Who gave it, resolved (empty: nobody)."
+        },
+        "region": {
+          "type": "string",
+          "description": "Where it is, resolved (empty: nowhere)."
+        },
+        "marker": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MarkerView"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Where it points now."
+        },
+        "rewards": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RewardView"
+          },
+          "description": "Its rewards."
+        },
+        "objectives": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ObjectiveView"
+          },
+          "description": "The current stage's objectives."
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "summary",
+        "category",
+        "stage",
+        "status",
+        "tracked",
+        "isNew",
+        "updated",
+        "updatedTick",
+        "giver",
+        "region",
+        "marker",
+        "rewards",
+        "objectives"
       ],
       "additionalProperties": false
     },

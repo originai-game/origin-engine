@@ -224,6 +224,47 @@ fn the_repository_idl_is_valid_and_covers_the_design() {
             "formatDuration"
         ]
     );
+    // G2-8: dialogue and quests.
+    assert_eq!(
+        fns("story"),
+        [
+            "load",
+            "parse",
+            "start",
+            "view",
+            "history",
+            "conversations",
+            "advance",
+            "choose",
+            "stop",
+            "get",
+            "set",
+            "reset",
+            "startQuest",
+            "progress",
+            "setStage",
+            "completeQuest",
+            "failQuest",
+            "quest",
+            "quests",
+            "track",
+            "markSeen",
+            "mark"
+        ]
+    );
+    for name in [
+        "Story",
+        "DialogueShown",
+        "DialogueEnded",
+        "DialogueCheck",
+        "QuestUpdated",
+        "StoryEvent",
+    ] {
+        assert!(
+            records.iter().any(|(_, n)| *n == name),
+            "story record {name}"
+        );
+    }
     assert!(fns("commands").contains(&"register".to_string()));
     assert!(fns("commands").contains(&"schedule".to_string()));
 }

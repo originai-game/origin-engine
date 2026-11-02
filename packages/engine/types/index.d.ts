@@ -19436,6 +19436,420 @@ export interface AiDescription {
 
 
 
+// ── story ───────────────────────────────────────────────────────
+// Dialogue and quests as data: dialogues in `.ogt` files of `type dialogue` (speakers, nodes of lines, choices with conditions, reasons and checks, variables, weighted picks, timers) and quests in `type quest` files (stages of objectives, rewards, conditions), validated by og cook, which names each mistake's line and the fix. Text is never inline: every line, choice, reason, name and title is an og.i18n key, and og.story resolves it in the active locale when it is read, so a locale switch re-translates the line on screen. og-story §1 has every line of both formats.
+// og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view in your UI each frame (the line in full, its speaker, its choices; the dialogue box paces its own reveal), and call og.story.advance or og.story.choose. Quests start from a dialogue (`quest start rescue`) or og.story.startQuest, count with og.story.progress and advance their stages themselves; og.story.quests lists them for a quest log.
+// Everything is world state: the story's variables, the nodes seen, the lines read, conversations and quests are in saves, snapshots and the world hash, saved by their ids (dialogue, node, line, quest, stage, objective), so a save survives any edit that keeps those ids. Renaming a node, stage or objective a save stands on is the one breaking edit: og.story warns, naming the id, and falls back (a conversation to its dialogue's start, a quest to its first stage) instead of landing elsewhere. Deterministic: `pick` and active checks draw from the story's own stream (og.Rng's fork "story"), timers count ticks, and arithmetic is plain f64. A world that never loads a dialogue or quest keeps its saves and hash: og.Story and the story's events join it at the first og.story.load.
+
+/**
+ * The story's counters (written by og.story; the story itself is a state block). Registered at the first og.story.load.
+ *
+ * The `Story` resource (token `og.Story`).
+ */
+export interface Story {
+  /**
+   * Lines shown so far (DialogueView.seq of the latest).
+   *
+   * @readonly written by the engine
+   */
+  readonly lines: number;
+  /**
+   * Conversations not yet ended.
+   *
+   * @readonly written by the engine
+   */
+  readonly conversations: number;
+  /**
+   * Quests started and not yet completed or failed.
+   *
+   * @readonly written by the engine
+   */
+  readonly activeQuests: number;
+}
+
+/**
+ * A conversation shows a new line (start the voice, reset the reveal). Sent before the game's systems, the tick after the call that moved it.
+ *
+ * The payload of the `DialogueShown` event (token `og.DialogueShown`).
+ */
+export interface DialogueShown {
+  /** The conversation. */
+  readonly conversation: number;
+  /** The line's DialogueView.seq. */
+  readonly seq: number;
+}
+
+/**
+ * A conversation ended: its dialogue ran out, reached `end`, took a choice without `goto`, or og.story.stop stopped it. Sent the tick after.
+ *
+ * The payload of the `DialogueEnded` event (token `og.DialogueEnded`).
+ */
+export interface DialogueEnded {
+  /** The conversation. */
+  readonly conversation: number;
+}
+
+/**
+ * An active check was rolled (d20 plus the stat against the target): reveal the roll. Sent the tick after.
+ *
+ * The payload of the `DialogueCheck` event (token `og.DialogueCheck`).
+ */
+export interface DialogueCheck {
+  /** The conversation. */
+  readonly conversation: number;
+  /** The variable read as the stat. */
+  readonly stat: string;
+  /** What the roll plus the stat had to reach. */
+  readonly target: number;
+  /** The d20, 1 to 20. */
+  readonly roll: number;
+  /** Whether roll + stat reached the target. */
+  readonly passed: boolean;
+}
+
+/**
+ * A quest started, counted, changed stage, completed or failed. Sent the tick after.
+ *
+ * The payload of the `QuestUpdated` event (token `og.QuestUpdated`).
+ */
+export interface QuestUpdated {
+  /** The quest's id. */
+  readonly quest: string;
+  /** active, completed or failed. */
+  readonly status: string;
+}
+
+/**
+ * A dialogue's `emit name "arg"`: open the shop, give the sword, play the cutscene. Sent the tick after.
+ *
+ * The payload of the `StoryEvent` event (token `og.StoryEvent`).
+ */
+export interface StoryEvent {
+  /** The conversation that emitted it. */
+  readonly conversation: number;
+  /** The name written after emit. */
+  readonly name: string;
+  /** Its argument, evaluated and written as text (empty without one). */
+  readonly arg: string;
+}
+
+/** A loaded dialogue or quest. */
+export interface StoryAsset {
+  /** dialogue or quest. */
+  readonly kind: string;
+  /** A dialogue's name or a quest's id: what og.story.start and og.story.startQuest take. */
+  readonly name: string;
+  /** A dialogue's nodes, in order (a quest: its stages). */
+  readonly nodes: readonly string[];
+  /** A dialogue's speakers (a quest: none). */
+  readonly speakers: readonly string[];
+  /** The variables it declares (var: the conversation's; global: the story's). */
+  readonly variables: readonly string[];
+}
+
+/**
+ * A conversation to start.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface StartDesc {
+  /**
+   * The dialogue's name (StoryAsset.name).
+   *
+   * @default ""
+   */
+  readonly dialogue?: string;
+  /**
+   * The node to start at (empty: the dialogue's `start`).
+   *
+   * @default ""
+   */
+  readonly node?: string;
+  /**
+   * Speaker ids to the entities playing them, `{ smith: entity }`: SpeakerView.entity (for a speech bubble or a camera).
+   *
+   * @default null
+   */
+  readonly cast?: unknown;
+  /**
+   * Starting values for the dialogue's own `var`s, `{ mood: 2 }`.
+   *
+   * @default null
+   */
+  readonly vars?: unknown;
+}
+
+/** Who speaks a line. */
+export interface SpeakerView {
+  /** The speaker's id (`narrator` for the narrator). */
+  readonly id: string;
+  /** Its name, resolved in the active locale (empty for the narrator). */
+  readonly name: string;
+  /** The entity playing it (StartDesc.cast; 0: none). */
+  readonly entity: Entity;
+  /** A portrait image's asset path (empty: none). */
+  readonly portrait: string;
+  /** The portrait's variant: the line's `expression`, else the speaker's. */
+  readonly expression: string;
+  /** left, right or center (VN staging). */
+  readonly side: string;
+}
+
+/** A choice's check. */
+export interface CheckView {
+  /** The variable read as the stat. */
+  readonly stat: string;
+  /** What the stat (passive) or a d20 plus the stat (active) must reach. */
+  readonly target: number;
+  /**
+   * The chance it passes, 0 to 1: an active check's share of the d20's faces that pass; a passive one's 1 or 0.
+   */
+  readonly chance: number;
+  /** passive (a threshold that enables the choice) or active (rolled when chosen). */
+  readonly kind: string;
+}
+
+/** A choice the node offers (hidden ones are left out). */
+export interface ChoiceView {
+  /** What og.story.choose takes: its place among the node's choices, hidden ones counted. */
+  readonly index: number;
+  /** Its id within the node. */
+  readonly id: string;
+  /** Its text, resolved in the active locale. */
+  readonly text: string;
+  /** Its i18n key. */
+  readonly key: string;
+  /** The arguments its text was resolved with. */
+  readonly args: unknown;
+  /** Whether it can be chosen now (its `if` holds and a passive check passes). */
+  readonly enabled: boolean;
+  /** Why it is disabled, resolved in the active locale (empty without a `reason`). */
+  readonly reason: string;
+  /** The reason's i18n key. */
+  readonly reasonKey: string;
+  /** The arguments the reason was resolved with. */
+  readonly reasonArgs: unknown;
+  /** Chosen before in this conversation (drawn muted). */
+  readonly visited: boolean;
+  /** The game's word for its icon: leave, trade, attack, lie... */
+  readonly kind: string;
+  /** Its check, if it has one. */
+  readonly check: CheckView | null;
+}
+
+/** A node's choice timer. */
+export interface TimerView {
+  /** Ticks until it runs out. */
+  readonly ticksLeft: number;
+  /** Its length in ticks. */
+  readonly ticksTotal: number;
+  /** The ChoiceView.index taken when it runs out. */
+  readonly defaultChoice: number;
+}
+
+/** An active check's roll. */
+export interface RollView {
+  /** The variable read as the stat. */
+  readonly stat: string;
+  /** What the roll plus the stat had to reach. */
+  readonly target: number;
+  /** The d20, 1 to 20. */
+  readonly roll: number;
+  /** Whether it passed. */
+  readonly passed: boolean;
+}
+
+/**
+ * What a conversation shows now: the line in full (the dialogue box paces its own reveal), its speaker and the choices, if it waits on them.
+ */
+export interface DialogueView {
+  /** The conversation. */
+  readonly conversation: number;
+  /** The node it is in. */
+  readonly node: string;
+  /**
+   * Counts lines shown across the story: a new number is a new line, even when a node repeats.
+   */
+  readonly seq: number;
+  /**
+   * The line had been read before it was shown (skip-read, a dimmed backlog); og.story.reset keeps what was read.
+   */
+  readonly seen: boolean;
+  /** The line's i18n key. */
+  readonly key: string;
+  /** The arguments it was resolved with (evaluated when it was shown). */
+  readonly args: unknown;
+  /** The line, resolved in the active locale. */
+  readonly text: string;
+  /** Its voice clip's asset path (empty: none). */
+  readonly voice: string;
+  /** Who says it. */
+  readonly speaker: SpeakerView;
+  /** The choices, when it waits on them; empty while a line waits for og.story.advance. */
+  readonly choices: readonly ChoiceView[];
+  /** The choice timer, while it runs. */
+  readonly timer: TimerView | null;
+  /** The last active check this conversation rolled. */
+  readonly lastCheck: RollView | null;
+  /** The conversation has ended (the view keeps its last line). */
+  readonly ended: boolean;
+}
+
+/** The choice made while a line was shown. */
+export interface ChosenView {
+  /** Its ChoiceView.index. */
+  readonly index: number;
+  /** Its text, resolved in the active locale. */
+  readonly text: string;
+}
+
+/** A line of a conversation's backlog. */
+export interface StoryLine {
+  /** Its DialogueView.seq. */
+  readonly seq: number;
+  /** Its node. */
+  readonly node: string;
+  /** Who said it. */
+  readonly speaker: SpeakerView;
+  /** Its i18n key. */
+  readonly key: string;
+  /** Its arguments. */
+  readonly args: unknown;
+  /** The line, resolved in the active locale. */
+  readonly text: string;
+  /** Its voice clip (empty: none). */
+  readonly voice: string;
+  /** It had been read before it was shown. */
+  readonly seen: boolean;
+  /** The choice made on it, if any. */
+  readonly chosen: ChosenView | null;
+}
+
+/**
+ * Where a quest's objective is, for the map, compass and tracker.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface MarkerDesc {
+  /**
+   * An entity to point at (0: none).
+   *
+   * @default 0
+   */
+  readonly entity?: Entity;
+  /**
+   * A point to point at, when there is no entity.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly position?: Vector3;
+}
+
+/**
+ * Where a quest points: the marker og.story.mark set, else the current stage's first undone objective's `marker`.
+ */
+export interface MarkerView {
+  /** An entity (0: none). */
+  readonly entity: Entity;
+  /**
+   * A point.
+   *
+   * @unit m (metres)
+   */
+  readonly position: Vector3;
+}
+
+/** A quest's reward. */
+export interface RewardView {
+  /** Its name, resolved in the active locale. */
+  readonly name: string;
+  /** How many. */
+  readonly amount: number;
+  /** Its image's asset path (empty: none). */
+  readonly image: string;
+  /** The game's rarity word (empty: none). */
+  readonly rarity: string;
+}
+
+/** An objective of a quest's current stage. */
+export interface ObjectiveView {
+  /** Its id. */
+  readonly id: string;
+  /** Its text, resolved in the active locale with `count` and `target` among its arguments. */
+  readonly text: string;
+  /** Counted so far. */
+  readonly count: number;
+  /** Counts needed. */
+  readonly target: number;
+  /** count reached target. */
+  readonly done: boolean;
+  /** Left undone when the quest failed. */
+  readonly failed: boolean;
+  /** Not needed to finish the stage. */
+  readonly optional: boolean;
+  /**
+   * Not revealed yet: declared hidden and not yet counted (the log leaves it out or shows ???).
+   */
+  readonly hidden: boolean;
+}
+
+/** A quest as a quest log shows it. */
+export interface QuestView {
+  /** Its id. */
+  readonly id: string;
+  /** Its title, resolved in the active locale. */
+  readonly title: string;
+  /** The current stage's summary, else the quest's, resolved. */
+  readonly summary: string;
+  /** main, side, daily... (the log's tabs). */
+  readonly category: string;
+  /** The current stage's id. */
+  readonly stage: string;
+  /** active, completed or failed. */
+  readonly status: string;
+  /** Shown in the HUD tracker (og.story.track; the first quest started is tracked). */
+  readonly tracked: boolean;
+  /** Not looked at since it started (og.story.markSeen clears it). */
+  readonly isNew: boolean;
+  /** Changed since it was last looked at (og.story.markSeen clears it). */
+  readonly updated: boolean;
+  /** The tick it last changed (sort the log by recent). */
+  readonly updatedTick: number;
+  /** Who gave it, resolved (empty: nobody). */
+  readonly giver: string;
+  /** Where it is, resolved (empty: nowhere). */
+  readonly region: string;
+  /** Where it points now. */
+  readonly marker: MarkerView | null;
+  /** Its rewards. */
+  readonly rewards: readonly RewardView[];
+  /** The current stage's objectives. */
+  readonly objectives: readonly ObjectiveView[];
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // ── platform ────────────────────────────────────────────────────
 // Platform services as host capabilities (docs/design.md §2.8): cloud store, leaderboards, telemetry, Origin Point and AI marks. Game code names a method and its arguments, never a credential, a URL or a cookie: the host owns them. On the web the shell forwards each call to the Player through origin-checked postMessage (Player protocol 2, docs/web-export.md); natively the host answers from a local JSON store (`og run --platform-store`, default `<project>/.og/platform.json`).
 // Calls are asynchronous: each returns a request number at once, and the answer arrives at the start of a later tick, when og.platform sends PlatformAnswered; read it with og.platform.result. Answers are host input, like key presses: the probe's `dump_platform` lists every call, its arguments, its answer and the ticks.
@@ -46558,6 +46972,212 @@ export declare namespace og {
      * @returns Null for an entity that has not thought.
      */
     function describe(world: World, entity: Entity): AiDescription | null;
+  }
+  /**
+   * The story's counters (written by og.story; the story itself is a state block). Registered at the first og.story.load.
+   */
+  const Story: ResourceType<{ readonly lines: FieldSpec<"u32">; readonly conversations: FieldSpec<"u32">; readonly activeQuests: FieldSpec<"u32"> }, Story>;
+  /**
+   * A conversation shows a new line (start the voice, reset the reveal). Sent before the game's systems, the tick after the call that moved it.
+   */
+  const DialogueShown: EventType<DialogueShown>;
+  /**
+   * A conversation ended: its dialogue ran out, reached `end`, took a choice without `goto`, or og.story.stop stopped it. Sent the tick after.
+   */
+  const DialogueEnded: EventType<DialogueEnded>;
+  /**
+   * An active check was rolled (d20 plus the stat against the target): reveal the roll. Sent the tick after.
+   */
+  const DialogueCheck: EventType<DialogueCheck>;
+  /** A quest started, counted, changed stage, completed or failed. Sent the tick after. */
+  const QuestUpdated: EventType<QuestUpdated>;
+  /**
+   * A dialogue's `emit name "arg"`: open the shop, give the sword, play the cutscene. Sent the tick after.
+   */
+  const StoryEvent: EventType<StoryEvent>;
+  /**
+   * Dialogue and quests as data: dialogues in `.ogt` files of `type dialogue` (speakers, nodes of lines, choices with conditions, reasons and checks, variables, weighted picks, timers) and quests in `type quest` files (stages of objectives, rewards, conditions), validated by og cook, which names each mistake's line and the fix. Text is never inline: every line, choice, reason, name and title is an og.i18n key, and og.story resolves it in the active locale when it is read, so a locale switch re-translates the line on screen. og-story §1 has every line of both formats.
+   * og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view in your UI each frame (the line in full, its speaker, its choices; the dialogue box paces its own reveal), and call og.story.advance or og.story.choose. Quests start from a dialogue (`quest start rescue`) or og.story.startQuest, count with og.story.progress and advance their stages themselves; og.story.quests lists them for a quest log.
+   * Everything is world state: the story's variables, the nodes seen, the lines read, conversations and quests are in saves, snapshots and the world hash, saved by their ids (dialogue, node, line, quest, stage, objective), so a save survives any edit that keeps those ids. Renaming a node, stage or objective a save stands on is the one breaking edit: og.story warns, naming the id, and falls back (a conversation to its dialogue's start, a quest to its first stage) instead of landing elsewhere. Deterministic: `pick` and active checks draw from the story's own stream (og.Rng's fork "story"), timers count ticks, and arithmetic is plain f64. A world that never loads a dialogue or quest keeps its saves and hash: og.Story and the story's events join it at the first og.story.load.
+   */
+  namespace story {
+    /**
+     * A cooked dialogue or quest (an `.ogt` of `type dialogue` or `type quest`, validated by og cook). Loading again replaces it, so a live edit takes effect at the conversation's next step. The first load registers og.Story and the story's events, so call it in setup: inside a system it is refused until one load has run outside one.
+     *
+     * @param world The world.
+     * @param path The asset, such as `story/smith.ogt`.
+     * @returns Refused for a path that is not a cooked dialogue or quest.
+     */
+    function load(world: World, path: string): Result<StoryAsset>;
+    /**
+     * A dialogue or quest from text, now (tests and generated content; assets go through og cook). Registers og.Story as load does.
+     *
+     * @param world The world.
+     * @param text The `.ogt` text.
+     * @returns Refused with the first error's line and the fix.
+     */
+    function parse(world: World, text: string): Result<StoryAsset>;
+    /**
+     * Start a conversation: it runs to its first line (or its choices) now, and og.DialogueShown is sent the next tick. Several may run at once.
+     *
+     * @param world The world.
+     * @param desc The dialogue, and optionally the node, cast and starting variables.
+     * @returns The conversation, or why not: an unloaded dialogue, an unknown node, speaker or variable.
+     */
+    function start(world: World, desc?: StartDesc): Result<number>;
+    /**
+     * What a conversation shows now, resolved in the active locale.
+     *
+     * @param world The world.
+     * @param conversation The conversation.
+     * @returns Null for a conversation that does not exist (never started, or stopped).
+     */
+    function view(world: World, conversation: number): DialogueView | null;
+    /**
+     * A conversation's lines so far, oldest first, with the choice made on each (a VN backlog).
+     *
+     * @param world The world.
+     * @param conversation The conversation.
+     * @returns Empty for an unknown conversation.
+     */
+    function history(world: World, conversation: number): readonly StoryLine[];
+    /**
+     * The conversations that exist (started and not stopped), oldest first.
+     *
+     * @param world The world.
+     */
+    function conversations(world: World): readonly number[];
+    /**
+     * Move a conversation past its line: it runs to the next line, its choices or its end.
+     *
+     * @param world The world.
+     * @param conversation The conversation.
+     * @returns Refused while it waits on choices, after it ended, or for an unknown conversation.
+     */
+    function advance(world: World, conversation: number): Result<void>;
+    /**
+     * Take a choice: its `set`, `emit` and `quest` steps run, an active check rolls (og.DialogueCheck), and the conversation goes to its `goto` (or `fail` on a missed roll), or ends without one.
+     *
+     * @param world The world.
+     * @param conversation The conversation.
+     * @param index ChoiceView.index.
+     * @returns Refused for a hidden or disabled choice, a conversation showing a line, or an unknown one.
+     */
+    function choose(world: World, conversation: number, index: number): Result<void>;
+    /**
+     * End a conversation now (og.DialogueEnded if it was running) and forget it. An ended conversation stays viewable until it is stopped.
+     *
+     * @param world The world.
+     * @param conversation The conversation.
+     * @returns False for an unknown conversation.
+     */
+    function stop(world: World, conversation: number): boolean;
+    /**
+     * A story variable (a `global` of any loaded dialogue or quest): its value, else its declared default.
+     *
+     * @param world The world.
+     * @param name The variable.
+     * @returns A number, a boolean, a string, or null for one nothing declares.
+     */
+    function get(world: World, name: string): unknown;
+    /**
+     * Set a story variable; quests whose conditions now hold advance.
+     *
+     * @param world The world.
+     * @param name The variable.
+     * @param value A number, a boolean or a string.
+     * @returns Refused for another kind of value or a world without a loaded story.
+     */
+    function set(world: World, name: string, value: unknown): Result<void>;
+    /**
+     * A new playthrough: the story's variables, seen nodes, conversations and quests are cleared. Lines read stay read (DialogueView.seen), so a second playthrough can skip them.
+     *
+     * @param world The world.
+     */
+    function reset(world: World): void;
+    /**
+     * Start a loaded quest at its first stage.
+     *
+     * @param world The world.
+     * @param id The quest's id.
+     * @returns False when it had started before. Refused for a quest not loaded.
+     */
+    function startQuest(world: World, id: string): Result<boolean>;
+    /**
+     * Count toward an objective of an active quest's current stage (a wolf killed, a herb picked); the stage advances when its objectives are done.
+     *
+     * @param world The world.
+     * @param quest The quest's id.
+     * @param objective The objective's id.
+     * @param amount How many (default 1).
+     * @returns False when the quest is not active or its stage has no such objective.
+     */
+    function progress(world: World, quest: string, objective: string, amount?: number): boolean;
+    /**
+     * Move an active quest to a stage, its counts cleared.
+     *
+     * @param world The world.
+     * @param quest The quest's id.
+     * @param stage The stage's id.
+     * @returns False when it is not active or already there. Refused for an unknown quest or stage.
+     */
+    function setStage(world: World, quest: string, stage: string): Result<boolean>;
+    /**
+     * Complete an active quest now.
+     *
+     * @param world The world.
+     * @param quest The quest's id.
+     * @returns False when it is not active. Refused for a quest not loaded.
+     */
+    function completeQuest(world: World, quest: string): Result<boolean>;
+    /**
+     * Fail an active quest now: its undone objectives are marked failed.
+     *
+     * @param world The world.
+     * @param quest The quest's id.
+     * @returns False when it is not active. Refused for a quest not loaded.
+     */
+    function failQuest(world: World, quest: string): Result<boolean>;
+    /**
+     * A started quest as the log shows it.
+     *
+     * @param world The world.
+     * @param id The quest's id.
+     * @returns Null for a quest not started.
+     */
+    function quest(world: World, id: string): QuestView | null;
+    /**
+     * Every started quest, in the order they started (a quest log).
+     *
+     * @param world The world.
+     */
+    function quests(world: World): readonly QuestView[];
+    /**
+     * Show a quest in the HUD tracker, or stop showing it.
+     *
+     * @param world The world.
+     * @param id The quest's id.
+     * @param on Tracked.
+     * @returns False for a quest not started.
+     */
+    function track(world: World, id: string, on: boolean): boolean;
+    /**
+     * The player looked at a quest: clear QuestView.isNew and updated.
+     *
+     * @param world The world.
+     * @param id The quest's id.
+     * @returns False for a quest not started.
+     */
+    function markSeen(world: World, id: string): boolean;
+    /**
+     * Point a quest at an entity or a point (the map, compass and tracker read QuestView.marker), over its objectives' own markers.
+     *
+     * @param world The world.
+     * @param id The quest's id.
+     * @param desc The entity or point; both zero clears it.
+     * @returns False for a quest not started.
+     */
+    function mark(world: World, id: string, desc?: MarkerDesc): boolean;
   }
   /**
    * An answer arrived: sent by og.platform at the start of the tick it was applied, read by systems the tick after (og.platform.result has it at once).

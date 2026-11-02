@@ -32,6 +32,18 @@ is one line here, written at the merge that changes
   from its quiet light choices when a look matches no seed family.
   Pre-release, so nothing migrates: name another built-in style, or eject
   `minimal` from an earlier engine first and name the game's own copy.
+- **Dialogue and quests (G2-8).** A new module, `og.story`, over a new
+  crate og-story: dialogues (`type dialogue`) and quests (`type quest`)
+  cook into new `og.Dialogue` and `og.Quest` blobs (new type hashes; no
+  existing blob changes), validated with each error's line and fix, and
+  every key they show checked against the base string table. A
+  conversation's view (`og.story.view`) carries the whole line resolved
+  through og.i18n, its speaker and choices (`reason` from a key, `visited`,
+  checks with their chance, timers); quests list with `og.story.quests`.
+  The story is world state (the `og.story` state block, by ids); og.Story
+  and the events `og.DialogueShown`, `og.DialogueEnded`,
+  `og.DialogueCheck`, `og.QuestUpdated` and `og.StoryEvent` are lazy, so a
+  world without a story keeps its hash. Knowledge: skill `og-story`.
 - **Formatting and time groups (G2-6, batch 3).** `og.i18n` formats
   compact numbers, currencies, dates, times and durations
   (`formatCompact`, `formatCurrency`, `formatDate`, `formatTime`,

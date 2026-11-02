@@ -1,0 +1,19 @@
+type strings
+version 1
+---
+locale "ja"
+string "npc.smith" "ブラノック"
+string "smith.hello" "鋼は安くない。所持金は{gold}ゴールドだな。"
+string "smith.buy" "剣を買う（10ゴールド）"
+string "smith.need_gold" "あと{need}ゴールド必要だ。"
+string "smith.haggle" "値切る"
+string "smith.secret" "古い鍛冶場について聞く"
+string "smith.leave" "立ち去る"
+string "smith.thanks" "刃に気をつけろ。"
+string "smith.calm" "いいだろう。もう一度だ。"
+string "smith.furious" "鍛冶場から出ていけ！"
+string "quest.rescue" "失われた剣"
+string "quest.rescue.wolves" "狼を追い払う（{count}/{target}）"
+string "quest.rescue.sword" "武器を手に入れる"
+string "quest.rescue.talk" "鍛冶屋に報告する"
+string "item.gold" "ゴールド"

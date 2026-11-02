@@ -1848,6 +1848,7 @@ dependencies = [
  "og-nav",
  "og-records",
  "og-render",
+ "og-story",
  "og-tests",
  "og-tilemap",
  "og-timeline",
@@ -2094,12 +2095,20 @@ dependencies = [
  "og-physics",
  "og-probe",
  "og-render",
+ "og-story",
  "og-tilemap",
  "og-timeline",
  "og-tween",
  "og-ui",
  "serde_json",
  "zmij",
+]
+
+[[package]]
+name = "og-story"
+version = "0.7.7"
+dependencies = [
+ "og-core",
 ]
 
 [[package]]

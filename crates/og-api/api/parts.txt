@@ -21,6 +21,7 @@ tilemap.ogt
 audio.ogt
 nav.ogt
 ai.ogt
+story.ogt
 platform.ogt
 i18n.ogt
 ui.ogt

@@ -110,6 +110,8 @@ enum Kind {
     UiMaterial,
     Vector,
     Behaviour,
+    Dialogue,
+    Quest,
     NavMesh,
     Strings,
     Rig,
@@ -146,6 +148,8 @@ impl Kind {
             Kind::UiMaterial => "ui-material",
             Kind::Vector => "vector",
             Kind::Behaviour => "behaviour",
+            Kind::Dialogue => "dialogue",
+            Kind::Quest => "quest",
             Kind::NavMesh => "navmesh",
             Kind::Strings => "strings",
             Kind::Rig => "rig",
@@ -226,6 +230,8 @@ enum Work<'a> {
     UiMaterial(&'a Source),
     Vector(&'a Source),
     Behaviour(&'a Source),
+    Dialogue(&'a Source),
+    Quest(&'a Source),
     NavMesh(&'a Source),
     Strings(&'a Source),
     Rig(&'a Source),
@@ -1002,6 +1008,14 @@ pub fn cook_project_with_texture_cache(
                     Work::Behaviour(s),
                 ));
             }
+            Kind::Dialogue => {
+                let st = stamp(&[b"dialogue", &hash]);
+                outs.push((s.rel.clone(), format::Dialogue::NAME, st, Work::Dialogue(s)));
+            }
+            Kind::Quest => {
+                let st = stamp(&[b"quest", &hash]);
+                outs.push((s.rel.clone(), format::Quest::NAME, st, Work::Quest(s)));
+            }
             Kind::Strings => {
                 let st = stamp(&[b"strings", &hash]);
                 outs.push((s.rel.clone(), format::Strings::NAME, st, Work::Strings(s)));
@@ -1530,6 +1544,18 @@ pub fn cook_project_with_texture_cache(
         .collect();
     let mut warnings = Vec::new();
     for (rel, what) in e6::check_strings(&tables) {
+        warnings.push(format!("assets/{rel}: {what}"));
+        if let Some(r) = reports.iter_mut().find(|r| r.source == rel) {
+            r.notes.push(what);
+        }
+    }
+    // Dialogues and quests: every key they show is in the base table.
+    let stories: Vec<(&str, &[u8])> = sources
+        .iter()
+        .filter(|s| matches!(s.kind, Kind::Dialogue | Kind::Quest))
+        .map(|s| (s.rel.as_str(), s.bytes.as_slice()))
+        .collect();
+    for (rel, what) in e6::check_story_keys(&tables, &stories) {
         warnings.push(format!("assets/{rel}: {what}"));
         if let Some(r) = reports.iter_mut().find(|r| r.source == rel) {
             r.notes.push(what);

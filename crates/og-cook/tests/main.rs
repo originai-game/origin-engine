@@ -33,6 +33,7 @@ mod shader;
 mod sound_chunks;
 mod sound_formats;
 mod sound_opus;
+mod story;
 mod stream;
 mod strings;
 mod support;

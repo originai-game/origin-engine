@@ -1619,6 +1619,116 @@ pub fn og_ai_describe(world: u32, entity: f64) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_story_load(world: u32, path: String) -> String {
+    <Host as StoryApi>::og_story_load(&Host, world, path)
+}
+
+#[wasm_bindgen]
+pub fn og_story_parse(world: u32, text: String) -> String {
+    <Host as StoryApi>::og_story_parse(&Host, world, text)
+}
+
+#[wasm_bindgen]
+pub fn og_story_start(world: u32, desc: Option<String>) -> String {
+    <Host as StoryApi>::og_story_start(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_story_view(world: u32, conversation: u32) -> String {
+    <Host as StoryApi>::og_story_view(&Host, world, conversation)
+}
+
+#[wasm_bindgen]
+pub fn og_story_history(world: u32, conversation: u32) -> String {
+    <Host as StoryApi>::og_story_history(&Host, world, conversation)
+}
+
+#[wasm_bindgen]
+pub fn og_story_conversations(world: u32) -> String {
+    <Host as StoryApi>::og_story_conversations(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_story_advance(world: u32, conversation: u32) -> String {
+    <Host as StoryApi>::og_story_advance(&Host, world, conversation)
+}
+
+#[wasm_bindgen]
+pub fn og_story_choose(world: u32, conversation: u32, index: u32) -> String {
+    <Host as StoryApi>::og_story_choose(&Host, world, conversation, index)
+}
+
+#[wasm_bindgen]
+pub fn og_story_stop(world: u32, conversation: u32) -> bool {
+    <Host as StoryApi>::og_story_stop(&Host, world, conversation)
+}
+
+#[wasm_bindgen]
+pub fn og_story_get(world: u32, name: String) -> String {
+    <Host as StoryApi>::og_story_get(&Host, world, name)
+}
+
+#[wasm_bindgen]
+pub fn og_story_set(world: u32, name: String, value: String) -> String {
+    <Host as StoryApi>::og_story_set(&Host, world, name, value)
+}
+
+#[wasm_bindgen]
+pub fn og_story_reset(world: u32) {
+    <Host as StoryApi>::og_story_reset(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_story_start_quest(world: u32, id: String) -> String {
+    <Host as StoryApi>::og_story_start_quest(&Host, world, id)
+}
+
+#[wasm_bindgen]
+pub fn og_story_progress(world: u32, quest: String, objective: String, amount: Option<u32>) -> bool {
+    <Host as StoryApi>::og_story_progress(&Host, world, quest, objective, amount)
+}
+
+#[wasm_bindgen]
+pub fn og_story_set_stage(world: u32, quest: String, stage: String) -> String {
+    <Host as StoryApi>::og_story_set_stage(&Host, world, quest, stage)
+}
+
+#[wasm_bindgen]
+pub fn og_story_complete_quest(world: u32, quest: String) -> String {
+    <Host as StoryApi>::og_story_complete_quest(&Host, world, quest)
+}
+
+#[wasm_bindgen]
+pub fn og_story_fail_quest(world: u32, quest: String) -> String {
+    <Host as StoryApi>::og_story_fail_quest(&Host, world, quest)
+}
+
+#[wasm_bindgen]
+pub fn og_story_quest(world: u32, id: String) -> String {
+    <Host as StoryApi>::og_story_quest(&Host, world, id)
+}
+
+#[wasm_bindgen]
+pub fn og_story_quests(world: u32) -> String {
+    <Host as StoryApi>::og_story_quests(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_story_track(world: u32, id: String, on: bool) -> bool {
+    <Host as StoryApi>::og_story_track(&Host, world, id, on)
+}
+
+#[wasm_bindgen]
+pub fn og_story_mark_seen(world: u32, id: String) -> bool {
+    <Host as StoryApi>::og_story_mark_seen(&Host, world, id)
+}
+
+#[wasm_bindgen]
+pub fn og_story_mark(world: u32, id: String, desc: Option<String>) -> bool {
+    <Host as StoryApi>::og_story_mark(&Host, world, id, desc)
+}
+
+#[wasm_bindgen]
 pub fn og_platform_store_get(world: u32, key: String) -> String {
     <Host as PlatformApi>::og_platform_store_get(&Host, world, key)
 }

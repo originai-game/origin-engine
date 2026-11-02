@@ -44,7 +44,7 @@ export function readRules(pkg: string): Rules {
 }
 
 /** The skills this package ships. */
-export const SKILLS = ["og-2d", "og-ai", "og-anim", "og-audio", "og-build", "og-core", "og-feel", "og-game", "og-i18n", "og-model", "og-net", "og-physics", "og-platform-sdk", "og-render", "og-taste", "og-ui", "architecture-discipline", "component-forge", "level-texturing", "localization", "recipe-craft", "ui-craft", "visual-acceptance"] as const;
+export const SKILLS = ["og-2d", "og-ai", "og-anim", "og-audio", "og-build", "og-core", "og-feel", "og-game", "og-i18n", "og-model", "og-net", "og-physics", "og-platform-sdk", "og-render", "og-story", "og-taste", "og-ui", "architecture-discipline", "component-forge", "level-texturing", "localization", "recipe-craft", "ui-craft", "visual-acceptance"] as const;
 
 /**
  * The guides this package ships: hand-written pages in guides/, mounted

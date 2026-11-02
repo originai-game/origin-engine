@@ -100,10 +100,37 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: "og.TimeGroups",
         enable: |w| enable_time_groups(w, og_core::TimeGroups::NAME),
     },
+    // G2-8: og.story's resource and events, registered at the first
+    // og.story.load (together, TOGETHER); og.story sends the events and
+    // writes the resource.
+    Lazy {
+        name: crate::story::STORY,
+        enable: |w| w.grant(crate::story::SYSTEM, &[crate::story::STORY]),
+    },
+    Lazy {
+        name: crate::story::SHOWN,
+        enable: |w| w.grant(crate::story::SYSTEM, &[crate::story::SHOWN]),
+    },
+    Lazy {
+        name: crate::story::ENDED,
+        enable: |w| w.grant(crate::story::SYSTEM, &[crate::story::ENDED]),
+    },
+    Lazy {
+        name: crate::story::CHECK,
+        enable: |w| w.grant(crate::story::SYSTEM, &[crate::story::CHECK]),
+    },
+    Lazy {
+        name: crate::story::QUEST_UPDATED,
+        enable: |w| w.grant(crate::story::SYSTEM, &[crate::story::QUEST_UPDATED]),
+    },
+    Lazy {
+        name: crate::story::STORY_EVENT,
+        enable: |w| w.grant(crate::story::SYSTEM, &[crate::story::STORY_EVENT]),
+    },
 ];
 
 /// Lazy records registered together: naming one registers the rest.
-const TOGETHER: &[&[&str]] = &[&["og.TimeGroup", "og.TimeGroups"]];
+const TOGETHER: &[&[&str]] = &[&["og.TimeGroup", "og.TimeGroups"], &crate::story::RECORDS];
 
 /// Lazy record `name` and the ones registered with it.
 pub(crate) fn with_partners(name: &'static str) -> Vec<&'static str> {
@@ -161,6 +188,9 @@ pub(crate) fn ensure(eng: &Engine, world: &mut World, name: &str) -> Result<(), 
         }
     }
     (lazy.enable)(world).map_err(|e| format!("{name}: {}", e.reason()))?;
+    if name == crate::story::STORY {
+        crate::story::attach(eng.id, world)?;
+    }
     for partner in with_partners(lazy.name) {
         if partner != lazy.name {
             ensure(eng, world, partner)?;
@@ -171,9 +201,15 @@ pub(crate) fn ensure(eng: &Engine, world: &mut World, name: &str) -> Result<(), 
 
 /// Runs lazy record `name`'s module grant on a world that has registered
 /// it (assembly, once the modules are mounted).
-pub(crate) fn enable(world: &mut World, name: &str) -> Result<(), String> {
+pub(crate) fn enable(world: &mut World, engine: u32, name: &str) -> Result<(), String> {
     match LAZY.iter().find(|l| l.name == name) {
-        Some(l) => (l.enable)(world).map_err(|e| format!("{name}: {}", e.reason())),
+        Some(l) => {
+            (l.enable)(world).map_err(|e| format!("{name}: {}", e.reason()))?;
+            if name == crate::story::STORY {
+                crate::story::attach(engine, world)?;
+            }
+            Ok(())
+        }
         None => Ok(()),
     }
 }

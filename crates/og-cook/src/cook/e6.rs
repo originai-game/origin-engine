@@ -122,6 +122,124 @@ pub(super) fn cook_behaviour(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Str
     ))
 }
 
+/// A dialogue or quest (G2-8): validated by og-story's parser and kept as
+/// text, parsed again at load.
+pub(super) fn cook_story(
+    s: &Source,
+    stamp: u64,
+    quest: bool,
+) -> Result<(Vec<u8>, Vec<String>), CookError> {
+    let what = if quest { "quest" } else { "dialogue" };
+    let text = std::str::from_utf8(&s.bytes)
+        .map_err(|_| CookError(format!("a {what} is text (UTF-8)")))?;
+    let (mut w, note) = if quest {
+        let q = og_story::Quest::parse(text).map_err(CookError)?;
+        let w = BlobWriter::new(
+            format::Quest::type_hash(),
+            format::Quest::schema_version(),
+            stamp,
+        );
+        let objectives: usize = q.stages.iter().map(|s| s.objectives.len()).sum();
+        let note = format!(
+            "quest '{}': {} stages, {objectives} objectives",
+            q.id,
+            q.stages.len()
+        );
+        (w, note)
+    } else {
+        let d = og_story::Dialogue::parse(text).map_err(CookError)?;
+        let w = BlobWriter::new(
+            format::Dialogue::type_hash(),
+            format::Dialogue::schema_version(),
+            stamp,
+        );
+        let choices: usize = d.nodes.iter().map(|n| n.choices.len()).sum();
+        let note = format!(
+            "dialogue '{}': {} nodes, {choices} choices, {} speakers",
+            d.name,
+            d.nodes.len(),
+            d.speakers.len()
+        );
+        (w, note)
+    };
+    if quest {
+        w.table(
+            "meta",
+            &[format::QuestMeta {
+                text_bytes: text.len() as u32,
+            }],
+            format::row_hash::<format::QuestMeta>(),
+        );
+    } else {
+        w.table(
+            "meta",
+            &[format::DialogueMeta {
+                text_bytes: text.len() as u32,
+            }],
+            format::row_hash::<format::DialogueMeta>(),
+        );
+    }
+    w.raw("text", text.as_bytes().to_vec(), 16);
+    Ok((w.finish(), vec![note]))
+}
+
+/// The cook's check of dialogues and quests against the base string table:
+/// every key they show is in it, and every argument its message takes is
+/// passed. As (source, line) warnings; nothing without a string table.
+pub(super) fn check_story_keys(
+    tables: &[(&str, &[u8])],
+    stories: &[(&str, &[u8])],
+) -> Vec<(String, String)> {
+    let parsed: Vec<og_i18n::StringTable> = tables
+        .iter()
+        .filter_map(|(_, b)| og_i18n::StringTable::parse(std::str::from_utf8(b).ok()?).ok())
+        .collect();
+    let Some(base) = og_i18n::base_table(&parsed) else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for (rel, bytes) in stories {
+        let Ok(text) = std::str::from_utf8(bytes) else {
+            continue;
+        };
+        let keys = match og_core::ogt::Document::parse(text).map(|d| d.ty) {
+            Ok(t) if t == og_story::QUEST_TYPE => og_story::Quest::parse(text).map(|q| q.keys()),
+            Ok(_) => og_story::Dialogue::parse(text).map(|d| d.keys()),
+            Err(_) => continue,
+        };
+        let Ok(keys) = keys else { continue };
+        for (key, args, line) in keys {
+            let at = if line > 0 {
+                format!("line {line}: ")
+            } else {
+                String::new()
+            };
+            match base.entries.get(&key) {
+                None => out.push((
+                    rel.to_string(),
+                    format!(
+                        "{at}the key '{key}' is not in the base string table ({}): add it there",
+                        base.locale
+                    ),
+                )),
+                Some((_, m)) => {
+                    for a in m.arguments() {
+                        if !args.contains(&a) {
+                            out.push((
+                                rel.to_string(),
+                                format!(
+                                    "{at}the message '{key}' takes {{{a}}}, which nothing passes: add 'arg {a} \"...\"'"
+                                ),
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    out
+}
+
 fn string_of(b: &Block, key: &str) -> Option<String> {
     b.get(key)
         .and_then(|e| e.values.first())

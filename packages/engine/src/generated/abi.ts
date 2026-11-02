@@ -651,6 +651,50 @@ export interface HostAbi<A, V> {
   og_ai_noise(world: number, desc: string | undefined): string;
   /** `og.ai.describe` */
   og_ai_describe(world: number, entity: number): string;
+  /** `og.story.load` */
+  og_story_load(world: number, path: string): string;
+  /** `og.story.parse` */
+  og_story_parse(world: number, text: string): string;
+  /** `og.story.start` */
+  og_story_start(world: number, desc: string | undefined): string;
+  /** `og.story.view` */
+  og_story_view(world: number, conversation: number): string;
+  /** `og.story.history` */
+  og_story_history(world: number, conversation: number): string;
+  /** `og.story.conversations` */
+  og_story_conversations(world: number): string;
+  /** `og.story.advance` */
+  og_story_advance(world: number, conversation: number): string;
+  /** `og.story.choose` */
+  og_story_choose(world: number, conversation: number, index: number): string;
+  /** `og.story.stop` */
+  og_story_stop(world: number, conversation: number): boolean;
+  /** `og.story.get` */
+  og_story_get(world: number, name: string): string;
+  /** `og.story.set` */
+  og_story_set(world: number, name: string, value: string): string;
+  /** `og.story.reset` */
+  og_story_reset(world: number): void;
+  /** `og.story.startQuest` */
+  og_story_start_quest(world: number, id: string): string;
+  /** `og.story.progress` */
+  og_story_progress(world: number, quest: string, objective: string, amount: number | undefined): boolean;
+  /** `og.story.setStage` */
+  og_story_set_stage(world: number, quest: string, stage: string): string;
+  /** `og.story.completeQuest` */
+  og_story_complete_quest(world: number, quest: string): string;
+  /** `og.story.failQuest` */
+  og_story_fail_quest(world: number, quest: string): string;
+  /** `og.story.quest` */
+  og_story_quest(world: number, id: string): string;
+  /** `og.story.quests` */
+  og_story_quests(world: number): string;
+  /** `og.story.track` */
+  og_story_track(world: number, id: string, on: boolean): boolean;
+  /** `og.story.markSeen` */
+  og_story_mark_seen(world: number, id: string): boolean;
+  /** `og.story.mark` */
+  og_story_mark(world: number, id: string, desc: string | undefined): boolean;
   /** `og.platform.storeGet` */
   og_platform_store_get(world: number, key: string): string;
   /** `og.platform.storeSet` */
@@ -1421,6 +1465,28 @@ export const SYMBOLS: readonly string[] = [
   "og_ai_finish",
   "og_ai_noise",
   "og_ai_describe",
+  "og_story_load",
+  "og_story_parse",
+  "og_story_start",
+  "og_story_view",
+  "og_story_history",
+  "og_story_conversations",
+  "og_story_advance",
+  "og_story_choose",
+  "og_story_stop",
+  "og_story_get",
+  "og_story_set",
+  "og_story_reset",
+  "og_story_start_quest",
+  "og_story_progress",
+  "og_story_set_stage",
+  "og_story_complete_quest",
+  "og_story_fail_quest",
+  "og_story_quest",
+  "og_story_quests",
+  "og_story_track",
+  "og_story_mark_seen",
+  "og_story_mark",
   "og_platform_store_get",
   "og_platform_store_set",
   "og_platform_store_list",

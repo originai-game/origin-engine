@@ -2,7 +2,7 @@
 
 # The Origin Engine API
 
-`@origingame/engine`, API version 1: 36 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
+`@origingame/engine`, API version 1: 37 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
 
 The Origin Engine API. Game code declares components and systems, and reads the world through typed views over engine memory.
 
@@ -91,6 +91,12 @@ Grouped by the skill that teaches them: the skill says how much of each to use a
 | [`nav`](nav.md) | `og.nav.*` | kept | Navigation: grids (A* and jump point search with eight-way moves that never cut a blocked corner, line-of-sight smoothing), flow fields for crowds, and navmeshes (baked at cook time from a level's static colliders and models, or built at runtime for a flat procedural level) with funnel paths and box obstacles that rebuild only the tiles they touch. |
 | [`ai`](ai.md) | `og.ai.*` | kept | Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (og-ai §3 has every line), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent. |
 
+### `og-story`
+
+| Module | TypeScript | Publish builds | Summary |
+|---|---|---|---|
+| [`story`](story.md) | `og.story.*` | kept | Dialogue and quests as data: dialogues in `.ogt` files of `type dialogue` (speakers, nodes of lines, choices with conditions, reasons and checks, variables, weighted picks, timers) and quests in `type quest` files (stages of objectives, rewards, conditions), validated by og cook, which names each mistake's line and the fix. Text is never inline: every line, choice, reason, name and title is an og.i18n key, and og.story resolves it in the active locale when it is read, so a locale switch re-translates the line on screen. og-story §1 has every line of both formats. |
+
 ### `og-platform-sdk`
 
 | Module | TypeScript | Publish builds | Summary |
@@ -160,7 +166,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2084 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2127 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -329,14 +335,17 @@ Field units the docs and Tune use.
 | [`ChartSeries`](ui.md#type-ChartSeries) | desc struct | ui | — |
 | [`CheckFieldDesc`](ui.md#type-CheckFieldDesc) | desc struct | ui | — |
 | [`CheckListResult`](ui.md#type-CheckListResult) | struct | ui | — |
+| [`CheckView`](story.md#type-CheckView) | struct | story | — |
 | [`ChipDesc`](ui.md#type-ChipDesc) | desc struct | ui | — |
 | [`ChoiceIndexResult`](ui.md#type-ChoiceIndexResult) | struct | ui | — |
 | [`ChoiceResult`](ui.md#type-ChoiceResult) | struct | ui | — |
+| [`ChoiceView`](story.md#type-ChoiceView) | struct | story | — |
 | [`Choreo`](ui.md#type-Choreo) | union | ui | — |
 | [`ChoreoCascade`](ui.md#type-ChoreoCascade) | struct | ui | — |
 | [`ChoreoPlay`](ui.md#type-ChoreoPlay) | struct | ui | — |
 | [`ChoreoStagger`](ui.md#type-ChoreoStagger) | struct | ui | — |
 | [`ChoreoSteps`](ui.md#type-ChoreoSteps) | struct | ui | — |
+| [`ChosenView`](story.md#type-ChosenView) | struct | story | — |
 | [`CircleGeometryDesc`](render.md#type-CircleGeometryDesc) | desc struct | render | — |
 | [`ClipAsset`](anim.md#type-ClipAsset) | handle | anim | — |
 | [`ClipAsset()`](anim.md#column-ClipAsset) | column kind | anim | — |
@@ -419,6 +428,7 @@ Field units the docs and Tune use.
 | [`DialogueDesc`](ui.md#type-DialogueDesc) | desc struct | ui | — |
 | [`DialogueLine`](ui.md#type-DialogueLine) | desc struct | ui | — |
 | [`DialogueResult`](ui.md#type-DialogueResult) | struct | ui | — |
+| [`DialogueView`](story.md#type-DialogueView) | struct | story | — |
 | [`Direction`](ui.md#type-Direction) | enum | ui | — |
 | [`DismissSpec`](ui.md#type-DismissSpec) | desc struct | ui | — |
 | [`DisplayInfo`](render.md#type-DisplayInfo) | struct | render | — |
@@ -703,7 +713,9 @@ Field units the docs and Tune use.
 | [`MapMarker`](ui.md#type-MapMarker) | desc struct | ui | — |
 | [`MapMarkerItem`](ui.md#type-MapMarkerItem) | desc struct | ui | — |
 | [`MapShape`](ui.md#type-MapShape) | enum | ui | — |
+| [`MarkerDesc`](story.md#type-MarkerDesc) | desc struct | story | — |
 | [`MarkerKind`](ui.md#type-MarkerKind) | enum | ui | — |
+| [`MarkerView`](story.md#type-MarkerView) | struct | story | — |
 | [`MaskDesc`](ui.md#type-MaskDesc) | desc struct | ui | — |
 | [`MassEase`](ui.md#type-MassEase) | enum | ui | — |
 | [`MassInstance`](ui.md#type-MassInstance) | desc struct | ui | — |
@@ -802,6 +814,7 @@ Field units the docs and Tune use.
 | [`ObjectiveQuest`](ui.md#type-ObjectiveQuest) | desc struct | ui | — |
 | [`ObjectiveStep`](ui.md#type-ObjectiveStep) | desc struct | ui | — |
 | [`ObjectiveTrackerDesc`](ui.md#type-ObjectiveTrackerDesc) | desc struct | ui | — |
+| [`ObjectiveView`](story.md#type-ObjectiveView) | struct | story | — |
 | [`og.A11yAction`](input.md#record-A11yAction) | event | input | — |
 | [`og.Afterimage`](render.md#record-Afterimage) | component | render | — |
 | [`og.ai.describe`](ai.md#fn-describe) | function | ai | `og_ai_describe` |
@@ -885,6 +898,9 @@ Field units the docs and Tune use.
 | [`og.debug.view`](debug.md#fn-view) | function | debug | `og_debug_view` |
 | [`og.Decal`](render.md#record-Decal) | component | render | — |
 | [`og.Desync`](net.md#record-Desync) | event | net | — |
+| [`og.DialogueCheck`](story.md#record-DialogueCheck) | event | story | — |
+| [`og.DialogueEnded`](story.md#record-DialogueEnded) | event | story | — |
+| [`og.DialogueShown`](story.md#record-DialogueShown) | event | story | — |
 | [`og.DirectionalLight`](render.md#record-DirectionalLight) | component | render | — |
 | [`og.Environment`](render.md#record-Environment) | resource | render | — |
 | [`og.Flipbook`](anim.md#record-Flipbook) | component | anim | — |
@@ -1100,6 +1116,7 @@ Field units the docs and Tune use.
 | [`og.procgen.noiseGrid`](procgen.md#fn-noiseGrid) | function | procgen | `og_procgen_noise_grid` |
 | [`og.procgen.poissonDisk`](procgen.md#fn-poissonDisk) | function | procgen | `og_procgen_poisson_disk` |
 | [`og.procgen.wfc`](procgen.md#fn-wfc) | function | procgen | `og_procgen_wfc` |
+| [`og.QuestUpdated`](story.md#record-QuestUpdated) | event | story | — |
 | [`og.Ragdoll`](physics.md#record-Ragdoll) | component | physics | — |
 | [`og.RectLight`](render.md#record-RectLight) | component | render | — |
 | [`og.ReflectionProbe`](render.md#record-ReflectionProbe) | component | render | — |
@@ -1180,6 +1197,30 @@ Field units the docs and Tune use.
 | [`og.SpringCollider`](anim.md#record-SpringCollider) | component | anim | — |
 | [`og.Sprite`](render.md#record-Sprite) | component | render | — |
 | [`og.Steering`](nav.md#record-Steering) | component | nav | — |
+| [`og.Story`](story.md#record-Story) | resource | story | — |
+| [`og.story.advance`](story.md#fn-advance) | function | story | `og_story_advance` |
+| [`og.story.choose`](story.md#fn-choose) | function | story | `og_story_choose` |
+| [`og.story.completeQuest`](story.md#fn-completeQuest) | function | story | `og_story_complete_quest` |
+| [`og.story.conversations`](story.md#fn-conversations) | function | story | `og_story_conversations` |
+| [`og.story.failQuest`](story.md#fn-failQuest) | function | story | `og_story_fail_quest` |
+| [`og.story.get`](story.md#fn-get) | function | story | `og_story_get` |
+| [`og.story.history`](story.md#fn-history) | function | story | `og_story_history` |
+| [`og.story.load`](story.md#fn-load) | function | story | `og_story_load` |
+| [`og.story.mark`](story.md#fn-mark) | function | story | `og_story_mark` |
+| [`og.story.markSeen`](story.md#fn-markSeen) | function | story | `og_story_mark_seen` |
+| [`og.story.parse`](story.md#fn-parse) | function | story | `og_story_parse` |
+| [`og.story.progress`](story.md#fn-progress) | function | story | `og_story_progress` |
+| [`og.story.quest`](story.md#fn-quest) | function | story | `og_story_quest` |
+| [`og.story.quests`](story.md#fn-quests) | function | story | `og_story_quests` |
+| [`og.story.reset`](story.md#fn-reset) | function | story | `og_story_reset` |
+| [`og.story.set`](story.md#fn-set) | function | story | `og_story_set` |
+| [`og.story.setStage`](story.md#fn-setStage) | function | story | `og_story_set_stage` |
+| [`og.story.start`](story.md#fn-start) | function | story | `og_story_start` |
+| [`og.story.startQuest`](story.md#fn-startQuest) | function | story | `og_story_start_quest` |
+| [`og.story.stop`](story.md#fn-stop) | function | story | `og_story_stop` |
+| [`og.story.track`](story.md#fn-track) | function | story | `og_story_track` |
+| [`og.story.view`](story.md#fn-view) | function | story | `og_story_view` |
+| [`og.StoryEvent`](story.md#record-StoryEvent) | event | story | — |
 | [`og.stream.budget`](stream.md#fn-budget) | function | stream | `og_stream_budget` |
 | [`og.stream.release`](stream.md#fn-release) | function | stream | `og_stream_release` |
 | [`og.stream.request`](stream.md#fn-request) | function | stream | `og_stream_request` |
@@ -1686,6 +1727,7 @@ Field units the docs and Tune use.
 | [`Query.count`](world.md#member-Query-count) | method | world | `og_query_count` |
 | [`QueryDesc`](world.md#type-QueryDesc) | desc struct | world | — |
 | [`QueryFilter`](physics.md#type-QueryFilter) | desc struct | physics | — |
+| [`QuestView`](story.md#type-QuestView) | struct | story | — |
 | [`RaceSplit`](ui.md#type-RaceSplit) | desc struct | ui | — |
 | [`RacingHudDesc`](ui.md#type-RacingHudDesc) | desc struct | ui | — |
 | [`RadialDesc`](ui.md#type-RadialDesc) | desc struct | ui | — |
@@ -1748,6 +1790,7 @@ Field units the docs and Tune use.
 | [`RewardChoiceResult`](ui.md#type-RewardChoiceResult) | struct | ui | — |
 | [`RewardOption`](ui.md#type-RewardOption) | desc struct | ui | — |
 | [`RewardTagKind`](ui.md#type-RewardTagKind) | enum | ui | — |
+| [`RewardView`](story.md#type-RewardView) | struct | story | — |
 | [`RibbonDesc`](render.md#type-RibbonDesc) | desc struct | render | — |
 | [`RibbonPoint`](render.md#type-RibbonPoint) | desc struct | render | — |
 | [`RichTextDesc`](ui.md#type-RichTextDesc) | desc struct | ui | — |
@@ -1775,6 +1818,7 @@ Field units the docs and Tune use.
 | [`RngStream.range`](rng.md#member-RngStream-range) | method | rng | `og_rng_stream_range` |
 | [`RngStream.seed`](rng.md#member-RngStream-seed) | property | rng | `og_rng_stream_get_seed` |
 | [`RngStream.weighted`](rng.md#member-RngStream-weighted) | method | rng | `og_rng_stream_weighted` |
+| [`RollView`](story.md#type-RollView) | struct | story | — |
 | [`RoomDesc`](platform.md#type-RoomDesc) | desc struct | platform | — |
 | [`RoomInfo`](platform.md#type-RoomInfo) | struct | platform | — |
 | [`RoomMessageData`](platform.md#type-RoomMessageData) | struct | platform | — |
@@ -1930,6 +1974,7 @@ Field units the docs and Tune use.
 | [`SpatialIndex.nearest`](world.md#member-SpatialIndex-nearest) | method | world | `og_spatial_index_nearest` |
 | [`SpatialIndex.within`](world.md#member-SpatialIndex-within) | method | world | `og_spatial_index_within` |
 | [`SpawnDesc`](world.md#type-SpawnDesc) | desc struct | world | — |
+| [`SpeakerView`](story.md#type-SpeakerView) | struct | story | — |
 | [`SpeechBubbleDesc`](ui.md#type-SpeechBubbleDesc) | desc struct | ui | — |
 | [`SpeedometerDesc`](ui.md#type-SpeedometerDesc) | desc struct | ui | — |
 | [`SpeedoStyle`](ui.md#type-SpeedoStyle) | enum | ui | — |
@@ -1963,6 +2008,7 @@ Field units the docs and Tune use.
 | [`StarBarDesc`](ui.md#type-StarBarDesc) | desc struct | ui | — |
 | [`StarBarResult`](ui.md#type-StarBarResult) | struct | ui | — |
 | [`StarRatingDesc`](ui.md#type-StarRatingDesc) | desc struct | ui | — |
+| [`StartDesc`](story.md#type-StartDesc) | desc struct | story | — |
 | [`StartFn`](game.md#type-StartFn) | callback | game | — |
 | [`StatBarDesc`](ui.md#type-StatBarDesc) | desc struct | ui | — |
 | [`StatBarStyle`](ui.md#type-StatBarStyle) | enum | ui | — |
@@ -1985,6 +2031,8 @@ Field units the docs and Tune use.
 | [`StoreOffer`](ui.md#type-StoreOffer) | desc struct | ui | — |
 | [`StoreSection`](ui.md#type-StoreSection) | desc struct | ui | — |
 | [`StoreSetDesc`](platform.md#type-StoreSetDesc) | desc struct | platform | — |
+| [`StoryAsset`](story.md#type-StoryAsset) | struct | story | — |
+| [`StoryLine`](story.md#type-StoryLine) | struct | story | — |
 | [`str()`](reflect.md#column-str) | column kind | reflect | — |
 | [`STREAM_FAILED`](stream.md#const-STREAM_FAILED) | constant | stream | — |
 | [`STREAM_LOADING`](stream.md#const-STREAM_LOADING) | constant | stream | — |
@@ -2080,6 +2128,7 @@ Field units the docs and Tune use.
 | [`TimelineTrack`](ui.md#type-TimelineTrack) | struct | ui | — |
 | [`TimelineTrackInfo`](timeline.md#type-TimelineTrackInfo) | struct | timeline | — |
 | [`TimerMode`](ui.md#type-TimerMode) | enum | ui | — |
+| [`TimerView`](story.md#type-TimerView) | struct | story | — |
 | [`TimeStyle`](i18n.md#type-TimeStyle) | enum | i18n | — |
 | [`ToastDesc`](ui.md#type-ToastDesc) | desc struct | ui | — |
 | [`ToggleResult`](ui.md#type-ToggleResult) | struct | ui | — |

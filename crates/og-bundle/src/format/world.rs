@@ -193,6 +193,42 @@ impl BlobKind for Behaviour {
 }
 
 row!(
+    /// The root of a dialogue blob (an `.ogt` of `type dialogue`, G2-8).
+    DialogueMeta, "og.Dialogue", 1 {
+        /// Bytes of the validated dialogue text in `text`.
+        text_bytes: u32,
+    }
+);
+
+/// The dialogue blob: `text` holds the dialogue file the cook validated
+/// (og-story's `Dialogue::parse`), parsed again at load.
+pub struct Dialogue;
+impl BlobKind for Dialogue {
+    const NAME: &'static str = "og.Dialogue";
+    fn schemas() -> Vec<Schema> {
+        vec![DialogueMeta::schema()]
+    }
+}
+
+row!(
+    /// The root of a quest blob (an `.ogt` of `type quest`, G2-8).
+    QuestMeta, "og.Quest", 1 {
+        /// Bytes of the validated quest text in `text`.
+        text_bytes: u32,
+    }
+);
+
+/// The quest blob: `text` holds the quest file the cook validated
+/// (og-story's `Quest::parse`), parsed again at load.
+pub struct Quest;
+impl BlobKind for Quest {
+    const NAME: &'static str = "og.Quest";
+    fn schemas() -> Vec<Schema> {
+        vec![QuestMeta::schema()]
+    }
+}
+
+row!(
     /// The root of a rig blob (an `.ogt` of `type rig`).
     RigMeta, "og.Rig", 1 {
         /// Bytes of the canonical rig text in `text`.

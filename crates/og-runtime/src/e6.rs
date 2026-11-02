@@ -122,6 +122,7 @@ pub(crate) fn mount_front(
     super::platform::mount(world, engine)?;
     super::stream::mount(world, engine)?;
     super::net::mount(world, engine)?;
+    super::story::mount(world, engine)?;
     let ai = og_ai::install(
         world,
         records,
@@ -205,6 +206,7 @@ pub(crate) fn retire(engine: u32) {
     super::stream::retire(engine);
     super::terrain::retire(engine);
     super::i18n::retire(engine);
+    super::story::retire(engine);
 }
 
 /// The dump actions (`dump_ai:<entity>[:path]`, `dump_nav:<entity>[:path]`),

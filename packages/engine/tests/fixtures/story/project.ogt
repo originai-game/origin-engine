@@ -1,0 +1,10 @@
+type project
+version 1
+---
+# The fixture story.test.ts cooks and loads (assets/story, assets/strings).
+name "Story fixture"
+id "story-fixture"
+engine "0.7.7"
+entry "main.ts"
+profile "2d"
+tick 60

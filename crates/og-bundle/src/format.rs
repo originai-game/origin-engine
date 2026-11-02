@@ -31,6 +31,8 @@
 //! | tileset (`og.Tileset`, an `.ogt` of `type tileset`) | [`TilesetMeta`] | `text` (the canonical tileset text) |
 //! | tilemap (`og.Tilemap`, an `.ogt` of `type tilemap`, a Tiled `.tmj`, an LDtk `.ldtk`) | [`TilemapMeta`] | `layers` [`MapLayerRow`], `cells` (u32 per cell, layer after layer), `objects` [`MapObjectRow`], `props` [`MapPropRow`], `tilesets` [`MapTilesetRow`], `strings`; optional `orientation` (u32 `og_tilemap::Orientation::code`, absent for orthogonal: G2-6) |
 //! | behaviour (`og.Behaviour`, an `.ogt` of `type behaviour`) | [`BehaviourMeta`] | `text` (the validated behaviour file) |
+//! | dialogue (`og.Dialogue`, an `.ogt` of `type dialogue`) | [`DialogueMeta`] | `text` (the validated dialogue file) |
+//! | quest (`og.Quest`, an `.ogt` of `type quest`) | [`QuestMeta`] | `text` (the validated quest file) |
 //! | navmesh (`og.NavMesh`, an `.ogt` of `type navmesh`) | [`NavMeshMeta`] | `columns` [`NavColumnRow`], `spans` [`NavSpanRow`] (the walkable heightfield), `tiles` [`NavTileRow`], `verts` [`NavVertRow`], `polys` [`NavPolyRow`], `poly_verts` (u32) |
 //! | string table (`og.Strings`, an `.ogt` of `type strings`) | [`StringsMeta`] | `text` (the validated table) |
 //! | humanoid rig (`og.Rig`, an `.ogt` of `type rig`) | [`RigMeta`] | `text` (the canonical rig: its scheme and the bones it names) |
@@ -115,6 +117,8 @@ pub fn expected_header(name: &str) -> Option<(u64, u32)> {
         Flipbook,
         Rig2D,
         Behaviour,
+        Dialogue,
+        Quest,
         Rig,
         Look,
         Palette,

@@ -489,6 +489,8 @@ pub(super) fn run(
             ))
         }
         Work::Behaviour(s) => e6::cook_behaviour(s, p.stamp),
+        Work::Dialogue(s) => e6::cook_story(s, p.stamp, false),
+        Work::Quest(s) => e6::cook_story(s, p.stamp, true),
         Work::Strings(s) => e6::cook_strings(s, p.stamp),
         Work::Rig(s) => anim::cook_rig(&s.bytes, p.stamp),
         Work::NavMesh(s) => e6::cook_navmesh(s, p.stamp),

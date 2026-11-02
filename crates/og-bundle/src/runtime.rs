@@ -1177,6 +1177,28 @@ impl Bundle {
             .ok_or_else(|| invalid(&blob, "the behaviour text is cut short or not UTF-8"))
     }
 
+    /// The validated text of a dialogue (`og.Dialogue`) or quest
+    /// (`og.Quest`) blob; parse it with og-story.
+    pub fn story_text(&self, id: &str, bytes: &[u8]) -> Result<String, LoadError> {
+        let text = match self.blob::<format::Dialogue>(id, bytes) {
+            Ok(blob) => {
+                let meta = one::<format::DialogueMeta>(&blob)?;
+                (blob.raw("text")?.get(..meta.text_bytes as usize), blob)
+            }
+            Err(_) => {
+                let blob = self.blob::<format::Quest>(id, bytes)?;
+                let meta = one::<format::QuestMeta>(&blob)?;
+                (blob.raw("text")?.get(..meta.text_bytes as usize), blob)
+            }
+        };
+        match text {
+            (Some(t), _) if std::str::from_utf8(t).is_ok() => {
+                Ok(std::str::from_utf8(t).unwrap().to_string())
+            }
+            (_, blob) => Err(invalid(&blob, "the story text is cut short or not UTF-8")),
+        }
+    }
+
     /// The look of a look blob (`og.Look`): flattened and checked by the
     /// cook; the assets it names are the caller's to load.
     pub fn look(&self, id: &str, bytes: &[u8]) -> Result<crate::look::LookFile, LoadError> {

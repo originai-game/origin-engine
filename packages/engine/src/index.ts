@@ -26,7 +26,7 @@ import {
   type FieldSpec,
 } from "./runtime.ts";
 import { cameras } from "./systems/cameras.ts";
-import { ai, i18n, nav, net, platform } from "./e6.ts";
+import { ai, i18n, nav, net, platform, story } from "./e6.ts";
 import { input } from "./input.ts";
 import { path, procgen, stream, terrain, timeline } from "./p2.ts";
 import { debug, depthRender } from "./depth.ts";
@@ -254,6 +254,7 @@ export const og: typeof Api.og = Object.freeze({
   tilemap,
   nav,
   ai,
+  story,
   platform,
   i18n,
   net,

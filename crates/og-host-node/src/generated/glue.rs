@@ -1941,6 +1941,138 @@ pub fn og_ai_describe(env: Env, world: u32, entity: f64) -> String {
     <Host as AiApi>::og_ai_describe(&Host, world, entity)
 }
 
+#[napi(js_name = "og_story_load")]
+pub fn og_story_load(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StoryApi>::og_story_load(&Host, world, path)
+}
+
+#[napi(js_name = "og_story_parse")]
+pub fn og_story_parse(env: Env, world: u32, text: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StoryApi>::og_story_parse(&Host, world, text)
+}
+
+#[napi(js_name = "og_story_start")]
+pub fn og_story_start(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StoryApi>::og_story_start(&Host, world, desc)
+}
+
+#[napi(js_name = "og_story_view")]
+pub fn og_story_view(env: Env, world: u32, conversation: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StoryApi>::og_story_view(&Host, world, conversation)
+}
+
+#[napi(js_name = "og_story_history")]
+pub fn og_story_history(env: Env, world: u32, conversation: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StoryApi>::og_story_history(&Host, world, conversation)
+}
+
+#[napi(js_name = "og_story_conversations")]
+pub fn og_story_conversations(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StoryApi>::og_story_conversations(&Host, world)
+}
+
+#[napi(js_name = "og_story_advance")]
+pub fn og_story_advance(env: Env, world: u32, conversation: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StoryApi>::og_story_advance(&Host, world, conversation)
+}
+
+#[napi(js_name = "og_story_choose")]
+pub fn og_story_choose(env: Env, world: u32, conversation: u32, index: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StoryApi>::og_story_choose(&Host, world, conversation, index)
+}
+
+#[napi(js_name = "og_story_stop")]
+pub fn og_story_stop(env: Env, world: u32, conversation: u32) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StoryApi>::og_story_stop(&Host, world, conversation)
+}
+
+#[napi(js_name = "og_story_get")]
+pub fn og_story_get(env: Env, world: u32, name: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StoryApi>::og_story_get(&Host, world, name)
+}
+
+#[napi(js_name = "og_story_set")]
+pub fn og_story_set(env: Env, world: u32, name: String, value: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StoryApi>::og_story_set(&Host, world, name, value)
+}
+
+#[napi(js_name = "og_story_reset")]
+pub fn og_story_reset(env: Env, world: u32) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StoryApi>::og_story_reset(&Host, world)
+}
+
+#[napi(js_name = "og_story_start_quest")]
+pub fn og_story_start_quest(env: Env, world: u32, id: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StoryApi>::og_story_start_quest(&Host, world, id)
+}
+
+#[napi(js_name = "og_story_progress")]
+pub fn og_story_progress(env: Env, world: u32, quest: String, objective: String, amount: Option<u32>) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StoryApi>::og_story_progress(&Host, world, quest, objective, amount)
+}
+
+#[napi(js_name = "og_story_set_stage")]
+pub fn og_story_set_stage(env: Env, world: u32, quest: String, stage: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StoryApi>::og_story_set_stage(&Host, world, quest, stage)
+}
+
+#[napi(js_name = "og_story_complete_quest")]
+pub fn og_story_complete_quest(env: Env, world: u32, quest: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StoryApi>::og_story_complete_quest(&Host, world, quest)
+}
+
+#[napi(js_name = "og_story_fail_quest")]
+pub fn og_story_fail_quest(env: Env, world: u32, quest: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StoryApi>::og_story_fail_quest(&Host, world, quest)
+}
+
+#[napi(js_name = "og_story_quest")]
+pub fn og_story_quest(env: Env, world: u32, id: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StoryApi>::og_story_quest(&Host, world, id)
+}
+
+#[napi(js_name = "og_story_quests")]
+pub fn og_story_quests(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StoryApi>::og_story_quests(&Host, world)
+}
+
+#[napi(js_name = "og_story_track")]
+pub fn og_story_track(env: Env, world: u32, id: String, on: bool) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StoryApi>::og_story_track(&Host, world, id, on)
+}
+
+#[napi(js_name = "og_story_mark_seen")]
+pub fn og_story_mark_seen(env: Env, world: u32, id: String) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StoryApi>::og_story_mark_seen(&Host, world, id)
+}
+
+#[napi(js_name = "og_story_mark")]
+pub fn og_story_mark(env: Env, world: u32, id: String, desc: Option<String>) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StoryApi>::og_story_mark(&Host, world, id, desc)
+}
+
 #[napi(js_name = "og_platform_store_get")]
 pub fn og_platform_store_get(env: Env, world: u32, key: String) -> String {
     let _env = crate::EnvScope::enter(&env);

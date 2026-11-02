@@ -47,6 +47,33 @@ export const ai = Object.freeze({
   describe: (world: W, entity: number) => parse(abi().og_ai_describe(world.id, entity)),
 });
 
+/** og.story (G2-8): dialogues and quests as data; the story is world state. */
+export const story = Object.freeze({
+  load: (world: W, path: string) => parse(abi().og_story_load(world.id, path)),
+  parse: (world: W, text: string) => parse(abi().og_story_parse(world.id, text)),
+  start: (world: W, desc?: unknown) => parse(abi().og_story_start(world.id, json(desc))),
+  view: (world: W, conversation: number) => parse(abi().og_story_view(world.id, conversation)),
+  history: (world: W, conversation: number) => parse(abi().og_story_history(world.id, conversation)),
+  conversations: (world: W) => parse(abi().og_story_conversations(world.id)),
+  advance: (world: W, conversation: number) => parse(abi().og_story_advance(world.id, conversation)),
+  choose: (world: W, conversation: number, index: number) => parse(abi().og_story_choose(world.id, conversation, index)),
+  stop: (world: W, conversation: number) => abi().og_story_stop(world.id, conversation),
+  get: (world: W, name: string) => parse(abi().og_story_get(world.id, name)),
+  set: (world: W, name: string, value: unknown) => parse(abi().og_story_set(world.id, name, JSON.stringify(value))),
+  reset: (world: W) => abi().og_story_reset(world.id),
+  startQuest: (world: W, id: string) => parse(abi().og_story_start_quest(world.id, id)),
+  progress: (world: W, quest: string, objective: string, amount?: number) =>
+    abi().og_story_progress(world.id, quest, objective, amount),
+  setStage: (world: W, quest: string, stage: string) => parse(abi().og_story_set_stage(world.id, quest, stage)),
+  completeQuest: (world: W, quest: string) => parse(abi().og_story_complete_quest(world.id, quest)),
+  failQuest: (world: W, quest: string) => parse(abi().og_story_fail_quest(world.id, quest)),
+  quest: (world: W, id: string) => parse(abi().og_story_quest(world.id, id)),
+  quests: (world: W) => parse(abi().og_story_quests(world.id)),
+  track: (world: W, id: string, on: boolean) => abi().og_story_track(world.id, id, on),
+  markSeen: (world: W, id: string) => abi().og_story_mark_seen(world.id, id),
+  mark: (world: W, id: string, desc?: unknown) => abi().og_story_mark(world.id, id, json(desc)),
+});
+
 export const platform = Object.freeze({
   storeGet: (world: W, key: string) => parse(abi().og_platform_store_get(world.id, key)),
   storeSet: (world: W, desc?: unknown) => parse(abi().og_platform_store_set(world.id, json(desc))),

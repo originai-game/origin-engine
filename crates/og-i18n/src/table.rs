@@ -111,6 +111,12 @@ pub struct MissingKey {
     pub detail: String,
 }
 
+/// The base table of a project's tables: the one marked `base`, else `en`,
+/// else the first (what the others are checked against).
+pub fn base_table(tables: &[StringTable]) -> Option<&StringTable> {
+    base_of(tables)
+}
+
 fn base_of(tables: &[StringTable]) -> Option<&StringTable> {
     base_in(tables.iter())
 }

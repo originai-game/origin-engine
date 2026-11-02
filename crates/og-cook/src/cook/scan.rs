@@ -145,6 +145,8 @@ pub(super) fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
                     Ok(doc) if doc.ty == vector::VECTOR_TYPE => Kind::Vector,
                     Ok(doc) if doc.ty == sfx::SFX_TYPE => Kind::Sound,
                     Ok(doc) if doc.ty == e6::BEHAVIOUR_TYPE => Kind::Behaviour,
+                    Ok(doc) if doc.ty == og_story::DIALOGUE_TYPE => Kind::Dialogue,
+                    Ok(doc) if doc.ty == og_story::QUEST_TYPE => Kind::Quest,
                     Ok(doc) if doc.ty == og_i18n::STRINGS_TYPE => Kind::Strings,
                     Ok(doc) if doc.ty == e6::NAVMESH_TYPE => Kind::NavMesh,
                     Ok(doc) if doc.ty == anim::RIG_TYPE => Kind::Rig,

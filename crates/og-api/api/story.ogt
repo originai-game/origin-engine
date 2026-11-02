@@ -1,0 +1,373 @@
+module story {
+  skill og-story
+  doc "Dialogue and quests as data: dialogues in `.ogt` files of `type dialogue` (speakers, nodes of lines, choices with conditions, reasons and checks, variables, weighted picks, timers) and quests in `type quest` files (stages of objectives, rewards, conditions), validated by og cook, which names each mistake's line and the fix. Text is never inline: every line, choice, reason, name and title is an og.i18n key, and og.story resolves it in the active locale when it is read, so a locale switch re-translates the line on screen. og-story §1 has every line of both formats."
+  doc "og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view in your UI each frame (the line in full, its speaker, its choices; the dialogue box paces its own reveal), and call og.story.advance or og.story.choose. Quests start from a dialogue (`quest start rescue`) or og.story.startQuest, count with og.story.progress and advance their stages themselves; og.story.quests lists them for a quest log."
+  doc "Everything is world state: the story's variables, the nodes seen, the lines read, conversations and quests are in saves, snapshots and the world hash, saved by their ids (dialogue, node, line, quest, stage, objective), so a save survives any edit that keeps those ids. Renaming a node, stage or objective a save stands on is the one breaking edit: og.story warns, naming the id, and falls back (a conversation to its dialogue's start, a quest to its first stage) instead of landing elsewhere. Deterministic: `pick` and active checks draw from the story's own stream (og.Rng's fork \"story\"), timers count ticks, and arithmetic is plain f64. A world that never loads a dialogue or quest keeps its saves and hash: og.Story and the story's events join it at the first og.story.load."
+
+  resource Story {
+    doc "The story's counters (written by og.story; the story itself is a state block). Registered at the first og.story.load."
+    field lines u32 "Lines shown so far (DialogueView.seq of the latest)." {
+      readonly true
+    }
+    field conversations u32 "Conversations not yet ended." {
+      readonly true
+    }
+    field activeQuests u32 "Quests started and not yet completed or failed." {
+      readonly true
+    }
+  }
+
+  event DialogueShown {
+    doc "A conversation shows a new line (start the voice, reset the reveal). Sent before the game's systems, the tick after the call that moved it."
+    field conversation u32 "The conversation."
+    field seq u32 "The line's DialogueView.seq."
+  }
+
+  event DialogueEnded {
+    doc "A conversation ended: its dialogue ran out, reached `end`, took a choice without `goto`, or og.story.stop stopped it. Sent the tick after."
+    field conversation u32 "The conversation."
+  }
+
+  event DialogueCheck {
+    doc "An active check was rolled (d20 plus the stat against the target): reveal the roll. Sent the tick after."
+    field conversation u32 "The conversation."
+    field stat String "The variable read as the stat."
+    field target f32 "What the roll plus the stat had to reach."
+    field roll u32 "The d20, 1 to 20."
+    field passed bool "Whether roll + stat reached the target."
+  }
+
+  event QuestUpdated {
+    doc "A quest started, counted, changed stage, completed or failed. Sent the tick after."
+    field quest String "The quest's id."
+    field status String "active, completed or failed."
+  }
+
+  event StoryEvent {
+    doc "A dialogue's `emit name \"arg\"`: open the shop, give the sword, play the cutscene. Sent the tick after."
+    field conversation u32 "The conversation that emitted it."
+    field name String "The name written after emit."
+    field arg String "Its argument, evaluated and written as text (empty without one)."
+  }
+
+  struct StoryAsset {
+    doc "A loaded dialogue or quest."
+    field kind String "dialogue or quest."
+    field name String "A dialogue's name or a quest's id: what og.story.start and og.story.startQuest take."
+    field nodes List.String "A dialogue's nodes, in order (a quest: its stages)."
+    field speakers List.String "A dialogue's speakers (a quest: none)."
+    field variables List.String "The variables it declares (var: the conversation's; global: the story's)."
+  }
+
+  struct StartDesc {
+    doc "A conversation to start."
+    desc true
+    field dialogue String "The dialogue's name (StoryAsset.name)."
+    field node String "The node to start at (empty: the dialogue's `start`)."
+    field cast Json "Speaker ids to the entities playing them, `{ smith: entity }`: SpeakerView.entity (for a speech bubble or a camera)."
+    field vars Json "Starting values for the dialogue's own `var`s, `{ mood: 2 }`."
+  }
+
+  struct SpeakerView {
+    doc "Who speaks a line."
+    field id String "The speaker's id (`narrator` for the narrator)."
+    field name String "Its name, resolved in the active locale (empty for the narrator)."
+    field entity Entity "The entity playing it (StartDesc.cast; 0: none)."
+    field portrait String "A portrait image's asset path (empty: none)."
+    field expression String "The portrait's variant: the line's `expression`, else the speaker's."
+    field side String "left, right or center (VN staging)."
+  }
+
+  struct CheckView {
+    doc "A choice's check."
+    field stat String "The variable read as the stat."
+    field target f32 "What the stat (passive) or a d20 plus the stat (active) must reach."
+    field chance f32 "The chance it passes, 0 to 1: an active check's share of the d20's faces that pass; a passive one's 1 or 0."
+    field kind String "passive (a threshold that enables the choice) or active (rolled when chosen)."
+  }
+
+  struct ChoiceView {
+    doc "A choice the node offers (hidden ones are left out)."
+    field index u32 "What og.story.choose takes: its place among the node's choices, hidden ones counted."
+    field id String "Its id within the node."
+    field text String "Its text, resolved in the active locale."
+    field key String "Its i18n key."
+    field args Json "The arguments its text was resolved with."
+    field enabled bool "Whether it can be chosen now (its `if` holds and a passive check passes)."
+    field reason String "Why it is disabled, resolved in the active locale (empty without a `reason`)."
+    field reasonKey String "The reason's i18n key."
+    field reasonArgs Json "The arguments the reason was resolved with."
+    field visited bool "Chosen before in this conversation (drawn muted)."
+    field kind String "The game's word for its icon: leave, trade, attack, lie..."
+    field check Option.CheckView "Its check, if it has one."
+  }
+
+  struct TimerView {
+    doc "A node's choice timer."
+    field ticksLeft u32 "Ticks until it runs out."
+    field ticksTotal u32 "Its length in ticks."
+    field defaultChoice u32 "The ChoiceView.index taken when it runs out."
+  }
+
+  struct RollView {
+    doc "An active check's roll."
+    field stat String "The variable read as the stat."
+    field target f32 "What the roll plus the stat had to reach."
+    field roll u32 "The d20, 1 to 20."
+    field passed bool "Whether it passed."
+  }
+
+  struct DialogueView {
+    doc "What a conversation shows now: the line in full (the dialogue box paces its own reveal), its speaker and the choices, if it waits on them."
+    field conversation u32 "The conversation."
+    field node String "The node it is in."
+    field seq u32 "Counts lines shown across the story: a new number is a new line, even when a node repeats."
+    field seen bool "The line had been read before it was shown (skip-read, a dimmed backlog); og.story.reset keeps what was read."
+    field key String "The line's i18n key."
+    field args Json "The arguments it was resolved with (evaluated when it was shown)."
+    field text String "The line, resolved in the active locale."
+    field voice String "Its voice clip's asset path (empty: none)."
+    field speaker SpeakerView "Who says it."
+    field choices List.ChoiceView "The choices, when it waits on them; empty while a line waits for og.story.advance."
+    field timer Option.TimerView "The choice timer, while it runs."
+    field lastCheck Option.RollView "The last active check this conversation rolled."
+    field ended bool "The conversation has ended (the view keeps its last line)."
+  }
+
+  struct ChosenView {
+    doc "The choice made while a line was shown."
+    field index u32 "Its ChoiceView.index."
+    field text String "Its text, resolved in the active locale."
+  }
+
+  struct StoryLine {
+    doc "A line of a conversation's backlog."
+    field seq u32 "Its DialogueView.seq."
+    field node String "Its node."
+    field speaker SpeakerView "Who said it."
+    field key String "Its i18n key."
+    field args Json "Its arguments."
+    field text String "The line, resolved in the active locale."
+    field voice String "Its voice clip (empty: none)."
+    field seen bool "It had been read before it was shown."
+    field chosen Option.ChosenView "The choice made on it, if any."
+  }
+
+  struct MarkerDesc {
+    doc "Where a quest's objective is, for the map, compass and tracker."
+    desc true
+    field entity Entity "An entity to point at (0: none)."
+    field position Vector3 "A point to point at, when there is no entity." {
+      unit m
+    }
+  }
+
+  struct MarkerView {
+    doc "Where a quest points: the marker og.story.mark set, else the current stage's first undone objective's `marker`."
+    field entity Entity "An entity (0: none)."
+    field position Vector3 "A point." {
+      unit m
+    }
+  }
+
+  struct RewardView {
+    doc "A quest's reward."
+    field name String "Its name, resolved in the active locale."
+    field amount f64 "How many."
+    field image String "Its image's asset path (empty: none)."
+    field rarity String "The game's rarity word (empty: none)."
+  }
+
+  struct ObjectiveView {
+    doc "An objective of a quest's current stage."
+    field id String "Its id."
+    field text String "Its text, resolved in the active locale with `count` and `target` among its arguments."
+    field count u32 "Counted so far."
+    field target u32 "Counts needed."
+    field done bool "count reached target."
+    field failed bool "Left undone when the quest failed."
+    field optional bool "Not needed to finish the stage."
+    field hidden bool "Not revealed yet: declared hidden and not yet counted (the log leaves it out or shows ???)."
+  }
+
+  struct QuestView {
+    doc "A quest as a quest log shows it."
+    field id String "Its id."
+    field title String "Its title, resolved in the active locale."
+    field summary String "The current stage's summary, else the quest's, resolved."
+    field category String "main, side, daily... (the log's tabs)."
+    field stage String "The current stage's id."
+    field status String "active, completed or failed."
+    field tracked bool "Shown in the HUD tracker (og.story.track; the first quest started is tracked)."
+    field isNew bool "Not looked at since it started (og.story.markSeen clears it)."
+    field updated bool "Changed since it was last looked at (og.story.markSeen clears it)."
+    field updatedTick u32 "The tick it last changed (sort the log by recent)."
+    field giver String "Who gave it, resolved (empty: nobody)."
+    field region String "Where it is, resolved (empty: nowhere)."
+    field marker Option.MarkerView "Where it points now."
+    field rewards List.RewardView "Its rewards."
+    field objectives List.ObjectiveView "The current stage's objectives."
+  }
+
+  fn load {
+    doc "A cooked dialogue or quest (an `.ogt` of `type dialogue` or `type quest`, validated by og cook). Loading again replaces it, so a live edit takes effect at the conversation's next step. The first load registers og.Story and the story's events, so call it in setup: inside a system it is refused until one load has run outside one."
+    param world World "The world."
+    param path String "The asset, such as `story/smith.ogt`."
+    returns Result.StoryAsset "Refused for a path that is not a cooked dialogue or quest."
+  }
+
+  fn parse {
+    doc "A dialogue or quest from text, now (tests and generated content; assets go through og cook). Registers og.Story as load does."
+    param world World "The world."
+    param text String "The `.ogt` text."
+    returns Result.StoryAsset "Refused with the first error's line and the fix."
+  }
+
+  fn start {
+    doc "Start a conversation: it runs to its first line (or its choices) now, and og.DialogueShown is sent the next tick. Several may run at once."
+    param world World "The world."
+    param desc StartDesc "The dialogue, and optionally the node, cast and starting variables."
+    returns Result.u32 "The conversation, or why not: an unloaded dialogue, an unknown node, speaker or variable."
+  }
+
+  fn view {
+    doc "What a conversation shows now, resolved in the active locale."
+    param world World "The world."
+    param conversation u32 "The conversation."
+    returns Option.DialogueView "Null for a conversation that does not exist (never started, or stopped)."
+  }
+
+  fn history {
+    doc "A conversation's lines so far, oldest first, with the choice made on each (a VN backlog)."
+    param world World "The world."
+    param conversation u32 "The conversation."
+    returns List.StoryLine "Empty for an unknown conversation."
+  }
+
+  fn conversations {
+    doc "The conversations that exist (started and not stopped), oldest first."
+    param world World "The world."
+    returns List.u32
+  }
+
+  fn advance {
+    doc "Move a conversation past its line: it runs to the next line, its choices or its end."
+    param world World "The world."
+    param conversation u32 "The conversation."
+    returns Result.Void "Refused while it waits on choices, after it ended, or for an unknown conversation."
+  }
+
+  fn choose {
+    doc "Take a choice: its `set`, `emit` and `quest` steps run, an active check rolls (og.DialogueCheck), and the conversation goes to its `goto` (or `fail` on a missed roll), or ends without one."
+    param world World "The world."
+    param conversation u32 "The conversation."
+    param index u32 "ChoiceView.index."
+    returns Result.Void "Refused for a hidden or disabled choice, a conversation showing a line, or an unknown one."
+  }
+
+  fn stop {
+    doc "End a conversation now (og.DialogueEnded if it was running) and forget it. An ended conversation stays viewable until it is stopped."
+    param world World "The world."
+    param conversation u32 "The conversation."
+    returns bool "False for an unknown conversation."
+  }
+
+  fn get {
+    doc "A story variable (a `global` of any loaded dialogue or quest): its value, else its declared default."
+    param world World "The world."
+    param name String "The variable."
+    returns Json "A number, a boolean, a string, or null for one nothing declares."
+  }
+
+  fn set {
+    doc "Set a story variable; quests whose conditions now hold advance."
+    param world World "The world."
+    param name String "The variable."
+    param value Json "A number, a boolean or a string."
+    returns Result.Void "Refused for another kind of value or a world without a loaded story."
+  }
+
+  fn reset {
+    doc "A new playthrough: the story's variables, seen nodes, conversations and quests are cleared. Lines read stay read (DialogueView.seen), so a second playthrough can skip them."
+    param world World "The world."
+  }
+
+  fn startQuest {
+    doc "Start a loaded quest at its first stage."
+    param world World "The world."
+    param id String "The quest's id."
+    returns Result.bool "False when it had started before. Refused for a quest not loaded."
+  }
+
+  fn progress {
+    doc "Count toward an objective of an active quest's current stage (a wolf killed, a herb picked); the stage advances when its objectives are done."
+    param world World "The world."
+    param quest String "The quest's id."
+    param objective String "The objective's id."
+    param amount u32 "How many (default 1)." {
+      optional true
+    }
+    returns bool "False when the quest is not active or its stage has no such objective."
+  }
+
+  fn setStage {
+    doc "Move an active quest to a stage, its counts cleared."
+    param world World "The world."
+    param quest String "The quest's id."
+    param stage String "The stage's id."
+    returns Result.bool "False when it is not active or already there. Refused for an unknown quest or stage."
+  }
+
+  fn completeQuest {
+    doc "Complete an active quest now."
+    param world World "The world."
+    param quest String "The quest's id."
+    returns Result.bool "False when it is not active. Refused for a quest not loaded."
+  }
+
+  fn failQuest {
+    doc "Fail an active quest now: its undone objectives are marked failed."
+    param world World "The world."
+    param quest String "The quest's id."
+    returns Result.bool "False when it is not active. Refused for a quest not loaded."
+  }
+
+  fn quest {
+    doc "A started quest as the log shows it."
+    param world World "The world."
+    param id String "The quest's id."
+    returns Option.QuestView "Null for a quest not started."
+  }
+
+  fn quests {
+    doc "Every started quest, in the order they started (a quest log)."
+    param world World "The world."
+    returns List.QuestView
+  }
+
+  fn track {
+    doc "Show a quest in the HUD tracker, or stop showing it."
+    param world World "The world."
+    param id String "The quest's id."
+    param on bool "Tracked."
+    returns bool "False for a quest not started."
+  }
+
+  fn markSeen {
+    doc "The player looked at a quest: clear QuestView.isNew and updated."
+    param world World "The world."
+    param id String "The quest's id."
+    returns bool "False for a quest not started."
+  }
+
+  fn mark {
+    doc "Point a quest at an entity or a point (the map, compass and tracker read QuestView.marker), over its objectives' own markers."
+    param world World "The world."
+    param id String "The quest's id."
+    param desc MarkerDesc "The entity or point; both zero clears it."
+    returns bool "False for a quest not started."
+  }
+}
+
+# ── platform ──────────────────────────────────────────────────────────────
+

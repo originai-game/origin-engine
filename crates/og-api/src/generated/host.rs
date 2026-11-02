@@ -751,6 +751,54 @@ pub trait AiApi: Wire {
     fn og_ai_describe(&self, world: u32, entity: f64) -> String;
 }
 
+/// `story`: packages/knowledge/wiki/story.md.
+pub trait StoryApi: Wire {
+    /// `og.story.load`
+    fn og_story_load(&self, world: u32, path: String) -> String;
+    /// `og.story.parse`
+    fn og_story_parse(&self, world: u32, text: String) -> String;
+    /// `og.story.start`
+    fn og_story_start(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.story.view`
+    fn og_story_view(&self, world: u32, conversation: u32) -> String;
+    /// `og.story.history`
+    fn og_story_history(&self, world: u32, conversation: u32) -> String;
+    /// `og.story.conversations`
+    fn og_story_conversations(&self, world: u32) -> String;
+    /// `og.story.advance`
+    fn og_story_advance(&self, world: u32, conversation: u32) -> String;
+    /// `og.story.choose`
+    fn og_story_choose(&self, world: u32, conversation: u32, index: u32) -> String;
+    /// `og.story.stop`
+    fn og_story_stop(&self, world: u32, conversation: u32) -> bool;
+    /// `og.story.get`
+    fn og_story_get(&self, world: u32, name: String) -> String;
+    /// `og.story.set`
+    fn og_story_set(&self, world: u32, name: String, value: String) -> String;
+    /// `og.story.reset`
+    fn og_story_reset(&self, world: u32);
+    /// `og.story.startQuest`
+    fn og_story_start_quest(&self, world: u32, id: String) -> String;
+    /// `og.story.progress`
+    fn og_story_progress(&self, world: u32, quest: String, objective: String, amount: Option<u32>) -> bool;
+    /// `og.story.setStage`
+    fn og_story_set_stage(&self, world: u32, quest: String, stage: String) -> String;
+    /// `og.story.completeQuest`
+    fn og_story_complete_quest(&self, world: u32, quest: String) -> String;
+    /// `og.story.failQuest`
+    fn og_story_fail_quest(&self, world: u32, quest: String) -> String;
+    /// `og.story.quest`
+    fn og_story_quest(&self, world: u32, id: String) -> String;
+    /// `og.story.quests`
+    fn og_story_quests(&self, world: u32) -> String;
+    /// `og.story.track`
+    fn og_story_track(&self, world: u32, id: String, on: bool) -> bool;
+    /// `og.story.markSeen`
+    fn og_story_mark_seen(&self, world: u32, id: String) -> bool;
+    /// `og.story.mark`
+    fn og_story_mark(&self, world: u32, id: String, desc: Option<String>) -> bool;
+}
+
 /// `platform`: packages/knowledge/wiki/platform.md.
 pub trait PlatformApi: Wire {
     /// `og.platform.storeGet`
@@ -1260,9 +1308,9 @@ pub trait NetApi: Wire {
 }
 
 /// Every trait: a host is a type that implements all of them.
-pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + DebugApi + PathApi + TimelineApi + NetApi {}
+pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + DebugApi + PathApi + TimelineApi + NetApi {}
 
-impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + DebugApi + PathApi + TimelineApi + NetApi> Host for T {}
+impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + DebugApi + PathApi + TimelineApi + NetApi> Host for T {}
 
 /// Every binding symbol, in binding-table order (`bindings.json` ids).
 pub const SYMBOLS: &[&str] = &[
@@ -1568,6 +1616,28 @@ pub const SYMBOLS: &[&str] = &[
     "og_ai_finish",
     "og_ai_noise",
     "og_ai_describe",
+    "og_story_load",
+    "og_story_parse",
+    "og_story_start",
+    "og_story_view",
+    "og_story_history",
+    "og_story_conversations",
+    "og_story_advance",
+    "og_story_choose",
+    "og_story_stop",
+    "og_story_get",
+    "og_story_set",
+    "og_story_reset",
+    "og_story_start_quest",
+    "og_story_progress",
+    "og_story_set_stage",
+    "og_story_complete_quest",
+    "og_story_fail_quest",
+    "og_story_quest",
+    "og_story_quests",
+    "og_story_track",
+    "og_story_mark_seen",
+    "og_story_mark",
     "og_platform_store_get",
     "og_platform_store_set",
     "og_platform_store_list",

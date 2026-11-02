@@ -519,7 +519,7 @@ pub(crate) fn assemble(
     )?;
     super::feel::install_back(&mut world, &feel, &feel_records)?;
     for name in lazy_named {
-        crate::lazy::enable(&mut world, name)?;
+        crate::lazy::enable(&mut world, engine_id, name)?;
     }
     let names_by_id = world.schemas().into_iter().map(|s| s.name).collect();
     Ok(Assembled {

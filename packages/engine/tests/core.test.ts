@@ -97,6 +97,27 @@ test("og.procgen and og.Rng's picks give og-core's pinned outputs, bit for bit, 
   expect(web.hash).toBe(node.hash);
 }, 120_000);
 
+type StoryRound = { transcript: string; lines: number; rolls: number[]; gold: unknown; quest: string; hash: string };
+
+test("og.story walks the same on a seed: the same lines, rolls and hash, natively and on the web", () => {
+  const node = run<StoryRound>("node", "story");
+  const again = run<StoryRound>("node", "story");
+  expect(again).toEqual(node);
+  expect(node.lines).toBe(60);
+  // Haggling rolls a d20 on the story's own stream, every roll in 1..20.
+  expect(node.rolls.length).toBeGreaterThan(5);
+  expect(node.rolls.every((r) => r >= 1 && r <= 20)).toBeTrue();
+  expect(new Set(node.rolls).size).toBeGreaterThan(1);
+  if (STALE_WASM) return;
+  const web = run<StoryRound>("web", "story");
+  // Field by field: the report's `host` differs by design.
+  expect(web.transcript).toBe(node.transcript);
+  expect(web.rolls).toEqual(node.rolls);
+  expect(web.gold).toEqual(node.gold);
+  expect(web.quest).toBe(node.quest);
+  expect(web.hash).toBe(node.hash);
+}, 120_000);
+
 type Access = { ok: boolean; reason: string; tick: number; seen: { tries: number; refused: number }; shared: number; log: string[] };
 type Undeclared = Record<"read" | "write" | "draw" | "events" | "emit", Access>;
 

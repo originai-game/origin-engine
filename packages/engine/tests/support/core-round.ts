@@ -17,6 +17,10 @@
 //               step times; every KeyDown, KeyUp and PointerDown seen
 //   procgen     og.procgen's generators and og.Rng's weighted and permutation
 //               draws, each as an FNV-1a hash of its output (floats as f32)
+//   story       og.story over the story fixture's smith and quest, parsed
+//               (no cook): a seeded walk that haggles (active d20 checks on
+//               the story's og.Rng fork) and picks, as a transcript hash,
+//               its rolls, the story's variables and the world's hash
 //   latency     og.audio.outputLatency: 0 headless, then (web) what the
 //               Worker reports for an AudioContext's latency
 
@@ -178,6 +182,48 @@ if (which === "rng") {
   engine.advance(12);
   out.seen = seen.map((e) => ({ ...e, at: Math.round(e.at * 1e4) / 1e4 }));
   out.hash = host === "publish" ? "" : engine.hash();
+} else if (which === "story") {
+  const fnv = (text: string): string => {
+    let h = 0xcbf29ce484222325n;
+    for (const b of new TextEncoder().encode(text)) h = BigInt.asUintN(64, (h ^ BigInt(b)) * 0x100000001b3n);
+    return h.toString(16).padStart(16, "0");
+  };
+  const must = <T>(r: unknown): T => {
+    const x = r as { ok: true; value: T } | { ok: false; reason: string };
+    if (!x.ok) throw new Error(x.reason);
+    return x.value;
+  };
+  const dir = join(pkg, "tests", "fixtures", "story", "assets", "story");
+  const engine = start(og.game({ tick: 60, seed: 42 }));
+  const w = engine.world;
+  for (const f of ["smith.ogt", "rescue.ogt"]) must(og.story.parse(w, readFileSync(join(dir, f), "utf8")));
+  must(og.story.startQuest(w, "rescue"));
+  type V = { key: string; node: string; seq: number; choices: { index: number; enabled: boolean }[]; lastCheck: { roll: number; passed: boolean } | null; ended: boolean };
+  let conv = must<number>(og.story.start(w, { dialogue: "smith" }));
+  const lines: string[] = [];
+  const rolls: number[] = [];
+  for (let i = 0; i < 60; i++) {
+    const v = og.story.view(w, conv) as unknown as V;
+    lines.push(`${v.seq}:${v.node}:${v.key}`);
+    if (v.ended) {
+      conv = must<number>(og.story.start(w, { dialogue: "smith" }));
+    } else if (v.choices.length > 0) {
+      must(og.story.choose(w, conv, 1));
+      const r = (og.story.view(w, conv) as unknown as V).lastCheck;
+      if (r) rolls.push(r.roll);
+    } else {
+      must(og.story.advance(w, conv));
+    }
+    engine.advance(1);
+  }
+  Object.assign(out, {
+    transcript: fnv(lines.join("\n")),
+    lines: lines.length,
+    rolls,
+    gold: og.story.get(w, "gold"),
+    quest: (og.story.quest(w, "rescue") as unknown as { stage: string; status: string }).stage,
+    hash: engine.hash(),
+  });
 } else if (which === "latency") {
   const Heard = defineResource("CrHeard", { latency: f64(-1) });
   const Listen = defineSystem("CrListen", { reads: [og.Audio], writes: [Heard] }, (_q, _t, world) => {

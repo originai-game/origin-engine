@@ -1,0 +1,20 @@
+type strings
+version 1
+---
+locale "en"
+base true
+string "npc.smith" "Brannoc"
+string "smith.hello" "Steel's not cheap. You've {gold} gold."
+string "smith.buy" "Buy the sword (10 gold)"
+string "smith.need_gold" "You need {need} more gold."
+string "smith.haggle" "Haggle"
+string "smith.secret" "Ask about the old forge"
+string "smith.leave" "Leave"
+string "smith.thanks" "Mind the edge."
+string "smith.calm" "Fine. Again, then."
+string "smith.furious" "Out of my forge!"
+string "quest.rescue" "The Lost Sword"
+string "quest.rescue.wolves" "Drive off the wolves ({count}/{target})"
+string "quest.rescue.sword" "Arm yourself"
+string "quest.rescue.talk" "Report to the smith"
+string "item.gold" "Gold"

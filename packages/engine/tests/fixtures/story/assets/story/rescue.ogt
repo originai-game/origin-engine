@@ -1,0 +1,26 @@
+type quest
+version 1
+---
+id rescue
+title "quest.rescue"
+category side
+global wolvesFled false
+reward "item.gold" 50 {
+  rarity common
+}
+stage hunt {
+  objective wolves "quest.rescue.wolves" {
+    target 3
+    marker 12 0 4
+  }
+  objective sword "quest.rescue.sword" {
+    optional
+  }
+  fail "wolvesFled"
+  next report
+}
+stage report {
+  objective talk "quest.rescue.talk" {
+    when "seen(smith.bought)"
+  }
+}
