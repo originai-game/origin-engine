@@ -278,6 +278,11 @@ impl Ui {
             }
         }
         let overlaps = self.find_overlaps(&order);
+        let dense: Vec<String> = order
+            .iter()
+            .filter(|&&i| self.nodes[i].props.dense)
+            .map(|&i| self.path_of(i))
+            .collect();
         self.apply_shakes(&order);
         self.apply_stagger(&order);
         self.run_motion(&order);
@@ -797,6 +802,7 @@ impl Ui {
             a11y,
             text_input: self.text_target.take(),
             overlaps,
+            dense,
             events: std::mem::take(&mut self.events),
             stats: LayoutStats {
                 laid_out: self.kept.laid_out,
