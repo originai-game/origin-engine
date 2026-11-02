@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2349 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2355 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -1667,6 +1667,7 @@ Field units the docs and Tune use.
 | [`og.ui.skeleton`](ui.md#fn-skeleton) | function | ui | `og_ui_skeleton` |
 | [`og.ui.skeletonGroup`](ui.md#fn-skeletonGroup) | function | ui | — |
 | [`og.ui.slider`](ui.md#fn-slider) | function | ui | `og_ui_slider` |
+| [`og.ui.songSelect`](ui.md#fn-songSelect) | function | ui | — |
 | [`og.ui.space`](ui.md#fn-space) | function | ui | — |
 | [`og.ui.spacer`](ui.md#fn-spacer) | function | ui | `og_ui_spacer` |
 | [`og.ui.spawnMass`](ui.md#fn-spawnMass) | function | ui | `og_ui_spawn_mass` |
@@ -2157,6 +2158,11 @@ Field units the docs and Tune use.
 | [`SoftBodyPoints`](physics.md#type-SoftBodyPoints) | struct | physics | — |
 | [`SolidFill`](ui.md#type-SolidFill) | desc struct | ui | — |
 | [`SolidGeometryDesc`](render.md#type-SolidGeometryDesc) | desc struct | render | — |
+| [`SongDifficulty`](ui.md#type-SongDifficulty) | desc struct | ui | — |
+| [`SongEntry`](ui.md#type-SongEntry) | desc struct | ui | — |
+| [`SongPreview`](ui.md#type-SongPreview) | desc struct | ui | — |
+| [`SongSelectDesc`](ui.md#type-SongSelectDesc) | desc struct | ui | — |
+| [`SongSelectResult`](ui.md#type-SongSelectResult) | struct | ui | — |
 | [`Sound`](load.md#type-Sound) | handle | load | — |
 | [`Sound()`](load.md#column-Sound) | column kind | load | — |
 | [`SOUND_CULLED`](audio.md#const-SOUND_CULLED) | constant | audio | — |

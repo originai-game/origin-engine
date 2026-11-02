@@ -34359,6 +34359,257 @@ export interface WorldMapResult {
 
 
 /**
+ * One chart of a song.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SongDifficulty {
+  /**
+   * Its key (easy, expert).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its name on its chip (Easy, Expert).
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Its level, the chip's numeral.
+   *
+   * @default 0
+   */
+  readonly level?: number;
+  /**
+   * Not playable yet: the chip dimmed with a lock.
+   *
+   * @default false
+   */
+  readonly locked?: boolean;
+}
+
+/**
+ * One song on the wheel.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SongEntry {
+  /**
+   * Its key: its row's element id, so its probe path is <id>/Wheel/<key>.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its title, the row's reading and the detail's heading.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * Its artist, under the title.
+   *
+   * @default ""
+   */
+  readonly artist?: string;
+  /**
+   * Its cover art (art kind jacket), square; null draws the style's placeholder.
+   *
+   * @default null
+   */
+  readonly jacket?: Texture | null;
+  /**
+   * Its tempo; 0 shows none.
+   *
+   * @default 0
+   */
+  readonly bpm?: number;
+  /**
+   * Its length; 0 shows none.
+   *
+   * @default 0
+   * @unit s (seconds of simulation time)
+   */
+  readonly seconds?: number;
+  /**
+   * Its charts, easiest first.
+   *
+   * @default []
+   */
+  readonly difficulties?: readonly SongDifficulty[];
+  /**
+   * The best score on the selected chart; 0 shows none.
+   *
+   * @default 0
+   */
+  readonly best?: number;
+  /**
+   * The best grade on the selected chart (S, A); empty shows none.
+   *
+   * @default ""
+   */
+  readonly grade?: string;
+  /**
+   * The selected chart was cleared with a full combo: a badge beside the grade.
+   *
+   * @default false
+   */
+  readonly fullCombo?: boolean;
+  /**
+   * The best accuracy on the selected chart, 0 to 1; a negative value shows none.
+   *
+   * @default -1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly accuracy?: number;
+  /**
+   * Not unlocked: its row dimmed with a lock, and Play refused.
+   *
+   * @default false
+   */
+  readonly locked?: boolean;
+  /**
+   * Not played yet: a New tag on its row.
+   *
+   * @default false
+   */
+  readonly isNew?: boolean;
+}
+
+/**
+ * The selected song's preview, which the game plays (og.audio).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SongPreview {
+  /**
+   * The preview is playing: the bar's play mark is a pause and its played part lit.
+   *
+   * @default false
+   */
+  readonly playing?: boolean;
+  /**
+   * How far into the song the preview is.
+   *
+   * @default 0
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly position?: number;
+  /**
+   * The song's waveform, its peaks 0 to 1 across its length (64 to 128 of them); empty draws a flat line.
+   *
+   * @default []
+   */
+  readonly peaks?: readonly number[];
+}
+
+/**
+ * A song select: the songs, the selected one and chart, the preview.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SongSelectDesc {
+  /**
+   * The songs, in the wheel's order.
+   *
+   * @default []
+   */
+  readonly songs?: readonly SongEntry[];
+  /**
+   * The song the wheel stands on (the game's: it passes SongSelectResult.selected back).
+   *
+   * @default ""
+   */
+  readonly selected?: string;
+  /**
+   * The selected chart's key.
+   *
+   * @default ""
+   */
+  readonly difficulty?: string;
+  /**
+   * The selected song's preview.
+   *
+   * @default {}
+   */
+  readonly preview?: SongPreview;
+  /**
+   * The tempo's label.
+   *
+   * @default "BPM"
+   */
+  readonly bpmLabel?: string;
+  /**
+   * The length's label.
+   *
+   * @default "Length"
+   */
+  readonly lengthLabel?: string;
+  /**
+   * The best score's label.
+   *
+   * @default "Best score"
+   */
+  readonly bestLabel?: string;
+  /**
+   * The grade's label.
+   *
+   * @default "Grade"
+   */
+  readonly gradeLabel?: string;
+  /**
+   * The full combo badge.
+   *
+   * @default "Full combo"
+   */
+  readonly fullComboLabel?: string;
+  /**
+   * The accuracy ring's caption.
+   *
+   * @default "Accuracy"
+   */
+  readonly accuracyLabel?: string;
+  /**
+   * The call to action.
+   *
+   * @default "Play"
+   */
+  readonly playLabel?: string;
+  /**
+   * The preview's play toggle, to a screen reader.
+   *
+   * @default "Preview"
+   */
+  readonly previewLabel?: string;
+  /**
+   * A new song's tag.
+   *
+   * @default "New"
+   */
+  readonly newLabel?: string;
+}
+
+/** What the player asked for this tick, for the game to apply. */
+export interface SongSelectResult {
+  /** Another song was focused or pressed: stand the wheel on it (and start its preview). */
+  readonly selected: string | null;
+  /** Another chart was pressed, or the tab actions (Q and E, the bumpers) stepped to it. */
+  readonly difficulty: string | null;
+  /**
+   * Play was pressed, or the selected song's row pressed again, or confirm on it: start the chart.
+   */
+  readonly play: boolean;
+  /** The preview's toggle was pressed: play or pause it. */
+  readonly preview: boolean;
+  /** A locked song or chart was asked to play: it shook. */
+  readonly refused: string | null;
+}
+
+
+/**
  * A template's action, by its id (a menu item, `buy:<item>`, `share`).
  *
  * @param action The action's id.
@@ -54554,6 +54805,14 @@ export declare namespace og {
      * @param desc The map, its regions and places, the player and the words.
      */
     function worldMap(id: string, desc?: WorldMapDesc): WorldMapResult;
+    /**
+     * A song select (Project Sekai, osu!, Beat Saber, Taiko): the songs on an angled wheel at the end side, each row its jacket, title and artist with its tempo, the selected row larger and lit, the rows above and below it leaning away and fading, gliding as the selection moves; beside it the selected song large: its jacket filling a square, the title in the display face, the artist, the tempo and length in tabular numerals, the charts as chips with their levels (the selected one lit, a locked one dimmed with a lock), the best score with its grade and a full combo badge; at the foot the preview's bar, its waveform lit up to where the preview is, with its play toggle and time, the accuracy as a ring beside it, and Play in the accent. Up and down (keys, a pad, the wheel's rows under the focus) move the selection, the tab actions (Q and E, the bumpers) step the chart over locked ones, confirm plays. On a phone in portrait the jacket and the detail stand at the top, the wheel scrolls under them and Play docks at the thumb.
+     * Parts: Songs.frame, Songs.wheel, Songs.row[selected][locked][new], Songs.jacket, Songs.detail, Songs.title, Songs.stats, Songs.chip[selected][locked], Songs.score, Songs.grade, Songs.combo, Songs.accuracy, Songs.preview[playing], Songs.wave, Songs.play. Slots: each song's jacket (art kind jacket). States: on each row, group pick (open, selected, locked); on each chip, group chart (open, selected, locked). Motion: the wheel's rows glide to their places on the ui spring as the selection moves; the detail's jacket and title cross-fade on a change of song; the played part of the waveform grows with the preview (still under reduced motion). Sounds: hover as the selection moves, tab on a chart step, confirm on Play, error on a refused one. Accessibility: the wheel a listbox of options named title, artist and tempo; the charts a radio group named name and level; the preview a button named the preview word with its time; the score and grade a status. Probe ids: <id>/Wheel/<key>, <id>/Main/Top/Detail/Charts/<key>, <id>/Main/Top/Detail/Head/Title, <id>/Main/Foot/Preview/Toggle, <id>/Main/Foot/Play (on a phone in portrait <id>/Detail/Charts/<key>, <id>/Preview/Toggle, <id>/Play).
+     *
+     * @param id Its id.
+     * @param desc The songs, the selection, the preview and the words.
+     */
+    function songSelect(id: string, desc?: SongSelectDesc): SongSelectResult;
     /**
      * The title screen template. Returns the item chosen this tick.
      *

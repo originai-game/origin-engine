@@ -11547,6 +11547,11 @@
         "WorldRegion",
         "WorldMapDesc",
         "WorldMapResult",
+        "SongDifficulty",
+        "SongEntry",
+        "SongPreview",
+        "SongSelectDesc",
+        "SongSelectResult",
         "MenuItem",
         "MenuResult",
         "MainMenuDesc",
@@ -15721,6 +15726,27 @@
             }
           ],
           "returns": "WorldMapResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "songSelect",
+          "doc": "A song select (Project Sekai, osu!, Beat Saber, Taiko): the songs on an angled wheel at the end side, each row its jacket, title and artist with its tempo, the selected row larger and lit, the rows above and below it leaning away and fading, gliding as the selection moves; beside it the selected song large: its jacket filling a square, the title in the display face, the artist, the tempo and length in tabular numerals, the charts as chips with their levels (the selected one lit, a locked one dimmed with a lock), the best score with its grade and a full combo badge; at the foot the preview's bar, its waveform lit up to where the preview is, with its play toggle and time, the accuracy as a ring beside it, and Play in the accent. Up and down (keys, a pad, the wheel's rows under the focus) move the selection, the tab actions (Q and E, the bumpers) step the chart over locked ones, confirm plays. On a phone in portrait the jacket and the detail stand at the top, the wheel scrolls under them and Play docks at the thumb.\nParts: Songs.frame, Songs.wheel, Songs.row[selected][locked][new], Songs.jacket, Songs.detail, Songs.title, Songs.stats, Songs.chip[selected][locked], Songs.score, Songs.grade, Songs.combo, Songs.accuracy, Songs.preview[playing], Songs.wave, Songs.play. Slots: each song's jacket (art kind jacket). States: on each row, group pick (open, selected, locked); on each chip, group chart (open, selected, locked). Motion: the wheel's rows glide to their places on the ui spring as the selection moves; the detail's jacket and title cross-fade on a change of song; the played part of the waveform grows with the preview (still under reduced motion). Sounds: hover as the selection moves, tab on a chart step, confirm on Play, error on a refused one. Accessibility: the wheel a listbox of options named title, artist and tempo; the charts a radio group named name and level; the preview a button named the preview word with its time; the score and grade a status. Probe ids: <id>/Wheel/<key>, <id>/Main/Top/Detail/Charts/<key>, <id>/Main/Top/Detail/Head/Title, <id>/Main/Foot/Preview/Toggle, <id>/Main/Foot/Play (on a phone in portrait <id>/Detail/Charts/<key>, <id>/Preview/Toggle, <id>/Play).",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "SongSelectDesc",
+              "optional": true,
+              "doc": "The songs, the selection, the preview and the words."
+            }
+          ],
+          "returns": "SongSelectResult",
           "publish": true,
           "host": false
         },
@@ -61372,6 +61398,288 @@
         "zoom",
         "centerX",
         "centerY"
+      ],
+      "additionalProperties": false
+    },
+    "SongDifficulty": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One chart of a song.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key (easy, expert).",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name on its chip (Easy, Expert).",
+          "default": ""
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its level, the chip's numeral.",
+          "default": 0
+        },
+        "locked": {
+          "type": "boolean",
+          "description": "Not playable yet: the chip dimmed with a lock.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "SongEntry": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One song on the wheel.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key: its row's element id, so its probe path is <id>/Wheel/<key>.",
+          "default": ""
+        },
+        "title": {
+          "type": "string",
+          "description": "Its title, the row's reading and the detail's heading.",
+          "default": ""
+        },
+        "artist": {
+          "type": "string",
+          "description": "Its artist, under the title.",
+          "default": ""
+        },
+        "jacket": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its cover art (art kind jacket), square; null draws the style's placeholder.",
+          "default": null
+        },
+        "bpm": {
+          "type": "number",
+          "description": "Its tempo; 0 shows none.",
+          "default": 0
+        },
+        "seconds": {
+          "type": "number",
+          "description": "Its length; 0 shows none.",
+          "default": 0,
+          "x-og-unit": "s"
+        },
+        "difficulties": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SongDifficulty"
+          },
+          "description": "Its charts, easiest first.",
+          "default": []
+        },
+        "best": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The best score on the selected chart; 0 shows none.",
+          "default": 0
+        },
+        "grade": {
+          "type": "string",
+          "description": "The best grade on the selected chart (S, A); empty shows none.",
+          "default": ""
+        },
+        "fullCombo": {
+          "type": "boolean",
+          "description": "The selected chart was cleared with a full combo: a badge beside the grade.",
+          "default": false
+        },
+        "accuracy": {
+          "type": "number",
+          "description": "The best accuracy on the selected chart, 0 to 1; a negative value shows none.",
+          "default": -1,
+          "x-og-unit": "ratio"
+        },
+        "locked": {
+          "type": "boolean",
+          "description": "Not unlocked: its row dimmed with a lock, and Play refused.",
+          "default": false
+        },
+        "isNew": {
+          "type": "boolean",
+          "description": "Not played yet: a New tag on its row.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "SongPreview": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "The selected song's preview, which the game plays (og.audio).",
+      "type": "object",
+      "properties": {
+        "playing": {
+          "type": "boolean",
+          "description": "The preview is playing: the bar's play mark is a pause and its played part lit.",
+          "default": false
+        },
+        "position": {
+          "type": "number",
+          "description": "How far into the song the preview is.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "peaks": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "The song's waveform, its peaks 0 to 1 across its length (64 to 128 of them); empty draws a flat line.",
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "SongSelectDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A song select: the songs, the selected one and chart, the preview.",
+      "type": "object",
+      "properties": {
+        "songs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SongEntry"
+          },
+          "description": "The songs, in the wheel's order.",
+          "default": []
+        },
+        "selected": {
+          "type": "string",
+          "description": "The song the wheel stands on (the game's: it passes SongSelectResult.selected back).",
+          "default": ""
+        },
+        "difficulty": {
+          "type": "string",
+          "description": "The selected chart's key.",
+          "default": ""
+        },
+        "preview": {
+          "$ref": "#/$defs/SongPreview",
+          "description": "The selected song's preview.",
+          "default": {}
+        },
+        "bpmLabel": {
+          "type": "string",
+          "description": "The tempo's label.",
+          "default": "BPM"
+        },
+        "lengthLabel": {
+          "type": "string",
+          "description": "The length's label.",
+          "default": "Length"
+        },
+        "bestLabel": {
+          "type": "string",
+          "description": "The best score's label.",
+          "default": "Best score"
+        },
+        "gradeLabel": {
+          "type": "string",
+          "description": "The grade's label.",
+          "default": "Grade"
+        },
+        "fullComboLabel": {
+          "type": "string",
+          "description": "The full combo badge.",
+          "default": "Full combo"
+        },
+        "accuracyLabel": {
+          "type": "string",
+          "description": "The accuracy ring's caption.",
+          "default": "Accuracy"
+        },
+        "playLabel": {
+          "type": "string",
+          "description": "The call to action.",
+          "default": "Play"
+        },
+        "previewLabel": {
+          "type": "string",
+          "description": "The preview's play toggle, to a screen reader.",
+          "default": "Preview"
+        },
+        "newLabel": {
+          "type": "string",
+          "description": "A new song's tag.",
+          "default": "New"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SongSelectResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What the player asked for this tick, for the game to apply.",
+      "type": "object",
+      "properties": {
+        "selected": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Another song was focused or pressed: stand the wheel on it (and start its preview)."
+        },
+        "difficulty": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Another chart was pressed, or the tab actions (Q and E, the bumpers) stepped to it."
+        },
+        "play": {
+          "type": "boolean",
+          "description": "Play was pressed, or the selected song's row pressed again, or confirm on it: start the chart."
+        },
+        "preview": {
+          "type": "boolean",
+          "description": "The preview's toggle was pressed: play or pause it."
+        },
+        "refused": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A locked song or chart was asked to play: it shook."
+        }
+      },
+      "required": [
+        "selected",
+        "difficulty",
+        "play",
+        "preview",
+        "refused"
       ],
       "additionalProperties": false
     },

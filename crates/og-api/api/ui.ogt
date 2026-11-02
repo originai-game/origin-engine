@@ -5919,6 +5919,105 @@ module ui {
     returns WorldMapResult
   }
 
+  # ·· song select ··
+
+  struct SongDifficulty {
+    doc "One chart of a song."
+    desc true
+    field key String "Its key (easy, expert)."
+    field name String "Its name on its chip (Easy, Expert)."
+    field level u32 "Its level, the chip's numeral."
+    field locked bool "Not playable yet: the chip dimmed with a lock."
+  }
+
+  struct SongEntry {
+    doc "One song on the wheel."
+    desc true
+    field key String "Its key: its row's element id, so its probe path is <id>/Wheel/<key>."
+    field title String "Its title, the row's reading and the detail's heading."
+    field artist String "Its artist, under the title."
+    field jacket Option.Texture "Its cover art (art kind jacket), square; null draws the style's placeholder."
+    field bpm f32 "Its tempo; 0 shows none."
+    field seconds f32 "Its length; 0 shows none." {
+      unit s
+    }
+    field difficulties List.SongDifficulty "Its charts, easiest first."
+    field best u32 "The best score on the selected chart; 0 shows none."
+    field grade String "The best grade on the selected chart (S, A); empty shows none."
+    field fullCombo bool "The selected chart was cleared with a full combo: a badge beside the grade."
+    field accuracy f32 "The best accuracy on the selected chart, 0 to 1; a negative value shows none." {
+      unit ratio
+      default -1
+    }
+    field locked bool "Not unlocked: its row dimmed with a lock, and Play refused."
+    field isNew bool "Not played yet: a New tag on its row."
+  }
+
+  struct SongPreview {
+    doc "The selected song's preview, which the game plays (og.audio)."
+    desc true
+    field playing bool "The preview is playing: the bar's play mark is a pause and its played part lit."
+    field position f32 "How far into the song the preview is." {
+      unit s
+      min 0
+    }
+    field peaks List.f32 "The song's waveform, its peaks 0 to 1 across its length (64 to 128 of them); empty draws a flat line."
+  }
+
+  struct SongSelectDesc {
+    doc "A song select: the songs, the selected one and chart, the preview."
+    desc true
+    field songs List.SongEntry "The songs, in the wheel's order."
+    field selected String "The song the wheel stands on (the game's: it passes SongSelectResult.selected back)."
+    field difficulty String "The selected chart's key."
+    field preview SongPreview "The selected song's preview."
+    field bpmLabel String "The tempo's label." {
+      default "BPM"
+    }
+    field lengthLabel String "The length's label." {
+      default "Length"
+    }
+    field bestLabel String "The best score's label." {
+      default "Best score"
+    }
+    field gradeLabel String "The grade's label." {
+      default "Grade"
+    }
+    field fullComboLabel String "The full combo badge." {
+      default "Full combo"
+    }
+    field accuracyLabel String "The accuracy ring's caption." {
+      default "Accuracy"
+    }
+    field playLabel String "The call to action." {
+      default "Play"
+    }
+    field previewLabel String "The preview's play toggle, to a screen reader." {
+      default "Preview"
+    }
+    field newLabel String "A new song's tag." {
+      default "New"
+    }
+  }
+
+  struct SongSelectResult {
+    doc "What the player asked for this tick, for the game to apply."
+    field selected Option.String "Another song was focused or pressed: stand the wheel on it (and start its preview)."
+    field difficulty Option.String "Another chart was pressed, or the tab actions (Q and E, the bumpers) stepped to it."
+    field play bool "Play was pressed, or the selected song's row pressed again, or confirm on it: start the chart."
+    field preview bool "The preview's toggle was pressed: play or pause it."
+    field refused Option.String "A locked song or chart was asked to play: it shook."
+  }
+
+  fn songSelect {
+    doc "A song select (Project Sekai, osu!, Beat Saber, Taiko): the songs on an angled wheel at the end side, each row its jacket, title and artist with its tempo, the selected row larger and lit, the rows above and below it leaning away and fading, gliding as the selection moves; beside it the selected song large: its jacket filling a square, the title in the display face, the artist, the tempo and length in tabular numerals, the charts as chips with their levels (the selected one lit, a locked one dimmed with a lock), the best score with its grade and a full combo badge; at the foot the preview's bar, its waveform lit up to where the preview is, with its play toggle and time, the accuracy as a ring beside it, and Play in the accent. Up and down (keys, a pad, the wheel's rows under the focus) move the selection, the tab actions (Q and E, the bumpers) step the chart over locked ones, confirm plays. On a phone in portrait the jacket and the detail stand at the top, the wheel scrolls under them and Play docks at the thumb."
+    doc "Parts: Songs.frame, Songs.wheel, Songs.row[selected][locked][new], Songs.jacket, Songs.detail, Songs.title, Songs.stats, Songs.chip[selected][locked], Songs.score, Songs.grade, Songs.combo, Songs.accuracy, Songs.preview[playing], Songs.wave, Songs.play. Slots: each song's jacket (art kind jacket). States: on each row, group pick (open, selected, locked); on each chip, group chart (open, selected, locked). Motion: the wheel's rows glide to their places on the ui spring as the selection moves; the detail's jacket and title cross-fade on a change of song; the played part of the waveform grows with the preview (still under reduced motion). Sounds: hover as the selection moves, tab on a chart step, confirm on Play, error on a refused one. Accessibility: the wheel a listbox of options named title, artist and tempo; the charts a radio group named name and level; the preview a button named the preview word with its time; the score and grade a status. Probe ids: <id>/Wheel/<key>, <id>/Main/Top/Detail/Charts/<key>, <id>/Main/Top/Detail/Head/Title, <id>/Main/Foot/Preview/Toggle, <id>/Main/Foot/Play (on a phone in portrait <id>/Detail/Charts/<key>, <id>/Preview/Toggle, <id>/Play)."
+    host false
+    param id String "Its id."
+    param desc SongSelectDesc "The songs, the selection, the preview and the words."
+    returns SongSelectResult
+  }
+
   # ── end of the genre patterns ────────────────────────────────────────
 
   # ── the UI kit: screen templates (TypeScript over the calls above) ──────
