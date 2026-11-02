@@ -782,8 +782,10 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       // A greeting with characters no locale font cooked (zh-CN and ja): the
       // Chinese font draws them from its outlines at run time (runtime true).
       if (screen === "mainMenu") {
-        og.ui.anchor("Greeting", { anchor: "top", direction: "column", padding: { left: 0, top: 24, right: 0, bottom: 0 } }, () => {
-          og.ui.label("Text", tr(world, "menu.greeting"), { step: "lg", color: { token: "inkMuted" }, nowrap: true });
+        // On the style's HUD plate: the scene behind it is any colour (a dark sky under a
+        // parchment style's dark ink), the plate's ink reads on the plate in every style.
+        og.ui.anchor("Greeting", { anchor: "top", direction: "column", margin: 24, padding: { left: 16, top: 6, right: 16, bottom: 6 }, background: { token: "hud" }, radius: 8, frame: "hud" }, () => {
+          og.ui.label("Text", tr(world, "menu.greeting"), { step: "lg", nowrap: true });
         });
       }
       if (r.selected === "play") d.screen = screenIndex("platformer");

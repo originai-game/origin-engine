@@ -29,7 +29,9 @@ export function shopScreen(id: string, desc: Api.ShopDesc = {}): Api.ShopResult 
   let sel = Math.min(kit.memory(`${id}.sel`, 0), Math.max(0, items.length - 1));
   const balance = desc.balance ?? 0;
   out.closed = screen(id, desc.title ?? "Shop", 760, () => {
-    kit.row("Bar", { width: grow(), gap: t.sm, cross: "center", align: "spaceBetween" }, () => {
+    // The balance wraps under the tabs where both do not fit (a phone, a large text size):
+    // it never reaches past the panel's padding.
+    kit.row("Bar", { width: grow(), gap: t.sm, cross: "center", align: "spaceBetween", wrap: true }, () => {
       if (cats.length > 0) {
         const r = kit.tabs("Categories", cats, cat, {});
         if (r.response.changed) sel = 0;
