@@ -9,7 +9,7 @@ import { afterAll, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ART_KINDS, artBrief, colourName, parsePalette, presetLook, readLook, styleArtBriefs, UI_KINDS, uiAllows, type BriefLook } from "../scripts/brief.ts";
+import { ART_KINDS, artBrief, colourName, parsePalette, presetLook, readLook, RIG_TEMPLATES, rigParts, styleArtBriefs, UI_KINDS, uiAllows, type BriefLook } from "../scripts/brief.ts";
 
 const temps: string[] = [];
 afterAll(() => {
@@ -273,4 +273,42 @@ test("a generated style's art requests become one brief per slot, in its shape l
   expect(corner.kind).toBe("ornament");
   expect(corner.prompt).toContain("rich ornament");
   expect(() => styleArtBriefs(presetLook("16bit-pixel"), { ...requests, slots: [{ name: "x/y", kind: "frame" }] })).toThrow("not an art kind");
+});
+
+test("rigParts lists a template's layers back to front, each with its side, its bone and its joint's rule", () => {
+  // humanoid-front as the mage draws it (examples/autorig/art/mage.py): the legs behind the robe, the
+  // image-left side before the right, the staff under the hand that holds it. og-cook's
+  // rig_parts_match_the_templates holds the fields equal to its templates; this holds the shape.
+  const front = rigParts("humanoid-front");
+  const layers = front.map((p) => p.layer);
+  expect(layers.length).toBe(25);
+  expect(new Set(layers).size).toBe(25);
+  const before = (a: string, b: string) => expect(layers.indexOf(a)).toBeLessThan(layers.indexOf(b));
+  before("cape", "leg-upper-l");
+  before("foot-r", "pelvis");
+  before("pelvis", "torso");
+  before("torso", "head");
+  before("hand-l", "arm-upper-r");
+  before("weapon", "hand-r");
+  const required = front.filter((p) => p.required).map((p) => p.layer).sort();
+  expect(required).toEqual(
+    ["arm-lower-l", "arm-lower-r", "arm-upper-l", "arm-upper-r", "foot-l", "foot-r", "hand-l", "hand-r", "head", "leg-lower-l", "leg-lower-r", "leg-upper-l", "leg-upper-r", "pelvis", "torso"],
+  );
+  const part = (name: string) => front.find((p) => p.layer === name)!;
+  expect(part("foot-l")).toMatchObject({ side: "l", bone: "foot-l", bones: 1, bends: false, hangsFrom: ["leg-lower-l"], joint: "top", what: "the image-left foot" });
+  expect(part("cape")).toMatchObject({ side: null, required: false, bones: 3, bends: true, hangsFrom: ["torso"] });
+  expect(part("head").hangsFrom).toEqual(["neck", "torso"]);
+  expect(part("pelvis")).toMatchObject({ hangsFrom: [], joint: "centre" });
+  expect(part("pelvis").note).toContain("root part");
+  expect(part("leg-lower-r").note).toContain("hangs from `leg-upper-r`: its joint is the centre of where it overlaps that part at its top");
+  expect(part("leg-lower-r").note).toContain("`pivot leg-lower-r <x> <y>`");
+  expect(part("weapon").note).toContain("hangs from `hand-r`, else `hand-l`");
+  // The same layers seen from the side, where -l is the far side.
+  expect(rigParts("humanoid-side").find((p) => p.layer === "foot-l")?.what).toBe("the far foot");
+  // A dog's 22 parts (its body, its head and four legs of three required), a creature's 17 with only its body required.
+  expect([rigParts("quadruped").length, rigParts("quadruped").filter((p) => p.required).length]).toEqual([22, 14]);
+  expect(rigParts("creature").filter((p) => p.required).map((p) => p.layer)).toEqual(["body"]);
+  expect([...RIG_TEMPLATES]).toEqual(["humanoid-side", "humanoid-front", "quadruped", "creature"]);
+  // Another name is refused, naming the four.
+  expect(() => rigParts("humanoid")).toThrow("'humanoid' is not an auto-rig template: use one of humanoid-side, humanoid-front, quadruped, creature");
 });

@@ -1152,3 +1152,192 @@ export function styleArtBriefs(look: BriefLook, requests: StyleArtRequests): Sty
     return { slot: s.name, brief: artBrief(look, s.kind as ArtKind, subject, insets ? { insets } : {}) };
   });
 }
+
+// ------------------------------------------------------- the auto-rig's parts
+
+/**
+ * The auto-rig's templates (docs/art.md §2.8): a `type rig2d` with `parts`
+ * (a layered PSD or a folder of PNGs) and one of these is rigged by the cook.
+ */
+export const RIG_TEMPLATES = ["humanoid-side", "humanoid-front", "quadruped", "creature"] as const;
+export type RigTemplate = (typeof RIG_TEMPLATES)[number];
+
+/** Where a part's joint with its parent is looked for (og-cook's `End`). */
+export type RigJoint = "top" | "bottom" | "centre" | "near";
+
+/** One part of an auto-rig template, as `rigParts` returns it. */
+export interface RigPart {
+  /** The layer's name (a folder's file is `<layer>.png`, or `NN-<layer>.png` to number the draw order). */
+  readonly layer: string;
+  /** Whether the cook refuses the art without it. */
+  readonly required: boolean;
+  /** `l` or `r` for a part with a side (docs/art.md §2.8 says what each side is per template), else null. */
+  readonly side: "l" | "r" | null;
+  /** The bone its pixels follow, named for the part; a chain's next bones are `<bone>-2`, `<bone>-3`, ... */
+  readonly bone: string;
+  /** How many bones it bends along: 1, or a chain's length (a cape 3, a tail 4). */
+  readonly bones: number;
+  /** Whether it bends (a limb or a chain, drawn as a mesh) or is drawn as it is. */
+  readonly bends: boolean;
+  /** The parts it hangs from, the first the art has; empty for the root part. */
+  readonly hangsFrom: readonly string[];
+  /** Where its joint with that part is looked for. */
+  readonly joint: RigJoint;
+  /** What it is, as the cook's refusal names it. */
+  readonly what: string;
+  /** The overlap and pivot rule for this part, one line. */
+  readonly note: string;
+}
+
+// rig-parts: begin
+// Each template's parts in the order to draw them, back to front (the order
+// the example art draws in; the art's own layer order is what the cook
+// draws). The fields are og-cook's (crates/og-cook/src/cook/autorig/
+// template.rs): its unit test `rig_parts_match_the_templates` reads this
+// block as JSON and fails on any part, field or `sides` that differs.
+const RIG_PARTS = {
+  "humanoid-side": {
+    "sides": "`-l` is the far side (drawn behind the body), `-r` the near side; the character faces right",
+    "parts": [
+      { "name": "cape", "required": false, "parents": ["torso"], "end": "top", "shape": "chain", "bones": 3, "what": "a cape from the shoulders" },
+      { "name": "wing-l", "required": false, "parents": ["torso"], "end": "near", "shape": "chain", "bones": 2, "what": "the far wing" },
+      { "name": "tail", "required": false, "parents": ["pelvis"], "end": "near", "shape": "chain", "bones": 4, "what": "a tail" },
+      { "name": "hair", "required": false, "parents": ["head"], "end": "top", "shape": "chain", "bones": 2, "what": "hair that swings" },
+      { "name": "arm-upper-l", "required": true, "parents": ["torso"], "end": "top", "shape": "limb", "bones": 1, "what": "the far upper arm" },
+      { "name": "arm-lower-l", "required": true, "parents": ["arm-upper-l"], "end": "top", "shape": "limb", "bones": 1, "what": "the far forearm" },
+      { "name": "shield", "required": false, "parents": ["hand-l", "hand-r"], "end": "near", "shape": "rigid", "bones": 1, "what": "a shield, its grip under the hand" },
+      { "name": "hand-l", "required": true, "parents": ["arm-lower-l"], "end": "top", "shape": "rigid", "bones": 1, "what": "the far hand" },
+      { "name": "leg-upper-l", "required": true, "parents": ["pelvis"], "end": "top", "shape": "limb", "bones": 1, "what": "the far thigh" },
+      { "name": "leg-lower-l", "required": true, "parents": ["leg-upper-l"], "end": "top", "shape": "limb", "bones": 1, "what": "the far shin" },
+      { "name": "foot-l", "required": true, "parents": ["leg-lower-l"], "end": "top", "shape": "rigid", "bones": 1, "what": "the far foot" },
+      { "name": "pelvis", "required": true, "parents": [], "end": "centre", "shape": "rigid", "bones": 1, "what": "the hips" },
+      { "name": "torso", "required": true, "parents": ["pelvis"], "end": "bottom", "shape": "limb", "bones": 1, "what": "the chest and belly" },
+      { "name": "neck", "required": false, "parents": ["torso"], "end": "bottom", "shape": "limb", "bones": 1, "what": "the neck" },
+      { "name": "ear-l", "required": false, "parents": ["head"], "end": "near", "shape": "rigid", "bones": 1, "what": "the far ear" },
+      { "name": "head", "required": true, "parents": ["neck", "torso"], "end": "bottom", "shape": "rigid", "bones": 1, "what": "the head" },
+      { "name": "ear-r", "required": false, "parents": ["head"], "end": "near", "shape": "rigid", "bones": 1, "what": "the near ear" },
+      { "name": "leg-upper-r", "required": true, "parents": ["pelvis"], "end": "top", "shape": "limb", "bones": 1, "what": "the near thigh" },
+      { "name": "leg-lower-r", "required": true, "parents": ["leg-upper-r"], "end": "top", "shape": "limb", "bones": 1, "what": "the near shin" },
+      { "name": "foot-r", "required": true, "parents": ["leg-lower-r"], "end": "top", "shape": "rigid", "bones": 1, "what": "the near foot" },
+      { "name": "wing-r", "required": false, "parents": ["torso"], "end": "near", "shape": "chain", "bones": 2, "what": "the near wing" },
+      { "name": "arm-upper-r", "required": true, "parents": ["torso"], "end": "top", "shape": "limb", "bones": 1, "what": "the near upper arm" },
+      { "name": "arm-lower-r", "required": true, "parents": ["arm-upper-r"], "end": "top", "shape": "limb", "bones": 1, "what": "the near forearm" },
+      { "name": "weapon", "required": false, "parents": ["hand-r", "hand-l"], "end": "near", "shape": "rigid", "bones": 1, "what": "a weapon, its grip under the hand" },
+      { "name": "hand-r", "required": true, "parents": ["arm-lower-r"], "end": "top", "shape": "rigid", "bones": 1, "what": "the near hand" }
+    ]
+  },
+  "humanoid-front": {
+    "sides": "`-l` is the part on the image's left, `-r` on its right; the character faces the viewer",
+    "parts": [
+      { "name": "cape", "required": false, "parents": ["torso"], "end": "top", "shape": "chain", "bones": 3, "what": "a cape from the shoulders" },
+      { "name": "wing-l", "required": false, "parents": ["torso"], "end": "near", "shape": "chain", "bones": 2, "what": "the image-left wing" },
+      { "name": "wing-r", "required": false, "parents": ["torso"], "end": "near", "shape": "chain", "bones": 2, "what": "the image-right wing" },
+      { "name": "tail", "required": false, "parents": ["pelvis"], "end": "near", "shape": "chain", "bones": 4, "what": "a tail" },
+      { "name": "hair", "required": false, "parents": ["head"], "end": "top", "shape": "chain", "bones": 2, "what": "hair that swings" },
+      { "name": "leg-upper-l", "required": true, "parents": ["pelvis"], "end": "top", "shape": "limb", "bones": 1, "what": "the image-left thigh" },
+      { "name": "leg-lower-l", "required": true, "parents": ["leg-upper-l"], "end": "top", "shape": "limb", "bones": 1, "what": "the image-left shin" },
+      { "name": "foot-l", "required": true, "parents": ["leg-lower-l"], "end": "top", "shape": "rigid", "bones": 1, "what": "the image-left foot" },
+      { "name": "leg-upper-r", "required": true, "parents": ["pelvis"], "end": "top", "shape": "limb", "bones": 1, "what": "the image-right thigh" },
+      { "name": "leg-lower-r", "required": true, "parents": ["leg-upper-r"], "end": "top", "shape": "limb", "bones": 1, "what": "the image-right shin" },
+      { "name": "foot-r", "required": true, "parents": ["leg-lower-r"], "end": "top", "shape": "rigid", "bones": 1, "what": "the image-right foot" },
+      { "name": "pelvis", "required": true, "parents": [], "end": "centre", "shape": "rigid", "bones": 1, "what": "the hips" },
+      { "name": "torso", "required": true, "parents": ["pelvis"], "end": "bottom", "shape": "limb", "bones": 1, "what": "the chest and belly" },
+      { "name": "neck", "required": false, "parents": ["torso"], "end": "bottom", "shape": "limb", "bones": 1, "what": "the neck" },
+      { "name": "ear-l", "required": false, "parents": ["head"], "end": "near", "shape": "rigid", "bones": 1, "what": "the image-left ear" },
+      { "name": "ear-r", "required": false, "parents": ["head"], "end": "near", "shape": "rigid", "bones": 1, "what": "the image-right ear" },
+      { "name": "head", "required": true, "parents": ["neck", "torso"], "end": "bottom", "shape": "rigid", "bones": 1, "what": "the head" },
+      { "name": "arm-upper-l", "required": true, "parents": ["torso"], "end": "top", "shape": "limb", "bones": 1, "what": "the image-left upper arm" },
+      { "name": "arm-lower-l", "required": true, "parents": ["arm-upper-l"], "end": "top", "shape": "limb", "bones": 1, "what": "the image-left forearm" },
+      { "name": "shield", "required": false, "parents": ["hand-l", "hand-r"], "end": "near", "shape": "rigid", "bones": 1, "what": "a shield, its grip under the hand" },
+      { "name": "hand-l", "required": true, "parents": ["arm-lower-l"], "end": "top", "shape": "rigid", "bones": 1, "what": "the image-left hand" },
+      { "name": "arm-upper-r", "required": true, "parents": ["torso"], "end": "top", "shape": "limb", "bones": 1, "what": "the image-right upper arm" },
+      { "name": "arm-lower-r", "required": true, "parents": ["arm-upper-r"], "end": "top", "shape": "limb", "bones": 1, "what": "the image-right forearm" },
+      { "name": "weapon", "required": false, "parents": ["hand-r", "hand-l"], "end": "near", "shape": "rigid", "bones": 1, "what": "a weapon, its grip under the hand" },
+      { "name": "hand-r", "required": true, "parents": ["arm-lower-r"], "end": "top", "shape": "rigid", "bones": 1, "what": "the image-right hand" }
+    ]
+  },
+  "quadruped": {
+    "sides": "`-l` is the far side (drawn behind the body), `-r` the near side; the animal faces right",
+    "parts": [
+      { "name": "tail", "required": false, "parents": ["body"], "end": "near", "shape": "chain", "bones": 4, "what": "a tail" },
+      { "name": "wing-l", "required": false, "parents": ["body"], "end": "near", "shape": "chain", "bones": 2, "what": "the far wing" },
+      { "name": "leg-back-upper-l", "required": true, "parents": ["body"], "end": "top", "shape": "limb", "bones": 1, "what": "the far back leg's upper part" },
+      { "name": "leg-back-lower-l", "required": true, "parents": ["leg-back-upper-l"], "end": "top", "shape": "limb", "bones": 1, "what": "the far back leg's lower part" },
+      { "name": "paw-back-l", "required": true, "parents": ["leg-back-lower-l"], "end": "top", "shape": "rigid", "bones": 1, "what": "the far back paw" },
+      { "name": "leg-front-upper-l", "required": true, "parents": ["body"], "end": "top", "shape": "limb", "bones": 1, "what": "the far front leg's upper part" },
+      { "name": "leg-front-lower-l", "required": true, "parents": ["leg-front-upper-l"], "end": "top", "shape": "limb", "bones": 1, "what": "the far front leg's lower part" },
+      { "name": "paw-front-l", "required": true, "parents": ["leg-front-lower-l"], "end": "top", "shape": "rigid", "bones": 1, "what": "the far front paw" },
+      { "name": "ear-l", "required": false, "parents": ["head"], "end": "near", "shape": "rigid", "bones": 1, "what": "the far ear" },
+      { "name": "body", "required": true, "parents": [], "end": "centre", "shape": "limb", "bones": 1, "what": "the body" },
+      { "name": "neck", "required": false, "parents": ["body"], "end": "near", "shape": "limb", "bones": 1, "what": "the neck" },
+      { "name": "mane", "required": false, "parents": ["neck", "head"], "end": "near", "shape": "chain", "bones": 2, "what": "a mane" },
+      { "name": "head", "required": true, "parents": ["neck", "body"], "end": "near", "shape": "rigid", "bones": 1, "what": "the head" },
+      { "name": "jaw", "required": false, "parents": ["head"], "end": "near", "shape": "rigid", "bones": 1, "what": "a lower jaw" },
+      { "name": "ear-r", "required": false, "parents": ["head"], "end": "near", "shape": "rigid", "bones": 1, "what": "the near ear" },
+      { "name": "leg-back-upper-r", "required": true, "parents": ["body"], "end": "top", "shape": "limb", "bones": 1, "what": "the near back leg's upper part" },
+      { "name": "leg-back-lower-r", "required": true, "parents": ["leg-back-upper-r"], "end": "top", "shape": "limb", "bones": 1, "what": "the near back leg's lower part" },
+      { "name": "paw-back-r", "required": true, "parents": ["leg-back-lower-r"], "end": "top", "shape": "rigid", "bones": 1, "what": "the near back paw" },
+      { "name": "leg-front-upper-r", "required": true, "parents": ["body"], "end": "top", "shape": "limb", "bones": 1, "what": "the near front leg's upper part" },
+      { "name": "leg-front-lower-r", "required": true, "parents": ["leg-front-upper-r"], "end": "top", "shape": "limb", "bones": 1, "what": "the near front leg's lower part" },
+      { "name": "paw-front-r", "required": true, "parents": ["leg-front-lower-r"], "end": "top", "shape": "rigid", "bones": 1, "what": "the near front paw" },
+      { "name": "wing-r", "required": false, "parents": ["body"], "end": "near", "shape": "chain", "bones": 2, "what": "the near wing" }
+    ]
+  },
+  "creature": {
+    "sides": "`-l` is the part on the image's left, `-r` on its right; limbs are numbered from the front (`limb-1`)",
+    "parts": [
+      { "name": "tail", "required": false, "parents": ["body"], "end": "near", "shape": "chain", "bones": 4, "what": "a tail" },
+      { "name": "wing-l", "required": false, "parents": ["body"], "end": "near", "shape": "chain", "bones": 2, "what": "the left wing" },
+      { "name": "wing-r", "required": false, "parents": ["body"], "end": "near", "shape": "chain", "bones": 2, "what": "the right wing" },
+      { "name": "limb-2", "required": false, "parents": ["body"], "end": "near", "shape": "chain", "bones": 3, "what": "a limb" },
+      { "name": "limb-4", "required": false, "parents": ["body"], "end": "near", "shape": "chain", "bones": 3, "what": "a limb" },
+      { "name": "limb-6", "required": false, "parents": ["body"], "end": "near", "shape": "chain", "bones": 3, "what": "a limb" },
+      { "name": "limb-8", "required": false, "parents": ["body"], "end": "near", "shape": "chain", "bones": 3, "what": "a limb" },
+      { "name": "body", "required": true, "parents": [], "end": "centre", "shape": "limb", "bones": 1, "what": "the body" },
+      { "name": "ear-l", "required": false, "parents": ["head", "body"], "end": "near", "shape": "rigid", "bones": 1, "what": "the left ear" },
+      { "name": "ear-r", "required": false, "parents": ["head", "body"], "end": "near", "shape": "rigid", "bones": 1, "what": "the right ear" },
+      { "name": "head", "required": false, "parents": ["body"], "end": "near", "shape": "rigid", "bones": 1, "what": "a head" },
+      { "name": "eye-l", "required": false, "parents": ["head", "body"], "end": "near", "shape": "rigid", "bones": 1, "what": "the left eye" },
+      { "name": "eye-r", "required": false, "parents": ["head", "body"], "end": "near", "shape": "rigid", "bones": 1, "what": "the right eye" },
+      { "name": "limb-1", "required": false, "parents": ["body"], "end": "near", "shape": "chain", "bones": 3, "what": "a limb" },
+      { "name": "limb-3", "required": false, "parents": ["body"], "end": "near", "shape": "chain", "bones": 3, "what": "a limb" },
+      { "name": "limb-5", "required": false, "parents": ["body"], "end": "near", "shape": "chain", "bones": 3, "what": "a limb" },
+      { "name": "limb-7", "required": false, "parents": ["body"], "end": "near", "shape": "chain", "bones": 3, "what": "a limb" }
+    ]
+  }
+} as const;
+// rig-parts: end
+
+/** Where the joint end is, in words. */
+const JOINT_WORDS: Readonly<Record<RigJoint, string>> = { top: "its top", bottom: "its bottom", centre: "its middle", near: "where they meet" };
+
+/**
+ * The parts of an auto-rig template (docs/art.md §2.8), back to front: each
+ * one's layer name, whether the cook needs it, its side, the bone it drives
+ * and the rule that places its joint. Pure; throws naming the four
+ * templates for any other name.
+ */
+export function rigParts(template: string): RigPart[] {
+  if (!(RIG_TEMPLATES as readonly string[]).includes(template)) throw new Error(`'${template}' is not an auto-rig template: use one of ${RIG_TEMPLATES.join(", ")}`);
+  return RIG_PARTS[template as RigTemplate].parts.map((p) => {
+    const side = /-(l|r)$/.exec(p.name)?.[1] as "l" | "r" | undefined;
+    const joint = p.end as RigJoint;
+    const from = p.parents.map((n) => `\`${n}\``).join(", else ");
+    const note =
+      p.parents.length === 0
+        ? "the root part: everything hangs from it, its bone at the centre of its solid pixels, the rig's root on the ground under it"
+        : `hangs from ${from}: its joint is the centre of where it overlaps that part at ${JOINT_WORDS[joint]} (solid pixels, alpha at least half); with no overlap, ${joint === "near" ? "its pixel nearest that part" : JOINT_WORDS[joint]}, which must touch it; \`pivot ${p.name} <x> <y>\` sets it`;
+    return {
+      layer: p.name,
+      required: p.required,
+      side: side ?? null,
+      bone: p.name,
+      bones: p.bones,
+      bends: p.shape !== "rigid",
+      hangsFrom: [...p.parents],
+      joint,
+      what: p.what,
+      note,
+    };
+  });
+}

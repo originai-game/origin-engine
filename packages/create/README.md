@@ -71,6 +71,19 @@ signature and shapes, a public contract kept stable. The prepack copies it
 with the presets and built-in palettes it reads (`presets/`), and the
 tests fail when the copy differs.
 
+## The auto-rig's parts
+
+`rigParts(template)` (from the same `bin/brief.ts`) lists the layers a
+character's layered art needs for one of the auto-rig's templates
+(`RIG_TEMPLATES`: `humanoid-side`, `humanoid-front`, `quadruped`,
+`creature`), back to front: each part's layer name, whether the cook
+requires it, its side (`l`, `r` or null), the bone it drives, the parts
+it hangs from and a one-line note on how its joint is found from its
+overlap (or set by a `pivot` line). Another name throws, naming the four.
+The data is og-cook's templates, held equal by og-cook's
+`rig_parts_match_the_templates` test; the contract itself is docs/art.md
+§2.8 in the engine repository.
+
 The published package carries the 3D template under `template/`, the 2D
 starter under `template-2d/`, the style catalogue under `looks/` and the look presets under `presets/`, copied by the `prepack` script
 (`scripts/pack-template.ts`); build output (`cooked/`,

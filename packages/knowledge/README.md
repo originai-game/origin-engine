@@ -108,6 +108,14 @@ break, with a `changelog.json` breaking entry):
   alone, for a game not written yet (the platform's style step).
 - `parsePalette(file, text)` and `colourName(hex)`: a `.hex` or `.gpl`
   palette as named colours.
+- `rigParts(template: string): RigPart[]`: the layers
+  the auto-rig needs for one of `RIG_TEMPLATES` (`humanoid-side`,
+  `humanoid-front`, `quadruped`, `creature`; docs/art.md §2.8), back to
+  front, each `RigPart { layer, required, side: "l" | "r" | null, bone,
+  bones, bends, hangsFrom, joint: RigJoint, what, note }`; another name
+  throws naming the four. Its data sits between the file's `rig-parts`
+  markers and og-cook's `rig_parts_match_the_templates` test holds it
+  equal to the cook's templates.
 
 What it decides, from the look's numbers (a field at zero constrains
 nothing, and the entry's prose stands in for it):

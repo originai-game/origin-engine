@@ -32,6 +32,10 @@ import { fileURLToPath } from "node:url";
 // equal); README §The art brief.
 export { ART_KINDS, ART_RESOURCES, artBrief, colourName, parseLook, parsePalette, presetLook, readLook, styleArtBriefs } from "./brief.ts";
 export type { ArtBlocks, ArtBrief, ArtKind, ArtResource, ArtValue, BriefLook, BriefOptions, BriefPalette, BriefReference, BriefStyle, ImageParams, ModelParams, PaletteColour, ReadLookOptions, StyleArtBrief, StyleArtRequests } from "./brief.ts";
+// The auto-rig's layer contract (docs/art.md §2.8): a template's parts, back
+// to front, held equal to og-cook's templates by its rig_parts test.
+export { RIG_TEMPLATES, rigParts } from "./brief.ts";
+export type { RigJoint, RigPart, RigTemplate } from "./brief.ts";
 
 /** Directories of a template copy that are build output, never scaffolded. */
 export const SKIPPED = new Set(["cooked", "dist", "node_modules", "og-out", ".og"]);

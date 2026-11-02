@@ -140,6 +140,12 @@ is one line here, written at the merge that changes
   run plant them from contact), a held weapon keeps its line, and a
   cape, a tail or hair lags through its chain. `step`, `takeoff`,
   `land`, `hit` and `fall` events mark the moments a game reacts to.
+- **The auto-rig's layer contract (G3-1).** docs/art.md §2.8 states the
+  layers each template reads, and `@origingame/create-game` exports
+  `rigParts(template)` (with `RIG_TEMPLATES`): a template's parts back to
+  front, each one's layer name, whether it is required, its side, the
+  bone it drives and how its joint is found. Additive; og-cook's tests
+  hold it equal to the cook's templates.
 - **FBX and OBJ models (G3-1).** The cook takes `.fbx` (binary and ASCII)
   and `.obj` with its `.mtl` as models, read by ufbx into a glTF binary,
   so they cook to the same model and `#anim` blobs and load with

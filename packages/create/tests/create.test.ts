@@ -5,7 +5,7 @@ import { afterAll, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
-import { artBrief, pickStyle, premiseProfile, presetLook, readCatalogue, readLook, words } from "../bin/create.ts";
+import { artBrief, pickStyle, premiseProfile, presetLook, readCatalogue, readLook, RIG_TEMPLATES, rigParts, words } from "../bin/create.ts";
 import { cpSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { SKIN_ELSEWHERE } from "../../knowledge/scripts/validate.ts";
@@ -369,6 +369,21 @@ test("the art brief is re-exported: bin/brief.ts is the knowledge package's, and
   expect(cli("faceted", "--profile", "3d", "--look", "faceted-low-poly", "--no-prompt").code).toBe(0);
   const three = artBrief(readLook(join(scratch, "faceted")), "prop", "a signpost");
   expect([three.medium, three.model?.faceBudget, three.model?.textureSize]).toEqual(["model", 200, 64]);
+});
+
+test("rigParts is re-exported beside the art brief and names the four templates for any other", () => {
+  expect([...RIG_TEMPLATES]).toEqual(["humanoid-side", "humanoid-front", "quadruped", "creature"]);
+  // The mage's lowest layers (examples/autorig/assets/chars/mage.psd): its legs, image-left first.
+  const legs = rigParts("humanoid-front").filter((p) => /^(leg|foot)/.test(p.layer));
+  expect(legs.map((p) => [p.layer, p.side, p.bone, p.required])).toEqual([
+    ["leg-upper-l", "l", "leg-upper-l", true],
+    ["leg-lower-l", "l", "leg-lower-l", true],
+    ["foot-l", "l", "foot-l", true],
+    ["leg-upper-r", "r", "leg-upper-r", true],
+    ["leg-lower-r", "r", "leg-lower-r", true],
+    ["foot-r", "r", "foot-r", true],
+  ]);
+  expect(() => rigParts("biped")).toThrow("use one of humanoid-side, humanoid-front, quadruped, creature");
 });
 
 test("the published package briefs from its own presets, catalogue and previews", () => {
