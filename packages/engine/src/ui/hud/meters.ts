@@ -8,7 +8,7 @@
 // extended stamina, red and slow while exhausted, gone once full.
 
 import type * as Api from "@origingame/engine";
-import { TAU, a11y, absolute, box, clamp01, close, easeInOut, edge, ellipseShape, fillDraw, frame, glow, groups, hudPlace, icon, kindColor, kit, leaf, levelOf, lit, mix, msToTicks, now, open, paintRgba, pct, phase, pulse, px, radial, rarityColor, reduced, role, sel, solid, sound, spring, stroke, text, token, trackDraw, ts, u, vgrad, anchorOf, inner, drop, shapeOf, arc, type Level, type Rgba, apply, type Props, stepSize, WHITE } from "./core.ts";
+import { TAU, a11y, absolute, box, clamp01, close, easeInOut, edge, ellipseShape, fillDraw, frame, glow, groups, hudPlace, icon, kindColor, kit, leaf, levelOf, lit, mix, msToTicks, now, open, paintRgba, pct, phase, pulse, px, radial, rarityColor, reduced, role, sel, solid, sound, spring, stroke, text, token, trackDraw, ts, u, vgrad, anchorOf, inner, drop, shapeOf, arc, type Level, type Rgba, apply, type Props, stepSize, WHITE, BLACK } from "./core.ts";
 
 const GHOST_HOLD_MS = 450;
 const GHOST_DRAIN_MS = 650;
@@ -159,7 +159,13 @@ function track(parent: string, desc: Api.StatBarDesc, frac: number, level: Level
   }, absolute({ start: 0, top: 0 }));
   if (inside) {
     // The value over the fill at the track's end, in the HUD's outline so it reads over any fill or the empty track.
-    box("Value", { width: pct(1), height: pct(1), direction: "row", align: "end", cross: "center", padding: { left: u(6), right: u(6), top: 0, bottom: 0 } }, undefined, () => {
+    // A soft scrim under the numerals, darkest at the track's end (80 % black, which reads as about half in linear light): a fill's edge, the ghost or the absorb's seam under them
+    // falls behind it, so no line crosses the figures and they read over the fill and the empty track alike.
+    const tw = inside.text.length * stepSize(inside.step).size * 0.62 + u(12);
+    leaf("Scrim", { width: px(Math.min(w, tw + u(18))), height: pct(1), part: sel("StatBar", "scrim") }, {
+      fills: [vgrad([[0, lit(BLACK, 0)], [Math.min(0.6, u(18) / Math.max(1, tw + u(18))), lit(BLACK, 0.68)], [1, lit(BLACK, 0.8)]], desc.reverse ? 270 : 90)],
+    }, absolute(desc.reverse ? { start: 0, top: 0 } : { end: 0, top: 0 }));
+    box("Value", { width: pct(1), height: pct(1), direction: "row", align: desc.reverse ? "start" : "end", cross: "center", padding: { left: u(6), right: u(6), top: 0, bottom: 0 } }, undefined, () => {
       text("Text", inside.text, { step: inside.step, font: "mono", color: inside.critical ? lit(mix(role("danger"), WHITE, 0.35)) : token("ink"), nowrap: true, outline: 1 });
     }, absolute({ start: 0, top: 0 }));
   }

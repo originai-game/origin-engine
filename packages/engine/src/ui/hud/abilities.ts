@@ -355,16 +355,22 @@ export function statusGrid(id: string, desc: Api.StatusGridDesc = {}): Api.Statu
     if (list.length === 0) return;
     const shown = limit > 0 && list.length > limit ? list.slice(0, limit - 1) : list;
     const more = list.length - shown.length;
-    box(rowId, { direction: "row", wrap: true, gap: u(4), width: px(columns * (size + u(4))) }, undefined, () => {
+    // Every column as wide as the row's widest timer needs (WoW's auras): the tiles stay evenly spaced, each duration
+    // centred under its tile and overhanging it, never pushing its own column wider than its neighbours'.
+    const timers = desc.timers !== false;
+    const col = Math.max(size, ...shown.map((fx) => timeOf(fx, size, timers).width));
+    // Anchored, a row never runs past the HUD band: wider columns (200 % text) wrap sooner.
+    const fit = anchor ? Math.max(1, Math.min(columns, Math.floor((hudRoom() + u(4)) / (col + u(4))))) : columns;
+    box(rowId, { direction: "row", wrap: true, gap: u(4), width: px(fit * (col + u(4))) }, undefined, () => {
       for (const fx of shown) {
-        const res = tile(keyId(fx.key ?? ""), fx, size, desc.timers !== false);
+        const res = tile(keyId(fx.key ?? ""), fx, size, timers, col);
         if (res.hovered || res.focused) hovered = fx.key ?? "";
         if (res.clicked) clicked = fx.key ?? "";
       }
       if (more > 0) {
         // The overflow in the tiles' own glass: the dark socket, a hairline, the top light, a small count in the display face.
         const r = Math.min(shapeOf("slot").radius, size / 5);
-        box("More", { width: px(size), height: px(size), align: "center", cross: "center", part: sel("StatusGrid", "more"), partClass: "slot" }, {
+        kit.column("More", { width: px(col), cross: "center" }, () => box("Tile", { width: px(size), height: px(size), align: "center", cross: "center", part: sel("StatusGrid", "more"), partClass: "slot" }, {
           shape: { kind: "rect", radii: [r, r, r, r] },
           fills: [solid(lit(BLACK, 0.9)), vgrad([[0, lit(WHITE, 0.1)], [0.55, lit(WHITE, 0.02)]])],
           strokes: [stroke(1, lit(BLACK, 0.85)), stroke(1, lit(BLACK, 0.6), "outside")],
@@ -372,7 +378,7 @@ export function statusGrid(id: string, desc: Api.StatusGridDesc = {}): Api.Statu
         }, () => {
           socketRim("Rim", size - 2, Math.max(0, r - 1), undefined, 1, absolute({ start: 1, top: 1 }), 0.35);
           text("Count", `+${more}`, { step: tsFit(11, size * 0.34), font: "display", color: token("ink"), nowrap: true, soft: true });
-        }, { a11y: a11y("text", `${more} more`) });
+        }, { a11y: a11y("text", `${more} more`) }));
       }
     }, { a11y: a11y("list", label) });
   };
@@ -387,7 +393,16 @@ export function statusGrid(id: string, desc: Api.StatusGridDesc = {}): Api.Statu
   return { hovered, clicked };
 }
 
-function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean): Api.Response {
+/** A tile's timer text and the width it takes with a gutter, so neighbouring timers read apart ("5m 6m", never "5m6m"). */
+function timeOf(fx: Api.StatusEffect, base: number, timers: boolean): { text: string; step: Api.TypeStepName; width: number } {
+  const size = fx.mine ? base : Math.round(base * 0.85);
+  const remaining = fx.remaining ?? 0;
+  const step = tsFit(11, size * 0.3);
+  const text = timers && remaining > 0 ? shortTime(remaining, false) : "";
+  return { text, step, width: text ? Math.ceil(text.length * stepSize(step).size * 0.62) + frame().t.sm + 4 : 0 };
+}
+
+function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean, col = base): Api.Response {
   const size = fx.mine ? base : Math.round(base * 0.85);
   const remaining = fx.remaining ?? 0;
   const lasting = remaining <= 0;
@@ -398,12 +413,9 @@ function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean): 
   const blink = expiring && !reduced() ? 0.45 + 0.55 * (0.5 + 0.5 * Math.cos(kit.seconds() * Math.PI * 2 * (remaining <= 2 ? 3 : 1.5))) : 1;
   const r = Math.min(shapeOf("slot").radius, size / 5);
   let res: Api.Response | null = null;
-  // The timer under the tile can be wider than the tile (a long time, 200 % text): the column grows to hold it.
-  const timeStep = tsFit(11, size * 0.3);
-  const timeText = timers && !lasting ? shortTime(remaining, false) : "";
-  // With a gutter, so neighbouring timers read as numbers apart ("5m 6m"), never one run ("5m6m").
-  const timeWidth = timeText ? Math.ceil(timeText.length * stepSize(timeStep).size * 0.62) + frame().t.sm + 4 : 0;
-  kit.column(id, { gap: 0, cross: "center", width: px(Math.max(size, base, timeWidth)) }, () => {
+  // The column is the row's (as wide as its widest timer): every tile in it centred, its timer centred under it.
+  const { text: timeText, step: timeStep } = timeOf(fx, base, timers);
+  kit.column(id, { gap: 0, cross: "center", width: px(Math.max(size, base, col)) }, () => {
     // A debuff's rim carries its dispel type; a buff's is a dark hairline under the socket's top light,
     // so type colour belongs to debuffs alone (WoW's and Diablo IV's auras).
     const rim = fx.debuff ? Math.max(1.5, Math.round(size / 18)) : 1;

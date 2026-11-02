@@ -278,7 +278,8 @@ function framesScreen(): void {
     anchor: "right",
     members: Array.from({ length: 20 }, (_, i) => ({
       key: `r${i}`,
-      name: ["Thrall", "Jaina", "Uther", "Sylvanas", "Anduin", "Varian", "Tyrande", "Malfurion", "Illidan", "Velen"][i % 10]! + (i >= 10 ? "II" : ""),
+      // Twenty names, each its own: a suffix such as "II" with no space read as a typo in a raid cell.
+      name: ["Aldric", "Brenna", "Corvin", "Dahlia", "Eamon", "Fiora", "Garrick", "Helka", "Isolde", "Jory", "Kestrel", "Lysa", "Maren", "Nolan", "Orla", "Pell", "Quill", "Rowan", "Sable", "Tamsin"][i]!,
       health: [100, 76, 34, 12, 90, 0, 55, 100, 67, 21][i % 10]!,
       absorb: i % 4 === 1 ? 20 : 0,
       incomingHeal: i % 5 === 2 ? 25 : 0,

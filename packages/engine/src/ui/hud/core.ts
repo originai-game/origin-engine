@@ -65,12 +65,15 @@ export function hudPlace(id: string, anchor: Api.Anchor | null, build: (inAnchor
   const middle = !anchor.startsWith("top") && !anchor.startsWith("bottom");
   // Where this one starts from the anchor's line, and where the next will.
   const start = first ? 0 : reach + gap;
-  const next = start + h;
+  // An offset away from the edge (a frame stepped under another corner's) counts in the stack's reach, so what follows clears it.
+  const next = start + h + (middle ? 0 : Math.abs(more.offsetY ?? 0));
   let dy: number;
   if (middle) {
     // A stack on a side is centred as a whole on the side's middle (by its
     // extent last tick), so a tracker and a combo under it both stay on screen.
-    if (first) kit.remember(`${key}/top`, sideTop(anchor, kit.memory(`${key}/total`, 0), t, gap));
+    // The stack's extent last tick, but never less than its first group's: a stack that has just appeared
+    // (no total yet) is centred by the size it now has, not by none (which put it half a screen low for a tick).
+    if (first) kit.remember(`${key}/top`, sideTop(anchor, Math.max(kit.memory(`${key}/total`, 0), h), t, gap));
     dy = kit.memory(`${key}/top`, 0) + start + h / 2;
   } else {
     dy = start;

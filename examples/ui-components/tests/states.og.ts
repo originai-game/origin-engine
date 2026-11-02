@@ -47,7 +47,15 @@ const steps = [
   "28.60:dump_ui:phone100.json",
   "28.70:text:200",
   "29.90:dump_ui:phone200.json",
-  "30.00:quit",
+  // The unit frames at 200 % on a phone, then opened afresh on a desktop: a side stack that has just appeared
+  // is placed by its own size from its first ticks (once a tall party lay half a screen low for a tick).
+  "30.00:show:frames",
+  "31.20:dump_ui:framesPhone200.json",
+  "31.30:viewport:desktop",
+  "31.35:show:abilities",
+  "31.45:show:frames",
+  "31.48:dump_ui:framesDesktop200.json",
+  "31.60:quit",
 ];
 
 export default playtest({
@@ -77,5 +85,16 @@ export default playtest({
       const overlap = (a: El, b: El) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
       t.ok(roots.every((a, i) => roots.every((b, j) => i >= j || !overlap(a, b))), `${file}: none covers another`);
     }
+    // The player's and the boss's frames never share space on a phone at 200 %: every part of one clear of every part of the other.
+    const parts = (file: string, root: string) => els(run, file).filter((e) => e.path.startsWith(`${root}/`) && e.width > 0 && e.height > 0);
+    const meet = (a: El, b: El) => a.x < b.x + b.width - 0.5 && b.x < a.x + a.width - 0.5 && a.y < b.y + b.height - 0.5 && b.y < a.y + a.height - 0.5;
+    const player = parts("framesPhone200.json", "PlayerHud");
+    const boss = parts("framesPhone200.json", "TargetHud");
+    const hits = player.flatMap((a) => boss.filter((b) => meet(a, b)).map((b) => `${a.path} × ${b.path}`));
+    t.ok(player.length > 0 && boss.length > 0, "both frames are shown on the phone at 200 %");
+    t.equal(hits.slice(0, 3).join("; "), "", "the player's and the boss's frames meet nowhere on the phone at 200 %");
+    t.ok(player.every((e) => e.x >= 0 && e.x + e.width <= 390.5), "the player's frame lies across the phone, none of it past the edge");
+    const party = parts("framesDesktop200.json", "PartyHud");
+    t.ok(party.length > 0 && party.every((e) => e.y >= 0 && e.y + e.height <= 1080.5), "on a desktop at 200 % the party lies on screen, its last member too");
   },
 });

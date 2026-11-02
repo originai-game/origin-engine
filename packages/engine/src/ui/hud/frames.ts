@@ -10,7 +10,7 @@
 // a grey shield on what cannot be interrupted, interrupted in red).
 
 import type * as Api from "@origingame/engine";
-import { formatNumber, hudRoom, shrunk, artTile, socketRim, hueOf, BLACK, WHITE, shapeOf, a11y, absolute, anchorOf, box, inner, radial, innerGlow, reduced, clamp01, close, drop, easeOut, edge, fillDraw, frame, glow, groups, hudPlace, icon, keyId, kit, leaf, lit, mix, msToTicks, now, open, paintRgba, pct, px, role, sel, solid, sound, stroke, text, token, trackDraw, ts, u, vgrad, ellipseShape, type Rgba, apply, textScale, stepSize } from "./core.ts";
+import { formatNumber, ut, hudRoom, shrunk, artTile, socketRim, hueOf, BLACK, WHITE, shapeOf, a11y, absolute, anchorOf, box, inner, radial, innerGlow, reduced, clamp01, close, drop, easeOut, edge, fillDraw, frame, glow, groups, hudPlace, icon, keyId, kit, leaf, lit, mix, msToTicks, now, open, paintRgba, pct, px, role, sel, solid, sound, stroke, text, token, trackDraw, ts, u, vgrad, ellipseShape, type Rgba, apply, textScale, stepSize } from "./core.ts";
 import { statBar } from "./meters.ts";
 import { statusGrid } from "./abilities.ts";
 
@@ -70,7 +70,21 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
   const healthMax = desc.healthMax ?? 100;
   const ringInk = cls === "elite" || cls === "boss" ? role("gold") : cls === "rare" ? { r: 0.82, g: 0.86, b: 0.92, a: 1 } : hostile ? role("danger") : role("lineStrong");
   const anchor = anchorOf(desc, null);
-  const corner = anchor === "topLeft" || anchor === "topRight" || anchor === "bottomLeft" || anchor === "bottomRight";
+  // A frame at a corner shares its edge with the opposite corner's stack (a player's frame and a target's):
+  // it takes at most half the band while that corner holds something (last tick), else the frame's own width.
+  // Where half the band leaves its bars too narrow (a phone at 200 % text), the frame built after the other
+  // steps under it onto a row of its own at its corner, and both take the band's whole width: they never share space.
+  const facing: Partial<Record<Api.Anchor, Api.Anchor>> = { topLeft: "topRight", topRight: "topLeft", bottomLeft: "bottomRight", bottomRight: "bottomLeft" };
+  const opposite = anchor ? facing[anchor] : undefined;
+  const tick = kit.tick();
+  const tk0 = frame().t;
+  const oppTick = opposite ? kit.memory(`~hudStack/${opposite}/tick`, -10) : -10;
+  const narrow = (hudRoom() - tk0.sm) / 2 - pd - u(6) - tk0.md - tk0.sm < ut(96);
+  const below = !!opposite && narrow && oppTick === tick;
+  if (below) kit.remember(`~unitFrameBelow/${anchor}`, tick);
+  const oppBelow = !!opposite && kit.memory(`~unitFrameBelow/${opposite}`, -10) >= tick - 1;
+  const shared = oppTick >= tick - 1 && !below && !oppBelow;
+  const stepDown = below ? kit.memory(`~hudStack/${opposite}/reach`, 0) + tk0.sm : 0;
   let res: Api.Response = NO_RESPONSE;
   hudPlace(id, anchor, () => {
     // A hit: the health fell this tick. For 450 ms the frame's edge flashes
@@ -84,6 +98,11 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
     const ring = desc.targeted ? role("highlight") : ringInk;
     // The level badge at most 40 % of the portrait, seated on its rim; its figure shrunk to fit at any text size.
     const badgeH = Math.round(Math.min(pd * 0.4, Math.max(14, pd * 0.3) * textScale()));
+    const frameW = Math.min(u(m.width) + pd, shared ? (hudRoom() - tk.sm) / 2 : hudRoom());
+    // The buffs under the bars in as many columns as fit the bars' width, so they never widen the frame.
+    const auraSize = size === "large" ? 22 : 18;
+    const barsW = frameW - pd - u(6) - tk.md - tk.sm;
+    const auraColumns = Math.max(1, Math.min(8, Math.floor((barsW + u(4)) / (u(auraSize) + u(4)))));
     open(id, {
       direction: "row",
       gap: tk.sm,
@@ -91,7 +110,7 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
       interactive: true,
       padding: { left: u(6), right: tk.md, top: u(6), bottom: u(6) + (desc.level ? Math.round(badgeH * 0.5) : 0) },
       // At a top or bottom corner a frame takes at most half the HUD band, so a player's and a target's frames sit side by side.
-      width: px(corner ? Math.min(u(m.width) + pd, (hudRoom() - tk.sm) / 2) : u(m.width) + pd),
+      width: px(frameW),
       part: sel("UnitFrame", "frame", size, hostile ? "hostile" : null, desc.targeted ? "targeted" : null, dead ? "dead" : null),
       partClass: "hud",
     });
@@ -188,7 +207,7 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
       if (desc.castName && size !== "small") {
         cast("Cast", { name: desc.castName, progress: desc.castProgress ?? 0, width: { kind: "grow" } }, true);
       }
-      if ((desc.effects ?? []).length > 0 && size !== "small") statusGrid("Effects", { effects: desc.effects ?? [], size: size === "large" ? 22 : 18, columns: 8, timers: false, split: false, anchor: null });
+      if ((desc.effects ?? []).length > 0 && size !== "small") statusGrid("Effects", { effects: desc.effects ?? [], size: auraSize, columns: auraColumns, timers: false, split: false, anchor: null });
     });
     if (desc.reverse) portrait();
     res = close({
@@ -196,7 +215,7 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
       a11y: a11y("button", name, { value: dead ? "Dead" : offline ? "Offline" : `${desc.level ? `Level ${desc.level}, ` : ""}${Math.round((health / Math.max(1, healthMax)) * 100)}% health`, selected: !!desc.targeted }),
       ...groups({ life, selection: desc.targeted ? "targeted" : "none", hurt: hurt > 0 ? "hit" : "none" }, { life: ["alive", "dead", "offline"], selection: ["none", "targeted"], hurt: ["none", "hit"] }),
     });
-  });
+  }, stepDown ? { offsetY: anchor?.startsWith("bottom") ? -stepDown : stepDown } : {});
   return res;
 }
 
@@ -241,7 +260,14 @@ function cell(id: string, m: Api.RaidMember, w: number, h: number): Api.Response
   const hp = m.dead || m.offline ? 0 : clamp01((m.health ?? 0) / max);
   const absorb = clamp01((m.absorb ?? 0) / max);
   const heal = clamp01((m.incomingHeal ?? 0) / max);
-  const cls = paintRgba(m.classColor, role("health"));
+  const base = paintRgba(m.classColor, role("health"));
+  // The name's ink by the cell's luminance: a pale class colour (a priest's white) under the name takes dark ink;
+  // where the name runs past a pale fill onto the dark track, the fill is deepened so the light ink reads on both.
+  const pale = 0.2126 * base.r + 0.7152 * base.g + 0.0722 * base.b > 0.75;
+  // Where the name's glyphs end, as a fraction of the cell (its box grows to the cell's end, so it is estimated from its letters).
+  const nameEnd = (u(5) + (ROLE_ICON[m.role ?? "none"] ? Math.max(10, Math.round(h * 0.34)) + u(3) : 0) + (m.name ?? "").length * stepSize(ts(11)).size * 0.58) / Math.max(1, w);
+  const darkInk = pale && !m.dead && !m.offline && clamp01((m.health ?? 0) / Math.max(1, m.healthMax ?? 100)) >= nameEnd;
+  const cls = pale && !darkInk ? mix(base, BLACK, 0.5) : base;
   const low = hp < 0.35 && hp > 0;
   const state = m.dead ? "dead" : m.offline ? "offline" : m.outOfRange ? "outOfRange" : null;
   const dispel = m.dispel ? DISPEL[m.dispel] ?? role("danger") : null;
@@ -264,14 +290,14 @@ function cell(id: string, m: Api.RaidMember, w: number, h: number): Api.Response
       strokes: [stroke(1, token("sheen", 0.65))],
     }, absolute({ start: Math.max(0, Math.min(hp + heal, 1) - absorb) * w, top: 0 }));
   }
-  const ink = m.dead || m.offline ? token("inkFaint") : token("ink");
+  const ink = m.dead || m.offline ? token("inkMuted") : darkInk ? lit({ r: 0.07, g: 0.08, b: 0.1, a: 1 }) : token("ink");
   kit.row("Label", { gap: u(3), cross: "center", padding: { left: u(5), right: u(4), top: 0, bottom: 0 }, width: pct(1) }, () => {
     const roleName = ROLE_ICON[m.role ?? "none"];
-    if (roleName) icon("Role", roleName, Math.max(10, Math.round(h * 0.34)), token("ink"), m.role ?? "");
+    if (roleName) icon("Role", roleName, Math.max(10, Math.round(h * 0.34)), darkInk ? ink : token("ink"), m.role ?? "");
     // At a large text size the status takes its own line under the name, so neither is cut to nothing.
     const stacked = textScale() >= 1.5 && !!(m.dead || m.offline);
     if (stacked) open("Names", { direction: "column", gap: 0, width: { kind: "grow" } });
-    text("Name", m.name ?? "", { step: ts(11), color: ink, nowrap: true, ellipsis: true, width: { kind: "grow" }, soft: true });
+    text("Name", m.name ?? "", { step: ts(11), color: ink, nowrap: true, ellipsis: true, width: { kind: "grow" }, soft: !darkInk });
     if (m.dead || m.offline) text("Status", m.dead ? "Dead" : "Offline", { step: ts(10), color: token("inkMuted"), nowrap: true, ellipsis: stacked });
     if (stacked) close();
   });
@@ -325,10 +351,8 @@ function cast(id: string, desc: Api.CastBarDesc, compact: boolean): void {
     });
     const w = kit.bounds(trackPath)?.width ?? u(240);
     leaf("Fill", { width: pct(shown), height: pct(1), part: sel("CastBar", "fill") }, fillDraw(ink, Math.min(h / 2, u(3))), absolute({ start: 0, top: 0 }));
-    if (!ended && shown > 0.01 && shown < 0.995 && withText) {
-      // Under its name: a faint edge, never a bright tick across the letters.
-      leaf("Spark", { width: px(2), height: pct(1), part: sel("CastBar", "spark") }, { fills: [solid(lit(WHITE, 0.45))] }, absolute({ start: shown * w - 1, top: 0 }));
-    } else if (!ended && shown > 0.01 && shown < 0.995) {
+    // Compact, the name fills the bar: no edge line at all (any line crosses the letters somewhere); the fill's end reads alone.
+    if (!ended && shown > 0.01 && shown < 0.995 && !withText) {
       // The spark at the leading edge.
       leaf("Spark", { width: px(u(10)), height: pct(1.8), part: sel("CastBar", "spark") }, {
         shape: ellipseShape(),

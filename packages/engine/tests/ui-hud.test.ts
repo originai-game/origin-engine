@@ -158,7 +158,7 @@ test("og.ui.statusGrid: buffs and debuffs in their rows, stacks and time, more t
   const els = dump(e);
   const buffs = below(els, "AurasHud/Auras/Buffs").filter((x) => x.path.split("/").length === 4);
   expect(buffs.map((x) => x.id)).toEqual(["haste", "might", "More"]);
-  expect(at(els, "AurasHud/Auras/Buffs/More/Count")?.text).toBe("+3");
+  expect(at(els, "AurasHud/Auras/Buffs/More/Tile/Count")?.text).toBe("+3");
   expect(at(els, "AurasHud/Auras/Debuffs/bleed/Tile/Stacks")?.text).toBe("3");
   expect(at(els, "AurasHud/Auras/Debuffs/bleed/Tile")?.name).toBe("Bleed, 3 stacks, 4 seconds");
   expect(states(at(els, "AurasHud/Auras/Debuffs/bleed/Tile")).time).toBe("expiring");
