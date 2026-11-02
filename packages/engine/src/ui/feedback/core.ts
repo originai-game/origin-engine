@@ -307,11 +307,9 @@ export function nameText(size = 16): Api.TextEffectsDesc {
   const dark = { r: 0.043, g: 0.051, b: 0.063, a: 1 };
   return {
     outline: { width: Math.round(scale() * k * (small ? 4 / 3 : 1) * 2) / 2, color: lit(dark, small ? 0.9 : 0.85), align: "outside" },
-    // Small text also takes a hard contact shadow under its soft drop: while the kit fonts' distance field (px_range 4)
-    // caps an outline under 1 px at this size, it gives the letters the dark lower edge the outline was meant to.
-    shadows: small
-      ? [{ offset: { x: 0, y: k }, blur: 0, color: lit(dark, 0.9) }, { offset: { x: 0, y: k }, blur: 2 * k, color: lit(dark, 0.8) }]
-      : [{ offset: { x: 0, y: k }, blur: 4 * k, color: lit(dark, 0.6) }],
+    // The fonts' distance field reaches a third of the em (px_range, og-cook), so the outline itself holds small
+    // letters' edges: no hard contact shadow under them, only the tight drop.
+    shadows: [small ? { offset: { x: 0, y: k }, blur: 2 * k, color: lit(dark, 0.8) } : { offset: { x: 0, y: k }, blur: 4 * k, color: lit(dark, 0.6) }],
   };
 }
 
