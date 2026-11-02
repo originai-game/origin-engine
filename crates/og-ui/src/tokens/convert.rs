@@ -111,6 +111,7 @@ impl StyleTokens {
                 tracking_em: s.tracking_em,
                 weight,
                 font,
+                features: s.features,
             };
             let small = |k: f32| TypeToken {
                 size: (s.size * k).round().max(12.0),
@@ -421,13 +422,14 @@ impl StyleTokens {
                     line(b.name(), vec![num(t.size), num(t.line_height)])
                 })
                 .collect();
-            let values = vec![
+            let mut values = vec![
                 num(base.size),
                 num(base.line_height),
                 num(base.tracking_em),
                 num(f32::from(base.weight)),
                 word(font),
             ];
+            values.extend(base.features.tags().map(word));
             typo.push(if overrides.is_empty() {
                 line(r.name(), values)
             } else {

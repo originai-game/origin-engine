@@ -41045,13 +41045,21 @@
           "type": "number",
           "description": "The leading text with Chinese, Japanese or Korean characters takes.",
           "x-og-unit": "cssPx"
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The OpenType features the step turns on, as tags: smcp (small caps), c2sc (capitals to small caps), tnum (tabular figures), lnum (lining figures), case (case-sensitive forms). A style sets them after a type role's font (`display 42 48 0.02 700 display smcp`); they apply where the role's font is imported with the same `features` line, and a font without one draws its defaults."
         }
       },
       "required": [
         "size",
         "lineHeight",
         "trackingEm",
-        "cjkLineHeight"
+        "cjkLineHeight",
+        "features"
       ],
       "additionalProperties": false
     },
@@ -41182,7 +41190,7 @@
           "description": "Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over panel (the scrim over backdrop) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too."
         },
         "tokens": {
-          "description": "The style's tokens (docs/ui.md §12.2), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric, at each breakpoint: size, lineHeight, trackingEm, weight, font), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses)."
+          "description": "The style's tokens (docs/ui.md §12.2), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric, at each breakpoint: size, lineHeight, trackingEm, weight, font, features), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses)."
         }
       },
       "required": [

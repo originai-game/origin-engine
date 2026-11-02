@@ -188,6 +188,10 @@ pub struct FontSettings {
     /// are rendered from its outlines when a text needs them (CJK UIs that
     /// show player text).
     pub runtime: bool,
+    /// OpenType features type steps turn on with this font (`features smcp
+    /// tnum`, og-ui's `Features::TAGS`): the atlas also holds every glyph
+    /// they substitute, and the font file ships for run-time shaping.
+    pub features: Vec<String>,
 }
 
 impl Default for FontSettings {
@@ -199,6 +203,7 @@ impl Default for FontSettings {
             px_range: 4.0,
             page_size: 1024,
             runtime: false,
+            features: Vec::new(),
         }
     }
 }
@@ -324,6 +329,9 @@ pub(super) fn anim_settings(s: &Source) -> Result<anim::AnimSettings, String> {
     anim::AnimSettings::parse(settings_block(s, "animation"))
 }
 
+/// The OpenType features a font import may name (og-ui's `Features::TAGS`).
+pub const FONT_FEATURES: [&str; 5] = ["smcp", "c2sc", "tnum", "lnum", "case"];
+
 pub(super) fn font_settings(s: &Source, base: &FontSettings) -> Result<FontSettings, String> {
     let mut f = base.clone();
     if let Some(b) = settings_block(s, "font") {
@@ -352,6 +360,24 @@ pub(super) fn font_settings(s: &Source, base: &FontSettings) -> Result<FontSetti
                 }
                 "page_size" => {
                     f.page_size = e.number(0).map_err(err)?.as_u64().map_err(err)? as u32
+                }
+                "features" => {
+                    f.features = e
+                        .values
+                        .iter()
+                        .map(|v| {
+                            v.as_word()
+                                .filter(|w| FONT_FEATURES.contains(w))
+                                .map(str::to_string)
+                                .ok_or_else(|| {
+                                    format!(
+                                        "line {}: features takes OpenType tags among {}",
+                                        e.line,
+                                        FONT_FEATURES.join(", ")
+                                    )
+                                })
+                        })
+                        .collect::<Result<_, _>>()?
                 }
                 k => return Err(format!("line {}: unknown font setting '{k}'", e.line)),
             }

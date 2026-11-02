@@ -22,6 +22,58 @@ use std::sync::{Arc, Mutex};
 /// Where shaped glyphs are drawn from: U+F0000 + glyph id (og-cook's font cook).
 pub const GLYPH_PUA: u32 = 0xF_0000;
 
+/// The OpenType features a type step turns on (docs/ui.md §15.5.4): small
+/// caps, capitals to small caps, tabular and lining figures, case-sensitive
+/// forms. A run with any of them is shaped with the font file, so its glyphs
+/// and advances are the feature's; the font's import names the same
+/// features (`features smcp tnum`) so its atlas holds their glyphs. A
+/// feature the font lacks changes nothing.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct Features(u8);
+
+impl Features {
+    /// No feature: the font's defaults.
+    pub const NONE: Features = Features(0);
+    /// The features, in bit order, by their OpenType tags.
+    pub const TAGS: [&'static str; 5] = ["smcp", "c2sc", "tnum", "lnum", "case"];
+
+    /// The features of `tags`; an unknown tag is an error naming it.
+    pub fn parse<'a>(tags: impl IntoIterator<Item = &'a str>) -> Result<Features, String> {
+        let mut bits = 0u8;
+        for t in tags {
+            let i = Self::TAGS.iter().position(|k| *k == t).ok_or_else(|| {
+                format!("unknown OpenType feature '{t}' (known: {})", Self::TAGS.join(", "))
+            })?;
+            bits |= 1 << i;
+        }
+        Ok(Features(bits))
+    }
+
+    pub fn is_empty(self) -> bool {
+        self.0 == 0
+    }
+
+    /// The tags turned on, in [`Features::TAGS`] order.
+    pub fn tags(self) -> impl Iterator<Item = &'static str> {
+        Self::TAGS
+            .into_iter()
+            .enumerate()
+            .filter(move |(i, _)| self.0 & (1 << i) != 0)
+            .map(|(_, t)| t)
+    }
+
+    /// The bits, for a cache key.
+    pub fn bits(self) -> u8 {
+        self.0
+    }
+
+    /// The features of `bits` (as [`Features::bits`] gives them), for the
+    /// generated default style.
+    pub const fn from_bits(bits: u8) -> Features {
+        Features(bits & ((1 << Self::TAGS.len()) - 1))
+    }
+}
+
 /// One shaped glyph, in em.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Shaped {
@@ -44,7 +96,7 @@ pub struct FontFile {
     ttf: Arc<Vec<u8>>,
     units_per_em: f32,
     #[cfg(feature = "shaping")]
-    shaped: Mutex<HashMap<(String, bool), ShapedRun>>,
+    shaped: Mutex<HashMap<(String, bool, u8), ShapedRun>>,
     /// Characters outside the atlas: their advance in em (`None`: not in the font).
     extra: Mutex<BTreeMap<char, Option<f32>>>,
     /// Characters outside the atlas laid out since the host last took them.
@@ -96,13 +148,24 @@ impl FontFile {
     /// build does not shape or the atlas lacks a glyph the result needs
     /// (`has`), so the run is drawn as written.
     pub fn shape(&self, run: &str, rtl: bool, has: &dyn Fn(char) -> bool) -> ShapedRun {
+        self.shape_with(run, rtl, Features::NONE, has)
+    }
+
+    /// [`FontFile::shape`] with OpenType `features` turned on.
+    pub fn shape_with(
+        &self,
+        run: &str,
+        rtl: bool,
+        features: Features,
+        has: &dyn Fn(char) -> bool,
+    ) -> ShapedRun {
         #[cfg(feature = "shaping")]
         {
-            let key = (run.to_string(), rtl);
+            let key = (run.to_string(), rtl, features.bits());
             if let Some(hit) = self.shaped.lock().ok()?.get(&key) {
                 return hit.clone();
             }
-            let shaped = self.shape_now(run, rtl, has).map(Arc::new);
+            let shaped = self.shape_now(run, rtl, features, has).map(Arc::new);
             if let Ok(mut c) = self.shaped.lock() {
                 if c.len() >= CACHE_RUNS {
                     c.clear();
@@ -113,13 +176,19 @@ impl FontFile {
         }
         #[cfg(not(feature = "shaping"))]
         {
-            let _ = (run, rtl, has);
+            let _ = (run, rtl, features, has);
             None
         }
     }
 
     #[cfg(feature = "shaping")]
-    fn shape_now(&self, run: &str, rtl: bool, has: &dyn Fn(char) -> bool) -> Option<Vec<Shaped>> {
+    fn shape_now(
+        &self,
+        run: &str,
+        rtl: bool,
+        features: Features,
+        has: &dyn Fn(char) -> bool,
+    ) -> Option<Vec<Shaped>> {
         let face = rustybuzz::Face::from_slice(&self.ttf, 0)?;
         let mut buf = rustybuzz::UnicodeBuffer::new();
         buf.push_str(run);
@@ -129,7 +198,15 @@ impl FontFile {
         } else {
             rustybuzz::Direction::LeftToRight
         });
-        let out = rustybuzz::shape(&face, &[], buf);
+        let on: Vec<rustybuzz::Feature> = features
+            .tags()
+            .map(|t| {
+                let b = t.as_bytes();
+                let tag = rustybuzz::ttf_parser::Tag::from_bytes(&[b[0], b[1], b[2], b[3]]);
+                rustybuzz::Feature::new(tag, 1, ..)
+            })
+            .collect();
+        let out = rustybuzz::shape(&face, &on, buf);
         let em = self.units_per_em;
         let mut glyphs = Vec::with_capacity(out.len());
         for (g, p) in out.glyph_infos().iter().zip(out.glyph_positions()) {

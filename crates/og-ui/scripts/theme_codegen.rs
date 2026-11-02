@@ -268,9 +268,27 @@ pub fn generate(tokens: &str) -> Result<String, String> {
             Ok(_) => unit(&t, &["font", "cjk", "lineHeight", key], "px")?,
             Err(_) => lh,
         };
+        // `fontFeatures` (CSS `font-feature-settings` tags, on only),
+        // none when absent.
+        let features = match get(&t, &["font", "scale", key, "fontFeatures"]) {
+            Ok(v) => {
+                let tags = v
+                    .as_array()
+                    .and_then(|a| a.iter().map(Value::as_str).collect::<Option<Vec<_>>>())
+                    .ok_or_else(|| format!("font.scale.{key}.fontFeatures is not a list of tags"))?;
+                og_ui::shape::Features::parse(tags)
+                    .map_err(|e| format!("font.scale.{key}.fontFeatures: {e}"))?
+                    .bits()
+            }
+            Err(_) => 0,
+        };
+        let features = match features {
+            0 => "crate::shape::Features::NONE".to_string(),
+            b => format!("crate::shape::Features::from_bits({b})"),
+        };
         writeln!(
             o,
-            "    {field}: TypeStep {{\n        size: {},\n        line_height: {},\n        tracking_em: {},\n        cjk_line_height: {},\n        cjk_tracking_em: {},\n    }},",
+            "    {field}: TypeStep {{\n        size: {},\n        line_height: {},\n        tracking_em: {},\n        cjk_line_height: {},\n        cjk_tracking_em: {},\n        features: {features},\n    }},",
             num(size),
             num(lh),
             num(track),
@@ -550,6 +568,9 @@ pub struct TypeStep {
     pub cjk_line_height: f32,
     /// Tracking of text with CJK characters, in em (CSS `letter-spacing`, which spaces Han too); 0 in the tokens.
     pub cjk_tracking_em: f32,
+    /// OpenType features the step turns on (small caps, tabular figures;
+    /// the tokens' `fontFeatures`), applied where its font ships them.
+    pub features: crate::shape::Features,
 }
 
 /// The type ramp.

@@ -341,7 +341,7 @@ fn theme_json(theme: Theme, sizes: og_ui::Density, style: &str) -> String {
         if let Some(s) = step(&theme, name) {
             ramp.insert(
                 name.to_string(),
-                json!({ "size": s.size, "lineHeight": s.line_height, "trackingEm": s.tracking_em, "cjkLineHeight": s.cjk_line_height }),
+                json!({ "size": s.size, "lineHeight": s.line_height, "trackingEm": s.tracking_em, "cjkLineHeight": s.cjk_line_height, "features": s.features.tags().collect::<Vec<_>>() }),
             );
         }
     }
@@ -387,7 +387,7 @@ fn tokens_json(t: &og_ui::StyleTokens) -> Value {
             let k = t.typography.get(role, bp);
             by.insert(
                 bp.name().to_string(),
-                json!({ "size": k.size, "lineHeight": k.line_height, "trackingEm": k.tracking_em, "weight": k.weight, "font": font(k.font) }),
+                json!({ "size": k.size, "lineHeight": k.line_height, "trackingEm": k.tracking_em, "weight": k.weight, "font": font(k.font), "features": k.features.tags().collect::<Vec<_>>() }),
             );
         }
         typography.insert(role.name().to_string(), Value::Object(by));

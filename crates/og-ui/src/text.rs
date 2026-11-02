@@ -13,7 +13,7 @@
 //! with the run before them, and each run is measured, kerned, shaped and
 //! drawn with its own font.
 
-use crate::shape::FontFile;
+use crate::shape::{FontFile, Features};
 use og_i18n::Direction;
 use og_render::{FontHandle, GlyphPlacement, MsdfFont};
 use std::ops::Range;
@@ -414,6 +414,21 @@ impl FontMetrics {
     /// [`FontMetrics::measure`] with `tracking` em after each character the
     /// font draws (og-render's `Text::tracking`: CSS `letter-spacing`).
     pub fn measure_tracked(&self, text: &str, size: f32, tracking: f32) -> f32 {
+        self.measure_with(text, size, tracking, Features::NONE)
+    }
+
+    /// [`FontMetrics::measure_tracked`] with a type step's OpenType
+    /// `features`: a text they shape is measured as it is drawn, glyph by
+    /// shaped glyph.
+    pub fn measure_with(&self, text: &str, size: f32, tracking: f32, features: Features) -> f32 {
+        if !features.is_empty() && self.shapes_features() {
+            return self
+                .visual_with(text, Direction::Ltr, tracking, features)
+                .iter()
+                .map(|g| g.advance)
+                .sum::<f32>()
+                * size;
+        }
         if tracking != 0.0 && (needs_visual(text) || self.is_mixed()) {
             return self
                 .visual(text, Direction::Ltr, tracking)
@@ -436,14 +451,26 @@ impl FontMetrics {
     /// its font runs, each laid out by its own font (in reverse order when
     /// right to left).
     pub fn run(&self, text: &str, rtl: bool, tracking: f32, first: usize) -> Vec<VisualGlyph> {
+        self.run_with(text, rtl, tracking, first, Features::NONE)
+    }
+
+    /// [`FontMetrics::run`] with OpenType `features`.
+    pub fn run_with(
+        &self,
+        text: &str,
+        rtl: bool,
+        tracking: f32,
+        first: usize,
+        features: Features,
+    ) -> Vec<VisualGlyph> {
         if !self.is_mixed() {
-            return self.run_one(text, rtl, tracking, first, 0);
+            return self.run_one(text, rtl, tracking, first, 0, features);
         }
         let mut parts = Vec::new();
         for (range, k) in self.font_runs(text) {
             let m = self.part(k).expect("a font of the run");
             let f = first + text[..range.start].chars().count();
-            parts.push(m.run_one(&text[range], rtl, tracking, f, k as u8));
+            parts.push(m.run_one(&text[range], rtl, tracking, f, k as u8, features));
         }
         if rtl {
             parts.reverse();
@@ -459,16 +486,21 @@ impl FontMetrics {
         tracking: f32,
         first: usize,
         font: u8,
+        features: Features,
     ) -> Vec<VisualGlyph> {
-        if text.chars().any(og_i18n::needs_shaping)
+        let script = text.chars().any(og_i18n::needs_shaping);
+        if (script || !features.is_empty())
             && let Some(file) = &self.file
-            && let Some(shaped) = file.shape(text, rtl, &|c| self.in_atlas(c))
+            && let Some(shaped) = file.shape_with(text, rtl, features, &|c| self.in_atlas(c))
         {
+            // A shaped script keeps its joins untracked (step_tracking); a
+            // run shaped only for its features tracks as written.
+            let track = if script { 0.0 } else { tracking };
             return shaped
                 .iter()
                 .map(|g| VisualGlyph {
                     ch: g.ch,
-                    advance: g.advance,
+                    advance: g.advance + track,
                     x: g.x,
                     y: g.y,
                     index: first + text[..(g.cluster as usize).min(text.len())].chars().count(),
@@ -522,23 +554,56 @@ impl FontMetrics {
     /// paragraph direction of its first strong character, `default` with
     /// none), each laid out by [`FontMetrics::run`].
     pub fn visual(&self, line: &str, default: Direction, tracking: f32) -> Vec<VisualGlyph> {
+        self.visual_with(line, default, tracking, Features::NONE)
+    }
+
+    /// [`FontMetrics::visual`] with OpenType `features`.
+    pub fn visual_with(
+        &self,
+        line: &str,
+        default: Direction,
+        tracking: f32,
+        features: Features,
+    ) -> Vec<VisualGlyph> {
         let base = og_i18n::paragraph_direction(line, default);
-        self.visual_at(line, base, tracking)
+        self.visual_at_with(line, base, tracking, features)
     }
 
     /// [`FontMetrics::visual`] at a given paragraph direction.
     pub fn visual_at(&self, line: &str, base: Direction, tracking: f32) -> Vec<VisualGlyph> {
+        self.visual_at_with(line, base, tracking, Features::NONE)
+    }
+
+    /// [`FontMetrics::visual_at`] with OpenType `features`.
+    pub fn visual_at_with(
+        &self,
+        line: &str,
+        base: Direction,
+        tracking: f32,
+        features: Features,
+    ) -> Vec<VisualGlyph> {
         if !needs_visual(line) && base == Direction::Ltr {
-            return self.run(line, false, tracking, 0);
+            return self.run_with(line, false, tracking, 0, features);
         }
         let mut out = Vec::new();
         for (range, rtl) in bidi_runs(line, base) {
             let first = line[..range.start].chars().count();
-            out.extend(self.run(&line[range], rtl, tracking, first));
+            out.extend(self.run_with(&line[range], rtl, tracking, first, features));
         }
         // Bidi marks and isolates have steered the runs; no face draws them.
         out.retain(|g| !og_i18n::is_bidi_control(g.ch));
         out
+    }
+
+    /// Whether this font can apply OpenType features: it ships its file
+    /// (`features` in its import) and this build shapes.
+    pub fn shapes_features(&self) -> bool {
+        FontFile::shapes()
+            && (self.file.is_some()
+                || self
+                    .runs
+                    .as_ref()
+                    .is_some_and(|r| r.iter().any(|f| f.metrics.file.is_some())))
     }
 
     /// The characters and placements a visual line draws with
@@ -566,9 +631,10 @@ pub(crate) fn drawn_line(
     line: &str,
     default: Direction,
     tracking: f32,
+    features: Features,
 ) -> (String, Vec<GlyphPlacement>) {
-    if needs_visual(line) {
-        FontMetrics::drawn(&m.visual(line, default, tracking))
+    if needs_visual(line) || (!features.is_empty() && m.shapes_features()) {
+        FontMetrics::drawn(&m.visual_with(line, default, tracking, features))
     } else {
         (line.to_string(), Vec::new())
     }
@@ -591,8 +657,19 @@ pub struct Piece {
 /// style's Chinese companion beside its Latin face). World text drawn with
 /// the UI's fonts (`og.render.floatingText`) draws these too.
 pub fn pieces(font: &UiFont, line: &str, default: Direction, tracking: f32) -> Vec<Piece> {
+    pieces_with(font, line, default, tracking, Features::NONE)
+}
+
+/// [`pieces`] with a type step's OpenType `features`.
+pub fn pieces_with(
+    font: &UiFont,
+    line: &str,
+    default: Direction,
+    tracking: f32,
+    features: Features,
+) -> Vec<Piece> {
     if !font.metrics.is_mixed() {
-        let (text, placements) = drawn_line(&font.metrics, line, default, tracking);
+        let (text, placements) = drawn_line(&font.metrics, line, default, tracking, features);
         return vec![Piece {
             font: font.handle,
             dx: 0.0,
@@ -601,7 +678,10 @@ pub fn pieces(font: &UiFont, line: &str, default: Direction, tracking: f32) -> V
             placements,
         }];
     }
-    split(font, &font.metrics.visual(line, default, tracking))
+    split(
+        font,
+        &font.metrics.visual_with(line, default, tracking, features),
+    )
 }
 
 /// Visual glyphs cut into one piece per run of one font, left to right.
@@ -916,18 +996,30 @@ pub(crate) fn tokens(paragraph: &str) -> Vec<(&str, bool)> {
 }
 
 /// The widest unbreakable unit: a wrapping text's minimum width.
-pub(crate) fn longest_word(text: &str, m: &FontMetrics, size: f32, tracking: f32) -> f32 {
+pub(crate) fn longest_word(
+    text: &str,
+    m: &FontMetrics,
+    size: f32,
+    tracking: f32,
+    features: Features,
+) -> f32 {
     text.split('\n')
         .flat_map(tokens)
         .filter(|(_, space)| !space)
-        .map(|(w, _)| m.measure_tracked(w, size, tracking))
+        .map(|(w, _)| m.measure_with(w, size, tracking, features))
         .fold(0.0, f32::max)
 }
 
 /// The widest `\n`-separated line, unwrapped.
-pub(crate) fn widest_line(text: &str, m: &FontMetrics, size: f32, tracking: f32) -> f32 {
+pub(crate) fn widest_line(
+    text: &str,
+    m: &FontMetrics,
+    size: f32,
+    tracking: f32,
+    features: Features,
+) -> f32 {
     text.split('\n')
-        .map(|l| m.measure_tracked(l, size, tracking))
+        .map(|l| m.measure_with(l, size, tracking, features))
         .fold(0.0, f32::max)
 }
 
@@ -938,6 +1030,7 @@ pub(crate) fn break_lines(
     m: &FontMetrics,
     size: f32,
     tracking: f32,
+    features: Features,
     max_width: Option<f32>,
 ) -> Vec<Line> {
     let mut lines = Vec::new();
@@ -945,7 +1038,7 @@ pub(crate) fn break_lines(
         let Some(max) = max_width else {
             lines.push(Line {
                 text: paragraph.to_owned(),
-                width: m.measure_tracked(paragraph, size, tracking),
+                width: m.measure_with(paragraph, size, tracking, features),
             });
             continue;
         };
@@ -957,16 +1050,16 @@ pub(crate) fn break_lines(
         for (unit, is_space) in tokens(paragraph) {
             if is_space {
                 spaces.push_str(unit);
-                spaces_w += m.measure_tracked(unit, size, tracking);
+                spaces_w += m.measure_with(unit, size, tracking, features);
                 continue;
             }
-            let w = m.measure_tracked(unit, size, tracking);
+            let w = m.measure_with(unit, size, tracking, features);
             // Kerned or shaped text measures differently whole than unit by
             // unit (pairs across the units, a run shaped together): a line
             // that fits whole stays whole.
             let fits_whole = |line: &str| {
                 (m.kerns() || m.is_mixed() || needs_visual(line))
-                    && m.measure_tracked(&format!("{line}{spaces}{unit}"), size, tracking) <= max
+                    && m.measure_with(&format!("{line}{spaces}{unit}"), size, tracking, features) <= max
             };
             if !line.is_empty() && width + spaces_w + w > max && !fits_whole(&line) {
                 lines.push(Line {
@@ -984,7 +1077,7 @@ pub(crate) fn break_lines(
             if line.is_empty() && w > max {
                 // Break the unit between characters.
                 for c in unit.chars() {
-                    let cw = m.measure_tracked(c.encode_utf8(&mut [0; 4]), size, tracking);
+                    let cw = m.measure_with(c.encode_utf8(&mut [0; 4]), size, tracking, features);
                     if !line.is_empty() && width + cw > max {
                         lines.push(Line {
                             text: std::mem::take(&mut line),
@@ -1010,7 +1103,7 @@ pub(crate) fn break_lines(
     // not the sum of its units.
     if m.kerns() || m.is_mixed() || needs_visual(text) {
         for l in &mut lines {
-            l.width = m.measure_tracked(&l.text, size, tracking);
+            l.width = m.measure_with(&l.text, size, tracking, features);
         }
     }
     lines

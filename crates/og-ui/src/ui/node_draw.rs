@@ -286,7 +286,13 @@ impl Ui {
                         // Bidi runs in visual order, shaped runs shaped, one
                         // piece per font of a mixed text (crate::text).
                         let pieces =
-                            crate::text::pieces(font, &line.text, self.direction, tc.tracking());
+                            crate::text::pieces_with(
+                            font,
+                            &line.text,
+                            self.direction,
+                            tc.tracking(),
+                            tc.step.features,
+                        );
                         let baseline = m.baseline(&line.text, ly, lh, size);
                         let bounds = Rect::new(x, ly, line.width * sk, lh);
                         let role = tc.font.effect_index();

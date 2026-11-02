@@ -7,6 +7,7 @@ mod a11y;
 mod button_contrast;
 mod documents;
 mod dressing;
+mod features;
 mod fields;
 mod gfx;
 mod glyphs;

@@ -117,13 +117,13 @@ pub(super) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
     let (pref, min) = match &n.content {
         Content::Text(t) => measure.texts.widths(t, || {
             let m = fonts.metrics_for(t.font, &t.text);
-            let pref = widest_line(&t.text, m, t.step.size, t.tracking());
+            let pref = widest_line(&t.text, m, t.step.size, t.tracking(), t.step.features);
             let min = if t.ellipsis {
                 // It can shrink to its ellipsis.
-                m.measure_tracked(ellipsis_of(m), t.step.size, t.tracking())
+                m.measure_with(ellipsis_of(m), t.step.size, t.tracking(), t.step.features)
                     .min(pref)
             } else if t.wrap {
-                longest_word(&t.text, m, t.step.size, t.tracking())
+                longest_word(&t.text, m, t.step.size, t.tracking(), t.step.features)
             } else {
                 pref
             };
@@ -268,6 +268,7 @@ pub(super) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'
                     m,
                     t.step.size,
                     t.tracking(),
+                    t.step.features,
                     t.wrap.then_some(width),
                 );
                 if t.ellipsis {

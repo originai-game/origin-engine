@@ -18,6 +18,28 @@ pub const GLYPH_PUA: u32 = 0xF_0000;
 
 /// Every glyph the font's GSUB substitutions reach from `start`, start included.
 fn substitution_closure(face: &ttf_parser::Face, start: &[ttf_parser::GlyphId]) -> Vec<u16> {
+    closure_of(face, start, None)
+}
+
+/// The GSUB lookups of the features `tags`, in any script and language.
+fn feature_lookups(face: &ttf_parser::Face, tags: &[String]) -> std::collections::BTreeSet<u16> {
+    let mut out = std::collections::BTreeSet::new();
+    if let Some(gsub) = face.tables().gsub {
+        for f in gsub.features {
+            if tags.iter().any(|t| ttf_parser::Tag::from_bytes_lossy(t.as_bytes()) == f.tag) {
+                out.extend(f.lookup_indices);
+            }
+        }
+    }
+    out
+}
+
+/// [`substitution_closure`] through the lookups `only` (all when `None`).
+fn closure_of(
+    face: &ttf_parser::Face,
+    start: &[ttf_parser::GlyphId],
+    only: Option<&std::collections::BTreeSet<u16>>,
+) -> Vec<u16> {
     use ttf_parser::gsub::SubstitutionSubtable as S;
     let mut set: std::collections::BTreeSet<u16> = start.iter().map(|g| g.0).collect();
     let Some(gsub) = face.tables().gsub else {
@@ -26,7 +48,10 @@ fn substitution_closure(face: &ttf_parser::Face, start: &[ttf_parser::GlyphId]) 
     loop {
         let before = set.len();
         let now: Vec<ttf_parser::GlyphId> = set.iter().map(|&g| ttf_parser::GlyphId(g)).collect();
-        for lookup in gsub.lookups {
+        for (li, lookup) in gsub.lookups.into_iter().enumerate() {
+            if only.is_some_and(|o| !o.contains(&(li as u16))) {
+                continue;
+            }
             for k in 0..lookup.subtables.len() {
                 let Some(sub) = lookup.subtables.get::<S>(k) else {
                     continue;
@@ -377,6 +402,29 @@ pub fn cook(
         wanted.dedup();
     }
 
+    // OpenType features: every glyph their lookups substitute for the
+    // charset's (small caps, tabular figures), drawn as glyph ids.
+    let featured = if s.features.is_empty() {
+        0
+    } else {
+        let lookups = feature_lookups(&face, &s.features);
+        let start: Vec<ttf_parser::GlyphId> = wanted
+            .iter()
+            .filter(|&&cp| cp < GLYPH_PUA)
+            .filter_map(|&cp| face.glyph_index(char::from_u32(cp)?))
+            .collect();
+        let before = wanted.len();
+        // The start glyphs too: a shaped run draws every glyph by its id.
+        wanted.extend(
+            closure_of(&face, &start, Some(&lookups))
+                .into_iter()
+                .map(|g| GLYPH_PUA + u32::from(g)),
+        );
+        wanted.sort_unstable();
+        wanted.dedup();
+        wanted.len() - before
+    };
+
     // Kerning between the cooked characters (shaped forms kern in the shaper).
     let kern_glyphs: Vec<(u32, ttf_parser::GlyphId)> = wanted
         .iter()
@@ -395,7 +443,7 @@ pub fn cook(
     // The font file ships with the atlas for run-time shaping and for
     // characters outside the charset (`runtime true`: og-ui renders them
     // from these outlines when a text needs them).
-    let ship_ttf = shaping || s.runtime;
+    let ship_ttf = shaping || s.runtime || !s.features.is_empty();
 
     // Render in parallel; results land by index, so the order is fixed.
     let slots: Vec<std::sync::Mutex<Option<Glyph>>> =
@@ -557,6 +605,12 @@ pub fn cook(
             bytes.len()
         ));
     }
+    if !s.features.is_empty() {
+        note.push_str(&format!(
+            "; OpenType features {}: {featured} glyph(s) by id and the font file for run-time shaping",
+            s.features.join(" ")
+        ));
+    }
     if !missing.is_empty() {
         let list: String = missing
             .iter()
@@ -569,4 +623,52 @@ pub fn cook(
         ));
     }
     Ok((w.finish(), FontNotes { note }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A font imported with `features smcp` carries the small-cap glyph of
+    /// each lower-case letter by id (what og-ui draws a featured run with)
+    /// and its file for shaping; without the line it carries neither.
+    #[test]
+    fn features_put_their_glyphs_in_the_atlas() {
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../templates/ui-kit/assets/fonts/EBGaramond-Medium.ttf"
+        );
+        let bytes = std::fs::read(path).expect("the kit's EB Garamond");
+        let face = ttf_parser::Face::parse(&bytes, 0).unwrap();
+        let a = face.glyph_index('a').unwrap();
+        let lookups = feature_lookups(&face, &["smcp".to_string()]);
+        let small_a: Vec<u16> = closure_of(&face, &[a], Some(&lookups))
+            .into_iter()
+            .filter(|&g| g != a.0)
+            .collect();
+        assert_eq!(small_a.len(), 1, "smcp maps a to one small cap");
+        let cooked = |features: &[&str]| {
+            let s = FontSettings {
+                charset: vec!["ascii".into()],
+                em_px: 16.0,
+                features: features.iter().map(|t| t.to_string()).collect(),
+                ..FontSettings::default()
+            };
+            let (blob, _) = cook(&bytes, &s, 2, 0).expect("cooks");
+            let b = og_blob::Blob::parse(&blob, "test").unwrap();
+            let rows: Vec<u32> = b
+                .table::<GlyphRow>("glyphs", row_hash::<GlyphRow>())
+                .unwrap()
+                .iter()
+                .map(|r| r.codepoint)
+                .collect();
+            (rows, b.raw("ttf").is_ok())
+        };
+        let (with, ships) = cooked(&["smcp"]);
+        assert!(ships, "the file ships for run-time shaping");
+        assert!(with.contains(&(GLYPH_PUA + u32::from(small_a[0]))), "a.sc by id");
+        assert!(with.contains(&(GLYPH_PUA + u32::from(a.0))), "a by id too");
+        let (without, ships) = cooked(&[]);
+        assert!(!ships && without.iter().all(|&c| c < GLYPH_PUA));
+    }
 }
