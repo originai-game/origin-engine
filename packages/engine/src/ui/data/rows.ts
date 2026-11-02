@@ -4,7 +4,7 @@
 // mark and a sign as well as its colour (XAG 103).
 
 import type * as Api from "@origingame/engine";
-import { clamp, fit, flags, frame, grow, kit, mark, paint, px, role, spring, still, text, token, xy } from "../containers/base.ts";
+import { byText, clamp, fit, flags, frame, grow, kit, mark, paint, px, role, spring, still, text, token, xy } from "../containers/base.ts";
 import { formatDelta, formatNumber } from "./format.ts";
 
 const TONE: Record<string, Api.ThemeColor> = { success: "success", warn: "warn", danger: "danger", info: "info", primary: "primary", neutral: "ink", gold: "gold", health: "health", mana: "mana", xp: "xp" };
@@ -66,16 +66,44 @@ export function keyValueRows(id: string, desc: Api.KeyValueRowsDesc): void {
 export function statCompare(id: string, desc: Api.StatCompareDesc): void {
   const { t, phone } = frame();
   const rows = desc.rows ?? [];
+  // The value columns grow with the text; where they and a readable label do not fit one line
+  // (a narrow panel, a large text size) each row puts its label above its values.
+  // Each column as wide as its widest value at this text size (mono digits are 0.6 em), so the
+  // columns line up row to row and take no more than they need.
+  const ramp = frame().theme.typeRamp as Record<string, Api.TypeStep>;
+  const sm = ramp.sm?.size ?? 14;
+  const cap = ramp.caption?.size ?? 13;
+  const fmtRow = (r: Api.StatCompareRow, v: number) => formatNumber(v, r.format, r.digits ?? 0, r.unit ?? "");
+  const chars = Math.max(3, ...rows.flatMap((r) => [fmtRow(r, r.current ?? 0).length, fmtRow(r, r.next ?? r.current ?? 0).length]));
+  const deltaChars = Math.max(2, ...rows.map((r) => formatDelta((r.next ?? r.current ?? 0) - (r.current ?? 0), r.format, r.digits ?? 0, "").length));
+  // A column heading wraps between its words, never inside one: the column holds its longest word.
+  const headWord = Math.max(0, ...[desc.currentLabel ?? "", desc.nextLabel ?? ""].flatMap((l) => l.split(/\s+/).map((w) => w.length)));
+  const valueCol = Math.ceil(chars * sm * 0.62) + 6;
+  const headCol = Math.ceil(Math.max(chars * sm * 0.62, headWord * cap * 0.58)) + 6;
+  const dcol = Math.ceil(deltaChars * cap * 0.62) + 8 + 2 + 12 + 4;
+  const room = kit.memory(`~w:${id}`, 0);
+  // Stacked, the headings are one line above the rows (“Equipped → Moonblade”) and the columns
+  // only as wide as their values.
+  const labelW = Math.min(byText(96), Math.max(0, ...rows.map((r) => (r.label ?? "").length)) * sm * 0.55 + (rows.some((r) => r.icon) ? 18 + t.sm : 0));
+  const stacked = room > 0 && room < 2 * headCol + 16 + dcol + 3 * t.sm + labelW + t.sm;
+  const col = stacked ? valueCol : headCol;
   kit.open(id, { direction: "column", width: desc.width ?? grow(), gap: 0, cross: "stretch", part: "StatCompare.frame", partClass: "panel" });
   try {
-    if (desc.currentLabel || desc.nextLabel) {
-      kit.row("Header", { width: grow(), gap: t.sm, padding: xy(0, t.xxs), cross: "center" }, () => {
+    if (stacked && (desc.currentLabel || desc.nextLabel)) {
+      const arrow = kit.frameDirection() === "rtl" ? "←" : "→";
+      text("Header", [desc.currentLabel, desc.nextLabel].filter((l) => l).join(` ${arrow} `), { step: "caption", color: "inkFaint", width: grow() });
+    } else if (desc.currentLabel || desc.nextLabel) {
+      kit.row("Header", { width: grow(), gap: t.sm, padding: xy(0, t.xxs), cross: "end" }, () => {
         kit.open("Gap", { width: grow() });
         kit.close();
-        text("Current", desc.currentLabel ?? "", { step: "caption", color: "inkFaint", nowrap: true, align: "end", width: px(phone ? 56 : 72) });
-        kit.spacer("Arrow", px(16));
-        text("Next", desc.nextLabel ?? "", { step: "caption", color: "inkFaint", nowrap: true, align: "end", width: px(phone ? 56 : 72) });
-        kit.spacer("Delta", px(phone ? 64 : 76));
+        // Each column's heading wraps in its column, never into its neighbour's.
+        text("Current", desc.currentLabel ?? "", { step: "caption", color: "inkFaint", align: "end", width: px(col) });
+        // Empty columns as wide as the rows' arrow and delta (a spacer is square: it made the header tall).
+        kit.open("Arrow", { width: px(16), height: px(0) });
+        kit.close();
+        text("Next", desc.nextLabel ?? "", { step: "caption", color: "inkFaint", align: "end", width: px(col) });
+        kit.open("Delta", { width: px(dcol), height: px(0) });
+        kit.close();
       });
     }
     rows.forEach((r, k) => {
@@ -89,18 +117,25 @@ export function statCompare(id: string, desc: Api.StatCompareDesc): void {
       // The delta springs to its new value (a count), unless motion is reduced.
       const shownDelta = still() ? rawDelta : kit.animate(kit.idi("~delta", k), rawDelta, spring("ui"));
       kit.open(kit.idi("Row", k), { direction: "column", width: grow(), gap: t.xxs, padding: xy(0, t.xs), part: `StatCompare.row${flags(better > 0 ? "better" : better < 0 ? "worse" : "same")}`, partClass: "slot" });
-      kit.row("Line", { width: grow(), gap: t.sm, cross: "center" }, () => {
+      const label = () => {
         if (r.icon) kit.icon("Icon", r.icon, { size: 18, tint: token("inkMuted"), label: "" });
         text("Label", r.label ?? "", { step: "sm", color: "inkMuted", width: grow() });
-        text("Current", fmtOf(cur), { step: "sm", font: "mono", color: same ? "ink" : "inkMuted", nowrap: true, align: "end", width: px(phone ? 56 : 72) });
+      };
+      if (stacked) kit.row("Name", { width: grow(), gap: t.sm, cross: "center" }, label);
+      kit.row("Line", { width: grow(), gap: t.sm, cross: "center" }, () => {
+        if (stacked) {
+          kit.open("Gap", { width: grow(), height: px(0) });
+          kit.close();
+        } else label();
+        text("Current", fmtOf(cur), { step: "sm", font: "mono", color: same ? "ink" : "inkMuted", nowrap: true, align: "end", width: px(col) });
         kit.open("Arrow", { width: px(16), height: px(16), align: "center", cross: "center" });
         if (!same) {
           kit.setDraw({ shape: { kind: "path", points: [{ x: 3, y: 8 }, { x: 13, y: 8 }, { x: 9, y: 4 }, { x: 13, y: 8 }, { x: 9, y: 12 }], width: 1.5, cap: "round", join: "round" }, fills: [{ kind: "solid", color: token("inkFaint") }] });
         }
         kit.close();
         if (kit.frameDirection() === "rtl") kit.props({ transform: { scaleX: -1 } });
-        text("Next", same ? "" : fmtOf(next), { step: "sm", font: "mono", color: ink === "inkFaint" ? "ink" : ink, nowrap: true, align: "end", width: px(phone ? 56 : 72) });
-        kit.open("Delta", { direction: "row", width: fit(phone ? 64 : 76), height: fit(24), gap: 2, align: "end", cross: "center" });
+        text("Next", same ? "" : fmtOf(next), { step: "sm", font: "mono", color: ink === "inkFaint" ? "ink" : ink, nowrap: true, align: "end", width: px(col) });
+        kit.open("Delta", { direction: "row", width: px(dcol), height: fit(24), gap: 2, align: "end", cross: "center" });
         if (!same) {
           kit.open("Chip", { direction: "row", gap: 2, padding: xy(6, 0), height: fit(22), cross: "center", radius: 11, background: paint(role(ink), 0.16), part: `StatCompare.delta${flags(better > 0 ? "better" : "worse")}`, partClass: "chip" });
           // Up or down, as a triangle: the direction of the change, whatever its colour.
@@ -141,5 +176,6 @@ export function statCompare(id: string, desc: Api.StatCompareDesc): void {
   } finally {
     kit.close();
   }
+  kit.remember(`~w:${id}`, kit.bounds(kit.lastPath())?.width ?? 0);
   kit.semantics({ role: "list", name: desc.label ?? "" });
 }

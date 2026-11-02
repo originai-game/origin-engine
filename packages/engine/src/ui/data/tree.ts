@@ -151,15 +151,13 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
       }
     }
   }
-  // The zoom controls' room along the bottom: the fit keeps every node clear of them.
-  const zoomRoom = target(40) + 4 + 2 * t.sm;
   const padX = Math.max(s / 2, ...capWs.map((w) => w / 2)) + t.sm;
   const padTop = s / 2 + t.sm;
-  const padBottom = s / 2 + 4 + capH + t.sm + zoomRoom;
+  const padBottom = s / 2 + 4 + capH + t.sm;
   // Zoom 1 fits the whole graph in its view (as laid out last tick): it opens with every node in
   // sight, and zooming in from there pans. Never tighter than its captions can stand apart: past
   // that the graph pans instead, and zoomed out further the captions hide (as maps drop labels).
-  const view = kit.bounds(`${id}/View`) ?? kit.bounds(id);
+  const view = kit.bounds(`${id}/Window/View`) ?? kit.bounds(id);
   const fitK = view ? Math.min(1, x1 > 0 ? Math.max(0.1, (view.width - 2 * padX) / x1) : 1, y1 > 0 ? Math.max(0.1, (view.height - padTop - padBottom) / y1) : 1) : 1;
   const k = Math.max(kNode, live * Math.max(fitK, labelled ? kCap : kNode));
   const captions = labelled && k >= kCap - 1e-6;
@@ -222,6 +220,9 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
         { kind: "gradient", type: "radial", from: { x: 0.5, y: 0.45 }, to: { x: 0.75, y: 0.75 }, stops: [{ offset: 0, color: token("sheen", 0.12) }, { offset: 1, color: token("sheen", 0) }] },
       ],
     });
+    // The window the graph pans in, its fades over its cut sides; the zoom controls in a bar under
+    // it, so no node ever sits beneath them however the graph is panned or zoomed.
+    kit.open("Window", { direction: "column", width: grow(), height: grow(), cross: "stretch" });
     kit.openScroll("View", { width: grow(), height: grow(), axes: "both" });
     try {
       kit.open("Canvas", { width: px(W), height: px(H) });
@@ -287,7 +288,10 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
         });
         if (n.label && captions) {
           const cw = capWs[k]!;
-          text(kit.idi("Caption", k), n.label, { step: "caption", color: locked ? "inkFaint" : "inkMuted", align: "center", width: fit(cw, capW), maxLines: 2 });
+          // On a backing of the graph's ground: a link running under a caption never strikes it through.
+          kit.column(kit.idi("Caption", k), { width: fit(cw, capW), cross: "center", padding: xy(2, 0), radius: 4, background: token("well", 0.92) }, () => {
+            text("Text", n.label ?? "", { step: "caption", color: locked ? "inkFaint" : "inkMuted", align: "center", width: grow(), maxLines: 2 });
+          });
           over({ insets: { start: (rtl() ? W - p.x : p.x) - cw / 2, top: p.y + s / 2 + 4 }, inert: true, z: 1 });
         }
         if (r.clicked) chosen = n.id ?? null;
@@ -314,15 +318,18 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
     edge("FadeEnd", false, kit.animate("~fe", panX < maxX - 0.5 ? 1 : 0, spring("ui")), true, fade, "well");
     edge("FadeTop", true, kit.animate("~ft", panY > 0.5 ? 1 : 0, spring("ui")), false, fade, "well");
     edge("FadeBottom", false, kit.animate("~fb", panY < maxY - 0.5 ? 1 : 0, spring("ui")), false, fade, "well");
-    // Zoom controls in the corner.
-    kit.row("Zoom", { gap: 2, padding: xy(2, 2), radius: t.control, background: token("panelRaised"), part: "Graph.zoom", partClass: "hud" }, () => {
-      const out = surface("Out", { part: "Graph.zoomButton", cls: "button", fill: null, disabled: zoom <= minZ + 1e-3, width: px(target(40)), height: px(target(40)), align: "center", cross: "center", semantics: { role: "button", name: desc.zoomOutLabel || "Zoom out" } }, () => mark("Minus", "minus", 16, role("ink")));
-      text("Level", `${Math.round(live * 100)}%`, { step: "caption", font: "mono", color: "inkMuted", nowrap: true });
-      const inn = surface("In", { part: "Graph.zoomButton", cls: "button", fill: null, disabled: zoom >= maxZ - 1e-3, width: px(target(40)), height: px(target(40)), align: "center", cross: "center", semantics: { role: "button", name: desc.zoomInLabel || "Zoom in" } }, () => mark("Plus", "plus", 16, role("ink")));
-      if (out.clicked) zoom = clamp(zoom / 1.25, minZ, maxZ);
-      if (inn.clicked) zoom = clamp(zoom * 1.25, minZ, maxZ);
+    kit.close();
+    // A toolbar of its own under the window, ruled off from it, so the window's lower edge reads as
+    // the edge it is.
+    kit.row("Bar", { width: grow(), align: "end", padding: xy(t.sm, t.xs), background: token("panel") }, () => {
+      kit.row("Zoom", { gap: 2, padding: xy(2, 2), radius: t.control, background: token("panelRaised"), part: "Graph.zoom", partClass: "hud" }, () => {
+        const out = surface("Out", { part: "Graph.zoomButton", cls: "button", fill: null, disabled: zoom <= minZ + 1e-3, width: px(target(40)), height: px(target(40)), align: "center", cross: "center", semantics: { role: "button", name: desc.zoomOutLabel || "Zoom out" } }, () => mark("Minus", "minus", 16, role("ink")));
+        text("Level", `${Math.round(live * 100)}%`, { step: "caption", font: "mono", color: "inkMuted", nowrap: true });
+        const inn = surface("In", { part: "Graph.zoomButton", cls: "button", fill: null, disabled: zoom >= maxZ - 1e-3, width: px(target(40)), height: px(target(40)), align: "center", cross: "center", semantics: { role: "button", name: desc.zoomInLabel || "Zoom in" } }, () => mark("Plus", "plus", 16, role("ink")));
+        if (out.clicked) zoom = clamp(zoom / 1.25, minZ, maxZ);
+        if (inn.clicked) zoom = clamp(zoom * 1.25, minZ, maxZ);
+      });
     });
-    over({ insets: { end: t.sm, bottom: t.sm }, z: 4 });
   } finally {
     kit.close();
   }
@@ -334,7 +341,7 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
     if (p.x - m < panX) panX = p.x - m;
     else if (p.x + m > panX + vw) panX = p.x + m - vw;
     if (p.y - m < panY) panY = p.y - m;
-    else if (p.y + m + capH + zoomRoom > panY + vh) panY = p.y + m + capH + zoomRoom - vh;
+    else if (p.y + m + capH > panY + vh) panY = p.y + m + capH - vh;
     free = true;
     panX = clamp(panX, 0, maxX);
     panY = clamp(panY, 0, maxY);
