@@ -31,10 +31,53 @@ function smooth(pts: Pt[]): Api.Vector2[] {
 }
 
 /** A line of the path, an absolute layer over the whole content (inert): its points, width, ink and glow. */
-function pathLayer(id: string, pts: Pt[], width: number, ink: Api.Paint, effects: Api.Effect[] = []): void {
+/** The smoothed path as a dense polyline (each curve sampled), so it can be cut anywhere along it. */
+function flatten(pts: Pt[]): Pt[] {
+  const c = smooth(pts);
+  const out: Pt[] = [c[0]!];
+  for (let i = 1; i + 2 < c.length; i += 3) {
+    const [a, b, d, e] = [c[i - 1]!, c[i]!, c[i + 1]!, c[i + 2]!];
+    for (let k = 1; k <= 16; k++) {
+      const t = k / 16;
+      const m = 1 - t;
+      out.push({ x: m * m * m * a.x + 3 * m * m * t * b.x + 3 * m * t * t * d.x + t * t * t * e.x, y: m * m * m * a.y + 3 * m * m * t * b.y + 3 * m * t * t * d.y + t * t * t * e.y });
+    }
+  }
+  return out;
+}
+
+/** The part of a polyline at or above `cut` (content y), cut exactly there. */
+function above(line: Pt[], cut: number): Pt[] {
+  const out: Pt[] = [];
+  for (let i = 0; i < line.length; i++) {
+    const p = line[i]!;
+    const q = line[i - 1];
+    if (q && (q.y <= cut) !== (p.y <= cut)) {
+      const t = (cut - q.y) / (p.y - q.y);
+      out.push({ x: q.x + (p.x - q.x) * t, y: cut });
+    }
+    if (p.y <= cut) out.push(p);
+  }
+  return out;
+}
+
+/**
+ * A line of the path, an absolute layer over the whole content (inert): its points, width, ink and glow. `endY`
+ * (content y, a vertical map's view edge of last tick) ends it before the view's clip: it stops a halo's reach above
+ * the edge and fades to nothing over its last 80 px there, so the clip never cuts a line or its glow.
+ */
+function pathLayer(id: string, pts: Pt[], width: number, ink: Api.Paint, effects: Api.Effect[] = [], endY = 0, H = 0): void {
   if (pts.length < 2) return;
+  const reach = width / 2 + effects.reduce((r, e) => Math.max(r, e.kind === "outerGlow" ? (e as { blur: number }).blur + ((e as { spread?: number }).spread ?? 0) : 0), 0);
+  const cut = endY > 0 && H > 0 ? endY - reach : 0;
+  const line = cut > 0 ? above(flatten(pts), cut) : null;
+  if (line && line.length < 2) return;
+  const fade = u(80);
+  const fills: Api.Fill[] = line
+    ? [{ kind: "gradient", type: "linear", from: { x: 0.5, y: cut / H }, to: { x: 0.5, y: Math.max(0, cut - fade) / H }, stops: [{ offset: 0, color: { ...ink, alpha: 0 } as Api.Paint }, { offset: 1, color: ink }] }]
+    : [{ kind: "solid", color: ink }];
   kit.open(id, { width: grow(), height: grow(), part: `Saga.path${id === "Lit" ? "[lit]" : ""}`, partClass: "badge" });
-  kit.setDraw({ shape: { kind: "path", points: smooth(pts), curves: true, width, cap: "round", join: "round" }, fills: [{ kind: "solid", color: ink }], effects } as Api.DrawDesc);
+  kit.setDraw({ shape: line ? { kind: "path", points: line, curves: false, width, cap: "round", join: "round" } : { kind: "path", points: smooth(pts), curves: true, width, cap: "round", join: "round" }, fills, effects } as Api.DrawDesc);
   kit.close();
   over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true });
 }
@@ -78,6 +121,9 @@ export function sagaMap(id: string, desc: Api.SagaMapDesc): Api.SagaMapResult {
   // left, and the path's points are already drawn mirrored, so a mirrored map measures from the right.
   const startOf = (x: number, w: number): number => Math.round(rtl() ? W - x - w / 2 : x - w / 2);
   kit.open(id, { direction: "column", width: grow(), height: grow(), part: "Saga.map", partClass: "panel" });
+  // Where the view's foot met the content last tick (a vertical map with chrome docked under it); remembered under
+  // this element after the view closes, so read here, not inside the view.
+  const endY = vertical && (desc.footInset ?? 0) > 0 ? kit.memory(`~s.end.${id}`, 0) : 0;
   // The backdrop: the map's art behind the view, still while the path scrolls over it (a parallax sky), a shade over
   // it so the badges read; without art, a dusk gradient.
   kit.open("Backdrop", { width: grow(), height: grow(), part: "Saga.backdrop", partClass: "badge" });
@@ -95,9 +141,9 @@ export function sagaMap(id: string, desc: Api.SagaMapDesc): Api.SagaMapResult {
   kit.open("Path", { width: px(W), height: px(H), part: "Saga.route", partClass: "badge" });
   // The path: a wide soft trail under every level, the way ahead a quiet line on it, and the way travelled lit in the
   // accent with a glow, from the first level to the one the player stands on.
-  pathLayer("Trail", at, u(26), token("shadow", 0.42));
-  pathLayer("Ahead", at.slice(Math.max(0, curIdx)), u(5), paint(mix(role("ink"), role("inkFaint"), 0.5), 0.55));
-  pathLayer("Lit", at.slice(0, curIdx + 1), u(6), paint(mix(hl, hex("#ffffff"), 0.25)), [glow(u(12), paint(hl, 0.85), 1)]);
+  pathLayer("Trail", at, u(26), token("shadow", 0.42), [], endY, H);
+  pathLayer("Ahead", at.slice(Math.max(0, curIdx)), u(5), paint(mix(role("ink"), role("inkFaint"), 0.5), 0.55), [], endY, H);
+  pathLayer("Lit", at.slice(0, curIdx + 1), u(6), paint(mix(hl, hex("#ffffff"), 0.25)), [glow(u(12), paint(hl, 0.85), 1)], endY, H);
 
   const rt = kit.memory("~s.rt", 0);
   const rk = kit.memory("~s.rk", 0);
@@ -229,6 +275,18 @@ export function sagaMap(id: string, desc: Api.SagaMapDesc): Api.SagaMapResult {
   }
   kit.close();
   kit.close();
+  {
+    // The view's foot in the content's coordinates, for the path's end next tick. Bounds are clipped to the view, so
+    // the scroll is read off the current level, whose top is at its point less half its badge in the content.
+    const view = kit.lastPath();
+    const vb = kit.bounds(view);
+    const cb = curPath ? kit.bounds(curPath) : null;
+    const cp = at[curIdx];
+    if (vb && cb && cp && cb.height >= u(nodes[curIdx]!.boss ? 96 : 84) - 1) {
+      const top = cp.y - u(nodes[curIdx]!.boss ? 96 : 84) / 2 - (cb.y - vb.y);
+      kit.remember(`~s.end.${id}`, Math.round(top + vb.height));
+    }
+  }
   // Open on the current level, centred, and follow it when it changes. og-ui scrolls by where the badge was last
   // frame (clipped or not), so it is asked until the badge shows in the view, then left to the player's scrolling.
   const want = keyHash(desc.current ?? "");

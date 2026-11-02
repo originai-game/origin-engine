@@ -194,7 +194,8 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
         kit.open("Units", { direction: portrait ? "row" : "column", gap: u(portrait ? 12 : 6), width: grow() });
         feat.forEach((f, k) => {
           const ink = tierInk(f.rarity);
-          const tierLight = (h: number, strength: number): void => {
+          const tierLight = (h: number, strength: number, shade = 0): void => {
+            const ink = mix(tierInk(f.rarity), role("shadow"), shade);
             // Undressed (a style's badge dress would lay its own flat fill over the gradient): light rising from the
             // foot, quadratic, so it reads as glow on the art and not as a coloured block.
             kit.open("Tier", { width: grow(), height: px(Math.round(h)) });
@@ -218,7 +219,8 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
             // In portrait the words stand on the light at the portrait's foot.
             // The tier's light over the lower 40 % of the portrait (55 % at the foot, none at its top), and the name and
             // stars on a dark contact shadow over it, never on the colour itself.
-            tierLight(tileH * 0.4, 0.55);
+            // Legendary is the one hot spot: lower tiers rise to 45 %, a little toward their shade.
+            tierLight(tileH * 0.4, rarityPips(f.rarity) >= 5 ? 0.55 : 0.45, rarityPips(f.rarity) >= 5 ? 0 : 0.18);
             over({ insets: { start: 0, end: 0, bottom: 0 }, inert: true });
             kit.column("Plate", { width: grow(), gap: u(2), cross: "center", padding: { left: u(4), right: u(4), top: u(14), bottom: u(5) } }, () => {
               kit.setDraw({ shape: { kind: "rect", radii: [0, 0, t.small, t.small] }, fills: [vgrad([[0, token("shadow", 0)], [0.4, token("shadow", 0.42)], [1, token("shadow", 0.7)]])] });
@@ -356,7 +358,7 @@ function pityMeter(id: string, pity: number, max: number, label: string): void {
       text("Count", `${pity} / ${max}`, { step: st(12), nowrap: true, font: "mono", color: "inkMuted" });
     });
     kit.open("Track", { width: grow(), height: px(u(6)), radius: 999 });
-    kit.setDraw({ shape: { kind: "rect", radii: [999, 999, 999, 999] }, fills: [{ kind: "solid", color: token("well", 0.9) }], strokes: [line(1, token("shadow", 0.6), "outside")] });
+    kit.setDraw({ shape: { kind: "rect", radii: [999, 999, 999, 999] }, fills: [{ kind: "solid", color: paint(hex("#ffffff"), 0.08) }], strokes: [line(1, token("shadow", 0.6), "outside")] });
     kit.open("Fill", { width: pct(Math.max(0.03, f)), height: grow() });
     kit.setDraw({ shape: { kind: "rect", radii: [999, 999, 999, 999] }, fills: [{ kind: "solid", color: token(f > 0.8 ? "highlight" : "primary") }] });
     kit.close();
