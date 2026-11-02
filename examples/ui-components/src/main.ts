@@ -505,7 +505,7 @@ function rtsScreen(world: World): void {
       ...(i % 5 === 3 ? { shield: 60, shieldMax: 80 } : {}), ...(i === 2 ? { energy: 70, energyMax: 200 } : {}),
     };
   });
-  const barracks = { key: "barracks", name: tr("barracks", "Barracks"), kind: tr("structure", "Structure"), icon: "home", health: 1000, healthMax: 1000, progress: null };
+  const barracks = { key: "barracks", name: tr("barracks", "Barracks"), kind: tr("structure", "Structure"), image: art("barracks"), icon: "home", health: 1000, healthMax: 1000, progress: null };
   const done = did("complete");
   const queue = {
     items: [
@@ -742,6 +742,7 @@ export default og.game({
     for (const k of ["fireball", "blink", "frost-nova", "meteor", "shield-wall", "pyroblast", "hex", "rune-of-power"]) paths[k] = `abilities/${k}.jpg`;
     for (const k of ["flame-blade", "poison", "curse", "frost", "rune-shield", "star", "broken-chain", "titan-heart", "thunder-strike"]) paths[k] = `kit-art/boons/${k}.jpg`;
     for (const k of ["aria", "kael", "mira", "aria-vell", "cultist"]) paths[k] = `kit-art/portraits/${k}.jpg`;
+    paths.barracks = "kit-art/buildings/barracks.jpg";
     for (const [k, path] of Object.entries(paths)) {
       const tex = og.load.texture(world, path);
       if (tex.ok) state.art[k] = tex.value;

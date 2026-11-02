@@ -519,14 +519,22 @@ test("og.ui.rtsConsole and dragSelect: four zones side by side, a paged selectio
   expect(row0).toEqual(["a", "Empty#1", "s", "c0", "c1"]);
   expect(at(els, "RtsHud/Rts/Panel/Commands/Grid/Row#0/a/Slot/Key")?.text).toBe("Q");
   expect(at(els, "RtsHud/Rts/Panel/Commands/Grid/Row#1/Empty#9")).toBeDefined();
-  // A building: its queue above the card, the first item counting down, a stacked slot's count.
+  // A building: no grid of one; its production beside the card, the first item large and counting down, a stacked slot's count after it.
   building = true;
   drag = { x: 300, y: 260 };
   e.advance(3);
   els = dump(e);
-  expect(at(els, "RtsHud/Rts/Panel/Selection/Body/Card/Queue/q0/Time")?.text).toBe("5");
-  expect(at(els, "RtsHud/Rts/Panel/Selection/Body/Card/Queue/q1/Count")?.text).toBe("3");
-  expect(states(at(els, "RtsHud/Rts/Panel/Selection/Body/Card/Queue")).queue).toBe("building");
+  expect(at(els, "RtsHud/Rts/Panel/Selection/Body/Grid")).toBe(undefined);
+  const card = at(els, "RtsHud/Rts/Panel/Selection/Body/Card")!;
+  const prod = at(els, "RtsHud/Rts/Panel/Selection/Body/Production")!;
+  expect(card.x + card.width).toBeLessThanOrEqual(prod.x);
+  const cur = at(els, "RtsHud/Rts/Panel/Selection/Body/Production/Current/Queue/q0")!;
+  const next = at(els, "RtsHud/Rts/Panel/Selection/Body/Production/Next/q1")!;
+  expect(cur.width).toBeGreaterThan(next.width);
+  expect(at(els, "RtsHud/Rts/Panel/Selection/Body/Production/Current/Queue/q0/Time")?.text).toBe("5");
+  expect(at(els, "RtsHud/Rts/Panel/Selection/Body/Production/Current/Info/Name")?.text).toBe("Marine");
+  expect(at(els, "RtsHud/Rts/Panel/Selection/Body/Production/Next/q1/Count")?.text).toBe("3");
+  expect(states(at(els, "RtsHud/Rts/Panel/Selection/Body/Production/Current/Queue")).queue).toBe("building");
   // The drag box: the rectangle between its corners, drawn where it says.
   expect(box).toEqual({ dragging: true, released: false, x: 100, y: 120, width: 200, height: 140 } as never);
   const b = at(els, "DragHud/Drag")!;
