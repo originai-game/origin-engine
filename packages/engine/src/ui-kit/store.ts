@@ -292,13 +292,23 @@ export function levelSelect(id: string, desc: Api.LevelSelectDesc = {}): Api.Lev
   return out;
 }
 
-// The award metals of packages/design's tokens (`metal.*.mid`, with their dark ink): a medal is
-// material, not a semantic role, so bronze never borrows warn and silver never reads as rank 4.
-const MEDALS: readonly Api.Color[] = [
-  { r: 1, g: 0.8, b: 0 },
-  { r: 0.722, g: 0.753, b: 0.8 },
-  { r: 0.788, g: 0.514, b: 0.302 },
+// The award metals of packages/design's tokens (`metal.*`: highlight, mid and shade, sRGB): a
+// medal is material, not a semantic role, so bronze never borrows warn and silver never reads as
+// rank 4. Each disc is lit from above, highlight to shade, with a highlight rim on its top edge.
+const MEDALS: ReadonlyArray<readonly [Api.Color, Api.Color, Api.Color]> = [
+  [{ r: 1, g: 0.902, b: 0.502 }, { r: 1, g: 0.8, b: 0 }, { r: 0.722, g: 0.525, b: 0.043 }],
+  [{ r: 0.957, g: 0.965, b: 0.973 }, { r: 0.722, g: 0.753, b: 0.8 }, { r: 0.478, g: 0.51, b: 0.557 }],
+  [{ r: 0.953, g: 0.776, b: 0.627 }, { r: 0.788, g: 0.514, b: 0.302 }, { r: 0.541, g: 0.294, b: 0.133 }],
 ];
+
+function medalDraw(rank: number): Api.DrawDesc {
+  const [hi, mid, shade] = MEDALS[rank - 1]!;
+  return {
+    shape: { kind: "ellipse" },
+    fills: [{ kind: "gradient", type: "linear", from: { x: 0.5, y: 0 }, to: { x: 0.5, y: 1 }, stops: [{ offset: 0, color: { color: hi } }, { offset: 0.5, color: { color: mid } }, { offset: 1, color: { color: shade } }] }],
+    effects: [{ kind: "innerShadow", offset: { x: 0, y: 1 }, blur: 0, spread: 0, color: { color: hi, alpha: 0.9 } }],
+  } as Api.DrawDesc;
+}
 
 export function leaderboardScreen(id: string, desc: Api.LeaderboardDesc = {}): Api.LeaderboardResult {
   const { t, phone } = frame();
@@ -335,8 +345,10 @@ export function leaderboardScreen(id: string, desc: Api.LeaderboardDesc = {}): A
         // Ranks 1 to 3 on a filled metal disc with the numeral on it; the rest plain muted numerals.
         kit.row("Rank", { width: px(40), cross: "center" }, () => {
           if (rank <= 3) {
-            kit.row("Medal", { width: px(26), height: px(26), radius: 13, background: { color: MEDALS[rank - 1]! }, align: "center", cross: "center" }, () => {
-              kit.label("Numeral", `${rank}`, { font: "mono", step: "meta", color: { color: { r: 0.067, g: 0.067, b: 0.075 } }, nowrap: true });
+            kit.row("Medal", { width: px(26), height: px(26), align: "center", cross: "center" }, () => {
+              kit.setDraw(medalDraw(rank));
+              // Semibold near-black (#15151a) on the metal, so 1 and 2 read on their bright discs.
+              kit.richText("Numeral", `[b]${rank}[/b]`, { font: "mono", step: "meta", color: { color: { r: 0.082, g: 0.082, b: 0.102 } }, nowrap: true });
             });
           } else {
             kit.label("Numeral", `${rank}`, { font: "mono", color: token("inkMuted"), nowrap: true });
