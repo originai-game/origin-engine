@@ -100,16 +100,15 @@ pub(crate) fn span_width(s: &RichSpan, text: &str, fonts: &dyn Metrics) -> f32 {
     m.measure_tracked(text, s.step.size, span_tracking(s, text)) + bold_overhang(s, text)
 }
 
-/// A span's tracking (em): its step's, and for a bold run the room its
-/// thickened ink takes ([`bold_weight`] on both sides of every glyph and
-/// the second copy, at most 1 px to the right), so a bold word keeps the
-/// regular word's gaps between its letters instead of closing them up. A
-/// shaped run takes none (its joins would break), and keeps
-/// [`bold_overhang`] after it instead.
+/// A span's tracking (em): its step's, and for a bold run one
+/// [`bold_weight`] more per glyph, as a bold face's advance grows by about
+/// its added stem: its letters stay apart without reading letter-spaced. A
+/// shaped run takes none (its joins would break). Either keeps
+/// [`bold_overhang`] after it.
 fn span_tracking(s: &RichSpan, text: &str) -> f32 {
     let step = crate::layout::step_tracking(&s.step, text);
     if s.bold && !text.chars().any(og_i18n::needs_shaping) {
-        step + (2.0 * bold_weight(s.step.size) + 1.0) / s.step.size
+        step + bold_weight(s.step.size) / s.step.size
     } else {
         step
     }
@@ -117,11 +116,10 @@ fn span_tracking(s: &RichSpan, text: &str) -> f32 {
 
 /// How far a bold span's ink reaches past its advance (CSS px): the
 /// shader's thickening ([`bold_weight`]) and the second copy, one device
-/// pixel to the right (at most 1 px). Reserved after a shaped bold run,
-/// which takes no tracking ([`span_tracking`]), so the space after it does
-/// not close up.
+/// pixel to the right (at most 1 px). Reserved after each bold run, so the
+/// space after it does not close up.
 fn bold_overhang(s: &RichSpan, text: &str) -> f32 {
-    if s.bold && !text.trim().is_empty() && text.chars().any(og_i18n::needs_shaping) {
+    if s.bold && !text.trim().is_empty() {
         bold_weight(s.step.size) + 1.0
     } else {
         0.0

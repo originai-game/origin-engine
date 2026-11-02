@@ -410,10 +410,10 @@ fn runs_of_either_direction_reorder_inside_one_span() {
 
 #[test]
 fn a_bold_span_keeps_room_for_its_thickened_ink() {
-    // Bold is thickened in the shader on both sides of every glyph and
-    // drawn twice, one device pixel apart: a bold word's letters must be
-    // spaced that much further apart or they run into each other, and the
-    // text after it must start that much later.
+    // Bold is thickened in the shader on both sides of every glyph: a bold
+    // word's glyphs must advance about one weight further each, as a bold
+    // face's do, or their ink runs together, but by less than the ink's
+    // whole growth, or the word reads letter-spaced.
     let mut ui = rich_ui();
     let gap = |ui: &mut Ui, markup: &str| {
         for _ in 0..2 {
@@ -436,9 +436,15 @@ fn a_bold_span_keeps_room_for_its_thickened_ink() {
     let (plain, _) = gap(&mut ui, "Call [color=danger]bolts[/color] down.");
     let (bold, weight) = gap(&mut ui, "Call [b]bolts[/b] down.");
     assert!(weight > 0.0, "the bold span is thickened");
-    let room = 5.0 * (2.0 * weight + 1.0);
+    // Five glyphs, x snapped to the pixel (1 px either way).
+    let least = plain + 5.0 * weight;
+    let most = plain + 5.0 * 2.0 * weight + weight + 1.0;
     assert!(
-        bold >= plain + room - 1.0, // x is snapped to the pixel
-        "every bold glyph keeps room for its ink: {bold} against {plain} + {room}"
+        bold >= least - 1.0,
+        "each bold glyph advances by its added stem: {bold} against at least {least}"
+    );
+    assert!(
+        bold <= most + 1.0,
+        "a bold word is not letter-spaced: {bold} against at most {most}"
     );
 }
