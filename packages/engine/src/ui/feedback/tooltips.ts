@@ -9,7 +9,7 @@
 // clamped inside the safe area, mirrored right to left.
 
 import type * as Api from "@origingame/engine";
-import { a11y, arc, bp, box, clamp, clamp01, close, drop, frame, groups, icon, kit, leaf, lit, msToTicks, open, pct, px, rarityColor, rarityPips, role, sel, shapeOf, solid, sound, stroke, text, token, vgrad, xy, type Rgba, ts, apply, floatFloor, u, textScale } from "./core.ts";
+import { a11y, arc, bp, box, clamp, clamp01, close, drop, frame, groups, icon, kit, leaf, lit, msToTicks, open, pct, px, rarityColor, rarityPips, role, sel, shapeOf, solid, sound, stroke, text, token, vgrad, xy, type Rgba, ts, apply, floatFloor, u, textScale, announcing } from "./core.ts";
 
 interface Placed {
   x: number;
@@ -186,13 +186,15 @@ function card(id: string, desc: Api.TooltipCardDesc, target: string, open_: bool
       build?.();
     }, pinned) || overCard;
   });
+  // While a banner or a level-up announces, the card steps under it and dims: its text never reads through the band.
+  const covered = announcing();
   apply({
-    opacity: first ? 0 : 1,
+    opacity: first ? 0 : covered ? 0.1 : 1,
     motion: { kind: "token", token: "ui" },
     enter: { kind: "fade", transition: { kind: "token", token: "enter" } },
     exit: { kind: "fade", transition: { kind: "token", token: "exit" } },
     a11y: a11y("tooltip", desc.title ?? "", { description: (desc.body ?? "").replace(/\[[^\]]*\]/g, "") }),
-    ...groups({ pin: pinned ? "pinned" : pinProgress > 0 ? "pinning" : "resting" }, { pin: ["resting", "pinning", "pinned"] }),
+    ...groups({ pin: pinned ? "pinned" : pinProgress > 0 ? "pinning" : "resting", cover: covered ? "dimmed" : "clear" }, { pin: ["resting", "pinning", "pinned"], cover: ["clear", "dimmed"] }),
   });
 
   // Nested cards: a hovered keyword opens its card beside this one.

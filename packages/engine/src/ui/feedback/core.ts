@@ -677,6 +677,21 @@ export function claimBand(name: string, top: number): void {
   BANDS.set(name, { tick: kit.tick(), top, height: frame().viewport.height });
 }
 
+/** The tick a banner or level-up last announced on (BANNER_TICK.at), per surface height. */
+const BANNER_TICK = { at: -1e9, height: 0 };
+
+/** A banner or a celebration's title is on screen this tick: open tooltip cards step under it and dim. */
+export function claimAnnouncement(): void {
+  BANNER_TICK.at = kit.tick();
+  BANNER_TICK.height = frame().viewport.height;
+}
+
+/** Whether an announcement was on screen this tick or the last (a card built before it reads last tick's). */
+export function announcing(): boolean {
+  const t = kit.tick();
+  return BANNER_TICK.height === frame().viewport.height && BANNER_TICK.at >= t - 1 && BANNER_TICK.at <= t;
+}
+
 /** The lowest y a floating card may reach: the safe area's bottom, above any claimed band. */
 export function floatFloor(): number {
   const f = frame();

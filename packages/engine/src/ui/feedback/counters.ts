@@ -149,19 +149,20 @@ function digits(id: string, shown: number, format: Api.NumberFormatDesc, step: A
       const below = Math.floor(whole) % place;
       const carry = below === place - 1 ? frac : 0;
       const d = Number(ch);
-      // The wheel shows through a window the height of a numeral, centred on
-      // the line, not the whole line box: the next digit never hangs below
-      // the others' baseline (or above their tops) while it turns in.
-      const win = Math.min(line, Math.ceil(stepSize(step).size * 0.92));
+      // The wheel shows through a window the height of a numeral's caps
+      // (and its outline), centred on the line: a digit in motion is never
+      // seen above the others' tops or below their baseline. The next digit
+      // sits one window below the current one, so they roll edge to edge.
+      const win = Math.min(line, Math.ceil(stepSize(step).size * 0.8));
       const top = Math.floor((line - win) / 2);
-      box(kit.idi("Digit", i++), { direction: "column", height: px(line), part: sel("NumberCounter", "digit") }, undefined, () => {
+      // Placed by layout (padding and insets), not transforms: a clip holds what layout puts in it.
+      box(kit.idi("Digit", i++), { direction: "column", height: px(line), padding: { left: 0, right: 0, top, bottom: 0 }, part: sel("NumberCounter", "digit") }, undefined, () => {
         box("Window", { direction: "column", height: px(win) }, { clip: "shape" }, () => {
-          kit.column("Wheel", { gap: 0 }, () => {
-            text("D", String(d), { step, font, color: ink, nowrap: true, outline: 1 });
-            text("N", String((d + 1) % 10), { step, font, color: ink, nowrap: true, outline: 1 });
-          });
-          apply({ transform: { y: -top - carry * line } });
-        }, { transform: { y: top } });
+          // An invisible numeral gives the window its width.
+          text("W", String(d), { step, font, nowrap: true, outline: 1 }, { opacity: 0, inert: true });
+          text("D", String(d), { step, font, color: ink, nowrap: true, outline: 1 }, absolute({ start: 0, top: -top - carry * win }));
+          text("N", String((d + 1) % 10), { step, font, color: ink, nowrap: true, outline: 1 }, absolute({ start: 0, top: -top + (1 - carry) * win }));
+        });
       });
       k -= 1;
     }

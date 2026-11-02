@@ -237,6 +237,23 @@ test("og.ui.subtitles: two speech lines at most, captions only when asked, the s
   expect(at(els, "Subs/s1/Text")!.text).toBe("[door creaks]");
 });
 
+test("og.ui.banner: an open tooltip card steps under it and dims while it shows, and comes back after", () => {
+  let tick0 = -1;
+  const e = engineFor("FbBannerTip", () => {
+    if (tick0 < 0) tick0 = og.ui.tick();
+    og.ui.button("Sword", "Ashbringer", {});
+    og.ui.tooltipCard("Tip", { open: true, target: "Sword", title: "Ashbringer", body: "A blade.", delayMs: 0 });
+    og.ui.banner("Wave", { kind: "victory", title: "Victory", shownAt: tick0 + 60, durationMs: 300 });
+  });
+  const cover = (): string | undefined => (at(dump(e), "Tip") as { visualStates?: Record<string, string> } | undefined)?.visualStates?.cover;
+  e.advance(50);
+  expect(cover()).toBe("clear");
+  e.advance(20);
+  expect(cover()).toBe("dimmed");
+  e.advance(120);
+  expect(cover()).toBe("clear");
+});
+
 test("og.ui.starRating and og.ui.banner: earned stars, a banner that holds and leaves", () => {
   let tick0 = -1;
   let r: ReturnType<typeof og.ui.banner> | null = null;

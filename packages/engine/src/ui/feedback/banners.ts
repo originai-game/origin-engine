@@ -9,7 +9,7 @@
 import type * as Api from "@origingame/engine";
 import {
   a11y, absolute, box, clamp01, close, drop, easeBack, easeOut, frame, groups, kit, leaf, lit, msToTicks, now, open, pct, px,
-  radial, reduced, role, sel, solid, sound, stroke, text, toneRole, token, vgrad, xy, inkOn, ts, mix, stepSize,
+  radial, reduced, role, sel, solid, sound, stroke, text, toneRole, token, vgrad, xy, inkOn, ts, mix, stepSize, claimAnnouncement,
 } from "./core.ts";
 
 const HOLD_MS: Record<Api.BannerKind, number> = { title: 3000, wave: 2400, victory: 3500, defeat: 3500, warning: 3000 };
@@ -30,6 +30,8 @@ export function banner(id: string, desc: Api.BannerDesc = {}): Api.BannerResult 
   const total = enter + hold + exit;
   if (age < 0 || (!settled && age >= total)) return { visible: false, done: !settled && age === total, progress: age < 0 ? 0 : 1 };
   sound(SOUND[kind], age === 0);
+  // Open tooltip cards step under the announcement and dim while it shows, so no text reads through it.
+  claimAnnouncement();
   const phase = age < enter ? "entering" : settled || age < enter + hold ? "holding" : "leaving";
   const x = clamp01(age / enter);
   const out = phase === "leaving" ? clamp01((age - enter - hold) / exit) : 0;

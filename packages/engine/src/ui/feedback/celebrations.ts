@@ -7,7 +7,7 @@
 // are the UI's own, seeded, so a replay throws the same.
 
 import type * as Api from "@origingame/engine";
-import { a11y, absolute, box, clamp01, easeBack, easeOut, frame, groups, kit, leaf, lit, msToTicks, now, pct, px, radial, reduced, role, sel, solid, sound, stroke, text, token, glow, vgrad, fill as fillText, ts, apply, fitWidth } from "./core.ts";
+import { a11y, absolute, box, clamp01, easeBack, easeOut, frame, groups, kit, leaf, lit, msToTicks, now, pct, px, radial, reduced, role, sel, solid, sound, stroke, text, token, glow, vgrad, fill as fillText, ts, apply, fitWidth, claimAnnouncement } from "./core.ts";
 
 const DURATION_MS: Record<Api.CelebrationKind, number> = { confetti: 3000, burst: 1000, levelUp: 2600, fireworks: 3500 };
 
@@ -114,7 +114,8 @@ export function celebration(id: string, desc: Api.CelebrationDesc = {}): void {
   const title = (desc.title ?? "Level up").toUpperCase();
   // The word fits the stage at its overshoot (1.1×): a long word or 200 % text steps down, never off the screen.
   const titleStep = fitWidth(ts(40, true), title.length * 0.6 * 1.1, stageW);
-  // The level-up announces like a banner: over a pinned tooltip too.
+  // The level-up announces like a banner: over a pinned tooltip too, which steps under it and dims.
+  claimAnnouncement();
   kit.anchor(id, { anchor: "center", direction: "column", cross: "center", over: true, tooltip: true }, () => {
     box("Stage", { width: px(stageW), height: px(300), align: "center", cross: "center", direction: "column" }, undefined, () => {
       if (!still) {
