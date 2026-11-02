@@ -298,6 +298,56 @@ The showcase's 37-preset station stays as the frame regression it is; the
 proof that a style reads is its family's sample scene with conformed
 assets, one frame per style.
 
+### 2.7 A style's painted art: the hand-off
+
+A UI style's frames, buttons and ornaments are painted art, and the
+engine never paints them. `og style art <pack>` writes what to paint,
+checks what arrives and packs it. Fulfilment belongs to whoever owns image
+generation: the platform's agent for a game, and an offline script for the
+engine's own seed styles. `og` makes no network call, and no `og.*` member
+generates art.
+
+1. **Requests.** `og style art` completes `<pack>/art-requests.json` (what
+   `og style new` writes: the style, look, premise, choices and palette).
+   Each slot gets `file` (`art/<part>.png`), `size` (the cell in CSS px),
+   `insets` (the nine-slice corners as fractions of the cell), `states`
+   (a button sheet's cells, left to right: normal, hover, pressed,
+   disabled, focused), `pixels` (the least to deliver: the 3× cell times
+   the states), `dress` (the dressing each cell goes to, such as
+   `Button.base[primary][hover]`) and `hash` (over the rest). A value
+   already in the file wins, so a pack retunes a slot by editing it, and
+   the hash moves with it.
+2. **Fulfilment.** The fulfiller turns each slot into a prompt through
+   `styleArtBriefs` (§2.2) and paints it, with the pack's concept sheets
+   as references where it has them. It drops `art/<part>.png` on a
+   transparent ground, at any size at least `pixels`, its states side by
+   side. A button may arrive as one normal cell, and its other states are
+   then derived. Into `art/provenance.json` it writes, keyed by the slot's
+   name: `model`, `prompt`, `request` (the slot's `hash` when it was
+   painted), and optionally `references`, `generation`, `date` and
+   `insets` (the corners it actually painted, as fractions, when they
+   differ from the request's).
+3. **Verification and packing.** `og style art` refuses art without a
+   provenance entry, reports art whose `request` is no longer the slot's
+   hash as stale, and leaves a slot without art to the style's own
+   dressing. `--check` writes nothing and fails on any of these. It then
+   cuts each sheet into cells, trims them to one alpha box, and resamples
+   each to its cell at 1×, 2× and 3×: Lanczos over premultiplied alpha,
+   or for a pixel style the dominant colour per block, enlarged by whole
+   pixels. It shelves the pieces below the style's atlas as it stood
+   before any art (kept as `art/base.png`) and writes `atlas.png`,
+   `atlas@2x.png` and `atlas@3x.png` with one layout. The style's `atlas`
+   line names the densities (`atlas "atlas.png" W H 2 3`); each painted
+   dressing gets an `authored` slice and its measured `tone`, and each
+   ornament line its region. The UI draws from the density nearest at or
+   above its device pixels per CSS px, and 3× above that (docs/ui.md
+   §12.6). `art/sheet.png` (every piece at 2×) and `art/report.json` (what
+   was packed from what, with the provenance) are for review, and the
+   cook never bundles `art/`.
+
+A rerun with nothing changed writes the same bytes, so a pack's art is
+reviewed as a diff.
+
 ## 3. Streams
 
 Each stream is one thread on branch `art/<stream>` from the main named in

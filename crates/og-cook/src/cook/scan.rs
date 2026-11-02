@@ -15,7 +15,7 @@ fn walk(dir: &Path, rel: &str, out: &mut Vec<(String, PathBuf)>) -> std::io::Res
         };
         if e.file_type()?.is_dir() {
             // A style pack's `art/` holds the painted sources `og style art`
-            // packs into its atlases (docs/art.md §2.4): never the bundle's.
+            // packs into its atlases (docs/art.md §2.7): never the bundle's.
             if name == "art" && dir.join("style.ogt").is_file() {
                 continue;
             }

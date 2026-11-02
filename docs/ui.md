@@ -703,6 +703,17 @@ first, then the art slots of its frames, buttons, ornaments and icon set
 filled through the art brief (§13.3). A generated style passes the same
 contrast and completeness tests as a built-in one.
 
+### 12.6 Painted art at every density
+
+A style's atlas line may name denser copies of one layout,
+`atlas "atlas.png" 384 256 2 3`: these are `atlas@2x.png` and
+`atlas@3x.png` beside it, at 2 and 3 texels per CSS px. Regions and insets
+stay in 1× texels, so a slice cuts the same art from every copy. Each frame
+draws from the copy nearest at or above its device pixels per og-ui unit
+(dpr times the resolution-relative unit), and from 3× above that. Phones
+top out at 3, and tablets and desktops at 2. `og style art` (docs/art.md
+§2.7) packs a style's painted slots into all three.
+
 ## 13. Art slots
 
 ### 13.1 The slot
