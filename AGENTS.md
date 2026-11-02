@@ -160,12 +160,14 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   move; a test an agent adds is the one that fails on the old code. The coordinator (the one session that merges into main) is the
   only runner of the gate, the review and the reference captures, once per
   merge, serially. The same applies to a human beside running agents.
-- **Sub-threads: at most five at a time, Claude Code on Opus 5.5 medium.**
+- **Sub-threads: at most eight at a time, Claude Code on Opus 5.5 medium.**
   When the coordinator delegates streams to separate Amp threads
-  (`create_thread`), it starts at most five at once and starts the next
-  batch only after the running ones have reported and been merged (the
-  owner's instructions: 2026-10-23, eight at once was too many;
-  2026-11-01, five instead of three). Every
+  (`create_thread`), it keeps at most eight running and starts another
+  as soon as one has reported and been merged (the owner's instructions:
+  2026-10-23, eight at once was too many while gates ran beside each
+  other; 2026-11-01, five instead of three; 2026-11-02, eight, now that
+  each thread draws on its own Mac satellite and only macrunner runs the
+  gate). Every
   such thread runs in `external-agent:claude-code` mode with features
   `["model:claude-opus-5-5", "effort:medium"]` (the owner, 2026-11-01;
   high before), the project ref
