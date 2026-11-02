@@ -187,6 +187,34 @@ becomes `backdrop blur`). Opacity, and blend modes (normal, multiply,
 screen, add, overlay, soft light, colour dodge) per element against what is
 under it.
 
+**Glass** is a backdrop with a material (og-render's `UiGlass`, zero
+values the plain frosted backdrop, unchanged): flat glass as the design
+language composes it, clear and coloured by what passes under it, with no
+specular rim, sheen or refraction. Its parts are a light tint over a
+modest blur with raised saturation, a hairline just inside the edge
+(CSS `inset 0 0 0 0.5px`), up to two soft shadows outside the shape only
+(CSS `box-shadow`s, never darkening what the glass shows), and CSS mixing
+(tint, hairline and shadows over sRGB-encoded values, so a tint reads as
+on a web page), all drawn by the backdrop's one instance. `solid` draws
+the tint opaque and reads nothing under it: a frame whose only glass is
+solid builds no blur pyramid. Three weights are presets
+(`UiGlassStyle`): `thin` (10 px of CSS blur, the lightest tint: small
+controls over art), `regular` (22 px: bars, capsules) and `thick` (32 px
+and a denser tint: menus, popovers, dialogs, sheets, toasts), each with an
+elevation (`raised` the hairline alone, `float` one short shadow, `lift`
+two deeper ones), 200 % saturation, in the light or dark scheme. Under
+reduced transparency glass is the solid raised surface with its hairline
+and shadow; under high contrast solid with a strong 1 px edge. The scrim
+(`ui_scrim`) dims and blurs (8 px, 120 % saturation), and under either
+fallback dims only. Controls on glass are flat fills, never a second glass
+or a border. A style reaches it through `effect backdrop … glass <weight>
+[elevation <e>] [edge <w> [<colour>]] [solid] [css]` and the IDL's
+`BackdropEffect` (`glass`, `elevation`, `edge`, `edgeColor`, `solid`,
+`cssMix`); og-ui's glass primitive (`DrawCmd::Glass`) carries a
+saturation and the material. `glass-thick` holds the scheme's `fg` at
+4.5:1 or more over bright, dark and busy backdrops (og-tests
+`ui_glass_text_holds_contrast`); the lighter weights do not promise it.
+
 ### 5.4 Masks and layers
 
 - Any element can clip its children to its own shape (rounded, squircle,

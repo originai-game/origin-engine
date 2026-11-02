@@ -108,7 +108,9 @@ impl Ui {
                 rect,
                 radius,
                 blur: g.blur,
+                saturation: 1.0,
                 tint,
+                material: og_render::UiGlass::default(),
                 alpha,
                 clip,
             });

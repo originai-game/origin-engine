@@ -108,13 +108,14 @@ pub mod particles;
 pub mod ui;
 pub use ui::{
     UI_GRADIENT_STOPS, UI_MASS_KEYS, UI_MASS_QUADS, UI_MATERIAL_PARAMS, UiAlign, UiBlend,
-    UiBuiltin, UiCap, UiClip, UiCorner, UiEdge, UiFit, UiGeometry, UiGradient, UiGradientKind,
+    UiBuiltin, UiCap, UiClip, UiCorner, UiEdge, UiElevation, UiFit, UiGeometry, UiGlass,
+    UiGlassFallback, UiGlassShadow, UiGlassStyle, UiGlassWeight, UiGradient, UiGradientKind,
     UiImage, UiJoin, UiLayer, UiList, UiMask, UiMassBatch, UiMassEase, UiMassInstance, UiMassKey,
     UiMassKind, UiMassSpace, UiMassTemplate, UiMaterial, UiMaterialHandle, UiMaterialShader,
     UiMode, UiOccluder, UiOcclusion, UiPaint, UiParticleShape, UiShape, UiSpread, UiStop, UiStroke,
     UiTextEffects, UiTextOutline, UiTextShadow, UiVectorData, UiVectorDraw, UiVectorHandle,
     UiVectorPaint, UiVectorStroke, UiVectorVertex, example_ui_material, flatten_cubic,
-    flatten_quad, format_number, oklab, oklab_to_linear, ui_material_module_source,
+    flatten_quad, format_number, oklab, oklab_to_linear, ui_material_module_source, ui_scrim,
 };
 mod particles_gpu;
 mod pipeline_cache;

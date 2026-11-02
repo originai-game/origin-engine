@@ -535,6 +535,7 @@ fn meta_cmds(kind: &MetaKind, screen: Rect, alpha: f32) -> Vec<DrawCmd> {
                 blur: 0.0,
                 saturation: 1.0,
                 brightness: 1.0,
+                glass: og_render::UiGlass::default(),
             };
             // No tint over the scene: the backdrop alone.
             back.paint = og_render::UiPaint::Solid([1.0, 1.0, 1.0, 0.0]);

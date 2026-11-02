@@ -11,7 +11,8 @@
 //! effect dropShadow|innerShadow <dx> <dy> <blur> [<spread>] <colour>
 //! effect outerGlow|innerGlow <blur> [<spread>] <colour>
 //! effect blur <radius>
-//! effect backdrop <blur> [saturation <s>] [brightness <b>] [tint <colour>]
+//! effect backdrop [<blur>] [saturation <s>] [brightness <b>] [tint <colour>]
+//!     [glass thin|regular|thick] [elevation raised|float|lift] [edge <w> [<colour>]] [solid] [css]
 //! material <builtin>|"<ui-material asset>" [<param>…]   (at most 16 numbers)
 //! blend normal|multiply|screen|add|overlay|softLight|colorDodge
 //! mask <gradient> | mask image <x> <y> <w> <h>
@@ -512,12 +513,17 @@ impl Effect {
                 radius: c.num()?.max(0.0),
             },
             "backdrop" => {
-                let blur = c.num()?.max(0.0);
+                let blur = if c.peek_number() {
+                    c.num()?.max(0.0)
+                } else {
+                    0.0
+                };
                 let (mut saturation, mut brightness) = (1.0, 1.0);
                 let mut tint = ColorRef::Literal(crate::style::Srgba {
                     rgb: [0, 0, 0],
                     alpha: 0.0,
                 });
+                let mut glass = crate::paint::GlassParts::default();
                 loop {
                     if c.eat("saturation") {
                         saturation = c.num()?.max(0.0);
@@ -525,6 +531,43 @@ impl Effect {
                         brightness = c.num()?.max(0.0);
                     } else if c.eat("tint") {
                         tint = c.color()?;
+                        glass.own_tint = true;
+                    } else if c.eat("glass") {
+                        glass.weight = Some(match c.word()? {
+                            "thin" => og_render::UiGlassWeight::Thin,
+                            "regular" => og_render::UiGlassWeight::Regular,
+                            "thick" => og_render::UiGlassWeight::Thick,
+                            w => {
+                                return Err(c.err(&format!(
+                                    "has glass '{w}', which is not a weight: thin, regular or thick"
+                                )));
+                            }
+                        });
+                    } else if c.eat("elevation") {
+                        glass.elevation = Some(match c.word()? {
+                            "raised" => og_render::UiElevation::Raised,
+                            "float" => og_render::UiElevation::Float,
+                            "lift" => og_render::UiElevation::Lift,
+                            w => {
+                                return Err(c.err(&format!(
+                                    "has elevation '{w}', which is not one: raised, float or lift"
+                                )));
+                            }
+                        });
+                    } else if c.eat("edge") {
+                        glass.edge = c.num()?.max(0.0);
+                        let colour = match c.peek() {
+                            Some(Value::String(_)) => true,
+                            Some(Value::Word(w)) => Palette::NAMES.contains(&w.as_str()),
+                            _ => false,
+                        };
+                        if colour {
+                            glass.edge_color = Some(c.color()?);
+                        }
+                    } else if c.eat("solid") {
+                        glass.solid = true;
+                    } else if c.eat("css") {
+                        glass.css_mix = true;
                     } else {
                         break;
                     }
@@ -534,6 +577,7 @@ impl Effect {
                     saturation,
                     brightness,
                     tint,
+                    glass,
                 }
             }
             w => {

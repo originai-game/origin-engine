@@ -657,26 +657,29 @@ struct UiInstance {
   geo2: vec4<f32>,
   // Stroke: width, offset of its centre from the outline, dash, gap.
   // Shadow: blur, spread, offset x, y. Backdrop: blur, saturation,
-  // brightness.
+  // brightness, the hairline's width.
   mode: vec4<f32>,
-  // Stroke: x dash offset, y dash cap.
+  // Stroke: x dash offset, y dash cap. Backdrop: the hairline's colour.
   mode2: vec4<f32>,
   // Solid colour, image tint, backdrop tint.
   color: vec4<f32>,
-  // Image: uv rect.
+  // Image: uv rect. Backdrop: its first shadow's offset xy, blur, spread.
   paint: vec4<f32>,
-  // Image: focal point xy, its size in pixels zw. Pattern: tile wh, rotation.
+  // Image: focal point xy, its size in pixels zw. Pattern: tile wh,
+  // rotation. Backdrop: the first shadow's colour.
   paint2: vec4<f32>,
   // Nine-slice: source border (px). Pattern: offset xy, scroll xy.
+  // Backdrop: the second shadow.
   paint3: vec4<f32>,
-  // Nine-slice: border drawn (CSS px).
+  // Nine-slice: border drawn (CSS px). Backdrop: the second shadow's colour.
   paint4: vec4<f32>,
   // The clip rectangle x0, y0, x1, y1 (CSS px).
   clip: vec4<f32>,
   // x: geometry | corner << 4 | cap << 8 | join << 12; y: paint | fit << 4
   // | edges << 8 | centre << 12; z: mode | blend << 4; w: clip shape + 1.
   kinds: vec4<u32>,
-  // x: opacity, y: gradient index (a vector's gradient base), z: _, w: layer.
+  // x: opacity, y: gradient index (a vector's gradient base), z: a
+  // backdrop's flags (1 solid, 2 mixed in sRGB-encoded values), w: layer.
   extra: vec4<f32>,
 };
 @group(0) @binding(4) var<storage, read> instances: array<UiInstance>;
@@ -713,6 +716,9 @@ fn vs_shape(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
     grow += max(s.mode.x * 0.5 + s.mode.y, 0.0);
   } else if (mode == MODE_SHADOW) {
     grow += 1.5 * max(s.mode.x, 0.0) + max(s.mode.y, 0.0) + max(abs(s.mode.z), abs(s.mode.w));
+  } else if (mode == MODE_BACKDROP) {
+    // The glass's shadows, outside it (none: the quad as it was).
+    grow += max(glass_shadow_reach(s.paint, s.paint2.a), glass_shadow_reach(s.paint3, s.paint4.a));
   }
   let local = corners[vi] * (s.center_half.zw + vec2<f32>(grow));
   var o: UiOut;
@@ -722,6 +728,15 @@ fn vs_shape(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   o.vpaint = 0u;
   o.aa = 1.0;
   return o;
+}
+
+// How far past the shape a glass shadow (offset xy, blur, spread) of
+// alpha `a` reaches; 0 for a clear one.
+fn glass_shadow_reach(sh: vec4<f32>, a: f32) -> f32 {
+  if (a <= 0.0) {
+    return 0.0;
+  }
+  return max(1.5 * max(sh.z, 0.0) + sh.w + max(abs(sh.x), abs(sh.y)), 0.0);
 }
 
 // Local units per device pixel at this fragment (call in uniform control flow).

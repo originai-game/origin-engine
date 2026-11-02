@@ -373,6 +373,27 @@ impl Reader<'_> {
                         alpha: 0.6,
                     }
                 },
+                glass: og_ui::paint::GlassParts {
+                    weight: match v["glass"].as_str() {
+                        Some("thin") => Some(og_render::UiGlassWeight::Thin),
+                        Some("regular") => Some(og_render::UiGlassWeight::Regular),
+                        Some("thick") => Some(og_render::UiGlassWeight::Thick),
+                        _ => None,
+                    },
+                    elevation: match v["elevation"].as_str() {
+                        Some("raised") => Some(og_render::UiElevation::Raised),
+                        Some("float") => Some(og_render::UiElevation::Float),
+                        Some("lift") => Some(og_render::UiElevation::Lift),
+                        _ => None,
+                    },
+                    edge: num(v, "edge", 0.0).max(0.0),
+                    edge_color: v["edgeColor"]
+                        .is_object()
+                        .then(|| color(&v["edgeColor"], "line")),
+                    solid: v["solid"].as_bool().unwrap_or(false),
+                    css_mix: v["cssMix"].as_bool().unwrap_or(false),
+                    own_tint: v["tint"].is_object(),
+                },
             },
             _ => return None,
         })

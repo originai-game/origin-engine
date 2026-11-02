@@ -157,7 +157,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1545 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1547 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -365,6 +365,7 @@ Field units the docs and Tune use.
 | [`Effect`](ui.md#type-Effect) | union | ui | — |
 | [`ElementDesc`](ui.md#type-ElementDesc) | desc struct | ui | — |
 | [`ElementProps`](ui.md#type-ElementProps) | desc struct | ui | — |
+| [`Elevation`](ui.md#type-Elevation) | enum | ui | — |
 | [`EmitFrom`](ui.md#type-EmitFrom) | enum | ui | — |
 | [`EngineProbe`](probe.md#type-EngineProbe) | interface | probe | — |
 | [`EngineProbe.capture`](probe.md#member-EngineProbe-capture) | method | probe | `og_engine_probe_capture` |
@@ -441,6 +442,7 @@ Field units the docs and Tune use.
 | [`GeometryInfo`](render.md#type-GeometryInfo) | struct | render | — |
 | [`GeometryPart`](render.md#type-GeometryPart) | desc struct | render | — |
 | [`GestureInfo`](ui.md#type-GestureInfo) | struct | ui | — |
+| [`GlassWeight`](ui.md#type-GlassWeight) | enum | ui | — |
 | [`GlowEffect`](ui.md#type-GlowEffect) | desc struct | ui | — |
 | [`GltfDesc`](load.md#type-GltfDesc) | desc struct | load | — |
 | [`GltfInfo`](load.md#type-GltfInfo) | struct | load | — |

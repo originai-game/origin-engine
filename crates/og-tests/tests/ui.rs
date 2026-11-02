@@ -101,6 +101,13 @@ fn ui_world_matches_its_reference() {
     check("ui-world");
 }
 
+#[test]
+fn ui_glass_matches_its_references() {
+    for which in og_tests::ui_scenes::GlassScene::ALL {
+        check(which.name());
+    }
+}
+
 /// Corner shapes cut where their geometry says: 12 px in from a 28 px
 /// corner a round corner is inside, a bevel's and a notch's cut leave the
 /// card; 4 px in, the squircle (radius 48, continuous) is still outside
@@ -435,4 +442,60 @@ fn ui_panel_draws_into_its_target_and_not_the_screen() {
         teal < 50,
         "{teal} teal pixels: the panel composited on the screen"
     );
+}
+
+/// The WCAG relative luminance of sRGB bytes.
+fn wcag_luminance(c: [f32; 3]) -> f32 {
+    let l = |v: f32| {
+        let v = v / 255.0;
+        if v <= 0.04045 {
+            v / 12.92
+        } else {
+            ((v + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    0.2126 * l(c[0]) + 0.7152 * l(c[1]) + 0.0722 * l(c[2])
+}
+
+/// Flat glass holds its text: over the bright, dark and busy backdrops,
+/// in either scheme, `glass-thick` (the weight that carries text) and
+/// solid glass give the scheme's `fg` at least 4.5:1 at 98 % of each text
+/// box's pixels, read from the frame drawn without the text. Prints every
+/// text's worst and median contrast, the inks and weights the material
+/// does not promise it for (muted, amber, `glass` and `glass-thin`)
+/// included.
+#[test]
+fn ui_glass_text_holds_contrast() {
+    let mut failures = Vec::new();
+    for which in og_tests::ui_scenes::GlassScene::ALL {
+        let (scene, inks) =
+            og_tests::ui_scenes::glass_scene(which, |_| unreachable!(), false).expect("scene");
+        let mut built: GfxScene = scenes::build(which.name()).expect("scene");
+        built.scene = scene;
+        let r = gfx::render_built(&mut built).expect("render");
+        for ink in inks {
+            let [x, y, w, h] = ink.rect;
+            let fg = wcag_luminance(ink.ink.map(f32::from));
+            let mut c = Vec::new();
+            for py in y as u32..(y + h) as u32 {
+                for qx in x as u32..(x + w) as u32 {
+                    let bg = wcag_luminance(px(&r, qx, py));
+                    c.push((fg.max(bg) + 0.05) / (fg.min(bg) + 0.05));
+                }
+            }
+            c.sort_by(f32::total_cmp);
+            let worst = c[c.len() / 50];
+            let median = c[c.len() / 2];
+            println!(
+                "{} {:?}{}: worst {worst:.2}, median {median:.2}",
+                which.name(),
+                ink.label,
+                if ink.held { " (held)" } else { "" }
+            );
+            if ink.held && worst < 4.5 {
+                failures.push(format!("{} {:?} {worst:.2}", which.name(), ink.label));
+            }
+        }
+    }
+    assert!(failures.is_empty(), "under 4.5:1: {failures:#?}");
 }

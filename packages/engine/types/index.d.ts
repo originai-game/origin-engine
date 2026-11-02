@@ -24288,12 +24288,68 @@ export interface BackdropEffect {
    */
   readonly brightness?: number;
   /**
-   * Over the blur, by its alpha; null is the theme's panel at 60 %.
+   * Over the blur, by its alpha; null is the theme's panel at 60 % (with a glass weight, the weight's tint).
    *
    * @default null
    */
   readonly tint?: Paint | null;
+  /**
+   * One of flat glass's weights (docs/ui.md §5.3): it sets the blur, 200 % saturation, the tint (unless tint is given), a 0.5 px hairline inside the edge and CSS mixing, in the theme's scheme; under reduced transparency the solid raised surface, under high contrast solid with a strong 1 px edge. none is the fields as given.
+   *
+   * @default "none"
+   */
+  readonly glass?: GlassWeight;
+  /**
+   * The soft shadow outside it, as the design language's shadows (with a glass weight, raised by default).
+   *
+   * @default "none"
+   */
+  readonly elevation?: Elevation;
+  /**
+   * A hairline just inside the edge (CSS inset 0 0 0 <edge>px); 0 is none, or the weight's.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly edge?: number;
+  /**
+   * The hairline's colour; null is the weight's (or the theme's line).
+   *
+   * @default null
+   */
+  readonly edgeColor?: Paint | null;
+  /**
+   * The tint drawn opaque, with the hairline and shadow: nothing under it is read (reduced transparency, increased contrast).
+   *
+   * @default false
+   */
+  readonly solid?: boolean;
+  /**
+   * Mix the tint, hairline and shadow in sRGB-encoded values, as CSS does, so a tint reads as it does on a web page (glass weights always do).
+   *
+   * @default false
+   */
+  readonly cssMix?: boolean;
 }
+
+/**
+ * How heavy a glass surface is: flat glass, clear and coloured by what passes under it, with no rim, sheen or refraction.
+ * - `"none"`: No weight: the backdrop's own fields.
+ * - `"thin"`: 10 px of blur and the lightest tint: small controls over art.
+ * - `"regular"`: 22 px: bars, tab bars, capsules.
+ * - `"thick"`: 32 px and a denser tint: menus, popovers, dialogs, sheets, toasts.
+ */
+export type GlassWeight = "none" | "thin" | "regular" | "thick";
+
+/**
+ * The soft shadow a glass surface casts.
+ * - `"none"`: No shadow (with a glass weight: raised).
+ * - `"raised"`: The hairline alone (an outer one in the light scheme).
+ * - `"float"`: One soft, short shadow: capsules and menus.
+ * - `"lift"`: Two deeper shadows: dialogs and sheets.
+ */
+export type Elevation = "none" | "raised" | "float" | "lift";
 
 /** An effect of the element. */
 export type Effect =

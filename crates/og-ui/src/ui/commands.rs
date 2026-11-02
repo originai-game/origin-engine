@@ -454,14 +454,26 @@ pub(crate) fn bake(c: DrawCmd, m: Affine) -> (DrawCmd, Affine) {
             rect,
             radius,
             blur,
+            saturation,
             tint,
+            mut material,
             alpha,
             clip,
         } => DrawCmd::Glass {
             rect: r(&rect),
             radius: radius * k,
             blur,
+            saturation,
             tint,
+            material: {
+                material.edge *= k;
+                for sh in &mut material.shadows {
+                    sh.offset *= k;
+                    sh.blur *= k;
+                    sh.spread *= k;
+                }
+                material
+            },
             alpha,
             clip: r(&clip),
         },

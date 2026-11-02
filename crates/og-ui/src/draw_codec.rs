@@ -405,11 +405,26 @@ fn mode(w: &mut W, m: &UiMode) {
             blur,
             saturation,
             brightness,
+            glass,
         } => {
-            w.u8(4);
+            // Tag 4 is the plain backdrop as it always was; 5 adds the
+            // material.
+            let plain = *glass == og_render::UiGlass::default();
+            w.u8(if plain { 4 } else { 5 });
             w.f32(*blur);
             w.f32(*saturation);
             w.f32(*brightness);
+            if !plain {
+                w.f32(glass.edge);
+                f4(w, &glass.edge_color);
+                for sh in &glass.shadows {
+                    v2(w, sh.offset);
+                    w.f32(sh.blur);
+                    w.f32(sh.spread);
+                    f4(w, &sh.color);
+                }
+                w.u8(u8::from(glass.solid) | u8::from(glass.srgb_mix) << 1);
+            }
         }
     }
 }
@@ -438,7 +453,35 @@ fn rmode(r: &mut R) -> Option<UiMode> {
             blur: r.f32()?,
             saturation: r.f32()?,
             brightness: r.f32()?,
+            glass: og_render::UiGlass::default(),
         },
+        5 => {
+            let (blur, saturation, brightness) = (r.f32()?, r.f32()?, r.f32()?);
+            let edge = r.f32()?;
+            let edge_color = rf4(r)?;
+            let mut shadows = [og_render::UiGlassShadow::default(); 2];
+            for sh in &mut shadows {
+                *sh = og_render::UiGlassShadow {
+                    offset: rv2(r)?,
+                    blur: r.f32()?,
+                    spread: r.f32()?,
+                    color: rf4(r)?,
+                };
+            }
+            let flags = r.u8()?;
+            UiMode::Backdrop {
+                blur,
+                saturation,
+                brightness,
+                glass: og_render::UiGlass {
+                    edge,
+                    edge_color,
+                    shadows,
+                    solid: flags & 1 != 0,
+                    srgb_mix: flags & 2 != 0,
+                },
+            }
+        }
         _ => return None,
     })
 }
@@ -717,5 +760,84 @@ impl R<'_> {
             }
             _ => return None,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::draw::DrawCmd;
+    use crate::layout::Rect;
+    use crate::motion::codec::{R, W};
+    use og_core::glam::Vec2;
+    use og_render::{UiGlass, UiGlassShadow, UiMode, UiShape};
+
+    /// A leaving element's glass keeps its material through a saved state
+    /// (the primitive and a UI shape's backdrop), and a plain one is the
+    /// bytes it always was.
+    #[test]
+    fn glass_material_survives_a_saved_state() {
+        let material = UiGlass {
+            edge: 0.5,
+            edge_color: [1.0, 1.0, 1.0, 0.08],
+            shadows: [
+                UiGlassShadow {
+                    offset: Vec2::new(0.0, 8.0),
+                    blur: 24.0,
+                    spread: -8.0,
+                    color: [0.0, 0.0, 0.0, 0.6],
+                },
+                UiGlassShadow::default(),
+            ],
+            solid: false,
+            srgb_mix: true,
+        };
+        let rect = Rect::new(10.0, 20.0, 200.0, 100.0);
+        let glass = |saturation, material| DrawCmd::Glass {
+            rect,
+            radius: 12.0,
+            blur: 44.0,
+            saturation,
+            tint: [0.1, 0.1, 0.12, 0.78],
+            material,
+            alpha: 1.0,
+            clip: rect,
+        };
+        let mut shape = UiShape::rect([0.0, 0.0, 50.0, 40.0], 8.0, [0.0, 0.0, 0.0, 0.3]);
+        shape.mode = UiMode::Backdrop {
+            blur: 20.0,
+            saturation: 2.0,
+            brightness: 1.0,
+            glass: UiGlass {
+                solid: true,
+                ..material
+            },
+        };
+        let cmds = [
+            glass(2.0, material),
+            glass(1.0, UiGlass::default()),
+            DrawCmd::Shape {
+                shape: Box::new(shape),
+                clip: rect,
+            },
+        ];
+        let mut bytes = Vec::new();
+        for c in &cmds {
+            W(&mut bytes).cmd(c);
+        }
+        let mut r = R {
+            bytes: &bytes,
+            at: 0,
+        };
+        for c in &cmds {
+            assert_eq!(r.cmd().as_ref(), Some(c));
+        }
+        assert_eq!(r.at, bytes.len());
+        // The plain glass is tag 0 and its six fields, as before.
+        let mut plain = Vec::new();
+        W(&mut plain).cmd(&cmds[1]);
+        assert_eq!(
+            (plain[0], plain.len()),
+            (0, 1 + 4 * (4 + 1 + 1 + 4 + 1 + 4))
+        );
     }
 }

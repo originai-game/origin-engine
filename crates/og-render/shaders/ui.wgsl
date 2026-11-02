@@ -221,24 +221,99 @@ fn fs_shape_dst(in: UiOut) -> @location(0) vec4<f32> {
   return finish_color(r, a);
 }
 
+// A glass shadow (offset xy, blur, spread) of the shape at local `p`: its
+// coverage 0..1, as a drop shadow's (mode_coverage).
+fn glass_shadow(s: UiInstance, p: vec2<f32>, sh: vec4<f32>, px: f32) -> f32 {
+  let q = p - sh.xy;
+  let sigma = max(0.5 * max(sh.z, 0.0), 0.5 * px);
+  let kind = s.kinds.x & 15u;
+  let corner = (s.kinds.x >> 4u) & 15u;
+  if (kind == GEO_RECT && corner == CORNER_ROUND) {
+    let half = max(s.center_half.zw + vec2<f32>(sh.w), vec2<f32>(0.0));
+    let r = clamp(corner_radius(q, s.geo) + sh.w, 0.0, min(half.x, half.y));
+    return clamp(rounded_box_shadow(q, half, r, sigma), 0.0, 1.0);
+  }
+  let d = shape_distance(s, q).x - sh.w;
+  return clamp(0.5 - 0.5 * erf1(d * 0.70710678 / sigma), 0.0, 1.0);
+}
+
 // A backdrop: what is under the shape blurred (the pyramid's level for
 // the radius), its saturation and brightness scaled, tinted, masked to the
-// shape. Glass is one.
+// shape. Glass is one: its material (ui::UiGlass) adds a hairline inside
+// the outline (mode.w wide, mode2 its colour) and up to two soft shadows
+// outside it (paint..paint4); flag 1 (extra.z) draws the tint opaque and
+// reads nothing under it, flag 2 mixes in sRGB-encoded values as CSS does.
+// With none of them, the plain frosted backdrop, as it always was.
 @fragment
 fn fs_backdrop(in: UiOut) -> @location(0) vec4<f32> {
   let s = instances[in.instance];
   let px = local_px(in.local);
-  let cov = clamp(0.5 - shape_distance(s, in.local).x / px, 0.0, 1.0);
-  let levels = backdrop.params.w;
-  let blur = max(s.mode.x, 0.0) * frame.output.z;
-  let lod = clamp(log2(max(blur, 1.0)) - 1.0, 0.0, max(levels - 1.0, 0.0));
-  let at = in.position.xy / frame.output.xy;
-  var rgb = textureSampleLevel(pyramid_tex, backdrop_sampler, at, lod).rgb;
-  let luma = dot(rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
-  rgb = mix(vec3<f32>(luma), rgb, s.mode.y) * s.mode.z;
-  rgb = mix(rgb, s.color.rgb, s.color.a);
-  let a = clamp(cov * s.extra.x * instance_clip(s, in.position.xy), 0.0, 1.0);
-  return finish_color(rgb, a);
+  let d = shape_distance(s, in.local).x;
+  let cov = clamp(0.5 - d / px, 0.0, 1.0);
+  let flags = u32(s.extra.z);
+  let solid = (flags & 1u) != 0u;
+  let srgb = (flags & 2u) != 0u;
+  let clip = s.extra.x * instance_clip(s, in.position.xy);
+  // Outside the shape only its shadows draw: nothing under it is read.
+  var rgb = vec3<f32>(0.0);
+  if (cov > 0.0) {
+    if (solid) {
+      rgb = s.color.rgb;
+    } else {
+      let levels = backdrop.params.w;
+      let blur = max(s.mode.x, 0.0) * frame.output.z;
+      let lod = clamp(log2(max(blur, 1.0)) - 1.0, 0.0, max(levels - 1.0, 0.0));
+      let at = in.position.xy / frame.output.xy;
+      rgb = textureSampleLevel(pyramid_tex, backdrop_sampler, at, lod).rgb;
+      if (srgb) {
+        // CSS's backdrop-filter and its tint work on encoded values.
+        rgb = encode(rgb);
+        let luma = dot(rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
+        rgb = max(mix(vec3<f32>(luma), rgb, s.mode.y) * s.mode.z, vec3<f32>(0.0));
+        rgb = decode(mix(min(rgb, vec3<f32>(1.0)), encode(s.color.rgb), s.color.a));
+      } else {
+        let luma = dot(rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
+        rgb = mix(vec3<f32>(luma), rgb, s.mode.y) * s.mode.z;
+        rgb = mix(rgb, s.color.rgb, s.color.a);
+      }
+    }
+    // The hairline: the band from the outline to `edge` inside it.
+    let edge = max(s.mode.w, 0.0);
+    if (edge > 0.0 && s.mode2.a > 0.0) {
+      let band = cov - clamp(0.5 - (d + edge) / px, 0.0, 1.0);
+      let k = clamp(band * s.mode2.a / cov, 0.0, 1.0);
+      if (srgb) {
+        rgb = decode(mix(encode(rgb), encode(s.mode2.rgb), k));
+      } else {
+        rgb = mix(rgb, s.mode2.rgb, k);
+      }
+    }
+  }
+  let ga = clamp(cov * s.extra.x * instance_clip(s, in.position.xy), 0.0, 1.0);
+  if (cov >= 1.0 || (s.paint2.a <= 0.0 && s.paint4.a <= 0.0)) {
+    return finish_color(rgb, ga);
+  }
+  // The shadows, outside the shape only (as under a translucent CSS box),
+  // the first over the second, and the glass over them.
+  var sa = 0.0;
+  var sc = vec3<f32>(0.0);
+  for (var k = 1; k >= 0; k -= 1) {
+    let sh = select(s.paint3, s.paint, k == 0);
+    let col = select(s.paint4, s.paint2, k == 0);
+    if (col.a > 0.0) {
+      var a = glass_shadow(s, in.local, sh, px) * col.a;
+      if (srgb && frame.output.w < 0.5) {
+        // Blended in linear light: as dark as CSS's over encoded values.
+        a = 1.0 - pow(1.0 - a, 2.2);
+      }
+      sc = mix(sc * sa, col.rgb, a) / max(sa + a * (1.0 - sa), 1e-4);
+      sa = sa + a * (1.0 - sa);
+    }
+  }
+  sa = sa * (1.0 - cov) * clip;
+  let a = ga + sa * (1.0 - ga);
+  let c = (rgb * ga + sc * sa * (1.0 - ga)) / max(a, 1e-4);
+  return finish_color(c, a);
 }
 
 // ── vectors ──────────────────────────────────────────────────────────────

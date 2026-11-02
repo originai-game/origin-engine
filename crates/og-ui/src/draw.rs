@@ -38,14 +38,18 @@ use og_render::{
 /// One thing to draw, in CSS pixels.
 #[derive(Clone, Debug, PartialEq)]
 pub enum DrawCmd {
-    /// Glass: the frame under `rect` blurred by `blur` CSS px, tinted
-    /// (`tint`: linear RGB, alpha how much covers the blur), masked to the
-    /// rounded rectangle, at `alpha`: a backdrop ([`og_render::UiMode::Backdrop`]).
+    /// Glass: the frame under `rect` blurred by `blur` CSS px, its
+    /// saturation scaled (1: as it is), tinted (`tint`: linear RGB, alpha
+    /// how much covers the blur), with its `material` (hairline, shadows,
+    /// solid fallback; the default none), masked to the rounded rectangle,
+    /// at `alpha`: a backdrop ([`og_render::UiMode::Backdrop`]).
     Glass {
         rect: Rect,
         radius: f32,
         blur: f32,
+        saturation: f32,
         tint: [f32; 4],
+        material: og_render::UiGlass,
         alpha: f32,
         clip: Rect,
     },
@@ -1137,7 +1141,9 @@ pub(crate) fn emit(
                 rect,
                 radius,
                 blur,
+                saturation,
                 tint,
+                material,
                 alpha,
                 clip,
             } => {
@@ -1145,8 +1151,9 @@ pub(crate) fn emit(
                 let mut s = rect_shape(*rect, *radius, *tint);
                 s.mode = UiMode::Backdrop {
                     blur: *blur,
-                    saturation: 1.0,
+                    saturation: *saturation,
                     brightness: 1.0,
+                    glass: *material,
                 };
                 s.opacity = *alpha;
                 put(overlay, s, c);

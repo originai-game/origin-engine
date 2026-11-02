@@ -178,6 +178,7 @@ pub fn effects() -> RenderScene {
                 blur,
                 saturation,
                 brightness,
+                glass: Default::default(),
             },
             paint: solid(tint),
             layer: 2,

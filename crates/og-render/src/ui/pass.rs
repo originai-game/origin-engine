@@ -1127,7 +1127,7 @@ impl Renderer {
                     pass.set_bind_group(2, backdrop, &[]);
                     pass.draw(0..6, range);
                 }
-                OverlaySource::Ui(ShapeSource::Backdrop) => {
+                OverlaySource::Ui(ShapeSource::Backdrop | ShapeSource::SolidBackdrop) => {
                     pass.set_pipeline(&ui.backdrop);
                     pass.set_bind_group(1, &self.white_sprite_group, &[]);
                     pass.set_bind_group(2, backdrop, &[]);

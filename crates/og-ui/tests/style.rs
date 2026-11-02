@@ -1513,7 +1513,7 @@ fn a_dressing_draws_with_the_ui_pass_types() {
         "  fill conic 90 primary \"#ff000080\" 0.2 danger lineStrong reflect\n",
         "  stroke 2 linear 180 primary danger inside dash 6 3 offset 1 round\n",
         "  effect dropShadow 0 4 8 2 \"#000000\"\n",
-        "  effect backdrop 12 saturation 1.4 tint panel\n",
+        "  effect backdrop 12 saturation 1.4 tint panel glass thick elevation lift edge 1 lineStrong\n",
         "  material hologram 0.5 2\n",
         "  blend screen\n",
         "  mask radial \"#ffffffff\" \"#ffffff00\"\n",
@@ -1553,9 +1553,17 @@ fn a_dressing_draws_with_the_ui_pass_types() {
     assert_eq!(d.draw.effects.len(), 2);
     assert!(matches!(
         &d.draw.effects[1],
-        Effect::Backdrop { blur, saturation, brightness, tint }
+        Effect::Backdrop { blur, saturation, brightness, tint, glass }
             if *blur == 12.0 && *saturation == 1.4 && *brightness == 1.0
                 && *tint == ColorRef::token("panel")
+                && *glass == GlassParts {
+                    weight: Some(og_render::UiGlassWeight::Thick),
+                    elevation: Some(og_render::UiElevation::Lift),
+                    edge: 1.0,
+                    edge_color: Some(ColorRef::token("lineStrong")),
+                    own_tint: true,
+                    ..GlassParts::default()
+                }
     ));
     let DressMaterial {
         layer,

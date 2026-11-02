@@ -225,13 +225,117 @@ pub enum Effect {
     /// Blurs the element and its subtree (a layer with the blur material).
     LayerBlur { radius: f32 },
     /// What is under the element blurred, its saturation and brightness
-    /// scaled and tinted: glass.
+    /// scaled and tinted: glass, with its material ([`GlassParts`]).
     Backdrop {
         blur: f32,
         saturation: f32,
         brightness: f32,
         tint: ColorRef,
+        glass: GlassParts,
     },
+}
+
+/// A backdrop's material beyond its blur and tint (og-render's
+/// [`og_render::UiGlass`]); the default is none of it, the plain frosted
+/// backdrop.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct GlassParts {
+    /// One of the design language's weights: its blur, 200 % saturation,
+    /// tint (unless the effect gives one), 0.5 px hairline and CSS mixing,
+    /// in the theme's scheme; under reduced transparency or increased
+    /// contrast the solid fallback. `None`: the effect's own values.
+    pub weight: Option<og_render::UiGlassWeight>,
+    /// The soft shadow outside it (`None`: none).
+    pub elevation: Option<og_render::UiElevation>,
+    /// A hairline inside the edge, CSS px (0: none, or the weight's).
+    pub edge: f32,
+    /// The hairline's colour (`None`: the weight's, or none).
+    pub edge_color: Option<ColorRef>,
+    /// The tint drawn opaque; nothing under it is read.
+    pub solid: bool,
+    /// Mixed in sRGB-encoded values, as CSS does.
+    pub css_mix: bool,
+    /// The effect named its tint: a weight keeps it instead of its own.
+    pub own_tint: bool,
+}
+
+impl GlassParts {
+    /// The backdrop's mode and tint for `theme` (`tint`: the effect's own,
+    /// resolved; `explicit_tint`: the effect named one).
+    pub fn resolve(
+        &self,
+        blur: f32,
+        saturation: f32,
+        brightness: f32,
+        tint: [f32; 4],
+        explicit_tint: bool,
+        theme: &Theme,
+    ) -> (og_render::UiMode, [f32; 4]) {
+        let dark = theme.scheme == crate::style::Scheme::Dark;
+        let fallback = if theme.reduced_transparency {
+            og_render::UiGlassFallback::ReducedTransparency
+        } else if theme.contrast == crate::style::Contrast::High {
+            og_render::UiGlassFallback::IncreasedContrast
+        } else {
+            og_render::UiGlassFallback::None
+        };
+        let (mut glass, blur, saturation, brightness, tint) = match self.weight {
+            Some(weight) => {
+                let style = og_render::UiGlassStyle {
+                    weight,
+                    elevation: self.elevation.unwrap_or_default(),
+                    dark,
+                    fallback,
+                };
+                let (mode, preset) = style.backdrop();
+                let og_render::UiMode::Backdrop {
+                    blur,
+                    saturation,
+                    brightness,
+                    glass,
+                } = mode
+                else {
+                    unreachable!("a glass style is a backdrop")
+                };
+                let solid = fallback != og_render::UiGlassFallback::None;
+                let tint = if explicit_tint && !solid {
+                    tint
+                } else {
+                    preset
+                };
+                (glass, blur, saturation, brightness, tint)
+            }
+            None => {
+                let mut glass = og_render::UiGlass::default();
+                if let Some(e) = self.elevation {
+                    let style = og_render::UiGlassStyle {
+                        elevation: e,
+                        dark,
+                        ..Default::default()
+                    };
+                    if let og_render::UiMode::Backdrop { glass: g, .. } = style.backdrop().0 {
+                        glass.shadows = g.shadows;
+                    }
+                }
+                (glass, blur, saturation, brightness, tint)
+            }
+        };
+        if self.edge > 0.0 {
+            glass.edge = self.edge;
+        }
+        if let Some(c) = &self.edge_color {
+            glass.edge_color = c.resolve(theme);
+        }
+        glass.solid |= self.solid;
+        glass.srgb_mix |= self.css_mix;
+        let mode = og_render::UiMode::Backdrop {
+            blur,
+            saturation,
+            brightness,
+            glass,
+        };
+        (mode, tint)
+    }
 }
 
 /// The element's outline.
@@ -599,16 +703,21 @@ impl ElementDraw {
                 saturation,
                 brightness,
                 tint,
+                glass,
             } = e
             {
+                let (mode, tint) = glass.resolve(
+                    *blur,
+                    *saturation,
+                    *brightness,
+                    tint.resolve(theme),
+                    glass.own_tint,
+                    theme,
+                );
                 out.push(self.shape(
                     at,
-                    og_render::UiPaint::Solid(tint.resolve(theme)),
-                    og_render::UiMode::Backdrop {
-                        blur: *blur,
-                        saturation: *saturation,
-                        brightness: *brightness,
-                    },
+                    og_render::UiPaint::Solid(tint),
+                    mode,
                     opacity,
                     Blend::Normal,
                 ));

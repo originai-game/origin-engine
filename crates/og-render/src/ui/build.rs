@@ -71,6 +71,9 @@ pub(crate) enum ShapePipe {
 pub(crate) enum ShapeSource {
     Shape(ShapePipe, Option<TextureHandle>),
     Backdrop,
+    /// A solid backdrop ([`UiGlass::solid`]): the backdrop's shader, which
+    /// reads no pyramid for it.
+    SolidBackdrop,
     /// A layer's composite.
     Composite(u32),
 }
@@ -435,7 +438,27 @@ pub(crate) fn shape(
             blur,
             saturation,
             brightness,
-        } => ([blur.max(0.0), saturation, brightness, 0.0], 4),
+            glass,
+        } => {
+            // The material (ui_common.wgsl's UiInstance): the hairline in
+            // mode.w and mode2, the shadows in paint to paint4 (a solid
+            // paint's free fields), the flags in extra.z.
+            g.mode2 = glass.edge_color;
+            for (k, sh) in glass.shadows.iter().enumerate() {
+                let [a, b] = if k == 0 {
+                    [&mut g.paint, &mut g.paint2]
+                } else {
+                    [&mut g.paint3, &mut g.paint4]
+                };
+                *a = [sh.offset.x, sh.offset.y, sh.blur.max(0.0), sh.spread];
+                *b = sh.color;
+            }
+            g.extra[2] = f32::from(u8::from(glass.solid) | u8::from(glass.srgb_mix) << 1);
+            (
+                [blur.max(0.0), saturation, brightness, glass.edge.max(0.0)],
+                4,
+            )
+        }
     };
     g.mode = mode;
     let blend = match s.blend {
@@ -524,8 +547,12 @@ pub(crate) fn shape(
     }
     let source = if let Some(k) = composite {
         ShapeSource::Composite(k)
-    } else if matches!(s.mode, UiMode::Backdrop { .. }) {
-        ShapeSource::Backdrop
+    } else if let UiMode::Backdrop { glass, .. } = s.mode {
+        if glass.solid {
+            ShapeSource::SolidBackdrop
+        } else {
+            ShapeSource::Backdrop
+        }
     } else if s.blend.reads_destination() {
         ShapeSource::Shape(ShapePipe::Destination, texture)
     } else {

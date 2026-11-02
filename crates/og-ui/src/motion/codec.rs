@@ -122,17 +122,35 @@ impl W<'_> {
                 rect,
                 radius,
                 blur,
+                saturation,
                 tint,
+                material,
                 alpha,
                 clip,
             } => {
-                self.u8(0);
+                // Tag 0 is the plain glass as it always was; 7 adds the
+                // saturation and the material.
+                let plain = *saturation == 1.0 && *material == og_render::UiGlass::default();
+                self.u8(if plain { 0 } else { 7 });
                 self.rect(rect);
                 self.f32(*radius);
                 self.f32(*blur);
                 self.color4(tint);
                 self.f32(*alpha);
                 self.rect(clip);
+                if !plain {
+                    self.f32(*saturation);
+                    self.f32(material.edge);
+                    self.color4(&material.edge_color);
+                    for sh in &material.shadows {
+                        self.f32(sh.offset.x);
+                        self.f32(sh.offset.y);
+                        self.f32(sh.blur);
+                        self.f32(sh.spread);
+                        self.color4(&sh.color);
+                    }
+                    self.u8(u8::from(material.solid) | u8::from(material.srgb_mix) << 1);
+                }
             }
             DrawCmd::Quad {
                 rect,
@@ -515,14 +533,42 @@ impl R<'_> {
 
     pub fn cmd(&mut self) -> Option<DrawCmd> {
         Some(match self.u8()? {
-            0 => DrawCmd::Glass {
-                rect: self.rect()?,
-                radius: self.f32()?,
-                blur: self.f32()?,
-                tint: self.color4()?,
-                alpha: self.f32()?,
-                clip: self.rect()?,
-            },
+            tag @ (0 | 7) => {
+                let (rect, radius, blur, tint, alpha, clip) = (
+                    self.rect()?,
+                    self.f32()?,
+                    self.f32()?,
+                    self.color4()?,
+                    self.f32()?,
+                    self.rect()?,
+                );
+                let mut saturation = 1.0;
+                let mut material = og_render::UiGlass::default();
+                if tag == 7 {
+                    saturation = self.f32()?;
+                    material.edge = self.f32()?;
+                    material.edge_color = self.color4()?;
+                    for sh in &mut material.shadows {
+                        sh.offset = Vec2::new(self.f32()?, self.f32()?);
+                        sh.blur = self.f32()?;
+                        sh.spread = self.f32()?;
+                        sh.color = self.color4()?;
+                    }
+                    let flags = self.u8()?;
+                    material.solid = flags & 1 != 0;
+                    material.srgb_mix = flags & 2 != 0;
+                }
+                DrawCmd::Glass {
+                    rect,
+                    radius,
+                    blur,
+                    saturation,
+                    tint,
+                    material,
+                    alpha,
+                    clip,
+                }
+            }
             1 => DrawCmd::Quad {
                 rect: self.rect()?,
                 radius: self.f32()?,

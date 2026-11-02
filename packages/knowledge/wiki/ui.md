@@ -377,6 +377,8 @@ module ui {
 | [`GlowEffect`](#type-GlowEffect) | desc struct | A glow: around the element, or along its inside. |
 | [`BlurEffect`](#type-BlurEffect) | desc struct | The element and its subtree blurred (drawn offscreen). |
 | [`BackdropEffect`](#type-BackdropEffect) | desc struct | What is under the element (the scene and the UI below it) blurred, its saturation and brightness scaled and tinted: glass. |
+| [`GlassWeight`](#type-GlassWeight) | enum | How heavy a glass surface is: flat glass, clear and coloured by what passes under it, with no rim, sheen or refraction. |
+| [`Elevation`](#type-Elevation) | enum | The soft shadow a glass surface casts. |
 | [`Effect`](#type-Effect) | union | An effect of the element. |
 | [`ClipMode`](#type-ClipMode) | enum | How an element cuts its children. |
 | [`MaskDesc`](#type-MaskDesc) | desc struct | An alpha mask over an element's subtree: a gradient's alpha, else an image's. |
@@ -4041,7 +4043,7 @@ fn setDraw {
 }
 ```
 
-<sub>`api.ogt` line 15633</sub>
+<sub>`api.ogt` line 15658</sub>
 
 <a id="fn-openWorldAnchor"></a>
 
@@ -4071,7 +4073,7 @@ fn openWorldAnchor {
 }
 ```
 
-<sub>`api.ogt` line 15763</sub>
+<sub>`api.ogt` line 15788</sub>
 
 <a id="fn-openWorldPanel"></a>
 
@@ -4101,7 +4103,7 @@ fn openWorldPanel {
 }
 ```
 
-<sub>`api.ogt` line 15818</sub>
+<sub>`api.ogt` line 15843</sub>
 
 <a id="fn-defineMass"></a>
 
@@ -4131,7 +4133,7 @@ fn defineMass {
 }
 ```
 
-<sub>`api.ogt` line 15963</sub>
+<sub>`api.ogt` line 15988</sub>
 
 <a id="fn-spawnMass"></a>
 
@@ -4161,7 +4163,7 @@ fn spawnMass {
 }
 ```
 
-<sub>`api.ogt` line 15970</sub>
+<sub>`api.ogt` line 15995</sub>
 
 <a id="fn-pushMass"></a>
 
@@ -4191,7 +4193,7 @@ fn pushMass {
 }
 ```
 
-<sub>`api.ogt` line 15977</sub>
+<sub>`api.ogt` line 16002</sub>
 
 <a id="fn-massCount"></a>
 
@@ -4219,7 +4221,7 @@ fn massCount {
 }
 ```
 
-<sub>`api.ogt` line 15984</sub>
+<sub>`api.ogt` line 16009</sub>
 
 <a id="fn-particles"></a>
 
@@ -4247,7 +4249,7 @@ fn particles {
 }
 ```
 
-<sub>`api.ogt` line 16057</sub>
+<sub>`api.ogt` line 16082</sub>
 
 <a id="fn-meta"></a>
 
@@ -4277,7 +4279,7 @@ fn meta {
 }
 ```
 
-<sub>`api.ogt` line 16107</sub>
+<sub>`api.ogt` line 16132</sub>
 
 <a id="fn-sceneViewport"></a>
 
@@ -4307,7 +4309,7 @@ fn sceneViewport {
 }
 ```
 
-<sub>`api.ogt` line 16158</sub>
+<sub>`api.ogt` line 16183</sub>
 
 <a id="fn-screen"></a>
 
@@ -4339,7 +4341,7 @@ fn screen {
 }
 ```
 
-<sub>`api.ogt` line 16248</sub>
+<sub>`api.ogt` line 16273</sub>
 
 <a id="fn-component"></a>
 
@@ -4373,7 +4375,7 @@ fn component {
 }
 ```
 
-<sub>`api.ogt` line 16257</sub>
+<sub>`api.ogt` line 16282</sub>
 
 <a id="fn-openSlot"></a>
 
@@ -4401,7 +4403,7 @@ fn openSlot {
 }
 ```
 
-<sub>`api.ogt` line 16267</sub>
+<sub>`api.ogt` line 16292</sub>
 
 <a id="fn-push"></a>
 
@@ -4435,7 +4437,7 @@ fn push {
 }
 ```
 
-<sub>`api.ogt` line 16273</sub>
+<sub>`api.ogt` line 16298</sub>
 
 <a id="fn-pop"></a>
 
@@ -4463,7 +4465,7 @@ fn pop {
 }
 ```
 
-<sub>`api.ogt` line 16283</sub>
+<sub>`api.ogt` line 16308</sub>
 
 <a id="fn-replace"></a>
 
@@ -4497,7 +4499,7 @@ fn replace {
 }
 ```
 
-<sub>`api.ogt` line 16289</sub>
+<sub>`api.ogt` line 16314</sub>
 
 <a id="fn-clear"></a>
 
@@ -4525,7 +4527,7 @@ fn clear {
 }
 ```
 
-<sub>`api.ogt` line 16299</sub>
+<sub>`api.ogt` line 16324</sub>
 
 <a id="fn-layers"></a>
 
@@ -4553,7 +4555,7 @@ fn layers {
 }
 ```
 
-<sub>`api.ogt` line 16305</sub>
+<sub>`api.ogt` line 16330</sub>
 
 <a id="fn-screenVm"></a>
 
@@ -4583,7 +4585,7 @@ fn screenVm {
 }
 ```
 
-<sub>`api.ogt` line 16311</sub>
+<sub>`api.ogt` line 16336</sub>
 
 <a id="fn-docEvents"></a>
 
@@ -4611,7 +4613,7 @@ fn docEvents {
 }
 ```
 
-<sub>`api.ogt` line 16318</sub>
+<sub>`api.ogt` line 16343</sub>
 
 <a id="fn-gameInput"></a>
 
@@ -4639,7 +4641,7 @@ fn gameInput {
 }
 ```
 
-<sub>`api.ogt` line 16324</sub>
+<sub>`api.ogt` line 16349</sub>
 
 <a id="fn-paused"></a>
 
@@ -4667,7 +4669,7 @@ fn paused {
 }
 ```
 
-<sub>`api.ogt` line 16330</sub>
+<sub>`api.ogt` line 16355</sub>
 
 <a id="fn-defineAction"></a>
 
@@ -4697,7 +4699,7 @@ fn defineAction {
 }
 ```
 
-<sub>`api.ogt` line 16336</sub>
+<sub>`api.ogt` line 16361</sub>
 
 <a id="fn-action"></a>
 
@@ -4725,7 +4727,7 @@ fn action {
 }
 ```
 
-<sub>`api.ogt` line 16343</sub>
+<sub>`api.ogt` line 16368</sub>
 
 <a id="fn-actionHeld"></a>
 
@@ -4753,7 +4755,7 @@ fn actionHeld {
 }
 ```
 
-<sub>`api.ogt` line 16349</sub>
+<sub>`api.ogt` line 16374</sub>
 
 <a id="fn-glyph"></a>
 
@@ -4783,7 +4785,7 @@ fn glyph {
 }
 ```
 
-<sub>`api.ogt` line 16355</sub>
+<sub>`api.ogt` line 16380</sub>
 
 <a id="fn-device"></a>
 
@@ -4811,7 +4813,7 @@ fn device {
 }
 ```
 
-<sub>`api.ogt` line 16362</sub>
+<sub>`api.ogt` line 16387</sub>
 
 <a id="fn-setDevice"></a>
 
@@ -4841,7 +4843,7 @@ fn setDevice {
 }
 ```
 
-<sub>`api.ogt` line 16368</sub>
+<sub>`api.ogt` line 16393</sub>
 
 <a id="fn-actionBar"></a>
 
@@ -4869,7 +4871,7 @@ fn actionBar {
 }
 ```
 
-<sub>`api.ogt` line 16375</sub>
+<sub>`api.ogt` line 16400</sub>
 
 <a id="fn-documentSchema"></a>
 
@@ -4892,7 +4894,7 @@ fn documentSchema {
 }
 ```
 
-<sub>`api.ogt` line 16381</sub>
+<sub>`api.ogt` line 16406</sub>
 
 <a id="fn-setProp"></a>
 
@@ -4926,7 +4928,7 @@ fn setProp {
 }
 ```
 
-<sub>`api.ogt` line 16386</sub>
+<sub>`api.ogt` line 16411</sub>
 
 <a id="fn-saveEdits"></a>
 
@@ -4954,7 +4956,7 @@ fn saveEdits {
 }
 ```
 
-<sub>`api.ogt` line 16395</sub>
+<sub>`api.ogt` line 16420</sub>
 
 ## Types
 
@@ -12259,7 +12261,13 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `blur` | `number` | `16` | ≥ 0 | `cssPx` | — | The blur. |
 | `saturation` | `number` | `1` | ≥ 0 | `ratio` | — | Multiplies the saturation. |
 | `brightness` | `number` | `1` | ≥ 0 | `ratio` | — | Multiplies the brightness. |
-| `tint` | `Paint \| null` | `null` | — | — | — | Over the blur, by its alpha; null is the theme's panel at 60 %. |
+| `tint` | `Paint \| null` | `null` | — | — | — | Over the blur, by its alpha; null is the theme's panel at 60 % (with a glass weight, the weight's tint). |
+| `glass` | `GlassWeight` | `"none"` | — | — | — | One of flat glass's weights (docs/ui.md §5.3): it sets the blur, 200 % saturation, the tint (unless tint is given), a 0.5 px hairline inside the edge and CSS mixing, in the theme's scheme; under reduced transparency the solid raised surface, under high contrast solid with a strong 1 px edge. none is the fields as given. |
+| `elevation` | `Elevation` | `"none"` | — | — | — | The soft shadow outside it, as the design language's shadows (with a glass weight, raised by default). |
+| `edge` | `number` | `0` | ≥ 0 | `cssPx` | — | A hairline just inside the edge (CSS inset 0 0 0 <edge>px); 0 is none, or the weight's. |
+| `edgeColor` | `Paint \| null` | `null` | — | — | — | The hairline's colour; null is the weight's (or the theme's line). |
+| `solid` | `boolean` | `false` | — | — | — | The tint drawn opaque, with the hairline and shadow: nothing under it is read (reduced transparency, increased contrast). |
+| `cssMix` | `boolean` | `false` | — | — | — | Mix the tint, hairline and shadow in sRGB-encoded values, as CSS does, so a tint reads as it does on a web page (glass weights always do). |
 
 ```ogt
 struct BackdropEffect {
@@ -12280,11 +12288,74 @@ struct BackdropEffect {
     min 0
     unit ratio
   }
-  field tint Option.Paint "Over the blur, by its alpha; null is the theme's panel at 60 %."
+  field tint Option.Paint "Over the blur, by its alpha; null is the theme's panel at 60 % (with a glass weight, the weight's tint)."
+  field glass GlassWeight "One of flat glass's weights (docs/ui.md §5.3): it sets the blur, 200 % saturation, the tint (unless tint is given), a 0.5 px hairline inside the edge and CSS mixing, in the theme's scheme; under reduced transparency the solid raised surface, under high contrast solid with a strong 1 px edge. none is the fields as given."
+  field elevation Elevation "The soft shadow outside it, as the design language's shadows (with a glass weight, raised by default)."
+  field edge f32 "A hairline just inside the edge (CSS inset 0 0 0 <edge>px); 0 is none, or the weight's." {
+    min 0
+    unit cssPx
+  }
+  field edgeColor Option.Paint "The hairline's colour; null is the weight's (or the theme's line)."
+  field solid bool "The tint drawn opaque, with the hairline and shadow: nothing under it is read (reduced transparency, increased contrast)."
+  field cssMix bool "Mix the tint, hairline and shadow in sRGB-encoded values, as CSS does, so a tint reads as it does on a web page (glass weights always do)."
 }
 ```
 
 <sub>`api.ogt` line 15498</sub>
+
+<a id="type-GlassWeight"></a>
+
+### `GlassWeight` (enum)
+
+How heavy a glass surface is: flat glass, clear and coloured by what passes under it, with no rim, sheen or refraction.
+
+A string: one of the variants below. The zero value is `"none"`.
+
+| Variant | Doc |
+|---|---|
+| `"none"` | No weight: the backdrop's own fields. |
+| `"thin"` | 10 px of blur and the lightest tint: small controls over art. |
+| `"regular"` | 22 px: bars, tab bars, capsules. |
+| `"thick"` | 32 px and a denser tint: menus, popovers, dialogs, sheets, toasts. |
+
+```ogt
+enum GlassWeight {
+  doc "How heavy a glass surface is: flat glass, clear and coloured by what passes under it, with no rim, sheen or refraction."
+  variant none "No weight: the backdrop's own fields."
+  variant thin "10 px of blur and the lightest tint: small controls over art."
+  variant regular "22 px: bars, tab bars, capsules."
+  variant thick "32 px and a denser tint: menus, popovers, dialogs, sheets, toasts."
+}
+```
+
+<sub>`api.ogt` line 15528</sub>
+
+<a id="type-Elevation"></a>
+
+### `Elevation` (enum)
+
+The soft shadow a glass surface casts.
+
+A string: one of the variants below. The zero value is `"none"`.
+
+| Variant | Doc |
+|---|---|
+| `"none"` | No shadow (with a glass weight: raised). |
+| `"raised"` | The hairline alone (an outer one in the light scheme). |
+| `"float"` | One soft, short shadow: capsules and menus. |
+| `"lift"` | Two deeper shadows: dialogs and sheets. |
+
+```ogt
+enum Elevation {
+  doc "The soft shadow a glass surface casts."
+  variant none "No shadow (with a glass weight: raised)."
+  variant raised "The hairline alone (an outer one in the light scheme)."
+  variant float "One soft, short shadow: capsules and menus."
+  variant lift "Two deeper shadows: dialogs and sheets."
+}
+```
+
+<sub>`api.ogt` line 15536</sub>
 
 <a id="type-Effect"></a>
 
@@ -12316,7 +12387,7 @@ union Effect {
 }
 ```
 
-<sub>`api.ogt` line 15519</sub>
+<sub>`api.ogt` line 15544</sub>
 
 <a id="type-ClipMode"></a>
 
@@ -12341,7 +12412,7 @@ enum ClipMode {
 }
 ```
 
-<sub>`api.ogt` line 15530</sub>
+<sub>`api.ogt` line 15555</sub>
 
 <a id="type-MaskDesc"></a>
 
@@ -12367,7 +12438,7 @@ struct MaskDesc {
 }
 ```
 
-<sub>`api.ogt` line 15537</sub>
+<sub>`api.ogt` line 15562</sub>
 
 <a id="type-MaterialName"></a>
 
@@ -12408,7 +12479,7 @@ enum MaterialName {
 }
 ```
 
-<sub>`api.ogt` line 15545</sub>
+<sub>`api.ogt` line 15570</sub>
 
 <a id="type-LayerDesc"></a>
 
@@ -12434,7 +12505,7 @@ struct LayerDesc {
 }
 ```
 
-<sub>`api.ogt` line 15560</sub>
+<sub>`api.ogt` line 15585</sub>
 
 <a id="type-TextShadowDesc"></a>
 
@@ -12467,7 +12538,7 @@ struct TextShadowDesc {
 }
 ```
 
-<sub>`api.ogt` line 15568</sub>
+<sub>`api.ogt` line 15593</sub>
 
 <a id="type-TextOutlineDesc"></a>
 
@@ -12497,7 +12568,7 @@ struct TextOutlineDesc {
 }
 ```
 
-<sub>`api.ogt` line 15583</sub>
+<sub>`api.ogt` line 15608</sub>
 
 <a id="type-TextEffectsDesc"></a>
 
@@ -12523,7 +12594,7 @@ struct TextEffectsDesc {
 }
 ```
 
-<sub>`api.ogt` line 15595</sub>
+<sub>`api.ogt` line 15620</sub>
 
 <a id="type-DrawDesc"></a>
 
@@ -12567,7 +12638,7 @@ struct DrawDesc {
 }
 ```
 
-<sub>`api.ogt` line 15603</sub>
+<sub>`api.ogt` line 15628</sub>
 
 <a id="type-BlendMode"></a>
 
@@ -12600,7 +12671,7 @@ enum BlendMode {
 }
 ```
 
-<sub>`api.ogt` line 15622</sub>
+<sub>`api.ogt` line 15647</sub>
 
 <a id="type-WorldTarget"></a>
 
@@ -12624,7 +12695,7 @@ struct WorldTarget {
 }
 ```
 
-<sub>`api.ogt` line 15641</sub>
+<sub>`api.ogt` line 15666</sub>
 
 <a id="type-AnchorScaleMode"></a>
 
@@ -12647,7 +12718,7 @@ enum AnchorScaleMode {
 }
 ```
 
-<sub>`api.ogt` line 15648</sub>
+<sub>`api.ogt` line 15673</sub>
 
 <a id="type-WorldOcclusion"></a>
 
@@ -12672,7 +12743,7 @@ enum WorldOcclusion {
 }
 ```
 
-<sub>`api.ogt` line 15654</sub>
+<sub>`api.ogt` line 15679</sub>
 
 <a id="type-Declutter"></a>
 
@@ -12699,7 +12770,7 @@ enum Declutter {
 }
 ```
 
-<sub>`api.ogt` line 15661</sub>
+<sub>`api.ogt` line 15686</sub>
 
 <a id="type-EdgeClampDesc"></a>
 
@@ -12733,7 +12804,7 @@ struct EdgeClampDesc {
 }
 ```
 
-<sub>`api.ogt` line 15669</sub>
+<sub>`api.ogt` line 15694</sub>
 
 <a id="type-WorldAnchorDesc"></a>
 
@@ -12826,7 +12897,7 @@ struct WorldAnchorDesc {
 }
 ```
 
-<sub>`api.ogt` line 15685</sub>
+<sub>`api.ogt` line 15710</sub>
 
 <a id="type-AnchorInfo"></a>
 
@@ -12873,7 +12944,7 @@ struct AnchorInfo {
 }
 ```
 
-<sub>`api.ogt` line 15739</sub>
+<sub>`api.ogt` line 15764</sub>
 
 <a id="type-WorldPanelDesc"></a>
 
@@ -12933,7 +13004,7 @@ struct WorldPanelDesc {
 }
 ```
 
-<sub>`api.ogt` line 15770</sub>
+<sub>`api.ogt` line 15795</sub>
 
 <a id="type-PanelInfo"></a>
 
@@ -12964,7 +13035,7 @@ struct PanelInfo {
 }
 ```
 
-<sub>`api.ogt` line 15804</sub>
+<sub>`api.ogt` line 15829</sub>
 
 <a id="type-MassKind"></a>
 
@@ -12993,7 +13064,7 @@ enum MassKind {
 }
 ```
 
-<sub>`api.ogt` line 15825</sub>
+<sub>`api.ogt` line 15850</sub>
 
 <a id="type-MassEase"></a>
 
@@ -13022,7 +13093,7 @@ enum MassEase {
 }
 ```
 
-<sub>`api.ogt` line 15834</sub>
+<sub>`api.ogt` line 15859</sub>
 
 <a id="type-MassSpace"></a>
 
@@ -13045,7 +13116,7 @@ enum MassSpace {
 }
 ```
 
-<sub>`api.ogt` line 15843</sub>
+<sub>`api.ogt` line 15868</sub>
 
 <a id="type-ParticleShape"></a>
 
@@ -13070,7 +13141,7 @@ enum ParticleShape {
 }
 ```
 
-<sub>`api.ogt` line 15849</sub>
+<sub>`api.ogt` line 15874</sub>
 
 <a id="type-MassKey"></a>
 
@@ -13117,7 +13188,7 @@ struct MassKey {
 }
 ```
 
-<sub>`api.ogt` line 15856</sub>
+<sub>`api.ogt` line 15881</sub>
 
 <a id="type-MassTemplateDesc"></a>
 
@@ -13217,7 +13288,7 @@ struct MassTemplateDesc {
 }
 ```
 
-<sub>`api.ogt` line 15882</sub>
+<sub>`api.ogt` line 15907</sub>
 
 <a id="type-MassInstance"></a>
 
@@ -13264,7 +13335,7 @@ struct MassInstance {
 }
 ```
 
-<sub>`api.ogt` line 15940</sub>
+<sub>`api.ogt` line 15965</sub>
 
 <a id="type-EmitFrom"></a>
 
@@ -13289,7 +13360,7 @@ enum EmitFrom {
 }
 ```
 
-<sub>`api.ogt` line 15990</sub>
+<sub>`api.ogt` line 16015</sub>
 
 <a id="type-ParticlesDesc"></a>
 
@@ -13383,7 +13454,7 @@ struct ParticlesDesc {
 }
 ```
 
-<sub>`api.ogt` line 15997</sub>
+<sub>`api.ogt` line 16022</sub>
 
 <a id="type-MetaKind"></a>
 
@@ -13408,7 +13479,7 @@ enum MetaKind {
 }
 ```
 
-<sub>`api.ogt` line 16063</sub>
+<sub>`api.ogt` line 16088</sub>
 
 <a id="type-MetaDesc"></a>
 
@@ -13470,7 +13541,7 @@ struct MetaDesc {
 }
 ```
 
-<sub>`api.ogt` line 16070</sub>
+<sub>`api.ogt` line 16095</sub>
 
 <a id="type-SceneViewportDesc"></a>
 
@@ -13518,7 +13589,7 @@ struct SceneViewportDesc {
 }
 ```
 
-<sub>`api.ogt` line 16114</sub>
+<sub>`api.ogt` line 16139</sub>
 
 <a id="type-SceneViewportInfo"></a>
 
@@ -13563,7 +13634,7 @@ struct SceneViewportInfo {
 }
 ```
 
-<sub>`api.ogt` line 16137</sub>
+<sub>`api.ogt` line 16162</sub>
 
 <a id="type-UiDocEvent"></a>
 
@@ -13590,7 +13661,7 @@ struct UiDocEvent {
 }
 ```
 
-<sub>`api.ogt` line 16166</sub>
+<sub>`api.ogt` line 16191</sub>
 
 <a id="type-UiDocResponse"></a>
 
@@ -13613,7 +13684,7 @@ struct UiDocResponse {
 }
 ```
 
-<sub>`api.ogt` line 16175</sub>
+<sub>`api.ogt` line 16200</sub>
 
 <a id="type-UiLayer"></a>
 
@@ -13656,7 +13727,7 @@ struct UiLayer {
 }
 ```
 
-<sub>`api.ogt` line 16182</sub>
+<sub>`api.ogt` line 16207</sub>
 
 <a id="type-UiActionTrigger"></a>
 
@@ -13681,7 +13752,7 @@ enum UiActionTrigger {
 }
 ```
 
-<sub>`api.ogt` line 16199</sub>
+<sub>`api.ogt` line 16224</sub>
 
 <a id="type-UiActionDesc"></a>
 
@@ -13718,7 +13789,7 @@ struct UiActionDesc {
 }
 ```
 
-<sub>`api.ogt` line 16206</sub>
+<sub>`api.ogt` line 16231</sub>
 
 <a id="type-UiDevice"></a>
 
@@ -13749,7 +13820,7 @@ enum UiDevice {
 }
 ```
 
-<sub>`api.ogt` line 16222</sub>
+<sub>`api.ogt` line 16247</sub>
 
 <a id="type-UiGlyph"></a>
 
@@ -13772,7 +13843,7 @@ struct UiGlyph {
 }
 ```
 
-<sub>`api.ogt` line 16232</sub>
+<sub>`api.ogt` line 16257</sub>
 
 <a id="type-UiActionHint"></a>
 
@@ -13799,7 +13870,7 @@ struct UiActionHint {
 }
 ```
 
-<sub>`api.ogt` line 16239</sub>
+<sub>`api.ogt` line 16264</sub>
 
 ## Column kinds
 

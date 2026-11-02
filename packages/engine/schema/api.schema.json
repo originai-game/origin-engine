@@ -9063,6 +9063,8 @@
         "GlowEffect",
         "BlurEffect",
         "BackdropEffect",
+        "GlassWeight",
+        "Elevation",
         "Effect",
         "ClipMode",
         "MaskDesc",
@@ -43087,11 +43089,86 @@
               "type": "null"
             }
           ],
-          "description": "Over the blur, by its alpha; null is the theme's panel at 60 %.",
+          "description": "Over the blur, by its alpha; null is the theme's panel at 60 % (with a glass weight, the weight's tint).",
           "default": null
+        },
+        "glass": {
+          "$ref": "#/$defs/GlassWeight",
+          "description": "One of flat glass's weights (docs/ui.md §5.3): it sets the blur, 200 % saturation, the tint (unless tint is given), a 0.5 px hairline inside the edge and CSS mixing, in the theme's scheme; under reduced transparency the solid raised surface, under high contrast solid with a strong 1 px edge. none is the fields as given.",
+          "default": "none"
+        },
+        "elevation": {
+          "$ref": "#/$defs/Elevation",
+          "description": "The soft shadow outside it, as the design language's shadows (with a glass weight, raised by default).",
+          "default": "none"
+        },
+        "edge": {
+          "type": "number",
+          "description": "A hairline just inside the edge (CSS inset 0 0 0 <edge>px); 0 is none, or the weight's.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "edgeColor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The hairline's colour; null is the weight's (or the theme's line).",
+          "default": null
+        },
+        "solid": {
+          "type": "boolean",
+          "description": "The tint drawn opaque, with the hairline and shadow: nothing under it is read (reduced transparency, increased contrast).",
+          "default": false
+        },
+        "cssMix": {
+          "type": "boolean",
+          "description": "Mix the tint, hairline and shadow in sRGB-encoded values, as CSS does, so a tint reads as it does on a web page (glass weights always do).",
+          "default": false
         }
       },
       "additionalProperties": false
+    },
+    "GlassWeight": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "How heavy a glass surface is: flat glass, clear and coloured by what passes under it, with no rim, sheen or refraction.",
+      "type": "string",
+      "enum": [
+        "none",
+        "thin",
+        "regular",
+        "thick"
+      ],
+      "x-og-variants": {
+        "none": "No weight: the backdrop's own fields.",
+        "thin": "10 px of blur and the lightest tint: small controls over art.",
+        "regular": "22 px: bars, tab bars, capsules.",
+        "thick": "32 px and a denser tint: menus, popovers, dialogs, sheets, toasts."
+      }
+    },
+    "Elevation": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "The soft shadow a glass surface casts.",
+      "type": "string",
+      "enum": [
+        "none",
+        "raised",
+        "float",
+        "lift"
+      ],
+      "x-og-variants": {
+        "none": "No shadow (with a glass weight: raised).",
+        "raised": "The hairline alone (an outer one in the light scheme).",
+        "float": "One soft, short shadow: capsules and menus.",
+        "lift": "Two deeper shadows: dialogs and sheets."
+      }
     },
     "Effect": {
       "x-og-kind": "union",
@@ -43338,7 +43415,40 @@
                   "type": "null"
                 }
               ],
-              "description": "Over the blur, by its alpha; null is the theme's panel at 60 %."
+              "description": "Over the blur, by its alpha; null is the theme's panel at 60 % (with a glass weight, the weight's tint)."
+            },
+            "glass": {
+              "$ref": "#/$defs/GlassWeight",
+              "description": "One of flat glass's weights (docs/ui.md §5.3): it sets the blur, 200 % saturation, the tint (unless tint is given), a 0.5 px hairline inside the edge and CSS mixing, in the theme's scheme; under reduced transparency the solid raised surface, under high contrast solid with a strong 1 px edge. none is the fields as given."
+            },
+            "elevation": {
+              "$ref": "#/$defs/Elevation",
+              "description": "The soft shadow outside it, as the design language's shadows (with a glass weight, raised by default)."
+            },
+            "edge": {
+              "type": "number",
+              "description": "A hairline just inside the edge (CSS inset 0 0 0 <edge>px); 0 is none, or the weight's.",
+              "minimum": 0,
+              "x-og-unit": "cssPx"
+            },
+            "edgeColor": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Paint"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The hairline's colour; null is the weight's (or the theme's line)."
+            },
+            "solid": {
+              "type": "boolean",
+              "description": "The tint drawn opaque, with the hairline and shadow: nothing under it is read (reduced transparency, increased contrast)."
+            },
+            "cssMix": {
+              "type": "boolean",
+              "description": "Mix the tint, hairline and shadow in sRGB-encoded values, as CSS does, so a tint reads as it does on a web page (glass weights always do)."
             }
           },
           "required": [
@@ -43346,7 +43456,13 @@
             "blur",
             "saturation",
             "brightness",
-            "tint"
+            "tint",
+            "glass",
+            "elevation",
+            "edge",
+            "edgeColor",
+            "solid",
+            "cssMix"
           ],
           "additionalProperties": false,
           "x-og-payload": "BackdropEffect"

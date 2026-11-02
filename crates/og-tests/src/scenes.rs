@@ -157,6 +157,11 @@ pub const SCENES: &[&str] = &[
     "ui-text-effects",
     "ui-world",
     "ui-panel",
+    "ui-glass-bright",
+    "ui-glass-dark",
+    "ui-glass-busy",
+    "ui-glass-dialog",
+    "ui-glass-fallback",
 ];
 
 /// A per-frame change (frame index from 0): moving sprites, an orbiting camera.
@@ -1091,6 +1096,17 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         },
         "ui-layers" => |g, _| {
             g.scene = crate::ui_scenes::layers();
+            Ok(())
+        },
+        // Flat glass (docs/ui.md §5.3, src/ui_scenes/glass.rs): its weights,
+        // hairline, shadows, scrim and fallbacks on three backdrops.
+        "ui-glass-bright" | "ui-glass-dark" | "ui-glass-busy" | "ui-glass-dialog"
+        | "ui-glass-fallback" => |g, name| {
+            let which = crate::ui_scenes::GlassScene::ALL
+                .into_iter()
+                .find(|s| s.name() == name)
+                .expect("a glass scene");
+            g.scene = crate::ui_scenes::glass_scene(which, load_font, true)?.0;
             Ok(())
         },
         "ui-text-effects" => |g, _| {

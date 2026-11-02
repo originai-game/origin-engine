@@ -32,9 +32,13 @@
 //! glass does (src/glass.rs).
 
 pub(crate) mod build;
+pub mod glass;
 pub mod mass;
 pub(crate) mod pass;
 
+pub use glass::{
+    GLASS_BLUR_SCALE, UiElevation, UiGlassFallback, UiGlassStyle, UiGlassWeight, ui_scrim,
+};
 pub use mass::{
     UI_MASS_BATCHES, UI_MASS_KEYS, UI_MASS_QUADS, UiMassBatch, UiMassEase, UiMassInstance,
     UiMassKey, UiMassKind, UiMassSpace, UiMassTemplate, UiOccluder, UiOcclusion, UiParticleShape,
@@ -300,12 +304,57 @@ pub enum UiMode {
     },
     /// What is drawn under the shape (the scene and the overlay below it),
     /// blurred by `blur` CSS px, its saturation and brightness scaled,
-    /// tinted by a solid paint (its alpha how much tint covers it). Glass.
+    /// tinted by a solid paint (its alpha how much tint covers it), with
+    /// the material's hairline and shadows ([`UiGlass`]). Glass.
     Backdrop {
         blur: f32,
         saturation: f32,
         brightness: f32,
+        glass: UiGlass,
     },
+}
+
+/// The rest of a backdrop's material (`docs/ui.md` §5.3), all off at its
+/// zero value, which draws the plain frosted backdrop: flat glass as the
+/// design language composes it (a light tint over a blur with raised
+/// saturation, a hairline edge, a soft shadow), drawn by the backdrop's
+/// one instance. No specular rim, sheen or refraction: the material stays
+/// clear and takes its colour from what passes under it.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct UiGlass {
+    /// A hairline just inside the outline (CSS `inset 0 0 0 <edge>px`):
+    /// its width in CSS px; 0 is none.
+    pub edge: f32,
+    /// The hairline's linear RGBA.
+    pub edge_color: [f32; 4],
+    /// Soft shadows outside the shape only, as a CSS `box-shadow` under a
+    /// translucent element: none darkens what the glass shows. The first
+    /// lies over the second; a clear colour is none.
+    pub shadows: [UiGlassShadow; 2],
+    /// Nothing under it is read: the tint is drawn opaque, with the
+    /// hairline and shadows (reduced transparency, increased contrast).
+    /// A frame whose only backdrops are solid builds no blur pyramid.
+    pub solid: bool,
+    /// Mixes the tint and the hairline over the blur, and the shadows over
+    /// the frame, in sRGB-encoded values, as CSS and the platform's glass
+    /// do, instead of in linear light: a dark tint at a given alpha over a
+    /// bright scene stays as dark as the same CSS tint (in linear light it
+    /// lets several times more of the scene through). Saturation and
+    /// brightness then scale encoded values too. The shadows' alpha is
+    /// mapped so a black shadow darkens as CSS's does.
+    pub srgb_mix: bool,
+}
+
+/// One of [`UiGlass::shadows`]: a CSS `box-shadow` (offset, blur, spread,
+/// colour), drawn outside the shape only.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct UiGlassShadow {
+    pub offset: Vec2,
+    /// The CSS blur (the Gaussian's standard deviation is half of it).
+    pub blur: f32,
+    pub spread: f32,
+    /// Linear RGBA; alpha 0 is none.
+    pub color: [f32; 4],
 }
 
 /// How a shape's colour combines with what is under it.
