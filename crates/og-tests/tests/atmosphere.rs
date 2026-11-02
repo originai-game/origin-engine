@@ -684,8 +684,9 @@ fn weather_surface_scenes_match_their_references_and_read_as_weather() {
 /// With the weather occlusion map turned off (shelter 0) the snow lies
 /// under it too, so the frame's lower half is brighter; with it the ground
 /// under the canopy is darker than the open snow; and in the rain (its
-/// puddles and ripples off in both frames) the ground under the canopy is
-/// lighter with the map than without it: dry, not soaked.
+/// puddles and ripples and the sun's shadows off in both frames) the
+/// ground under the canopy is lighter with the map than without it: dry,
+/// not soaked.
 #[test]
 fn a_canopy_keeps_the_snow_and_the_rain_off_the_ground_under_it() {
     use og_tests::sky_scenes::sky_scene;
@@ -707,9 +708,14 @@ fn a_canopy_keeps_the_snow_and_the_rain_off_the_ground_under_it() {
     );
     // The ground under the canopy, with and without the map, the puddles
     // and ripples left out of both (mirrors of the sky, brighter than any
-    // ground): dry there is lighter than soaked.
+    // ground) and the sun's shadows off in both (the weather map is drawn
+    // all the same): in the canopy's shade, dry ground has only the sky's
+    // dim light to show while a wet film reflects the bright horizon at
+    // this grazing angle, so shade would measure the gloss, not the
+    // wetness. Sunlit, dry there is lighter than soaked.
     let damp = |shelter: bool| {
         let mut s = sky_scene("weather-shelter-rain");
+        s.light.cast_shadows = false;
         if let Some(w) = s.surface_weather.as_mut() {
             w.puddles = 0.0;
             w.rain = 0.0;
