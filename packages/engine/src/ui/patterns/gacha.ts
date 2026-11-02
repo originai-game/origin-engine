@@ -119,8 +119,10 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
         kit.setDraw({
           shape: { kind: "rect", radii: [t.control, t.control, t.control, t.control] },
           fills: [
-            { kind: "solid", color: paint(mix(role("panel"), role("shadow"), 0.3), on ? 0.62 : 0.46) },
-            ...(on ? [{ kind: "solid", color: paint(role("lineStrong"), 0.55) } as Api.Fill] : []),
+            // In portrait, over the bright splash, the step between the two is wider: the others a darker glass, the
+            // current one a lit neutral chip.
+            { kind: "solid", color: paint(mix(role("panel"), role("shadow"), portrait && !on ? 0.6 : 0.3), on ? (portrait ? 0.86 : 0.62) : portrait ? 0.58 : 0.46) },
+            ...(on ? [{ kind: "solid", color: paint(role("lineStrong"), portrait ? 0.8 : 0.55) } as Api.Fill] : []),
             vgrad([[0, paint(white, on ? 0.24 : 0.12)], [0.12, paint(white, on ? 0.1 : 0.05)], [1, paint(white, 0.02)]]),
           ],
           strokes: [],
@@ -133,6 +135,12 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
           text("Name", b.name ?? "", { step: st(14), font: "display", maxLines: 2, width: grow(), align: portrait ? "center" : "start", color: on ? "ink" : "inkMuted" });
           if (b.endsIn !== undefined && b.endsIn !== null && !portrait && !short) text("Ends", countdownShort(b.endsIn, timeWords(desc)), { step: st(12), color: b.endsIn < 3600 ? "warn" : on ? "ink" : "inkMuted", nowrap: true, font: "mono" });
         });
+        // On a phone the current tab also carries a short underline in the neutral primary.
+        if (on && portrait) {
+          kit.open("Rim", { width: px(u(28)), height: px(u(3)), radius: 999, background: token("primary"), part: "Gacha.tabRim", partClass: "badge" });
+          kit.close();
+          over({ insets: { centerX: true, bottom: u(4) }, inert: true });
+        }
         if (b.fresh) {
           kit.open("Dot", { width: px(u(8)), height: px(u(8)) });
           kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "solid", color: token("danger") }] });
@@ -515,11 +523,13 @@ function reveal(it: Api.PullItem, idx: number, n: number, dt: number, W: number,
   // The light is one radial bloom centred on the card, about 1.6 times its height across and never wider than about
   // 40 % of the screen, falling smoothly to nothing (no disc's edge, no wash over half the screen): the banner's scene
   // reads round it.
-  const rayD = Math.round(Math.min(artH * (pipsN >= 5 ? 1.6 : pipsN >= 4 ? 1.45 : 1.3), W * 0.42));
+  // About 1.6 times the card on each side of its centre: the card covers the bloom's core, so its light must reach
+  // past the card's edges to be seen (capped so it never washes half the screen).
+  const rayD = Math.round(Math.min(artH * (pipsN >= 5 ? 1.9 : pipsN >= 4 ? 1.7 : 1.5), W * 0.6));
   const centred = { start: Math.round((artW - rayD) / 2), top: Math.round((artH - rayD) / 2) };
-  const g0 = pipsN >= 5 ? 0.62 : pipsN >= 4 ? 0.48 : 0.3;
+  const g0 = pipsN >= 5 ? 0.35 : pipsN >= 4 ? 0.28 : 0.2;
   kit.open("Glow", { width: px(rayD), height: px(rayD), part: "Pull.glow", partClass: "badge" });
-  kit.setDraw({ shape: { kind: "ellipse" }, blend: "add", fills: [radial([[0, paint(mix(ink, hex("#ffffff"), 0.25), g0)], [0.15, paint(ink, g0 * 0.72)], [0.3, paint(ink, g0 * 0.44)], [0.45, paint(ink, g0 * 0.24)], [0.6, paint(ink, g0 * 0.11)], [0.75, paint(ink, g0 * 0.04)], [0.9, paint(ink, g0 * 0.01)], [1, paint(ink, 0)]])] } as Api.DrawDesc);
+  kit.setDraw({ shape: { kind: "ellipse" }, blend: "add", fills: [radial([[0, paint(mix(ink, hex("#ffffff"), 0.2), g0)], [0.3, paint(ink, g0 * 0.9)], [0.45, paint(ink, g0 * 0.6)], [0.58, paint(ink, g0 * 0.32)], [0.7, paint(ink, g0 * 0.13)], [0.82, paint(ink, g0 * 0.03)], [0.92, paint(ink, 0)], [1, paint(ink, 0)]])] } as Api.DrawDesc);
   kit.close();
   over({ insets: centred, inert: true, overlaps: ["*"] });
   if (pipsN >= 3) {

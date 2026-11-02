@@ -138,7 +138,8 @@ export function rewardChoice(id: string, desc: Api.RewardChoiceDesc): Api.Reward
         shape: { kind: "rect", radii: [t.panel, t.panel, t.panel, t.panel] },
         fills: [vgrad([[0, token("panelRaised")], [1, token("panel")]])],
         strokes: sel ? [line(3, token("focus"))] : [line(1, token("shadow", 0.5), "outside")],
-        effects: [shadow(u(compact ? 3 : 6), u(compact ? 10 : 16), 0.45), ...(high && !o.locked ? [glow(u(compact ? 10 : 14), paint(edge, 0.32), 0)] : [])],
+        // Epic and above: a wide, faint glow (a tight one read as a coloured stroke round the card).
+        effects: [shadow(u(compact ? 3 : 6), u(compact ? 10 : 16), 0.45), ...(high && !o.locked ? [glow(u(compact ? 10 : 28), paint(edge, compact ? 0.32 : 0.22), 0)] : [])],
       });
       // The tier's light, a layer of its own under the card's content (a style dresses the card's fills, not this).
       if (tier) {
@@ -152,11 +153,18 @@ export function rewardChoice(id: string, desc: Api.RewardChoiceDesc): Api.Reward
             compact
               ? vgrad([[0, paint(tier, 0)], [0.72, paint(tier, 0)], [1, paint(tier, high ? 0.24 : 0.18)]], startAngle)
               : vgrad([[0, paint(tier, high ? 0.3 : 0.22)], [0.32, paint(tier, 0)]]),
-            vgrad([[0, paint(tier, 0)], [1 - f - 0.0005, paint(tier, 0)], [1 - f, paint(tier)], [1, paint(tier)]], startAngle),
+            // A row's stripe runs down its start edge; a standing card's is a band across its top, over its art.
+            ...(compact ? [vgrad([[0, paint(tier, 0)], [1 - f - 0.0005, paint(tier, 0)], [1 - f, paint(tier)], [1, paint(tier)]], startAngle)] : []),
           ],
         } as Api.DrawDesc);
         kit.close();
         over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, z: -1 });
+        if (!compact) {
+          kit.open("Band", { width: grow(), height: px(u(4)), part: `Reward.band${flags(`rarity=${o.rarity ?? "none"}`)}`, partClass: "badge" });
+          kit.setDraw({ shape: { kind: "rect", radii: [t.panel, t.panel, 0, 0] }, fills: [{ kind: "solid", color: paint(tier) }] });
+          kit.close();
+          over({ insets: { start: 0, top: 0, end: 0 }, inert: true, z: 2 });
+        }
       }
       const artW = compact ? Math.round(Math.min(u(88), cw * 0.26) * Math.min(1.4, ts)) : cw - u(32);
       artSlot("Art", "Reward.art", { texture: o.image ?? null, kind: "item", icon: o.icon, rarity: o.rarity, width: px(artW), height: px(compact ? artW : Math.round(artW * 0.62)), radius: Math.max(4, t.small) }, () => {

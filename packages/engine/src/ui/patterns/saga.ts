@@ -237,11 +237,32 @@ export function sagaMap(id: string, desc: Api.SagaMapDesc): Api.SagaMapResult {
     if (kit.bounds(curPath)) kit.remember("~s.shown", want);
   }
   // The game's docked chrome at the foot: the view stops above it (the backdrop runs on behind it).
-  if ((desc.footInset ?? 0) > 0) kit.spacer("Foot", px(Math.round(desc.footInset!)));
+  // The game's docked chrome at the foot: the view stops above it (the backdrop runs on behind it), and a little more
+  // where that leaves a level cut by the view's edge. The view opens centred on the current level and the levels are
+  // evenly spaced along it, so a level's distance from either edge is the half view less a whole number of spacings:
+  // the spacer grows until both edges fall between two levels (a whole level shows above the button, or none).
+  if ((desc.footInset ?? 0) > 0) {
+    const foot = Math.round(desc.footInset!);
+    let extra = 0;
+    if (vertical) {
+      const mainH = kit.memory(`~s.main.${id}`, 0) || vp.height;
+      const half = (mainH - foot) / 2;
+      const r = ((half % spacing) + spacing) % spacing;
+      // A level's footprint about its centre: its badge, and its stars under it.
+      const lo = u(66) / 2 + u(24);
+      const hi = spacing - u(66) / 2 - u(10);
+      const d = r > hi ? r - hi : r < lo ? r - hi + spacing : 0;
+      extra = Math.round(2 * d);
+    }
+    kit.spacer("Foot", px(foot + extra));
+  }
   kit.close();
   const me = kit.lastPath();
   const box = kit.bounds(me);
-  if (box) kit.remember(crossKey, Math.round(vertical ? box.width : box.height));
+  if (box) {
+    kit.remember(crossKey, Math.round(vertical ? box.width : box.height));
+    kit.remember(`~s.main.${id}`, Math.round(vertical ? box.height : box.width));
+  }
   kit.semantics({ role: "list", name: desc.label ?? "Levels" });
   return out;
 }
