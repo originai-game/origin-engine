@@ -41,13 +41,14 @@ are `u32` constants in `src/schema.rs`.
 | Record | Kind | Fields |
 |---|---|---|
 | `og.Transform` | component | `position: vec3`, `quaternion: quat`, `scale: vec3` (registered by schema, so the engine's own is adopted) |
-| `og.RigidBody` | component | `kind` (0 dynamic, 1 static, 2 kinematic), `mass` (0: from density), `linear_damping`, `angular_damping`, `gravity_scale`, `lock` (bits: translation x 1, y 2, z 4; rotation x 8, y 16, z 32), `ccd`, `center_of_mass` (moves the collider's centre of mass, entity frame, scaled; inertia kept) |
+| `og.RigidBody` | component | `kind` (0 dynamic, 1 static, 2 kinematic), `mass` (0: from density), `linear_damping`, `angular_damping`, `gravity_scale`, `lock` (bits: translation x 1, y 2, z 4; rotation x 8, y 16, z 32), `ccd`, `center_of_mass` (moves the collider's centre of mass, entity frame, scaled; inertia kept), `can_sleep`, `sleeping` (written; below) |
 | `og.Collider` | component | `shape` (0 box, 1 sphere, 2 capsule, 3 cylinder, 4 convex, 5 trimesh), `size`, `radius`, `height`, `mesh`, `offset`, `rotation`, `friction`, `restitution`, `density`, `sensor`, `layers`, `mask` |
 | `og.Velocity` | component | `linear`, `angular`; written for dynamic bodies; a kinematic body moves by it (below); set it to launch or stop a body |
-| `og.Physics` | resource | `profile`, `gravity`, `substeps` (1–16), `solver_iterations` (1–32), `rest_speed` |
+| `og.Physics` | resource | `profile`, `gravity`, `substeps` (1–16), `solver_iterations` (1–32), `rest_speed`, `sleep_ticks` (0: no sleep), `sleep_speed` |
 | `og.CollisionStarted` | event | `a`, `b` (entity ids, a < b), `point`, `normal` (from a to b) |
 | `og.CollisionEnded` | event | `a`, `b` |
 | `og.SensorEntered`, `og.SensorExited` | event | `sensor`, `other` |
+| `og.BodySlept`, `og.BodyWoke` | event | `entity`; in entity order (G2-3 sleep) |
 | `og.Contact` | event | `a`, `b`, `sensor` (bit 0: a is a sensor, bit 1: b); every touching pair, each tick |
 
 A collider without a `RigidBody` is static at its transform, unless its
@@ -127,7 +128,7 @@ a little-endian `u16` tag, `u32` length and bytes, tags ascending
 using none of it saves and hashes byte for byte as before
 (`tests/unchanged.rs` pins the beyond scenario's hashes from cb1d65bf), and
 a decoder skips a tag it does not know: a later extension adds a tag.
-Tags: 1 compounds.
+Tags: 1 compounds, 2 sleep (the rest counters).
 
 ## The step on the lanes
 
@@ -470,3 +471,20 @@ phases, `--bodies`, `--pairs` and `--rows` set those grains) and
 - Evidence of the crate: `tests/evidence/M6/physics-*` (the pile's hashes
   agree in debug and release, and the restore at tick 1800 ends in the
   uninterrupted run's world).
+
+### Sleep (G2-3)
+
+`src/sleep.rs`. With `og.Physics.sleep_ticks` above 0, a dynamic body
+slower than `sleep_speed` before and after each of that many steps in a
+row sleeps, but only with every dynamic body joined to it by a contact
+pair or a joint: a group sleeps whole. Rapier's own sleep stays off
+(`can_sleep(false)`); a body falling asleep is put to sleep with
+`RigidBody::sleep` at the pose the step left it (the rest rule's pose
+reset would be a change rapier wakes it for). Rapier leaves a sleeping
+body out of contact solving and wakes it only when a contact starts
+(`sim::sleep_path` tests that), so before and after every step each
+sleeping body linked to an awake dynamic or moving kinematic body is
+woken, to a fixpoint. The counters are by entity in trailer tag 2; the
+sleep flag is rapier's, in its saved world. `og.RigidBody.sleeping` is
+written back, and `og.BodySlept` / `og.BodyWoke` are sent in entity
+order. `same_body` keeps the two sleep fields out of the rebuild test.

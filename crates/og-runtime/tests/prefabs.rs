@@ -255,8 +255,10 @@ fn hashes_are_pinned_without_prefabs_and_stable_across_a_re_cook_with_them() {
 /// hand-written world's hash on main 67a07d57 (G2-2 and G2-5), before
 /// prefabs; a change on main that moves every world's hash moves it too
 /// (G2-5's og.AudioMix resource and audio records moved it from
-/// 0ccd86471f57151d).
-const BY_HAND_HASH: &str = "e5f1f831d77c7bc0";
+/// 0ccd86471f57151d; G2-3's sleep from e5f1f831d77c7bc0: og.RigidBody and
+/// og.Physics at version 2 with their new fields, og.BodySlept and
+/// og.BodyWoke registered, all in the type table every world hashes).
+const BY_HAND_HASH: &str = "88fa067dd437beb0";
 
 #[test]
 fn apply_back_and_revert_round_trip_in_the_text() {

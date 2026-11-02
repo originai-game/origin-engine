@@ -51,6 +51,8 @@ module physics {
 | [`og.CollisionEnded`](#record-CollisionEnded) | event | Two solid colliders stopped touching, or one of them went away. |
 | [`og.SensorEntered`](#record-SensorEntered) | event | A collider started overlapping a sensor. |
 | [`og.SensorExited`](#record-SensorExited) | event | A collider stopped overlapping a sensor, or one of them went away. |
+| [`og.BodySlept`](#record-BodySlept) | event | A body fell asleep during the tick (Physics.sleepTicks), with every dynamic body it touches; sent in entity order. Stop a rolling sound, settle a pile's debris. |
+| [`og.BodyWoke`](#record-BodyWoke) | event | A sleeping body woke during the tick: something touched, pushed or moved it, game code wrote to it, or sleep was turned off; sent in entity order. |
 | [`og.Contact`](#record-Contact) | event | One pair in contact at the end of a step, sent every tick for every touching pair: how a game asks what is touching what right now. |
 | [`JOINT_FIXED`](#const-JOINT_FIXED) | constant | `Joint.kind`: the two bodies move as one. |
 | [`JOINT_REVOLUTE`](#const-JOINT_REVOLUTE) | constant | `Joint.kind`: a hinge about `axis` (2D: about z), with optional limits and a motor. |
@@ -155,7 +157,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 8600</sub>
+<sub>`api.ogt` line 8626</sub>
 
 <a id="fn-raycastAll"></a>
 
@@ -185,7 +187,7 @@ fn raycastAll {
 }
 ```
 
-<sub>`api.ogt` line 8607</sub>
+<sub>`api.ogt` line 8633</sub>
 
 <a id="fn-projectPoint"></a>
 
@@ -215,7 +217,7 @@ fn projectPoint {
 }
 ```
 
-<sub>`api.ogt` line 8614</sub>
+<sub>`api.ogt` line 8640</sub>
 
 <a id="fn-shapeCast"></a>
 
@@ -245,7 +247,7 @@ fn shapeCast {
 }
 ```
 
-<sub>`api.ogt` line 8621</sub>
+<sub>`api.ogt` line 8647</sub>
 
 <a id="fn-overlap"></a>
 
@@ -275,7 +277,7 @@ fn overlap {
 }
 ```
 
-<sub>`api.ogt` line 8628</sub>
+<sub>`api.ogt` line 8654</sub>
 
 <a id="fn-applyForce"></a>
 
@@ -311,7 +313,7 @@ fn applyForce {
 }
 ```
 
-<sub>`api.ogt` line 8635</sub>
+<sub>`api.ogt` line 8661</sub>
 
 <a id="fn-applyImpulse"></a>
 
@@ -347,7 +349,7 @@ fn applyImpulse {
 }
 ```
 
-<sub>`api.ogt` line 8646</sub>
+<sub>`api.ogt` line 8672</sub>
 
 <a id="fn-applyTorque"></a>
 
@@ -379,7 +381,7 @@ fn applyTorque {
 }
 ```
 
-<sub>`api.ogt` line 8657</sub>
+<sub>`api.ogt` line 8683</sub>
 
 <a id="fn-applyTorqueImpulse"></a>
 
@@ -411,7 +413,7 @@ fn applyTorqueImpulse {
 }
 ```
 
-<sub>`api.ogt` line 8665</sub>
+<sub>`api.ogt` line 8691</sub>
 
 <a id="fn-setMesh"></a>
 
@@ -443,7 +445,7 @@ fn setMesh {
 }
 ```
 
-<sub>`api.ogt` line 8673</sub>
+<sub>`api.ogt` line 8699</sub>
 
 <a id="fn-ropePoints"></a>
 
@@ -473,7 +475,7 @@ fn ropePoints {
 }
 ```
 
-<sub>`api.ogt` line 8734</sub>
+<sub>`api.ogt` line 8760</sub>
 
 <a id="fn-clothPoints"></a>
 
@@ -503,7 +505,7 @@ fn clothPoints {
 }
 ```
 
-<sub>`api.ogt` line 8741</sub>
+<sub>`api.ogt` line 8767</sub>
 
 <a id="fn-fluidParticles"></a>
 
@@ -533,7 +535,7 @@ fn fluidParticles {
 }
 ```
 
-<sub>`api.ogt` line 8748</sub>
+<sub>`api.ogt` line 8774</sub>
 
 <a id="fn-fluid3dParticles"></a>
 
@@ -563,7 +565,7 @@ fn fluid3dParticles {
 }
 ```
 
-<sub>`api.ogt` line 8755</sub>
+<sub>`api.ogt` line 8781</sub>
 
 <a id="fn-waterHeight"></a>
 
@@ -597,7 +599,7 @@ fn waterHeight {
 }
 ```
 
-<sub>`api.ogt` line 8762</sub>
+<sub>`api.ogt` line 8788</sub>
 
 <a id="fn-vehicleWheels"></a>
 
@@ -627,7 +629,7 @@ fn vehicleWheels {
 }
 ```
 
-<sub>`api.ogt` line 8771</sub>
+<sub>`api.ogt` line 8797</sub>
 
 <a id="fn-ragdollRigFromSkeleton"></a>
 
@@ -657,7 +659,7 @@ fn ragdollRigFromSkeleton {
 }
 ```
 
-<sub>`api.ogt` line 8778</sub>
+<sub>`api.ogt` line 8804</sub>
 
 <a id="fn-setRagdollRig"></a>
 
@@ -689,7 +691,7 @@ fn setRagdollRig {
 }
 ```
 
-<sub>`api.ogt` line 8785</sub>
+<sub>`api.ogt` line 8811</sub>
 
 <a id="fn-ragdollPose"></a>
 
@@ -719,7 +721,7 @@ fn ragdollPose {
 }
 ```
 
-<sub>`api.ogt` line 8793</sub>
+<sub>`api.ogt` line 8819</sub>
 
 <a id="fn-stats"></a>
 
@@ -747,7 +749,7 @@ fn stats {
 }
 ```
 
-<sub>`api.ogt` line 8821</sub>
+<sub>`api.ogt` line 8847</sub>
 
 ## Components, resources and events
 
@@ -771,6 +773,8 @@ Token `og.RigidBody`, registered under the schema name `og.RigidBody`; its value
 | `lock` | `number` | `0` | 0 … 63 | — | — | Locked axes, a sum of the LOCK_* bits: 1, 2, 4 no translation along x, y, z; 8, 16, 32 no rotation about x, y, z (2D uses 1, 2 and 32). |
 | `ccd` | `number` | `0` | 0 … 1 | — | — | 1 enables continuous collision detection, for fast small bodies that must not tunnel; 0 off. |
 | `centerOfMass` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | tunable | Moves the centre of mass from where the collider puts it (its shape's centre), in the entity's own frame and scaled by og.Transform.scale like Collider.offset; the inertia stays the shape's. A car's lowered below its wheel mounts keeps it on its wheels at full lock; a weight at a toy's base rights it. Needs an og.Collider. |
+| `canSleep` | `boolean` | `true` | — | — | — | Whether the body may sleep when Physics.sleepTicks is set. A body sleeps only with every dynamic body it touches, so false keeps it and what touches it awake (a player's ball, a body game code moves every tick). |
+| `sleeping` | `boolean` | `false` | — | — | — | Written: true while the body sleeps (Physics.sleepTicks). Write false to wake it; physics then writes it back as the body is. |
 
 ```ogt
 component RigidBody {
@@ -816,6 +820,10 @@ component RigidBody {
     unit m
     tunable true
   }
+  field canSleep bool "Whether the body may sleep when Physics.sleepTicks is set. A body sleeps only with every dynamic body it touches, so false keeps it and what touches it awake (a player's ball, a body game code moves every tick)." {
+    default true
+  }
+  field sleeping bool "Written: true while the body sleeps (Physics.sleepTicks). Write false to wake it; physics then writes it back as the body is."
 }
 ```
 
@@ -909,7 +917,7 @@ component Collider {
 }
 ```
 
-<sub>`api.ogt` line 7286</sub>
+<sub>`api.ogt` line 7290</sub>
 
 <a id="record-Velocity"></a>
 
@@ -938,7 +946,7 @@ component Velocity {
 }
 ```
 
-<sub>`api.ogt` line 7346</sub>
+<sub>`api.ogt` line 7350</sub>
 
 <a id="record-Physics"></a>
 
@@ -955,6 +963,8 @@ Token `og.Physics`, registered under the schema name `og.Physics`; its value typ
 | `substeps` | `number` | `1` | 1 … 16 | — | tunable | Physics steps per tick, each of dt / substeps: more is stiffer stacks and less tunnelling, at more cost. |
 | `solverIterations` | `number` | `4` | 1 … 32 | — | tunable | Solver iterations per step. |
 | `restSpeed` | `number` | `0.02` | 0 … 1 | `mps` | tunable | A dynamic body touching something, supported with at most 2 mm of overlap and slower than this before and after a step, keeps its pose and loses its residual velocity (the same number in m/s and rad/s); 0 disables it. |
+| `sleepTicks` | `number` | `0` | 0 … 3600 | — | tunable | Ticks in a row a dynamic body must stay slower than sleepSpeed before it sleeps, together with every dynamic body it touches (contacts and joints, transitively): a settled pile sleeps whole and costs nothing until something wakes it (a body landing on it, a push, a joint, a moving kinematic body, a write to its Transform, Velocity, RigidBody or Collider, its support going away). BodySlept and BodyWoke report it. Deterministic: counted in ticks, saved with the world. 0, the default, never sleeps; new projects use about 30. |
+| `sleepSpeed` | `number` | `0.1` | 0 … 10 | `mps` | tunable | The speed under which a body counts towards sleepTicks, before and after each step (the same number in m/s and rad/s). |
 
 ```ogt
 resource Physics {
@@ -989,10 +999,22 @@ resource Physics {
     unit mps
     tunable true
   }
+  field sleepTicks u32 "Ticks in a row a dynamic body must stay slower than sleepSpeed before it sleeps, together with every dynamic body it touches (contacts and joints, transitively): a settled pile sleeps whole and costs nothing until something wakes it (a body landing on it, a push, a joint, a moving kinematic body, a write to its Transform, Velocity, RigidBody or Collider, its support going away). BodySlept and BodyWoke report it. Deterministic: counted in ticks, saved with the world. 0, the default, never sleeps; new projects use about 30." {
+    min 0
+    max 3600
+    tunable true
+  }
+  field sleepSpeed f32 "The speed under which a body counts towards sleepTicks, before and after each step (the same number in m/s and rad/s)." {
+    default 0.1
+    min 0
+    max 10
+    unit mps
+    tunable true
+  }
 }
 ```
 
-<sub>`api.ogt` line 7358</sub>
+<sub>`api.ogt` line 7362</sub>
 
 <a id="record-CollisionStarted"></a>
 
@@ -1030,7 +1052,7 @@ event CollisionStarted {
 }
 ```
 
-<sub>`api.ogt` line 7392</sub>
+<sub>`api.ogt` line 7408</sub>
 
 <a id="record-CollisionEnded"></a>
 
@@ -1053,7 +1075,7 @@ event CollisionEnded {
 }
 ```
 
-<sub>`api.ogt` line 7409</sub>
+<sub>`api.ogt` line 7425</sub>
 
 <a id="record-SensorEntered"></a>
 
@@ -1076,7 +1098,7 @@ event SensorEntered {
 }
 ```
 
-<sub>`api.ogt` line 7415</sub>
+<sub>`api.ogt` line 7431</sub>
 
 <a id="record-SensorExited"></a>
 
@@ -1099,7 +1121,49 @@ event SensorExited {
 }
 ```
 
-<sub>`api.ogt` line 7421</sub>
+<sub>`api.ogt` line 7437</sub>
+
+<a id="record-BodySlept"></a>
+
+### `og.BodySlept` (event)
+
+A body fell asleep during the tick (Physics.sleepTicks), with every dynamic body it touches; sent in entity order. Stop a rolling sound, settle a pile's debris.
+
+Token `og.BodySlept`, registered under the schema name `og.BodySlept`; its value type is `BodySlept`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `entity` | `Entity` | `0` | — | — | — | The body's entity. |
+
+```ogt
+event BodySlept {
+  doc "A body fell asleep during the tick (Physics.sleepTicks), with every dynamic body it touches; sent in entity order. Stop a rolling sound, settle a pile's debris."
+  field entity Entity "The body's entity."
+}
+```
+
+<sub>`api.ogt` line 7443</sub>
+
+<a id="record-BodyWoke"></a>
+
+### `og.BodyWoke` (event)
+
+A sleeping body woke during the tick: something touched, pushed or moved it, game code wrote to it, or sleep was turned off; sent in entity order.
+
+Token `og.BodyWoke`, registered under the schema name `og.BodyWoke`; its value type is `BodyWoke`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `entity` | `Entity` | `0` | — | — | — | The body's entity. |
+
+```ogt
+event BodyWoke {
+  doc "A sleeping body woke during the tick: something touched, pushed or moved it, game code wrote to it, or sleep was turned off; sent in entity order."
+  field entity Entity "The body's entity."
+}
+```
+
+<sub>`api.ogt` line 7448</sub>
 
 <a id="record-Contact"></a>
 
@@ -1124,7 +1188,7 @@ event Contact {
 }
 ```
 
-<sub>`api.ogt` line 7427</sub>
+<sub>`api.ogt` line 7453</sub>
 
 <a id="record-Joint"></a>
 
@@ -1229,7 +1293,7 @@ component Joint {
 }
 ```
 
-<sub>`api.ogt` line 7444</sub>
+<sub>`api.ogt` line 7470</sub>
 
 <a id="record-CharacterController"></a>
 
@@ -1350,7 +1414,7 @@ component CharacterController {
 }
 ```
 
-<sub>`api.ogt` line 7514</sub>
+<sub>`api.ogt` line 7540</sub>
 
 <a id="record-PlatformerController"></a>
 
@@ -1602,7 +1666,7 @@ component PlatformerController {
 }
 ```
 
-<sub>`api.ogt` line 7601</sub>
+<sub>`api.ogt` line 7627</sub>
 
 <a id="record-CharacterEvent"></a>
 
@@ -1632,7 +1696,7 @@ event CharacterEvent {
 }
 ```
 
-<sub>`api.ogt` line 7803</sub>
+<sub>`api.ogt` line 7829</sub>
 
 <a id="record-Vehicle"></a>
 
@@ -1791,7 +1855,7 @@ component Vehicle {
 }
 ```
 
-<sub>`api.ogt` line 7819</sub>
+<sub>`api.ogt` line 7845</sub>
 
 <a id="record-Rope"></a>
 
@@ -1880,7 +1944,7 @@ component Rope {
 }
 ```
 
-<sub>`api.ogt` line 7937</sub>
+<sub>`api.ogt` line 7963</sub>
 
 <a id="record-Cloth"></a>
 
@@ -1986,7 +2050,7 @@ component Cloth {
 }
 ```
 
-<sub>`api.ogt` line 8003</sub>
+<sub>`api.ogt` line 8029</sub>
 
 <a id="record-Fluid2D"></a>
 
@@ -2110,7 +2174,7 @@ component Fluid2D {
 }
 ```
 
-<sub>`api.ogt` line 8079</sub>
+<sub>`api.ogt` line 8105</sub>
 
 <a id="record-Fluid3D"></a>
 
@@ -2279,7 +2343,7 @@ component Fluid3D {
 }
 ```
 
-<sub>`api.ogt` line 8168</sub>
+<sub>`api.ogt` line 8194</sub>
 
 <a id="record-WaterSurface"></a>
 
@@ -2344,7 +2408,7 @@ component WaterSurface {
 }
 ```
 
-<sub>`api.ogt` line 8294</sub>
+<sub>`api.ogt` line 8320</sub>
 
 <a id="record-WaterLine"></a>
 
@@ -2421,7 +2485,7 @@ component WaterLine {
 }
 ```
 
-<sub>`api.ogt` line 8337</sub>
+<sub>`api.ogt` line 8363</sub>
 
 <a id="record-Splash"></a>
 
@@ -2452,7 +2516,7 @@ event Splash {
 }
 ```
 
-<sub>`api.ogt` line 8390</sub>
+<sub>`api.ogt` line 8416</sub>
 
 <a id="record-Ragdoll"></a>
 
@@ -2520,7 +2584,7 @@ component Ragdoll {
 }
 ```
 
-<sub>`api.ogt` line 8402</sub>
+<sub>`api.ogt` line 8428</sub>
 
 ## Types
 
@@ -2548,7 +2612,7 @@ struct QueryFilter {
 }
 ```
 
-<sub>`api.ogt` line 8447</sub>
+<sub>`api.ogt` line 8473</sub>
 
 <a id="type-RaycastDesc"></a>
 
@@ -2583,7 +2647,7 @@ struct RaycastDesc {
 }
 ```
 
-<sub>`api.ogt` line 8455</sub>
+<sub>`api.ogt` line 8481</sub>
 
 <a id="type-RaycastHit"></a>
 
@@ -2612,7 +2676,7 @@ struct RaycastHit {
 }
 ```
 
-<sub>`api.ogt` line 8471</sub>
+<sub>`api.ogt` line 8497</sub>
 
 <a id="type-RaycastAllDesc"></a>
 
@@ -2652,7 +2716,7 @@ struct RaycastAllDesc {
 }
 ```
 
-<sub>`api.ogt` line 8482</sub>
+<sub>`api.ogt` line 8508</sub>
 
 <a id="type-ProjectPointDesc"></a>
 
@@ -2687,7 +2751,7 @@ struct ProjectPointDesc {
 }
 ```
 
-<sub>`api.ogt` line 8502</sub>
+<sub>`api.ogt` line 8528</sub>
 
 <a id="type-PointProjection"></a>
 
@@ -2720,7 +2784,7 @@ struct PointProjection {
 }
 ```
 
-<sub>`api.ogt` line 8518</sub>
+<sub>`api.ogt` line 8544</sub>
 
 <a id="type-ShapeDesc"></a>
 
@@ -2762,7 +2826,7 @@ struct ShapeDesc {
 }
 ```
 
-<sub>`api.ogt` line 8532</sub>
+<sub>`api.ogt` line 8558</sub>
 
 <a id="type-ShapeCastDesc"></a>
 
@@ -2801,7 +2865,7 @@ struct ShapeCastDesc {
 }
 ```
 
-<sub>`api.ogt` line 8554</sub>
+<sub>`api.ogt` line 8580</sub>
 
 <a id="type-ShapeCastHit"></a>
 
@@ -2828,7 +2892,7 @@ struct ShapeCastHit {
 }
 ```
 
-<sub>`api.ogt` line 8572</sub>
+<sub>`api.ogt` line 8598</sub>
 
 <a id="type-OverlapDesc"></a>
 
@@ -2858,7 +2922,7 @@ struct OverlapDesc {
 }
 ```
 
-<sub>`api.ogt` line 8582</sub>
+<sub>`api.ogt` line 8608</sub>
 
 <a id="type-MeshDesc"></a>
 
@@ -2882,7 +2946,7 @@ struct MeshDesc {
 }
 ```
 
-<sub>`api.ogt` line 8593</sub>
+<sub>`api.ogt` line 8619</sub>
 
 <a id="type-WheelPose"></a>
 
@@ -2916,7 +2980,7 @@ struct WheelPose {
 }
 ```
 
-<sub>`api.ogt` line 8681</sub>
+<sub>`api.ogt` line 8707</sub>
 
 <a id="type-RagdollBoneDesc"></a>
 
@@ -2959,7 +3023,7 @@ struct RagdollBoneDesc {
 }
 ```
 
-<sub>`api.ogt` line 8697</sub>
+<sub>`api.ogt` line 8723</sub>
 
 <a id="type-RagdollRigDesc"></a>
 
@@ -2983,7 +3047,7 @@ struct RagdollRigDesc {
 }
 ```
 
-<sub>`api.ogt` line 8719</sub>
+<sub>`api.ogt` line 8745</sub>
 
 <a id="type-BonePose"></a>
 
@@ -3006,7 +3070,7 @@ struct BonePose {
 }
 ```
 
-<sub>`api.ogt` line 8726</sub>
+<sub>`api.ogt` line 8752</sub>
 
 <a id="type-PhysicsPhase"></a>
 
@@ -3031,7 +3095,7 @@ struct PhysicsPhase {
 }
 ```
 
-<sub>`api.ogt` line 8800</sub>
+<sub>`api.ogt` line 8826</sub>
 
 <a id="type-PhysicsStats"></a>
 
@@ -3062,7 +3126,7 @@ struct PhysicsStats {
 }
 ```
 
-<sub>`api.ogt` line 8809</sub>
+<sub>`api.ogt` line 8835</sub>
 
 ## Constants
 
@@ -3228,130 +3292,130 @@ const PROFILE_3D u32 3 "Physics.profile: rapier3d."
 const JOINT_FIXED u32 0 "`Joint.kind`: the two bodies move as one."
 ```
 
-<sub>`api.ogt` line 7434</sub>
+<sub>`api.ogt` line 7460</sub>
 
 ```ogt
 const JOINT_REVOLUTE u32 1 "`Joint.kind`: a hinge about `axis` (2D: about z), with optional limits and a motor."
 ```
 
-<sub>`api.ogt` line 7435</sub>
+<sub>`api.ogt` line 7461</sub>
 
 ```ogt
 const JOINT_PRISMATIC u32 2 "`Joint.kind`: a slider along `axis`, with optional limits and a motor."
 ```
 
-<sub>`api.ogt` line 7436</sub>
+<sub>`api.ogt` line 7462</sub>
 
 ```ogt
 const JOINT_SPRING u32 3 "`Joint.kind`: a damped spring pulling the anchors to `restLength` apart."
 ```
 
-<sub>`api.ogt` line 7437</sub>
+<sub>`api.ogt` line 7463</sub>
 
 ```ogt
 const JOINT_ROPE u32 4 "`Joint.kind`: a rope: the anchors stay at most `length` apart, free inside it."
 ```
 
-<sub>`api.ogt` line 7438</sub>
+<sub>`api.ogt` line 7464</sub>
 
 ```ogt
 const JOINT_BALL u32 5 "`Joint.kind`: a ball and socket (3D; the 2D profile treats it as a hinge)."
 ```
 
-<sub>`api.ogt` line 7439</sub>
+<sub>`api.ogt` line 7465</sub>
 
 ```ogt
 const MOTOR_NONE u32 0 "`Joint.motor`: no motor."
 ```
 
-<sub>`api.ogt` line 7440</sub>
+<sub>`api.ogt` line 7466</sub>
 
 ```ogt
 const MOTOR_VELOCITY u32 1 "`Joint.motor`: drive towards `motorTarget` speed (rad/s or m/s)."
 ```
 
-<sub>`api.ogt` line 7441</sub>
+<sub>`api.ogt` line 7467</sub>
 
 ```ogt
 const MOTOR_POSITION u32 2 "`Joint.motor`: spring towards `motorTarget` angle or position (a servo)."
 ```
 
-<sub>`api.ogt` line 7442</sub>
+<sub>`api.ogt` line 7468</sub>
 
 ```ogt
 const CHARACTER_JUMPED u32 1 "`CharacterEvent.kind`: a jump from the ground (or in coyote time)."
 ```
 
-<sub>`api.ogt` line 7796</sub>
+<sub>`api.ogt` line 7822</sub>
 
 ```ogt
 const CHARACTER_LANDED u32 2 "`CharacterEvent.kind`: touched the ground after being in the air."
 ```
 
-<sub>`api.ogt` line 7797</sub>
+<sub>`api.ogt` line 7823</sub>
 
 ```ogt
 const CHARACTER_WALL_JUMPED u32 3 "`CharacterEvent.kind`: a jump off a wall."
 ```
 
-<sub>`api.ogt` line 7798</sub>
+<sub>`api.ogt` line 7824</sub>
 
 ```ogt
 const CHARACTER_AIR_JUMPED u32 4 "`CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps)."
 ```
 
-<sub>`api.ogt` line 7799</sub>
+<sub>`api.ogt` line 7825</sub>
 
 ```ogt
 const CHARACTER_LEFT_GROUND u32 5 "`CharacterEvent.kind`: left the ground without jumping (ran off an edge)."
 ```
 
-<sub>`api.ogt` line 7800</sub>
+<sub>`api.ogt` line 7826</sub>
 
 ```ogt
 const CHARACTER_BUMPED u32 6 "`CharacterEvent.kind`: hit a ceiling while rising."
 ```
 
-<sub>`api.ogt` line 7801</sub>
+<sub>`api.ogt` line 7827</sub>
 
 ```ogt
 const DRIVE_REAR u32 0 "`Vehicle.drive`: the rear wheels drive."
 ```
 
-<sub>`api.ogt` line 7815</sub>
+<sub>`api.ogt` line 7841</sub>
 
 ```ogt
 const DRIVE_FRONT u32 1 "`Vehicle.drive`: the front wheels drive."
 ```
 
-<sub>`api.ogt` line 7816</sub>
+<sub>`api.ogt` line 7842</sub>
 
 ```ogt
 const DRIVE_ALL u32 2 "`Vehicle.drive`: every wheel drives."
 ```
 
-<sub>`api.ogt` line 7817</sub>
+<sub>`api.ogt` line 7843</sub>
 
 ```ogt
 const PIN_TOP u32 1 "`Cloth.pins` bit: the whole top row is pinned."
 ```
 
-<sub>`api.ogt` line 7998</sub>
+<sub>`api.ogt` line 8024</sub>
 
 ```ogt
 const PIN_TOP_CORNERS u32 2 "`Cloth.pins` bit: the top-left and top-right corners are pinned."
 ```
 
-<sub>`api.ogt` line 7999</sub>
+<sub>`api.ogt` line 8025</sub>
 
 ```ogt
 const PIN_LEFT u32 4 "`Cloth.pins` bit: the whole left column is pinned (a flag on a pole)."
 ```
 
-<sub>`api.ogt` line 8000</sub>
+<sub>`api.ogt` line 8026</sub>
 
 ```ogt
 const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
 ```
 
-<sub>`api.ogt` line 8001</sub>
+<sub>`api.ogt` line 8027</sub>

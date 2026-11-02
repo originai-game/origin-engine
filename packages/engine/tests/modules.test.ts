@@ -103,6 +103,36 @@ test("a compound of child colliders is one body, and raycastAll and projectPoint
   expect(must(og.physics.projectPoint(w, { point: { x: 6, y: 3, z: 0 }, maxDistance: 1 }))).toBeNull();
 });
 
+const Slept = defineResource("MdSlept", { slept: u32(), woke: u32() });
+const WatchSleep = defineSystem("MdWatchSleep", { reads: [og.BodySlept, og.BodyWoke], writes: [Slept] }, (_q, _t, world) => {
+  const seen = must(world.resource(Slept));
+  seen.slept += world.events(og.BodySlept).length;
+  seen.woke += world.events(og.BodyWoke).length;
+});
+
+test("with sleepTicks a resting box sleeps, says so, and wakes when pushed", () => {
+  const engine = start(
+    og.game({
+      resources: [Slept],
+      systems: [WatchSleep],
+      start: (world: World) => {
+        must(world.resource(og.Physics)).sleepTicks = 30;
+        floorAndBox(world);
+      },
+    }),
+  );
+  expect(engine.advance(240).ok).toBeTrue();
+  const w = engine.world;
+  const box = w.find("box")!;
+  expect(must(w.get(box, og.RigidBody)).sleeping).toBeTrue();
+  expect(must(w.resource(Slept))).toMatchObject({ slept: 1, woke: 0 });
+  must(og.physics.applyImpulse(w, box, { x: 2, y: 0, z: 0 }));
+  expect(engine.advance(3).ok).toBeTrue();
+  expect(must(w.get(box, og.RigidBody)).sleeping).toBeFalse();
+  expect(must(w.resource(Slept)).woke).toBe(1);
+  expect(must(w.get(box, og.Transform)).position.x).toBeGreaterThan(0.01);
+});
+
 test("a restored snapshot continues the simulation exactly", () => {
   const engine = start(og.game({ resources: [Seen], systems: [Watch], start: floorAndBox }));
   engine.advance(20);

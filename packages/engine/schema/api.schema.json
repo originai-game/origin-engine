@@ -6458,6 +6458,8 @@
         "CollisionEnded",
         "SensorEntered",
         "SensorExited",
+        "BodySlept",
+        "BodyWoke",
         "Contact",
         "Joint",
         "CharacterController",
@@ -28615,6 +28617,16 @@
           },
           "x-og-unit": "m",
           "x-og-tunable": true
+        },
+        "canSleep": {
+          "type": "boolean",
+          "description": "Whether the body may sleep when Physics.sleepTicks is set. A body sleeps only with every dynamic body it touches, so false keeps it and what touches it awake (a player's ball, a body game code moves every tick).",
+          "default": true
+        },
+        "sleeping": {
+          "type": "boolean",
+          "description": "Written: true while the body sleeps (Physics.sleepTicks). Write false to wake it; physics then writes it back as the body is.",
+          "default": false
         }
       },
       "additionalProperties": false
@@ -28824,6 +28836,25 @@
           "maximum": 1,
           "x-og-unit": "mps",
           "x-og-tunable": true
+        },
+        "sleepTicks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Ticks in a row a dynamic body must stay slower than sleepSpeed before it sleeps, together with every dynamic body it touches (contacts and joints, transitively): a settled pile sleeps whole and costs nothing until something wakes it (a body landing on it, a push, a joint, a moving kinematic body, a write to its Transform, Velocity, RigidBody or Collider, its support going away). BodySlept and BodyWoke report it. Deterministic: counted in ticks, saved with the world. 0, the default, never sleeps; new projects use about 30.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 3600,
+          "x-og-tunable": true
+        },
+        "sleepSpeed": {
+          "type": "number",
+          "description": "The speed under which a body counts towards sleepTicks, before and after each step (the same number in m/s and rad/s).",
+          "default": 0.1,
+          "minimum": 0,
+          "maximum": 10,
+          "x-og-unit": "mps",
+          "x-og-tunable": true
         }
       },
       "additionalProperties": false
@@ -28933,6 +28964,38 @@
       "required": [
         "sensor",
         "other"
+      ],
+      "additionalProperties": false
+    },
+    "BodySlept": {
+      "x-og-kind": "event",
+      "x-og-module": "physics",
+      "description": "A body fell asleep during the tick (Physics.sleepTicks), with every dynamic body it touches; sent in entity order. Stop a rolling sound, settle a pile's debris.",
+      "type": "object",
+      "properties": {
+        "entity": {
+          "$ref": "#/$defs/Entity",
+          "description": "The body's entity."
+        }
+      },
+      "required": [
+        "entity"
+      ],
+      "additionalProperties": false
+    },
+    "BodyWoke": {
+      "x-og-kind": "event",
+      "x-og-module": "physics",
+      "description": "A sleeping body woke during the tick: something touched, pushed or moved it, game code wrote to it, or sleep was turned off; sent in entity order.",
+      "type": "object",
+      "properties": {
+        "entity": {
+          "$ref": "#/$defs/Entity",
+          "description": "The body's entity."
+        }
+      },
+      "required": [
+        "entity"
       ],
       "additionalProperties": false
     },

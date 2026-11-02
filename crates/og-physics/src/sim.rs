@@ -23,6 +23,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
+#[path = "sleep.rs"]
+mod sleep;
+
 fn invalid(what: &str, value: f32) -> Error {
     Error::new(
         ErrorKind::Invalid,
@@ -277,10 +280,14 @@ impl TrackedChild {
 pub(crate) struct SimExt {
     /// Each compound body's child colliders, by body entity, as built.
     pub(crate) compounds: IdMap<u64, Vec<TrackedChild>>,
+    /// The ticks each awake dynamic body has rested in a row, by entity,
+    /// while sleep is on ([`sleep`]); none at 0.
+    pub(crate) still: IdMap<u64, u32>,
 }
 
 /// Extension section tags of the og.physics block.
 pub(crate) const EXT_COMPOUNDS: u16 = 1;
+pub(crate) const EXT_SLEEP: u16 = 2;
 
 impl SimExt {
     /// Its sections, each `(tag, bytes)`; none for what is empty.
@@ -291,6 +298,12 @@ impl SimExt {
             let list: Vec<(&u64, &Vec<TrackedChild>)> = self.compounds.iter().collect();
             crate::encode(&mut bytes, &list).expect("compounds serialize into memory");
             out.push((EXT_COMPOUNDS, bytes));
+        }
+        if !self.still.is_empty() {
+            let mut bytes = Vec::new();
+            let list: Vec<(&u64, &u32)> = self.still.iter().collect();
+            crate::encode(&mut bytes, &list).expect("rest counts serialize into memory");
+            out.push((EXT_SLEEP, bytes));
         }
         out
     }
@@ -311,6 +324,9 @@ impl SimExt {
                 let list: Vec<(u64, Vec<TrackedChild>)> =
                     crate::codec().deserialize(bytes).map_err(parse)?;
                 ext.compounds = list.into_iter().collect();
+            } else if tag == EXT_SLEEP {
+                let list: Vec<(u64, u32)> = crate::codec().deserialize(bytes).map_err(parse)?;
+                ext.still = list.into_iter().collect();
             }
         }
         Ok(ext)
@@ -658,6 +674,7 @@ fn step_here(
     // Poses before this tick moved anything (game code teleporting
     // kinematic platforms included): how far each body moved this tick.
     let poses = BodyPoses::record(&sim.world);
+    let asleep = sleep::asleep(sim);
     let handles = sync(settings, dt, scene, shared, sim)?;
     let pushes = std::mem::take(&mut shared.pushes);
     apply_pushes(sim, &handles, &pushes, dt);
@@ -669,6 +686,7 @@ fn step_here(
     laps.lap(Phase::Ragdolls);
     ext::water(scene, settings, dt, sim, &handles, &mut out)?;
     laps.lap(Phase::Water);
+    let sleeping = sleep::before_step(settings, scene, sim, &handles);
     let pre = rest_poses(scene, sim, &handles);
     laps.lap(Phase::Readout);
 
@@ -693,9 +711,11 @@ fn step_here(
         motions: &motions,
         carried: &carried,
     };
-    let (touching, moved) = after_step(settings, scene, sim, &handles, pre, &hits, split);
+    let (touching, moved) =
+        after_step(settings, scene, sim, &handles, pre, &sleeping, &hits, split);
     out.touching = touching;
     out.moved = moved;
+    out.sleep = sleep::report(scene, &sim.world, &handles, &asleep);
     laps.lap(Phase::Readout);
     ext::characters(scene, settings, dt, sim, &poses, &mut out)?;
     super::platformers(scene, settings, dt, sim, &poses, &mut out)?;
@@ -808,6 +828,18 @@ fn same_children(b: &Body, built: Option<&Vec<TrackedChild>>) -> bool {
     }
 }
 
+/// Whether two og.RigidBody values build the same rapier body: sleep's
+/// fields (`canSleep`, `sleeping`) change none of it, and a save does not
+/// keep them in [`Tracked`].
+fn same_body(a: &RigidBody, b: &RigidBody) -> bool {
+    let shape = |x: &RigidBody| RigidBody {
+        can_sleep: true,
+        sleeping: false,
+        ..*x
+    };
+    shape(a) == shape(b)
+}
+
 fn plan(
     b: &Body,
     tracked: &IdMap<u64, Tracked>,
@@ -821,7 +853,7 @@ fn plan(
     let key = b.entity.to_bits();
     match tracked.get(&key) {
         Some(t)
-            if t.body == b.body
+            if same_body(&t.body, &b.body)
                 && t.collider == b.collider
                 && t.scale == b.scale
                 && !b.collider.as_ref().is_some_and(stale_mesh)
@@ -1023,25 +1055,32 @@ enum Rest {
     /// step, its velocity dropped.
     Still(rp::Pose),
     Moving,
+    /// Asleep through the step: rapier left it where it was.
+    Asleep,
 }
 
 /// One body read back after the step (by ranges of bodies on the lanes):
-/// its component values and, for a dynamic body, what the rest rule does.
+/// what the rest rule does to a dynamic one, whether it was slower than
+/// og.Physics.sleepSpeed before and after the step, its component values
+/// and its [`Tracked`].
 type Read = (
     Option<Rest>,
+    bool,
     Option<(Vec3, Quat, Option<Velocity>)>,
     Tracked,
 );
 
-/// The touching pairs and the rest rule after the step: what each dynamic
-/// body's component values become.
-#[allow(clippy::type_complexity)]
+/// The touching pairs, the rest rule and sleep after the step: what each
+/// dynamic body's component values become. `sleeping` is, per scene body,
+/// whether it slept through the step (empty: none did).
+#[allow(clippy::type_complexity, clippy::too_many_arguments)]
 fn after_step(
     settings: &Physics,
     scene: &Scene,
     sim: &mut Sim,
     handles: &Handles<'_>,
     before: Vec<rp::Pose>,
+    sleeping: &[bool],
     hits: &Hits<'_>,
     split: bool,
 ) -> (
@@ -1051,6 +1090,7 @@ fn after_step(
     let Sim {
         world: w,
         bodies: tracked,
+        ext,
         ..
     } = sim;
     let grains = crate::lanes::now();
@@ -1151,7 +1191,7 @@ fn after_step(
     // Each body read back by ranges of bodies on the lanes (rapier's
     // bodies read only), the rest rule decided there; then, in body order,
     // the resting bodies stilled in rapier and the tracked values kept.
-    let rest = settings.rest_speed;
+    let (rest, calm) = (settings.rest_speed, settings.sleep_speed);
     let firsts: Vec<usize> = {
         let mut k = 0;
         scene
@@ -1167,18 +1207,33 @@ fn after_step(
     let read: Vec<Read> = {
         let (bodies, deepest, before, firsts) = (&w.bodies, &deepest, &before, &firsts);
         by_bodies(scene.bodies.len(), |r| {
+            let start = r.start;
             scene.bodies[r.clone()]
                 .iter()
                 .zip(&handles.by_body[r.clone()])
                 .zip(&firsts[r])
-                .map(|((b, &h), &k)| read_body(b, h, bodies, deepest, before.get(k), rest))
+                .enumerate()
+                .map(|(i, ((b, &h), &k))| {
+                    let asleep = sleeping.get(start + i).copied().unwrap_or(false);
+                    read_body(b, h, bodies, deepest, before.get(k), (rest, calm), asleep)
+                })
                 .collect()
         })
     };
+    let calm: Vec<bool> = read.iter().map(|r| r.1).collect();
+    let falling_asleep = sleep::decide(settings, scene, w, &mut ext.still, handles, &calm);
     let mut moved = Vec::with_capacity(scene.bodies.len());
     let mut kept = Vec::with_capacity(scene.bodies.len());
-    for (&h, (rest, out, t)) in handles.by_body.iter().zip(read) {
-        if let Some(rest) = rest {
+    for (k, (&h, (rest, _, mut out, mut t))) in handles.by_body.iter().zip(read).enumerate() {
+        if falling_asleep[k] {
+            // Where the step left it, as rapier keeps it asleep.
+            let rb = &mut w.bodies[h];
+            let (position, quaternion) = unpose(rb.position(), scene.bodies[k].position);
+            rb.sleep();
+            out = Some((position, quaternion, Some(Velocity::default())));
+            (t.position, t.quaternion, t.velocity) =
+                (position, quaternion, Some(Velocity::default()));
+        } else if let Some(rest) = rest {
             // Touched in body order, as one thread reading them back would.
             let rb = &mut w.bodies[h];
             if let Rest::Still(pre) = rest {
@@ -1257,9 +1312,14 @@ fn read_body(
     bodies: &rp::RigidBodySet,
     deepest: &[Option<f32>],
     pre: Option<&rp::Pose>,
-    rest: f32,
+    (rest, calm_speed): (f32, f32),
+    asleep: bool,
 ) -> Read {
-    let (rest_rule, out) = if simulated(b) {
+    let mut calm = false;
+    let (rest_rule, out) = if asleep {
+        // Asleep through the step: where it was, its components as they are.
+        (Some(Rest::Asleep), None)
+    } else if simulated(b) {
         let pre = pre.expect("one pre-step pose per dynamic body");
         let rb = &bodies[h];
         let velocity = unlocked(
@@ -1278,6 +1338,7 @@ fn read_body(
             .copied()
             .flatten()
             .is_some_and(|d| d >= -REST_PENETRATION);
+        calm = slow(&prior, calm_speed) && slow(&velocity, calm_speed);
         if rest > 0.0 && supported && slow(&prior, rest) && slow(&velocity, rest) {
             (
                 Some(Rest::Still(*pre)),
@@ -1310,7 +1371,7 @@ fn read_body(
         quaternion,
         velocity,
     };
-    (rest_rule, out, tracked)
+    (rest_rule, calm, out, tracked)
 }
 
 /// The colliders of a scene, placed for queries (no bodies, no stepping).
@@ -1691,4 +1752,173 @@ pub(crate) fn load(bytes: &[u8], holes: &[Hole], shared: &mut Shared) -> Result<
     }
     full.extend_from_slice(&bytes[from..]);
     codec().deserialize(&full).map_err(parse)
+}
+
+#[cfg(test)]
+mod sleep_path {
+    //! G2-3's sleep rests on rapier 0.36 doing three things with a body
+    //! built `can_sleep(false)`: `sleep()` puts it to sleep and it stays
+    //! asleep, unmoved, step after step; it never falls asleep on its own;
+    //! and what wakes it is deterministic. Checked here before anything is
+    //! built on it.
+    use super::*;
+
+    fn body(w: &mut rp::PhysicsWorld, y: f32, radius: f32) -> rp::RigidBodyHandle {
+        let h = w.bodies.insert(
+            rp::RigidBodyBuilder::dynamic()
+                .pose(pose(Vec3::new(0.0, y, 0.0), Quat::IDENTITY))
+                .can_sleep(false),
+        );
+        w.colliders
+            .insert_with_parent(rp::ColliderBuilder::ball(radius).build(), h, &mut w.bodies);
+        h
+    }
+
+    fn scene() -> (rp::PhysicsWorld, rp::RigidBodyHandle) {
+        let mut w = rp::PhysicsWorld {
+            gravity: v(Vec3::new(0.0, -9.81, 0.0)),
+            ..Default::default()
+        };
+        w.integration_parameters.dt = 1.0 / 60.0;
+        let floor = w.bodies.insert(rp::RigidBodyBuilder::fixed());
+        let big = Vec3::new(20.0, 0.5, 20.0);
+        let floor_shape = rp::ColliderBuilder::new(
+            primitive(
+                &Collider {
+                    shape: SHAPE_BOX,
+                    size: big * 2.0,
+                    ..Collider::default()
+                },
+                Vec3::ONE,
+            )
+            .unwrap()
+            .unwrap(),
+        )
+        .position(pose(Vec3::new(0.0, -0.5, 0.0), Quat::IDENTITY));
+        w.colliders
+            .insert_with_parent(floor_shape.build(), floor, &mut w.bodies);
+        let ball = body(&mut w, 0.6, 0.5);
+        (w, ball)
+    }
+
+    #[test]
+    fn sleep_holds_never_starts_itself_and_wakes_alike() {
+        // Never asleep by itself, however long it rests.
+        let (mut w, ball) = scene();
+        for _ in 0..600 {
+            w.step();
+        }
+        assert!(!w.bodies[ball].is_sleeping(), "can_sleep(false) slept");
+
+        // Put to sleep: it stays asleep and does not move by a bit.
+        w.bodies[ball].sleep();
+        let at = *w.bodies[ball].position();
+        for _ in 0..300 {
+            w.step();
+            assert!(w.bodies[ball].is_sleeping(), "woke by itself");
+            assert_eq!(*w.bodies[ball].position(), at, "a sleeping body moved");
+        }
+
+        // A ball dropped on it: whatever rapier does with the contact, two
+        // runs (and a run restored from a save while it sleeps) do the same.
+        let saved = {
+            let mut b = Vec::new();
+            crate::encode(&mut b, &w).unwrap();
+            b
+        };
+        let drop = |w: &mut rp::PhysicsWorld| -> Vec<(bool, u32)> {
+            let top = body(w, 3.0, 0.3);
+            (0..120)
+                .map(|_| {
+                    w.step();
+                    let rb = &w.bodies[ball];
+                    let _ = &w.bodies[top];
+                    (rb.is_sleeping(), rb.position().translation.y.to_bits())
+                })
+                .collect()
+        };
+        let a = drop(&mut w);
+        use bincode::Options;
+        let mut restored: rp::PhysicsWorld = crate::codec().deserialize(&saved).unwrap();
+        let b = drop(&mut restored);
+        assert_eq!(a, b, "the wake is not deterministic across a restore");
+        // Rapier wakes it when an awake body comes into contact (the
+        // falling ball lands about 35 ticks in): its rule, in the island
+        // manager, saved with the world; og-physics reads it back.
+        let woke = a.iter().position(|s| !s.0);
+        assert!(matches!(woke, Some(30..=40)), "woke at {woke:?}");
+    }
+
+    #[test]
+    fn a_body_slept_beside_an_awake_neighbour_at_rest() {
+        // Two balls touching on the floor, one island; only one is slept.
+        let (mut w, ball) = scene();
+        let other = w.bodies.insert(
+            rp::RigidBodyBuilder::dynamic()
+                .pose(pose(Vec3::new(1.0, 0.5, 0.0), Quat::IDENTITY))
+                .can_sleep(false),
+        );
+        w.colliders.insert_with_parent(
+            rp::ColliderBuilder::ball(0.5).build(),
+            other,
+            &mut w.bodies,
+        );
+        for _ in 0..300 {
+            w.step();
+        }
+        w.bodies[ball].sleep();
+        let mut slept = 0;
+        for _ in 0..120 {
+            w.step();
+            slept += usize::from(w.bodies[ball].is_sleeping());
+        }
+        // A neighbour at rest does not wake it, and is not put to sleep.
+        assert_eq!(slept, 120);
+        assert!(!w.bodies[other].is_sleeping());
+    }
+
+    #[test]
+    fn an_awake_body_resting_on_a_sleeping_one_sinks_through_it() {
+        // Why sleep.rs sleeps groups whole and wakes what touches an awake
+        // body: rapier leaves a sleeping body out of contact solving, and
+        // wakes it only when a contact starts, not for one already there.
+        let (mut w, ball) = scene();
+        w.remove_body(ball);
+        let cube = || {
+            let c = Collider {
+                shape: SHAPE_BOX,
+                size: Vec3::ONE,
+                ..Collider::default()
+            };
+            rp::ColliderBuilder::new(primitive(&c, Vec3::ONE).unwrap().unwrap()).build()
+        };
+        let mut boxed = |y: f32| {
+            let h = w.bodies.insert(
+                rp::RigidBodyBuilder::dynamic()
+                    .pose(pose(Vec3::new(0.0, y, 0.0), Quat::IDENTITY))
+                    .can_sleep(false),
+            );
+            w.colliders.insert_with_parent(cube(), h, &mut w.bodies);
+            h
+        };
+        let (low, top) = (boxed(0.5), boxed(1.5));
+        for _ in 0..300 {
+            w.step();
+        }
+        let resting = w.bodies[top].position().translation.y;
+        assert!(
+            (resting - 1.5).abs() < 0.01,
+            "the stack settled at {resting}"
+        );
+        w.bodies[low].sleep();
+        for _ in 0..120 {
+            w.step();
+        }
+        assert!(w.bodies[low].is_sleeping(), "the contact woke it");
+        let sunk = w.bodies[top].position().translation.y;
+        assert!(
+            sunk < 1.0,
+            "the top box stayed on the sleeping one ({sunk})"
+        );
+    }
 }

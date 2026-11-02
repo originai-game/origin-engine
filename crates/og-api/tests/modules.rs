@@ -75,6 +75,8 @@ const VERSIONS: &[(&str, u32, u64)] = &[
     ("og.AudioSnapshot", 1, 0x515c0d8ddf345f37),
     ("og.AudioSource", 2, 0x35081d41554c04b2),
     ("og.Blendshapes", 1, 0xbc3663f9e80b3bc0),
+    ("og.BodySlept", 1, 0x316a96ff6521a2ed),
+    ("og.BodyWoke", 1, 0x268b8a476bcb2864),
     ("og.Collider", 1, 0xe83c74a0520778bc),
     ("og.CollisionEnded", 1, 0x4e62d2a73639aeb5),
     ("og.CollisionStarted", 1, 0x6c9e735a7abf1f6a),
@@ -88,12 +90,12 @@ const VERSIONS: &[(&str, u32, u64)] = &[
     ("og.IkTarget2D", 1, 0x4e454eb44cd38470),
     ("og.JointLimit", 1, 0x4b0c9cec8d17a70f),
     ("og.LookAt", 1, 0x219ef1857429f798),
-    ("og.Physics", 1, 0x1b49ec8691b7148e),
+    ("og.Physics", 2, 0xc6d013db66fc764a),
     ("og.PointerDown", 1, 0xa0091884ee01db37),
     ("og.PointerMove", 1, 0x9328be6142683eea),
     ("og.PointerUp", 1, 0x2f71597da11eef1a),
     ("og.Pointers", 1, 0xe0a9491012ab78ea),
-    ("og.RigidBody", 1, 0xee825e5cf1291264),
+    ("og.RigidBody", 2, 0xd0c1d5054f7c1d2e),
     ("og.SensorEntered", 1, 0xa33b45062725b7f1),
     ("og.SensorExited", 1, 0xcaa743ce70b55c7a),
     ("og.Skeleton", 1, 0xdf1d8ad824fb1c2a),
@@ -163,6 +165,8 @@ fn physics_audio_animation_and_input_records_have_the_idl_layouts() {
     check::<og_physics::SensorEntered>(&mut failures);
     check::<og_physics::SensorExited>(&mut failures);
     check::<og_physics::Contact>(&mut failures);
+    check::<og_physics::BodySlept>(&mut failures);
+    check::<og_physics::BodyWoke>(&mut failures);
     check::<og_physics::Fluid3D>(&mut failures);
     check::<og_audio::AudioSource>(&mut failures);
     check::<og_audio::AudioListener>(&mut failures);

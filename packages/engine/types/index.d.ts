@@ -11011,6 +11011,16 @@ export interface RigidBody {
    * @tunable
    */
   centerOfMass: Vector3;
+  /**
+   * Whether the body may sleep when Physics.sleepTicks is set. A body sleeps only with every dynamic body it touches, so false keeps it and what touches it awake (a player's ball, a body game code moves every tick).
+   *
+   * @default true
+   */
+  canSleep: boolean;
+  /**
+   * Written: true while the body sleeps (Physics.sleepTicks). Write false to wake it; physics then writes it back as the body is.
+   */
+  sleeping: boolean;
 }
 
 /**
@@ -11179,6 +11189,22 @@ export interface Physics {
    * @tunable
    */
   restSpeed: number;
+  /**
+   * Ticks in a row a dynamic body must stay slower than sleepSpeed before it sleeps, together with every dynamic body it touches (contacts and joints, transitively): a settled pile sleeps whole and costs nothing until something wakes it (a body landing on it, a push, a joint, a moving kinematic body, a write to its Transform, Velocity, RigidBody or Collider, its support going away). BodySlept and BodyWoke report it. Deterministic: counted in ticks, saved with the world. 0, the default, never sleeps; new projects use about 30.
+   *
+   * @range 0..3600
+   * @tunable
+   */
+  sleepTicks: number;
+  /**
+   * The speed under which a body counts towards sleepTicks, before and after each step (the same number in m/s and rad/s).
+   *
+   * @default 0.1
+   * @range 0..10
+   * @unit mps (metres per second)
+   * @tunable
+   */
+  sleepSpeed: number;
 }
 
 /**
@@ -11248,6 +11274,26 @@ export interface SensorExited {
   readonly sensor: Entity;
   /** The entity that left it. */
   readonly other: Entity;
+}
+
+/**
+ * A body fell asleep during the tick (Physics.sleepTicks), with every dynamic body it touches; sent in entity order. Stop a rolling sound, settle a pile's debris.
+ *
+ * The payload of the `BodySlept` event (token `og.BodySlept`).
+ */
+export interface BodySlept {
+  /** The body's entity. */
+  readonly entity: Entity;
+}
+
+/**
+ * A sleeping body woke during the tick: something touched, pushed or moved it, game code wrote to it, or sleep was turned off; sent in entity order.
+ *
+ * The payload of the `BodyWoke` event (token `og.BodyWoke`).
+ */
+export interface BodyWoke {
+  /** The body's entity. */
+  readonly entity: Entity;
 }
 
 /**
@@ -41245,7 +41291,7 @@ export declare namespace og {
    * A body the physics step simulates. It needs an og.Transform and usually has an og.Collider; a dynamic body without an og.Velocity gets one.
    * Changing a RigidBody, a Collider or Transform.scale rebuilds the body (it loses its contacts' warm starts); a Transform or Velocity that game code changed moves it (a teleport).
    */
-  const RigidBody: ComponentType<{ readonly kind: FieldSpec<"u32">; readonly mass: FieldSpec<"f32">; readonly linearDamping: FieldSpec<"f32">; readonly angularDamping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly lock: FieldSpec<"u32">; readonly ccd: FieldSpec<"u32">; readonly centerOfMass: FieldSpec<"Vector3"> }, RigidBody>;
+  const RigidBody: ComponentType<{ readonly kind: FieldSpec<"u32">; readonly mass: FieldSpec<"f32">; readonly linearDamping: FieldSpec<"f32">; readonly angularDamping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly lock: FieldSpec<"u32">; readonly ccd: FieldSpec<"u32">; readonly centerOfMass: FieldSpec<"Vector3">; readonly canSleep: FieldSpec<"bool">; readonly sleeping: FieldSpec<"bool"> }, RigidBody>;
   /**
    * The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). Sizes are scaled by og.Transform.scale.
    * Compound colliders: a Collider without a RigidBody on a child entity whose og.Parent chain reaches a RigidBody is part of that body (the nearest such ancestor), placed at its transform relative to the body (the transforms between them composed, the body's scale applied): a table of a top and four legs, a ship of a hull and a mast, are one body. Its mass adds to the body's from its density, or the body's RigidBody.mass is shared among its colliders by theirs; its friction, restitution, layers and sensor flag are its own. Children join in entity order, whatever the query order. Changing a child (its collider, or its transform relative to the body) rebuilds the body, which loses its contacts' warm starts. Events and queries name the collider's entity; RaycastHit.body and PointProjection.body name the body. A controller's body takes no children; a collider whose chain reaches no body stays static at its world transform.
@@ -41258,7 +41304,7 @@ export declare namespace og {
   /**
    * The physics settings of the world. The profile is the project's; the same components serve both profiles.
    */
-  const Physics: ResourceType<{ readonly profile: FieldSpec<"u32">; readonly gravity: FieldSpec<"Vector3">; readonly substeps: FieldSpec<"u32">; readonly solverIterations: FieldSpec<"u32">; readonly restSpeed: FieldSpec<"f32"> }, Physics>;
+  const Physics: ResourceType<{ readonly profile: FieldSpec<"u32">; readonly gravity: FieldSpec<"Vector3">; readonly substeps: FieldSpec<"u32">; readonly solverIterations: FieldSpec<"u32">; readonly restSpeed: FieldSpec<"f32">; readonly sleepTicks: FieldSpec<"u32">; readonly sleepSpeed: FieldSpec<"f32"> }, Physics>;
   /**
    * Two solid colliders started touching during the tick. Read in the tick after, when og.Velocity already holds the solver's answer (the bodies parting): how hard they met is `impulse` and `relativeVelocity`, taken in the step itself.
    */
@@ -41269,6 +41315,14 @@ export declare namespace og {
   const SensorEntered: EventType<SensorEntered>;
   /** A collider stopped overlapping a sensor, or one of them went away. */
   const SensorExited: EventType<SensorExited>;
+  /**
+   * A body fell asleep during the tick (Physics.sleepTicks), with every dynamic body it touches; sent in entity order. Stop a rolling sound, settle a pile's debris.
+   */
+  const BodySlept: EventType<BodySlept>;
+  /**
+   * A sleeping body woke during the tick: something touched, pushed or moved it, game code wrote to it, or sleep was turned off; sent in entity order.
+   */
+  const BodyWoke: EventType<BodyWoke>;
   /**
    * One pair in contact at the end of a step, sent every tick for every touching pair: how a game asks what is touching what right now.
    */

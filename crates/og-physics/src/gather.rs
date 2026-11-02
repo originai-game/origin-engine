@@ -296,6 +296,8 @@ impl Ids {
         world.register::<crate::Splash>()?;
         world.register::<Fluid3D>()?;
         world.register::<Parent>()?;
+        world.register::<crate::BodySlept>()?;
+        world.register::<crate::BodyWoke>()?;
         let (body_fields, body_layout) = fields_of::<RigidBody>(world)?;
         let (collider_fields, collider_layout) = fields_of::<Collider>(world)?;
         Ok(Ids {

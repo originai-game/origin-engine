@@ -42,6 +42,16 @@ is one line here, written at the merge that changes
   trailer, written only when used: a world without compounds saves and
   hashes as before.
 
+- Added (physics, G2-3): sleep. `Physics.sleepTicks` (0, off, by
+  default) and `Physics.sleepSpeed`; `RigidBody.canSleep` and
+  `RigidBody.sleeping` (written; write false to wake); events
+  `og.BodySlept` and `og.BodyWoke`, in entity order. A body sleeps only
+  with every dynamic body it touches, counted in ticks and saved with the
+  world. og.RigidBody and og.Physics are version 2: saves of 0.7.7
+  restore with the new fields at their defaults (sleep off). The raw
+  world hash moves once for every engine world (the new layouts are in
+  its type table); the portable hash and the golden replays do not.
+
 - **A reactive ECS with spatial queries (G2-2).** Added to the IDL:
   `SystemDesc.changed`, `added`, `removed`, `state`, `value`, `when`
   (`StateWhen`) and `runIf` (`RunCondition`); `QueryDesc.changed`,

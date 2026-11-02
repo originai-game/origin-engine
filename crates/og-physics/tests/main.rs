@@ -22,6 +22,7 @@ mod queries;
 mod ragdoll;
 mod saves;
 mod self_collision;
+mod sleep;
 mod soft;
 mod support;
 mod time_scale;

@@ -67,6 +67,10 @@ module physics {
       unit m
       tunable true
     }
+    field canSleep bool "Whether the body may sleep when Physics.sleepTicks is set. A body sleeps only with every dynamic body it touches, so false keeps it and what touches it awake (a player's ball, a body game code moves every tick)." {
+      default true
+    }
+    field sleeping bool "Written: true while the body sleeps (Physics.sleepTicks). Write false to wake it; physics then writes it back as the body is."
   }
 
   component Collider {
@@ -173,6 +177,18 @@ module physics {
       unit mps
       tunable true
     }
+    field sleepTicks u32 "Ticks in a row a dynamic body must stay slower than sleepSpeed before it sleeps, together with every dynamic body it touches (contacts and joints, transitively): a settled pile sleeps whole and costs nothing until something wakes it (a body landing on it, a push, a joint, a moving kinematic body, a write to its Transform, Velocity, RigidBody or Collider, its support going away). BodySlept and BodyWoke report it. Deterministic: counted in ticks, saved with the world. 0, the default, never sleeps; new projects use about 30." {
+      min 0
+      max 3600
+      tunable true
+    }
+    field sleepSpeed f32 "The speed under which a body counts towards sleepTicks, before and after each step (the same number in m/s and rad/s)." {
+      default 0.1
+      min 0
+      max 10
+      unit mps
+      tunable true
+    }
   }
 
   event CollisionStarted {
@@ -208,6 +224,16 @@ module physics {
     doc "A collider stopped overlapping a sensor, or one of them went away."
     field sensor Entity "The entity whose collider is the sensor."
     field other Entity "The entity that left it."
+  }
+
+  event BodySlept {
+    doc "A body fell asleep during the tick (Physics.sleepTicks), with every dynamic body it touches; sent in entity order. Stop a rolling sound, settle a pile's debris."
+    field entity Entity "The body's entity."
+  }
+
+  event BodyWoke {
+    doc "A sleeping body woke during the tick: something touched, pushed or moved it, game code wrote to it, or sleep was turned off; sent in entity order."
+    field entity Entity "The body's entity."
   }
 
   event Contact {

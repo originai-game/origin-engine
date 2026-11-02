@@ -2257,6 +2257,16 @@
             "z": 0
           },
           "tunable": true
+        },
+        {
+          "name": "canSleep",
+          "column": "bool",
+          "default": true
+        },
+        {
+          "name": "sleeping",
+          "column": "bool",
+          "default": false
         }
       ]
     },
@@ -8304,6 +8314,18 @@
           "column": "f32",
           "default": 0.02,
           "tunable": true
+        },
+        {
+          "name": "sleepTicks",
+          "column": "u32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "sleepSpeed",
+          "column": "f32",
+          "default": 0.1,
+          "tunable": true
         }
       ]
     },
@@ -9437,6 +9459,32 @@
     },
     {
       "id": 15,
+      "name": "BodySlept",
+      "schema": "og.BodySlept",
+      "module": "physics",
+      "fields": [
+        {
+          "name": "entity",
+          "type": "Entity",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "name": "BodyWoke",
+      "schema": "og.BodyWoke",
+      "module": "physics",
+      "fields": [
+        {
+          "name": "entity",
+          "type": "Entity",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 17,
       "name": "Contact",
       "schema": "og.Contact",
       "module": "physics",
@@ -9459,7 +9507,7 @@
       ]
     },
     {
-      "id": 16,
+      "id": 18,
       "name": "CharacterEvent",
       "schema": "og.CharacterEvent",
       "module": "physics",
@@ -9482,7 +9530,7 @@
       ]
     },
     {
-      "id": 17,
+      "id": 19,
       "name": "Splash",
       "schema": "og.Splash",
       "module": "physics",
@@ -9514,7 +9562,7 @@
       ]
     },
     {
-      "id": 18,
+      "id": 20,
       "name": "AnimationEvent",
       "schema": "og.AnimationEvent",
       "module": "anim",
@@ -9547,7 +9595,7 @@
       ]
     },
     {
-      "id": 19,
+      "id": 21,
       "name": "FlipbookEvent",
       "schema": "og.FlipbookEvent",
       "module": "anim",
@@ -9575,7 +9623,7 @@
       ]
     },
     {
-      "id": 20,
+      "id": 22,
       "name": "Skeleton2DEvent",
       "schema": "og.Skeleton2DEvent",
       "module": "anim",
@@ -9608,7 +9656,7 @@
       ]
     },
     {
-      "id": 21,
+      "id": 23,
       "name": "TweenCompleted",
       "schema": "og.TweenCompleted",
       "module": "tween",
@@ -9631,7 +9679,7 @@
       ]
     },
     {
-      "id": 22,
+      "id": 24,
       "name": "MusicBeat",
       "schema": "og.MusicBeat",
       "module": "audio",
@@ -9659,7 +9707,7 @@
       ]
     },
     {
-      "id": 23,
+      "id": 25,
       "name": "SoundStarted",
       "schema": "og.SoundStarted",
       "module": "audio",
@@ -9682,7 +9730,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 26,
       "name": "SoundEnded",
       "schema": "og.SoundEnded",
       "module": "audio",
@@ -9710,7 +9758,7 @@
       ]
     },
     {
-      "id": 25,
+      "id": 27,
       "name": "NavLinkReached",
       "schema": "og.NavLinkReached",
       "module": "nav",
@@ -9761,7 +9809,7 @@
       ]
     },
     {
-      "id": 26,
+      "id": 28,
       "name": "AiChanged",
       "schema": "og.AiChanged",
       "module": "ai",
@@ -9789,7 +9837,7 @@
       ]
     },
     {
-      "id": 27,
+      "id": 29,
       "name": "PlatformAnswered",
       "schema": "og.PlatformAnswered",
       "module": "platform",
@@ -9807,7 +9855,7 @@
       ]
     },
     {
-      "id": 28,
+      "id": 30,
       "name": "RoomJoined",
       "schema": "og.RoomJoined",
       "module": "platform",
@@ -9840,7 +9888,7 @@
       ]
     },
     {
-      "id": 29,
+      "id": 31,
       "name": "RoomPeerJoined",
       "schema": "og.RoomPeerJoined",
       "module": "platform",
@@ -9858,7 +9906,7 @@
       ]
     },
     {
-      "id": 30,
+      "id": 32,
       "name": "RoomPeerLeft",
       "schema": "og.RoomPeerLeft",
       "module": "platform",
@@ -9876,7 +9924,7 @@
       ]
     },
     {
-      "id": 31,
+      "id": 33,
       "name": "RoomMessage",
       "schema": "og.RoomMessage",
       "module": "platform",
@@ -9899,7 +9947,7 @@
       ]
     },
     {
-      "id": 32,
+      "id": 34,
       "name": "StreamEvent",
       "schema": "og.StreamEvent",
       "module": "stream",
@@ -9917,7 +9965,7 @@
       ]
     },
     {
-      "id": 33,
+      "id": 35,
       "name": "TimelineStarted",
       "schema": "og.TimelineStarted",
       "module": "timeline",
@@ -9935,7 +9983,7 @@
       ]
     },
     {
-      "id": 34,
+      "id": 36,
       "name": "TimelineMarker",
       "schema": "og.TimelineMarker",
       "module": "timeline",
@@ -9963,7 +10011,7 @@
       ]
     },
     {
-      "id": 35,
+      "id": 37,
       "name": "TimelineEnded",
       "schema": "og.TimelineEnded",
       "module": "timeline",
@@ -9981,7 +10029,7 @@
       ]
     },
     {
-      "id": 36,
+      "id": 38,
       "name": "Desync",
       "schema": "og.Desync",
       "module": "net",

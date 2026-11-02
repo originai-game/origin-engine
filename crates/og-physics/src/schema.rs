@@ -85,7 +85,7 @@ pub const LOCK_ROTATION_Z: u32 = 32;
 /// an `og.Collider`. In the 2D profile the body moves in the xy plane and
 /// rotates about z.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
-#[reflect(name = "og.RigidBody")]
+#[reflect(name = "og.RigidBody", version = 2)]
 pub struct RigidBody {
     /// 0 dynamic (simulated, written back), 1 static (never moves), 2 kinematic (moved by its Velocity each tick, or by game code through its Transform).
     #[reflect(min = 0, max = 2, label = "Kind")]
@@ -115,6 +115,16 @@ pub struct RigidBody {
     /// og.Collider (a body without one has its mass at its origin).
     #[reflect(name = "centerOfMass", unit = "m", tunable)]
     pub center_of_mass: Vec3,
+    /// Whether the body may sleep when og.Physics.sleepTicks is set (it
+    /// sleeps only with everything it touches); false keeps it, and what
+    /// touches it, awake.
+    #[reflect(name = "canSleep", default = 1)]
+    #[serde(skip)]
+    pub can_sleep: bool,
+    /// Written: true while the body sleeps (og.Physics.sleepTicks). Write
+    /// false to wake it; physics writes it back to what the body is.
+    #[serde(skip)]
+    pub sleeping: bool,
 }
 
 impl Default for RigidBody {
@@ -128,6 +138,8 @@ impl Default for RigidBody {
             lock: 0,
             ccd: 0,
             center_of_mass: Vec3::ZERO,
+            can_sleep: true,
+            sleeping: false,
         }
     }
 }
@@ -322,7 +334,7 @@ pub const PROFILE_3D: u32 = 3;
 /// The physics settings of a world. The profile is the project's
 /// (`physics2d` or `physics3d`); the same components serve both.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.Physics")]
+#[reflect(name = "og.Physics", version = 2)]
 pub struct Physics {
     /// 2 for the 2D profile (rapier2d: xy plane, rotation about z), 3 for 3D
     /// (rapier3d). Changed at run time, the next step builds the other
@@ -348,6 +360,23 @@ pub struct Physics {
         tunable
     )]
     pub rest_speed: f32,
+    /// Ticks in a row a dynamic body must stay slower than `sleepSpeed`
+    /// before it sleeps, with every dynamic body it touches (contacts and
+    /// joints, transitively) as calm; a sleeping body costs nothing until
+    /// something wakes it. 0, the default, never sleeps.
+    #[reflect(name = "sleepTicks", min = 0, max = 3600, tunable)]
+    pub sleep_ticks: u32,
+    /// The speed under which a body counts towards sleepTicks, before and
+    /// after each step (the same number in m/s and rad/s).
+    #[reflect(
+        name = "sleepSpeed",
+        min = 0,
+        max = 10,
+        unit = "m/s",
+        default = 0.1,
+        tunable
+    )]
+    pub sleep_speed: f32,
 }
 
 impl Default for Physics {
@@ -358,6 +387,8 @@ impl Default for Physics {
             substeps: 1,
             solver_iterations: 4,
             rest_speed: 0.02,
+            sleep_ticks: 0,
+            sleep_speed: 0.1,
         }
     }
 }
@@ -436,6 +467,24 @@ pub struct SensorExited {
     pub sensor: u64,
     /// The entity that left it.
     pub other: u64,
+}
+
+/// A body fell asleep during the tick (og.Physics.sleepTicks): it rested
+/// that long with everything it touches. Sent in entity order.
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+#[reflect(name = "og.BodySlept")]
+pub struct BodySlept {
+    /// The body's entity.
+    pub entity: u64,
+}
+
+/// A sleeping body woke during the tick: something touched, pushed or
+/// moved it, or game code wrote to it. Sent in entity order.
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+#[reflect(name = "og.BodyWoke")]
+pub struct BodyWoke {
+    /// The body's entity.
+    pub entity: u64,
 }
 
 /// One pair in contact at the end of a step, sent every tick for every

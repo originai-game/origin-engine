@@ -686,7 +686,7 @@ impl PhysicsSystem {
 fn schedule(world: &mut World, shared: &Arc<Mutex<Shared>>, ids: &Arc<Ids>) -> Result<()> {
     let mut desc = SystemDesc::new(SYSTEM_NAME)
         .read::<Physics>()
-        .read::<RigidBody>()
+        .write::<RigidBody>()
         .read::<Collider>()
         .write::<Velocity>()
         .read::<Contact>()
@@ -696,7 +696,9 @@ fn schedule(world: &mut World, shared: &Arc<Mutex<Shared>>, ids: &Arc<Ids>) -> R
         .write::<SensorEntered>()
         .write::<SensorExited>()
         .write::<CharacterEvent>()
-        .write::<Splash>();
+        .write::<Splash>()
+        .write::<BodySlept>()
+        .write::<BodyWoke>();
     desc.writes.push(gather::TRANSFORM.to_string());
     for name in gather::WRITTEN {
         desc.writes.push(name.to_string());
@@ -1290,6 +1292,16 @@ pub(crate) enum ControlOut {
     Platformer(PlatformerController),
 }
 
+/// What sleep made of the tick: the `og.RigidBody` values to write (their
+/// `sleeping` changed) and the bodies that fell asleep and woke, each in
+/// entity order.
+#[derive(Default)]
+pub(crate) struct SleepOut {
+    pub(crate) writes: Vec<(Entity, RigidBody)>,
+    pub(crate) slept: Vec<u64>,
+    pub(crate) woke: Vec<u64>,
+}
+
 /// What one step produced.
 #[derive(Default)]
 pub(crate) struct StepOut {
@@ -1306,6 +1318,8 @@ pub(crate) struct StepOut {
     pub ragdolls: Vec<(Entity, Ragdoll)>,
     pub events: Vec<CharacterEvent>,
     pub splashes: Vec<Splash>,
+    /// What sleep changed (og.Physics.sleepTicks).
+    pub sleep: SleepOut,
     /// The step's phases, timed on the thread it ran on.
     pub laps: Option<stats::Laps>,
 }
@@ -1384,6 +1398,15 @@ fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> Result
     }
     for s in &out.splashes {
         ctx.send(*s)?;
+    }
+    for (e, b) in &out.sleep.writes {
+        ctx.set(*e, *b)?;
+    }
+    for &entity in &out.sleep.slept {
+        ctx.send(BodySlept { entity })?;
+    }
+    for &entity in &out.sleep.woke {
+        ctx.send(BodyWoke { entity })?;
     }
 
     // Started/Ended from the pairs the previous step carried over.

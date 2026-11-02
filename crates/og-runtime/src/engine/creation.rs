@@ -103,12 +103,15 @@ const REGISTERED_BY_MODULES: &[&str] = &[
 /// An engine record's schema at the version its module registers, so the
 /// module adopts the IDL's record: a record whose fields changed since
 /// saves held it is at a later version (og-audio's og.AudioSource and
-/// og.AudioBusFx, version 2: the bus graph and the bus effects).
+/// og.AudioBusFx, version 2: the bus graph and the bus effects;
+/// og-physics's og.RigidBody and og.Physics, version 2: sleep).
 fn versioned(mut schema: og_core::Schema) -> og_core::Schema {
     use og_core::Reflect;
     schema.version = match schema.name.as_str() {
         "og.AudioSource" => og_audio::AudioSource::schema().version,
         "og.AudioBusFx" => og_audio::AudioBusFx::schema().version,
+        "og.RigidBody" => og_physics::RigidBody::schema().version,
+        "og.Physics" => og_physics::Physics::schema().version,
         _ => return schema,
     };
     schema

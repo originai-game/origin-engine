@@ -92,6 +92,22 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         note: "0.7.7 and earlier: gained userBus, the equaliser, the echo and the waveshaper (G2-5); the restore takes them at their defaults, all off",
         run: None,
     },
+    Migration {
+        target: Target::Record,
+        name: "og.RigidBody",
+        from: 1,
+        to: 2,
+        note: "0.7.7 and earlier: gained canSleep and sleeping (G2-3, sleep); the restore takes them at true and false, so a body can sleep and is awake",
+        run: None,
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.Physics",
+        from: 1,
+        to: 2,
+        note: "0.7.7 and earlier: gained sleepTicks and sleepSpeed (G2-3, sleep); the restore takes them at 0 and 0.1, sleep off as before",
+        run: None,
+    },
 ];
 
 fn ui_9_to_11(edit: &mut SnapshotEdit) -> Result<(), String> {
