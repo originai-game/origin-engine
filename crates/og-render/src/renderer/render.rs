@@ -146,6 +146,21 @@ impl Renderer {
                 resolution: scene.quality.ao_resolution.unwrap_or(a.resolution),
                 ..a
             });
+        // Screen-space GI (ssgi.rs), in the AO passes' place: its targets
+        // hold the AO too, at the GI's resolution when both are on.
+        let gi = post_fx
+            .gi
+            .filter(|g| scene.quality.global_illumination && g.intensity > 0.0)
+            .map(|g| ScreenSpaceGlobalIllumination {
+                resolution: scene.quality.ao_resolution.unwrap_or(g.resolution),
+                ..g
+            });
+        let ao = ao.map(|a| AmbientOcclusion {
+            resolution: gi.map_or(a.resolution, |g| g.resolution),
+            ..a
+        });
+        // The AO passes run (for the AO, the GI or both).
+        let ao_target = ao.is_some() || gi.is_some();
         let outline = post_fx.outline.is_some()
             || batches
                 .iter()
@@ -174,7 +189,7 @@ impl Renderer {
         let custom_posts = self.custom_posts.prepare(&self.device, scene);
         let ui_depth = scene.overlay.as_ref().is_some_and(|o| o.ui.needs_depth());
         let prepass = !custom_posts.is_empty()
-            || ao.is_some()
+            || ao_target
             || ssr.is_some()
             // Volumetric fog reads each pixel's depth.
             || volumetric_fog.is_some()
@@ -201,7 +216,7 @@ impl Renderer {
         let (face_fluid, face_depth, object_space) =
             self.prepare_frame_pipelines(PrepareFramePipelinesInputs {
                 scene,
-                ao,
+                ao: ao_target,
                 batches: &mut batches,
                 skinned_batches: &mut skinned_batches,
                 skinned_visible: &mut skinned_visible,
@@ -1868,8 +1883,14 @@ impl Renderer {
             Some(t) if scene.texture_color_space(t) == Some(ColorSpace::Srgb) => 2.0,
             Some(_) => 1.0,
         };
-        if let Some(a) = &ao {
-            fx_uniform.ao = [1.0, 1.0, a.direct, 0.0];
+        // w: 1 with the GI's bounce in the AO texture's gba.
+        if ao_target {
+            fx_uniform.ao = [
+                1.0,
+                1.0,
+                ao.map_or(0.0, |a| a.direct),
+                gi.is_some() as u32 as f32,
+            ];
         }
         // The planar reflection's plane (n, n·at) for the material shaders
         // that read it (pbr.wgsl `planar_reflection`); 0 without one.
@@ -1930,12 +1951,29 @@ impl Renderer {
                     .write_view(&self.device, &self.queue, k, p.frame.view_proj);
             }
         }
+        // Screen-space GI reads the previous frame's lit image: TAA's
+        // history, or without TAA its own copy of the main pass's image.
+        let gi_copy = gi.is_some() && !taa;
+        if gi_copy
+            && self
+                .persistent
+                .ensure_gi(&self.device, self.width, self.height)
+        {
+            self.gi_history = None;
+        }
+        let gi_history_valid = if taa {
+            self.taa_history.is_some()
+        } else {
+            gi_copy && self.gi_history.is_some_and(|f| f + 1 == self.frame_index)
+        };
         self.write_frame_post_uniforms(WriteFramePostUniformsInputs {
             cam: &cam,
             camera: &camera,
             post_fx,
             scene,
             ao,
+            gi,
+            gi_history: gi_history_valid,
             dof,
             motion_blur,
             god_rays,
@@ -1972,9 +2010,10 @@ impl Renderer {
         if prepass {
             passes.push(FramePass::Prepass);
         }
-        if let Some(a) = ao {
+        let ao_resolution = gi.map(|g| g.resolution).or(ao.map(|a| a.resolution));
+        if let Some(resolution) = ao_resolution {
             passes.extend([FramePass::Ao, FramePass::AoBlur]);
-            if a.resolution == AoResolution::Half {
+            if resolution == AoResolution::Half {
                 passes.push(FramePass::AoUpsample);
             }
         }
@@ -2193,6 +2232,7 @@ impl Renderer {
                     lightmap: lightmap_size,
                     lightdir: lightdir_on,
                     gtao,
+                    gi: gi.is_some(),
                     water: !scene_water.is_empty() || fluids_3d || particle_frame.distortion,
                     water_ao: !scene_water.is_empty() && ao.is_some_and(|a| a.direct > 0.0),
                     transmission,
@@ -2390,7 +2430,7 @@ impl Renderer {
             scene.id(),
             scene.decal_atlas,
             self.decal_buffers.generation,
-            ao.is_some(),
+            ao_target,
             scene.lighting_2d.is_some(),
             reflection.is_some(),
         );
@@ -2398,7 +2438,7 @@ impl Renderer {
             let atlas_view = scene.decal_atlas.map_or(&self.default_white, |t| {
                 &self.cache.textures[t.index()].view
             });
-            let ao_view = if ao.is_some() {
+            let ao_view = if ao_target {
                 self.graph.view("ao")
             } else {
                 &self.post.white
@@ -2528,7 +2568,7 @@ impl Renderer {
                     let atlas_view = scene.decal_atlas.map_or(&self.default_white, |t| {
                         &self.cache.textures[t.index()].view
                     });
-                    let ao_view = if ao.is_some() {
+                    let ao_view = if ao_target {
                         self.graph.view("ao")
                     } else {
                         &self.post.white
@@ -2585,7 +2625,7 @@ impl Renderer {
                 copy,
                 scene_depth,
                 &reflection_views,
-                if ao.is_some() {
+                if ao_target {
                     self.graph.view("ao")
                 } else {
                     &self.post.white
@@ -3448,45 +3488,55 @@ impl Renderer {
                         &self.light_buffers[2],
                     ],
                 ),
-                FramePass::Main => self.encode_main(MainPassInputs {
-                    scene,
-                    water_draws: &water_draws,
-                    fluid_frame: &fluid_frame,
-                    transmission_view,
-                    taa,
-                    encoder: &mut encoder,
-                    frame_bind_group,
-                    fx_group,
-                    draw_list: &draw_list,
-                    main_list: &main_list,
-                    batches: &batches,
-                    physical_fx,
-                    probe_binding,
-                    stats: &mut stats,
-                    draw_skinned: &draw_skinned,
-                    skinned_visible: &skinned_visible,
-                    lit_skinned: &lit_skinned,
-                    terrain_indices,
-                    terrain_draws: &terrain_draws,
-                    view_frustum: &view_frustum,
-                    scatter_batches: &scatter_batches,
-                    scatter_material: &scatter_material,
-                    scatter_mesh: &scatter_mesh,
-                    sky_group,
-                    fluid_bounds,
-                    draw_blended: &draw_blended,
-                    blended_list: &blended_list,
-                    sprite_frame: &sprite_frame,
-                    sprite_fx_group,
-                    particle_group: &particle_group,
-                    particle_frame: &particle_frame,
-                    draw_strips: &draw_strips,
-                    ribbon_frame: &ribbon_frame,
-                    line_frame: &line_frame,
-                    draw_sprites: &draw_sprites,
-                    metaball_groups: &metaball_groups,
-                    volumetric_fog,
-                }),
+                FramePass::Main => {
+                    self.encode_main(MainPassInputs {
+                        scene,
+                        water_draws: &water_draws,
+                        fluid_frame: &fluid_frame,
+                        transmission_view,
+                        taa,
+                        encoder: &mut encoder,
+                        frame_bind_group,
+                        fx_group,
+                        draw_list: &draw_list,
+                        main_list: &main_list,
+                        batches: &batches,
+                        physical_fx,
+                        probe_binding,
+                        stats: &mut stats,
+                        draw_skinned: &draw_skinned,
+                        skinned_visible: &skinned_visible,
+                        lit_skinned: &lit_skinned,
+                        terrain_indices,
+                        terrain_draws: &terrain_draws,
+                        view_frustum: &view_frustum,
+                        scatter_batches: &scatter_batches,
+                        scatter_material: &scatter_material,
+                        scatter_mesh: &scatter_mesh,
+                        sky_group,
+                        fluid_bounds,
+                        draw_blended: &draw_blended,
+                        blended_list: &blended_list,
+                        sprite_frame: &sprite_frame,
+                        sprite_fx_group,
+                        particle_group: &particle_group,
+                        particle_frame: &particle_frame,
+                        draw_strips: &draw_strips,
+                        ribbon_frame: &ribbon_frame,
+                        line_frame: &line_frame,
+                        draw_sprites: &draw_sprites,
+                        metaball_groups: &metaball_groups,
+                        volumetric_fog,
+                    });
+                    // The lit image for the next frame's GI (`gi-write`).
+                    if let (true, Some((_, copies))) = (gi_copy, &self.persistent.gi) {
+                        encoder.copy_texture_to_texture(
+                            self.graph.view("hdr").texture().as_image_copy(),
+                            copies[slot].texture().as_image_copy(),
+                            self.graph.view("hdr").texture().size(),
+                        );
+                    }
+                }
                 FramePass::Glow => {
                     let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                         label: Some("glow"),
@@ -3747,6 +3797,8 @@ impl Renderer {
         if taa {
             self.taa_history = Some(cam.view_proj);
         }
+        // The main pass copied its lit image for the next frame's GI.
+        self.gi_history = gi_copy.then_some(self.frame_index);
         self.prev_view_proj = Some(cam.view_proj);
         self.frame_index += 1;
         // The first frame made the scene's pipelines: keep them now, not

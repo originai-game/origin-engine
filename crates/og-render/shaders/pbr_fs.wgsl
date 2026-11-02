@@ -282,10 +282,15 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   }
   // What `ao.z` keeps of the whole colour (three.js-era post AO multiplies everything, the emitted light too).
   var ao_all = 1.0;
+  // Screen-space GI's bounce (ssgi.rs: the AO texture's gba with `ao.w`), the light a diffuse surface receives
+  // from what the screen shows around it; the material's AO and the shadow darkness keep their share of it.
+  var bounce = vec3<f32>(0.0);
   if (EFFECTS && fx.ao.x > 0.5) {
     // Screen-space ambient occlusion, likewise; `ao.z` lets it reach the direct and local light too, and moves the
     // image-based light to the same floor (0.35, as three.js-era post AO: the whole colour × mix(0.35, 1, ao)).
-    let ssao_sample = textureSampleLevel(ssao_tex, fx_sampler, in.clip.xy * fx.screen.zw, 0.0).r;
+    let ao_texel = textureSampleLevel(ssao_tex, fx_sampler, in.clip.xy * fx.screen.zw, 0.0);
+    let ssao_sample = ao_texel.r;
+    if (fx.ao.w > 0.5) { bounce = ao_texel.gba * (ibl_scale / max(material.flags.z, 1e-4)); }
     ibl_scale *= mix(mix(1.0, ssao_sample, fx.ao.y), mix(0.35, 1.0, ssao_sample), fx.ao.z);
     ao_all = mix(1.0, mix(0.35, 1.0, ssao_sample), fx.ao.z);
     color *= ao_all;
@@ -304,7 +309,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     ibl = ibl * (1.0 - fc) + coat_env * (0.04 * coat_lut.x + coat_lut.y) * s.coat * frame.params.x;
   }
   let dbg_direct = color;
-  color += ibl * ibl_scale;
+  color += ibl * ibl_scale + kd_ibl * s.albedo * bounce;
 
   color += surface_emissive(hook, params, material.emissive.rgb * material_sample(emissive_tex, UV_EMISSIVE, uv).rgb) * ao_all;
   if (EFFECTS && abs(fx.decal_info.x) > 0.5) { color += decal_emissive; }
@@ -322,7 +327,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     // Debug (DebugView::lit_code): 3 albedo, 4 diffuse image-based light, 5 specular image-based light, 6 direct light.
     let m = u32(frame.light_color.w + 0.5);
     if (m == 3u) { return vec4<f32>(s.albedo, 1.0); }
-    if (m == 4u) { return vec4<f32>(kd_ibl * diffuse_ibl * ibl_scale, 1.0); }
+    if (m == 4u) { return vec4<f32>(kd_ibl * (diffuse_ibl * ibl_scale + s.albedo * bounce), 1.0); }
     if (m == 5u) { return vec4<f32>(specular_ibl * ibl_scale, 1.0); }
     return vec4<f32>(dbg_direct, 1.0);
   }

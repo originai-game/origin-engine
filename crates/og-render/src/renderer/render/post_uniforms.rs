@@ -1,6 +1,7 @@
 //! Post uniforms stage.
 
 use super::*;
+use crate::ssgi::GiOcclusion;
 
 pub(super) struct WriteFramePostUniformsInputs<'a> {
     pub(super) cam: &'a frame::CameraFrame,
@@ -8,6 +9,9 @@ pub(super) struct WriteFramePostUniformsInputs<'a> {
     pub(super) post_fx: &'a PostEffects,
     pub(super) scene: &'a RenderScene,
     pub(super) ao: Option<AmbientOcclusion>,
+    pub(super) gi: Option<ScreenSpaceGlobalIllumination>,
+    /// The previous frame's lit image is there for the GI to read.
+    pub(super) gi_history: bool,
     pub(super) dof: Option<DepthOfField>,
     pub(super) motion_blur: Option<MotionBlur>,
     pub(super) god_rays: Option<GodRays>,
@@ -28,6 +32,8 @@ impl Renderer {
             post_fx,
             scene,
             ao,
+            gi,
+            gi_history,
             dof,
             motion_blur,
             god_rays,
@@ -60,13 +66,15 @@ impl Renderer {
                 scene.debug.ao_code(),
             ],
             // z: the AO targets' divisor of the screen (2 at half resolution).
-            ao: ao.map_or([0.0; 4], |a| {
-                let divisor = match a.resolution {
-                    AoResolution::Full => 1.0,
-                    AoResolution::Half => 2.0,
+            ao: {
+                let divisor = match gi.map(|g| g.resolution).or(ao.map(|a| a.resolution)) {
+                    Some(AoResolution::Half) => 2.0,
+                    _ => 1.0,
                 };
-                [a.radius, a.intensity, divisor, 0.0]
-            }),
+                ao.map_or([0.0, 0.0, divisor, 0.0], |a| {
+                    [a.radius, a.intensity, divisor, 0.0]
+                })
+            },
             // x: radius per metre of depth (0: fixed), y: 1 for the screen method.
             ao2: ao.map_or([0.0; 4], |a| {
                 [
@@ -144,6 +152,22 @@ impl Renderer {
             blur: screen_blur.map_or([[0.0; 4]; 2], |b| {
                 b.rows(self.width as f32, self.height as f32)
             }),
+            // The noise moves per frame only under TAA, which averages it;
+            // without TAA a still frame keeps one pattern.
+            gi: ScreenSpaceGlobalIllumination::rows(
+                gi.as_ref(),
+                if self.persistent.history.is_some() {
+                    self.frame_index
+                } else {
+                    0
+                },
+                gi_history,
+                match ao.map(|a| a.method) {
+                    None => GiOcclusion::Rays,
+                    Some(AoMethod::Ssao | AoMethod::Screen) => GiOcclusion::Ssao,
+                    Some(_) => GiOcclusion::Gtao,
+                },
+            ),
         };
         self.queue
             .write_buffer(&self.post.fx_buffer, 0, bytemuck::bytes_of(&fxp));

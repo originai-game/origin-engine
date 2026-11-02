@@ -4,7 +4,8 @@ use super::*;
 
 pub(super) struct PrepareFramePipelinesInputs<'a> {
     pub(super) scene: &'a RenderScene,
-    pub(super) ao: Option<AmbientOcclusion>,
+    /// The AO texture is bound (screen-space AO or GI).
+    pub(super) ao: bool,
     pub(super) batches: &'a mut [Batch],
     pub(super) skinned_batches: &'a mut [Batch],
     pub(super) skinned_visible: &'a mut [Batch],
@@ -37,9 +38,9 @@ impl Renderer {
             prepass,
         }: PrepareFramePipelinesInputs<'_>,
     ) -> (bool, bool, bool) {
-        // Decals and screen-space AO need the effect shader on every batch;
+        // Decals and screen-space AO (or GI) need the effect shader on every batch;
         // decals take screen derivatives (the lean pipelines keep the discard).
-        if ao.is_some() || !scene.decals.is_empty() {
+        if ao || !scene.decals.is_empty() {
             let decals = !scene.decals.is_empty();
             for b in batches.iter_mut().chain(skinned_batches.iter_mut()) {
                 b.effects = true;

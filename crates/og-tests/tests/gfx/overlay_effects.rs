@@ -468,6 +468,57 @@ fn ao_ssao_matches_its_reference() {
 }
 
 #[test]
+fn gi_room_matches_its_reference() {
+    assert!(check("gi-room").stats.prepass_draws > 0);
+}
+
+#[test]
+fn gi_room_taa_matches_its_reference() {
+    assert!(check("gi-room-taa").stats.prepass_draws > 0);
+}
+
+/// Screen-space GI bleeds each wall's colour onto what faces it: against
+/// the same room without it, the left half of the frame (the red wall and
+/// the floor and block beside it) gains more red than green, and the right
+/// half (the green wall's side) more green than red.
+#[test]
+fn gi_bleeds_each_walls_colour_towards_its_side() {
+    let render = |gi: bool| {
+        let mut g = scenes::build("gi-room").expect("gi-room");
+        if !gi {
+            g.scene.post.gi = None;
+        }
+        gfx::render_built(&mut g).expect("rendered").image
+    };
+    let (on, off) = (render(true), render(false));
+    // Summed (red, green) gain over each half of the frame.
+    let mut gain = [[0i64; 2]; 2];
+    for y in 0..on.height {
+        for x in 0..on.width {
+            let i = ((y * on.width + x) * 4) as usize;
+            let half = (x >= on.width / 2) as usize;
+            for (c, g) in gain[half].iter_mut().enumerate() {
+                *g += on.pixels[i + c] as i64 - off.pixels[i + c] as i64;
+            }
+        }
+    }
+    println!(
+        "(red, green) gained: left {:?}, right {:?}",
+        gain[0], gain[1]
+    );
+    assert!(
+        gain[0][0] > gain[0][1],
+        "the red wall's side reddens: {:?}",
+        gain[0]
+    );
+    assert!(
+        gain[1][1] > gain[1][0],
+        "the green wall's side greens: {:?}",
+        gain[1]
+    );
+}
+
+#[test]
 fn dof_low_matches_its_reference() {
     check("dof-low");
 }

@@ -6552,7 +6552,7 @@ export declare function ToneMapping(value?: ToneMapping, options?: FieldOptions)
 /**
  * A graphics preset: a row of RenderSettings' quality fields that og.render.applyQuality writes (its doc has the table). The settings screen (og.ui.settingsScreen) offers the three.
  * - `"medium"`: The full frame: every quality field at its default.
- * - `"low"`: The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles, no screen-space reflections or ambient occlusion, FXAA for MSAA; and, for a game that turns one of those back on, ambient occlusion at half resolution and half the reflection and fog steps.
+ * - `"low"`: The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles, no screen-space reflections, ambient occlusion or global illumination, FXAA for MSAA; and, for a game that turns one of those back on, ambient occlusion at half resolution and half the reflection and fog steps.
  * - `"high"`: The full frame refined, at the GPU time of the effects the scene draws: the shadow maps at twice their side, ambient occlusion at full resolution whatever PostEffects.aoResolution asks, twice PostEffects.ssrSteps and twice the volumetric fog's slices (or raymarch steps). A scene without those effects differs from medium only by its shadow maps.
  */
 export type GraphicsQuality = "medium" | "low" | "high";
@@ -7541,6 +7541,74 @@ export interface PostEffects {
    * @capacity 8 elements (List.Post.8): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
    */
   custom: readonly Post[];
+}
+
+/**
+ * Screen-space global illumination: light bounces between what the frame shows. Each pixel casts rays over the hemisphere of its normal through the depth-normal prepass, and where a ray meets a surface it takes the light that surface sent on the previous frame (so a few frames give many bounces): a red wall tints the floor beside it, a sunlit patch lights the room's ceiling, an emissive panel lights what faces it. The bounce adds to the diffuse ambient light, and the rays that hit something take their share of the ambient light (the environment, the sky, baked lightmaps and LightVolumes) away, as ambient occlusion does; with PostEffects.ao on, its term does that. Under TAA the rays change every frame and TAA averages them; without it a still frame keeps one pattern, blurred. Light from off screen, or behind what the screen shows, is not bounced. Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it.
+ *
+ * The `GlobalIllumination` resource (token `og.GlobalIllumination`).
+ */
+export interface GlobalIllumination {
+  /** Bounce the light. */
+  enabled: boolean;
+  /**
+   * Scales the bounced light; 1 is physical.
+   *
+   * @default 1
+   * @range 0..
+   * @tunable
+   */
+  intensity: number;
+  /**
+   * How far each ray travels: the reach of a bounce.
+   *
+   * @default 4
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  maxDistance: number;
+  /**
+   * How far behind the depth buffer a surface is taken to extend: a ray passing behind a surface by less than this hits it.
+   *
+   * @default 0.5
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  thickness: number;
+  /**
+   * Steps along each ray.
+   *
+   * @default 12
+   * @range 4..64
+   */
+  steps: number;
+  /**
+   * Rays per pixel each frame: more is smoother and costlier (TAA adds the frames' rays together).
+   *
+   * @default 4
+   * @range 1..16
+   */
+  rays: number;
+  /**
+   * How much of the ambient light the rays that hit something take away (1 physical, 0 the bounce is only added); not read while PostEffects.ao is on, whose term occludes.
+   *
+   * @default 1
+   * @range 0..1
+   * @tunable
+   */
+  occlusion: number;
+  /**
+   * Full resolution, or half for a quarter of the rays and a depth-aware upsample. With PostEffects.ao on, the AO is drawn at this resolution too. RenderSettings.aoResolution replaces it as it replaces the AO's.
+   */
+  resolution: AoResolution;
+  /**
+   * The graphics quality's switch: false draws none and enabled keeps the game's choice. og.render.applyQuality writes it (false in the low preset, true in medium and high) on a world that has this resource; a game that names the resource after applying a preset applies the preset again.
+   *
+   * @default true
+   */
+  allowed: boolean;
 }
 
 /**
@@ -49584,6 +49652,10 @@ export declare namespace og {
    * Screen-space ambient occlusion, outlines, depth of field, motion blur and god rays run a depth-normal prepass, turned on with them. Grading, the colour adjustments (temperature to threshold), vignette, aberration, grain and the flash apply to the display colour after tone mapping, and lens distortion bends the result; the UI and screen-space sprites (the overlay) come after all of it.
    */
   const PostEffects: ResourceType<{ readonly ao: FieldSpec<"bool">; readonly aoRadius: FieldSpec<"f32">; readonly aoIntensity: FieldSpec<"f32">; readonly aoMethod: FieldSpec<"AoMethod">; readonly aoResolution: FieldSpec<"AoResolution">; readonly aoDirect: FieldSpec<"f32">; readonly aoRadiusScale: FieldSpec<"f32">; readonly outline: FieldSpec<"bool">; readonly outlineColor: FieldSpec<"Color">; readonly outlineWidth: FieldSpec<"f32">; readonly outlineDepthThreshold: FieldSpec<"f32">; readonly outlineNormalThreshold: FieldSpec<"f32">; readonly depthOfField: FieldSpec<"bool">; readonly dofFocusDistance: FieldSpec<"f32">; readonly dofFocusRange: FieldSpec<"f32">; readonly dofMaxBlur: FieldSpec<"f32">; readonly dofFalloff: FieldSpec<"f32">; readonly dofQuality: FieldSpec<"DofQuality">; readonly motionBlur: FieldSpec<"bool">; readonly motionBlurShutter: FieldSpec<"f32">; readonly motionBlurSamples: FieldSpec<"u32">; readonly motionBlurMaxPixels: FieldSpec<"f32">; readonly screenBlur: FieldSpec<"ScreenBlur">; readonly screenBlurStrength: FieldSpec<"f32">; readonly screenBlurCenter: FieldSpec<"Vector2">; readonly screenBlurAngle: FieldSpec<"f32">; readonly screenBlurSamples: FieldSpec<"u32">; readonly godRays: FieldSpec<"bool">; readonly godRaysIntensity: FieldSpec<"f32">; readonly godRaysDecay: FieldSpec<"f32">; readonly godRaysDensity: FieldSpec<"f32">; readonly godRaysTint: FieldSpec<"Color">; readonly godRaysSamples: FieldSpec<"u32">; readonly godRaysThreshold: FieldSpec<"f32">; readonly glow: FieldSpec<"bool">; readonly glowIntensity: FieldSpec<"f32">; readonly lut: FieldSpec<"Lut">; readonly lutIntensity: FieldSpec<"f32">; readonly temperature: FieldSpec<"f32">; readonly tint: FieldSpec<"f32">; readonly brightness: FieldSpec<"f32">; readonly contrast: FieldSpec<"f32">; readonly balanceShadows: FieldSpec<"Vector3">; readonly balanceMidtones: FieldSpec<"Vector3">; readonly balanceHighlights: FieldSpec<"Vector3">; readonly preserveLuminosity: FieldSpec<"bool">; readonly hue: FieldSpec<"f32">; readonly saturation: FieldSpec<"f32">; readonly vibrance: FieldSpec<"f32">; readonly grayscale: FieldSpec<"f32">; readonly invert: FieldSpec<"f32">; readonly threshold: FieldSpec<"f32">; readonly vignette: FieldSpec<"bool">; readonly vignetteIntensity: FieldSpec<"f32">; readonly vignetteRadius: FieldSpec<"f32">; readonly vignetteSmoothness: FieldSpec<"f32">; readonly vignetteColor: FieldSpec<"Color">; readonly chromaticAberration: FieldSpec<"f32">; readonly lensDistortion: FieldSpec<"f32">; readonly lensDistortionCenter: FieldSpec<"Vector2">; readonly filmGrain: FieldSpec<"f32">; readonly filmGrainSize: FieldSpec<"f32">; readonly sharpen: FieldSpec<"f32">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly shakeTrauma: FieldSpec<"f32">; readonly shakeMaxOffset: FieldSpec<"f32">; readonly shakeMaxRoll: FieldSpec<"f32">; readonly shakeFrequency: FieldSpec<"f32">; readonly shakeSeed: FieldSpec<"u32">; readonly ssr: FieldSpec<"bool">; readonly ssrMaxDistance: FieldSpec<"f32">; readonly ssrThickness: FieldSpec<"f32">; readonly ssrSteps: FieldSpec<"u32">; readonly ssrFade: FieldSpec<"f32">; readonly ssrIntensity: FieldSpec<"f32">; readonly custom: ListSpec<"Post"> }, PostEffects>;
+  /**
+   * Screen-space global illumination: light bounces between what the frame shows. Each pixel casts rays over the hemisphere of its normal through the depth-normal prepass, and where a ray meets a surface it takes the light that surface sent on the previous frame (so a few frames give many bounces): a red wall tints the floor beside it, a sunlit patch lights the room's ceiling, an emissive panel lights what faces it. The bounce adds to the diffuse ambient light, and the rays that hit something take their share of the ambient light (the environment, the sky, baked lightmaps and LightVolumes) away, as ambient occlusion does; with PostEffects.ao on, its term does that. Under TAA the rays change every frame and TAA averages them; without it a still frame keeps one pattern, blurred. Light from off screen, or behind what the screen shows, is not bounced. Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it.
+   */
+  const GlobalIllumination: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly intensity: FieldSpec<"f32">; readonly maxDistance: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly steps: FieldSpec<"u32">; readonly rays: FieldSpec<"u32">; readonly occlusion: FieldSpec<"f32">; readonly resolution: FieldSpec<"AoResolution">; readonly allowed: FieldSpec<"bool"> }, GlobalIllumination>;
   /**
    * Stylisation primitives that move the frame away from the photographic: a low-resolution pixel grid scaled up by whole numbers, fewer tones or a fixed palette through an ordered or blue-noise dither, halftone dots, cross-hatching, painterly smoothing over a canvas, ink lines on tonal edges, flat colour bands by depth, and the vertex snapping, affine textures and coarse depth of early 3D hardware. They compose: a look (og.load.look) sets this with PostEffects and RenderSettings, and the game's art direction is in that data, not in the engine. Every primitive is off at its zero value (0, false, none) and then costs nothing: no pass is recorded and no pipeline is built. RenderCapabilities.stylise names the primitives this renderer draws; a field it does not name is carried and read back but not drawn. Read after each tick; it never feeds back into the simulation.
    * Order in the frame: depth bands colour the lit scene with the fog, before tone mapping; after tone mapping and PostEffects' grading come paint, hatching, halftone and ink, then posterize and palette quantise through the dither, all at the logical resolution, and the pixel grid is scaled up last. The UI and screen-space sprites are drawn over the scaled frame at the output's resolution, unstylised.

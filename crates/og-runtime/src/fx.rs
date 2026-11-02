@@ -22,11 +22,16 @@ use serde_json::Value;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
+/// Screen-space GI's settings: a lazy resource (crate::lazy), so a world
+/// that never names it keeps its type table and hash.
+pub(crate) const GLOBAL_ILLUMINATION: &str = "og.GlobalIllumination";
+
 /// The layouts of the effect records the engine registered.
 #[derive(Default)]
 pub(crate) struct FxLayouts {
     pub post: Option<Layout>,
     pub lighting_2d: Option<Layout>,
+    pub global_illumination: Option<Layout>,
     pub light_2d: Option<Layout>,
     pub occluder_2d: Option<Layout>,
     pub light_mask_2d: Option<Layout>,
@@ -50,6 +55,7 @@ impl FxLayouts {
         FxLayouts {
             post: get("og.PostEffects"),
             lighting_2d: get("og.Lighting2D"),
+            global_illumination: get(GLOBAL_ILLUMINATION),
             light_2d: get("og.Light2D"),
             occluder_2d: get("og.Occluder2D"),
             light_mask_2d: get("og.LightMask2D"),
@@ -317,6 +323,7 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
     post.motion_blur = None;
     post.god_rays = None;
     post.ssr = None;
+    post.gi = None;
     post.glow = None;
     post.color_grading = None;
     post.color_adjust = None;
@@ -498,6 +505,21 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
         &fx.look.palettes,
         textures,
     );
+    if let Some(g) = resource(world, layouts.global_illumination.as_ref())
+        && on(&g, "enabled", false)
+        && on(&g, "allowed", true)
+    {
+        post.gi = Some(og_render::ScreenSpaceGlobalIllumination {
+            intensity: f(&g, "intensity", 1.0),
+            max_distance: f(&g, "maxDistance", 4.0),
+            thickness: f(&g, "thickness", 0.5),
+            steps: u(&g, "steps", 12),
+            rays: u(&g, "rays", 4),
+            occlusion: f(&g, "occlusion", 1.0).clamp(0.0, 1.0),
+            resolution: [AoResolution::Full, AoResolution::Half]
+                [variant(&g["resolution"], &["full", "half"]).min(1)],
+        });
+    }
     if let Some(l) = resource(world, layouts.lighting_2d.as_ref())
         && on(&l, "enabled", false)
     {

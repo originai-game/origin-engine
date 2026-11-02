@@ -200,6 +200,12 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: "og.LightMask2D",
         enable: |_, _| Ok(()),
     },
+    // R3: screen-space GI's settings, read by extraction alone: a world
+    // that never names them keeps its type table and hash.
+    Lazy {
+        name: crate::fx::GLOBAL_ILLUMINATION,
+        enable: |_, _| Ok(()),
+    },
     // R12: the runtime's before-tick hook reads and writes them
     // (crate::origin); no module to grant. Naming either registers both.
     Lazy {

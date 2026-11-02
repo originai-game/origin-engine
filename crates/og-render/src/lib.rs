@@ -96,12 +96,14 @@ mod probe_content;
 mod probe_select;
 mod probes;
 mod quality;
+mod ssgi;
 mod ssr;
 pub use probe_content::{ProbeContent, ProbeRoom};
 pub use probes::{
     MAX_REFLECTION_PROBES, PROBE_MAX_RESOLUTION, PROBE_MIN_RESOLUTION, ProbeCapture, ProbeMode,
     ReflectionProbe,
 };
+pub use ssgi::ScreenSpaceGlobalIllumination;
 pub use ssr::ScreenSpaceReflections;
 mod material;
 mod metaballs;
@@ -493,6 +495,9 @@ pub struct Renderer {
     culling_counts: bool,
     /// The previous frame's unjittered view-projection, when TAA history is valid.
     taa_history: Option<Mat4>,
+    /// The frame whose lit image screen-space GI's copy holds
+    /// (`Persistent::gi`, without TAA); forgotten with the TAA history.
+    gi_history: Option<u64>,
     /// The scene origin the last frame was drawn at ([`RenderScene::origin`]):
     /// the history above is in its coordinates.
     drawn_origin: Vec3,

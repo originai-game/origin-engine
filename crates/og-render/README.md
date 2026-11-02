@@ -484,6 +484,7 @@ the default is byte for byte the frame without the field.
 | `soft_particles` | false | true | true | free |
 | `ssr` | false | true | true | free |
 | `ambient_occlusion` | false | true | true | free |
+| `global_illumination` | false | true | true | free |
 | `ao_resolution` | `Some(Half)` | `None` | `Some(Full)` | free (the graph adds or drops `ao-upsample`) |
 | `ssr_step_scale` | 0.5 | 1 | 2 | free (a uniform) |
 | `volumetric_step_scale` | 0.5 | 1 | 2 | remakes the froxel volumes (the raymarch's steps are a uniform) |

@@ -52,6 +52,8 @@ pub const SCENES: &[&str] = &[
     "environment-map",
     "ao-gtao",
     "ao-ssao",
+    "gi-room",
+    "gi-room-taa",
     "dof-low",
     "dof-high",
     "god-rays",
@@ -649,6 +651,22 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         },
         "ao-ssao" => |g, _| {
             g.scene = fx::ao_scene(og_render::AoMethod::Ssao);
+            Ok(())
+        },
+        // Screen-space GI (og-render ssgi.rs) without TAA: each frame reads
+        // the last one's lit image, one more bounce a frame, so the capture
+        // waits four.
+        "gi-room" => |g, _| {
+            g.scene = fx::gi_scene(true);
+            g.frames = 4;
+            Ok(())
+        },
+        // The same under TAA: the rays turn every frame and TAA's history
+        // averages them (and is the image the GI reads).
+        "gi-room-taa" => |g, _| {
+            g.scene = fx::gi_scene(true);
+            g.desc.antialias = Antialias::Taa;
+            g.frames = 32;
             Ok(())
         },
         "dof-low" => |g, _| {

@@ -28,6 +28,9 @@ struct FxPost {
   ssr2: vec4<f32>,            // x: steps
   blur: vec4<f32>,            // the screen blur: x kind (0 off, 1 zoom, 2 spin, 3 directional), y strength, zw centre (uv)
   blur2: vec4<f32>,           // x: taps, yz: directional's offset (uv) at t = 1
+  gi0: vec4<f32>,             // screen-space GI (ssgi.wgsl): x max distance, y thickness, z intensity (0: off), w steps
+  gi1: vec4<f32>,             // x: rays, y: the noise's frame offset (px), z: 1 with last frame's lit image (tex_a), w: the occlusion from 0 the rays, 1 GTAO, 2 SSAO
+  gi2: vec4<f32>,             // x: how much the rays' hits occlude the ambient light
 };
 @group(0) @binding(0) var<uniform> fxp: FxPost;
 @group(0) @binding(1) var fx_linear: sampler;
@@ -121,15 +124,23 @@ fn ao_uv(px: vec2<i32>, uv: vec2<f32>) -> vec2<f32> {
 @fragment
 fn fs_gtao(in: VsOut) -> @location(0) vec4<f32> {
   let px = ao_pixel(in.pos.xy);
+  if (is_sky(depth_at(px))) { return vec4<f32>(1.0); }
+  return vec4<f32>(gtao_term(in), 0.0, 0.0, 1.0);
+}
+
+// The GTAO term at the AO texel `in.pos` (1 on the sky; fs_gtao, and
+// fs_ssgi's occlusion with PostEffects.ao's GTAO).
+fn gtao_term(in: VsOut) -> f32 {
+  let px = ao_pixel(in.pos.xy);
   let uv = ao_uv(px, in.uv);
   let d = depth_at(px);
-  if (is_sky(d)) { return vec4<f32>(1.0); }
+  if (is_sky(d)) { return 1.0; }
   let p = view_pos(uv, d);
   let n = normalize((fxp.view * vec4<f32>(world_normal(px), 0.0)).xyz);
   let v = select(normalize(-p), vec3<f32>(0.0, 0.0, 1.0), fxp.cam.y > 0.5);
   let radius = select(fxp.ao.x, min(fxp.ao.x, fxp.ao2.x * length(p)), fxp.ao2.x > 0.0);
   let radius_px = radius * pixels_per_unit(d);
-  if (radius_px < 1.0) { return vec4<f32>(1.0); }
+  if (radius_px < 1.0) { return 1.0; }
   let noise = ign(in.pos.xy);
   let slices = 3u;
   let steps = 6u;
@@ -177,7 +188,7 @@ fn fs_gtao(in: VsOut) -> @location(0) vec4<f32> {
     vis += proj_len * (arc0 + arc1);
   }
   vis = clamp(vis / f32(slices), 0.0, 1.0);
-  return vec4<f32>(pow(vis, max(fxp.ao.y, 0.0)), 0.0, 0.0, 1.0);
+  return pow(vis, max(fxp.ao.y, 0.0));
 }
 
 // AoMethod::Screen: three.js-era post SSAO. A disc of 14 taps (a Vogel spiral, rotated per pixel) whose radius is a
@@ -225,7 +236,16 @@ fn fs_ssao(in: VsOut) -> @location(0) vec4<f32> {
   let d = depth_at(px);
   if (fxp.cam.w > 0.5 && fxp.cam.w < 1.5) { return vec4<f32>(fract(d), 0.0, 0.0, 1.0); }
   if (is_sky(d)) { return vec4<f32>(1.0); }
-  if (fxp.ao2.y > 0.5) { return vec4<f32>(ao_screen(in, d), 0.0, 0.0, 1.0); }
+  return vec4<f32>(ssao_term(in), 0.0, 0.0, 1.0);
+}
+
+// The SSAO term (or the screen method's, `ao2.y`) at the AO texel
+// `in.pos`, off the sky (fs_ssao, and fs_ssgi's occlusion with
+// PostEffects.ao's SSAO or screen AO).
+fn ssao_term(in: VsOut) -> f32 {
+  let px = ao_pixel(in.pos.xy);
+  let d = depth_at(px);
+  if (fxp.ao2.y > 0.5) { return ao_screen(in, d); }
   let p = view_pos(ao_uv(px, in.uv), d);
   let n = normalize((fxp.view * vec4<f32>(world_normal(px), 0.0)).xyz);
   let radius = select(fxp.ao.x, min(fxp.ao.x, fxp.ao2.x * length(p)), fxp.ao2.x > 0.0);
@@ -251,7 +271,7 @@ fn fs_ssao(in: VsOut) -> @location(0) vec4<f32> {
     if (scene < sample_depth - 0.02 * radius) { occlusion += range; }
   }
   let ao = 1.0 - occlusion / 8.0;
-  return vec4<f32>(pow(ao, max(fxp.ao.y, 0.0)), 0.0, 0.0, 1.0);
+  return pow(ao, max(fxp.ao.y, 0.0));
 }
 
 // The view depth the prepass clears to (post.rs FAR_DEPTH): the sky.

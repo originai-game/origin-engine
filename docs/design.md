@@ -948,6 +948,25 @@ S6).
   maximum distance, and for rays turning back to the camera. Where a ray
   misses, the probes and environment already drawn remain
   (`RenderCapabilities.ssr` is false only without a renderer).
+- **Screen-space GI (R3).** The lazy resource `og.GlobalIllumination`
+  (`enabled`, `intensity`, `maxDistance`, `thickness`, `steps`, `rays`,
+  `occlusion`, `resolution`, and `allowed`, the quality switch
+  `og.render.applyQuality` writes on a world that has it), registered on
+  first use so a world without it keeps its type table and hash, draws in the AO passes' place (`ssgi.rs`,
+  `ssgi.wgsl`): the AO targets become RGBA16F, r the occlusion, gba the
+  bounce, so the lit passes read it through the effect group's AO
+  texture and no lit binding is added (the lit stages sit at 16 of 16
+  sampled textures). Each pixel casts cosine-weighted rays from its
+  prepass normal and marches them through the view depth; a hit on a
+  surface facing the ray reads the previous frame's lit image where the
+  hit pixel's velocity puts it: TAA's history under TAA, else a copy of
+  the main pass's image kept between frames. One bounce a frame, many
+  over a few. Under TAA the rays' noise moves every frame and TAA's
+  accumulation is the denoiser; the blur and the half-resolution
+  upsample are the AO's, over four channels and weighted by normals.
+  The bounce adds to the diffuse ambient light times the albedo; the
+  rays that hit take their share of the ambient light, or with
+  `PostEffects.ao` its term does. Scattered copies keep the AO alone.
 
 Render targets, views, layers and custom shaders (depth S8).
 

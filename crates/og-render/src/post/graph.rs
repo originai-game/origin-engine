@@ -451,9 +451,17 @@ impl FrameGraph {
             let pair = |f: &dyn Fn(usize) -> wgpu::BindGroup| [f(0), f(1)];
             let groups = match p {
                 // The AO reads the depth with the water's surfaces in it when there is one.
+                // The GI reads the lit image the previous frame left: the
+                // TAA history it wrote, or the main pass's copy.
                 FramePass::Ao => {
                     let d = self.try_view("ao-depth").unwrap_or(depth);
-                    pair(&|_| fx_group_depth(black, d, black))
+                    let previous = |slot: usize| match (cfg.gi, history, &persistent.gi) {
+                        (false, ..) => black,
+                        (true, Some(h), _) => &h[1 - slot],
+                        (true, None, Some((_, g))) => &g[1 - slot],
+                        (true, None, None) => black,
+                    };
+                    pair(&|slot| fx_group_depth(previous(slot), d, black))
                 }
                 FramePass::AoBlur => pair(&|_| fx_group(black, self.view("ao.raw"))),
                 FramePass::AoUpsample => pair(&|_| fx_group(black, self.view("ao.blur"))),
@@ -477,7 +485,6 @@ impl FrameGraph {
             };
             fx.insert(p, groups);
         }
-        let _ = cfg;
         Bindings {
             taa: taa_groups,
             taa_sharpen,
@@ -507,14 +514,18 @@ impl FrameGraph {
     ) -> u32 {
         let b = self.bindings.as_ref().expect("prepared");
         let clear = wgpu::LoadOp::Clear(wgpu::Color::BLACK);
+        // Screen-space GI in the AO passes' place (ssgi.rs).
+        let gi = self.cfg.is_some_and(|c| c.gi);
+        let half = self.views.contains_key("ao.blur");
         let effect = match pass {
+            FramePass::Ao if gi => Some(("fs_ssgi", "ao.raw")),
             FramePass::Ao => Some((if gtao { "fs_gtao" } else { "fs_ssao" }, "ao.raw")),
+            FramePass::AoBlur if gi => Some(("fs_gi_blur", if half { "ao.blur" } else { "ao" })),
             // Half resolution: the blur's depth is at twice its texel, which
             // gathers do not read.
-            FramePass::AoBlur if self.views.contains_key("ao.blur") => {
-                Some(("fs_ao_blur", "ao.blur"))
-            }
+            FramePass::AoBlur if half => Some(("fs_ao_blur", "ao.blur")),
             FramePass::AoBlur => Some((AO_BLUR_GATHER, "ao")),
+            FramePass::AoUpsample if gi => Some(("fs_gi_upsample", "ao")),
             FramePass::AoUpsample => Some(("fs_ao_upsample", "ao")),
             FramePass::Outline => Some(("fs_outline", "hdr.outline")),
             FramePass::DofCoc => Some(("fs_dof_coc", "dof.coc")),

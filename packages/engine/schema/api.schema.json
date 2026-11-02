@@ -4375,6 +4375,7 @@
         "StripBlend",
         "StripBlend",
         "PostEffects",
+        "GlobalIllumination",
         "Palette",
         "Look",
         "Palette",
@@ -26839,7 +26840,7 @@
       ],
       "x-og-variants": {
         "medium": "The full frame: every quality field at its default.",
-        "low": "The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles, no screen-space reflections or ambient occlusion, FXAA for MSAA; and, for a game that turns one of those back on, ambient occlusion at half resolution and half the reflection and fog steps.",
+        "low": "The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles, no screen-space reflections, ambient occlusion or global illumination, FXAA for MSAA; and, for a game that turns one of those back on, ambient occlusion at half resolution and half the reflection and fog steps.",
         "high": "The full frame refined, at the GPU time of the effects the scene draws: the shadow maps at twice their side, ambient occlusion at full resolution whatever PostEffects.aoResolution asks, twice PostEffects.ssrSteps and twice the volumetric fog's slices (or raymarch steps). A scene without those effects differs from medium only by its shadow maps."
       }
     },
@@ -27861,6 +27862,79 @@
           "maxItems": 8,
           "description": "The custom post passes, in order (og.load.post, `type post` assets): at most RenderCapabilities.maxCustomPosts (8, og-render's MAX_CUSTOM_POSTS). Each runs over the one before it (the lit image for the first), after depth of field and motion blur and before exposure, bloom and the tone curve, and reads the lit image, depth and normals too (any pass turns the prepass on). Write the whole list: `post.custom = [grade, crt]`, `post.custom = []`; a look gives it on one line (`custom \"post/tint.ogt\" \"post/crt.ogt\"`). A 0 in it is skipped. Its parameters are set with og.render.setPostParam. A pass the device fails to compile is reported (og.render.postErrors) and skipped.",
           "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "GlobalIllumination": {
+      "x-og-kind": "resource",
+      "x-og-module": "render",
+      "description": "Screen-space global illumination: light bounces between what the frame shows. Each pixel casts rays over the hemisphere of its normal through the depth-normal prepass, and where a ray meets a surface it takes the light that surface sent on the previous frame (so a few frames give many bounces): a red wall tints the floor beside it, a sunlit patch lights the room's ceiling, an emissive panel lights what faces it. The bounce adds to the diffuse ambient light, and the rays that hit something take their share of the ambient light (the environment, the sky, baked lightmaps and LightVolumes) away, as ambient occlusion does; with PostEffects.ao on, its term does that. Under TAA the rays change every frame and TAA averages them; without it a still frame keeps one pattern, blurred. Light from off screen, or behind what the screen shows, is not bounced. Off by default. Read after each tick; it never feeds back into the simulation, and a world that never names this resource keeps the type table, saves and hash it had without it.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Bounce the light.",
+          "default": false
+        },
+        "intensity": {
+          "type": "number",
+          "description": "Scales the bounced light; 1 is physical.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "maxDistance": {
+          "type": "number",
+          "description": "How far each ray travels: the reach of a bounce.",
+          "default": 4,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "thickness": {
+          "type": "number",
+          "description": "How far behind the depth buffer a surface is taken to extend: a ray passing behind a surface by less than this hits it.",
+          "default": 0.5,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "steps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Steps along each ray.",
+          "default": 12,
+          "minimum": 4,
+          "maximum": 64
+        },
+        "rays": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Rays per pixel each frame: more is smoother and costlier (TAA adds the frames' rays together).",
+          "default": 4,
+          "minimum": 1,
+          "maximum": 16
+        },
+        "occlusion": {
+          "type": "number",
+          "description": "How much of the ambient light the rays that hit something take away (1 physical, 0 the bounce is only added); not read while PostEffects.ao is on, whose term occludes.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "resolution": {
+          "$ref": "#/$defs/AoResolution",
+          "description": "Full resolution, or half for a quarter of the rays and a depth-aware upsample. With PostEffects.ao on, the AO is drawn at this resolution too. RenderSettings.aoResolution replaces it as it replaces the AO's.",
+          "default": "full"
+        },
+        "allowed": {
+          "type": "boolean",
+          "description": "The graphics quality's switch: false draws none and enabled keeps the game's choice. og.render.applyQuality writes it (false in the low preset, true in medium and high) on a world that has this resource; a game that names the resource after applying a preset applies the preset again.",
+          "default": true
         }
       },
       "additionalProperties": false

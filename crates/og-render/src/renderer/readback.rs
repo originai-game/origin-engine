@@ -113,6 +113,7 @@ impl Renderer {
     /// (call it on a camera cut).
     pub fn reset_history(&mut self) {
         self.taa_history = None;
+        self.gi_history = None;
     }
 
     /// Keeps the renderer's state that belongs to the world's time (the

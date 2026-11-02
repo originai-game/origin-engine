@@ -50,7 +50,9 @@ pub struct RenderQuality {
     pub ssr: bool,
     /// `PostEffects::ao` darkens creases; false draws none.
     pub ambient_occlusion: bool,
-    /// The resolution `PostEffects::ao` is searched at: `None` (the
+    /// `PostEffects::gi` bounces light; false draws none.
+    pub global_illumination: bool,
+    /// The resolution `PostEffects::ao` (and `PostEffects::gi`) is searched at: `None` (the
     /// default) is the scene's [`crate::AmbientOcclusion::resolution`];
     /// `Some` replaces it, the scene's kept for when it is `None` again.
     pub ao_resolution: Option<AoResolution>,
@@ -87,6 +89,7 @@ impl Default for RenderQuality {
             soft_particles: true,
             ssr: true,
             ambient_occlusion: true,
+            global_illumination: true,
             ao_resolution: None,
             ssr_step_scale: 1.0,
             volumetric_step_scale: 1.0,
@@ -101,7 +104,7 @@ impl Default for RenderQuality {
 pub enum QualityPreset {
     /// The cheapest frame: no rect-light shadows, two shadowed lights,
     /// half-size shadow maps, plain fog, hard particles, no screen-space
-    /// reflections or ambient occlusion, one sample per pixel; and, for a
+    /// reflections, ambient occlusion or global illumination, one sample per pixel; and, for a
     /// game that turns one of those back on, ambient occlusion at half
     /// resolution and half the reflection and fog steps.
     Low,
@@ -126,6 +129,7 @@ impl RenderQuality {
                 soft_particles: false,
                 ssr: false,
                 ambient_occlusion: false,
+                global_illumination: false,
                 ao_resolution: Some(AoResolution::Half),
                 ssr_step_scale: 0.5,
                 volumetric_step_scale: 0.5,
@@ -161,6 +165,7 @@ impl RenderQuality {
             soft_particles: self.soft_particles && row.soft_particles,
             ssr: self.ssr && row.ssr,
             ambient_occlusion: self.ambient_occlusion && row.ambient_occlusion,
+            global_illumination: self.global_illumination && row.global_illumination,
             ao_resolution: if ao(row.ao_resolution) < ao(self.ao_resolution) {
                 row.ao_resolution
             } else {

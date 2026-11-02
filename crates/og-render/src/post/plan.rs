@@ -211,6 +211,12 @@ pub(crate) struct GraphConfig {
     pub lightdir: bool,
     /// GTAO (or SSAO).
     pub gtao: bool,
+    /// Screen-space global illumination (`ssgi.rs`) draws in the AO
+    /// passes' place: their targets hold [`crate::ssgi::GI_FORMAT`], the
+    /// AO pass reads the previous frame's lit image (TAA's history, or
+    /// without TAA `gi-read`, which the main pass's copy into `gi-write`
+    /// fills for the next frame).
+    pub gi: bool,
     /// The main pass draws water or a 3D fluid: it copies the scene drawn
     /// so far.
     pub water: bool,
@@ -366,7 +372,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 h,
                 HDR_FORMAT,
                 1,
-                if cfg.water || cfg.transmission {
+                if cfg.water || cfg.transmission || (cfg.gi && !cfg.taa) {
                     attach_bind | wgpu::TextureUsages::COPY_SRC
                 } else {
                     attach_bind
@@ -407,6 +413,11 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
     if cfg.taa {
         g.import("history-read").import("history-write");
     }
+    // The GI's own copy of the lit image when there is no TAA history.
+    let gi_copy = cfg.gi && !cfg.taa;
+    if gi_copy {
+        g.import("gi-read").import("gi-write");
+    }
     let has = |p| passes.contains(&p);
     if has(FramePass::Prepass) {
         g.transient(
@@ -438,16 +449,21 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             );
         }
     }
+    let ao_format = if cfg.gi {
+        crate::ssgi::GI_FORMAT
+    } else {
+        AO_FORMAT
+    };
     if has(FramePass::AoUpsample) {
         // Searched and blurred at half resolution (each texel the depth's
         // at twice its coordinate), then upsampled to `ao`.
         let (hw, hh) = (w.div_ceil(2), h.div_ceil(2));
-        g.transient("ao.raw", desc(hw, hh, AO_FORMAT, 1, attach_bind))
-            .transient("ao.blur", desc(hw, hh, AO_FORMAT, 1, attach_bind))
-            .transient("ao", desc(w, h, AO_FORMAT, 1, attach_bind));
+        g.transient("ao.raw", desc(hw, hh, ao_format, 1, attach_bind))
+            .transient("ao.blur", desc(hw, hh, ao_format, 1, attach_bind))
+            .transient("ao", desc(w, h, ao_format, 1, attach_bind));
     } else if has(FramePass::Ao) {
-        g.transient("ao.raw", desc(w, h, AO_FORMAT, 1, attach_bind))
-            .transient("ao", desc(w, h, AO_FORMAT, 1, attach_bind));
+        g.transient("ao.raw", desc(w, h, ao_format, 1, attach_bind))
+            .transient("ao", desc(w, h, ao_format, 1, attach_bind));
     }
     if has(FramePass::Light2d) {
         let (lw, lh) = cfg.lightmap;
@@ -600,11 +616,11 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             ),
         );
     }
-    let ao_reads: &[&str] = if ao_depth {
-        &["ao-depth", "gbuffer"]
-    } else {
-        &["lindepth", "gbuffer"]
-    };
+    let mut ao_reads = vec![if ao_depth { "ao-depth" } else { "lindepth" }, "gbuffer"];
+    // The GI reads the previous frame's lit image.
+    if cfg.gi {
+        ao_reads.push(if cfg.taa { "history-read" } else { "gi-read" });
+    }
     for &p in passes {
         let name = p.name();
         match p {
@@ -620,7 +636,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 }
                 g.pass(name, &[], &writes)
             }
-            FramePass::Ao => g.pass(name, ao_reads, &["ao.raw"]),
+            FramePass::Ao => g.pass(name, &ao_reads, &["ao.raw"]),
             FramePass::AoBlur if has(FramePass::AoUpsample) => {
                 g.pass(name, &["ao.raw", "lindepth", "gbuffer"], &["ao.blur"])
             }
@@ -698,6 +714,9 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 }
                 if cfg.water {
                     writes.push("scene-copy");
+                }
+                if gi_copy {
+                    writes.push("gi-write");
                 }
                 g.pass(name, &reads, &writes)
             }
@@ -823,4 +842,65 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
         };
     }
     g
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn cfg(taa: bool, gi: bool) -> GraphConfig {
+        GraphConfig {
+            width: 64,
+            height: 32,
+            post: (64, 32),
+            samples: 1,
+            taa,
+            lightmap: (1, 1),
+            lightdir: false,
+            gtao: true,
+            gi,
+            water: false,
+            water_ao: false,
+            transmission: false,
+            fluid_fields: 0,
+            reflection: [None, None],
+            object_space: false,
+            ui_depth: false,
+        }
+    }
+
+    /// Screen-space GI in the AO passes' place: the graph compiles with and
+    /// without TAA (it reads TAA's history, or its own copy the main pass
+    /// writes), the AO runs before the main pass that samples it, and the
+    /// AO's targets hold the GI's RGBA instead of the AO's R8.
+    #[test]
+    fn gi_frames_compile_with_the_ao_targets_widened() {
+        for taa in [false, true] {
+            let mut passes = vec![
+                FramePass::Prepass,
+                FramePass::Ao,
+                FramePass::AoBlur,
+                FramePass::AoUpsample,
+                FramePass::Main,
+            ];
+            if taa {
+                passes.push(FramePass::Taa);
+            }
+            passes.push(FramePass::Tonemap);
+            for gi in [false, true] {
+                let plan = build_graph(&passes, &cfg(taa, gi))
+                    .compile()
+                    .unwrap_or_else(|e| panic!("taa {taa} gi {gi}: {e}"));
+                let at = |p: FramePass| plan.order().iter().position(|&i| passes[i] == p);
+                assert!(at(FramePass::AoUpsample) < at(FramePass::Main));
+                let format = plan.physical()[plan.slot("ao").expect("ao realized")].format;
+                let want = if gi {
+                    crate::ssgi::GI_FORMAT
+                } else {
+                    AO_FORMAT
+                };
+                assert_eq!(format, want, "taa {taa} gi {gi}");
+            }
+        }
+    }
 }

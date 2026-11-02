@@ -178,6 +178,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             soft_particles: on(s, "softParticles", full.soft_particles),
             ssr: on(s, "screenSpaceReflections", full.ssr),
             ambient_occlusion: on(s, "ambientOcclusion", full.ambient_occlusion),
+            // On the lazy og.GlobalIllumination's `allowed` (crate::fx).
+            global_illumination: full.global_illumination,
             ao_resolution: [
                 None,
                 Some(og_render::AoResolution::Full),

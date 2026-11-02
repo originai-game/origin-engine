@@ -55,6 +55,7 @@ impl Renderer {
         );
         self.graph.invalidate();
         self.taa_history = None;
+        self.gi_history = None;
         if let Some((surface, config)) = &mut self.surface {
             config.width = width;
             config.height = height;
@@ -220,6 +221,7 @@ impl Renderer {
         self.persistent
             .resize_history(&self.device, hw, hh, self.info.antialias);
         self.taa_history = None;
+        self.gi_history = None;
     }
 
     /// The size of TAA's history and of the frame after it: the output's

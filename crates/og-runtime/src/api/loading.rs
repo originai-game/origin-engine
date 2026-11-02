@@ -122,11 +122,26 @@ pub fn og_render_apply_quality(world: u32, preset: String) -> String {
         "volumetricStepScale": q.volumetric_step_scale,
         "msaaSamples": q.msaa_samples,
     });
-    result_void(
-        engine(world).and_then(|eng| {
-            super::engine::write_resource_value(eng.id, "og.RenderSettings", &fields)
-        }),
-    )
+    result_void(engine(world).and_then(|eng| {
+        super::engine::write_resource_value(eng.id, "og.RenderSettings", &fields)?;
+        // Screen-space GI's switch lives on its own lazy resource, written
+        // only where the world has it: a world that never named it keeps
+        // its type table and hash.
+        let has_gi = eng
+            .state
+            .borrow()
+            .names_by_id
+            .iter()
+            .any(|n| n == crate::fx::GLOBAL_ILLUMINATION);
+        if has_gi {
+            super::engine::write_resource_value(
+                eng.id,
+                crate::fx::GLOBAL_ILLUMINATION,
+                &json!({ "allowed": q.global_illumination }),
+            )?;
+        }
+        Ok(())
+    }))
 }
 
 pub fn og_render_look(world: u32) -> String {

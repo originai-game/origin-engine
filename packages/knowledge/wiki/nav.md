@@ -18,7 +18,7 @@ module nav {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 12764</sub>
+<sub>`api.ogt` line 12806</sub>
 
 ## Contents
 
@@ -102,7 +102,7 @@ fn grid {
 }
 ```
 
-<sub>`api.ogt` line 13264</sub>
+<sub>`api.ogt` line 13306</sub>
 
 <a id="fn-gridFromTilemap"></a>
 
@@ -132,7 +132,7 @@ fn gridFromTilemap {
 }
 ```
 
-<sub>`api.ogt` line 13271</sub>
+<sub>`api.ogt` line 13313</sub>
 
 <a id="fn-setCost"></a>
 
@@ -168,7 +168,7 @@ fn setCost {
 }
 ```
 
-<sub>`api.ogt` line 13278</sub>
+<sub>`api.ogt` line 13320</sub>
 
 <a id="fn-cellAt"></a>
 
@@ -200,7 +200,7 @@ fn cellAt {
 }
 ```
 
-<sub>`api.ogt` line 13288</sub>
+<sub>`api.ogt` line 13330</sub>
 
 <a id="fn-findPath"></a>
 
@@ -230,7 +230,7 @@ fn findPath {
 }
 ```
 
-<sub>`api.ogt` line 13296</sub>
+<sub>`api.ogt` line 13338</sub>
 
 <a id="fn-flowField"></a>
 
@@ -260,7 +260,7 @@ fn flowField {
 }
 ```
 
-<sub>`api.ogt` line 13303</sub>
+<sub>`api.ogt` line 13345</sub>
 
 <a id="fn-setFlowTargets"></a>
 
@@ -292,7 +292,7 @@ fn setFlowTargets {
 }
 ```
 
-<sub>`api.ogt` line 13310</sub>
+<sub>`api.ogt` line 13352</sub>
 
 <a id="fn-flowAt"></a>
 
@@ -324,7 +324,7 @@ fn flowAt {
 }
 ```
 
-<sub>`api.ogt` line 13318</sub>
+<sub>`api.ogt` line 13360</sub>
 
 <a id="fn-load"></a>
 
@@ -358,7 +358,7 @@ fn load {
 }
 ```
 
-<sub>`api.ogt` line 13326</sub>
+<sub>`api.ogt` line 13368</sub>
 
 <a id="fn-build"></a>
 
@@ -388,7 +388,7 @@ fn build {
 }
 ```
 
-<sub>`api.ogt` line 13336</sub>
+<sub>`api.ogt` line 13378</sub>
 
 <a id="fn-setObstacle"></a>
 
@@ -424,7 +424,7 @@ fn setObstacle {
 }
 ```
 
-<sub>`api.ogt` line 13343</sub>
+<sub>`api.ogt` line 13385</sub>
 
 <a id="fn-carve"></a>
 
@@ -460,7 +460,7 @@ fn carve {
 }
 ```
 
-<sub>`api.ogt` line 13354</sub>
+<sub>`api.ogt` line 13396</sub>
 
 <a id="fn-setArea"></a>
 
@@ -496,7 +496,7 @@ fn setArea {
 }
 ```
 
-<sub>`api.ogt` line 13365</sub>
+<sub>`api.ogt` line 13407</sub>
 
 <a id="fn-setLink"></a>
 
@@ -532,7 +532,7 @@ fn setLink {
 }
 ```
 
-<sub>`api.ogt` line 13376</sub>
+<sub>`api.ogt` line 13418</sub>
 
 <a id="fn-setLinkOpen"></a>
 
@@ -566,7 +566,7 @@ fn setLinkOpen {
 }
 ```
 
-<sub>`api.ogt` line 13387</sub>
+<sub>`api.ogt` line 13429</sub>
 
 <a id="fn-finishLink"></a>
 
@@ -596,7 +596,7 @@ fn finishLink {
 }
 ```
 
-<sub>`api.ogt` line 13396</sub>
+<sub>`api.ogt` line 13438</sub>
 
 <a id="fn-nearest"></a>
 
@@ -632,7 +632,7 @@ fn nearest {
 }
 ```
 
-<sub>`api.ogt` line 13403</sub>
+<sub>`api.ogt` line 13445</sub>
 
 <a id="fn-pathOf"></a>
 
@@ -662,7 +662,7 @@ fn pathOf {
 }
 ```
 
-<sub>`api.ogt` line 13414</sub>
+<sub>`api.ogt` line 13456</sub>
 
 ## Components, resources and events
 
@@ -786,7 +786,7 @@ component NavAgent {
 }
 ```
 
-<sub>`api.ogt` line 12792</sub>
+<sub>`api.ogt` line 12834</sub>
 
 <a id="record-Steering"></a>
 
@@ -914,7 +914,7 @@ component Steering {
 }
 ```
 
-<sub>`api.ogt` line 12880</sub>
+<sub>`api.ogt` line 12922</sub>
 
 <a id="record-NavFilter"></a>
 
@@ -937,7 +937,7 @@ component NavFilter {
 }
 ```
 
-<sub>`api.ogt` line 12975</sub>
+<sub>`api.ogt` line 13017</sub>
 
 <a id="record-Crowd"></a>
 
@@ -986,7 +986,7 @@ component Crowd {
 }
 ```
 
-<sub>`api.ogt` line 12981</sub>
+<sub>`api.ogt` line 13023</sub>
 
 <a id="record-NavLinkReached"></a>
 
@@ -1025,7 +1025,7 @@ event NavLinkReached {
 }
 ```
 
-<sub>`api.ogt` line 13046</sub>
+<sub>`api.ogt` line 13088</sub>
 
 ## Types
 
@@ -1041,7 +1041,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Navigation "A grid, a navmesh or a flow field agents plan on."
 ```
 
-<sub>`api.ogt` line 12770</sub>
+<sub>`api.ogt` line 12812</sub>
 
 <a id="type-NavAlgorithm"></a>
 
@@ -1064,7 +1064,7 @@ enum NavAlgorithm {
 }
 ```
 
-<sub>`api.ogt` line 12786</sub>
+<sub>`api.ogt` line 12828</sub>
 
 <a id="type-NavLinkKind"></a>
 
@@ -1091,7 +1091,7 @@ enum NavLinkKind {
 }
 ```
 
-<sub>`api.ogt` line 13011</sub>
+<sub>`api.ogt` line 13053</sub>
 
 <a id="type-NavLinkDesc"></a>
 
@@ -1141,7 +1141,7 @@ struct NavLinkDesc {
 }
 ```
 
-<sub>`api.ogt` line 13019</sub>
+<sub>`api.ogt` line 13061</sub>
 
 <a id="type-NavShapeKind"></a>
 
@@ -1168,7 +1168,7 @@ enum NavShapeKind {
 }
 ```
 
-<sub>`api.ogt` line 13063</sub>
+<sub>`api.ogt` line 13105</sub>
 
 <a id="type-NavShape"></a>
 
@@ -1222,7 +1222,7 @@ struct NavShape {
 }
 ```
 
-<sub>`api.ogt` line 13071</sub>
+<sub>`api.ogt` line 13113</sub>
 
 <a id="type-NavAreaDesc"></a>
 
@@ -1248,7 +1248,7 @@ struct NavAreaDesc {
 }
 ```
 
-<sub>`api.ogt` line 13101</sub>
+<sub>`api.ogt` line 13143</sub>
 
 <a id="type-NavGridDesc"></a>
 
@@ -1293,7 +1293,7 @@ struct NavGridDesc {
 }
 ```
 
-<sub>`api.ogt` line 13110</sub>
+<sub>`api.ogt` line 13152</sub>
 
 <a id="type-TilemapGridDesc"></a>
 
@@ -1321,7 +1321,7 @@ struct TilemapGridDesc {
 }
 ```
 
-<sub>`api.ogt` line 13135</sub>
+<sub>`api.ogt` line 13177</sub>
 
 <a id="type-NavCell"></a>
 
@@ -1344,7 +1344,7 @@ struct NavCell {
 }
 ```
 
-<sub>`api.ogt` line 13145</sub>
+<sub>`api.ogt` line 13187</sub>
 
 <a id="type-PathDesc"></a>
 
@@ -1390,7 +1390,7 @@ struct PathDesc {
 }
 ```
 
-<sub>`api.ogt` line 13152</sub>
+<sub>`api.ogt` line 13194</sub>
 
 <a id="type-NavPath"></a>
 
@@ -1421,7 +1421,7 @@ struct NavPath {
 }
 ```
 
-<sub>`api.ogt` line 13175</sub>
+<sub>`api.ogt` line 13217</sub>
 
 <a id="type-FlowDesc"></a>
 
@@ -1445,7 +1445,7 @@ struct FlowDesc {
 }
 ```
 
-<sub>`api.ogt` line 13187</sub>
+<sub>`api.ogt` line 13229</sub>
 
 <a id="type-NavBox"></a>
 
@@ -1473,7 +1473,7 @@ struct NavBox {
 }
 ```
 
-<sub>`api.ogt` line 13194</sub>
+<sub>`api.ogt` line 13236</sub>
 
 <a id="type-NavMeshDesc"></a>
 
@@ -1531,7 +1531,7 @@ struct NavMeshDesc {
 }
 ```
 
-<sub>`api.ogt` line 13205</sub>
+<sub>`api.ogt` line 13247</sub>
 
 <a id="type-NavMeshInfo"></a>
 
@@ -1568,7 +1568,7 @@ struct NavMeshInfo {
 }
 ```
 
-<sub>`api.ogt` line 13241</sub>
+<sub>`api.ogt` line 13283</sub>
 
 <a id="type-NavRebuild"></a>
 
@@ -1589,7 +1589,7 @@ struct NavRebuild {
 }
 ```
 
-<sub>`api.ogt` line 13258</sub>
+<sub>`api.ogt` line 13300</sub>
 
 ## Column kinds
 
@@ -1608,7 +1608,7 @@ column Navigation {
 }
 ```
 
-<sub>`api.ogt` line 12772</sub>
+<sub>`api.ogt` line 12814</sub>
 
 ## Constants
 
@@ -1625,34 +1625,34 @@ column Navigation {
 const NAV_IDLE u32 0 "NavAgent.status: not seeking."
 ```
 
-<sub>`api.ogt` line 12779</sub>
+<sub>`api.ogt` line 12821</sub>
 
 ```ogt
 const NAV_MOVING u32 1 "NavAgent.status: following a path or a flow field."
 ```
 
-<sub>`api.ogt` line 12780</sub>
+<sub>`api.ogt` line 12822</sub>
 
 ```ogt
 const NAV_ARRIVED u32 2 "NavAgent.status: within stopDistance of the target."
 ```
 
-<sub>`api.ogt` line 12781</sub>
+<sub>`api.ogt` line 12823</sub>
 
 ```ogt
 const NAV_UNREACHABLE u32 3 "NavAgent.status: no path reaches the target, or the agent is off its grid or navmesh."
 ```
 
-<sub>`api.ogt` line 12782</sub>
+<sub>`api.ogt` line 12824</sub>
 
 ```ogt
 const NAV_PARTIAL u32 4 "NavAgent.status: the target is cut off; moving to the reachable point nearest it."
 ```
 
-<sub>`api.ogt` line 12783</sub>
+<sub>`api.ogt` line 12825</sub>
 
 ```ogt
 const NAV_ON_LINK u32 5 "NavAgent.status: crossing an off-mesh link (a jump, a ladder, a door, a teleport)."
 ```
 
-<sub>`api.ogt` line 12784</sub>
+<sub>`api.ogt` line 12826</sub>

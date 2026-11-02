@@ -8938,6 +8938,63 @@
     },
     {
       "id": 13,
+      "name": "GlobalIllumination",
+      "schema": "og.GlobalIllumination",
+      "module": "render",
+      "fields": [
+        {
+          "name": "enabled",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "intensity",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "maxDistance",
+          "column": "f32",
+          "default": 4,
+          "tunable": true
+        },
+        {
+          "name": "thickness",
+          "column": "f32",
+          "default": 0.5,
+          "tunable": true
+        },
+        {
+          "name": "steps",
+          "column": "u32",
+          "default": 12
+        },
+        {
+          "name": "rays",
+          "column": "u32",
+          "default": 4
+        },
+        {
+          "name": "occlusion",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
+          "name": "resolution",
+          "column": "AoResolution",
+          "default": "full"
+        },
+        {
+          "name": "allowed",
+          "column": "bool",
+          "default": true
+        }
+      ]
+    },
+    {
+      "id": 14,
       "name": "Stylise",
       "schema": "og.Stylise",
       "module": "render",
@@ -9202,7 +9259,7 @@
       ]
     },
     {
-      "id": 14,
+      "id": 15,
       "name": "MaterialStyle",
       "schema": "og.MaterialStyle",
       "module": "render",
@@ -9302,7 +9359,7 @@
       ]
     },
     {
-      "id": 15,
+      "id": 16,
       "name": "Lighting2D",
       "schema": "og.Lighting2D",
       "module": "render",
@@ -9344,7 +9401,7 @@
       ]
     },
     {
-      "id": 16,
+      "id": 17,
       "name": "Physics",
       "schema": "og.Physics",
       "module": "physics",
@@ -9397,7 +9454,7 @@
       ]
     },
     {
-      "id": 17,
+      "id": 18,
       "name": "Fog",
       "schema": "og.Fog",
       "module": "atmosphere",
@@ -9504,7 +9561,7 @@
       ]
     },
     {
-      "id": 18,
+      "id": 19,
       "name": "Sky",
       "schema": "og.Sky",
       "module": "atmosphere",
@@ -9634,7 +9691,7 @@
       ]
     },
     {
-      "id": 19,
+      "id": 20,
       "name": "DayNight",
       "schema": "og.DayNight",
       "module": "atmosphere",
@@ -9700,7 +9757,7 @@
       ]
     },
     {
-      "id": 20,
+      "id": 21,
       "name": "PhysicalSky",
       "schema": "og.PhysicalSky",
       "module": "atmosphere",
@@ -9755,7 +9812,7 @@
       ]
     },
     {
-      "id": 21,
+      "id": 22,
       "name": "Clouds",
       "schema": "og.Clouds",
       "module": "atmosphere",
@@ -9840,7 +9897,7 @@
       ]
     },
     {
-      "id": 22,
+      "id": 23,
       "name": "WeatherState",
       "schema": "og.WeatherState",
       "module": "atmosphere",
@@ -9963,7 +10020,7 @@
       ]
     },
     {
-      "id": 23,
+      "id": 24,
       "name": "Weather",
       "schema": "og.Weather",
       "module": "atmosphere",
@@ -10018,7 +10075,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 25,
       "name": "Wind",
       "schema": "og.Wind",
       "module": "atmosphere",
@@ -10054,7 +10111,7 @@
       ]
     },
     {
-      "id": 25,
+      "id": 26,
       "name": "Audio",
       "schema": "og.Audio",
       "module": "audio",
@@ -10132,7 +10189,7 @@
       ]
     },
     {
-      "id": 26,
+      "id": 27,
       "name": "Story",
       "schema": "og.Story",
       "module": "story",
@@ -10158,7 +10215,7 @@
       ]
     },
     {
-      "id": 27,
+      "id": 28,
       "name": "PlatformGrants",
       "schema": "og.PlatformGrants",
       "module": "platform",
@@ -10172,7 +10229,7 @@
       ]
     },
     {
-      "id": 28,
+      "id": 29,
       "name": "Lockstep",
       "schema": "og.Lockstep",
       "module": "net",
@@ -10232,7 +10289,7 @@
       ]
     },
     {
-      "id": 29,
+      "id": 30,
       "name": "ArtPalette",
       "schema": "og.ArtPalette",
       "module": "art",
@@ -10271,7 +10328,7 @@
       ]
     },
     {
-      "id": 30,
+      "id": 31,
       "name": "ArtPixels",
       "schema": "og.ArtPixels",
       "module": "art",
@@ -10310,7 +10367,7 @@
       ]
     },
     {
-      "id": 31,
+      "id": 32,
       "name": "ArtTexels",
       "schema": "og.ArtTexels",
       "module": "art",
@@ -10338,7 +10395,7 @@
       ]
     },
     {
-      "id": 32,
+      "id": 33,
       "name": "ArtShape",
       "schema": "og.ArtShape",
       "module": "art",
@@ -10381,7 +10438,7 @@
       ]
     },
     {
-      "id": 33,
+      "id": 34,
       "name": "ArtLine",
       "schema": "og.ArtLine",
       "module": "art",
@@ -10418,7 +10475,7 @@
       ]
     },
     {
-      "id": 34,
+      "id": 35,
       "name": "ArtMotion",
       "schema": "og.ArtMotion",
       "module": "art",
@@ -10441,7 +10498,7 @@
       ]
     },
     {
-      "id": 35,
+      "id": 36,
       "name": "ArtCamera",
       "schema": "og.ArtCamera",
       "module": "art",

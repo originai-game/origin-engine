@@ -26,6 +26,7 @@ impl Renderer {
         let chain = scene.stylise.chain_bits();
         if scene.camera_cut || self.stylise_chain.is_some_and(|c| c != chain) {
             self.taa_history = None;
+            self.gi_history = None;
         }
         self.stylise_chain = Some(chain);
         let (grid, upscale, grid_offset) = self.pixel_grid(scene.stylise.pixel);

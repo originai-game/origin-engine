@@ -145,6 +145,95 @@ pub fn ao_scene(method: AoMethod) -> RenderScene {
 }
 
 // ---------------------------------------------------------------------------
+// Screen-space global illumination.
+// ---------------------------------------------------------------------------
+
+/// An open-topped room under a low sun: a red wall on the left, a green one
+/// on the right, a white back wall and floor, a white block and sphere in
+/// the middle, under a dim sky (the ambient light the bounce stands out
+/// against). With `gi` the sunlit floor lights the walls and the block, and
+/// the coloured walls tint the floor and the white faces beside them.
+pub fn gi_scene(gi: bool) -> RenderScene {
+    let mut scene = RenderScene::new();
+    ground(&mut scene, 30.0, 1.0, 0.9);
+    let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
+    let sphere = scene.add_mesh(shapes::sphere(32, 24));
+    let matte = |s: &mut RenderScene, c: [f32; 3]| {
+        s.add_material(Material {
+            base_color: [c[0], c[1], c[2], 1.0],
+            roughness: 0.9,
+            ..Default::default()
+        })
+    };
+    let white = matte(&mut scene, [0.8, 0.8, 0.8]);
+    let red = matte(&mut scene, [0.8, 0.08, 0.06]);
+    let green = matte(&mut scene, [0.08, 0.7, 0.1]);
+    let place = |s: &mut RenderScene, m, mat, p: Vec3, size: Vec3| {
+        s.add_instance(m, mat, Mat4::from_translation(p) * Mat4::from_scale(size));
+    };
+    place(
+        &mut scene,
+        cube,
+        white,
+        Vec3::new(0.0, 1.5, -2.5),
+        Vec3::new(6.0, 3.0, 0.2),
+    );
+    place(
+        &mut scene,
+        cube,
+        red,
+        Vec3::new(-2.9, 1.5, 0.0),
+        Vec3::new(0.2, 3.0, 5.0),
+    );
+    place(
+        &mut scene,
+        cube,
+        green,
+        Vec3::new(2.9, 1.5, 0.0),
+        Vec3::new(0.2, 3.0, 5.0),
+    );
+    place(
+        &mut scene,
+        cube,
+        white,
+        Vec3::new(-1.0, 0.6, -0.8),
+        Vec3::new(1.0, 1.2, 1.0),
+    );
+    place(
+        &mut scene,
+        sphere,
+        white,
+        Vec3::new(1.1, 0.5, 0.2),
+        Vec3::splat(1.0),
+    );
+    // High and from the front right: the floor and the red wall in sun, the
+    // green wall's inside in shade.
+    let sun = Vec3::new(0.45, 0.8, 0.4);
+    scene.light = DirectionalLight {
+        direction_to_light: sun,
+        intensity: 3.0,
+        ..Default::default()
+    };
+    scene.environment = Environment {
+        sky: ProceduralSky {
+            sun_direction: sun,
+            sun_color: Vec3::new(1.0, 0.97, 0.92),
+            look: None,
+        },
+        intensity: 0.25,
+        background: Background::Sky,
+    };
+    scene.post.gi = gi.then(og_render::ScreenSpaceGlobalIllumination::default);
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 2.2, 6.0),
+        target: Vec3::new(0.0, 0.9, -1.0),
+        exposure: Exposure::linear(0.8),
+        ..Default::default()
+    };
+    scene
+}
+
+// ---------------------------------------------------------------------------
 // Depth of field.
 // ---------------------------------------------------------------------------
 

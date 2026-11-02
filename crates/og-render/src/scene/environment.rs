@@ -487,6 +487,8 @@ pub struct PostEffects {
     pub flash: Option<ScreenFlash>,
     /// Screen-space reflections (`None`: off).
     pub ssr: Option<crate::ScreenSpaceReflections>,
+    /// Screen-space global illumination (`None`: off; `ssgi.rs`).
+    pub gi: Option<crate::ScreenSpaceGlobalIllumination>,
     /// `Some(radius)`: [`PostEffects::bloom`] as three.js UnrealBloomPass
     /// (luminance high pass, five Gaussian mips mixed by `radius`, the knee
     /// as its smoothWidth and the intensity as its strength); `None`: the

@@ -477,8 +477,11 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
     ibl_scale *= mix(1.0, ao_sample, material.flags.y);
   }
   var ao_direct = 1.0;  // also scales the emitted light (pbr_fs.wgsl ao_all)
+  var bounce = vec3<f32>(0.0);  // screen-space GI's (pbr_fs.wgsl)
   if (EFFECTS && fx.ao.x > 0.5) {
-    let ssao_sample = textureSampleLevel(ssao_tex, fx_sampler, in.clip.xy * fx.screen.zw, 0.0).r;
+    let ao_texel = textureSampleLevel(ssao_tex, fx_sampler, in.clip.xy * fx.screen.zw, 0.0);
+    let ssao_sample = ao_texel.r;
+    if (fx.ao.w > 0.5) { bounce = ao_texel.gba * (ibl_scale / max(material.flags.z, 1e-4)); }
     ibl_scale *= mix(mix(1.0, ssao_sample, fx.ao.y), mix(0.35, 1.0, ssao_sample), fx.ao.z);
     ao_direct = mix(1.0, mix(0.35, 1.0, ssao_sample), fx.ao.z);
     diffuse *= ao_direct;
@@ -497,7 +500,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
     coat_keep = 1.0 - fc;
     coat_ibl = coat_env * (0.04 * coat_lut.x + coat_lut.y) * s.coat * frame.params.x;
   }
-  var ibl_diffuse = kd_ibl * irradiance * s.albedo;
+  var ibl_diffuse = kd_ibl * (irradiance * ibl_scale + bounce) * s.albedo;
   var ibl_specular = prefiltered * env_brdf;
   // The sheen over the base (the lights' share is in physical_brdf).
   var sheen_keep = 1.0;
@@ -506,7 +509,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
     ibl_diffuse *= sheen_keep;
     ibl_specular = ibl_specular * sheen_keep + irradiance * k.sheen_color * sheen_ibl(n_dot_v, k.sheen_roughness);
   }
-  diffuse += ibl_diffuse * coat_keep * ibl_scale;
+  diffuse += ibl_diffuse * coat_keep;
   specular += (ibl_specular * coat_keep + coat_ibl) * ibl_scale;
 
   // Transmission: the opaque scene behind, refracted through the volume

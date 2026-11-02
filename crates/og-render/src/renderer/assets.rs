@@ -166,6 +166,7 @@ impl Renderer {
                 ..Default::default()
             };
             self.taa_history = None;
+            self.gi_history = None;
         }
         for index in self.cache.shaders.len()..scene.shaders().len() {
             let (lit, shadow) = custom::module_sources(&scene.shaders()[index], self.planar_slot());

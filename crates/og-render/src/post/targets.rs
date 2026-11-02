@@ -12,6 +12,10 @@ pub(crate) struct Persistent {
     pub offscreen_linear: Option<wgpu::TextureView>,
     /// TAA history ping-pong: frame `n` writes `history[n % 2]`.
     pub history: Option<[wgpu::TextureView; 2]>,
+    /// Screen-space GI's copy of the lit image without TAA (`ssgi.rs`),
+    /// with its size: frame `n` copies into `gi[n % 2]` and reads the
+    /// other. Made by [`Persistent::ensure_gi`] on the first such frame.
+    pub gi: Option<((u32, u32), [wgpu::TextureView; 2])>,
 }
 
 impl Persistent {
@@ -64,7 +68,29 @@ impl Persistent {
             offscreen_view,
             offscreen_linear,
             history,
+            gi: None,
         }
+    }
+
+    /// The GI's copies at the scene's size; true when they were made anew
+    /// (what they hold is not the previous frame's).
+    pub fn ensure_gi(&mut self, device: &wgpu::Device, width: u32, height: u32) -> bool {
+        if self
+            .gi
+            .as_ref()
+            .is_some_and(|(size, _)| *size == (width, height))
+        {
+            return false;
+        }
+        let usage = wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST;
+        self.gi = Some((
+            (width, height),
+            [0, 1].map(|_| {
+                target_texture(device, "gi history", width, height, HDR_FORMAT, usage)
+                    .create_view(&Default::default())
+            }),
+        ));
+        true
     }
 }
 
