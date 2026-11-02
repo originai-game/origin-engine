@@ -44,20 +44,25 @@ type Summary = {
   facts: { droppedAt: number; drops: number; rejoinedAt: number; rejoins: number } | null;
 };
 
-/** Two `og run --room` processes at once, each with its own extra arguments; `during` gets each process once they started. */
+/**
+ * Two `og run --room` processes at once, each with its own extra arguments; `during` gets each process once they started.
+ * `paced` leaves out --headless, so each run takes its ticks at the game's rate on the wall clock (og run's pacing)
+ * instead of as fast as it can: a test that acts on wall time then lands on the same ticks on any machine.
+ */
 async function pair(
   project: string,
   room: string,
   args: string[][],
   shaping: string[] = [],
   during?: (pids: number[]) => Promise<void>,
+  paced = false,
 ): Promise<Summary[]> {
   const r = await relay(shaping);
   const processes: number[] = [];
   try {
     const runs = Promise.all(
       args.map(async (extra) => {
-        const p = Bun.spawn([ogBin(), "run", project, "--headless", "--no-render", "--json", "--room", `ws://127.0.0.1:${r.port}/${room}`, ...extra], {
+        const p = Bun.spawn([ogBin(), "run", project, ...(paced ? [] : ["--headless"]), "--no-render", "--json", "--room", `ws://127.0.0.1:${r.port}/${room}`, ...extra], {
           cwd: repo,
           stdout: "pipe",
           stderr: "pipe",
@@ -184,8 +189,9 @@ test("rollback through latency, jitter and loss confirms tick 600 as lockstep do
 
 test("a peer frozen past stallTimeout is dropped at one tick, then takes its seat back from the room's world", async () => {
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-  // Unpaced, about 7 ms a tick here: the stall at 2 s falls well inside the run.
-  const common = ["--ticks", "1500", "--setup", "stall:800"];
+  // Paced at 60 Hz, whatever the machine's speed: the stall from 2 s to 4.5 s, the drop near
+  // tick 170 and the rejoin near tick 280 fall well inside 900 ticks (15 s).
+  const common = ["--ticks", "900", "--setup", "stall:800"];
   const [a, b] = await pair(
     "templates/archetypes/arena",
     "stall",
@@ -203,6 +209,7 @@ test("a peer frozen past stallTimeout is dropped at one tick, then takes its sea
       await sleep(2500);
       signal("CONT");
     },
+    true,
   );
   for (const s of [a!, b!]) {
     expect(s.lockstep.running).toBe(true);
