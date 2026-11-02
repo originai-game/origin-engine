@@ -552,3 +552,52 @@ fn a_replaced_mesh_draws_its_new_shape() {
         "skinned meshes are refused"
     );
 }
+
+/// R4's physical sky over the colonnade: each frame matches its
+/// reference, and reads as the sky it is. At noon the band above the
+/// pillars is blue (blue over red); looking into the setting sun the
+/// horizon below it is warm (red over blue); in twilight the sky is far
+/// darker than at noon yet still blue overhead (ozone); a hazy afternoon
+/// is paler (less blue for its brightness) than a clear noon.
+#[test]
+fn physical_sky_scenes_match_their_references_and_read_as_sky() {
+    use og_tests::sky_scenes::{SKY_SCENES, sky_scene};
+    for scene in SKY_SCENES {
+        check(scene);
+    }
+    let rgb = |img: &RgbaImage, x0: u32, y0: u32, x1: u32, y1: u32| {
+        let mut sum = [0.0f32; 3];
+        for y in y0..y1 {
+            for x in x0..x1 {
+                let p = px(img, x, y);
+                for c in 0..3 {
+                    sum[c] += p[c];
+                }
+            }
+        }
+        sum.map(|s| s / ((x1 - x0) * (y1 - y0)) as f32)
+    };
+    let noon = frame(&sky_scene("sky-physical-noon"));
+    let top = rgb(&noon, 560, 0, 720, 40);
+    assert!(top[2] > top[0] + 20.0, "noon is blue overhead: {top:?}");
+    let sunset = frame(&sky_scene("sky-physical-sunset"));
+    let low = rgb(&sunset, 400, 250, 880, 330);
+    assert!(low[0] > low[2] + 20.0, "the sunset is warm: {low:?}");
+    let twilight = frame(&sky_scene("sky-physical-twilight"));
+    let dusk_top = rgb(&twilight, 560, 0, 720, 40);
+    assert!(
+        luma(dusk_top) * 3.0 < luma(top),
+        "twilight is darker: {dusk_top:?} vs {top:?}"
+    );
+    assert!(
+        dusk_top[2] >= dusk_top[0],
+        "and blue overhead: {dusk_top:?}"
+    );
+    let hazy = frame(&sky_scene("sky-physical-hazy"));
+    let h = rgb(&hazy, 560, 0, 720, 40);
+    let blueness = |c: [f32; 3]| (c[2] - c[0]) / luma(c).max(1.0);
+    assert!(
+        blueness(h) < blueness(top),
+        "haze pales the sky: {h:?} vs {top:?}"
+    );
+}

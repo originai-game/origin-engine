@@ -2211,6 +2211,30 @@ Still open: object space leaves terrain, scattered copies and vertex-offset
 materials in world space and does not cut alpha holes; a bent shadow
 bridges features narrower than a cell of its 4 × 2 grid.
 
+## R4: sky and weather
+
+**The physical sky** (`sky_physical.rs`, `shaders/sky_scatter.wgsl`):
+`SkyLook::physical` set to a `PhysicalAtmosphere` (Earth's by default,
+Hillaire 2020's coefficients) draws the sky by single scattering through
+air (Rayleigh) and haze (Mie, Cornette–Shanks phase) with ozone
+absorption, in a spherical atmosphere, plus Hillaire's multiple-scattering
+term. The sky pass marches 24 samples per pixel, the image-based light's
+sky 16; the optical depth towards the sun is the Chapman function's
+closed approximation (exact to 4 % against a numeric column, a unit
+test), so there is no transmittance texture and no new binding: the
+atmosphere is 38 vec4s of the frame uniform (`frame.sky_scatter`) and of
+the IBL generator's parameters (its slot grew from 256 to 1024 bytes).
+The multiple-scattering table (16 sun angles at 0 and 8 km) is
+integrated on the CPU once per atmosphere and cached. The same
+formulas run on the CPU (`PhysicalAtmosphere::radiance`,
+`sun_transmittance`), which the unit tests check (blue noon zenith,
+brighter horizon and sun glow, red sun at 2°, a twilight zenith kept
+blue by ozone, darkening through twilight) and which
+`DayNightLook::with_atmosphere` uses for the sun's colour through the
+air and the fog's colour (the sky's cosine-weighted mean). The brightness
+is scaled so the sky's mean irradiance at noon matches the gradient
+sky's. Frames: `sky-physical-noon`, `-sunset`, `-twilight`, `-hazy`.
+
 ## Reflection probe faces
 
 A due capture draws six faces (`probes.rs`, `lib.rs`'s probe pass; the

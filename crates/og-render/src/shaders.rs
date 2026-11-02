@@ -76,7 +76,7 @@ pub fn shader_sources() -> Vec<ShaderSource> {
     // A target's depth texture: from the view's linear depth prepass.
     add("view resolve depth", crate::views::resolve_depth_source());
     add("lines", crate::lines::LINES_WGSL.to_string());
-    add("sky", format!("{}{}", crate::FRAME_WGSL, crate::SKY_WGSL));
+    add("sky", crate::sky_source());
     add(
         "sprite",
         format!(
@@ -159,7 +159,7 @@ pub fn shader_sources() -> Vec<ShaderSource> {
         crate::sprite_array::OVERLAY_ARRAY_WGSL.to_string(),
     );
     add("mipmap", crate::mips::MIPMAP_WGSL.to_string());
-    add("ibl", crate::ibl::IBL_WGSL.to_string());
+    add("ibl", crate::ibl::ibl_source());
     add("lights 2d", crate::light2d::LIGHT2D_WGSL.to_string());
     add(
         "lights 2d shadows",

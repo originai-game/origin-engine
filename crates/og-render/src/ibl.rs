@@ -22,8 +22,9 @@ const IRRADIANCE_SIZE: u32 = 32;
 pub const PREFILTER_SIZE: u32 = 128;
 pub const PREFILTER_MIPS: u32 = 5;
 const LUT_SIZE: u32 = 256;
-/// Uniform slots: one per pass, at the 256-byte dynamic offset alignment.
-const SLOT: u64 = 256;
+/// Uniform slots: one per pass, a multiple of the 256-byte dynamic offset
+/// alignment that holds [`Params`].
+const SLOT: u64 = 1024;
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -39,6 +40,19 @@ struct Params {
     /// An environment map's turn, scale and irradiance
     /// (`environment::env_params`); unused by the sky's passes.
     env: [[f32; 4]; 8],
+    /// The physical sky's block (`PhysicalAtmosphere::gpu`; zero: the
+    /// gradient or the built-in sky).
+    scatter: [[f32; 4]; crate::sky_physical::SCATTER_VEC4S],
+}
+
+const _: () = assert!(std::mem::size_of::<Params>() as u64 <= SLOT);
+
+/// The generator's module: its passes and the physical sky's functions.
+pub(crate) fn ibl_source() -> String {
+    format!(
+        "{IBL_WGSL}{}",
+        crate::renderer::sky_scatter_wgsl("params.scatter")
+    )
 }
 
 /// The views the frame binds.
@@ -148,7 +162,7 @@ impl IblGenerator {
     pub fn new(device: &wgpu::Device) -> IblGenerator {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("ibl"),
-            source: wgpu::ShaderSource::Wgsl(IBL_WGSL.into()),
+            source: wgpu::ShaderSource::Wgsl(ibl_source().into()),
         });
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("ibl sampler"),
@@ -392,6 +406,9 @@ impl IblGenerator {
         sun_color: Vec3,
         look: Option<&SkyLook>,
     ) {
+        let scatter = look
+            .and_then(|l| l.physical.as_ref())
+            .map_or([[0.0; 4]; crate::sky_physical::SCATTER_VEC4S], |p| p.gpu());
         let look = look.map_or([[0.0; 4]; 5], |l| l.gpu(true, sun_color));
         let base = Params {
             face: 0,
@@ -402,6 +419,7 @@ impl IblGenerator {
             sun_color: [sun_color.x, sun_color.y, sun_color.z, 0.0],
             look,
             env: [[0.0; 4]; 8],
+            scatter,
         };
         let lut = !self.lut_drawn;
         let all: Vec<&Pass> = self
@@ -523,6 +541,7 @@ impl IblGenerator {
                 sun_color: [0.0; 4],
                 look: [[0.0; 4]; 5],
                 env: crate::environment::env_params(rotation, scale, irradiance),
+                scatter: [[0.0; 4]; crate::sky_physical::SCATTER_VEC4S],
             };
             let at = i * SLOT as usize;
             bytes[at..at + std::mem::size_of::<Params>()]
@@ -637,6 +656,7 @@ impl IblGenerator {
             sun_color: [0.0; 4],
             look: [[0.0; 4]; 5],
             env: [[0.0; 4]; 8],
+            scatter: [[0.0; 4]; crate::sky_physical::SCATTER_VEC4S],
         };
         let captured = cube_view(capture, "probe capture");
         for face in 0..6 {

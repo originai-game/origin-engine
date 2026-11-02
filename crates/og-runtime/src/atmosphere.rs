@@ -31,6 +31,7 @@ use std::sync::Arc;
 pub(crate) struct AtmoLayouts {
     fog: Option<Layout>,
     sky: Option<Layout>,
+    physical_sky: Option<Layout>,
     day_night: Option<Layout>,
     weather: Option<Layout>,
     wind: Option<Layout>,
@@ -54,6 +55,7 @@ impl AtmoLayouts {
         AtmoLayouts {
             fog: get("og.Fog"),
             sky: get("og.Sky"),
+            physical_sky: get("og.PhysicalSky"),
             day_night: get("og.DayNight"),
             weather: get("og.Weather"),
             wind: get("og.Wind"),
@@ -117,7 +119,11 @@ struct DayNightNow {
 /// is absent or disabled. A pure function of the world: extraction draws
 /// it, and the probe's `get` answers it ([`derive`]), so what is read is
 /// what is drawn.
-fn day_night_now(world: &World, layout: Option<&Layout>) -> Option<DayNightNow> {
+fn day_night_now(
+    world: &World,
+    layout: Option<&Layout>,
+    physical: Option<&Layout>,
+) -> Option<DayNightNow> {
     let d = resource(world, layout)?;
     if !on(&d, "enabled", false) {
         return None;
@@ -125,13 +131,37 @@ fn day_night_now(world: &World, layout: Option<&Layout>) -> Option<DayNightNow> 
     let time = world.time();
     let (tilt, azimuth) = (f(&d, "tilt", 25.0), f(&d, "azimuth", 0.0));
     let now = hours(&d, time.tick, time.dt);
+    let air = physical_air(world, physical);
     let look = og_render::day_night(now, tilt, azimuth);
+    let look = match &air {
+        Some(a) => look.with_atmosphere(a),
+        None => look,
+    };
     let intensity = look.light_intensity * f(&d, "lightIntensity", 1.0).max(0.0);
     Some(DayNightNow {
         d,
         hours: now,
         look,
         intensity,
+    })
+}
+
+/// An enabled og.PhysicalSky as the renderer's atmosphere.
+fn physical_air(world: &World, layout: Option<&Layout>) -> Option<og_render::PhysicalAtmosphere> {
+    let p = resource(world, layout)?;
+    if !on(&p, "enabled", false) {
+        return None;
+    }
+    let earth = og_render::PhysicalAtmosphere::EARTH;
+    Some(og_render::PhysicalAtmosphere {
+        rayleigh: earth.rayleigh * f(&p, "airDensity", 1.0).max(0.0),
+        mie: earth.mie * f(&p, "haze", 1.0).max(0.0),
+        mie_absorption: earth.mie_absorption * f(&p, "haze", 1.0).max(0.0),
+        ozone: earth.ozone * f(&p, "ozone", 1.0).max(0.0),
+        ground_albedo: color(&p["groundAlbedo"], Vec3::splat(0.3)),
+        altitude: f(&p, "altitude", 0.0).max(0.0),
+        night: color(&p["night"], earth.night),
+        ..earth
     })
 }
 
@@ -170,7 +200,11 @@ pub(crate) fn derive(
         }
         _ => return,
     };
-    let Some(now) = day_night_now(world, layouts.get("og.DayNight")) else {
+    let Some(now) = day_night_now(
+        world,
+        layouts.get("og.DayNight"),
+        layouts.get("og.PhysicalSky"),
+    ) else {
         return;
     };
     let c = now.look.light_color;
@@ -227,6 +261,27 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     let tick = time.tick;
     let orthographic = matches!(scene.camera.projection, Projection::Orthographic { .. });
 
+    // The physical sky: alone, towards the first directional light.
+    let air = physical_air(world, layouts.physical_sky.as_ref());
+    if let Some(air) = air {
+        let dir = scene.light.direction_to_light.normalize_or(Vec3::Y);
+        let sun = Vec3::new(1.0, 0.97, 0.93);
+        let look = SkyLook {
+            physical: Some(air),
+            sun_size: 0.8,
+            ..SkyLook::DEFAULT
+        };
+        scene.environment.sky = ProceduralSky {
+            sun_direction: dir,
+            sun_color: sun,
+            look: Some(look),
+        };
+        scene.environment.background = Background::Procedural {
+            sun_direction: dir,
+            sun_color: sun,
+        };
+    }
+
     // The sky: a chosen look, drawn per pixel and lit by.
     if let Some(s) = resource(world, layouts.sky.as_ref())
         && on(&s, "enabled", false)
@@ -246,6 +301,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             moon_intensity: f(&s, "moonIntensity", 1.4),
             moon_color: color(&s["moonColor"], Vec3::new(0.9, 0.92, 1.0)),
             moon_direction: super::fx::vec3(&s["moonDirection"]),
+            physical: air,
         };
         let dir = super::fx::vec3(&s["sunDirection"]).normalize_or(Vec3::Y);
         let sun = color(&s["sunColor"], Vec3::new(1.0, 0.95, 0.88));
@@ -267,12 +323,18 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         hours: now,
         look,
         intensity,
-    }) = day_night_now(world, layouts.day_night.as_ref())
-    {
+    }) = day_night_now(
+        world,
+        layouts.day_night.as_ref(),
+        layouts.physical_sky.as_ref(),
+    ) {
         let (tilt, azimuth) = (f(&d, "tilt", 25.0), f(&d, "azimuth", 0.0));
         // The image-based light steps every `step` game minutes.
         let step = f(&d, "step", 10.0).clamp(1.0, 120.0) / 60.0;
         let mut stepped = og_render::day_night((now / step).floor() * step, tilt, azimuth);
+        if let Some(a) = &air {
+            stepped = stepped.with_atmosphere(a);
+        }
         // The moon opposite the sun drawn this frame (moon_direction zero).
         stepped.sky.moon_size = f(&d, "moonSize", 1.6);
         stepped.sky.moon_phase = f(&d, "moonPhase", 0.5);

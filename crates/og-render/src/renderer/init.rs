@@ -483,7 +483,7 @@ impl Renderer {
             lit_source_with(&hooks::default_hooks(), planar),
         );
         // Parsed when the first pipeline that uses it is made (deferred.rs).
-        let sky_shader = deferred::module(&device, "sky", format!("{FRAME_WGSL}{SKY_WGSL}"));
+        let sky_shader = deferred::module(&device, "sky", sky_source());
         let sprite_shader = shader(
             &device,
             "sprite",

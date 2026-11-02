@@ -152,6 +152,23 @@ pub(crate) fn fluid_shared_source() -> String {
     format!("{FRAME_WGSL}{}{LIGHTING_WGSL}{AREA_WGSL}", clusters::wgsl())
 }
 pub(crate) const SKY_WGSL: &str = wgsl!("sky.wgsl");
+/// The physical sky's scattering (`sky_physical.rs`), its block named
+/// `SCATTER` until [`sky_scatter_wgsl`] names it.
+const SKY_SCATTER_WGSL: &str = wgsl!("sky_scatter.wgsl");
+
+/// The physical sky's functions reading their block from `block` (the
+/// frame's `frame.sky_scatter`, the image-based light's `params.scatter`).
+pub(crate) fn sky_scatter_wgsl(block: &str) -> String {
+    SKY_SCATTER_WGSL.replace("SCATTER[", &format!("{block}["))
+}
+
+/// The sky pass's module: the frame, the physical sky, the sky pass.
+pub(crate) fn sky_source() -> String {
+    format!(
+        "{FRAME_WGSL}{}{SKY_WGSL}",
+        sky_scatter_wgsl("frame.sky_scatter")
+    )
+}
 pub(crate) const SPRITE_WGSL: &str = wgsl!("sprite.wgsl");
 /// The material uniform; the standard group's textures and the dissolve
 /// follow it (`material_maps.wgsl`, `material_dissolve.wgsl`), the

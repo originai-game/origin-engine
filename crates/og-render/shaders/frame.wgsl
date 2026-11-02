@@ -41,6 +41,7 @@ struct Frame {
   sky_moon: vec4<f32>,        // xyz: towards the moon, w: its angular radius (0: none)
   sky_moon_look: vec4<f32>,   // rgb: the lit moon's colour, w: phase (0 new, 0.5 full)
   time: vec4<f32>,            // x: seconds, y: tick, z: ticks per second
+  sky_scatter: array<vec4<f32>, 38>,  // the physical sky (sky_scatter.wgsl; [0].w 0: the gradient)
   // Water (`water.rs`): caustics on what lies below the first surface that has them.
   caustics: vec4<f32>,        // x: the surface's height, y: strength (0: none), z: cells per metre, w: fade per metre of depth
   caustics_area: vec4<f32>,   // xy: the surface's min xz, zw: its max xz

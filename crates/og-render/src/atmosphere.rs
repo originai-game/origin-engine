@@ -99,6 +99,11 @@ pub struct SkyLook {
     pub moon_color: Vec3,
     /// Towards the moon; zero: opposite the drawn sun.
     pub moon_direction: Vec3,
+    /// Draw the sky by scattering sunlight through this atmosphere instead
+    /// of the gradient (`zenith`, `horizon`, `ground` and `glow` unused;
+    /// the sun disc is reddened by the air; `brightness`, the stars and the
+    /// moon apply as before). `None`: the gradient.
+    pub physical: Option<crate::PhysicalAtmosphere>,
 }
 
 impl Default for SkyLook {
@@ -125,6 +130,7 @@ impl SkyLook {
         moon_intensity: 1.4,
         moon_color: Vec3::new(0.9, 0.92, 1.0),
         moon_direction: Vec3::ZERO,
+        physical: None,
     };
     /// The cosines of the sun disc's outer and inner edge.
     pub(crate) fn disc(&self) -> (f32, f32) {
@@ -150,7 +156,7 @@ impl SkyLook {
 /// The frame uniform's atmosphere block (`frame.wgsl`): fog, the sky look
 /// the sky pass draws per pixel, the clock.
 #[repr(C)]
-#[derive(Clone, Copy, Default, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct AtmosphereGpu {
     /// rgb: colour, w: 1 when fog is on.
     pub fog_color: [f32; 4],
@@ -168,6 +174,9 @@ pub(crate) struct AtmosphereGpu {
     pub sky: [[f32; 4]; 8],
     /// x: seconds (tick / rate), y: the tick, z: ticks per second.
     pub time: [f32; 4],
+    /// The physical sky's block (`PhysicalAtmosphere::gpu`; zero: the
+    /// gradient), read by `sky_scatter.wgsl` as `frame.sky_scatter`.
+    pub scatter: [[f32; 4]; crate::sky_physical::SCATTER_VEC4S],
 }
 
 impl AtmosphereGpu {
@@ -178,7 +187,7 @@ impl AtmosphereGpu {
         tick: u64,
         rate: f32,
     ) -> AtmosphereGpu {
-        let mut a = AtmosphereGpu::default();
+        let mut a: AtmosphereGpu = bytemuck::Zeroable::zeroed();
         if let Some(f) = fog {
             a.fog_color = f.color.extend(1.0).to_array();
             a.fog_distance = [
@@ -207,6 +216,9 @@ impl AtmosphereGpu {
                 a.sky[7] = (look.moon_color * look.moon_intensity.max(0.0))
                     .extend(look.moon_phase.rem_euclid(1.0))
                     .to_array();
+            }
+            if let Some(p) = &look.physical {
+                a.scatter = p.gpu();
             }
         }
         let rate = if rate > 0.0 { rate } else { 60.0 };
@@ -237,6 +249,55 @@ pub struct DayNightLook {
     pub ambient: f32,
     /// A fog colour that matches the horizon.
     pub fog_color: Vec3,
+}
+
+impl DayNightLook {
+    /// The same time of day under a physical sky: the sky scattered
+    /// through `air` (its sun disc reddened by it), the sun's light its
+    /// colour after crossing the air to a viewer `air.altitude` up (gone
+    /// once the planet hides it, when the moon takes over as before), the
+    /// image-based light at full strength (the scattered sky carries the
+    /// dimming), and a fog colour of the sky's horizon. A pure function of
+    /// its inputs, like [`day_night`].
+    pub fn with_atmosphere(mut self, air: &crate::PhysicalAtmosphere) -> DayNightLook {
+        // The sun above the air: a 5800 K white.
+        let white = Vec3::new(1.0, 0.97, 0.93);
+        let through = air.sun_transmittance(air.altitude, self.sun_direction.y);
+        self.sun_color = white;
+        self.sky.physical = Some(*air);
+        self.sky.sun_intensity = 40.0;
+        self.sky.glow = 0.0;
+        // Brighter than the gradient's zenith blue with the default
+        // exposure, as the gradient's brightness was.
+        self.sky.brightness = 1.1;
+        if self.light_direction == self.sun_direction {
+            self.light_color = (white * through).max(Vec3::splat(1e-4));
+            // The gradient's light ramps with the elevation; the air does
+            // that now, so the light is the sun's at full strength scaled to
+            // the gradient's noon (3) and fades only past the horizon.
+            let k = (through.dot(Vec3::new(0.2126, 0.7152, 0.0722))).max(1e-4);
+            self.light_color /= k;
+            self.light_intensity = 3.0 * k;
+        }
+        self.ambient = 1.0;
+        // The fog's colour: the light the air scatters towards a point, the
+        // sky's mean over the upper hemisphere (cosine-weighted, three
+        // bearings at three heights), not its bright horizon.
+        let s = self.sun_direction;
+        let side = Vec3::new(-s.z, 0.0, s.x).normalize_or(Vec3::X);
+        let toward = Vec3::new(s.x, 0.0, s.z).normalize_or(Vec3::Z);
+        let (mut sum, mut weight) = (Vec3::ZERO, 0.0);
+        for bearing in [side, -side, toward] {
+            for y in [0.1f32, 0.4, 0.8] {
+                let d = (bearing * (1.0 - y * y).sqrt() + Vec3::Y * y).normalize();
+                sum += air.radiance(air.altitude, d, s, 12) * y;
+                weight += y;
+            }
+        }
+        let horizon = sum / weight;
+        self.fog_color = (horizon * white * 1.1 + air.night).max(Vec3::splat(1e-4));
+        self
+    }
 }
 
 fn mix3(a: Vec3, b: Vec3, t: f32) -> Vec3 {
@@ -378,5 +439,25 @@ mod tests {
                     .asin()
                     .to_degrees()
         );
+    }
+
+    /// The day-night look under the physical sky: the sun's light is the
+    /// air's colour (warm and dimmer at 17:30 than at noon, none once it has
+    /// set, the moon taking over later as before), the sky is drawn
+    /// physically, and the fog is the sky's mean colour, darker at dusk.
+    #[test]
+    fn the_physical_day_night_light_crosses_the_air() {
+        let air = crate::PhysicalAtmosphere::EARTH;
+        let at = |h: f32| day_night(h, 25.0, 0.0).with_atmosphere(&air);
+        let (noon, dusk, set) = (at(12.0), at(17.5), at(18.3));
+        assert!(noon.sky.physical.is_some() && noon.ambient == 1.0);
+        let lum = |c: Vec3| c.dot(Vec3::new(0.2126, 0.7152, 0.0722));
+        let warm = |c: Vec3| c.x / c.z;
+        assert!(warm(dusk.light_color) > 2.0 * warm(noon.light_color));
+        assert!(dusk.light_intensity < 0.5 * noon.light_intensity);
+        assert!(set.light_intensity < 1e-3, "{}", set.light_intensity);
+        assert_eq!(at(23.0).light_direction, -at(23.0).sun_direction);
+        assert!(lum(dusk.fog_color) < 0.5 * lum(noon.fog_color));
+        assert!(noon.fog_color.z > noon.fog_color.x, "{}", noon.fog_color);
     }
 }

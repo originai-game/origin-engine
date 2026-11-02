@@ -135,6 +135,7 @@ pub use shaders::{ShaderSource, shader_sources};
 mod shadows;
 pub mod shapes;
 mod skin;
+mod sky_physical;
 mod sprite_array;
 mod sprite_mesh;
 mod sprite_normals;
@@ -211,6 +212,7 @@ pub use shadows::PointShadows;
 pub use skin::{
     JointPalette, MAX_JOINTS, MAX_MORPH_TARGETS, MorphTargets, SkinData, SkinnedInstance,
 };
+pub use sky_physical::PhysicalAtmosphere;
 pub use sprite_mesh::{SpriteMesh, SpriteMeshVertex};
 pub use stylise::{
     DEFAULT_CANVAS_WORLD_SCALE, DepthBands, DitherPattern, Halftone, Hatching, Ink,

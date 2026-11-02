@@ -15500,6 +15500,60 @@ export interface DayNight {
 }
 
 /**
+ * A physical sky: sunlight scattered by the air (Rayleigh: the blue overhead, the red sunsets) and by haze (Mie: the white glow around the sun), with ozone keeping the twilight zenith blue, in a spherical atmosphere of Earth's proportions with multiple scattering (Hillaire 2020). It replaces the gradient of og.Sky and og.DayNight, and the image-based light follows it. With og.DayNight enabled the cycle also takes its light from it: the sun's colour is the light that crosses the air (white at noon, orange then red as it sets, gone below the horizon), the ambient light the scattered sky, and the fog's colour the sky's horizon; `get:og.DayNight` answers those. With og.Sky enabled, og.Sky's sun direction, disc, stars, moon and brightness are drawn through the air. Alone it draws the sky towards the first DirectionalLight. Visual only: drawn from the tick, never written to the world.
+ *
+ * The `PhysicalSky` resource (token `og.PhysicalSky`).
+ */
+export interface PhysicalSky {
+  /** Draw the sky by scattering. */
+  enabled: boolean;
+  /**
+   * How much haze the air holds, a multiplier on Earth's aerosols (1: a clear day; 0: pure air; 5 to 10: a hazy or smoggy day, a whiter sky and a wider glow round the sun).
+   *
+   * @default 1
+   * @range 0..40
+   * @tunable
+   */
+  haze: number;
+  /**
+   * A multiplier on the air's scattering (1: Earth; above 1 a deeper blue and redder sunsets, below 1 a thinner, darker sky).
+   *
+   * @default 1
+   * @range 0..10
+   * @tunable
+   */
+  airDensity: number;
+  /**
+   * A multiplier on ozone's absorption, which keeps the sky blue overhead at twilight (0: none, the twilight sky turns grey and yellow).
+   *
+   * @default 1
+   * @range 0..10
+   * @tunable
+   */
+  ozone: number;
+  /**
+   * The ground's colour as the air sees it from below: it lights the haze and the sky below the horizon.
+   *
+   * @default { r: 0.3, g: 0.3, b: 0.3 }
+   */
+  groundAlbedo: Color;
+  /**
+   * The height above sea level of the world's y 0 (the camera's height is added): from high up the sky darkens overhead and the sun stays up longer.
+   *
+   * @range 0..100000
+   * @unit m (metres)
+   * @tunable
+   */
+  altitude: number;
+  /**
+   * The sky's light with the sun far below the horizon (airglow and starlight), so a night is dark blue rather than black.
+   *
+   * @default { r: 0.0006, g: 0.0009, b: 0.0024 }
+   */
+  night: Color;
+}
+
+/**
  * A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence) and dimmed sunlight. Particles are simulated by the renderer from the tick, so they look the same on every run; they never touch the simulation.
  *
  * The `Weather` resource (token `og.Weather`).
@@ -50258,6 +50312,10 @@ export declare namespace og {
    * A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and the moon disc, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and the fog's colour. The clock is start plus the simulated seconds times speed, wrapped to 24 hours; the image-based light is regenerated every `step` minutes of game time while the sky drawn per pixel moves smoothly. The drive happens as the frame is drawn and never writes the world: the DirectionalLight keeps the colour, intensity and transform it was given. The probe's `get` answers what is drawn, a pure function of the tick: `get:og.DayNight` adds `hours`, `toSun`, `toLight` (towards the sun by day, the moon by night), `lightColor` and `lightIntensity`, and `get:<sun>.og.DirectionalLight` on the driven light answers the drawn `color` and `intensity` with `toLight` and `drivenBy`.
    */
   const DayNight: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly start: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly tilt: FieldSpec<"f32">; readonly azimuth: FieldSpec<"f32">; readonly lightIntensity: FieldSpec<"f32">; readonly tintFog: FieldSpec<"bool">; readonly step: FieldSpec<"f32">; readonly moonSize: FieldSpec<"f32">; readonly moonPhase: FieldSpec<"f32"> }, DayNight>;
+  /**
+   * A physical sky: sunlight scattered by the air (Rayleigh: the blue overhead, the red sunsets) and by haze (Mie: the white glow around the sun), with ozone keeping the twilight zenith blue, in a spherical atmosphere of Earth's proportions with multiple scattering (Hillaire 2020). It replaces the gradient of og.Sky and og.DayNight, and the image-based light follows it. With og.DayNight enabled the cycle also takes its light from it: the sun's colour is the light that crosses the air (white at noon, orange then red as it sets, gone below the horizon), the ambient light the scattered sky, and the fog's colour the sky's horizon; `get:og.DayNight` answers those. With og.Sky enabled, og.Sky's sun direction, disc, stars, moon and brightness are drawn through the air. Alone it draws the sky towards the first DirectionalLight. Visual only: drawn from the tick, never written to the world.
+   */
+  const PhysicalSky: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly haze: FieldSpec<"f32">; readonly airDensity: FieldSpec<"f32">; readonly ozone: FieldSpec<"f32">; readonly groundAlbedo: FieldSpec<"Color">; readonly altitude: FieldSpec<"f32">; readonly night: FieldSpec<"Color"> }, PhysicalSky>;
   /**
    * A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence) and dimmed sunlight. Particles are simulated by the renderer from the tick, so they look the same on every run; they never touch the simulation.
    */

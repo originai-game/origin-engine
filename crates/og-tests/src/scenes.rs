@@ -168,6 +168,10 @@ pub const SCENES: &[&str] = &[
     "ui-glass-busy",
     "ui-glass-dialog",
     "ui-glass-fallback",
+    "sky-physical-noon",
+    "sky-physical-sunset",
+    "sky-physical-twilight",
+    "sky-physical-hazy",
 ];
 
 /// A per-frame change (frame index from 0): moving sprites, an orbiting camera.
@@ -959,6 +963,14 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             Ok(())
         },
         // Weather presets over the colonnade: particles, fog, dimmed light.
+        // R4: the physical sky at noon, sunset, twilight and in haze.
+        "sky-physical-noon"
+        | "sky-physical-sunset"
+        | "sky-physical-twilight"
+        | "sky-physical-hazy" => |g, name| {
+            g.scene = crate::sky_scenes::sky_scene(name);
+            Ok(())
+        },
         "weather-rain" | "weather-snow" => |g, name| {
             g.scene = crate::atmo_scenes::weather_scene(if name == "weather-rain" {
                 og_render::WEATHER_RAIN

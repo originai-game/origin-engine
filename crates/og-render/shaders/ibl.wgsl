@@ -18,6 +18,8 @@ struct Params {
   // +y and the scale of what is copied; [1..8] its 27 irradiance harmonic
   // floats (coefficient k's channel c at float 3k + c).
   env: array<vec4<f32>, 8>,
+  // The physical sky (sky_scatter.wgsl, appended to this module; [0].w 0: off).
+  scatter: array<vec4<f32>, 38>,
 };
 @group(0) @binding(0) var<uniform> params: Params;
 @group(0) @binding(1) var source_cube: texture_cube<f32>;
@@ -58,6 +60,14 @@ const PI: f32 = 3.14159265359;
 // would only add noise to the lighting).
 fn looked_sky(d: vec3<f32>) -> vec3<f32> {
   let sun = normalize(params.sun_dir.xyz);
+  if (scatter_on()) {
+    // The physical sky from the look's altitude (sky.wgsl's sky_physical_look
+    // without the stars and the moon).
+    let h0 = params.scatter[3].z;
+    let sky = physical_sky(d, sun, h0, 16u) * params.look[4].yzw + params.scatter[5].rgb;
+    let disc = smoothstep(params.look[3].x, params.look[3].y, dot(d, sun)) * params.look[3].z;
+    return sky * params.look[1].w + params.look[4].yzw * physical_sun(d, h0) * disc;
+  }
   let up = clamp(d.y, -1.0, 1.0);
   var sky = mix(params.look[1].rgb, params.look[0].rgb, pow(max(up, 0.0), 0.55));
   sky = mix(params.look[2].rgb, sky, smoothstep(-0.08, 0.02, up));

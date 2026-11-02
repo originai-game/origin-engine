@@ -20,6 +20,7 @@ pub mod p2_scenes;
 pub mod physical_scenes;
 pub mod scenes;
 pub mod shadow_scenes;
+pub mod sky_scenes;
 pub mod stylise_scenes;
 pub mod target_scenes;
 pub mod terrain_scenes;
