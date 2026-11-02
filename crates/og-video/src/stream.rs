@@ -20,11 +20,16 @@ pub const AHEAD: usize = 8;
 pub const FALLBACK_MAX: (u32, u32) = (1280, 720);
 
 /// The size of the rendition the cook adds beside a stream larger than
-/// [`FALLBACK_MAX`] (its aspect kept, even sides, at least 64): what the
-/// web's fallback decoder plays instead. `None` for a stream that fits.
-/// The cook and the runtime both derive it from the stream's size.
+/// [`FALLBACK_MAX`] in either orientation (a portrait 720x1280 fits: the
+/// decoder's cost is its pixels), its aspect kept, even sides, at least 64:
+/// what the web's fallback decoder plays instead. `None` for a stream that
+/// fits. The cook and the runtime both derive it from the stream's size.
 pub fn fallback_size((w, h): (u32, u32)) -> Option<(u32, u32)> {
-    let (mw, mh) = FALLBACK_MAX;
+    let (mw, mh) = if w >= h {
+        FALLBACK_MAX
+    } else {
+        (FALLBACK_MAX.1, FALLBACK_MAX.0)
+    };
     if w <= mw && h <= mh {
         return None;
     }
@@ -287,7 +292,10 @@ mod tests {
         assert_eq!(fallback_size((1280, 720)), None);
         assert_eq!(fallback_size((1920, 1080)), Some((1280, 720)));
         assert_eq!(fallback_size((3840, 1600)), Some((1280, 532)));
-        assert_eq!(fallback_size((1080, 1920)), Some((404, 720)));
+        assert_eq!(fallback_size((1080, 1920)), Some((720, 1280)));
+        assert_eq!(fallback_size((720, 1280)), None);
+        assert_eq!(fallback_size((1282, 720)), Some((1280, 718)));
+        assert_eq!(fallback_size((960, 960)), Some((720, 720)));
     }
 
     #[test]

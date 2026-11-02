@@ -47,5 +47,6 @@ mod timeline;
 mod timeline_sound;
 mod tube_path;
 mod ui_configure;
+mod video_rendition;
 mod web_findings;
 mod world_ui;

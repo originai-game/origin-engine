@@ -1254,7 +1254,7 @@ video is a command script played headless and recorded (docs/depth.md §3).
   311 KB brotli, fetched only then and never part of the engine's wasm or
   a page's boot). On one thread it decodes, in Safari 27 on Apple silicon,
   720p at 46 fps on worst-case noisy footage (221 on clean) and 1080p at
-  19 (94 clean), so a stream larger than 1280x720 also cooks a 720p
+  19 (94 clean), so a stream larger than 1280x720 (720x1280 portrait) also cooks a 720p
   rendition (`<id>#stream720`, `og_video::stream::fallback_size`) which
   the fallback plays instead. `og.video.capabilities` reports which
   decoder runs (`rav1d-wasm`, hardware false, max 1280x720). **Time:** `VideoPlayer.time` is world state advanced by the

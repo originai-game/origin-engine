@@ -44032,7 +44032,7 @@ export interface VideoCapabilities {
    */
   readonly hardware: boolean;
   /**
-   * The widest stream this decoder plays in real time at 30 fps (wider ones still play, with frames held where decoding falls behind): 7680 for rav1d natively and WebCodecs, 1280 (by 720) for rav1d-wasm, which plays a larger stream's 720p rendition, cooked beside it, instead (measured; docs/design.md §2.9).
+   * The widest stream this decoder plays in real time at 30 fps (wider ones still play, with frames held where decoding falls behind): 7680 for rav1d natively and WebCodecs, 1280 (by 720, or 720 by 1280 for a portrait stream) for rav1d-wasm, which plays a larger stream's 720p rendition, cooked beside it, instead (measured; docs/design.md §2.9).
    */
   readonly maxWidth: number;
   /** The tallest, as maxWidth. */

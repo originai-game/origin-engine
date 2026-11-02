@@ -7,7 +7,7 @@ import { beforeAll, expect, test } from "bun:test";
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ALIASED_FILES, DEFAULT_PUBLISH, downloadLines, downloadsOf, hashedName, headersFile, HASHED_FILES, settingsOf, webBuild, type ProjectSettings, type SizeRow } from "../src/node/web-build.ts";
+import { ALIASED_FILES, DEFAULT_PUBLISH, downloadLines, downloadsOf, hashedName, headersFile, HASHED_FILES, serviceWorkerLists, settingsOf, webBuild, type ProjectSettings, type SizeRow } from "../src/node/web-build.ts";
 import { mapStack } from "../src/sourcemap.ts";
 import { ogBin } from "./support/og-bin.ts";
 import { slow } from "./support/slow.ts";
@@ -318,6 +318,16 @@ test("og build prints what each page downloads, not the directory's total", () =
   expect(d.later.pwa.files).toBe(3);
   expect(d.later.videos).toEqual({ files: 2, bytes: 39000, compressed: 13000 });
   expect(d.later.av1.compressed).toBe(311);
+  // The service worker installs neither stream nor the fallback decoder: a
+  // page fetches one stream (the 720p rendition only on the fallback), and
+  // each is cached when fetched.
+  const sw = serviceWorkerLists(files.map((f) => f.path), new Set(["cooked/stream/vale.ogb"]));
+  expect(sw.files).toContain("cooked/clips/intro.ogt.poster.ogb");
+  for (const f of ["cooked/clips/intro.ogt.stream.ogb", "cooked/clips/intro.ogt.stream720.ogb", "av1/og-av1.wasm", "cooked/stream/vale.ogb", "cooked/music/song.wav.chunk1.ogb"]) {
+    expect(sw.files).not.toContain(f);
+    expect(sw.lazy).toContain(f);
+  }
+  expect(sw.single).toEqual(["origin-engine.js", "origin-engine_bg.wasm"]);
   const text = downloadLines(d, "brotli-11");
   expect(text).toContain("boot, lanes page (isolated)");
   expect(text).toContain(`${d.boot.single.compressed} B`);

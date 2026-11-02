@@ -348,6 +348,27 @@ export function downloadsOf(files: readonly SizeRow[]): Downloads {
   };
 }
 
+/**
+ * The service worker's lists (`OG_SW` without its version) for a publish
+ * build's file paths: `files`, precached at install, and each engine
+ * variant's; `lazy`, cached when the engine first fetches them: the
+ * streaming groups' packs, a long sound's chunks, a streamed video's units
+ * (a page fetches the main stream or, on the AV1 fallback, its 720p
+ * rendition, never both) and the fallback decoder.
+ */
+export function serviceWorkerLists(paths: readonly string[], packs: ReadonlySet<string>): { files: string[]; lazy: string[]; single: string[]; lanes: string[] } {
+  const onDemand = (f: string) => packs.has(f) || SOUND_CHUNK.test(f) || (f.startsWith("cooked/") && VIDEO_STREAM.test(f)) || f.startsWith("av1/");
+  // A content-hashed file's plain copy is fetched by no page, so it is not precached.
+  const aliases = aliasesOf(paths);
+  const precache = paths.filter((f) => !NOT_PRECACHED.test(f) && !onDemand(f) && !aliases.has(f));
+  return {
+    files: ["./", ...precache.filter((f) => !SINGLE_ENGINE.test(f) && !LANES_ENGINE.test(f))],
+    lazy: paths.filter(onDemand).sort(),
+    single: precache.filter((f) => SINGLE_ENGINE.test(f)),
+    lanes: precache.filter((f) => LANES_ENGINE.test(f)),
+  };
+}
+
 /** The download lines `og build` prints under its size table. */
 export function downloadLines(d: Downloads, codec: SizeRow["codec"]): string {
   const kb = (n: number) => `${(n / 1000).toFixed(1)} kB`;
@@ -788,7 +809,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
   const wasmBytes = statSync(join(out, served("origin-engine_bg.wasm"))).size;
   const firstGroup = walk(join(out, "cooked")).filter((f) => {
     const path = relative(out, f).split("\\").join("/");
-    return !packs.has(path) && !SOUND_CHUNK.test(path);
+    return !packs.has(path) && !SOUND_CHUNK.test(path) && !VIDEO_STREAM.test(path);
   });
   const cookedBytes = firstGroup.filter((f) => !f.endsWith(".cook.ogt")).reduce((n, f) => n + statSync(f).size, 0);
   // The build id a crash report names: the bundles whose stacks the maps resolve.
@@ -853,16 +874,11 @@ export async function webBuild(project: string, entry: string, out: string, publ
     // The first group is precached; a streaming group's pack is cached when the engine fetches it.
     // So is a long sound's chunk (cooked/<sound>.chunk<n>.ogb).
     const rows = fileRows();
-    const aliases = aliasesOf(rows.map((f) => f.path));
-    const precache = rows.map((f) => f.path).filter((f) => !NOT_PRECACHED.test(f) && !packs.has(f) && !SOUND_CHUNK.test(f) && !aliases.has(f));
-    const chunks = rows.map((f) => f.path).filter((f) => SOUND_CHUNK.test(f));
-    const common = precache.filter((f) => !SINGLE_ENGINE.test(f) && !LANES_ENGINE.test(f));
-    const variants = { single: precache.filter((f) => SINGLE_ENGINE.test(f)), lanes: precache.filter((f) => LANES_ENGINE.test(f)) };
-    const lazy = [...packs, ...chunks].sort();
+    const lists = serviceWorkerLists(rows.map((f) => f.path), packs);
     // Each file's content, so a new build's worker carries what did not change over from the old cache.
-    const known = new Set([...precache, ...lazy]);
+    const known = new Set([...lists.files, ...lists.single, ...lists.lanes, ...lists.lazy]);
     const hashes = Object.fromEntries(rows.filter((f) => known.has(f.path)).map((f) => [f.path, f.sha256.slice(0, 16)]));
-    writeFileSync(join(out, "sw.js"), `const OG_SW=${JSON.stringify({ version: version.slice(0, 16), files: ["./", ...common], lazy, ...variants, hashes })};\n${sw}`);
+    writeFileSync(join(out, "sw.js"), `const OG_SW=${JSON.stringify({ version: version.slice(0, 16), ...lists, hashes })};\n${sw}`);
     version = identity(fileRows());
   }
 
