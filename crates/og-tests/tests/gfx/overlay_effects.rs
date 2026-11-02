@@ -307,6 +307,18 @@ fn decals_match_their_reference() {
 fn many_normal_mapped_decals_match_their_reference() {
     let s = check("decals-many").stats;
     assert_eq!((s.decals, s.decals_dropped), (642, 0));
+    // No blue on the brown and green ground: a small hole seen at a grazing
+    // angle once sampled the atlas level where its image and its normal
+    // map's flat blue average together, drawing blue strokes.
+    let img = gfx::render("decals-many").expect("render").image;
+    let blue = (img.height / 2..img.height)
+        .flat_map(|y| (0..img.width).map(move |x| ((y * img.width + x) * 4) as usize))
+        .filter(|&i| {
+            let [r, g, b] = [0, 1, 2].map(|c| i32::from(img.pixels[i + c]));
+            b > r + 25 && b > g + 25
+        })
+        .count();
+    assert!(blue < 20, "{blue} blue pixels on the ground");
 }
 
 #[test]

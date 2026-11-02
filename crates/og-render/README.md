@@ -1211,7 +1211,11 @@ default records no pass and costs nothing (`effects_off_add_no_passes`).
   render-to-texture view) walk every record. A decal's `normal_rect` is a
   tangent-space normal map in the same atlas (an sRGB atlas read back to
   its stored values), blended over the surface's normal after its own
-  normal map.
+  normal map by the box's fade (its flat texels change nothing). The
+  shader picks a decal's mip level itself, capped where its region still
+  spans eight texels, and keeps the bilinear taps inside the region, so
+  neither image bleeds into its neighbour at a grazing angle (pbr.wgsl
+  `decal_sample`).
 - **Particles**: `ParticleEmitter` assets and `ParticleSystem`s with
   curves, bursts, noise, sprite sheets, collision against the depth buffer
   (compute) or against `RenderScene::particle_colliders` (the CPU path:

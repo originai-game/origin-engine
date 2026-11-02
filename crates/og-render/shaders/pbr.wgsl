@@ -462,23 +462,30 @@ fn frame_decals(frag: vec2<f32>, p: vec3<f32>) -> vec2<u32> {
 }
 
 // Atlas region `rect` (u0, v0, u1, v1) at `t` (0..1 across the box), with
-// the box's screen gradients `gx`, `gy`. The sample stays inside the region
-// by its filter's reach (half the footprint's longer side, at least half a
-// texel, plus half a texel of the level the minor side picks): at a grazing
-// angle the footprint is long, and a bilinear or anisotropic tap past the
-// region's edge would draw the atlas's next region (a normal map's opaque
-// blue) as a line along the box's edge.
+// the box's screen gradients `gx`, `gy`. The level is picked here, not by
+// the sampler, and capped where the region's smaller side still spans
+// eight texels: past it a level's texels average the region with its
+// neighbours (at a grazing angle a small decal reached the atlas's 1x1
+// level, half the normal map's opaque blue). The sample stays inside the
+// region by its bilinear reach at the upper level of the trilinear pair
+// (1.5 texels: the taps' texels, whose own footprints may straddle a
+// boundary not aligned to the level), so the image is never pinned or
+// smeared by a large footprint.
 fn decal_sample(rect: vec4<f32>, t: vec2<f32>, gx: vec2<f32>, gy: vec2<f32>) -> vec4<f32> {
-  let span = rect.zw - rect.xy;
-  let dx = gx * span;
-  let dy = gy * span;
-  let texel = 1.0 / vec2<f32>(textureDimensions(decal_atlas));
-  let reach = 0.5 * (abs(dx) + abs(dy)) + 0.5 * texel;
+  let size = vec2<f32>(textureDimensions(decal_atlas));
   let lo = min(rect.xy, rect.zw);
   let hi = max(rect.xy, rect.zw);
+  let span = rect.zw - rect.xy;
+  let dx = gx * span * size;
+  let dy = gy * span * size;
+  let footprint = max(dot(dx, dx), dot(dy, dy));
+  let region = max(min(hi.x - lo.x, hi.y - lo.y) * min(size.x, size.y), 1.0);
+  let cap = max(log2(region / 8.0), 0.0);
+  let lod = clamp(0.5 * log2(max(footprint, 1e-8)), 0.0, cap);
+  let reach = 1.5 * exp2(ceil(lod)) / size;
   let mid = (lo + hi) * 0.5;
   let uv = clamp(mix(rect.xy, rect.zw, t), min(lo + reach, mid), max(hi - reach, mid));
-  return textureSampleGrad(decal_atlas, fx_sampler, uv, dx, dy);
+  return textureSampleLevel(decal_atlas, fx_sampler, uv, lod);
 }
 
 // Projected decals: the boxes covering the point blend their image over
@@ -525,7 +532,11 @@ fn apply_decals(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, albedo: vec3<f32>, 
         tu = normalize(tu);
         let tv = cross(n, tu);
         let bent = normalize(tu * ts.x + tv * ts.y + n * ts.z);
-        r.normal = vec4<f32>(normalize(mix(r.normal.xyz, bent, a)), max(r.normal.w, a));
+        // By the box's fade, not the image's alpha: the normal map's flat
+        // texels leave the surface as it is, and its relief often lies where
+        // the image is clear (a crater's slopes between its pit and rim).
+        let w = clamp(fade, 0.0, 1.0);
+        r.normal = vec4<f32>(normalize(mix(r.normal.xyz, bent, w)), max(r.normal.w, w));
       }
     }
   }
