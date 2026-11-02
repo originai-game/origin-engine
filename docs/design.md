@@ -1256,7 +1256,10 @@ video is a command script played headless and recorded (docs/depth.md §3).
   720p at 46 fps on worst-case noisy footage (221 on clean) and 1080p at
   19 (94 clean), so a stream larger than 1280x720 (720x1280 portrait) also cooks a 720p
   rendition (`<id>#stream720`, `og_video::stream::fallback_size`) which
-  the fallback plays instead. `og.video.capabilities` reports which
+  the fallback plays instead, encoded 6 crf coarser than the stream
+  (`crf720` overrides it): a 4 s 1080p test clip's stream is 786 KB, its
+  rendition 408 KB (552 KB at the stream's crf). A player fetches only
+  one of them, and a publish build's service worker precaches neither. `og.video.capabilities` reports which
   decoder runs (`rav1d-wasm`, hardware false, max 1280x720).
   **Time:** `VideoPlayer.time` is world state advanced by the
   tick (dt × speed), frame = floor(time × fps), exactly as for a clip;

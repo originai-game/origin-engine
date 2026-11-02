@@ -45,6 +45,7 @@
 //! size 1280 720              # default the source's, at most 1920 wide
 //! keyframe 1                 # seconds between key frames (default 1): a seek decodes at most this much
 //! crf 32                     # AV1 quality, 0 (best) to 63 (default 32)
+//! crf720 38                  # the 720p rendition's (default crf + 6, at most 63)
 //! ```
 //!
 //! The encoder is ffmpeg's `libsvtav1`, else `libaom-av1` (`og doctor`
@@ -102,6 +103,23 @@ pub struct VideoDecl {
     pub keyframe: f64,
     /// A stream's AV1 constant rate factor, 0..=63.
     pub crf: u32,
+    /// Its 720p rendition's (`crf720`); `None`: [`RENDITION_CRF`] more than
+    /// `crf`, at most 63.
+    pub crf720: Option<u32>,
+}
+
+/// How much coarser the 720p rendition is encoded than its stream by
+/// default: it is the web fallback's copy, fetched only where the browser
+/// cannot decode AV1, so it is kept small (a 1080p stream's rendition at
+/// the same crf was 70% of the stream's bytes).
+pub const RENDITION_CRF: u32 = 6;
+
+impl VideoDecl {
+    /// The 720p rendition's crf.
+    pub fn rendition_crf(&self) -> u32 {
+        self.crf720
+            .unwrap_or_else(|| (self.crf + RENDITION_CRF).min(63))
+    }
 }
 
 /// What `ffprobe` says of a source.
@@ -141,8 +159,11 @@ impl VideoPlan {
         );
         if self.decl.stream {
             d.push_str(&format!(
-                " stream av1 {} keyframe {} crf {}",
-                self.encoder, self.decl.keyframe, self.decl.crf
+                " stream av1 {} keyframe {} crf {} crf720 {}",
+                self.encoder,
+                self.decl.keyframe,
+                self.decl.crf,
+                self.decl.rendition_crf()
             ));
         }
         d
@@ -178,6 +199,7 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Vid
         stream: false,
         keyframe: 1.0,
         crf: 32,
+        crf720: None,
     };
     let mut max_given = false;
     for e in &doc.body.entries {
@@ -244,6 +266,15 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Vid
                 }
                 out.crf = v as u32;
             }
+            "crf720" => {
+                let v = e.number(0).map_err(err)?.as_f64();
+                if v.fract() != 0.0 || !(0.0..=63.0).contains(&v) {
+                    return Err(format!(
+                        "line {line}: crf720 is a whole number from 0 to 63"
+                    ));
+                }
+                out.crf720 = Some(v as u32);
+            }
             "size" => {
                 let w = e.number(0).map_err(err)?.as_f64();
                 let h = e.number(1).map_err(err)?.as_f64();
@@ -271,7 +302,7 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Vid
             }
             k => {
                 return Err(format!(
-                    "line {line}: unknown key '{k}' (source, fps, maxSeconds, size, kind, audio, stream, keyframe, crf)"
+                    "line {line}: unknown key '{k}' (source, fps, maxSeconds, size, kind, audio, stream, keyframe, crf, crf720)"
                 ));
             }
         }
@@ -287,9 +318,9 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Vid
             .body
             .entries
             .iter()
-            .any(|e| matches!(e.key.as_str(), "keyframe" | "crf"))
+            .any(|e| matches!(e.key.as_str(), "keyframe" | "crf" | "crf720"))
     {
-        return Err("keyframe and crf are a stream's (`stream true`)".into());
+        return Err("keyframe, crf and crf720 are a stream's (`stream true`)".into());
     }
     Ok(out)
 }
@@ -643,8 +674,11 @@ pub fn stream_fallback_id(id: &str) -> String {
 
 /// The plan of a stream's fallback rendition: the same, at `size`.
 pub fn fallback_plan(plan: &VideoPlan, size: (u32, u32)) -> VideoPlan {
+    let mut decl = plan.decl.clone();
+    decl.crf = decl.rendition_crf();
     VideoPlan {
         size,
+        decl,
         ..plan.clone()
     }
 }
@@ -910,6 +944,7 @@ mod tests {
             stream: false,
             keyframe: 1.0,
             crf: 32,
+            crf720: None,
         };
         let probe = Probe {
             duration: 5.0,
@@ -935,7 +970,7 @@ mod tests {
         assert_eq!(p.key_interval(), 60);
         assert!(
             p.describe()
-                .contains("stream av1 libsvtav1 keyframe 1 crf 32")
+                .contains("stream av1 libsvtav1 keyframe 1 crf 32 crf720 38")
         );
     }
 
@@ -945,7 +980,11 @@ mod tests {
         let doc = |body: &str| format!("type video\nversion 1\n---\nsource \"a.mp4\"\n{body}\n");
         let d = parse("a.ogt", &doc("stream true\nkeyframe 2\ncrf 40"), &exists).unwrap();
         assert!(d.stream && d.max_seconds.is_infinite());
-        assert_eq!((d.keyframe, d.crf), (2.0, 40));
+        assert_eq!((d.keyframe, d.crf, d.rendition_crf()), (2.0, 40, 46));
+        let d = parse("a.ogt", &doc("stream true\ncrf 60\ncrf720 36"), &exists).unwrap();
+        assert_eq!(d.rendition_crf(), 36);
+        let d = parse("a.ogt", &doc("stream true\ncrf 60"), &exists).unwrap();
+        assert_eq!(d.rendition_crf(), 63);
         let d = parse("a.ogt", &doc("stream true\nmaxSeconds 30"), &exists).unwrap();
         assert_eq!(d.max_seconds, 30.0);
         assert!(

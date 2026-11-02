@@ -1156,6 +1156,7 @@ stream true                # decoded as it plays
 size 1280 720              # default the source's, at most 1920 wide; even, at least 64x64
 keyframe 1                 # seconds between key frames: what a seek decodes at most (default 1)
 crf 32                     # quality, 0 best to 63 (default 32)
+crf720 38                  # the 720p rendition's (default crf + 6)
 ```
 
 The API is the same: `og.load.video`, `og.VideoPlayer`, its texture on a

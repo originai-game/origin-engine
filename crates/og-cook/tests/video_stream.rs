@@ -122,6 +122,12 @@ fn a_stream_wider_than_720p_gets_a_720p_rendition_for_the_webs_fallback() {
         "type video\nversion 1\n---\nsource \"count.mp4\"\nstream true\nfps 10\nmaxSeconds 1\nsize 1440 810\nkeyframe 0.5\naudio false\n",
     )
     .unwrap();
+    // The same at crf720 32, the stream's own crf.
+    std::fs::write(
+        root.join("assets/clips/same.ogt"),
+        "type video\nversion 1\n---\nsource \"count.mp4\"\nstream true\nfps 10\nmaxSeconds 1\nsize 1440 810\nkeyframe 0.5\naudio false\ncrf720 32\n",
+    )
+    .unwrap();
     std::fs::write(
         root.join("assets/clips/small.ogt"),
         "type video\nversion 1\n---\nsource \"count.mp4\"\nstream true\nfps 10\nmaxSeconds 1\nsize 640 360\naudio false\n",
@@ -149,6 +155,15 @@ fn a_stream_wider_than_720p_gets_a_720p_rendition_for_the_webs_fallback() {
     assert!(
         b.output("clips/small.ogt#stream720").is_err(),
         "a stream that fits has none"
+    );
+    // The rendition is coarser than its stream by default (crf + 6), and
+    // crf720 overrides that.
+    let bytes = |id: &str| b.read(id).unwrap().len();
+    assert!(
+        bytes(id) < bytes("clips/same.ogt#stream720"),
+        "default {} bytes, at the stream's crf {}",
+        bytes(id),
+        bytes("clips/same.ogt#stream720")
     );
 }
 
