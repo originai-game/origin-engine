@@ -75,6 +75,10 @@ fn project() -> PathBuf {
 /// An engine; with `watch`, a game system that reads og.CameraCut (which
 /// registers the virtual cameras' records at creation).
 fn start(watch: bool) -> (u32, Cuts) {
+    start_at(project(), watch)
+}
+
+fn start_at(root: PathBuf, watch: bool) -> (u32, Cuts) {
     let cuts = CUTS.with(Rc::clone);
     cuts.borrow_mut().clear();
     set_hooks(Rc::new(Game(cuts.clone())));
@@ -89,12 +93,9 @@ fn start(watch: bool) -> (u32, Cuts) {
         ));
     }
     let game = og_game_game(Some(json!({ "seed": 3, "systems": systems }).to_string()));
-    let engine = value(og_engine_create(
-        game,
-        json!({ "root": project() }).to_string(),
-    ))
-    .as_u64()
-    .unwrap() as u32;
+    let engine = value(og_engine_create(game, json!({ "root": root }).to_string()))
+        .as_u64()
+        .unwrap() as u32;
     frames(engine, 1);
     (engine, cuts)
 }
@@ -481,4 +482,190 @@ fn a_shot_with_focus_hands_the_depth_of_field_back() {
     );
     assert_eq!(p["dofFocusRange"], range0);
     assert_eq!(brain(engine)["live"], json!(0));
+}
+
+fn named_shot(engine: u32, name: &str, x: f64, vcam: Value) -> f64 {
+    let e = value(og_world_spawn(
+        engine,
+        Some(json!({ "name": name }).to_string()),
+    ))
+    .as_f64()
+    .unwrap();
+    value(og_world_insert(
+        engine,
+        e,
+        "og.Transform".into(),
+        Some(at(x, 0.0, 0.0).to_string()),
+    ));
+    value(og_world_insert(
+        engine,
+        e,
+        "og.VirtualCamera".into(),
+        Some(vcam.to_string()),
+    ));
+    e
+}
+
+fn solo(engine: u32) -> f64 {
+    brain(engine)["solo"].as_f64().unwrap_or(0.0)
+}
+
+const TALK: &str = "type dialogue
+version 1
+---
+name talk
+start one
+speaker smith {
+  name \"npc.smith\"
+}
+node one {
+  shot close
+  say smith \"l.one\"
+  say smith \"l.two\" {
+    shot smith
+  }
+  say smith \"l.three\" {
+    shot none
+  }
+  say smith \"l.four\"
+}
+";
+
+/// R10 batch 3: a dialogue line's shot is og.CameraBrain's solo while it
+/// shows, a node's covers its lines, a cast role finds the virtual camera
+/// that looks at its entity, `shot none` and the end hand the game's own
+/// solo back.
+///
+/// Ways this could fail: the story writes the solo but never hands it
+/// back (the camera stays on the close-up after the talk); it hands back
+/// 0 instead of the game's solo; a role is looked up as an entity name;
+/// a solo the game set during the talk is overwritten at the end.
+#[test]
+fn a_dialogue_takes_the_games_solo_for_its_shots_and_hands_it_back() {
+    let (engine, _) = start(false);
+    let game = shot(engine, 1.0, json!({ "priority": 1, "blendTime": 0 }));
+    let close = named_shot(
+        engine,
+        "close",
+        2.0,
+        json!({ "enabled": false, "blendTime": 0 }),
+    );
+    let smith = spawn(engine, &[("og.Transform", at(9.0, 0.0, 0.0))]);
+    let on_smith = shot(
+        engine,
+        3.0,
+        json!({ "enabled": false, "lookAt": smith, "blendTime": 0 }),
+    );
+    value(og_engine_write_resource(
+        engine,
+        "og.CameraBrain".into(),
+        json!({ "solo": game }).to_string(),
+    ));
+    value(og_runtime::og_story_parse(engine, TALK.into()));
+    let conv = value(og_runtime::og_story_start(
+        engine,
+        Some(json!({ "dialogue": "talk", "cast": { "smith": smith } }).to_string()),
+    ))
+    .as_u64()
+    .unwrap() as u32;
+    ticks(engine, 2);
+    let view: Value = serde_json::from_str(&og_runtime::og_story_view(engine, conv)).unwrap();
+    assert_eq!(
+        view["shot"],
+        json!("close"),
+        "the node's shot covers its line"
+    );
+    assert_eq!(solo(engine), close, "the line's shot is the solo");
+    value(og_runtime::og_story_advance(engine, conv));
+    ticks(engine, 2);
+    assert_eq!(
+        solo(engine),
+        on_smith,
+        "the cast role's camera: the one that looks at smith"
+    );
+    assert!((cam_x(engine) - 3.0).abs() < 1e-6, "and it is live");
+    value(og_runtime::og_story_advance(engine, conv));
+    ticks(engine, 2);
+    assert_eq!(solo(engine), game, "`shot none`: the game's solo is back");
+    value(og_runtime::og_story_advance(engine, conv));
+    ticks(engine, 2);
+    assert_eq!(solo(engine), close, "the node's shot again");
+    // The game picks another solo during the talk: that one is what the
+    // end hands back.
+    let other = shot(engine, 4.0, json!({ "enabled": false, "blendTime": 0 }));
+    value(og_engine_write_resource(
+        engine,
+        "og.CameraBrain".into(),
+        json!({ "solo": other }).to_string(),
+    ));
+    ticks(engine, 2);
+    value(og_runtime::og_story_advance(engine, conv));
+    ticks(engine, 2);
+    assert_eq!(
+        solo(engine),
+        other,
+        "the end hands back the game's latest solo"
+    );
+    assert!((cam_x(engine) - 4.0).abs() < 1e-6);
+}
+
+const CUTSCENE: &str = "type timeline
+version 1
+---
+duration 1
+track shot {
+  key 0.2 {
+    camera \"wide\"
+    blend 0.5
+    ease linear
+  }
+  key 0.6 {
+    none
+  }
+}
+";
+
+/// A timeline's shot track sets og.CameraBrain.solo from its keys with
+/// the key's blend and ease, and a `none` key hands the found solo back.
+#[test]
+fn a_shot_track_soloes_its_cameras_with_its_blend_and_hands_the_solo_back() {
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-runtime-vcam-shot-track");
+    std::fs::create_dir_all(root.join("assets/timelines")).unwrap();
+    std::fs::write(root.join("assets/timelines/cut.ogt"), CUTSCENE).unwrap();
+    let cooked = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
+    assert!(cooked.ok(), "{:?}", cooked.errors());
+    let (engine, _) = start_at(root, false);
+    let game = shot(engine, 1.0, json!({ "priority": 1, "blendTime": 0 }));
+    let wide = named_shot(
+        engine,
+        "wide",
+        5.0,
+        json!({ "enabled": false, "blendTime": 0 }),
+    );
+    let tl = value(og_runtime::og_load_timeline(
+        engine,
+        "timelines/cut.ogt".into(),
+    ));
+    spawn(
+        engine,
+        &[("og.Timeline", json!({ "asset": tl, "playing": true }))],
+    );
+    ticks(engine, 18);
+    assert_eq!(solo(engine), wide, "the key at 0.2 s soloes the wide shot");
+    let b = brain(engine);
+    assert_eq!(
+        b["blendDuration"].as_f64(),
+        Some(0.5),
+        "with the key's blend: {b}"
+    );
+    assert_eq!(b["blendCurve"], json!("linear"));
+    let x = cam_x(engine);
+    assert!(x > 1.0 && x < 5.0, "mid-blend: {x}");
+    ticks(engine, 24);
+    assert_eq!(
+        solo(engine),
+        0.0,
+        "the `none` key hands back the solo it found (none)"
+    );
+    let _ = game;
 }

@@ -84,6 +84,20 @@ is one line here, written at the merge that changes
   worlds hash as before; the brain's state is record fields, so a restore
   mid-blend continues it. A timeline's camera track still owns og.Camera
   while it plays. The column `Ease` lets records hold og.tween's curves.
+- **Dialogue and timeline shots (R10, batch 3).** A dialogue line takes
+  `shot <camera>` (a node's covers its lines; `shot none` shows a line
+  without one): while it shows, og.story makes that og.VirtualCamera
+  `og.CameraBrain.solo` and hands the game's own solo back when no line
+  has a shot (or the solo the game set meanwhile). The camera is an
+  entity's name, or a cast role: the role's entity's own og.VirtualCamera,
+  else the first one that looks at it. `DialogueView.shot` names the
+  line's shot. A timeline's `track shot { key 1 { camera "wide" blend 0.5
+  ease linear } key 4 { none } }` soloes its cameras from its keys and
+  hands the solo back at a `none` key and its end. og.CameraBrain gains
+  `soloBlend` (-1: the camera's own blend) and `soloEase`. The story save
+  is version 3 (versions 1 and 2 load); the og.Timeline blob is unchanged.
+  Load dialogues and timelines with shots in setup: loading registers the
+  virtual cameras' records and grants their writes.
 - **Removed: six built-in styles, folded into the sixteen the owner settled**
   (2026-11-02): `bubbly` into `cartoon`, `arcade` into `pixel`, `paper`
   into `storybook`, `inkwash` into `jade` (a new pack, coming), `neon`

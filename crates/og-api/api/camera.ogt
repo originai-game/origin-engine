@@ -440,7 +440,14 @@ module camera {
     field blendEase Ease "The curve of those blends." {
       default cubicInOut
     }
-    field solo Entity "A shot that outranks every priority while it is set (a cutscene or a dialogue close-up): an entity with an og.VirtualCamera, live even when it is not enabled; 0 releases it and the brain blends back to the highest priority. Anything else is ignored."
+    field solo Entity "A shot that outranks every priority while it is set (a cutscene or a dialogue close-up): an entity with an og.VirtualCamera, live even when it is not enabled; 0 releases it and the brain blends back to the highest priority. Anything else is ignored. og.story sets it for a dialogue line's `shot` and a timeline's shot track for its keys."
+    field soloBlend f32 "Seconds of the blend to the solo shot when it goes live (0 cuts); below 0 the solo camera's own blendTime and blendEase (then the brain's). A timeline's shot key sets it with solo; og.story sets it to -1." {
+      default -1
+      unit s
+    }
+    field soloEase Ease "The curve of that blend when soloBlend is 0 or more." {
+      default cubicInOut
+    }
     field live Entity "The live camera (0: none)." {
       readonly true
     }

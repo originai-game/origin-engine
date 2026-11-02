@@ -7889,6 +7889,16 @@
           "default": 0
         },
         {
+          "name": "soloBlend",
+          "column": "f32",
+          "default": -1
+        },
+        {
+          "name": "soloEase",
+          "column": "Ease",
+          "default": "cubicInOut"
+        },
+        {
           "name": "live",
           "column": "Entity",
           "default": 0,

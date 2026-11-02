@@ -13,7 +13,7 @@
 use super::engine::engine;
 use super::{ok, ok_void, parse, refuse};
 use og_core::{IdMap, Rng};
-use og_ecs::{Entity, StateBlock, SystemDesc, World};
+use og_ecs::{Entity, QueryDesc, StateBlock, SystemContext, SystemDesc, World};
 use og_story::{Dialogue, Event, Library, Quest, Story, Val, Wait};
 use serde_json::{Map, Value, json};
 use std::any::Any;
@@ -52,6 +52,26 @@ struct Rt {
     /// (records a bark's `when` or an objective's `where` reads, events
     /// objectives count).
     granted: std::collections::BTreeSet<String>,
+    /// Shots warned about as naming no virtual camera (not saved).
+    unresolved: std::collections::BTreeSet<String>,
+}
+
+/// The records a line's `shot` writes and reads (R10): the brain's solo,
+/// the virtual cameras a cast role resolves to.
+const BRAIN: &str = crate::feel::vcam::BRAIN;
+const VCAM: &str = crate::feel::vcam::VCAM;
+
+/// Whether a loaded dialogue shows any line in a shot.
+fn uses_shots(lib: &Library) -> bool {
+    lib.dialogues.values().any(|d| {
+        d.nodes.iter().any(|n| {
+            !n.shot.is_empty()
+                || n.steps.iter().any(|s| match s {
+                    og_story::Step::Say(l) => !l.shot.is_empty() && l.shot != "none",
+                    _ => false,
+                })
+        })
+    })
 }
 
 thread_local! {
@@ -159,6 +179,10 @@ fn needs(engine_id: u32) -> Result<Vec<String>, String> {
         (reads, Story::counted_events(&rt.lib))
     });
     let mut out = std::collections::BTreeSet::new();
+    if with(engine_id, |rt| uses_shots(&rt.lib)) {
+        out.insert(BRAIN.to_string());
+        out.insert(VCAM.to_string());
+    }
     for v in reads.iter().filter(|v| v.contains('.')) {
         let path = v.strip_prefix("self.").unwrap_or(v);
         if path.starts_with("event.") || path.starts_with("og.Time.") {
@@ -201,6 +225,13 @@ fn grant(engine_id: u32, world: Option<&mut World>) -> Result<(), String> {
             missing.join(", ")
         ));
     };
+    // The virtual cameras' records are lazy: a dialogue with a shot
+    // registers them as naming og.VirtualCamera would.
+    if let Ok(eng) = engine(engine_id) {
+        for n in &missing {
+            super::lazy::ensure(&eng, world, n)?;
+        }
+    }
     let names: Vec<&str> = missing.iter().map(String::as_str).collect();
     world
         .grant(SYSTEM, &names)
@@ -296,6 +327,7 @@ pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
                     s.run_barks(lib, tick, &read, &alive);
                     voice_plan(s, voices, tick)
                 });
+                shot(ctx, &eng, engine_id)?;
                 // Voices: stop the ones whose line moved on or ended, start
                 // the new lines' (each its own entity with an AudioSource).
                 for e in stops {
@@ -352,6 +384,116 @@ pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
             },
         )
         .map_err(|e| e.reason().to_string())
+}
+
+/// A line's shot (R10): the newest running conversation's current line's
+/// shot is og.CameraBrain.solo while it shows. The solo the brain had when
+/// the story took it is kept (Story.camera) and handed back when no line
+/// has a shot, unless the game set another meanwhile, which is then the
+/// one handed back (and a solo the game sets while the story holds it is
+/// replaced at the next line's shot only).
+fn shot(
+    ctx: &mut SystemContext<'_>,
+    eng: &super::engine::Engine,
+    engine_id: u32,
+) -> og_core::Result<()> {
+    if !with(engine_id, |rt| rt.granted.contains(BRAIN)) {
+        return Ok(());
+    }
+    let (Ok(bid), Ok(vid)) = (ctx.id_by_name(BRAIN), ctx.id_by_name(VCAM)) else {
+        return Ok(());
+    };
+    let layouts = {
+        let st = eng.state.borrow();
+        (
+            st.layouts.get(BRAIN).cloned(),
+            st.layouts.get(VCAM).cloned(),
+        )
+    };
+    let (Some(bl), Some(vl)) = layouts else {
+        return Ok(());
+    };
+    if !ctx.has_resource_id(bid)? {
+        return Ok(());
+    }
+    let (wanted, held) = with(engine_id, |rt| {
+        let s = rt.story.as_ref();
+        let wanted = s.and_then(|s| {
+            let (id, shot) = s.shot()?;
+            Some((shot.to_string(), s.convs.get(&id)?.cast.clone()))
+        });
+        (wanted, s.and_then(|s| s.camera))
+    });
+    let is_vcam = |e: Entity| ctx.is_alive(e) && ctx.get_bytes(e, vid).is_ok();
+    // A name: that entity; a cast role: its entity's own virtual camera,
+    // else the first (in query order) that looks at it.
+    let want = match &wanted {
+        None => None,
+        Some((shot, cast)) => {
+            let found = match cast.get(shot.as_str()) {
+                Some(&bits) => {
+                    let actor = Entity::from_bits(bits);
+                    if is_vcam(actor) {
+                        Some(actor)
+                    } else {
+                        let q = QueryDesc {
+                            read: vec![VCAM.into()],
+                            ..QueryDesc::default()
+                        };
+                        let mut hit = None;
+                        'all: for a in ctx.query_with(&q)? {
+                            for &e in a.entities() {
+                                let v = vl.decode(&ctx.get_bytes(e, vid)?);
+                                if v["lookAt"].as_f64().map_or(0, |x| x as u64) == bits {
+                                    hit = Some(e);
+                                    break 'all;
+                                }
+                            }
+                        }
+                        hit
+                    }
+                }
+                None => ctx.find(shot).filter(|e| is_vcam(*e)),
+            };
+            if found.is_none() {
+                let first = with(engine_id, |rt| rt.unresolved.insert(shot.clone()));
+                if first {
+                    log(
+                        eng,
+                        vec![format!(
+                            "a line's shot '{shot}' names no virtual camera: no entity of that name with an og.VirtualCamera, and no cast role whose entity has one or is one's lookAt; the line shows without a shot"
+                        )],
+                    );
+                }
+            }
+            found.map(Entity::to_bits)
+        }
+    };
+    let bytes = ctx.resource_bytes(bid)?;
+    let mut brain = bl.decode(&bytes);
+    let cur = brain["solo"].as_f64().map_or(0, |x| x as u64);
+    let (camera, write) = match (held, want) {
+        (None, None) => return Ok(()),
+        (None, Some(e)) => (Some((cur, e)), Some(e)),
+        (Some((found, wrote)), Some(e)) => {
+            let found = if cur == wrote { found } else { cur };
+            (Some((found, e)), (cur != e).then_some(e))
+        }
+        (Some((found, wrote)), None) => (None, (cur == wrote).then_some(found)),
+    };
+    if let Some(solo) = write {
+        brain["solo"] = json!(solo);
+        brain["soloBlend"] = json!(-1.0);
+        let bad = |e: String| og_core::Error::new(og_core::ErrorKind::Invalid, e);
+        let next = bl.encode(Some(&bytes), Some(&brain)).map_err(bad)?;
+        ctx.set_resource_bytes(bid, &next)?;
+    }
+    with(engine_id, |rt| {
+        if let Some(s) = rt.story.as_mut() {
+            s.camera = camera;
+        }
+    });
+    Ok(())
 }
 
 /// The voice each speaking line or bark should have now: `c<conversation>`
@@ -813,6 +955,7 @@ pub fn og_story_view(world: u32, conversation: u32) -> String {
             args: Vec::new(),
             voice: String::new(),
             expression: String::new(),
+            shot: String::new(),
             seq: 0,
             seen: false,
             chosen: None,
@@ -833,6 +976,7 @@ pub fn og_story_view(world: u32, conversation: u32) -> String {
             "voiceTicks": if l.voice.is_empty() { 0 } else { l.voice_ticks },
             "voiceLeft": if c.wait == Wait::Ended { 0 } else { l.voice_left(s.tick) },
             "speaker": speaker_json(world, &d, c, &l.speaker, &l.expression),
+            "shot": l.shot,
             "choices": choices,
             "timer": timer,
             "lastCheck": c.last_roll.as_ref().map(|r| json!({

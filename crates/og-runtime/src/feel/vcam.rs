@@ -342,7 +342,12 @@ pub(crate) fn brain(
     let mut blend = f(&brain, "blend", 1.0).clamp(0.0, 1.0);
     let mut from = from_entity;
     if live != prev {
+        let solo_blend = f(&brain, "soloBlend", -1.0);
         let (duration, curve) = match live.and_then(index) {
+            // A blend to the solo shot by the solo's own (a timeline's shot key).
+            Some(_) if live == solo && solo_blend >= 0.0 => {
+                (solo_blend, ease_of(&brain["soloEase"]))
+            }
             Some(i) if f(&shots[i].2, "blendTime", -1.0) >= 0.0 => (
                 f(&shots[i].2, "blendTime", -1.0),
                 ease_of(&shots[i].2["blendEase"]),

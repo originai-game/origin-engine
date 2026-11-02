@@ -51,6 +51,7 @@ pub(super) fn track(e: &Entry, read: &mut Read<'_>) -> Result<Track, String> {
         "transition" => Track::Transition(transitions(block)?),
         "marker" => Track::Marker(markers(block)?),
         "timeline" => Track::Timeline(nested(block)?),
+        "shot" => Track::Shot(shots(block)?),
         k => match FieldsKind::from_name(k) {
             Some(kind) => Track::Fields(fields(block, kind, target)?),
             None => {
@@ -743,6 +744,46 @@ fn nested(block: &Block) -> Result<Vec<NestedKey>, String> {
             return Err(at(
                 e,
                 "a timeline key names what it plays: `play \"timelines/door.ogt\"`",
+            ));
+        }
+        out.push(k);
+    }
+    Ok(sorted(out, |k| k.time))
+}
+
+fn shots(block: &Block) -> Result<Vec<ShotKey>, String> {
+    let mut out = Vec::new();
+    for e in only_keys(block, "shot")? {
+        let mut k = ShotKey {
+            time: key_time(e)?,
+            camera: String::new(),
+            blend: -1.0,
+            ease: Ease::Linear,
+        };
+        let mut named = false;
+        for f in key_block(e)? {
+            no_block(f)?;
+            match f.key.as_str() {
+                "camera" => {
+                    k.camera = string(f)?;
+                    named = true;
+                }
+                "none" => named = true,
+                "blend" => {
+                    let v = one_number(f)?;
+                    if v < 0.0 {
+                        return Err(at(f, "blend is 0 (a cut) or more seconds"));
+                    }
+                    k.blend = v;
+                }
+                "ease" => k.ease = ease(f)?,
+                _ => return Err(unknown(f, "shot key entry", "camera, none, blend or ease")),
+            }
+        }
+        if !named {
+            return Err(at(
+                e,
+                "a shot key names its camera, `camera \"closeup\"` (a virtual camera's entity name), or `none` to release it",
             ));
         }
         out.push(k);

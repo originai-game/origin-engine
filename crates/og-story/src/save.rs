@@ -13,8 +13,9 @@ use std::collections::{BTreeMap, BTreeSet};
 const MAGIC: &[u8; 4] = b"OGST";
 /// The saved form's version.
 /// 2 (G2-8 batch 2) adds each line's voice timing, barks, ambient
-/// barkers and the voices playing; version 1 is still read.
-pub const SAVE_VERSION: u8 = 2;
+/// barkers and the voices playing; 3 (R10) each line's camera shot and
+/// the solo the story holds. Versions 1 and 2 are still read.
+pub const SAVE_VERSION: u8 = 3;
 
 struct W<'a>(&'a mut Vec<u8>);
 
@@ -249,6 +250,7 @@ impl Story {
                 }
                 w.u32(s.voice_ticks);
                 w.opt_u32(s.voice_start);
+                w.str(&s.shot);
             }
             match c.timer {
                 Some((l, t)) => {
@@ -387,6 +389,15 @@ impl Story {
             w.u32(*seq);
             w.u64(*e);
         }
+        // Version 3: the solo shot the story holds.
+        match self.camera {
+            Some((found, wrote)) => {
+                w.u8(1);
+                w.u64(found);
+                w.u64(wrote);
+            }
+            None => w.u8(0),
+        }
     }
 
     /// A story from its saved form; the tick is 0 and no warning is pending.
@@ -396,7 +407,7 @@ impl Story {
             .ok_or("the story's saved state does not start with OGST")?;
         let mut r = R { b: rest, at: 0 };
         let v = r.u8()?;
-        if v != 1 && v != SAVE_VERSION {
+        if !(1..=SAVE_VERSION).contains(&v) {
             return Err(format!(
                 "the story's saved state has version {v}; this engine reads {SAVE_VERSION}"
             ));
@@ -451,6 +462,7 @@ impl Story {
                 } else {
                     (0, None)
                 };
+                let shot = if v >= 3 { r.str()? } else { String::new() };
                 history.push(Shown {
                     node,
                     step,
@@ -464,6 +476,7 @@ impl Story {
                     chosen,
                     voice_ticks,
                     voice_start,
+                    shot,
                 });
             }
             let timer = if r.bool()? {
@@ -612,6 +625,9 @@ impl Story {
                 let seq = r.u32()?;
                 s.voices.insert(k, (seq, r.u64()?));
             }
+        }
+        if v >= 3 && r.bool()? {
+            s.camera = Some((r.u64()?, r.u64()?));
         }
         if r.at != r.b.len() {
             return Err("the story's saved state has bytes past its end".into());

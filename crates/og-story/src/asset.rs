@@ -20,6 +20,7 @@
 //!   say smith "smith.hello" {
 //!     arg gold "gold"
 //!     voice "vo/smith_hello"
+//!     shot smith_close           # a virtual camera's name or a cast role
 //!   }
 //!   choice "smith.buy" {
 //!     if "gold >= 10"
@@ -39,6 +40,7 @@
 //!   timer 600 smith.leave        # ticks; the choice taken when it runs out
 //! }
 //! node bought {
+//!   shot counter                 # every line of the node, unless one names its own
 //!   say smith "smith.thanks"
 //!   quest progress rescue sword
 //!   emit give_sword
@@ -58,6 +60,13 @@
 //! reached, the steps after it run at once and the line waits for a
 //! choice. A node that runs out of steps without choices ends the
 //! conversation. A choice without `goto` ends it too.
+//!
+//! `shot` names a virtual camera (its entity's name, or a cast role that
+//! the conversation's cast maps to one): a node's covers its lines, a
+//! line's replaces it for that line, and `shot none` shows a line without
+//! one. The runtime makes it og.CameraBrain's solo shot while the line
+//! shows and hands the solo back when the line, the node or the
+//! conversation ends.
 //!
 //! ```text
 //! type quest
@@ -149,6 +158,10 @@ pub struct Line {
     pub voice: String,
     /// The portrait variant (empty: the speaker's).
     pub expression: String,
+    /// The camera shot it is shown in: a virtual camera's entity name or
+    /// a cast role (empty: the node's; `none`: no shot even if the node
+    /// has one).
+    pub shot: String,
     pub line: usize,
 }
 
@@ -235,6 +248,9 @@ pub struct Node {
     /// The step of the line its choices are shown with (its last `say`);
     /// `None` without one (they show with the line before).
     pub choice_line: Option<usize>,
+    /// `shot <camera>`: the shot its lines are shown in unless a line
+    /// names its own (empty: none).
+    pub shot: String,
     pub line: usize,
 }
 
@@ -574,8 +590,8 @@ fn choice(e: &Entry) -> Result<Choice, String> {
     Ok(c)
 }
 
-/// A line: the i18n key at value `i`, with its block's `arg`, `voice` and
-/// `expression`.
+/// A line: the i18n key at value `i`, with its block's `arg`, `voice`,
+/// `expression` and `shot`.
 fn line_at(x: &Entry, speaker: String, i: usize) -> Result<Line, String> {
     let text = text_of(x, i)?;
     let opt = |k: &str| -> Result<String, String> {
@@ -588,12 +604,12 @@ fn line_at(x: &Entry, speaker: String, i: usize) -> Result<Line, String> {
         && let Some(bad) = b
             .entries
             .iter()
-            .find(|v| !matches!(v.key.as_str(), "arg" | "voice" | "expression"))
+            .find(|v| !matches!(v.key.as_str(), "arg" | "voice" | "expression" | "shot"))
     {
         return Err(err(
             bad,
             format!(
-                "'{}' is not part of a line: arg, voice or expression",
+                "'{}' is not part of a line: arg, voice, expression or shot",
                 bad.key
             ),
         ));
@@ -603,6 +619,7 @@ fn line_at(x: &Entry, speaker: String, i: usize) -> Result<Line, String> {
         text,
         voice: opt("voice")?,
         expression: opt("expression")?,
+        shot: opt("shot")?,
         line: x.line,
     })
 }
@@ -721,6 +738,7 @@ fn node(e: &Entry) -> Result<Node, String> {
         choices: Vec::new(),
         timer: None,
         choice_line: None,
+        shot: String::new(),
         line: e.line,
     };
     let empty = Block::new();
@@ -774,6 +792,15 @@ fn node(e: &Entry) -> Result<Node, String> {
                 n.choices.push(choice(x)?);
                 continue;
             }
+            "shot" => {
+                no_block(x)?;
+                n.shot = name_at(
+                    x,
+                    0,
+                    "a camera: a virtual camera's entity name or a cast role",
+                )?;
+                continue;
+            }
             "timer" => {
                 let ticks = x
                     .values
@@ -792,7 +819,7 @@ fn node(e: &Entry) -> Result<Node, String> {
                 return Err(err(
                     x,
                     format!(
-                        "'{other}' is not a step: say, set, if, goto, end, pick, emit, quest, choice or timer"
+                        "'{other}' is not a step: say, set, if, goto, end, pick, emit, quest, choice, timer or shot"
                     ),
                 ));
             }

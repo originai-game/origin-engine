@@ -139,6 +139,7 @@ module story {
     field voiceTicks u32 "The voice's length in ticks (0: no voice, or one that did not load)."
     field voiceLeft u32 "Ticks of the voice still to play: voiceTicks until it starts, 0 once it has ended (advance then, for auto-advance)."
     field speaker SpeakerView "Who says it."
+    field shot String "The camera shot it is shown in: its `shot`, else its node's (a virtual camera's entity name or a cast role); empty: none. While it shows, og.story makes that og.VirtualCamera og.CameraBrain.solo: a name is the entity of that name, a role the cast entity's own og.VirtualCamera, else the first one whose lookAt is that entity. When no running conversation's line has a shot the game's own solo is handed back."
     field choices List.ChoiceView "The choices, when it waits on them; empty while a line waits for og.story.advance."
     field timer Option.TimerView "The choice timer, while it runs."
     field lastCheck Option.RollView "The last active check this conversation rolled."

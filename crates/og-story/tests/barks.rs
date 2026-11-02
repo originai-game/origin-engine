@@ -255,6 +255,9 @@ fn voices_time_their_lines_and_saves_keep_barks() {
     s.bark(&l, 1, "idle", "").unwrap();
     s.run_barks(&l, 3, &w.read(), &|_| true);
     s.voices.insert(format!("c{c}"), (1, 77));
+    // Version 3 (R10): the solo the story holds, and each line's shot.
+    s.camera = Some((3, 9));
+    s.convs.get_mut(&c).unwrap().history[0].shot = "close".into();
     let mut a = Vec::new();
     s.save(&mut a);
     let back = Story::load(&a).unwrap();
@@ -266,13 +269,24 @@ fn voices_time_their_lines_and_saves_keep_barks() {
     assert_eq!(back.bark_last_by, s.bark_last_by);
     assert_eq!(back.voices, s.voices);
     assert_eq!(back.convs[&c].history[0].voice_start, Some(10));
+    assert_eq!(back.camera, Some((3, 9)));
+    assert_eq!(back.convs[&c].history[0].shot, "close");
     // A version-1 save (batch 1) still loads.
     let mut v1 = Story::new(Rng::new(2));
     v1.globals.insert("x".into(), Val::Num(1.0));
     let mut bytes = Vec::new();
     v1.save(&mut bytes);
-    let cut = bytes.len() - 8 * 4; // the eight empty version-2 sections
+    // The eight empty version-2 sections and version 3's empty camera.
+    let cut = bytes.len() - 8 * 4 - 1;
     let mut old = bytes[..cut].to_vec();
     old[4] = 1;
     assert_eq!(Story::load(&old).unwrap().globals["x"], Val::Num(1.0));
+    // A version-2 save (G2-8): no camera byte.
+    let mut v2 = bytes[..bytes.len() - 1].to_vec();
+    v2[4] = 2;
+    let back = Story::load(&v2).unwrap();
+    assert_eq!(
+        (back.globals["x"].clone(), back.camera),
+        (Val::Num(1.0), None)
+    );
 }

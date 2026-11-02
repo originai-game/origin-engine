@@ -468,6 +468,9 @@ fn needs(eng: &Engine, lt: &Loaded, out: &mut std::collections::BTreeSet<String>
                         .map(|r| r.to_string()),
                 ),
             },
+            Track::Shot(_) => {
+                out.insert(feel::vcam::BRAIN.to_string());
+            }
             Track::Camera(c)
                 if c.keys.iter().any(|k| {
                     k.focus.is_some() || k.focus_on.is_some() || k.focus_range.is_some()
@@ -509,9 +512,16 @@ fn grant(eng: &Engine, h: u64, world: Option<&mut World>) -> Result<(), String> 
     grant_loaded(eng, &l, world)
 }
 
-fn grant_loaded(eng: &Engine, lt: &Loaded, world: Option<&mut World>) -> Result<(), String> {
+fn grant_loaded(eng: &Engine, lt: &Loaded, mut world: Option<&mut World>) -> Result<(), String> {
     let mut want = std::collections::BTreeSet::new();
     needs(eng, lt, &mut want, 0);
+    // A shot track registers the virtual cameras' lazy records, as naming
+    // og.VirtualCamera would.
+    if want.contains(feel::vcam::BRAIN)
+        && let Some(w) = world.as_deref_mut()
+    {
+        super::lazy::ensure(eng, w, feel::vcam::BRAIN)?;
+    }
     // A lazy record no game has used yet is not registered: its tracks
     // write nothing until it is and the timeline loads again.
     if let Some(w) = world.as_deref() {

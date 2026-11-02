@@ -39,6 +39,9 @@ pub(super) struct Run {
     /// og.PostEffects' depth of field as a camera track's focus found it:
     /// on (1 or 0), focus distance, focus range.
     pub(super) focus: Option<[f32; 3]>,
+    /// While a shot track holds og.CameraBrain.solo: the solo it found
+    /// (handed back) and the one it wrote, as entity bits.
+    pub(super) solo: Option<(u64, u64)>,
 }
 
 #[derive(Default)]
@@ -166,7 +169,8 @@ fn save(sh: &Shared, out: &mut Vec<u8>) {
             | u32::from(r.active) << 3
             | u32::from(r.release) << 4
             | u32::from(r.camera.is_some()) << 5
-            | u32::from(r.focus.is_some()) << 6;
+            | u32::from(r.focus.is_some()) << 6
+            | u32::from(r.solo.is_some()) << 7;
         u32_(out, flags);
         for v in r.camera.unwrap_or_default() {
             out.extend_from_slice(&v.to_le_bytes());
@@ -175,6 +179,11 @@ fn save(sh: &Shared, out: &mut Vec<u8>) {
         // always had.
         for v in r.focus.iter().flatten() {
             out.extend_from_slice(&v.to_le_bytes());
+        }
+        // Only while a shot track holds the solo, likewise.
+        if let Some((found, wrote)) = r.solo {
+            u64_(out, found);
+            u64_(out, wrote);
         }
         u32_(out, r.anim.len() as u32);
         for (t, k) in &r.anim {
@@ -230,6 +239,9 @@ fn load_state(bytes: &[u8]) -> og_core::Result<Shared> {
         if flags & 64 != 0 {
             r.focus = Some([b.f32()?, b.f32()?, b.f32()?]);
         }
+        if flags & 128 != 0 {
+            r.solo = Some((b.u64()?, b.u64()?));
+        }
         for _ in 0..b.u32()? {
             r.anim.push((b.u32()?, b.u32()?));
         }
@@ -277,6 +289,9 @@ pub(super) struct Rec {
     pub(super) source: (SchemaId, Layout),
     /// og.PostEffects, for a camera track's focus.
     pub(super) post: Option<(SchemaId, Layout)>,
+    /// og.CameraBrain's layout, for a shot track (registered lazily: its
+    /// id is looked up when the track plays).
+    pub(super) brain: Option<Layout>,
 }
 
 /// Registers the timeline events (their layouts into `layouts`).
@@ -325,6 +340,7 @@ pub(crate) fn install(
         player: get("og.AnimationPlayer")?,
         source: get("og.AudioSource")?,
         post: get("og.PostEffects").ok(),
+        brain: layouts.get(crate::feel::vcam::BRAIN).cloned(),
     };
     let names =
         |ids: &[&(SchemaId, Layout)]| ids.iter().map(|x| x.1.schema.clone()).collect::<Vec<_>>();
@@ -749,6 +765,10 @@ fn release(ctx: &mut SystemContext<'_>, r: &Rec, run: &mut Run) -> og_core::Resu
             .encode(Some(&bytes), Some(&cam))
             .map_err(invalid)?;
         ctx.set_resource_bytes(r.camera.0, &out)?;
+    }
+    if let Some((found, _)) = run.solo {
+        super::evaluate::set_solo(ctx, r, found, -1.0, og_tween::Ease::CubicInOut)?;
+        run.solo = None;
     }
     for (_, _, v) in std::mem::take(&mut run.voices) {
         let e = Entity::from_bits(v);

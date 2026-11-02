@@ -372,3 +372,75 @@ fn field_tracks_are_checked_against_the_records_and_nesting_cycles_are_refused()
     let r = cook_project(&root, &CookOptions::default()).unwrap();
     assert!(r.ok(), "{:?}", r.errors());
 }
+
+const SHOTS: &str = r#"type timeline
+version 1
+---
+duration 4
+track shot {
+  key 2 {
+    none
+  }
+  key 0.5 {
+    camera "wide"
+    blend 0.75
+    ease cubicOut
+  }
+}
+"#;
+
+/// R10 batch 3's shot track cooks to its canonical text (keys in time
+/// order, a key's blend only when it has one), pinned, in the same blob
+/// version; a key naming neither a camera nor `none`, and a negative blend,
+/// are refused naming the fix.
+///
+/// Ways this could fail: the cook drops the track (a cutscene cooks and
+/// never cuts), writes keys out of order, or bumps the blob so every
+/// timeline re-cooks.
+#[test]
+fn a_shot_track_cooks_to_its_pinned_text_and_a_key_without_a_camera_is_refused() {
+    let root = project("shots", &[("timelines/t.ogt", SHOTS)]);
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let blob = std::fs::read(root.join("cooked/timelines/t.ogt.ogb")).unwrap();
+    let at = blob
+        .windows(13)
+        .position(|w| w == b"type timeline")
+        .expect("the canonical text");
+    let mut text = &blob[at..];
+    while let [rest @ .., 0] = text {
+        text = rest;
+    }
+    let text = std::str::from_utf8(text).unwrap();
+    let wide = text.find("camera \"wide\"").expect(text);
+    let none = text.find("none").expect(text);
+    assert!(wide < none, "keys in time order: {text}");
+    assert!(
+        text.contains("blend 0.75") && text.contains("ease cubicOut"),
+        "{text}"
+    );
+    assert_eq!(
+        (blob.len(), format!("{:016x}", fnv(text.as_bytes())), {
+            use og_cook::format::BlobKind;
+            og_cook::format::Timeline::schema_version()
+        }),
+        (336, "674449ac599b4ef5".to_string(), 1),
+        "{text}"
+    );
+    let bad = |body: &str| -> String {
+        let root = project(
+            "shots-bad",
+            &[(
+                "timelines/t.ogt",
+                &format!("type timeline\nversion 1\n---\nduration 2\ntrack shot {{\n{body}}}\n"),
+            )],
+        );
+        let report = cook_project(&root, &CookOptions::default()).unwrap();
+        assert!(!report.ok(), "{body} cooked");
+        format!("{:?}", report.errors())
+    };
+    let e = bad("  key 0 {\n    blend 1\n  }\n");
+    assert!(e.contains("names its camera") && e.contains("none"), "{e}");
+    let e = bad("  key 0 {\n    camera \"wide\"\n    blend -1\n  }\n");
+    assert!(e.contains("blend is 0"), "{e}");
+}

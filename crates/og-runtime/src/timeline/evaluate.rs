@@ -87,6 +87,7 @@ pub(super) fn evaluate(
         let ti32 = base | ti as u32;
         match tr {
             Track::Camera(c) => camera(ctx, engine_id, r, lt, run, c, t)?,
+            Track::Shot(keys) => shot(ctx, engine_id, r, lt, run, keys, t)?,
             Track::Fields(f) if f.kind != og_timeline::FieldsKind::Material => {
                 fields(ctx, engine_id, &lt.id, f, t)?;
             }
@@ -386,6 +387,103 @@ fn model_clips(
             .ok_or("its og.Model.asset is not a loaded glTF")?
     };
     clip_set(&eng, &path)
+}
+
+/// A shot track at time `t`: the key at or before it names
+/// og.CameraBrain.solo (its blend and ease the brain's soloBlend and
+/// soloEase); a `none` key, and the time before the first key, hand the
+/// solo the run found back. Written only when it changes, so a game's own
+/// solo set meanwhile stands until the next key.
+fn shot(
+    ctx: &mut SystemContext<'_>,
+    engine_id: u32,
+    r: &Rec,
+    lt: &Loaded,
+    run: &mut Run,
+    keys: &[og_timeline::ShotKey],
+    t: f32,
+) -> og_core::Result<()> {
+    let Some(k) = keys.iter().rev().find(|k| k.time <= t) else {
+        return Ok(());
+    };
+    let want = if k.camera.is_empty() {
+        None
+    } else {
+        match ctx.find(&k.camera) {
+            Some(e) => Some(e.to_bits()),
+            None => {
+                note(
+                    engine_id,
+                    format!(
+                        "timeline {}: no entity '{}' for its shot track (a virtual camera's name)",
+                        lt.id, k.camera
+                    ),
+                );
+                None
+            }
+        }
+    };
+    let Some(cur) = solo_now(ctx, r)? else {
+        return Ok(());
+    };
+    match (run.solo, want) {
+        (None, Some(e)) => {
+            run.solo = Some((cur, e));
+            set_solo(ctx, r, e, k.blend, k.ease)?;
+        }
+        (Some((found, wrote)), Some(e)) if wrote != e => {
+            run.solo = Some((found, e));
+            set_solo(ctx, r, e, k.blend, k.ease)?;
+        }
+        (Some((found, _)), None) => {
+            run.solo = None;
+            set_solo(ctx, r, found, k.blend, k.ease)?;
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+/// og.CameraBrain.solo now, if the brain is registered.
+fn solo_now(ctx: &SystemContext<'_>, r: &Rec) -> og_core::Result<Option<u64>> {
+    let Ok(id) = ctx.id_by_name(crate::feel::vcam::BRAIN) else {
+        return Ok(None);
+    };
+    if !ctx.has_resource_id(id)? {
+        return Ok(None);
+    }
+    let Some(l) = &r.brain else {
+        return Ok(None);
+    };
+    let v = l.decode(&ctx.resource_bytes(id)?);
+    Ok(Some(v["solo"].as_f64().map_or(0, |x| x as u64)))
+}
+
+/// Writes og.CameraBrain's solo and its blend (`blend` below 0: the
+/// camera's own).
+pub(super) fn set_solo(
+    ctx: &mut SystemContext<'_>,
+    r: &Rec,
+    solo: u64,
+    blend: f32,
+    ease: og_tween::Ease,
+) -> og_core::Result<()> {
+    let (Ok(id), Some(l)) = (ctx.id_by_name(crate::feel::vcam::BRAIN), &r.brain) else {
+        return Ok(());
+    };
+    if !ctx.has_resource_id(id)? {
+        return Ok(());
+    }
+    let bytes = ctx.resource_bytes(id)?;
+    let mut v = l.decode(&bytes);
+    v["solo"] = json!(solo);
+    v["soloBlend"] = json!(blend);
+    v["soloEase"] = json!(ease.name());
+    let out = l.encode(Some(&bytes), Some(&v)).map_err(invalid)?;
+    if out != bytes {
+        ctx.set_resource_bytes(id, &out)?;
+    }
+    Ok(())
 }
 
 fn camera(

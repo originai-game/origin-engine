@@ -19254,7 +19254,7 @@
     },
     {
       "name": "timeline",
-      "doc": "Timelines: cutscenes and sequences as data, Unity's Timeline and Godot's AnimationPlayer as an `.ogt` the agent reads and diffs. A `type timeline` file has a `duration` in seconds, `path \"<name>\" { ... }` blocks (as og.path's) and `track <kind> [\"<entity>\"] { key <seconds> { ... } }` blocks; `og cook` cooks it (importing caption files) and og.load.timeline loads it. Tracks: `camera` (position and target keys, or `rail \"<path>\"` with `at` 0..1 along it, or `follow \"<entity>\"` with offsets; fov; eased), `transform \"<entity>\"` (position, rotation in degrees or quaternion, scale; eased), `animation \"<entity>\"` (clip, speed, blendIn, loop; `model` names the glTF whose clips they are, else the entity's og.Model), `audio` (sound, volume, pitch, bus), `music` (sound, volume, fadeIn, fadeOut, end, loop, bus), `caption` (text from `key` to `end` with a UI type step `style` and an `anchor`; `captions \"narration.srt\" [offset]` imports a SubRip file or word timestamps `.json`), `event` (`do \"<command-channel action>\"`: teleport, set, a game's registered command; `retroactive true` runs it when a seek passes it), `transition` (kind cut, fade, wipe, dissolve, iris or slide; mode through, in or out; duration, color, from, over og.ui's screen cover) `marker` (`name`, sending og.TimelineMarker when played past), `property [\"<entity>\"]` (`field \"og.PointLight.distance\"`, keys of `value`: any reflected field of a component on the entity, or of a resource without one), `light \"<entity>\"` (its og.DirectionalLight, og.PointLight, og.SpotLight, og.RectLight or og.Light2D: color, intensity, distance, angle, ...), `visibility \"<entity>\"` (`visible true|false` of whatever it draws, stepped), `post` (og.PostEffects' fields), `blendshape \"<entity>\"` (og.Blendshapes w0 to w7; its source becomes component), `material \"<entity>\"` (its og.Mesh's material, or its og.Model's material `index N`: StandardMaterialDesc fields by name, other names the material shader's parameters) and `timeline` (`play \"<timeline>\"`, speed, loop: from its key until the next, another timeline plays nested at (time − key) × speed, its markers sent as `<file>/<marker>`, at most four deep). Camera keys also take `roll` (degrees about the view direction), `focus` (a distance) or `focusOn \"<entity>\"` and `focusRange`, which set og.PostEffects' depth of field while the track owns the camera. The cook checks every field against the engine's records (a field the record lacks, one a timeline cannot drive, a value of the wrong shape) and refuses nesting in a cycle or deeper than four; a track kind this engine does not read is refused naming it and the engine's version.\nBetween two keys that set a value the later key's `ease` (og.tween's Ease names, linear when it gives none) mixes them; before the first and after the last the value is held. Every value is evaluated at the timeline's time, never accumulated over ticks, and that time is kept exactly (in steps of a thousandth of a tick), so seeking to a time and playing to it give the same world: a seek is how a video render starts at any frame.\nAn og.Timeline component plays one on its entity, run by the engine's og.timeline system after the game's systems (and tweens) and before og.anim and physics, so what it sets is what animation, physics and the frame see that tick. While one with a camera track plays (or is paused) it owns og.Camera, and hands back the camera it found when it stops or ends. Its event keys' actions run at the start of the next tick, as og.ai's commands do. Loading a timeline (og.load.timeline, outside a system) grants og.timeline the records its tracks write; values they wrote stay when it stops, while the camera, its depth of field and the materials go back. A material track is presentation, not world state: it is applied every frame from the timeline's time, so a restored save draws the right material on its next frame. The command channel plays them too: `timeline:play:<name>` (`timelines/<name>.ogt`, or an asset id), `timeline:seek:<seconds>[:<name>]`, `timeline:pause[:<name>]`, `timeline:resume[:<name>]`, `timeline:stop[:<name>]`.",
+      "doc": "Timelines: cutscenes and sequences as data, Unity's Timeline and Godot's AnimationPlayer as an `.ogt` the agent reads and diffs. A `type timeline` file has a `duration` in seconds, `path \"<name>\" { ... }` blocks (as og.path's) and `track <kind> [\"<entity>\"] { key <seconds> { ... } }` blocks; `og cook` cooks it (importing caption files) and og.load.timeline loads it. Tracks: `camera` (position and target keys, or `rail \"<path>\"` with `at` 0..1 along it, or `follow \"<entity>\"` with offsets; fov; eased), `transform \"<entity>\"` (position, rotation in degrees or quaternion, scale; eased), `animation \"<entity>\"` (clip, speed, blendIn, loop; `model` names the glTF whose clips they are, else the entity's og.Model), `audio` (sound, volume, pitch, bus), `music` (sound, volume, fadeIn, fadeOut, end, loop, bus), `caption` (text from `key` to `end` with a UI type step `style` and an `anchor`; `captions \"narration.srt\" [offset]` imports a SubRip file or word timestamps `.json`), `event` (`do \"<command-channel action>\"`: teleport, set, a game's registered command; `retroactive true` runs it when a seek passes it), `transition` (kind cut, fade, wipe, dissolve, iris or slide; mode through, in or out; duration, color, from, over og.ui's screen cover) `marker` (`name`, sending og.TimelineMarker when played past), `property [\"<entity>\"]` (`field \"og.PointLight.distance\"`, keys of `value`: any reflected field of a component on the entity, or of a resource without one), `light \"<entity>\"` (its og.DirectionalLight, og.PointLight, og.SpotLight, og.RectLight or og.Light2D: color, intensity, distance, angle, ...), `visibility \"<entity>\"` (`visible true|false` of whatever it draws, stepped), `post` (og.PostEffects' fields), `blendshape \"<entity>\"` (og.Blendshapes w0 to w7; its source becomes component), `material \"<entity>\"` (its og.Mesh's material, or its og.Model's material `index N`: StandardMaterialDesc fields by name, other names the material shader's parameters) and `timeline` (`play \"<timeline>\"`, speed, loop: from its key until the next, another timeline plays nested at (time − key) × speed, its markers sent as `<file>/<marker>`, at most four deep) and `shot` (`camera \"<entity>\"`, a virtual camera's name, or `none`; `blend` seconds and `ease`: from its key until the next, that og.VirtualCamera is og.CameraBrain.solo, blended to over the key's blend by its ease or by the camera's own; `none` and the timeline's end hand back the solo it found). Camera keys also take `roll` (degrees about the view direction), `focus` (a distance) or `focusOn \"<entity>\"` and `focusRange`, which set og.PostEffects' depth of field while the track owns the camera. The cook checks every field against the engine's records (a field the record lacks, one a timeline cannot drive, a value of the wrong shape) and refuses nesting in a cycle or deeper than four; a track kind this engine does not read is refused naming it and the engine's version.\nBetween two keys that set a value the later key's `ease` (og.tween's Ease names, linear when it gives none) mixes them; before the first and after the last the value is held. Every value is evaluated at the timeline's time, never accumulated over ticks, and that time is kept exactly (in steps of a thousandth of a tick), so seeking to a time and playing to it give the same world: a seek is how a video render starts at any frame.\nAn og.Timeline component plays one on its entity, run by the engine's og.timeline system after the game's systems (and tweens) and before og.anim and physics, so what it sets is what animation, physics and the frame see that tick. While one with a camera track plays (or is paused) it owns og.Camera, and hands back the camera it found when it stops or ends. Its event keys' actions run at the start of the next tick, as og.ai's commands do. Loading a timeline (og.load.timeline, outside a system) grants og.timeline the records its tracks write; values they wrote stay when it stops, while the camera, its depth of field and the materials go back. A material track is presentation, not world state: it is applied every frame from the timeline's time, so a restored save draws the right material on its next frame. The command channel plays them too: `timeline:play:<name>` (`timelines/<name>.ogt`, or an asset id), `timeline:seek:<seconds>[:<name>]`, `timeline:pause[:<name>]`, `timeline:resume[:<name>]`, `timeline:stop[:<name>]`.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -24876,8 +24876,19 @@
         },
         "solo": {
           "$ref": "#/$defs/Entity",
-          "description": "A shot that outranks every priority while it is set (a cutscene or a dialogue close-up): an entity with an og.VirtualCamera, live even when it is not enabled; 0 releases it and the brain blends back to the highest priority. Anything else is ignored.",
+          "description": "A shot that outranks every priority while it is set (a cutscene or a dialogue close-up): an entity with an og.VirtualCamera, live even when it is not enabled; 0 releases it and the brain blends back to the highest priority. Anything else is ignored. og.story sets it for a dialogue line's `shot` and a timeline's shot track for its keys.",
           "default": 0
+        },
+        "soloBlend": {
+          "type": "number",
+          "description": "Seconds of the blend to the solo shot when it goes live (0 cuts); below 0 the solo camera's own blendTime and blendEase (then the brain's). A timeline's shot key sets it with solo; og.story sets it to -1.",
+          "default": -1,
+          "x-og-unit": "s"
+        },
+        "soloEase": {
+          "$ref": "#/$defs/Ease",
+          "description": "The curve of that blend when soloBlend is 0 or more.",
+          "default": "cubicInOut"
         },
         "live": {
           "$ref": "#/$defs/Entity",
@@ -42471,6 +42482,10 @@
           "$ref": "#/$defs/SpeakerView",
           "description": "Who says it."
         },
+        "shot": {
+          "type": "string",
+          "description": "The camera shot it is shown in: its `shot`, else its node's (a virtual camera's entity name or a cast role); empty: none. While it shows, og.story makes that og.VirtualCamera og.CameraBrain.solo: a name is the entity of that name, a role the cast entity's own og.VirtualCamera, else the first one whose lookAt is that entity. When no running conversation's line has a shot the game's own solo is handed back."
+        },
         "choices": {
           "type": "array",
           "items": {
@@ -42517,6 +42532,7 @@
         "voiceTicks",
         "voiceLeft",
         "speaker",
+        "shot",
         "choices",
         "timer",
         "lastCheck",
@@ -77187,7 +77203,7 @@
       "properties": {
         "kind": {
           "type": "string",
-          "description": "camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material or timeline."
+          "description": "camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material, timeline or shot."
         },
         "target": {
           "type": "string",
