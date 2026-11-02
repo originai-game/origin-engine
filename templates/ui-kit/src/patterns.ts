@@ -9,6 +9,7 @@
 // a gallery, never saved.
 
 import { og } from "@origingame/engine";
+import { storyCommand } from "./story.ts";
 import type { CardTarget, GridItem, HandCard, InventoryCarry, InventoryMove, PaperdollSlot, PullItem, RewardOption, Size, StoreOffer, UiRect, World } from "@origingame/engine";
 
 /** A fixture the preview changes: its readonly fields writable. */
@@ -66,12 +67,13 @@ function screen(id: string, title: string, sub: string, build: () => void, hints
 const ART_FILES = [
   "cards/strike", "cards/defend", "cards/bash", "cards/anger", "cards/inflame", "cards/wound",
   "portraits/cultist", "portraits/red-louse", "portraits/aria", "portraits/kael", "portraits/mira", "portraits/aria-vell",
-  "scenes/gacha-moonlit-tide", "scenes/paperdoll-aria-vell", "scenes/title",
+  "scenes/gacha-moonlit-tide", "scenes/paperdoll-aria-vell", "scenes/title", "scenes/storybook-vale", "scenes/golden-valley",
   "items/ashbringer", "items/elven-bow", "items/hunters-bow", "items/healing-draught", "items/mana-vial", "items/ember-ring", "items/crown",
   "items/arcane-staff", "items/boots", "items/iron-key", "items/sapphire-amulet", "items/mage-robe", "items/iron-sword", "items/oak-shield",
   "items/gauntlets", "items/knight-helm",
   "boons/thunder-strike", "boons/titan-heart", "boons/crown-of-ages", "boons/frost", "boons/gold", "boons/flame-blade", "boons/crystal",
   "boons/star", "boons/rune-shield", "boons/mana",
+  "figures/mira",
 ] as const;
 type ArtName = (typeof ART_FILES)[number];
 const ART: Partial<Record<ArtName, number>> = {};
@@ -84,7 +86,7 @@ let words: World | null = null;
  * A preview's words in the active locale (og.i18n, assets/strings): every string a pattern screen shows is the game's,
  * keyed, so a locale frame has no English chrome. Banner and character names stay proper nouns.
  */
-function L(key: string, args?: Record<string, string | number>): string {
+export function L(key: string, args?: Record<string, string | number>): string {
   return words ? og.i18n.t(words, key, args) : key;
 }
 
@@ -92,7 +94,8 @@ function L(key: string, args?: Record<string, string | number>): string {
 export function loadPatternArt(world: World): void {
   words = world;
   for (const f of ART_FILES) {
-    const r = og.load.texture(world, `textures/art/${f}.jpg`);
+    // Figures are cut out on transparent ground (PNG); the rest is painted edge to edge (JPEG).
+    const r = og.load.texture(world, `textures/art/${f}.${f.startsWith("figures/") ? "png" : "jpg"}`);
     if (r.ok) ART[f] = r.value as unknown as number;
   }
 }
@@ -118,6 +121,9 @@ const SCENES: Record<string, [ArtName, { x: number; y: number }]> = {
   generators: ["scenes/gacha-moonlit-tide", { x: 0.3, y: 0.5 }],
   store: ["scenes/paperdoll-aria-vell", { x: 0.5, y: 0.25 }],
   pass: ["scenes/title", { x: 0.6, y: 0.4 }],
+  dialogue: ["scenes/storybook-vale", { x: 0.5, y: 0.45 }],
+  vn: ["scenes/golden-valley", { x: 0.5, y: 0.5 }],
+  quests: ["scenes/storybook-vale", { x: 0.35, y: 0.5 }],
 };
 
 /** The pattern screen's painted scene, built before anything over it (the kit's Gallery button among them). */
@@ -666,8 +672,9 @@ export function gachaScreen(backdrop = 0): void {
 }
 
 /** `pat:<key>:<value>`: a pattern preview's state (pick:<item>, highlight:<tag>, reset). */
-export function patternsCommand(_world: World, args: readonly string[]): void {
+export function patternsCommand(world: World, args: readonly string[]): void {
   const [key, value = ""] = args;
+  if ((key === "dlg" || key === "quest") && storyCommand(world, key, value, args[2] ?? "")) return;
   if (key === "pick") p.pick = { key: value, count: 0 };
   else if (key === "highlight") p.highlight = value;
   else if (key === "select") p.selected = value;

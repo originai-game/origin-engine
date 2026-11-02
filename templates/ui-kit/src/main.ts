@@ -18,6 +18,7 @@
 
 import { og, defineComponent, defineResource, defineSystem, bool, f32, f64, str, u32 } from "@origingame/engine";
 import type { Entity, GameSettings, Viewport, World } from "@origingame/engine";
+import { dialogueScreen, loadStory, questsScreen, vnScreen } from "./story.ts";
 import { art, boardScreen, cardsScreen, gachaScreen, gearScreen, generatorsScreen, loadPatternArt, passScreen, patternScene, patternsCommand, rewardsScreen, sagaScreen, storeScreen } from "./patterns.ts";
 import { chartsScreen, containersScreen, dataScreen, demoCommand, graphScreen, navigationScreen, overlaysScreen } from "./components.ts";
 import { bindingsScreen, controlsDemo, controlsScreen, fieldsScreen, foundationsScreen, rangesScreen } from "./controls.ts";
@@ -29,6 +30,7 @@ export const SCREENS = [
   "containers", "navigation", "overlays", "data", "charts", "chartsMore", "graph",
   "foundations", "controls", "ranges", "fields", "bindings",
   "gear", "cards", "rewards", "gacha", "saga", "board", "generators", "store", "pass",
+  "dialogue", "vn", "quests",
 ] as const;
 export type Screen = (typeof SCREENS)[number];
 
@@ -89,6 +91,9 @@ const BLURBS: Record<Screen, string> = {
   generators: "An idle game: generators with their cycles and buy amount, and the prestige",
   store: "A store: the purse, a featured bundle, a daily rotation, limits and sold out",
   pass: "A battle pass: the season, its level and XP, free and premium tracks, claims",
+  dialogue: "A conversation: the speaker, the line typing out, choices with checks and odds, a timer, a roll",
+  vn: "A visual novel's text box: the name plate, the narrator, Auto, and the backlog",
+  quests: "A quest log: tabs, new and updated quests, objectives, rewards, Track; the HUD's tracker",
 };
 
 /** The demo's state: one entity named "demo" (dump_entity:demo reads it). */
@@ -729,7 +734,7 @@ function materialsScreen(d: DemoState): void {
 }
 
 /** The genre patterns' preview screens (patterns.ts). */
-const PATTERN_SCREENS: ReadonlySet<string> = new Set(["gear", "cards", "rewards", "gacha", "saga", "board", "generators", "store", "pass"]);
+const PATTERN_SCREENS: ReadonlySet<string> = new Set(["gear", "cards", "rewards", "gacha", "saga", "board", "generators", "store", "pass", "dialogue", "vn", "quests"]);
 
 /**
  * The title's event card (a live game's banner beside its menu): the event's
@@ -1382,6 +1387,18 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       passScreen();
       back = og.ui.back();
       break;
+    case "dialogue":
+      // Back is the conversation's Skip, and closes its backlog first.
+      dialogueScreen(world);
+      break;
+    case "vn":
+      vnScreen(world);
+      break;
+    case "quests":
+      // Back leaves an open quest for the list first on a phone (the log takes it).
+      questsScreen(world);
+      back = og.ui.back();
+      break;
     case "gacha":
       // Back skips or closes a pull first (the sequence takes it).
       gachaScreen(d.backdrop as number);
@@ -1467,6 +1484,7 @@ export default og.game({
     const iconSet = og.load.font(world, "icons/iconoir.ogt");
     const backdrop = og.load.texture(world, "textures/backdrop.png");
     loadPatternArt(world);
+    loadStory(world);
     for (const [key, path] of Object.entries(ART_PATHS)) {
       const tex = og.load.texture(world, path);
       KIT_ART[key] = tex.ok ? (tex.value as unknown as number) : 0;

@@ -51,3 +51,9 @@ the shop's merchant, so each style's screens sit on their own scene:
 | File | Kind | Origin |
 |---|---|---|
 | `scenes/cyber.jpg` | menuBackground | regenerated after the originality gate refused the r3 scene (a lone figure facing the city, a face billboard): origin MCP `generate_image` (gpt-image-2.5-sunburst), an empty wet rooftop, acid-yellow and cyan towers with signal-red lights, invented Latin signage only (no katakana, no faces, no people); cut to 1280×720 |
+
+## Figures (2026-11-02, the U6d dialogue stream)
+
+| File | Kind | Origin |
+|---|---|---|
+| `figures/mira.png` | fullBody, cut out (a conversation's speaker, waist up, 2:3) | Painter (transparent background), from `portraits/mira.jpg` as the identity reference, in the same direction; 640×960. The kit's dialogue and visual-novel screens stand it at the speaker's side. |

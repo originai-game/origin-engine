@@ -11,7 +11,7 @@ export interface Script {
 }
 
 /** Builds a script: `cmd` runs a command, `shot` takes a frame. */
-function builder(t0: number) {
+export function builder(t0: number) {
   const steps: string[] = [];
   const files: string[] = [];
   let t = t0;
@@ -488,6 +488,135 @@ export function patternsScript(phone: boolean): Script {
   b.shot("text200-store", 1.0);
   b.cmd("show:pass");
   b.shot("text200-pass", 1.2);
+  b.cmd("demo:text:100");
+  return b.end();
+}
+
+/** The story patterns (src/story.ts) in their states: the conversation, the visual novel and its backlog, the quest log and tracker. */
+function story(b: ReturnType<typeof builder>, phone: boolean, prefix = ""): void {
+  b.cmd("show:dialogue");
+  b.cmd("pat:dlg:reset");
+  // Mira's line typing out (part of it shown, the rest held in place), then whole with the choices risen in.
+  b.shot(`${prefix}dialogue-typing`, 0.45);
+  b.shot(`${prefix}dialogue-choices`, 2.4);
+  b.dump(`${prefix}dialogue-choices`);
+  if (!phone) {
+    // The pointer over the check: its tag's odds, the lit edge.
+    b.cmd("touch_move_to:Talk/Choices/List/dlg.gate.persuade", 0.05);
+    b.shot(`${prefix}dialogue-hover`, 0.4);
+    b.cmd("touch_move_to:Talk/Tools/Auto", 0.05);
+  }
+  // The timer near its end: the bar in danger, pulsing; the default choice marked.
+  b.shot(`${prefix}dialogue-timer`, phone ? 5.4 : 4.8);
+  // Asked who else knows (its number on the keys, a tap on a phone), the answer, then back at the gate: that choice visited.
+  if (phone) b.seq((at) => tap(at, "Talk/Choices/List/dlg.gate.who"), 0.3);
+  else b.seq((at) => key(at, "Digit4"), 0.3);
+  b.shot(`${prefix}dialogue-answer`, 2.4);
+  b.seq((at) => tap(at, "Talk/Hit"), 0.3);
+  b.shot(`${prefix}dialogue-visited`, 2.4);
+  b.dump(`${prefix}dialogue-visited`);
+  // The check taken: the d20 rolls, its word in success or failure.
+  b.seq((at) => tap(at, "Talk/Choices/List/dlg.gate.persuade"), 0.1);
+  b.shot(`${prefix}dialogue-roll`, 0.5);
+  b.dump(`${prefix}dialogue-roll`);
+  // The backlog over the conversation: every line, the reply chosen under each.
+  if (phone) b.seq((at) => tap(at, "Talk/Tools/Log"), 0.3);
+  else b.seq((at) => key(at, "KeyX"), 0.3);
+  b.shot(`${prefix}dialogue-log`, 0.8);
+  b.dump(`${prefix}dialogue-log`);
+  b.seq((at) => key(at, "Escape"), 0.3);
+  // A voiced line: the bars by the name.
+  b.cmd("pat:dlg:reset");
+  b.cmd("pat:dlg:voice:on");
+  b.shot(`${prefix}dialogue-voice`, 2.4);
+  b.cmd("pat:dlg:reset");
+  b.cmd("show:vn");
+  // The narrator in the box (no plate, muted), then Aria with her plate, Auto on, the choices, and the backlog.
+  b.shot(`${prefix}vn-narrator`, 3.2);
+  b.seq((at) => tap(at, "Talk/Hit"), 0.3);
+  b.shot(`${prefix}vn-line`, 2.0);
+  b.dump(`${prefix}vn-line`);
+  b.cmd("pat:dlg:auto:on");
+  b.shot(`${prefix}vn-auto`, 0.3);
+  b.shot(`${prefix}vn-choices`, 5.0);
+  b.cmd("pat:dlg:log:on");
+  b.shot(`${prefix}vn-log`, 0.8);
+  b.cmd("pat:dlg:reset");
+  b.cmd("show:quests");
+  // The main tab: the tracked quest shown, its objectives (done, counted, optional, hidden), rewards, Track and Map.
+  b.shot(`${prefix}quests-idle`, 1.0);
+  b.dump(`${prefix}quests`);
+  if (phone) {
+    b.seq((at) => tap(at, "Log/Side/List/Active/kit_dawn"), 0.3);
+    b.shot(`${prefix}quests-detail`, 0.8);
+    b.dump(`${prefix}quests-detail`);
+    b.seq((at) => tap(at, "Log/Detail/Back"), 0.3);
+  } else {
+    b.cmd("touch_move_to:Log/Side/List/Active/kit_dawn", 0.05);
+    b.shot(`${prefix}quests-hover`, 0.4);
+  }
+  // The side tab: the active one, then the completed and failed under their heading; a completed one's stamp.
+  b.cmd("pat:quest:tab:side");
+  b.shot(`${prefix}quests-side`, 0.8);
+  if (phone) {
+    b.seq((at) => tap(at, "Log/Side/List/Done/kit_letters"), 0.3);
+    b.shot(`${prefix}quests-completed`, 0.8);
+    b.seq((at) => tap(at, "Log/Detail/Back"), 0.3);
+    b.seq((at) => tap(at, "Log/Side/List/Done/kit_tide"), 0.3);
+    b.shot(`${prefix}quests-failed`, 0.8);
+    b.seq((at) => tap(at, "Log/Detail/Back"), 0.3);
+  } else {
+    b.seq((at) => tap(at, "Log/Side/List/Done/kit_letters"), 0.3);
+    b.shot(`${prefix}quests-completed`, 0.8);
+    b.cmd("pat:quest:select:kit_tide");
+    b.shot(`${prefix}quests-failed`, 0.8);
+  }
+  // The daily (new, breathing), tracked.
+  b.cmd("pat:quest:tab:daily");
+  if (phone) b.seq((at) => tap(at, "Log/Side/List/Active/kit_supply"), 0.3);
+  b.shot(`${prefix}quests-daily`, 0.8);
+  b.seq((at) => tap(at, "Log/Detail/Actions/Track"), 0.3);
+  b.shot(`${prefix}quests-tracked`, 0.6);
+  b.dump(`${prefix}quests-tracked`);
+  if (phone) b.seq((at) => tap(at, "Log/Detail/Back"), 0.3);
+  b.cmd("pat:quest:tab:main");
+  // The HUD's tracker: the tracked quests, then a chart found (the count pops).
+  b.cmd("pat:quest:hud:on");
+  b.shot(`${prefix}quests-tracker`, 0.8);
+  b.cmd("pat:quest:progress:kit_dawn.charts");
+  b.shot(`${prefix}quests-tracker-progress`, 0.15);
+  b.cmd("pat:quest:hud:off");
+}
+
+/** The story patterns in their states, then right to left, in Japanese, Korean and Chinese, and at 200 % text. */
+export function storyScript(phone: boolean): Script {
+  const b = builder(0.3);
+  if (phone) b.cmd("viewport:phone");
+  story(b, phone);
+  for (const loc of ["ar", "ja", "ko", "zh"]) {
+    const name = loc === "ar" ? "rtl" : loc;
+    b.cmd(`locale:${loc === "zh" ? "zh-CN" : loc}`);
+    b.cmd("show:dialogue");
+    b.cmd("pat:dlg:reset");
+    b.shot(`${name}-dialogue`, 2.6);
+    b.cmd("show:vn");
+    b.cmd("pat:dlg:reset");
+    b.seq((at) => tap(at, "Talk/Hit"), 0.3);
+    b.shot(`${name}-vn`, 2.6);
+    b.cmd("show:quests");
+    b.shot(`${name}-quests`, 1.0);
+  }
+  b.cmd("locale:en");
+  b.cmd("demo:text:200");
+  b.cmd("show:dialogue");
+  b.cmd("pat:dlg:reset");
+  b.shot("text200-dialogue", 2.6);
+  b.cmd("show:vn");
+  b.cmd("pat:dlg:reset");
+  b.seq((at) => tap(at, "Talk/Hit"), 0.3);
+  b.shot("text200-vn", 2.6);
+  b.cmd("show:quests");
+  b.shot("text200-quests", 1.0);
   b.cmd("demo:text:100");
   return b.end();
 }
