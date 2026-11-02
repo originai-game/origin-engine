@@ -306,6 +306,7 @@ fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
         rs.interp.alpha = alpha;
         rs.interp.display = true;
         super::extract::extract(world, &mut rs);
+        super::stream::mips::frame(eng, &mut rs);
         rs.interp.alpha = None;
         rs.interp.display = false;
         super::probes::load_bakes(eng, &mut rs);

@@ -300,7 +300,7 @@ pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine: u32) {
         "dump_stream",
         og_probe::CommandDesc {
             usage: "dump_stream[:path]".into(),
-            doc: "the streaming groups: the memory budget, what is used and its peak, every group's trigger, state, why and since which tick and what it keeps for the frame after unloading, and the recent state changes; the terrain streamer: its mode, tiles resident, waiting, decoding and cached; and the world cells: each cell's entity, sub-scene, whether it is loaded, its entities and when it last loaded and unloaded".into(),
+            doc: "the streaming groups: the memory budget, what is used and its peak, every group's trigger, state, why and since which tick and what it keeps for the frame after unloading, and the recent state changes; the terrain streamer: its mode, tiles resident, waiting, decoding and cached; the world cells: each cell's entity, sub-scene, whether it is loaded, its entities and when it last loaded and unloaded; and the textures streamed by their mips: the mode, the mip budget, what is used, and each texture's state, footprint and sizes".into(),
         },
         0,
         move |_world, _args| Ok(super::stream::dump(engine)),
@@ -312,6 +312,14 @@ pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine: u32) {
             doc: "stream terrain tiles as the view needs them (the default) or decode and show every wanted tile each frame (resident), with each terrain's tile budget in MiB".into(),
         },
         move |_world, args| super::terrain::set_streaming(engine, args),
+    );
+    let _ = probe.register_command(
+        "mip_stream",
+        og_probe::CommandDesc {
+            usage: "mip_stream:<stream|resident>[:<MiB>]".into(),
+            doc: "stream the textures cooked with `stream true` by their mips, whole while big on screen within the budget (the default), or read and show every one whole before each frame (resident), with the mip budget in MiB".into(),
+        },
+        move |_world, args| super::stream::mips::set_mode(engine, args),
     );
     let _ = probe.register_dump(
         "dump_nav",

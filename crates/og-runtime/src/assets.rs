@@ -995,6 +995,9 @@ pub(crate) fn retranscode(eng: &Engine) {
                 ));
             }
         }
+        // A texture streamed by its mips no longer holds its whole chain.
+        drop(rs);
+        super::stream::mips::reset(eng, h);
     }
     let mut arrays_pending = Vec::new();
     for i in arrays {

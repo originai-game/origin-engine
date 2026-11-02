@@ -45,6 +45,7 @@ mod sky_off;
 mod sprite_arrays;
 mod stream_chunked;
 mod stream_fetch;
+mod stream_mips;
 mod stream_release;
 mod text_facing;
 mod tilemap_reload;

@@ -330,6 +330,10 @@
       {
         "member": "og.WorldOrigin, og.OriginShifted; the IDL attribute worldspace",
         "summary": "Large worlds, R12: a world that names og.WorldOrigin shifts as a tick starts once its focus (WorldOrigin.focus, else the first og.StreamAnchor, else og.Camera.position) strays past `step` from the zero, by the multiple of `step` nearest it, so every place stays near zero however far the world goes; the zero is kept in f64 and og.OriginShifted carries the delta. What moves is the schema's: fields marked `worldspace world`, `root`, `hook` or `none` with their axes (og-idl refuses an unmarked Vector2/Vector3 record field named as a place); every state block shifts, rapier's bodies in place with their contacts, warm starts and sleep kept, navigation by a frame offset, streamed cells with their subtrees; VirtualCamera.eased and CameraBrain.fromPosition are marked world. The render origin is laid on the absolute world's grid, so a shift draws nothing different. 2D worlds shift on plane xy. A world without og.WorldOrigin keeps its hash and frames."
+      },
+      {
+        "member": "texture { stream true }, model { stream_textures true }; the probe's mip_stream and dump_stream's mips",
+        "summary": "Texture mip streaming, G3-3 batch 3: a texture cooked with `stream true` ships its mip tail (levels at most 256 px, byte for byte the whole chain's) in the boot bundle and its whole chain as `<id>#mips`, fetched on demand. Before each frame the engine measures how many pixels each streamed texture covers, loads the whole chain of the most magnified within a 128 MiB mip budget, swaps it in under the same handle and puts the tail back once the texture has been small for 120 frames; texture size reports the whole chain's throughout. Presentation only: a world's hash never depends on it. The probe's `mip_stream:resident` shows every streamed texture whole before each frame, for reproducible captures; `mip_stream:stream[:<MiB>]` streams within that budget. Textures without `stream true` cook and draw as before."
       }
     ],
     "fixed": [

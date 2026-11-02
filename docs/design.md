@@ -523,7 +523,34 @@ collider at scale 1 naming the geometry takes it while the mesh is
 bit-for-bit the one baked, so the shape is the one a build would make and
 nothing a tick computes changes (that step: 9 ms). A scaled collider, a
 convex hull and the 2D profile build as before. It is opt-in: about 90
-bytes a triangle. Texture mip streaming is the next batch.
+bytes a triangle.
+
+**Texture mips.** A texture cooked with `texture { stream true }` (or a
+model's, `model { stream_textures true }`) ships twice from one encode:
+`<id>`, its mip tail (the whole chain's levels from the first at most
+256 px on its longest side, byte for byte), in the boot bundle, and
+`<id>#mips`, the whole chain, fetched on demand (the web host never
+preloads it; a publish build caches it lazily, as sound chunks). A texture
+already within 256 px, pixel art and one in a streaming group (its pack
+holds the whole chain) cook whole. Before each frame
+(og-runtime's `stream/mips.rs`), each streamed texture's footprint is the
+most pixels across any instance drawing it covers (its mesh's bounding
+sphere, measured as `og_render::lod` measures); one whose footprint passes
+its tail's longest side is wanted whole, and stays wanted 120 frames
+after it was last, so a camera turning away and back does not read it
+again. The wanted ones are admitted by footprint over tail (then id, the
+rank kept while they stay wanted) within a mip budget of 128 MiB, apart
+from the groups'; they are read through the streaming fetcher after the
+sound chunks and the packs, transcoded by the host and swapped in under
+the same handle, and one no longer admitted goes back to its tail.
+`texture_size` reports the whole chain's size throughout, so nothing
+sized from the texture moves. It is presentation only: no world state,
+nothing a tick reads. The probe's `mip_stream:resident` reads and shows
+every streamed texture whole before each frame (natively at once, so a
+capture is the whole texture's, as without streaming);
+`mip_stream:stream[:<MiB>]` streams again within that budget, and
+`dump_stream`'s `mips` lists the mode, the budget, what is used and each
+texture's state and footprint (`og-runtime/tests/stream_mips.rs`).
 
 ### 2.6 Renderer **(D)**
 

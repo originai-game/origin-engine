@@ -290,6 +290,9 @@ pub struct RenderScene {
     pub origin: Vec3,
     /// How each texture is sampled by sprites, tiles and text (by texture index).
     texture_filters: Vec<TextureFilter>,
+    /// The size a streamed texture reports while it holds only its mip
+    /// tail ([`RenderScene::set_texture_size`]): its whole chain's.
+    texture_sizes: std::collections::HashMap<TextureHandle, (u32, u32)>,
     /// The textures [`RenderScene::paletted_texture`] made, by (index
     /// texture, palette texture, row): the revisions of both it was made
     /// at, and the texture.

@@ -50,6 +50,7 @@ pub(crate) mod cell_store;
 pub(crate) mod cells;
 mod kept;
 mod loading;
+pub(crate) mod mips;
 mod residency;
 
 use super::{assets, environment, extract, fx, geometry, look};
@@ -198,6 +199,9 @@ enum Need {
     },
     /// A loading group's pack.
     Pack { group: String, priority: i32 },
+    /// A streamed texture's whole mip chain (`mips`), for the scene
+    /// texture of that slot.
+    Mips { id: String, handle: u32 },
 }
 
 /// A read wanted now: the file under the bundle and what it is for.
@@ -215,6 +219,9 @@ impl Wanted {
             }),
             Need::Pack { group, priority } => json!({
                 "path": self.path, "kind": "pack", "group": group, "priority": priority,
+            }),
+            Need::Mips { id, .. } => json!({
+                "path": self.path, "kind": "mips", "texture": id,
             }),
         }
     }
@@ -255,6 +262,8 @@ pub(crate) struct Streams {
     scenes: BTreeMap<String, Vec<usize>>,
     /// The ticks held for a cell group's pack ([`cell_groups::gate`]).
     holds: cell_groups::Holds,
+    /// The textures streamed by their mips.
+    mips: mips::Mips,
 }
 
 /// An asset kept for the frame after its group unloaded.
@@ -533,6 +542,7 @@ pub(crate) fn dump(engine_id: u32) -> Value {
     );
     v["events"] = json!(s.log);
     v["fetch"] = fetch_json(s);
+    v["mips"] = mips::dump(&s.mips);
     drop(a);
     v["terrain"] = super::terrain::stream_json(engine_id);
     v["cells"] = cells::dump(&eng);

@@ -113,6 +113,7 @@ impl RenderScene {
             sprite_shadows: Vec::new(),
             sprite_outlines: Vec::new(),
             texture_filters: Vec::new(),
+            texture_sizes: Default::default(),
             paletted: std::collections::HashMap::new(),
             mesh_slots: Slots::default(),
             texture_slots: Slots::default(),
@@ -937,6 +938,7 @@ impl RenderScene {
         if let Some(f) = self.texture_filters.get_mut(i) {
             *f = TextureFilter::Linear;
         }
+        self.texture_sizes.remove(&handle);
         let slot = handle.slot();
         for (m, revision) in self
             .materials
@@ -1294,9 +1296,41 @@ impl RenderScene {
         }
     }
 
-    /// Width and height of any texture.
+    /// Width and height of any texture (a streamed one's whole chain's,
+    /// [`RenderScene::set_texture_size`], whatever it holds now).
     pub fn texture_size(&self, handle: TextureHandle) -> Option<(u32, u32)> {
-        self.textures.get(handle.index()).map(TextureSource::size)
+        let size = self.textures.get(handle.index()).map(TextureSource::size)?;
+        Some(self.texture_sizes.get(&handle).copied().unwrap_or(size))
+    }
+
+    /// The size [`RenderScene::texture_size`] reports for `handle` whatever
+    /// levels it holds (`None`: its own): a texture streamed by its mips
+    /// (G3-3) reports its whole chain's while it holds its tail, so a
+    /// sprite, an image or a layout sized from it does not change when
+    /// the levels above arrive. False for a bad handle.
+    pub fn set_texture_size(&mut self, handle: TextureHandle, size: Option<(u32, u32)>) -> bool {
+        if !self.texture_slots.live(handle.index(), handle.generation()) {
+            return false;
+        }
+        match size {
+            Some(s) => self.texture_sizes.insert(handle, s),
+            None => self.texture_sizes.remove(&handle),
+        };
+        true
+    }
+
+    /// Every texture `material` samples: its maps and its physical
+    /// extensions' (texture arrays aside). Empty for a bad handle.
+    pub fn material_textures(&self, material: MaterialHandle) -> Vec<TextureHandle> {
+        self.standard_material(material)
+            .map(|m| {
+                m.textures()
+                    .into_iter()
+                    .chain(m.physical_textures())
+                    .flatten()
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
     /// The material as added with [`RenderScene::add_material`] or

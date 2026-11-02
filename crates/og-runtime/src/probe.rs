@@ -277,6 +277,7 @@ pub(crate) const MODULE_ACTIONS: &[&str] = &[
     "inspect",
     "lanes",
     "locale",
+    "mip_stream",
     "terrain_stream",
     "timeline",
     "turntable",

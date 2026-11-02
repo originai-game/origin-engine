@@ -346,6 +346,8 @@ pub(crate) fn fetch(eng: &Engine) {
                 priority: g.desc.priority,
             },
         }));
+        // Then the textures wanted whole, the most magnified first.
+        wants.extend(super::mips::wanted(&a));
     }
     let read = |path: &str| match hooks() {
         Some(h) => h.read_asset(path),
@@ -391,6 +393,10 @@ pub(crate) fn fetch(eng: &Engine) {
             if matches!(result, super::assets::Fetch::Pending) {
                 f.in_flight.insert(w.path.clone(), w.need.clone());
                 f.peak = f.peak.max(f.in_flight.len());
+                drop(a);
+                if let Need::Mips { id, handle } = &w.need {
+                    super::mips::reading(eng, id, *handle);
+                }
                 continue;
             }
             f.in_flight.remove(&w.path);
@@ -436,6 +442,7 @@ fn deliver(eng: &Engine, w: &Wanted, bytes: Result<Vec<u8>, String>) {
                 Err(e) => warn_once(eng, e.to_string()),
             }
         }
+        Need::Mips { id, handle } => super::mips::deliver(eng, id, *handle, bytes),
         Need::Pack { group, .. } => {
             let tick = tick_of(eng);
             {
