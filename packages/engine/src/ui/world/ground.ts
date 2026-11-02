@@ -244,16 +244,12 @@ export function pathLine(world: Api.World, id: string, desc: Api.PathLineDesc = 
           { x: end.x - ux * s + uy * s * 0.8, y: end.y - uy * s - ux * s * 0.8 },
         ], width, lit(endInk), sel("PathLine", "end"), { outline: true, effects: [glow(4, lit(endInk, 0.6))] });
       }
-      if (desc.label) {
-        box("Label", { padding: { left: u(6), right: u(6), top: u(2), bottom: u(2) }, part: sel("PathLine", "label"), partClass: "chip" }, {
-          shape: { kind: "rect", radii: [3, 3, 3, 3] },
-          fills: [solid(token("hud", 0.9))],
-          strokes: [stroke(1, lit(endInk, 0.8))],
-        }, () => text("Text", desc.label ?? "", { step: ts(12), font: "mono", color: token("ink"), nowrap: true }),
-          fixed({ start: end.x + u(10), top: end.y - u(26) }, { a11y: a11y("text", desc.label ?? "") }));
-      }
     }
   });
+  // The label is a tag of its own over the path's end: it takes part in the
+  // tags' declutter (it never lands on a plate, a ping or another label) and
+  // stays inside the safe area.
+  if (desc.label) groundLabel(`${id}Label`, pts3[pts3.length - 1]!, desc.label, "mono", token("ink"), lit(desc.invalid ? role("danger") : base, 0.8), sel("PathLine", "label"), "text");
 }
 
 export function placementGhost(world: Api.World, id: string, desc: Api.PlacementGhostDesc = {}): void {
@@ -309,17 +305,28 @@ export function placementGhost(world: Api.World, id: string, desc: Api.Placement
       }
     }
     line("Edge", foot, 2, lit(mix(col, WHITE, 0.15), 0.9), null, { closed: true, effects: [glow(3, lit(col, 0.4))] });
-    if (desc.label) {
-      const mid = g.local(c);
-      if (mid) {
-        box("Label", { padding: { left: u(7), right: u(7), top: u(2), bottom: u(2) }, part: sel("PlacementGhost", "label"), partClass: "chip" }, {
-          shape: { kind: "rect", radii: [3, 3, 3, 3] },
-          fills: [solid(token("hud", 0.92))],
-          strokes: [stroke(1, lit(col))],
-        }, () => text("Text", desc.label ?? "", { step: ts(12), font: "display", color: valid ? token("ink") : lit(role("danger")), nowrap: true }),
-          fixed({ start: mid.x - u(40), top: mid.y - u(40) }, { a11y: a11y("status", desc.label ?? "") }));
-      }
-    }
   });
   if (drawn) apply(groups({ place: valid ? "valid" : "invalid" }, { place: ["valid", "invalid"] }));
+  if (drawn && desc.label) groundLabel(`${id}Label`, c, desc.label, "display", valid ? token("ink") : lit(role("danger")), lit(col), sel("PlacementGhost", "label"), "status");
+}
+
+/** A ground shape's label: a chip in a world anchor of its own over `at`, decluttered with the tags. */
+function groundLabel(id: string, at: Api.Vector3, label: string, font: "mono" | "display", ink: Api.Paint, edgeInk: Api.Paint, part: string, a11yRole: "text" | "status"): void {
+  kit.openWorldAnchor(id, {
+    target: { entity: null, point: at },
+    offset: { x: 0, y: 0.4, z: 0 },
+    declutter: "shift",
+    contain: true,
+    priority: 50,
+    occlusion: "none",
+  });
+  try {
+    box("Chip", { padding: { left: u(7), right: u(7), top: u(2), bottom: u(2) }, part, partClass: "chip" }, {
+      shape: { kind: "rect", radii: [3, 3, 3, 3] },
+      fills: [solid(token("hud", 0.92))],
+      strokes: [stroke(1, edgeInk)],
+    }, () => text("Text", label, { step: ts(12), font, color: ink, nowrap: true }), { a11y: a11y(a11yRole, label) });
+  } finally {
+    kit.close();
+  }
 }

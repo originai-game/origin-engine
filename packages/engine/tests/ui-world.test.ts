@@ -148,10 +148,10 @@ test("ground shapes sit on their centre's projection, and are not drawn behind t
   expect(at(els, "Donut/Box/Area")).toBeDefined();
   expect([at(els, "Donut/Box/Edge#0"), at(els, "Donut/Box/Edge#1")].every(Boolean)).toBe(true);
   expect(at(els, "Path/Box/Beyond")).toBeDefined();
-  expect(at(els, "Path/Box/Label/Text")?.text).toBe("12 m · 2 AP");
+  expect(at(els, "PathLabel/Chip/Text")?.text).toBe("12 m · 2 AP");
   expect(states(at(els, "Ghost")).place).toBe("invalid");
   expect(els.some((x) => x.path.startsWith("Ghost/Box/Hatch#"))).toBe(true);
-  expect(at(els, "Ghost/Box/Label")?.name).toBe("Blocked");
+  expect(at(els, "GhostLabel/Chip")?.name).toBe("Blocked");
 });
 
 test("og.ui.damageNumbers and overheadBars: hits spawn mass elements that live out their time; a miss is a word", () => {

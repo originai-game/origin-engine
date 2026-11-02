@@ -43540,7 +43540,7 @@ export declare namespace og {
     function telegraph(world: World, id: string, desc?: TelegraphDesc): void;
     /**
      * A path line to the bar of Baldur's Gate 3, XCOM 2 and RTS move orders: the route on the ground (draped on the surface with desc.ground) as a line with chevrons marching toward its end, the part past this turn's reach in danger, an arrow head or a destination ring at its end with a label (the distance, the cost), a cross when it cannot be taken.
-     * Parts: PathLine.line[reach|beyond][invalid], PathLine.chevron, PathLine.end, PathLine.label. Accessibility: text named the label. Probe ids: <id>, <id>/Label.
+     * Parts: PathLine.line[reach|beyond][invalid], PathLine.chevron, PathLine.end, PathLine.label. Accessibility: text named the label. Probe ids: <id>, <id>Label (the label, a tag of its own: it declutters with the other tags and stays in the safe area).
      *
      * @param world The world: its og.Camera projects the ground, so the calling system declares og.Camera among its reads.
      * @param id Its id.
@@ -43549,7 +43549,7 @@ export declare namespace og {
     function pathLine(world: World, id: string, desc?: PathLineDesc): void;
     /**
      * A placement ghost to the bar of Age of Empires IV, Anno and Cities: Skylines: the footprint on the ground (draped on the surface with desc.ground) in success or danger (hatched when invalid, so it is not told by colour alone), its grid cells, a range ring for a tower's reach, and its cost or the reason it cannot go there; it breathes while held.
-     * Parts: PlacementGhost.footprint[valid|invalid], PlacementGhost.cells, PlacementGhost.range, PlacementGhost.label. States: group place (valid, invalid). Accessibility: status named the label. Probe ids: <id>, <id>/Label.
+     * Parts: PlacementGhost.footprint[valid|invalid], PlacementGhost.cells, PlacementGhost.range, PlacementGhost.label. States: group place (valid, invalid). Accessibility: status named the label. Probe ids: <id>, <id>Label (the label, a tag of its own: it declutters with the other tags and stays in the safe area).
      *
      * @param world The world: its og.Camera projects the ground, so the calling system declares og.Camera among its reads.
      * @param id Its id.

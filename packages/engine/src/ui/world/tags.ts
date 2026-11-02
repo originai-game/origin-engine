@@ -78,7 +78,12 @@ export function nameplate(id: string, desc: Api.NameplateDesc = {}): Api.AnchorI
     }
     if (desc.health !== null && desc.health !== undefined) {
       const hp = clamp01(desc.health);
-      box("Bar", { width: px(barW), height: px(barH), part: sel("Nameplate", "bar"), partClass: "bar" }, {
+      // Past the last level of detail the bar alone stays: shorter, thinner and
+      // fading toward the far limit, so a distant crowd reads as depth, not as a grid of marks.
+      const far = lodName === "bar";
+      const maxD = desc.maxDistance || 80;
+      const farFade = far ? 1 - 0.65 * clamp01((inf.distance - lods[lods.length - 1]!) / Math.max(1, maxD - lods[lods.length - 1]!)) : 1;
+      box("Bar", { width: px(far ? Math.round(barW * 0.55) : barW), height: px(far ? Math.max(3, Math.round(barH * 0.7)) : barH), part: sel("Nameplate", "bar"), partClass: "bar" }, {
         ...trackDraw(barH / 3),
         strokes: [stroke(targeted ? 1.5 : 1, targeted ? token("highlight") : token("shadow", 0.95), "outside"), ...(cls === "elite" || cls === "boss" ? [stroke(1, lit(role("gold")), "inside")] : [])],
         effects: targeted ? [glow(6, token("highlight", 0.5))] : [],
@@ -95,7 +100,7 @@ export function nameplate(id: string, desc: Api.NameplateDesc = {}): Api.AnchorI
         if (ghost > shown + 0.001 && !reduced()) leaf("Ghost", { width: pct(ghost), height: pct(1) }, { fills: [solid(token("sheen", 0.7))] }, absolute({ start: 0, top: 0 }));
         leaf("Fill", { width: pct(shown), height: pct(1), part: sel("Nameplate", "fill", desc.reaction ?? "hostile") }, fillDraw(ink, barH / 3), absolute({ start: 0, top: 0 }));
         if ((desc.shield ?? 0) > 0) leaf("Shield", { width: pct(clamp01(desc.shield ?? 0)), height: pct(1), part: sel("Nameplate", "shield") }, { fills: [solid(token("sheen", 0.4))], strokes: [stroke(1, token("sheen", 0.7))] }, absolute({ end: 0, top: 0 }));
-      });
+      }, far ? { opacity: 0.8 * farFade } : undefined);
     }
     if (desc.castName && lodName !== "bar") {
       box("Cast", { width: px(barW), height: px(Math.max(10, ut(12))), cross: "center", align: "center", part: sel("Nameplate", "cast"), partClass: "bar" }, trackDraw(2), () => {
