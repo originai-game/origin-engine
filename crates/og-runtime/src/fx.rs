@@ -142,6 +142,14 @@ pub(crate) struct FxState {
     /// it draws nothing while the array's streaming group is not resident.
     pub emitter_arrays: IdMap<usize, usize>,
     pub by_path: BTreeMap<String, usize>,
+    /// Built-in mesh particles' shapes (`render mesh box`), made once.
+    pub particle_meshes: BTreeMap<&'static str, MeshHandle>,
+    /// Emitters being loaded, outermost first: a sub-emitter naming one of
+    /// them is a cycle.
+    pub loading: Vec<String>,
+    /// og.particles' state (`super::particle_events`): the systems the
+    /// tick simulates, drawn as they stand. Set at the first emitter load.
+    pub host: Option<Arc<std::sync::Mutex<super::particle_events::Hosted>>>,
     /// Trail styles made from Trail components, by their fields' bits.
     pub trail_styles: BTreeMap<Vec<u32>, TrailStyleHandle>,
     /// Ribbons and sprites queued this tick (`og.render.ribbon`, `.sprite`).
@@ -706,6 +714,8 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
     scene.decals.clear();
     scene.particles.clear();
     scene.particle_layers.clear();
+    scene.hosted_particles.clear();
+    let hosted = fx.host.as_ref().map(|h| super::particle_events::lock(h));
     scene.trails.clear();
     scene.beams.clear();
     scene.ribbons.clear();
@@ -824,6 +834,9 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
         if layers != 1 {
             scene.particle_layers.resize(scene.particles.len(), 1);
             scene.particle_layers.push(layers);
+        }
+        if let Some(h) = hosted.as_ref().and_then(|h| h.systems.get(&e)) {
+            scene.hosted_particles.push((e, Arc::new(h.cpu.clone())));
         }
         scene.particles.push(ParticleSystem {
             id: e,
@@ -1389,12 +1402,15 @@ pub(crate) fn resolve_luts(eng: &super::engine::Engine) {
 }
 
 /// `og.load.emitter`: a cooked emitter, its textures (or its texture
-/// array) loaded with it.
+/// array), its mesh (`render mesh`) and its sub-emitters loaded with it.
 pub(crate) fn load_emitter(eng: &super::engine::Engine, path: &str) -> Result<usize, String> {
     let id = og_bundle::runtime::asset_id(path).to_string();
     let key = format!("emitter:{id}");
     if let Some(&i) = eng.render.borrow().fx.by_path.get(&key) {
         return Ok(i);
+    }
+    if eng.render.borrow().fx.loading.contains(&id) {
+        return Err(format!("{id}: a sub-emitter cycle ({id} fires itself)"));
     }
     let text = {
         let assets = eng.assets.borrow();
@@ -1403,34 +1419,127 @@ pub(crate) fn load_emitter(eng: &super::engine::Engine, path: &str) -> Result<us
             .emitter_text(&id, bytes.bytes())
             .map_err(|e| e.to_string())?
     };
-    let mut array = None;
-    let emitter = og_bundle::fx::parse_emitter_with(
-        &text,
-        &mut |tex| {
-            let i = super::assets::load_texture(eng, tex)?;
-            Ok(eng.render.borrow().textures.get(i).copied())
-        },
-        &mut |a| {
-            let i = super::assets::load_texture_array_index(eng, a)?;
-            array = Some(i);
-            Ok(eng
-                .render
-                .borrow()
-                .texture_arrays
-                .get(i)
-                .and_then(|a| a.handle))
-        },
-    )
-    .map_err(|e| format!("{id}: {e}"))?;
+    eng.render.borrow_mut().fx.loading.push(id.clone());
+    let parsed = parse_linked(eng, &text);
+    eng.render.borrow_mut().fx.loading.pop();
+    let (emitter, array) = parsed.map_err(|e| format!("{id}: {e}"))?;
     let mut rs = eng.render.borrow_mut();
+    let host = super::particle_events::shared(eng.id);
+    rs.fx.host = Some(host.clone());
+    // An emitter that sends events: the tick simulates its systems.
+    let definition = (!emitter.events.is_empty()).then(|| {
+        let subs = emitter
+            .sub_emitters
+            .iter()
+            .map(|s| rs.scene.emitter(s.emitter).cloned())
+            .collect();
+        let points = match emitter.shape {
+            og_render::EmitterShape::Mesh { mesh } => rs
+                .scene
+                .mesh(mesh)
+                .map(og_render::mesh_points)
+                .unwrap_or_default(),
+            _ => vec![[0.0; 4]; 2],
+        };
+        (emitter.clone(), subs, points)
+    });
     let h = rs.scene.add_emitter(emitter);
     rs.fx.emitters.push(h);
     let i = rs.fx.emitters.len() - 1;
+    if let Some((emitter, subs, points)) = definition {
+        let d = super::particle_events::Definition {
+            handle: h,
+            emitter,
+            subs,
+            points,
+        };
+        super::particle_events::lock(&host)
+            .emitters
+            .insert(i, Arc::new(d));
+    }
     if let Some(a) = array {
         rs.fx.emitter_arrays.insert(i, a);
     }
     rs.fx.by_path.insert(key, i);
     Ok(i)
+}
+
+/// An emitter's text with every reference loaded: the emitter and the load
+/// index of the texture array it draws from.
+fn parse_linked(
+    eng: &super::engine::Engine,
+    text: &str,
+) -> Result<(og_render::ParticleEmitter, Option<usize>), String> {
+    let mut array = None;
+    let emitter = og_bundle::fx::parse_emitter_linked(
+        text,
+        &mut og_bundle::fx::EmitterLinks {
+            texture: &mut |tex| {
+                let i = super::assets::load_texture(eng, tex)?;
+                Ok(eng.render.borrow().textures.get(i).copied())
+            },
+            array: &mut |a| {
+                let i = super::assets::load_texture_array_index(eng, a)?;
+                array = Some(i);
+                Ok(eng
+                    .render
+                    .borrow()
+                    .texture_arrays
+                    .get(i)
+                    .and_then(|a| a.handle))
+            },
+            mesh: &mut |m| particle_mesh(eng, m).map(Some),
+            emitter: &mut |e| {
+                let i = load_emitter(eng, e)?;
+                Ok(eng.render.borrow().fx.emitters.get(i).copied())
+            },
+        },
+    )?;
+    Ok((emitter, array))
+}
+
+/// A mesh particle's mesh: a built-in shape (made once) or a model's first
+/// mesh, the model loaded with the emitter.
+fn particle_mesh(
+    eng: &super::engine::Engine,
+    mesh: og_bundle::fx::ParticleMesh<'_>,
+) -> Result<MeshHandle, String> {
+    use og_bundle::fx::ParticleMesh;
+    match mesh {
+        ParticleMesh::Builtin(name) => {
+            let name = og_bundle::fx::PARTICLE_MESHES
+                .iter()
+                .copied()
+                .find(|n| *n == name)
+                .ok_or_else(|| format!("`{name}` is not a built-in particle mesh"))?;
+            let mut rs = eng.render.borrow_mut();
+            if let Some(&h) = rs.fx.particle_meshes.get(name) {
+                return Ok(h);
+            }
+            let data = match name {
+                "box" => og_render::shapes::cuboid(glam::Vec3::ONE),
+                "sphere" => og_render::shapes::sphere(12, 8),
+                _ => og_render::shapes::tetrahedron(),
+            };
+            let h = rs.scene.add_mesh(data);
+            rs.fx.particle_meshes.insert(name, h);
+            Ok(h)
+        }
+        ParticleMesh::Asset(model) => {
+            let i = super::assets::load_gltf(eng, model)?;
+            let geometry = match eng.assets.borrow().entries.get(i).map(|e| &e.payload) {
+                Some(super::assets::Payload::Gltf { geometries, .. }) => {
+                    geometries.first().copied()
+                }
+                _ => None,
+            }
+            .ok_or_else(|| format!("{model}: the model has no mesh"))?;
+            let rs = eng.render.borrow();
+            super::assets::index_of(geometry as f64)
+                .and_then(|g| rs.geometries.get(g).copied())
+                .ok_or_else(|| format!("{model}: the model's mesh is not loaded"))
+        }
+    }
 }
 
 #[cfg(test)]

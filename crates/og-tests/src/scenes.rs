@@ -42,6 +42,7 @@ pub const SCENES: &[&str] = &[
     "overlay",
     "particles",
     "particles-cpu",
+    "particles-lit",
     "fx-2d",
     "trails-beams",
     "decals",
@@ -570,6 +571,14 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = fx::particles_scene();
             g.desc.particles = og_render::ParticleSimulation::Cpu;
             g.frames = 120;
+            g.update = Some(fx::tick_update);
+            Ok(())
+        },
+        // R7: lit smoke, lit mesh debris with collision dust (sub-emitters,
+        // so the CPU path) and a heat haze bending a checker wall.
+        "particles-lit" => |g, _| {
+            g.scene = fx::particles_lit_scene();
+            g.frames = 90;
             g.update = Some(fx::tick_update);
             Ok(())
         },

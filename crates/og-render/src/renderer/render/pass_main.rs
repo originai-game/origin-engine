@@ -164,7 +164,12 @@ impl Renderer {
         // and reflect, then the pass goes on over it.
         // So is it for transmissive materials, which refract the
         // copy's mip chain (`physical.rs`).
-        let split = !water_draws.is_empty() || fluid_frame.is_some() || transmission_view.is_some();
+        // And for particles that bend the scene behind them (heat haze),
+        // which read the same copy.
+        let split = !water_draws.is_empty()
+            || fluid_frame.is_some()
+            || transmission_view.is_some()
+            || particle_frame.distortion;
         let begin = |encoder: &mut crate::Encoder, first: bool| {
             let (view, resolve_target, store) = if msaa {
                 (
@@ -375,9 +380,17 @@ impl Renderer {
                 self.samples,
                 group,
                 scene.camera_layers,
-                |t| match t {
+                true,
+                |t: Option<TextureHandle>| match t {
                     None => white,
                     Some(t) => groups[t.index()].as_ref().expect("made before the pass"),
+                },
+                |m: crate::MeshHandle| {
+                    self.cache
+                        .meshes
+                        .get(m.index())
+                        .filter(|g| g.full)
+                        .map(|g| (&g.vertices, &g.indices, g.index_count))
                 },
             );
         }

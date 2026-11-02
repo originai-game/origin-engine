@@ -342,6 +342,10 @@
       {
         "member": "og.Blendshapes.influences",
         "summary": "Up to 64 blendshapes: weights of targets 9…64, carried with the previous frame's weights for motion vectors."
+      },
+      {
+        "member": "og.ParticleEvent",
+        "summary": "An emitter's events (birth, death, collision) as an event gameplay reads; its systems are simulated in the tick. Emitters gain render mesh, lit, distortion, subEmitter and events lines."
       }
     ],
     "fixed": [

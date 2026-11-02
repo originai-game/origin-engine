@@ -2,14 +2,23 @@
 // collapse), camera-facing or stretched along the velocity, sized and
 // coloured by the emitter's curves, animated through a sprite sheet, and
 // softened against the depth prepass. The instance data is the simulation's
-// storage buffer or the CPU path's upload. Prepended by
-// frame.wgsl, noise.wgsl and particle_common.wgsl.
+// storage buffer or the CPU path's upload. Prepended by frame.wgsl, the
+// light tables, lighting.wgsl and area.wgsl (renderer::fluid_shared_source:
+// lit particles), noise.wgsl and particle_common.wgsl.
+//
+// `vs_mesh`/`fs_mesh` draw a mesh per particle instead of a quad (the mesh's
+// vertices beside the particle as instance data); `fs_distort` draws a
+// billboard as the opaque scene behind it, shifted (heat haze), from the
+// main pass's scene copy.
 
 @group(1) @binding(0) var sprite_tex: texture_2d<f32>;
 @group(1) @binding(1) var sprite_sampler: sampler;
 @group(2) @binding(0) var<uniform> emitter: Emitter;
 @group(2) @binding(1) var<uniform> view: ParticleView;
 @group(2) @binding(2) var scene_depth: texture_2d<f32>;
+// The opaque scene copied before the transparent draws (white where the pass
+// has none: its distortion systems are not drawn there).
+@group(2) @binding(3) var scene_color: texture_2d<f32>;
 
 struct ParticleIn {
   @location(0) pos_age: vec4<f32>,
@@ -24,6 +33,7 @@ struct ParticleOut {
   @location(2) color: vec4<f32>,
   @location(3) depth: f32,
   @location(4) world: vec3<f32>,
+  @location(5) normal: vec3<f32>,
 };
 
 @vertex
@@ -81,7 +91,141 @@ fn vs(@builtin(vertex_index) vi: u32, p: ParticleIn) -> ParticleOut {
   o.color = color_curve(emitter, t) * emitter.color;
   o.depth = dot(world - view.cam_pos.xyz, view.cam_forward.xyz);
   o.world = world;
+  o.normal = -view.cam_forward.xyz;
   return o;
+}
+
+// The light a particle at `p` with normal `n` receives (emitter.look.x):
+// the sun with its cascades, the image-based light, the cluster's local
+// lights, on a rough white surface.
+fn particle_light(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>) -> vec3<f32> {
+  var s: Surface;
+  s.albedo = vec3<f32>(1.0);
+  s.metallic = 0.0;
+  s.roughness = 1.0;
+  s.f0 = vec3<f32>(0.04);
+  s.coat = 0.0;
+  s.coat_roughness = 1.0;
+  s.coat_normal = n;
+  let v = select(normalize(frame.view_pos.xyz - p), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
+  let l = normalize(frame.light_dir.xyz);
+  let n_dot_l = max(dot(n, l), 0.0);
+  var shadow = 1.0;
+  if (frame.light_dir.w > 0.5) { shadow = cascade_shadow(p, n, n_dot_l); }
+  var c = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
+  c += ambient_light_level(n, p) * frame.params.x;
+  c += surface_local_lights(frag, s, p, n, v);
+  return c;
+}
+
+// A billboard's normal: a soft ball facing the camera, so a lit puff
+// shades away from the light.
+fn ball_normal(local: vec2<f32>) -> vec3<f32> {
+  let q = local * 2.0;
+  let z = sqrt(max(1.0 - dot(q, q), 0.0));
+  return normalize(view.cam_right.xyz * q.x + view.cam_up.xyz * q.y - view.cam_forward.xyz * (z + 0.3));
+}
+
+struct MeshIn {
+  @location(5) position: vec3<f32>,
+  @location(6) normal: vec3<f32>,
+  @location(7) color: vec4<f32>,
+};
+
+// Rotates `v` by `angle` about the unit `axis` (Rodrigues).
+fn rotate(v: vec3<f32>, axis: vec3<f32>, angle: f32) -> vec3<f32> {
+  let c = cos(angle);
+  let s = sin(angle);
+  return v * c + cross(axis, v) * s + axis * dot(axis, v) * (1.0 - c);
+}
+
+@vertex
+fn vs_mesh(p: ParticleIn, m: MeshIn) -> ParticleOut {
+  var o: ParticleOut;
+  if (p.pos_age.w >= p.vel_life.w) {
+    o.clip = vec4<f32>(2.0, 2.0, 2.0, 1.0);
+    return o;
+  }
+  let age = p.pos_age.w;
+  let t = clamp(age / max(p.vel_life.w, 1e-6), 0.0, 1.0);
+  let size = p.misc.x * size_curve(emitter, t);
+  var center = p.pos_age.xyz;
+  var vel = p.vel_life.xyz;
+  if (emitter.ranges2.z > 0.5) {
+    center = (emitter.transform * vec4<f32>(center, 1.0)).xyz;
+    vel = (emitter.transform * vec4<f32>(vel, 0.0)).xyz;
+  }
+  var pos = m.position * size;
+  var nrm = m.normal;
+  let speed = length(vel);
+  if (emitter.render.x > 0.5 && speed > 1e-4) {
+    // +y along the velocity, stretched by the speed.
+    let y = vel / speed;
+    var x = cross(y, vec3<f32>(0.0, 0.0, 1.0));
+    if (dot(x, x) < 1e-6) { x = cross(y, vec3<f32>(1.0, 0.0, 0.0)); }
+    x = normalize(x);
+    let z = cross(x, y);
+    let stretch = 1.0 + speed * emitter.render.y / max(size, 1e-4);
+    pos = x * pos.x + y * (pos.y * stretch) + z * pos.z;
+    nrm = x * nrm.x + y * (nrm.y / stretch) + z * nrm.z;
+  } else {
+    // Tumbling about an axis of its own (its random value).
+    let a = p.misc.w * 43.758;
+    let axis = normalize(vec3<f32>(sin(a), cos(a * 1.7), sin(a * 2.3 + 1.0)) + vec3<f32>(1e-3, 0.0, 0.0));
+    let rot = p.misc.y + p.misc.z * age;
+    pos = rotate(pos, axis, rot);
+    nrm = rotate(nrm, axis, rot);
+  }
+  let world = center + pos;
+  o.clip = frame.view_proj * vec4<f32>(world, 1.0);
+  o.uv = vec2<f32>(0.5);
+  o.local = vec2<f32>(0.0);
+  o.color = color_curve(emitter, t) * emitter.color * m.color;
+  o.depth = dot(world - view.cam_pos.xyz, view.cam_forward.xyz);
+  o.world = world;
+  o.normal = normalize(nrm);
+  return o;
+}
+
+@fragment
+fn fs_mesh(in: ParticleOut) -> @location(0) vec4<f32> {
+  var c = in.color;
+  if (emitter.look.x > 0.5) {
+    c = vec4<f32>(c.rgb * particle_light(in.clip.xy, in.world, normalize(in.normal)), c.a);
+  }
+  c = vec4<f32>(apply_fog(c.rgb, in.world), c.a);
+  if (c.a <= 0.0) { discard; }
+  return c;
+}
+
+// Distortion: the scene copy behind the particle, shifted along the
+// texture's red and green (a normal map) or out from the quad's centre.
+@fragment
+fn fs_distort(in: ParticleOut) -> @location(0) vec4<f32> {
+  let tex = textureSample(sprite_tex, sprite_sampler, in.uv);
+  var bend: vec2<f32>;
+  var mask: f32;
+  if (emitter.sheet2.y > 0.5) {
+    bend = tex.rg * 2.0 - 1.0;
+    mask = tex.a;
+  } else {
+    let r = length(in.local) * 2.0;
+    let d = clamp(1.0 - r, 0.0, 1.0);
+    bend = in.local * 2.0 * d * 4.0;
+    mask = smoothstep(0.0, 0.3, d);
+  }
+  var w = in.color.a * mask;
+  if (emitter.render.z > 0.0) {
+    let at = min(vec2<i32>(in.clip.xy), vec2<i32>(textureDimensions(scene_depth)) - vec2<i32>(1));
+    let scene = textureLoad(scene_depth, at, 0).r;
+    w *= clamp((scene - in.depth) / emitter.render.z, 0.0, 1.0);
+  }
+  if (w <= 0.0) { discard; }
+  let size = vec2<i32>(textureDimensions(scene_color));
+  // Screen rows run down: the bend's +y is up.
+  let shift = vec2<f32>(bend.x, -bend.y) * emitter.look.y * f32(size.y) * w;
+  let at = clamp(vec2<i32>(in.clip.xy + shift), vec2<i32>(0), size - vec2<i32>(1));
+  return vec4<f32>(textureLoad(scene_color, at, 0).rgb, smoothstep(0.0, 0.25, w));
 }
 
 @fragment
@@ -94,6 +238,9 @@ fn fs(in: ParticleOut) -> @location(0) vec4<f32> {
     // No texture: a soft round dot.
     let d = clamp(1.0 - length(in.local) * 2.0, 0.0, 1.0);
     c.a *= d * d;
+  }
+  if (emitter.look.x > 0.5) {
+    c = vec4<f32>(c.rgb * particle_light(in.clip.xy, in.world, ball_normal(in.local)), c.a);
   }
   if (emitter.render.z > 0.0) {
     // Clamped: a pass without a depth of its own binds a 1x1 far plane.

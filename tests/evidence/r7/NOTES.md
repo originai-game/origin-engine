@@ -52,3 +52,58 @@ og-tests frames (gfx references, `scripts/check.sh --only test`):
   decals where the base scene's scorch is the 41st; asserts it still
   darkens the ground (it was dropped before), and that 260 decals on one
   spot draw with at least 5 cluster references dropped.
+
+## Batch 2: mesh, lit and distorting particles; sub-emitters and events
+
+`particles/` is a low sun from the right over a striped wall and the
+ground before it with four systems:
+
+- `smoke` (left): `lit true` alpha puffs rising slowly;
+- `debris` (centre): forty lit tetrahedra (`render mesh tetrahedron`)
+  thrown up every second, tumbling, bouncing on the ground (an og.Collider
+  box) and kicking two dust puffs at each impact (`subEmitter collision
+  "fx/dust.ogt" 2 0.1`); its `events birth death collision` line makes the
+  tick simulate it;
+- `chips` (front right): small lit cubes (`render mesh box`), a fountain;
+- `haze` (right): `distortion 0.02` puffs over a glowing brazier.
+
+Gameplay reads og.ParticleEvent: a `Count` system tallies the debris'
+births, deaths and impacts in the `Tally` resource and grows a brass
+column (left of the crater) by 4 mm per impact.
+
+Without a renderer it runs to `tick 121 hash 04b9e146816fa04c entities
+26` (OG_RENDERER=none on the orb), the same on every run, with
+`get:Tally` at tick 120 answering births 120, deaths 39, bounces 197.
+The hash moves with the tally column, so it covers the events.
+
+Commands (macrunner, a native dev build):
+
+```sh
+og run tests/evidence/r7/particles --headless --size 1280x720 --out /tmp/r7 \
+  --commands "1.5:screenshot:particles;1.5:get:Tally;2:screenshot:particles-later;2.01:quit"
+```
+
+`particles` should show:
+
+- the smoke column bright on its right (sun) side and grey-blue on its
+  left, not the flat white of unlit smoke;
+- the debris as small solid brown tetrahedra in flight and lying around
+  the crater, faces lit differently by the sun (flat shading, no
+  billboards, nothing transparent), with soft tan dust puffs where they
+  land;
+- the chips as small lit grey cubes arcing to the front right;
+- the wall's stripes wavering above the brazier (the haze bends them; no
+  colour is added, no dark or bright square around a puff, and the haze
+  stops at the wall's silhouette: nothing in front of the brazier is
+  bent);
+- the brass column left of the crater, taller in `particles-later`.
+
+og-tests frames (gfx references, `scripts/check.sh --only test`):
+
+- `particles` and `particles-cpu` (unchanged scenes): must stay within
+  tolerance of their references (the particle module now carries the
+  lighting code; billboards unlit as before).
+- `particles-lit` (new): `og_tests::fx::particles_lit_scene` after 90
+  ticks: the same four looks as the sample with the debris on the CPU path
+  (its collision sub-emitter) bouncing off a `ParticleCollider::Plane`;
+  `stats.particle_systems` 3, `particle_collision_skipped` 0.

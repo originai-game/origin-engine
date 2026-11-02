@@ -47,7 +47,7 @@ the world → scene extraction belongs to the layer above.
 | `FrameStats` | `draw_calls` (every pass), `batches`, `instances`, `culled`, `triangles` (main pass), `shadow_passes`, `shadow_casters`, `lights`, `lights_dropped`, `lights_culled`, `cluster_lights`, `cluster_lights_dropped`, `sprites`, `glyphs`, `sprite_draws`, `missing_glyphs` (overlay ones included), `overlay_sprites`, `overlay_glyphs`, `overlay_draws`, `texture_bytes` (textures, texture arrays, environment maps, palettes and colour LUTs on the GPU; removed ones count nothing), `frame`, `taa_history` (whether TAA blended history this frame), `shadowed_lights` and `shadowed_lights_dropped`, `particle_collision_skipped`, and phase 2's `terrain_draws` (clipmap levels in the main pass), `terrain_triangles`, `terrain_shadow_draws`, `reflection_draws` (the planar reflection pass). |
 | `RenderInfo` | Adapter, backend, device type, `antialias`, `shadow_map_size`, `shadow_cascades`, `shadowed_lights`, `point_shadows` (resolved: `Cube` or `Paraboloid`), `texture_formats`, `backend_tier()`: the reference-frame directory name and the tier the probe's hello, `og.render.capabilities` and `og polish` report (`tier_name(backend, device_type, adapter)`: `vulkan-cpu` for a software rasterizer, `is_software_adapter`: a CPU device type, or an adapter named llvmpipe, lavapipe or SwiftShader). |
 | `RenderError` | `NoAdapter`, `NoDevice`, `Surface`, `InvalidHandle`, `Readback`, `Unsupported`, `InvalidData`. |
-| `shapes` | `sphere`, `plane`, `cuboid(size)`, `checker`. |
+| `shapes` | `sphere`, `plane`, `cuboid(size)`, `tetrahedron`, `checker`. |
 | `gltf` (feature `gltf`) | `load_glb(bytes) -> GltfModel`, `GltfModel::add_to(&mut scene) -> ModelParts`, `ModelParts::instance`. A bridge until the cook (M4). |
 | `wgpu` | The wgpu this crate is built on, re-exported for hosts. |
 
@@ -1230,6 +1230,29 @@ default records no pass and costs nothing (`effects_off_add_no_passes`).
   with the scene's colliders instead of the depth buffer); without collision both paths
   give the same particles (`gpu_and_cpu_paths_simulate_the_same_particles`)
   and a 600-tick run is deterministic on either.
+  R7 adds three render modes and events. `ParticleRender::Mesh { mesh }`
+  draws each particle as an instance of a mesh (`shapes::tetrahedron`,
+  `cuboid`, `sphere` or a model's), sized by the size curve and turned by
+  its rotation and spin about its own random axis, depth-written and
+  back-face culled. `lit` shades billboards (as a soft ball facing the
+  camera) and meshes (by their normals) with the sun and its cascades, the
+  sky's irradiance and the clustered local lights; the particle pipeline
+  binds the frame group, its own sprite texture and two draw textures
+  (8 sampled textures), so the lit pipelines' sixteen are untouched.
+  `distortion` (billboards) bends the opaque scene behind each particle by
+  up to that fraction of the screen's height along the texture's red and
+  green (an untextured one pushes outwards), from a copy of the scene
+  (`scene-copy`, the water's) after the opaque pass; the transparent
+  particles draw after it. `sub_emitters` (up to `MAX_SUB_EMITTERS`, 4)
+  fire another emitter's particles at a parent's birth, death or
+  collision (`ParticleEventKind`; a collision is a hit faster than
+  `IMPACT_SPEED`, 0.5 m/s, into the surface), one level deep; a system
+  with any runs on the CPU path. `CpuParticles::advance` reports the
+  system's `ParticleEvent`s, and a host that reads them simulates the
+  system in its own tick and hands the renderer its state
+  (`RenderScene::hosted_particles`), drawn as it stands: og-runtime does
+  this for the emitters with an `events` line once a game names
+  og.ParticleEvent.
 - **Trails, ribbons and beams**: `Trail` keeps a per-id history for its
   `TrailStyle`'s lifetime; `Ribbon` is an explicit polyline; `Beam` joins
   two points and scrolls with the tick.

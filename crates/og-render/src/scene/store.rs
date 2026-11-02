@@ -76,6 +76,7 @@ impl RenderScene {
             tick_rate: 60.0,
             particles: Vec::new(),
             particle_colliders: Vec::new(),
+            hosted_particles: Vec::new(),
             trails: Vec::new(),
             ribbons: Vec::new(),
             lines: Vec::new(),

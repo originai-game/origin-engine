@@ -132,6 +132,44 @@ pub fn cuboid(size: Vec3) -> MeshData {
     MeshData { vertices, indices }
 }
 
+/// A regular tetrahedron inscribed in a sphere of radius 0.5 centred at the
+/// origin, with flat normals (three.js `TetrahedronGeometry(0.5)`): the
+/// cheapest mesh particle, a shard or a chip.
+pub fn tetrahedron() -> MeshData {
+    let k = 0.5 / 3f32.sqrt();
+    let c = [
+        Vec3::new(k, k, k),
+        Vec3::new(-k, -k, k),
+        Vec3::new(-k, k, -k),
+        Vec3::new(k, -k, -k),
+    ];
+    let mut vertices = Vec::with_capacity(12);
+    let mut indices = Vec::with_capacity(12);
+    for (a, b, d) in [(0, 1, 3), (0, 2, 1), (0, 3, 2), (1, 2, 3)] {
+        let (a, b, d) = (c[a], c[b], c[d]);
+        let mut n = (b - a).cross(d - a).normalize();
+        // Counter-clockwise seen from outside: flip a face that faces in.
+        let (b, d) = if n.dot(a + b + d) < 0.0 {
+            n = -n;
+            (d, b)
+        } else {
+            (b, d)
+        };
+        let base = vertices.len() as u32;
+        for (p, uv) in [(a, [0.5, 0.0]), (b, [0.0, 1.0]), (d, [1.0, 1.0])] {
+            vertices.push(Vertex {
+                tangent: [0.0; 4],
+                position: p.to_array(),
+                normal: n.to_array(),
+                uv,
+                color: [1.0; 4],
+            });
+        }
+        indices.extend_from_slice(&[base, base + 1, base + 2]);
+    }
+    MeshData { vertices, indices }
+}
+
 /// A grey checkerboard of `size`x`size` texels with `cells` squares per side
 /// (sRGB, mips generated).
 pub fn checker(size: u32, cells: u32) -> TextureData {

@@ -264,3 +264,93 @@ fn a_streaming_group_holds_a_lut() {
     assert_eq!(group.name, "grade");
     assert_eq!(group.memory, 32 * 32 * 32 * 4);
 }
+
+/// R7's lines: `render mesh`, `lit`, `distortion`, `events` and
+/// `subEmitter` reach their fields through the linked parser (each
+/// reference resolved by its own link); the cook refuses a sub-emitter or a
+/// mesh model not under assets/, a fifth sub-emitter and distortion on a
+/// mesh.
+#[test]
+fn mesh_lit_distorting_emitters_with_events_and_sub_emitters() {
+    use og_cook::fx::{EmitterLinks, ParticleMesh, parse_emitter_linked};
+    use og_render::{MeshHandle, ParticleEventKind, RenderScene};
+    let mut scene = RenderScene::default();
+    let text = "type particles\nversion 1\n---\nrender mesh tetrahedron\nlit true\n\
+                events death collision death\nsubEmitter death \"fx/puff.ogt\" 4 0.5\n\
+                subEmitter collision \"fx/chip.ogt\" 2\n";
+    let mut meshes = Vec::new();
+    let mut subs = Vec::new();
+    let em = parse_emitter_linked(
+        text,
+        &mut EmitterLinks {
+            texture: &mut |_| Ok(None),
+            array: &mut |_| Ok(None),
+            mesh: &mut |m| {
+                meshes.push(format!("{m:?}"));
+                Ok(Some(MeshHandle::from_bits(7)))
+            },
+            emitter: &mut |id| {
+                subs.push(id.to_string());
+                Ok(Some(scene.add_emitter(Default::default())))
+            },
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        meshes,
+        [format!("{:?}", ParticleMesh::Builtin("tetrahedron"))]
+    );
+    assert_eq!(subs, ["fx/puff.ogt", "fx/chip.ogt"]);
+    assert_eq!(
+        em.render,
+        ParticleRender::Mesh {
+            mesh: MeshHandle::from_bits(7)
+        }
+    );
+    assert!(em.lit);
+    assert_eq!(
+        em.events,
+        [ParticleEventKind::Death, ParticleEventKind::Collision]
+    );
+    assert_eq!(em.sub_emitters.len(), 2);
+    let s = &em.sub_emitters[0];
+    assert_eq!(
+        (s.trigger, s.count, s.inherit_velocity),
+        (ParticleEventKind::Death, 4, 0.5)
+    );
+    assert_eq!(em.sub_emitters[1].trigger, ParticleEventKind::Collision);
+    assert_eq!(em.sub_emitters[1].inherit_velocity, 0.0);
+    let haze = parse_emitter(
+        "type particles\nversion 1\n---\ndistortion 0.05\n",
+        &mut |_| Ok(None),
+    )
+    .unwrap();
+    assert_eq!(haze.distortion, 0.05);
+
+    let five = format!(
+        "type particles\nversion 1\n---\n{}",
+        "subEmitter birth \"fx/puff.ogt\" 1\n".repeat(5)
+    );
+    let root = project(
+        "linked",
+        &[
+            ("fx/puff.ogt", b"type particles\nversion 1\n---\nrate 0\n"),
+            (
+                "fx/orphan.ogt",
+                b"type particles\nversion 1\n---\nsubEmitter death \"fx/none.ogt\" 2\nrender mesh \"models/none.glb\"\n",
+            ),
+            ("fx/five.ogt", five.as_bytes()),
+            (
+                "fx/warp.ogt",
+                b"type particles\nversion 1\n---\nrender mesh box\ndistortion 0.1\n",
+            ),
+        ],
+    );
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    let errors = report.errors().join("\n");
+    assert!(errors.contains("fx/none.ogt"), "{errors}");
+    assert!(errors.contains("models/none.glb"), "{errors}");
+    assert!(errors.contains("at most 4 subEmitter lines"), "{errors}");
+    assert!(errors.contains("fx/warp.ogt"), "{errors}");
+    assert!(!errors.contains("fx/puff.ogt:"), "{errors}");
+}

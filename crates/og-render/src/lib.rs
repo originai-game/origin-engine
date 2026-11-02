@@ -195,10 +195,11 @@ pub use lines::{LineLayer, LineMode, Lines, wire_edges};
 pub use material::{PhysicalExtensions, Side, StandardMaterial, UvTransform};
 pub use metaballs::{FIELDS, MAX_FLUIDS, Metaballs};
 pub use particles::{
-    Burst, ColorCurve, Curve, EmitterHandle, EmitterShape, MAX_CURVE_KEYS, ParticleAlign,
-    ParticleBlend, ParticleCollider, ParticleCollision, ParticleEmitter, ParticleNoise,
-    ParticleRender, ParticleSimulation, ParticleState, ParticleSystem, SheetMode, SimulationSpace,
-    SpriteSheet,
+    Burst, ChildParticles, ColorCurve, CpuParticles, Curve, EmitterHandle, EmitterShape,
+    MAX_CURVE_KEYS, MAX_SUB_EMITTERS, ParticleAlign, ParticleBlend, ParticleClock,
+    ParticleCollider, ParticleCollision, ParticleEmitter, ParticleEvent, ParticleEventKind,
+    ParticleNoise, ParticleRender, ParticleSimulation, ParticleState, ParticleSystem, SheetMode,
+    SimulationSpace, SpriteSheet, SubEmitter, mesh_points,
 };
 pub use points::Points;
 pub use post_custom::{MAX_CUSTOM_POSTS, PostHandle, PostShader, example_crt, post_module_source};

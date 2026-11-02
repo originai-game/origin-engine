@@ -21,14 +21,34 @@
 //! always simulate on the CPU and draw through the sprite batch; one with a
 //! texture array ([`ParticleEmitter::array`]) draws each particle from a
 //! layer of it, the layers being the sheet's frames.
+//!
+//! **Events and sub-emitters.** The CPU path reports what happens to its
+//! particles ([`ParticleEvent`]: births, deaths, collisions) and spawns
+//! each emitter's [`SubEmitter`]s at them. Its arithmetic is
+//! deterministic on every host (og-core's transcendentals, never the host
+//! libm), so a host can run the same steps in its tick and read the events
+//! as gameplay ([`crate::RenderScene::hosted_particles`] then hands the
+//! renderer the tick's particles to draw, so what is drawn is what the
+//! game read). A system whose emitter has sub-emitters simulates on the
+//! CPU; its children draw with their own emitter's look.
 
 use crate::scene::{MeshData, MeshHandle, TextureArrayHandle, TextureHandle};
 use glam::{Mat4, Vec3, Vec4};
+// The CPU path's transcendentals: bit-identical on every host, so a host's
+// tick can run it (ParticleEvent, sub-emitters).
+use og_core::math;
 
 /// The most keys a [`Curve`] or [`ColorCurve`] can have.
 pub const MAX_CURVE_KEYS: usize = 8;
 /// Points sampled from a mesh for [`EmitterShape::Mesh`].
 pub const MESH_SAMPLE_POINTS: usize = 512;
+/// How fast (metres per second, into the surface) a particle must hit a
+/// collider for the hit to be a [`ParticleEventKind::Collision`]: one
+/// resting on the ground touches it every tick and sends none.
+pub const IMPACT_SPEED: f32 = 0.5;
+
+/// The most sub-emitters one emitter fires ([`ParticleEmitter::sub_emitters`]).
+pub const MAX_SUB_EMITTERS: usize = 4;
 
 /// A small keyframe table over a particle's life (0 at birth, 1 at death),
 /// linear between keys, constant beyond the ends. At most
@@ -293,6 +313,54 @@ pub enum ParticleRender {
     /// Sprites in the 2D batch on `layer` (positions in the xy plane, z
     /// from the emitter): always simulated on the CPU.
     Sprite { layer: i32 },
+    /// A mesh of the scene per particle (debris, leaves, shell casings),
+    /// `size` its scale, turned by the particle's rotation about an axis
+    /// of its own (its random value) or, with [`ParticleAlign::Velocity`],
+    /// its +y along the velocity; its vertex colours times the particle's.
+    Mesh { mesh: MeshHandle },
+}
+
+/// What happens to a particle ([`ParticleEvent::kind`], a
+/// [`SubEmitter::trigger`]).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum ParticleEventKind {
+    /// Spawned.
+    Birth,
+    /// Reached the end of its lifetime (a particle the ring overwrites
+    /// before then sends none).
+    #[default]
+    Death,
+    /// Bounced off a collider ([`ParticleEmitter::collision`], the CPU path's
+    /// [`ParticleCollider`]s) at more than [`IMPACT_SPEED`].
+    Collision,
+}
+
+/// One particle event of a CPU step: where, how fast, which particle.
+/// Positions and velocities are in the world (a local-space system's are
+/// carried out by its transform at that tick).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ParticleEvent {
+    pub kind: ParticleEventKind,
+    /// The tick it happened in.
+    pub tick: u64,
+    /// The particle's index in its system's spawn order (low 32 bits).
+    pub index: u32,
+    pub position: Vec3,
+    pub velocity: Vec3,
+}
+
+/// Another emitter fired at this one's particle events: `count` of its
+/// particles are born where a parent particle was born, died or hit
+/// something, moving at their own start velocity plus `inherit_velocity`
+/// times the parent's (sparks off a bullet's impact, a firework's burst at
+/// the end of its trail). One level deep: a sub-emitter's own
+/// sub-emitters are not fired.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SubEmitter {
+    pub trigger: ParticleEventKind,
+    pub emitter: EmitterHandle,
+    pub count: u32,
+    pub inherit_velocity: f32,
 }
 
 /// The emitter description: an asset. `[min, max]` pairs are uniform random
@@ -353,6 +421,28 @@ pub struct ParticleEmitter {
     pub render: ParticleRender,
     /// Sprite mode: strength of the order-independent glow ([`crate::Glow`]).
     pub glow: f32,
+    /// Lit by the scene's lights (the sun with its shadows, the image-based
+    /// light, the cluster's point and spot lights) instead of drawn at its
+    /// colour: smoke and dust that darken away from the sun, debris that
+    /// shades. A billboard is lit as a soft ball facing the camera; a mesh
+    /// by its normals. 3D modes only.
+    pub lit: bool,
+    /// Above 0 the particles bend the image behind them instead of adding
+    /// colour (heat haze, shock rings, a portal's shimmer): the opaque scene
+    /// behind each one is drawn shifted by up to this fraction of the
+    /// screen's height, along the texture's red and green as a normal map
+    /// (an untextured particle pushes outwards from its centre), weighted
+    /// by the colour curve's alpha. `blend` and the colour are not used.
+    /// Billboards only.
+    pub distortion: f32,
+    /// Emitters fired at this one's particle events. A system with any
+    /// simulates on the CPU.
+    pub sub_emitters: Vec<SubEmitter>,
+    /// The particle events gameplay reads (`og.ParticleEvent`), in no
+    /// order; empty sends none. A host that reads them simulates the
+    /// system in its tick ([`CpuParticles::advance`]) and the renderer
+    /// draws that simulation as it stands ([`crate::RenderScene::hosted_particles`]).
+    pub events: Vec<ParticleEventKind>,
 }
 
 impl Default for ParticleEmitter {
@@ -390,6 +480,10 @@ impl Default for ParticleEmitter {
             collision: None,
             render: ParticleRender::Billboard,
             glow: 0.0,
+            lit: false,
+            distortion: 0.0,
+            sub_emitters: Vec::new(),
+            events: Vec::new(),
         }
     }
 }
@@ -400,7 +494,9 @@ impl ParticleEmitter {
         self.lifetime[0].max(self.lifetime[1]).max(0.0)
     }
 
-    pub(crate) fn validate(&self) -> Result<(), String> {
+    /// Refuses an emitter the renderer cannot draw, naming why (the
+    /// parser checks every file with it, so the cook refuses it too).
+    pub fn validate(&self) -> Result<(), String> {
         if self.max_particles == 0 || self.max_particles > 1 << 20 {
             return Err(format!(
                 "max_particles {} (1 to 1048576)",
@@ -425,6 +521,18 @@ impl ParticleEmitter {
         }
         if self.array.is_some() && !matches!(self.render, ParticleRender::Sprite { .. }) {
             return Err("a texture array is drawn by a sprite-mode emitter (render sprite)".into());
+        }
+        if !(self.distortion.is_finite() && self.distortion >= 0.0) {
+            return Err(format!("distortion {}", self.distortion));
+        }
+        if self.distortion > 0.0 && self.render != ParticleRender::Billboard {
+            return Err("distortion is drawn by billboards (render billboard)".into());
+        }
+        if self.sub_emitters.len() > MAX_SUB_EMITTERS {
+            return Err(format!(
+                "{} sub-emitters (at most {MAX_SUB_EMITTERS})",
+                self.sub_emitters.len()
+            ));
         }
         Ok(())
     }
@@ -773,8 +881,9 @@ impl ParticleState {
 }
 
 /// Points and normals on a mesh's surface, area weighted, for
-/// [`EmitterShape::Mesh`] (the same table on both paths).
-pub(crate) fn mesh_points(mesh: &MeshData) -> Vec<[f32; 4]> {
+/// [`EmitterShape::Mesh`] (the same table on both paths, and what a host
+/// passes [`CpuParticles::advance`] as `points`): two entries a point.
+pub fn mesh_points(mesh: &MeshData) -> Vec<[f32; 4]> {
     let tris: Vec<[Vec3; 3]> = mesh
         .indices
         .as_chunks::<3>()
@@ -828,10 +937,10 @@ pub(crate) fn mesh_points(mesh: &MeshData) -> Vec<[f32; 4]> {
 
 /// A unit vector within `angle` radians of `axis` (uniform over the cap).
 fn cone_dir(axis: Vec3, angle: f32, r0: f32, r1: f32) -> Vec3 {
-    let cos_max = angle.min(std::f32::consts::PI).cos();
+    let cos_max = math::cos(angle.min(std::f32::consts::PI));
     let cos_t = 1.0 - r0 * (1.0 - cos_max);
     let sin_t = (1.0 - cos_t * cos_t).max(0.0).sqrt();
-    let phi = r1 * std::f32::consts::TAU;
+    let (phi_sin, phi_cos) = math::sin_cos(r1 * std::f32::consts::TAU);
     let helper = if axis.y.abs() < 0.999 {
         Vec3::Y
     } else {
@@ -839,7 +948,7 @@ fn cone_dir(axis: Vec3, angle: f32, r0: f32, r1: f32) -> Vec3 {
     };
     let t = helper.cross(axis).normalize();
     let b = axis.cross(t);
-    (t * (phi.cos() * sin_t) + b * (phi.sin() * sin_t) + axis * cos_t).normalize_or(axis)
+    (t * (phi_cos * sin_t) + b * (phi_sin * sin_t) + axis * cos_t).normalize_or(axis)
 }
 
 /// The emitter shape's (position, direction) for random values `r`.
@@ -848,7 +957,11 @@ fn shape_sample(shape: &EmitterShape, r: [f32; 4], points: &[[f32; 4]]) -> (Vec3
         EmitterShape::Point => (Vec3::ZERO, Vec3::Y),
         EmitterShape::Sphere { radius, surface } => {
             let d = cone_dir(Vec3::Y, std::f32::consts::PI, r[0], r[1]);
-            let k = if surface { 1.0 } else { r[2].cbrt() };
+            let k = if surface {
+                1.0
+            } else {
+                math::pow(r[2], 1.0 / 3.0)
+            };
             (d * radius * k, d)
         }
         EmitterShape::Cone {
@@ -856,9 +969,9 @@ fn shape_sample(shape: &EmitterShape, r: [f32; 4], points: &[[f32; 4]]) -> (Vec3
             radius,
         } => {
             let d = cone_dir(Vec3::Y, angle_degrees.to_radians(), r[0], r[1]);
-            let a = r[2] * std::f32::consts::TAU;
+            let (sin, cos) = math::sin_cos(r[2] * std::f32::consts::TAU);
             let rr = r[3].sqrt() * radius;
-            (Vec3::new(a.cos() * rr, 0.0, a.sin() * rr), d)
+            (Vec3::new(cos * rr, 0.0, sin * rr), d)
         }
         EmitterShape::Box { half_extents } => (
             (Vec3::new(r[0], r[1], r[2]) * 2.0 - Vec3::ONE) * half_extents,
@@ -1011,7 +1124,8 @@ impl ParticleCollider {
 
 /// The CPU path's collision response, as the compute shader's: the normal
 /// part of the velocity reflected by `bounce`, the tangential part reduced
-/// by `friction`, and the step taken again from `before`.
+/// by `friction`, and the step taken again from `before`. Whether it
+/// bounced.
 fn collide(
     colliders: &[ParticleCollider],
     c: ParticleCollision,
@@ -1019,7 +1133,7 @@ fn collide(
     pos: &mut Vec3,
     vel: &mut Vec3,
     dt: f32,
-) {
+) -> bool {
     for collider in colliders {
         if collider.hit(before, before).is_some() {
             continue;
@@ -1032,9 +1146,13 @@ fn collide(
             let normal_part = n * vn;
             *vel = (*vel - normal_part) * (1.0 - c.friction) - normal_part * c.bounce;
             *pos = before + *vel * dt;
+            // A particle settling on a surface touches it every tick: only
+            // an impact is a collision event.
+            return -vn > IMPACT_SPEED;
         }
-        return;
+        return false;
     }
+    false
 }
 
 /// The turbulence's lattice at the render origin `origin` for noise of
@@ -1052,7 +1170,8 @@ pub(crate) fn noise_origin(origin: Vec3, frequency: f32) -> ([i32; 3], Vec3) {
 }
 
 /// One fixed step of a live particle at `time` seconds; `origin`: the
-/// render origin a world-space system is simulated relative to.
+/// render origin a world-space system is simulated relative to. Whether it
+/// bounced off a collider.
 fn integrate(
     e: &ParticleEmitter,
     p: &mut ParticleState,
@@ -1061,7 +1180,7 @@ fn integrate(
     seed: u32,
     colliders: &[ParticleCollider],
     origin: Vec3,
-) {
+) -> bool {
     let mut pos = Vec3::from_slice(&p.pos_age[..3]);
     let mut vel = Vec3::from_slice(&p.vel_life[..3]);
     vel += e.gravity * dt;
@@ -1079,11 +1198,13 @@ fn integrate(
     vel *= 1.0 / (1.0 + e.drag.max(0.0) * dt);
     let before = pos;
     pos += vel * dt;
-    if let Some(c) = e.collision {
-        collide(colliders, c, before, &mut pos, &mut vel, dt);
-    }
+    let hit = match e.collision {
+        Some(c) => collide(colliders, c, before, &mut pos, &mut vel, dt),
+        None => false,
+    };
     p.pos_age = pos.extend(p.pos_age[3] + dt).to_array();
     p.vel_life = vel.extend(p.vel_life[3]).to_array();
+    hit
 }
 
 /// For a slot, the particle index spawned into it by `step` (the newest of
@@ -1099,6 +1220,15 @@ pub(crate) fn slot_spawn(slot: u32, max: u32, first: u64, count: u32) -> Option<
     Some(((first as u32).wrapping_add(k), k))
 }
 
+/// The particles one [`SubEmitter`] fired, simulated with its emitter in
+/// the world (its spawn order's own ring of the child's `max_particles`).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ChildParticles {
+    pub slots: Vec<ParticleState>,
+    /// The particles born into it so far: the next one's index.
+    pub born: u64,
+}
+
 /// The CPU path of one system: its slots and where its clock stood.
 #[derive(Clone, Debug, Default)]
 pub struct CpuParticles {
@@ -1109,23 +1239,87 @@ pub struct CpuParticles {
     /// The render origin a world-space system's slots are relative to
     /// (`origin.rs`): its turbulence samples the field there.
     pub origin: Vec3,
+    /// Per [`ParticleEmitter::sub_emitters`] entry, the particles it fired.
+    pub children: Vec<ChildParticles>,
+}
+
+/// The index of the particle in `slot` while `step` integrates it: the
+/// slot's latest spawn before the step (particles fill the ring in order).
+fn index_of(step: &TickStep, slot: u32, max: u32) -> u32 {
+    let (last, max, slot) = (step.first.saturating_sub(1), max as u64, slot as u64);
+    let back = (last % max + max - slot) % max;
+    last.saturating_sub(back) as u32
+}
+
+/// The seed of a system's `k`-th sub-emitter's particles.
+pub(crate) fn child_seed(seed: u32, k: usize) -> u32 {
+    pcg(seed ^ pcg(0x5ab_e317 ^ k as u32))
+}
+
+/// A sub-emitter's particle `n`, born at `at` (world) with `inherited`
+/// velocity added to its own start velocity. A mesh shape is a point here.
+fn spawn_child(e: &ParticleEmitter, seed: u32, n: u32, at: Vec3, inherited: Vec3) -> ParticleState {
+    let r = |s: u32| rand(seed, n, s);
+    let lerp = |range: [f32; 2], t: f32| range[0] + (range[1] - range[0]) * t;
+    let life = lerp(e.lifetime, r(0)).max(1e-3);
+    let speed = lerp(e.speed, r(1));
+    let size = lerp(e.size, r(2));
+    let rot = lerp(e.rotation_degrees, r(3)).to_radians();
+    let spin = lerp(e.angular_velocity_degrees, r(4)).to_radians();
+    let shape = match e.shape {
+        EmitterShape::Mesh { .. } => EmitterShape::Point,
+        s => s,
+    };
+    let (offset, dir) = shape_sample(&shape, [r(6), r(7), r(8), r(11)], &[]);
+    let dir = if e.spread_degrees > 0.0 {
+        cone_dir(dir, e.spread_degrees.to_radians(), r(9), r(10))
+    } else {
+        dir
+    };
+    ParticleState {
+        pos_age: (at + offset).extend(0.0).to_array(),
+        vel_life: (dir * speed + inherited).extend(life).to_array(),
+        misc: [size, rot, spin, r(5)],
+    }
 }
 
 impl CpuParticles {
     /// Steps the system to `sys.tick`; returns the ticks simulated.
-    /// `colliders`: what its particles bounce off (empty: nothing).
-    pub(crate) fn advance(
+    /// `colliders`: what its particles bounce off (empty: nothing). `subs`:
+    /// the emitters of `e.sub_emitters`, in order (`None`: not fired).
+    /// `events`: where to report every birth, death and collision of the
+    /// system's own particles (not its sub-emitters'), in slot order per
+    /// tick.
+    #[allow(clippy::too_many_arguments)]
+    pub fn advance(
         &mut self,
         e: &ParticleEmitter,
         sys: &ParticleSystem,
         tick_rate: f32,
         points: &[[f32; 4]],
         colliders: &[ParticleCollider],
+        subs: &[Option<&ParticleEmitter>],
+        mut events: Option<&mut Vec<ParticleEvent>>,
     ) -> u32 {
         let max = e.max_particles;
         if self.slots.len() != max as usize {
             self.slots = vec![ParticleState::default(); max as usize];
             self.last_tick = None;
+        }
+        let firing: Vec<(usize, &SubEmitter, &ParticleEmitter)> = e
+            .sub_emitters
+            .iter()
+            .enumerate()
+            .filter_map(|(k, s)| Some((k, s, (*subs.get(k)?)?)))
+            .collect();
+        self.children
+            .resize_with(e.sub_emitters.len(), Default::default);
+        for &(k, _, ce) in &firing {
+            let c = &mut self.children[k];
+            if c.slots.len() != ce.max_particles as usize {
+                c.slots = vec![ParticleState::default(); ce.max_particles as usize];
+                c.born = 0;
+            }
         }
         let (reset, steps) = plan_ticks(
             e,
@@ -1137,18 +1331,92 @@ impl CpuParticles {
         );
         if reset {
             self.slots.fill(ParticleState::default());
+            for c in &mut self.children {
+                c.slots.fill(ParticleState::default());
+                c.born = 0;
+            }
         }
         let seed = hash_seed(sys.seed);
+        let want = |kind| events.is_some() || firing.iter().any(|f| f.1.trigger == kind);
+        let (births, deaths, hits) = (
+            want(ParticleEventKind::Birth),
+            want(ParticleEventKind::Death),
+            want(ParticleEventKind::Collision),
+        );
+        let local = e.space == SimulationSpace::Local;
+        let mut fired: Vec<ParticleEvent> = Vec::new();
         for step in &steps {
             let dt = step.dt;
+            fired.clear();
+            let mut report = |kind, n: u32, p: &ParticleState| {
+                let (mut at, mut vel) = (
+                    Vec3::from_slice(&p.pos_age[..3]),
+                    Vec3::from_slice(&p.vel_life[..3]),
+                );
+                if local {
+                    at = step.transform.transform_point3(at);
+                    vel = step.transform.transform_vector3(vel);
+                }
+                fired.push(ParticleEvent {
+                    kind,
+                    tick: step.tick,
+                    index: n,
+                    position: at,
+                    velocity: vel,
+                });
+            };
             for (slot, p) in self.slots.iter_mut().enumerate() {
                 match slot_spawn(slot as u32, max, step.first, step.count) {
-                    Some((n, k)) => *p = spawn(e, seed, n, k, step, dt, points),
+                    Some((n, k)) => {
+                        *p = spawn(e, seed, n, k, step, dt, points);
+                        if births {
+                            report(ParticleEventKind::Birth, n, p);
+                        }
+                    }
                     None if p.alive() => {
-                        integrate(e, p, dt, step.time, seed, colliders, self.origin)
+                        let hit = integrate(e, p, dt, step.time, seed, colliders, self.origin);
+                        if hit && hits {
+                            report(
+                                ParticleEventKind::Collision,
+                                index_of(step, slot as u32, max),
+                                p,
+                            );
+                        }
+                        if !p.alive() && deaths {
+                            report(
+                                ParticleEventKind::Death,
+                                index_of(step, slot as u32, max),
+                                p,
+                            );
+                        }
                     }
                     None => {}
                 }
+            }
+            // The sub-emitters: their particles step, then each event's are born.
+            for &(k, sub, ce) in &firing {
+                let cseed = child_seed(seed, k);
+                let c = &mut self.children[k];
+                let cmax = ce.max_particles.max(1) as u64;
+                for q in c.slots.iter_mut().filter(|q| q.alive()) {
+                    integrate(ce, q, dt, step.time, cseed, colliders, self.origin);
+                }
+                for ev in fired.iter().filter(|ev| ev.kind == sub.trigger) {
+                    for _ in 0..sub.count {
+                        let n = c.born;
+                        c.born += 1;
+                        c.slots[(n % cmax) as usize] = spawn_child(
+                            ce,
+                            cseed,
+                            n as u32,
+                            ev.position,
+                            ev.velocity * sub.inherit_velocity,
+                        );
+                    }
+                }
+            }
+            if let Some(out) = events.as_deref_mut() {
+                out.extend_from_slice(&fired);
             }
         }
         self.last_tick = Some(sys.tick);
@@ -1227,7 +1495,7 @@ mod tests {
         let e = fountain();
         for t in ticks {
             sys.tick = t;
-            cpu.advance(&e, sys, 60.0, &[], &[]);
+            cpu.advance(&e, sys, 60.0, &[], &[], &[], None);
         }
     }
 
@@ -1273,5 +1541,65 @@ mod tests {
         run(&mut slow, &mut b, 140..=159);
         run(&mut normal, &mut a, 20..=39);
         assert_eq!(alive(&b).len(), alive(&a).len());
+    }
+
+    /// A death sub-emitter fires `count` particles at each death, where it
+    /// happened, every run alike; the events report each death once.
+    #[test]
+    fn a_death_sub_emitter_fires_where_each_particle_dies() {
+        let mut e = fountain();
+        e.sub_emitters.push(SubEmitter {
+            trigger: ParticleEventKind::Death,
+            emitter: EmitterHandle(1),
+            count: 3,
+            inherit_velocity: 0.0,
+        });
+        let child = ParticleEmitter {
+            shape: EmitterShape::Point,
+            rate: 0.0,
+            speed: [0.0, 0.0],
+            lifetime: [5.0, 5.0],
+            gravity: Vec3::ZERO,
+            max_particles: 512,
+            ..Default::default()
+        };
+        let go = || {
+            let mut sys = ParticleSystem::new(1, EmitterHandle(0), Mat4::IDENTITY, 3, 0);
+            let mut cpu = CpuParticles::default();
+            let mut events = Vec::new();
+            for t in 0..=89 {
+                sys.tick = t;
+                cpu.advance(&e, &sys, 60.0, &[], &[], &[Some(&child)], Some(&mut events));
+            }
+            (cpu, events)
+        };
+        let (a, events) = go();
+        let deaths: Vec<&ParticleEvent> = events
+            .iter()
+            .filter(|ev| ev.kind == ParticleEventKind::Death)
+            .collect();
+        assert!(
+            deaths.len() >= 20,
+            "the burst dies after a second: {}",
+            deaths.len()
+        );
+        assert_eq!(a.children[0].born, deaths.len() as u64 * 3);
+        // Still children (speed 0, no gravity) sit where their parent died.
+        let kids: Vec<Vec3> = a.children[0]
+            .slots
+            .iter()
+            .filter(|s| s.alive())
+            .map(|s| Vec3::from_slice(&s.pos_age[..3]))
+            .collect();
+        for d in &deaths {
+            let near = kids
+                .iter()
+                .filter(|k| k.distance(d.position) < 1e-3)
+                .count();
+            assert_eq!(near, 3, "three children at {:?}", d.position);
+        }
+        let (b, again) = go();
+        assert_eq!(events, again);
+        assert_eq!(a.children[0].slots, b.children[0].slots);
     }
 }

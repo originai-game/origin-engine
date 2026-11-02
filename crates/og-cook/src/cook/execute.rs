@@ -256,22 +256,34 @@ pub(super) fn run(
                     missing.borrow_mut().push(id.to_string());
                 }
             };
-            let em = crate::fx::parse_emitter_with(
+            let em = crate::fx::parse_emitter_linked(
                 text,
-                &mut |id| {
-                    check(id);
-                    Ok(None)
-                },
-                &mut |id| {
-                    check(id);
-                    Ok(None)
+                &mut crate::fx::EmitterLinks {
+                    texture: &mut |id| {
+                        check(id);
+                        Ok(None)
+                    },
+                    array: &mut |id| {
+                        check(id);
+                        Ok(None)
+                    },
+                    mesh: &mut |m| {
+                        if let crate::fx::ParticleMesh::Asset(id) = m {
+                            check(id);
+                        }
+                        Ok(None)
+                    },
+                    emitter: &mut |id| {
+                        check(id);
+                        Ok(None)
+                    },
                 },
             )
             .map_err(CookError)?;
             let missing = missing.into_inner();
             if !missing.is_empty() {
                 return Err(CookError(format!(
-                    "the emitter names texture(s) or texture array(s) not under assets/: {}",
+                    "the emitter names asset(s) not under assets/ (a texture, texture array, mesh model or sub-emitter): {}",
                     missing.join(", ")
                 )));
             }

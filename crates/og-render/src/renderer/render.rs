@@ -134,6 +134,10 @@ impl Renderer {
             camera.position,
             cam.forward,
         )?;
+        // Mesh particles read the f32 vertices of a compact mesh too.
+        for &m in &particle_frame.meshes {
+            self.ensure_full(scene, m);
+        }
         // The quality's resolution, where it sets one, over the scene's.
         let ao = post_fx
             .ao
@@ -2101,7 +2105,7 @@ impl Renderer {
                     lightmap: lightmap_size,
                     lightdir: lightdir_on,
                     gtao,
-                    water: !scene_water.is_empty() || fluids_3d,
+                    water: !scene_water.is_empty() || fluids_3d || particle_frame.distortion,
                     water_ao: !scene_water.is_empty() && ao.is_some_and(|a| a.direct > 0.0),
                     transmission,
                     fluid_fields: fluids as u32,
@@ -2462,8 +2466,13 @@ impl Renderer {
             .graph
             .try_view("lindepth")
             .unwrap_or(&self.post.far_depth);
-        let particle_group = (!particle_frame.systems.is_empty())
-            .then(|| self.particles.draw_group(&self.device, scene_depth));
+        let particle_group = (!particle_frame.systems.is_empty()).then(|| {
+            let copy = self
+                .graph
+                .try_view("scene-copy")
+                .unwrap_or(&self.post.white);
+            self.particles.draw_group(&self.device, scene_depth, copy)
+        });
         let metaball_groups: Vec<wgpu::BindGroup> = post::FIELD_NAMES
             .iter()
             .map_while(|name| self.graph.try_view(name))
@@ -2684,8 +2693,12 @@ impl Renderer {
                     .as_ref()
                     .map_or(&self.post.far_depth, |pre| &pre.lindepth);
                 (!particle_frame.systems.is_empty()).then(|| {
-                    self.particles
-                        .draw_group_of(&self.device, &slot.particle_buffer, depth)
+                    self.particles.draw_group_of(
+                        &self.device,
+                        &slot.particle_buffer,
+                        depth,
+                        &self.post.white,
+                    )
                 })
             })
             .collect();
@@ -2720,8 +2733,10 @@ impl Renderer {
                 let pb = buffer("probe face particles", bytemuck::bytes_of(&particles));
                 let lb = buffer("probe face lines", bytemuck::bytes_of(&lines));
                 (
-                    (!particle_frame.systems.is_empty())
-                        .then(|| self.particles.draw_group_of(&self.device, &pb, depth)),
+                    (!particle_frame.systems.is_empty()).then(|| {
+                        self.particles
+                            .draw_group_of(&self.device, &pb, depth, &self.post.white)
+                    }),
                     self.lines.view_group(&self.device, &lb),
                 )
             })

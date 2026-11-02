@@ -351,6 +351,181 @@ pub fn particles_scene() -> RenderScene {
     scene
 }
 
+/// R7's particle looks under a low sun: lit smoke (left), lit mesh debris
+/// tumbling out of a crater that bounces on the ground and kicks a dust
+/// puff at each bounce (a collision sub-emitter, so the CPU path), and a
+/// heat haze over a glowing brazier that bends the checker wall behind it.
+pub fn particles_lit_scene() -> RenderScene {
+    let mut scene = RenderScene::new();
+    terrain(&mut scene, 40.0);
+    let smoke_tex = smoke_texture(&mut scene);
+    // The checker wall the haze bends.
+    let checker = scene.add_texture(shapes::checker(512, 16));
+    let wall = scene.add_mesh(shapes::cuboid(Vec3::new(9.0, 3.5, 0.3)));
+    let tiles = scene.add_material(Material {
+        base_color_texture: Some(checker),
+        roughness: 0.8,
+        ..Default::default()
+    });
+    scene.add_instance(
+        wall,
+        tiles,
+        Mat4::from_translation(Vec3::new(0.0, 1.75, -2.6)),
+    );
+    // Lit smoke: an alpha puff column the sun shades from the right.
+    let smoke = scene.add_emitter(ParticleEmitter {
+        max_particles: 200,
+        shape: EmitterShape::Cone {
+            angle_degrees: 10.0,
+            radius: 0.3,
+        },
+        rate: 30.0,
+        lifetime: [2.5, 3.2],
+        speed: [0.5, 0.8],
+        size: [0.7, 1.0],
+        size_over_life: Curve::new(&[(0.0, 0.5), (1.0, 1.6)]),
+        color_over_life: ColorCurve::new(&[
+            (0.0, [1.0, 1.0, 1.0, 0.0]),
+            (0.15, [1.0, 1.0, 1.0, 0.9]),
+            (1.0, [1.0, 1.0, 1.0, 0.0]),
+        ]),
+        color: [0.85, 0.85, 0.85, 1.0],
+        rotation_degrees: [0.0, 360.0],
+        gravity: Vec3::new(0.0, 0.3, 0.0),
+        drag: 0.4,
+        texture: Some(smoke_tex),
+        blend: ParticleBlend::Alpha,
+        lit: true,
+        ..Default::default()
+    });
+    scene.particles.push(ParticleSystem::new(
+        50,
+        smoke,
+        Mat4::from_translation(Vec3::new(-2.8, 0.0, -0.6)),
+        11,
+        0,
+    ));
+    // Debris: lit tetrahedra thrown up, bouncing; dust at each bounce.
+    let dust = scene.add_emitter(ParticleEmitter {
+        max_particles: 400,
+        shape: EmitterShape::Point,
+        spread_degrees: 80.0,
+        rate: 0.0,
+        lifetime: [0.5, 0.8],
+        speed: [0.2, 0.5],
+        size: [0.15, 0.25],
+        color_over_life: ColorCurve::new(&[
+            (0.0, [1.0, 1.0, 1.0, 0.7]),
+            (1.0, [1.0, 1.0, 1.0, 0.0]),
+        ]),
+        color: [0.6, 0.5, 0.4, 1.0],
+        gravity: Vec3::new(0.0, 0.2, 0.0),
+        texture: Some(smoke_tex),
+        blend: ParticleBlend::Alpha,
+        lit: true,
+        ..Default::default()
+    });
+    let shard = scene.add_mesh(shapes::tetrahedron());
+    let debris = scene.add_emitter(ParticleEmitter {
+        max_particles: 120,
+        shape: EmitterShape::Point,
+        spread_degrees: 35.0,
+        rate: 0.0,
+        // Forty every second (the emitter loops its one-second cycle).
+        bursts: vec![Burst::once(0.0, 40)],
+        duration: 1.0,
+        lifetime: [1.6, 2.0],
+        speed: [3.5, 5.0],
+        size: [0.12, 0.22],
+        color_over_life: ColorCurve::new(&[(0.0, [1.0; 4]), (1.0, [1.0; 4])]),
+        color: [0.55, 0.42, 0.32, 1.0],
+        rotation_degrees: [0.0, 360.0],
+        angular_velocity_degrees: [-540.0, 540.0],
+        gravity: Vec3::new(0.0, -9.8, 0.0),
+        collision: Some(ParticleCollision {
+            bounce: 0.35,
+            friction: 0.4,
+        }),
+        render: ParticleRender::Mesh { mesh: shard },
+        lit: true,
+        sub_emitters: vec![og_render::SubEmitter {
+            trigger: og_render::ParticleEventKind::Collision,
+            emitter: dust,
+            count: 2,
+            inherit_velocity: 0.1,
+        }],
+        ..Default::default()
+    });
+    scene.particles.push(ParticleSystem::new(
+        51,
+        debris,
+        Mat4::from_translation(Vec3::new(0.0, 0.1, 0.4)),
+        23,
+        0,
+    ));
+    scene
+        .particle_colliders
+        .push(og_render::ParticleCollider::Plane {
+            normal: Vec3::Y,
+            offset: 0.0,
+        });
+    // A brazier and the haze over it.
+    let brazier = scene.add_mesh(shapes::cuboid(Vec3::new(0.7, 0.5, 0.7)));
+    let coals = scene.add_material(Material {
+        base_color: [0.1, 0.08, 0.07, 1.0],
+        emissive: [3.0, 0.9, 0.2],
+        roughness: 0.9,
+        ..Default::default()
+    });
+    scene.add_instance(
+        brazier,
+        coals,
+        Mat4::from_translation(Vec3::new(2.8, 0.25, -1.2)),
+    );
+    let haze = scene.add_emitter(ParticleEmitter {
+        max_particles: 120,
+        shape: EmitterShape::Box {
+            half_extents: Vec3::new(0.3, 0.05, 0.3),
+        },
+        rate: 30.0,
+        lifetime: [1.4, 1.8],
+        speed: [0.6, 0.9],
+        size: [0.6, 0.9],
+        size_over_life: Curve::new(&[(0.0, 0.6), (1.0, 1.4)]),
+        color_over_life: ColorCurve::new(&[
+            (0.0, [1.0, 1.0, 1.0, 0.0]),
+            (0.25, [1.0, 1.0, 1.0, 1.0]),
+            (1.0, [1.0, 1.0, 1.0, 0.0]),
+        ]),
+        rotation_degrees: [0.0, 360.0],
+        gravity: Vec3::ZERO,
+        distortion: 0.02,
+        ..Default::default()
+    });
+    scene.particles.push(ParticleSystem::new(
+        52,
+        haze,
+        Mat4::from_translation(Vec3::new(2.8, 0.55, -1.2)),
+        31,
+        0,
+    ));
+    let sun = Vec3::new(0.85, 0.4, 0.3);
+    scene.light = DirectionalLight {
+        direction_to_light: sun,
+        intensity: 3.0,
+        cast_shadows: true,
+        ..Default::default()
+    };
+    scene.environment.sky.sun_direction = sun;
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 2.4, 6.4),
+        target: Vec3::new(0.0, 1.0, -0.8),
+        exposure: Exposure::linear(0.9),
+        ..Default::default()
+    };
+    scene
+}
+
 /// Ticks the scene's clocks to the frame (60 ticks per second).
 pub fn tick_update(scene: &mut RenderScene, frame: u32) {
     tick_all(scene, frame as u64);

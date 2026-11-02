@@ -55,6 +55,8 @@ struct EmitterGpu {
     /// The turbulence's lattice at the render origin (`origin.rs`): xyz
     /// its whole cells, then the rest.
     noise_origin: [[f32; 4]; 2],
+    /// x: lit, y: distortion, z: a mesh per particle.
+    look: [f32; 4],
 }
 
 /// `struct ParticleView` in particle_common.wgsl.
@@ -187,8 +189,55 @@ fn emitter_gpu(
         spawn: [first as u32, count, (first % max as u64) as u32, bursts],
         info: [max, seed, 0, 0],
         noise_origin: [[0.0; 4]; 2],
+        look: [
+            e.lit as u32 as f32,
+            e.distortion,
+            matches!(e.render, ParticleRender::Mesh { .. }) as u32 as f32,
+            0.0,
+        ],
     }
 }
+
+/// How a system's particles are drawn.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub(crate) enum DrawKind {
+    Billboard,
+    Mesh,
+    /// The scene behind, shifted (`fs_distort`).
+    Distort,
+}
+
+fn draw_kind(e: &ParticleEmitter) -> DrawKind {
+    match e.render {
+        ParticleRender::Mesh { .. } => DrawKind::Mesh,
+        _ if e.distortion > 0.0 => DrawKind::Distort,
+        _ => DrawKind::Billboard,
+    }
+}
+
+/// A mesh's vertices beside the particles (`MeshIn` in particles.wgsl):
+/// [`crate::Vertex`]'s position, normal and colour.
+const MESH_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
+    array_stride: std::mem::size_of::<crate::Vertex>() as u64,
+    step_mode: wgpu::VertexStepMode::Vertex,
+    attributes: &[
+        wgpu::VertexAttribute {
+            format: wgpu::VertexFormat::Float32x3,
+            offset: 0,
+            shader_location: 5,
+        },
+        wgpu::VertexAttribute {
+            format: wgpu::VertexFormat::Float32x3,
+            offset: 12,
+            shader_location: 6,
+        },
+        wgpu::VertexAttribute {
+            format: wgpu::VertexFormat::Float32x4,
+            offset: 32,
+            shader_location: 7,
+        },
+    ],
+};
 
 struct GpuSystem {
     buffer: wgpu::Buffer,
@@ -209,6 +258,8 @@ struct SystemState {
     /// The render origin's moves since the system last simulated
     /// ([`ParticleRenderer::shift`]): added to its world-space particles.
     shift: Vec3,
+    /// Its sub-emitters' vertex buffers, by sub-emitter.
+    children: Vec<Option<wgpu::Buffer>>,
 }
 
 /// One system's work this frame.
@@ -227,6 +278,12 @@ pub(crate) struct FrameSystem {
     depth: f32,
     /// Its three.js layer mask ([`RenderScene::particle_layers`]).
     pub layers: u32,
+    /// A sub-emitter's particles: which of the system's.
+    child: Option<usize>,
+    /// Slots drawn.
+    max: u32,
+    kind: DrawKind,
+    mesh: Option<crate::MeshHandle>,
 }
 
 /// What the frame's particles need from the rest of the renderer.
@@ -244,6 +301,11 @@ pub(crate) struct ParticleFrame {
     pub cpu_alive: u32,
     pub ticks: u32,
     pub collision_skipped: u32,
+    /// A system bends the scene behind it: the main pass copies the opaque
+    /// scene for it (`DrawKind::Distort`).
+    pub distortion: bool,
+    /// The meshes particles are drawn with (their f32 vertices are needed).
+    pub meshes: Vec<usize>,
 }
 
 pub(crate) struct ParticleRenderer {
@@ -255,7 +317,7 @@ pub(crate) struct ParticleRenderer {
         wgpu::ComputePipeline,
     ),
     pub draw_layout: wgpu::BindGroupLayout,
-    draw: HashMap<(ParticleBlend, u32), wgpu::RenderPipeline>,
+    draw: HashMap<(ParticleBlend, u32, DrawKind), wgpu::RenderPipeline>,
     draw_module: wgpu::ShaderModule,
     draw_pl: wgpu::PipelineLayout,
     emitter_buffer: wgpu::Buffer,
@@ -375,6 +437,7 @@ impl ParticleRenderer {
                 uniform_entry(0, wgpu::ShaderStages::VERTEX_FRAGMENT, true),
                 uniform_entry(1, wgpu::ShaderStages::VERTEX_FRAGMENT, false),
                 depth_entry(2, wgpu::ShaderStages::FRAGMENT),
+                depth_entry(3, wgpu::ShaderStages::FRAGMENT),
             ],
         });
         let draw_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -487,6 +550,7 @@ impl ParticleRenderer {
                 upload: None,
                 seen: 0,
                 shift: Vec3::ZERO,
+                children: Vec::new(),
             });
             if state.emitter != sys.emitter.index() || state.max != e.max_particles {
                 *state = SystemState {
@@ -497,6 +561,7 @@ impl ParticleRenderer {
                     upload: None,
                     seen: 0,
                     shift: Vec3::ZERO,
+                    children: Vec::new(),
                 };
             }
             state.seen = self.frame;
@@ -521,7 +586,69 @@ impl ParticleRenderer {
                     }
                 }
             }
+            // Sub-emitters' particles are in the world whatever the parent's space.
+            if pending != Vec3::ZERO {
+                for c in &mut state.cpu.children {
+                    for p in &mut c.slots {
+                        for (x, d) in p.pos_age.iter_mut().zip(pending.to_array()) {
+                            *x += d;
+                        }
+                    }
+                }
+            }
             let seed = hash_seed(sys.seed);
+            let subs: Vec<Option<&ParticleEmitter>> = e
+                .sub_emitters
+                .iter()
+                .map(|s| scene.emitters().get(s.emitter.index()))
+                .collect();
+            if let ParticleRender::Mesh { mesh } = e.render {
+                if scene.mesh(mesh).is_none() {
+                    return Err(RenderError::InvalidHandle(format!(
+                        "emitter {}: mesh {}",
+                        sys.emitter.index(),
+                        mesh.index()
+                    )));
+                }
+                out.meshes.push(mesh.index());
+            }
+            for (k, sub) in subs.iter().enumerate() {
+                let Some(ce) = sub else {
+                    return Err(RenderError::InvalidHandle(format!(
+                        "emitter {}: sub-emitter {k}: emitter {}",
+                        sys.emitter.index(),
+                        e.sub_emitters[k].emitter.index()
+                    )));
+                };
+                ce.validate().map_err(|m| {
+                    RenderError::InvalidData(format!(
+                        "emitter {}: sub-emitter {k}: {m}",
+                        sys.emitter.index()
+                    ))
+                })?;
+                if ce.texture.is_some_and(|t| t.index() >= texture_count) {
+                    return Err(RenderError::InvalidHandle(format!(
+                        "emitter {}: sub-emitter {k}: texture",
+                        sys.emitter.index()
+                    )));
+                }
+                if let ParticleRender::Mesh { mesh } = ce.render {
+                    if scene.mesh(mesh).is_none() {
+                        return Err(RenderError::InvalidHandle(format!(
+                            "emitter {}: sub-emitter {k}: mesh {}",
+                            sys.emitter.index(),
+                            mesh.index()
+                        )));
+                    }
+                    out.meshes.push(mesh.index());
+                }
+            }
+            // A host's own simulation of it (its tick read the events).
+            let hosted = scene
+                .hosted_particles
+                .iter()
+                .find(|(id, _)| *id == sys.id)
+                .map(|(_, p)| p);
             let sprite_mode = matches!(e.render, ParticleRender::Sprite { .. });
             // The CPU path bounces world-space billboards off the scene's
             // colliders; sprite systems and a scene without colliders pass through.
@@ -550,7 +677,14 @@ impl ParticleRenderer {
                     }
                     None => None,
                 };
-                out.ticks += state.cpu.advance(e, sys, tick_rate, points, &[]);
+                match hosted {
+                    Some(h) => take_hosted(&mut state.cpu, h, e.space, scene.origin),
+                    None => {
+                        out.ticks += state
+                            .cpu
+                            .advance(e, sys, tick_rate, points, &[], &subs, None)
+                    }
+                }
                 out.cpu_alive += state.cpu.alive() as u32;
                 push_sprites(
                     e,
@@ -560,6 +694,29 @@ impl ParticleRenderer {
                     array,
                     &mut out.sprites,
                 );
+                for (c, ce) in state.cpu.children.iter().zip(&subs) {
+                    let Some(ce) = ce else { continue };
+                    let world = ParticleSystem {
+                        transform: Mat4::IDENTITY,
+                        ..*sys
+                    };
+                    let layer = match ce.render {
+                        ParticleRender::Sprite { layer } => layer,
+                        _ => layer,
+                    };
+                    let ce = ParticleEmitter {
+                        space: SimulationSpace::World,
+                        ..(*ce).clone()
+                    };
+                    push_sprites(
+                        &ce,
+                        &world,
+                        &c.slots,
+                        (layer, layers),
+                        None,
+                        &mut out.sprites,
+                    );
+                }
                 continue;
             }
             let depth = (sys.transform.w_axis.truncate() - eye).dot(forward);
@@ -574,6 +731,14 @@ impl ParticleRenderer {
             };
             out.needs_depth |= soft > 0.0 || collide;
             out.soft |= soft > 0.0;
+            let kind = draw_kind(e);
+            out.distortion |= kind == DrawKind::Distort;
+            let mesh = match e.render {
+                ParticleRender::Mesh { mesh } => Some(mesh),
+                _ => None,
+            };
+            // Sub-emitters' events and a host's own simulation are the CPU path's.
+            let gpu = gpu && e.sub_emitters.is_empty() && hosted.is_none();
             // The render origin moved: world-space particles on the GPU
             // move with it before this frame's ticks (the CPU's moved above).
             let shift = (gpu && moved != Vec3::ZERO && state.gpu.is_some()).then(|| {
@@ -658,20 +823,22 @@ impl ParticleRenderer {
                     texture: e.texture,
                     depth,
                     layers,
+                    child: None,
+                    max: e.max_particles,
+                    kind,
+                    mesh,
                 });
             } else {
-                out.ticks += state.cpu.advance(e, sys, tick_rate, points, colliders);
+                match hosted {
+                    Some(h) => take_hosted(&mut state.cpu, h, e.space, scene.origin),
+                    None => {
+                        out.ticks += state
+                            .cpu
+                            .advance(e, sys, tick_rate, points, colliders, &subs, None)
+                    }
+                }
                 out.cpu_alive += state.cpu.alive() as u32;
-                let bytes: &[u8] = bytemuck::cast_slice(&state.cpu.slots);
-                let upload = state.upload.get_or_insert_with(|| {
-                    device.create_buffer(&wgpu::BufferDescriptor {
-                        label: Some("particles (cpu)"),
-                        size: bytes.len() as u64,
-                        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-                        mapped_at_creation: false,
-                    })
-                });
-                queue.write_buffer(upload, 0, bytes);
+                upload(device, queue, &mut state.upload, &state.cpu.slots);
                 entries.push(emitter_gpu(
                     e,
                     sys.transform,
@@ -694,6 +861,66 @@ impl ParticleRenderer {
                     texture: e.texture,
                     depth,
                     layers,
+                    child: None,
+                    max: state.cpu.slots.len() as u32,
+                    kind,
+                    mesh,
+                });
+            }
+            // Its sub-emitters' particles, each drawn as its own emitter
+            // draws (in the world).
+            state
+                .children
+                .resize_with(state.cpu.children.len(), || None);
+            for (k, (c, ce)) in state.cpu.children.iter().zip(&subs).enumerate() {
+                let Some(ce) = ce else { continue };
+                if c.slots.is_empty() {
+                    continue;
+                }
+                out.cpu_alive += c.slots.iter().filter(|p| p.alive()).count() as u32;
+                upload(device, queue, &mut state.children[k], &c.slots);
+                let kind = draw_kind(ce);
+                out.distortion |= kind == DrawKind::Distort;
+                let soft = if scene.quality.soft_particles {
+                    ce.soft_distance.max(0.0)
+                } else {
+                    0.0
+                };
+                out.needs_depth |= soft > 0.0;
+                out.soft |= soft > 0.0;
+                let first_entry = entries.len() as u32;
+                let mut entry = emitter_gpu(
+                    ce,
+                    Mat4::IDENTITY,
+                    None,
+                    dt,
+                    crate::particles::child_seed(seed, k),
+                    0,
+                    ce.texture.is_some(),
+                    false,
+                    soft,
+                );
+                entry.ranges2[2] = 0.0;
+                entry.noise_origin = noise_origin;
+                entries.push(entry);
+                out.systems.push(FrameSystem {
+                    id: sys.id,
+                    first_entry,
+                    ticks: 0,
+                    reset: false,
+                    shift: None,
+                    gpu: false,
+                    blend: ce.blend,
+                    texture: ce.texture,
+                    depth,
+                    layers,
+                    child: Some(k),
+                    max: c.slots.len() as u32,
+                    kind,
+                    mesh: match ce.render {
+                        ParticleRender::Mesh { mesh } => Some(mesh),
+                        _ => None,
+                    },
                 });
             }
         }
@@ -701,7 +928,10 @@ impl ParticleRenderer {
         self.systems.retain(|_, s| s.seen == frame);
         // Far systems first; additive after alpha within the same depth.
         og_core::sort::sort_by(&mut out.systems, |a, b| {
-            b.depth.total_cmp(&a.depth).then(a.id.cmp(&b.id))
+            b.depth
+                .total_cmp(&a.depth)
+                .then(a.id.cmp(&b.id))
+                .then(a.child.cmp(&b.child))
         });
         if !entries.is_empty() {
             let size = EMITTER_STRIDE * entries.len() as u64;
@@ -803,17 +1033,24 @@ impl ParticleRenderer {
 
     /// The draw bind group (emitter entries, view, scene depth): the main
     /// camera's view buffer.
-    pub fn draw_group(&self, device: &wgpu::Device, depth: &wgpu::TextureView) -> wgpu::BindGroup {
-        self.draw_group_of(device, &self.view_buffer, depth)
+    pub fn draw_group(
+        &self,
+        device: &wgpu::Device,
+        depth: &wgpu::TextureView,
+        scene_color: &wgpu::TextureView,
+    ) -> wgpu::BindGroup {
+        self.draw_group_of(device, &self.view_buffer, depth, scene_color)
     }
 
     /// The draw bind group of a camera whose [`ParticleViewGpu`] is in
-    /// `view` (a secondary camera's, `views.rs`).
+    /// `view` (a secondary camera's, `views.rs`); `scene_color`: the scene
+    /// copy distortion reads (a placeholder where the pass has none).
     pub fn draw_group_of(
         &self,
         device: &wgpu::Device,
         view: &wgpu::Buffer,
         depth: &wgpu::TextureView,
+        scene_color: &wgpu::TextureView,
     ) -> wgpu::BindGroup {
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("particle draw"),
@@ -835,6 +1072,10 @@ impl ParticleRenderer {
                     binding: 2,
                     resource: wgpu::BindingResource::TextureView(depth),
                 },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(scene_color),
+                },
             ],
         })
     }
@@ -842,11 +1083,12 @@ impl ParticleRenderer {
     /// Makes the draw pipelines the frame needs (by blend and sample count).
     pub fn ensure_pipelines(&mut self, device: &wgpu::Device, frame: &ParticleFrame, samples: u32) {
         for s in &frame.systems {
-            let key = (s.blend, samples);
+            let key = (s.blend, samples, s.kind);
             if self.draw.contains_key(&key) {
                 continue;
             }
             let blend = match s.blend {
+                _ if s.kind == DrawKind::Distort => wgpu::BlendState::ALPHA_BLENDING,
                 ParticleBlend::Additive => wgpu::BlendState {
                     color: wgpu::BlendComponent {
                         src_factor: wgpu::BlendFactor::SrcAlpha,
@@ -861,7 +1103,12 @@ impl ParticleRenderer {
                 },
                 ParticleBlend::Alpha => wgpu::BlendState::ALPHA_BLENDING,
             };
-            let buffers = [Some(PARTICLE_LAYOUT)];
+            let mesh = s.kind == DrawKind::Mesh;
+            let buffers = if mesh {
+                vec![Some(PARTICLE_LAYOUT), Some(MESH_LAYOUT)]
+            } else {
+                vec![Some(PARTICLE_LAYOUT)]
+            };
             let p = crate::hdr_pipeline(
                 device,
                 crate::HdrPipeline {
@@ -869,11 +1116,16 @@ impl ParticleRenderer {
                     label: "particles",
                     layout: &self.draw_pl,
                     module: &self.draw_module,
-                    vs: "vs",
-                    fs: "fs",
+                    vs: if mesh { "vs_mesh" } else { "vs" },
+                    fs: match s.kind {
+                        DrawKind::Billboard => "fs",
+                        DrawKind::Mesh => "fs_mesh",
+                        DrawKind::Distort => "fs_distort",
+                    },
                     buffers: &buffers,
-                    cull: None,
-                    depth_write: false,
+                    cull: mesh.then_some(wgpu::Face::Back),
+                    // Debris occludes what is behind it, and itself.
+                    depth_write: mesh,
                     depth_compare: wgpu::CompareFunction::LessEqual,
                     blend: Some(blend),
                     samples,
@@ -884,8 +1136,10 @@ impl ParticleRenderer {
         let _ = HDR_FORMAT;
     }
 
-    /// Draws the frame's billboard systems on a camera's layers (`mask`),
-    /// far to near. Returns the draws.
+    /// Draws the frame's 3D systems on a camera's layers (`mask`), far to
+    /// near. `distort`: the group carries the pass's scene copy, so its
+    /// distortion systems draw (elsewhere they are left out). `mesh`: a
+    /// mesh's f32 vertices, indices and index count. Returns the draws.
     #[allow(clippy::too_many_arguments)]
     pub fn draw<'b>(
         &self,
@@ -894,24 +1148,41 @@ impl ParticleRenderer {
         samples: u32,
         group: &wgpu::BindGroup,
         mask: u32,
+        distort: bool,
         texture_group: impl Fn(Option<crate::TextureHandle>) -> &'b wgpu::BindGroup,
+        mesh: impl Fn(crate::MeshHandle) -> Option<(&'b wgpu::Buffer, &'b wgpu::Buffer, u32)>,
     ) -> u32 {
         let mut draws = 0;
-        for s in frame.systems.iter().filter(|s| s.layers & mask != 0) {
+        for s in frame
+            .systems
+            .iter()
+            .filter(|s| s.layers & mask != 0 && (distort || s.kind != DrawKind::Distort))
+        {
             let Some(state) = self.systems.get(&s.id) else {
                 continue;
             };
-            let buffer = if s.gpu {
-                &state.gpu.as_ref().expect("gpu system").buffer
-            } else {
-                state.upload.as_ref().expect("uploaded")
+            let buffer = match s.child {
+                Some(k) => state.children[k].as_ref().expect("uploaded"),
+                None if s.gpu => &state.gpu.as_ref().expect("gpu system").buffer,
+                None => state.upload.as_ref().expect("uploaded"),
             };
-            pass.set_pipeline(&self.draw[&(s.blend, samples)]);
+            let Some(pipeline) = self.draw.get(&(s.blend, samples, s.kind)) else {
+                continue;
+            };
+            pass.set_pipeline(pipeline);
             pass.set_bind_group(1, texture_group(s.texture), &[]);
             let draw_entry = s.first_entry + s.ticks;
             pass.set_bind_group(2, group, &[(draw_entry as u64 * EMITTER_STRIDE) as u32]);
             pass.set_vertex_buffer(0, buffer.slice(..));
-            pass.draw(0..6, 0..state.max);
+            match s.mesh.map(&mesh) {
+                Some(Some((vertices, indices, count))) => {
+                    pass.set_vertex_buffer(1, vertices.slice(..));
+                    pass.set_index_buffer(indices.slice(..), wgpu::IndexFormat::Uint32);
+                    pass.draw_indexed(0..count, 0, 0..s.max);
+                }
+                Some(None) => continue,
+                None => pass.draw(0..6, 0..s.max),
+            }
             draws += 1;
         }
         draws
@@ -948,6 +1219,58 @@ impl ParticleRenderer {
         drop(data);
         staging.unmap();
         Some(slots)
+    }
+}
+
+/// Writes `slots` into a CPU system's vertex buffer, made (again) at its size.
+fn upload(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    buffer: &mut Option<wgpu::Buffer>,
+    slots: &[ParticleState],
+) {
+    let bytes: &[u8] = bytemuck::cast_slice(slots);
+    if bytes.is_empty() {
+        return;
+    }
+    if buffer
+        .as_ref()
+        .is_none_or(|b| b.size() != bytes.len() as u64)
+    {
+        *buffer = Some(device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("particles (cpu)"),
+            size: bytes.len() as u64,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        }));
+    }
+    queue.write_buffer(buffer.as_ref().expect("made"), 0, bytes);
+}
+
+/// A host's own simulation of a system as the frame draws it: its slots
+/// and its sub-emitters' moved from the host's world to the scene's render
+/// origin (`origin.rs`).
+fn take_hosted(
+    cpu: &mut CpuParticles,
+    hosted: &CpuParticles,
+    space: SimulationSpace,
+    origin: Vec3,
+) {
+    cpu.clone_from(hosted);
+    let back = |slots: &mut [ParticleState]| {
+        for p in slots {
+            for (c, o) in p.pos_age.iter_mut().zip(origin.to_array()) {
+                *c -= o;
+            }
+        }
+    };
+    if origin != Vec3::ZERO {
+        if space == SimulationSpace::World {
+            back(&mut cpu.slots);
+        }
+        for c in &mut cpu.children {
+            back(&mut c.slots);
+        }
     }
 }
 
@@ -1013,7 +1336,8 @@ pub(crate) fn sim_source() -> String {
     format!("{NOISE_WGSL}{COMMON_WGSL}{SIM_WGSL}")
 }
 
-/// The particle draw module after the frame group.
+/// The particle draw module after the frame group, the light tables and
+/// the lighting (`fluid_shared_source`: lit particles).
 pub(crate) fn draw_source(frame_wgsl: &str) -> String {
     format!("{frame_wgsl}{NOISE_WGSL}{COMMON_WGSL}{DRAW_WGSL}")
 }

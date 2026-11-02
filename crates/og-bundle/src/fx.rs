@@ -40,6 +40,13 @@
 //! softDistance 0
 //! collision 0.4 0.2                 # <bounce> <friction> (depth-buffer collision in compute)
 //! render billboard                  # billboard | sprite <layer> (2D: drawn as sprites)
+//!                                   #   | mesh <box | sphere | tetrahedron | "<model asset id>">
+//! lit false                         # lit by the scene's lights (3D: billboards and meshes)
+//! distortion 0                      # > 0: bends the scene behind (heat haze), this fraction
+//!                                   #   of the screen at most; billboards only
+//! subEmitter death "fx/sparks.ogt" 8 0.3
+//!                                   # <birth | death | collision> "<emitter asset id>" <count>
+//!                                   #   [<inherit velocity>]; at most 4, one level deep
 //! glow 0                            # sprite mode: strength in the 2D glow buffer
 //! array "fx/smoke.ogt" random       # sprite mode: draw from a texture array (`type texture-array`)
 //!                                   #   instead of `texture`, a layer per particle:
@@ -54,13 +61,43 @@
 //! `<layers>` uses the first that many (default every layer). Every
 //! particle of the emitter is one draw whichever layers they show. A
 //! billboard emitter with an array is refused by the renderer.
+//!
+//! `render mesh` draws a mesh per particle: a built-in shape (a unit `box`,
+//! a `sphere` of diameter 1 or a `tetrahedron` shard) or the first mesh of
+//! a model asset (a glTF). `subEmitter` fires another emitter asset at
+//! this one's particle events (where each particle is born, dies or hits a
+//! collider), `count` particles each, moving at their own start velocity
+//! plus `inherit` times the parent's.
 
 use og_core::ogt::{Document, Entry, Value};
 use og_render::{
-    Burst, ColorCurve, ColorLut, Curve, EmitterShape, MAX_CURVE_KEYS, ParticleAlign, ParticleBlend,
-    ParticleCollision, ParticleEmitter, ParticleRender, SheetMode, SimulationSpace,
-    TextureArrayHandle, TextureHandle,
+    Burst, ColorCurve, ColorLut, Curve, EmitterHandle, EmitterShape, MAX_CURVE_KEYS,
+    MAX_SUB_EMITTERS, MeshHandle, ParticleAlign, ParticleBlend, ParticleCollision, ParticleEmitter,
+    ParticleEventKind, ParticleRender, SheetMode, SimulationSpace, SubEmitter, TextureArrayHandle,
+    TextureHandle,
 };
+
+/// The built-in meshes `render mesh <name>` names.
+pub const PARTICLE_MESHES: &[&str] = &["box", "sphere", "tetrahedron"];
+
+/// What a `render mesh` line names: a built-in shape or a model asset.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ParticleMesh<'a> {
+    /// One of [`PARTICLE_MESHES`].
+    Builtin(&'a str),
+    /// A model's asset id (its first mesh).
+    Asset(&'a str),
+}
+
+/// How an emitter's references become the scene's handles. Each answers
+/// `None` when the caller only checks the text (the cook): a mesh then
+/// draws as handle 0 and a sub-emitter is left out.
+pub struct EmitterLinks<'a> {
+    pub texture: &'a mut dyn FnMut(&str) -> Result<Option<TextureHandle>, String>,
+    pub array: &'a mut dyn FnMut(&str) -> Result<Option<TextureArrayHandle>, String>,
+    pub mesh: &'a mut dyn FnMut(ParticleMesh<'_>) -> Result<Option<MeshHandle>, String>,
+    pub emitter: &'a mut dyn FnMut(&str) -> Result<Option<EmitterHandle>, String>,
+}
 
 /// The `.ogt` type of an emitter file.
 pub const EMITTER_TYPE: &str = "particles";
@@ -139,8 +176,13 @@ pub fn emitter_references(text: &str) -> Vec<String> {
             d.body
                 .entries
                 .iter()
-                .filter(|e| e.key == "texture" || e.key == "array")
-                .filter_map(|e| e.values.first().and_then(Value::as_str).map(str::to_string))
+                .filter_map(|e| match e.key.as_str() {
+                    "texture" | "array" => e.values.first(),
+                    "render" => e.values.get(1),
+                    "subEmitter" => e.values.get(1),
+                    _ => None,
+                })
+                .filter_map(|v| v.as_str().map(str::to_string))
                 .collect()
         })
         .unwrap_or_default()
@@ -157,12 +199,35 @@ pub fn parse_emitter(
 }
 
 /// [`parse_emitter`] with `array` resolving a texture array's asset id
-/// (an `array` line) to the scene's handle.
+/// (an `array` line) to the scene's handle; meshes and sub-emitters are
+/// not resolved (see [`parse_emitter_linked`]).
 pub fn parse_emitter_with(
     text: &str,
     texture: &mut dyn FnMut(&str) -> Result<Option<TextureHandle>, String>,
     array: &mut dyn FnMut(&str) -> Result<Option<TextureArrayHandle>, String>,
 ) -> Result<ParticleEmitter, String> {
+    parse_emitter_linked(
+        text,
+        &mut EmitterLinks {
+            texture,
+            array,
+            mesh: &mut |_| Ok(None),
+            emitter: &mut |_| Ok(None),
+        },
+    )
+}
+
+/// Parses an emitter file, resolving every reference through `links`.
+pub fn parse_emitter_linked(
+    text: &str,
+    links: &mut EmitterLinks<'_>,
+) -> Result<ParticleEmitter, String> {
+    let EmitterLinks {
+        texture,
+        array,
+        mesh,
+        emitter,
+    } = links;
     let doc = Document::parse(text).map_err(|e| e.to_string())?;
     if doc.ty != EMITTER_TYPE {
         return Err(format!(
@@ -178,6 +243,7 @@ pub fn parse_emitter_with(
     }
     let mut em = ParticleEmitter::default();
     let mut bursts = Vec::new();
+    let mut subs = 0;
     for e in &doc.body.entries {
         let line = e.line;
         match e.key.as_str() {
@@ -387,11 +453,113 @@ pub fn parse_emitter_with(
                             .and_then(Value::as_number)
                             .map_or(0, |n| n.as_f32() as i32),
                     },
+                    "mesh" => {
+                        let what = match e.values.get(1) {
+                            Some(v) if v.as_str().is_some() => {
+                                ParticleMesh::Asset(v.as_str().unwrap_or_default())
+                            }
+                            Some(v)
+                                if v.as_word().is_some_and(|w| PARTICLE_MESHES.contains(&w)) =>
+                            {
+                                ParticleMesh::Builtin(v.as_word().unwrap_or_default())
+                            }
+                            _ => {
+                                return Err(format!(
+                                    "line {line}: render mesh <{}> or a model's \"<asset id>\"",
+                                    PARTICLE_MESHES.join(" | ")
+                                ));
+                            }
+                        };
+                        let handle = mesh(what).map_err(|r| format!("line {line}: mesh: {r}"))?;
+                        ParticleRender::Mesh {
+                            mesh: handle.unwrap_or(MeshHandle::from_bits(0)),
+                        }
+                    }
                     other => {
                         return Err(format!(
-                            "line {line}: render `{other}` (billboard, sprite <layer>)"
+                            "line {line}: render `{other}` (billboard, sprite <layer>, mesh <shape>)"
                         ));
                     }
+                }
+            }
+            "lit" => {
+                em.lit = e
+                    .values
+                    .first()
+                    .and_then(Value::as_bool)
+                    .ok_or_else(|| format!("line {line}: lit true | false"))?
+            }
+            "distortion" => {
+                let v = one(e)?;
+                if !(0.0..=1.0).contains(&v) {
+                    return Err(format!(
+                        "line {line}: distortion is a fraction of the screen from 0 to 1"
+                    ));
+                }
+                em.distortion = v;
+            }
+            "events" => {
+                em.events.clear();
+                for i in 0..e.values.len().max(1) {
+                    let kind = match word(e, i)? {
+                        "birth" => ParticleEventKind::Birth,
+                        "death" => ParticleEventKind::Death,
+                        "collision" => ParticleEventKind::Collision,
+                        other => {
+                            return Err(format!(
+                                "line {line}: events `{other}` (birth, death, collision)"
+                            ));
+                        }
+                    };
+                    if !em.events.contains(&kind) {
+                        em.events.push(kind);
+                    }
+                }
+            }
+            "subEmitter" => {
+                let trigger = match word(e, 0)? {
+                    "birth" => ParticleEventKind::Birth,
+                    "death" => ParticleEventKind::Death,
+                    "collision" => ParticleEventKind::Collision,
+                    other => {
+                        return Err(format!(
+                            "line {line}: subEmitter `{other}` (birth, death, collision)"
+                        ));
+                    }
+                };
+                let usage = || {
+                    format!(
+                        "line {line}: subEmitter <birth | death | collision> \"<emitter asset id>\" <count> [<inherit velocity>]"
+                    )
+                };
+                let id = e.values.get(1).and_then(Value::as_str).ok_or_else(usage)?;
+                let num = |i: usize| {
+                    e.values
+                        .get(i)
+                        .and_then(Value::as_number)
+                        .map(|n| n.as_f32())
+                };
+                let count = num(2).ok_or_else(usage)?;
+                if !(1.0..=4096.0).contains(&count) || count.fract() != 0.0 {
+                    return Err(format!(
+                        "line {line}: subEmitter's count is a whole number from 1 to 4096"
+                    ));
+                }
+                subs += 1;
+                if subs > MAX_SUB_EMITTERS {
+                    return Err(format!(
+                        "line {line}: at most {MAX_SUB_EMITTERS} subEmitter lines"
+                    ));
+                }
+                if let Some(handle) =
+                    emitter(id).map_err(|r| format!("line {line}: subEmitter {id}: {r}"))?
+                {
+                    em.sub_emitters.push(SubEmitter {
+                        trigger,
+                        emitter: handle,
+                        count: count as u32,
+                        inherit_velocity: num(3).unwrap_or(0.0),
+                    });
                 }
             }
             "glow" => em.glow = one(e)?.max(0.0),
@@ -427,6 +595,7 @@ pub fn parse_emitter_with(
         }
     }
     em.bursts = bursts;
+    em.validate()?;
     Ok(em)
 }
 

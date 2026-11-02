@@ -114,6 +114,12 @@ pub struct RenderScene {
     /// path's stand-in for the depth buffer the compute path reads;
     /// [`crate::ParticleCollider`]). Empty by default.
     pub particle_colliders: Vec<crate::ParticleCollider>,
+    /// Systems the host simulated itself (its tick ran
+    /// [`crate::CpuParticles::advance`] to read their events), by
+    /// [`ParticleSystem::id`]: the renderer draws these particles and their
+    /// sub-emitters' as they are instead of simulating them, so what is
+    /// drawn is what the game read. A system absent here simulates as usual.
+    pub hosted_particles: Vec<(u64, std::sync::Arc<crate::CpuParticles>)>,
     pub trails: Vec<Trail>,
     pub ribbons: Vec<Ribbon>,
     pub beams: Vec<Beam>,

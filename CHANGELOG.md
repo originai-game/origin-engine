@@ -520,6 +520,22 @@ is one line here, written at the merge that changes
   and the previous frame's weights in its previous section, so the
   skinned prepass's motion vectors follow a morphing face under TAA. A
   save of version 1 restores through the migrating restore.
+- **Mesh, lit and distorting particles; sub-emitters and particle events
+  (R7, batch 2).** An emitter file takes `render mesh <box | sphere |
+  tetrahedron | "model id">` (each particle a small shape that tumbles
+  with its rotation), `lit true` (billboards and meshes shaded by the sun,
+  the sky and local lights), `distortion <0..1>` (billboards that bend the
+  scene behind them: heat haze, shock rings), `subEmitter <birth | death |
+  collision> "<emitter id>" <count> [<inherit velocity>]` (up to four, one
+  level deep) and `events <birth | death | collision>...`. New
+  `og.ParticleEvent` (entity, kind, index, position, velocity) and
+  `ParticleEventKind`: once a game names the event, systems whose emitter
+  has an `events` line are simulated in the tick by the og.particles
+  system (engine randomness, fixed math, carried by snapshots) and drawn
+  as simulated, so gameplay reads exactly the particles shown. A
+  collision event is an impact faster than 0.5 m/s. The cook refuses an
+  emitter whose mesh model or sub-emitter is missing, or that the renderer
+  cannot draw (distortion on a mesh, a fifth sub-emitter).
 
 ## 0.7.7 — 2026-10-31
 

@@ -1600,7 +1600,7 @@ module render {
   const PARTICLES_ARMED u32 4294967295 "ParticleSystem.startTick's default: never written. A looping emitter emits as if started at tick 0; a one-shot (`looping false`) emits nothing until its startTick is written, so a burst spawned in `start` waits for its first use. Write it back to re-arm a one-shot without firing it."
 
   component ParticleSystem {
-    doc "Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay; on an entity with og.TimeGroup they spawn, age and move at the group's scale (og.time.setGroupScale), read as the frame is drawn. They never feed back into the simulation. They simulate in compute (sprite-mode emitters on the CPU), identical either way."
+    doc "Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay; on an entity with og.TimeGroup they spawn, age and move at the group's scale (og.time.setGroupScale), read as the frame is drawn. They never feed back into the simulation. They simulate in compute (sprite-mode emitters, and emitters with sub-emitters, on the CPU), identical either way. An emitter whose file has an `events` line (`events death collision`) is simulated in the tick instead, once the game names og.ParticleEvent: the og.particles system steps it with the engine's randomness and fixed math, sends an og.ParticleEvent for each of those events, and the renderer draws that simulation as it stands, so gameplay reads exactly the particles shown (snapshots and restores carry them)."
     field emitter ParticleEmitter "The emitter asset; 0 draws nothing."
     field seed u32 "The random seed: systems with different seeds differ."
     field startTick u32 "The tick emission started: write the tick (`time.tick`, `world.tick`) to fire a one-shot burst, or to restart one. Its default, PARTICLES_ARMED, is never written: a looping emitter emits as if started at tick 0, while a one-shot (`looping false`) stays armed and emits nothing until a tick is written, so effects spawned ahead of their first use wait." {
@@ -1612,6 +1612,27 @@ module render {
     }
     field layers u32 "Three.js layers, as Mesh.layers: its particles (billboards and 2D sprite particles alike) are drawn by the cameras whose masks share a bit with it (og.Camera, og.CameraView, og.Mirror)." {
       default 1
+    }
+  }
+
+  enum ParticleEventKind {
+    doc "What happened to a particle (og.ParticleEvent.kind; an emitter's `events` and `subEmitter` lines name them)."
+    variant birth "It was spawned."
+    variant death "It reached the end of its lifetime (a particle the emitter's ring reuses before then sends none)."
+    variant collision "It hit a collider faster than 0.5 m/s into it (one settling on the ground sends none): an og.Collider box or sphere in the tick (the emitter's `collision` line, world space)."
+  }
+
+  event ParticleEvent {
+    doc "A particle of an og.ParticleSystem was born, died or hit something in the last tick (read in the tick after, like every event): a bullet's spark that lands, a firework's shell that bursts, debris that rings a bell. Sent only for systems whose emitter names the kind on its `events` line; such systems are simulated in the tick (og.particles), with the engine's randomness, so the events replay. Registered when a game first names it: a world that never does keeps its hash. Sub-emitters' particles send none."
+    field entity Entity "The entity with the og.ParticleSystem."
+    field kind ParticleEventKind "What happened."
+    field index u32 "The particle's index in its system's spawn order (counting from 0 at startTick)."
+    field position Vector3 "Where, in the world." {
+      unit m
+      worldspace world
+    }
+    field velocity Vector3 "Its velocity then, in the world (before a bounce)." {
+      unit mps
     }
   }
 

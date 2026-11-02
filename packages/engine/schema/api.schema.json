@@ -4396,6 +4396,8 @@
         "LightMask2D",
         "Decal",
         "ParticleSystem",
+        "ParticleEventKind",
+        "ParticleEvent",
         "Trail",
         "Beam",
         "RibbonPoint",
@@ -6352,7 +6354,7 @@
         },
         {
           "name": "emitter",
-          "doc": "A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (og-render §2 gives every line with its default and an example; og-cook's fx module parses it): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. A sprite-mode emitter may draw from a texture array instead (`array \"<id>\" [<layers>] [off | life <cycles> | fps <n> | random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures and the array it names are loaded with it; while the array's streaming group is not resident its systems draw nothing. Loaded once per path.",
+          "doc": "A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (og-render §2 gives every line with its default and an example; og-cook's fx module parses it): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard, mesh (`render mesh box | sphere | tetrahedron | \"<model id>\"`: each particle a small lit shape that tumbles with its rotation) or 2D sprite rendering, `lit true` (billboards and meshes shaded by the sun, the sky and local lights), `distortion <0..1>` (billboards that bend the scene behind them: heat haze, shock rings), `subEmitter <birth | death | collision> \"<emitter id>\" <count> [<inherit velocity>]` (up to 4: another emitter's particles born where this one's are born, die or bounce; one level deep) and `events <birth | death | collision>...` (og.ParticleEvent: its systems simulate in the tick). A sprite-mode emitter may draw from a texture array instead (`array \"<id>\" [<layers>] [off | life <cycles> | fps <n> | random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures, array, mesh model and sub-emitters it names are loaded with it (a sub-emitter that fires its parent is refused); while the array's streaming group is not resident its systems draw nothing. Loaded once per path.",
           "params": [
             {
               "name": "world",
@@ -6368,7 +6370,7 @@
             }
           ],
           "returns": "Result<ParticleEmitter>",
-          "returnsDoc": "Refused for a path not in the bundle, or a texture or texture array it cannot load.",
+          "returnsDoc": "Refused for a path not in the bundle, or a texture, texture array, model or sub-emitter it cannot load.",
           "publish": true
         },
         {
@@ -28749,7 +28751,7 @@
     "ParticleSystem": {
       "x-og-kind": "component",
       "x-og-module": "render",
-      "description": "Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay; on an entity with og.TimeGroup they spawn, age and move at the group's scale (og.time.setGroupScale), read as the frame is drawn. They never feed back into the simulation. They simulate in compute (sprite-mode emitters on the CPU), identical either way.",
+      "description": "Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay; on an entity with og.TimeGroup they spawn, age and move at the group's scale (og.time.setGroupScale), read as the frame is drawn. They never feed back into the simulation. They simulate in compute (sprite-mode emitters, and emitters with sub-emitters, on the CPU), identical either way. An emitter whose file has an `events` line (`events death collision`) is simulated in the tick instead, once the game names og.ParticleEvent: the og.particles system steps it with the engine's randomness and fixed math, sends an og.ParticleEvent for each of those events, and the renderer draws that simulation as it stands, so gameplay reads exactly the particles shown (snapshots and restores carry them).",
       "type": "object",
       "properties": {
         "emitter": {
@@ -28791,6 +28793,63 @@
           "default": 1
         }
       },
+      "additionalProperties": false
+    },
+    "ParticleEventKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "What happened to a particle (og.ParticleEvent.kind; an emitter's `events` and `subEmitter` lines name them).",
+      "type": "string",
+      "enum": [
+        "birth",
+        "death",
+        "collision"
+      ],
+      "x-og-variants": {
+        "birth": "It was spawned.",
+        "death": "It reached the end of its lifetime (a particle the emitter's ring reuses before then sends none).",
+        "collision": "It hit a collider faster than 0.5 m/s into it (one settling on the ground sends none): an og.Collider box or sphere in the tick (the emitter's `collision` line, world space)."
+      }
+    },
+    "ParticleEvent": {
+      "x-og-kind": "event",
+      "x-og-module": "render",
+      "description": "A particle of an og.ParticleSystem was born, died or hit something in the last tick (read in the tick after, like every event): a bullet's spark that lands, a firework's shell that bursts, debris that rings a bell. Sent only for systems whose emitter names the kind on its `events` line; such systems are simulated in the tick (og.particles), with the engine's randomness, so the events replay. Registered when a game first names it: a world that never does keeps its hash. Sub-emitters' particles send none.",
+      "type": "object",
+      "properties": {
+        "entity": {
+          "$ref": "#/$defs/Entity",
+          "description": "The entity with the og.ParticleSystem."
+        },
+        "kind": {
+          "$ref": "#/$defs/ParticleEventKind",
+          "description": "What happened."
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The particle's index in its system's spawn order (counting from 0 at startTick)."
+        },
+        "position": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where, in the world.",
+          "x-og-unit": "m",
+          "x-og-worldspace": "world"
+        },
+        "velocity": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Its velocity then, in the world (before a bounce).",
+          "x-og-unit": "mps"
+        }
+      },
+      "required": [
+        "entity",
+        "kind",
+        "index",
+        "position",
+        "velocity"
+      ],
       "additionalProperties": false
     },
     "Trail": {

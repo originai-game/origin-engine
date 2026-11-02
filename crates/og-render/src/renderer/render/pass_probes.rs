@@ -380,9 +380,17 @@ impl Renderer {
                         self.samples,
                         group,
                         u32::MAX,
+                        false,
                         |t: Option<TextureHandle>| match t {
                             None => white,
                             Some(t) => groups[t.index()].as_ref().expect("made before the pass"),
+                        },
+                        |m: crate::MeshHandle| {
+                            self.cache
+                                .meshes
+                                .get(m.index())
+                                .filter(|g| g.full)
+                                .map(|g| (&g.vertices, &g.indices, g.index_count))
                         },
                     );
                 }

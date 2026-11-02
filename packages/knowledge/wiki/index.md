@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2314 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2316 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -1121,6 +1121,7 @@ Field units the docs and Tune use.
 | [`og.OrbitCamera`](camera.md#record-OrbitCamera) | component | camera | — |
 | [`og.OriginShifted`](transform.md#record-OriginShifted) | event | transform | — |
 | [`og.Parent`](transform.md#record-Parent) | component | transform | — |
+| [`og.ParticleEvent`](render.md#record-ParticleEvent) | event | render | — |
 | [`og.ParticleSystem`](render.md#record-ParticleSystem) | component | render | — |
 | [`og.path.create`](path.md#fn-create) | function | path | `og_path_create` |
 | [`og.path.find`](path.md#fn-find) | function | path | `og_path_find` |
@@ -1728,6 +1729,7 @@ Field units the docs and Tune use.
 | [`PaperdollStat`](ui.md#type-PaperdollStat) | desc struct | ui | — |
 | [`ParticleEmitter`](render.md#type-ParticleEmitter) | handle | render | — |
 | [`ParticleEmitter()`](render.md#column-ParticleEmitter) | column kind | render | — |
+| [`ParticleEventKind`](render.md#type-ParticleEventKind) | enum | render | — |
 | [`PARTICLES_ARMED`](render.md#const-PARTICLES_ARMED) | constant | render | — |
 | [`ParticlesDesc`](ui.md#type-ParticlesDesc) | desc struct | ui | — |
 | [`ParticleShape`](ui.md#type-ParticleShape) | enum | ui | — |

@@ -8332,7 +8332,7 @@ export interface Decal {
 export declare const PARTICLES_ARMED: 4294967295;
 
 /**
- * Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay; on an entity with og.TimeGroup they spawn, age and move at the group's scale (og.time.setGroupScale), read as the frame is drawn. They never feed back into the simulation. They simulate in compute (sprite-mode emitters on the CPU), identical either way.
+ * Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay; on an entity with og.TimeGroup they spawn, age and move at the group's scale (og.time.setGroupScale), read as the frame is drawn. They never feed back into the simulation. They simulate in compute (sprite-mode emitters, and emitters with sub-emitters, on the CPU), identical either way. An emitter whose file has an `events` line (`events death collision`) is simulated in the tick instead, once the game names og.ParticleEvent: the og.particles system steps it with the engine's randomness and fixed math, sends an og.ParticleEvent for each of those events, and the renderer draws that simulation as it stands, so gameplay reads exactly the particles shown (snapshots and restores carry them).
  *
  * The value of the `ParticleSystem` component (token `og.ParticleSystem`).
  */
@@ -8363,6 +8363,41 @@ export interface ParticleSystem {
    * @default 1
    */
   layers: number;
+}
+
+/**
+ * What happened to a particle (og.ParticleEvent.kind; an emitter's `events` and `subEmitter` lines name them).
+ * - `"birth"`: It was spawned.
+ * - `"death"`: It reached the end of its lifetime (a particle the emitter's ring reuses before then sends none).
+ * - `"collision"`: It hit a collider faster than 0.5 m/s into it (one settling on the ground sends none): an og.Collider box or sphere in the tick (the emitter's `collision` line, world space).
+ */
+export type ParticleEventKind = "birth" | "death" | "collision";
+
+/**
+ * A particle of an og.ParticleSystem was born, died or hit something in the last tick (read in the tick after, like every event): a bullet's spark that lands, a firework's shell that bursts, debris that rings a bell. Sent only for systems whose emitter names the kind on its `events` line; such systems are simulated in the tick (og.particles), with the engine's randomness, so the events replay. Registered when a game first names it: a world that never does keeps its hash. Sub-emitters' particles send none.
+ *
+ * The payload of the `ParticleEvent` event (token `og.ParticleEvent`).
+ */
+export interface ParticleEvent {
+  /** The entity with the og.ParticleSystem. */
+  readonly entity: Entity;
+  /** What happened. */
+  readonly kind: ParticleEventKind;
+  /** The particle's index in its system's spawn order (counting from 0 at startTick). */
+  readonly index: number;
+  /**
+   * Where, in the world.
+   *
+   * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
+   */
+  readonly position: Vector3;
+  /**
+   * Its velocity then, in the world (before a bounce).
+   *
+   * @unit mps (metres per second)
+   */
+  readonly velocity: Vector3;
 }
 
 /**
@@ -49091,9 +49126,13 @@ export declare namespace og {
    */
   const Decal: ComponentType<{ readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly uvMin: FieldSpec<"Vector2">; readonly uvMax: FieldSpec<"Vector2">; readonly emissive: FieldSpec<"Color">; readonly roughness: FieldSpec<"f32">; readonly angleFade: FieldSpec<"f32">; readonly normalMin: FieldSpec<"Vector2">; readonly normalMax: FieldSpec<"Vector2">; readonly normalScale: FieldSpec<"f32">; readonly visible: FieldSpec<"bool"> }, Decal>;
   /**
-   * Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay; on an entity with og.TimeGroup they spawn, age and move at the group's scale (og.time.setGroupScale), read as the frame is drawn. They never feed back into the simulation. They simulate in compute (sprite-mode emitters on the CPU), identical either way.
+   * Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay; on an entity with og.TimeGroup they spawn, age and move at the group's scale (og.time.setGroupScale), read as the frame is drawn. They never feed back into the simulation. They simulate in compute (sprite-mode emitters, and emitters with sub-emitters, on the CPU), identical either way. An emitter whose file has an `events` line (`events death collision`) is simulated in the tick instead, once the game names og.ParticleEvent: the og.particles system steps it with the engine's randomness and fixed math, sends an og.ParticleEvent for each of those events, and the renderer draws that simulation as it stands, so gameplay reads exactly the particles shown (snapshots and restores carry them).
    */
   const ParticleSystem: ComponentType<{ readonly emitter: FieldSpec<"ParticleEmitter">; readonly seed: FieldSpec<"u32">; readonly startTick: FieldSpec<"u32">; readonly stopTick: FieldSpec<"u32">; readonly visible: FieldSpec<"bool">; readonly layers: FieldSpec<"u32"> }, ParticleSystem>;
+  /**
+   * A particle of an og.ParticleSystem was born, died or hit something in the last tick (read in the tick after, like every event): a bullet's spark that lands, a firework's shell that bursts, debris that rings a bell. Sent only for systems whose emitter names the kind on its `events` line; such systems are simulated in the tick (og.particles), with the engine's randomness, so the events replay. Registered when a game first names it: a world that never does keeps its hash. Sub-emitters' particles send none.
+   */
+  const ParticleEvent: EventType<ParticleEvent>;
   /**
    * A streak behind the entity: its world positions over the last `lifetime` seconds as a camera-facing strip, from widthStart and color at the head to widthEnd and colorEnd at the tail.
    */
@@ -49668,11 +49707,11 @@ export declare namespace og {
      */
     function environment(world: World, path: string): Result<EnvironmentMap>;
     /**
-     * A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (og-render §2 gives every line with its default and an example; og-cook's fx module parses it): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard or 2D sprite rendering. A sprite-mode emitter may draw from a texture array instead (`array "<id>" [<layers>] [off | life <cycles> | fps <n> | random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures and the array it names are loaded with it; while the array's streaming group is not resident its systems draw nothing. Loaded once per path.
+     * A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles` (og-render §2 gives every line with its default and an example; og-cook's fx module parses it): shape, rate and bursts, lifetime, speed, size and colour over life, gravity, drag, noise, a texture and sprite sheet, blending, collision, billboard, mesh (`render mesh box | sphere | tetrahedron | "<model id>"`: each particle a small lit shape that tumbles with its rotation) or 2D sprite rendering, `lit true` (billboards and meshes shaded by the sun, the sky and local lights), `distortion <0..1>` (billboards that bend the scene behind them: heat haze, shock rings), `subEmitter <birth | death | collision> "<emitter id>" <count> [<inherit velocity>]` (up to 4: another emitter's particles born where this one's are born, die or bounce; one level deep) and `events <birth | death | collision>...` (og.ParticleEvent: its systems simulate in the tick). A sprite-mode emitter may draw from a texture array instead (`array "<id>" [<layers>] [off | life <cycles> | fps <n> | random]`: each particle shows a layer by its age, at a rate, or one at random for its life; one draw per array whatever the layers; `round true` fades each particle to the soft dot's round edge). The textures, array, mesh model and sub-emitters it names are loaded with it (a sub-emitter that fires its parent is refused); while the array's streaming group is not resident its systems draw nothing. Loaded once per path.
      *
      * @param world The world whose renderer owns it.
      * @param path The asset id, such as `fx/sparks.ogt`.
-     * @returns Refused for a path not in the bundle, or a texture or texture array it cannot load.
+     * @returns Refused for a path not in the bundle, or a texture, texture array, model or sub-emitter it cannot load.
      */
     function emitter(world: World, path: string): Result<ParticleEmitter>;
     /**

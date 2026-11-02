@@ -274,6 +274,20 @@ fn particles_cpu_match_their_reference() {
     assert_eq!(s.particle_collision_skipped, 2);
 }
 
+/// R7: lit smoke, lit mesh debris kicking dust at each bounce (a collision
+/// sub-emitter, on the CPU path) and a heat haze, under a low sun.
+#[test]
+fn lit_mesh_and_distorting_particles_match_their_reference() {
+    let s = check("particles-lit").stats;
+    assert_eq!(s.particle_systems, 3);
+    assert!(
+        s.particles_cpu > 20,
+        "{} live CPU particles",
+        s.particles_cpu
+    );
+    assert_eq!(s.particle_collision_skipped, 0);
+}
+
 #[test]
 fn fx_2d_matches_its_reference() {
     let s = check("fx-2d").stats;

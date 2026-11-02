@@ -182,6 +182,11 @@ render billboard          # billboard (3D) | sprite <layer>: 2D, drawn in the sp
 glow 0                    # sprite mode: strength in the 2D glow
 array "fx/smoke.ogt" random   # sprite mode: draw from a texture array, [<layers>] [off | life <cycles> | fps <n> | random]
 round false               # sprite mode: fade each particle to a round edge over its texture or layer
+render mesh box           # or sphere | tetrahedron | "models/shard.glb": each particle a small tumbling shape (3D)
+lit true                  # billboards and meshes shaded by the sun, the sky and local lights (default false: unlit)
+distortion 0.02           # billboards bend the scene behind them by up to this fraction of the screen (heat haze, shock rings)
+events death collision    # birth | death | collision: send og.ParticleEvent for these (simulated in the tick)
+subEmitter death "fx/pop.ogt" 12 0.3   # <birth | death | collision> "<emitter id>" <count> [<inherit velocity>], up to 4
 ```
 
 - Directions: `point`, `cone` and `box` emit along the entity's +y
@@ -205,8 +210,30 @@ round false               # sprite mode: fade each particle to a round edge over
 - `collision` bounces 3D billboards off what the depth buffer shows on the
   full tier (sparks on a floor); sprite-mode emitters skip it. It is a
   look, never gameplay: particles never touch the simulation.
-- The cook refuses an unknown line, a missing texture or array and a
-  value of the wrong shape, naming the line.
+- `render mesh` draws each particle as a shape (debris, shards, leaves)
+  scaled by its size and turned by its rotation; `lit true` shades it
+  (and lit billboards: smoke the sun lights from one side). `distortion`
+  draws a billboard as a bend in the scene behind it rather than a colour
+  (the texture's alpha shapes it); not on a mesh emitter.
+- `subEmitter` starts another emitter's particles where one of this
+  emitter's is born, dies or hits something (a firework's shell bursting
+  into sparks): `count` particles each, inheriting that fraction of its
+  velocity. One level deep: a sub-emitter's own `subEmitter` lines are
+  ignored. A look, like the rest, unless the emitter has an `events` line.
+- `events` is the one way particles reach gameplay. Once the game names
+  `og.ParticleEvent`, a system whose emitter has an `events` line is
+  simulated in the tick (an engine system, with the engine's
+  randomness, carried by snapshots) and drawn as simulated, so what the
+  game reads is what the player sees. Its `collision` hits og.Collider
+  boxes and spheres faster than 0.5 m/s. Read them the tick after:
+
+  ```ts
+  for (const e of world.events(og.ParticleEvent)) {
+    if (e.kind === "collision") ring(e.position);
+  }
+  ```
+- The cook refuses an unknown line, a missing texture, array, mesh model
+  or sub-emitter, and a value of the wrong shape, naming the line.
 
 A hit's sparks in a 2D game (Hollowbell's `fx/hit.ogt`):
 

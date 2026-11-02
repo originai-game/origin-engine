@@ -712,7 +712,7 @@ impl Renderer {
             &device,
             &frame_layout,
             &sprite_layout,
-            FRAME_WGSL,
+            &fluid_shared_source(),
         );
         let lights_2d = light2d::Light2dRenderer::new(&device);
         let ribbon_sampler = device.create_sampler(&wgpu::SamplerDescriptor {

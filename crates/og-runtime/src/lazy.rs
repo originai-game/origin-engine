@@ -203,6 +203,12 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: crate::video::PLAYER,
         enable: |w, _| w.grant(crate::video::VIDEO_SYSTEM, &[crate::video::PLAYER]),
     },
+    // R7: og.particles simulates the systems whose emitters send events
+    // and sends them, once a game names the event.
+    Lazy {
+        name: crate::particle_events::EVENT,
+        enable: crate::particle_events::enable,
+    },
     // R10: virtual cameras; og.camera's brain writes them (and
     // og.PostEffects, for a shot's focus). Naming one registers all three.
     Lazy {

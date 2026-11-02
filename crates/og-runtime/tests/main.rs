@@ -7,6 +7,7 @@
 mod ao_resolution;
 mod armed_emitters;
 mod art_contract;
+mod particle_events;
 // It reads the frame recorder, which a publish build has not.
 #[cfg(not(feature = "publish"))]
 mod baked_scenes;

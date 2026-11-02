@@ -24,6 +24,7 @@ struct Emitter {
   spawn: vec4<u32>,        // first index (low 32 bits), count, first % max, bursts
   info: vec4<u32>,         // max particles, seed
   noise_origin: array<vec4<f32>, 2>,  // the turbulence's lattice at the render origin: xyz whole cells, then the rest (origin.rs)
+  look: vec4<f32>,         // x: 1 lit, y: distortion (fraction of the screen's height), z: 1 a mesh per particle
 };
 
 struct ParticleView {
