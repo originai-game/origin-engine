@@ -26,7 +26,7 @@ struct VertexInput {
 };
 
 struct VertexOutput {
-  world: vec3<f32>,   // world position (projected by the engine)
+  world: vec3<f32>,   // world position from camera().origin (projected by the engine)
   normal: vec3<f32>,  // world normal
   uv: vec2<f32>,
   color: vec4<f32>,
@@ -60,6 +60,10 @@ struct Camera {
   position: vec3<f32>,
   forward: vec3<f32>,
   time: f32,
+  // Where the zero of world positions (VertexOutput.world, position) is in
+  // the world: the render origin (origin.rs), zero until the camera is
+  // kilometres from the world's zero. Add it for a pattern laid in the world.
+  origin: vec3<f32>,
 };
 
 // The material's eight texture slots, by number (StandardMaterialDesc's

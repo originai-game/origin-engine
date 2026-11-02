@@ -120,9 +120,11 @@ impl RuntimeView {
         let camera = if !describe {
             serde_json::Value::Null
         } else {
+            // In the world: the frame is drawn from its render origin.
+            let (position, target) = (c.position + scene.origin, c.target + scene.origin);
             json!({
-            "position": [c.position.x, c.position.y, c.position.z],
-            "target": [c.target.x, c.target.y, c.target.z],
+            "position": [position.x, position.y, position.z],
+            "target": [target.x, target.y, target.z],
             "up": [c.up.x, c.up.y, c.up.z],
             "projection": og_render::projection_name(c),
             "fov": match c.projection { og_render::Projection::Perspective { fov_y_degrees } => json!(fov_y_degrees), _ => json!(null) },

@@ -106,7 +106,12 @@ pub(crate) fn apply_bakes(rs: &mut RenderState) -> Vec<(usize, String)> {
             continue;
         }
         let room = rs.probe_bakes.content.room(&rs.scene, &p);
-        let k = key(&p, room.hash);
+        // Keyed by its place in the world, wherever the frame is drawn from.
+        let mut at = p;
+        if rs.scene.origin != glam::Vec3::ZERO {
+            at.position += rs.scene.origin;
+        }
+        let k = key(&at, room.hash);
         match rs.probe_bakes.tried.get(&k) {
             Some(&h) => rs.scene.reflection_probes[i].baked = h,
             None => wanted.push((i, k.clone())),

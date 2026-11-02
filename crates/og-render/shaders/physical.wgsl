@@ -312,6 +312,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   hook.uv = uv;
   hook.color = in.color;
   hook.time = frame.time.x;
+  hook.origin = frame.origin.xyz;
   hook.eye = frame.view_pos.xyz;
   hook.front = hook_front;
   let params = shader_params();

@@ -10,7 +10,7 @@ struct ScatterUniform {
   prev_view_proj: mat4x4<f32>,
   wind: vec4<f32>,            // xy: the wind's horizontal direction (x, z), z: the mean lean (0: still), w: the gust
   wind_phase: vec4<f32>,      // xy: the gust wave's two time phases this frame, zw: the previous frame's
-  wind_shape: vec4<f32>,      // x: the wave's wavenumber (rad/m), y: the mesh's top above its origin (m)
+  wind_shape: vec4<f32>,      // x: the wave's wavenumber (rad/m), y: the mesh's top above its origin (m), zw: the frame's origin's x and z (origin.rs)
 };
 @group(2) @binding(0) var<uniform> scatter: ScatterUniform;
 
@@ -70,8 +70,11 @@ fn scatter_sway(local: vec3<f32>, base: vec3<f32>, scale: f32, phase: vec2<f32>)
     return vec3<f32>(0.0);
   }
   let dir = scatter.wind.xy;
-  let jitter = f32(scatter_hash(bitcast<u32>(base.x) ^ scatter_hash(bitcast<u32>(base.z))) >> 8u) / 16777216.0;
-  let x = scatter.wind_shape.x * dot(base.xz, dir) + jitter;
+  // The copy's place in the world: the same bits wherever the frame's
+  // origin is (scatter.rs places the copies in the world first).
+  let at = base.xz + scatter.wind_shape.zw;
+  let jitter = f32(scatter_hash(bitcast<u32>(at.x) ^ scatter_hash(bitcast<u32>(at.y))) >> 8u) / 16777216.0;
+  let x = scatter.wind_shape.x * dot(at, dir) + jitter;
   let wave = (sin(x - phase.x) + 0.5 * sin(2.3 * x + 1.7 - phase.y)) / 1.5;
   let h = local.y * scale;
   let d = lean * (1.0 + scatter.wind.w * wave) * h * min(local.y / top, 1.0);

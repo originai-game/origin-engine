@@ -466,7 +466,7 @@ struct ScatterGpu {
     /// previous frame's.
     wind_phase: [f32; 4],
     /// x: the gust wave's wavenumber (rad/m), y: the mesh's top above its
-    /// origin (m).
+    /// origin (m), zw: the scene's origin's x and z (`origin.rs`).
     wind_shape: [f32; 4],
 }
 
@@ -481,6 +481,9 @@ struct ChunkKey {
     source: (u64, Vec<usize>),
     params: [u32; 8],
     transform: [u32; 16],
+    /// The scene's origin the chunk's transforms are relative to
+    /// (`origin.rs`): `transform` is its terrain's placement in the world.
+    origin: [u32; 3],
     layers: Vec<u32>,
     mesh: usize,
     chunk: (u32, u32),
@@ -876,7 +879,21 @@ impl ScatterRenderer {
             {
                 params[k] = v.to_bits();
             }
-            let transform = model.to_cols_array().map(f32::to_bits);
+            // The copies are placed in the world (the terrain's placement
+            // plus the scene's origin: exact, as the origin is on a coarse
+            // grid) and then moved by the origin, so each copy's place, and
+            // the wind's phase hashed from its bits, is the same bits
+            // wherever the origin is (`origin.rs`).
+            let world = scene.origin != Vec3::ZERO;
+            let placed_on = if world {
+                let mut w = t.clone();
+                w.transform.w_axis += scene.origin.extend(0.0);
+                std::borrow::Cow::Owned(w)
+            } else {
+                std::borrow::Cow::Borrowed(t)
+            };
+            let transform = placed_on.transform.to_cols_array().map(f32::to_bits);
+            let origin = scene.origin.to_array().map(f32::to_bits);
             let layers: Vec<u32> = t
                 .layers
                 .iter()
@@ -931,6 +948,7 @@ impl ScatterRenderer {
                     source: (revisions[di], under),
                     params,
                     transform,
+                    origin,
                     layers: layers.clone(),
                     mesh: d.mesh.index(),
                     chunk: (cx, cz),
@@ -955,12 +973,17 @@ impl ScatterRenderer {
                 };
                 'cells: for z in cz * CHUNK_CELLS..((cz + 1) * CHUNK_CELLS).min(cells.y as u32) {
                     for x in cx * CHUNK_CELLS..((cx + 1) * CHUNK_CELLS).min(cells.x as u32) {
-                        match t.copy_at(ground, &s, x, z) {
+                        match placed_on.copy_at(ground, &s, x, z) {
                             None => {
                                 complete = false;
                                 break 'cells;
                             }
-                            Some(Some((_, m, _))) => placed.push(m),
+                            Some(Some((_, mut m, _))) => {
+                                if world {
+                                    m.w_axis -= scene.origin.extend(0.0);
+                                }
+                                placed.push(m)
+                            }
                             Some(None) => {}
                         }
                     }
@@ -1023,7 +1046,12 @@ impl ScatterRenderer {
                 prev_view_proj: prev_view_proj.to_cols_array_2d(),
                 wind: wind_row,
                 wind_phase: [now[0], now[1], prev_phase[0], prev_phase[1]],
-                wind_shape: [std::f32::consts::TAU / WIND_WAVELENGTH, mesh_top, 0.0, 0.0],
+                wind_shape: [
+                    std::f32::consts::TAU / WIND_WAVELENGTH,
+                    mesh_top,
+                    scene.origin.x,
+                    scene.origin.z,
+                ],
             };
             queue.write_buffer(&self.uniform, si as u64 * SLOT, bytemuck::bytes_of(&gpu));
             let shader = shader_of(d.material.index());

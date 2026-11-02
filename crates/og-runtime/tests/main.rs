@@ -29,6 +29,7 @@ mod prefabs;
 mod profile2d;
 mod raycast_record_cost;
 mod render_interpolation;
+mod render_origin;
 mod render_quality;
 mod render_raycast;
 mod restored_event;

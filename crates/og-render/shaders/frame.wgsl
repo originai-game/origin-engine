@@ -44,6 +44,7 @@ struct Frame {
   // Water (`water.rs`): caustics on what lies below the first surface that has them.
   caustics: vec4<f32>,        // x: the surface's height, y: strength (0: none), z: cells per metre, w: fade per metre of depth
   caustics_area: vec4<f32>,   // xy: the surface's min xz, zw: its max xz
+  caustics_cells: array<vec4<f32>, 2>,  // the two cell layers at the frame's origin: xy whole cells, zw the rest (origin.rs)
   shadow: vec4<f32>,          // x: the sun's softness (0: hard), y: 1 when point lights' shadows are paraboloids, zw: unused
   // Stylisation (stylise.rs): the retro-3D vertex path and the material style.
   stylise: vec4<f32>,         // xy: the vertex snap grid in cells (0: none), z: affine texturing, w: depth bits (0: full)
@@ -62,6 +63,7 @@ struct Frame {
   hemi_sky: vec4<f32>,        // rgb: the hemisphere light's sky colour, w: intensity / pi (0: off)
   hemi_ground: vec4<f32>,     // rgb: its ground colour
   material_surface: vec4<f32>,  // the material style's surface: x 0 none, 1 clay, 2 paper, 3 plastic; y strength; z scale (m)
+  origin: vec4<f32>,          // xyz: where the zero of the frame's coordinates is in the world (origin.rs)
 };
 
 // The hemisphere light (three.js HemisphereLight) as irradiance in the IBL's units: added beside the environment's

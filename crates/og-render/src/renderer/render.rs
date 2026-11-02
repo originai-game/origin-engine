@@ -879,6 +879,7 @@ impl Renderer {
                     shadow_size,
                     light.shadow_bias,
                     light.shadow_normal_bias,
+                    scene.origin,
                 )
             } else {
                 frame::fit_cascades(
@@ -891,6 +892,7 @@ impl Renderer {
                     shadow_size,
                     self.info.shadow_cascades as usize,
                     light.cascade_blend,
+                    scene.origin,
                 )
             }
         } else {
@@ -1287,7 +1289,7 @@ impl Renderer {
                 scene.tick,
                 scene.tick_rate,
             ),
-            caustics: water::caustics(scene_water),
+            caustics: water::caustics(scene_water, scene.origin),
             shadow: [
                 if cascades.is_empty() {
                     0.0
@@ -1340,7 +1342,12 @@ impl Renderer {
                 [g[0], g[1], g[2], 0.0]
             },
             material_surface: scene.stylise.material.surface_uniform(),
+            origin: scene.origin.extend(0.0).to_array(),
         };
+        // The shadow passes' clock, and the scene's origin for the hooks
+        // (`h.origin`, `origin.rs`).
+        let t = uniform.atmosphere.time;
+        let shadow_time = [t[0], scene.origin.x, scene.origin.y, scene.origin.z];
         let mut shadow_slots = vec![bytemuck::Zeroable::zeroed(); SHADOW_SLOTS];
         for (i, c) in cascades.iter().enumerate() {
             uniform.cascade_view_proj[i] = c.view_proj.to_cols_array_2d();
@@ -1348,7 +1355,7 @@ impl Renderer {
             shadow_slots[i] = ShadowPassUniform {
                 view_proj: c.view_proj.to_cols_array_2d(),
                 light: [0.0; 4],
-                time: uniform.atmosphere.time,
+                time: shadow_time,
                 paraboloid: [0.0; 4],
                 pad: [0.0; 36],
             };
@@ -1360,7 +1367,7 @@ impl Renderer {
                 shadow_slots[CASCADES + layer] = ShadowPassUniform {
                     view_proj: vp.to_cols_array_2d(),
                     light: ls.position.extend(ls.range).to_array(),
-                    time: uniform.atmosphere.time,
+                    time: shadow_time,
                     // Hemisphere 0 below the light, 1 above (frame.rs).
                     paraboloid: if ls.paraboloid {
                         [
@@ -1399,7 +1406,7 @@ impl Renderer {
             u.view_pos = mirrored.position.extend(0.0).to_array();
             u.view_forward = f.forward.extend(u.view_forward[3]).to_array();
             (u.view_right, u.view_up) = f.axes();
-            u.caustics = [[0.0; 4]; 2];
+            u.caustics = [[0.0; 4]; 4];
             u.cluster = self.reflection_clusters[k].params;
             self.queue
                 .write_buffer(&self.reflection_buffer[k], 0, bytemuck::bytes_of(&u));
@@ -2130,6 +2137,7 @@ impl Renderer {
                     &self.post.white
                 },
                 ao.map_or(0.0, |a| a.direct),
+                scene.origin,
                 &self.post.white,
                 &|h| {
                     self.cache

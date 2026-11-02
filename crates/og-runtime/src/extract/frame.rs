@@ -20,7 +20,10 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     // A review camera frames what the last frame drew for its entity, so
     // the models below pick their levels for it (once more at the end).
     let ids = std::mem::take(&mut rs.ids.instances);
-    let framed = super::review::bounds(rs, &h, &ids);
+    // The last frame was drawn from its render origin; this one is built
+    // in the world and moved to its own at the end (`rebase`).
+    let drawn_at = std::mem::take(&mut rs.scene.origin);
+    let framed = super::review::bounds(rs, &h, &ids).map(|(a, b)| (a + drawn_at, b + drawn_at));
     rs.ids.instances = ids;
     let size = backend_size(rs);
     let camera = resource(world, rs.camera.as_ref());
@@ -77,6 +80,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         .and_then(|c| c["layers"].as_u64())
         .map_or(1, |x| x as u32);
     scene.camera_cut = false;
+    let (mut origin, mut look_along) = (Vec3::ZERO, None);
     if let Some(c) = &camera {
         let (position, rot) = super::interpolate::camera_pose(c);
         let (position, rot, cut) = super::interpolate::camera(&rs.interp, position, rot);
@@ -85,6 +89,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         cam.position = position;
         cam.target = position + rot * Vec3::NEG_Z;
         cam.up = rot * Vec3::Y;
+        origin = render_origin(position);
+        look_along = Some(rot * Vec3::NEG_Z);
         cam.near = f(c, "near", 0.1);
         cam.far = f(c, "far", 2000.0);
         let zoom = f(c, "zoom", 1.0).max(0.01);
@@ -603,7 +609,46 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     let shifts = super::interpolate::ui_shifts(rs, &mut h, camera.as_deref());
     super::modules::emit(rs, &shifts);
     super::interpolate::end(rs, &mut h);
+    rebase(&mut rs.scene, origin, look_along);
     rs.hierarchy = h;
+}
+
+/// The render origin's grid (m): a power of two, so moving a position near
+/// a grid point to it is exact.
+pub(crate) const RENDER_GRID: f32 = 8192.0;
+
+/// The render origin for a camera at `position`: the nearest point of the
+/// [`RENDER_GRID`], so the frame is drawn within 4096 m of the camera on
+/// every axis, and a scene whose camera stays within 4096 m of the world's
+/// zero is drawn at it, exactly as before render origins.
+pub(crate) fn render_origin(position: Vec3) -> Vec3 {
+    if !position.is_finite() {
+        return Vec3::ZERO;
+    }
+    (position / RENDER_GRID).round() * RENDER_GRID
+}
+
+/// Moves the frame, built in the world, to its render origin
+/// (`og_render::RenderScene::rebase`): the GPU then works on positions
+/// within a few kilometres of the camera, so nothing jitters however far
+/// from the world's zero it is. The camera looks along `forward` (from its
+/// rotation, exact) rather than at the target `position + forward`, which
+/// was rounded at the camera's distance from the world's zero, unless
+/// something since turned it (the review camera).
+fn rebase(scene: &mut og_render::RenderScene, origin: Vec3, forward: Option<Vec3>) {
+    if origin == Vec3::ZERO {
+        return;
+    }
+    let cam = scene.camera;
+    let look = cam.target - cam.position;
+    // What rounding position + forward at this distance can do to it.
+    let rounding = 4.0 * cam.position.abs().max_element() * f32::EPSILON + 1e-4;
+    scene.rebase(origin);
+    if let Some(f) = forward
+        && (look - f).length() <= rounding
+    {
+        scene.camera.target = scene.camera.position + f;
+    }
 }
 
 /// The colliders CPU-simulated particles bounce off

@@ -103,6 +103,7 @@ pub use ssr::ScreenSpaceReflections;
 mod material;
 mod metaballs;
 mod mips;
+mod origin;
 mod overlay;
 pub mod particles;
 pub mod ui;
@@ -461,6 +462,9 @@ pub struct Renderer {
     culling_counts: bool,
     /// The previous frame's unjittered view-projection, when TAA history is valid.
     taa_history: Option<Mat4>,
+    /// The scene origin the last frame was drawn at ([`RenderScene::origin`]):
+    /// the history above is in its coordinates.
+    drawn_origin: Vec3,
     /// The last frame's stylisation primitives, on or off
     /// ([`Stylise::chain_bits`]): a change resets the TAA history.
     stylise_chain: Option<u16>,

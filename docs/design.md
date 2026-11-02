@@ -969,6 +969,36 @@ style `ramp` takes a fifth number. The cook's `color_textures uastc`
 (project.ogt, §2.5) packs colour textures as UASTC where ETC1S's 4×4
 block loss shows on foliage and bark, overridable for the web export.
 
+**Render origin (R12).** The frame is drawn relative to a point near
+the camera, so the GPU's f32 arithmetic works on numbers within a few
+kilometres however far the world reaches (`og-render/src/origin.rs`).
+Extraction builds the frame in the world, then moves it to the render
+origin, the point of an 8192 m grid nearest the camera
+(`extract::render_origin`): a power-of-two grid, so `p - origin` is exact
+for every position near it, and a camera within 4096 m of the world's
+zero draws at it, exactly as before. `RenderScene::rebase` moves every
+world-space position the frame draws (instances and their previous
+transforms, cameras and views, lights, sprites, text, particle systems
+and colliders, trails, ribbons, beams, scene lines and points, decals,
+probes and light volumes, water, terrains, fog heights, 2D lights,
+fluids) and records the origin in `RenderScene::origin`; screen-space
+sets and the overlay stay. The camera's look comes from its rotation, not
+from a target `position + forward` rounded at its distance from the
+world's zero. What the renderer keeps between frames moves with the
+origin, so a move is invisible: TAA's history and the previous
+view-projection (`origin::shift_matrix`), world-space particles (a shift
+dispatch on the GPU, the slots on the CPU) and trail histories. Patterns
+laid in the world add the origin back, in f64 on the CPU and without the
+whole repeats, so they stay put: terrain layer uvs, the lake's normal-map
+layers, caustic cells and particle turbulence (whole lattice cells plus
+the rest), the stylised surface origin, the shadow cascades' texel grid,
+and the wind phase of scattered copies (placed in the world, then moved,
+so their bits hash the same). Material hooks read `h.origin` and full
+custom shaders `camera().origin` for patterns of their own. Rendering
+stays presentation: the origin never reaches the tick. A world placed
+100 km out still holds f32 positions (7.8 mm apart there); keeping the
+simulation precise is the tick-owned rebase of `og.WorldOrigin` (§2.4).
+
 **Shared frames.** A native engine process can show its frames in another
 process's window with no copy through the CPU: Origin Desktop's Preview,
 while its built-in runner runs a Session's engine. The runner names the

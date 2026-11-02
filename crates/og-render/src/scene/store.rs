@@ -65,6 +65,7 @@ impl RenderScene {
             ui_vectors: Vec::new(),
             ui_materials: Vec::new(),
             custom_post: Vec::new(),
+            origin: glam::Vec3::ZERO,
             views: Vec::new(),
             tick: 0,
             tick_rate: 60.0,
