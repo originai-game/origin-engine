@@ -189,6 +189,34 @@ pub fn og_rng_stream_fork(stream: u32, label: String) -> u32 {
         None => 0,
     }
 }
+/// The weights a `weighted` call passes (a JSON list); none on bad JSON.
+fn weights(text: &str) -> Vec<f64> {
+    serde_json::from_str::<Vec<Option<f64>>>(text)
+        .map(|w| w.into_iter().map(|x| x.unwrap_or(f64::NAN)).collect())
+        .unwrap_or_default()
+}
+
+fn weighted(r: &mut Rng, text: &str) -> i32 {
+    og_core::procgen::weighted(r, &weights(text)).map_or(-1, |i| i as i32)
+}
+
+fn permutation(r: &mut Rng, n: u32) -> String {
+    serde_json::to_string(&og_core::procgen::permutation(r, n.min(1 << 24)))
+        .unwrap_or_else(|_| "[]".into())
+}
+
+pub fn og_rng_stream_weighted(stream: u32, weights: String) -> i32 {
+    with_stream(stream, -1, |r| weighted(r, &weights))
+}
+pub fn og_rng_stream_permutation(stream: u32, n: u32) -> String {
+    with_stream(stream, "[]".into(), |r| permutation(r, n))
+}
+pub fn og_rng_weighted(world: u32, weights: String) -> i32 {
+    with_rng(world, -1, |r| weighted(r, &weights))
+}
+pub fn og_rng_permutation(world: u32, n: u32) -> String {
+    with_rng(world, "[]".into(), |r| permutation(r, n))
+}
 pub fn og_rng_next(world: u32) -> f64 {
     with_rng(world, f64::NAN, Rng::next_f64)
 }

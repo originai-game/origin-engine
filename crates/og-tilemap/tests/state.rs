@@ -103,3 +103,53 @@ fn tile_layer_edits_are_checked_and_bump_only_their_chunk() {
     );
     assert!(s.set(7, 0, 0, 1).is_err());
 }
+
+#[test]
+fn a_fill_equals_setting_each_cell_and_refuses_without_writing() {
+    let a = map(20, 15);
+    let (mut by_set, mut by_fill) = (state(&a, "filled"), state(&a, "filled"));
+    // A 6-wide block that runs 2 columns past the right edge (x 16..22).
+    let (x0, y0, w) = (16u32, 3u32, 6u32);
+    let floor: Vec<i32> = (0..24).map(|i| (i * 7) % 40 - 1).collect();
+    let walls: Vec<i32> = (0..24).map(|i| ((i * 5) % 3 != 0) as i32).collect();
+    for (k, (&f, &t)) in floor.iter().zip(&walls).enumerate() {
+        let (x, y) = (x0 + k as u32 % w, y0 + k as u32 / w);
+        if x < 20 {
+            by_set.set(0, x, y, f).unwrap();
+            by_set.set(1, x, y, t).unwrap();
+        }
+    }
+    by_fill.fill(0, x0, y0, w, &floor).unwrap();
+    by_fill.fill(1, x0, y0, w, &walls).unwrap();
+    for l in 0..2 {
+        for y in 0..15 {
+            for x in 0..20 {
+                assert_eq!(
+                    by_fill.get(l, x, y),
+                    by_set.get(l, x, y),
+                    "layer {l} ({x}, {y})"
+                );
+            }
+        }
+    }
+    let (mut b1, mut b2) = (Vec::new(), Vec::new());
+    by_set.encode(&mut b1);
+    by_fill.encode(&mut b2);
+    assert_eq!(b1, b2);
+
+    let before = (
+        b2.clone(),
+        by_fill.layer_version(0),
+        by_fill.layer_version(1),
+    );
+    let e = by_fill.fill(0, 0, 0, 2, &[1, 2, 999, 3]).unwrap_err();
+    assert!(e.to_string().contains("999"), "{e}");
+    let e = by_fill.fill(1, 0, 0, 2, &[1, 0, 2, 1]).unwrap_err();
+    assert!(e.to_string().contains("terrain"), "{e}");
+    let e = by_fill.fill(0, 0, 0, 3, &[1, 2, 3, 4]).unwrap_err();
+    assert!(e.to_string().contains("width 3"), "{e}");
+    let mut after = Vec::new();
+    by_fill.encode(&mut after);
+    let after = (after, by_fill.layer_version(0), by_fill.layer_version(1));
+    assert_eq!(after, before, "a refused fill writes nothing");
+}

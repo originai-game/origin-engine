@@ -1,0 +1,588 @@
+<!-- Generated from crates/og-api/api.ogt by `og api gen`. Do not edit: `og api check` fails on any difference; change api.ogt and regenerate. -->
+
+# The `procgen` module
+
+Procedural generation: gradient noise (Perlin, simplex, FBM), Poisson-disk points, BSP dungeons and wave function collapse, all deterministic. Each generator takes a `seed`; give it a stream's, og.Rng's fork `rng.fork("dungeon").seed` (with `rng` from `world.resource(og.Rng)`; a fork needs og.Rng among a system's reads only), so the same world and label give the same output and the main stream does not move. A generator draws only from a stream on that seed, in a fixed order, with arithmetic that is bit-identical on every host: the same seed gives the same map natively and on the web, in a replay and after a restore.
+
+Weighted picks and shuffles are og.Rng's and RngStream's own (`weighted`, `permutation`; a shuffle is a permutation applied to an array). og.tilemap.fill writes a generated grid into a tilemap layer.
+
+- **TypeScript**: functions are the namespace `og.procgen`; components, resources and events are tokens on `og`.
+- **Publish builds**: kept (members may override).
+- **Skill**: `og-core`, which teaches the module (how much of it to use, and how to prove it).
+- **Index**: [every module and name](index.md).
+
+```ogt
+module procgen {
+  # declarations follow, each quoted below
+```
+
+<sub>`api.ogt` line 1627</sub>
+
+## Contents
+
+| Name | Kind | Summary |
+|---|---|---|
+| [`NoiseKind`](#type-NoiseKind) | enum | Which gradient noise. |
+| [`FbmDesc`](#type-FbmDesc) | desc struct | Fractal noise (FBM): `octaves` layers, each `lacunarity` times the frequency and `gain` times the amplitude of the last, divided by the amplitudes' sum, so the value stays about -1 to 1. One octave is plain noise. |
+| [`NoiseGridDesc`](#type-NoiseGridDesc) | desc struct | A grid of noise samples, row-major from (x, y), `step` apart: a height field, a biome map, a cave mask. |
+| [`og.procgen.noise`](#fn-noise) | function | Noise at one point, about -1 to 1: a pure function of the desc and the point. |
+| [`og.procgen.noiseGrid`](#fn-noiseGrid) | function | Noise over a grid in one call, row-major: `values[j * width + i]` is the sample at (x + i * step, y + j * step). |
+| [`PoissonDesc`](#type-PoissonDesc) | desc struct | Points no closer than `radius` to each other, filling an area evenly with no grid look (Bridson 2007): trees in a forest, loot in a field. |
+| [`og.procgen.poissonDisk`](#fn-poissonDisk) | function | Poisson-disk points in [0, width) × [0, height), in the order they were placed. |
+| [`CellRect`](#type-CellRect) | struct | A rectangle of grid cells: column x, row y (from the top), width and height in cells. |
+| [`BspDesc`](#type-BspDesc) | desc struct | A dungeon by binary space partition: the area is split in two along its longer side, again and again, each leaf gets a room and every split's halves are joined by an L-shaped corridor. |
+| [`BspResult`](#type-BspResult) | struct | What og.procgen.bsp made. |
+| [`og.procgen.bsp`](#fn-bsp) | function | A BSP dungeon: rooms that never overlap, every floor cell reachable from every other. |
+| [`WfcTile`](#type-WfcTile) | struct | A tile for og.procgen.wfc: its weight and the socket on each edge. Two tiles may sit side by side when the sockets on their shared edge are equal (a road edge meets a road edge). |
+| [`WfcCell`](#type-WfcCell) | struct | A cell fixed before generation starts (an entrance, a river's source). |
+| [`WfcDesc`](#type-WfcDesc) | desc struct | Wave function collapse, the simple tiled model: a grid filled with tiles whose edges all fit. The cell with the fewest tiles left (ties: the first) is decided by a weighted draw and the choice spreads to its neighbours; a dead end restarts on a fork of the seed. |
+| [`WfcResult`](#type-WfcResult) | struct | What og.procgen.wfc made, row-major from the top. |
+| [`og.procgen.wfc`](#fn-wfc) | function | A grid of tiles whose edges all fit, by wave function collapse. |
+
+## Functions
+
+<a id="fn-noise"></a>
+
+### `og.procgen.noise`
+
+Noise at one point, about -1 to 1: a pure function of the desc and the point.
+
+```ts
+og.procgen.noise(desc: FbmDesc, x: number, y: number, z: number): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `desc` | `FbmDesc` | no | The seed, kind and fractal settings. |
+| `x` | `number` | no | x. |
+| `y` | `number` | no | y. |
+| `z` | `number` | no | z (3D only). |
+
+**Returns** `number`.
+
+Binding symbol `og_procgen_noise` · publish builds: kept
+
+```ogt
+fn noise {
+  doc "Noise at one point, about -1 to 1: a pure function of the desc and the point."
+  param desc FbmDesc "The seed, kind and fractal settings."
+  param x f32 "x."
+  param y f32 "y."
+  param z f32 "z (3D only)."
+  returns f32
+}
+```
+
+<sub>`api.ogt` line 1687</sub>
+
+<a id="fn-noiseGrid"></a>
+
+### `og.procgen.noiseGrid`
+
+Noise over a grid in one call, row-major: `values[j * width + i]` is the sample at (x + i * step, y + j * step).
+
+```ts
+og.procgen.noiseGrid(desc?: NoiseGridDesc): Result<readonly number[]>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `desc` | `NoiseGridDesc` | yes | The grid and its noise. |
+
+**Returns** `Result<readonly number[]>`: Refused for more than 16,777,216 samples.
+
+Binding symbol `og_procgen_noise_grid` · publish builds: kept
+
+```ogt
+fn noiseGrid {
+  doc "Noise over a grid in one call, row-major: `values[j * width + i]` is the sample at (x + i * step, y + j * step)."
+  param desc NoiseGridDesc "The grid and its noise."
+  returns Result.List.f32 "Refused for more than 16,777,216 samples."
+}
+```
+
+<sub>`api.ogt` line 1696</sub>
+
+<a id="fn-poissonDisk"></a>
+
+### `og.procgen.poissonDisk`
+
+Poisson-disk points in [0, width) × [0, height), in the order they were placed.
+
+```ts
+og.procgen.poissonDisk(desc?: PoissonDesc): Result<readonly Vector2[]>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `desc` | `PoissonDesc` | yes | The area, the radius and the seed. |
+
+**Returns** `Result<readonly Vector2[]>`: Refused for a size or radius that is not finite and above 0, or a radius so small the area needs more than 16,777,216 grid cells.
+
+Binding symbol `og_procgen_poisson_disk` · publish builds: kept
+
+```ogt
+fn poissonDisk {
+  doc "Poisson-disk points in [0, width) × [0, height), in the order they were placed."
+  param desc PoissonDesc "The area, the radius and the seed."
+  returns Result.List.Vector2 "Refused for a size or radius that is not finite and above 0, or a radius so small the area needs more than 16,777,216 grid cells."
+}
+```
+
+<sub>`api.ogt` line 1731</sub>
+
+<a id="fn-bsp"></a>
+
+### `og.procgen.bsp`
+
+A BSP dungeon: rooms that never overlap, every floor cell reachable from every other.
+
+```ts
+og.procgen.bsp(desc?: BspDesc): Result<BspResult>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `desc` | `BspDesc` | yes | The area, the room sizes and the seed. |
+
+**Returns** `Result<BspResult>`: Refused for an area that cannot hold one room of minRoom with its padding.
+
+Binding symbol `og_procgen_bsp` · publish builds: kept
+
+```ogt
+fn bsp {
+  doc "A BSP dungeon: rooms that never overlap, every floor cell reachable from every other."
+  param desc BspDesc "The area, the room sizes and the seed."
+  returns Result.BspResult "Refused for an area that cannot hold one room of minRoom with its padding."
+}
+```
+
+<sub>`api.ogt` line 1787</sub>
+
+<a id="fn-wfc"></a>
+
+### `og.procgen.wfc`
+
+A grid of tiles whose edges all fit, by wave function collapse.
+
+```ts
+og.procgen.wfc(desc?: WfcDesc): Result<WfcResult>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `desc` | `WfcDesc` | yes | The grid, the tiles and the seed. |
+
+**Returns** `Result<WfcResult>`: Refused for an empty tile list, a fixed cell outside the grid or naming no tile, or no tiling in `attempts` tries (naming the cell the last try ran out at).
+
+Binding symbol `og_procgen_wfc` · publish builds: kept
+
+```ogt
+fn wfc {
+  doc "A grid of tiles whose edges all fit, by wave function collapse."
+  param desc WfcDesc "The grid, the tiles and the seed."
+  returns Result.WfcResult "Refused for an empty tile list, a fixed cell outside the grid or naming no tile, or no tiling in `attempts` tries (naming the cell the last try ran out at)."
+}
+```
+
+<sub>`api.ogt` line 1845</sub>
+
+## Types
+
+<a id="type-NoiseKind"></a>
+
+### `NoiseKind` (enum)
+
+Which gradient noise.
+
+A string: one of the variants below. The zero value is `"perlin"`.
+
+| Variant | Doc |
+|---|---|
+| `"perlin"` | Ken Perlin's improved noise (2002): 0 on every whole-number point, smooth between. |
+| `"simplex"` | Simplex noise (Perlin 2001, Gustavson's construction): fewer directional artefacts, cheaper in 3D. |
+
+```ogt
+enum NoiseKind {
+  doc "Which gradient noise."
+  variant perlin "Ken Perlin's improved noise (2002): 0 on every whole-number point, smooth between."
+  variant simplex "Simplex noise (Perlin 2001, Gustavson's construction): fewer directional artefacts, cheaper in 3D."
+}
+```
+
+<sub>`api.ogt` line 1632</sub>
+
+<a id="type-FbmDesc"></a>
+
+### `FbmDesc` (desc struct)
+
+Fractal noise (FBM): `octaves` layers, each `lacunarity` times the frequency and `gain` times the amplitude of the last, divided by the amplitudes' sum, so the value stays about -1 to 1. One octave is plain noise.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `seed` | `number` | `0` | — | — | — | The stream's seed: og.Rng's `rng.fork("terrain").seed`. Each octave reads its own table derived from it. |
+| `kind` | `NoiseKind` | `"perlin"` | — | — | — | Perlin or simplex. |
+| `octaves` | `number` | `1` | 1 … 16 | — | — | Layers summed. |
+| `frequency` | `number` | `1` | ≥ 0 | — | — | The first octave's frequency: features about 1 / frequency apart. |
+| `lacunarity` | `number` | `2` | ≥ 1 | — | — | Each octave's frequency over the last's. |
+| `gain` | `number` | `0.5` | 0 … 1 | — | — | Each octave's amplitude over the last's (persistence). |
+| `threeD` | `boolean` | `false` | — | — | — | Sample 3D noise at z (a slice that changes smoothly with z: animate it by moving z); 2D ignores z. |
+
+```ogt
+struct FbmDesc {
+  doc "Fractal noise (FBM): `octaves` layers, each `lacunarity` times the frequency and `gain` times the amplitude of the last, divided by the amplitudes' sum, so the value stays about -1 to 1. One octave is plain noise."
+  desc true
+  field seed u32 "The stream's seed: og.Rng's `rng.fork(\"terrain\").seed`. Each octave reads its own table derived from it."
+  field kind NoiseKind "Perlin or simplex."
+  field octaves u32 "Layers summed." {
+    default 1
+    min 1
+    max 16
+  }
+  field frequency f32 "The first octave's frequency: features about 1 / frequency apart." {
+    default 1
+    min 0
+  }
+  field lacunarity f32 "Each octave's frequency over the last's." {
+    default 2
+    min 1
+  }
+  field gain f32 "Each octave's amplitude over the last's (persistence)." {
+    default 0.5
+    min 0
+    max 1
+  }
+  field threeD bool "Sample 3D noise at z (a slice that changes smoothly with z: animate it by moving z); 2D ignores z."
+}
+```
+
+<sub>`api.ogt` line 1638</sub>
+
+<a id="type-NoiseGridDesc"></a>
+
+### `NoiseGridDesc` (desc struct)
+
+A grid of noise samples, row-major from (x, y), `step` apart: a height field, a biome map, a cave mask.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `noise` | `FbmDesc` | `{}` | — | — | — | The noise. |
+| `width` | `number` | `64` | 1 … 4096 | — | — | Samples across. |
+| `height` | `number` | `64` | 1 … 4096 | — | — | Samples down. |
+| `x` | `number` | `0` | — | — | — | The first sample's x. |
+| `y` | `number` | `0` | — | — | — | The first sample's y. |
+| `z` | `number` | `0` | — | — | — | The slice (3D noise only). |
+| `step` | `number` | `1` | ≥ 0 | — | — | The distance between samples. |
+
+```ogt
+struct NoiseGridDesc {
+  doc "A grid of noise samples, row-major from (x, y), `step` apart: a height field, a biome map, a cave mask."
+  desc true
+  field noise FbmDesc "The noise."
+  field width u32 "Samples across." {
+    default 64
+    min 1
+    max 4096
+  }
+  field height u32 "Samples down." {
+    default 64
+    min 1
+    max 4096
+  }
+  field x f32 "The first sample's x."
+  field y f32 "The first sample's y."
+  field z f32 "The slice (3D noise only)."
+  field step f32 "The distance between samples." {
+    default 1
+    min 0
+  }
+}
+```
+
+<sub>`api.ogt` line 1664</sub>
+
+<a id="type-PoissonDesc"></a>
+
+### `PoissonDesc` (desc struct)
+
+Points no closer than `radius` to each other, filling an area evenly with no grid look (Bridson 2007): trees in a forest, loot in a field.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `seed` | `number` | `0` | — | — | — | The stream's seed: og.Rng's `rng.fork("trees").seed`. |
+| `width` | `number` | `0` | ≥ 0 | `m` | — | The area's width, from x 0. |
+| `height` | `number` | `0` | ≥ 0 | `m` | — | The area's height, from y 0. |
+| `radius` | `number` | `1` | ≥ 0 | `m` | — | The least distance between two points. |
+| `attempts` | `number` | `30` | 1 … 256 | — | — | Candidates tried around a point before it is done (more fills tighter). |
+| `maxPoints` | `number` | `4096` | 0 … 1048576 | — | — | The most points made. |
+
+```ogt
+struct PoissonDesc {
+  doc "Points no closer than `radius` to each other, filling an area evenly with no grid look (Bridson 2007): trees in a forest, loot in a field."
+  desc true
+  field seed u32 "The stream's seed: og.Rng's `rng.fork(\"trees\").seed`."
+  field width f32 "The area's width, from x 0." {
+    min 0
+    unit m
+  }
+  field height f32 "The area's height, from y 0." {
+    min 0
+    unit m
+  }
+  field radius f32 "The least distance between two points." {
+    default 1
+    min 0
+    unit m
+  }
+  field attempts u32 "Candidates tried around a point before it is done (more fills tighter)." {
+    default 30
+    min 1
+    max 256
+  }
+  field maxPoints u32 "The most points made." {
+    default 4096
+    min 0
+    max 1048576
+  }
+}
+```
+
+<sub>`api.ogt` line 1702</sub>
+
+<a id="type-CellRect"></a>
+
+### `CellRect` (struct)
+
+A rectangle of grid cells: column x, row y (from the top), width and height in cells.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `x` | `number` | `0` | — | — | — | The left column. |
+| `y` | `number` | `0` | — | — | — | The top row. |
+| `width` | `number` | `0` | — | — | — | Columns. |
+| `height` | `number` | `0` | — | — | — | Rows. |
+
+```ogt
+struct CellRect {
+  doc "A rectangle of grid cells: column x, row y (from the top), width and height in cells."
+  field x u32 "The left column."
+  field y u32 "The top row."
+  field width u32 "Columns."
+  field height u32 "Rows."
+}
+```
+
+<sub>`api.ogt` line 1737</sub>
+
+<a id="type-BspDesc"></a>
+
+### `BspDesc` (desc struct)
+
+A dungeon by binary space partition: the area is split in two along its longer side, again and again, each leaf gets a room and every split's halves are joined by an L-shaped corridor.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `seed` | `number` | `0` | — | — | — | The stream's seed: og.Rng's `rng.fork("dungeon").seed`. |
+| `width` | `number` | `48` | 1 … 4096 | — | — | Columns. |
+| `height` | `number` | `32` | 1 … 4096 | — | — | Rows. |
+| `minRoom` | `number` | `4` | ≥ 1 | — | — | A room's least side, in cells. |
+| `maxRoom` | `number` | `12` | ≥ 1 | — | — | A room's greatest side; an area larger than it with its padding is always split. |
+| `depth` | `number` | `5` | ≤ 16 | — | — | The most splits, down any branch (up to 2^depth rooms). |
+| `padding` | `number` | `1` | — | — | — | Wall cells kept between a room and its leaf's edge. |
+| `corridor` | `number` | `1` | ≥ 1 | — | — | Corridor width, in cells. |
+
+```ogt
+struct BspDesc {
+  doc "A dungeon by binary space partition: the area is split in two along its longer side, again and again, each leaf gets a room and every split's halves are joined by an L-shaped corridor."
+  desc true
+  field seed u32 "The stream's seed: og.Rng's `rng.fork(\"dungeon\").seed`."
+  field width u32 "Columns." {
+    default 48
+    min 1
+    max 4096
+  }
+  field height u32 "Rows." {
+    default 32
+    min 1
+    max 4096
+  }
+  field minRoom u32 "A room's least side, in cells." {
+    default 4
+    min 1
+  }
+  field maxRoom u32 "A room's greatest side; an area larger than it with its padding is always split." {
+    default 12
+    min 1
+  }
+  field depth u32 "The most splits, down any branch (up to 2^depth rooms)." {
+    default 5
+    max 16
+  }
+  field padding u32 "Wall cells kept between a room and its leaf's edge." {
+    default 1
+  }
+  field corridor u32 "Corridor width, in cells." {
+    default 1
+    min 1
+  }
+}
+```
+
+<sub>`api.ogt` line 1745</sub>
+
+<a id="type-BspResult"></a>
+
+### `BspResult` (struct)
+
+What og.procgen.bsp made.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `rooms` | `readonly CellRect[]` | `[]` | — | — | — | One room per leaf, left before right down the tree. |
+| `corridors` | `readonly CellRect[]` | `[]` | — | — | — | Corridor segments, two per split. |
+| `cells` | `readonly number[]` | `[]` | — | — | — | width × height, row-major from the top: 0 wall, 1 room, 2 corridor. og.tilemap.fill writes it into a layer (map the values to tiles first). |
+
+```ogt
+struct BspResult {
+  doc "What og.procgen.bsp made."
+  field rooms List.CellRect "One room per leaf, left before right down the tree."
+  field corridors List.CellRect "Corridor segments, two per split."
+  field cells List.u32 "width × height, row-major from the top: 0 wall, 1 room, 2 corridor. og.tilemap.fill writes it into a layer (map the values to tiles first)."
+}
+```
+
+<sub>`api.ogt` line 1780</sub>
+
+<a id="type-WfcTile"></a>
+
+### `WfcTile` (struct)
+
+A tile for og.procgen.wfc: its weight and the socket on each edge. Two tiles may sit side by side when the sockets on their shared edge are equal (a road edge meets a road edge).
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `weight` | `number` | `1` | ≥ 0 | — | — | How often it is drawn against the others that fit. |
+| `up` | `number` | `0` | — | — | — | The socket on its top edge. |
+| `right` | `number` | `0` | — | — | — | The socket on its right edge. |
+| `down` | `number` | `0` | — | — | — | The socket on its bottom edge. |
+| `left` | `number` | `0` | — | — | — | The socket on its left edge. |
+| `rotations` | `boolean` | `false` | — | — | — | It also comes turned 90°, 180° and 270° clockwise (its sockets with it; turns that look the same count once). |
+
+```ogt
+struct WfcTile {
+  doc "A tile for og.procgen.wfc: its weight and the socket on each edge. Two tiles may sit side by side when the sockets on their shared edge are equal (a road edge meets a road edge)."
+  field weight f32 "How often it is drawn against the others that fit." {
+    default 1
+    min 0
+  }
+  field up u32 "The socket on its top edge."
+  field right u32 "The socket on its right edge."
+  field down u32 "The socket on its bottom edge."
+  field left u32 "The socket on its left edge."
+  field rotations bool "It also comes turned 90°, 180° and 270° clockwise (its sockets with it; turns that look the same count once)."
+}
+```
+
+<sub>`api.ogt` line 1793</sub>
+
+<a id="type-WfcCell"></a>
+
+### `WfcCell` (struct)
+
+A cell fixed before generation starts (an entrance, a river's source).
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `x` | `number` | `0` | — | — | — | The column. |
+| `y` | `number` | `0` | — | — | — | The row. |
+| `tile` | `number` | `0` | — | — | — | The tile's index in WfcDesc.tiles. |
+| `rotation` | `number` | `0` | — | — | — | Quarter turns clockwise, 0 to 3. |
+
+```ogt
+struct WfcCell {
+  doc "A cell fixed before generation starts (an entrance, a river's source)."
+  field x u32 "The column."
+  field y u32 "The row."
+  field tile u32 "The tile's index in WfcDesc.tiles."
+  field rotation u32 "Quarter turns clockwise, 0 to 3."
+}
+```
+
+<sub>`api.ogt` line 1806</sub>
+
+<a id="type-WfcDesc"></a>
+
+### `WfcDesc` (desc struct)
+
+Wave function collapse, the simple tiled model: a grid filled with tiles whose edges all fit. The cell with the fewest tiles left (ties: the first) is decided by a weighted draw and the choice spreads to its neighbours; a dead end restarts on a fork of the seed.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `seed` | `number` | `0` | — | — | — | The stream's seed: og.Rng's `rng.fork("village").seed`. |
+| `width` | `number` | `16` | 1 … 1024 | — | — | Columns. |
+| `height` | `number` | `16` | 1 … 1024 | — | — | Rows. |
+| `tiles` | `readonly WfcTile[]` | `[]` | — | — | — | The tiles (with rotations, at most 1,024 variants). |
+| `fixed` | `readonly WfcCell[]` | `[]` | — | — | — | Cells decided before the first draw. |
+| `wrap` | `boolean` | `false` | — | — | — | The edges wrap round (a tiling texture). |
+| `attempts` | `number` | `10` | 1 … 1000 | — | — | Tries before refusing. |
+
+```ogt
+struct WfcDesc {
+  doc "Wave function collapse, the simple tiled model: a grid filled with tiles whose edges all fit. The cell with the fewest tiles left (ties: the first) is decided by a weighted draw and the choice spreads to its neighbours; a dead end restarts on a fork of the seed."
+  desc true
+  field seed u32 "The stream's seed: og.Rng's `rng.fork(\"village\").seed`."
+  field width u32 "Columns." {
+    default 16
+    min 1
+    max 1024
+  }
+  field height u32 "Rows." {
+    default 16
+    min 1
+    max 1024
+  }
+  field tiles List.WfcTile "The tiles (with rotations, at most 1,024 variants)."
+  field fixed List.WfcCell "Cells decided before the first draw."
+  field wrap bool "The edges wrap round (a tiling texture)."
+  field attempts u32 "Tries before refusing." {
+    default 10
+    min 1
+    max 1000
+  }
+}
+```
+
+<sub>`api.ogt` line 1814</sub>
+
+<a id="type-WfcResult"></a>
+
+### `WfcResult` (struct)
+
+What og.procgen.wfc made, row-major from the top.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `tiles` | `readonly number[]` | `[]` | — | — | — | Each cell's tile index. |
+| `rotations` | `readonly number[]` | `[]` | — | — | — | Each cell's quarter turns clockwise. |
+| `attempt` | `number` | `0` | — | — | — | The try that succeeded, from 1. |
+
+```ogt
+struct WfcResult {
+  doc "What og.procgen.wfc made, row-major from the top."
+  field tiles List.u32 "Each cell's tile index."
+  field rotations List.u32 "Each cell's quarter turns clockwise."
+  field attempt u32 "The try that succeeded, from 1."
+}
+```
+
+<sub>`api.ogt` line 1838</sub>

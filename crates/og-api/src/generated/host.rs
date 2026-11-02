@@ -231,6 +231,10 @@ pub trait RngApi: Wire {
     fn og_rng_stream_integer(&self, rng_stream: u32, low: i32, high: i32) -> i32;
     /// `RngStream.chance`
     fn og_rng_stream_chance(&self, rng_stream: u32, p: f64) -> bool;
+    /// `RngStream.weighted`
+    fn og_rng_stream_weighted(&self, rng_stream: u32, weights: String) -> i32;
+    /// `RngStream.permutation`
+    fn og_rng_stream_permutation(&self, rng_stream: u32, n: u32) -> String;
     /// `RngStream.fork`
     fn og_rng_stream_fork(&self, rng_stream: u32, label: String) -> u32;
     /// `Rng.next`
@@ -241,8 +245,26 @@ pub trait RngApi: Wire {
     fn og_rng_integer(&self, world: u32, low: i32, high: i32) -> i32;
     /// `Rng.chance`
     fn og_rng_chance(&self, world: u32, p: f64) -> bool;
+    /// `Rng.weighted`
+    fn og_rng_weighted(&self, world: u32, weights: String) -> i32;
+    /// `Rng.permutation`
+    fn og_rng_permutation(&self, world: u32, n: u32) -> String;
     /// `Rng.fork`
     fn og_rng_fork(&self, world: u32, label: String) -> u32;
+}
+
+/// `procgen`: packages/knowledge/wiki/procgen.md.
+pub trait ProcgenApi: Wire {
+    /// `og.procgen.noise`
+    fn og_procgen_noise(&self, desc: String, x: f64, y: f64, z: f64) -> f64;
+    /// `og.procgen.noiseGrid`
+    fn og_procgen_noise_grid(&self, desc: Option<String>) -> String;
+    /// `og.procgen.poissonDisk`
+    fn og_procgen_poisson_disk(&self, desc: Option<String>) -> String;
+    /// `og.procgen.bsp`
+    fn og_procgen_bsp(&self, desc: Option<String>) -> String;
+    /// `og.procgen.wfc`
+    fn og_procgen_wfc(&self, desc: Option<String>) -> String;
 }
 
 /// `input`: packages/knowledge/wiki/input.md.
@@ -641,6 +663,8 @@ pub trait TweenApi: Wire {
 pub trait TilemapApi: Wire {
     /// `og.tilemap.setTile`
     fn og_tilemap_set_tile(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.tilemap.fill`
+    fn og_tilemap_fill(&self, world: u32, desc: Option<String>) -> String;
     /// `og.tilemap.getTile`
     fn og_tilemap_get_tile(&self, world: u32, entity: f64, layer: String, x: u32, y: u32) -> i32;
     /// `og.tilemap.cellAt`
@@ -1210,9 +1234,9 @@ pub trait NetApi: Wire {
 }
 
 /// Every trait: a host is a type that implements all of them.
-pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + DebugApi + PathApi + TimelineApi + NetApi {}
+pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + DebugApi + PathApi + TimelineApi + NetApi {}
 
-impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + DebugApi + PathApi + TimelineApi + NetApi> Host for T {}
+impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + DebugApi + PathApi + TimelineApi + NetApi> Host for T {}
 
 /// Every binding symbol, in binding-table order (`bindings.json` ids).
 pub const SYMBOLS: &[&str] = &[
@@ -1285,12 +1309,21 @@ pub const SYMBOLS: &[&str] = &[
     "og_rng_stream_range",
     "og_rng_stream_integer",
     "og_rng_stream_chance",
+    "og_rng_stream_weighted",
+    "og_rng_stream_permutation",
     "og_rng_stream_fork",
     "og_rng_next",
     "og_rng_range",
     "og_rng_integer",
     "og_rng_chance",
+    "og_rng_weighted",
+    "og_rng_permutation",
     "og_rng_fork",
+    "og_procgen_noise",
+    "og_procgen_noise_grid",
+    "og_procgen_poisson_disk",
+    "og_procgen_bsp",
+    "og_procgen_wfc",
     "og_input_define_action",
     "og_input_actions",
     "og_input_action",
@@ -1472,6 +1505,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_tween_squash",
     "og_tween_flash",
     "og_tilemap_set_tile",
+    "og_tilemap_fill",
     "og_tilemap_get_tile",
     "og_tilemap_cell_at",
     "og_tilemap_cell_center",

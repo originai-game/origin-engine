@@ -2273,7 +2273,7 @@ export interface Time {
 
 // ── rng ─────────────────────────────────────────────────────────
 // Deterministic randomness. Every random draw comes from an Rng stream; the sequence for a seed is identical on every host and in the Web scaffold's rng.ts.
-// Inside a system: forking needs og.Rng among the reads (a fork is derived from the seed and the label, and leaves the main stream where it is); drawing from og.Rng itself (next, range, integer, chance) moves its state, so it needs og.Rng among the writes. A stream a fork returned is the system's own to draw from.
+// Inside a system: forking needs og.Rng among the reads (a fork is derived from the seed and the label, and leaves the main stream where it is); drawing from og.Rng itself (next, range, integer, chance, weighted, permutation) moves its state, so it needs og.Rng among the writes. A stream a fork returned is the system's own to draw from.
 
 /**
  * One generator stream, forked from the Rng resource for a subsystem that must not perturb the main sequence.
@@ -2303,6 +2303,18 @@ export interface RngStream {
    * @param p The probability, between 0 and 1.
    */
   chance(p: number): boolean;
+  /**
+   * An index drawn in proportion to its weight (one draw): `weighted([1, 3])` is 1 three times in four. Zero, negative and non-finite weights are never drawn; -1 when none is positive.
+   *
+   * @param weights One weight per choice.
+   */
+  weighted(weights: readonly number[]): number;
+  /**
+   * 0 to n - 1 in a drawn order (Fisher-Yates, n - 1 draws). A shuffled copy of an array is `rng.permutation(a.length).map((i) => a[i])`.
+   *
+   * @param n How many indices.
+   */
+  permutation(n: number): readonly number[];
   /**
    * A fresh stream on a seed derived from this stream's seed and a label.
    *
@@ -2352,12 +2364,385 @@ export interface Rng {
    */
   chance(p: number): boolean;
   /**
+   * An index drawn in proportion to its weight (one draw): `weighted([1, 3])` is 1 three times in four. Zero, negative and non-finite weights are never drawn; -1 when none is positive.
+   *
+   * @param weights One weight per choice.
+   */
+  weighted(weights: readonly number[]): number;
+  /**
+   * 0 to n - 1 in a drawn order (Fisher-Yates, n - 1 draws). A shuffled copy of an array is `rng.permutation(a.length).map((i) => a[i])`.
+   *
+   * @param n How many indices.
+   */
+  permutation(n: number): readonly number[];
+  /**
    * A stream for a subsystem, derived from the seed and a label, so drawing from it leaves the main sequence alone. The same label gives the same stream every time, on every host, wherever the main stream is; og.Rng among a system's reads is enough.
    *
    * @param label The subsystem's name, such as `spawner`.
    */
   fork(label: string): RngStream;
 }
+
+// ── procgen ─────────────────────────────────────────────────────
+// Procedural generation: gradient noise (Perlin, simplex, FBM), Poisson-disk points, BSP dungeons and wave function collapse, all deterministic. Each generator takes a `seed`; give it a stream's, og.Rng's fork `rng.fork("dungeon").seed` (with `rng` from `world.resource(og.Rng)`; a fork needs og.Rng among a system's reads only), so the same world and label give the same output and the main stream does not move. A generator draws only from a stream on that seed, in a fixed order, with arithmetic that is bit-identical on every host: the same seed gives the same map natively and on the web, in a replay and after a restore.
+// Weighted picks and shuffles are og.Rng's and RngStream's own (`weighted`, `permutation`; a shuffle is a permutation applied to an array). og.tilemap.fill writes a generated grid into a tilemap layer.
+
+/**
+ * Which gradient noise.
+ * - `"perlin"`: Ken Perlin's improved noise (2002): 0 on every whole-number point, smooth between.
+ * - `"simplex"`: Simplex noise (Perlin 2001, Gustavson's construction): fewer directional artefacts, cheaper in 3D.
+ */
+export type NoiseKind = "perlin" | "simplex";
+
+/**
+ * Fractal noise (FBM): `octaves` layers, each `lacunarity` times the frequency and `gain` times the amplitude of the last, divided by the amplitudes' sum, so the value stays about -1 to 1. One octave is plain noise.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface FbmDesc {
+  /**
+   * The stream's seed: og.Rng's `rng.fork("terrain").seed`. Each octave reads its own table derived from it.
+   *
+   * @default 0
+   */
+  readonly seed?: number;
+  /**
+   * Perlin or simplex.
+   *
+   * @default "perlin"
+   */
+  readonly kind?: NoiseKind;
+  /**
+   * Layers summed.
+   *
+   * @default 1
+   * @range 1..16
+   */
+  readonly octaves?: number;
+  /**
+   * The first octave's frequency: features about 1 / frequency apart.
+   *
+   * @default 1
+   * @range 0..
+   */
+  readonly frequency?: number;
+  /**
+   * Each octave's frequency over the last's.
+   *
+   * @default 2
+   * @range 1..
+   */
+  readonly lacunarity?: number;
+  /**
+   * Each octave's amplitude over the last's (persistence).
+   *
+   * @default 0.5
+   * @range 0..1
+   */
+  readonly gain?: number;
+  /**
+   * Sample 3D noise at z (a slice that changes smoothly with z: animate it by moving z); 2D ignores z.
+   *
+   * @default false
+   */
+  readonly threeD?: boolean;
+}
+
+/**
+ * A grid of noise samples, row-major from (x, y), `step` apart: a height field, a biome map, a cave mask.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface NoiseGridDesc {
+  /**
+   * The noise.
+   *
+   * @default {}
+   */
+  readonly noise?: FbmDesc;
+  /**
+   * Samples across.
+   *
+   * @default 64
+   * @range 1..4096
+   */
+  readonly width?: number;
+  /**
+   * Samples down.
+   *
+   * @default 64
+   * @range 1..4096
+   */
+  readonly height?: number;
+  /**
+   * The first sample's x.
+   *
+   * @default 0
+   */
+  readonly x?: number;
+  /**
+   * The first sample's y.
+   *
+   * @default 0
+   */
+  readonly y?: number;
+  /**
+   * The slice (3D noise only).
+   *
+   * @default 0
+   */
+  readonly z?: number;
+  /**
+   * The distance between samples.
+   *
+   * @default 1
+   * @range 0..
+   */
+  readonly step?: number;
+}
+
+
+
+/**
+ * Points no closer than `radius` to each other, filling an area evenly with no grid look (Bridson 2007): trees in a forest, loot in a field.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PoissonDesc {
+  /**
+   * The stream's seed: og.Rng's `rng.fork("trees").seed`.
+   *
+   * @default 0
+   */
+  readonly seed?: number;
+  /**
+   * The area's width, from x 0.
+   *
+   * @default 0
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly width?: number;
+  /**
+   * The area's height, from y 0.
+   *
+   * @default 0
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly height?: number;
+  /**
+   * The least distance between two points.
+   *
+   * @default 1
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly radius?: number;
+  /**
+   * Candidates tried around a point before it is done (more fills tighter).
+   *
+   * @default 30
+   * @range 1..256
+   */
+  readonly attempts?: number;
+  /**
+   * The most points made.
+   *
+   * @default 4096
+   * @range 0..1048576
+   */
+  readonly maxPoints?: number;
+}
+
+
+/** A rectangle of grid cells: column x, row y (from the top), width and height in cells. */
+export interface CellRect {
+  /** The left column. */
+  readonly x: number;
+  /** The top row. */
+  readonly y: number;
+  /** Columns. */
+  readonly width: number;
+  /** Rows. */
+  readonly height: number;
+}
+
+/**
+ * A dungeon by binary space partition: the area is split in two along its longer side, again and again, each leaf gets a room and every split's halves are joined by an L-shaped corridor.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface BspDesc {
+  /**
+   * The stream's seed: og.Rng's `rng.fork("dungeon").seed`.
+   *
+   * @default 0
+   */
+  readonly seed?: number;
+  /**
+   * Columns.
+   *
+   * @default 48
+   * @range 1..4096
+   */
+  readonly width?: number;
+  /**
+   * Rows.
+   *
+   * @default 32
+   * @range 1..4096
+   */
+  readonly height?: number;
+  /**
+   * A room's least side, in cells.
+   *
+   * @default 4
+   * @range 1..
+   */
+  readonly minRoom?: number;
+  /**
+   * A room's greatest side; an area larger than it with its padding is always split.
+   *
+   * @default 12
+   * @range 1..
+   */
+  readonly maxRoom?: number;
+  /**
+   * The most splits, down any branch (up to 2^depth rooms).
+   *
+   * @default 5
+   * @range ..16
+   */
+  readonly depth?: number;
+  /**
+   * Wall cells kept between a room and its leaf's edge.
+   *
+   * @default 1
+   */
+  readonly padding?: number;
+  /**
+   * Corridor width, in cells.
+   *
+   * @default 1
+   * @range 1..
+   */
+  readonly corridor?: number;
+}
+
+/** What og.procgen.bsp made. */
+export interface BspResult {
+  /** One room per leaf, left before right down the tree. */
+  readonly rooms: readonly CellRect[];
+  /** Corridor segments, two per split. */
+  readonly corridors: readonly CellRect[];
+  /**
+   * width × height, row-major from the top: 0 wall, 1 room, 2 corridor. og.tilemap.fill writes it into a layer (map the values to tiles first).
+   */
+  readonly cells: readonly number[];
+}
+
+
+/**
+ * A tile for og.procgen.wfc: its weight and the socket on each edge. Two tiles may sit side by side when the sockets on their shared edge are equal (a road edge meets a road edge).
+ */
+export interface WfcTile {
+  /**
+   * How often it is drawn against the others that fit.
+   *
+   * @default 1
+   * @range 0..
+   */
+  readonly weight: number;
+  /** The socket on its top edge. */
+  readonly up: number;
+  /** The socket on its right edge. */
+  readonly right: number;
+  /** The socket on its bottom edge. */
+  readonly down: number;
+  /** The socket on its left edge. */
+  readonly left: number;
+  /**
+   * It also comes turned 90°, 180° and 270° clockwise (its sockets with it; turns that look the same count once).
+   */
+  readonly rotations: boolean;
+}
+
+/** A cell fixed before generation starts (an entrance, a river's source). */
+export interface WfcCell {
+  /** The column. */
+  readonly x: number;
+  /** The row. */
+  readonly y: number;
+  /** The tile's index in WfcDesc.tiles. */
+  readonly tile: number;
+  /** Quarter turns clockwise, 0 to 3. */
+  readonly rotation: number;
+}
+
+/**
+ * Wave function collapse, the simple tiled model: a grid filled with tiles whose edges all fit. The cell with the fewest tiles left (ties: the first) is decided by a weighted draw and the choice spreads to its neighbours; a dead end restarts on a fork of the seed.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface WfcDesc {
+  /**
+   * The stream's seed: og.Rng's `rng.fork("village").seed`.
+   *
+   * @default 0
+   */
+  readonly seed?: number;
+  /**
+   * Columns.
+   *
+   * @default 16
+   * @range 1..1024
+   */
+  readonly width?: number;
+  /**
+   * Rows.
+   *
+   * @default 16
+   * @range 1..1024
+   */
+  readonly height?: number;
+  /**
+   * The tiles (with rotations, at most 1,024 variants).
+   *
+   * @default []
+   */
+  readonly tiles?: readonly WfcTile[];
+  /**
+   * Cells decided before the first draw.
+   *
+   * @default []
+   */
+  readonly fixed?: readonly WfcCell[];
+  /**
+   * The edges wrap round (a tiling texture).
+   *
+   * @default false
+   */
+  readonly wrap?: boolean;
+  /**
+   * Tries before refusing.
+   *
+   * @default 10
+   * @range 1..1000
+   */
+  readonly attempts?: number;
+}
+
+/** What og.procgen.wfc made, row-major from the top. */
+export interface WfcResult {
+  /** Each cell's tile index. */
+  readonly tiles: readonly number[];
+  /** Each cell's quarter turns clockwise. */
+  readonly rotations: readonly number[];
+  /** The try that succeeded, from 1. */
+  readonly attempt: number;
+}
+
 
 // ── input ───────────────────────────────────────────────────────
 // Input as the game sees it: the Input resource for polling, events for edges.
@@ -16456,6 +16841,51 @@ export interface TileCell {
   readonly y: number;
   /** Whether the point was on the map. */
   readonly inside: boolean;
+}
+
+
+/**
+ * A block of cells to write at once: a generated grid (og.procgen's BSP cells or WFC tiles mapped to tile ids).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface FillDesc {
+  /**
+   * The entity with the og.Tilemap.
+   *
+   * @default 0
+   */
+  readonly entity?: Entity;
+  /**
+   * The layer's name.
+   *
+   * @default ""
+   */
+  readonly layer?: string;
+  /**
+   * The block's left column.
+   *
+   * @default 0
+   */
+  readonly x?: number;
+  /**
+   * The block's top row.
+   *
+   * @default 0
+   */
+  readonly y?: number;
+  /**
+   * The block's width in cells: `tiles` is row-major, `width` per row.
+   *
+   * @default 0
+   */
+  readonly width?: number;
+  /**
+   * The cells, as og.tilemap.setTile's `tile`: a tile id or -1 on a tile layer, 1 or 0 on a terrain layer (re-tiled once, after every cell is written).
+   *
+   * @default []
+   */
+  readonly tiles?: readonly number[];
 }
 
 
@@ -40650,6 +41080,49 @@ export declare namespace og {
    */
   const Rng: ResourceType<{ readonly seed: FieldSpec<"u32">; readonly state: FieldSpec<"u32"> }, Rng>;
   /**
+   * Procedural generation: gradient noise (Perlin, simplex, FBM), Poisson-disk points, BSP dungeons and wave function collapse, all deterministic. Each generator takes a `seed`; give it a stream's, og.Rng's fork `rng.fork("dungeon").seed` (with `rng` from `world.resource(og.Rng)`; a fork needs og.Rng among a system's reads only), so the same world and label give the same output and the main stream does not move. A generator draws only from a stream on that seed, in a fixed order, with arithmetic that is bit-identical on every host: the same seed gives the same map natively and on the web, in a replay and after a restore.
+   * Weighted picks and shuffles are og.Rng's and RngStream's own (`weighted`, `permutation`; a shuffle is a permutation applied to an array). og.tilemap.fill writes a generated grid into a tilemap layer.
+   */
+  namespace procgen {
+    /**
+     * Noise at one point, about -1 to 1: a pure function of the desc and the point.
+     *
+     * @param desc The seed, kind and fractal settings.
+     * @param x x.
+     * @param y y.
+     * @param z z (3D only).
+     */
+    function noise(desc: FbmDesc, x: number, y: number, z: number): number;
+    /**
+     * Noise over a grid in one call, row-major: `values[j * width + i]` is the sample at (x + i * step, y + j * step).
+     *
+     * @param desc The grid and its noise.
+     * @returns Refused for more than 16,777,216 samples.
+     */
+    function noiseGrid(desc?: NoiseGridDesc): Result<readonly number[]>;
+    /**
+     * Poisson-disk points in [0, width) × [0, height), in the order they were placed.
+     *
+     * @param desc The area, the radius and the seed.
+     * @returns Refused for a size or radius that is not finite and above 0, or a radius so small the area needs more than 16,777,216 grid cells.
+     */
+    function poissonDisk(desc?: PoissonDesc): Result<readonly Vector2[]>;
+    /**
+     * A BSP dungeon: rooms that never overlap, every floor cell reachable from every other.
+     *
+     * @param desc The area, the room sizes and the seed.
+     * @returns Refused for an area that cannot hold one room of minRoom with its padding.
+     */
+    function bsp(desc?: BspDesc): Result<BspResult>;
+    /**
+     * A grid of tiles whose edges all fit, by wave function collapse.
+     *
+     * @param desc The grid, the tiles and the seed.
+     * @returns Refused for an empty tile list, a fixed cell outside the grid or naming no tile, or no tiling in `attempts` tries (naming the cell the last try ran out at).
+     */
+    function wfc(desc?: WfcDesc): Result<WfcResult>;
+  }
+  /**
    * The input state at the start of this tick (og-input's og.Input, version 2). Edges (pressed, released) last exactly one tick; read the state through the methods.
    * Key sets are 128 bits over og-input's KEY_CODES (KeyboardEvent.code names): code i is bit i % 32 of word i / 32. Button masks: left 1, middle 2, right 4.
    */
@@ -42379,6 +42852,14 @@ export declare namespace og {
      * @returns Refused for an entity whose map is not adopted yet, an unknown layer, a cell outside the map or a tile the tileset lacks.
      */
     function setTile(world: World, desc?: SetTileDesc): Result<void>;
+    /**
+     * Write a block of cells, as setTile on each (row by row) but re-tiling a terrain layer and rebuilding the colliders once. Cells past the map's edge are skipped.
+     *
+     * @param world The world.
+     * @param desc The map, the layer, where and the cells.
+     * @returns Refused for an entity whose map is not adopted yet, an unknown layer, a width of 0 or not dividing the cells, or a tile the tileset lacks (nothing is written then).
+     */
+    function fill(world: World, desc?: FillDesc): Result<void>;
     /**
      * A cell's tile id, -1 when empty: on a terrain layer the tile auto-tiling resolved from the neighbours (setTile writes 1 or 0 there; the id changes with them). -1 outside the map or before the map is adopted.
      *

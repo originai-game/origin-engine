@@ -180,6 +180,18 @@
       {
         "member": "SoftBody, SOFT_SPHERE, SOFT_BOX, SOFT_MESH, og.physics.softBodyPoints, SoftBodyPoints (G2-3)",
         "summary": "PBD soft volumes (G2-3): og.SoftBody is a closed surface of points (a sphere, a box or a closed mesh; 2D a ring) held by distance constraints along its edges (stiffness) and one constraint on the volume it encloses (pressure, volumeStiffness; 2D its area), dropped under gravity and pushed out of every solid collider with thickness and friction, so it lands, squashes and springs back; pinTop hangs it from its entity. It moves nothing, like og.Cloth. volume (now over rest) and center are written; its points are in the og.physics state block's trailer (tag 5), softBodyPoints reads them with the surface's triangles, and the renderer draws it with material. og.SoftBody is registered only once a game names it."
+      },
+      {
+        "member": "RngStream.weighted, RngStream.permutation, Rng.weighted, Rng.permutation",
+        "summary": "Weighted picks and shuffles on the engine's seeded streams: `weighted(weights)` draws an index with probability weight / sum (zero, negative and non-finite weights never picked; -1 when none is positive), `permutation(n)` is 0 to n - 1 in a Fisher-Yates order (n - 1 draws). A shuffled copy is `rng.permutation(a.length).map((i) => a[i])`. On og.Rng itself both need og.Rng among the system's writes."
+      },
+      {
+        "member": "og.procgen.noise, og.procgen.noiseGrid, og.procgen.poissonDisk, og.procgen.bsp, og.procgen.wfc, NoiseKind, FbmDesc, NoiseGridDesc, PoissonDesc, CellRect, BspDesc, BspResult, WfcTile, WfcCell, WfcDesc, WfcResult",
+        "summary": "Procedural generation (G2-6): Perlin and simplex noise in 2D and 3D with fractal octaves, Poisson-disk points (Bridson), BSP rooms joined by corridors, and wave function collapse (the simple tiled model, with rotations, fixed cells and wrapping, retried on forks of the seed). Each is a pure function of its desc: it takes a seed (og.Rng's `rng.fork(\"label\").seed`, a u32 as og.Rng's own) and draws only from og.Rng streams of it, in integer and IEEE f32 arithmetic with no host libm, so equal descs give bit-identical results on both hosts. They need no world and touch no state."
+      },
+      {
+        "member": "og.tilemap.fill, FillDesc",
+        "summary": "Writes a row-major block of cells at once (a generated grid mapped to tile ids): checked whole before any cell is written, a terrain layer re-tiled and the colliders rebuilt once, cells past the map's edge skipped."
       }
     ],
     "fixed": [

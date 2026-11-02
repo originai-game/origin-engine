@@ -35,6 +35,15 @@ export const stream = Object.freeze({
 });
 
 // Depth S2 (IDL `path`, `timeline`).
+/** og.procgen: pure generators, every draw from the seed they are given. */
+export const procgen = Object.freeze({
+  noise: (desc: unknown, x: number, y: number, z: number) => abi().og_procgen_noise(JSON.stringify(desc ?? {}), x, y, z),
+  noiseGrid: (desc?: unknown) => parse(abi().og_procgen_noise_grid(json(desc))),
+  poissonDisk: (desc?: unknown) => parse(abi().og_procgen_poisson_disk(json(desc))),
+  bsp: (desc?: unknown) => parse(abi().og_procgen_bsp(json(desc))),
+  wfc: (desc?: unknown) => parse(abi().og_procgen_wfc(json(desc))),
+});
+
 export const path = Object.freeze({
   create: (world: W, desc?: unknown) => parse(abi().og_path_create(world.id, json(desc))),
   find: (world: W, name: string) => parse(abi().og_path_find(world.id, name)),

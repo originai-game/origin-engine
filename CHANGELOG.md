@@ -15,6 +15,17 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Procedural generation (G2-6, batch 1).** `og.procgen`: Perlin and
+  simplex noise in 2D and 3D with fractal octaves (`noise`, `noiseGrid`),
+  Poisson-disk points (`poissonDisk`), BSP rooms with corridors (`bsp`)
+  and wave function collapse with rotations, fixed cells and wrapping
+  (`wfc`). Each is a pure function of a desc holding a u32 seed (og.Rng's
+  `rng.fork("label").seed`), bit-identical on both hosts (integer and IEEE
+  f32 arithmetic only; og-core pins every generator's output). og.Rng and
+  RngStream gain `weighted` and `permutation`; `og.tilemap.fill` writes a
+  generated block of cells, re-tiling and rebuilding colliders once. All
+  additive: no type, resource or saved value changes, so every world's
+  hash and saves are as before.
 - **Prefabs (G2-1).** An `.ogt` of `type prefab` holds one entity tree; a
   scene (or another prefab) places it with a `prefab "<id>"` line in an
   entity, whose block then lists only overrides (component blocks for the

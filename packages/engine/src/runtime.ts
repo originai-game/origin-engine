@@ -973,6 +973,9 @@ function jsonResource(world: WorldImpl, token: Token, value: Record<string, unkn
       range: (low: number, high: number) => (checkAccess("write", "og.Rng"), abi().og_rng_range(id, low, high)),
       integer: (low: number, high: number) => (checkAccess("write", "og.Rng"), abi().og_rng_integer(id, low, high)),
       chance: (p: number) => (checkAccess("write", "og.Rng"), abi().og_rng_chance(id, p)),
+      weighted: (weights: readonly number[]) =>
+        (checkAccess("write", "og.Rng"), abi().og_rng_weighted(id, JSON.stringify(weights))),
+      permutation: (n: number) => (checkAccess("write", "og.Rng"), parse<number[]>(abi().og_rng_permutation(id, n))),
       fork: (label: string) => (checkAccess("read", "og.Rng"), rngStream(abi().og_rng_fork(id, label))),
     });
   }
@@ -1004,6 +1007,8 @@ function rngStream(handle: number): object {
     range: (low: number, high: number) => abi().og_rng_stream_range(handle, low, high),
     integer: (low: number, high: number) => abi().og_rng_stream_integer(handle, low, high),
     chance: (p: number) => abi().og_rng_stream_chance(handle, p),
+    weighted: (weights: readonly number[]) => abi().og_rng_stream_weighted(handle, JSON.stringify(weights)),
+    permutation: (n: number) => parse<number[]>(abi().og_rng_stream_permutation(handle, n)),
     fork: (label: string) => rngStream(abi().og_rng_stream_fork(handle, label)),
   });
 }
@@ -1806,6 +1811,7 @@ export const tween = Object.freeze({
 
 export const tilemap = Object.freeze({
   setTile: (world: WorldImpl, desc?: unknown) => parse(abi().og_tilemap_set_tile(world.id, json(desc))),
+  fill: (world: WorldImpl, desc?: unknown) => parse(abi().og_tilemap_fill(world.id, json(desc))),
   getTile: (world: WorldImpl, entity: number, layer: string, x: number, y: number) =>
     abi().og_tilemap_get_tile(world.id, entity, layer, x, y),
   cellAt: (world: WorldImpl, entity: number, point: unknown) =>

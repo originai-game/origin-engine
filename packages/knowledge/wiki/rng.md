@@ -4,7 +4,7 @@
 
 Deterministic randomness. Every random draw comes from an Rng stream; the sequence for a seed is identical on every host and in the Web scaffold's rng.ts.
 
-Inside a system: forking needs og.Rng among the reads (a fork is derived from the seed and the label, and leaves the main stream where it is); drawing from og.Rng itself (next, range, integer, chance) moves its state, so it needs og.Rng among the writes. A stream a fork returned is the system's own to draw from.
+Inside a system: forking needs og.Rng among the reads (a fork is derived from the seed and the label, and leaves the main stream where it is); drawing from og.Rng itself (next, range, integer, chance, weighted, permutation) moves its state, so it needs og.Rng among the writes. A stream a fork returned is the system's own to draw from.
 
 - **TypeScript**: functions are none at module level (its members live on the types below); components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
@@ -70,6 +70,16 @@ resource Rng {
     param p f64 "The probability, between 0 and 1."
     returns bool
   }
+  fn weighted {
+    doc "An index drawn in proportion to its weight (one draw): `weighted([1, 3])` is 1 three times in four. Zero, negative and non-finite weights are never drawn; -1 when none is positive."
+    param weights List.f64 "One weight per choice."
+    returns i32
+  }
+  fn permutation {
+    doc "0 to n - 1 in a drawn order (Fisher-Yates, n - 1 draws). A shuffled copy of an array is `rng.permutation(a.length).map((i) => a[i])`."
+    param n u32 "How many indices."
+    returns List.u32
+  }
   fn fork {
     doc "A stream for a subsystem, derived from the seed and a label, so drawing from it leaves the main sequence alone. The same label gives the same stream every time, on every host, wherever the main stream is; og.Rng among a system's reads is enough."
     param label String "The subsystem's name, such as `spawner`."
@@ -78,7 +88,7 @@ resource Rng {
 }
 ```
 
-<sub>`api.ogt` line 1568</sub>
+<sub>`api.ogt` line 1578</sub>
 
 <a id="member-Rng-next"></a>
 
@@ -101,7 +111,7 @@ fn next {
 }
 ```
 
-<sub>`api.ogt` line 1576</sub>
+<sub>`api.ogt` line 1586</sub>
 
 <a id="member-Rng-range"></a>
 
@@ -131,7 +141,7 @@ fn range {
 }
 ```
 
-<sub>`api.ogt` line 1580</sub>
+<sub>`api.ogt` line 1590</sub>
 
 <a id="member-Rng-integer"></a>
 
@@ -161,7 +171,7 @@ fn integer {
 }
 ```
 
-<sub>`api.ogt` line 1586</sub>
+<sub>`api.ogt` line 1596</sub>
 
 <a id="member-Rng-chance"></a>
 
@@ -189,7 +199,63 @@ fn chance {
 }
 ```
 
-<sub>`api.ogt` line 1592</sub>
+<sub>`api.ogt` line 1602</sub>
+
+<a id="member-Rng-weighted"></a>
+
+#### `Rng.weighted`
+
+An index drawn in proportion to its weight (one draw): `weighted([1, 3])` is 1 three times in four. Zero, negative and non-finite weights are never drawn; -1 when none is positive.
+
+```ts
+Rng.weighted(weights: readonly number[]): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `weights` | `readonly number[]` | no | One weight per choice. |
+
+**Returns** `number`.
+
+Binding symbol `og_rng_weighted` · publish builds: kept
+
+```ogt
+fn weighted {
+  doc "An index drawn in proportion to its weight (one draw): `weighted([1, 3])` is 1 three times in four. Zero, negative and non-finite weights are never drawn; -1 when none is positive."
+  param weights List.f64 "One weight per choice."
+  returns i32
+}
+```
+
+<sub>`api.ogt` line 1607</sub>
+
+<a id="member-Rng-permutation"></a>
+
+#### `Rng.permutation`
+
+0 to n - 1 in a drawn order (Fisher-Yates, n - 1 draws). A shuffled copy of an array is `rng.permutation(a.length).map((i) => a[i])`.
+
+```ts
+Rng.permutation(n: number): readonly number[]
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `n` | `number` | no | How many indices. |
+
+**Returns** `readonly number[]`.
+
+Binding symbol `og_rng_permutation` · publish builds: kept
+
+```ogt
+fn permutation {
+  doc "0 to n - 1 in a drawn order (Fisher-Yates, n - 1 draws). A shuffled copy of an array is `rng.permutation(a.length).map((i) => a[i])`."
+  param n u32 "How many indices."
+  returns List.u32
+}
+```
+
+<sub>`api.ogt` line 1612</sub>
 
 <a id="member-Rng-fork"></a>
 
@@ -217,7 +283,7 @@ fn fork {
 }
 ```
 
-<sub>`api.ogt` line 1597</sub>
+<sub>`api.ogt` line 1617</sub>
 
 ## Interfaces
 
@@ -364,6 +430,62 @@ fn chance {
 
 <sub>`api.ogt` line 1556</sub>
 
+<a id="member-RngStream-weighted"></a>
+
+#### `RngStream.weighted`
+
+An index drawn in proportion to its weight (one draw): `weighted([1, 3])` is 1 three times in four. Zero, negative and non-finite weights are never drawn; -1 when none is positive.
+
+```ts
+RngStream.weighted(weights: readonly number[]): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `weights` | `readonly number[]` | no | One weight per choice. |
+
+**Returns** `number`.
+
+Binding symbol `og_rng_stream_weighted` · publish builds: kept
+
+```ogt
+fn weighted {
+  doc "An index drawn in proportion to its weight (one draw): `weighted([1, 3])` is 1 three times in four. Zero, negative and non-finite weights are never drawn; -1 when none is positive."
+  param weights List.f64 "One weight per choice."
+  returns i32
+}
+```
+
+<sub>`api.ogt` line 1561</sub>
+
+<a id="member-RngStream-permutation"></a>
+
+#### `RngStream.permutation`
+
+0 to n - 1 in a drawn order (Fisher-Yates, n - 1 draws). A shuffled copy of an array is `rng.permutation(a.length).map((i) => a[i])`.
+
+```ts
+RngStream.permutation(n: number): readonly number[]
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `n` | `number` | no | How many indices. |
+
+**Returns** `readonly number[]`.
+
+Binding symbol `og_rng_stream_permutation` · publish builds: kept
+
+```ogt
+fn permutation {
+  doc "0 to n - 1 in a drawn order (Fisher-Yates, n - 1 draws). A shuffled copy of an array is `rng.permutation(a.length).map((i) => a[i])`."
+  param n u32 "How many indices."
+  returns List.u32
+}
+```
+
+<sub>`api.ogt` line 1566</sub>
+
 <a id="member-RngStream-fork"></a>
 
 #### `RngStream.fork`
@@ -390,4 +512,4 @@ fn fork {
 }
 ```
 
-<sub>`api.ogt` line 1561</sub>
+<sub>`api.ogt` line 1571</sub>

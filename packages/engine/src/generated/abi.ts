@@ -185,6 +185,10 @@ export interface HostAbi<A, V> {
   og_rng_stream_integer(rng_stream: number, low: number, high: number): number;
   /** `RngStream.chance` */
   og_rng_stream_chance(rng_stream: number, p: number): boolean;
+  /** `RngStream.weighted` */
+  og_rng_stream_weighted(rng_stream: number, weights: string): number;
+  /** `RngStream.permutation` */
+  og_rng_stream_permutation(rng_stream: number, n: number): string;
   /** `RngStream.fork` */
   og_rng_stream_fork(rng_stream: number, label: string): number;
   /** `Rng.next` */
@@ -195,8 +199,22 @@ export interface HostAbi<A, V> {
   og_rng_integer(world: number, low: number, high: number): number;
   /** `Rng.chance` */
   og_rng_chance(world: number, p: number): boolean;
+  /** `Rng.weighted` */
+  og_rng_weighted(world: number, weights: string): number;
+  /** `Rng.permutation` */
+  og_rng_permutation(world: number, n: number): string;
   /** `Rng.fork` */
   og_rng_fork(world: number, label: string): number;
+  /** `og.procgen.noise` */
+  og_procgen_noise(desc: string, x: number, y: number, z: number): number;
+  /** `og.procgen.noiseGrid` */
+  og_procgen_noise_grid(desc: string | undefined): string;
+  /** `og.procgen.poissonDisk` */
+  og_procgen_poisson_disk(desc: string | undefined): string;
+  /** `og.procgen.bsp` */
+  og_procgen_bsp(desc: string | undefined): string;
+  /** `og.procgen.wfc` */
+  og_procgen_wfc(desc: string | undefined): string;
   /** `og.input.defineAction` */
   og_input_define_action(world: number, desc: string | undefined): string;
   /** `og.input.actions` */
@@ -559,6 +577,8 @@ export interface HostAbi<A, V> {
   og_tween_flash(world: number, desc: string | undefined): string;
   /** `og.tilemap.setTile` */
   og_tilemap_set_tile(world: number, desc: string | undefined): string;
+  /** `og.tilemap.fill` */
+  og_tilemap_fill(world: number, desc: string | undefined): string;
   /** `og.tilemap.getTile` */
   og_tilemap_get_tile(world: number, entity: number, layer: string, x: number, y: number): number;
   /** `og.tilemap.cellAt` */
@@ -1142,12 +1162,21 @@ export const SYMBOLS: readonly string[] = [
   "og_rng_stream_range",
   "og_rng_stream_integer",
   "og_rng_stream_chance",
+  "og_rng_stream_weighted",
+  "og_rng_stream_permutation",
   "og_rng_stream_fork",
   "og_rng_next",
   "og_rng_range",
   "og_rng_integer",
   "og_rng_chance",
+  "og_rng_weighted",
+  "og_rng_permutation",
   "og_rng_fork",
+  "og_procgen_noise",
+  "og_procgen_noise_grid",
+  "og_procgen_poisson_disk",
+  "og_procgen_bsp",
+  "og_procgen_wfc",
   "og_input_define_action",
   "og_input_actions",
   "og_input_action",
@@ -1329,6 +1358,7 @@ export const SYMBOLS: readonly string[] = [
   "og_tween_squash",
   "og_tween_flash",
   "og_tilemap_set_tile",
+  "og_tilemap_fill",
   "og_tilemap_get_tile",
   "og_tilemap_cell_at",
   "og_tilemap_cell_center",

@@ -2,7 +2,7 @@
 
 # The Origin Engine API
 
-`@origingame/engine`, API version 1: 35 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
+`@origingame/engine`, API version 1: 36 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
 
 The Origin Engine API. Game code declares components and systems, and reads the world through typed views over engine memory.
 
@@ -21,6 +21,7 @@ Grouped by the skill that teaches them: the skill says how much of each to use a
 | [`world`](world.md) | types and tokens | kept | The world: an archetype ECS. Entities are generational handles; components are columns in engine memory. |
 | [`system`](system.md) | named exports | kept | Systems: functions the engine calls once per tick with their matched archetypes. |
 | [`rng`](rng.md) | types and tokens | kept | Deterministic randomness. Every random draw comes from an Rng stream; the sequence for a seed is identical on every host and in the Web scaffold's rng.ts. |
+| [`procgen`](procgen.md) | `og.procgen.*` | kept | Procedural generation: gradient noise (Perlin, simplex, FBM), Poisson-disk points, BSP dungeons and wave function collapse, all deterministic. Each generator takes a `seed`; give it a stream's, og.Rng's fork `rng.fork("dungeon").seed` (with `rng` from `world.resource(og.Rng)`; a fork needs og.Rng among a system's reads only), so the same world and label give the same output and the main stream does not move. A generator draws only from a stream on that seed, in a fixed order, with arithmetic that is bit-identical on every host: the same seed gives the same map natively and on the web, in a replay and after a restore. |
 
 ### `og-game`
 
@@ -159,7 +160,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1964 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1986 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -277,6 +278,8 @@ Field units the docs and Tune use.
 | [`BreadcrumbsDesc`](ui.md#type-BreadcrumbsDesc) | desc struct | ui | — |
 | [`BreadcrumbsResult`](ui.md#type-BreadcrumbsResult) | struct | ui | — |
 | [`Breakpoint`](ui.md#type-Breakpoint) | enum | ui | — |
+| [`BspDesc`](procgen.md#type-BspDesc) | desc struct | procgen | — |
+| [`BspResult`](procgen.md#type-BspResult) | struct | procgen | — |
 | [`BufferGeometryDesc`](render.md#type-BufferGeometryDesc) | desc struct | render | — |
 | [`BuildProfile`](probe.md#type-BuildProfile) | enum | probe | — |
 | [`BundleInfo`](load.md#type-BundleInfo) | struct | load | — |
@@ -305,6 +308,7 @@ Field units the docs and Tune use.
 | [`CastState`](ui.md#type-CastState) | enum | ui | — |
 | [`CelebrationDesc`](ui.md#type-CelebrationDesc) | desc struct | ui | — |
 | [`CelebrationKind`](ui.md#type-CelebrationKind) | enum | ui | — |
+| [`CellRect`](procgen.md#type-CellRect) | struct | procgen | — |
 | [`CHARACTER_AIR_JUMPED`](physics.md#const-CHARACTER_AIR_JUMPED) | constant | physics | — |
 | [`CHARACTER_BUMPED`](physics.md#const-CHARACTER_BUMPED) | constant | physics | — |
 | [`CHARACTER_JUMPED`](physics.md#const-CHARACTER_JUMPED) | constant | physics | — |
@@ -472,10 +476,12 @@ Field units the docs and Tune use.
 | [`f32()`](reflect.md#column-f32) | column kind | reflect | — |
 | [`f64()`](reflect.md#column-f64) | column kind | reflect | — |
 | [`FactsFn`](game.md#type-FactsFn) | callback | game | — |
+| [`FbmDesc`](procgen.md#type-FbmDesc) | desc struct | procgen | — |
 | [`FieldDesc`](ui.md#type-FieldDesc) | desc struct | ui | — |
 | [`FieldOptions`](reflect.md#type-FieldOptions) | desc struct | reflect | — |
 | [`FieldResult`](ui.md#type-FieldResult) | struct | ui | — |
 | [`Fill`](ui.md#type-Fill) | union | ui | — |
+| [`FillDesc`](tilemap.md#type-FillDesc) | desc struct | tilemap | — |
 | [`FixedSize`](ui.md#type-FixedSize) | struct | ui | — |
 | [`FlashDesc`](tween.md#type-FlashDesc) | desc struct | tween | — |
 | [`FlightHudDesc`](ui.md#type-FlightHudDesc) | desc struct | ui | — |
@@ -752,6 +758,8 @@ Field units the docs and Tune use.
 | [`NodeGraphDesc`](ui.md#type-NodeGraphDesc) | desc struct | ui | — |
 | [`NodeGraphResult`](ui.md#type-NodeGraphResult) | struct | ui | — |
 | [`NoiseDesc`](ai.md#type-NoiseDesc) | desc struct | ai | — |
+| [`NoiseGridDesc`](procgen.md#type-NoiseGridDesc) | desc struct | procgen | — |
+| [`NoiseKind`](procgen.md#type-NoiseKind) | enum | procgen | — |
 | [`Notation`](ui.md#type-Notation) | enum | ui | — |
 | [`NotificationItem`](ui.md#type-NotificationItem) | desc struct | ui | — |
 | [`NotificationsDesc`](ui.md#type-NotificationsDesc) | desc struct | ui | — |
@@ -1050,6 +1058,11 @@ Field units the docs and Tune use.
 | [`og.Points`](render.md#record-Points) | component | render | — |
 | [`og.PostEffects`](render.md#record-PostEffects) | resource | render | — |
 | [`og.PrefabLink`](load.md#record-PrefabLink) | component | load | — |
+| [`og.procgen.bsp`](procgen.md#fn-bsp) | function | procgen | `og_procgen_bsp` |
+| [`og.procgen.noise`](procgen.md#fn-noise) | function | procgen | `og_procgen_noise` |
+| [`og.procgen.noiseGrid`](procgen.md#fn-noiseGrid) | function | procgen | `og_procgen_noise_grid` |
+| [`og.procgen.poissonDisk`](procgen.md#fn-poissonDisk) | function | procgen | `og_procgen_poisson_disk` |
+| [`og.procgen.wfc`](procgen.md#fn-wfc) | function | procgen | `og_procgen_wfc` |
 | [`og.Ragdoll`](physics.md#record-Ragdoll) | component | physics | — |
 | [`og.RectLight`](render.md#record-RectLight) | component | render | — |
 | [`og.ReflectionProbe`](render.md#record-ReflectionProbe) | component | render | — |
@@ -1148,6 +1161,7 @@ Field units the docs and Tune use.
 | [`og.Tilemap`](tilemap.md#record-Tilemap) | component | tilemap | — |
 | [`og.tilemap.cellAt`](tilemap.md#fn-cellAt) | function | tilemap | `og_tilemap_cell_at` |
 | [`og.tilemap.cellCenter`](tilemap.md#fn-cellCenter) | function | tilemap | `og_tilemap_cell_center` |
+| [`og.tilemap.fill`](tilemap.md#fn-fill) | function | tilemap | `og_tilemap_fill` |
 | [`og.tilemap.getTile`](tilemap.md#fn-getTile) | function | tilemap | `og_tilemap_get_tile` |
 | [`og.tilemap.setTile`](tilemap.md#fn-setTile) | function | tilemap | `og_tilemap_set_tile` |
 | [`og.Time`](time.md#record-Time) | resource | time | — |
@@ -1544,6 +1558,7 @@ Field units the docs and Tune use.
 | [`PointProjection`](physics.md#type-PointProjection) | struct | physics | — |
 | [`PointsDesc`](render.md#type-PointsDesc) | desc struct | render | — |
 | [`PointShadows`](render.md#type-PointShadows) | enum | render | — |
+| [`PoissonDesc`](procgen.md#type-PoissonDesc) | desc struct | procgen | — |
 | [`PolyhedronGeometryDesc`](render.md#type-PolyhedronGeometryDesc) | desc struct | render | — |
 | [`PopoverDesc`](ui.md#type-PopoverDesc) | desc struct | ui | — |
 | [`PopoverResult`](ui.md#type-PopoverResult) | struct | ui | — |
@@ -1667,14 +1682,18 @@ Field units the docs and Tune use.
 | [`Rng.fork`](rng.md#member-Rng-fork) | method | rng | `og_rng_fork` |
 | [`Rng.integer`](rng.md#member-Rng-integer) | method | rng | `og_rng_integer` |
 | [`Rng.next`](rng.md#member-Rng-next) | method | rng | `og_rng_next` |
+| [`Rng.permutation`](rng.md#member-Rng-permutation) | method | rng | `og_rng_permutation` |
 | [`Rng.range`](rng.md#member-Rng-range) | method | rng | `og_rng_range` |
+| [`Rng.weighted`](rng.md#member-Rng-weighted) | method | rng | `og_rng_weighted` |
 | [`RngStream`](rng.md#type-RngStream) | interface | rng | — |
 | [`RngStream.chance`](rng.md#member-RngStream-chance) | method | rng | `og_rng_stream_chance` |
 | [`RngStream.fork`](rng.md#member-RngStream-fork) | method | rng | `og_rng_stream_fork` |
 | [`RngStream.integer`](rng.md#member-RngStream-integer) | method | rng | `og_rng_stream_integer` |
 | [`RngStream.next`](rng.md#member-RngStream-next) | method | rng | `og_rng_stream_next` |
+| [`RngStream.permutation`](rng.md#member-RngStream-permutation) | method | rng | `og_rng_stream_permutation` |
 | [`RngStream.range`](rng.md#member-RngStream-range) | method | rng | `og_rng_stream_range` |
 | [`RngStream.seed`](rng.md#member-RngStream-seed) | property | rng | `og_rng_stream_get_seed` |
+| [`RngStream.weighted`](rng.md#member-RngStream-weighted) | method | rng | `og_rng_stream_weighted` |
 | [`RoomDesc`](platform.md#type-RoomDesc) | desc struct | platform | — |
 | [`RoomInfo`](platform.md#type-RoomInfo) | struct | platform | — |
 | [`RoomMessageData`](platform.md#type-RoomMessageData) | struct | platform | — |
@@ -2091,6 +2110,10 @@ Field units the docs and Tune use.
 | [`WEATHER_NONE`](atmosphere.md#const-WEATHER_NONE) | constant | atmosphere | — |
 | [`WEATHER_RAIN`](atmosphere.md#const-WEATHER_RAIN) | constant | atmosphere | — |
 | [`WEATHER_SNOW`](atmosphere.md#const-WEATHER_SNOW) | constant | atmosphere | — |
+| [`WfcCell`](procgen.md#type-WfcCell) | struct | procgen | — |
+| [`WfcDesc`](procgen.md#type-WfcDesc) | desc struct | procgen | — |
+| [`WfcResult`](procgen.md#type-WfcResult) | struct | procgen | — |
+| [`WfcTile`](procgen.md#type-WfcTile) | struct | procgen | — |
 | [`WheelInput`](input.md#type-WheelInput) | struct | input | — |
 | [`WheelPose`](physics.md#type-WheelPose) | struct | physics | — |
 | [`WipeSide`](ui.md#type-WipeSide) | enum | ui | — |

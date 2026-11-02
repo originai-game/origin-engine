@@ -306,6 +306,78 @@ impl MapState {
         Ok(())
     }
 
+    /// Writes a row-major block of `width`-wide cells at (x, y), as `set` on
+    /// each but checking every value before writing any and re-tiling a
+    /// terrain layer once, over the block and its border. Cells past the
+    /// map's edge are skipped.
+    pub fn fill(&mut self, layer: usize, x: u32, y: u32, width: u32, values: &[i32]) -> Result<()> {
+        let name = self
+            .asset
+            .layers
+            .get(layer)
+            .map(|l| l.name.clone())
+            .ok_or_else(|| invalid(format!("layer {layer}: the map has {}", self.layers.len())))?;
+        if width == 0 || !values.len().is_multiple_of(width as usize) {
+            return Err(invalid(format!(
+                "a fill of {} cells is not whole rows of width {width}",
+                values.len()
+            )));
+        }
+        let terrain = self.layers[layer].terrain.is_some();
+        let count = self.tilesets[self.asset.layers[layer].tileset as usize].count();
+        let mut stored = Vec::with_capacity(values.len());
+        for &value in values {
+            stored.push(if terrain {
+                match value {
+                    0 | 1 => value as u32,
+                    _ => {
+                        return Err(invalid(format!(
+                            "layer '{name}' is a terrain layer: fill with 1 or 0, not {value}"
+                        )));
+                    }
+                }
+            } else if value < 0 {
+                0
+            } else if (value as u32) < count {
+                value as u32 + 1
+            } else {
+                return Err(invalid(format!(
+                    "tile {value} is not in layer '{name}''s tileset ({count} tiles)"
+                )));
+            });
+        }
+        let rows = (values.len() / width as usize) as u32;
+        for (k, &v) in stored.iter().enumerate() {
+            let (cx, cy) = (
+                x as u64 + (k as u64 % width as u64),
+                y as u64 + (k as u64 / width as u64),
+            );
+            if cx >= self.asset.width as u64 || cy >= self.asset.height as u64 {
+                continue;
+            }
+            let (cx, cy) = (cx as u32, cy as u32);
+            let i = (cy * self.asset.width + cx) as usize;
+            if self.layers[layer].cells[i] == v {
+                continue;
+            }
+            self.layers[layer].cells[i] = v;
+            if !terrain {
+                self.layers[layer].resolved[i] = v;
+                self.bump(layer, cx, cy);
+            }
+        }
+        if terrain && rows > 0 {
+            let x1 = (x as u64 + width as u64).min(self.asset.width as u64) as u32;
+            let y1 = (y as u64 + rows as u64).min(self.asset.height as u64) as u32;
+            for cy in y.saturating_sub(1)..=y1.min(self.asset.height.saturating_sub(1)) {
+                for cx in x.saturating_sub(1)..=x1.min(self.asset.width.saturating_sub(1)) {
+                    self.resolve(layer, cx, cy);
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// How many times layer `layer`'s drawn tiles changed.
     pub fn layer_version(&self, layer: usize) -> u64 {
         self.layers.get(layer).map_or(0, |l| l.version)

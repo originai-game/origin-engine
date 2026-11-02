@@ -20,7 +20,7 @@ module tilemap {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 10631</sub>
+<sub>`api.ogt` line 10878</sub>
 
 ## Contents
 
@@ -35,6 +35,8 @@ module tilemap {
 | [`SetTileDesc`](#type-SetTileDesc) | desc struct | One cell to change. |
 | [`TileCell`](#type-TileCell) | struct | A cell of a map. |
 | [`og.tilemap.setTile`](#fn-setTile) | function | Change a cell. It applies at once to getTile, and to drawing and colliders at the og.tilemap system (this tick when called before it). Deterministic: equal edits in equal order give equal maps. |
+| [`FillDesc`](#type-FillDesc) | desc struct | A block of cells to write at once: a generated grid (og.procgen's BSP cells or WFC tiles mapped to tile ids). |
+| [`og.tilemap.fill`](#fn-fill) | function | Write a block of cells, as setTile on each (row by row) but re-tiling a terrain layer and rebuilding the colliders once. Cells past the map's edge are skipped. |
 | [`og.tilemap.getTile`](#fn-getTile) | function | A cell's tile id, -1 when empty: on a terrain layer the tile auto-tiling resolved from the neighbours (setTile writes 1 or 0 there; the id changes with them). -1 outside the map or before the map is adopted. |
 | [`og.tilemap.cellAt`](#fn-cellAt) | function | The cell under a world point (its xy), for a map at its entity's position. |
 | [`og.tilemap.cellCenter`](#fn-cellCenter) | function | A cell's centre in world coordinates (z of the map). |
@@ -69,7 +71,37 @@ fn setTile {
 }
 ```
 
-<sub>`api.ogt` line 10743</sub>
+<sub>`api.ogt` line 10990</sub>
+
+<a id="fn-fill"></a>
+
+### `og.tilemap.fill`
+
+Write a block of cells, as setTile on each (row by row) but re-tiling a terrain layer and rebuilding the colliders once. Cells past the map's edge are skipped.
+
+```ts
+og.tilemap.fill(world: World, desc?: FillDesc): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `desc` | `FillDesc` | yes | The map, the layer, where and the cells. |
+
+**Returns** `Result<void>`: Refused for an entity whose map is not adopted yet, an unknown layer, a width of 0 or not dividing the cells, or a tile the tileset lacks (nothing is written then).
+
+Binding symbol `og_tilemap_fill` · publish builds: kept
+
+```ogt
+fn fill {
+  doc "Write a block of cells, as setTile on each (row by row) but re-tiling a terrain layer and rebuilding the colliders once. Cells past the map's edge are skipped."
+  param world World "The world."
+  param desc FillDesc "The map, the layer, where and the cells."
+  returns Result.Void "Refused for an entity whose map is not adopted yet, an unknown layer, a width of 0 or not dividing the cells, or a tile the tileset lacks (nothing is written then)."
+}
+```
+
+<sub>`api.ogt` line 11008</sub>
 
 <a id="fn-getTile"></a>
 
@@ -105,7 +137,7 @@ fn getTile {
 }
 ```
 
-<sub>`api.ogt` line 10750</sub>
+<sub>`api.ogt` line 11015</sub>
 
 <a id="fn-cellAt"></a>
 
@@ -137,7 +169,7 @@ fn cellAt {
 }
 ```
 
-<sub>`api.ogt` line 10760</sub>
+<sub>`api.ogt` line 11025</sub>
 
 <a id="fn-cellCenter"></a>
 
@@ -171,7 +203,7 @@ fn cellCenter {
 }
 ```
 
-<sub>`api.ogt` line 10768</sub>
+<sub>`api.ogt` line 11033</sub>
 
 ## Components, resources and events
 
@@ -230,7 +262,7 @@ component Tilemap {
 }
 ```
 
-<sub>`api.ogt` line 10647</sub>
+<sub>`api.ogt` line 10894</sub>
 
 ## Types
 
@@ -246,7 +278,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TilemapAsset "A loaded map: its layers, tilesets and objects."
 ```
 
-<sub>`api.ogt` line 10638</sub>
+<sub>`api.ogt` line 10885</sub>
 
 <a id="type-TileLayerInfo"></a>
 
@@ -283,7 +315,7 @@ struct TileLayerInfo {
 }
 ```
 
-<sub>`api.ogt` line 10679</sub>
+<sub>`api.ogt` line 10926</sub>
 
 <a id="type-TileObject"></a>
 
@@ -318,7 +350,7 @@ struct TileObject {
 }
 ```
 
-<sub>`api.ogt` line 10693</sub>
+<sub>`api.ogt` line 10940</sub>
 
 <a id="type-TilemapInfo"></a>
 
@@ -353,7 +385,7 @@ struct TilemapInfo {
 }
 ```
 
-<sub>`api.ogt` line 10709</sub>
+<sub>`api.ogt` line 10956</sub>
 
 <a id="type-SetTileDesc"></a>
 
@@ -385,7 +417,7 @@ struct SetTileDesc {
 }
 ```
 
-<sub>`api.ogt` line 10724</sub>
+<sub>`api.ogt` line 10971</sub>
 
 <a id="type-TileCell"></a>
 
@@ -408,7 +440,39 @@ struct TileCell {
 }
 ```
 
-<sub>`api.ogt` line 10736</sub>
+<sub>`api.ogt` line 10983</sub>
+
+<a id="type-FillDesc"></a>
+
+### `FillDesc` (desc struct)
+
+A block of cells to write at once: a generated grid (og.procgen's BSP cells or WFC tiles mapped to tile ids).
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `entity` | `Entity` | `0` | — | — | — | The entity with the og.Tilemap. |
+| `layer` | `string` | `""` | — | — | — | The layer's name. |
+| `x` | `number` | `0` | — | — | — | The block's left column. |
+| `y` | `number` | `0` | — | — | — | The block's top row. |
+| `width` | `number` | `0` | — | — | — | The block's width in cells: `tiles` is row-major, `width` per row. |
+| `tiles` | `readonly number[]` | `[]` | — | — | — | The cells, as og.tilemap.setTile's `tile`: a tile id or -1 on a tile layer, 1 or 0 on a terrain layer (re-tiled once, after every cell is written). |
+
+```ogt
+struct FillDesc {
+  doc "A block of cells to write at once: a generated grid (og.procgen's BSP cells or WFC tiles mapped to tile ids)."
+  desc true
+  field entity Entity "The entity with the og.Tilemap."
+  field layer String "The layer's name."
+  field x u32 "The block's left column."
+  field y u32 "The block's top row."
+  field width u32 "The block's width in cells: `tiles` is row-major, `width` per row."
+  field tiles List.i32 "The cells, as og.tilemap.setTile's `tile`: a tile id or -1 on a tile layer, 1 or 0 on a terrain layer (re-tiled once, after every cell is written)."
+}
+```
+
+<sub>`api.ogt` line 10997</sub>
 
 ## Column kinds
 
@@ -427,4 +491,4 @@ column TilemapAsset {
 }
 ```
 
-<sub>`api.ogt` line 10640</sub>
+<sub>`api.ogt` line 10887</sub>

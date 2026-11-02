@@ -32,6 +32,7 @@ pub mod hash;
 pub mod idmap;
 pub mod math;
 pub mod ogt;
+pub mod procgen;
 pub mod reflect;
 pub mod rng;
 pub mod sort;

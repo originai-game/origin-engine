@@ -1,8 +1,8 @@
 use og_runtime::{
     Dispatch, Fetch, Hooks, og_engine_create, og_engine_frame, og_engine_probe_dump,
     og_engine_probe_reload, og_engine_take_log, og_game_game, og_host_begin_bundle,
-    og_load_tilemap, og_system_define_system, og_tilemap_get_tile, og_tilemap_set_tile,
-    og_world_get_tick, og_world_insert, og_world_spawn, set_hooks,
+    og_load_tilemap, og_system_define_system, og_tilemap_fill, og_tilemap_get_tile,
+    og_tilemap_set_tile, og_world_get_tick, og_world_insert, og_world_spawn, set_hooks,
 };
 use serde_json::{Value, json};
 use std::{cell::Cell, path::PathBuf, rc::Rc};
@@ -94,6 +94,21 @@ fn reload_preserves_edited_tiles_and_runs_the_new_bundle() {
         engine,
         Some(json!({ "entity": entity, "layer": "floor", "x": 2, "y": 1, "tile": 1 }).to_string()),
     ));
+    // A block from (1, 0), 3 wide: its third column is past the map's edge.
+    let fill = |tiles: Value| {
+        og_tilemap_fill(
+            engine,
+            Some(json!({ "entity": entity, "layer": "floor", "x": 1, "y": 0, "width": 3, "tiles": tiles }).to_string()),
+        )
+    };
+    let refused: Value = serde_json::from_str(&fill(json!([0, 0, 0, 0, 5, 0]))).unwrap();
+    assert_eq!(refused["ok"], false, "{refused}");
+    assert_eq!(
+        og_tilemap_get_tile(engine, entity, "floor".into(), 1, 0),
+        -1,
+        "a refused fill writes nothing"
+    );
+    value(fill(json!([-1, 0, 0, 0, 0, 0])));
     value(og_engine_frame(engine, 1000.0 / 60.0));
     for version in [2, 3] {
         let tick = og_world_get_tick(engine);
@@ -114,7 +129,17 @@ fn reload_preserves_edited_tiles_and_runs_the_new_bundle() {
         );
         value(og_engine_frame(engine, 1000.0 / 60.0));
         assert_eq!(seen.get(), version, "the new system runs");
-        assert_eq!(og_tilemap_get_tile(engine, entity, "floor".into(), 2, 1), 1);
+        assert_eq!(og_tilemap_get_tile(engine, entity, "floor".into(), 2, 1), 0);
+        assert_eq!(
+            og_tilemap_get_tile(engine, entity, "floor".into(), 2, 0),
+            0,
+            "filled"
+        );
+        assert_eq!(
+            og_tilemap_get_tile(engine, entity, "floor".into(), 1, 1),
+            0,
+            "filled"
+        );
         assert_eq!(
             og_tilemap_get_tile(engine, entity, "floor".into(), 1, 0),
             -1

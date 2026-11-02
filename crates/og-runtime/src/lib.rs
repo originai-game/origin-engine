@@ -62,6 +62,7 @@ mod platform;
 mod polish;
 mod prefab;
 mod probe;
+mod procgen;
 #[cfg(not(feature = "publish"))]
 mod record;
 mod review;
@@ -112,10 +113,10 @@ pub use engine::{
 };
 pub use feel::{
     og_camera_kick, og_camera_punch, og_camera_shake, og_load_flipbook, og_load_tilemap,
-    og_render_floating_text, og_tilemap_cell_at, og_tilemap_cell_center, og_tilemap_get_tile,
-    og_tilemap_set_tile, og_time_hit_stop, og_time_set_scale, og_tween_active, og_tween_cancel,
-    og_tween_cancel_entity, og_tween_flash, og_tween_parallel, og_tween_sequence, og_tween_squash,
-    og_tween_to,
+    og_render_floating_text, og_tilemap_cell_at, og_tilemap_cell_center, og_tilemap_fill,
+    og_tilemap_get_tile, og_tilemap_set_tile, og_time_hit_stop, og_time_set_scale, og_tween_active,
+    og_tween_cancel, og_tween_cancel_entity, og_tween_flash, og_tween_parallel, og_tween_sequence,
+    og_tween_squash, og_tween_to,
 };
 pub use geometry::{
     og_debug_arrow, og_debug_axes, og_debug_box, og_debug_clear, og_debug_enabled, og_debug_line,
@@ -191,6 +192,10 @@ pub use platform::{
     og_platform_load_slot, og_platform_now, og_platform_point, og_platform_result,
     og_platform_save_settings, og_platform_save_slot, og_platform_set_host, og_platform_store_get,
     og_platform_store_list, og_platform_store_set, og_platform_take, og_platform_telemetry,
+};
+pub use procgen::{
+    og_procgen_bsp, og_procgen_noise, og_procgen_noise_grid, og_procgen_poisson_disk,
+    og_procgen_wfc,
 };
 #[cfg(not(feature = "publish"))]
 pub use record::{render_frame, render_restore, render_snapshot};

@@ -15,6 +15,8 @@
 //   input       input events' `at` within the tick: from the probe's input
 //               (the host's stamp, clamped) and from the command channel's
 //               step times; every KeyDown, KeyUp and PointerDown seen
+//   procgen     og.procgen's generators and og.Rng's weighted and permutation
+//               draws, each as an FNV-1a hash of its output (floats as f32)
 //   latency     og.audio.outputLatency: 0 headless, then (web) what the
 //               Worker reports for an AudioContext's latency
 
@@ -243,6 +245,50 @@ if (which === "rng") {
     if (ev.played !== before) picks.push(ev.index);
   }
   out.picks = picks;
+  out.hash = engine.hash();
+} else if (which === "procgen") {
+  // The same generators and settings as og-core's pinned test
+  // (procgen::tests::every_generator_gives_its_pinned_output_for_a_seed).
+  const fnv = (bytes: Iterable<number>): string => {
+    let h = 0xcbf29ce484222325n;
+    for (const b of bytes) h = BigInt.asUintN(64, (h ^ BigInt(b)) * 0x100000001b3n);
+    return h.toString(16).padStart(16, "0");
+  };
+  const f32s = (v: readonly number[]) => new Uint8Array(new Float32Array(v).buffer);
+  const u32s = (v: readonly number[]) => new Uint8Array(new Uint32Array(v).buffer);
+  const must = <T>(r: { ok: true; value: T } | { ok: false; reason: string }): T => {
+    if (!r.ok) throw new Error(r.reason);
+    return r.value;
+  };
+  const grid = (kind: "perlin" | "simplex", threeD: boolean) =>
+    must(og.procgen.noiseGrid({
+      noise: { seed: 7, kind, octaves: 4, frequency: 0.13, threeD },
+      width: 16, height: 16, x: -3.5, y: 2.25, step: 0.7, z: 1.3,
+    })) as number[];
+  const pipes = [
+    { weight: 2, up: 0, right: 0, down: 0, left: 0, rotations: false },
+    { weight: 1, up: 1, right: 0, down: 1, left: 0, rotations: true },
+    { weight: 1, up: 1, right: 1, down: 0, left: 0, rotations: true },
+  ];
+  const wfc = must(og.procgen.wfc({ seed: 9, width: 20, height: 12, tiles: pipes, wrap: true, attempts: 5 }));
+  const poisson = must(og.procgen.poissonDisk({ seed: 5, width: 40, height: 30, radius: 3, attempts: 30, maxPoints: 10000 }));
+  const engine = start(og.game({ tick: 60, seed: 42 }));
+  const rng = must(engine.world.resource(og.Rng));
+  const picks = rng.fork("picks");
+  out.hashes = {
+    perlin2: fnv(f32s(grid("perlin", false))),
+    perlin3: fnv(f32s(grid("perlin", true))),
+    simplex2: fnv(f32s(grid("simplex", false))),
+    simplex3: fnv(f32s(grid("simplex", true))),
+    poisson: fnv(f32s(poisson.flatMap((p) => [p.x, p.y]))),
+    bsp: fnv(must(og.procgen.bsp({ seed: 3 })).cells),
+    wfc: fnv(wfc.tiles.map((t, i) => t * 4 + wfc.rotations[i]!)),
+    weighted: fnv(Array.from({ length: 64 }, () => picks.weighted([1, 0, 3, 0.5]))),
+    permutation: fnv(u32s(picks.permutation(32))),
+    mainWeighted: rng.weighted([0, 0, 1]),
+  };
+  out.noise = og.procgen.noise({ seed: 7, kind: "simplex", octaves: 3 }, 0.37, -1.2, 0);
+  out.refused = og.procgen.bsp({ width: 0 });
   out.hash = engine.hash();
 } else {
   throw new Error(`unknown --case ${which}`);

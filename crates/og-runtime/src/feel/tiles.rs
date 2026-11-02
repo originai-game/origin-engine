@@ -243,6 +243,40 @@ pub fn og_tilemap_set_tile(world: u32, desc: Option<String>) -> String {
     })())
 }
 
+pub fn og_tilemap_fill(world: u32, desc: Option<String>) -> String {
+    wire_void((|| {
+        let d = parse(desc.as_deref())?;
+        let entity = d["entity"]
+            .as_f64()
+            .ok_or("desc.entity is the entity with the og.Tilemap")?;
+        let tiles: Vec<i32> = d["tiles"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .map(|v| {
+                        v.as_i64()
+                            .unwrap_or(-1)
+                            .clamp(i32::MIN as i64, i32::MAX as i64) as i32
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        with_live(world, entity, |live| {
+            let layer = layer_index(live, d["layer"].as_str().unwrap_or_default())?;
+            let (x, y, width) = (
+                d["x"].as_u64().unwrap_or(0).min(u32::MAX as u64) as u32,
+                d["y"].as_u64().unwrap_or(0).min(u32::MAX as u64) as u32,
+                d["width"].as_u64().unwrap_or(0).min(u32::MAX as u64) as u32,
+            );
+            live.state.fill(layer, x, y, width, &tiles).map_err(err)?;
+            if live.state.asset().layers[layer].collision {
+                live.dirty = true;
+            }
+            Ok(())
+        })
+    })())
+}
+
 pub fn og_tilemap_get_tile(world: u32, entity: f64, layer: String, x: u32, y: u32) -> i32 {
     with_live(world, entity, |live| {
         Ok(live.state.get(layer_index(live, &layer)?, x, y))

@@ -344,6 +344,36 @@ impl RngApi for NodeHost {
     fn og_rng_fork(&self, world: u32, label: String) -> u32 {
         rt::og_rng_fork(world, label)
     }
+    fn og_rng_stream_weighted(&self, rng_stream: u32, weights: String) -> i32 {
+        rt::og_rng_stream_weighted(rng_stream, weights)
+    }
+    fn og_rng_stream_permutation(&self, rng_stream: u32, n: u32) -> String {
+        rt::og_rng_stream_permutation(rng_stream, n)
+    }
+    fn og_rng_weighted(&self, world: u32, weights: String) -> i32 {
+        rt::og_rng_weighted(world, weights)
+    }
+    fn og_rng_permutation(&self, world: u32, n: u32) -> String {
+        rt::og_rng_permutation(world, n)
+    }
+}
+
+impl ProcgenApi for NodeHost {
+    fn og_procgen_noise(&self, desc: String, x: f64, y: f64, z: f64) -> f64 {
+        rt::og_procgen_noise(desc, x, y, z)
+    }
+    fn og_procgen_noise_grid(&self, desc: Option<String>) -> String {
+        rt::og_procgen_noise_grid(desc)
+    }
+    fn og_procgen_poisson_disk(&self, desc: Option<String>) -> String {
+        rt::og_procgen_poisson_disk(desc)
+    }
+    fn og_procgen_bsp(&self, desc: Option<String>) -> String {
+        rt::og_procgen_bsp(desc)
+    }
+    fn og_procgen_wfc(&self, desc: Option<String>) -> String {
+        rt::og_procgen_wfc(desc)
+    }
 }
 
 impl InputApi for NodeHost {
@@ -853,6 +883,9 @@ impl TweenApi for NodeHost {
 impl TilemapApi for NodeHost {
     fn og_tilemap_set_tile(&self, world: u32, desc: Option<String>) -> String {
         rt::og_tilemap_set_tile(world, desc)
+    }
+    fn og_tilemap_fill(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_tilemap_fill(world, desc)
     }
     fn og_tilemap_get_tile(&self, world: u32, entity: f64, layer: String, x: u32, y: u32) -> i32 {
         rt::og_tilemap_get_tile(world, entity, layer, x, y)

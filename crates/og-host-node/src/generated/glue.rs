@@ -543,6 +543,18 @@ pub fn og_rng_stream_chance(env: Env, rng_stream: u32, p: f64) -> bool {
     <Host as RngApi>::og_rng_stream_chance(&Host, rng_stream, p)
 }
 
+#[napi(js_name = "og_rng_stream_weighted")]
+pub fn og_rng_stream_weighted(env: Env, rng_stream: u32, weights: String) -> i32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RngApi>::og_rng_stream_weighted(&Host, rng_stream, weights)
+}
+
+#[napi(js_name = "og_rng_stream_permutation")]
+pub fn og_rng_stream_permutation(env: Env, rng_stream: u32, n: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RngApi>::og_rng_stream_permutation(&Host, rng_stream, n)
+}
+
 #[napi(js_name = "og_rng_stream_fork")]
 pub fn og_rng_stream_fork(env: Env, rng_stream: u32, label: String) -> u32 {
     let _env = crate::EnvScope::enter(&env);
@@ -573,10 +585,52 @@ pub fn og_rng_chance(env: Env, world: u32, p: f64) -> bool {
     <Host as RngApi>::og_rng_chance(&Host, world, p)
 }
 
+#[napi(js_name = "og_rng_weighted")]
+pub fn og_rng_weighted(env: Env, world: u32, weights: String) -> i32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RngApi>::og_rng_weighted(&Host, world, weights)
+}
+
+#[napi(js_name = "og_rng_permutation")]
+pub fn og_rng_permutation(env: Env, world: u32, n: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RngApi>::og_rng_permutation(&Host, world, n)
+}
+
 #[napi(js_name = "og_rng_fork")]
 pub fn og_rng_fork(env: Env, world: u32, label: String) -> u32 {
     let _env = crate::EnvScope::enter(&env);
     <Host as RngApi>::og_rng_fork(&Host, world, label)
+}
+
+#[napi(js_name = "og_procgen_noise")]
+pub fn og_procgen_noise(env: Env, desc: String, x: f64, y: f64, z: f64) -> f64 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as ProcgenApi>::og_procgen_noise(&Host, desc, x, y, z)
+}
+
+#[napi(js_name = "og_procgen_noise_grid")]
+pub fn og_procgen_noise_grid(env: Env, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as ProcgenApi>::og_procgen_noise_grid(&Host, desc)
+}
+
+#[napi(js_name = "og_procgen_poisson_disk")]
+pub fn og_procgen_poisson_disk(env: Env, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as ProcgenApi>::og_procgen_poisson_disk(&Host, desc)
+}
+
+#[napi(js_name = "og_procgen_bsp")]
+pub fn og_procgen_bsp(env: Env, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as ProcgenApi>::og_procgen_bsp(&Host, desc)
+}
+
+#[napi(js_name = "og_procgen_wfc")]
+pub fn og_procgen_wfc(env: Env, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as ProcgenApi>::og_procgen_wfc(&Host, desc)
 }
 
 #[napi(js_name = "og_input_define_action")]
@@ -1663,6 +1717,12 @@ pub fn og_tween_flash(env: Env, world: u32, desc: Option<String>) -> String {
 pub fn og_tilemap_set_tile(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as TilemapApi>::og_tilemap_set_tile(&Host, world, desc)
+}
+
+#[napi(js_name = "og_tilemap_fill")]
+pub fn og_tilemap_fill(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TilemapApi>::og_tilemap_fill(&Host, world, desc)
 }
 
 #[napi(js_name = "og_tilemap_get_tile")]

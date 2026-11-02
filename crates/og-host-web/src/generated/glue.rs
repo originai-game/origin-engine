@@ -454,6 +454,16 @@ pub fn og_rng_stream_chance(rng_stream: u32, p: f64) -> bool {
 }
 
 #[wasm_bindgen]
+pub fn og_rng_stream_weighted(rng_stream: u32, weights: String) -> i32 {
+    <Host as RngApi>::og_rng_stream_weighted(&Host, rng_stream, weights)
+}
+
+#[wasm_bindgen]
+pub fn og_rng_stream_permutation(rng_stream: u32, n: u32) -> String {
+    <Host as RngApi>::og_rng_stream_permutation(&Host, rng_stream, n)
+}
+
+#[wasm_bindgen]
 pub fn og_rng_stream_fork(rng_stream: u32, label: String) -> u32 {
     <Host as RngApi>::og_rng_stream_fork(&Host, rng_stream, label)
 }
@@ -479,8 +489,43 @@ pub fn og_rng_chance(world: u32, p: f64) -> bool {
 }
 
 #[wasm_bindgen]
+pub fn og_rng_weighted(world: u32, weights: String) -> i32 {
+    <Host as RngApi>::og_rng_weighted(&Host, world, weights)
+}
+
+#[wasm_bindgen]
+pub fn og_rng_permutation(world: u32, n: u32) -> String {
+    <Host as RngApi>::og_rng_permutation(&Host, world, n)
+}
+
+#[wasm_bindgen]
 pub fn og_rng_fork(world: u32, label: String) -> u32 {
     <Host as RngApi>::og_rng_fork(&Host, world, label)
+}
+
+#[wasm_bindgen]
+pub fn og_procgen_noise(desc: String, x: f64, y: f64, z: f64) -> f64 {
+    <Host as ProcgenApi>::og_procgen_noise(&Host, desc, x, y, z)
+}
+
+#[wasm_bindgen]
+pub fn og_procgen_noise_grid(desc: Option<String>) -> String {
+    <Host as ProcgenApi>::og_procgen_noise_grid(&Host, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_procgen_poisson_disk(desc: Option<String>) -> String {
+    <Host as ProcgenApi>::og_procgen_poisson_disk(&Host, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_procgen_bsp(desc: Option<String>) -> String {
+    <Host as ProcgenApi>::og_procgen_bsp(&Host, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_procgen_wfc(desc: Option<String>) -> String {
+    <Host as ProcgenApi>::og_procgen_wfc(&Host, desc)
 }
 
 #[wasm_bindgen]
@@ -1386,6 +1431,11 @@ pub fn og_tween_flash(world: u32, desc: Option<String>) -> String {
 #[wasm_bindgen]
 pub fn og_tilemap_set_tile(world: u32, desc: Option<String>) -> String {
     <Host as TilemapApi>::og_tilemap_set_tile(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_tilemap_fill(world: u32, desc: Option<String>) -> String {
+    <Host as TilemapApi>::og_tilemap_fill(&Host, world, desc)
 }
 
 #[wasm_bindgen]
