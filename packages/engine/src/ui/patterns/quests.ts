@@ -10,7 +10,7 @@
 import type * as Api from "@origingame/engine";
 import { objectiveTracker } from "../hud/nav.ts";
 import {
-  artSlot, btn, clamp, eyebrow, fill, flags, frame, grow, kit, line, mix, over, paint, pips, px, rarityColor, role, rtl, shadow, spring, st, still, surface,
+  artSlot, btn, chevron, clamp, eyebrow, fill, flags, frame, grow, kit, line, mix, over, paint, pips, px, rarityColor, role, rtl, shadow, spring, st, still, surface,
   symbol, text, token, u, vgrad, vstate, xy, type Mut, type SymbolKind,
 } from "./core.ts";
 
@@ -320,7 +320,7 @@ export function questLog(id: string, desc: Api.QuestLogDesc): Api.QuestLogResult
     kit.setDraw({ shape: { kind: "rect", radii: [u(16), u(16), u(16), u(16)] }, fills: [{ kind: "solid", color: token("panel", 0.88) }, vgrad([[0, token("sheen", 0.05)], [1, token("sheen", 0)]])], effects: [shadow(u(10), u(30), 0.45)] });
     if (portrait) {
       // The style's secondary button with a chevron to the start edge (a glass pane read as a flat grey box).
-      if (btn("Back", desc.backLabel ?? "Back", { variant: "secondary", sym: "chevronBack", size: "sm", part: "QuestLog.back" }).clicked) {
+      if (btn("Back", desc.backLabel ?? "Back", { variant: "secondary", size: "sm", part: "QuestLog.back", before: () => chevron("Chevron", "back", u(14), role("ink")) }).clicked) {
         openNext = false;
         kit.feedback("back", -1);
       }

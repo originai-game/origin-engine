@@ -1230,7 +1230,7 @@ test("questLog: a reward's caption stands in its own row under the tile; a phone
   engine.advance(4);
   engine.probe.commands(`0:touch_move:${centre(byPath(engine, "List/Active/rescue")!)};0.05:touch_start;0.1:touch_end`);
   engine.advance(10);
-  expect(byPath(engine, "Detail/Back/Sym")).toBeDefined();
+  expect(byPath(engine, "Detail/Back/Chevron")).toBeDefined();
   expect(byPath(engine, "Detail/Back/Label")!.text).toBe("Back");
 });
 
