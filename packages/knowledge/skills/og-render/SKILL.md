@@ -1139,6 +1139,17 @@ builds nothing (a 131,072-triangle mesh: 49 ms in that step, 9 ms baked,
 plus 18 ms decoding at load). It costs about 90 bytes a triangle, so it is
 off by default; a scaled collider still builds its own shape.
 
+A model seen far away (trees, rocks, buildings on the horizon) can be
+cooked with an octahedral impostor: `impostor true` in its `model { }`
+block (with `impostorGrid 8` frames per side and `impostorSize 128` pixels
+per frame, the defaults) bakes two atlases, `<model>#impostor` and
+`<model>#impostor-normal`, and the model draws as one camera-facing card
+once an atlas texel covers less than a pixel: the last level after its
+meshes', picked as they are (lodBias moves it; dump_entity shows it).
+A posed (animated) model keeps its meshes. Give an og.TerrainScatter the
+same model as `impostor` and an `impostorDistance` below its `distance`,
+and its copies past that distance draw as the card.
+
 **Debug draw.** `og.debug.line`, `box`, `sphere`, `arrow`, `axes` and
 `text` (a label above a world point, in the UI's body font; every field is
 in `og api show debug`) each take

@@ -19,7 +19,7 @@ pub(super) struct PrepassPassInputs<'a, F0, F1, F2> {
     pub(super) terrain_indices: Option<&'a wgpu::Buffer>,
     pub(super) terrain_draws: &'a [terrain::TerrainDraw],
     pub(super) view_frustum: &'a Frustum,
-    pub(super) scatter_batches: &'a [scatter::ScatterBatch],
+    pub(super) scatter_batches: &'a scatter::ScatterBatches,
     pub(super) scatter_material: &'a F1,
     pub(super) scatter_mesh: &'a F2,
 }

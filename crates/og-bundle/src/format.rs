@@ -11,7 +11,7 @@
 //!
 //! | blob | root | sections |
 //! |---|---|---|
-//! | model (`og.Model`) | [`ModelMeta`] | `primitives` [`PrimitiveRow`], `lods` [`LodRow`], `clusters` [`ClusterRow`] (each level's meshlets), `meshes` [`MeshRow`], `materials` [`MaterialRow`], `textures` [`TextureRefRow`], `nodes` [`NodeRow`], `scenes` [`SceneRow`], `roots` (u32 node indices), `strings`, `vertices`, `indices`, `bvh_nodes` ([`BvhNodeRow`] rows, zlib) and `bvh_tris` (u32, zlib): each primitive's raycast BVH, og-render's `Bvh`, unless `raycast false`; `colliders` (optional, `collider true`: the primitive count, each one's u32 offset and length after the header, then og-physics' `bake_trimesh` bytes over LOD 0); `lights` [`LightRow`] (`KHR_lights_punctual`), `instances` [`InstanceRow`] (`EXT_mesh_gpu_instancing`), `variants` [`VariantRow`] and `variant_mappings` [`VariantMappingRow`] (`KHR_materials_variants`) |
+//! | model (`og.Model`) | [`ModelMeta`] | `primitives` [`PrimitiveRow`], `lods` [`LodRow`], `clusters` [`ClusterRow`] (each level's meshlets), `meshes` [`MeshRow`], `materials` [`MaterialRow`], `textures` [`TextureRefRow`], `nodes` [`NodeRow`], `scenes` [`SceneRow`], `roots` (u32 node indices), `strings`, `vertices`, `indices`, `bvh_nodes` ([`BvhNodeRow`] rows, zlib) and `bvh_tris` (u32, zlib): each primitive's raycast BVH, og-render's `Bvh`, unless `raycast false`; `colliders` (optional, `collider true`: the primitive count, each one's u32 offset and length after the header, then og-physics' `bake_trimesh` bytes over LOD 0); `lights` [`LightRow`] (`KHR_lights_punctual`), `instances` [`InstanceRow`] (`EXT_mesh_gpu_instancing`), `variants` [`VariantRow`] and `variant_mappings` [`VariantMappingRow`] (`KHR_materials_variants`); `impostors` (optional, `impostor true`) [`ImpostorRow`] |
 //! | texture (`og.Texture`; a PNG, JPEG, KTX2, WebP, TGA, PSD or DDS source, a glTF's image, a texture array's layer) | [`TextureMeta`] | `ktx2` (a KTX2 file) |
 //! | texture array (`og.TextureArray`, an `.ogt` of `type texture-array`) | [`TextureArrayMeta`] | `layers` [`ArrayLayerRow`] (each layer's `og.Texture` id, `<id>#layer<n>`), `strings` |
 //! | video (`og.Video`, an `.ogt` of `type video` cooked by ffmpeg) | [`VideoMeta`] | none: a clip's frames are the texture array `<id>#frames`, a stream's the `og.VideoStream` `<id>#stream` with its poster `<id>#poster`; its sound `<id>#audio` |
@@ -289,6 +289,34 @@ row!(
         error_radius: f32,
         /// The group it was simplified with (a DAG's), the level index here.
         group: u32,
+    }
+);
+
+row!(
+    /// A model's octahedral impostor (`model { impostor true }`,
+    /// og-render's `impostor`): the whole model drawn as one camera-facing
+    /// card from its two atlases, the last level of its chain. At most one
+    /// per model (the optional `impostors` table; absent or empty: none).
+    ImpostorRow, "og.ModelImpostor", 1 {
+        /// The atlases' `og.Texture` ids (in `strings`): the albedo with
+        /// its coverage in alpha, and the normal (in each frame's basis)
+        /// with the depth towards the viewer.
+        albedo_offset: u32,
+        albedo_len: u32,
+        normal_offset: u32,
+        normal_len: u32,
+        /// Frames per side of the atlases, and pixels per frame.
+        grid: u32,
+        frame: u32,
+        /// The sphere the frames cover, in the model's space.
+        center_x: f32, center_y: f32, center_z: f32,
+        radius: f32,
+        /// Its error in the model's units, as `LodRow::error`: an atlas
+        /// texel's size on the model, so a model draws its impostor once a
+        /// texel covers less than a pixel and its mesh's coarsest level
+        /// would be drawn (a chain's errors only rise: the impostor
+        /// replaces the mesh levels no finer than it).
+        error: f32,
     }
 );
 

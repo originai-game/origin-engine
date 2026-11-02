@@ -775,6 +775,7 @@ impl UncookedGltf {
             instances: BTreeMap::new(),
             variants: Vec::new(),
             variant_materials: Vec::new(),
+            impostor: None,
         };
         // The default scene's bounds, with the nodes' transforms.
         let world = model.node_world();

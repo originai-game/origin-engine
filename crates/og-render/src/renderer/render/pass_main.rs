@@ -23,7 +23,7 @@ pub(super) struct MainPassInputs<'a, F0, F1, F2, F3, F4, F5, F6> {
     pub(super) terrain_indices: Option<&'a wgpu::Buffer>,
     pub(super) terrain_draws: &'a [terrain::TerrainDraw],
     pub(super) view_frustum: &'a Frustum,
-    pub(super) scatter_batches: &'a [scatter::ScatterBatch],
+    pub(super) scatter_batches: &'a scatter::ScatterBatches,
     pub(super) scatter_material: &'a F2,
     pub(super) scatter_mesh: &'a F3,
     pub(super) sky_group: &'a wgpu::BindGroup,

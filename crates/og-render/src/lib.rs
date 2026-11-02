@@ -126,6 +126,7 @@ pub use ui::{
 mod particles_gpu;
 mod pipeline_cache;
 pub use pipeline_cache::set_pipeline_cache_dir;
+mod impostor;
 mod physical;
 mod points;
 mod post;
@@ -193,6 +194,7 @@ pub use id_pass::{
     IdCamera, IdFrame, IdObject, IdSources, id_pass_size, projection_name, render_ids,
     render_ids_from, view_id_cameras,
 };
+pub use impostor::{Impostor, ImpostorDraw, MAX_IMPOSTOR_GRID};
 pub use lightmap::{
     BakedLighting, BakedMesh, LightmapPages, LightmapUvs, PROBE_VOLUMES, Probe, ProbeVolume,
 };
@@ -211,6 +213,10 @@ pub use post_custom::{MAX_CUSTOM_POSTS, PostHandle, PostShader, example_crt, pos
 pub use quality::{QualityPreset, RenderQuality};
 pub use ribbons::{Beam, Ribbon, RibbonPoint, RibbonUv, Trail, TrailStyle, TrailStyleHandle};
 pub use scatter::{ScatterDraw, WIND_WAVELENGTH, Wind};
+/// The octahedral impostors' frame layout, shared with the cook's bake.
+pub mod impostors {
+    pub use crate::impostor::{blend_frames, frame_basis, frame_direction, oct_decode, oct_encode};
+}
 pub use scene::*;
 pub use shadows::PointShadows;
 pub use skin::{

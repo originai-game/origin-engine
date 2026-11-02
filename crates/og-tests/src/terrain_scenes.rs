@@ -507,6 +507,8 @@ pub fn grass_scene() -> RenderScene {
         material: grass,
         scatter: grass_scatter(),
         cast_shadows: true,
+        impostor: None,
+        impostor_distance: 0.0,
     });
     scene
 }

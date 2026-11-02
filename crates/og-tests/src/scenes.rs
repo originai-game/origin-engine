@@ -157,6 +157,8 @@ pub const SCENES: &[&str] = &[
     "terrain-grass-wind",
     "terrain-holes",
     "terrain-layers",
+    "impostors",
+    "impostor-scatter",
     "post-blur",
     "ui-shapes",
     "ui-paints",
@@ -1186,6 +1188,21 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // height blend (a crisp rim) as the first four are.
         "terrain-layers" => |g, _| {
             g.scene = crate::terrain_scenes::layers_scene(true);
+            Ok(())
+        },
+        // R6: a ball red on its +x half and blue on its -x half, 2 m
+        // across on a grey floor, drawn as its mesh (left) and as its
+        // octahedral impostor (right): the two read alike, red towards the
+        // camera's right, blue its left, each casting a round shadow.
+        "impostors" => |g, _| {
+            g.scene = crate::impostor_scenes::impostors_scene();
+            Ok(())
+        },
+        // R6: the ball scattered over a 48 m green terrain, its copies
+        // farther than 15 m drawn as its impostor (cross-dithered over the
+        // last 1.5 m): the far balls look as the near ones do.
+        "impostor-scatter" => |g, _| {
+            g.scene = crate::impostor_scenes::impostor_scatter_scene(15.0);
             Ok(())
         },
         // The bloom scene through a zoom blur towards a point left of and

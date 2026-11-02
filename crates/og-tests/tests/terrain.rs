@@ -20,6 +20,7 @@ use og_tests::terrain_scenes as ts;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+mod impostors;
 mod sampling_scatter;
 mod streaming_wind;
 

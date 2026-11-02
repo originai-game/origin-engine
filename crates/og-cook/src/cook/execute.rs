@@ -92,7 +92,7 @@ pub(super) fn run(
         Work::Model(s, ids) => {
             let g = s.gltf.as_ref().expect("loaded");
             let mesh = mesh_for(s, options)?;
-            let (blob, mut n) = model::cook(g, ids, &mesh, p.stamp, false)?;
+            let (blob, mut n) = model::cook(g, ids, &mesh, p.stamp, false, &s.rel)?;
             // A model written as text past the project's budgets is cooked
             // and flagged: the budgets are reported numbers, never a reason
             // a model is not made (indices are u32; nothing breaks past them).
@@ -118,13 +118,37 @@ pub(super) fn run(
         Work::Proxy(s) => {
             let g = s.gltf.as_ref().expect("loaded");
             let mesh = mesh_for(s, options)?;
-            model::cook(g, &[], &mesh, p.stamp, true).map(|(b, mut n)| {
+            model::cook(g, &[], &mesh, p.stamp, true, &s.rel).map(|(b, mut n)| {
                 n.notes.retain(|x| x.contains("triangles"));
                 (
                     b,
                     n.notes.into_iter().map(|x| format!("proxy: {x}")).collect(),
                 )
             })
+        }
+        Work::Impostor(s, b, normal) => {
+            let g = s.gltf.as_ref().expect("loaded");
+            let baked = g
+                .impostor(*b)
+                .map_err(|e| CookError(format!("{}: impostor: {e}", s.rel)))?;
+            let (img, k) = match normal {
+                false => (&baked.albedo, format::kind::COLOR),
+                true => (&baked.normal, format::kind::LINEAR),
+            };
+            let note = format!(
+                "{}: {}x{} impostor {} ({}×{} frames)",
+                p.id,
+                img.width,
+                img.height,
+                if *normal {
+                    "normal and depth"
+                } else {
+                    "albedo"
+                },
+                b.grid,
+                b.grid
+            );
+            texture::cook(img, k, &options.texture, p.stamp).map(|t| (t, vec![note]))
         }
         Work::Animation(s, a) => {
             let g = s.gltf.as_ref().expect("loaded");

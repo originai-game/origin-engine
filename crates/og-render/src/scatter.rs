@@ -166,6 +166,13 @@ pub struct ScatterDraw {
     pub scatter: TerrainScatter,
     /// Whether the copies are drawn into the shadow passes.
     pub cast_shadows: bool,
+    /// The mesh's impostor (`impostor.rs`): copies past
+    /// `impostor_distance` draw as it instead of the mesh, dithered across
+    /// the last tenth before it.
+    pub impostor: Option<crate::Impostor>,
+    /// How far from the camera (along x and z) copies draw as their mesh;
+    /// 0 (or no impostor): always. Useful below the scatter's `distance`.
+    pub impostor_distance: f32,
 }
 
 fn smoothstep(e0: f32, e1: f32, x: f32) -> f32 {
@@ -504,9 +511,25 @@ struct ScatterGpu {
     /// x: the gust wave's wavenumber (rad/m), y: the mesh's top above its
     /// origin (m), zw: the scene's origin's x and z (`origin.rs`).
     wind_shape: [f32; 4],
+    /// The impostor's sphere in the model's space (xyz centre, w radius),
+    /// its grid and distance (x frames per side, y the distance past which
+    /// copies draw as it: 0 never), and the direction to the sun (xyz).
+    impostor: [f32; 4],
+    impostor_grid: [f32; 4],
+    impostor_light: [f32; 4],
+}
+
+impl ScatterGpu {
+    fn impostor(&mut self, i: &crate::Impostor, distance: f32, light: Vec3) {
+        self.impostor = i.center.extend(i.radius).to_array();
+        self.impostor_grid = [i.grid as f32, distance, 0.0, 0.0];
+        self.impostor_light = light.extend(0.0).to_array();
+    }
 }
 
 const SLOT: u64 = 256;
+/// The pipelines' kinds past a [`ScatterPass`]'s: its impostor's.
+const IMPOSTOR_KIND: u8 = 3;
 
 /// What a chunk was built from: the scatter, its terrain's placement and
 /// data, the mesh and material, and the chunk's place.
@@ -546,6 +569,30 @@ pub(crate) struct ScatterBatch {
     chunks: Vec<ChunkKey>,
     /// How far the wind moves a copy at most: the chunks' bounds grow by it.
     sway: f32,
+    /// The impostor's material: the chunks' copies past the impostor
+    /// distance draw as it.
+    impostor: Option<usize>,
+}
+
+/// The model impostors of one atlas drawn this frame
+/// ([`crate::RenderScene::impostors`]): a range of the frame's impostor
+/// instances, with their bounds.
+pub(crate) struct ImpostorBatch {
+    material: usize,
+    cast_shadows: bool,
+    offset: u32,
+    first: u32,
+    count: u32,
+    center: Vec3,
+    radius: f32,
+}
+
+/// What [`ScatterRenderer::prepare`] answers: the scatters' batches and
+/// the model impostors'.
+#[derive(Default)]
+pub(crate) struct ScatterBatches {
+    pub scatters: Vec<ScatterBatch>,
+    pub impostors: Vec<ImpostorBatch>,
 }
 
 /// Which pass a scatter draws into.
@@ -594,6 +641,8 @@ pub(crate) struct ScatterRenderer {
     /// The wind's phases the last frame drew with (the motion vectors'
     /// previous positions).
     wind_phase: Option<[f32; 2]>,
+    /// The frame's model impostors' transforms, and how many it holds.
+    impostor_instances: Option<(wgpu::Buffer, u64)>,
 }
 
 impl ScatterRenderer {
@@ -674,6 +723,7 @@ impl ScatterRenderer {
             frame: 0,
             built: 0,
             wind_phase: None,
+            impostor_instances: None,
         }
     }
 
@@ -709,11 +759,17 @@ impl ScatterRenderer {
         shader: Option<usize>,
         side: Side,
         pass: ScatterPass,
+        impostor: bool,
     ) {
-        let kind = pass as u8;
+        let kind = pass as u8 + if impostor { IMPOSTOR_KIND } else { 0 };
         // The shadow pass reads no material shader (copies cast as cut by the material's alpha).
         let shader = shader.filter(|_| pass != ScatterPass::Shadow);
         if self.pipelines.contains_key(&(shader, side, kind)) {
+            return;
+        }
+        if kind >= IMPOSTOR_KIND {
+            let p = self.impostor_pipeline(device, pass);
+            self.pipelines.insert((None, Side::Double, kind), p);
             return;
         }
         let lit_module = match shader {
@@ -823,6 +879,164 @@ impl ScatterRenderer {
         self.pipelines.insert((shader, side, kind), p);
     }
 
+    /// An impostor pipeline (`impostor.wgsl`): the card has no vertex
+    /// buffer but the instances' (slot 0), and both faces drawn.
+    fn impostor_pipeline(&self, device: &wgpu::Device, pass: ScatterPass) -> wgpu::RenderPipeline {
+        let buffers = [Some(crate::INSTANCE_LAYOUT)];
+        let depth = Some(wgpu::DepthStencilState {
+            format: crate::DEPTH_FORMAT,
+            depth_write_enabled: Some(true),
+            depth_compare: Some(wgpu::CompareFunction::Less),
+            stencil: Default::default(),
+            bias: Default::default(),
+        });
+        let target = |format| {
+            Some(wgpu::ColorTargetState {
+                format,
+                blend: None,
+                write_mask: wgpu::ColorWrites::ALL,
+            })
+        };
+        let (layout, module, vs, fs, targets): (_, _, _, _, Vec<_>) = match pass {
+            ScatterPass::Lit => {
+                return crate::hdr_pipeline(
+                    device,
+                    crate::HdrPipeline {
+                        alpha_to_coverage: false,
+                        label: "impostor",
+                        layout: &self.lit_fx_layout,
+                        module: &self.lit_module,
+                        vs: "vs_impostor",
+                        fs: "fs_impostor",
+                        buffers: &buffers,
+                        cull: None,
+                        depth_write: true,
+                        depth_compare: wgpu::CompareFunction::Less,
+                        blend: None,
+                        samples: self.samples,
+                    },
+                );
+            }
+            ScatterPass::Prepass => (
+                &self.lit_layout,
+                &self.lit_module,
+                "vs_impostor",
+                "fs_impostor_prepass",
+                vec![
+                    target(crate::post::GBUFFER_FORMAT),
+                    target(crate::post::LINDEPTH_FORMAT),
+                    target(crate::post::OUTLINE_FORMAT),
+                ],
+            ),
+            ScatterPass::Shadow => (
+                &self.shadow_layout,
+                &self.shadow_module,
+                "vs_impostor_shadow",
+                "fs_impostor_shadow",
+                vec![Some(wgpu::ColorTargetState {
+                    format: wgpu::TextureFormat::R32Float,
+                    blend: None,
+                    write_mask: wgpu::ColorWrites::RED,
+                })],
+            ),
+        };
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("impostor"),
+            layout: Some(layout),
+            vertex: wgpu::VertexState {
+                module,
+                entry_point: Some(vs),
+                compilation_options: Default::default(),
+                buffers: &buffers,
+            },
+            primitive: Default::default(),
+            depth_stencil: depth,
+            multisample: Default::default(),
+            fragment: Some(wgpu::FragmentState {
+                module,
+                entry_point: Some(fs),
+                compilation_options: Default::default(),
+                targets: &targets,
+            }),
+            multiview_mask: None,
+            cache: crate::pipeline_cache::of(device).as_ref(),
+        })
+    }
+
+    /// Groups the scene's model impostors by atlas, uploads their
+    /// transforms and writes each group's uniform at the slots after the
+    /// scatters'.
+    #[allow(clippy::too_many_arguments)]
+    fn prepare_impostors(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        scene: &crate::RenderScene,
+        base: ScatterGpu,
+        groups: &[(crate::Impostor, Vec<usize>)],
+        first_slot: usize,
+    ) -> Vec<ImpostorBatch> {
+        let total: usize = groups.iter().map(|g| g.1.len()).sum();
+        if total == 0 {
+            return Vec::new();
+        }
+        let size = (total * std::mem::size_of::<crate::instances::GpuTransform>()) as u64;
+        if self.impostor_instances.as_ref().is_none_or(|b| b.1 < size) {
+            let cap = size.next_power_of_two();
+            let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("impostor instances"),
+                size: cap,
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            self.impostor_instances = Some((buffer, cap));
+        }
+        let mut transforms = Vec::with_capacity(total);
+        let mut out = Vec::with_capacity(groups.len());
+        let light = scene.light.direction_to_light.normalize_or(Vec3::Y);
+        for (k, (imp, members)) in groups.iter().enumerate() {
+            let first = transforms.len() as u32;
+            let (mut lo, mut hi) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));
+            let mut grow = 0.0f32;
+            let mut cast = false;
+            for &i in members {
+                let d = &scene.impostors[i];
+                let c = d.transform.transform_point3(imp.center);
+                let s = d
+                    .transform
+                    .to_scale_rotation_translation()
+                    .0
+                    .abs()
+                    .max_element();
+                lo = lo.min(c);
+                hi = hi.max(c);
+                grow = grow.max(imp.radius * s);
+                cast |= d.cast_shadows;
+                transforms.push(crate::instances::gpu_transform(&d.transform));
+            }
+            let slot = first_slot + k;
+            let mut gpu = base;
+            gpu.impostor(imp, 0.0, light);
+            queue.write_buffer(&self.uniform, slot as u64 * SLOT, bytemuck::bytes_of(&gpu));
+            out.push(ImpostorBatch {
+                material: imp.material.index(),
+                cast_shadows: cast,
+                offset: (slot as u64 * SLOT) as u32,
+                first,
+                count: members.len() as u32,
+                center: (lo + hi) * 0.5,
+                radius: (hi - lo).length() * 0.5 + grow,
+            });
+        }
+        if let Some((buffer, _)) = &self.impostor_instances {
+            queue.write_buffer(buffer, 0, bytemuck::cast_slice(&transforms));
+        }
+        for pass in [ScatterPass::Lit, ScatterPass::Prepass, ScatterPass::Shadow] {
+            self.pipeline(device, None, Side::Double, pass, true);
+        }
+        out
+    }
+
     /// Builds the chunks this frame needs and answers what to draw.
     /// `side_of` answers a material's side (`None`: not of this scene);
     /// `mesh_bounds` a mesh's radius about its origin and its top above it
@@ -840,7 +1054,7 @@ impl ScatterRenderer {
         mesh_bounds: impl Fn(usize) -> Option<(f32, f32)>,
         shader_of: impl Fn(usize) -> Option<usize>,
         hooks_of: impl Fn(usize) -> String,
-    ) -> Vec<ScatterBatch> {
+    ) -> ScatterBatches {
         use wgpu::util::DeviceExt;
         self.frame += 1;
         self.built = 0;
@@ -849,15 +1063,44 @@ impl ScatterRenderer {
         let phase = wind.map(|w| wind_phases(&w, scene.tick, scene.tick_rate));
         let prev_phase = self.wind_phase.or(phase).unwrap_or_default();
         self.wind_phase = phase;
-        if scene.scatters.is_empty() {
-            self.chunks.retain(|_, c| self.frame - c.used < KEEP_FRAMES);
-            return batches;
+        // The model impostors by atlas, in the order each first appears.
+        let mut groups: Vec<(crate::Impostor, Vec<usize>)> = Vec::new();
+        for (i, d) in scene.impostors.iter().enumerate() {
+            match groups.iter_mut().find(|g| g.0 == d.impostor) {
+                Some(g) => g.1.push(i),
+                None => groups.push((d.impostor, vec![i])),
+            }
         }
-        if self.slots < scene.scatters.len() as u64 {
-            self.slots = (scene.scatters.len() as u64).next_power_of_two();
+        let slots = (scene.scatters.len() + groups.len()) as u64;
+        if self.slots < slots {
+            self.slots = slots.next_power_of_two();
             let (u, g) = Self::slots(device, &self.uniform_layout, self.slots);
             self.uniform = u;
             self.group = g;
+        }
+        // A model impostor is drawn at any distance (the level pick
+        // decides), never faded or swayed.
+        let base = ScatterGpu {
+            camera: camera.extend(f32::MAX).to_array(),
+            fade: [f32::MAX, 0.0, 0.0, 0.0],
+            view_proj: view_proj.to_cols_array_2d(),
+            prev_view_proj: prev_view_proj.to_cols_array_2d(),
+            wind: [0.0; 4],
+            wind_phase: [0.0; 4],
+            wind_shape: [0.0, 0.0, scene.origin.x, scene.origin.z],
+            impostor: [0.0; 4],
+            impostor_grid: [0.0; 4],
+            impostor_light: [0.0; 4],
+        };
+        let impostors =
+            self.prepare_impostors(device, queue, scene, base, &groups, scene.scatters.len());
+        let light = scene.light.direction_to_light.normalize_or(Vec3::Y);
+        if scene.scatters.is_empty() {
+            self.chunks.retain(|_, c| self.frame - c.used < KEEP_FRAMES);
+            return ScatterBatches {
+                scatters: batches,
+                impostors,
+            };
         }
         let (sources, revisions) = scene.terrain_sources();
         let mut budget = CHUNKS_PER_FRAME;
@@ -1075,7 +1318,7 @@ impl ScatterRenderer {
                 _ => ([0.0; 4], 0.0),
             };
             let now = phase.unwrap_or_default();
-            let gpu = ScatterGpu {
+            let mut gpu = ScatterGpu {
                 camera: camera.extend(s.distance).to_array(),
                 fade: [s.fade_from(), 0.0, 0.0, 0.0],
                 view_proj: view_proj.to_cols_array_2d(),
@@ -1088,7 +1331,17 @@ impl ScatterRenderer {
                     scene.origin.x,
                     scene.origin.z,
                 ],
+                impostor: [0.0; 4],
+                impostor_grid: [0.0; 4],
+                impostor_light: [0.0; 4],
             };
+            let impostor = d.impostor.filter(|_| d.impostor_distance > 0.0);
+            if let Some(i) = &impostor {
+                gpu.impostor(i, d.impostor_distance, light);
+                for pass in [ScatterPass::Lit, ScatterPass::Prepass, ScatterPass::Shadow] {
+                    self.pipeline(device, None, Side::Double, pass, true);
+                }
+            }
             queue.write_buffer(&self.uniform, si as u64 * SLOT, bytemuck::bytes_of(&gpu));
             let shader = shader_of(d.material.index());
             if let Some(sh) = shader
@@ -1101,7 +1354,7 @@ impl ScatterRenderer {
                 self.hooked.insert(sh, module);
             }
             for pass in [ScatterPass::Lit, ScatterPass::Prepass, ScatterPass::Shadow] {
-                self.pipeline(device, shader, side, pass);
+                self.pipeline(device, shader, side, pass, false);
             }
             batches.push(ScatterBatch {
                 mesh: d.mesh.index(),
@@ -1112,21 +1365,26 @@ impl ScatterRenderer {
                 offset: (si as u64 * SLOT) as u32,
                 chunks: keys,
                 sway,
+                impostor: impostor.map(|i| i.material.index()),
             });
         }
         self.chunks.retain(|_, c| self.frame - c.used < KEEP_FRAMES);
-        batches
+        ScatterBatches {
+            scatters: batches,
+            impostors,
+        }
     }
 
     /// Draws `batches` into a pass (groups 0 and, for the lit passes, the
-    /// frame bound by the caller): the chunks whose bounds `visible` keeps.
-    /// Answers the draws and the copies drawn.
+    /// frame bound by the caller): the chunks whose bounds `visible` keeps,
+    /// with their copies' impostors, then the model impostors. Answers the
+    /// draws and the copies drawn.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn draw<'a>(
         &self,
         pass: &mut wgpu::RenderPass,
         kind: ScatterPass,
-        batches: &[ScatterBatch],
+        all: &ScatterBatches,
         material_group: impl Fn(usize) -> Option<&'a wgpu::BindGroup>,
         mesh: impl Fn(usize) -> Option<(&'a wgpu::Buffer, &'a wgpu::Buffer, u32)>,
         visible: impl Fn(Vec3, f32) -> bool,
@@ -1134,7 +1392,19 @@ impl ScatterRenderer {
         fx_group: Option<&wgpu::BindGroup>,
     ) -> (u32, u32) {
         let (mut draws, mut copies) = (0, 0);
-        for b in batches {
+        let bind_rest = |pass: &mut wgpu::RenderPass, group, offset| {
+            pass.set_bind_group(1, group, &[]);
+            pass.set_bind_group(2, &self.group, &[offset]);
+            if kind == ScatterPass::Lit
+                && let Some(fx) = fx_group
+            {
+                pass.set_bind_group(3, fx, &[]);
+            }
+        };
+        let impostor_pipeline =
+            self.pipelines
+                .get(&(None, Side::Double, kind as u8 + IMPOSTOR_KIND));
+        for b in &all.scatters {
             if kind == ScatterPass::Shadow && !b.cast_shadows {
                 continue;
             }
@@ -1157,13 +1427,7 @@ impl ScatterRenderer {
                 }
                 if !bound {
                     pass.set_pipeline(p);
-                    pass.set_bind_group(1, group, &[]);
-                    pass.set_bind_group(2, &self.group, &[b.offset]);
-                    if kind == ScatterPass::Lit
-                        && let Some(fx) = fx_group
-                    {
-                        pass.set_bind_group(3, fx, &[]);
-                    }
+                    bind_rest(pass, group, b.offset);
                     pass.set_vertex_buffer(0, vertices.slice(..));
                     pass.set_index_buffer(indices.slice(..), wgpu::IndexFormat::Uint32);
                     bound = true;
@@ -1176,6 +1440,59 @@ impl ScatterRenderer {
                 pass.draw_indexed(0..count, 0, 0..c.count);
                 draws += 1;
                 copies += c.count;
+            }
+            // The same chunks' far copies as the impostor: the vertex
+            // stages split each copy between the two by its distance.
+            let (Some(m), Some(ip)) = (b.impostor, impostor_pipeline) else {
+                continue;
+            };
+            let Some(group) = material_group(m) else {
+                continue;
+            };
+            let mut bound = false;
+            for k in &b.chunks {
+                let Some(c) = self.chunks.get(k) else {
+                    continue;
+                };
+                let Some(buffer) = &c.buffer else { continue };
+                if !visible(c.center, c.radius) {
+                    continue;
+                }
+                if !bound {
+                    pass.set_pipeline(ip);
+                    bind_rest(pass, group, b.offset);
+                    bound = true;
+                }
+                if let Some(b) = probes.as_deref_mut() {
+                    b.at(pass, c.center, c.radius);
+                }
+                pass.set_vertex_buffer(0, buffer.slice(..));
+                pass.draw(0..6, 0..c.count);
+                draws += 1;
+            }
+        }
+        // The model impostors, an instanced card per batch.
+        if let (Some(ip), Some((buffer, _))) = (impostor_pipeline, &self.impostor_instances) {
+            for b in &all.impostors {
+                if kind == ScatterPass::Shadow && !b.cast_shadows {
+                    continue;
+                }
+                let Some(group) = material_group(b.material) else {
+                    continue;
+                };
+                if !visible(b.center, b.radius) {
+                    continue;
+                }
+                pass.set_pipeline(ip);
+                bind_rest(pass, group, b.offset);
+                if let Some(p) = probes.as_deref_mut() {
+                    p.at(pass, b.center, b.radius);
+                }
+                let stride = std::mem::size_of::<crate::instances::GpuTransform>() as u64;
+                pass.set_vertex_buffer(0, buffer.slice(b.first as u64 * stride..));
+                pass.draw(0..6, 0..b.count);
+                draws += 1;
+                copies += b.count;
             }
         }
         if let Some(b) = probes {

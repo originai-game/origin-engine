@@ -1681,6 +1681,23 @@ unchanged.
   answers the same copies within `distance` on the CPU (tests, tools):
   nearest rows first, at most 65,536. `FrameStats::scatter_draws`,
   `scatter_copies`, `scatter_built`.
+- **Impostors** (R6, `src/impostor.rs`, `shaders/impostor*.wgsl`). An
+  `Impostor { material, grid, center, radius }` is a model baked by the
+  cook (`model { impostor true }`) from `grid × grid` directions over the
+  sphere (an octahedral map, +y at the grid's centre) into two atlases,
+  bound as its StandardMaterial's `map` (albedo, coverage in alpha) and
+  `normalMap` (normal in each frame's basis, depth in alpha). It draws as
+  one card facing the eye (the light in the shadow passes) that blends the
+  three frames around the eye's direction by weight and coverage, lit by
+  the blended normal at the blended depth, as a scattered copy is lit.
+  `RenderScene::impostors` (`ImpostorDraw { impostor, transform,
+  cast_shadows }`, grouped by atlas into one instanced draw each) holds
+  the models og-runtime picked at their impostor's level, the last of
+  their chain; a `ScatterDraw` with an `impostor` draws its copies past
+  `impostor_distance` as cards, cross-dithered with the meshes over the
+  last tenth before it. The cards are new entry points of the scatter
+  modules and read only the material group's map and normal map: the lit
+  stages bind nothing new.
 - **Wind.** `RenderScene::wind` (`Wind { strength, direction, speed, gust
   }`, og.Wind; `None` or strength 0 still) sways the copies of every
   scatter whose `TerrainScatter::sway` is above 0, in the vertex stage of

@@ -78934,6 +78934,20 @@
           "minimum": 0,
           "maximum": 2,
           "x-og-tunable": true
+        },
+        "impostor": {
+          "$ref": "#/$defs/Asset",
+          "description": "A glTF (og.load.gltf) of the same mesh at its root, cooked with an octahedral impostor (its import settings' `model { impostor true }`): copies farther than impostorDistance draw as that impostor, a card showing the mesh as baked from the camera's direction, instead of the mesh, cross-dithered over the last tenth before it. None: the mesh at every distance.",
+          "default": 0
+        },
+        "impostorDistance": {
+          "type": "number",
+          "description": "How far from the camera, along x and z, copies draw as their mesh before their impostor takes over; 0 never switches. Useful below `distance`.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 500,
+          "x-og-unit": "m",
+          "x-og-tunable": true
         }
       },
       "additionalProperties": false

@@ -638,7 +638,7 @@ fn put_gltf(eng: &Engine, name: &str, entry: usize, g: Gltf) -> Result<(), Strin
         .collect();
     let model = g.file.finish(g.prims);
     let (_, handles) =
-        super::assets::insert_model(eng, name, None, model, &textures, Some(entry), false)?;
+        super::assets::insert_model(eng, name, None, model, &textures, None, Some(entry), false)?;
     if let Some(owned) = eng.assets.borrow_mut().uncooked.owned.get_mut(&entry) {
         *owned = handles;
     }

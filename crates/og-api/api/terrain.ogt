@@ -101,6 +101,13 @@ module terrain {
       max 2
       tunable true
     }
+    field impostor Asset "A glTF (og.load.gltf) of the same mesh at its root, cooked with an octahedral impostor (its import settings' `model { impostor true }`): copies farther than impostorDistance draw as that impostor, a card showing the mesh as baked from the camera's direction, instead of the mesh, cross-dithered over the last tenth before it. None: the mesh at every distance."
+    field impostorDistance f32 "How far from the camera, along x and z, copies draw as their mesh before their impostor takes over; 0 never switches. Useful below `distance`." {
+      min 0
+      max 500
+      unit m
+      tunable true
+    }
   }
 
   struct TerrainInfo {

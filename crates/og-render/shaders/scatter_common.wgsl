@@ -11,6 +11,9 @@ struct ScatterUniform {
   wind: vec4<f32>,            // xy: the wind's horizontal direction (x, z), z: the mean lean (0: still), w: the gust
   wind_phase: vec4<f32>,      // xy: the gust wave's two time phases this frame, zw: the previous frame's
   wind_shape: vec4<f32>,      // x: the wave's wavenumber (rad/m), y: the mesh's top above its origin (m), zw: the frame's origin's x and z (origin.rs)
+  impostor: vec4<f32>,        // the impostor's sphere in the model's space (impostor.rs): xyz its centre, w its radius
+  impostor_grid: vec4<f32>,   // x: frames per side of its atlas, y: the distance past which copies draw as impostors (0: never)
+  impostor_light: vec4<f32>,  // xyz: towards the sun (the shadow cascades' cards face it)
 };
 @group(2) @binding(0) var<uniform> scatter: ScatterUniform;
 
@@ -35,6 +38,15 @@ fn scatter_fade(at: vec3<f32>) -> f32 {
   if (d > scatter.camera.w) { return 0.0; }
   if (scatter.camera.w <= scatter.fade.x) { return 1.0; }
   return 1.0 - smoothstep(scatter.fade.x, scatter.camera.w, d);
+}
+
+// How much of a copy standing at `at` draws as its mesh: 1 nearer than
+// the last tenth before the impostor distance, 0 past it (0 distance:
+// always 1). The impostor draws the rest (impostor.wgsl).
+fn scatter_near(at: vec3<f32>) -> f32 {
+  let far = scatter.impostor_grid.y;
+  if (far <= 0.0) { return 1.0; }
+  return 1.0 - smoothstep(0.9 * far, far, length(at.xz - scatter.camera.xz));
 }
 
 // Whether a pixel of a copy faded to `fade` is dropped: an interleaved

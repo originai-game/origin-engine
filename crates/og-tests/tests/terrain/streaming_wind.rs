@@ -259,6 +259,8 @@ fn scattered_copies_are_drawn_from_chunks_and_fade_by_dither() {
         material: red,
         scatter: s,
         cast_shadows: true,
+        impostor: None,
+        impostor_distance: 0.0,
     });
     scene.fog = None;
     scene.post.tonemap = Tonemap::None;
@@ -413,6 +415,8 @@ fn wind_sways_scattered_copies_downwind() {
         material: red,
         scatter: s,
         cast_shadows: false,
+        impostor: None,
+        impostor_distance: 0.0,
     });
     scene.fog = None;
     scene.post.tonemap = Tonemap::None;

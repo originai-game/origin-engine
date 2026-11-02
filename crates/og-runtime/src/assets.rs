@@ -463,31 +463,35 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
         None => id.clone(),
     };
     let formats = texture_formats(eng);
-    let (model, textures) = {
+    let (model, textures, impostor) = {
         let assets = eng.assets.borrow();
         let (bytes, bundle) = assets.blob(&source)?;
         let model = bundle
             .model(&source, bytes.bytes())
             .map_err(|e| e.to_string())?;
+        let texture = |id: &str| {
+            let (tb, bundle) = assets.blob(id)?;
+            let tex = bundle.texture(id, tb.bytes()).map_err(|e| e.to_string())?;
+            match hooks().map(|h| h.texture(&tex, formats.as_ref())) {
+                Some(Fetch::Ready(d)) => Ok(d),
+                Some(Fetch::Pending) => Err(format!("{id}: the texture is still being transcoded")),
+                Some(Fetch::Failed(e)) => Err(format!("{id}: {e}")),
+                None => Err("no host is installed to decode textures".to_string()),
+            }
+        };
         let mut textures = Vec::with_capacity(model.textures.len());
         for t in &model.textures {
-            let (tb, bundle) = assets.blob(&t.id)?;
-            let tex = bundle
-                .texture(&t.id, tb.bytes())
-                .map_err(|e| e.to_string())?;
-            let data = match hooks().map(|h| h.texture(&tex, formats.as_ref())) {
-                Some(Fetch::Ready(d)) => d,
-                Some(Fetch::Pending) => {
-                    return Err(format!("{}: the texture is still being transcoded", t.id));
-                }
-                Some(Fetch::Failed(e)) => return Err(format!("{}: {e}", t.id)),
-                None => return Err("no host is installed to decode textures".into()),
-            };
-            textures.push(data);
+            textures.push(texture(&t.id)?);
         }
-        (model, textures)
+        // The impostor's atlases: a model whose atlases are missing draws
+        // its meshes at every distance.
+        let impostor = match &model.impostor {
+            Some(i) => Some([texture(&i.albedo)?, texture(&i.normal)?]),
+            None => None,
+        };
+        (model, textures, impostor)
     };
-    insert_model(eng, &id, group, model, &textures, into, true).map(|(i, _)| i)
+    insert_model(eng, &id, group, model, &textures, impostor, into, true).map(|(i, _)| i)
 }
 
 /// Adds a decoded model and its textures (in [`CookedModel::textures`]
@@ -495,13 +499,16 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
 /// index. A cooked model is `registered` under its path (og.load.gltf of it
 /// answers this asset, a hot reload refreshes it); an uncooked one
 /// (og.load.gltfData) is not. A streamed model (`group`) is its proxy.
-/// Answers the asset index and the model's textures in the scene.
+/// `impostor` holds its impostor's two atlases (albedo, normal), when it
+/// has one. Answers the asset index and the model's textures in the scene.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn insert_model(
     eng: &Engine,
     id: &str,
     group: Option<String>,
     model: og_bundle::runtime::CookedModel,
     textures: &[og_render::TextureSource],
+    impostor: Option<[og_render::TextureSource; 2]>,
     into: Option<usize>,
     registered: bool,
 ) -> Result<(usize, Vec<og_render::TextureHandle>), String> {
@@ -557,14 +564,42 @@ pub(crate) fn insert_model(
                         .unwrap_or_default()
                 })
                 .collect();
-            parts
-                .iter()
-                .any(|l| !l.is_empty())
-                .then(|| super::extract::ModelLods {
+            // The impostor: the model's last level, a card drawn from
+            // its atlases as a StandardMaterial (`map` the albedo,
+            // `normalMap` the normal and depth; og-render's `impostor`).
+            let impostor = match (impostor, &model.impostor) {
+                (Some([albedo, normal]), Some(i)) => {
+                    let albedo = rs.scene.add_texture_source(albedo);
+                    let normal = rs.scene.add_texture_source(normal);
+                    let material = rs.scene.add_standard_material(og_render::StandardMaterial {
+                        map: albedo.slot(),
+                        normalMap: normal.slot(),
+                        alphaTest: 0.5,
+                        side: 2,
+                        roughness: 0.85,
+                        ..Default::default()
+                    });
+                    let grid = i.grid.clamp(2, og_render::MAX_IMPOSTOR_GRID);
+                    Some((
+                        og_render::Impostor {
+                            material,
+                            grid,
+                            center: i.center,
+                            radius: i.radius,
+                        },
+                        i.error,
+                    ))
+                }
+                _ => None,
+            };
+            (parts.iter().any(|l| !l.is_empty()) || impostor.is_some()).then(|| {
+                super::extract::ModelLods {
                     parts,
                     center: (model.min + model.max) * 0.5,
                     radius: ((model.max - model.min) * 0.5).length().max(1e-3),
-                })
+                    impostor,
+                }
+            })
         }
     };
     let stand_in = group.as_ref().map(|_| {

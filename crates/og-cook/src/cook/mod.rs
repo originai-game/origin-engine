@@ -251,6 +251,8 @@ enum Work<'a> {
     Model(&'a Source, Vec<String>),
     /// A streaming group's glTF stand-in: its coarsest LOD, no textures.
     Proxy(&'a Source),
+    /// A model's impostor atlas: the albedo, or (true) the normal and depth.
+    Impostor(&'a Source, model::ImpostorBake, bool),
     Animation(&'a Source, anim::AnimSettings),
     GltfTexture(&'a Source, usize, u32, Split),
     Texture(&'a Source, u32, Split),
@@ -874,6 +876,30 @@ pub fn cook_project_with_texture_cache(
                         st,
                         Work::Proxy(s),
                     ));
+                }
+                // The impostor's two atlases (`model { impostor true }`),
+                // baked from the model's source.
+                if let Some(b) = mesh_for(s, options).ok().and_then(|m| m.impostor) {
+                    let size = [b.grid.to_le_bytes(), b.frame.to_le_bytes()].concat();
+                    for (normal, id) in model::impostor_ids(&s.rel).into_iter().enumerate() {
+                        let st = with(
+                            &[
+                                b"impostor",
+                                &[normal as u8],
+                                &size,
+                                tex_desc.as_bytes(),
+                                &hash,
+                            ],
+                            &model_desc,
+                            &[],
+                        );
+                        outs.push((
+                            id,
+                            format::Texture::NAME,
+                            st,
+                            Work::Impostor(s, b, normal == 1),
+                        ));
+                    }
                 }
                 if anim::wanted(g) {
                     match anim_settings(s) {

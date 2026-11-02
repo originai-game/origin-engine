@@ -308,6 +308,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     // The meshlet path draws the level picked here too (one per model, with
     // hysteresis), so both paths draw the same picture.
     rs.scene.instance_levels.clear();
+    rs.scene.impostors.clear();
     for (e, asset, parts, mut look, bias) in model_parts {
         let m = h.world_of(e);
         let level = match model_lods.get(&asset) {
@@ -334,6 +335,21 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             look.fx.flash = 0.8;
             look.fx.flash_color = og_render::lod::debug_color(level);
         }
+        // At its impostor's level a model at rest is one card (og-render's
+        // `impostor`), drawn with the scattered copies' passes.
+        if og_render::WORLD_3D
+            && let Some(l) = model_lods.get(&asset)
+            && let Some((impostor, _)) = l.impostor
+            && l.impostor_level() == Some(level)
+            && !posed.contains(&e)
+        {
+            rs.scene.impostors.push(og_render::ImpostorDraw {
+                impostor,
+                transform: m,
+                cast_shadows: look.cast,
+            });
+            continue;
+        }
         if posed.contains(&e)
             && super::fx::posed_model(rs, e, asset, m, h.blend_alpha(e), &parts, look, &mut keys)
         {
@@ -346,6 +362,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             }
         }
         let levels = model_lods.get(&asset).map(|l| &l.parts);
+        // Its meshes never draw past their coarsest: a posed model (or one
+        // in the 2D profile) at its impostor's level draws that.
+        let level = match model_lods.get(&asset).and_then(|l| l.impostor_level()) {
+            Some(i) => level.min(i - 1),
+            None => level,
+        };
         // Drawn without a pose: a part whose node the glTF hides at rest
         // (KHR_node_visibility, a `.vox` frame after 0) is not drawn, when
         // the parts are the model's own (not a bake's).

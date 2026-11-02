@@ -42,7 +42,7 @@ fn scatter_hook(in: ScatterOut, front: bool) -> Hook {
 fn vs(v: ScatterVertex, i: ScatterInstance) -> ScatterOut {
   let model = instance_matrix(i.m0, i.m1, i.m2, i.m3);
   var o: ScatterOut;
-  o.fade = scatter_fade(i.m3);
+  o.fade = scatter_fade(i.m3) * scatter_near(i.m3);
   let scale = length(i.m1);
   let sway = scatter_sway(v.position, i.m3, scale, scatter.wind_phase.xy);
   var world = model * vec4<f32>(v.position, 1.0) + vec4<f32>(sway, 0.0);

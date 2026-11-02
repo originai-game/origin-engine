@@ -60,12 +60,15 @@ pub struct ModelNotes {
 /// Cooks a parsed glTF into a model blob. `texture_ids` are the asset ids
 /// of [`GltfSource::textures`], in order. A `proxy` (a streaming group's
 /// stand-in, `#proxy`) keeps each primitive's coarsest LOD and no textures.
+/// `id` is the model's asset id: with `opts.impostor`, its impostor's
+/// atlases are `<id>#impostor` and `<id>#impostor-normal` ([`impostor_ids`]).
 pub fn cook(
     src: &GltfSource,
     texture_ids: &[String],
     opts: &MeshOptions,
     stamp: u64,
     proxy: bool,
+    id: &str,
 ) -> Result<(Vec<u8>, ModelNotes), CookError> {
     let doc = &src.doc;
     let mut notes = src.warnings.clone();
@@ -407,60 +410,7 @@ pub fn cook(
         .map(|s| s.index() as u32)
         .unwrap_or(if scenes.is_empty() { NONE } else { 0 });
 
-    // Bounds of the default scene's vertices with node transforms, from the
-    // source positions: what og-render's glTF bridge computes, less the
-    // nodes hidden at rest (`KHR_node_visibility` `visible: false`) and
-    // what is under them, which the rest pose does not draw (an animated
-    // `.vox`'s frames after 0).
-    let (mut lo, mut hi) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));
-    if let Some(scene) = doc.default_scene().or_else(|| doc.scenes().next()) {
-        let mut stack: Vec<(gltf::Node, Mat4)> =
-            scene.nodes().map(|n| (n, Mat4::IDENTITY)).collect();
-        while let Some((node, parent)) = stack.pop() {
-            if node
-                .extension_value("KHR_node_visibility")
-                .and_then(|v| v.get("visible")?.as_bool())
-                == Some(false)
-            {
-                continue;
-            }
-            let (t, r, s) = node.transform().decomposed();
-            let world = parent
-                * Mat4::from_scale_rotation_translation(
-                    Vec3::from(s),
-                    Quat::from_array(r),
-                    Vec3::from(t),
-                );
-            // An instanced node draws its mesh at each instance only.
-            let at: Vec<Mat4> = match instanced.get(&node.index()) {
-                Some(i) => i.iter().map(|m| world * *m).collect(),
-                None => vec![world],
-            };
-            if let Some(mesh) = node.mesh() {
-                for prim in mesh
-                    .primitives()
-                    .filter(|p| p.mode() == gltf::mesh::Mode::Triangles)
-                {
-                    let reader = prim.reader(|b| Some(&src.buffers[b.index()].0[..]));
-                    if let Some(ps) = reader.read_positions() {
-                        for p in ps {
-                            for m in &at {
-                                let w = m.transform_point3(Vec3::from(p));
-                                lo = lo.min(w);
-                                hi = hi.max(w);
-                            }
-                        }
-                    }
-                }
-            }
-            for c in node.children() {
-                stack.push((c, world));
-            }
-        }
-    }
-    if lo.x > hi.x {
-        (lo, hi) = (Vec3::ZERO, Vec3::ZERO);
-    }
+    let (lo, hi) = scene_bounds(src, &instanced);
     let skipped_animations = doc.animations().count() as u32;
     let skipped_skins = doc.skins().count() as u32;
     if skipped_animations + skipped_skins > 0 {
@@ -486,6 +436,36 @@ pub fn cook(
                 u.kind
             },
         });
+    }
+    // The impostor: its atlases' ids and the sphere they cover (the
+    // bounds', as og-runtime's levels use), its error an atlas texel.
+    let mut impostors = Vec::new();
+    if let Some(b) = opts.impostor.filter(|_| !proxy) {
+        let [albedo, normal] = impostor_ids(id);
+        let (albedo_offset, albedo_len) = strings.add(&albedo);
+        let (normal_offset, normal_len) = strings.add(&normal);
+        let center = (lo + hi) * 0.5;
+        let radius = ((hi - lo) * 0.5).length().max(1e-3);
+        impostors.push(ImpostorRow {
+            albedo_offset,
+            albedo_len,
+            normal_offset,
+            normal_len,
+            grid: b.grid,
+            frame: b.frame,
+            center_x: center.x,
+            center_y: center.y,
+            center_z: center.z,
+            radius,
+            error: 2.0 * radius / b.frame as f32,
+        });
+        notes.push(format!(
+            "impostor: {g}×{g} frames of {f} px ({s}×{s} atlas), one texel {e:.3} units",
+            g = b.grid,
+            f = b.frame,
+            s = b.grid * b.frame,
+            e = 2.0 * radius / b.frame as f32
+        ));
     }
     let meta = ModelMeta {
         primitive_count: prims.len() as u32,
@@ -531,7 +511,8 @@ pub fn cook(
             "variant_mappings",
             &mappings,
             row_hash::<VariantMappingRow>(),
-        );
+        )
+        .table("impostors", &impostors, row_hash::<ImpostorRow>());
     // The art contract's outline hull (`conform::mesh` gives the layout).
     if let Some(c) = &opts.conform
         && let Some(l) = &c.line
@@ -633,4 +614,72 @@ fn colliders(blob: &[u8]) -> Result<(Vec<u8>, usize), CookError> {
         section.extend_from_slice(c);
     }
     Ok((section, baked.len()))
+}
+
+/// Bounds of the default scene's vertices with node transforms, from the
+/// source positions: what og-render's glTF bridge computes, less the
+/// nodes hidden at rest (`KHR_node_visibility` `visible: false`) and
+/// what is under them, which the rest pose does not draw (an animated
+/// `.vox`'s frames after 0). Zero for a scene with no vertices.
+pub(super) fn scene_bounds(
+    src: &GltfSource,
+    instanced: &std::collections::BTreeMap<usize, Vec<Mat4>>,
+) -> (Vec3, Vec3) {
+    let (mut lo, mut hi) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));
+    let doc = &src.doc;
+    if let Some(scene) = doc.default_scene().or_else(|| doc.scenes().next()) {
+        let mut stack: Vec<(gltf::Node, Mat4)> =
+            scene.nodes().map(|n| (n, Mat4::IDENTITY)).collect();
+        while let Some((node, parent)) = stack.pop() {
+            if node
+                .extension_value("KHR_node_visibility")
+                .and_then(|v| v.get("visible")?.as_bool())
+                == Some(false)
+            {
+                continue;
+            }
+            let (t, r, s) = node.transform().decomposed();
+            let world = parent
+                * Mat4::from_scale_rotation_translation(
+                    Vec3::from(s),
+                    Quat::from_array(r),
+                    Vec3::from(t),
+                );
+            // An instanced node draws its mesh at each instance only.
+            let at: Vec<Mat4> = match instanced.get(&node.index()) {
+                Some(i) => i.iter().map(|m| world * *m).collect(),
+                None => vec![world],
+            };
+            if let Some(mesh) = node.mesh() {
+                for prim in mesh
+                    .primitives()
+                    .filter(|p| p.mode() == gltf::mesh::Mode::Triangles)
+                {
+                    let reader = prim.reader(|b| Some(&src.buffers[b.index()].0[..]));
+                    if let Some(ps) = reader.read_positions() {
+                        for p in ps {
+                            for m in &at {
+                                let w = m.transform_point3(Vec3::from(p));
+                                lo = lo.min(w);
+                                hi = hi.max(w);
+                            }
+                        }
+                    }
+                }
+            }
+            for c in node.children() {
+                stack.push((c, world));
+            }
+        }
+    }
+    if lo.x > hi.x {
+        (lo, hi) = (Vec3::ZERO, Vec3::ZERO);
+    }
+    (lo, hi)
+}
+
+/// The asset ids of model `id`'s impostor atlases: the albedo, then the
+/// normal and depth.
+pub fn impostor_ids(id: &str) -> [String; 2] {
+    [format!("{id}#impostor"), format!("{id}#impostor-normal")]
 }

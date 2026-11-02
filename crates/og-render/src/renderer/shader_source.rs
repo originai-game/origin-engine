@@ -131,21 +131,25 @@ pub(crate) fn shadow_source(hooks: &str) -> String {
 /// on the copies as on meshes).
 pub(crate) fn scatter_lit_source(hooks: &str) -> String {
     format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{hooks}{PLANAR_STUB}{SCREEN_AO_STUB}{LIGHTING_WGSL}{AREA_WGSL}{INSTANCE_WGSL}{}{}",
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{hooks}{PLANAR_STUB}{SCREEN_AO_STUB}{LIGHTING_WGSL}{AREA_WGSL}{INSTANCE_WGSL}{}{}{}{}",
         clusters::wgsl(),
         particles_gpu::NOISE_WGSL,
         wgsl3d!("scatter_common.wgsl"),
-        wgsl3d!("scatter.wgsl")
+        wgsl3d!("scatter.wgsl"),
+        wgsl3d!("impostor_common.wgsl"),
+        wgsl3d!("impostor.wgsl")
     )
 }
 
 /// The scattered copies' shadow module.
 pub(crate) fn scatter_shadow_source() -> String {
     format!(
-        "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{SHADOW_PASS_WGSL}{INSTANCE_WGSL}{}",
+        "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{SHADOW_PASS_WGSL}{INSTANCE_WGSL}{}{}{}",
         particles_gpu::NOISE_WGSL,
         wgsl3d!("scatter_common.wgsl"),
-        wgsl3d!("scatter_shadow.wgsl")
+        wgsl3d!("scatter_shadow.wgsl"),
+        wgsl3d!("impostor_common.wgsl"),
+        wgsl3d!("impostor_shadow.wgsl")
     )
 }
 

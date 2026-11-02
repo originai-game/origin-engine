@@ -33,6 +33,11 @@ pub struct MeshOptions {
     /// §2.3, `conform::mesh`): set by the cook from project.ogt's `look`
     /// for every asset that does not opt out; `None` conforms nothing.
     pub conform: Option<conform::mesh::Conform>,
+    /// Bake the model's octahedral impostor (`model { impostor true
+    /// impostorGrid 8 impostorSize 128 }`): two atlases, `<id>#impostor`
+    /// and `<id>#impostor-normal`, drawn as the model's last level far
+    /// away. Off by default.
+    pub impostor: Option<model::ImpostorBake>,
 }
 
 impl Default for MeshOptions {
@@ -47,6 +52,7 @@ impl Default for MeshOptions {
             raycast: true,
             collider: false,
             conform: None,
+            impostor: None,
         }
     }
 }
@@ -110,6 +116,56 @@ impl MeshOptions {
                     e.line
                 )
             })?;
+        }
+        if let Some(e) = b.get("impostor") {
+            let on = e.values.first().and_then(|v| v.as_bool()).ok_or_else(|| {
+                format!(
+                    "line {}: impostor takes true (bake the model's octahedral impostor, drawn as its last level far away) or false (the default)",
+                    e.line
+                )
+            })?;
+            o.impostor = on.then(model::ImpostorBake::default);
+        }
+        for (key, lo, hi) in [
+            ("impostorGrid", 2u32, og_render::MAX_IMPOSTOR_GRID),
+            ("impostorSize", 16, 512),
+        ] {
+            let Some(e) = b.get(key) else { continue };
+            let v = e
+                .number(0)
+                .and_then(|n| n.as_u64())
+                .map_err(|x| format!("line {}: {key}: {x}", e.line))?;
+            let Some(bake) = o.impostor.as_mut() else {
+                return Err(format!(
+                    "line {}: {key} sizes the impostor; add `impostor true`",
+                    e.line
+                ));
+            };
+            if !(u64::from(lo)..=u64::from(hi)).contains(&v) {
+                return Err(format!(
+                    "line {}: {key} is {} from {lo} to {hi}",
+                    e.line,
+                    if key == "impostorGrid" {
+                        "the frames per side of the atlas"
+                    } else {
+                        "the pixels per frame"
+                    }
+                ));
+            }
+            match key {
+                "impostorGrid" => bake.grid = v as u32,
+                _ => bake.frame = v as u32,
+            }
+        }
+        if let Some(bake) = o.impostor
+            && bake.grid * bake.frame > 4096
+        {
+            return Err(format!(
+                "impostorGrid {} × impostorSize {} makes an atlas {} pixels wide, past 4096",
+                bake.grid,
+                bake.frame,
+                bake.grid * bake.frame
+            ));
         }
         if let Some(e) = b.get("collider") {
             o.collider = e.values.first().and_then(|v| v.as_bool()).ok_or_else(|| {

@@ -73,7 +73,7 @@ fn load {
 }
 ```
 
-<sub>`api.ogt` line 27492</sub>
+<sub>`api.ogt` line 27499</sub>
 
 <a id="fn-sample"></a>
 
@@ -103,7 +103,7 @@ fn sample {
 }
 ```
 
-<sub>`api.ogt` line 27499</sub>
+<sub>`api.ogt` line 27506</sub>
 
 <a id="fn-bounds"></a>
 
@@ -145,7 +145,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 27506</sub>
+<sub>`api.ogt` line 27513</sub>
 
 <a id="fn-edit"></a>
 
@@ -177,7 +177,7 @@ fn edit {
 }
 ```
 
-<sub>`api.ogt` line 27522</sub>
+<sub>`api.ogt` line 27529</sub>
 
 <a id="fn-layer"></a>
 
@@ -209,7 +209,7 @@ fn layer {
 }
 ```
 
-<sub>`api.ogt` line 27530</sub>
+<sub>`api.ogt` line 27537</sub>
 
 <a id="fn-setLayer"></a>
 
@@ -243,7 +243,7 @@ fn setLayer {
 }
 ```
 
-<sub>`api.ogt` line 27538</sub>
+<sub>`api.ogt` line 27545</sub>
 
 ## Components, resources and events
 
@@ -311,6 +311,8 @@ Token `og.TerrainScatter`, registered under the schema name `og.TerrainScatter`;
 | `seed` | `number` | `1` | — | — | — | Another seed places the copies elsewhere. |
 | `castShadows` | `boolean` | `true` | — | — | — | Whether the copies cast shadows (grass usually does not: three.js meshes cast only with castShadow set). |
 | `sway` | `number` | `1` | 0 … 2 | — | tunable | How much og.Wind sways the copies: 1 as it blows, 0 still (stones), between for stiffer stems. Each vertex above the mesh's origin moves by its height, so model the copy with its root at the origin. |
+| `impostor` | `Asset` | `0` | — | — | — | A glTF (og.load.gltf) of the same mesh at its root, cooked with an octahedral impostor (its import settings' `model { impostor true }`): copies farther than impostorDistance draw as that impostor, a card showing the mesh as baked from the camera's direction, instead of the mesh, cross-dithered over the last tenth before it. None: the mesh at every distance. |
+| `impostorDistance` | `number` | `0` | 0 … 500 | `m` | tunable | How far from the camera, along x and z, copies draw as their mesh before their impostor takes over; 0 never switches. Useful below `distance`. |
 
 ```ogt
 component TerrainScatter {
@@ -367,6 +369,13 @@ component TerrainScatter {
     default 1
     min 0
     max 2
+    tunable true
+  }
+  field impostor Asset "A glTF (og.load.gltf) of the same mesh at its root, cooked with an octahedral impostor (its import settings' `model { impostor true }`): copies farther than impostorDistance draw as that impostor, a card showing the mesh as baked from the camera's direction, instead of the mesh, cross-dithered over the last tenth before it. None: the mesh at every distance."
+  field impostorDistance f32 "How far from the camera, along x and z, copies draw as their mesh before their impostor takes over; 0 never switches. Useful below `distance`." {
+    min 0
+    max 500
+    unit m
     tunable true
   }
 }
@@ -470,7 +479,7 @@ struct TerrainInfo {
 }
 ```
 
-<sub>`api.ogt` line 27326</sub>
+<sub>`api.ogt` line 27333</sub>
 
 <a id="type-TerrainSampleDesc"></a>
 
@@ -510,7 +519,7 @@ struct TerrainSampleDesc {
 }
 ```
 
-<sub>`api.ogt` line 27350</sub>
+<sub>`api.ogt` line 27357</sub>
 
 <a id="type-TerrainSample"></a>
 
@@ -541,7 +550,7 @@ struct TerrainSample {
 }
 ```
 
-<sub>`api.ogt` line 27369</sub>
+<sub>`api.ogt` line 27376</sub>
 
 <a id="type-TerrainBounds"></a>
 
@@ -566,7 +575,7 @@ struct TerrainBounds {
 }
 ```
 
-<sub>`api.ogt` line 27382</sub>
+<sub>`api.ogt` line 27389</sub>
 
 <a id="type-TerrainBrush"></a>
 
@@ -624,7 +633,7 @@ struct TerrainBrush {
 }
 ```
 
-<sub>`api.ogt` line 27392</sub>
+<sub>`api.ogt` line 27399</sub>
 
 <a id="type-TerrainEdit"></a>
 
@@ -651,7 +660,7 @@ struct TerrainEdit {
 }
 ```
 
-<sub>`api.ogt` line 27426</sub>
+<sub>`api.ogt` line 27433</sub>
 
 <a id="type-TerrainLayerDesc"></a>
 
@@ -732,7 +741,7 @@ struct TerrainLayerDesc {
 }
 ```
 
-<sub>`api.ogt` line 27437</sub>
+<sub>`api.ogt` line 27444</sub>
 
 ## Column kinds
 

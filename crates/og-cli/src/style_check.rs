@@ -1361,6 +1361,7 @@ mod tests {
             instances: Default::default(),
             variants: Vec::new(),
             variant_materials: Vec::new(),
+            impostor: None,
             primitives: vec![CookedPrimitive {
                 material: 0,
                 vertices,

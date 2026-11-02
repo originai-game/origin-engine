@@ -1117,6 +1117,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 sway: f(&v, "sway", 1.0),
             },
             cast_shadows: on(&v, "castShadows", true),
+            // The far copies' impostor: the named model's (og-render's `impostor`).
+            impostor: rs
+                .model_lods
+                .get(&(v["impostor"].as_f64().unwrap_or(0.0) as u64))
+                .and_then(|l| l.impostor.map(|i| i.0)),
+            impostor_distance: f(&v, "impostorDistance", 0.0),
         });
     }
     // The unedited terrains' tiles, as the camera needs them.

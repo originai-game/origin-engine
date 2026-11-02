@@ -1055,7 +1055,7 @@ impl Renderer {
         let terrain_casters = terrain_draws.iter().any(|d| d.cast_shadows);
         // Scattered copies: the chunks this frame needs built, what to draw.
         let scatter_batches = if !WORLD_3D {
-            Vec::new()
+            scatter::ScatterBatches::default()
         } else {
             let materials = &self.cache.materials;
             let meshes = &self.cache.meshes;

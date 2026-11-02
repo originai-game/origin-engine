@@ -234,6 +234,23 @@ pub struct CookedModel {
     /// Per variant, the primitives whose material it changes: (primitive,
     /// material).
     pub variant_materials: Vec<Vec<(usize, usize)>>,
+    /// Its octahedral impostor (`model { impostor true }`).
+    pub impostor: Option<CookedImpostor>,
+}
+
+/// A model's octahedral impostor ([`crate::format::ImpostorRow`]): drawn
+/// as its last level far away (og-render's `impostor`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct CookedImpostor {
+    /// The atlases' `og.Texture` ids: albedo and coverage, normal and depth.
+    pub albedo: String,
+    pub normal: String,
+    pub grid: u32,
+    pub frame: u32,
+    pub center: Vec3,
+    pub radius: f32,
+    /// In the model's units, as a level's error.
+    pub error: f32,
 }
 
 /// What [`CookedModel::add_to`] added: per part the mesh, the material and
@@ -282,6 +299,8 @@ impl CookedModel {
         let instance_rows = table::<InstanceRow>(blob, "instances")?;
         let variant_rows = table::<VariantRow>(blob, "variants")?;
         let mapping_rows = table::<VariantMappingRow>(blob, "variant_mappings")?;
+        // Optional: a model cooked before impostors has no table.
+        let impostor_rows = table::<ImpostorRow>(blob, "impostors").unwrap_or_default();
         let strings = blob.raw("strings")?;
         let vertices = blob.raw("vertices")?;
         let indices = blob.raw("indices")?;
@@ -649,7 +668,20 @@ impl CookedModel {
             }
             variant_materials[v].push((p, mat));
         }
+        let impostor = match impostor_rows.first() {
+            None => None,
+            Some(i) => Some(CookedImpostor {
+                albedo: s(i.albedo_offset, i.albedo_len)?,
+                normal: s(i.normal_offset, i.normal_len)?,
+                grid: i.grid,
+                frame: i.frame,
+                center: Vec3::new(i.center_x, i.center_y, i.center_z),
+                radius: i.radius,
+                error: i.error,
+            }),
+        };
         Ok(CookedModel {
+            impostor,
             lights,
             instances,
             variants,

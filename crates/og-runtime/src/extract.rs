@@ -229,12 +229,15 @@ pub(crate) struct ModelLods {
     pub parts: Vec<Vec<(MeshHandle, f32)>>,
     pub center: Vec3,
     pub radius: f32,
+    /// The model's impostor and its error: the level after the parts'
+    /// coarsest (`og_render::Impostor`).
+    pub impostor: Option<(og_render::Impostor, f32)>,
 }
 
 impl ModelLods {
     /// The model's error per level, level 0 first (0): the largest of its
     /// parts' at that level, a part with fewer levels standing at its
-    /// coarsest.
+    /// coarsest; then its impostor's, when it has one.
     pub fn errors(&self) -> Vec<f32> {
         let n = self.parts.iter().map(|p| p.len()).max().unwrap_or(0);
         std::iter::once(0.0)
@@ -245,7 +248,14 @@ impl ModelLods {
                     .map(|x| x.1)
                     .fold(0.0, f32::max)
             }))
+            .chain(self.impostor.map(|i| i.1))
             .collect()
+    }
+
+    /// The level index of the impostor, when the model has one.
+    pub fn impostor_level(&self) -> Option<usize> {
+        self.impostor
+            .map(|_| self.parts.iter().map(|p| p.len()).max().unwrap_or(0) + 1)
     }
 }
 
@@ -691,4 +701,44 @@ pub(crate) fn add_font(
         }));
     }
     FontPages { pages }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A model's impostor is the level after its parts' coarsest: chosen
+    /// by `lod::select` once its error (an atlas texel) projects under a
+    /// pixel, and never while a mesh level still would be finer.
+    #[test]
+    fn the_impostor_ends_the_level_chain() {
+        let mut scene = RenderScene::new();
+        let mesh = scene.add_mesh(og_render::shapes::cuboid(Vec3::ONE));
+        let impostor = og_render::Impostor {
+            material: scene.add_standard_material(Default::default()),
+            grid: 8,
+            center: Vec3::ZERO,
+            radius: 1.0,
+        };
+        let lods = ModelLods {
+            // One part with levels 3 cm and 12 cm off, another with one.
+            parts: vec![vec![(mesh, 0.03), (mesh, 0.12)], vec![(mesh, 0.02)]],
+            center: Vec3::ZERO,
+            radius: 1.0,
+            impostor: Some((impostor, 2.0 / 128.0)),
+        };
+        assert_eq!(lods.errors(), vec![0.0, 0.03, 0.12, 2.0 / 128.0]);
+        assert_eq!(lods.impostor_level(), Some(3));
+        // The impostor's error is under the coarsest mesh's here, so it
+        // counts as that (lod::select keeps errors rising): it replaces
+        // level 2, drawn once level 2 would be (under 8.3 px per unit).
+        assert_eq!(og_render::lod::select(&lods.errors(), 20.0, 1.0, None), 1);
+        assert_eq!(og_render::lod::select(&lods.errors(), 5.0, 1.0, None), 3);
+        let none = ModelLods {
+            impostor: None,
+            ..lods
+        };
+        assert_eq!(none.errors().len(), 3);
+        assert_eq!(none.impostor_level(), None);
+    }
 }

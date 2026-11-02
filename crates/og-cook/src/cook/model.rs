@@ -10,12 +10,14 @@ use std::path::Path;
 
 mod blob;
 mod ext;
+mod impostor;
 pub mod plain;
 mod primitive;
 
 use super::conform;
 pub use blob::*;
 pub(super) use ext::uv_plan;
+pub use impostor::{Baked, ImpostorBake};
 pub(super) use primitive::*;
 
 /// A texture the model needs: which image, cooked as which kind.
@@ -50,6 +52,22 @@ pub struct GltfSource {
     /// (`model_text::to_glb_within`): the factor and the triangles it
     /// drew as written, for the cook report.
     pub(super) segments: Option<(f64, usize)>,
+    /// The model's impostor, baked by the first of its two atlases' outputs.
+    pub(super) impostor: std::sync::OnceLock<Result<Baked, String>>,
+}
+
+impl GltfSource {
+    /// The model's impostor baked as `b` asks (once for both atlases).
+    pub fn impostor(&self, b: ImpostorBake) -> Result<&Baked, String> {
+        self.impostor
+            .get_or_init(|| {
+                let instanced = ext::instances(self)?;
+                let bounds = blob::scene_bounds(self, &instanced);
+                impostor::bake(self, &instanced, bounds, b)
+            })
+            .as_ref()
+            .map_err(Clone::clone)
+    }
 }
 
 fn base64_decode(s: &str) -> Option<Vec<u8>> {
@@ -325,6 +343,7 @@ pub fn load(bytes: &[u8], dir: &Path) -> Result<GltfSource, String> {
         conform_plan: Default::default(),
         character: false,
         segments: None,
+        impostor: Default::default(),
     })
 }
 

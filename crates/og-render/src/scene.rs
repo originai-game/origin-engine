@@ -217,6 +217,9 @@ pub struct RenderScene {
     /// Copies scattered over this frame's terrains, placed and drawn by
     /// the renderer from cached chunks.
     pub scatters: Vec<crate::ScatterDraw>,
+    /// Models drawn as their impostors this frame (`impostor.rs`): each a
+    /// camera-facing card, drawn with the scattered copies' passes.
+    pub impostors: Vec<crate::ImpostorDraw>,
     /// The wind that sways the scattered copies (`None` or strength 0:
     /// still).
     pub wind: Option<crate::Wind>,

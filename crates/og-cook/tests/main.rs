@@ -17,6 +17,7 @@ mod fbx;
 mod flipbook;
 mod fx;
 mod gltf_formats;
+mod impostor;
 mod lod;
 mod look_builtins;
 mod model_text;

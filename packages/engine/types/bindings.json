@@ -6787,6 +6787,17 @@
           "column": "f32",
           "default": 1,
           "tunable": true
+        },
+        {
+          "name": "impostor",
+          "column": "Asset",
+          "default": 0
+        },
+        {
+          "name": "impostorDistance",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
         }
       ]
     },
