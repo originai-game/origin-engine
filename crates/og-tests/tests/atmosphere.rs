@@ -47,6 +47,20 @@ fn luma(p: [f32; 3]) -> f32 {
     0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2]
 }
 
+/// Mean colour over a rectangle.
+fn rgb(img: &RgbaImage, x0: u32, y0: u32, x1: u32, y1: u32) -> [f32; 3] {
+    let mut sum = [0.0f32; 3];
+    for y in y0..y1 {
+        for x in x0..x1 {
+            let p = px(img, x, y);
+            for c in 0..3 {
+                sum[c] += p[c];
+            }
+        }
+    }
+    sum.map(|s| s / ((x1 - x0) * (y1 - y0)) as f32)
+}
+
 /// Mean luma over a rectangle.
 fn mean(img: &RgbaImage, x0: u32, y0: u32, x1: u32, y1: u32) -> f32 {
     let mut sum = 0.0;
@@ -566,18 +580,6 @@ fn physical_sky_scenes_match_their_references_and_read_as_sky() {
     for scene in SKY_SCENES.iter().filter(|s| s.starts_with("sky-")) {
         check(scene);
     }
-    let rgb = |img: &RgbaImage, x0: u32, y0: u32, x1: u32, y1: u32| {
-        let mut sum = [0.0f32; 3];
-        for y in y0..y1 {
-            for x in x0..x1 {
-                let p = px(img, x, y);
-                for c in 0..3 {
-                    sum[c] += p[c];
-                }
-            }
-        }
-        sum.map(|s| s / ((x1 - x0) * (y1 - y0)) as f32)
-    };
     let noon = frame(&sky_scene("sky-physical-noon"));
     let top = rgb(&noon, 560, 0, 720, 40);
     assert!(top[2] > top[0] + 20.0, "noon is blue overhead: {top:?}");
@@ -656,7 +658,9 @@ fn cloud_scenes_match_their_references_and_read_as_clouds() {
         "and darker on the ground"
     );
     let sunset = frame(&sky_scene("clouds-sunset"));
-    let warm = px(&sunset, 640, 200);
+    // The cumulus band over the horizon (the cirrus above is faint, the
+    // sky between its streaks blue).
+    let warm = rgb(&sunset, 400, 480, 880, 600);
     assert!(warm[0] > warm[2], "the sunset clouds are warm: {warm:?}");
 }
 
