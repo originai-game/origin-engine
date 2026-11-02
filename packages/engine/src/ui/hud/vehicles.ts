@@ -67,6 +67,9 @@ export function speedometer(id: string, desc: Api.SpeedometerDesc = {}): void {
           }, fixed({ start: c - to, top: c - to }));
         }
         // Ticks and numbers.
+        // At a large text size the dial grows less than its text: the numerals ring is capped smaller and pushed out,
+        // and the readout dropped a little, so the readout sits clear under the hub and of the numerals.
+        const big = textScale() >= 1.5;
         const speedStep = tsFit(size >= 150 ? 30 : 22, size * 0.15, true);
         const unitStep = tsFit(10, size * 0.065);
         const readoutHalf = Math.max(String(Math.round(max)).length * stepSize(speedStep).size * 0.62, unit.length * stepSize(unitStep).size * 0.62 + size * 0.16) / 2 + size * 0.02;
@@ -85,14 +88,14 @@ export function speedometer(id: string, desc: Api.SpeedometerDesc = {}): void {
             shape: { kind: "path", points: [{ x: c + Math.cos(a) * r0, y: c + Math.sin(a) * r0 }, { x: c + Math.cos(a) * r1, y: c + Math.sin(a) * r1 }], width: major ? 2 : 1, cap: "butt" },
             fills: [solid(major ? token("ink") : token("inkMuted"))],
           }, fixed({ start: 0, top: 0 }));
-          const rt = r0 - size * 0.08;
+          const rt = r0 - size * (big ? 0.065 : 0.08);
           const lw = size * 0.16;
-          const numStep = tsFit(10, size * 0.075);
+          const numStep = tsFit(10, size * (big ? 0.058 : 0.075));
           const nx = c + Math.cos(a) * rt;
           const ny = c + Math.sin(a) * rt - size * 0.035;
           // A numeral that would reach the readout under the hub (large text, the dial's lowest marks) is left out.
           const numW = String(Math.round(v)).length * stepSize(numStep).size * 0.62;
-          const hitsReadout = ny + stepSize(numStep).line > c + size * 0.06 && Math.abs(nx - c) - numW / 2 < readoutHalf;
+          const hitsReadout = ny + stepSize(numStep).line > c + size * (big ? 0.0 : 0.06) && Math.abs(nx - c) - numW / 2 < readoutHalf;
           const nb: [number, number, number, number] = [nx - numW / 2 - 2, nx + numW / 2 + 2, ny, ny + stepSize(numStep).line];
           const crowded = placedNums.some((q) => nb[0] < q[1] && nb[1] > q[0] && nb[2] < q[3] && nb[3] > q[2]);
           if (major && size >= 120 && !hitsReadout && !crowded) {
@@ -134,7 +137,7 @@ export function speedometer(id: string, desc: Api.SpeedometerDesc = {}): void {
               }, () => text("Text", desc.gear ?? "", { step: gearStep, font: "display", color: token("ink"), nowrap: true }));
             }
           });
-        }, fixed({ start: 0, top: c + size * 0.05 }));
+        }, fixed({ start: 0, top: c + size * (big ? 0.07 : 0.05) }));
         if (over) {
           leaf("Shift", { width: px(size * 0.1), height: px(size * 0.1), part: sel("Speedometer", "shift") }, {
             shape: ellipseShape(),

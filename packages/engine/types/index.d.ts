@@ -38781,7 +38781,7 @@ export interface StandingsEntry {
    */
   readonly out?: boolean;
   /**
-   * Holds the fastest lap: a small mark by its name.
+   * Holds the fastest lap: a small purple chip by its name (StandingsTowerDesc.fastestLabel).
    *
    * @default false
    */
@@ -38830,6 +38830,12 @@ export interface StandingsTowerDesc {
    * @default "OUT"
    */
   readonly outLabel?: string;
+  /**
+   * The fastest lap's chip.
+   *
+   * @default "FL"
+   */
+  readonly fastestLabel?: string;
   /**
    * Opens its own anchored group there; null builds it in place.
    *
@@ -50346,8 +50352,8 @@ export declare namespace og {
      */
     function flightHud(id: string, desc?: FlightHudDesc): void;
     /**
-     * A standings tower to the bar of F1, Gran Turismo and Forza: one row a car in race order, its position in a tabular cell, its team colour as a stripe, the driver's name and the gap to the leader (or, relative, a signed gap to the player) in tabular digits; the player's row lit; a car that changes place slides to its new row and a small arrow says how many places it gained or lost; a car in the pit lane says so, a retired one dims to the foot; more cars than rows keep the leaders and the cars around the player with a break between.
-     * Parts: StandingsTower.frame, StandingsTower.row[player][pit][out], StandingsTower.position, StandingsTower.stripe, StandingsTower.name, StandingsTower.gap, StandingsTower.change[up|down], StandingsTower.fastest, StandingsTower.break. State groups: row (racing, player, pit, out) on each row. Sounds: success when the player gains a place. Accessibility: table named Standings, each row a row named by its driver with its position and gap. Probe ids: <id>, <id>/<key>, <id>/<key>/Position, <id>/<key>/Name, <id>/<key>/Gap.
+     * A standings tower to the bar of F1, Gran Turismo and Forza: one row a car in race order, its position in a tabular cell, its team colour as a stripe, the driver's name and the gap to the leader (or, relative, a signed gap to the player) in tabular digits; one continuous panel with hairlines between rows, the player's row lit (a solid position cell over a tinted row); a car that changes place slides to its new row and a small arrow says how many places it gained or lost; a car in the pit lane says so, a retired one dims to the foot; more cars than rows keep the leaders and the cars around the player with a break between.
+     * Parts: StandingsTower.frame, StandingsTower.row[player][pit][out], StandingsTower.position, StandingsTower.stripe, StandingsTower.name, StandingsTower.gap, StandingsTower.change[up|down], StandingsTower.fastest, StandingsTower.rule, StandingsTower.break. State groups: row (racing, player, pit, out) on each row. Sounds: success when the player gains a place. Accessibility: table named Standings, each row a row named by its driver with its position and gap. Probe ids: <id>, <id>/<key>, <id>/<key>/Position, <id>/<key>/Name, <id>/<key>/Gap.
      *
      * @param id Its id.
      * @param desc The cars in race order.

@@ -6,10 +6,14 @@
 // and the lap as large numerals over their totals, the running lap, the
 // best and last laps, a signed split coloured ahead or behind) and the
 // cockpit mirrors of Forza and Need for Speed (a render target flipped as a
-// mirror in a wide frame whose sides slant in).
+// mirror in a dark rounded bezel with a glass highlight). The tower and the
+// lap block share one width (raceWidth) so they stack as one column.
 
 import type * as Api from "@origingame/engine";
 import { BLACK, WHITE, a11y, absolute, anchorOf, apply, box, chip, drop, edge, frame, groups, hudPlace, hudRoom, keyId, kit, leaf, lit, paintRgba, pct, pop, px, role, sel, solid, sound, spring, stroke, teamColor, text, token, ts, u, ut, vgrad, stepSize, rtl, type Rgba } from "./core.ts";
+
+/** The fastest lap's and a new best's purple, as F1 timing marks them. */
+const PURPLE: Rgba = { r: 0.68, g: 0.42, b: 1, a: 1 };
 
 /** A lap time as racing games write it: m:ss.mmm. */
 export function lapText(ms: number): string {
@@ -26,6 +30,18 @@ export function signedSeconds(sec: number, digits = 2): string {
   return sec < 0 ? `\u2212${v}` : `+${v}`;
 }
 
+/** The width the lap block and the tower share, so stacked they read as one column. */
+function raceWidth(): number {
+  const f = frame();
+  return Math.min(hudRoom(), f.phone ? ut(220) : Math.max(u(220), Math.min(ut(290), hudRoom() * 0.3)));
+}
+
+/** The racing panels' ground: the HUD chip denser, over a blurred scene, so rows sit on an even ground. */
+function racePanel(): Api.DrawDesc {
+  const c = chip();
+  return { ...c, fills: [solid(token("hud", 0.9)), ...(c.fills ?? []).slice(1)], effects: [{ kind: "backdrop", blur: u(12) }, ...(c.effects ?? [])] };
+}
+
 /** A small filled triangle pointing up or down. */
 function arrow(id: string, up: boolean, side: number, ink: Rgba, part: string): void {
   const pts = (up ? [[0.5, 0.1], [0.95, 0.9], [0.05, 0.9]] : [[0.05, 0.1], [0.95, 0.1], [0.5, 0.9]]).map(([x, y]) => ({ x: x! * side, y: y! * side }));
@@ -37,7 +53,7 @@ export function standingsTower(id: string, desc: Api.StandingsTowerDesc = {}): v
   const tk = f.t;
   const all = desc.entries ?? [];
   const rowH = Math.max(ut(24), stepSize(ts(13)).line + u(6));
-  const gap = u(2);
+  const gap = 0;
   // At most two fifths of the safe area's height, so a large text size cuts the field rather than crowds the HUD
   // (it stacks under a lap block at the same corner and must leave the opposite corner free).
   const vp = f.viewport;
@@ -55,7 +71,7 @@ export function standingsTower(id: string, desc: Api.StandingsTowerDesc = {}): v
     const around = [pi - 1, pi, pi + 1].filter((i) => i >= lead && i < all.length);
     shown = [...Array.from({ length: lead }, (_, i) => i), null, ...around];
   } else if (all.length > most) shown = shown.slice(0, most);
-  const w = Math.min(hudRoom(), ut(f.phone ? 220 : 270));
+  const w = raceWidth();
   const posW = Math.ceil(stepSize(ts(14)).size * 1.4) + u(4);
   const gapW = Math.ceil(stepSize(ts(12)).size * 0.62 * 6) + u(4);
   const e = edge(`${id}~pos`, pi);
@@ -68,7 +84,7 @@ export function standingsTower(id: string, desc: Api.StandingsTowerDesc = {}): v
     return i === 0 ? (desc.leaderLabel ?? "Leader") : signedSeconds(en.gap ?? 0);
   };
   hudPlace(id, anchorOf(desc, "left"), () => {
-    box(id, { direction: "column", gap, width: px(w), padding: { left: u(4), right: u(4), top: u(4), bottom: u(4) }, part: sel("StandingsTower", "frame"), partClass: "hud" }, chip(), () => {
+    box(id, { direction: "column", gap, width: px(w), padding: { left: 0, right: 0, top: u(3), bottom: u(3) }, part: sel("StandingsTower", "frame"), partClass: "hud" }, racePanel(), () => {
       shown.forEach((i, r) => {
         if (i === null) {
           // The break: three dots where the field is cut.
@@ -88,22 +104,28 @@ export function standingsTower(id: string, desc: Api.StandingsTowerDesc = {}): v
           direction: "row", gap: tk.sm, cross: "center", width: pct(1), height: px(rowH), padding: { left: 0, right: tk.sm, top: 0, bottom: 0 },
           part: sel("StandingsTower", "row", en.player ? "player" : null, en.pit ? "pit" : null, en.out ? "out" : null),
         }, {
-          shape: { kind: "rect", radii: [3, 3, 3, 3] },
-          fills: [solid(en.player ? token("highlight", 0.24) : r % 2 === 0 ? token("shadow", 0.3) : token("shadow", 0.16))],
-          strokes: en.player ? [stroke(1, token("highlight", 0.85))] : [],
+          // One mark for the player (docs/ui.md §15.5): a solid position cell over a lightly tinted row, no outline.
+          fills: en.player ? [solid(token("highlight", 0.18))] : [],
         }, () => {
-          box("PositionBox", { width: px(posW), height: pct(1), align: "center", cross: "center", part: sel("StandingsTower", "position") }, {
-            shape: { kind: "rect", radii: [3, 0, 0, 3] },
-            fills: [solid(en.player ? token("highlight", 0.9) : lit(BLACK, 0.35))],
-          }, () => text("Position", String(i + 1), { step: ts(14), font: "display", color: en.player ? lit(BLACK) : token("ink"), nowrap: true }));
+          // A hairline between rows, none against the player's lit row.
+          const prev = r > 0 ? shown[r - 1] : null;
+          if (r > 0 && !en.player && !(prev != null && all[prev]?.player)) leaf("Rule", { width: pct(1), height: px(1), part: sel("StandingsTower", "rule") }, { fills: [solid(lit(WHITE, 0.08))] }, absolute({ start: 0, top: 0 }));
+          box("PositionBox", { width: px(posW), height: pct(1), align: "center", cross: "center", part: sel("StandingsTower", "position") }, en.player ? {
+            fills: [solid(token("highlight", 0.9))],
+          } : undefined, () => text("Position", String(i + 1), { step: ts(14), font: "display", color: en.player ? lit(BLACK) : token("ink"), nowrap: true }));
           leaf("Stripe", { width: px(Math.max(3, u(3))), height: pct(0.62), part: sel("StandingsTower", "stripe") }, { shape: { kind: "rect", radii: [1, 1, 1, 1] }, fills: [solid(lit(ink))] });
           text("Name", en.name ?? "", { step: ts(13), font: en.player ? "display" : "body", color: en.out ? token("inkFaint") : token("ink"), nowrap: true, ellipsis: true, width: { kind: "grow" } });
-          if (en.fastest) leaf("Fastest", { width: px(u(6)), height: px(u(6)), part: sel("StandingsTower", "fastest") }, { shape: { kind: "ellipse" }, fills: [solid(lit({ r: 0.66, g: 0.36, b: 0.98, a: 1 }))] }, { a11y: a11y("image", "Fastest lap") });
+          if (en.fastest) {
+            box("Fastest", { padding: { left: u(4), right: u(4), top: 0, bottom: 0 }, cross: "center", part: sel("StandingsTower", "fastest") }, {
+              shape: { kind: "rect", radii: [u(3), u(3), u(3), u(3)] }, fills: [solid(lit(PURPLE))],
+            }, () => text("Label", desc.fastestLabel ?? "FL", { step: ts(9), font: "display", color: lit(WHITE), nowrap: true }), { a11y: a11y("image", "Fastest lap") });
+          }
           const ch = en.change ?? 0;
           if (ch !== 0 && !en.out) {
             box("Change", { direction: "row", gap: 1, cross: "center", part: sel("StandingsTower", "change", ch > 0 ? "up" : "down") }, undefined, () => {
               const c = ch > 0 ? role("success") : role("danger");
-              arrow("Arrow", ch > 0, u(7), c, sel("StandingsTower", "change"));
+              // Sized off the count's text, so it grows with the player's text size.
+              arrow("Arrow", ch > 0, Math.max(u(7), Math.round(stepSize(ts(10)).size * 0.6)), c, sel("StandingsTower", "change"));
               text("Count", String(Math.abs(ch)), { step: ts(10), font: "mono", color: lit(c), nowrap: true });
             });
           }
@@ -123,9 +145,7 @@ export function standingsTower(id: string, desc: Api.StandingsTowerDesc = {}): v
 export function lapTimer(id: string, desc: Api.LapTimerDesc = {}): void {
   const f = frame();
   const tk = f.t;
-  // Grows with the text, to three tenths of the HUD band off a phone so a centred mirror keeps its place beside it;
-  // on a phone, wide enough for the place, the lap and the split in one head.
-  const w = Math.min(hudRoom(), f.phone ? ut(210) : Math.max(u(200), Math.min(ut(290), hudRoom() * 0.3)));
+  const w = raceWidth();
   const lap = desc.lap ?? 0;
   const total = desc.lapTotal ?? 0;
   const final = total > 0 && lap >= total;
@@ -171,7 +191,7 @@ export function lapTimer(id: string, desc: Api.LapTimerDesc = {}): void {
     box(id, {
       direction: "column", gap: u(4), width: px(w), padding: { left: tk.md, right: tk.md, top: tk.sm, bottom: tk.sm },
       part: sel("LapTimer", "frame"), partClass: "hud",
-    }, chip(), () => {
+    }, racePanel(), () => {
       if (headed) {
         kit.row("Head", { gap: tk.md, cross: "end", width: pct(1) }, () => {
           if ((desc.position ?? 0) > 0) big("Position", desc.positionLabel ?? "Position", desc.position ?? 0, desc.positionTotal ?? 0, false);
@@ -187,8 +207,8 @@ export function lapTimer(id: string, desc: Api.LapTimerDesc = {}): void {
       }
       if (!f.phone) {
         row("Current", desc.currentLabel ?? "Current lap", desc.currentMs ?? 0, token("ink"));
-        if (best !== null) row("Best", desc.bestLabel ?? "Best lap", best, newBest && eb.since < 240 ? lit({ r: 0.72, g: 0.45, b: 1, a: 1 }) : token("ink"));
-        if (last !== null) row("Last", desc.lastLabel ?? "Last lap", last, newBest ? lit({ r: 0.72, g: 0.45, b: 1, a: 1 }) : token("inkMuted"));
+        if (best !== null) row("Best", desc.bestLabel ?? "Best lap", best, newBest && eb.since < 240 ? lit(PURPLE) : token("ink"));
+        if (last !== null) row("Last", desc.lastLabel ?? "Last lap", last, newBest ? lit(PURPLE) : token("inkMuted"));
       }
       if (delta !== null && !(f.phone && headed)) splitBox("row");
     }, {
@@ -203,23 +223,32 @@ export function rearView(id: string, desc: Api.RearViewDesc = {}): void {
   const room = hudRoom();
   const w = Math.round(Math.min(room, desc.width ? u(desc.width) : Math.min(u(560), room * (f.viewport.breakpoint === "phonePortrait" ? 2 / 3 : f.phone ? 0.4 : 1 / 3))));
   const h = Math.round(w / Math.max(1.5, desc.aspect || 4.2));
-  const slant = Math.round(h * 0.16);
-  const rim = Math.max(2, u(3));
-  const pts = [{ x: 0, y: 0 }, { x: w, y: 0 }, { x: w - slant, y: h }, { x: slant, y: h }];
+  // A dark bezel round the glass, as a cockpit mirror's housing: square-on, its corners rounded, a soft shadow under it.
+  const bezel = Math.max(5, u(7));
+  const r = Math.round(Math.min(h * 0.22, u(18)));
+  const ri = Math.max(2, r - bezel);
+  const gw = w - bezel * 2;
+  const gh = h - bezel * 2;
   hudPlace(id, anchorOf(desc, "top"), () => {
-    box(id, { width: px(w), height: px(h), part: sel("RearView", "frame"), partClass: "hud" }, {
-      shape: { kind: "path", points: pts, closed: true, filled: true, join: "round" },
-      fills: [solid(lit(BLACK, 0.85))],
-      strokes: [stroke(rim, token("lineStrong", 0.85)), stroke(1, token("shadow", 0.9), "outside")],
-      effects: [drop(u(2), u(10), token("shadow", 0.5))],
-      clip: "shape",
+    box(id, { width: px(w), height: px(h), padding: { left: bezel, right: bezel, top: bezel, bottom: bezel }, part: sel("RearView", "frame"), partClass: "hud" }, {
+      shape: { kind: "rect", radii: [r, r, r, r] },
+      fills: [solid(lit({ r: 0.043, g: 0.05, b: 0.063, a: 1 }, 0.96)), vgrad([[0, lit(WHITE, 0.07)], [0.5, lit(WHITE, 0)]])],
+      strokes: [stroke(1, lit(WHITE, 0.08)), stroke(1, lit(BLACK, 0.6), "outside")],
+      effects: [drop(u(4), u(16), token("shadow", 0.55))],
     }, () => {
-      if (desc.texture) {
-        kit.image("View", { texture: desc.texture, width: px(w), height: px(h), label: "" });
-        apply(absolute({ start: 0, top: 0 }, desc.mirror !== false ? { transform: { scaleX: -1 } } : {}));
-      }
-      // A soft glare across the glass's top.
-      leaf("Glare", { width: pct(1), height: px(Math.round(h * 0.45)), part: sel("RearView", "glare") }, { fills: [vgrad([[0, lit(WHITE, 0.16)], [1, lit(WHITE, 0)]])] }, absolute({ start: 0, top: 0 }));
+      box("Glass", { width: px(gw), height: px(gh), part: sel("RearView", "glass") }, {
+        shape: { kind: "rect", radii: [ri, ri, ri, ri] },
+        fills: [solid(lit({ r: 0.1, g: 0.12, b: 0.15, a: 1 }))],
+        clip: "shape",
+      }, () => {
+        if (desc.texture) {
+          kit.image("View", { texture: desc.texture, width: px(gw), height: px(gh), label: "" });
+          apply(absolute({ start: 0, top: 0 }, desc.mirror !== false ? { transform: { scaleX: -1 } } : {}));
+        }
+        // The glass: a faint sheen across its top and a bright hairline along its top edge.
+        leaf("Glare", { width: pct(1), height: px(Math.round(gh * 0.5)), part: sel("RearView", "glare") }, { fills: [vgrad([[0, lit(WHITE, 0.14)], [1, lit(WHITE, 0)]])] }, absolute({ start: 0, top: 0 }));
+        leaf("Edge", { width: pct(1), height: px(1), part: sel("RearView", "glare") }, { fills: [solid(lit(WHITE, 0.32))] }, absolute({ start: 0, top: 0 }));
+      });
     }, { a11y: a11y("image", desc.label ?? "Rear view") });
   });
 }

@@ -174,13 +174,16 @@ export function minimapView(id: string, desc: Api.MinimapViewDesc = {}): Api.Min
       }
       // North on the rim.
       const nAng = -Math.PI / 2 + turn;
-      const nr = R - rim - u(8);
-      box("North", { width: px(u(16)), height: px(u(16)), align: "center", cross: "center", part: sel("Minimap", "north") }, {
+      // The badge is sized by its letter (which grows with the text) and seated inside the rim, never cut by the frame's edge.
+      const nStep = tsFit(10, u(10));
+      const nb = Math.max(u(16), Math.ceil(stepSize(nStep).line) + u(4));
+      const nr = R - rim - nb / 2 - u(2);
+      box("North", { width: px(nb), height: px(nb), align: "center", cross: "center", part: sel("Minimap", "north") }, {
         shape: ellipseShape(),
         fills: [solid(token("hud", 0.95))],
         strokes: [stroke(1, token("lineStrong"))],
-      }, () => text("Letter", desc.north ?? "N", { step: tsFit(10, u(10)), font: "display", color: lit(role("danger")), nowrap: true }),
-        fixed({ start: R + Math.cos(nAng) * nr - u(8), top: R + Math.sin(nAng) * nr - u(8) }));
+      }, () => text("Letter", desc.north ?? "N", { step: nStep, font: "display", color: lit(role("danger")), nowrap: true }),
+        fixed({ start: R + Math.cos(nAng) * nr - nb / 2, top: R + Math.sin(nAng) * nr - nb / 2 }));
       const r = close({ a11y: a11y("image", desc.zone || "Minimap") });
       result = { clicked: r.clicked };
       if (desc.zone) text("Zone", desc.zone, { step: ts(12), font: "display", color: token("ink"), nowrap: true, outline: 1 });

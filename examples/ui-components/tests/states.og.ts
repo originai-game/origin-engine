@@ -60,7 +60,11 @@ const steps = [
   "31.50:text:100",
   "32.70:dump_ui:framesDesktop.json",
   "32.72:screenshot:framesDesktop.png",
-  "32.80:quit",
+  // The racing screen in Arabic: its words come from the string tables, not left in English.
+  "32.80:show:racing",
+  "32.85:lang:ar",
+  "33.40:dump_ui:raceAr.json",
+  "33.50:quit",
 ];
 
 export default playtest({
@@ -130,6 +134,9 @@ export default playtest({
           t.ok(ratio >= floor, `${shot}: "${e.text}" reads at ${ratio.toFixed(2)}:1 on its ground (at least ${floor}:1)`);
         }
       });
+    }
+    for (const [path, word] of [["LapTimeHud/LapTime/Head/Position/Caption", "المركز"], ["LapTimeHud/LapTime/Best/Label", "أفضل لفة"], ["LapTimeHud/LapTime/Last/Label", "اللفة السابقة"], ["TowerHud/Tower/moreno/Gap", "المتصدر"], ["TowerHud/Tower/alvarez/Gap", "صيانة"]] as const) {
+      t.equal(at(run, "raceAr.json", path)?.text, word, `in Arabic ${path} reads from the string table`);
     }
     const party = parts("framesDesktop200.json", "PartyHud");
     t.ok(party.length > 0 && party.every((e) => e.y >= 0 && e.y + e.height <= 1080.5), "on a desktop at 200 % the party lies on screen, its last member too");

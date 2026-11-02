@@ -414,7 +414,9 @@ function strategyScreen(): void {
 // A circuit in map space (0 to 1): the minimap's spline track mode.
 const CIRCUIT = [[0.2, 0.62], [0.16, 0.42], [0.28, 0.24], [0.48, 0.2], [0.58, 0.32], [0.72, 0.22], [0.86, 0.3], [0.84, 0.5], [0.74, 0.62], [0.8, 0.78], [0.62, 0.86], [0.42, 0.78], [0.32, 0.84]].map(([x, y]) => ({ x: x!, y: y! }));
 
-function racingScreen(): void {
+function racingScreen(world: World): void {
+  // The racing words from the string tables in Arabic (assets/strings/ar.ogt), the pseudo-locale's otherwise.
+  const tr = (key: string, en: string) => (state.locale === "ar" ? og.i18n.t(world, `race.${key}`) : L(en));
   const s = seconds();
   const rpm = 0.45 + 0.5 * Math.abs(Math.sin(s * 0.8));
   const vp = og.ui.frameViewport();
@@ -438,12 +440,15 @@ function racingScreen(): void {
   og.ui.lapTimer("LapTime", {
     position: place, positionTotal: grid.length, lap: 2, lapTotal: 3, currentMs: 72384 + s * 1000,
     bestMs: best ? 99812 : 101226, lastMs: best ? 99812 : 102450, deltaMs: best ? -420 : 180,
-    positionLabel: L("Position"), lapLabel: L("Lap"), currentLabel: L("Current lap"), bestLabel: L("Best lap"), lastLabel: L("Last lap"), splitLabel: L("Split"),
+    positionLabel: tr("position", "Position"), lapLabel: tr("lap", "Lap"), finalLabel: tr("final", "Final lap"), currentLabel: tr("current", "Current lap"), bestLabel: tr("best", "Best lap"), lastLabel: tr("last", "Last lap"), splitLabel: tr("split", "Split"),
   });
-  // Upright phone: the tower mid-left, the circuit bottom-left, the dial bottom-right, so nothing shares a corner at 200 %.
-  // Elsewhere the tower stacks under the lap block at the top-left corner.
+  // The tower stacks under the lap block at the top-start corner, one column, so the driving view's middle stays clear;
+  // a phone held sideways has no height for both and puts it bottom-left. The circuit goes bottom-left on an upright phone.
   const upright = vp.breakpoint === "phonePortrait";
-  og.ui.standingsTower("Tower", { entries: grid, rows: upright ? 4 : small() ? 3 : 10, leaderLabel: L("Leader"), anchor: upright ? "left" : small() ? "bottomLeft" : "topLeft" });
+  og.ui.standingsTower("Tower", {
+    entries: grid, rows: upright ? 4 : small() ? 3 : 10, anchor: !upright && small() ? "bottomLeft" : "topLeft",
+    leaderLabel: tr("leader", "Leader"), pitLabel: tr("pit", "PIT"), outLabel: tr("out", "OUT"), fastestLabel: tr("fastest", "FL"),
+  });
   // Rivals on the circuit as dots in their colours, the player's arrow along the track.
   const along = (k: number) => {
     const t = (((k % 1) + 1) % 1) * CIRCUIT.length;
@@ -452,7 +457,7 @@ function racingScreen(): void {
     return { x: a.x + (b.x - a.x) * (t % 1), y: a.y + (b.y - a.y) * (t % 1) };
   };
   og.ui.minimapView("Circuit", {
-    track: CIRCUIT, zoom: 1, centerX: 0.5, centerY: 0.5, shape: "square", size: small() ? 120 : 180, zone: L("Monaco Ridge"), anchor: upright ? "bottomLeft" : "topRight",
+    track: CIRCUIT, zoom: 1, centerX: 0.5, centerY: 0.5, shape: "square", size: small() ? 120 : 180, zone: tr("track", "Saltmarsh Ring"), anchor: upright ? "bottomLeft" : "topRight",
     markers: [
       { key: "me", kind: "player", ...along(0.34 + s * 0.01), heading: 2.2 },
       { key: "a", kind: "poi", ...along(0.42 + s * 0.01), color: { color: { r: 0.9, g: 0.25, b: 0.2 } } },
@@ -462,8 +467,6 @@ function racingScreen(): void {
   // The mirror needs the top band's middle: an upright phone has none, and a small screen at large text gives it to the lap block.
   if (vp.breakpoint !== "phonePortrait" && !(small() && state.textScale >= 1.5)) og.ui.rearView("Mirror", { texture: state.art.rear ?? null });
   og.ui.speedometer("Speedo", { speed: 118 + rpm * 120, maxSpeed: 320, rpm, gear: rpm > 0.85 ? "5" : "4", boost: 0.66 });
-  // The second dial only where the left side has room under the lap block and the tower.
-  if (!small() && tall()) og.ui.speedometer("Digital", { speed: 287, maxSpeed: 320, rpm: 0.93, gear: "6", style: "digital", anchor: "bottomLeft" });
 }
 
 function flightScreen(): void {
@@ -553,7 +556,7 @@ const Stage = defineSystem("Stage", { reads: [og.Camera] }, (_q, _t, world) => {
     case "frames": framesScreen(); break;
     case "shooter": shooterScreen(world); break;
     case "strategy": strategyScreen(); break;
-    case "racing": racingScreen(); break;
+    case "racing": racingScreen(world); break;
     case "flight": flightScreen(); break;
     case "world": worldScreen(world); break;
   }
