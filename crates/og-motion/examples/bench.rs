@@ -3,6 +3,8 @@
 //!
 //!     cargo run --release -p og-motion --example bench -- <bundle.safetensors> [case.safetensors]
 //!
+//! `OG_MOTION_BACKEND=vulkan|dx12|metal` picks the backend (default: wgpu's primary ones).
+//!
 //! A case file is og-motion-train's: `input.*` tensors (the seven graph inputs)
 //! and `expected.counts`, `expected.tokens`, `expected.motion`.
 
@@ -11,7 +13,7 @@ use std::time::Instant;
 use og_motion::contract::{FRAMES, MOTION_FEATURES};
 use og_motion::glue::{Statics, decoder_inputs, student_inputs};
 use og_motion::gpu::Gpu;
-use og_motion::{Bundle, Inputs, Model, valid_frames};
+use og_motion::{Bundle, Inputs, Model, StudentOutput, valid_frames};
 
 fn read(path: &str) -> Bundle {
     Bundle::from_safetensors(&std::fs::read(path).unwrap_or_else(|e| panic!("{path}: {e}")))
@@ -37,6 +39,11 @@ fn repeat(inputs: &Inputs, n: usize) -> Inputs {
     }
 }
 
+fn generate(gpu: &mut Gpu, inputs: &Inputs) -> (StudentOutput, Vec<f32>) {
+    let g = pollster::block_on(gpu.generate(inputs)).unwrap();
+    (g.student, g.motion)
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let bundle = read(&args[1]);
@@ -47,7 +54,14 @@ fn main() {
     );
     let statics = Statics::new(&bundle).unwrap();
     let start = Instant::now();
-    let gpu = pollster::block_on(Gpu::request(&bundle)).unwrap();
+    let backends = match std::env::var("OG_MOTION_BACKEND").as_deref() {
+        Ok("vulkan") => wgpu::Backends::VULKAN,
+        Ok("dx12") => wgpu::Backends::DX12,
+        Ok("metal") => wgpu::Backends::METAL,
+        _ => wgpu::Backends::PRIMARY,
+    };
+    let mut gpu = pollster::block_on(Gpu::request_on(&bundle, backends)).unwrap();
+    println!("adapter: {:?}", gpu.device().adapter_info());
     println!("gpu ready in {:.0} ms", start.elapsed().as_secs_f64() * 1e3);
     let case = args.get(2).map(|p| read(p));
     let base = match &case {
@@ -67,12 +81,8 @@ fn main() {
         }
         None => panic!("a case file is needed for inputs"),
     };
-    let generate = |inputs: &Inputs| {
-        let g = pollster::block_on(gpu.generate(inputs)).unwrap();
-        (g.student, g.motion)
-    };
     if let Some(c) = &case {
-        let (student, motion) = generate(&base);
+        let (student, motion) = generate(&mut gpu, &base);
         let counts: Vec<u32> = c.tensors["expected.counts"]
             .data
             .iter()
@@ -115,11 +125,11 @@ fn main() {
     }
     for n in [1usize, 8, 32, 128, 256] {
         let inputs = repeat(&base, n);
-        let _ = generate(&inputs); // warm: pipelines and buffers of this size
+        let _ = generate(&mut gpu, &inputs); // warm: pipelines and buffers of this size
         let runs = 10;
         let start = Instant::now();
         for _ in 0..runs {
-            let _ = generate(&inputs);
+            let _ = generate(&mut gpu, &inputs);
         }
         let ms = start.elapsed().as_secs_f64() * 1e3 / runs as f64;
         let start = Instant::now();

@@ -55,10 +55,30 @@ any redistribution. No weights are in this repository.
 
 ## State
 
-Measured on the Mac satellite's "Apple Paravirtual device" (Metal, about
-230 GFLOP/s for these kernels, not an M4 Pro's throughput): 36 ms for one
-character, 6 ms a character from 32 up; the student is about 1.5 GFLOP a
-character and takes 80% of it. Numbers on the runners' GPUs are owed. Open:
-reusing buffers and bind groups across calls (small batches are dispatch
-bound), a CPU path fast enough to stand in where there is no adapter, f16
-storage, and the intent API, retargeting and foot planting in og-anim.
+`examples/bench.rs` with the run2b bundle (2026-11-02, release, warm; the
+student is about 1.5 GFLOP a character). Before the kernel work below, on
+the runners:
+
+| GPU | 1 character | 8 | 32 | 256 (per character) |
+|---|---|---|---|---|
+| RTX 5060, Vulkan (studio-win) | 15.7 ms | 30.6 ms | 48.1 ms | 226 ms (0.88) |
+| RTX 5060, DX12 | 17.5 ms | 25.6 ms | 41.3 ms | 209 ms (0.82) |
+| M4 Pro 16-core, Metal (macrunner, quiet) | 29.6 ms | 63.8 ms | 233 ms | 1867 ms (7.3) |
+
+Metal ran at about 205 GFLOP/s, an M4 Pro's or a paravirtual GPU's alike:
+wgpu's forced loop bounding (on by default for every shader module) cost
+the linear kernel ten times its speed on Metal. The modules are now made
+with `create_shader_module_trusted` without it, keeping bounds checks (the
+kernels' loops are bounded by uniforms they check); with that, a `Plan`
+per batch size (buffers, staging and bind groups made once, a call only
+writes its inputs), and per-row layer norm and per-query attention
+kernels, the Mac satellite's paravirtual GPU does one character in 17 ms,
+32 in 1.6 ms a character and 256 in 0.67 ms a character (was 36 ms and 6
+ms), and the demo course in 238 ms. One character is latency bound: each
+of the student's dependent dispatches costs about 0.1 ms there whatever
+its size (measured by truncating the pass), so fewer, fused kernels are
+what would cut it. `Gpu::request` on DX12 took 26–30 s with wgpu's FXC
+fallback; it now uses static DXC on Windows MSVC, as og-render. The
+runners' numbers after this work are owed. Open: kernel fusion for one
+character, a CPU path fast enough to stand in where there is no adapter,
+f16 storage, and the intent API, retargeting and foot planting in og-anim.

@@ -32,7 +32,7 @@ fn gpu_generation_matches_the_cpu() {
     let bundle = fixture("tiny.safetensors");
     let inputs = case_inputs(&fixture("case.safetensors"));
     let cpu = Model::new(&bundle).unwrap().generate(&inputs);
-    let gpu = pollster::block_on(Gpu::request(&bundle)).expect("a GPU adapter");
+    let mut gpu = pollster::block_on(Gpu::request(&bundle)).expect("a GPU adapter");
     let statics = Statics::new(&bundle).unwrap();
     let student = pollster::block_on(gpu.student(&student_inputs(&statics, &inputs))).unwrap();
     assert_eq!(student.counts, cpu.counts, "token counts");
