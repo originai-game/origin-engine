@@ -69,8 +69,13 @@ any redistribution. No weights are in this repository.
   where it touched down and let go over `RELEASE_FRAMES`.
 - `tests/gpu.rs`: the GPU path against the CPU path (needs a GPU adapter).
 - `examples/bench.rs`: times a trained bundle and checks it against a case
-  file. On the trained run2b bundle, the CPU and GPU paths agree with
-  `ogm/reference.py` exactly in tokens and counts and within 9e-5 in motion.
+  file. On the trained run2b and run3 bundles, the CPU and GPU paths agree
+  with `ogm/reference.py` exactly in tokens and counts and within 9e-5 in
+  motion. run3 (the student retrained with og-motion-train's fixed count
+  mask) is the bundle to ship: in og-motion-train's closed loop it reaches
+  the targets as run2b does (9.16 cm against the teacher's 8.68) and chooses
+  token counts as the teacher does; its weights in f16 change nothing
+  measurable.
 
 ## State
 
