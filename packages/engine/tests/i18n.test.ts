@@ -5,7 +5,7 @@
 // base, a key no table has answers itself with one warning, and the active
 // locale sets the UI's font chain and direction (Arabic: right to left).
 import { expect, test } from "bun:test";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { og } from "@origingame/engine";
@@ -74,4 +74,16 @@ test("og.i18n: refusals name the fix", () => {
   expect(r.ok).toBeFalse();
   const info = og.i18n.locale(e.world) as unknown as Info;
   expect([info.requested, info.active, info.locales.length]).toEqual(["", "", 0]);
+});
+
+test("the kit's zh-CN table is simplified Chinese: every Han character is in GB2312", () => {
+  // Wrong: a traditional form (級, 選, 體, 設, 獲) in the simplified table; GB2312 holds the simplified set and none of those.
+  const gbk = new TextDecoder("gbk");
+  const gb2312 = new Set<string>();
+  for (let row = 0xb0; row <= 0xf7; row++) for (let col = 0xa1; col <= 0xfe; col++) gb2312.add(gbk.decode(new Uint8Array([row, col])));
+  expect(gb2312.has("级") && !gb2312.has("級")).toBeTrue();
+  const table = readFileSync(join(kit, "assets", "strings", "zh-CN.ogt"), "utf8");
+  const outside = [...table.matchAll(/^string "([^"]*)" "(.*)"$/gm)].flatMap(([, key, text]) =>
+    [...text!].filter((ch) => /\p{Script=Han}/u.test(ch) && !gb2312.has(ch)).map((ch) => `${key}: ${ch}`));
+  expect(outside).toEqual([]);
 });

@@ -612,14 +612,22 @@ function galleryButton(world: World, d: DemoState): void {
   // The genre patterns' screens lay their header round it: on a phone it takes the top end corner, as a shipped game's
   // menu button does (the start corner is the web shell's Back).
   const corner = phone && PATTERN_SCREENS.has(SCREENS[d.screen]!);
-  // A tablet's or a desktop's top edge is the HUD's (timers, wallets, scores), so where touch controls or a
-  // letterbox took the bottom-left corner last tick, the button stands mid-way down the left edge.
-  const taken = !top && ["TouchMove", "Steer", "Story.Bottom"].some((p) => og.ui.bounds(p) !== null);
+  // In a cutscene it is film chrome: in the top bar's end corner, centred in the bar, at every size (built after the
+  // bars, over them; the picture and its Skip below stay clear).
+  const film = SCREENS[d.screen] === "cutscene";
+  const barH = Math.round((vp.height - vp.safeArea.top - vp.safeArea.bottom) * 0.1);
+  const inBar = Math.max(0, Math.round((barH - (og.ui.bounds("Back")?.height ?? 40)) / 2));
+  // A tablet's or a desktop's top edge is the HUD's (timers, wallets, scores), so where touch controls took the
+  // bottom-left corner last tick, the button stands mid-way down the left edge.
+  const taken = !top && !film && ["TouchMove", "Steer", "Story.Bottom"].some((p) => og.ui.bounds(p) !== null);
   // Elsewhere it sits above a docked action bar (under a finger the bar spans the bottom edge):
   // last tick's place of the bar, when the screen has one.
   const bar = og.ui.bounds("Hints");
   const lift = !top && bar && bar.y + bar.height >= vp.height - 1 && bar.width >= vp.width - 1 ? vp.height - bar.y : 0;
-  og.ui.anchor("Back", { anchor: corner ? "topRight" : top ? "top" : taken ? "left" : "bottomLeft", offsetY: corner ? 0 : bp === "phonePortrait" ? 52 : taken ? 0 : -lift }, () => {
+  og.ui.anchor("Back", {
+    anchor: film || corner ? "topRight" : top ? "top" : taken ? "left" : "bottomLeft",
+    offsetY: film ? inBar : corner ? 0 : bp === "phonePortrait" ? 52 : taken ? 0 : -lift,
+  }, () => {
     // The medium size: its label at the body's 16 px at 1080p, never under it.
     if (og.ui.button("Gallery", tr(world, "gallery.button"), { variant: "secondary" }).clicked) d.screen = 0;
   });
@@ -772,7 +780,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
   if (screen !== "gallery" && screen !== "widgets" && !PATTERN_SCREENS.has(screen) && d.backdrop) og.render.sprite(world, { texture: d.backdrop as never, width: 640, height: 360, layer: -10 });
 
   // The gacha banner runs its art full-bleed on a phone: the Gallery button floats on it, so it is built after it.
-  if (screen !== "gallery" && screen !== "loading" && screen !== "gacha") galleryButton(world, d);
+  if (screen !== "gallery" && screen !== "loading" && screen !== "gacha" && screen !== "cutscene") galleryButton(world, d);
   let back = false;
   switch (screen) {
     case "gallery":
@@ -1210,7 +1218,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       og.ui.label("Text", tr(world, "menu.mixed"), { step: "lg", nowrap: true });
     });
   }
-  if (screen === "gacha") galleryButton(world, d);
+  if (screen === "gacha" || screen === "cutscene") galleryButton(world, d);
   if (back) d.screen = 0;
 }
 
