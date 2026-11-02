@@ -363,13 +363,12 @@ fn a_replay_and_a_restored_save_go_tick_for_tick_across_a_cell_load() {
 /// af7faee87b6dea25) for ui-gaps' UI state version 14, and again
 /// (af7faee87b6dea25 -> d68afb5b35367aa5) for version 15, with no change to
 /// the cells' own behaviour;
-/// then G3-3 batch 2 moved it (og.StreamCell persist and budget, the og.cells
-/// state block, StreamAnchor.maxSpeed), the ids unmoved;
-/// then G3-3 batch 2 moved it (og.StreamCell persist and budget, the og.cells
-/// state block, StreamAnchor.maxSpeed), the ids unmoved.
+/// then (d68afb5b35367aa5 -> 79754bb0d5be7814) G3-3 batch 2's og.StreamCell
+/// persist and budget, the og.cells state block and StreamAnchor.maxSpeed,
+/// the ids unmoved.
 const WELL_FIRST: f64 = (1u64 << 32 | 4) as f64;
 const WELL_AFTER_RELOAD: f64 = (2u64 << 32 | 4) as f64;
-const END_HASH: &str = "e2675326923827b4";
+const END_HASH: &str = "79754bb0d5be7814";
 
 #[test]
 fn a_session_without_anchors_refuses_the_camera() {
