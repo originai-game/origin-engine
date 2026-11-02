@@ -59,6 +59,17 @@ the shop's merchant, so each style's screens sit on their own scene:
 | `figures/mira.png` | fullBody, cut out (a conversation's speaker, waist up, 2:3) | Painter (transparent background), from `portraits/mira.jpg` as the identity reference, in the same direction; 640×960. The kit's dialogue and visual-novel screens stand it at the speaker's side. |
 | `figures/aria.png` | fullBody, cut out (a conversation's speaker, waist up, 2:3) | origin MCP `generate_image` (gpt-image-2.5-sunburst, transparent), from `portraits/aria.jpg`'s description (silver hair, the crescent circlet and pendant, the black hooded cloak) in the same direction as `figures/mira.png`; the model returned a flat magenta ground, keyed out (ImageMagick, fuzz 22 %, the edge eroded 2 px, feathered and despilled), 640×960. The visual novel's Aria stands it. |
 
+## The genre previews (2026-11-02, the U6d stream, r40)
+
+Art for the lobby, character select, versus, draft, world map and song
+select previews, in the same direction as the set above:
+
+| File | Kind | Origin |
+|---|---|---|
+| `figures/kael.png` | fullBody, cut out (a versus side's splash, waist up, 2:3) | origin MCP `generate_image` (gpt-image-2.5-sunburst, transparent), from `portraits/kael.jpg`'s description (auburn hair, the scar, a teal jerkin over mail, a bronze pauldron, the sword over the shoulder) in the direction of `figures/mira.png`; 640×960 |
+| `portraits/torvin.jpg`, `wren.jpg`, `vesper.jpg`, `maren.jpg` | bust, unitPortrait (a roster's invented fighters) | origin MCP `generate_image` (gpt-image-2.5-sunburst), one 2×2 sheet cut into cells, 512 px |
+| `songs/neon-moon.jpg`, `sakura-wind.jpg`, `stormbreak.jpg`, `desert-drum.jpg`, `crystal-echo.jpg`, `phoenix.jpg` | jacket (a song's cover, square) | origin MCP `generate_image` (gpt-image-2.5-sunburst), one 3×2 sheet cut into cells, 384 px |
+| `maps/world.jpg` | map (an invented continent from above) | the platform's image API (`/v1/images/generations`, gpt-image-2.5-sunburst) with the development key, the same tool as `generate_image` (whose reply was too large to carry it); cut from 3:2 to 16:9, 1536×864 |
 ## Starship screens (2026-11-02, holo's screens as kit screens)
 
 The five screens the holo pack carried (ship status, turn order, ability
