@@ -47,6 +47,7 @@ use og_motion::intent::{Batch, Frame, Goal, Motion};
 use og_motion::library::{Library, POSES};
 use og_motion::soma::{Leg, Planter, Skeleton};
 use og_motion::{Bundle, Generation};
+#[cfg(not(target_arch = "wasm32"))]
 use og_render::wgpu;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -82,6 +83,8 @@ struct Flight {
 struct Ready {
     /// None while a batch has it.
     gpu: Option<Gpu>,
+    /// Waited on when a native caller blocks; the web never blocks.
+    #[cfg(not(target_arch = "wasm32"))]
     device: wgpu::Device,
     flight: Option<Flight>,
     motion: Motion,
@@ -211,6 +214,7 @@ fn load(eng: &Engine, backend: Option<&dyn RenderBackend>, bytes_out: &mut u64) 
         Ok::<_, String>(Ready {
             rate: gpu.rate(),
             gpu: Some(gpu),
+            #[cfg(not(target_arch = "wasm32"))]
             device,
             flight: None,
             motion: Motion::default(),
