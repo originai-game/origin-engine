@@ -1167,7 +1167,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       break;
     case "cards":
       // Back stops aiming first (the hand takes it).
-      cardsScreen();
+      cardsScreen(d.backdrop as number);
       break;
     case "rewards":
       // Back disarms banishing first (the choice takes it).
@@ -1176,7 +1176,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       break;
     case "gacha":
       // Back skips or closes a pull first (the sequence takes it).
-      gachaScreen();
+      gachaScreen(d.backdrop as number);
       back = og.ui.back();
       break;
     case "toasts": {

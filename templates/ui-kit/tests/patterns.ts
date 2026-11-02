@@ -142,6 +142,10 @@ function cards(b: ReturnType<typeof builder>, phone: boolean, prefix = ""): void
   b.cmd("show:cards");
   b.cmd("pat:reset");
   b.shot(`${prefix}cards-idle`, 0.8);
+  // The enemies' portraits from a real texture (the art path beside the placeholder above).
+  b.cmd("pat:art:on");
+  b.shot(`${prefix}cards-art`, 0.4);
+  b.cmd("pat:art:off");
   if (!phone) {
     // Hover: the card lifts clear of the fan, straight and larger; its neighbours part.
     b.cmd(`touch_move_to:${FAN}/bash`, 0.1);
@@ -274,6 +278,7 @@ function gacha(b: ReturnType<typeof builder>, phone: boolean, prefix = ""): void
   }
   // Another banner: its tab current, its art and title; then the purse too short for ten.
   b.seq((at) => tap(at, "Banner/Body/Tabs/weapon"), 0.3);
+  // The weapon banner wears a real texture as its key art (the others draw the placeholder).
   b.shot(`${prefix}gacha-weapon`, 0.6);
   b.cmd("pat:banner:event");
   b.cmd("pat:balance:500");

@@ -145,7 +145,9 @@ function cardFace(c: Api.HandCard, cw: number, ch: number, o: FaceOpts): void {
     if (never) symbol("Never", "cross", Math.round(g * 0.5), role("ink"));
     else text("Value", `${c.cost}`, { step: stIn(g >= u(40) ? 20 : 15, Math.round(g * 0.6)), color: tone, font: "mono", nowrap: true });
     kit.close();
-    over({ insets: { start: -Math.round(g * 0.18), top: -Math.round(g * 0.18) }, inert: true, z: 5 });
+    // Seated inside the card's corner, so the frame's line never runs through it.
+    const seat = Math.max(3, Math.round(pad * 0.5));
+    over({ insets: { start: seat, top: seat }, inert: true, z: 5 });
     // Changed this turn: a chevron on the gem's end edge, down when lowered and up when raised.
     if (hasCost && (c.costDown || c.costUp)) {
       const m = Math.round(g * 0.46);
@@ -157,7 +159,8 @@ function cardFace(c: Api.HandCard, cw: number, ch: number, o: FaceOpts): void {
       kit.setDraw({ shape: { kind: "path", points: pts, width: Math.max(1.5, q * 0.18), cap: "round", join: "round" }, fills: [{ kind: "solid", color: token("onPrimary") }] });
       kit.close();
       kit.close();
-      over({ insets: { start: Math.round(g * 0.62), top: Math.round(g * 0.5) }, inert: true, z: 6 });
+      // On the gem's lower end edge, clear of its number.
+      over({ insets: { start: seat + Math.round(g * 0.8), top: seat + Math.round(g * 0.68) }, inert: true, z: 6 });
     }
   }
   // Out of reach: the card under a shade (still readable), never faded to nothing.

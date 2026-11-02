@@ -113,13 +113,16 @@ const c = {
   turn: true,
   inspect: "",
   log: "",
+  /** The enemies wear real art (`pat:art:on`). */
+  art: false,
   /** A foe that refused a card (behind a taunt) and how many ticks its flash has left. */
   refused: "",
   refusedT: 0,
 };
 
 /** The combat table: two enemies (the second behind a taunt, so it cannot be targeted), the energy, the piles, and the hand. */
-export function cardsScreen(): void {
+/** `pat:art:on` gives the enemies the kit's backdrop as their portraits (the art path); else the style's placeholder. */
+export function cardsScreen(backdrop = 0): void {
   const t = og.ui.frameTheme();
   const vp = og.ui.frameViewport();
   const sa = vp.safeArea;
@@ -145,7 +148,7 @@ export function cardsScreen(): void {
         og.ui.column(f.key, { width: px(foeW), gap: t.space.xs, cross: "center", padding: { left: t.space.sm, top: t.space.sm, right: t.space.sm, bottom: t.space.sm }, radius: t.radius.panel, background: { token: "panel" } }, () => {
           // A card refused on it: its edge in danger ink while the card shakes.
           if (flash) og.ui.setDraw({ shape: { kind: "rect", radii: [t.radius.panel, t.radius.panel, t.radius.panel, t.radius.panel] }, fills: [{ kind: "solid", color: { token: "panel" } }], strokes: [{ width: 3, align: "inside", paint: { kind: "solid", color: { token: "danger" } } }] } as never);
-          if (figure) og.ui.column("Figure", { width: px(small ? 56 : big ? 128 : 96), height: px(small ? 60 : big ? 148 : 112), radius: 48, background: { token: f.taunt ? "control" : "primarySoft" } }, () => {});
+          if (figure) og.ui.artSlot("Figure", { kind: "portrait", texture: c.art && backdrop ? (backdrop as never) : null, focal: { x: 0.5, y: 0.4 }, rarity: f.taunt ? "rare" : "epic", width: px(small ? 64 : big ? 148 : 112), height: px(small ? 64 : big ? 148 : 112), radius: 12, label: f.name });
           og.ui.label("Name", f.name, { step: small ? "sm" : big ? "xl2" : "lg", font: "display", maxLines: 2, ellipsis: true, width: grow, align: "center" });
           // The hit points under the bar, not in it: a bar's inner label is small and would be cut at 200 %.
           og.ui.meter("Hp", f.hp, f.max, { kind: "health", width: grow });
@@ -153,8 +156,11 @@ export function cardsScreen(): void {
           if (f.taunt) {
             // Behind a taunt: a shield and the words, lit in danger ink while a card it refused shakes.
             og.ui.row("Taunt", { gap: t.space.xxs, cross: "center", align: "center", width: grow }, () => {
-              // The shield grows with the words beside it.
-              og.ui.icon("Shield", "shield", { size: Math.round((small ? 16 : big ? 24 : 18) * Math.max(1, ts)), tint: { token: flash ? "danger" : "inkMuted" }, label: "" });
+              // A shield drawn as a path (an icon set may not have one), growing with the words beside it.
+              const sh = Math.round((small ? 16 : big ? 24 : 18) * Math.max(1, ts));
+              const q = (x: number, y: number) => ({ x: x * sh, y: y * sh });
+              og.ui.column("Shield", { width: px(sh), height: px(sh) }, () => {});
+              og.ui.setDraw({ shape: { kind: "path", points: [q(0.5, 0.04), q(0.9, 0.18), q(0.84, 0.6), q(0.5, 0.96), q(0.16, 0.6), q(0.1, 0.18)], closed: true, filled: true }, fills: [{ kind: "solid", color: { token: flash ? "danger" : "inkMuted" } }] } as never);
               og.ui.label("Note", "Behind a taunt", { step: small ? "sm" : big ? "lg" : "sm", color: { token: flash ? "danger" : "inkMuted" }, maxLines: 2 });
             });
           }
@@ -298,25 +304,14 @@ const g = {
 };
 
 const BANNERS = [
-  { key: "event", name: "Moonlit Tide", title: "Moonlit Tide", subtitle: "Event wish · Character", endsIn: 3 * 86400 + 5 * 3600, fresh: false, hue: [0.12, 0.2, 0.45] },
-  { key: "weapon", name: "Epitome", title: "Epitome Invocation", subtitle: "Event wish · Weapon", endsIn: 50 * 60, fresh: true, hue: [0.38, 0.16, 0.12] },
-  { key: "std", name: "Wanderlust", title: "Wanderlust Invocation", subtitle: "Standard wish", endsIn: null, fresh: false, hue: [0.1, 0.28, 0.26] },
+  { key: "event", name: "Moonlit Tide", title: "Moonlit Tide", subtitle: "Event wish · Character", endsIn: 3 * 86400 + 5 * 3600, fresh: false },
+  { key: "weapon", name: "Epitome", title: "Epitome Invocation", subtitle: "Event wish · Weapon", endsIn: 50 * 60, fresh: true },
+  { key: "std", name: "Wanderlust", title: "Wanderlust Invocation", subtitle: "Standard wish", endsIn: null, fresh: false },
 ] as const;
 
-/** Placeholder key art: a night sky in the banner's hue, a moon, and the featured figure's silhouette at the end side. */
-function keyArt(hue: readonly [number, number, number]): void {
-  const [cr, cg, cb] = hue;
-  const sky = (k: number) => ({ r: cr * k, g: cg * k, b: cb * k, a: 1 });
-  og.ui.column("Sky", { width: grow, height: grow }, () => {});
-  og.ui.setDraw({ shape: { kind: "rect" }, fills: [
-    { kind: "gradient", type: "linear", from: { x: 0.5, y: 0 }, to: { x: 0.5, y: 1 }, stops: [{ offset: 0, color: sky(0.6) }, { offset: 0.7, color: sky(1.6) }, { offset: 1, color: sky(2.2) }] },
-    { kind: "gradient", type: "radial", from: { x: 0.72, y: 0.3 }, to: { x: 0.18, y: 0.3 }, stops: [{ offset: 0, color: { r: 1, g: 0.96, b: 0.85, a: 0.95 } }, { offset: 0.22, color: { r: 1, g: 0.9, b: 0.7, a: 0.6 } }, { offset: 1, color: { r: 1, g: 0.9, b: 0.7, a: 0 } }] },
-    { kind: "gradient", type: "radial", from: { x: 0.74, y: 0.95 }, to: { x: 0.2, y: 0.7 }, stops: [{ offset: 0, color: { r: 0.02, g: 0.02, b: 0.05, a: 0.95 } }, { offset: 0.55, color: { r: 0.02, g: 0.02, b: 0.05, a: 0.9 } }, { offset: 0.56, color: { r: 0.02, g: 0.02, b: 0.05, a: 0 } }] },
-  ] } as never);
-}
-
 /** A gacha banner and its pull: the pull is the game's (it spends the purse and draws the results) and the reveal the pattern's. */
-export function gachaScreen(): void {
+/** The weapon banner wears the kit's backdrop (the art path); the others draw the style's placeholder. */
+export function gachaScreen(backdrop = 0): void {
   const vp = og.ui.frameViewport();
   const sa = vp.safeArea;
   const small = phone();
@@ -327,6 +322,7 @@ export function gachaScreen(): void {
       current: b.key,
       title: b.title,
       subtitle: b.subtitle,
+      image: b.key === "weapon" && backdrop ? (backdrop as never) : null,
       featured: b.key === "std" ? [] : [{ name: "Aria", title: "Tidecaller of the Moon", stars: 5, rarity: "legendary" }, { name: "Kael", title: "The Ember", stars: 4, rarity: "epic" }, { name: "Mira", title: "Of the Grove", stars: 4, rarity: "epic" }],
       rateText: b.key === "std" ? "A [b]5-star[/b] is guaranteed within [b]90[/b] wishes." : "[b]50 %[/b] chance your next 5-star is [color=highlight]Aria[/color]; a lost one makes the next one hers.",
       endsIn: b.endsIn,
@@ -336,7 +332,7 @@ export function gachaScreen(): void {
       single: 160,
       multi: 1600,
       currency: "gem",
-    }, () => keyArt(b.hue));
+    }, () => {});
     if (res.banner) g.banner = res.banner;
     if (res.pull > 0 && g.balance >= res.pull * 160) {
       g.balance -= res.pull * 160;
@@ -367,6 +363,7 @@ export function patternsCommand(_world: World, args: readonly string[]): void {
     r.picks = Number(value) || 1;
     r.selected = [];
   } else if (key === "rselect") r.selected = value ? value.split(",") : [];
+  else if (key === "art") c.art = value === "on";
   else if (key === "balance") g.balance = Number(value) || 0;
   else if (key === "banner") g.banner = value;
   else if (key === "pull") {
@@ -385,6 +382,7 @@ export function patternsCommand(_world: World, args: readonly string[]): void {
     c.inspect = "";
     c.refused = "";
     c.refusedT = 0;
+    c.art = false;
     p.bag = BAG0.map((i) => ({ ...i }));
     p.slots = SLOTS0.map((s) => ({ ...s }));
     p.stash = STASH0.map((i) => ({ ...i }));

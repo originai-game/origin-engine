@@ -6,7 +6,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  artSlot, btn, clamp, flags, floating, frame, glow, grow, hex, keyHash, kit, line, mix, over, paint, priceTag, px, radial, rarityColor, rarityPips,
+  artSlot, btn, clamp, fit, flags, floating, frame, glow, grow, hex, keyHash, kit, line, mix, over, paint, priceTag, px, radial, rarityColor, rarityPips,
   role, rtl, scrimFill, shadow, spring, st, still, surface, symbol, text, timerChip, token, u, vstate, xy, type Mut, type Rgba,
 } from "./core.ts";
 import { cornerTag, plainText } from "./rewards.ts";
@@ -54,9 +54,11 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
 
   kit.open(id, { direction: "column", width: grow(), height: grow(), part: "Gacha.frame", partClass: "panel", radius: t.panel });
   // The key art behind everything, and a scrim from the text's edge so the text reads on any art.
-  kit.open("Art", { width: grow(), height: grow(), direction: "column", part: "Gacha.art", partClass: "slot" });
-  art();
-  kit.close();
+  // The key art: the game's texture, else the style's placeholder (a figure standing at the focal point on two hues);
+  // the game's builder draws over it. The featured unit stands on the art side, the words on the other.
+  const feat = desc.featured ?? [];
+  const focal = desc.focal ?? (portrait ? { x: 0.5, y: 0.3 } : { x: 0.68, y: 0.36 });
+  artSlot("Art", "Gacha.art", { texture: desc.image ?? null, kind: "banner", focal, rarity: feat[0]?.rarity, radius: t.panel, width: grow(), height: grow() }, art);
   over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, z: -2, layoutMotion: spring("ui") });
   kit.open("Scrim", { width: grow(), height: grow(), part: "Gacha.scrim", partClass: "panel" });
   // In portrait the words run from the top to the foot: an even shade under the foot's gradient.
@@ -115,16 +117,18 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
   }
 
   // The banner's words, at the start over the scrim.
-  kit.open("Main", { direction: "column", width: grow(), height: grow(), gap: u(12) });
-  // The words scroll when they outgrow the frame (a phone on its side, 200 % text); the foot and its pulls never leave it.
-  kit.openScroll("Info", { width: portrait ? grow() : px(Math.min(u(460), Math.round(vp.width * 0.42))), height: grow(), gap: u(10), padding: xy(0, 0) });
+  // Beside the art (a desktop, a phone on its side) the words and the purchase block under them are one column at the
+  // start, centred down the frame; in portrait the words run from the top and the purchase block sits at the foot.
+  const sideW = Math.min(u(480), Math.round(vp.width * 0.4));
+  kit.open("Main", { direction: "column", width: portrait ? grow() : px(sideW), height: grow(), gap: u(portrait ? 12 : 18), align: portrait || short ? "start" : "center" });
+  // The words scroll when they outgrow the frame (a phone on its side, 200 % text); the purchase block never leaves it.
+  kit.openScroll("Info", { width: grow(), height: portrait || short ? grow() : fit(), gap: u(10), padding: xy(0, 0) });
   {
     if (desc.subtitle) text("Subtitle", desc.subtitle.toLocaleUpperCase(), { step: st(13), color: "highlight", font: "display", nowrap: true, ellipsis: true, width: grow() });
-    text("Title", desc.title ?? "", { step: st(phone ? 26 : 40), heading: true, font: "display", width: grow(), maxLines: 2, ellipsis: true });
+    text("Title", desc.title ?? "", { step: st(phone ? 26 : 48), heading: true, font: "display", width: grow(), maxLines: 2, ellipsis: true });
     if (desc.endsIn !== undefined && desc.endsIn !== null) {
       timerChip("Timer", desc.endsIn, "");
     }
-    const feat = desc.featured ?? [];
     if (feat.length > 0) {
       kit.column("Featured", { width: grow(), gap: u(6), part: "Gacha.featured", partClass: "panel" }, () => {
         feat.forEach((f, k) => {
@@ -156,32 +160,24 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
   }
   kit.close();
 
-  // The foot: details and history at the start, the pity and the purse, the pulls at the end.
-  kit.open("Foot", { direction: portrait ? "column" : "row", width: grow(), gap: u(portrait ? 10 : 14), cross: portrait ? "stretch" : "end" });
+  // The purchase block: the pity and the purse over the pulls; details and history under them.
+  kit.open("Foot", { direction: "column", width: grow(), gap: u(portrait ? 10 : 12), cross: "stretch" });
   {
-    kit.row("Bar", { gap: u(8), cross: "center" }, () => {
-      if (btn("Details", desc.detailsLabel ?? "Details", { variant: "quiet", size: "sm", sym: "eye", part: "Gacha.details" }).clicked) out.details = true;
-      if (btn("History", desc.historyLabel ?? "History", { variant: "quiet", size: "sm", sym: "clock", part: "Gacha.history" }).clicked) out.history = true;
-    });
-    if (!portrait) {
-      kit.open("Spacer", { width: grow() });
-      kit.close();
-    }
-    kit.column("Pulls", { gap: u(8), cross: portrait ? "stretch" : "end", width: portrait ? grow() : null }, () => {
-      kit.row("Status", { gap: u(14), cross: "center", wrap: big, align: portrait ? "spaceBetween" : "start" }, () => {
+    kit.column("Pulls", { gap: u(8), cross: "stretch", width: grow() }, () => {
+      kit.row("Status", { gap: u(14), cross: "center", wrap: big, align: "spaceBetween", width: grow() }, () => {
         if ((desc.pityMax ?? 0) > 0) pityMeter("Pity", desc.pity ?? 0, desc.pityMax!, desc.pityLabel ?? "Guaranteed in {left}");
         kit.row("Purse", { gap: u(6), cross: "center", padding: xy(u(10), u(4)), radius: 999, background: token("shadow", 0.55), part: "Gacha.purse", partClass: "chip" }, () => {
           priceTag("Balance", { amount: balance, currency, size: "md" });
         });
       });
-      kit.open("Buttons", { direction: big ? "column" : "row", gap: u(10), cross: big ? "stretch" : "center", width: portrait ? grow() : null });
+      kit.open("Buttons", { direction: big ? "column" : "row", gap: u(10), cross: "stretch", width: grow() });
       {
         const pull = (key: string, label: string, n: number, cost: number): void => {
           const can = balance >= cost;
           const r = btn(key, label, {
             variant: n > 1 ? "premium" : "secondary",
             size: "lg",
-            width: portrait ? grow() : null,
+            width: grow(),
             part: `Gacha.pull${flags(n > 1 ? "multi" : "single", !can && "short")}`,
             name: `${label}, ${cost} ${currency}${can ? "" : `, ${desc.shortLabel ?? "not enough"}`}`,
             before: () => {
@@ -205,10 +201,26 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
       }
       kit.close();
     });
+    kit.row("Bar", { gap: u(8), cross: "center" }, () => {
+      if (btn("Details", desc.detailsLabel ?? "Details", { variant: "quiet", size: "sm", sym: "eye", part: "Gacha.details" }).clicked) out.details = true;
+      if (btn("History", desc.historyLabel ?? "History", { variant: "quiet", size: "sm", sym: "clock", part: "Gacha.history" }).clicked) out.history = true;
+    });
   }
   kit.close();
   kit.close();
   kit.close();
+  // The name plate: the first featured unit large on the art side, its title and stars under it (beside the art only;
+  // in portrait its row leads the list).
+  const lead = feat[0];
+  if (lead && !portrait) {
+    const ink = tierInk(lead.rarity);
+    kit.column("Spotlight", { gap: u(6), cross: "end", width: px(Math.round(vp.width * 0.36)), part: `Gacha.spotlight${flags(`rarity=${lead.rarity ?? "none"}`)}`, partClass: "badge" }, () => {
+      text("Name", lead.name ?? "", { step: st(short ? 36 : 64), heading: true, font: "display", align: "end", width: grow(), maxLines: 2 });
+      if (lead.title) text("Title", lead.title, { step: st(short ? 14 : 18), color: mix(ink, role("ink"), 0.55), font: "display", align: "end", width: grow(), maxLines: 2 });
+      stars("Stars", lead.stars ?? 0, u(short ? 18 : 24), ink);
+    });
+    over({ insets: { end: u(phone ? 16 : 48), bottom: u(phone ? 14 : 40) }, inert: true });
+  }
   kit.close();
   return out;
 }
