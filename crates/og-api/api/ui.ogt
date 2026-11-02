@@ -1868,6 +1868,8 @@ module ui {
     field subtitle String "A line under the title; empty is none."
     field badge String "A badge in the top end corner; empty is none."
     field badgeTone Tone "The badge's tone."
+    field number String "A number on a small plate at the top start corner (its place in a hand, its slot), over the media's corner when there is media, else above the body; small, so the art stays the card's one dominant element. Empty is none."
+    field cost String "A numeral in a disc at the bottom end corner (a cost, a level), beside the body so the game's text never runs under it; small, so the art stays the card's one dominant element. Empty is none."
     field interactive bool "The whole card is a button: it lifts under the pointer and the focus, sinks when pressed, and answers clicked."
     field selected bool "Ringed in the focus ink (Card.frame[selected])."
     field disabled bool "Shown but inert."
@@ -2805,6 +2807,8 @@ module ui {
 
   fn card {
     doc "A card over a body the game builds. Answers its response (clicked when interactive)."
+    doc "Its corners: a badge at the top end, a number plate at the top start, a cost disc at the bottom end; each mirrors right to left."
+    doc "Parts: Card.frame[selected][<variant>], Card.media[placeholder], Card.number, Card.cost. Accessibility: a button (interactive) or group named by its eyebrow, title and subtitle, else its text; the number and the cost are read as text. Probe ids: <id>/Media, <id>/Body (with a cost, the game's body in <id>/Body/Content and the disc at <id>/Body/Cost/Text), <id>/Number/Text, <id>/Badge, <id>/Selected."
     host false
     param id String "Its id."
     param desc CardDesc "Variant, media, titles and state."

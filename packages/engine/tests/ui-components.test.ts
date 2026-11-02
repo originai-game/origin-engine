@@ -917,6 +917,49 @@ test("calendar: November 2026 from Monday, today ringed and named, a tap selects
   expect([year, month]).toEqual([2027, 1]);
 });
 
+test("card: a number plate at the top start and a cost disc at the bottom end, small beside the art, the body's text never under them, mirrored right to left", () => {
+  // Wrong: the number or cost dropped (no slot), drawn over the body's text, as large as the art, or left where it
+  // was when the layout mirrors.
+  const engine = run(() => {
+    og.ui.card("Ability", { interactive: true, width: { kind: "fixed", px: 200 }, media: { aspect: 4 / 3 }, number: "1", cost: "3", padding: 12 }, () => {
+      og.ui.label("Effect", "Deal high damage to a target in range of the ship.", { width: { kind: "grow" } });
+    });
+  }, 640, kit);
+  const box = (end: string) => byPath(engine, `Ability/${end}`)!;
+  const read = () => {
+    const card = byPath(engine, "Root/Ability")!;
+    const art = box("Media");
+    const plate = box("Number");
+    const disc = box("Body/Cost");
+    const effect = box("Body/Content/Effect");
+    return { card, art, plate, disc, effect };
+  };
+  let { card, art, plate, disc, effect } = read();
+  expect(box("Number/Text").text).toBe("1");
+  expect(box("Body/Cost/Text").text).toBe("3");
+  // The plate on the art's top start corner, the disc at the card's bottom end.
+  expect(plate.x - art.x).toBeLessThan(16);
+  expect(plate.y - art.y).toBeLessThan(16);
+  expect(plate.x + plate.width).toBeLessThan(art.x + art.width / 2);
+  expect(card.x + card.width - (disc.x + disc.width)).toBeLessThan(16);
+  expect(card.y + card.height - (disc.y + disc.height)).toBeLessThan(16);
+  expect(disc.y).toBeGreaterThanOrEqual(art.y + art.height);
+  // Small beside the art: the art stays the one dominant element.
+  expect(plate.width * plate.height).toBeLessThan(art.width * art.height * 0.08);
+  expect(disc.width * disc.height).toBeLessThan(art.width * art.height * 0.12);
+  // The body's text wraps short of the disc.
+  expect(effect.x + effect.width).toBeLessThanOrEqual(disc.x + 0.5);
+  // Right to left both corners mirror.
+  const loaded = og.i18n.load(engine.world, "strings/ar.ogt");
+  if (!loaded.ok) throw new Error(loaded.reason);
+  og.i18n.setLocale(engine.world, "ar-EG");
+  engine.advance(8);
+  ({ card, art, plate, disc, effect } = read());
+  expect(art.x + art.width - (plate.x + plate.width)).toBeLessThan(16);
+  expect(disc.x - card.x).toBeLessThan(16);
+  expect(effect.x).toBeGreaterThanOrEqual(disc.x + disc.width - 0.5);
+});
+
 // ── direction, locale ───────────────────────────────────────────────────
 
 test("right to left: breadcrumbs, tabs and the calendar's arrows run from the right; the pseudo-locale's longer labels overlap nothing", () => {

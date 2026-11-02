@@ -29,18 +29,41 @@ export function card(id: string, desc: Api.CardDesc, build: Api.UiBuild): Api.Re
   const disabled = desc.disabled ?? false;
   const fillRole = CARD_FILL[variant] ?? "panelRaised";
   const pad = desc.padding ?? t.lg;
+  const line = (step: string, px0: number): number => frame().theme.typeRamp[step]?.lineHeight ?? byText(px0);
+  // The corner marks: small beside the art (a number plate a caption's line tall, a cost disc a large numeral's).
+  const plateH = line("sm", 20) + 4;
+  const disc = Math.max(byText(28), line("lg", 26) + 6);
+  const content = (): void => {
+    if (desc.eyebrow) text("Eyebrow", desc.eyebrow, { step: "caption", color: "inkMuted", width: grow() });
+    if (desc.title) text("Title", desc.title, { step: "lg", heading: true, width: grow() });
+    if (desc.subtitle) text("Subtitle", desc.subtitle, { step: "sm", color: "inkMuted", width: grow() });
+    if (desc.title || desc.subtitle || desc.eyebrow) kit.spacer("Gap", px(t.xs));
+    build();
+  };
   const body = (): void => {
     if (desc.media) media("Media", desc.media, t.panel, !!desc.badge);
-    kit.column("Body", { width: grow(), padding: all(pad), gap: t.xs }, () => {
-      if (desc.eyebrow) text("Eyebrow", desc.eyebrow, { step: "caption", color: "inkMuted", width: grow() });
-      if (desc.title) text("Title", desc.title, { step: "lg", heading: true, width: grow() });
-      if (desc.subtitle) text("Subtitle", desc.subtitle, { step: "sm", color: "inkMuted", width: grow() });
-      if (desc.title || desc.subtitle || desc.eyebrow) kit.spacer("Gap", px(t.xs));
-      build();
-    });
+    // With no media the number plate stands over the body's top: the body starts under it.
+    const padding = desc.number && !desc.media ? { ...all(pad), top: t.sm + plateH + t.xs } : all(pad);
+    if (desc.cost) {
+      // The cost disc beside the body at its bottom end, so the game's text wraps short of it.
+      kit.row("Body", { width: grow(), padding, gap: t.sm, cross: "end" }, () => {
+        kit.column("Content", { width: grow(), gap: t.xs }, content);
+        kit.open("Cost", { direction: "column", width: px(disc), height: px(disc), align: "center", cross: "center", part: "Card.cost", partClass: "badge" });
+        kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "solid", color: token("well") }], strokes: [{ width: 1.5, align: "inside", paint: { kind: "solid", color: token("lineStrong") } }] });
+        text("Text", desc.cost ?? "", { step: "lg", font: "rounded", nowrap: true });
+        kit.close();
+      });
+    } else kit.column("Body", { width: grow(), padding, gap: t.xs }, content);
     if (desc.badge) {
       kit.badge("Badge", desc.badge, desc.badgeTone ?? "primary");
       over({ insets: { top: t.sm, end: t.sm }, z: 2 });
+    }
+    if (desc.number) {
+      kit.open("Number", { direction: "row", width: fit(plateH, plateH * 3), height: px(plateH), align: "center", cross: "center", padding: xy(t.xs, 0), part: "Card.number", partClass: "badge" });
+      kit.setDraw({ shape: { kind: "rect", radii: [4, 4, 4, 4] }, fills: [{ kind: "solid", color: token("panelRaised", 0.92) }], strokes: [{ width: 1, align: "inside", paint: { kind: "solid", color: token("lineStrong") } }] });
+      text("Text", desc.number, { step: "sm", font: "display", nowrap: true });
+      kit.close();
+      over({ insets: { top: t.sm, start: t.sm }, z: 2 });
     }
     if (selected) ring("Selected");
   };

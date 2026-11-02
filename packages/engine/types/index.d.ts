@@ -24282,6 +24282,18 @@ export interface CardDesc {
    */
   readonly badgeTone?: Tone;
   /**
+   * A number on a small plate at the top start corner (its place in a hand, its slot), over the media's corner when there is media, else above the body; small, so the art stays the card's one dominant element. Empty is none.
+   *
+   * @default ""
+   */
+  readonly number?: string;
+  /**
+   * A numeral in a disc at the bottom end corner (a cost, a level), beside the body so the game's text never runs under it; small, so the art stays the card's one dominant element. Empty is none.
+   *
+   * @default ""
+   */
+  readonly cost?: string;
+  /**
    * The whole card is a button: it lifts under the pointer and the focus, sinks when pressed, and answers clicked.
    *
    * @default false
@@ -51694,6 +51706,8 @@ export declare namespace og {
     function previewViewport(world: World, viewport: Viewport | null): void;
     /**
      * A card over a body the game builds. Answers its response (clicked when interactive).
+     * Its corners: a badge at the top end, a number plate at the top start, a cost disc at the bottom end; each mirrors right to left.
+     * Parts: Card.frame[selected][<variant>], Card.media[placeholder], Card.number, Card.cost. Accessibility: a button (interactive) or group named by its eyebrow, title and subtitle, else its text; the number and the cost are read as text. Probe ids: <id>/Media, <id>/Body (with a cost, the game's body in <id>/Body/Content and the disc at <id>/Body/Cost/Text), <id>/Number/Text, <id>/Badge, <id>/Selected.
      *
      * @param id Its id.
      * @param desc Variant, media, titles and state.
