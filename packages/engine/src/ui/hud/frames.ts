@@ -60,6 +60,9 @@ function hpText(v: number, max: number): string {
   return formatNumber(Math.round(v), { notation: max >= 100_000 ? "compact" : "grouped" });
 }
 
+/** A dimmed name's ink: a solid muted grey (#A9AEB8), never an alpha, so it steps down a tone and keeps its letter shape. */
+const MUTED: Rgba = { r: 0.663, g: 0.682, b: 0.722, a: 1 };
+
 const SIZES: Record<Api.UnitFrameSize, { portrait: number; width: number; bar: number; name: number }> = {
   large: { portrait: 64, width: 232, bar: 16, name: 15 },
   medium: { portrait: 44, width: 176, bar: 12, name: 13 },
@@ -209,7 +212,7 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
     if (!desc.reverse) portrait();
     kit.column("Bars", { gap: u(3), width: { kind: "grow" } }, () => {
       kit.row("Head", { gap: tk.xs, cross: "center", width: { kind: "grow" } }, () => {
-        const nameInk = dead || offline ? token("ink", 0.65) : hostile ? lit(mix(role("danger"), WHITE, 0.45)) : token("ink");
+        const nameInk = dead || offline ? lit(MUTED) : hostile ? lit(mix(role("danger"), WHITE, 0.45)) : token("ink");
         // A long name (a boss's) first shrinks, to four fifths of its step at most, to keep its whole identity; past that
         // it is cut. The display face runs about 0.56 em a glyph.
         const nStep = ts(m.name);
@@ -239,7 +242,7 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
         const tl = stepSize(tStep).line;
         box("TitleRow", { height: px(Math.ceil(want * 1.25)), width: { kind: "grow" }, cross: "start" }, undefined, () => {
           // Scaled about its own centre, then moved back so it keeps the name's start and sits at the row's top.
-          text("Title", desc.title ?? "", { step: tStep, color: token("ink", 0.65), nowrap: true, ellipsis: true, width: px(tw), name: true },
+          text("Title", desc.title ?? "", { step: tStep, color: lit(MUTED), nowrap: true, ellipsis: true, width: px(tw), name: true },
             absolute(desc.reverse ? { end: 0, top: 0 } : { start: 0, top: 0 }, fit.transform ? { transform: { scaleX: fit.k, scaleY: fit.k, x: (desc.reverse ? 1 : -1) * ((1 - fit.k) * tw) / 2, y: -((1 - fit.k) * tl) / 2 } } : {}));
         });
       }
@@ -376,7 +379,7 @@ function cell(id: string, m: Api.RaidMember, w: number, h: number): Api.Response
     fills: [solid(lit(cls, out ? 0.4 : 1))],
   }, absolute({ start: 0, top: 0 }));
   // The name keeps its line and place; dead or offline says so at the cell's end on that line, a step smaller and muted.
-  const ink = out ? token("ink", 0.65) : token("ink");
+  const ink = out ? lit(MUTED) : token("ink");
   kit.row("Label", { gap: u(3), cross: "center", padding: { left: stripe + u(4), right: u(4), top: 0, bottom: 0 }, width: pct(1) }, () => {
     const roleName = ROLE_ICON[m.role ?? "none"];
     if (roleName) icon("Role", roleName, Math.max(10, Math.round(h * 0.3)), token("ink", out ? 0.62 : 0.85), m.role ?? "");
