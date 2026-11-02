@@ -137,7 +137,9 @@ export function shooterHud(id: string, desc: Api.ShooterHudDesc = {}): Api.HudRe
     });
     pauseButton(out, desc.pauseLabel ?? "Pause");
   });
- kit.anchor(`${id}.ammo`, { ...chip(), anchor: showTouch ? "topRight" : "bottomRight", offsetY: showTouch ? 56 : 0, direction: "column", cross: "end", gap: t.xs }, () => {
+  // Under the kills and pause row when the stick takes the bottom: as far down as that row stood last tick.
+  const row = kit.bounds(`${id}.top`);
+  kit.anchor(`${id}.ammo`, { ...chip(), anchor: showTouch ? "topRight" : "bottomRight", offsetY: showTouch ? (row ? row.height + t.sm : 56) : 0, direction: "column", cross: "end", gap: t.xs }, () => {
     const mag = desc.magazine ?? 0;
     const ammo = desc.ammo ?? 0;
     kit.row("Rounds", { gap: t.xs, cross: "end" }, () => {
@@ -148,8 +150,22 @@ export function shooterHud(id: string, desc: Api.ShooterHudDesc = {}): Api.HudRe
   });
   const abilities = desc.abilities ?? [];
   if (abilities.length > 0) {
-    // Above the touch controls when they show, else along the bottom edge.
-    kit.anchor(`${id}.abilities`, showTouch ? { anchor: "right", direction: "column", gap: t.md, offsetY: 120 } : { anchor: "bottom", gap: t.md }, () => {
+    // A row standing on the touch actions when they show (where their cluster's top stood last tick: a fixed
+    // place below the right edge's middle ran under Fire and off a landscape phone), else along the bottom edge.
+    // On a short screen (a landscape phone at a large text size) the ammo above leaves no room for the row: it
+    // stands beside the actions instead, level with their bottom.
+    const vp = frame().viewport;
+    const actions = kit.bounds("TouchActions");
+    const ammo = kit.bounds(`${id}.ammo`);
+    const row = kit.bounds(`${id}.abilities`);
+    const above = actions ? vp.height - actions.y + t.md : 160;
+    const fits = !actions || !ammo || !row || actions.y - t.md - row.height >= ammo.y + ammo.height + t.sm;
+    const place: Api.AnchorDesc = !showTouch
+      ? { anchor: "bottom", gap: t.md }
+      : fits || !actions
+        ? { anchor: "bottomRight", gap: t.md, offsetY: -above }
+        : { anchor: "bottomRight", gap: t.md, offsetX: -(vp.width - actions.x + t.md) };
+    kit.anchor(`${id}.abilities`, place, () => {
       abilities.forEach((a, i) => {
         const r = kit.cooldown(a.id ?? kit.idi("Ability", i), a.remaining ?? 0, { label: a.key ?? "", icon: a.icon ?? "", size: 56 });
         if (r.clicked) out.action = a.id ?? `ability${i}`;

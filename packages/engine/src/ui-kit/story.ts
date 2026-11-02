@@ -27,7 +27,13 @@ export function cutscene(id: string, desc: Api.CutsceneDesc = {}): Api.CutsceneR
     }
   }
   const line = lines[index]!;
-  kit.anchor(`${id}.box`, { anchor: "bottom", width: phone ? grow() : px(Math.min(760, frame().viewport.width - 64)), offsetY: letterbox ? -frame().viewport.height * 0.04 : 0 }, () => {
+  // Over the letterbox, its bottom a small gap above the bottom bar (the anchor stands a gutter above the safe
+  // area): straddling the bar's edge read as a box slipping off the screen.
+  const vp = frame().viewport;
+  // The bar's top as it stood last tick (it reaches into the safe area), else a tenth of the height.
+  const barTop = kit.bounds(`${id}.Bottom`)?.y ?? vp.height * 0.9;
+  const lift = letterbox ? Math.max(0, vp.height - vp.safeArea.bottom - t.gutter - (barTop - t.sm)) : 0;
+  kit.anchor(`${id}.box`, { anchor: "bottom", width: phone ? grow() : px(Math.min(760, vp.width - 64)), offsetY: -lift }, () => {
     const r = kit.dialogue("Dialogue", { speaker: line.speaker ?? "", text: line.text ?? "", portraitIcon: line.portrait ?? "" });
     if (r.advanced) {
       if (index + 1 >= lines.length) out.finished = true;

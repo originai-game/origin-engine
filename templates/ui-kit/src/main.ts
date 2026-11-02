@@ -594,16 +594,19 @@ function materialsScreen(d: DemoState): void {
 /** The Gallery button over every screen. */
 function galleryButton(world: World, d: DemoState): void {
   const bp = og.ui.breakpoint();
+  const vp = og.ui.frameViewport();
   // On a phone the bottom corners belong to the touch controls, and on the
   // shooter's to its vitals (the button sat between Health and Armor: a
   // stray label in the HUD at every desktop aspect); its top middle is free.
   const top = bp === "phonePortrait" || bp === "phoneLandscape" || SCREENS[d.screen] === "shooter";
+  // A tablet's or a desktop's top edge is the HUD's (timers, wallets, scores), so where touch controls or a
+  // letterbox took the bottom-left corner last tick, the button stands mid-way down the left edge.
+  const taken = !top && ["TouchMove", "Steer", "Story.Bottom"].some((p) => og.ui.bounds(p) !== null);
   // Elsewhere it sits above a docked action bar (under a finger the bar spans the bottom edge):
   // last tick's place of the bar, when the screen has one.
-  const vp = og.ui.frameViewport();
   const bar = og.ui.bounds("Hints");
   const lift = !top && bar && bar.y + bar.height >= vp.height - 1 && bar.width >= vp.width - 1 ? vp.height - bar.y : 0;
-  og.ui.anchor("Back", { anchor: top ? "top" : "bottomLeft", offsetY: bp === "phonePortrait" ? 52 : -lift }, () => {
+  og.ui.anchor("Back", { anchor: top ? "top" : taken ? "left" : "bottomLeft", offsetY: bp === "phonePortrait" ? 52 : taken ? 0 : -lift }, () => {
     // The medium size: its label at the body's 16 px at 1080p, never under it.
     if (og.ui.button("Gallery", tr(world, "gallery.button"), { variant: "secondary" }).clicked) d.screen = 0;
   });
@@ -613,6 +616,8 @@ function galleryButton(world: World, d: DemoState): void {
 function widgetsScreen(world: World, d: DemoState): void {
   const vp = og.ui.frameViewport();
   const phone = vp.breakpoint === "phonePortrait" || vp.breakpoint === "phoneLandscape";
+  // Under a finger the touch controls take the bottom (their stick, d-pad and Hit stand about 260 px tall).
+  const touch = phone || vp.breakpoint === "tablet" || vp.coarsePointer;
   const t = og.ui.frameTheme();
   const grow = { kind: "grow" } as const;
   og.ui.anchor("Widgets", {
@@ -625,7 +630,7 @@ function widgetsScreen(world: World, d: DemoState): void {
     radius: t.radius.panel,
   }, () => {
     // A scroll area: the row cut at its bottom fades into the panel, so it reads as more below, not a clip.
-    og.ui.scrollArea("Body", { width: grow, height: { kind: "fixed", px: phone ? vp.height - 380 : vp.height - 120 }, gap: t.space.md, padding: { left: 0, top: 0, right: t.space.md, bottom: 0 }, fadeInto: "panel" }, () => {
+    og.ui.scrollArea("Body", { width: grow, height: { kind: "fixed", px: touch ? vp.height - 380 : vp.height - 120 }, gap: t.space.md, padding: { left: 0, top: 0, right: t.space.md, bottom: 0 }, fadeInto: "panel" }, () => {
       const tabs = og.ui.tabs("Tabs", ["Overview", "Stats", "Gear"], d.tab, { fill: true, width: grow });
       d.tab = tabs.selected;
       og.ui.row("Pickers", { width: grow, gap: t.space.md, cross: "center" }, () => {
