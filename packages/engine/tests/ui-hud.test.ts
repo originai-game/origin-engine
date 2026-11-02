@@ -287,7 +287,7 @@ test("og.ui.minimapView: out of range is dropped, an objective is held on the ri
   expect(Math.hypot(gx - cx, gy - cy)).toBeLessThan(map.width / 2);
   expect(Math.hypot(gx - cx, gy - cy)).toBeGreaterThan(map.width / 2 - 25);
   expect(at(els, "MapHud/Map/Bezel/pingPulse") ?? at(els, "MapHud/Map/Bezel/Map/pingPulse")).toBeDefined();
-  expect(at(els, "MapHud/Map/Zone")?.text).toBe("Kings Canyon");
+  expect(at(els, "MapHud/Map/ZonePlate/Zone")?.text).toBe("Kings Canyon");
   // North straddles the bezel above the map: its centre outside the map's glass, so it covers nothing on the map.
   const north = at(els, "MapHud/Map/Bezel/North")!;
   expect(Math.abs(north.x + north.width / 2 - cx)).toBeLessThan(2);
