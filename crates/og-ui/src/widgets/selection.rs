@@ -14,7 +14,14 @@ impl Ui {
         desc: TabsDesc,
     ) -> Response {
         let t = self.theme;
-        let h = self.sizes().control_md;
+        // Under a finger each tab is a whole target: the track grows by its
+        // inset, so the tab inside it is the control height (44 px).
+        let h = self.sizes().control_md
+            + if self.viewport.coarse_pointer {
+                2.0 * t.space.xxs
+            } else {
+                0.0
+            };
         self.open(
             id,
             Element {
@@ -333,7 +340,11 @@ impl Ui {
         let bounded = desc.min != desc.max;
         let (lo, hi) = (desc.min.min(desc.max), desc.min.max(desc.max));
         let h = self.sizes().control_md;
-        self.open(
+        let id = id.into();
+        let name = id.as_str().to_owned();
+        // A `stepper`, not a row: one of og-ui's controls, its states its own.
+        let spin = self.push(
+            "stepper",
             id,
             Element {
                 direction: Direction::Row,
@@ -343,15 +354,38 @@ impl Ui {
                 ..Element::default()
             },
         );
-        let spin = self.parent();
+        self.stack.push(spin);
+        // The spinbutton is one stop for keys and pads, Left and Right (or
+        // Up and Down) stepping it (the ARIA spinbutton pattern, as
+        // og.ui.numberStepper); − and + are the pointer's shortcuts for
+        // that, and stops of their own only under a finger.
+        self.nodes[spin].el.interactive = true;
+        self.nodes[spin].el.radius = t.radius.control;
+        let spun = self.nav_target(spin, true);
+        let touch = self.viewport.coarse_pointer;
+        // Its hover and press states (and the focus ring), on a clear ground.
+        let amounts = self.state_amounts(spin, &spun);
+        let clear = t.palette.control.fade(0.0);
+        let bg = Ui::state_color(clear, t.palette.control, t.palette.control_strong, amounts);
+        self.nodes[spin].el.background = (bg.alpha > 0.004).then_some(bg);
         self.nodes[spin].a11y.role = Some("spinbutton");
+        if self.nodes[spin].a11y.name.is_none() {
+            self.nodes[spin].a11y.name = Some(name);
+        }
         self.nodes[spin].a11y.value = Some(format!("{:.*}", desc.decimals as usize, *value));
-        let mut out = Response::default();
         let spin_key = self.nodes[spin].key;
         let mut delta = if self.nav.spin.0 == spin_key {
             self.nav.spin.1
         } else {
             0
+        };
+        if spun.focused {
+            delta += self.nav.adjust;
+        }
+        let mut out = Response {
+            hovered: spun.hovered,
+            focused: spun.focused,
+            ..Response::default()
         };
         let digits = desc.decimals as usize;
         for (name, sign) in [("Dec", -1), ("Inc", 1)] {
@@ -387,8 +421,11 @@ impl Ui {
             );
             let r = if at_end {
                 Response::default()
-            } else {
+            } else if touch {
                 self.nav_target(i, true)
+            } else {
+                let key = self.nodes[i].key;
+                self.respond(key)
             };
             if r.clicked {
                 delta += sign;

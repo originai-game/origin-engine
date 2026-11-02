@@ -162,7 +162,7 @@ const ruleOf = new Map(RULES.map((r) => [r.id, r]));
 /** A role a player operates (focus, press, drag). */
 const INTERACTIVE = new Set(["button", "link", "checkbox", "radio", "switch", "slider", "textbox", "combobox", "option", "tab", "spinbutton", "menuitem"]);
 /** og-ui's widgets that draw their own hover and press (and sound them through the style). */
-const FEEDBACK_KINDS = new Set(["button", "action", "chip", "toggle", "checkbox", "radio", "slider", "field", "textarea", "select", "option", "tab", "link", "joystick", "dpad"]);
+const FEEDBACK_KINDS = new Set(["button", "action", "chip", "stepper", "toggle", "checkbox", "radio", "slider", "field", "textarea", "select", "option", "tab", "link", "joystick", "dpad"]);
 /** Touch controls: the player's thumbs on a HUD, not part of pad navigation. */
 const TOUCH_CONTROLS = new Set(["joystick", "dpad", "action"]);
 /** Pictures: their `text` is the picture's name, not words. */

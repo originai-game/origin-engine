@@ -895,3 +895,51 @@ fn last_path_names_the_element_just_built() {
     ui.end();
     assert_eq!(seen, ["Shop/Row/Buy", "Shop/Row", "Shop"]);
 }
+
+/// A stepper and a value; records whether the stepper has the focus.
+#[derive(Default)]
+struct Spin {
+    value: f32,
+    focused: bool,
+}
+
+fn spin(ui: &mut Ui, s: &mut Spin) {
+    let r = ui.stepper(
+        "Amount",
+        &mut s.value,
+        StepperDesc {
+            min: 0.0,
+            max: 9.0,
+            ..StepperDesc::default()
+        },
+    );
+    s.focused = r.focused;
+}
+
+#[test]
+fn a_stepper_takes_the_focus_as_one_stop_and_right_steps_it() {
+    // Wrong: only its − and + reachable, the spinbutton itself never focused
+    // (keys and pads met two buttons, and `og ui check` reported it).
+    let mut rig = Rig::new(Spin {
+        value: 3.0,
+        ..Spin::default()
+    });
+    let b = &mut spin;
+    rig.idle(1, b);
+    rig.key(UiKey::Tab, b);
+    rig.idle(1, b);
+    assert!(rig.state.focused, "Tab focuses the stepper");
+    assert_eq!(
+        rig.ui.frame().a11y.focused,
+        "Amount",
+        "the spinbutton itself"
+    );
+    rig.key(UiKey::Right, b);
+    rig.idle(1, b);
+    assert_eq!(rig.state.value, 4.0, "Right steps it");
+    assert_eq!(
+        rig.ui.frame().a11y.focus_order,
+        vec!["Amount".to_string()],
+        "one stop: on a fine pointer − and + are the pointer's shortcuts, not stops"
+    );
+}

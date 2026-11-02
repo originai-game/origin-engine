@@ -641,7 +641,7 @@ function widgetsScreen(world: World, d: DemoState): void {
       const checks = og.ui.checkboxList("Options", ["Show hints", "Hard mode"], [d.optA, d.optB]);
       d.optA = checks.values[0] ?? d.optA;
       d.optB = checks.values[1] ?? d.optB;
-      og.ui.row("Chips", { gap: t.space.sm, cross: "center" }, () => {
+      og.ui.row("Chips", { gap: t.space.sm, cross: "center", wrap: true, width: grow }, () => {
         ["All", "Weapons", "Armor"].forEach((c, i) => {
           if (og.ui.chip(og.ui.idi("Chip", i), c, { selected: d.chip === i }).clicked) d.chip = i;
         });

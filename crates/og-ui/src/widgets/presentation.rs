@@ -10,6 +10,11 @@ impl Ui {
             "chip",
             id.into(),
             Element {
+                // A short label ("All") still makes a target a finger hits.
+                width: Size::Fit {
+                    min: if self.viewport.coarse_pointer { h } else { 0.0 },
+                    max: f32::INFINITY,
+                },
                 height: Size::Fixed(h),
                 padding: Insets::xy(t.space.md, 0.0),
                 interactive: !desc.disabled,
