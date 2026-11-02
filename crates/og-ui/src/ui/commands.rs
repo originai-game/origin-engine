@@ -318,6 +318,26 @@ impl Ui {
                         },
                     );
                 }
+                // A glitching subtree draws through the glitch material
+                // (TransitionKind::Glitch): a layer from its first command
+                // to its last.
+                if let Some(g) = self.nodes[j].fx.map(|f| f.glitch).filter(|&g| g > 0.0) {
+                    let nj = &self.nodes[j];
+                    let strength = match theme.art.motion.glitch {
+                        s if s > 0.0 => s,
+                        _ => 1.0,
+                    };
+                    let (begin, end) = glitch_layer(
+                        key,
+                        g * strength,
+                        nj.screen.height,
+                        self.ticks_per_second,
+                        nj.rect,
+                        nj.clip,
+                    );
+                    cmds.insert(first, (begin, nj.world));
+                    cmds.push((end, nj.world));
+                }
             }
         }
         for (g, ghost) in ghosts.iter().enumerate() {
@@ -456,6 +476,54 @@ fn fade_cmd(c: &mut DrawCmd, k: f32) {
         }
         DrawCmd::PushClip { .. } | DrawCmd::PopClip | DrawCmd::BeginLayer { .. } => {}
     }
+}
+
+/// The layer a glitching subtree draws into and its composite: og-render's
+/// glitch material (`UiBuiltin::Glitch`) at `g` (0 settled, 1 torn; a
+/// stronger style past 1), its slices about a sixth of the element's
+/// height and varied by its key, shifted up to 10 CSS px with a 3.5 px
+/// colour split, re-cut every two ticks of the UI clock (`Ui::seconds`,
+/// counted in ticks), so a captured frame is the same every run.
+fn glitch_layer(
+    key: u64,
+    g: f32,
+    height: f32,
+    ticks_per_second: u32,
+    rect: Rect,
+    clip: Rect,
+) -> (DrawCmd, DrawCmd) {
+    // 0.8–1.2 from the key (splitmix64's finaliser).
+    let mut x = key;
+    x ^= x >> 30;
+    x = x.wrapping_mul(0xbf58_476d_1ce4_e5b9);
+    x ^= x >> 27;
+    x = x.wrapping_mul(0x94d0_49bb_1331_11eb);
+    x ^= x >> 31;
+    let vary = 0.8 + 0.4 * ((x >> 40) as f32 / (1u64 << 24) as f32);
+    let slice = (height / 6.0 * vary).clamp(4.0, 48.0);
+    let split = 10.0 * g.min(1.5);
+    let mut params = [[0.0; 4]; og_render::UI_MATERIAL_PARAMS];
+    params[0] = [
+        g.clamp(0.0, 1.0),
+        slice,
+        split,
+        ticks_per_second as f32 / 2.0,
+    ];
+    let begin = DrawCmd::BeginLayer {
+        material: og_render::UiMaterial::Builtin(og_render::UiBuiltin::Glitch),
+        params,
+        mask: None,
+        expand: split + 2.0,
+        rect: Rect::default(),
+    };
+    let end = DrawCmd::EndLayer {
+        geometry: None,
+        rect,
+        opacity: 1.0,
+        blend: og_render::UiBlend::Normal,
+        clip,
+    };
+    (begin, end)
 }
 
 /// A command with its map applied where the map keeps rectangles upright

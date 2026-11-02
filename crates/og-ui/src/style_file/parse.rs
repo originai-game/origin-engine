@@ -442,7 +442,15 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                     match c.key.as_str() {
                         "enter" | "toast" => {
                             let w = q.word(0)?;
-                            let k = kind_of(w).ok_or_else(|| q.err(&format!("'{w}' is fade, slideUp, slideDown, slideLeft, slideRight, scale or pop")))?;
+                            let k = kind_of(w).ok_or_else(|| q.err(&format!("'{w}' is fade, slideUp, slideDown, slideLeft, slideRight, scale, pop or glitch")))?;
+                            // `glitch <strength>`: how far it tears (0.05–2, 1 when left out).
+                            if k == TransitionKind::Glitch {
+                                m.glitch = q.num_or(1, 1.0)?.clamp(0.05, 2.0);
+                            } else if c.values.len() > 1 {
+                                return Err(q.err(&format!(
+                                    "{w} takes no number (only glitch takes a strength)"
+                                )));
+                            }
                             if c.key == "enter" {
                                 m.enter = Some(k);
                             } else {

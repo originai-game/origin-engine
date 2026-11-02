@@ -554,6 +554,7 @@ pub(super) fn transition_kind(v: &Value) -> Option<TransitionKind> {
         "slideRight" => TransitionKind::SlideRight,
         "scale" => TransitionKind::Scale,
         "pop" => TransitionKind::Pop,
+        "glitch" => TransitionKind::Glitch,
         _ => return None,
     })
 }

@@ -477,9 +477,10 @@ fn parse_presence(vals: &[Value], enter: bool) -> Result<PresenceSpec, String> {
         "slideRight" => TransitionKind::SlideRight,
         "scale" => TransitionKind::Scale,
         "pop" => TransitionKind::Pop,
+        "glitch" => TransitionKind::Glitch,
         other => {
             return Err(format!(
-                "'{other}' is not a presence: fade, slideUp, slideDown, slideLeft, slideRight, scale, pop"
+                "'{other}' is not a presence: fade, slideUp, slideDown, slideLeft, slideRight, scale, pop, glitch"
             ));
         }
     };

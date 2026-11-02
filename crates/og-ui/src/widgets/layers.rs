@@ -55,7 +55,8 @@ impl Ui {
     /// transition (`kind`) and its controls' stagger.
     fn enter(&mut self, i: usize, since: u64, kind: Option<TransitionKind>) {
         let t = self.theme;
-        let ticks = self.ticks_for(t.durations_ms.base) as f32;
+        let ms = kind.map_or(t.durations_ms.base, |k| k.duration_ms(t.durations_ms.base));
+        let ticks = self.ticks_for(ms) as f32;
         let p = ((self.state.tick - since) as f32 + 1.0) / ticks;
         if let Some(kind) = kind
             && p < 1.0
@@ -141,7 +142,7 @@ impl Ui {
         let ms = if desc.duration_ms > 0.0 {
             desc.duration_ms
         } else {
-            self.theme.durations_ms.base
+            desc.kind.duration_ms(self.theme.durations_ms.base)
         };
         let (pr, e) = self.presence(key, show, ms, desc.instant);
         let distance = if desc.distance > 0.0 {
@@ -195,19 +196,18 @@ impl Ui {
             NONE,
         );
         let key = self.nodes[backdrop].key;
-        let (pr, e) = self.presence(key, open, t.durations_ms.base, false);
-        if pr.entering && pr.progress <= 1.0 / self.ticks_for(t.durations_ms.base) as f32 + 1e-6 {
-            self.sound(crate::style_file::UiSound::Open);
-        }
-        if pr.leaving
-            && pr.progress >= 1.0 - 1.0 / self.ticks_for(t.durations_ms.base) as f32 - 1e-6
-        {
-            self.sound(crate::style_file::UiSound::Close);
-        }
         let kind = desc
             .transition
             .or(t.art.motion.enter)
             .unwrap_or(TransitionKind::Scale);
+        let ms = kind.duration_ms(t.durations_ms.base);
+        let (pr, e) = self.presence(key, open, ms, false);
+        if pr.entering && pr.progress <= 1.0 / self.ticks_for(ms) as f32 + 1e-6 {
+            self.sound(crate::style_file::UiSound::Open);
+        }
+        if pr.leaving && pr.progress >= 1.0 - 1.0 / self.ticks_for(ms) as f32 - 1e-6 {
+            self.sound(crate::style_file::UiSound::Close);
+        }
         let mut r = ModalResponse {
             visible: pr.visible,
             dismissed: false,

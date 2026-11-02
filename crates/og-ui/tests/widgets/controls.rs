@@ -236,6 +236,85 @@ fn fading(ui: &mut Ui, s: &mut Shown) {
     s.progress.push(p.progress);
 }
 
+/// A transition of `kind` over `ms` (0: the style's) around a button,
+/// shown from the second tick; the frame's draw items `at` ticks in.
+fn torn(kind: TransitionKind, ms: f32, reduced: bool, at: u32) -> Vec<DrawItem> {
+    let mut rig = Rig::new(Shown::default());
+    if reduced {
+        let mut t = *rig.ui.theme();
+        t.reduced_motion = true;
+        rig.ui.set_theme(t);
+    }
+    let b = &mut |ui: &mut Ui, s: &mut Shown| {
+        ui.transition(
+            "Panel",
+            s.show,
+            TransitionDesc {
+                kind,
+                duration_ms: ms,
+                ..TransitionDesc::default()
+            },
+            |ui| {
+                ui.button("Go", "Go", ButtonDesc::default());
+            },
+        );
+    };
+    rig.idle(1, b);
+    rig.state.show = true;
+    rig.idle(at, b);
+    rig.ui.frame().items.clone()
+}
+
+/// The strength of the glitch material a frame draws through, if any.
+fn glitch_strength(items: &[DrawItem]) -> Option<f32> {
+    items.iter().find_map(|i| match &i.cmd {
+        DrawCmd::BeginLayer {
+            material: og_render::UiMaterial::Builtin(og_render::UiBuiltin::Glitch),
+            params,
+            ..
+        } => Some(params[0][0]),
+        _ => None,
+    })
+}
+
+/// A glitch is a frame like any other: two runs draw one frame (the
+/// material's slices come from the element's id and the tick-counted UI
+/// clock, never a wall clock or an unseeded rng); it draws its subtree
+/// through og-render's glitch material, weaker as it settles; settled it
+/// is exactly the fade's frame; under reduced motion it is that fade
+/// throughout.
+///
+/// Ways it could fail: parameters from wall-clock time (two runs differ);
+/// no glitch layer at all, or one that never weakens; the layer left
+/// behind once settled; reduced motion still tearing.
+#[test]
+fn a_glitch_draws_the_same_every_run_settles_and_only_fades_under_reduced_motion() {
+    let mid = 4;
+    let a = torn(TransitionKind::Glitch, 0.0, false, mid);
+    assert_eq!(
+        a,
+        torn(TransitionKind::Glitch, 0.0, false, mid),
+        "two runs, one frame"
+    );
+    let now = glitch_strength(&a).expect("the subtree draws through the glitch material");
+    let later = glitch_strength(&torn(TransitionKind::Glitch, 0.0, false, mid + 4))
+        .expect("still glitching four ticks on");
+    assert!(now > later && later > 0.0, "it settles: {now} then {later}");
+    // The default base (240 ms) is held to 180 ms: settled by tick 11.
+    assert_eq!(
+        torn(TransitionKind::Glitch, 0.0, false, 12),
+        torn(TransitionKind::Fade, 180.0, false, 12),
+        "settled, nothing of the glitch is left"
+    );
+    for at in [2, mid, 8] {
+        assert_eq!(
+            torn(TransitionKind::Glitch, 180.0, true, at),
+            torn(TransitionKind::Fade, 180.0, true, at),
+            "reduced motion: a plain fade at tick {at}"
+        );
+    }
+}
+
 #[test]
 fn a_transition_advances_by_tick_takes_no_input_while_moving_and_leaves() {
     let mut rig = Rig::new(Shown::default());

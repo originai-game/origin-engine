@@ -45690,7 +45690,8 @@
         "slideLeft",
         "slideRight",
         "scale",
-        "pop"
+        "pop",
+        "glitch"
       ],
       "x-og-variants": {
         "fade": "Opacity only.",
@@ -45699,7 +45700,8 @@
         "slideLeft": "Enters from the right.",
         "slideRight": "Enters from the left.",
         "scale": "Grows from slightly smaller around its centre.",
-        "pop": "Springs up from smaller around its centre, overshoots and settles."
+        "pop": "Springs up from smaller around its centre, overshoots and settles.",
+        "glitch": "Tears in: the content draws through the glitch material (slices pushed sideways, colours split) as it fades in or out, over 150 to 180 ms whatever the style's base duration; as deterministic as every frame (from the element's id and the tick-counted UI clock). A style sets its strength (`enter glitch 0.8`)."
       }
     },
     "Tone": {

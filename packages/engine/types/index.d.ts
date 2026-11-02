@@ -22600,8 +22600,9 @@ export type Anchor = "topLeft" | "top" | "topRight" | "left" | "center" | "right
  * - `"slideRight"`: Enters from the left.
  * - `"scale"`: Grows from slightly smaller around its centre.
  * - `"pop"`: Springs up from smaller around its centre, overshoots and settles.
+ * - `"glitch"`: Tears in: the content draws through the glitch material (slices pushed sideways, colours split) as it fades in or out, over 150 to 180 ms whatever the style's base duration; as deterministic as every frame (from the element's id and the tick-counted UI clock). A style sets its strength (`enter glitch 0.8`).
  */
-export type TransitionKind = "fade" | "slideUp" | "slideDown" | "slideLeft" | "slideRight" | "scale" | "pop";
+export type TransitionKind = "fade" | "slideUp" | "slideDown" | "slideLeft" | "slideRight" | "scale" | "pop" | "glitch";
 
 /**
  * A status tone of badges, toasts and map markers.

@@ -352,6 +352,9 @@ pub struct StyleMotion {
     pub shake: f32,
     /// Counters pop by this fraction when they finish (0: no pop).
     pub pop: f32,
+    /// How far a `glitch` entrance or toast tears (`enter glitch 0.8`; 0
+    /// when the style names no glitch, which then tears at 1).
+    pub glitch: f32,
     /// The spring the hover lift moves on (`None`: `motion.spring.default`
     /// of the style, damping 1 and 350 ms: it settles without overshoot).
     pub hover_spring: Option<crate::theme::Spring>,

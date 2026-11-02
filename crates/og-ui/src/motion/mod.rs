@@ -50,6 +50,8 @@ impl PresenceSpec {
             TransitionKind::SlideRight => values.push((Prop::X, -distance)),
             TransitionKind::Scale => values.push((Prop::Scale, 0.92)),
             TransitionKind::Pop => values.push((Prop::Scale, 0.6)),
+            // An element's own exit (props) is values only: it fades.
+            TransitionKind::Glitch => {}
         }
         PresenceSpec {
             values,
@@ -159,6 +161,25 @@ pub enum TransitionKind {
     Scale,
     /// Springs up from smaller around its centre, overshoots and settles.
     Pop,
+    /// Tears in: the content draws through og-render's glitch material
+    /// (slices pushed sideways, their colours split), weaker as it fades in
+    /// and stronger as it fades out (docs/ui.md §7.5). Short whatever the
+    /// style's base duration ([`TransitionKind::duration_ms`]); its
+    /// strength is the style's (`motion { enter glitch 0.8 }`).
+    /// Deterministic: its slices come from the element's id and the
+    /// tick-counted UI clock.
+    Glitch,
+}
+
+impl TransitionKind {
+    /// How long this kind takes when the style's duration `ms` drives it:
+    /// a glitch keeps to 150–180 ms, every other kind takes `ms`.
+    pub fn duration_ms(self, ms: f32) -> f32 {
+        match self {
+            TransitionKind::Glitch => ms.clamp(150.0, 180.0),
+            _ => ms,
+        }
+    }
 }
 
 /// What a transition does to its subtree this frame.
@@ -168,6 +189,10 @@ pub(crate) struct Fx {
     pub dx: f32,
     pub dy: f32,
     pub scale: f32,
+    /// How torn a glitch is (0 none … 1 the most), before the style's
+    /// strength: the subtree draws through the glitch material at it
+    /// (`Ui::commands`).
+    pub glitch: f32,
     /// Takes no input (moving, or leaving).
     pub inert: bool,
 }
@@ -179,6 +204,7 @@ impl Default for Fx {
             dx: 0.0,
             dy: 0.0,
             scale: 1.0,
+            glitch: 0.0,
             inert: false,
         }
     }
@@ -205,6 +231,14 @@ pub(crate) fn fx(kind: TransitionKind, e: f32, distance: f32, reduced: bool) -> 
         TransitionKind::Pop => {
             // Arithmetic only: a parabola past 1 that lands back on it.
             f.scale = 0.8 + 0.2 * e + 0.8 * e * e * away;
+            f.alpha = (2.0 * e).min(1.0);
+        }
+        TransitionKind::Glitch => {
+            // Most torn as it appears, settled by the end, and torn for most
+            // of the way (the square root holds it up as the eased presence
+            // rushes in); it shows early (opacity twice as fast) so the
+            // tear is seen, not faded out.
+            f.glitch = away.max(0.0).sqrt();
             f.alpha = (2.0 * e).min(1.0);
         }
     }

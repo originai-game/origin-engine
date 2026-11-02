@@ -624,7 +624,7 @@ Motion and juice, all by the tick and in the UI state:
 |---|---|
 | A score, coins or a reward counting up | `og.ui.counter(id, value, { from: 0, font: "display", step: "xl3" })` |
 | Sparks when a star or reward lands | `og.ui.burst({ count: 10 })` right after the element |
-| A panel or item popping in | `og.ui.transition(id, show, { kind: "pop" })` (also `fade`, `slideUp`…, `scale`) |
+| A panel or item popping in | `og.ui.transition(id, show, { kind: "pop" })` (also `fade`, `slideUp`…, `scale`, `glitch`: a short deterministic tear, a style's `enter glitch 0.8`) |
 | A change of game screen | `const s = og.ui.screenTransition("Screens", state.screen, { kind: "iris" }).shown;` then build `s` (`fade`, `wipe`, `iris`, `dissolve`, `slide`; a colour or a texture) |
 | A wrong answer, a locked door, a refused purchase | `og.ui.shake({ sound: true })` right after the element, once, on the tick it happens: it swings three times and comes to rest by itself (the style's `motion.shake`, else 6 px), with the `error` sound |
 

@@ -406,6 +406,16 @@ input last.
 - **Enter and exit** per element: an element removed from the tree is kept
   (inert, not hit-testable, not in the accessibility tree) until its exit
   finishes, so lists, toasts and panels leave the way they arrived.
+- **Glitch** (`glitch`, a transition kind beside fade, the slides, scale
+  and pop; any style can name it, `motion { enter glitch 0.8 }` with its
+  strength): the content draws through the glitch layer material (§5.4:
+  slices pushed sideways, colours split about 3.5 px) as it fades in or
+  out, over 150–180 ms whatever the style's base duration, weakening to
+  nothing as it settles. Its slice height comes from the element's id and
+  its slices are re-cut every two ticks of the tick-counted UI clock, so a
+  captured frame is the same every run; under reduced motion it is a plain
+  fade. An element's own exit (props) has no tear: it fades. A transition
+  between whole screens that captures the outgoing one is separate work.
 - **Layout animation**: an element whose laid-out rectangle changes
   (reordering, inserting, resizing, wrapping to a new line) moves from
   the old rectangle to the new on a spring (the FLIP technique). A hand of
