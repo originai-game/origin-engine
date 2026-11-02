@@ -208,6 +208,13 @@ export function scorebug(id: string, desc: Api.ScorebugDesc = {}): void {
         side("Home", desc.home, 0);
         side("Away", desc.away, 1);
         box("Clock", { direction: "row", gap: u(6), cross: "center", padding: { left: tk.sm, right: tk.sm, top: 0, bottom: 0 }, part: sel("Scorebug", "clock") }, undefined, () => {
+          if (desc.final) {
+            // Over: the final label in a chip at the caption step where the clock was, never the added time.
+            box("Final", { padding: { left: u(6), right: u(6), top: u(1), bottom: u(1) }, part: sel("Scorebug", "final") }, { shape: { kind: "rect", radii: [2, 2, 2, 2] }, fills: [solid(token("ink"))] }, () => {
+              text("Text", desc.final ?? "", { step: ts(12), font: "display", color: token("inkInverse"), nowrap: true });
+            });
+            return;
+          }
           if (fit < 1) text("Period", desc.period ?? "", { step: ts(12), font: "display", color: token("inkMuted"), nowrap: true });
           text("Clock", fit >= 2 && desc.added ? `${desc.clock ?? ""} ${desc.added}` : desc.clock ?? "", { step: ts(17), font: "mono", color: token("ink"), nowrap: true });
           // Added time: its own box in the accent at the clock's end (EA FC's +3), so it never reads as part of the clock.
@@ -232,7 +239,7 @@ export function scorebug(id: string, desc: Api.ScorebugDesc = {}): void {
         }, () => text("Text", desc.situation ?? "", { step: ts(12), font: "display", color: token("onPrimary"), nowrap: true }), { transform: { y: -(1 - x) * u(20) }, opacity: x });
       }
     });
-    apply({ a11y: a11y("status", "Score", { value: `${desc.home?.abbr ?? "Home"} ${desc.home?.score ?? 0}, ${desc.away?.abbr ?? "Away"} ${desc.away?.score ?? 0}, ${desc.clock ?? ""} ${desc.period ?? ""}`.trim() }) });
+    apply({ a11y: a11y("status", "Score", { value: `${desc.home?.abbr ?? "Home"} ${desc.home?.score ?? 0}, ${desc.away?.abbr ?? "Away"} ${desc.away?.score ?? 0}, ${desc.final || `${desc.clock ?? ""} ${desc.period ?? ""}`}`.trim() }) });
   });
 }
 

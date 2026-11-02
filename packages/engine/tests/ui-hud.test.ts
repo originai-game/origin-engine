@@ -794,6 +794,26 @@ test("og.ui.matchStats, goalTimeline, playerPlate, substitution and the scorebug
   expect(states(at(els, "MeHud/Me")).stamina).toBe("low");
 }, LOADED_MS);
 
+test("og.ui.scorebug at full time and a radar's pitch: a final chip in place of the clock and never the added time; a pitch under the markers", () => {
+  // Wrong: a finished match still showing 90:00 +3; a sports radar a black square with dots and no pitch.
+  const e = engineFor("HudFinal", () => {
+    og.ui.scorebug("Bug", { home: { abbr: "NOR", score: 2 }, away: { abbr: "VAL", score: 1 }, clock: "90:00", added: "+3", period: "2nd", final: "FT" });
+    og.ui.minimapView("Radar", { shape: "square", zoom: 1, pitch: true, anchor: "bottomLeft", markers: [{ key: "me", kind: "player", x: 0.5, y: 0.5 }] });
+  });
+  e.advance(3);
+  const els = dump(e);
+  expect(at(els, "BugHud/Bug/Bar/Clock/Final/Text")?.text).toBe("FT");
+  expect(at(els, "BugHud/Bug/Bar/Clock/Clock")).toBe(undefined);
+  expect(at(els, "BugHud/Bug/Bar/Clock/Added")).toBe(undefined);
+  expect(at(els, "BugHud/Bug")?.value).toContain("FT");
+  // The pitch fills the map in place of the grid: touchlines, halfway line, both boxes and the centre circle.
+  const map = at(els, "RadarHud/Radar/Bezel/Map")!;
+  const pitch = at(els, "RadarHud/Radar/Bezel/Map/Pitch")!;
+  expect([pitch.x, pitch.y, pitch.width, pitch.height]).toEqual([map.x, map.y, map.width, map.height]);
+  expect(below(els, "RadarHud/Radar/Bezel/Map/Pitch").map((x) => x.id)).toEqual(["Touchlines", "Halfway", "BoxL", "BoxR", "Circle"]);
+  expect(at(els, "RadarHud/Radar/Bezel/Map/Grid")).toBe(undefined);
+}, LOADED_MS);
+
 test("og.ui.wavePreview and laneKeys: the waves past max fold into dots, the current lit; caps under their lanes, a held one down", () => {
   const e = engineFor("HudGenres", () => {
     og.ui.wavePreview("Waves", { current: 8, max: 4, waves: Array.from({ length: 6 }, (_, i) => ({ key: `w${i + 7}`, number: i + 7, name: "Crawlers", count: (i + 1) * 3, boss: i === 4 })) });

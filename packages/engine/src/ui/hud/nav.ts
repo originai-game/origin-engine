@@ -121,6 +121,36 @@ export function minimapView(id: string, desc: Api.MinimapViewDesc = {}, bare = f
       if (desc.texture) {
         kit.image("Texture", { texture: desc.texture, uv: [cx - span / 2, cy - span / 2, cx + span / 2, cy + span / 2], width: px(cover), height: px(cover), label: "" });
         apply(fixed({ start: (size - cover) / 2, top: (size - cover) / 2 }, { transform: { rotate: turn } }));
+      } else if (desc.pitch) {
+        // A pitch under the markers, in map coordinates (so it pans, zooms and turns with them): touchlines, halfway
+        // line, centre circle and both penalty boxes as hairlines at about 20 % white.
+        const turnC = Math.cos(turn);
+        const turnS = Math.sin(turn);
+        const at = (x: number, y: number): Api.Vector2 => {
+          const dx = ((x - cx) / zoom) * size;
+          const dy = ((y - cy) / zoom) * size;
+          return { x: R + dx * turnC - dy * turnS, y: R + dx * turnS + dy * turnC };
+        };
+        const [x0, x1, y0, y1] = [0.04, 0.96, 0.04, 0.96];
+        const len = x1 - x0;
+        const wid = y1 - y0;
+        // A real pitch's proportions along its length and width: a box 16.5 m deep and 40.3 m wide on 105 by 68 m.
+        const boxD = len * (16.5 / 105);
+        const boxW = wid * (40.3 / 68);
+        const ring = len * (9.15 / 105);
+        const ink = solid(lit(WHITE, 0.2));
+        const lw = Math.max(1, u(1));
+        box("Pitch", { width: px(size), height: px(size), part: sel("Minimap", "pitch") }, undefined, () => {
+          const line = (lid: string, pts: Api.Vector2[], closed = false) =>
+            leaf(lid, { width: px(size), height: px(size) }, { shape: { kind: "path", points: pts, closed, width: lw, cap: "butt", join: "miter" }, fills: [ink] }, fixed({ start: 0, top: 0 }));
+          line("Touchlines", [at(x0, y0), at(x1, y0), at(x1, y1), at(x0, y1)], true);
+          line("Halfway", [at(0.5, y0), at(0.5, y1)]);
+          const mid = (y0 + y1) / 2;
+          line("BoxL", [at(x0, mid - boxW / 2), at(x0 + boxD, mid - boxW / 2), at(x0 + boxD, mid + boxW / 2), at(x0, mid + boxW / 2)]);
+          line("BoxR", [at(x1, mid - boxW / 2), at(x1 - boxD, mid - boxW / 2), at(x1 - boxD, mid + boxW / 2), at(x1, mid + boxW / 2)]);
+          const n = 48;
+          line("Circle", Array.from({ length: n }, (_, i) => at(0.5 + ring * Math.cos((i / n) * Math.PI * 2), mid + ring * Math.sin((i / n) * Math.PI * 2))), true);
+        }, fixed({ start: 0, top: 0 }));
       } else {
         // No art: a grid that moves with the player, so motion still reads.
         const cells = 6;

@@ -8565,6 +8565,7 @@ module ui {
     field zone String "A label under it (the zone's name); empty is none."
     field track List.Vector2 "A racing circuit: its centre line as points in map coordinates (0 to 1, as markers), drawn as a smooth line (through every point) over the style's well in place of the texture and the grid. Give zoom 1 and the centre 0.5, 0.5 to show the whole circuit; three points or more."
     field trackOpen bool "The track does not close on itself (a point-to-point stage)."
+    field pitch bool "A sports radar: a pitch drawn under the markers in place of the grid (with no texture), as hairlines at about 20 % white: the touchlines, the halfway line, the centre circle and both penalty boxes, the field running left to right over the map's coordinates 0.04 to 0.96 (give zoom 1 and the centre 0.5, 0.5 to show it whole)."
     field north String "The north letter." {
       default "N"
     }
@@ -8580,7 +8581,7 @@ module ui {
 
   fn minimapView {
     doc "A minimap to the bar of MOBAs, shooters and open worlds: the map in a round or square frame, centred on the player and zoomed, fixed with north up and the player's arrow turning or turning with the player; markers for allies (their arrows), enemies, loot by rarity, points of interest, objectives and pings, which stay on the frame's edge pointing out when out of range; pings pulse; a north mark on the rim, the zone under it; a press answers clicked (click to move reads the press's position against the map's bounds)."
-    doc "Parts: Minimap.bezel (a dark rounded bezel with a soft drop), Minimap.frame[<shape>] (the map's glass inside it), Minimap.map, Minimap.track, Minimap.start, Minimap.marker[<kind>][clamped], Minimap.north (straddling the bezel's top edge, over nothing on the map), Minimap.plate (a square map's caption plate at the bezel's foot; a round map's caption is the same plate as a pill centred under the ring), Minimap.ping. Slots: texture (art kind map). Accessibility: image named by the zone; markers images named by their labels. Probe ids: <id>, <id>/Bezel/Map/<key>, <id>/Bezel/Plate/Zone (square) or <id>/ZonePlate/Zone (round)."
+    doc "Parts: Minimap.bezel (a dark rounded bezel with a soft drop), Minimap.frame[<shape>] (the map's glass inside it), Minimap.map, Minimap.pitch, Minimap.track, Minimap.start, Minimap.marker[<kind>][clamped], Minimap.north (straddling the bezel's top edge, over nothing on the map), Minimap.plate (a square map's caption plate at the bezel's foot; a round map's caption is the same plate as a pill centred under the ring), Minimap.ping. Slots: texture (art kind map). Accessibility: image named by the zone; markers images named by their labels. Probe ids: <id>, <id>/Bezel/Map/<key>, <id>/Bezel/Plate/Zone (square) or <id>/ZonePlate/Zone (round)."
     host false
     param id String "Its id."
     param desc MinimapViewDesc "The map and its markers."
@@ -9064,14 +9065,15 @@ module ui {
     field shotClock String "A shot or play clock; empty is none."
     field situation String "A line under it (2nd & 7, Power play); empty is none."
     field added String "Added or stoppage time beside the clock (+3), in the accent; empty is none."
+    field final String "The match is over: this label (FT, Final) in a chip in place of the clock, the period and the added time, which it never shows; empty is a live clock."
     field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
       default topLeft
     }
   }
 
   fn scorebug {
-    doc "A broadcast scorebug to the bar of sports games (EA FC, NBA 2K, Rocket League): each side's colour block with its crest and short name, the scores in tabular digits that flip and flash when they change, possession and time-out pips, the clock and period, a shot clock, added time beside the clock, a situation line sliding out under it."
-    doc "Parts: Scorebug.frame, Scorebug.team[home|away], Scorebug.score, Scorebug.clock, Scorebug.period, Scorebug.shot, Scorebug.added, Scorebug.situation, Scorebug.timeout[used], Scorebug.possession. Sounds: success when a score changes. Accessibility: status named home score, away score, clock and period. Probe ids: <id>, <id>/Home/Score, <id>/Away/Score, <id>/Clock."
+    doc "A broadcast scorebug to the bar of sports games (EA FC, NBA 2K, Rocket League): each side's colour block with its crest and short name, the scores in tabular digits that flip and flash when they change, possession and time-out pips, the clock and period, a shot clock, added time beside the clock, a final chip (FT) in its place once the match is over, a situation line sliding out under it."
+    doc "Parts: Scorebug.frame, Scorebug.team[home|away], Scorebug.score, Scorebug.clock, Scorebug.period, Scorebug.shot, Scorebug.added, Scorebug.final, Scorebug.situation, Scorebug.timeout[used], Scorebug.possession. Sounds: success when a score changes. Accessibility: status named home score, away score, clock and period. Probe ids: <id>, <id>/Home/Score, <id>/Away/Score, <id>/Clock."
     host false
     param id String "Its id."
     param desc ScorebugDesc "The score and the clock."
