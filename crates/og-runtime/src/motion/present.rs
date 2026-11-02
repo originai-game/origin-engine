@@ -80,14 +80,28 @@ const FRAME_BUDGET_MS: f64 = 3.0;
 const DECODE_BUDGET_MS: f64 = 3.0;
 /// The model's frame rate.
 const RATE: f32 = 30.0;
-/// The most an agent's body leans from upright (hips to head) in the frames
-/// of a jump goal, rad (30°).
+/// The most an agent's body leans from upright in the frames of a jump
+/// goal, rad (30°): the pelvis to the chest (the root's pitch) and the
+/// hips to the head (the spine's), each.
 const JUMP_LEAN: f32 = 0.524;
+/// The same for a crouch goal (45°): the knees and hips bend, the torso
+/// inclines, the body does not pitch down flat.
+const CROUCH_LEAN: f32 = 0.785;
+/// How fast the drawn body may pitch further forward, rad/s (150°/s): a
+/// jump into a crouch cannot fold flat in a few frames across the goals'
+/// boundary.
+const LEAN_RATE: f32 = 2.62;
 /// Tokens either side of a model goal's own duration it may take
 /// ([`token_counts`]).
 const TOKEN_SLACK: usize = 2;
 /// The library's jump pose.
 const JUMP: usize = 3;
+/// The library's crouch pose.
+const CROUCH: usize = 4;
+/// SOMA's chest joint.
+const CHEST: usize = 3;
+/// SOMA's first spine joint (the hips' child toward the head).
+const SPINE: usize = 1;
 /// How far behind the frame clock a drawn frame may fall before frames are
 /// skipped to catch up, s.
 const MAX_LAG: f64 = 0.25;
@@ -176,6 +190,8 @@ struct Shown {
     /// `plantedSlide`, the foot plant's own measure).
     planted: [Option<Vec3>; 2],
     slide: (f32, u32, f32),
+    /// The lean (hips to head) last drawn, rad.
+    lean: Option<f32>,
     /// The model goals asked for, oldest first, until their frames are
     /// shown: what each frame's tag names.
     issued: VecDeque<Issued>,
@@ -623,38 +639,99 @@ fn start_flight(r: &mut Ready) {
 }
 
 /// `pose` re-rooted: the hips over the origin at their height, facing +Z.
-/// With `upright`, a body leaning further than [`JUMP_LEAN`] from upright
-/// (hips to head) is turned about its hips back to that lean.
-fn rerooted(skeleton: &Skeleton, pose: &Pose, upright: bool) -> Vec<Trs> {
+/// How far `v` leans from straight up, rad.
+fn lean_of(v: Vec3) -> f32 {
+    og_core::math::acos(v.normalize_or_zero().y.clamp(-1.0, 1.0))
+}
+
+/// The rotation that brings `v` to lean `max` from up (identity when it
+/// leans no more).
+fn unlean(v: Vec3, max: f32) -> glam::Quat {
+    let axis = v.cross(Vec3::Y);
+    let lean = lean_of(v);
+    if lean <= max || axis.length_squared() < 1e-12 {
+        return glam::Quat::IDENTITY;
+    }
+    og_core::math::quat_from_axis_angle(axis.normalize(), lean - max)
+}
+
+/// `pose`'s local transforms re-rooted: the hips over the origin at their
+/// height, facing +Z. Its lean from upright is bounded by `max`: first, off
+/// the ground, the root's pitch (pelvis to chest), turning the whole body
+/// about the hips,
+/// then the spine's (hips to head), turning the torso at the spine so the
+/// legs keep their bend. Answers the transforms and the lean (hips to
+/// head) they have.
+fn rerooted(
+    skeleton: &Skeleton,
+    asset: &SkeletonAsset,
+    pose: &Pose,
+    max: f32,
+    grounded: bool,
+) -> (Vec<Trs>, f32) {
     let h = heading(pose.positions[RIGHT_LEG], pose.positions[LEFT_LEG]);
     let mut local = skeleton.local(pose);
     let undo = rotation_of(-h);
     local[0].translation = Vec3::new(0.0, local[0].translation.y, 0.0);
     local[0].rotation = (undo * local[0].rotation).normalize();
-    if upright {
-        let up = undo * (Vec3::from(pose.positions[HEAD]) - Vec3::from(pose.positions[0]));
-        let lean = og_core::math::acos(up.normalize_or_zero().y.clamp(-1.0, 1.0));
-        let axis = up.cross(Vec3::Y);
-        if lean > JUMP_LEAN && axis.length_squared() > 1e-12 {
-            let back = og_core::math::quat_from_axis_angle(axis.normalize(), lean - JUMP_LEAN);
-            local[0].rotation = (back * local[0].rotation).normalize();
-        }
+    // Measured on the transforms as drawn (forward kinematics), not on the
+    // model's positions.
+    let from_hips = |local: &[Trs], j: usize| {
+        let m = asset.model_space(local);
+        m[j].translation - m[0].translation
+    };
+    // On the ground the legs stay where the model put them (turning the
+    // root would swing a planted foot): only the torso is turned there.
+    if !grounded {
+        let root = unlean(from_hips(&local, CHEST), max);
+        local[0].rotation = (root * local[0].rotation).normalize();
     }
-    local
+    if skeleton.parents[SPINE] == 0 {
+        let spine = unlean(from_hips(&local, HEAD), max);
+        let r0 = local[0].rotation;
+        local[SPINE].rotation = (r0.inverse() * spine * r0 * local[SPINE].rotation).normalize();
+    }
+    let lean = lean_of(from_hips(&local, HEAD));
+    (local, lean)
 }
 
-/// The palette of `a` for the frame between `prev` and `next` at `phase`.
-fn palette(r: &Ready, a: &Seen, s: &mut Shown) -> Option<Vec<Mat4>> {
+/// The lean a frame of library pose `pose` may have, rad.
+fn lean_bound(pose: Option<usize>) -> f32 {
+    match pose {
+        Some(JUMP) => JUMP_LEAN,
+        Some(CROUCH) => CROUCH_LEAN,
+        _ => std::f32::consts::PI,
+    }
+}
+
+fn palette(r: &Ready, a: &Seen, s: &mut Shown, elapsed: f32) -> Option<Vec<Mat4>> {
     let (target, map) = s.target.as_ref()?;
     let prev = s.prev?;
     let next = s.next.unwrap_or(prev);
-    // A jump's frames keep the body near upright: the model's jump can
-    // pitch it close to horizontal, which reads as a dive.
-    let upright = |f: &Frame| s.issued(f).is_some_and(|g| g.pose == JUMP);
-    let frames = [
-        rerooted(&r.soma_skeleton, &prev.pose, upright(&prev)),
-        rerooted(&r.soma_skeleton, &next.pose, upright(&next)),
-    ];
+    // A jump's and a crouch's frames keep the body near upright (the model
+    // can pitch it close to horizontal, which reads as a dive), and no
+    // frame pitches forward faster than LEAN_RATE from the last drawn.
+    let rate = s.lean.map_or(std::f32::consts::PI, |l| {
+        l + LEAN_RATE * elapsed.max(1.0 / 120.0)
+    });
+    let grounded = |f: &Frame| f.contacts.iter().any(|c| *c > og_motion::soma::CONTACT);
+    let bound = |f: &Frame| lean_bound(s.issued(f).map(|g| g.pose)).min(rate);
+    let (a0, l0) = rerooted(
+        &r.soma_skeleton,
+        &r.soma,
+        &prev.pose,
+        bound(&prev),
+        grounded(&prev),
+    );
+    let (a1, l1) = rerooted(
+        &r.soma_skeleton,
+        &r.soma,
+        &next.pose,
+        bound(&next),
+        grounded(&next),
+    );
+    s.lean = Some(l0 + (l1 - l0) * s.phase.clamp(0.0, 1.0));
+    let frames = [a0, a1];
     let clip = og_motion::soma::clip("motion", &r.soma, &frames);
     let out = og_anim::retarget(
         &r.soma,
@@ -766,6 +843,7 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
                 facing: 0.0,
                 planted: [None; 2],
                 slide: (0.0, 0, 0.0),
+                lean: None,
                 issued: VecDeque::new(),
                 next_id: 0,
             }
@@ -881,7 +959,7 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
             s.phase = s.phase.min(1.0);
             s.starved += 1;
         }
-        if let Some(m) = palette(r, a, s) {
+        if let Some(m) = palette(r, a, s, elapsed) {
             s.shown += 1;
             p.palettes.insert(a.entity, m);
         }
@@ -938,6 +1016,8 @@ pub(crate) fn dump(eng: &Engine) -> Value {
                     "maxMm": 1000.0 * s.slide.2,
                 },
                 "rig": s.target.as_ref().map(|(_, m)| m.scheme.clone()),
+                // The drawn body's lean from upright (hips to head).
+                "leanDeg": s.lean.map(|l| l.to_degrees()),
                 // The drawn frame: the pose its model goal asked for, and
                 // how far behind the frame clock it is (s).
                 "drawnPose": s.next.and_then(|f| s.issued(&f)).map(|g| POSES[g.pose]),
