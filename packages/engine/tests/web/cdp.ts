@@ -30,6 +30,17 @@ export function chromePath(argv: string[] = process.argv): string {
   return path;
 }
 
+/** Poll `read` (the test's own state, a server's requests) until it is truthy; throws naming `what` after `timeoutMs`. */
+export async function waitFor<T>(read: () => T, what: string, timeoutMs = 30_000): Promise<NonNullable<T>> {
+  const t0 = performance.now();
+  for (;;) {
+    const v = read();
+    if (v) return v as NonNullable<T>;
+    if (performance.now() - t0 > timeoutMs) throw new Error(`timed out after ${timeoutMs} ms waiting for ${what}`);
+    await new Promise((r) => setTimeout(r, 50));
+  }
+}
+
 type Pending = { resolve(v: unknown): void; reject(e: Error): void };
 
 export class Browser {
@@ -291,6 +302,30 @@ export class Page {
       }
       if (performance.now() - t0 > timeoutMs) throw new Error(`timed out after ${timeoutMs} ms waiting for ${expression}`);
       await new Promise((r) => setTimeout(r, 50));
+    }
+  }
+
+  /** Resolve once the page has run `n` animation frames (requestAnimationFrame callbacks). */
+  async afterFrames(n: number): Promise<void> {
+    await this.eval(`new Promise((r) => { let k = 0; const f = () => (++k >= ${n} ? r(true) : requestAnimationFrame(f)); requestAnimationFrame(f); })`);
+  }
+
+  /**
+   * Wait until `expression`'s value is the same before and after `frames`
+   * animation frames of the page (a clock that settled or holds), and answer
+   * it; throws `what` did not hold after `timeoutMs`, with the last values.
+   */
+  async held<T>(expression: string, what: string, o: { frames?: number; timeoutMs?: number } = {}): Promise<T> {
+    const t0 = performance.now();
+    const timeoutMs = o.timeoutMs ?? 30_000;
+    let seen: unknown[] = [];
+    for (;;) {
+      const a = await this.eval<T>(expression);
+      await this.afterFrames(o.frames ?? 30);
+      const b = await this.eval<T>(expression);
+      if (JSON.stringify(a) === JSON.stringify(b)) return b;
+      seen = [a, b];
+      if (performance.now() - t0 > timeoutMs) throw new Error(`timed out after ${timeoutMs} ms waiting for ${what} to hold (last ${JSON.stringify(seen)})`);
     }
   }
 

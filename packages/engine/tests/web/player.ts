@@ -44,7 +44,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { settingsOf, webBuild } from "../../src/node/web-build.ts";
-import { Browser, chromePath } from "./cdp.ts";
+import { Browser, chromePath, waitFor } from "./cdp.ts";
 import { readHeaders, serve, TYPES } from "./serve.ts";
 
 const args = process.argv.slice(2);
@@ -82,14 +82,13 @@ const check = (ok: boolean, what: string, detail?: unknown) => {
   checks.push({ check: what, ok, ...(ok ? {} : { detail }) });
   console.log(`${ok ? "ok  " : "FAIL"} ${what}${ok ? "" : `: ${String(JSON.stringify(detail)).slice(0, 400)}`}`);
 };
-const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const server = serve({ dist: join(work, "publish"), isolate: true, extra: { "/g/runner": player } });
 const browser = await Browser.launch({ chrome: chromePath(args) });
 let got: Array<{ kind: string; value?: number; substrate?: string; at: number }> = [];
 try {
   const page = await browser.open(`http://127.0.0.1:${server.port}/g/runner`);
-  await page.until("got.some((m) => m.kind === 'ready')", 60_000);
-  await wait(800);
+  // `ready` follows the first frame; the boot `sample` is posted at the first frame too.
+  await page.until("got.some((m) => m.kind === 'ready') && got.some((m) => m.kind === 'sample')", 60_000);
   got = await page.eval("got");
   const kinds = got.map((m) => m.kind);
   check(kinds[0] === "hello" && got[0]!.substrate === "origin-engine", "hello first, with substrate origin-engine", got[0]);
@@ -99,24 +98,20 @@ try {
   check(!kinds.includes("fail") && !kinds.includes("crash"), "no fail, no crash", kinds);
   const gate = await page.eval<boolean>("g.contentWindow.document.getElementById('og-gate').hidden");
   check(gate === true, "under a Player the shell draws no gate of its own", gate);
-  const t0 = await page.eval<number>("g.contentWindow.__runtime_probe__.tick()");
-  await wait(400);
-  const t1 = await page.eval<number>("g.contentWindow.__runtime_probe__.tick()");
-  check(t0 === t1, "before start the clock holds", { t0, t1 });
+  const TICK = "g.contentWindow.__runtime_probe__.tick()";
+  // Behind the Player's gate the Worker may still be settling the store's answer (settle.ts):
+  // the clock holds once the tick stays put across the page's frames.
+  const t1 = await page.held<number>(TICK, "the tick before start").catch((e: Error) => e.message);
+  check(typeof t1 === "number", "before start the clock holds", t1);
   await page.eval("send('start')");
-  await wait(700);
-  const t2 = await page.eval<number>("g.contentWindow.__runtime_probe__.tick()");
-  check(t2 > t1 + 20, "start plays", { t1, t2 });
+  const t2 = await page.until<number>(`${TICK}.then((t) => t > ${Number(t1) + 20} && t)`, 30_000).catch((e: Error) => e.message);
+  check(typeof t2 === "number", "start plays", { t1, t2 });
   await page.eval("send('pause')");
-  await wait(200);
-  const t3 = await page.eval<number>("g.contentWindow.__runtime_probe__.tick()");
-  await wait(500);
-  const t4 = await page.eval<number>("g.contentWindow.__runtime_probe__.tick()");
-  check(t4 === t3, "pause holds the clock", { t3, t4 });
+  const t4 = await page.held<number>(TICK, "the tick after pause").catch((e: Error) => e.message);
+  check(typeof t4 === "number", "pause holds the clock", t4);
   await page.eval("send('resume')");
-  await wait(600);
-  const t5 = await page.eval<number>("g.contentWindow.__runtime_probe__.tick()");
-  check(t5 > t4 + 20, "resume plays again", { t4, t5 });
+  const t5 = await page.until<number>(`${TICK}.then((t) => t > ${Number(t4) + 20} && t)`, 30_000).catch((e: Error) => e.message);
+  check(typeof t5 === "number", "resume plays again", { t4, t5 });
   const calls = (await page.eval<Array<{ kind: string; method?: string; id?: string; args?: { key?: string } }>>("got")).filter((m) => m.kind === "call");
   check(calls.some((c) => c.method === "store.get" && c.args?.key === "best" && typeof c.id === "string"), "og.platform's store.get reached the Player as its store.get call", calls);
   check(!calls.some((c) => c.method?.startsWith("save.")), "with store.* in the hello, the save is never read", calls);
@@ -140,6 +135,8 @@ const served: string[] = [];
 const dist = join(work, "publish");
 const rules = readHeaders(dist);
 declare const Bun: { serve(o: { port: number; hostname: string; fetch(r: Request): Response | Promise<Response> }): { port: number; stop(): void }; file(p: string): Blob };
+let releaseWasm = () => {};
+let wasmHeld = Promise.resolve();
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 const origin = Bun.serve({
   port: 0,
@@ -180,8 +177,8 @@ const origin = Bun.serve({
       const html = readFileSync(path, "utf8").replace(/<head[^>]*>/, (m) => `${m}<script id="__og-game-config">window.__OG_GAME=${JSON.stringify({ id: GAME.id, version: 1, releaseId: GAME.releaseId, protocol: 2 })}</script>`);
       return new Response(html, { headers });
     }
-    // The engine binary arrives late, so the boot splash (and its backdrop) can be seen.
-    if (rel.endsWith(".wasm")) await wait(2500);
+    // The engine binary is held until the boot splash (and its backdrop) has been captured.
+    if (rel.endsWith(".wasm")) await wasmHeld;
     return new Response(Bun.file(path), { headers });
   },
 });
@@ -195,6 +192,7 @@ const save = (name: string, png: Uint8Array) => {
 };
 for (const view of [{ name: "desktop", width: 1280, height: 720, mobile: false }, { name: "phone", width: 390, height: 844, mobile: true }]) {
   requests.length = 0;
+  wasmHeld = new Promise((r) => (releaseWasm = r));
   const browser2 = await Browser.launch({ chrome: chromePath(args), width: view.width, height: view.height });
   try {
     const page = await browser2.open("about:blank");
@@ -203,11 +201,12 @@ for (const view of [{ name: "desktop", width: 1280, height: 720, mobile: false }
       await page.send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
     }
     await page.send("Page.navigate", { url: `http://127.0.0.1:${origin.port}${ROOT}?level=2#og-h=${CODE}&lvl=3` });
-    await page.until("document.querySelector('#og-backdrop[data-shown]') && !document.getElementById('og-boot').hidden", 20_000).catch(() => null);
-    await wait(400);
+    // The splash with the cover's backdrop faded in (its opacity transition done, the image decoded).
+    await page.until("(() => { const b = document.querySelector('#og-backdrop[data-shown]'); return b && !document.getElementById('og-boot').hidden && b.getAnimations().length === 0 && b.querySelector('img')?.complete && getComputedStyle(b).opacity === '0.45'; })()", 30_000).catch(() => null);
     const booting = await page.eval<{ boot: boolean; backdrop: boolean }>("({ boot: !document.getElementById('og-boot').hidden, backdrop: !!document.querySelector('#og-backdrop[data-shown]') })");
     check(booting.boot && booting.backdrop, `${view.name}: the boot splash stands on the cover's backdrop`, booting);
     save(`top-level-${view.name}-boot.png`, await page.screenshot());
+    releaseWasm();
     await page.until("document.querySelector('#og-gate') && !document.getElementById('og-gate').hidden", 60_000);
     await page.until("document.querySelector('#og-backdrop[data-shown]')", 10_000).catch(() => null);
     const v = view.name;
@@ -216,9 +215,7 @@ for (const view of [{ name: "desktop", width: 1280, height: 720, mobile: false }
     const hello = requests.find((r) => r.path === "hello");
     check(!!hello && hello.body?.["handoff"] === CODE && hello.bearer === null && hello.body?.["kind"] === "hello" && hello.body?.["substrate"] === "origin-engine", `${v}: the hello carried the code in its body and no bearer`, hello);
     check(!served.some((p) => p.includes(CODE)), `${v}: no URL the browser fetched names the code`, served.filter((p) => p.includes(CODE)));
-    const storeGet = () => requests.find((r) => r.path === "call" && r.body?.["method"] === "store.get");
-    for (let i = 0; i < 50 && !storeGet(); i++) await wait(100);
-    const call = storeGet();
+    const call = await waitFor(() => requests.find((r) => r.path === "call" && r.body?.["method"] === "store.get"), "og.platform's store.get at the play origin", 30_000).catch(() => undefined);
     check(call?.bearer === "Bearer ogp_account_token" && (call?.body?.["args"] as { key?: string })?.key === "best", `${v}: og.platform's store.get went to /__player/v2/…/call with the redeemed credential`, call ?? requests);
     const stored = await page.eval<Record<string, string | null>>(`({ token: localStorage.getItem("og_token_${GAME.id}"), portal: localStorage.getItem("og_portal_${GAME.id}"), any: Object.keys(localStorage).filter((k) => (localStorage.getItem(k) ?? "").includes("ogp_account_token")) })`);
     check(stored["token"] === null && stored["portal"] === "1" && (stored["any"] as unknown as string[]).length === 0, `${v}: the account credential is in no storage, the Player's marker is set`, stored);
@@ -229,23 +226,23 @@ for (const view of [{ name: "desktop", width: 1280, height: 720, mobile: false }
     save(`top-level-${v}-gate.png`, await page.screenshot());
     if (view.mobile) await page.tap(view.width / 2, view.height / 2);
     else await page.click(view.width / 2, view.height / 2);
-    await page.until("document.getElementById('og-back').hasAttribute('data-playing')", 10_000);
+    await page.until("document.getElementById('og-back').hasAttribute('data-playing')", 30_000);
     const t1 = await page.eval<number>("__runtime_probe__.tick()");
-    await wait(1500);
-    const t2 = await page.eval<number>("__runtime_probe__.tick()");
-    check(t2 > t1 + 20, `${v}: the gate's tap starts play`, { t1, t2 });
+    const t2 = await page.until<number>(`__runtime_probe__.tick().then((t) => t > ${t1 + 20} && t)`, 30_000).catch((e: Error) => e.message);
+    check(typeof t2 === "number", `${v}: the gate's tap starts play`, { t1, t2 });
     const best = (await page.eval<{ facts?: { best?: number } }>("__runtime_probe__.state()")).facts?.best;
     check(best === 777, `${v}: the play origin's stored best is the game's best`, best);
-    for (let i = 0; i < 40 && !requests.some((r) => r.path === "report"); i++) await wait(100);
+    // `start` is reported at the tap and `ready` at once after it (the transport's first batch).
+    await waitFor(() => requests.some((r) => r.path === "report" && ((r.body?.["messages"] as Array<{ kind?: string }>) ?? []).some((m) => m.kind === "ready")), "the report carrying ready", 30_000).catch(() => null);
     const reports = requests.filter((r) => r.path === "report").flatMap((r) => (r.body?.["messages"] as Array<Record<string, unknown>>) ?? []);
     const kinds = reports.map((m) => m["kind"]);
     check(kinds[0] === "start" && kinds.includes("ready") && reports.every((m) => /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(String(m["id"]))), `${v}: start is reported first, then ready, with UUID v7 ids`, kinds);
     save(`top-level-${v}-playing.png`, await page.screenshot());
     // The release's service worker is in charge of the next open.
-    const worker = await Promise.race([page.eval<boolean>("navigator.serviceWorker.ready.then(() => true)"), wait(10_000).then(() => false)]);
+    const worker = await page.until<boolean>("navigator.serviceWorker.getRegistration().then((r) => r?.active?.state === 'activated')", 30_000).catch(() => false);
     check(worker === true, `${v}: the release's service worker is active`, worker);
     await page.eval("document.getElementById('og-back').click()");
-    await page.until("location.pathname === '/portal/games/runner'", 10_000).catch(() => null);
+    await page.until("location.pathname === '/portal/games/runner'", 30_000).catch(() => null);
     const after = await page.eval<string>("location.pathname");
     check(after === "/portal/games/runner", `${v}: Back with no Portal referrer goes to the game's page`, after);
     // A second open in the same browser, now under the release's own service worker: the
@@ -263,12 +260,12 @@ for (const view of [{ name: "desktop", width: 1280, height: 720, mobile: false }
     await again.until("document.querySelector('#og-gate') && !document.getElementById('og-gate').hidden", 60_000).catch(() => null);
     const revisit = await again.eval<{ controlled: boolean; game: boolean; address: string }>("({ controlled: !!navigator.serviceWorker.controller, game: !!window.__OG_GAME, address: location.pathname + location.search + location.hash })");
     check(revisit.controlled && revisit.game, `${v}: the second open is under the service worker and still gets the platform's entry`, revisit);
-    for (let i = 0; i < 50 && !requests.some((r) => r.path === "hello"); i++) await wait(100);
-    const hello2 = requests.find((r) => r.path === "hello");
+    const hello2 = await waitFor(() => requests.find((r) => r.path === "hello"), "the second open's hello", 30_000).catch(() => undefined);
     check(hello2?.body?.["handoff"] === CODE2 && revisit.address === `${ROOT}?level=2`, `${v}: the second open redeems its own code and takes it out of the address`, { hello: hello2?.body, address: revisit.address });
     save(`top-level-${v}-revisit-gate.png`, await again.screenshot());
     top[v] = { address, best, reports: kinds, chrome, revisit };
   } finally {
+    releaseWasm();
     await browser2.close();
   }
 }
@@ -354,7 +351,8 @@ for (const view of [{ name: "desktop", width: 1280, height: 720, mobile: false }
     }
     await page.send("Page.navigate", { url: `http://127.0.0.1:${stage.port}${STAGE_ROOT}` });
     await page.until("window.stageGot && stageGot.some((m) => m.kind === 'ready') && typeof __runtime_probe__ === 'object'", 60_000);
-    await wait(800);
+    // The first tick's store.get, answered by the overlay and applied (its best is a fact).
+    await page.until("stageGot.some((m) => m.kind === 'call' && m.method === 'store.get') && __runtime_probe__.state().then((s) => s.facts?.best === 555)", 30_000).catch(() => null);
     const heard = await page.eval<Array<{ kind: string; substrate?: string; method?: string; args?: { key?: string } }>>("stageGot");
     const kinds = heard.map((m) => m.kind);
     check(heard[0]?.kind === "hello" && heard[0].substrate === "origin-engine", `${v}: the shell's hello reaches the overlay in its own document`, heard[0]);
@@ -364,9 +362,8 @@ for (const view of [{ name: "desktop", width: 1280, height: 720, mobile: false }
     const gate = await page.eval<boolean>("document.getElementById('og-gate').hidden");
     check(gate === true, `${v}: the overlay owns play start: the shell draws no gate`, gate);
     const t1 = await page.eval<number>("__runtime_probe__.tick()");
-    await wait(1000);
-    const t2 = await page.eval<number>("__runtime_probe__.tick()");
-    check(t2 > t1 + 20, `${v}: play runs without a tap (the overlay's hello said started)`, { t1, t2 });
+    const t2 = await page.until<number>(`__runtime_probe__.tick().then((t) => t > ${t1 + 20} && t)`, 30_000).catch((e: Error) => e.message);
+    check(typeof t2 === "number", `${v}: play runs without a tap (the overlay's hello said started)`, { t1, t2 });
     const calls = heard.filter((m) => m.kind === "call");
     check(calls.some((c) => c.method === "store.get" && c.args?.key === "best"), `${v}: og.platform's store.get went to the overlay as a protocol 2 call`, calls);
     const best = (await page.eval<{ facts?: { best?: number } }>("__runtime_probe__.state()")).facts?.best;
@@ -393,8 +390,9 @@ for (const view of [{ name: "desktop", width: 1280, height: 720, mobile: false }
   try {
     const page = await browser4.open(`http://127.0.0.1:${stage.port}${STAGE_ROOT}?silent=1`);
     await page.until("document.querySelector('#og-gate') && !document.getElementById('og-gate').hidden", 60_000);
-    // The first tick's store.get (behind the gate) is answered once the 1.5 s hello wait ends.
-    await wait(2000);
+    // The first tick's store.get (behind the gate) is answered from the page's memory once the
+    // 1.5 s hello wait ends, and the Worker takes a tick behind the gate to apply it (settle.ts).
+    await page.until("__runtime_probe__.tick().then((t) => t >= 2)", 30_000).catch(() => null);
     const hellos = await page.eval<number>("stageGot.filter((m) => m.kind === 'hello').length");
     check(hellos >= 2 && hellos <= 6, `${v}: the shell repeats its hello (at most six) while no overlay answers`, hellos);
     const keys = await page.eval<string[]>("Object.keys(localStorage)");

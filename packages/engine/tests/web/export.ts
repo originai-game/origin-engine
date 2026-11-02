@@ -60,7 +60,6 @@ const save = (name: string, png: Uint8Array) => {
   writeFileSync(join(out, name), png);
   return name;
 };
-const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // ── the builds ─────────────────────────────────────────────────────────
 const builds: Record<string, { dist: string; manifest: BuildManifest; total: { bytes: number; compressed: number }; files: Array<{ path: string; bytes: number; compressed: number }> }> = {};
@@ -91,6 +90,11 @@ for (const game of ["runner", "match3"]) {
   check(m.game.profile === "2d" && m.variant === "2d" && m.lanes !== null && same("origin-engine-lanes_bg.wasm") && same("origin-engine-lanes.js"), `${game}: a 2d game ships the 2D lanes module (dist/web-publish-2d)`, { profile: m.game.profile, variant: m.variant, lanes: m.lanes });
 }
 
+// The ticks behind the gate: the first (it builds the first screen), then one per round of
+// og.platform answers the Worker applies before the tap (src/web/settle.ts). The runner asks the
+// store for its best on its first tick, so a second tick applies the answer; match3 asks nothing.
+const BEHIND_GATE: Record<string, number> = { runner: 2, match3: 1 };
+
 const results: Record<string, unknown> = {};
 const browser = await Browser.launch({ chrome });
 
@@ -118,18 +122,18 @@ try {
         const gate = await page.eval<boolean>("!document.getElementById('og-gate').hidden");
         check(gate, `${label}: the play gate is up after the first frame`);
         const gateShot = save(`${game}-${backend}-gate.png`, await page.screenshot());
-        const before = await page.eval<number>("__runtime_probe__.tick()");
-        check(before === 1, `${label}: behind the gate the game took its first tick (its first screen, UI included)`, before);
+        // Sampled once the clock holds: the settling ticks may still land after the first frame.
+        const before = await page.held<number>("__runtime_probe__.tick()", `${label}'s tick behind the gate`);
+        check(before === BEHIND_GATE[game], `${label}: behind the gate the game took its first tick (its first screen, UI included) and ${BEHIND_GATE[game]! - 1} to apply the store's answers, then held`, before);
         await page.tap(640, 360);
-        await wait(1500);
-        const after = await page.eval<number>("__runtime_probe__.tick()");
-        check(after > before + 30, `${label}: a tap on the gate starts the clock`, { before, after });
+        const after = await page.until<number>(`__runtime_probe__.tick().then((t) => t > ${before + 30} && t)`, 30_000).catch((e: Error) => e.message);
+        check(typeof after === "number", `${label}: a tap on the gate starts the clock`, { before, after });
         const isolated = await page.eval<boolean>("crossOriginIsolated");
         check(isolated && t.lanes.on && t.lanes.threads > 1, `${label}: isolated, the engine runs the lanes variant on ${t.lanes.threads} Workers`, t.lanes);
         const playShot = save(`${game}-${backend}-play.png`, await page.screenshot());
         const errors = log.filter((l) => /^(error|exception)/.test(l));
         check(errors.length === 0, `${label}: no console errors`, errors.slice(0, 5));
-        results[label] = { ...t, isolated, ticksAfterTap: after - before, gate: gateShot, play: playShot };
+        results[label] = { ...t, isolated, ticksAfterTap: Number(after) - before, gate: gateShot, play: playShot };
       } catch (e) {
         check(false, `${label}: loads`, { error: String(e), log: log.slice(-20) });
       } finally {
@@ -151,7 +155,8 @@ try {
       const motion0 = await page.eval<string>("document.querySelector('.og-boot-mark').dataset.motion");
       boot.splash = save("runner-boot-splash.png", await page.screenshot());
       check(motion0 === "genesis", "boot: the splash plays genesis", motion0);
-      await wait(450);
+      // genesis part-way: its animations 450 ms in (or already handed to progress).
+      await page.until("document.querySelector('.og-boot-mark').dataset.motion !== 'genesis' || document.querySelector('.og-boot-mark').getAnimations({ subtree: true }).some((a) => a.currentTime >= 450)", 30_000);
       boot.genesis = save("runner-boot-genesis.png", await page.screenshot());
       const p = await page.until<{ motion: string; label: string; offset: string; now: string }>(
         "(() => { const m = document.querySelector('.og-boot-mark'); const v = Number(document.getElementById('og-boot').getAttribute('aria-valuenow')); return m.dataset.motion === 'progress' && v >= 20 && v <= 80 ? { motion: m.dataset.motion, label: document.getElementById('og-boot-label').textContent, offset: m.querySelector('[data-part=wipe]').style.strokeDashoffset, now: String(v) } : null })()",
@@ -176,8 +181,10 @@ try {
       check(!!sw && cached > 10, "the service worker precached the build", { sw, cached });
       await page.send("Network.enable");
       await page.send("Network.emulateNetworkConditions", { offline: true, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+      // The reloaded document is the one without the mark.
+      await page.eval("window.__ogBeforeReload = true");
       await page.send("Page.reload", { ignoreCache: false });
-      await wait(500);
+      await page.until("document.readyState !== 'loading' && !window.__ogBeforeReload", 30_000);
       const offline = await load(page);
       check(offline.firstFrame > 0, "offline: the game starts from the service worker's cache", offline);
       check(offline.lanes.on, "offline: the lanes variant boots from the service worker's precache", offline.lanes);
@@ -218,6 +225,8 @@ try {
     try {
       await page.send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 3, mobile: true });
       await page.send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
+      // Whether Chrome made its install prompt, seen from the document's start (before the shell listens).
+      await page.send("Page.addScriptToEvaluateOnNewDocument", { source: "window.__ogInstallPrompt = false; addEventListener('beforeinstallprompt', () => { window.__ogInstallPrompt = true; });" });
       await page.send("Page.navigate", { url: `http://127.0.0.1:${server.port}/game/index.html` });
       const phone = await load(page);
       check(!phone.lanes.on && /not cross-origin isolated/.test(phone.lanes.why), "phone: without isolation, the single-threaded engine says why", phone.lanes);
@@ -227,12 +236,14 @@ try {
       check(size.cssW === 390 && size.cssH === 844, "phone: the canvas fills 390×844", size);
       check(size.w === 780 && size.h === 1688, "phone: drawn at the DPR cap of 2 (780×1688), not 3", size);
       check(!size.iso && size.button === "Tap to play", "phone: without isolation, a touch gate", size);
-      await wait(500);
-      const hint = await page.eval<boolean>("document.getElementById('og-install').hidden");
-      check(hint, "phone: no install hint where the criteria do not hold (Chrome made no install prompt; not iOS Safari)", hint);
+      // The shell listens for beforeinstallprompt once it has booted (installPwa); whether Chrome
+      // prompted, and when, is in the detail (headless Chrome prompts before the shell listens).
+      const install = await page.eval<{ hidden: boolean; prompted: boolean }>("({ hidden: document.getElementById('og-install').hidden, prompted: window.__ogInstallPrompt })");
+      check(install.hidden, "phone: no install hint behind the gate (not iOS Safari)", install);
       const gate = save("match3-phone-gate.png", await page.screenshot());
+      const before = await page.eval<number>("__runtime_probe__.tick()");
       await page.tap(195, 422);
-      await wait(1500);
+      await page.until(`__runtime_probe__.tick().then((t) => t > ${before + 30})`, 30_000);
       const play = save("match3-phone-play.png", await page.screenshot());
       results["match3 phone"] = { ...size, gate, play };
     } catch (e) {
