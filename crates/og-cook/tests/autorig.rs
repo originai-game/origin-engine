@@ -845,3 +845,182 @@ fn every_template_plays_its_library_with_its_feet_on_the_ground() {
         "the launch is {launch:?}"
     );
 }
+
+/// The triangles a slot draws in `pose`, rig pixels.
+fn slot_triangles(rig: &Rig2dAsset, pose: &og_anim::Pose2d, slot: usize) -> Vec<[[f32; 2]; 3]> {
+    let (vertices, indices) = rig.triangles(pose);
+    let mut first = 0;
+    for &s in &pose.order {
+        let k = match pose.slots[s].map(|a| &rig.attachments[a].kind) {
+            Some(AttachmentKind::Region { .. }) => 6,
+            Some(AttachmentKind::Mesh { triangles, .. }) => triangles.len(),
+            _ => 0,
+        };
+        if s == slot {
+            let p = |i: u32| {
+                let v = &vertices[i as usize];
+                [v.position[0] * rig.unit, v.position[1] * rig.unit]
+            };
+            return indices[first..first + k]
+                .chunks(3)
+                .map(|t| [p(t[0]), p(t[1]), p(t[2])])
+                .collect();
+        }
+        first += k;
+    }
+    Vec::new()
+}
+
+/// A polygon's area.
+fn area(p: &[[f32; 2]]) -> f32 {
+    let twice: f32 = (0..p.len())
+        .map(|i| {
+            let (u, v) = (p[i], p[(i + 1) % p.len()]);
+            u[0] * v[1] - v[0] * u[1]
+        })
+        .sum();
+    (twice / 2.0).abs()
+}
+
+/// What two convex polygons share: `a` clipped by each edge of `b`
+/// (Sutherland and Hodgman).
+fn clip_polygon(a: &[[f32; 2]], b: &[[f32; 2]]) -> Vec<[f32; 2]> {
+    let twice: f32 = (0..b.len())
+        .map(|i| {
+            let (u, v) = (b[i], b[(i + 1) % b.len()]);
+            u[0] * v[1] - v[0] * u[1]
+        })
+        .sum();
+    if twice == 0.0 {
+        return Vec::new();
+    }
+    let mut out = a.to_vec();
+    for i in 0..b.len() {
+        let (e0, e1) = (b[i], b[(i + 1) % b.len()]);
+        let inside = |p: [f32; 2]| {
+            twice.signum() * ((e1[0] - e0[0]) * (p[1] - e0[1]) - (e1[1] - e0[1]) * (p[0] - e0[0]))
+        };
+        let input = std::mem::take(&mut out);
+        for j in 0..input.len() {
+            let (p, q) = (input[j], input[(j + 1) % input.len()]);
+            let (dp, dq) = (inside(p), inside(q));
+            if dp >= 0.0 {
+                out.push(p);
+            }
+            if (dp >= 0.0) != (dq >= 0.0) {
+                let t = dp / (dp - dq);
+                out.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]);
+            }
+        }
+        if out.len() < 3 {
+            return Vec::new();
+        }
+    }
+    out
+}
+
+/// The area slots `a` and `b` draw over each other in `pose` where it
+/// shows, rig pixels squared: each pair of their triangles' shared
+/// polygon (a part's own triangles tile it without overlapping), less
+/// what the one part drawn in front of both that covers most of it
+/// hides (a robe over the tops of the thighs).
+fn seen_overlap(rig: &Rig2dAsset, pose: &og_anim::Pose2d, a: usize, b: usize) -> f32 {
+    let rank = |s: usize| pose.order.iter().position(|&o| o == s).unwrap();
+    let front: Vec<Vec<[[f32; 2]; 3]>> = pose
+        .order
+        .iter()
+        .filter(|&&s| rank(s) > rank(a).max(rank(b)))
+        .map(|&s| slot_triangles(rig, pose, s))
+        .collect();
+    let (ta, tb) = (slot_triangles(rig, pose, a), slot_triangles(rig, pose, b));
+    let mut total = 0.0;
+    for p in &ta {
+        for q in &tb {
+            let shared = clip_polygon(p, q);
+            if shared.is_empty() {
+                continue;
+            }
+            let hidden = front
+                .iter()
+                .map(|tris| {
+                    tris.iter()
+                        .map(|t| {
+                            let c = clip_polygon(&shared, t);
+                            if c.is_empty() { 0.0 } else { area(&c) }
+                        })
+                        .sum::<f32>()
+                })
+                .fold(0.0f32, f32::max);
+            total += (area(&shared) - hidden).max(0.0);
+        }
+    }
+    total
+}
+
+#[test]
+fn seen_from_the_front_the_legs_never_cross_in_any_clip() {
+    // The mage of examples/autorig: its boots, shins and thighs drawn 4
+    // pixels apart, the closest legs of any front-view art made.
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join("og-cook-autorig")
+        .join("mage");
+    let _ = std::fs::remove_dir_all(&root);
+    let chars = root.join("assets/chars");
+    std::fs::create_dir_all(&chars).unwrap();
+    let art = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../examples/autorig/assets/chars");
+    for f in ["mage.psd", "mage.ogt"] {
+        std::fs::copy(art.join(f), chars.join(f)).unwrap();
+    }
+    let rig = cooked(&root).load_rig2d("chars/mage.ogt").unwrap();
+    assert_eq!(rig.clips.len(), 10);
+    let slot = |n: &str| rig.slots.iter().position(|s| s.name == n).unwrap();
+    // Every drawn part of one leg against every one of the other.
+    let legs = ["leg-upper", "leg-lower", "foot"];
+    let setup = rig.pose(None, 0.0, &[]);
+    let pairs: Vec<(String, String, f32, f32)> = legs
+        .iter()
+        .flat_map(|a| {
+            legs.iter()
+                .map(move |b| (format!("{a}-l"), format!("{b}-r")))
+        })
+        .map(|(a, b)| {
+            let (sa, sb) = (slot(&a), slot(&b));
+            // What the pair already overlaps as drawn.
+            let rest = seen_overlap(&rig, &setup, sa, sb);
+            // One pixel of slide along the shorter part's height: a
+            // sliver that thin is the parts' anti-aliased edges, not a
+            // leg in front of the other.
+            let tall = |s: &str| {
+                let tris = slot_triangles(&rig, &setup, slot(s));
+                let ys = tris.iter().flatten().map(|p| p[1]);
+                ys.clone().fold(f32::MIN, f32::max) - ys.fold(f32::MAX, f32::min)
+            };
+            let slack = tall(&a).min(tall(&b));
+            (a, b, rest, slack)
+        })
+        .collect();
+    let mut crossed = Vec::new();
+    for c in &rig.clips {
+        // Every frame at 30 frames a second.
+        let frames = (c.duration * 30.0).round() as usize;
+        for i in 0..=frames {
+            let f = i as f32 / frames as f32;
+            let pose = rig.pose(Some(c), f * c.duration, &[]);
+            for (a, b, rest, slack) in &pairs {
+                let more = seen_overlap(&rig, &pose, slot(a), slot(b)) - rest;
+                if more > *slack {
+                    crossed.push(format!(
+                        "{} at {f:.2}: {a} over {b} by {more:.0} px² (as drawn {rest:.0}, slack {slack:.0})",
+                        c.name
+                    ));
+                }
+            }
+        }
+    }
+    assert!(
+        crossed.is_empty(),
+        "{} frames where one leg's parts draw over the other's: {:#?}",
+        crossed.len(),
+        &crossed[..crossed.len().min(20)]
+    );
+}

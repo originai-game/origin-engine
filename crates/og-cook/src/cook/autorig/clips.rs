@@ -227,6 +227,17 @@ impl<'a> Clip<'a> {
         }
     }
 
+    /// The pose at `fraction` of the clip as built so far.
+    pub fn pose(&self, fraction: f32) -> og_anim::Pose2d {
+        self.rig
+            .pose(Some(&self.clip), fraction * self.clip.duration, &[])
+    }
+
+    /// The fractions every track is sampled at.
+    pub fn samples(&self) -> Vec<f32> {
+        self.times()
+    }
+
     /// Turns a chain (`base`, `base-2`, ...): bone `k` by `f(fraction, k)`.
     pub fn chain(&mut self, base: &str, f: impl Fn(f32, usize) -> f32) {
         for k in 0..8 {
