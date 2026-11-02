@@ -57,6 +57,7 @@ declare module "bun:test" {
     function each<T extends readonly unknown[]>(rows: readonly T[]): (name: string, body: (...row: [...T]) => unknown, timeout?: number) => void;
   }
   export function describe(name: string, body: () => void): void;
+  export function setDefaultTimeout(ms: number): void;
   export function beforeAll(body: Body): void;
   export function afterAll(body: Body): void;
   interface Matchers {
