@@ -8,7 +8,7 @@
 //! | [`QueryDesc`], [`QueryIter`], [`ArchetypeView`] | queries yielding per-field column slices |
 //! | [`SystemDesc`], [`SystemContext`] | declared systems and what they may touch |
 //! | [`Bundle`] | `()` or a tuple of components for spawning |
-//! | [`StateBlock`] | a module's state outside archetypes and resources, saved and restored with the world |
+//! | [`StateBlock`], [`trailer`] | a module's state outside archetypes and resources, saved and restored with the world; the tagged trailer a block grows by |
 //! | [`SnapshotEdit`], [`TypeValues`] | a snapshot opened for editing: what a save migration changes before a restore |
 //! | [`SelectionReport`] | what restoring a selection (tagged entities and chosen resources) did |
 //! | [`HookDesc`], [`StateDesc`], [`StateRun`] | add and remove hooks; state machines and the systems bound to their values |
@@ -59,7 +59,7 @@ pub use registry::{FieldRef, SchemaId};
 pub use schedule::{SystemContext, SystemDesc, SystemInfo};
 pub use snapshot::{MigrationReport, snapshot_type_names};
 pub use spatial::{Neighbour, SpatialDesc, SpatialHash};
-pub use state::StateBlock;
+pub use state::{StateBlock, trailer};
 pub use world::{Bundle, BundleEncoder, MAX_NAME, World, WorldDesc, last_tick};
 
 pub use og_core::{Error, ErrorKind, Reflect, Result};
