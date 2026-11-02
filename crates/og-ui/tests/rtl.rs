@@ -15,6 +15,9 @@
 //!   `kerning_pairs_tighten_the_measure`
 //! - a right-to-left UI not mirrored, or its text not aligned to the right
 //!   → `a_right_to_left_ui_mirrors_its_layout`
+//! - a scroller off the surface's centre line clipped by its unmirrored box,
+//!   so its content vanishes right to left
+//!   → `a_scrollers_content_shows_where_it_is_mirrored_to`
 
 use og_i18n::Direction;
 use og_ui::shape::{FontFile, GLYPH_PUA};
@@ -215,6 +218,65 @@ fn a_right_to_left_ui_mirrors_its_layout() {
         assert!(
             (x(&rtl, id) - (400.0 - x(&ltr, id) - w(&ltr, id))).abs() < 0.01,
             "{id} is mirrored about the centre"
+        );
+    }
+}
+
+#[test]
+fn a_scrollers_content_shows_where_it_is_mirrored_to() {
+    let frame = |dir: Direction| {
+        let mut ui = Ui::new(UiDesc::default());
+        ui.set_direction(dir);
+        let vp = Viewport {
+            width: 400.0,
+            height: 200.0,
+            dpr: 1.0,
+            ..Viewport::default()
+        };
+        ui.begin(InputFrame::default(), vp);
+        // A sideways scroller in the row's last quarter: its box is far from its mirror image.
+        ui.row(
+            "Bar",
+            Element {
+                width: Size::grow(),
+                ..Element::default()
+            },
+            |ui| {
+                ui.row(
+                    "Pad",
+                    Element {
+                        width: Size::Fixed(300.0),
+                        height: Size::Fixed(20.0),
+                        ..Element::default()
+                    },
+                    |_| {},
+                );
+                ui.scroll(
+                    "Strip",
+                    ScrollDesc {
+                        width: Size::Fixed(100.0),
+                        height: Size::Fixed(20.0),
+                        axes: ScrollAxes::Horizontal,
+                        ..ScrollDesc::default()
+                    },
+                    |ui| ui.label("Inside", "tab", LabelDesc::default()),
+                );
+            },
+        );
+        ui.end().clone()
+    };
+    for dir in [Direction::Ltr, Direction::Rtl] {
+        let f = frame(dir);
+        let strip = f.element("Strip").unwrap();
+        let inside = f
+            .element("Inside")
+            .unwrap_or_else(|| panic!("{dir:?}: the scroller's content is on screen"));
+        assert!(
+            inside.x >= strip.x - 0.01 && inside.x + inside.width <= strip.x + strip.width + 0.01,
+            "{dir:?}: the content sits in its scroller ({} in {}..{})",
+            inside.x,
+            strip.x,
+            strip.x + strip.width
         );
     }
 }

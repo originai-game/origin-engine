@@ -267,6 +267,10 @@ impl Ui {
             for &i in &order {
                 let r = &mut self.nodes[i].rect;
                 r.x = vp.width - r.x - r.width;
+                // Its clip too (a scroll container's box, laid out left to right): unmirrored, it
+                // would cut away the content of a scroller off the surface's centre line.
+                let c = &mut self.nodes[i].clip;
+                c.x = vp.width - c.x - c.width;
                 let t = self.nodes[i].props.transform;
                 if !t.is_identity() {
                     self.nodes[i].props.transform = t.mirrored();
