@@ -18,9 +18,10 @@ use crate::bundle::{Bundle, BundleError, Config};
 use crate::contract::{COUNTS, FRAMES, MAX_TOKENS, SLOTS};
 use crate::cpu::{CONDITION_ROWS, SEQUENCE, argmax, check_config, tensor_shapes};
 use crate::glue::{
-    CODES, DecoderInputs, HEADS, LOCAL_FEATURES, SLOT_FEATURES, StudentInputs, StudentOutput,
-    TARGET_FEATURES,
+    CODES, DecoderInputs, HEADS, LOCAL_FEATURES, SLOT_FEATURES, Statics, StudentInputs,
+    StudentOutput, TARGET_FEATURES, decoder_inputs, finish, student_inputs,
 };
+use crate::{Generation, Inputs};
 
 #[derive(Clone, Copy)]
 enum Kernel {
@@ -324,6 +325,7 @@ pub struct Gpu {
     /// Pass 1's mask (its 9 rows: CLS and the slots) and pass 2's (26 rows).
     mask_count: wgpu::Buffer,
     mask_full: wgpu::Buffer,
+    statics: Statics,
 }
 
 impl Gpu {
@@ -417,6 +419,21 @@ impl Gpu {
             shapes,
             mask_count,
             mask_full,
+            statics: Statics::new(bundle)?,
+        })
+    }
+
+    /// Generates motion for encoded inputs: [`crate::Model::generate`] on the GPU.
+    pub async fn generate(&self, inputs: &Inputs) -> Result<Generation, GpuError> {
+        let student = self.student(&student_inputs(&self.statics, inputs)).await?;
+        let local = self
+            .decoder(&decoder_inputs(&self.statics, inputs, &student))
+            .await?;
+        let motion = finish(&self.statics, inputs, &student, &local);
+        Ok(Generation {
+            counts: student.counts.clone(),
+            motion,
+            student,
         })
     }
 
