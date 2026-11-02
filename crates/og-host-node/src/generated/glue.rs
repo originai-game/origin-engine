@@ -2247,6 +2247,12 @@ pub fn og_ui_set_focus(env: Env, path: String) {
     <Host as UiApi>::og_ui_set_focus(&Host, path)
 }
 
+#[napi(js_name = "og_ui_scroll_into_view")]
+pub fn og_ui_scroll_into_view(env: Env, path: String, center: bool) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_scroll_into_view(&Host, path, center)
+}
+
 #[napi(js_name = "og_ui_frame_direction")]
 pub fn og_ui_frame_direction(env: Env) -> String {
     let _env = crate::EnvScope::enter(&env);

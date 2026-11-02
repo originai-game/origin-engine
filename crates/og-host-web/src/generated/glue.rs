@@ -1874,6 +1874,11 @@ pub fn og_ui_set_focus(path: String) {
 }
 
 #[wasm_bindgen]
+pub fn og_ui_scroll_into_view(path: String, center: bool) {
+    <Host as UiApi>::og_ui_scroll_into_view(&Host, path, center)
+}
+
+#[wasm_bindgen]
 pub fn og_ui_frame_direction() -> String {
     <Host as UiApi>::og_ui_frame_direction(&Host)
 }

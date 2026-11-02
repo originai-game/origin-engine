@@ -673,3 +673,86 @@ fn a_focused_zoom_view_takes_keys() {
     rig.idle(1, b);
     assert_eq!(zoom(&rig).zoom, 1.0);
 }
+
+/// A board of focusable tiles (the nodes of a saga map), scrolling both ways.
+fn board_of_controls(ui: &mut Ui) {
+    ui.scroll(
+        "Board",
+        ScrollDesc {
+            width: Size::Fixed(200.0),
+            height: Size::Fixed(200.0),
+            axes: ScrollAxes::Both,
+            ..ScrollDesc::default()
+        },
+        |ui| {
+            for r in 0..10 {
+                ui.row(ui_idi("Row", r), Element::default(), |ui| {
+                    for c in 0..10 {
+                        ui.container(
+                            ui_idi("Tile", r * 10 + c),
+                            Element {
+                                width: Size::Fixed(50.0),
+                                height: Size::Fixed(50.0),
+                                interactive: true,
+                                focusable: true,
+                                ..Element::default()
+                            },
+                            |_| {},
+                        );
+                    }
+                });
+            }
+        },
+    );
+}
+
+/// A component scrolls its container to one of its controls (a saga map
+/// opening on the current level): centred in the view on both axes where
+/// the range allows, held at the content's end where it does not, and the
+/// least that shows it whole without `center`. Ways it could fail:
+/// scrolling by the control's own position instead of its distance from
+/// the view's middle, no clamp at the end, one axis only, a control out of
+/// view it cannot find, or offsets outside the UI state.
+#[test]
+fn a_component_scrolls_its_container_to_a_control() {
+    let mut rig = Rig::new(());
+    let target: std::cell::Cell<Option<(&str, bool)>> = std::cell::Cell::new(None);
+    let mut b = |ui: &mut Ui, _: &mut ()| {
+        board_of_controls(ui);
+        if let Some((path, center)) = target.take() {
+            ui.scroll_into_view_path(path, center);
+        }
+    };
+    rig.idle(2, &mut b);
+    let view = rig.ui.frame().element("Board").expect("board").clone();
+    let (vx, vy) = view.center();
+    // Tile 76 (row 7, column 6) is out of view at first; centred, its middle is the view's.
+    assert!(
+        pos(&rig.ui, "Board/Row#7/Tile#76").is_none(),
+        "out of view at first"
+    );
+    target.set(Some(("Board/Row#7/Tile#76", true)));
+    rig.idle(2, &mut b);
+    let (cx, cy) = rig.center("Board/Row#7/Tile#76").into();
+    assert!(
+        (cx - vx).abs() < 0.5 && (cy - vy).abs() < 0.5,
+        "centred on both axes: ({cx}, {cy}) against ({vx}, {vy})"
+    );
+    // The last tile cannot be centred: the board stops at its content's end.
+    target.set(Some(("Board/Row#9/Tile#99", true)));
+    rig.idle(2, &mut b);
+    let last = pos(&rig.ui, "Board/Row#9/Tile#99").expect("the last tile shows");
+    assert!(
+        (last.x + 50.0 - (view.x + view.width)).abs() < 0.5
+            && (last.y + 50.0 - (view.y + view.height)).abs() < 0.5,
+        "held at the end: {last:?} in {view:?}"
+    );
+    // Without center, the least that shows it whole: back to the first tile, near the view's corner.
+    target.set(Some(("Board/Row#0/Tile#0", false)));
+    rig.idle(2, &mut b);
+    let first = pos(&rig.ui, "Board/Row#0/Tile#0").expect("the first tile shows");
+    assert!(
+        first.x >= view.x - 0.5 && first.y >= view.y - 0.5 && first.y < view.y + 20.0,
+        "the least scroll that shows it: {first:?} in {view:?}"
+    );
+}

@@ -1128,6 +1128,9 @@ impl UiApi for WebHost {
     fn og_ui_set_focus(&self, path: String) {
         rt::og_ui_set_focus(path)
     }
+    fn og_ui_scroll_into_view(&self, path: String, center: bool) {
+        rt::og_ui_scroll_into_view(path, center)
+    }
     fn og_ui_counter(&self, id: String, value: f64, desc: Option<String>) -> f64 {
         rt::og_ui_counter(id, value, desc)
     }

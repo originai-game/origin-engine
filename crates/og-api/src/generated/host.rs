@@ -863,6 +863,8 @@ pub trait UiApi: Wire {
     fn og_ui_last_path(&self) -> String;
     /// `og.ui.setFocus`
     fn og_ui_set_focus(&self, path: String);
+    /// `og.ui.scrollIntoView`
+    fn og_ui_scroll_into_view(&self, path: String, center: bool);
     /// `og.ui.frameDirection`
     fn og_ui_frame_direction(&self) -> String;
     /// `og.ui.frameTheme`
@@ -1603,6 +1605,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_seconds",
     "og_ui_last_path",
     "og_ui_set_focus",
+    "og_ui_scroll_into_view",
     "og_ui_frame_direction",
     "og_ui_frame_theme",
     "og_ui_open_anchor",

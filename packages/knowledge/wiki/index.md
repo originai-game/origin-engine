@@ -160,7 +160,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2041 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2042 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -1425,6 +1425,7 @@ Field units the docs and Tune use.
 | [`og.ui.screenVm`](ui.md#fn-screenVm) | function | ui | `og_ui_screen_vm` |
 | [`og.ui.scroll`](ui.md#fn-scroll) | function | ui | — |
 | [`og.ui.scrollArea`](ui.md#fn-scrollArea) | function | ui | — |
+| [`og.ui.scrollIntoView`](ui.md#fn-scrollIntoView) | function | ui | `og_ui_scroll_into_view` |
 | [`og.ui.searchBox`](ui.md#fn-searchBox) | function | ui | — |
 | [`og.ui.seconds`](ui.md#fn-seconds) | function | ui | `og_ui_seconds` |
 | [`og.ui.seek`](ui.md#fn-seek) | function | ui | `og_ui_seek` |

@@ -293,6 +293,12 @@ pub fn og_ui_set_focus(path: String) {
     with_ui("og.ui.setFocus", |ui| ui.set_focus(&path));
 }
 
+pub fn og_ui_scroll_into_view(path: String, center: bool) {
+    with_ui("og.ui.scrollIntoView", |ui| {
+        ui.scroll_into_view_path(&path, center)
+    });
+}
+
 pub fn og_ui_last_path() -> String {
     with_ui("og.ui.lastPath", |ui| ui.last_path()).unwrap_or_default()
 }

@@ -394,6 +394,54 @@ impl Ui {
         }
     }
 
+    /// Scrolls the scroll container around the control at `path` (a full
+    /// path, as [`Ui::focus_path`] names it; an interactive or focusable
+    /// element) so the control is in its view,
+    /// by where both were in the last frame: by the least that shows it
+    /// whole, or with `center` so it stands in the view's middle (a saga
+    /// map opening on the current level). The offset is clamped to the
+    /// container's range; it stops a fling. Nothing for a path the last
+    /// frame had no control at or that is in no scroll container.
+    pub fn scroll_into_view_path(&mut self, path: &str, center: bool) {
+        let key = crate::id::key_of_path(path);
+        if !center {
+            self.scroll_into_view(key);
+            return;
+        }
+        let Some(h) = self.hit(key).copied() else {
+            return;
+        };
+        if h.scroller == 0 {
+            return;
+        }
+        let Some(view) = self.hit(h.scroller).map(|s| s.rect) else {
+            return;
+        };
+        let range = self
+            .state
+            .scroll_info
+            .get(&h.scroller)
+            .map_or(og_core::glam::Vec2::ZERO, |i| i.range);
+        let at = self.offset(h.scroller);
+        let d = og_core::glam::Vec2::new(
+            (h.full.x + h.full.width / 2.0) - (view.x + view.width / 2.0),
+            (h.full.y + h.full.height / 2.0) - (view.y + view.height / 2.0),
+        );
+        let to = (at + d).clamp(
+            og_core::glam::Vec2::ZERO,
+            range.max(og_core::glam::Vec2::ZERO),
+        );
+        if range.y > 0.0 {
+            self.state.scroll.insert(h.scroller, to.y);
+        }
+        if range.x > 0.0 {
+            self.state.scroll_x.insert(h.scroller, to.x);
+        }
+        if self.state.fling.is_some_and(|(k, _)| k == h.scroller) {
+            self.state.fling = None;
+        }
+    }
+
     /// Scrolls the containers around `key` so it is in their view.
     fn scroll_into_view(&mut self, key: u64) {
         let Some(h) = self.hit(key).copied() else {

@@ -22364,6 +22364,7 @@ export interface UiPointer {
 
 
 
+
 /**
  * One node of the accessibility tree: an element with a role (layout containers and spacers have none and are left out).
  */
@@ -45660,6 +45661,13 @@ export declare namespace og {
      * @param path The element's full path (og.ui.lastPath, og.ui.focus).
      */
     function setFocus(path: string): void;
+    /**
+     * Scroll the scroll container around a control (an interactive or focusable element, by its full path) so the control is in its view, by where both were in the last frame: by the least that shows it whole, or centred in the view (a saga map opening on the current level, a list on its chosen row). The offset stays in the container's range and stops a fling. Nothing for a path the last frame had no control at or that is in no scroll container.
+     *
+     * @param path The control's full path (og.ui.lastPath, og.ui.focus).
+     * @param center Centre it in the view, as far as the range allows; false scrolls by the least that shows it.
+     */
+    function scrollIntoView(path: string, center: boolean): void;
     /**
      * The writing direction of the frame being built, `ltr` or `rtl` (og.i18n's locale sets it): code that draws its own arrows, chevrons or progress along a line mirrors them by it; layout mirrors rows and insets itself.
      */
