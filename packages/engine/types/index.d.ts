@@ -1697,6 +1697,13 @@ export interface World {
    */
   find(name: string): Entity | null;
   /**
+   * Where an entity came from when it was placed from a prefab: its og.PrefabLink (the prefab, its node, the instance's root).
+   *
+   * @param entity The entity.
+   * @returns Null for an entity not placed from a prefab, or a dead one.
+   */
+  prefabOf(entity: Entity): PrefabLink | null;
+  /**
    * An entity's name.
    *
    * @param entity The entity.
@@ -1723,7 +1730,7 @@ export interface World {
    */
   emit<E extends AnyEvent>(event: E, payload: Value<E>): Result<void>;
   /**
-   * Spawn a loaded scene or glTF asset into the world: a root entity from the desc, then (for a scene) every scene entity under it with its components and names, or (for a glTF) a Model on the root.
+   * Spawn a loaded scene, prefab or glTF asset into the world: a root entity from the desc, then (for a scene or prefab) every entity under it with its components (a scene's with their names, a prefab's unnamed, each with an og.PrefabLink to it), or (for a glTF) a Model on the root.
    * Scene entity names must be free: a name already in use refuses the whole instantiation before anything spawns.
    *
    * @param asset A ready asset from og.load.
@@ -10784,6 +10791,33 @@ export interface Model {
 
 
 
+
+
+/**
+ * Where an entity came from when it was placed from a prefab: a scene's `prefab` line (flattened by the cook) or world.instantiate of og.load.prefab's asset. The engine writes it as the entity spawns and never changes it; it is world state like any component (snapshots, restores, the hash). A world that never placed a prefab does not register it, so its saves and hash are as before.
+ *
+ * The value of the `PrefabLink` component (token `og.PrefabLink`).
+ */
+export interface PrefabLink {
+  /**
+   * The prefab placed (a prefab nested in another links to the outermost one placed). Loaded as og.load.prefab loads it.
+   *
+   * @readonly written by the engine
+   */
+  readonly prefab: Asset;
+  /**
+   * The entity's node: its index in the prefab's own entity table, depth first with parents first (0 is the prefab's root).
+   *
+   * @readonly written by the engine
+   */
+  readonly node: number;
+  /**
+   * The instance's root entity (the root's own, for the root).
+   *
+   * @readonly written by the engine
+   */
+  readonly root: Entity;
+}
 
 
 
@@ -31812,8 +31846,10 @@ export interface UiActionHint {
  * - `"help"`: `help`: list every action the channel knows, core and registered.
  * - `"mouse_move"`: `mouse_move:dx,dy`: move the mouse by relative CSS pixels (movementX/Y, summed in og.Pointers.movement: mouse-look) with the pointer's position held, as a locked pointer moves.
  * - `"pointer_lock"`: `pointer_lock:<on|off>`: report the pointer locked or released (og.PointerLock.locked), as the web shell does from pointerlockchange; headless hosts never lock on their own.
+ * - `"apply_prefab"`: `apply_prefab:<entity>[:<Component>[.<field>]][:base]`: move an entity's prefab overrides (all, a component's or one field; a field set at run time too) into its prefab's `.ogt` at the entity's node, and out of its scene's instance block, so the scene cooks to the same world and every other instance takes the values; with `base`, into a variant's base (docs/design.md §2.5, prefabs).
+ * - `"revert_prefab"`: `revert_prefab:<entity>[:<Component>[.<field>]]`: drop an entity's prefab overrides (all, a component's or one field) from its scene's instance block, and set the live values back to the prefab's.
  */
-export type CoreAction = "screenshot" | "listen" | "touch_move_to" | "touch_move" | "touch_start" | "touch_end" | "scroll" | "touch" | "gamepad" | "key_down" | "key_up" | "type" | "compose" | "commit" | "move_to_text" | "teleport" | "frame_entity" | "dump_world" | "dump_entity" | "dump_ui" | "set" | "get" | "seed" | "pause" | "resume" | "advance" | "quit" | "describe" | "expect" | "save_scene" | "help" | "mouse_move" | "pointer_lock";
+export type CoreAction = "screenshot" | "listen" | "touch_move_to" | "touch_move" | "touch_start" | "touch_end" | "scroll" | "touch" | "gamepad" | "key_down" | "key_up" | "type" | "compose" | "commit" | "move_to_text" | "teleport" | "frame_entity" | "dump_world" | "dump_entity" | "dump_ui" | "set" | "get" | "seed" | "pause" | "resume" | "advance" | "quit" | "describe" | "expect" | "save_scene" | "help" | "mouse_move" | "pointer_lock" | "apply_prefab" | "revert_prefab";
 
 /**
  * A registered action. It runs at the start of the tick it was scheduled for.
@@ -32405,6 +32441,32 @@ export interface EntityDump {
   readonly name: string | null;
   /** Each component's field values, by component name. */
   readonly components: Readonly<Record<string, unknown>>;
+  /** Where it came from, for an entity placed from a prefab; absent otherwise. */
+  readonly prefab?: EntityPrefab;
+}
+
+/**
+ * Where an entity placed from a prefab came from (its og.PrefabLink, resolved) and what its instance overrides.
+ */
+export interface EntityPrefab {
+  /** The prefab's asset id (the outermost one placed). */
+  readonly prefab: string;
+  /** The entity's node path in the prefab: empty for its root, `lid/hinge` for a grandchild. */
+  readonly node: string;
+  /** The instance root's probe id. */
+  readonly root: string;
+  /**
+   * The fields its instance's text overrides on it, `Component.field`, in text order (empty for an instance placed at run time, which no text holds).
+   */
+  readonly overrides: readonly string[];
+}
+
+/** The instances of one prefab in the world. */
+export interface DescribedPrefab {
+  /** The prefab's asset id. */
+  readonly prefab: string;
+  /** Each instance root's probe id, in entity order. */
+  readonly instances: readonly string[];
 }
 
 /** One UI element with its bounds. */
@@ -32724,6 +32786,8 @@ export interface Description {
   readonly views: readonly DescribedView[];
   /** The UI elements in draw order. */
   readonly ui: readonly DescribedUi[];
+  /** The prefab instances in the world, by prefab id; absent in a world without one. */
+  readonly prefabs?: readonly DescribedPrefab[];
 }
 
 /**
@@ -35541,6 +35605,10 @@ export declare namespace og {
    * The glTF's materials are shared by every instance of it; `tint` and `flash` are this instance's own, carried with its transform to the lit shaders (one draw for every instance, whatever each shows), so one of a crowd can flash when struck.
    */
   const Model: ComponentType<{ readonly asset: FieldSpec<"Asset">; readonly tint: FieldSpec<"Color">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly castShadow: FieldSpec<"bool">; readonly receiveShadow: FieldSpec<"bool">; readonly visible: FieldSpec<"bool">; readonly lodBias: FieldSpec<"f32">; readonly layers: FieldSpec<"u32">; readonly static: FieldSpec<"bool">; readonly variant: FieldSpec<"i32"> }, Model>;
+  /**
+   * Where an entity came from when it was placed from a prefab: a scene's `prefab` line (flattened by the cook) or world.instantiate of og.load.prefab's asset. The engine writes it as the entity spawns and never changes it; it is world state like any component (snapshots, restores, the hash). A world that never placed a prefab does not register it, so its saves and hash are as before.
+   */
+  const PrefabLink: ComponentType<{ readonly prefab: FieldSpec<"Asset">; readonly node: FieldSpec<"u32">; readonly root: FieldSpec<"Entity"> }, PrefabLink>;
   /** A load completed. */
   const AssetReady: EventType<AssetReady>;
   /** A load failed. */
@@ -35591,6 +35659,14 @@ export declare namespace og {
      * @param path The scene's asset id, such as `scenes/main.ogt`.
      */
     function scene(world: World, path: string): Result<Asset>;
+    /**
+     * Load a cooked prefab (an .ogt of `type prefab`: one entity tree authored once and placed many times, docs/design.md §2.5). world.instantiate spawns it as it spawns a scene, its root under the desc's root entity, each entity unnamed (place a prefab many times without name clashes) and carrying an og.PrefabLink. A scene places one with a `prefab` line in an entity, and the cook flattens it there.
+     *
+     * @param world The world that owns the asset.
+     * @param path The prefab's asset id, such as `prefabs/crate.ogt`.
+     * @returns The prefab, or why not (not cooked, or not a prefab).
+     */
+    function prefab(world: World, path: string): Result<Asset>;
     /**
      * Load a cooked MSDF font for og.render.text, or an icon set (an `.ogt` of `type icons`: SVG icons cooked into a distance-field atlas like a font) for UiDesc.icons.font.
      *

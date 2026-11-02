@@ -20,7 +20,7 @@ module probe {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 19248</sub>
+<sub>`api.ogt` line 19276</sub>
 
 ## Contents
 
@@ -64,6 +64,8 @@ module probe {
 | [`SystemDump`](#type-SystemDump) | struct | One system. The engine fills reads, writes and matched for every system the game declared; ms is null because the probe reads no clock (state().timings has the tick's time). |
 | [`WorldDump`](#type-WorldDump) | struct | The world: tables, systems, resources. |
 | [`EntityDump`](#type-EntityDump) | struct | One entity. |
+| [`EntityPrefab`](#type-EntityPrefab) | struct | Where an entity placed from a prefab came from (its og.PrefabLink, resolved) and what its instance overrides. |
+| [`DescribedPrefab`](#type-DescribedPrefab) | struct | The instances of one prefab in the world. |
 | [`UiElement`](#type-UiElement) | struct | One UI element with its bounds. |
 | [`UiSurface`](#type-UiSurface) | struct | The surface UI bounds are laid out on. |
 | [`UiDump`](#type-UiDump) | struct | The UI tree, flattened in draw order. |
@@ -100,7 +102,7 @@ interface RuntimeProbe {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 19780</sub>
+<sub>`api.ogt` line 19828</sub>
 
 <a id="member-RuntimeProbe-version"></a>
 
@@ -120,7 +122,7 @@ prop version u32 "PROBE_VERSION." {
 }
 ```
 
-<sub>`api.ogt` line 19784</sub>
+<sub>`api.ogt` line 19832</sub>
 
 <a id="member-RuntimeProbe-tick"></a>
 
@@ -144,7 +146,7 @@ fn tick {
 }
 ```
 
-<sub>`api.ogt` line 19787</sub>
+<sub>`api.ogt` line 19835</sub>
 
 <a id="member-RuntimeProbe-state"></a>
 
@@ -168,7 +170,7 @@ fn state {
 }
 ```
 
-<sub>`api.ogt` line 19792</sub>
+<sub>`api.ogt` line 19840</sub>
 
 <a id="member-RuntimeProbe-advance"></a>
 
@@ -196,7 +198,7 @@ fn advance {
 }
 ```
 
-<sub>`api.ogt` line 19797</sub>
+<sub>`api.ogt` line 19845</sub>
 
 <a id="member-RuntimeProbe-pause"></a>
 
@@ -219,7 +221,7 @@ fn pause {
 }
 ```
 
-<sub>`api.ogt` line 19802</sub>
+<sub>`api.ogt` line 19850</sub>
 
 <a id="member-RuntimeProbe-resume"></a>
 
@@ -242,7 +244,7 @@ fn resume {
 }
 ```
 
-<sub>`api.ogt` line 19806</sub>
+<sub>`api.ogt` line 19854</sub>
 
 <a id="member-RuntimeProbe-input"></a>
 
@@ -271,7 +273,7 @@ fn input {
 }
 ```
 
-<sub>`api.ogt` line 19810</sub>
+<sub>`api.ogt` line 19858</sub>
 
 <a id="member-RuntimeProbe-accepted"></a>
 
@@ -294,7 +296,7 @@ fn accepted {
 }
 ```
 
-<sub>`api.ogt` line 19816</sub>
+<sub>`api.ogt` line 19864</sub>
 
 <a id="member-RuntimeProbe-pick"></a>
 
@@ -325,7 +327,7 @@ fn pick {
 }
 ```
 
-<sub>`api.ogt` line 19820</sub>
+<sub>`api.ogt` line 19868</sub>
 
 <a id="member-RuntimeProbe-entity"></a>
 
@@ -354,7 +356,7 @@ fn entity {
 }
 ```
 
-<sub>`api.ogt` line 19827</sub>
+<sub>`api.ogt` line 19875</sub>
 
 <a id="member-RuntimeProbe-bounds"></a>
 
@@ -382,7 +384,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 19833</sub>
+<sub>`api.ogt` line 19881</sub>
 
 <a id="member-RuntimeProbe-patch"></a>
 
@@ -414,7 +416,7 @@ fn patch {
 }
 ```
 
-<sub>`api.ogt` line 19838</sub>
+<sub>`api.ogt` line 19886</sub>
 
 <a id="member-RuntimeProbe-run"></a>
 
@@ -442,7 +444,7 @@ fn run {
 }
 ```
 
-<sub>`api.ogt` line 19845</sub>
+<sub>`api.ogt` line 19893</sub>
 
 <a id="type-EngineProbe"></a>
 
@@ -460,7 +462,7 @@ interface EngineProbe {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 19852</sub>
+<sub>`api.ogt` line 19900</sub>
 
 <a id="member-EngineProbe-hello"></a>
 
@@ -484,7 +486,7 @@ fn hello {
 }
 ```
 
-<sub>`api.ogt` line 19857</sub>
+<sub>`api.ogt` line 19905</sub>
 
 <a id="member-EngineProbe-capture"></a>
 
@@ -525,7 +527,7 @@ fn capture {
 }
 ```
 
-<sub>`api.ogt` line 19862</sub>
+<sub>`api.ogt` line 19910</sub>
 
 <a id="member-EngineProbe-sweep"></a>
 
@@ -555,7 +557,7 @@ fn sweep {
 }
 ```
 
-<sub>`api.ogt` line 19875</sub>
+<sub>`api.ogt` line 19923</sub>
 
 <a id="member-EngineProbe-reload"></a>
 
@@ -578,7 +580,7 @@ fn reload {
 }
 ```
 
-<sub>`api.ogt` line 19882</sub>
+<sub>`api.ogt` line 19930</sub>
 
 <a id="member-EngineProbe-snapshot"></a>
 
@@ -601,7 +603,7 @@ fn snapshot {
 }
 ```
 
-<sub>`api.ogt` line 19886</sub>
+<sub>`api.ogt` line 19934</sub>
 
 <a id="member-EngineProbe-restore"></a>
 
@@ -629,7 +631,7 @@ fn restore {
 }
 ```
 
-<sub>`api.ogt` line 19890</sub>
+<sub>`api.ogt` line 19938</sub>
 
 <a id="member-EngineProbe-dump"></a>
 
@@ -659,7 +661,7 @@ fn dump {
 }
 ```
 
-<sub>`api.ogt` line 19895</sub>
+<sub>`api.ogt` line 19943</sub>
 
 <a id="member-EngineProbe-commands"></a>
 
@@ -687,7 +689,7 @@ fn commands {
 }
 ```
 
-<sub>`api.ogt` line 19902</sub>
+<sub>`api.ogt` line 19950</sub>
 
 <a id="member-EngineProbe-listen"></a>
 
@@ -717,7 +719,7 @@ fn listen {
 }
 ```
 
-<sub>`api.ogt` line 19907</sub>
+<sub>`api.ogt` line 19955</sub>
 
 <a id="member-EngineProbe-memory"></a>
 
@@ -740,7 +742,7 @@ fn memory {
 }
 ```
 
-<sub>`api.ogt` line 19914</sub>
+<sub>`api.ogt` line 19962</sub>
 
 <a id="member-EngineProbe-describe"></a>
 
@@ -763,7 +765,7 @@ fn describe {
 }
 ```
 
-<sub>`api.ogt` line 19918</sub>
+<sub>`api.ogt` line 19966</sub>
 
 <a id="member-EngineProbe-expect"></a>
 
@@ -791,7 +793,7 @@ fn expect {
 }
 ```
 
-<sub>`api.ogt` line 19922</sub>
+<sub>`api.ogt` line 19970</sub>
 
 <a id="member-EngineProbe-expectations"></a>
 
@@ -814,7 +816,7 @@ fn expectations {
 }
 ```
 
-<sub>`api.ogt` line 19927</sub>
+<sub>`api.ogt` line 19975</sub>
 
 <a id="member-EngineProbe-saveScene"></a>
 
@@ -848,7 +850,7 @@ fn saveScene {
 }
 ```
 
-<sub>`api.ogt` line 19931</sub>
+<sub>`api.ogt` line 19979</sub>
 
 ## Types
 
@@ -873,7 +875,7 @@ struct PickResult {
 }
 ```
 
-<sub>`api.ogt` line 19262</sub>
+<sub>`api.ogt` line 19290</sub>
 
 <a id="type-ProbeTunable"></a>
 
@@ -908,7 +910,7 @@ struct ProbeTunable {
 }
 ```
 
-<sub>`api.ogt` line 19269</sub>
+<sub>`api.ogt` line 19297</sub>
 
 <a id="type-ProbeEntityRef"></a>
 
@@ -931,7 +933,7 @@ struct ProbeEntityRef {
 }
 ```
 
-<sub>`api.ogt` line 19286</sub>
+<sub>`api.ogt` line 19314</sub>
 
 <a id="type-ProbeTimings"></a>
 
@@ -968,7 +970,7 @@ struct ProbeTimings {
 }
 ```
 
-<sub>`api.ogt` line 19294</sub>
+<sub>`api.ogt` line 19322</sub>
 
 <a id="type-ProbeTiming"></a>
 
@@ -991,7 +993,7 @@ struct ProbeTiming {
 }
 ```
 
-<sub>`api.ogt` line 19311</sub>
+<sub>`api.ogt` line 19339</sub>
 
 <a id="type-ProbeState"></a>
 
@@ -1020,7 +1022,7 @@ struct ProbeState {
 }
 ```
 
-<sub>`api.ogt` line 19319</sub>
+<sub>`api.ogt` line 19347</sub>
 
 <a id="type-AdvanceOperation"></a>
 
@@ -1039,7 +1041,7 @@ struct AdvanceOperation {
 }
 ```
 
-<sub>`api.ogt` line 19329</sub>
+<sub>`api.ogt` line 19357</sub>
 
 <a id="type-InputOperation"></a>
 
@@ -1058,7 +1060,7 @@ struct InputOperation {
 }
 ```
 
-<sub>`api.ogt` line 19334</sub>
+<sub>`api.ogt` line 19362</sub>
 
 <a id="type-PickOperation"></a>
 
@@ -1079,7 +1081,7 @@ struct PickOperation {
 }
 ```
 
-<sub>`api.ogt` line 19339</sub>
+<sub>`api.ogt` line 19367</sub>
 
 <a id="type-EntityOperation"></a>
 
@@ -1098,7 +1100,7 @@ struct EntityOperation {
 }
 ```
 
-<sub>`api.ogt` line 19345</sub>
+<sub>`api.ogt` line 19373</sub>
 
 <a id="type-ExpectOperation"></a>
 
@@ -1117,7 +1119,7 @@ struct ExpectOperation {
 }
 ```
 
-<sub>`api.ogt` line 19350</sub>
+<sub>`api.ogt` line 19378</sub>
 
 <a id="type-ProbeOperation"></a>
 
@@ -1155,7 +1157,7 @@ union ProbeOperation {
 }
 ```
 
-<sub>`api.ogt` line 19355</sub>
+<sub>`api.ogt` line 19383</sub>
 
 <a id="type-ProbeProgramResult"></a>
 
@@ -1178,7 +1180,7 @@ struct ProbeProgramResult {
 }
 ```
 
-<sub>`api.ogt` line 19369</sub>
+<sub>`api.ogt` line 19397</sub>
 
 <a id="type-Hello"></a>
 
@@ -1215,7 +1217,7 @@ struct Hello {
 }
 ```
 
-<sub>`api.ogt` line 19376</sub>
+<sub>`api.ogt` line 19404</sub>
 
 <a id="type-BuildProfile"></a>
 
@@ -1240,7 +1242,7 @@ enum BuildProfile {
 }
 ```
 
-<sub>`api.ogt` line 19391</sub>
+<sub>`api.ogt` line 19419</sub>
 
 <a id="type-Capture"></a>
 
@@ -1265,7 +1267,7 @@ struct Capture {
 }
 ```
 
-<sub>`api.ogt` line 19398</sub>
+<sub>`api.ogt` line 19426</sub>
 
 <a id="type-Heard"></a>
 
@@ -1296,7 +1298,7 @@ struct Heard {
 }
 ```
 
-<sub>`api.ogt` line 19406</sub>
+<sub>`api.ogt` line 19434</sub>
 
 <a id="type-ProbeHeap"></a>
 
@@ -1323,7 +1325,7 @@ struct ProbeHeap {
 }
 ```
 
-<sub>`api.ogt` line 19418</sub>
+<sub>`api.ogt` line 19446</sub>
 
 <a id="type-ProbeWorldMemory"></a>
 
@@ -1342,7 +1344,7 @@ struct ProbeWorldMemory {
 }
 ```
 
-<sub>`api.ogt` line 19429</sub>
+<sub>`api.ogt` line 19457</sub>
 
 <a id="type-ProbeStreamMemory"></a>
 
@@ -1371,7 +1373,7 @@ struct ProbeStreamMemory {
 }
 ```
 
-<sub>`api.ogt` line 19434</sub>
+<sub>`api.ogt` line 19462</sub>
 
 <a id="type-ProbeMemory"></a>
 
@@ -1412,7 +1414,7 @@ struct ProbeMemory {
 }
 ```
 
-<sub>`api.ogt` line 19447</sub>
+<sub>`api.ogt` line 19475</sub>
 
 <a id="type-SweepDesc"></a>
 
@@ -1444,7 +1446,7 @@ struct SweepDesc {
 }
 ```
 
-<sub>`api.ogt` line 19466</sub>
+<sub>`api.ogt` line 19494</sub>
 
 <a id="type-SweepFrame"></a>
 
@@ -1467,7 +1469,7 @@ struct SweepFrame {
 }
 ```
 
-<sub>`api.ogt` line 19477</sub>
+<sub>`api.ogt` line 19505</sub>
 
 <a id="type-SweepResult"></a>
 
@@ -1486,7 +1488,7 @@ struct SweepResult {
 }
 ```
 
-<sub>`api.ogt` line 19484</sub>
+<sub>`api.ogt` line 19512</sub>
 
 <a id="type-ReloadReport"></a>
 
@@ -1515,7 +1517,7 @@ struct ReloadReport {
 }
 ```
 
-<sub>`api.ogt` line 19489</sub>
+<sub>`api.ogt` line 19517</sub>
 
 <a id="type-SnapshotInfo"></a>
 
@@ -1542,7 +1544,7 @@ struct SnapshotInfo {
 }
 ```
 
-<sub>`api.ogt` line 19500</sub>
+<sub>`api.ogt` line 19528</sub>
 
 <a id="type-DumpKind"></a>
 
@@ -1569,7 +1571,7 @@ enum DumpKind {
 }
 ```
 
-<sub>`api.ogt` line 19510</sub>
+<sub>`api.ogt` line 19538</sub>
 
 <a id="type-DumpDesc"></a>
 
@@ -1593,7 +1595,7 @@ struct DumpDesc {
 }
 ```
 
-<sub>`api.ogt` line 19518</sub>
+<sub>`api.ogt` line 19546</sub>
 
 <a id="type-ArchetypeDump"></a>
 
@@ -1614,7 +1616,7 @@ struct ArchetypeDump {
 }
 ```
 
-<sub>`api.ogt` line 19525</sub>
+<sub>`api.ogt` line 19553</sub>
 
 <a id="type-SystemDump"></a>
 
@@ -1643,7 +1645,7 @@ struct SystemDump {
 }
 ```
 
-<sub>`api.ogt` line 19531</sub>
+<sub>`api.ogt` line 19559</sub>
 
 <a id="type-WorldDump"></a>
 
@@ -1672,7 +1674,7 @@ struct WorldDump {
 }
 ```
 
-<sub>`api.ogt` line 19542</sub>
+<sub>`api.ogt` line 19570</sub>
 
 <a id="type-EntityDump"></a>
 
@@ -1685,6 +1687,7 @@ One entity.
 | `id` | `string` | `""` | — | — | — | Its probe id. |
 | `name` | `string \| null` | `null` | — | — | — | Its name. |
 | `components` | `Readonly<Record<string, unknown>>` | `{}` | — | — | — | Each component's field values, by component name. |
+| `prefab` | `EntityPrefab` | `{ prefab: "", node: "", root: "", overrides: [] }` | — | — | optional | Where it came from, for an entity placed from a prefab; absent otherwise. |
 
 ```ogt
 struct EntityDump {
@@ -1692,10 +1695,59 @@ struct EntityDump {
   field id String "Its probe id."
   field name Option.String "Its name."
   field components Map.Json "Each component's field values, by component name."
+  field prefab EntityPrefab "Where it came from, for an entity placed from a prefab; absent otherwise." {
+    optional true
+  }
 }
 ```
 
-<sub>`api.ogt` line 19552</sub>
+<sub>`api.ogt` line 19580</sub>
+
+<a id="type-EntityPrefab"></a>
+
+### `EntityPrefab` (struct)
+
+Where an entity placed from a prefab came from (its og.PrefabLink, resolved) and what its instance overrides.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `prefab` | `string` | `""` | — | — | — | The prefab's asset id (the outermost one placed). |
+| `node` | `string` | `""` | — | — | — | The entity's node path in the prefab: empty for its root, `lid/hinge` for a grandchild. |
+| `root` | `string` | `""` | — | — | — | The instance root's probe id. |
+| `overrides` | `readonly string[]` | `[]` | — | — | — | The fields its instance's text overrides on it, `Component.field`, in text order (empty for an instance placed at run time, which no text holds). |
+
+```ogt
+struct EntityPrefab {
+  doc "Where an entity placed from a prefab came from (its og.PrefabLink, resolved) and what its instance overrides."
+  field prefab String "The prefab's asset id (the outermost one placed)."
+  field node String "The entity's node path in the prefab: empty for its root, `lid/hinge` for a grandchild."
+  field root String "The instance root's probe id."
+  field overrides List.String "The fields its instance's text overrides on it, `Component.field`, in text order (empty for an instance placed at run time, which no text holds)."
+}
+```
+
+<sub>`api.ogt` line 19590</sub>
+
+<a id="type-DescribedPrefab"></a>
+
+### `DescribedPrefab` (struct)
+
+The instances of one prefab in the world.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `prefab` | `string` | `""` | — | — | — | The prefab's asset id. |
+| `instances` | `readonly string[]` | `[]` | — | — | — | Each instance root's probe id, in entity order. |
+
+```ogt
+struct DescribedPrefab {
+  doc "The instances of one prefab in the world."
+  field prefab String "The prefab's asset id."
+  field instances List.String "Each instance root's probe id, in entity order."
+}
+```
+
+<sub>`api.ogt` line 19598</sub>
 
 <a id="type-UiElement"></a>
 
@@ -1750,7 +1802,7 @@ struct UiElement {
 }
 ```
 
-<sub>`api.ogt` line 19559</sub>
+<sub>`api.ogt` line 19604</sub>
 
 <a id="type-UiSurface"></a>
 
@@ -1779,7 +1831,7 @@ struct UiSurface {
 }
 ```
 
-<sub>`api.ogt` line 19586</sub>
+<sub>`api.ogt` line 19631</sub>
 
 <a id="type-UiDump"></a>
 
@@ -1802,7 +1854,7 @@ struct UiDump {
 }
 ```
 
-<sub>`api.ogt` line 19599</sub>
+<sub>`api.ogt` line 19644</sub>
 
 <a id="type-DesyncDump"></a>
 
@@ -1829,7 +1881,7 @@ struct DesyncDump {
 }
 ```
 
-<sub>`api.ogt` line 19606</sub>
+<sub>`api.ogt` line 19651</sub>
 
 <a id="type-DumpResult"></a>
 
@@ -1857,7 +1909,7 @@ union DumpResult {
 }
 ```
 
-<sub>`api.ogt` line 19615</sub>
+<sub>`api.ogt` line 19660</sub>
 
 <a id="type-ScreenBox"></a>
 
@@ -1890,7 +1942,7 @@ struct ScreenBox {
 }
 ```
 
-<sub>`api.ogt` line 19624</sub>
+<sub>`api.ogt` line 19669</sub>
 
 <a id="type-ScreenPoint"></a>
 
@@ -1915,7 +1967,7 @@ struct ScreenPoint {
 }
 ```
 
-<sub>`api.ogt` line 19640</sub>
+<sub>`api.ogt` line 19685</sub>
 
 <a id="type-DescribedEntity"></a>
 
@@ -1962,7 +2014,7 @@ struct DescribedEntity {
 }
 ```
 
-<sub>`api.ogt` line 19650</sub>
+<sub>`api.ogt` line 19695</sub>
 
 <a id="type-DescribedView"></a>
 
@@ -1989,7 +2041,7 @@ struct DescribedView {
 }
 ```
 
-<sub>`api.ogt` line 19672</sub>
+<sub>`api.ogt` line 19717</sub>
 
 <a id="type-DescribedUi"></a>
 
@@ -2024,7 +2076,7 @@ struct DescribedUi {
 }
 ```
 
-<sub>`api.ogt` line 19681</sub>
+<sub>`api.ogt` line 19726</sub>
 
 <a id="type-DescribedCamera"></a>
 
@@ -2065,7 +2117,7 @@ struct DescribedCamera {
 }
 ```
 
-<sub>`api.ogt` line 19694</sub>
+<sub>`api.ogt` line 19739</sub>
 
 <a id="type-PassSize"></a>
 
@@ -2086,7 +2138,7 @@ struct PassSize {
 }
 ```
 
-<sub>`api.ogt` line 19714</sub>
+<sub>`api.ogt` line 19759</sub>
 
 <a id="type-Description"></a>
 
@@ -2103,6 +2155,7 @@ The frame as data: deterministic, the same JSON on every host and backend for th
 | `entities` | `readonly DescribedEntity[]` | `[]` | — | — | — | The entities the main camera shows, nearest first (each names the views that also show it). |
 | `views` | `readonly DescribedView[]` | `[]` | — | — | — | The secondary cameras the frame draws, in its view order, each with what it shows. |
 | `ui` | `readonly DescribedUi[]` | `[]` | — | — | — | The UI elements in draw order. |
+| `prefabs` | `readonly DescribedPrefab[]` | `[]` | — | — | optional | The prefab instances in the world, by prefab id; absent in a world without one. |
 
 ```ogt
 struct Description {
@@ -2114,10 +2167,13 @@ struct Description {
   field entities List.DescribedEntity "The entities the main camera shows, nearest first (each names the views that also show it)."
   field views List.DescribedView "The secondary cameras the frame draws, in its view order, each with what it shows."
   field ui List.DescribedUi "The UI elements in draw order."
+  field prefabs List.DescribedPrefab "The prefab instances in the world, by prefab id; absent in a world without one." {
+    optional true
+  }
 }
 ```
 
-<sub>`api.ogt` line 19720</sub>
+<sub>`api.ogt` line 19765</sub>
 
 <a id="type-ExpectStatus"></a>
 
@@ -2142,7 +2198,7 @@ enum ExpectStatus {
 }
 ```
 
-<sub>`api.ogt` line 19731</sub>
+<sub>`api.ogt` line 19779</sub>
 
 <a id="type-ExpectResult"></a>
 
@@ -2177,7 +2233,7 @@ struct ExpectResult {
 }
 ```
 
-<sub>`api.ogt` line 19738</sub>
+<sub>`api.ogt` line 19786</sub>
 
 <a id="type-ExpectReport"></a>
 
@@ -2202,7 +2258,7 @@ struct ExpectReport {
 }
 ```
 
-<sub>`api.ogt` line 19752</sub>
+<sub>`api.ogt` line 19800</sub>
 
 <a id="type-SavedScene"></a>
 
@@ -2235,7 +2291,7 @@ struct SavedScene {
 }
 ```
 
-<sub>`api.ogt` line 19760</sub>
+<sub>`api.ogt` line 19808</sub>
 
 <a id="type-SavedSceneFile"></a>
 
@@ -2260,7 +2316,7 @@ struct SavedSceneFile {
 }
 ```
 
-<sub>`api.ogt` line 19772</sub>
+<sub>`api.ogt` line 19820</sub>
 
 ## Constants
 
@@ -2277,34 +2333,34 @@ struct SavedSceneFile {
 const PROBE_GLOBAL String "__runtime_probe__" "The global the page publishes the probe on."
 ```
 
-<sub>`api.ogt` line 19255</sub>
+<sub>`api.ogt` line 19283</sub>
 
 ```ogt
 const PROBE_VERSION u32 5 "The RuntimeProbe contract revision both sides speak."
 ```
 
-<sub>`api.ogt` line 19256</sub>
+<sub>`api.ogt` line 19284</sub>
 
 ```ogt
 const PROBE_WIRE_VERSION u32 1 "The wire revision hello reports."
 ```
 
-<sub>`api.ogt` line 19257</sub>
+<sub>`api.ogt` line 19285</sub>
 
 ```ogt
 const REPLAY_SEED_PARAM String "replay-seed" "The page query parameter that starts a deterministic replay from a uint32 seed."
 ```
 
-<sub>`api.ogt` line 19258</sub>
+<sub>`api.ogt` line 19286</sub>
 
 ```ogt
 const PLAYTEST_MAX_TICKS u32 3600 "The longest playtest one request may advance, in fixed steps."
 ```
 
-<sub>`api.ogt` line 19259</sub>
+<sub>`api.ogt` line 19287</sub>
 
 ```ogt
 const PROBE_PROGRAM_MAX_OPERATIONS u32 256 "The most operations one probe program may carry."
 ```
 
-<sub>`api.ogt` line 19260</sub>
+<sub>`api.ogt` line 19288</sub>

@@ -57,7 +57,7 @@ pub use query::{ArchetypeView, QueryDesc, QueryIter};
 pub use reactive::{HookDesc, HookEvent, StateDesc, StateRun, StateWhen};
 pub use registry::{FieldRef, SchemaId};
 pub use schedule::{SystemContext, SystemDesc, SystemInfo};
-pub use snapshot::MigrationReport;
+pub use snapshot::{MigrationReport, snapshot_type_names};
 pub use spatial::{Neighbour, SpatialDesc, SpatialHash};
 pub use state::StateBlock;
 pub use world::{Bundle, BundleEncoder, MAX_NAME, World, WorldDesc, last_tick};

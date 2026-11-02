@@ -89,7 +89,7 @@ impl Probe {
                 _ => Value::Null,
             },
         };
-        json!({
+        let mut out = json!({
             "kind": "describe",
             "tick": world.time().tick,
             "surface": surface,
@@ -98,7 +98,62 @@ impl Probe {
             "entities": entities,
             "views": views,
             "ui": ui,
-        })
+        });
+        let prefabs = self.prefab_instances(world);
+        if !prefabs.is_empty() {
+            out["prefabs"] = Value::Array(prefabs);
+        }
+        out
+    }
+
+    /// The prefab instances in the world (entities whose og.PrefabLink is
+    /// their own root), by prefab: `[{ prefab, instances }]`, sorted by
+    /// prefab id, the instances by entity. Empty in a world that never
+    /// placed a prefab.
+    fn prefab_instances(&self, world: &World) -> Vec<Value> {
+        const LINK: &str = "og.PrefabLink";
+        let Some(writer) = self.scene_writer.as_ref() else {
+            return Vec::new();
+        };
+        let Ok(id) = world.id_by_name(LINK) else {
+            return Vec::new();
+        };
+        let Ok(schema) = world.schema(id).cloned() else {
+            return Vec::new();
+        };
+        let q = og_ecs::QueryDesc {
+            read: vec![LINK.to_string()],
+            ..og_ecs::QueryDesc::default()
+        };
+        let mut roots: Vec<og_ecs::Entity> = world
+            .query(&q)
+            .map(|q| q.flat_map(|v| v.entities().to_vec()).collect())
+            .unwrap_or_default();
+        og_core::sort::sort_by_key(&mut roots, |e| e.index());
+        let mut by: std::collections::BTreeMap<String, Vec<Value>> = Default::default();
+        for e in roots {
+            let Ok(bytes) = world.get_bytes(e, id) else {
+                continue;
+            };
+            let link = crate::value::component_json(&schema, &bytes);
+            let root = link.get("root").and_then(Value::as_f64).map(|b| b as u64);
+            if root != Some(e.to_bits()) {
+                continue;
+            }
+            let Some(prefab) = link
+                .get("prefab")
+                .and_then(Value::as_f64)
+                .and_then(|h| writer.prefab_id(h as u64))
+            else {
+                continue;
+            };
+            by.entry(prefab)
+                .or_default()
+                .push(json!(self.names.id_of(world, e)));
+        }
+        by.into_iter()
+            .map(|(prefab, instances)| json!({ "prefab": prefab, "instances": instances }))
+            .collect()
     }
 
     /// `shown` as described entities, nearest first (`order` 0), then by

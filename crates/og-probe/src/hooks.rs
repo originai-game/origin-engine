@@ -210,6 +210,44 @@ pub trait SceneWriter {
         write: bool,
         spawned: bool,
     ) -> Result<SavedScene, String>;
+
+    /// `apply_prefab` and `revert_prefab` (`docs/design.md` §2.5): the
+    /// overrides of an entity placed from a prefab moved into the prefab's
+    /// text (`edit.apply`) or dropped with the live values set back to the
+    /// prefab's. The files written (the scene's and, applying, the
+    /// prefab's).
+    fn prefab(&mut self, world: &mut World, edit: &PrefabEdit) -> Result<SavedScene, String> {
+        let _ = (world, edit);
+        Err("this host has no prefab write-back".into())
+    }
+
+    /// The asset id of the prefab an og.PrefabLink's `prefab` handle names
+    /// (`describe`'s `prefabs`).
+    fn prefab_id(&self, handle: u64) -> Option<String> {
+        let _ = handle;
+        None
+    }
+
+    /// `dump_entity`'s `prefab`: where a placed entity came from and what
+    /// its instance overrides; `None` leaves it out.
+    fn entity_prefab(&self, world: &World, entity: Entity) -> Option<Value> {
+        let _ = (world, entity);
+        None
+    }
+}
+
+/// One `apply_prefab` or `revert_prefab`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PrefabEdit {
+    pub entity: Entity,
+    /// `Component` or `Component.field`; `None`: every override.
+    pub target: Option<String>,
+    /// Apply into the prefab (else revert to it).
+    pub apply: bool,
+    /// Apply into a variant's base instead of the variant.
+    pub base: bool,
+    /// Write the files (else only return the texts).
+    pub write: bool,
 }
 
 /// One UI element with its bounds, in CSS pixels (IDL `probe.UiElement`).

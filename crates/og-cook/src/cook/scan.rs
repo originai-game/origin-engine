@@ -121,6 +121,7 @@ pub(super) fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
                         continue;
                     }
                     Ok(doc) if doc.ty == "scene" => Kind::Scene,
+                    Ok(doc) if doc.ty == prefab::PREFAB_TYPE => Kind::Prefab,
                     Ok(doc) if doc.ty == crate::fx::EMITTER_TYPE => Kind::Emitter,
                     Ok(doc) if doc.ty == og_ui::style_file::STYLE_TYPE => Kind::Style,
                     Ok(doc)

@@ -59,6 +59,7 @@ mod net;
 mod physics_ext;
 mod platform;
 mod polish;
+mod prefab;
 mod probe;
 #[cfg(not(feature = "publish"))]
 mod record;

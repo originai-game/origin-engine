@@ -264,6 +264,11 @@ pub fn og_world_find(world: u32, name: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_world_prefab_of(world: u32, entity: f64) -> String {
+    <Host as WorldApi>::og_world_prefab_of(&Host, world, entity)
+}
+
+#[wasm_bindgen]
 pub fn og_world_name_of(world: u32, entity: f64) -> String {
     <Host as WorldApi>::og_world_name_of(&Host, world, entity)
 }
@@ -1046,6 +1051,11 @@ pub fn og_load_gltf(world: u32, path: String, desc: Option<String>) -> String {
 #[wasm_bindgen]
 pub fn og_load_scene(world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_scene(&Host, world, path)
+}
+
+#[wasm_bindgen]
+pub fn og_load_prefab(world: u32, path: String) -> String {
+    <Host as LoadApi>::og_load_prefab(&Host, world, path)
 }
 
 #[wasm_bindgen]

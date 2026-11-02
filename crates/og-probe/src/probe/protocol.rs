@@ -748,6 +748,21 @@ impl Probe {
         }))
     }
 
+    /// `apply_prefab` and `revert_prefab`: the host's prefab write-back,
+    /// noted in the log. `Err` without a scene writer, or for an entity
+    /// not placed from a prefab.
+    pub fn prefab_edit(
+        &mut self,
+        world: &mut World,
+        edit: &crate::PrefabEdit,
+    ) -> Result<crate::SavedScene, String> {
+        let writer = self
+            .scene_writer
+            .as_mut()
+            .ok_or("this host has no scene write-back")?;
+        writer.prefab(world, edit)
+    }
+
     // ---- dumps ------------------------------------------------------------
 
     /// The world dump: archetype tables (non-empty, in creation order) with
@@ -819,6 +834,17 @@ impl Probe {
             .and_then(|c| c.entity_render(world, e))
         {
             out["render"] = r;
+        }
+        if let Some(mut p) = self
+            .scene_writer
+            .as_ref()
+            .and_then(|w| w.entity_prefab(world, e))
+        {
+            // The instance's root by its probe id.
+            if let Some(bits) = p["root"].as_f64() {
+                p["root"] = json!(self.names.id_of(world, Entity::from_bits(bits as u64)));
+            }
+            out["prefab"] = p;
         }
         out
     }

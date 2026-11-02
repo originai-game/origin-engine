@@ -1018,6 +1018,34 @@ fn find {
 
 <sub>`api.ogt` line 1125</sub>
 
+<a id="member-World-prefabOf"></a>
+
+#### `World.prefabOf`
+
+Where an entity came from when it was placed from a prefab: its og.PrefabLink (the prefab, its node, the instance's root).
+
+```ts
+World.prefabOf(entity: Entity): PrefabLink | null
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `entity` | `Entity` | no | The entity. |
+
+**Returns** `PrefabLink | null`: Null for an entity not placed from a prefab, or a dead one.
+
+Binding symbol `og_world_prefab_of` · publish builds: kept
+
+```ogt
+fn prefabOf {
+  doc "Where an entity came from when it was placed from a prefab: its og.PrefabLink (the prefab, its node, the instance's root)."
+  param entity Entity "The entity."
+  returns Option.PrefabLink "Null for an entity not placed from a prefab, or a dead one."
+}
+```
+
+<sub>`api.ogt` line 1131</sub>
+
 <a id="member-World-nameOf"></a>
 
 #### `World.nameOf`
@@ -1044,7 +1072,7 @@ fn nameOf {
 }
 ```
 
-<sub>`api.ogt` line 1131</sub>
+<sub>`api.ogt` line 1137</sub>
 
 <a id="member-World-query"></a>
 
@@ -1072,7 +1100,7 @@ fn query {
 }
 ```
 
-<sub>`api.ogt` line 1137</sub>
+<sub>`api.ogt` line 1143</sub>
 
 <a id="member-World-events"></a>
 
@@ -1101,7 +1129,7 @@ fn events {
 }
 ```
 
-<sub>`api.ogt` line 1143</sub>
+<sub>`api.ogt` line 1149</sub>
 
 <a id="member-World-emit"></a>
 
@@ -1132,13 +1160,13 @@ fn emit {
 }
 ```
 
-<sub>`api.ogt` line 1150</sub>
+<sub>`api.ogt` line 1156</sub>
 
 <a id="member-World-instantiate"></a>
 
 #### `World.instantiate`
 
-Spawn a loaded scene or glTF asset into the world: a root entity from the desc, then (for a scene) every scene entity under it with its components and names, or (for a glTF) a Model on the root.
+Spawn a loaded scene, prefab or glTF asset into the world: a root entity from the desc, then (for a scene or prefab) every entity under it with its components (a scene's with their names, a prefab's unnamed, each with an og.PrefabLink to it), or (for a glTF) a Model on the root.
 
 Scene entity names must be free: a name already in use refuses the whole instantiation before anything spawns.
 
@@ -1157,7 +1185,7 @@ Binding symbol `og_world_instantiate` · publish builds: kept
 
 ```ogt
 fn instantiate {
-  doc "Spawn a loaded scene or glTF asset into the world: a root entity from the desc, then (for a scene) every scene entity under it with its components and names, or (for a glTF) a Model on the root."
+  doc "Spawn a loaded scene, prefab or glTF asset into the world: a root entity from the desc, then (for a scene or prefab) every entity under it with its components (a scene's with their names, a prefab's unnamed, each with an og.PrefabLink to it), or (for a glTF) a Model on the root."
   doc "Scene entity names must be free: a name already in use refuses the whole instantiation before anything spawns."
   param asset Asset "A ready asset from og.load."
   param desc SpawnDesc "Name, parent and transform of the root entity."
@@ -1165,7 +1193,7 @@ fn instantiate {
 }
 ```
 
-<sub>`api.ogt` line 1158</sub>
+<sub>`api.ogt` line 1164</sub>
 
 <a id="member-World-snapshot"></a>
 
@@ -1195,7 +1223,7 @@ fn snapshot {
 }
 ```
 
-<sub>`api.ogt` line 1166</sub>
+<sub>`api.ogt` line 1172</sub>
 
 <a id="member-World-openSave"></a>
 
@@ -1223,7 +1251,7 @@ fn openSave {
 }
 ```
 
-<sub>`api.ogt` line 1174</sub>
+<sub>`api.ogt` line 1180</sub>
 
 <a id="member-World-restore"></a>
 
@@ -1253,7 +1281,7 @@ fn restore {
 }
 ```
 
-<sub>`api.ogt` line 1180</sub>
+<sub>`api.ogt` line 1186</sub>
 
 <a id="type-Query"></a>
 
@@ -1267,7 +1295,7 @@ interface Query {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1188</sub>
+<sub>`api.ogt` line 1194</sub>
 
 <a id="member-Query-archetypes"></a>
 
@@ -1290,7 +1318,7 @@ fn archetypes {
 }
 ```
 
-<sub>`api.ogt` line 1190</sub>
+<sub>`api.ogt` line 1196</sub>
 
 <a id="member-Query-count"></a>
 
@@ -1313,7 +1341,7 @@ fn count {
 }
 ```
 
-<sub>`api.ogt` line 1194</sub>
+<sub>`api.ogt` line 1200</sub>
 
 <a id="type-ArchetypeView"></a>
 
@@ -1327,7 +1355,7 @@ interface ArchetypeView {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1200</sub>
+<sub>`api.ogt` line 1206</sub>
 
 <a id="member-ArchetypeView-count"></a>
 
@@ -1345,7 +1373,7 @@ Binding symbol `og_archetype_view_get_count` · publish builds: kept
 prop count u32 "The number of entities in the archetype."
 ```
 
-<sub>`api.ogt` line 1202</sub>
+<sub>`api.ogt` line 1208</sub>
 
 <a id="member-ArchetypeView-tick"></a>
 
@@ -1363,7 +1391,7 @@ Binding symbol `og_archetype_view_get_tick` · publish builds: kept
 prop tick u32 "The tick this view belongs to."
 ```
 
-<sub>`api.ogt` line 1203</sub>
+<sub>`api.ogt` line 1209</sub>
 
 <a id="member-ArchetypeView-entities"></a>
 
@@ -1381,7 +1409,7 @@ Binding symbol `og_archetype_view_get_entities` · publish builds: kept
 prop entities Uint32Array "The entities as (index, generation) pairs: entity i is at 2i and 2i + 1. These are not handles: for a handle use entity(i) (world.despawn, get, set, insert and remove refuse a bare index, naming the call)."
 ```
 
-<sub>`api.ogt` line 1204</sub>
+<sub>`api.ogt` line 1210</sub>
 
 <a id="member-ArchetypeView-rows"></a>
 
@@ -1399,7 +1427,7 @@ Binding symbol `og_archetype_view_get_rows` · publish builds: kept
 prop rows Uint32Array "The rows the query's change filters pass (SystemDesc.changed, added, removed; QueryDesc's), in row order; every row, 0 to count - 1, for a query without them. Columns still hold every row: loop over rows and index the columns with them."
 ```
 
-<sub>`api.ogt` line 1205</sub>
+<sub>`api.ogt` line 1211</sub>
 
 <a id="member-ArchetypeView-entity"></a>
 
@@ -1427,7 +1455,7 @@ fn entity {
 }
 ```
 
-<sub>`api.ogt` line 1206</sub>
+<sub>`api.ogt` line 1212</sub>
 
 <a id="member-ArchetypeView-has"></a>
 
@@ -1456,7 +1484,7 @@ fn has {
 }
 ```
 
-<sub>`api.ogt` line 1211</sub>
+<sub>`api.ogt` line 1217</sub>
 
 <a id="member-ArchetypeView-column"></a>
 
@@ -1488,7 +1516,7 @@ fn column {
 }
 ```
 
-<sub>`api.ogt` line 1217</sub>
+<sub>`api.ogt` line 1223</sub>
 
 ## Types
 

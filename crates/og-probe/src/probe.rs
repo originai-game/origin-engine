@@ -210,7 +210,7 @@ pub struct Probe {
     /// The frame as data and picking ([`Probe::set_scene_view`]).
     pub(crate) scene_view: Option<Box<dyn SceneView>>,
     /// The boot scene's write-back ([`Probe::set_scene_writer`]).
-    scene_writer: Option<Box<dyn SceneWriter>>,
+    pub(crate) scene_writer: Option<Box<dyn SceneWriter>>,
     /// Reference files for `expect:frame` ([`Probe::set_reader`]).
     pub(crate) reader: Option<ReaderFn>,
     /// Expectations evaluated since the host last took them.

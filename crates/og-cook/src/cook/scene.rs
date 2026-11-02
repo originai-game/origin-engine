@@ -321,26 +321,70 @@ pub fn references(text: &str) -> Vec<String> {
     out.into_iter().collect()
 }
 
-/// Cooks a scene document. `known` says whether an asset id is cooked.
+/// What a scene's cook reads beside its text: prefab texts by asset id
+/// (`None`: not a prefab of the project), and whether the cook is a
+/// publish's (an orphaned override is then refused, not noted).
+pub struct Prefabs<'a> {
+    pub texts: &'a dyn Fn(&str) -> Option<String>,
+    pub publish: bool,
+}
+
+/// Cooks a scene or prefab document (`source`, its asset id; a prefab's
+/// text is read through `prefabs.texts` by it). `known` says whether an
+/// asset id is cooked. Instances are flattened first ([`super::prefab`]);
+/// a prefab cooks to its own tree, every entity linked to it.
 pub fn cook(
     doc: &Document,
+    source: &str,
     schemas: &BTreeMap<String, Schema>,
     known: &dyn Fn(&str) -> bool,
+    prefabs: &Prefabs,
     stamp: u64,
 ) -> Result<(Vec<u8>, Vec<String>), CookError> {
-    if doc.ty != "scene" {
+    let is_prefab = doc.ty == super::prefab::PREFAB_TYPE;
+    if doc.ty != "scene" && !is_prefab {
         return Err(CookError(format!(
-            "expected a 'scene' document, got '{}'",
+            "expected a 'scene' or 'prefab' document, got '{}'",
             doc.ty
         )));
     }
     if doc.version != 1 {
         return Err(CookError(format!(
-            "scene version {} is not supported (1)",
-            doc.version
+            "{} version {} is not supported (1)",
+            doc.ty, doc.version
         )));
     }
     let mut notes = Vec::new();
+    // Instances flattened: the entities below are the scene's, with every
+    // prefab's tree in place.
+    let mut flattener = super::prefab::Flattener::new(prefabs.texts, schemas);
+    let flat = if is_prefab {
+        vec![flattener.prefab(source)?]
+    } else {
+        flattener.scene(source, &doc.body)?
+    };
+    let orphans: Vec<String> = flattener
+        .orphans
+        .iter()
+        .filter(|o| o.source == source)
+        .map(ToString::to_string)
+        .collect();
+    if !orphans.is_empty() {
+        if prefabs.publish {
+            return Err(CookError(format!(
+                "a published game never ships an override that does nothing: {}",
+                orphans.join("; ")
+            )));
+        }
+        notes.extend(orphans.into_iter().map(|o| format!("warning: {o}")));
+    }
+    let mut links = Vec::new();
+    for n in &flat {
+        n.links(&mut links);
+    }
+    let flat_body = Block {
+        entries: flat.iter().map(super::prefab::Node::to_entry).collect(),
+    };
     let mut strings: Vec<u8> = Vec::new();
     let mut add = |s: &str| {
         let at = strings.len() as u32;
@@ -353,7 +397,13 @@ pub fn cook(
     let mut name = String::new();
     let mut paths: Vec<(String, og_timeline::PathDesc)> = Vec::new();
     let mut resources: BTreeMap<String, Pending> = BTreeMap::new();
-    for e in &doc.body.entries {
+    let top: &[og_core::ogt::Entry] = if is_prefab {
+        name = flat[0].name.clone();
+        &[]
+    } else {
+        &doc.body.entries
+    };
+    for e in top {
         match e.key.as_str() {
             "name" => {
                 name = e
@@ -412,8 +462,7 @@ pub fn cook(
     }
     // Depth-first, parents before children.
     let empty = Block::new();
-    let mut stack: Vec<(&og_core::ogt::Entry, u32)> = doc
-        .body
+    let mut stack: Vec<(&og_core::ogt::Entry, u32)> = flat_body
         .get_all("entity")
         .collect::<Vec<_>>()
         .into_iter()
@@ -608,6 +657,40 @@ pub fn cook(
         });
         resource_payloads.push((r.clone(), bytes, size as u32, hash, schema.to_json()));
     }
+    // Where each entity came from: written when any was placed.
+    let mut prefab_ids: Vec<String> = Vec::new();
+    let mut prefab_rows = Vec::new();
+    if links.iter().any(Option::is_some) {
+        let mut roots: BTreeMap<u32, u32> = BTreeMap::new();
+        for (i, l) in links.iter().enumerate() {
+            let Some(l) = l else {
+                prefab_rows.push(PrefabRow {
+                    prefab: NONE,
+                    node: NONE,
+                    root: NONE,
+                });
+                continue;
+            };
+            let root = *roots.entry(l.instance).or_insert(i as u32);
+            let r = match prefab_ids.iter().position(|p| *p == l.prefab) {
+                Some(r) => r,
+                None => {
+                    prefab_ids.push(l.prefab.clone());
+                    prefab_ids.len() - 1
+                }
+            };
+            prefab_rows.push(PrefabRow {
+                prefab: r as u32,
+                node: l.node,
+                root,
+            });
+        }
+    }
+    let mut prefab_ref_rows = Vec::new();
+    for r in &prefab_ids {
+        let (id_offset, id_len) = add(r);
+        prefab_ref_rows.push(RefRow { id_offset, id_len });
+    }
     let meta = SceneMeta {
         entity_count: entity_rows.len() as u32,
         component_count: comp_rows.len() as u32,
@@ -628,6 +711,15 @@ pub fn cook(
     for (comp, bytes, stride, hash, json) in payloads {
         w.rows(&format!("c.{comp}"), bytes, stride, hash);
         w.raw(&format!("s.{comp}"), json.into_bytes(), 1);
+    }
+    if !prefab_rows.is_empty() {
+        w.table("prefabs", &prefab_rows, row_hash::<PrefabRow>())
+            .table("prefab_refs", &prefab_ref_rows, row_hash::<RefRow>());
+        notes.push(format!(
+            "{} entities from {} prefab(s)",
+            prefab_rows.iter().filter(|r| r.prefab != NONE).count(),
+            prefab_ids.len()
+        ));
     }
     if !resource_rows.is_empty() {
         w.table("resources", &resource_rows, row_hash::<ComponentRow>());

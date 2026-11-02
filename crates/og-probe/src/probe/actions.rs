@@ -488,6 +488,44 @@ impl Probe {
             #[cfg(not(feature = "publish"))]
             "expect" => self.expect_args(world, args, Some(step.at)).map(|_| ()),
             #[cfg(not(feature = "publish"))]
+            "apply_prefab" | "revert_prefab" => {
+                // `<action>:<entity>[:<Component>[.<field>]][:base]`, over
+                // the source files (docs/design.md §2.5, prefabs).
+                let apply = step.action == "apply_prefab";
+                let usage = if apply {
+                    "apply_prefab:<entity>[:<Component>[.<field>]][:base]"
+                } else {
+                    "revert_prefab:<entity>[:<Component>[.<field>]]"
+                };
+                let id = arg(0, usage)?;
+                let entity = self.entity_of(world, id)?;
+                let base = apply && args.iter().skip(1).any(|a| a == "base");
+                let target = args.iter().skip(1).find(|a| *a != "base").cloned();
+                let edit = crate::PrefabEdit {
+                    entity,
+                    target,
+                    apply,
+                    base,
+                    write: true,
+                };
+                let saved = self.prefab_edit(world, &edit)?;
+                self.note(
+                    tick,
+                    false,
+                    format!(
+                        "{}: {}",
+                        step.action,
+                        saved
+                            .files
+                            .iter()
+                            .map(|f| format!("{} ({} line(s) changed)", f.source, f.lines.len()))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    ),
+                );
+                Ok(())
+            }
+            #[cfg(not(feature = "publish"))]
             "save_scene" => {
                 // `save_scene[:path][:spawned]`: `spawned` is a flag, any
                 // other argument the path.
@@ -753,11 +791,10 @@ impl Probe {
             // commands and a timeline's event keys reach); the ones that only
             // observe it for a tool are not built in.
             #[cfg(feature = "publish")]
-            "screenshot" | "listen" | "describe" | "expect" | "save_scene" | "dump_world"
-            | "dump_ui" | "dump_entity" | "get" | "help" => Err(format!(
-                "`{}` is not built into a publish build",
-                step.action
-            )),
+            "screenshot" | "listen" | "describe" | "expect" | "save_scene" | "apply_prefab"
+            | "revert_prefab" | "dump_world" | "dump_ui" | "dump_entity" | "get" | "help" => Err(
+                format!("`{}` is not built into a publish build", step.action),
+            ),
             name => {
                 let Some(registered) = self.commands.get(name) else {
                     return Err(format!(

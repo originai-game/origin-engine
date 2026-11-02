@@ -229,6 +229,9 @@ pub struct CookOptions {
     /// and the game's, as `og schema` exports them). Components without one
     /// get a layout inferred from the scene text.
     pub schemas: Vec<Schema>,
+    /// A publish's cook (`og build --publish`): a prefab override that no
+    /// longer does anything is refused instead of noted.
+    pub publish: bool,
 }
 
 pub(super) fn settings_block<'a>(s: &'a Source, key: &str) -> Option<&'a og_core::ogt::Block> {

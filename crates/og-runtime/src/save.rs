@@ -355,6 +355,20 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
     // save whose only differences are theirs (og.Gamepad's eight pads in a
     // build after a four-pad save) is taken, mapped field by field.
     if let Some(f) = running(world) {
+        // A save that holds og.PrefabLink, in a world that has not
+        // registered it yet: registered and checked as the tick ends.
+        if og_ecs::snapshot_type_names(&snapshot)
+            .is_ok_and(|n| n.iter().any(|n| n == super::prefab::LINK))
+            && eng
+                .state
+                .borrow()
+                .names_by_id
+                .iter()
+                .all(|n| n != super::prefab::LINK)
+        {
+            eng.state.borrow_mut().pending_restore = Some(Pending { snapshot, migrate });
+            return ok(Value::Null);
+        }
         // SAFETY: the frame is published while its system runs.
         let migrate = match unsafe { f.ctx() }.check_snapshot_replacing(
             &snapshot,
@@ -372,6 +386,7 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
         Ok(w) => w,
         Err(e) => return refuse(e),
     };
+    super::prefab::before_restore(&eng, w, &snapshot);
     let migrate = match w.check_snapshot_replacing(&snapshot, migrate, SESSION, &engine_owned) {
         Ok(session_differs) => migrate || session_differs,
         Err(e) => return refuse(refusal(e, migrate)),
@@ -734,6 +749,7 @@ pub(crate) fn restore_session(
     snapshot: &[u8],
     keep: &[&str],
 ) -> Result<(), String> {
+    super::prefab::before_restore(eng, world, snapshot);
     world
         .check_snapshot(snapshot, false)
         .map_err(|e| refusal(e, false))?;
@@ -766,6 +782,7 @@ fn apply_selection(eng: &Engine, world: &mut World, pending: &Pending) -> Result
             .unwrap_or_default()
     };
     let lenient = |ty: &str| SESSION.contains(&ty);
+    super::prefab::before_restore(eng, world, &pending.snapshot);
     world
         .restore_selection(
             &pending.snapshot,
@@ -831,6 +848,7 @@ fn apply_keeping(
     // state is the save's, as og.Input's edges come from what follows).
     let actions = eng.state.borrow().actions.clone();
     let kept_actions = actions.as_ref().map(|a| og_input::actions::lock(a).clone());
+    super::prefab::before_restore(eng, world, &pending.snapshot);
     if pending.migrate {
         world
             .restore_migrating(&pending.snapshot)

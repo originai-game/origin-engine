@@ -344,6 +344,12 @@ module world {
       returns Option.Entity "Null when no live entity has the name."
     }
 
+    fn prefabOf {
+      doc "Where an entity came from when it was placed from a prefab: its og.PrefabLink (the prefab, its node, the instance's root)."
+      param entity Entity "The entity."
+      returns Option.PrefabLink "Null for an entity not placed from a prefab, or a dead one."
+    }
+
     fn nameOf {
       doc "An entity's name."
       param entity Entity "The entity."
@@ -372,7 +378,7 @@ module world {
     }
 
     fn instantiate {
-      doc "Spawn a loaded scene or glTF asset into the world: a root entity from the desc, then (for a scene) every scene entity under it with its components and names, or (for a glTF) a Model on the root."
+      doc "Spawn a loaded scene, prefab or glTF asset into the world: a root entity from the desc, then (for a scene or prefab) every entity under it with its components (a scene's with their names, a prefab's unnamed, each with an og.PrefabLink to it), or (for a glTF) a Model on the root."
       doc "Scene entity names must be free: a name already in use refuses the whole instantiation before anything spawns."
       param asset Asset "A ready asset from og.load."
       param desc SpawnDesc "Name, parent and transform of the root entity."

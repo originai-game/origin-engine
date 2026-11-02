@@ -695,6 +695,21 @@ pub fn og_world_find(world: u32, name: String) -> String {
     }
 }
 
+/// `world.prefabOf`: the entity's og.PrefabLink, or null (no link, a dead
+/// entity, or a world that never placed a prefab).
+pub fn og_world_prefab_of(world: u32, entity_id: f64) -> String {
+    let r: Value = serde_json::from_str(&og_world_get(
+        world,
+        entity_id,
+        super::prefab::LINK.to_string(),
+    ))
+    .unwrap_or(Value::Null);
+    match (r["ok"].as_bool(), r.get("value")) {
+        (Some(true), Some(v)) if !v.is_null() => v.to_string(),
+        _ => "null".into(),
+    }
+}
+
 pub fn og_world_name_of(world: u32, entity_id: f64) -> String {
     let name = engine(world).ok().and_then(|eng| {
         let st = eng.state.borrow();

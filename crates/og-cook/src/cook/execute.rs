@@ -85,6 +85,7 @@ pub(super) fn run(
     threads: usize,
     schemas: &BTreeMap<String, Schema>,
     known: &BTreeSet<String>,
+    prefab_texts: &BTreeMap<String, String>,
     budgets: &stats::Budgets,
 ) -> Result<(Vec<u8>, Vec<String>), CookError> {
     match p.work.as_ref().expect("planned work") {
@@ -529,7 +530,18 @@ pub(super) fn run(
             let text = std::str::from_utf8(&s.bytes)
                 .map_err(|_| CookError("scene is not UTF-8".into()))?;
             let doc = Document::parse(text).map_err(|e| CookError(e.to_string()))?;
-            scene::cook(&doc, schemas, &|id| known.contains(id), p.stamp)
+            let texts = |id: &str| prefab_texts.get(id).cloned();
+            scene::cook(
+                &doc,
+                &s.rel,
+                schemas,
+                &|id| known.contains(id),
+                &scene::Prefabs {
+                    texts: &texts,
+                    publish: options.publish,
+                },
+                p.stamp,
+            )
         }
     }
 }

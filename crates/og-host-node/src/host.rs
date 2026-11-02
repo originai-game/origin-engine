@@ -157,6 +157,9 @@ impl WorldApi for NodeHost {
     fn og_world_set_state(&self, world: u32, name: String, value: String) -> String {
         rt::og_world_set_state(world, name, value)
     }
+    fn og_world_prefab_of(&self, world: u32, entity: f64) -> String {
+        rt::og_world_prefab_of(world, entity)
+    }
     fn og_world_name_of(&self, world: u32, entity: f64) -> String {
         rt::og_world_name_of(world, entity)
     }
@@ -721,6 +724,9 @@ impl LoadApi for NodeHost {
     }
     fn og_load_scene(&self, world: u32, path: String) -> String {
         rt::og_load_scene(world, path)
+    }
+    fn og_load_prefab(&self, world: u32, path: String) -> String {
+        rt::og_load_prefab(world, path)
     }
     fn og_load_status(&self, world: u32, asset: f64) -> String {
         rt::og_load_status(world, asset)

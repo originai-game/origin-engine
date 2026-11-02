@@ -351,6 +351,16 @@ pub const CORE_ACTIONS: &[(&str, &str, &str)] = &[
         "save_scene[:path][:spawned]",
         "Write every scene the world was assembled from back from the world (the boot scene's and each og.world.instantiate made): only the lines whose values changed (comments and order kept), plus the fields and resources set or patch tuned; with spawned, the entities the game spawned under the boot scene's marked section; over each scene's .ogt, or the boot scene's to path under the output directory and the others beside it.",
     ),
+    (
+        "apply_prefab",
+        "apply_prefab:<entity>[:<Component>[.<field>]][:base]",
+        "Move an entity's prefab overrides (all, a component's or one field; a field set at run time too) into its prefab's .ogt, at the entity's node, and out of its scene's instance block, so the scene cooks to the same world and every other instance takes the values; with base, into a variant's base.",
+    ),
+    (
+        "revert_prefab",
+        "revert_prefab:<entity>[:<Component>[.<field>]]",
+        "Drop an entity's prefab overrides (all, a component's or one field) from its scene's instance block and set the live values back to the prefab's.",
+    ),
     ("quit", "quit", "End the run."),
     (
         "help",

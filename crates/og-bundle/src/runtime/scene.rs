@@ -10,6 +10,18 @@ pub struct EntityDesc {
     /// The asset id of a model this entity instantiates (its default scene
     /// becomes the entity's children).
     pub instance: Option<String>,
+    /// Where it came from when it was placed from a prefab.
+    pub prefab: Option<PrefabOrigin>,
+}
+
+/// An entity's prefab origin (`docs/design.md` §2.5, prefabs): the prefab
+/// placed (an index into [`SceneDesc::prefabs`]), the node's index in that
+/// prefab's own entity table, and the entity index of its instance's root.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PrefabOrigin {
+    pub prefab: usize,
+    pub node: u32,
+    pub root: usize,
 }
 
 /// One component type's values in a scene.
@@ -59,6 +71,9 @@ pub struct SceneDesc {
     /// The resource fields it sets when instantiated (`resource <Name> {
     /// ... }`), sorted by name.
     pub resources: Vec<ResourceTable>,
+    /// The prefabs its entities were placed from, by asset id
+    /// ([`EntityDesc::prefab`]); empty when none was.
+    pub prefabs: Vec<String>,
 }
 
 /// One resource's fields in a scene: `schema` holds only the fields the
@@ -107,7 +122,32 @@ impl SceneDesc {
                     ),
                     None => None,
                 },
+                prefab: None,
             });
+        }
+        // Older blobs and scenes without prefabs have no `prefabs` table.
+        let mut prefabs = Vec::new();
+        if blob.section("prefabs").is_some() {
+            prefabs = table::<RefRow>(blob, "prefab_refs")?
+                .iter()
+                .map(|r| s(r.id_offset, r.id_len))
+                .collect::<Result<Vec<_>, _>>()?;
+            let rows = table::<PrefabRow>(blob, "prefabs")?;
+            if rows.len() != out.len() {
+                return Err(bad("prefabs: one row per entity".into()));
+            }
+            for (i, r) in rows.iter().enumerate() {
+                let Some(p) = opt(r.prefab) else { continue };
+                let root = r.root as usize;
+                if p >= prefabs.len() || root > i {
+                    return Err(bad(format!("entity {i}: prefab origin out of range")));
+                }
+                out[i].prefab = Some(PrefabOrigin {
+                    prefab: p,
+                    node: r.node,
+                    root,
+                });
+            }
         }
         let mut components = Vec::with_capacity(comps.len());
         for c in &comps {
@@ -189,6 +229,7 @@ impl SceneDesc {
             components,
             paths,
             resources,
+            prefabs,
         })
     }
 }

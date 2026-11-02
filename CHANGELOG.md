@@ -15,6 +15,25 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Prefabs (G2-1).** An `.ogt` of `type prefab` holds one entity tree; a
+  scene (or another prefab) places it with a `prefab "<id>"` line in an
+  entity, whose block then lists only overrides (component blocks for the
+  root, `override "<node>" { ... }` for a descendant, `remove "<node>"
+  [Component]`, added children). Prefabs nest, `base "<id>"` makes a
+  variant, cycles are refused naming the chain. The cook flattens them
+  into the scene blob and names a placed descendant `<instance>/<node>`.
+  An orphaned override (its node, component or field gone from the
+  prefab) is a dev-cook warning, an `og prefab check` failure and a
+  publish-cook refusal. Added to the IDL: `og.load.prefab`,
+  `og.PrefabLink`, `World.prefabOf`. Added to `og`: `og prefab check`,
+  `show`, `extract`. Added to the probe, strictly additive to protocol 5:
+  the `apply_prefab` and `revert_prefab` actions and `dump_entity`'s
+  optional `prefab`; `save_scene` keeps instances as instances. A world
+  that places a prefab hashes differently from the same entities written
+  by hand (its `og.PrefabLink`s) and stably across a re-cook; a game
+  without prefabs never registers the link and saves and hashes as
+  before, so no save migration is needed.
+
 - **A reactive ECS with spatial queries (G2-2).** Added to the IDL:
   `SystemDesc.changed`, `added`, `removed`, `state`, `value`, `when`
   (`StateWhen`) and `runIf` (`RunCondition`); `QueryDesc.changed`,

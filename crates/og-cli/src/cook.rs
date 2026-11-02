@@ -217,10 +217,17 @@ pub fn texture_options(root: &Path, web: bool) -> Result<TextureOptions, String>
 /// Cooks a project for a native run, or for the web export (`web`, which
 /// takes project.ogt's `publish` overrides); `Err` names the failing assets.
 pub fn cook(root: &Path, threads: usize, web: bool) -> Result<Report, String> {
+    cook_for(root, threads, web, false)
+}
+
+/// [`cook`] for a publish (`og build --publish`): a prefab override that
+/// no longer does anything is refused, naming it.
+pub fn cook_for(root: &Path, threads: usize, web: bool, publish: bool) -> Result<Report, String> {
     let options = CookOptions {
         threads,
         schemas: engine_schemas(),
         texture: texture_options(root, web)?,
+        publish,
         ..CookOptions::default()
     };
     let report = cook_project(root, &options).map_err(|e| format!("og cook: {e}"))?;

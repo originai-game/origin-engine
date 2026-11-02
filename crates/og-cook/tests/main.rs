@@ -19,6 +19,7 @@ mod lod;
 mod look_builtins;
 mod model_text;
 mod physical;
+mod prefab;
 mod raycast_bvh;
 mod retarget;
 mod rig2d;

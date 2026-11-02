@@ -482,6 +482,40 @@ fn parse<'a>(registry: &Registry, bytes: &'a [u8]) -> Result<Parsed<'a>> {
     Ok(parsed)
 }
 
+/// The names of the types a snapshot's (or a selection's) type table
+/// lists, in its order, without reading the rest: a host registers a type
+/// it registers lazily before restoring a snapshot that holds it.
+pub fn snapshot_type_names(bytes: &[u8]) -> Result<Vec<String>> {
+    let mut r = Reader { buf: bytes, pos: 0 };
+    if r.take(4)? != MAGIC {
+        return Err(bad("not a world snapshot (magic)"));
+    }
+    let format = r.u32()? as u32;
+    if !(FORMAT_STATE..=FORMAT_SELECTION).contains(&format) {
+        return Err(bad(format!(
+            "format {format}, this engine reads {FORMAT_STATE} to {FORMAT_SELECTION}"
+        )));
+    }
+    let tables = format != FORMAT_STATE;
+    let n = r.count(12)?;
+    let mut out = Vec::with_capacity(n);
+    for _ in 0..n {
+        out.push(r.str("type name")?.to_owned());
+        r.u64()?;
+        if tables {
+            r.u32()?;
+            for _ in 0..r.count(12)? {
+                r.sized()?;
+                r.sized()?;
+                for _ in 0..r.count(4)? {
+                    r.sized()?;
+                }
+            }
+        }
+    }
+    Ok(out)
+}
+
 /// Reads and validates a snapshot of any format, or a selection.
 pub(crate) fn parse_any<'a>(registry: &Registry, bytes: &'a [u8]) -> Result<Parsed<'a>> {
     let mut r = Reader { buf: bytes, pos: 0 };

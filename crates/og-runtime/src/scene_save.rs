@@ -16,12 +16,14 @@
 //! since, each with every component the text can give.
 
 use super::codec::{Kind, Layout, RecordKind};
+use og_bundle::runtime::SceneDesc;
 use og_bundle::scene_text::{
-    FieldValue, Plan, RESOURCE, SpawnedEntity, Tuned, rewrite_with, spawned_names,
+    FieldValue, Instances, Plan, RESOURCE, SpawnedEntity, Tuned, listed_fields, rewrite_instances,
+    spawned_names,
 };
 use og_core::IdMap;
 use og_ecs::{Entity, World};
-use og_probe::{SavedFile, SavedScene, SceneWriter};
+use og_probe::{PrefabEdit, SavedFile, SavedScene, SceneWriter};
 use std::collections::{BTreeMap, BTreeSet};
 
 pub(crate) struct RuntimeWriter {
@@ -327,13 +329,28 @@ impl SceneWriter for RuntimeWriter {
                 add_resources: file.boot,
                 spawned: if file.boot { section.clone() } else { None },
             };
-            let r = rewrite_with(&file.text, &current, &plan);
-            for s in r.skipped {
+            // A placed entity's prefab value (its og.PrefabLink's node in
+            // the prefab's cooked blob): its fields are overrides, written
+            // only when they differ from it.
+            let base = |entity: &str, component: &str, field: &str| {
+                let bits = *file.names.get(entity)?;
+                prefab_value(&eng, world, Entity::from_bits(bits), component, field)
+            };
+            let mut r = rewrite_instances(
+                &file.text,
+                &current,
+                &plan,
+                &Instances {
+                    base: &base,
+                    paths: false,
+                },
+            );
+            for s in std::mem::take(&mut r.skipped) {
                 if !skipped.contains(&s) {
                     skipped.push(s);
                 }
             }
-            let written = if write && !r.lines.is_empty() {
+            let written = if write && r.changed() {
                 std::fs::write(&file.path, &r.text)
                     .map_err(|e| format!("{}: {e}", file.path.display()))?;
                 file.source.clone()
@@ -351,6 +368,435 @@ impl SceneWriter for RuntimeWriter {
         out.skipped = skipped;
         Ok(out)
     }
+
+    fn prefab(&mut self, world: &mut World, edit: &PrefabEdit) -> Result<SavedScene, String> {
+        let eng = super::engine::engine(self.engine)?;
+        prefab_edit(&eng, world, edit)
+    }
+
+    fn prefab_id(&self, handle: u64) -> Option<String> {
+        let eng = super::engine::engine(self.engine).ok()?;
+        let index = super::assets::index_of(handle as f64)?;
+        let assets = eng.assets.borrow();
+        assets
+            .entries
+            .get(index)
+            .map(|e| og_bundle::runtime::asset_id(&e.path).to_string())
+    }
+
+    fn entity_prefab(&self, world: &World, entity: Entity) -> Option<serde_json::Value> {
+        let eng = super::engine::engine(self.engine).ok()?;
+        let link = link_of(&eng, world, entity)?;
+        // What its instance overrides: its lines in its scene's text.
+        let overrides: Vec<String> = instance_text(&eng, world, entity)
+            .ok()
+            .map(|(_, text, name)| {
+                listed_fields(&text, &name, false)
+                    .into_iter()
+                    .map(|(c, f)| format!("{c}.{f}"))
+                    .collect()
+            })
+            .unwrap_or_default();
+        Some(serde_json::json!({
+            "prefab": link.id,
+            "node": link.path,
+            "root": link.root.to_bits() as f64,
+            "overrides": overrides,
+        }))
+    }
+}
+
+/// The value the prefab gives field `component.field` of `entity`, an
+/// entity placed from a prefab: `None` for one that was not (or a world
+/// without og.PrefabLink), `Some(None)` when the prefab's node lacks the
+/// field.
+pub(crate) fn prefab_value(
+    eng: &super::engine::Engine,
+    world: &World,
+    entity: Entity,
+    component: &str,
+    field: &str,
+) -> Option<Option<FieldValue>> {
+    let link_layout = eng
+        .state
+        .borrow()
+        .layouts
+        .get(super::prefab::LINK)
+        .cloned()?;
+    let sid = world.id_by_name(super::prefab::LINK).ok()?;
+    let bytes = world.get_bytes(entity, sid).ok()?;
+    let prefab = handle_bits(&link_layout, &bytes, "prefab")?;
+    let (i, f) = link_layout.field("node")?;
+    let at = link_layout.offset(i);
+    let node = u32::from_le_bytes(bytes.get(at..at + f.ty.size())?.try_into().ok()?) as usize;
+    let index = super::assets::index_of(prefab as f64)?;
+    let assets = eng.assets.borrow();
+    let Some(super::assets::Payload::Scene(scene)) = assets.entries.get(index).map(|e| &e.payload)
+    else {
+        return Some(None);
+    };
+    let short = component.strip_prefix("og.").unwrap_or(component);
+    let Some(table) = scene
+        .components
+        .iter()
+        .find(|t| t.name == component || t.name == short || t.name == format!("og.{short}"))
+    else {
+        return Some(None);
+    };
+    let Some(row) = table.get(node) else {
+        return Some(None);
+    };
+    let layout = Layout::from_schema(&table.schema, RecordKind::Component);
+    Some(field_value(&layout, row, field))
+}
+
+/// An entity's og.PrefabLink, resolved: the prefab's load index and asset
+/// id, the node's path in it (`""` the root, `lid/hinge`), and the
+/// instance's root.
+struct Link {
+    index: usize,
+    id: String,
+    path: String,
+    root: Entity,
+}
+
+/// A node's path in a prefab's own blob (its entities named by node).
+fn node_path(scene: &SceneDesc, node: usize) -> String {
+    let mut names = Vec::new();
+    let mut at = Some(node);
+    while let Some(i) = at {
+        let e = &scene.entities[i];
+        if e.parent.is_some() {
+            names.push(e.name.clone());
+        }
+        at = e.parent;
+    }
+    names.reverse();
+    names.join("/")
+}
+
+fn link_of(eng: &super::engine::Engine, world: &World, entity: Entity) -> Option<Link> {
+    let layout = eng
+        .state
+        .borrow()
+        .layouts
+        .get(super::prefab::LINK)
+        .cloned()?;
+    let sid = world.id_by_name(super::prefab::LINK).ok()?;
+    let bytes = world.get_bytes(entity, sid).ok()?;
+    let index = super::assets::index_of(handle_bits(&layout, &bytes, "prefab")? as f64)?;
+    let root = Entity::from_bits(handle_bits(&layout, &bytes, "root")?);
+    let (i, f) = layout.field("node")?;
+    let at = layout.offset(i);
+    let node = u32::from_le_bytes(bytes.get(at..at + f.ty.size())?.try_into().ok()?) as usize;
+    let assets = eng.assets.borrow();
+    let entry = assets.entries.get(index)?;
+    let super::assets::Payload::Scene(scene) = &entry.payload else {
+        return None;
+    };
+    (node < scene.entities.len()).then(|| Link {
+        index,
+        id: og_bundle::runtime::asset_id(&entry.path).to_string(),
+        path: node_path(scene, node),
+        root,
+    })
+}
+
+/// The scene a placed entity was spawned by: its file, its text and the
+/// entity's name there.
+fn instance_text(
+    eng: &super::engine::Engine,
+    world: &World,
+    entity: Entity,
+) -> Result<(std::path::PathBuf, String, String), String> {
+    let bits = entity.to_bits();
+    let id = eng
+        .state
+        .borrow()
+        .scene_instances
+        .iter()
+        .find(|i| i.entities.contains(&bits))
+        .map(|i| i.id.clone())
+        .ok_or("the entity was not spawned by a scene")?;
+    let name = world
+        .name(entity)
+        .filter(|n| !n.is_empty())
+        .ok_or("the entity has no name: a prefab instantiated at run time (og.load.prefab) is not in a scene's text")?
+        .to_string();
+    let path = assets_file(eng, &id)?;
+    let text = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+    Ok((path, text, name))
+}
+
+fn assets_file(eng: &super::engine::Engine, id: &str) -> Result<std::path::PathBuf, String> {
+    let root = eng.assets.borrow().root.clone();
+    if root.is_empty() {
+        return Err("this host has no project directory to read the texts from".into());
+    }
+    Ok(std::path::Path::new(&root).join("assets").join(id))
+}
+
+/// `Comp` and `og.Comp` are one component.
+fn same_component(a: &str, b: &str) -> bool {
+    a.strip_prefix("og.").unwrap_or(a) == b.strip_prefix("og.").unwrap_or(b)
+}
+
+/// `apply_prefab` and `revert_prefab` (`docs/design.md` §2.5).
+fn prefab_edit(
+    eng: &super::engine::Engine,
+    world: &mut World,
+    edit: &PrefabEdit,
+) -> Result<SavedScene, String> {
+    let action = if edit.apply {
+        "apply_prefab"
+    } else {
+        "revert_prefab"
+    };
+    let link = link_of(eng, world, edit.entity)
+        .ok_or_else(|| format!("{action}: the entity was not placed from a prefab"))?;
+    let (scene_path, scene_text, name) =
+        instance_text(eng, world, edit.entity).map_err(|e| format!("{action}: {e}"))?;
+    let layouts = eng.state.borrow().layouts.clone();
+    let layout_of = |c: &str| {
+        layouts
+            .get(c)
+            .or_else(|| layouts.get(&format!("og.{c}")))
+            .filter(|l| l.kind == RecordKind::Component)
+            .cloned()
+    };
+    // The fields it acts on: the instance's overrides of the entity (all,
+    // a component's), or the one field named (an override or not).
+    let listed = listed_fields(&scene_text, &name, false);
+    let fields: Vec<(String, String)> = match edit.target.as_deref() {
+        None => listed,
+        Some(t) => match t.split_once('.') {
+            Some((c, f)) => {
+                let c = listed
+                    .iter()
+                    .find(|(lc, _)| same_component(lc, c))
+                    .map_or_else(|| c.to_string(), |(lc, _)| lc.clone());
+                vec![(c, f.to_string())]
+            }
+            None => listed
+                .into_iter()
+                .filter(|(c, _)| same_component(c, t))
+                .collect(),
+        },
+    };
+    if fields.is_empty() {
+        return Err(format!(
+            "{action}: '{name}' has no override{} in {}",
+            edit.target
+                .as_deref()
+                .map_or_else(String::new, |t| format!(" of {t}")),
+            scene_path.display()
+        ));
+    }
+    let picked = |c: &str, f: &str| fields.iter().any(|(fc, ff)| fc == c && ff == f);
+    let live = |world: &World, c: &str, f: &str| -> Option<FieldValue> {
+        let layout = layout_of(c)?;
+        let sid = world.id_by_name(&layout.schema).ok()?;
+        let bytes = world.get_bytes(edit.entity, sid).ok()?;
+        field_value(&layout, &bytes, f)
+    };
+    let mut files = Vec::new();
+    let mut out = |path: &std::path::Path,
+                   old: &str,
+                   r: og_bundle::scene_text::Rewrite|
+     -> Result<(), String> {
+        let source = path
+            .strip_prefix(eng.assets.borrow().root.as_str())
+            .map_or_else(|_| path.display().to_string(), |p| p.display().to_string());
+        let written = if edit.write && r.text != old {
+            std::fs::write(path, &r.text).map_err(|e| format!("{}: {e}", path.display()))?;
+            source.clone()
+        } else {
+            String::new()
+        };
+        files.push(SavedFile {
+            source,
+            written,
+            text: r.text,
+            lines: r.lines,
+        });
+        Ok(())
+    };
+    if edit.apply {
+        let world: &World = world;
+        // Into the prefab placed, or the base of that variant.
+        let mut target = link.id.clone();
+        let mut variant: Option<(std::path::PathBuf, String)> = None;
+        if edit.base {
+            let path = assets_file(eng, &link.id)?;
+            let text =
+                std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+            let base = og_core::ogt::Document::parse(&text)
+                .ok()
+                .and_then(|d| {
+                    d.body
+                        .get("base")
+                        .and_then(|b| b.string(0).ok().map(str::to_string))
+                })
+                .ok_or_else(|| format!("{action}: {} is not a variant (no base line)", link.id))?;
+            target = og_bundle::runtime::asset_id(&base).to_string();
+            variant = Some((path, text));
+        }
+        let values: Vec<(String, String, FieldValue)> = fields
+            .iter()
+            .filter_map(|(c, f)| live(world, c, f).map(|v| (c.clone(), f.clone(), v)))
+            .collect();
+        let value = |c: &str, f: &str| {
+            values
+                .iter()
+                .find(|(vc, vf, _)| vc == c && vf == f)
+                .map(|x| x.2.clone())
+        };
+        let node = link.path.clone();
+        // The prefab's text: the values at the node, a line each.
+        let path = assets_file(eng, &target)?;
+        let text =
+            std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+        let current = |e: &str, c: &str, f: &str| {
+            if e == node && picked(c, f) {
+                value(c, f)
+            } else {
+                None
+            }
+        };
+        let always = |_: &str, _: &str, _: &str| Some(None);
+        let plan = Plan {
+            tuned: fields
+                .iter()
+                .map(|(c, f)| (node.clone(), c.clone(), f.clone()))
+                .collect(),
+            ..Plan::default()
+        };
+        let r = rewrite_instances(
+            &text,
+            &current,
+            &plan,
+            &Instances {
+                base: &always,
+                paths: true,
+            },
+        );
+        if !r.skipped.is_empty() {
+            return Err(format!("{action}: {}", r.skipped.join("; ")));
+        }
+        out(&path, &text, r)?;
+        // Out of the variant, when written through to its base.
+        let at_value = |e: &str, c: &str, f: &str| -> Option<Option<FieldValue>> {
+            (e == node && picked(c, f)).then(|| value(c, f))
+        };
+        if let Some((vpath, vtext)) = variant {
+            let r = rewrite_instances(
+                &vtext,
+                &current,
+                &Plan::default(),
+                &Instances {
+                    base: &at_value,
+                    paths: true,
+                },
+            );
+            out(&vpath, &vtext, r)?;
+        }
+        // Out of the instance: back at the prefab's (new) value.
+        let current = |e: &str, c: &str, f: &str| {
+            if e == name && picked(c, f) {
+                value(c, f)
+            } else {
+                None
+            }
+        };
+        let at_value = |e: &str, c: &str, f: &str| -> Option<Option<FieldValue>> {
+            (e == name && picked(c, f)).then(|| value(c, f))
+        };
+        let r = rewrite_instances(
+            &scene_text,
+            &current,
+            &Plan::default(),
+            &Instances {
+                base: &at_value,
+                paths: false,
+            },
+        );
+        out(&scene_path, &scene_text, r)?;
+    } else {
+        // The prefab's values; the instance's lines go, the live values
+        // become them.
+        let base: Vec<(String, String, Option<FieldValue>)> = fields
+            .iter()
+            .map(|(c, f)| {
+                let v = prefab_value(eng, world, edit.entity, c, f).flatten();
+                (c.clone(), f.clone(), v)
+            })
+            .collect();
+        let value = |c: &str, f: &str| {
+            base.iter()
+                .find(|(bc, bf, _)| bc == c && bf == f)
+                .and_then(|x| x.2.clone())
+        };
+        let current = |e: &str, c: &str, f: &str| {
+            if e == name && picked(c, f) {
+                value(c, f)
+            } else {
+                None
+            }
+        };
+        let at_value = |e: &str, c: &str, f: &str| -> Option<Option<FieldValue>> {
+            (e == name && picked(c, f)).then(|| value(c, f))
+        };
+        let r = rewrite_instances(
+            &scene_text,
+            &current,
+            &Plan::default(),
+            &Instances {
+                base: &at_value,
+                paths: false,
+            },
+        );
+        out(&scene_path, &scene_text, r)?;
+        let assets = eng.assets.borrow();
+        let Some(super::assets::Payload::Scene(prefab)) =
+            assets.entries.get(link.index).map(|e| &e.payload)
+        else {
+            return Err(format!("{action}: {} is not loaded", link.id));
+        };
+        let node = prefab
+            .entities
+            .iter()
+            .enumerate()
+            .find(|(i, _)| node_path(prefab, *i) == link.path)
+            .map(|(i, _)| i);
+        for (c, f) in &fields {
+            let Some(layout) = layout_of(c) else { continue };
+            let row = prefab
+                .components
+                .iter()
+                .find(|t| same_component(&t.name, c))
+                .and_then(|t| node.and_then(|n| t.get(n)).map(|row| (t, row)));
+            let Some((table, row)) = row else { continue };
+            let mut dropped = Vec::new();
+            let all = super::assets::migrate(&table.schema, row, &layout, &mut dropped);
+            let Some(v) = all.get(f.as_str()) else {
+                continue;
+            };
+            let sid = world
+                .id_by_name(&layout.schema)
+                .map_err(|e| e.reason().to_string())?;
+            let now = world
+                .get_bytes(edit.entity, sid)
+                .map_err(|e| e.reason().to_string())?;
+            let bytes = layout.encode(Some(&now), Some(&serde_json::json!({ f.as_str(): v })))?;
+            world
+                .insert_bytes(edit.entity, sid, &bytes)
+                .map_err(|e| e.reason().to_string())?;
+        }
+    }
+    Ok(SavedScene {
+        files,
+        ..SavedScene::default()
+    })
 }
 
 impl RuntimeWriter {

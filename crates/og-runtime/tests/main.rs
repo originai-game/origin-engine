@@ -22,6 +22,7 @@ mod missing_glyphs;
 mod model_clips;
 mod model_reload;
 mod no_renderer;
+mod prefabs;
 mod profile2d;
 mod raycast_record_cost;
 mod render_interpolation;

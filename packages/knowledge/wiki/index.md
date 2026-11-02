@@ -157,7 +157,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1764 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1769 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -367,6 +367,7 @@ Field units the docs and Tune use.
 | [`DensityMode`](ui.md#type-DensityMode) | enum | ui | — |
 | [`DescribedCamera`](probe.md#type-DescribedCamera) | struct | probe | — |
 | [`DescribedEntity`](probe.md#type-DescribedEntity) | struct | probe | — |
+| [`DescribedPrefab`](probe.md#type-DescribedPrefab) | struct | probe | — |
 | [`DescribedUi`](probe.md#type-DescribedUi) | struct | probe | — |
 | [`DescribedView`](probe.md#type-DescribedView) | struct | probe | — |
 | [`Description`](probe.md#type-Description) | struct | probe | — |
@@ -434,6 +435,7 @@ Field units the docs and Tune use.
 | [`Entity()`](world.md#column-Entity) | column kind | world | — |
 | [`EntityDump`](probe.md#type-EntityDump) | struct | probe | — |
 | [`EntityOperation`](probe.md#type-EntityOperation) | struct | probe | — |
+| [`EntityPrefab`](probe.md#type-EntityPrefab) | struct | probe | — |
 | [`EnvironmentMap`](render.md#type-EnvironmentMap) | handle | render | — |
 | [`EnvironmentMap()`](render.md#column-EnvironmentMap) | column kind | render | — |
 | [`ExpectOperation`](probe.md#type-ExpectOperation) | struct | probe | — |
@@ -858,6 +860,7 @@ Field units the docs and Tune use.
 | [`og.load.lut`](load.md#fn-lut) | function | load | `og_load_lut` |
 | [`og.load.palette`](load.md#fn-palette) | function | load | `og_load_palette` |
 | [`og.load.post`](load.md#fn-post) | function | load | `og_load_post` |
+| [`og.load.prefab`](load.md#fn-prefab) | function | load | `og_load_prefab` |
 | [`og.load.rig`](load.md#fn-rig) | function | load | `og_load_rig` |
 | [`og.load.rig2d`](load.md#fn-rig2d) | function | load | `og_load_rig2d` |
 | [`og.load.scene`](load.md#fn-scene) | function | load | `og_load_scene` |
@@ -966,6 +969,7 @@ Field units the docs and Tune use.
 | [`og.PointLight`](render.md#record-PointLight) | component | render | — |
 | [`og.Points`](render.md#record-Points) | component | render | — |
 | [`og.PostEffects`](render.md#record-PostEffects) | resource | render | — |
+| [`og.PrefabLink`](load.md#record-PrefabLink) | component | load | — |
 | [`og.Ragdoll`](physics.md#record-Ragdoll) | component | physics | — |
 | [`og.RectLight`](render.md#record-RectLight) | component | render | — |
 | [`og.ReflectionProbe`](render.md#record-ReflectionProbe) | component | render | — |
@@ -1906,6 +1910,7 @@ Field units the docs and Tune use.
 | [`World.instantiate`](world.md#member-World-instantiate) | method | world | `og_world_instantiate` |
 | [`World.nameOf`](world.md#member-World-nameOf) | method | world | `og_world_name_of` |
 | [`World.openSave`](world.md#member-World-openSave) | method | world | `og_world_open_save` |
+| [`World.prefabOf`](world.md#member-World-prefabOf) | method | world | `og_world_prefab_of` |
 | [`World.query`](world.md#member-World-query) | method | world | `og_world_query` |
 | [`World.remove`](world.md#member-World-remove) | method | world | `og_world_remove` |
 | [`World.removed`](world.md#member-World-removed) | method | world | `og_world_removed` |

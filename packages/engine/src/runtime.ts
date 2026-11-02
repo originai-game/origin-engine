@@ -1115,6 +1115,10 @@ export class WorldImpl {
     return structural(parse(abi().og_world_restore(this.id, save, json(desc))));
   }
 
+  prefabOf(entity: number): unknown {
+    return parse(abi().og_world_prefab_of(this.id, entity));
+  }
+
   nameOf(entity: number): string | null {
     return parse(abi().og_world_name_of(this.id, entity));
   }
@@ -1729,6 +1733,7 @@ export const load = Object.freeze({
   defaultBundle: (world: WorldImpl) => parse(abi().og_load_default_bundle(world.id)),
   gltf: (world: WorldImpl, path: string, desc?: unknown) => parse(abi().og_load_gltf(world.id, path, json(desc))),
   scene: (world: WorldImpl, path: string) => parse(abi().og_load_scene(world.id, path)),
+  prefab: (world: WorldImpl, path: string) => parse(abi().og_load_prefab(world.id, path)),
   font: (world: WorldImpl, path: string) => parse(abi().og_load_font(world.id, path)),
   fontInfo: (world: WorldImpl, font: number) => parse(abi().og_load_font_info(world.id, font)),
   sound: (world: WorldImpl, path: string) => parse(abi().og_load_sound(world.id, path)),

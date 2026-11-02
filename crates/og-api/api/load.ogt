@@ -194,6 +194,26 @@ module load {
     returns Result.Asset
   }
 
+  fn prefab {
+    doc "Load a cooked prefab (an .ogt of `type prefab`: one entity tree authored once and placed many times, docs/design.md §2.5). world.instantiate spawns it as it spawns a scene, its root under the desc's root entity, each entity unnamed (place a prefab many times without name clashes) and carrying an og.PrefabLink. A scene places one with a `prefab` line in an entity, and the cook flattens it there."
+    param world World "The world that owns the asset."
+    param path String "The prefab's asset id, such as `prefabs/crate.ogt`."
+    returns Result.Asset "The prefab, or why not (not cooked, or not a prefab)."
+  }
+
+  component PrefabLink {
+    doc "Where an entity came from when it was placed from a prefab: a scene's `prefab` line (flattened by the cook) or world.instantiate of og.load.prefab's asset. The engine writes it as the entity spawns and never changes it; it is world state like any component (snapshots, restores, the hash). A world that never placed a prefab does not register it, so its saves and hash are as before."
+    field prefab Asset "The prefab placed (a prefab nested in another links to the outermost one placed). Loaded as og.load.prefab loads it." {
+      readonly true
+    }
+    field node u32 "The entity's node: its index in the prefab's own entity table, depth first with parents first (0 is the prefab's root)." {
+      readonly true
+    }
+    field root Entity "The instance's root entity (the root's own, for the root)." {
+      readonly true
+    }
+  }
+
   fn font {
     doc "Load a cooked MSDF font for og.render.text, or an icon set (an `.ogt` of `type icons`: SVG icons cooked into a distance-field atlas like a font) for UiDesc.icons.font."
     param world World "The world that owns the font."

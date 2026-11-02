@@ -135,6 +135,8 @@ pub trait WorldApi: Wire {
     fn og_world_set_state(&self, world: u32, name: String, value: String) -> String;
     /// `World.find`
     fn og_world_find(&self, world: u32, name: String) -> String;
+    /// `World.prefabOf`
+    fn og_world_prefab_of(&self, world: u32, entity: f64) -> String;
     /// `World.nameOf`
     fn og_world_name_of(&self, world: u32, entity: f64) -> String;
     /// `World.query`
@@ -485,6 +487,8 @@ pub trait LoadApi: Wire {
     fn og_load_gltf(&self, world: u32, path: String, desc: Option<String>) -> String;
     /// `og.load.scene`
     fn og_load_scene(&self, world: u32, path: String) -> String;
+    /// `og.load.prefab`
+    fn og_load_prefab(&self, world: u32, path: String) -> String;
     /// `og.load.font`
     fn og_load_font(&self, world: u32, path: String) -> String;
     /// `og.load.fontInfo`
@@ -1223,6 +1227,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_world_state",
     "og_world_set_state",
     "og_world_find",
+    "og_world_prefab_of",
     "og_world_name_of",
     "og_world_query",
     "og_world_events",
@@ -1380,6 +1385,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_load_default_bundle",
     "og_load_gltf",
     "og_load_scene",
+    "og_load_prefab",
     "og_load_font",
     "og_load_font_info",
     "og_load_sound",

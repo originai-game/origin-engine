@@ -29,6 +29,7 @@ mod look_licences;
 mod look_styles;
 mod model;
 pub mod model_text;
+pub mod prefab;
 pub mod probes;
 mod psd;
 mod rig2d;
@@ -95,6 +96,8 @@ enum Kind {
     Sound,
     Font,
     Scene,
+    /// An `.ogt` of `type prefab`: cooked as a scene, flattened.
+    Prefab,
     Lut,
     Emitter,
     Style,
@@ -130,6 +133,7 @@ impl Kind {
             Kind::Sound => "sound",
             Kind::Font => "font",
             Kind::Scene => "scene",
+            Kind::Prefab => "prefab",
             Kind::Lut => "lut",
             Kind::Emitter => "emitter",
             Kind::Style => "style",
@@ -438,6 +442,17 @@ pub fn cook_project_with_texture_cache(
     sources.retain(|s| !consumed.contains(&s.rel));
     ignored.retain(|r| !consumed.contains(r));
     let known: BTreeSet<String> = sources.iter().map(|s| s.rel.clone()).collect();
+    // Prefab texts by asset id: scenes and prefabs flatten through them.
+    let prefab_texts: BTreeMap<String, String> = sources
+        .iter()
+        .filter(|s| s.kind == Kind::Prefab)
+        .map(|s| {
+            (
+                s.rel.clone(),
+                String::from_utf8_lossy(&s.bytes).into_owned(),
+            )
+        })
+        .collect();
     // The project's look (project.ogt's `look "looks/<id>.ogt"`): its art
     // contract (docs/art.md §2.1), read before anything cooks. A line that
     // names no look of the bundle is that asset's error.
@@ -1135,13 +1150,41 @@ pub fn cook_project_with_texture_cache(
                 }
                 Err(e) => early_errors.push((s.rel.clone(), "font", e)),
             },
-            Kind::Scene => {
+            Kind::Scene | Kind::Prefab => {
                 let text = String::from_utf8_lossy(&s.bytes);
-                let refs: Vec<String> = scene::references(&text)
+                // Every prefab it reaches, transitively, with its text's
+                // hash: editing a prefab re-cooks what places it.
+                let texts = |id: &str| prefab_texts.get(id).cloned();
+                let reached = prefab::reached(&text, &texts);
+                let mut refs: BTreeSet<String> = scene::references(&text).into_iter().collect();
+                let mut placed = Vec::new();
+                for id in &reached {
+                    let t = prefab_texts.get(id);
+                    if let Some(t) = t {
+                        refs.extend(scene::references(t));
+                    }
+                    placed.push(format!(
+                        "{id}#{}",
+                        t.map_or(0, |t| hash_bytes(t.as_bytes()))
+                    ));
+                }
+                let refs: Vec<String> = refs
                     .into_iter()
                     .map(|r| format!("{r}={}", known.contains(&r)))
                     .collect();
-                let st = stamp(&[b"scene", &hash, &schema_hash, refs.join("\n").as_bytes()]);
+                // A scene that places no prefab keeps the stamp it had.
+                let st = if placed.is_empty() && s.kind == Kind::Scene {
+                    stamp(&[b"scene", &hash, &schema_hash, refs.join("\n").as_bytes()])
+                } else {
+                    stamp(&[
+                        b"scene",
+                        &hash,
+                        &schema_hash,
+                        refs.join("\n").as_bytes(),
+                        placed.join("\n").as_bytes(),
+                        &[options.publish as u8],
+                    ])
+                };
                 outs.push((s.rel.clone(), format::Scene::NAME, st, Work::Scene(s)));
             }
         }
@@ -1185,8 +1228,15 @@ pub fn cook_project_with_texture_cache(
     let next = std::sync::atomic::AtomicUsize::new(0);
     std::thread::scope(|scope| {
         for worker in 0..threads.min(todo.len()) {
-            let (next, results, plan, schemas, known, todo) =
-                (&next, &results, &plan, &schemas, &known, &todo);
+            let (next, results, plan, schemas, known, todo, prefab_texts) = (
+                &next,
+                &results,
+                &plan,
+                &schemas,
+                &known,
+                &todo,
+                &prefab_texts,
+            );
             let budgets = &budgets;
             scope.spawn(move || {
                 loop {
@@ -1196,7 +1246,7 @@ pub fn cook_project_with_texture_cache(
                     let t = Instant::now();
                     let start = t.duration_since(started).as_secs_f64() * 1000.0;
                     let r = texture_cache::run(texture_cache, p, || {
-                        run(p, options, threads, schemas, known, budgets)
+                        run(p, options, threads, schemas, known, prefab_texts, budgets)
                     });
                     *results[i].lock().expect("no poisoning") =
                         Some((r, t.elapsed().as_secs_f64() * 1000.0, start, worker as u32));
@@ -1489,6 +1539,16 @@ pub fn cook_project_with_texture_cache(
             .iter()
             .filter(|n| n.starts_with("warning: over budget: "))
         {
+            warnings.push(format!("assets/{}: {n}", r.source));
+        }
+    }
+    // A prefab override whose target is gone: cooked (dropped), and said
+    // (a publish's cook refuses it).
+    for r in reports
+        .iter()
+        .filter(|r| r.kind == "scene" || r.kind == "prefab")
+    {
+        for n in r.notes.iter().filter(|n| n.contains("orphaned override")) {
             warnings.push(format!("assets/{}: {n}", r.source));
         }
     }

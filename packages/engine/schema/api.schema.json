@@ -2304,6 +2304,21 @@
               "publish": true
             },
             {
+              "name": "prefabOf",
+              "doc": "Where an entity came from when it was placed from a prefab: its og.PrefabLink (the prefab, its node, the instance's root).",
+              "params": [
+                {
+                  "name": "entity",
+                  "type": "Entity",
+                  "optional": false,
+                  "doc": "The entity."
+                }
+              ],
+              "returns": "Option<PrefabLink>",
+              "returnsDoc": "Null for an entity not placed from a prefab, or a dead one.",
+              "publish": true
+            },
+            {
               "name": "nameOf",
               "doc": "An entity's name.",
               "params": [
@@ -2380,7 +2395,7 @@
             },
             {
               "name": "instantiate",
-              "doc": "Spawn a loaded scene or glTF asset into the world: a root entity from the desc, then (for a scene) every scene entity under it with its components and names, or (for a glTF) a Model on the root.\nScene entity names must be free: a name already in use refuses the whole instantiation before anything spawns.",
+              "doc": "Spawn a loaded scene, prefab or glTF asset into the world: a root entity from the desc, then (for a scene or prefab) every entity under it with its components (a scene's with their names, a prefab's unnamed, each with an og.PrefabLink to it), or (for a glTF) a Model on the root.\nScene entity names must be free: a name already in use refuses the whole instantiation before anything spawns.",
               "params": [
                 {
                   "name": "asset",
@@ -5689,6 +5704,7 @@
         "SoundInfo",
         "TextureArrayInfo",
         "Model",
+        "PrefabLink",
         "AssetReady",
         "AssetFailed"
       ],
@@ -5796,6 +5812,27 @@
             }
           ],
           "returns": "Result<Asset>",
+          "publish": true
+        },
+        {
+          "name": "prefab",
+          "doc": "Load a cooked prefab (an .ogt of `type prefab`: one entity tree authored once and placed many times, docs/design.md §2.5). world.instantiate spawns it as it spawns a scene, its root under the desc's root entity, each entity unnamed (place a prefab many times without name clashes) and carrying an og.PrefabLink. A scene places one with a `prefab` line in an entity, and the cook flattens it there.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world that owns the asset."
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "optional": false,
+              "doc": "The prefab's asset id, such as `prefabs/crate.ogt`."
+            }
+          ],
+          "returns": "Result<Asset>",
+          "returnsDoc": "The prefab, or why not (not cooked, or not a prefab).",
           "publish": true
         },
         {
@@ -14125,6 +14162,8 @@
         "SystemDump",
         "WorldDump",
         "EntityDump",
+        "EntityPrefab",
+        "DescribedPrefab",
         "UiElement",
         "UiSurface",
         "UiDump",
@@ -26974,6 +27013,35 @@
           "default": -1,
           "minimum": -1,
           "x-og-tunable": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "PrefabLink": {
+      "x-og-kind": "component",
+      "x-og-module": "load",
+      "description": "Where an entity came from when it was placed from a prefab: a scene's `prefab` line (flattened by the cook) or world.instantiate of og.load.prefab's asset. The engine writes it as the entity spawns and never changes it; it is world state like any component (snapshots, restores, the hash). A world that never placed a prefab does not register it, so its saves and hash are as before.",
+      "type": "object",
+      "properties": {
+        "prefab": {
+          "$ref": "#/$defs/Asset",
+          "description": "The prefab placed (a prefab nested in another links to the outermost one placed). Loaded as og.load.prefab loads it.",
+          "default": 0,
+          "readOnly": true
+        },
+        "node": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The entity's node: its index in the prefab's own entity table, depth first with parents first (0 is the prefab's root).",
+          "default": 0,
+          "readOnly": true
+        },
+        "root": {
+          "$ref": "#/$defs/Entity",
+          "description": "The instance's root entity (the root's own, for the root).",
+          "default": 0,
+          "readOnly": true
         }
       },
       "additionalProperties": false
@@ -54581,7 +54649,9 @@
         "save_scene",
         "help",
         "mouse_move",
-        "pointer_lock"
+        "pointer_lock",
+        "apply_prefab",
+        "revert_prefab"
       ],
       "x-og-variants": {
         "screenshot": "`screenshot[:path][:full|:N]`: capture the next frame. Without a renderer it writes nothing and logs, not as a warning, that the frame is unchecked.",
@@ -54616,7 +54686,9 @@
         "save_scene": "`save_scene[:path][:spawned]`: write every scene the world was assembled from back from the world (the boot scene's, then each og.world.instantiate made, each to its own `.ogt`): only the lines whose values changed (comments and order kept), the fields set or patch tuned, and resources as `resource <Name> { }` blocks; with `spawned`, the entities the game spawned at run time under the boot scene's marked section. To each scene's source, or with a path the boot scene's to that file under the output directory and the others beside it.",
         "help": "`help`: list every action the channel knows, core and registered.",
         "mouse_move": "`mouse_move:dx,dy`: move the mouse by relative CSS pixels (movementX/Y, summed in og.Pointers.movement: mouse-look) with the pointer's position held, as a locked pointer moves.",
-        "pointer_lock": "`pointer_lock:<on|off>`: report the pointer locked or released (og.PointerLock.locked), as the web shell does from pointerlockchange; headless hosts never lock on their own."
+        "pointer_lock": "`pointer_lock:<on|off>`: report the pointer locked or released (og.PointerLock.locked), as the web shell does from pointerlockchange; headless hosts never lock on their own.",
+        "apply_prefab": "`apply_prefab:<entity>[:<Component>[.<field>]][:base]`: move an entity's prefab overrides (all, a component's or one field; a field set at run time too) into its prefab's `.ogt` at the entity's node, and out of its scene's instance block, so the scene cooks to the same world and every other instance takes the values; with `base`, into a variant's base (docs/design.md §2.5, prefabs).",
+        "revert_prefab": "`revert_prefab:<entity>[:<Component>[.<field>]]`: drop an entity's prefab overrides (all, a component's or one field) from its scene's instance block, and set the live values back to the prefab's."
       }
     },
     "CommandDesc": {
@@ -55996,12 +56068,74 @@
           "type": "object",
           "additionalProperties": {},
           "description": "Each component's field values, by component name."
+        },
+        "prefab": {
+          "$ref": "#/$defs/EntityPrefab",
+          "description": "Where it came from, for an entity placed from a prefab; absent otherwise."
         }
       },
       "required": [
         "id",
         "name",
         "components"
+      ],
+      "additionalProperties": false
+    },
+    "EntityPrefab": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "Where an entity placed from a prefab came from (its og.PrefabLink, resolved) and what its instance overrides.",
+      "type": "object",
+      "properties": {
+        "prefab": {
+          "type": "string",
+          "description": "The prefab's asset id (the outermost one placed)."
+        },
+        "node": {
+          "type": "string",
+          "description": "The entity's node path in the prefab: empty for its root, `lid/hinge` for a grandchild."
+        },
+        "root": {
+          "type": "string",
+          "description": "The instance root's probe id."
+        },
+        "overrides": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The fields its instance's text overrides on it, `Component.field`, in text order (empty for an instance placed at run time, which no text holds)."
+        }
+      },
+      "required": [
+        "prefab",
+        "node",
+        "root",
+        "overrides"
+      ],
+      "additionalProperties": false
+    },
+    "DescribedPrefab": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "The instances of one prefab in the world.",
+      "type": "object",
+      "properties": {
+        "prefab": {
+          "type": "string",
+          "description": "The prefab's asset id."
+        },
+        "instances": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Each instance root's probe id, in entity order."
+        }
+      },
+      "required": [
+        "prefab",
+        "instances"
       ],
       "additionalProperties": false
     },
@@ -56296,6 +56430,10 @@
               "type": "object",
               "additionalProperties": {},
               "description": "Each component's field values, by component name."
+            },
+            "prefab": {
+              "$ref": "#/$defs/EntityPrefab",
+              "description": "Where it came from, for an entity placed from a prefab; absent otherwise."
             }
           },
           "required": [
@@ -56824,6 +56962,13 @@
             "$ref": "#/$defs/DescribedUi"
           },
           "description": "The UI elements in draw order."
+        },
+        "prefabs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DescribedPrefab"
+          },
+          "description": "The prefab instances in the world, by prefab id; absent in a world without one."
         }
       },
       "required": [

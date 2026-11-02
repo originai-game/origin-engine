@@ -307,6 +307,23 @@ module probe {
     field id String "Its probe id."
     field name Option.String "Its name."
     field components Map.Json "Each component's field values, by component name."
+    field prefab EntityPrefab "Where it came from, for an entity placed from a prefab; absent otherwise." {
+      optional true
+    }
+  }
+
+  struct EntityPrefab {
+    doc "Where an entity placed from a prefab came from (its og.PrefabLink, resolved) and what its instance overrides."
+    field prefab String "The prefab's asset id (the outermost one placed)."
+    field node String "The entity's node path in the prefab: empty for its root, `lid/hinge` for a grandchild."
+    field root String "The instance root's probe id."
+    field overrides List.String "The fields its instance's text overrides on it, `Component.field`, in text order (empty for an instance placed at run time, which no text holds)."
+  }
+
+  struct DescribedPrefab {
+    doc "The instances of one prefab in the world."
+    field prefab String "The prefab's asset id."
+    field instances List.String "Each instance root's probe id, in entity order."
   }
 
   struct UiElement {
@@ -479,6 +496,9 @@ module probe {
     field entities List.DescribedEntity "The entities the main camera shows, nearest first (each names the views that also show it)."
     field views List.DescribedView "The secondary cameras the frame draws, in its view order, each with what it shows."
     field ui List.DescribedUi "The UI elements in draw order."
+    field prefabs List.DescribedPrefab "The prefab instances in the world, by prefab id; absent in a world without one." {
+      optional true
+    }
   }
 
   enum ExpectStatus {

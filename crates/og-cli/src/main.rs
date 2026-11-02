@@ -24,6 +24,7 @@ mod doctor;
 mod doctor_project;
 mod migrate;
 mod polish;
+mod prefab;
 mod probe;
 mod project;
 mod publish;
@@ -116,6 +117,14 @@ commands:
   bake lightmaps [project] [--samples N] [--bounces N] [--texels-per-metre N] [--sky R,G,B] [--scene <id>]
                       trace the light of the scenes with static models or LightVolumes into
                       <scene>.lightmap.ogt and .ktx2 beside them (CPU, native), then cook
+  prefab check [project]
+                      flatten every scene and prefab as the cook does: cycles, name clashes and
+                      orphaned overrides (a node, component or field the prefab no longer has);
+                      exits 1 while any exists (a publish cook refuses an orphaned override)
+  prefab show <prefab> [--scene <id> --instance <name>] [--project <dir>]
+                      the flattened tree, each field with the text its value comes from
+  prefab extract <scene> <entity> <prefab> [--project <dir>]
+                      an authored entity becomes a new prefab, its block an instance of it
   sfx [<preset> [--seed N] [--pitch P] [--length L] [--volume V] --out <file.ogt|file.wav>]
   sfx library <dir>
                       the procedural sound presets (coin, jump, hit, click, ...): list them,
@@ -271,6 +280,7 @@ fn main() -> ExitCode {
         ["bake", "probes", rest @ ..] => bake_probes::run(rest),
         ["bake", rest @ ..] => bake_lightmaps::run(rest),
         ["api", rest @ ..] => api::run(rest),
+        ["prefab", rest @ ..] => prefab::run(rest),
         ["sfx", rest @ ..] => sfx::run(rest),
         ["style", rest @ ..] => style::run(rest),
         ["ui", rest @ ..] => ui::run(rest),

@@ -46,7 +46,22 @@ row!(
     }
 );
 
-/// The scene blob.
+row!(
+    /// Where one entity came from (the optional `prefabs` table, one row
+    /// per entity in entity order, present when any entity was placed
+    /// from a prefab): `prefab` is its `prefab_refs` entry (the prefab
+    /// placed, the outermost for a nested one) or [`NONE`] for an
+    /// authored entity, `node` its index in that prefab's own table and
+    /// `root` the entity index of its instance's root.
+    PrefabRow, "og.ScenePrefab", 1 {
+        prefab: u32,
+        node: u32,
+        root: u32,
+    }
+);
+
+/// The scene blob. A prefab's blob is one too (manifest type
+/// `og.Scene`), its entities all linked to it.
 pub struct Scene;
 impl BlobKind for Scene {
     const NAME: &'static str = "og.Scene";

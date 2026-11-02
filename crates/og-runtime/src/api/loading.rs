@@ -69,6 +69,10 @@ pub fn og_load_scene(world: u32, path: String) -> String {
     result(engine(world).and_then(|eng| assets::load_scene(&eng, &path).map(asset_value)))
 }
 
+pub fn og_load_prefab(world: u32, path: String) -> String {
+    result(engine(world).and_then(|eng| crate::prefab::load(&eng, &path).map(asset_value)))
+}
+
 pub fn og_load_lut(world: u32, path: String) -> String {
     result(engine(world).and_then(|eng| super::fx::load_lut(&eng, &path).map(asset_value)))
 }

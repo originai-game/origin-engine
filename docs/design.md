@@ -291,8 +291,9 @@ instance, a tuned field is written as an override line in that
 instance's block (`override "<node>"`, or the instance's own block for
 the root), and only when it differs from the prefab's cooked value; a
 field tuned back to the prefab's value has its override line removed.
-`apply_prefab:<entity>[:<Component>[.<field>]]` (probe action, RPC and
-`og prefab apply`) is the other direction: the instance's overrides on
+`apply_prefab:<entity>[:<Component>[.<field>]]` (a command-channel
+action; no RPC member, so `hello`'s members are unchanged) is the other
+direction: the instance's overrides on
 that entity's node (all of them, a component's, or one field) are
 written into the prefab's `.ogt` (through the same line-preserving
 rewrite, at the node's block) and removed from the instance's text, so

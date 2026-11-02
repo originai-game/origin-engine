@@ -1277,7 +1277,12 @@ fn field_json(ty: FieldType, bytes: &[u8], target: &super::codec::FieldLayout) -
 
 /// A scene table's row as a value of the registered layout, migrated by
 /// field name: missing fields keep their defaults, extra ones are reported.
-fn migrate(schema: &Schema, row: &[u8], layout: &Layout, dropped: &mut Vec<String>) -> Value {
+pub(crate) fn migrate(
+    schema: &Schema,
+    row: &[u8],
+    layout: &Layout,
+    dropped: &mut Vec<String>,
+) -> Value {
     let packed = og_core::reflect::Layout::of(schema);
     let mut out = Map::new();
     for (i, f) in schema.fields.iter().enumerate() {
@@ -1324,7 +1329,10 @@ pub(crate) fn spawn_scene(
     scene: &SceneDesc,
     root: Option<Entity>,
 ) -> Result<Vec<Entity>, String> {
-    {
+    // A prefab's own blob (og.load.prefab) spawns unnamed: it is placed
+    // many times.
+    let prefab = scene.prefabs.first() == Some(&scene.id);
+    if !prefab {
         let st = eng.state.borrow();
         let mut seen = std::collections::BTreeSet::new();
         for e in &scene.entities {
@@ -1355,11 +1363,38 @@ pub(crate) fn spawn_scene(
             )),
         }
     }
+    // The prefabs its entities came from, each loaded once (the links'
+    // asset handles), and og.PrefabLink registered: before anything spawns.
+    let mut prefab_assets = Vec::with_capacity(scene.prefabs.len());
+    for id in &scene.prefabs {
+        prefab_assets.push(if *id == scene.id {
+            load_scene(eng, id)?
+        } else {
+            super::prefab::load(eng, id).map_err(|r| format!("{}: {r}", scene.id))?
+        });
+    }
+    let link = if scene.prefabs.is_empty() {
+        None
+    } else {
+        let id = super::prefab::register(eng, eng.world()?)?;
+        let layout = eng.state.borrow().layouts.get(super::prefab::LINK).cloned();
+        layout.map(|l| (id, l))
+    };
     let mut spawned: Vec<Entity> = Vec::with_capacity(scene.entities.len());
     before_structural(eng);
     for (i, e) in scene.entities.iter().enumerate() {
         let world = eng.world()?;
         let mut components = Vec::new();
+        // Its og.PrefabLink, spawned with it (an instance's root gets its
+        // own once its id is known, below).
+        let origin = e.prefab.zip(link.as_ref());
+        if let Some((o, (id, layout))) = origin
+            && o.root != i
+        {
+            let root = spawned.get(o.root).map_or(0, |r| r.to_bits());
+            let value = super::prefab::link_value(prefab_assets[o.prefab], o.node, root);
+            components.push((*id, layout.encode(None, Some(&value))?));
+        }
         let mut has_transform = false;
         // A `Model` table beside a `model` line: its fields, with the
         // line's asset (`model_table`).
@@ -1431,7 +1466,16 @@ pub(crate) fn spawn_scene(
         let entity = world
             .spawn_bytes(components)
             .map_err(|e| e.reason().to_string())?;
-        if !e.name.is_empty() {
+        if let Some((o, (id, layout))) = origin
+            && o.root == i
+        {
+            let value =
+                super::prefab::link_value(prefab_assets[o.prefab], o.node, entity.to_bits());
+            eng.world()?
+                .insert_bytes(entity, *id, &layout.encode(None, Some(&value))?)
+                .map_err(|e| e.reason().to_string())?;
+        }
+        if !e.name.is_empty() && !prefab {
             super::api::set_name(eng, entity, &e.name);
         }
         spawned.push(entity);

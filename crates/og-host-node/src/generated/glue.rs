@@ -315,6 +315,12 @@ pub fn og_world_find(env: Env, world: u32, name: String) -> String {
     <Host as WorldApi>::og_world_find(&Host, world, name)
 }
 
+#[napi(js_name = "og_world_prefab_of")]
+pub fn og_world_prefab_of(env: Env, world: u32, entity: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as WorldApi>::og_world_prefab_of(&Host, world, entity)
+}
+
 #[napi(js_name = "og_world_name_of")]
 pub fn og_world_name_of(env: Env, world: u32, entity: f64) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -1255,6 +1261,12 @@ pub fn og_load_gltf(env: Env, world: u32, path: String, desc: Option<String>) ->
 pub fn og_load_scene(env: Env, world: u32, path: String) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as LoadApi>::og_load_scene(&Host, world, path)
+}
+
+#[napi(js_name = "og_load_prefab")]
+pub fn og_load_prefab(env: Env, world: u32, path: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_prefab(&Host, world, path)
 }
 
 #[napi(js_name = "og_load_font")]

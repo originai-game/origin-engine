@@ -20,7 +20,7 @@ module system {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1229</sub>
+<sub>`api.ogt` line 1235</sub>
 
 ## Contents
 
@@ -74,7 +74,7 @@ fn defineHook {
 }
 ```
 
-<sub>`api.ogt` line 1301</sub>
+<sub>`api.ogt` line 1307</sub>
 
 <a id="fn-defineSystem"></a>
 
@@ -106,7 +106,7 @@ fn defineSystem {
 }
 ```
 
-<sub>`api.ogt` line 1325</sub>
+<sub>`api.ogt` line 1331</sub>
 
 ## Interfaces
 
@@ -122,7 +122,7 @@ interface Hook {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1296</sub>
+<sub>`api.ogt` line 1302</sub>
 
 <a id="member-Hook-name"></a>
 
@@ -140,7 +140,7 @@ Binding symbol `og_hook_get_name` · publish builds: kept
 prop name String "The hook's unique name."
 ```
 
-<sub>`api.ogt` line 1298</sub>
+<sub>`api.ogt` line 1304</sub>
 
 <a id="type-System"></a>
 
@@ -154,7 +154,7 @@ interface System {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1318</sub>
+<sub>`api.ogt` line 1324</sub>
 
 <a id="member-System-name"></a>
 
@@ -172,7 +172,7 @@ Binding symbol `og_system_get_name` · publish builds: kept
 prop name String "The system's unique name."
 ```
 
-<sub>`api.ogt` line 1320</sub>
+<sub>`api.ogt` line 1326</sub>
 
 <a id="member-System-reads"></a>
 
@@ -190,7 +190,7 @@ Binding symbol `og_system_get_reads` · publish builds: kept
 prop reads List.AnyReflected "What it reads."
 ```
 
-<sub>`api.ogt` line 1321</sub>
+<sub>`api.ogt` line 1327</sub>
 
 <a id="member-System-writes"></a>
 
@@ -208,7 +208,7 @@ Binding symbol `og_system_get_writes` · publish builds: kept
 prop writes List.AnyReflected "What it writes."
 ```
 
-<sub>`api.ogt` line 1322</sub>
+<sub>`api.ogt` line 1328</sub>
 
 ## Types
 
@@ -235,7 +235,7 @@ enum StateWhen {
 }
 ```
 
-<sub>`api.ogt` line 1237</sub>
+<sub>`api.ogt` line 1243</sub>
 
 <a id="type-StateDesc"></a>
 
@@ -260,7 +260,7 @@ struct StateDesc {
 }
 ```
 
-<sub>`api.ogt` line 1244</sub>
+<sub>`api.ogt` line 1250</sub>
 
 <a id="type-RunCondition"></a>
 
@@ -286,7 +286,7 @@ callback RunCondition {
 }
 ```
 
-<sub>`api.ogt` line 1253</sub>
+<sub>`api.ogt` line 1259</sub>
 
 <a id="type-SystemDesc"></a>
 
@@ -330,7 +330,7 @@ struct SystemDesc {
 }
 ```
 
-<sub>`api.ogt` line 1259</sub>
+<sub>`api.ogt` line 1265</sub>
 
 <a id="type-HookEvent"></a>
 
@@ -353,7 +353,7 @@ enum HookEvent {
 }
 ```
 
-<sub>`api.ogt` line 1276</sub>
+<sub>`api.ogt` line 1282</sub>
 
 <a id="type-HookDesc"></a>
 
@@ -379,7 +379,7 @@ struct HookDesc {
 }
 ```
 
-<sub>`api.ogt` line 1282</sub>
+<sub>`api.ogt` line 1288</sub>
 
 <a id="type-HookRun"></a>
 
@@ -406,7 +406,7 @@ callback HookRun {
 }
 ```
 
-<sub>`api.ogt` line 1290</sub>
+<sub>`api.ogt` line 1296</sub>
 
 <a id="type-SystemRun"></a>
 
@@ -435,4 +435,4 @@ callback SystemRun {
 }
 ```
 
-<sub>`api.ogt` line 1311</sub>
+<sub>`api.ogt` line 1317</sub>

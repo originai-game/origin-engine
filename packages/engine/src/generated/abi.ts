@@ -109,6 +109,8 @@ export interface HostAbi<A, V> {
   og_world_set_state(world: number, name: string, value: string): string;
   /** `World.find` */
   og_world_find(world: number, name: string): string;
+  /** `World.prefabOf` */
+  og_world_prefab_of(world: number, entity: number): string;
   /** `World.nameOf` */
   og_world_name_of(world: number, entity: number): string;
   /** `World.query` */
@@ -423,6 +425,8 @@ export interface HostAbi<A, V> {
   og_load_gltf(world: number, path: string, desc: string | undefined): string;
   /** `og.load.scene` */
   og_load_scene(world: number, path: string): string;
+  /** `og.load.prefab` */
+  og_load_prefab(world: number, path: string): string;
   /** `og.load.font` */
   og_load_font(world: number, path: string): string;
   /** `og.load.fontInfo` */
@@ -1080,6 +1084,7 @@ export const SYMBOLS: readonly string[] = [
   "og_world_state",
   "og_world_set_state",
   "og_world_find",
+  "og_world_prefab_of",
   "og_world_name_of",
   "og_world_query",
   "og_world_events",
@@ -1237,6 +1242,7 @@ export const SYMBOLS: readonly string[] = [
   "og_load_default_bundle",
   "og_load_gltf",
   "og_load_scene",
+  "og_load_prefab",
   "og_load_font",
   "og_load_font_info",
   "og_load_sound",
@@ -1616,6 +1622,10 @@ export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {
     og_world_children(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("world.children", "entity", entity);
       return abi.og_world_children(world, entity);
+    },
+    og_world_prefab_of(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("world.prefabOf", "entity", entity);
+      return abi.og_world_prefab_of(world, entity);
     },
     og_world_name_of(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("world.nameOf", "entity", entity);

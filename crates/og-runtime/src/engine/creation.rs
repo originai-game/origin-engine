@@ -178,6 +178,18 @@ pub(crate) fn assemble(
         {
             continue;
         }
+        // og.PrefabLink: its layout now, registered with the world when the
+        // first prefab entity spawns (super::prefab), so a world without
+        // prefabs keeps its type table and hash.
+        if decl.schema == crate::prefab::LINK {
+            match Layout::from_decl(decl) {
+                Ok(l) => {
+                    layouts.insert(l.schema.clone(), l);
+                }
+                Err(e) => warnings.push(format!("{} not registered: {e}", decl.schema)),
+            }
+            continue;
+        }
         match Layout::from_decl(decl).and_then(|l| {
             world.register_schema(versioned(l.schema())).map_err(err)?;
             Ok(l)
@@ -276,7 +288,11 @@ pub(crate) fn assemble(
     // the UI's begin), then the game's, then the modules' after them.
     let ui = super::modules::new_ui(game.tick, previous.as_ref().map(|p| p.0));
     let (physics, actions) = super::modules::mount_front(&mut world, engine_id, profile, &ui)?;
-    let record_names: Vec<String> = layouts.keys().cloned().collect();
+    let record_names: Vec<String> = layouts
+        .keys()
+        .filter(|n| world.id_by_name(n).is_ok())
+        .cloned()
+        .collect();
     super::terrain::mount(&mut world, engine_id)?;
     super::e6::mount_front(&mut world, engine_id, profile, &physics, &record_names)?;
 
@@ -293,6 +309,25 @@ pub(crate) fn assemble(
                 .cloned()
                 .ok_or_else(|| format!("the game lists system {s}, which was never declared"))?,
         );
+    }
+    // og.PrefabLink, registered now when a system or hook names it (it is
+    // otherwise registered as the first prefab entity spawns).
+    let link = crate::prefab::LINK;
+    let names_link = systems_decl.iter().any(|s| {
+        s.reads.iter().chain(&s.writes).any(|t| t.name == link)
+            || s.without
+                .iter()
+                .chain(&s.changed)
+                .chain(&s.added)
+                .chain(&s.removed)
+                .any(|n| n == link)
+    }) || game.hooks.iter().any(|&h| {
+        all_hooks.get(h as usize).is_some_and(|h| {
+            h.component == link || h.reads.iter().chain(&h.writes).any(|t| t.name == link)
+        })
+    });
+    if names_link && let Some(l) = layouts.get(link) {
+        world.register_schema(l.schema()).map_err(err)?;
     }
     let mut systems = Vec::new();
     for i in order(&systems_decl)? {
@@ -430,9 +465,11 @@ pub(crate) fn assemble(
     // targets), before the UI's end and physics (root motion moves Transforms).
     // Tweens and flipbooks, then og-anim, then tilemaps and camera feel;
     // og.sprite after physics (the poses at the tick's end).
+    // Registered ones only: og.PrefabLink's layout is known before the
+    // world registers it (crate::prefab).
     let components: Vec<String> = layouts
         .values()
-        .filter(|l| l.kind == RecordKind::Component)
+        .filter(|l| l.kind == RecordKind::Component && world.id_by_name(&l.schema).is_ok())
         .map(|l| l.schema.clone())
         .collect();
     let feel = super::feel::install_front(&mut world, &components)?;

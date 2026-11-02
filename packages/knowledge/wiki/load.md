@@ -18,7 +18,7 @@ module load {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 6770</sub>
+<sub>`api.ogt` line 6776</sub>
 
 ## Contents
 
@@ -47,6 +47,8 @@ module load {
 | [`og.load.defaultBundle`](#fn-defaultBundle) | function | The game's own bundle, opened before the first tick from `cooked/`. |
 | [`og.load.gltf`](#fn-gltf) | function | Load a cooked glTF (.gltf or .glb), as three.js GLTFLoader.load: its meshes, materials and textures join the renderer once. |
 | [`og.load.scene`](#fn-scene) | function | Load a cooked scene (.ogt). world.instantiate spawns its entities: depth first, parents before children, each component table matched to a registered component by its reflected name (`Transform` is og.Transform) and migrated field by field; a field the scene lacks keeps its default, one the component lacks is dropped with a warning. |
+| [`og.load.prefab`](#fn-prefab) | function | Load a cooked prefab (an .ogt of `type prefab`: one entity tree authored once and placed many times, docs/design.md §2.5). world.instantiate spawns it as it spawns a scene, its root under the desc's root entity, each entity unnamed (place a prefab many times without name clashes) and carrying an og.PrefabLink. A scene places one with a `prefab` line in an entity, and the cook flattens it there. |
+| [`og.PrefabLink`](#record-PrefabLink) | component | Where an entity came from when it was placed from a prefab: a scene's `prefab` line (flattened by the cook) or world.instantiate of og.load.prefab's asset. The engine writes it as the entity spawns and never changes it; it is world state like any component (snapshots, restores, the hash). A world that never placed a prefab does not register it, so its saves and hash are as before. |
 | [`og.load.font`](#fn-font) | function | Load a cooked MSDF font for og.render.text, or an icon set (an `.ogt` of `type icons`: SVG icons cooked into a distance-field atlas like a font) for UiDesc.icons.font. |
 | [`og.load.fontInfo`](#fn-fontInfo) | function | A loaded font's metrics. |
 | [`og.load.sound`](#fn-sound) | function | Load a cooked sound for the audio module. Sounds are `.wav`, `.mp3`, `.ogg` (Vorbis) and `.flac` files under assets/ (and procedural `.ogt` presets): og cook decodes each to 16-bit PCM and encodes it to QOA, so every format plays, streams and loops the same. The asset id keeps the source's extension (`audio/theme.mp3`). |
@@ -109,7 +111,7 @@ fn bundle {
 }
 ```
 
-<sub>`api.ogt` line 6930</sub>
+<sub>`api.ogt` line 6936</sub>
 
 <a id="fn-bundleInfo"></a>
 
@@ -139,7 +141,7 @@ fn bundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 6937</sub>
+<sub>`api.ogt` line 6943</sub>
 
 <a id="fn-defaultBundle"></a>
 
@@ -167,7 +169,7 @@ fn defaultBundle {
 }
 ```
 
-<sub>`api.ogt` line 6944</sub>
+<sub>`api.ogt` line 6950</sub>
 
 <a id="fn-gltf"></a>
 
@@ -202,7 +204,7 @@ fn gltf {
 }
 ```
 
-<sub>`api.ogt` line 6950</sub>
+<sub>`api.ogt` line 6956</sub>
 
 <a id="fn-scene"></a>
 
@@ -232,7 +234,37 @@ fn scene {
 }
 ```
 
-<sub>`api.ogt` line 6959</sub>
+<sub>`api.ogt` line 6965</sub>
+
+<a id="fn-prefab"></a>
+
+### `og.load.prefab`
+
+Load a cooked prefab (an .ogt of `type prefab`: one entity tree authored once and placed many times, docs/design.md §2.5). world.instantiate spawns it as it spawns a scene, its root under the desc's root entity, each entity unnamed (place a prefab many times without name clashes) and carrying an og.PrefabLink. A scene places one with a `prefab` line in an entity, and the cook flattens it there.
+
+```ts
+og.load.prefab(world: World, path: string): Result<Asset>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world that owns the asset. |
+| `path` | `string` | no | The prefab's asset id, such as `prefabs/crate.ogt`. |
+
+**Returns** `Result<Asset>`: The prefab, or why not (not cooked, or not a prefab).
+
+Binding symbol `og_load_prefab` · publish builds: kept
+
+```ogt
+fn prefab {
+  doc "Load a cooked prefab (an .ogt of `type prefab`: one entity tree authored once and placed many times, docs/design.md §2.5). world.instantiate spawns it as it spawns a scene, its root under the desc's root entity, each entity unnamed (place a prefab many times without name clashes) and carrying an og.PrefabLink. A scene places one with a `prefab` line in an entity, and the cook flattens it there."
+  param world World "The world that owns the asset."
+  param path String "The prefab's asset id, such as `prefabs/crate.ogt`."
+  returns Result.Asset "The prefab, or why not (not cooked, or not a prefab)."
+}
+```
+
+<sub>`api.ogt` line 6972</sub>
 
 <a id="fn-font"></a>
 
@@ -262,7 +294,7 @@ fn font {
 }
 ```
 
-<sub>`api.ogt` line 6966</sub>
+<sub>`api.ogt` line 6992</sub>
 
 <a id="fn-fontInfo"></a>
 
@@ -292,7 +324,7 @@ fn fontInfo {
 }
 ```
 
-<sub>`api.ogt` line 6973</sub>
+<sub>`api.ogt` line 6999</sub>
 
 <a id="fn-sound"></a>
 
@@ -325,7 +357,7 @@ fn sound {
 }
 ```
 
-<sub>`api.ogt` line 6980</sub>
+<sub>`api.ogt` line 7006</sub>
 
 <a id="fn-lut"></a>
 
@@ -355,7 +387,7 @@ fn lut {
 }
 ```
 
-<sub>`api.ogt` line 6988</sub>
+<sub>`api.ogt` line 7014</sub>
 
 <a id="fn-environment"></a>
 
@@ -385,7 +417,7 @@ fn environment {
 }
 ```
 
-<sub>`api.ogt` line 6995</sub>
+<sub>`api.ogt` line 7021</sub>
 
 <a id="fn-emitter"></a>
 
@@ -415,7 +447,7 @@ fn emitter {
 }
 ```
 
-<sub>`api.ogt` line 7002</sub>
+<sub>`api.ogt` line 7028</sub>
 
 <a id="fn-shader"></a>
 
@@ -445,7 +477,7 @@ fn shader {
 }
 ```
 
-<sub>`api.ogt` line 7009</sub>
+<sub>`api.ogt` line 7035</sub>
 
 <a id="fn-post"></a>
 
@@ -475,7 +507,7 @@ fn post {
 }
 ```
 
-<sub>`api.ogt` line 7016</sub>
+<sub>`api.ogt` line 7042</sub>
 
 <a id="fn-vector"></a>
 
@@ -505,7 +537,7 @@ fn vector {
 }
 ```
 
-<sub>`api.ogt` line 7023</sub>
+<sub>`api.ogt` line 7049</sub>
 
 <a id="fn-uiMaterial"></a>
 
@@ -535,7 +567,7 @@ fn uiMaterial {
 }
 ```
 
-<sub>`api.ogt` line 7030</sub>
+<sub>`api.ogt` line 7056</sub>
 
 <a id="fn-texture"></a>
 
@@ -568,7 +600,7 @@ fn texture {
 }
 ```
 
-<sub>`api.ogt` line 7037</sub>
+<sub>`api.ogt` line 7063</sub>
 
 <a id="fn-textureArray"></a>
 
@@ -601,7 +633,7 @@ fn textureArray {
 }
 ```
 
-<sub>`api.ogt` line 7045</sub>
+<sub>`api.ogt` line 7071</sub>
 
 <a id="fn-style"></a>
 
@@ -631,7 +663,7 @@ fn style {
 }
 ```
 
-<sub>`api.ogt` line 7053</sub>
+<sub>`api.ogt` line 7079</sub>
 
 <a id="fn-document"></a>
 
@@ -661,7 +693,7 @@ fn document {
 }
 ```
 
-<sub>`api.ogt` line 7060</sub>
+<sub>`api.ogt` line 7086</sub>
 
 <a id="fn-look"></a>
 
@@ -691,7 +723,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 7067</sub>
+<sub>`api.ogt` line 7093</sub>
 
 <a id="fn-lookInfo"></a>
 
@@ -721,7 +753,7 @@ fn lookInfo {
 }
 ```
 
-<sub>`api.ogt` line 7074</sub>
+<sub>`api.ogt` line 7100</sub>
 
 <a id="fn-palette"></a>
 
@@ -751,7 +783,7 @@ fn palette {
 }
 ```
 
-<sub>`api.ogt` line 7081</sub>
+<sub>`api.ogt` line 7107</sub>
 
 <a id="fn-soundInfo"></a>
 
@@ -781,7 +813,7 @@ fn soundInfo {
 }
 ```
 
-<sub>`api.ogt` line 7088</sub>
+<sub>`api.ogt` line 7114</sub>
 
 <a id="fn-status"></a>
 
@@ -811,7 +843,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 7095</sub>
+<sub>`api.ogt` line 7121</sub>
 
 <a id="fn-error"></a>
 
@@ -841,7 +873,7 @@ fn error {
 }
 ```
 
-<sub>`api.ogt` line 7102</sub>
+<sub>`api.ogt` line 7128</sub>
 
 <a id="fn-gltfInfo"></a>
 
@@ -871,7 +903,7 @@ fn gltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 7109</sub>
+<sub>`api.ogt` line 7135</sub>
 
 <a id="fn-animation"></a>
 
@@ -904,7 +936,7 @@ fn animation {
 }
 ```
 
-<sub>`api.ogt` line 7116</sub>
+<sub>`api.ogt` line 7142</sub>
 
 <a id="fn-rig"></a>
 
@@ -934,7 +966,7 @@ fn rig {
 }
 ```
 
-<sub>`api.ogt` line 7124</sub>
+<sub>`api.ogt` line 7150</sub>
 
 <a id="fn-flipbook"></a>
 
@@ -964,7 +996,7 @@ fn flipbook {
 }
 ```
 
-<sub>`api.ogt` line 7131</sub>
+<sub>`api.ogt` line 7157</sub>
 
 <a id="fn-tilemap"></a>
 
@@ -994,7 +1026,7 @@ fn tilemap {
 }
 ```
 
-<sub>`api.ogt` line 7138</sub>
+<sub>`api.ogt` line 7164</sub>
 
 <a id="fn-video"></a>
 
@@ -1024,7 +1056,7 @@ fn video {
 }
 ```
 
-<sub>`api.ogt` line 7145</sub>
+<sub>`api.ogt` line 7171</sub>
 
 <a id="fn-videoInfo"></a>
 
@@ -1054,7 +1086,7 @@ fn videoInfo {
 }
 ```
 
-<sub>`api.ogt` line 7152</sub>
+<sub>`api.ogt` line 7178</sub>
 
 <a id="fn-timeline"></a>
 
@@ -1084,7 +1116,7 @@ fn timeline {
 }
 ```
 
-<sub>`api.ogt` line 7159</sub>
+<sub>`api.ogt` line 7185</sub>
 
 <a id="fn-rig2d"></a>
 
@@ -1114,7 +1146,7 @@ fn rig2d {
 }
 ```
 
-<sub>`api.ogt` line 7166</sub>
+<sub>`api.ogt` line 7192</sub>
 
 ## Components, resources and events
 
@@ -1185,7 +1217,38 @@ component Model {
 }
 ```
 
-<sub>`api.ogt` line 6889</sub>
+<sub>`api.ogt` line 6895</sub>
+
+<a id="record-PrefabLink"></a>
+
+### `og.PrefabLink` (component)
+
+Where an entity came from when it was placed from a prefab: a scene's `prefab` line (flattened by the cook) or world.instantiate of og.load.prefab's asset. The engine writes it as the entity spawns and never changes it; it is world state like any component (snapshots, restores, the hash). A world that never placed a prefab does not register it, so its saves and hash are as before.
+
+Token `og.PrefabLink`, registered under the schema name `og.PrefabLink`; its value type is `PrefabLink`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `prefab` | `Asset` | `0` | — | — | read only | The prefab placed (a prefab nested in another links to the outermost one placed). Loaded as og.load.prefab loads it. |
+| `node` | `number` | `0` | — | — | read only | The entity's node: its index in the prefab's own entity table, depth first with parents first (0 is the prefab's root). |
+| `root` | `Entity` | `0` | — | — | read only | The instance's root entity (the root's own, for the root). |
+
+```ogt
+component PrefabLink {
+  doc "Where an entity came from when it was placed from a prefab: a scene's `prefab` line (flattened by the cook) or world.instantiate of og.load.prefab's asset. The engine writes it as the entity spawns and never changes it; it is world state like any component (snapshots, restores, the hash). A world that never placed a prefab does not register it, so its saves and hash are as before."
+  field prefab Asset "The prefab placed (a prefab nested in another links to the outermost one placed). Loaded as og.load.prefab loads it." {
+    readonly true
+  }
+  field node u32 "The entity's node: its index in the prefab's own entity table, depth first with parents first (0 is the prefab's root)." {
+    readonly true
+  }
+  field root Entity "The instance's root entity (the root's own, for the root)." {
+    readonly true
+  }
+}
+```
+
+<sub>`api.ogt` line 6979</sub>
 
 <a id="record-AssetReady"></a>
 
@@ -1208,7 +1271,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 7173</sub>
+<sub>`api.ogt` line 7199</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -1233,7 +1296,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 7179</sub>
+<sub>`api.ogt` line 7205</sub>
 
 ## Types
 
@@ -1249,7 +1312,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Asset "A loaded bundle, scene or glTF asset."
 ```
 
-<sub>`api.ogt` line 6776</sub>
+<sub>`api.ogt` line 6782</sub>
 
 <a id="type-Font"></a>
 
@@ -1263,7 +1326,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Font "A cooked MSDF font: its glyph table and one or more atlas pages."
 ```
 
-<sub>`api.ogt` line 6777</sub>
+<sub>`api.ogt` line 6783</sub>
 
 <a id="type-Sound"></a>
 
@@ -1277,7 +1340,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Sound "A cooked sound: QOA-encoded PCM the audio module plays."
 ```
 
-<sub>`api.ogt` line 6778</sub>
+<sub>`api.ogt` line 6784</sub>
 
 <a id="type-Style"></a>
 
@@ -1291,7 +1354,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Style "A cooked UI style: its values, atlas, fonts, icons and sounds loaded with it, for og.ui.configure."
 ```
 
-<sub>`api.ogt` line 6779</sub>
+<sub>`api.ogt` line 6785</sub>
 
 <a id="type-TextureArray"></a>
 
@@ -1305,7 +1368,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TextureArray "A cooked texture array: same-sized layers uploaded as one 2D-array texture (og.load.textureArray)."
 ```
 
-<sub>`api.ogt` line 6780</sub>
+<sub>`api.ogt` line 6786</sub>
 
 <a id="type-LoadStatus"></a>
 
@@ -1330,7 +1393,7 @@ enum LoadStatus {
 }
 ```
 
-<sub>`api.ogt` line 6817</sub>
+<sub>`api.ogt` line 6823</sub>
 
 <a id="type-GltfDesc"></a>
 
@@ -1360,7 +1423,7 @@ struct GltfDesc {
 }
 ```
 
-<sub>`api.ogt` line 6824</sub>
+<sub>`api.ogt` line 6830</sub>
 
 <a id="type-GltfInfo"></a>
 
@@ -1389,7 +1452,7 @@ struct GltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 6836</sub>
+<sub>`api.ogt` line 6842</sub>
 
 <a id="type-BundleInfo"></a>
 
@@ -1412,7 +1475,7 @@ struct BundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 6846</sub>
+<sub>`api.ogt` line 6852</sub>
 
 <a id="type-FontInfo"></a>
 
@@ -1445,7 +1508,7 @@ struct FontInfo {
 }
 ```
 
-<sub>`api.ogt` line 6853</sub>
+<sub>`api.ogt` line 6859</sub>
 
 <a id="type-SoundInfo"></a>
 
@@ -1476,7 +1539,7 @@ struct SoundInfo {
 }
 ```
 
-<sub>`api.ogt` line 6865</sub>
+<sub>`api.ogt` line 6871</sub>
 
 <a id="type-TextureArrayInfo"></a>
 
@@ -1507,7 +1570,7 @@ struct TextureArrayInfo {
 }
 ```
 
-<sub>`api.ogt` line 6878</sub>
+<sub>`api.ogt` line 6884</sub>
 
 ## Column kinds
 
@@ -1530,7 +1593,7 @@ column TextureArray {
 }
 ```
 
-<sub>`api.ogt` line 6782</sub>
+<sub>`api.ogt` line 6788</sub>
 
 ```ogt
 column Asset {
@@ -1541,7 +1604,7 @@ column Asset {
 }
 ```
 
-<sub>`api.ogt` line 6789</sub>
+<sub>`api.ogt` line 6795</sub>
 
 ```ogt
 column Sound {
@@ -1552,7 +1615,7 @@ column Sound {
 }
 ```
 
-<sub>`api.ogt` line 6796</sub>
+<sub>`api.ogt` line 6802</sub>
 
 ```ogt
 column Font {
@@ -1563,7 +1626,7 @@ column Font {
 }
 ```
 
-<sub>`api.ogt` line 6803</sub>
+<sub>`api.ogt` line 6809</sub>
 
 ```ogt
 column Style {
@@ -1574,4 +1637,4 @@ column Style {
 }
 ```
 
-<sub>`api.ogt` line 6810</sub>
+<sub>`api.ogt` line 6816</sub>
