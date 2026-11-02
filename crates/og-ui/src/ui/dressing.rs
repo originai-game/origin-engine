@@ -259,6 +259,35 @@ impl Ui {
     /// toggle's knob): its atlas art when its dressing has a slice and the
     /// style an atlas, else through the UI pass ([`Ui::part_draw`]).
     #[allow(clippy::too_many_arguments)]
+    /// Where a piece of painted art (a slider's thumb) draws in `rect`:
+    /// art far from square (a cyber bar, under 4:5 or over 5:4) keeps its
+    /// own aspect at the rect's height (or width), centred, rather than
+    /// stretching to it; square art, and a part with no art, take `rect`.
+    pub(crate) fn piece_rect(&self, part: &crate::dress::PartRef, rect: Rect) -> Rect {
+        let r = self.dress.resolve(part);
+        let Some(s) = r.frame.slice.filter(|_| self.theme.art.atlas.is_some()) else {
+            return rect;
+        };
+        let (w, h) = (
+            s.border[0] + s.border[2] + s.middle[0],
+            s.border[1] + s.border[3] + s.middle[1],
+        );
+        if w <= 0.0 || h <= 0.0 || rect.height <= 0.0 {
+            return rect;
+        }
+        let (aspect, room) = (w / h, rect.width / rect.height);
+        if (0.8..=1.25).contains(&(aspect / room)) {
+            return rect;
+        }
+        let (cx, cy) = rect.center();
+        let (fw, fh) = if aspect < room {
+            (rect.height * aspect, rect.height)
+        } else {
+            (rect.width, rect.width / aspect)
+        };
+        Rect::new(cx - fw / 2.0, cy - fh / 2.0, fw, fh)
+    }
+
     pub(crate) fn part_commands(
         &self,
         part: &crate::dress::PartRef,

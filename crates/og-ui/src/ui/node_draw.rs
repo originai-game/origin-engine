@@ -186,6 +186,7 @@ impl Ui {
                 let kp = PartRef::new("Slider", "knob", C::Chip)
                     .flag("round")
                     .flag_if(active, "pressed");
+                let knob = self.piece_rect(&kp, knob);
                 self.part_commands(&kp, knob.snapped(dpr), Some(p.knob), alpha, clip, cmds);
             }
             Widget::Toggle { on, slide } => {
