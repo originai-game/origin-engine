@@ -26250,8 +26250,9 @@ export type GraphNodeState = "available" | "locked" | "active" | "done" | "curre
  * - `"square"`: A rounded square.
  * - `"hex"`: A hexagon.
  * - `"diamond"`: A diamond.
+ * - `"triangle"`: A triangle, point up.
  */
-export type GraphNodeShape = "circle" | "square" | "hex" | "diamond";
+export type GraphNodeShape = "circle" | "square" | "hex" | "diamond" | "triangle";
 
 /**
  * A node of a graph, at a position in the graph's own units.
@@ -26313,6 +26314,12 @@ export interface GraphNode {
    * @default false
    */
   readonly disabled?: boolean;
+  /**
+   * Its side on a map: 0 the player's (primary), 1 an enemy's (danger), more the style's team colours; the node is filled in that colour, its ring still its state's. Null is no side (the state's ink alone). Pair a side with a shape (triangle, diamond) so sides are not told by colour alone.
+   *
+   * @default null
+   */
+  readonly team?: number | null;
 }
 
 /**
@@ -51846,6 +51853,8 @@ export declare namespace og {
     function tree(id: string, desc?: TreeDesc): TreeResult;
     /**
      * A pan-and-zoom graph of nodes and links: skill trees, run maps, flowcharts.
+     * Each node is a circle, rounded square, hexagon, diamond or triangle; a node with a team (a sector map's allied and hostile systems) is filled in its side's colour, a sided node with no icon showing no letters (its shape and colour mark it). Its state shows by its ring and a mark.
+     * Parts: Graph.frame, Graph.node[<state>][<kind>][<shape>][team=<n>][selected], Graph.zoom, Graph.zoomButton. Accessibility: group named label, value the zoom; each node a button named by its label, value its state, selected when selected. Probe ids: <id>/Window/View/Canvas/Node#i, <id>/Window/View/Canvas/Caption#i, <id>/Bar/Zoom/In, <id>/Bar/Zoom/Out.
      *
      * @param id Its id.
      * @param desc Nodes, links and the zoom.

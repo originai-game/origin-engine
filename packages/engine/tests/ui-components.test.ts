@@ -14,6 +14,7 @@ import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 import { tableOrder } from "../src/ui/data/table.ts";
 import { niceTicks, formatDelta, formatNumber } from "../src/ui/data/format.ts";
 import { ogBin } from "./support/og-bin.ts";
+import { drawsDuring } from "./support/ui.ts";
 
 declare const Bun: { spawnSync(cmd: string[]): { exitCode: number; stderr: Uint8Array } };
 
@@ -711,6 +712,33 @@ test("nodeGraph: zoom in scales it, a node tap chooses it, a locked node says so
   expect(zoom).toBeCloseTo(1.25, 5);
   tapAt(engine, find(engine, (e) => e.role === "button" && e.name === "Cleave")!);
   expect(chosen).toBe("cleave");
+});
+
+test("nodeGraph: a triangle node and a node's side: allied and hostile differ by shape and by colour, with no letters over them", () => {
+  // Wrong: a triangle drawn as the circle (an unknown shape), sides told by colour alone or not at all (every node
+  // on the panel's ground), or a sided node's label's first letters over its mark.
+  const nodes: Api.GraphNode[] = [
+    { id: "home", x: 0, y: 0, label: "Allied", shape: "triangle", team: 0, state: "current" },
+    { id: "rim", x: 120, y: 60, label: "Hostile", shape: "diamond", team: 1 },
+    { id: "far", x: 240, y: 0, label: "Unclaimed" },
+  ];
+  const engine = run(() => og.ui.nodeGraph("Map", { nodes, labels: false }));
+  const draws = drawsDuring(() => engine.advance(1));
+  const node = (i: number) => [...draws.entries()].find(([p]) => p.endsWith(`/Canvas/Node#${i}`))?.[1]?.find((d) => d.shape) ?? {};
+  expect(node(0).shape).toMatchObject({ kind: "polygon", sides: 3 });
+  expect(node(1).shape).toMatchObject({ kind: "polygon", sides: 4 });
+  const fill = (i: number) => JSON.stringify(node(i).fills ?? null);
+  // The sides' fills differ from each other and from an unsided node's ground.
+  expect(fill(0)).not.toBe(fill(1));
+  expect(fill(0)).not.toBe(fill(2));
+  expect(fill(1)).not.toBe(fill(2));
+  expect(fill(2)).toContain("panelRaised");
+  // The side's mark is its shape and colour: no letters; an unsided node keeps its initials.
+  expect(byPath(engine, "Node#0/Label")).toBe(undefined);
+  expect(byPath(engine, "Node#1/Label")).toBe(undefined);
+  expect(byPath(engine, "Node#2/Label")?.text).toBe("Un");
+  // A screen reader still hears each by its label and state.
+  expect(find(engine, (e) => e.role === "button" && e.name === "Allied")?.value).toBe("current");
 });
 
 test("nodeGraph: at 200 % text no node or caption overlaps another, and the fit keeps every node clear of the zoom controls", () => {

@@ -7,6 +7,7 @@ import {
   byText, chevron, target, wrapRow, clamp, fit, flags, frame, grow, kit, lastGesture, mark, over, overProps, px, recallPath, rememberPath, role, rtl, spring, still, surface, text, token, xy,
 } from "../containers/base.ts";
 import { edge } from "../containers/panels.ts";
+import { lit, mix, teamColor } from "../feedback/core.ts";
 
 // ── tree ────────────────────────────────────────────────────────────────
 
@@ -265,10 +266,13 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
         const state = n.state ?? "available";
         const locked = state === "locked";
         const ink = STATE_INK[state] ?? "ink";
+        // A side (a map's allied and hostile systems): the node filled in its side's colour, its ring still its state's.
+        const sided = n.team !== null && n.team !== undefined;
+        const side = sided ? (n.team === 0 ? role("primary") : n.team === 1 ? role("danger") : teamColor(n.team!)) : null;
         const r = surface(kit.idi("Node", k), {
           part: "Graph.node",
           cls: "avatar",
-          flags: [state, n.kind ?? "", "round", desc.selected === n.id ? "selected" : ""],
+          flags: [state, n.kind ?? "", "round", n.shape ?? "", sided ? `team=${n.team}` : "", desc.selected === n.id ? "selected" : ""],
           selected: desc.selected === n.id,
           fill: role(locked ? "panel" : "panelRaised"),
           disabled: n.disabled ?? false,
@@ -281,13 +285,16 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
           layer: { insets: { start: (rtl() ? W - p.x : p.x) - s / 2, top: p.y - s / 2 }, z: 1 },
         }, () => {
           kit.setDraw({
-            shape: n.shape === "hex" ? { kind: "polygon", sides: 6, rounding: 4, rotation: Math.PI / 6 } : n.shape === "diamond" ? { kind: "polygon", sides: 4, rounding: 4 } : { kind: n.shape === "square" ? "rect" : "ellipse" },
-            fills: [{ kind: "solid", color: token(locked ? "panel" : "panelRaised") }],
+            shape: n.shape === "hex" ? { kind: "polygon", sides: 6, rounding: 4, rotation: Math.PI / 6 } : n.shape === "diamond" ? { kind: "polygon", sides: 4, rounding: 4 } : n.shape === "triangle" ? { kind: "polygon", sides: 3, rounding: 3 } : { kind: n.shape === "square" ? "rect" : "ellipse" },
+            fills: side
+              ? [{ kind: "gradient", type: "linear", from: { x: 0.5, y: 0 }, to: { x: 0.5, y: 1 }, stops: [{ offset: 0, color: lit(mix(side, { r: 1, g: 1, b: 1, a: 1 }, 0.2), locked ? 0.45 : 1) }, { offset: 1, color: lit(mix(side, { r: 0, g: 0, b: 0, a: 1 }, 0.3), locked ? 0.45 : 1) }] }]
+              : [{ kind: "solid", color: token(locked ? "panel" : "panelRaised") }],
             strokes: [{ width: state === "current" || desc.selected === n.id ? 3 : 2, align: "inside", paint: { kind: "solid", color: token(desc.selected === n.id ? "focus" : ink) } }],
             effects: state === "current" || state === "active" ? [{ kind: "outerGlow", blur: 14, color: token(ink, 0.6) }] : [],
           });
           if (n.icon) kit.icon("Icon", n.icon, { size: s * 0.46, tint: token(locked ? "inkFaint" : ink), label: "" });
-          else text("Label", (n.label ?? "").slice(0, 2), { step: "sm", color: locked ? "inkFaint" : "ink", nowrap: true });
+          // A sided node's shape and colour mark it: no letters over them.
+          else if (!sided) text("Label", (n.label ?? "").slice(0, 2), { step: "sm", color: locked ? "inkFaint" : "ink", nowrap: true });
           // State in shape too (XAG 103): a lock's bar, a tick, a dot for current.
           if (locked || state === "done" || state === "current") {
             kit.open("State", { width: px(18), height: px(18), radius: 9, align: "center", cross: "center", background: token(locked ? "panelRaised" : state === "done" ? "success" : "highlight") });

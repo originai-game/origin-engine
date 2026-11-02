@@ -2560,6 +2560,7 @@ module ui {
     variant square "A rounded square."
     variant hex "A hexagon."
     variant diamond "A diamond."
+    variant triangle "A triangle, point up."
   }
 
   struct GraphNode {
@@ -2574,6 +2575,7 @@ module ui {
     field shape GraphNodeShape "Its outline."
     field kind String "A selector flag a style dresses (`boss`, `shop`)."
     field disabled bool "Shown but not pressable."
+    field team Option.u32 "Its side on a map: 0 the player's (primary), 1 an enemy's (danger), more the style's team colours; the node is filled in that colour, its ring still its state's. Null is no side (the state's ink alone). Pair a side with a shape (triangle, diamond) so sides are not told by colour alone."
   }
 
   struct GraphLink {
@@ -2983,6 +2985,8 @@ module ui {
 
   fn nodeGraph {
     doc "A pan-and-zoom graph of nodes and links: skill trees, run maps, flowcharts."
+    doc "Each node is a circle, rounded square, hexagon, diamond or triangle; a node with a team (a sector map's allied and hostile systems) is filled in its side's colour, a sided node with no icon showing no letters (its shape and colour mark it). Its state shows by its ring and a mark."
+    doc "Parts: Graph.frame, Graph.node[<state>][<kind>][<shape>][team=<n>][selected], Graph.zoom, Graph.zoomButton. Accessibility: group named label, value the zoom; each node a button named by its label, value its state, selected when selected. Probe ids: <id>/Window/View/Canvas/Node#i, <id>/Window/View/Canvas/Caption#i, <id>/Bar/Zoom/In, <id>/Bar/Zoom/Out."
     host false
     param id String "Its id."
     param desc NodeGraphDesc "Nodes, links and the zoom."
