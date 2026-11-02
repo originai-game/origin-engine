@@ -1694,3 +1694,83 @@ fn a_version_1_styles_button_and_tab_labels_keep_its_body_size() {
         );
     }
 }
+
+/// A style declares colour roles of its own (docs/ui.md §12.2): read by
+/// name like a palette role (a paint's token, a dressing's fill), held to
+/// the non-text floor on its raised panel, and refused when they clash
+/// with a named role or a dressing names one the style lacks.
+#[test]
+fn a_style_declares_its_own_colour_roles_read_by_name_and_held_to_3_to_1() {
+    let base = v2_with("scheme ", "scheme dark").expect("the test style parses");
+    let ground = base
+        .theme
+        .palette
+        .panel_raised
+        .over_linear(base.theme.palette.backdrop);
+    // A colour that reads on it, and one that does not.
+    let bright = ["#ffffff", "#000000"]
+        .into_iter()
+        .find(|h| og_ui::style_file::parse_color(h).unwrap().contrast(ground) >= 3.0)
+        .unwrap();
+    let [r, g, b] = ground.rgb;
+    let flat = format!("#{r:02x}{g:02x}{b:02x}");
+    let with_roles = |roles: &str, fill: &str| {
+        v2_with(
+            "scheme ",
+            &format!(
+                "scheme dark\nroles {{\n{roles}}}\ndress \"Card.frame\" {{\n  fill {fill}\n}}"
+            ),
+        )
+    };
+    let file = with_roles(&format!("  corruption \"{bright}\"\n"), "corruption")
+        .unwrap_or_else(|e| panic!("{e}"));
+    let t = file.theme;
+    let want = og_ui::style_file::parse_color(bright).unwrap();
+    assert_eq!(t.color("corruption"), Some(want));
+    assert_eq!(t.color("primary"), Some(t.palette.primary));
+    assert_eq!(t.color("sanity"), None);
+    assert_eq!(
+        og_ui::paint::ColorRef::token("corruption").resolve(&t),
+        want.linear()
+    );
+    let card = file
+        .dressings
+        .iter()
+        .rev()
+        .find(|d| d.selector == Selector::parse("Card.frame").unwrap())
+        .expect("the card dressing");
+    assert!(
+        format!("{:?}", card.draw.fills).contains("corruption"),
+        "{:?}",
+        card.draw.fills
+    );
+    let refused = |roles: &str, fill: &str, says: &str| {
+        let e = with_roles(roles, fill).expect_err(roles);
+        assert!(e.contains(says), "{roles}: {e}");
+    };
+    refused(
+        &format!("  primary \"{bright}\"\n"),
+        "primary",
+        "is a palette role",
+    );
+    refused(
+        &format!("  epic \"{bright}\"\n"),
+        "primary",
+        "is a colour token",
+    );
+    refused(
+        &format!("  Corruption \"{bright}\"\n"),
+        "primary",
+        "lowerCamelCase",
+    );
+    refused(
+        &format!("  corruption \"{flat}\"\n"),
+        "primary",
+        "needs 3:1",
+    );
+    refused(
+        &format!("  corruption \"{bright}\"\n"),
+        "sanity",
+        "has 'sanity', which is not a paint: a colour (a palette role, a role the style declares",
+    );
+}

@@ -41,6 +41,7 @@ fn once<T>(p: &P, slot: &mut Option<T>, v: T) -> Result<(), String> {
 ///   team1 "#3d7eff"                          # team1 … team8, then physical fire ice lightning poison holy shadow arcane: a colour [and a cue]
 ///   series1 "#4e79a7"                        # series1 … series8
 /// }
+/// roles { corruption "#9b5cff" }             # optional: the style's own colour roles (lowerCamelCase, up to 16), read by name like a palette role, 3:1 on panelRaised
 /// typography {                               # display title heading body label caption numeric (all required)
 ///   display 42 48 0.02 700 display {         # size, line height, tracking em, weight, font role (body, display, numeric, rounded)
 ///     phonePortrait 34 40                    # per breakpoint: size, line height
@@ -167,6 +168,16 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
             "radius",
         )?);
     }
+    // The style's own colour roles first: a dressing's paint names them.
+    if let Some(e) = body.get("roles") {
+        let p = P { e };
+        if !v2 {
+            return Err(p.err(
+                "is a version 2 block: write `version 2` and the rest of the version 2 tokens (og style upgrade converts a version 1 style)",
+            ));
+        }
+        theme.roles = parse_roles(&p)?;
+    }
     let mut dressings: Vec<Dressing> = Vec::new();
     for e in &body.entries {
         let p = P { e };
@@ -190,8 +201,9 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
             "sound",
             "durations",
         ];
-        const V2_ONLY: [&str; 9] = [
+        const V2_ONLY: [&str; 10] = [
             "colors",
+            "roles",
             "typography",
             "space",
             "size",
@@ -214,7 +226,7 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
             ));
         }
         match key {
-            "scheme" | "atlas" | "scale" | "icons" => {}
+            "scheme" | "atlas" | "scale" | "icons" | "roles" => {}
             "name" => file.name = p.string(0)?.to_string(),
             "palette" => {
                 let block = p.block()?;
@@ -521,6 +533,7 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                 let atlas = crate::paint_entry::AtlasContext {
                     size: file.atlas.as_ref().map(|_| size),
                     scale,
+                    roles: theme.roles,
                 };
                 let mut seen = crate::dress::DrawSeen::default();
                 for c in &block.entries {
@@ -718,8 +731,63 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
         }
         file.dressings = v1_dressings(&theme.art);
     }
+    // A style's own roles carry meaning as the named ones do, so they meet
+    // the same non-text floor: 3:1 on the raised panel over the backdrop
+    // (WCAG 1.4.11), translucent ones as they composite there.
+    if let Some(e) = body.get("roles") {
+        let ground = theme.palette.panel_raised.over(theme.palette.backdrop);
+        for (name, c) in theme.roles.iter() {
+            let r = c.over_linear(ground).contrast(ground);
+            if r < 3.0 {
+                return Err(P { e }.err(&format!(
+                    "{name} reads {r:.2}:1 on the style's raised panel: a colour role needs 3:1 there (WCAG 1.4.11), so make it lighter or darker"
+                )));
+            }
+        }
+    }
     // The motion code reads the style's motion tokens (docs/ui.md §7.7).
     theme.motion = crate::motion::MotionTokens::from_style(&theme.tokens);
     file.theme = theme;
     Ok(file)
+}
+
+/// `roles { corruption "#7a2fd0" … }`: the colour roles a style declares
+/// of its own (docs/ui.md §12.2), beside the palette's. Each is a name in
+/// lowerCamelCase that no palette role or colour token has, and one colour.
+fn parse_roles(p: &P) -> Result<crate::style::Roles, String> {
+    let block = p.block()?;
+    let mut roles = crate::style::Roles::NONE;
+    let token_names: Vec<String> = crate::tokens::colour_token_names();
+    for e in &block.entries {
+        let q = P { e };
+        let name = e.key.as_str();
+        if Palette::NAMES.contains(&name) {
+            return Err(q.err(
+                "is a palette role: set it in `palette { }`; `roles { }` declares the style's own",
+            ));
+        }
+        if token_names.iter().any(|t| t == name) {
+            return Err(q.err("is a colour token: set it in `colors { }`"));
+        }
+        let ok = name.chars().next().is_some_and(|c| c.is_ascii_lowercase())
+            && name.chars().all(|c| c.is_ascii_alphanumeric())
+            && name.len() <= crate::style::Roles::NAME;
+        if !ok {
+            return Err(q.err(&format!(
+                "is not a role name: lowerCamelCase letters and digits, up to {} bytes",
+                crate::style::Roles::NAME
+            )));
+        }
+        if roles.get(name).is_some() {
+            return Err(q.err("is set twice"));
+        }
+        if e.values.len() != 1 {
+            return Err(q.err("takes one colour, \"#rrggbb\" or \"#rrggbbaa\""));
+        }
+        roles.set(name, q.color(0)?).map_err(|m| q.err(&m))?;
+    }
+    if roles.is_empty() {
+        return Err(p.err("declares no role: leave the block out"));
+    }
+    Ok(roles)
 }

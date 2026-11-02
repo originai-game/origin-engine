@@ -46,9 +46,9 @@ pub(super) fn size_or(v: &Value, d: Size) -> Size {
     size(v).unwrap_or(d)
 }
 
-/// A palette colour by its ThemeColor name.
+/// A colour role by its name: a ThemeColor, or one the style declares.
 fn token(theme: &Theme, name: &str) -> Option<Srgba> {
-    theme.palette.get(name)
+    theme.color(name)
 }
 
 /// Every ThemeColor name, in the IDL's order.
@@ -114,7 +114,7 @@ pub(super) fn paint(theme: &Theme, v: &Value) -> Option<Srgba> {
         return None;
     }
     let alpha = f(v, "alpha", 1.0).clamp(0.0, 1.0);
-    let base = match v["token"].as_str() {
+    let base = match v["token"].as_str().or(v["role"].as_str()) {
         Some(t) => token(theme, t)?,
         None => {
             let c = &v["color"];
@@ -332,6 +332,9 @@ fn theme_json(theme: Theme, sizes: og_ui::Density, style: &str) -> String {
         if let Some(c) = token(&theme, name) {
             palette.insert(name.to_string(), json!(hex(c)));
         }
+    }
+    for (name, c) in theme.roles.iter() {
+        palette.insert(name.to_string(), json!(hex(c)));
     }
     let mut ramp = Map::new();
     for name in TYPE_STEPS {

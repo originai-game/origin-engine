@@ -526,14 +526,20 @@ fn parse_size(vals: &[Value]) -> Result<Size, String> {
 }
 
 fn parse_paint(vals: &[Value]) -> Result<Paint, String> {
-    const HOW: &str = "a paint: token <role> (a palette role) or \"#rrggbb[aa]\"";
+    const HOW: &str =
+        "a paint: token <role> (a palette role or one the style declares) or \"#rrggbb[aa]\"";
     match vals {
         [Value::Word(t), Value::Word(role)] if t == "token" => {
-            if crate::Palette::NAMES.contains(&role.as_str()) {
+            // A palette role, or one the style declares (docs/ui.md §12.2):
+            // a name the style lacks draws as a missing token.
+            if crate::Palette::NAMES.contains(&role.as_str())
+                || (role.starts_with(|c: char| c.is_ascii_lowercase())
+                    && role.chars().all(|c| c.is_ascii_alphanumeric()))
+            {
                 Ok(Paint::Token(role.clone()))
             } else {
                 Err(format!(
-                    "'{role}' is not a palette role: {}",
+                    "'{role}' is not a colour role: a palette role ({}) or one the style declares",
                     crate::Palette::NAMES.join(", ")
                 ))
             }

@@ -180,6 +180,94 @@ impl Srgba {
     };
 }
 
+/// The colour roles a style declares of its own (docs/ui.md §12.2): a
+/// game's corruption, sanity or faction colours beside the palette's named
+/// roles, read by name like any role ([`Theme::color`]: `{ token }`,
+/// `[color=]`, a dressing's paints, `UiTheme.palette`). Fixed capacity, so
+/// the theme stays a value: [`Roles::MAX`] roles of up to [`Roles::NAME`]
+/// bytes, in the order the style declares them.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Roles {
+    names: [[u8; Roles::NAME]; Roles::MAX],
+    lens: [u8; Roles::MAX],
+    colors: [Srgba; Roles::MAX],
+    count: u8,
+}
+
+impl Default for Roles {
+    fn default() -> Roles {
+        Roles::NONE
+    }
+}
+
+impl Roles {
+    /// The most roles a style declares.
+    pub const MAX: usize = 16;
+    /// The longest role name, in bytes.
+    pub const NAME: usize = 32;
+    pub const NONE: Roles = Roles {
+        names: [[0; Roles::NAME]; Roles::MAX],
+        lens: [0; Roles::MAX],
+        colors: [Srgba::BLACK; Roles::MAX],
+        count: 0,
+    };
+
+    /// Adds or replaces a role. `Err` when the table is full or the name
+    /// too long (the style parser checks names before).
+    pub fn set(&mut self, name: &str, color: Srgba) -> Result<(), String> {
+        if let Some(i) = self.index(name) {
+            self.colors[i] = color;
+            return Ok(());
+        }
+        if name.len() > Roles::NAME {
+            return Err(format!(
+                "role name '{name}' is longer than {} bytes",
+                Roles::NAME
+            ));
+        }
+        let i = usize::from(self.count);
+        if i >= Roles::MAX {
+            return Err(format!("a style declares at most {} roles", Roles::MAX));
+        }
+        self.names[i][..name.len()].copy_from_slice(name.as_bytes());
+        self.lens[i] = name.len() as u8;
+        self.colors[i] = color;
+        self.count += 1;
+        Ok(())
+    }
+
+    fn name_at(&self, i: usize) -> &str {
+        std::str::from_utf8(&self.names[i][..usize::from(self.lens[i])]).unwrap_or("")
+    }
+
+    fn index(&self, name: &str) -> Option<usize> {
+        (0..usize::from(self.count)).find(|&i| self.name_at(i) == name)
+    }
+
+    /// A role's colour by its name.
+    pub fn get(&self, name: &str) -> Option<Srgba> {
+        self.index(name).map(|i| self.colors[i])
+    }
+
+    /// A role's colour by its name, to change it.
+    pub fn get_mut(&mut self, name: &str) -> Option<&mut Srgba> {
+        self.index(name).map(|i| &mut self.colors[i])
+    }
+
+    /// Every role and its colour, in the order declared.
+    pub fn iter(&self) -> impl Iterator<Item = (&str, Srgba)> + '_ {
+        (0..usize::from(self.count)).map(|i| (self.name_at(i), self.colors[i]))
+    }
+
+    pub fn len(&self) -> usize {
+        usize::from(self.count)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.count == 0
+    }
+}
+
 /// Light or dark: which variant of the default style the theme starts
 /// from (a style file sets every colour itself).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -297,6 +385,9 @@ impl Breakpoint {
 pub struct Theme {
     pub scheme: Scheme,
     pub palette: Palette,
+    /// The style's own colour roles (docs/ui.md §12.2), read with the
+    /// palette's by [`Theme::color`]; the default style declares none.
+    pub roles: Roles,
     pub space: Space,
     pub radius: Radius,
     pub type_ramp: TypeRamp,
@@ -387,6 +478,7 @@ impl Theme {
         Theme {
             scheme,
             palette,
+            roles: Roles::NONE,
             space: tokens::SPACE,
             radius: tokens::RADIUS,
             type_ramp: tokens::TYPE_RAMP,
@@ -405,6 +497,12 @@ impl Theme {
             motion: crate::motion::MotionTokens::default(),
             tokens: derived,
         }
+    }
+
+    /// A colour role by its name: one of the palette's (the IDL's
+    /// ThemeColor), else one the style declares ([`Roles`]).
+    pub fn color(&self, name: &str) -> Option<Srgba> {
+        self.palette.get(name).or_else(|| self.roles.get(name))
     }
 
     /// The high-contrast variant of a scheme: `inkMuted` takes `ink`,
@@ -454,6 +552,13 @@ impl Theme {
         }
         if p.scrim.alpha < 1.0 {
             p.scrim = p.scrim.over(p.backdrop);
+        }
+        // A style's own translucent roles flatten over the panel too.
+        let n = t.roles.len();
+        for c in &mut t.roles.colors[..n] {
+            if c.alpha < 1.0 {
+                *c = c.over(ground);
+            }
         }
         t.reduced_transparency = true;
         t

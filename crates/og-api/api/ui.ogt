@@ -189,7 +189,8 @@ module ui {
     doc "A colour: a theme token, or an sRGB colour as authored (components 0 to 1), with an alpha. Neither is white."
     desc true
     field token Option.ThemeColor "A semantic colour of the theme."
-    field color Option.Color "An sRGB colour as authored, when no token is given."
+    field role Option.String "A colour role the style declares of its own (its `roles` block, docs/ui.md §12.2: a game's corruption or faction colour) by name, when no token is given; a name the style lacks draws magenta."
+    field color Option.Color "An sRGB colour as authored, when no token or role is given."
     field alpha f32 "The opacity." {
       default 1
       min 0
@@ -529,7 +530,7 @@ module ui {
   struct UiTheme {
     doc "The style values the UI draws with, read-only."
     field scheme Scheme "The palette in use."
-    field palette Map.String "Each ThemeColor as `#rrggbb` or `#rrggbbaa` (sRGB as authored)."
+    field palette Map.String "Each ThemeColor, then each colour role the style declares of its own (docs/ui.md §12.2), as `#rrggbb` or `#rrggbbaa` (sRGB as authored)."
     field space Map.f32 "The spacing scale by name (xxs, xs, sm, md, lg, xl, xxl, xl3), in CSS pixels."
     field radius Map.f32 "The corner radii by name (small, control, bar, panel), in CSS pixels."
     field typeRamp Map.TypeStep "Each TypeStepName's step."

@@ -73,6 +73,18 @@ fn missing_err(p: &P, missing: &[String], what: &str) -> Result<(), String> {
     }
 }
 
+/// Every colour token's name (`colors { … }`), in the block's order.
+pub fn colour_token_names() -> Vec<String> {
+    Status::ALL
+        .iter()
+        .map(|s| s.name().to_string())
+        .chain(Rarity::ALL.iter().map(|r| r.name().to_string()))
+        .chain((1..=TEAMS).map(|k| format!("team{k}")))
+        .chain(DamageType::ALL.iter().map(|d| d.name().to_string()))
+        .chain((1..=SERIES).map(|k| format!("series{k}")))
+        .collect()
+}
+
 /// The `colors { … }` block.
 pub(crate) fn parse_colors(p: &P, icons: &[String]) -> Result<ColorTokens, String> {
     let block = p.block()?;
@@ -143,13 +155,8 @@ pub(crate) fn parse_colors(p: &P, icons: &[String]) -> Result<ColorTokens, Strin
             )));
         }
     }
-    let want: Vec<String> = Status::ALL
-        .iter()
-        .map(|s| s.name().to_string())
-        .chain(Rarity::ALL.iter().map(|r| r.name().to_string()))
-        .chain((1..=TEAMS).map(|k| format!("team{k}")))
-        .chain(DamageType::ALL.iter().map(|d| d.name().to_string()))
-        .chain((1..=SERIES).map(|k| format!("series{k}")))
+    let want: Vec<String> = colour_token_names()
+        .into_iter()
         .filter(|n| !seen.contains(&n.as_str()))
         .collect();
     missing_err(p, &want, "a style sets every colour token")?;

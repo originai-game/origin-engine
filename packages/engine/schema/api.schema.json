@@ -38976,6 +38976,18 @@
           "description": "A semantic colour of the theme.",
           "default": null
         },
+        "role": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A colour role the style declares of its own (its `roles` block, docs/ui.md §12.2: a game's corruption or faction colour) by name, when no token is given; a name the style lacks draws magenta.",
+          "default": null
+        },
         "color": {
           "anyOf": [
             {
@@ -38985,7 +38997,7 @@
               "type": "null"
             }
           ],
-          "description": "An sRGB colour as authored, when no token is given.",
+          "description": "An sRGB colour as authored, when no token or role is given.",
           "default": null
         },
         "alpha": {
@@ -40378,7 +40390,7 @@
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Each ThemeColor as `#rrggbb` or `#rrggbbaa` (sRGB as authored)."
+          "description": "Each ThemeColor, then each colour role the style declares of its own (docs/ui.md §12.2), as `#rrggbb` or `#rrggbbaa` (sRGB as authored)."
         },
         "space": {
           "type": "object",
