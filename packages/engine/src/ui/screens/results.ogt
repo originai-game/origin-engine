@@ -1,0 +1,266 @@
+type screen
+version 1
+---
+# Results and post-match (docs/ui.md Appendix B: grades, XP cascades,
+# graphs). Victory or defeat, the grade, the stats, the XP and the level it
+# reached, the rewards, the match's graphs, and Continue, Replay and Play
+# again.
+#
+# Viewmodel: won, grade, title (the result's line), stats, level, xp (0 to
+# 1, after), gained, rewards, tab. Events to code: continue, again,
+# replay, tab (the click wrote tab). Slots: Graph takes the match's graphs
+# (og.ui.chart: the gold or score over time; RTS, MOBA, 4X); Scores takes
+# the final scoreboard (og.ui.scoreboard); Celebration takes the level-up
+# or the grade's flourish (og.ui.celebration, og.ui.numberCounter for the
+# XP cascade).
+name "results"
+layer menu
+under hide
+back none
+focus "Panel/Footer/Continue"
+props {
+  won bool "The player won."
+  grade string "The grade (S, A, B …; empty: none)."
+  title string "The result's line (Victory, Stage clear)."
+  stats list "The stats: { name, value, best (bool) }."
+  level number "The level after the match."
+  xp number "Progress to the next level after the match, 0 to 1."
+  gained number "XP gained."
+  rewards list "The rewards: { name, amount, texture }."
+  tab string "summary, graphs or board."
+}
+actions {
+  confirm "Continue"
+}
+timeline land {
+  track "Panel/Head/Grade" scale {
+    key 0 2
+    key 260 0.92 out
+    key 420 1 out
+  }
+  event 0 "" sound reward
+}
+fixture default "{\"won\": true, \"grade\": \"A\", \"title\": \"Victory\", \"stats\": [{\"name\": \"Score\", \"value\": 48210, \"best\": true}, {\"name\": \"Kills\", \"value\": 14, \"best\": false}, {\"name\": \"Accuracy\", \"value\": 0.62, \"best\": false}], \"level\": 18, \"xp\": 0.45, \"gained\": 1240, \"rewards\": [{\"name\": \"Gold\", \"amount\": 320, \"texture\": 0}, {\"name\": \"Crate\", \"amount\": 1, \"texture\": 0}], \"tab\": \"summary\"}"
+column Results {
+  width grow
+  height grow
+  padding 32
+  align center
+  cross center
+  at phone {
+    padding 12
+  }
+  column Panel {
+    width grow 0 960
+    height grow 0 900
+    padding 24
+    gap 16
+    frame panel
+    on appear play land
+    at phone {
+      padding 16
+      gap 12
+    }
+    row Head {
+      width grow
+      gap 16
+      cross center
+      column Text {
+        width grow
+        gap 4
+        label Title {
+          text bind title
+          step xl4
+          heading true
+          at phone {
+            step xl2
+          }
+          state outcome bind won {
+            lost {
+              ink token danger
+            }
+            won {
+              ink token gold
+            }
+          }
+        }
+        label Gained {
+          text "+{gained, grouped} XP"
+          color token xp
+        }
+      }
+      label Grade {
+        text bind grade
+        step displayLg
+        heading true
+        visible bind "grade != \"\""
+        at phone {
+          step xl4
+        }
+      }
+    }
+    row Level {
+      width grow
+      gap 12
+      cross center
+      label Value {
+        text "Level {level}"
+        step lg
+      }
+      progress Xp {
+        width grow
+        value bind xp
+      }
+    }
+    slot Celebration {
+      width grow
+    }
+    row Tabs {
+      gap 6
+      button Summary {
+        key "screen.results.summary"
+        text "Summary"
+        variant ghost
+        size small
+        at phone {
+          size medium
+        }
+        on click set tab "\"summary\""
+        state selection bind "tab == \"summary\"" {
+          off {
+            opacity 0.7
+          }
+          on {
+            opacity 1
+          }
+        }
+      }
+      button Graphs {
+        key "screen.results.graphs"
+        text "Graphs"
+        variant ghost
+        size small
+        at phone {
+          size medium
+        }
+        on click set tab "\"graphs\""
+        state selection bind "tab == \"graphs\"" {
+          off {
+            opacity 0.7
+          }
+          on {
+            opacity 1
+          }
+        }
+      }
+      button Board {
+        key "screen.results.board"
+        text "Scoreboard"
+        variant ghost
+        size small
+        at phone {
+          size medium
+        }
+        on click set tab "\"board\""
+        state selection bind "tab == \"board\"" {
+          off {
+            opacity 0.7
+          }
+          on {
+            opacity 1
+          }
+        }
+      }
+    }
+    scroll Page {
+      width grow
+      height grow
+      column Summary {
+        width grow
+        gap 12
+        visible bind "tab == \"summary\""
+        column Stats {
+          width grow
+          gap 6
+          for s in stats {
+            row Stat {
+              width grow
+              gap 8
+              cross center
+              label Name {
+                text bind s.name
+                color token inkMuted
+              }
+              badge Best {
+                key "screen.results.best"
+                text "Best"
+                tone accent
+                visible bind s.best
+              }
+              spacer
+              label Value {
+                text bind s.value grouped
+                step lg
+              }
+            }
+          }
+        }
+        row Rewards {
+          width grow
+          gap 8
+          wrap true
+          for r in rewards {
+            column Reward {
+              padding 8
+              gap 4
+              cross center
+              frame card
+              art Art {
+                kind itemIcon
+                width 56
+                height 56
+                texture bind r.texture
+              }
+              label Amount {
+                text "{r.name} ×{r.amount, compact}"
+                step caption
+              }
+            }
+          }
+        }
+      }
+      slot Graph {
+        width grow
+        visible bind "tab == \"graphs\""
+      }
+      slot Scores {
+        width grow
+        visible bind "tab == \"board\""
+      }
+    }
+    row Footer {
+      width grow
+      gap 8
+      align end
+      wrap true
+      button Replay {
+        key "screen.results.replay"
+        text "Watch replay"
+        variant quiet
+        on click emit replay
+      }
+      button Again {
+        key "screen.results.again"
+        text "Play again"
+        on click emit again
+      }
+      button Continue {
+        key "screen.results.continue"
+        text "Continue"
+        variant primary
+        on click emit continue
+        on action confirm emit continue
+      }
+    }
+  }
+}

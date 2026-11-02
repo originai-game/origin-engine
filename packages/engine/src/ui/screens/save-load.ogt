@@ -1,0 +1,220 @@
+type screen
+version 1
+---
+# Save and load with thumbnails (docs/ui.md Appendix B). The slots as
+# cards, each its thumbnail, title, place, time played and date, an
+# autosave tag; Save or Load acts on the selected one, Delete asks first.
+#
+# Viewmodel: mode ("save" or "load"), slots, selected. Events to code:
+# select (the click wrote selected), save, load, delete (code asks with
+# og.ui.confirm), newSlot. Slots: Preview takes the selected save's
+# detail (party, quest, og.ui.keyValueRows).
+name "save-load"
+layer menu
+focus "Body/Slots/List"
+props {
+  mode string "save or load: the title and the main action."
+  slots list "The saves: { title, place, played (seconds), date (text), auto (bool), empty (bool), thumb (texture) }."
+  selected number "The selected slot's index."
+}
+actions {
+  confirm "Select"
+  back "Back"
+  details "Delete"
+}
+fixture default "{\"mode\": \"load\", \"slots\": [{\"title\": \"Chapter 3\", \"place\": \"Old mill\", \"played\": 15120, \"date\": \"Today 18:42\", \"auto\": true, \"empty\": false, \"thumb\": 0}, {\"title\": \"Chapter 2\", \"place\": \"Harbour\", \"played\": 9800, \"date\": \"Yesterday\", \"auto\": false, \"empty\": false, \"thumb\": 0}, {\"title\": \"\", \"place\": \"\", \"played\": 0, \"date\": \"\", \"auto\": false, \"empty\": true, \"thumb\": 0}], \"selected\": 0}"
+column Screen {
+  width grow
+  height grow
+  padding 32
+  gap 16
+  at phone {
+    padding 16
+    gap 12
+  }
+  row Header {
+    width grow
+    gap 12
+    cross center
+    button Back {
+      key "screen.common.back"
+      text "Back"
+      variant quiet
+      on click pop
+    }
+    label SaveTitle {
+      key "screen.save-load.saveTitle"
+      text "Save game"
+      step xl2
+      heading true
+      visible bind "mode == \"save\""
+      at phone {
+        step xl
+      }
+    }
+    label LoadTitle {
+      key "screen.save-load.loadTitle"
+      text "Load game"
+      step xl2
+      heading true
+      visible bind "mode != \"save\""
+      at phone {
+        step xl
+      }
+    }
+  }
+  grid Body {
+    width grow
+    height grow
+    gap 24
+    columns "3fr" "2fr"
+    rows "1fr"
+    at phonePortrait {
+      columns "1fr"
+      rows "1fr" auto
+      gap 12
+    }
+    scroll Slots {
+      width grow
+      height grow
+      column List {
+        width grow
+        gap 8
+        focusGroup stop
+        for s in slots {
+          row Slot {
+            width grow
+            padding 10
+            gap 12
+            cross center
+            frame card
+            interactive true
+            focusable true
+            on click set selected "$index"
+            on click emit select
+            art Thumb {
+              kind saveThumb
+              width 160
+              aspect 1.78
+              texture bind s.thumb
+              at phone {
+                width 96
+              }
+            }
+            column Text {
+              width grow
+              gap 2
+              label Empty {
+                key "screen.save-load.empty"
+                text "Empty slot"
+                step lg
+                visible bind s.empty
+              }
+              label Name {
+                text bind s.title
+                visible bind "!s.empty"
+                step lg
+                maxLines 1
+                ellipsis true
+              }
+              label Place {
+                text bind s.place
+                color token inkMuted
+                maxLines 1
+                ellipsis true
+                visible bind "!s.empty"
+              }
+              row Meta {
+                gap 8
+                visible bind "!s.empty"
+                label Played {
+                  text "{s.played, duration}"
+                  step caption
+                  color token inkMuted
+                }
+                label Date {
+                  text bind s.date
+                  step caption
+                  color token inkMuted
+                }
+              }
+            }
+            badge Auto {
+              key "screen.save-load.auto"
+              text "Auto"
+              tone info
+              visible bind s.auto
+            }
+            state selection bind "$index == selected" {
+              off {
+                opacity 0.8
+              }
+              on {
+                opacity 1
+                background token primarySoft
+              }
+              transition any any token ui
+            }
+            state interaction {
+              normal {
+                scale 1
+              }
+              hover {
+                scale 1.01
+              }
+              pressed {
+                scale 0.99
+              }
+              focused {
+                scale 1.01
+              }
+              transition any any token ui
+            }
+          }
+        }
+      }
+    }
+    column Side {
+      width grow
+      gap 12
+      slot Preview {
+        width grow
+        at phone {
+          visible false
+        }
+      }
+      row Actions {
+        width grow
+        gap 8
+        align end
+        button Delete {
+          key "screen.save-load.delete"
+          text "Delete"
+          variant danger
+          on click emit delete
+          on action details emit delete
+        }
+        button New {
+          key "screen.save-load.new"
+          text "New slot"
+          visible bind "mode == \"save\""
+          on click emit newSlot
+        }
+        button Save {
+          key "screen.save-load.save"
+          text "Save"
+          variant primary
+          visible bind "mode == \"save\""
+          on click emit save
+        }
+        button Load {
+          key "screen.save-load.load"
+          text "Load"
+          variant primary
+          visible bind "mode != \"save\" && slots.length > 0"
+          on click emit load
+        }
+      }
+    }
+  }
+}

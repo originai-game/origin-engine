@@ -1,0 +1,73 @@
+type screen
+version 1
+---
+# Pull results and pack opening (docs/ui.md Appendix B: gacha banner and
+# pull results; pack opening). Over everything: the charge, each result
+# revealed in its tier's colour, then the summary of every result with
+# Pull again and Done.
+#
+# Viewmodel: count (results in the pull), again (the price of another
+# pull, text), canAgain. Events to code: again, done (also Back once the
+# summary shows). Slots: Sequence takes og.ui.pullSequence (charge, reveal
+# and summary, its own Skip; it answers when it reaches the summary and
+# when Again or Done is pressed). For a pack opening, the same sequence
+# with cards (art kind card) or og.ui.rewardChoice when the player keeps
+# some.
+name "pull-results"
+layer modal
+under hide
+back emit done
+props {
+  count number "How many results the pull gave."
+  again string "Another pull's price, as text (10 × 160)."
+  canAgain bool "The player can pay for another."
+}
+actions {
+  confirm "Next"
+  back "Done"
+}
+fixture default "{\"count\": 10, \"again\": \"10 × 160\", \"canAgain\": true}"
+stack Results {
+  width grow
+  height grow
+  background token backdrop
+  slot Sequence {
+    width grow
+    height grow
+    position absolute
+    start 0
+    top 0
+    end 0
+    bottom 0
+  }
+  row Bar {
+    position absolute
+    start 24
+    end 24
+    bottom 24
+    gap 12
+    align end
+    at phone {
+      start 12
+      end 12
+      bottom 12
+    }
+    label Count {
+      text "{count, plural, one {# result} other {# results}}"
+      step caption
+      color token inkMuted
+    }
+    spacer
+    button Again {
+      text "Again · {again}"
+      disabled bind "!canAgain"
+      on click emit again
+    }
+    button Done {
+      key "screen.pull-results.done"
+      text "Done"
+      variant primary
+      on click emit done
+    }
+  }
+}

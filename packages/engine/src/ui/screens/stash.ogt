@@ -1,0 +1,203 @@
+type screen
+version 1
+---
+# Stash, storage, bank (docs/ui.md Appendix B). The stash's tabs and grid
+# beside the player's bag, items moved between them by drag, quick
+# transfer (Shift and a press, or the details action held) or Deposit all;
+# the bank's gold with deposit and withdraw.
+#
+# Viewmodel: tabs, tab, used, slots, gold, banked. Events to code: tab
+# (the click wrote tab), depositAll, sortStash, deposit, withdraw and
+# buyTab. Slots: StashGrid and BagGrid each take og.ui.inventoryGrid (the
+# two grids move items between them; each answers what moved); Amount
+# takes og.ui.numberStepper for the gold to move.
+name "stash"
+layer menu
+pause true
+focus "Body/Stash/StashGrid"
+props {
+  tabs list "The stash's tabs: { name, locked }."
+  tab number "The selected tab's index."
+  used number "Cells in use in the tab."
+  slots number "Cells in the tab."
+  gold number "Gold carried."
+  banked number "Gold in the bank."
+}
+actions {
+  confirm "Select"
+  back "Close"
+  details "Quick transfer"
+}
+fixture default "{\"tabs\": [{\"name\": \"I\", \"locked\": false}, {\"name\": \"II\", \"locked\": false}, {\"name\": \"III\", \"locked\": true}], \"tab\": 0, \"used\": 37, \"slots\": 60, \"gold\": 1840, \"banked\": 25600}"
+column Screen {
+  width grow
+  height grow
+  padding 32
+  gap 12
+  at phone {
+    padding 16
+  }
+  row Header {
+    width grow
+    gap 12
+    cross center
+    wrap true
+    button Close {
+      key "screen.common.close"
+      text "Close"
+      variant quiet
+      on click pop
+    }
+    label Title {
+      key "screen.stash.title"
+      text "Stash"
+      step xl2
+      heading true
+      at phone {
+        step xl
+      }
+    }
+    spacer
+    row Bank {
+      gap 8
+      cross center
+      label Banked {
+        text "{banked, grouped}"
+        step lg
+        color token gold
+      }
+      slot Amount {
+      }
+      button Deposit {
+        key "screen.stash.deposit"
+        text "Deposit"
+        size small
+        at phone {
+          size medium
+        }
+        on click emit deposit
+      }
+      button Withdraw {
+        key "screen.stash.withdraw"
+        text "Withdraw"
+        size small
+        at phone {
+          size medium
+        }
+        on click emit withdraw
+      }
+    }
+  }
+  grid Body {
+    width grow
+    height grow
+    gap 24
+    columns "1fr" "1fr"
+    rows "1fr"
+    at phonePortrait {
+      columns "1fr"
+      rows "1fr" "1fr"
+      gap 12
+    }
+    column Stash {
+      width grow
+      height grow
+      gap 8
+      row Tabs {
+        width grow
+        gap 6
+        cross center
+        wrap true
+        for t in tabs {
+          button Tab {
+            width fit 44
+            text bind t.name
+            variant ghost
+            size small
+            at phone {
+              size medium
+            }
+            disabled bind t.locked
+            on click set tab "$index"
+            state selection bind "$index == tab" {
+              off {
+                opacity 0.7
+              }
+              on {
+                opacity 1
+              }
+            }
+          }
+        }
+        button BuyTab {
+          key "screen.stash.buyTab"
+          text "+"
+          size small
+          at phone {
+            size medium
+          }
+          square true
+          name "Buy a tab"
+          on click emit buyTab
+        }
+        spacer
+        label Used {
+          text "{used}/{slots}"
+          step caption
+          color token inkMuted
+        }
+      }
+      slot StashGrid {
+        width grow
+        height grow
+      }
+      row Actions {
+        width grow
+        gap 8
+        button Sort {
+          key "screen.stash.sort"
+          text "Sort"
+          size small
+          at phone {
+            size medium
+          }
+          on click emit sortStash
+        }
+        button DepositAll {
+          key "screen.stash.depositAll"
+          text "Deposit all"
+          size small
+          at phone {
+            size medium
+          }
+          on click emit depositAll
+        }
+      }
+    }
+    column Bag {
+      width grow
+      height grow
+      gap 8
+      row Head {
+        width grow
+        gap 8
+        cross center
+        label Title {
+          key "screen.stash.bag"
+          text "Bag"
+          step lg
+          heading true
+        }
+        spacer
+        label Gold {
+          text "{gold, grouped}"
+          color token gold
+        }
+      }
+      slot BagGrid {
+        width grow
+        height grow
+      }
+    }
+  }
+}

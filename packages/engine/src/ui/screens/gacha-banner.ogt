@@ -1,0 +1,122 @@
+type screen
+version 1
+---
+# Gacha banner (docs/ui.md Appendix B: gacha banner and pull results; pack
+# opening). The banners, their key art, the featured units, the time left,
+# the pity and the one and ten pulls; Details and History beside them.
+# pull-results is the reveal that follows.
+#
+# Viewmodel: currency (the purse's amount), rules (the odds lines shown by
+# Details), showRules. Events to code: details (the click toggles
+# showRules), history, topUp (Back pops it). Slots: Banner takes og.ui.gachaBanner
+# (the banners as tabs, the art, featured units, timer, pity, the purse and
+# the pull buttons; it answers the pull asked for: code takes the pull and
+# pushes pull-results); RulesTable takes the odds table (og.ui.table) when
+# Details is open.
+name "gacha-banner"
+layer menu
+focus "Body/Banner"
+props {
+  currency number "The pull currency the player holds."
+  showRules bool "Details is open (two-way: its button toggles it)."
+}
+actions {
+  confirm "Pull"
+  back "Back"
+  tabNext "Next banner"
+  tabPrev "Previous banner"
+}
+fixture default "{\"currency\": 4800, \"showRules\": false}"
+column Screen {
+  width grow
+  height grow
+  padding 24
+  gap 12
+  at phone {
+    padding 12
+    gap 8
+  }
+  row Header {
+    width grow
+    gap 12
+    cross center
+    button Back {
+      key "screen.common.back"
+      text "Back"
+      variant quiet
+      on click pop
+    }
+    label Title {
+      key "screen.gacha-banner.title"
+      text "Summon"
+      step xl2
+      heading true
+      at phone {
+        step xl
+      }
+    }
+    spacer
+    label Currency {
+      text "{currency, grouped}"
+      step lg
+      color token primary
+    }
+    button TopUp {
+      key "screen.gacha-banner.topUp"
+      text "+"
+      square true
+      size small
+      at phone {
+        size medium
+      }
+      name "Get more"
+      on click emit topUp
+    }
+  }
+  stack Body {
+    width grow
+    height grow
+    slot Banner {
+      width grow
+      height grow
+    }
+    column Rules {
+      position absolute
+      top 0
+      end 0
+      width grow 0 420
+      padding 16
+      gap 8
+      frame panel
+      visible bind showRules
+      enter slideLeft 24 token enter
+      label Title {
+        key "screen.gacha-banner.rules"
+        text "Rates and rules"
+        step lg
+        heading true
+      }
+      slot RulesTable {
+        width grow
+      }
+    }
+  }
+  row Footer {
+    width grow
+    gap 8
+    align end
+    button Details {
+      key "screen.gacha-banner.details"
+      text "Details"
+      variant quiet
+      on click set showRules "!showRules"
+      on click emit details
+    }
+    button History {
+      key "screen.gacha-banner.history"
+      text "History"
+      variant quiet
+      on click emit history
+    }
+  }
+}

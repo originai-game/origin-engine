@@ -1,0 +1,198 @@
+type screen
+version 1
+---
+# Inventory (docs/ui.md Appendix B: grid, list, weighted, nested
+# containers). The bag's grid (or list), its weight against the limit, the
+# filters and sort, the selected item's detail with its actions, and a
+# breadcrumb into nested containers.
+#
+# Viewmodel: path (the containers opened, outermost first), weight,
+# capacity, filter, filters, gold, view. Events to code: filter (the
+# click wrote filter), sort, view (grid and list), up (the breadcrumb's
+# parent), use, drop (Back pops it). Slots: Grid takes og.ui.inventoryGrid (or
+# og.ui.dataList for the list view); Detail takes the selected item
+# (og.ui.tooltipCard, og.ui.statCompare); Equip takes og.ui.paperdoll
+# when the screen is the bag and the doll together.
+name "inventory"
+layer menu
+pause true
+focus "Body/Grid"
+props {
+  path list "The containers opened, outermost first: { name }."
+  weight number "What the bag holds, in the game's unit."
+  capacity number "What it can hold (0: no limit)."
+  filter number "The selected filter's index."
+  filters list "The filters: { name }."
+  gold number "The purse."
+  view string "grid or list."
+}
+actions {
+  confirm "Select"
+  back "Close"
+  details "Item menu"
+  rotate "Rotate"
+}
+fixture default "{\"path\": [{\"name\": \"Backpack\"}], \"weight\": 42.5, \"capacity\": 60, \"filter\": 0, \"filters\": [{\"name\": \"All\"}, {\"name\": \"Weapons\"}, {\"name\": \"Armour\"}, {\"name\": \"Consumables\"}], \"gold\": 1840, \"view\": \"grid\"}"
+column Screen {
+  width grow
+  height grow
+  padding 32
+  gap 12
+  at phone {
+    padding 16
+  }
+  row Header {
+    width grow
+    gap 12
+    cross center
+    wrap true
+    button Close {
+      key "screen.common.close"
+      text "Close"
+      variant quiet
+      on click pop
+    }
+    label Title {
+      key "screen.inventory.title"
+      text "Inventory"
+      step xl2
+      heading true
+      at phone {
+        step xl
+      }
+    }
+    row Path {
+      gap 6
+      cross center
+      for c in path {
+        button Crumb {
+          text bind c.name
+          variant ghost
+          size small
+          at phone {
+            size medium
+          }
+          on click emit up
+        }
+      }
+    }
+    spacer
+    label Gold {
+      text "{gold, grouped}"
+      step lg
+      color token gold
+    }
+  }
+  row Tools {
+    width grow
+    gap 8
+    cross center
+    wrap true
+    for f in filters {
+      button Filter {
+        text bind f.name
+        variant ghost
+        size small
+        at phone {
+          size medium
+        }
+        on click set filter "$index"
+        on click emit filter
+        state selection bind "$index == filter" {
+          off {
+            opacity 0.7
+          }
+          on {
+            opacity 1
+          }
+        }
+      }
+    }
+    spacer
+    button Sort {
+      key "screen.inventory.sort"
+      text "Sort"
+      size small
+      at phone {
+        size medium
+      }
+      on click emit sort
+    }
+    button View {
+      key "screen.inventory.view"
+      text "Grid / list"
+      size small
+      at phone {
+        size medium
+      }
+      on click emit view
+    }
+  }
+  grid Body {
+    width grow
+    height grow
+    gap 24
+    columns "2fr" "1fr"
+    rows "1fr"
+    at phonePortrait {
+      columns "1fr"
+      rows "1fr" auto
+      gap 12
+    }
+    column Main {
+      width grow
+      height grow
+      gap 12
+      slot Equip {
+        width grow
+      }
+      slot Grid {
+        width grow
+        height grow
+      }
+    }
+    column Side {
+      width grow
+      gap 12
+      slot Detail {
+        width grow
+      }
+      row Actions {
+        width grow
+        gap 8
+        button Use {
+          key "screen.inventory.use"
+          text "Use"
+          variant primary
+          on click emit use
+        }
+        button Drop {
+          key "screen.inventory.drop"
+          text "Drop"
+          variant quiet
+          on click emit drop
+        }
+      }
+    }
+  }
+  row Weight {
+    width grow
+    gap 12
+    cross center
+    visible bind "capacity > 0"
+    label Label {
+      key "screen.inventory.weight"
+      text "Weight"
+      step caption
+      color token inkMuted
+    }
+    progress Bar {
+      width grow
+      value bind "weight / capacity"
+    }
+    label Value {
+      text "{weight, fixed, 1} / {capacity, grouped}"
+      step caption
+    }
+  }
+}

@@ -1,0 +1,108 @@
+type screen
+version 1
+---
+# Route flowchart (docs/ui.md Appendix B: backlog, gallery, route
+# flowchart). The story's scenes as a chart of branches, the ones seen lit
+# and the unseen ones dark, the endings reached, and the selected scene's
+# summary with Jump.
+#
+# Viewmodel: routes (count seen), endings, scene (the selected one: { name,
+# chapter, summary, seen (bool) }). Events to code: jump (Back pops it).
+#
+# PATTERN PENDING (U6d): the route flowchart pattern mounts in the slot
+# Chart (scenes, branches and endings laid out by chapter, pan and zoom).
+# Until it lands, code fills Chart with og.ui.nodeGraph.
+name "flowchart"
+layer menu
+focus "Body/Chart"
+props {
+  seen number "Scenes seen."
+  scenes number "Scenes in all."
+  endings string "Endings reached, as text (3/7)."
+  scene object "The selected scene: { name, chapter, summary, seen (bool) }."
+}
+actions {
+  confirm "Jump"
+  back "Back"
+}
+fixture default "{\"seen\": 41, \"scenes\": 96, \"endings\": \"2/6\", \"scene\": {\"name\": \"The bridge at dusk\", \"chapter\": \"Chapter 3\", \"summary\": \"You chose to wait for her. She never came.\", \"seen\": true}}"
+column Screen {
+  width grow
+  height grow
+  padding 32
+  gap 12
+  at phone {
+    padding 16
+  }
+  row Header {
+    width grow
+    gap 12
+    cross center
+    wrap true
+    button Back {
+      key "screen.common.back"
+      text "Back"
+      variant quiet
+      on click pop
+    }
+    label Title {
+      key "screen.flowchart.title"
+      text "Story chart"
+      step xl2
+      heading true
+      at phone {
+        step xl
+      }
+    }
+    spacer
+    label Seen {
+      text "Scenes {seen}/{scenes} · Endings {endings}"
+      step caption
+      color token inkMuted
+    }
+  }
+  grid Body {
+    width grow
+    height grow
+    gap 16
+    columns "1fr" 320
+    rows "1fr"
+    at phonePortrait {
+      columns "1fr"
+      rows "1fr" auto
+      gap 12
+    }
+    slot Chart {
+      width grow
+      height grow
+    }
+    column Scene {
+      width grow
+      padding 16
+      gap 8
+      frame panel
+      label Chapter {
+        text bind scene.chapter
+        step caption
+        color token inkMuted
+      }
+      label Name {
+        text bind scene.name
+        step lg
+        heading true
+      }
+      label Summary {
+        text bind scene.summary
+        step reading
+        maxLines 6
+      }
+      button Jump {
+        key "screen.flowchart.jump"
+        text "Jump here"
+        variant primary
+        disabled bind "!scene.seen"
+        on click emit jump
+      }
+    }
+  }
+}

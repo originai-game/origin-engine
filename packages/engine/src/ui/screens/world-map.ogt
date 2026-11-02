@@ -1,0 +1,106 @@
+type screen
+version 1
+---
+# World map (docs/ui.md Appendix B: fog, markers, fast travel). The map
+# filling the screen, its legend and the selected place's detail, the
+# region the player is in, and the zoom.
+#
+# Viewmodel: region, zoom (two-way). Events to code: zoomIn, zoomOut,
+# center (on the player) (Back pops it). Slots: Map takes og.ui.worldMap (the
+# painted map with fog, regions, pins, the player's arrow, the legend and
+# the place's detail with Fast travel and waypoints; it answers the pin
+# pressed, travel and the waypoint); Tracker takes og.ui.questTracker for
+# the tracked quest over the map.
+name "world-map"
+layer menu
+pause true
+under hide
+focus "Map/Map"
+props {
+  region string "The region the player is in."
+  zoom number "The map's zoom, 0 to 1 (two-way)."
+}
+actions {
+  confirm "Select"
+  back "Close"
+  details "Waypoint"
+}
+fixture default "{\"region\": \"Greywater Marsh\", \"zoom\": 0.4}"
+stack Map {
+  width grow
+  height grow
+  slot Map {
+    width grow
+    height grow
+    position absolute
+    start 0
+    top 0
+    end 0
+    bottom 0
+  }
+  row Head {
+    position absolute
+    start 24
+    top 24
+    end 24
+    gap 12
+    cross center
+    at phone {
+      start 12
+      top 12
+      end 12
+    }
+    button Close {
+      key "screen.common.close"
+      text "Close"
+      on click pop
+    }
+    panel Region {
+      padding 8
+      frame hud
+      label Name {
+        text bind region
+        step lg
+        heading true
+        maxLines 1
+        ellipsis true
+      }
+    }
+    spacer
+    slot Tracker {
+      at phonePortrait {
+        visible false
+      }
+    }
+  }
+  column Zoom {
+    position absolute
+    end 24
+    bottom 24
+    gap 8
+    at phone {
+      end 12
+      bottom 12
+    }
+    button In {
+      key "screen.world-map.zoomIn"
+      text "+"
+      square true
+      name "Zoom in"
+      on click emit zoomIn
+    }
+    button Out {
+      key "screen.world-map.zoomOut"
+      text "-"
+      square true
+      name "Zoom out"
+      on click emit zoomOut
+    }
+    button Center {
+      key "screen.world-map.center"
+      text "Me"
+      name "Centre on me"
+      on click emit center
+    }
+  }
+}

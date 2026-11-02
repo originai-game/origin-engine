@@ -1,0 +1,63 @@
+type screen
+version 1
+---
+# Scoreboard (docs/ui.md Appendix B). Held over the match (Tab, the
+# pad's View): the score and the time, each team's table of players with
+# their values, the local player lit; it takes no input, so play goes on.
+#
+# Viewmodel: score (as text: 7 - 5), clock (seconds), map. Events: none
+# (code pushes it while the key is held and pops it on release). Slots:
+# Board takes og.ui.scoreboard (the teams in their colours, the rows,
+# the dead, ping bars, the MVP); Extra takes the match's own row
+# (objectives held, og.ui.matchStats).
+name "scoreboard"
+layer hud
+props {
+  score string "The score, as text."
+  clock number "Seconds left (or played)."
+  map string "The map's name."
+}
+fixture default "{\"score\": \"7 - 5\", \"clock\": 412, \"map\": \"Harbour\"}"
+column Scoreboard {
+  width grow
+  height grow
+  padding 48
+  align center
+  cross center
+  at phone {
+    padding 12
+  }
+  at phoneLandscape {
+    padding 52 8
+  }
+  column Panel {
+    width grow 0 1100
+    gap 8
+    row Head {
+      width grow
+      gap 16
+      cross center
+      label Map {
+        text bind map
+        color token inkMuted
+      }
+      spacer
+      label Score {
+        text bind score
+        step xl2
+        heading true
+      }
+      spacer
+      label Clock {
+        text bind clock clock
+        step lg
+      }
+    }
+    slot Board {
+      width grow
+    }
+    slot Extra {
+      width grow
+    }
+  }
+}

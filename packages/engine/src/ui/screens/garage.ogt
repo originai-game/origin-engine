@@ -1,0 +1,235 @@
+type screen
+version 1
+---
+# Garage, tuning and livery editor (docs/ui.md Appendix B). The vehicle
+# turning in the middle, its class and rating, the tabs (Cars, Upgrades,
+# Tuning, Livery), the selected tab's page at the end side and the
+# performance bars that change with it.
+#
+# Viewmodel: name, rating, className, tab, performance (the bars, each
+# with its value after the change). Events to code: tab (the click wrote
+# tab), apply, revert, testDrive (Back pops it). Slots: Viewport takes the vehicle
+# (og.ui.viewport, a sceneViewport the player drags to turn).
+#
+# PATTERN PENDING (U6d): the garage pattern mounts in the slot Page (the
+# car list, upgrade parts by slot, the tuning sliders with their curves,
+# and the livery editor's layers, decals and colours). Until it lands,
+# code fills Page with og.ui.dataList, og.ui.valueSlider rows and
+# og.ui.colorPicker.
+name "garage"
+layer menu
+under hide
+focus "Tabs/Cars"
+props {
+  name string "The vehicle's name."
+  rating number "Its performance rating."
+  className string "Its class (A, S1, GT3)."
+  tab string "cars, upgrades, tuning or livery."
+  performance list "The bars: { name, value, after } (0 to 1)."
+  changed bool "Something changed since Apply."
+}
+actions {
+  confirm "Select"
+  back "Back"
+  tabNext "Next tab"
+  tabPrev "Previous tab"
+}
+fixture default "{\"name\": \"Kestrel GT\", \"rating\": 742, \"className\": \"A\", \"tab\": \"tuning\", \"performance\": [{\"name\": \"Speed\", \"value\": 0.72, \"after\": 0.75}, {\"name\": \"Handling\", \"value\": 0.64, \"after\": 0.6}, {\"name\": \"Acceleration\", \"value\": 0.58, \"after\": 0.61}, {\"name\": \"Braking\", \"value\": 0.7, \"after\": 0.7}], \"changed\": true}"
+stack Garage {
+  width grow
+  height grow
+  slot Viewport {
+    width grow
+    height grow
+    position absolute
+    start 0
+    top 0
+    end 0
+    bottom 0
+  }
+  column Screen {
+    width grow
+    height grow
+    padding 24
+    gap 12
+    at phone {
+      padding 12
+    }
+    row Header {
+      width grow
+      gap 12
+      cross center
+      wrap true
+      button Back {
+        key "screen.common.back"
+        text "Back"
+        variant quiet
+        on click pop
+      }
+      column Car {
+        gap 2
+        label Name {
+          text bind name
+          step xl2
+          heading true
+          at phone {
+            step xl
+          }
+        }
+        label Rating {
+          text "{className} · {rating}"
+          color token inkMuted
+        }
+      }
+      spacer
+      button TestDrive {
+        key "screen.garage.testDrive"
+        text "Test drive"
+        size small
+        at phone {
+          size medium
+        }
+        on click emit testDrive
+      }
+    }
+    row Tabs {
+      width grow
+      wrap true
+      gap 6
+      focusGroup wrap
+      button Cars {
+        key "screen.garage.cars"
+        text "Cars"
+        variant ghost
+        on click set tab "\"cars\""
+        state selection bind "tab == \"cars\"" {
+          off {
+            opacity 0.7
+          }
+          on {
+            opacity 1
+          }
+        }
+      }
+      button Upgrades {
+        key "screen.garage.upgrades"
+        text "Upgrades"
+        variant ghost
+        on click set tab "\"upgrades\""
+        state selection bind "tab == \"upgrades\"" {
+          off {
+            opacity 0.7
+          }
+          on {
+            opacity 1
+          }
+        }
+      }
+      button Tuning {
+        key "screen.garage.tuning"
+        text "Tuning"
+        variant ghost
+        on click set tab "\"tuning\""
+        state selection bind "tab == \"tuning\"" {
+          off {
+            opacity 0.7
+          }
+          on {
+            opacity 1
+          }
+        }
+      }
+      button Livery {
+        key "screen.garage.livery"
+        text "Livery"
+        variant ghost
+        on click set tab "\"livery\""
+        state selection bind "tab == \"livery\"" {
+          off {
+            opacity 0.7
+          }
+          on {
+            opacity 1
+          }
+        }
+      }
+    }
+    row Body {
+      width grow
+      height grow
+      gap 16
+      spacer
+      column Side {
+        width grow 0 420
+        height grow
+        padding 16
+        gap 12
+        frame panel
+        at phone {
+          width grow
+        }
+        scroll PageScroll {
+          width grow
+          height grow
+          slot Page {
+            width grow
+          }
+        }
+        column Performance {
+          width grow
+          gap 6
+          for p in performance {
+            row Bar {
+              width grow
+              gap 8
+              cross center
+              label Name {
+                text bind p.name
+                width 110
+                step caption
+                color token inkMuted
+              }
+              progress Value {
+                width grow
+                value bind p.after
+              }
+              label Delta {
+                text bind "(p.after - p.value) * 100" fixed 1
+                width 44
+                step caption
+                textAlign end
+                state change bind "p.after >= p.value" {
+                  down {
+                    ink token danger
+                  }
+                  up {
+                    ink token success
+                  }
+                }
+              }
+            }
+          }
+        }
+        row Actions {
+          width grow
+          gap 8
+          align end
+          button Revert {
+            key "screen.garage.revert"
+            text "Revert"
+            variant quiet
+            disabled bind "!changed"
+            on click emit revert
+          }
+          button Apply {
+            key "screen.settings.apply"
+            text "Apply"
+            variant primary
+            disabled bind "!changed"
+            on click emit apply
+          }
+        }
+      }
+    }
+  }
+}

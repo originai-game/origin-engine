@@ -1,0 +1,83 @@
+type screen
+version 1
+---
+# Dialogue (docs/ui.md Appendix B: choices, checks, timers). Over the
+# scene: the speaker's portrait and the conversation box with its line,
+# its choices (checks, locked ones with their reason, a timer), and Skip,
+# Log and Auto.
+#
+# Viewmodel: cinematic (letterbox bars on), speaking (a line is up).
+# Events to code: log (push backlog), skip. Slots: Conversation takes
+# og.ui.conversation (fed by og.story.view: the name, the line typing out,
+# the choices with their checks and reasons, the timer, the roll, Skip,
+# Log and Auto; it answers the choice and going on); Portrait takes the
+# speaker (art kind bust, or a sceneViewport for a 3D close-up).
+name "dialogue"
+layer hud
+input menu
+capture true
+back emit skip
+props {
+  cinematic bool "Letterbox bars above and below."
+  speaking bool "A line is up (false: the box is hidden between lines)."
+}
+actions {
+  confirm "Next"
+  back "Skip"
+  details "Log"
+}
+fixture default "{\"cinematic\": true, \"speaking\": true}"
+stack Dialogue {
+  width grow
+  height grow
+  on action details emit log
+  column Bars {
+    width grow
+    height grow
+    position absolute
+    start 0
+    top 0
+    end 0
+    bottom 0
+    visible bind cinematic
+    panel Top {
+      width grow
+      height 64
+      background "#000000"
+      at phone {
+        height 32
+      }
+    }
+    spacer
+    panel Bottom {
+      width grow
+      height 64
+      background "#000000"
+      at phone {
+        height 32
+      }
+    }
+  }
+  row Stage {
+    position absolute
+    start 32
+    end 32
+    bottom 80
+    gap 16
+    cross end
+    visible bind speaking
+    at phone {
+      start 12
+      end 12
+      bottom 40
+    }
+    slot Portrait {
+      at phonePortrait {
+        visible false
+      }
+    }
+    slot Conversation {
+      width grow
+    }
+  }
+}

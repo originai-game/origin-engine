@@ -1,0 +1,137 @@
+type screen
+version 1
+---
+# Deck builder and collection (docs/ui.md Appendix B). The collection's
+# cards with search and filters (cost, kind, tier, owned), the deck being
+# built beside it with its count and cost curve, and Save; on a phone the
+# deck is a sheet over the collection.
+#
+# Viewmodel: deck (its name, two-way), count, size, query, filters,
+# filter, valid. Events to code: search (the field wrote query), filter
+# (the click wrote filter), save, clear (Back pops it). Slots: Curve takes the
+# deck's cost curve (og.ui.chart, bars).
+#
+# PATTERN PENDING (U6d): the deck builder pattern mounts in the slot
+# Builder (the collection grid, the deck list, drag between them, counts
+# and copies). Until it lands, code fills Builder with og.ui.dataGrid for
+# the collection and og.ui.dataList for the deck.
+name "deck-builder"
+layer menu
+focus "Body/Builder"
+props {
+  deck string "The deck's name (two-way)."
+  count number "Cards in the deck."
+  size number "The deck's size (count must reach it)."
+  query string "The search's text (two-way)."
+  filters list "The filters: { name }."
+  filter number "The selected filter's index."
+  valid bool "The deck can be saved."
+}
+actions {
+  confirm "Add"
+  back "Back"
+  details "Inspect"
+}
+fixture default "{\"deck\": \"Ember aggro\", \"count\": 24, \"size\": 30, \"query\": \"\", \"filters\": [{\"name\": \"All\"}, {\"name\": \"Units\"}, {\"name\": \"Spells\"}, {\"name\": \"Owned\"}], \"filter\": 0, \"valid\": false}"
+column Screen {
+  width grow
+  height grow
+  padding 24
+  gap 12
+  at phone {
+    padding 12
+  }
+  row Header {
+    width grow
+    gap 12
+    cross center
+    wrap true
+    button Back {
+      key "screen.common.back"
+      text "Back"
+      variant quiet
+      on click pop
+    }
+    field Name {
+      width grow 160 360
+      input bind deck
+      placeholder "Deck name"
+      maxChars 32
+    }
+    spacer
+    label Count {
+      text "{count}/{size}"
+      step lg
+      state full bind "count >= size" {
+        short {
+          ink token warn
+        }
+        full {
+          ink token success
+        }
+      }
+    }
+  }
+  row Tools {
+    width grow
+    gap 8
+    cross center
+    wrap true
+    field Search {
+      width grow 160 320
+      input bind query
+      placeholder "Search cards"
+      on changed emit search
+    }
+    for f in filters {
+      button Filter {
+        text bind f.name
+        variant ghost
+        size small
+        at phone {
+          size medium
+        }
+        on click set filter "$index"
+        on click emit filter
+        state selection bind "$index == filter" {
+          off {
+            opacity 0.7
+          }
+          on {
+            opacity 1
+          }
+        }
+      }
+    }
+  }
+  column Body {
+    width grow
+    height grow
+    gap 12
+    slot Builder {
+      width grow
+      height grow
+    }
+    slot Curve {
+      width grow
+    }
+  }
+  row Footer {
+    width grow
+    gap 8
+    align end
+    button Clear {
+      key "screen.deck-builder.clear"
+      text "Clear"
+      variant quiet
+      on click emit clear
+    }
+    button Save {
+      key "screen.common.save"
+      text "Save"
+      variant primary
+      disabled bind "!valid"
+      on click emit save
+    }
+  }
+}

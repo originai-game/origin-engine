@@ -1,0 +1,227 @@
+type screen
+version 1
+---
+# Character creation (docs/ui.md Appendix B: sliders, presets, turntable).
+# The character turning in the middle, presets across the top, the
+# categories (body, face, hair, colours) at the start side, the selected
+# category's sliders at the end, the name and Done at the foot.
+#
+# Viewmodel: presets, preset, categories, category, sliders, name. Events
+# to code: preset (the click wrote preset), category, randomize, done
+# (Back pops it). The sliders write their value back; code applies them to the
+# model. Slots: Turntable takes the character (og.ui.viewport, a
+# sceneViewport the player drags to turn); Colours takes swatches or
+# og.ui.colorPicker for the selected category.
+name "character-creation"
+layer menu
+under hide
+focus "Body/Categories/List"
+props {
+  presets list "The presets: { name, texture }."
+  preset number "The selected preset's index (-1: custom)."
+  categories list "The categories: { name }."
+  category number "The selected category's index."
+  sliders list "The selected category's sliders: { name, value, min, max }; value two-way."
+  name string "The character's name (two-way)."
+}
+actions {
+  confirm "Select"
+  back "Back"
+  details "Randomize"
+}
+fixture default "{\"presets\": [{\"name\": \"Wanderer\", \"texture\": 0}, {\"name\": \"Scholar\", \"texture\": 0}, {\"name\": \"Veteran\", \"texture\": 0}], \"preset\": 0, \"categories\": [{\"name\": \"Body\"}, {\"name\": \"Face\"}, {\"name\": \"Hair\"}, {\"name\": \"Colours\"}], \"category\": 1, \"sliders\": [{\"name\": \"Jaw\", \"value\": 0.4, \"min\": 0, \"max\": 1}, {\"name\": \"Eyes\", \"value\": 0.6, \"min\": 0, \"max\": 1}, {\"name\": \"Nose\", \"value\": 0.5, \"min\": 0, \"max\": 1}], \"name\": \"Mara\"}"
+column Screen {
+  width grow
+  height grow
+  padding 32
+  gap 16
+  at phone {
+    padding 16
+    gap 8
+  }
+  row Header {
+    width grow
+    gap 12
+    cross center
+    button Back {
+      key "screen.common.back"
+      text "Back"
+      variant quiet
+      on click pop
+    }
+    label Title {
+      key "screen.character-creation.title"
+      text "Create your character"
+      step xl2
+      heading true
+      maxLines 1
+      ellipsis true
+      at phone {
+        step lg
+      }
+    }
+  }
+  scroll Presets {
+    width grow
+    at phoneLandscape {
+      visible false
+    }
+    row List {
+      gap 8
+      for p in presets {
+        column Preset {
+          width 96
+          gap 4
+          padding 4
+          cross center
+          frame card
+          interactive true
+          focusable true
+          on click set preset "$index"
+          on click emit preset
+          art Art {
+            kind bust
+            width 80
+            height 80
+            texture bind p.texture
+          }
+          label Name {
+            text bind p.name
+            step caption
+            maxLines 1
+            ellipsis true
+          }
+          state selection bind "$index == preset" {
+            off {
+              opacity 0.75
+            }
+            on {
+              opacity 1
+              background token primarySoft
+            }
+          }
+          state interaction {
+            normal {
+              y 0
+            }
+            hover {
+              y -2
+            }
+            pressed {
+              y 0
+            }
+            focused {
+              y -2
+            }
+            transition any any token ui
+          }
+        }
+      }
+    }
+  }
+  grid Body {
+    width grow
+    height grow
+    gap 16
+    columns 200 "1fr" 320
+    rows "1fr"
+    at phonePortrait {
+      columns "1fr"
+      rows 240 auto auto
+      gap 8
+    }
+    column Categories {
+      width grow
+      gap 4
+      at phonePortrait {
+        cell 1 2
+      }
+      row List {
+        width grow
+        gap 4
+        wrap true
+        for c in categories {
+          button Category {
+            text bind c.name
+            variant ghost
+            on click set category "$index"
+            on click emit category
+            state selection bind "$index == category" {
+              off {
+                opacity 0.7
+              }
+              on {
+                opacity 1
+              }
+            }
+          }
+        }
+      }
+    }
+    slot Turntable {
+      width grow
+      height grow
+      at phonePortrait {
+        cell 1 1
+      }
+    }
+    scroll Sliders {
+      width grow
+      height grow
+      at phonePortrait {
+        cell 1 3
+      }
+      column List {
+        width grow
+        gap 10
+        for s in sliders {
+          column Slider {
+            width grow
+            gap 4
+            label Name {
+              text bind s.name
+              step caption
+              color token inkMuted
+            }
+            slider Value {
+              width grow
+              min bind s.min
+              max bind s.max
+              value bind s.value
+            }
+          }
+        }
+        slot Colours {
+          width grow
+        }
+      }
+    }
+  }
+  row Footer {
+    width grow
+    gap 12
+    cross center
+    wrap true
+    field Name {
+      width grow 0 320
+      input bind name
+      placeholder "Name"
+      maxChars 24
+    }
+    spacer
+    button Randomize {
+      key "screen.character-creation.randomize"
+      text "Randomize"
+      variant quiet
+      on click emit randomize
+      on action details emit randomize
+    }
+    button Done {
+      key "screen.character-creation.done"
+      text "Done"
+      variant primary
+      disabled bind "name == \"\""
+      on click emit done
+    }
+  }
+}

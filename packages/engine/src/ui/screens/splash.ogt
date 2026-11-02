@@ -1,0 +1,88 @@
+type screen
+version 1
+---
+# Boot and splash (docs/ui.md Appendix B: boot, splash, title, main menu,
+# mode select). The studio's and partners' marks one after another, then
+# the boot's progress while the first assets load. The engine's own boot
+# splash (the brand's genesis motion) runs before the game's code; this is
+# the game's, after it.
+#
+# Viewmodel: marks (the logos in order), mark (the one showing), progress,
+# status. Events to code: skip (a press, a tap or confirm: code moves to
+# the next mark or the title). Slots: Custom takes a mark the game draws
+# itself (an animated logo, og.ui.emitter) instead of the art.
+name "splash"
+layer modal
+under hide
+back none
+capture true
+props {
+  marks list "The marks in order: { name, texture } (texture: an og.load.texture handle, 0 for the placeholder)."
+  mark number "The index of the mark showing now."
+  progress number "Boot progress, 0 to 1 (below 0: no bar)."
+  status string "What is loading, small under the bar (empty: nothing)."
+}
+actions {
+  confirm "Skip"
+}
+fixture default "{\"marks\": [{\"name\": \"Studio\", \"texture\": 0}, {\"name\": \"Engine\", \"texture\": 0}], \"mark\": 0, \"progress\": 0.4, \"status\": \"Loading shaders\"}"
+column Splash {
+  width grow
+  height grow
+  padding 48
+  gap 24
+  align center
+  cross center
+  background token backdrop
+  interactive true
+  on click emit skip
+  on action confirm emit skip
+  at phone {
+    padding 24
+  }
+  spacer
+  for m in marks {
+    column Mark {
+      gap 12
+      cross center
+      visible bind "$index == mark"
+      enter fade
+      exit fade
+      art Art {
+        kind logo
+        width 360
+        height 160
+        texture bind m.texture
+        at phone {
+          width 260
+          height 116
+        }
+      }
+      label Name {
+        text bind m.name
+        step caption
+        color token inkMuted
+      }
+    }
+  }
+  slot Custom {
+  }
+  spacer
+  column Boot {
+    width grow 0 360
+    gap 8
+    cross center
+    visible bind "progress >= 0"
+    progress Bar {
+      width grow
+      value bind progress
+    }
+    label Status {
+      text bind status
+      step caption
+      color token inkMuted
+      maxLines 1
+      ellipsis true
+    }
+  }
+}

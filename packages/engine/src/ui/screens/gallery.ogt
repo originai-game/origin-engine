@@ -1,0 +1,202 @@
+type screen
+version 1
+---
+# Gallery (docs/ui.md Appendix B: backlog, gallery, route flowchart). The
+# event CGs, music and endings unlocked, by tab, each a thumbnail (locked
+# ones a silhouette with a hint), the count found, and the full view of
+# the selected one.
+#
+# Viewmodel: tab, items, found, total, viewing (the full view is open).
+# Events to code: tab (the click wrote tab), open (the click wrote
+# selected: code fills Viewer and sets viewing), close (Back pops it).
+#
+# PATTERN PENDING (U6d): the gallery pattern mounts in the slot Viewer (the
+# full view with its variants, zoom and the next and previous). Until it
+# lands, code fills Viewer with og.ui.artSlot of the selected CG.
+name "gallery"
+layer menu
+focus "Body/Grid"
+props {
+  tab string "cg, music or endings."
+  items list "The tab's items: { name, unlocked (bool), hint, texture }."
+  selected number "The selected item's index."
+  found number "Items unlocked in the tab."
+  total number "Items in the tab."
+  viewing bool "The full view is open."
+}
+actions {
+  confirm "View"
+  back "Back"
+  tabNext "Next tab"
+  tabPrev "Previous tab"
+}
+fixture default "{\"tab\": \"cg\", \"items\": [{\"name\": \"First meeting\", \"unlocked\": true, \"hint\": \"\", \"texture\": 0}, {\"name\": \"The festival\", \"unlocked\": true, \"hint\": \"\", \"texture\": 0}, {\"name\": \"???\", \"unlocked\": false, \"hint\": \"Chapter 4\", \"texture\": 0}], \"selected\": 0, \"found\": 2, \"total\": 24, \"viewing\": false}"
+stack Gallery {
+  width grow
+  height grow
+  column Screen {
+    width grow
+    height grow
+    padding 32
+    gap 12
+    at phone {
+      padding 16
+    }
+    row Header {
+      width grow
+      gap 12
+      cross center
+      wrap true
+      button Back {
+        key "screen.common.back"
+        text "Back"
+        variant quiet
+        on click pop
+      }
+      label Title {
+        key "screen.gallery.title"
+        text "Gallery"
+        step xl2
+        heading true
+        at phone {
+          step xl
+        }
+      }
+      spacer
+      label Found {
+        text "{found}/{total}"
+        color token inkMuted
+      }
+    }
+    row Tabs {
+      gap 6
+      button Cg {
+        key "screen.gallery.cg"
+        text "Scenes"
+        variant ghost
+        on click set tab "\"cg\""
+        state selection bind "tab == \"cg\"" {
+          off {
+            opacity 0.7
+          }
+          on {
+            opacity 1
+          }
+        }
+      }
+      button Music {
+        key "screen.gallery.music"
+        text "Music"
+        variant ghost
+        on click set tab "\"music\""
+        state selection bind "tab == \"music\"" {
+          off {
+            opacity 0.7
+          }
+          on {
+            opacity 1
+          }
+        }
+      }
+      button Endings {
+        key "screen.gallery.endings"
+        text "Endings"
+        variant ghost
+        on click set tab "\"endings\""
+        state selection bind "tab == \"endings\"" {
+          off {
+            opacity 0.7
+          }
+          on {
+            opacity 1
+          }
+        }
+      }
+    }
+    scroll Body {
+      width grow
+      height grow
+      grid Grid {
+        width grow
+        gap 12
+        columns "1fr" "1fr" "1fr" "1fr"
+        focusGroup wrap
+        at tablet {
+          columns "1fr" "1fr" "1fr"
+        }
+        at phonePortrait {
+          columns "1fr" "1fr"
+          gap 8
+        }
+        for it in items {
+          column Item {
+            width grow
+            gap 4
+            interactive true
+            focusable true
+            on click set selected "$index"
+            on click emit open
+            art Thumb {
+              kind eventCg
+              width grow
+              texture bind it.texture
+            }
+            label Name {
+              text bind it.name
+              step caption
+              maxLines 1
+              ellipsis true
+            }
+            label Hint {
+              text bind it.hint
+              step caption
+              color token inkMuted
+              visible bind "!it.unlocked"
+            }
+            state lock bind it.unlocked {
+              locked {
+                opacity 0.45
+              }
+              open {
+                opacity 1
+              }
+            }
+            state interaction {
+              normal {
+                scale 1
+              }
+              hover {
+                scale 1.02
+              }
+              pressed {
+                scale 0.98
+              }
+              focused {
+                scale 1.02
+              }
+              transition any any token ui
+            }
+          }
+        }
+      }
+    }
+  }
+  column Full {
+    width grow
+    height grow
+    position absolute
+    start 0
+    top 0
+    end 0
+    bottom 0
+    background token scrim
+    visible bind viewing
+    interactive true
+    on click set viewing "false"
+    on click emit close
+    slot Viewer {
+      width grow
+      height grow
+    }
+  }
+}

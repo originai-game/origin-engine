@@ -1,0 +1,105 @@
+type screen
+version 1
+---
+# Loading with tips, lore and progress (docs/ui.md Appendix B). The
+# destination's art, its name, a tip or a line of lore that changes on a
+# press, and the progress along the foot; "Press to continue" once loaded
+# when the game waits for the player.
+#
+# Viewmodel: place, tip, progress, ready, waits. Events to code: nextTip
+# (a press while loading), continue (a press once ready). Slots: Lore takes
+# a richer card (an item, a character: og.ui.card, og.ui.prose).
+name "loading"
+layer modal
+under hide
+back none
+capture true
+props {
+  place string "Where the player is going."
+  tip string "A tip or a line of lore."
+  progress number "0 to 1."
+  ready bool "Loading is done."
+  waits bool "The game waits for a press once ready."
+}
+actions {
+  confirm "Continue"
+}
+fixture default "{\"place\": \"The Sunken Archive\", \"tip\": \"Dodging through an attack at the last moment slows time for a breath.\", \"progress\": 0.62, \"ready\": false, \"waits\": true}"
+stack Loading {
+  width grow
+  height grow
+  interactive true
+  on click emit "nextTip"
+  art Art {
+    kind tutorial
+    width grow
+    height grow
+    position absolute
+    start 0
+    top 0
+    end 0
+    bottom 0
+  }
+  column Foot {
+    width grow
+    height grow
+    padding 48
+    gap 12
+    at phone {
+      padding 24
+    }
+    spacer
+    label Place {
+      text bind place
+      step xl3
+      heading true
+      at phone {
+        step xl
+      }
+    }
+    column Tip {
+      width grow 0 720
+      padding 16
+      gap 6
+      frame panel
+      label Eyebrow {
+        key "screen.loading.tip"
+        text "Tip"
+        step caption
+        color token primary
+      }
+      label Text {
+        text bind tip
+        step reading
+        maxLines 4
+      }
+      slot Lore {
+        width grow
+      }
+    }
+    row Progress {
+      width grow
+      gap 12
+      cross center
+      progress Bar {
+        width grow
+        value bind progress
+      }
+      label Percent {
+        text "{progress, percent}"
+        step caption
+        color token inkMuted
+        visible bind "!ready"
+      }
+      button Continue {
+        key "screen.loading.continue"
+        text "Continue"
+        variant primary
+        visible bind "ready && waits"
+        autofocus true
+        on click emit continue
+        on action confirm emit continue
+      }
+    }
+  }
+}

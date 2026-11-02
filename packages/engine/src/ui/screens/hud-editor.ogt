@@ -1,0 +1,136 @@
+type screen
+version 1
+---
+# HUD layout editor (docs/ui.md Appendix B: settings, its HUD layout
+# editor; §8.4 the player-customised HUD). Over the live HUD: a bar with
+# the selected element's scale and opacity, Reset, Cancel and Save. The
+# HUD's elements that declare `customize true` are what the player moves.
+#
+# Viewmodel: selected (the element's name), scale, opacity, snap. Events
+# to code: save, cancel, reset, resetAll. The sliders write scale and
+# opacity back; code applies them to the selected element.
+#
+# PATTERN PENDING (U6d): the HUD layout editor mounts in the slot Editor
+# (the drag handles, guides and snapping over the customizable elements).
+# Until it lands, code fills Editor from og.ui's HUD edit mode and its own
+# handles.
+name "hud-editor"
+layer modal
+under none
+pause true
+props {
+  selected string "The selected element's name (empty: none)."
+  scale number "Its scale, 0.5 to 2 (two-way)."
+  opacity number "Its opacity, 0.2 to 1 (two-way)."
+  snap bool "Snap to the grid and the other elements (two-way)."
+}
+actions {
+  confirm "Save"
+  back "Cancel"
+}
+fixture default "{\"selected\": \"Health\", \"scale\": 1, \"opacity\": 1, \"snap\": true}"
+stack Editor {
+  width grow
+  height grow
+  slot Editor {
+    width grow
+    height grow
+    position absolute
+    start 0
+    top 0
+    end 0
+    bottom 0
+  }
+  column Bar {
+    position absolute
+    start 16
+    end 16
+    bottom 16
+    padding 12
+    gap 8
+    frame panel
+    row Selected {
+      width grow
+      gap 12
+      cross center
+      wrap true
+      label Name {
+        text bind selected
+        step lg
+        heading true
+      }
+      label Hint {
+        key "screen.hud-editor.hint"
+        text "Drag an element to move it."
+        color token inkMuted
+        visible bind "selected == \"\""
+      }
+      spacer
+      toggle Snap {
+        key "screen.hud-editor.snap"
+        text "Snap"
+        checked bind snap
+      }
+    }
+    row Sliders {
+      width grow
+      gap 16
+      cross center
+      wrap true
+      visible bind "selected != \"\""
+      label ScaleLabel {
+        key "screen.hud-editor.scale"
+        text "Size"
+      }
+      slider Scale {
+        width grow 120
+        min 0.5
+        max 2
+        stepBy 0.05
+        value bind scale
+      }
+      label OpacityLabel {
+        key "screen.hud-editor.opacity"
+        text "Opacity"
+      }
+      slider Opacity {
+        width grow 120
+        min 0.2
+        max 1
+        stepBy 0.05
+        value bind opacity
+      }
+    }
+    row Actions {
+      width grow
+      gap 8
+      align end
+      wrap true
+      button Reset {
+        key "screen.hud-editor.reset"
+        text "Reset"
+        variant quiet
+        disabled bind "selected == \"\""
+        on click emit reset
+      }
+      button ResetAll {
+        key "screen.hud-editor.resetAll"
+        text "Reset all"
+        variant quiet
+        on click emit resetAll
+      }
+      spacer
+      button Cancel {
+        key "screen.common.cancel"
+        text "Cancel"
+        on click emit cancel
+      }
+      button Save {
+        key "screen.common.save"
+        text "Save"
+        variant primary
+        on click emit save
+      }
+    }
+  }
+}

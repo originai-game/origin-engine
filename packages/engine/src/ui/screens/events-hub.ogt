@@ -1,0 +1,248 @@
+type screen
+version 1
+---
+# Missions and events hub (docs/ui.md Appendix B: daily login, missions,
+# events hub). The live events as banners with their time left, and the
+# daily and weekly missions with their progress and rewards; Claim on the
+# finished ones, Claim all at the head.
+#
+# Viewmodel: events, tab, missions, resets (seconds). Events to code:
+# event (the click wrote event: code opens it), tab, claim (the click
+# wrote claiming: the mission's index), claimAll (Back pops it). Slots: Featured
+# takes the first event's own panel (og.ui.banner, og.ui.carousel of
+# event art); Points takes a points track (og.ui.goalChips,
+# og.ui.progressBar with milestones).
+name "events-hub"
+layer menu
+focus "Body/Missions/List"
+props {
+  events list "The live events: { name, ends (seconds), texture, fresh (bool) }."
+  event number "The event pressed last."
+  tab string "daily or weekly."
+  missions list "The tab's missions: { name, done, goal, reward, claimed (bool) }."
+  claiming number "The mission whose Claim was pressed."
+  resets number "Seconds until the tab's missions reset."
+}
+actions {
+  confirm "Select"
+  back "Back"
+}
+fixture default "{\"events\": [{\"name\": \"Harvest festival\", \"ends\": 432000, \"texture\": 0, \"fresh\": true}, {\"name\": \"Double XP weekend\", \"ends\": 86400, \"texture\": 0, \"fresh\": false}], \"event\": 0, \"tab\": \"daily\", \"missions\": [{\"name\": \"Win 3 matches\", \"done\": 3, \"goal\": 3, \"reward\": \"50 gems\", \"claimed\": false}, {\"name\": \"Collect 500 gold\", \"done\": 320, \"goal\": 500, \"reward\": \"1 ticket\", \"claimed\": false}, {\"name\": \"Log in\", \"done\": 1, \"goal\": 1, \"reward\": \"100 gold\", \"claimed\": true}], \"claiming\": -1, \"resets\": 39600}"
+column Screen {
+  width grow
+  height grow
+  padding 32
+  gap 12
+  at phone {
+    padding 16
+  }
+  row Header {
+    width grow
+    gap 12
+    cross center
+    button Back {
+      key "screen.common.back"
+      text "Back"
+      variant quiet
+      on click pop
+    }
+    label Title {
+      key "screen.events-hub.title"
+      text "Events"
+      step xl2
+      heading true
+      at phone {
+        step xl
+      }
+    }
+    spacer
+    button ClaimAll {
+      key "screen.events-hub.claimAll"
+      text "Claim all"
+      variant primary
+      size small
+      at phone {
+        size medium
+      }
+      on click emit claimAll
+    }
+  }
+  grid Body {
+    width grow
+    height grow
+    gap 24
+    columns "1fr" "1fr"
+    rows "1fr"
+    at phonePortrait {
+      columns "1fr"
+      rows auto "1fr"
+      gap 12
+    }
+    scroll Events {
+      width grow
+      height grow
+      column List {
+        width grow
+        gap 12
+        slot Featured {
+          width grow
+        }
+        for e in events {
+          stack Event {
+            width grow
+            interactive true
+            focusable true
+            on click set event "$index"
+            on click emit event
+            art Art {
+              kind banner
+              width grow
+              texture bind e.texture
+            }
+            row Plate {
+              position absolute
+              start 0
+              end 0
+              bottom 0
+              padding 12
+              gap 8
+              cross center
+              background token scrim
+              label Name {
+                text bind e.name
+                step lg
+                width grow
+                maxLines 1
+                ellipsis true
+              }
+              badge New {
+                key "screen.common.new"
+                text "New"
+                tone accent
+                visible bind e.fresh
+              }
+              label Ends {
+                text "{e.ends, duration}"
+                step caption
+              }
+            }
+            state interaction {
+              normal {
+                scale 1
+              }
+              hover {
+                scale 1.01
+              }
+              pressed {
+                scale 0.99
+              }
+              focused {
+                scale 1.01
+              }
+              transition any any token ui
+            }
+          }
+        }
+      }
+    }
+    column Missions {
+      width grow
+      height grow
+      gap 8
+      row Tabs {
+        width grow
+        gap 6
+        cross center
+        button Daily {
+          key "screen.events-hub.daily"
+          text "Daily"
+          variant ghost
+          on click set tab "\"daily\""
+          state selection bind "tab == \"daily\"" {
+            off {
+              opacity 0.7
+            }
+            on {
+              opacity 1
+            }
+          }
+        }
+        button Weekly {
+          key "screen.events-hub.weekly"
+          text "Weekly"
+          variant ghost
+          on click set tab "\"weekly\""
+          state selection bind "tab == \"weekly\"" {
+            off {
+              opacity 0.7
+            }
+            on {
+              opacity 1
+            }
+          }
+        }
+        spacer
+        label Resets {
+          text "{resets, countdown}"
+          step caption
+          color token inkMuted
+        }
+      }
+      slot Points {
+        width grow
+      }
+      scroll MissionScroll {
+        width grow
+        height grow
+        column List {
+          width grow
+          gap 6
+          for m in missions {
+            row Mission {
+              width grow
+              padding 10
+              gap 12
+              cross center
+              frame card
+              column Text {
+                width grow
+                gap 4
+                label Name {
+                  text bind m.name
+                  maxLines 2
+                }
+                progress Bar {
+                  width grow
+                  value bind "m.done / m.goal"
+                }
+                label Count {
+                  text "{m.done, grouped}/{m.goal, grouped} · {m.reward}"
+                  step caption
+                  color token inkMuted
+                }
+              }
+              button Claim {
+                key "screen.events-hub.claim"
+                text "Claim"
+                variant primary
+                size small
+                at phone {
+                  size medium
+                }
+                visible bind "m.done >= m.goal && !m.claimed"
+                on click set claiming "$index"
+                on click emit claim
+              }
+              badge Claimed {
+                key "screen.events-hub.claimed"
+                text "Claimed"
+                tone success
+                visible bind m.claimed
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

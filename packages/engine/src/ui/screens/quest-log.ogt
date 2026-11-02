@@ -1,0 +1,76 @@
+type screen
+version 1
+---
+# Quest log and journal (docs/ui.md Appendix B: quest log, journal,
+# codex, bestiary, encyclopedia). The quests by category, the selected
+# quest's objectives, rewards, Track and Show on map. codex is the
+# encyclopedia beside it.
+#
+# Viewmodel: active (count), done (count). Back pops it. Slots:
+# Log takes og.ui.questLog (the tabs, the list with its new and updated
+# dots, the detail with objectives, rewards, Track and Show on map; it
+# answers the quest picked, tracked and shown); Map takes a small map of
+# the quest's area when the game has one (og.ui.minimapView).
+name "quest-log"
+layer menu
+pause true
+focus "Body/Log"
+props {
+  active number "Quests in progress."
+  done number "Quests completed."
+}
+actions {
+  confirm "Select"
+  back "Close"
+  details "Track"
+  tabNext "Next tab"
+  tabPrev "Previous tab"
+}
+fixture default "{\"active\": 7, \"done\": 23}"
+column Screen {
+  width grow
+  height grow
+  padding 32
+  gap 12
+  at phone {
+    padding 16
+  }
+  row Header {
+    width grow
+    gap 12
+    cross center
+    button Close {
+      key "screen.common.close"
+      text "Close"
+      variant quiet
+      on click pop
+    }
+    label Title {
+      key "screen.quest-log.title"
+      text "Journal"
+      step xl2
+      heading true
+      at phone {
+        step xl
+      }
+    }
+    spacer
+    label Counts {
+      text "{active} active · {done} done"
+      step caption
+      color token inkMuted
+    }
+  }
+  column Body {
+    width grow
+    height grow
+    gap 12
+    slot Log {
+      width grow
+      height grow
+    }
+    slot Map {
+      width grow
+    }
+  }
+}

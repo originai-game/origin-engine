@@ -1,0 +1,256 @@
+type screen
+version 1
+---
+# Shop and vendor in the world (docs/ui.md Appendix B). The vendor's
+# portrait and greeting, Buy, Sell and Buy back tabs over the goods, the
+# selected item's comparison, the player's purse, and an amount for
+# stacks.
+#
+# Viewmodel: vendor, greeting, tab, goods, selected, gold, amount. Events
+# to code: tab (the click wrote tab), select (the click wrote selected),
+# buy, sell, buyBack, close. Slots: Compare takes the selected item
+# against what is equipped (og.ui.statCompare, og.ui.tooltipCard); Amount
+# takes og.ui.numberStepper; Bag takes og.ui.inventoryGrid on the Sell tab
+# when the game sells from a grid.
+name "vendor"
+layer menu
+pause true
+focus "Body/Goods/List"
+props {
+  vendor string "The vendor's name."
+  greeting string "What the vendor says."
+  portrait number "The vendor's portrait texture (0: the placeholder)."
+  tab string "buy, sell or buyBack."
+  goods list "The tab's items: { name, price, stock (-1: endless), tier, texture, afford (bool) }."
+  selected number "The selected item's index."
+  gold number "The player's gold."
+}
+actions {
+  confirm "Buy"
+  back "Leave"
+  tabNext "Next tab"
+  tabPrev "Previous tab"
+}
+fixture default "{\"vendor\": \"Hesk the trader\", \"greeting\": \"Fine wares, fair prices. Mostly fair.\", \"portrait\": 0, \"tab\": \"buy\", \"goods\": [{\"name\": \"Healing draught\", \"price\": 40, \"stock\": -1, \"tier\": \"Common\", \"texture\": 0, \"afford\": true}, {\"name\": \"Steel longsword\", \"price\": 820, \"stock\": 1, \"tier\": \"Rare\", \"texture\": 0, \"afford\": true}, {\"name\": \"Wyrmscale mail\", \"price\": 4200, \"stock\": 1, \"tier\": \"Epic\", \"texture\": 0, \"afford\": false}], \"selected\": 0, \"gold\": 1840}"
+column Screen {
+  width grow
+  height grow
+  padding 32
+  gap 12
+  at phone {
+    padding 16
+  }
+  row Header {
+    width grow
+    gap 16
+    cross center
+    art Portrait {
+      kind bust
+      width 72
+      height 72
+      texture bind portrait
+      at phone {
+        width 48
+        height 48
+      }
+    }
+    column Who {
+      width grow
+      gap 2
+      label Name {
+        text bind vendor
+        step xl
+        heading true
+      }
+      label Greeting {
+        text bind greeting
+        color token inkMuted
+        maxLines 2
+      }
+    }
+    label Gold {
+      text "{gold, grouped}"
+      step lg
+      color token gold
+    }
+  }
+  row Tabs {
+    gap 6
+    focusGroup wrap
+    button Buy {
+      key "screen.vendor.buy"
+      text "Buy"
+      variant ghost
+      on click set tab "\"buy\""
+      state selection bind "tab == \"buy\"" {
+        off {
+          opacity 0.7
+        }
+        on {
+          opacity 1
+        }
+      }
+    }
+    button Sell {
+      key "screen.vendor.sell"
+      text "Sell"
+      variant ghost
+      on click set tab "\"sell\""
+      state selection bind "tab == \"sell\"" {
+        off {
+          opacity 0.7
+        }
+        on {
+          opacity 1
+        }
+      }
+    }
+    button BuyBack {
+      key "screen.vendor.buyBack"
+      text "Buy back"
+      variant ghost
+      on click set tab "\"buyBack\""
+      state selection bind "tab == \"buyBack\"" {
+        off {
+          opacity 0.7
+        }
+        on {
+          opacity 1
+        }
+      }
+    }
+  }
+  grid Body {
+    width grow
+    height grow
+    gap 24
+    columns "3fr" "2fr"
+    rows "1fr"
+    at phonePortrait {
+      columns "1fr"
+      rows "1fr" auto
+      gap 12
+    }
+    scroll Goods {
+      width grow
+      height grow
+      column List {
+        width grow
+        gap 4
+        focusGroup stop
+        slot Bag {
+          width grow
+        }
+        for g in goods {
+          row Good {
+            width grow
+            padding 8
+            gap 10
+            cross center
+            radius 8
+            interactive true
+            focusable true
+            on click set selected "$index"
+            art Icon {
+              kind itemIcon
+              width 44
+              height 44
+              texture bind g.texture
+            }
+            column Text {
+              width grow
+              gap 2
+              label Name {
+                text bind g.name
+                maxLines 1
+                ellipsis true
+              }
+              label Tier {
+                text bind g.tier
+                step caption
+                color token inkMuted
+              }
+            }
+            label Stock {
+              text "×{g.stock}"
+              step caption
+              color token inkMuted
+              visible bind "g.stock >= 0"
+            }
+            label Price {
+              text "{g.price, grouped}"
+              state afford bind g.afford {
+                short {
+                  ink token danger
+                }
+                afford {
+                  ink token gold
+                }
+              }
+            }
+            state selection bind "$index == selected" {
+              off {
+                background token panel
+              }
+              on {
+                background token primarySoft
+              }
+              transition any any token ui
+            }
+            state interaction {
+              normal {
+                scale 1
+              }
+              hover {
+                scale 1.01
+              }
+              pressed {
+                scale 0.99
+              }
+              focused {
+                scale 1.01
+              }
+              transition any any token ui
+            }
+          }
+        }
+      }
+    }
+    column Side {
+      width grow
+      gap 12
+      slot Compare {
+        width grow
+      }
+      row Actions {
+        width grow
+        gap 8
+        cross center
+        slot Amount {
+        }
+        spacer
+        button BuyItem {
+          key "screen.vendor.buyItem"
+          text "Buy"
+          variant primary
+          visible bind "tab == \"buy\""
+          on click emit buy
+        }
+        button SellItem {
+          key "screen.vendor.sellItem"
+          text "Sell"
+          variant primary
+          visible bind "tab == \"sell\""
+          on click emit sell
+        }
+        button BuyBackItem {
+          key "screen.vendor.buyBackItem"
+          text "Buy back"
+          variant primary
+          visible bind "tab == \"buyBack\""
+          on click emit buyBack
+        }
+      }
+    }
+  }
+}

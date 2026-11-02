@@ -1,0 +1,188 @@
+type screen
+version 1
+---
+# Training mode with frame data (docs/ui.md Appendix B). Over the live
+# fight: the last move's frame data (startup, active, recovery, on block,
+# on hit), the combo's damage and hits, the inputs history, and the dummy's
+# settings in a side panel.
+#
+# Viewmodel: move (the last move's name), startup, active, recovery,
+# onBlock, onHit, damage, hits, showInputs, showPanel. Events to code:
+# reset (the positions), record, playback, panel (the click toggles
+# showPanel). Slots: Inputs takes the input history (og.ui.dataList of
+# direction and button glyphs with frame counts); Dummy takes the dummy's
+# settings (og.ui.dropdown for stance, block and recovery,
+# og.ui.toggleSwitch rows); Bars takes the fighters' meters
+# (og.ui.statBar).
+name "training"
+layer hud
+props {
+  move string "The last move's name."
+  startup number "Its startup, frames."
+  active number "Its active frames."
+  recovery number "Its recovery, frames."
+  onBlock number "Its advantage on block (negative: punishable)."
+  onHit number "Its advantage on hit."
+  damage number "The combo's damage."
+  hits number "The combo's hits."
+  showInputs bool "The input history shows."
+  showPanel bool "The dummy's panel is open (two-way)."
+}
+fixture default "{\"move\": \"Heavy kick\", \"startup\": 11, \"active\": 3, \"recovery\": 19, \"onBlock\": -6, \"onHit\": 2, \"damage\": 1840, \"hits\": 5, \"showInputs\": true, \"showPanel\": false}"
+stack Training {
+  width grow
+  height grow
+  slot Bars {
+    position absolute
+    start 16
+    top 16
+    end 16
+  }
+  column Data {
+    position absolute
+    start 16
+    top 96
+    padding 12
+    gap 4
+    frame hud
+    at phone {
+      top 72
+      start 8
+    }
+    at phoneLandscape {
+      start 52
+    }
+    label Move {
+      text bind move
+      step lg
+      heading true
+    }
+    row Frames {
+      gap 12
+      label Startup {
+        text "S {startup}"
+        font mono
+      }
+      label Active {
+        text "A {active}"
+        font mono
+      }
+      label Recovery {
+        text "R {recovery}"
+        font mono
+      }
+    }
+    row Advantage {
+      gap 12
+      label Block {
+        text "Block {onBlock}"
+        font mono
+        state safe bind "onBlock >= -3" {
+          unsafe {
+            ink token danger
+          }
+          safe {
+            ink token ink
+          }
+        }
+      }
+      label Hit {
+        text "Hit {onHit}"
+        font mono
+      }
+    }
+    divider
+    label Combo {
+      text "{hits} hits · {damage, grouped}"
+      color token warn
+    }
+  }
+  column InputsColumn {
+    position absolute
+    start 16
+    bottom 16
+    visible bind showInputs
+    at phonePortrait {
+      visible false
+    }
+    slot Inputs {
+    }
+  }
+  row Tools {
+    position absolute
+    end 16
+    top 96
+    gap 8
+    at phone {
+      top 72
+      end 8
+    }
+    at phoneLandscape {
+      end 52
+    }
+    button Reset {
+      key "screen.training.reset"
+      text "Reset"
+      size small
+      at phone {
+        size medium
+      }
+      on click emit reset
+    }
+    button Record {
+      key "screen.training.record"
+      text "Record"
+      size small
+      at phone {
+        size medium
+      }
+      on click emit record
+    }
+    button Playback {
+      key "screen.training.playback"
+      text "Play back"
+      size small
+      at phone {
+        size medium
+      }
+      on click emit playback
+    }
+    button Panel {
+      key "screen.training.dummy"
+      text "Dummy"
+      size small
+      at phone {
+        size medium
+      }
+      on click set showPanel "!showPanel"
+      on click emit panel
+    }
+  }
+  column Panel {
+    position absolute
+    end 16
+    top 148
+    width grow 0 320
+    padding 12
+    gap 8
+    frame panel
+    visible bind showPanel
+    enter slideLeft 24 token enter
+    at phone {
+      end 8
+      top 120
+    }
+    at phoneLandscape {
+      end 52
+    }
+    label Title {
+      key "screen.training.dummyTitle"
+      text "Dummy"
+      step lg
+      heading true
+    }
+    slot Dummy {
+      width grow
+    }
+  }
+}

@@ -1,0 +1,162 @@
+type screen
+version 1
+---
+# Guild, friends and chat (docs/ui.md Appendix B). Friends, Guild and Chat
+# tabs: the friends online first with their status and Invite, requests;
+# the guild's name, message of the day, members and ranks; the chat's
+# channels and messages with the input at the foot.
+#
+# Viewmodel: tab, online (friends online), requests, guild (its name and
+# message of the day), draft (the chat's input, two-way). Events to code:
+# tab (the click wrote tab), add (add a friend), send (Back pops it).
+#
+# PATTERN PENDING (U6d): the guild, friends and chat pattern mounts in the
+# slot Social (the friends list with presence, the guild roster with ranks
+# and the chat with channels, links and moderation). Until it lands, code
+# fills Social with og.ui.dataList for each tab.
+name "social"
+layer menu
+focus "Tabs/Friends"
+props {
+  tab string "friends, guild or chat."
+  online number "Friends online."
+  requests number "Friend requests waiting."
+  guild object "The guild: { name, motd }."
+  draft string "The chat's input (two-way)."
+}
+actions {
+  confirm "Select"
+  back "Close"
+  tabNext "Next tab"
+  tabPrev "Previous tab"
+}
+fixture default "{\"tab\": \"friends\", \"online\": 4, \"requests\": 2, \"guild\": {\"name\": \"Lanterns of Vael\", \"motd\": \"Raid tonight at 20:00. Bring potions.\"}, \"draft\": \"\"}"
+column Screen {
+  width grow
+  height grow
+  padding 24
+  gap 12
+  at phone {
+    padding 12
+  }
+  row Header {
+    width grow
+    gap 12
+    cross center
+    wrap true
+    button Close {
+      key "screen.common.close"
+      text "Close"
+      variant quiet
+      on click pop
+    }
+    label Title {
+      key "screen.social.title"
+      text "Social"
+      step xl2
+      heading true
+      at phone {
+        step xl
+      }
+    }
+    spacer
+    button Add {
+      key "screen.social.add"
+      text "Add friend"
+      size small
+      at phone {
+        size medium
+      }
+      on click emit add
+    }
+  }
+  row Tabs {
+    gap 6
+    focusGroup wrap
+    button Friends {
+      text "Friends {online}"
+      variant ghost
+      on click set tab "\"friends\""
+      state selection bind "tab == \"friends\"" {
+        off {
+          opacity 0.7
+        }
+        on {
+          opacity 1
+        }
+      }
+    }
+    button Guild {
+      key "screen.social.guild"
+      text "Guild"
+      variant ghost
+      on click set tab "\"guild\""
+      state selection bind "tab == \"guild\"" {
+        off {
+          opacity 0.7
+        }
+        on {
+          opacity 1
+        }
+      }
+    }
+    button Chat {
+      key "screen.social.chat"
+      text "Chat"
+      variant ghost
+      on click set tab "\"chat\""
+      state selection bind "tab == \"chat\"" {
+        off {
+          opacity 0.7
+        }
+        on {
+          opacity 1
+        }
+      }
+    }
+    badge Requests {
+      text "{requests, plural, one {# request} other {# requests}}"
+      tone accent
+      visible bind "requests > 0"
+    }
+  }
+  column GuildHead {
+    width grow
+    padding 12
+    gap 4
+    frame card
+    visible bind "tab == \"guild\""
+    label Name {
+      text bind guild.name
+      step lg
+      heading true
+    }
+    label Motd {
+      text bind guild.motd
+      color token inkMuted
+      maxLines 3
+    }
+  }
+  slot Social {
+    width grow
+    height grow
+  }
+  row Input {
+    width grow
+    gap 8
+    visible bind "tab == \"chat\""
+    field Message {
+      width grow
+      input bind draft
+      placeholder "Say something"
+      maxChars 240
+    }
+    button Send {
+      key "screen.social.send"
+      text "Send"
+      variant primary
+      disabled bind "draft == \"\""
+      on click emit send
+    }
+  }
+}

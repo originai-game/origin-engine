@@ -1,0 +1,220 @@
+type screen
+version 1
+---
+# Codex, bestiary and encyclopedia (docs/ui.md Appendix B: quest log,
+# journal, codex, bestiary, encyclopedia). Categories, a searchable list
+# of entries (the undiscovered ones ???), and the selected entry's art,
+# text and facts; how many of each category are found.
+#
+# Viewmodel: categories, category, query, entries, selected, entry.
+# Events to code: category (the click wrote category), search (the field
+# wrote query), select (the click wrote selected). Slots: Facts takes
+# the entry's facts (og.ui.keyValueRows: weaknesses, habitat); Prose
+# takes rich text with links (og.ui.prose) when the entry's text is more
+# than a paragraph.
+name "codex"
+layer menu
+pause true
+focus "Body/Entries/List"
+props {
+  categories list "The categories: { name, found, total }."
+  category number "The selected category's index."
+  query string "The search's text (two-way)."
+  entries list "The category's entries: { name, found (bool), fresh (bool) }."
+  selected number "The selected entry's index."
+  entry object "The selected entry: { name, kind, text, texture }."
+}
+actions {
+  confirm "Select"
+  back "Close"
+  tabNext "Next category"
+  tabPrev "Previous category"
+}
+fixture default "{\"categories\": [{\"name\": \"Creatures\", \"found\": 18, \"total\": 40}, {\"name\": \"Places\", \"found\": 9, \"total\": 22}, {\"name\": \"Lore\", \"found\": 31, \"total\": 60}], \"category\": 0, \"query\": \"\", \"entries\": [{\"name\": \"Bog wight\", \"found\": true, \"fresh\": true}, {\"name\": \"Lantern moth\", \"found\": true, \"fresh\": false}, {\"name\": \"???\", \"found\": false, \"fresh\": false}], \"selected\": 0, \"entry\": {\"name\": \"Bog wight\", \"kind\": \"Undead · Marsh\", \"text\": \"Drawn to light, it drowns travellers who carry lanterns after dark. Fire keeps it at bay.\", \"texture\": 0}}"
+column Screen {
+  width grow
+  height grow
+  padding 32
+  gap 12
+  at phone {
+    padding 16
+  }
+  row Header {
+    width grow
+    gap 12
+    cross center
+    wrap true
+    button Close {
+      key "screen.common.close"
+      text "Close"
+      variant quiet
+      on click pop
+    }
+    label Title {
+      key "screen.codex.title"
+      text "Codex"
+      step xl2
+      heading true
+      at phone {
+        step xl
+      }
+    }
+    spacer
+    field Search {
+      width grow 160 320
+      input bind query
+      placeholder "Search"
+      on changed emit search
+    }
+  }
+  row Categories {
+    width grow
+    wrap true
+    gap 6
+    for c in categories {
+      button Category {
+        text "{c.name} {c.found}/{c.total}"
+        variant ghost
+        size small
+        at phone {
+          size medium
+        }
+        on click set category "$index"
+        on click emit category
+        state selection bind "$index == category" {
+          off {
+            opacity 0.7
+          }
+          on {
+            opacity 1
+          }
+        }
+      }
+    }
+  }
+  grid Body {
+    width grow
+    height grow
+    gap 24
+    columns 300 "1fr"
+    rows "1fr"
+    at phonePortrait {
+      columns "1fr"
+      rows 200 "1fr"
+      gap 12
+    }
+    scroll Entries {
+      width grow
+      height grow
+      column List {
+        width grow
+        gap 2
+        focusGroup stop
+        for e in entries {
+          row Entry {
+            width grow
+            height fit 44
+            padding 8
+            gap 8
+            cross center
+            radius 6
+            interactive true
+            focusable true
+            on click set selected "$index"
+            on click emit select
+            label Name {
+              text bind e.name
+              width grow
+              maxLines 1
+              ellipsis true
+            }
+            badge New {
+              key "screen.common.new"
+              text "New"
+              tone accent
+              visible bind e.fresh
+            }
+            state selection bind "$index == selected" {
+              off {
+                background token panel
+              }
+              on {
+                background token primarySoft
+              }
+              transition any any token ui
+            }
+            state find bind e.found {
+              hidden {
+                opacity 0.5
+              }
+              found {
+                opacity 1
+              }
+            }
+            state interaction {
+              normal {
+                scale 1
+              }
+              hover {
+                scale 1.01
+              }
+              pressed {
+                scale 0.99
+              }
+              focused {
+                scale 1.01
+              }
+              transition any any token ui
+            }
+          }
+        }
+      }
+    }
+    scroll Page {
+      width grow
+      height grow
+      column Entry {
+        width grow
+        gap 12
+        row Head {
+          width grow
+          gap 16
+          wrap true
+          art Art {
+            kind unitPortrait
+            width 200
+            height 200
+            texture bind entry.texture
+            at phone {
+              width 120
+              height 120
+            }
+          }
+          column Text {
+            width grow 200
+            gap 4
+            label Name {
+              text bind entry.name
+              step xl
+              heading true
+            }
+            label Kind {
+              text bind entry.kind
+              color token inkMuted
+            }
+            slot Facts {
+              width grow
+            }
+          }
+        }
+        label Body {
+          text bind entry.text
+          step reading
+        }
+        slot Prose {
+          width grow
+        }
+      }
+    }
+  }
+}

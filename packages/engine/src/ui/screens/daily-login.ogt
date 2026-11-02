@@ -1,0 +1,136 @@
+type screen
+version 1
+---
+# Daily login (docs/ui.md Appendix B: daily login, missions, events hub).
+# The month's (or the week's) calendar of rewards, days claimed ticked,
+# today's lit with Claim, the streak, and the big reward at its end.
+#
+# Viewmodel: days, today, streak, claimed (today's is claimed). Events to
+# code: claim, close. Slots: Big takes the streak's grand reward (art and
+# name: og.ui.card, a celebration with og.ui.celebration on the claim).
+name "daily-login"
+layer modal
+focus "Panel/Foot/Claim"
+props {
+  days list "The days: { day (number), name, amount, texture, claimed (bool) }."
+  today number "Today's index in days."
+  streak number "Days in a row."
+  claimed bool "Today's reward is claimed."
+}
+actions {
+  confirm "Claim"
+  back "Close"
+}
+timeline claim {
+  track "Panel/Days" scale {
+    key 0 1
+    key 120 1.04 out
+    key 300 1 out
+  }
+  event 0 "" sound reward
+}
+fixture default "{\"days\": [{\"day\": 1, \"name\": \"Gold\", \"amount\": 500, \"texture\": 0, \"claimed\": true}, {\"day\": 2, \"name\": \"Gems\", \"amount\": 20, \"texture\": 0, \"claimed\": true}, {\"day\": 3, \"name\": \"Potion\", \"amount\": 3, \"texture\": 0, \"claimed\": false}, {\"day\": 4, \"name\": \"Gold\", \"amount\": 1000, \"texture\": 0, \"claimed\": false}, {\"day\": 5, \"name\": \"Ticket\", \"amount\": 1, \"texture\": 0, \"claimed\": false}, {\"day\": 6, \"name\": \"Gems\", \"amount\": 50, \"texture\": 0, \"claimed\": false}, {\"day\": 7, \"name\": \"Chest\", \"amount\": 1, \"texture\": 0, \"claimed\": false}], \"today\": 2, \"streak\": 3, \"claimed\": false}"
+column Login {
+  width grow
+  height grow
+  padding 24
+  align center
+  cross center
+  at phone {
+    padding 12
+  }
+  column Panel {
+    width grow 0 760
+    padding 24
+    gap 16
+    frame panel
+    enter pop
+    at phone {
+      padding 16
+      gap 12
+    }
+    row Head {
+      width grow
+      gap 12
+      cross center
+      label Title {
+        key "screen.daily-login.title"
+        text "Daily rewards"
+        step xl
+        heading true
+      }
+      spacer
+      badge Streak {
+        text "{streak, plural, one {# day} other {# days}} in a row"
+        tone accent
+      }
+    }
+    grid Days {
+      width grow
+      gap 8
+      columns "1fr" "1fr" "1fr" "1fr" "1fr" "1fr" "1fr"
+      at phonePortrait {
+        columns "1fr" "1fr" "1fr" "1fr"
+      }
+      for d in days {
+        column Day {
+          width grow
+          padding 8
+          gap 4
+          cross center
+          frame card
+          label Number {
+            text "Day {d.day}"
+            step caption
+            color token inkMuted
+          }
+          art Art {
+            kind currency
+            width 40
+            height 40
+            texture bind d.texture
+          }
+          label Amount {
+            text "×{d.amount, compact}"
+            step caption
+          }
+          state progress bind "d.claimed ? \"claimed\" : ($index == today ? \"today\" : \"ahead\")" {
+            ahead {
+              opacity 0.8
+            }
+            today {
+              opacity 1
+              background token primarySoft
+            }
+            claimed {
+              opacity 0.45
+            }
+            transition any any token ui
+          }
+        }
+      }
+    }
+    slot Big {
+      width grow
+    }
+    row Foot {
+      width grow
+      gap 8
+      align end
+      button Close {
+        key "screen.common.close"
+        text "Close"
+        variant quiet
+        on click pop
+      }
+      button Claim {
+        key "screen.daily-login.claim"
+        text "Claim"
+        variant primary
+        disabled bind claimed
+        on click emit claim
+        on click play claim
+      }
+    }
+  }
+}

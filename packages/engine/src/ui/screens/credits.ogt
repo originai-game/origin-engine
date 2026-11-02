@@ -1,0 +1,101 @@
+type screen
+version 1
+---
+# Credits (docs/ui.md Appendix B). The roll: the game's logo, then each
+# section's heading and its names, scrolling up on their own; a press
+# speeds it, Back leaves; the licences at the end.
+#
+# Viewmodel: sections, offset (how far the roll has run, CSS px: code
+# advances it each tick, faster while held). Events to code: faster (a
+# press) (Back pops it). Slots: End takes what follows the roll (a thank-you, a
+# last scene: og.ui.prose, og.ui.artSlot); Licences takes the third-party
+# notices (og.ui.prose).
+name "credits"
+layer menu
+under hide
+capture true
+props {
+  sections list "The sections: { title, names: [{ name, role }] }."
+  offset number "How far the roll has run, CSS px."
+}
+actions {
+  confirm "Faster"
+  back "Back"
+}
+fixture default "{\"sections\": [{\"title\": \"Directed by\", \"names\": [{\"name\": \"Ada Lin\", \"role\": \"\"}]}, {\"title\": \"Art\", \"names\": [{\"name\": \"Tomas Reyes\", \"role\": \"Lead artist\"}, {\"name\": \"Mira Okafor\", \"role\": \"Environment\"}]}, {\"title\": \"Music\", \"names\": [{\"name\": \"Jun Sato\", \"role\": \"Composer\"}]}], \"offset\": 0}"
+stack Credits {
+  width grow
+  height grow
+  background token backdrop
+  interactive true
+  on click emit faster
+  on action confirm emit faster
+  column Roll {
+    position absolute
+    start 0
+    end 0
+    top 0
+    padding 48
+    gap 40
+    cross center
+    y bind "-offset"
+    at phone {
+      padding 24
+      gap 28
+    }
+    art Logo {
+      kind logo
+      width 360
+      height 140
+      at phone {
+        width 240
+        height 94
+      }
+    }
+    for s in sections {
+      column Section {
+        width grow 0 640
+        gap 10
+        cross center
+        label Title {
+          text bind s.title
+          step caption
+          color token inkMuted
+          textAlign center
+        }
+        for n in s.names {
+          column Person {
+            cross center
+            gap 2
+            label Name {
+              text bind n.name
+              step xl
+              textAlign center
+            }
+            label Role {
+              text bind n.role
+              step caption
+              color token inkMuted
+              visible bind "n.role != \"\""
+            }
+          }
+        }
+      }
+    }
+    slot End {
+      width grow 0 640
+    }
+    slot Licences {
+      width grow 0 640
+    }
+  }
+  button Back {
+    key "screen.common.back"
+    text "Back"
+    variant quiet
+    position absolute
+    start 16
+    top 16
+    on click pop
+  }
+}

@@ -1,0 +1,215 @@
+type screen
+version 1
+---
+# Management dashboards (docs/ui.md Appendix B: ledgers, budgets, graphs,
+# overlays). The treasury and its rate at the head, the key figures as
+# cards with their trend, the ledger, the budget's sliders and the graph
+# of the period; the map overlays as toggles.
+#
+# Viewmodel: funds, rate (per period), period, figures, budget, overlays,
+# tab. Events to code: tab (the click wrote tab), overlay (the toggle
+# wrote its value) (Back pops it). Slots: Graph takes og.ui.chart (income and
+# spending over time); Overlays takes the map lenses when there are more
+# than the toggles below (og.ui.segmented).
+#
+# PATTERN PENDING (U6d): the ledger pattern mounts in the slot Ledger (the
+# income and spending lines by category, with sub-totals and their change).
+# Until it lands, code fills Ledger with og.ui.table.
+name "management"
+layer menu
+focus "Tabs/Overview"
+props {
+  funds number "The treasury."
+  rate number "Its change per period."
+  period string "The period, as text (per month)."
+  figures list "The key figures: { name, value, delta (fraction) }."
+  budget list "The budget's lines: { name, share (0 to 1, two-way) }."
+  overlays list "The map overlays: { name, on (bool, two-way) }."
+  tab string "overview, ledger or budget."
+}
+actions {
+  back "Close"
+  tabNext "Next tab"
+  tabPrev "Previous tab"
+}
+fixture default "{\"funds\": 1284000, \"rate\": -12400, \"period\": \"per month\", \"figures\": [{\"name\": \"Population\", \"value\": 48210, \"delta\": 0.031}, {\"name\": \"Happiness\", \"value\": 72, \"delta\": -0.02}, {\"name\": \"Jobs\", \"value\": 21400, \"delta\": 0.012}], \"budget\": [{\"name\": \"Roads\", \"share\": 0.3}, {\"name\": \"Health\", \"share\": 0.25}, {\"name\": \"Education\", \"share\": 0.2}], \"overlays\": [{\"name\": \"Traffic\", \"on\": false}, {\"name\": \"Pollution\", \"on\": true}], \"tab\": \"overview\"}"
+column Screen {
+  width grow
+  height grow
+  padding 24
+  gap 12
+  at phone {
+    padding 12
+  }
+  row Header {
+    width grow
+    gap 12
+    cross center
+    wrap true
+    button Close {
+      key "screen.common.close"
+      text "Close"
+      variant quiet
+      on click pop
+    }
+    label Funds {
+      text bind funds grouped
+      step xl2
+      heading true
+      color token gold
+      at phone {
+        step xl
+      }
+    }
+    label Rate {
+      text "{rate, grouped} {period}"
+      state sign bind "rate >= 0" {
+        down {
+          ink token danger
+        }
+        up {
+          ink token success
+        }
+      }
+    }
+  }
+  row Tabs {
+    gap 6
+    focusGroup wrap
+    button Overview {
+      key "screen.management.overview"
+      text "Overview"
+      variant ghost
+      on click set tab "\"overview\""
+      state selection bind "tab == \"overview\"" {
+        off {
+          opacity 0.7
+        }
+        on {
+          opacity 1
+        }
+      }
+    }
+    button LedgerTab {
+      key "screen.management.ledger"
+      text "Ledger"
+      variant ghost
+      on click set tab "\"ledger\""
+      state selection bind "tab == \"ledger\"" {
+        off {
+          opacity 0.7
+        }
+        on {
+          opacity 1
+        }
+      }
+    }
+    button Budget {
+      key "screen.management.budget"
+      text "Budget"
+      variant ghost
+      on click set tab "\"budget\""
+      state selection bind "tab == \"budget\"" {
+        off {
+          opacity 0.7
+        }
+        on {
+          opacity 1
+        }
+      }
+    }
+  }
+  scroll Body {
+    width grow
+    height grow
+    column Overview {
+      width grow
+      gap 16
+      visible bind "tab == \"overview\""
+      grid Figures {
+        width grow
+        gap 12
+        columns "1fr" "1fr" "1fr"
+        at phonePortrait {
+          columns "1fr"
+        }
+        for f in figures {
+          column Figure {
+            width grow
+            padding 12
+            gap 4
+            frame card
+            label Name {
+              text bind f.name
+              step caption
+              color token inkMuted
+            }
+            label Value {
+              text bind f.value compact
+              step xl
+            }
+            label Delta {
+              text bind f.delta percent 1
+              step caption
+              state trend bind "f.delta >= 0" {
+                down {
+                  ink token danger
+                }
+                up {
+                  ink token success
+                }
+              }
+            }
+          }
+        }
+      }
+      slot Graph {
+        width grow
+      }
+      row OverlayRow {
+        width grow
+        gap 12
+        wrap true
+        for o in overlays {
+          toggle Overlay {
+            text bind o.name
+            checked bind o.on
+            on changed emit overlay
+          }
+        }
+        slot Overlays {
+        }
+      }
+    }
+    slot Ledger {
+      width grow
+      visible bind "tab == \"ledger\""
+    }
+    column BudgetPage {
+      width grow
+      gap 10
+      visible bind "tab == \"budget\""
+      for b in budget {
+        row Line {
+          width grow
+          gap 12
+          cross center
+          label Name {
+            text bind b.name
+            width 140
+          }
+          slider Share {
+            width grow
+            stepBy 0.01
+            value bind b.share
+          }
+          label Value {
+            text bind b.share percent
+            width 56
+            textAlign end
+          }
+        }
+      }
+    }
+  }
+}

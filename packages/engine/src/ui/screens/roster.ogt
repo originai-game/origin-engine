@@ -1,0 +1,210 @@
+type screen
+version 1
+---
+# Roster and team builder (docs/ui.md Appendix B: roster, team builder,
+# character detail and ascension). The owned characters as portrait tiles
+# with their level, stars and element, sorted and filtered; the team's
+# slots at the head, filled by a press or a drag. character-detail is the
+# one character's page.
+#
+# Viewmodel: team (the slots: { name, texture, empty }), units, sort,
+# power. Events to code: open (the click wrote selected: push
+# character-detail), slot (the team slot pressed: the click wrote slot),
+# sort, auto (fill the team) (Back pops it). Slots: Filters takes og.ui.segmented
+# or og.ui.dropdown for element, role and rarity.
+name "roster"
+layer menu
+focus "Body/Grid"
+props {
+  team list "The team's slots: { name, texture, empty (bool) }."
+  slot number "The team slot pressed last."
+  units list "The owned characters: { name, level, stars, element, texture, inTeam (bool) }."
+  selected number "The character pressed last."
+  sort string "What the list is sorted by, as text."
+  power number "The team's power."
+}
+actions {
+  confirm "Select"
+  back "Back"
+  details "Details"
+}
+fixture default "{\"team\": [{\"name\": \"Aria\", \"texture\": 0, \"empty\": false}, {\"name\": \"Kael\", \"texture\": 0, \"empty\": false}, {\"name\": \"\", \"texture\": 0, \"empty\": true}, {\"name\": \"\", \"texture\": 0, \"empty\": true}], \"slot\": 0, \"units\": [{\"name\": \"Aria\", \"level\": 60, \"stars\": 5, \"element\": \"Fire\", \"texture\": 0, \"inTeam\": true}, {\"name\": \"Kael\", \"level\": 52, \"stars\": 4, \"element\": \"Ice\", \"texture\": 0, \"inTeam\": true}, {\"name\": \"Juno\", \"level\": 40, \"stars\": 4, \"element\": \"Wind\", \"texture\": 0, \"inTeam\": false}, {\"name\": \"Pell\", \"level\": 12, \"stars\": 3, \"element\": \"Earth\", \"texture\": 0, \"inTeam\": false}], \"selected\": 0, \"sort\": \"Level\", \"power\": 48210}"
+column Screen {
+  width grow
+  height grow
+  padding 24
+  gap 12
+  at phone {
+    padding 12
+  }
+  row Header {
+    width grow
+    gap 12
+    cross center
+    wrap true
+    button Back {
+      key "screen.common.back"
+      text "Back"
+      variant quiet
+      on click pop
+    }
+    label Title {
+      key "screen.roster.title"
+      text "Team"
+      step xl2
+      heading true
+      at phone {
+        step xl
+      }
+    }
+    spacer
+    label Power {
+      text "Power {power, grouped}"
+      step lg
+    }
+  }
+  row Team {
+    width grow
+    gap 12
+    focusGroup wrap
+    for t in team {
+      column Slot {
+        width grow 0 160
+        gap 4
+        padding 6
+        cross center
+        frame slot
+        interactive true
+        focusable true
+        on click set slot "$index"
+        on click emit slot
+        art Art {
+          kind bust
+          width grow
+          texture bind t.texture
+          visible bind "!t.empty"
+        }
+        label Empty {
+          key "screen.roster.empty"
+          text "Empty"
+          color token inkMuted
+          visible bind t.empty
+        }
+        label Name {
+          text bind t.name
+          step caption
+          maxLines 1
+          ellipsis true
+        }
+        state interaction {
+          normal {
+            scale 1
+          }
+          hover {
+            scale 1.03
+          }
+          pressed {
+            scale 0.97
+          }
+          focused {
+            scale 1.03
+          }
+          transition any any token ui
+        }
+      }
+    }
+  }
+  row Tools {
+    width grow
+    gap 8
+    cross center
+    wrap true
+    slot Filters {
+    }
+    spacer
+    button Sort {
+      text "Sort: {sort}"
+      size small
+      at phone {
+        size medium
+      }
+      on click emit sort
+    }
+    button Auto {
+      key "screen.roster.auto"
+      text "Auto"
+      size small
+      at phone {
+        size medium
+      }
+      on click emit auto
+    }
+  }
+  scroll Body {
+    width grow
+    height grow
+    grid Grid {
+      width grow
+      gap 10
+      columns "1fr" "1fr" "1fr" "1fr" "1fr" "1fr"
+      focusGroup wrap
+      at tablet {
+        columns "1fr" "1fr" "1fr" "1fr"
+      }
+      at phonePortrait {
+        columns "1fr" "1fr" "1fr"
+        gap 6
+      }
+      for u in units {
+        column Unit {
+          width grow
+          gap 2
+          padding 4
+          frame card
+          interactive true
+          focusable true
+          on click set selected "$index"
+          on click emit open
+          art Art {
+            kind bust
+            width grow
+            texture bind u.texture
+          }
+          label Name {
+            text bind u.name
+            step caption
+            maxLines 1
+            ellipsis true
+          }
+          label Meta {
+            text "Lv {u.level} · {u.stars, plural, one {# star} other {# stars}}"
+            step caption
+            color token inkMuted
+            maxLines 1
+          }
+          badge InTeam {
+            key "screen.roster.inTeam"
+            text "In team"
+            tone info
+            visible bind u.inTeam
+          }
+          state interaction {
+            normal {
+              scale 1
+            }
+            hover {
+              scale 1.03
+            }
+            pressed {
+              scale 0.97
+            }
+            focused {
+              scale 1.03
+            }
+            transition any any token ui
+          }
+        }
+      }
+    }
+  }
+}

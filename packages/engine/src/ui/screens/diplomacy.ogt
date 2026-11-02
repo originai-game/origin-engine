@@ -1,0 +1,288 @@
+type screen
+version 1
+---
+# Diplomacy and trade (docs/ui.md Appendix B). The other powers with
+# their leader, attitude and treaties; the selected one's page: what they
+# think of the player and why, the actions (declare war, alliance, open
+# borders), and the trade table, each side's offer with the deal's
+# acceptance.
+#
+# Viewmodel: powers, selected, power (the selected one's page), mine and
+# theirs (the offers), acceptance (-1 to 1). Events to code: select (the
+# click wrote selected), action (the click wrote acting: the action's
+# index), propose, clearDeal (Back pops it). Slots: Leader takes the leader's
+# portrait or a scene (og.ui.viewport); Offers takes the items to add to
+# the deal (og.ui.dataList, drag into the offers below).
+name "diplomacy"
+layer menu
+pause true
+focus "Body/Powers/List"
+props {
+  powers list "The powers met: { name, attitude (as text), war (bool), texture }."
+  selected number "The selected power's index."
+  power object "The selected power: { name, leader, reasons: [{ text, value }], actions: [{ name, enabled }] }."
+  acting number "The action pressed last."
+  mine list "What the player offers: { name }."
+  theirs list "What they offer: { name }."
+  acceptance number "How they take the deal, -1 (refuse) to 1 (gladly)."
+}
+actions {
+  confirm "Select"
+  back "Close"
+}
+fixture default "{\"powers\": [{\"name\": \"Aurelian Empire\", \"attitude\": \"Friendly\", \"war\": false, \"texture\": 0}, {\"name\": \"Free Cities\", \"attitude\": \"Wary\", \"war\": false, \"texture\": 0}, {\"name\": \"Ashen Horde\", \"attitude\": \"Hostile\", \"war\": true, \"texture\": 0}], \"selected\": 0, \"power\": {\"name\": \"Aurelian Empire\", \"leader\": \"Empress Livia\", \"reasons\": [{\"text\": \"Trade partners\", \"value\": 12}, {\"text\": \"Border tension\", \"value\": -4}], \"actions\": [{\"name\": \"Propose alliance\", \"enabled\": true}, {\"name\": \"Open borders\", \"enabled\": true}, {\"name\": \"Declare war\", \"enabled\": true}]}, \"acting\": -1, \"mine\": [{\"name\": \"200 gold\"}], \"theirs\": [{\"name\": \"Iron (10 turns)\"}], \"acceptance\": 0.3}"
+column Screen {
+  width grow
+  height grow
+  padding 24
+  gap 12
+  at phone {
+    padding 12
+  }
+  row Header {
+    width grow
+    gap 12
+    cross center
+    button Close {
+      key "screen.common.close"
+      text "Close"
+      variant quiet
+      on click pop
+    }
+    label Title {
+      key "screen.diplomacy.title"
+      text "Diplomacy"
+      step xl2
+      heading true
+      at phone {
+        step xl
+      }
+    }
+  }
+  grid Body {
+    width grow
+    height grow
+    gap 16
+    columns 280 "1fr"
+    rows "1fr"
+    at phonePortrait {
+      columns "1fr"
+      rows 180 "1fr"
+      gap 12
+    }
+    scroll Powers {
+      width grow
+      height grow
+      column List {
+        width grow
+        gap 4
+        focusGroup stop
+        for p in powers {
+          row Power {
+            width grow
+            padding 8
+            gap 10
+            cross center
+            radius 8
+            interactive true
+            focusable true
+            on click set selected "$index"
+            on click emit select
+            art Emblem {
+              kind emblem
+              width 36
+              height 36
+              texture bind p.texture
+            }
+            column Text {
+              width grow
+              label Name {
+                text bind p.name
+                maxLines 1
+                ellipsis true
+              }
+              label Attitude {
+                text bind p.attitude
+                step caption
+                color token inkMuted
+              }
+            }
+            badge War {
+              key "screen.diplomacy.war"
+              text "War"
+              tone danger
+              visible bind p.war
+            }
+            state selection bind "$index == selected" {
+              off {
+                background token panel
+              }
+              on {
+                background token primarySoft
+              }
+              transition any any token ui
+            }
+            state interaction {
+              normal {
+                scale 1
+              }
+              hover {
+                scale 1.01
+              }
+              pressed {
+                scale 0.99
+              }
+              focused {
+                scale 1.01
+              }
+              transition any any token ui
+            }
+          }
+        }
+      }
+    }
+    scroll Page {
+      width grow
+      height grow
+      column Power {
+        width grow
+        gap 12
+        row Head {
+          width grow
+          gap 16
+          slot Leader {
+          }
+          column Text {
+            width grow
+            gap 4
+            label Name {
+              text bind power.name
+              step xl
+              heading true
+            }
+            label Leader {
+              text bind power.leader
+              color token inkMuted
+            }
+            for r in power.reasons {
+              row Reason {
+                width grow
+                gap 8
+                label Text {
+                  text bind r.text
+                  width grow
+                  step caption
+                }
+                label Value {
+                  text bind r.value
+                  step caption
+                  state sign bind "r.value >= 0" {
+                    down {
+                      ink token danger
+                    }
+                    up {
+                      ink token success
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        row Actions {
+          width grow
+          gap 8
+          wrap true
+          for a in power.actions {
+            button Action {
+              text bind a.name
+              size small
+              at phone {
+                size medium
+              }
+              disabled bind "!a.enabled"
+              on click set acting "$index"
+              on click emit action
+            }
+          }
+        }
+        label TradeTitle {
+          key "screen.diplomacy.trade"
+          text "Trade"
+          step lg
+          heading true
+        }
+        grid Trade {
+          width grow
+          gap 12
+          columns "1fr" "1fr"
+          column Mine {
+            width grow
+            padding 12
+            gap 6
+            frame card
+            label Title {
+              key "screen.diplomacy.youGive"
+              text "You give"
+              step caption
+              color token inkMuted
+            }
+            for m in mine {
+              label Item {
+                text bind m.name
+              }
+            }
+          }
+          column Theirs {
+            width grow
+            padding 12
+            gap 6
+            frame card
+            label Title {
+              key "screen.diplomacy.theyGive"
+              text "They give"
+              step caption
+              color token inkMuted
+            }
+            for t in theirs {
+              label Item {
+                text bind t.name
+              }
+            }
+          }
+        }
+        slot Offers {
+          width grow
+        }
+        row Deal {
+          width grow
+          gap 12
+          cross center
+          wrap true
+          label Acceptance {
+            key "screen.diplomacy.acceptance"
+            text "Their view"
+            step caption
+            color token inkMuted
+          }
+          progress Meter {
+            width grow 120
+            value bind "(acceptance + 1) / 2"
+          }
+          button Clear {
+            key "screen.diplomacy.clear"
+            text "Clear"
+            variant quiet
+            on click emit clearDeal
+          }
+          button Propose {
+            key "screen.diplomacy.propose"
+            text "Propose"
+            variant primary
+            on click emit propose
+          }
+        }
+      }
+    }
+  }
+}

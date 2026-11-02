@@ -1,0 +1,141 @@
+type screen
+version 1
+---
+# Death, retry, revive offer, game over (docs/ui.md Appendix B). The
+# defeat's line over the dimmed scene, the run's score and best, a revive
+# offer with its price or an ad and a countdown, then Retry, Checkpoint
+# and Quit.
+#
+# Viewmodel: title (You died, Game over), score, best, offer (a revive is
+# offered), price (its price, as text), left (seconds the offer stays),
+# checkpoint (a checkpoint exists). Events to code: revive, retry,
+# checkpoint, quit, decline (the offer's no thanks, or its countdown
+# running out: code sets offer false). Slots: Stats takes the run's
+# numbers (og.ui.keyValueRows); OfferArt takes the revive's own art or the
+# ad's button (og.ui.holdButton for a paid revive).
+name "game-over"
+layer modal
+under dim
+pause true
+back none
+focus "Panel/Actions/Retry"
+props {
+  title string "The defeat's line."
+  score number "The run's score."
+  best number "The best score."
+  offer bool "A revive is offered."
+  price string "The revive's price, as text (50 gems, Watch an ad)."
+  left number "Seconds the offer stays."
+  checkpoint bool "A checkpoint exists."
+}
+actions {
+  confirm "Retry"
+}
+timeline land {
+  track "Panel/Title" scale {
+    key 0 1.3
+    key 300 1 out
+  }
+  event 0 "" sound error
+}
+fixture default "{\"title\": \"You died\", \"score\": 18420, \"best\": 24100, \"offer\": true, \"price\": \"50 gems\", \"left\": 5, \"checkpoint\": true}"
+column GameOver {
+  width grow
+  height grow
+  padding 32
+  align center
+  cross center
+  at phone {
+    padding 16
+  }
+  column Panel {
+    width grow 0 440
+    gap 16
+    cross center
+    on appear play land
+    label Title {
+      text bind title
+      step xl5
+      heading true
+      textAlign center
+      color token danger
+      at phone {
+        step xl3
+      }
+    }
+    row Score {
+      gap 16
+      label Value {
+        text bind score grouped
+        step xl
+      }
+      label Best {
+        text "Best {best, grouped}"
+        color token inkMuted
+      }
+    }
+    slot Stats {
+      width grow
+    }
+    column Offer {
+      width grow
+      padding 16
+      gap 8
+      cross center
+      frame card
+      visible bind offer
+      label Line {
+        key "screen.game-over.revive"
+        text "Continue where you fell?"
+        step lg
+      }
+      label Left {
+        text bind left countdown
+        step xl2
+      }
+      slot OfferArt {
+        width grow
+      }
+      button Revive {
+        text "Revive · {price}"
+        variant primary
+        size large
+        width grow
+        on click emit revive
+      }
+      button Decline {
+        key "screen.game-over.decline"
+        text "No thanks"
+        variant quiet
+        on click emit decline
+      }
+    }
+    column Actions {
+      width grow
+      gap 8
+      visible bind "!offer"
+      button Retry {
+        key "screen.game-over.retry"
+        text "Retry"
+        variant primary
+        size large
+        width grow
+        on click emit retry
+      }
+      button Checkpoint {
+        key "screen.game-over.checkpoint"
+        text "Last checkpoint"
+        width grow
+        visible bind checkpoint
+        on click emit checkpoint
+      }
+      button Quit {
+        key "screen.game-over.quit"
+        text "Quit to menu"
+        variant quiet
+        width grow
+        on click emit quit
+      }
+    }
+  }
+}

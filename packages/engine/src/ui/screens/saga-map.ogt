@@ -1,0 +1,197 @@
+type screen
+version 1
+---
+# Level and saga map (docs/ui.md Appendix B). The levels along a path
+# that scrolls, the player's pin on the current one, the stars won, lives
+# and their refill timer, and the selected level's card with Play.
+#
+# Viewmodel: lives, maxLives, refill (seconds), stars (total), level (the
+# selected one: { name, stars, best, goal }), showLevel. Events to code:
+# play, close (the card), settings (Back pops it). Slots: Map takes og.ui.sagaMap
+# (the path, badges, stars, locks, bosses and the pin; it answers the
+# level picked: code fills level and sets showLevel); Boosters takes the
+# boosters to take into the level (og.ui.card tiles).
+name "saga-map"
+layer menu
+focus "Map/Map"
+props {
+  lives number "Lives left."
+  maxLives number "The most lives."
+  refill number "Seconds until the next life."
+  stars number "Stars won in all."
+  level object "The picked level: { name, stars, best, goal }."
+  showLevel bool "The level's card is open."
+}
+actions {
+  confirm "Play"
+  back "Back"
+}
+fixture default "{\"lives\": 4, \"maxLives\": 5, \"refill\": 1260, \"stars\": 128, \"level\": {\"name\": \"Level 42\", \"stars\": 2, \"best\": 18400, \"goal\": \"Clear 30 jellies in 25 moves\"}, \"showLevel\": true}"
+stack Map {
+  width grow
+  height grow
+  slot Map {
+    width grow
+    height grow
+    position absolute
+    start 0
+    top 0
+    end 0
+    bottom 0
+  }
+  row Top {
+    position absolute
+    start 16
+    top 16
+    end 16
+    gap 8
+    cross center
+    panel Lives {
+      padding 8
+      frame hud
+      row Row {
+        gap 6
+        cross center
+        icon Heart {
+          icon heart
+          iconSize 20
+          color token danger
+        }
+        label Count {
+          text "{lives}/{maxLives}"
+          step lg
+        }
+        label Refill {
+          text "{refill, countdown}"
+          step caption
+          color token inkMuted
+          visible bind "lives < maxLives"
+        }
+      }
+    }
+    panel Stars {
+      padding 8
+      frame hud
+      row Row {
+        gap 6
+        cross center
+        icon Star {
+          icon star
+          iconSize 20
+          color token gold
+        }
+        label Count {
+          text bind stars grouped
+          step lg
+        }
+      }
+    }
+    spacer
+    button Settings {
+      key "screen.saga-map.settings"
+      text "Settings"
+      size small
+      at phone {
+        size medium
+      }
+      on click emit settings
+    }
+  }
+  row Shade {
+    width grow
+    height grow
+    padding 24
+    align center
+    cross center
+    background token scrim
+    visible bind showLevel
+    interactive true
+    on click set showLevel "false"
+    column Card {
+      width grow 0 420
+      padding 24
+      gap 12
+      cross center
+      frame panel
+      interactive true
+      enter pop
+      label Name {
+        text bind level.name
+        step xl2
+        heading true
+      }
+      row Stars {
+        gap 6
+        icon One {
+          icon star
+          iconSize 32
+          state lit bind "level.stars >= 1" {
+            off {
+              ink token inkFaint
+            }
+            on {
+              ink token gold
+            }
+          }
+        }
+        icon Two {
+          icon star
+          iconSize 32
+          state lit bind "level.stars >= 2" {
+            off {
+              ink token inkFaint
+            }
+            on {
+              ink token gold
+            }
+          }
+        }
+        icon Three {
+          icon star
+          iconSize 32
+          state lit bind "level.stars >= 3" {
+            off {
+              ink token inkFaint
+            }
+            on {
+              ink token gold
+            }
+          }
+        }
+      }
+      label Goal {
+        text bind level.goal
+        textAlign center
+        maxLines 3
+      }
+      label Best {
+        text "Best {level.best, grouped}"
+        step caption
+        color token inkMuted
+      }
+      slot Boosters {
+        width grow
+      }
+      row Actions {
+        width grow
+        gap 8
+        button Close {
+          key "screen.common.close"
+          text "Close"
+          variant quiet
+          on click set showLevel "false"
+          on click emit close
+        }
+        button Play {
+          key "screen.saga-map.play"
+          text "Play"
+          variant primary
+          width grow
+          autofocus true
+          disabled bind "lives == 0"
+          on click emit play
+        }
+      }
+    }
+  }
+}

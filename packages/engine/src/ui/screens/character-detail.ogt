@@ -1,0 +1,293 @@
+type screen
+version 1
+---
+# Character detail and ascension (docs/ui.md Appendix B: roster, team
+# builder, character detail and ascension). The character's splash, name,
+# stars and element, its level and XP with Level up, its stats, skills and
+# gear by tab, and Ascend with the materials it takes.
+#
+# Viewmodel: name, title, element, stars, level, maxLevel, xp (0 to 1),
+# tab, stats, materials, canAscend. Events to code: tab (the click wrote
+# tab), levelUp, ascend, previous, next (the neighbour in the roster);
+# Back pops it. Slots: Skills takes the skills (og.ui.abilityBar, og.ui.card with
+# og.ui.tooltipCard); Gear takes og.ui.paperdoll or og.ui.inventoryGrid of
+# its equipment; Ascension takes the ascension's celebration
+# (og.ui.celebration) when it plays.
+name "character-detail"
+layer menu
+focus "Body/Info/Actions/LevelUp"
+props {
+  name string "The character's name."
+  title string "Its epithet."
+  element string "Its element or class."
+  stars number "Its stars (rarity or ascension)."
+  level number "Its level."
+  maxLevel number "Its level cap at this ascension."
+  xp number "Progress to the next level, 0 to 1."
+  tab string "stats, skills or gear."
+  stats list "Its stats: { name, value }."
+  materials list "What Ascend takes: { name, have, need, texture }."
+  canAscend bool "Ascend is open (at the cap with the materials)."
+  splash number "The splash's texture (0: the placeholder)."
+}
+actions {
+  confirm "Level up"
+  back "Back"
+  tabNext "Next"
+  tabPrev "Previous"
+}
+fixture default "{\"name\": \"Aria\", \"title\": \"Flame of the North\", \"element\": \"Fire\", \"stars\": 5, \"level\": 60, \"maxLevel\": 70, \"xp\": 0.35, \"tab\": \"stats\", \"stats\": [{\"name\": \"HP\", \"value\": 12840}, {\"name\": \"Attack\", \"value\": 2210}, {\"name\": \"Defence\", \"value\": 860}, {\"name\": \"Crit\", \"value\": 42}], \"materials\": [{\"name\": \"Ember core\", \"have\": 12, \"need\": 20, \"texture\": 0}, {\"name\": \"Gold\", \"have\": 98000, \"need\": 80000, \"texture\": 0}], \"canAscend\": false, \"splash\": 0}"
+stack Detail {
+  width grow
+  height grow
+  art Splash {
+    kind characterSplash
+    width grow 0 760
+    height grow
+    position absolute
+    start 0
+    top 0
+    bottom 0
+    texture bind splash
+    at phonePortrait {
+      visible false
+    }
+  }
+  column Screen {
+    width grow
+    height grow
+    padding 24
+    gap 12
+    at phone {
+      padding 12
+    }
+    row Header {
+      width grow
+      gap 12
+      cross center
+      button Back {
+        key "screen.common.back"
+        text "Back"
+        variant quiet
+        on click pop
+      }
+      spacer
+      button Previous {
+        key "screen.character-detail.previous"
+        text "<"
+        square true
+        name "Previous character"
+        on click emit previous
+        on action tabPrev emit previous
+      }
+      button Next {
+        key "screen.character-detail.next"
+        text ">"
+        square true
+        name "Next character"
+        on click emit next
+        on action tabNext emit next
+      }
+    }
+    row Body {
+      width grow
+      height grow
+      gap 16
+      spacer
+      column Info {
+        width grow 0 520
+        height grow
+        padding 16
+        gap 10
+        frame panel
+        at phone {
+          width grow
+        }
+        label Element {
+          text bind element
+          step caption
+          color token inkMuted
+        }
+        label Name {
+          text bind name
+          step xl3
+          heading true
+          at phone {
+            step xl2
+          }
+        }
+        label Title {
+          text bind title
+          color token inkMuted
+        }
+        label Stars {
+          text "{stars, plural, one {# star} other {# stars}}"
+          color token gold
+        }
+        row Level {
+          width grow
+          gap 8
+          cross center
+          label Value {
+            text "Lv {level}/{maxLevel}"
+            step lg
+          }
+          progress Xp {
+            width grow
+            value bind xp
+          }
+        }
+        row Tabs {
+          gap 6
+          button Stats {
+            key "screen.character-detail.stats"
+            text "Stats"
+            variant ghost
+            size small
+            at phone {
+              size medium
+            }
+            on click set tab "\"stats\""
+            state selection bind "tab == \"stats\"" {
+              off {
+                opacity 0.7
+              }
+              on {
+                opacity 1
+              }
+            }
+          }
+          button Skills {
+            key "screen.character-detail.skills"
+            text "Skills"
+            variant ghost
+            size small
+            at phone {
+              size medium
+            }
+            on click set tab "\"skills\""
+            state selection bind "tab == \"skills\"" {
+              off {
+                opacity 0.7
+              }
+              on {
+                opacity 1
+              }
+            }
+          }
+          button Gear {
+            key "screen.character-detail.gear"
+            text "Gear"
+            variant ghost
+            size small
+            at phone {
+              size medium
+            }
+            on click set tab "\"gear\""
+            state selection bind "tab == \"gear\"" {
+              off {
+                opacity 0.7
+              }
+              on {
+                opacity 1
+              }
+            }
+          }
+        }
+        scroll Page {
+          width grow
+          height grow
+          column Stats {
+            width grow
+            gap 6
+            visible bind "tab == \"stats\""
+            for s in stats {
+              row Stat {
+                width grow
+                gap 8
+                label Name {
+                  text bind s.name
+                  color token inkMuted
+                }
+                spacer
+                label Value {
+                  text bind s.value grouped
+                }
+              }
+            }
+          }
+          slot Skills {
+            width grow
+            visible bind "tab == \"skills\""
+          }
+          slot Gear {
+            width grow
+            visible bind "tab == \"gear\""
+          }
+        }
+        column Ascend {
+          width grow
+          gap 6
+          visible bind "level >= maxLevel"
+          label Title {
+            key "screen.character-detail.ascendTitle"
+            text "Ascension"
+            step caption
+            color token inkMuted
+          }
+          row Materials {
+            width grow
+            gap 8
+            wrap true
+            for m in materials {
+              row Material {
+                gap 4
+                cross center
+                art Icon {
+                  kind itemIcon
+                  width 28
+                  height 28
+                  texture bind m.texture
+                }
+                label Count {
+                  text "{m.have, compact}/{m.need, compact}"
+                  step caption
+                  state enough bind "m.have >= m.need" {
+                    short {
+                      ink token danger
+                    }
+                    enough {
+                      ink token ink
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        row Actions {
+          width grow
+          gap 8
+          button LevelUp {
+            key "screen.character-detail.levelUp"
+            text "Level up"
+            variant primary
+            width grow
+            disabled bind "level >= maxLevel"
+            on click emit levelUp
+          }
+          button Ascend {
+            key "screen.character-detail.ascend"
+            text "Ascend"
+            width grow
+            disabled bind "!canAscend"
+            on click emit ascend
+          }
+        }
+        slot Ascension {
+          width grow
+        }
+      }
+    }
+  }
+}

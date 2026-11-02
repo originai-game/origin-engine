@@ -1,0 +1,135 @@
+type screen
+version 1
+---
+# Photo mode (docs/ui.md Appendix B). The game frozen with the HUD hidden;
+# the camera's controls, the filters and frames in a side panel that hides
+# with one button, and Take photo; the gallery of shots taken.
+#
+# Viewmodel: panel (the panel shows, two-way), fov (two-way), shots (taken
+# this session). Events to code: take, hide (the click toggles panel),
+# reset, gallery, exit. Slots: Frame takes the chosen frame or the rule of
+# thirds over the picture (og.ui.artSlot, og.ui.shapeBox lines).
+#
+# PATTERN PENDING (U6d): the photo mode pattern mounts in the slot Controls
+# (camera, lens, depth of field, filters, poses, stickers and frames by
+# tab). Until it lands, code fills Controls with og.ui.tabBar over
+# og.ui.valueSlider rows.
+name "photo-mode"
+layer modal
+under none
+pause true
+back emit exit
+props {
+  panel bool "The side panel shows (two-way)."
+  fov number "The field of view, degrees (two-way)."
+  shots number "Photos taken this session."
+}
+actions {
+  confirm "Take photo"
+  back "Exit"
+  details "Hide"
+}
+fixture default "{\"panel\": true, \"fov\": 60, \"shots\": 3}"
+stack Photo {
+  width grow
+  height grow
+  on action details set panel "!panel"
+  slot Frame {
+    width grow
+    height grow
+    position absolute
+    start 0
+    top 0
+    end 0
+    bottom 0
+  }
+  column Panel {
+    position absolute
+    end 16
+    top 16
+    bottom 16
+    width grow 0 340
+    padding 12
+    gap 10
+    frame panel
+    visible bind panel
+    enter slideLeft 24 token enter
+    exit fade
+    at phonePortrait {
+      top 360
+      end 8
+      bottom 8
+    }
+    label Title {
+      key "screen.photo-mode.title"
+      text "Photo mode"
+      step lg
+      heading true
+    }
+    row Fov {
+      width grow
+      gap 8
+      cross center
+      label Label {
+        key "screen.photo-mode.fov"
+        text "Field of view"
+        step caption
+      }
+      slider Value {
+        width grow
+        min 20
+        max 110
+        stepBy 1
+        value bind fov
+      }
+    }
+    scroll Scroll {
+      width grow
+      height grow
+      slot Controls {
+        width grow
+      }
+    }
+    row Actions {
+      width grow
+      gap 8
+      button Reset {
+        key "screen.photo-mode.reset"
+        text "Reset"
+        variant quiet
+        on click emit reset
+      }
+      button Gallery {
+        text "Gallery ({shots})"
+        variant quiet
+        on click emit gallery
+      }
+    }
+  }
+  row Bar {
+    position absolute
+    start 16
+    bottom 16
+    gap 8
+    button Take {
+      key "screen.photo-mode.take"
+      text "Take photo"
+      variant primary
+      size large
+      on click emit take
+      on action confirm emit take
+    }
+    button Hide {
+      key "screen.photo-mode.hide"
+      text "Hide"
+      on click set panel "!panel"
+      on click emit hide
+    }
+    button Exit {
+      key "screen.photo-mode.exit"
+      text "Exit"
+      variant quiet
+      on click emit exit
+    }
+  }
+}

@@ -1,0 +1,405 @@
+type screen
+version 1
+---
+# Settings (docs/ui.md Appendix B: settings with graphics, audio, controls
+# and remapping, accessibility, language, HUD layout editor). Tabs down the
+# start side (across the top on a phone), the selected tab's page, and
+# Apply, Reset and Back at the foot.
+#
+# Viewmodel: tab (the selected tab's name), audio (the volumes, written
+# back by the sliders), graphics, accessibility and language values, and
+# dirty. Events to code: apply, reset, hudLayout (open hud-editor),
+# language (the language row pressed: code opens a picker, og.ui.dropdown).
+# Slots: GraphicsExtra, AudioExtra and AccessibilityExtra take the game's
+# own rows (og.ui.dropdown, og.ui.segmented, og.ui.valueSlider); Bindings
+# takes the remapping list (og.ui.keyBindingRow per action, with
+# og.ui.actionHints for the device's glyphs).
+#
+# PATTERN PENDING (U6d): the settings tree mounts in the slot Tree (a
+# searchable tree of every setting with its page, og.ui's settings
+# pattern). Until it lands the tabs below are the pages, and code may fill
+# Tree with og.ui.searchBox over its own rows.
+name "settings"
+layer menu
+focus "Body/Tabs/Graphics"
+remember true
+props {
+  tab string "The selected tab: graphics, audio, controls, accessibility, language."
+  audio object "{ master, music, effects, voice }, each 0 to 1 (two-way)."
+  graphics object "{ quality (a word), vsync (bool), fpsCap (number), renderScale (0.5 to 1) }."
+  accessibility object "{ subtitles (bool), textScale (1 to 2), reduceMotion (bool), highContrast (bool), holdToToggle (bool) }."
+  language string "The language's own name (English, 日本語)."
+  dirty bool "Something changed since the last Apply."
+}
+actions {
+  confirm "Select"
+  back "Back"
+  tabNext "Next tab"
+  tabPrev "Previous tab"
+}
+fixture default "{\"tab\": \"graphics\", \"audio\": {\"master\": 0.8, \"music\": 0.6, \"effects\": 0.9, \"voice\": 1}, \"graphics\": {\"quality\": \"High\", \"vsync\": true, \"fpsCap\": 120, \"renderScale\": 1}, \"accessibility\": {\"subtitles\": true, \"textScale\": 1, \"reduceMotion\": false, \"highContrast\": false, \"holdToToggle\": false}, \"language\": \"English\", \"dirty\": false}"
+column Screen {
+  width grow
+  height grow
+  padding 32
+  gap 16
+  at phone {
+    padding 16
+    gap 12
+  }
+  row Header {
+    width grow
+    gap 12
+    cross center
+    button Back {
+      key "screen.common.back"
+      text "Back"
+      variant quiet
+      on click pop
+    }
+    label Title {
+      key "screen.settings.title"
+      text "Settings"
+      step xl2
+      heading true
+      at phone {
+        step xl
+      }
+    }
+    spacer
+    slot Tree {
+      width fit 0 320
+    }
+  }
+  grid Body {
+    width grow
+    height grow
+    gap 24
+    columns 220 "1fr"
+    rows "1fr"
+    at phonePortrait {
+      columns "1fr"
+      rows auto "1fr"
+      gap 12
+    }
+    scroll TabScroll {
+      width grow
+      column Tabs {
+        width grow
+        gap 4
+        focusGroup stop
+        focusMemory true
+        button Graphics {
+          key "screen.settings.graphics"
+          text "Graphics"
+          variant ghost
+          width grow
+          on click set tab "\"graphics\""
+          state selection bind "tab == \"graphics\"" {
+            off {
+              opacity 0.7
+            }
+            on {
+              opacity 1
+            }
+          }
+        }
+        button Audio {
+          key "screen.settings.audio"
+          text "Audio"
+          variant ghost
+          width grow
+          on click set tab "\"audio\""
+          state selection bind "tab == \"audio\"" {
+            off {
+              opacity 0.7
+            }
+            on {
+              opacity 1
+            }
+          }
+        }
+        button Controls {
+          key "screen.settings.controls"
+          text "Controls"
+          variant ghost
+          width grow
+          on click set tab "\"controls\""
+          state selection bind "tab == \"controls\"" {
+            off {
+              opacity 0.7
+            }
+            on {
+              opacity 1
+            }
+          }
+        }
+        button Accessibility {
+          key "screen.settings.accessibility"
+          text "Accessibility"
+          variant ghost
+          width grow
+          on click set tab "\"accessibility\""
+          state selection bind "tab == \"accessibility\"" {
+            off {
+              opacity 0.7
+            }
+            on {
+              opacity 1
+            }
+          }
+        }
+        button Language {
+          key "screen.settings.language"
+          text "Language"
+          variant ghost
+          width grow
+          on click set tab "\"language\""
+          state selection bind "tab == \"language\"" {
+            off {
+              opacity 0.7
+            }
+            on {
+              opacity 1
+            }
+          }
+        }
+      }
+    }
+    scroll Page {
+      width grow
+      height grow
+      column Graphics {
+        width grow
+        gap 12
+        visible bind "tab == \"graphics\""
+        row Quality {
+          width grow
+          gap 12
+          cross center
+          label Label {
+            key "screen.settings.quality"
+            text "Quality"
+          }
+          spacer
+          label Value {
+            text bind graphics.quality
+            color token inkMuted
+          }
+        }
+        toggle Vsync {
+          key "screen.settings.vsync"
+          text "Vertical sync"
+          width grow
+          checked bind graphics.vsync
+        }
+        row Scale {
+          width grow
+          gap 12
+          cross center
+          label Label {
+            key "screen.settings.renderScale"
+            text "Render scale"
+          }
+          slider Slider {
+            width grow
+            min 0.5
+            max 1
+            stepBy 0.05
+            value bind graphics.renderScale
+          }
+        }
+        slot GraphicsExtra {
+          width grow
+        }
+      }
+      column Audio {
+        width grow
+        gap 12
+        visible bind "tab == \"audio\""
+        row Master {
+          width grow
+          gap 12
+          cross center
+          label Label {
+            key "screen.settings.master"
+            text "Master"
+            width 120
+          }
+          slider Slider {
+            width grow
+            value bind audio.master
+          }
+        }
+        row Music {
+          width grow
+          gap 12
+          cross center
+          label Label {
+            key "screen.settings.music"
+            text "Music"
+            width 120
+          }
+          slider Slider {
+            width grow
+            value bind audio.music
+          }
+        }
+        row Effects {
+          width grow
+          gap 12
+          cross center
+          label Label {
+            key "screen.settings.effects"
+            text "Effects"
+            width 120
+          }
+          slider Slider {
+            width grow
+            value bind audio.effects
+          }
+        }
+        row Voice {
+          width grow
+          gap 12
+          cross center
+          label Label {
+            key "screen.settings.voice"
+            text "Voice"
+            width 120
+          }
+          slider Slider {
+            width grow
+            value bind audio.voice
+          }
+        }
+        slot AudioExtra {
+          width grow
+        }
+      }
+      column Controls {
+        width grow
+        gap 12
+        visible bind "tab == \"controls\""
+        label Hint {
+          key "screen.settings.remapHint"
+          text "Select an action, then press the key or button to bind it."
+          color token inkMuted
+        }
+        slot Bindings {
+          width grow
+        }
+        button HudLayout {
+          key "screen.settings.hudLayout"
+          text "Edit HUD layout"
+          on click emit hudLayout
+        }
+      }
+      column Accessibility {
+        width grow
+        gap 12
+        visible bind "tab == \"accessibility\""
+        toggle Subtitles {
+          key "screen.settings.subtitles"
+          text "Subtitles"
+          width grow
+          checked bind accessibility.subtitles
+        }
+        row TextScale {
+          width grow
+          gap 12
+          cross center
+          label Label {
+            key "screen.settings.textScale"
+            text "Text size"
+          }
+          slider Slider {
+            width grow
+            min 1
+            max 2
+            stepBy 0.25
+            value bind accessibility.textScale
+          }
+        }
+        toggle ReduceMotion {
+          key "screen.settings.reduceMotion"
+          text "Reduce motion"
+          width grow
+          checked bind accessibility.reduceMotion
+        }
+        toggle HighContrast {
+          key "screen.settings.highContrast"
+          text "High contrast"
+          width grow
+          checked bind accessibility.highContrast
+        }
+        toggle HoldToToggle {
+          key "screen.settings.holdToToggle"
+          text "Holds become toggles"
+          width grow
+          checked bind accessibility.holdToToggle
+        }
+        slot AccessibilityExtra {
+          width grow
+        }
+      }
+      column Language {
+        width grow
+        gap 12
+        visible bind "tab == \"language\""
+        row Current {
+          width grow
+          gap 12
+          cross center
+          padding 12
+          frame card
+          interactive true
+          focusable true
+          on click emit language
+          label Label {
+            key "screen.settings.languageLabel"
+            text "Language"
+          }
+          spacer
+          label Value {
+            text bind language
+            step lg
+          }
+          state interaction {
+            normal {
+              opacity 1
+            }
+            hover {
+              opacity 0.85
+            }
+            pressed {
+              opacity 0.7
+            }
+            focused {
+              opacity 0.85
+            }
+            transition any any token ui
+          }
+        }
+      }
+    }
+  }
+  row Footer {
+    width grow
+    gap 12
+    align end
+    button Reset {
+      key "screen.settings.reset"
+      text "Reset to defaults"
+      variant quiet
+      on click emit reset
+    }
+    button Apply {
+      key "screen.settings.apply"
+      text "Apply"
+      variant primary
+      disabled bind "!dirty"
+      on click emit apply
+    }
+  }
+}

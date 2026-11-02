@@ -1,0 +1,296 @@
+type screen
+version 1
+---
+# Creator tools (docs/ui.md Appendix B: inspector, hierarchy,
+# catalogues). An editor's chrome around the world view: the toolbar
+# (select, move, rotate, scale, play), the hierarchy at the start side,
+# the inspector at the end, the catalogue at the foot; on a phone the
+# panels are tabs over the view.
+#
+# Viewmodel: tool (select, move, rotate or scale), playing, selected (the
+# selected object's name), panel (on a phone: the open panel), dirty.
+# Events to code: tool (the click wrote tool), play, save, undo, redo,
+# exit. Slots: View takes the world view with its gizmos (og.ui.viewport);
+# Hierarchy takes og.ui.tree of the scene's objects; Inspector takes the
+# selected object's properties (og.ui.keyValueRows, og.ui.inputField,
+# og.ui.numberStepper, og.ui.colorPicker per reflected field); Catalogue
+# takes the assets to place (og.ui.searchBox over og.ui.dataGrid of
+# thumbnails, art kind levelThumb or itemIcon).
+name "creator-tools"
+layer menu
+under none
+input all
+back emit exit
+props {
+  tool string "select, move, rotate or scale."
+  playing bool "The world is playing."
+  selected string "The selected object's name (empty: none)."
+  panel string "On a phone, the open panel: hierarchy, inspector or catalogue."
+  dirty bool "Unsaved changes."
+}
+actions {
+  back "Exit"
+}
+fixture default "{\"tool\": \"move\", \"playing\": false, \"selected\": \"Lantern_03\", \"panel\": \"inspector\", \"dirty\": true}"
+column Editor {
+  width grow
+  height grow
+  row Toolbar {
+    width grow
+    padding 8
+    gap 6
+    cross center
+    frame panel
+    wrap true
+    button Select {
+      key "screen.creator-tools.select"
+      text "Select"
+      variant ghost
+      size small
+      at phonePortrait {
+        size medium
+      }
+      on click set tool "\"select\""
+      state selection bind "tool == \"select\"" {
+        off {
+          opacity 0.7
+        }
+        on {
+          opacity 1
+        }
+      }
+    }
+    button Move {
+      key "screen.creator-tools.move"
+      text "Move"
+      variant ghost
+      size small
+      at phonePortrait {
+        size medium
+      }
+      on click set tool "\"move\""
+      state selection bind "tool == \"move\"" {
+        off {
+          opacity 0.7
+        }
+        on {
+          opacity 1
+        }
+      }
+    }
+    button Rotate {
+      key "screen.creator-tools.rotate"
+      text "Rotate"
+      variant ghost
+      size small
+      at phonePortrait {
+        size medium
+      }
+      on click set tool "\"rotate\""
+      state selection bind "tool == \"rotate\"" {
+        off {
+          opacity 0.7
+        }
+        on {
+          opacity 1
+        }
+      }
+    }
+    button Scale {
+      key "screen.creator-tools.scale"
+      text "Scale"
+      variant ghost
+      size small
+      at phonePortrait {
+        size medium
+      }
+      on click set tool "\"scale\""
+      state selection bind "tool == \"scale\"" {
+        off {
+          opacity 0.7
+        }
+        on {
+          opacity 1
+        }
+      }
+    }
+    spacer
+    button Undo {
+      key "screen.creator-tools.undo"
+      text "Undo"
+      size small
+      at phonePortrait {
+        size medium
+      }
+      variant quiet
+      on click emit undo
+    }
+    button Redo {
+      key "screen.creator-tools.redo"
+      text "Redo"
+      size small
+      at phonePortrait {
+        size medium
+      }
+      variant quiet
+      on click emit redo
+    }
+    button Play {
+      key "screen.creator-tools.play"
+      text "Play"
+      size small
+      at phonePortrait {
+        size medium
+      }
+      variant primary
+      on click emit play
+      state run bind playing {
+        stopped {
+          opacity 1
+        }
+        playing {
+          opacity 0.8
+        }
+      }
+    }
+    button Save {
+      key "screen.common.save"
+      text "Save"
+      size small
+      at phonePortrait {
+        size medium
+      }
+      disabled bind "!dirty"
+      on click emit save
+    }
+  }
+  grid Body {
+    width grow
+    height grow
+    columns 260 "1fr" 320
+    rows "1fr" 200
+    areas "tree view inspector" "tree catalogue inspector"
+    at tablet {
+      columns 220 "1fr" 280
+    }
+    at phonePortrait {
+      columns "1fr"
+      rows "1fr" auto 260
+      areas "view" "tabs" "panel"
+    }
+    column TreePanel {
+      width grow
+      height grow
+      padding 8
+      gap 6
+      frame panel
+      area tree
+      at phonePortrait {
+        area panel
+        visible bind "panel == \"hierarchy\""
+      }
+      label Title {
+        key "screen.creator-tools.hierarchy"
+        text "Hierarchy"
+        step caption
+        color token inkMuted
+      }
+      slot Hierarchy {
+        width grow
+        height grow
+      }
+    }
+    slot View {
+      width grow
+      height grow
+      area view
+    }
+    row Tabs {
+      width grow
+      gap 6
+      padding 6
+      visible false
+      area tabs
+      at phonePortrait {
+        visible true
+      }
+      button Hierarchy {
+        key "screen.creator-tools.hierarchy"
+        text "Hierarchy"
+        size small
+        at phonePortrait {
+          size medium
+        }
+        variant ghost
+        on click set panel "\"hierarchy\""
+      }
+      button Inspector {
+        key "screen.creator-tools.inspector"
+        text "Inspector"
+        size small
+        at phonePortrait {
+          size medium
+        }
+        variant ghost
+        on click set panel "\"inspector\""
+      }
+      button Catalogue {
+        key "screen.creator-tools.catalogue"
+        text "Catalogue"
+        size small
+        at phonePortrait {
+          size medium
+        }
+        variant ghost
+        on click set panel "\"catalogue\""
+      }
+    }
+    column InspectorPanel {
+      width grow
+      height grow
+      padding 8
+      gap 6
+      frame panel
+      area inspector
+      at phonePortrait {
+        area panel
+        visible bind "panel == \"inspector\""
+      }
+      label Selected {
+        text bind selected
+        step lg
+        maxLines 1
+        ellipsis true
+      }
+      scroll Scroll {
+        width grow
+        height grow
+        slot Inspector {
+          width grow
+        }
+      }
+    }
+    column CataloguePanel {
+      width grow
+      height grow
+      padding 8
+      gap 6
+      frame panel
+      area catalogue
+      at phonePortrait {
+        area panel
+        visible bind "panel == \"catalogue\""
+      }
+      label Title {
+        key "screen.creator-tools.catalogue"
+        text "Catalogue"
+        step caption
+        color token inkMuted
+      }
+      slot Catalogue {
+        width grow
+        height grow
+      }
+    }
+  }
+}

@@ -1,0 +1,167 @@
+type screen
+version 1
+---
+# Mode select (docs/ui.md Appendix B: boot, splash, title, main menu, mode
+# select). The game's modes as large cards with their art, a line each, a
+# lock with its reason, and a tag (New, Ranked, Limited time).
+#
+# Viewmodel: modes, selected. Events to code: select (a card; the click's
+# `set` already wrote `selected`), play (the selected mode) (Back pops it). Slots:
+# Detail takes more about the selected mode (rules, rewards: og.ui.
+# keyValueRows, og.ui.card).
+name "mode-select"
+layer menu
+focus "Modes"
+props {
+  modes list "The modes: { name, line, tag, locked, reason, texture }."
+  selected number "The index of the selected mode."
+}
+actions {
+  confirm "Play"
+  back "Back"
+}
+fixture default "{\"modes\": [{\"name\": \"Story\", \"line\": \"The campaign, alone or with a friend.\", \"tag\": \"\", \"locked\": false, \"reason\": \"\", \"texture\": 0}, {\"name\": \"Arena\", \"line\": \"Ranked fights, one life.\", \"tag\": \"Ranked\", \"locked\": false, \"reason\": \"\", \"texture\": 0}, {\"name\": \"Trials\", \"line\": \"Hard challenges for the brave.\", \"tag\": \"New\", \"locked\": true, \"reason\": \"Finish chapter 2\", \"texture\": 0}], \"selected\": 0}"
+column Screen {
+  width grow
+  height grow
+  padding 32
+  gap 20
+  at phone {
+    padding 16
+    gap 12
+  }
+  row Header {
+    width grow
+    gap 12
+    cross center
+    button Back {
+      key "screen.common.back"
+      text "Back"
+      variant quiet
+      on click pop
+    }
+    label Title {
+      key "screen.mode-select.title"
+      text "Choose a mode"
+      step xl2
+      heading true
+      at phone {
+        step xl
+      }
+    }
+  }
+  scroll Scroll {
+    width grow
+    height grow
+    grid Modes {
+      width grow
+      gap 16
+      columns "1fr" "1fr" "1fr"
+      focusGroup wrap
+      at tablet {
+        columns "1fr" "1fr"
+      }
+      at phonePortrait {
+        columns "1fr"
+        gap 12
+      }
+      for mode in modes {
+        column Mode {
+          width grow
+          padding 12
+          gap 8
+          frame card
+          interactive true
+          focusable true
+          on click set selected "$index"
+          on click emit select
+          art Art {
+            kind levelThumb
+            width grow
+            aspect 1.78
+            texture bind mode.texture
+          }
+          row Head {
+            width grow
+            gap 8
+            cross center
+            label Name {
+              text bind mode.name
+              step lg
+              heading true
+            }
+            spacer
+            badge Tag {
+              text bind mode.tag
+              tone accent
+              visible bind "mode.tag != \"\""
+            }
+          }
+          label Line {
+            text bind mode.line
+            color token inkMuted
+            maxLines 2
+          }
+          label Reason {
+            text bind mode.reason
+            step caption
+            color token warn
+            visible bind mode.locked
+          }
+          state selection bind "$index == selected" {
+            off {
+              opacity 0.85
+            }
+            on {
+              opacity 1
+            }
+            transition any any token ui
+          }
+          state lock bind mode.locked {
+            open {
+              scale 1
+            }
+            locked {
+              opacity 0.55
+            }
+          }
+          state interaction {
+            normal {
+              y 0
+            }
+            hover {
+              y -4
+            }
+            pressed {
+              y 0
+            }
+            focused {
+              y -4
+            }
+            transition any any token ui
+          }
+        }
+      }
+    }
+  }
+  slot Detail {
+    width grow
+  }
+  row Footer {
+    width grow
+    gap 12
+    align end
+    button Play {
+      key "screen.mode-select.play"
+      text "Play"
+      variant primary
+      size large
+      disabled bind "modes.length == 0"
+      on click emit play
+      on action confirm emit play
+      at phone {
+        width grow
+      }
+    }
+  }
+}
