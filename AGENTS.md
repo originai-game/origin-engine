@@ -194,14 +194,19 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   is WebGPU only, with no WebGL2 tier (the owner, 2026-11-01). Nothing runs
   on lavapipe any more (the owner, 2026-11-01: it was slow, ui-styles took
   25 min on an orb against 2 on macrunner, and judged nothing): an orb
-  runs no gfx test, no `og run` screenshot, no `og test` playtest that
-  draws, no `og ui check`, `og ui preview` or `og polish`. An agent in an
-  orb writes the code, runs `cargo check`, clippy, the logic tests of the
-  crates it edits and og-render's `tests/shaders.rs` (it translates every
-  module to MSL, SPIR-V and HLSL on any machine), pushes its branch, and
-  names the frames and scenes its change should move; the coordinator has
-  them drawn, read and recorded on macrunner (and studio-win for DX12 and
-  the browsers). No `references/vulkan-cpu/` frame is recorded. After each
+  runs nothing that draws on its own Linux machine. It draws on its Mac
+  satellite instead (`mac_sidecar`, mac.large, macos-27; the owner,
+  2026-11-02): a native dev build there (`RUSTC_WRAPPER= cargo build -p
+  og-host-node -p og-cli`, then `OG_GATE=1 sh scripts/build.sh --native`,
+  bun 1.4.4) draws `og test` playtests, `og run` films and `og ui check`
+  pixel-identical to macrunner's `metal` references (measured 2026-11-02:
+  RMSE 0 on every kit phone frame). There an agent draws the frames its
+  change moves, one playtest at a time (`--jobs 2` dropped frames), reads
+  them against `docs/ui.md` §15.4 and fixes them before reporting; it
+  never runs `scripts/check.sh`, a wasm build or a recording there. The
+  coordinator still runs the gate and records references on macrunner
+  (and studio-win for DX12 and the browsers) when it lands a branch. No
+  `references/vulkan-cpu/` frame is recorded. After each
   batch of merges the coordinator runs both lanes on the runners, and a
   publish needs both green on its commit.
 - **When to run the gate.** Function first, measurement later. After a
