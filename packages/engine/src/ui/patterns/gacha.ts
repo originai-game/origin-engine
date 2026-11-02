@@ -358,7 +358,7 @@ function pityMeter(id: string, pity: number, max: number, label: string): void {
       text("Count", `${pity} / ${max}`, { step: st(12), nowrap: true, font: "mono", color: "inkMuted" });
     });
     kit.open("Track", { width: grow(), height: px(u(6)), radius: 999 });
-    kit.setDraw({ shape: { kind: "rect", radii: [999, 999, 999, 999] }, fills: [{ kind: "solid", color: paint(hex("#ffffff"), 0.08) }], strokes: [line(1, token("shadow", 0.6), "outside")] });
+    kit.setDraw({ shape: { kind: "rect", radii: [999, 999, 999, 999] }, fills: [{ kind: "solid", color: paint(hex("#ffffff"), 0.12) }], strokes: [line(1, token("shadow", 0.6), "outside")] });
     kit.open("Fill", { width: pct(Math.max(0.03, f)), height: grow() });
     kit.setDraw({ shape: { kind: "rect", radii: [999, 999, 999, 999] }, fills: [{ kind: "solid", color: token(f > 0.8 ? "highlight" : "primary") }] });
     kit.close();

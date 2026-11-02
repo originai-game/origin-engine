@@ -73,9 +73,15 @@ function pathLayer(id: string, pts: Pt[], width: number, ink: Api.Paint, effects
   const line = cut > 0 ? above(flatten(pts), cut) : null;
   if (line && line.length < 2) return;
   const fade = u(80);
-  const fills: Api.Fill[] = line
-    ? [{ kind: "gradient", type: "linear", from: { x: 0.5, y: cut / H }, to: { x: 0.5, y: Math.max(0, cut - fade) / H }, stops: [{ offset: 0, color: { ...ink, alpha: 0 } as Api.Paint }, { offset: 1, color: ink }] }]
-    : [{ kind: "solid", color: ink }];
+  // A path's gradient runs over the line's own box (its points' extent and 0.75 of its width round it, og-render's
+  // polyline reach for a round join), not the element's: the fade's ends are placed in that box.
+  let fills: Api.Fill[] = [{ kind: "solid", color: ink }];
+  if (line) {
+    const ys = line.map((p) => p.y);
+    const top = Math.min(...ys) - 0.75 * width;
+    const h = Math.max(1, Math.max(...ys) - Math.min(...ys) + 1.5 * width);
+    fills = [{ kind: "gradient", type: "linear", from: { x: 0.5, y: (cut - top) / h }, to: { x: 0.5, y: (cut - fade - top) / h }, stops: [{ offset: 0, color: { ...ink, alpha: 0 } as Api.Paint }, { offset: 1, color: ink }] }];
+  }
   kit.open(id, { width: grow(), height: grow(), part: `Saga.path${id === "Lit" ? "[lit]" : ""}`, partClass: "badge" });
   kit.setDraw({ shape: line ? { kind: "path", points: line, curves: false, width, cap: "round", join: "round" } : { kind: "path", points: smooth(pts), curves: true, width, cap: "round", join: "round" }, fills, effects } as Api.DrawDesc);
   kit.close();
