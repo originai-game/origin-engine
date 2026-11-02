@@ -216,7 +216,7 @@ export function idleHud(id: string, desc: Api.IdleHudDesc = {}): Api.HudResult {
   kit.anchor(`${id}.wallet`, { anchor: "top", gap: t.sm, cross: "center" }, () => {
     currencies.forEach((c, i) => {
       hudBox(c.id ?? kit.idi("Currency", i), () => {
-        if (c.icon) iconOr("Icon", c.icon, 20, token("primary"));
+        if (c.icon) iconOr("Icon", c.icon, 20, token("gold"));
         kit.label("Amount", fmt(c.amount ?? 0), { step: i === 0 ? "lg" : "body", font: "mono", nowrap: true });
         if ((c.perSecond ?? 0) !== 0) kit.label("Rate", (desc.rateLabel ?? "+{rate}/s").replaceAll("{rate}", fmt(c.perSecond ?? 0)), { step: "meta", color: token("success"), nowrap: true });
       }, { height: i === 0 ? t.controlLg : t.controlMd });

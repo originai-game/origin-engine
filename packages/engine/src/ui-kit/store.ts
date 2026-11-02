@@ -43,13 +43,20 @@ export function shopScreen(id: string, desc: Api.ShopDesc = {}): Api.ShopResult 
         kit.label("Unit", desc.currency ?? "coins", { step: "base", color: token("inkMuted"), nowrap: true });
       });
     });
+    // A price is money: the currency's coin in gold before the numeral in full ink (the purse's way).
+    const price = (pid: string, amount: number, ink: Api.ThemeColor, step: Api.TypeStepName, size: number, unit = ""): void => {
+      kit.row(pid, { gap: t.xs, cross: "center" }, () => {
+        iconOr("Coin", desc.currencyIcon || "coins", size, token("gold"));
+        kit.label("Amount", `${fmt(amount)}${unit}`, { step, font: "mono", color: token(ink), nowrap: true });
+      });
+    };
     const body = (): void => {
       const g = kit.grid("Items", { count: items.length, cellWidth: phone ? 96 : 112, cellHeight: phone ? 112 : 124, height: fit(0, phone ? 260 : 320), width: grow(), selected: sel }, (i) => {
         const it = items[i]!;
         picture("Picture", it.icon, it.name ?? "", 36);
         kit.label("Name", it.name ?? "", { step: "base", nowrap: true });
         if (it.owned) kit.badge("Owned", desc.ownedLabel ?? "Owned", "success");
-        else kit.label("Price", fmt(it.price ?? 0), { step: "meta", font: "mono", color: token(balance >= (it.price ?? 0) ? "highlight" : "inkFaint"), nowrap: true });
+        else price("Price", it.price ?? 0, balance >= (it.price ?? 0) ? "ink" : "inkFaint", "meta", 14);
       });
       if (g.clicked !== null && g.clicked !== undefined) sel = g.clicked;
       const it = items[sel];
@@ -60,7 +67,10 @@ export function shopScreen(id: string, desc: Api.ShopDesc = {}): Api.ShopResult 
         }
         kit.label("Name", it.name ?? "", { step: "lg", width: grow() });
         if (it.description) kit.label("Description", it.description, { step: "meta", color: token("inkMuted"), width: grow() });
-        kit.keyValue("Price", desc.priceLabel ?? "Price", `${fmt(it.price ?? 0)} ${desc.currency ?? "coins"}`, true);
+        kit.row("Price", { width: grow(), align: "spaceBetween", cross: "center", gap: t.md }, () => {
+          kit.label("Key", desc.priceLabel ?? "Price", { color: token("inkMuted"), nowrap: true });
+          price("Value", it.price ?? 0, "ink", "body", 18, ` ${desc.currency ?? "coins"}`);
+        });
         const short = balance < (it.price ?? 0);
         // Short of the price, Buy still answers: it refuses, shaking with the error sound.
         const r = kit.button("Buy", it.owned ? (desc.ownedLabel ?? "Owned") : short ? (desc.shortLabel ?? "Not enough") : (desc.buyLabel ?? "Buy"), { variant: short ? "secondary" : "primary", width: grow(), disabled: it.owned }) as Api.Response;
@@ -143,7 +153,7 @@ export function levelSelect(id: string, desc: Api.LevelSelectDesc = {}): Api.Lev
   // Back from every input: the button, a press on the scrim, Escape, B.
   out.closed = screen(id, desc.title ?? "Levels", 720, () => {
     kit.row("Total", { gap: t.xs, cross: "center" }, () => {
-      iconOr("Star", "star", 18, token("primary"), starsLabel(earned, levels.length * 3));
+      iconOr("Star", "star", 18, token("gold"), starsLabel(earned, levels.length * 3));
       kit.label("Count", `${earned} / ${levels.length * 3}`, { font: "mono", color: token("inkMuted"), nowrap: true });
     });
     // A numeral is the card's face, in display type on a square card; a
@@ -164,7 +174,7 @@ export function levelSelect(id: string, desc: Api.LevelSelectDesc = {}): Api.Lev
       else kit.label("Name", name, { step: "xl3", font: "display", nowrap: true });
       const stars = Math.min(3, l.stars ?? 0);
       kit.row("Stars", { gap: 2 }, () => {
-        for (let k = 0; k < 3; k++) iconOr(kit.idi("Star", k), "star", 14, token(k < stars ? "primary" : "controlStrong"), k === 0 ? starsLabel(stars, 3) : "");
+        for (let k = 0; k < 3; k++) iconOr(kit.idi("Star", k), "star", 14, token(k < stars ? "gold" : "controlStrong"), k === 0 ? starsLabel(stars, 3) : "");
       });
     });
     if (g.clicked !== null && g.clicked !== undefined && !levels[g.clicked]?.locked) out.chosen = g.clicked;
@@ -176,7 +186,13 @@ export function levelSelect(id: string, desc: Api.LevelSelectDesc = {}): Api.Lev
   return out;
 }
 
-const MEDALS: readonly Api.ThemeColor[] = ["warn", "inkMuted", "highlight"];
+// The award metals of packages/design's tokens (`metal.*.mid`, with their dark ink): a medal is
+// material, not a semantic role, so bronze never borrows warn and silver never reads as rank 4.
+const MEDALS: readonly Api.Color[] = [
+  { r: 1, g: 0.8, b: 0 },
+  { r: 0.722, g: 0.753, b: 0.8 },
+  { r: 0.788, g: 0.514, b: 0.302 },
+];
 
 export function leaderboardScreen(id: string, desc: Api.LeaderboardDesc = {}): Api.LeaderboardResult {
   const { t, phone } = frame();
@@ -210,7 +226,16 @@ export function leaderboardScreen(id: string, desc: Api.LeaderboardDesc = {}): A
       kit.list("Rows", { count: entries.length, rowHeight: t.row, height, width: grow(), selected: player >= 0 ? player : null }, (i) => {
         const e = entries[i]!;
         const rank = e.rank ?? i + 1;
-        kit.label("Rank", `${rank}`, { width: px(40), font: "mono", step: rank <= 3 ? "lg" : "body", color: token(rank <= 3 ? MEDALS[rank - 1]! : "inkMuted"), nowrap: true });
+        // Ranks 1 to 3 on a filled metal disc with the numeral on it; the rest plain muted numerals.
+        kit.row("Rank", { width: px(40), cross: "center" }, () => {
+          if (rank <= 3) {
+            kit.row("Medal", { width: px(26), height: px(26), radius: 13, background: { color: MEDALS[rank - 1]! }, align: "center", cross: "center" }, () => {
+              kit.label("Numeral", `${rank}`, { font: "mono", step: "meta", color: { color: { r: 0.067, g: 0.067, b: 0.075 } }, nowrap: true });
+            });
+          } else {
+            kit.label("Numeral", `${rank}`, { font: "mono", color: token("inkMuted"), nowrap: true });
+          }
+        });
         kit.label("Name", e.name ?? "", { width: grow(), nowrap: true });
         kit.label("Score", e.score ?? "", { font: "mono", nowrap: true });
       });

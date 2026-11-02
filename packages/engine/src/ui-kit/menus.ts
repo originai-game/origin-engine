@@ -123,7 +123,7 @@ function stars(id: string, earned: number, max: number, since: number, size: num
       const shown = kit.seconds() - since >= 0.3 * (k + 1);
       const on = k < earned;
       kit.transition(kit.idi("Star", k), shown, { kind: "scale", instant: false }, () => {
-        iconOr("Mark", "star", size, token(on ? "primary" : "controlStrong"));
+        iconOr("Mark", "star", size, token(on ? "gold" : "controlStrong"));
         if (on) kit.burst({ delayMs: 120 });
       });
       if (!shown) kit.spacer(kit.idi("Gap", k), px(size));
