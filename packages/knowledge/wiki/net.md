@@ -8,6 +8,8 @@ Inputs are og.PlayerInput: one entity per player carries it with `player` set to
 
 Rollback (og.Lockstep.mode `rollback`, maxPrediction) keeps the same seats, inputs and hashes but does not wait for a late input: the tick runs on a prediction (the player's last input) and, when the real one differs, the world is rewound to the engine's own snapshot of that tick and runs forward again in the same frame, sounds played once and the view snapped. The peers agree on the confirmed world (og.net.finalHash); og.net.resimulating tells a game's own presentation that a tick runs again. Inputs cross the room unreliably and are repeated until acknowledged, so a lost message costs time, not the room.
 
+A peer that goes silent (a frozen tab, a lost connection the room has not noticed yet) is reported as og.PeerStalled after a second, and dropped after og.Lockstep.stallTimeout: the authority (the lowest running peer that is not itself silent) agrees with every other running peer how far the seat's inputs reach, and every peer empties the seat from the tick after its last input, so og.SeatDropped arrives at one tick everywhere and the room plays on; a peer that leaves the room is dropped the same way at once. A dropped seat's input is empty (og.PlayerInput's zero value), so a held move or fire stops; a game that wants a bot there reads og.SeatDropped and drives that seat itself. With og.Lockstep.rejoin a dropped player that comes back (the same peer, or a newcomer of the same name) takes its seat again from the authority's world, og.SeatRejoined at one tick on every peer. Wall time decides only when a peer is reported and dropped, never what the confirmed world is.
+
 Every tick each peer hashes its world without its own session (og.Input, og.Pointers, og.Gamepad, og.PointerLock, og.Audio, og.Camera, og.Lockstep, the gameplay actions of og.input, the input, room, platform, asset and stream events, the UI's focus and hover) and every hashEvery ticks sends the hashes since its last batch; the first tick whose hashes differ is reported once as og.Desync, and the probe's `desync` dump (`dump_desync`) names it with the component-level diff of the two peers' snapshots of that tick: the answer to what is not deterministic (Math.random, Date.now, a wall clock, iteration over a Set of objects, a module variable, input read from og.Input or og.input's actions).
 
 - **TypeScript**: functions are the namespace `og.net`; components, resources and events are tokens on `og`.
@@ -31,6 +33,9 @@ module net {
 | [`og.Lockstep`](#record-Lockstep) | resource | Lockstep's settings and this peer's place. The game sets enabled, players, inputDelay and hashEvery (the authority's are the room's once it starts: changes while running wait for the next start); the engine sets localPlayer and running. It is this peer's own: never hashed, never compared. |
 | [`og.PlayerInput`](#record-PlayerInput) | component | One player's input for this tick, the same on every peer: the engine writes every field but `player` at the start of each tick from the seat's input (zero for a seat nobody holds, and before its holder's first input). Its packed bytes are what crosses the room, read through this layout. |
 | [`og.Desync`](#record-Desync) | event | This peer's world and another's differ: sent once, at the start of the tick after the hashes showed it. The probe's `desync` dump (`dump_desync`) names the component and field that differ, once the other peer's snapshot of that tick arrived. |
+| [`og.SeatDropped`](#record-SeatDropped) | event | A seat's player was dropped: it left the room, or stalled past og.Lockstep.stallTimeout. Sent at the start of the first tick the seat is empty, the same tick on every peer (a hashed event: the confirmed world holds it); from then on its og.PlayerInput is the zero value until og.SeatRejoined. |
+| [`og.SeatRejoined`](#record-SeatRejoined) | event | A seat held before is taken again, by its returning player (og.Lockstep.rejoin) or a newcomer: sent at the start of the first tick of its new holder's input, the same tick on every peer (hashed). |
+| [`og.PeerStalled`](#record-PeerStalled) | event | A running peer has sent nothing for a second (or half of stallTimeout, if shorter): for a "waiting for player" message. This peer's own (wall time decides it): never hashed, and a peer that speaks again is reported again the next time it falls silent. |
 | [`InputDesc`](#type-InputDesc) | desc struct | This peer's player's input: og.PlayerInput's fields but `player` and `tick`. |
 | [`LockstepSeat`](#type-LockstepSeat) | struct | One peer's hold on a seat. |
 | [`LockstepStatus`](#type-LockstepStatus) | struct | Lockstep on this peer, as the probe and a HUD read it. |
@@ -70,7 +75,7 @@ fn submit {
 }
 ```
 
-<sub>`api.ogt` line 24257</sub>
+<sub>`api.ogt` line 24294</sub>
 
 <a id="fn-status"></a>
 
@@ -98,7 +103,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 24264</sub>
+<sub>`api.ogt` line 24301</sub>
 
 <a id="fn-resimulating"></a>
 
@@ -126,7 +131,7 @@ fn resimulating {
 }
 ```
 
-<sub>`api.ogt` line 24270</sub>
+<sub>`api.ogt` line 24307</sub>
 
 <a id="fn-finalHash"></a>
 
@@ -156,7 +161,7 @@ fn finalHash {
 }
 ```
 
-<sub>`api.ogt` line 24276</sub>
+<sub>`api.ogt` line 24313</sub>
 
 <a id="fn-hash"></a>
 
@@ -184,7 +189,7 @@ fn hash {
 }
 ```
 
-<sub>`api.ogt` line 24283</sub>
+<sub>`api.ogt` line 24320</sub>
 
 ## Components, resources and events
 
@@ -205,6 +210,8 @@ Token `og.Lockstep`, registered under the schema name `og.Lockstep`; its value t
 | `hashEvery` | `number` | `10` | 0 … 600 | `ticks` | — | How often the peers exchange their world hashes, in ticks (every tick is hashed, so the first divergent tick is exact); 0 compares nothing. |
 | `running` | `boolean` | `false` | — | — | read only | Whether lockstep runs: the room filled the seats and the authority started (until this peer leaves the room or turns it off). |
 | `mode` | `NetMode` | `"lockstep"` | — | — | — | lockstep (the default: every tick waits for every input) or rollback (ticks run on predicted inputs and are rewound when an input differs; set before the room starts, the authority's is the room's). |
+| `stallTimeout` | `number` | `5000` | 0 … 600000 | `ms` | — | Milliseconds a running peer may stay silent before its seat is dropped (og.SeatDropped); 0 never drops a peer still in the room, so the room waits for it as long as it takes. The authority's is the room's. |
+| `rejoin` | `boolean` | `true` | — | — | — | Whether a dropped player that comes back (or a newcomer of the same name) takes its seat again (og.SeatRejoined); when off, a seat once dropped stays empty and newcomers take only seats never held. The authority's is the room's. |
 | `maxPrediction` | `number` | `8` | 1 … 30 | `ticks` | — | In rollback, the most ticks this peer runs past the last tick whose inputs are all in before it waits (a peer also predicts no further than it can re-simulate in half a frame). 8 (133 ms at 60 Hz) covers most internet latency on top of inputDelay. |
 
 ```ogt
@@ -235,6 +242,15 @@ resource Lockstep {
     readonly true
   }
   field mode NetMode "lockstep (the default: every tick waits for every input) or rollback (ticks run on predicted inputs and are rewound when an input differs; set before the room starts, the authority's is the room's)."
+  field stallTimeout u32 "Milliseconds a running peer may stay silent before its seat is dropped (og.SeatDropped); 0 never drops a peer still in the room, so the room waits for it as long as it takes. The authority's is the room's." {
+    default 5000
+    min 0
+    max 600000
+    unit ms
+  }
+  field rejoin bool "Whether a dropped player that comes back (or a newcomer of the same name) takes its seat again (og.SeatRejoined); when off, a seat once dropped stays empty and newcomers take only seats never held. The authority's is the room's." {
+    default true
+  }
   field maxPrediction u32 "In rollback, the most ticks this peer runs past the last tick whose inputs are all in before it waits (a peer also predicts no further than it can re-simulate in half a frame). 8 (133 ms at 60 Hz) covers most internet latency on top of inputDelay." {
     default 8
     min 1
@@ -244,7 +260,7 @@ resource Lockstep {
 }
 ```
 
-<sub>`api.ogt` line 24135</sub>
+<sub>`api.ogt` line 24136</sub>
 
 <a id="record-PlayerInput"></a>
 
@@ -285,7 +301,7 @@ component PlayerInput {
 }
 ```
 
-<sub>`api.ogt` line 24170</sub>
+<sub>`api.ogt` line 24180</sub>
 
 <a id="record-Desync"></a>
 
@@ -310,7 +326,86 @@ event Desync {
 }
 ```
 
-<sub>`api.ogt` line 24189</sub>
+<sub>`api.ogt` line 24199</sub>
+
+<a id="record-SeatDropped"></a>
+
+### `og.SeatDropped` (event)
+
+A seat's player was dropped: it left the room, or stalled past og.Lockstep.stallTimeout. Sent at the start of the first tick the seat is empty, the same tick on every peer (a hashed event: the confirmed world holds it); from then on its og.PlayerInput is the zero value until og.SeatRejoined.
+
+Token `og.SeatDropped`, registered under the schema name `og.SeatDropped`; its value type is `SeatDropped`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `seat` | `number` | `0` | — | — | — | The seat, og.PlayerInput.player. |
+| `peer` | `number` | `0` | — | — | — | The peer that held it. |
+| `tick` | `number` | `0` | — | — | — | The first tick the seat is empty (og.Time.tick now). |
+| `left` | `boolean` | `false` | — | — | — | Whether the peer left the room (else it stalled and may come back). |
+
+```ogt
+event SeatDropped {
+  doc "A seat's player was dropped: it left the room, or stalled past og.Lockstep.stallTimeout. Sent at the start of the first tick the seat is empty, the same tick on every peer (a hashed event: the confirmed world holds it); from then on its og.PlayerInput is the zero value until og.SeatRejoined."
+  field seat u32 "The seat, og.PlayerInput.player."
+  field peer u32 "The peer that held it."
+  field tick u32 "The first tick the seat is empty (og.Time.tick now)."
+  field left bool "Whether the peer left the room (else it stalled and may come back)."
+}
+```
+
+<sub>`api.ogt` line 24206</sub>
+
+<a id="record-SeatRejoined"></a>
+
+### `og.SeatRejoined` (event)
+
+A seat held before is taken again, by its returning player (og.Lockstep.rejoin) or a newcomer: sent at the start of the first tick of its new holder's input, the same tick on every peer (hashed).
+
+Token `og.SeatRejoined`, registered under the schema name `og.SeatRejoined`; its value type is `SeatRejoined`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `seat` | `number` | `0` | — | — | — | The seat. |
+| `peer` | `number` | `0` | — | — | — | The peer that holds it now. |
+| `tick` | `number` | `0` | — | — | — | The first tick of its input (og.Time.tick now). |
+
+```ogt
+event SeatRejoined {
+  doc "A seat held before is taken again, by its returning player (og.Lockstep.rejoin) or a newcomer: sent at the start of the first tick of its new holder's input, the same tick on every peer (hashed)."
+  field seat u32 "The seat."
+  field peer u32 "The peer that holds it now."
+  field tick u32 "The first tick of its input (og.Time.tick now)."
+}
+```
+
+<sub>`api.ogt` line 24214</sub>
+
+<a id="record-PeerStalled"></a>
+
+### `og.PeerStalled` (event)
+
+A running peer has sent nothing for a second (or half of stallTimeout, if shorter): for a "waiting for player" message. This peer's own (wall time decides it): never hashed, and a peer that speaks again is reported again the next time it falls silent.
+
+Token `og.PeerStalled`, registered under the schema name `og.PeerStalled`; its value type is `PeerStalled`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `peer` | `number` | `0` | — | — | — | The silent peer. |
+| `seat` | `number` | `0` | — | — | — | Its seat; og.Lockstep.players for a spectator. |
+| `silentMs` | `number` | `0` | — | `ms` | — | How long it has been silent, in milliseconds. |
+
+```ogt
+event PeerStalled {
+  doc "A running peer has sent nothing for a second (or half of stallTimeout, if shorter): for a \"waiting for player\" message. This peer's own (wall time decides it): never hashed, and a peer that speaks again is reported again the next time it falls silent."
+  field peer u32 "The silent peer."
+  field seat u32 "Its seat; og.Lockstep.players for a spectator."
+  field silentMs u32 "How long it has been silent, in milliseconds." {
+    unit ms
+  }
+}
+```
+
+<sub>`api.ogt` line 24221</sub>
 
 ## Types
 
@@ -335,7 +430,7 @@ enum NetMode {
 }
 ```
 
-<sub>`api.ogt` line 24122</sub>
+<sub>`api.ogt` line 24123</sub>
 
 <a id="type-InputDesc"></a>
 
@@ -365,7 +460,7 @@ struct InputDesc {
 }
 ```
 
-<sub>`api.ogt` line 24196</sub>
+<sub>`api.ogt` line 24230</sub>
 
 <a id="type-LockstepSeat"></a>
 
@@ -378,7 +473,8 @@ One peer's hold on a seat.
 | `seat` | `number` | `0` | — | — | — | The seat. |
 | `peer` | `number` | `0` | — | — | — | The peer that holds (or held) it. |
 | `since` | `number` | `0` | — | `ticks` | — | The first tick of its input. |
-| `until` | `number \| null` | `null` | — | `ticks` | — | The last tick of its input, once it left. |
+| `until` | `number \| null` | `null` | — | `ticks` | — | The last tick of its input, once it was dropped. |
+| `left` | `boolean` | `false` | — | — | — | Whether it was dropped because it left the room (else it stalled). |
 
 ```ogt
 struct LockstepSeat {
@@ -388,13 +484,14 @@ struct LockstepSeat {
   field since f64 "The first tick of its input." {
     unit ticks
   }
-  field until Option.f64 "The last tick of its input, once it left." {
+  field until Option.f64 "The last tick of its input, once it was dropped." {
     unit ticks
   }
+  field left bool "Whether it was dropped because it left the room (else it stalled)."
 }
 ```
 
-<sub>`api.ogt` line 24206</sub>
+<sub>`api.ogt` line 24240</sub>
 
 <a id="type-LockstepStatus"></a>
 
@@ -422,6 +519,8 @@ Lockstep on this peer, as the probe and a HUD read it.
 | `predicted` | `number` | `0` | — | `ticks` | — | Ticks the world now runs past its last confirmed tick (0 in lockstep). |
 | `rollbacks` | `number` | `0` | — | — | — | Rewinds this peer made since lockstep started. |
 | `resimulatedTicks` | `number` | `0` | — | `ticks` | — | Ticks this peer ran again after a rewind. |
+| `stalled` | `readonly number[]` | `[]` | — | — | — | The running peers silent for a second or more (og.PeerStalled). |
+| `drops` | `number` | `0` | — | — | — | Seats (and spectators) this peer has seen dropped since it joined the room. |
 | `snapshotBytes` | `number` | `0` | — | `bytes` | — | The bytes of the snapshots kept for a rewind: one per tick not yet final. |
 
 ```ogt
@@ -459,13 +558,15 @@ struct LockstepStatus {
   field resimulatedTicks f64 "Ticks this peer ran again after a rewind." {
     unit ticks
   }
+  field stalled List.u32 "The running peers silent for a second or more (og.PeerStalled)."
+  field drops f64 "Seats (and spectators) this peer has seen dropped since it joined the room."
   field snapshotBytes f64 "The bytes of the snapshots kept for a rewind: one per tick not yet final." {
     unit bytes
   }
 }
 ```
 
-<sub>`api.ogt` line 24218</sub>
+<sub>`api.ogt` line 24253</sub>
 
 ## Column kinds
 
@@ -484,4 +585,4 @@ column NetMode {
 }
 ```
 
-<sub>`api.ogt` line 24128</sub>
+<sub>`api.ogt` line 24129</sub>

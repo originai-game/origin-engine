@@ -11,12 +11,13 @@ import { fileURLToPath } from "node:url";
 import { ogBin } from "./support/og-bin.ts";
 
 declare const Bun: {
-  spawnSync(cmd: string[], o: { cwd: string }): { exitCode: number };
+  spawnSync(cmd: string[], o?: { cwd: string }): { exitCode: number };
   spawn(cmd: string[], o: { cwd: string; stdout: "pipe"; stderr: "pipe" }): {
     exited: Promise<number>;
     stdout: ReadableStream<Uint8Array>;
     stderr: ReadableStream<Uint8Array>;
-    kill(): void;
+    kill(signal?: string): void;
+    pid: number;
   };
 };
 
@@ -39,25 +40,36 @@ type Summary = {
   tick: number;
   netHash: string;
   confirmedHash: string | null;
-  lockstep: { running: boolean; peer: number; startTick: number | null; desync: number | null; rollback: boolean; rollbacks: number; resimulatedTicks: number; finalTick: number | null };
+  lockstep: { running: boolean; peer: number; startTick: number | null; desync: number | null; rollback: boolean; rollbacks: number; resimulatedTicks: number; finalTick: number | null; drops: number };
+  facts: { droppedAt: number; drops: number; rejoinedAt: number; rejoins: number } | null;
 };
 
-/** Two `og run --room` processes at once, each with its own extra arguments. */
-async function pair(project: string, room: string, args: string[][], shaping: string[] = []): Promise<Summary[]> {
+/** Two `og run --room` processes at once, each with its own extra arguments; `during` gets each process once they started. */
+async function pair(
+  project: string,
+  room: string,
+  args: string[][],
+  shaping: string[] = [],
+  during?: (pids: number[]) => Promise<void>,
+): Promise<Summary[]> {
   const r = await relay(shaping);
+  const processes: number[] = [];
   try {
-    return await Promise.all(
+    const runs = Promise.all(
       args.map(async (extra) => {
         const p = Bun.spawn([ogBin(), "run", project, "--headless", "--no-render", "--json", "--room", `ws://127.0.0.1:${r.port}/${room}`, ...extra], {
           cwd: repo,
           stdout: "pipe",
           stderr: "pipe",
         });
+        processes.push(p.pid);
         const [code, out, err] = await Promise.all([p.exited, new Response(p.stdout).text(), new Response(p.stderr).text()]);
         if (code !== 0) throw new Error(`og run ${extra.join(" ")} exited ${code}: ${err}${out}`);
         return JSON.parse(out.trim().split("\n").pop()!) as Summary;
       }),
     );
+    if (during) await during(processes);
+    return await runs;
   } finally {
     r.stop();
   }
@@ -169,3 +181,40 @@ test("rollback through latency, jitter and loss confirms tick 600 as lockstep do
   expect(roll[0]!.lockstep.rollbacks + roll[1]!.lockstep.rollbacks).toBeGreaterThan(10);
   expect(roll[0]!.lockstep.resimulatedTicks + roll[1]!.lockstep.resimulatedTicks).toBeGreaterThan(roll[0]!.lockstep.rollbacks);
 }, 300_000);
+
+test("a peer frozen past stallTimeout is dropped at one tick, then takes its seat back from the room's world", async () => {
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  // Unpaced, about 7 ms a tick here: the stall at 2 s falls well inside the run.
+  const common = ["--ticks", "1500", "--setup", "stall:800"];
+  const [a, b] = await pair(
+    "templates/archetypes/arena",
+    "stall",
+    [
+      [...common, "--setup", "bot:1:tick"],
+      [...common, "--setup", "bot:2:tick"],
+    ],
+    [],
+    async ([, second]) => {
+      // A real stall: the engine's process (og run's bun child) stops, as a
+      // frozen tab does, sends nothing, then runs again.
+      const signal = (sig: string) => Bun.spawnSync(["pkill", `-${sig}`, "-P", String(second)]);
+      await sleep(2000);
+      signal("STOP");
+      await sleep(2500);
+      signal("CONT");
+    },
+  );
+  for (const s of [a!, b!]) {
+    expect(s.lockstep.running).toBe(true);
+    expect(s.lockstep.desync).toBeNull();
+    // og.SeatDropped and og.SeatRejoined are in the world: the rejoined peer has them from the room's.
+    expect(s.facts!.drops).toBe(1);
+    expect(s.facts!.rejoins).toBe(1);
+  }
+  expect(b!.facts!.droppedAt).toBe(a!.facts!.droppedAt);
+  expect(b!.facts!.rejoinedAt).toBe(a!.facts!.rejoinedAt);
+  // 2.5 s of silence against a 0.8 s timeout: dropped well before it came back.
+  expect(a!.facts!.rejoinedAt - a!.facts!.droppedAt).toBeGreaterThan(60);
+  expect(a!.confirmedHash).not.toBeNull();
+  expect(b!.confirmedHash).toBe(a!.confirmedHash);
+}, 120_000);

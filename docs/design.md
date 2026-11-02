@@ -1178,6 +1178,25 @@ cross the room. Lockstep rests on §1's determinism and snapshot.
   re-simulated tick replays each sound once (a new play is kept only if
   at most 100 ms of wall time late), the view snaps, and
   `og.net.resimulating` tells a game's own effects to hold.
+- **Stall, drop and rejoin.** A running peer silent for a second is
+  reported (`og.PeerStalled`, session-only, and the status's `stalled`).
+  Silent past `og.Lockstep.stallTimeout` (5000 ms; 0 never drops), or gone
+  from the room, its seat is dropped: the acting authority (the lowest
+  running peer not itself silent) asks every other running peer how far
+  it holds the seat's inputs, each stops taking more, and the seat empties
+  from the tick after the furthest, with the inputs up to it handed to
+  all. So `og.SeatDropped { seat, peer, tick, left }` arrives at one tick
+  on every peer (in rollback, a peer that predicted past it re-simulates),
+  and the seat's input is empty from then on: a game hands it to a bot if
+  it wants one. Wall time decides only when a peer is reported and
+  dropped. A dropped peer that comes back holds its world and asks again;
+  with `rejoin` (the default) the authority gives it back its seat (or a
+  newcomer of the same name gets it) from a snapshot, from a tick past
+  every input the authority has sent, and `og.SeatRejoined` arrives at
+  one tick everywhere. Both seat events are hashed and lazily registered
+  (only a world that runs lockstep in a room has them). Each input
+  message names the seat changes its sender knows, so one that overtook
+  an `admit` or a `drop` waits for the resend.
 - **Late join.** A peer that joins a running room asks for a snapshot. A
   running peer sends one, and the new peer takes a free seat (or watches)
   from the tick named in the `admit` message.

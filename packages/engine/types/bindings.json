@@ -9192,6 +9192,16 @@
           "default": "lockstep"
         },
         {
+          "name": "stallTimeout",
+          "column": "u32",
+          "default": 5000
+        },
+        {
+          "name": "rejoin",
+          "column": "bool",
+          "default": true
+        },
+        {
           "name": "maxPrediction",
           "column": "u32",
           "default": 8
@@ -10492,6 +10502,80 @@
         },
         {
           "name": "peers",
+          "type": "u32",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 42,
+      "name": "SeatDropped",
+      "schema": "og.SeatDropped",
+      "module": "net",
+      "fields": [
+        {
+          "name": "seat",
+          "type": "u32",
+          "default": 0
+        },
+        {
+          "name": "peer",
+          "type": "u32",
+          "default": 0
+        },
+        {
+          "name": "tick",
+          "type": "u32",
+          "default": 0
+        },
+        {
+          "name": "left",
+          "type": "bool",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": 43,
+      "name": "SeatRejoined",
+      "schema": "og.SeatRejoined",
+      "module": "net",
+      "fields": [
+        {
+          "name": "seat",
+          "type": "u32",
+          "default": 0
+        },
+        {
+          "name": "peer",
+          "type": "u32",
+          "default": 0
+        },
+        {
+          "name": "tick",
+          "type": "u32",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 44,
+      "name": "PeerStalled",
+      "schema": "og.PeerStalled",
+      "module": "net",
+      "fields": [
+        {
+          "name": "peer",
+          "type": "u32",
+          "default": 0
+        },
+        {
+          "name": "seat",
+          "type": "u32",
+          "default": 0
+        },
+        {
+          "name": "silentMs",
           "type": "u32",
           "default": 0
         }

@@ -264,8 +264,10 @@ fn hashes_are_pinned_without_prefabs_and_stable_across_a_re_cook_with_them() {
 /// once a game names them, so only the version-2 layouts remain; then
 /// from 8c463e75e426e15b for og.Vehicle's version-2 layout, the
 /// drivetrain; then G2-7's rollback from fd13375581ba26c1: og.Lockstep's
-/// `mode` and `maxPrediction` fields change its layout in the type table).
-const BY_HAND_HASH: &str = "93d4a11b9687d3b6";
+/// `mode` and `maxPrediction` fields change its layout in the type table;
+/// then G2-7's stall timeout from 93d4a11b9687d3b6: its `stallTimeout` and
+/// `rejoin` fields; the seat events are lazy, so they do not).
+const BY_HAND_HASH: &str = "13d5d679aa3698ae";
 
 #[test]
 fn apply_back_and_revert_round_trip_in_the_text() {

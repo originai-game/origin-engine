@@ -75,7 +75,7 @@ use std::collections::BTreeSet;
 
 /// The version of lockstep's messages: a `start` of another version is
 /// refused, so peers on different engines never play together.
-pub const WIRE_VERSION: u64 = 2;
+pub const WIRE_VERSION: u64 = 3;
 
 /// og.Lockstep's settings, as the game set them.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -92,6 +92,12 @@ pub struct Config {
     /// a frame, measured by the runtime): it decides only when this peer
     /// waits, never what the room's confirmed world is.
     pub budget: u32,
+    /// Milliseconds a running peer may stay silent before the authority
+    /// drops it (0 never drops a peer that is still in the room).
+    pub stall_timeout: u32,
+    /// Whether a dropped peer that comes back, or a newcomer, takes a seat
+    /// a dropped or departed peer held (else such a seat stays empty).
+    pub rejoin: bool,
 }
 
 impl Default for Config {
@@ -104,6 +110,8 @@ impl Default for Config {
             rollback: false,
             max_prediction: 8,
             budget: u32::MAX,
+            stall_timeout: 5000,
+            rejoin: true,
         }
     }
 }
@@ -125,13 +133,26 @@ pub enum Gate {
     Rewind { snapshot: Vec<u8>, tick: u64 },
 }
 
+/// A seat changing hands at a tick, the same on every peer: og.SeatDropped
+/// (`dropped`) or og.SeatRejoined.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SeatEvent {
+    pub seat: u32,
+    pub peer: u32,
+    pub dropped: bool,
+    /// For a drop: the peer left the room (else it stalled).
+    pub left: bool,
+}
+
 /// One peer's hold on a seat: the ticks whose inputs it sends.
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct Hold {
     peer: u32,
     since: u64,
-    /// The last tick of its input, once it left.
+    /// The last tick of its input, once it was dropped.
     until: Option<u64>,
+    /// Whether it was dropped because it left the room (else it stalled).
+    left: bool,
 }
 
 impl Hold {
@@ -152,8 +173,13 @@ struct Run {
     seats: Vec<Vec<Hold>>,
     /// Every peer admitted (seated or watching) and still present.
     running: BTreeSet<u32>,
-    /// Every peer ever admitted, so a newcomer is told apart.
+    /// Every peer admitted and not dropped since, so a newcomer is told
+    /// apart.
     admitted: BTreeSet<u32>,
+    /// The authority's stall timeout (ms; 0 never drops a present peer).
+    stall_timeout: u64,
+    /// Whether a seat a dropped peer held is taken again.
+    rejoin: bool,
 }
 
 impl Run {
@@ -175,6 +201,17 @@ impl Run {
             .map(|s| s as u32)
     }
 
+    /// How many seat changes this peer knows (holds begun and ended): an
+    /// input message from a peer that knows more waits for the reliable
+    /// `admit` or `drop` it overtook.
+    fn epoch(&self) -> u64 {
+        self.seats
+            .iter()
+            .flatten()
+            .map(|h| 1 + u64::from(h.until.is_some()))
+            .sum()
+    }
+
     /// The hold of seat `seat` covering `tick`.
     fn hold(&self, seat: usize, tick: u64) -> Option<&Hold> {
         self.seats[seat].iter().find(|h| h.covers(tick))
@@ -188,7 +225,7 @@ impl Run {
                 .flat_map(|(s, holds)| {
                     holds
                         .iter()
-                        .map(move |h| json!([s, h.peer, h.since, h.until]))
+                        .map(move |h| json!([s, h.peer, h.since, h.until, h.left]))
                 })
                 .collect(),
         )
@@ -279,7 +316,50 @@ pub struct Lockstep {
     notes: Vec<String>,
     /// The last final worlds' hashes, by tick ([`Lockstep::final_hash`]).
     finals: IdMap<u64, u64>,
+    /// The wall clock, in ms ([`Lockstep::set_clock`]): it decides only
+    /// when a silent peer is dropped, never at which tick.
+    now: u64,
+    /// When each other peer was last heard from (ms).
+    heard: IdMap<u32, u64>,
+    /// Seats whose drop is being agreed: the last tick of their input
+    /// this peer takes (it told the authority so).
+    frozen: IdMap<u32, u64>,
+    /// At the authority: the drops being agreed, by seat.
+    proposals: IdMap<u32, Proposal>,
+    /// Peers dropped for a stall, admitted again once heard from.
+    held_back: BTreeSet<u32>,
+    /// This peer was dropped and waits for the authority's snapshot.
+    rejoining: bool,
+    /// Peers silent past [`STALL_NOTICE_MS`] (og.PeerStalled sent once).
+    silent: BTreeSet<u32>,
+    /// og.PeerStalled to send: (peer, seat, silent ms).
+    stalls: Vec<(u32, Option<u32>, u64)>,
+    drops: u64,
+    /// Every peer's name seen in the room, so a returning player is known.
+    names: IdMap<u32, String>,
 }
+
+/// A drop the authority is agreeing with the other peers: every running
+/// peer reports how far it has the seat's inputs, and the seat empties
+/// after the furthest, so no peer has run a tick past it on real input.
+#[derive(Clone, Debug)]
+struct Proposal {
+    peer: u32,
+    since: u64,
+    left: bool,
+    /// The authority's own last input of the seat.
+    from: u64,
+    /// The furthest last input reported, and the lowest.
+    last: u64,
+    low: u64,
+    /// The inputs reported past `from`.
+    inputs: IdMap<u64, Vec<u8>>,
+    /// The peers yet to answer.
+    waiting: BTreeSet<u32>,
+}
+
+/// A peer silent this long is reported (og.PeerStalled, status `stalled`).
+const STALL_NOTICE_MS: u64 = 1000;
 
 fn hex(h: u64) -> String {
     format!("{h:016x}")
@@ -328,6 +408,58 @@ impl Lockstep {
     /// 1024, when hashing): `None` before the tick is final.
     pub fn final_hash(&self, tick: u64) -> Option<u64> {
         self.finals.get(&tick).copied()
+    }
+
+    /// The wall clock now, in ms, given before every [`Lockstep::gate`] and
+    /// event. It decides only when a silent peer is dropped; the tick the
+    /// seat empties at is agreed. A jump past half of [`STALL_NOTICE_MS`]
+    /// is this process's own pause (a suspended process or tab), not the
+    /// others' silence.
+    pub fn set_clock(&mut self, now: u64) {
+        if self.now > 0 && now > self.now + STALL_NOTICE_MS / 2 {
+            let gap = now - self.now;
+            for h in self.heard.values_mut() {
+                *h += gap;
+            }
+        }
+        self.now = self.now.max(now);
+    }
+
+    /// The seats that change hands as tick `tick` starts: og.SeatDropped
+    /// the tick after a dropped peer's last input, og.SeatRejoined when a
+    /// seat held before is taken again. Read from the agreed seats alone,
+    /// so a re-simulated tick and a late joiner's world see the same.
+    pub fn seat_events(&self, tick: u64) -> Vec<SeatEvent> {
+        let Some(run) = &self.run else {
+            return Vec::new();
+        };
+        let mut out = Vec::new();
+        for (s, holds) in run.seats.iter().enumerate() {
+            for (i, h) in holds.iter().enumerate() {
+                if i > 0 && h.since == tick {
+                    out.push(SeatEvent {
+                        seat: s as u32,
+                        peer: h.peer,
+                        dropped: false,
+                        left: false,
+                    });
+                }
+                if h.until.is_some_and(|u| u + 1 == tick) {
+                    out.push(SeatEvent {
+                        seat: s as u32,
+                        peer: h.peer,
+                        dropped: true,
+                        left: h.left,
+                    });
+                }
+            }
+        }
+        out
+    }
+
+    /// og.PeerStalled to send: (peer, its seat, ms silent), once per silence.
+    pub fn take_stalls(&mut self) -> Vec<(u32, Option<u32>, u64)> {
+        std::mem::take(&mut self.stalls)
     }
 
     /// The tick the world reached furthest (the present, below which a
@@ -401,9 +533,31 @@ impl Lockstep {
     fn reset(&mut self) {
         let local = std::mem::take(&mut self.local);
         let desync = (self.desync.take(), self.desync_event.take());
+        let (now, drops) = (self.now, self.drops);
         *self = Lockstep::default();
         self.local = local;
         (self.desync, self.desync_event) = desync;
+        (self.now, self.drops) = (now, drops);
+    }
+
+    /// This peer was dropped (it stalled): it leaves the run, keeps the
+    /// room, holds its world and tells the others it is back, so the
+    /// authority admits it again from a snapshot.
+    fn dropped_self(&mut self) {
+        let me = self.me;
+        let peers = std::mem::take(&mut self.peers);
+        let names = std::mem::take(&mut self.names);
+        let now = self.now;
+        self.reset();
+        self.me = me;
+        self.heard = peers.keys().map(|p| (*p, now)).collect();
+        self.peers = peers;
+        self.names = names;
+        self.rejoining = true;
+        self.notes.push(
+            "lockstep: this peer was dropped (it stalled); it waits for the authority's world to rejoin".into(),
+        );
+        self.send(None, json!({ "k": "back" }));
     }
 
     /// The state of a run starting (or joined) with the world at `tick`.
@@ -418,6 +572,13 @@ impl Lockstep {
         self.rewind_to = None;
         self.batch_from = tick + 1;
         self.batch.clear();
+        self.frozen.clear();
+        self.proposals.clear();
+        self.rejoining = false;
+        let now = self.now;
+        for p in &run.running {
+            self.heard.insert(*p, now);
+        }
         let me = self.me;
         self.acks = run
             .running
@@ -437,9 +598,14 @@ impl Lockstep {
                 self.me = Some(*peer);
                 self.peers = peers.iter().cloned().collect();
                 self.peers.entry(*peer).or_default();
+                self.names = self.peers.clone();
+                let now = self.now;
+                self.heard = self.peers.keys().map(|p| (*p, now)).collect();
             }
             Event::PeerJoined { peer, name } => {
                 self.peers.insert(*peer, name.clone());
+                self.names.insert(*peer, name.clone());
+                self.heard.insert(*peer, self.now);
             }
             Event::PeerLeft { peer } => self.departed(*peer),
             Event::Left { .. } => self.reset(),
@@ -447,46 +613,305 @@ impl Lockstep {
                 from,
                 channel: Some(c),
                 payload: Payload::Json(data),
-            } if c == LOCKSTEP_CHANNEL => self.message(*from, data),
+            } if c == LOCKSTEP_CHANNEL => {
+                if self.heard.contains_key(from) {
+                    self.heard.insert(*from, self.now);
+                }
+                self.held_back.remove(from);
+                self.message(*from, data)
+            }
             Event::Message { .. } | Event::Error { .. } => {}
         }
     }
 
+    /// A peer left the room. Its seat empties once the authority agreed
+    /// how far its inputs reach ([`Lockstep::gate`]): what each peer
+    /// received from it before it left may differ, since inputs cross the
+    /// room unreliably.
     fn departed(&mut self, peer: u32) {
         self.peers.remove(&peer);
         self.theirs.remove(&peer);
         self.compared.remove(&peer);
         self.acks.remove(&peer);
+        self.heard.remove(&peer);
+        self.silent.remove(&peer);
+        self.held_back.remove(&peer);
+        for p in self.proposals.values_mut() {
+            p.waiting.remove(&peer);
+        }
+        if let Some(run) = self.run.as_mut() {
+            run.running.remove(&peer);
+            run.admitted.remove(&peer);
+        }
+    }
+
+    /// The last tick through which this peer has every input of `seat`'s
+    /// open hold (the hold's `since - 1` when it has none), or what it told
+    /// an authority already.
+    fn contiguous(&self, seat: u32) -> u64 {
+        if let Some(f) = self.frozen.get(&seat) {
+            return *f;
+        }
+        let since = self
+            .run
+            .as_ref()
+            .and_then(|r| r.seats.get(seat as usize)?.last().map(|h| h.since))
+            .unwrap_or(0);
+        let mut t = (self.confirmed + 1).max(since);
+        while self.inputs.get(&t).is_some_and(|m| m.contains_key(&seat)) {
+            t += 1;
+        }
+        t.saturating_sub(1)
+    }
+
+    /// The inputs of `seat` this peer holds for `ticks`, base64, while
+    /// each is there.
+    fn seat_inputs(&self, seat: u32, ticks: std::ops::RangeInclusive<u64>) -> Vec<Value> {
+        ticks
+            .map_while(|t| {
+                self.inputs
+                    .get(&t)
+                    .and_then(|m| m.get(&seat))
+                    .map(|b| json!(base64::encode(b)))
+            })
+            .collect()
+    }
+
+    /// The authority asks how far this peer has a seat's inputs, to drop
+    /// it: this peer answers with its own last and the inputs past the
+    /// authority's, and takes no later input of the seat from now on.
+    fn drop_asked(&mut self, from: u32, d: &Value) {
+        let (Some(s), Some(p), Some(since), Some(after)) = (
+            u32_of(&d["s"]),
+            u32_of(&d["p"]),
+            u64_of(&d["since"]),
+            u64_of(&d["from"]),
+        ) else {
+            return;
+        };
+        let Some(run) = &self.run else { return };
+        if Some(p) == self.me || !run.running.contains(&from) {
+            return;
+        }
+        let open = run
+            .seats
+            .get(s as usize)
+            .and_then(|h| h.last())
+            .is_some_and(|h| h.peer == p && h.since == since && h.until.is_none());
+        if !open {
+            return;
+        }
+        let last = self.contiguous(s);
+        self.frozen.insert(s, last);
+        let list = self.seat_inputs(s, after + 1..=last);
+        self.send(
+            Some(from),
+            json!({ "k": "drop!", "s": s, "since": since, "last": last, "t": after + 1, "i": list }),
+        );
+    }
+
+    /// A drop every peer applies alike: the seat's hold ends at `until`,
+    /// with the inputs to it; a peer that ran a later tick on a predicted
+    /// input for the seat runs it again.
+    fn apply_drop(&mut self, d: &Value) {
+        let (Some(p), Some(until)) = (u32_of(&d["p"]), u64_of(&d["until"])) else {
+            return;
+        };
+        let left = d["left"].as_bool().unwrap_or(false);
         let Some(run) = self.run.as_mut() else { return };
-        run.running.remove(&peer);
-        let mut emptied = Vec::new();
-        for (s, holds) in run.seats.iter_mut().enumerate() {
-            if let Some(h) = holds
-                .last_mut()
-                .filter(|h| h.peer == peer && h.until.is_none())
-            {
-                let last = self.seat_last.get(&(s as u32)).copied().unwrap_or(0);
-                // Its seat is empty from the tick after its last input (an
-                // empty hold when it sent none).
-                let until = last.max(h.since.saturating_sub(1));
-                h.until = Some(until);
-                emptied.push((s, until));
-                self.notes.push(format!(
-                    "lockstep: peer {peer} left seat {s}; its last input is for tick {until}"
-                ));
+        let seat = u32_of(&d["s"]);
+        if let Some(s) = seat {
+            let Some(since) = u64_of(&d["since"]) else {
+                return;
+            };
+            let Some(h) = run
+                .seats
+                .get_mut(s as usize)
+                .and_then(|h| h.iter_mut().find(|h| h.peer == p && h.since == since))
+            else {
+                return;
+            };
+            if h.until.is_some() {
+                return;
+            }
+            h.until = Some(until);
+            h.left = left;
+        } else if !run.running.contains(&p) {
+            return;
+        }
+        run.running.remove(&p);
+        run.admitted.remove(&p);
+        self.acks.remove(&p);
+        self.theirs.remove(&p);
+        self.compared.remove(&p);
+        self.silent.remove(&p);
+        if !left {
+            self.held_back.insert(p);
+        }
+        self.drops += 1;
+        if let Some(s) = seat {
+            self.frozen.remove(&s);
+            self.proposals.remove(&s);
+            let t0 = u64_of(&d["t"]).unwrap_or(until + 1);
+            for (i, b) in d["i"].as_array().into_iter().flatten().enumerate() {
+                let t = t0 + i as u64;
+                if t <= until
+                    && let Some(bytes) = b.as_str().and_then(base64::decode)
+                {
+                    self.take_input(t, s, bytes);
+                }
+            }
+            let later: Vec<u64> = self.inputs.range(until + 1..).map(|(t, _)| *t).collect();
+            for t in later {
+                if let Some(m) = self.inputs.get_mut(&t) {
+                    m.remove(&s);
+                }
+            }
+            // A tick past it ran with the seat held (on a prediction).
+            if self.frontier > until + 1 {
+                self.mark_wrong(until + 1);
+            }
+            self.notes.push(format!(
+                "lockstep: seat {s} dropped from tick {} (peer {p} {}; its last input is for tick {until})",
+                until + 1,
+                if left { "left" } else { "stalled" }
+            ));
+        } else {
+            self.notes.push(format!(
+                "lockstep: spectator {p} dropped ({})",
+                if left { "left" } else { "stalled" }
+            ));
+        }
+        if Some(p) == self.me {
+            self.dropped_self();
+        }
+    }
+
+    /// At every boundary while running: the peers silent past the notice
+    /// (og.PeerStalled), and at the acting authority (the lowest running
+    /// peer that is not silent past the stall timeout) the drops of the
+    /// seats whose holder left or stalled, agreed with the other peers.
+    fn watch(&mut self) {
+        let (Some(run), Some(me)) = (self.run.as_ref(), self.me) else {
+            return;
+        };
+        let timeout = run.stall_timeout;
+        let now = self.now;
+        let notice = if timeout > 0 {
+            STALL_NOTICE_MS.min(timeout / 2)
+        } else {
+            STALL_NOTICE_MS
+        };
+        let silence = |p: u32| now.saturating_sub(self.heard.get(&p).copied().unwrap_or(now));
+        let stalled = |p: u32| p != me && timeout > 0 && silence(p) >= timeout;
+        let mut stalls = Vec::new();
+        let mut quiet = BTreeSet::new();
+        for p in run.running.iter().copied().filter(|p| *p != me) {
+            if silence(p) >= notice {
+                quiet.insert(p);
+                if !self.silent.contains(&p) {
+                    stalls.push((p, run.open_seat(p), silence(p)));
+                }
             }
         }
-        // A tick past its last input that ran with a predicted input for it
-        // ran wrong: the seat is empty there.
-        for (s, until) in emptied {
-            let wrong = self
-                .used
-                .range(until + 1..)
-                .find(|(_, u)| u.get(s).is_some_and(|b| !b.is_empty()))
-                .map(|(t, _)| *t);
-            if let Some(t) = wrong {
-                self.mark_wrong(t);
+        let acting = run
+            .running
+            .iter()
+            .copied()
+            .find(|p| self.peers.contains_key(p) && !stalled(*p));
+        let mut targets = Vec::new();
+        let mut spectators = Vec::new();
+        let mut answer: BTreeSet<u32> = BTreeSet::new();
+        if acting == Some(me) {
+            for (s, holds) in run.seats.iter().enumerate() {
+                if let Some(h) = holds.last().filter(|h| h.until.is_none() && h.peer != me) {
+                    let gone = !self.peers.contains_key(&h.peer);
+                    if gone || stalled(h.peer) {
+                        targets.push((s as u32, h.peer, h.since, gone));
+                    }
+                }
             }
+            for p in run.running.iter().copied() {
+                if run.open_seat(p).is_none() && stalled(p) {
+                    spectators.push(p);
+                }
+            }
+            answer = run
+                .running
+                .iter()
+                .copied()
+                .filter(|p| *p != me && self.peers.contains_key(p) && !stalled(*p))
+                .collect();
+        }
+        self.silent = quiet;
+        self.stalls.extend(stalls);
+        if acting != Some(me) {
+            return;
+        }
+        for p in spectators {
+            let d = json!({ "k": "drop", "p": p, "until": 0, "left": false });
+            self.send(None, d.clone());
+            self.apply_drop(&d);
+        }
+        for (s, p, since, left) in targets {
+            if self.proposals.get(&s).is_some_and(|x| x.since == since) {
+                continue;
+            }
+            let from = self.contiguous(s);
+            self.frozen.insert(s, from);
+            let waiting: BTreeSet<u32> = answer.iter().copied().filter(|q| *q != p).collect();
+            self.notes.push(format!(
+                "lockstep: peer {p} {} seat {s}; agreeing its last input with peers {waiting:?}",
+                if left { "left" } else { "stalled in" }
+            ));
+            self.proposals.insert(
+                s,
+                Proposal {
+                    peer: p,
+                    since,
+                    left,
+                    from,
+                    last: from,
+                    low: from,
+                    inputs: IdMap::new(),
+                    waiting,
+                },
+            );
+            self.send(
+                None,
+                json!({ "k": "drop?", "s": s, "p": p, "since": since, "from": from }),
+            );
+        }
+        // Peers that left or stalled meanwhile answer no more.
+        let seats: Vec<u32> = self.proposals.keys().copied().collect();
+        for s in seats {
+            let p = self.proposals.get_mut(&s).expect("listed");
+            p.waiting.retain(|q| answer.contains(q));
+            if !p.waiting.is_empty() {
+                continue;
+            }
+            let p = self.proposals.remove(&s).expect("listed");
+            let left = p.left || !self.peers.contains_key(&p.peer);
+            let until = p.last.max(p.since.saturating_sub(1));
+            let t0 = (p.low + 1).max(p.since);
+            let mut list = Vec::new();
+            for t in t0..=until {
+                let b = if t <= p.from {
+                    self.inputs.get(&t).and_then(|m| m.get(&s)).cloned()
+                } else {
+                    p.inputs.get(&t).cloned()
+                };
+                match b {
+                    Some(b) => list.push(json!(base64::encode(&b))),
+                    None => break,
+                }
+            }
+            let d = json!({
+                "k": "drop", "s": s, "p": p.peer, "since": p.since, "until": until,
+                "left": left, "t": t0, "i": list,
+            });
+            self.send(None, d.clone());
+            self.apply_drop(&d);
         }
     }
 
@@ -496,7 +921,8 @@ impl Lockstep {
 
     /// A real input for `seat` at `tick`, received or made here.
     fn take_input(&mut self, tick: u64, seat: u32, bytes: Vec<u8>) {
-        if tick < self.hashed
+        if self.frozen.get(&seat).is_some_and(|f| tick > *f)
+            || tick < self.hashed
             || self
                 .inputs
                 .get(&tick)
@@ -558,8 +984,15 @@ impl Lockstep {
                         peer,
                         since,
                         until: None,
+                        left: false,
                     });
+                    // A tick from `since` this peer predicted ran without
+                    // the seat's new holder (and its og.SeatRejoined).
+                    if self.frontier > since {
+                        self.mark_wrong(since);
+                    }
                 }
+                self.heard.insert(peer, self.now);
                 // The newcomer has none of this peer's inputs from its
                 // snapshot's tick on.
                 self.acks.insert(peer, tick.saturating_sub(1));
@@ -572,15 +1005,79 @@ impl Lockstep {
                     let e = self.acks.entry(from).or_insert(a);
                     *e = (*e).max(a);
                 }
-                let (Some(t0), Some(s)) = (u64_of(&d["t"]), u32_of(&d["s"])) else {
+                let (Some(t0), Some(s), Some(since)) =
+                    (u64_of(&d["t"]), u32_of(&d["s"]), u64_of(&d["h"]))
+                else {
                     return;
                 };
+                // Sent after a seat change this peer has not heard yet (an
+                // unreliable message overtakes a reliable one): its inputs
+                // may confirm a tick the change moves, so they wait for
+                // the resend.
+                if self
+                    .run
+                    .as_ref()
+                    .is_none_or(|r| u64_of(&d["e"]).is_some_and(|e| e > r.epoch()))
+                {
+                    return;
+                }
                 let list = d["i"].as_array().cloned().unwrap_or_default();
                 for (i, b) in list.iter().enumerate() {
+                    let t = t0 + i as u64;
+                    // Only the seat's holder at t, in the hold it sent for:
+                    // never a dropped peer's inputs from before its drop.
+                    let holds = self.run.as_ref().and_then(|r| {
+                        r.seats
+                            .get(s as usize)?
+                            .iter()
+                            .find(|h| h.covers(t))
+                            .map(|h| h.peer == from && h.since == since)
+                    });
+                    if holds != Some(true) {
+                        continue;
+                    }
                     let bytes = b.as_str().and_then(base64::decode).unwrap_or_default();
-                    self.take_input(t0 + i as u64, s, bytes);
+                    self.take_input(t, s, bytes);
                 }
             }
+            "drop?" => self.drop_asked(from, d),
+            "drop!" => {
+                let (Some(s), Some(since), Some(last), Some(t0)) = (
+                    u32_of(&d["s"]),
+                    u64_of(&d["since"]),
+                    u64_of(&d["last"]),
+                    u64_of(&d["t"]),
+                ) else {
+                    return;
+                };
+                let Some(p) = self.proposals.get_mut(&s).filter(|p| p.since == since) else {
+                    return;
+                };
+                if !p.waiting.remove(&from) {
+                    return;
+                }
+                p.last = p.last.max(last);
+                p.low = p.low.min(last);
+                for (i, b) in d["i"].as_array().into_iter().flatten().enumerate() {
+                    let t = t0 + i as u64;
+                    if t > p.from
+                        && t <= last
+                        && let Some(bytes) = b.as_str().and_then(base64::decode)
+                    {
+                        p.inputs.entry(t).or_insert(bytes);
+                    }
+                }
+            }
+            "drop" => {
+                // From a running peer, or a lower one: after a partition the
+                // higher side gives way and rejoins.
+                let trusted = self.run.as_ref().is_some_and(|r| r.running.contains(&from))
+                    || self.me.is_some_and(|me| from < me);
+                if trusted {
+                    self.apply_drop(d);
+                }
+            }
+            "back" => {}
             "hash" => {
                 let Some(first) = u64_of(&d["from"]) else {
                     return;
@@ -746,6 +1243,15 @@ impl Lockstep {
             return Gate::Go;
         }
         if self.run.is_none() {
+            if self.rejoining {
+                // Dropped: the world holds until the authority's arrives
+                // (unless every other peer is gone).
+                if self.peers.len() > 1 {
+                    self.waits += 1;
+                    return Gate::Wait;
+                }
+                self.rejoining = false;
+            }
             let players = cfg.players.max(1);
             if self.authority() != Some(me) || (self.peers.len() as u32) < players {
                 return Gate::Go;
@@ -772,13 +1278,18 @@ impl Lockstep {
                 )),
             }
         }
+        self.watch();
+        if self.run.is_none() {
+            // This peer was dropped meanwhile.
+            return Gate::Wait;
+        }
         if self.authority() == Some(me) {
             let run = self.run.as_ref().expect("running");
             let newcomers: Vec<u32> = self
                 .peers
                 .keys()
                 .copied()
-                .filter(|p| !run.admitted.contains(p))
+                .filter(|p| !run.admitted.contains(p) && !self.held_back.contains(p))
                 .collect();
             if !newcomers.is_empty() {
                 // A newcomer gets a confirmed world: this one when every
@@ -832,6 +1343,7 @@ impl Lockstep {
                 peer: *p,
                 since: tick + delay,
                 until: None,
+                left: false,
             });
         }
         let run = Run {
@@ -847,6 +1359,8 @@ impl Lockstep {
             seats,
             running: peers.iter().copied().collect(),
             admitted: peers.iter().copied().collect(),
+            stall_timeout: u64::from(cfg.stall_timeout),
+            rejoin: cfg.rejoin,
         };
         let msg = start_msg(&run, tick, &bytes, &self.inputs, &self.seat_last);
         self.notes.push(format!(
@@ -862,18 +1376,39 @@ impl Lockstep {
     /// confirmed world `bytes` of tick `at`.
     fn admit(&mut self, peer: u32, tick: u64, at: u64, bytes: &[u8]) {
         let run = self.run.as_mut().expect("running");
-        let free = run
-            .seats
-            .iter()
-            .position(|h| h.last().is_none_or(|h| h.until.is_some()));
-        let since = tick + run.delay;
+        let name = self.names.get(&peer).cloned().unwrap_or_default();
+        let free = |h: &Vec<Hold>| h.last().is_none_or(|h| h.until.is_some());
+        // With rejoin, a returning player takes back the seat it held (the
+        // same peer, or a newcomer of the same name), else the first free
+        // one; without, only a seat nobody held yet.
+        let free = if run.rejoin {
+            run.seats
+                .iter()
+                .position(|h| {
+                    free(h)
+                        && h.last().is_some_and(|l| {
+                            l.peer == peer
+                                || (!name.is_empty() && self.names.get(&l.peer) == Some(&name))
+                        })
+                })
+                .or_else(|| run.seats.iter().position(free))
+        } else {
+            run.seats.iter().position(Vec::is_empty)
+        };
+        // After every input this peer made already (in rollback a boundary
+        // may be a re-simulated one, its inputs sent up to the frontier's):
+        // a peer that confirms a tick from `since` needs one sent after
+        // the admit.
+        let since = tick.max(self.frontier) + run.delay;
         if let Some(s) = free {
             run.seats[s].push(Hold {
                 peer,
                 since,
                 until: None,
+                left: false,
             });
         }
+        self.heard.insert(peer, self.now);
         run.admitted.insert(peer);
         run.running.insert(peer);
         self.acks.insert(peer, at.saturating_sub(1));
@@ -896,6 +1431,19 @@ impl Lockstep {
     /// Sends this peer's own inputs the others lack: every input from the
     /// lowest acknowledgement on (at most [`MAX_RESEND`]), to `to` or all.
     fn send_inputs(&mut self, to: Option<u32>) {
+        if to.is_none() {
+            // A peer far behind the others (a stalled one) gets its own
+            // message, so the rest are not held to its window.
+            let lo = self.acks.values().copied().min().unwrap_or(0);
+            let hi = self.acks.values().copied().max().unwrap_or(0);
+            if hi - lo > MAX_RESEND / 2 {
+                let peers: Vec<u32> = self.acks.keys().copied().collect();
+                for p in peers {
+                    self.send_inputs(Some(p));
+                }
+                return;
+            }
+        }
         let (Some(run), Some(me)) = (self.run.as_ref(), self.me) else {
             return;
         };
@@ -905,7 +1453,7 @@ impl Lockstep {
         };
         // Every message carries the acknowledgement, inputs or not (a
         // spectator's, or a seated peer's before its first input).
-        let mut msg = json!({ "k": "inputs", "a": self.confirmed });
+        let mut msg = json!({ "k": "inputs", "a": self.confirmed, "e": run.epoch() });
         if let Some(floor) = floor
             && let Some((&first, _)) = self.own.range(floor + 1..).next()
             && let Some(seat) = run.seat_of(me, first)
@@ -922,6 +1470,7 @@ impl Lockstep {
                 .collect();
             msg["t"] = json!(first);
             msg["s"] = json!(seat);
+            msg["h"] = json!(run.hold(seat as usize, first).map(|h| h.since));
             msg["i"] = json!(ticks);
         }
         self.out.push((to, msg, true));
@@ -985,8 +1534,16 @@ impl Lockstep {
         let hashed = self.hashed;
         self.ring.retain(|t, _| *t >= hashed);
         self.used.retain(|t, _| *t >= hashed);
-        // Each seat's last real input stays, for the next prediction.
-        self.inputs.retain(|t, _| *t + 1 >= hashed);
+        // Each seat's last real input stays, for the next prediction, and
+        // every input a running peer may lack, for a drop to hand on.
+        let floor = self
+            .acks
+            .values()
+            .copied()
+            .min()
+            .map_or(hashed, |a| a.min(hashed))
+            .max(hashed.saturating_sub(CONFIRM_AHEAD));
+        self.inputs.retain(|t, _| *t + 1 >= floor);
         let peers: Vec<u32> = self.theirs.keys().copied().collect();
         for p in peers {
             self.compare(p);
@@ -1069,6 +1626,8 @@ impl Lockstep {
             "rollbacks": self.rollbacks,
             "resimulatedTicks": self.resimulated,
             "snapshotBytes": self.ring.values().map(|(_, b)| b.len()).sum::<usize>(),
+            "stalled": self.silent,
+            "drops": self.drops,
             "compared": self.compared.iter().map(|(p, t)| json!({ "peer": p, "tick": t })).collect::<Vec<_>>(),
             "desync": self.desync.as_ref().map(|d| json!({ "tick": d.tick, "peer": d.peer })),
         })
@@ -1106,6 +1665,8 @@ fn start_msg(
         "holds": run.holds_json(),
         "running": run.running,
         "admitted": run.admitted,
+        "stallTimeout": run.stall_timeout,
+        "rejoin": run.rejoin,
         "inputs": inputs,
         "last": seat_last.iter().map(|(s, t)| json!([s, t])).collect::<Vec<_>>(),
         "snapshot": base64::encode(snapshot),
@@ -1133,6 +1694,7 @@ fn parse_run(d: &Value) -> Option<Parsed> {
             peer: u32_of(&h[1])?,
             since: u64_of(&h[2])?,
             until: u64_of(&h[3]),
+            left: h[4].as_bool().unwrap_or(false),
         });
     }
     let set = |k: &str| -> Option<BTreeSet<u32>> { d[k].as_array()?.iter().map(u32_of).collect() };
@@ -1145,6 +1707,8 @@ fn parse_run(d: &Value) -> Option<Parsed> {
         seats,
         running: set("running")?,
         admitted: set("admitted")?,
+        stall_timeout: u64_of(&d["stallTimeout"]).unwrap_or(5000),
+        rejoin: d["rejoin"].as_bool().unwrap_or(true),
     };
     let inputs = d["inputs"]
         .as_array()?
@@ -1205,6 +1769,12 @@ mod tests {
         /// Ticks taken for the first time, and again (a rollback's).
         first: u64,
         again: u64,
+        /// A stalled process: it neither runs nor reads the room; what
+        /// arrives meanwhile waits in `inbox`.
+        paused: bool,
+        inbox: Vec<(u32, Value)>,
+        /// The seat events each tick ran with, as last run.
+        events: std::collections::BTreeMap<u64, Vec<SeatEvent>>,
     }
 
     /// A seeded network: each message is late by `latency` plus up to
@@ -1297,6 +1867,9 @@ mod tests {
                 id,
                 first: 0,
                 again: 0,
+                paused: false,
+                inbox: Vec::new(),
+                events: Default::default(),
             });
         }
 
@@ -1323,14 +1896,18 @@ mod tests {
                 payload: Payload::Json(data),
             };
             if let Some(p) = self.peers.iter_mut().find(|p| p.id == to) {
-                p.ls.on_event(&e);
+                if p.paused {
+                    p.inbox.push((from, e_data(e)));
+                } else {
+                    p.ls.on_event(&e);
+                }
             }
         }
 
         fn route(&mut self) {
             loop {
                 let mut sent = Vec::new();
-                for p in &mut self.peers {
+                for p in self.peers.iter_mut().filter(|p| !p.paused) {
                     for (to, data, lossy) in p.ls.take_out() {
                         sent.push((p.id, to, data, lossy));
                     }
@@ -1377,6 +1954,11 @@ mod tests {
         /// One frame of peer `i`: as many ticks as its gate lets it, at most `n`.
         fn frame(&mut self, i: usize, n: u32) -> u32 {
             let mut taken = 0;
+            let now = self.now * 16 + 1;
+            if self.peers[i].paused {
+                return 0;
+            }
+            self.peers[i].ls.set_clock(now);
             while taken < n {
                 let p = &mut self.peers[i];
                 let w = p.world.clone();
@@ -1390,6 +1972,7 @@ mod tests {
                     Gate::Go => {}
                 }
                 let t = p.world.tick;
+                p.events.insert(t, p.ls.seat_events(t));
                 if p.ls.resimulating(t) {
                     p.again += 1;
                 } else {
@@ -1436,12 +2019,33 @@ mod tests {
             );
         }
 
+        /// A stalled peer runs again: the room's messages to it arrive.
+        fn resume(&mut self, i: usize) {
+            self.peers[i].paused = false;
+            self.peers[i].ls.set_clock(self.now * 16 + 1);
+            for (from, data) in std::mem::take(&mut self.peers[i].inbox) {
+                let to = self.peers[i].id;
+                self.deliver(from, to, data);
+            }
+            self.route();
+        }
+
         /// Every peer's hash of the confirmed world at `tick`.
         fn hashes(&self, tick: u64) -> Vec<Option<u64>> {
             self.peers
                 .iter()
                 .map(|p| p.ls.finals.get(&tick).copied())
                 .collect()
+        }
+    }
+
+    fn e_data(e: Event) -> Value {
+        match e {
+            Event::Message {
+                payload: Payload::Json(d),
+                ..
+            } => d,
+            _ => Value::Null,
         }
     }
 
@@ -1615,7 +2219,7 @@ mod tests {
     #[test]
     fn a_late_joiner_takes_a_left_seat_from_a_snapshot_and_the_worlds_stay_equal() {
         for (mode, net) in [
-            (cfg(2, 3, 4), None),
+            (cfg(2, 3, 4), lossy(17, 3, 3, 10)),
             (
                 Config {
                     rollback: true,
@@ -1649,6 +2253,156 @@ mod tests {
             assert_eq!(room.hashes(t)[0], room.hashes(t)[1], "{mode:?}");
             assert_eq!(room.peers[0].ls.dump()["desync"], json!(false), "{mode:?}");
         }
+    }
+
+    /// The world of tick `until` from the seats' holds: a seat's input is
+    /// its peer's (peer number = seat) while a hold covers the tick, else
+    /// empty.
+    fn offline_holds(
+        players: u32,
+        delay: u64,
+        until: u64,
+        holds: &[(u32, u64, Option<u64>)],
+    ) -> u64 {
+        let mut state = 7;
+        for t in 0..until {
+            let inputs: Vec<Vec<u8>> = (0..players)
+                .map(|s| {
+                    let held = holds
+                        .iter()
+                        .any(|(hs, since, u)| *hs == s && t >= *since && u.is_none_or(|u| t <= u));
+                    if held { made(s, t - delay) } else { Vec::new() }
+                })
+                .collect();
+            state = fold(state, t, &inputs);
+        }
+        state
+    }
+
+    #[test]
+    fn a_stalled_peer_is_dropped_at_one_tick_on_every_peer_and_takes_its_seat_back() {
+        let modes = [
+            Config {
+                stall_timeout: 400,
+                ..cfg(3, 2, 1)
+            },
+            Config {
+                rollback: true,
+                max_prediction: 6,
+                stall_timeout: 400,
+                ..cfg(3, 2, 1)
+            },
+        ];
+        // A seated peer stalls, then the authority itself (the next lowest
+        // takes over).
+        for (mode, stalled, seed) in [
+            (modes[0], 2, 5),
+            (modes[1], 2, 13),
+            (modes[0], 0, 21),
+            (modes[1], 0, 29),
+        ] {
+            let others: Vec<usize> = (0..3).filter(|i| *i != stalled).collect();
+            let mut room = Room::new(lossy(seed, 3, 3, 10));
+            for id in 0..3 {
+                room.join(id, mode);
+            }
+            room.run_to(120);
+            // Peer 2's process stops: the others wait for its seat, then
+            // the authority drops it and they play on with it empty.
+            room.peers[stalled].paused = true;
+            let held = room.peers[others[0]].world.tick;
+            for _ in 0..300 {
+                for i in &others {
+                    room.frame(*i, 2);
+                }
+                room.now += 1;
+                room.route();
+            }
+            let a = room.peers[others[0]].world.tick;
+            assert!(a > held + 60, "{mode:?}: the room held at {held}, now {a}");
+            let dropped: Vec<Vec<(u64, SeatEvent)>> = others
+                .iter()
+                .map(|i| &room.peers[*i])
+                .map(|p| {
+                    p.events
+                        .iter()
+                        .flat_map(|(t, e)| e.iter().map(move |e| (*t, *e)))
+                        .collect()
+                })
+                .collect();
+            assert_eq!(dropped[0].len(), 1, "{mode:?}: {dropped:?}");
+            assert_eq!(dropped[0], dropped[1], "{mode:?}: one drop tick for all");
+            let (drop_tick, e) = dropped[0][0];
+            let s = stalled as u32;
+            assert_eq!((e.seat, e.peer, e.dropped, e.left), (s, s, true, false));
+            // It comes back: dropped, it asks again and takes its seat back.
+            room.resume(stalled);
+            room.run_to(a + 150);
+            let t = room.peers.iter().map(|p| p.ls.hashed).min().unwrap();
+            let h = room.hashes(t);
+            assert!(
+                h[0].is_some() && h[0] == h[1] && h[1] == h[2],
+                "{mode:?}: {h:?}"
+            );
+            let p2 = &room.peers[stalled];
+            assert_eq!(p2.ls.seat(p2.world.tick + 5), Some(s), "{mode:?}");
+            let back: Vec<Vec<u64>> = room
+                .peers
+                .iter()
+                .map(|p| {
+                    p.events
+                        .iter()
+                        .filter(|(_, e)| e.iter().any(|e| !e.dropped && e.seat == s && e.peer == s))
+                        .map(|(t, _)| *t)
+                        .collect()
+                })
+                .collect();
+            assert_eq!(back[0].len(), 1, "{mode:?}: {back:?}");
+            assert!(back.iter().all(|b| *b == back[0]), "{mode:?}: {back:?}");
+            assert!(back[0][0] > drop_tick);
+            // The confirmed world is the one the seats' holds give.
+            let seats = room.peers[others[0]].ls.status()["seats"].clone();
+            let holds: Vec<(u32, u64, Option<u64>)> = seats
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|h| {
+                    (
+                        u32_of(&h[0]).unwrap(),
+                        u64_of(&h[2]).unwrap(),
+                        u64_of(&h[3]),
+                    )
+                })
+                .collect();
+            assert_eq!(holds.iter().filter(|h| h.0 == s).count(), 2, "{holds:?}");
+            assert!(holds.contains(&(s, 2, Some(drop_tick - 1))), "{holds:?}");
+            assert_eq!(h[0], Some(offline_holds(3, 2, t, &holds)), "{mode:?}");
+            for p in &room.peers {
+                assert_eq!(p.ls.dump()["desync"], json!(false), "{mode:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn stall_timeout_0_never_drops_a_silent_peer() {
+        let mut room = Room::new(None);
+        let mode = Config {
+            stall_timeout: 0,
+            ..cfg(2, 2, 1)
+        };
+        for id in 0..2 {
+            room.join(id, mode);
+        }
+        room.run_to(50);
+        room.peers[1].paused = true;
+        for _ in 0..2000 {
+            room.frame(0, 2);
+            room.now += 1;
+        }
+        let p = &room.peers[0];
+        assert!(p.world.tick < 60, "it waits for the seat: {}", p.world.tick);
+        assert!(p.events.values().all(Vec::is_empty));
+        assert_eq!(p.ls.status()["stalled"], json!([1]), "reported as stalled");
     }
 
     #[test]

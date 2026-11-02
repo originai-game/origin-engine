@@ -514,6 +514,8 @@ const summary = {
   // and the shared hash of the final world at --ticks (in rollback the world may run past it).
   ...(room !== undefined ? { lockstep: netStatus(), confirmedHash: finalHash(ticks ?? dump.tick) } : {}),
   entities: dump.entities,
+  // The game's facts (og.game's `facts`), as the probe prints them.
+  facts: (engine.probe.state() as { facts?: unknown }).facts ?? null,
   advanceMs: +ms.toFixed(2),
   frames,
   systems,

@@ -160,7 +160,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1999 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2002 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -1003,6 +1003,7 @@ Field units the docs and Tune use.
 | [`og.path.sample`](path.md#fn-sample) | function | path | `og_path_sample` |
 | [`og.Path2`](shapes.md#value-Path2) | value | shapes | — |
 | [`og.PathFollower`](path.md#record-PathFollower) | component | path | — |
+| [`og.PeerStalled`](net.md#record-PeerStalled) | event | net | — |
 | [`og.Perceivable`](ai.md#record-Perceivable) | component | ai | — |
 | [`og.Perception`](ai.md#record-Perception) | component | ai | — |
 | [`og.Physics`](physics.md#record-Physics) | resource | physics | — |
@@ -1129,6 +1130,8 @@ Field units the docs and Tune use.
 | [`og.RoomPeerJoined`](platform.md#record-RoomPeerJoined) | event | platform | — |
 | [`og.RoomPeerLeft`](platform.md#record-RoomPeerLeft) | event | platform | — |
 | [`og.Rope`](physics.md#record-Rope) | component | physics | — |
+| [`og.SeatDropped`](net.md#record-SeatDropped) | event | net | — |
+| [`og.SeatRejoined`](net.md#record-SeatRejoined) | event | net | — |
 | [`og.SensorEntered`](physics.md#record-SensorEntered) | event | physics | — |
 | [`og.SensorExited`](physics.md#record-SensorExited) | event | physics | — |
 | [`og.Shape`](shapes.md#value-Shape) | value | shapes | — |

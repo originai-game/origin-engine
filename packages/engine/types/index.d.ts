@@ -40653,6 +40653,7 @@ export interface TimelineInfo {
 // Deterministic lockstep over a room (docs/design.md §2.10): every peer runs the whole world, and what crosses the room is each player's input, one per tick, and the world's hash. Turn it on with og.Lockstep (`enabled`, `players`); join a room (og.platform.roomJoin, or `og run --room ws://127.0.0.1:P/<room>` with `og relay` natively). Until the room holds `players` peers the world runs freely on each (a lobby, the local input driving the local player); then the authority (the lowest peer number) starts: every other peer takes its world's snapshot, the seats go to the peers in number order, and from then on tick t runs only when every seated player's input for t is in. A peer that joins a running room takes a free seat (or watches) from a snapshot a running peer hands it.
 // Inputs are og.PlayerInput: one entity per player carries it with `player` set to its seat; the engine writes every other field at the start of each tick from that seat's input for the tick. A system reads the inputs from og.PlayerInput, never from og.Input, and gives this peer's own with og.net.submit (from a system that reads og.Input: what the local player holds now, sent for the tick inputDelay ticks on). Without a room, or with lockstep off, og.net.submit drives the local player's og.PlayerInput the next tick, so the same game plays alone.
 // Rollback (og.Lockstep.mode `rollback`, maxPrediction) keeps the same seats, inputs and hashes but does not wait for a late input: the tick runs on a prediction (the player's last input) and, when the real one differs, the world is rewound to the engine's own snapshot of that tick and runs forward again in the same frame, sounds played once and the view snapped. The peers agree on the confirmed world (og.net.finalHash); og.net.resimulating tells a game's own presentation that a tick runs again. Inputs cross the room unreliably and are repeated until acknowledged, so a lost message costs time, not the room.
+// A peer that goes silent (a frozen tab, a lost connection the room has not noticed yet) is reported as og.PeerStalled after a second, and dropped after og.Lockstep.stallTimeout: the authority (the lowest running peer that is not itself silent) agrees with every other running peer how far the seat's inputs reach, and every peer empties the seat from the tick after its last input, so og.SeatDropped arrives at one tick everywhere and the room plays on; a peer that leaves the room is dropped the same way at once. A dropped seat's input is empty (og.PlayerInput's zero value), so a held move or fire stops; a game that wants a bot there reads og.SeatDropped and drives that seat itself. With og.Lockstep.rejoin a dropped player that comes back (the same peer, or a newcomer of the same name) takes its seat again from the authority's world, og.SeatRejoined at one tick on every peer. Wall time decides only when a peer is reported and dropped, never what the confirmed world is.
 // Every tick each peer hashes its world without its own session (og.Input, og.Pointers, og.Gamepad, og.PointerLock, og.Audio, og.Camera, og.Lockstep, the gameplay actions of og.input, the input, room, platform, asset and stream events, the UI's focus and hover) and every hashEvery ticks sends the hashes since its last batch; the first tick whose hashes differ is reported once as og.Desync, and the probe's `desync` dump (`dump_desync`) names it with the component-level diff of the two peers' snapshots of that tick: the answer to what is not deterministic (Math.random, Date.now, a wall clock, iteration over a Set of objects, a module variable, input read from og.Input or og.input's actions).
 
 /**
@@ -40719,6 +40720,20 @@ export interface Lockstep {
    */
   mode: NetMode;
   /**
+   * Milliseconds a running peer may stay silent before its seat is dropped (og.SeatDropped); 0 never drops a peer still in the room, so the room waits for it as long as it takes. The authority's is the room's.
+   *
+   * @default 5000
+   * @range 0..600000
+   * @unit ms (milliseconds)
+   */
+  stallTimeout: number;
+  /**
+   * Whether a dropped player that comes back (or a newcomer of the same name) takes its seat again (og.SeatRejoined); when off, a seat once dropped stays empty and newcomers take only seats never held. The authority's is the room's.
+   *
+   * @default true
+   */
+  rejoin: boolean;
+  /**
    * In rollback, the most ticks this peer runs past the last tick whose inputs are all in before it waits (a peer also predicts no further than it can re-simulate in half a frame). 8 (133 ms at 60 Hz) covers most internet latency on top of inputDelay.
    *
    * @default 8
@@ -40781,6 +40796,54 @@ export interface Desync {
 }
 
 /**
+ * A seat's player was dropped: it left the room, or stalled past og.Lockstep.stallTimeout. Sent at the start of the first tick the seat is empty, the same tick on every peer (a hashed event: the confirmed world holds it); from then on its og.PlayerInput is the zero value until og.SeatRejoined.
+ *
+ * The payload of the `SeatDropped` event (token `og.SeatDropped`).
+ */
+export interface SeatDropped {
+  /** The seat, og.PlayerInput.player. */
+  readonly seat: number;
+  /** The peer that held it. */
+  readonly peer: number;
+  /** The first tick the seat is empty (og.Time.tick now). */
+  readonly tick: number;
+  /** Whether the peer left the room (else it stalled and may come back). */
+  readonly left: boolean;
+}
+
+/**
+ * A seat held before is taken again, by its returning player (og.Lockstep.rejoin) or a newcomer: sent at the start of the first tick of its new holder's input, the same tick on every peer (hashed).
+ *
+ * The payload of the `SeatRejoined` event (token `og.SeatRejoined`).
+ */
+export interface SeatRejoined {
+  /** The seat. */
+  readonly seat: number;
+  /** The peer that holds it now. */
+  readonly peer: number;
+  /** The first tick of its input (og.Time.tick now). */
+  readonly tick: number;
+}
+
+/**
+ * A running peer has sent nothing for a second (or half of stallTimeout, if shorter): for a "waiting for player" message. This peer's own (wall time decides it): never hashed, and a peer that speaks again is reported again the next time it falls silent.
+ *
+ * The payload of the `PeerStalled` event (token `og.PeerStalled`).
+ */
+export interface PeerStalled {
+  /** The silent peer. */
+  readonly peer: number;
+  /** Its seat; og.Lockstep.players for a spectator. */
+  readonly seat: number;
+  /**
+   * How long it has been silent, in milliseconds.
+   *
+   * @unit ms (milliseconds)
+   */
+  readonly silentMs: number;
+}
+
+/**
  * This peer's player's input: og.PlayerInput's fields but `player` and `tick`.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -40831,11 +40894,13 @@ export interface LockstepSeat {
    */
   readonly since: number;
   /**
-   * The last tick of its input, once it left.
+   * The last tick of its input, once it was dropped.
    *
    * @unit ticks (fixed simulation steps)
    */
   readonly until: number | null;
+  /** Whether it was dropped because it left the room (else it stalled). */
+  readonly left: boolean;
 }
 
 /** Lockstep on this peer, as the probe and a HUD read it. */
@@ -40904,6 +40969,10 @@ export interface LockstepStatus {
    * @unit ticks (fixed simulation steps)
    */
   readonly resimulatedTicks: number;
+  /** The running peers silent for a second or more (og.PeerStalled). */
+  readonly stalled: readonly number[];
+  /** Seats (and spectators) this peer has seen dropped since it joined the room. */
+  readonly drops: number;
   /**
    * The bytes of the snapshots kept for a rewind: one per tick not yet final.
    *
@@ -46105,7 +46174,7 @@ export declare namespace og {
   /**
    * Lockstep's settings and this peer's place. The game sets enabled, players, inputDelay and hashEvery (the authority's are the room's once it starts: changes while running wait for the next start); the engine sets localPlayer and running. It is this peer's own: never hashed, never compared.
    */
-  const Lockstep: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly players: FieldSpec<"u32">; readonly localPlayer: FieldSpec<"u32">; readonly inputDelay: FieldSpec<"u32">; readonly hashEvery: FieldSpec<"u32">; readonly running: FieldSpec<"bool">; readonly mode: FieldSpec<"NetMode">; readonly maxPrediction: FieldSpec<"u32"> }, Lockstep>;
+  const Lockstep: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly players: FieldSpec<"u32">; readonly localPlayer: FieldSpec<"u32">; readonly inputDelay: FieldSpec<"u32">; readonly hashEvery: FieldSpec<"u32">; readonly running: FieldSpec<"bool">; readonly mode: FieldSpec<"NetMode">; readonly stallTimeout: FieldSpec<"u32">; readonly rejoin: FieldSpec<"bool">; readonly maxPrediction: FieldSpec<"u32"> }, Lockstep>;
   /**
    * One player's input for this tick, the same on every peer: the engine writes every field but `player` at the start of each tick from the seat's input (zero for a seat nobody holds, and before its holder's first input). Its packed bytes are what crosses the room, read through this layout.
    */
@@ -46115,9 +46184,22 @@ export declare namespace og {
    */
   const Desync: EventType<Desync>;
   /**
+   * A seat's player was dropped: it left the room, or stalled past og.Lockstep.stallTimeout. Sent at the start of the first tick the seat is empty, the same tick on every peer (a hashed event: the confirmed world holds it); from then on its og.PlayerInput is the zero value until og.SeatRejoined.
+   */
+  const SeatDropped: EventType<SeatDropped>;
+  /**
+   * A seat held before is taken again, by its returning player (og.Lockstep.rejoin) or a newcomer: sent at the start of the first tick of its new holder's input, the same tick on every peer (hashed).
+   */
+  const SeatRejoined: EventType<SeatRejoined>;
+  /**
+   * A running peer has sent nothing for a second (or half of stallTimeout, if shorter): for a "waiting for player" message. This peer's own (wall time decides it): never hashed, and a peer that speaks again is reported again the next time it falls silent.
+   */
+  const PeerStalled: EventType<PeerStalled>;
+  /**
    * Deterministic lockstep over a room (docs/design.md §2.10): every peer runs the whole world, and what crosses the room is each player's input, one per tick, and the world's hash. Turn it on with og.Lockstep (`enabled`, `players`); join a room (og.platform.roomJoin, or `og run --room ws://127.0.0.1:P/<room>` with `og relay` natively). Until the room holds `players` peers the world runs freely on each (a lobby, the local input driving the local player); then the authority (the lowest peer number) starts: every other peer takes its world's snapshot, the seats go to the peers in number order, and from then on tick t runs only when every seated player's input for t is in. A peer that joins a running room takes a free seat (or watches) from a snapshot a running peer hands it.
    * Inputs are og.PlayerInput: one entity per player carries it with `player` set to its seat; the engine writes every other field at the start of each tick from that seat's input for the tick. A system reads the inputs from og.PlayerInput, never from og.Input, and gives this peer's own with og.net.submit (from a system that reads og.Input: what the local player holds now, sent for the tick inputDelay ticks on). Without a room, or with lockstep off, og.net.submit drives the local player's og.PlayerInput the next tick, so the same game plays alone.
    * Rollback (og.Lockstep.mode `rollback`, maxPrediction) keeps the same seats, inputs and hashes but does not wait for a late input: the tick runs on a prediction (the player's last input) and, when the real one differs, the world is rewound to the engine's own snapshot of that tick and runs forward again in the same frame, sounds played once and the view snapped. The peers agree on the confirmed world (og.net.finalHash); og.net.resimulating tells a game's own presentation that a tick runs again. Inputs cross the room unreliably and are repeated until acknowledged, so a lost message costs time, not the room.
+   * A peer that goes silent (a frozen tab, a lost connection the room has not noticed yet) is reported as og.PeerStalled after a second, and dropped after og.Lockstep.stallTimeout: the authority (the lowest running peer that is not itself silent) agrees with every other running peer how far the seat's inputs reach, and every peer empties the seat from the tick after its last input, so og.SeatDropped arrives at one tick everywhere and the room plays on; a peer that leaves the room is dropped the same way at once. A dropped seat's input is empty (og.PlayerInput's zero value), so a held move or fire stops; a game that wants a bot there reads og.SeatDropped and drives that seat itself. With og.Lockstep.rejoin a dropped player that comes back (the same peer, or a newcomer of the same name) takes its seat again from the authority's world, og.SeatRejoined at one tick on every peer. Wall time decides only when a peer is reported and dropped, never what the confirmed world is.
    * Every tick each peer hashes its world without its own session (og.Input, og.Pointers, og.Gamepad, og.PointerLock, og.Audio, og.Camera, og.Lockstep, the gameplay actions of og.input, the input, room, platform, asset and stream events, the UI's focus and hover) and every hashEvery ticks sends the hashes since its last batch; the first tick whose hashes differ is reported once as og.Desync, and the probe's `desync` dump (`dump_desync`) names it with the component-level diff of the two peers' snapshots of that tick: the answer to what is not deterministic (Math.random, Date.now, a wall clock, iteration over a Set of objects, a module variable, input read from og.Input or og.input's actions).
    */
   namespace net {

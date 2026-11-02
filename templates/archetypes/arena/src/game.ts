@@ -63,6 +63,11 @@ export const Duel = defineResource("Duel", {
   took: u32(),
   tookX: f32(0, { unit: "m" }),
   tookY: f32(0, { unit: "m" }),
+  /** The seats' changes of hand, the same tick on every peer (og.SeatDropped, og.SeatRejoined): the last ticks, and how many. */
+  droppedAt: u32(0, { unit: "ticks" }),
+  rejoinedAt: u32(0, { unit: "ticks" }),
+  drops: u32(),
+  rejoins: u32(),
 });
 
 /** A one-shot voice: Feedback starts it when its Sound bit is asked for. */
@@ -299,6 +304,19 @@ export const Voices = defineSystem("Voices", { writes: [Duel, Voice, og.AudioSou
   duel.sfx = left;
 });
 
+/** Notes the seats changing hands. A dropped seat's og.PlayerInput is empty, so its fighter stands still until its player is back. */
+export const Seats = defineSystem("Seats", { reads: [og.SeatDropped, og.SeatRejoined], writes: [Duel] }, (_q, _time, world) => {
+  const duel = must(world.resource(Duel));
+  for (const e of world.events(og.SeatDropped)) {
+    duel.droppedAt = e.tick;
+    duel.drops += 1;
+  }
+  for (const e of world.events(og.SeatRejoined)) {
+    duel.rejoinedAt = e.tick;
+    duel.rejoins += 1;
+  }
+});
+
 /** The HUD: both scores, and who this peer plays or whom it waits for. */
 export const Hud = defineSystem("Hud", { reads: [Duel, og.Lockstep] }, (_q, _time, world) => {
   const duel = must(world.resource(Duel));
@@ -312,7 +330,9 @@ export const Hud = defineSystem("Hud", { reads: [Duel, og.Lockstep] }, (_q, _tim
   const line =
     duel.winner !== 0
       ? `${duel.winner === 1 ? "Red" : "Blue"} wins`
-      : net.running
+      : net.running && net.stalled.length > 0
+        ? `Waiting for ${net.stalled.map((p) => `peer ${p}`).join(", ")}`
+        : net.running
         ? lock.localPlayer < lock.players
           ? `You are ${lock.localPlayer === 0 ? "Red" : "Blue"}`
           : "Watching"
@@ -328,5 +348,6 @@ export const Hud = defineSystem("Hud", { reads: [Duel, og.Lockstep] }, (_q, _tim
 export function facts(world: World): Record<string, unknown> {
   const d = world.resource(Duel);
   if (!d.ok) return {};
-  return { score0: d.value.score0, score1: d.value.score1, coins: d.value.coins, winner: d.value.winner };
+  const v = d.value;
+  return { score0: v.score0, score1: v.score1, coins: v.coins, winner: v.winner, droppedAt: v.droppedAt, drops: v.drops, rejoinedAt: v.rejoinedAt, rejoins: v.rejoins };
 }

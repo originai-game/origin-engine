@@ -45,6 +45,12 @@ const PEER_JOINED: &str = "og.RoomPeerJoined";
 const PEER_LEFT: &str = "og.RoomPeerLeft";
 const MESSAGE: &str = "og.RoomMessage";
 const DESYNC: &str = "og.Desync";
+const SEAT_DROPPED: &str = "og.SeatDropped";
+const SEAT_REJOINED: &str = "og.SeatRejoined";
+const PEER_STALLED: &str = "og.PeerStalled";
+/// Lockstep's seat events: lazy records ([`super::lazy`]), registered once a
+/// world runs lockstep in a room, so a game without rooms keeps its hash.
+pub(crate) const SEAT_EVENTS: [&str; 3] = [SEAT_DROPPED, SEAT_REJOINED, PEER_STALLED];
 /// The messages kept for og.platform.roomMessage.
 const KEEP_MESSAGES: usize = 256;
 /// The wire form of roomSend's bytes: `{ "$og.bytes": "<base64>" }`.
@@ -233,6 +239,7 @@ pub fn og_room_deliver(engine: u32, event: String) -> bool {
     };
     let tick = tick_of(engine);
     with(engine, |n| {
+        n.ls.set_clock(super::probe::now_ms() as u64);
         n.ls.on_event(&e);
         match e {
             Event::Joined { room, peer, peers } => {
@@ -509,7 +516,7 @@ pub fn og_net_status(world: u32) -> String {
             .as_array()
             .map(|a| {
                 a.iter()
-                    .map(|h| json!({ "seat": h[0], "peer": h[1], "since": h[2], "until": h[3] }))
+                    .map(|h| json!({ "seat": h[0], "peer": h[1], "since": h[2], "until": h[3], "left": h[4].as_bool().unwrap_or(false) }))
                     .collect()
             })
             .unwrap_or_default();
@@ -533,6 +540,8 @@ pub fn og_net_status(world: u32) -> String {
             "rollbacks": s["rollbacks"],
             "resimulatedTicks": s["resimulatedTicks"],
             "snapshotBytes": s["snapshotBytes"],
+            "stalled": if s["stalled"].is_null() { json!([]) } else { s["stalled"].clone() },
+            "drops": s["drops"],
         })
         .to_string()
     })
@@ -597,6 +606,8 @@ fn config(eng: &Engine, world: &World) -> Config {
         hash_every: u("hashEvery", 10),
         rollback: v["mode"] == json!("rollback"),
         max_prediction: u("maxPrediction", 8).clamp(1, 30),
+        stall_timeout: u("stallTimeout", 5000).min(600_000),
+        rejoin: v["rejoin"].as_bool().unwrap_or(true),
         budget: with(eng.id, |n| n.cost.budget(f64::from(world.time().dt))),
     }
 }
@@ -610,10 +621,29 @@ pub(crate) fn gate(engine: u32, world: &mut World) -> bool {
         return true;
     };
     let cfg = config(&eng, world);
+    if cfg.enabled {
+        // Before the start's snapshot, so every peer's world holds them.
+        for name in SEAT_EVENTS {
+            if let Err(e) = super::lazy::ensure(&eng, world, name) {
+                eng.state
+                    .borrow_mut()
+                    .log
+                    .push(json!({ "tick": world.time().tick, "warning": true, "text": e }));
+            }
+        }
+    }
     loop {
         let tick = world.time().tick;
         let gate = with(engine, |n| {
+            n.ls.set_clock(super::probe::now_ms() as u64);
             let g = n.ls.gate(&cfg, tick, &mut || world.snapshot());
+            let players = n.ls.players().unwrap_or(0);
+            for (peer, seat, ms) in n.ls.take_stalls() {
+                n.pending.push((
+                    PEER_STALLED,
+                    json!({ "peer": peer, "seat": seat.unwrap_or(players), "silentMs": ms.min(u64::from(u32::MAX)) }),
+                ));
+            }
             flush(engine, n, tick);
             g
         });
@@ -722,12 +752,15 @@ pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
                     DESYNC,
                     LOCKSTEP,
                     PLAYER_INPUT,
+                    SEAT_DROPPED,
+                    SEAT_REJOINED,
+                    PEER_STALLED,
                 ]
                 .iter()
                 .filter_map(|n| st.layouts.get(*n).map(|l| (n.to_string(), l.clone())));
                 og_core::sort::map(rows)
             };
-            let (events, desync, running, seat, players, local) = with(engine_id, |n| {
+            let (events, desync, running, seat, players, local, seats) = with(engine_id, |n| {
                 for m in n.messages.iter_mut().filter(|m| m.tick.is_none()) {
                     m.tick = Some(tick);
                 }
@@ -753,10 +786,27 @@ pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
                     n.ls.seat(tick),
                     n.ls.players(),
                     n.ls.local().to_vec(),
+                    n.ls.seat_events(tick),
                 )
             });
             for (name, v) in &events {
                 send(ctx, &layouts, name, v)?;
+            }
+            // The seats changing hands now: from the agreed seats, so a
+            // re-simulated tick sends them again and every peer at one tick.
+            for e in seats {
+                let (name, v) = if e.dropped {
+                    (
+                        SEAT_DROPPED,
+                        json!({ "seat": e.seat, "peer": e.peer, "tick": tick, "left": e.left }),
+                    )
+                } else {
+                    (
+                        SEAT_REJOINED,
+                        json!({ "seat": e.seat, "peer": e.peer, "tick": tick }),
+                    )
+                };
+                send(ctx, &layouts, name, &v)?;
             }
             if let Some((t, peer, peers)) = desync {
                 send(

@@ -102,15 +102,20 @@ fn run(
             let _ = socket.flush();
             return;
         }
+        // A signal interrupting a write leaves the frame queued in the
+        // socket: the next flush sends it.
+        let failed = |r: tungstenite::Result<()>| {
+            r.is_err_and(|e| !matches!(&e, tungstenite::Error::Io(e) if e.kind() == io::ErrorKind::Interrupted))
+        };
         let mut wrote = false;
         while let Ok(op) = ops.try_recv() {
-            if socket.write(Message::text(op)).is_err() {
+            if failed(socket.write(Message::text(op))) {
                 let _ = events.send(lost("the relay connection failed"));
                 return;
             }
             wrote = true;
         }
-        if wrote && socket.flush().is_err() {
+        if wrote && failed(socket.flush()) {
             let _ = events.send(lost("the relay connection failed"));
             return;
         }
@@ -128,7 +133,11 @@ fn run(
             Err(tungstenite::Error::Io(e))
                 if matches!(
                     e.kind(),
-                    io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut
+                    // A signal (a stopped and resumed process) interrupts
+                    // the read; the connection is still there.
+                    io::ErrorKind::WouldBlock
+                        | io::ErrorKind::TimedOut
+                        | io::ErrorKind::Interrupted
                 ) => {}
             Err(_) => {
                 let _ = events.send(lost("the relay connection failed"));

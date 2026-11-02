@@ -519,7 +519,11 @@ fn connection(stream: TcpStream, rooms: Shared, stop: Arc<AtomicBool>, log: Send
             Err(tungstenite::Error::Io(e))
                 if matches!(
                     e.kind(),
-                    io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut
+                    // A signal (a stopped and resumed process) interrupts
+                    // the read; the connection is still there.
+                    io::ErrorKind::WouldBlock
+                        | io::ErrorKind::TimedOut
+                        | io::ErrorKind::Interrupted
                 ) => {}
             Err(_) => break "the connection failed",
         }

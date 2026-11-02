@@ -53,6 +53,7 @@ pub const SESSION_EVENTS: &[&str] = &[
     "og.RoomPeerLeft",
     "og.RoomMessage",
     "og.Desync",
+    "og.PeerStalled",
     "og.PlatformAnswered",
     "og.AssetReady",
     "og.AssetFailed",

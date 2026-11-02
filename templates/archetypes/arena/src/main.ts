@@ -13,7 +13,7 @@
 
 import { og } from "@origingame/engine";
 import type { Entity, World } from "@origingame/engine";
-import { Coin, COIN, CoinDrop, Duel, facts, Feedback, Fighter, FIGHTER, HEIGHT, Hud, Move, must, setBot, Sound, Sparks, Submit, Tuning, Voice, Voices, WIDTH } from "./game.ts";
+import { Coin, COIN, CoinDrop, Duel, facts, Feedback, Fighter, FIGHTER, HEIGHT, Hud, Move, must, Seats, setBot, Sound, Sparks, Submit, Tuning, Voice, Voices, WIDTH } from "./game.ts";
 
 /** The brand ink #14161b, linear, behind the floor. */
 const INK = { r: 0.00699, g: 0.00802, b: 0.01096 };
@@ -78,12 +78,18 @@ export default og.game({
   seed: 1,
   look: "looks/arena.ogt",
   resources: [Duel, Tuning],
-  systems: [Submit, Move, CoinDrop, Feedback, Voices, Hud],
+  systems: [Submit, Seats, Move, CoinDrop, Feedback, Voices, Hud],
   start,
   commands: {
     /** `bot:<n>`: this peer's input comes from scripted bot n (0 hands it back to the keys). */
     bot: (_world, args) => setBot(Number(args[0]), args[1] === "tick"),
     /** `rollback:<maxPrediction>`: the room runs in rollback instead of lockstep. */
+    /** `stall:<ms>`: og.Lockstep.stallTimeout, 0 never dropping a silent peer. */
+    stall: (world, args) => {
+      const ms = Number(args[0]);
+      if (!Number.isInteger(ms) || ms < 0) throw new Error("write stall:<ms>, 0 or more");
+      must(world.resource(og.Lockstep)).stallTimeout = ms;
+    },
     rollback: (world, args) => {
       const n = Number(args[0] ?? 8);
       if (!Number.isInteger(n) || n < 1 || n > 30) throw new Error("write rollback:<maxPrediction>, 1 to 30 ticks");
@@ -103,6 +109,7 @@ export default og.game({
   commandHelp: {
     bot: { usage: "<n>[:tick]", doc: "Drive this peer's player by scripted bot n (1, 2, ...); 0 gives it back to the keys. With :tick the bot plays its seat by the tick alone, not the world (still for the first 60 ticks), so every session gets the same inputs." },
     rollback: { usage: "<maxPrediction>", doc: "Run the room in rollback, predicting up to maxPrediction ticks (1 to 30), instead of lockstep." },
+    stall: { usage: "<ms>", doc: "Drop a peer silent this long (og.Lockstep.stallTimeout; 0 never drops)." },
     warp: { usage: "<player>:<x>:<y>", doc: "Put fighter 0 (Red) or 1 (Blue) at a point of the floor." },
   },
   facts,

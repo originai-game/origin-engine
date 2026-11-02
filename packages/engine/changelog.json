@@ -228,6 +228,22 @@
       {
         "member": "TileLayerInfo.cellColliders, TileLayerDesc.cellColliders, SHAPE_TRIMESH in 2D",
         "summary": "Merged tilemap colliders off the orthogonal grid (G2-6): each connected region of solid cells (sharing sides) is one static collider, a generated triangle mesh whose shape is saved with the world (a restore needs no mesh): in 2D its outline, a hollow polyline with holes as their own loops, in 3D the closed prism over it. A static map now costs physics per region, not per cell (256 × 256 hex, half solid: 1,264 colliders instead of 32,631; steady tick 0.26 ms against the merged orthogonal map's 1.73 ms, release). A layer's `cellColliders true` (`.ogt` layer line, Tiled bool property, TileLayerDesc) keeps one diamond or hexagon per cell. SHAPE_TRIMESH now works in 2D for game code too: the outline of the mesh's triangles. Cook: a layer flag bit, clear for every map cooked before, so nothing re-cooks."
+      },
+      {
+        "member": "og.Lockstep.stallTimeout, og.Lockstep.rejoin, og.SeatDropped, og.SeatRejoined, og.PeerStalled",
+        "summary": "Stall timeout, drop and rejoin (G2-7): a peer silent for a second is reported (og.PeerStalled, this peer's own), and past stallTimeout (5000 ms; 0 never drops) or on leaving the room its seat is dropped at a tick every peer agrees on (og.SeatDropped, hashed), with empty input from then on. With rejoin (default true) a dropped player that comes back, or a newcomer of the same name, takes its seat back from the authority's world (og.SeatRejoined, at one tick on every peer). The seat events are registered only once a world runs lockstep in a room."
+      },
+      {
+        "member": "og.net.status: stalled, drops; LockstepSeat.left",
+        "summary": "The status lists the silent peers and counts the drops; each seat hold says whether it ended because its peer left the room or stalled."
+      },
+      {
+        "member": "og run --json: facts",
+        "summary": "og run's summary carries the game's facts (og.game's `facts`), as the probe prints them."
+      },
+      {
+        "member": "arena: Seats, stall:<ms>",
+        "summary": "Coin Duel notes the seats changing hands (Duel.droppedAt, rejoinedAt, drops, rejoins), shows \"Waiting for peer n\" while a peer is silent, and takes `stall:<ms>` for og.Lockstep.stallTimeout."
       }
     ],
     "fixed": [
@@ -274,6 +290,14 @@
       {
         "member": "og.Lockstep (rooms)",
         "summary": "A lockstep room no longer stalls for good when the room loses an input message: every input message carries all of the sender's inputs its peers have not acknowledged (each carries the sender's confirmed tick) and a peer waiting at a boundary sends them again. The lockstep wire version is 2: a peer on an older engine has its start refused with the reason instead of desyncing (G2-7)."
+      },
+      {
+        "member": "lockstep: inputs overtaking a seat change",
+        "summary": "An input message (sent unreliably) that overtook the reliable `admit` it followed let a peer confirm the new seat's first tick without it, so a late joiner's world could differ; input messages now name the seat changes their sender knows and wait for the resend otherwise. In rollback an admit's seat starts after every input the authority already sent."
+      },
+      {
+        "member": "og-net relay client: a stopped and resumed process",
+        "summary": "A signal interrupting the client's socket read or write (a process stopped and resumed, a laptop waking) no longer counts as a lost connection."
       }
     ]
   },

@@ -72,6 +72,19 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: "og.VehicleWheel",
         enable: |w| og_physics::enable(w, "og.VehicleWheel"),
     },
+    // G2-7: og.net sends them once a world runs lockstep in a room.
+    Lazy {
+        name: "og.SeatDropped",
+        enable: |w| w.grant(crate::net::NET_SYSTEM, &["og.SeatDropped"]),
+    },
+    Lazy {
+        name: "og.SeatRejoined",
+        enable: |w| w.grant(crate::net::NET_SYSTEM, &["og.SeatRejoined"]),
+    },
+    Lazy {
+        name: "og.PeerStalled",
+        enable: |w| w.grant(crate::net::NET_SYSTEM, &["og.PeerStalled"]),
+    },
     Lazy {
         name: "og.SoftBody",
         enable: |w| og_physics::enable(w, "og.SoftBody"),
