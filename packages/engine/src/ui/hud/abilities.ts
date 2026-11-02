@@ -77,11 +77,12 @@ export function abilitySlot(id: string, desc: Api.AbilitySlotDesc = {}): Api.Res
     const inset = Math.max(2, Math.round(size / 18));
     if (desc.image) {
       kit.image("Icon", { texture: desc.image, width: px(size - inset * 2), height: px(size - inset * 2), label: "" });
-      apply(absolute({ start: inset, top: inset }, { opacity: locked ? 0.35 : 1 }));
+      // Cooling, the art dims under the sweep so the countdown reads over it.
+      apply(absolute({ start: inset, top: inset }, { opacity: locked ? 0.35 : cooling ? 0.45 : 1 }));
     } else {
       box("IconBox", { width: pct(1), height: pct(1), align: "center", cross: "center", part: sel("AbilitySlot", "icon") }, undefined, () => {
         icon("Icon", desc.icon ?? "", Math.round(size * 0.58), locked ? token("inkFaint") : token("ink"));
-      }, absolute({ start: 0, top: 0 }, { opacity: locked ? 0.45 : 1 }));
+      }, absolute({ start: 0, top: 0 }, { opacity: locked ? 0.45 : cooling ? 0.4 : 1 }));
     }
     if (desc.unaffordable && !locked) {
       leaf("Unaffordable", { width: pct(1), height: pct(1), part: sel("AbilitySlot", "tint", "unaffordable") }, {
@@ -99,12 +100,13 @@ export function abilitySlot(id: string, desc: Api.AbilitySlotDesc = {}): Api.Res
       // The sweep's edge: a bright hand at the boundary, so the turning reads at a glance.
       const angle = -Math.PI / 2 + (1 - left) * Math.PI * 2;
       leaf("Hand", { width: px(size * 1.5), height: px(size * 1.5) }, {
-        shape: { kind: "arc", start: angle - 0.02, sweep: 0.04, thickness: size * 0.75, cap: "butt" },
+        // From the slot's edge in to a little past its middle ring only: it never runs under the numerals at the centre.
+        shape: { kind: "arc", start: angle - 0.02, sweep: 0.04, thickness: size * 0.33, cap: "butt" },
         fills: [solid(token("sheen", 0.45))],
       }, absolute({ start: -size * 0.25, top: -size * 0.25 }));
       // With a cost or a charge count along the slot's bottom, the cooldown sits above them rather than on them.
       const below = !!desc.cost || charged;
-      text("Time", shortTime(cooldown, true), { step: tsFit(size >= 52 ? 18 : 15, size * (below ? 0.34 : 0.42), true), font: "display", color: token("ink"), nowrap: true, outline: 1.2 },
+      text("Time", shortTime(cooldown, true), { step: tsFit(size >= 52 ? 18 : 15, size * (below ? 0.34 : 0.42), true), font: "display", color: token("ink"), nowrap: true, outline: 1.6 },
         absolute(below ? { centerX: true, top: Math.round(size * 0.14) } : { centerX: true, centerY: true }));
     }
     if (flashT > 0) {
@@ -114,7 +116,7 @@ export function abilitySlot(id: string, desc: Api.AbilitySlotDesc = {}): Api.Res
       }, absolute({ start: 0, top: 0 }));
     }
     if (ult !== null && !ultReady) {
-      text("Ultimate", `${Math.floor(clamp01(ult) * 100)}%`, { step: tsFit(16, size * 0.36, true), font: "display", color: lit(role("gold")), nowrap: true, outline: 1.2 }, absolute({ centerX: true, centerY: true }));
+      text("Ultimate", `${Math.floor(clamp01(ult) * 100)}%`, { step: tsFit(16, size * 0.36, true), font: "display", color: lit(role("gold")), nowrap: true, outline: 1.6 }, absolute({ centerX: true, centerY: true }));
     }
     if (locked) {
       box("Lock", { width: pct(1), height: pct(1), align: "center", cross: "center", part: sel("AbilitySlot", "lock") }, { fills: [solid(token("shadow", 0.5))] }, () => {
@@ -128,11 +130,11 @@ export function abilitySlot(id: string, desc: Api.AbilitySlotDesc = {}): Api.Res
           leaf("Fill", { width: pct(p), height: pct(1) }, { fills: [solid(lit(role("gold")))] });
         }, absolute({ start: 0, bottom: 0 }));
       }
-      text("Charges", String(charges), { step: tsFit(14, size * 0.28, true), font: "display", color: charges === 0 ? lit(role("danger")) : token("ink"), nowrap: true, outline: 1.2 },
+      text("Charges", String(charges), { step: tsFit(14, size * 0.28, true), font: "display", color: charges === 0 ? lit(role("danger")) : token("ink"), nowrap: true, outline: 1.6 },
         absolute({ end: inset + 1, bottom: inset }));
     }
     if (desc.cost) {
-      text("Cost", desc.cost, { step: ts(11), font: "mono", color: desc.unaffordable ? lit(role("danger")) : lit(role("mana")), nowrap: true, outline: 1 },
+      text("Cost", desc.cost, { step: ts(11), font: "mono", color: desc.unaffordable ? lit(role("danger")) : lit(role("mana")), nowrap: true, outline: 1.4 },
         absolute(charged ? { start: inset + 1, bottom: inset } : { centerX: true, bottom: inset }));
     }
     r0 = close({
