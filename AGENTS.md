@@ -160,14 +160,17 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   move; a test an agent adds is the one that fails on the old code. The coordinator (the one session that merges into main) is the
   only runner of the gate, the review and the reference captures, once per
   merge, serially. The same applies to a human beside running agents.
-- **Sub-threads: at most thirteen at a time, Claude Code on Opus 5.5 medium.**
+- **Sub-threads: five at a time, in waves, Claude Code on Opus 5.5 medium.**
   When the coordinator delegates streams to separate Amp threads
-  (`create_thread`), it keeps at most thirteen running and starts another
-  as soon as one has reported and been merged (the owner's instructions:
+  (`create_thread`), at most five author streams run at once (macrunner
+  and the art director are not counted). The rest wait, paused with their
+  work pushed, and the next one starts only when a running stream has
+  finished its whole scope (the owner, 2026-11-02 latest: thirteen at once
+  stalled threads and hit rate limits). Earlier instructions:
   2026-10-23, eight at once was too many while gates ran beside each
   other; 2026-11-01, five instead of three; 2026-11-02, eight, now that
   each thread draws on its own Mac satellite and only macrunner runs the
-  gate; 2026-11-02 later, thirteen, with macrunner's queue kept short:
+  gate; 2026-11-02 later, thirteen, then back to five. macrunner's queue is kept short:
   only the newest head of each stream waits, and a superseded or stale
   head is dropped, never landed). Every
   such thread runs in `external-agent:claude-code` mode with features
@@ -211,12 +214,17 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   on lavapipe any more (the owner, 2026-11-01: it was slow, ui-styles took
   25 min on an orb against 2 on macrunner, and judged nothing): an orb
   runs nothing that draws on its own Linux machine. It draws on its Mac
-  satellite instead (`mac_sidecar`, mac.large, macos-27; the owner,
-  2026-11-02): a native dev build there (`RUSTC_WRAPPER= cargo build -p
+  satellite instead (`mac_sidecar`, mac.medium, macos-27; the owner,
+  2026-11-02, medium since large was used too often): a native dev build there (`RUSTC_WRAPPER= cargo build -p
   og-host-node -p og-cli`, then `OG_GATE=1 sh scripts/build.sh --native`,
   bun 1.4.4) draws `og test` playtests, `og run` films and `og ui check`
   pixel-identical to macrunner's `metal` references (measured 2026-11-02:
-  RMSE 0 on every kit phone frame). There an agent draws the frames its
+  RMSE 0 on every kit phone frame). The satellite is used sparingly (the owner, 2026-11-02): only
+  for a change that moves pixels, once at the end of a batch, never per
+  iteration, and stopped (`mac_sidecar stop`) when the frames are read.
+  Logic changes are checked with `cargo check -p` and the unit tests of the
+  crate on the orb, with no satellite. No contact sheets or films unless
+  the coordinator asks for one. There an agent draws the frames its
   change moves, one playtest at a time (`--jobs 2` dropped frames), reads
   them against `docs/ui.md` §15.4 and fixes them before reporting; it
   never runs `scripts/check.sh`, a wasm build or a recording there. The
