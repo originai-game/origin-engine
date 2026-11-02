@@ -1,6 +1,6 @@
 //! `og replay record [project] --commands "<script>" | --commands-file <f>
 //! [--ticks N] [--seed S] [--clock <UTC ms>] [--locale <tag>]
-//! [--keyframe-every K] --out <trace.json> [--json]`
+//! [--platform-fake <file.json>] [--keyframe-every K] --out <trace.json> [--json]`
 //!
 //! `og replay compare <trace.json> [project] [--json]`
 //!
@@ -12,7 +12,10 @@
 //! script, seed, clock and locale with the installed engine (on the
 //! trace's entry of the project, default the current directory) and
 //! reports the first tick whose hash differs, with og-net's diff of the
-//! first keyframe from there. `packages/engine/src/node/replay.ts` has the
+//! first keyframe from there. The trace keeps the platform's journal (every
+//! answer and notice with its tick), which compare feeds back instead of a
+//! live host; `--platform-fake` scripts the recording's platform services as
+//! `og run`'s does. `packages/engine/src/node/replay.ts` has the
 //! trace's and the report's shapes. Exit 0 (compare: the same), 3 (compare:
 //! diverged), 1 a failure, 2 a usage error.
 
@@ -20,7 +23,7 @@ use crate::project::{self, Project};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og replay record [project] --commands \"t:action[:args];...\" | --commands-file <f> [--ticks N] [--seed S] [--clock <UTC ms>] [--locale <tag>] [--keyframe-every K] --out <trace.json> [--json]\n       og replay compare <trace.json> [project] [--json]";
+const USAGE: &str = "usage: og replay record [project] --commands \"t:action[:args];...\" | --commands-file <f> [--ticks N] [--seed S] [--clock <UTC ms>] [--locale <tag>] [--platform-fake <file.json>] [--keyframe-every K] --out <trace.json> [--json]\n       og replay compare <trace.json> [project] [--json]";
 
 /// What `og replay` was asked.
 struct Args {
@@ -51,7 +54,7 @@ fn parse(args: &[&str]) -> Result<Args, String> {
         match rest[i] {
             "--json" => a.forward.push("--json".into()),
             flag @ ("--commands" | "--commands-file" | "--ticks" | "--seed" | "--clock"
-            | "--locale" | "--keyframe-every" | "--out")
+            | "--locale" | "--keyframe-every" | "--out" | "--platform-fake")
                 if record =>
             {
                 let Some(v) = rest.get(i + 1) else {
@@ -60,6 +63,12 @@ fn parse(args: &[&str]) -> Result<Args, String> {
                 match flag {
                     "--out" => {
                         a.out = Some(std::path::absolute(v).map_err(|e| format!("--out {v}: {e}"))?)
+                    }
+                    "--platform-fake" => {
+                        let path = std::path::absolute(v)
+                            .map_err(|e| format!("--platform-fake {v}: {e}"))?;
+                        a.forward
+                            .extend([flag.to_string(), path.display().to_string()]);
                     }
                     "--commands-file" => {
                         let script = std::fs::read_to_string(v)

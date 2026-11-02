@@ -4,7 +4,7 @@
 //
 //   bun src/node/replay.ts --entry <game.native.js> [--root <project>] [--project-entry <rel>]
 //       --record <trace.json> --commands "t:action[:args];..." [--ticks N] [--seed S]
-//       [--clock <UTC ms>] [--locale <tag>] [--keyframe-every K] [--json]
+//       [--clock <UTC ms>] [--locale <tag>] [--platform-fake <file.json>] [--keyframe-every K] [--json]
 //   bun src/node/replay.ts --entry <game.native.js> [--root <project>] --compare <trace.json> [--json]
 //
 // Both run the game as `og run --no-render --commands` does (headless, no
@@ -16,10 +16,17 @@
 //
 // - --record writes the trace: { schema: 1, kind: "og-replay", engine,
 //   project: { id, entry, bundleSha256 }, seed, clock, locale, commands,
-//   ticks, startTick, table, hashes, keyframes: [{ tick, save }] }. `table`
+//   ticks, startTick, table, hashes, keyframes: [{ tick, save }], platform }. `table`
 //   is every type with its fields the run registered: the hash's domain.
 //   `bundleSha256` is the bundle's with the machine left out
 //   (bundle-hash.ts): a change of it is a change of the game, not the engine.
+// - `platform` is the platform's journal: what answered (host, capabilities)
+//   and every answer and notice with the tick it was handed to the engine at
+//   (applied at the next tick's start). Platform answers are host input, like
+//   key presses: --compare feeds the journal back at the same ticks instead
+//   of asking a live host, so a purchase recorded `cancelled` replays
+//   `cancelled`. A trace without one (older) replays against the local
+//   platform. --platform-fake scripts the recording's services (og run's).
 // - --compare replays the trace's script, seed, clock and locale and hashes
 //   each tick within the trace's table, so what a newer engine added is left
 //   out and what it removed differs. At the first keyframe at or after the
@@ -38,7 +45,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { loadNativeHost, native } from "./index.ts";
 import { openAudio } from "./audio.ts";
 import { bundleHash } from "./bundle-hash.ts";
-import { nativePlatform } from "./platform.ts";
+import { nativePlatform, readFake } from "./platform.ts";
+import type { PlatformAnswer, PlatformHost, PlatformLink, PlatformNotice } from "../platform-local.ts";
 import { createEngine, fixedClock, type Engine, type GameToken } from "../runtime.ts";
 
 /** Fields of a type the hash reads, by type name. */
@@ -58,6 +66,15 @@ export interface ReplayTrace {
   table: Table;
   hashes: string[];
   keyframes: { tick: number; save: string }[];
+  /** The platform's journal; absent in traces from before it. */
+  platform?: PlatformJournal;
+}
+
+/** Every answer and notice the platform handed the engine, with the tick it was handed at. */
+export interface PlatformJournal {
+  host: string;
+  capabilities: string[];
+  entries: Array<{ tick: number; request: number; answer: PlatformAnswer } | { tick: number; notice: PlatformNotice }>;
 }
 
 const argv = process.argv.slice(2);
@@ -71,6 +88,7 @@ let ticks: number | undefined;
 let seed: number | undefined;
 let clock: number | undefined;
 let locale: string | undefined;
+let platformFake: string | undefined;
 let keyframeEvery = 30;
 let asJson = false;
 for (let i = 0; i < argv.length; i++) {
@@ -91,6 +109,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--clock") clock = Number(next());
   else if (a === "--locale") locale = next();
   else if (a === "--keyframe-every") keyframeEvery = Number(next());
+  else if (a === "--platform-fake") platformFake = resolve(next());
   else if (a === "--json") asJson = true;
   else usage(`unknown argument '${a}'`);
 }
@@ -163,7 +182,71 @@ const created = createEngine(mod.default!, {
 if (!created.ok) fail(`${entry}: ${created.reason}`);
 const engine: Engine = created.value;
 if (clock !== undefined) engine.setClock(fixedClock(engine, clock));
-engine.attachPlatform(nativePlatform());
+function fakeOf() {
+  if (platformFake === undefined) return {};
+  const f = readFake(platformFake);
+  if (!f.ok) fail(`--platform-fake: ${f.reason}`);
+  return f.ok ? f.value : {};
+}
+
+/** The recording's journal, filled by the host `recording` wraps. */
+const journal: PlatformJournal = { host: "none", capabilities: [], entries: [] };
+
+/** `host`, with every answer and notice it hands the engine kept in the journal at the engine's tick. */
+function recording(host: PlatformHost): PlatformHost {
+  journal.host = host.host;
+  journal.capabilities = [...host.capabilities];
+  const keep = (link: PlatformLink): PlatformLink => ({
+    get tick() {
+      return link.tick;
+    },
+    answer: (request, answer) => {
+      journal.entries.push({ tick: link.tick, request, answer });
+      link.answer(request, answer);
+    },
+    notify: (notice) => {
+      journal.entries.push({ tick: link.tick, notice });
+      link.notify(notice);
+    },
+    pause: () => link.pause(),
+    resume: () => link.resume(),
+  });
+  return {
+    host: host.host,
+    capabilities: host.capabilities,
+    time: host.time,
+    handle(calls, answer, link) {
+      // Every host the engine attaches gets a link (runtime.ts pumpPlatform).
+      const l = keep(link!);
+      host.handle(calls, l.answer, l);
+    },
+    poll: (link) => host.poll?.(keep(link)),
+  };
+}
+
+/** The journal as the host: each entry handed back at its tick, an answer once its call was made. */
+function journalHost(j: PlatformJournal): PlatformHost {
+  const asked = new Set<number>();
+  let at = 0;
+  return {
+    host: j.host,
+    capabilities: j.capabilities,
+    handle(calls) {
+      for (const c of calls) asked.add(c.request);
+    },
+    poll(link) {
+      while (at < j.entries.length) {
+        const e = j.entries[at]!;
+        if (e.tick > link.tick || ("request" in e && !asked.has(e.request))) return;
+        if ("request" in e) link.answer(e.request, e.answer);
+        else link.notify(e.notice);
+        at++;
+      }
+    },
+  };
+}
+
+engine.attachPlatform(trace?.platform ? journalHost(trace.platform) : recording(nativePlatform(undefined, fakeOf())));
 const opened = openAudio(engine.id, "null");
 if (!opened.ok) fail(`audio: ${opened.reason}`);
 const sink = opened.value;
@@ -266,6 +349,7 @@ if (!trace) {
     table,
     hashes,
     keyframes,
+    platform: journal,
   };
   mkdirSync(dirname(recordPath!), { recursive: true });
   writeFileSync(recordPath!, JSON.stringify(out) + "\n");
