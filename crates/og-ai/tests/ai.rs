@@ -772,3 +772,265 @@ tree {
         "the missing field is named: {w:?}"
     );
 }
+
+/// The template's yard as og.nav and og.ai run it (templates/game: the
+/// guard's machine on a navmesh round a wall), with what G2-4 must leave
+/// alone beside it: a crowd that separates without og.Crowd, a box obstacle
+/// set at run time, and a grid agent over weighted cells. Its world hash
+/// and its 300-tick trajectory were recorded on main 67a07d57, before
+/// G2-4: a world that uses none of G2-4 hashes and moves bit for bit as
+/// before, and a restore at tick 150 replays it.
+#[test]
+fn a_yard_without_g2_4_features_hashes_and_moves_as_before_it() {
+    use og_nav::{Heightfield, NavMesh, NavParams, Obstacle, Steering};
+    const GUARD_MACHINE: &str = include_str!("../../../templates/game/assets/ai/guard.ogt");
+    struct Yard {
+        world: World,
+        ai: og_ai::AiSystem,
+        navs: og_nav::SharedNavs,
+        mesh: u64,
+        agents: Vec<Entity>,
+        trickster: Entity,
+    }
+    let yard = || {
+        let mut world = World::new(&WorldDesc {
+            tick_rate: 60,
+            seed: 1,
+        })
+        .unwrap();
+        let ai = install(
+            &mut world,
+            &[],
+            AiDesc {
+                plane: Plane::Xz,
+                ray: None,
+                sink: None,
+                behaviours: None,
+            },
+        )
+        .unwrap();
+        let params = NavParams {
+            cell_size: 0.25,
+            tile_size: 32,
+            ..Default::default()
+        };
+        // 24 m square from (-12, 0, -12); the template's wall, 0.6 × 6 m at (-3, -2).
+        let field =
+            Heightfield::flat(params, Vec3::new(-12.0, 0.0, -12.0), 96, 96).without(|x, z| {
+                let (wx, wz) = (x as f32 * 0.25 - 12.0, z as f32 * 0.25 - 12.0);
+                (-3.3..-2.7).contains(&wx) && (-5.0..1.0).contains(&wz)
+            });
+        let mut navs = Navs::default();
+        let mesh = navs.insert(Nav::Mesh(Box::new(NavMesh::build(field))));
+        let mut grid = Grid::new(16, 16, 1.0, Vec2::new(-8.0, -8.0));
+        for y in 0..14 {
+            grid.set(8, y, 40);
+        }
+        let grid = navs.insert(Nav::Grid(grid));
+        let navs = Arc::new(Mutex::new(navs));
+        og_nav::install(
+            &mut world,
+            navs.clone(),
+            NavDesc {
+                plane: Plane::Xz,
+                raycast: None,
+                plans_per_tick: og_nav::PLANS_PER_TICK,
+            },
+        )
+        .unwrap();
+        let b = ai
+            .behaviours
+            .lock()
+            .unwrap()
+            .insert(Behaviour::parse(GUARD_MACHINE).unwrap());
+        let mut agents = vec![
+            world
+                .spawn((
+                    Transform {
+                        position: Vec3::new(-6.0, 0.0, -3.0),
+                        ..Default::default()
+                    },
+                    NavAgent {
+                        nav: mesh,
+                        speed: 1.5,
+                        acceleration: 12.0,
+                        face_movement: true,
+                        turn_speed: 8.0,
+                        ..Default::default()
+                    },
+                    AiAgent {
+                        behaviour: b,
+                        ..Default::default()
+                    },
+                    Perception {
+                        sight: 8.0,
+                        fov: 120.0,
+                        team: 2,
+                        ..Default::default()
+                    },
+                ))
+                .unwrap(),
+        ];
+        // A crowd crossing the wall's line both ways, separating.
+        for i in 0..8 {
+            let side = if i % 2 == 0 { -1.0 } else { 1.0 };
+            let z = -4.0 + i as f32;
+            agents.push(
+                world
+                    .spawn((
+                        Transform {
+                            position: Vec3::new(-8.0 * side, 0.0, z),
+                            ..Default::default()
+                        },
+                        NavAgent {
+                            nav: mesh,
+                            target: Vec3::new(6.0 * side, 0.0, -z),
+                            seeking: true,
+                            speed: 2.5 + 0.1 * i as f32,
+                            ..Default::default()
+                        },
+                        Steering {
+                            separation: 1.5,
+                            separation_radius: 1.2,
+                            wander: 0.2,
+                            ..Default::default()
+                        },
+                    ))
+                    .unwrap(),
+            );
+        }
+        agents.push(
+            world
+                .spawn((
+                    Transform {
+                        position: Vec3::new(-6.5, 0.0, -6.5),
+                        ..Default::default()
+                    },
+                    NavAgent {
+                        nav: grid,
+                        target: Vec3::new(6.5, 0.0, -6.5),
+                        seeking: true,
+                        speed: 4.0,
+                        ..Default::default()
+                    },
+                ))
+                .unwrap(),
+        );
+        let trickster = world
+            .spawn((
+                Transform {
+                    position: Vec3::new(4.0, 0.0, 6.0),
+                    ..Default::default()
+                },
+                Perceivable {
+                    team: 1,
+                    eye_height: 1.0,
+                },
+            ))
+            .unwrap();
+        Yard {
+            world,
+            ai,
+            navs,
+            mesh,
+            agents,
+            trickster,
+        }
+    };
+    // What the game does at tick t: the trickster walks past the guard's post and away; a crate lands in the crowd's way.
+    let act = |y: &mut Yard, t: u32| {
+        let s = t as f32 / 60.0;
+        let at = if s < 2.5 {
+            Vec3::new(4.0 - 3.6 * s, 0.0, 6.0 - 2.4 * s)
+        } else {
+            Vec3::new(-5.0 + 4.0 * (s - 2.5), 0.0, 0.0 + 3.0 * (s - 2.5))
+        };
+        y.world
+            .insert(
+                y.trickster,
+                Transform {
+                    position: at,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        if t == 100
+            && let Some(Nav::Mesh(m)) = y.navs.lock().unwrap().get_mut(y.mesh)
+        {
+            m.set_obstacle(
+                7,
+                Some(Obstacle {
+                    min: Vec3::new(0.5, 0.0, -1.0),
+                    max: Vec3::new(1.5, 1.0, 1.0),
+                }),
+            );
+        }
+    };
+    let fnv = |h: &mut u64, bits: u32| {
+        for b in bits.to_le_bytes() {
+            *h ^= b as u64;
+            *h = h.wrapping_mul(0x0000_0100_0000_01b3);
+        }
+    };
+    let mut y = yard();
+    let mut trail = 0xcbf2_9ce4_8422_2325u64;
+    let mut commands = Vec::new();
+    let mut snap = None;
+    for t in 0..300u32 {
+        if t == 150 {
+            snap = Some((y.world.snapshot(), trail));
+        }
+        act(&mut y, t);
+        y.world.step().unwrap();
+        commands.extend(y.ai.take_commands().into_iter().map(|c| (t, c.0)));
+        for &e in &y.agents {
+            let p = y.world.get::<Transform>(e).unwrap().position;
+            for c in [p.x, p.y, p.z] {
+                fnv(&mut trail, c.to_bits());
+            }
+        }
+    }
+    let hash = format!("{:016x}", y.world.world_hash());
+    let guard = y.world.get::<Transform>(y.agents[0]).unwrap().position;
+    assert!(
+        commands.iter().any(|(_, c)| c == "alarm"),
+        "the guard saw the trickster and raised the alarm: {commands:?}"
+    );
+    assert!(
+        guard.distance(Vec3::new(-6.0, 0.0, -3.0)) > 1.0,
+        "the guard moved"
+    );
+    assert_eq!(
+        (hash.as_str(), format!("{trail:016x}").as_str()),
+        (YARD_HASH, YARD_TRAIL),
+        "a yard using no G2-4 feature hashes or moves otherwise than on main 67a07d57"
+    );
+    // Restored at tick 150 into a fresh yard, it goes on as the original.
+    let (bytes, mut trail2) = snap.unwrap();
+    let mut z = yard();
+    z.world.restore(&bytes).unwrap();
+    if let Some(Nav::Mesh(m)) = z.navs.lock().unwrap().get_mut(z.mesh) {
+        assert_eq!(
+            m.obstacles().count(),
+            1,
+            "the crate came back with the save"
+        );
+    }
+    for t in 150..300u32 {
+        act(&mut z, t);
+        z.world.step().unwrap();
+        for &e in &z.agents {
+            let p = z.world.get::<Transform>(e).unwrap().position;
+            for c in [p.x, p.y, p.z] {
+                fnv(&mut trail2, c.to_bits());
+            }
+        }
+    }
+    assert_eq!(format!("{:016x}", z.world.world_hash()), hash);
+    assert_eq!(trail2, trail, "the restored yard moved otherwise");
+}
+
+/// [`a_yard_without_g2_4_features_hashes_and_moves_as_before_it`]'s world
+/// hash and trajectory digest on main 67a07d57 (before G2-4).
+const YARD_HASH: &str = "10c3d2daa0248e7e";
+const YARD_TRAIL: &str = "944e29cc07af861e";
