@@ -1900,6 +1900,7 @@ export const ui = Object.freeze({
   semantics: (desc?: unknown): boolean => abi().og_ui_semantics(json(desc)),
   frameDirection: (): "ltr" | "rtl" => abi().og_ui_frame_direction() as "ltr" | "rtl",
   lastPath: (): string => abi().og_ui_last_path(),
+  scrollIntoView: (path: string, center: boolean): void => abi().og_ui_scroll_into_view(path, center),
   feedback: (event: string, rise: number) => abi().og_ui_feedback(event, rise),
   setHaptics: (intensity: number) => abi().og_ui_set_haptics(intensity),
   openScroll: (id: string, desc?: unknown) => abi().og_ui_open_scroll(id, json(desc)),
