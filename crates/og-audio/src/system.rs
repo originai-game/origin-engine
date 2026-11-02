@@ -174,21 +174,30 @@ impl AudioLink {
     }
 }
 
-static LINKS: Mutex<IdMap<u32, AudioLink>> = Mutex::new(IdMap::new());
-
-/// Publishes an engine's link so its host's sink can find it by engine id.
-pub fn publish_link(engine: u32, link: AudioLink) {
-    LINKS.lock().expect("audio links").insert(engine, link);
+thread_local! {
+    /// Each engine's link by engine id, per thread: an engine id is an index
+    /// into og-runtime's engines of the thread that made it (thread-local),
+    /// so two threads each have an engine 0. Every caller (the runtime, the
+    /// host's sink calls, the probe) runs on the engine's thread; a sink's
+    /// own threads hold a clone of the link, never look it up.
+    static LINKS: std::cell::RefCell<IdMap<u32, AudioLink>> =
+        const { std::cell::RefCell::new(IdMap::new()) };
 }
 
-/// The link of an engine, if `publish_link` was called for it.
+/// Publishes an engine's link so its host's sink can find it by engine id
+/// on the engine's thread.
+pub fn publish_link(engine: u32, link: AudioLink) {
+    LINKS.with(|l| l.borrow_mut().insert(engine, link));
+}
+
+/// The link of an engine of this thread, if `publish_link` was called for it.
 pub fn link(engine: u32) -> Option<AudioLink> {
-    LINKS.lock().expect("audio links").get(&engine).cloned()
+    LINKS.with(|l| l.borrow().get(&engine).cloned())
 }
 
 /// Forgets an engine's link (on destroy); its sink stops receiving.
 pub fn retire_link(engine: u32) -> Option<AudioLink> {
-    let link = LINKS.lock().expect("audio links").remove(&engine);
+    let link = LINKS.with(|l| l.borrow_mut().remove(&engine));
     if let Some(l) = &link {
         l.detach();
     }
@@ -1575,4 +1584,34 @@ fn run(ctx: &mut SystemContext<'_>, link: &AudioLink, occluder: Option<&Occluder
     };
     link.publish(packet, live);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use og_ecs::WorldDesc;
+
+    /// Engine ids are per thread (og-runtime's engines are thread-local),
+    /// so two threads' engine 0 must each find their own link: with one
+    /// process-wide map the second publish replaced the first, and the
+    /// first thread's sink heard the other engine.
+    #[test]
+    fn two_threads_engine_zero_keep_their_own_links() {
+        let run = |tick_rate: u32| {
+            std::thread::spawn(move || {
+                let mut world = World::new(&WorldDesc { tick_rate, seed: 1 }).unwrap();
+                let made = install(&mut world, &AudioDesc::default()).unwrap();
+                publish_link(0, made);
+                // Both threads publish before either looks up.
+                std::thread::sleep(std::time::Duration::from_millis(50));
+                let found = link(0).expect("this thread's engine 0").tick_rate();
+                retire_link(0);
+                found
+            })
+        };
+        let (a, b) = (run(30), run(60));
+        assert_eq!(a.join().unwrap(), 30);
+        assert_eq!(b.join().unwrap(), 60);
+        assert!(link(0).is_none(), "the test thread published nothing");
+    }
 }
