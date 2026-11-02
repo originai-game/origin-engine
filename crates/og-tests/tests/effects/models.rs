@@ -256,6 +256,82 @@ fn skinned_cylinder_bends_with_its_palette() {
     assert_eq!(s.culled, 1);
 }
 
+/// Deformed vertices (a simulated garment's): a skinned instance with its
+/// own positions draws them instead of its mesh's. The bind positions draw
+/// the plain mesh; the positions of the blendshape test's taller cylinder
+/// draw that cylinder, so the shader reads every vertex, odd and even.
+#[test]
+fn deformed_vertices_replace_the_mesh() {
+    let desc = small();
+    let (mesh, _) = fx::skinned_cylinder(0.3, 24, 24);
+    let n = mesh.vertices.len();
+    let build = |stretch: Option<f32>| {
+        let mut scene = RenderScene::new();
+        let m = scene.add_material(Material {
+            base_color: [0.8, 0.3, 0.5, 1.0],
+            ..Default::default()
+        });
+        match stretch {
+            None => {
+                let h = scene.add_mesh(mesh.clone());
+                scene.add_instance(h, m, Mat4::IDENTITY);
+            }
+            Some(k) => {
+                // Zero skin weights: the palette leaves the vertices alone.
+                let h = scene.add_skinned_mesh(
+                    mesh.clone(),
+                    og_render::SkinData {
+                        joints: vec![[0; 4]; n],
+                        weights: vec![[0.0; 4]; n],
+                    },
+                );
+                scene.joint_palettes.push(JointPalette::default());
+                scene.deformed_vertices.push(og_render::DeformedVertices {
+                    positions: mesh
+                        .vertices
+                        .iter()
+                        .map(|v| {
+                            let p = Vec3::from(v.position);
+                            p + Vec3::new(0.0, p.y * k, 0.0)
+                        })
+                        .collect(),
+                    normals: mesh.vertices.iter().map(|v| Vec3::from(v.normal)).collect(),
+                });
+                let mut inst = SkinnedInstance::new(h, m, Mat4::IDENTITY, 0);
+                inst.deformed = Some(0);
+                scene.skinned_instances.push(inst);
+            }
+        }
+        scene.environment.background = Background::Color(Vec3::ZERO);
+        scene.camera = Camera {
+            position: Vec3::new(0.0, 1.6, 6.0),
+            target: Vec3::new(0.0, 1.6, 0.0),
+            ..Default::default()
+        };
+        scene
+    };
+    let (plain, _) = frame(&desc, &build(None));
+    let (rest, stats) = frame(&desc, &build(Some(0.0)));
+    assert_eq!(stats.skinned_instances, 1);
+    let d = differing(&rest, &plain, 4.0);
+    println!("deformed at the bind positions vs the plain mesh: {d} pixels differ");
+    assert!(d < 40, "the bind positions are not the mesh ({d} pixels)");
+    let (tall, _) = frame(&desc, &build(Some(0.4)));
+    save("deformed-vertices", &tall);
+    let top = |img: &RgbaImage| {
+        (0..180)
+            .find(|&y| (0..320).any(|x| luma(px(img, x, y)) > 20.0))
+            .expect("drawn")
+    };
+    println!("top row: rest {}, stretched {}", top(&rest), top(&tall));
+    assert!(top(&tall) + 10 < top(&rest));
+    // A count that does not match the mesh is refused.
+    let mut bad = build(Some(0.0));
+    bad.deformed_vertices[0].positions.pop();
+    let mut r = Renderer::new_blocking(&desc).expect("renderer");
+    assert!(r.render(&bad, &RenderTarget::Offscreen).is_err());
+}
+
 /// Blendshapes: a target that pushes the cylinder's top up draws it taller
 /// at weight 1 and unchanged at weight 0 (also on a mesh without a skin).
 #[test]

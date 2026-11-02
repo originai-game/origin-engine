@@ -358,10 +358,11 @@ pub(crate) struct SkinnedFrame {
     pub(crate) data: Vec<skin::SkinnedInstanceGpu>,
     pub(crate) spheres: Vec<(Vec3, f32)>,
     /// The palette buffer's current section: the joints, then the weight
-    /// slots (`skin.rs`, its layout).
+    /// and deformed vertex slots (`skin.rs`, its layout).
     pub(crate) matrices: Vec<[[f32; 4]; 4]>,
-    /// The previous frame's weight slots, in the current section's order.
-    pub(crate) previous_weights: Vec<[[f32; 4]; 4]>,
+    /// The previous frame's weight and deformed vertex slots, in the
+    /// current section's order.
+    pub(crate) previous_slots: Vec<[[f32; 4]; 4]>,
 }
 
 /// The lit pipelines: (side, blended, skinned, effects). Without effects the

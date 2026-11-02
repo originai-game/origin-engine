@@ -29,7 +29,7 @@ struct SkinnedInstanceIn {
   @location(6) m2: vec3<f32>,
   @location(7) m3: vec3<f32>,
   @location(8) palette: vec4<f32>,
-  @location(11) morph0: vec4<f32>,  // x: first weight slot + 1 (skin.rs)
+  @location(11) morph0: vec4<f32>,  // x: first weight slot + 1, y: first deformed slot + 1 (skin.rs)
   @location(12) morph1: vec4<f32>,  // unused
 };
 struct SkinIn {
@@ -147,7 +147,7 @@ fn skin_matrix(s: SkinIn, palette: vec4<f32>) -> mat4x4<f32> {
 
 @vertex
 fn vs_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInstanceIn, s: SkinIn) -> VsOut {
-  let m = morphed(v.position, v.normal, vi, i.palette, i.morph0.x);
+  let m = morphed(v.position, v.normal, vi, i.palette, i.morph0.x, i.morph0.y);
   var mv = v;
   mv.position = m.position;
   return shadow_vertex(instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s, i.palette), mv);
@@ -155,7 +155,7 @@ fn vs_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInstanceIn,
 
 @vertex
 fn vs_skinned_hooked(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInstanceIn, s: SkinIn) -> VsOut {
-  let m = morphed(v.position, v.normal, vi, i.palette, i.morph0.x);
+  let m = morphed(v.position, v.normal, vi, i.palette, i.morph0.x, i.morph0.y);
   var mv = v;
   mv.position = m.position;
   mv.normal = m.normal;

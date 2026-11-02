@@ -128,8 +128,8 @@ fn custom_skin(joints: vec4<u32>, weights: vec4<f32>, palette: vec4<f32>) -> mat
 }
 
 // A skinned vertex's morph targets (skin_storage.wgsl's `morphed`).
-fn custom_morph(v: VertexInput, vi: u32, palette: vec4<f32>, weights: f32) -> VertexInput {
-  let m = morphed(v.position, v.normal, vi, palette, weights);
+fn custom_morph(v: VertexInput, vi: u32, palette: vec4<f32>, morph0: vec4<f32>) -> VertexInput {
+  let m = morphed(v.position, v.normal, vi, palette, morph0.x, morph0.y);
   var o = v;
   o.position = m.position;
   o.normal = m.normal;
@@ -157,7 +157,7 @@ struct CustomSkinnedIn {
   @location(6) m2: vec3<f32>,
   @location(7) m3: vec3<f32>,
   @location(8) palette: vec4<f32>,
-  @location(11) morph0: vec4<f32>,  // x: first weight slot + 1 (skin.rs)
+  @location(11) morph0: vec4<f32>,  // x: first weight slot + 1, y: first deformed slot + 1 (skin.rs)
   @location(12) morph1: vec4<f32>,  // unused
 };
 struct CustomSkinIn {
@@ -206,7 +206,7 @@ fn custom_plain(v: CustomVertexIn, i: CustomInstanceIn) -> CustomOut {
 
 fn custom_skinned(vi: u32, v: CustomVertexIn, i: CustomSkinnedIn, s: CustomSkinIn) -> CustomOut {
   let model = instance_matrix(i.m0, i.m1, i.m2, i.m3) * custom_skin(s.joints, s.weights, i.palette);
-  return custom_place(custom_morph(custom_input(v), vi, i.palette, i.morph0.x), model);
+  return custom_place(custom_morph(custom_input(v), vi, i.palette, i.morph0), model);
 }
 
 // The fragment entry's input and the shader's surface there.

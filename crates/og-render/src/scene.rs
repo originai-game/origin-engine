@@ -166,6 +166,16 @@ pub struct RenderScene {
     /// Ignored unless its length equals `skinned_instances`'; then the
     /// morph moves with the camera only.
     pub previous_morph_weights: Vec<[f32; crate::MAX_MORPH_TARGETS]>,
+    /// The vertices of skinned instances that bring their own
+    /// ([`crate::SkinnedInstance::deformed`] indexes it): a simulated
+    /// garment's points, in each instance's space.
+    pub deformed_vertices: Vec<crate::DeformedVertices>,
+    /// Each `deformed_vertices` entry as the previous frame drew it, same
+    /// order, in this frame's instance space: TAA's motion vectors of a
+    /// swinging garment (the palette buffer's previous section, `skin.rs`).
+    /// An entry whose count differs, or a list whose length differs, moves
+    /// with the camera and the instance only.
+    pub previous_deformed_vertices: Vec<crate::DeformedVertices>,
     /// The camera cut into this frame (a teleport or a cut between shots):
     /// motion blur takes no camera motion from the frame before, and TAA
     /// starts from this frame's samples ([`crate::Renderer::reset_history`]).

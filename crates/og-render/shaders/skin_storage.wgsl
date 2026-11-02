@@ -27,8 +27,19 @@ struct Morphed {
 // added at their weights. palette.z: the mesh's first morph header,
 // palette.w: its targets (0: none); `weights`: the first weight slot plus
 // one (0: no weights). Each vertex walks only the targets that move it.
-fn morphed(position: vec3<f32>, normal: vec3<f32>, vi: u32, palette: vec4<f32>, weights: f32) -> Morphed {
+// `deformed`: the first slot plus one of the instance's own vertex
+// positions (a simulated garment: skin.rs, the palette buffer's layout),
+// which replace the mesh's and its morphs (0: none). Two vertices a slot:
+// columns 0 and 1 the even vertex's position and normal, 2 and 3 the odd's.
+fn morphed(position: vec3<f32>, normal: vec3<f32>, vi: u32, palette: vec4<f32>, weights: f32, deformed: f32) -> Morphed {
   var m: Morphed;
+  if (deformed > 0.5) {
+    let d = joint_palette[u32(deformed) - 1u + vi / 2u];
+    let c = (vi % 2u) * 2u;
+    m.position = d[c].xyz;
+    m.normal = d[c + 1u].xyz;
+    return m;
+  }
   m.position = position;
   m.normal = normal;
   if (palette.w < 0.5 || weights < 0.5) { return m; }

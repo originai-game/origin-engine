@@ -212,7 +212,8 @@ pub use scatter::{ScatterDraw, WIND_WAVELENGTH, Wind};
 pub use scene::*;
 pub use shadows::PointShadows;
 pub use skin::{
-    JointPalette, MAX_JOINTS, MAX_MORPH_TARGETS, MorphTargets, SkinData, SkinnedInstance,
+    DeformedVertices, JointPalette, MAX_JOINTS, MAX_MORPH_TARGETS, MorphTargets, SkinData,
+    SkinnedInstance,
 };
 pub use sky_physical::PhysicalAtmosphere;
 pub use sprite_mesh::{SpriteMesh, SpriteMeshVertex};

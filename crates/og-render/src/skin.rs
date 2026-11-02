@@ -19,16 +19,26 @@
 //!      morph targets and whose weights are not all zero, in draw order:
 //!      [`weight_slots`] of its targets, 16 weights a slot in column-major
 //!      order (target `t` at slot `t / 16`, column `(t % 16) / 4`, row
-//!      `t % 4`); its `morph0.x` is its first slot plus one (0: none).
+//!      `t % 4`); its `morph0.x` is its first slot plus one (0: none);
+//!    - with them, in the same draw order, the vertices of each skinned
+//!      instance with [`SkinnedInstance::deformed`] (a simulated garment):
+//!      [`deformed_slots`], two vertices a slot (columns 0 and 1 the even
+//!      vertex's position and normal in the instance's space, 2 and 3 the
+//!      odd one's), which replace the mesh's own and its morphs; its
+//!      `morph0.y` is its first slot plus one (0: none).
 //! 2. **The previous section** (TAA only, [`append_previous`]): the same
 //!    layout again from slot `section`, holding the previous frame's joints
-//!    (in the world, [`crate::RenderScene::previous_joint_palettes`]) and
-//!    the previous frame's weights
-//!    ([`crate::RenderScene::previous_morph_weights`]). The skinned prepass
-//!    reads `section` at `Fx::decal_info.w` (0: no previous section) and
-//!    finds an instance's previous joints at `palette.x + section` and its
-//!    previous weights at `morph0.x - 1 + section`, so a morphing face has
-//!    motion vectors under TAA.
+//!    (in the world, [`crate::RenderScene::previous_joint_palettes`]), the
+//!    previous frame's weights
+//!    ([`crate::RenderScene::previous_morph_weights`]) and the previous
+//!    frame's deformed vertices
+//!    ([`crate::RenderScene::previous_deformed_vertices`], in this frame's
+//!    instance space). The skinned prepass reads `section` at
+//!    `Fx::decal_info.w` (0: no previous section) and finds an instance's
+//!    previous joints at `palette.x + section`, its previous weights at
+//!    `morph0.x - 1 + section` and its previous vertices at
+//!    `morph0.y - 1 + section`, so a morphing face and a swinging garment
+//!    have motion vectors under TAA.
 //!
 //! Both sections together hold at most [`MAX_JOINTS`] slots.
 //!
@@ -107,6 +117,11 @@ pub struct SkinnedInstance {
     pub bounds_scale: f32,
     /// Its own hit flash and tint ([`crate::InstanceFx`]).
     pub fx: crate::InstanceFx,
+    /// Its own vertices, an index into
+    /// [`crate::RenderScene::deformed_vertices`] (a simulated garment): they
+    /// replace the mesh's positions, normals and morphs (`None`: the mesh's).
+    /// Give the mesh zero skin weights, so the palette leaves them in place.
+    pub deformed: Option<u32>,
     /// Drawn into the shadow maps, as [`crate::Instance::cast_shadows`]:
     /// a skinned (mesh, material)'s non-casters are a batch of their own.
     pub cast_shadows: bool,
@@ -126,6 +141,7 @@ impl SkinnedInstance {
             morph_weights: [0.0; MAX_MORPH_TARGETS],
             bounds_scale: 2.0,
             fx: crate::InstanceFx::NONE,
+            deformed: None,
             cast_shadows: true,
             receive_shadows: true,
         }
@@ -198,6 +214,28 @@ pub(crate) fn weight_slots(weights: &[f32], targets: usize) -> Vec<[[f32; 4]; 4]
     slots
 }
 
+/// A skinned instance's own vertices ([`SkinnedInstance::deformed`]): one
+/// position and normal per vertex of its mesh, in the instance's space
+/// (before its transform), in the mesh's vertex order.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct DeformedVertices {
+    pub positions: Vec<Vec3>,
+    pub normals: Vec<Vec3>,
+}
+
+/// The palette slots of a deformed instance's vertices: two to a slot
+/// (position, normal; position, normal), the module's layout.
+pub(crate) fn deformed_slots(d: &DeformedVertices) -> Vec<[[f32; 4]; 4]> {
+    let mut slots = vec![[[0.0; 4]; 4]; d.positions.len().div_ceil(2)];
+    for (v, (p, n)) in d.positions.iter().zip(&d.normals).enumerate() {
+        let s = &mut slots[v / 2];
+        let c = (v % 2) * 2;
+        s[c] = [p.x, p.y, p.z, 1.0];
+        s[c + 1] = [n.x, n.y, n.z, 0.0];
+    }
+    slots
+}
+
 /// `SkinIn` in pbr.wgsl / shadow.wgsl: joints (Uint16x4) and weights.
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -215,8 +253,8 @@ pub(crate) const SKIN_VERTEX_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::V
 /// `SkinnedInstanceIn`: the transform (its columns' xyz, as
 /// [`crate::instances::GpuTransform::columns`]), (first joint, joint count,
 /// the mesh's first morph header, its morph targets), `morph0.x` its first
-/// weight slot plus one (0: no weights; the module's layout), `morph1`
-/// unused, and the instance's look ([`crate::instances::layer_bits`] of no layer, then
+/// weight slot plus one (0: no weights; the module's layout), `morph0.y`
+/// its first deformed vertex slot plus one (0: none), `morph1` unused, and the instance's look ([`crate::instances::layer_bits`] of no layer, then
 /// [`crate::instances::fx_bits`]).
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -380,7 +418,7 @@ impl GpuPalette {
 /// [`crate::RenderScene::previous_joint_palettes`] entry, in the world,
 /// or, where it has none of the same length, its joints this frame times
 /// the transform its first instance is drawn at (motion with the camera
-/// only); then `previous_weights`, the previous frame's weight slots in
+/// only); then `previous_slots`, the previous frame's weight and deformed vertex slots in
 /// the current section's order. `None` without previous palettes or room
 /// for a second section; else whether any joint or weight moved since the
 /// previous frame.
@@ -388,17 +426,17 @@ pub(crate) fn append_previous(
     palettes: &[JointPalette],
     previous: &[JointPalette],
     instances: &[SkinnedInstance],
-    previous_weights: &[[[f32; 4]; 4]],
+    previous_slots: &[[[f32; 4]; 4]],
     slots: &mut Vec<[[f32; 4]; 4]>,
 ) -> Option<bool> {
     if previous.is_empty() || previous.len() != palettes.len() || slots.len() * 2 > MAX_JOINTS {
         return None;
     }
     let joints: usize = palettes.iter().map(|p| p.matrices.len()).sum();
-    if slots.len() != joints + previous_weights.len() {
+    if slots.len() != joints + previous_slots.len() {
         return None;
     }
-    let weights_moved = slots[joints..] != *previous_weights;
+    let weights_moved = slots[joints..] != *previous_slots;
     let mut at = vec![None; palettes.len()];
     for s in instances {
         if let Some(t) = at.get_mut(s.palette as usize) {
@@ -419,7 +457,7 @@ pub(crate) fn append_previous(
             slots.extend(p.matrices.iter().map(|m| (t * *m).to_cols_array_2d()));
         }
     }
-    slots.extend_from_slice(previous_weights);
+    slots.extend_from_slice(previous_slots);
     Some(moved || weights_moved)
 }
 
@@ -491,6 +529,24 @@ mod motion_tests {
             None
         );
         assert!(joints.is_empty());
+    }
+
+    /// Two vertices a slot, the shader's reading (`morphed`'s `deformed`):
+    /// vertex `v` at slot `v / 2`, its position in column `(v % 2) * 2` and
+    /// its normal in the next; an odd count leaves the last slot half empty.
+    #[test]
+    fn deformed_vertices_pack_two_a_slot() {
+        let d = DeformedVertices {
+            positions: (0..3).map(|v| Vec3::new(v as f32, 10.0 + v as f32, -1.0)).collect(),
+            normals: (0..3).map(|v| Vec3::new(0.0, 0.0, v as f32 + 0.5)).collect(),
+        };
+        let slots = deformed_slots(&d);
+        assert_eq!(slots.len(), 2);
+        assert_eq!(slots[0][2], [1.0, 11.0, -1.0, 1.0]);
+        assert_eq!(slots[0][3], [0.0, 0.0, 1.5, 0.0]);
+        assert_eq!(slots[1][0], [2.0, 12.0, -1.0, 1.0]);
+        assert_eq!(slots[1][1], [0.0, 0.0, 2.5, 0.0]);
+        assert_eq!(slots[1][2], [0.0; 4]);
     }
 
     /// The previous section carries the previous frame's weight slots after

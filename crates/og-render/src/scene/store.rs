@@ -96,6 +96,8 @@ impl RenderScene {
             instance_levels: Vec::new(),
             previous_joint_palettes: Vec::new(),
             previous_morph_weights: Vec::new(),
+            deformed_vertices: Vec::new(),
+            previous_deformed_vertices: Vec::new(),
             camera_cut: false,
             joint_palettes: Vec::new(),
             skinned_instances: Vec::new(),

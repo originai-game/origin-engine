@@ -116,7 +116,7 @@ impl Renderer {
                 &scene.joint_palettes,
                 &scene.previous_joint_palettes,
                 &scene.skinned_instances,
-                &skinned.previous_weights,
+                &skinned.previous_slots,
                 &mut joint_matrices,
             )
         } else {

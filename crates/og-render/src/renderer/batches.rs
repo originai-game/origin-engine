@@ -693,7 +693,7 @@ impl Renderer {
         let mut batches: Vec<Batch> = Vec::new();
         let mut data = Vec::with_capacity(order.len());
         let mut spheres = Vec::with_capacity(order.len());
-        let mut previous_weights = Vec::new();
+        let mut previous_slots = Vec::new();
         for &i in &order {
             let s = &scene.skinned_instances[i];
             let (mesh, material, cast) = (s.mesh.index(), s.material.index(), s.cast_shadows);
@@ -765,7 +765,37 @@ impl Renderer {
                     .get(i)
                     .filter(|_| scene.previous_morph_weights.len() == scene.skinned_instances.len())
                     .unwrap_or(&s.morph_weights);
-                previous_weights.extend(skin::weight_slots(before, targets_n));
+                previous_slots.extend(skin::weight_slots(before, targets_n));
+            }
+            // Its own vertices (a garment), after its weights.
+            let mut deformed_at = 0.0;
+            if let Some(d) = s.deformed {
+                let Some(now) = scene.deformed_vertices.get(d as usize) else {
+                    return Err(RenderError::InvalidData(format!(
+                        "skinned instance {i}: deformed vertices {d} of {}",
+                        scene.deformed_vertices.len()
+                    )));
+                };
+                let n = scene.mesh(s.mesh).map_or(0, |m| m.vertices.len());
+                if now.positions.len() != n || now.normals.len() != n {
+                    return Err(RenderError::InvalidData(format!(
+                        "skinned instance {i}: {} deformed positions and {} normals for a mesh of {n} vertices",
+                        now.positions.len(),
+                        now.normals.len()
+                    )));
+                }
+                deformed_at = (matrices.len() + 1) as f32;
+                matrices.extend(skin::deformed_slots(now));
+                let before = scene
+                    .previous_deformed_vertices
+                    .get(d as usize)
+                    .filter(|b| {
+                        scene.previous_deformed_vertices.len() == scene.deformed_vertices.len()
+                            && b.positions.len() == n
+                            && b.normals.len() == n
+                    })
+                    .unwrap_or(now);
+                previous_slots.extend(skin::deformed_slots(before));
             }
             data.push(skin::SkinnedInstanceGpu {
                 transform: instances::gpu_columns(&s.transform),
@@ -775,7 +805,7 @@ impl Renderer {
                     morph_first as f32,
                     targets as f32,
                 ],
-                morph0: [weights_at, 0.0, 0.0, 0.0],
+                morph0: [weights_at, deformed_at, 0.0, 0.0],
                 morph1: [0.0; 4],
                 look: {
                     let [flash, color, tint] = instances::fx_bits(&s.fx);
@@ -790,7 +820,7 @@ impl Renderer {
         }
         if matrices.len() > MAX_JOINTS {
             return Err(RenderError::InvalidData(format!(
-                "{} joints and blendshape weight slots in the frame's palette (at most {MAX_JOINTS})",
+                "{} joints, blendshape weight and deformed vertex slots in the frame's palette (at most {MAX_JOINTS})",
                 matrices.len()
             )));
         }
@@ -799,7 +829,7 @@ impl Renderer {
             data,
             spheres,
             matrices,
-            previous_weights,
+            previous_slots,
         })
     }
 
