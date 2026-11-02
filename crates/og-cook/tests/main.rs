@@ -46,4 +46,5 @@ mod texture_cache;
 mod textures_p4;
 mod tilemap;
 mod timeline;
+mod video_stream;
 mod vox;

@@ -520,11 +520,21 @@ pub(super) fn run(
         Work::VideoFrame(src, h, plan, n) => {
             video::cook_frame(src, *h, plan, *n, &options.texture, p.stamp).map(|b| (b, Vec::new()))
         }
+        Work::VideoStream(src, h, plan) => video::cook_stream(src, *h, plan, p.stamp),
+        Work::VideoPoster(src, h, plan) => {
+            video::cook_poster(src, *h, plan, &options.texture, p.stamp).map(|b| (b, Vec::new()))
+        }
         Work::VideoAudio(src, plan) => {
             let wav = video::audio_wav(src, plan)?;
             let pcm =
                 audio::wav(&format!("{}'s sound track", src.display()), &wav).map_err(CookError)?;
-            let e = audio::encode(&pcm, None).map_err(CookError)?;
+            // A stream's sound is long: Opus (96 kb/s stereo), a clip's QOA.
+            let e = if plan.decl.stream {
+                let bitrate = audio::SoundSettings::default().opus_bitrate(pcm.channels);
+                audio::encode_opus(&pcm, bitrate).map_err(CookError)?
+            } else {
+                audio::encode(&pcm, None).map_err(CookError)?
+            };
             audio::cook(&e, None, p.stamp)
                 .map(|(b, n)| (b, vec![format!("the video's sound: {n}")]))
         }

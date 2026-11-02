@@ -767,8 +767,9 @@ impl Bundle {
         })
     }
 
-    /// Reads a video blob's meta row (its frames are the texture array
-    /// `<id>#frames`, its sound `<id>#audio`).
+    /// Reads a video blob's meta row (a clip's frames are the texture array
+    /// `<id>#frames`, a stream's the `og.VideoStream` `<id>#stream`; its
+    /// sound `<id>#audio`).
     pub fn video(&self, id: &str, bytes: &[u8]) -> Result<format::VideoMeta, LoadError> {
         let blob = self.blob::<format::Video>(id, bytes)?;
         let meta = one::<format::VideoMeta>(&blob)?;
@@ -776,6 +777,13 @@ impl Bundle {
             return Err(invalid(&blob, "a video with no frames or no rate"));
         }
         Ok(meta)
+    }
+
+    /// Reads a video stream blob: its shape, its codec configuration and
+    /// each frame's unit ([`video_stream_of`] with this bundle's stamp).
+    pub fn video_stream(&self, id: &str, bytes: &[u8]) -> Result<CookedVideoStream, LoadError> {
+        let o = self.output(id)?;
+        video_stream_of(bytes, &o.file, o.stamp, id)
     }
 
     /// Decodes a texture array blob: its shape and its layers' texture ids

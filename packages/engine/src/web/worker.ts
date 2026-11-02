@@ -359,7 +359,8 @@ export interface Fetched {
  * group's outputs are not fetched: the engine reads its pack
  * (`cooked/stream/<name>.ogb`) through the fetcher when the group loads;
  * nor are the chunks of a sound cooked in chunks, which the engine reads
- * through the fetcher ahead of the playheads. The engine asks for at most
+ * through the fetcher ahead of the playheads, nor a streamed video's units
+ * (og.VideoStream), which og.load.video asks the fetcher for. The engine asks for at most
  * four such files at a time (og-runtime's `stream::fetch`): the chunks a
  * playhead needs soonest first, then the packs by their group's priority.
  */
@@ -383,7 +384,7 @@ export async function preloadBundle(
   const all = JSON.parse(glue.og_web_bundle_files(manifest)) as Array<{ id: string; file: string; type: string; group?: string }> | { error: string };
   if (!Array.isArray(all)) throw new Error(`${manifestPath}: ${all.error}`);
   // A long sound's chunks (og.SoundChunk) are fetched as its playheads near them.
-  const listed = all.filter((o) => o.group === undefined && o.type !== "og.SoundChunk");
+  const listed = all.filter((o) => o.group === undefined && o.type !== "og.SoundChunk" && o.type !== "og.VideoStream");
   let fetched = 0;
   let failed = 0;
   const blobs = new Map<string, Uint8Array>();

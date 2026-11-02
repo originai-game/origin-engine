@@ -14,7 +14,8 @@
 //! | model (`og.Model`) | [`ModelMeta`] | `primitives` [`PrimitiveRow`], `lods` [`LodRow`], `meshes` [`MeshRow`], `materials` [`MaterialRow`], `textures` [`TextureRefRow`], `nodes` [`NodeRow`], `scenes` [`SceneRow`], `roots` (u32 node indices), `strings`, `vertices`, `indices`, `bvh_nodes` ([`BvhNodeRow`] rows, zlib) and `bvh_tris` (u32, zlib): each primitive's raycast BVH, og-render's `Bvh`, unless `raycast false`; `lights` [`LightRow`] (`KHR_lights_punctual`), `instances` [`InstanceRow`] (`EXT_mesh_gpu_instancing`), `variants` [`VariantRow`] and `variant_mappings` [`VariantMappingRow`] (`KHR_materials_variants`) |
 //! | texture (`og.Texture`; a PNG, JPEG, KTX2, WebP, TGA, PSD or DDS source, a glTF's image, a texture array's layer) | [`TextureMeta`] | `ktx2` (a KTX2 file) |
 //! | texture array (`og.TextureArray`, an `.ogt` of `type texture-array`) | [`TextureArrayMeta`] | `layers` [`ArrayLayerRow`] (each layer's `og.Texture` id, `<id>#layer<n>`), `strings` |
-//! | video (`og.Video`, an `.ogt` of `type video` cooked by ffmpeg) | [`VideoMeta`] | none: its frames are the texture array `<id>#frames`, its sound `<id>#audio` |
+//! | video (`og.Video`, an `.ogt` of `type video` cooked by ffmpeg) | [`VideoMeta`] | none: a clip's frames are the texture array `<id>#frames`, a stream's the `og.VideoStream` `<id>#stream` with its poster `<id>#poster`; its sound `<id>#audio` |
+//! | video stream (`og.VideoStream`, `<id>#stream` of a streamed video, fetched when it loads) | [`VideoStreamMeta`] | `config` (AV1's sequence header OBU), `units` [`VideoUnitRow`], `data` (the AV1 temporal units) |
 //! | sound (`og.Sound`; a `.wav`, `.mp3`, `.ogg` (Vorbis), `.flac` or `.opus`, or a procedural preset: an `.ogt` of `type sfx` synthesised by the cook) | [`SoundMeta`] | `qoa` (`codec` QOA: a QOA file; of a sound cooked in chunks, the header and the first chunk's frames) or `opus` (`codec` Opus: an Opus sound, `crate::opus`) |
 //! | sound chunk (`og.SoundChunk`, `<id>#chunk<n>` of a sound cooked in chunks) | [`SoundChunkMeta`] | `qoa` (the chunk's QOA frames) |
 //! | font (`og.Font`) | [`FontMeta`] | `glyphs` [`GlyphRow`], `kerning` [`KernRow`] (sorted by left, right), `atlas.<n>` (KTX2 RGBA8, zlib), `ttf` (the font file, when shaped or `runtime`) |
@@ -98,6 +99,7 @@ pub fn expected_header(name: &str) -> Option<(u64, u32)> {
         Model,
         TextureArray,
         Video,
+        VideoStream,
         Texture,
         Sound,
         SoundChunk,
@@ -526,9 +528,12 @@ impl BlobKind for TextureArray {
 
 row!(
     /// The root of a video blob (an `.ogt` of `type video`, cooked by
-    /// ffmpeg): its frames are the layers of the texture array
-    /// `<id>#frames`, its sound (when `audio` is 1) the sound `<id>#audio`.
-    VideoMeta, "og.Video", 1 {
+    /// ffmpeg). A clip (`streamed` 0): its frames are the layers of the
+    /// texture array `<id>#frames`. A stream (`streamed` 1): its frames are
+    /// the AV1 units of `<id>#stream` ([`VideoStreamMeta`]), decoded as it
+    /// plays, and its first frame the texture `<id>#poster`. Its sound
+    /// (when `audio` is 1) is the sound `<id>#audio` either way.
+    VideoMeta, "og.Video", 2 {
         width: u32,
         height: u32,
         frames: u32,
@@ -539,8 +544,18 @@ row!(
         audio: u32,
         /// [`kind`]: colour or pixel.
         kind: u32,
+        /// 1: streamed (`<id>#stream`, `<id>#poster`); 0: a clip (`<id>#frames`).
+        streamed: u32,
+        /// A stream's [`video_codec`]; 0 for a clip.
+        codec: u32,
     }
 );
+
+/// The codecs a stream is cooked in.
+pub mod video_codec {
+    /// AV1, 8-bit 4:2:0, in temporal units of the low-overhead OBU format.
+    pub const AV1: u32 = 1;
+}
 
 /// The video blob.
 pub struct Video;
@@ -548,6 +563,42 @@ impl BlobKind for Video {
     const NAME: &'static str = "og.Video";
     fn schemas() -> Vec<Schema> {
         vec![VideoMeta::schema()]
+    }
+}
+
+row!(
+    /// The root of a video stream blob (`<id>#stream` of a streamed
+    /// `type video`): the `config` section is the codec's configuration
+    /// (AV1: the sequence header OBU), `units` one [`VideoUnitRow`] per
+    /// frame (frame n is unit n, shown at n / fps), `data` the units' bytes.
+    VideoStreamMeta, "og.VideoStream", 1 {
+        /// [`video_codec`].
+        codec: u32,
+        width: u32,
+        height: u32,
+        frames: u32,
+        fps: u32,
+        /// Frames from one key frame to the next (the longest a seek decodes).
+        key_interval: u32,
+    }
+);
+
+row!(
+    /// One frame's unit in a stream's `data`.
+    VideoUnitRow, "og.VideoUnit", 1 {
+        offset: u32,
+        size: u32,
+        /// 1: a key frame, where decoding may start.
+        key: u32,
+    }
+);
+
+/// The video stream blob.
+pub struct VideoStream;
+impl BlobKind for VideoStream {
+    const NAME: &'static str = "og.VideoStream";
+    fn schemas() -> Vec<Schema> {
+        vec![VideoStreamMeta::schema(), VideoUnitRow::schema()]
     }
 }
 

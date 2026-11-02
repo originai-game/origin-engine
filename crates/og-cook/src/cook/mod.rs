@@ -255,6 +255,9 @@ enum Work<'a> {
     VideoArray(&'a Source, Box<video::VideoPlan>),
     VideoFrame(PathBuf, u64, Box<video::VideoPlan>, usize),
     VideoAudio(PathBuf, Box<video::VideoPlan>),
+    /// A streamed video's AV1 units and its poster frame.
+    VideoStream(PathBuf, u64, Box<video::VideoPlan>),
+    VideoPoster(PathBuf, u64, Box<video::VideoPlan>),
     Font(&'a Source, FontSettings),
     Scene(&'a Source),
 }
@@ -1132,14 +1135,19 @@ pub fn cook_project_with_texture_cache(
                         let src = root.join(&d.source);
                         let bytes =
                             std::fs::read(&src).map_err(|e| format!("{}: {e}", src.display()))?;
-                        let plan = video::plan(&d, video::probe(&src)?)?;
+                        let encoder = if d.stream {
+                            video::stream_encoder()?
+                        } else {
+                            ""
+                        };
+                        let plan = video::plan(&d, video::probe(&src)?, encoder)?;
                         Ok((src, hash_bytes(&bytes), plan))
                     });
                 match planned {
                     Ok((src, src_hash, plan)) => {
                         let described = plan.describe();
                         let base = [
-                            b"video 1".as_slice(),
+                            b"video 2".as_slice(),
                             tex_desc.as_bytes(),
                             &hash,
                             &src_hash.to_le_bytes(),
@@ -1152,21 +1160,37 @@ pub fn cook_project_with_texture_cache(
                             stamp(&base),
                             Work::VideoMeta(plan.clone()),
                         ));
-                        let frames = video::frames_id(&s.rel);
-                        outs.push((
-                            frames.clone(),
-                            format::TextureArray::NAME,
-                            stamp(&[&base[..], &[b"array".as_slice()]].concat()),
-                            Work::VideoArray(s, plan.clone()),
-                        ));
-                        for n in 0..plan.frames as usize {
-                            let st = stamp(&[&base[..], &[&(n as u32).to_le_bytes()[..]]].concat());
+                        if plan.decl.stream {
                             outs.push((
-                                texture_array::layer_id(&frames, n),
-                                format::Texture::NAME,
-                                st,
-                                Work::VideoFrame(src.clone(), src_hash, plan.clone(), n),
+                                video::stream_id(&s.rel),
+                                format::VideoStream::NAME,
+                                stamp(&[&base[..], &[b"stream".as_slice()]].concat()),
+                                Work::VideoStream(src.clone(), src_hash, plan.clone()),
                             ));
+                            outs.push((
+                                video::poster_id(&s.rel),
+                                format::Texture::NAME,
+                                stamp(&[&base[..], &[b"poster".as_slice()]].concat()),
+                                Work::VideoPoster(src.clone(), src_hash, plan.clone()),
+                            ));
+                        } else {
+                            let frames = video::frames_id(&s.rel);
+                            outs.push((
+                                frames.clone(),
+                                format::TextureArray::NAME,
+                                stamp(&[&base[..], &[b"array".as_slice()]].concat()),
+                                Work::VideoArray(s, plan.clone()),
+                            ));
+                            for n in 0..plan.frames as usize {
+                                let st =
+                                    stamp(&[&base[..], &[&(n as u32).to_le_bytes()[..]]].concat());
+                                outs.push((
+                                    texture_array::layer_id(&frames, n),
+                                    format::Texture::NAME,
+                                    st,
+                                    Work::VideoFrame(src.clone(), src_hash, plan.clone(), n),
+                                ));
+                            }
                         }
                         if plan.audio {
                             outs.push((

@@ -13,7 +13,7 @@ default = ["cook", "basis", "transcode"]
 # og-render (og-bundle's `transcode`).
 transcode = ["og-bundle/transcode"]
 # The cook itself (native only): importers, encoders, the incremental manifest.
-cook = ["og-render/bake", "dep:og-ai", "dep:og-story", "dep:og-i18n", "og-nav/bake", "dep:gltf", "og-render/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde_json", "dep:nalgebra", "dep:og-ui", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-geom", "dep:ufbx"]
+cook = ["og-render/bake", "dep:og-ai", "dep:og-story", "dep:og-i18n", "og-nav/bake", "dep:gltf", "og-render/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde_json", "dep:nalgebra", "dep:og-ui", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-geom", "dep:og-video", "dep:ufbx"]
 # Encode textures with the basis-universal crate (a default). Without it the
 # cook looks for KTX-Software's `toktx` on PATH.
 basis = ["og-bundle/basis", "dep:basis-universal", "dep:ruzstd"]
@@ -30,6 +30,9 @@ og-ui = { path = "../og-ui", optional = true }
 og-tilemap = { path = "../og-tilemap" }
 # `type model`: the cook builds its parts with og-geom's generators.
 og-geom = { path = "../og-geom", optional = true }
+# A streamed `type video`: the IVF ffmpeg writes is read into units, and its
+# poster is frame 0 as rav1d decodes it (the frame the runtime shows first).
+og-video = { path = "../og-video", optional = true }
 # Timelines and paths: the cook validates and canonicalises them (importing
 # caption files), the runtime parses the canonical text.
 og-timeline = { path = "../og-timeline" }

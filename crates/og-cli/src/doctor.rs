@@ -247,6 +247,21 @@ pub fn run(args: &[&str]) -> ExitCode {
             None,
         ),
     }
+    // The AV1 encoder a streamed video (`stream true`) is cooked with.
+    match og_cook::cook::video::av1_encoder() {
+        Some(e) => out.check(
+            "ok",
+            "av1 encoder",
+            &format!("{e} (og cook encodes streamed footage)"),
+            None,
+        ),
+        None => out.check(
+            "optional",
+            "av1 encoder",
+            "ffmpeg has neither libsvtav1 nor libaom-av1: og cook refuses `stream true` videos",
+            Some("brew install ffmpeg, or an ffmpeg built with libsvtav1".into()),
+        ),
+    }
     let engine = engine_checks(&mut out, &cwd);
     if out.json {
         let report = serde_json::json!({

@@ -213,6 +213,58 @@ pub fn sound_chunk_of(bytes: &[u8], path: &str, stamp: u64) -> Result<(u32, Vec<
     Ok((meta.chunk, blob.raw("qoa")?.to_vec()))
 }
 
+/// A video stream blob (`<id>#stream`) read from its file's bytes without a
+/// bundle (they land after `og.load.video`, fetched on the web), its type
+/// and cook `stamp` checked.
+pub fn video_stream_of(
+    bytes: &[u8],
+    path: &str,
+    stamp: u64,
+    id: &str,
+) -> Result<CookedVideoStream, LoadError> {
+    let aligned = og_blob::AlignedBytes::from_slice(bytes);
+    let expect = Expect {
+        type_hash: format::VideoStream::type_hash(),
+        schema_version: format::VideoStream::schema_version(),
+        stamp: Some(stamp),
+    };
+    let blob = Blob::open(aligned.as_slice(), path, &expect)?;
+    let meta = one::<format::VideoStreamMeta>(&blob)?;
+    let rows = table::<format::VideoUnitRow>(&blob, "units")?;
+    let data = blob.raw("data")?;
+    if rows.len() != meta.frames as usize || rows.is_empty() || rows[0].key == 0 {
+        return Err(invalid(
+            &blob,
+            "a stream's units disagree with its meta row, or it starts on no key frame",
+        ));
+    }
+    let units = rows
+        .iter()
+        .map(|r| {
+            let end = r.offset as usize + r.size as usize;
+            data.get(r.offset as usize..end)
+                .map(|d| (r.key != 0, d.to_vec()))
+                .ok_or_else(|| invalid(&blob, "a unit past the stream's data"))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(CookedVideoStream {
+        id: asset_id(id).to_string(),
+        meta,
+        config: blob.raw("config")?.to_vec(),
+        units,
+    })
+}
+
+/// A cooked video stream ([`Bundle::video_stream`]): its shape, its codec's
+/// configuration and each frame's unit (whether it is a key frame, its bytes).
+#[derive(Clone, Debug, PartialEq)]
+pub struct CookedVideoStream {
+    pub id: String,
+    pub meta: crate::format::VideoStreamMeta,
+    pub config: Vec<u8>,
+    pub units: Vec<(bool, Vec<u8>)>,
+}
+
 /// A cooked texture array: its shape and its layers' texture ids, in
 /// layer order ([`Bundle::texture_array`]).
 #[derive(Clone, Debug, PartialEq)]
