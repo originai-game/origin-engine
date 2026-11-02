@@ -259,10 +259,17 @@ impl Ui {
             return;
         }
         let d = self.part_draw(part, fill);
+        // The UI pass's commands keep the screen's clip (`bake`), while an
+        // element under a map is drawn in its layout box with its clip taken
+        // there: a part inside a moved sheet was cut by a clip left behind.
         let at = crate::paint::Placed {
             rect,
             radius,
-            clip,
+            clip: if self.drawing.is_identity() {
+                clip
+            } else {
+                self.drawing.map_rect(&clip)
+            },
             alpha,
         };
         cmds.extend(d.enter(t, &at));
