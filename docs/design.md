@@ -1060,7 +1060,10 @@ later.
   folder `parts "x/"` of PNG parts, and a `template`; `cook/autorig.rs`):
   each layer named for a part of the template, the joints where the
   parts overlap near their joint ends, the template's bones through
-  them, two-bone IK on the legs, the parts packed into an atlas cooked
+  them, two-bone IK on the legs, the parts that bend (limbs, the torso,
+  a cape's or a tail's chain) meshes weighted across their joints
+  through a joint bone a transform constraint turns half-way (so a knee
+  bends without pinching), the parts packed into an atlas cooked
   beside the rig as `<rig>#atlas`, so the setup pose draws the art as
   drawn; a layer whose pixels Photoshop would show otherwise (effects,
   blend modes, clipping, adjustments) or that fits no part is refused,

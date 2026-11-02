@@ -32,6 +32,7 @@ use og_core::ogt::Document;
 use std::path::Path;
 
 mod atlas;
+mod mesh;
 mod parts;
 mod skeleton;
 mod template;

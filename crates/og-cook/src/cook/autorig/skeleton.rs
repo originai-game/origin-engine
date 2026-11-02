@@ -4,10 +4,12 @@
 //! part's joint (else across the part), regions placed so the setup pose
 //! draws the art exactly as it was drawn.
 
+use super::mesh::{self, Bend};
 use super::parts::{Art, Part};
 use super::template::{End, Shape, Spec, Template};
 use og_anim::{
     Affine2, Attachment2d, AttachmentKind, Bone2d, Ik2d, Rig2dAsset, SheetFilter, Slot2d,
+    TransformConstraint2d,
 };
 
 type P = [f32; 2];
@@ -279,11 +281,13 @@ pub fn rig(
     // World (origin, angle) per bone, to make each child's local transform.
     let mut world: Vec<(P, f32)> = vec![([0.0, 0.0], 0.0)];
     let mut first_bone = vec![0usize; nodes.len()];
+    let mut laid: Vec<Vec<(P, f32, f32)>> = Vec::with_capacity(nodes.len());
     for (i, n) in nodes.iter().enumerate() {
         let mut parent = n.parent.map_or(0, |p| first_bone[p]);
-        // A part hangs from its parent's last bone (a chain's end) only
-        // for chains; everything else from the parent's first bone.
-        for (k, (o, a, l)) in layout(n, &nodes, &to_rig).into_iter().enumerate() {
+        // Each part hangs from its parent's first bone; a chain's bones
+        // each from the one before.
+        laid.push(layout(n, &nodes, &to_rig));
+        for (k, &(o, a, l)) in laid[i].iter().enumerate() {
             let (po, pa) = world[parent];
             let d = sub(o, po);
             let r = (-pa).to_radians();
@@ -347,13 +351,60 @@ pub fn rig(
             weight: 1.0,
         });
     }
-    // The bones' world transforms as og-anim composes them.
+    // A joint bone where each bending part meets its parent: at the
+    // joint, turned half-way between the two by a transform constraint, so
+    // the joint's pixels (a knee cap, an elbow) turn rigidly at half the
+    // angle instead of being pinched between the two bones.
+    let mut transforms = Vec::new();
+    let mut joint_bone: Vec<Option<usize>> = vec![None; nodes.len()];
+    for (i, n) in nodes.iter().enumerate() {
+        let Some(p) = n.parent else { continue };
+        let bends = |s: Shape| matches!(s, Shape::Limb | Shape::Chain(_));
+        if !bends(n.spec.shape) && !bends(nodes[p].spec.shape) {
+            continue;
+        }
+        let (pb, cb) = (first_bone[p], first_bone[i]);
+        let (po, pa) = world[pb];
+        let (o, a) = world[cb];
+        let d = sub(o, po);
+        let r = (-pa).to_radians();
+        bones.push(Bone2d {
+            name: format!("joint-{}", n.spec.name),
+            parent: Some(pb),
+            x: d[0] * r.cos() - d[1] * r.sin(),
+            y: d[0] * r.sin() + d[1] * r.cos(),
+            rotation: 0.0,
+            skew: 0.0,
+            scale: [1.0, 1.0],
+            length: 0.0,
+        });
+        world.push((o, pa + normal(a - pa) / 2.0));
+        joint_bone[i] = Some(bones.len() - 1);
+        transforms.push(TransformConstraint2d {
+            name: format!("joint-{}", n.spec.name),
+            bones: vec![bones.len() - 1],
+            target: cb,
+            rotation: 0.0,
+            at: [0.0, 0.0],
+            scale: [0.0, 0.0],
+            shear: 0.0,
+            mix: [0.5, 0.0, 0.0, 0.0],
+        });
+    }
+    // The bones' world transforms in the setup pose, as og-anim poses them
+    // (a joint bone half-way, as its constraint turns it).
     let mut affine: Vec<Affine2> = Vec::with_capacity(bones.len());
-    for b in &bones {
+    for (i, b) in bones.iter().enumerate() {
         let local = Affine2::trs(b.x, b.y, b.rotation, b.scale[0], b.scale[1]);
-        affine.push(match b.parent {
+        let composed = match b.parent {
             Some(p) => affine[p].mul(&local),
             None => local,
+        };
+        affine.push(if joint_bone.contains(&Some(i)) {
+            let (o, a) = world[i];
+            Affine2::trs(o[0], o[1], a, 1.0, 1.0)
+        } else {
+            composed
         });
     }
     // One slot and one region per part, back to front.
@@ -370,6 +421,38 @@ pub fn rig(
             p.top as f32 + p.height as f32 / 2.0,
         ]);
         let at = affine[bone].inverse().apply_to(centre);
+        let node = &nodes[n];
+        let kind = match node.spec.shape {
+            // Limbs and chains bend: a mesh weighted along their bones.
+            Shape::Limb | Shape::Chain(_) => {
+                let (origin, angle, step) = laid[n][0];
+                let rad = angle.to_radians();
+                let child = node.spec.tip.iter().find_map(|t| {
+                    nodes
+                        .iter()
+                        .position(|m| m.spec.name == *t && m.parent == Some(n))
+                });
+                let bend = Bend {
+                    bones: (bone..bone + laid[n].len()).collect(),
+                    origin,
+                    dir: [rad.cos(), rad.sin()],
+                    step,
+                    start: node
+                        .parent
+                        .zip(joint_bone[n])
+                        .map(|(p, j)| (j, first_bone[p])),
+                    end: child.and_then(|c| joint_bone[c].map(|j| (j, first_bone[c]))),
+                };
+                mesh::mesh(p, *r, &bend, &to_rig, &affine)
+            }
+            Shape::Rigid => AttachmentKind::Region {
+                rect: r.map(|v| v as f32),
+                at,
+                rotation: normal(-world[bone].1),
+                skew: 0.0,
+                size: [p.width as f32, p.height as f32],
+            },
+        };
         slots.push(Slot2d {
             name: p.name.clone(),
             bone,
@@ -380,13 +463,7 @@ pub fn rig(
         attachments.push(Attachment2d {
             name: p.name.clone(),
             slot: i,
-            kind: AttachmentKind::Region {
-                rect: r.map(|v| v as f32),
-                at,
-                rotation: normal(-world[bone].1),
-                skew: 0.0,
-                size: [p.width as f32, p.height as f32],
-            },
+            kind,
         });
     }
     Ok(Rig2dAsset {
@@ -398,7 +475,7 @@ pub fn rig(
         slots,
         attachments,
         iks,
-        transforms: Vec::new(),
+        transforms,
         paths: Vec::new(),
         clips: Vec::new(),
         skins: Vec::new(),

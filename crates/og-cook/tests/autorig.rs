@@ -69,6 +69,28 @@ fn canvas(x: f32, y: f32) -> [f32; 2] {
     [x - 50.0, 194.0 - y]
 }
 
+/// The vertices `triangles` drew for one slot of the pose.
+fn slot_vertices<'a>(
+    rig: &Rig2dAsset,
+    pose: &og_anim::Pose2d,
+    vertices: &'a [og_anim::RigVertex],
+    slot: usize,
+) -> &'a [og_anim::RigVertex] {
+    let mut at = 0;
+    for &s in &pose.order {
+        let n = match pose.slots[s].map(|a| &rig.attachments[a].kind) {
+            Some(AttachmentKind::Region { .. }) => 4,
+            Some(AttachmentKind::Mesh { vertices, .. }) => vertices.len(),
+            _ => 0,
+        };
+        if s == slot {
+            return &vertices[at..at + n];
+        }
+        at += n;
+    }
+    panic!("slot {slot} is not drawn")
+}
+
 fn near(a: [f32; 2], b: [f32; 2], tolerance: f32) -> bool {
     (a[0] - b[0]).abs() <= tolerance && (a[1] - b[1]).abs() <= tolerance
 }
@@ -154,35 +176,48 @@ fn the_setup_pose_draws_every_part_where_the_art_has_it() {
     ];
     let pose = rig.pose(None, 0.0, &[]);
     let (vertices, _) = rig.triangles(&pose);
-    let order = &pose.order;
+    let atlas_size = [rig.size[0] as f32, rig.size[1] as f32];
     for (name, [l, t, r, b]) in rects {
         let slot = rig.slots.iter().position(|s| &s.name == name).unwrap();
-        let at = order.iter().position(|&s| s == slot).unwrap();
-        let quad = &vertices[at * 4..at * 4 + 4];
-        let mut got: Vec<[f32; 2]> = quad
+        let drawn = slot_vertices(&rig, &pose, &vertices, slot);
+        // Every vertex sits where its texel is in the art: the same
+        // offset from its texel for all of them, and together they span
+        // the part's rectangle.
+        let positions: Vec<[f32; 2]> = drawn
             .iter()
             .map(|v| [v.position[0] * rig.unit, v.position[1] * rig.unit])
             .collect();
-        let mut want = vec![
-            canvas(*l, *t),
-            canvas(*r, *t),
-            canvas(*l, *b),
-            canvas(*r, *b),
-        ];
-        let key = |p: &[f32; 2]| ((p[0] * 4.0).round() as i32, (p[1] * 4.0).round() as i32);
-        got.sort_by_key(key);
-        want.sort_by_key(key);
-        for (g, w) in got.iter().zip(&want) {
-            assert!(near(*g, *w, 0.01), "{name}: corners {got:?}, not {want:?}");
-        }
-        // Its texels are its own: the region's rect in the atlas is its size.
-        let AttachmentKind::Region { rect, size, .. } =
-            &rig.attachments[rig.slots[slot].attachment.unwrap()].kind
-        else {
-            panic!("{name} is a region");
+        let texels: Vec<[f32; 2]> = drawn
+            .iter()
+            .map(|v| [v.uv[0] * atlas_size[0], v.uv[1] * atlas_size[1]])
+            .collect();
+        let offset = |i: usize| {
+            [
+                positions[i][0] - texels[i][0],
+                positions[i][1] + texels[i][1],
+            ]
         };
-        assert_eq!([rect[2], rect[3]], *size);
-        assert_eq!(*size, [r - l, b - t]);
+        for i in 0..drawn.len() {
+            assert!(
+                near(offset(i), offset(0), 0.01),
+                "{name}: vertex {i} is not where its texel is drawn"
+            );
+        }
+        let lo = positions
+            .iter()
+            .fold([f32::MAX; 2], |a, p| [a[0].min(p[0]), a[1].min(p[1])]);
+        let hi = positions
+            .iter()
+            .fold([f32::MIN; 2], |a, p| [a[0].max(p[0]), a[1].max(p[1])]);
+        let (want_lo, want_hi) = (canvas(*l, *b), canvas(*r, *t));
+        assert!(
+            near(lo, want_lo, 0.01) && near(hi, want_hi, 0.01),
+            "{name}: spans {lo:?}..{hi:?}, not {want_lo:?}..{want_hi:?}"
+        );
+        // Bending parts are meshes, the rest regions.
+        let kind = &rig.attachments[rig.slots[slot].attachment.unwrap()].kind;
+        let bends = matches!(*name, "arm-upper-r" | "torso");
+        assert_eq!(matches!(kind, AttachmentKind::Mesh { .. }), bends, "{name}");
     }
     // Back to front as the files are numbered: the far arm first, the near hand last.
     assert_eq!(rig.slots.first().unwrap().name, "arm-upper-l");
@@ -283,4 +318,113 @@ fn art_that_does_not_fit_the_template_is_refused_naming_the_file_and_the_fix() {
         |_| {},
     );
     assert!(errors(&root).contains("`bone` is not one of its lines"));
+}
+
+#[test]
+fn an_elbow_bends_through_its_joint_instead_of_hinging() {
+    use og_anim::{BoneTimeline, Clip2d, Ease, Key, Rotation, Turn};
+    let root = project("bend", &[("stick.ogt", &rig_text("stick/"))], |_| {});
+    let rig = cooked(&root).load_rig2d("chars/stick.ogt").unwrap();
+    let forearm = rig.bone("arm-lower-r").unwrap();
+    let clip = Clip2d {
+        name: "bend".into(),
+        duration: 1.0,
+        looping: false,
+        bones: vec![BoneTimeline {
+            bone: forearm,
+            rotate: vec![Key {
+                time: 0.0,
+                value: Rotation {
+                    degrees: 90.0,
+                    turn: Turn::Shorter,
+                },
+                ease: Ease::Linear,
+            }],
+            ..Default::default()
+        }],
+        slots: vec![],
+        deforms: vec![],
+        order: vec![],
+        iks: vec![],
+        events: vec![],
+    };
+    let setup = rig.pose(None, 0.0, &[]);
+    let bent = rig.pose(Some(&clip), 0.0, &[]);
+    let (before, _) = rig.triangles(&setup);
+    let (after, _) = rig.triangles(&bent);
+    let elbow = origin(&rig, "arm-lower-r");
+    // How far each vertex moved, as a share of how far a hard hinge
+    // (everything turned with the forearm about the elbow) moves it.
+    let shares = |part: &str| -> Vec<([f32; 2], f32)> {
+        let slot = rig.slots.iter().position(|s| s.name == part).unwrap();
+        let a = slot_vertices(&rig, &setup, &before, slot);
+        let b = slot_vertices(&rig, &bent, &after, slot);
+        a.iter()
+            .zip(b)
+            .map(|(a, b)| {
+                let p = [a.position[0] * rig.unit, a.position[1] * rig.unit];
+                let q = [b.position[0] * rig.unit, b.position[1] * rig.unit];
+                let v = [p[0] - elbow[0], p[1] - elbow[1]];
+                let hinge = [elbow[0] - v[1], elbow[1] + v[0]];
+                let full = (hinge[0] - p[0]).hypot(hinge[1] - p[1]);
+                (p, (q[0] - p[0]).hypot(q[1] - p[1]) / full.max(1e-3))
+            })
+            .collect()
+    };
+    let lower = shares("arm-lower-r");
+    let top = lower.iter().map(|v| v.0[1]).fold(f32::MIN, f32::max);
+    let mid = elbow[1] - 12.0;
+    for (p, share) in &lower {
+        // The forearm's top, inside the upper arm, stays mostly with it.
+        if (p[1] - top).abs() < 0.5 {
+            assert!(
+                *share < 0.4,
+                "the forearm's top at {p:?} moved {share} of a hinge"
+            );
+        }
+        // Its middle turns with it.
+        if (p[1] - mid).abs() < 4.0 {
+            assert!(
+                (share - 1.0).abs() < 0.05,
+                "the forearm's middle at {p:?} moved {share} of a hinge"
+            );
+        }
+    }
+    // The pixels at the joint turn about it rather than being pinched
+    // towards it (blending a quarter turn halves into 0.71 of their reach).
+    let slot = rig
+        .slots
+        .iter()
+        .position(|s| s.name == "arm-lower-r")
+        .unwrap();
+    let a = slot_vertices(&rig, &setup, &before, slot);
+    let b = slot_vertices(&rig, &bent, &after, slot);
+    let reach = |v: &og_anim::RigVertex| {
+        (v.position[0] * rig.unit - elbow[0]).hypot(v.position[1] * rig.unit - elbow[1])
+    };
+    let mut seen = 0;
+    for (a, b) in a.iter().zip(b) {
+        if (a.position[1] * rig.unit - elbow[1]).abs() <= 4.0 && reach(a) > 2.0 {
+            seen += 1;
+            assert!(
+                reach(b) > 0.9 * reach(a),
+                "a joint vertex is pinched from {} to {}",
+                reach(a),
+                reach(b)
+            );
+        }
+    }
+    assert!(seen >= 4, "{seen} vertices at the joint");
+    // The upper arm's end, over the forearm, follows part of the way.
+    let upper = shares("arm-upper-r");
+    let bottom = upper.iter().map(|v| v.0[1]).fold(f32::MAX, f32::min);
+    let end: Vec<f32> = upper
+        .iter()
+        .filter(|v| (v.0[1] - bottom).abs() < 0.5)
+        .map(|v| v.1)
+        .collect();
+    assert!(
+        !end.is_empty() && end.iter().all(|s| *s > 0.3 && *s < 1.0),
+        "the upper arm's end moved {end:?} of a hinge"
+    );
 }

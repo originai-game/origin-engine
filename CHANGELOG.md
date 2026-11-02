@@ -44,7 +44,9 @@ is one line here, written at the merge that changes
   file may name `parts "hero.psd"` (a layered PSD) or `parts "hero/"` (a
   folder of canvas-sized PNG parts) and `template humanoid-side`: the
   cook reads each part's pixels and alpha, puts each joint where the part
-  overlaps its parent, builds the template's bones and leg IK, and packs
+  overlaps its parent, builds the template's bones and leg IK, meshes
+  the parts that bend (weighted across each joint through a half-way
+  joint bone, so elbows and knees bend instead of hinging), and packs
   the parts into an atlas texture (`<rig>#atlas`), into the same rig
   og.Skeleton2D plays. Optional `pivot <part> x y`, `unit` and `filter`.
   No IDL member changes.
