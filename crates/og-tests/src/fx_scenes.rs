@@ -237,6 +237,117 @@ pub const DECAL_PAINT: [f32; 4] = [0.5, 0.5, 1.0, 1.0];
 // Decals.
 // ---------------------------------------------------------------------------
 
+/// A bullet-hole atlas: the left half the hole's colour (a dark pit in a
+/// pale chipped rim), the right half its tangent-space normal map (the rim
+/// raised, the pit sunk; glTF's convention, +y up the image), sRGB as an
+/// artist's atlas usually is.
+pub fn bullet_hole_atlas(scene: &mut RenderScene) -> TextureHandle {
+    scene.add_texture(texture(256, ColorSpace::Srgb, |u, v| {
+        let qu = (u * 2.0).fract();
+        let (x, y) = (qu - 0.5, 0.5 - v);
+        let d = (x * x + y * y).sqrt() * 2.0;
+        // Height: a raised rim at d 0.45 around a pit, flat outside 0.9.
+        let h = |d: f32| (-((d - 0.45) / 0.18).powi(2)).exp() * 0.6 - (1.0 - smooth(0.0, 0.35, d));
+        if u < 0.5 {
+            let pit = 1.0 - smooth(0.12, 0.3, d);
+            let rim = (1.0 - smooth(0.0, 0.25, (d - 0.45).abs())) * 0.8;
+            let a = (pit + rim).min(1.0) * (1.0 - smooth(0.7, 0.9, d));
+            let c = 30.0 + 170.0 * rim * (1.0 - pit);
+            [
+                c as u8,
+                (c * 0.95) as u8,
+                (c * 0.9) as u8,
+                (a * 255.0) as u8,
+            ]
+        } else {
+            // The slope of h along the radius, as a normal.
+            let e = 0.01;
+            let g = (h(d + e) - h(d - e)) / (2.0 * e) * 0.6;
+            let (dx, dy) = if d > 1e-4 {
+                (x / (d * 0.5) * 0.5, y / (d * 0.5) * 0.5)
+            } else {
+                (0.0, 0.0)
+            };
+            let n = Vec3::new(-g * dx, -g * dy, 1.0).normalize();
+            let enc = |c: f32| ((c * 0.5 + 0.5) * 255.0).round() as u8;
+            [enc(n.x), enc(n.y), enc(n.z), 255]
+        }
+    }))
+}
+
+/// A wall and the ground before it peppered with 640 bullet holes (more
+/// than the 32 decals a frame drew before R7), each with the atlas's normal
+/// map, and two large ones that show the normal map's relief under the low
+/// sun: their rims lit on the sun's side, shadowed on the other.
+pub fn decals_many_scene() -> RenderScene {
+    let mut scene = RenderScene::new();
+    terrain(&mut scene, 40.0);
+    scene.decal_atlas = Some(bullet_hole_atlas(&mut scene));
+    let wall = scene.add_mesh(shapes::cuboid(Vec3::new(8.0, 3.0, 0.4)));
+    let plaster = scene.add_material(Material {
+        base_color: [0.82, 0.78, 0.7, 1.0],
+        roughness: 0.9,
+        ..Default::default()
+    });
+    scene.add_instance(
+        wall,
+        plaster,
+        Mat4::from_translation(Vec3::new(0.0, 1.5, -2.2)),
+    );
+    let hole = |p: Vec3, n: Vec3, size: f32, rot: f32| Decal {
+        uv_rect: [0.0, 0.0, 0.5, 1.0],
+        normal_rect: [0.5, 0.0, 1.0, 1.0],
+        normal_scale: 1.0,
+        roughness: 0.95,
+        ..Decal::on_surface(p, n, Vec2::splat(size), 0.3, rot)
+    };
+    let mut decals = Vec::new();
+    for k in 0..640u32 {
+        let (i, j) = ((k % 32) as f32, (k / 32) as f32);
+        let jitter = |s: u32| hash2(k as i32, s as i32, 77) - 0.5;
+        let rot = hash2(k as i32, 9, 77) * std::f32::consts::TAU;
+        let size = 0.12 + 0.1 * hash2(k as i32, 3, 77);
+        if k < 400 {
+            // The wall's face (z = -2.0), 32 × 12 holes.
+            let p = Vec3::new(
+                -3.8 + i * 0.245 + jitter(1) * 0.1,
+                0.2 + j * 0.22 + jitter(2) * 0.1,
+                -2.0,
+            );
+            decals.push(hole(p, Vec3::Z, size, rot));
+        } else {
+            // The ground before it, 32 × 8 more.
+            let p = Vec3::new(
+                -3.8 + i * 0.245 + jitter(1) * 0.1,
+                0.0,
+                -1.6 + (j - 12.5) * 0.3 + jitter(2) * 0.1,
+            );
+            decals.push(hole(p, Vec3::Y, size, rot));
+        }
+    }
+    // Two large ones, under the low sun, where the relief reads.
+    decals.push(hole(Vec3::new(-1.5, 0.0, 1.0), Vec3::Y, 1.6, 0.0));
+    decals.push(Decal {
+        normal_scale: 2.0,
+        ..hole(Vec3::new(1.5, 0.0, 1.0), Vec3::Y, 1.6, 0.0)
+    });
+    scene.decals = decals;
+    let sun = Vec3::new(-0.8, 0.45, 0.4);
+    scene.light = DirectionalLight {
+        direction_to_light: sun,
+        intensity: 3.0,
+        ..Default::default()
+    };
+    scene.environment.sky.sun_direction = sun;
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 3.0, 5.6),
+        target: Vec3::new(0.0, 0.6, -0.8),
+        exposure: Exposure::linear(0.9),
+        ..Default::default()
+    };
+    scene
+}
+
 /// A courtyard with scorch marks, a glowing rune circle, cracks up a wall
 /// and a paint splat over the corner where wall meets ground.
 pub fn decals_scene() -> RenderScene {

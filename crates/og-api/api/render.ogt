@@ -1555,7 +1555,7 @@ module render {
   }
 
   component Decal {
-    doc "A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one). At most 32 are drawn."
+    doc "A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one); with a normalMin to normalMax region, that region of the same atlas is a tangent-space normal map that bends the surface's normal (cracks, a bullet hole's rim, embossed lettering). Later decals blend over earlier ones. Tens of thousands can be placed: each pixel walks only the decals whose box can reach it, and at most 255 overlap at one place (the newest are kept)."
     field color Color "A linear colour multiplied with the atlas." {
       default 1 1 1
     }
@@ -1583,6 +1583,14 @@ module render {
       min 0
       max 90
       unit deg
+    }
+    field normalMin Vector2 "The top-left corner of the decal's normal map in RenderSettings.decalAtlas, v down (glTF's convention: +X along u, +Y up the image). Equal to normalMax (the default), the decal has no normal map."
+    field normalMax Vector2 "The bottom-right corner of the decal's normal map in the atlas, v down."
+    field normalScale f32 "How strongly the normal map bends the surface, as three.js normalScale." {
+      default 1
+      min 0
+      max 4
+      tunable true
     }
     field visible bool "Whether it is drawn." {
       default true

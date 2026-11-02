@@ -45,6 +45,7 @@ pub const SCENES: &[&str] = &[
     "fx-2d",
     "trails-beams",
     "decals",
+    "decals-many",
     "post-grade",
     "post-agx",
     "environment-map",
@@ -587,6 +588,11 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         },
         "decals" => |g, _| {
             g.scene = fx::decals_scene();
+            Ok(())
+        },
+        // 642 normal-mapped bullet holes on a wall and the ground (R7).
+        "decals-many" => |g, _| {
+            g.scene = fx::decals_many_scene();
             Ok(())
         },
         // The spike's scene through a teal-orange LUT, vignette, fringing and grain.

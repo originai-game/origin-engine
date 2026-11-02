@@ -774,6 +774,14 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
             emissive: color(&v["emissive"], Vec3::ZERO),
             roughness: f(&v, "roughness", -1.0),
             angle_fade_degrees: f(&v, "angleFade", 75.0),
+            normal_rect: {
+                let (lo, hi) = (
+                    vec2(&v["normalMin"], Vec2::ZERO),
+                    vec2(&v["normalMax"], Vec2::ZERO),
+                );
+                [lo.x, lo.y, hi.x, hi.y]
+            },
+            normal_scale: f(&v, "normalScale", 1.0),
         });
     }
     for (e, v) in rows(world, layouts.particles.as_ref()) {

@@ -334,6 +334,10 @@
       {
         "member": "texture { stream true }, model { stream_textures true }; the probe's mip_stream and dump_stream's mips",
         "summary": "Texture mip streaming, G3-3 batch 3: a texture cooked with `stream true` ships its mip tail (levels at most 256 px, byte for byte the whole chain's) in the boot bundle and its whole chain as `<id>#mips`, fetched on demand. Before each frame the engine measures how many pixels each streamed texture covers, loads the whole chain of the most magnified within a 128 MiB mip budget, swaps it in under the same handle and puts the tail back once the texture has been small for 120 frames; texture size reports the whole chain's throughout. Presentation only: a world's hash never depends on it. The probe's `mip_stream:resident` shows every streamed texture whole before each frame, for reproducible captures; `mip_stream:stream[:<MiB>]` streams within that budget. Textures without `stream true` cook and draw as before."
+      },
+      {
+        "member": "og.Decal normalMin, normalMax and normalScale; decals past 32 per frame",
+        "summary": "Decals, R7 batch 1: a decal can carry a tangent-space normal map from a region of the decal atlas (normalMin to normalMax, strength normalScale as three.js normalScale) that bends the surface's normal; a frame draws up to 65,536 decals (they were capped at 32), binned into the light clusters so each pixel walks only the decals that can cover it, at most 255 in one cluster (the newest kept). Existing decals draw as before; off by default (an empty normal region)."
       }
     ],
     "fixed": [

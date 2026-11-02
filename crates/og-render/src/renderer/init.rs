@@ -733,6 +733,7 @@ impl Renderer {
             })
         };
         let fx_buffer = uniform_buffer("fx", std::mem::size_of::<fx::FxUniform>());
+        let decal_buffers = fx::DecalBuffers::new(&device);
         let sprite_fx_buffer = uniform_buffer("sprite fx", 32);
 
         let post = post::PostPasses::new(
@@ -907,6 +908,10 @@ impl Renderer {
             fx_layout,
             fx_lean_layout,
             fx_buffer,
+            decal_buffers,
+            decal_records: Vec::new(),
+            decal_spheres: Vec::new(),
+            decal_bins: clusters::DecalBins::default(),
             sprite_fx_layout,
             sprite_fx_buffer,
             palette_layout,

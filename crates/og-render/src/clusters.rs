@@ -182,6 +182,9 @@ pub(crate) struct ClusterBuilder {
     pub table: Vec<u32>,
     /// One byte per reference.
     pub refs: Vec<u8>,
+    /// The depth slices' near and far planes of the last build (what
+    /// [`ClusterBuilder::bin_decals`] slices by).
+    planes: (f32, f32),
     /// x: clusters across per pixel, y: down per pixel, z and w: the depth
     /// slice's scale and bias (of log2 depth for a perspective camera).
     pub params: [f32; 4],
@@ -259,6 +262,7 @@ impl ClusterBuilder {
     fn assign(&mut self, lights: &[Light], view: &ClusterView) {
         let near = view.near.max(1e-4);
         let far = view.far.max(near * 1.0001);
+        self.planes = (near, far);
         let gz = CLUSTER_GRID[2] as f32;
         let (scale, bias) = if view.camera.orthographic {
             let scale = gz / (far - near);
@@ -277,7 +281,8 @@ impl ClusterBuilder {
         // Each kept light's cluster box.
         self.boxes.clear();
         for &i in &self.kept {
-            let b = light_box(&lights[i], view, near, scale, bias);
+            let l = &lights[i];
+            let b = sphere_box(l.position, l.range, view, near, scale, bias);
             self.boxes.push(b);
         }
 
@@ -353,6 +358,70 @@ impl ClusterBuilder {
     }
 }
 
+/// One frame's decals binned into the main view's clusters: `cells` is the
+/// table (one word per cluster: the first reference, 24 bits, and the
+/// count, 8 bits) followed by the references (one decal record index a
+/// word, ascending within a cluster, so later decals blend over earlier).
+#[derive(Default)]
+pub(crate) struct DecalBins {
+    pub cells: Vec<u32>,
+    /// Decals outside the view.
+    pub culled: u32,
+    /// References dropped from clusters over [`crate::MAX_CLUSTER_DECALS`].
+    pub refs_dropped: u32,
+    boxes: Vec<(u32, [u32; 6])>,
+    count: Vec<u32>,
+    fill: Vec<u32>,
+}
+
+impl ClusterBuilder {
+    /// Bins the decals' bounding spheres (centre, radius, in record order)
+    /// into the clusters of the view this builder last built: a cluster
+    /// over [`crate::MAX_CLUSTER_DECALS`] keeps its newest (highest index).
+    pub fn bin_decals(&self, spheres: &[(Vec3, f32)], view: &ClusterView, out: &mut DecalBins) {
+        let cap = crate::MAX_CLUSTER_DECALS as u32;
+        out.culled = 0;
+        out.refs_dropped = 0;
+        out.boxes.clear();
+        let (scale, bias) = (self.params[2], self.params[3]);
+        for (i, &(c, r)) in spheres.iter().enumerate() {
+            if view.frustum.intersects_sphere(c, r.max(1e-3)) {
+                let b = sphere_box(c, r, view, self.planes.0.max(1e-4), scale, bias);
+                out.boxes.push((i as u32, b));
+            } else {
+                out.culled += 1;
+            }
+        }
+        out.count.clear();
+        out.count.resize(CLUSTERS, 0);
+        for (_, b) in &out.boxes {
+            for_each_cluster(b, |c| out.count[c] += 1);
+        }
+        out.cells.clear();
+        let mut offset = 0u32;
+        for n in out.count.iter_mut() {
+            out.refs_dropped += n.saturating_sub(cap);
+            *n = (*n).min(cap);
+            out.cells.push(offset | (*n << 24));
+            offset += *n;
+        }
+        out.cells.resize(CLUSTERS + offset as usize, 0);
+        // Newest first, each written from its cluster's end backwards.
+        out.fill.clear();
+        out.fill.resize(CLUSTERS, 0);
+        let (cells, fill, count) = (&mut out.cells, &mut out.fill, &out.count);
+        for (i, b) in out.boxes.iter().rev() {
+            for_each_cluster(b, |c| {
+                if fill[c] < count[c] {
+                    fill[c] += 1;
+                    let at = (cells[c] & 0x00ff_ffff) + count[c] - fill[c];
+                    cells[CLUSTERS + at as usize] = *i;
+                }
+            });
+        }
+    }
+}
+
 /// Calls `f` with every cluster index in the box (x0, x1, y0, y1, z0, z1, inclusive).
 fn for_each_cluster(b: &[u32; 6], mut f: impl FnMut(usize)) {
     let (gx, gy) = (CLUSTER_GRID[0], CLUSTER_GRID[1]);
@@ -366,13 +435,20 @@ fn for_each_cluster(b: &[u32; 6], mut f: impl FnMut(usize)) {
     }
 }
 
-/// The clusters a light's sphere can touch.
-fn light_box(light: &Light, view: &ClusterView, near: f32, scale: f32, bias: f32) -> [u32; 6] {
+/// The clusters a sphere (a light's range, a decal's box) can touch.
+fn sphere_box(
+    center: Vec3,
+    radius: f32,
+    view: &ClusterView,
+    near: f32,
+    scale: f32,
+    bias: f32,
+) -> [u32; 6] {
     let [gx, gy, gz] = CLUSTER_GRID;
-    let r = light.range.max(1e-3);
+    let r = radius.max(1e-3);
     let cam = view.camera;
     // Depth slices from the view depth of the sphere's extent.
-    let d = (light.position - view.position).dot(cam.forward);
+    let d = (center - view.position).dot(cam.forward);
     let slice = |depth: f32| {
         let s = if cam.orthographic {
             depth * scale + bias
@@ -385,7 +461,7 @@ fn light_box(light: &Light, view: &ClusterView, near: f32, scale: f32, bias: f32
     let z0 = (slice(d - r) - 0.01).max(0.0) as u32;
     let z1 = ((slice(d + r) + 0.01) as u32).min(gz - 1);
     // The view-space box, clipped to the near plane, projected.
-    let c = cam.view.transform_point3(light.position);
+    let c = cam.view.transform_point3(center);
     let zmax = if cam.orthographic {
         c.z + r
     } else {
@@ -420,4 +496,84 @@ fn light_box(light: &Light, view: &ClusterView, near: f32, scale: f32, bias: f32
     let y0 = tile(-(hi.y + py), gy);
     let y1 = tile(-(lo.y - py), gy);
     [x0, x1, y0, y1, z0, z1]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::frame::camera_frame;
+    use glam::Vec2;
+
+    /// The cluster the lit shader's `cluster_at` finds for world point `p`.
+    fn cluster_of(
+        b: &ClusterBuilder,
+        cam: &CameraFrame,
+        eye: Vec3,
+        size: (u32, u32),
+        p: Vec3,
+    ) -> usize {
+        let q = cam.view_proj.project_point3(p);
+        let frag = Vec2::new(
+            (q.x * 0.5 + 0.5) * size.0 as f32,
+            (0.5 - q.y * 0.5) * size.1 as f32,
+        );
+        let x = ((frag.x * b.params[0]) as u32).min(CLUSTER_GRID[0] - 1);
+        let y = ((frag.y * b.params[1]) as u32).min(CLUSTER_GRID[1] - 1);
+        let depth = (p - eye).dot(cam.forward);
+        let s = depth.log2() * b.params[2] + b.params[3];
+        let z = (s.clamp(0.0, (CLUSTER_GRID[2] - 1) as f32)) as u32;
+        ((z * CLUSTER_GRID[1] + y) * CLUSTER_GRID[0] + x) as usize
+    }
+
+    /// Decals bin by their bounding spheres: one behind the camera is
+    /// culled, one in view is found in the cluster the shader looks up for
+    /// its centre, and a cluster past the cap keeps its newest decals, in
+    /// ascending order (later ones blend over earlier ones).
+    #[test]
+    fn decals_bin_into_the_shaders_cluster_and_keep_the_newest() {
+        let camera = crate::Camera::default();
+        let size = (1280, 720);
+        let cam = camera_frame(&camera, size.0 as f32 / size.1 as f32, Vec2::ZERO);
+        let frustum = Frustum::from_view_proj(cam.view_proj);
+        let view = ClusterView {
+            camera: &cam,
+            frustum: &frustum,
+            position: camera.position,
+            near: camera.near,
+            far: camera.far,
+            width: size.0,
+            height: size.1,
+        };
+        let mut b = ClusterBuilder::default();
+        b.build(&[], &view);
+        let n = crate::MAX_CLUSTER_DECALS + 45;
+        let mut spheres = vec![(Vec3::new(0.3, 0.2, 0.1), 0.05); n];
+        spheres.push((Vec3::new(0.0, 2.0, 30.0), 1.0));
+        spheres.push((Vec3::new(-2.0, 0.0, -1.0), 0.05));
+        let mut bins = DecalBins::default();
+        b.bin_decals(&spheres, &view, &mut bins);
+        assert_eq!(bins.culled, 1);
+        let refs = |c: usize| {
+            let w = bins.cells[c];
+            let first = CLUSTERS + (w & 0x00ff_ffff) as usize;
+            bins.cells[first..first + (w >> 24) as usize].to_vec()
+        };
+        let here = refs(cluster_of(&b, &cam, camera.position, size, spheres[0].0));
+        let kept: Vec<u32> = (45..n as u32).collect();
+        assert_eq!(here, kept);
+        let there = refs(cluster_of(
+            &b,
+            &cam,
+            camera.position,
+            size,
+            spheres[n + 1].0,
+        ));
+        assert_eq!(there, vec![n as u32 + 1]);
+        // Every cluster the crowd reaches dropped the same 45 oldest.
+        let crowded = (0..CLUSTERS)
+            .filter(|&c| refs(c).len() == kept.len())
+            .count() as u32;
+        assert!(crowded >= 1);
+        assert_eq!(bins.refs_dropped, crowded * 45);
+    }
 }

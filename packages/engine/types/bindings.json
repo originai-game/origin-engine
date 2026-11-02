@@ -1493,6 +1493,28 @@
           "default": 75
         },
         {
+          "name": "normalMin",
+          "column": "Vector2",
+          "default": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "name": "normalMax",
+          "column": "Vector2",
+          "default": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "name": "normalScale",
+          "column": "f32",
+          "default": 1,
+          "tunable": true
+        },
+        {
           "name": "visible",
           "column": "bool",
           "default": true

@@ -730,6 +730,7 @@ impl Views {
             f.prev_view_proj = vp;
             let (w, h) = (p.size.0 as f32, p.size.1 as f32);
             f.screen = [w, h, 1.0 / w, 1.0 / h];
+            crate::fx::unclustered(&mut f);
             queue.write_buffer(&slot.fx_buffer, 0, bytemuck::bytes_of(&f));
             let strips = light_map.map_or(1, |(_, s)| s.max(1));
             let ambient = scene.lighting_2d.map_or(glam::Vec3::ONE, |l| l.ambient);
@@ -1289,7 +1290,7 @@ impl crate::Renderer {
                         self.ltc.as_entire_binding(),
                     ],
                 );
-                let fx = crate::bind_group(
+                let fx = crate::fx::fx_group(
                     &self.device,
                     "fx (view)",
                     &self.fx_layout,
@@ -1301,6 +1302,7 @@ impl crate::Renderer {
                         // No planar reflection in a view (the main camera's).
                         wgpu::BindingResource::TextureView(&self.post.white),
                     ][..if self.planar_slot() { 5 } else { 4 }],
+                    &self.decal_buffers,
                 );
                 let lean = self.fx_lean_group(&slot.fx_buffer, &self.post.white, atlas_view);
                 (frame, fx, lean)

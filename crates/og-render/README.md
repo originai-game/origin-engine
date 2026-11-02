@@ -1202,8 +1202,16 @@ default records no pass and costs nothing (`effects_off_add_no_passes`).
   tonemap, below), film grain seeded by the tick, screen
   flash and camera shake (a deterministic offset of the camera, not a
   post pass).
-- **Decals**: up to 8 projected boxes per frame, read by the lit shader
-  (`fx-decals`); each is capped to its box.
+- **Decals**: up to 65,536 projected boxes per frame (`MAX_DECALS`), read
+  by the lit shader from two storage buffers of the effect group (the
+  records, binding 5, and their clusters, binding 6: each decal's bounding
+  sphere binned into the light clusters' grid, at most
+  `MAX_CLUSTER_DECALS` (255) a cluster, the newest kept), each capped to
+  its box; views without decal clusters (a planar reflection, a
+  render-to-texture view) walk every record. A decal's `normal_rect` is a
+  tangent-space normal map in the same atlas (an sRGB atlas read back to
+  its stored values), blended over the surface's normal after its own
+  normal map.
 - **Particles**: `ParticleEmitter` assets and `ParticleSystem`s with
   curves, bursts, noise, sprite sheets, collision against the depth buffer
   (compute) or against `RenderScene::particle_colliders` (the CPU path:
@@ -1432,7 +1440,7 @@ second one for the physical pipelines, whose layout differs:
 |---|---|
 | 0 frame | cascades, local shadows, irradiance, prefiltered, BRDF LUT (5) |
 | 1 physical material | base colour, normal, emissive, gradient, the pack (5), plus the material and physical uniforms |
-| 2 physical effects | SSAO, decal atlas, the transmission copy (3) |
+| 2 physical effects | SSAO, decal atlas, the transmission copy (3), plus the decal records and cells (storage) |
 | 3 skin | none: the joint palette and the morph deltas are storage buffers |
 
 The pack is an RGBA8 2D array texture made once per set of maps (shared by

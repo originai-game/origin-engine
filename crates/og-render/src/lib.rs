@@ -399,6 +399,12 @@ pub struct Renderer {
     /// serves them.
     fx_lean_layout: Option<wgpu::BindGroupLayout>,
     fx_buffer: wgpu::Buffer,
+    /// The frame's decal records and their clusters (`fx.rs`), and the CPU
+    /// vectors they are packed in, kept between frames.
+    decal_buffers: fx::DecalBuffers,
+    decal_records: Vec<fx::DecalGpu>,
+    decal_spheres: Vec<(glam::Vec3, f32)>,
+    decal_bins: clusters::DecalBins,
     sprite_fx_layout: wgpu::BindGroupLayout,
     sprite_fx_buffer: wgpu::Buffer,
     palette_layout: wgpu::BindGroupLayout,

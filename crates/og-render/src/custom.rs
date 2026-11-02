@@ -91,15 +91,13 @@ pub(crate) fn lit_source(shader: &MaterialShader, lit: bool) -> String {
 // The lit module's fx group (pbr.wgsl's declarations, which the prepass
 // reads), kept apart from pbr.wgsl's entry points.
 fn fx_section() -> &'static str {
-    "struct DecalGpu { inv: mat4x4<f32>, axis: vec4<f32>, uv_rect: vec4<f32>, color: vec4<f32>, emissive: vec4<f32> };
-struct Fx {
+    "struct Fx {
   view_proj_unjittered: mat4x4<f32>,
   prev_view_proj: mat4x4<f32>,
   screen: vec4<f32>,
   ao: vec4<f32>,
   decal_info: vec4<f32>,
   reserved: vec4<f32>,
-  decals: array<DecalGpu, 32>,
 };
 @group(2) @binding(0) var<uniform> fx: Fx;
 "

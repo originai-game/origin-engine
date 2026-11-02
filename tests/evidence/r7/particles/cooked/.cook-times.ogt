@@ -1,0 +1,8 @@
+type cook-times
+version 1
+---
+asset "fx/chips.ogt" 0.727
+asset "fx/debris.ogt" 4.749
+asset "fx/dust.ogt" 0.185
+asset "fx/haze.ogt" 0.195
+asset "fx/smoke.ogt" 0.223

@@ -302,6 +302,13 @@ fn decals_match_their_reference() {
     assert_eq!(check("decals").stats.decals, 5);
 }
 
+/// 642 normal-mapped decals, every one drawn (R7: no 32 cap).
+#[test]
+fn many_normal_mapped_decals_match_their_reference() {
+    let s = check("decals-many").stats;
+    assert_eq!((s.decals, s.decals_dropped), (642, 0));
+}
+
 #[test]
 fn post_grade_matches_its_reference() {
     check("post-grade");

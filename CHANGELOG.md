@@ -502,6 +502,16 @@ is one line here, written at the merge that changes
   `documents` and `edits`; new actions `dump_ui:layers` and `ui:<verb>`
   (set, state, play, seek, push, pop, save, clear, action). A UI snapshot
   is version 11 (it carries the layer stack).
+- **Decals with normal maps, and no 32 cap (R7, batch 1).** `og.Decal`
+  gains `normalMin`, `normalMax` and `normalScale`: a region of
+  `RenderSettings.decalAtlas` holding a tangent-space normal map (glTF's
+  convention; an sRGB atlas is read back to its stored values) that bends
+  the surface's normal under the decal, after the surface's own normal
+  map. A frame now draws up to 65,536 decals: their records are a storage
+  buffer and they are binned into the light clusters' grid, so a pixel
+  walks only the decals whose box can reach it; at most 255 overlap in one
+  cluster (the newest kept, the rest counted in `decals_dropped`). Later
+  decals still blend over earlier ones. Existing decals draw as before.
 
 ## 0.7.7 — 2026-10-31
 

@@ -1735,13 +1735,50 @@ impl Renderer {
         }
         let mut fx_uniform =
             fx::fx_uniform(cam.view_proj, prev_view_proj, (self.width, self.height));
-        let decals = fx::pack_decals(&scene.decals, &mut fx_uniform.decals);
+        // The decals: their records, and the main view's clusters they reach.
+        fx::pack_decals(
+            &scene.decals,
+            &mut self.decal_records,
+            &mut self.decal_spheres,
+        );
+        let decals = self.decal_records.len() as u32;
+        if decals > 0 {
+            self.clusters.bin_decals(
+                &self.decal_spheres,
+                &clusters::ClusterView {
+                    camera: &cam,
+                    frustum: &view_frustum,
+                    position: camera.position,
+                    near: camera.near,
+                    far: camera.far,
+                    width: self.width,
+                    height: self.height,
+                },
+                &mut self.decal_bins,
+            );
+            self.decal_buffers.write(
+                &self.device,
+                &self.queue,
+                &self.decal_records,
+                &self.decal_bins.cells,
+            );
+        }
+        let decals_dropped = scene.decals.len() as u32 - decals
+            + if decals > 0 {
+                self.decal_bins.refs_dropped
+            } else {
+                0
+            };
         // The previous joints' section (`skin::append_previous`).
         if skinned_motion.is_some() {
             fx_uniform.decal_info[3] = joints_drawn as f32;
         }
         fx_uniform.decal_info[0] = decals as f32;
-        fx_uniform.decal_info[1] = scene.decal_atlas.is_some() as u32 as f32;
+        fx_uniform.decal_info[1] = match scene.decal_atlas {
+            None => 0.0,
+            Some(t) if scene.texture_color_space(t) == Some(ColorSpace::Srgb) => 2.0,
+            Some(_) => 1.0,
+        };
         if let Some(a) = &ao {
             fx_uniform.ao = [1.0, 1.0, a.direct, 0.0];
         }
@@ -1764,6 +1801,7 @@ impl Renderer {
             u.view_proj_unjittered = view_proj.to_cols_array_2d();
             u.prev_view_proj = view_proj.to_cols_array_2d();
             u.screen = [*rw as f32, *rh as f32, 1.0 / *rw as f32, 1.0 / *rh as f32];
+            fx::unclustered(&mut u);
             self.queue
                 .write_buffer(&self.reflection_fx_buffer[k], 0, bytemuck::bytes_of(&u));
         }
@@ -2218,7 +2256,7 @@ impl Renderer {
             strip_segments: ribbon_frame.segments,
             line_instances: line_frame.instances,
             decals,
-            decals_dropped: scene.decals.len() as u32 - decals,
+            decals_dropped,
             lights_2d,
             occluders_2d,
             skinned_instances: scene.skinned_instances.len() as u32,
@@ -2258,6 +2296,7 @@ impl Renderer {
             self.graph.generation,
             scene.id(),
             scene.decal_atlas,
+            self.decal_buffers.generation,
             ao.is_some(),
             scene.lighting_2d.is_some(),
             reflection.is_some(),
@@ -2302,7 +2341,7 @@ impl Renderer {
             };
             let groups = FxGroups {
                 key: fx_key,
-                fx: bind_group(
+                fx: fx::fx_group(
                     &self.device,
                     "fx",
                     &self.fx_layout,
@@ -2313,6 +2352,7 @@ impl Renderer {
                         wgpu::BindingResource::Sampler(&self.trilinear_sampler),
                         wgpu::BindingResource::TextureView(planar_view),
                     ][..if self.planar_slot() { 5 } else { 4 }],
+                    &self.decal_buffers,
                 ),
                 fx_lean: self.fx_lean_group(&self.fx_buffer, ao_view, atlas_view),
                 sprite: sprite_group(lightmap_view, lightdir_view, "sprite fx"),
@@ -2400,7 +2440,7 @@ impl Renderer {
                     } else {
                         &self.post.white
                     };
-                    bind_group(
+                    fx::fx_group(
                         &self.device,
                         "physical fx",
                         &p.fx_layout,
@@ -2413,6 +2453,7 @@ impl Renderer {
                                 transmission_view.map_or(&self.post.white, |(v, _)| v),
                             ),
                         ],
+                        &self.decal_buffers,
                     )
                 })
         });
@@ -2551,7 +2592,7 @@ impl Renderer {
                 let atlas_view = scene.decal_atlas.map_or(&self.default_white, |t| {
                     &self.cache.textures[t.index()].view
                 });
-                bind_group(
+                fx::fx_group(
                     &self.device,
                     "fx (planar reflection)",
                     &self.fx_layout,
@@ -2563,6 +2604,7 @@ impl Renderer {
                         // Not the reflection itself: this pass draws it.
                         wgpu::BindingResource::TextureView(&self.post.white),
                     ][..if self.planar_slot() { 5 } else { 4 }],
+                    &self.decal_buffers,
                 )
             })
             .collect();

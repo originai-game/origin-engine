@@ -61,8 +61,9 @@ pub(crate) fn planar_slot(planar_reflections: u32) -> bool {
 }
 
 /// The lit pipelines' effect group (group 2): the effect uniform, the screen
-/// AO, the decal atlas and their sampler, and with `planar` ([`planar_slot`])
-/// the planar reflection material shaders read (planar.wgsl).
+/// AO, the decal atlas and their sampler, with `planar` ([`planar_slot`])
+/// the planar reflection material shaders read (planar.wgsl), and the decal
+/// records and cells (bindings 5 and 6, `fx.rs`).
 pub(crate) fn fx_layout_entries(planar: bool) -> Vec<wgpu::BindGroupLayoutEntry> {
     let mut entries = vec![
         uniform_entry(0, wgpu::ShaderStages::VERTEX_FRAGMENT),
@@ -73,6 +74,7 @@ pub(crate) fn fx_layout_entries(planar: bool) -> Vec<wgpu::BindGroupLayoutEntry>
     if planar {
         entries.push(tex2d(4));
     }
+    entries.extend(crate::fx::decal_layout_entries());
     entries
 }
 
@@ -177,10 +179,10 @@ mod tests {
     }
 
     /// One planar reflection keeps the effect group main had before
-    /// material shaders could read the mirror (four bindings, no lean group
-    /// for the lightmapped pipelines, the lit module's `planar_reflection`
-    /// the stub); two add binding 4, and only then do the lightmapped
-    /// pipelines need the group without it.
+    /// material shaders could read the mirror (four bindings and the decal
+    /// buffers, no lean group for the lightmapped pipelines, the lit
+    /// module's `planar_reflection` the stub); two add binding 4, and only
+    /// then do the lightmapped pipelines need the group without it.
     #[test]
     fn the_effect_group_carries_the_planar_reflection_only_with_two() {
         let hooks = hooks::default_hooks();
@@ -190,13 +192,13 @@ mod tests {
             let fx = fx_layout_entries(planar_slot(count));
             let bindings: Vec<u32> = fx.iter().map(|e| e.binding).collect();
             if slot {
-                assert_eq!(bindings, [0, 1, 2, 3, 4], "{at}");
+                assert_eq!(bindings, [0, 1, 2, 3, 4, 5, 6], "{at}");
                 assert_eq!(textures(&fx), 3, "{at}");
                 // The lightmapped pipelines' group: the default one's.
                 let lean = fx_layout_entries(false);
                 assert_eq!(textures(&lean), 2, "{at}");
             } else {
-                assert_eq!(bindings, [0, 1, 2, 3], "{at}");
+                assert_eq!(bindings, [0, 1, 2, 3, 5, 6], "{at}");
                 assert_eq!(textures(&fx), 2, "{at}");
             }
             let source = lit_source_with(&hooks, planar_slot(count));

@@ -28652,7 +28652,7 @@
     "Decal": {
       "x-og-kind": "component",
       "x-og-module": "render",
-      "description": "A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one). At most 32 are drawn.",
+      "description": "A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one); with a normalMin to normalMax region, that region of the same atlas is a tangent-space normal map that bends the surface's normal (cracks, a bullet hole's rim, embossed lettering). Later decals blend over earlier ones. Tens of thousands can be placed: each pixel walks only the decals whose box can reach it, and at most 255 overlap at one place (the newest are kept).",
       "type": "object",
       "properties": {
         "color": {
@@ -28713,6 +28713,30 @@
           "minimum": 0,
           "maximum": 90,
           "x-og-unit": "deg"
+        },
+        "normalMin": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The top-left corner of the decal's normal map in RenderSettings.decalAtlas, v down (glTF's convention: +X along u, +Y up the image). Equal to normalMax (the default), the decal has no normal map.",
+          "default": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        "normalMax": {
+          "$ref": "#/$defs/Vector2",
+          "description": "The bottom-right corner of the decal's normal map in the atlas, v down.",
+          "default": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        "normalScale": {
+          "type": "number",
+          "description": "How strongly the normal map bends the surface, as three.js normalScale.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 4,
+          "x-og-tunable": true
         },
         "visible": {
           "type": "boolean",

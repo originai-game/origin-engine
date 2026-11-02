@@ -150,7 +150,7 @@ impl Renderer {
         ao: &wgpu::TextureView,
         atlas: &wgpu::TextureView,
     ) -> Option<wgpu::BindGroup> {
-        Some(bind_group(
+        Some(crate::fx::fx_group(
             &self.device,
             "fx (lightmapped)",
             self.fx_lean_layout.as_ref()?,
@@ -160,6 +160,7 @@ impl Renderer {
                 wgpu::BindingResource::TextureView(atlas),
                 wgpu::BindingResource::Sampler(&self.trilinear_sampler),
             ],
+            &self.decal_buffers,
         ))
     }
 

@@ -90,7 +90,7 @@ module render {
 | [`og.Light2D`](#record-Light2D) | component | A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff (faded over its last tenth, so even a falloff below 1 ends without a rim), shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn. |
 | [`og.Occluder2D`](#record-Occluder2D) | component | A shape that blocks 2D light (walls, crates, characters), centred on the entity's position and turned and scaled with it about z: a width by height rectangle, or the polygon `points` gives. Pixels inside it are not shadowed by it. At most 128 are drawn. |
 | [`og.LightMask2D`](#record-LightMask2D) | component | The light layers that light the entity's sprite, flipbook, 2D rig or tilemap: a Light2D lights it when their `layers` share a bit. Without one an entity is on layer 0 (bit 1). At most four different masks are lit in one frame; any further mask is lit as layer 0. |
-| [`og.Decal`](#record-Decal) | component | A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one). At most 32 are drawn. |
+| [`og.Decal`](#record-Decal) | component | A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one); with a normalMin to normalMax region, that region of the same atlas is a tangent-space normal map that bends the surface's normal (cracks, a bullet hole's rim, embossed lettering). Later decals blend over earlier ones. Tens of thousands can be placed: each pixel walks only the decals whose box can reach it, and at most 255 overlap at one place (the newest are kept). |
 | [`PARTICLES_ARMED`](#const-PARTICLES_ARMED) | constant | ParticleSystem.startTick's default: never written. A looping emitter emits as if started at tick 0; a one-shot (`looping false`) emits nothing until its startTick is written, so a burst spawned in `start` waits for its first use. Write it back to re-arm a one-shot without firing it. |
 | [`og.ParticleSystem`](#record-ParticleSystem) | component | Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay; on an entity with og.TimeGroup they spawn, age and move at the group's scale (og.time.setGroupScale), read as the frame is drawn. They never feed back into the simulation. They simulate in compute (sprite-mode emitters on the CPU), identical either way. |
 | [`og.Trail`](#record-Trail) | component | A streak behind the entity: its world positions over the last `lifetime` seconds as a camera-facing strip, from widthStart and color at the head to widthEnd and colorEnd at the tail. |
@@ -305,7 +305,7 @@ fn ribbon {
 }
 ```
 
-<sub>`api.ogt` line 5515</sub>
+<sub>`api.ogt` line 5523</sub>
 
 <a id="fn-sprite"></a>
 
@@ -335,7 +335,7 @@ fn sprite {
 }
 ```
 
-<sub>`api.ogt` line 5645</sub>
+<sub>`api.ogt` line 5653</sub>
 
 <a id="fn-floatingText"></a>
 
@@ -365,7 +365,7 @@ fn floatingText {
 }
 ```
 
-<sub>`api.ogt` line 5840</sub>
+<sub>`api.ogt` line 5848</sub>
 
 <a id="fn-measureText"></a>
 
@@ -395,7 +395,7 @@ fn measureText {
 }
 ```
 
-<sub>`api.ogt` line 5847</sub>
+<sub>`api.ogt` line 5855</sub>
 
 <a id="fn-boxGeometry"></a>
 
@@ -425,7 +425,7 @@ fn boxGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5916</sub>
+<sub>`api.ogt` line 5924</sub>
 
 <a id="fn-planeGeometry"></a>
 
@@ -455,7 +455,7 @@ fn planeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5923</sub>
+<sub>`api.ogt` line 5931</sub>
 
 <a id="fn-sphereGeometry"></a>
 
@@ -485,7 +485,7 @@ fn sphereGeometry {
 }
 ```
 
-<sub>`api.ogt` line 5930</sub>
+<sub>`api.ogt` line 5938</sub>
 
 <a id="fn-standardMaterial"></a>
 
@@ -515,7 +515,7 @@ fn standardMaterial {
 }
 ```
 
-<sub>`api.ogt` line 6014</sub>
+<sub>`api.ogt` line 6022</sub>
 
 <a id="fn-updateMaterial"></a>
 
@@ -547,7 +547,7 @@ fn updateMaterial {
 }
 ```
 
-<sub>`api.ogt` line 6021</sub>
+<sub>`api.ogt` line 6029</sub>
 
 <a id="fn-shaderMaterial"></a>
 
@@ -579,7 +579,7 @@ fn shaderMaterial {
 }
 ```
 
-<sub>`api.ogt` line 6038</sub>
+<sub>`api.ogt` line 6046</sub>
 
 <a id="fn-setMaterialShader"></a>
 
@@ -611,7 +611,7 @@ fn setMaterialShader {
 }
 ```
 
-<sub>`api.ogt` line 6046</sub>
+<sub>`api.ogt` line 6054</sub>
 
 <a id="fn-setShaderParam"></a>
 
@@ -645,7 +645,7 @@ fn setShaderParam {
 }
 ```
 
-<sub>`api.ogt` line 6054</sub>
+<sub>`api.ogt` line 6062</sub>
 
 <a id="fn-applyLook"></a>
 
@@ -675,7 +675,7 @@ fn applyLook {
 }
 ```
 
-<sub>`api.ogt` line 6063</sub>
+<sub>`api.ogt` line 6071</sub>
 
 <a id="fn-applyQuality"></a>
 
@@ -735,7 +735,7 @@ fn applyQuality {
 }
 ```
 
-<sub>`api.ogt` line 6070</sub>
+<sub>`api.ogt` line 6078</sub>
 
 <a id="fn-setDisplay"></a>
 
@@ -765,7 +765,7 @@ fn setDisplay {
 }
 ```
 
-<sub>`api.ogt` line 6174</sub>
+<sub>`api.ogt` line 6182</sub>
 
 <a id="fn-resetDisplay"></a>
 
@@ -793,7 +793,7 @@ fn resetDisplay {
 }
 ```
 
-<sub>`api.ogt` line 6181</sub>
+<sub>`api.ogt` line 6189</sub>
 
 <a id="fn-display"></a>
 
@@ -821,7 +821,7 @@ fn display {
 }
 ```
 
-<sub>`api.ogt` line 6187</sub>
+<sub>`api.ogt` line 6195</sub>
 
 <a id="fn-look"></a>
 
@@ -849,7 +849,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 6193</sub>
+<sub>`api.ogt` line 6201</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -877,7 +877,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 6199</sub>
+<sub>`api.ogt` line 6207</sub>
 
 <a id="fn-text"></a>
 
@@ -907,7 +907,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 6205</sub>
+<sub>`api.ogt` line 6213</sub>
 
 <a id="fn-bufferGeometry"></a>
 
@@ -937,7 +937,7 @@ fn bufferGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6243</sub>
+<sub>`api.ogt` line 6251</sub>
 
 <a id="fn-updateGeometry"></a>
 
@@ -969,7 +969,7 @@ fn updateGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6250</sub>
+<sub>`api.ogt` line 6258</sub>
 
 <a id="fn-geometryInfo"></a>
 
@@ -999,7 +999,7 @@ fn geometryInfo {
 }
 ```
 
-<sub>`api.ogt` line 6258</sub>
+<sub>`api.ogt` line 6266</sub>
 
 <a id="fn-cylinderGeometry"></a>
 
@@ -1029,7 +1029,7 @@ fn cylinderGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6453</sub>
+<sub>`api.ogt` line 6461</sub>
 
 <a id="fn-coneGeometry"></a>
 
@@ -1059,7 +1059,7 @@ fn coneGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6460</sub>
+<sub>`api.ogt` line 6468</sub>
 
 <a id="fn-capsuleGeometry"></a>
 
@@ -1089,7 +1089,7 @@ fn capsuleGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6467</sub>
+<sub>`api.ogt` line 6475</sub>
 
 <a id="fn-torusGeometry"></a>
 
@@ -1119,7 +1119,7 @@ fn torusGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6474</sub>
+<sub>`api.ogt` line 6482</sub>
 
 <a id="fn-ringGeometry"></a>
 
@@ -1149,7 +1149,7 @@ fn ringGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6481</sub>
+<sub>`api.ogt` line 6489</sub>
 
 <a id="fn-circleGeometry"></a>
 
@@ -1179,7 +1179,7 @@ fn circleGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6488</sub>
+<sub>`api.ogt` line 6496</sub>
 
 <a id="fn-tubeGeometry"></a>
 
@@ -1209,7 +1209,7 @@ fn tubeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6495</sub>
+<sub>`api.ogt` line 6503</sub>
 
 <a id="fn-shapeGeometry"></a>
 
@@ -1239,7 +1239,7 @@ fn shapeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6732</sub>
+<sub>`api.ogt` line 6740</sub>
 
 <a id="fn-extrudeGeometry"></a>
 
@@ -1269,7 +1269,7 @@ fn extrudeGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6739</sub>
+<sub>`api.ogt` line 6747</sub>
 
 <a id="fn-latheGeometry"></a>
 
@@ -1299,7 +1299,7 @@ fn latheGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6746</sub>
+<sub>`api.ogt` line 6754</sub>
 
 <a id="fn-polyhedronGeometry"></a>
 
@@ -1329,7 +1329,7 @@ fn polyhedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6753</sub>
+<sub>`api.ogt` line 6761</sub>
 
 <a id="fn-icosahedronGeometry"></a>
 
@@ -1359,7 +1359,7 @@ fn icosahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6760</sub>
+<sub>`api.ogt` line 6768</sub>
 
 <a id="fn-dodecahedronGeometry"></a>
 
@@ -1389,7 +1389,7 @@ fn dodecahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6767</sub>
+<sub>`api.ogt` line 6775</sub>
 
 <a id="fn-octahedronGeometry"></a>
 
@@ -1419,7 +1419,7 @@ fn octahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6774</sub>
+<sub>`api.ogt` line 6782</sub>
 
 <a id="fn-tetrahedronGeometry"></a>
 
@@ -1449,7 +1449,7 @@ fn tetrahedronGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6781</sub>
+<sub>`api.ogt` line 6789</sub>
 
 <a id="fn-sweepGeometry"></a>
 
@@ -1479,7 +1479,7 @@ fn sweepGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6788</sub>
+<sub>`api.ogt` line 6796</sub>
 
 <a id="fn-csgGeometry"></a>
 
@@ -1509,7 +1509,7 @@ fn csgGeometry {
 }
 ```
 
-<sub>`api.ogt` line 6795</sub>
+<sub>`api.ogt` line 6803</sub>
 
 <a id="fn-mergeGeometries"></a>
 
@@ -1539,7 +1539,7 @@ fn mergeGeometries {
 }
 ```
 
-<sub>`api.ogt` line 6802</sub>
+<sub>`api.ogt` line 6810</sub>
 
 <a id="fn-lines"></a>
 
@@ -1569,7 +1569,7 @@ fn lines {
 }
 ```
 
-<sub>`api.ogt` line 6860</sub>
+<sub>`api.ogt` line 6868</sub>
 
 <a id="fn-points"></a>
 
@@ -1599,7 +1599,7 @@ fn points {
 }
 ```
 
-<sub>`api.ogt` line 6895</sub>
+<sub>`api.ogt` line 6903</sub>
 
 <a id="fn-raycast"></a>
 
@@ -1631,7 +1631,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 6999</sub>
+<sub>`api.ogt` line 7007</sub>
 
 <a id="fn-light2dAt"></a>
 
@@ -1668,7 +1668,7 @@ fn light2dAt {
 }
 ```
 
-<sub>`api.ogt` line 7007</sub>
+<sub>`api.ogt` line 7015</sub>
 
 <a id="fn-renderTarget"></a>
 
@@ -1698,7 +1698,7 @@ fn renderTarget {
 }
 ```
 
-<sub>`api.ogt` line 7066</sub>
+<sub>`api.ogt` line 7074</sub>
 
 <a id="fn-setPostParam"></a>
 
@@ -1732,7 +1732,7 @@ fn setPostParam {
 }
 ```
 
-<sub>`api.ogt` line 7178</sub>
+<sub>`api.ogt` line 7186</sub>
 
 <a id="fn-postErrors"></a>
 
@@ -1760,7 +1760,7 @@ fn postErrors {
 }
 ```
 
-<sub>`api.ogt` line 7193</sub>
+<sub>`api.ogt` line 7201</sub>
 
 <a id="fn-bakedLighting"></a>
 
@@ -1788,7 +1788,7 @@ fn bakedLighting {
 }
 ```
 
-<sub>`api.ogt` line 7261</sub>
+<sub>`api.ogt` line 7269</sub>
 
 ## Components, resources and events
 
@@ -3203,7 +3203,7 @@ component LightMask2D {
 
 ### `og.Decal` (component)
 
-A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one). At most 32 are drawn.
+A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one); with a normalMin to normalMax region, that region of the same atlas is a tangent-space normal map that bends the surface's normal (cracks, a bullet hole's rim, embossed lettering). Later decals blend over earlier ones. Tens of thousands can be placed: each pixel walks only the decals whose box can reach it, and at most 255 overlap at one place (the newest are kept).
 
 Token `og.Decal`, registered under the schema name `og.Decal`; its value type is `Decal`.
 
@@ -3216,11 +3216,14 @@ Token `og.Decal`, registered under the schema name `og.Decal`; its value type is
 | `emissive` | `Color` | `{ r: 0, g: 0, b: 0 }` | — | — | — | Linear light added where the decal covers (glowing runes, lava). |
 | `roughness` | `number` | `-1` | -1 … 1 | — | — | The surface roughness under the decal; -1 keeps the surface's. |
 | `angleFade` | `number` | `75` | 0 … 90 | `deg` | — | Surfaces turned further than this from the projection direction are not covered (the last 15 degrees fade). |
+| `normalMin` | `Vector2` | `{ x: 0, y: 0 }` | — | — | — | The top-left corner of the decal's normal map in RenderSettings.decalAtlas, v down (glTF's convention: +X along u, +Y up the image). Equal to normalMax (the default), the decal has no normal map. |
+| `normalMax` | `Vector2` | `{ x: 0, y: 0 }` | — | — | — | The bottom-right corner of the decal's normal map in the atlas, v down. |
+| `normalScale` | `number` | `1` | 0 … 4 | — | tunable | How strongly the normal map bends the surface, as three.js normalScale. |
 | `visible` | `boolean` | `true` | — | — | — | Whether it is drawn. |
 
 ```ogt
 component Decal {
-  doc "A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one). At most 32 are drawn."
+  doc "A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one); with a normalMin to normalMax region, that region of the same atlas is a tangent-space normal map that bends the surface's normal (cracks, a bullet hole's rim, embossed lettering). Later decals blend over earlier ones. Tens of thousands can be placed: each pixel walks only the decals whose box can reach it, and at most 255 overlap at one place (the newest are kept)."
   field color Color "A linear colour multiplied with the atlas." {
     default 1 1 1
   }
@@ -3248,6 +3251,14 @@ component Decal {
     min 0
     max 90
     unit deg
+  }
+  field normalMin Vector2 "The top-left corner of the decal's normal map in RenderSettings.decalAtlas, v down (glTF's convention: +X along u, +Y up the image). Equal to normalMax (the default), the decal has no normal map."
+  field normalMax Vector2 "The bottom-right corner of the decal's normal map in the atlas, v down."
+  field normalScale f32 "How strongly the normal map bends the surface, as three.js normalScale." {
+    default 1
+    min 0
+    max 4
+    tunable true
   }
   field visible bool "Whether it is drawn." {
     default true
@@ -3292,7 +3303,7 @@ component ParticleSystem {
 }
 ```
 
-<sub>`api.ogt` line 5377</sub>
+<sub>`api.ogt` line 5385</sub>
 
 <a id="record-Trail"></a>
 
@@ -3368,7 +3379,7 @@ component Trail {
 }
 ```
 
-<sub>`api.ogt` line 5393</sub>
+<sub>`api.ogt` line 5401</sub>
 
 <a id="record-Beam"></a>
 
@@ -3435,7 +3446,7 @@ component Beam {
 }
 ```
 
-<sub>`api.ogt` line 5441</sub>
+<sub>`api.ogt` line 5449</sub>
 
 <a id="record-Sprite"></a>
 
@@ -3589,7 +3600,7 @@ component Sprite {
 }
 ```
 
-<sub>`api.ogt` line 5652</sub>
+<sub>`api.ogt` line 5660</sub>
 
 <a id="record-Afterimage"></a>
 
@@ -3637,7 +3648,7 @@ component Afterimage {
 }
 ```
 
-<sub>`api.ogt` line 5754</sub>
+<sub>`api.ogt` line 5762</sub>
 
 <a id="record-ReflectionProbe"></a>
 
@@ -3690,7 +3701,7 @@ component ReflectionProbe {
 }
 ```
 
-<sub>`api.ogt` line 5982</sub>
+<sub>`api.ogt` line 5990</sub>
 
 <a id="record-Lines"></a>
 
@@ -3753,7 +3764,7 @@ component Lines {
 }
 ```
 
-<sub>`api.ogt` line 6902</sub>
+<sub>`api.ogt` line 6910</sub>
 
 <a id="record-Points"></a>
 
@@ -3807,7 +3818,7 @@ component Points {
 }
 ```
 
-<sub>`api.ogt` line 6939</sub>
+<sub>`api.ogt` line 6947</sub>
 
 <a id="record-CameraView"></a>
 
@@ -3914,7 +3925,7 @@ component CameraView {
 }
 ```
 
-<sub>`api.ogt` line 7073</sub>
+<sub>`api.ogt` line 7081</sub>
 
 <a id="record-Mirror"></a>
 
@@ -3959,7 +3970,7 @@ component Mirror {
 }
 ```
 
-<sub>`api.ogt` line 7145</sub>
+<sub>`api.ogt` line 7153</sub>
 
 <a id="record-RectLight"></a>
 
@@ -4009,7 +4020,7 @@ component RectLight {
 }
 ```
 
-<sub>`api.ogt` line 7207</sub>
+<sub>`api.ogt` line 7215</sub>
 
 <a id="record-LightVolume"></a>
 
@@ -4043,7 +4054,7 @@ component LightVolume {
 }
 ```
 
-<sub>`api.ogt` line 7234</sub>
+<sub>`api.ogt` line 7242</sub>
 
 ## Types
 
@@ -5155,7 +5166,7 @@ struct RibbonPoint {
 }
 ```
 
-<sub>`api.ogt` line 5482</sub>
+<sub>`api.ogt` line 5490</sub>
 
 <a id="type-RibbonDesc"></a>
 
@@ -5186,7 +5197,7 @@ struct RibbonDesc {
 }
 ```
 
-<sub>`api.ogt` line 5503</sub>
+<sub>`api.ogt` line 5511</sub>
 
 <a id="type-TextDesc"></a>
 
@@ -5250,7 +5261,7 @@ struct TextDesc {
 }
 ```
 
-<sub>`api.ogt` line 5522</sub>
+<sub>`api.ogt` line 5530</sub>
 
 <a id="type-TextMeasureDesc"></a>
 
@@ -5279,7 +5290,7 @@ struct TextMeasureDesc {
 }
 ```
 
-<sub>`api.ogt` line 5557</sub>
+<sub>`api.ogt` line 5565</sub>
 
 <a id="type-TextMetrics"></a>
 
@@ -5302,7 +5313,7 @@ struct TextMetrics {
 }
 ```
 
-<sub>`api.ogt` line 5568</sub>
+<sub>`api.ogt` line 5576</sub>
 
 <a id="type-SpriteDesc"></a>
 
@@ -5415,7 +5426,7 @@ struct SpriteDesc {
 }
 ```
 
-<sub>`api.ogt` line 5575</sub>
+<sub>`api.ogt` line 5583</sub>
 
 <a id="type-FloatingTextDesc"></a>
 
@@ -5505,7 +5516,7 @@ struct FloatingTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 5781</sub>
+<sub>`api.ogt` line 5789</sub>
 
 <a id="type-BoxGeometryDesc"></a>
 
@@ -5547,7 +5558,7 @@ struct BoxGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 5854</sub>
+<sub>`api.ogt` line 5862</sub>
 
 <a id="type-PlaneGeometryDesc"></a>
 
@@ -5583,7 +5594,7 @@ struct PlaneGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 5877</sub>
+<sub>`api.ogt` line 5885</sub>
 
 <a id="type-SphereGeometryDesc"></a>
 
@@ -5623,7 +5634,7 @@ struct SphereGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 5895</sub>
+<sub>`api.ogt` line 5903</sub>
 
 <a id="type-RenderCapabilities"></a>
 
@@ -5684,7 +5695,7 @@ struct RenderCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 5941</sub>
+<sub>`api.ogt` line 5949</sub>
 
 <a id="type-ReflectionProbeMode"></a>
 
@@ -5707,7 +5718,7 @@ enum ReflectionProbeMode {
 }
 ```
 
-<sub>`api.ogt` line 5969</sub>
+<sub>`api.ogt` line 5977</sub>
 
 <a id="type-Shader"></a>
 
@@ -5721,7 +5732,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Shader "A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader, or with `mode full` its own vertex and fragment entries, and the parameters they read."
 ```
 
-<sub>`api.ogt` line 6029</sub>
+<sub>`api.ogt` line 6037</sub>
 
 <a id="type-FrameCap"></a>
 
@@ -5752,7 +5763,7 @@ enum FrameCap {
 }
 ```
 
-<sub>`api.ogt` line 6091</sub>
+<sub>`api.ogt` line 6099</sub>
 
 <a id="type-PowerPreference"></a>
 
@@ -5775,7 +5786,7 @@ enum PowerPreference {
 }
 ```
 
-<sub>`api.ogt` line 6101</sub>
+<sub>`api.ogt` line 6109</sub>
 
 <a id="type-DisplaySettings"></a>
 
@@ -5830,7 +5841,7 @@ struct DisplaySettings {
 }
 ```
 
-<sub>`api.ogt` line 6107</sub>
+<sub>`api.ogt` line 6115</sub>
 
 <a id="type-GpuMemory"></a>
 
@@ -5867,7 +5878,7 @@ struct GpuMemory {
 }
 ```
 
-<sub>`api.ogt` line 6136</sub>
+<sub>`api.ogt` line 6144</sub>
 
 <a id="type-DisplayInfo"></a>
 
@@ -5914,7 +5925,7 @@ struct DisplayInfo {
 }
 ```
 
-<sub>`api.ogt` line 6155</sub>
+<sub>`api.ogt` line 6163</sub>
 
 <a id="type-BufferGeometryDesc"></a>
 
@@ -5955,7 +5966,7 @@ struct BufferGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6214</sub>
+<sub>`api.ogt` line 6222</sub>
 
 <a id="type-GeometryInfo"></a>
 
@@ -5986,7 +5997,7 @@ struct GeometryInfo {
 }
 ```
 
-<sub>`api.ogt` line 6230</sub>
+<sub>`api.ogt` line 6238</sub>
 
 <a id="type-CylinderGeometryDesc"></a>
 
@@ -6045,7 +6056,7 @@ struct CylinderGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6265</sub>
+<sub>`api.ogt` line 6273</sub>
 
 <a id="type-ConeGeometryDesc"></a>
 
@@ -6089,7 +6100,7 @@ struct ConeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6301</sub>
+<sub>`api.ogt` line 6309</sub>
 
 <a id="type-CapsuleGeometryDesc"></a>
 
@@ -6136,7 +6147,7 @@ struct CapsuleGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6325</sub>
+<sub>`api.ogt` line 6333</sub>
 
 <a id="type-TorusGeometryDesc"></a>
 
@@ -6183,7 +6194,7 @@ struct TorusGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6352</sub>
+<sub>`api.ogt` line 6360</sub>
 
 <a id="type-RingGeometryDesc"></a>
 
@@ -6234,7 +6245,7 @@ struct RingGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6379</sub>
+<sub>`api.ogt` line 6387</sub>
 
 <a id="type-CircleGeometryDesc"></a>
 
@@ -6274,7 +6285,7 @@ struct CircleGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6409</sub>
+<sub>`api.ogt` line 6417</sub>
 
 <a id="type-TubeGeometryDesc"></a>
 
@@ -6318,7 +6329,7 @@ struct TubeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6430</sub>
+<sub>`api.ogt` line 6438</sub>
 
 <a id="type-ShapePoints"></a>
 
@@ -6339,7 +6350,7 @@ struct ShapePoints {
 }
 ```
 
-<sub>`api.ogt` line 6504</sub>
+<sub>`api.ogt` line 6512</sub>
 
 <a id="type-ShapeGeometryDesc"></a>
 
@@ -6376,7 +6387,7 @@ struct ShapeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6510</sub>
+<sub>`api.ogt` line 6518</sub>
 
 <a id="type-ExtrudeGeometryDesc"></a>
 
@@ -6449,7 +6460,7 @@ struct ExtrudeGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6527</sub>
+<sub>`api.ogt` line 6535</sub>
 
 <a id="type-LatheGeometryDesc"></a>
 
@@ -6497,7 +6508,7 @@ struct LatheGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6572</sub>
+<sub>`api.ogt` line 6580</sub>
 
 <a id="type-PolyhedronGeometryDesc"></a>
 
@@ -6541,7 +6552,7 @@ struct PolyhedronGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6598</sub>
+<sub>`api.ogt` line 6606</sub>
 
 <a id="type-SolidGeometryDesc"></a>
 
@@ -6581,7 +6592,7 @@ struct SolidGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6620</sub>
+<sub>`api.ogt` line 6628</sub>
 
 <a id="type-SweepKey"></a>
 
@@ -6604,7 +6615,7 @@ struct SweepKey {
 }
 ```
 
-<sub>`api.ogt` line 6640</sub>
+<sub>`api.ogt` line 6648</sub>
 
 <a id="type-SweepGeometryDesc"></a>
 
@@ -6656,7 +6667,7 @@ struct SweepGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6648</sub>
+<sub>`api.ogt` line 6656</sub>
 
 <a id="type-MirrorAxis"></a>
 
@@ -6683,7 +6694,7 @@ enum MirrorAxis {
 }
 ```
 
-<sub>`api.ogt` line 6675</sub>
+<sub>`api.ogt` line 6683</sub>
 
 <a id="type-GeometryPart"></a>
 
@@ -6717,7 +6728,7 @@ struct GeometryPart {
 }
 ```
 
-<sub>`api.ogt` line 6683</sub>
+<sub>`api.ogt` line 6691</sub>
 
 <a id="type-CsgOp"></a>
 
@@ -6742,7 +6753,7 @@ enum CsgOp {
 }
 ```
 
-<sub>`api.ogt` line 6697</sub>
+<sub>`api.ogt` line 6705</sub>
 
 <a id="type-CsgGeometryDesc"></a>
 
@@ -6778,7 +6789,7 @@ struct CsgGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6704</sub>
+<sub>`api.ogt` line 6712</sub>
 
 <a id="type-MergeGeometriesDesc"></a>
 
@@ -6810,7 +6821,7 @@ struct MergeGeometriesDesc {
 }
 ```
 
-<sub>`api.ogt` line 6719</sub>
+<sub>`api.ogt` line 6727</sub>
 
 <a id="type-LineMode"></a>
 
@@ -6835,7 +6846,7 @@ enum LineMode {
 }
 ```
 
-<sub>`api.ogt` line 6809</sub>
+<sub>`api.ogt` line 6817</sub>
 
 <a id="type-LinesDesc"></a>
 
@@ -6901,7 +6912,7 @@ struct LinesDesc {
 }
 ```
 
-<sub>`api.ogt` line 6823</sub>
+<sub>`api.ogt` line 6831</sub>
 
 <a id="type-PointsDesc"></a>
 
@@ -6952,7 +6963,7 @@ struct PointsDesc {
 }
 ```
 
-<sub>`api.ogt` line 6867</sub>
+<sub>`api.ogt` line 6875</sub>
 
 <a id="type-RaycastGeometryDesc"></a>
 
@@ -6985,7 +6996,7 @@ struct RaycastGeometryDesc {
 }
 ```
 
-<sub>`api.ogt` line 6970</sub>
+<sub>`api.ogt` line 6978</sub>
 
 <a id="type-GeometryHit"></a>
 
@@ -7020,7 +7031,7 @@ struct GeometryHit {
 }
 ```
 
-<sub>`api.ogt` line 6984</sub>
+<sub>`api.ogt` line 6992</sub>
 
 <a id="type-RenderTargetFormat"></a>
 
@@ -7043,7 +7054,7 @@ enum RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 7020</sub>
+<sub>`api.ogt` line 7028</sub>
 
 <a id="type-RenderTarget"></a>
 
@@ -7057,7 +7068,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle RenderTarget "A texture a camera draws into (og.render.renderTarget), as three.js WebGLRenderTarget."
 ```
 
-<sub>`api.ogt` line 7033</sub>
+<sub>`api.ogt` line 7041</sub>
 
 <a id="type-RenderTargetDesc"></a>
 
@@ -7091,7 +7102,7 @@ struct RenderTargetDesc {
 }
 ```
 
-<sub>`api.ogt` line 7042</sub>
+<sub>`api.ogt` line 7050</sub>
 
 <a id="type-RenderTargetInfo"></a>
 
@@ -7118,7 +7129,7 @@ struct RenderTargetInfo {
 }
 ```
 
-<sub>`api.ogt` line 7057</sub>
+<sub>`api.ogt` line 7065</sub>
 
 <a id="type-Post"></a>
 
@@ -7132,7 +7143,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Post "A custom post pass from og.load.post (an `.ogt` of `type post`): a WGSL `post` function over the lit image and the parameters it reads."
 ```
 
-<sub>`api.ogt` line 7169</sub>
+<sub>`api.ogt` line 7177</sub>
 
 <a id="type-PostError"></a>
 
@@ -7153,7 +7164,7 @@ struct PostError {
 }
 ```
 
-<sub>`api.ogt` line 7187</sub>
+<sub>`api.ogt` line 7195</sub>
 
 <a id="type-VolumetricFog"></a>
 
@@ -7176,7 +7187,7 @@ enum VolumetricFog {
 }
 ```
 
-<sub>`api.ogt` line 7201</sub>
+<sub>`api.ogt` line 7209</sub>
 
 <a id="type-BakedScene"></a>
 
@@ -7209,7 +7220,7 @@ struct BakedScene {
 }
 ```
 
-<sub>`api.ogt` line 7249</sub>
+<sub>`api.ogt` line 7257</sub>
 
 ## Column kinds
 
@@ -7497,7 +7508,7 @@ column ReflectionProbeMode {
 }
 ```
 
-<sub>`api.ogt` line 5975</sub>
+<sub>`api.ogt` line 5983</sub>
 
 ```ogt
 column Shader {
@@ -7508,7 +7519,7 @@ column Shader {
 }
 ```
 
-<sub>`api.ogt` line 6031</sub>
+<sub>`api.ogt` line 6039</sub>
 
 ```ogt
 column LineMode {
@@ -7519,7 +7530,7 @@ column LineMode {
 }
 ```
 
-<sub>`api.ogt` line 6816</sub>
+<sub>`api.ogt` line 6824</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -7530,7 +7541,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 7026</sub>
+<sub>`api.ogt` line 7034</sub>
 
 ```ogt
 column RenderTarget {
@@ -7541,7 +7552,7 @@ column RenderTarget {
 }
 ```
 
-<sub>`api.ogt` line 7035</sub>
+<sub>`api.ogt` line 7043</sub>
 
 ```ogt
 column Post {
@@ -7552,7 +7563,7 @@ column Post {
 }
 ```
 
-<sub>`api.ogt` line 7171</sub>
+<sub>`api.ogt` line 7179</sub>
 
 ## Constants
 
@@ -7568,28 +7579,28 @@ column Post {
 const PARTICLES_ARMED u32 4294967295 "ParticleSystem.startTick's default: never written. A looping emitter emits as if started at tick 0; a one-shot (`looping false`) emits nothing until its startTick is written, so a burst spawned in `start` waits for its first use. Write it back to re-arm a one-shot without firing it."
 ```
 
-<sub>`api.ogt` line 5375</sub>
+<sub>`api.ogt` line 5383</sub>
 
 ```ogt
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>`api.ogt` line 5937</sub>
+<sub>`api.ogt` line 5945</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>`api.ogt` line 5938</sub>
+<sub>`api.ogt` line 5946</sub>
 
 ```ogt
 const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included (a HUD element made of sprites sitting on a UI panel: draw it only while its screen shows), in their layers' order either way."
 ```
 
-<sub>`api.ogt` line 5939</sub>
+<sub>`api.ogt` line 5947</sub>
 
 ```ogt
 const MAX_REFLECTION_PROBES u32 8 "The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped."
 ```
 
-<sub>`api.ogt` line 5967</sub>
+<sub>`api.ogt` line 5975</sub>

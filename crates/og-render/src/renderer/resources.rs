@@ -343,7 +343,7 @@ pub(crate) struct Batch {
 
 /// The effect bind groups and what they were made from.
 pub(crate) struct FxGroups {
-    pub(crate) key: (u64, u64, Option<TextureHandle>, bool, bool, bool),
+    pub(crate) key: (u64, u64, Option<TextureHandle>, u32, bool, bool, bool),
     pub(crate) fx: wgpu::BindGroup,
     /// `fx` for the lightmapped pipelines (`Renderer::fx_lean_group`).
     pub(crate) fx_lean: Option<wgpu::BindGroup>,

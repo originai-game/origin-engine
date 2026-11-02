@@ -292,6 +292,7 @@ impl PhysicalPipelines {
                 uniform_entry(7, wgpu::ShaderStages::FRAGMENT),
             ],
         });
+        let decals = crate::fx::decal_layout_entries();
         let fx_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("physical fx"),
             entries: &[
@@ -300,6 +301,8 @@ impl PhysicalPipelines {
                 tex2d(2),
                 sampler_entry(3, wgpu::SamplerBindingType::Filtering),
                 tex2d(4),
+                decals[0],
+                decals[1],
             ],
         });
         let layout = |label, groups: &[&wgpu::BindGroupLayout]| {

@@ -11,11 +11,11 @@ use og_render::{
     AmbientOcclusion, AoMethod, Background, Beam, Burst, Camera, CameraShake, ChromaticAberration,
     ColorAdjust, ColorCurve, ColorGrading, ColorLut, Curve, Decal, DepthOfField, DofQuality,
     EmitterShape, Exposure, FilmGrain, FrameStats, Glow, GodRays, JointPalette, LensDistortion,
-    Light2d, Lighting2d, MAX_DECALS, Material, MorphTargets, MotionBlur, Occluder2d, Outline,
-    ParticleCollision, ParticleEmitter, ParticleRender, ParticleSimulation, ParticleSystem,
-    Projection, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage, ScreenBlur,
-    ScreenBlurKind, ScreenFlash, SkinnedInstance, Sprite, SpriteFx, StandardMaterial, Tonemap,
-    Trail, TrailStyle, View, ViewTarget, Vignette, shapes,
+    Light2d, Lighting2d, MAX_CLUSTER_DECALS, Material, MorphTargets, MotionBlur, Occluder2d,
+    Outline, ParticleCollision, ParticleEmitter, ParticleRender, ParticleSimulation,
+    ParticleSystem, Projection, RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage,
+    ScreenBlur, ScreenBlurKind, ScreenFlash, SkinnedInstance, Sprite, SpriteFx, StandardMaterial,
+    Tonemap, Trail, TrailStyle, View, ViewTarget, Vignette, shapes,
 };
 use og_tests::fx_scenes as fx;
 use og_tests::{gfx, scenes};

@@ -85,11 +85,13 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let face = select(1.0, -1.0, dot(n, v) < 0.0);
   n = n * face;
   var decal_emissive = vec3<f32>(0.0);
-  if (EFFECTS && fx.decal_info.x > 0.5) {
-    let d = apply_decals(in.world_pos, n, s.albedo, s.roughness, dpx, dpy);
+  var decal_normal = vec4<f32>(0.0);
+  if (EFFECTS && abs(fx.decal_info.x) > 0.5) {
+    let d = apply_decals(in.clip.xy, in.world_pos, n, s.albedo, s.roughness, dpx, dpy);
     s.albedo = d.albedo;
     s.roughness = clamp(d.roughness, 0.04, 1.0);
     decal_emissive = d.emissive;
+    decal_normal = d.normal;
   }
   s.f0 = mix(vec3<f32>(0.04), s.albedo, s.metallic);
   let normal_uv = material_uv(UV_NORMAL, uv);
@@ -112,6 +114,8 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     }
   }
   n = surface_normal(hook, params, n);
+  // The decals' normal maps over the surface's own (apply_decals).
+  if (decal_normal.w > 0.0) { n = normalize(mix(n, decal_normal.xyz, decal_normal.w)); }
   // The material style's made surface (MaterialStyle.surface, frame.wgsl
   // material_surface), in the mesh's own space; a material with styled
   // false (mode 8) keeps its own. The branch is on uniforms only, so the
@@ -249,7 +253,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   color += ibl * ibl_scale;
 
   color += surface_emissive(hook, params, material.emissive.rgb * textureSample(emissive_tex, material_sampler, material_uv(UV_EMISSIVE, uv)).rgb) * ao_all;
-  if (EFFECTS && fx.decal_info.x > 0.5) { color += decal_emissive; }
+  if (EFFECTS && abs(fx.decal_info.x) > 0.5) { color += decal_emissive; }
   if (EFFECTS && material.rim.w > 0.0) { color += dissolve_edge; }
   if (EFFECTS && material.toon.y > 0.0) {
     // Rim (fresnel) light at grazing angles.

@@ -351,11 +351,13 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   let face = select(1.0, -1.0, dot(n, v) < 0.0);
   n = n * face;
   var decal_emissive = vec3<f32>(0.0);
-  if (EFFECTS && fx.decal_info.x > 0.5) {
-    let d = apply_decals(in.world_pos, n, s.albedo, s.roughness, dpx, dpy);
+  var decal_normal = vec4<f32>(0.0);
+  if (EFFECTS && abs(fx.decal_info.x) > 0.5) {
+    let d = apply_decals(in.clip.xy, in.world_pos, n, s.albedo, s.roughness, dpx, dpy);
     s.albedo = d.albedo;
     s.roughness = clamp(d.roughness, 0.04, 1.0);
     decal_emissive = d.emissive;
+    decal_normal = d.normal;
   }
   // The dielectric reflectance from the index of refraction.
   let ior = physical.transmission.z;
@@ -378,6 +380,8 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
     if (framed) { n = normalize(tbn * map) * face; }
   }
   n = surface_normal(hook, params, n);
+  // The decals' normal maps over the surface's own (apply_decals).
+  if (decal_normal.w > 0.0) { n = normalize(mix(n, decal_normal.xyz, decal_normal.w)); }
   s.coat = material.coat.x * coat_maps.r;
   s.coat_roughness = clamp(material.coat.y * coat_maps.g, 0.04, 1.0);
   s.coat_normal = n_vertex * face;
@@ -526,7 +530,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   var color = diffuse + specular;
 
   color += surface_emissive(hook, params, material.emissive.rgb * textureSample(emissive_tex, material_sampler, material_uv(UV_EMISSIVE, uv)).rgb) * ao_direct;
-  if (EFFECTS && fx.decal_info.x > 0.5) { color += decal_emissive; }
+  if (EFFECTS && abs(fx.decal_info.x) > 0.5) { color += decal_emissive; }
   if (EFFECTS && material.rim.w > 0.0) { color += dissolve.rgb; }
   if (EFFECTS && material.toon.y > 0.0) {
     color += material.rim.rgb * material.toon.y * pow(1.0 - n_dot_v, material.toon.z);

@@ -21,20 +21,26 @@ struct DecalGpu {
   uv_rect: vec4<f32>,     // u0, v0, u1, v1 in the atlas
   color: vec4<f32>,       // linear rgba
   emissive: vec4<f32>,    // rgb: emitted light, w: roughness (<0 keep)
+  normal_rect: vec4<f32>, // u0, v0, u1, v1 of its normal map in the atlas
+  normal: vec4<f32>,      // x: the normal map's scale (0: none)
 };
 struct Fx {
   view_proj_unjittered: mat4x4<f32>,
   prev_view_proj: mat4x4<f32>,
   screen: vec4<f32>,      // w, h, 1/w, 1/h
   ao: vec4<f32>,          // x: 1 when the AO texture is valid, y: intensity
-  decal_info: vec4<f32>,  // x: decals, y: 1 with an atlas, z: cos fade width, w: the previous joints' section (0: none; vs_prepass_skinned)
+  decal_info: vec4<f32>,  // x: decals (negative: no decal clusters, walk them all), y: atlas (1 linear, 2 sRGB), z: cos fade width, w: the previous joints' section (0: none; vs_prepass_skinned)
   planar: vec4<f32>,      // the planar reflection's plane (n, n·at); n 0: none, then w -1 while drawing it
-  decals: array<DecalGpu, 32>,
 };
 @group(2) @binding(0) var<uniform> fx: Fx;
 @group(2) @binding(1) var ssao_tex: texture_2d<f32>;
 @group(2) @binding(2) var decal_atlas: texture_2d<f32>;
 @group(2) @binding(3) var fx_sampler: sampler;
+// The decal records and their clusters (fx.rs, clusters.rs `DecalBins`):
+// one word per cluster (first reference, 24 bits; count, 8 bits), then the
+// references, one record index a word.
+@group(2) @binding(5) var<storage, read> decal_list: array<DecalGpu>;
+@group(2) @binding(6) var<storage, read> decal_cells: array<u32>;
 // planar_reflection (the planar reflection for material shaders): planar.wgsl,
 // or its stub where the lit pipelines have no texture slot left (lib.rs).
 
@@ -434,18 +440,43 @@ struct DecalResult {
   albedo: vec3<f32>,
   roughness: f32,
   emissive: vec3<f32>,
+  // xyz: the decals' normal in the world, w: how much of it covers (0: none).
+  normal: vec4<f32>,
 };
 
+// An sRGB atlas's texel back to the values stored (a normal map in it).
+fn decal_stored(c: vec3<f32>) -> vec3<f32> {
+  return select(1.055 * pow(c, vec3<f32>(1.0 / 2.4)) - 0.055, c * 12.92, c <= vec3<f32>(0.0031308));
+}
+
+// The decals that can cover the fragment at pixel `frag`, world `p`: x the
+// first reference and y their count, or x NO_CLUSTER and y every record in
+// a view without decal clusters (a reflection, a render-to-texture view, a
+// frame with no light clusters).
+fn frame_decals(frag: vec2<f32>, p: vec3<f32>) -> vec2<u32> {
+  if (fx.decal_info.x < 0.0 || frame.cluster.x <= 0.0) {
+    return vec2<u32>(NO_CLUSTER, u32(abs(fx.decal_info.x)));
+  }
+  let word = decal_cells[cluster_at(frag, p)];
+  return vec2<u32>(word & 0xffffffu, word >> 24u);
+}
+
 // Projected decals: the boxes covering the point blend their image over
-// the surface's albedo (and roughness) before it is lit.
-fn apply_decals(p: vec3<f32>, n: vec3<f32>, albedo: vec3<f32>, roughness: f32, dpx: vec3<f32>, dpy: vec3<f32>) -> DecalResult {
+// the surface's albedo (and roughness) before it is lit, in record order;
+// those with a normal map bend the normal (DecalResult.normal, blended over
+// the surface's own after its normal map).
+fn apply_decals(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, albedo: vec3<f32>, roughness: f32, dpx: vec3<f32>, dpy: vec3<f32>) -> DecalResult {
   var r: DecalResult;
   r.albedo = albedo;
   r.roughness = roughness;
   r.emissive = vec3<f32>(0.0);
-  let count = u32(fx.decal_info.x);
-  for (var i = 0u; i < count; i++) {
-    let d = fx.decals[i];
+  r.normal = vec4<f32>(n, 0.0);
+  let range = frame_decals(frag, p);
+  let cells = CLUSTER_X * CLUSTER_Y * CLUSTER_Z;
+  for (var k = 0u; k < range.y; k++) {
+    var i = k;
+    if (range.x != NO_CLUSTER) { i = decal_cells[cells + range.x + k]; }
+    let d = decal_list[i];
     let local = (d.inv * vec4<f32>(p, 1.0)).xyz;
     if (any(abs(local) > vec3<f32>(0.5))) { continue; }
     let facing = dot(n, d.axis.xyz);
@@ -454,17 +485,32 @@ fn apply_decals(p: vec3<f32>, n: vec3<f32>, albedo: vec3<f32>, roughness: f32, d
     let t = vec2<f32>(local.x + 0.5, 0.5 - local.y);
     let uv = mix(d.uv_rect.xy, d.uv_rect.zw, t);
     var texel = vec4<f32>(1.0);
+    let gx = (d.inv * vec4<f32>(dpx, 0.0)).xy * vec2<f32>(1.0, -1.0);
+    let gy = (d.inv * vec4<f32>(dpy, 0.0)).xy * vec2<f32>(1.0, -1.0);
     if (fx.decal_info.y > 0.5) {
       let span = d.uv_rect.zw - d.uv_rect.xy;
-      let gx = (d.inv * vec4<f32>(dpx, 0.0)).xy * vec2<f32>(1.0, -1.0) * span;
-      let gy = (d.inv * vec4<f32>(dpy, 0.0)).xy * vec2<f32>(1.0, -1.0) * span;
-      texel = textureSampleGrad(decal_atlas, fx_sampler, uv, gx, gy);
+      texel = textureSampleGrad(decal_atlas, fx_sampler, uv, gx * span, gy * span);
     }
     let c = d.color * texel;
     let a = clamp(c.a * fade, 0.0, 1.0);
     r.albedo = mix(r.albedo, c.rgb, a);
     if (d.emissive.w >= 0.0) { r.roughness = mix(r.roughness, d.emissive.w, a); }
     r.emissive += d.emissive.rgb * texel.rgb * a;
+    if (d.normal.x != 0.0 && fx.decal_info.y > 0.5) {
+      // The box's +x (u) and +y (up the image) in the world, on the surface.
+      let span = d.normal_rect.zw - d.normal_rect.xy;
+      var m = textureSampleGrad(decal_atlas, fx_sampler, mix(d.normal_rect.xy, d.normal_rect.zw, t), gx * span, gy * span).xyz;
+      if (fx.decal_info.y > 1.5) { m = decal_stored(m); }
+      let ts = vec3<f32>((m.xy * 2.0 - 1.0) * d.normal.x, max(m.z * 2.0 - 1.0, 1e-3));
+      let ux = vec3<f32>(d.inv[0].x, d.inv[1].x, d.inv[2].x);
+      var tu = ux - n * dot(n, ux);
+      if (dot(tu, tu) > 1e-12) {
+        tu = normalize(tu);
+        let tv = cross(n, tu);
+        let bent = normalize(tu * ts.x + tv * ts.y + n * ts.z);
+        r.normal = vec4<f32>(normalize(mix(r.normal.xyz, bent, a)), max(r.normal.w, a));
+      }
+    }
   }
   return r;
 }

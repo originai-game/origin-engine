@@ -165,7 +165,7 @@ fn glow_is_order_independent_and_flash_tints() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn decals_project_onto_surfaces_and_are_capped() {
+fn decals_project_onto_surfaces_past_the_old_cap() {
     let base = fx::decals_scene();
     let desc = scenes::base_desc();
     let (with, stats) = frame(&desc, &base);
@@ -187,11 +187,33 @@ fn decals_project_onto_surfaces_and_are_capped() {
     assert!(changed > 20_000, "decals changed {changed} pixels");
     let r = px(&with, rune.0, rune.1);
     println!("rune ring pixel {r:?}");
-    // Beyond MAX_DECALS they are dropped and counted.
+    // Past the 32 a frame once drew, every decal still draws: the base
+    // scene's five after 40 others off to one side cover what they did.
     let mut many = fx::decals_scene();
-    many.decals = vec![Decal::default(); MAX_DECALS + 5];
-    let (_, s) = frame(&small(), &many);
-    assert_eq!((s.decals, s.decals_dropped), (MAX_DECALS as u32, 5));
+    let mut decals: Vec<Decal> = (0..40)
+        .map(|i| Decal {
+            color: [0.1, 0.1, 0.9, 1.0],
+            ..Decal::on_surface(
+                Vec3::new(-6.0 + (i % 8) as f32 * 0.3, 0.0, 2.0 + (i / 8) as f32 * 0.3),
+                Vec3::Y,
+                Vec2::splat(0.25),
+                0.3,
+                0.0,
+            )
+        })
+        .collect();
+    decals.extend(base.decals.iter().copied());
+    many.decals = decals;
+    let (late, s) = frame(&desc, &many);
+    assert_eq!((s.decals, s.decals_dropped), (45, 0));
+    let s2 = luma(px(&late, scorch.0, scorch.1));
+    assert!(s2 < 0.5 * s0, "the 41st decal's scorch: {s2} vs {s0}");
+    // Past MAX_CLUSTER_DECALS in one place the oldest there are dropped.
+    let mut pile = fx::decals_scene();
+    pile.decals = vec![pile.decals[0]; MAX_CLUSTER_DECALS + 5];
+    let (_, s) = frame(&small(), &pile);
+    assert_eq!(s.decals, MAX_CLUSTER_DECALS as u32 + 5);
+    assert!(s.decals_dropped >= 5, "{}", s.decals_dropped);
 }
 
 /// R11 batch 2's far edge: a large light (radius 30) and three small

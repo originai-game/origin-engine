@@ -1404,6 +1404,16 @@ impl RenderScene {
         }
     }
 
+    /// How a texture's texels are sampled: decoded from sRGB or as stored
+    /// (a render target's are linear); `None` for a foreign handle.
+    pub fn texture_color_space(&self, handle: TextureHandle) -> Option<ColorSpace> {
+        Some(match self.textures.get(handle.index())? {
+            TextureSource::Rgba(t) => t.color_space,
+            TextureSource::Encoded(u) => u.desc.color_space,
+            TextureSource::Target(_) => ColorSpace::Linear,
+        })
+    }
+
     /// A pre-encoded texture (`None` for an RGBA8 one or a foreign handle).
     pub fn texture_upload(&self, handle: TextureHandle) -> Option<&TextureUpload> {
         match self.textures.get(handle.index())? {
