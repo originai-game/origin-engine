@@ -42,6 +42,18 @@ pub(crate) const MESHLET_CULL_WGSL: &str = wgsl!("meshlet_cull.wgsl");
 pub(crate) const MESHLET_SHADOW_WGSL: &str = wgsl!("meshlet_shadow.wgsl");
 pub(crate) const MESHLET_DEPTH_WGSL: &str = wgsl!("meshlet_depth.wgsl");
 
+/// The lit and prepass module of the meshlet path: the standard lit module
+/// (the built-in hooks; with `planar` its planar reflection slot) and the
+/// pulling entry points. Its own module, never the standard one: a material
+/// shader is checked against that one (og-cook `validate_shader`), and the
+/// pulling entry points read `instance_index`.
+pub(crate) fn lit_source(planar: bool) -> String {
+    format!(
+        "{}{MESHLET_WGSL}",
+        crate::lit_source_with(&crate::hooks::default_hooks(), planar)
+    )
+}
+
 /// The early phase's depth module.
 pub(crate) fn depth_source() -> String {
     format!("{}{MESHLET_DEPTH_WGSL}", crate::INSTANCE_WGSL)
@@ -249,6 +261,23 @@ pub(crate) fn plan<'a>(
     (rows, draws, items, workgroups)
 }
 
+/// The bytes a draw group binds of the work items from a batch's first
+/// (its dynamic offset): the largest batch's items, rounded up to the
+/// item alignment; and the bytes the items buffer needs so every batch's
+/// window lies inside it (wgpu refuses an offset whose window would pass
+/// the buffer's end). `items` is the plan's total.
+pub(crate) fn item_window(rows: &[BatchRow], items: u32) -> (u64, u64) {
+    let window = rows
+        .iter()
+        .map(|r| r.instances.saturating_mul(r.most).div_ceil(ITEM_ALIGN) * ITEM_ALIGN)
+        .max()
+        .unwrap_or(0)
+        .max(ITEM_ALIGN) as u64
+        * 8;
+    let last = rows.iter().map(|r| r.first_item).max().unwrap_or(0) as u64 * 8;
+    (window, (items as u64 * 8).max(last + window))
+}
+
 /// One mesh's rows in the mesh table.
 type MeshRows = [[u32; 4]; MESH_ROWS];
 
@@ -320,6 +349,8 @@ pub(crate) struct MeshletGpu {
     pub(crate) draw_layout: wgpu::BindGroupLayout,
     lit: HashMap<(Side, bool), wgpu::RenderPipeline>,
     prepass: HashMap<Side, wgpu::RenderPipeline>,
+    /// The lit module ([`lit_source`]) and its planar slot.
+    lit_module: Option<(bool, wgpu::ShaderModule)>,
     /// The shadow casters' pipelines by (side, the whole vertex for an
     /// alpha-tested or dissolving material), and their module.
     shadow: HashMap<(Side, bool), wgpu::RenderPipeline>,
@@ -348,10 +379,17 @@ pub(crate) struct MeshletGpu {
     cull_group: Option<(
         Vec<wgpu::Buffer>,
         Option<wgpu::TextureView>,
+        u64,
         wgpu::BindGroup,
     )>,
-    /// Per mesh: its draw group and what it binds.
-    mesh_groups: HashMap<usize, (Vec<wgpu::Buffer>, wgpu::BindGroup)>,
+    /// Per mesh: its draw group and what it binds (the buffers, and the
+    /// bytes of `items` its window binds).
+    mesh_groups: HashMap<usize, ((Vec<wgpu::Buffer>, u64), wgpu::BindGroup)>,
+    /// The bytes of `items` a draw group binds from a batch's first work
+    /// item (its dynamic offset): the frame's largest batch's items.
+    window: u64,
+    /// The bytes of `items` this frame's dispatch writes.
+    items_bytes: u64,
     /// This frame's clustered batches (empty: the path is off this frame).
     pub(crate) frame: Vec<MeshletDraw>,
     max_binding: u64,
@@ -549,6 +587,7 @@ impl MeshletGpu {
             draw_layout,
             lit: HashMap::new(),
             prepass: HashMap::new(),
+            lit_module: None,
             shadow: HashMap::new(),
             shadow_module: None,
             pools: None,
@@ -574,6 +613,8 @@ impl MeshletGpu {
             no_pyramid,
             cull_group: None,
             mesh_groups: HashMap::new(),
+            window: 0,
+            items_bytes: 0,
             frame: Vec::new(),
             max_binding,
         }
@@ -657,11 +698,23 @@ impl MeshletGpu {
         &mut self,
         device: &wgpu::Device,
         layouts: [&wgpu::BindGroupLayout; 3],
-        module: &wgpu::ShaderModule,
+        planar: bool,
         batches: &[Batch],
         prepass: bool,
         samples: u32,
     ) {
+        if self.lit_module.as_ref().is_none_or(|(p, _)| *p != planar) {
+            self.lit.clear();
+            self.prepass.clear();
+            self.lit_module = Some((
+                planar,
+                device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("pbr meshlet"),
+                    source: wgpu::ShaderSource::Wgsl(lit_source(planar).into()),
+                }),
+            ));
+        }
+        let module = &self.lit_module.as_ref().expect("made above").1;
         let camera = || self.frame.iter().filter(|d| d.lit);
         let missing = camera().any(|d| {
             let b = &batches[d.batch as usize];
@@ -819,11 +872,17 @@ impl MeshletGpu {
             (rows.len() * 32) as u64,
             storage_usage(),
         );
+        // A draw binds a window of `items` from its batch's first item,
+        // as wide as the largest batch's items: the buffer holds the last
+        // batch's whole window.
+        let (window, items_buffer) = item_window(&rows, items);
+        self.window = window;
+        self.items_bytes = items as u64 * 8;
         grow(
             device,
             &mut self.items,
             "meshlet items",
-            items as u64 * 8,
+            items_buffer,
             storage_usage(),
         );
         grow(
@@ -893,6 +952,7 @@ impl MeshletGpu {
             0,
             bytemuck::cast_slice(&[scene.lod_debug as u32, 0, 0, 0]),
         );
+        let items_bytes = self.items_bytes;
         let bound = vec![
             gc.instances.clone(),
             self.views.clone(),
@@ -906,7 +966,7 @@ impl MeshletGpu {
         if self
             .cull_group
             .as_ref()
-            .is_none_or(|(b, v, _)| *b != bound || *v != view)
+            .is_none_or(|(b, v, n, _)| *b != bound || *v != view || *n != items_bytes)
         {
             let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("meshlet cull"),
@@ -925,7 +985,17 @@ impl MeshletGpu {
                     entry(3, &self.batches),
                     entry(4, &pools.meshes),
                     entry(5, &pools.clusters),
-                    entry(6, &self.items),
+                    // The dispatch's items, never past the binding limit
+                    // (the buffer may be larger: windows, power-of-two
+                    // growth).
+                    wgpu::BindGroupEntry {
+                        binding: 6,
+                        resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                            buffer: &self.items,
+                            offset: 0,
+                            size: wgpu::BufferSize::new(items_bytes),
+                        }),
+                    },
                     entry(7, &self.draws),
                     wgpu::BindGroupEntry {
                         binding: 8,
@@ -936,7 +1006,7 @@ impl MeshletGpu {
                     entry(9, &self.vis),
                 ],
             });
-            self.cull_group = Some((bound, view, group));
+            self.cull_group = Some((bound, view, items_bytes, group));
         }
         self.frame = draws;
         self.ensure_groups(device, batches, (&gc.instances, previous), vertices);
@@ -948,7 +1018,7 @@ impl MeshletGpu {
         } else {
             encoder.clear_buffer(&self.vis, write * 4, Some(half * 4));
         }
-        let cull_group = &self.cull_group.as_ref().expect("made above").2;
+        let cull_group = &self.cull_group.as_ref().expect("made above").3;
         let dispatch = |pass: &mut wgpu::ComputePass<'_>, slot: u64| {
             pass.set_pipeline(&self.cull);
             pass.set_bind_group(0, cull_group, &[slot as u32]);
@@ -1081,6 +1151,7 @@ impl MeshletGpu {
                 v.clone(),
                 previous.clone(),
             ];
+            let bound = (bound, self.window);
             if self
                 .mesh_groups
                 .get(&mesh)
@@ -1096,10 +1167,12 @@ impl MeshletGpu {
                     entry(9, instances),
                     wgpu::BindGroupEntry {
                         binding: 10,
+                        // A window from the batch's first item (the
+                        // dynamic offset), within the buffer for every one.
                         resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
                             buffer: &self.items,
                             offset: 0,
-                            size: None,
+                            size: wgpu::BufferSize::new(self.window),
                         }),
                     },
                     entry(11, &pools.clusters),
@@ -1281,6 +1354,33 @@ mod tests {
         assert_eq!(items, 1264);
         assert_eq!(workgroups, 3 + 10 * 3);
         assert_eq!(rows[3].first_workgroup, 23);
+    }
+
+    /// Every batch's draw group window holds its items and lies inside the
+    /// items buffer at its offset (the bounce of 427a61745: a window as wide
+    /// as the buffer, at a nonzero offset).
+    #[test]
+    fn each_batch_s_window_holds_its_items_and_fits_the_buffer_at_its_offset() {
+        let batches = [batch(0, 0, 3), batch(1, 3, 10), batch(0, 13, 1)];
+        let slot = |m: usize| Some((m as u32, if m == 0 { 7 } else { 40 }));
+        let views: [(&[u32], bool); 2] = [(&[0, 1, 2], true), (&[2, 0], false)];
+        let (rows, _, items, _) = plan(&batches, views, slot, |_| true);
+        let (window, buffer) = item_window(&rows, items);
+        assert_eq!(window, 416 * 8, "batch 1's 400 items, aligned");
+        for r in &rows {
+            let offset = r.first_item as u64 * 8;
+            assert_eq!(offset % 256, 0, "a storage offset's alignment");
+            assert!(r.instances as u64 * r.most as u64 * 8 <= window);
+            assert!(
+                offset + window <= buffer,
+                "row at {offset}: {window} past {buffer}"
+            );
+        }
+        // The last batch (3 x 7 items from its first) still gets the
+        // whole window.
+        let last = rows.iter().map(|r| r.first_item).max().unwrap() as u64 * 8;
+        assert_eq!(buffer, last + window);
+        assert!(buffer > items as u64 * 8);
     }
 
     /// A secondary view's pixels per unit, from its view-projection

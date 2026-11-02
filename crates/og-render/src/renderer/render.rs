@@ -1338,7 +1338,7 @@ impl Renderer {
                     m.ensure_pipelines(
                         &self.device,
                         [&self.frame_layout, &self.material_layout, &self.fx_layout],
-                        &self.pbr_shader,
+                        planar_slot(self.info.planar_reflections),
                         &batches,
                         prepass,
                         self.samples,

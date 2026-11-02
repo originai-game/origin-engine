@@ -49,6 +49,8 @@ pub fn shader_sources() -> Vec<ShaderSource> {
         crate::meshlet_gpu::MESHLET_CULL_WGSL.to_string(),
     );
     add("shadow", crate::shadow_source(&hooks));
+    add("meshlet lit", crate::meshlet_gpu::lit_source(false));
+    add("meshlet lit (planar)", crate::meshlet_gpu::lit_source(true));
     add("meshlet shadow", crate::meshlet_gpu::shadow_source());
     add("meshlet early depth", crate::meshlet_gpu::depth_source());
     add(
