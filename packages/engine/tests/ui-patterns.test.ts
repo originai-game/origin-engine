@@ -1183,6 +1183,27 @@ test("questLog: shows the tracked quest, its hidden objective as ???, and answer
   expect(tracks).toEqual(["rescue"]);
 });
 
+test("questLog: a reward's caption stands in its own row under the tile; a phone's Back is the secondary button with a chevron", () => {
+  // Wrong: the name inside the card a style dresses (its frame and notches cut it), or Back a bare glass pane.
+  const engine = storyRun((w) => {
+    if (og.story.quests(w).length === 0) ok(og.story.startQuest(w, "rescue"));
+    og.ui.questLog("Quests", { quests: og.story.quests(w) });
+  });
+  engine.advance(4);
+  const tile = byPath(engine, "Rewards/R#0/Tile")!;
+  const caption = byPath(engine, "Rewards/R#0/Caption")!;
+  expect(tile.width).toBe(tile.height);
+  expect(caption.y).toBeGreaterThanOrEqual(tile.y + tile.height);
+  expect(byPath(engine, "Rewards/R#0/Caption/Name")!.text).toBe("Gold");
+  expect(elements(engine).some((e) => e.path.includes("Rewards/R#0/Tile/") && e.text === "Gold")).toBeFalse();
+  og.ui.previewViewport(engine.world, { width: 390, height: 844, dpr: 3, coarsePointer: true, breakpoint: "phonePortrait", safeArea: { left: 0, top: 47, right: 0, bottom: 34 } } as never);
+  engine.advance(4);
+  engine.probe.commands(`0:touch_move:${centre(byPath(engine, "List/Active/rescue")!)};0.05:touch_start;0.1:touch_end`);
+  engine.advance(10);
+  expect(byPath(engine, "Detail/Back/Sym")).toBeDefined();
+  expect(byPath(engine, "Detail/Back/Label")!.text).toBe("Back");
+});
+
 test("questTracker: a tracked quest that completes flashes Complete instead of vanishing at once", () => {
   // Wrong: a completed quest dropped from the tracker the tick it completes (no Complete), or an untracked one shown.
   let done = false;
