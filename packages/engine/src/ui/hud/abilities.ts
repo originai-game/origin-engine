@@ -147,18 +147,18 @@ function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc.size))
     if (cooling && !locked) {
       const max = desc.cooldownMax ?? 0;
       const left = max > 0 ? clamp01(cooldown / max) : 1;
-      // The part still to come under 66 % black, the part done left clean: the fraction left reads without the numeral.
+      // The part still to come darkened by about 60 % as seen, the part done left clean: the fraction left reads without the numeral.
       leaf("Sweep", { width: px(size * 1.5), height: px(size * 1.5), part: sel("AbilitySlot", "sweep") }, {
         shape: pie(left),
-        fills: [solid(lit(BLACK, 0.66))],
+        // og-ui composites in linear light: 90 % black there reads as about 60 % darker to the eye (66 % read as a quarter).
+        fills: [solid(lit(BLACK, 0.9))],
       }, absolute({ start: -size * 0.25, top: -size * 0.25 }));
-      // The sweep's leading edge: a bright line about 1.5 px wide from the rim inward, under the numerals.
+      // The sweep's leading edge: a faint 1 px line from the rim inward, under the numerals; the dim is what reads.
       const angle = -Math.PI / 2 + (1 - left) * Math.PI * 2;
-      const half = 0.75 / Math.max(1, size * 0.5);
+      const half = 0.5 / Math.max(1, size * 0.5);
       leaf("Hand", { width: px(size * 1.5), height: px(size * 1.5) }, {
         shape: { kind: "arc", start: angle - half, sweep: half * 2, thickness: size * 0.4, cap: "butt" },
-        fills: [solid(lit(WHITE, 0.9))],
-        effects: [glow(3, lit(WHITE, 0.5))],
+        fills: [solid(lit(WHITE, 0.4))],
       }, absolute({ start: -size * 0.25, top: -size * 0.25 }));
     }
     // The art set into the frame: a 2 px inner shadow and a soft vignette, and a faint glint along its top.
@@ -272,9 +272,9 @@ function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc.size))
       a11y: a11y("button", desc.name ?? "", { value: locked ? "Locked" : cooling ? `${Math.ceil(cooldown)}s` : disabled ? "Unavailable" : "Ready" }),
       ...groups({ ready: readyState, use }, { ready: ["ready", "cooling", "disabled", "locked"], use: ["idle", "active", "unaffordable"] }),
     });
-    // The ranks: pips right under the slot, centred (a bar bottom-aligns its slots, so every hotkey still shares a line).
+    // The ranks: pips right under the slot, centred.
     const maxLevel = desc.maxLevel ?? 0;
-    const pipH = Math.max(3, Math.round(size / 16));
+    const pipH = Math.max(3, Math.round(size / 20));
     if (maxLevel > 0) {
       kit.row("Pips", { gap: u(2), height: px(pipH) }, () => {
         for (let i = 0; i < maxLevel; i++) {
@@ -287,6 +287,8 @@ function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc.size))
           });
         }
       });
+      // Out of the flow, just under the slot's bottom edge: a slot with ranks keeps the row's bottom line and its hotkey's.
+      apply(absolute({ centerX: true, top: size + 1 }, { overlaps: [path.slice(0, path.lastIndexOf("/"))] }));
     }
     // The hotkey: a small, quiet label under the slot, else the action's glyph on the device used last.
     const glyph = !desc.hotkey && desc.action ? kit.frameGlyph(desc.action) : null;
@@ -298,7 +300,11 @@ function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc.size))
       const capInk = token("inkMuted");
       box("Hotkey", { height: px(Math.ceil(stepSize(keyStep).size)), cross: "center", align: "center", part: sel("AbilitySlot", "hotkey") }, undefined, () => {
         if (keyIcon) icon("Glyph", keyIcon, Math.round(stepSize(keyStep).size * 1.1), capInk);
-        else text("Key", keyText, { step: keyStep, font: "display", color: capInk, nowrap: true, outline: 1.4 });
+        else {
+          // No outline (at 200 % one makes the letters look hollow): a soft shadow holds them on a bright scene.
+          text("Key", keyText, { step: keyStep, font: "display", color: capInk, nowrap: true });
+          kit.setDraw({ text: { shadows: [{ offset: { x: 0, y: 1 }, blur: 3, color: lit(BLACK, 0.75) }, { offset: { x: 0, y: 0 }, blur: 6, color: lit(BLACK, 0.4) }] } });
+        }
       }, { overlaps: [path] });
     }
   });

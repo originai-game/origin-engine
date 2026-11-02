@@ -120,9 +120,11 @@ test("og.ui.abilityBar: the sweep's seconds, a charge left is ready, the ultimat
   expect(at(els, "BarHud/Bar/p/Hotkey")!.y).toBe(keyQ.y);
   expect(states(at(els, "BarHud/Bar/e/Slot")).ready).toBe("cooling");
   expect(at(els, "BarHud/Bar/r/Slot/Ultimate/Value")?.text).toBe("62%");
-  // An ultimate is 1.15 times its neighbours, and still shares their hotkey line.
+  // An ultimate is 1.15 times its neighbours, its bottom on their line and its hotkey on theirs.
   expect(at(els, "BarHud/Bar/r/Slot")!.width).toBeCloseTo(at(els, "BarHud/Bar/q/Slot")!.width * 1.15, 0);
   expect(at(els, "BarHud/Bar/r/Hotkey")!.y).toBe(at(els, "BarHud/Bar/q/Hotkey")!.y);
+  const bottom = (k: string) => at(els, `BarHud/Bar/${k}/Slot`)!.y + at(els, `BarHud/Bar/${k}/Slot`)!.height;
+  expect(bottom("r")).toBeCloseTo(bottom("q"), 0);
   expect(states(at(els, "BarHud/Bar/t/Slot")).ready).toBe("locked");
   expect(at(els, "BarHud/Bar/q/Hotkey/Key")?.text).toBe("Q");
   // A PlayStation pad's press: the cap follows it to the pad's triangle.
