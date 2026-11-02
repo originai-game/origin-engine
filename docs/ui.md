@@ -826,8 +826,13 @@ locale (mirrored layout). No box is sized to its English text.
 
 ### 15.4 The review bar (owner, 2026-11-01)
 
-The UI is held to the level of shipped commercial games, and the
-coordinator reviews every UI merge from U6 on against it, frame by frame:
+The UI is held to the level of shipped commercial games. The look comes
+first (the owner, 2026-11-02): every UI branch has art direction, the art
+director's frame review is part of each round, and its notes bind the
+author's next round. Numeric gates serve the look and never force an
+ugly fix (a dark slab behind every name, a lit plate behind every label);
+where a gate and the art director disagree, the art director decides and
+the gate is loosened. The bar:
 
 - Each genre showcase is read beside screenshots of two shipped games of
   its genre, and a screen that reads as a prototype beside them is held.
@@ -839,8 +844,8 @@ coordinator reviews every UI merge from U6 on against it, frame by frame:
 - Every interactive part is captured idle, hovered, pressed, focused and
   disabled, and each transition is recorded as a clip and watched.
 - No placeholder survives: no flat-fill loading screen, no button whose
-  edge does not show, secondary text at 4.5:1 on its own scrim, and no two
-  seed styles that read as one.
+  edge does not show, text that reads at a glance by the art director's
+  eye, and no two seed styles that read as one.
 - A merge with a defect seen in a frame is held and fixed, never recorded
   as a reference.
 
@@ -983,8 +988,10 @@ each with the element paths and the prop to change:
   the pseudo-locale and at 200 % text;
 - elements outside the safe area or under the shell's covered region;
 - touch targets under 44 CSS px on a coarse pointer;
-- contrast under 4.5:1 (7:1 in high contrast), measured on pixels as
-  `og polish` does;
+- contrast: an error only for live text under 3:1 on pixels (7:1 in the
+  high-contrast mode), measured as `og polish` does; under 4.5:1 it is a
+  warning for the art director to judge, and dimmed, decorative and
+  over-the-scene HUD text is judged by eye, not by the number;
 - text under the minimum size;
 - focus: an interactive element unreachable by pad from the default
   focus, a focus trap, a layer without Back;
