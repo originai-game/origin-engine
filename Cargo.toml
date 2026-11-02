@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/og-core", "crates/og-geom", "crates/og-core-derive", "crates/og-ecs", "crates/og-lanes", "crates/og-api", "crates/og-records", "crates/og-idl", "crates/og-runtime", "crates/og-render", "crates/og-bake", "crates/og-cook", "crates/og-bundle", "crates/og-blob", "crates/og-probe", "crates/og-input", "crates/og-physics", "crates/og-anim", "crates/og-tween", "crates/og-timeline", "crates/og-tilemap", "crates/og-audio", "crates/og-nav", "crates/og-ai", "crates/og-story", "crates/og-motion", "crates/og-i18n", "crates/og-net", "crates/og-ui", "crates/og-host-web", "crates/og-host-node", "crates/og-cli", "crates/og-tests", "crates/og-tests-cooked", "crates/og-tests-web"]
+members = ["crates/og-core", "crates/og-geom", "crates/og-core-derive", "crates/og-ecs", "crates/og-lanes", "crates/og-api", "crates/og-records", "crates/og-idl", "crates/og-runtime", "crates/og-render", "crates/og-bake", "crates/og-cook", "crates/og-bundle", "crates/og-blob", "crates/og-probe", "crates/og-input", "crates/og-physics", "crates/og-anim", "crates/og-tween", "crates/og-timeline", "crates/og-tilemap", "crates/og-audio", "crates/og-nav", "crates/og-ai", "crates/og-story", "crates/og-motion", "crates/og-i18n", "crates/og-net", "crates/og-ui", "crates/og-video", "crates/og-host-web", "crates/og-host-node", "crates/og-cli", "crates/og-tests", "crates/og-tests-cooked", "crates/og-tests-web"]
 
 # A vendored dependency, patched in below; not a member (no fmt, clippy or tests of ours).
 exclude = ["third_party"]
@@ -154,6 +154,9 @@ opt-level = 3
 # its blocks as voices reach them; at -O0 a packet costs about 20 times
 # its optimised 56 us and a 3-minute track's test minutes.
 [profile.dev.package.opus-pure]
+opt-level = 3
+# The AV1 decoder: at -O0 a 720p frame takes most of a second.
+[profile.dev.package.rav1d]
 opt-level = 3
 [profile.dev.package.fdsm]
 opt-level = 3

@@ -1,0 +1,26 @@
+[package]
+name = "og-video"
+version = "0.7.7"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Origin Engine streamed video: the AV1 decoder of the native host (rav1d, BSD-2-Clause, the memory-safe Rust port of dav1d), I420 to RGBA, a decode thread per stream, and the IVF demuxer the cook reads ffmpeg's AV1 with."
+
+# No renderer and no engine state: the cook (ivf), og-runtime's native
+# host (`decode`, a thread per stream) and the web fallback's own wasm
+# module (`decode` with one thread) share it.
+[features]
+default = ["decode"]
+# The rav1d decoder (natively a decode thread per stream).
+decode = ["dep:rav1d", "dep:libc"]
+
+[dependencies]
+# 8-bit only (the cook encodes 8-bit 4:2:0). Hand-written assembly on
+# arm64 only, which builds with the C compiler (no nasm on x86_64).
+rav1d = { version = "1.1.0", default-features = false, features = ["bitdepth_8"], optional = true }
+# rav1d's errors are negated errno values (its own dependency).
+libc = { version = "0.2", optional = true }
+
+[[test]]
+name = "decode"
+required-features = ["decode"]
