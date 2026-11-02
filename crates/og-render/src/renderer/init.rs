@@ -853,6 +853,7 @@ impl Renderer {
             pass_ms: Vec::new(),
             gpu_timer: None,
             cull_inside: CullScratch::default(),
+            shelter_key: None,
             probes: probes::Probes::default(),
             sorted: instances::SortedInstances::default(),
             views: views::Views::default(),

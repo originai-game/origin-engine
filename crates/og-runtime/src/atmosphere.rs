@@ -806,14 +806,30 @@ fn lightning_and_surfaces(
     let Some(st) = resource(world, layouts.weather_state.as_ref()) else {
         return;
     };
-    let rain = resource(world, layouts.weather.as_ref())
-        .filter(|w| u(w, "kind", 0) == og_render::WEATHER_RAIN)
-        .map_or(0.0, |w| f(&w, "intensity", 1.0));
+    let weather = resource(world, layouts.weather.as_ref());
+    let kind = weather.as_ref().map_or(0, |w| u(w, "kind", 0));
+    let rain = weather
+        .as_ref()
+        .filter(|_| kind == og_render::WEATHER_RAIN)
+        .map_or(0.0, |w| f(w, "intensity", 1.0));
+    // The shelter map looks along the fall: the rain's or the snow's speed
+    // (og_render::weather's particles) slanted by the wind, at most 45°
+    // (what drifts flatter eddies round a roof, not under it); straight
+    // down once neither falls.
+    let (drift, down) = match (kind, weather.as_ref()) {
+        (og_render::WEATHER_RAIN, Some(w)) => (super::fx::vec3(&w["wind"]), 11.0),
+        (og_render::WEATHER_SNOW, Some(w)) => (super::fx::vec3(&w["wind"]) * 0.8, 0.88),
+        _ => (Vec3::ZERO, 1.0),
+    };
+    let drift = Vec3::new(drift.x, 0.0, drift.z).clamp_length_max(down);
+    let fall = drift - Vec3::Y * down;
     scene.surface_weather = Some(og_render::SurfaceWeather {
         wetness: f(&st, "wetness", 0.0),
         puddles: f(&st, "puddles", 0.0),
         snow: f(&st, "snowDepth", 0.0) / f(&st, "snowCover", 0.08).max(1e-3),
         rain,
+        fall: fall.normalize_or(Vec3::NEG_Y),
+        shelter: f(&st, "shelterSize", 64.0),
         ..Default::default()
     });
     let strikes = u(&st, "strikes", 0);

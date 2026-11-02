@@ -36,6 +36,7 @@ impl Renderer {
         let taau = upscale == 0 && grid != out && grid.0 <= out.0 && grid.1 <= out.1;
         self.scene_size(grid.0, grid.1, taau);
         self.grow_local_shadows(scene);
+        self.fit_shelter_layer(scene);
         self.ensure_environment(scene);
         (upscale, grid_offset)
     }

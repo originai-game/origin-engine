@@ -9,6 +9,9 @@ pub(crate) enum FramePass {
     Cascade(u32),
     /// Local light shadow layer (6 per point light, 1 per spot).
     LocalFace(u32),
+    /// The weather occlusion map, the cascade array's last layer (weather.rs
+    /// `shelter_view`): in the frames it is drawn again, not every frame.
+    Shelter,
     /// The depth-normal prepass (normal, velocity, view depth, outline ids).
     Prepass,
     /// Ambient occlusion (GTAO or SSAO), then its blur.
@@ -145,6 +148,7 @@ impl FramePass {
         match self {
             FramePass::Cascade(i) => format!("cascade.{i}"),
             FramePass::LocalFace(i) => format!("local-shadow.{i}"),
+            FramePass::Shelter => "shelter".into(),
             FramePass::Prepass => "prepass".into(),
             FramePass::Ao => "ao".into(),
             FramePass::AoBlur => "ao-blur".into(),
@@ -604,7 +608,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
     for &p in passes {
         let name = p.name();
         match p {
-            FramePass::Cascade(_) => g.pass(name, &[], &["cascades"]),
+            FramePass::Cascade(_) | FramePass::Shelter => g.pass(name, &[], &["cascades"]),
             FramePass::LocalFace(_) => g.pass(name, &[], &["local-shadows"]),
             FramePass::Prepass => {
                 let mut writes = vec!["pre-depth", "gbuffer", "lindepth", "outline-id"];

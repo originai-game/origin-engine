@@ -1,13 +1,14 @@
 //! The realism wave's sky and weather scenes (R4): the physical sky over
 //! the colonnade at noon, at sunset looking into the sun, in twilight after
 //! it has set, and on a hazy afternoon; clouds; wet ground with puddles,
-//! lying snow and a lightning strike.
+//! lying snow and a lightning strike; a canopy keeping the snow and the
+//! rain off the ground under it.
 
 use crate::atmo_scenes::{colonnade, colonnade_camera};
-use glam::Vec3;
+use glam::{Mat4, Vec3};
 use og_render::{
-    Background, Bloom, Clouds, DirectionalLight, Environment, Fog, PhysicalAtmosphere,
-    ProceduralSky, RenderScene, SurfaceWeather, day_night,
+    Background, Bloom, Clouds, DirectionalLight, Environment, Fog, Material, PhysicalAtmosphere,
+    ProceduralSky, RenderScene, SurfaceWeather, day_night, shapes,
 };
 
 /// The scenes of this module, in `SCENES` order.
@@ -23,6 +24,8 @@ pub const SKY_SCENES: &[&str] = &[
     "weather-wet",
     "weather-snow-cover",
     "weather-lightning",
+    "weather-shelter-snow",
+    "weather-shelter-rain",
 ];
 
 /// The colonnade at `hours` under the physical sky of `air`, lit by the
@@ -98,6 +101,29 @@ fn weathered(hours: f32, weather: SurfaceWeather) -> RenderScene {
     scene
 }
 
+/// A flat canopy 8 m wide (x -4 to 4) and 6 m deep (z -9 to -3), its
+/// underside 3 m up, on four posts: in front of the weathered camera, which
+/// sees the ground under it.
+pub fn canopy(scene: &mut RenderScene) {
+    let slab = scene.add_mesh(shapes::cuboid(Vec3::new(8.0, 0.2, 6.0)));
+    let post = scene.add_mesh(shapes::cuboid(Vec3::new(0.2, 3.0, 0.2)));
+    let wood = scene.add_material(Material {
+        base_color: [0.42, 0.3, 0.2, 1.0],
+        roughness: 0.8,
+        ..Default::default()
+    });
+    scene.add_instance(
+        slab,
+        wood,
+        Mat4::from_translation(Vec3::new(0.0, 3.1, -6.0)),
+    );
+    for x in [-3.8f32, 3.8] {
+        for z in [-8.8f32, -3.2] {
+            scene.add_instance(post, wood, Mat4::from_translation(Vec3::new(x, 1.5, z)));
+        }
+    }
+}
+
 /// The scene called `name` of [`SKY_SCENES`].
 pub fn sky_scene(name: &str) -> RenderScene {
     let earth = PhysicalAtmosphere::EARTH;
@@ -131,6 +157,33 @@ pub fn sky_scene(name: &str) -> RenderScene {
             scene.camera.target = Vec3::new(-1.0, 8.0, -30.0);
             let at = Vec3::new(-25.0, 0.0, -160.0);
             og_render::add_lightning(&mut scene, at, 900.0, 3, 0.03);
+            scene
+        }
+        "weather-shelter-snow" => {
+            let mut scene = weathered(
+                11.0,
+                SurfaceWeather {
+                    snow: 0.8,
+                    ..SurfaceWeather::default()
+                },
+            );
+            canopy(&mut scene);
+            scene
+        }
+        "weather-shelter-rain" => {
+            // The rain slanted by a wind from -x: the dry patch shifts
+            // downwind (+x) of the canopy.
+            let mut scene = weathered(
+                11.0,
+                SurfaceWeather {
+                    wetness: 1.0,
+                    puddles: 0.8,
+                    rain: 1.0,
+                    fall: Vec3::new(0.35, -1.0, 0.0).normalize(),
+                    ..SurfaceWeather::default()
+                },
+            );
+            canopy(&mut scene);
             scene
         }
         "clouds-fair" => clouded(

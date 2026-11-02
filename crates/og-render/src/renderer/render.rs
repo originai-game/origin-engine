@@ -591,11 +591,40 @@ impl Renderer {
             && scene.previous_transforms.len() == scene.instances.len();
         let blur_motion = motion_blur.is_some() && previous_valid;
         let sorted = transforms.len() as u32;
+        // The weather occlusion map (weather.rs `shelter_view`), in the
+        // cascade array's last layer (`fit_shelter_layer` gave it one):
+        // drawn again only when what it was drawn from changes.
+        let shelter = scene
+            .surface_weather
+            .as_ref()
+            .filter(|_| self.cascade_map.layers.len() as u32 > self.info.shadow_cascades)
+            .and_then(|w| {
+                let (view_proj, cell) = weather::shelter_view(w, camera.position, scene.origin)?;
+                let frustum = Frustum::from_view_proj(view_proj);
+                let mut inside = vec![false; spheres.len()];
+                for b in batches.iter().filter(|b| b.cast) {
+                    inside[b.first as usize..(b.first + b.count) as usize].fill(true);
+                }
+                frustum.test_spheres(&mut inside, &spheres);
+                let key = weather::shelter_key(
+                    w,
+                    cell,
+                    spheres
+                        .iter()
+                        .zip(&inside)
+                        .filter(|(_, i)| **i)
+                        .map(|(s, _)| *s),
+                    scene.terrains.len(),
+                );
+                Some((view_proj, frustum, key, self.shelter_key != Some(key)))
+            });
+        let shelter_redraw = shelter.as_ref().is_some_and(|s| s.3);
         // The passes this frame can cull at most: the camera, the
         // occluders, the planar reflection, the cascades and the shadowed
         // local lights' faces. The buffers must fit them; `encode` sizes
         // them for the frame's actual passes and regrows when that grows.
         let max_passes = 2
+            + shelter_redraw as usize
             + reflection.is_some() as usize
             + if scene.light.cast_shadows {
                 (self.info.shadow_cascades as usize).clamp(1, CASCADES)
@@ -1134,6 +1163,26 @@ impl Renderer {
                 }
             })
             .collect();
+        // The weather occlusion map's casters (not the skinned or the
+        // scattered copies: see `shadow_pass`), when it is drawn again.
+        let shelter_list: Option<DrawList> = shelter.as_ref().filter(|s| s.3).map(|s| {
+            if gpu_cull {
+                let g = gpu_pass(cull_gpu::PassKind::Shadow, &s.1);
+                indirect_list(&batches, sorted, g, |b| b.cast)
+            } else {
+                self.cull(
+                    &batches,
+                    &spheres,
+                    &mut transforms,
+                    &mut origins,
+                    &mut cull_inside,
+                    &s.1,
+                    true,
+                    |b| b.cast,
+                )
+                .0
+            }
+        });
 
         // Local lights: the clusters they reach, their records, their shadow faces.
         self.clusters.build(
@@ -1682,6 +1731,33 @@ impl Renderer {
                 };
             }
         }
+        // The weather occlusion map: its view and its layer, the array's
+        // last (never a constant: cascades or cached layers may come first).
+        if let Some((view_proj, ..)) = &shelter {
+            let side = self.info.shadow_map_size as f32;
+            let w = scene.surface_weather.as_ref().expect("filtered above");
+            let texel = w.shelter.clamp(4.0, 1024.0) / side;
+            uniform.atmosphere.shelter = [
+                view_proj.x_axis.to_array(),
+                view_proj.y_axis.to_array(),
+                view_proj.z_axis.to_array(),
+                view_proj.w_axis.to_array(),
+                [
+                    self.cascade_map.layers.len() as f32,
+                    weather::DRIP_EDGE / texel,
+                    side,
+                    // 5 cm along the fall, in the map's depth.
+                    0.05 / (2.0 * weather::SHELTER_REACH),
+                ],
+            ];
+            shadow_slots[SHELTER_SLOT] = ShadowPassUniform {
+                view_proj: view_proj.to_cols_array_2d(),
+                light: [0.0; 4],
+                time: shadow_time,
+                paraboloid: [0.0; 4],
+                pad: [0.0; 36],
+            };
+        }
         self.queue
             .write_buffer(&self.frame_buffer, 0, bytemuck::bytes_of(&uniform));
         let probe_positions: Vec<Vec3> = probe_frame
@@ -1878,6 +1954,10 @@ impl Renderer {
         };
         let mut passes: Vec<FramePass> =
             (0..cascades.len() as u32).map(FramePass::Cascade).collect();
+        if shelter_redraw {
+            passes.push(FramePass::Shelter);
+        }
+        self.shelter_key = shelter.as_ref().map(|s| s.2);
         for ls in &local_shadows {
             for face in 0..ls.faces.len() {
                 passes.push(FramePass::LocalFace((ls.layer + face) as u32));
@@ -3038,7 +3118,12 @@ impl Renderer {
                            list: &DrawList,
                            frustum: &Frustum,
                            view: u32,
-                           stats: &mut FrameStats| {
+                           stats: &mut FrameStats,
+                           // The weather occlusion map takes only what stands
+                           // still for its key (weather::shelter_key): no
+                           // skinned casters, no scattered copies (grass must
+                           // not keep the ground under it dry).
+                           all_casters: bool| {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("shadow"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -3081,6 +3166,23 @@ impl Renderer {
                 stats.draw_calls += m.draw_shadow(&mut pass, &batches, view, |b| {
                     &self.cache.materials[b.material].bind_group
                 });
+            }
+            if !all_casters {
+                if let Some(indices) = terrain_indices
+                    && terrain_casters
+                {
+                    let (n, _) = terrain::draw_levels(
+                        &mut pass,
+                        &terrain_draws,
+                        indices,
+                        terrain::TerrainPass::Shadow,
+                        |c, r| frustum.intersects_sphere(c, r),
+                        None,
+                    );
+                    stats.draw_calls += n;
+                    stats.terrain_shadow_draws += n;
+                }
+                return;
             }
             // Skinned casters, unculled.
             let n = draw_skinned(
@@ -3147,7 +3249,24 @@ impl Renderer {
                     &cascades[i as usize].frustum,
                     cascade_views.get(i as usize).copied().unwrap_or(0),
                     &mut stats,
+                    true,
                 ),
+                FramePass::Shelter => {
+                    let s = shelter.as_ref().expect("a shelter pass has its view");
+                    shadow_pass(
+                        &mut encoder,
+                        self.cascade_map.layers.last().expect("fit_shelter_layer"),
+                        &self.cascade_map.depth,
+                        SHELTER_SLOT,
+                        shelter_list.as_ref().expect("a list when redrawn"),
+                        &s.1,
+                        // No view: clustered (meshlet) casters are not drawn
+                        // into the weather map yet.
+                        0,
+                        &mut stats,
+                        false,
+                    )
+                }
                 FramePass::LocalFace(layer) => shadow_pass(
                     &mut encoder,
                     &self.local_map.layers[layer as usize],
@@ -3161,6 +3280,7 @@ impl Renderer {
                         .expect("a frustum per shadowed face"),
                     local_views[layer as usize],
                     &mut stats,
+                    true,
                 ),
                 FramePass::Prepass => self.encode_prepass(PrepassPassInputs {
                     water_draws: &water_draws,

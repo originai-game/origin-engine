@@ -551,6 +551,23 @@ impl Renderer {
         ))
     }
 
+    /// Gives the cascade array one more layer, last, for the weather
+    /// occlusion map while the scene's surface weather has shelter, and
+    /// takes it away again when it has none: a scene without it keeps the
+    /// array of `shadow_cascades` layers it had (the frame groups are made
+    /// again when it changes).
+    pub(crate) fn fit_shelter_layer(&mut self, scene: &RenderScene) {
+        let shelter = scene.surface_weather.is_some_and(|w| w.shelter > 0.0);
+        let wanted = self.info.shadow_cascades + u32::from(shelter);
+        if self.cascade_map.layers.len() as u32 == wanted {
+            return;
+        }
+        self.cascade_map =
+            ShadowMap::new(&self.device, "cascades", self.info.shadow_map_size, wanted);
+        self.shelter_key = None;
+        self.environment = None;
+    }
+
     /// Grows the local shadow array to its full capacity when the scene's
     /// shadowed lights could need more layers than it has (once per
     /// renderer: the frame bind groups are made again with it).

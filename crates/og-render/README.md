@@ -2260,12 +2260,27 @@ decals). Wet porous surfaces darken and every surface gains a sheen
 ground, mirror-smooth, rippled by raindrop rings while it rains; snow
 settles on what faces up, deeper cover reaching steeper faces, its edge
 broken by noise. The masks follow the world position and the geometric
-normal (a normal map shades the cover without moving it); nothing
-shelters a surface from the sky yet. A strike (`add_lightning`) is a
+normal (a normal map shades the cover without moving it). Roofs shelter
+what is under them through the weather occlusion map (`shelter_view`):
+the depth of what is nearest the sky, drawn like a shadow cascade from
+above along the fall (the rain or snow slanted by og.Weather's wind, at
+most 45°) over `SurfaceWeather::shelter` metres around the camera (64 by
+default; 0: none), and compared in `weather_open` with a 5×5 filter that
+softens the drip line over `DRIP_EDGE`. It is the cascade array's last
+layer (`fit_shelter_layer` adds it only while the scene has surface
+weather, so the array otherwise keeps its size; its index comes from
+`frame.weather_shelter.x`, never a constant), takes only static casters
+and terrain (no skinned or scattered copies), and is drawn again only
+when `shelter_key` changes: the camera crosses an eighth of the square,
+the fall turns, or a caster inside moves, appears or goes (a static
+shadow cache, when the shadows have one, is where that test belongs).
+The tick's wetness, puddles and snow depth are the open ground's; the
+map is drawn only. A strike (`add_lightning`) is a
 double flash of the sky's light, a light over the strike and a bolt by
 midpoint displacement seeded by the strike's number. The state they draw
 is the runtime's og.WeatherState, simulated in the tick (og-runtime
-`weather.rs`). Frames: `weather-wet`, `-snow-cover`, `-lightning`.
+`weather.rs`). Frames: `weather-wet`, `-snow-cover`, `-lightning`,
+`-shelter-snow`, `-shelter-rain`.
 
 ## Reflection probe faces
 

@@ -310,6 +310,10 @@ pub struct Renderer {
     /// The custom post passes on the device (`post_custom.rs`).
     custom_posts: post_custom::CustomPosts,
     cull_inside: CullScratch,
+    /// What the weather occlusion map in the cascade array's last layer
+    /// was last drawn from (`weather::shelter_key`; `None`: not drawn
+    /// since the array was made).
+    shelter_key: Option<u64>,
     post: post::PostPasses,
     cascade_map: ShadowMap,
     local_map: ShadowMap,

@@ -9770,6 +9770,12 @@
           "tunable": true
         },
         {
+          "name": "shelterSize",
+          "column": "f32",
+          "default": 64,
+          "tunable": true
+        },
+        {
           "name": "wetness",
           "column": "f32",
           "default": 0,

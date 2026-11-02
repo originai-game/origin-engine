@@ -182,8 +182,12 @@ pub(crate) const MATERIAL_DISSOLVE_WGSL: &str = wgsl!("material_dissolve.wgsl");
 const MATERIAL_PHYSICAL_WGSL: &str = wgsl!("material_physical.wgsl");
 pub(crate) const RIBBON_WGSL: &str = wgsl!("ribbon.wgsl");
 
-/// Uniform slots of the shadow passes (dynamic offsets): 3 cascades, then 12 local faces.
-pub(crate) const SHADOW_SLOTS: usize = CASCADES + LOCAL_SHADOW_LAYERS;
+/// The shadow pass slot of the weather occlusion map (weather.rs
+/// `shelter_view`), after the cascades' and the local faces'.
+pub(crate) const SHELTER_SLOT: usize = CASCADES + LOCAL_SHADOW_LAYERS;
+/// Uniform slots of the shadow passes (dynamic offsets): the cascades, the
+/// local faces, then the weather occlusion map.
+pub(crate) const SHADOW_SLOTS: usize = SHELTER_SLOT + 1;
 pub(crate) const SHADOW_SLOT_STRIDE: u64 = 256;
 
 #[cfg(test)]

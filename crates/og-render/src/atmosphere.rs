@@ -181,6 +181,13 @@ pub(crate) struct AtmosphereGpu {
     pub clouds: [[f32; 4]; crate::clouds::CLOUD_VEC4S],
     /// Weather on the lit surfaces (`SurfaceWeather::gpu`; zero: dry).
     pub weather: [[f32; 4]; 2],
+    /// The weather occlusion map (`weather::shelter_view`): its view
+    /// projection, then x: its layer of the cascade array plus one (0: no
+    /// map; the layer is always the array's last, so cascades or cached
+    /// layers added in front of it move it, never a constant), y: the drip
+    /// line's soft edge in texels, z: the map's side in texels, w: the
+    /// depth bias. Written by the renderer after `new`.
+    pub shelter: [[f32; 4]; 5],
 }
 
 impl AtmosphereGpu {

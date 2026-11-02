@@ -179,6 +179,8 @@ pub const SCENES: &[&str] = &[
     "weather-wet",
     "weather-snow-cover",
     "weather-lightning",
+    "weather-shelter-snow",
+    "weather-shelter-rain",
 ];
 
 /// A per-frame change (frame index from 0): moving sprites, an orbiting camera.
@@ -981,7 +983,9 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         | "clouds-gradient"
         | "weather-wet"
         | "weather-snow-cover"
-        | "weather-lightning" => |g, name| {
+        | "weather-lightning"
+        | "weather-shelter-snow"
+        | "weather-shelter-rain" => |g, name| {
             g.scene = crate::sky_scenes::sky_scene(name);
             Ok(())
         },

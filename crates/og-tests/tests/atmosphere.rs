@@ -670,3 +670,37 @@ fn weather_surface_scenes_match_their_references_and_read_as_weather() {
     };
     assert!(mean(&storm, 0, 0, 1280, 720) > 1.3 * mean(&calm, 0, 0, 1280, 720));
 }
+
+/// R4's shelter: the ground under the canopy stays free of snow and dry.
+/// With the weather occlusion map turned off (shelter 0) the snow lies
+/// under it too, so the frame's lower half is brighter; with it the ground
+/// under the canopy is darker than the open snow, and the wet frame is
+/// lighter under the canopy than without the map (dry ground, no puddles).
+#[test]
+fn a_canopy_keeps_the_snow_and_the_rain_off_the_ground_under_it() {
+    use og_tests::sky_scenes::sky_scene;
+    let open = |name: &str| {
+        let mut s = sky_scene(name);
+        if let Some(w) = s.surface_weather.as_mut() {
+            w.shelter = 0.0;
+        }
+        frame(&s)
+    };
+    let lower = |img: &RgbaImage| mean(img, 0, 400, 1280, 720);
+    let snow = frame(&sky_scene("weather-shelter-snow"));
+    let snowed_under = open("weather-shelter-snow");
+    assert!(
+        lower(&snow) < 0.95 * lower(&snowed_under),
+        "the canopy keeps the snow off: {} vs {}",
+        lower(&snow),
+        lower(&snowed_under)
+    );
+    let rain = frame(&sky_scene("weather-shelter-rain"));
+    let soaked = open("weather-shelter-rain");
+    assert!(
+        lower(&rain) > 1.02 * lower(&soaked),
+        "the canopy keeps the ground under it dry: {} vs {}",
+        lower(&rain),
+        lower(&soaked)
+    );
+}

@@ -77,8 +77,15 @@ impl Renderer {
         if (cascade, local) != (self.info.shadow_map_size, self.local_shadow_size) {
             self.info.shadow_map_size = cascade;
             self.local_shadow_size = local;
-            self.cascade_map =
-                ShadowMap::new(&self.device, "cascades", cascade, self.info.shadow_cascades);
+            // The array keeps its layers (the weather occlusion map's,
+            // if any, last).
+            self.cascade_map = ShadowMap::new(
+                &self.device,
+                "cascades",
+                cascade,
+                self.cascade_map.layers.len() as u32,
+            );
+            self.shelter_key = None;
             self.local_map = ShadowMap::new(
                 &self.device,
                 "local shadows",

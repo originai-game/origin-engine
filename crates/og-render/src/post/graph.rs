@@ -696,6 +696,7 @@ impl FrameGraph {
             | FramePass::GodRaysMask
             | FramePass::GodRaysBlur
             | FramePass::Cascade(_)
+            | FramePass::Shelter
             | FramePass::LocalFace(_)
             | FramePass::Prepass
             | FramePass::Particles
