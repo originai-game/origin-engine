@@ -105,3 +105,49 @@ fn a_stream_cooks_to_av1_units_with_its_key_frames_poster_and_opus_sound() {
         "a stream's sound is Opus"
     );
 }
+
+#[test]
+fn a_stream_wider_than_720p_gets_a_720p_rendition_for_the_webs_fallback() {
+    if og_cook::cook::video::av1_encoder().is_none() {
+        eprintln!("skipped: no ffmpeg with an AV1 encoder");
+        return;
+    }
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-cook-video-rendition");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(root.join("assets/clips")).unwrap();
+    std::fs::copy(fixture(), root.join("assets/clips/count.mp4")).unwrap();
+    // 1440x810 (wider than 1280): 10 frames, a key frame every half second.
+    std::fs::write(
+        root.join("assets/clips/wide.ogt"),
+        "type video\nversion 1\n---\nsource \"count.mp4\"\nstream true\nfps 10\nmaxSeconds 1\nsize 1440 810\nkeyframe 0.5\naudio false\n",
+    )
+    .unwrap();
+    std::fs::write(
+        root.join("assets/clips/small.ogt"),
+        "type video\nversion 1\n---\nsource \"count.mp4\"\nstream true\nfps 10\nmaxSeconds 1\nsize 640 360\naudio false\n",
+    )
+    .unwrap();
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let b = Bundle::open(&root.join("cooked")).unwrap();
+    let id = "clips/wide.ogt#stream720";
+    let s = b.video_stream(id, b.read(id).unwrap().as_slice()).unwrap();
+    assert_eq!(
+        (s.meta.width, s.meta.height, s.units.len()),
+        (1280, 720, 10)
+    );
+    let keys: Vec<bool> = s.units.iter().map(|u| u.0).collect();
+    assert_eq!(
+        keys.iter().filter(|k| **k).count(),
+        2,
+        "the main stream's key frames: 0 and 5"
+    );
+    assert!(keys[0] && keys[5]);
+    let mut d = og_video::decode::Decoder::new(1).unwrap();
+    let p = d.decode(&s.units[0].1).unwrap().unwrap();
+    assert_eq!((p.width, p.height), (1280, 720));
+    assert!(
+        b.output("clips/small.ogt#stream720").is_err(),
+        "a stream that fits has none"
+    );
+}

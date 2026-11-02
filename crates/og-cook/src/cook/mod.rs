@@ -1167,6 +1167,18 @@ pub fn cook_project_with_texture_cache(
                                 stamp(&[&base[..], &[b"stream".as_slice()]].concat()),
                                 Work::VideoStream(src.clone(), src_hash, plan.clone()),
                             ));
+                            if let Some(size) = og_video::stream::fallback_size(plan.size) {
+                                outs.push((
+                                    video::stream_fallback_id(&s.rel),
+                                    format::VideoStream::NAME,
+                                    stamp(&[&base[..], &[b"stream720".as_slice()]].concat()),
+                                    Work::VideoStream(
+                                        src.clone(),
+                                        src_hash,
+                                        Box::new(video::fallback_plan(&plan, size)),
+                                    ),
+                                ));
+                            }
                             outs.push((
                                 video::poster_id(&s.rel),
                                 format::Texture::NAME,

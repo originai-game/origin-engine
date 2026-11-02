@@ -31,6 +31,9 @@
 //!   read from the IVF ffmpeg writes ([`og_video::ivf`]) into the engine's
 //!   own blob, so no container is read at run time; the runtime fetches it
 //!   when `og.load.video` runs, not with the startup bundle;
+//! - `<id>#stream720`, beside a stream larger than 1280x720: the same at
+//!   that size or less (its aspect kept), which the web's software
+//!   fallback decoder plays instead (it holds 30 fps at 720p, not 1080p);
 //! - `<id>#poster`: frame 0 as rav1d decodes it, a texture of the video's
 //!   kind, shown until the stream's first frame and on a host with no AV1
 //!   decoder;
@@ -621,6 +624,20 @@ pub fn audio_wav(path: &Path, plan: &VideoPlan) -> Result<Vec<u8>, CookError> {
 /// The id of a stream's units.
 pub fn stream_id(id: &str) -> String {
     format!("{id}#stream")
+}
+
+/// The id of a stream's rendition for the web's software fallback (beside
+/// a stream larger than 720p: `og_video::stream::fallback_size`).
+pub fn stream_fallback_id(id: &str) -> String {
+    format!("{id}#stream720")
+}
+
+/// The plan of a stream's fallback rendition: the same, at `size`.
+pub fn fallback_plan(plan: &VideoPlan, size: (u32, u32)) -> VideoPlan {
+    VideoPlan {
+        size,
+        ..plan.clone()
+    }
 }
 
 /// The id of a stream's poster frame.
