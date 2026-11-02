@@ -560,7 +560,7 @@ impl Ui {
                 Element {
                     width: w,
                     height: hgt,
-                    background: Some(p.scrim.fade(1.6)),
+                    background: Some(p.scrim.deepen(1.6)),
                     interactive: true,
                     ..Element::default()
                 },

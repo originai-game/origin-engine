@@ -277,3 +277,20 @@ fn a_zoomed_scroll_view_clips_where_it_stands() {
     let want: Vec<[f32; 4]> = one.iter().map(|c| c.map(|v| v * 1.5)).collect();
     assert_eq!(zoomed, want);
 }
+
+/// A scrim made stronger stays a scrim: the dark scrim reads CSS 0.42 over
+/// mid grey (linear 0.687), the spotlight's 1.6 times it reads CSS 0.67,
+/// linear about 0.89, and high contrast's 1.5 times stays see-through.
+/// Scaling the linear alpha itself drew both opaque black.
+#[test]
+fn a_deeper_scrim_reads_deeper_and_stays_translucent() {
+    let scrim = og_ui::Theme::dark().palette.scrim;
+    assert!((scrim.alpha - 0.687).abs() < 0.01, "{scrim:?}");
+    // CSS 0.42 × 1.6 = 0.672 over #808080: 128 × 0.328 = 42 → linear
+    // 0.0232 against the grey's 0.2158, so 1 − 0.0232 / 0.2158 = 0.893.
+    let spot = scrim.deepen(1.6).alpha;
+    assert!((spot - 0.893).abs() < 0.01, "{spot}");
+    assert!((scrim.deepen(1.0).alpha - scrim.alpha).abs() < 0.005);
+    let high = og_ui::Theme::dark().to_high_contrast().palette.scrim.alpha;
+    assert!(high > scrim.alpha && high < 0.95, "{high}");
+}
