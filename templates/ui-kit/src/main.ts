@@ -945,7 +945,9 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
   if (screen !== "gallery" && screen !== "widgets" && !PATTERN_SCREENS.has(screen) && backdrop) og.render.sprite(world, { texture: backdrop, width: 640, height: 360, layer: -10 });
 
   // The gacha banner runs its art full-bleed on a phone: the Gallery button floats on it, so it is built after it.
-  if (screen !== "gallery" && screen !== "loading" && screen !== "gacha" && screen !== "cutscene" && screen !== "saga") galleryButton(world, d);
+  // So does a conversation's: its caption shade and its press layer span the screen, and the button stands over them.
+  const floats = screen === "gacha" || screen === "cutscene" || screen === "saga" || screen === "dialogue" || screen === "vn";
+  if (screen !== "gallery" && screen !== "loading" && !floats) galleryButton(world, d);
   let back = false;
   switch (screen) {
     case "gallery":
@@ -1452,7 +1454,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       og.ui.label("Text", tr(world, "menu.mixed"), { step: "lg", nowrap: true });
     });
   }
-  if (screen === "gacha" || screen === "cutscene" || screen === "saga") galleryButton(world, d);
+  if (floats) galleryButton(world, d);
   if (back) d.screen = 0;
 }
 
