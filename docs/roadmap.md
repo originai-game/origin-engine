@@ -127,6 +127,20 @@ After R, as the plan's final stage:
 
 ## 4. Status
 
+**Wave A (the owner, 2026-11-02: five fresh threads, each owning related items end to end; the previous thirteen stopped with their work pushed):**
+
+| Thread | Owns |
+|---|---|
+| [T-01a19d11-21da](https://ampcode.com/threads/T-01a19d11-21da-744f-bfd2-0a638d1a1751) | G3-3 batches 2–3, then R12 batches 2–4 |
+| [T-01a19d11-2b05](https://ampcode.com/threads/T-01a19d11-2b05-73c2-be70-d91f9caecf9a) | og-ui: the Arabic measure fix, the overlay's 14.9 ms GPU cost, ui-gaps B2–B7 |
+| [T-01a19d11-3577](https://ampcode.com/threads/T-01a19d11-3577-7340-8942-6475146f923f) | G3-7 inspector and gizmos, R10 batch 3 (shots), G3-1 batch 5 |
+| [T-01a19d11-3f20](https://ampcode.com/threads/T-01a19d11-3f20-7120-8033-d77a94db6a4d) | G2-7 batches 4–6, R11 batches 2–4 |
+| [T-01a19d11-4856](https://ampcode.com/threads/T-01a19d11-4856-7563-be4e-9a998afa0d13) | UI content: RTS and sports HUD, the holo kit screens, the selection grammar, U6d's remaining patterns |
+
+Next wave: the remaining style packs and their art notes, U6d's screen documents, `og ui eject` and the settings tree, accessibility (deferred), the rest of R.
+The rows below are the previous threads, kept for their history.
+
+
 | Stream | Thread | Branch | State |
 |---|---|---|---|
 | G1-2 | [T-d77ec7d3](https://ampcode.com/threads/T-d77ec7d3-271f-4b67-9d15-d46a5959df5a) | `g1-input-actions` | merged 2026-11-01 (main 1fa0b316; follow-up g1-save-empty-types merged at 1c1451ea) |
