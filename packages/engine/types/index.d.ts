@@ -29096,6 +29096,24 @@ export interface GachaBannerDesc {
    * @default "History"
    */
   readonly historyLabel?: string;
+  /**
+   * A time left of a day or more, on the timer and the tabs ({d} days, {h} hours).
+   *
+   * @default "{d}d {h}h"
+   */
+  readonly daysLabel?: string;
+  /**
+   * A time left of an hour or more ({h} hours, {m} minutes).
+   *
+   * @default "{h}h {m}m"
+   */
+  readonly hoursLabel?: string;
+  /**
+   * A time left under an hour, on the tabs ({m} minutes; the timer counts it down as m:ss).
+   *
+   * @default "{m}m"
+   */
+  readonly minutesLabel?: string;
 }
 
 /** What the banner did this tick. */
@@ -29249,6 +29267,12 @@ export interface PullSequenceDesc {
    * @default "Continue"
    */
   readonly continueLabel?: string;
+  /**
+   * The badge on a unit seen for the first time.
+   *
+   * @default "NEW"
+   */
+  readonly newLabel?: string;
 }
 
 /**

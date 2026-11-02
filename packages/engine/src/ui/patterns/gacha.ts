@@ -7,7 +7,7 @@
 import type * as Api from "@origingame/engine";
 import {
   accent, artSlot, btn, clamp, fit, flags, floating, frame, glow, grow, hex, keyHash, kit, line, mix, over, paint, priceTag, px, radial, rarityColor, rarityPips,
-  role, rtl, scrimFill, shadow, spring, st, still, surface, symbol, text, timerChip, token, u, vgrad, vstate, xy, type Mut, type Rgba,
+  role, rtl, scrimFill, shadow, spring, st, still, surface, symbol, text, timerChip, token, u, vgrad, vstate, xy, type Mut, type Rgba, type TimeWords,
 } from "./core.ts";
 import { cornerTag, plainText } from "./rewards.ts";
 
@@ -129,7 +129,7 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
         if (!phone && !short) artSlot("Thumb", "Gacha.thumb", { texture: b.image ?? null, kind: "banner", width: px(u(44)), height: px(u(44)), radius: t.small });
         kit.column("Text", { width: grow(), gap: 2, cross: portrait ? "center" : "start" }, () => {
           text("Name", b.name ?? "", { step: st(14), font: "display", maxLines: 2, width: grow(), align: portrait ? "center" : "start" });
-          if (b.endsIn !== undefined && b.endsIn !== null && !portrait && !short) text("Ends", countdownShort(b.endsIn), { step: st(12), color: b.endsIn < 3600 ? "warn" : "inkMuted", nowrap: true, font: "mono" });
+          if (b.endsIn !== undefined && b.endsIn !== null && !portrait && !short) text("Ends", countdownShort(b.endsIn, timeWords(desc)), { step: st(12), color: b.endsIn < 3600 ? "warn" : "inkMuted", nowrap: true, font: "mono" });
         });
         if (b.fresh) {
           kit.open("Dot", { width: px(u(8)), height: px(u(8)) });
@@ -170,7 +170,7 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
     if (desc.subtitle) text("Subtitle", desc.subtitle.toLocaleUpperCase(), { step: st(13), color: "highlight", font: "display", nowrap: true, ellipsis: true, width: grow() });
     text("Title", desc.title ?? "", { step: st(phone ? 26 : 48), heading: true, font: "display", width: grow(), maxLines: 2, ellipsis: true });
     if (desc.endsIn !== undefined && desc.endsIn !== null) {
-      timerChip("Timer", desc.endsIn, "");
+      timerChip("Timer", desc.endsIn, "", timeWords(desc));
     }
     if (feat.length > 0) {
       kit.column("Featured", { width: grow(), gap: u(6), part: "Gacha.featured", partClass: "panel" }, () => {
@@ -279,13 +279,16 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
 }
 
 /** Seconds as `2d 4h` or `3h 12m`, for a tab. */
-function countdownShort(seconds: number): string {
+function countdownShort(seconds: number, words: TimeWords): string {
   const s = Math.max(0, Math.ceil(seconds));
   const d = Math.floor(s / 86400);
   const h = Math.floor((s % 86400) / 3600);
   const m = Math.floor((s % 3600) / 60);
-  return d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m`;
+  return d > 0 ? fill(words.days ?? "{d}d {h}h", { d, h }) : h > 0 ? fill(words.hours ?? "{h}h {m}m", { h, m }) : fill(words.minutes ?? "{m}m", { m });
 }
+
+/** The banner's words for a time left. */
+const timeWords = (desc: Api.GachaBannerDesc): TimeWords => ({ days: desc.daysLabel, hours: desc.hoursLabel, minutes: desc.minutesLabel });
 
 /** The pity meter: a thin bar toward the guarantee and how many pulls are left. */
 function pityMeter(id: string, pity: number, max: number, label: string): void {
@@ -383,7 +386,7 @@ export function pullSequence(id: string, desc: Api.PullSequenceDesc): Api.PullSe
       if (phase === 1) charge(top, tick - t0, W, H);
       else if (phase === 2) {
         const it = items[clamp(idx, 0, n - 1)]!;
-        reveal(it, idx, n, tick - t0, W, H, desc.tapLabel ?? "Tap to continue", desc.continueLabel ?? "Continue");
+        reveal(it, idx, n, tick - t0, W, H, desc.tapLabel ?? "Tap to continue", desc.continueLabel ?? "Continue", desc.newLabel ?? "NEW");
       } else if (phase === 3) summary(items, desc, W, H, (again) => {
         if (again) out.again = true;
         else out.done = true;
@@ -457,7 +460,7 @@ function charge(top: Api.PullItem | null, dt: number, W: number, H: number): voi
 }
 
 /** One result large: its art, then its name, kind and stars landing one by one, a burst from legendary. */
-function reveal(it: Api.PullItem, idx: number, n: number, dt: number, W: number, H: number, tap: string, go: string): void {
+function reveal(it: Api.PullItem, idx: number, n: number, dt: number, W: number, H: number, tap: string, go: string, newLabel: string): void {
   const { phone } = frame();
   const ink = tierInk(it.rarity);
   const landscape = W > H;
@@ -508,7 +511,7 @@ function reveal(it: Api.PullItem, idx: number, n: number, dt: number, W: number,
   over({ insets: { start: 3, top: 3 }, inert: true });
   if (it.isNew) {
     // New in the tier's own ink, not a second accent beside it.
-    cornerTag("New", "NEW", ink);
+    cornerTag("New", newLabel, ink);
     over({ insets: { end: -u(8), top: -u(10) }, inert: true, z: 4 });
   }
   kit.close();
@@ -548,6 +551,7 @@ function reveal(it: Api.PullItem, idx: number, n: number, dt: number, W: number,
 
 /** Every result at once, the highest tiers first, then Again and Done. */
 function summary(items: readonly Api.PullItem[], desc: Api.PullSequenceDesc, W: number, H: number, done: (again: boolean) => void): void {
+  const newLabel = desc.newLabel ?? "NEW";
   const { viewport: vp, phone } = frame();
   const portrait = vp.breakpoint === "phonePortrait";
   const order = items.map((x, i) => ({ x, i })).sort((a, b) => rarityPips(b.x.rarity) - rarityPips(a.x.rarity) || a.i - b.i).map((e) => e.x);
@@ -579,7 +583,7 @@ function summary(items: readonly Api.PullItem[], desc: Api.PullSequenceDesc, W: 
       if (it.extra) text("Extra", it.extra, { step: st(12), color: "highlight", maxLines: 2, width: grow(), align: portrait ? "start" : "center" });
     });
     if (it.isNew) {
-      cornerTag("New", "NEW", ink);
+      cornerTag("New", newLabel, ink);
       // A row tile (a phone in portrait) wears it over its art at the start, clear of its name.
       over({ insets: portrait ? { start: -u(4), top: -u(8) } : { end: -u(4), top: -u(8) }, inert: true, z: 3 });
     }

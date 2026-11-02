@@ -11,7 +11,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  clamp, fit, flags, frame, grow, hex, kit, lastInteraction, mix, over, paint, parentOf, pct, px, role, rtl, surface, text, token, xy, type Rgba,
+  clamp, fill, fit, flags, frame, grow, hex, kit, lastInteraction, mix, over, paint, parentOf, pct, px, role, rtl, surface, text, token, xy, type Rgba,
 } from "../containers/base.ts";
 
 export * from "../containers/base.ts";
@@ -472,15 +472,22 @@ export function grouped(n: number): string {
 }
 
 /** Seconds as the two largest units (2d 4h, 3h 12m, 4:05). */
-export function countdown(seconds: number): string {
+export function countdown(seconds: number, words: TimeWords = {}): string {
   const s = Math.max(0, Math.ceil(seconds));
   const d = Math.floor(s / 86400);
   const h = Math.floor((s % 86400) / 3600);
   const m = Math.floor((s % 3600) / 60);
   const r = s % 60;
-  if (d > 0) return `${d}d ${h}h`;
-  if (h > 0) return `${h}h ${m.toString().padStart(2, "0")}m`;
+  if (d > 0) return fill(words.days ?? "{d}d {h}h", { d, h });
+  if (h > 0) return fill(words.hours ?? "{h}h {m}m", { h, m: m.toString().padStart(2, "0") });
   return `${m}:${r.toString().padStart(2, "0")}`;
+}
+
+/** A time left's words in the game's language: `{d}`, `{h}` and `{m}` stand for its days, hours and minutes. */
+export interface TimeWords {
+  days?: string | undefined;
+  hours?: string | undefined;
+  minutes?: string | undefined;
 }
 
 /** The currencies' colours and symbols. */
@@ -536,15 +543,15 @@ export function priceTag(id: string, d: { amount: number; currency?: string; ori
 }
 
 /** A timer chip: a clock drawn, the time left, warn under a minute. */
-export function timerChip(id: string, seconds: number, label = ""): void {
+export function timerChip(id: string, seconds: number, label = "", words: TimeWords = {}): void {
   const { t } = frame();
   const urgent = seconds < 60;
   kit.open(id, { direction: "row", gap: u(6), cross: "center", padding: xy(u(10), u(4)), radius: 999, background: token(urgent ? "danger" : "well"), part: `Timer.chip${flags(urgent && "urgent")}`, partClass: "chip" });
   symbol("Clock", "clock", u(14), role(urgent ? "onPrimary" : "inkMuted"), { icon: "clock" });
   if (label) text("Label", label, { step: st(13), color: urgent ? hex("#ffffff") : "inkMuted", nowrap: true });
-  text("Time", countdown(seconds), { step: st(13), color: urgent ? hex("#ffffff") : "ink", nowrap: true, font: "mono" });
+  text("Time", countdown(seconds, words), { step: st(13), color: urgent ? hex("#ffffff") : "ink", nowrap: true, font: "mono" });
   kit.close();
-  kit.semantics({ role: "timer", name: [label, countdown(seconds)].filter(Boolean).join(" ") });
+  kit.semantics({ role: "timer", name: [label, countdown(seconds, words)].filter(Boolean).join(" ") });
 }
 
 /** A ring timer: an arc of the time left, `size` across, warn and then danger as it runs out, the seconds in the middle. */

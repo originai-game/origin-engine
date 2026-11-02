@@ -52025,6 +52025,21 @@
           "type": "string",
           "description": "The pull history button.",
           "default": "History"
+        },
+        "daysLabel": {
+          "type": "string",
+          "description": "A time left of a day or more, on the timer and the tabs ({d} days, {h} hours).",
+          "default": "{d}d {h}h"
+        },
+        "hoursLabel": {
+          "type": "string",
+          "description": "A time left of an hour or more ({h} hours, {m} minutes).",
+          "default": "{h}h {m}m"
+        },
+        "minutesLabel": {
+          "type": "string",
+          "description": "A time left under an hour, on the tabs ({m} minutes; the timer counts it down as m:ss).",
+          "default": "{m}m"
         }
       },
       "additionalProperties": false
@@ -52220,6 +52235,11 @@
           "type": "string",
           "description": "What it says after the confirm glyph when a key or a pad was used last (one hint for the device in hand, never both).",
           "default": "Continue"
+        },
+        "newLabel": {
+          "type": "string",
+          "description": "The badge on a unit seen for the first time.",
+          "default": "NEW"
         }
       },
       "additionalProperties": false

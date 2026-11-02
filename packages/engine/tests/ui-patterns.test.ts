@@ -642,6 +642,21 @@ test("gachaBanner: a pull the purse pays is asked for; one it cannot is reported
   expect(byPath(b.engine, "Pulls/Status/Pity")!.name).toBe("Guaranteed in 18");
 });
 
+test("gachaBanner: the time left is in the game's words, days and hours on the timer, minutes on a tab", () => {
+  // Wrong: the English units (3d 5h) under a locale's words, or a tab's minutes in the timer's form.
+  const engine = run(() => {
+    og.ui.gachaBanner("Banner", {
+      banners: [{ key: "event", name: "Event", endsIn: 3 * 86400 + 5 * 3600 }, { key: "weapon", name: "Weapon", endsIn: 50 * 60 }],
+      current: "event", title: "Moonlit Tide", endsIn: 3 * 86400 + 5 * 3600 + 30,
+      daysLabel: "{d}日{h}時間", hoursLabel: "{h}時間{m}分", minutesLabel: "{m}分",
+    }, () => {});
+  }, { width: 1280, height: 720 });
+  const texts = elements(engine).map((e) => e.text);
+  expect(texts.filter((t) => t === "3日5時間").length).toBe(2);
+  expect(texts).toContain("50分");
+  expect(texts.some((t) => /\d[dhm]\b/.test(t))).toBe(false);
+});
+
 test("gachaBanner: tabs and the bumpers switch banners, wrapping at the ends", () => {
   const b = banner(5000);
   b.press("Tabs/std");
@@ -690,6 +705,19 @@ test("pullSequence: a new token charges, then reveals each result in order, then
   expect(p.last().phase).toBe("summary");
   const tiles = elements(p.engine).filter((e) => e.role === "listitem").sort((a, b) => a.y - b.y || a.x - b.x).map((e) => e.path.split("/").at(-1));
   expect(tiles).toEqual(["p2", "p3", "p1"]);
+});
+
+test("pullSequence: a unit seen for the first time wears the game's word for new", () => {
+  let token = 0;
+  const engine = run(() => {
+    og.ui.pullSequence("Pull", { token, items: PULL, againPrice: 1600, newLabel: "新" });
+  });
+  token = 1;
+  engine.advance(2);
+  key(engine, "Escape");
+  const texts = elements(engine).map((e) => e.text);
+  expect(texts).toContain("新");
+  expect(texts).not.toContain("NEW");
 });
 
 test("pullSequence: Skip goes straight to the summary; Done closes it; a new token starts again", () => {
