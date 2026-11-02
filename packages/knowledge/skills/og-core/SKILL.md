@@ -344,7 +344,8 @@ the skill that teaches it; `og api show <module>` prints a module's
 overview. This skill's are the ECS and its rules: `og api show world`
 (entities, queries, resources, events), `og api show system` (systems and
 their order), `og api show reflect` (components, resources and their
-column factories), `og api show rng` (seeded streams) and
+column factories), `og api show rng` (seeded streams), `og api show procgen` (noise,
+Poisson, BSP and WFC generators from a forked stream) and
 `og api show math` (vectors, quaternions, colours as data). When the wiki
 and memory disagree, the wiki is right: it is regenerated from the same IDL the engine is built
 from. The other skills, and which modules each teaches, are og-game §1.
