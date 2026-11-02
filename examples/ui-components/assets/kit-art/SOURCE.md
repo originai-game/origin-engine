@@ -8,6 +8,6 @@ UI art review with the OriginGame platform's image tool (origin MCP
 original work, no third-party art, released CC0 1.0. See the kit's
 SOURCE.md for the whole set.
 
-`ui/name-scrim.png` is drawn by a script for this repository (a 64 px
-soft rect of #0B0D10, 90 % at its core, with a 16 px smoothstep feather in its alpha),
+`ui/name-scrim.png` is drawn by a script for this repository (a 256 px
+soft rect of #0B0D10, 90 % at its core, with a 64 px smoothstep feather in its alpha),
 CC0 1.0.

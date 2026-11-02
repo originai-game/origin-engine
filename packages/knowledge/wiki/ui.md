@@ -21683,7 +21683,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `level` | `string` | `""` | — | — | — | Its level (60, ??); empty is none. |
 | `title` | `string` | `""` | — | — | — | A line under the name (a guild, a class). |
 | `portrait` | `Texture \| null` | `null` | — | — | — | Its portrait (art kind portrait, 1:1). |
-| `scrim` | `Texture \| null` | `null` | — | — | — | A pre-feathered soft rect from the style's art (a dark neutral, its feather baked into the alpha), drawn as a nine-slice from the portrait's centre to past the bars' end under the name and bars so their text holds on a bright scene; null draws none (the text's soft shadow alone). |
+| `scrim` | `Texture \| null` | `null` | — | — | — | A pre-feathered soft rect from the style's art (a dark neutral, its feather baked into the alpha), drawn as a nine-slice under the name and class line only (from the portrait's centre to 16 px past the longer line, its feather 24 px scaled with the text and lying outside that) so the text holds on a bright scene; the bars' dark tracks get none; null draws none (the text's soft shadow alone). |
 | `icon` | `string` | `""` | — | — | — | A class or role icon of the atlas. |
 | `health` | `number` | `0` | — | — | — | Health. |
 | `healthMax` | `number` | `100` | — | — | — | Its maximum. |
@@ -21715,7 +21715,7 @@ struct UnitFrameDesc {
   field level String "Its level (60, ??); empty is none."
   field title String "A line under the name (a guild, a class)."
   field portrait Option.Texture "Its portrait (art kind portrait, 1:1)."
-  field scrim Option.Texture "A pre-feathered soft rect from the style's art (a dark neutral, its feather baked into the alpha), drawn as a nine-slice from the portrait's centre to past the bars' end under the name and bars so their text holds on a bright scene; null draws none (the text's soft shadow alone)."
+  field scrim Option.Texture "A pre-feathered soft rect from the style's art (a dark neutral, its feather baked into the alpha), drawn as a nine-slice under the name and class line only (from the portrait's centre to 16 px past the longer line, its feather 24 px scaled with the text and lying outside that) so the text holds on a bright scene; the bars' dark tracks get none; null draws none (the text's soft shadow alone)."
   field icon String "A class or role icon of the atlas."
   field health f32 "Health."
   field healthMax f32 "Its maximum." {

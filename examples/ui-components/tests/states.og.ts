@@ -91,7 +91,8 @@ export default playtest({
       t.ok(roots.every((a, i) => roots.every((b, j) => i >= j || !overlap(a, b))), `${file}: none covers another`);
     }
     // The player's and the boss's frames never share space on a phone at 200 %: every part of one clear of every part of the other.
-    const parts = (file: string, root: string) => els(run, file).filter((e) => e.path.startsWith(`${root}/`) && e.width > 0 && e.height > 0);
+    // A name band's feather is a soft shadow that may bleed past its frame by design; what must not meet is content.
+    const parts = (file: string, root: string) => els(run, file).filter((e) => e.path.startsWith(`${root}/`) && e.width > 0 && e.height > 0 && !/Scrim$/.test(e.path));
     const meet = (a: El, b: El) => a.x < b.x + b.width - 0.5 && b.x < a.x + a.width - 0.5 && a.y < b.y + b.height - 0.5 && b.y < a.y + a.height - 0.5;
     const player = parts("framesPhone200.json", "PlayerHud");
     const boss = parts("framesPhone200.json", "TargetHud");
@@ -111,14 +112,17 @@ export default playtest({
         const lum = (i: number) => 0.2126 * lin(img.rgba[i]! / 255) + 0.7152 * lin(img.rgba[i + 1]! / 255) + 0.0722 * lin(img.rgba[i + 2]! / 255);
         const labels = els(run, dump).filter((e) => /^(PlayerHud|TargetHud|PartyHud)\/.*\/(Name|Title)$/.test(e.path) && e.text && e.width > 4);
         t.ok(labels.length >= 3, `${shot}: the frames' names are on screen`);
-        for (const e of labels) {
+        for (const el of labels) {
+          // The glyphs' own run (a label's box spans the bars): its text's width at the box's start (its end in RTL).
+          const w = Math.min(el.width, el.text.length * (el.height / 1.3) * 0.56 + 4);
+          const e = { ...el, w, x0: el.x };
           const ls: number[] = [];
           for (let y = Math.max(0, Math.floor(e.y * k)); y < Math.min(img.height, Math.ceil((e.y + e.height) * k)); y++) {
-            for (let x = Math.max(0, Math.floor(e.x * k)); x < Math.min(img.width, Math.ceil((e.x + e.width) * k)); x++) ls.push(lum((y * img.width + x) * 4));
+            for (let x = Math.max(0, Math.floor(e.x0 * k)); x < Math.min(img.width, Math.ceil((e.x0 + e.w) * k)); x++) ls.push(lum((y * img.width + x) * 4));
           }
           ls.sort((a, b) => a - b);
-          // A label's box runs the bars' width, so its glyphs are a few per cent of it: their ink is the brightest 1 %.
-          const ink = ls[Math.floor(ls.length * 0.99)] ?? 0;
+          // Glyphs cover a fifth of their run or less: their ink is the brightest 2 %.
+          const ink = ls[Math.floor(ls.length * 0.98)] ?? 0;
           const ground = ls[Math.floor(ls.length * 0.5)] ?? 0;
           const ratio = (Math.max(ink, ground) + 0.05) / (Math.min(ink, ground) + 0.05);
           const floor = /\/Title$/.test(e.path) || /\/(dead|off)\//.test(e.path) ? 3 : 4.5;

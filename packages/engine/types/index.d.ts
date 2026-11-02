@@ -33036,7 +33036,7 @@ export interface UnitFrameDesc {
    */
   readonly portrait?: Texture | null;
   /**
-   * A pre-feathered soft rect from the style's art (a dark neutral, its feather baked into the alpha), drawn as a nine-slice from the portrait's centre to past the bars' end under the name and bars so their text holds on a bright scene; null draws none (the text's soft shadow alone).
+   * A pre-feathered soft rect from the style's art (a dark neutral, its feather baked into the alpha), drawn as a nine-slice under the name and class line only (from the portrait's centre to 16 px past the longer line, its feather 24 px scaled with the text and lying outside that) so the text holds on a bright scene; the bars' dark tracks get none; null draws none (the text's soft shadow alone).
    *
    * @default null
    */
