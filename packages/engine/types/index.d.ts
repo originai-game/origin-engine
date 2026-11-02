@@ -35484,6 +35484,313 @@ export interface OverlayBarResult {
 
 
 /**
+ * One chat channel (General, Party, Guild, Whispers, Trade): a tab, and an ink its messages wear.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ChatChannel {
+  /**
+   * Its key: its tab's element id (<id>/Tabs/Row/<key>), and the messages' `channel`.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its name on its tab and in the tag before its messages where several channels show.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Its ink: a theme colour's name (info, success) or `#rrggbb`; empty is the ink.
+   *
+   * @default ""
+   */
+  readonly color?: string;
+  /**
+   * Messages the player has not seen in it: a count on its tab.
+   *
+   * @default 0
+   */
+  readonly unread?: number;
+  /**
+   * Unread messages naming the player: its tab's count turns to the highlight.
+   *
+   * @default 0
+   */
+  readonly mentions?: number;
+  /**
+   * The tab that shows every channel's messages, each tagged with its channel.
+   *
+   * @default false
+   */
+  readonly all?: boolean;
+  /**
+   * No sending to it (System, Combat log): the input's channel skips it.
+   *
+   * @default false
+   */
+  readonly readOnly?: boolean;
+}
+
+/**
+ * A link inside a message: an item, a player, a place or a quest, which a press answers by its key.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ChatLink {
+  /**
+   * Its key, answered in ChatResult.link.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its words, shown in brackets ([Ashbringer]).
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * What it links (item, player, place, quest), to a screen reader.
+   *
+   * @default ""
+   */
+  readonly kind?: string;
+  /**
+   * An item's tier: the link's ink (common shows the accent).
+   *
+   * @default "none"
+   */
+  readonly rarity?: Rarity;
+}
+
+/**
+ * One message, as the game holds it. Its words are shown as they were typed: no markup is read in them.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ChatMessage {
+  /**
+   * Its key: its line's element id, so its probe path is <id>/Log/<key>.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * The channel it was said in.
+   *
+   * @default ""
+   */
+  readonly channel?: string;
+  /**
+   * Who said it; empty for a system line.
+   *
+   * @default ""
+   */
+  readonly author?: string;
+  /**
+   * The author's key, answered in ChatResult.author when their name is pressed (a whisper, a profile).
+   *
+   * @default ""
+   */
+  readonly authorKey?: string;
+  /**
+   * The author's portrait (art kind portrait) at the line's start; null shows none.
+   *
+   * @default null
+   */
+  readonly avatar?: Texture | null;
+  /**
+   * The words. `{0}`, `{1}` stand for its links in order; `@Name` naming a member is a mention.
+   *
+   * @default ""
+   */
+  readonly text?: string;
+  /**
+   * Its links, by their place in the text.
+   *
+   * @default []
+   */
+  readonly links?: readonly ChatLink[];
+  /**
+   * When, as the game writes it (12:04); empty shows none.
+   *
+   * @default ""
+   */
+  readonly time?: string;
+  /**
+   * A notice from the game (Kael joined the party): muted, with no author.
+   *
+   * @default false
+   */
+  readonly system?: boolean;
+  /**
+   * The local player's own message.
+   *
+   * @default false
+   */
+  readonly own?: boolean;
+}
+
+/**
+ * Someone a mention can name: the suggestions while an @ word is typed.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ChatMember {
+  /**
+   * Their key.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Their name as a mention writes it.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Their portrait (art kind portrait) in the suggestion; null shows none.
+   *
+   * @default null
+   */
+  readonly avatar?: Texture | null;
+}
+
+/** A message the player sent. */
+export interface ChatSend {
+  /** The channel it goes to. */
+  readonly channel: string;
+  /** Its words, trimmed. */
+  readonly text: string;
+}
+
+/**
+ * A chat window: the channels, the messages, the player's draft and the channel it goes to.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ChatDesc {
+  /**
+   * The window's title; empty shows none.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * The tabs, start to end.
+   *
+   * @default []
+   */
+  readonly channels?: readonly ChatChannel[];
+  /**
+   * The tab shown.
+   *
+   * @default ""
+   */
+  readonly channel?: string;
+  /**
+   * The messages, oldest first (the game keeps its own limit).
+   *
+   * @default []
+   */
+  readonly messages?: readonly ChatMessage[];
+  /**
+   * The local player's name: a message mentioning @me is lit.
+   *
+   * @default ""
+   */
+  readonly me?: string;
+  /**
+   * Who a mention can name.
+   *
+   * @default []
+   */
+  readonly members?: readonly ChatMember[];
+  /**
+   * The input's text (the game's: it passes ChatResult.draft back).
+   *
+   * @default ""
+   */
+  readonly draft?: string;
+  /**
+   * The channel the input sends to; empty is the tab shown (or the first one that can be sent to).
+   *
+   * @default ""
+   */
+  readonly sendTo?: string;
+  /**
+   * The longest message.
+   *
+   * @default 255
+   */
+  readonly maxChars?: number;
+  /**
+   * The HUD's chat (World of Warcraft, Valorant): no panel, the newest lines over the game on a soft shade, fading after `fadeAfter` seconds unless the pointer is over it; the tabs and the input show while `typing`.
+   *
+   * @default false
+   */
+  readonly hud?: boolean;
+  /**
+   * With hud: the player is writing (the game opens the input with Enter and closes it on a send or Back).
+   *
+   * @default false
+   */
+  readonly typing?: boolean;
+  /**
+   * With hud: seconds a line stays before it fades.
+   *
+   * @default 10
+   */
+  readonly fadeAfter?: number;
+  /**
+   * The empty input's words.
+   *
+   * @default "Say something…"
+   */
+  readonly placeholder?: string;
+  /**
+   * The send button's word.
+   *
+   * @default "Send"
+   */
+  readonly sendLabel?: string;
+  /**
+   * The pill over the log when newer messages are below the view ({n} is how many).
+   *
+   * @default "{n} new"
+   */
+  readonly newLabel?: string;
+  /**
+   * The input's channel chip, to a screen reader.
+   *
+   * @default "Channel"
+   */
+  readonly channelLabel?: string;
+}
+
+/** What the player asked for this tick, for the game to apply. */
+export interface ChatResult {
+  /** Another tab was pressed. */
+  readonly channel: string | null;
+  /** The input's channel chip was pressed: the next channel that can be sent to. */
+  readonly sendTo: string | null;
+  /** The input's text changed (typed, or a mention suggestion inserted). */
+  readonly draft: string | null;
+  /** Enter or Send with words in the input (the game posts it and clears the draft). */
+  readonly send: ChatSend | null;
+  /** A link was pressed: its key. */
+  readonly link: string | null;
+  /** An author's name was pressed: their key. */
+  readonly author: string | null;
+  /** With hud and typing: Back was pressed (the game closes the input). */
+  readonly closed: boolean;
+}
+
+
+/**
  * A template's action, by its id (a menu item, `buy:<item>`, `share`).
  *
  * @param action The action's id.
@@ -55711,6 +56018,14 @@ export declare namespace og {
      * @param desc The overlays and the shown one.
      */
     function overlayBar(id: string, desc?: OverlayBarDesc): OverlayBarResult;
+    /**
+     * A chat window (World of Warcraft, Final Fantasy XIV, Discord in a game): the channel tabs, each its name and its unread count (in the highlight when a message there names the player); the log, each message one wrapping line of its time, its channel's tag in the channel's ink where the tab shows every channel, the author's name in that ink (a press answers them), and the words as typed, with each link a bracketed press in its tier's ink and each @mention in the highlight; a message naming the player is lit along its edge, a system line is muted. The log stays on the newest message while the player is at its foot; scrolled up, new messages gather in a pill (3 new) that brings the view down. Under it the input: the channel chip in its ink (a press steps to the next channel that can be sent to), the field and Send (a round button with its arrow where the window is narrow for its text, the chip's name then cut short); Enter sends, and while an @word is typed the matching members are offered over the input, a press writing the name. The HUD form draws no panel, only the newest lines over the game, which fade once idle, and shows the tabs and the input while the player types. On a phone the window takes its room and Send is a whole touch target.
+     * Parts: Chat.frame, Chat.tab[selected|mention], Chat.log, Chat.line[mention|own|system], Chat.avatar, Chat.new, Chat.input, Chat.channel, Chat.suggestion. Slots: avatars (portrait). Sounds: tab on a tab, select on a link or a name, confirm on a send. Accessibility: the tabs a tablist, the log a log and one focus group whose lines keys and a pad walk (reading back scrolls it), each line a listitem named author: words; links are links. Probe ids: <id>/Tabs/Row/<channel>, <id>/Log/<key>, <id>/Log/<key>/Text/<link> (a link: L<key>; a name: U<authorKey>), <id>/New, <id>/Input/Channel, <id>/Input/Field, <id>/Input/Send, <id>/Suggest/<member>.
+     *
+     * @param id Its id.
+     * @param desc The channels, messages, draft and words.
+     */
+    function chat(id: string, desc?: ChatDesc): ChatResult;
     /**
      * The title screen template. Returns the item chosen this tick.
      *

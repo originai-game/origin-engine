@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2375 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2383 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -345,6 +345,13 @@ Field units the docs and Tune use.
 | [`ChartKind`](ui.md#type-ChartKind) | enum | ui | — |
 | [`ChartResult`](ui.md#type-ChartResult) | struct | ui | — |
 | [`ChartSeries`](ui.md#type-ChartSeries) | desc struct | ui | — |
+| [`ChatChannel`](ui.md#type-ChatChannel) | desc struct | ui | — |
+| [`ChatDesc`](ui.md#type-ChatDesc) | desc struct | ui | — |
+| [`ChatLink`](ui.md#type-ChatLink) | desc struct | ui | — |
+| [`ChatMember`](ui.md#type-ChatMember) | desc struct | ui | — |
+| [`ChatMessage`](ui.md#type-ChatMessage) | desc struct | ui | — |
+| [`ChatResult`](ui.md#type-ChatResult) | struct | ui | — |
+| [`ChatSend`](ui.md#type-ChatSend) | struct | ui | — |
 | [`CheckFieldDesc`](ui.md#type-CheckFieldDesc) | desc struct | ui | — |
 | [`CheckListResult`](ui.md#type-CheckListResult) | struct | ui | — |
 | [`CheckView`](story.md#type-CheckView) | struct | story | — |
@@ -1449,6 +1456,7 @@ Field units the docs and Tune use.
 | [`og.ui.celebration`](ui.md#fn-celebration) | function | ui | — |
 | [`og.ui.characterSelect`](ui.md#fn-characterSelect) | function | ui | — |
 | [`og.ui.chart`](ui.md#fn-chart) | function | ui | — |
+| [`og.ui.chat`](ui.md#fn-chat) | function | ui | — |
 | [`og.ui.checkbox`](ui.md#fn-checkbox) | function | ui | `og_ui_checkbox` |
 | [`og.ui.checkboxList`](ui.md#fn-checkboxList) | function | ui | `og_ui_checkbox_list` |
 | [`og.ui.checkField`](ui.md#fn-checkField) | function | ui | — |

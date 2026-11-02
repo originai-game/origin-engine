@@ -11569,6 +11569,13 @@
         "MapOverlay",
         "OverlayBarDesc",
         "OverlayBarResult",
+        "ChatChannel",
+        "ChatLink",
+        "ChatMessage",
+        "ChatMember",
+        "ChatSend",
+        "ChatDesc",
+        "ChatResult",
         "MenuItem",
         "MenuResult",
         "MainMenuDesc",
@@ -15827,6 +15834,27 @@
             }
           ],
           "returns": "OverlayBarResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "chat",
+          "doc": "A chat window (World of Warcraft, Final Fantasy XIV, Discord in a game): the channel tabs, each its name and its unread count (in the highlight when a message there names the player); the log, each message one wrapping line of its time, its channel's tag in the channel's ink where the tab shows every channel, the author's name in that ink (a press answers them), and the words as typed, with each link a bracketed press in its tier's ink and each @mention in the highlight; a message naming the player is lit along its edge, a system line is muted. The log stays on the newest message while the player is at its foot; scrolled up, new messages gather in a pill (3 new) that brings the view down. Under it the input: the channel chip in its ink (a press steps to the next channel that can be sent to), the field and Send (a round button with its arrow where the window is narrow for its text, the chip's name then cut short); Enter sends, and while an @word is typed the matching members are offered over the input, a press writing the name. The HUD form draws no panel, only the newest lines over the game, which fade once idle, and shows the tabs and the input while the player types. On a phone the window takes its room and Send is a whole touch target.\nParts: Chat.frame, Chat.tab[selected|mention], Chat.log, Chat.line[mention|own|system], Chat.avatar, Chat.new, Chat.input, Chat.channel, Chat.suggestion. Slots: avatars (portrait). Sounds: tab on a tab, select on a link or a name, confirm on a send. Accessibility: the tabs a tablist, the log a log and one focus group whose lines keys and a pad walk (reading back scrolls it), each line a listitem named author: words; links are links. Probe ids: <id>/Tabs/Row/<channel>, <id>/Log/<key>, <id>/Log/<key>/Text/<link> (a link: L<key>; a name: U<authorKey>), <id>/New, <id>/Input/Channel, <id>/Input/Field, <id>/Input/Send, <id>/Suggest/<member>.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "ChatDesc",
+              "optional": true,
+              "doc": "The channels, messages, draft and words."
+            }
+          ],
+          "returns": "ChatResult",
           "publish": true,
           "host": false
         },
@@ -62822,6 +62850,392 @@
       },
       "required": [
         "selected"
+      ],
+      "additionalProperties": false
+    },
+    "ChatChannel": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One chat channel (General, Party, Guild, Whispers, Trade): a tab, and an ink its messages wear.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key: its tab's element id (<id>/Tabs/Row/<key>), and the messages' `channel`.",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name on its tab and in the tag before its messages where several channels show.",
+          "default": ""
+        },
+        "color": {
+          "type": "string",
+          "description": "Its ink: a theme colour's name (info, success) or `#rrggbb`; empty is the ink.",
+          "default": ""
+        },
+        "unread": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Messages the player has not seen in it: a count on its tab.",
+          "default": 0
+        },
+        "mentions": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Unread messages naming the player: its tab's count turns to the highlight.",
+          "default": 0
+        },
+        "all": {
+          "type": "boolean",
+          "description": "The tab that shows every channel's messages, each tagged with its channel.",
+          "default": false
+        },
+        "readOnly": {
+          "type": "boolean",
+          "description": "No sending to it (System, Combat log): the input's channel skips it.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "ChatLink": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A link inside a message: an item, a player, a place or a quest, which a press answers by its key.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key, answered in ChatResult.link.",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "Its words, shown in brackets ([Ashbringer]).",
+          "default": ""
+        },
+        "kind": {
+          "type": "string",
+          "description": "What it links (item, player, place, quest), to a screen reader.",
+          "default": ""
+        },
+        "rarity": {
+          "$ref": "#/$defs/Rarity",
+          "description": "An item's tier: the link's ink (common shows the accent).",
+          "default": "none"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ChatMessage": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One message, as the game holds it. Its words are shown as they were typed: no markup is read in them.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key: its line's element id, so its probe path is <id>/Log/<key>.",
+          "default": ""
+        },
+        "channel": {
+          "type": "string",
+          "description": "The channel it was said in.",
+          "default": ""
+        },
+        "author": {
+          "type": "string",
+          "description": "Who said it; empty for a system line.",
+          "default": ""
+        },
+        "authorKey": {
+          "type": "string",
+          "description": "The author's key, answered in ChatResult.author when their name is pressed (a whisper, a profile).",
+          "default": ""
+        },
+        "avatar": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The author's portrait (art kind portrait) at the line's start; null shows none.",
+          "default": null
+        },
+        "text": {
+          "type": "string",
+          "description": "The words. `{0}`, `{1}` stand for its links in order; `@Name` naming a member is a mention.",
+          "default": ""
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ChatLink"
+          },
+          "description": "Its links, by their place in the text.",
+          "default": []
+        },
+        "time": {
+          "type": "string",
+          "description": "When, as the game writes it (12:04); empty shows none.",
+          "default": ""
+        },
+        "system": {
+          "type": "boolean",
+          "description": "A notice from the game (Kael joined the party): muted, with no author.",
+          "default": false
+        },
+        "own": {
+          "type": "boolean",
+          "description": "The local player's own message.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "ChatMember": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "Someone a mention can name: the suggestions while an @ word is typed.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Their key.",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "Their name as a mention writes it.",
+          "default": ""
+        },
+        "avatar": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Their portrait (art kind portrait) in the suggestion; null shows none.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "ChatSend": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A message the player sent.",
+      "type": "object",
+      "properties": {
+        "channel": {
+          "type": "string",
+          "description": "The channel it goes to."
+        },
+        "text": {
+          "type": "string",
+          "description": "Its words, trimmed."
+        }
+      },
+      "required": [
+        "channel",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "ChatDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A chat window: the channels, the messages, the player's draft and the channel it goes to.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The window's title; empty shows none.",
+          "default": ""
+        },
+        "channels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ChatChannel"
+          },
+          "description": "The tabs, start to end.",
+          "default": []
+        },
+        "channel": {
+          "type": "string",
+          "description": "The tab shown.",
+          "default": ""
+        },
+        "messages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ChatMessage"
+          },
+          "description": "The messages, oldest first (the game keeps its own limit).",
+          "default": []
+        },
+        "me": {
+          "type": "string",
+          "description": "The local player's name: a message mentioning @me is lit.",
+          "default": ""
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ChatMember"
+          },
+          "description": "Who a mention can name.",
+          "default": []
+        },
+        "draft": {
+          "type": "string",
+          "description": "The input's text (the game's: it passes ChatResult.draft back).",
+          "default": ""
+        },
+        "sendTo": {
+          "type": "string",
+          "description": "The channel the input sends to; empty is the tab shown (or the first one that can be sent to).",
+          "default": ""
+        },
+        "maxChars": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The longest message.",
+          "default": 255
+        },
+        "hud": {
+          "type": "boolean",
+          "description": "The HUD's chat (World of Warcraft, Valorant): no panel, the newest lines over the game on a soft shade, fading after `fadeAfter` seconds unless the pointer is over it; the tabs and the input show while `typing`.",
+          "default": false
+        },
+        "typing": {
+          "type": "boolean",
+          "description": "With hud: the player is writing (the game opens the input with Enter and closes it on a send or Back).",
+          "default": false
+        },
+        "fadeAfter": {
+          "type": "number",
+          "description": "With hud: seconds a line stays before it fades.",
+          "default": 10
+        },
+        "placeholder": {
+          "type": "string",
+          "description": "The empty input's words.",
+          "default": "Say something…"
+        },
+        "sendLabel": {
+          "type": "string",
+          "description": "The send button's word.",
+          "default": "Send"
+        },
+        "newLabel": {
+          "type": "string",
+          "description": "The pill over the log when newer messages are below the view ({n} is how many).",
+          "default": "{n} new"
+        },
+        "channelLabel": {
+          "type": "string",
+          "description": "The input's channel chip, to a screen reader.",
+          "default": "Channel"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ChatResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What the player asked for this tick, for the game to apply.",
+      "type": "object",
+      "properties": {
+        "channel": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Another tab was pressed."
+        },
+        "sendTo": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The input's channel chip was pressed: the next channel that can be sent to."
+        },
+        "draft": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The input's text changed (typed, or a mention suggestion inserted)."
+        },
+        "send": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ChatSend"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Enter or Send with words in the input (the game posts it and clears the draft)."
+        },
+        "link": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A link was pressed: its key."
+        },
+        "author": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An author's name was pressed: their key."
+        },
+        "closed": {
+          "type": "boolean",
+          "description": "With hud and typing: Back was pressed (the game closes the input)."
+        }
+      },
+      "required": [
+        "channel",
+        "sendTo",
+        "draft",
+        "send",
+        "link",
+        "author",
+        "closed"
       ],
       "additionalProperties": false
     },

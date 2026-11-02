@@ -6317,6 +6317,101 @@ module ui {
     param desc OverlayBarDesc "The overlays and the shown one."
     returns OverlayBarResult
   }
+  struct ChatChannel {
+    doc "One chat channel (General, Party, Guild, Whispers, Trade): a tab, and an ink its messages wear."
+    desc true
+    field key String "Its key: its tab's element id (<id>/Tabs/Row/<key>), and the messages' `channel`."
+    field name String "Its name on its tab and in the tag before its messages where several channels show."
+    field color String "Its ink: a theme colour's name (info, success) or `#rrggbb`; empty is the ink."
+    field unread u32 "Messages the player has not seen in it: a count on its tab."
+    field mentions u32 "Unread messages naming the player: its tab's count turns to the highlight."
+    field all bool "The tab that shows every channel's messages, each tagged with its channel."
+    field readOnly bool "No sending to it (System, Combat log): the input's channel skips it."
+  }
+  struct ChatLink {
+    doc "A link inside a message: an item, a player, a place or a quest, which a press answers by its key."
+    desc true
+    field key String "Its key, answered in ChatResult.link."
+    field label String "Its words, shown in brackets ([Ashbringer])."
+    field kind String "What it links (item, player, place, quest), to a screen reader."
+    field rarity Rarity "An item's tier: the link's ink (common shows the accent)."
+  }
+  struct ChatMessage {
+    doc "One message, as the game holds it. Its words are shown as they were typed: no markup is read in them."
+    desc true
+    field key String "Its key: its line's element id, so its probe path is <id>/Log/<key>."
+    field channel String "The channel it was said in."
+    field author String "Who said it; empty for a system line."
+    field authorKey String "The author's key, answered in ChatResult.author when their name is pressed (a whisper, a profile)."
+    field avatar Option.Texture "The author's portrait (art kind portrait) at the line's start; null shows none."
+    field text String "The words. `{0}`, `{1}` stand for its links in order; `@Name` naming a member is a mention."
+    field links List.ChatLink "Its links, by their place in the text."
+    field time String "When, as the game writes it (12:04); empty shows none."
+    field system bool "A notice from the game (Kael joined the party): muted, with no author."
+    field own bool "The local player's own message."
+  }
+  struct ChatMember {
+    doc "Someone a mention can name: the suggestions while an @ word is typed."
+    desc true
+    field key String "Their key."
+    field name String "Their name as a mention writes it."
+    field avatar Option.Texture "Their portrait (art kind portrait) in the suggestion; null shows none."
+  }
+  struct ChatSend {
+    doc "A message the player sent."
+    field channel String "The channel it goes to."
+    field text String "Its words, trimmed."
+  }
+  struct ChatDesc {
+    doc "A chat window: the channels, the messages, the player's draft and the channel it goes to."
+    desc true
+    field title String "The window's title; empty shows none."
+    field channels List.ChatChannel "The tabs, start to end."
+    field channel String "The tab shown."
+    field messages List.ChatMessage "The messages, oldest first (the game keeps its own limit)."
+    field me String "The local player's name: a message mentioning @me is lit."
+    field members List.ChatMember "Who a mention can name."
+    field draft String "The input's text (the game's: it passes ChatResult.draft back)."
+    field sendTo String "The channel the input sends to; empty is the tab shown (or the first one that can be sent to)."
+    field maxChars u32 "The longest message." {
+      default 255
+    }
+    field hud bool "The HUD's chat (World of Warcraft, Valorant): no panel, the newest lines over the game on a soft shade, fading after `fadeAfter` seconds unless the pointer is over it; the tabs and the input show while `typing`."
+    field typing bool "With hud: the player is writing (the game opens the input with Enter and closes it on a send or Back)."
+    field fadeAfter f32 "With hud: seconds a line stays before it fades." {
+      default 10
+    }
+    field placeholder String "The empty input's words." {
+      default "Say something…"
+    }
+    field sendLabel String "The send button's word." {
+      default "Send"
+    }
+    field newLabel String "The pill over the log when newer messages are below the view ({n} is how many)." {
+      default "{n} new"
+    }
+    field channelLabel String "The input's channel chip, to a screen reader." {
+      default "Channel"
+    }
+  }
+  struct ChatResult {
+    doc "What the player asked for this tick, for the game to apply."
+    field channel Option.String "Another tab was pressed."
+    field sendTo Option.String "The input's channel chip was pressed: the next channel that can be sent to."
+    field draft Option.String "The input's text changed (typed, or a mention suggestion inserted)."
+    field send Option.ChatSend "Enter or Send with words in the input (the game posts it and clears the draft)."
+    field link Option.String "A link was pressed: its key."
+    field author Option.String "An author's name was pressed: their key."
+    field closed bool "With hud and typing: Back was pressed (the game closes the input)."
+  }
+  fn chat {
+    doc "A chat window (World of Warcraft, Final Fantasy XIV, Discord in a game): the channel tabs, each its name and its unread count (in the highlight when a message there names the player); the log, each message one wrapping line of its time, its channel's tag in the channel's ink where the tab shows every channel, the author's name in that ink (a press answers them), and the words as typed, with each link a bracketed press in its tier's ink and each @mention in the highlight; a message naming the player is lit along its edge, a system line is muted. The log stays on the newest message while the player is at its foot; scrolled up, new messages gather in a pill (3 new) that brings the view down. Under it the input: the channel chip in its ink (a press steps to the next channel that can be sent to), the field and Send (a round button with its arrow where the window is narrow for its text, the chip's name then cut short); Enter sends, and while an @word is typed the matching members are offered over the input, a press writing the name. The HUD form draws no panel, only the newest lines over the game, which fade once idle, and shows the tabs and the input while the player types. On a phone the window takes its room and Send is a whole touch target."
+    doc "Parts: Chat.frame, Chat.tab[selected|mention], Chat.log, Chat.line[mention|own|system], Chat.avatar, Chat.new, Chat.input, Chat.channel, Chat.suggestion. Slots: avatars (portrait). Sounds: tab on a tab, select on a link or a name, confirm on a send. Accessibility: the tabs a tablist, the log a log and one focus group whose lines keys and a pad walk (reading back scrolls it), each line a listitem named author: words; links are links. Probe ids: <id>/Tabs/Row/<channel>, <id>/Log/<key>, <id>/Log/<key>/Text/<link> (a link: L<key>; a name: U<authorKey>), <id>/New, <id>/Input/Channel, <id>/Input/Field, <id>/Input/Send, <id>/Suggest/<member>."
+    host false
+    param id String "Its id."
+    param desc ChatDesc "The channels, messages, draft and words."
+    returns ChatResult
+  }
   # ── end of the genre patterns ────────────────────────────────────────
 
   # ── the UI kit: screen templates (TypeScript over the calls above) ──────

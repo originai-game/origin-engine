@@ -1726,3 +1726,98 @@ test("overlayBar: a press shows an overlay and its legend; a press on the shown 
   expect(st.selected).toBe("");
   expect(byPath(engine, "Lenses/Legend") === undefined).toBeTrue();
 });
+
+// ── chat ────────────────────────────────────────────────────────────────
+
+const CHANNELS: Api.ChatChannel[] = [
+  { key: "all", name: "All", all: true },
+  { key: "party", name: "Party", color: "info" },
+  { key: "guild", name: "Guild", color: "success" },
+  { key: "system", name: "System", readOnly: true },
+];
+
+function chatRun(st: { draft: string; sendTo: string; messages: Api.ChatMessage[] }, results: Api.ChatResult[], h = 420): Engine {
+  return run(() => {
+    og.ui.column("Box", { width: { kind: "fixed", px: 520 }, height: { kind: "fixed", px: h } }, () => {
+      const r = og.ui.chat("Chat", {
+        channels: CHANNELS,
+        channel: "all",
+        messages: st.messages,
+        me: "Lumen",
+        members: [{ key: "lumen", name: "Lumen" }, { key: "luka", name: "Luka" }, { key: "riven", name: "Riven" }],
+        draft: st.draft,
+        sendTo: st.sendTo,
+      });
+      results.push(r);
+      if (r.draft !== null) st.draft = r.draft;
+      if (r.sendTo !== null) st.sendTo = r.sendTo;
+    });
+  });
+}
+
+test("chat: a player's words show as typed, markup and all; a link and an author answer their keys; @me lights the line", () => {
+  // Wrong: a player's [b] read as markup, a link answered as the author (or not at all), a mention of another lit as one of mine.
+  const results: Api.ChatResult[] = [];
+  const st = { draft: "", sendTo: "", messages: [
+    { key: "m1", channel: "party", author: "Riven", authorKey: "riven", text: "[b]loot[/b] {0} for @Lumen", links: [{ key: "blade", label: "Ashbringer", kind: "item", rarity: "legendary" as const }] },
+    { key: "m2", channel: "guild", author: "Juno", authorKey: "juno", text: "gg @Riven" },
+  ] };
+  const engine = chatRun(st, results);
+  engine.advance(10);
+  const words = (k: string): string => elements(engine).filter((e) => e.path.includes(`/Log/${k}/Text`)).map((e) => e.text).join("");
+  expect(words("m1")).toContain("[b]loot[/b]");
+  expect(words("m1")).toContain("[Ashbringer]");
+  expect(byPath(engine, "Log/m1/Edge") !== undefined && byPath(engine, "Log/m2/Edge") === undefined).toBeTrue();
+  tapOn(engine, byPath(engine, "Log/m1/Text/Lblade")!);
+  tapOn(engine, byPath(engine, "Log/m2/Text/Ujuno")!);
+  expect([results.filter((r) => r.link).map((r) => r.link), results.filter((r) => r.author).map((r) => r.author)]).toEqual([["blade"], ["juno"]]);
+});
+
+test("chat: an @word offers the members it starts, a press writes the name; Send posts to the chip's channel, which steps past a read-only one", () => {
+  // Wrong: no suggestion, a suggestion that drops the rest of the draft, a send to System, or a send of nothing.
+  const results: Api.ChatResult[] = [];
+  const st = { draft: "nice one @lu", sendTo: "", messages: [] as Api.ChatMessage[] };
+  const engine = chatRun(st, results);
+  engine.advance(10);
+  expect(byPath(engine, "Suggest/riven") === undefined && byPath(engine, "Suggest/luka") !== undefined).toBeTrue();
+  tapOn(engine, byPath(engine, "Suggest/luka")!);
+  engine.advance(4);
+  expect(st.draft).toBe("nice one @Luka ");
+  for (let i = 0; i < 2; i++) {
+    tapOn(engine, byPath(engine, "Input/Channel")!);
+    engine.advance(4);
+  }
+  expect(st.sendTo).toBe("party");
+  tapOn(engine, byPath(engine, "Input/Send")!);
+  expect(results.filter((r) => r.send).map((r) => [r.send!.channel, r.send!.text])).toEqual([["party", "nice one @Luka"]]);
+});
+
+test("chat: at its foot the log follows a new message; scrolled up, new ones gather in the pill, whose press brings the view down", () => {
+  // Wrong: the view yanked down while the player reads back, or new messages arriving unseen with no pill.
+  const results: Api.ChatResult[] = [];
+  const say = (i: number): Api.ChatMessage => ({ key: `m${i}`, channel: "party", author: "Riven", text: `line ${i} of the raid plan` });
+  const st = { draft: "", sendTo: "", messages: Array.from({ length: 30 }, (_, i) => say(i)) };
+  const engine = chatRun(st, results, 300);
+  engine.advance(30);
+  const shows = (k: string): boolean => {
+    const e = byPath(engine, `Log/${k}`);
+    const log = byPath(engine, "Chat/Log")!;
+    return !!e && e.y + e.height <= log.y + log.height + 2 && e.y >= log.y - 2;
+  };
+  expect(shows("m29")).toBeTrue();
+  st.messages = [...st.messages, say(30)];
+  engine.advance(30);
+  expect(shows("m30")).toBeTrue();
+  const log = byPath(engine, "Chat/Log")!;
+  engine.probe.commands(`0:touch_move:${Math.round(log.x + log.width / 2)},${Math.round(log.y + log.height / 2)};0.05:scroll:0,-400`);
+  engine.advance(30);
+  expect(shows("m30")).toBeFalse();
+  st.messages = [...st.messages, say(31), say(32)];
+  engine.advance(30);
+  expect(shows("m32")).toBeFalse();
+  expect(elements(engine).find((e) => e.path.endsWith("Chat/New/Text"))?.text).toBe("2 new");
+  tapOn(engine, byPath(engine, "Chat/New")!);
+  engine.advance(40);
+  expect(shows("m32")).toBeTrue();
+  expect(byPath(engine, "Chat/New") === undefined).toBeTrue();
+});
