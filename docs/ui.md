@@ -868,6 +868,64 @@ approved concept is read against the nearest one. The concept sets the
 bar for hierarchy, material and art, not pixel positions: the layout may
 differ where the engine's components or the breakpoint require it.
 
+**Approved directions (owner, 2026-11-02).** B, clean sci-fi, is the
+target of the engine's default style and of the UI kit's own frames; A,
+dark fantasy, of the fantasy seed style; C, bright stylised anime, of the
+anime seed style. Each is approved for every screen it was drawn for:
+
+| Screen | Default style and kit | Fantasy seed | Anime seed |
+| --- | --- | --- | --- |
+| HUD (abilities, vitals, resources, minimap, buffs) | `B-hud` | `A-hud` | `C-hud` |
+| Main menu | `B-menu` | `A-menu` | `C-menu` |
+| Gacha banner | `B-gacha` | `A-gacha` | `C-gacha` |
+| Shop | `B-shop` | `A-shop` | `C-shop` |
+| Inventory and paperdoll | `B-inventory` | `A-inventory` | `C-inventory` |
+| Settings | `B-settings` | `A-settings` | `C-settings` |
+| Dialogue | `B-dialogue` | `A-dialogue` | `C-dialogue` |
+
+B sets the default's hierarchy, frames, material and art; its colour
+values stay the design language's (`packages/design`). **The default's
+primary is neutral (owner, 2026-11-02)**: neither the concept's cyan nor
+amber. Its chrome (panels, controls, the primary button, selection,
+focus, tabs, sliders, rings) is drawn from the neutral ladder and told
+apart by tone, lift and weight; hue appears only on semantic roles
+(success, warning, danger, info) and game roles (health, mana, xp, gold,
+rarity, team), never on the chrome itself. Each game colours itself
+through its style; the seed styles keep their own palettes. A default
+frame is read against this rule: any hued chrome is a finding. The kit's art
+stays painted, and the showcase frames wear the seed styles with the
+default as one column beside them. The concepts' README lists every
+approved image and the genre sheets that extend the set.
+
+**Every pack a seed (owner, 2026-11-02).** Each style pack under
+`templates/styles` is a seed with an approved sheet of three screens (its
+genre's HUD, a menu or shop, settings) in the showcase archive
+(`ui-art/<id>`, docs/ci.md §Showcase), read like the table above; the
+README's coverage matrix gives each genre a primary and secondary seed and
+names the four packs approved for the gaps (wasteland, foundry, midcore,
+jade), which follow batch 3.
+
+| Pack | HUD | Menu or shop | Settings |
+| --- | --- | --- | --- |
+| fantasy | `A-hud` | `A-shop` | `A-settings` |
+| kawaii | `C-hud` | `C-shop` | `C-settings` |
+| scifi | `scifi-hud` (`ui-art/037fdb651dcd`) | `scifi-menu` (`ui-art/b0fc49921189`) | `scifi-settings` (`ui-art/96b1cf217878`) |
+| cartoon | `cartoon-hud` (`ui-art/b476bf510b9c`) | `cartoon-menu` (`ui-art/18417a3dbdad`) | `cartoon-settings` (`ui-art/3fd89c603e7c`) |
+| tactical | `tactical-hud` (`ui-art/5dc0d4592974`) | `tactical-menu` (`ui-art/9a9110d75f5e`) | `tactical-settings` (`ui-art/673672bc2ab1`) |
+| pixel | `pixel-hud` (`ui-art/3383564cc379`) | `pixel-menu` (`ui-art/187c8df6ca84`) | `pixel-settings` (`ui-art/41124ea7b1be`) |
+| broadcast | `broadcast-hud` (`ui-art/342c9b49d2e6`) | `broadcast-menu` (`ui-art/734f4c4d2379`) | `broadcast-settings` (`ui-art/e16be56d19f0`) |
+| gilded | `gilded-hud` (`ui-art/23b214a1d6ae`) | `gilded-menu` (`ui-art/75f688ef5276`) | `gilded-settings` (`ui-art/6ca093ebfc1e`) |
+| neon | `neon-hud` (`ui-art/fc3155f3505a`) | `neon-menu` (`ui-art/ad494d89ad97`) | `neon-settings` (`ui-art/c9aae1a6c66e`) |
+| bubbly | `bubbly-hud` (`ui-art/a944c75f8827`) | `bubbly-menu` (`ui-art/fd559b5c997e`) | `bubbly-settings` (`ui-art/cee7e332670b`) |
+| dread | `dread-hud` (`ui-art/f3c187324b73`) | `dread-menu` (`ui-art/88d34c09a6b2`) | `dread-settings` (`ui-art/94d363b1c999`) |
+| craft | `craft-hud` (`ui-art/ffd3635f6b19`) | `craft-menu` (`ui-art/a9e6efac42b5`) | `craft-settings` (`ui-art/84ffbbb1286f`) |
+| inkwash | `inkwash-hud` (`ui-art/e3d0e58be15b`) | `inkwash-menu` (`ui-art/375e297c719f`) | `inkwash-settings` (`ui-art/818e42ee2b42`) |
+| holo | redraw pending: the owner found the first sheet clichéd (2026-11-02); new directions go to the owner as thumbnails first | | |
+| cyber | redraw pending: the owner found the first sheet clichéd (2026-11-02); new directions go to the owner as thumbnails first | | |
+| arcade | `arcade-hud` (`ui-art/324d90871abe`) | `arcade-menu` (`ui-art/87bde4bbebde`) | `arcade-settings` (`ui-art/1ea7aecafa41`) |
+| storybook | `storybook-hud` (`ui-art/dcc5fae146a1`) | `storybook-menu` (`ui-art/e181cf7311d3`) | `storybook-settings` (`ui-art/58673c78f815`) |
+| paper | `paper-hud` (`ui-art/b05ba49c6229`) | `paper-menu` (`ui-art/b02bf53f590a`) | `paper-settings` (`ui-art/4075524240e4`) |
+
 The checklist:
 
 1. **Hierarchy.** Each screen has one dominant element (the key art and
