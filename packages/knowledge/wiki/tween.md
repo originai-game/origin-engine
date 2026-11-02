@@ -18,7 +18,7 @@ module tween {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 10872</sub>
+<sub>`api.ogt` line 11038</sub>
 
 ## Contents
 
@@ -27,6 +27,7 @@ module tween {
 | [`Tween`](#type-Tween) | handle | A running tween or group. |
 | [`Tween()`](#column-Tween) | column kind | A Tween handle field. |
 | [`Ease`](#type-Ease) | enum | An easing curve from the start (0) to the end (1). In starts slow, out ends slow, inOut both. back overshoots, elastic rings, bounce bounces at the end. |
+| [`Ease()`](#column-Ease) | column kind | An Ease field: the variant's index. |
 | [`TweenDesc`](#type-TweenDesc) | desc struct | One tween of one field. |
 | [`TweenGroupDesc`](#type-TweenGroupDesc) | desc struct | How a sequence or parallel group runs. |
 | [`og.TweenCompleted`](#record-TweenCompleted) | event | A tween or group ended on its own (read in the tick after). |
@@ -71,7 +72,7 @@ fn to {
 }
 ```
 
-<sub>`api.ogt` line 10997</sub>
+<sub>`api.ogt` line 11170</sub>
 
 <a id="fn-sequence"></a>
 
@@ -105,7 +106,7 @@ fn sequence {
 }
 ```
 
-<sub>`api.ogt` line 11004</sub>
+<sub>`api.ogt` line 11177</sub>
 
 <a id="fn-parallel"></a>
 
@@ -139,7 +140,7 @@ fn parallel {
 }
 ```
 
-<sub>`api.ogt` line 11014</sub>
+<sub>`api.ogt` line 11187</sub>
 
 <a id="fn-cancel"></a>
 
@@ -169,7 +170,7 @@ fn cancel {
 }
 ```
 
-<sub>`api.ogt` line 11024</sub>
+<sub>`api.ogt` line 11197</sub>
 
 <a id="fn-cancelEntity"></a>
 
@@ -199,7 +200,7 @@ fn cancelEntity {
 }
 ```
 
-<sub>`api.ogt` line 11031</sub>
+<sub>`api.ogt` line 11204</sub>
 
 <a id="fn-active"></a>
 
@@ -229,7 +230,7 @@ fn active {
 }
 ```
 
-<sub>`api.ogt` line 11038</sub>
+<sub>`api.ogt` line 11211</sub>
 
 <a id="fn-squash"></a>
 
@@ -259,7 +260,7 @@ fn squash {
 }
 ```
 
-<sub>`api.ogt` line 11045</sub>
+<sub>`api.ogt` line 11218</sub>
 
 <a id="fn-flash"></a>
 
@@ -289,7 +290,7 @@ fn flash {
 }
 ```
 
-<sub>`api.ogt` line 11052</sub>
+<sub>`api.ogt` line 11225</sub>
 
 ## Components, resources and events
 
@@ -316,7 +317,7 @@ event TweenCompleted {
 }
 ```
 
-<sub>`api.ogt` line 10950</sub>
+<sub>`api.ogt` line 11123</sub>
 
 ## Types
 
@@ -332,7 +333,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Tween "A running tween or group."
 ```
 
-<sub>`api.ogt` line 10878</sub>
+<sub>`api.ogt` line 11044</sub>
 
 <a id="type-Ease"></a>
 
@@ -395,7 +396,7 @@ enum Ease {
 }
 ```
 
-<sub>`api.ogt` line 10887</sub>
+<sub>`api.ogt` line 11053</sub>
 
 <a id="type-TweenDesc"></a>
 
@@ -450,7 +451,7 @@ struct TweenDesc {
 }
 ```
 
-<sub>`api.ogt` line 10913</sub>
+<sub>`api.ogt` line 11086</sub>
 
 <a id="type-TweenGroupDesc"></a>
 
@@ -478,7 +479,7 @@ struct TweenGroupDesc {
 }
 ```
 
-<sub>`api.ogt` line 10940</sub>
+<sub>`api.ogt` line 11113</sub>
 
 <a id="type-SquashDesc"></a>
 
@@ -516,7 +517,7 @@ struct SquashDesc {
 }
 ```
 
-<sub>`api.ogt` line 10957</sub>
+<sub>`api.ogt` line 11130</sub>
 
 <a id="type-FlashDesc"></a>
 
@@ -558,7 +559,7 @@ struct FlashDesc {
 }
 ```
 
-<sub>`api.ogt` line 10975</sub>
+<sub>`api.ogt` line 11148</sub>
 
 ## Column kinds
 
@@ -567,6 +568,7 @@ Each is a factory, `Tween(value?, options?)`, that makes one field of a componen
 | Column | Value | Typed array | Stride | Doc |
 |---|---|---|---|---|
 | <a id="column-Tween"></a>`Tween` | `Tween` | `Uint32Array` | 2 | A Tween handle field. |
+| <a id="column-Ease"></a>`Ease` | `Ease` | `Uint32Array` | 1 | An Ease field: the variant's index. |
 
 ```ogt
 column Tween {
@@ -577,4 +579,15 @@ column Tween {
 }
 ```
 
-<sub>`api.ogt` line 10880</sub>
+<sub>`api.ogt` line 11046</sub>
+
+```ogt
+column Ease {
+  doc "An Ease field: the variant's index."
+  array Uint32Array
+  stride 1
+  value Ease
+}
+```
+
+<sub>`api.ogt` line 11079</sub>

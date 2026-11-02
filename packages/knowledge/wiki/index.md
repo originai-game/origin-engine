@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2211 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2215 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -461,6 +461,7 @@ Field units the docs and Tune use.
 | [`DumpKind`](probe.md#type-DumpKind) | enum | probe | — |
 | [`DumpResult`](probe.md#type-DumpResult) | union | probe | — |
 | [`Ease`](tween.md#type-Ease) | enum | tween | — |
+| [`Ease()`](tween.md#column-Ease) | column kind | tween | — |
 | [`EaseKey`](ui.md#type-EaseKey) | struct | ui | — |
 | [`EaseName`](ui.md#type-EaseName) | enum | ui | — |
 | [`EdgeClampDesc`](ui.md#type-EdgeClampDesc) | desc struct | ui | — |
@@ -893,6 +894,8 @@ Field units the docs and Tune use.
 | [`og.camera.kick`](camera.md#fn-kick) | function | camera | `og_camera_kick` |
 | [`og.camera.punch`](camera.md#fn-punch) | function | camera | `og_camera_punch` |
 | [`og.camera.shake`](camera.md#fn-shake) | function | camera | `og_camera_shake` |
+| [`og.CameraBrain`](camera.md#record-CameraBrain) | resource | camera | — |
+| [`og.CameraCut`](camera.md#record-CameraCut) | event | camera | — |
 | [`og.CameraRail`](camera.md#record-CameraRail) | component | camera | — |
 | [`og.CameraView`](render.md#record-CameraView) | component | render | — |
 | [`og.CameraZone`](camera.md#record-CameraZone) | component | camera | — |
@@ -1632,6 +1635,7 @@ Field units the docs and Tune use.
 | [`og.Velocity`](physics.md#record-Velocity) | component | physics | — |
 | [`og.video.capabilities`](video.md#fn-capabilities) | function | video | `og_video_capabilities` |
 | [`og.VideoPlayer`](video.md#record-VideoPlayer) | component | video | — |
+| [`og.VirtualCamera`](camera.md#record-VirtualCamera) | component | camera | — |
 | [`og.Water`](atmosphere.md#record-Water) | component | atmosphere | — |
 | [`og.Water2D`](atmosphere.md#record-Water2D) | component | atmosphere | — |
 | [`og.WaterLine`](physics.md#record-WaterLine) | component | physics | — |

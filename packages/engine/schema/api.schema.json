@@ -4066,7 +4066,10 @@
         "FollowCamera",
         "Follow2D",
         "CameraZone",
-        "CameraRail"
+        "CameraRail",
+        "VirtualCamera",
+        "CameraBrain",
+        "CameraCut"
       ],
       "consts": [],
       "functions": [
@@ -7962,6 +7965,7 @@
       "types": [
         "Tween",
         "Tween",
+        "Ease",
         "Ease",
         "TweenDesc",
         "TweenGroupDesc",
@@ -24238,6 +24242,342 @@
           "default": 0
         }
       },
+      "additionalProperties": false
+    },
+    "VirtualCamera": {
+      "x-og-kind": "component",
+      "x-og-module": "camera",
+      "description": "A shot og.Camera can take, as Cinemachine's virtual cameras: a position (its own entity's, or following another entity), what it looks at, a field of view, roll and focus. The engine's og.camera system (og.CameraBrain) makes the enabled one with the highest priority live and writes its pose into og.Camera, blending from the previous shot over the incoming one's blendTime by its blendEase. This is the way to drive the camera in a new 3D game: a vcam with `follow` and `collide` replaces og.FollowCamera, and a cutscene or a dialogue switches shots by priority or og.CameraBrain.solo.\nRegistered when a game first names it, with og.CameraBrain and og.CameraCut: a world without virtual cameras keeps its hash. Its pose is tick state on every host, drawing on no randomness; it changes only og.Camera (and og.PostEffects' depth of field for a vcam with focus), which the simulation reads only if the game does. While a timeline's camera track plays, the timeline drives og.Camera and the brain waits. A vcam drives og.Camera after the game's systems, so do not also give the game an og.OrbitCamera or og.FollowCamera.",
+      "type": "object",
+      "properties": {
+        "priority": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Of the enabled virtual cameras the highest priority is live; of equal ones, the one enabled last (`activated`), then the first in query order.",
+          "default": 0,
+          "x-og-tunable": true
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Takes part in the brain's pick. Disabling the live camera blends to the next one.",
+          "default": true
+        },
+        "follow": {
+          "$ref": "#/$defs/Entity",
+          "description": "The entity it follows: it sits at followOffset from it, easing by smoothTime. 0: it sits at its own entity's og.Transform position.",
+          "default": 0
+        },
+        "followOffset": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where it sits relative to the followed entity: in that entity's own axes with followRotation, else in world axes.",
+          "default": {
+            "x": 0,
+            "y": 2,
+            "z": 6
+          },
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "followRotation": {
+          "type": "boolean",
+          "description": "Turn followOffset with the followed entity's rotation, so it stays behind it.",
+          "default": false
+        },
+        "smoothTime": {
+          "type": "number",
+          "description": "Roughly how long it takes to catch up with the followed entity; 0 snaps every tick. It snaps when it is enabled.",
+          "default": 0.25,
+          "minimum": 0,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "lookAt": {
+          "$ref": "#/$defs/Entity",
+          "description": "The entity it looks at, at lookOffset from its position. 0: it keeps its own entity's og.Transform rotation.",
+          "default": 0
+        },
+        "lookOffset": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The point it looks at, relative to the lookAt entity's position (and the point collision keeps clear from).",
+          "default": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          },
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "fov": {
+          "type": "number",
+          "description": "The vertical field of view it gives og.Camera.",
+          "default": 50,
+          "minimum": 1,
+          "maximum": 179,
+          "x-og-unit": "deg",
+          "x-og-tunable": true
+        },
+        "roll": {
+          "type": "number",
+          "description": "A turn about the view direction, applied after the look (a Dutch angle).",
+          "default": 0,
+          "x-og-unit": "deg",
+          "x-og-tunable": true
+        },
+        "focus": {
+          "type": "number",
+          "description": "Depth of field: the focus distance it gives og.PostEffects (depthOfField on), handed back when no live camera has one. 0 leaves og.PostEffects alone.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "focusRange": {
+          "type": "number",
+          "description": "Depth of field: the range around the focus distance that stays sharp.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "blendTime": {
+          "type": "number",
+          "description": "Seconds the brain takes to blend to it when it goes live (0 cuts); below 0 uses og.CameraBrain's blendTime and blendEase.",
+          "default": -1,
+          "x-og-unit": "s"
+        },
+        "blendEase": {
+          "$ref": "#/$defs/Ease",
+          "description": "The curve of the blend to it: position lerped, rotation slerped, fov, roll and focus lerped by the curve's value at the blend's time.",
+          "default": "cubicInOut"
+        },
+        "collide": {
+          "type": "boolean",
+          "description": "Keep a sphere of `radius` clear of colliders between the look point and where it sits: it pulls in towards the look point at once and eases back out over damping. Against the colliders as the tick started (og.physics' query view): it never moves a body.",
+          "default": false
+        },
+        "radius": {
+          "type": "number",
+          "description": "The sphere collision keeps clear.",
+          "default": 0.2,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "damping": {
+          "type": "number",
+          "description": "Roughly how long it takes to ease back out once the way is clear; 0 snaps.",
+          "default": 0.4,
+          "minimum": 0,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "collisionLayers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The physics layers collision considers (a collider counts when its layers meet these); 0 every layer.",
+          "default": 0
+        },
+        "eased": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Controller state: the followed point after smoothing, before collision.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m",
+          "readOnly": true
+        },
+        "pull": {
+          "type": "number",
+          "description": "Controller state: how far collision has pulled it in towards the look point.",
+          "default": 0,
+          "x-og-unit": "m",
+          "readOnly": true
+        },
+        "activated": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Controller state: og.CameraBrain.activations when it was last enabled (the later wins a priority tie).",
+          "default": 0,
+          "readOnly": true
+        },
+        "primed": {
+          "type": "boolean",
+          "description": "Controller state: it was evaluated last tick (enabled, live or blended from); one that was not snaps to its goal and, if enabled, takes the next activation.",
+          "default": false,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "CameraBrain": {
+      "x-og-kind": "resource",
+      "x-og-module": "camera",
+      "description": "Picks the live og.VirtualCamera every tick and blends og.Camera to it, as Cinemachine's brain: the solo shot if one is set, else the enabled one with the highest priority. A change of live camera blends from the previous camera (still moving) over the incoming one's blendTime by its blendEase; a change during a blend starts from the blended pose, so the view never jumps. The first live camera of a world cuts. With no live camera og.Camera is left where it is.\nRegistered with og.VirtualCamera. Its state fields are world state, saved and restored with the world, so a replay or a restore mid-blend continues the same blend.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Drive og.Camera; false leaves it to the game (the vcams' state still updates).",
+          "default": true
+        },
+        "blendTime": {
+          "type": "number",
+          "description": "Seconds of a blend to a camera whose blendTime is below 0.",
+          "default": 1,
+          "minimum": 0,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "blendEase": {
+          "$ref": "#/$defs/Ease",
+          "description": "The curve of those blends.",
+          "default": "cubicInOut"
+        },
+        "solo": {
+          "$ref": "#/$defs/Entity",
+          "description": "A shot that outranks every priority while it is set (a cutscene or a dialogue close-up): an entity with an og.VirtualCamera, live even when it is not enabled; 0 releases it and the brain blends back to the highest priority. Anything else is ignored.",
+          "default": 0
+        },
+        "live": {
+          "$ref": "#/$defs/Entity",
+          "description": "The live camera (0: none).",
+          "default": 0,
+          "readOnly": true
+        },
+        "from": {
+          "$ref": "#/$defs/Entity",
+          "description": "The camera being blended from; 0 when the blend starts from a held pose (an interrupted blend).",
+          "default": 0,
+          "readOnly": true
+        },
+        "blend": {
+          "type": "number",
+          "description": "How far the blend has come, 0 to 1 (1: settled on the live camera); the weight is the curve at this time.",
+          "default": 1,
+          "readOnly": true
+        },
+        "blendDuration": {
+          "type": "number",
+          "description": "The current blend's length.",
+          "default": 0,
+          "x-og-unit": "s",
+          "readOnly": true
+        },
+        "blendCurve": {
+          "$ref": "#/$defs/Ease",
+          "description": "The current blend's curve.",
+          "default": "quadOut",
+          "readOnly": true
+        },
+        "fromPosition": {
+          "$ref": "#/$defs/Vector3",
+          "description": "A held pose to blend from: its position.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m",
+          "readOnly": true
+        },
+        "fromQuaternion": {
+          "$ref": "#/$defs/Quaternion",
+          "description": "Its rotation.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "readOnly": true
+        },
+        "fromFov": {
+          "type": "number",
+          "description": "Its field of view.",
+          "default": 0,
+          "x-og-unit": "deg",
+          "readOnly": true
+        },
+        "fromFocus": {
+          "type": "number",
+          "description": "Its focus distance (0: none).",
+          "default": 0,
+          "x-og-unit": "m",
+          "readOnly": true
+        },
+        "fromFocusRange": {
+          "type": "number",
+          "description": "Its focus range.",
+          "default": 0,
+          "x-og-unit": "m",
+          "readOnly": true
+        },
+        "activations": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many times a virtual camera has been enabled (og.VirtualCamera.activated).",
+          "default": 0,
+          "readOnly": true
+        },
+        "focusHeld": {
+          "type": "boolean",
+          "description": "The brain is driving og.PostEffects' depth of field and holds what it found: heldDepthOfField, heldFocusDistance and heldFocusRange, handed back when no live camera has focus.",
+          "default": false,
+          "readOnly": true
+        },
+        "heldDepthOfField": {
+          "type": "boolean",
+          "description": "og.PostEffects.depthOfField as the brain found it.",
+          "default": false,
+          "readOnly": true
+        },
+        "heldFocusDistance": {
+          "type": "number",
+          "description": "og.PostEffects.dofFocusDistance as the brain found it.",
+          "default": 0,
+          "x-og-unit": "m",
+          "readOnly": true
+        },
+        "heldFocusRange": {
+          "type": "number",
+          "description": "og.PostEffects.dofFocusRange as the brain found it.",
+          "default": 0,
+          "x-og-unit": "m",
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "CameraCut": {
+      "x-og-kind": "event",
+      "x-og-module": "camera",
+      "description": "The live virtual camera changed (sent by the og.camera system; read the tick after).",
+      "type": "object",
+      "properties": {
+        "from": {
+          "$ref": "#/$defs/Entity",
+          "description": "The camera that was live (0: none)."
+        },
+        "to": {
+          "$ref": "#/$defs/Entity",
+          "description": "The camera now live (0: none)."
+        },
+        "blend": {
+          "type": "number",
+          "description": "The blend's length in seconds (0: a cut).",
+          "x-og-unit": "s"
+        }
+      },
+      "required": [
+        "from",
+        "to",
+        "blend"
+      ],
       "additionalProperties": false
     },
     "Geometry": {

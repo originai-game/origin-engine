@@ -39,6 +39,13 @@ module tween {
     variant bounceInOut "Bounces at both ends."
   }
 
+  column Ease {
+    doc "An Ease field: the variant's index."
+    array Uint32Array
+    stride 1
+    value Ease
+  }
+
   struct TweenDesc {
     doc "One tween of one field."
     desc true
