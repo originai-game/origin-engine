@@ -186,6 +186,146 @@ and the fallback where tsrs has no package.
 - Reusable production assets come through the platform's asset MCP as today;
   the cook consumes what the agent put in `assets/`.
 
+#### Prefabs (G2-1) **(D)**
+
+A prefab is a reusable entity tree authored once and placed many times.
+The design keeps the scene path as it is (one text grammar, one cooked
+scene blob, one spawn) and adds deltas on top of it: an instance stores
+only what differs from its prefab, so a prefab edit reaches every
+instance on the next cook and an instance's edits survive it.
+
+**The asset.** `assets/**/*.ogt` of `type prefab`, version 1: exactly one
+top-level `entity "<root>" { ... }` in the scene grammar (components,
+`model`, child `entity` blocks), and nothing else (no `resource`,
+`path` or `stream`: those belong to the scene that places it). Entities
+inside a prefab are addressed by their **node path**, the names from the
+root down joined by `/` (`""` is the root, `lid/hinge` a grandchild);
+names are unique among siblings, which the cook checks.
+
+**Placing one (nesting).** Anywhere an entity can appear, in a scene or
+another prefab, an entity may be an instance:
+
+```text
+entity "crate1" {
+  prefab "prefabs/crate.ogt"        # its tree is the prefab's
+  Transform { position 4 0 2 }      # an override of the root
+  override "lid" {                  # an override of a descendant
+    Health { hp 40 }                # field lines: only those that differ
+  }
+  remove "lid/sticker"              # a descendant this instance drops
+  entity "loot" { ... }             # an entity added under the root
+}
+```
+
+The instance's own component blocks and its `override "<node>"` blocks
+list only fields that differ; a component the prefab node lacks is added.
+`remove "<node>"` drops a node and its subtree; `remove "<node>" Health`
+drops one component. Instances nest: a prefab may contain instances of
+others, to any depth; a cycle (a prefab reaching itself through its
+instances or its base) is refused naming the chain.
+
+**Variants.** A prefab whose header body starts with `base
+"prefabs/goblin.ogt"` is a variant: its one `entity` block is an instance
+of the base, in exactly the instance grammar above (overrides, `remove`,
+added children). Variants chain (a variant of a variant); the root keeps
+the variant's own entity name.
+
+**Cooking.** The cook flattens. A scene (or prefab) is expanded
+depth-first in text order: an instance becomes its prefab's flattened
+tree at its place, then the variant chain's deltas from the base
+outwards, then the instance's own, each in text order. The scene blob
+the runtime reads is unchanged in shape (entities, parents, component
+tables), so spawning, hooks (§2.3, G2-2) and the world hash treat a
+flattened prefab exactly as the same entities written out by hand. Two
+things are added beside it:
+
+- a `prefabs` table: per entity, the prefab asset id and node path it
+  came from, and the index of its instance root (or none for an authored
+  entity), for the runtime's link (below) and the tools;
+- the stamp: a scene's (and a prefab's) cook stamp includes the source
+  hash of every prefab it reaches, transitively, so editing a prefab
+  re-cooks every scene and prefab that places it. Prefabs cook to a blob
+  of their own too (the same scene blob, flattened), so
+  `og.load.prefab` loads one for `world.instantiate` at run time.
+
+Overrides are kept on re-cook by construction: they are text in the
+instance, applied over whatever the prefab says now. A field the
+instance does not override follows the prefab; one it does keeps its
+value. An **orphaned** override or `remove` (its node no longer exists:
+the prefab renamed or deleted it), or an overridden field the prefab's
+component no longer has, stays in the text so a rename back, or a fix,
+restores it. A dev cook warns in its notes; `og prefab check` exits
+non-zero while any exists; a publish cook refuses it, naming the
+instance, the node and the field: a game never ships an override that
+silently does nothing (the owner, 2026-11-02). Everything else the cook
+refuses as it refuses a scene today (unknown asset, bad values, a
+cycle).
+
+**Names.** An instance's root takes the instance entity's name; each
+descendant is named `<root name>/<node path>` (`crate1/lid/hinge`), so a
+placed tree is addressable by the probe, `world.find` and the command
+channel, and match the probe's path ids. A generated name that collides
+with a hand-written entity's or another instance's fails the cook,
+naming both. An unnamed instance root leaves its tree unnamed.
+
+**At run time.** Each entity spawned from a prefab carries one engine
+component, `og.PrefabLink { prefab: Asset, node: u32, root: Entity }`,
+written by the spawn from the `prefabs` table: `prefab` is the prefab's
+asset handle (interned, never a string per entity) and `node` the index
+of the node in that prefab's flattened table, which names its path. It
+is ordinary world state: snapshots, restores and the hash carry it, so a
+game that places prefabs hashes differently from the same entities
+written by hand (accepted, the owner, 2026-11-02), and stably across a
+re-cook that changes nothing it spawns. A game without prefabs has no
+such entity, so its archetypes, saves and hash are unchanged, and older
+saves need no migration (no saved layout changes). The API: `og.load.prefab(path)` (an `Asset`), the existing
+`world.instantiate(asset, SpawnDesc)` (a prefab is instantiated like a
+scene, under a root from the desc, and that root is the instance root),
+and `world.prefabOf(entity)`, the link as `Option<PrefabLink>`. og-ecs
+needs nothing new: the link is a reflected component, the spawn order is
+the flattened order, and add hooks fire per entity as they spawn.
+
+**Write-back and apply-back (dev builds).** `save_scene` keeps
+instances as instances: for an entity with a link whose root is a scene
+instance, a tuned field is written as an override line in that
+instance's block (`override "<node>"`, or the instance's own block for
+the root), and only when it differs from the prefab's cooked value; a
+field tuned back to the prefab's value has its override line removed.
+`apply_prefab:<entity>[:<Component>[.<field>]]` (probe action, RPC and
+`og prefab apply`) is the other direction: the instance's overrides on
+that entity's node (all of them, a component's, or one field) are
+written into the prefab's `.ogt` (through the same line-preserving
+rewrite, at the node's block) and removed from the instance's text, so
+the scene cooks to the same world and every other instance of the
+prefab takes the new value. On a variant, apply-back writes into the
+variant's own text, and `:base` writes through to the base. A value
+that differs only on this instance and was never an override (a run
+time change through `set`) is applied the same way. `revert_prefab:
+<entity>[:<Component>[.<field>]]` removes overrides and sets the live
+values back to the prefab's.
+
+**Tools.**
+
+- `og prefab check [project]`: cycles, orphaned overrides and removes,
+  overridden fields the prefab no longer has, sibling name clashes.
+- `og prefab show <prefab> [--scene <id> --instance <name>]`: the
+  flattened tree, each field with where its value comes from (base,
+  variant, instance override).
+- `og prefab extract <scene> <entity> <prefab path>`: an authored entity
+  subtree becomes a new prefab and the scene's block becomes an instance
+  of it with no overrides (the scene cooks to the same world).
+- Probe: `dump_entity` gains `prefab` (asset, node, root, and the fields
+  this instance overrides); `apply_prefab`, `revert_prefab` as above;
+  `describe` lists instances by prefab. Strictly additive to protocol 5:
+  the actions are new, the dump field optional, and nothing existing
+  changes shape (origin-agent's probe.ts follows when this lands).
+
+**Determinism.** Flattening is a pure function of the texts (depth-first,
+text order, deltas in a fixed order), so both hosts spawn the same
+entities in the same order with the same values, and a replay or a save
+does not depend on whether a tree was written by hand or placed from a
+prefab, apart from the `og.PrefabLink` components it carries.
+
 ### 2.6 Renderer **(D)**
 
 wgpu with WGSL shaders cooked per backend (naga). On the web the renderer
