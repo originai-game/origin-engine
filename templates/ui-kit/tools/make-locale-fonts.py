@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """The UI kit's locale fonts: Noto subsets holding exactly the characters
 its string tables (assets/strings/*.ogt) use, plus printable ASCII, plus
-every character of the settings screen's language list (LANGUAGES in
-src/main.ts, read from the source: each language is named in its own
-script, 한국어 and العربية whatever the locale, so every subset whose face
-has a name's characters carries them, and a name draws in every locale).
+every character of the kit's language lists (the settings screen's
+LANGUAGES in src/main.ts and the gallery's select in src/controls.ts, read
+from the sources: each language is named in its own script, 한국어 and
+العربية whatever the locale, so every subset whose face has a name's
+characters carries them, and a name draws in every locale).
 
     python3 tools/make-locale-fonts.py <NotoSansCJK-Regular.ttc> <NotoSansArabic.ttf>
 
@@ -29,7 +30,8 @@ from fontTools.ttLib import TTCollection, TTFont
 
 KIT = Path(__file__).resolve().parent.parent
 STRINGS = KIT / "assets" / "strings"
-MAIN = KIT / "src" / "main.ts"
+# The language lists: the settings screen's ({ code, label } rows) and the gallery's select (plain names).
+LISTS = [(KIT / "src" / "main.ts", r'label: "([^"]*)"'), (KIT / "src" / "controls.ts", r'"([^"]*)"')]
 FONTS = KIT / "assets" / "fonts"
 ASCII = "".join(chr(c) for c in range(0x20, 0x7F))
 # Strings drawn with run-time glyphs in zh-CN and ja (not cooked).
@@ -49,11 +51,14 @@ def chars_of(locale: str) -> str:
 
 
 def endonyms() -> str:
-    """The characters of the language list's labels (`const LANGUAGES = [...]` in src/main.ts)."""
-    block = re.search(r"^const LANGUAGES = \[(.*?)^\];", MAIN.read_text(encoding="utf-8"), re.M | re.S)
-    if not block:
-        sys.exit(f"{MAIN}: no `const LANGUAGES = [...]` (the settings screen's language list)")
-    return "".join(re.findall(r'label: "([^"]*)"', block.group(1)))
+    """The characters of every language list's names (each file's `const LANGUAGES = [...]`)."""
+    out = ""
+    for path, name in LISTS:
+        block = re.search(r"^const LANGUAGES = \[(.*?)\];", path.read_text(encoding="utf-8"), re.M | re.S)
+        if not block:
+            sys.exit(f"{path}: no `const LANGUAGES = [...]` (a language list)")
+        out += "".join(re.findall(name, block.group(1)))
+    return out
 
 
 def covered(font: TTFont, text: str) -> str:
