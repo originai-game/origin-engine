@@ -22,6 +22,7 @@ mod dev;
 mod device;
 mod doctor;
 mod doctor_project;
+mod i18n;
 mod migrate;
 mod polish;
 mod prefab;
@@ -126,6 +127,12 @@ commands:
                       the flattened tree, each field with the text its value comes from
   prefab extract <scene> <entity> <prefab> [--project <dir>]
                       an authored entity becomes a new prefab, its block an instance of it
+  i18n extract [project] [--json] [--write] [--check]
+                      every og.i18n key the dialogues and quests show (type dialogue, type
+                      quest), with the arguments they pass and where, against each string
+                      table: per locale, the keys it lacks and the arguments nothing passes;
+                      --write adds the keys the base table lacks to it (assets/strings/en.ogt
+                      when there is none); --check exits 1 while any table is incomplete
   sfx [<preset> [--seed N] [--pitch P] [--length L] [--volume V] --out <file.ogt|file.wav>]
   sfx library <dir>
                       the procedural sound presets (coin, jump, hit, click, ...): list them,
@@ -283,6 +290,7 @@ fn main() -> ExitCode {
         ["api", rest @ ..] => api::run(rest),
         ["prefab", rest @ ..] => prefab::run(rest),
         ["sfx", rest @ ..] => sfx::run(rest),
+        ["i18n", rest @ ..] => i18n::run(rest),
         ["style", rest @ ..] => style::run(rest),
         ["ui", rest @ ..] => ui::run(rest),
         [] => {

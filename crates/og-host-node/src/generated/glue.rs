@@ -2001,6 +2001,24 @@ pub fn og_story_stop(env: Env, world: u32, conversation: u32) -> bool {
     <Host as StoryApi>::og_story_stop(&Host, world, conversation)
 }
 
+#[napi(js_name = "og_story_bark")]
+pub fn og_story_bark(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StoryApi>::og_story_bark(&Host, world, desc)
+}
+
+#[napi(js_name = "og_story_ambient")]
+pub fn og_story_ambient(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StoryApi>::og_story_ambient(&Host, world, desc)
+}
+
+#[napi(js_name = "og_story_barks")]
+pub fn og_story_barks(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StoryApi>::og_story_barks(&Host, world)
+}
+
 #[napi(js_name = "og_story_get")]
 pub fn og_story_get(env: Env, world: u32, name: String) -> String {
     let _env = crate::EnvScope::enter(&env);

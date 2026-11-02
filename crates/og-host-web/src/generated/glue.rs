@@ -1669,6 +1669,21 @@ pub fn og_story_stop(world: u32, conversation: u32) -> bool {
 }
 
 #[wasm_bindgen]
+pub fn og_story_bark(world: u32, desc: Option<String>) -> String {
+    <Host as StoryApi>::og_story_bark(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_story_ambient(world: u32, desc: Option<String>) -> String {
+    <Host as StoryApi>::og_story_ambient(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_story_barks(world: u32) -> String {
+    <Host as StoryApi>::og_story_barks(&Host, world)
+}
+
+#[wasm_bindgen]
 pub fn og_story_get(world: u32, name: String) -> String {
     <Host as StoryApi>::og_story_get(&Host, world, name)
 }

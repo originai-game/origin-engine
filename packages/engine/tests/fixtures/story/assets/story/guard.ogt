@@ -1,0 +1,33 @@
+type dialogue
+version 1
+---
+# Barks (a world read, priority, cooldowns, once) and a voiced line.
+name guard
+start halt
+speaker guard {
+  name "npc.guard"
+}
+node halt {
+  say guard "guard.halt" {
+    voice "vo/guard_halt.wav"
+  }
+  emit halted
+}
+bark idle {
+  topic idle
+  speaker guard
+  say "guard.yawn"
+  say "guard.stretch"
+  cooldown 120
+}
+bark hurt {
+  topic idle
+  speaker guard
+  when "self.GuardHealth.hp < 30"
+  priority 5
+  say "guard.hurt" {
+    arg hp "self.GuardHealth.hp"
+  }
+  cooldown 60
+  duration 30
+}

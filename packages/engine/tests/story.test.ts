@@ -5,11 +5,16 @@
 // conversation saved mid-line restores to the same line and hash, an edit
 // that renames the node a save stands on warns naming it and falls back
 // to the start, and a world that never loads a story keeps its hash.
+// Batch 2: barks read the world (a game component) and keep priority and
+// cooldowns, ambient barkers draw on the story's stream identically per
+// seed, a voiced line plays through og.audio on its own entity and the
+// view counts down to its end, quest objectives count named og events with
+// no game code, and dump_story writes all of it.
 import { expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { og } from "@origingame/engine";
+import { og, defineComponent, f32, type Entity } from "@origingame/engine";
 import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 import { ogBin } from "./support/og-bin.ts";
@@ -176,6 +181,135 @@ test("og.story: a world that never loads a story keeps its hash; the first load 
   expect(b.hash()).not.toBe(a.hash());
   a.destroy();
   b.destroy();
+});
+
+const GuardHealth = defineComponent("GuardHealth", { hp: f32() });
+
+type Bark = { entity: Entity; bark: string; seq: number; key: string; text: string; ticksLeft: number; priority: number };
+const barks = (w: Engine["world"]) => (og.story.barks(w) as unknown as Bark[]).map((b) => [b.entity, b.key, b.text]);
+
+function guards(e: Engine): [Entity, Entity] {
+  const w = e.world;
+  must(og.story.load(w, "story/guard.ogt"));
+  must(og.story.load(w, "story/watch.ogt"));
+  const g = (name: string, hp: number): Entity => {
+    const x = must<Entity>(w.spawn({ name }));
+    must(w.insert(x, GuardHealth, { hp }));
+    return x;
+  };
+  return [g("guard-a", 100), g("guard-b", 10)];
+}
+
+test("og.story barks: a world read picks the higher priority, cooldowns hold, and an objective counts the bark's event", () => {
+  const e = start();
+  const w = e.world;
+  const [a, b] = guards(e);
+  expect(must<boolean>(og.story.startQuest(w, "watch"))).toBeTrue();
+  must(og.story.bark(w, { entity: a, topic: "idle" }));
+  must(og.story.bark(w, { entity: b, topic: "idle" }));
+  e.advance(1);
+  // a is healthy: the idle yawn. b's GuardHealth.hp 10 < 30: the hurt line, at priority 5, with the hp it read.
+  expect(barks(w)).toEqual([
+    [a, "guard.yawn", "*yawns*"],
+    [b, "guard.hurt", "Only 10 left in me..."],
+  ]);
+  // Sent the tick after the ask, as the line settles.
+  expect(w.events(og.BarkSaid).map((x) => [x.entity, x.bark, x.key])).toEqual([
+    [a, "idle", "guard.yawn"],
+    [b, "hurt", "guard.hurt"],
+  ]);
+  e.advance(1);
+  // og.BarkSaid where event.bark == 'hurt': counted with no game code.
+  type Q = { objectives: { id: string; count: number; done: boolean }[] };
+  expect((og.story.quest(w, "watch") as unknown as Q).objectives.map((o) => [o.id, o.count, o.done])).toEqual([
+    ["halts", 0, false],
+    ["hurts", 1, true],
+  ]);
+
+  // Asked again within the cooldowns: a's yawn (120 ticks) says nothing new; past b's 30-tick duration and 60-tick cooldown it may.
+  const seqs = () => (og.story.barks(w) as unknown as Bark[]).map((x) => x.seq);
+  const before = seqs();
+  must(og.story.bark(w, { entity: a, topic: "idle" }));
+  e.advance(1);
+  expect((og.story.barks(w) as unknown as Bark[]).find((x) => x.entity === a)!.seq).toBe(before[0]);
+  e.advance(70);
+  must(og.story.bark(w, { entity: b, topic: "idle" }));
+  e.advance(1);
+  const hurt = (og.story.barks(w) as unknown as Bark[]).find((x) => x.entity === b)!;
+  expect([hurt.key, hurt.seq > before[1]!]).toEqual(["guard.hurt", true]);
+
+  // A topic no dialogue has is refused, naming it.
+  const r = og.story.bark(w, { entity: a, topic: "sing" }) as unknown as { ok: boolean; reason: string };
+  expect(r.ok).toBeFalse();
+  expect(r.reason).toContain("sing");
+  e.destroy();
+});
+
+test("og.story ambient barks draw on the story's stream: the same seed says the same lines at the same ticks", () => {
+  const run = (): string[] => {
+    const e = start();
+    const w = e.world;
+    const [a, b] = guards(e);
+    must(og.story.ambient(w, { entity: a, topic: "idle", every: 40, jitter: 30 }));
+    must(og.story.ambient(w, { entity: b, topic: "idle", every: 40, jitter: 30 }));
+    const said: string[] = [];
+    for (let t = 0; t < 400; t++) {
+      e.advance(1);
+      for (const x of w.events(og.BarkSaid)) said.push(`${t}:${x.entity}:${x.key}:${x.seq}`);
+    }
+    const hash = e.hash();
+    e.destroy();
+    return [...said, hash];
+  };
+  const one = run();
+  expect(one.length).toBeGreaterThan(6);
+  expect(run()).toEqual(one);
+});
+
+test("og.story voice: a voiced line plays on its own og.AudioSource entity, the view counts to its end, and dump_story shows it", () => {
+  const e = start();
+  const w = e.world;
+  guards(e);
+  must(og.story.startQuest(w, "watch"));
+  const c = must<number>(og.story.start(w, { dialogue: "guard" }));
+  type V = View & { voice: string; voiceTicks: number; voiceLeft: number };
+  let v = og.story.view(w, c) as unknown as V;
+  expect([v.key, v.voice]).toEqual(["guard.halt", "vo/guard_halt.wav"]);
+  const total = v.voiceTicks;
+  expect(total).toBeGreaterThan(1);
+  e.advance(1);
+  v = og.story.view(w, c) as unknown as V;
+  expect(v.voiceLeft).toBeGreaterThan(0);
+  expect(v.voiceLeft).toBeLessThanOrEqual(total);
+
+  e.probe.commands("0:dump_story:story.json");
+  e.advance(1);
+  type Dump = { loaded: boolean; voices: { for: string; seq: number; entity: number }[]; quests: { id: string; countsEvents: unknown }[]; conversations: { line: { voiceLeft: number } }[]; rng: { seed: number } };
+  const dump = JSON.parse(e.takeOutputs().find((o) => o.file === "story.json")!.data) as Dump;
+  expect(dump.loaded).toBeTrue();
+  expect(dump.voices.map((x) => [x.for, x.seq])).toEqual([[`c${c}`, v.seq]]);
+  const voice = dump.voices[0]!.entity;
+  expect(w.has(voice as never, og.AudioSource)).toBeTrue();
+  expect(dump.quests.find((q) => q.id === "watch")!.countsEvents).toEqual([
+    { objective: "halts", on: "og.StoryEvent" },
+    { objective: "hurts", on: "og.BarkSaid" },
+  ]);
+
+  // Played out: the view says so and the voice's entity is gone.
+  e.advance(total + 1);
+  v = og.story.view(w, c) as unknown as V;
+  expect(v.voiceLeft).toBe(0);
+  expect(w.alive(voice as never)).toBeFalse();
+
+  // Advancing emits `halted`; og.StoryEvent where event.name == 'halted' counts it, twice over two visits.
+  must(og.story.advance(w, c));
+  e.advance(2);
+  const c2 = must<number>(og.story.start(w, { dialogue: "guard" }));
+  must(og.story.advance(w, c2));
+  e.advance(2);
+  type Q = { objectives: { id: string; count: number; done: boolean }[] };
+  expect((og.story.quest(w, "watch") as unknown as Q).objectives[0]).toMatchObject({ id: "halts", count: 2, done: true });
+  e.destroy();
 });
 
 function smithText(): string {

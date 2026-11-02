@@ -166,7 +166,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2157 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2164 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -201,6 +201,7 @@ Field units the docs and Tune use.
 | [`AiMarkDesc`](platform.md#type-AiMarkDesc) | desc struct | platform | — |
 | [`AlertDesc`](ui.md#type-AlertDesc) | desc struct | ui | — |
 | [`Align`](ui.md#type-Align) | enum | ui | — |
+| [`AmbientDesc`](story.md#type-AmbientDesc) | desc struct | story | — |
 | [`AmmoDesc`](ui.md#type-AmmoDesc) | desc struct | ui | — |
 | [`Anchor`](ui.md#type-Anchor) | enum | ui | — |
 | [`AnchorDesc`](ui.md#type-AnchorDesc) | desc struct | ui | — |
@@ -255,6 +256,8 @@ Field units the docs and Tune use.
 | [`BannerDesc`](ui.md#type-BannerDesc) | desc struct | ui | — |
 | [`BannerKind`](ui.md#type-BannerKind) | enum | ui | — |
 | [`BannerResult`](ui.md#type-BannerResult) | struct | ui | — |
+| [`BarkDesc`](story.md#type-BarkDesc) | desc struct | story | — |
+| [`BarkView`](story.md#type-BarkView) | struct | story | — |
 | [`BattlePassDesc`](ui.md#type-BattlePassDesc) | desc struct | ui | — |
 | [`BattlePassResult`](ui.md#type-BattlePassResult) | struct | ui | — |
 | [`Behaviour`](ai.md#type-Behaviour) | handle | ai | — |
@@ -865,6 +868,7 @@ Field units the docs and Tune use.
 | [`og.AudioListener`](audio.md#record-AudioListener) | component | audio | — |
 | [`og.AudioSnapshot`](audio.md#record-AudioSnapshot) | component | audio | — |
 | [`og.AudioSource`](audio.md#record-AudioSource) | component | audio | — |
+| [`og.BarkSaid`](story.md#record-BarkSaid) | event | story | — |
 | [`og.Beam`](render.md#record-Beam) | component | render | — |
 | [`og.Blendshapes`](anim.md#record-Blendshapes) | component | anim | — |
 | [`og.BodySlept`](physics.md#record-BodySlept) | event | physics | — |
@@ -1224,6 +1228,9 @@ Field units the docs and Tune use.
 | [`og.Steering`](nav.md#record-Steering) | component | nav | — |
 | [`og.Story`](story.md#record-Story) | resource | story | — |
 | [`og.story.advance`](story.md#fn-advance) | function | story | `og_story_advance` |
+| [`og.story.ambient`](story.md#fn-ambient) | function | story | `og_story_ambient` |
+| [`og.story.bark`](story.md#fn-bark) | function | story | `og_story_bark` |
+| [`og.story.barks`](story.md#fn-barks) | function | story | `og_story_barks` |
 | [`og.story.choose`](story.md#fn-choose) | function | story | `og_story_choose` |
 | [`og.story.completeQuest`](story.md#fn-completeQuest) | function | story | `og_story_complete_quest` |
 | [`og.story.conversations`](story.md#fn-conversations) | function | story | `og_story_conversations` |

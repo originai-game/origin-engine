@@ -6,6 +6,8 @@ Dialogue and quests as data: dialogues in `.ogt` files of `type dialogue` (speak
 
 og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view in your UI each frame (the line in full, its speaker, its choices; the dialogue box paces its own reveal), and call og.story.advance or og.story.choose. Quests start from a dialogue (`quest start rescue`) or og.story.startQuest, count with og.story.progress and advance their stages themselves; og.story.quests lists them for a quest log.
 
+Barks are ambient lines an entity says on its own (a dialogue's `bark` blocks: a topic, lines, a `when` that may read the world, priority, weight, cooldowns per entity and shared, once): og.story.bark asks for one, og.story.ambient every so often, og.story.barks lists those being said. A line's `voice` is played by og.story through og.audio, and DialogueView.voiceLeft says when it ends. A quest objective with `on <Event>` counts each such event the game or the engine sends, filtered by `where` (which reads `event.<field>`), with no game code. `dump_story` writes the whole story: variables, conversations, quests, barks, cooldowns and voices.
+
 Everything is world state: the story's variables, the nodes seen, the lines read, conversations and quests are in saves, snapshots and the world hash, saved by their ids (dialogue, node, line, quest, stage, objective), so a save survives any edit that keeps those ids. Renaming a node, stage or objective a save stands on is the one breaking edit: og.story warns, naming the id, and falls back (a conversation to its dialogue's start, a quest to its first stage) instead of landing elsewhere. Deterministic: `pick` and active checks draw from the story's own stream (og.Rng's fork "story"), timers count ticks, and arithmetic is plain f64. A world that never loads a dialogue or quest keeps its saves and hash: og.Story and the story's events join it at the first og.story.load.
 
 - **TypeScript**: functions are the namespace `og.story`; components, resources and events are tokens on `og`.
@@ -29,6 +31,7 @@ module story {
 | [`og.DialogueEnded`](#record-DialogueEnded) | event | A conversation ended: its dialogue ran out, reached `end`, took a choice without `goto`, or og.story.stop stopped it. Sent the tick after. |
 | [`og.DialogueCheck`](#record-DialogueCheck) | event | An active check was rolled (d20 plus the stat against the target): reveal the roll. Sent the tick after. |
 | [`og.QuestUpdated`](#record-QuestUpdated) | event | A quest started, counted, changed stage, completed or failed. Sent the tick after. |
+| [`og.BarkSaid`](#record-BarkSaid) | event | An entity barked (og.story.bark or og.story.ambient): show its line over it with og.story.barks. Sent the tick after it was asked for. |
 | [`og.StoryEvent`](#record-StoryEvent) | event | A dialogue's `emit name "arg"`: open the shop, give the sword, play the cutscene. Sent the tick after. |
 | [`StoryAsset`](#type-StoryAsset) | struct | A loaded dialogue or quest. |
 | [`StartDesc`](#type-StartDesc) | desc struct | A conversation to start. |
@@ -40,6 +43,9 @@ module story {
 | [`DialogueView`](#type-DialogueView) | struct | What a conversation shows now: the line in full (the dialogue box paces its own reveal), its speaker and the choices, if it waits on them. |
 | [`ChosenView`](#type-ChosenView) | struct | The choice made while a line was shown. |
 | [`StoryLine`](#type-StoryLine) | struct | A line of a conversation's backlog. |
+| [`BarkDesc`](#type-BarkDesc) | desc struct | A bark to ask for. |
+| [`AmbientDesc`](#type-AmbientDesc) | desc struct | An entity that barks on its own. |
+| [`BarkView`](#type-BarkView) | struct | A bark being said. |
 | [`MarkerDesc`](#type-MarkerDesc) | desc struct | Where a quest's objective is, for the map, compass and tracker. |
 | [`MarkerView`](#type-MarkerView) | struct | Where a quest points: the marker og.story.mark set, else the current stage's first undone objective's `marker`. |
 | [`RewardView`](#type-RewardView) | struct | A quest's reward. |
@@ -54,6 +60,9 @@ module story {
 | [`og.story.advance`](#fn-advance) | function | Move a conversation past its line: it runs to the next line, its choices or its end. |
 | [`og.story.choose`](#fn-choose) | function | Take a choice: its `set`, `emit` and `quest` steps run, an active check rolls (og.DialogueCheck), and the conversation goes to its `goto` (or `fail` on a missed roll), or ends without one. |
 | [`og.story.stop`](#fn-stop) | function | End a conversation now (og.DialogueEnded if it was running) and forget it. An ended conversation stays viewable until it is stopped. |
+| [`og.story.bark`](#fn-bark) | function | Ask an entity to bark a line of a topic: at the og.story system's next run, of that topic's barks whose `when` holds (it may read the world: `self.Health.hp`, `Game.alarm`) and whose cooldowns are over, the highest priority is said, ties drawn by weight on the story's stream; og.BarkSaid follows. Nothing is said when none qualifies, or the entity is saying a bark of equal or higher priority. |
+| [`og.story.ambient`](#fn-ambient) | function | Let an entity bark a topic on its own, every `every` ticks (and up to `jitter` more), as og.story.bark would; `every` 0 stops it. In saves; a despawned entity stops. |
+| [`og.story.barks`](#fn-barks) | function | The barks being said, by entity: draw each over its entity (a speech bubble) until it ends. |
 | [`og.story.get`](#fn-get) | function | A story variable (a `global` of any loaded dialogue or quest): its value, else its declared default. |
 | [`og.story.set`](#fn-set) | function | Set a story variable; quests whose conditions now hold advance. |
 | [`og.story.reset`](#fn-reset) | function | A new playthrough: the story's variables, seen nodes, conversations and quests are cleared. Lines read stay read (DialogueView.seen), so a second playthrough can skip them. |
@@ -98,7 +107,7 @@ fn load {
 }
 ```
 
-<sub>`api.ogt` line 13004</sub>
+<sub>`api.ogt` line 13051</sub>
 
 <a id="fn-parse"></a>
 
@@ -128,7 +137,7 @@ fn parse {
 }
 ```
 
-<sub>`api.ogt` line 13011</sub>
+<sub>`api.ogt` line 13058</sub>
 
 <a id="fn-start"></a>
 
@@ -158,7 +167,7 @@ fn start {
 }
 ```
 
-<sub>`api.ogt` line 13018</sub>
+<sub>`api.ogt` line 13065</sub>
 
 <a id="fn-view"></a>
 
@@ -188,7 +197,7 @@ fn view {
 }
 ```
 
-<sub>`api.ogt` line 13025</sub>
+<sub>`api.ogt` line 13072</sub>
 
 <a id="fn-history"></a>
 
@@ -218,7 +227,7 @@ fn history {
 }
 ```
 
-<sub>`api.ogt` line 13032</sub>
+<sub>`api.ogt` line 13079</sub>
 
 <a id="fn-conversations"></a>
 
@@ -246,7 +255,7 @@ fn conversations {
 }
 ```
 
-<sub>`api.ogt` line 13039</sub>
+<sub>`api.ogt` line 13086</sub>
 
 <a id="fn-advance"></a>
 
@@ -276,7 +285,7 @@ fn advance {
 }
 ```
 
-<sub>`api.ogt` line 13045</sub>
+<sub>`api.ogt` line 13092</sub>
 
 <a id="fn-choose"></a>
 
@@ -308,7 +317,7 @@ fn choose {
 }
 ```
 
-<sub>`api.ogt` line 13052</sub>
+<sub>`api.ogt` line 13099</sub>
 
 <a id="fn-stop"></a>
 
@@ -338,7 +347,95 @@ fn stop {
 }
 ```
 
-<sub>`api.ogt` line 13060</sub>
+<sub>`api.ogt` line 13107</sub>
+
+<a id="fn-bark"></a>
+
+### `og.story.bark`
+
+Ask an entity to bark a line of a topic: at the og.story system's next run, of that topic's barks whose `when` holds (it may read the world: `self.Health.hp`, `Game.alarm`) and whose cooldowns are over, the highest priority is said, ties drawn by weight on the story's stream; og.BarkSaid follows. Nothing is said when none qualifies, or the entity is saying a bark of equal or higher priority.
+
+```ts
+og.story.bark(world: World, desc?: BarkDesc): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `desc` | `BarkDesc` | yes | Who and which topic. |
+
+**Returns** `Result<void>`: Refused for a topic no loaded dialogue has.
+
+Binding symbol `og_story_bark` · publish builds: kept
+
+```ogt
+fn bark {
+  doc "Ask an entity to bark a line of a topic: at the og.story system's next run, of that topic's barks whose `when` holds (it may read the world: `self.Health.hp`, `Game.alarm`) and whose cooldowns are over, the highest priority is said, ties drawn by weight on the story's stream; og.BarkSaid follows. Nothing is said when none qualifies, or the entity is saying a bark of equal or higher priority."
+  param world World "The world."
+  param desc BarkDesc "Who and which topic."
+  returns Result.Void "Refused for a topic no loaded dialogue has."
+}
+```
+
+<sub>`api.ogt` line 13114</sub>
+
+<a id="fn-ambient"></a>
+
+### `og.story.ambient`
+
+Let an entity bark a topic on its own, every `every` ticks (and up to `jitter` more), as og.story.bark would; `every` 0 stops it. In saves; a despawned entity stops.
+
+```ts
+og.story.ambient(world: World, desc?: AmbientDesc): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `desc` | `AmbientDesc` | yes | Who, which topic and how often. |
+
+**Returns** `Result<void>`: Refused for a topic no loaded dialogue has.
+
+Binding symbol `og_story_ambient` · publish builds: kept
+
+```ogt
+fn ambient {
+  doc "Let an entity bark a topic on its own, every `every` ticks (and up to `jitter` more), as og.story.bark would; `every` 0 stops it. In saves; a despawned entity stops."
+  param world World "The world."
+  param desc AmbientDesc "Who, which topic and how often."
+  returns Result.Void "Refused for a topic no loaded dialogue has."
+}
+```
+
+<sub>`api.ogt` line 13121</sub>
+
+<a id="fn-barks"></a>
+
+### `og.story.barks`
+
+The barks being said, by entity: draw each over its entity (a speech bubble) until it ends.
+
+```ts
+og.story.barks(world: World): readonly BarkView[]
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+
+**Returns** `readonly BarkView[]`.
+
+Binding symbol `og_story_barks` · publish builds: kept
+
+```ogt
+fn barks {
+  doc "The barks being said, by entity: draw each over its entity (a speech bubble) until it ends."
+  param world World "The world."
+  returns List.BarkView
+}
+```
+
+<sub>`api.ogt` line 13128</sub>
 
 <a id="fn-get"></a>
 
@@ -368,7 +465,7 @@ fn get {
 }
 ```
 
-<sub>`api.ogt` line 13067</sub>
+<sub>`api.ogt` line 13134</sub>
 
 <a id="fn-set"></a>
 
@@ -400,7 +497,7 @@ fn set {
 }
 ```
 
-<sub>`api.ogt` line 13074</sub>
+<sub>`api.ogt` line 13141</sub>
 
 <a id="fn-reset"></a>
 
@@ -427,7 +524,7 @@ fn reset {
 }
 ```
 
-<sub>`api.ogt` line 13082</sub>
+<sub>`api.ogt` line 13149</sub>
 
 <a id="fn-startQuest"></a>
 
@@ -457,7 +554,7 @@ fn startQuest {
 }
 ```
 
-<sub>`api.ogt` line 13087</sub>
+<sub>`api.ogt` line 13154</sub>
 
 <a id="fn-progress"></a>
 
@@ -493,7 +590,7 @@ fn progress {
 }
 ```
 
-<sub>`api.ogt` line 13094</sub>
+<sub>`api.ogt` line 13161</sub>
 
 <a id="fn-setStage"></a>
 
@@ -525,7 +622,7 @@ fn setStage {
 }
 ```
 
-<sub>`api.ogt` line 13105</sub>
+<sub>`api.ogt` line 13172</sub>
 
 <a id="fn-completeQuest"></a>
 
@@ -555,7 +652,7 @@ fn completeQuest {
 }
 ```
 
-<sub>`api.ogt` line 13113</sub>
+<sub>`api.ogt` line 13180</sub>
 
 <a id="fn-failQuest"></a>
 
@@ -585,7 +682,7 @@ fn failQuest {
 }
 ```
 
-<sub>`api.ogt` line 13120</sub>
+<sub>`api.ogt` line 13187</sub>
 
 <a id="fn-quest"></a>
 
@@ -615,7 +712,7 @@ fn quest {
 }
 ```
 
-<sub>`api.ogt` line 13127</sub>
+<sub>`api.ogt` line 13194</sub>
 
 <a id="fn-quests"></a>
 
@@ -643,7 +740,7 @@ fn quests {
 }
 ```
 
-<sub>`api.ogt` line 13134</sub>
+<sub>`api.ogt` line 13201</sub>
 
 <a id="fn-track"></a>
 
@@ -675,7 +772,7 @@ fn track {
 }
 ```
 
-<sub>`api.ogt` line 13140</sub>
+<sub>`api.ogt` line 13207</sub>
 
 <a id="fn-markSeen"></a>
 
@@ -705,7 +802,7 @@ fn markSeen {
 }
 ```
 
-<sub>`api.ogt` line 13148</sub>
+<sub>`api.ogt` line 13215</sub>
 
 <a id="fn-mark"></a>
 
@@ -737,7 +834,7 @@ fn mark {
 }
 ```
 
-<sub>`api.ogt` line 13155</sub>
+<sub>`api.ogt` line 13222</sub>
 
 ## Components, resources and events
 
@@ -770,7 +867,7 @@ resource Story {
 }
 ```
 
-<sub>`api.ogt` line 12799</sub>
+<sub>`api.ogt` line 12800</sub>
 
 <a id="record-DialogueShown"></a>
 
@@ -793,7 +890,7 @@ event DialogueShown {
 }
 ```
 
-<sub>`api.ogt` line 12812</sub>
+<sub>`api.ogt` line 12813</sub>
 
 <a id="record-DialogueEnded"></a>
 
@@ -814,7 +911,7 @@ event DialogueEnded {
 }
 ```
 
-<sub>`api.ogt` line 12818</sub>
+<sub>`api.ogt` line 12819</sub>
 
 <a id="record-DialogueCheck"></a>
 
@@ -843,7 +940,7 @@ event DialogueCheck {
 }
 ```
 
-<sub>`api.ogt` line 12823</sub>
+<sub>`api.ogt` line 12824</sub>
 
 <a id="record-QuestUpdated"></a>
 
@@ -866,7 +963,34 @@ event QuestUpdated {
 }
 ```
 
-<sub>`api.ogt` line 12832</sub>
+<sub>`api.ogt` line 12833</sub>
+
+<a id="record-BarkSaid"></a>
+
+### `og.BarkSaid` (event)
+
+An entity barked (og.story.bark or og.story.ambient): show its line over it with og.story.barks. Sent the tick after it was asked for.
+
+Token `og.BarkSaid`, registered under the schema name `og.BarkSaid`; its value type is `BarkSaid`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `entity` | `Entity` | `0` | — | — | — | Who barked. |
+| `bark` | `string` | `""` | — | — | — | The bark's id in its dialogue. |
+| `key` | `string` | `""` | — | — | — | The line's i18n key. |
+| `seq` | `number` | `0` | — | — | — | The line's number (BarkView.seq). |
+
+```ogt
+event BarkSaid {
+  doc "An entity barked (og.story.bark or og.story.ambient): show its line over it with og.story.barks. Sent the tick after it was asked for."
+  field entity Entity "Who barked."
+  field bark String "The bark's id in its dialogue."
+  field key String "The line's i18n key."
+  field seq u32 "The line's number (BarkView.seq)."
+}
+```
+
+<sub>`api.ogt` line 12839</sub>
 
 <a id="record-StoryEvent"></a>
 
@@ -891,7 +1015,7 @@ event StoryEvent {
 }
 ```
 
-<sub>`api.ogt` line 12838</sub>
+<sub>`api.ogt` line 12847</sub>
 
 ## Types
 
@@ -920,7 +1044,7 @@ struct StoryAsset {
 }
 ```
 
-<sub>`api.ogt` line 12845</sub>
+<sub>`api.ogt` line 12854</sub>
 
 <a id="type-StartDesc"></a>
 
@@ -948,7 +1072,7 @@ struct StartDesc {
 }
 ```
 
-<sub>`api.ogt` line 12854</sub>
+<sub>`api.ogt` line 12863</sub>
 
 <a id="type-SpeakerView"></a>
 
@@ -977,7 +1101,7 @@ struct SpeakerView {
 }
 ```
 
-<sub>`api.ogt` line 12863</sub>
+<sub>`api.ogt` line 12872</sub>
 
 <a id="type-CheckView"></a>
 
@@ -1002,7 +1126,7 @@ struct CheckView {
 }
 ```
 
-<sub>`api.ogt` line 12873</sub>
+<sub>`api.ogt` line 12882</sub>
 
 <a id="type-ChoiceView"></a>
 
@@ -1043,7 +1167,7 @@ struct ChoiceView {
 }
 ```
 
-<sub>`api.ogt` line 12881</sub>
+<sub>`api.ogt` line 12890</sub>
 
 <a id="type-TimerView"></a>
 
@@ -1066,7 +1190,7 @@ struct TimerView {
 }
 ```
 
-<sub>`api.ogt` line 12897</sub>
+<sub>`api.ogt` line 12906</sub>
 
 <a id="type-RollView"></a>
 
@@ -1091,7 +1215,7 @@ struct RollView {
 }
 ```
 
-<sub>`api.ogt` line 12904</sub>
+<sub>`api.ogt` line 12913</sub>
 
 <a id="type-DialogueView"></a>
 
@@ -1108,7 +1232,9 @@ What a conversation shows now: the line in full (the dialogue box paces its own 
 | `key` | `string` | `""` | — | — | — | The line's i18n key. |
 | `args` | `unknown` | `null` | — | — | — | The arguments it was resolved with (evaluated when it was shown). |
 | `text` | `string` | `""` | — | — | — | The line, resolved in the active locale. |
-| `voice` | `string` | `""` | — | — | — | Its voice clip's asset path (empty: none). |
+| `voice` | `string` | `""` | — | — | — | Its voice clip's asset path (empty: none). og.story plays it on its own entity (an og.AudioSource on the sfx bus) from the tick after the line is shown, and stops it when the line moves on. |
+| `voiceTicks` | `number` | `0` | — | — | — | The voice's length in ticks (0: no voice, or one that did not load). |
+| `voiceLeft` | `number` | `0` | — | — | — | Ticks of the voice still to play: voiceTicks until it starts, 0 once it has ended (advance then, for auto-advance). |
 | `speaker` | `SpeakerView` | `{ id: "", name: "", entity: 0, portrait: "", expression: "", side: "" }` | — | — | — | Who says it. |
 | `choices` | `readonly ChoiceView[]` | `[]` | — | — | — | The choices, when it waits on them; empty while a line waits for og.story.advance. |
 | `timer` | `TimerView \| null` | `null` | — | — | — | The choice timer, while it runs. |
@@ -1125,7 +1251,9 @@ struct DialogueView {
   field key String "The line's i18n key."
   field args Json "The arguments it was resolved with (evaluated when it was shown)."
   field text String "The line, resolved in the active locale."
-  field voice String "Its voice clip's asset path (empty: none)."
+  field voice String "Its voice clip's asset path (empty: none). og.story plays it on its own entity (an og.AudioSource on the sfx bus) from the tick after the line is shown, and stops it when the line moves on."
+  field voiceTicks u32 "The voice's length in ticks (0: no voice, or one that did not load)."
+  field voiceLeft u32 "Ticks of the voice still to play: voiceTicks until it starts, 0 once it has ended (advance then, for auto-advance)."
   field speaker SpeakerView "Who says it."
   field choices List.ChoiceView "The choices, when it waits on them; empty while a line waits for og.story.advance."
   field timer Option.TimerView "The choice timer, while it runs."
@@ -1134,7 +1262,7 @@ struct DialogueView {
 }
 ```
 
-<sub>`api.ogt` line 12912</sub>
+<sub>`api.ogt` line 12921</sub>
 
 <a id="type-ChosenView"></a>
 
@@ -1155,7 +1283,7 @@ struct ChosenView {
 }
 ```
 
-<sub>`api.ogt` line 12929</sub>
+<sub>`api.ogt` line 12940</sub>
 
 <a id="type-StoryLine"></a>
 
@@ -1190,7 +1318,106 @@ struct StoryLine {
 }
 ```
 
-<sub>`api.ogt` line 12935</sub>
+<sub>`api.ogt` line 12946</sub>
+
+<a id="type-BarkDesc"></a>
+
+### `BarkDesc` (desc struct)
+
+A bark to ask for.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `entity` | `Entity` | `0` | — | — | — | Who barks: its og.story.barks entry, `self.` in the bark's conditions and arguments. |
+| `topic` | `string` | `""` | — | — | — | The topic: one of the bark's `topic`s, such as idle or alarm. |
+| `dialogue` | `string` | `""` | — | — | — | Only this dialogue's barks (empty: every loaded dialogue's). |
+
+```ogt
+struct BarkDesc {
+  doc "A bark to ask for."
+  desc true
+  field entity Entity "Who barks: its og.story.barks entry, `self.` in the bark's conditions and arguments."
+  field topic String "The topic: one of the bark's `topic`s, such as idle or alarm."
+  field dialogue String "Only this dialogue's barks (empty: every loaded dialogue's)."
+}
+```
+
+<sub>`api.ogt` line 12959</sub>
+
+<a id="type-AmbientDesc"></a>
+
+### `AmbientDesc` (desc struct)
+
+An entity that barks on its own.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `entity` | `Entity` | `0` | — | — | — | Who barks. |
+| `topic` | `string` | `""` | — | — | — | The topic it asks for. |
+| `dialogue` | `string` | `""` | — | — | — | Only this dialogue's barks (empty: any). |
+| `every` | `number` | `600` | — | — | — | Ticks between asks (0 stops it). |
+| `jitter` | `number` | `0` | — | — | — | Up to this many ticks more each time, drawn on the story's stream. |
+
+```ogt
+struct AmbientDesc {
+  doc "An entity that barks on its own."
+  desc true
+  field entity Entity "Who barks."
+  field topic String "The topic it asks for."
+  field dialogue String "Only this dialogue's barks (empty: any)."
+  field every u32 "Ticks between asks (0 stops it)." {
+    default 600
+  }
+  field jitter u32 "Up to this many ticks more each time, drawn on the story's stream."
+}
+```
+
+<sub>`api.ogt` line 12967</sub>
+
+<a id="type-BarkView"></a>
+
+### `BarkView` (struct)
+
+A bark being said.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `entity` | `Entity` | `0` | — | — | — | Who says it. |
+| `dialogue` | `string` | `""` | — | — | — | Its dialogue. |
+| `bark` | `string` | `""` | — | — | — | Its id. |
+| `seq` | `number` | `0` | — | — | — | The line's number: a new number is a new bark. |
+| `key` | `string` | `""` | — | — | — | The line's i18n key. |
+| `args` | `unknown` | `null` | — | — | — | The arguments it was resolved with (evaluated when it was said, world reads included). |
+| `text` | `string` | `""` | — | — | — | The line, resolved in the active locale. |
+| `speaker` | `SpeakerView` | `{ id: "", name: "", entity: 0, portrait: "", expression: "", side: "" }` | — | — | — | The bark's speaker (entity: who says it). |
+| `voice` | `string` | `""` | — | — | — | Its voice clip (empty: none), played as a conversation's. |
+| `voiceLeft` | `number` | `0` | — | — | — | Ticks of its voice still to play. |
+| `ticksLeft` | `number` | `0` | — | — | — | Ticks it still shows. |
+| `priority` | `number` | `0` | — | — | — | Its priority: only a higher one interrupts it. |
+
+```ogt
+struct BarkView {
+  doc "A bark being said."
+  field entity Entity "Who says it."
+  field dialogue String "Its dialogue."
+  field bark String "Its id."
+  field seq u32 "The line's number: a new number is a new bark."
+  field key String "The line's i18n key."
+  field args Json "The arguments it was resolved with (evaluated when it was said, world reads included)."
+  field text String "The line, resolved in the active locale."
+  field speaker SpeakerView "The bark's speaker (entity: who says it)."
+  field voice String "Its voice clip (empty: none), played as a conversation's."
+  field voiceLeft u32 "Ticks of its voice still to play."
+  field ticksLeft u32 "Ticks it still shows."
+  field priority i32 "Its priority: only a higher one interrupts it."
+}
+```
+
+<sub>`api.ogt` line 12979</sub>
 
 <a id="type-MarkerDesc"></a>
 
@@ -1216,7 +1443,7 @@ struct MarkerDesc {
 }
 ```
 
-<sub>`api.ogt` line 12948</sub>
+<sub>`api.ogt` line 12995</sub>
 
 <a id="type-MarkerView"></a>
 
@@ -1239,7 +1466,7 @@ struct MarkerView {
 }
 ```
 
-<sub>`api.ogt` line 12957</sub>
+<sub>`api.ogt` line 13004</sub>
 
 <a id="type-RewardView"></a>
 
@@ -1264,7 +1491,7 @@ struct RewardView {
 }
 ```
 
-<sub>`api.ogt` line 12965</sub>
+<sub>`api.ogt` line 13012</sub>
 
 <a id="type-ObjectiveView"></a>
 
@@ -1297,7 +1524,7 @@ struct ObjectiveView {
 }
 ```
 
-<sub>`api.ogt` line 12973</sub>
+<sub>`api.ogt` line 13020</sub>
 
 <a id="type-QuestView"></a>
 
@@ -1344,4 +1571,4 @@ struct QuestView {
 }
 ```
 
-<sub>`api.ogt` line 12985</sub>
+<sub>`api.ogt` line 13032</sub>

@@ -10,17 +10,20 @@
 //! |---|---|
 //! | [`expr`] | [`Expr`], [`Val`]: conditions and values |
 //! | [`asset`] | [`Dialogue`], [`Quest`]: parsing and validation |
-//! | [`story`] | [`Story`], [`Library`]: conversations, quests, variables |
+//! | [`story`] | [`Story`], [`Library`]: conversations, quests, variables, event-counted objectives |
+//! | [`bark`] | barks and ambient lines: requests, cooldowns, priority |
 //! | [`save`] | [`Story::save`], [`Story::load`] |
 
 pub mod asset;
+pub mod bark;
 pub mod expr;
 pub mod save;
 pub mod story;
 
 pub use asset::{
-    Check, Choice, DIALOGUE_TYPE, Dialogue, Line, NARRATOR, Node, Objective, QUEST_TYPE, Quest,
-    QuestOp, Reward, Speaker, Stage, Step, Text, VarDecl,
+    Bark, Check, Choice, DIALOGUE_TYPE, Dialogue, Line, NARRATOR, Node, Objective, QUEST_TYPE,
+    Quest, QuestOp, Reward, Speaker, Stage, Step, Text, VarDecl,
 };
+pub use bark::{Ambient, Request, Said};
 pub use expr::{Expr, Val};
-pub use story::{Conv, Event, Library, QuestState, Roll, Shown, Story, Wait};
+pub use story::{Conv, Event, Library, QuestState, Read, Roll, Shown, Story, Wait};

@@ -37,6 +37,7 @@ pub mod sfx;
 mod shader_check;
 pub mod stats;
 mod stream;
+pub mod strings_extract;
 mod terrain;
 mod terrain_generate;
 mod texture;

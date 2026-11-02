@@ -671,6 +671,12 @@ export interface HostAbi<A, V> {
   og_story_choose(world: number, conversation: number, index: number): string;
   /** `og.story.stop` */
   og_story_stop(world: number, conversation: number): boolean;
+  /** `og.story.bark` */
+  og_story_bark(world: number, desc: string | undefined): string;
+  /** `og.story.ambient` */
+  og_story_ambient(world: number, desc: string | undefined): string;
+  /** `og.story.barks` */
+  og_story_barks(world: number): string;
   /** `og.story.get` */
   og_story_get(world: number, name: string): string;
   /** `og.story.set` */
@@ -1512,6 +1518,9 @@ export const SYMBOLS: readonly string[] = [
   "og_story_advance",
   "og_story_choose",
   "og_story_stop",
+  "og_story_bark",
+  "og_story_ambient",
+  "og_story_barks",
   "og_story_get",
   "og_story_set",
   "og_story_reset",

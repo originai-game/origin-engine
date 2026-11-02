@@ -22,6 +22,9 @@ pub const MAX_STEPS: u32 = 10_000;
 pub struct Library {
     pub dialogues: BTreeMap<String, Arc<Dialogue>>,
     pub quests: BTreeMap<String, Arc<Quest>>,
+    /// Each voice clip's length in ticks (the runtime fills it from the
+    /// cooked sounds when a dialogue loads; 0 or absent: unknown).
+    pub voice_ticks: BTreeMap<String, u32>,
 }
 
 impl Library {
@@ -65,6 +68,23 @@ pub struct Shown {
     pub seen: bool,
     /// The choice made while it was shown: its index and id.
     pub chosen: Option<(u32, String)>,
+    /// Its voice clip's length in ticks (Library::voice_ticks; 0: unknown
+    /// or none).
+    pub voice_ticks: u32,
+    /// The tick its voice started (set by the runtime when it plays it).
+    pub voice_start: Option<u32>,
+}
+
+impl Shown {
+    /// Ticks of its voice left at `now`: all of them before it starts, 0
+    /// once it has ended (or without one).
+    pub fn voice_left(&self, now: u32) -> u32 {
+        match self.voice_start {
+            _ if self.voice.is_empty() => 0,
+            None => self.voice_ticks,
+            Some(s) => (s.saturating_add(self.voice_ticks)).saturating_sub(now),
+        }
+    }
 }
 
 /// An active check's roll.
@@ -138,6 +158,13 @@ pub enum Event {
         name: String,
         arg: String,
     },
+    /// A bark was said (conv 0 for an `emit` of a bark's steps).
+    Bark {
+        entity: u64,
+        bark: String,
+        key: String,
+        seq: u32,
+    },
 }
 
 /// A world's story.
@@ -155,6 +182,23 @@ pub struct Story {
     pub quests: Vec<QuestState>,
     /// Events not yet sent.
     pub events: Vec<Event>,
+    /// Barks being said, by speaker entity.
+    pub barks: BTreeMap<u64, crate::bark::Said>,
+    /// Barks asked for, said at the og.story system's next run.
+    pub bark_requests: Vec<crate::bark::Request>,
+    /// Entities that bark on their own, every so often.
+    pub ambient: BTreeMap<u64, crate::bark::Ambient>,
+    /// When each bark (`dialogue.bark`) was last said by anyone.
+    pub bark_last: BTreeMap<String, u32>,
+    /// When each bark was last said by each entity.
+    pub bark_last_by: BTreeMap<(String, u64), u32>,
+    /// The next line of each `cycle` bark.
+    pub bark_cycle: BTreeMap<String, u32>,
+    /// The `once` barks said this playthrough.
+    pub bark_once: BTreeSet<String>,
+    /// The voices playing: `c<conversation>` or `b<entity>` to the line's
+    /// seq and the entity playing it (the runtime's).
+    pub voices: BTreeMap<String, (u32, u64)>,
     /// The tick the og.story system last ran (not saved: it is the world's).
     pub tick: u32,
     /// Warnings not yet logged (not saved).
@@ -174,6 +218,14 @@ impl Story {
             convs: BTreeMap::new(),
             quests: Vec::new(),
             events: Vec::new(),
+            barks: BTreeMap::new(),
+            bark_requests: Vec::new(),
+            ambient: BTreeMap::new(),
+            bark_last: BTreeMap::new(),
+            bark_last_by: BTreeMap::new(),
+            bark_cycle: BTreeMap::new(),
+            bark_once: BTreeSet::new(),
+            voices: BTreeMap::new(),
             tick: 0,
             warnings: Vec::new(),
         }
@@ -187,9 +239,15 @@ impl Story {
         self.convs.clear();
         self.quests.clear();
         self.events.clear();
+        self.barks.clear();
+        self.bark_requests.clear();
+        self.bark_last.clear();
+        self.bark_last_by.clear();
+        self.bark_cycle.clear();
+        self.bark_once.clear();
     }
 
-    fn warn(&mut self, w: String) {
+    pub(crate) fn warn(&mut self, w: String) {
         if !self.warnings.contains(&w) {
             self.warnings.push(w);
         }
@@ -615,6 +673,8 @@ impl Story {
             seq: self.seq,
             seen,
             chosen: None,
+            voice_ticks: lib.voice_ticks.get(&l.voice).copied().unwrap_or(0),
+            voice_start: None,
         };
         let c = self.convs.get_mut(&id).unwrap();
         c.pc = pc as u32;
@@ -625,12 +685,11 @@ impl Story {
         });
     }
 
-    fn act(&mut self, lib: &Library, d: &Arc<Dialogue>, id: u32, s: &Step) {
+    pub(crate) fn act(&mut self, lib: &Library, d: &Arc<Dialogue>, id: u32, s: &Step) {
         match s {
             Step::Set(name, x) => {
                 let v = self.value(lib, d, id, x);
-                let c = self.convs.get_mut(&id).unwrap();
-                match c.locals.get_mut(name) {
+                match self.convs.get_mut(&id).and_then(|c| c.locals.get_mut(name)) {
                     Some(slot) => *slot = v,
                     None => {
                         self.globals.insert(name.clone(), v);
@@ -671,6 +730,7 @@ impl Story {
             lib,
             dialogue: Some(&d.name),
             locals: self.convs.get(&id).map(|c| &c.locals),
+            world: None,
         }
     }
 
@@ -742,6 +802,7 @@ impl Story {
             lib,
             dialogue: d.map(|d| d.name.as_str()),
             locals: self.convs.get(&id).map(|c| &c.locals),
+            world: None,
         };
         x.eval(&scope).ok()
     }
@@ -759,6 +820,7 @@ impl Story {
             lib,
             dialogue: d.map(|d| d.name.as_str()),
             locals: self.convs.get(&id).map(|c| &c.locals),
+            world: None,
         };
         args.iter()
             .map(|(k, x)| (k.clone(), x.eval(&scope).unwrap_or(Val::Num(0.0))))
@@ -809,6 +871,58 @@ impl Story {
         }
         self.settle(lib);
         true
+    }
+
+    /// The event names quest objectives count (`on <Event>`) across the
+    /// loaded quests, sorted.
+    pub fn counted_events(lib: &Library) -> Vec<String> {
+        let mut out: Vec<String> = lib
+            .quests
+            .values()
+            .flat_map(|q| q.stages.iter())
+            .flat_map(|s| s.objectives.iter())
+            .filter_map(|o| o.on.clone())
+            .collect();
+        out.sort();
+        out.dedup();
+        out
+    }
+
+    /// One event `name` the world sent: every objective of an active
+    /// quest's current stage that counts it (`on name`) and whose `where`
+    /// holds counts one. `read` reads the event's fields (`event.kind`) and
+    /// the world. True when something counted.
+    pub fn count_event(&mut self, lib: &Library, name: &str, read: Read<'_>) -> bool {
+        let mut hits = Vec::new();
+        for q in self.quests.iter().filter(|q| q.status == "active") {
+            let Some(stage) = lib.quests.get(&q.id).and_then(|d| d.stage(&q.stage)) else {
+                continue;
+            };
+            for o in stage
+                .objectives
+                .iter()
+                .filter(|o| o.on.as_deref() == Some(name))
+            {
+                let scope = ConvScope {
+                    story: self,
+                    lib,
+                    dialogue: None,
+                    locals: None,
+                    world: Some((read, None)),
+                };
+                if o.filter
+                    .as_ref()
+                    .is_none_or(|x| x.eval(&scope).is_ok_and(|v| v.truthy()))
+                {
+                    hits.push((q.id.clone(), o.id.clone()));
+                }
+            }
+        }
+        let mut any = false;
+        for (q, o) in hits {
+            any |= self.progress(lib, &q, &o, 1);
+        }
+        any
     }
 
     /// A quest operation; Ok(false) when it changes nothing.
@@ -938,6 +1052,7 @@ impl Story {
                     lib,
                     dialogue: None,
                     locals: None,
+                    world: None,
                 };
                 let holds = |x: &Expr| x.eval(&scope).is_ok_and(|v| v.truthy());
                 let fail = st.fail.as_ref().is_some_and(holds);
@@ -1013,15 +1128,30 @@ fn finish(q: &mut QuestState, def: &Quest, status: &'static str, tick: u32) {
 }
 
 /// What an expression reads: a conversation's variables, then the story's.
-struct ConvScope<'a> {
-    story: &'a Story,
-    lib: &'a Library,
-    dialogue: Option<&'a str>,
-    locals: Option<&'a BTreeMap<String, Val>>,
+pub(crate) struct ConvScope<'a> {
+    pub story: &'a Story,
+    pub lib: &'a Library,
+    pub dialogue: Option<&'a str>,
+    pub locals: Option<&'a BTreeMap<String, Val>>,
+    /// The world, where it is at hand (a bark's `when`, an objective's
+    /// `where`), and the entity `self.` names.
+    pub world: Option<(Read<'a>, Option<u64>)>,
 }
+
+/// Reads the world for an expression: `(entity, "Health.hp")` a component
+/// field of an entity, `(None, "Game.alarm")` a resource field or, while
+/// an event is counted, `(None, "event.kind")` its field.
+pub type Read<'a> = &'a dyn Fn(Option<u64>, &str) -> Option<Val>;
 
 impl Scope for ConvScope<'_> {
     fn var(&self, name: &str) -> Option<Val> {
+        if name.contains('.') {
+            let (read, me) = self.world?;
+            return match name.strip_prefix("self.") {
+                Some(rest) => read(Some(me?), rest),
+                None => read(None, name),
+            };
+        }
         self.locals
             .and_then(|l| l.get(name).cloned())
             .or_else(|| self.story.get(self.lib, name))

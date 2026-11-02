@@ -13,7 +13,7 @@
 use super::engine::engine;
 use super::{ok, ok_void, parse, refuse};
 use og_core::{IdMap, Rng};
-use og_ecs::{StateBlock, SystemDesc, World};
+use og_ecs::{Entity, StateBlock, SystemDesc, World};
 use og_story::{Dialogue, Event, Library, Quest, Story, Val, Wait};
 use serde_json::{Map, Value, json};
 use std::any::Any;
@@ -28,8 +28,17 @@ pub(crate) const ENDED: &str = "og.DialogueEnded";
 pub(crate) const CHECK: &str = "og.DialogueCheck";
 pub(crate) const QUEST_UPDATED: &str = "og.QuestUpdated";
 pub(crate) const STORY_EVENT: &str = "og.StoryEvent";
+pub(crate) const BARK_SAID: &str = "og.BarkSaid";
 /// og.Story and the events, registered together.
-pub(crate) const RECORDS: [&str; 6] = [STORY, SHOWN, ENDED, CHECK, QUEST_UPDATED, STORY_EVENT];
+pub(crate) const RECORDS: [&str; 7] = [
+    STORY,
+    SHOWN,
+    ENDED,
+    CHECK,
+    QUEST_UPDATED,
+    STORY_EVENT,
+    BARK_SAID,
+];
 /// The og.story system and its state block.
 pub(crate) const SYSTEM: &str = "og.story";
 
@@ -37,6 +46,12 @@ pub(crate) const SYSTEM: &str = "og.story";
 struct Rt {
     lib: Library,
     story: Option<Story>,
+    /// Voice clips by asset path: their og.audio sound handles.
+    voices: BTreeMap<String, u64>,
+    /// What og.story's system has been granted on the world it runs on
+    /// (records a bark's `when` or an objective's `where` reads, events
+    /// objectives count).
+    granted: std::collections::BTreeSet<String>,
 }
 
 thread_local! {
@@ -104,65 +119,317 @@ pub(crate) fn attach(engine: u32, world: &mut World) -> Result<(), String> {
         if rt.story.is_none() {
             rt.story = Some(Story::new(seed));
         }
+        // A new world: what the loaded stories read is granted afresh.
+        rt.granted.clear();
     });
     match world.add_state_block(SYSTEM, Box::new(StoryBlock(engine))) {
-        Err(e) if e.reason().contains("already added") => Ok(()),
-        r => r.map_err(err),
+        Err(e) if e.reason().contains("already added") => {}
+        r => r.map_err(err)?,
     }
+    grant(engine, Some(world))
+}
+
+/// The records and events the loaded stories read, as og.story's system
+/// must declare them: each world read's record (its longest name a layout
+/// has) and each event an objective counts. og.Time is read as the clock.
+fn needs(engine_id: u32) -> Result<Vec<String>, String> {
+    let eng = engine(engine_id)?;
+    let st = eng.state.borrow();
+    let (reads, events) = with(engine_id, |rt| {
+        let mut reads = Vec::new();
+        let mut put = |x: &og_story::Expr| x.vars(&mut reads);
+        for d in rt.lib.dialogues.values() {
+            for b in &d.barks {
+                b.when.iter().for_each(&mut put);
+                b.lines
+                    .iter()
+                    .flat_map(|l| l.text.args.iter())
+                    .for_each(|(_, x)| put(x));
+            }
+        }
+        for o in rt
+            .lib
+            .quests
+            .values()
+            .flat_map(|q| q.stages.iter())
+            .flat_map(|s| s.objectives.iter())
+        {
+            o.filter.iter().for_each(&mut put);
+        }
+        (reads, Story::counted_events(&rt.lib))
+    });
+    let mut out = std::collections::BTreeSet::new();
+    for v in reads.iter().filter(|v| v.contains('.')) {
+        let path = v.strip_prefix("self.").unwrap_or(v);
+        if path.starts_with("event.") || path.starts_with("og.Time.") {
+            continue;
+        }
+        let rec = record_of(&st.layouts, path).ok_or_else(|| {
+            format!(
+                "'{v}' names no component, resource or event this game has (a world read is Record.field, self.Component.field or event.field)"
+            )
+        })?;
+        out.insert(rec.0.to_string());
+    }
+    for e in events {
+        if !st.layouts.contains_key(&e) {
+            return Err(format!(
+                "an objective counts '{e}', which is no event this game has (its name as declared, such as og.CollisionStarted)"
+            ));
+        }
+        out.insert(e);
+    }
+    Ok(out.into_iter().collect())
+}
+
+/// Grants og.story's system what the loaded stories read; inside a system
+/// (`world` None) only what it already has, else refused naming the fix.
+fn grant(engine_id: u32, world: Option<&mut World>) -> Result<(), String> {
+    let want = needs(engine_id)?;
+    let missing: Vec<String> = with(engine_id, |rt| {
+        want.iter()
+            .filter(|n| !rt.granted.contains(*n))
+            .cloned()
+            .collect()
+    });
+    if missing.is_empty() {
+        return Ok(());
+    }
+    let Some(world) = world else {
+        return Err(format!(
+            "this story reads {}, which og.story is not yet granted: load it in setup, outside a system",
+            missing.join(", ")
+        ));
+    };
+    let names: Vec<&str> = missing.iter().map(String::as_str).collect();
+    world
+        .grant(SYSTEM, &names)
+        .map_err(|e| e.reason().to_string())?;
+    with(engine_id, |rt| rt.granted.extend(missing));
+    Ok(())
+}
+
+/// The layout a world read names (`Health.hp`, `og.Transform.position.x`)
+/// and the field path after it: the longest record name that has a layout.
+fn record_of<'a>(
+    layouts: &'a BTreeMap<String, super::codec::Layout>,
+    path: &'a str,
+) -> Option<(&'a str, &'a str)> {
+    path.rmatch_indices('.')
+        .map(|(i, _)| (&path[..i], &path[i + 1..]))
+        .find(|(rec, _)| layouts.contains_key(*rec))
+}
+
+fn walk(v: &Value, fields: &str) -> Option<Val> {
+    let mut at = v;
+    for f in fields.split('.') {
+        at = at.get(f)?;
+    }
+    val_of(at)
 }
 
 /// The og.story system, mounted on every world before the game's systems.
 /// It does nothing until og.Story is registered; then each tick it runs the
-/// choice timers, sends the events the story queued since the last run and
-/// writes og.Story's counters.
+/// choice timers, counts the events objectives count, settles barks, starts
+/// and stops voices, sends the events the story queued since the last run
+/// and writes og.Story's counters.
 pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
     world
-        .add_system(SystemDesc::new(SYSTEM), move |ctx| {
-            let Ok(story_id) = ctx.id_by_name(STORY) else {
-                return Ok(());
-            };
-            let tick = ctx.time().tick;
-            let (events, counters, warnings) = with(engine_id, |rt| {
-                let s = rt.story.get_or_insert_with(fresh);
-                s.tick(&rt.lib, tick as u32);
-                let counters = json!({
-                    "lines": s.seq,
-                    "conversations": s.convs.values().filter(|c| c.wait != Wait::Ended).count(),
-                    "activeQuests": s.quests.iter().filter(|q| q.status == "active").count(),
+        .add_system(
+            SystemDesc::new(SYSTEM).write::<og_audio::AudioSource>(),
+            move |ctx| {
+                let Ok(story_id) = ctx.id_by_name(STORY) else {
+                    return Ok(());
+                };
+                let Ok(eng) = engine(engine_id) else {
+                    return Ok(());
+                };
+                let time = ctx.time();
+                let tick = time.tick as u32;
+                let layout = |name: &str| eng.state.borrow().layouts.get(name).cloned();
+                // The world as a story reads it.
+                let read = |e: Option<u64>, path: &str| -> Option<Val> {
+                    if let Some(f) = path.strip_prefix("og.Time.") {
+                        return match f {
+                            "tick" => Some(Val::Num(time.tick as f64)),
+                            "dt" => Some(Val::Num(f64::from(time.dt))),
+                            "elapsed" => Some(Val::Num(time.elapsed)),
+                            _ => None,
+                        };
+                    }
+                    let st = eng.state.borrow();
+                    let (rec, fields) = record_of(&st.layouts, path)?;
+                    let l = st.layouts.get(rec)?;
+                    let id = ctx.id_by_name(rec).ok()?;
+                    let bytes = match e {
+                        Some(e) => ctx.get_bytes(Entity::from_bits(e), id).ok()?,
+                        None => ctx.resource_bytes(id).ok()?,
+                    };
+                    walk(&l.decode(&bytes), fields)
+                };
+                // Events objectives count, as they were sent.
+                let counted = with(engine_id, |rt| Story::counted_events(&rt.lib));
+                let mut seen_events: Vec<(String, Value)> = Vec::new();
+                for name in &counted {
+                    let (Ok(id), Some(l)) = (ctx.id_by_name(name), layout(name)) else {
+                        continue;
+                    };
+                    for b in ctx.events_bytes(id).unwrap_or_default() {
+                        seen_events.push((name.clone(), l.decode(&b)));
+                    }
+                }
+                let alive = |e: u64| ctx.is_alive(Entity::from_bits(e));
+                let (starts, stops) = with(engine_id, |rt| {
+                    let Rt {
+                        lib, story, voices, ..
+                    } = rt;
+                    let s = story.get_or_insert_with(fresh);
+                    s.tick(lib, tick);
+                    for (name, ev) in &seen_events {
+                        let with_event =
+                            |e: Option<u64>, path: &str| match path.strip_prefix("event.") {
+                                Some(f) => walk(ev, f),
+                                None => read(e, path),
+                            };
+                        s.count_event(lib, name, &with_event);
+                    }
+                    s.run_barks(lib, tick, &read, &alive);
+                    voice_plan(s, voices, tick)
                 });
-                (
-                    std::mem::take(&mut s.events),
-                    counters,
-                    std::mem::take(&mut s.warnings),
-                )
-            });
-            let Ok(eng) = engine(engine_id) else {
-                return Ok(());
-            };
-            let layouts: BTreeMap<&str, super::codec::Layout> = {
-                let st = eng.state.borrow();
-                RECORDS
-                    .iter()
-                    .filter_map(|n| st.layouts.get(*n).map(|l| (*n, l.clone())))
-                    .collect()
-            };
-            let bad = |e: String| og_core::Error::new(og_core::ErrorKind::Invalid, e);
-            for e in &events {
-                let (name, v) = event_json(e);
-                if let Some(l) = layouts.get(name) {
-                    ctx.send_bytes(
-                        ctx.id_by_name(name)?,
-                        &l.encode(None, Some(&v)).map_err(bad)?,
+                // Voices: stop the ones whose line moved on or ended, start
+                // the new lines' (each its own entity with an AudioSource).
+                for e in stops {
+                    let e = Entity::from_bits(e);
+                    if ctx.is_alive(e) {
+                        ctx.despawn(e)?;
+                    }
+                }
+                let source = ctx.id_by_name("og.AudioSource")?;
+                let bad = |e: String| og_core::Error::new(og_core::ErrorKind::Invalid, e);
+                let mut spawned = Vec::new();
+                if let Some(l) = layout("og.AudioSource") {
+                    for (key, seq, handle) in starts {
+                        let bytes = l
+                            .encode(None, Some(&json!({ "sound": handle })))
+                            .map_err(bad)?;
+                        let e = ctx.spawn_bytes(vec![(source, bytes)])?;
+                        spawned.push((key, seq, e.to_bits()));
+                    }
+                }
+                let (events, counters, warnings) = with(engine_id, |rt| {
+                    let s = rt.story.get_or_insert_with(fresh);
+                    for (key, seq, e) in spawned {
+                        started(s, &key, seq, e, tick);
+                    }
+                    let counters = json!({
+                        "lines": s.seq,
+                        "conversations": s.convs.values().filter(|c| c.wait != Wait::Ended).count(),
+                        "activeQuests": s.quests.iter().filter(|q| q.status == "active").count(),
+                    });
+                    (
+                        std::mem::take(&mut s.events),
+                        counters,
+                        std::mem::take(&mut s.warnings),
+                    )
+                });
+                for e in &events {
+                    let (name, v) = event_json(e);
+                    if let Some(l) = layout(name) {
+                        ctx.send_bytes(
+                            ctx.id_by_name(name)?,
+                            &l.encode(None, Some(&v)).map_err(bad)?,
+                        )?;
+                    }
+                }
+                if let Some(l) = layout(STORY) {
+                    ctx.set_resource_bytes(
+                        story_id,
+                        &l.encode(None, Some(&counters)).map_err(bad)?,
                     )?;
                 }
-            }
-            if let Some(l) = layouts.get(STORY) {
-                ctx.set_resource_bytes(story_id, &l.encode(None, Some(&counters)).map_err(bad)?)?;
-            }
-            log(&eng, warnings);
-            Ok(())
-        })
+                log(&eng, warnings);
+                Ok(())
+            },
+        )
         .map_err(|e| e.reason().to_string())
+}
+
+/// The voice each speaking line or bark should have now: `c<conversation>`
+/// for a conversation's current line, `b<entity>` for a bark, with its seq,
+/// clip and length.
+fn voice_wants(s: &Story) -> BTreeMap<String, (u32, String, u32, Option<u32>)> {
+    let mut want = BTreeMap::new();
+    for (id, c) in &s.convs {
+        if c.wait == Wait::Ended {
+            continue;
+        }
+        if let Some(l) = c.history.last().filter(|l| !l.voice.is_empty()) {
+            want.insert(
+                format!("c{id}"),
+                (l.seq, l.voice.clone(), l.voice_ticks, l.voice_start),
+            );
+        }
+    }
+    for (e, b) in &s.barks {
+        if !b.voice.is_empty() {
+            want.insert(
+                format!("b{e}"),
+                (b.seq, b.voice.clone(), b.voice_ticks, b.voice_start),
+            );
+        }
+    }
+    want
+}
+
+/// Which voice entities to despawn (their line moved on, ended or played
+/// out) and which voices to start: (key, seq, sound handle).
+fn voice_plan(
+    s: &mut Story,
+    handles: &BTreeMap<String, u64>,
+    tick: u32,
+) -> (Vec<(String, u32, u64)>, Vec<u64>) {
+    let want = voice_wants(s);
+    let mut stops = Vec::new();
+    s.voices.retain(|k, (seq, e)| {
+        let keep = want
+            .get(k)
+            .is_some_and(|w| w.0 == *seq && w.3.is_some_and(|t| t.saturating_add(w.2) > tick));
+        if !keep {
+            stops.push(*e);
+        }
+        keep
+    });
+    let starts = want
+        .into_iter()
+        .filter(|(k, w)| w.3.is_none() && w.2 > 0 && !s.voices.contains_key(k))
+        .filter_map(|(k, (seq, clip, _, _))| handles.get(&clip).map(|h| (k, seq, *h)))
+        .collect();
+    (starts, stops)
+}
+
+/// A voice started at `tick` on entity `e`: the line or bark it is for
+/// times its end from now.
+fn started(s: &mut Story, key: &str, seq: u32, e: u64, tick: u32) {
+    s.voices.insert(key.to_string(), (seq, e));
+    let rest = &key[1..];
+    if key.starts_with('c') {
+        if let Some(l) = rest
+            .parse::<u32>()
+            .ok()
+            .and_then(|id| s.convs.get_mut(&id))
+            .and_then(|c| c.history.last_mut())
+            .filter(|l| l.seq == seq)
+        {
+            l.voice_start = Some(tick);
+        }
+    } else if let Some(b) = rest
+        .parse::<u64>()
+        .ok()
+        .and_then(|e| s.barks.get_mut(&e))
+        .filter(|b| b.seq == seq)
+    {
+        b.voice_start = Some(tick);
+    }
 }
 
 fn event_json(e: &Event) -> (&'static str, Value) {
@@ -183,6 +450,15 @@ fn event_json(e: &Event) -> (&'static str, Value) {
             STORY_EVENT,
             json!({ "conversation": conv, "name": name, "arg": arg }),
         ),
+        Event::Bark {
+            entity,
+            bark,
+            key,
+            seq,
+        } => (
+            BARK_SAID,
+            json!({ "entity": entity, "bark": bark, "key": key, "seq": seq }),
+        ),
     }
 }
 
@@ -202,7 +478,7 @@ fn log(eng: &super::engine::Engine, warnings: Vec<String>) {
 /// warnings; refused before anything was loaded.
 fn story<T>(engine_id: u32, f: impl FnOnce(&Library, &mut Story) -> T) -> Result<T, String> {
     let (r, warnings) = with(engine_id, |rt| {
-        let Rt { lib, story } = rt;
+        let Rt { lib, story, .. } = rt;
         let Some(s) = story.as_mut() else {
             return (None, Vec::new());
         };
@@ -288,26 +564,95 @@ fn insert(engine_id: u32, text: &str) -> Result<Value, String> {
             "speakers": [],
             "variables": q.vars.iter().map(|v| v.name.clone()).collect::<Vec<_>>(),
         });
-        with(engine_id, |rt| {
-            rt.lib.quests.insert(q.id.clone(), Arc::new(q))
+        let id = q.id.clone();
+        let old = with(engine_id, |rt| {
+            rt.lib.quests.insert(id.clone(), Arc::new(q))
         });
+        if let Err(e) = grant(engine_id, eng.world().ok()) {
+            with(engine_id, |rt| match old {
+                Some(o) => rt.lib.quests.insert(id, o),
+                None => rt.lib.quests.remove(&id),
+            });
+            return Err(e);
+        }
         Ok(info)
     } else if ty == og_story::DIALOGUE_TYPE {
         let d = Dialogue::parse(text)?;
+        load_voices(&eng, engine_id, &d);
         let info = json!({
             "kind": "dialogue", "name": d.name,
             "nodes": d.nodes.iter().map(|n| n.id.clone()).collect::<Vec<_>>(),
             "speakers": d.speakers.iter().map(|s| s.id.clone()).collect::<Vec<_>>(),
             "variables": d.vars.iter().map(|v| v.name.clone()).collect::<Vec<_>>(),
         });
-        with(engine_id, |rt| {
-            rt.lib.dialogues.insert(d.name.clone(), Arc::new(d))
+        let name = d.name.clone();
+        let old = with(engine_id, |rt| {
+            rt.lib.dialogues.insert(name.clone(), Arc::new(d))
         });
+        if let Err(e) = grant(engine_id, eng.world().ok()) {
+            with(engine_id, |rt| match old {
+                Some(o) => rt.lib.dialogues.insert(name, o),
+                None => rt.lib.dialogues.remove(&name),
+            });
+            return Err(e);
+        }
         Ok(info)
     } else {
         Err(format!(
             "expected 'type dialogue' or 'type quest', found 'type {ty}'"
         ))
+    }
+}
+
+/// Loads each voice clip a dialogue names into the engine's sounds, and
+/// records its length in ticks (a one-shot's, as og.audio ends it). A clip
+/// that does not load is warned about; its line shows without a voice.
+fn load_voices(eng: &super::engine::Engine, engine_id: u32, d: &Dialogue) {
+    let clips: std::collections::BTreeSet<String> = d
+        .nodes
+        .iter()
+        .flat_map(|n| n.steps.iter())
+        .filter_map(|s| match s {
+            og_story::Step::Say(l) => Some(l.voice.clone()),
+            _ => None,
+        })
+        .chain(
+            d.barks
+                .iter()
+                .flat_map(|b| b.lines.iter().map(|l| l.voice.clone())),
+        )
+        .filter(|v| !v.is_empty())
+        .collect();
+    let rate = f64::from(eng.state.borrow().rate.max(1));
+    let mut warnings = Vec::new();
+    for clip in clips {
+        if with(engine_id, |rt| rt.voices.contains_key(&clip)) {
+            continue;
+        }
+        match super::assets::load_sound(eng, &clip) {
+            Ok(i) => {
+                let (handle, ticks) = {
+                    let a = eng.assets.borrow();
+                    let m = &a.sounds[i].meta;
+                    let ticks =
+                        (f64::from(m.frames) * rate / f64::from(m.sample_rate.max(1))).ceil();
+                    (a.sound_handles[i], ticks as u32)
+                };
+                with(engine_id, |rt| {
+                    rt.voices.insert(clip.clone(), handle);
+                    rt.lib.voice_ticks.insert(clip, ticks);
+                });
+            }
+            Err(e) => warnings.push(format!(
+                "og.story: dialogue '{}': its voice '{clip}' does not load ({e}); its lines show without it",
+                d.name
+            )),
+        }
+    }
+    let mut st = eng.state.borrow_mut();
+    for w in warnings {
+        st.log
+            .push(json!({ "tick": og_ecs::last_tick(), "warning": true, "text": w }));
     }
 }
 
@@ -471,6 +816,8 @@ pub fn og_story_view(world: u32, conversation: u32) -> String {
             seq: 0,
             seen: false,
             chosen: None,
+            voice_ticks: 0,
+            voice_start: None,
         };
         let l = last.unwrap_or(&empty);
         let args = args_json(&l.args);
@@ -483,6 +830,8 @@ pub fn og_story_view(world: u32, conversation: u32) -> String {
             "args": args,
             "text": tr(world, &l.key, &args),
             "voice": l.voice,
+            "voiceTicks": if l.voice.is_empty() { 0 } else { l.voice_ticks },
+            "voiceLeft": if c.wait == Wait::Ended { 0 } else { l.voice_left(s.tick) },
             "speaker": speaker_json(world, &d, c, &l.speaker, &l.expression),
             "choices": choices,
             "timer": timer,
@@ -531,6 +880,157 @@ pub fn og_story_choose(world: u32, conversation: u32, index: u32) -> String {
 
 pub fn og_story_stop(world: u32, conversation: u32) -> bool {
     story(world, |_, s| s.stop(conversation)).unwrap_or(false)
+}
+
+// ── barks ───────────────────────────────────────────────────────────────
+
+fn bark_desc(desc: Option<String>) -> Result<(u64, String, String, Value), String> {
+    let d = parse(desc.as_deref())?;
+    let entity = d["entity"]
+        .as_f64()
+        .filter(|e| e.is_finite() && *e > 0.0)
+        .ok_or("the desc's entity is the entity that barks")? as u64;
+    let topic = d["topic"]
+        .as_str()
+        .filter(|t| !t.is_empty())
+        .ok_or("the desc's topic names the barks to choose from, such as idle")?
+        .to_string();
+    let dialogue = d["dialogue"].as_str().unwrap_or("").to_string();
+    Ok((entity, topic, dialogue, d))
+}
+
+pub fn og_story_bark(world: u32, desc: Option<String>) -> String {
+    wire_void((|| {
+        let (entity, topic, dialogue, _) = bark_desc(desc)?;
+        story(world, |lib, s| s.bark(lib, entity, &topic, &dialogue))?
+    })())
+}
+
+pub fn og_story_ambient(world: u32, desc: Option<String>) -> String {
+    wire_void((|| {
+        let (entity, topic, dialogue, d) = bark_desc(desc)?;
+        let every = d["every"]
+            .as_f64()
+            .map_or(600, |v| v.clamp(0.0, 1e9) as u32);
+        let jitter = d["jitter"].as_f64().map_or(0, |v| v.clamp(0.0, 1e9) as u32);
+        story(world, |lib, s| {
+            if every > 0 {
+                let known = lib
+                    .dialogues
+                    .values()
+                    .filter(|x| dialogue.is_empty() || x.name == dialogue)
+                    .any(|x| x.barks.iter().any(|b| b.topic == topic));
+                if !known {
+                    return Err(format!("no loaded dialogue has a bark of topic '{topic}'"));
+                }
+            }
+            s.ambient(entity, &topic, &dialogue, every, jitter);
+            Ok(())
+        })?
+    })())
+}
+
+fn bark_json(engine: u32, lib: &Library, s: &Story, e: u64, b: &og_story::Said) -> Value {
+    let args = args_json(&b.args);
+    let d = lib.dialogues.get(&b.dialogue);
+    let sp = d.and_then(|d| d.speaker(&b.speaker));
+    json!({
+        "entity": e,
+        "dialogue": b.dialogue,
+        "bark": b.bark,
+        "seq": b.seq,
+        "key": b.key,
+        "args": args,
+        "text": tr(engine, &b.key, &args),
+        "speaker": {
+            "id": b.speaker,
+            "name": sp.map_or(String::new(), |x| tr(engine, &x.name, &json!({}))),
+            "entity": e,
+            "portrait": sp.map_or("", |x| x.portrait.as_str()),
+            "expression": sp.map_or("", |x| x.expression.as_str()),
+            "side": sp.map_or("left", |x| x.side.as_str()),
+        },
+        "voice": b.voice,
+        "voiceLeft": b.voice_left(s.tick),
+        "ticksLeft": b.until.saturating_sub(s.tick),
+        "priority": b.priority,
+    })
+}
+
+pub fn og_story_barks(world: u32) -> String {
+    story(world, |lib, s| {
+        Value::Array(
+            s.barks
+                .iter()
+                .map(|(e, b)| bark_json(world, lib, s, *e, b))
+                .collect(),
+        )
+    })
+    .unwrap_or_else(|_| json!([]))
+    .to_string()
+}
+
+/// `dump_story`: the whole story as the probe writes it.
+pub(crate) fn dump(engine_id: u32) -> Value {
+    with(engine_id, |rt| {
+        let lib = &rt.lib;
+        let Some(s) = rt.story.as_ref() else {
+            return json!({ "loaded": false });
+        };
+        let vars: Map<String, Value> = s
+            .globals
+            .iter()
+            .map(|(k, v)| (k.clone(), val_json(v)))
+            .collect();
+        let convs: Vec<Value> = s.convs.iter().map(|(id, c)| {
+            let l = c.history.last();
+            json!({
+                "conversation": id, "dialogue": c.dialogue, "node": c.node, "step": c.pc,
+                "wait": match c.wait { Wait::Line => "line", Wait::Choices => "choices", Wait::Ended => "ended" },
+                "line": l.map(|l| json!({ "seq": l.seq, "key": l.key, "args": args_json(&l.args), "voice": l.voice,
+                    "voiceLeft": l.voice_left(s.tick), "seen": l.seen })),
+                "locals": c.locals.iter().map(|(k, v)| (k.clone(), val_json(v))).collect::<Map<_, _>>(),
+                "cast": c.cast, "visited": c.visited, "lines": c.history.len(),
+                "timer": c.timer.map(|(l, t)| json!({ "ticksLeft": l, "ticksTotal": t })),
+                "lastCheck": c.last_roll.as_ref().map(|r| json!({ "stat": r.stat, "target": r.target, "roll": r.roll, "passed": r.passed })),
+            })
+        }).collect();
+        let quests: Vec<Value> = s.quests.iter().map(|q| json!({
+            "id": q.id, "stage": q.stage, "status": q.status, "counts": q.counts, "failed": q.failed,
+            "tracked": q.tracked, "updatedTick": q.updated_tick,
+            "countsEvents": lib.quests.get(&q.id).and_then(|d| d.stage(&q.stage)).map(|st| st.objectives.iter()
+                .filter_map(|o| o.on.as_ref().map(|e| json!({ "objective": o.id, "on": e }))).collect::<Vec<_>>()),
+        })).collect();
+        let barks: Vec<Value> = s.barks.iter().map(|(e, b)| json!({
+            "entity": e, "dialogue": b.dialogue, "bark": b.bark, "key": b.key, "seq": b.seq,
+            "priority": b.priority, "ticksLeft": b.until.saturating_sub(s.tick), "voiceLeft": b.voice_left(s.tick),
+        })).collect();
+        let cooldowns: Vec<Value> = s
+            .bark_last_by
+            .iter()
+            .map(|((b, e), t)| json!({ "bark": b, "entity": e, "saidTick": t }))
+            .collect();
+        json!({
+            "loaded": true,
+            "tick": s.tick,
+            "lines": s.seq,
+            "dialogues": lib.dialogues.keys().collect::<Vec<_>>(),
+            "quests": quests,
+            "variables": vars,
+            "seen": s.seen,
+            "read": s.read.len(),
+            "conversations": convs,
+            "barks": barks,
+            "ambient": s.ambient.iter().map(|(e, a)| json!({ "entity": e, "topic": a.topic, "every": a.every, "jitter": a.jitter, "nextTick": a.next })).collect::<Vec<_>>(),
+            "barkLast": s.bark_last,
+            "barkCooldowns": cooldowns,
+            "barkOnce": s.bark_once,
+            "voices": s.voices.iter().map(|(k, (seq, e))| json!({ "for": k, "seq": seq, "entity": e })).collect::<Vec<_>>(),
+            "voiceClips": rt.voices,
+            "granted": rt.granted,
+            "rng": { "seed": s.rng.seed(), "state": s.rng.save() },
+        })
+    })
 }
 
 // ── variables ───────────────────────────────────────────────────────────

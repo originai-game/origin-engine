@@ -137,6 +137,10 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: crate::story::STORY_EVENT,
         enable: |w| w.grant(crate::story::SYSTEM, &[crate::story::STORY_EVENT]),
     },
+    Lazy {
+        name: crate::story::BARK_SAID,
+        enable: |w| w.grant(crate::story::SYSTEM, &[crate::story::BARK_SAID]),
+    },
 ];
 
 /// Lazy records registered together: naming one registers the rest.

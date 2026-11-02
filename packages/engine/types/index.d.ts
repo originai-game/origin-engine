@@ -19439,6 +19439,7 @@ export interface AiDescription {
 // ── story ───────────────────────────────────────────────────────
 // Dialogue and quests as data: dialogues in `.ogt` files of `type dialogue` (speakers, nodes of lines, choices with conditions, reasons and checks, variables, weighted picks, timers) and quests in `type quest` files (stages of objectives, rewards, conditions), validated by og cook, which names each mistake's line and the fix. Text is never inline: every line, choice, reason, name and title is an og.i18n key, and og.story resolves it in the active locale when it is read, so a locale switch re-translates the line on screen. og-story §1 has every line of both formats.
 // og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view in your UI each frame (the line in full, its speaker, its choices; the dialogue box paces its own reveal), and call og.story.advance or og.story.choose. Quests start from a dialogue (`quest start rescue`) or og.story.startQuest, count with og.story.progress and advance their stages themselves; og.story.quests lists them for a quest log.
+// Barks are ambient lines an entity says on its own (a dialogue's `bark` blocks: a topic, lines, a `when` that may read the world, priority, weight, cooldowns per entity and shared, once): og.story.bark asks for one, og.story.ambient every so often, og.story.barks lists those being said. A line's `voice` is played by og.story through og.audio, and DialogueView.voiceLeft says when it ends. A quest objective with `on <Event>` counts each such event the game or the engine sends, filtered by `where` (which reads `event.<field>`), with no game code. `dump_story` writes the whole story: variables, conversations, quests, barks, cooldowns and voices.
 // Everything is world state: the story's variables, the nodes seen, the lines read, conversations and quests are in saves, snapshots and the world hash, saved by their ids (dialogue, node, line, quest, stage, objective), so a save survives any edit that keeps those ids. Renaming a node, stage or objective a save stands on is the one breaking edit: og.story warns, naming the id, and falls back (a conversation to its dialogue's start, a quest to its first stage) instead of landing elsewhere. Deterministic: `pick` and active checks draw from the story's own stream (og.Rng's fork "story"), timers count ticks, and arithmetic is plain f64. A world that never loads a dialogue or quest keeps its saves and hash: og.Story and the story's events join it at the first og.story.load.
 
 /**
@@ -19517,6 +19518,22 @@ export interface QuestUpdated {
   readonly quest: string;
   /** active, completed or failed. */
   readonly status: string;
+}
+
+/**
+ * An entity barked (og.story.bark or og.story.ambient): show its line over it with og.story.barks. Sent the tick after it was asked for.
+ *
+ * The payload of the `BarkSaid` event (token `og.BarkSaid`).
+ */
+export interface BarkSaid {
+  /** Who barked. */
+  readonly entity: Entity;
+  /** The bark's id in its dialogue. */
+  readonly bark: string;
+  /** The line's i18n key. */
+  readonly key: string;
+  /** The line's number (BarkView.seq). */
+  readonly seq: number;
 }
 
 /**
@@ -19681,8 +19698,16 @@ export interface DialogueView {
   readonly args: unknown;
   /** The line, resolved in the active locale. */
   readonly text: string;
-  /** Its voice clip's asset path (empty: none). */
+  /**
+   * Its voice clip's asset path (empty: none). og.story plays it on its own entity (an og.AudioSource on the sfx bus) from the tick after the line is shown, and stops it when the line moves on.
+   */
   readonly voice: string;
+  /** The voice's length in ticks (0: no voice, or one that did not load). */
+  readonly voiceTicks: number;
+  /**
+   * Ticks of the voice still to play: voiceTicks until it starts, 0 once it has ended (advance then, for auto-advance).
+   */
+  readonly voiceLeft: number;
   /** Who says it. */
   readonly speaker: SpeakerView;
   /** The choices, when it waits on them; empty while a line waits for og.story.advance. */
@@ -19723,6 +19748,98 @@ export interface StoryLine {
   readonly seen: boolean;
   /** The choice made on it, if any. */
   readonly chosen: ChosenView | null;
+}
+
+/**
+ * A bark to ask for.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface BarkDesc {
+  /**
+   * Who barks: its og.story.barks entry, `self.` in the bark's conditions and arguments.
+   *
+   * @default 0
+   */
+  readonly entity?: Entity;
+  /**
+   * The topic: one of the bark's `topic`s, such as idle or alarm.
+   *
+   * @default ""
+   */
+  readonly topic?: string;
+  /**
+   * Only this dialogue's barks (empty: every loaded dialogue's).
+   *
+   * @default ""
+   */
+  readonly dialogue?: string;
+}
+
+/**
+ * An entity that barks on its own.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface AmbientDesc {
+  /**
+   * Who barks.
+   *
+   * @default 0
+   */
+  readonly entity?: Entity;
+  /**
+   * The topic it asks for.
+   *
+   * @default ""
+   */
+  readonly topic?: string;
+  /**
+   * Only this dialogue's barks (empty: any).
+   *
+   * @default ""
+   */
+  readonly dialogue?: string;
+  /**
+   * Ticks between asks (0 stops it).
+   *
+   * @default 600
+   */
+  readonly every?: number;
+  /**
+   * Up to this many ticks more each time, drawn on the story's stream.
+   *
+   * @default 0
+   */
+  readonly jitter?: number;
+}
+
+/** A bark being said. */
+export interface BarkView {
+  /** Who says it. */
+  readonly entity: Entity;
+  /** Its dialogue. */
+  readonly dialogue: string;
+  /** Its id. */
+  readonly bark: string;
+  /** The line's number: a new number is a new bark. */
+  readonly seq: number;
+  /** The line's i18n key. */
+  readonly key: string;
+  /** The arguments it was resolved with (evaluated when it was said, world reads included). */
+  readonly args: unknown;
+  /** The line, resolved in the active locale. */
+  readonly text: string;
+  /** The bark's speaker (entity: who says it). */
+  readonly speaker: SpeakerView;
+  /** Its voice clip (empty: none), played as a conversation's. */
+  readonly voice: string;
+  /** Ticks of its voice still to play. */
+  readonly voiceLeft: number;
+  /** Ticks it still shows. */
+  readonly ticksLeft: number;
+  /** Its priority: only a higher one interrupts it. */
+  readonly priority: number;
 }
 
 /**
@@ -19827,6 +19944,9 @@ export interface QuestView {
   /** The current stage's objectives. */
   readonly objectives: readonly ObjectiveView[];
 }
+
+
+
 
 
 
@@ -47238,12 +47358,17 @@ export declare namespace og {
   /** A quest started, counted, changed stage, completed or failed. Sent the tick after. */
   const QuestUpdated: EventType<QuestUpdated>;
   /**
+   * An entity barked (og.story.bark or og.story.ambient): show its line over it with og.story.barks. Sent the tick after it was asked for.
+   */
+  const BarkSaid: EventType<BarkSaid>;
+  /**
    * A dialogue's `emit name "arg"`: open the shop, give the sword, play the cutscene. Sent the tick after.
    */
   const StoryEvent: EventType<StoryEvent>;
   /**
    * Dialogue and quests as data: dialogues in `.ogt` files of `type dialogue` (speakers, nodes of lines, choices with conditions, reasons and checks, variables, weighted picks, timers) and quests in `type quest` files (stages of objectives, rewards, conditions), validated by og cook, which names each mistake's line and the fix. Text is never inline: every line, choice, reason, name and title is an og.i18n key, and og.story resolves it in the active locale when it is read, so a locale switch re-translates the line on screen. og-story §1 has every line of both formats.
    * og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view in your UI each frame (the line in full, its speaker, its choices; the dialogue box paces its own reveal), and call og.story.advance or og.story.choose. Quests start from a dialogue (`quest start rescue`) or og.story.startQuest, count with og.story.progress and advance their stages themselves; og.story.quests lists them for a quest log.
+   * Barks are ambient lines an entity says on its own (a dialogue's `bark` blocks: a topic, lines, a `when` that may read the world, priority, weight, cooldowns per entity and shared, once): og.story.bark asks for one, og.story.ambient every so often, og.story.barks lists those being said. A line's `voice` is played by og.story through og.audio, and DialogueView.voiceLeft says when it ends. A quest objective with `on <Event>` counts each such event the game or the engine sends, filtered by `where` (which reads `event.<field>`), with no game code. `dump_story` writes the whole story: variables, conversations, quests, barks, cooldowns and voices.
    * Everything is world state: the story's variables, the nodes seen, the lines read, conversations and quests are in saves, snapshots and the world hash, saved by their ids (dialogue, node, line, quest, stage, objective), so a save survives any edit that keeps those ids. Renaming a node, stage or objective a save stands on is the one breaking edit: og.story warns, naming the id, and falls back (a conversation to its dialogue's start, a quest to its first stage) instead of landing elsewhere. Deterministic: `pick` and active checks draw from the story's own stream (og.Rng's fork "story"), timers count ticks, and arithmetic is plain f64. A world that never loads a dialogue or quest keeps its saves and hash: og.Story and the story's events join it at the first og.story.load.
    */
   namespace story {
@@ -47318,6 +47443,28 @@ export declare namespace og {
      * @returns False for an unknown conversation.
      */
     function stop(world: World, conversation: number): boolean;
+    /**
+     * Ask an entity to bark a line of a topic: at the og.story system's next run, of that topic's barks whose `when` holds (it may read the world: `self.Health.hp`, `Game.alarm`) and whose cooldowns are over, the highest priority is said, ties drawn by weight on the story's stream; og.BarkSaid follows. Nothing is said when none qualifies, or the entity is saying a bark of equal or higher priority.
+     *
+     * @param world The world.
+     * @param desc Who and which topic.
+     * @returns Refused for a topic no loaded dialogue has.
+     */
+    function bark(world: World, desc?: BarkDesc): Result<void>;
+    /**
+     * Let an entity bark a topic on its own, every `every` ticks (and up to `jitter` more), as og.story.bark would; `every` 0 stops it. In saves; a despawned entity stops.
+     *
+     * @param world The world.
+     * @param desc Who, which topic and how often.
+     * @returns Refused for a topic no loaded dialogue has.
+     */
+    function ambient(world: World, desc?: AmbientDesc): Result<void>;
+    /**
+     * The barks being said, by entity: draw each over its entity (a speech bubble) until it ends.
+     *
+     * @param world The world.
+     */
+    function barks(world: World): readonly BarkView[];
     /**
      * A story variable (a `global` of any loaded dialogue or quest): its value, else its declared default.
      *

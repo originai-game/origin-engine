@@ -1,0 +1,18 @@
+type quest
+version 1
+---
+# Objectives counted from events, with no game code.
+id watch
+title "quest.watch"
+stage listen {
+  objective halts "quest.watch.halts" {
+    target 2
+    on og.StoryEvent
+    where "event.name == 'halted'"
+  }
+  objective hurts "quest.watch.hurts" {
+    target 1
+    on og.BarkSaid
+    where "event.bark == 'hurt'"
+  }
+}

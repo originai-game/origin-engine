@@ -773,6 +773,12 @@ pub trait StoryApi: Wire {
     fn og_story_choose(&self, world: u32, conversation: u32, index: u32) -> String;
     /// `og.story.stop`
     fn og_story_stop(&self, world: u32, conversation: u32) -> bool;
+    /// `og.story.bark`
+    fn og_story_bark(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.story.ambient`
+    fn og_story_ambient(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.story.barks`
+    fn og_story_barks(&self, world: u32) -> String;
     /// `og.story.get`
     fn og_story_get(&self, world: u32, name: String) -> String;
     /// `og.story.set`
@@ -1663,6 +1669,9 @@ pub const SYMBOLS: &[&str] = &[
     "og_story_advance",
     "og_story_choose",
     "og_story_stop",
+    "og_story_bark",
+    "og_story_ambient",
+    "og_story_barks",
     "og_story_get",
     "og_story_set",
     "og_story_reset",

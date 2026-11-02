@@ -246,6 +246,38 @@ pub struct Dialogue {
     pub speakers: Vec<Speaker>,
     pub vars: Vec<VarDecl>,
     pub nodes: Vec<Node>,
+    pub barks: Vec<Bark>,
+}
+
+/// A bark: an ambient line an entity says on its own (a guard's yawn, a
+/// shopkeeper's call), not a conversation. og.story.bark asks for one of a
+/// topic; og.story.ambient asks every so often. The highest `priority` of
+/// the topic whose `when` holds and whose cooldowns are over is said; ties
+/// are drawn by `weight` on the story's stream.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Bark {
+    pub id: String,
+    pub topic: String,
+    /// The speaker it is for (empty: any): its name and portrait.
+    pub speaker: String,
+    pub lines: Vec<Line>,
+    /// Said only while this holds; it may read the world.
+    pub when: Option<Expr>,
+    pub priority: i32,
+    pub weight: f64,
+    /// Ticks before the same entity says it again.
+    pub cooldown: u32,
+    /// Ticks before anyone says it again.
+    pub shared: u32,
+    /// Ticks it shows (and holds its speaker against lower priorities).
+    pub duration: u32,
+    /// Its lines in turn (`cycle`, the default) or drawn (`random`).
+    pub random: bool,
+    /// Said once per playthrough.
+    pub once: bool,
+    /// Steps run when it is said (`set`, `emit`, `quest`).
+    pub steps: Vec<Step>,
+    pub line: usize,
 }
 
 impl Dialogue {
@@ -254,6 +286,9 @@ impl Dialogue {
     }
     pub fn speaker(&self, id: &str) -> Option<&Speaker> {
         self.speakers.iter().find(|s| s.id == id)
+    }
+    pub fn bark(&self, id: &str) -> Option<&Bark> {
+        self.barks.iter().find(|b| b.id == id)
     }
 }
 
@@ -269,6 +304,12 @@ pub struct Objective {
     pub optional: bool,
     pub hidden: bool,
     pub marker: Option<[f32; 3]>,
+    /// `on <Event>`: each such event counts one, with no game code (the
+    /// og.story system reads it the tick after it is sent).
+    pub on: Option<String>,
+    /// `where "<cond>"`: an `on` event counts only when this holds; it reads
+    /// the event's fields as `event.<field>` and the world.
+    pub filter: Option<Expr>,
     pub line: usize,
 }
 
@@ -533,6 +574,144 @@ fn choice(e: &Entry) -> Result<Choice, String> {
     Ok(c)
 }
 
+/// A line: the i18n key at value `i`, with its block's `arg`, `voice` and
+/// `expression`.
+fn line_at(x: &Entry, speaker: String, i: usize) -> Result<Line, String> {
+    let text = text_of(x, i)?;
+    let opt = |k: &str| -> Result<String, String> {
+        match x.block.as_ref().and_then(|b| b.get(k)) {
+            Some(v) => name_at(v, 0, "a value"),
+            None => Ok(String::new()),
+        }
+    };
+    if let Some(b) = &x.block
+        && let Some(bad) = b
+            .entries
+            .iter()
+            .find(|v| !matches!(v.key.as_str(), "arg" | "voice" | "expression"))
+    {
+        return Err(err(
+            bad,
+            format!(
+                "'{}' is not part of a line: arg, voice or expression",
+                bad.key
+            ),
+        ));
+    }
+    Ok(Line {
+        speaker,
+        text,
+        voice: opt("voice")?,
+        expression: opt("expression")?,
+        line: x.line,
+    })
+}
+
+fn ticks_of(x: &Entry, max: u64) -> Result<u32, String> {
+    x.values
+        .first()
+        .and_then(|v| v.as_number())
+        .and_then(|v| v.as_u64().ok())
+        .filter(|t| *t <= max)
+        .map(|t| t as u32)
+        .ok_or_else(|| err(x, format!("'{}' takes ticks, 0 to {max}", x.key)))
+}
+
+fn bark(e: &Entry) -> Result<Bark, String> {
+    let mut b = Bark {
+        id: name_at(e, 0, "an id")?,
+        topic: String::new(),
+        speaker: String::new(),
+        lines: Vec::new(),
+        when: None,
+        priority: 0,
+        weight: 1.0,
+        cooldown: 600,
+        shared: 0,
+        duration: 180,
+        random: false,
+        once: false,
+        steps: Vec::new(),
+        line: e.line,
+    };
+    for x in e
+        .block
+        .as_ref()
+        .map(|b| b.entries.as_slice())
+        .unwrap_or(&[])
+    {
+        if let Some(step) = action(x)? {
+            no_block(x)?;
+            b.steps.push(step);
+            continue;
+        }
+        match x.key.as_str() {
+            "topic" => b.topic = name_at(x, 0, "a word, such as idle or alarm")?,
+            "speaker" => b.speaker = name_at(x, 0, "a speaker")?,
+            "say" => b.lines.push(line_at(x, String::new(), 0)?),
+            "when" => b.when = Some(expr_at(x, 0)?),
+            "priority" => {
+                b.priority = x
+                    .values
+                    .first()
+                    .and_then(|v| v.as_number())
+                    .and_then(|n| n.as_i64().ok())
+                    .filter(|p| (-1000..=1000).contains(p))
+                    .ok_or_else(|| err(x, "'priority' is a whole number, -1000 to 1000"))?
+                    as i32
+            }
+            "weight" => {
+                b.weight = x
+                    .values
+                    .first()
+                    .and_then(|v| v.as_number())
+                    .map(|n| n.as_f64())
+                    .filter(|w| *w > 0.0 && w.is_finite())
+                    .ok_or_else(|| err(x, "'weight' is a number above 0"))?
+            }
+            "cooldown" => b.cooldown = ticks_of(x, 1 << 30)?,
+            "shared" => b.shared = ticks_of(x, 1 << 30)?,
+            "duration" => {
+                b.duration = ticks_of(x, 1 << 30)?;
+                if b.duration == 0 {
+                    return Err(err(x, "'duration' is 1 tick or more"));
+                }
+            }
+            "order" => {
+                b.random = match name_at(x, 0, "cycle or random")?.as_str() {
+                    "cycle" => false,
+                    "random" => true,
+                    other => {
+                        return Err(err(
+                            x,
+                            format!("a bark's order is cycle or random, not '{other}'"),
+                        ));
+                    }
+                }
+            }
+            "once" => b.once = true,
+            other => {
+                return Err(err(
+                    x,
+                    format!(
+                        "'{other}' is not part of a bark: topic, speaker, say, when, priority, weight, cooldown, shared, duration, order, once, set, emit or quest"
+                    ),
+                ));
+            }
+        }
+    }
+    if b.topic.is_empty() {
+        return Err(err(e, format!("the bark '{}' needs a 'topic'", b.id)));
+    }
+    if b.lines.is_empty() {
+        return Err(err(
+            e,
+            format!("the bark '{}' needs a line: say \"<key>\"", b.id),
+        ));
+    }
+    Ok(b)
+}
+
 fn node(e: &Entry) -> Result<Node, String> {
     let id = name_at(e, 0, "an id")?;
     let mut n = Node {
@@ -553,37 +732,7 @@ fn node(e: &Entry) -> Result<Node, String> {
             continue;
         }
         let step = match x.key.as_str() {
-            "say" => {
-                let speaker = name_at(x, 0, "a speaker")?;
-                let text = text_of(x, 1)?;
-                let opt = |k: &str| -> Result<String, String> {
-                    match x.block.as_ref().and_then(|b| b.get(k)) {
-                        Some(v) => name_at(v, 0, "a value"),
-                        None => Ok(String::new()),
-                    }
-                };
-                if let Some(b) = &x.block
-                    && let Some(bad) = b
-                        .entries
-                        .iter()
-                        .find(|v| !matches!(v.key.as_str(), "arg" | "voice" | "expression"))
-                {
-                    return Err(err(
-                        bad,
-                        format!(
-                            "'{}' is not part of a line: arg, voice or expression",
-                            bad.key
-                        ),
-                    ));
-                }
-                Step::Say(Line {
-                    speaker,
-                    text,
-                    voice: opt("voice")?,
-                    expression: opt("expression")?,
-                    line: x.line,
-                })
-            }
+            "say" => Step::Say(line_at(x, name_at(x, 0, "a speaker")?, 1)?),
             "if" => Step::If(expr_at(x, 0)?, name_at(x, 1, "a node to go to")?),
             "goto" => Step::Goto(name_at(x, 0, "a node")?),
             "end" => Step::End,
@@ -709,9 +858,37 @@ fn check_expr(
     vars: &BTreeSet<&str>,
     nodes: Option<&BTreeSet<&str>>,
 ) -> Result<(), String> {
+    check_reads(x, line, vars, nodes, false)
+}
+
+/// [`check_expr`], where `world` allows world reads (`Game.alarm`,
+/// `self.Health.hp`, `event.kind`): a bark's `when` and arguments, an
+/// objective's `where`, evaluated where the world is at hand.
+fn check_reads(
+    x: &Expr,
+    line: usize,
+    vars: &BTreeSet<&str>,
+    nodes: Option<&BTreeSet<&str>>,
+    world: bool,
+) -> Result<(), String> {
     let mut vs = Vec::new();
     x.vars(&mut vs);
-    if let Some(v) = vs.iter().find(|v| !vars.contains(v.as_str())) {
+    if let Some(v) = vs.iter().find(|v| v.contains('.')) {
+        if !world {
+            return Err(format!(
+                "line {line}: '{v}' reads the world, which only a bark's when and arguments and an objective's where can: copy it into a story variable with og.story.set"
+            ));
+        }
+        if v.split('.').count() < 2 || v.ends_with('.') || v.starts_with('.') {
+            return Err(format!(
+                "line {line}: '{v}' is not a world read: write Record.field, self.Component.field or event.field"
+            ));
+        }
+    }
+    if let Some(v) = vs
+        .iter()
+        .find(|v| !v.contains('.') && !vars.contains(v.as_str()))
+    {
         return Err(format!(
             "line {line}: '{v}' is not declared: add 'var {v} <value>' (this conversation's) or 'global {v} <value>' (the story's)"
         ));
@@ -748,6 +925,7 @@ impl Dialogue {
             speakers: Vec::new(),
             vars: Vec::new(),
             nodes: Vec::new(),
+            barks: Vec::new(),
         };
         let mut start_line = 0;
         for e in &doc.body.entries {
@@ -802,6 +980,13 @@ impl Dialogue {
                     }
                     d.vars.push(v);
                 }
+                "bark" => {
+                    let b = bark(e)?;
+                    if d.bark(&b.id).is_some() {
+                        return Err(err(e, format!("the bark '{}' is declared twice", b.id)));
+                    }
+                    d.barks.push(b);
+                }
                 "node" => {
                     let n = node(e)?;
                     if d.node(&n.id).is_some() {
@@ -813,7 +998,7 @@ impl Dialogue {
                     return Err(err(
                         e,
                         format!(
-                            "'{other}' is not part of a dialogue: name, start, speaker, var, global or node"
+                            "'{other}' is not part of a dialogue: name, start, speaker, var, global, node or bark"
                         ),
                     ));
                 }
@@ -822,10 +1007,17 @@ impl Dialogue {
         if d.name.is_empty() {
             return Err("a dialogue needs a 'name'".into());
         }
-        if d.nodes.is_empty() {
-            return Err("a dialogue needs a 'node'".into());
+        if d.nodes.is_empty() && d.barks.is_empty() {
+            return Err("a dialogue needs a 'node' or a 'bark'".into());
         }
-        if d.start.is_empty() {
+        if d.nodes.is_empty() {
+            if !d.start.is_empty() {
+                return Err(format!(
+                    "line {start_line}: 'start {}' names no node",
+                    d.start
+                ));
+            }
+        } else if d.start.is_empty() {
             d.start = d.nodes[0].id.clone();
         } else if d.node(&d.start).is_none() {
             return Err(format!(
@@ -921,6 +1113,24 @@ impl Dialogue {
                 }
             }
         }
+        for b in &self.barks {
+            if !b.speaker.is_empty() && b.speaker != NARRATOR && self.speaker(&b.speaker).is_none()
+            {
+                return Err(format!(
+                    "line {}: the bark '{}' names the speaker '{}', which is not declared",
+                    b.line, b.id, b.speaker
+                ));
+            }
+            if let Some(x) = &b.when {
+                check_reads(x, b.line, &vars, Some(&nodes), true)?;
+            }
+            for l in &b.lines {
+                for (_, x) in &l.text.args {
+                    check_reads(x, l.line, &vars, Some(&nodes), true)?;
+                }
+            }
+            steps(&b.steps, &[], b.line)?;
+        }
         Ok(())
     }
 
@@ -944,6 +1154,11 @@ impl Dialogue {
                     },
                     0,
                 );
+            }
+        }
+        for b in &self.barks {
+            for l in &b.lines {
+                put(&l.text, l.line);
             }
         }
         for n in &self.nodes {
@@ -1057,6 +1272,8 @@ impl Quest {
                                     optional: false,
                                     hidden: false,
                                     marker: None,
+                                    on: None,
+                                    filter: None,
                                     line: x.line,
                                 };
                                 for y in x
@@ -1080,6 +1297,14 @@ impl Quest {
                                                 as u32
                                         }
                                         "when" => o.when = Some(expr_at(y, 0)?),
+                                        "on" => {
+                                            o.on = Some(name_at(
+                                                y,
+                                                0,
+                                                "an event's name, such as og.CollisionStarted or EnemyDied",
+                                            )?)
+                                        }
+                                        "where" => o.filter = Some(expr_at(y, 0)?),
                                         "optional" => o.optional = true,
                                         "hidden" => o.hidden = true,
                                         "marker" => {
@@ -1101,7 +1326,7 @@ impl Quest {
                                             return Err(err(
                                                 y,
                                                 format!(
-                                                    "'{other}' is not part of an objective: target, when, optional, hidden, marker or arg"
+                                                    "'{other}' is not part of an objective: target, when, on, where, optional, hidden, marker or arg"
                                                 ),
                                             ));
                                         }
@@ -1162,6 +1387,15 @@ impl Quest {
             for o in &s.objectives {
                 if let Some(x) = &o.when {
                     check_expr(x, o.line, &vars, None)?;
+                }
+                if let Some(x) = &o.filter {
+                    if o.on.is_none() {
+                        return Err(format!(
+                            "line {}: 'where' filters an 'on' event: add 'on <Event>'",
+                            o.line
+                        ));
+                    }
+                    check_reads(x, o.line, &vars, None, true)?;
                 }
                 for (_, x) in &o.text.args {
                     check_expr(x, o.line, &vars, None)?;

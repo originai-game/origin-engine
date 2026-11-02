@@ -362,6 +362,15 @@ impl RngApi for NodeHost {
 }
 
 impl StoryApi for NodeHost {
+    fn og_story_bark(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_story_bark(world, desc)
+    }
+    fn og_story_ambient(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_story_ambient(world, desc)
+    }
+    fn og_story_barks(&self, world: u32) -> String {
+        rt::og_story_barks(world)
+    }
     fn og_story_load(&self, world: u32, path: String) -> String {
         rt::og_story_load(world, path)
     }

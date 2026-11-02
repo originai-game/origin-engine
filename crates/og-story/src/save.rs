@@ -4,6 +4,7 @@
 //! equal bytes (the world hash compares them). Places are saved by id
 //! (dialogue, node, line key, quest, stage, objective), never by index.
 
+use crate::bark::{Ambient, Request, Said};
 use crate::expr::Val;
 use crate::story::{Conv, Event, QuestState, Roll, Shown, Story, Wait};
 use og_core::Rng;
@@ -11,7 +12,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 const MAGIC: &[u8; 4] = b"OGST";
 /// The saved form's version.
-pub const SAVE_VERSION: u8 = 1;
+/// 2 (G2-8 batch 2) adds each line's voice timing, barks, ambient
+/// barkers and the voices playing; version 1 is still read.
+pub const SAVE_VERSION: u8 = 2;
 
 struct W<'a>(&'a mut Vec<u8>);
 
@@ -59,6 +62,22 @@ impl W<'_> {
         self.u32(s.len() as u32);
         for k in s {
             self.str(k);
+        }
+    }
+    fn opt_u32(&mut self, v: Option<u32>) {
+        match v {
+            Some(x) => {
+                self.u8(1);
+                self.u32(x);
+            }
+            None => self.u8(0),
+        }
+    }
+    fn args(&mut self, a: &[(String, Val)]) {
+        self.u32(a.len() as u32);
+        for (k, v) in a {
+            self.str(k);
+            self.val(v);
         }
     }
     fn roll(&mut self, r: &Roll) {
@@ -136,6 +155,21 @@ impl R<'_> {
         }
         Ok(s)
     }
+    fn opt_u32(&mut self) -> Result<Option<u32>, String> {
+        Ok(if self.bool()? {
+            Some(self.u32()?)
+        } else {
+            None
+        })
+    }
+    fn args(&mut self) -> Result<Vec<(String, Val)>, String> {
+        let mut out = Vec::new();
+        for _ in 0..self.count()? {
+            let k = self.str()?;
+            out.push((k, self.val()?));
+        }
+        Ok(out)
+    }
     fn roll(&mut self) -> Result<Roll, String> {
         Ok(Roll {
             stat: self.str()?,
@@ -200,11 +234,7 @@ impl Story {
                 w.u32(s.step);
                 w.str(&s.speaker);
                 w.str(&s.key);
-                w.u32(s.args.len() as u32);
-                for (k, v) in &s.args {
-                    w.str(k);
-                    w.val(v);
-                }
+                w.args(&s.args);
                 w.str(&s.voice);
                 w.str(&s.expression);
                 w.u32(s.seq);
@@ -217,6 +247,8 @@ impl Story {
                     }
                     None => w.u8(0),
                 }
+                w.u32(s.voice_ticks);
+                w.opt_u32(s.voice_start);
             }
             match c.timer {
                 Some((l, t)) => {
@@ -288,7 +320,72 @@ impl Story {
                     w.str(name);
                     w.str(arg);
                 }
+                Event::Bark {
+                    entity,
+                    bark,
+                    key,
+                    seq,
+                } => {
+                    w.u8(5);
+                    w.u64(*entity);
+                    w.str(bark);
+                    w.str(key);
+                    w.u32(*seq);
+                }
             }
+        }
+        // Version 2: barks, ambient barkers, cooldowns and voices.
+        w.u32(self.barks.len() as u32);
+        for (e, b) in &self.barks {
+            w.u64(*e);
+            w.str(&b.dialogue);
+            w.str(&b.bark);
+            w.u32(b.line);
+            w.str(&b.key);
+            w.args(&b.args);
+            w.str(&b.speaker);
+            w.str(&b.voice);
+            w.u32(b.seq);
+            w.u32(b.start);
+            w.u32(b.until);
+            w.u32(b.priority as u32);
+            w.u32(b.voice_ticks);
+            w.opt_u32(b.voice_start);
+        }
+        w.u32(self.bark_requests.len() as u32);
+        for q in &self.bark_requests {
+            w.u64(q.entity);
+            w.str(&q.topic);
+            w.str(&q.dialogue);
+        }
+        w.u32(self.ambient.len() as u32);
+        for (e, a) in &self.ambient {
+            w.u64(*e);
+            w.str(&a.topic);
+            w.str(&a.dialogue);
+            w.u32(a.every);
+            w.u32(a.jitter);
+            w.u32(a.next);
+        }
+        for m in [&self.bark_last, &self.bark_cycle] {
+            w.u32(m.len() as u32);
+            for (k, t) in m {
+                w.str(k);
+                w.u32(*t);
+            }
+        }
+        w.u32(self.bark_last_by.len() as u32);
+        for ((k, e), t) in &self.bark_last_by {
+            w.str(k);
+            w.u64(*e);
+            w.u32(*t);
+        }
+        w.set(&self.bark_once);
+        w.u32(self.voices.len() as u32);
+        for (k, (seq, e)) in &self.voices {
+            w.str(k);
+            w.u32(*seq);
+            w.u64(*e);
         }
     }
 
@@ -299,7 +396,7 @@ impl Story {
             .ok_or("the story's saved state does not start with OGST")?;
         let mut r = R { b: rest, at: 0 };
         let v = r.u8()?;
-        if v != SAVE_VERSION {
+        if v != 1 && v != SAVE_VERSION {
             return Err(format!(
                 "the story's saved state has version {v}; this engine reads {SAVE_VERSION}"
             ));
@@ -338,11 +435,7 @@ impl Story {
                 let step = r.u32()?;
                 let speaker = r.str()?;
                 let key = r.str()?;
-                let mut args = Vec::new();
-                for _ in 0..r.count()? {
-                    let k = r.str()?;
-                    args.push((k, r.val()?));
-                }
+                let args = r.args()?;
                 let voice = r.str()?;
                 let expression = r.str()?;
                 let seq = r.u32()?;
@@ -352,6 +445,11 @@ impl Story {
                     Some((i, r.str()?))
                 } else {
                     None
+                };
+                let (voice_ticks, voice_start) = if v >= 2 {
+                    (r.u32()?, r.opt_u32()?)
+                } else {
+                    (0, None)
                 };
                 history.push(Shown {
                     node,
@@ -364,6 +462,8 @@ impl Story {
                     seq,
                     seen,
                     chosen,
+                    voice_ticks,
+                    voice_start,
                 });
             }
             let timer = if r.bool()? {
@@ -441,9 +541,77 @@ impl Story {
                     name: r.str()?,
                     arg: r.str()?,
                 },
+                5 => Event::Bark {
+                    entity: r.u64()?,
+                    bark: r.str()?,
+                    key: r.str()?,
+                    seq: r.u32()?,
+                },
                 t => return Err(format!("the story's saved state has an event of kind {t}")),
             };
             s.events.push(e);
+        }
+        if v >= 2 {
+            for _ in 0..r.count()? {
+                let e = r.u64()?;
+                let said = Said {
+                    dialogue: r.str()?,
+                    bark: r.str()?,
+                    line: r.u32()?,
+                    key: r.str()?,
+                    args: r.args()?,
+                    speaker: r.str()?,
+                    voice: r.str()?,
+                    seq: r.u32()?,
+                    start: r.u32()?,
+                    until: r.u32()?,
+                    priority: r.u32()? as i32,
+                    voice_ticks: r.u32()?,
+                    voice_start: r.opt_u32()?,
+                };
+                s.barks.insert(e, said);
+            }
+            for _ in 0..r.count()? {
+                s.bark_requests.push(Request {
+                    entity: r.u64()?,
+                    topic: r.str()?,
+                    dialogue: r.str()?,
+                });
+            }
+            for _ in 0..r.count()? {
+                let e = r.u64()?;
+                let a = Ambient {
+                    topic: r.str()?,
+                    dialogue: r.str()?,
+                    every: r.u32()?,
+                    jitter: r.u32()?,
+                    next: r.u32()?,
+                };
+                s.ambient.insert(e, a);
+            }
+            for i in 0..2 {
+                let mut m = BTreeMap::new();
+                for _ in 0..r.count()? {
+                    let k = r.str()?;
+                    m.insert(k, r.u32()?);
+                }
+                if i == 0 {
+                    s.bark_last = m;
+                } else {
+                    s.bark_cycle = m;
+                }
+            }
+            for _ in 0..r.count()? {
+                let k = r.str()?;
+                let e = r.u64()?;
+                s.bark_last_by.insert((k, e), r.u32()?);
+            }
+            s.bark_once = r.set()?;
+            for _ in 0..r.count()? {
+                let k = r.str()?;
+                let seq = r.u32()?;
+                s.voices.insert(k, (seq, r.u64()?));
+            }
         }
         if r.at != r.b.len() {
             return Err("the story's saved state has bytes past its end".into());

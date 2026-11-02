@@ -24,7 +24,7 @@ module platform {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 13166</sub>
+<sub>`api.ogt` line 13233</sub>
 
 ## Contents
 
@@ -134,7 +134,7 @@ fn storeGet {
 }
 ```
 
-<sub>`api.ogt` line 13284</sub>
+<sub>`api.ogt` line 13351</sub>
 
 <a id="fn-storeSet"></a>
 
@@ -164,7 +164,7 @@ fn storeSet {
 }
 ```
 
-<sub>`api.ogt` line 13291</sub>
+<sub>`api.ogt` line 13358</sub>
 
 <a id="fn-storeList"></a>
 
@@ -192,7 +192,7 @@ fn storeList {
 }
 ```
 
-<sub>`api.ogt` line 13298</sub>
+<sub>`api.ogt` line 13365</sub>
 
 <a id="fn-leaderboardSubmit"></a>
 
@@ -222,7 +222,7 @@ fn leaderboardSubmit {
 }
 ```
 
-<sub>`api.ogt` line 13304</sub>
+<sub>`api.ogt` line 13371</sub>
 
 <a id="fn-leaderboardTop"></a>
 
@@ -252,7 +252,7 @@ fn leaderboardTop {
 }
 ```
 
-<sub>`api.ogt` line 13311</sub>
+<sub>`api.ogt` line 13378</sub>
 
 <a id="fn-leaderboardAround"></a>
 
@@ -282,7 +282,7 @@ fn leaderboardAround {
 }
 ```
 
-<sub>`api.ogt` line 13318</sub>
+<sub>`api.ogt` line 13385</sub>
 
 <a id="fn-telemetry"></a>
 
@@ -316,7 +316,7 @@ fn telemetry {
 }
 ```
 
-<sub>`api.ogt` line 13325</sub>
+<sub>`api.ogt` line 13392</sub>
 
 <a id="fn-point"></a>
 
@@ -346,7 +346,7 @@ fn point {
 }
 ```
 
-<sub>`api.ogt` line 13335</sub>
+<sub>`api.ogt` line 13402</sub>
 
 <a id="fn-aiMark"></a>
 
@@ -376,7 +376,7 @@ fn aiMark {
 }
 ```
 
-<sub>`api.ogt` line 13342</sub>
+<sub>`api.ogt` line 13409</sub>
 
 <a id="fn-loadSettings"></a>
 
@@ -404,7 +404,7 @@ fn loadSettings {
 }
 ```
 
-<sub>`api.ogt` line 13349</sub>
+<sub>`api.ogt` line 13416</sub>
 
 <a id="fn-saveSettings"></a>
 
@@ -434,7 +434,7 @@ fn saveSettings {
 }
 ```
 
-<sub>`api.ogt` line 13355</sub>
+<sub>`api.ogt` line 13422</sub>
 
 <a id="fn-saveSlot"></a>
 
@@ -464,7 +464,7 @@ fn saveSlot {
 }
 ```
 
-<sub>`api.ogt` line 13362</sub>
+<sub>`api.ogt` line 13429</sub>
 
 <a id="fn-loadSlot"></a>
 
@@ -494,7 +494,7 @@ fn loadSlot {
 }
 ```
 
-<sub>`api.ogt` line 13369</sub>
+<sub>`api.ogt` line 13436</sub>
 
 <a id="fn-products"></a>
 
@@ -526,7 +526,7 @@ fn products {
 }
 ```
 
-<sub>`api.ogt` line 13476</sub>
+<sub>`api.ogt` line 13543</sub>
 
 <a id="fn-purchase"></a>
 
@@ -556,7 +556,7 @@ fn purchase {
 }
 ```
 
-<sub>`api.ogt` line 13485</sub>
+<sub>`api.ogt` line 13552</sub>
 
 <a id="fn-entitlements"></a>
 
@@ -584,7 +584,7 @@ fn entitlements {
 }
 ```
 
-<sub>`api.ogt` line 13492</sub>
+<sub>`api.ogt` line 13559</sub>
 
 <a id="fn-consume"></a>
 
@@ -614,7 +614,7 @@ fn consume {
 }
 ```
 
-<sub>`api.ogt` line 13498</sub>
+<sub>`api.ogt` line 13565</sub>
 
 <a id="fn-grant"></a>
 
@@ -644,7 +644,7 @@ fn grant {
 }
 ```
 
-<sub>`api.ogt` line 13505</sub>
+<sub>`api.ogt` line 13572</sub>
 
 <a id="fn-granted"></a>
 
@@ -674,7 +674,7 @@ fn granted {
 }
 ```
 
-<sub>`api.ogt` line 13512</sub>
+<sub>`api.ogt` line 13579</sub>
 
 <a id="fn-adReady"></a>
 
@@ -704,7 +704,7 @@ fn adReady {
 }
 ```
 
-<sub>`api.ogt` line 13519</sub>
+<sub>`api.ogt` line 13586</sub>
 
 <a id="fn-showAd"></a>
 
@@ -734,7 +734,7 @@ fn showAd {
 }
 ```
 
-<sub>`api.ogt` line 13526</sub>
+<sub>`api.ogt` line 13593</sub>
 
 <a id="fn-achievementUnlock"></a>
 
@@ -764,7 +764,7 @@ fn achievementUnlock {
 }
 ```
 
-<sub>`api.ogt` line 13533</sub>
+<sub>`api.ogt` line 13600</sub>
 
 <a id="fn-achievementProgress"></a>
 
@@ -794,7 +794,7 @@ fn achievementProgress {
 }
 ```
 
-<sub>`api.ogt` line 13540</sub>
+<sub>`api.ogt` line 13607</sub>
 
 <a id="fn-achievements"></a>
 
@@ -822,7 +822,7 @@ fn achievements {
 }
 ```
 
-<sub>`api.ogt` line 13547</sub>
+<sub>`api.ogt` line 13614</sub>
 
 <a id="fn-player"></a>
 
@@ -850,7 +850,7 @@ fn player {
 }
 ```
 
-<sub>`api.ogt` line 13553</sub>
+<sub>`api.ogt` line 13620</sub>
 
 <a id="fn-friends"></a>
 
@@ -882,7 +882,7 @@ fn friends {
 }
 ```
 
-<sub>`api.ogt` line 13559</sub>
+<sub>`api.ogt` line 13626</sub>
 
 <a id="fn-inviteSend"></a>
 
@@ -914,7 +914,7 @@ fn inviteSend {
 }
 ```
 
-<sub>`api.ogt` line 13568</sub>
+<sub>`api.ogt` line 13635</sub>
 
 <a id="fn-invites"></a>
 
@@ -942,7 +942,7 @@ fn invites {
 }
 ```
 
-<sub>`api.ogt` line 13577</sub>
+<sub>`api.ogt` line 13644</sub>
 
 <a id="fn-share"></a>
 
@@ -972,7 +972,7 @@ fn share {
 }
 ```
 
-<sub>`api.ogt` line 13583</sub>
+<sub>`api.ogt` line 13650</sub>
 
 <a id="fn-supports"></a>
 
@@ -1002,7 +1002,7 @@ fn supports {
 }
 ```
 
-<sub>`api.ogt` line 13590</sub>
+<sub>`api.ogt` line 13657</sub>
 
 <a id="fn-notice"></a>
 
@@ -1032,7 +1032,7 @@ fn notice {
 }
 ```
 
-<sub>`api.ogt` line 13597</sub>
+<sub>`api.ogt` line 13664</sub>
 
 <a id="fn-result"></a>
 
@@ -1062,7 +1062,7 @@ fn result {
 }
 ```
 
-<sub>`api.ogt` line 13604</sub>
+<sub>`api.ogt` line 13671</sub>
 
 <a id="fn-info"></a>
 
@@ -1090,7 +1090,7 @@ fn info {
 }
 ```
 
-<sub>`api.ogt` line 13611</sub>
+<sub>`api.ogt` line 13678</sub>
 
 <a id="fn-now"></a>
 
@@ -1118,7 +1118,7 @@ fn now {
 }
 ```
 
-<sub>`api.ogt` line 13617</sub>
+<sub>`api.ogt` line 13684</sub>
 
 <a id="fn-roomCreate"></a>
 
@@ -1150,7 +1150,7 @@ fn roomCreate {
 }
 ```
 
-<sub>`api.ogt` line 13690</sub>
+<sub>`api.ogt` line 13757</sub>
 
 <a id="fn-roomJoin"></a>
 
@@ -1180,7 +1180,7 @@ fn roomJoin {
 }
 ```
 
-<sub>`api.ogt` line 13699</sub>
+<sub>`api.ogt` line 13766</sub>
 
 <a id="fn-roomLeave"></a>
 
@@ -1208,7 +1208,7 @@ fn roomLeave {
 }
 ```
 
-<sub>`api.ogt` line 13706</sub>
+<sub>`api.ogt` line 13773</sub>
 
 <a id="fn-roomSend"></a>
 
@@ -1242,7 +1242,7 @@ fn roomSend {
 }
 ```
 
-<sub>`api.ogt` line 13712</sub>
+<sub>`api.ogt` line 13779</sub>
 
 <a id="fn-roomPeers"></a>
 
@@ -1270,7 +1270,7 @@ fn roomPeers {
 }
 ```
 
-<sub>`api.ogt` line 13722</sub>
+<sub>`api.ogt` line 13789</sub>
 
 <a id="fn-roomInfo"></a>
 
@@ -1298,7 +1298,7 @@ fn roomInfo {
 }
 ```
 
-<sub>`api.ogt` line 13728</sub>
+<sub>`api.ogt` line 13795</sub>
 
 <a id="fn-roomMessage"></a>
 
@@ -1328,7 +1328,7 @@ fn roomMessage {
 }
 ```
 
-<sub>`api.ogt` line 13734</sub>
+<sub>`api.ogt` line 13801</sub>
 
 ## Components, resources and events
 
@@ -1353,7 +1353,7 @@ event PlatformAnswered {
 }
 ```
 
-<sub>`api.ogt` line 13181</sub>
+<sub>`api.ogt` line 13248</sub>
 
 <a id="record-PlatformNotice"></a>
 
@@ -1376,7 +1376,7 @@ event PlatformNotice {
 }
 ```
 
-<sub>`api.ogt` line 13391</sub>
+<sub>`api.ogt` line 13458</sub>
 
 <a id="record-PlatformGrants"></a>
 
@@ -1397,7 +1397,7 @@ resource PlatformGrants {
 }
 ```
 
-<sub>`api.ogt` line 13397</sub>
+<sub>`api.ogt` line 13464</sub>
 
 <a id="record-RoomJoined"></a>
 
@@ -1426,7 +1426,7 @@ event RoomJoined {
 }
 ```
 
-<sub>`api.ogt` line 13662</sub>
+<sub>`api.ogt` line 13729</sub>
 
 <a id="record-RoomPeerJoined"></a>
 
@@ -1449,7 +1449,7 @@ event RoomPeerJoined {
 }
 ```
 
-<sub>`api.ogt` line 13671</sub>
+<sub>`api.ogt` line 13738</sub>
 
 <a id="record-RoomPeerLeft"></a>
 
@@ -1472,7 +1472,7 @@ event RoomPeerLeft {
 }
 ```
 
-<sub>`api.ogt` line 13677</sub>
+<sub>`api.ogt` line 13744</sub>
 
 <a id="record-RoomMessage"></a>
 
@@ -1497,7 +1497,7 @@ event RoomMessage {
 }
 ```
 
-<sub>`api.ogt` line 13683</sub>
+<sub>`api.ogt` line 13750</sub>
 
 ## Types
 
@@ -1522,7 +1522,7 @@ enum PlatformOrder {
 }
 ```
 
-<sub>`api.ogt` line 13175</sub>
+<sub>`api.ogt` line 13242</sub>
 
 <a id="type-StoreSetDesc"></a>
 
@@ -1550,7 +1550,7 @@ struct StoreSetDesc {
 }
 ```
 
-<sub>`api.ogt` line 13187</sub>
+<sub>`api.ogt` line 13254</sub>
 
 <a id="type-LeaderboardSubmitDesc"></a>
 
@@ -1578,7 +1578,7 @@ struct LeaderboardSubmitDesc {
 }
 ```
 
-<sub>`api.ogt` line 13196</sub>
+<sub>`api.ogt` line 13263</sub>
 
 <a id="type-LeaderboardQueryDesc"></a>
 
@@ -1608,7 +1608,7 @@ struct LeaderboardQueryDesc {
 }
 ```
 
-<sub>`api.ogt` line 13206</sub>
+<sub>`api.ogt` line 13273</sub>
 
 <a id="type-PointDesc"></a>
 
@@ -1636,7 +1636,7 @@ struct PointDesc {
 }
 ```
 
-<sub>`api.ogt` line 13219</sub>
+<sub>`api.ogt` line 13286</sub>
 
 <a id="type-AiMarkDesc"></a>
 
@@ -1662,7 +1662,7 @@ struct AiMarkDesc {
 }
 ```
 
-<sub>`api.ogt` line 13230</sub>
+<sub>`api.ogt` line 13297</sub>
 
 <a id="type-SaveSlotDesc"></a>
 
@@ -1688,7 +1688,7 @@ struct SaveSlotDesc {
 }
 ```
 
-<sub>`api.ogt` line 13238</sub>
+<sub>`api.ogt` line 13305</sub>
 
 <a id="type-LoadSlotDesc"></a>
 
@@ -1712,7 +1712,7 @@ struct LoadSlotDesc {
 }
 ```
 
-<sub>`api.ogt` line 13246</sub>
+<sub>`api.ogt` line 13313</sub>
 
 <a id="type-PlatformError"></a>
 
@@ -1737,7 +1737,7 @@ struct PlatformError {
 }
 ```
 
-<sub>`api.ogt` line 13253</sub>
+<sub>`api.ogt` line 13320</sub>
 
 <a id="type-PlatformResult"></a>
 
@@ -1772,7 +1772,7 @@ struct PlatformResult {
 }
 ```
 
-<sub>`api.ogt` line 13261</sub>
+<sub>`api.ogt` line 13328</sub>
 
 <a id="type-PlatformInfo"></a>
 
@@ -1797,7 +1797,7 @@ struct PlatformInfo {
 }
 ```
 
-<sub>`api.ogt` line 13276</sub>
+<sub>`api.ogt` line 13343</sub>
 
 <a id="type-AdKind"></a>
 
@@ -1820,7 +1820,7 @@ enum AdKind {
 }
 ```
 
-<sub>`api.ogt` line 13378</sub>
+<sub>`api.ogt` line 13445</sub>
 
 <a id="type-PlatformNoticeKind"></a>
 
@@ -1845,7 +1845,7 @@ enum PlatformNoticeKind {
 }
 ```
 
-<sub>`api.ogt` line 13384</sub>
+<sub>`api.ogt` line 13451</sub>
 
 <a id="type-PlatformNoticeData"></a>
 
@@ -1874,7 +1874,7 @@ struct PlatformNoticeData {
 }
 ```
 
-<sub>`api.ogt` line 13402</sub>
+<sub>`api.ogt` line 13469</sub>
 
 <a id="type-ProductsDesc"></a>
 
@@ -1896,7 +1896,7 @@ struct ProductsDesc {
 }
 ```
 
-<sub>`api.ogt` line 13413</sub>
+<sub>`api.ogt` line 13480</sub>
 
 <a id="type-PurchaseDesc"></a>
 
@@ -1924,7 +1924,7 @@ struct PurchaseDesc {
 }
 ```
 
-<sub>`api.ogt` line 13419</sub>
+<sub>`api.ogt` line 13486</sub>
 
 <a id="type-AdDesc"></a>
 
@@ -1950,7 +1950,7 @@ struct AdDesc {
 }
 ```
 
-<sub>`api.ogt` line 13430</sub>
+<sub>`api.ogt` line 13497</sub>
 
 <a id="type-AchievementProgressDesc"></a>
 
@@ -1977,7 +1977,7 @@ struct AchievementProgressDesc {
 }
 ```
 
-<sub>`api.ogt` line 13439</sub>
+<sub>`api.ogt` line 13506</sub>
 
 <a id="type-FriendsDesc"></a>
 
@@ -2003,7 +2003,7 @@ struct FriendsDesc {
 }
 ```
 
-<sub>`api.ogt` line 13449</sub>
+<sub>`api.ogt` line 13516</sub>
 
 <a id="type-InviteDesc"></a>
 
@@ -2029,7 +2029,7 @@ struct InviteDesc {
 }
 ```
 
-<sub>`api.ogt` line 13459</sub>
+<sub>`api.ogt` line 13526</sub>
 
 <a id="type-ShareDesc"></a>
 
@@ -2057,7 +2057,7 @@ struct ShareDesc {
 }
 ```
 
-<sub>`api.ogt` line 13467</sub>
+<sub>`api.ogt` line 13534</sub>
 
 <a id="type-RoomDesc"></a>
 
@@ -2085,7 +2085,7 @@ struct RoomDesc {
 }
 ```
 
-<sub>`api.ogt` line 13625</sub>
+<sub>`api.ogt` line 13692</sub>
 
 <a id="type-RoomPeer"></a>
 
@@ -2108,7 +2108,7 @@ struct RoomPeer {
 }
 ```
 
-<sub>`api.ogt` line 13636</sub>
+<sub>`api.ogt` line 13703</sub>
 
 <a id="type-RoomInfo"></a>
 
@@ -2137,7 +2137,7 @@ struct RoomInfo {
 }
 ```
 
-<sub>`api.ogt` line 13643</sub>
+<sub>`api.ogt` line 13710</sub>
 
 <a id="type-RoomMessageData"></a>
 
@@ -2164,4 +2164,4 @@ struct RoomMessageData {
 }
 ```
 
-<sub>`api.ogt` line 13653</sub>
+<sub>`api.ogt` line 13720</sub>

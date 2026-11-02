@@ -270,6 +270,15 @@ pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine: u32) {
         move |_world, args| super::modules::set_cover(engine, args),
     );
     let _ = probe.register_dump(
+        "dump_story",
+        og_probe::CommandDesc {
+            usage: "dump_story[:path]".into(),
+            doc: "og.story's whole state: variables, seen nodes, every conversation's node, line, voice, timer and last roll, quests with their counts and the events they count, barks being said, ambient barkers, bark cooldowns, voices playing and the story's random stream".into(),
+        },
+        0,
+        move |_world, _args| Ok(super::story::dump(engine)),
+    );
+    let _ = probe.register_dump(
         "dump_platform",
         og_probe::CommandDesc {
             usage: "dump_platform[:path]".into(),

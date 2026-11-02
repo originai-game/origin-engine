@@ -1,6 +1,6 @@
 ---
 name: og-story
-description: Dialogue and quests on Origin Engine with og.story — dialogue graphs and quests as .ogt data (speakers, lines as og.i18n keys, choices with conditions, reasons and d20 checks, variables, weighted picks, timers; quest stages, objectives, rewards), a dialogue box and quest log fed by og.story.view and og.story.quests, and saves that survive edits. Use when a game has talking characters, branching conversations, a visual novel, quests or a quest log.
+description: Dialogue, barks and quests on Origin Engine with og.story — dialogue graphs and quests as .ogt data (speakers, lines as og.i18n keys, choices with conditions, reasons and d20 checks, variables, weighted picks, timers; quest stages, objectives, rewards), barks (ambient lines with world conditions, priority and cooldowns), voice-over, quest objectives counted from events, a dialogue box and quest log fed by og.story.view and og.story.quests, og i18n extract for the keys, and saves that survive edits. Use when a game has talking characters, NPC barks, branching conversations, a visual novel, quests or a quest log.
 ---
 
 A conversation on Origin Engine is data, not code: a dialogue in
@@ -152,13 +152,61 @@ og.story.advance(world, conv.value);       // or og.story.choose(world, conv.val
 HUD tracker, `og.story.markSeen` when the player opens it, and
 `og.story.mark` to point the map at an entity.
 
-## 4. Saves and determinism
+## 4. Barks, voice and event objectives
+
+A bark is a line an entity says on its own, outside a conversation: an
+idle mutter, a hurt cry, an alarm. It lives in a dialogue (a dialogue may
+hold only barks):
+
+```text
+bark hurt {
+  topic idle                       # what og.story.bark asks for
+  speaker guard
+  when "self.Health.hp < 30"       # may read the world: self.Component.field, Record.field
+  priority 5                       # higher wins; only higher interrupts one being said
+  say "guard.hurt" {
+    arg hp "self.Health.hp"
+  }
+  cooldown 60                      # per entity, ticks (default 600); `shared 300` across entities
+  duration 30                      # ticks it shows (default 180); `once`, `weight 2`, `order random`
+}
+```
+
+```ts
+og.story.bark(world, { entity: guard, topic: "idle" });                  // one, now
+og.story.ambient(world, { entity: guard, topic: "idle", every: 600, jitter: 300 }); // every so often
+for (const b of og.story.barks(world)) drawBubble(b.entity, b.text);     // each frame
+```
+
+- og.BarkSaid arrives with each new bark; `seq` tells a new one apart.
+- A world read names its record (`Health.hp`); og.story is granted it when
+  the dialogue loads, so load stories in setup, outside a system.
+- `voice "vo/guard_halt.wav"` inside a `say` block plays the clip through
+  og.audio when the line shows (its own entity with an og.AudioSource,
+  despawned when the line moves on); the view's `voiceLeft` counts the
+  ticks to its end, for auto-advance and the backlog's replay.
+- An objective counts an og event with no game code: `on og.StoryEvent`
+  (or og.BarkSaid, og.CollisionStarted, ...) and an optional
+  `where "event.name == 'halted'"`.
+
+## 5. Strings and debugging
+
+- `og i18n extract` lists every key the dialogues and quests show, with
+  their arguments and lines, and per locale the keys its table lacks;
+  `--check` exits 1 on a gap (run it before a release), `--write` adds the
+  missing keys to the base table for a writer to fill in.
+- `og run --commands "1:dump_story:story.json"` (or the probe) writes the
+  whole story: variables, conversations and their lines and voices,
+  quests with the events they count, barks, cooldowns and the stream.
+
+## 6. Saves and determinism
 
 The story is world state: saves, restores and the world hash carry it,
 by ids (dialogue, node, line key, quest, stage, objective). Any edit that
 keeps those ids is safe for old saves. Renaming the node, stage or
 objective a save stands on is the one breaking edit: og.story logs a
 warning naming the id and falls back (a conversation to its dialogue's
-`start`, a quest to its first stage). `pick` and active checks draw from
-og.Rng's fork "story", and timers count ticks, so a seed replays the same
-conversation on every host.
+`start`, a quest to its first stage). `pick`, active checks, a bark's
+weighted choice and random lines and an ambient barker's jitter draw from
+og.Rng's fork "story", and timers, cooldowns and voices count ticks, so
+a seed replays the same conversation and barks on every host.

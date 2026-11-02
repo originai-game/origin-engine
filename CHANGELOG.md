@@ -44,6 +44,21 @@ is one line here, written at the merge that changes
   and the events `og.DialogueShown`, `og.DialogueEnded`,
   `og.DialogueCheck`, `og.QuestUpdated` and `og.StoryEvent` are lazy, so a
   world without a story keeps its hash. Knowledge: skill `og-story`.
+- **og.story completed: barks, voice-over, event objectives (G2-8,
+  batch 2).** A dialogue's `bark` blocks are ambient lines an entity says
+  on its own: a topic, lines in cycle or random order, a `when` that may
+  read the world (`Record.field`, `self.Component.field`), priority,
+  weight, per-entity and shared cooldowns, `once`. `og.story.bark` asks
+  for one, `og.story.ambient` asks every so often (its jitter drawn on the
+  story's stream), `og.story.barks` lists those being said and
+  `og.BarkSaid` (lazy) announces each. A line's `voice` clip plays through
+  og.audio on its own entity, and `DialogueView.voiceLeft` says when it
+  ends. A quest objective with `on <Event>` (and `where` over
+  `event.<field>`) counts that og event with no game code. `dump_story`
+  writes the whole story. `og i18n extract` lists the keys the dialogues
+  and quests show and, per locale, the keys a table lacks; `--check` exits
+  1 on a gap and `--write` adds the missing keys to the base table. The
+  `og.story` state block saves as version 2 (version 1 still loads).
 - **Formatting and time groups (G2-6, batch 3).** `og.i18n` formats
   compact numbers, currencies, dates, times and durations
   (`formatCompact`, `formatCurrency`, `formatDate`, `formatTime`,
