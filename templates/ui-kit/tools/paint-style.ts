@@ -145,7 +145,7 @@ export function solidify(file: string, colour: string, flat?: number): void {
     "(", "+clone", "-alpha", "extract", "-threshold", "50%",
     "-fill", "gray50", "-draw", "color 0,0 floodfill",
     "-fill", "white", "-opaque", "black", "-fill", "black", "-opaque", "gray50", ")",
-    "(", "-clone", "0", "-fill", colour, "-colorize", "100", "-alpha", "off", "-clone", "1", "-compose", "copy_opacity", "-composite", ")",
+    "(", "-clone", "0", "-fill", colour, "-colorize", "100", "-alpha", "off", "-clone", "1", "-alpha", "off", "-compose", "copy_opacity", "-composite", ")",
     "-delete", "1", "+swap", "-compose", "over", "-composite",
     "-shave", "2x2", "-define", "png:compression-level=9", file,
   ]);
@@ -155,8 +155,24 @@ export function solidify(file: string, colour: string, flat?: number): void {
   execFileSync("magick", [file, "-fill", colour, "-draw", `rectangle ${x0},${y0} ${w! - 1 - x0},${h! - 1 - y0}`, "-define", "png:compression-level=9", file]);
 }
 
-/** What paint() does to a source after it arrives: trimmed and shrunk, made solid where the slot says. */
+/**
+ * A source painted on an opaque ground (the image model sometimes ignores the
+ * transparent background for a light frame): when all four corners are
+ * opaque, the ground is flood-filled clear from each corner, within a small
+ * fuzz, up to the art's outline.
+ */
+export function clearGround(file: string): void {
+  const [w, h] = execFileSync("magick", ["identify", "-format", "%w %h", file], { encoding: "utf8" }).split(" ").map(Number);
+  const corners = [[0, 0], [w! - 1, 0], [0, h! - 1], [w! - 1, h! - 1]];
+  const alpha = corners.map(([x, y]) => Number(execFileSync("magick", [file, "-format", `%[fx:p{${x},${y}}.a]`, "info:"], { encoding: "utf8" })));
+  if (alpha.some((a) => a < 0.5)) return;
+  execFileSync("magick", [file, "-alpha", "set", "-fuzz", "20%", "-fill", "none", ...corners.flatMap(([x, y]) => ["-draw", `color ${x},${y} floodfill`]), file]);
+  console.log(`${file}: its opaque ground cleared from the corners`);
+}
+
+/** What paint() does to a source after it arrives: its ground cleared, trimmed and shrunk, made solid where the slot says. */
 function finish(file: string, s: Slot): void {
+  clearGround(file);
   shrink(file, s);
   if (s.opaque) solidify(file, s.opaque, s.flat);
 }
