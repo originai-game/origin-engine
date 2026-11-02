@@ -859,7 +859,8 @@ approved image and the genre sheets that extend the set.
 genre's HUD, a menu or shop, settings) in
 `tests/evidence/ui-art/concepts/packs/`, read like the table above; the
 README's coverage matrix gives each genre a primary and secondary seed and
-names the packs proposed for the gaps (wasteland, foundry, midcore, jade).
+names the four packs approved for the gaps (wasteland, foundry, midcore,
+jade), which follow batch 3.
 
 | Pack | HUD | Menu or shop | Settings |
 | --- | --- | --- | --- |
@@ -870,6 +871,12 @@ names the packs proposed for the gaps (wasteland, foundry, midcore, jade).
 | tactical | `packs/tactical-hud` | `packs/tactical-menu` | `packs/tactical-settings` |
 | pixel | `packs/pixel-hud` | `packs/pixel-menu` | `packs/pixel-settings` |
 | broadcast | `packs/broadcast-hud` | `packs/broadcast-menu` | `packs/broadcast-settings` |
+| gilded | `packs/gilded-hud` | `packs/gilded-menu` | `packs/gilded-settings` |
+| neon | `packs/neon-hud` | `packs/neon-menu` | `packs/neon-settings` |
+| bubbly | `packs/bubbly-hud` | `packs/bubbly-menu` | `packs/bubbly-settings` |
+| dread | `packs/dread-hud` | `packs/dread-menu` | `packs/dread-settings` |
+| craft | `packs/craft-hud` | `packs/craft-menu` | `packs/craft-settings` |
+| inkwash | `packs/inkwash-hud` | `packs/inkwash-menu` | `packs/inkwash-settings` |
 
 The checklist:
 

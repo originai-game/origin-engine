@@ -131,7 +131,13 @@ well and the new pack proposed for each.
 | Kids and education |  |  | **P** | S |  |  |  |  |  |  |  |  |  |  |  |  |  | S |  |  |
 | Wuxia and xianxia |  |  |  |  |  |  |  |  | S |  | **P** |  |  |  |  |  |  |  |  | **jade**: inkwash is restrained monochrome ink; xianxia wants carved jade and gold ornament |
 
-### New packs for the gaps (proposals, one sample each in `proposals/`)
+### New packs for the gaps (approved, one sample each in `proposals/`)
+
+Approved by the coordinator under the owner's "cover the styles as
+completely as possible" (2026-11-02). Each becomes a pack after batch 3,
+with a sheet of its own, and is the primary seed of: `wasteland` survival
+and extraction, `foundry` city builders, factory and 4X, `midcore` mobile
+midcore and auto-battlers, `jade` xianxia.
 
 | Proposal | For | Why no pack carries it | Sample |
 | --- | --- | --- | --- |
@@ -155,3 +161,9 @@ cartoon, tactical, pixel, broadcast, then the rest by genre reach.
 | 1 | tactical | `packs/tactical-hud` (shooter) | `packs/tactical-menu` (loadout) | `packs/tactical-settings` | sent for veto |
 | 1 | pixel | `packs/pixel-hud` (ability bar) | `packs/pixel-menu` (main menu) | `packs/pixel-settings` | sent for veto |
 | 1 | broadcast | `packs/broadcast-hud` (football) | `packs/broadcast-menu` (full time) | `packs/broadcast-settings` | sent for veto |
+| 2 | gilded | `packs/gilded-hud` (card combat) | `packs/gilded-menu` (collection and deck) | `packs/gilded-settings` | sent for veto |
+| 2 | neon | `packs/neon-hud` (racing) | `packs/neon-menu` (song select) | `packs/neon-settings` | sent for veto |
+| 2 | bubbly | `packs/bubbly-hud` (party) | `packs/bubbly-menu` (store) | `packs/bubbly-settings` | sent for veto |
+| 2 | dread | `packs/dread-hud` (survival horror) | `packs/dread-menu` (main menu) | `packs/dread-settings` | sent for veto |
+| 2 | craft | `packs/craft-hud` (farming) | `packs/craft-menu` (crafting) | `packs/craft-settings` | sent for veto |
+| 2 | inkwash | `packs/inkwash-hud` (wuxia) | `packs/inkwash-menu` (main menu) | `packs/inkwash-settings` | sent for veto |
