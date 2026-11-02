@@ -97,19 +97,31 @@ pub(crate) fn span_width(s: &RichSpan, text: &str, fonts: &dyn Metrics) -> f32 {
         return s.step.size * 1.1;
     }
     let m = fonts.metrics_for(s.font, text);
-    m.measure_tracked(
-        text,
-        s.step.size,
-        crate::layout::step_tracking(&s.step, text),
-    ) + bold_overhang(s, text)
+    m.measure_tracked(text, s.step.size, span_tracking(s, text)) + bold_overhang(s, text)
+}
+
+/// A span's tracking (em): its step's, and for a bold run the room its
+/// thickened ink takes ([`bold_weight`] on both sides of every glyph and
+/// the second copy, at most 1 px to the right), so a bold word keeps the
+/// regular word's gaps between its letters instead of closing them up. A
+/// shaped run takes none (its joins would break), and keeps
+/// [`bold_overhang`] after it instead.
+fn span_tracking(s: &RichSpan, text: &str) -> f32 {
+    let step = crate::layout::step_tracking(&s.step, text);
+    if s.bold && !text.chars().any(og_i18n::needs_shaping) {
+        step + (2.0 * bold_weight(s.step.size) + 1.0) / s.step.size
+    } else {
+        step
+    }
 }
 
 /// How far a bold span's ink reaches past its advance (CSS px): the
 /// shader's thickening ([`bold_weight`]) and the second copy, one device
-/// pixel to the right (at most 1 px). Reserved after each bold word, so
-/// the space after it does not close up.
+/// pixel to the right (at most 1 px). Reserved after a shaped bold run,
+/// which takes no tracking ([`span_tracking`]), so the space after it does
+/// not close up.
 fn bold_overhang(s: &RichSpan, text: &str) -> f32 {
-    if s.bold && !text.trim().is_empty() {
+    if s.bold && !text.trim().is_empty() && text.chars().any(og_i18n::needs_shaping) {
         bold_weight(s.step.size) + 1.0
     } else {
         0.0
@@ -388,7 +400,7 @@ fn visual_segments(
             }
             let piece_text = &text[r.clone()];
             let m = fonts.metrics_for(s.font, piece_text);
-            let tracking = crate::layout::step_tracking(&s.step, piece_text);
+            let tracking = span_tracking(s, piece_text);
             let needs = rtl || crate::text::needs_visual(piece_text) || m.is_mixed();
             if !needs {
                 out.push(Segment {
@@ -700,7 +712,7 @@ impl Ui {
             let Some(handle) = font.handle else { continue };
             let mixed = font.metrics.is_mixed();
             let m = &font.metrics;
-            let tracking = crate::layout::step_tracking(&s.step, &text);
+            let tracking = span_tracking(s, &text);
             // Bold: thickened in the shader (as far as the field reaches)
             // and drawn twice, the second copy one device pixel to the
             // right, so small text whose field is thin is bold too.

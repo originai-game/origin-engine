@@ -410,33 +410,35 @@ fn runs_of_either_direction_reorder_inside_one_span() {
 
 #[test]
 fn a_bold_span_keeps_room_for_its_thickened_ink() {
-    // Bold is thickened in the shader and drawn twice, one device pixel
-    // apart: its ink reaches past its advance, so the text after it must
-    // start that much later or the space between them closes up.
+    // Bold is thickened in the shader on both sides of every glyph and
+    // drawn twice, one device pixel apart: a bold word's letters must be
+    // spaced that much further apart or they run into each other, and the
+    // text after it must start that much later.
     let mut ui = rich_ui();
     let gap = |ui: &mut Ui, markup: &str| {
         for _ in 0..2 {
             step(ui, InputFrame::default(), markup, Size::Fixed(400.0));
         }
         let t = texts(ui);
-        let six = t
+        let word = t
             .iter()
-            .filter(|t| t.0 == "6")
+            .filter(|t| t.0 == "bolts")
             .map(|t| t.1)
             .fold(f32::MAX, f32::min);
-        let weight = t.iter().find(|t| t.0 == "6").map_or(0.0, |t| t.5);
+        let weight = t.iter().find(|t| t.0 == "bolts").map_or(0.0, |t| t.5);
         let after = t
             .iter()
             .find(|t| t.0.starts_with(' '))
             .expect("the text after")
             .1;
-        (after - six, weight)
+        (after - word, weight)
     };
-    let (plain, _) = gap(&mut ui, "Deal [color=danger]6[/color] damage.");
-    let (bold, weight) = gap(&mut ui, "Deal [b]6[/b] damage.");
+    let (plain, _) = gap(&mut ui, "Call [color=danger]bolts[/color] down.");
+    let (bold, weight) = gap(&mut ui, "Call [b]bolts[/b] down.");
     assert!(weight > 0.0, "the bold span is thickened");
+    let room = 5.0 * (2.0 * weight + 1.0);
     assert!(
-        bold >= plain + weight + 1.0 - 1e-3,
-        "a bold span reserves its overhang: {bold} against {plain} + {weight} + 1"
+        bold >= plain + room - 1.0, // x is snapped to the pixel
+        "every bold glyph keeps room for its ink: {bold} against {plain} + {room}"
     );
 }
