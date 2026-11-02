@@ -1363,3 +1363,43 @@ test("versus: both sides named in one region; confirm skips only once the sides 
   key(engine, "Enter");
   expect(results.filter((r) => r.skipped).length).toBeGreaterThan(0);
 });
+
+// ── draft and ban ───────────────────────────────────────────────────────
+
+test("draft: a banned or picked character is refused; in the local turn a press hovers and the action locks the hovered one in", () => {
+  // Wrong: a banned character hoverable, the action live outside the local turn, or the action locking something other than the hover.
+  const results: Api.DraftResult[] = [];
+  const st = { hovered: "", yourTurn: false };
+  const engine = run(() => {
+    og.ui.column("Box", { width: { kind: "fixed", px: 1232 }, height: { kind: "fixed", px: 672 } }, () => {
+      const r = og.ui.draft("Draft", {
+        teams: [
+          { name: "Blue", team: 0, bans: ["vell"], picks: [{ player: "You", you: true, active: st.yourTurn, entry: st.hovered }, { player: "Kael" }] },
+          { name: "Red", team: 1, bans: [""], picks: [{ player: "Nyx", entry: "mira", locked: true }, { player: "Zed" }] },
+        ],
+        roster: ROSTER.map((e) => ({ ...e, taken: false, locked: false })),
+        phase: "pick",
+        phaseLabel: "Pick",
+        secondsLeft: 20,
+        yourTurn: st.yourTurn,
+        hovered: st.hovered,
+      });
+      results.push(r);
+      if (r.hovered) st.hovered = r.hovered;
+    });
+  });
+  const tile = (k: string) => elements(engine).find((e) => e.path.endsWith(`/${k}`) && e.path.includes("/Roster/"))!;
+  tapOn(engine, tile("aria"));
+  expect(results.some((r) => r.hovered)).toBeFalse();
+  expect(byPath(engine, "Foot/Action/Label")!.text).toBe("Waiting");
+  st.yourTurn = true;
+  engine.advance(2);
+  tapOn(engine, tile("vell"));
+  tapOn(engine, tile("mira"));
+  expect(results.filter((r) => r.refused).map((r) => r.refused)).toEqual(["vell", "mira"]);
+  tapOn(engine, tile("aria"));
+  expect(st.hovered).toBe("aria");
+  expect(byPath(engine, "Start/Picks/Slot#0/Words/Character")!.text).toBe("Aria");
+  tapOn(engine, byPath(engine, "Foot/Action")!);
+  expect(results.filter((r) => r.locked).map((r) => r.locked)).toEqual(["aria"]);
+});

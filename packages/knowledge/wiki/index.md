@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2339 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2344 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -458,6 +458,10 @@ Field units the docs and Tune use.
 | [`DofQuality()`](render.md#column-DofQuality) | column kind | render | — |
 | [`DpadDesc`](ui.md#type-DpadDesc) | desc struct | ui | — |
 | [`DpadResult`](ui.md#type-DpadResult) | struct | ui | — |
+| [`DraftDesc`](ui.md#type-DraftDesc) | desc struct | ui | — |
+| [`DraftResult`](ui.md#type-DraftResult) | struct | ui | — |
+| [`DraftSlot`](ui.md#type-DraftSlot) | desc struct | ui | — |
+| [`DraftTeam`](ui.md#type-DraftTeam) | desc struct | ui | — |
 | [`DragAxis`](ui.md#type-DragAxis) | enum | ui | — |
 | [`DragSelectDesc`](ui.md#type-DragSelectDesc) | desc struct | ui | — |
 | [`DragSelectResult`](ui.md#type-DragSelectResult) | struct | ui | — |
@@ -1470,6 +1474,7 @@ Field units the docs and Tune use.
 | [`og.ui.docEvents`](ui.md#fn-docEvents) | function | ui | `og_ui_doc_events` |
 | [`og.ui.documentSchema`](ui.md#fn-documentSchema) | function | ui | `og_ui_document_schema` |
 | [`og.ui.dpad`](ui.md#fn-dpad) | function | ui | `og_ui_dpad` |
+| [`og.ui.draft`](ui.md#fn-draft) | function | ui | — |
 | [`og.ui.dragging`](ui.md#fn-dragging) | function | ui | `og_ui_dragging` |
 | [`og.ui.dragSelect`](ui.md#fn-dragSelect) | function | ui | — |
 | [`og.ui.dropdown`](ui.md#fn-dropdown) | function | ui | — |

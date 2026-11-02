@@ -33655,7 +33655,7 @@ export interface LobbyResult {
  */
 export interface RosterEntry {
   /**
-   * Its key: its tile's element id, so its probe path is <id>/Roster/<key>.
+   * Its key: its tile's element id, so its probe path is <id>/Stage/Roster/Row#<r>/<key>.
    *
    * @default ""
    */
@@ -33921,6 +33921,193 @@ export interface VersusDesc {
 export interface VersusResult {
   /** Confirm, Back or a press asked to go on. */
   readonly skipped: boolean;
+}
+
+
+/**
+ * One pick of a team in a draft.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DraftSlot {
+  /**
+   * The player's name.
+   *
+   * @default ""
+   */
+  readonly player?: string;
+  /**
+   * The roster key picked or hovered (empty: none yet).
+   *
+   * @default ""
+   */
+  readonly entry?: string;
+  /**
+   * The pick is locked in: the slot shows the character whole; else a hover shows it dimmed.
+   *
+   * @default false
+   */
+  readonly locked?: boolean;
+  /**
+   * This slot picks now: lit, with the timer's light along it.
+   *
+   * @default false
+   */
+  readonly active?: boolean;
+  /**
+   * The local player's slot.
+   *
+   * @default false
+   */
+  readonly you?: boolean;
+}
+
+/**
+ * One side of a draft.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DraftTeam {
+  /**
+   * The team's name (Blue side).
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Its team, for its colour.
+   *
+   * @default 0
+   */
+  readonly team?: number;
+  /**
+   * Its picks, in pick order.
+   *
+   * @default []
+   */
+  readonly picks?: readonly DraftSlot[];
+  /**
+   * Its bans, roster keys in ban order; an empty key is a ban still to come.
+   *
+   * @default []
+   */
+  readonly bans?: readonly string[];
+}
+
+/**
+ * A draft: two teams' picks and bans, the roster, the phase and its timer.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DraftDesc {
+  /**
+   * The two teams, the local player's first (it stands on the start side).
+   *
+   * @default []
+   */
+  readonly teams?: readonly DraftTeam[];
+  /**
+   * The roster: taken (picked by anyone) and banned characters are told by the teams' lists.
+   *
+   * @default []
+   */
+  readonly roster?: readonly RosterEntry[];
+  /**
+   * ban, pick or done: what the active slot does (Ban in danger, Lock in in the accent).
+   *
+   * @default ""
+   */
+  readonly phase?: string;
+  /**
+   * The banner over the roster (Ban phase · Blue bans 2).
+   *
+   * @default ""
+   */
+  readonly phaseLabel?: string;
+  /**
+   * Time left in this turn.
+   *
+   * @default 0
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly secondsLeft?: number;
+  /**
+   * The turn's whole time, for the bar; 0 is 30.
+   *
+   * @default 0
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly seconds?: number;
+  /**
+   * The local player acts now: the roster takes presses and the action is live.
+   *
+   * @default false
+   */
+  readonly yourTurn?: boolean;
+  /**
+   * The roster key the local player has hovered (its slot shows it dimmed, its tile is rimmed).
+   *
+   * @default ""
+   */
+  readonly hovered?: string;
+  /**
+   * Tiles a row; 0 fits 88 px tiles.
+   *
+   * @default 0
+   */
+  readonly columns?: number;
+  /**
+   * The pick action.
+   *
+   * @default "Lock in"
+   */
+  readonly lockLabel?: string;
+  /**
+   * The ban action.
+   *
+   * @default "Ban"
+   */
+  readonly banLabel?: string;
+  /**
+   * The action while it is not the local player's turn.
+   *
+   * @default "Waiting"
+   */
+  readonly waitingLabel?: string;
+  /**
+   * The bans row's label.
+   *
+   * @default "Bans"
+   */
+  readonly bansLabel?: string;
+  /**
+   * A banned character, to a screen reader.
+   *
+   * @default "Banned"
+   */
+  readonly bannedLabel?: string;
+  /**
+   * A picked character, to a screen reader.
+   *
+   * @default "Picked"
+   */
+  readonly pickedLabel?: string;
+}
+
+/** What the local player asked for this tick, for the game to apply. */
+export interface DraftResult {
+  /**
+   * An open character pressed or focused in the local player's turn: hover it (its slot shows it).
+   */
+  readonly hovered: string | null;
+  /**
+   * The action, or confirm, on the hovered character: lock it in (a pick or a ban by the phase).
+   */
+  readonly locked: string | null;
+  /** A banned or picked character pressed: it shook. */
+  readonly refused: string | null;
 }
 
 
@@ -54090,7 +54277,7 @@ export declare namespace og {
     function lobby(id: string, desc?: LobbyDesc): LobbyResult;
     /**
      * A character select (Street Fighter 6, Valorant, Overwatch, Smash): the local player's character standing large on the start side, its splash art filling that half over a scrim with its role in the eyebrow, its name in the display face and a line of description; with two players the other's on the end side, mirrored, each tagged in its team's colour; the roster under or beside them as a grid of portrait tiles in whole rows, each cursor a rim in its player's team colour with the player's tag at the tile's corner (two on one tile split the corner), a confirmed pick a tick, a locked tile dark behind a lock, a taken one dimmed. Lock in in the accent at the foot (Locked in, quiet, once confirmed); a timer when the game gives one. Keys and pads walk the tiles (the focus is the local cursor), confirm locks in, Back unlocks. On a phone in portrait the splash takes the top and the grid scrolls under it.
-     * Parts: Select.frame, Select.stage, Select.splash[you|rival][confirmed], Select.name, Select.roster, Select.tile[cursor][confirmed][locked][taken], Select.tag, Select.lock, Select.confirm[on], Select.timer. Slots: each entry's portrait (art kind portrait) and splash (art kind splash). States: on each tile, group pick (open, cursor, confirmed, locked, taken). Motion: a new character's splash slides in from its side on the panel spring; a confirmed pick flashes its tile and its splash's name pops on the emphasis spring (still under reduced motion); a refused tile shakes. Sounds: hover as the cursor moves, confirm on a pick, error on a refused one, back on Back. Accessibility: the roster a grid of buttons named name, role, locked or taken and whose cursor is on it; each splash a region named the player and the character. Probe ids: <id>/Roster/<key>, <id>/Roster/Random, <id>/Stage/Start, <id>/Stage/End, <id>/Foot/Lock.
+     * Parts: Select.frame, Select.stage, Select.splash[you|rival][confirmed], Select.name, Select.roster, Select.tile[cursor][confirmed][locked][taken], Select.tag, Select.lock, Select.confirm[on], Select.timer. Slots: each entry's portrait (art kind portrait) and splash (art kind splash). States: on each tile, group pick (open, cursor, confirmed, locked, taken). Motion: a new character's splash slides in from its side on the panel spring; a confirmed pick flashes its tile and its splash's name pops on the emphasis spring (still under reduced motion); a refused tile shakes. Sounds: hover as the cursor moves, confirm on a pick, error on a refused one, back on Back. Accessibility: the roster a grid of buttons named name, role, locked or taken and whose cursor is on it; each splash a region named the player and the character. Probe ids: <id>/Stage/Roster/Row#<r>/<key>, <id>/Stage/Roster/Row#<r>/Random, <id>/Stage/Start, <id>/Stage/End, <id>/Foot/Lock.
      *
      * @param id Its id.
      * @param desc The roster, the cursors and the words.
@@ -54104,6 +54291,14 @@ export declare namespace og {
      * @param desc The sides, the stage and the words.
      */
     function versus(id: string, desc?: VersusDesc): VersusResult;
+    /**
+     * A draft with bans (League of Legends, Dota 2, Marvel Snap's draft mode, a sports draft): the two teams in columns at the sides, each pick a wide slot with the character's art across it (dimmed while only hovered), the player's name and the character's, the slot that picks now lit in its team's colour with a light running along it; each team's bans a row of small tiles under its picks, struck through in danger, the bans to come empty. In the middle the phase banner (ban in danger, pick in the accent) with a bar that runs down with the turn's time and the seconds, the roster as a grid of portrait tiles in whole rows (banned ones struck and dark, picked ones dimmed, the hovered one rimmed in the local team's colour), and under it one action: Ban in danger or Lock in in the accent in the local player's turn, Waiting otherwise. On a phone in portrait the teams stand as two rows of portraits above the roster.
+     * Parts: Draft.frame, Draft.team[start|end], Draft.slot[active][locked][you], Draft.slotArt, Draft.bans, Draft.ban[empty], Draft.banner[ban|pick], Draft.timer, Draft.roster, Draft.tile[cursor][banned][taken], Draft.action[ban|pick|waiting]. Slots: each slot's and tile's art (the entry's splash or portrait, art kind portrait). States: on each tile, group pick (open, cursor, taken, banned); on each slot, group slot (empty, hovered, locked). Motion: a pick locking in flashes its slot and slides its art in on the panel spring; the active slot's light sweeps along it; a ban's slash draws across (still under reduced motion); a refused tile shakes. Sounds: hover as the hover moves, confirm on a pick, error on a refused tile, alert in the last five seconds of the local player's turn. Accessibility: each team a list named its name of slots named player, character and state; the roster a grid of buttons named name and banned or picked; the timer a timer. Probe ids: <id>/Start/Picks/Slot#<i>, <id>/End/Picks/Slot#<i>, <id>/Start/Bans/Ban#<i>, <id>/Middle/Room/Roster/Row#<r>/<key>, <id>/Middle/Banner, <id>/Middle/Foot/Action (on a phone in portrait the teams are under <id>/Teams/Wrap).
+     *
+     * @param id Its id.
+     * @param desc The teams, the roster, the phase and the words.
+     */
+    function draft(id: string, desc?: DraftDesc): DraftResult;
     /**
      * The title screen template. Returns the item chosen this tick.
      *
