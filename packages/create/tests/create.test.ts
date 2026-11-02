@@ -234,7 +234,7 @@ test("--look extends the catalogue preset it names; an unknown slug is refused w
   expect(r.out).toContain("extends anime-cel-3d (--look)");
   const look = read("cel", "assets", "looks", "cel.ogt");
   expect(topLevel(look, "extends")).toBe("anime-cel-3d");
-  expect(look).toContain("built-in neon style"); // the preset's UI style, as the catalogue gives it
+  expect(look).toContain("built-in cyber style"); // the preset's UI style, as the catalogue gives it
   expect(read("cel", "README.md")).toContain("It extends `anime-cel-3d`, chosen with `--look`");
   const bad = cli("nope-look", "--look", "photoreal-ultra");
   expect(bad.code).not.toBe(0);
