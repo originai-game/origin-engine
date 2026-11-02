@@ -140,7 +140,7 @@ After R, as the plan's final stage:
 | [T-a558a897](https://ampcode.com/threads/T-a558a897-87a0-4c1d-82c8-f218e5e0e18b) | render: R1 meshlets, culling, the visibility buffer |
 | [T-01a19d59-9055](https://ampcode.com/threads/T-01a19d59-9055-707b-8b4e-f2a9a91c4030) | render: R2 TAAU, R8 shadows and post; environment maps: background blurriness, a ground-projected skybox, blending two maps, runtime HDR loading (the owner, 2026-11-02) |
 | [T-01a19d59-9d85](https://ampcode.com/threads/T-01a19d59-9d85-7604-ba45-b447cc453814) | render: R4 sky and weather, R5 water |
-| [T-c113ecea](https://ampcode.com/threads/T-c113ecea-ad88-4d45-83d2-97ed7f2b6561) | render: R7 decals and particles, R9 characters (blendshapes, cloth, VAT crowds): decals, particles, blendshapes and cloth landed (main d6d7d1844); VAT crowds with macrunner (r9-vat 511c3c26a; CPU-culled, not yet GPU-culled or on the meshlet path) |
+| [T-c113ecea](https://ampcode.com/threads/T-c113ecea-ad88-4d45-83d2-97ed7f2b6561) | render: R7 decals and particles, R9 characters (blendshapes, cloth, VAT crowds): all landed 2026-11-02 (VAT crowds last, main 6c90534f0); crowds are CPU-culled, not yet GPU-culled or on the meshlet path |
 | [T-e522b299](https://ampcode.com/threads/T-e522b299-b8c9-44cb-8bf4-ff01169395c1) | render: R6 terrain holes, layers, impostors, wind |
 | [T-aa5a5083](https://ampcode.com/threads/T-aa5a5083-c49e-4586-9621-ca6f7e8dec57) | render: R3 dynamic GI (screen-space GI, run-time probes) |
 
