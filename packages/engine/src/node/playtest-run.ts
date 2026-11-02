@@ -18,6 +18,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { bundleGame } from "./build.ts";
 import { FrameUnchecked, PLAYTEST_CLOCK, type PlaytestChecks, type PlaytestDesc, type PlaytestLockstep, type PlaytestRun } from "../playtest.ts";
 import { loadNativeHost, native } from "./index.ts";
+import { decodePng } from "./png.ts";
 
 declare const Bun: {
   spawnSync(cmd: string[], o?: { cwd?: string; stdout?: string; stderr?: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
@@ -248,6 +249,10 @@ const runOf = (s: Summary, dir: string, later: readonly PlaytestRun[], peers: re
       const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
       if (bytes.length < 24 || view.getUint32(12) !== 0x49484452) throw new Error(`${f} is not a PNG`);
       return { width: view.getUint32(16), height: view.getUint32(20), bytes: bytes.length };
+    },
+    pixels: (f: string) => {
+      if (missed.has(f)) throw new FrameUnchecked(f);
+      return decodePng(new Uint8Array(readFileSync(path(f))));
     },
     wav: (f: string) => {
       const bytes = readFileSync(path(f));

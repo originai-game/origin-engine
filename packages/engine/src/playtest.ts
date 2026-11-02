@@ -48,6 +48,8 @@ export interface PlaytestRun {
   json<T = unknown>(file: string): T;
   /** A written PNG's size. Throws when the run wrote no such file (and, for a screenshot taken without a renderer, a FrameUnchecked: read frames inside `t.frame`). */
   png(file: string): { width: number; height: number; bytes: number };
+  /** A written PNG decoded: its RGBA8 rows, for checks that read pixels (contrast, a colour at a point). Throws as `png` does. */
+  pixels(file: string): { width: number; height: number; rgba: Uint8Array };
   /** A written text output. */
   text(file: string): string;
   /** A written WAV (`listen`): its rate, frames, peak and RMS (16-bit PCM read back, both channels). */
