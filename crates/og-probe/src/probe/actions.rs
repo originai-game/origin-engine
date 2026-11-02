@@ -58,7 +58,10 @@ impl Probe {
                 let frame = capture.capture(world, width, height);
                 let Some(frame) = frame else {
                     if !capture.deferred() {
-                        return Err("the renderer produced no frame".into());
+                        return Err(match capture.capture_error() {
+                            Some(why) => format!("the renderer produced no frame: {why}"),
+                            None => "the renderer produced no frame".into(),
+                        });
                     }
                     // Its frame lands on a later call: written then.
                     self.shot = Some(Shot {

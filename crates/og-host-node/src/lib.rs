@@ -483,6 +483,8 @@ struct OffscreenBackend {
     triangles: u64,
     /// Devices lost and the renderer made again on a new one.
     losses: u32,
+    /// Why the last capture or frame read failed (`RenderBackend::capture_error`).
+    capture_error: Option<String>,
     /// The window drawing this engine's frames, when the process was told
     /// one (`ORIGIN_FRAMES_SOCKET`, og-render's `shared_frames`).
     #[cfg(any(target_os = "macos", target_os = "linux", windows))]
@@ -607,15 +609,20 @@ impl RenderBackend for OffscreenBackend {
         }
         let image = self
             .draw(scene)
-            .ok()
-            .and_then(|_| self.renderer.read_offscreen().ok());
+            .and_then(|_| self.renderer.read_offscreen().map_err(|e| e.to_string()));
+        self.capture_error = image.as_ref().err().cloned();
         if size != target {
             self.renderer.resize(target.0, target.1);
         }
-        image
+        image.ok()
+    }
+    fn capture_error(&self) -> Option<String> {
+        self.capture_error.clone()
     }
     fn read_frame(&mut self) -> Option<og_render::RgbaImage> {
-        self.renderer.read_offscreen().ok()
+        let image = self.renderer.read_offscreen().map_err(|e| e.to_string());
+        self.capture_error = image.as_ref().err().cloned();
+        image.ok()
     }
     fn gpu_memory(&self) -> Option<og_render::GpuMemory> {
         Some(self.renderer.gpu_memory())
@@ -705,6 +712,7 @@ pub fn og_node_attach_offscreen(env: Env, engine: u32, width: u32, height: u32) 
                     missing: 0,
                     triangles: 0,
                     losses: 0,
+                    capture_error: None,
                     #[cfg(any(target_os = "macos", target_os = "linux", windows))]
                     frames,
                 })),

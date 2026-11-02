@@ -116,6 +116,12 @@ pub trait RenderBackend {
     fn deferred(&self) -> bool {
         false
     }
+    /// Why the last `capture` answered `None` (a readback that timed out,
+    /// a lost device), for the probe's message; `None` when it gave a frame
+    /// or does not say.
+    fn capture_error(&self) -> Option<String> {
+        None
+    }
     /// og-render's `Renderer::save_state` (the adapted exposure) as its
     /// number, for a probe snapshot; 0 keeps nothing.
     fn save_state(&mut self) -> u64 {

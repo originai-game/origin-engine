@@ -866,7 +866,10 @@ impl Probe {
         };
         let Some(frame) = capture.capture(world, width, height) else {
             r.status = Status::Fail;
-            r.reason = "the renderer produced no frame".into();
+            r.reason = match capture.capture_error() {
+                Some(why) => format!("the renderer produced no frame: {why}"),
+                None => "the renderer produced no frame".into(),
+            };
             return None;
         };
         match decode_png(&frame.png) {

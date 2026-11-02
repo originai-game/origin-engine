@@ -45,6 +45,11 @@ pub trait Capture {
     fn deferred(&self) -> bool {
         false
     }
+    /// Why the last `capture` answered `None`, added to the probe's
+    /// "the renderer produced no frame"; `None` when it does not say.
+    fn capture_error(&self) -> Option<String> {
+        None
+    }
     /// Keeps the renderer's state that follows the world's time (the
     /// adapted auto exposure) with a snapshot the probe takes (`snapshot`,
     /// a sweep's start); the answer comes back to

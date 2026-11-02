@@ -92,6 +92,11 @@ impl Capture for RuntimeCapture {
         Some(json!({ "lod": level }))
     }
 
+    fn capture_error(&self) -> Option<String> {
+        let rs = self.render.try_borrow().ok()?;
+        rs.backend.as_ref()?.capture_error()
+    }
+
     fn capture(&mut self, world: &World, width: u32, height: u32) -> Option<Frame> {
         let mut rs = self.render.try_borrow_mut().ok()?;
         // Captured frames show every wanted terrain tile, whatever the decode timing.
