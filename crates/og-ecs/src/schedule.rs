@@ -440,6 +440,33 @@ impl<'w> SystemContext<'w> {
         ))
     }
 
+    /// The archetypes `desc` matches, for a query the system could not
+    /// declare when it was scheduled (one over a type registered later,
+    /// and granted to it with [`World::grant`]). Every type it reads or
+    /// writes must be declared or granted, read or written as `desc` says;
+    /// change filters are refused (only declared queries track changes).
+    pub fn query_with(&self, desc: &QueryDesc) -> Result<QueryIter<'w>> {
+        let owner = format!("system '{}'", self.system.name);
+        let access = QueryAccess::resolve(&self.world.registry, desc, &owner)?;
+        if access.filters() {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!("{owner}: a query made while it runs cannot filter by change"),
+            ));
+        }
+        for id in &access.required {
+            self.require(*id, false)?;
+        }
+        for id in &access.writes {
+            self.require(*id, true)?;
+        }
+        Ok(QueryIter::new(
+            self.world,
+            Arc::new(access),
+            self.system.last_run,
+        ))
+    }
+
     /// The change tick of this system's last run (0 before it ran).
     pub fn last_run(&self) -> u64 {
         self.system.last_run

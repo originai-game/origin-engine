@@ -697,3 +697,45 @@ fn a_granted_type_registered_after_the_schedule_is_readable_and_writable_then() 
     assert_eq!(w.get::<Late>(e).unwrap().n, 2, "the grant covers writes");
     assert!(w.grant("nobody", &["Late"]).is_err());
 }
+
+#[test]
+fn a_system_queries_a_granted_late_type_by_a_query_made_while_it_runs() {
+    let mut w = base();
+    let seen = log();
+    let s = seen.clone();
+    w.add_system(SystemDesc::new("finder").read::<Pos>(), move |ctx| {
+        let desc = QueryDesc::new().read::<Pos>().write::<Late>();
+        match ctx.query_with(&desc) {
+            Ok(it) => {
+                for a in it {
+                    for &e in a.entities() {
+                        let n = ctx.get::<Late>(e)?.n + 1;
+                        ctx.set(e, Late { n })?;
+                        s.lock().unwrap().push(format!("{} {n}", e.index()));
+                    }
+                }
+            }
+            Err(err) => s.lock().unwrap().push(format!("{:?}", err.kind())),
+        }
+        let changed = QueryDesc {
+            changed: vec!["Pos".into()],
+            ..QueryDesc::new()
+        };
+        if ctx.query_with(&changed).is_ok() {
+            s.lock().unwrap().push("change filter allowed".into());
+        }
+        Ok(())
+    })
+    .unwrap();
+    w.register::<Late>().unwrap();
+    let a = w.spawn((Pos::default(), Late { n: 5 })).unwrap();
+    w.spawn((Pos::default(),)).unwrap();
+    w.step().unwrap();
+    assert_eq!(take(&seen), ["Access"], "Late is not granted yet");
+    w.grant("finder", &["Late"]).unwrap();
+    w.step().unwrap();
+    w.step().unwrap();
+    let i = a.index();
+    assert_eq!(take(&seen), [format!("{i} 6"), format!("{i} 7")]);
+    assert_eq!(w.get::<Late>(a).unwrap().n, 7);
+}

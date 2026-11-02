@@ -26,6 +26,12 @@ declared-access checks: `spawn_bytes`, `insert_bytes`, `remove_id`,
 `get_bytes`, `set_bytes`, `resource_bytes`, `set_resource_bytes`,
 `has_resource_id`, `events_bytes`, `send_bytes`.
 
+A type registered after a system was scheduled (a module's lazily
+registered component) is added to its declarations with `World::grant`;
+the system then queries it with `SystemContext::query_with(&QueryDesc)`,
+checked against those declarations, since its declared queries were
+fixed when it was scheduled. Such a query takes no change filters.
+
 ```rust
 let pos = world.field::<Position>("p")?;
 let vel = world.field::<Velocity>("v")?;
