@@ -368,11 +368,21 @@ impl Ui {
         let t = self.theme;
         let p = t.palette;
         let size = if desc.size > 0.0 { desc.size } else { 64.0 }.max(self.min_target());
+        // A label wider than the button (a longer locale, 200 % text)
+        // widens it rather than being cut: the button stays its size tall.
+        let width = if desc.icon.is_empty() && !text.is_empty() {
+            let step = t.type_ramp.sm;
+            let m = &self.fonts.for_text(FontRole::Body, text).metrics;
+            let w = m.measure_tracked(text, step.size, crate::layout::step_tracking(&step, text));
+            size.max((w + 2.0 * t.space.sm).ceil())
+        } else {
+            size
+        };
         let i = self.leaf(
             "action",
             id.into(),
             Element {
-                width: Size::Fixed(size),
+                width: Size::Fixed(width),
                 height: Size::Fixed(size),
                 interactive: true,
                 radius: t.radius.control,

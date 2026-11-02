@@ -273,3 +273,16 @@ test("the default screens: the values a show command's usage lists, else each pl
     { name: "menu-shot-5", commands: "0:key_down:Enter;0.6:key_up:Enter", at: 1.5 },
   ]);
 });
+
+test("a label drawn in two inks with split clips (a meter's fill and track) is one line, neither cut nor mis-scaled", () => {
+  // Wrong: each piece judged on its own clip (reported cut), and a frame that draws one piece more than
+  // the other matched in drawing order against another control's text of the same string.
+  const els = [el("Boost", "", "meter", "progressbar", [312, 1000, 196, 20], { text: "Boost" }), el("boost", "", "action", "button", [720, 1060, 84, 84], { text: "Boost" })];
+  const color = [1, 1, 1, 1];
+  const base = frame({ elements: els, texts: [{ text: "Boost", size: 13, bounds: [392, 1001, 35, 18], clip: [312, 1000, 196, 20], color }, { text: "Boost", size: 14, bounds: [743, 1092, 38, 20], clip: [720, 1060, 84, 84], color }] });
+  const meter = { text: "Boost", size: 26, bounds: [375, 983, 70, 36] as [number, number, number, number], color };
+  const scaled = frame({ elements: els, texts: [{ ...meter, clip: [312, 982, 121.5, 38] }, { ...meter, clip: [433.5, 982, 74.5, 38] }, { text: "Boost", size: 28, bounds: [724, 1082, 75, 40], clip: [720, 1060, 84, 84], color }] });
+  const c200 = { ...cell, scale: 200 };
+  expect(checkFrame(scaled, c200).filter((f) => f.rule === "text-scale")).toEqual([]);
+  expect(checkScale(base, scaled, c200)).toEqual([]);
+});

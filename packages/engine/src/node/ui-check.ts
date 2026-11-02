@@ -331,8 +331,33 @@ export interface CheckOptions {
   skip?: readonly string[];
 }
 
+/**
+ * The frame's lines of text as drawn once: one line drawn as several pieces
+ * of one string at one place, each clipped to a part of it (a meter's label
+ * in the fill's ink over the fill and the track's ink past it), is one line
+ * whose clip is the pieces' together. Each piece alone looks cut, and a
+ * piece more at one scale than another would shift the scale rule's match.
+ */
+function drawnTexts(f: UiFrameSnapshot): UiFrameSnapshot["texts"] {
+  const by = new Map<string, UiFrameSnapshot["texts"][number]>();
+  for (const t of f.texts) {
+    const k = `${t.text}\u0000${t.size}\u0000${t.bounds.join(",")}`;
+    const had = by.get(k);
+    if (!had) {
+      by.set(k, { ...t, clip: [...t.clip] as Rect4 });
+      continue;
+    }
+    const [x0, y0] = [Math.min(had.clip[0], t.clip[0]), Math.min(had.clip[1], t.clip[1])];
+    const x1 = Math.max(had.clip[0] + had.clip[2], t.clip[0] + t.clip[2]);
+    const y1 = Math.max(had.clip[1] + had.clip[3], t.clip[1] + t.clip[3]);
+    had.clip = [x0, y0, x1 - x0, y1 - y0];
+  }
+  return [...by.values()];
+}
+
 /** Every rule that one frame shows, for the cell it was taken in. */
-export function checkFrame(f: UiFrameSnapshot, cell: UiCell, opts: CheckOptions = {}): UiFinding[] {
+export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOptions = {}): UiFinding[] {
+  const f: UiFrameSnapshot = { ...frame, texts: drawnTexts(frame) };
   const out: UiFinding[] = [];
   const skip = new Set(opts.skip ?? []);
   const where = cellName(cell);
@@ -655,8 +680,10 @@ export function checkLocales(base: UiFrameSnapshot, other: UiFrameSnapshot, cell
  * player's setting does not reach (a fixed pixel size, a text drawn by the
  * game from the style's authored tokens).
  */
-export function checkScale(base: UiFrameSnapshot, scaled: UiFrameSnapshot, cell: UiCell): UiFinding[] {
+export function checkScale(baseFrame: UiFrameSnapshot, scaledFrame: UiFrameSnapshot, cell: UiCell): UiFinding[] {
   if (cell.scale === 100) return [];
+  const base = { ...baseFrame, texts: drawnTexts(baseFrame) };
+  const scaled = { ...scaledFrame, texts: drawnTexts(scaledFrame) };
   const k = cell.scale / 100;
   const out: UiFinding[] = [];
   const left = new Map<string, number[]>();
