@@ -54,7 +54,7 @@ are `u32` constants in `src/schema.rs`.
 | `og.Contact` | event | `a`, `b`, `sensor` (bit 0: a is a sensor, bit 1: b); every touching pair, each tick |
 
 `og.ContactHook`, `og.BodySlept`, `og.BodyWoke`, `og.JointBroken`,
-`og.VehicleWheel` and `og.SoftBody` are lazy ([`LAZY`]): `install` does not register them, and [`enable`]
+`og.VehicleWheel`, `og.SoftBody` and `og.Garment` are lazy ([`LAZY`]): `install` does not register them, and [`enable`]
 registers one and grants it to `og.physics` (and the query system), as a
 host does once a game names it (og-runtime's `lazy.rs`). Until then the
 events are not sent and no hooks are read, so a world that never uses
@@ -137,7 +137,7 @@ a little-endian `u16` tag, `u32` length and bytes, tags ascending
 using none of it saves and hashes byte for byte as before
 (`tests/unchanged.rs` pins the beyond scenario's hashes from cb1d65bf), and
 a decoder skips a tag it does not know: a later extension adds a tag.
-Tags: 1 compounds, 2 sleep (the rest counters), 3 hooks (some collider has its contact hooks on, an empty section), 4 vehicles (a drivetrain's gearbox, wheel children), 5 soft volumes (each og.SoftBody's points and surface).
+Tags: 1 compounds, 2 sleep (the rest counters), 3 hooks (some collider has its contact hooks on, an empty section), 4 vehicles (a drivetrain's gearbox, wheel children), 5 soft volumes (each og.SoftBody's points and surface), 6 garments (each og.Garment's points, targets and constraints).
 
 ## The step on the lanes
 
@@ -291,6 +291,7 @@ reached from TypeScript through `crates/og-api/api/physics.ogt`'s physics module
 | `og.Vehicle` drivetrain (G2-3) | `model` VEHICLE_DRIVETRAIN: `drivetrain.rs`, rapier-free, turns throttle and forward speed into a torque at the driven wheels through the torque curve, a gear and the final drive, with an automatic or manual gearbox whose gear, rpm and clutch are the trailer's tag 4 (`SimExt::vehicles`); 3D splits it across the driven wheels as forces at their radius, 2D drives the wheel motors towards the gear's top speed with it. `handbrake` brakes and loosens the handbrake wheels (`handbrakeGrip` on their friction slip and side stiffness), `driftGrip` their side stiffness while they slide. `og.VehicleWheel` children (lazy, found among parented entities, up to 16 in entity order) replace the implicit wheels; what building bakes in of them is kept in the tag 4 entry so a changed child rebuilds the controller. An arcade car on its implicit wheels writes no entry, so its block does not move. |
 | `og.Rope`, `og.Cloth` | Verlet strands and grids with pins, wind and gusts, pushed out of every solid collider; cloth with `friction` against solids, `substeps`, and self-collision by `thickness` (below); `rope_points`, `cloth_points` |
 | `og.SoftBody` (G2-3) | PBD soft volumes (`softbody.rs`): an icosphere, a box's faces or a closed registered mesh (welded), 2D a ring; per substep, `iterations` passes of pins (`pinTop`), edge distances by `stiffness`, the volume constraint (Müller et al. 2007: every point along the volume's gradient, 2D the area's) towards `pressure` × the rest volume, and push-out of solids at `thickness`, then friction. One-way like cloth; lazy, so found by `SystemContext::query_with` over the granted type; its points and surface are the trailer's tag 5 (`SimExt::softs`), written only while one exists; `soft_body_points` |
+| `og.Garment` (R9) | Cloth on a skinned character (`garment.rs`), 3D only: the host hands each tick the skin's targets for the rig's points in the world (`set_garment_rig` once, a welded mesh with each point's freedom; `set_garment_pose` each tick, after the animation; og-runtime's `garment.rs` skins them on the CPU), and per substep the points integrate gravity and a gusting wind, then `iterations` passes of edges, bends, the backstop behind the skin's normal, the reach (`freedom` × `maxDistance`, 0 within `pinTop` of the top) and push-out of solids at `radius`; the skin carries each point (`previous` moves with its correction). One-way like cloth; lazy; the trailer's tag 6 (`SimExt::garments`), shifted with the origin; `garment_points` |
 | `og.Fluid2D` | double density relaxation (Clavet et al.) on a grid in a fixed order, velocity capped at half the radius per substep; fluids of one `group` simulated together, layering by `density` and blending by `mixing` (below); `fluid_particles`, `fluid_mix` |
 | `og.Fluid3D` | 3D profile: the same model over a spatial hash, against 3D colliders and height fields, in optional `bounds`, with an emitter (`emitRate` up to `maxCount`) and a sink box; groups layer and mix as in 2D (below); `fluid3d_particles`, `fluid3d_mix` |
 | `og.WaterSurface`, `og.WaterLine` | a height field and a spring line splashed by crossing bodies (`og.Splash`), buoyancy and drag on dynamic bodies; `water_heights`, `water_line` |

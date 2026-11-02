@@ -9,8 +9,8 @@
 use crate::StepOut;
 use crate::schema::{BODY_KINEMATIC, Collider, Parent, RigidBody, Transform, Velocity};
 use crate::schema_ext::{
-    CharacterController, Cloth, ContactHook, Fluid2D, Fluid3D, Joint, PlatformerController,
-    Ragdoll, Rope, SoftBody, Vehicle, VehicleWheel, WaterLine, WaterSurface,
+    CharacterController, Cloth, ContactHook, Fluid2D, Fluid3D, Garment, Joint,
+    PlatformerController, Ragdoll, Rope, SoftBody, Vehicle, VehicleWheel, WaterLine, WaterSurface,
 };
 use og_core::glam::{Quat, Vec3};
 use og_core::{Layout, Reflect, Result};
@@ -404,6 +404,9 @@ pub(crate) struct Scene {
     pub wheels: og_core::IdMap<u64, Vec<WheelChild>>,
     /// The soft volumes (lazy), at their world pose, by entity (ascending).
     pub softs: Vec<(Entity, Vec3, Quat, SoftBody)>,
+    /// The garments (lazy), by entity (ascending): their skin's pose comes
+    /// from the host (`Shared::garment_poses`).
+    pub garments: Vec<(Entity, Garment)>,
 }
 
 /// The most og.VehicleWheel children a vehicle takes.
@@ -426,6 +429,7 @@ pub(crate) struct LazyIds {
     pub hook: Option<SchemaId>,
     pub wheel: Option<SchemaId>,
     pub soft: Option<SchemaId>,
+    pub garment: Option<SchemaId>,
 }
 
 impl LazyIds {
@@ -434,6 +438,7 @@ impl LazyIds {
             hook: id(ContactHook::NAME),
             wheel: id(VehicleWheel::NAME),
             soft: id(SoftBody::NAME),
+            garment: id(Garment::NAME),
         }
     }
 }
@@ -855,6 +860,28 @@ pub(crate) fn gather<'w>(
         e, p, c
     ));
     Ok(scene)
+}
+
+/// The og.Garment entities (`garment`, lazily registered, so found by a
+/// query made while the step runs), in entity order.
+pub(crate) fn garments<'w>(
+    query: &dyn Fn(&QueryDesc) -> Result<QueryIter<'w>>,
+    get: GetBytes<'_>,
+    garment: SchemaId,
+) -> Result<Vec<(Entity, Garment)>> {
+    let desc = QueryDesc {
+        read: vec![Garment::NAME.to_string()],
+        ..QueryDesc::default()
+    };
+    let layout = Layout::of(&Garment::schema());
+    let mut out = Vec::new();
+    for a in query(&desc)? {
+        for e in a.entities() {
+            out.push((*e, layout.decode::<Garment>(&get(*e, garment)?)?));
+        }
+    }
+    og_core::sort::sort_by_key(&mut out, |s| s.0.to_bits());
+    Ok(out)
 }
 
 /// The og.SoftBody entities (`soft`, lazily registered, so found by a

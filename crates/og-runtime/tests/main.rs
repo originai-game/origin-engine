@@ -18,6 +18,7 @@ mod contact_hit;
 mod cookie_cap;
 mod display;
 mod drop_shadows;
+mod garment;
 mod geometry_uv_repeat;
 #[cfg(not(feature = "publish"))]
 mod inspector;

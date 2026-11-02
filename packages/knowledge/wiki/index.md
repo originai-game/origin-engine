@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2320 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2322 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -971,6 +971,7 @@ Field units the docs and Tune use.
 | [`og.FootLock`](anim.md#record-FootLock) | component | anim | — |
 | [`og.game`](game.md#fn-game) | function | game | `og_game_game` |
 | [`og.Gamepad`](input.md#record-Gamepad) | resource | input | — |
+| [`og.Garment`](physics.md#record-Garment) | component | physics | — |
 | [`og.i18n.formatCompact`](i18n.md#fn-formatCompact) | function | i18n | `og_i18n_format_compact` |
 | [`og.i18n.formatCurrency`](i18n.md#fn-formatCurrency) | function | i18n | `og_i18n_format_currency` |
 | [`og.i18n.formatDate`](i18n.md#fn-formatDate) | function | i18n | `og_i18n_format_date` |
@@ -1144,6 +1145,7 @@ Field units the docs and Tune use.
 | [`og.physics.clothPoints`](physics.md#fn-clothPoints) | function | physics | `og_physics_cloth_points` |
 | [`og.physics.fluid3dParticles`](physics.md#fn-fluid3dParticles) | function | physics | `og_physics_fluid3d_particles` |
 | [`og.physics.fluidParticles`](physics.md#fn-fluidParticles) | function | physics | `og_physics_fluid_particles` |
+| [`og.physics.garmentPoints`](physics.md#fn-garmentPoints) | function | physics | `og_physics_garment_points` |
 | [`og.physics.overlap`](physics.md#fn-overlap) | function | physics | `og_physics_overlap` |
 | [`og.physics.projectPoint`](physics.md#fn-projectPoint) | function | physics | `og_physics_project_point` |
 | [`og.physics.ragdollPose`](physics.md#fn-ragdollPose) | function | physics | `og_physics_ragdoll_pose` |

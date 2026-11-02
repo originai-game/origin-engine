@@ -537,8 +537,12 @@ mod motion_tests {
     #[test]
     fn deformed_vertices_pack_two_a_slot() {
         let d = DeformedVertices {
-            positions: (0..3).map(|v| Vec3::new(v as f32, 10.0 + v as f32, -1.0)).collect(),
-            normals: (0..3).map(|v| Vec3::new(0.0, 0.0, v as f32 + 0.5)).collect(),
+            positions: (0..3)
+                .map(|v| Vec3::new(v as f32, 10.0 + v as f32, -1.0))
+                .collect(),
+            normals: (0..3)
+                .map(|v| Vec3::new(0.0, 0.0, v as f32 + 0.5))
+                .collect(),
         };
         let slots = deformed_slots(&d);
         assert_eq!(slots.len(), 2);

@@ -57,6 +57,7 @@ compile_error!("og-physics needs the `physics2d` or the `physics3d` feature (bot
 mod drivetrain;
 mod fluid;
 mod fluid3d;
+mod garment;
 mod gather;
 mod lanes;
 mod outline;
@@ -72,6 +73,7 @@ mod dim2;
 #[cfg(feature = "physics3d")]
 mod dim3;
 
+pub use garment::{GarmentPoints, GarmentPose, GarmentRig};
 pub use lanes::{Grains, grains, pool_bodies, set_grains};
 pub use outline::outline;
 pub use schema::*;
@@ -358,6 +360,11 @@ pub(crate) struct Shared {
     /// bone poses the host gave for this tick.
     pub rigs: IdMap<u64, Arc<RagdollRig>>,
     pub ragdoll_targets: IdMap<u64, Vec<(Vec3, Quat)>>,
+    /// Garment rigs by entity, with the key the host gave them (assets,
+    /// like ragdoll rigs), and the skin's pose of each for this tick
+    /// ([`PhysicsSystem::set_garment_pose`]), taken by the step.
+    pub garment_rigs: IdMap<u64, (u64, Arc<GarmentRig>)>,
+    pub garment_poses: IdMap<u64, GarmentPose>,
     /// What the last step cost ([`PhysicsSystem::stats`]; not world state).
     pub stats: PhysicsStats,
     /// Forces and impulses waiting for the next step, in the order given
@@ -661,13 +668,14 @@ pub const QUERY_SYSTEM_NAME: &str = "og.physics.queries";
 /// The physics types registered only once a game uses them, so a world
 /// that never does keeps the type table, saves and hash it had before
 /// G2-3 added them: [`install`] leaves them out and [`enable`] adds one.
-pub const LAZY: [&str; 6] = [
+pub const LAZY: [&str; 7] = [
     BodySlept::NAME,
     BodyWoke::NAME,
     JointBroken::NAME,
     ContactHook::NAME,
     VehicleWheel::NAME,
     SoftBody::NAME,
+    Garment::NAME,
 ];
 
 /// Registers lazy physics type `name` (one of [`LAZY`]) and grants it to
@@ -682,6 +690,7 @@ pub fn enable(world: &mut World, name: &str) -> Result<()> {
         ContactHook::NAME => world.register::<ContactHook>().map(drop)?,
         VehicleWheel::NAME => world.register::<VehicleWheel>().map(drop)?,
         SoftBody::NAME => world.register::<SoftBody>().map(drop)?,
+        Garment::NAME => world.register::<Garment>().map(drop)?,
         other => {
             return Err(Error::new(
                 ErrorKind::NotFound,
@@ -1260,6 +1269,45 @@ impl PhysicsSystem {
         lock(&self.shared).rigs.contains_key(&entity.to_bits())
     }
 
+    /// Registers the rig the og.Garment on `entity` is built from, under
+    /// `key` (the host's name for it: a model's mesh); a rig of another key
+    /// rebuilds the garment on the skin at its next step.
+    pub fn set_garment_rig(&self, entity: Entity, key: u64, rig: GarmentRig) -> Result<()> {
+        rig.check()?;
+        lock(&self.shared)
+            .garment_rigs
+            .insert(entity.to_bits(), (key, Arc::new(rig)));
+        Ok(())
+    }
+
+    /// The key of the garment rig registered for `entity`, if any.
+    pub fn garment_rig_key(&self, entity: Entity) -> Option<u64> {
+        lock(&self.shared)
+            .garment_rigs
+            .get(&entity.to_bits())
+            .map(|r| r.0)
+    }
+
+    /// Where the skin puts the points of the garment on `entity` this tick
+    /// (rig order, world space), for its next step. A garment given no pose
+    /// in a tick keeps its points.
+    pub fn set_garment_pose(&self, entity: Entity, pose: GarmentPose) {
+        lock(&self.shared)
+            .garment_poses
+            .insert(entity.to_bits(), pose);
+    }
+
+    /// The points of the og.Garment on `entity` after the last step and the
+    /// targets that step held them to (rig order, world space).
+    pub fn garment_points(&self, entity: Entity) -> Option<GarmentPoints> {
+        with_sim!(self.shared, |s| s.ext.garments.get(&entity.to_bits()).map(
+            |g| GarmentPoints {
+                points: g.points.clone(),
+                targets: g.targets.clone(),
+            }
+        ))
+    }
+
     /// The animation's bone poses (rig order, world space) the ragdoll on
     /// `entity` follows at its next step while its weight is 0.
     pub fn set_ragdoll_targets(&self, entity: Entity, targets: Vec<(Vec3, Quat)>) {
@@ -1506,6 +1554,13 @@ fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> Result
             &|e, id| ctx.get_bytes(e, id),
             soft,
             ids,
+        )?;
+    }
+    if let Some(garment) = lazy.garment {
+        scene.garments = gather::garments(
+            &|d| ctx.query_with(d),
+            &|e, id| ctx.get_bytes(e, id),
+            garment,
         )?;
     }
     laps.lap(stats::Phase::Gather);

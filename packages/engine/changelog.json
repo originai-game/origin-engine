@@ -346,6 +346,14 @@
       {
         "member": "og.ParticleEvent",
         "summary": "An emitter's events (birth, death, collision) as an event gameplay reads; its systems are simulated in the tick. Emitters gain render mesh, lit, distortion, subEmitter and events lines."
+      },
+      {
+        "member": "og.Garment",
+        "summary": "Cloth on a skinned model's mesh, posed by the skin and simulated in the tick (R9)."
+      },
+      {
+        "member": "og.physics.garmentPoints",
+        "summary": "An og.Garment's simulated points after the last step, in the world (R9)."
       }
     ],
     "fixed": [

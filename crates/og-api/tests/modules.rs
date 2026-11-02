@@ -113,6 +113,7 @@ const VERSIONS: &[(&str, u32, u64)] = &[
     ("og.Vehicle", 2, 0x45a35b63ff56d1d2),
     ("og.VehicleWheel", 1, 0xc3aa8551ae5e84c4),
     ("og.SoftBody", 1, 0x3bcfc31a2cb8077b),
+    ("og.Garment", 1, 0xd263e6bb0f6b7520),
     ("og.Velocity", 1, 0x70aff545497a9c4d),
 ];
 
@@ -179,6 +180,7 @@ fn physics_audio_animation_and_input_records_have_the_idl_layouts() {
     check::<og_physics::Vehicle>(&mut failures);
     check::<og_physics::VehicleWheel>(&mut failures);
     check::<og_physics::SoftBody>(&mut failures);
+    check::<og_physics::Garment>(&mut failures);
     check::<og_physics::Fluid3D>(&mut failures);
     check::<og_audio::AudioSource>(&mut failures);
     check::<og_audio::AudioListener>(&mut failures);

@@ -1623,6 +1623,12 @@ pub fn og_physics_rope_points(env: Env, world: u32, entity: f64) -> String {
     <Host as PhysicsApi>::og_physics_rope_points(&Host, world, entity)
 }
 
+#[napi(js_name = "og_physics_garment_points")]
+pub fn og_physics_garment_points(env: Env, world: u32, entity: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_garment_points(&Host, world, entity)
+}
+
 #[napi(js_name = "og_physics_cloth_points")]
 pub fn og_physics_cloth_points(env: Env, world: u32, entity: f64) -> String {
     let _env = crate::EnvScope::enter(&env);

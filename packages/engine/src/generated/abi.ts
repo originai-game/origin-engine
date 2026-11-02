@@ -545,6 +545,8 @@ export interface HostAbi<A, V> {
   og_physics_set_mesh(world: number, mesh: number, desc: string | undefined): string;
   /** `og.physics.ropePoints` */
   og_physics_rope_points(world: number, entity: number): string;
+  /** `og.physics.garmentPoints` */
+  og_physics_garment_points(world: number, entity: number): string;
   /** `og.physics.clothPoints` */
   og_physics_cloth_points(world: number, entity: number): string;
   /** `og.physics.softBodyPoints` */
@@ -1523,6 +1525,7 @@ export const SYMBOLS: readonly string[] = [
   "og_physics_apply_torque_impulse",
   "og_physics_set_mesh",
   "og_physics_rope_points",
+  "og_physics_garment_points",
   "og_physics_cloth_points",
   "og_physics_soft_body_points",
   "og_physics_fluid_particles",
@@ -1991,6 +1994,10 @@ export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {
     og_physics_rope_points(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("og.physics.ropePoints", "entity", entity);
       return abi.og_physics_rope_points(world, entity);
+    },
+    og_physics_garment_points(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("og.physics.garmentPoints", "entity", entity);
+      return abi.og_physics_garment_points(world, entity);
     },
     og_physics_cloth_points(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("og.physics.clothPoints", "entity", entity);

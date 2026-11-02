@@ -16,6 +16,7 @@ mod edits;
 mod fluid3d;
 mod fluid_groups;
 mod forces;
+mod garment;
 mod heightfield;
 mod joints;
 mod platformer_ground;

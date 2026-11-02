@@ -1354,6 +1354,11 @@ pub fn og_physics_rope_points(world: u32, entity: f64) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_physics_garment_points(world: u32, entity: f64) -> String {
+    <Host as PhysicsApi>::og_physics_garment_points(&Host, world, entity)
+}
+
+#[wasm_bindgen]
 pub fn og_physics_cloth_points(world: u32, entity: f64) -> String {
     <Host as PhysicsApi>::og_physics_cloth_points(&Host, world, entity)
 }

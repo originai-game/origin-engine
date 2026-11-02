@@ -167,7 +167,7 @@ fn noise(a: u32, b: u32, c: u32) -> f32 {
 }
 
 /// Linear interpolation of the gust noise over ticks, so it changes smoothly.
-fn gust(x: u32, y: u32, tick: u64) -> f32 {
+pub(crate) fn gust(x: u32, y: u32, tick: u64) -> f32 {
     let period = 24u64;
     let k = (tick / period) as u32;
     let t = (tick % period) as f32 / period as f32;

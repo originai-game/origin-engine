@@ -890,6 +890,67 @@ pub(crate) fn soft(
             },
         ));
     }
+    // Garments (og.Garment, 3D), each towards the pose the host gave it
+    // this tick; one given none keeps its points.
+    let live: BTreeSet<u64> = og_core::sort::set(scene.garments.iter().map(|g| g.0.to_bits()));
+    sim.ext.garments.retain(|e, _| live.contains(e));
+    let poses = std::mem::take(&mut shared.garment_poses);
+    if !flat2 {
+        let mut garments: IdMap<u64, (&Garment, &crate::GarmentPose)> = IdMap::new();
+        for (e, garment) in &scene.garments {
+            let key = e.to_bits();
+            let (Some((rig_key, rig)), Some(pose)) =
+                (shared.garment_rigs.get(&key), poses.get(&key))
+            else {
+                continue;
+            };
+            let n = rig.rest.len();
+            if pose.targets.len() != n || pose.normals.len() != n {
+                return Err(og_core::Error::new(
+                    og_core::ErrorKind::Invalid,
+                    format!(
+                        "og.Garment of entity {key}: a pose of {} targets and {} normals for a rig of {n} points",
+                        pose.targets.len(),
+                        pose.normals.len()
+                    ),
+                ));
+            }
+            let rebuild = sim
+                .ext
+                .garments
+                .get(&key)
+                .is_none_or(|s| s.key != (*rig_key, garment.pin_top.to_bits()));
+            if rebuild {
+                sim.ext.garments.insert(
+                    key,
+                    crate::garment::GarmentState::new(garment, *rig_key, rig, pose),
+                );
+            }
+            garments.insert(key, (garment, pose));
+        }
+        let colliders = &sim.world.colliders;
+        let mut jobs: Vec<_> = sim
+            .ext
+            .garments
+            .iter_mut()
+            .filter_map(|(k, s)| garments.get(k).map(|g| (s, *g)))
+            .collect();
+        let work = jobs
+            .iter()
+            .map(|(s, (g, _))| {
+                s.points.len()
+                    * g.iterations.clamp(1, 64) as usize
+                    * g.substeps.clamp(1, 16) as usize
+            })
+            .sum();
+        soft_each(Soft::Cloths, &mut jobs, work, grains.cloth_work, |job| {
+            let (garment, pose) = job.1;
+            let state = &mut *job.0;
+            let (min, max) = bounds(&state.points, garment.max_distance);
+            let near = Near::around(colliders, min, max, garment.radius * 2.0 + 0.1);
+            state.step(garment, pose, dt, tick, gravity, &near);
+        });
+    }
     laps.lap(Phase::Soft);
     // Fluids: each alone, or with the others of its group (the first four
     // in entity order); each set steps from its own particles.

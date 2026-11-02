@@ -591,7 +591,7 @@ module `render`), on both hosts, off by default:
 | `Trail`, `Beam`, `Ribbon` | components `og.Trail`, `og.Beam`; `og.render.ribbon(world, desc)` per tick |
 | `SpriteFx` | `SpriteDesc` `flash`, `flashColor`, `glow`, `blend` |
 | Toon, rim, dissolve, flash, outline per material | `StandardMaterialDesc` fields, set with `og.render.standardMaterial` / `updateMaterial` |
-| Skinning and blendshapes | `og.Skeleton` + `og.AnimationPlayer`, `og.Blendshapes` (the runtime keeps skinned copies of a model's meshes) |
+| Skinning and blendshapes | `og.Skeleton` + `og.AnimationPlayer`, `og.Blendshapes` (the runtime keeps skinned copies of a model's meshes); `og.Garment`'s simulated vertices through `SkinnedInstance::deformed` and `RenderScene::deformed_vertices` (`skin.rs`, the palette buffer's layout) |
 | `Overlay` | `SpriteDesc.screen` / `TextDesc.screen` with an optional `clip` `[x, y, w, h]`; og-ui draws into it |
 
 `templates/fx-showcase` shows each of them on five stations with references

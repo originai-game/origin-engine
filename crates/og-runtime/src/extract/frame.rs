@@ -48,6 +48,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     scene.overlay = None;
     scene.joint_palettes.clear();
     scene.skinned_instances.clear();
+    scene.deformed_vertices.clear();
+    scene.previous_deformed_vertices.clear();
+    rs.fx.deformed_keys.clear();
     scene.sprite_order.clear();
     scene.sprite_fx.clear();
     scene.sprite_arrays.clear();

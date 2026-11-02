@@ -1086,6 +1086,10 @@ impl PhysicsApi for WebHost {
     fn og_physics_soft_body_points(&self, world: u32, entity: f64) -> String {
         rt::og_physics_soft_body_points(world, entity)
     }
+
+    fn og_physics_garment_points(&self, world: u32, entity: f64) -> String {
+        rt::og_physics_garment_points(world, entity)
+    }
     fn og_physics_fluid_particles(&self, world: u32, entity: f64) -> String {
         rt::og_physics_fluid_particles(world, entity)
     }

@@ -883,6 +883,84 @@ impl Default for SoftBody {
     }
 }
 
+// ---- garments on skinned characters ------------------------------------------
+
+/// Cloth on a skinned character: glTF mesh `mesh` of the entity's model,
+/// posed by its skeleton each tick and simulated from there. Each point
+/// stays within `maxDistance` of where its skin puts it (scaled by its
+/// vertex colour's red; 0 and points within `pinTop` of the top stay on the
+/// skin), never further than `backstop` behind it, and keeps its edges'
+/// lengths; with `radius` it collides with solids. One-way, as cloth. The
+/// runtime hands the skinned pose to [`crate::PhysicsSystem::set_garment_pose`]
+/// before each step; its points are world state (the og.physics block's
+/// trailer).
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+#[reflect(name = "og.Garment")]
+pub struct Garment {
+    /// The glTF mesh of the entity's model that is the garment.
+    pub mesh: u32,
+    /// How far a point may stray from where its skin puts it.
+    #[reflect(name = "maxDistance", min = 0, unit = "m", default = 0.2, tunable)]
+    pub max_distance: f32,
+    /// Points within this height of the garment's top at rest stay on the skin.
+    #[reflect(name = "pinTop", min = 0, unit = "m", default = 0.04, tunable)]
+    pub pin_top: f32,
+    /// How far a point may go behind where its skin puts it (0: never).
+    #[reflect(min = 0, unit = "m", tunable)]
+    pub backstop: f32,
+    /// How stiff its edges are, 0 to 1 a pass.
+    #[reflect(min = 0, max = 1, default = 1, tunable)]
+    pub stiffness: f32,
+    /// How much it resists folding, 0 to 1 a pass.
+    #[reflect(min = 0, max = 1, default = 0.1, tunable)]
+    pub bending: f32,
+    /// Constraint passes per substep.
+    #[reflect(min = 1, max = 64, default = 6, tunable)]
+    pub iterations: u32,
+    /// Steps per tick.
+    #[reflect(min = 1, max = 16, default = 1)]
+    pub substeps: u32,
+    /// How much of its velocity each point keeps per tick.
+    #[reflect(min = 0, max = 1, default = 0.97, tunable)]
+    pub damping: f32,
+    /// Multiplies og.Physics.gravity.
+    #[reflect(name = "gravityScale", min = -10, max = 10, default = 1, tunable)]
+    pub gravity_scale: f32,
+    /// A steady acceleration (wind).
+    #[reflect(unit = "mps2", tunable)]
+    pub wind: Vec3,
+    /// How much the wind varies over the garment and the tick.
+    #[reflect(min = 0, max = 2, default = 0.6, tunable)]
+    pub gust: f32,
+    /// The thickness it collides with solids at (0: none).
+    #[reflect(min = 0, unit = "m", tunable)]
+    pub radius: f32,
+    /// How much of its sliding a point touching a solid loses each step.
+    #[reflect(min = 0, max = 1, tunable)]
+    pub friction: f32,
+}
+
+impl Default for Garment {
+    fn default() -> Self {
+        Garment {
+            mesh: 0,
+            max_distance: 0.2,
+            pin_top: 0.04,
+            backstop: 0.0,
+            stiffness: 1.0,
+            bending: 0.1,
+            iterations: 6,
+            substeps: 1,
+            damping: 0.97,
+            gravity_scale: 1.0,
+            wind: Vec3::ZERO,
+            gust: 0.6,
+            radius: 0.0,
+            friction: 0.0,
+        }
+    }
+}
+
 // ---- Verlet ropes and cloth -------------------------------------------------
 
 /// A Verlet rope: `segments` links from the entity's world position (its

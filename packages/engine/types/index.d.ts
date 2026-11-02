@@ -13891,6 +13891,121 @@ export interface Cloth {
   visible: boolean;
 }
 
+/**
+ * Cloth on a skinned character: glTF mesh `mesh` of the entity's og.Model (a skirt, a cape, a coat's tails), posed by the entity's og.Skeleton and simulated from there. Each tick the animation poses the mesh; then every point of it swings under gravity and wind and drags behind the motion, but stays within `maxDistance` of where the skinned pose puts it, never goes further than `backstop` behind it into the body, and keeps its edges' lengths. Points within `pinTop` of the garment's top, and points whose vertex colour's red is 0, stay on the skinned pose; red between 0 and 1 scales `maxDistance` (paint it in the modelling tool: white everywhere frees the whole garment). With `radius` it collides with every solid collider too. One-way like og.Cloth (it moves nothing), simulated in the physics step with the rest of the world, so it replays and snapshots carry it. The model draws the garment where the simulation leaves it, with motion vectors for TAA. 3D only. Its blendshapes are not applied.
+ *
+ * The value of the `Garment` component (token `og.Garment`).
+ */
+export interface Garment {
+  /**
+   * The glTF mesh of the entity's model that is the garment (its primitives together), as og.Blendshapes.mesh.
+   */
+  mesh: number;
+  /**
+   * How far a point may stray from where the skinned pose puts it.
+   *
+   * @default 0.2
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  maxDistance: number;
+  /**
+   * Points within this height of the garment's top at rest (the bind pose, the model's +y) stay on the skinned pose: a skirt's waistband, a cape's collar.
+   *
+   * @default 0.04
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  pinTop: number;
+  /**
+   * How far a point may go behind where the skinned pose puts it, against the skinned normal (0: never behind it, so it cannot sink into the body).
+   *
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  backstop: number;
+  /**
+   * How stiff its edges are, 0 to 1 a pass: 1 holds their length, lower stretches.
+   *
+   * @default 1
+   * @range 0..1
+   * @tunable
+   */
+  stiffness: number;
+  /**
+   * How much it resists folding, 0 to 1 a pass (across each pair of triangles that share an edge): 0 drapes like silk, near 1 like leather.
+   *
+   * @default 0.1
+   * @range 0..1
+   * @tunable
+   */
+  bending: number;
+  /**
+   * Constraint passes per substep.
+   *
+   * @default 6
+   * @range 1..64
+   * @tunable
+   */
+  iterations: number;
+  /**
+   * Simulation steps per tick.
+   *
+   * @default 1
+   * @range 1..16
+   */
+  substeps: number;
+  /**
+   * How much of its velocity each point keeps per tick.
+   *
+   * @default 0.97
+   * @range 0..1
+   * @tunable
+   */
+  damping: number;
+  /**
+   * Multiplies og.Physics.gravity.
+   *
+   * @default 1
+   * @range -10..10
+   * @tunable
+   */
+  gravityScale: number;
+  /**
+   * A steady acceleration (wind); the garment flutters with it.
+   *
+   * @unit mps2 (metres per second squared)
+   * @tunable
+   */
+  wind: Vector3;
+  /**
+   * How much the wind varies over the garment and the tick (0: steady).
+   *
+   * @default 0.6
+   * @range 0..2
+   * @tunable
+   */
+  gust: number;
+  /**
+   * The thickness it collides with solid colliders at (0: no collision; the skinned pose, through `maxDistance` and `backstop`, holds it on the body). A character's own collider counts: keep it inside the body, or leave this 0.
+   *
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  radius: number;
+  /**
+   * How much of its sliding a point touching a solid loses each step.
+   *
+   * @range 0..1
+   * @tunable
+   */
+  friction: number;
+}
+
 /** `SoftBody.shape`: a sphere of `radius` (an icosphere; 2D a ring). */
 export declare const SOFT_SPHERE: 0;
 
@@ -15087,6 +15202,7 @@ export interface BonePose {
   /** Its rotation in world space. */
   readonly rotation: Quaternion;
 }
+
 
 
 
@@ -50359,6 +50475,10 @@ export declare namespace og {
    */
   const Cloth: ComponentType<{ readonly columns: FieldSpec<"u32">; readonly rows: FieldSpec<"u32">; readonly spacing: FieldSpec<"f32">; readonly pins: FieldSpec<"u32">; readonly iterations: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly gust: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly friction: FieldSpec<"f32">; readonly material: FieldSpec<"Material">; readonly visible: FieldSpec<"bool"> }, Cloth>;
   /**
+   * Cloth on a skinned character: glTF mesh `mesh` of the entity's og.Model (a skirt, a cape, a coat's tails), posed by the entity's og.Skeleton and simulated from there. Each tick the animation poses the mesh; then every point of it swings under gravity and wind and drags behind the motion, but stays within `maxDistance` of where the skinned pose puts it, never goes further than `backstop` behind it into the body, and keeps its edges' lengths. Points within `pinTop` of the garment's top, and points whose vertex colour's red is 0, stay on the skinned pose; red between 0 and 1 scales `maxDistance` (paint it in the modelling tool: white everywhere frees the whole garment). With `radius` it collides with every solid collider too. One-way like og.Cloth (it moves nothing), simulated in the physics step with the rest of the world, so it replays and snapshots carry it. The model draws the garment where the simulation leaves it, with motion vectors for TAA. 3D only. Its blendshapes are not applied.
+   */
+  const Garment: ComponentType<{ readonly mesh: FieldSpec<"u32">; readonly maxDistance: FieldSpec<"f32">; readonly pinTop: FieldSpec<"f32">; readonly backstop: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly bending: FieldSpec<"f32">; readonly iterations: FieldSpec<"u32">; readonly substeps: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly gust: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly friction: FieldSpec<"f32"> }, Garment>;
+  /**
    * A PBD soft volume: a closed surface of points (2D: a ring in the xy plane) held by distance constraints along its edges and by one constraint on the volume it encloses (2D: its area), dropped under gravity and pushed out of every solid collider, so it lands, squashes and springs back: jelly, a water balloon, a slime. Built at the entity's world pose (its og.Transform after its parents') when it appears or its shape changes. It moves nothing (one-way like og.Cloth). Its points are world state (the og.physics state block); og.physics.softBodyPoints reads them and the renderer draws its surface with `material`.
    */
   const SoftBody: ComponentType<{ readonly shape: FieldSpec<"u32">; readonly radius: FieldSpec<"f32">; readonly size: FieldSpec<"Vector3">; readonly detail: FieldSpec<"u32">; readonly mesh: FieldSpec<"Geometry">; readonly stiffness: FieldSpec<"f32">; readonly pressure: FieldSpec<"f32">; readonly volumeStiffness: FieldSpec<"f32">; readonly iterations: FieldSpec<"u32">; readonly substeps: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly friction: FieldSpec<"f32">; readonly pinTop: FieldSpec<"f32">; readonly material: FieldSpec<"Material">; readonly visible: FieldSpec<"bool">; readonly volume: FieldSpec<"f32">; readonly center: FieldSpec<"Vector3"> }, SoftBody>;
@@ -50486,6 +50606,14 @@ export declare namespace og {
      * @returns Refused for an entity without an og.Rope.
      */
     function ropePoints(world: World, entity: Entity): Result<readonly Vector3[]>;
+    /**
+     * An og.Garment's points after the last step, in the world: one per position of the garment's mesh (vertices at the same position, split along a seam, share one), in the order the mesh first uses them.
+     *
+     * @param world The world.
+     * @param entity The garment's entity.
+     * @returns Refused for an entity without an og.Garment, or one not simulated yet (it needs og.Model, og.Skeleton and a loaded og.load.animation of the model).
+     */
+    function garmentPoints(world: World, entity: Entity): Result<readonly Vector3[]>;
     /**
      * An og.Cloth's points after the last step, row by row (`columns` per row, rows downwards from the top edge).
      *

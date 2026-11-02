@@ -180,6 +180,14 @@ pub(crate) struct FxState {
     /// The last frame's blendshape weights of each posed model's skinned
     /// mesh, by (entity, mesh index): TAA's motion of a morphing face.
     pub drawn_weights: BTreeMap<(u64, usize), [f32; og_render::MAX_MORPH_TARGETS]>,
+    /// og.Garment's welds and the entities the last tick posed (`super::garment`).
+    pub garments: super::garment::Garments,
+    /// This frame's `deformed_vertices` entries' (entity, primitive) and
+    /// instance transform, in their order.
+    pub deformed_keys: Vec<((u64, usize), Mat4)>,
+    /// The last frame's garment vertices by (entity, primitive), in the
+    /// world: TAA's motion of a swinging garment.
+    pub drawn_deformed: BTreeMap<(u64, usize), Vec<Vec3>>,
 }
 
 pub(crate) fn f(v: &Value, key: &str, default: f32) -> f32 {
@@ -1109,6 +1117,7 @@ pub(crate) fn posed_model(
     look: ModelLook,
     keys: &mut Vec<(u64, u32)>,
 ) -> bool {
+    let physics = rs.draw.physics.clone();
     let RenderState {
         scene,
         fx,
@@ -1138,6 +1147,17 @@ pub(crate) fn posed_model(
     let meshes = skinned_meshes(scene, &info, skin, info.prim_mesh.len());
     let palette = scene.joint_palettes.len() as u32;
     atmo.palettes.insert(entity, palette);
+    // og.Garment: its primitives drawn at the simulated points, posed by
+    // this frame's palette (`super::garment::deformed`).
+    let mut garment = super::garment::deformed(
+        fx,
+        scene,
+        physics.as_ref(),
+        entity,
+        asset,
+        world_matrix,
+        &matrices,
+    );
     scene.joint_palettes.push(JointPalette { matrices });
     // Parts and nodes line up unless the parts are not the model's own
     // (a bake's lightmapped parts): then every part is drawn.
@@ -1153,7 +1173,12 @@ pub(crate) fn posed_model(
                 inst.fx = look.fx;
                 inst.cast_shadows = look.cast;
                 inst.receive_shadows = look.receive;
-                if info.prim_mesh.get(p).copied() == Some(out.mesh) {
+                if let Some((zero, vertices)) = garment.remove(&p) {
+                    inst.mesh = zero;
+                    inst.deformed = Some(scene.deformed_vertices.len() as u32);
+                    scene.deformed_vertices.push(vertices);
+                    fx.deformed_keys.push(((entity, p), world_matrix));
+                } else if info.prim_mesh.get(p).copied() == Some(out.mesh) {
                     let n = inst.morph_weights.len().min(out.weights.len());
                     inst.morph_weights[..n].copy_from_slice(&out.weights[..n]);
                 }
@@ -1215,6 +1240,7 @@ pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64, cut: 
     scene.previous_transforms.clear();
     scene.previous_joint_palettes.clear();
     scene.previous_morph_weights.clear();
+    scene.previous_deformed_vertices.clear();
     let blur = scene.post.motion_blur.is_some();
     let keyed = keys.len() == scene.instances.len();
     if blur && keyed {
@@ -1233,6 +1259,7 @@ pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64, cut: 
         fx.drawn.clear();
         fx.drawn_joints.clear();
         fx.drawn_weights.clear();
+        fx.drawn_deformed.clear();
         return;
     }
     if taa {
@@ -1240,6 +1267,7 @@ pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64, cut: 
     } else {
         fx.drawn_joints.clear();
         fx.drawn_weights.clear();
+        fx.drawn_deformed.clear();
     }
     if !interp.display && !taa {
         return;
@@ -1336,6 +1364,37 @@ fn joints(
         })
         .collect();
     fx.drawn_weights = weights;
+    // Each garment's vertices the frame before, in this frame's instance
+    // space (its own where it was not drawn then), and this frame's kept
+    // in the world.
+    let mut drawn = BTreeMap::new();
+    scene.previous_deformed_vertices = scene
+        .deformed_vertices
+        .iter()
+        .zip(&fx.deformed_keys)
+        .map(|(d, &(key, world))| {
+            let now: Vec<Vec3> = d
+                .positions
+                .iter()
+                .map(|p| world.transform_point3(*p))
+                .collect();
+            let before = fx
+                .drawn_deformed
+                .get(&key)
+                .filter(|b| b.len() == now.len())
+                .map(|b| {
+                    let inverse = world.inverse();
+                    og_render::DeformedVertices {
+                        positions: b.iter().map(|p| inverse.transform_point3(*p)).collect(),
+                        normals: d.normals.clone(),
+                    }
+                })
+                .unwrap_or_else(|| d.clone());
+            drawn.insert(key, now);
+            before
+        })
+        .collect();
+    fx.drawn_deformed = drawn;
 }
 
 /// The overlay's size in CSS pixels: the host's viewport, else the target.

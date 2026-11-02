@@ -241,6 +241,7 @@ pub(crate) fn mount_back(
         })
         .map_err(err)?;
     super::physics_ext::schedule_ragdoll_targets(world, engine_id, &physics)?;
+    super::garment::schedule(world, engine_id, &physics)?;
     physics.schedule(world).map_err(err)?;
     // UI sounds: the events this tick's UI queued (its begin, from the
     // input, and its widgets), played on the ui bus. A voice per event

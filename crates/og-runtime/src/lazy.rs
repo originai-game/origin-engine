@@ -103,6 +103,14 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: "og.SoftBody",
         enable: |w, _| og_physics::enable(w, "og.SoftBody"),
     },
+    // R9: og.physics steps it; the garment system poses it.
+    Lazy {
+        name: "og.Garment",
+        enable: |w, _| {
+            og_physics::enable(w, "og.Garment")?;
+            w.grant(crate::garment::SYSTEM, &["og.Garment"])
+        },
+    },
     // og.motion: its system and state block (goals) once a game names it.
     Lazy {
         name: crate::motion::AGENT,

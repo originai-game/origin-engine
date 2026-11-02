@@ -90,6 +90,7 @@ module physics {
 | [`PIN_LEFT`](#const-PIN_LEFT) | constant | `Cloth.pins` bit: the whole left column is pinned (a flag on a pole). |
 | [`PIN_TOP_RINGS`](#const-PIN_TOP_RINGS) | constant | `Cloth.pins` bit: every fourth point of the top row (curtain rings). |
 | [`og.Cloth`](#record-Cloth) | component | A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's world position (its og.Transform after its parents': its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour). |
+| [`og.Garment`](#record-Garment) | component | Cloth on a skinned character: glTF mesh `mesh` of the entity's og.Model (a skirt, a cape, a coat's tails), posed by the entity's og.Skeleton and simulated from there. Each tick the animation poses the mesh; then every point of it swings under gravity and wind and drags behind the motion, but stays within `maxDistance` of where the skinned pose puts it, never goes further than `backstop` behind it into the body, and keeps its edges' lengths. Points within `pinTop` of the garment's top, and points whose vertex colour's red is 0, stay on the skinned pose; red between 0 and 1 scales `maxDistance` (paint it in the modelling tool: white everywhere frees the whole garment). With `radius` it collides with every solid collider too. One-way like og.Cloth (it moves nothing), simulated in the physics step with the rest of the world, so it replays and snapshots carry it. The model draws the garment where the simulation leaves it, with motion vectors for TAA. 3D only. Its blendshapes are not applied. |
 | [`SOFT_SPHERE`](#const-SOFT_SPHERE) | constant | `SoftBody.shape`: a sphere of `radius` (an icosphere; 2D a ring). |
 | [`SOFT_BOX`](#const-SOFT_BOX) | constant | `SoftBody.shape`: a box of `size` (each face a grid of `detail` + 1 cells; 2D a rectangle). |
 | [`SOFT_MESH`](#const-SOFT_MESH) | constant | `SoftBody.shape`: the closed surface of geometry `mesh` (3D only). |
@@ -126,6 +127,7 @@ module physics {
 | [`RagdollRigDesc`](#type-RagdollRigDesc) | desc struct | The bones of a ragdoll, parents first, for og.physics.setRagdollRig; og.physics.ragdollRigFromSkeleton makes one from a model's skeleton. |
 | [`BonePose`](#type-BonePose) | struct | A ragdoll bone's pose as the last step left it (blended with the animation by og.Ragdoll.weight). |
 | [`og.physics.ropePoints`](#fn-ropePoints) | function | An og.Rope's points after the last step, from its entity to its end (empty before its first step). The engine draws visible ropes itself; this is for game logic and custom drawing. |
+| [`og.physics.garmentPoints`](#fn-garmentPoints) | function | An og.Garment's points after the last step, in the world: one per position of the garment's mesh (vertices at the same position, split along a seam, share one), in the order the mesh first uses them. |
 | [`og.physics.clothPoints`](#fn-clothPoints) | function | An og.Cloth's points after the last step, row by row (`columns` per row, rows downwards from the top edge). |
 | [`SoftBodyPoints`](#type-SoftBodyPoints) | struct | An og.SoftBody's surface after the last step. |
 | [`og.physics.softBodyPoints`](#fn-softBodyPoints) | function | An og.SoftBody's points and the triangles of its surface after the last step (none before its first step). The engine draws visible soft bodies itself; this is for game logic (where it touches, how squashed it is) and custom drawing. |
@@ -170,7 +172,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 9719</sub>
+<sub>`api.ogt` line 9796</sub>
 
 <a id="fn-raycastAll"></a>
 
@@ -200,7 +202,7 @@ fn raycastAll {
 }
 ```
 
-<sub>`api.ogt` line 9726</sub>
+<sub>`api.ogt` line 9803</sub>
 
 <a id="fn-projectPoint"></a>
 
@@ -230,7 +232,7 @@ fn projectPoint {
 }
 ```
 
-<sub>`api.ogt` line 9733</sub>
+<sub>`api.ogt` line 9810</sub>
 
 <a id="fn-shapeCast"></a>
 
@@ -260,7 +262,7 @@ fn shapeCast {
 }
 ```
 
-<sub>`api.ogt` line 9740</sub>
+<sub>`api.ogt` line 9817</sub>
 
 <a id="fn-overlap"></a>
 
@@ -290,7 +292,7 @@ fn overlap {
 }
 ```
 
-<sub>`api.ogt` line 9747</sub>
+<sub>`api.ogt` line 9824</sub>
 
 <a id="fn-applyForce"></a>
 
@@ -326,7 +328,7 @@ fn applyForce {
 }
 ```
 
-<sub>`api.ogt` line 9754</sub>
+<sub>`api.ogt` line 9831</sub>
 
 <a id="fn-applyImpulse"></a>
 
@@ -362,7 +364,7 @@ fn applyImpulse {
 }
 ```
 
-<sub>`api.ogt` line 9765</sub>
+<sub>`api.ogt` line 9842</sub>
 
 <a id="fn-applyTorque"></a>
 
@@ -394,7 +396,7 @@ fn applyTorque {
 }
 ```
 
-<sub>`api.ogt` line 9776</sub>
+<sub>`api.ogt` line 9853</sub>
 
 <a id="fn-applyTorqueImpulse"></a>
 
@@ -426,7 +428,7 @@ fn applyTorqueImpulse {
 }
 ```
 
-<sub>`api.ogt` line 9784</sub>
+<sub>`api.ogt` line 9861</sub>
 
 <a id="fn-setMesh"></a>
 
@@ -458,7 +460,7 @@ fn setMesh {
 }
 ```
 
-<sub>`api.ogt` line 9792</sub>
+<sub>`api.ogt` line 9869</sub>
 
 <a id="fn-ropePoints"></a>
 
@@ -488,7 +490,37 @@ fn ropePoints {
 }
 ```
 
-<sub>`api.ogt` line 9854</sub>
+<sub>`api.ogt` line 9931</sub>
+
+<a id="fn-garmentPoints"></a>
+
+### `og.physics.garmentPoints`
+
+An og.Garment's points after the last step, in the world: one per position of the garment's mesh (vertices at the same position, split along a seam, share one), in the order the mesh first uses them.
+
+```ts
+og.physics.garmentPoints(world: World, entity: Entity): Result<readonly Vector3[]>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `entity` | `Entity` | no | The garment's entity. |
+
+**Returns** `Result<readonly Vector3[]>`: Refused for an entity without an og.Garment, or one not simulated yet (it needs og.Model, og.Skeleton and a loaded og.load.animation of the model).
+
+Binding symbol `og_physics_garment_points` · publish builds: kept
+
+```ogt
+fn garmentPoints {
+  doc "An og.Garment's points after the last step, in the world: one per position of the garment's mesh (vertices at the same position, split along a seam, share one), in the order the mesh first uses them."
+  param world World "The world."
+  param entity Entity "The garment's entity."
+  returns Result.List.Vector3 "Refused for an entity without an og.Garment, or one not simulated yet (it needs og.Model, og.Skeleton and a loaded og.load.animation of the model)."
+}
+```
+
+<sub>`api.ogt` line 9938</sub>
 
 <a id="fn-clothPoints"></a>
 
@@ -518,7 +550,7 @@ fn clothPoints {
 }
 ```
 
-<sub>`api.ogt` line 9861</sub>
+<sub>`api.ogt` line 9945</sub>
 
 <a id="fn-softBodyPoints"></a>
 
@@ -548,7 +580,7 @@ fn softBodyPoints {
 }
 ```
 
-<sub>`api.ogt` line 9874</sub>
+<sub>`api.ogt` line 9958</sub>
 
 <a id="fn-fluidParticles"></a>
 
@@ -578,7 +610,7 @@ fn fluidParticles {
 }
 ```
 
-<sub>`api.ogt` line 9881</sub>
+<sub>`api.ogt` line 9965</sub>
 
 <a id="fn-fluid3dParticles"></a>
 
@@ -608,7 +640,7 @@ fn fluid3dParticles {
 }
 ```
 
-<sub>`api.ogt` line 9888</sub>
+<sub>`api.ogt` line 9972</sub>
 
 <a id="fn-waterHeight"></a>
 
@@ -642,7 +674,7 @@ fn waterHeight {
 }
 ```
 
-<sub>`api.ogt` line 9895</sub>
+<sub>`api.ogt` line 9979</sub>
 
 <a id="fn-vehicleWheels"></a>
 
@@ -672,7 +704,7 @@ fn vehicleWheels {
 }
 ```
 
-<sub>`api.ogt` line 9904</sub>
+<sub>`api.ogt` line 9988</sub>
 
 <a id="fn-ragdollRigFromSkeleton"></a>
 
@@ -702,7 +734,7 @@ fn ragdollRigFromSkeleton {
 }
 ```
 
-<sub>`api.ogt` line 9911</sub>
+<sub>`api.ogt` line 9995</sub>
 
 <a id="fn-setRagdollRig"></a>
 
@@ -734,7 +766,7 @@ fn setRagdollRig {
 }
 ```
 
-<sub>`api.ogt` line 9918</sub>
+<sub>`api.ogt` line 10002</sub>
 
 <a id="fn-ragdollPose"></a>
 
@@ -764,7 +796,7 @@ fn ragdollPose {
 }
 ```
 
-<sub>`api.ogt` line 9926</sub>
+<sub>`api.ogt` line 10010</sub>
 
 <a id="fn-stats"></a>
 
@@ -792,7 +824,7 @@ fn stats {
 }
 ```
 
-<sub>`api.ogt` line 9954</sub>
+<sub>`api.ogt` line 10038</sub>
 
 ## Components, resources and events
 
@@ -2349,6 +2381,112 @@ component Cloth {
 
 <sub>`api.ogt` line 9020</sub>
 
+<a id="record-Garment"></a>
+
+### `og.Garment` (component)
+
+Cloth on a skinned character: glTF mesh `mesh` of the entity's og.Model (a skirt, a cape, a coat's tails), posed by the entity's og.Skeleton and simulated from there. Each tick the animation poses the mesh; then every point of it swings under gravity and wind and drags behind the motion, but stays within `maxDistance` of where the skinned pose puts it, never goes further than `backstop` behind it into the body, and keeps its edges' lengths. Points within `pinTop` of the garment's top, and points whose vertex colour's red is 0, stay on the skinned pose; red between 0 and 1 scales `maxDistance` (paint it in the modelling tool: white everywhere frees the whole garment). With `radius` it collides with every solid collider too. One-way like og.Cloth (it moves nothing), simulated in the physics step with the rest of the world, so it replays and snapshots carry it. The model draws the garment where the simulation leaves it, with motion vectors for TAA. 3D only. Its blendshapes are not applied.
+
+Token `og.Garment`, registered under the schema name `og.Garment`; its value type is `Garment`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `mesh` | `number` | `0` | — | — | — | The glTF mesh of the entity's model that is the garment (its primitives together), as og.Blendshapes.mesh. |
+| `maxDistance` | `number` | `0.2` | ≥ 0 | `m` | tunable | How far a point may stray from where the skinned pose puts it. |
+| `pinTop` | `number` | `0.04` | ≥ 0 | `m` | tunable | Points within this height of the garment's top at rest (the bind pose, the model's +y) stay on the skinned pose: a skirt's waistband, a cape's collar. |
+| `backstop` | `number` | `0` | ≥ 0 | `m` | tunable | How far a point may go behind where the skinned pose puts it, against the skinned normal (0: never behind it, so it cannot sink into the body). |
+| `stiffness` | `number` | `1` | 0 … 1 | — | tunable | How stiff its edges are, 0 to 1 a pass: 1 holds their length, lower stretches. |
+| `bending` | `number` | `0.1` | 0 … 1 | — | tunable | How much it resists folding, 0 to 1 a pass (across each pair of triangles that share an edge): 0 drapes like silk, near 1 like leather. |
+| `iterations` | `number` | `6` | 1 … 64 | — | tunable | Constraint passes per substep. |
+| `substeps` | `number` | `1` | 1 … 16 | — | — | Simulation steps per tick. |
+| `damping` | `number` | `0.97` | 0 … 1 | — | tunable | How much of its velocity each point keeps per tick. |
+| `gravityScale` | `number` | `1` | -10 … 10 | — | tunable | Multiplies og.Physics.gravity. |
+| `wind` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps2` | tunable | A steady acceleration (wind); the garment flutters with it. |
+| `gust` | `number` | `0.6` | 0 … 2 | — | tunable | How much the wind varies over the garment and the tick (0: steady). |
+| `radius` | `number` | `0` | ≥ 0 | `m` | tunable | The thickness it collides with solid colliders at (0: no collision; the skinned pose, through `maxDistance` and `backstop`, holds it on the body). A character's own collider counts: keep it inside the body, or leave this 0. |
+| `friction` | `number` | `0` | 0 … 1 | — | tunable | How much of its sliding a point touching a solid loses each step. |
+
+```ogt
+component Garment {
+  doc "Cloth on a skinned character: glTF mesh `mesh` of the entity's og.Model (a skirt, a cape, a coat's tails), posed by the entity's og.Skeleton and simulated from there. Each tick the animation poses the mesh; then every point of it swings under gravity and wind and drags behind the motion, but stays within `maxDistance` of where the skinned pose puts it, never goes further than `backstop` behind it into the body, and keeps its edges' lengths. Points within `pinTop` of the garment's top, and points whose vertex colour's red is 0, stay on the skinned pose; red between 0 and 1 scales `maxDistance` (paint it in the modelling tool: white everywhere frees the whole garment). With `radius` it collides with every solid collider too. One-way like og.Cloth (it moves nothing), simulated in the physics step with the rest of the world, so it replays and snapshots carry it. The model draws the garment where the simulation leaves it, with motion vectors for TAA. 3D only. Its blendshapes are not applied."
+  field mesh u32 "The glTF mesh of the entity's model that is the garment (its primitives together), as og.Blendshapes.mesh."
+  field maxDistance f32 "How far a point may stray from where the skinned pose puts it." {
+    default 0.2
+    min 0
+    unit m
+    tunable true
+  }
+  field pinTop f32 "Points within this height of the garment's top at rest (the bind pose, the model's +y) stay on the skinned pose: a skirt's waistband, a cape's collar." {
+    default 0.04
+    min 0
+    unit m
+    tunable true
+  }
+  field backstop f32 "How far a point may go behind where the skinned pose puts it, against the skinned normal (0: never behind it, so it cannot sink into the body)." {
+    min 0
+    unit m
+    tunable true
+  }
+  field stiffness f32 "How stiff its edges are, 0 to 1 a pass: 1 holds their length, lower stretches." {
+    default 1
+    min 0
+    max 1
+    tunable true
+  }
+  field bending f32 "How much it resists folding, 0 to 1 a pass (across each pair of triangles that share an edge): 0 drapes like silk, near 1 like leather." {
+    default 0.1
+    min 0
+    max 1
+    tunable true
+  }
+  field iterations u32 "Constraint passes per substep." {
+    default 6
+    min 1
+    max 64
+    tunable true
+  }
+  field substeps u32 "Simulation steps per tick." {
+    default 1
+    min 1
+    max 16
+  }
+  field damping f32 "How much of its velocity each point keeps per tick." {
+    default 0.97
+    min 0
+    max 1
+    tunable true
+  }
+  field gravityScale f32 "Multiplies og.Physics.gravity." {
+    default 1
+    min -10
+    max 10
+    tunable true
+  }
+  field wind Vector3 "A steady acceleration (wind); the garment flutters with it." {
+    unit mps2
+    tunable true
+  }
+  field gust f32 "How much the wind varies over the garment and the tick (0: steady)." {
+    default 0.6
+    min 0
+    max 2
+    tunable true
+  }
+  field radius f32 "The thickness it collides with solid colliders at (0: no collision; the skinned pose, through `maxDistance` and `backstop`, holds it on the body). A character's own collider counts: keep it inside the body, or leave this 0." {
+    min 0
+    unit m
+    tunable true
+  }
+  field friction f32 "How much of its sliding a point touching a solid loses each step." {
+    min 0
+    max 1
+    tunable true
+  }
+}
+```
+
+<sub>`api.ogt` line 9096</sub>
+
 <a id="record-SoftBody"></a>
 
 ### `og.SoftBody` (component)
@@ -2476,7 +2614,7 @@ component SoftBody {
 }
 ```
 
-<sub>`api.ogt` line 9100</sub>
+<sub>`api.ogt` line 9177</sub>
 
 <a id="record-Fluid2D"></a>
 
@@ -2601,7 +2739,7 @@ component Fluid2D {
 }
 ```
 
-<sub>`api.ogt` line 9195</sub>
+<sub>`api.ogt` line 9272</sub>
 
 <a id="record-Fluid3D"></a>
 
@@ -2771,7 +2909,7 @@ component Fluid3D {
 }
 ```
 
-<sub>`api.ogt` line 9285</sub>
+<sub>`api.ogt` line 9362</sub>
 
 <a id="record-WaterSurface"></a>
 
@@ -2836,7 +2974,7 @@ component WaterSurface {
 }
 ```
 
-<sub>`api.ogt` line 9412</sub>
+<sub>`api.ogt` line 9489</sub>
 
 <a id="record-WaterLine"></a>
 
@@ -2913,7 +3051,7 @@ component WaterLine {
 }
 ```
 
-<sub>`api.ogt` line 9455</sub>
+<sub>`api.ogt` line 9532</sub>
 
 <a id="record-Splash"></a>
 
@@ -2945,7 +3083,7 @@ event Splash {
 }
 ```
 
-<sub>`api.ogt` line 9508</sub>
+<sub>`api.ogt` line 9585</sub>
 
 <a id="record-Ragdoll"></a>
 
@@ -3013,7 +3151,7 @@ component Ragdoll {
 }
 ```
 
-<sub>`api.ogt` line 9521</sub>
+<sub>`api.ogt` line 9598</sub>
 
 ## Types
 
@@ -3041,7 +3179,7 @@ struct QueryFilter {
 }
 ```
 
-<sub>`api.ogt` line 9566</sub>
+<sub>`api.ogt` line 9643</sub>
 
 <a id="type-RaycastDesc"></a>
 
@@ -3076,7 +3214,7 @@ struct RaycastDesc {
 }
 ```
 
-<sub>`api.ogt` line 9574</sub>
+<sub>`api.ogt` line 9651</sub>
 
 <a id="type-RaycastHit"></a>
 
@@ -3105,7 +3243,7 @@ struct RaycastHit {
 }
 ```
 
-<sub>`api.ogt` line 9590</sub>
+<sub>`api.ogt` line 9667</sub>
 
 <a id="type-RaycastAllDesc"></a>
 
@@ -3145,7 +3283,7 @@ struct RaycastAllDesc {
 }
 ```
 
-<sub>`api.ogt` line 9601</sub>
+<sub>`api.ogt` line 9678</sub>
 
 <a id="type-ProjectPointDesc"></a>
 
@@ -3180,7 +3318,7 @@ struct ProjectPointDesc {
 }
 ```
 
-<sub>`api.ogt` line 9621</sub>
+<sub>`api.ogt` line 9698</sub>
 
 <a id="type-PointProjection"></a>
 
@@ -3213,7 +3351,7 @@ struct PointProjection {
 }
 ```
 
-<sub>`api.ogt` line 9637</sub>
+<sub>`api.ogt` line 9714</sub>
 
 <a id="type-ShapeDesc"></a>
 
@@ -3255,7 +3393,7 @@ struct ShapeDesc {
 }
 ```
 
-<sub>`api.ogt` line 9651</sub>
+<sub>`api.ogt` line 9728</sub>
 
 <a id="type-ShapeCastDesc"></a>
 
@@ -3294,7 +3432,7 @@ struct ShapeCastDesc {
 }
 ```
 
-<sub>`api.ogt` line 9673</sub>
+<sub>`api.ogt` line 9750</sub>
 
 <a id="type-ShapeCastHit"></a>
 
@@ -3321,7 +3459,7 @@ struct ShapeCastHit {
 }
 ```
 
-<sub>`api.ogt` line 9691</sub>
+<sub>`api.ogt` line 9768</sub>
 
 <a id="type-OverlapDesc"></a>
 
@@ -3351,7 +3489,7 @@ struct OverlapDesc {
 }
 ```
 
-<sub>`api.ogt` line 9701</sub>
+<sub>`api.ogt` line 9778</sub>
 
 <a id="type-MeshDesc"></a>
 
@@ -3375,7 +3513,7 @@ struct MeshDesc {
 }
 ```
 
-<sub>`api.ogt` line 9712</sub>
+<sub>`api.ogt` line 9789</sub>
 
 <a id="type-WheelPose"></a>
 
@@ -3411,7 +3549,7 @@ struct WheelPose {
 }
 ```
 
-<sub>`api.ogt` line 9800</sub>
+<sub>`api.ogt` line 9877</sub>
 
 <a id="type-RagdollBoneDesc"></a>
 
@@ -3454,7 +3592,7 @@ struct RagdollBoneDesc {
 }
 ```
 
-<sub>`api.ogt` line 9817</sub>
+<sub>`api.ogt` line 9894</sub>
 
 <a id="type-RagdollRigDesc"></a>
 
@@ -3478,7 +3616,7 @@ struct RagdollRigDesc {
 }
 ```
 
-<sub>`api.ogt` line 9839</sub>
+<sub>`api.ogt` line 9916</sub>
 
 <a id="type-BonePose"></a>
 
@@ -3501,7 +3639,7 @@ struct BonePose {
 }
 ```
 
-<sub>`api.ogt` line 9846</sub>
+<sub>`api.ogt` line 9923</sub>
 
 <a id="type-SoftBodyPoints"></a>
 
@@ -3522,7 +3660,7 @@ struct SoftBodyPoints {
 }
 ```
 
-<sub>`api.ogt` line 9868</sub>
+<sub>`api.ogt` line 9952</sub>
 
 <a id="type-PhysicsPhase"></a>
 
@@ -3547,7 +3685,7 @@ struct PhysicsPhase {
 }
 ```
 
-<sub>`api.ogt` line 9933</sub>
+<sub>`api.ogt` line 10017</sub>
 
 <a id="type-PhysicsStats"></a>
 
@@ -3578,7 +3716,7 @@ struct PhysicsStats {
 }
 ```
 
-<sub>`api.ogt` line 9942</sub>
+<sub>`api.ogt` line 10026</sub>
 
 ## Constants
 
@@ -3907,16 +4045,16 @@ const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (
 const SOFT_SPHERE u32 0 "`SoftBody.shape`: a sphere of `radius` (an icosphere; 2D a ring)."
 ```
 
-<sub>`api.ogt` line 9096</sub>
+<sub>`api.ogt` line 9173</sub>
 
 ```ogt
 const SOFT_BOX u32 1 "`SoftBody.shape`: a box of `size` (each face a grid of `detail` + 1 cells; 2D a rectangle)."
 ```
 
-<sub>`api.ogt` line 9097</sub>
+<sub>`api.ogt` line 9174</sub>
 
 ```ogt
 const SOFT_MESH u32 2 "`SoftBody.shape`: the closed surface of geometry `mesh` (3D only)."
 ```
 
-<sub>`api.ogt` line 9098</sub>
+<sub>`api.ogt` line 9175</sub>

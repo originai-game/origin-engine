@@ -114,6 +114,16 @@ deterministic and part of snapshots (`og api show physics`):
   wants `thickness` about its `spacing` so it never passes through
   itself, `substeps` 2–4 and `friction` near 1 so it lies where it lands
   (self-collision costs about 1 ms a tick per 1,000 points).
+- `og.Garment` — cloth on a skinned character (3D): a cape, a skirt, a
+  coat's tails. Put it on the entity with og.Model, og.Skeleton and its
+  animation, `mesh` naming the glTF mesh that is the garment; each tick
+  the skinned pose places its points and physics lets them swing and sag
+  within `maxDistance` of it, so it never flies off the body. Paint the
+  mesh's vertex colour red where it may move (1: free, 0: stuck to the
+  body; a mesh without colours is free everywhere) or let `pinTop` hold
+  its top edge; `backstop` stops it sinking into the body behind, and
+  `radius` pushes it out of solid colliders. The engine draws it at the
+  simulated points; `og.physics.garmentPoints` reads them.
 - `og.Fluid2D` — a particle fluid drawn as metaballs on a sprite layer.
   Give two or more fluids the same `group` and they interact: by
   `density` the heavier sinks under the lighter (oil on water), by

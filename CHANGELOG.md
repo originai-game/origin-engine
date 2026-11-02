@@ -536,6 +536,16 @@ is one line here, written at the merge that changes
   collision event is an impact faster than 0.5 m/s. The cook refuses an
   emitter whose mesh model or sub-emitter is missing, or that the renderer
   cannot draw (distortion on a mesh, a fifth sub-emitter).
+- **Cloth on skinned garments (R9, batch 4).** `og.Garment` (lazy, 3D)
+  on a posed model simulates one of its glTF meshes as a garment: each
+  tick, after the animation, the runtime skins the mesh's welded points
+  and og.physics steps them in the deterministic tick (gravity, gusting
+  wind, edges and bends, each point within `maxDistance` of the skin by
+  its vertex colour's red, `pinTop`, `backstop`, push-out of solids at
+  `radius`), saved in the og.physics block. The renderer draws them as
+  the skinned instance's own vertices (`SkinnedInstance::deformed`, in
+  the joint palette buffer, with the previous frame's for TAA's motion
+  vectors). `og.physics.garmentPoints` reads them.
 
 ## 0.7.7 — 2026-10-31
 

@@ -293,6 +293,8 @@ pub(crate) struct SimExt {
     pub(crate) vehicles: IdMap<u64, VehicleExt>,
     /// The soft volumes' points and surfaces, by entity (og.SoftBody).
     pub(crate) softs: IdMap<u64, crate::softbody::SoftState>,
+    /// The garments' points and edges, by entity (og.Garment).
+    pub(crate) garments: IdMap<u64, crate::garment::GarmentState>,
 }
 
 /// A vehicle's state beyond its controller ([`SimExt::vehicles`]).
@@ -311,6 +313,7 @@ pub(crate) const EXT_SLEEP: u16 = 2;
 pub(crate) const EXT_HOOKS: u16 = 3;
 pub(crate) const EXT_VEHICLES: u16 = 4;
 pub(crate) const EXT_SOFTS: u16 = 5;
+pub(crate) const EXT_GARMENTS: u16 = 6;
 
 impl SimExt {
     /// Its sections, each `(tag, bytes)`; none for what is empty.
@@ -342,6 +345,12 @@ impl SimExt {
             let list: Vec<(&u64, &crate::softbody::SoftState)> = self.softs.iter().collect();
             crate::encode(&mut bytes, &list).expect("soft volumes serialize into memory");
             out.push((EXT_SOFTS, bytes));
+        }
+        if !self.garments.is_empty() {
+            let mut bytes = Vec::new();
+            let list: Vec<(&u64, &crate::garment::GarmentState)> = self.garments.iter().collect();
+            crate::encode(&mut bytes, &list).expect("garments serialize into memory");
+            out.push((EXT_GARMENTS, bytes));
         }
         out
     }
@@ -375,6 +384,10 @@ impl SimExt {
                 let list: Vec<(u64, crate::softbody::SoftState)> =
                     crate::codec().deserialize(bytes).map_err(parse)?;
                 ext.softs = list.into_iter().collect();
+            } else if tag == EXT_GARMENTS {
+                let list: Vec<(u64, crate::garment::GarmentState)> =
+                    crate::codec().deserialize(bytes).map_err(parse)?;
+                ext.garments = list.into_iter().collect();
             }
         }
         Ok(ext)
@@ -501,6 +514,11 @@ impl Sim {
         for (_, b) in self.ext.softs.iter_mut() {
             points(&mut b.points);
             points(&mut b.previous);
+        }
+        for (_, g) in self.ext.garments.iter_mut() {
+            points(&mut g.points);
+            points(&mut g.previous);
+            points(&mut g.targets);
         }
     }
 }
