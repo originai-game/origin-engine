@@ -28,6 +28,8 @@ import { artBrief, presetLook, type ArtKind } from "../../../packages/knowledge/
 const ROOT = resolve(import.meta.dir, "../../..");
 const API = process.env.OG_IMAGE_API ?? "https://api.origingame.ai/v1/images/edits";
 const MODEL = process.env.OG_IMAGE_MODEL ?? "gpt-image-2.5-sunburst";
+/** Retries of a slot the image API refuses for an empty upstream key (429 insufficient_quota). */
+const RETRIES = 3;
 
 interface Slot {
   name: string;
@@ -39,6 +41,8 @@ interface Slot {
   note?: string;
   /** A ground colour (`#rrggbb`): everything inside the art's outline is made opaque on it. */
   opaque?: string;
+  /** With `opaque`: everything farther than this fraction of the cell from its edges is painted flat in it (a centre the model hazed). */
+  flat?: number;
 }
 
 function usage(): never {
@@ -47,7 +51,8 @@ function usage(): never {
 }
 
 const args = process.argv.slice(2);
-// --shrink: only trim and shrink the sources already in art/ (no painting).
+// --shrink: only finish the sources already in art/ (trim, shrink, `opaque`
+// and `flat`), with no painting; each step leaves a finished source as it is.
 const shrinkOnly = args.includes("--shrink");
 const pack = args[0] ? resolve(args[0]) : usage();
 const all = args.includes("--all");
@@ -64,7 +69,7 @@ function styleArt(): boolean {
     return false;
   }
 }
-if (!shrinkOnly) styleArt();
+styleArt();
 const requests = JSON.parse(readFileSync(join(pack, "art-requests.json"), "utf8"));
 const slots: Slot[] = requests.slots.filter((s: Slot) => s.hash && s.size);
 const look = presetLook(requests.lookPreset ?? usage());
@@ -123,7 +128,9 @@ export function shrink(file: string, s: Slot): void {
   // image's ground carries faint alpha noise that a plain trim keeps.
   const box = execFileSync("magick", [file, "-alpha", "extract", "-threshold", "3.2%", "-format", "%@", "info:"], { encoding: "utf8" }).trim();
   if (!/^\d+x\d+\+\d+\+\d+$/.test(box)) throw new Error(`${file}: no art to trim (${box})`);
-  execFileSync("magick", [file, "-crop", box, "+repage", "-resize", `${side}x${side}^>`, "-define", "png:compression-level=9", file]);
+  // A source opaque to its edges has nothing to trim (magick reports 0x0).
+  const crop = box.startsWith("0x0") ? [] : ["-crop", box, "+repage"];
+  execFileSync("magick", [file, ...crop, "-resize", `${side}x${side}^>`, "-define", "png:compression-level=9", file]);
 }
 
 /**
@@ -132,7 +139,7 @@ export function shrink(file: string, s: Slot): void {
  * art's outline (its pixels above half alpha, the outside flood-filled from a
  * corner) is laid over the slot's `opaque` colour; the outline keeps its edge.
  */
-export function solidify(file: string, colour: string): void {
+export function solidify(file: string, colour: string, flat?: number): void {
   execFileSync("magick", [
     file, "-bordercolor", "none", "-border", "2",
     "(", "+clone", "-alpha", "extract", "-threshold", "50%",
@@ -142,6 +149,16 @@ export function solidify(file: string, colour: string): void {
     "-delete", "1", "+swap", "-compose", "over", "-composite",
     "-shave", "2x2", "-define", "png:compression-level=9", file,
   ]);
+  if (flat === undefined) return;
+  const [w, h] = execFileSync("magick", ["identify", "-format", "%w %h", file], { encoding: "utf8" }).split(" ").map(Number);
+  const x0 = Math.round(w! * flat), y0 = Math.round(h! * flat);
+  execFileSync("magick", [file, "-fill", colour, "-draw", `rectangle ${x0},${y0} ${w! - 1 - x0},${h! - 1 - y0}`, "-define", "png:compression-level=9", file]);
+}
+
+/** What paint() does to a source after it arrives: trimmed and shrunk, made solid where the slot says. */
+function finish(file: string, s: Slot): void {
+  shrink(file, s);
+  if (s.opaque) solidify(file, s.opaque, s.flat);
 }
 
 async function paint(s: Slot): Promise<void> {
@@ -157,14 +174,25 @@ async function paint(s: Slot): Promise<void> {
   form.set("prompt", text);
   concepts.forEach((c, i) => form.append("image[]", new Blob([conceptData[i]!], { type: conceptType(c) }), conceptName(c)));
   const started = Date.now();
-  const res = await fetch(API, { method: "POST", headers: { Authorization: `Bearer ${process.env.OG_PLATFORM_DEVELOPMENT_KEY}` }, body: form });
-  const body = await res.json().catch(() => null);
+  // The platform spreads requests over several upstream keys, one of which
+  // may be out of credit (2026-11-02): a 429 insufficient_quota is tried
+  // again, up to RETRIES times with a growing pause, and logged.
+  let res: Response;
+  let body: any;
+  for (let attempt = 0; ; attempt++) {
+    res = await fetch(API, { method: "POST", headers: { Authorization: `Bearer ${process.env.OG_PLATFORM_DEVELOPMENT_KEY}` }, body: form });
+    body = await res.json().catch(() => null);
+    const quota = res.status === 429 && body?.error?.type === "insufficient_quota";
+    if (!quota || attempt === RETRIES) break;
+    const wait = 2000 * 2 ** attempt;
+    console.log(`${s.name}: 429 ${body.error.code ?? "insufficient_quota"}; retry ${attempt + 1} of ${RETRIES} in ${wait / 1000} s`);
+    await new Promise((r) => setTimeout(r, wait));
+  }
   const b64 = body?.data?.[0]?.b64_json;
   if (!res.ok || !b64) throw new Error(`${s.name}: ${res.status} ${JSON.stringify(body)?.slice(0, 300)}`);
   const file = join(artDir, `${part(s)}.png`);
   writeFileSync(file, Buffer.from(b64, "base64"));
-  shrink(file, s);
-  if (s.opaque) solidify(file, s.opaque);
+  finish(file, s);
   provenance[s.name] = {
     model: MODEL,
     prompt: text,
@@ -177,9 +205,23 @@ async function paint(s: Slot): Promise<void> {
 }
 
 if (shrinkOnly) {
-  for (const s of slots) if (existsSync(join(artDir, `${part(s)}.png`))) shrink(join(artDir, `${part(s)}.png`), s);
-  console.log("shrunk the sources in", artDir);
-  process.exit(0);
+  for (const s of slots) {
+    const file = join(artDir, `${part(s)}.png`);
+    if (!existsSync(file)) continue;
+    finish(file, s);
+    // A slot whose prompt is the one it was painted from changed only in
+    // how it is finished (`opaque`, `flat`): finished again, it fulfils
+    // its request as it stands.
+    const p = provenance[s.name];
+    if (p && p.request !== s.hash && p.prompt === prompt(s)) {
+      p.request = s.hash;
+      p.finished = { opaque: s.opaque ?? null, flat: s.flat ?? null };
+      console.log(`${s.name}: finished again for its request`);
+    }
+  }
+  writeFileSync(provPath, JSON.stringify(Object.fromEntries(Object.entries(provenance).sort()), null, 2) + "\n");
+  console.log("finished the sources in", artDir);
+  process.exit(styleArt() ? 0 : 1);
 }
 if (!process.env.OG_PLATFORM_DEVELOPMENT_KEY && !dry) throw new Error("OG_PLATFORM_DEVELOPMENT_KEY is not set");
 const results = await Promise.allSettled(todo.map(paint));
