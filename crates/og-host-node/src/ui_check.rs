@@ -25,6 +25,12 @@ fn frame(engine: u32) -> Value {
     };
     let ui = shared.lock();
     let f = ui.frame();
+    // Everything in CSS px, as the draw items are and the rules measure
+    // (18 px at 1080p): the frame lays out in og-ui units (docs/ui.md
+    // §15.2), so its viewport, elements, overlaps and accessibility
+    // rectangles are scaled by the unit here, as the probe's are.
+    let u = f.unit.max(1.0);
+    let ur = |r: &Rect| json!([r.x * u, r.y * u, r.width * u, r.height * u]);
     let vp = f.viewport;
     let theme = ui.theme();
     let sounds: serde_json::Map<String, Value> = og_ui::UiSound::ALL
@@ -64,14 +70,22 @@ fn frame(engine: u32) -> Value {
             _ => {}
         }
     }
-    let elements: Vec<Value> = f.elements.iter().map(|e| e.to_json()).collect();
+    let elements: Vec<Value> = f
+        .elements
+        .iter()
+        .map(|e| {
+            let mut e = e.clone();
+            (e.x, e.y, e.width, e.height) = (e.x * u, e.y * u, e.width * u, e.height * u);
+            e.to_json()
+        })
+        .collect();
     let a11y = &f.a11y;
     json!({
         "viewport": {
-            "width": vp.width, "height": vp.height, "dpr": vp.dpr,
-            "safeArea": [vp.safe_area.left, vp.safe_area.top, vp.safe_area.right, vp.safe_area.bottom],
+            "width": vp.width * u, "height": vp.height * u, "dpr": vp.dpr / u,
+            "safeArea": [vp.safe_area.left * u, vp.safe_area.top * u, vp.safe_area.right * u, vp.safe_area.bottom * u],
             "coarsePointer": vp.coarse_pointer, "highContrast": vp.high_contrast,
-            "reducedMotion": vp.reduced_motion, "covered": rect(&vp.covered),
+            "reducedMotion": vp.reduced_motion, "covered": ur(&vp.covered),
             "breakpoint": vp.breakpoint().name(),
         },
         "style": ui.style_name(),
@@ -80,7 +94,7 @@ fn frame(engine: u32) -> Value {
         "primary": [p.primary.linear(), p.primary_hover.linear(), p.primary_active.linear()],
         "elements": elements,
         "overlaps": f.overlaps.iter().map(|o| json!({
-            "path": o.path, "other": o.other, "rect": rect(&o.rect), "inFlow": o.in_flow,
+            "path": o.path, "other": o.other, "rect": ur(&o.rect), "inFlow": o.in_flow,
         })).collect::<Vec<_>>(),
         "dense": f.dense,
         "stats": {
@@ -95,7 +109,7 @@ fn frame(engine: u32) -> Value {
             "focusOrder": a11y.focus_order,
             "nodes": a11y.nodes.iter().map(|n| json!({
                 "path": n.path, "parent": n.parent, "role": n.role, "name": n.name,
-                "states": n.states, "rect": [n.x, n.y, n.width, n.height],
+                "states": n.states, "rect": [n.x * u, n.y * u, n.width * u, n.height * u],
             })).collect::<Vec<_>>(),
         },
         "motion": f.motion.iter().map(|m| json!({
