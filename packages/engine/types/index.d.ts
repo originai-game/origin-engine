@@ -24336,8 +24336,8 @@ export interface BackdropEffect {
 /**
  * How heavy a glass surface is: flat glass, clear and coloured by what passes under it, with no rim, sheen or refraction.
  * - `"none"`: No weight: the backdrop's own fields.
- * - `"thin"`: 10 px of blur and the lightest tint: small controls over art.
- * - `"regular"`: 22 px: bars, tab bars, capsules.
+ * - `"thin"`: 10 px of blur and the lightest tint: icons and play discs over art, never text (it does not hold text at 4.5:1).
+ * - `"regular"`: 22 px: bars, tab bars, capsules; holds the scheme's text at 4.5:1.
  * - `"thick"`: 32 px and a denser tint: menus, popovers, dialogs, sheets, toasts.
  */
 export type GlassWeight = "none" | "thin" | "regular" | "thick";

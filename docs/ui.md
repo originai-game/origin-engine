@@ -211,9 +211,37 @@ or a border. A style reaches it through `effect backdrop … glass <weight>
 [elevation <e>] [edge <w> [<colour>]] [solid] [css]` and the IDL's
 `BackdropEffect` (`glass`, `elevation`, `edge`, `edgeColor`, `solid`,
 `cssMix`); og-ui's glass primitive (`DrawCmd::Glass`) carries a
-saturation and the material. `glass-thick` holds the scheme's `fg` at
-4.5:1 or more over bright, dark and busy backdrops (og-tests
-`ui_glass_text_holds_contrast`); the lighter weights do not promise it.
+saturation and the material.
+
+The weights that carry text, `regular` and `thick`, hold the scheme's `fg`
+at 4.5:1 or more over bright, dark and busy backdrops in either scheme,
+their current item and selected row included (og-tests
+`ui_glass_text_holds_contrast`, worst 2 % of each text box: lowest 4.73,
+the dark bar's current item over a bright sky). For that the dark
+`regular` tint is 64 %, denser than the platform's 52 % (3.56 there).
+`glass-thin` keeps its clear tints and carries **icons and play discs
+only, never text**: over a bright sky a dark thin capsule's text read
+1.78, a light one over a dark scene 3.24, and holding 4.5 would take
+about 68 % (dark) and 50 % (light), no longer thin.
+
+Palette pairs these scenes measured under 4.5:1 (the ui-scale stream
+fixes them when it generates the palette from `packages/design`; the
+glass is not the cause, most fail on solid glass too):
+
+- `fg-muted` on `fill-strong` (a selected row's shortcut): 3.0–3.8, and
+  3.51 on solid glass.
+- Amber text (`accent-ink`) on a bar's current-item fill: 1.80–4.31 (4.31
+  on solid glass); on a `regular` bar without the fill 2.25–4.78.
+- `fg-muted` on a `thick` menu whose scheme does not match the backdrop:
+  3.85–3.88 (light menu over a dark scene), 4.10–4.29 (dark menu over a
+  bright sky).
+- `accent-ink` "Undo" on a light `thick` toast over warm light: 4.26.
+- Translucent control tints: the platform's `material-control` (white 13
+  %) is specified for CSS's blending over encoded values; the UI pass
+  blends flat fills in linear light, where it reads about three times as
+  strong over dark glass (a white current item over a bright sky fell to
+  3.60). About 5 % draws as CSS's 13 % does there; the palette should
+  state its translucent fills for the engine's blending.
 
 ### 5.4 Masks and layers
 

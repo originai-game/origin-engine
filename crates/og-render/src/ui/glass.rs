@@ -9,6 +9,12 @@
 //! hairline just inside the edge, a soft shadow outside. No specular rim,
 //! sheen or refraction. It mixes as CSS does ([`UiGlass::srgb_mix`]), so a
 //! tint reads the same here as on the platform's pages.
+//!
+//! The engine's values diverge from the platform's in one place: the dark
+//! `regular` tint is 64 % (the platform's 52 %), the least that holds the
+//! scheme's `fg` at 4.5:1 on a bar over a bright sky. `glass-thin` keeps
+//! the platform's clear tints and carries icons and play discs only, never
+//! text: holding text there would take a tint as dense as `regular`.
 
 use super::{UiGlass, UiGlassShadow, UiMode};
 use glam::Vec2;
@@ -16,7 +22,8 @@ use glam::Vec2;
 /// How heavy a glass surface is.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum UiGlassWeight {
-    /// 10 px of blur and the lightest tint: small controls over art.
+    /// 10 px of blur and the lightest tint: icons and play discs over
+    /// art, never text.
     Thin,
     /// 22 px: bars, tab bars, capsules.
     #[default]
@@ -102,7 +109,7 @@ impl UiGlassStyle {
             (UiGlassWeight::Regular, false) => srgb(250, 250, 252, 0.58),
             (UiGlassWeight::Thick, false) => srgb(246, 246, 248, 0.8),
             (UiGlassWeight::Thin, true) => srgb(44, 44, 48, 0.28),
-            (UiGlassWeight::Regular, true) => srgb(30, 30, 34, 0.52),
+            (UiGlassWeight::Regular, true) => srgb(30, 30, 34, 0.64),
             (UiGlassWeight::Thick, true) => srgb(28, 28, 30, 0.78),
         };
         let edge_color = if dark {

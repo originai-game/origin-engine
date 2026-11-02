@@ -458,12 +458,13 @@ fn wcag_luminance(c: [f32; 3]) -> f32 {
 }
 
 /// Flat glass holds its text: over the bright, dark and busy backdrops,
-/// in either scheme, `glass-thick` (the weight that carries text) and
-/// solid glass give the scheme's `fg` at least 4.5:1 at 98 % of each text
-/// box's pixels, read from the frame drawn without the text. Prints every
-/// text's worst and median contrast, the inks and weights the material
-/// does not promise it for (muted, amber, `glass` and `glass-thin`)
-/// included.
+/// in either scheme, the weights that carry text (`glass` and
+/// `glass-thick`, their selected row and current item included) and solid
+/// glass give the scheme's `fg` at least 4.5:1 at 98 % of each text box's
+/// pixels, read from the frame drawn without the text; `glass-thin`
+/// carries no text at all (icons and play discs only). Prints every text's
+/// worst and median contrast, the palette pairs the material does not
+/// promise it for (muted and amber inks) included.
 #[test]
 fn ui_glass_text_holds_contrast() {
     let mut failures = Vec::new();
@@ -492,6 +493,13 @@ fn ui_glass_text_holds_contrast() {
                 ink.label,
                 if ink.held { " (held)" } else { "" }
             );
+            if ink.on_thin {
+                failures.push(format!(
+                    "{} {:?} is text on glass-thin",
+                    which.name(),
+                    ink.label
+                ));
+            }
             if ink.held && worst < 4.5 {
                 failures.push(format!("{} {:?} {worst:.2}", which.name(), ink.label));
             }

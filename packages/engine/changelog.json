@@ -7,7 +7,7 @@
     "added": [
       {
         "member": "BackdropEffect.glass, BackdropEffect.elevation, BackdropEffect.edge, BackdropEffect.edgeColor, BackdropEffect.solid, BackdropEffect.cssMix, GlassWeight, Elevation",
-        "summary": "Flat glass (docs/ui.md §5.3): a backdrop effect takes one of three weights (thin 10 px, regular 22 px, thick 32 px of CSS blur, 200 % saturation, a light tint in the theme's scheme, a 0.5 px hairline inside the edge, mixed as CSS mixes), an elevation (raised, float, lift: soft shadows outside the shape only), its own hairline width and colour, solid (the tint opaque, nothing under it read) and cssMix. Under reduced transparency a weighted glass is the solid raised surface; under high contrast solid with a strong 1 px edge. A style writes `effect backdrop … glass thick elevation lift`. Backdrops without these draw as before."
+        "summary": "Flat glass (docs/ui.md §5.3): a backdrop effect takes one of three weights (thin 10 px, regular 22 px, thick 32 px of CSS blur, 200 % saturation, a light tint in the theme's scheme, a 0.5 px hairline inside the edge, mixed as CSS mixes), an elevation (raised, float, lift: soft shadows outside the shape only), its own hairline width and colour, solid (the tint opaque, nothing under it read) and cssMix. Under reduced transparency a weighted glass is the solid raised surface; under high contrast solid with a strong 1 px edge. Thin glass carries icons and play discs only, never text; regular and thick hold the scheme's text at 4.5:1. A style writes `effect backdrop … glass thick elevation lift`. Backdrops without these draw as before."
       },
       {
         "member": "GameDesc.saveVersion, GameDesc.migrations, SaveMigration, World.openSave, SaveEdit, SaveType",

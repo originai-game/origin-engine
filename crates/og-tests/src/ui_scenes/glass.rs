@@ -6,7 +6,7 @@
 //! - `ui-glass-bright`, `ui-glass-dark`, `ui-glass-busy`: the same chrome
 //!   on each backdrop, the light scheme on the left half and the dark on
 //!   the right: a `glass` bar with a current item, a `glass-thick` menu
-//!   with a selected row, a `glass-thin` capsule and a `glass-thick` toast.
+//!   with a selected row, a `glass-thin` play disc and a `glass-thick` toast.
 //! - `ui-glass-dialog`: a `glass-thick` dialog (lift) over the scrim,
 //!   with a field and flat buttons, on the dark backdrop.
 //! - `ui-glass-fallback`: the dark chrome and a dialog under reduced
@@ -56,9 +56,13 @@ pub struct GlassInk {
     pub label: String,
     pub rect: [f32; 4],
     pub ink: [u8; 3],
-    /// What the material promises 4.5:1 for: the scheme's `fg` on
-    /// `glass-thick` (the weight that carries text) or on solid glass.
+    /// What the material promises 4.5:1 for: the scheme's `fg` on the
+    /// weights that carry text (`glass` and `glass-thick`, a selected row
+    /// or current item on them included) or on solid glass.
     pub held: bool,
+    /// It lies on `glass-thin`, which carries icons and play discs only,
+    /// never text.
+    pub on_thin: bool,
 }
 
 /// The design language's colours of one scheme (sRGB bytes, alpha).
@@ -80,7 +84,12 @@ const DARK: Tokens = Tokens {
     muted: [0xae, 0xae, 0xb2],
     fill: 0.24,
     fill_strong: 0.36,
-    control: ([255, 255, 255], 0.13),
+    // The platform's `material-control` is white at 13 % blended over
+    // sRGB-encoded values (CSS); the UI pass blends flat fills in linear
+    // light, where 13 % white over dark glass reads about three times as
+    // strong, so the scene takes the value that draws as CSS's does there
+    // (docs/ui.md §5.3's palette notes).
+    control: ([255, 255, 255], 0.05),
     accent: [0xff, 0xb2, 0x24],
     accent_fg: [0x1d, 0x13, 0x00],
     accent_ink: [0xff, 0xb2, 0x24],
@@ -116,6 +125,8 @@ struct Painter<'a> {
     inks: Vec<GlassInk>,
     /// The ink held to 4.5:1 where the next texts are ([`GlassInk::held`]).
     held: Option<[u8; 3]>,
+    /// The next texts lie on `glass-thin`.
+    on_thin: bool,
 }
 
 /// Layers: the backdrop 0, the scrim 1, glass 2, controls on it 3, text 4
@@ -147,6 +158,7 @@ impl Painter<'_> {
             rect: [x, y - 0.8 * size, w, 0.95 * size],
             ink,
             held: self.held == Some(ink),
+            on_thin: self.on_thin,
         });
         if let Some(font) = self.font {
             self.o.texts.push(Text {
@@ -170,7 +182,7 @@ impl Painter<'_> {
         };
         let solid = fallback != UiGlassFallback::None;
         let thick = Some(t.fg);
-        self.held = if solid { thick } else { None };
+        self.held = thick;
         // A `glass` bar; its current item a flat clear tint, concentric
         // (inset 6: radius 12 - 6).
         let bar = [x0 + 24.0, 24.0, 592.0, 52.0];
@@ -185,9 +197,12 @@ impl Painter<'_> {
         } else {
             rgba(t.control.0, t.control.1)
         };
+        // The current item carries the scheme's fg (an amber label on it is
+        // a palette pair the ui-scale stream fixes, docs/ui.md §5.3); the
+        // amber one is a neighbour.
         self.flat([bar[0] + 6.0, bar[1] + 6.0, 96.0, 40.0], 6.0, current, 3);
         for (i, label) in ["Play", "Library", "Store", "Friends"].iter().enumerate() {
-            let ink = if i == 0 { t.accent_ink } else { t.fg };
+            let ink = if i == 1 { t.accent_ink } else { t.fg };
             let x = bar[0] + 24.0 + i as f32 * 104.0;
             self.text(label, x, bar[1] + 32.0, 17.0, 64.0, ink, 4);
         }
@@ -216,19 +231,28 @@ impl Painter<'_> {
             let key = ["N", "C", "L", ",", "Q"][i];
             self.text(key, menu[0] + 222.0, y + 26.0, 15.0, 12.0, t.muted, 4);
         }
-        // A `glass-thin` capsule (float): a play capsule over art.
-        let cap = [x0 + 320.0, 112.0, 132.0, 44.0];
-        self.held = if solid { thick } else { None };
-        self.glass(cap, 22.0, style(UiGlassWeight::Thin, UiElevation::Float), 2);
-        self.text(
-            "Play now",
-            cap[0] + 30.0,
-            cap[1] + 28.0,
-            17.0,
-            76.0,
-            t.fg,
-            4,
+        // A `glass-thin` play disc (float) over art: an icon, never text.
+        let disc = [x0 + 320.0, 108.0, 52.0, 52.0];
+        self.glass(
+            disc,
+            26.0,
+            style(UiGlassWeight::Thin, UiElevation::Float),
+            2,
         );
+        self.o.ui.shapes.push(UiShape {
+            geometry: UiGeometry::Polygon {
+                sides: 3,
+                inner: 1.0,
+                rounding: 1.5,
+                rotation: std::f32::consts::FRAC_PI_2,
+            },
+            layer: 3,
+            ..UiShape::rect(
+                [disc[0] + 15.0, disc[1] + 14.0, 24.0, 24.0],
+                0.0,
+                rgba(t.fg, 1.0),
+            )
+        });
         // A `glass-thick` toast: a flat dot, its line and a quiet action.
         let toast = [x0 + 300.0, 560.0, 316.0, 56.0];
         self.held = thick;
@@ -551,6 +575,7 @@ pub fn glass_scene(
             font,
             inks: Vec::new(),
             held: None,
+            on_thin: false,
         };
         let none = UiGlassFallback::None;
         match which {
