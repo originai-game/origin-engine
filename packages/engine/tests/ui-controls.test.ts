@@ -173,7 +173,7 @@ test("foundations: roles read as headings, art waits as a busy image, a labelled
   expect(art.height).toBeCloseTo(160, 0);
   // A portrait without art waits as a figure (head and shoulders), not a symbol on a grey box.
   expect(find(engine, (e) => e.path.endsWith("Hero/Head"))).toBeDefined();
-  expect(find(engine, (e) => e.path.endsWith("Hero/Placeholder"))).toBeUndefined();
+  expect(find(engine, (e) => e.path.endsWith("Hero/Placeholder")) === undefined).toBeTrue();
   expect(find(engine, (e) => e.role === "separator" && e.name === "OR")).toBeDefined();
   expect(find(engine, (e) => e.text === "Legendary")).toBeDefined();
   expect(find(engine, (e) => e.text.includes("Ember Blade") || e.text.includes("burns"))).toBeDefined();
