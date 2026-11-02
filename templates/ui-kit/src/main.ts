@@ -18,7 +18,7 @@
 
 import { og, defineComponent, defineResource, defineSystem, bool, f32, f64, str, u32 } from "@origingame/engine";
 import type { Entity, GameSettings, Viewport, World } from "@origingame/engine";
-import { art, cardsScreen, gachaScreen, gearScreen, loadPatternArt, patternScene, patternsCommand, rewardsScreen } from "./patterns.ts";
+import { art, boardScreen, cardsScreen, gachaScreen, gearScreen, generatorsScreen, loadPatternArt, patternScene, patternsCommand, rewardsScreen, sagaScreen } from "./patterns.ts";
 import { chartsScreen, containersScreen, dataScreen, demoCommand, graphScreen, navigationScreen, overlaysScreen } from "./components.ts";
 import { bindingsScreen, controlsDemo, controlsScreen, fieldsScreen, foundationsScreen, rangesScreen } from "./controls.ts";
 
@@ -28,7 +28,7 @@ export const SCREENS = [
   "players", "text", "materials",
   "containers", "navigation", "overlays", "data", "charts", "chartsMore", "graph",
   "foundations", "controls", "ranges", "fields", "bindings",
-  "gear", "cards", "rewards", "gacha",
+  "gear", "cards", "rewards", "gacha", "saga", "board", "generators",
 ] as const;
 export type Screen = (typeof SCREENS)[number];
 
@@ -84,6 +84,9 @@ const BLURBS: Record<Screen, string> = {
   cards: "A hand of cards: fan, hover lift, drag to play, a targeting arc",
   rewards: "Pick one of three: reroll, banish, skip, a locked reward",
   gacha: "A gacha banner, its pity and purse, and a ten-pull reveal",
+  saga: "A saga map: levels on a painted path, stars, the avatar's pin, locked and boss levels",
+  board: "A match-3 level: goal chips, the score toward three stars, moves left",
+  generators: "An idle game: generators with their cycles and buy amount, and the prestige",
 };
 
 /** The demo's state: one entity named "demo" (dump_entity:demo reads it). */
@@ -598,7 +601,7 @@ function materialsScreen(d: DemoState): void {
 }
 
 /** The genre patterns' preview screens (patterns.ts). */
-const PATTERN_SCREENS: ReadonlySet<string> = new Set(["gear", "cards", "rewards", "gacha"]);
+const PATTERN_SCREENS: ReadonlySet<string> = new Set(["gear", "cards", "rewards", "gacha", "saga", "board", "generators"]);
 
 /** The Gallery button over every screen. */
 function galleryButton(world: World, d: DemoState): void {
@@ -780,7 +783,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
   if (screen !== "gallery" && screen !== "widgets" && !PATTERN_SCREENS.has(screen) && d.backdrop) og.render.sprite(world, { texture: d.backdrop as never, width: 640, height: 360, layer: -10 });
 
   // The gacha banner runs its art full-bleed on a phone: the Gallery button floats on it, so it is built after it.
-  if (screen !== "gallery" && screen !== "loading" && screen !== "gacha" && screen !== "cutscene") galleryButton(world, d);
+  if (screen !== "gallery" && screen !== "loading" && screen !== "gacha" && screen !== "cutscene" && screen !== "saga") galleryButton(world, d);
   let back = false;
   switch (screen) {
     case "gallery":
@@ -1194,6 +1197,19 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       rewardsScreen();
       back = og.ui.back();
       break;
+    case "saga":
+      sagaScreen();
+      back = og.ui.back();
+      break;
+    case "board":
+      boardScreen();
+      back = og.ui.back();
+      break;
+    case "generators":
+      // Back lets go of a held Ascend first (the hold takes it).
+      generatorsScreen();
+      back = og.ui.back();
+      break;
     case "gacha":
       // Back skips or closes a pull first (the sequence takes it).
       gachaScreen(d.backdrop as number);
@@ -1218,7 +1234,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       og.ui.label("Text", tr(world, "menu.mixed"), { step: "lg", nowrap: true });
     });
   }
-  if (screen === "gacha" || screen === "cutscene") galleryButton(world, d);
+  if (screen === "gacha" || screen === "cutscene" || screen === "saga") galleryButton(world, d);
   if (back) d.screen = 0;
 }
 

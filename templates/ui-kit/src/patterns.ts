@@ -67,7 +67,7 @@ const ART_FILES = [
   "items/arcane-staff", "items/boots", "items/iron-key", "items/sapphire-amulet", "items/mage-robe", "items/iron-sword", "items/oak-shield",
   "items/gauntlets", "items/knight-helm",
   "boons/thunder-strike", "boons/titan-heart", "boons/crown-of-ages", "boons/frost", "boons/gold", "boons/flame-blade", "boons/crystal",
-  "boons/star", "boons/rune-shield",
+  "boons/star", "boons/rune-shield", "boons/mana",
 ] as const;
 type ArtName = (typeof ART_FILES)[number];
 const ART: Partial<Record<ArtName, number>> = {};
@@ -110,6 +110,8 @@ const SCENES: Record<string, [ArtName, { x: number; y: number }]> = {
   rewards: ["scenes/title", { x: 0.4, y: 0.5 }],
   gacha: ["scenes/gacha-moonlit-tide", { x: 0.72, y: 0.3 }],
   gear: ["scenes/paperdoll-aria-vell", { x: 0.5, y: 0.3 }],
+  board: ["scenes/title", { x: 0.5, y: 0.6 }],
+  generators: ["scenes/gacha-moonlit-tide", { x: 0.3, y: 0.5 }],
 };
 
 /** The pattern screen's painted scene, built before anything over it (the kit's Gallery button among them). */
@@ -660,6 +662,10 @@ export function patternsCommand(_world: World, args: readonly string[]): void {
     r.selected = [];
   } else if (key === "rselect") r.selected = value ? value.split(",") : [];
   else if (key === "art") artOn = value !== "off";
+  else if (key === "saga") s.current = value || "l21";
+  else if (key === "score") b.score = Number(value) || 0;
+  else if (key === "goal") b.have = value.split(",").map((x) => Number(x) || 0);
+  else if (key === "purse") ig.energy = Number(value) || 0;
   else if (key === "balance") g.balance = Number(value) || 0;
   else if (key === "banner") g.banner = value;
   else if (key === "pull") {
@@ -697,6 +703,14 @@ export function patternsCommand(_world: World, args: readonly string[]): void {
     g.balance = 2400;
     g.pity = 74;
     g.items = [];
+    s.current = "l21";
+    s.picked = "";
+    b.score = 18450;
+    b.moves = 12;
+    b.have = [14, 4];
+    ig.energy = 4.82e15;
+    ig.mult = 0;
+    ig.gens = GEN0.map((x) => ({ ...x }));
   }
 }
 
@@ -840,4 +854,211 @@ export function gearScreen(): void {
     if (vp.width >= 1100) og.ui.row("Split", { width: grow, gap: t.space.xl, cross: "start" }, body);
     else og.ui.column("Stack", { width: grow, gap: t.space.lg, cross: "start" }, body);
   }, [{ action: "confirm", hint: L("gear.hint.place") }, { action: "rotate", hint: L("gear.rotate") }, { action: "details", hint: L("gear.hint.menu") }, { action: "back", hint: L("gear.hint.putBack") }]);
+}
+
+// ── saga: a run's levels on a painted path ──────────────────────────────
+
+/** The run: thirty levels, the first twenty cleared with their stars, the player on the twenty-first, a boss at 25. */
+const SAGA0 = Array.from({ length: 30 }, (_, i) => ({
+  key: `l${i + 1}`, label: `${i + 1}`, stars: i < 20 ? [3, 2, 3, 3, 1][i % 5]! : 0, locked: i > 20, boss: i === 24,
+}));
+const s = { current: "l21", picked: "" };
+
+/** The saga map (Candy Crush Saga, Royal Match): the map is the screen, its title over its top under a scrim, Play at the foot. */
+export function sagaScreen(): void {
+  const t = og.ui.frameTheme();
+  const vp = og.ui.frameViewport();
+  const sa = vp.safeArea;
+  const small = phone();
+  const big = !small && vp.height >= 1000;
+  const lvl = (s.picked || s.current).slice(1);
+  // The map runs under the notch and the status bar; its words keep to the safe area.
+  og.ui.anchor("Saga", { anchor: "topLeft", margin: 0, offsetX: -sa.left, offsetY: -sa.top, width: px(vp.width), height: px(vp.height), direction: "column" }, () => {
+    const r = og.ui.sagaMap("Map", {
+      nodes: SAGA0.map((n) => ({ ...n, ...(n.boss ? { image: art("portraits/cultist") } : {}) })),
+      current: s.current,
+      avatar: art("portraits/aria-vell"),
+      backdrop: art("scenes/title"),
+      label: L("saga.title"),
+      levelLabel: L("saga.level"),
+      bossLabel: L("saga.boss"),
+      starsLabel: L("saga.stars"),
+      lockedLabel: L("gear.locked"),
+      currentLabel: L("saga.here"),
+    });
+    if (r.picked) s.picked = r.picked;
+  });
+  // The world's name over the map's top, on a scrim that keeps it legible on any art; clear of the Gallery's corner.
+  const galleryW = small ? (og.ui.bounds("Back")?.width ?? 100) + t.space.sm : 0;
+  og.ui.anchor("SagaHead", { anchor: "topLeft", margin: 0, offsetX: -sa.left, offsetY: -sa.top, width: px(vp.width), direction: "column", padding: { left: sa.left + (small ? t.space.sm : t.space.xl), top: sa.top + (small ? t.space.sm : t.space.lg), right: sa.right + galleryW + t.space.sm, bottom: t.space.xl3 } }, () => {
+    og.ui.setDraw({ shape: { kind: "rect" }, fills: [{ kind: "gradient", type: "linear", from: { x: 0.5, y: 0 }, to: { x: 0.5, y: 1 }, stops: [{ offset: 0, color: { token: "shadow", alpha: 0.82 } }, { offset: 1, color: { token: "shadow", alpha: 0 } }] }] } as never);
+    og.ui.label("Title", L("saga.world"), { step: small ? "xl2" : big ? "xl6" : "xl4", heading: true, font: "display", nowrap: true, ellipsis: true, width: grow });
+    og.ui.label("Sub", L("saga.sub", { stars: SAGA0.reduce((n, x) => n + x.stars, 0), max: 60 }), { step: small ? "sm" : big ? "xl" : "base", color: { token: "inkMuted" }, nowrap: true });
+    og.ui.props({ inert: true } as never);
+  });
+  // Play the level picked (or the one the player stands on), the screen's one call to action at the thumb.
+  og.ui.anchor("SagaPlay", { anchor: small ? "bottom" : "bottomRight", margin: small ? t.space.md : t.space.xl, direction: "column", width: small ? px(vp.width - sa.left - sa.right - 2 * t.space.md) : null }, () => {
+    og.ui.heroButton("Play", L("saga.play", { level: lvl }), { tone: "primary", size: "large", key: small ? "" : "Enter", width: small ? grow : px(big ? 420 : 300) });
+  });
+}
+
+// ── board: a match-3 level's goals and stars ────────────────────────────
+
+const b = { score: 18450, moves: 12, have: [14, 4] as number[] };
+const GEMS = ["#ff4d5e", "#3ea8ff", "#3ed46a", "#ffc93c", "#b05cff", "#e8f0ff"];
+
+/** A match-3 level (Candy Crush, Royal Match): its goals over the board, the score toward three stars and the moves left beside it. */
+export function boardScreen(): void {
+  const t = og.ui.frameTheme();
+  const vp = og.ui.frameViewport();
+  const sa = vp.safeArea;
+  const small = phone();
+  const portrait = vp.breakpoint === "phonePortrait";
+  const big = !small && vp.height >= 1000;
+  const goals = [
+    // Blue gems are the board's own pieces: drawn as the board draws them, not the kit's (purple) crystal art.
+    { key: "blue", label: L("board.goal.blue"), have: b.have[0]!, need: 20 },
+    { key: "ice", label: L("board.goal.ice"), have: b.have[1]!, need: 6, image: art("boons/frost") },
+  ];
+  const H = vp.height - sa.top - sa.bottom;
+  const W = vp.width - sa.left - sa.right;
+  // The board: as large as the room left, eight by eight; its gems are the game's (drawn here as the kit's shapes).
+  const boardPx = portrait ? Math.min(W - 2 * t.space.sm, H - 330) : Math.min(H - (big ? 210 : 150), W * 0.48);
+  const cell = Math.floor(boardPx / 8);
+  const panel = (): void => {
+    og.ui.column("Panel", { gap: t.space.md, cross: "center", padding: { left: t.space.lg, top: t.space.lg, right: t.space.lg, bottom: t.space.lg }, radius: t.radius.panel, width: portrait ? grow : px(big ? 360 : 280), background: { token: "shadow", alpha: 0.62 } as never }, () => {
+      og.ui.label("LevelCap", L("board.level").toLocaleUpperCase(), { step: big ? "lg" : "sm", color: { token: "inkMuted" }, font: "display", nowrap: true });
+      og.ui.label("Level", "47", { step: big ? "xl6" : "xl4", font: "display", nowrap: true });
+      og.ui.label("MovesCap", L("board.moves").toLocaleUpperCase(), { step: big ? "lg" : "sm", color: { token: "info" }, font: "display", nowrap: true });
+      og.ui.label("Moves", `${b.moves}`, { step: big ? "xl6" : "xl4", font: "display", nowrap: true, color: { token: b.moves <= 5 ? "danger" : "ink" } });
+      og.ui.starBar("Stars", { value: b.score, thresholds: [8000, 16000, 26000], label: L("board.score"), valueText: og.ui.formatNumber(b.score, { notation: "grouped" } as never), starsLabel: L("saga.stars") });
+    });
+  };
+  og.ui.anchor("Board", { anchor: "topLeft", margin: 0, width: px(W), height: px(H), direction: portrait ? "column" : "row", align: "center", cross: "center", gap: portrait ? t.space.sm : t.space.xl, padding: { left: t.space.sm, top: portrait ? Math.round((og.ui.bounds("Back")?.height ?? 44) + t.space.md) : t.space.lg, right: t.space.sm, bottom: t.space.sm } }, () => {
+    if (!portrait) panel();
+    og.ui.column("Play", { gap: t.space.md, cross: "center" }, () => {
+      og.ui.goalChips("Goals", { goals, label: L("board.goals"), progressLabel: L("board.progress"), doneLabel: L("board.done"), compact: portrait });
+      if (portrait) og.ui.row("Strip", { gap: t.space.lg, cross: "center" }, () => {
+        og.ui.column("Moves", { gap: 0, cross: "center" }, () => {
+          og.ui.label("Cap", L("board.moves"), { step: "xs", color: { token: "info" }, nowrap: true });
+          og.ui.label("Value", `${b.moves}`, { step: "xl3", font: "display", nowrap: true });
+        });
+        og.ui.starBar("Stars", { value: b.score, thresholds: [8000, 16000, 26000], label: L("board.score"), valueText: og.ui.formatNumber(b.score, { notation: "grouped" } as never), compact: true, starsLabel: L("saga.stars") });
+      });
+      og.ui.column("Grid", { width: px(cell * 8 + 12), height: px(cell * 8 + 12), padding: { left: 6, top: 6, right: 6, bottom: 6 }, radius: t.radius.panel, gap: 0 }, () => {
+        og.ui.setDraw({ shape: { kind: "rect" }, fills: [{ kind: "solid", color: { token: "shadow", alpha: 0.7 } }], strokes: [{ width: 1.5, align: "inside", paint: { kind: "solid", color: { token: "info", alpha: 0.55 } } }] } as never);
+        for (let y = 0; y < 8; y++) {
+          og.ui.row(`R${y}`, { gap: 0 }, () => {
+            for (let x = 0; x < 8; x++) {
+              const g = GEMS[(x * 7 + y * 5 + ((x * y) % 3)) % GEMS.length]!;
+              og.ui.column(`C${x}`, { width: px(cell), height: px(cell), align: "center", cross: "center" }, () => {
+                og.ui.setDraw({ shape: { kind: "rect" }, fills: [{ kind: "solid", color: { token: "panel", alpha: (x + y) % 2 ? 0.28 : 0.16 } }] } as never);
+                og.ui.column("Gem", { width: px(Math.round(cell * 0.72)), height: px(Math.round(cell * 0.72)) }, () => {});
+                og.ui.setDraw({ shape: { kind: "polygon", sides: 4, rounding: 2 }, fills: [{ kind: "gradient", type: "linear", from: { x: 0.3, y: 0 }, to: { x: 0.7, y: 1 }, stops: [{ offset: 0, color: { color: hexColor(g, 1.35) } }, { offset: 1, color: { color: hexColor(g, 0.7) } }] }], effects: [{ kind: "outerGlow", blur: 6, spread: 0, color: { color: hexColor(g, 1), alpha: 0.35 } }] } as never);
+              });
+            }
+          });
+        }
+      });
+    });
+    if (portrait) og.ui.props({} as never);
+  });
+}
+
+/** A hex colour as the engine's colour, lightened (k > 1) or darkened (k < 1). */
+function hexColor(h: string, k: number): { r: number; g: number; b: number } {
+  const n = parseInt(h.slice(1), 16);
+  const f = (v: number) => Math.min(1, Math.max(0, k > 1 ? v + (1 - v) * (k - 1) : v * k));
+  return { r: f(((n >> 16) & 255) / 255), g: f(((n >> 8) & 255) / 255), b: f((n & 255) / 255) };
+}
+
+// ── generators: an idle game's main screen ──────────────────────────────
+
+/** The generators as the game holds them: what each makes a second, what the next one costs, its level and how many are owned. */
+const GEN0 = [
+  { key: "solar", art: "boons/star", level: 125, owned: 348, rate: 1.24e6, cost: 12.4e6, secs: 1.6, cycle: 0.55 },
+  { key: "fusion", art: "boons/flame-blade", level: 87, owned: 112, rate: 52.7e6, cost: 380e6, secs: 4, cycle: 0.3 },
+  { key: "orbital", art: "boons/rune-shield", level: 64, owned: 36, rate: 2.31e9, cost: 5.6e9, secs: 0.12, cycle: 1 },
+  { key: "drill", art: "boons/crystal", level: 28, owned: 8, rate: 97.4e9, cost: 210e9, secs: 12, cycle: 0.72 },
+  { key: "dyson", art: "boons/gold", level: 12, owned: 2, rate: 4.12e12, cost: 6.8e12, secs: 30, cycle: 0.2 },
+  { key: "forge", art: "boons/frost", level: 0, owned: 0, rate: 0, cost: 1.2e15, secs: 0, cycle: 0, locked: true },
+] as const;
+const ig = { energy: 4.82e15, mult: 0, gens: GEN0.map((x) => ({ ...x })), ascended: 0 };
+// Idle letters past trillions (aa, ab …), three significant digits: what the genre writes.
+const fmtIdle = (n: number) => og.ui.formatNumber(n, { notation: "letters" } as never);
+
+/** An idle game's main screen (AdVenture Capitalist, Cookie Clicker): the energy over everything, the generators with the buy amount, the prestige. */
+export function generatorsScreen(): void {
+  const t = og.ui.frameTheme();
+  const vp = og.ui.frameViewport();
+  const small = phone();
+  const wide = vp.width >= 1100;
+  const n = [1, 10, 100][ig.mult]!;
+  screen("Gens", L("idle.title"), L("idle.sub"), () => {
+    // The energy, the screen's number, counting as it changes.
+    og.ui.column("Energy", { width: grow, cross: "center", gap: 0, padding: { left: t.space.md, top: t.space.sm, right: t.space.md, bottom: t.space.sm }, radius: t.radius.panel, background: { token: "shadow", alpha: 0.55 } as never }, () => {
+      og.ui.label("Cap", L("idle.energy").toLocaleUpperCase(), { step: small ? "sm" : "base", color: { token: "inkMuted" }, font: "display", nowrap: true });
+      og.ui.numberCounter("Value", ig.energy, { format: { notation: "letters" }, step: small ? "xl4" : "xl6", font: "display", delta: false } as never);
+      og.ui.label("Rate", L("idle.rate", { rate: fmtIdle(ig.gens.reduce((s0, g0) => s0 + g0.rate, 0)) }), { step: small ? "base" : "lg", color: { token: "info" }, font: "display", nowrap: true });
+    });
+    const list = (): void => {
+      og.ui.column("Generators", { width: grow, gap: t.space.sm }, () => {
+        og.ui.row("Head", { width: grow, cross: "center", gap: t.space.sm }, () => {
+          og.ui.label("Title", L("idle.generators").toLocaleUpperCase(), { step: small ? "base" : "lg", font: "display", heading: true, nowrap: true, width: grow });
+          const m = og.ui.segmented("Mult", { items: [{ label: "×1" }, { label: "×10" }, { label: "×100" }], selected: ig.mult, size: "small", label: L("idle.buyAmount") } as never);
+          if (m.changed) ig.mult = m.selected;
+        });
+        for (const g0 of ig.gens) {
+          const locked = "locked" in g0 && g0.locked;
+          const cost = g0.cost * (n === 1 ? 1 : n === 10 ? 11.2 : 140);
+          const r = og.ui.idleGenerator(g0.key, {
+            name: L(`idle.gen.${g0.key}`),
+            image: art(g0.art as ArtName),
+            level: g0.level,
+            ownedText: og.ui.formatNumber(g0.owned, { notation: "grouped" } as never),
+            rateText: L("idle.perSec", { rate: fmtIdle(g0.rate) }),
+            cycle: g0.cycle,
+            cycleSeconds: g0.secs,
+            costText: fmtIdle(cost),
+            currencyIcon: art("boons/crystal"),
+            affordable: !locked && ig.energy >= cost,
+            buyCount: n,
+            buyLabel: L("idle.buy"),
+            levelLabel: L("idle.level"),
+            ownedLabel: L("idle.owned"),
+            locked,
+            lockedHint: L("idle.unlock", { cost: fmtIdle(g0.cost) }),
+          });
+          if (r.bought) {
+            ig.energy -= cost;
+            g0.owned += n;
+          }
+        }
+      });
+    };
+    const prestige = (): void => {
+      const p0 = og.ui.prestigePanel("Prestige", {
+        title: L("idle.prestige"),
+        lead: L("idle.ascendFor"),
+        rewardText: L("idle.shards", { n: 128 }),
+        points: [L("idle.point.reset"), L("idle.point.keep"), L("idle.point.stronger")],
+        image: art("boons/star"),
+        actionLabel: L("idle.ascend"),
+        available: ig.energy >= 1e15,
+        lockedHint: L("idle.unlock", { cost: fmtIdle(1e15) }),
+      });
+      if (p0.confirmed) {
+        ig.ascended += 1;
+        ig.energy = 0;
+      }
+    };
+    if (wide) og.ui.row("Split", { width: grow, gap: t.space.xl, cross: "start" }, () => {
+      og.ui.column("Left", { width: grow, gap: t.space.md }, list);
+      og.ui.column("Right", { width: px(vp.height >= 1000 ? 560 : 420), gap: t.space.md }, prestige);
+    });
+    else {
+      list();
+      prestige();
+    }
+  }, [{ action: "confirm", hint: L("idle.hint.buy") }, { action: "back", hint: L("hint.back") }]);
 }

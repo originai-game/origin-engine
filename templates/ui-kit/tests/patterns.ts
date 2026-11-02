@@ -313,6 +313,44 @@ function gacha(b: ReturnType<typeof builder>, phone: boolean, prefix = ""): void
   b.cmd("pat:reset");
 }
 
+/** The saga map, the match-3 board's goals and stars, and the idle generators with the prestige, in their states. */
+function progression(b: ReturnType<typeof builder>, phone: boolean, prefix = ""): void {
+  b.cmd("show:saga");
+  // Opens centred on the current level (21), the path lit up to it, 22 on locked, the boss at 25.
+  b.shot(`${prefix}saga-idle`, 1.0);
+  b.dump(`${prefix}saga`);
+  // A locked level refused (it shakes), then an open one picked: Play names it.
+  b.seq((at) => tap(at, "Map/View/Path/l22"), 0.15);
+  b.shot(`${prefix}saga-refused`, 0.1);
+  b.seq((at) => tap(at, "Map/View/Path/l20"), 0.4);
+  b.shot(`${prefix}saga-picked`, 0.4);
+  // The player moves on: the map follows to the new current level.
+  b.cmd("pat:saga:l3");
+  b.shot(`${prefix}saga-start`, 1.0);
+  b.cmd("pat:reset");
+  b.cmd("show:board");
+  b.shot(`${prefix}board-idle`, 0.8);
+  // The third star crossed (it pops), and a goal met (its chip turns to success with a tick).
+  b.cmd("pat:score:27000");
+  b.shot(`${prefix}board-star`, 0.12);
+  b.cmd("pat:goal:20,6");
+  b.shot(`${prefix}board-goals-met`, 0.8);
+  b.cmd("pat:reset");
+  b.cmd("show:generators");
+  b.shot(`${prefix}generators-idle`, 1.0);
+  b.dump(`${prefix}generators`);
+  if (!phone) {
+    // Ascend held part-way: the hold fills, nothing resets yet.
+    b.seq((at) => `${at.toFixed(2)}:touch_move_to:Prestige/Action/Button;${(at + 0.05).toFixed(2)}:touch_start`, 0.5);
+    b.shot(`${prefix}generators-ascend-holding`, 0.05);
+    b.cmd("touch_end", 0.6);
+  }
+  // A purse that pays none: every Buy glass, Ascend flat with why.
+  b.cmd("pat:purse:1000");
+  b.shot(`${prefix}generators-poor`, 1.6);
+  b.cmd("pat:reset");
+}
+
 /** Every pattern screen in its states, then right to left and at 200 % text. */
 export function patternsScript(phone: boolean): Script {
   const b = builder(0.3);
@@ -321,6 +359,7 @@ export function patternsScript(phone: boolean): Script {
   cards(b, phone);
   rewards(b, phone);
   gacha(b, phone);
+  progression(b, phone);
   b.cmd("locale:ar");
   b.cmd("show:gear");
   b.shot("rtl-gear", 0.8);
@@ -342,6 +381,10 @@ export function patternsScript(phone: boolean): Script {
   b.shot("rtl-rewards", 1.0);
   b.cmd("show:gacha");
   b.shot("rtl-gacha", 0.8);
+  b.cmd("show:saga");
+  b.shot("rtl-saga", 1.0);
+  b.cmd("show:generators");
+  b.shot("rtl-generators", 0.8);
   b.cmd("pat:pull:10");
   b.seq((at) => key(at, "Escape"), 0.2);
   b.shot("rtl-gacha-summary", 1.2);
