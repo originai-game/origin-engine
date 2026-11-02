@@ -57,6 +57,7 @@ the shop's merchant, so each style's screens sit on their own scene:
 | File | Kind | Origin |
 |---|---|---|
 | `figures/mira.png` | fullBody, cut out (a conversation's speaker, waist up, 2:3) | Painter (transparent background), from `portraits/mira.jpg` as the identity reference, in the same direction; 640×960. The kit's dialogue and visual-novel screens stand it at the speaker's side. |
+| `figures/aria.png` | fullBody, cut out (a conversation's speaker, waist up, 2:3) | origin MCP `generate_image` (gpt-image-2.5-sunburst, transparent), from `portraits/aria.jpg`'s description (silver hair, the crescent circlet and pendant, the black hooded cloak) in the same direction as `figures/mira.png`; the model returned a flat magenta ground, keyed out (ImageMagick, fuzz 22 %, the edge eroded 2 px, feathered and despilled), 640×960. The visual novel's Aria stands it. |
 
 ## Starship screens (2026-11-02, holo's screens as kit screens)
 

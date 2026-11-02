@@ -86,7 +86,7 @@ name kit_marsh
 start arrive
 speaker aria {
   name "dlg.aria"
-  portrait "textures/art/figures/mira.png"
+  portrait "textures/art/figures/aria.png"
   side right
 }
 node arrive {
@@ -266,7 +266,9 @@ function talk(world: World, id: string, dialogue: string, layout: "cinematic" | 
   const foot = !small && layout === "box" ? (og.ui.bounds("Back")?.height ?? 40) + 12 : 0;
   const v = view(world, dialogue);
   og.ui.anchor(id, { anchor: "topLeft", margin: 0, offsetY: top, width: px(vp.width - sa.left - sa.right), height: px(vp.height - sa.top - sa.bottom - top - foot), direction: "column" }, () => {
-    const r = og.ui.conversation("Talk", { view: v, portrait: art("figures/mira"), layout, auto: dl.auto, ...words(world) });
+    // Each speaker stands their own figure: the texture loaded for the line's portrait path.
+    const figure = v?.speaker.portrait.replace(/^textures\/art\//, "").replace(/\.png$/, "");
+    const r = og.ui.conversation("Talk", { view: v, portrait: art(figure as Parameters<typeof art>[0]), layout, auto: dl.auto, ...words(world) });
     if (dl.conv >= 0 && !dl.log) {
       if (r.advanced) og.story.advance(world, dl.conv);
       if (r.chosen !== null) og.story.choose(world, dl.conv, r.chosen);

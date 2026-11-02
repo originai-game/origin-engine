@@ -73,7 +73,7 @@ const ART_FILES = [
   "items/gauntlets", "items/knight-helm",
   "boons/thunder-strike", "boons/titan-heart", "boons/crown-of-ages", "boons/frost", "boons/gold", "boons/flame-blade", "boons/crystal",
   "boons/star", "boons/rune-shield", "boons/mana",
-  "figures/mira",
+  "figures/mira", "figures/aria",
 ] as const;
 type ArtName = (typeof ART_FILES)[number];
 const ART: Partial<Record<ArtName, number>> = {};
