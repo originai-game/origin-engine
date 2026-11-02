@@ -31747,6 +31747,452 @@ export interface BattlePassResult {
 
 
 /**
+ * How a conversation stands on the screen.
+ * - `"cinematic"`: The speaker's portrait large at its side (SpeakerView.side), the line as a caption over a shade at the foot, the choices stacked on the other side: a CRPG's or an action game's conversation (Mass Effect, Baldur's Gate 3, Cyberpunk 2077).
+ * - `"box"`: A visual novel's text box across the foot, the speaker's name on a plate over its top edge and the portrait standing behind it; the choices centred over the scene (Ace Attorney, Persona, Fate).
+ */
+export type ConversationLayout = "cinematic" | "box";
+
+/**
+ * A conversation on screen, as og.story.view answers it.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ConversationDesc {
+  /**
+   * What og.story.view answers this tick; null shows nothing (no conversation runs).
+   *
+   * @default null
+   */
+  readonly view?: DialogueView | null;
+  /**
+   * The speaker's portrait (art kind portrait): the texture the game loaded for view.speaker.portrait and its expression (og.load.texture). Null draws the style's placeholder figure for a speaker with a portrait path, and no portrait for the narrator or a speaker without one.
+   *
+   * @default null
+   */
+  readonly portrait?: Texture | null;
+  /**
+   * How it stands.
+   *
+   * @default "cinematic"
+   */
+  readonly layout?: ConversationLayout;
+  /**
+   * How fast the line types out; 0 shows it whole at once (also under reduced motion).
+   *
+   * @default 45
+   * @range 0..
+   */
+  readonly charsPerSecond?: number;
+  /**
+   * Auto: a whole line advances by itself once its voice has ended (DialogueView.voiceLeft) and autoDelayMs has passed; choices always wait.
+   *
+   * @default false
+   */
+  readonly auto?: boolean;
+  /**
+   * The pause after a whole line before auto advances; 0 is 900 plus 30 per character.
+   *
+   * @default 0
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly autoDelayMs?: number;
+  /**
+   * A check's stat in words, by its variable ({ "charm": "Persuasion" }); a stat it lacks is written as its variable name.
+   *
+   * @default null
+   */
+  readonly statNames?: unknown;
+  /**
+   * Skip (the back action); empty hides it.
+   *
+   * @default "Skip"
+   */
+  readonly skipLabel?: string;
+  /**
+   * Log (the details action); empty hides it.
+   *
+   * @default "Log"
+   */
+  readonly logLabel?: string;
+  /**
+   * Auto; empty hides it.
+   *
+   * @default "Auto"
+   */
+  readonly autoLabel?: string;
+  /**
+   * What a press does on a whole line, said to a screen reader and beside the confirm glyph.
+   *
+   * @default "Continue"
+   */
+  readonly continueLabel?: string;
+  /**
+   * A disabled choice's reason when the dialogue gives none.
+   *
+   * @default "Unavailable"
+   */
+  readonly unavailableLabel?: string;
+  /**
+   * An active check's tag before its choice ({stat}, {chance} as a percent).
+   *
+   * @default "{stat} · {chance}"
+   */
+  readonly checkLabel?: string;
+  /**
+   * An active check passed.
+   *
+   * @default "Success"
+   */
+  readonly passedLabel?: string;
+  /**
+   * An active check missed.
+   *
+   * @default "Failure"
+   */
+  readonly failedLabel?: string;
+}
+
+/** What the conversation's player did this tick: the game passes it on to og.story. */
+export interface ConversationResult {
+  /** Go on: og.story.advance (a press or confirm on a whole line with no choices, or auto). */
+  readonly advanced: boolean;
+  /** A choice taken: og.story.choose with this ChoiceView.index. */
+  readonly chosen: number | null;
+  /** Skip (or back) was pressed. */
+  readonly skipped: boolean;
+  /** Log was pressed: show the backlog (og.ui.backlog). */
+  readonly log: boolean;
+  /** Auto was pressed: flip ConversationDesc.auto. */
+  readonly autoToggled: boolean;
+  /** The whole line shows. */
+  readonly revealed: boolean;
+  /** The ChoiceView.index under the pointer or the focus. */
+  readonly hovered: number | null;
+}
+
+
+/**
+ * A conversation's backlog, as og.story.history answers it.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface BacklogDesc {
+  /**
+   * The lines, oldest first (og.story.history).
+   *
+   * @default []
+   */
+  readonly lines?: readonly StoryLine[];
+  /**
+   * Its title.
+   *
+   * @default "Log"
+   */
+  readonly title?: string;
+  /**
+   * Close (and the back action).
+   *
+   * @default "Close"
+   */
+  readonly closeLabel?: string;
+  /**
+   * A voiced line's replay button, said to a screen reader.
+   *
+   * @default "Play voice"
+   */
+  readonly replayLabel?: string;
+  /**
+   * With no lines yet.
+   *
+   * @default "Nothing has been said yet."
+   */
+  readonly emptyLabel?: string;
+}
+
+/** What the backlog's player did this tick. */
+export interface BacklogResult {
+  /** Close or back was pressed: hide it. */
+  readonly closed: boolean;
+  /** A line's voice to play again: its StoryLine.seq (its voice is StoryLine.voice). */
+  readonly replay: number | null;
+}
+
+
+/**
+ * The barks being said, as og.story.barks answers them.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface BarksDesc {
+  /**
+   * The barks (og.story.barks), each drawn over its entity.
+   *
+   * @default []
+   */
+  readonly barks?: readonly BarkView[];
+  /**
+   * World units over each speaker's point.
+   *
+   * @default 2.2
+   * @unit m (metres)
+   */
+  readonly height?: number;
+  /**
+   * A bark of this priority or higher is a shout (bold, a jagged edge).
+   *
+   * @default 5
+   */
+  readonly shoutPriority?: number;
+  /**
+   * A speaker off screen keeps its bubble on the edge.
+   *
+   * @default false
+   */
+  readonly clamp?: boolean;
+  /**
+   * A bubble's widest; 0 is 260.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly maxWidth?: number;
+}
+
+
+/**
+ * One tab of the quest log: a category of QuestView.category.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface QuestTab {
+  /**
+   * Its category (main, side, daily).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its words.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+}
+
+/**
+ * A texture for an asset path a quest names (a reward's image), loaded by the game (og.load.texture).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface QuestArt {
+  /**
+   * The path, as QuestView names it.
+   *
+   * @default ""
+   */
+  readonly path?: string;
+  /**
+   * Its texture.
+   *
+   * @default 0
+   */
+  readonly texture?: Texture;
+}
+
+/**
+ * The quest log, as og.story.quests answers it.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface QuestLogDesc {
+  /**
+   * The quests, in og.story.quests' order (their start).
+   *
+   * @default []
+   */
+  readonly quests?: readonly QuestView[];
+  /**
+   * The quest shown in the detail (game state); empty or unknown shows the tracked one, else the first.
+   *
+   * @default ""
+   */
+  readonly selected?: string;
+  /**
+   * The tabs, in order; empty is one list of every quest.
+   *
+   * @default []
+   */
+  readonly tabs?: readonly QuestTab[];
+  /**
+   * The tab shown (game state); empty is the first.
+   *
+   * @default ""
+   */
+  readonly tab?: string;
+  /**
+   * Textures for the reward images the quests name; one it lacks draws the style's placeholder.
+   *
+   * @default []
+   */
+  readonly art?: readonly QuestArt[];
+  /**
+   * Its title.
+   *
+   * @default "Quests"
+   */
+  readonly title?: string;
+  /**
+   * Track.
+   *
+   * @default "Track"
+   */
+  readonly trackLabel?: string;
+  /**
+   * A tracked quest's toggle.
+   *
+   * @default "Tracked"
+   */
+  readonly trackedLabel?: string;
+  /**
+   * Show on map (a quest with a marker); empty hides it.
+   *
+   * @default "Show on map"
+   */
+  readonly mapLabel?: string;
+  /**
+   * The objectives' heading.
+   *
+   * @default "Objectives"
+   */
+  readonly objectivesLabel?: string;
+  /**
+   * The rewards' heading.
+   *
+   * @default "Rewards"
+   */
+  readonly rewardsLabel?: string;
+  /**
+   * An optional objective's tag.
+   *
+   * @default "Optional"
+   */
+  readonly optionalLabel?: string;
+  /**
+   * An objective not yet revealed.
+   *
+   * @default "???"
+   */
+  readonly hiddenLabel?: string;
+  /**
+   * Who gave it ({giver}).
+   *
+   * @default "From {giver}"
+   */
+  readonly giverLabel?: string;
+  /**
+   * A quest not looked at yet.
+   *
+   * @default "New"
+   */
+  readonly newLabel?: string;
+  /**
+   * The active quests' heading.
+   *
+   * @default "Active"
+   */
+  readonly activeLabel?: string;
+  /**
+   * The completed quests' heading and a completed quest's stamp.
+   *
+   * @default "Completed"
+   */
+  readonly completedLabel?: string;
+  /**
+   * A failed quest's stamp.
+   *
+   * @default "Failed"
+   */
+  readonly failedLabel?: string;
+  /**
+   * With no quests in the tab.
+   *
+   * @default "No quests yet."
+   */
+  readonly emptyLabel?: string;
+  /**
+   * On a phone, back from a quest to the list.
+   *
+   * @default "Back"
+   */
+  readonly backLabel?: string;
+}
+
+/** What the quest log's player did this tick. */
+export interface QuestLogResult {
+  /** A quest picked: show it (game state), and og.story.markSeen it. */
+  readonly selected: string | null;
+  /** Track pressed: og.story.track it, flipping QuestView.tracked. */
+  readonly track: string | null;
+  /** Show on map pressed: open the map on its marker. */
+  readonly showOnMap: string | null;
+  /** A tab picked: show it (game state). */
+  readonly tab: string | null;
+  /** Back was pressed at the list. */
+  readonly closed: boolean;
+}
+
+
+/**
+ * The HUD's quest tracker, fed by og.story.quests.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface QuestTrackerDesc {
+  /**
+   * The quests (og.story.quests): the tracked active ones show, and a tracked one that completes flashes Complete and leaves.
+   *
+   * @default []
+   */
+  readonly quests?: readonly QuestView[];
+  /**
+   * Where the player stands: each quest's distance to its marker. Null shows none.
+   *
+   * @default null
+   */
+  readonly from?: Vector3 | null;
+  /**
+   * The most shown; 0 is og.ui.objectiveTracker's.
+   *
+   * @default 0
+   */
+  readonly max?: number;
+  /**
+   * Its width; 0 is og.ui.objectiveTracker's.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly width?: number;
+  /**
+   * The completed word.
+   *
+   * @default "Complete"
+   */
+  readonly completeLabel?: string;
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default "right"
+   */
+  readonly anchor?: Anchor | null;
+}
+
+
+/**
  * A template's action, by its id (a menu item, `buy:<item>`, `share`).
  *
  * @param action The action's id.
@@ -50589,6 +51035,46 @@ export declare namespace og {
      * @param desc The season and the tiers.
      */
     function battlePass(id: string, desc?: BattlePassDesc): BattlePassResult;
+    /**
+     * A conversation to the bar of Mass Effect, Baldur's Gate 3, Disco Elysium and Persona, fed by og.story.view: the speaker's name in the display face over the line, which types out by the tick (a press shows it whole, the next goes on; skip-read lines, DialogueView.seen, show whole), a chevron bobbing when it waits, a voice cue (three bars) while its voice plays, and auto that holds until the voice ends. Choices stand in a stack, numbered for the keys: an active check leads with its stat and chance in a tag tinted by the odds, a passive one that passed with its stat, a disabled one muted behind a lock with its reason, a visited one in muted ink. A timed choice runs a bar under them that warms as it runs out, the default choice marked. A roll (DialogueView.lastCheck) pops a d20 with its number and Success or Failure. Skip, Log and Auto stand at the top end with the device's glyphs.
+     * Parts: Conversation.frame[cinematic|box], Conversation.box, Conversation.name, Conversation.line[typing|shown], Conversation.more, Conversation.voice, Conversation.choices, Conversation.choice[enabled|disabled][visited][default][check], Conversation.number, Conversation.tag[passive|active], Conversation.reason, Conversation.timer[low], Conversation.roll[passed|failed], Conversation.die, Conversation.tools, Conversation.tool[on]. Slots: the portrait (art kind portrait). States: on the line, group reveal (typing, shown); on each choice, group choice (open, visited, disabled); on the roll, group roll (passed, failed). Motion: the line types by the tick; choices rise in one after another on the panel spring; the chevron bobs and the voice bars move (still under reduced motion); a roll pops on the emphasis spring; the timer pulses under its last fifth. Sounds: counterTick as the line types, select on a choice, confirm on going on, success or error on a roll. Accessibility: a region named by the speaker whose line is a live status (read whole, not letter by letter); the choices a list of buttons named by number, text, check and reason, said disabled when they are; the timer a timer. Probe ids: <id>/Line, <id>/Name, <id>/Choices/List/<choice id>, <id>/Timer, <id>/Roll, <id>/Tools/Skip, <id>/Tools/Log, <id>/Tools/Auto.
+     *
+     * @param id Its id.
+     * @param desc The view and the words.
+     */
+    function conversation(id: string, desc?: ConversationDesc): ConversationResult;
+    /**
+     * A visual novel's backlog (Ren'Py, Persona, Ace Attorney): a panel over the dimmed scene that opens on the newest line and scrolls back, each line under its speaker's name, the narrator's in muted italics, the choice the player made on a line under it as their reply, a voiced line with a button that plays it again; Close (and back) hides it.
+     * Parts: Backlog.frame, Backlog.title, Backlog.list, Backlog.entry[narrator][seen], Backlog.name, Backlog.text, Backlog.reply, Backlog.replay, Backlog.close. States: on each entry, group voice (silent, voiced). Motion: it rises in on the panel spring; the list opens at its foot. Sounds: open, back on close, select on a replay. Accessibility: a dialog named by title; the list a log of its lines, each named speaker: text; each replay a button. Probe ids: <id>/List/L<seq>, <id>/List/L<seq>/Replay, <id>/Close.
+     *
+     * @param id Its id.
+     * @param desc The lines and the words.
+     */
+    function backlog(id: string, desc?: BacklogDesc): BacklogResult;
+    /**
+     * Barks over their speakers (The Last of Us, Hitman, Sea of Thieves): one og.ui.speechBubble for each bark og.story is saying, typed out from the tick it began and leaving as og.story's time for it (BarkView.ticksLeft) runs out; a new line on the same entity replaces the old at once; a shout from shoutPriority up.
+     * Parts: those of og.ui.speechBubble. Accessibility: each bubble text named its speaker. Probe ids: <id>/E<entity> (the speech bubble's own ids under it).
+     *
+     * @param id Its id.
+     * @param desc The barks.
+     */
+    function barks(id: string, desc?: BarksDesc): void;
+    /**
+     * A quest log to the bar of The Witcher 3, Genshin Impact and Destiny 2: tabs by category over a list of quests (the active ones, then the completed and failed under their heading, muted), each with its category's mark, its region, a New dot until it is looked at and an updated dot when it changed, the tracked one pinned; beside it (stacked on a phone, the list then the quest) the quest itself: its title in the display face, the giver and region, the summary, the stage's objectives as boxes with their counts and bars (optional ones tagged, hidden ones ???, failed ones crossed in danger), the rewards as tiles with their art and amounts, and Track and Show on map. A completed quest wears a stamp.
+     * Parts: QuestLog.frame, QuestLog.tabs, QuestLog.list, QuestLog.group, QuestLog.row[selected][tracked][new][updated][completed|failed], QuestLog.mark, QuestLog.dot, QuestLog.detail, QuestLog.title, QuestLog.meta, QuestLog.summary, QuestLog.objective[done|failed|optional|hidden], QuestLog.check, QuestLog.count, QuestLog.bar, QuestLog.reward, QuestLog.stamp[completed|failed], QuestLog.track[on], QuestLog.map. Slots: each reward's art (art kind item). States: on each row, group status (active, completed, failed); on each objective, group step (open, done, failed). Motion: the detail slides in on a change of quest on the panel spring; a done objective's box ticks with a pop; the New dot breathes (still under reduced motion). Sounds: select on a row, confirm on Track, back on Back. Accessibility: tabs a tablist; the list a listbox of quests named title, category, status, new or updated and tracked; the detail a region named its title; each objective a checkbox named its text and count; Track a toggle. Probe ids: <id>/Tabs/<tab>, <id>/List/<quest id>, <id>/Detail/Title, <id>/Detail/Objectives/<objective id>, <id>/Detail/Rewards/R<i>, <id>/Detail/Actions/Track, <id>/Detail/Actions/Map.
+     *
+     * @param id Its id.
+     * @param desc The quests and the words.
+     */
+    function questLog(id: string, desc?: QuestLogDesc): QuestLogResult;
+    /**
+     * The tracked quests on the HUD: og.ui.objectiveTracker fed by og.story's quests (each tracked active quest's title, its stage's objectives that are revealed, their counts and bars, optional and failed ones as the tracker draws them, the distance to its marker), and a tracked quest that completes flashing Complete before it leaves.
+     * Parts: those of og.ui.objectiveTracker. Accessibility: as og.ui.objectiveTracker's. Probe ids: <id>/<quest id>, <id>/<quest id>/<objective id>.
+     *
+     * @param id Its id.
+     * @param desc The quests.
+     */
+    function questTracker(id: string, desc?: QuestTrackerDesc): void;
     /**
      * The title screen template. Returns the item chosen this tick.
      *

@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2220 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2236 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -252,12 +252,15 @@ Field units the docs and Tune use.
 | [`AudioResampler`](audio.md#type-AudioResampler) | enum | audio | — |
 | [`AudioResampler()`](audio.md#column-AudioResampler) | column kind | audio | — |
 | [`BackdropEffect`](ui.md#type-BackdropEffect) | desc struct | ui | — |
+| [`BacklogDesc`](ui.md#type-BacklogDesc) | desc struct | ui | — |
+| [`BacklogResult`](ui.md#type-BacklogResult) | struct | ui | — |
 | [`BadgeKind`](ui.md#type-BadgeKind) | enum | ui | — |
 | [`BakedScene`](render.md#type-BakedScene) | struct | render | — |
 | [`BannerDesc`](ui.md#type-BannerDesc) | desc struct | ui | — |
 | [`BannerKind`](ui.md#type-BannerKind) | enum | ui | — |
 | [`BannerResult`](ui.md#type-BannerResult) | struct | ui | — |
 | [`BarkDesc`](story.md#type-BarkDesc) | desc struct | story | — |
+| [`BarksDesc`](ui.md#type-BarksDesc) | desc struct | ui | — |
 | [`BarkView`](story.md#type-BarkView) | struct | story | — |
 | [`BattlePassDesc`](ui.md#type-BattlePassDesc) | desc struct | ui | — |
 | [`BattlePassResult`](ui.md#type-BattlePassResult) | struct | ui | — |
@@ -384,6 +387,9 @@ Field units the docs and Tune use.
 | [`Contrast`](ui.md#type-Contrast) | enum | ui | — |
 | [`ControlSize`](ui.md#type-ControlSize) | enum | ui | — |
 | [`ControlSizes`](ui.md#type-ControlSizes) | struct | ui | — |
+| [`ConversationDesc`](ui.md#type-ConversationDesc) | desc struct | ui | — |
+| [`ConversationLayout`](ui.md#type-ConversationLayout) | enum | ui | — |
+| [`ConversationResult`](ui.md#type-ConversationResult) | struct | ui | — |
 | [`CooldownDesc`](ui.md#type-CooldownDesc) | desc struct | ui | — |
 | [`CoreAction`](commands.md#type-CoreAction) | enum | commands | — |
 | [`CornerShape`](ui.md#type-CornerShape) | enum | ui | — |
@@ -1368,8 +1374,10 @@ Field units the docs and Tune use.
 | [`og.ui.animate`](ui.md#fn-animate) | function | ui | `og_ui_animate` |
 | [`og.ui.artSlot`](ui.md#fn-artSlot) | function | ui | — |
 | [`og.ui.back`](ui.md#fn-back) | function | ui | `og_ui_back` |
+| [`og.ui.backlog`](ui.md#fn-backlog) | function | ui | — |
 | [`og.ui.badge`](ui.md#fn-badge) | function | ui | `og_ui_badge` |
 | [`og.ui.banner`](ui.md#fn-banner) | function | ui | — |
+| [`og.ui.barks`](ui.md#fn-barks) | function | ui | — |
 | [`og.ui.battlePass`](ui.md#fn-battlePass) | function | ui | — |
 | [`og.ui.bounds`](ui.md#fn-bounds) | function | ui | `og_ui_bounds` |
 | [`og.ui.breadcrumbs`](ui.md#fn-breadcrumbs) | function | ui | — |
@@ -1400,6 +1408,7 @@ Field units the docs and Tune use.
 | [`og.ui.confirm`](ui.md#fn-confirm) | function | ui | — |
 | [`og.ui.confirmDialog`](ui.md#fn-confirmDialog) | function | ui | — |
 | [`og.ui.contextMenu`](ui.md#fn-contextMenu) | function | ui | — |
+| [`og.ui.conversation`](ui.md#fn-conversation) | function | ui | — |
 | [`og.ui.cooldown`](ui.md#fn-cooldown) | function | ui | `og_ui_cooldown` |
 | [`og.ui.countBadge`](ui.md#fn-countBadge) | function | ui | — |
 | [`og.ui.counter`](ui.md#fn-counter) | function | ui | `og_ui_counter` |
@@ -1539,6 +1548,8 @@ Field units the docs and Tune use.
 | [`og.ui.pushButton`](ui.md#fn-pushButton) | function | ui | — |
 | [`og.ui.pushMass`](ui.md#fn-pushMass) | function | ui | `og_ui_push_mass` |
 | [`og.ui.puzzleHud`](ui.md#fn-puzzleHud) | function | ui | — |
+| [`og.ui.questLog`](ui.md#fn-questLog) | function | ui | — |
+| [`og.ui.questTracker`](ui.md#fn-questTracker) | function | ui | — |
 | [`og.ui.racingHud`](ui.md#fn-racingHud) | function | ui | — |
 | [`og.ui.radialMenu`](ui.md#fn-radialMenu) | function | ui | — |
 | [`og.ui.radialMeter`](ui.md#fn-radialMeter) | function | ui | — |
@@ -1815,6 +1826,11 @@ Field units the docs and Tune use.
 | [`Query.count`](world.md#member-Query-count) | method | world | `og_query_count` |
 | [`QueryDesc`](world.md#type-QueryDesc) | desc struct | world | — |
 | [`QueryFilter`](physics.md#type-QueryFilter) | desc struct | physics | — |
+| [`QuestArt`](ui.md#type-QuestArt) | desc struct | ui | — |
+| [`QuestLogDesc`](ui.md#type-QuestLogDesc) | desc struct | ui | — |
+| [`QuestLogResult`](ui.md#type-QuestLogResult) | struct | ui | — |
+| [`QuestTab`](ui.md#type-QuestTab) | desc struct | ui | — |
+| [`QuestTrackerDesc`](ui.md#type-QuestTrackerDesc) | desc struct | ui | — |
 | [`QuestView`](story.md#type-QuestView) | struct | story | — |
 | [`RaceSplit`](ui.md#type-RaceSplit) | desc struct | ui | — |
 | [`RacingHudDesc`](ui.md#type-RacingHudDesc) | desc struct | ui | — |

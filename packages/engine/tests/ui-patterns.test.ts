@@ -1040,3 +1040,160 @@ test("battlePass: the track opens on the player's tier, far along it, in a row a
     expect(byPath(p.engine, "Tiers/L1") === undefined).toBeTrue();
   }
 });
+
+// ── story: the conversation, the backlog, the quest log and tracker ─────
+
+const storyFixture = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "story");
+{
+  const cooked = Bun.spawnSync([ogBin(), "cook", storyFixture]);
+  if (cooked.exitCode !== 0) throw new Error(new TextDecoder().decode(cooked.stderr));
+}
+const ok = <T>(r: unknown): T => {
+  const x = r as { ok: boolean; value: T; reason?: string };
+  if (!x.ok) throw new Error(x.reason);
+  return x.value;
+};
+
+/** An engine over tests/fixtures/story (the smith, the rescue), its one system building `build(world)` on a 1280×720 desktop. */
+function storyRun(build: (w: Api.World) => void): Engine {
+  let world: Api.World | null = null;
+  const sys = defineSystem(`StoryBuild${systems++}`, {}, () => {
+    og.ui.anchor("Root", { anchor: "topLeft", margin: 0, width: { kind: "fixed", px: 1280 }, height: { kind: "fixed", px: 720 }, direction: "column" } as never, () => build(world!));
+  });
+  const r = createEngine(og.game({ seed: 42, systems: [sys] }) as unknown as GameToken, { root: storyFixture, locale: "en" });
+  if (!r.ok) throw new Error(r.reason);
+  world = r.value.world;
+  ok(og.i18n.load(world, "strings/en.ogt"));
+  ok(og.story.load(world, "story/smith.ogt"));
+  ok(og.story.load(world, "story/rescue.ogt"));
+  og.ui.previewViewport(world, { width: 1280, height: 720, dpr: 1, coarsePointer: false, breakpoint: "desktop", safeArea: { left: 0, top: 0, right: 0, bottom: 0 } } as never);
+  r.value.advance(2);
+  return r.value;
+}
+
+/** The smith's conversation on screen, the game passing the answer on to og.story as it should. */
+function smith(desc: Partial<Api.ConversationDesc> = {}, fake?: (v: Api.DialogueView) => Api.DialogueView) {
+  let conv = -1;
+  const results: Api.ConversationResult[] = [];
+  const engine = storyRun((w) => {
+    if (conv < 0) conv = ok<number>(og.story.start(w, { dialogue: "smith" }));
+    const v0 = og.story.view(w, conv);
+    const v = v0 && fake ? fake(v0) : v0;
+    const r = og.ui.conversation("Talk", { view: v, ...desc });
+    results.push(r);
+    if (r.advanced) og.story.advance(w, conv);
+    if (r.chosen !== null) og.story.choose(w, conv, r.chosen);
+  });
+  const tapEl = (end: string) => {
+    engine.probe.commands(`0:touch_move:${centre(byPath(engine, end)!)};0.05:touch_start;0.1:touch_end`);
+    engine.advance(10);
+  };
+  return { engine, results, view: () => og.story.view(engine.world, conv)!, tapEl };
+}
+
+test("conversation: the line types out by the tick; a press shows it whole before the next goes on", () => {
+  // Wrong: a press while typing advancing (the rest of the line never read), or the whole line at once.
+  const s = smith({ charsPerSecond: 20 }, (v) => ({ ...v, choices: [], ended: false }));
+  const said = () => elements(s.engine).find((e) => e.role === "status" && e.path.endsWith("Line"))!;
+  // Said whole at once to a screen reader, never letter by letter.
+  expect(said().name).toBe("Brannoc: Steel's not cheap. You've 10 gold.");
+  expect(s.results.at(-1)!.revealed).toBeFalse();
+  s.tapEl("Talk/Hit");
+  expect(s.results.at(-1)!.revealed).toBeTrue();
+  expect(s.results.some((r) => r.advanced)).toBeFalse();
+  s.tapEl("Talk/Hit");
+  expect(s.results.filter((r) => r.advanced).length).toBe(1);
+});
+
+test("conversation: a choice answers its ChoiceView.index (a hidden one counted), a disabled one says why and takes no press", () => {
+  // Wrong: answering the row's position (Leave is the third row but index 3), or a disabled choice chosen.
+  const s = smith({ charsPerSecond: 0, statNames: { charm: "Charm" } }, (v) => ({
+    ...v,
+    ended: false,
+    timer: null,
+    choices: v.choices.map((c) => (c.index === 0 ? { ...c, enabled: false, reason: "You need 5 more gold." } : c)),
+  }));
+  s.engine.advance(4);
+  const buy = elements(s.engine).find((e) => e.role === "button" && e.name.includes("Buy the sword"))!;
+  expect(buy.name).toBe("1, Buy the sword (10 gold), You need 5 more gold.");
+  expect(buy.states).toContain("disabled");
+  const haggle = elements(s.engine).find((e) => e.role === "button" && e.name.includes("Haggle"))!;
+  // d20 + 3 against 12: 60 %.
+  expect(haggle.name).toBe("2, Charm · 60 %, Haggle");
+  s.tapEl(buy.path.split("/").slice(-2).join("/"));
+  expect(s.results.some((r) => r.chosen !== null)).toBeFalse();
+  s.tapEl("Choices/List/smith.leave");
+  expect(s.results.find((r) => r.chosen !== null)!.chosen).toBe(3);
+});
+
+test("conversation: auto holds a whole line until its voice has ended, then goes on once", () => {
+  // Wrong: auto cutting off a voice still playing (advancing on the pause alone), or advancing every tick after.
+  let left = 120;
+  const s = smith({ charsPerSecond: 0, auto: true, autoDelayMs: 100 }, (v) => ({ ...v, choices: [], ended: false, voiceTicks: 240, voiceLeft: left }));
+  s.engine.advance(60);
+  expect(s.results.some((r) => r.advanced)).toBeFalse();
+  expect(elements(s.engine).some((e) => e.path.endsWith("Head/Voice"))).toBeTrue();
+  left = 0;
+  s.engine.advance(30);
+  expect(s.results.filter((r) => r.advanced).length).toBe(1);
+});
+
+test("backlog: each line under its speaker with the reply chosen on it; back closes it", () => {
+  // Wrong: the reply lost (the player's choices missing from the log), or back ignored.
+  const closed: boolean[] = [];
+  const engine = storyRun((w) => {
+    const r = og.ui.backlog("Log", {
+      lines: [
+        { seq: 1, node: "greet", speaker: { id: "smith", name: "Brannoc", entity: 0 as never, portrait: "", expression: "", side: "right" }, key: "smith.hello", args: {}, text: "Steel's not cheap.", voice: "vo/a.wav", seen: false, chosen: { index: 1, text: "Haggle" } },
+        { seq: 2, node: "angry", speaker: { id: "narrator", name: "", entity: 0 as never, portrait: "", expression: "", side: "center" }, key: "n", args: {}, text: "He slams the anvil.", voice: "", seen: false, chosen: null },
+      ],
+    });
+    closed.push(r.closed);
+    void w;
+  });
+  engine.advance(4);
+  const items = elements(engine).filter((e) => e.role === "listitem");
+  expect(items.map((e) => e.name)).toEqual(["Brannoc: Steel's not cheap. → Haggle", "He slams the anvil."]);
+  expect(elements(engine).some((e) => e.role === "button" && e.name === "Play voice: Steel's not cheap.")).toBeTrue();
+  key(engine, "Escape");
+  expect(closed.some((c) => c)).toBeTrue();
+});
+
+test("questLog: shows the tracked quest, its hidden objective as ???, and answers Track for the game to pass on", () => {
+  // Wrong: the first quest shown instead of the tracked one, a hidden objective's text leaked, Track flipping state itself.
+  const tracks: string[] = [];
+  const engine = storyRun((w) => {
+    if (og.story.quests(w).length === 0) {
+      ok(og.story.startQuest(w, "rescue"));
+      og.story.progress(w, "rescue", "wolves", 2);
+    }
+    const qs = og.story.quests(w).map((q) => ({ ...q, objectives: [...q.objectives, { id: "secret", text: "Find the traitor", count: 0, target: 1, done: false, failed: false, optional: false, hidden: true }] }));
+    const decoy = { ...qs[0]!, id: "decoy", title: "Decoy", tracked: false };
+    const r = og.ui.questLog("Quests", { quests: [decoy, ...qs] });
+    if (r.track) tracks.push(r.track);
+  });
+  engine.advance(4);
+  expect(byPath(engine, "Detail/Body/Head/TitleRow/Title")!.text).toBe("The Lost Sword");
+  const objectives = elements(engine).filter((e) => e.role === "checkbox").map((e) => e.name);
+  expect(objectives).toContain("Drive off the wolves (2/3), 2 of 3");
+  expect(objectives).toContain("???");
+  expect(objectives.some((n) => n.includes("traitor"))).toBeFalse();
+  engine.probe.commands(`0:touch_move:${centre(byPath(engine, "Actions/Track")!)};0.05:touch_start;0.1:touch_end`);
+  engine.advance(10);
+  expect(tracks).toEqual(["rescue"]);
+});
+
+test("questTracker: a tracked quest that completes flashes Complete instead of vanishing at once", () => {
+  // Wrong: a completed quest dropped from the tracker the tick it completes (no Complete), or an untracked one shown.
+  let done = false;
+  const engine = storyRun((w) => {
+    if (og.story.quests(w).length === 0) ok(og.story.startQuest(w, "rescue"));
+    if (done && og.story.quest(w, "rescue")!.status === "active") ok(og.story.completeQuest(w, "rescue"));
+    og.ui.questTracker("Track", { quests: og.story.quests(w), anchor: null });
+  });
+  engine.advance(4);
+  expect(elements(engine).some((e) => e.path.endsWith("Track/rescue"))).toBeTrue();
+  done = true;
+  engine.advance(6);
+  expect(elements(engine).some((e) => e.text === "Complete")).toBeTrue();
+});

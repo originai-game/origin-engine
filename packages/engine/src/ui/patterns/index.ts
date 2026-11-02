@@ -13,6 +13,8 @@ import { goalChips, starBar } from "./goals.ts";
 import { idleGenerator, prestigePanel } from "./idle.ts";
 import { storeFront } from "./store.ts";
 import { battlePass } from "./pass.ts";
+import { backlog, barks, conversation } from "./story.ts";
+import { questLog, questTracker } from "./quests.ts";
 
 export const patterns = Object.freeze({
   cardHand,
@@ -29,4 +31,9 @@ export const patterns = Object.freeze({
   prestigePanel,
   storeFront,
   battlePass,
+  conversation,
+  backlog,
+  barks,
+  questLog,
+  questTracker,
 });

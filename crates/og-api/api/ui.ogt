@@ -5105,6 +5105,250 @@ module ui {
     returns BattlePassResult
   }
 
+  # ·· story: the conversation, its backlog, barks, the quest log and tracker ··
+
+  enum ConversationLayout {
+    doc "How a conversation stands on the screen."
+    variant cinematic "The speaker's portrait large at its side (SpeakerView.side), the line as a caption over a shade at the foot, the choices stacked on the other side: a CRPG's or an action game's conversation (Mass Effect, Baldur's Gate 3, Cyberpunk 2077)."
+    variant box "A visual novel's text box across the foot, the speaker's name on a plate over its top edge and the portrait standing behind it; the choices centred over the scene (Ace Attorney, Persona, Fate)."
+  }
+
+  struct ConversationDesc {
+    doc "A conversation on screen, as og.story.view answers it."
+    desc true
+    field view Option.DialogueView "What og.story.view answers this tick; null shows nothing (no conversation runs)."
+    field portrait Option.Texture "The speaker's portrait (art kind portrait): the texture the game loaded for view.speaker.portrait and its expression (og.load.texture). Null draws the style's placeholder figure for a speaker with a portrait path, and no portrait for the narrator or a speaker without one."
+    field layout ConversationLayout "How it stands."
+    field charsPerSecond f32 "How fast the line types out; 0 shows it whole at once (also under reduced motion)." {
+      default 45
+      min 0
+    }
+    field auto bool "Auto: a whole line advances by itself once its voice has ended (DialogueView.voiceLeft) and autoDelayMs has passed; choices always wait."
+    field autoDelayMs f32 "The pause after a whole line before auto advances; 0 is 900 plus 30 per character." {
+      min 0
+      unit ms
+    }
+    field statNames Json "A check's stat in words, by its variable ({ \"charm\": \"Persuasion\" }); a stat it lacks is written as its variable name."
+    field skipLabel String "Skip (the back action); empty hides it." {
+      default "Skip"
+    }
+    field logLabel String "Log (the details action); empty hides it." {
+      default "Log"
+    }
+    field autoLabel String "Auto; empty hides it." {
+      default "Auto"
+    }
+    field continueLabel String "What a press does on a whole line, said to a screen reader and beside the confirm glyph." {
+      default "Continue"
+    }
+    field unavailableLabel String "A disabled choice's reason when the dialogue gives none." {
+      default "Unavailable"
+    }
+    field checkLabel String "An active check's tag before its choice ({stat}, {chance} as a percent)." {
+      default "{stat} · {chance}"
+    }
+    field passedLabel String "An active check passed." {
+      default "Success"
+    }
+    field failedLabel String "An active check missed." {
+      default "Failure"
+    }
+  }
+
+  struct ConversationResult {
+    doc "What the conversation's player did this tick: the game passes it on to og.story."
+    field advanced bool "Go on: og.story.advance (a press or confirm on a whole line with no choices, or auto)."
+    field chosen Option.u32 "A choice taken: og.story.choose with this ChoiceView.index."
+    field skipped bool "Skip (or back) was pressed."
+    field log bool "Log was pressed: show the backlog (og.ui.backlog)."
+    field autoToggled bool "Auto was pressed: flip ConversationDesc.auto."
+    field revealed bool "The whole line shows."
+    field hovered Option.u32 "The ChoiceView.index under the pointer or the focus."
+  }
+
+  fn conversation {
+    doc "A conversation to the bar of Mass Effect, Baldur's Gate 3, Disco Elysium and Persona, fed by og.story.view: the speaker's name in the display face over the line, which types out by the tick (a press shows it whole, the next goes on; skip-read lines, DialogueView.seen, show whole), a chevron bobbing when it waits, a voice cue (three bars) while its voice plays, and auto that holds until the voice ends. Choices stand in a stack, numbered for the keys: an active check leads with its stat and chance in a tag tinted by the odds, a passive one that passed with its stat, a disabled one muted behind a lock with its reason, a visited one in muted ink. A timed choice runs a bar under them that warms as it runs out, the default choice marked. A roll (DialogueView.lastCheck) pops a d20 with its number and Success or Failure. Skip, Log and Auto stand at the top end with the device's glyphs."
+    doc "Parts: Conversation.frame[cinematic|box], Conversation.box, Conversation.name, Conversation.line[typing|shown], Conversation.more, Conversation.voice, Conversation.choices, Conversation.choice[enabled|disabled][visited][default][check], Conversation.number, Conversation.tag[passive|active], Conversation.reason, Conversation.timer[low], Conversation.roll[passed|failed], Conversation.die, Conversation.tools, Conversation.tool[on]. Slots: the portrait (art kind portrait). States: on the line, group reveal (typing, shown); on each choice, group choice (open, visited, disabled); on the roll, group roll (passed, failed). Motion: the line types by the tick; choices rise in one after another on the panel spring; the chevron bobs and the voice bars move (still under reduced motion); a roll pops on the emphasis spring; the timer pulses under its last fifth. Sounds: counterTick as the line types, select on a choice, confirm on going on, success or error on a roll. Accessibility: a region named by the speaker whose line is a live status (read whole, not letter by letter); the choices a list of buttons named by number, text, check and reason, said disabled when they are; the timer a timer. Probe ids: <id>/Line, <id>/Name, <id>/Choices/List/<choice id>, <id>/Timer, <id>/Roll, <id>/Tools/Skip, <id>/Tools/Log, <id>/Tools/Auto."
+    host false
+    param id String "Its id."
+    param desc ConversationDesc "The view and the words."
+    returns ConversationResult
+  }
+
+  struct BacklogDesc {
+    doc "A conversation's backlog, as og.story.history answers it."
+    desc true
+    field lines List.StoryLine "The lines, oldest first (og.story.history)."
+    field title String "Its title." {
+      default "Log"
+    }
+    field closeLabel String "Close (and the back action)." {
+      default "Close"
+    }
+    field replayLabel String "A voiced line's replay button, said to a screen reader." {
+      default "Play voice"
+    }
+    field emptyLabel String "With no lines yet." {
+      default "Nothing has been said yet."
+    }
+  }
+
+  struct BacklogResult {
+    doc "What the backlog's player did this tick."
+    field closed bool "Close or back was pressed: hide it."
+    field replay Option.u32 "A line's voice to play again: its StoryLine.seq (its voice is StoryLine.voice)."
+  }
+
+  fn backlog {
+    doc "A visual novel's backlog (Ren'Py, Persona, Ace Attorney): a panel over the dimmed scene that opens on the newest line and scrolls back, each line under its speaker's name, the narrator's in muted italics, the choice the player made on a line under it as their reply, a voiced line with a button that plays it again; Close (and back) hides it."
+    doc "Parts: Backlog.frame, Backlog.title, Backlog.list, Backlog.entry[narrator][seen], Backlog.name, Backlog.text, Backlog.reply, Backlog.replay, Backlog.close. States: on each entry, group voice (silent, voiced). Motion: it rises in on the panel spring; the list opens at its foot. Sounds: open, back on close, select on a replay. Accessibility: a dialog named by title; the list a log of its lines, each named speaker: text; each replay a button. Probe ids: <id>/List/L<seq>, <id>/List/L<seq>/Replay, <id>/Close."
+    host false
+    param id String "Its id."
+    param desc BacklogDesc "The lines and the words."
+    returns BacklogResult
+  }
+
+  struct BarksDesc {
+    doc "The barks being said, as og.story.barks answers them."
+    desc true
+    field barks List.BarkView "The barks (og.story.barks), each drawn over its entity."
+    field height f32 "World units over each speaker's point." {
+      default 2.2
+      unit m
+    }
+    field shoutPriority i32 "A bark of this priority or higher is a shout (bold, a jagged edge)." {
+      default 5
+    }
+    field clamp bool "A speaker off screen keeps its bubble on the edge."
+    field maxWidth f32 "A bubble's widest; 0 is 260." {
+      min 0
+      unit cssPx
+    }
+  }
+
+  fn barks {
+    doc "Barks over their speakers (The Last of Us, Hitman, Sea of Thieves): one og.ui.speechBubble for each bark og.story is saying, typed out from the tick it began and leaving as og.story's time for it (BarkView.ticksLeft) runs out; a new line on the same entity replaces the old at once; a shout from shoutPriority up."
+    doc "Parts: those of og.ui.speechBubble. Accessibility: each bubble text named its speaker. Probe ids: <id>/E<entity> (the speech bubble's own ids under it)."
+    host false
+    param id String "Its id."
+    param desc BarksDesc "The barks."
+    returns Void
+  }
+
+  struct QuestTab {
+    doc "One tab of the quest log: a category of QuestView.category."
+    desc true
+    field key String "Its category (main, side, daily)."
+    field label String "Its words."
+  }
+
+  struct QuestArt {
+    doc "A texture for an asset path a quest names (a reward's image), loaded by the game (og.load.texture)."
+    desc true
+    field path String "The path, as QuestView names it."
+    field texture Texture "Its texture."
+  }
+
+  struct QuestLogDesc {
+    doc "The quest log, as og.story.quests answers it."
+    desc true
+    field quests List.QuestView "The quests, in og.story.quests' order (their start)."
+    field selected String "The quest shown in the detail (game state); empty or unknown shows the tracked one, else the first."
+    field tabs List.QuestTab "The tabs, in order; empty is one list of every quest."
+    field tab String "The tab shown (game state); empty is the first."
+    field art List.QuestArt "Textures for the reward images the quests name; one it lacks draws the style's placeholder."
+    field title String "Its title." {
+      default "Quests"
+    }
+    field trackLabel String "Track." {
+      default "Track"
+    }
+    field trackedLabel String "A tracked quest's toggle." {
+      default "Tracked"
+    }
+    field mapLabel String "Show on map (a quest with a marker); empty hides it." {
+      default "Show on map"
+    }
+    field objectivesLabel String "The objectives' heading." {
+      default "Objectives"
+    }
+    field rewardsLabel String "The rewards' heading." {
+      default "Rewards"
+    }
+    field optionalLabel String "An optional objective's tag." {
+      default "Optional"
+    }
+    field hiddenLabel String "An objective not yet revealed." {
+      default "???"
+    }
+    field giverLabel String "Who gave it ({giver})." {
+      default "From {giver}"
+    }
+    field newLabel String "A quest not looked at yet." {
+      default "New"
+    }
+    field activeLabel String "The active quests' heading." {
+      default "Active"
+    }
+    field completedLabel String "The completed quests' heading and a completed quest's stamp." {
+      default "Completed"
+    }
+    field failedLabel String "A failed quest's stamp." {
+      default "Failed"
+    }
+    field emptyLabel String "With no quests in the tab." {
+      default "No quests yet."
+    }
+    field backLabel String "On a phone, back from a quest to the list." {
+      default "Back"
+    }
+  }
+
+  struct QuestLogResult {
+    doc "What the quest log's player did this tick."
+    field selected Option.String "A quest picked: show it (game state), and og.story.markSeen it."
+    field track Option.String "Track pressed: og.story.track it, flipping QuestView.tracked."
+    field showOnMap Option.String "Show on map pressed: open the map on its marker."
+    field tab Option.String "A tab picked: show it (game state)."
+    field closed bool "Back was pressed at the list."
+  }
+
+  fn questLog {
+    doc "A quest log to the bar of The Witcher 3, Genshin Impact and Destiny 2: tabs by category over a list of quests (the active ones, then the completed and failed under their heading, muted), each with its category's mark, its region, a New dot until it is looked at and an updated dot when it changed, the tracked one pinned; beside it (stacked on a phone, the list then the quest) the quest itself: its title in the display face, the giver and region, the summary, the stage's objectives as boxes with their counts and bars (optional ones tagged, hidden ones ???, failed ones crossed in danger), the rewards as tiles with their art and amounts, and Track and Show on map. A completed quest wears a stamp."
+    doc "Parts: QuestLog.frame, QuestLog.tabs, QuestLog.list, QuestLog.group, QuestLog.row[selected][tracked][new][updated][completed|failed], QuestLog.mark, QuestLog.dot, QuestLog.detail, QuestLog.title, QuestLog.meta, QuestLog.summary, QuestLog.objective[done|failed|optional|hidden], QuestLog.check, QuestLog.count, QuestLog.bar, QuestLog.reward, QuestLog.stamp[completed|failed], QuestLog.track[on], QuestLog.map. Slots: each reward's art (art kind item). States: on each row, group status (active, completed, failed); on each objective, group step (open, done, failed). Motion: the detail slides in on a change of quest on the panel spring; a done objective's box ticks with a pop; the New dot breathes (still under reduced motion). Sounds: select on a row, confirm on Track, back on Back. Accessibility: tabs a tablist; the list a listbox of quests named title, category, status, new or updated and tracked; the detail a region named its title; each objective a checkbox named its text and count; Track a toggle. Probe ids: <id>/Tabs/<tab>, <id>/List/<quest id>, <id>/Detail/Title, <id>/Detail/Objectives/<objective id>, <id>/Detail/Rewards/R<i>, <id>/Detail/Actions/Track, <id>/Detail/Actions/Map."
+    host false
+    param id String "Its id."
+    param desc QuestLogDesc "The quests and the words."
+    returns QuestLogResult
+  }
+
+  struct QuestTrackerDesc {
+    doc "The HUD's quest tracker, fed by og.story.quests."
+    desc true
+    field quests List.QuestView "The quests (og.story.quests): the tracked active ones show, and a tracked one that completes flashes Complete and leaves."
+    field from Option.Vector3 "Where the player stands: each quest's distance to its marker. Null shows none."
+    field max u32 "The most shown; 0 is og.ui.objectiveTracker's."
+    field width f32 "Its width; 0 is og.ui.objectiveTracker's." {
+      min 0
+      unit cssPx
+    }
+    field completeLabel String "The completed word." {
+      default "Complete"
+    }
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
+      default right
+    }
+  }
+
+  fn questTracker {
+    doc "The tracked quests on the HUD: og.ui.objectiveTracker fed by og.story's quests (each tracked active quest's title, its stage's objectives that are revealed, their counts and bars, optional and failed ones as the tracker draws them, the distance to its marker), and a tracked quest that completes flashing Complete before it leaves."
+    doc "Parts: those of og.ui.objectiveTracker. Accessibility: as og.ui.objectiveTracker's. Probe ids: <id>/<quest id>, <id>/<quest id>/<objective id>."
+    host false
+    param id String "Its id."
+    param desc QuestTrackerDesc "The quests."
+    returns Void
+  }
+
   # ── end of the genre patterns ────────────────────────────────────────
 
   # ── the UI kit: screen templates (TypeScript over the calls above) ──────
