@@ -160,9 +160,9 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   move; a test an agent adds is the one that fails on the old code. The coordinator (the one session that merges into main) is the
   only runner of the gate, the review and the reference captures, once per
   merge, serially. The same applies to a human beside running agents.
-- **Sub-threads: five at a time, in waves, Claude Code on Opus 5.5 medium.**
+- **Sub-threads: eight at a time, in waves, Claude Code on Opus 5.5 medium.**
   When the coordinator delegates streams to separate Amp threads
-  (`create_thread`), at most five author streams run at once (macrunner
+  (`create_thread`), at most eight author streams run at once (macrunner
   and the art director are not counted). The rest wait, paused with their
   work pushed, and the next one starts only when a running stream has
   finished its whole scope (the owner, 2026-11-02 latest: thirteen at once
@@ -174,7 +174,7 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   2026-10-23, eight at once was too many while gates ran beside each
   other; 2026-11-01, five instead of three; 2026-11-02, eight, now that
   each thread draws on its own Mac satellite and only macrunner runs the
-  gate; 2026-11-02 later, thirteen, then back to five. macrunner's queue is kept short:
+  gate; 2026-11-02 later, thirteen, then back to five, then eight (the owner, to speed up, with no author on a GPU). macrunner's queue is kept short:
   only the newest head of each stream waits, and a superseded or stale
   head is dropped, never landed). Every
   such thread runs in `external-agent:claude-code` mode with features

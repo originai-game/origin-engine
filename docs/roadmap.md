@@ -18,8 +18,9 @@ exist.
 - **Order.** The UI wave (`docs/ui.md`, U6 and U8) comes first and is held
   to `docs/ui.md` §15.4. The streams of wave G1 run beside it because they
   own other files. The realism wave (R, `docs/release.md` F10) starts once
-  U8 has merged. G2 and G3 fill the slots as they free.
-- **Threads.** At most five sub-threads at once, `external-agent:claude-code`
+  U8 has merged; R1, R2, R4, R5 and R8 started early beside wave B to use
+  the eight slots (the owner, 2026-11-02). G2 and G3 fill the slots as they free.
+- **Threads.** At most eight sub-threads at once, `external-agent:claude-code`
   on Opus 5.5 medium (AGENTS.md); file-splitting threads in Amp `high`.
   Each stream is one thread on one branch from `origin/main`, owns the
   files its row names, and does not edit another running stream's files.
@@ -136,6 +137,9 @@ After R, as the plan's final stage:
 | [T-01a19d41-3600](https://ampcode.com/threads/T-01a19d41-3600-743b-bb6c-5361bfee4fb2) | tools: G3-7 batches 1–3, R10 batch 3 (shots), G3-1 batch 5 |
 | [T-01a19d41-442d](https://ampcode.com/threads/T-01a19d41-442d-7563-bb21-0b7907d172d2) | G2-7 batch 6, R11 batches 2–4 |
 | [T-01a19d41-4c76](https://ampcode.com/threads/T-01a19d41-4c76-71d9-a16b-ef8bb985a436) | UI content: RTS and sports HUD, the holo kit screens, U6d's remaining patterns, screen documents, `og ui eject`, the settings tree |
+| [T-a558a897](https://ampcode.com/threads/T-a558a897-87a0-4c1d-82c8-f218e5e0e18b) | render: R1 meshlets, culling, the visibility buffer |
+| [T-01a19d59-9055](https://ampcode.com/threads/T-01a19d59-9055-707b-8b4e-f2a9a91c4030) | render: R2 TAAU, R8 shadows and post |
+| [T-01a19d59-9d85](https://ampcode.com/threads/T-01a19d59-9d85-7604-ba45-b447cc453814) | render: R4 sky and weather, R5 water |
 
 Deferred: the overlay's GPU cost (perf phase), accessibility, the genre archetypes, the platform asks' joint review, compatibility (DX12, browsers, phones).
 The rows below are the previous threads, kept for their history.
