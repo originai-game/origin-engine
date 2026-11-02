@@ -59,6 +59,13 @@ pub trait RenderBackend {
     fn texture_formats(&self) -> Option<og_render::TextureFormats> {
         None
     }
+    /// The renderer's device and queue, for compute that runs beside the
+    /// frames (og.motion's model); `None` for a backend without a GPU.
+    /// After a lost device is replaced ([`RenderBackend::recover`]) this
+    /// answers the new one.
+    fn compute(&self) -> Option<(og_render::wgpu::Device, og_render::wgpu::Queue)> {
+        None
+    }
     /// Draw one frame of the scene to the display target.
     fn render(&mut self, scene: &RenderScene) -> Result<(), String>;
     /// The last frame's text characters its fonts lack (og-render's
@@ -339,6 +346,8 @@ pub(crate) struct RenderState {
     /// The cooked textures in the renderer, decoded again for a new
     /// device's encodings (`super::assets::retranscode`).
     pub decoded: super::assets::Decoded,
+    /// og.motion's model and the palettes it draws (`super::motion::present`).
+    pub motion: super::motion::present::Presenter,
 }
 
 impl RenderState {
@@ -387,6 +396,7 @@ impl RenderState {
             interp: Default::default(),
             display: Default::default(),
             decoded: Default::default(),
+            motion: Default::default(),
         }
     }
 }

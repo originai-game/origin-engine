@@ -165,8 +165,15 @@ impl Renderer {
             1
         };
         // Compute and storage buffers (particles, culling, the skinning
-        // palette, the light tables) at the downlevel defaults' counts.
-        let limits = wgpu::Limits::downlevel_defaults().using_resolution(adapter.limits());
+        // palette, the light tables) at the downlevel defaults' counts, but
+        // WebGPU's own eight storage buffers a stage (every WebGPU device has
+        // them; the engine has no other tier): og.motion's kernels, which run
+        // on this device (og-motion's `Gpu::new`), bind up to seven.
+        let mut limits = wgpu::Limits::downlevel_defaults().using_resolution(adapter.limits());
+        limits.max_storage_buffers_per_shader_stage = limits
+            .max_storage_buffers_per_shader_stage
+            .max(8)
+            .min(adapter.limits().max_storage_buffers_per_shader_stage);
         let shadow_size = desc
             .shadow_map_size
             .clamp(64, limits.max_texture_dimension_2d.max(64));

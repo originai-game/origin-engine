@@ -1091,6 +1091,12 @@ mod canvas {
         fn info(&self) -> Option<og_render::RenderInfo> {
             Some(self.renderer.info().clone())
         }
+        fn compute(&self) -> Option<(og_render::wgpu::Device, og_render::wgpu::Queue)> {
+            Some((
+                self.renderer.device().clone(),
+                self.renderer.queue().clone(),
+            ))
+        }
         fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
             if self.recover_device()? {
                 return Ok(());

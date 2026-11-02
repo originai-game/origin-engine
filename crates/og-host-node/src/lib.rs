@@ -549,6 +549,12 @@ impl RenderBackend for OffscreenBackend {
     fn info(&self) -> Option<og_render::RenderInfo> {
         Some(self.renderer.info().clone())
     }
+    fn compute(&self) -> Option<(og_render::wgpu::Device, og_render::wgpu::Queue)> {
+        Some((
+            self.renderer.device().clone(),
+            self.renderer.queue().clone(),
+        ))
+    }
     /// The loop's frame: at the size the window asked for since the last
     /// one (as the web host takes its canvas's), drawn offscreen, then
     /// shown in the window when one draws this engine's frames.
