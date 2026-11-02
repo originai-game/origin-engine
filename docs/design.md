@@ -694,8 +694,11 @@ visible clusters are appended as work items (instance, cluster), and
 each batch is drawn once, by `draw_indirect`, 64 × 3 vertices per
 visible cluster, by vertex pulling (`meshlet.wgsl`: no index or vertex
 buffer is bound; a cluster's unused triangles collapse), in the prepass
-and the lit pass. Each instance's previous transform travels with it,
-so TAA's motion vectors hold. `debugView lod` tints each cluster by its
+and the lit pass. The prepass reads each instance's previous transform
+at its sorted slot, but under GPU culling (as for every GPU-culled
+batch) there is none apart from the current one, so TAA reprojects these
+batches by the camera's motion alone; motion blur culls on the CPU, and
+the path is then off. `debugView lod` tints each cluster by its
 level. The path takes the camera pass's opaque batches of clustered
 meshes under GPU culling (`Culling.auto` turns GPU culling on when such
 a batch exists); what it cannot take keeps the per-instance path:
