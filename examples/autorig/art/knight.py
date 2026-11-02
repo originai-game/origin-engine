@@ -1,5 +1,5 @@
 """The knight: a side-view humanoid facing right, one SVG group per part
-of the humanoid-side template (docs/art.md §5), drawn where it sits in the
+of the humanoid-side template (docs/art.md §2.8), drawn where it sits in the
 setup pose and overlapping its parent at each joint. make.sh renders each
 group to a canvas-sized PNG and stacks them into knight.psd. Made here for
 the engine; CC0."""

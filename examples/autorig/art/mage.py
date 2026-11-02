@@ -1,5 +1,5 @@
 """The mage: a front-view humanoid facing the viewer, one SVG group per
-part of the humanoid-front template (docs/art.md §5), drawn where it sits
+part of the humanoid-front template (docs/art.md §2.8), drawn where it sits
 in the setup pose and overlapping its parent at each joint: `-l` parts on
 the image's left. make.sh renders each group to a canvas-sized PNG and
 stacks them into mage.psd. Made here for the engine; CC0."""

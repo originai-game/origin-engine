@@ -1,5 +1,5 @@
 """The fox: a four-legged animal facing right, one SVG group per part of
-the quadruped template (docs/art.md §5), drawn where it sits in the setup
+the quadruped template (docs/art.md §2.8), drawn where it sits in the setup
 pose and overlapping its parent at each joint: `-l` parts are the far
 side, drawn behind the body. make.sh renders each group to a canvas-sized
 PNG and stacks them into fox.psd. Made here for the engine; CC0."""

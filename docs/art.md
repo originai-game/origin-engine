@@ -348,6 +348,190 @@ generates art.
 A rerun with nothing changed writes the same bytes, so a pack's art is
 reviewed as a diff.
 
+### 2.8 The auto-rig's input layers
+
+A character drawn in layers is rigged by the cook, with no editor step: a
+`type rig2d` file names the art and a template, and the cook makes the
+bones, the slots, the leg IK, the atlas and the template's clips
+(`crates/og-cook/src/cook/autorig.rs`). This section is the contract the
+art meets. `rigParts(template)` of `@origingame/create-game` gives the same
+part lists as data (`packages/knowledge/scripts/brief.ts`, held equal to
+the cook's templates by og-cook's `rig_parts_match_the_templates`).
+
+```text
+type rig2d
+version 1
+---
+parts "knight.psd"          # a layered PSD (or PSB), or "knight/", a folder of PNGs
+template humanoid-side      # humanoid-side, humanoid-front, quadruped, creature
+pivot hand-r 212 340        # optional, repeatable: a part's joint, canvas pixels
+unit 200                    # optional: pixels per world unit
+filter nearest              # optional: pixel art
+```
+
+Any other line is refused (`autorig.rs` `build`).
+
+**The templates and their parts** (`autorig/template.rs`). A part is
+required or optional; each hangs from the first of its parents the art
+has, and its joint is looked for at one end of it: its top, its bottom,
+its middle (the root part) or wherever it meets its parent ("near"). A
+part is rigid (drawn as it is, one bone), a limb (one bone, a mesh that
+bends at its joints) or a chain of bones (a mesh that lags through them).
+
+The two humanoid templates share their parts (the `humanoid!` list):
+
+| Part | Needed | Hangs from | Joint at | Moves as |
+|---|---|---|---|---|
+| `pelvis` | required | (the root) | middle | rigid |
+| `torso` | required | `pelvis` | bottom | limb |
+| `neck` | optional | `torso` | bottom | limb |
+| `head` | required | `neck`, else `torso` | bottom | rigid |
+| `hair` | optional | `head` | top | chain of 2 |
+| `ear-l`, `ear-r` | optional | `head` | near | rigid |
+| `arm-upper-l`, `arm-upper-r` | required | `torso` | top | limb |
+| `arm-lower-l`, `arm-lower-r` | required | the upper arm of its side | top | limb |
+| `hand-l`, `hand-r` | required | the forearm of its side | top | rigid |
+| `leg-upper-l`, `leg-upper-r` | required | `pelvis` | top | limb |
+| `leg-lower-l`, `leg-lower-r` | required | the thigh of its side | top | limb |
+| `foot-l`, `foot-r` | required | the shin of its side | top | rigid |
+| `cape` | optional | `torso` | top | chain of 3 |
+| `tail` | optional | `pelvis` | near | chain of 4 |
+| `wing-l`, `wing-r` | optional | `torso` | near | chain of 2 |
+| `weapon` | optional | `hand-r`, else `hand-l` | near | rigid |
+| `shield` | optional | `hand-l`, else `hand-r` | near | rigid |
+
+- `humanoid-side`: `-l` is the far side (drawn behind the body), `-r` the
+  near side; the character faces right. Two-bone IK on each leg; a knee
+  drawn straight bends forwards.
+- `humanoid-front`: `-l` is the part on the image's left, `-r` on its
+  right; the character faces the viewer. Two-bone IK on each leg; a knee
+  drawn straight bends outwards. Its clips foreshorten each thigh (scaled
+  to the hip's reach to its foot, 0.86 to 1.0) so a knee bends towards the
+  viewer, keep the feet at their drawn angle (`Template.level`), and no
+  standing clip moves a foot inwards of where it is drawn
+  (`autorig/front.rs`), so boots drawn side by side, even a few pixels
+  apart, do not slide over each other (og-cook's
+  `seen_from_the_front_the_legs_never_cross_in_any_clip`).
+
+`quadruped`: `-l` is the far side (drawn behind the body), `-r` the near
+side; the animal faces right. Two-bone IK on each of the four legs.
+
+| Part | Needed | Hangs from | Joint at | Moves as |
+|---|---|---|---|---|
+| `body` | required | (the root) | middle | limb |
+| `neck` | optional | `body` | near | limb |
+| `head` | required | `neck`, else `body` | near | rigid |
+| `jaw` | optional | `head` | near | rigid |
+| `ear-l`, `ear-r` | optional | `head` | near | rigid |
+| `mane` | optional | `neck`, else `head` | near | chain of 2 |
+| `leg-front-upper-l`, `-r`; `leg-back-upper-l`, `-r` | required | `body` | top | limb |
+| `leg-front-lower-l`, `-r`; `leg-back-lower-l`, `-r` | required | the upper part of its leg | top | limb |
+| `paw-front-l`, `-r`; `paw-back-l`, `-r` | required | the lower part of its leg | top | rigid |
+| `tail` | optional | `body` | near | chain of 4 |
+| `wing-l`, `wing-r` | optional | `body` | near | chain of 2 |
+
+`creature`: `-l` is the part on the image's left, `-r` on its right; limbs
+are numbered from the front (`limb-1`). No IK; the body squashes and
+stretches, and the rigid parts on it keep their shape.
+
+| Part | Needed | Hangs from | Joint at | Moves as |
+|---|---|---|---|---|
+| `body` | required | (the root) | middle | limb |
+| `head` | optional | `body` | near | rigid |
+| `eye-l`, `eye-r`, `ear-l`, `ear-r` | optional | `head`, else `body` | near | rigid |
+| `limb-1` to `limb-8` | optional | `body` | near | chain of 3 |
+| `tail` | optional | `body` | near | chain of 4 |
+| `wing-l`, `wing-r` | optional | `body` | near | chain of 2 |
+
+**Naming** (`autorig/parts.rs`). A layer's or file's name becomes a part
+name trimmed, lower-cased, with `_` and spaces as `-` (`Arm Upper_L` is
+`arm-upper-l`). Every name must be one of the template's parts: the side
+suffixes are `-l` and `-r` exactly as the tables write them, and the
+optional parts above are the only extras. A name starting with `_` (a
+layer, a file, or a PSD group holding the layer) is left out, as are
+hidden PSD layers (the cook's report lists them). A PSD group named for a
+part merges the layers it holds into that part (composited in order,
+normal blending), so a part may be painted in several layers. Each part is
+drawn once.
+
+**Layers and their size.** In a PSD (`.psd` or `.psb`, RGB or greyscale,
+8 or 16 bits a channel; `cook/psd/layers.rs`) a layer may have any size
+and place on the canvas; each part is its pixels as Photoshop shows them
+over nothing (the layer's opacity, fill and enabled layer mask in its
+alpha), trimmed to its pixels with any alpha. In a folder every PNG (a
+`.png` file whose name does not start with `_`) is exported at the canvas
+size, untrimmed, so each sits where it is drawn; the cook trims them. No
+margin is needed, round a part or the character: the cook packs the
+trimmed parts into the atlas 8 pixels apart and from its edges, and
+bleeds each part's colour into that gap at zero alpha so no filtering or
+mip level draws a fringe (`autorig/atlas.rs`). The atlas is at most
+4096 x 4096. The ground is the lowest drawn pixel of any part, and the
+rig's root stands on it under the root part's joint; by default a world
+unit is the drawn height over the template's height (a humanoid 2 units,
+a quadruped 1.2, a creature 1), and `unit` overrides it.
+
+**Overlaps and pivots: how joints are found** (`autorig/skeleton.rs`).
+A pixel is solid at alpha 128 or more.
+
+- The root part's (`pelvis`, `body`) joint is the centre of its solid
+  pixels.
+- Every other part's joint is the centre of its solid pixels that lie
+  over its parent's solid pixels, counting only those in its joint end's
+  band: for a top or bottom joint, the part's top (or bottom) 35 % of its
+  height, or half its narrower side when that is more; for a near joint,
+  anywhere. So draw each part overlapping its parent where they join, as
+  a shoulder lies over the torso.
+- With no such overlap, the joint is at its end by convention (the centre
+  of the solid pixels within half its narrower side of its top or
+  bottom; for a near joint, its pixel nearest the centre of its parent),
+  and that point must be within 2 % of the drawn height (at least 3
+  pixels) of the parent's solid pixels, or the art is refused.
+- `pivot <part> <x> <y>` (canvas pixels) sets a part's joint, overlap or
+  not.
+- A bone runs from its part's joint to the joint of the part it leads to
+  (the forearm's, for an upper arm); a part at the end of its line (a
+  hand, a head) points from its joint to the centre of its pixels, and a
+  chain runs to its farthest pixel, split into equal bones.
+- Where a limb continues into its next part (an elbow, a knee, a wrist,
+  an ankle, the waist, the neck) the overlap turns at half the joint's
+  angle, so the pixels there turn rigidly instead of pinching: draw that
+  overlap round (a knee cap). A part that hangs from the trunk (a
+  shoulder, a hip, a cape, a tail) hinges at its joint: draw its end
+  round where the parent covers it.
+- A leg drawn straight (within about a degree) has its knee put on the
+  line from the hip to the ankle, and bends the template's way; a leg
+  drawn bent bends as drawn.
+- Upright: in the humanoid templates the head's joint is above the
+  pelvis's, and in every template with legs each foot or paw is below
+  the hips; otherwise the art is refused.
+
+**Draw order.** The parts draw back to front in the art's order: a PSD's
+layer order (bottom first; a part merged from a group at its first
+layer's place), or a folder's file names sorted, so a `NN-` prefix
+(digits, then `-`, `_`, a space or `.`) numbers the order and is dropped
+from the part's name (`01-leg-upper-l.png` is `leg-upper-l`). A few clips
+bring an arm in front for their length (the attack's striking arm, the
+wave's hand). `rigParts` lists each template's parts in the order the
+example art draws them (`examples/autorig/art/`), the far or image-left
+side first.
+
+**Refusals name the layer and the file, and the fix** (`autorig.rs`,
+`autorig/parts.rs`, `autorig/skeleton.rs`, `autorig/atlas.rs`): a name
+that is no part of the template (`chars/hero.psd: layer \`Arm Uper R\``
+or `chars/hero/13-arm-uper-r.png`, the nearest part suggested within
+three edits, every part listed, and the `_` way to leave it out); a
+second layer or file of one part (merge them, or group them under the
+part's name); a part with no pixels; the required parts missing, each
+with what it is and what `-l` and `-r` mean in the template; a PNG not at
+the first PNG's size, or a folder with none; a PSD layer with layer
+effects, a blend mode other than normal (or in a group with one), a
+clipping mask, a vector mask, or an adjustment or fill layer, each with
+the Photoshop menu that fixes it; a part that does not touch its parent
+(how far its joint end is, and the `pivot` line that sets it); a part
+whose parents the art lacks; a head drawn below the pelvis or a foot
+above the hips; parts that overflow the atlas; a `pivot` for a part the
+art does not have.
+
 ## 3. Streams
 
 Each stream is one thread on branch `art/<stream>` from the main named in

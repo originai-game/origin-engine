@@ -1,5 +1,5 @@
 """The jelly: a simple creature, one SVG group per part of the creature
-template (docs/art.md §5): a domed body, two eyes on it and five tentacles
+template (docs/art.md §2.8): a domed body, two eyes on it and five tentacles
 hanging from it, the back two behind the body. make.sh renders each
 group to a canvas-sized PNG and stacks them into jelly.psd. Made here for
 the engine; CC0."""

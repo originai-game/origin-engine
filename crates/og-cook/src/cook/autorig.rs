@@ -16,7 +16,7 @@
 //! ```
 //!
 //! The part list and the layer conventions are the art contract
-//! (`docs/art.md` §5): each part is a layer (or a group, merged) named
+//! (`docs/art.md` §2.8): each part is a layer (or a group, merged) named
 //! for it, drawn where it sits on the character in its setup pose, and
 //! overlapping its parent where they join. The cook reads each part's
 //! pixels and alpha ([`parts`]), places each joint at the centroid of the
