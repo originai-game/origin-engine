@@ -17,7 +17,7 @@ use std::path::PathBuf;
 use std::sync::OnceLock;
 
 /// The project holding the tree (`assets/tree.glb`), cooked once per process.
-fn cooked() -> Result<&'static PathBuf, String> {
+pub(crate) fn cooked() -> Result<&'static PathBuf, String> {
     static ROOT: OnceLock<Result<PathBuf, String>> = OnceLock::new();
     ROOT.get_or_init(|| {
         let root = std::env::temp_dir().join(format!("og-tests-lod-{}", std::process::id()));

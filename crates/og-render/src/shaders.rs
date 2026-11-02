@@ -44,6 +44,10 @@ pub fn shader_sources() -> Vec<ShaderSource> {
         );
     }
     add("physical", crate::physical_source(&hooks));
+    add(
+        "meshlet cull",
+        crate::meshlet_gpu::MESHLET_CULL_WGSL.to_string(),
+    );
     add("shadow", crate::shadow_source(&hooks));
     add(
         "shadow array maps",

@@ -245,6 +245,8 @@ pub(crate) struct GpuCulling {
     /// frame may draw): false until a frame culled its camera pass, and
     /// again when the buffer is replaced.
     primed: bool,
+    /// Whether the last `encode` built the pyramid (it had occluders).
+    occlusion: bool,
     readbacks: Vec<Readback>,
     latest: Option<GpuCounts>,
     /// The last encoded frame's layout and given counts (`finish` copies
@@ -487,6 +489,7 @@ impl GpuCulling {
                 })
                 .create_view(&Default::default()),
             primed: false,
+            occlusion: false,
             readbacks,
             latest: None,
             last: None,
@@ -537,6 +540,16 @@ impl GpuCulling {
     /// depth, the pyramid and the camera pass's occlusion test.
     pub fn primed(&self) -> bool {
         self.primed
+    }
+
+    /// The depth pyramid the last `encode` built and its levels (the
+    /// meshlet path tests clusters against it); `None` when it had no
+    /// occluders.
+    pub fn pyramid(&self) -> Option<(&wgpu::TextureView, u32)> {
+        self.pyramid
+            .as_ref()
+            .filter(|_| self.occlusion)
+            .map(|p| (&p.full, p.levels))
     }
 
     /// Whether a readback holds a frame's counts not yet read.
@@ -986,6 +999,7 @@ impl GpuCulling {
             0,
             bytemuck::cast_slice(&view_proj.to_cols_array()),
         );
+        self.occlusion = occlusion;
         let pyramid = self.pyramid.as_ref().filter(|_| occlusion);
         // Pyramid levels 0: the camera pass tests no occlusion.
         let levels = pyramid.map_or(0, |x| x.levels);

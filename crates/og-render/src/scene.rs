@@ -40,6 +40,8 @@ pub struct RenderScene {
     mesh_revisions: Vec<u64>,
     /// Per mesh: [`RenderScene::set_vertex_encoding`].
     mesh_encodings: Vec<VertexEncoding>,
+    /// Per mesh: its levels cut into clusters ([`RenderScene::set_mesh_clusters`]).
+    mesh_clusters: Vec<Option<std::sync::Arc<crate::meshlet::MeshClusters>>>,
     textures: Vec<TextureSource>,
     /// Per texture: how many times [`RenderScene::set_texture`] replaced it.
     texture_revisions: Vec<u64>,
@@ -267,6 +269,17 @@ pub struct RenderScene {
     /// water, trails, text, tile layers and sprite meshes) draws on every
     /// camera.
     pub camera_layers: u32,
+    /// Whether instances of clustered meshes draw through the meshlet path
+    /// (`meshlet.rs`): their level picked and their clusters culled on the
+    /// GPU. True by default; false draws them as any mesh, level 0.
+    pub meshlets: bool,
+    /// The scene's level-of-detail bias for clustered meshes (`lod.rs`'s
+    /// bias: 2 keeps detail twice as far, 0 the full mesh), 1 by default.
+    pub lod_bias: f32,
+    /// Colours each clustered instance by the level it draws (green the
+    /// full mesh, yellow, orange, red: [`crate::lod::debug_color`]), as
+    /// og-runtime's `debugView lod` colours the others.
+    pub lod_debug: bool,
     /// Secondary cameras drawn into render targets or viewports of the
     /// frame, before it in [`crate::View::order`] (`views.rs`).
     pub views: Vec<crate::View>,

@@ -20,7 +20,10 @@ impl Renderer {
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("vertices"),
                 contents: if bytes.is_empty() { &[0u8; 16] } else { bytes },
-                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                // STORAGE: the meshlet path pulls them (meshlet.wgsl).
+                usage: wgpu::BufferUsages::VERTEX
+                    | wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::COPY_DST,
             })
     }
 

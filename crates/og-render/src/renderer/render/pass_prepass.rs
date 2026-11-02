@@ -160,6 +160,15 @@ impl Renderer {
             }
             stats.prepass_draws += 1;
         }
+        if let Some(m) = self.meshlet.as_ref().filter(|m| !m.frame.is_empty()) {
+            stats.prepass_draws += m.draw(
+                &mut p,
+                batches,
+                true,
+                |b| &self.cache.materials[b.material].bind_group,
+                |_, _| {},
+            );
+        }
         stats.prepass_draws += draw_skinned(
             &mut p,
             skinned_visible,

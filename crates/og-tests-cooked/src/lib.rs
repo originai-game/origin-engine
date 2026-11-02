@@ -1,5 +1,5 @@
 //! Origin Engine tests that cook a project: og-tests' gfx scenes whose
-//! content og-cook makes (`vox-keyframes`, `lod-levels`,
+//! content og-cook makes (`vox-keyframes`, `lod-levels`, the `meshlet-*` scenes,
 //! `terrain-generated`, `ui-vector`, the glTF extension scenes), and og-ui's frames drawn with cooked
 //! fonts and icons (`tests/text_gfx.rs`, `materials_gfx.rs`,
 //! `pack_contrast.rs`). A package of its own so that og-tests and og-ui
@@ -14,6 +14,7 @@
 pub mod depth_render_scenes;
 pub mod gfx;
 pub mod gltf_scenes;
+pub mod meshlet_scenes;
 pub mod scenes;
 pub mod terrain_scenes;
 pub mod ui_scenes;

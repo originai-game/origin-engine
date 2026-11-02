@@ -277,6 +277,10 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         .as_ref()
         .map_or(1.0, |s| f(s, "lodBias", 1.0).max(0.0));
     let debug_lod = super::geometry::current_view(rs) == "lod";
+    // The clustered instances' levels are picked by the renderer, with the
+    // settings' bias (a model's own lodBias applies to the others only).
+    rs.scene.lod_bias = settings_bias;
+    rs.scene.lod_debug = debug_lod;
     let view_height = match rs.backend.as_ref().map(|b| b.size()) {
         Some((_, ht)) if ht > 0 => ht as f32,
         _ => super::fx::viewport(rs).1,
@@ -330,8 +334,11 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 continue;
             }
             // A part with fewer levels than the model draws its coarsest.
+            // One the meshlet path draws keeps level 0: the renderer picks
+            // its level per instance on the GPU (og-render's `meshlet`).
             let mesh = match (level, levels.and_then(|l| l.get(k))) {
                 (0, _) | (_, None) => mesh,
+                _ if rs.scene.meshlet_drawable(mesh, material) => mesh,
                 (_, Some(p)) if p.is_empty() => mesh,
                 (l, Some(p)) => p[(l - 1).min(p.len() - 1)].0,
             };

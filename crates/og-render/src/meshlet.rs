@@ -105,6 +105,10 @@ pub struct ClusterLevel {
 pub struct MeshClusters {
     pub levels: Vec<ClusterLevel>,
     pub clusters: Vec<Cluster>,
+    /// Every level's triangles, level 0 first, indexing the mesh's
+    /// vertices (the mesh's own indices are level 0's alone: every pass
+    /// but the meshlet path draws them).
+    pub indices: Vec<u32>,
 }
 
 impl MeshClusters {
@@ -300,6 +304,7 @@ mod tests {
                 },
             ],
             clusters: vec![cluster(0, 64), cluster(192, 36), cluster(300, 10)],
+            indices: Vec::new(),
         };
         assert_eq!(m.validate(330), Ok(()));
         // An index count short of the last level.

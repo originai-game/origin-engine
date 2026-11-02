@@ -14,6 +14,9 @@ pub const NATIVE_SCENES: &[&str] = &[
     "vox-keyframes",
     "skeleton-2d",
     "lod-levels",
+    "meshlet-forest",
+    "meshlet-occlusion",
+    "meshlet-near",
     "probe-interior",
     "ssr-wet-floor",
     "baked-cornell",
@@ -51,6 +54,24 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         #[cfg(not(target_arch = "wasm32"))]
         "lod-levels" => |g, _| {
             g.scene = crate::depth_render_scenes::lod_scene()?.0;
+            Ok(())
+        },
+        // R1: the meshlet path (meshlet_scenes).
+        #[cfg(not(target_arch = "wasm32"))]
+        "meshlet-forest" => |g, _| {
+            g.scene = crate::meshlet_scenes::forest_scene()?;
+            Ok(())
+        },
+        #[cfg(not(target_arch = "wasm32"))]
+        "meshlet-occlusion" => |g, _| {
+            g.scene = crate::meshlet_scenes::occlusion_scene()?;
+            // The third frame culls against the second's occluders.
+            g.frames = 3;
+            Ok(())
+        },
+        #[cfg(not(target_arch = "wasm32"))]
+        "meshlet-near" => |g, _| {
+            g.scene = crate::meshlet_scenes::near_scene(true)?;
             Ok(())
         },
         // Round 3: a terrain the cook generated (noise, erosion, a sea,

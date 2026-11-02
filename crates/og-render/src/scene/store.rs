@@ -15,6 +15,7 @@ impl RenderScene {
             meshes: Vec::new(),
             mesh_revisions: Vec::new(),
             mesh_encodings: Vec::new(),
+            mesh_clusters: Vec::new(),
             textures: Vec::new(),
             texture_revisions: Vec::new(),
             materials: Vec::new(),
@@ -61,6 +62,9 @@ impl RenderScene {
             point_layers: Vec::new(),
             particle_layers: Vec::new(),
             camera_layers: 1,
+            meshlets: true,
+            lod_bias: 1.0,
+            lod_debug: false,
             posts: Vec::new(),
             post_params: Vec::new(),
             ui_vectors: Vec::new(),
@@ -774,12 +778,14 @@ impl RenderScene {
             self.meshes[i] = mesh;
             self.mesh_revisions[i] += 1;
             self.mesh_encodings[i] = VertexEncoding::Full;
+            self.mesh_clusters[i] = None;
         } else {
             self.meshes.push(mesh);
             self.skins.push(None);
             self.morphs.push(None);
             self.mesh_revisions.push(0);
             self.mesh_encodings.push(VertexEncoding::Full);
+            self.mesh_clusters.push(None);
         }
         MeshHandle::from_parts(i, generation)
     }
@@ -799,6 +805,7 @@ impl RenderScene {
         let reuse = self.skins[i].is_none() && self.morphs[i].is_none();
         self.meshes[i] = MeshData::default();
         self.mesh_revisions[i] += 1;
+        self.mesh_clusters[i] = None;
         self.mesh_slots.remove(i, reuse);
         true
     }
@@ -821,7 +828,75 @@ impl RenderScene {
         }
         self.meshes[i] = mesh;
         self.mesh_revisions[i] += 1;
+        // Its clusters described the old indices.
+        self.mesh_clusters[i] = None;
         true
+    }
+
+    /// Gives a mesh its levels cut into clusters (the cook's: og-bundle's
+    /// `CookedPrimitive::mesh_clusters`), or takes them away with `None`.
+    /// Its instances then draw through the meshlet path (`meshlet.rs`)
+    /// where their material allows ([`RenderScene::meshlet_drawable`]),
+    /// which picks each instance's level and culls its clusters on the GPU;
+    /// the mesh's own indices stay level 0 for every other pass. Refused
+    /// (false) for a bad handle, a skinned or morphed mesh, clusters that
+    /// do not describe their indices ([`crate::meshlet::MeshClusters::validate`])
+    /// or indices past the mesh's vertices. [`RenderScene::set_mesh`]
+    /// drops them.
+    pub fn set_mesh_clusters(
+        &mut self,
+        handle: MeshHandle,
+        clusters: Option<crate::meshlet::MeshClusters>,
+    ) -> bool {
+        let i = handle.index();
+        if !self.mesh_slots.live(i, handle.generation())
+            || self.skins[i].is_some()
+            || self.morphs[i].is_some()
+        {
+            return false;
+        }
+        if let Some(c) = &clusters {
+            let vertices = self.meshes[i].vertices.len() as u32;
+            if c.validate(c.indices.len() as u32).is_err()
+                || c.indices.iter().any(|&v| v >= vertices)
+            {
+                return false;
+            }
+        }
+        self.mesh_clusters[i] = clusters.map(std::sync::Arc::new);
+        true
+    }
+
+    /// A mesh's clusters ([`RenderScene::set_mesh_clusters`]).
+    pub fn mesh_clusters(&self, handle: MeshHandle) -> Option<&crate::meshlet::MeshClusters> {
+        self.contains_mesh(handle)
+            .then(|| self.mesh_clusters[handle.index()].as_deref())
+            .flatten()
+    }
+
+    pub(crate) fn mesh_clusters_all(
+        &self,
+    ) -> &[Option<std::sync::Arc<crate::meshlet::MeshClusters>>] {
+        &self.mesh_clusters
+    }
+
+    /// Whether instances of `mesh` with `material` draw through the meshlet
+    /// path: the scene's [`RenderScene::meshlets`] on, the mesh clustered,
+    /// and the material one the path draws (opaque, standard: no physical
+    /// lobes, material shader, texture array or wireframe; a lightmapped
+    /// mesh is decided by the renderer). Instances it refuses draw their
+    /// mesh's level 0 as any mesh does, so a caller picking levels on the
+    /// CPU (og-runtime's per-entity LOD) keeps doing so for them.
+    pub fn meshlet_drawable(&self, mesh: MeshHandle, material: MaterialHandle) -> bool {
+        self.meshlets && self.mesh_clusters(mesh).is_some() && self.contains_material(material) && {
+            let i = material.index();
+            let m = &self.materials[i];
+            !m.is_transparent()
+                && !m.is_physical()
+                && !m.draws_array_maps()
+                && m.wireframe == 0
+                && self.material_shaders.get(i).is_none_or(Option::is_none)
+        }
     }
 
     pub(crate) fn mesh_revisions(&self) -> &[u64] {

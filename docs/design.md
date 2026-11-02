@@ -669,23 +669,38 @@ error, its parents' error, the sphere both are projected from and its
 group, and a cluster is drawn when its error projects under a pixel and
 its parents' does not (`meshlet::selected`); the cook's per-level chain
 writes those fields so that exactly the level `lod::select` picks is
-drawn. Per frame, the GPU picks each clustered instance's level by
-screen-space error (`lod::select` without hysteresis), then tests each
-of the level's clusters on its own: its sphere against the frustum, its
-normal cone against the eye (not for two-sided materials, transforms
-that mirror or scale unevenly, or shadow passes), and its sphere against
-the depth pyramid in two phases (the clusters visible last frame are
-drawn first and build the pyramid; the others are tested against it and
-drawn when they pass, and are last frame's visible set next time;
-occlusion is skipped while it culls little). The visible clusters are
-written as indirect draws, one draw per batch whose instances are the
-visible clusters, drawn by vertex pulling. Shadow maps go through the
-same culling with their own planes. What the path cannot take (skinned,
-morphed, runtime geometry without clusters, custom shaders that move
-vertices) keeps the per-instance path. Then a visibility buffer: the
-clusters write instance and triangle ids, small triangles are
-rasterised in compute, and one material pass shades the buffer. The CPU
-statement of every test is `meshlet.rs`, whose unit tests check it.
+drawn. Per frame (`meshlet_gpu.rs`, `meshlet_cull.wgsl`), after GPU
+culling (`cull_gpu.rs`) has culled and compacted a clustered batch's
+instances, one compute pass runs a workgroup per instance: it tests the
+instance's sphere against the frustum and the depth pyramid, picks its
+level by screen-space error (`lod::select` without hysteresis, with the
+settings' `lodBias`), then tests each of the level's clusters on its
+own: its sphere against the frustum, its normal cone against the eye
+(not for two-sided materials, transforms that mirror or scale unevenly,
+or orthographic cameras), and its sphere
+against the depth pyramid GPU culling built from last frame's visible
+occluders (its two phases: those occluders are drawn first, at this frame's
+camera, and build the pyramid; there is no occlusion test on a frame without last
+frame's visibility or without an occluding material). The
+visible clusters are appended as work items (instance, cluster), and
+each batch is drawn once, by `draw_indirect`, 64 × 3 vertices per
+visible cluster, by vertex pulling (`meshlet.wgsl`: no index or vertex
+buffer is bound; a cluster's unused triangles collapse), in the prepass
+and the lit pass. Each instance's previous transform travels with it,
+so TAA's motion vectors hold. `debugView lod` tints each cluster by its
+level. The path takes the camera pass's opaque batches of clustered
+meshes under GPU culling (`Culling.auto` turns GPU culling on when such
+a batch exists); what it cannot take keeps the per-instance path:
+skinned, morphed, lightmapped or compact meshes, custom shaders,
+transparent and physical materials, texture arrays, runtime geometry
+without clusters, object-space stylise, and `Culling.cpu`
+(`meshlet_gpu::takes`, `RenderScene.meshlets` turns it off). Next, the
+shadow maps, the planar reflection, views and probes go through the
+same culling with their own planes (they draw level 0 per instance
+until then); then a visibility buffer: the clusters write instance and
+triangle ids, small triangles are rasterised in compute, and one
+material pass shades the buffer. The CPU statement of every test is
+`meshlet.rs`, whose unit tests check it.
 
 Runtime geometry and debug draw (depth S1). Games can make geometry from
 attribute arrays (`og.render.bufferGeometry`, three.js BufferGeometry's

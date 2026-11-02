@@ -62,8 +62,9 @@ impl CookedPrimitive {
         }
     }
 
-    /// Every level with its clusters, over [`Self::indices`] whole (the
-    /// mesh [`Self::mesh_all`] makes); `None` when a level has none.
+    /// Every level with its clusters and indices, for
+    /// [`RenderScene::set_mesh_clusters`] on [`Self::mesh`]`(0)`'s mesh;
+    /// `None` when a level has none.
     pub fn mesh_clusters(&self) -> Option<og_render::meshlet::MeshClusters> {
         let levels = self
             .lods
@@ -80,16 +81,8 @@ impl CookedPrimitive {
         Some(og_render::meshlet::MeshClusters {
             levels,
             clusters: self.clusters.clone(),
-        })
-    }
-
-    /// Every level's triangles in one mesh, level 0 first: the indices
-    /// [`Self::mesh_clusters`]' ranges address.
-    pub fn mesh_all(&self) -> MeshData {
-        MeshData {
-            vertices: self.vertices.clone(),
             indices: self.indices.clone(),
-        }
+        })
     }
 
     pub fn triangle_count(&self, lod: usize) -> usize {
@@ -830,6 +823,13 @@ impl CookedModel {
             .iter()
             .map(|p| scene.add_mesh(p.mesh(0)))
             .collect();
+        // Each mesh's levels as clusters, for the meshlet path (og-render's
+        // `meshlet`): its instances' levels are then picked on the GPU.
+        for (p, &m) in self.primitives.iter().zip(&meshes) {
+            if let Some(c) = p.mesh_clusters() {
+                scene.set_mesh_clusters(m, Some(c));
+            }
+        }
         let world = self.node_world();
         let node_shown = self.node_shown();
         let mut parts = Vec::new();

@@ -420,6 +420,7 @@ pub(crate) fn prepass_pipeline(
     side: Side,
     skinned: bool,
     lean: Option<(bool, bool)>,
+    meshlet: bool,
 ) -> wgpu::RenderPipeline {
     let (derivatives, compact) = lean.unwrap_or_default();
     let lean = lean.is_some();
@@ -459,13 +460,19 @@ pub(crate) fn prepass_pipeline(
         vertex: wgpu::VertexState {
             module,
             entry_point: Some(match (skinned, lean) {
+                _ if meshlet => "vs_prepass_meshlet",
                 (true, _) => "vs_prepass_skinned",
                 (false, true) if compact => "vs_prepass_lean_compact",
                 (false, true) => "vs_prepass_lean",
                 (false, false) => "vs_prepass",
             }),
             compilation_options: options.clone(),
-            buffers: if skinned { &skin } else { &plain },
+            // The meshlet entry pulls its vertices (meshlet.wgsl).
+            buffers: match (meshlet, skinned) {
+                (true, _) => &[],
+                (false, true) => &skin,
+                (false, false) => &plain,
+            },
         },
         primitive: wgpu::PrimitiveState {
             cull_mode: cull_mode(side),

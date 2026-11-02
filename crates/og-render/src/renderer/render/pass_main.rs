@@ -13,6 +13,7 @@ pub(super) struct MainPassInputs<'a, F0, F1, F2, F3, F4, F5, F6> {
     pub(super) fx_group: &'a wgpu::BindGroup,
     pub(super) draw_list: &'a F0,
     pub(super) main_list: &'a DrawList,
+    pub(super) batches: &'a [Batch],
     pub(super) physical_fx: Option<(&'a wgpu::BindGroup, &'a wgpu::BindGroup)>,
     pub(super) probe_binding: Option<probe_select::ProbeGroups<'a>>,
     pub(super) stats: &'a mut FrameStats,
@@ -55,6 +56,7 @@ impl Renderer {
             fx_group,
             draw_list,
             main_list,
+            batches,
             physical_fx,
             probe_binding,
             stats,
@@ -217,6 +219,19 @@ impl Renderer {
             Some(fx_group),
         );
         stats.draw_calls += main_list.ranges.len() as u32;
+        // The clustered batches (meshlet_gpu.rs), each one draw of its
+        // visible clusters.
+        if let Some(m) = self.meshlet.as_ref().filter(|m| !m.frame.is_empty()) {
+            let mut binder = probe_select::Binder::new(probe_binding);
+            stats.draw_calls += m.draw(
+                &mut pass,
+                batches,
+                false,
+                |b| &self.cache.materials[b.material].bind_group,
+                |p, b| binder.bind(p, b.probe),
+            );
+            binder.reset(&mut pass);
+        }
         stats.draw_calls += draw_skinned(
             &mut pass,
             skinned_visible,

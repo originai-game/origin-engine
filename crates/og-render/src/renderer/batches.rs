@@ -363,6 +363,7 @@ impl Renderer {
                         b.side,
                         is_skinned,
                         None,
+                        false,
                     );
                     a.prepass.insert(key, p);
                 }
@@ -447,6 +448,7 @@ impl Renderer {
                         b.side,
                         is_skinned,
                         None,
+                        false,
                     );
                     self.cache.hook_prepass_pipelines.insert(key, p);
                 }
@@ -474,6 +476,7 @@ impl Renderer {
                         b.side,
                         false,
                         Some((b.derivatives, b.compact)),
+                        false,
                     );
                     self.lean_prepass_pipelines.insert(key, p);
                 }
@@ -524,6 +527,7 @@ impl Renderer {
                     b.side,
                     is_skinned,
                     None,
+                    false,
                 );
                 self.prepass_pipelines.insert((b.side, is_skinned), p);
             }

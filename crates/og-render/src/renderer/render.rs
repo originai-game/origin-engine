@@ -71,6 +71,17 @@ impl Renderer {
         } = sorted_instances;
         let mut origins = submission.clone();
         self.prepare_full_meshes(scene, &batches);
+        // The meshlet path's cluster pools (meshlet_gpu.rs), once the
+        // scene has a clustered mesh.
+        if scene.meshlets && scene.mesh_clusters_all().iter().any(Option::is_some) {
+            let limits = self.device.limits();
+            let max = limits
+                .max_storage_buffer_binding_size
+                .min(limits.max_buffer_size);
+            self.meshlet
+                .get_or_insert_with(|| meshlet_gpu::MeshletGpu::new(&self.device, max))
+                .sync(&self.device, &self.queue, scene);
+        }
         let mut skinned = self.build_skinned(scene, &probe_boxes)?;
         // The planar water this frame draws: none where the 3D world is
         // not built in (WORLD_3D).
@@ -593,18 +604,62 @@ impl Renderer {
                     self.info.shadowed_lights as usize,
                     self.info.point_shadows,
                 ));
-        let gpu_cull = self.gpu_culls(sorted) && !blur_motion && !batches.is_empty() && {
-            let limits = self.device.limits();
-            let gc = self.gpu_cull.get_or_insert_with(|| {
-                cull_gpu::GpuCulling::new(
-                    &self.device,
-                    limits
-                        .max_storage_buffer_binding_size
-                        .min(limits.max_buffer_size),
-                )
-            });
-            gc.fits(sorted, max_passes)
+        // The batches the meshlet path draws in the camera pass (under GPU
+        // culling, which it follows; never with stylise's object pass,
+        // which redraws the camera list's instances, nor with motion blur,
+        // which culls on the CPU).
+        let mut meshlet_taken: Vec<u32> = match self.meshlet.as_ref() {
+            Some(m)
+                if self.indirect
+                    && self.desc_culling != Culling::Cpu
+                    && !blur_motion
+                    && !object_space =>
+            {
+                batches
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, b)| {
+                        meshlet_gpu::takes(
+                            scene,
+                            b,
+                            m.clustered(b.mesh),
+                            self.lightmaps.group(b.mesh).is_some(),
+                        ) && self.cache.materials[b.material].wireframe.is_none()
+                    })
+                    .map(|(i, _)| i as u32)
+                    .collect()
+            }
+            _ => Vec::new(),
         };
+        if !self
+            .meshlet
+            .as_ref()
+            .is_some_and(|m| m.fits(&batches, &meshlet_taken))
+        {
+            meshlet_taken.clear();
+        }
+        // Clustered batches draw only under GPU culling: they turn it on
+        // under `Culling::Auto` however few the instances.
+        let gpu_cull = (self.gpu_culls(sorted) || !meshlet_taken.is_empty())
+            && !blur_motion
+            && !batches.is_empty()
+            && {
+                let limits = self.device.limits();
+                let gc = self.gpu_cull.get_or_insert_with(|| {
+                    cull_gpu::GpuCulling::new(
+                        &self.device,
+                        limits
+                            .max_storage_buffer_binding_size
+                            .min(limits.max_buffer_size),
+                    )
+                });
+                gc.fits(sorted, max_passes)
+            };
+        if !gpu_cull {
+            meshlet_taken.clear();
+        }
+        // Under GPU culling (the meshlet path's batches included) TAA
+        // reprojects the camera's motion alone.
         let object_motion = previous_valid && (blur_motion || (taa && !gpu_cull));
         let mut cull_passes: Vec<cull_gpu::CullPass> = Vec::new();
         let mut gpu_pass = |kind, frustum: &Frustum| {
@@ -638,12 +693,15 @@ impl Renderer {
             if occlusion {
                 gpu_pass(cull_gpu::PassKind::Occluders, &view_frustum);
             }
-            (
-                indirect_list(&batches, sorted, g, |b| {
-                    !b.transparent && b.layers & mask != 0
-                }),
-                0,
-            )
+            let mut list = indirect_list(&batches, sorted, g, |b| {
+                !b.transparent && b.layers & mask != 0
+            });
+            // The meshlet path draws its batches itself; the camera's
+            // layers still decide (a batch off them draws nothing there).
+            meshlet_taken.retain(|&b| batches[b as usize].layers & mask != 0);
+            list.ranges
+                .retain(|r| meshlet_taken.binary_search(&r.0).is_err());
+            (list, 0)
         } else {
             self.cull(
                 &batches,
@@ -1116,9 +1174,56 @@ impl Renderer {
             {
                 r.1 -= sorted;
             }
-            Some(commands)
+            let mut commands = vec![commands];
+            // The clustered batches' culling, after GPU culling's (it
+            // reads the camera pass's survivors and the pyramid).
+            if let Some(m) = self.meshlet.as_mut() {
+                let gc = self.gpu_cull.as_ref().expect("made above");
+                commands.extend(m.encode(
+                    &self.device,
+                    &self.queue,
+                    scene,
+                    &batches,
+                    &meshlet_taken,
+                    gc,
+                    gc.pyramid(),
+                    cam.jittered_view_proj,
+                    view_frustum.planes(),
+                    (self.width, self.height),
+                ));
+                if !m.frame.is_empty() {
+                    // Last frame's transforms at the same slots: with object
+                    // motion, the previous-transform buffer (the regular
+                    // prepass's rule), once it can be bound as storage.
+                    let previous = if object_motion
+                        && self
+                            .prev_instance_buffer
+                            .usage()
+                            .contains(wgpu::BufferUsages::STORAGE)
+                    {
+                        &self.prev_instance_buffer
+                    } else {
+                        &gc.instances
+                    };
+                    m.ensure_groups(&self.device, &batches, (&gc.instances, previous), |mesh| {
+                        &self.cache.meshes[mesh].vertices
+                    });
+                    m.ensure_pipelines(
+                        &self.device,
+                        [&self.frame_layout, &self.material_layout, &self.fx_layout],
+                        &self.pbr_shader,
+                        &batches,
+                        prepass,
+                        self.samples,
+                    );
+                }
+            }
+            commands
         } else {
-            None
+            if let Some(m) = self.meshlet.as_mut() {
+                m.frame.clear();
+            }
+            Vec::new()
         };
         let cpu_instances = if gpu_cull {
             &transforms[sorted as usize..]
@@ -2981,6 +3086,7 @@ impl Renderer {
                     fx_group,
                     draw_list: &draw_list,
                     main_list: &main_list,
+                    batches: &batches,
                     physical_fx,
                     probe_binding,
                     stats: &mut stats,

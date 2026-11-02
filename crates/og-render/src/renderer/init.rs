@@ -943,6 +943,7 @@ impl Renderer {
             desc_culling: desc.culling,
             indirect,
             gpu_cull: None,
+            meshlet: None,
             culling_counts: false,
             taa_history: None,
             drawn_origin: Vec3::ZERO,

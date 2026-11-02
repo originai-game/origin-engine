@@ -81,12 +81,13 @@ pub(crate) fn fx_layout_entries(planar: bool) -> Vec<wgpu::BindGroupLayoutEntry>
 /// else it is [`PLANAR_STUB`].
 pub(crate) fn lit_source_with(hooks: &str, planar: bool) -> String {
     format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{}{SCREEN_AO_WGSL}{PBR_FS_WGSL}{PBR_PREPASS_WGSL}{PBR_LEAN_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_WGSL}",
+        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{}{SCREEN_AO_WGSL}{PBR_FS_WGSL}{PBR_PREPASS_WGSL}{PBR_LEAN_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_WGSL}{}",
         clusters::wgsl(),
         particles_gpu::NOISE_WGSL,
         skin::palette_wgsl(3),
         lightmap::probe_wgsl(),
-        if planar { PLANAR_WGSL } else { PLANAR_STUB }
+        if planar { PLANAR_WGSL } else { PLANAR_STUB },
+        meshlet_gpu::MESHLET_WGSL,
     )
 }
 

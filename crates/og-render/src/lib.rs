@@ -90,6 +90,7 @@ mod lightmap;
 mod lines;
 pub mod lod;
 pub mod meshlet;
+mod meshlet_gpu;
 mod probe_content;
 mod probe_select;
 mod probes;
@@ -462,6 +463,8 @@ pub struct Renderer {
     desc_culling: Culling,
     indirect: bool,
     gpu_cull: Option<cull_gpu::GpuCulling>,
+    /// The meshlet path (meshlet_gpu.rs), once a scene has a clustered mesh.
+    meshlet: Option<meshlet_gpu::MeshletGpu>,
     /// Whether the next frame's GPU culling counts are read back
     /// ([`Renderer::request_culling_counts`]).
     culling_counts: bool,
