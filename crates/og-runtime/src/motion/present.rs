@@ -15,8 +15,10 @@
 //!    with [`super::advance`]; without drive, its Transform's velocity),
 //!    in the pose it will be in there (walking, running, or the goal's).
 //! 3. **One batch for every agent** runs at a time, never blocking the
-//!    frame: its readback is polled each frame and lands a frame or two
-//!    after the GPU finishes. A native host blocks only when an agent has
+//!    frame: it is submitted in slices of about [`FRAME_BUDGET_MS`] of GPU
+//!    time, one a frame, so no frame misses its vsync for it, and its
+//!    readback is polled each frame and lands a frame or two after the
+//!    last slice finishes. A native host blocks only when an agent has
 //!    nothing left to show (`og run` stepping faster than real time draws
 //!    every frame that way, so its frames do not depend on timing).
 //! 4. **The pose.** Each agent plays its frames at 30 Hz on the frame's
@@ -59,6 +61,10 @@ pub(crate) const MODEL_FILE: &str = "motion/model.ogb";
 pub(crate) const MODEL_ENTRY: &str = "motion/model.safetensors";
 /// How far ahead of the simulation the model's next goal is placed.
 const HORIZON: f32 = 1.2;
+/// The GPU time a batch may add to one frame, ms: a batch runs in slices of
+/// about this much, one a frame (`Gpu::set_frame_budget`), so a frame of
+/// 16.7 ms keeps room for the scene.
+const FRAME_BUDGET_MS: f64 = 3.0;
 /// The model's frame rate.
 const RATE: f32 = 30.0;
 
@@ -81,6 +87,8 @@ struct Ready {
     soma: SkeletonAsset,
     soma_skeleton: Skeleton,
     soma_map: HumanoidMap,
+    /// The device's rate as the last batch measured it, GFLOP/s.
+    rate: f64,
 }
 
 #[derive(Default)]
@@ -197,7 +205,9 @@ fn load(eng: &Engine, backend: Option<&dyn RenderBackend>, bytes_out: &mut u64) 
         let soma_map = HumanoidMap::detect(&soma);
         let mut gpu = Gpu::new(device.clone(), queue, &bundle).map_err(|e| e.to_string())?;
         gpu.set_blocking(false);
+        gpu.set_frame_budget(Some(FRAME_BUDGET_MS));
         Ok::<_, String>(Ready {
+            rate: gpu.rate(),
             gpu: Some(gpu),
             device,
             flight: None,
@@ -323,17 +333,21 @@ fn poll_flight(
     let Some(flight) = r.flight.as_mut() else {
         return false;
     };
-    #[cfg(not(target_arch = "wasm32"))]
-    if block {
-        let _ = r.device.poll(wgpu::PollType::wait_indefinitely());
-    }
-    #[cfg(target_arch = "wasm32")]
-    let _ = block;
     let mut cx = Context::from_waker(Waker::noop());
-    let Poll::Ready((gpu, result)) = flight.future.as_mut().poll(&mut cx) else {
-        return false;
+    // Each poll submits the batch's next slice or polls its readback;
+    // blocking (native) runs every slice left and waits for the GPU.
+    let (gpu, result) = loop {
+        match flight.future.as_mut().poll(&mut cx) {
+            Poll::Ready(done) => break done,
+            Poll::Pending if block && cfg!(not(target_arch = "wasm32")) => {
+                #[cfg(not(target_arch = "wasm32"))]
+                let _ = r.device.poll(wgpu::PollType::wait_indefinitely());
+            }
+            Poll::Pending => return false,
+        }
     };
     let flight = r.flight.take().expect("polled above");
+    r.rate = gpu.rate();
     r.gpu = Some(gpu);
     match result {
         Ok(g) => {
@@ -638,6 +652,8 @@ pub(crate) fn dump(eng: &Engine) -> Value {
         "inFlight": ready.is_some_and(|r| r.flight.is_some()),
         "batches": p.batches,
         "lastBatch": { "characters": p.last_batch.0, "ms": p.last_batch.1 },
+        "frameBudgetMs": FRAME_BUDGET_MS,
+        "gpuGflops": ready.map_or(0.0, |r| r.rate),
         "errors": p.errors,
         "agents": agents,
     })

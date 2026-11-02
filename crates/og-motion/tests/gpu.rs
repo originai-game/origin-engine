@@ -57,3 +57,36 @@ fn gpu_generation_matches_the_cpu() {
         }
     }
 }
+
+/// A frame budget splits a generation into slices, one submitted per poll,
+/// as the engine's frame loop polls it; the result is the unsliced one,
+/// bit for bit (the same dispatches in the same order).
+#[test]
+fn a_frame_budget_slices_a_generation_without_changing_it() {
+    use std::future::Future;
+    use std::task::{Context, Poll, Waker};
+    let bundle = fixture("tiny.safetensors");
+    let inputs = case_inputs(&fixture("case.safetensors"));
+    let mut gpu = pollster::block_on(Gpu::request(&bundle)).expect("a GPU adapter");
+    let whole = pollster::block_on(gpu.generate(&inputs)).unwrap();
+    gpu.set_blocking(false);
+    // Far under one dispatch's cost: every dispatch is a slice of its own.
+    gpu.set_frame_budget(Some(1e-6));
+    let device = gpu.device().clone();
+    let mut future = Box::pin(gpu.generate(&inputs));
+    let mut cx = Context::from_waker(Waker::noop());
+    let mut polls = 0;
+    let sliced = loop {
+        polls += 1;
+        match future.as_mut().poll(&mut cx) {
+            Poll::Ready(g) => break g.unwrap(),
+            Poll::Pending => {
+                let _ = device.poll(wgpu::PollType::wait_indefinitely());
+            }
+        }
+    };
+    assert!(polls > 20, "{polls} polls: the generation was not sliced");
+    assert_eq!(sliced.counts, whole.counts);
+    assert_eq!(sliced.student.tokens, whole.student.tokens);
+    assert!(sliced.motion == whole.motion, "the sliced motion differs");
+}

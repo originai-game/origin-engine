@@ -40,7 +40,7 @@ let on_rig = og_anim::retarget(&skeleton.asset(), &HumanoidMap::detect(&skeleton
 | `glue` | `Statics`, `student_inputs`, `decoder_inputs`, `finish`: everything around the two networks, shared by both paths |
 | `cpu` | `Cpu`: the student and the decoder in f32 loops, the reference path (the `reference` feature: tests and tools only; the engine runs the model on the GPU only) |
 | `library` | `POSES` (idle, walk, run, jump, crouch, wave, cheer), `Library`: the poses og.motion's goals name, carried by the bundle |
-| `gpu` | `Gpu` (`request`, `request_on`, `new`, `set_blocking`, async `student`, `decoder`, `generate`), `shader_sources` |
+| `gpu` | `Gpu` (`request`, `request_on`, `new`, `set_blocking`, `set_frame_budget` (a generation in slices of about that much GPU time, one per poll, cut by each dispatch's estimated work and the rate timestamp queries measure), `rate`, async `student`, `decoder`, `generate`), `shader_sources` |
 | `intent` | `Goal` (`placed`), `Motion` (`add`, `push`, `batch`, `accept`, `generate`, `generate_gpu`, `pop`), `Frame` |
 | `soma` | `Skeleton` (`from_bundle`, `asset`, `local`), `plant_feet`, `Planter` (frame by frame, anchors in the world), `clip` |
 | (root) | `Model` (CPU end to end), `Generation` |

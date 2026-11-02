@@ -131,6 +131,39 @@ struct Op {
     kernel: Kernel,
     group: wgpu::BindGroup,
     workgroups: (u32, u32),
+    /// Its work in floating-point operations, estimated from its kernel's
+    /// parameters: what a slice of a frame's budget is cut by.
+    cost: f64,
+}
+
+/// A dispatch's fixed cost in FLOP at [`FIRST_RATE`] (0.4 ms): on the Mac
+/// satellite's virtual M4 Pro a slice of 15 small dispatches took 7.8 ms
+/// (median) however little work each had.
+const DISPATCH: f64 = 4.0e8;
+
+/// The floating-point operations of one dispatch of `kernel` with `params`
+/// (its uniform, as recorded), plus [`DISPATCH`] for its fixed cost.
+fn cost(kernel: Kernel, p: [u32; 8]) -> f64 {
+    let v = p.map(f64::from);
+    let work = match kernel {
+        // rows, k, out
+        Kernel::Linear | Kernel::LinearSmall => 2.0 * v[0] * v[1] * v[2],
+        // rows, width
+        Kernel::LayerNorm => 8.0 * v[0] * v[1],
+        // n, heads, head width, length: scores and the weighted sum
+        Kernel::Attention => 4.0 * v[0] * v[1] * v[3] * v[3] * v[2],
+        // n, width, length
+        Kernel::Assemble => v[0] * v[1] * v[2],
+        // n, length, logits
+        Kernel::SelectCount => v[0] * v[1] * v[2],
+        // n, cin, cout, t, kernel
+        Kernel::Conv1d => 2.0 * v[0] * v[1] * v[2] * v[3] * v[4],
+        // n, width, positions, per
+        Kernel::Fuse => 4.0 * v[0] * v[2] * (v[1] + 2.0 * v[3]),
+        // n, a, b
+        Kernel::Transpose => v[0] * v[1] * v[2],
+    };
+    work + DISPATCH
 }
 
 /// Records a network's dispatches, then runs them in one compute pass.
@@ -143,6 +176,24 @@ fn groups_for(elements: usize, per_group: usize) -> (u32, u32) {
     let groups = elements.div_ceil(per_group).max(1);
     let x = groups.min(65535);
     (x as u32, groups.div_ceil(x) as u32)
+}
+
+/// `ops` cut into consecutive runs of at most `limit` estimated work each
+/// (a run of one when a dispatch alone exceeds it); one run without a limit.
+fn slices(ops: &[Op], limit: Option<f64>) -> Vec<std::ops::Range<usize>> {
+    let Some(limit) = limit else {
+        return std::iter::once(0..ops.len()).collect();
+    };
+    let (mut out, mut start, mut work) = (Vec::new(), 0, 0.0);
+    for (i, op) in ops.iter().enumerate() {
+        if i > start && work + op.cost > limit {
+            out.push(start..i);
+            (start, work) = (i, 0.0);
+        }
+        work += op.cost;
+    }
+    out.push(start..ops.len());
+    out
 }
 
 impl Recorder<'_> {
@@ -181,6 +232,7 @@ impl Recorder<'_> {
             kernel,
             group,
             workgroups,
+            cost: cost(kernel, params),
         });
     }
 
@@ -278,9 +330,10 @@ impl Recorder<'_> {
     }
 
     fn plan(self, inputs: Vec<wgpu::Buffer>, outputs: Vec<wgpu::Buffer>) -> Plan {
+        let timer = self.gpu.timer.as_ref().map_or(0, |t| t.resolve.size());
         let staging = self.gpu.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("og-motion readback"),
-            size: outputs.iter().map(|b| b.size()).sum(),
+            size: outputs.iter().map(|b| b.size()).sum::<u64>() + timer,
             usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -308,6 +361,39 @@ pub const STORAGE_BUFFERS: u32 = 7;
 
 /// Batch sizes whose plans are kept; past it the cache starts over.
 const PLANS: usize = 8;
+
+/// The slices of one plan that are timed; later ones run untimed.
+const TIMED_SLICES: u32 = 64;
+
+/// The device's rate before any slice was timed, and where the device has
+/// no timestamp queries (a publish build, a virtual GPU): FLOP a
+/// millisecond, 1 TFLOP/s, between the M4 Pro's 1.7 and the satellite's
+/// 0.5 at large batches (`og-motion`'s README).
+const FIRST_RATE: f64 = 1.0e9;
+
+/// Timestamp queries around each slice's pass, where the device has them.
+struct Timer {
+    set: wgpu::QuerySet,
+    resolve: wgpu::Buffer,
+    /// Nanoseconds a tick.
+    period: f64,
+}
+
+/// Pending once, then ready: a slice's turn ends, and the next poll (a
+/// frame later, in a frame loop) submits the next one.
+struct Yield(bool);
+
+impl Future for Yield {
+    type Output = ();
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+        if self.0 {
+            return Poll::Ready(());
+        }
+        self.0 = true;
+        cx.waker().wake_by_ref();
+        Poll::Pending
+    }
+}
 
 #[derive(Default)]
 struct MapState {
@@ -355,6 +441,11 @@ pub struct Gpu {
     decoders: HashMap<usize, Plan>,
     /// Readbacks block in a device poll ([`Gpu::set_blocking`]).
     blocking: bool,
+    /// The GPU time one submit may take, ms ([`Gpu::set_frame_budget`]).
+    budget: Option<f64>,
+    /// The device's measured rate, FLOP a millisecond.
+    rate: f64,
+    timer: Option<Timer>,
 }
 
 impl Gpu {
@@ -411,6 +502,22 @@ impl Gpu {
     /// browser completes readbacks on its own and nothing blocks either way.
     pub fn set_blocking(&mut self, blocking: bool) {
         self.blocking = blocking;
+    }
+
+    /// Splits each network's dispatches into slices of about `ms` of GPU
+    /// time, one submitted per poll of the generation (a frame loop's
+    /// frame), so a batch never holds a frame past its budget. `None` (the
+    /// default) submits each network at once. Slices are cut by each
+    /// dispatch's estimated work and the device's rate, measured with
+    /// timestamp queries where the device has them ([`Gpu::rate`]).
+    pub fn set_frame_budget(&mut self, ms: Option<f64>) {
+        self.budget = ms.filter(|ms| *ms > 0.0);
+    }
+
+    /// The device's rate as measured on the slices run so far, GFLOP/s
+    /// (1000 before the first timed slice, or without timestamp queries).
+    pub fn rate(&self) -> f64 {
+        self.rate / 1.0e6
     }
 
     /// The model on `device` (one of its own, or a renderer's). Refused for
@@ -490,6 +597,23 @@ impl Gpu {
             })
         };
         let (mask_count, mask_full) = (mask(&count, "mask count"), mask(&full, "mask full"));
+        let timer = device
+            .features()
+            .contains(wgpu::Features::TIMESTAMP_QUERY)
+            .then(|| Timer {
+                set: device.create_query_set(&wgpu::QuerySetDescriptor {
+                    label: Some("og-motion slices"),
+                    ty: wgpu::QueryType::Timestamp,
+                    count: 2 * TIMED_SLICES,
+                }),
+                resolve: device.create_buffer(&wgpu::BufferDescriptor {
+                    label: Some("og-motion slice times"),
+                    size: u64::from(2 * TIMED_SLICES) * 8,
+                    usage: wgpu::BufferUsages::QUERY_RESOLVE | wgpu::BufferUsages::COPY_SRC,
+                    mapped_at_creation: false,
+                }),
+                period: f64::from(queue.get_timestamp_period()),
+            });
         Ok(Gpu {
             device,
             queue,
@@ -504,6 +628,9 @@ impl Gpu {
             students: HashMap::new(),
             decoders: HashMap::new(),
             blocking: true,
+            budget: None,
+            rate: FIRST_RATE,
+            timer,
         })
     }
 
@@ -531,25 +658,68 @@ impl Gpu {
     }
 
     /// Runs `plan` with `inputs` written into its input buffers and returns
-    /// its outputs as 32-bit words.
-    async fn run(&self, plan: &Plan, inputs: &[&[u8]]) -> Result<Vec<Vec<u32>>, GpuError> {
+    /// its outputs as 32-bit words: in one submit, or with a frame budget
+    /// in slices, yielding after each but the last.
+    async fn run(&mut self, plan: &Plan, inputs: &[&[u8]]) -> Result<Vec<Vec<u32>>, GpuError> {
         for (buffer, data) in plan.inputs.iter().zip(inputs) {
             self.queue.write_buffer(buffer, 0, data);
         }
+        let slices = slices(&plan.ops, self.budget.map(|ms| ms * self.rate));
+        let timed = if self.budget.is_some() && self.timer.is_some() {
+            slices.len().min(TIMED_SLICES as usize)
+        } else {
+            0
+        };
+        let last = slices.len() - 1;
         let mut encoder = self.encoder();
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("og-motion"),
-                timestamp_writes: None,
-            });
-            for op in &plan.ops {
-                pass.set_pipeline(&self.pipelines[op.kernel as usize]);
-                pass.set_bind_group(0, &op.group, &[]);
-                pass.dispatch_workgroups(op.workgroups.0, op.workgroups.1, 1);
+        for (i, range) in slices.iter().enumerate() {
+            {
+                let timestamp_writes = (i < timed).then(|| wgpu::ComputePassTimestampWrites {
+                    query_set: &self.timer.as_ref().expect("timed above").set,
+                    beginning_of_pass_write_index: Some(2 * i as u32),
+                    end_of_pass_write_index: Some(2 * i as u32 + 1),
+                });
+                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("og-motion"),
+                    timestamp_writes,
+                });
+                for op in &plan.ops[range.clone()] {
+                    pass.set_pipeline(&self.pipelines[op.kernel as usize]);
+                    pass.set_bind_group(0, &op.group, &[]);
+                    pass.dispatch_workgroups(op.workgroups.0, op.workgroups.1, 1);
+                }
+            }
+            if i < last {
+                self.queue.submit(Some(encoder.finish()));
+                Yield(false).await;
+                encoder = self.encoder();
             }
         }
-        let sources: Vec<&wgpu::Buffer> = plan.outputs.iter().collect();
-        self.read(encoder, &sources, &plan.staging).await
+        let mut sources: Vec<&wgpu::Buffer> = plan.outputs.iter().collect();
+        if let Some(t) = &self.timer {
+            if timed > 0 {
+                encoder.resolve_query_set(&t.set, 0..2 * timed as u32, &t.resolve, 0);
+            }
+            sources.push(&t.resolve);
+        }
+        let mut out = self.read(encoder, &sources, &plan.staging).await?;
+        if let Some(t) = &self.timer {
+            let ticks = out.pop().expect("the timer's buffer was read");
+            let (mut ms, mut work) = (0.0, 0.0);
+            for (i, range) in slices.iter().take(timed).enumerate() {
+                let at = |k: usize| u64::from(ticks[2 * k]) | (u64::from(ticks[2 * k + 1]) << 32);
+                let (begin, end) = (at(2 * i), at(2 * i + 1));
+                ms += end.saturating_sub(begin) as f64 * t.period / 1.0e6;
+                work += plan.ops[range.clone()]
+                    .iter()
+                    .map(|op| op.cost)
+                    .sum::<f64>();
+            }
+            if ms > 0.05 {
+                self.rate = 0.5 * self.rate + 0.5 * (work / ms);
+            }
+        }
+        Ok(out)
     }
 
     fn scratch(&self, floats: usize, label: &str) -> wgpu::Buffer {
