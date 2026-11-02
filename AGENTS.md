@@ -106,9 +106,11 @@ what remains to launch, `docs/release.md`.
   default style, which replaces the grey `prototype`, is generated from it
   into `crates/og-ui/src/theme.rs` and checked for drift; origin-agent pins
   the published package by version, as it pins the engine. Roles only
-  games need (health, mana, xp, gold, the HUD) live in the same tokens. A
-  game's UI still wears its own style (`type style`, a look's `ui` line)
-  when it picks one.
+  games need (health, mana, xp, gold, the HUD) live in the same tokens. The
+  default style is for origin-agent and prototypes only: every game ships
+  its own style (`type style`, a look's `ui` line), and a publish build
+  refuses one still in the default (`docs/ui.md` §12.1). The language binds
+  the default style alone, never a game's.
 
 ## Build and gate discipline
 

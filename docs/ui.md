@@ -571,8 +571,14 @@ Categories (the full lists are the appendices):
 
 A style (`type style` version 2) has tokens, part dressings, a motion
 personality, a sound and haptic set, fonts, icons and art. It stays one
-complete asset a look's `ui` line names, and the engine's `prototype`
-remains the placeholder `og polish` flags.
+complete asset a look's `ui` line names. The engine's default style (the
+design language the engine shares with origin-agent, `packages/design`,
+which replaces `prototype`) is for origin-agent's own surfaces and for
+prototyping only (the owner, 2026-11-02): every game ships its own style,
+built-in, generated or hand-made, and a publish build refuses a game whose
+screens still draw in the default style. The design language binds the
+default style alone; a game's style may restyle, re-dress, re-shape or
+replace anything above the accessibility floor of §15.2.
 
 ### 12.2 Tokens
 
