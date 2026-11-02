@@ -195,5 +195,17 @@ pub(crate) struct MipChain {
     groups: Vec<wgpu::BindGroup>,
 }
 
+impl MipChain {
+    /// The view of level `k` alone.
+    pub(crate) fn level(&self, k: usize) -> &wgpu::TextureView {
+        &self.levels[k]
+    }
+
+    /// Its levels, level 0 included.
+    pub(crate) fn level_count(&self) -> u32 {
+        self.levels.len() as u32
+    }
+}
+
 /// The mip generator's module (`crate::shaders` validates it).
 pub(crate) const MIPMAP_WGSL: &str = wgsl!("mipmap.wgsl");

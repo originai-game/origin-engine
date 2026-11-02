@@ -68,7 +68,20 @@ struct VectorMesh {
 /// A layer's target, kept across frames by size.
 struct LayerTarget {
     size: (u32, u32),
+    /// Level 0, what the layer draws into.
     view: wgpu::TextureView,
+    /// Every level, what its composite samples.
+    sampled: wgpu::TextureView,
+    /// The levels a blur reads (`None`: one level), filled from level 0
+    /// once the layer is drawn.
+    chain: Option<crate::mips::MipChain>,
+}
+
+/// Whether a layer's target carries mips: the blur reads them, each of its
+/// taps prefiltered to its spacing (ui_builtin.wgsl), so no radius
+/// undersamples the layer.
+fn layer_mips(material: UiMaterial) -> bool {
+    material == UiMaterial::Builtin(UiBuiltin::Blur)
 }
 
 /// What one frame bound: the group 0 of the output and of each layer,
@@ -723,6 +736,7 @@ impl UiRenderer {
         texture_view: impl Fn(crate::TextureHandle) -> Option<wgpu::TextureView>,
         depth: &wgpu::TextureView,
         camera: super::mass::MassCameraGpu,
+        mips: &crate::mips::MipGenerator,
     ) {
         let Some(overlay) = &scene.overlay else {
             return;
@@ -855,20 +869,22 @@ impl UiRenderer {
                 ],
             ));
         }
-        // Targets: one per layer drawn, reused by size.
+        // Targets: one per layer drawn, reused by size and mips.
         let mut used = vec![false; self.targets.len()];
         let mut target_of = Vec::new();
+        let wants_mips = |plan: &crate::overlay::LayerPlan| {
+            layer_mips(overlay.ui.layers[plan.index as usize].material)
+        };
         for plan in &frame.layers {
             if plan.target.is_some() {
                 // A world panel draws into its own render target.
                 target_of.push(usize::MAX);
                 continue;
             }
-            let found = self
-                .targets
-                .iter()
-                .enumerate()
-                .position(|(i, t)| !used[i] && t.size == plan.size);
+            let with_mips = wants_mips(plan);
+            let found = self.targets.iter().enumerate().position(|(i, t)| {
+                !used[i] && t.size == plan.size && t.chain.is_some() == with_mips
+            });
             let i = match found {
                 Some(i) => i,
                 None => {
@@ -879,7 +895,11 @@ impl UiRenderer {
                             height: plan.size.1,
                             depth_or_array_layers: 1,
                         },
-                        mip_level_count: 1,
+                        mip_level_count: if with_mips {
+                            crate::mips::mip_count(plan.size.0, plan.size.1)
+                        } else {
+                            1
+                        },
                         sample_count: 1,
                         dimension: wgpu::TextureDimension::D2,
                         format: LAYER_FORMAT,
@@ -887,9 +907,18 @@ impl UiRenderer {
                             | wgpu::TextureUsages::TEXTURE_BINDING,
                         view_formats: &[],
                     });
+                    let sampled = texture.create_view(&Default::default());
+                    let (view, chain) = if with_mips {
+                        let chain = mips.chain(device, &texture);
+                        (chain.level(0).clone(), Some(chain))
+                    } else {
+                        (sampled.clone(), None)
+                    };
                     self.targets.push(LayerTarget {
                         size: plan.size,
-                        view: texture.create_view(&Default::default()),
+                        view,
+                        sampled,
+                        chain,
                     });
                     used.push(false);
                     self.targets.len() - 1
@@ -918,7 +947,9 @@ impl UiRenderer {
                     .targets
                     .iter()
                     .enumerate()
-                    .position(|(i, t)| !taken[i] && t.size == plan.size)
+                    .position(|(i, t)| {
+                        !taken[i] && t.size == plan.size && t.chain.is_some() == wants_mips(plan)
+                    })
                     .expect("kept above");
                 taken[i] = true;
                 target_of.push(i);
@@ -968,7 +999,7 @@ impl UiRenderer {
             let target = self
                 .targets
                 .get(target_of[n])
-                .map_or(&self.white, |t| &t.view);
+                .map_or(&self.white, |t| &t.sampled);
             let composite = crate::bind_group(
                 device,
                 "ui layer composite",
@@ -1240,6 +1271,14 @@ impl Renderer {
                 group0,
                 TargetKind::Layer,
             );
+            drop(pass);
+            // A blur's levels, from what the layer drew.
+            if plan.target.is_none()
+                && let Some(chain) = &self.ui.targets[*target].chain
+            {
+                self.mips.record_chain(encoder, chain);
+                draws += chain.level_count() - 1;
+            }
         }
         draws
     }

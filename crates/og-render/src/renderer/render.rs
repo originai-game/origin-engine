@@ -1804,6 +1804,7 @@ impl Renderer {
                 |t| textures.get(t.index()).map(|g| g.view.clone()),
                 depth,
                 camera,
+                &self.mips,
             );
         }
 

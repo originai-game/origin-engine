@@ -34,7 +34,7 @@ mod effects_layers;
 mod glass;
 mod text_world;
 
-pub use effects_layers::{effects, layers};
+pub use effects_layers::{blur_detail, effects, layers};
 pub use glass::{GlassInk, GlassScene, glass_scene};
 pub use text_world::*;
 

@@ -468,3 +468,90 @@ pub fn layers() -> RenderScene {
         o.ui.time = 1.25;
     })
 }
+
+/// A 640×720 texture of independent random texels: the finest detail
+/// there is, the worst case of a photograph for a blur.
+fn noise_texture(scene: &mut RenderScene) -> TextureHandle {
+    let (w, h) = (640u32, 720u32);
+    let mut rgba = Vec::with_capacity((w * h * 4) as usize);
+    let mut s = 0x2545_f491_u32;
+    for _ in 0..w * h {
+        for _ in 0..3 {
+            s ^= s << 13;
+            s ^= s >> 17;
+            s ^= s << 5;
+            rgba.push((s >> 24) as u8);
+        }
+        rgba.push(255);
+    }
+    scene.add_texture(TextureData {
+        width: w,
+        height: h,
+        rgba,
+        color_space: ColorSpace::Srgb,
+        mips: Mips::None,
+    })
+}
+
+/// Blurs of the finest detail: the left half a layer of random texels
+/// through the blur material of `radius` CSS px, the right half the same
+/// texels under a glass backdrop of `2 × radius` (the backdrop's reach for
+/// a CSS blur of `radius`), whose bottom quarter is a hard edge, black to
+/// the left of x 960 and white to its right. A correct blur of either is
+/// smooth, and the edge a smooth ramp without kinks.
+pub fn blur_detail(radius: f32) -> RenderScene {
+    overlay_scene(|scene, o| {
+        let noise = noise_texture(scene);
+        let image = |r: [f32; 4], layer: i32| UiShape {
+            layer,
+            ..shape(
+                rect([0.0; 4], UiCorner::Round),
+                r,
+                UiPaint::Image(UiImage {
+                    texture: noise,
+                    uv: [0.0, 0.0, 1.0, 1.0],
+                    size: Vec2::new(640.0, 720.0),
+                    tint: [1.0; 4],
+                    fit: UiFit::Fill,
+                    focal: Vec2::splat(0.5),
+                }),
+            )
+        };
+        let left = [0.0, 0.0, 640.0, 720.0];
+        o.ui.shapes.push(image(left, 10));
+        let mut params = [[0.0; 4]; og_render::UI_MATERIAL_PARAMS];
+        params[0][0] = radius;
+        o.ui.layers.push(UiLayer {
+            capture: [10, 10],
+            rect: left,
+            material: UiMaterial::Builtin(UiBuiltin::Blur),
+            params,
+            mask: None,
+            target: None,
+        });
+        o.ui.shapes.push(UiShape {
+            layer: 50,
+            ..shape(rect([0.0; 4], UiCorner::Round), left, UiPaint::Layer(0))
+        });
+        let right = [640.0, 0.0, 640.0, 720.0];
+        o.ui.shapes.push(image(right, 0));
+        o.ui.shapes.push(UiShape::rect(
+            [640.0, 540.0, 320.0, 180.0],
+            0.0,
+            [0.0, 0.0, 0.0, 1.0],
+        ));
+        o.ui.shapes
+            .push(UiShape::rect([960.0, 540.0, 320.0, 180.0], 0.0, [1.0; 4]));
+        o.ui.shapes.push(UiShape {
+            mode: UiMode::Backdrop {
+                blur: 2.0 * radius,
+                saturation: 1.0,
+                brightness: 1.0,
+                glass: Default::default(),
+            },
+            paint: solid([0.0; 4]),
+            layer: 1,
+            ..UiShape::rect(right, 0.0, [1.0; 4])
+        });
+    })
+}

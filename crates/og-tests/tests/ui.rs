@@ -511,3 +511,70 @@ fn ui_glass_text_holds_contrast() {
     }
     assert!(failures.is_empty(), "under 3:1: {failures:#?}");
 }
+
+/// How much detail finer than a few pixels a region keeps: the standard
+/// deviation of each pixel's luma less its 5×5 neighbourhood's mean.
+fn fine_detail(r: &Rendered, x: std::ops::Range<u32>, y: std::ops::Range<u32>) -> f32 {
+    let luma = |qx: u32, py: u32| {
+        let p = px(r, qx, py);
+        0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2]
+    };
+    let mut v = Vec::new();
+    for py in y {
+        for qx in x.clone() {
+            let mut mean = 0.0;
+            for dy in 0..5 {
+                for dx in 0..5 {
+                    mean += luma(qx + dx - 2, py + dy - 2);
+                }
+            }
+            v.push(luma(qx, py) - mean / 25.0);
+        }
+    }
+    let m = v.iter().sum::<f32>() / v.len() as f32;
+    (v.iter().map(|d| (d - m) * (d - m)).sum::<f32>() / v.len() as f32).sqrt()
+}
+
+/// The largest second difference 8 px apart along row `y` over `x`: the
+/// kinks of a ramp (a smooth blur of a hard edge has none much over its
+/// curvature).
+fn kinks(r: &Rendered, x: std::ops::Range<u32>, y: u32) -> f32 {
+    let luma = |qx: u32| {
+        let p = px(r, qx, y);
+        0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2]
+    };
+    x.map(|qx| (luma(qx - 8) - 2.0 * luma(qx) + luma(qx + 8)).abs())
+        .fold(0.0, f32::max)
+}
+
+/// A blur of any radius is smooth on photographic detail: random texels
+/// through the layer blur and under a glass backdrop keep no detail finer
+/// than a few pixels (no mosaic of undersampled taps), and glass blurs a
+/// hard edge into a ramp without kinks (no creases of a coarse level
+/// magnified), at a small radius and a large one.
+#[test]
+fn blurs_are_smooth_on_the_finest_detail() {
+    let mut failures = Vec::new();
+    for radius in [12.0, 48.0] {
+        let mut built: GfxScene = scenes::build("ui-effects").expect("scene");
+        built.scene = og_tests::ui_scenes::blur_detail(radius);
+        let r = gfx::render_built(&mut built).expect("render");
+        let layer = fine_detail(&r, 160..480, 200..520);
+        let glass = fine_detail(&r, 800..1120, 150..400);
+        let edge = (640..700)
+            .map(|y| kinks(&r, 860..1060, y))
+            .fold(0.0, f32::max);
+        println!(
+            "radius {radius}: fine detail of the layer blur {layer:.3}, of the glass {glass:.3}; glass edge kinks {edge:.2}"
+        );
+        for (what, v) in [("layer blur", layer), ("glass", glass)] {
+            if v > 0.6 {
+                failures.push(format!("{what} at radius {radius}: {v:.3}"));
+            }
+        }
+        if edge > 4.0 {
+            failures.push(format!("glass edge kinks at radius {radius}: {edge:.2}"));
+        }
+    }
+    assert!(failures.is_empty(), "blocky: {failures:?}");
+}

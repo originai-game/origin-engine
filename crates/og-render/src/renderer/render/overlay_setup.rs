@@ -37,6 +37,11 @@ impl Renderer {
                     );
             }
             self.ui.prepare(&self.device, scene, of);
+            // A blurred layer's levels (ui/pass.rs).
+            if !of.layers.is_empty() {
+                self.mips
+                    .prepare(&self.device, crate::ui::pass::LAYER_FORMAT);
+            }
         }
         // Glass: the tonemap renders into the glass source, which becomes
         // the output and the blur pyramid after the post passes (glass, a

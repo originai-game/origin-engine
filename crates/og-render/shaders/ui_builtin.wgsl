@@ -129,20 +129,25 @@ fn material(m: MaterialInput, p: Params) -> vec4<f32> {
     }
     case 9u: {
       // Layer blur: a Gaussian of half the radius, 9x9 taps over the
-      // premultiplied layer.
+      // premultiplied layer, each read from the level of the layer's mips
+      // (ui/pass.rs) as coarse as the taps are apart, so every tap
+      // averages the detail between it and its neighbours: read from
+      // level 0, taps r/4 apart point-sampled fine detail into a mosaic.
       let r = max(p.a.x, 0.0);
       if (r < 0.5) {
         return layer(m.uv);
       }
       let sigma = 0.5 * r;
       let step = r / 4.0;
+      let device = f32(textureDimensions(layer_tex, 0u).x) / max(layer_params.rect.z, 1.0);
+      let lod = log2(max(step * device, 1.0));
       var sum = vec4<f32>(0.0);
       var wsum = 0.0;
       for (var y = -4; y <= 4; y++) {
         for (var x = -4; x <= 4; x++) {
           let o = vec2<f32>(f32(x), f32(y)) * step;
           let w = exp(-dot(o, o) / (2.0 * sigma * sigma));
-          sum += layer_premultiplied(m.uv + o * texel) * w;
+          sum += textureSampleLevel(layer_tex, layer_sampler, m.uv + o * texel, lod) * w;
           wsum += w;
         }
       }
