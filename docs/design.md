@@ -511,7 +511,8 @@ model` (og-cook's `cook/model_text.rs`) names each part's geometry by its
 og.render call and desc fields, places it as mergeGeometries does, gives
 it a material and hangs it from a named pivot. The cook writes it as a
 glTF binary (the writer `.vox` uses) before the model path reads it, so
-it becomes the one model blob a glTF does: meshopt, the LOD chain with
+it becomes the one model blob a glTF does (an FBX or OBJ goes the same
+way, read by ufbx into a glTF binary in og-cook's `cook/fbx.rs`): meshopt, the LOD chain with
 measured errors, the raycast BVH, the node graph. A part placed several
 times is one mesh under several nodes, drawn instanced; a mirrored
 placement is baked. The cook refuses it past the project's triangle and

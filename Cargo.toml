@@ -147,6 +147,9 @@ opt-level = 3
 opt-level = 3
 [profile.dev.package.meshopt]
 opt-level = 3
+# The FBX reader (og-cook's fbx.rs): its C parses and bakes every clip.
+[profile.dev.package.ufbx]
+opt-level = 3
 # The Opus codec: the cook encodes every Opus sound and the mixer decodes
 # its blocks as voices reach them; at -O0 a packet costs about 20 times
 # its optimised 56 us and a 3-minute track's test minutes.

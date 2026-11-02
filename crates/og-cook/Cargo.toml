@@ -13,7 +13,7 @@ default = ["cook", "basis", "transcode"]
 # og-render (og-bundle's `transcode`).
 transcode = ["og-bundle/transcode"]
 # The cook itself (native only): importers, encoders, the incremental manifest.
-cook = ["og-render/bake", "dep:og-ai", "dep:og-story", "dep:og-i18n", "og-nav/bake", "dep:gltf", "og-render/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde_json", "dep:nalgebra", "dep:og-ui", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-geom"]
+cook = ["og-render/bake", "dep:og-ai", "dep:og-story", "dep:og-i18n", "og-nav/bake", "dep:gltf", "og-render/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde_json", "dep:nalgebra", "dep:og-ui", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-geom", "dep:ufbx"]
 # Encode textures with the basis-universal crate (a default). Without it the
 # cook looks for KTX-Software's `toktx` on PATH.
 basis = ["og-bundle/basis", "dep:basis-universal", "dep:ruzstd"]
@@ -75,6 +75,10 @@ nalgebra = { version = "0.34.1", optional = true }
 # The cook compiles material shaders for every back end (WGSL in; SPIR-V
 # and MSL out), as wgpu would at load.
 naga = { version = "30.0.1", optional = true, features = ["wgsl-in", "msl-out", "spv-out", "hlsl-out"] }
+# FBX (binary and ASCII, 3000 to 7700) and OBJ with its .mtl, read into a
+# glTF binary the model cook takes (`cook/fbx.rs`): ufbx, one C99 file
+# compiled by `cc`, MIT or Unlicense. The cook only, never the wasm.
+ufbx = { version = "0.11.5", optional = true }
 
 [dev-dependencies]
 og-tests = { path = "../og-tests" }

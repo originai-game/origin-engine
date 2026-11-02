@@ -224,7 +224,7 @@ call names an asset id, the path under `assets/` (og-game §5, §6).
 | `FontLoader` | `og.load.font` of a TTF or OTF, for `og.render.text` and og.ui |
 | `loader.loadAsync(url)` and `await` | no promises: a load completes at a tick boundary, and under `og run` before the next tick, so it lands on the same tick every run |
 
-A MagicaVoxel `.vox` loads with `og.load.gltf` too, and so does a
+`FBXLoader` and `OBJLoader` (with `MTLLoader`) become an `.fbx` or `.obj` in `assets/`, loaded with `og.load.gltf` too: the cook reads them into the same model. A MagicaVoxel `.vox` loads with `og.load.gltf` too, and so does a
 `type model` asset (§4).
 
 ## 8. The render loop: the tick

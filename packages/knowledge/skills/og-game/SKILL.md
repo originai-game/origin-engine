@@ -156,7 +156,7 @@ the other points there.
 |---|---|
 | `project.ogt` | The manifest: `name`, `id`, the pinned `engine` version, `entry`, `profile` (`2d` or `3d`), `tick`, `seed`, `scenes`, the first `scene`, the game's `look`, the `screens` `og style check` captures (og-build §8), the `ui { screen "<name>" "<commands>" }` screens `og ui check`, `og ui preview` and `og polish` visit (og-ui §8; the cook refuses an unknown line, a screen without a name or commands, a name twice), `publish` settings |
 | `src/main.ts` | The game entry: its default export is `og.game({...})` |
-| `assets/` | Source assets: glTF and `.vox` models (Draco, meshopt and quantised glTF read; KHR_texture_transform, unlit, punctual lights, GPU instancing and material variants honoured), PNG/JPEG/WebP/TGA/PSD (flattened)/DDS/KTX2 textures, WAV/MP3/Ogg Vorbis/FLAC sounds, TTF/OTF fonts, `.ogt` scenes and looks, and `<file>.ogt` import settings |
+| `assets/` | Source assets: glTF, FBX, OBJ and `.vox` models (Draco, meshopt and quantised glTF read; KHR_texture_transform, unlit, punctual lights, GPU instancing and material variants honoured), PNG/JPEG/WebP/TGA/PSD (flattened)/DDS/KTX2 textures, WAV/MP3/Ogg Vorbis/FLAC sounds, TTF/OTF fonts, `.ogt` scenes and looks, and `<file>.ogt` import settings |
 | `cooked/` | `og cook` output (`.ogb` blobs and `.cook.ogt`); never committed, the only thing the runtime reads |
 | `tests/*.og.ts` | Playtest scripts `og test` runs headless |
 | `dist/` | `og build` output |
@@ -337,6 +337,17 @@ registered schema and refuses a model path that does not exist.
   size that is not, pixel art (`kind pixel`) and fonts stay RGBA8.
 - Declare the characters a font must show (`chars`) rather than cooking a
   whole CJK charset: the full set is several times the size of the font.
+- FBX and OBJ files are models too: the cook reads them (FBX binary or
+  ASCII, OBJ with its `.mtl`) into a glTF, in metres with +Y up whatever
+  the DCC's unit and axes, so they load as any glTF:
+  `og.load.gltf(world, "models/crate.fbx")`, a scene's `model
+  "models/crate.fbx"`, and `og.load.animation` for a skinned FBX's clips
+  (one per animation stack, by its name). Skins, blend shapes (morph
+  targets), materials (Lambert, Phong, Stingray, standard surface, the
+  `.mtl`), embedded textures and point, spot and directional lights come
+  across; cameras are dropped. Keep the textures beside the file (or
+  export with Embed Media on) and the `.mtl` beside the OBJ: a missing one
+  is refused with that fix. glTF stays the format to prefer.
 - MagicaVoxel `.vox` files are models: the cook meshes every model of the
   file (greedy quads, flat-shaded, the palette as vertex colours) and its
   scene graph into a glTF, z-up turned y-up, each model about its centre

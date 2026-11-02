@@ -20,20 +20,26 @@ impl Bin {
         target: Option<u32>,
         mut accessor: serde_json::Value,
     ) -> usize {
+        let view = self.view(data);
+        if let Some(t) = target {
+            self.views[view]["target"] = t.into();
+        }
+        accessor["bufferView"] = view.into();
+        self.accessors.push(accessor);
+        self.accessors.len() - 1
+    }
+
+    /// Appends `data` (4-aligned) as a buffer view with no accessor (an
+    /// image's bytes); answers the view.
+    pub fn view(&mut self, data: &[u8]) -> usize {
         while !self.bytes.len().is_multiple_of(4) {
             self.bytes.push(0);
         }
-        let mut view = serde_json::json!({
+        self.views.push(serde_json::json!({
             "buffer": 0, "byteOffset": self.bytes.len(), "byteLength": data.len()
-        });
-        if let Some(t) = target {
-            view["target"] = t.into();
-        }
+        }));
         self.bytes.extend_from_slice(data);
-        self.views.push(view);
-        accessor["bufferView"] = (self.views.len() - 1).into();
-        self.accessors.push(accessor);
-        self.accessors.len() - 1
+        self.views.len() - 1
     }
 }
 

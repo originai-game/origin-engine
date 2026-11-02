@@ -101,7 +101,7 @@ pub(super) fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
             continue;
         }
         let kind = match ext(rel).as_str() {
-            "glb" | "gltf" | "vox" => Kind::Model,
+            "glb" | "gltf" | "vox" | "fbx" | "obj" => Kind::Model,
             "png" | "jpg" | "jpeg" | "ktx2" | "webp" | "tga" | "psd" | "dds" => Kind::Texture,
             e if audio::EXTENSIONS.contains(&e) => Kind::Sound,
             "ttf" | "otf" => Kind::Font,

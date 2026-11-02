@@ -334,7 +334,7 @@ the playtests' frames are then unchecked, §3).
 
 ## 7. Big games: what the cook packs and the page fetches
 
-What `og cook` takes is decided by the file: `.glb`/`.gltf` and MagicaVoxel
+What `og cook` takes is decided by the file: `.glb`/`.gltf`, `.fbx`, `.obj` (with its `.mtl`; both read into a glTF, metres and +Y up) and MagicaVoxel
 `.vox` (meshed into a glTF: flat-shaded quads, palette colours, `model {
 voxScale voxOrigin }` for the size and origin, frames as clips; og-game §5)
 are models; `.ogt` files by their `type` (scene,

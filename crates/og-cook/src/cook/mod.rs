@@ -18,6 +18,7 @@ pub use conform::{ConformAction, ConformEntry};
 pub mod cube_source;
 mod e6;
 mod environment;
+mod fbx;
 mod flipbook;
 mod font;
 pub mod icons;
@@ -366,6 +367,23 @@ pub fn cook_project_with_texture_cache(
                 }
             }
         }
+        // An FBX or OBJ is a model: read by ufbx and written as a glTF
+        // binary here (`fbx.rs`), so the rest of the cook sees a .glb; the
+        // files it read beside the glb's own (an OBJ's .mtl, the sources
+        // of packed images) join its hash and are consumed with it.
+        let mut imported = None;
+        if s.kind == Kind::Model && fbx::handles(&ext(&s.rel)) {
+            match fbx::to_glb(&s.bytes, &s.path, &ext(&s.rel)) {
+                Ok(i) => {
+                    s.bytes = i.glb;
+                    imported = Some((i.read, i.notes));
+                }
+                Err(e) => {
+                    s.error = Some(e);
+                    continue;
+                }
+            }
+        }
         // A model written as text (`type model`): its parts built and
         // written as a glTF binary here, so the rest of the cook sees a .glb.
         if s.kind == Kind::Model && ext(&s.rel) == "ogt" {
@@ -386,6 +404,10 @@ pub fn cook_project_with_texture_cache(
             match model::load(&s.bytes, dir) {
                 Ok(mut g) => {
                     g.character = character;
+                    if let Some((read, notes)) = imported {
+                        g.external.extend(read);
+                        g.warnings.extend(notes);
+                    }
                     let base = s
                         .rel
                         .rsplit_once('/')

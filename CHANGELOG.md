@@ -40,6 +40,12 @@ is one line here, written at the merge that changes
   camera loads cells, refused in an og.net session. `dump_stream` lists
   the cells. The four records are lazy: a world without cells hashes and
   saves as before.
+- **FBX and OBJ models (G3-1).** The cook takes `.fbx` (binary and ASCII)
+  and `.obj` with its `.mtl` as models, read by ufbx into a glTF binary,
+  so they cook to the same model and `#anim` blobs and load with
+  `og.load.gltf` and `og.load.animation`: meshes in metres with +Y up,
+  materials, embedded and beside-the-file textures, skins, morph targets,
+  one clip per animation stack, punctual lights. No IDL member changes.
 - **Removed: the built-in `minimal` style** (the owner, 2026-11-02). No
   `@styles/minimal/` pack ships and `og style list` no longer names it; a
   look with `ui "minimal"` no longer cooks. `og style new` still starts

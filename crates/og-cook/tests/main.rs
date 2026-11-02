@@ -12,6 +12,7 @@ mod conform_mesh;
 mod cook_report;
 mod documents;
 mod environment;
+mod fbx;
 mod flipbook;
 mod fx;
 mod gltf_formats;
