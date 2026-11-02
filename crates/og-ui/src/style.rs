@@ -108,6 +108,37 @@ impl Srgba {
         self.fade(((mixed - lb) / (lc - lb)).clamp(0.0, 1.0) / self.alpha.max(1e-4))
     }
 
+    /// This translucent fill, stated for og-render's linear-light blending
+    /// as a theme's are (`packages/design`'s `linear` values), `k` times as
+    /// strong as it reads: the CSS alpha it draws like over mid grey (the
+    /// tokens' ground for a scrim), times `k`, restated for linear light.
+    /// [`Srgba::fade`] scales the linear alpha itself, which overshoots: a
+    /// dark scrim's 0.69 (CSS 0.42) times 1.6 is opaque, not CSS 0.67.
+    pub fn deepen(self, k: f32) -> Srgba {
+        let grey = Srgba::rgb(128, 128, 128);
+        let (lc, lb) = (Srgba { alpha: 1.0, ..self }.luminance(), grey.luminance());
+        if (lc - lb).abs() < 1e-4 {
+            return self.fade(k);
+        }
+        let css = |s: f32| Srgba { alpha: s, ..self }.over(grey).luminance();
+        // The CSS alpha drawing the luminance this one draws in linear light.
+        let drawn = lb + (lc - lb) * self.alpha.clamp(0.0, 1.0);
+        let (mut lo, mut hi) = (0.0f32, 1.0f32);
+        for _ in 0..24 {
+            let mid = (lo + hi) / 2.0;
+            if (css(mid) - lb).abs() < (drawn - lb).abs() {
+                lo = mid;
+            } else {
+                hi = mid;
+            }
+        }
+        let want = css(((lo + hi) / 2.0 * k).min(1.0));
+        Srgba {
+            alpha: ((want - lb) / (lc - lb)).clamp(0.0, 1.0),
+            ..self
+        }
+    }
+
     /// Mixed towards `to` by `t` (0–1), keeping this colour's alpha.
     pub fn mix(self, to: Srgba, t: f32) -> Srgba {
         let t = t.clamp(0.0, 1.0);
@@ -523,7 +554,7 @@ impl Theme {
         t.palette.control = p.control_strong;
         t.palette.control_strong = p.line_strong;
         t.palette.line = p.line_strong;
-        t.palette.scrim = p.scrim.fade(1.5);
+        t.palette.scrim = p.scrim.deepen(1.5);
         t.contrast = Contrast::High;
         t.outline = true;
         t
