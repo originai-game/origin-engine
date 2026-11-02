@@ -650,6 +650,24 @@ Categories (the full lists are the appendices):
   and control groups; the HUD layout editor; photo mode; the settings
   tree (graphics, audio, controls with remapping, accessibility, language).
 
+### 11.1 Screen documents
+
+The library's screen documents are `packages/engine/src/ui/screens/`, in
+the engine package: 59 `type screen` documents, one or more for each row
+of Appendix B (`main-menu`, `pause`, `save-load`, `inventory` …), built
+from og-ui's elements. Each names its viewmodel (`props`), the events it
+emits and which og.ui component or pattern fills each slot at its top; its
+words are string keys (`screen.<name>.<word>`) with English fallbacks, and
+a `fixture default` previews it (`ui:push:<name>:default`). The directory's
+README.md holds the table from each Appendix B row to its documents, which
+the cook's test (`crates/og-cook/tests/documents.rs`) holds equal to
+Appendix B, cooking every document; a slot marked `PATTERN PENDING` is
+where a pattern still being written mounts, and the table names those
+documents. `og ui eject <screen> [project] [--force]` copies one into the
+game's `assets/ui/<screen>.ogt` (refusing to overwrite without `--force`),
+where `og.load.document` loads it and the game edits it as its own; `og ui
+eject --list` prints each with its row.
+
 ## 12. Styles v2
 
 ### 12.1 What a style is

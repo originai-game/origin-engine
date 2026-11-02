@@ -15,6 +15,13 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Screen documents and `og ui eject` (docs/ui.md §11.1).** The engine
+  package ships `src/ui/screens/`: 59 `type screen` documents, one or
+  more for every screen type of docs/ui.md Appendix B, each with its
+  viewmodel, events, slots, string keys and a preview fixture. `og ui
+  eject <screen> [project] [--force]` copies one into the game's
+  `assets/ui/` to edit as its own; `og ui eject --list` names them with
+  their rows.
 - **The inspector and gizmos (development builds).** F1 opens a panel over
   the game: entities and resources, every reflected field edited through
   the probe's `set` with undo, Save through `save_scene`; translate, rotate
