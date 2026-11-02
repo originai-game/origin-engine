@@ -153,7 +153,8 @@ export function cardsScreen(): void {
           if (f.taunt) {
             // Behind a taunt: a shield and the words, lit in danger ink while a card it refused shakes.
             og.ui.row("Taunt", { gap: t.space.xxs, cross: "center", align: "center", width: grow }, () => {
-              og.ui.icon("Shield", "shield", { size: small ? 16 : big ? 24 : 18, tint: { token: flash ? "danger" : "inkMuted" }, label: "" });
+              // The shield grows with the words beside it.
+              og.ui.icon("Shield", "shield", { size: Math.round((small ? 16 : big ? 24 : 18) * Math.max(1, ts)), tint: { token: flash ? "danger" : "inkMuted" }, label: "" });
               og.ui.label("Note", "Behind a taunt", { step: small ? "sm" : big ? "lg" : "sm", color: { token: flash ? "danger" : "inkMuted" }, maxLines: 2 });
             });
           }

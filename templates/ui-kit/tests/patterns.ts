@@ -285,6 +285,8 @@ function gacha(b: ReturnType<typeof builder>, phone: boolean, prefix = ""): void
   b.shot(`${prefix}gacha-charge`, 0.6);
   b.shot(`${prefix}gacha-reveal`, 1.2);
   for (let k = 0; k < 5; k++) b.seq((at) => tap(at, "PullLayer/Panel/Stage"), 0.25);
+  // The 5★: its burst as the last star lands, then the reveal at rest.
+  b.shot(`${prefix}gacha-reveal-burst`, 1.0);
   b.shot(`${prefix}gacha-reveal-legendary`, 0.9);
   b.dump(`${prefix}gacha-reveal`);
   b.seq((at) => tap(at, "PullLayer/Panel/Stage/Bar/Skip"), 0.2);

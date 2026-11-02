@@ -68,7 +68,8 @@ export function rewardChoice(id: string, desc: Api.RewardChoiceDesc): Api.Reward
   const cw = portrait ? room : Math.floor(Math.min(desc.cardWidth && desc.cardWidth > 0 ? desc.cardWidth : u(260), (room - gap * Math.max(0, n - 1)) / Math.max(1, n)));
   const compact = portrait || vp.height - vp.safeArea.top - vp.safeArea.bottom < 480;
 
-  kit.open("Options", { direction: portrait ? "column" : "row", gap, cross: "stretch", align: "center", width: portrait ? grow() : null, part: "Reward.options", partClass: "panel" });
+  // Its top padding keeps a card's corner tag (it stands above the card) and a hover's lift inside any clip around it.
+  kit.open("Options", { direction: portrait ? "column" : "row", gap, cross: "stretch", align: "center", width: portrait ? grow() : null, padding: { left: 0, right: 0, top: u(22), bottom: 0 }, part: "Reward.options", partClass: "panel" });
   opts.forEach((o, i) => {
     const key = o.key ?? `r${i}`;
     const tier = rarityColor(o.rarity);
@@ -125,6 +126,8 @@ export function rewardChoice(id: string, desc: Api.RewardChoiceDesc): Api.Reward
       const artW = compact ? Math.round(Math.min(u(88), cw * 0.26) * Math.min(1.4, ts)) : cw - u(32);
       artSlot("Art", "Reward.art", { texture: o.image ?? null, kind: "item", icon: o.icon, rarity: o.rarity, width: px(artW), height: px(compact ? artW : Math.round(artW * 0.62)), radius: Math.max(4, t.small) });
       kit.column("Text", { width: grow(), gap: u(4), cross: compact ? "start" : "center" }, () => {
+        // A compact row's tag leads its words (standing on the corner it would cover them at large text).
+        if (o.tag && compact) cornerTag("Tag", o.tag);
         if (o.kind) text("Kind", o.kind.toLocaleUpperCase(), { step: st(12), color: tier ? mix(edge, role("ink"), 0.45) : "inkMuted", nowrap: true, ellipsis: true, width: grow(), align: compact ? "start" : "center", font: "display" });
         text("Title", o.title ?? "", { step: st(compact ? 17 : 20), heading: true, font: "display", width: grow(), align: compact ? "start" : "center", maxLines: 2, ellipsis: true });
         pips("Pips", o.rarity, u(7), 6);
@@ -140,7 +143,7 @@ export function rewardChoice(id: string, desc: Api.RewardChoiceDesc): Api.Reward
           });
         }
       });
-      if (o.tag) {
+      if (o.tag && !compact) {
         cornerTag("Tag", o.tag);
         over({ insets: { end: -u(6), top: -u(10) }, inert: true, z: 6 });
       }
@@ -158,7 +161,8 @@ export function rewardChoice(id: string, desc: Api.RewardChoiceDesc): Api.Reward
         kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "solid", color: token("danger") }], strokes: [line(2, token("shadow", 0.7), "outside")], effects: [shadow(2, 6, 0.5)] });
         symbol("Mark", "cross", u(22), role("onPrimary"));
         kit.close();
-        over({ insets: { centerX: true, top: u(compact ? 8 : 40) }, inert: true, z: 8 });
+        // On the art: a compact row's art is at its start, a card's at its top.
+        over({ insets: compact ? { start: u(12) + Math.round(artW / 2) - u(22), centerY: true } : { centerX: true, top: u(40) }, inert: true, z: 8 });
       }
       if (o.locked) {
         kit.open("Shade", { width: grow(), height: grow() });

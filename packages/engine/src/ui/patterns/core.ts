@@ -102,8 +102,10 @@ export function ground(level: "panel" | "panelRaised" | "well" = "panelRaised"):
  * text sits on, so the text holds 4.5:1 on any picture, pale or dark.
  */
 export function scrimFill(edge: "bottom" | "top" | "start" | "end", strength = 0.82): Api.Fill {
-  const angle = edge === "bottom" ? 0 : edge === "top" ? 180 : (edge === "start") !== rtl() ? 90 : 270;
-  return vgrad([[0, token("shadow", 0)], [0.45, token("shadow", strength * 0.55)], [1, token("shadow", strength)]], angle);
+  // Darkest at `edge`: a gradient at angle 90 runs from the left to the right.
+  const angle = edge === "bottom" ? 0 : edge === "top" ? 180 : (edge === "start") !== rtl() ? 270 : 90;
+  // Most of its strength from the middle on, so words laid over its darker half read on pale art.
+  return vgrad([[0, token("shadow", 0)], [0.5, token("shadow", strength * 0.8)], [1, token("shadow", strength)]], angle);
 }
 
 // ── symbols drawn as shapes ─────────────────────────────────────────────
@@ -377,13 +379,13 @@ function currencyLook(currency: string): { sym: SymbolKind; color: Rgba } {
  * a struck-through original price when discounted, and the amount in the
  * danger ink with `short` when it cannot be paid (said, not only coloured).
  */
-export function priceTag(id: string, d: { amount: number; currency?: string; original?: number; affordable?: boolean; free?: string; text?: string; size?: "sm" | "md" | "lg"; shortLabel?: string }): void {
+export function priceTag(id: string, d: { amount: number; currency?: string; original?: number; affordable?: boolean; free?: string; text?: string; size?: "sm" | "md" | "lg"; shortLabel?: string; ink?: Rgba }): void {
   const { t } = frame();
   // Scaled with the surface (st, u): a price is read in play, 18 px at 1080p.
   const step = st(d.size === "lg" ? 20 : d.size === "sm" ? 14 : 16);
   const iconSize = u(d.size === "lg" ? 22 : d.size === "sm" ? 14 : 18);
   const can = d.affordable ?? true;
-  kit.open(id, { direction: "row", gap: t.xxs + 2, cross: "center", part: `Price.tag${flags(!can && "short", !!d.original && d.original > d.amount && "discount")}`, partClass: "chip" });
+  kit.open(id, { direction: "row", gap: t.xxs + 2, cross: "center", part: `Price.tag${flags(!can && "short", !!d.original && d.original > d.amount && "discount")}`, partClass: "badge" });
   if (d.text !== undefined && d.text !== "") {
     text("Amount", d.text, { step, nowrap: true, font: "display" });
   } else if (d.amount === 0 && d.free) {
@@ -400,7 +402,7 @@ export function priceTag(id: string, d: { amount: number; currency?: string; ori
       kit.close();
       kit.props({ position: "absolute", insets: { start: 0, end: 0, centerY: true }, inert: true, overlaps: [kit.lastPath().replace(/\/Strike$/, "/Was")] });
     }
-    text("Amount", grouped(d.amount), { step, color: can ? "ink" : "danger", nowrap: true, font: "mono" });
+    text("Amount", grouped(d.amount), { step, color: can ? d.ink ?? "ink" : "danger", nowrap: true, font: "mono" });
   }
   kit.close();
   const words = d.text || (d.amount === 0 && d.free ? d.free : `${grouped(d.amount)} ${d.currency ?? ""}`.trim());
@@ -543,6 +545,27 @@ export function st(px0: number): Api.TypeStepName {
 }
 
 /**
+ * `px0`'s step (st), or the largest smaller one no taller than `box` CSS px:
+ * a number inside a badge that grows less than the text does (a cost gem at
+ * 200 % text keeps its digits inside it).
+ */
+export function stIn(px0: number, box: number): Api.TypeStepName {
+  const ramp = frame().theme.typeRamp;
+  const want = st(px0);
+  if ((ramp[want]?.size ?? 0) <= box) return want;
+  let best: Api.TypeStepName = "xs";
+  let bestSize = 0;
+  for (const s of STEPS) {
+    const size = ramp[s]?.size ?? 0;
+    if (size <= box && size > bestSize) {
+      best = s;
+      bestSize = size;
+    }
+  }
+  return best;
+}
+
+/**
  * The type step for one line of `s` in `width` CSS px: `px0`'s step (st),
  * or the largest smaller one whose line fits (a card's name in a narrow fan
  * at large text, where a word cannot wrap). Never below the reference
@@ -568,6 +591,9 @@ export function fitStep(s: string, width: number, px0: number, min = 11): Api.Ty
   return best;
 }
 
+/** A colour at full opacity. */
+const opaque = (c: Rgba): Rgba => ({ ...c, a: 1 });
+
 export type BtnVariant = "primary" | "secondary" | "quiet" | "danger" | "premium";
 
 /**
@@ -588,7 +614,9 @@ export function btn(id: string, label: string, d: { variant?: BtnVariant; part?:
     part: d.part ?? "Pattern.button",
     cls: "button",
     flags: [v, size],
-    fill: fillRole ? role(fillRole) : null,
+    // Opaque: a style's control fill may be translucent, and a button over a busy scene must not vanish into it.
+    // A secondary button is the raised panel lifted toward the ink (a style's control colour is meant to be laid thin).
+    fill: fillRole ? opaque(fillRole === "control" ? mix(role("panelRaised"), role("ink"), 0.12) : role(fillRole)) : null,
     wash: v === "primary" || v === "danger" || v === "premium" ? hex("#ffffff") : undefined,
     washBy: 0.14,
     disabled: d.disabled ?? false,
@@ -598,7 +626,8 @@ export function btn(id: string, label: string, d: { variant?: BtnVariant; part?:
     gap: u(8),
     align: "center",
     radius: t.control,
-    ...(d.selected === undefined ? {} : { selected: d.selected, selectedFill: role("primarySoft") }),
+    // Selected, a coloured variant keeps its colour (Banish armed is danger); a secondary one takes the primary's soft fill.
+    ...(d.selected === undefined ? {} : { selected: d.selected, selectedFill: opaque(fillRole && fillRole !== "control" ? role(fillRole) : mix(role("panelRaised"), role("primary"), 0.3)) }),
     // A toggle (Banish armed) is said selected as it is drawn: the tree has no pressed state.
     semantics: { role: "button", name: d.name ?? label, ...(d.selected === undefined ? {} : { selected: d.selected }) },
   }, () => {

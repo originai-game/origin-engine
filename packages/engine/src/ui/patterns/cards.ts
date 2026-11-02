@@ -10,7 +10,7 @@
 import type * as Api from "@origingame/engine";
 import {
   artSlot, clamp, fitStep, flags, floating, floatingContent, frame, glow, grow, inside, keyHash, keyOf, kit, lastInteraction, line, mix, over, overProps,
-  paint, pips, pointer, px, rarityColor, recallPath, rememberPath, role, rtl, shadow, spring, st, still, surface, symbol, text, token, u, vgrad, vstate, xy, type Mut,
+  paint, pips, pointer, px, rarityColor, recallPath, rememberPath, role, rtl, shadow, spring, st, stIn, still, surface, symbol, text, token, u, vgrad, vstate, xy, type Mut,
 } from "./core.ts";
 
 // ── the hand's state ────────────────────────────────────────────────────
@@ -71,6 +71,8 @@ interface FaceOpts {
   big?: boolean;
   /** It has the focus of keys and pads: the ring is the card's (the hand draws none). */
   focused?: boolean;
+  /** How much of its width shows from its start edge (the next card in the fan covers the rest); unset: all of it. */
+  shows?: number;
 }
 
 /**
@@ -101,7 +103,15 @@ function cardFace(c: Api.HandCard, cw: number, ch: number, o: FaceOpts): void {
   kit.open("Name", { width: grow(), direction: "row", align: "center", cross: "center", padding: xy(Math.round(pad * 1.2), Math.max(2, Math.round(pad * 0.6))), radius: Math.max(3, Math.round(r * 0.5)), background: paint(band), part: "Card.name", partClass: "badge" });
   // The name whole: up to two lines, its step fitted to the banner where one word is wider than it (a narrow fan at large text).
   const nameW = cw - pad * 2 - Math.round(pad * 2.4);
-  text("Text", c.name ?? "", { step: fitStep(c.name ?? "", nameW, o.big ? 18 : cw >= u(180) ? 15 : 13), maxLines: 2, width: grow(), align: "center", font: "display", heading: true });
+  const nameStep = fitStep(c.name ?? "", nameW, o.big ? 18 : cw >= u(180) ? 15 : 13);
+  // Overlapped in the fan: the name reads from the start in the strip that shows, or is left to the lifted card when it
+  // would be cut there (a stub like "Stri" reads as a broken label).
+  const nameWidth = [...(c.name ?? "")].length * (frame().theme.typeRamp[nameStep]?.size ?? 13) * 0.58;
+  // Centred, it shows whole while its end stays in the strip; else it moves to the start.
+  const covered = o.shows !== undefined && cw / 2 + nameWidth / 2 > o.shows - pad;
+  const room = (o.shows ?? cw) - pad * 2 - Math.round(pad * 1.2);
+  const nameFits = !covered || nameWidth <= room;
+  if (nameFits) text("Text", c.name ?? "", { step: nameStep, maxLines: covered ? 1 : 2, nowrap: covered, width: grow(), align: covered ? "start" : "center", font: "display", heading: true });
   kit.close();
   if (o.rules) {
     kit.row("Type", { width: grow(), gap: u(6), cross: "center", align: "center", part: "Card.type", partClass: "panel" }, () => {
@@ -133,7 +143,7 @@ function cardFace(c: Api.HandCard, cw: number, ch: number, o: FaceOpts): void {
       effects: [shadow(2, 4, 0.5)],
     });
     if (never) symbol("Never", "cross", Math.round(g * 0.5), role("ink"));
-    else text("Value", `${c.cost}`, { step: st(g >= u(40) ? 20 : 15), color: tone, font: "mono", nowrap: true });
+    else text("Value", `${c.cost}`, { step: stIn(g >= u(40) ? 20 : 15, Math.round(g * 0.6)), color: tone, font: "mono", nowrap: true });
     kit.close();
     over({ insets: { start: -Math.round(g * 0.18), top: -Math.round(g * 0.18) }, inert: true, z: 5 });
     // Changed this turn: a chevron on the gem's end edge, down when lowered and up when raised.
@@ -153,7 +163,7 @@ function cardFace(c: Api.HandCard, cw: number, ch: number, o: FaceOpts): void {
   // Out of reach: the card under a shade (still readable), never faded to nothing.
   if (!o.playable) {
     kit.open("Shade", { width: px(cw), height: px(ch), part: "Card.shade", partClass: "panel" });
-    kit.setDraw({ shape: { kind: "rect", radii: [r, r, r, r] }, fills: [{ kind: "solid", color: token("shadow", 0.38) }] });
+    kit.setDraw({ shape: { kind: "rect", radii: [r, r, r, r] }, fills: [{ kind: "solid", color: token("shadow", 0.5) }] });
     kit.close();
     over({ insets: { start: 0, top: 0 }, inert: true, z: 4 });
   }
@@ -389,6 +399,7 @@ export function cardHand(id: string, desc: Api.CardHandDesc): Api.CardHandResult
       rules: pl.w >= u(140) && (pl.mode !== "rest" || ts < 1.5),
       big: pl.mode !== "rest" && pl.w >= u(200),
       focused: fanIx.focused && focusVisible && i === h.cur,
+      ...(pl.mode === "rest" && places[i + 1]?.mode === "rest" ? { shows: Math.max(0, places[i + 1]!.x - pl.x) } : {}),
     }));
     kit.semantics({
       role: "option",
@@ -488,13 +499,23 @@ export function cardHand(id: string, desc: Api.CardHandDesc): Api.CardHandResult
   // ── a card shown large ──
   const big = desc.inspect ? card(desc.inspect) : null;
   const bw = Math.round(Math.min(phone ? 280 : u(340), (vp.width - sa.left - sa.right) * 0.8, ((roomH - u(48)) / 1.4)));
-  const m = floating(`${id}Inspect`, !!big, { scrim: true }, (s) => ({ x: (vp.width - s.width) / 2, y: (vp.height - s.height) / 2 }), (at) => {
+  // Standing on the hand (just above the fan), so the header and its actions stay clear while there is room.
+  // A card taller than the room above the hand (large text on a phone) slides down over the hand, which the scrim
+  // shades, before it rises over the header's band (the top 30 % of the room).
+  const above = (s: { width: number; height: number }): number => {
+    const floor = fanRect ? fanRect.y - u(8) : (vp.height + s.height) / 2;
+    const y = Math.min((vp.height - s.height) / 2, floor - s.height);
+    const header = sa.top + roomH * 0.3;
+    return Math.max(sa.top + u(8), y >= header ? y : Math.min(header, vp.height - sa.bottom - u(8) - s.height));
+  };
+  const m = floating(`${id}Inspect`, !!big, { scrim: true }, (s) => ({ x: (vp.width - s.width) / 2, y: above(s) }), (at) => {
     if (!big) return;
     floatingContent({ direction: "column", part: "CardHand.inspect", partClass: "panel" }, () => {
       // At large text it grows with its rules (its art gives up room first), never past the safe area.
       const grown = ts >= 1.3;
       kit.open("Card", { width: px(bw), height: grown ? null : px(Math.round(bw * 1.4)), direction: "column", cross: "stretch", padding: all4(Math.round(bw * 0.045)), gap: Math.round(bw * 0.03), part: `Card.frame${flags(`rarity=${big.rarity ?? "none"}`, "inspect")}`, partClass: "card" });
-      cardFace(big, bw, Math.round(bw * (grown ? 1.0 : 1.4)), { playable: can(big) || !!desc.disabled, ready: false, rules: true, big: true });
+      // Grown, the art gives up most of its room to the rules.
+      cardFace(big, bw, Math.round(bw * (grown ? 0.7 : 1.4)), { playable: can(big) || !!desc.disabled, ready: false, rules: true, big: true });
       kit.close();
       kit.semantics({ role: "dialog", name: big.name ?? "", description: plain(big.text ?? "") });
     });

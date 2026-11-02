@@ -228,7 +228,7 @@ export interface Verdict {
  * (swap), ⊘ over a danger shade (invalid).
  */
 export function verdictMarks(v: Verdict, w: number, h: number, cs: number): void {
-  const tone: Api.ThemeColor = v.drop === "valid" ? "success" : v.drop === "merge" ? "highlight" : v.drop === "swap" ? "info" : "danger";
+  const tone: Api.ThemeColor = v.drop === "valid" ? "success" : v.drop === "merge" ? "gold" : v.drop === "swap" ? "info" : "danger";
   kit.open("Verdict", { width: px(w), height: px(h), part: `Inventory.verdict${flags(v.drop)}`, partClass: "slot" });
   kit.setDraw({ shape: { kind: "rect", radii: [4, 4, 4, 4] }, fills: [{ kind: "solid", color: token(v.drop === "invalid" ? "danger" : tone, v.drop === "invalid" ? 0.34 : 0.1) }], strokes: [line(3, token(tone)), line(1, token("shadow", 0.7), "outside")] });
   kit.close();
@@ -236,7 +236,8 @@ export function verdictMarks(v: Verdict, w: number, h: number, cs: number): void
   const b = Math.max(22, Math.round(cs * 0.48));
   kit.open("Badge", { direction: "row", height: px(b), width: v.drop === "merge" ? null : px(b), padding: xy(v.drop === "merge" ? Math.round(b * 0.28) : 0, 0), align: "center", cross: "center", part: `Inventory.verdictBadge${flags(v.drop)}`, partClass: "badge" });
   kit.setDraw({ shape: { kind: "rect", radii: [999, 999, 999, 999] }, fills: [{ kind: "solid", color: token(tone) }], strokes: [line(2, token("shadow", 0.75), "outside")], effects: [shadow(2, 6, 0.5)] });
-  const ink = role(v.drop === "merge" ? "well" : "onPrimary");
+  // Gold is light in most styles: the merge's count is in the dark ink that reads on it.
+  const ink = role(v.drop === "merge" ? "inkInverse" : "onPrimary");
   if (v.drop === "valid") symbol("Mark", "check", Math.round(b * 0.62), ink);
   else if (v.drop === "swap") symbol("Mark", "swap", Math.round(b * 0.7), ink);
   else if (v.drop === "invalid") symbol("Mark", "ban", Math.round(b * 0.66), ink);
@@ -247,15 +248,17 @@ export function verdictMarks(v: Verdict, w: number, h: number, cs: number): void
 }
 
 /** The carried item under the pointer: drawn at the root over everything, lifted and shadowed, with what a drop would do. */
-function ghost(it: Api.GridItem, rot: boolean, count: number, cs: number, gx: number, gy: number, at: { x: number; y: number }, root: Api.UiRect | null, verdict: Verdict | null = null): void {
+function ghost(it: Api.GridItem, rot: boolean, count: number, cs: number, gx: number, gy: number, at: { x: number; y: number }, root: Api.UiRect | null, verdict: Verdict | null = null, outside = false): void {
   if (!root) return;
-  const shown = { ...it, rotated: rot, count };
+  // Off its grid (over a paperdoll's slot, another grid) it is carried as a one-cell icon centred on the pointer, so
+  // what it is over shows round it: the slot's accept or reject, the other grid's footprint.
+  const shown = outside ? { ...it, rotated: false, w: 1, h: 1, count } : { ...it, rotated: rot, count };
   const f = footprintOf(shown);
   const w = f.w * cs;
   const h = f.h * cs;
   const lx = rtl() ? root.x + root.width - at.x : at.x - root.x;
-  const start = lx - (gx + 0.5) * cs;
-  const top = at.y - root.y - (gy + 0.5) * cs;
+  const start = lx - (outside ? 0.5 : gx + 0.5) * cs;
+  const top = at.y - root.y - (outside ? 0.5 : gy + 0.5) * cs;
   kit.open("Ghost", { width: px(w), height: px(h), part: `Inventory.ghost${flags(`rarity=${it.rarity ?? "none"}`)}`, partClass: "slot" });
   tile(shown, w, h, cs, { raised: true });
   if (verdict) verdictMarks(verdict, w, h, cs);
@@ -541,7 +544,7 @@ export function inventoryGrid(id: string, desc: Api.InventoryGridDesc): Api.Inve
     }
     // The footprint: where the carried item would land, in what it would do there.
     if (fp && verdict) {
-      const tone: Api.ThemeColor = verdict.drop === "valid" ? "success" : verdict.drop === "merge" ? "highlight" : verdict.drop === "swap" ? "info" : "danger";
+      const tone: Api.ThemeColor = verdict.drop === "valid" ? "success" : verdict.drop === "merge" ? "gold" : verdict.drop === "swap" ? "info" : "danger";
       const fx = clamp(fp.x, 0, cols - 1);
       const fy = clamp(fp.y, 0, rows - 1);
       const fw = Math.max(1, Math.min(fp.w, cols - fx));
@@ -699,7 +702,7 @@ export function inventoryGrid(id: string, desc: Api.InventoryGridDesc): Api.Inve
       const x0 = rtl() ? cellsRect.x + (cols - h.cx - s.w) * cs : cellsRect.x + h.cx * cs;
       out.carried = { ...out.carried, x: x0 + (s.w * cs) / 2, y: cellsRect.y + (h.cy + s.h / 2) * cs };
     }
-    if (!h.byFocus) ghost(it, h.rot === 1, h.count, cs, h.gx, h.gy, { x: p.x, y: p.y }, kit.bounds(rootPath), verdictOf());
+    if (!h.byFocus) ghost(it, h.rot === 1, h.count, cs, h.gx, h.gy, { x: p.x, y: p.y }, kit.bounds(rootPath), verdictOf(), !fp);
     if (touch || h.byFocus) {
       const r = btn("Rotate", desc.rotateLabel ?? "Rotate", { size: "sm", sym: "rotate", part: "Inventory.rotate" });
       if (r.clicked) {
@@ -833,11 +836,20 @@ export function paperdoll(id: string, desc: Api.PaperdollDesc, figure: Api.UiBui
         if (target === "accepts" || target === "rejects") {
           // Under the carry: a bright success edge and glow (it fits), or a danger edge, a shade and ⊘ (it does not).
           const yes = target === "accepts";
-          kit.open(yes ? "Accepts" : "Rejects", { width: grow(), height: grow(), align: "center", cross: "center", part: `Paperdoll.target${flags(target)}`, partClass: "slot" });
-          kit.setDraw({ shape: { kind: "rect" }, fills: yes ? [] : [{ kind: "solid", color: token("danger", 0.32) }], strokes: [line(3, token(yes ? "success" : "danger"))], effects: [{ kind: "outerGlow", blur: 12, spread: 0, color: token(yes ? "success" : "danger", 0.6) }] });
-          if (!yes) symbol("Ban", "ban", Math.round(Math.min(sw, sh) * 0.5), role("onPrimary"));
+          // Drawn round the slot (what is carried covers its middle): a ring a little outside it, the inside shaded when
+          // it refuses, and a badge on its top end corner, a tick or ⊘.
+          const o = u(5);
+          kit.open(yes ? "Accepts" : "Rejects", { width: px(sw + o * 2), height: px(sh + o * 2), part: `Paperdoll.target${flags(target)}`, partClass: "slot" });
+          kit.setDraw({ shape: { kind: "rect", radii: [t.small + o, t.small + o, t.small + o, t.small + o] }, fills: yes ? [] : [{ kind: "solid", color: token("danger", 0.32) }], strokes: [line(3, token(yes ? "success" : "danger")), line(1, token("shadow", 0.7), "outside")], effects: [{ kind: "outerGlow", blur: 12, spread: 0, color: token(yes ? "success" : "danger", 0.6) }] });
           kit.close();
-          over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, z: 4 });
+          kit.props(overProps({ insets: { start: -o, top: -o }, inert: true, z: 4, overlaps: ["*"] }));
+          const bd = Math.max(22, u(26));
+          kit.open(yes ? "Yes" : "No", { width: px(bd), height: px(bd), align: "center", cross: "center", part: `Paperdoll.targetBadge${flags(target)}`, partClass: "badge" });
+          kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "solid", color: token(yes ? "success" : "danger") }], strokes: [line(2, token("shadow", 0.75), "outside")], effects: [shadow(2, 6, 0.5)] });
+          symbol("Mark", yes ? "check" : "ban", Math.round(bd * 0.64), role("onPrimary"));
+          kit.close();
+          kit.props(overProps({ insets: { end: -Math.round(bd * 0.75), top: -Math.round(bd * 0.75) }, inert: true, z: 6, overlaps: ["*"] }));
+          kit.semantics({ role: "status", name: yes ? "accepts" : "refuses" });
         }
       });
       const path = kit.lastPath();
@@ -959,13 +971,13 @@ export function statLine(id: string, s: Api.PaperdollStat, compare: boolean): vo
     text("Label", s.label ?? "", { step: st(14), color: "inkMuted", maxLines: 2, ellipsis: true, width: grow() });
     text("Value", s.value ?? "", { step: st(14), font: "mono", nowrap: true });
     if (compare) {
-      kit.row("Delta", { width: px(u(64)), gap: 2, cross: "center", align: "end", part: `Paperdoll.delta${flags(d > 0 ? "up" : d < 0 ? "down" : "")}`, partClass: "badge" }, () => {
+      kit.row("Delta", { width: px(u(64)), gap: 0, cross: "center", align: "end", part: `Paperdoll.delta${flags(d > 0 ? "up" : d < 0 ? "down" : "")}`, partClass: "badge" }, () => {
         if (d === 0) return;
         // A signed number is one left-to-right run in every script (+48, −6 %): its sign drawn as a shape
         // (a font may lack U+2212) before its digits, and built the other way round right to left so the
         // mirrored row still reads sign first.
         const digits = signedDigits(s.deltaText || `${Math.abs(d)}`);
-        const mark = () => symbol("Mark", d > 0 ? "plus" : "minus", u(10), role(tone));
+        const mark = () => symbol("Mark", d > 0 ? "plus" : "minus", u(9), role(tone));
         const num = () => text("Text", digits, { step: st(13), color: tone, font: "mono", nowrap: true });
         if (rtl()) {
           num();

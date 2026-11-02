@@ -6,8 +6,8 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  artSlot, btn, clamp, flags, floating, frame, glow, grow, keyHash, kit, line, mix, over, paint, priceTag, px, radial, rarityColor, rarityPips,
-  role, scrimFill, shadow, spring, st, still, surface, symbol, text, timerChip, token, u, vstate, xy, type Mut, type Rgba,
+  artSlot, btn, clamp, flags, floating, frame, glow, grow, hex, keyHash, kit, line, mix, over, paint, priceTag, px, radial, rarityColor, rarityPips,
+  role, rtl, scrimFill, shadow, spring, st, still, surface, symbol, text, timerChip, token, u, vstate, xy, type Mut, type Rgba,
 } from "./core.ts";
 import { cornerTag, plainText } from "./rewards.ts";
 
@@ -59,7 +59,8 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
   kit.close();
   over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, z: -2, layoutMotion: spring("ui") });
   kit.open("Scrim", { width: grow(), height: grow(), part: "Gacha.scrim", partClass: "panel" });
-  kit.setDraw({ shape: { kind: "rect" }, fills: [scrimFill(portrait ? "bottom" : "start", 0.9), scrimFill("bottom", 0.7)] });
+  // In portrait the words run from the top to the foot: an even shade under the foot's gradient.
+  kit.setDraw({ shape: { kind: "rect" }, fills: portrait ? [{ kind: "solid", color: token("shadow", 0.65) }, scrimFill("bottom", 0.75)] : [scrimFill("start", 0.9), scrimFill("bottom", 0.7)] });
   kit.close();
   over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, z: -1 });
 
@@ -129,7 +130,11 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
         feat.forEach((f, k) => {
           const ink = tierInk(f.rarity);
           kit.row(kit.idi("Unit", k), { width: grow(), gap: u(10), cross: "center", padding: xy(u(10), u(6)), radius: t.small, part: `Gacha.unit${flags(`rarity=${f.rarity ?? "none"}`)}`, partClass: "panel" }, () => {
-            kit.setDraw({ shape: { kind: "rect", radii: [t.small, t.small, t.small, t.small] }, fills: [{ kind: "gradient", type: "linear", from: { x: 0, y: 0.5 }, to: { x: 1, y: 0.5 }, stops: [{ offset: 0, color: paint(ink, 0.42) }, { offset: 1, color: paint(ink, 0.05) }] }] });
+            kit.setDraw({ shape: { kind: "rect", radii: [t.small, t.small, t.small, t.small] }, fills: [
+              // An opaque ground first, so the row reads on pale key art; the tier's ink washes in from the start.
+              { kind: "solid", color: paint(mix(role("panel"), role("shadow"), 0.25), 0.94) },
+              { kind: "gradient", type: "linear", from: { x: rtl() ? 1 : 0, y: 0.5 }, to: { x: rtl() ? 0 : 1, y: 0.5 }, stops: [{ offset: 0, color: paint(ink, 0.34) }, { offset: 1, color: paint(ink, 0) }] },
+            ] });
             kit.open("Edge", { width: px(3), height: grow() });
             kit.setDraw({ shape: { kind: "rect" }, fills: [{ kind: "solid", color: paint(ink) }] });
             kit.close();
@@ -143,7 +148,8 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
       });
     }
     if (desc.rateText) {
-      kit.open("Rate", { width: grow(), direction: "column", part: "Gacha.rate", partClass: "panel" });
+      kit.open("Rate", { width: grow(), direction: "column", padding: xy(u(10), u(6)), part: "Gacha.rate", partClass: "panel" });
+      kit.setDraw({ shape: { kind: "rect", radii: [t.small, t.small, t.small, t.small] }, fills: [{ kind: "solid", color: token("shadow", 0.55) }] });
       kit.richText("Body", desc.rateText, { step: st(13), color: token("inkMuted"), width: grow() });
       kit.close();
     }
@@ -179,7 +185,8 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
             part: `Gacha.pull${flags(n > 1 ? "multi" : "single", !can && "short")}`,
             name: `${label}, ${cost} ${currency}${can ? "" : `, ${desc.shortLabel ?? "not enough"}`}`,
             before: () => {
-              priceTag("Price", { amount: cost, currency, affordable: can, size: "sm", shortLabel: desc.shortLabel ?? "not enough" });
+              // On the premium button's gold, the price takes the button's dark ink.
+              priceTag("Price", { amount: cost, currency, affordable: can, size: "sm", shortLabel: desc.shortLabel ?? "not enough", ...(n > 1 ? { ink: hex("#1d1406") } : {}) });
               kit.open("Sep", { width: px(1), height: px(u(18)), background: token("line") });
               kit.close();
             },
@@ -219,7 +226,9 @@ function countdownShort(seconds: number): string {
 function pityMeter(id: string, pity: number, max: number, label: string): void {
   const f = clamp(pity / max, 0, 1);
   const w = u(140);
-  kit.column(id, { gap: u(4), cross: "end", part: "Gacha.pity", partClass: "bar" }, () => {
+  kit.column(id, { gap: u(4), cross: "end", padding: xy(u(10), u(6)), part: "Gacha.pity", partClass: "badge" }, () => {
+    // On a dark pill, as the purse beside it: it reads on any key art.
+    kit.setDraw({ shape: { kind: "rect", radii: [u(10), u(10), u(10), u(10)] }, fills: [{ kind: "solid", color: token("shadow", 0.6) }] });
     text("Label", fill(label, { left: Math.max(0, max - pity), max, pity }), { step: st(13), nowrap: true, color: f > 0.8 ? "highlight" : "ink" });
     kit.open("Track", { width: px(w), height: px(u(6)), radius: 999, background: token("shadow", 0.6) });
     kit.open("Fill", { width: px(Math.max(u(6), Math.round(w * f))), height: px(u(6)), radius: 999, background: token(f > 0.8 ? "highlight" : "primary") });
@@ -291,6 +300,8 @@ export function pullSequence(id: string, desc: Api.PullSequenceDesc): Api.PullSe
       semantics: { role: "dialog", name: phase === 3 ? "Results" : top?.name ?? "" },
       props: { states: [{ name: "phase", states: [vstate("charge"), vstate("reveal"), vstate("summary")], transitions: [] }], state: [{ group: "phase", state: PHASES[phase] === "idle" ? "charge" : PHASES[phase]! }] },
     }, () => {
+      // Edge to edge: the layer is the screen, so it draws no outline round it.
+      kit.setDraw({ shape: { kind: "rect" }, fills: [{ kind: "solid", color: paint(mix(role("well"), role("shadow"), 0.55)) }] });
       kit.open("Content", { direction: "column", width: grow(), height: grow(), align: "center", cross: "center", padding: xy(u(16), u(16)) });
       if (phase === 1) charge(top, tick - t0, W, H);
       else if (phase === 2) {
@@ -386,19 +397,23 @@ function reveal(it: Api.PullItem, idx: number, n: number, dt: number, W: number,
     over({ insets: { end: -u(8), top: -u(10) }, inert: true, z: 4 });
   }
   kit.close();
-  if (rarityPips(it.rarity) >= 5 && !still()) kit.burst({ count: 14, color: paint(ink), delayMs: 120 });
   kit.column("Words", { gap: u(8), cross: landscape ? "start" : "center", width: landscape ? px(Math.min(u(440), Math.round(W * 0.36))) : grow() }, () => {
     if (it.kind) text("Kind", it.kind.toLocaleUpperCase(), { step: st(14), color: mix(ink, role("ink"), 0.4), font: "display", nowrap: true });
     text("Name", it.name ?? "", { step: st(phone ? 28 : 44), heading: true, font: "display", maxLines: 2, width: grow(), align: landscape ? "start" : "center" });
     kit.props({ enter: { values: [{ prop: "opacity", value: 0 }, { prop: "x", value: u(-40) }], transition: spring("panel"), delayMs: 180 } });
     const ns = it.stars ?? 0;
     stars("Stars", ns, u(phone ? 22 : 30), ink, ns, Array.from({ length: ns }, (_, k) => 320 + k * 110));
+    // Legendary and above: a burst from the stars as the last one lands (from the stars, not the art, so its rays
+    // stay fine and clear of the art and its tag).
+    if (rarityPips(it.rarity) >= 5 && !still()) kit.burst({ count: 12, color: paint(mix(ink, role("ink"), 0.25)), radius: u(phone ? 90 : 140), delayMs: 320 + ns * 110 });
     if (it.extra) text("Extra", it.extra, { step: st(15), color: "highlight", maxLines: 2, width: grow(), align: landscape ? "start" : "center" });
   });
   kit.close();
   kit.semantics({ role: "status", name: [it.name, `${it.stars ?? 0} stars`, it.isNew ? "new" : "", it.extra ?? ""].filter(Boolean).join(", ") });
   // How far along, and how to go on.
-  kit.row("Hint", { gap: u(10), cross: "center", part: "Pull.hint", partClass: "chip", padding: xy(u(14), u(6)), radius: 999, background: token("shadow", 0.6) }, () => {
+  kit.row("Hint", { gap: u(10), cross: "center", part: "Pull.hint", partClass: "badge", padding: xy(u(16), u(8)) }, () => {
+    // A pill on the stage, no outline: a hint, not a control.
+    kit.setDraw({ shape: { kind: "rect", radii: [999, 999, 999, 999] }, fills: [{ kind: "solid", color: token("shadow", 0.6) }] });
     text("Count", `${idx + 1} / ${n}`, { step: st(14), font: "mono", color: "inkMuted", nowrap: true });
     const g = kit.frameGlyph("confirm") as Api.UiGlyph | null;
     if (g && !frame().touch) text("Glyph", g.text, { step: st(13), font: "mono", nowrap: true });
@@ -425,8 +440,10 @@ function summary(items: readonly Api.PullItem[], desc: Api.PullSequenceDesc, W: 
   const artH = portrait ? u(56) : Math.max(u(40), Math.floor(Math.min((tw - u(16)) * 1.1, (H - u(phone ? 110 : 160)) / rows - gap - textH - u(16))));
   kit.open("Summary", { direction: "column", gap: u(phone ? 10 : 18), cross: "center", width: grow(), height: grow(), align: "center", part: "Pull.summary", partClass: "panel" });
   // The grid scrolls when the results outgrow the screen (a phone at large text); its bar stays.
-  const tall = rows * (artH * (portrait ? 0 : 1) + Math.max(portrait ? artH : 0, textH) + u(16)) + (rows - 1) * gap + u(20) > H - u(phone ? 110 : 160);
-  kit.openScroll("Grid", { width: px(cols * tw + (cols - 1) * gap), height: tall ? grow() : null, padding: xy(0, u(10)), gap: 0 });
+  // (A grid that only just fills the room is not tall: it stays centred, not pinned to the top.)
+  const tall = rows * (artH * (portrait ? 0 : 1) + Math.max(portrait ? artH : 0, textH) + u(16)) + (rows - 1) * gap + u(20) > H - u(phone ? 110 : 160) + u(4);
+  // Its top padding keeps a tile's NEW tag (it stands above the tile) inside the scroll's clip.
+  kit.openScroll("Grid", { width: px(cols * tw + (cols - 1) * gap + u(12)), height: tall ? grow() : null, padding: { left: u(6), right: u(6), top: u(14), bottom: u(10) }, gap: 0 });
   kit.open("Tiles", { direction: "row", wrap: true, gap, width: px(cols * tw + (cols - 1) * gap), align: "center" });
   order.forEach((it, k) => {
     const ink = tierInk(it.rarity);
@@ -440,7 +457,8 @@ function summary(items: readonly Api.PullItem[], desc: Api.PullSequenceDesc, W: 
     });
     if (it.isNew) {
       cornerTag("New", "NEW");
-      over({ insets: { end: -u(4), top: -u(8) }, inert: true, z: 3 });
+      // A row tile (a phone in portrait) wears it over its art at the start, clear of its name.
+      over({ insets: portrait ? { start: -u(4), top: -u(8) } : { end: -u(4), top: -u(8) }, inert: true, z: 3 });
     }
     kit.close();
     kit.props({ enter: { values: [{ prop: "opacity", value: 0 }, { prop: "y", value: u(30) }, { prop: "scale", value: 0.85 }], transition: spring("emphasis"), delayMs: 60 * k } });
@@ -449,7 +467,8 @@ function summary(items: readonly Api.PullItem[], desc: Api.PullSequenceDesc, W: 
   kit.close();
   kit.semantics({ role: "list", name: "Results" });
   kit.close();
-  kit.row("Bar", { gap: u(12), cross: "center" }, () => {
+  // It wraps (Done under Again) when the two outgrow the screen: a phone at large text.
+  kit.row("Bar", { gap: u(12), cross: "center", align: "center", wrap: true, width: px(W - u(32)) }, () => {
     if (desc.againLabel) {
       const can = desc.affordable ?? true;
       const r = btn("Again", fill(desc.againLabel, { n }), {
