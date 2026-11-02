@@ -29,8 +29,8 @@
 # the wasm steps (crates/), drift (the IDL, og-idl, og and the generated
 # files), check-conformance (packages/engine, templates/, examples/, the
 # comparer, its corpus and the pins), web-reference (og-host-web's and og-tests-web's crates,
-# packages/engine, templates/fx-showcase), ui-styles (og, templates/ui-kit,
-# templates/styles, og-ui's references). A change to scripts/, Cargo.toml,
+# packages/engine, templates/fx-showcase), ui-styles and ui-kit (og,
+# templates/ui-kit, templates/styles, og-ui's references). A change to scripts/, Cargo.toml,
 # Cargo.lock, rust-toolchain.toml, .cargo/ or .config/ reruns all of them. Each skip is
 # printed with its reason. --all, or CI set in the environment, runs
 # everything.
@@ -62,12 +62,12 @@ STEPS_QUICK="fmt clippy test-quick drift bun-quick"
 # reference frames, the generated API, the packages' tests on the native
 # host), without the wasm build, its size, determinism and the browser
 # tiers, which are a wave's end measurements (docs/ci.md §Lanes).
-STEPS_FUNCTIONAL="fmt clippy test drift bun-functional ui-styles"
+STEPS_FUNCTIONAL="fmt clippy test drift bun-functional ui-styles ui-kit"
 # The Windows lane: the Mac's wasm at the same inputs instead of a wasm
 # build, the tests whose result a platform can change, and the browser
 # tiers in Chrome on D3D12 (docs/ci.md §Two machines).
 STEPS_WINDOWS="wasm-import test-windows web-reference"
-STEPS="$STEPS_FULL test-quick bun-quick bun-functional ui-styles web-reference check-conformance wasm-export wasm-import test-windows"
+STEPS="$STEPS_FULL test-quick bun-quick bun-functional ui-styles ui-kit web-reference check-conformance wasm-export wasm-import test-windows"
 FUNCTIONAL=0
 WINDOWS=0
 BUN_QUICK_PACKAGES="packages/knowledge packages/create"   # no native build needed
@@ -118,8 +118,8 @@ crates/og-records/src/generated crates/og-host-web/src/generated crates/og-host-
 rule_conformance() {
   echo "packages/engine templates examples crates/og-cli/src/check.rs scripts/tsrs-diff.sh scripts/tsrs-corpus scripts/install-tools.sh scripts/lib.sh"
 }
-# ui-styles: og and the addon it loads (og-cli, og-host-node, packages/engine), the kit and the
-# built-in styles its sheets draw, and og-ui's references.
+# ui-styles and ui-kit: og and the addon it loads (og-cli, og-host-node, packages/engine), the kit
+# and the built-in styles its sheets draw, and og-ui's references.
 rule_ui_styles() {
   echo "$(og_crate_dirs -p og-cli -p og-host-node -e normal,build | og_words) packages/engine templates/ui-kit templates/styles crates/og-ui/references $RULE_COMMON"
 }
@@ -722,6 +722,18 @@ step_ui_styles() {
   "$OG_TARGET_DIR/debug/og" test templates/ui-kit --filter tests/style- --jobs "${OG_UI_STYLES_JOBS:-3}"
 }
 
+# Every other kit playtest (templates/ui-kit/tests/*.og.ts but style-*):
+# the screens' frames, the component and controls previews, input by
+# touch, keys and pads, locales, sounds. U6b's landing broke four of them
+# (gamepad, locales, sounds, touch) and nothing in the gate ran them
+# (2026-11-02). After ui-styles (step_needs), so the two never draw on the
+# GPU at once and share its native build. Path-aware (rule_ui_styles).
+step_ui_kit() {
+  if skip_unchanged ui-kit "ui-kit" "$(rule_ui_styles)"; then return $SKIP; fi
+  OG_GATE=1 sh packages/engine/scripts/build.sh --native || return 1
+  "$OG_TARGET_DIR/debug/og" test templates/ui-kit --skip tests/style- --jobs "${OG_UI_KIT_JOBS:-3}"
+}
+
 # The packages that need no native build.
 step_bun_quick() {
   # shellcheck disable=SC2086
@@ -884,6 +896,7 @@ step_needs() {
     wasm-opt) echo wasm-build ;;
     size-gate) echo wasm-opt ;;
     bun-test) echo wasm-opt ;;
+    ui-kit) echo ui-styles ;;
     wasm-export) echo wasm-opt ;;
     # The Windows lane's browser tiers take the Mac's wasm (build.sh, OG_GATE=1).
     web-reference) [ "$WINDOWS" = 0 ] || echo wasm-import ;;
