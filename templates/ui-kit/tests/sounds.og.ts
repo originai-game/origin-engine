@@ -10,15 +10,16 @@ export default playtest({
   name: "a press sounds on the ui bus by default, and not after sounds:off",
   size: "1280x720",
   commands: [
+    // The shop is the eleventh row (88 px rows that hold a two-line blurb): 600 px brings it whole into the list's view.
     "0.3:touch_move_to:Screens",
-    "0.35:scroll:0,400",
+    "0.35:scroll:0,600",
     tapText(0.5, "=shop"),
     "0.7:listen:on.wav:0.3",
     "0.75:dump_world:on.json",
     "0.8:show:gallery",
     "0.9:sounds:off",
     "1.0:touch_move_to:Screens",
-    "1.05:scroll:0,400",
+    "1.05:scroll:0,600",
     tapText(1.2, "=shop"),
     "1.4:listen:off.wav:0.3",
     "1.5:quit",
