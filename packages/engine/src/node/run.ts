@@ -5,7 +5,7 @@
 //   bun src/node/run.ts --entry <game.js|.ts> [--root <project>] [--ticks N] [--seed S]
 //       [--setup action[:arg...]]... [--commands "t:action[:args];..."] [--out <dir>]
 //       [--port P] [--size WxH] [--realtime] [--watch <bundle.js>] [--no-render]
-//       [--audio null|device|<out.wav>] [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>]
+//       [--audio null|device|<out.wav>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>]
 //       [--trace <out.json> [--trace-append]] [--room ws://127.0.0.1:P/<room>] [--json]
 //       [--restore <world.save>] [--handoff <world.save>]
 //
@@ -50,7 +50,7 @@ import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { loadNativeHost, native } from "./index.ts";
 import { openAudio, type AudioSink } from "./audio.ts";
-import { nativePlatform } from "./platform.ts";
+import { nativePlatform, readFake } from "./platform.ts";
 import { Trace, unixMs, type TraceDocument } from "../trace.ts";
 import { beginBundle, boundHost, createEngine, fixedClock, type Engine, type GameToken, type Result } from "../runtime.ts";
 
@@ -69,6 +69,7 @@ let render = true;
 let asJson = false;
 let audioOut = "null";
 let platformStore: string | undefined;
+let platformFake: string | undefined;
 let locale: string | undefined;
 let clock: number | undefined;
 let tracePath: string | undefined;
@@ -102,6 +103,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--json") asJson = true;
   else if (a === "--audio") audioOut = next();
   else if (a === "--platform-store") platformStore = resolve(next());
+  else if (a === "--platform-fake") platformFake = resolve(next());
   else if (a === "--locale") locale = next();
   else if (a === "--clock") clock = Number(next());
   else if (a === "--trace") tracePath = resolve(next());
@@ -202,7 +204,10 @@ if (tracePath) {
 // og.platform: the local store, in memory unless --platform-store names a file;
 // its clock the system's, or with --clock one that starts there and moves with the ticks.
 if (clock !== undefined) engine.setClock(fixedClock(engine, clock));
-engine.attachPlatform(nativePlatform(platformStore));
+// The platform services are faked: every call succeeds unless --platform-fake scripts it.
+const fake = platformFake === undefined ? { ok: true as const, value: {} } : readFake(platformFake);
+if (!fake.ok) fail(`--platform-fake: ${fake.reason}`);
+engine.attachPlatform(nativePlatform(platformStore, fake.ok ? fake.value : {}));
 // One sink per engine, pumped after every step (crates/og-audio/README.md
 // §Host contract): null keeps the stream drained, a .wav path captures it.
 const audioMode = audioOut === "device" ? "device" : audioOut === "null" ? "null" : "capture";

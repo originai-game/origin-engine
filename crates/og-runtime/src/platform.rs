@@ -19,7 +19,17 @@ use og_core::Reflect;
 use og_ecs::{SystemDesc, World};
 use serde_json::{Value, json};
 use std::cell::RefCell;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
+
+mod services;
+pub(crate) use services::{GRANTS, enable_grants};
+pub use services::{
+    og_platform_achievement_progress, og_platform_achievement_unlock, og_platform_achievements,
+    og_platform_ad_ready, og_platform_consume, og_platform_entitlements, og_platform_friends,
+    og_platform_grant, og_platform_granted, og_platform_invite_send, og_platform_invites,
+    og_platform_player, og_platform_products, og_platform_purchase, og_platform_share,
+    og_platform_show_ad, og_platform_supports,
+};
 
 /// The system's name in the schedule (before the game's systems).
 pub const PLATFORM_SYSTEM: &str = "og.platform";
@@ -44,7 +54,39 @@ const MAX_VALUE: usize = 64 * 1024;
 /// with a `too_large` error.
 const MAX_ANSWER: usize = 4 * MAX_VALUE;
 
-const RETRYABLE: &[&str] = &["offline", "timeout", "unavailable", "rate_limited"];
+const RETRYABLE: &[&str] = &[
+    "offline",
+    "timeout",
+    "unavailable",
+    "rate_limited",
+    "no_fill",
+];
+
+/// `og.PlatformNotice`'s name: a lazy record (super::lazy), registered when
+/// a game first names it.
+pub const NOTICE: &str = "og.PlatformNotice";
+/// og.PlatformAnswered's name.
+const ANSWERED: &str = "og.PlatformAnswered";
+/// The notices kept for og.platform.notice.
+const KEEP_NOTICES: usize = 256;
+/// What a notice may be about.
+const NOTICE_KINDS: &[&str] = &["purchase", "entitlements", "invite"];
+
+/// Whether `event` is og.platform's own: an answer or a notice, which a
+/// system that writes shared state in a lockstep session never hears
+/// ([`withheld`]).
+pub(crate) fn is_platform_event(event: &str) -> bool {
+    event == ANSWERED || event == NOTICE
+}
+
+/// One notice the host sent (og_platform_notify).
+struct Notice {
+    kind: String,
+    data: Value,
+    time: f64,
+    /// The tick it was applied at.
+    tick: u64,
+}
 
 struct Record {
     method: String,
@@ -107,6 +149,11 @@ struct Platform {
     /// Slot calls in progress by request, and the store calls each made.
     slots: IdMap<u32, SlotCall>,
     sub: IdMap<u32, u32>,
+    /// Notices sent since the last tick, applied at the next tick's start.
+    notices_in: Vec<Value>,
+    /// Applied notices by number (the last [`KEEP_NOTICES`]).
+    notices: BTreeMap<u32, Notice>,
+    next_notice: u32,
 }
 
 thread_local! {
@@ -771,7 +818,49 @@ fn result_of(id: u32, r: &Record) -> Option<Value> {
     Some(v)
 }
 
+/// Whether the running system may not hear platform answers and notices:
+/// inside a running lockstep or rollback session, a system that writes
+/// shared state (anything but the session's own records, og-net's
+/// SESSION_RESOURCES and SESSION_EVENTS). An answer is this peer's alone,
+/// so applying it to shared state would make this world differ from the
+/// other peers'; such a system hears nothing, and the engine logs it once.
+pub(crate) fn withheld(world: u32) -> bool {
+    let Some(f) = running(world) else {
+        return false;
+    };
+    if !crate::net::session_running(world) {
+        return false;
+    }
+    let Ok(eng) = engine(world) else {
+        return false;
+    };
+    let session = |n: &str| {
+        og_net::state::SESSION_RESOURCES.contains(&n) || og_net::state::SESSION_EVENTS.contains(&n)
+    };
+    let mut st = eng.state.borrow_mut();
+    let Some(s) = st.systems.get(f.system) else {
+        return false;
+    };
+    let Some(write) = s.writes.iter().find(|w| !session(w)).cloned() else {
+        return false;
+    };
+    let system = s.name.clone();
+    if st
+        .undeclared_logged
+        .insert(format!("{system} platform session"))
+    {
+        let tick = tick_now(world).unwrap_or(0);
+        st.log.push(json!({ "tick": tick, "warning": true, "text": format!(
+            "system '{system}' writes '{write}', shared state, so in this lockstep session it hears no platform answer or notice: they are this peer's alone. Read them in a system that writes none, and carry what every peer must see in og.PlayerInput (og.net.submit)"
+        ) }));
+    }
+    true
+}
+
 pub fn og_platform_result(world: u32, request: u32) -> String {
+    if withheld(world) {
+        return "null".into();
+    }
     with(world, |p| {
         p.log
             .get(&request)
@@ -836,7 +925,39 @@ pub fn og_platform_now(world: u32) -> f64 {
     time + tick.saturating_sub(at) as f64 * tick_ms(world)
 }
 
+pub fn og_platform_notice(world: u32, notice: u32) -> String {
+    if withheld(world) {
+        return "null".into();
+    }
+    with(world, |p| {
+        p.notices.get(&notice).map_or(Value::Null, |n| {
+            json!({ "notice": notice, "kind": n.kind, "data": n.data, "tick": n.tick, "time": n.time })
+        })
+    })
+    .to_string()
+}
+
 // ── the host's side (lifecycle members) ─────────────────────────────────
+
+/// Unasked host input: `{ kind, data, time? }`, applied at the next tick's
+/// start (og.PlatformNotice). False for a malformed notice, an unknown kind
+/// or data over the answers' cap.
+pub fn og_platform_notify(engine: u32, notice: String) -> bool {
+    if notice.len() > services::MAX_NOTICE {
+        return false;
+    }
+    let Ok(v) = serde_json::from_str::<Value>(&notice) else {
+        return false;
+    };
+    if !v["kind"]
+        .as_str()
+        .is_some_and(|k| NOTICE_KINDS.contains(&k))
+    {
+        return false;
+    }
+    with(engine, |p| p.notices_in.push(v));
+    true
+}
 
 /// The calls made since the last take: `[{ request, method, args, tick }]`.
 pub fn og_platform_take(engine: u32) -> String {
@@ -971,8 +1092,50 @@ pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
                     }
                     arrived
                 });
+                // Notices: numbered, kept, and announced when the game named
+                // og.PlatformNotice (registered with the world).
+                let notices = with(engine_id, |p| {
+                    let mut out = Vec::new();
+                    for v in std::mem::take(&mut p.notices_in) {
+                        if let Some(t) = time_of(&v) {
+                            rebase(p, t, tick, v["clock"].as_str(), ms);
+                        }
+                        p.next_notice = p.next_notice.wrapping_add(1).max(1);
+                        let n = p.next_notice;
+                        let kind = v["kind"].as_str().unwrap_or("").to_string();
+                        out.push((n, kind.clone()));
+                        p.notices.insert(
+                            n,
+                            Notice {
+                                kind,
+                                data: v.get("data").cloned().unwrap_or(Value::Null),
+                                time: time_of(&v).unwrap_or(0.0),
+                                tick,
+                            },
+                        );
+                        while p.notices.len() > KEEP_NOTICES {
+                            p.notices.pop_first();
+                        }
+                    }
+                    out
+                });
                 for (request, ok) in arrived {
                     ctx.send(PlatformAnswered { request, ok })?;
+                }
+                if !notices.is_empty()
+                    && let Ok(id) = ctx.id_by_name(NOTICE)
+                {
+                    let layout = engine(engine_id)
+                        .ok()
+                        .and_then(|e| e.state.borrow().layouts.get(NOTICE).cloned());
+                    if let Some(layout) = layout {
+                        for (notice, kind) in notices {
+                            let bytes = layout
+                                .encode(None, Some(&json!({ "notice": notice, "kind": kind })))
+                                .map_err(|e| og_core::Error::new(og_core::ErrorKind::Invalid, e))?;
+                            ctx.send_bytes(id, &bytes)?;
+                        }
+                    }
                 }
                 Ok(())
             },
@@ -1002,6 +1165,9 @@ pub(crate) fn dump(engine: u32) -> Value {
                 }
                 c
             }).collect::<Vec<_>>(),
+            "notices": p.notices.iter().map(|(n, x)| json!({
+                "notice": n, "kind": x.kind, "data": x.data, "tick": x.tick, "time": x.time,
+            })).collect::<Vec<_>>(),
         })
     })
 }
@@ -1332,5 +1498,178 @@ mod tests {
             bad["reason"].as_str().unwrap().contains("at most 8"),
             "{bad}"
         );
+    }
+
+    #[test]
+    fn a_notice_is_applied_at_the_next_tick_numbered_and_kept() {
+        let e = engine_at_60();
+        host(e, 1.0, "fixed");
+        assert!(!og_platform_notify(
+            e,
+            json!({ "kind": "lottery" }).to_string()
+        ));
+        assert!(!og_platform_notify(e, "not json".into()));
+        let data =
+            json!({ "purchase": "p-1", "product": "gems", "quantity": 1, "state": "completed" });
+        assert!(og_platform_notify(
+            e,
+            json!({ "kind": "purchase", "data": data, "time": 5000.0 }).to_string()
+        ));
+        // Host input, like an answer: nothing until the tick's start.
+        assert_eq!(og_platform_notice(e, 1), "null");
+        let applied = tick_now(e).unwrap();
+        advance(e, 1);
+        let n: Value = serde_json::from_str(&og_platform_notice(e, 1)).unwrap();
+        assert_eq!(n["kind"], json!("purchase"), "{n}");
+        assert_eq!(n["data"], data, "{n}");
+        assert_eq!(n["time"], json!(5000.0), "{n}");
+        assert_eq!(n["tick"], json!(applied), "{n}");
+        let dump = dump(e);
+        assert_eq!(dump["notices"][0]["data"], data, "{dump}");
+        // The last KEEP_NOTICES are kept.
+        for _ in 0..KEEP_NOTICES {
+            assert!(og_platform_notify(
+                e,
+                json!({ "kind": "invite" }).to_string()
+            ));
+        }
+        advance(e, 1);
+        assert_eq!(og_platform_notice(e, 1), "null");
+        assert_ne!(og_platform_notice(e, KEEP_NOTICES as u32 + 1), "null");
+    }
+
+    #[test]
+    fn services_validate_their_arguments_and_name_their_methods() {
+        let e = engine_at_60();
+        og_platform_set_host(
+            e,
+            json!({ "host": "test", "capabilities": ["purchase.buy", "ad.show"] }).to_string(),
+        );
+        assert!(og_platform_supports(e, "ad.show".into()));
+        assert!(!og_platform_supports(e, "share".into()));
+        let refused = |answer: String| {
+            let v: Value = serde_json::from_str(&answer).unwrap();
+            assert_eq!(v["ok"], json!(false), "{v}");
+        };
+        refused(og_platform_purchase(
+            e,
+            Some(json!({ "product": "a b" }).to_string()),
+        ));
+        refused(og_platform_consume(e, String::new()));
+        refused(og_platform_show_ad(
+            e,
+            Some(json!({ "kind": "popup" }).to_string()),
+        ));
+        refused(og_platform_achievement_progress(
+            e,
+            Some(json!({ "id": "a", "percent": 101 }).to_string()),
+        ));
+        refused(og_platform_invite_send(
+            e,
+            Some(json!({ "payload": "x".repeat(1100) }).to_string()),
+        ));
+        refused(og_platform_share(
+            e,
+            Some(json!({ "text": "" }).to_string()),
+        ));
+        refused(og_platform_share(
+            e,
+            Some(json!({ "text": "hi", "path": "https://x.y?a" }).to_string()),
+        ));
+        refused(og_platform_products(
+            e,
+            Some(json!({ "ids": vec!["a"; 101] }).to_string()),
+        ));
+        value(&og_platform_purchase(
+            e,
+            Some(json!({ "product": "gems.100", "quantity": 500 }).to_string()),
+        ));
+        value(&og_platform_show_ad(e, None));
+        og_platform_achievements(e);
+        let calls: Vec<Value> = serde_json::from_str(&og_platform_take(e)).unwrap();
+        let shapes: Vec<(String, Value)> = calls
+            .iter()
+            .map(|c| (c["method"].as_str().unwrap().to_string(), c["args"].clone()))
+            .collect();
+        assert_eq!(
+            shapes,
+            vec![
+                (
+                    "purchase.buy".into(),
+                    json!({ "product": "gems.100", "quantity": 99 })
+                ),
+                (
+                    "ad.show".into(),
+                    json!({ "kind": "rewarded", "placement": "default" })
+                ),
+                ("achievement.list".into(), json!({})),
+            ]
+        );
+    }
+
+    fn snapshot_of(e: u32) -> String {
+        value(&crate::og_world_snapshot(e, None))
+            .as_str()
+            .unwrap()
+            .to_string()
+    }
+
+    #[test]
+    fn a_purchase_is_granted_once_across_a_restore_and_a_replayed_notice() {
+        let e = engine_at_60();
+        host(e, 1.0, "fixed");
+        // A world that never grants keeps its type table: no og.PlatformGrants.
+        let untouched = engine_at_60();
+        assert!(
+            !crate::save_snapshot_bytes(&snapshot_of(untouched))
+                .ok()
+                .and_then(|b| og_ecs::snapshot_type_names(&b).ok())
+                .is_some_and(|n| n.iter().any(|t| t == GRANTS))
+        );
+        // The notice that the purchase completed: the game grants it.
+        let notice = json!({ "kind": "purchase", "data": { "purchase": "p-7", "product": "gems", "quantity": 1, "state": "completed" } });
+        let grant_from_notice = |n: u32| {
+            let v: Value = serde_json::from_str(&og_platform_notice(e, n)).unwrap();
+            let id = v["data"]["purchase"].as_str().unwrap().to_string();
+            value(&og_platform_grant(e, id)).as_bool().unwrap()
+        };
+        assert!(og_platform_notify(e, notice.to_string()));
+        advance(e, 1);
+        assert!(grant_from_notice(1), "the first grant is new");
+        assert!(og_platform_granted(e, "p-7".into()));
+        // Saved after the grant, before consume.
+        let saved = snapshot_of(e);
+        assert!(
+            og_ecs::snapshot_type_names(&crate::save_snapshot_bytes(&saved).unwrap())
+                .unwrap()
+                .iter()
+                .any(|t| t == GRANTS)
+        );
+        value(&og_platform_consume(e, "p-7".into()));
+        // A fresh engine (a relaunch) restores the save, and the host sends
+        // the notice again: still granted once.
+        let relaunch = engine_at_60();
+        host(relaunch, 1.0, "fixed");
+        assert!(!og_platform_granted(relaunch, "p-7".into()));
+        let restored: Value =
+            serde_json::from_str(&crate::og_world_restore(relaunch, saved, None)).unwrap();
+        assert_eq!(restored["ok"], json!(true), "{restored}");
+        assert!(og_platform_granted(relaunch, "p-7".into()));
+        assert!(og_platform_notify(relaunch, notice.to_string()));
+        advance(relaunch, 1);
+        let v: Value = serde_json::from_str(&og_platform_notice(relaunch, 1)).unwrap();
+        let again = value(&og_platform_grant(
+            relaunch,
+            v["data"]["purchase"].as_str().unwrap().to_string(),
+        ));
+        assert_eq!(again, json!(false), "a replayed notice granted twice");
+        // Another purchase is new; a malformed id is refused.
+        assert_eq!(
+            value(&og_platform_grant(relaunch, "p-8".into())),
+            json!(true)
+        );
+        let bad: Value =
+            serde_json::from_str(&og_platform_grant(relaunch, "no spaces".into())).unwrap();
+        assert_eq!(bad["ok"], json!(false));
     }
 }

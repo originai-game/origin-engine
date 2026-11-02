@@ -142,6 +142,60 @@ impl PlatformApi for NodeHost {
     fn og_platform_load_slot(&self, world: u32, desc: Option<String>) -> String {
         rt::og_platform_load_slot(world, desc)
     }
+    fn og_platform_products(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_platform_products(world, desc)
+    }
+    fn og_platform_purchase(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_platform_purchase(world, desc)
+    }
+    fn og_platform_entitlements(&self, world: u32) -> u32 {
+        rt::og_platform_entitlements(world)
+    }
+    fn og_platform_consume(&self, world: u32, purchase: String) -> String {
+        rt::og_platform_consume(world, purchase)
+    }
+    fn og_platform_grant(&self, world: u32, purchase: String) -> String {
+        rt::og_platform_grant(world, purchase)
+    }
+    fn og_platform_granted(&self, world: u32, purchase: String) -> bool {
+        rt::og_platform_granted(world, purchase)
+    }
+    fn og_platform_ad_ready(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_platform_ad_ready(world, desc)
+    }
+    fn og_platform_show_ad(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_platform_show_ad(world, desc)
+    }
+    fn og_platform_achievement_unlock(&self, world: u32, id: String) -> String {
+        rt::og_platform_achievement_unlock(world, id)
+    }
+    fn og_platform_achievement_progress(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_platform_achievement_progress(world, desc)
+    }
+    fn og_platform_achievements(&self, world: u32) -> u32 {
+        rt::og_platform_achievements(world)
+    }
+    fn og_platform_player(&self, world: u32) -> u32 {
+        rt::og_platform_player(world)
+    }
+    fn og_platform_friends(&self, world: u32, desc: Option<String>) -> u32 {
+        rt::og_platform_friends(world, desc)
+    }
+    fn og_platform_invite_send(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_platform_invite_send(world, desc)
+    }
+    fn og_platform_invites(&self, world: u32) -> u32 {
+        rt::og_platform_invites(world)
+    }
+    fn og_platform_share(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_platform_share(world, desc)
+    }
+    fn og_platform_supports(&self, world: u32, method: String) -> bool {
+        rt::og_platform_supports(world, method)
+    }
+    fn og_platform_notice(&self, world: u32, notice: u32) -> String {
+        rt::og_platform_notice(world, notice)
+    }
     fn og_platform_result(&self, world: u32, request: u32) -> String {
         rt::og_platform_result(world, request)
     }

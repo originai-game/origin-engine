@@ -166,7 +166,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2127 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2157 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -181,6 +181,7 @@ Field units the docs and Tune use.
 | [`AccordionDesc`](ui.md#type-AccordionDesc) | desc struct | ui | — |
 | [`AccordionResult`](ui.md#type-AccordionResult) | struct | ui | — |
 | [`AccordionSection`](ui.md#type-AccordionSection) | desc struct | ui | — |
+| [`AchievementProgressDesc`](platform.md#type-AchievementProgressDesc) | desc struct | platform | — |
 | [`ActionButtonDesc`](ui.md#type-ActionButtonDesc) | desc struct | ui | — |
 | [`ActionDesc`](input.md#type-ActionDesc) | desc struct | input | — |
 | [`ActionHint`](ui.md#type-ActionHint) | desc struct | ui | — |
@@ -189,6 +190,8 @@ Field units the docs and Tune use.
 | [`ActionInfo`](input.md#type-ActionInfo) | struct | input | — |
 | [`ActionKind`](input.md#type-ActionKind) | enum | input | — |
 | [`ActionState`](input.md#type-ActionState) | struct | input | — |
+| [`AdDesc`](platform.md#type-AdDesc) | desc struct | platform | — |
+| [`AdKind`](platform.md#type-AdKind) | enum | platform | — |
 | [`AdvanceOperation`](probe.md#type-AdvanceOperation) | struct | probe | — |
 | [`AI_FAILURE`](ai.md#const-AI_FAILURE) | constant | ai | — |
 | [`AI_INTERRUPTED`](ai.md#const-AI_INTERRUPTED) | constant | ai | — |
@@ -520,6 +523,7 @@ Field units the docs and Tune use.
 | [`FontRole`](ui.md#type-FontRole) | enum | ui | — |
 | [`FrameCap`](render.md#type-FrameCap) | enum | render | — |
 | [`FramesResult`](ui.md#type-FramesResult) | struct | ui | — |
+| [`FriendsDesc`](platform.md#type-FriendsDesc) | desc struct | platform | — |
 | [`Frustum`](math.md#type-Frustum) | struct | math | — |
 | [`frustum`](math.md#value-frustum) | value | math | — |
 | [`FrustumMath`](math.md#type-FrustumMath) | interface | math | — |
@@ -640,6 +644,7 @@ Field units the docs and Tune use.
 | [`InventoryMove`](ui.md#type-InventoryMove) | struct | ui | — |
 | [`InventoryPick`](ui.md#type-InventoryPick) | desc struct | ui | — |
 | [`InventoryResult`](ui.md#type-InventoryResult) | struct | ui | — |
+| [`InviteDesc`](platform.md#type-InviteDesc) | desc struct | platform | — |
 | [`JOINT_BALL`](physics.md#const-JOINT_BALL) | constant | physics | — |
 | [`JOINT_FIXED`](physics.md#const-JOINT_FIXED) | constant | physics | — |
 | [`JOINT_PRISMATIC`](physics.md#const-JOINT_PRISMATIC) | constant | physics | — |
@@ -1076,15 +1081,30 @@ Field units the docs and Tune use.
 | [`og.physics.stats`](physics.md#fn-stats) | function | physics | `og_physics_stats` |
 | [`og.physics.vehicleWheels`](physics.md#fn-vehicleWheels) | function | physics | `og_physics_vehicle_wheels` |
 | [`og.physics.waterHeight`](physics.md#fn-waterHeight) | function | physics | `og_physics_water_height` |
+| [`og.platform.achievementProgress`](platform.md#fn-achievementProgress) | function | platform | `og_platform_achievement_progress` |
+| [`og.platform.achievements`](platform.md#fn-achievements) | function | platform | `og_platform_achievements` |
+| [`og.platform.achievementUnlock`](platform.md#fn-achievementUnlock) | function | platform | `og_platform_achievement_unlock` |
+| [`og.platform.adReady`](platform.md#fn-adReady) | function | platform | `og_platform_ad_ready` |
 | [`og.platform.aiMark`](platform.md#fn-aiMark) | function | platform | `og_platform_ai_mark` |
+| [`og.platform.consume`](platform.md#fn-consume) | function | platform | `og_platform_consume` |
+| [`og.platform.entitlements`](platform.md#fn-entitlements) | function | platform | `og_platform_entitlements` |
+| [`og.platform.friends`](platform.md#fn-friends) | function | platform | `og_platform_friends` |
+| [`og.platform.grant`](platform.md#fn-grant) | function | platform | `og_platform_grant` |
+| [`og.platform.granted`](platform.md#fn-granted) | function | platform | `og_platform_granted` |
 | [`og.platform.info`](platform.md#fn-info) | function | platform | `og_platform_info` |
+| [`og.platform.invites`](platform.md#fn-invites) | function | platform | `og_platform_invites` |
+| [`og.platform.inviteSend`](platform.md#fn-inviteSend) | function | platform | `og_platform_invite_send` |
 | [`og.platform.leaderboardAround`](platform.md#fn-leaderboardAround) | function | platform | `og_platform_leaderboard_around` |
 | [`og.platform.leaderboardSubmit`](platform.md#fn-leaderboardSubmit) | function | platform | `og_platform_leaderboard_submit` |
 | [`og.platform.leaderboardTop`](platform.md#fn-leaderboardTop) | function | platform | `og_platform_leaderboard_top` |
 | [`og.platform.loadSettings`](platform.md#fn-loadSettings) | function | platform | `og_platform_load_settings` |
 | [`og.platform.loadSlot`](platform.md#fn-loadSlot) | function | platform | `og_platform_load_slot` |
+| [`og.platform.notice`](platform.md#fn-notice) | function | platform | `og_platform_notice` |
 | [`og.platform.now`](platform.md#fn-now) | function | platform | `og_platform_now` |
+| [`og.platform.player`](platform.md#fn-player) | function | platform | `og_platform_player` |
 | [`og.platform.point`](platform.md#fn-point) | function | platform | `og_platform_point` |
+| [`og.platform.products`](platform.md#fn-products) | function | platform | `og_platform_products` |
+| [`og.platform.purchase`](platform.md#fn-purchase) | function | platform | `og_platform_purchase` |
 | [`og.platform.result`](platform.md#fn-result) | function | platform | `og_platform_result` |
 | [`og.platform.roomCreate`](platform.md#fn-roomCreate) | function | platform | `og_platform_room_create` |
 | [`og.platform.roomInfo`](platform.md#fn-roomInfo) | function | platform | `og_platform_room_info` |
@@ -1095,12 +1115,17 @@ Field units the docs and Tune use.
 | [`og.platform.roomSend`](platform.md#fn-roomSend) | function | platform | `og_platform_room_send` |
 | [`og.platform.saveSettings`](platform.md#fn-saveSettings) | function | platform | `og_platform_save_settings` |
 | [`og.platform.saveSlot`](platform.md#fn-saveSlot) | function | platform | `og_platform_save_slot` |
+| [`og.platform.share`](platform.md#fn-share) | function | platform | `og_platform_share` |
+| [`og.platform.showAd`](platform.md#fn-showAd) | function | platform | `og_platform_show_ad` |
 | [`og.platform.storeGet`](platform.md#fn-storeGet) | function | platform | `og_platform_store_get` |
 | [`og.platform.storeList`](platform.md#fn-storeList) | function | platform | `og_platform_store_list` |
 | [`og.platform.storeSet`](platform.md#fn-storeSet) | function | platform | `og_platform_store_set` |
+| [`og.platform.supports`](platform.md#fn-supports) | function | platform | `og_platform_supports` |
 | [`og.platform.telemetry`](platform.md#fn-telemetry) | function | platform | `og_platform_telemetry` |
 | [`og.PlatformAnswered`](platform.md#record-PlatformAnswered) | event | platform | — |
 | [`og.PlatformerController`](physics.md#record-PlatformerController) | component | physics | — |
+| [`og.PlatformGrants`](platform.md#record-PlatformGrants) | resource | platform | — |
+| [`og.PlatformNotice`](platform.md#record-PlatformNotice) | event | platform | — |
 | [`og.PlayerInput`](net.md#record-PlayerInput) | component | net | — |
 | [`og.PointerDown`](input.md#record-PointerDown) | event | input | — |
 | [`og.PointerLock`](input.md#record-PointerLock) | resource | input | — |
@@ -1649,6 +1674,8 @@ Field units the docs and Tune use.
 | [`PlatformerHudDesc`](ui.md#type-PlatformerHudDesc) | desc struct | ui | — |
 | [`PlatformError`](platform.md#type-PlatformError) | struct | platform | — |
 | [`PlatformInfo`](platform.md#type-PlatformInfo) | struct | platform | — |
+| [`PlatformNoticeData`](platform.md#type-PlatformNoticeData) | struct | platform | — |
+| [`PlatformNoticeKind`](platform.md#type-PlatformNoticeKind) | enum | platform | — |
 | [`PlatformOrder`](platform.md#type-PlatformOrder) | enum | platform | — |
 | [`PlatformResult`](platform.md#type-PlatformResult) | struct | platform | — |
 | [`PlayDesc`](ui.md#type-PlayDesc) | desc struct | ui | — |
@@ -1696,6 +1723,7 @@ Field units the docs and Tune use.
 | [`ProbeTimings`](probe.md#type-ProbeTimings) | struct | probe | — |
 | [`ProbeTunable`](probe.md#type-ProbeTunable) | struct | probe | — |
 | [`ProbeWorldMemory`](probe.md#type-ProbeWorldMemory) | struct | probe | — |
+| [`ProductsDesc`](platform.md#type-ProductsDesc) | desc struct | platform | — |
 | [`PROFILE_2D`](physics.md#const-PROFILE_2D) | constant | physics | — |
 | [`PROFILE_3D`](physics.md#const-PROFILE_3D) | constant | physics | — |
 | [`ProgressBarDesc`](ui.md#type-ProgressBarDesc) | desc struct | ui | — |
@@ -1709,6 +1737,7 @@ Field units the docs and Tune use.
 | [`PullPhase`](ui.md#type-PullPhase) | enum | ui | — |
 | [`PullSequenceDesc`](ui.md#type-PullSequenceDesc) | desc struct | ui | — |
 | [`PullSequenceResult`](ui.md#type-PullSequenceResult) | struct | ui | — |
+| [`PurchaseDesc`](platform.md#type-PurchaseDesc) | desc struct | platform | — |
 | [`PushButtonDesc`](ui.md#type-PushButtonDesc) | desc struct | ui | — |
 | [`PuzzleHudDesc`](ui.md#type-PuzzleHudDesc) | desc struct | ui | — |
 | [`QualityPreset`](render.md#type-QualityPreset) | enum | render | — |
@@ -1925,6 +1954,7 @@ Field units the docs and Tune use.
 | [`ShapePoints`](render.md#type-ShapePoints) | struct | render | — |
 | [`ShapePreset`](ui.md#type-ShapePreset) | enum | ui | — |
 | [`ShapeType`](ui.md#type-ShapeType) | enum | ui | — |
+| [`ShareDesc`](platform.md#type-ShareDesc) | desc struct | platform | — |
 | [`SheetDesc`](ui.md#type-SheetDesc) | desc struct | ui | — |
 | [`SheetEdge`](ui.md#type-SheetEdge) | enum | ui | — |
 | [`SheetResult`](ui.md#type-SheetResult) | struct | ui | — |

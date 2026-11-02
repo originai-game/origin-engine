@@ -41,6 +41,8 @@ export interface HostAbi<A, V> {
   og_platform_answer(engine: number, request: number, answer: string): boolean;
   /** Say what answers this engine's platform calls: JSON `{ host, capabilities }` (`player`, `local` or `none`; the methods it answers), as og.platform.info reports. */
   og_platform_set_host(engine: number, info: string): void;
+  /** Unasked host input for og.platform (docs/platform-asks.md #18): JSON `{ kind, data, time? }`, kind `purchase` (a purchase settled: `{ purchase, product, quantity, state }`), `entitlements` (`{ entitlements }`, changed without a call) or `invite` (`{ invite, from, payload, time }`). Applied at the start of the next tick (og.PlatformNotice) and logged with the answers. False for a malformed notice or an unknown kind. */
+  og_platform_notify(engine: number, notice: string): boolean;
   /** The room ops (IDL `platform` rooms, og.net's lockstep) made since the last call, oldest first, as JSON `[op]`: `{ op: "create", name, capacity }`, `{ op: "join", room, name }`, `{ op: "leave" }`, `{ op: "send", to?, channel?, data? | bytes? }` (bytes base64; a channel starting `og.` is the engine's own). The host carries each in order (docs/design.md §2.8). */
   og_room_take(engine: number): string;
   /** One room event from the host, JSON: `{ type: "joined", room, peer, peers: [{ peer, name }] }`, `{ type: "peer_joined", peer, name }`, `{ type: "peer_left", peer }`, `{ type: "message", from, channel?, data? | bytes? }`, `{ type: "left", reason }` or `{ type: "error", op, code, message }`. Lockstep's messages act between ticks at once; the game's events are sent at the start of the next tick. False for a malformed event. */
@@ -721,6 +723,42 @@ export interface HostAbi<A, V> {
   og_platform_save_slot(world: number, desc: string | undefined): string;
   /** `og.platform.loadSlot` */
   og_platform_load_slot(world: number, desc: string | undefined): string;
+  /** `og.platform.products` */
+  og_platform_products(world: number, desc: string | undefined): string;
+  /** `og.platform.purchase` */
+  og_platform_purchase(world: number, desc: string | undefined): string;
+  /** `og.platform.entitlements` */
+  og_platform_entitlements(world: number): number;
+  /** `og.platform.consume` */
+  og_platform_consume(world: number, purchase: string): string;
+  /** `og.platform.grant` */
+  og_platform_grant(world: number, purchase: string): string;
+  /** `og.platform.granted` */
+  og_platform_granted(world: number, purchase: string): boolean;
+  /** `og.platform.adReady` */
+  og_platform_ad_ready(world: number, desc: string | undefined): string;
+  /** `og.platform.showAd` */
+  og_platform_show_ad(world: number, desc: string | undefined): string;
+  /** `og.platform.achievementUnlock` */
+  og_platform_achievement_unlock(world: number, id: string): string;
+  /** `og.platform.achievementProgress` */
+  og_platform_achievement_progress(world: number, desc: string | undefined): string;
+  /** `og.platform.achievements` */
+  og_platform_achievements(world: number): number;
+  /** `og.platform.player` */
+  og_platform_player(world: number): number;
+  /** `og.platform.friends` */
+  og_platform_friends(world: number, desc: string | undefined): number;
+  /** `og.platform.inviteSend` */
+  og_platform_invite_send(world: number, desc: string | undefined): string;
+  /** `og.platform.invites` */
+  og_platform_invites(world: number): number;
+  /** `og.platform.share` */
+  og_platform_share(world: number, desc: string | undefined): string;
+  /** `og.platform.supports` */
+  og_platform_supports(world: number, method: string): boolean;
+  /** `og.platform.notice` */
+  og_platform_notice(world: number, notice: number): string;
   /** `og.platform.result` */
   og_platform_result(world: number, request: number): string;
   /** `og.platform.info` */
@@ -1500,6 +1538,24 @@ export const SYMBOLS: readonly string[] = [
   "og_platform_save_settings",
   "og_platform_save_slot",
   "og_platform_load_slot",
+  "og_platform_products",
+  "og_platform_purchase",
+  "og_platform_entitlements",
+  "og_platform_consume",
+  "og_platform_grant",
+  "og_platform_granted",
+  "og_platform_ad_ready",
+  "og_platform_show_ad",
+  "og_platform_achievement_unlock",
+  "og_platform_achievement_progress",
+  "og_platform_achievements",
+  "og_platform_player",
+  "og_platform_friends",
+  "og_platform_invite_send",
+  "og_platform_invites",
+  "og_platform_share",
+  "og_platform_supports",
+  "og_platform_notice",
   "og_platform_result",
   "og_platform_info",
   "og_platform_now",
@@ -1736,6 +1792,7 @@ export const SYMBOLS: readonly string[] = [
   "og_platform_take",
   "og_platform_answer",
   "og_platform_set_host",
+  "og_platform_notify",
   "og_room_take",
   "og_room_deliver",
   "og_room_set_host",

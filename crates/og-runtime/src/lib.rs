@@ -192,11 +192,16 @@ pub use physics_ext::{
     og_physics_stats, og_physics_vehicle_wheels, og_physics_water_height,
 };
 pub use platform::{
-    og_platform_ai_mark, og_platform_answer, og_platform_info, og_platform_leaderboard_around,
+    og_platform_achievement_progress, og_platform_achievement_unlock, og_platform_achievements,
+    og_platform_ad_ready, og_platform_ai_mark, og_platform_answer, og_platform_consume,
+    og_platform_entitlements, og_platform_friends, og_platform_grant, og_platform_granted,
+    og_platform_info, og_platform_invite_send, og_platform_invites, og_platform_leaderboard_around,
     og_platform_leaderboard_submit, og_platform_leaderboard_top, og_platform_load_settings,
-    og_platform_load_slot, og_platform_now, og_platform_point, og_platform_result,
-    og_platform_save_settings, og_platform_save_slot, og_platform_set_host, og_platform_store_get,
-    og_platform_store_list, og_platform_store_set, og_platform_take, og_platform_telemetry,
+    og_platform_load_slot, og_platform_notice, og_platform_notify, og_platform_now,
+    og_platform_player, og_platform_point, og_platform_products, og_platform_purchase,
+    og_platform_result, og_platform_save_settings, og_platform_save_slot, og_platform_set_host,
+    og_platform_share, og_platform_show_ad, og_platform_store_get, og_platform_store_list,
+    og_platform_store_set, og_platform_supports, og_platform_take, og_platform_telemetry,
 };
 pub use procgen::{
     og_procgen_bsp, og_procgen_noise, og_procgen_noise_grid, og_procgen_poisson_disk,

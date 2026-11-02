@@ -5,6 +5,15 @@
 // `conflict`; leaderboards keep each name's best and rank in the board's
 // order; Origin Point and AI marks are recorded (a local balance, a list),
 // never sent anywhere; telemetry is kept as the last 200 events.
+//
+// Purchases, ads, achievements, the player, friends, invites and share
+// (docs/platform-asks.md #18) are the platform's. Natively, in playtests and
+// on a dev page without a Player, the local platform fakes them
+// deterministically (LocalFake): outcomes come from per-method queues, never
+// from chance, and what they leave behind (purchases, achievements) is kept
+// in the document, so a relaunch on the same store sees it. Without a fake
+// (a published page with no Player) they answer `unavailable`: a page never
+// grants a purchase nobody paid for.
 
 /** One platform call, as og_platform_take lists it. */
 export interface PlatformCall {
@@ -23,6 +32,27 @@ export type PlatformAnswer = (
   readonly time?: number;
 };
 
+/** Unasked host input (og_platform_notify): applied at the next tick's start as og.PlatformNotice. */
+export interface PlatformNotice {
+  readonly kind: "purchase" | "entitlements" | "invite";
+  readonly data: unknown;
+  readonly time?: number;
+}
+
+/** What a platform host may do to the engine it answers, besides answering. */
+export interface PlatformLink {
+  /** The engine's tick now (read between ticks). */
+  readonly tick: number;
+  /** Answer one call (as `handle`'s `answer`). */
+  answer(request: number, result: PlatformAnswer): void;
+  /** Send a notice. */
+  notify(notice: PlatformNotice): void;
+  /** Pause the game through the host's lifecycle (no ticks, no audio), as while an ad shows. */
+  pause(): void;
+  /** Resume it. */
+  resume(): void;
+}
+
 /** What answers an engine's platform calls. */
 export interface PlatformHost {
   /** `player`, `local` or `none` (og.platform.info). */
@@ -31,11 +61,73 @@ export interface PlatformHost {
   /** The Player hello's UTC milliseconds, sampled when this host attaches. */
   readonly time?: number | undefined;
   /** Handle calls in order; answer every one but `telemetry`, now or later. */
-  handle(calls: readonly PlatformCall[], answer: (request: number, result: PlatformAnswer) => void): void;
+  handle(calls: readonly PlatformCall[], answer: (request: number, result: PlatformAnswer) => void, link?: PlatformLink): void;
+  /** Called on every pump, with calls or without: a host that answers later or sends notices on its own. */
+  poll?(link: PlatformLink): void;
 }
 
-/** Every method the local platform answers. */
+/** The store, leaderboards, telemetry, Origin Point and AI marks: what the local platform always answers. */
 export const LOCAL_CAPABILITIES = ["store.get", "store.set", "store.list", "leaderboard.submit", "leaderboard.top", "leaderboard.around", "telemetry", "point", "ai.mark"] as const;
+
+/** Purchases, ads, achievements, the player, friends, invites and share (docs/platform-asks.md #18): the platform's, faked locally only with a LocalFake. */
+export const SERVICE_METHODS = [
+  "purchase.products",
+  "purchase.buy",
+  "purchase.entitlements",
+  "purchase.consume",
+  "ad.ready",
+  "ad.show",
+  "achievement.unlock",
+  "achievement.progress",
+  "achievement.list",
+  "player.get",
+  "friends.list",
+  "invite.send",
+  "invite.list",
+  "share",
+] as const;
+
+/** Every error code a platform answer may carry. */
+export const ERROR_CODES = ["offline", "timeout", "invalid", "unauthorized", "not_found", "conflict", "too_large", "rate_limited", "unavailable", "failed", "cancelled", "no_fill"] as const;
+
+/** A product the fake sells. */
+export interface FakeProduct {
+  readonly id: string;
+  /** Default `consumable`. */
+  readonly kind?: "consumable" | "durable" | "subscription";
+  readonly title?: string;
+  readonly description?: string;
+  /** Default `{ amount: 0.99, currency: "USD" }`. */
+  readonly price?: { readonly amount: number; readonly currency: string };
+}
+
+/**
+ * The local platform's fake of the platform services, for `og run --platform-fake <file.json>`
+ * and PlaytestDesc.platform: every outcome scripted, none by chance.
+ */
+export interface LocalFake {
+  /** What the game sells; omitted: any product id is a consumable at 0.99 USD. */
+  readonly products?: readonly FakeProduct[];
+  /**
+   * Per method, the outcomes of its calls in order, then the default (success): `ok`, an error
+   * code (`cancelled`, `no_fill`, `unavailable`, ...), `pending` for purchase.buy (settled
+   * completed by a `purchase` notice at the next pump), `completed`, `skipped` or `shown` for
+   * ad.show, `not_ready` for ad.ready. `{ "purchase.buy": ["cancelled", "ok"] }`.
+   */
+  readonly outcomes?: Readonly<Record<string, readonly string[]>>;
+  /** player.get's answer; default `{ player: "local-player", name: <the store's player>, guest: false }`. */
+  readonly player?: { readonly player?: string; readonly name?: string; readonly guest?: boolean };
+  /** friends.list's friends. */
+  readonly friends?: ReadonlyArray<{ readonly player: string; readonly name: string; readonly online?: boolean; readonly playing?: boolean }>;
+  /** invite.list's invites. */
+  readonly invites?: ReadonlyArray<{ readonly invite: string; readonly from: { readonly player: string; readonly name: string }; readonly payload?: unknown; readonly opened?: boolean }>;
+  /** Notices sent once the engine reaches `tick` (between ticks: applied at the next one's start). */
+  readonly notices?: ReadonlyArray<PlatformNotice & { readonly tick: number }>;
+  /** Methods this fake host lacks: left out of its capabilities and answered `unavailable`. */
+  readonly unavailable?: readonly string[];
+  /** Pumps an ad holds the game paused before its answer (default 2: a host frame). */
+  readonly adPumps?: number;
+}
 
 export interface LocalDocument {
   version: 1;
@@ -45,6 +137,13 @@ export interface LocalDocument {
   points: { balance: number; grants: Array<{ reason: string; amount: number; tick: number }> };
   marks: Array<{ kind: string; label: string; model?: string; tick: number }>;
   events: Array<{ name: string; attrs: Record<string, unknown>; tick: number }>;
+  /** The fake's: purchases made (consumed or not), with the next id's number. */
+  purchases?: Array<{ purchase: string; product: string; kind: string; quantity: number; state: "completed" | "pending"; consumed: boolean; tick: number }>;
+  achievements?: Record<string, { percent: number; unlocked: boolean; tick: number | null }>;
+  shares?: Array<{ text: string; title: string; path: string; image: boolean; tick: number }>;
+  invitesSent?: Array<{ invite: string; to: string | null; message: string; payload: unknown; tick: number }>;
+  ads?: Array<{ kind: string; placement: string; outcome: string; tick: number }>;
+  seq?: number;
 }
 
 /** Where the document lives: a file natively, localStorage in a browser, memory in tests. */
@@ -148,23 +247,191 @@ export function answerLocally(doc: LocalDocument, call: PlatformCall): PlatformA
   }
 }
 
-/** The local platform over a persistence: every call answered at once, the document saved after each batch. */
-export function localPlatform(persistence: LocalPersistence = memoryPersistence()): PlatformHost & { document(): LocalDocument } {
+const SERVICES: ReadonlySet<string> = new Set(SERVICE_METHODS);
+
+/** What a fake call leaves to do later: an ad's answer while the game is paused, a pending purchase to settle. */
+type Later = { kind: "ad"; request: number; result: PlatformAnswer; pumps: number; fresh: boolean } | { kind: "settle"; purchase: string; fresh: boolean };
+
+/** The fake's state for one host: the outcome queues' positions, what waits for a later pump, the notices sent. */
+class Fake {
+  readonly #fake: LocalFake;
+  readonly #used = new Map<string, number>();
+  readonly later: Later[] = [];
+  readonly #sent = new Set<number>();
+  constructor(fake: LocalFake) {
+    this.#fake = fake;
+  }
+
+  get capabilities(): string[] {
+    const off = new Set(this.#fake.unavailable ?? []);
+    return [...LOCAL_CAPABILITIES, ...SERVICE_METHODS].filter((m) => !off.has(m));
+  }
+
+  /** The next scripted outcome of `method`, or undefined (the default). */
+  #next(method: string): string | undefined {
+    const queue = this.#fake.outcomes?.[method];
+    const at = this.#used.get(method) ?? 0;
+    this.#used.set(method, at + 1);
+    return queue?.[at];
+  }
+
+  #product(id: string): Required<Omit<FakeProduct, "price">> & { price: { amount: number; currency: string; display: string } } | null {
+    const list = this.#fake.products;
+    const p = list ? list.find((x) => x.id === id) : { id };
+    if (!p) return null;
+    const price = p.price ?? { amount: 0.99, currency: "USD" };
+    return { id: p.id, kind: p.kind ?? "consumable", title: p.title ?? p.id, description: p.description ?? "", price: { ...price, display: `${price.amount.toFixed(2)} ${price.currency}` } };
+  }
+
+  /** Answers one service call against `doc` (null: answered later, by `poll`). */
+  answer(doc: LocalDocument, call: PlatformCall, link: PlatformLink | undefined): PlatformAnswer | null {
+    const a = call.args;
+    if ((this.#fake.unavailable ?? []).includes(call.method)) return fail("unavailable", `this host has no ${call.method} (the fake's unavailable list)`);
+    const outcome = this.#next(call.method);
+    if (outcome && (ERROR_CODES as readonly string[]).includes(outcome)) return fail(outcome, `${call.method}: ${outcome} (the fake's scripted outcome)`);
+    const purchases = (doc.purchases ??= []);
+    const id = (prefix: string) => `${prefix}-${(doc.seq = (doc.seq ?? 0) + 1)}`;
+    switch (call.method) {
+      case "purchase.products": {
+        const ids = (a["ids"] as string[] | undefined) ?? [];
+        const all = ids.length > 0 ? ids : (this.#fake.products ?? []).map((p) => p.id);
+        return okData({ products: all.map((x) => this.#product(x)).filter((p) => p !== null) });
+      }
+      case "purchase.buy": {
+        const product = this.#product(String(a["product"]));
+        if (!product) return fail("not_found", `no product '${String(a["product"])}' in this game's store`);
+        if (product.kind !== "consumable" && purchases.some((p) => p.product === product.id && !p.consumed)) return fail("conflict", `'${product.id}' is owned already`);
+        const quantity = product.kind === "consumable" ? Number(a["quantity"] ?? 1) : 1;
+        const state = outcome === "pending" ? "pending" : "completed";
+        const purchase = id("purchase");
+        purchases.push({ purchase, product: product.id, kind: product.kind, quantity, state, consumed: false, tick: call.tick });
+        if (state === "pending") this.later.push({ kind: "settle", purchase, fresh: true });
+        return okData({ purchase, product: product.id, quantity, state });
+      }
+      case "purchase.entitlements":
+        return okData({ entitlements: entitlementsOf(doc) });
+      case "purchase.consume": {
+        const p = purchases.find((x) => x.purchase === a["purchase"] && x.state === "completed" && !x.consumed && x.kind === "consumable");
+        if (!p) return fail("not_found", `no unconsumed consumable purchase '${String(a["purchase"])}'`);
+        p.consumed = true;
+        return okData({ purchase: p.purchase, product: p.product, consumed: true });
+      }
+      case "ad.ready":
+        return okData({ kind: a["kind"], placement: a["placement"], ready: outcome !== "not_ready" });
+      case "ad.show": {
+        const kind = String(a["kind"]);
+        const shown = outcome === "skipped" || outcome === "completed" || outcome === "shown" ? outcome : kind === "interstitial" ? "shown" : "completed";
+        (doc.ads ??= []).push({ kind, placement: String(a["placement"]), outcome: shown, tick: call.tick });
+        const result = okData({ kind, placement: a["placement"], outcome: shown });
+        // The game is paused while the ad shows; the answer comes after it resumed.
+        if (!link) return result;
+        link.pause();
+        this.later.push({ kind: "ad", request: call.request, result, pumps: Math.max(1, this.#fake.adPumps ?? 2), fresh: true });
+        return null;
+      }
+      case "achievement.unlock":
+      case "achievement.progress": {
+        const key = String(a["id"]);
+        const list = (doc.achievements ??= {});
+        const was = list[key] ?? { percent: 0, unlocked: false, tick: null };
+        const percent = call.method === "achievement.unlock" ? 100 : Math.max(was.percent, Number(a["percent"] ?? 0));
+        const unlocked = was.unlocked || percent >= 100;
+        list[key] = { percent, unlocked, tick: unlocked ? (was.tick ?? call.tick) : null };
+        return okData({ id: key, percent, unlocked, new: unlocked && !was.unlocked });
+      }
+      case "achievement.list":
+        return okData({ achievements: Object.keys(doc.achievements ?? {}).sort().map((k) => ({ id: k, percent: doc.achievements![k]!.percent, unlocked: doc.achievements![k]!.unlocked, time: null })) });
+      case "player.get":
+        return okData({ player: this.#fake.player?.player ?? "local-player", name: this.#fake.player?.name ?? doc.player, guest: this.#fake.player?.guest ?? false });
+      case "friends.list":
+        if (this.#fake.player?.guest) return fail("unauthorized", "a guest has no friends list");
+        return okData({ friends: (this.#fake.friends ?? []).slice(0, Number(a["count"] ?? 50)).map((f) => ({ player: f.player, name: f.name, online: f.online ?? false, playing: f.playing ?? false })) });
+      case "invite.send": {
+        const invite = id("invite");
+        const to = typeof a["to"] === "string" ? a["to"] : null;
+        (doc.invitesSent ??= []).push({ invite, to, message: String(a["message"] ?? ""), payload: a["payload"] ?? null, tick: call.tick });
+        return okData({ invite, to });
+      }
+      case "invite.list":
+        return okData({ invites: (this.#fake.invites ?? []).map((i) => ({ invite: i.invite, from: i.from, payload: i.payload ?? null, time: null, opened: i.opened ?? false })) });
+      case "share":
+        (doc.shares ??= []).push({ text: String(a["text"]), title: String(a["title"] ?? ""), path: String(a["path"] ?? ""), image: a["image"] === true, tick: call.tick });
+        return okData({ shared: true, target: null });
+      default:
+        return fail("invalid", `unknown platform method '${call.method}'`);
+    }
+  }
+
+  /** What waits: ads released after their pumps (resuming the game first), pending purchases settled, notices due. */
+  poll(doc: LocalDocument, link: PlatformLink): boolean {
+    let changed = false;
+    for (const l of this.later.splice(0)) {
+      // Nothing is released in the pump that made it: the game runs at least one frame paused.
+      if (l.fresh) {
+        l.fresh = false;
+        this.later.push(l);
+        continue;
+      }
+      if (l.kind === "ad") {
+        if (--l.pumps > 0) {
+          this.later.push(l);
+          continue;
+        }
+        link.resume();
+        link.answer(l.request, l.result);
+      } else {
+        const p = doc.purchases?.find((x) => x.purchase === l.purchase);
+        if (!p) continue;
+        p.state = "completed";
+        changed = true;
+        link.notify({ kind: "purchase", data: { purchase: p.purchase, product: p.product, quantity: p.quantity, state: "completed" } });
+      }
+    }
+    (this.#fake.notices ?? []).forEach((n, i) => {
+      if (this.#sent.has(i) || link.tick < n.tick) return;
+      this.#sent.add(i);
+      link.notify({ kind: n.kind, data: n.data, ...(n.time === undefined ? {} : { time: n.time }) });
+    });
+    return changed;
+  }
+}
+
+/** The entitlements a document holds: owned durables and subscriptions, unconsumed consumables. */
+function entitlementsOf(doc: LocalDocument) {
+  return (doc.purchases ?? []).filter((p) => p.state === "completed" && !p.consumed).map((p) => ({ purchase: p.purchase, product: p.product, kind: p.kind, quantity: p.quantity, expires: null }));
+}
+
+/** The local platform over a persistence: every call answered at once (an ad after a paused frame), the document saved after each batch. With `fake`, it fakes the platform services; without, they are `unavailable`. */
+export function localPlatform(persistence: LocalPersistence = memoryPersistence(), fake?: LocalFake): PlatformHost & { document(): LocalDocument } {
   let doc = readDocument(persistence.load());
+  const faked = fake ? new Fake(fake) : null;
   return {
     host: "local",
-    capabilities: LOCAL_CAPABILITIES,
+    capabilities: faked ? faked.capabilities : LOCAL_CAPABILITIES,
     document: () => doc,
-    handle(calls, answer) {
+    handle(calls, answer, link) {
       doc = readDocument(persistence.load());
       const answers: Array<[number, PlatformAnswer]> = [];
       for (const c of calls) {
-        const r = answerLocally(doc, c);
+        const r = SERVICES.has(c.method)
+          ? faked
+            ? faked.answer(doc, c, link)
+            : fail("unavailable", `no platform answers ${c.method} here: a page without a Player sells, shows and shares nothing`)
+          : answerLocally(doc, c);
         if (r) answers.push([c.request, r]);
       }
       persistence.save(JSON.stringify(doc, null, 2));
       for (const [request, r] of answers) answer(request, r);
     },
+    ...(faked
+      ? {
+          poll(link: PlatformLink) {
+            if (faked.later.length === 0 && !(fake!.notices ?? []).length) return;
+            doc = readDocument(persistence.load());
+            if (faked.poll(doc, link)) persistence.save(JSON.stringify(doc, null, 2));
+          },
+        }
+      : {}),
   };
 }
 

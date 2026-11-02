@@ -111,6 +111,12 @@ pub fn og_platform_set_host(env: Env, engine: u32, info: String) {
     <Host as Lifecycle>::og_platform_set_host(&Host, engine, info)
 }
 
+#[napi(js_name = "og_platform_notify")]
+pub fn og_platform_notify(env: Env, engine: u32, notice: String) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_platform_notify(&Host, engine, notice)
+}
+
 #[napi(js_name = "og_room_take")]
 pub fn og_room_take(env: Env, engine: u32) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -2149,6 +2155,114 @@ pub fn og_platform_save_slot(env: Env, world: u32, desc: Option<String>) -> Stri
 pub fn og_platform_load_slot(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as PlatformApi>::og_platform_load_slot(&Host, world, desc)
+}
+
+#[napi(js_name = "og_platform_products")]
+pub fn og_platform_products(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_products(&Host, world, desc)
+}
+
+#[napi(js_name = "og_platform_purchase")]
+pub fn og_platform_purchase(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_purchase(&Host, world, desc)
+}
+
+#[napi(js_name = "og_platform_entitlements")]
+pub fn og_platform_entitlements(env: Env, world: u32) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_entitlements(&Host, world)
+}
+
+#[napi(js_name = "og_platform_consume")]
+pub fn og_platform_consume(env: Env, world: u32, purchase: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_consume(&Host, world, purchase)
+}
+
+#[napi(js_name = "og_platform_grant")]
+pub fn og_platform_grant(env: Env, world: u32, purchase: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_grant(&Host, world, purchase)
+}
+
+#[napi(js_name = "og_platform_granted")]
+pub fn og_platform_granted(env: Env, world: u32, purchase: String) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_granted(&Host, world, purchase)
+}
+
+#[napi(js_name = "og_platform_ad_ready")]
+pub fn og_platform_ad_ready(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_ad_ready(&Host, world, desc)
+}
+
+#[napi(js_name = "og_platform_show_ad")]
+pub fn og_platform_show_ad(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_show_ad(&Host, world, desc)
+}
+
+#[napi(js_name = "og_platform_achievement_unlock")]
+pub fn og_platform_achievement_unlock(env: Env, world: u32, id: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_achievement_unlock(&Host, world, id)
+}
+
+#[napi(js_name = "og_platform_achievement_progress")]
+pub fn og_platform_achievement_progress(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_achievement_progress(&Host, world, desc)
+}
+
+#[napi(js_name = "og_platform_achievements")]
+pub fn og_platform_achievements(env: Env, world: u32) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_achievements(&Host, world)
+}
+
+#[napi(js_name = "og_platform_player")]
+pub fn og_platform_player(env: Env, world: u32) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_player(&Host, world)
+}
+
+#[napi(js_name = "og_platform_friends")]
+pub fn og_platform_friends(env: Env, world: u32, desc: Option<String>) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_friends(&Host, world, desc)
+}
+
+#[napi(js_name = "og_platform_invite_send")]
+pub fn og_platform_invite_send(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_invite_send(&Host, world, desc)
+}
+
+#[napi(js_name = "og_platform_invites")]
+pub fn og_platform_invites(env: Env, world: u32) -> u32 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_invites(&Host, world)
+}
+
+#[napi(js_name = "og_platform_share")]
+pub fn og_platform_share(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_share(&Host, world, desc)
+}
+
+#[napi(js_name = "og_platform_supports")]
+pub fn og_platform_supports(env: Env, world: u32, method: String) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_supports(&Host, world, method)
+}
+
+#[napi(js_name = "og_platform_notice")]
+pub fn og_platform_notice(env: Env, world: u32, notice: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_notice(&Host, world, notice)
 }
 
 #[napi(js_name = "og_platform_result")]

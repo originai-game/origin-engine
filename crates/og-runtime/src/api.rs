@@ -804,6 +804,9 @@ pub fn og_world_events(world: u32, event: String) -> String {
     let list = (|| -> Result<Vec<Value>, String> {
         let eng = engine(world)?;
         let bytes = if let Some(f) = running(world) {
+            if crate::platform::is_platform_event(&event) && crate::platform::withheld(world) {
+                return Ok(Vec::new());
+            }
             let (layout, id) = running_record(&eng, &event, RecordKind::Event)?;
             // SAFETY: the frame is published while its system runs.
             let all = unsafe { f.ctx() }

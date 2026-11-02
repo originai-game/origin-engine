@@ -613,6 +613,15 @@ fn config(eng: &Engine, world: &World) -> Config {
 }
 
 /// The probe's tick gate: whether the next tick may run.
+/// Whether lockstep (or rollback) runs on this engine now: its world is
+/// shared with the room's other peers.
+pub(crate) fn session_running(engine: u32) -> bool {
+    NETS.with(|n| {
+        n.try_borrow()
+            .is_ok_and(|n| n.get(&engine).is_some_and(|n| n.ls.running()))
+    })
+}
+
 pub(crate) fn gate(engine: u32, world: &mut World) -> bool {
     if !with(engine, |n| n.ls.me().is_some()) {
         return true;

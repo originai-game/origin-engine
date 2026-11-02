@@ -19853,7 +19853,9 @@ export interface QuestView {
 // ── platform ────────────────────────────────────────────────────
 // Platform services as host capabilities (docs/design.md §2.8): cloud store, leaderboards, telemetry, Origin Point and AI marks. Game code names a method and its arguments, never a credential, a URL or a cookie: the host owns them. On the web the shell forwards each call to the Player through origin-checked postMessage (Player protocol 2, docs/web-export.md); natively the host answers from a local JSON store (`og run --platform-store`, default `<project>/.og/platform.json`).
 // Calls are asynchronous: each returns a request number at once, and the answer arrives at the start of a later tick, when og.platform sends PlatformAnswered; read it with og.platform.result. Answers are host input, like key presses: the probe's `dump_platform` lists every call, its arguments, its answer and the ticks.
-// Errors carry the Player's stable codes: offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable, failed; retryable is true for offline, timeout, unavailable and rate_limited.
+// Errors carry the Player's stable codes: offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable, failed, cancelled (the player backed out of a purchase, an ad or a share sheet) and no_fill (no ad to show now); retryable is true for offline, timeout, unavailable, rate_limited and no_fill.
+// Purchases, ads, achievements, the player, friends, invites and share (products, purchase, showAd, achievementUnlock, player, friends, inviteSend, share, ...) are the platform's: accounts and money never enter the engine. Each call is a method name and its arguments, the host attaches the player's game-scoped credential, and every id it hands back (the player, a friend, a purchase, an invite) is opaque and scoped to this game. A host that lacks one answers it `unavailable`: ask og.platform.supports first. Natively and in playtests a deterministic fake answers them (`og run --platform-fake`, PlaytestDesc.platform); a published page never fakes them. Entitlements are always the host's answer, never the engine's log or a save: ask og.platform.entitlements when the game starts, and grant a consumable once per purchase with og.platform.grant.
+// Unasked host input (a pending purchase settled, a refund, an entitlement changed on another device, an invite arrived) is a notice: og.PlatformNotice at the start of a tick, read with og.platform.notice, logged with the answers. In a running lockstep or rollback session (og.Lockstep) a platform answer or notice is this peer's alone: a system that reads og.PlatformAnswered or og.PlatformNotice, or calls og.platform.result or og.platform.notice, while it writes shared state (anything but the session's own records: input, audio, camera, og.Lockstep) hears nothing and reads null, and the engine logs it once; carry what every peer must see in og.PlayerInput (og.net.submit).
 // Rooms (roomCreate, roomJoin, roomSend, ...) put this engine with other players' engines: the host carries them (natively `og relay` with `og run --room`, on the web the platform's rooms through the shell, docs/platform-asks.md) and its answers and the other peers' messages arrive as events at the start of a tick (og.RoomJoined, og.RoomPeerJoined, og.RoomPeerLeft, og.RoomMessage), host input like key presses. Deterministic play over a room is og.net's lockstep.
 
 /**
@@ -20050,7 +20052,7 @@ export interface LoadSlotDesc {
 /** Why a call failed. */
 export interface PlatformError {
   /**
-   * offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable or failed.
+   * offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable, failed, cancelled or no_fill.
    */
   readonly code: string;
   /** What happened, in words. */
@@ -20092,7 +20094,7 @@ export interface PlatformInfo {
    */
   readonly host: string;
   /**
-   * The methods it answers: store.get, store.set, store.list, leaderboard.submit, leaderboard.top, leaderboard.around, telemetry, point, ai.mark.
+   * The methods it answers: store.get, store.set, store.list, leaderboard.submit, leaderboard.top, leaderboard.around, telemetry, point, ai.mark, purchase.products, purchase.buy, purchase.entitlements, purchase.consume, ad.ready, ad.show, achievement.unlock, achievement.progress, achievement.list, player.get, friends.list, invite.send, invite.list, share (og.platform.supports asks for one).
    */
   readonly capabilities: readonly string[];
   /** Calls not answered yet. */
@@ -20102,6 +20104,232 @@ export interface PlatformInfo {
    */
   readonly clock: string;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/**
+ * Which kind of ad.
+ * - `"rewarded"`: The player chose to watch it for a reward: the answer says whether they watched it to the end.
+ * - `"interstitial"`: Shown at a break the game picks (between levels): the player may close it.
+ */
+export type AdKind = "rewarded" | "interstitial";
+
+/**
+ * What a notice is about.
+ * - `"purchase"`: A purchase settled: a pending one completed or failed, or one was refunded. Data `{ purchase, product, quantity, state }`, state `completed`, `failed` or `refunded`.
+ * - `"entitlements"`: The player's entitlements changed without a call (bought on another device, a subscription expired): data `{ entitlements }`, the entitlements answer's shape.
+ * - `"invite"`: An invite to this game arrived: data `{ invite, from: { player, name }, payload, time }`.
+ */
+export type PlatformNoticeKind = "purchase" | "entitlements" | "invite";
+
+/**
+ * Unasked host input arrived: sent by og.platform at the start of the tick it was applied, read by systems the tick after; read it with og.platform.notice. Registered when a game first names it (a system's reads); without it notices are still logged and readable.
+ *
+ * The payload of the `PlatformNotice` event (token `og.PlatformNotice`).
+ */
+export interface PlatformNotice {
+  /** The notice's number, for og.platform.notice: 1 for the first, counting up. */
+  readonly notice: number;
+  /** What it is about. */
+  readonly kind: PlatformNoticeKind;
+}
+
+/**
+ * The purchases this world granted (og.platform.grant), so a consumable is granted once however its answer or notice comes back: a replay, a relaunch, a restored save. World state: saved, restored and hashed. Registered when a game first names it or calls og.platform.grant. Write it only through og.platform.grant.
+ *
+ * The `PlatformGrants` resource (token `og.PlatformGrants`).
+ */
+export interface PlatformGrants {
+  /**
+   * The 64-bit hashes of the granted purchase ids, each as two u32 (low, high), oldest first: the last 256 grants.
+   *
+   * @capacity 512 elements (List.u32.512): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  ids: readonly number[];
+}
+
+/** A notice og.PlatformNotice announced. */
+export interface PlatformNoticeData {
+  /** Its number. */
+  readonly notice: number;
+  /** `purchase`, `entitlements` or `invite`. */
+  readonly kind: string;
+  /** What it carries (see og.PlatformNoticeKind). */
+  readonly data: unknown;
+  /** The tick it was applied at. */
+  readonly tick: number;
+  /**
+   * The host's clock when it sent it, UTC milliseconds; 0 when it gave none.
+   *
+   * @unit ms (milliseconds)
+   */
+  readonly time: number;
+}
+
+/**
+ * Which products to describe.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ProductsDesc {
+  /**
+   * Product ids as the game's store lists them (1 to 64 of letters, digits, `.`, `_` and `-`), at most 100; empty: every product the game sells.
+   *
+   * @default []
+   */
+  readonly ids?: readonly string[];
+}
+
+/**
+ * A purchase to ask the player for.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PurchaseDesc {
+  /**
+   * The product's id.
+   *
+   * @default ""
+   */
+  readonly product?: string;
+  /**
+   * How many, for a consumable.
+   *
+   * @default 1
+   * @range 1..99
+   */
+  readonly quantity?: number;
+}
+
+/**
+ * An ad to show.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface AdDesc {
+  /**
+   * Rewarded or interstitial (default rewarded).
+   *
+   * @default "rewarded"
+   */
+  readonly kind?: AdKind;
+  /**
+   * Where in the game, as the game names it (`level.end`, `continue`): 1 to 64 of letters, digits, `.`, `_` and `-` (default `default`).
+   *
+   * @default "default"
+   */
+  readonly placement?: string;
+}
+
+/**
+ * Progress towards an achievement.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface AchievementProgressDesc {
+  /**
+   * The achievement's id (1 to 64 of letters, digits, `.`, `_` and `-`).
+   *
+   * @default ""
+   */
+  readonly id?: string;
+  /**
+   * How far, 0 to 100: 100 unlocks it. Progress never goes back (a lower value keeps the higher one).
+   *
+   * @default 0
+   * @range 0..100
+   */
+  readonly percent?: number;
+}
+
+/**
+ * How many friends.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface FriendsDesc {
+  /**
+   * At most this many, those playing this game first.
+   *
+   * @default 50
+   * @range 1..200
+   */
+  readonly count?: number;
+}
+
+/**
+ * An invite to this game.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface InviteDesc {
+  /**
+   * The friend's player id (og.platform.friends); empty: the host offers an invite link through the share sheet.
+   *
+   * @default ""
+   */
+  readonly to?: string;
+  /**
+   * What the invite says, at most 120 characters; empty: the host's own words.
+   *
+   * @default ""
+   */
+  readonly message?: string;
+  /**
+   * What the game hands the invited player (a room id, a level): any JSON, at most 1 KiB encoded; their og.platform.invites carries it back.
+   *
+   * @default null
+   */
+  readonly payload?: unknown;
+}
+
+/**
+ * What to share through the device's share sheet.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ShareDesc {
+  /**
+   * The text, 1 to 280 characters.
+   *
+   * @default ""
+   */
+  readonly text?: string;
+  /**
+   * A title, at most 80 characters; empty: the game's name.
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * A short query the game's own Play link carries back (`?share=<path>`), at most 256 of letters, digits, `.`, `_`, `-`, `/` and `=`; empty: the plain Play link. The host builds the link: a game names no URL.
+   *
+   * @default ""
+   */
+  readonly path?: string;
+  /**
+   * Attach the frame drawn last (a score screen).
+   *
+   * @default false
+   */
+  readonly image?: boolean;
+}
+
+
+
+
+
 
 
 
@@ -47202,6 +47430,14 @@ export declare namespace og {
    */
   const PlatformAnswered: EventType<PlatformAnswered>;
   /**
+   * Unasked host input arrived: sent by og.platform at the start of the tick it was applied, read by systems the tick after; read it with og.platform.notice. Registered when a game first names it (a system's reads); without it notices are still logged and readable.
+   */
+  const PlatformNotice: EventType<PlatformNotice>;
+  /**
+   * The purchases this world granted (og.platform.grant), so a consumable is granted once however its answer or notice comes back: a replay, a relaunch, a restored save. World state: saved, restored and hashed. Registered when a game first names it or calls og.platform.grant. Write it only through og.platform.grant.
+   */
+  const PlatformGrants: ResourceType<{ readonly ids: ListSpec<"u32"> }, PlatformGrants>;
+  /**
    * roomCreate or roomJoin finished, or the host put this engine in a room (`og run --room`, a Play link to a room): sent at the start of the tick after the host answered. With ok false the engine is in no room and `reason` says why.
    */
   const RoomJoined: EventType<RoomJoined>;
@@ -47218,7 +47454,9 @@ export declare namespace og {
   /**
    * Platform services as host capabilities (docs/design.md §2.8): cloud store, leaderboards, telemetry, Origin Point and AI marks. Game code names a method and its arguments, never a credential, a URL or a cookie: the host owns them. On the web the shell forwards each call to the Player through origin-checked postMessage (Player protocol 2, docs/web-export.md); natively the host answers from a local JSON store (`og run --platform-store`, default `<project>/.og/platform.json`).
    * Calls are asynchronous: each returns a request number at once, and the answer arrives at the start of a later tick, when og.platform sends PlatformAnswered; read it with og.platform.result. Answers are host input, like key presses: the probe's `dump_platform` lists every call, its arguments, its answer and the ticks.
-   * Errors carry the Player's stable codes: offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable, failed; retryable is true for offline, timeout, unavailable and rate_limited.
+   * Errors carry the Player's stable codes: offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable, failed, cancelled (the player backed out of a purchase, an ad or a share sheet) and no_fill (no ad to show now); retryable is true for offline, timeout, unavailable, rate_limited and no_fill.
+   * Purchases, ads, achievements, the player, friends, invites and share (products, purchase, showAd, achievementUnlock, player, friends, inviteSend, share, ...) are the platform's: accounts and money never enter the engine. Each call is a method name and its arguments, the host attaches the player's game-scoped credential, and every id it hands back (the player, a friend, a purchase, an invite) is opaque and scoped to this game. A host that lacks one answers it `unavailable`: ask og.platform.supports first. Natively and in playtests a deterministic fake answers them (`og run --platform-fake`, PlaytestDesc.platform); a published page never fakes them. Entitlements are always the host's answer, never the engine's log or a save: ask og.platform.entitlements when the game starts, and grant a consumable once per purchase with og.platform.grant.
+   * Unasked host input (a pending purchase settled, a refund, an entitlement changed on another device, an invite arrived) is a notice: og.PlatformNotice at the start of a tick, read with og.platform.notice, logged with the answers. In a running lockstep or rollback session (og.Lockstep) a platform answer or notice is this peer's alone: a system that reads og.PlatformAnswered or og.PlatformNotice, or calls og.platform.result or og.platform.notice, while it writes shared state (anything but the session's own records: input, audio, camera, og.Lockstep) hears nothing and reads null, and the engine logs it once; carry what every peer must see in og.PlayerInput (og.net.submit).
    * Rooms (roomCreate, roomJoin, roomSend, ...) put this engine with other players' engines: the host carries them (natively `og relay` with `og run --room`, on the web the platform's rooms through the shell, docs/platform-asks.md) and its answers and the other peers' messages arrive as events at the start of a tick (og.RoomJoined, og.RoomPeerJoined, og.RoomPeerLeft, og.RoomMessage), host input like key presses. Deterministic play over a room is og.net's lockstep.
    */
   namespace platform {
@@ -47326,11 +47564,149 @@ export declare namespace og {
      */
     function loadSlot(world: World, desc?: LoadSlotDesc): Result<number>;
     /**
+     * Describe the products the game sells: titles and prices as the player's store shows them. The catalogue and the prices are the platform's.
+     *
+     * @param world The world.
+     * @param desc Which products.
+     * @returns Refused for a malformed id or more than 100. The answer's data is `{ products: [{ id, kind, title, description, price: { amount, currency, display } }] }`: kind `consumable`, `durable` or `subscription`, amount in the currency's units, display as the player's store writes it.
+     */
+    function products(world: World, desc?: ProductsDesc): Result<number>;
+    /**
+     * Ask the player to buy a product: the host shows its own purchase sheet and takes the money. The answer is the host's word on it; deliver a consumable with og.platform.grant and then og.platform.consume.
+     *
+     * @param world The world.
+     * @param desc The product and how many.
+     * @returns Refused for a malformed product id. The answer's data is `{ purchase, product, quantity, state }`: state `completed`, or `pending` (waiting for a parent's approval or a payment; a `purchase` notice settles it). Errors: `cancelled` (the player backed out), `not_found` (no such product), `conflict` (a durable already owned), `unavailable`.
+     */
+    function purchase(world: World, desc?: PurchaseDesc): Result<number>;
+    /**
+     * What the player owns in this game, as the host knows it: durables, active subscriptions and consumables not yet consumed. Ask when the game starts and after a restore, never trust a save for it.
+     *
+     * @param world The world.
+     * @returns The answer's data is `{ entitlements: [{ purchase, product, kind, quantity, expires }] }`, expires UTC milliseconds for a subscription, null otherwise.
+     */
+    function entitlements(world: World): number;
+    /**
+     * Tell the host a consumable purchase was delivered: it leaves the entitlements. Grant it first (og.platform.grant).
+     *
+     * @param world The world.
+     * @param purchase The purchase id an answer, an entitlement or a notice carried.
+     * @returns Refused for a malformed id (1 to 128 of letters, digits, `.`, `_`, `-` and `:`). The answer's data is `{ purchase, product, consumed: true }`; `not_found` for a purchase not owned or already consumed.
+     */
+    function consume(world: World, purchase: string): Result<number>;
+    /**
+     * Record that this world granted purchase `purchase` (in og.PlatformGrants): true the first time, false for one already granted, so a purchase's answer, notice or entitlement seen again (a replay, a relaunch, a save restored from before og.platform.consume) grants once. It records; it is not proof of payment (the host's answer is). Inside a system, declare og.PlatformGrants among its writes.
+     *
+     * @param world The world.
+     * @param purchase The purchase id.
+     * @returns Whether it was new. Refused for a malformed id, or inside a system that did not declare og.PlatformGrants.
+     */
+    function grant(world: World, purchase: string): Result<boolean>;
+    /**
+     * Whether this world granted purchase `purchase` (og.platform.grant). Inside a system, declare og.PlatformGrants among its reads.
+     *
+     * @param world The world.
+     * @param purchase The purchase id.
+     */
+    function granted(world: World, purchase: string): boolean;
+    /**
+     * Ask whether an ad can be shown now, to offer a rewarded one only when there is one.
+     *
+     * @param world The world.
+     * @param desc The kind and placement.
+     * @returns Refused for a malformed placement. The answer's data is `{ kind, placement, ready }`.
+     */
+    function adReady(world: World, desc?: AdDesc): Result<number>;
+    /**
+     * Show an ad. While it shows, the host pauses the game through its lifecycle (no ticks, no audio: on the web the Player's pause and resume) and the answer arrives after it resumed, at a tick's start. Grant a reward only on `completed`.
+     *
+     * @param world The world.
+     * @param desc The kind and placement.
+     * @returns Refused for a malformed placement. The answer's data is `{ kind, placement, outcome }`: outcome `completed` or `skipped` for a rewarded ad, `shown` for an interstitial. Errors: `no_fill` (no ad now; retryable), `rate_limited` (the platform's frequency cap), `unavailable`.
+     */
+    function showAd(world: World, desc?: AdDesc): Result<number>;
+    /**
+     * Unlock an achievement. The achievements and their titles are the platform's, by id.
+     *
+     * @param world The world.
+     * @param id The achievement's id.
+     * @returns Refused for a malformed id. The answer's data is `{ id, percent: 100, unlocked: true, new }`, new false when it was unlocked before.
+     */
+    function achievementUnlock(world: World, id: string): Result<number>;
+    /**
+     * Report progress towards an achievement; 100 unlocks it.
+     *
+     * @param world The world.
+     * @param desc The id and how far.
+     * @returns Refused for a malformed id or a percent outside 0 to 100. The answer's data is `{ id, percent, unlocked, new }`.
+     */
+    function achievementProgress(world: World, desc?: AchievementProgressDesc): Result<number>;
+    /**
+     * The player's achievements in this game.
+     *
+     * @param world The world.
+     * @returns The answer's data is `{ achievements: [{ id, percent, unlocked, time }] }`, time the unlock's UTC milliseconds or null.
+     */
+    function achievements(world: World): number;
+    /**
+     * Who is playing: an id scoped to this game (the same player has another id in another game) and the name to show.
+     *
+     * @param world The world.
+     * @returns The answer's data is `{ player, name, guest }`, guest true for a player without an account.
+     */
+    function player(world: World): number;
+    /**
+     * The player's friends, those playing this game first.
+     *
+     * @param world The world.
+     * @param desc How many.
+     * @returns The answer's data is `{ friends: [{ player, name, online, playing }] }`, ids scoped to this game; `unauthorized` for a guest.
+     */
+    function friends(world: World, desc?: FriendsDesc): number;
+    /**
+     * Invite a friend to this game, or offer an invite link through the share sheet. The invited player opens the game with the invite in og.platform.invites.
+     *
+     * @param world The world.
+     * @param desc Whom, the words and what the game hands them.
+     * @returns Refused for a malformed friend id, a message over 120 characters or a payload over 1 KiB. The answer's data is `{ invite, to }` (to null for a link); `cancelled` when the player closed the share sheet.
+     */
+    function inviteSend(world: World, desc?: InviteDesc): Result<number>;
+    /**
+     * The invites to this game the player has not acted on, the one the game was opened with marked `opened`.
+     *
+     * @param world The world.
+     * @returns The answer's data is `{ invites: [{ invite, from: { player, name }, payload, time, opened }] }`.
+     */
+    function invites(world: World): number;
+    /**
+     * Share through the device's share sheet: the text, the game's own Play link and, with image, the frame drawn last.
+     *
+     * @param world The world.
+     * @param desc What to share.
+     * @returns Refused for an empty text, one over 280 characters, a title over 80 or a malformed path. The answer's data is `{ shared: true, target }` (target the app the player picked, when the host knows it, else null); `cancelled` when the player closed the sheet.
+     */
+    function share(world: World, desc?: ShareDesc): Result<number>;
+    /**
+     * Whether the host answers platform method `method` (`purchase.buy`, `ad.show`, `share`: og.platform.info's capabilities): what to offer the player before asking. A method it lacks is answered `unavailable`.
+     *
+     * @param world The world.
+     * @param method The method.
+     */
+    function supports(world: World, method: string): boolean;
+    /**
+     * A notice og.PlatformNotice announced. The engine keeps the last 256.
+     *
+     * @param world The world.
+     * @param notice og.PlatformNotice.notice.
+     * @returns Null for a number never given, one older than the last 256, or inside a system that writes shared state in a running lockstep session.
+     */
+    function notice(world: World, notice: number): PlatformNoticeData | null;
+    /**
      * The answer to a call, once it arrived.
      *
      * @param world The world.
      * @param request The call.
-     * @returns Null while it is in flight, or for an unknown request.
+     * @returns Null while it is in flight, for an unknown request, or inside a system that writes shared state in a running lockstep session.
      */
     function result(world: World, request: number): PlatformResult | null;
     /**

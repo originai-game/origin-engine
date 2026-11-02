@@ -94,6 +94,11 @@ pub fn og_platform_set_host(engine: u32, info: String) {
 }
 
 #[wasm_bindgen]
+pub fn og_platform_notify(engine: u32, notice: String) -> bool {
+    <Host as Lifecycle>::og_platform_notify(&Host, engine, notice)
+}
+
+#[wasm_bindgen]
 pub fn og_room_take(engine: u32) -> String {
     <Host as Lifecycle>::og_room_take(&Host, engine)
 }
@@ -1791,6 +1796,96 @@ pub fn og_platform_save_slot(world: u32, desc: Option<String>) -> String {
 #[wasm_bindgen]
 pub fn og_platform_load_slot(world: u32, desc: Option<String>) -> String {
     <Host as PlatformApi>::og_platform_load_slot(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_products(world: u32, desc: Option<String>) -> String {
+    <Host as PlatformApi>::og_platform_products(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_purchase(world: u32, desc: Option<String>) -> String {
+    <Host as PlatformApi>::og_platform_purchase(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_entitlements(world: u32) -> u32 {
+    <Host as PlatformApi>::og_platform_entitlements(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_consume(world: u32, purchase: String) -> String {
+    <Host as PlatformApi>::og_platform_consume(&Host, world, purchase)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_grant(world: u32, purchase: String) -> String {
+    <Host as PlatformApi>::og_platform_grant(&Host, world, purchase)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_granted(world: u32, purchase: String) -> bool {
+    <Host as PlatformApi>::og_platform_granted(&Host, world, purchase)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_ad_ready(world: u32, desc: Option<String>) -> String {
+    <Host as PlatformApi>::og_platform_ad_ready(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_show_ad(world: u32, desc: Option<String>) -> String {
+    <Host as PlatformApi>::og_platform_show_ad(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_achievement_unlock(world: u32, id: String) -> String {
+    <Host as PlatformApi>::og_platform_achievement_unlock(&Host, world, id)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_achievement_progress(world: u32, desc: Option<String>) -> String {
+    <Host as PlatformApi>::og_platform_achievement_progress(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_achievements(world: u32) -> u32 {
+    <Host as PlatformApi>::og_platform_achievements(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_player(world: u32) -> u32 {
+    <Host as PlatformApi>::og_platform_player(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_friends(world: u32, desc: Option<String>) -> u32 {
+    <Host as PlatformApi>::og_platform_friends(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_invite_send(world: u32, desc: Option<String>) -> String {
+    <Host as PlatformApi>::og_platform_invite_send(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_invites(world: u32) -> u32 {
+    <Host as PlatformApi>::og_platform_invites(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_share(world: u32, desc: Option<String>) -> String {
+    <Host as PlatformApi>::og_platform_share(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_supports(world: u32, method: String) -> bool {
+    <Host as PlatformApi>::og_platform_supports(&Host, world, method)
+}
+
+#[wasm_bindgen]
+pub fn og_platform_notice(world: u32, notice: u32) -> String {
+    <Host as PlatformApi>::og_platform_notice(&Host, world, notice)
 }
 
 #[wasm_bindgen]

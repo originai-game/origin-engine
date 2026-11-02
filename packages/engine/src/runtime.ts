@@ -12,7 +12,7 @@ import bindings from "../types/bindings.json" with { type: "json" };
 import type * as Api from "@origingame/engine";
 import type { Dispatcher, HostAbi } from "./generated/abi.ts";
 import { SYMBOLS, checkEntities } from "./generated/abi.ts";
-import { noPlatform, type PlatformAnswer, type PlatformCall, type PlatformHost } from "./platform-local.ts";
+import { noPlatform, type PlatformAnswer, type PlatformCall, type PlatformHost, type PlatformLink, type PlatformNotice } from "./platform-local.ts";
 
 // ── host binding ──────────────────────────────────────────────────────────
 
@@ -1492,7 +1492,31 @@ export class Engine {
   /** Hand the platform calls made since the last pump to the attached host (before and after every advance and frame, after a command). */
   pumpPlatform(): void {
     const calls = parse<PlatformCall[]>(abi().og_platform_take(this.id));
-    if (calls.length > 0) this.#platform.handle(calls, (request, answer) => void this.answerPlatform(request, answer));
+    const host = this.#platform;
+    if (calls.length === 0 && !host.poll) return;
+    const link = this.#link;
+    if (calls.length > 0) host.handle(calls, link.answer, link);
+    host.poll?.(link);
+  }
+
+  /** What the attached host may do besides answering: notices, and pausing the game while an ad shows. */
+  readonly #link: PlatformLink = (() => {
+    const engine = this;
+    return {
+      get tick() {
+        return engine.world.tick;
+      },
+      answer: (request: number, answer: PlatformAnswer) => void engine.answerPlatform(request, answer),
+      notify: (notice: PlatformNotice) => void engine.notifyPlatform(notice),
+      pause: () => void engine.probe.pause(),
+      resume: () => void engine.probe.resume(),
+    };
+  })();
+
+  /** Unasked host input (a purchase settled, entitlements changed, an invite): applied at the start of the next tick as og.PlatformNotice. */
+  notifyPlatform(notice: PlatformNotice): boolean {
+    const timed = typeof notice.time === "number" ? { ...notice, clock: "player" } : { ...notice, time: this.#clock.now() };
+    return abi().og_platform_notify(this.id, JSON.stringify(timed));
   }
 
   /** og.platform's calls the world has no answer to yet: in flight at the host, or answered and applied at the next tick's start. */

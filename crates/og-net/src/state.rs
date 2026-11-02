@@ -55,6 +55,7 @@ pub const SESSION_EVENTS: &[&str] = &[
     "og.Desync",
     "og.PeerStalled",
     "og.PlatformAnswered",
+    "og.PlatformNotice",
     "og.AssetReady",
     "og.AssetFailed",
     "og.StreamEvent",

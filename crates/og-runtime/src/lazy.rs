@@ -86,6 +86,16 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: "og.PeerStalled",
         enable: |w| w.grant(crate::net::NET_SYSTEM, &["og.PeerStalled"]),
     },
+    // G3-6: og.platform sends it once a game names it; the grants are the
+    // runtime's own (og.platform.grant writes them).
+    Lazy {
+        name: crate::platform::NOTICE,
+        enable: |w| w.grant(crate::platform::PLATFORM_SYSTEM, &[crate::platform::NOTICE]),
+    },
+    Lazy {
+        name: crate::platform::GRANTS,
+        enable: crate::platform::enable_grants,
+    },
     Lazy {
         name: "og.SoftBody",
         enable: |w| og_physics::enable(w, "og.SoftBody"),

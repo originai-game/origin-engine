@@ -6,7 +6,11 @@ Platform services as host capabilities (docs/design.md §2.8): cloud store, lead
 
 Calls are asynchronous: each returns a request number at once, and the answer arrives at the start of a later tick, when og.platform sends PlatformAnswered; read it with og.platform.result. Answers are host input, like key presses: the probe's `dump_platform` lists every call, its arguments, its answer and the ticks.
 
-Errors carry the Player's stable codes: offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable, failed; retryable is true for offline, timeout, unavailable and rate_limited.
+Errors carry the Player's stable codes: offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable, failed, cancelled (the player backed out of a purchase, an ad or a share sheet) and no_fill (no ad to show now); retryable is true for offline, timeout, unavailable, rate_limited and no_fill.
+
+Purchases, ads, achievements, the player, friends, invites and share (products, purchase, showAd, achievementUnlock, player, friends, inviteSend, share, ...) are the platform's: accounts and money never enter the engine. Each call is a method name and its arguments, the host attaches the player's game-scoped credential, and every id it hands back (the player, a friend, a purchase, an invite) is opaque and scoped to this game. A host that lacks one answers it `unavailable`: ask og.platform.supports first. Natively and in playtests a deterministic fake answers them (`og run --platform-fake`, PlaytestDesc.platform); a published page never fakes them. Entitlements are always the host's answer, never the engine's log or a save: ask og.platform.entitlements when the game starts, and grant a consumable once per purchase with og.platform.grant.
+
+Unasked host input (a pending purchase settled, a refund, an entitlement changed on another device, an invite arrived) is a notice: og.PlatformNotice at the start of a tick, read with og.platform.notice, logged with the answers. In a running lockstep or rollback session (og.Lockstep) a platform answer or notice is this peer's alone: a system that reads og.PlatformAnswered or og.PlatformNotice, or calls og.platform.result or og.platform.notice, while it writes shared state (anything but the session's own records: input, audio, camera, og.Lockstep) hears nothing and reads null, and the engine logs it once; carry what every peer must see in og.PlayerInput (og.net.submit).
 
 Rooms (roomCreate, roomJoin, roomSend, ...) put this engine with other players' engines: the host carries them (natively `og relay` with `og run --room`, on the web the platform's rooms through the shell, docs/platform-asks.md) and its answers and the other peers' messages arrive as events at the start of a tick (og.RoomJoined, og.RoomPeerJoined, og.RoomPeerLeft, og.RoomMessage), host input like key presses. Deterministic play over a room is og.net's lockstep.
 
@@ -51,6 +55,36 @@ module platform {
 | [`og.platform.saveSettings`](#fn-saveSettings) | function | Save the game's settings under `og.settings` (the last save wins), with the same local fallback as loadSettings. |
 | [`og.platform.saveSlot`](#fn-saveSlot) | function | Save a long text under a slot, in as many store keys as it needs: a mid-size 3D world's snapshot is over a key's 64 KiB (examples/kestrel-stair's 93 entities: about 78 KB). The parts go in the bank of keys the slot's last save did not use (`<slot>.a*` or `<slot>.b*`), then the manifest (`<slot>`: the bank, the part count, the length, a checksum and `meta`) is written last, at the revision read before: so a save cut short leaves the last one whole, and another device's save landing meanwhile is a conflict, never a mix. One request for all of it; a slot takes at most 17 of the player's 64 keys for this game (its two banks and the manifest: 1 MiB, the platform's budget for a player and game), and a world that would take more saves a selection of what it keeps (world.snapshot's SnapshotDesc). og-game §8. |
 | [`og.platform.loadSlot`](#fn-loadSlot) | function | Read a slot saveSlot wrote: its manifest, then its parts, joined and checked against the manifest's length and checksum. One request for all of it. |
+| [`AdKind`](#type-AdKind) | enum | Which kind of ad. |
+| [`PlatformNoticeKind`](#type-PlatformNoticeKind) | enum | What a notice is about. |
+| [`og.PlatformNotice`](#record-PlatformNotice) | event | Unasked host input arrived: sent by og.platform at the start of the tick it was applied, read by systems the tick after; read it with og.platform.notice. Registered when a game first names it (a system's reads); without it notices are still logged and readable. |
+| [`og.PlatformGrants`](#record-PlatformGrants) | resource | The purchases this world granted (og.platform.grant), so a consumable is granted once however its answer or notice comes back: a replay, a relaunch, a restored save. World state: saved, restored and hashed. Registered when a game first names it or calls og.platform.grant. Write it only through og.platform.grant. |
+| [`PlatformNoticeData`](#type-PlatformNoticeData) | struct | A notice og.PlatformNotice announced. |
+| [`ProductsDesc`](#type-ProductsDesc) | desc struct | Which products to describe. |
+| [`PurchaseDesc`](#type-PurchaseDesc) | desc struct | A purchase to ask the player for. |
+| [`AdDesc`](#type-AdDesc) | desc struct | An ad to show. |
+| [`AchievementProgressDesc`](#type-AchievementProgressDesc) | desc struct | Progress towards an achievement. |
+| [`FriendsDesc`](#type-FriendsDesc) | desc struct | How many friends. |
+| [`InviteDesc`](#type-InviteDesc) | desc struct | An invite to this game. |
+| [`ShareDesc`](#type-ShareDesc) | desc struct | What to share through the device's share sheet. |
+| [`og.platform.products`](#fn-products) | function | Describe the products the game sells: titles and prices as the player's store shows them. The catalogue and the prices are the platform's. |
+| [`og.platform.purchase`](#fn-purchase) | function | Ask the player to buy a product: the host shows its own purchase sheet and takes the money. The answer is the host's word on it; deliver a consumable with og.platform.grant and then og.platform.consume. |
+| [`og.platform.entitlements`](#fn-entitlements) | function | What the player owns in this game, as the host knows it: durables, active subscriptions and consumables not yet consumed. Ask when the game starts and after a restore, never trust a save for it. |
+| [`og.platform.consume`](#fn-consume) | function | Tell the host a consumable purchase was delivered: it leaves the entitlements. Grant it first (og.platform.grant). |
+| [`og.platform.grant`](#fn-grant) | function | Record that this world granted purchase `purchase` (in og.PlatformGrants): true the first time, false for one already granted, so a purchase's answer, notice or entitlement seen again (a replay, a relaunch, a save restored from before og.platform.consume) grants once. It records; it is not proof of payment (the host's answer is). Inside a system, declare og.PlatformGrants among its writes. |
+| [`og.platform.granted`](#fn-granted) | function | Whether this world granted purchase `purchase` (og.platform.grant). Inside a system, declare og.PlatformGrants among its reads. |
+| [`og.platform.adReady`](#fn-adReady) | function | Ask whether an ad can be shown now, to offer a rewarded one only when there is one. |
+| [`og.platform.showAd`](#fn-showAd) | function | Show an ad. While it shows, the host pauses the game through its lifecycle (no ticks, no audio: on the web the Player's pause and resume) and the answer arrives after it resumed, at a tick's start. Grant a reward only on `completed`. |
+| [`og.platform.achievementUnlock`](#fn-achievementUnlock) | function | Unlock an achievement. The achievements and their titles are the platform's, by id. |
+| [`og.platform.achievementProgress`](#fn-achievementProgress) | function | Report progress towards an achievement; 100 unlocks it. |
+| [`og.platform.achievements`](#fn-achievements) | function | The player's achievements in this game. |
+| [`og.platform.player`](#fn-player) | function | Who is playing: an id scoped to this game (the same player has another id in another game) and the name to show. |
+| [`og.platform.friends`](#fn-friends) | function | The player's friends, those playing this game first. |
+| [`og.platform.inviteSend`](#fn-inviteSend) | function | Invite a friend to this game, or offer an invite link through the share sheet. The invited player opens the game with the invite in og.platform.invites. |
+| [`og.platform.invites`](#fn-invites) | function | The invites to this game the player has not acted on, the one the game was opened with marked `opened`. |
+| [`og.platform.share`](#fn-share) | function | Share through the device's share sheet: the text, the game's own Play link and, with image, the frame drawn last. |
+| [`og.platform.supports`](#fn-supports) | function | Whether the host answers platform method `method` (`purchase.buy`, `ad.show`, `share`: og.platform.info's capabilities): what to offer the player before asking. A method it lacks is answered `unavailable`. |
+| [`og.platform.notice`](#fn-notice) | function | A notice og.PlatformNotice announced. The engine keeps the last 256. |
 | [`og.platform.result`](#fn-result) | function | The answer to a call, once it arrived. |
 | [`og.platform.info`](#fn-info) | function | What answers platform calls here, and what it answers. |
 | [`og.platform.now`](#fn-now) | function | The host's wall-clock time, UTC milliseconds since 1970, as of this tick: what the host last told the engine (when it attached, and with every answer, applied at a tick's start like the answers) moved on by the ticks since. The one wall-clock read game code may make: it is host input, so a replay with the same answers gives the same values. Use it to know how long the game was closed (a save's time against a launch's), never to time play (that is og.Time). |
@@ -100,7 +134,7 @@ fn storeGet {
 }
 ```
 
-<sub>`api.ogt` line 13282</sub>
+<sub>`api.ogt` line 13284</sub>
 
 <a id="fn-storeSet"></a>
 
@@ -130,7 +164,7 @@ fn storeSet {
 }
 ```
 
-<sub>`api.ogt` line 13289</sub>
+<sub>`api.ogt` line 13291</sub>
 
 <a id="fn-storeList"></a>
 
@@ -158,7 +192,7 @@ fn storeList {
 }
 ```
 
-<sub>`api.ogt` line 13296</sub>
+<sub>`api.ogt` line 13298</sub>
 
 <a id="fn-leaderboardSubmit"></a>
 
@@ -188,7 +222,7 @@ fn leaderboardSubmit {
 }
 ```
 
-<sub>`api.ogt` line 13302</sub>
+<sub>`api.ogt` line 13304</sub>
 
 <a id="fn-leaderboardTop"></a>
 
@@ -218,7 +252,7 @@ fn leaderboardTop {
 }
 ```
 
-<sub>`api.ogt` line 13309</sub>
+<sub>`api.ogt` line 13311</sub>
 
 <a id="fn-leaderboardAround"></a>
 
@@ -248,7 +282,7 @@ fn leaderboardAround {
 }
 ```
 
-<sub>`api.ogt` line 13316</sub>
+<sub>`api.ogt` line 13318</sub>
 
 <a id="fn-telemetry"></a>
 
@@ -282,7 +316,7 @@ fn telemetry {
 }
 ```
 
-<sub>`api.ogt` line 13323</sub>
+<sub>`api.ogt` line 13325</sub>
 
 <a id="fn-point"></a>
 
@@ -312,7 +346,7 @@ fn point {
 }
 ```
 
-<sub>`api.ogt` line 13333</sub>
+<sub>`api.ogt` line 13335</sub>
 
 <a id="fn-aiMark"></a>
 
@@ -342,7 +376,7 @@ fn aiMark {
 }
 ```
 
-<sub>`api.ogt` line 13340</sub>
+<sub>`api.ogt` line 13342</sub>
 
 <a id="fn-loadSettings"></a>
 
@@ -370,7 +404,7 @@ fn loadSettings {
 }
 ```
 
-<sub>`api.ogt` line 13347</sub>
+<sub>`api.ogt` line 13349</sub>
 
 <a id="fn-saveSettings"></a>
 
@@ -400,7 +434,7 @@ fn saveSettings {
 }
 ```
 
-<sub>`api.ogt` line 13353</sub>
+<sub>`api.ogt` line 13355</sub>
 
 <a id="fn-saveSlot"></a>
 
@@ -430,7 +464,7 @@ fn saveSlot {
 }
 ```
 
-<sub>`api.ogt` line 13360</sub>
+<sub>`api.ogt` line 13362</sub>
 
 <a id="fn-loadSlot"></a>
 
@@ -460,7 +494,545 @@ fn loadSlot {
 }
 ```
 
-<sub>`api.ogt` line 13367</sub>
+<sub>`api.ogt` line 13369</sub>
+
+<a id="fn-products"></a>
+
+### `og.platform.products`
+
+Describe the products the game sells: titles and prices as the player's store shows them. The catalogue and the prices are the platform's.
+
+```ts
+og.platform.products(world: World, desc?: ProductsDesc): Result<number>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `desc` | `ProductsDesc` | yes | Which products. |
+
+**Returns** `Result<number>`: Refused for a malformed id or more than 100. The answer's data is `{ products: [{ id, kind, title, description, price: { amount, currency, display } }] }`: kind `consumable`, `durable` or `subscription`, amount in the currency's units, display as the player's store writes it.
+
+Binding symbol `og_platform_products` · publish builds: kept
+
+```ogt
+fn products {
+  doc "Describe the products the game sells: titles and prices as the player's store shows them. The catalogue and the prices are the platform's."
+  param world World "The world."
+  param desc ProductsDesc "Which products." {
+    optional true
+  }
+  returns Result.u32 "Refused for a malformed id or more than 100. The answer's data is `{ products: [{ id, kind, title, description, price: { amount, currency, display } }] }`: kind `consumable`, `durable` or `subscription`, amount in the currency's units, display as the player's store writes it."
+}
+```
+
+<sub>`api.ogt` line 13476</sub>
+
+<a id="fn-purchase"></a>
+
+### `og.platform.purchase`
+
+Ask the player to buy a product: the host shows its own purchase sheet and takes the money. The answer is the host's word on it; deliver a consumable with og.platform.grant and then og.platform.consume.
+
+```ts
+og.platform.purchase(world: World, desc?: PurchaseDesc): Result<number>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `desc` | `PurchaseDesc` | yes | The product and how many. |
+
+**Returns** `Result<number>`: Refused for a malformed product id. The answer's data is `{ purchase, product, quantity, state }`: state `completed`, or `pending` (waiting for a parent's approval or a payment; a `purchase` notice settles it). Errors: `cancelled` (the player backed out), `not_found` (no such product), `conflict` (a durable already owned), `unavailable`.
+
+Binding symbol `og_platform_purchase` · publish builds: kept
+
+```ogt
+fn purchase {
+  doc "Ask the player to buy a product: the host shows its own purchase sheet and takes the money. The answer is the host's word on it; deliver a consumable with og.platform.grant and then og.platform.consume."
+  param world World "The world."
+  param desc PurchaseDesc "The product and how many."
+  returns Result.u32 "Refused for a malformed product id. The answer's data is `{ purchase, product, quantity, state }`: state `completed`, or `pending` (waiting for a parent's approval or a payment; a `purchase` notice settles it). Errors: `cancelled` (the player backed out), `not_found` (no such product), `conflict` (a durable already owned), `unavailable`."
+}
+```
+
+<sub>`api.ogt` line 13485</sub>
+
+<a id="fn-entitlements"></a>
+
+### `og.platform.entitlements`
+
+What the player owns in this game, as the host knows it: durables, active subscriptions and consumables not yet consumed. Ask when the game starts and after a restore, never trust a save for it.
+
+```ts
+og.platform.entitlements(world: World): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+
+**Returns** `number`: The answer's data is `{ entitlements: [{ purchase, product, kind, quantity, expires }] }`, expires UTC milliseconds for a subscription, null otherwise.
+
+Binding symbol `og_platform_entitlements` · publish builds: kept
+
+```ogt
+fn entitlements {
+  doc "What the player owns in this game, as the host knows it: durables, active subscriptions and consumables not yet consumed. Ask when the game starts and after a restore, never trust a save for it."
+  param world World "The world."
+  returns u32 "The answer's data is `{ entitlements: [{ purchase, product, kind, quantity, expires }] }`, expires UTC milliseconds for a subscription, null otherwise."
+}
+```
+
+<sub>`api.ogt` line 13492</sub>
+
+<a id="fn-consume"></a>
+
+### `og.platform.consume`
+
+Tell the host a consumable purchase was delivered: it leaves the entitlements. Grant it first (og.platform.grant).
+
+```ts
+og.platform.consume(world: World, purchase: string): Result<number>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `purchase` | `string` | no | The purchase id an answer, an entitlement or a notice carried. |
+
+**Returns** `Result<number>`: Refused for a malformed id (1 to 128 of letters, digits, `.`, `_`, `-` and `:`). The answer's data is `{ purchase, product, consumed: true }`; `not_found` for a purchase not owned or already consumed.
+
+Binding symbol `og_platform_consume` · publish builds: kept
+
+```ogt
+fn consume {
+  doc "Tell the host a consumable purchase was delivered: it leaves the entitlements. Grant it first (og.platform.grant)."
+  param world World "The world."
+  param purchase String "The purchase id an answer, an entitlement or a notice carried."
+  returns Result.u32 "Refused for a malformed id (1 to 128 of letters, digits, `.`, `_`, `-` and `:`). The answer's data is `{ purchase, product, consumed: true }`; `not_found` for a purchase not owned or already consumed."
+}
+```
+
+<sub>`api.ogt` line 13498</sub>
+
+<a id="fn-grant"></a>
+
+### `og.platform.grant`
+
+Record that this world granted purchase `purchase` (in og.PlatformGrants): true the first time, false for one already granted, so a purchase's answer, notice or entitlement seen again (a replay, a relaunch, a save restored from before og.platform.consume) grants once. It records; it is not proof of payment (the host's answer is). Inside a system, declare og.PlatformGrants among its writes.
+
+```ts
+og.platform.grant(world: World, purchase: string): Result<boolean>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `purchase` | `string` | no | The purchase id. |
+
+**Returns** `Result<boolean>`: Whether it was new. Refused for a malformed id, or inside a system that did not declare og.PlatformGrants.
+
+Binding symbol `og_platform_grant` · publish builds: kept
+
+```ogt
+fn grant {
+  doc "Record that this world granted purchase `purchase` (in og.PlatformGrants): true the first time, false for one already granted, so a purchase's answer, notice or entitlement seen again (a replay, a relaunch, a save restored from before og.platform.consume) grants once. It records; it is not proof of payment (the host's answer is). Inside a system, declare og.PlatformGrants among its writes."
+  param world World "The world."
+  param purchase String "The purchase id."
+  returns Result.bool "Whether it was new. Refused for a malformed id, or inside a system that did not declare og.PlatformGrants."
+}
+```
+
+<sub>`api.ogt` line 13505</sub>
+
+<a id="fn-granted"></a>
+
+### `og.platform.granted`
+
+Whether this world granted purchase `purchase` (og.platform.grant). Inside a system, declare og.PlatformGrants among its reads.
+
+```ts
+og.platform.granted(world: World, purchase: string): boolean
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `purchase` | `string` | no | The purchase id. |
+
+**Returns** `boolean`.
+
+Binding symbol `og_platform_granted` · publish builds: kept
+
+```ogt
+fn granted {
+  doc "Whether this world granted purchase `purchase` (og.platform.grant). Inside a system, declare og.PlatformGrants among its reads."
+  param world World "The world."
+  param purchase String "The purchase id."
+  returns bool
+}
+```
+
+<sub>`api.ogt` line 13512</sub>
+
+<a id="fn-adReady"></a>
+
+### `og.platform.adReady`
+
+Ask whether an ad can be shown now, to offer a rewarded one only when there is one.
+
+```ts
+og.platform.adReady(world: World, desc?: AdDesc): Result<number>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `desc` | `AdDesc` | yes | The kind and placement. |
+
+**Returns** `Result<number>`: Refused for a malformed placement. The answer's data is `{ kind, placement, ready }`.
+
+Binding symbol `og_platform_ad_ready` · publish builds: kept
+
+```ogt
+fn adReady {
+  doc "Ask whether an ad can be shown now, to offer a rewarded one only when there is one."
+  param world World "The world."
+  param desc AdDesc "The kind and placement."
+  returns Result.u32 "Refused for a malformed placement. The answer's data is `{ kind, placement, ready }`."
+}
+```
+
+<sub>`api.ogt` line 13519</sub>
+
+<a id="fn-showAd"></a>
+
+### `og.platform.showAd`
+
+Show an ad. While it shows, the host pauses the game through its lifecycle (no ticks, no audio: on the web the Player's pause and resume) and the answer arrives after it resumed, at a tick's start. Grant a reward only on `completed`.
+
+```ts
+og.platform.showAd(world: World, desc?: AdDesc): Result<number>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `desc` | `AdDesc` | yes | The kind and placement. |
+
+**Returns** `Result<number>`: Refused for a malformed placement. The answer's data is `{ kind, placement, outcome }`: outcome `completed` or `skipped` for a rewarded ad, `shown` for an interstitial. Errors: `no_fill` (no ad now; retryable), `rate_limited` (the platform's frequency cap), `unavailable`.
+
+Binding symbol `og_platform_show_ad` · publish builds: kept
+
+```ogt
+fn showAd {
+  doc "Show an ad. While it shows, the host pauses the game through its lifecycle (no ticks, no audio: on the web the Player's pause and resume) and the answer arrives after it resumed, at a tick's start. Grant a reward only on `completed`."
+  param world World "The world."
+  param desc AdDesc "The kind and placement."
+  returns Result.u32 "Refused for a malformed placement. The answer's data is `{ kind, placement, outcome }`: outcome `completed` or `skipped` for a rewarded ad, `shown` for an interstitial. Errors: `no_fill` (no ad now; retryable), `rate_limited` (the platform's frequency cap), `unavailable`."
+}
+```
+
+<sub>`api.ogt` line 13526</sub>
+
+<a id="fn-achievementUnlock"></a>
+
+### `og.platform.achievementUnlock`
+
+Unlock an achievement. The achievements and their titles are the platform's, by id.
+
+```ts
+og.platform.achievementUnlock(world: World, id: string): Result<number>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `id` | `string` | no | The achievement's id. |
+
+**Returns** `Result<number>`: Refused for a malformed id. The answer's data is `{ id, percent: 100, unlocked: true, new }`, new false when it was unlocked before.
+
+Binding symbol `og_platform_achievement_unlock` · publish builds: kept
+
+```ogt
+fn achievementUnlock {
+  doc "Unlock an achievement. The achievements and their titles are the platform's, by id."
+  param world World "The world."
+  param id String "The achievement's id."
+  returns Result.u32 "Refused for a malformed id. The answer's data is `{ id, percent: 100, unlocked: true, new }`, new false when it was unlocked before."
+}
+```
+
+<sub>`api.ogt` line 13533</sub>
+
+<a id="fn-achievementProgress"></a>
+
+### `og.platform.achievementProgress`
+
+Report progress towards an achievement; 100 unlocks it.
+
+```ts
+og.platform.achievementProgress(world: World, desc?: AchievementProgressDesc): Result<number>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `desc` | `AchievementProgressDesc` | yes | The id and how far. |
+
+**Returns** `Result<number>`: Refused for a malformed id or a percent outside 0 to 100. The answer's data is `{ id, percent, unlocked, new }`.
+
+Binding symbol `og_platform_achievement_progress` · publish builds: kept
+
+```ogt
+fn achievementProgress {
+  doc "Report progress towards an achievement; 100 unlocks it."
+  param world World "The world."
+  param desc AchievementProgressDesc "The id and how far."
+  returns Result.u32 "Refused for a malformed id or a percent outside 0 to 100. The answer's data is `{ id, percent, unlocked, new }`."
+}
+```
+
+<sub>`api.ogt` line 13540</sub>
+
+<a id="fn-achievements"></a>
+
+### `og.platform.achievements`
+
+The player's achievements in this game.
+
+```ts
+og.platform.achievements(world: World): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+
+**Returns** `number`: The answer's data is `{ achievements: [{ id, percent, unlocked, time }] }`, time the unlock's UTC milliseconds or null.
+
+Binding symbol `og_platform_achievements` · publish builds: kept
+
+```ogt
+fn achievements {
+  doc "The player's achievements in this game."
+  param world World "The world."
+  returns u32 "The answer's data is `{ achievements: [{ id, percent, unlocked, time }] }`, time the unlock's UTC milliseconds or null."
+}
+```
+
+<sub>`api.ogt` line 13547</sub>
+
+<a id="fn-player"></a>
+
+### `og.platform.player`
+
+Who is playing: an id scoped to this game (the same player has another id in another game) and the name to show.
+
+```ts
+og.platform.player(world: World): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+
+**Returns** `number`: The answer's data is `{ player, name, guest }`, guest true for a player without an account.
+
+Binding symbol `og_platform_player` · publish builds: kept
+
+```ogt
+fn player {
+  doc "Who is playing: an id scoped to this game (the same player has another id in another game) and the name to show."
+  param world World "The world."
+  returns u32 "The answer's data is `{ player, name, guest }`, guest true for a player without an account."
+}
+```
+
+<sub>`api.ogt` line 13553</sub>
+
+<a id="fn-friends"></a>
+
+### `og.platform.friends`
+
+The player's friends, those playing this game first.
+
+```ts
+og.platform.friends(world: World, desc?: FriendsDesc): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `desc` | `FriendsDesc` | yes | How many. |
+
+**Returns** `number`: The answer's data is `{ friends: [{ player, name, online, playing }] }`, ids scoped to this game; `unauthorized` for a guest.
+
+Binding symbol `og_platform_friends` · publish builds: kept
+
+```ogt
+fn friends {
+  doc "The player's friends, those playing this game first."
+  param world World "The world."
+  param desc FriendsDesc "How many." {
+    optional true
+  }
+  returns u32 "The answer's data is `{ friends: [{ player, name, online, playing }] }`, ids scoped to this game; `unauthorized` for a guest."
+}
+```
+
+<sub>`api.ogt` line 13559</sub>
+
+<a id="fn-inviteSend"></a>
+
+### `og.platform.inviteSend`
+
+Invite a friend to this game, or offer an invite link through the share sheet. The invited player opens the game with the invite in og.platform.invites.
+
+```ts
+og.platform.inviteSend(world: World, desc?: InviteDesc): Result<number>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `desc` | `InviteDesc` | yes | Whom, the words and what the game hands them. |
+
+**Returns** `Result<number>`: Refused for a malformed friend id, a message over 120 characters or a payload over 1 KiB. The answer's data is `{ invite, to }` (to null for a link); `cancelled` when the player closed the share sheet.
+
+Binding symbol `og_platform_invite_send` · publish builds: kept
+
+```ogt
+fn inviteSend {
+  doc "Invite a friend to this game, or offer an invite link through the share sheet. The invited player opens the game with the invite in og.platform.invites."
+  param world World "The world."
+  param desc InviteDesc "Whom, the words and what the game hands them." {
+    optional true
+  }
+  returns Result.u32 "Refused for a malformed friend id, a message over 120 characters or a payload over 1 KiB. The answer's data is `{ invite, to }` (to null for a link); `cancelled` when the player closed the share sheet."
+}
+```
+
+<sub>`api.ogt` line 13568</sub>
+
+<a id="fn-invites"></a>
+
+### `og.platform.invites`
+
+The invites to this game the player has not acted on, the one the game was opened with marked `opened`.
+
+```ts
+og.platform.invites(world: World): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+
+**Returns** `number`: The answer's data is `{ invites: [{ invite, from: { player, name }, payload, time, opened }] }`.
+
+Binding symbol `og_platform_invites` · publish builds: kept
+
+```ogt
+fn invites {
+  doc "The invites to this game the player has not acted on, the one the game was opened with marked `opened`."
+  param world World "The world."
+  returns u32 "The answer's data is `{ invites: [{ invite, from: { player, name }, payload, time, opened }] }`."
+}
+```
+
+<sub>`api.ogt` line 13577</sub>
+
+<a id="fn-share"></a>
+
+### `og.platform.share`
+
+Share through the device's share sheet: the text, the game's own Play link and, with image, the frame drawn last.
+
+```ts
+og.platform.share(world: World, desc?: ShareDesc): Result<number>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `desc` | `ShareDesc` | yes | What to share. |
+
+**Returns** `Result<number>`: Refused for an empty text, one over 280 characters, a title over 80 or a malformed path. The answer's data is `{ shared: true, target }` (target the app the player picked, when the host knows it, else null); `cancelled` when the player closed the sheet.
+
+Binding symbol `og_platform_share` · publish builds: kept
+
+```ogt
+fn share {
+  doc "Share through the device's share sheet: the text, the game's own Play link and, with image, the frame drawn last."
+  param world World "The world."
+  param desc ShareDesc "What to share."
+  returns Result.u32 "Refused for an empty text, one over 280 characters, a title over 80 or a malformed path. The answer's data is `{ shared: true, target }` (target the app the player picked, when the host knows it, else null); `cancelled` when the player closed the sheet."
+}
+```
+
+<sub>`api.ogt` line 13583</sub>
+
+<a id="fn-supports"></a>
+
+### `og.platform.supports`
+
+Whether the host answers platform method `method` (`purchase.buy`, `ad.show`, `share`: og.platform.info's capabilities): what to offer the player before asking. A method it lacks is answered `unavailable`.
+
+```ts
+og.platform.supports(world: World, method: string): boolean
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `method` | `string` | no | The method. |
+
+**Returns** `boolean`.
+
+Binding symbol `og_platform_supports` · publish builds: kept
+
+```ogt
+fn supports {
+  doc "Whether the host answers platform method `method` (`purchase.buy`, `ad.show`, `share`: og.platform.info's capabilities): what to offer the player before asking. A method it lacks is answered `unavailable`."
+  param world World "The world."
+  param method String "The method."
+  returns bool
+}
+```
+
+<sub>`api.ogt` line 13590</sub>
+
+<a id="fn-notice"></a>
+
+### `og.platform.notice`
+
+A notice og.PlatformNotice announced. The engine keeps the last 256.
+
+```ts
+og.platform.notice(world: World, notice: number): PlatformNoticeData | null
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `notice` | `number` | no | og.PlatformNotice.notice. |
+
+**Returns** `PlatformNoticeData | null`: Null for a number never given, one older than the last 256, or inside a system that writes shared state in a running lockstep session.
+
+Binding symbol `og_platform_notice` · publish builds: kept
+
+```ogt
+fn notice {
+  doc "A notice og.PlatformNotice announced. The engine keeps the last 256."
+  param world World "The world."
+  param notice u32 "og.PlatformNotice.notice."
+  returns Option.PlatformNoticeData "Null for a number never given, one older than the last 256, or inside a system that writes shared state in a running lockstep session."
+}
+```
+
+<sub>`api.ogt` line 13597</sub>
 
 <a id="fn-result"></a>
 
@@ -477,7 +1049,7 @@ og.platform.result(world: World, request: number): PlatformResult | null
 | `world` | `World` | no | The world. |
 | `request` | `number` | no | The call. |
 
-**Returns** `PlatformResult | null`: Null while it is in flight, or for an unknown request.
+**Returns** `PlatformResult | null`: Null while it is in flight, for an unknown request, or inside a system that writes shared state in a running lockstep session.
 
 Binding symbol `og_platform_result` · publish builds: kept
 
@@ -486,11 +1058,11 @@ fn result {
   doc "The answer to a call, once it arrived."
   param world World "The world."
   param request u32 "The call."
-  returns Option.PlatformResult "Null while it is in flight, or for an unknown request."
+  returns Option.PlatformResult "Null while it is in flight, for an unknown request, or inside a system that writes shared state in a running lockstep session."
 }
 ```
 
-<sub>`api.ogt` line 13374</sub>
+<sub>`api.ogt` line 13604</sub>
 
 <a id="fn-info"></a>
 
@@ -518,7 +1090,7 @@ fn info {
 }
 ```
 
-<sub>`api.ogt` line 13381</sub>
+<sub>`api.ogt` line 13611</sub>
 
 <a id="fn-now"></a>
 
@@ -546,7 +1118,7 @@ fn now {
 }
 ```
 
-<sub>`api.ogt` line 13387</sub>
+<sub>`api.ogt` line 13617</sub>
 
 <a id="fn-roomCreate"></a>
 
@@ -578,7 +1150,7 @@ fn roomCreate {
 }
 ```
 
-<sub>`api.ogt` line 13460</sub>
+<sub>`api.ogt` line 13690</sub>
 
 <a id="fn-roomJoin"></a>
 
@@ -608,7 +1180,7 @@ fn roomJoin {
 }
 ```
 
-<sub>`api.ogt` line 13469</sub>
+<sub>`api.ogt` line 13699</sub>
 
 <a id="fn-roomLeave"></a>
 
@@ -636,7 +1208,7 @@ fn roomLeave {
 }
 ```
 
-<sub>`api.ogt` line 13476</sub>
+<sub>`api.ogt` line 13706</sub>
 
 <a id="fn-roomSend"></a>
 
@@ -670,7 +1242,7 @@ fn roomSend {
 }
 ```
 
-<sub>`api.ogt` line 13482</sub>
+<sub>`api.ogt` line 13712</sub>
 
 <a id="fn-roomPeers"></a>
 
@@ -698,7 +1270,7 @@ fn roomPeers {
 }
 ```
 
-<sub>`api.ogt` line 13492</sub>
+<sub>`api.ogt` line 13722</sub>
 
 <a id="fn-roomInfo"></a>
 
@@ -726,7 +1298,7 @@ fn roomInfo {
 }
 ```
 
-<sub>`api.ogt` line 13498</sub>
+<sub>`api.ogt` line 13728</sub>
 
 <a id="fn-roomMessage"></a>
 
@@ -756,7 +1328,7 @@ fn roomMessage {
 }
 ```
 
-<sub>`api.ogt` line 13504</sub>
+<sub>`api.ogt` line 13734</sub>
 
 ## Components, resources and events
 
@@ -781,7 +1353,51 @@ event PlatformAnswered {
 }
 ```
 
-<sub>`api.ogt` line 13179</sub>
+<sub>`api.ogt` line 13181</sub>
+
+<a id="record-PlatformNotice"></a>
+
+### `og.PlatformNotice` (event)
+
+Unasked host input arrived: sent by og.platform at the start of the tick it was applied, read by systems the tick after; read it with og.platform.notice. Registered when a game first names it (a system's reads); without it notices are still logged and readable.
+
+Token `og.PlatformNotice`, registered under the schema name `og.PlatformNotice`; its value type is `PlatformNotice`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `notice` | `number` | `0` | — | — | — | The notice's number, for og.platform.notice: 1 for the first, counting up. |
+| `kind` | `PlatformNoticeKind` | `"purchase"` | — | — | — | What it is about. |
+
+```ogt
+event PlatformNotice {
+  doc "Unasked host input arrived: sent by og.platform at the start of the tick it was applied, read by systems the tick after; read it with og.platform.notice. Registered when a game first names it (a system's reads); without it notices are still logged and readable."
+  field notice u32 "The notice's number, for og.platform.notice: 1 for the first, counting up."
+  field kind PlatformNoticeKind "What it is about."
+}
+```
+
+<sub>`api.ogt` line 13391</sub>
+
+<a id="record-PlatformGrants"></a>
+
+### `og.PlatformGrants` (resource)
+
+The purchases this world granted (og.platform.grant), so a consumable is granted once however its answer or notice comes back: a replay, a relaunch, a restored save. World state: saved, restored and hashed. Registered when a game first names it or calls og.platform.grant. Write it only through og.platform.grant.
+
+Token `og.PlatformGrants`, registered under the schema name `og.PlatformGrants`; its value type is `PlatformGrants`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `ids` | `readonly number[]` | `[]` | — | — | a list of at most 512 `u32` (`List.u32.512`): reads a frozen copy, writes a whole array | The 64-bit hashes of the granted purchase ids, each as two u32 (low, high), oldest first: the last 256 grants. |
+
+```ogt
+resource PlatformGrants {
+  doc "The purchases this world granted (og.platform.grant), so a consumable is granted once however its answer or notice comes back: a replay, a relaunch, a restored save. World state: saved, restored and hashed. Registered when a game first names it or calls og.platform.grant. Write it only through og.platform.grant."
+  field ids List.u32.512 "The 64-bit hashes of the granted purchase ids, each as two u32 (low, high), oldest first: the last 256 grants."
+}
+```
+
+<sub>`api.ogt` line 13397</sub>
 
 <a id="record-RoomJoined"></a>
 
@@ -810,7 +1426,7 @@ event RoomJoined {
 }
 ```
 
-<sub>`api.ogt` line 13432</sub>
+<sub>`api.ogt` line 13662</sub>
 
 <a id="record-RoomPeerJoined"></a>
 
@@ -833,7 +1449,7 @@ event RoomPeerJoined {
 }
 ```
 
-<sub>`api.ogt` line 13441</sub>
+<sub>`api.ogt` line 13671</sub>
 
 <a id="record-RoomPeerLeft"></a>
 
@@ -856,7 +1472,7 @@ event RoomPeerLeft {
 }
 ```
 
-<sub>`api.ogt` line 13447</sub>
+<sub>`api.ogt` line 13677</sub>
 
 <a id="record-RoomMessage"></a>
 
@@ -881,7 +1497,7 @@ event RoomMessage {
 }
 ```
 
-<sub>`api.ogt` line 13453</sub>
+<sub>`api.ogt` line 13683</sub>
 
 ## Types
 
@@ -906,7 +1522,7 @@ enum PlatformOrder {
 }
 ```
 
-<sub>`api.ogt` line 13173</sub>
+<sub>`api.ogt` line 13175</sub>
 
 <a id="type-StoreSetDesc"></a>
 
@@ -934,7 +1550,7 @@ struct StoreSetDesc {
 }
 ```
 
-<sub>`api.ogt` line 13185</sub>
+<sub>`api.ogt` line 13187</sub>
 
 <a id="type-LeaderboardSubmitDesc"></a>
 
@@ -962,7 +1578,7 @@ struct LeaderboardSubmitDesc {
 }
 ```
 
-<sub>`api.ogt` line 13194</sub>
+<sub>`api.ogt` line 13196</sub>
 
 <a id="type-LeaderboardQueryDesc"></a>
 
@@ -992,7 +1608,7 @@ struct LeaderboardQueryDesc {
 }
 ```
 
-<sub>`api.ogt` line 13204</sub>
+<sub>`api.ogt` line 13206</sub>
 
 <a id="type-PointDesc"></a>
 
@@ -1020,7 +1636,7 @@ struct PointDesc {
 }
 ```
 
-<sub>`api.ogt` line 13217</sub>
+<sub>`api.ogt` line 13219</sub>
 
 <a id="type-AiMarkDesc"></a>
 
@@ -1046,7 +1662,7 @@ struct AiMarkDesc {
 }
 ```
 
-<sub>`api.ogt` line 13228</sub>
+<sub>`api.ogt` line 13230</sub>
 
 <a id="type-SaveSlotDesc"></a>
 
@@ -1072,7 +1688,7 @@ struct SaveSlotDesc {
 }
 ```
 
-<sub>`api.ogt` line 13236</sub>
+<sub>`api.ogt` line 13238</sub>
 
 <a id="type-LoadSlotDesc"></a>
 
@@ -1096,7 +1712,7 @@ struct LoadSlotDesc {
 }
 ```
 
-<sub>`api.ogt` line 13244</sub>
+<sub>`api.ogt` line 13246</sub>
 
 <a id="type-PlatformError"></a>
 
@@ -1106,7 +1722,7 @@ Why a call failed.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `code` | `string` | `""` | — | — | — | offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable or failed. |
+| `code` | `string` | `""` | — | — | — | offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable, failed, cancelled or no_fill. |
 | `message` | `string` | `""` | — | — | — | What happened, in words. |
 | `retryable` | `boolean` | `false` | — | — | — | Whether the same call may succeed later. |
 | `revision` | `number` | `0` | — | — | — | For a conflict of a conditional write: the revision the key is at now (read it again, merge, write at it); 0 otherwise. |
@@ -1114,14 +1730,14 @@ Why a call failed.
 ```ogt
 struct PlatformError {
   doc "Why a call failed."
-  field code String "offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable or failed."
+  field code String "offline, timeout, invalid, unauthorized, not_found, conflict, too_large, rate_limited, unavailable, failed, cancelled or no_fill."
   field message String "What happened, in words."
   field retryable bool "Whether the same call may succeed later."
   field revision u32 "For a conflict of a conditional write: the revision the key is at now (read it again, merge, write at it); 0 otherwise."
 }
 ```
 
-<sub>`api.ogt` line 13251</sub>
+<sub>`api.ogt` line 13253</sub>
 
 <a id="type-PlatformResult"></a>
 
@@ -1156,7 +1772,7 @@ struct PlatformResult {
 }
 ```
 
-<sub>`api.ogt` line 13259</sub>
+<sub>`api.ogt` line 13261</sub>
 
 <a id="type-PlatformInfo"></a>
 
@@ -1167,7 +1783,7 @@ What answers platform calls here.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `host` | `string` | `""` | — | — | — | `player` (a Player frames the game), `local` (the native host's JSON store or the browser's own storage) or `none`. |
-| `capabilities` | `readonly string[]` | `[]` | — | — | — | The methods it answers: store.get, store.set, store.list, leaderboard.submit, leaderboard.top, leaderboard.around, telemetry, point, ai.mark. |
+| `capabilities` | `readonly string[]` | `[]` | — | — | — | The methods it answers: store.get, store.set, store.list, leaderboard.submit, leaderboard.top, leaderboard.around, telemetry, point, ai.mark, purchase.products, purchase.buy, purchase.entitlements, purchase.consume, ad.ready, ad.show, achievement.unlock, achievement.progress, achievement.list, player.get, friends.list, invite.send, invite.list, share (og.platform.supports asks for one). |
 | `pending` | `number` | `0` | — | — | — | Calls not answered yet. |
 | `clock` | `string` | `""` | — | — | — | Whose clock og.platform.now and the answers' `time` read: `player` (the Player's answers carry its time), `browser` (the web host's own clock: the Player gives no time yet, docs/platform-asks.md), `system` (the native host's system clock), `fixed` (`og run --clock` and playtests: a clock that starts where it is told and moves with the ticks) or `none`. |
 
@@ -1175,13 +1791,273 @@ What answers platform calls here.
 struct PlatformInfo {
   doc "What answers platform calls here."
   field host String "`player` (a Player frames the game), `local` (the native host's JSON store or the browser's own storage) or `none`."
-  field capabilities List.String "The methods it answers: store.get, store.set, store.list, leaderboard.submit, leaderboard.top, leaderboard.around, telemetry, point, ai.mark."
+  field capabilities List.String "The methods it answers: store.get, store.set, store.list, leaderboard.submit, leaderboard.top, leaderboard.around, telemetry, point, ai.mark, purchase.products, purchase.buy, purchase.entitlements, purchase.consume, ad.ready, ad.show, achievement.unlock, achievement.progress, achievement.list, player.get, friends.list, invite.send, invite.list, share (og.platform.supports asks for one)."
   field pending u32 "Calls not answered yet."
   field clock String "Whose clock og.platform.now and the answers' `time` read: `player` (the Player's answers carry its time), `browser` (the web host's own clock: the Player gives no time yet, docs/platform-asks.md), `system` (the native host's system clock), `fixed` (`og run --clock` and playtests: a clock that starts where it is told and moves with the ticks) or `none`."
 }
 ```
 
-<sub>`api.ogt` line 13274</sub>
+<sub>`api.ogt` line 13276</sub>
+
+<a id="type-AdKind"></a>
+
+### `AdKind` (enum)
+
+Which kind of ad.
+
+A string: one of the variants below. The zero value is `"rewarded"`.
+
+| Variant | Doc |
+|---|---|
+| `"rewarded"` | The player chose to watch it for a reward: the answer says whether they watched it to the end. |
+| `"interstitial"` | Shown at a break the game picks (between levels): the player may close it. |
+
+```ogt
+enum AdKind {
+  doc "Which kind of ad."
+  variant rewarded "The player chose to watch it for a reward: the answer says whether they watched it to the end."
+  variant interstitial "Shown at a break the game picks (between levels): the player may close it."
+}
+```
+
+<sub>`api.ogt` line 13378</sub>
+
+<a id="type-PlatformNoticeKind"></a>
+
+### `PlatformNoticeKind` (enum)
+
+What a notice is about.
+
+A string: one of the variants below. The zero value is `"purchase"`.
+
+| Variant | Doc |
+|---|---|
+| `"purchase"` | A purchase settled: a pending one completed or failed, or one was refunded. Data `{ purchase, product, quantity, state }`, state `completed`, `failed` or `refunded`. |
+| `"entitlements"` | The player's entitlements changed without a call (bought on another device, a subscription expired): data `{ entitlements }`, the entitlements answer's shape. |
+| `"invite"` | An invite to this game arrived: data `{ invite, from: { player, name }, payload, time }`. |
+
+```ogt
+enum PlatformNoticeKind {
+  doc "What a notice is about."
+  variant purchase "A purchase settled: a pending one completed or failed, or one was refunded. Data `{ purchase, product, quantity, state }`, state `completed`, `failed` or `refunded`."
+  variant entitlements "The player's entitlements changed without a call (bought on another device, a subscription expired): data `{ entitlements }`, the entitlements answer's shape."
+  variant invite "An invite to this game arrived: data `{ invite, from: { player, name }, payload, time }`."
+}
+```
+
+<sub>`api.ogt` line 13384</sub>
+
+<a id="type-PlatformNoticeData"></a>
+
+### `PlatformNoticeData` (struct)
+
+A notice og.PlatformNotice announced.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `notice` | `number` | `0` | — | — | — | Its number. |
+| `kind` | `string` | `""` | — | — | — | `purchase`, `entitlements` or `invite`. |
+| `data` | `unknown` | `null` | — | — | — | What it carries (see og.PlatformNoticeKind). |
+| `tick` | `number` | `0` | — | — | — | The tick it was applied at. |
+| `time` | `number` | `0` | — | `ms` | — | The host's clock when it sent it, UTC milliseconds; 0 when it gave none. |
+
+```ogt
+struct PlatformNoticeData {
+  doc "A notice og.PlatformNotice announced."
+  field notice u32 "Its number."
+  field kind String "`purchase`, `entitlements` or `invite`."
+  field data Json "What it carries (see og.PlatformNoticeKind)."
+  field tick u32 "The tick it was applied at."
+  field time f64 "The host's clock when it sent it, UTC milliseconds; 0 when it gave none." {
+    unit ms
+  }
+}
+```
+
+<sub>`api.ogt` line 13402</sub>
+
+<a id="type-ProductsDesc"></a>
+
+### `ProductsDesc` (desc struct)
+
+Which products to describe.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `ids` | `readonly string[]` | `[]` | — | — | — | Product ids as the game's store lists them (1 to 64 of letters, digits, `.`, `_` and `-`), at most 100; empty: every product the game sells. |
+
+```ogt
+struct ProductsDesc {
+  doc "Which products to describe."
+  desc true
+  field ids List.String "Product ids as the game's store lists them (1 to 64 of letters, digits, `.`, `_` and `-`), at most 100; empty: every product the game sells."
+}
+```
+
+<sub>`api.ogt` line 13413</sub>
+
+<a id="type-PurchaseDesc"></a>
+
+### `PurchaseDesc` (desc struct)
+
+A purchase to ask the player for.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `product` | `string` | `""` | — | — | — | The product's id. |
+| `quantity` | `number` | `1` | 1 … 99 | — | — | How many, for a consumable. |
+
+```ogt
+struct PurchaseDesc {
+  doc "A purchase to ask the player for."
+  desc true
+  field product String "The product's id."
+  field quantity u32 "How many, for a consumable." {
+    default 1
+    min 1
+    max 99
+  }
+}
+```
+
+<sub>`api.ogt` line 13419</sub>
+
+<a id="type-AdDesc"></a>
+
+### `AdDesc` (desc struct)
+
+An ad to show.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `kind` | `AdKind` | `"rewarded"` | — | — | — | Rewarded or interstitial (default rewarded). |
+| `placement` | `string` | `"default"` | — | — | — | Where in the game, as the game names it (`level.end`, `continue`): 1 to 64 of letters, digits, `.`, `_` and `-` (default `default`). |
+
+```ogt
+struct AdDesc {
+  doc "An ad to show."
+  desc true
+  field kind AdKind "Rewarded or interstitial (default rewarded)."
+  field placement String "Where in the game, as the game names it (`level.end`, `continue`): 1 to 64 of letters, digits, `.`, `_` and `-` (default `default`)." {
+    default "default"
+  }
+}
+```
+
+<sub>`api.ogt` line 13430</sub>
+
+<a id="type-AchievementProgressDesc"></a>
+
+### `AchievementProgressDesc` (desc struct)
+
+Progress towards an achievement.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `id` | `string` | `""` | — | — | — | The achievement's id (1 to 64 of letters, digits, `.`, `_` and `-`). |
+| `percent` | `number` | `0` | 0 … 100 | — | — | How far, 0 to 100: 100 unlocks it. Progress never goes back (a lower value keeps the higher one). |
+
+```ogt
+struct AchievementProgressDesc {
+  doc "Progress towards an achievement."
+  desc true
+  field id String "The achievement's id (1 to 64 of letters, digits, `.`, `_` and `-`)."
+  field percent f32 "How far, 0 to 100: 100 unlocks it. Progress never goes back (a lower value keeps the higher one)." {
+    min 0
+    max 100
+  }
+}
+```
+
+<sub>`api.ogt` line 13439</sub>
+
+<a id="type-FriendsDesc"></a>
+
+### `FriendsDesc` (desc struct)
+
+How many friends.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `count` | `number` | `50` | 1 … 200 | — | — | At most this many, those playing this game first. |
+
+```ogt
+struct FriendsDesc {
+  doc "How many friends."
+  desc true
+  field count u32 "At most this many, those playing this game first." {
+    default 50
+    min 1
+    max 200
+  }
+}
+```
+
+<sub>`api.ogt` line 13449</sub>
+
+<a id="type-InviteDesc"></a>
+
+### `InviteDesc` (desc struct)
+
+An invite to this game.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `to` | `string` | `""` | — | — | — | The friend's player id (og.platform.friends); empty: the host offers an invite link through the share sheet. |
+| `message` | `string` | `""` | — | — | — | What the invite says, at most 120 characters; empty: the host's own words. |
+| `payload` | `unknown` | `null` | — | — | — | What the game hands the invited player (a room id, a level): any JSON, at most 1 KiB encoded; their og.platform.invites carries it back. |
+
+```ogt
+struct InviteDesc {
+  doc "An invite to this game."
+  desc true
+  field to String "The friend's player id (og.platform.friends); empty: the host offers an invite link through the share sheet."
+  field message String "What the invite says, at most 120 characters; empty: the host's own words."
+  field payload Json "What the game hands the invited player (a room id, a level): any JSON, at most 1 KiB encoded; their og.platform.invites carries it back."
+}
+```
+
+<sub>`api.ogt` line 13459</sub>
+
+<a id="type-ShareDesc"></a>
+
+### `ShareDesc` (desc struct)
+
+What to share through the device's share sheet.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `text` | `string` | `""` | — | — | — | The text, 1 to 280 characters. |
+| `title` | `string` | `""` | — | — | — | A title, at most 80 characters; empty: the game's name. |
+| `path` | `string` | `""` | — | — | — | A short query the game's own Play link carries back (`?share=<path>`), at most 256 of letters, digits, `.`, `_`, `-`, `/` and `=`; empty: the plain Play link. The host builds the link: a game names no URL. |
+| `image` | `boolean` | `false` | — | — | — | Attach the frame drawn last (a score screen). |
+
+```ogt
+struct ShareDesc {
+  doc "What to share through the device's share sheet."
+  desc true
+  field text String "The text, 1 to 280 characters."
+  field title String "A title, at most 80 characters; empty: the game's name."
+  field path String "A short query the game's own Play link carries back (`?share=<path>`), at most 256 of letters, digits, `.`, `_`, `-`, `/` and `=`; empty: the plain Play link. The host builds the link: a game names no URL."
+  field image bool "Attach the frame drawn last (a score screen)."
+}
+```
+
+<sub>`api.ogt` line 13467</sub>
 
 <a id="type-RoomDesc"></a>
 
@@ -1209,7 +2085,7 @@ struct RoomDesc {
 }
 ```
 
-<sub>`api.ogt` line 13395</sub>
+<sub>`api.ogt` line 13625</sub>
 
 <a id="type-RoomPeer"></a>
 
@@ -1232,7 +2108,7 @@ struct RoomPeer {
 }
 ```
 
-<sub>`api.ogt` line 13406</sub>
+<sub>`api.ogt` line 13636</sub>
 
 <a id="type-RoomInfo"></a>
 
@@ -1261,7 +2137,7 @@ struct RoomInfo {
 }
 ```
 
-<sub>`api.ogt` line 13413</sub>
+<sub>`api.ogt` line 13643</sub>
 
 <a id="type-RoomMessageData"></a>
 
@@ -1288,4 +2164,4 @@ struct RoomMessageData {
 }
 ```
 
-<sub>`api.ogt` line 13423</sub>
+<sub>`api.ogt` line 13653</sub>

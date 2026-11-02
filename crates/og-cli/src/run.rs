@@ -1,6 +1,6 @@
 //! `og run [project|entry] [--headless] [--commands "t:action[:args];..."] [--seed S]
 //! [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]...
-//! [--audio null|device|<out.wav>] [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--json] [--no-check]`
+//! [--audio null|device|<out.wav>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--json] [--no-check]`
 //!
 //! Cooks the project, type-checks it (crate::check: a type error stops the
 //! run before anything is bundled, its diagnostics printed, or with
@@ -15,7 +15,9 @@
 //! (relative to the current directory; its SHA-256 is in `--json`'s summary,
 //! the same for two runs of the same script). og.platform's calls are
 //! answered from a local store, in memory unless `--platform-store
-//! file.json` keeps it in a file; `og.platform.now` reads the system clock,
+//! file.json` keeps it in a file, and its purchases, ads, achievements,
+//! identity and share calls are faked, each succeeding unless
+//! `--platform-fake file.json` (a LocalFake) scripts it; `og.platform.now` reads the system clock,
 //! or with `--clock <UTC ms>` a clock that starts there and moves with the
 //! ticks (reproducible, as playtests run). `--trace out.json` writes the
 //! run in the Chrome trace format (`trace.rs`): the cook, each tick with its
@@ -41,7 +43,7 @@ use crate::project::{self, Project};
 use std::path::Path;
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--platform-store <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--room ws://127.0.0.1:P/<room>] [--json] [--no-check]\n       og run --device chrome|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]";
+const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--room ws://127.0.0.1:P/<room>] [--json] [--no-check]\n       og run --device chrome|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]";
 
 /// What `og run` was asked.
 pub struct RunArgs {
@@ -121,8 +123,8 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
                 i += 1;
             }
             flag @ ("--ticks" | "--seed" | "--setup" | "--commands" | "--size" | "--out"
-            | "--port" | "--audio" | "--platform-store" | "--clock" | "--locale"
-            | "--trace" | "--room") => {
+            | "--port" | "--audio" | "--platform-store" | "--platform-fake" | "--clock"
+            | "--locale" | "--trace" | "--room") => {
                 let Some(v) = args.get(i + 1) else {
                     return Err(format!("{flag} needs a value. {USAGE}"));
                 };
@@ -138,12 +140,12 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
                         r.forward.extend([flag.into(), v.to_string()]);
                         device_forward.extend([flag.to_string(), v.to_string()]);
                     }
-                    "--audio" | "--platform-store" => {
+                    "--audio" | "--platform-store" | "--platform-fake" => {
                         // A path is the caller's, not bun's working directory's.
                         let v = match *v {
                             "null" | "device" if flag == "--audio" => v.to_string(),
                             path => std::path::absolute(path)
-                                .map_err(|e| format!("--audio {path}: {e}"))?
+                                .map_err(|e| format!("{flag} {path}: {e}"))?
                                 .display()
                                 .to_string(),
                         };

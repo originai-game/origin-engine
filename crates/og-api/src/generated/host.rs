@@ -59,6 +59,8 @@ pub trait Lifecycle: Wire {
     fn og_platform_answer(&self, engine: u32, request: u32, answer: String) -> bool;
     /// Say what answers this engine's platform calls: JSON `{ host, capabilities }` (`player`, `local` or `none`; the methods it answers), as og.platform.info reports.
     fn og_platform_set_host(&self, engine: u32, info: String);
+    /// Unasked host input for og.platform (docs/platform-asks.md #18): JSON `{ kind, data, time? }`, kind `purchase` (a purchase settled: `{ purchase, product, quantity, state }`), `entitlements` (`{ entitlements }`, changed without a call) or `invite` (`{ invite, from, payload, time }`). Applied at the start of the next tick (og.PlatformNotice) and logged with the answers. False for a malformed notice or an unknown kind.
+    fn og_platform_notify(&self, engine: u32, notice: String) -> bool;
     /// The room ops (IDL `platform` rooms, og.net's lockstep) made since the last call, oldest first, as JSON `[op]`: `{ op: "create", name, capacity }`, `{ op: "join", room, name }`, `{ op: "leave" }`, `{ op: "send", to?, channel?, data? | bytes? }` (bytes base64; a channel starting `og.` is the engine's own). The host carries each in order (docs/design.md §2.8).
     fn og_room_take(&self, engine: u32) -> String;
     /// One room event from the host, JSON: `{ type: "joined", room, peer, peers: [{ peer, name }] }`, `{ type: "peer_joined", peer, name }`, `{ type: "peer_left", peer }`, `{ type: "message", from, channel?, data? | bytes? }`, `{ type: "left", reason }` or `{ type: "error", op, code, message }`. Lockstep's messages act between ticks at once; the game's events are sent at the start of the next tick. False for a malformed event.
@@ -827,6 +829,42 @@ pub trait PlatformApi: Wire {
     fn og_platform_save_slot(&self, world: u32, desc: Option<String>) -> String;
     /// `og.platform.loadSlot`
     fn og_platform_load_slot(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.platform.products`
+    fn og_platform_products(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.platform.purchase`
+    fn og_platform_purchase(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.platform.entitlements`
+    fn og_platform_entitlements(&self, world: u32) -> u32;
+    /// `og.platform.consume`
+    fn og_platform_consume(&self, world: u32, purchase: String) -> String;
+    /// `og.platform.grant`
+    fn og_platform_grant(&self, world: u32, purchase: String) -> String;
+    /// `og.platform.granted`
+    fn og_platform_granted(&self, world: u32, purchase: String) -> bool;
+    /// `og.platform.adReady`
+    fn og_platform_ad_ready(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.platform.showAd`
+    fn og_platform_show_ad(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.platform.achievementUnlock`
+    fn og_platform_achievement_unlock(&self, world: u32, id: String) -> String;
+    /// `og.platform.achievementProgress`
+    fn og_platform_achievement_progress(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.platform.achievements`
+    fn og_platform_achievements(&self, world: u32) -> u32;
+    /// `og.platform.player`
+    fn og_platform_player(&self, world: u32) -> u32;
+    /// `og.platform.friends`
+    fn og_platform_friends(&self, world: u32, desc: Option<String>) -> u32;
+    /// `og.platform.inviteSend`
+    fn og_platform_invite_send(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.platform.invites`
+    fn og_platform_invites(&self, world: u32) -> u32;
+    /// `og.platform.share`
+    fn og_platform_share(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.platform.supports`
+    fn og_platform_supports(&self, world: u32, method: String) -> bool;
+    /// `og.platform.notice`
+    fn og_platform_notice(&self, world: u32, notice: u32) -> String;
     /// `og.platform.result`
     fn og_platform_result(&self, world: u32, request: u32) -> String;
     /// `og.platform.info`
@@ -1651,6 +1689,24 @@ pub const SYMBOLS: &[&str] = &[
     "og_platform_save_settings",
     "og_platform_save_slot",
     "og_platform_load_slot",
+    "og_platform_products",
+    "og_platform_purchase",
+    "og_platform_entitlements",
+    "og_platform_consume",
+    "og_platform_grant",
+    "og_platform_granted",
+    "og_platform_ad_ready",
+    "og_platform_show_ad",
+    "og_platform_achievement_unlock",
+    "og_platform_achievement_progress",
+    "og_platform_achievements",
+    "og_platform_player",
+    "og_platform_friends",
+    "og_platform_invite_send",
+    "og_platform_invites",
+    "og_platform_share",
+    "og_platform_supports",
+    "og_platform_notice",
     "og_platform_result",
     "og_platform_info",
     "og_platform_now",

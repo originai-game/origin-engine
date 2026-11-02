@@ -22,6 +22,7 @@
 //   });
 
 import { decodePng, encodePngBest } from "./node/png.ts";
+import type { LocalFake } from "./platform-local.ts";
 
 /** What one headless run produced. */
 export interface PlaytestRun {
@@ -154,6 +155,13 @@ export interface PlaytestDesc {
    * process has its own store in memory.
    */
   readonly store?: "keep";
+  /**
+   * How the platform services are faked in every process of the playtest (`og run --platform-fake`):
+   * the products, each method's outcomes in order (`{ "purchase.buy": ["cancelled", "ok"] }`), the
+   * player, friends, invites, notices sent at a tick, and the methods the host lacks. Omitted: every
+   * purchase, ad, achievement, identity and share call succeeds.
+   */
+  readonly platform?: LocalFake;
   /**
    * Play the script in a room (docs/design.md §2.8, §2.10): the playtest starts a relay
    * (`og relay`, in its own process) and runs `players` processes at once, each `og run

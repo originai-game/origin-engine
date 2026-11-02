@@ -106,6 +106,15 @@ const storeOf = (place: number): string | undefined => {
   mkdirSync(dirname(path), { recursive: true });
   return path;
 };
+// PlaytestDesc.platform: the services' fake, one file every process reads (a dot name, as the store's).
+const fakeFile = desc!.platform
+  ? (() => {
+      const path = join(out, ".store", "fake.json");
+      mkdirSync(dirname(path), { recursive: true });
+      writeFileSync(path, JSON.stringify(desc!.platform));
+      return path;
+    })()
+  : undefined;
 const command = (commands: string, dir: string, clock: number, room?: { url: string; ticks?: number | undefined; place: number }) => {
   const c = ["bun", join(here, "run.ts"), "--entry", entry!, "--commands", commands, "--out", dir, "--json", "--clock", String(clock)];
   if (room) c.push("--room", room.url);
@@ -116,6 +125,7 @@ const command = (commands: string, dir: string, clock: number, room?: { url: str
   for (const step of (desc!.setup ?? "").split(";").map((s) => s.trim()).filter((s) => s !== "")) c.push("--setup", step);
   const store = storeOf(room?.place ?? 0);
   if (store) c.push("--platform-store", store);
+  if (fakeFile) c.push("--platform-fake", fakeFile);
   return c;
 };
 type ExpectResult = { tick: number; expect: string; kind: string; status: "pass" | "fail" | "unchecked"; expected: unknown; observed: unknown; reason: string };

@@ -5,7 +5,7 @@
 // tick and `dump_desync` the component and field.
 import { expect, test } from "bun:test";
 import { dirname, join } from "node:path";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { ogBin } from "./support/og-bin.ts";
@@ -117,6 +117,34 @@ test("Math.random() in a system is a desync: og.Desync names tick 101 and dump_d
       expect(dump.diff.components[0].entity).toBe("wobbler");
       expect(dump.diff.components[0].fields.map((f: { field: string }) => f.field)).toEqual(["offset"]);
     }
+  } finally {
+    for (const o of outs) rmSync(o, { recursive: true, force: true });
+  }
+}, 300_000);
+
+test("two peers whose platforms answer one purchase differently keep one hash: a shared-state system hears neither", async () => {
+  const outs = [mkdtempSync(join(tmpdir(), "og-session-")), mkdtempSync(join(tmpdir(), "og-session-"))];
+  try {
+    const fakes = ["ok", "cancelled"].map((outcome, i) => {
+      const file = join(outs[i]!, "fake.json");
+      writeFileSync(file, JSON.stringify({ outcomes: { "purchase.buy": [outcome] } }));
+      return file;
+    });
+    const script = "4:heard;4.2:get:Wallet:wallet.json;4.2:get:Heard:heard.json";
+    const runs = await pair(
+      "packages/engine/tests/fixtures/platform-session",
+      "session",
+      outs.map((out, i) => ["--ticks", "300", "--out", out, "--commands", script, "--platform-fake", fakes[i]!]),
+    );
+    for (const [i, run] of runs.entries()) {
+      expect(run.lockstep.running).toBe(true);
+      expect(run.lockstep.desync).toBeNull();
+      // Credit writes the shared Wallet: it heard no answer and read no result.
+      expect(JSON.parse(readFileSync(join(outs[i]!, "wallet.json"), "utf8")).value).toEqual({ gems: 0, answers: 0 });
+      // Toast writes nothing shared: it heard its peer's own answer.
+      expect(JSON.parse(readFileSync(join(outs[i]!, "heard.json"), "utf8")).value).toEqual({ count: 1 });
+    }
+    expect(runs[1]!.netHash).toBe(runs[0]!.netHash);
   } finally {
     for (const o of outs) rmSync(o, { recursive: true, force: true });
   }
