@@ -2719,7 +2719,7 @@ module ui {
     field shape GraphNodeShape "Its outline."
     field kind String "A selector flag a style dresses (`boss`, `shop`)."
     field disabled bool "Shown but not pressable."
-    field team Option.u32 "Its side on a map: 0 the player's (primary), 1 an enemy's (danger), more the style's team colours; the node is filled in that colour, its ring still its state's. Null is no side (the state's ink alone). Pair a side with a shape (triangle, diamond) so sides are not told by colour alone."
+    field team Option.u32 "Its side on a map: 0 the player's (ink, so it differs from danger in every style, a gold primary too), 1 an enemy's (danger), more the style's team colours; the node is filled in that colour, its ring still its state's. Null is no side (the state's ink alone). Pair a side with a shape (triangle, diamond) so sides are not told by colour alone."
   }
 
   struct GraphLink {
@@ -2750,7 +2750,7 @@ module ui {
     field curved bool "Links bend as a run map's paths." {
       default true
     }
-    field labels bool "Names under the nodes." {
+    field labels bool "Names under the nodes; without them no room is kept under a node for one, so the fit fills the window." {
       default true
     }
     field selected String "The selected node's id: ringed in the focus ink."
@@ -2758,6 +2758,7 @@ module ui {
     field zoomOutLabel String "Zoom out's accessible name."
     field width Option.Size "Its width; null grows."
     field height Option.Size "Its height; null is 420 (360 on a phone)."
+    field ground Option.Texture "A texture tiled over the field's ground (star dust, a grid: light marks on transparent), 256 px a tile, tinted in the ink at 6 % so it reads as a field and never competes with the nodes; under the links, panning with them. Null is the plain ground."
     field label String "What a screen reader calls it."
   }
 
@@ -3132,7 +3133,7 @@ module ui {
   fn nodeGraph {
     doc "A pan-and-zoom graph of nodes and links: skill trees, run maps, flowcharts."
     doc "Each node is a circle, rounded square, hexagon, diamond or triangle; a node with a team (a sector map's allied and hostile systems) is filled in its side's colour, a sided node with no icon showing no letters (its shape and colour mark it). Its state shows by its ring and a mark."
-    doc "Parts: Graph.frame, Graph.node[<state>][<kind>][<shape>][team=<n>][selected], Graph.zoom, Graph.zoomButton. Accessibility: group named label, value the zoom; each node a button named by its label, value its state, selected when selected. Probe ids: <id>/Window/View/Canvas/Node#i, <id>/Window/View/Canvas/Caption#i, <id>/Bar/Zoom/In, <id>/Bar/Zoom/Out."
+    doc "Parts: Graph.frame (its ground's texture on <id>/Window/View/Canvas), Graph.node[<state>][<kind>][<shape>][team=<n>][selected], Graph.zoom, Graph.zoomButton. Accessibility: group named label, value the zoom; each node a button named by its label, value its state, selected when selected. Probe ids: <id>/Window/View/Canvas/Node#i, <id>/Window/View/Canvas/Caption#i, <id>/Bar/Zoom/In, <id>/Bar/Zoom/Out."
     host false
     param id String "Its id."
     param desc NodeGraphDesc "Nodes, links and the zoom."

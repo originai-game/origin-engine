@@ -716,13 +716,23 @@ test("nodeGraph: zoom in scales it, a node tap chooses it, a locked node says so
 
 test("nodeGraph: a triangle node and a node's side: allied and hostile differ by shape and by colour, with no letters over them", () => {
   // Wrong: a triangle drawn as the circle (an unknown shape), sides told by colour alone or not at all (every node
-  // on the panel's ground), or a sided node's label's first letters over its mark.
+  // on the panel's ground), the player's side in a primary a style may share with danger, a sided node's label's
+  // first letters over its mark, no ground texture, or caption room kept under nodes that show none.
   const nodes: Api.GraphNode[] = [
     { id: "home", x: 0, y: 0, label: "Allied", shape: "triangle", team: 0, state: "current" },
-    { id: "rim", x: 120, y: 60, label: "Hostile", shape: "diamond", team: 1 },
+    { id: "rim", x: 120, y: 300, label: "Hostile", shape: "diamond", team: 1 },
     { id: "far", x: 240, y: 0, label: "Unclaimed" },
   ];
-  const engine = run(() => og.ui.nodeGraph("Map", { nodes, labels: false }));
+  let palette: Record<string, string> = {};
+  let ground: unknown = null;
+  const engine = run(() => {
+    palette = og.ui.frameTheme().palette as Record<string, string>;
+    og.ui.nodeGraph("Map", { nodes, labels: false, height: { kind: "fixed", px: 300 }, ground: ground as never });
+  }, 640, kit);
+  const tex = og.load.texture(engine.world, "textures/backdrop.png");
+  if (!tex.ok) throw new Error(tex.reason);
+  ground = tex.value;
+  engine.advance(4);
   const draws = drawsDuring(() => engine.advance(1));
   const node = (i: number) => [...draws.entries()].find(([p]) => p.endsWith(`/Canvas/Node#${i}`))?.[1]?.find((d) => d.shape) ?? {};
   expect(node(0).shape).toMatchObject({ kind: "polygon", sides: 3 });
@@ -733,6 +743,23 @@ test("nodeGraph: a triangle node and a node's side: allied and hostile differ by
   expect(fill(0)).not.toBe(fill(2));
   expect(fill(1)).not.toBe(fill(2));
   expect(fill(2)).toContain("panelRaised");
+  // The player's side in the ink, never the primary (fantasy's gold primary beside its gold danger told the sides
+  // by shape alone): the fill's top stop is the ink lightened.
+  const rgb = (h: string) => [1, 3, 5].map((i) => Number.parseInt(h.slice(i, i + 2), 16) / 255);
+  const top = (node(0).fills?.[0] as unknown as { stops: { color: { color: { r: number; g: number; b: number } } }[] }).stops[0]!.color.color;
+  const lightened = (h: string) => rgb(h).map((c) => c + (1 - c) * 0.2);
+  const off = (h: string) => Math.max(...lightened(h).map((c, i) => Math.abs(c - [top.r, top.g, top.b][i]!)));
+  expect(palette.ink).not.toBe(palette.primary);
+  expect(off(palette.ink!)).toBeLessThan(0.01);
+  // The ground's texture tiled faintly over the field, in the ink.
+  const canvas = [...draws.entries()].find(([p]) => p.endsWith("/Canvas"))?.[1]?.[0];
+  expect(canvas?.fills?.[0]).toMatchObject({ kind: "image", fit: "pattern" });
+  expect(JSON.stringify(canvas?.fills?.[0])).toContain("ink");
+  // With no captions the fit keeps no caption's room under the bottom row: it sits a node and the fade above the
+  // window's foot (two caption lines higher before).
+  const view = byPath(engine, "Map/Window/View")!;
+  const low = byPath(engine, "Canvas/Node#1")!;
+  expect(view.y + view.height - (low.y + low.height)).toBeLessThan(28 + 8);
   // The side's mark is its shape and colour: no letters; an unsided node keeps its initials.
   expect(byPath(engine, "Node#0/Label")).toBe(undefined);
   expect(byPath(engine, "Node#1/Label")).toBe(undefined);

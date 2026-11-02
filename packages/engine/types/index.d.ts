@@ -27311,7 +27311,7 @@ export interface GraphNode {
    */
   readonly disabled?: boolean;
   /**
-   * Its side on a map: 0 the player's (primary), 1 an enemy's (danger), more the style's team colours; the node is filled in that colour, its ring still its state's. Null is no side (the state's ink alone). Pair a side with a shape (triangle, diamond) so sides are not told by colour alone.
+   * Its side on a map: 0 the player's (ink, so it differs from danger in every style, a gold primary too), 1 an enemy's (danger), more the style's team colours; the node is filled in that colour, its ring still its state's. Null is no side (the state's ink alone). Pair a side with a shape (triangle, diamond) so sides are not told by colour alone.
    *
    * @default null
    */
@@ -27394,7 +27394,7 @@ export interface NodeGraphDesc {
    */
   readonly curved?: boolean;
   /**
-   * Names under the nodes.
+   * Names under the nodes; without them no room is kept under a node for one, so the fit fills the window.
    *
    * @default true
    */
@@ -27429,6 +27429,12 @@ export interface NodeGraphDesc {
    * @default null
    */
   readonly height?: Size | null;
+  /**
+   * A texture tiled over the field's ground (star dust, a grid: light marks on transparent), 256 px a tile, tinted in the ink at 6 % so it reads as a field and never competes with the nodes; under the links, panning with them. Null is the plain ground.
+   *
+   * @default null
+   */
+  readonly ground?: Texture | null;
   /**
    * What a screen reader calls it.
    *
@@ -53091,7 +53097,7 @@ export declare namespace og {
     /**
      * A pan-and-zoom graph of nodes and links: skill trees, run maps, flowcharts.
      * Each node is a circle, rounded square, hexagon, diamond or triangle; a node with a team (a sector map's allied and hostile systems) is filled in its side's colour, a sided node with no icon showing no letters (its shape and colour mark it). Its state shows by its ring and a mark.
-     * Parts: Graph.frame, Graph.node[<state>][<kind>][<shape>][team=<n>][selected], Graph.zoom, Graph.zoomButton. Accessibility: group named label, value the zoom; each node a button named by its label, value its state, selected when selected. Probe ids: <id>/Window/View/Canvas/Node#i, <id>/Window/View/Canvas/Caption#i, <id>/Bar/Zoom/In, <id>/Bar/Zoom/Out.
+     * Parts: Graph.frame (its ground's texture on <id>/Window/View/Canvas), Graph.node[<state>][<kind>][<shape>][team=<n>][selected], Graph.zoom, Graph.zoomButton. Accessibility: group named label, value the zoom; each node a button named by its label, value its state, selected when selected. Probe ids: <id>/Window/View/Canvas/Node#i, <id>/Window/View/Canvas/Caption#i, <id>/Bar/Zoom/In, <id>/Bar/Zoom/Out.
      *
      * @param id Its id.
      * @param desc Nodes, links and the zoom.

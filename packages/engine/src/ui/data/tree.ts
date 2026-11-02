@@ -129,8 +129,9 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
   const s = size * Math.max(0.75, Math.min(1.25, live));
   // Room round the nodes' centres for a node and its caption (two lines under it), at the text size.
   const capW = byText(120);
-  const capH = byText(2 * 18);
   const labelled = desc.labels !== false;
+  // With no captions none is room kept under a node: the graph fills its window down to the fade.
+  const capH = labelled ? byText(2 * 18) : 0;
   // Each caption's width: its text's at the caption size (about 0.56 em an average letter), up to
   // capW, where it wraps. Estimated, not measured: a caption panned out of view has no bounds.
   const em = 13 * Math.max(1, frame().theme.textScale ?? 1);
@@ -237,6 +238,8 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
     kit.openScroll("View", { width: grow(), height: grow(), axes: "both" });
     try {
       kit.open("Canvas", { width: px(W), height: px(H) });
+      // The field's ground (star dust, a grid): tiled faintly in the ink, panning with the graph.
+      if (desc.ground) kit.setDraw({ fills: [{ kind: "image", texture: desc.ground, fit: "pattern", tile: { x: 256, y: 256 }, tint: token("ink", 0.06) }] });
       // Links under the nodes: one path element each.
       links.forEach((l, k) => {
         const a = byId.get(l.from ?? "");
@@ -267,8 +270,10 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
         const locked = state === "locked";
         const ink = STATE_INK[state] ?? "ink";
         // A side (a map's allied and hostile systems): the node filled in its side's colour, its ring still its state's.
+        // The player's side is the style's ink, never its primary (a gold primary beside a gold danger told the sides
+        // by shape alone): ink and danger differ in every pack.
         const sided = n.team !== null && n.team !== undefined;
-        const side = sided ? (n.team === 0 ? role("primary") : n.team === 1 ? role("danger") : teamColor(n.team!)) : null;
+        const side = sided ? (n.team === 0 ? role("ink") : n.team === 1 ? role("danger") : teamColor(n.team!)) : null;
         const r = surface(kit.idi("Node", k), {
           part: "Graph.node",
           cls: "avatar",
