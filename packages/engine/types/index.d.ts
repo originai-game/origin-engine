@@ -32659,6 +32659,282 @@ export interface LobbyResult {
 
 
 /**
+ * One character on a select screen's roster.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RosterEntry {
+  /**
+   * Its key: its tile's element id, so its probe path is <id>/Roster/<key>.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its name, large over its splash when a cursor is on it.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Its role or class (Duelist, Grappler, Support): the eyebrow over the name.
+   *
+   * @default ""
+   */
+  readonly role?: string;
+  /**
+   * Its tile's art (art kind portrait), the face filling the tile; null draws the style's placeholder figure.
+   *
+   * @default null
+   */
+  readonly portrait?: Texture | null;
+  /**
+   * Its full art (art kind splash) standing large on its player's side; null takes the portrait.
+   *
+   * @default null
+   */
+  readonly splash?: Texture | null;
+  /**
+   * Not owned or not unlocked: the tile dark with a lock; a press is refused and says why.
+   *
+   * @default false
+   */
+  readonly locked?: boolean;
+  /**
+   * Why it is locked (Unlock at level 10).
+   *
+   * @default ""
+   */
+  readonly lockedHint?: string;
+  /**
+   * Picked by another player of the local player's team: the tile dimmed, a press refused.
+   *
+   * @default false
+   */
+  readonly taken?: boolean;
+  /**
+   * A line under the name on its splash (its play style).
+   *
+   * @default ""
+   */
+  readonly description?: string;
+}
+
+/**
+ * One player's cursor on the roster.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SelectCursor {
+  /**
+   * The player's key (p1, p2).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * The player's name or slot (P1, Mira): its tag on the tile and over its splash.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * The roster key its cursor is on (empty: none yet).
+   *
+   * @default ""
+   */
+  readonly entry?: string;
+  /**
+   * Locked in: its tile wears the tick and its splash its lock.
+   *
+   * @default false
+   */
+  readonly confirmed?: boolean;
+  /**
+   * Its team, for its colour (the style's team roles).
+   *
+   * @default 0
+   */
+  readonly team?: number;
+  /**
+   * The local player: keys, pads and the pointer move this cursor (SelectResult.hovered).
+   *
+   * @default false
+   */
+  readonly you?: boolean;
+}
+
+/**
+ * A character select: the roster, the players' cursors and the words.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface CharacterSelectDesc {
+  /**
+   * The screen's title (Choose your fighter).
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * The roster in its order: the grid fills rows from the start.
+   *
+   * @default []
+   */
+  readonly roster?: readonly RosterEntry[];
+  /**
+   * The players' cursors: the local player's splash stands on the start side; with two players, the other's on the end side.
+   *
+   * @default []
+   */
+  readonly cursors?: readonly SelectCursor[];
+  /**
+   * Tiles a row; 0 fits as many 96 px tiles as the grid's width holds (four on a phone in portrait).
+   *
+   * @default 0
+   */
+  readonly columns?: number;
+  /**
+   * Time left to pick, shown as a timer over the grid; a negative value shows none.
+   *
+   * @default -1
+   * @unit s (seconds of simulation time)
+   */
+  readonly secondsLeft?: number;
+  /**
+   * The local player's confirm.
+   *
+   * @default "Lock in"
+   */
+  readonly lockLabel?: string;
+  /**
+   * The confirm once locked in.
+   *
+   * @default "Locked in"
+   */
+  readonly lockedInLabel?: string;
+  /**
+   * A taken character's reason.
+   *
+   * @default "Taken"
+   */
+  readonly takenLabel?: string;
+  /**
+   * The random pick's tile; empty shows none.
+   *
+   * @default "Random"
+   */
+  readonly randomLabel?: string;
+}
+
+/** What the local player asked for this tick, for the game to apply. */
+export interface CharacterSelectResult {
+  /**
+   * The roster key under the pointer or the focus: move the local player's cursor to it (a fighting game's cursor follows the stick).
+   */
+  readonly hovered: string | null;
+  /** A character pressed or confirmed (its tile, or Lock in on the cursor's): lock it in. */
+  readonly picked: string | null;
+  /** The random tile was pressed: pick one for the player. */
+  readonly random: boolean;
+  /** A locked or taken character pressed: it shook. */
+  readonly refused: string | null;
+  /** Back while locked in: unlock the pick. */
+  readonly cancelled: boolean;
+}
+
+
+/**
+ * One side of a versus screen.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface VersusSide {
+  /**
+   * The player's or team's name, in the display face.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * The character's name, over the player's.
+   *
+   * @default ""
+   */
+  readonly character?: string;
+  /**
+   * The character's full art (art kind splash), filling the side; null draws the style's placeholder figure.
+   *
+   * @default null
+   */
+  readonly splash?: Texture | null;
+  /**
+   * A line under the name (a rank, a record: 12W 3L).
+   *
+   * @default ""
+   */
+  readonly detail?: string;
+  /**
+   * Its team, for its colour.
+   *
+   * @default 0
+   */
+  readonly team?: number;
+}
+
+/**
+ * A versus screen: two sides, the stage, the words.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface VersusDesc {
+  /**
+   * The start side (the local player's).
+   *
+   * @default {}
+   */
+  readonly left?: VersusSide;
+  /**
+   * The end side.
+   *
+   * @default {}
+   */
+  readonly right?: VersusSide;
+  /**
+   * The mark between them.
+   *
+   * @default "VS"
+   */
+  readonly versusLabel?: string;
+  /**
+   * The stage or mode under the mark (Round 1 · Skyreach Gate).
+   *
+   * @default ""
+   */
+  readonly stage?: string;
+  /**
+   * Loading progress, 0 to 1, as a bar along the foot; a negative value shows none.
+   *
+   * @default -1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly progress?: number;
+  /**
+   * The skip hint; empty takes no skip.
+   *
+   * @default "Skip"
+   */
+  readonly skipLabel?: string;
+}
+
+/** What the versus screen was asked this tick. */
+export interface VersusResult {
+  /** Confirm, Back or a press asked to go on. */
+  readonly skipped: boolean;
+}
+
+
+/**
  * A template's action, by its id (a menu item, `buy:<item>`, `share`).
  *
  * @param action The action's id.
@@ -52584,6 +52860,22 @@ export declare namespace og {
      * @param desc The party, the mode, matchmaking and the ready check.
      */
     function lobby(id: string, desc?: LobbyDesc): LobbyResult;
+    /**
+     * A character select (Street Fighter 6, Valorant, Overwatch, Smash): the local player's character standing large on the start side, its splash art filling that half over a scrim with its role in the eyebrow, its name in the display face and a line of description; with two players the other's on the end side, mirrored, each tagged in its team's colour; the roster under or beside them as a grid of portrait tiles in whole rows, each cursor a rim in its player's team colour with the player's tag at the tile's corner (two on one tile split the corner), a confirmed pick a tick, a locked tile dark behind a lock, a taken one dimmed. Lock in in the accent at the foot (Locked in, quiet, once confirmed); a timer when the game gives one. Keys and pads walk the tiles (the focus is the local cursor), confirm locks in, Back unlocks. On a phone in portrait the splash takes the top and the grid scrolls under it.
+     * Parts: Select.frame, Select.stage, Select.splash[you|rival][confirmed], Select.name, Select.roster, Select.tile[cursor][confirmed][locked][taken], Select.tag, Select.lock, Select.confirm[on], Select.timer. Slots: each entry's portrait (art kind portrait) and splash (art kind splash). States: on each tile, group pick (open, cursor, confirmed, locked, taken). Motion: a new character's splash slides in from its side on the panel spring; a confirmed pick flashes its tile and its splash's name pops on the emphasis spring (still under reduced motion); a refused tile shakes. Sounds: hover as the cursor moves, confirm on a pick, error on a refused one, back on Back. Accessibility: the roster a grid of buttons named name, role, locked or taken and whose cursor is on it; each splash a region named the player and the character. Probe ids: <id>/Roster/<key>, <id>/Roster/Random, <id>/Stage/Start, <id>/Stage/End, <id>/Foot/Lock.
+     *
+     * @param id Its id.
+     * @param desc The roster, the cursors and the words.
+     */
+    function characterSelect(id: string, desc?: CharacterSelectDesc): CharacterSelectResult;
+    /**
+     * A versus screen (Street Fighter, Tekken, Mortal Kombat, a MOBA's loading screen): the screen split on a slant into two sides, each a character's splash filling its half in the tint of its team, the character's name huge in the display face and the player's name and detail under it at the foot; the mark between them on the slant, the stage under it, and loading progress along the foot when the game gives it. The sides slam in from their edges, the mark pops in after them and both splashes drift slowly (still under reduced motion).
+     * Parts: Versus.frame, Versus.side[left|right], Versus.splash, Versus.name, Versus.player, Versus.mark, Versus.stage, Versus.progress, Versus.skip. Slots: each side's splash (art kind splash). Motion: the sides slide in from their edges on the panel spring, the mark scales in on the emphasis spring 200 ms later, the splashes drift by a few pixels over the screen's life. Sounds: open as it shows, confirm on a skip. Accessibility: a region named both sides and the mark (Aria versus Kael). Probe ids: <id>/Left, <id>/Right, <id>/Mark, <id>/Progress.
+     *
+     * @param id Its id.
+     * @param desc The sides, the stage and the words.
+     */
+    function versus(id: string, desc?: VersusDesc): VersusResult;
     /**
      * The title screen template. Returns the item chosen this tick.
      *

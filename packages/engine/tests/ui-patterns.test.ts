@@ -1304,3 +1304,62 @@ test("lobby: a ready check is accepted by confirm whatever has the focus, once; 
   key(p.engine, "Escape");
   expect(p.results.some((r) => r.decline)).toBeFalse();
 });
+
+// ── character select and versus ─────────────────────────────────────────
+
+const ROSTER: Api.RosterEntry[] = [
+  { key: "aria", name: "Aria", role: "Support" },
+  { key: "kael", name: "Kael", role: "Duelist" },
+  { key: "mira", name: "Mira", role: "Ranger", taken: true },
+  { key: "brann", name: "Brann", role: "Tank" },
+  { key: "vell", name: "Vell", role: "Mage", locked: true, lockedHint: "Unlock at level 10" },
+];
+
+function selectScreen() {
+  const results: Api.CharacterSelectResult[] = [];
+  const me = { key: "p1", name: "P1", entry: "kael", you: true, confirmed: false, team: 0 };
+  const engine = run(() => {
+    og.ui.column("Box", { width: { kind: "fixed", px: 1232 }, height: { kind: "fixed", px: 672 } }, () => {
+      const r = og.ui.characterSelect("Sel", { title: "Choose", roster: ROSTER, randomLabel: "", cursors: [me, { key: "p2", name: "P2", entry: "brann", team: 1 }] });
+      results.push(r);
+      if (r.hovered) me.entry = r.hovered;
+      if (r.picked) me.confirmed = true;
+      if (r.cancelled) me.confirmed = false;
+    });
+  });
+  engine.advance(20);
+  return { engine, results, me };
+}
+
+test("characterSelect: a taken or locked tile is refused, an open one picked; the rival's tag stands on its tile; Back unlocks", () => {
+  // Wrong: a taken character picked twice, a locked one picked, the rival's cursor not shown, or Back ignored once locked in.
+  const s = selectScreen();
+  expect(byPath(s.engine, "Roster/Row#0/brann/Tags/Tag#0/Text")!.text).toBe("P2");
+  expect(byPath(s.engine, "Stage/Start/Words/Name")!.text).toBe("Kael");
+  tapOn(s.engine, byPath(s.engine, "Roster/Row#0/mira")!);
+  tapOn(s.engine, byPath(s.engine, "Roster/Row#1/vell") ?? byPath(s.engine, "Roster/Row#0/vell")!);
+  expect(s.results.filter((r) => r.refused).map((r) => r.refused)).toEqual(["mira", "vell"]);
+  expect(s.results.some((r) => r.picked)).toBeFalse();
+  tapOn(s.engine, byPath(s.engine, "Roster/Row#0/aria")!);
+  expect(s.results.filter((r) => r.picked).map((r) => r.picked)).toEqual(["aria"]);
+  expect(byPath(s.engine, "Foot/Lock/Label")!.text).toBe("Locked in");
+  key(s.engine, "Escape");
+  expect(s.results.some((r) => r.cancelled)).toBeTrue();
+});
+
+test("versus: both sides named in one region; confirm skips only once the sides have landed", () => {
+  // Wrong: a skip answered the first tick (the press that opened it skips it at once), or a side left unnamed.
+  const results: Api.VersusResult[] = [];
+  const engine = run(() => {
+    og.ui.column("Box", { width: { kind: "fixed", px: 1232 }, height: { kind: "fixed", px: 672 } }, () => {
+      results.push(og.ui.versus("Vs", { left: { name: "Aria", character: "Kael" }, right: { name: "Mira", character: "Brann", team: 1 }, stage: "Round 1" }));
+    });
+  });
+  expect(elements(engine).some((e) => e.role === "region" && e.name === "Kael VS Brann")).toBeTrue();
+  engine.probe.commands("0:key_down:Enter;0.02:key_up:Enter");
+  engine.advance(2);
+  expect(results.some((r) => r.skipped)).toBeFalse();
+  engine.advance(10);
+  key(engine, "Enter");
+  expect(results.filter((r) => r.skipped).length).toBeGreaterThan(0);
+});

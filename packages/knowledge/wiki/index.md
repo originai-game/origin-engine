@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2261 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2270 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -339,6 +339,8 @@ Field units the docs and Tune use.
 | [`CHARACTER_LANDED`](physics.md#const-CHARACTER_LANDED) | constant | physics | — |
 | [`CHARACTER_LEFT_GROUND`](physics.md#const-CHARACTER_LEFT_GROUND) | constant | physics | — |
 | [`CHARACTER_WALL_JUMPED`](physics.md#const-CHARACTER_WALL_JUMPED) | constant | physics | — |
+| [`CharacterSelectDesc`](ui.md#type-CharacterSelectDesc) | desc struct | ui | — |
+| [`CharacterSelectResult`](ui.md#type-CharacterSelectResult) | struct | ui | — |
 | [`ChartDesc`](ui.md#type-ChartDesc) | desc struct | ui | — |
 | [`ChartKind`](ui.md#type-ChartKind) | enum | ui | — |
 | [`ChartResult`](ui.md#type-ChartResult) | struct | ui | — |
@@ -1401,6 +1403,7 @@ Field units the docs and Tune use.
 | [`og.ui.carousel`](ui.md#fn-carousel) | function | ui | — |
 | [`og.ui.castBar`](ui.md#fn-castBar) | function | ui | — |
 | [`og.ui.celebration`](ui.md#fn-celebration) | function | ui | — |
+| [`og.ui.characterSelect`](ui.md#fn-characterSelect) | function | ui | — |
 | [`og.ui.chart`](ui.md#fn-chart) | function | ui | — |
 | [`og.ui.checkbox`](ui.md#fn-checkbox) | function | ui | `og_ui_checkbox` |
 | [`og.ui.checkboxList`](ui.md#fn-checkboxList) | function | ui | `og_ui_checkbox_list` |
@@ -1653,6 +1656,7 @@ Field units the docs and Tune use.
 | [`og.ui.tutorialOverlay`](ui.md#fn-tutorialOverlay) | function | ui | — |
 | [`og.ui.unitFrame`](ui.md#fn-unitFrame) | function | ui | — |
 | [`og.ui.valueSlider`](ui.md#fn-valueSlider) | function | ui | — |
+| [`og.ui.versus`](ui.md#fn-versus) | function | ui | — |
 | [`og.ui.viewFrame`](ui.md#fn-viewFrame) | function | ui | — |
 | [`og.ui.viewport`](ui.md#fn-viewport) | function | ui | `og_ui_viewport` |
 | [`og.ui.visualState`](ui.md#fn-visualState) | function | ui | `og_ui_visual_state` |
@@ -1944,6 +1948,7 @@ Field units the docs and Tune use.
 | [`RoomPeer`](platform.md#type-RoomPeer) | struct | platform | — |
 | [`RootMotion`](anim.md#type-RootMotion) | enum | anim | — |
 | [`RootMotion()`](anim.md#column-RootMotion) | column kind | anim | — |
+| [`RosterEntry`](ui.md#type-RosterEntry) | desc struct | ui | — |
 | [`RumbleDesc`](input.md#type-RumbleDesc) | desc struct | input | — |
 | [`RunCondition`](system.md#type-RunCondition) | callback | system | — |
 | [`RuntimeProbe`](probe.md#type-RuntimeProbe) | interface | probe | — |
@@ -2019,6 +2024,7 @@ Field units the docs and Tune use.
 | [`SearchResult`](ui.md#type-SearchResult) | struct | ui | — |
 | [`SegmentedDesc`](ui.md#type-SegmentedDesc) | desc struct | ui | — |
 | [`SegmentItem`](ui.md#type-SegmentItem) | desc struct | ui | — |
+| [`SelectCursor`](ui.md#type-SelectCursor) | desc struct | ui | — |
 | [`SelectDesc`](ui.md#type-SelectDesc) | desc struct | ui | — |
 | [`SelectionRingDesc`](ui.md#type-SelectionRingDesc) | desc struct | ui | — |
 | [`SemanticsDesc`](ui.md#type-SemanticsDesc) | desc struct | ui | — |
@@ -2374,6 +2380,9 @@ Field units the docs and Tune use.
 | [`VectorFill`](ui.md#type-VectorFill) | desc struct | ui | — |
 | [`VEHICLE_ARCADE`](physics.md#const-VEHICLE_ARCADE) | constant | physics | — |
 | [`VEHICLE_DRIVETRAIN`](physics.md#const-VEHICLE_DRIVETRAIN) | constant | physics | — |
+| [`VersusDesc`](ui.md#type-VersusDesc) | desc struct | ui | — |
+| [`VersusResult`](ui.md#type-VersusResult) | struct | ui | — |
+| [`VersusSide`](ui.md#type-VersusSide) | desc struct | ui | — |
 | [`Video`](video.md#type-Video) | handle | video | — |
 | [`Video()`](video.md#column-Video) | column kind | video | — |
 | [`VideoCapabilities`](video.md#type-VideoCapabilities) | struct | video | — |

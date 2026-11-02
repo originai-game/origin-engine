@@ -11464,6 +11464,13 @@
         "ReadyCheckView",
         "LobbyDesc",
         "LobbyResult",
+        "RosterEntry",
+        "SelectCursor",
+        "CharacterSelectDesc",
+        "CharacterSelectResult",
+        "VersusSide",
+        "VersusDesc",
+        "VersusResult",
         "MenuItem",
         "MenuResult",
         "MainMenuDesc",
@@ -15395,6 +15402,48 @@
             }
           ],
           "returns": "LobbyResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "characterSelect",
+          "doc": "A character select (Street Fighter 6, Valorant, Overwatch, Smash): the local player's character standing large on the start side, its splash art filling that half over a scrim with its role in the eyebrow, its name in the display face and a line of description; with two players the other's on the end side, mirrored, each tagged in its team's colour; the roster under or beside them as a grid of portrait tiles in whole rows, each cursor a rim in its player's team colour with the player's tag at the tile's corner (two on one tile split the corner), a confirmed pick a tick, a locked tile dark behind a lock, a taken one dimmed. Lock in in the accent at the foot (Locked in, quiet, once confirmed); a timer when the game gives one. Keys and pads walk the tiles (the focus is the local cursor), confirm locks in, Back unlocks. On a phone in portrait the splash takes the top and the grid scrolls under it.\nParts: Select.frame, Select.stage, Select.splash[you|rival][confirmed], Select.name, Select.roster, Select.tile[cursor][confirmed][locked][taken], Select.tag, Select.lock, Select.confirm[on], Select.timer. Slots: each entry's portrait (art kind portrait) and splash (art kind splash). States: on each tile, group pick (open, cursor, confirmed, locked, taken). Motion: a new character's splash slides in from its side on the panel spring; a confirmed pick flashes its tile and its splash's name pops on the emphasis spring (still under reduced motion); a refused tile shakes. Sounds: hover as the cursor moves, confirm on a pick, error on a refused one, back on Back. Accessibility: the roster a grid of buttons named name, role, locked or taken and whose cursor is on it; each splash a region named the player and the character. Probe ids: <id>/Roster/<key>, <id>/Roster/Random, <id>/Stage/Start, <id>/Stage/End, <id>/Foot/Lock.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "CharacterSelectDesc",
+              "optional": true,
+              "doc": "The roster, the cursors and the words."
+            }
+          ],
+          "returns": "CharacterSelectResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "versus",
+          "doc": "A versus screen (Street Fighter, Tekken, Mortal Kombat, a MOBA's loading screen): the screen split on a slant into two sides, each a character's splash filling its half in the tint of its team, the character's name huge in the display face and the player's name and detail under it at the foot; the mark between them on the slant, the stage under it, and loading progress along the foot when the game gives it. The sides slam in from their edges, the mark pops in after them and both splashes drift slowly (still under reduced motion).\nParts: Versus.frame, Versus.side[left|right], Versus.splash, Versus.name, Versus.player, Versus.mark, Versus.stage, Versus.progress, Versus.skip. Slots: each side's splash (art kind splash). Motion: the sides slide in from their edges on the panel spring, the mark scales in on the emphasis spring 200 ms later, the splashes drift by a few pixels over the screen's life. Sounds: open as it shows, confirm on a skip. Accessibility: a region named both sides and the mark (Aria versus Kael). Probe ids: <id>/Left, <id>/Right, <id>/Mark, <id>/Progress.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "VersusDesc",
+              "optional": true,
+              "doc": "The sides, the stage and the words."
+            }
+          ],
+          "returns": "VersusResult",
           "publish": true,
           "host": false
         },
@@ -59071,6 +59120,334 @@
         "mode",
         "accept",
         "decline"
+      ],
+      "additionalProperties": false
+    },
+    "RosterEntry": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One character on a select screen's roster.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key: its tile's element id, so its probe path is <id>/Roster/<key>.",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name, large over its splash when a cursor is on it.",
+          "default": ""
+        },
+        "role": {
+          "type": "string",
+          "description": "Its role or class (Duelist, Grappler, Support): the eyebrow over the name.",
+          "default": ""
+        },
+        "portrait": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its tile's art (art kind portrait), the face filling the tile; null draws the style's placeholder figure.",
+          "default": null
+        },
+        "splash": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its full art (art kind splash) standing large on its player's side; null takes the portrait.",
+          "default": null
+        },
+        "locked": {
+          "type": "boolean",
+          "description": "Not owned or not unlocked: the tile dark with a lock; a press is refused and says why.",
+          "default": false
+        },
+        "lockedHint": {
+          "type": "string",
+          "description": "Why it is locked (Unlock at level 10).",
+          "default": ""
+        },
+        "taken": {
+          "type": "boolean",
+          "description": "Picked by another player of the local player's team: the tile dimmed, a press refused.",
+          "default": false
+        },
+        "description": {
+          "type": "string",
+          "description": "A line under the name on its splash (its play style).",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "SelectCursor": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One player's cursor on the roster.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "The player's key (p1, p2).",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "The player's name or slot (P1, Mira): its tag on the tile and over its splash.",
+          "default": ""
+        },
+        "entry": {
+          "type": "string",
+          "description": "The roster key its cursor is on (empty: none yet).",
+          "default": ""
+        },
+        "confirmed": {
+          "type": "boolean",
+          "description": "Locked in: its tile wears the tick and its splash its lock.",
+          "default": false
+        },
+        "team": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its team, for its colour (the style's team roles).",
+          "default": 0
+        },
+        "you": {
+          "type": "boolean",
+          "description": "The local player: keys, pads and the pointer move this cursor (SelectResult.hovered).",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "CharacterSelectDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A character select: the roster, the players' cursors and the words.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The screen's title (Choose your fighter).",
+          "default": ""
+        },
+        "roster": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RosterEntry"
+          },
+          "description": "The roster in its order: the grid fills rows from the start.",
+          "default": []
+        },
+        "cursors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SelectCursor"
+          },
+          "description": "The players' cursors: the local player's splash stands on the start side; with two players, the other's on the end side.",
+          "default": []
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Tiles a row; 0 fits as many 96 px tiles as the grid's width holds (four on a phone in portrait).",
+          "default": 0
+        },
+        "secondsLeft": {
+          "type": "number",
+          "description": "Time left to pick, shown as a timer over the grid; a negative value shows none.",
+          "default": -1,
+          "x-og-unit": "s"
+        },
+        "lockLabel": {
+          "type": "string",
+          "description": "The local player's confirm.",
+          "default": "Lock in"
+        },
+        "lockedInLabel": {
+          "type": "string",
+          "description": "The confirm once locked in.",
+          "default": "Locked in"
+        },
+        "takenLabel": {
+          "type": "string",
+          "description": "A taken character's reason.",
+          "default": "Taken"
+        },
+        "randomLabel": {
+          "type": "string",
+          "description": "The random pick's tile; empty shows none.",
+          "default": "Random"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CharacterSelectResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What the local player asked for this tick, for the game to apply.",
+      "type": "object",
+      "properties": {
+        "hovered": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The roster key under the pointer or the focus: move the local player's cursor to it (a fighting game's cursor follows the stick)."
+        },
+        "picked": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A character pressed or confirmed (its tile, or Lock in on the cursor's): lock it in."
+        },
+        "random": {
+          "type": "boolean",
+          "description": "The random tile was pressed: pick one for the player."
+        },
+        "refused": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A locked or taken character pressed: it shook."
+        },
+        "cancelled": {
+          "type": "boolean",
+          "description": "Back while locked in: unlock the pick."
+        }
+      },
+      "required": [
+        "hovered",
+        "picked",
+        "random",
+        "refused",
+        "cancelled"
+      ],
+      "additionalProperties": false
+    },
+    "VersusSide": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One side of a versus screen.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The player's or team's name, in the display face.",
+          "default": ""
+        },
+        "character": {
+          "type": "string",
+          "description": "The character's name, over the player's.",
+          "default": ""
+        },
+        "splash": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The character's full art (art kind splash), filling the side; null draws the style's placeholder figure.",
+          "default": null
+        },
+        "detail": {
+          "type": "string",
+          "description": "A line under the name (a rank, a record: 12W 3L).",
+          "default": ""
+        },
+        "team": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its team, for its colour.",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "VersusDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A versus screen: two sides, the stage, the words.",
+      "type": "object",
+      "properties": {
+        "left": {
+          "$ref": "#/$defs/VersusSide",
+          "description": "The start side (the local player's).",
+          "default": {}
+        },
+        "right": {
+          "$ref": "#/$defs/VersusSide",
+          "description": "The end side.",
+          "default": {}
+        },
+        "versusLabel": {
+          "type": "string",
+          "description": "The mark between them.",
+          "default": "VS"
+        },
+        "stage": {
+          "type": "string",
+          "description": "The stage or mode under the mark (Round 1 · Skyreach Gate).",
+          "default": ""
+        },
+        "progress": {
+          "type": "number",
+          "description": "Loading progress, 0 to 1, as a bar along the foot; a negative value shows none.",
+          "default": -1,
+          "x-og-unit": "ratio"
+        },
+        "skipLabel": {
+          "type": "string",
+          "description": "The skip hint; empty takes no skip.",
+          "default": "Skip"
+        }
+      },
+      "additionalProperties": false
+    },
+    "VersusResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What the versus screen was asked this tick.",
+      "type": "object",
+      "properties": {
+        "skipped": {
+          "type": "boolean",
+          "description": "Confirm, Back or a press asked to go on."
+        }
+      },
+      "required": [
+        "skipped"
       ],
       "additionalProperties": false
     },
