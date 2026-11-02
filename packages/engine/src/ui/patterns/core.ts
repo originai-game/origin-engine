@@ -90,7 +90,7 @@ export function scrimFill(edge: "bottom" | "top" | "start" | "end", strength = 0
 export type SymbolKind =
   | "lock" | "star" | "starOutline" | "coin" | "gem" | "crown" | "check" | "cross" | "plus" | "minus" | "dot" | "ring"
   | "clock" | "heart" | "shield" | "sword" | "flag" | "pin" | "eye" | "rotate" | "split" | "chat" | "speaker" | "camera" | "grid" | "bolt"
-  | "swap" | "ban" | "helm" | "amulet" | "glove" | "gemRing" | "boot" | "armor" | "arrowUp" | "chevronBack";
+  | "swap" | "ban" | "helm" | "amulet" | "glove" | "gemRing" | "boot" | "armor" | "arrowUp";
 
 /**
  * A symbol drawn as shapes, `size` square, in `color`: what a style's icon
@@ -158,12 +158,6 @@ export function symbol(id: string, kind: SymbolKind, size: number, color: Rgba, 
     case "arrowUp":
       kit.setDraw({ shape: path([p(0.22, 0.48), p(0.5, 0.18), p(0.78, 0.48), p(0.5, 0.18), p(0.5, 0.84)]), fills: fill });
       break;
-    case "chevronBack": {
-      // Back points to the start edge: left, mirrored right to left.
-      const m = (x: number) => (rtl() ? 1 - x : x);
-      kit.setDraw({ shape: path([p(m(0.62), 0.2), p(m(0.32), 0.5), p(m(0.62), 0.8)]), fills: fill });
-      break;
-    }
     case "dot":
       kit.setDraw({ shape: { kind: "ellipse" }, fills: fill });
       break;
