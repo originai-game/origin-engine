@@ -546,7 +546,7 @@ impl Views {
                     "view lines",
                     std::mem::size_of::<crate::lines::LineUniform>() as u64,
                 ),
-                sprite_fx_buffer: buffer("view sprite fx", 16),
+                sprite_fx_buffer: buffer("view sprite fx", 32),
                 light_map: None,
                 fields: Vec::new(),
                 fields_size: (0, 0),
@@ -660,7 +660,7 @@ impl Views {
         fx: &crate::fx::FxUniform,
         lights: bool,
         viewport_format: wgpu::TextureFormat,
-        light_map_scale: Option<f32>,
+        light_map: Option<(f32, u32)>,
         fields: usize,
         soft: bool,
         glow: Option<f32>,
@@ -727,12 +727,22 @@ impl Views {
             let (w, h) = (p.size.0 as f32, p.size.1 as f32);
             f.screen = [w, h, 1.0 / w, 1.0 / h];
             queue.write_buffer(&slot.fx_buffer, 0, bytemuck::bytes_of(&f));
-            queue.write_buffer(&slot.sprite_fx_buffer, 0, bytemuck::bytes_of(&f.screen));
-            // The 2D light map at the frame's share of the view's size.
-            slot.light_map = light_map_scale.map(|scale| {
-                let size = (
-                    ((p.size.0 as f32 * scale) as u32).max(1),
-                    ((p.size.1 as f32 * scale) as u32).max(1),
+            let strips = light_map.map_or(1, |(_, s)| s.max(1));
+            queue.write_buffer(
+                &slot.sprite_fx_buffer,
+                0,
+                bytemuck::bytes_of(&[f.screen, [strips as f32, 0.0, 0.0, 0.0]]),
+            );
+            // The 2D light map at the frame's share of the view's size,
+            // its strips side by side (light2d.rs).
+            slot.light_map = light_map.map(|(scale, strips)| {
+                let size = crate::light2d::strips_size(
+                    (
+                        ((p.size.0 as f32 * scale) as u32).max(1),
+                        ((p.size.1 as f32 * scale) as u32).max(1),
+                    ),
+                    strips,
+                    device.limits().max_texture_dimension_2d,
                 );
                 match slot.light_map.take() {
                     Some((s, v)) if s == size => (s, v),

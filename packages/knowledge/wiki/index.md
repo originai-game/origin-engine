@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2208 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2211 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -694,6 +694,8 @@ Field units the docs and Tune use.
 | [`LevelInfo`](ui.md#type-LevelInfo) | desc struct | ui | — |
 | [`LevelSelectDesc`](ui.md#type-LevelSelectDesc) | desc struct | ui | — |
 | [`LevelSelectResult`](ui.md#type-LevelSelectResult) | struct | ui | — |
+| [`Light2DKind`](render.md#type-Light2DKind) | enum | render | — |
+| [`Light2DKind()`](render.md#column-Light2DKind) | column kind | render | — |
 | [`LinearKey`](ui.md#type-LinearKey) | struct | ui | — |
 | [`LineCap`](ui.md#type-LineCap) | enum | ui | — |
 | [`LineJoin`](ui.md#type-LineJoin) | enum | ui | — |
@@ -993,6 +995,7 @@ Field units the docs and Tune use.
 | [`og.KeyUp`](input.md#record-KeyUp) | event | input | — |
 | [`og.Light2D`](render.md#record-Light2D) | component | render | — |
 | [`og.Lighting2D`](render.md#record-Lighting2D) | resource | render | — |
+| [`og.LightMask2D`](render.md#record-LightMask2D) | component | render | — |
 | [`og.LightVolume`](render.md#record-LightVolume) | component | render | — |
 | [`og.Lines`](render.md#record-Lines) | component | render | — |
 | [`og.load.animation`](load.md#fn-animation) | function | load | `og_load_animation` |

@@ -57,6 +57,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     // Layer masks of the sprites, lines, points and particle systems
     // (views.rs): filled by what pushes them, 1 past their ends.
     scene.sprite_layers.clear();
+    // 2D light masks of the sprites (og.LightMask2D): 1 past the end.
+    scene.sprite_light_masks.clear();
     // Billboards (sprites' facing): set by what pushes them, none past the end.
     scene.sprite_facing.clear();
     scene.text_facing.clear();

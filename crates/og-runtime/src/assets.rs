@@ -1658,6 +1658,8 @@ fn apply_resources(
         };
         let value = migrate(&r.schema, &r.bytes, layout, dropped);
         let world = eng.world()?;
+        // A lazy resource (og.Lighting2D) a scene sets is registered then.
+        super::lazy::ensure(eng, world, &layout.schema)?;
         let id = world
             .id_by_name(&layout.schema)
             .map_err(|e| e.reason().to_string())?;

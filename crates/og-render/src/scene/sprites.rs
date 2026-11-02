@@ -772,6 +772,8 @@ pub struct TileLayer {
     /// keeps the layer as authored in any range (a sky, a far parallax
     /// backdrop).
     pub lit: bool,
+    /// Its 2D light layers, as [`crate::RenderScene::sprite_light_masks`].
+    pub light_mask: u32,
 }
 
 /// The nine pieces of a nine-slice sprite: the corners keep their size, the

@@ -175,6 +175,8 @@ export interface ColumnKinds {
   MaterialSurface: { readonly array: Uint32Array; readonly stride: 1; readonly value: MaterialSurface };
   /** A StyliseSpace field: the variant's index. */
   StyliseSpace: { readonly array: Uint32Array; readonly stride: 1; readonly value: StyliseSpace };
+  /** A Light2DKind field: the variant's index. */
+  Light2DKind: { readonly array: Uint32Array; readonly stride: 1; readonly value: Light2DKind };
   /** A ReflectionProbeMode field: the variant's index. */
   ReflectionProbeMode: { readonly array: Uint32Array; readonly stride: 1; readonly value: ReflectionProbeMode };
   /**
@@ -7555,7 +7557,31 @@ export interface Lighting2D {
    * @range 0.25..1
    */
   resolution: number;
+  /**
+   * The angular resolution of each shadow-casting light's shadow: how many directions around it are traced against the occluders (more keeps a small occluder far from a large light sharp, at more cost).
+   *
+   * @default 1024
+   * @range 64..4096
+   */
+  shadowAngles: number;
 }
+
+/**
+ * What shape of light a Light2D is.
+ * - `"point"`: Light all around its position, to radius.
+ * - `"spot"`: A cone along the entity's local +x (turned with its Transform about z), innerAngle to outerAngle either side of the axis, to radius.
+ * - `"global"`: Light on every lit pixel of its layers at full intensity, from the direction of the entity's local +x at height (for normal maps); no radius and no shadows.
+ */
+export type Light2DKind = "point" | "spot" | "global";
+
+/**
+ * A Light2DKind field: the variant's index.
+ *
+ * A `Light2DKind` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function Light2DKind(value?: Light2DKind, options?: FieldOptions): FieldSpec<"Light2DKind">;
 
 /**
  * A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff, shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn.
@@ -7602,21 +7628,51 @@ export interface Light2D {
    */
   sourceRadius: number;
   /**
-   * Occluders between the light and a pixel shade it.
+   * Occluders between the light and a pixel shade it (point and spot lights).
    *
    * @default true
    */
   castShadows: boolean;
+  /** Point, spot or global. */
+  kind: Light2DKind;
+  /**
+   * A spot's half-angle at full intensity, in radians.
+   *
+   * @default 0.35
+   * @range 0..3.14159
+   */
+  innerAngle: number;
+  /**
+   * A spot's half-angle where it reaches zero, in radians (at least innerAngle).
+   *
+   * @default 0.6
+   * @range 0..3.14159
+   */
+  outerAngle: number;
+  /**
+   * How far above the 2D plane the light is, in world units: the slant normal-mapped sprites see it at (0 grazes the surface).
+   *
+   * @default 1
+   * @range 0..
+   * @unit m (metres)
+   */
+  height: number;
+  /**
+   * The light layers it lights: a bit per layer, matched against each sprite's, rig's or tilemap's og.LightMask2D (layer 0, bit 1, without one).
+   *
+   * @default 4294967295
+   */
+  layers: number;
 }
 
 /**
- * A rectangle that blocks 2D light (walls, crates, characters), centred on the entity's position and turned with it about z. Pixels inside it are not shadowed by it. At most 128 are drawn.
+ * A shape that blocks 2D light (walls, crates, characters), centred on the entity's position and turned and scaled with it about z: a width by height rectangle, or the polygon `points` gives. Pixels inside it are not shadowed by it. At most 128 are drawn.
  *
  * The value of the `Occluder2D` component (token `og.Occluder2D`).
  */
 export interface Occluder2D {
   /**
-   * Its width in world units.
+   * Its width in world units (without points).
    *
    * @default 1
    * @range 0..
@@ -7624,13 +7680,39 @@ export interface Occluder2D {
    */
   width: number;
   /**
-   * Its height in world units.
+   * Its height in world units (without points).
    *
    * @default 1
    * @range 0..
    * @unit m (metres)
    */
   height: number;
+  /**
+   * A polygon instead of the rectangle: up to 16 vertices as x, y pairs in the entity's frame, in order around it; concave is fine. Fewer than three vertices keeps the rectangle.
+   *
+   * @capacity 32 elements (List.f32.32): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  points: readonly number[];
+  /**
+   * The light layers whose lights it blocks (a bit per layer, as Light2D.layers).
+   *
+   * @default 4294967295
+   */
+  layers: number;
+}
+
+/**
+ * The light layers that light the entity's sprite, flipbook, 2D rig or tilemap: a Light2D lights it when their `layers` share a bit. Without one an entity is on layer 0 (bit 1). At most four different masks are lit in one frame; any further mask is lit as layer 0.
+ *
+ * The value of the `LightMask2D` component (token `og.LightMask2D`).
+ */
+export interface LightMask2D {
+  /**
+   * A bit per light layer.
+   *
+   * @default 1
+   */
+  layers: number;
 }
 
 /**
@@ -46351,15 +46433,19 @@ export declare namespace og {
   /**
    * 2D lighting of the sprite layers minLayer to maxLayer (sprites, 2D particles and og.Tilemap layers there, a map layer unless its `lit` property is false): their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default.
    */
-  const Lighting2D: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly ambient: FieldSpec<"Color">; readonly minLayer: FieldSpec<"i32">; readonly maxLayer: FieldSpec<"i32">; readonly resolution: FieldSpec<"f32"> }, Lighting2D>;
+  const Lighting2D: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly ambient: FieldSpec<"Color">; readonly minLayer: FieldSpec<"i32">; readonly maxLayer: FieldSpec<"i32">; readonly resolution: FieldSpec<"f32">; readonly shadowAngles: FieldSpec<"u32"> }, Lighting2D>;
   /**
    * A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff, shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn.
    */
-  const Light2D: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly falloff: FieldSpec<"f32">; readonly sourceRadius: FieldSpec<"f32">; readonly castShadows: FieldSpec<"bool"> }, Light2D>;
+  const Light2D: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly falloff: FieldSpec<"f32">; readonly sourceRadius: FieldSpec<"f32">; readonly castShadows: FieldSpec<"bool">; readonly kind: FieldSpec<"Light2DKind">; readonly innerAngle: FieldSpec<"f32">; readonly outerAngle: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly layers: FieldSpec<"u32"> }, Light2D>;
   /**
-   * A rectangle that blocks 2D light (walls, crates, characters), centred on the entity's position and turned with it about z. Pixels inside it are not shadowed by it. At most 128 are drawn.
+   * A shape that blocks 2D light (walls, crates, characters), centred on the entity's position and turned and scaled with it about z: a width by height rectangle, or the polygon `points` gives. Pixels inside it are not shadowed by it. At most 128 are drawn.
    */
-  const Occluder2D: ComponentType<{ readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32"> }, Occluder2D>;
+  const Occluder2D: ComponentType<{ readonly width: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly points: ListSpec<"f32">; readonly layers: FieldSpec<"u32"> }, Occluder2D>;
+  /**
+   * The light layers that light the entity's sprite, flipbook, 2D rig or tilemap: a Light2D lights it when their `layers` share a bit. Without one an entity is on layer 0 (bit 1). At most four different masks are lit in one frame; any further mask is lit as layer 0.
+   */
+  const LightMask2D: ComponentType<{ readonly layers: FieldSpec<"u32"> }, LightMask2D>;
   /**
    * A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one). At most 32 are drawn.
    */

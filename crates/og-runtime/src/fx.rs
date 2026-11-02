@@ -13,9 +13,10 @@ use og_ecs::{Entity, QueryDesc, World};
 use og_render::{
     AmbientOcclusion, AoMethod, AoResolution, Beam, CameraShake, ChromaticAberration, ColorAdjust,
     ColorCurve, ColorGrading, Curve, Decal, DepthOfField, DofQuality, FilmGrain, Glow, GodRays,
-    JointPalette, LensDistortion, Light2d, Lighting2d, MeshHandle, MorphTargets, MotionBlur,
-    Occluder2d, Outline, ParticleBlend, ParticleSystem, RibbonUv, ScreenBlur, ScreenBlurKind,
-    ScreenFlash, SkinData, SkinnedInstance, Trail, TrailStyle, TrailStyleHandle, Vignette,
+    JointPalette, LensDistortion, Light2d, Light2dKind, Lighting2d, MeshHandle, MorphTargets,
+    MotionBlur, Occluder2d, Outline, ParticleBlend, ParticleSystem, RibbonUv, ScreenBlur,
+    ScreenBlurKind, ScreenFlash, SkinData, SkinnedInstance, Trail, TrailStyle, TrailStyleHandle,
+    Vignette,
 };
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -28,6 +29,7 @@ pub(crate) struct FxLayouts {
     pub lighting_2d: Option<Layout>,
     pub light_2d: Option<Layout>,
     pub occluder_2d: Option<Layout>,
+    pub light_mask_2d: Option<Layout>,
     pub decal: Option<Layout>,
     pub particles: Option<Layout>,
     pub trail: Option<Layout>,
@@ -49,6 +51,7 @@ impl FxLayouts {
             lighting_2d: get("og.Lighting2D"),
             light_2d: get("og.Light2D"),
             occluder_2d: get("og.Occluder2D"),
+            light_mask_2d: get("og.LightMask2D"),
             decal: get("og.Decal"),
             particles: get("og.ParticleSystem"),
             trail: get("og.Trail"),
@@ -207,6 +210,20 @@ pub(crate) fn vec3(v: &Value) -> Vec3 {
 /// The load index of a handle field (`0` is none).
 pub(crate) fn handle_index(v: &Value) -> Option<usize> {
     super::assets::index_of(v.as_f64()?)
+}
+
+/// A u32 bit mask field.
+fn mask(v: &Value, key: &str, default: u32) -> u32 {
+    v[key].as_u64().map_or(default, |x| x as u32)
+}
+
+/// Each og.LightMask2D's layers by entity (empty until a game names it:
+/// og.LightMask2D is lazy). A receiver without one is lit as mask 1.
+pub(crate) fn light_masks(world: &World, layouts: &FxLayouts) -> IdMap<u64, u32> {
+    rows(world, layouts.light_mask_2d.as_ref())
+        .into_iter()
+        .map(|(e, v)| (e, mask(&v, "layers", 1)))
+        .collect()
 }
 
 pub(crate) fn variant(v: &Value, names: &[&str]) -> usize {
@@ -689,7 +706,11 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
     // Time groups (og.TimeGroups), once a game uses them.
     let groups = world.time_groups();
     for (e, v) in rows(world, layouts.light_2d.as_ref()) {
-        let (pos, _, _) = planar(h.world_of(e));
+        let m = h.world_of(e);
+        let (pos, _, _) = planar(m);
+        // A spot's and a global light's axis: the entity's local +x in
+        // the plane.
+        let axis = m.x_axis.truncate().truncate();
         scene.lights_2d.push(Light2d {
             position: pos,
             color: color(&v["color"], Vec3::ONE),
@@ -698,6 +719,16 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
             falloff: f(&v, "falloff", 2.0),
             source_radius: f(&v, "sourceRadius", 0.25),
             cast_shadows: on(&v, "castShadows", true),
+            kind: match variant(&v["kind"], &["point", "spot", "global"]) {
+                1 => Light2dKind::Spot,
+                2 => Light2dKind::Global,
+                _ => Light2dKind::Point,
+            },
+            direction: axis.normalize_or(Vec2::X),
+            inner_angle: f(&v, "innerAngle", 0.35),
+            outer_angle: f(&v, "outerAngle", 0.6),
+            height: f(&v, "height", 1.0),
+            layers: mask(&v, "layers", u32::MAX),
         });
     }
     for (e, v) in rows(world, layouts.occluder_2d.as_ref()) {
@@ -706,6 +737,7 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
             center: pos,
             half_size: Vec2::new(f(&v, "width", 1.0), f(&v, "height", 1.0)) * scale * 0.5,
             rotation: rot,
+            layers: mask(&v, "layers", u32::MAX),
         });
     }
     for (e, v) in rows(world, layouts.decal.as_ref()) {

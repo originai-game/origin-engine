@@ -54,6 +54,7 @@ impl RenderScene {
             instance_layers: Vec::new(),
             skinned_layers: Vec::new(),
             sprite_layers: Vec::new(),
+            sprite_light_masks: Vec::new(),
             sprite_facing: Vec::new(),
             text_facing: Vec::new(),
             line_layers: Vec::new(),

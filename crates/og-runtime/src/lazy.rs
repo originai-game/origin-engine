@@ -168,6 +168,25 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: crate::stream::cells::ANCHOR,
         enable: |_, _| Ok(()),
     },
+    // R11: 2D lighting, read by extraction alone (no system is granted
+    // them): a world without 2D lights keeps its type table, hash and
+    // frames whatever these records become.
+    Lazy {
+        name: "og.Lighting2D",
+        enable: |_, _| Ok(()),
+    },
+    Lazy {
+        name: "og.Light2D",
+        enable: |_, _| Ok(()),
+    },
+    Lazy {
+        name: "og.Occluder2D",
+        enable: |_, _| Ok(()),
+    },
+    Lazy {
+        name: "og.LightMask2D",
+        enable: |_, _| Ok(()),
+    },
     // G3-2: og.video plays it; a world without footage keeps its hash
     // whatever the player's layout becomes.
     Lazy {
@@ -235,6 +254,13 @@ pub(crate) fn ensure(eng: &Engine, world: &mut World, name: &str) -> Result<(), 
     let id = world
         .register_schema(crate::engine::versioned(layout.schema()))
         .map_err(|e| e.reason().to_string())?;
+    // A resource holds its default from the moment it is registered.
+    if layout.kind == crate::codec::RecordKind::Resource && !world.has_resource_id(id) {
+        let bytes = layout.encode(None, None)?;
+        world
+            .insert_resource_bytes(id, &bytes)
+            .map_err(|e| e.reason().to_string())?;
+    }
     {
         // The runtime's table of names by id mirrors the registry's order.
         let mut st = eng.state.borrow_mut();

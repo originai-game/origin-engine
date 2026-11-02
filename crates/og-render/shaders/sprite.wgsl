@@ -18,10 +18,22 @@ struct SpriteParams {
 
 struct SpriteFxFrame {
   screen: vec4<f32>,  // w, h, 1/w, 1/h
+  light: vec4<f32>,   // x: the light map's strips
 };
 @group(2) @binding(0) var light_map: texture_2d<f32>;
 @group(2) @binding(1) var light_sampler: sampler;
 @group(2) @binding(2) var<uniform> sprite_fx: SpriteFxFrame;
+
+// The 2D light a lit receiver takes: `lit` is 1 + its strip of the light
+// map (light2d.rs: one strip per light mask, side by side), sampled inside
+// its strip so the filter never reads the next one.
+fn light_at(clip: vec2<f32>, lit: f32) -> vec3<f32> {
+  let strips = max(sprite_fx.light.x, 1.0);
+  let half = 0.5 / f32(textureDimensions(light_map).x);
+  let u = clamp(clip.x * sprite_fx.screen.z, half * strips, 1.0 - half * strips);
+  let uv = vec2<f32>((floor(lit - 0.5) + u) / strips, clip.y * sprite_fx.screen.w);
+  return textureSampleLevel(light_map, light_sampler, uv, 0.0).rgb;
+}
 
 struct SpriteIn {
   @location(0) position_rotation: vec4<f32>,  // xyz: anchor position, w: rotation (radians)
@@ -256,7 +268,7 @@ fn fs(in: SpriteOut) -> @location(0) vec4<f32> {
   }
   if (c.a <= 0.0) { discard; }
   if (in.fx.y > 0.5) {
-    let light = textureSampleLevel(light_map, light_sampler, in.clip.xy * sprite_fx.screen.zw, 0.0).rgb;
+    let light = light_at(in.clip.xy, in.fx.y);
     c = vec4<f32>(c.rgb * light, c.a);
   }
   return vec4<f32>(apply_fog(c.rgb, in.world), c.a);
@@ -271,7 +283,7 @@ fn fs_untonemapped(in: SpriteOut) -> @location(0) vec4<f32> {
   var c = sprite_color(in);
   if (c.a <= 0.0) { discard; }
   if (in.fx.y > 0.5) {
-    let light = textureSampleLevel(light_map, light_sampler, in.clip.xy * sprite_fx.screen.zw, 0.0).rgb;
+    let light = light_at(in.clip.xy, in.fx.y);
     c = vec4<f32>(c.rgb * light, c.a);
   }
   return c;

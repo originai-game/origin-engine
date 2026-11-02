@@ -245,6 +245,9 @@ impl Renderer {
             self.ribbon_group(run.texture);
         }
         let lit_range = scene.lighting_2d.map(|l| (l.min_layer, l.max_layer));
+        // The light map's strips, one per light mask of the lit receivers.
+        let light_slots = light2d::LightSlots::of(scene);
+        let lit = |layer: i32, mask: u32| light_slots.lit(lit_range, layer, mask);
         let view = match camera.projection {
             Projection::Orthographic { height } => {
                 let half = Vec2::new(height * 0.5 * aspect, height * 0.5);
@@ -321,7 +324,7 @@ impl Renderer {
             self.cache.textures.len(),
             array_layers,
             &particle_frame.sprites,
-            |layer| lit_range.is_some_and(|(lo, hi)| (lo..=hi).contains(&layer)),
+            lit,
             view,
             &layered,
             scene.camera_layers,
@@ -370,7 +373,7 @@ impl Renderer {
                 self.cache.textures.len(),
                 array_layers,
                 &particle_frame.sprites,
-                |layer| lit_range.is_some_and(|(lo, hi)| (lo..=hi).contains(&layer)),
+                lit,
                 None,
                 &view_strips,
                 p.layers,
@@ -427,7 +430,7 @@ impl Renderer {
                     self.cache.textures.len(),
                     array_layers,
                     &particle_frame.sprites,
-                    |_| false,
+                    |_, _| 0.0,
                     None,
                     &[],
                     u32::MAX,
@@ -486,9 +489,7 @@ impl Renderer {
         }
         // The sprite meshes' corners (sprite_mesh.rs), lit as their layers' sprites.
         if !scene.sprite_meshes.is_empty() {
-            let corners = sprite_mesh::vertices(scene, |layer| {
-                lit_range.is_some_and(|(lo, hi)| (lo..=hi).contains(&layer))
-            });
+            let corners = sprite_mesh::vertices(scene, lit);
             let meshes = self.sprite_meshes.get_or_insert_with(|| {
                 sprite_mesh::SpriteMeshRenderer::new(
                     &self.device,
@@ -1232,12 +1233,19 @@ impl Renderer {
             );
             ui_uniform = Some(u);
         }
+        // The sprite shaders' light map strips (`SpriteFxFrame::light`).
+        self.queue.write_buffer(
+            &self.sprite_fx_buffer,
+            16,
+            bytemuck::bytes_of(&[light_slots.count() as f32, 0.0, 0.0, 0.0]),
+        );
         let (lights_2d, occluders_2d) = match scene.lighting_2d {
             Some(_) => self.lights_2d.write(
                 &self.queue,
                 cam.view_proj,
                 &scene.lights_2d,
                 &scene.occluders_2d,
+                &light_slots,
             ),
             None => (0, 0),
         };
@@ -1483,7 +1491,9 @@ impl Renderer {
             &fx_uniform,
             !lights_gpu.is_empty(),
             viewport_format,
-            scene.lighting_2d.map(|l| l.resolution.clamp(0.25, 1.0)),
+            scene
+                .lighting_2d
+                .map(|l| (l.resolution.clamp(0.25, 1.0), light_slots.count())),
             fluids,
             particle_frame.soft,
             // The weight the frame's tonemap gives its glow (post.rs
@@ -1673,6 +1683,15 @@ impl Renderer {
         let lightmap_scale = scene
             .lighting_2d
             .map_or(0.5, |l| l.resolution.clamp(0.25, 1.0));
+        // The light map: its strips side by side (light2d.rs).
+        let lightmap_size = light2d::strips_size(
+            (
+                ((self.width as f32 * lightmap_scale) as u32).max(1),
+                ((self.height as f32 * lightmap_scale) as u32).max(1),
+            ),
+            light_slots.count(),
+            self.device.limits().max_texture_dimension_2d,
+        );
         // Colour adjustments: the grading table and the adjustments baked
         // into one (when either changed), bound under scene id 0, which no
         // scene has, so the bindings are made again when it comes or goes.
@@ -1746,10 +1765,7 @@ impl Renderer {
                     height: self.height,
                     samples: self.samples,
                     taa,
-                    lightmap: (
-                        ((self.width as f32 * lightmap_scale) as u32).max(1),
-                        ((self.height as f32 * lightmap_scale) as u32).max(1),
-                    ),
+                    lightmap: lightmap_size,
                     gtao,
                     water: !scene_water.is_empty() || fluids_3d,
                     water_ao: !scene_water.is_empty() && ao.is_some_and(|a| a.direct > 0.0),
@@ -2822,8 +2838,12 @@ impl Renderer {
                 }
                 FramePass::Light2d => {
                     let ambient = scene.lighting_2d.map_or(Vec3::ONE, |l| l.ambient);
-                    self.lights_2d
-                        .encode(&mut encoder, self.graph.view("lightmap"), ambient);
+                    self.lights_2d.encode(
+                        &mut encoder,
+                        self.graph.view("lightmap"),
+                        lightmap_size,
+                        ambient,
+                    );
                     stats.draw_calls += (lights_2d > 0) as u32;
                 }
                 FramePass::Probes => self.encode_probes(ProbesPassInputs {

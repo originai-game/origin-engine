@@ -167,6 +167,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         .lock()
         .unwrap_or_else(|e| e.into_inner())
         .clone();
+    let light_masks = crate::fx::light_masks(world, &rs.draw.fx);
     for e in skeletons {
         let Ok(s) = world.get::<Skeleton2D>(e) else {
             continue;
@@ -210,6 +211,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
             layer: s.layer,
             key: 0.0,
             blend: og_render::SpriteBlend::Alpha,
+            light_mask: light_masks.get(&bits).copied().unwrap_or(1),
         });
     }
 }

@@ -225,6 +225,12 @@ pub struct RenderScene {
     /// The same for the world `sprites` (with their drop shadows, glow and
     /// afterimages drawn from them).
     pub sprite_layers: Vec<u32>,
+    /// Each world sprite's 2D light layers (`og.LightMask2D`), by index in
+    /// `sprites`: lit by the [`crate::Light2d`]s whose `layers` share a
+    /// bit with it. An index past the end is 1 (layer 0, every light's
+    /// default). A frame lights at most [`crate::MAX_LIGHT_MASKS_2D`]
+    /// different masks apart; a further one is lit as mask 1.
+    pub sprite_light_masks: Vec<u32>,
     /// How each world sprite faces the camera, by index in `sprites`
     /// (billboards): an index past the end is [`SpriteFacing::None`], the
     /// xy plane. A faced sprite without a [`RenderScene::sprite_order`] key

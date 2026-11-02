@@ -44,7 +44,7 @@ fn fs_mesh(in: MeshOut) -> @location(0) vec4<f32> {
   c.a = min(c.a, 1.0);
   if (c.a <= 0.0) { discard; }
   if (in.lit > 0.5) {
-    let light = textureSampleLevel(light_map, light_sampler, in.clip.xy * sprite_fx.screen.zw, 0.0).rgb;
+    let light = light_at(in.clip.xy, in.lit);
     c = vec4<f32>(c.rgb * light, c.a);
   }
   return vec4<f32>(apply_fog(c.rgb, in.world), c.a);

@@ -43,6 +43,8 @@ pub struct SpriteMesh {
     pub layer: i32,
     pub key: f32,
     pub blend: SpriteBlend,
+    /// Its 2D light layers, as [`crate::RenderScene::sprite_light_masks`].
+    pub light_mask: u32,
 }
 
 impl Default for SpriteMesh {
@@ -54,6 +56,7 @@ impl Default for SpriteMesh {
             layer: 0,
             key: 0.0,
             blend: SpriteBlend::Alpha,
+            light_mask: 1,
         }
     }
 }
@@ -114,10 +117,10 @@ pub(crate) fn ranges(
 }
 
 /// The corners of every mesh's triangles, in scene order (`ranges`).
-pub(crate) fn vertices(scene: &RenderScene, lit: impl Fn(i32) -> bool) -> Vec<MeshVertex> {
+pub(crate) fn vertices(scene: &RenderScene, lit: impl Fn(i32, u32) -> f32) -> Vec<MeshVertex> {
     let mut out = Vec::new();
     for m in &scene.sprite_meshes {
-        let lit = f32::from(u8::from(lit(m.layer)));
+        let lit = lit(m.layer, m.light_mask);
         out.extend(m.indices.iter().map(|&i| {
             let v = &m.vertices[i as usize];
             MeshVertex {
@@ -256,7 +259,7 @@ mod tests {
         let mut scene = RenderScene::new();
         scene.sprite_meshes = vec![tri(0, 2), tri(3, 1)];
         assert_eq!(ranges(&scene, 0).unwrap(), [(0, 6), (6, 3)]);
-        let v = vertices(&scene, |l| l == 3);
+        let v = vertices(&scene, |l, _| f32::from(u8::from(l == 3)));
         assert_eq!(v.len(), 9);
         assert_eq!((v[0].lit, v[8].lit), (0.0, 1.0));
         scene.sprite_meshes[1].indices[2] = 3;

@@ -335,13 +335,7 @@ pub(crate) fn draw_runs_of(billboards: &[(f32, SpriteRun)]) -> Vec<SpriteRun> {
 /// A sprite's instance with its effects.
 const NO_FLASH: [u8; 4] = [255, 255, 255, 0];
 
-fn sprite_instance(
-    s: &Sprite,
-    flash: [f32; 4],
-    glow: f32,
-    lit: bool,
-    soft: bool,
-) -> SpriteInstance {
+fn sprite_instance(s: &Sprite, flash: [f32; 4], glow: f32, lit: f32, soft: bool) -> SpriteInstance {
     let unorm = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
     SpriteInstance {
         position_rotation: s.position.extend(s.rotation).to_array(),
@@ -353,7 +347,7 @@ fn sprite_instance(
         } else {
             NO_FLASH
         },
-        fx: [glow, lit as u32 as f32, soft as u32 as f32],
+        fx: [glow, lit, soft as u32 as f32],
         ground: NO_GROUND,
         layer: 0,
         facing: FACING_NONE,
@@ -475,11 +469,11 @@ pub(crate) struct ViewRect {
 
 /// Appends the instances of a tile layer's chunks inside `view` (all of
 /// them without one), per repeat, and returns (quads, chunks). `lit`: the
-/// tiles take the 2D light map as a lit sprite does.
+/// tiles take the 2D light map as a lit sprite does (`build`'s `lit`).
 fn tile_instances(
     layer: &TileLayer,
     view: Option<ViewRect>,
-    lit: bool,
+    lit: f32,
     out: &mut Vec<SpriteInstance>,
 ) -> (u32, u32) {
     let origin = layer.origin.truncate();
@@ -530,7 +524,7 @@ fn tile_instances(
                     uv_rect: q.uv,
                     color: layer.color,
                     flash: NO_FLASH,
-                    fx: [0.0, lit as u32 as f32, 0.0],
+                    fx: [0.0, lit, 0.0],
                     ground: NO_GROUND,
                     layer: 0,
                     facing: FACING_NONE,
@@ -567,8 +561,8 @@ fn tile_instances(
 /// into runs, with the tile layers and the layered strips placed before
 /// the sprites of their layer. `font(i)` is the layout of the scene's font
 /// `i`; `array_layers(a)` the layers of an uploaded texture array (`None`:
-/// not uploaded or removed); `lit` says which layers 2D lighting applies
-/// to; `view` culls tile chunks (orthographic cameras). A sprite or
+/// not uploaded or removed); `lit(layer, light mask)` is the light map a
+/// receiver takes, 0 unlit, else 1 + its strip (`light2d::LightSlots`); `view` culls tile chunks (orthographic cameras). A sprite or
 /// particle drawn from an array ([`RenderScene::sprite_arrays`]) joins its
 /// array's run, and the glow pass by array when it glows. `mask` is the
 /// camera's three.js layer mask: a world sprite or 2D particle whose own
@@ -584,7 +578,7 @@ pub(crate) fn build<'a>(
     texture_count: usize,
     array_layers: impl Fn(TextureArrayHandle) -> Option<u32>,
     extra: &[ExtraSprite],
-    lit: impl Fn(i32) -> bool,
+    lit: impl Fn(i32, u32) -> f32,
     view: Option<ViewRect>,
     strips: &[LayeredStrip],
     mask: u32,
@@ -685,7 +679,16 @@ pub(crate) fn build<'a>(
             ),
             None => ([1.0, 1.0, 1.0, 0.0], 0.0, SpriteBlend::Alpha, true),
         };
-        let mut inst = sprite_instance(s, flash, glow, lit(s.layer), false);
+        let mut inst = sprite_instance(
+            s,
+            flash,
+            glow,
+            lit(
+                s.layer,
+                crate::views::layer_of(&scene.sprite_light_masks, i),
+            ),
+            false,
+        );
         if let Some(o) = lines.get(&(i as u32)) {
             outline(&mut inst, o, s.texture.and_then(|t| scene.texture_size(t)));
         }
@@ -707,7 +710,7 @@ pub(crate) fn build<'a>(
         if let (Some(g), Some(&(opacity, on))) = (ground, shadows.get(&(i as u32)))
             && opacity > 0.0
         {
-            let mut shadow = sprite_instance(s, [1.0, 1.0, 1.0, 0.0], 0.0, false, false);
+            let mut shadow = sprite_instance(s, [1.0, 1.0, 1.0, 0.0], 0.0, 0.0, false);
             shadow.color = [0.0, 0.0, 0.0, opacity * s.color[3]];
             let height = if on.height.is_finite() {
                 on.height
@@ -794,7 +797,7 @@ pub(crate) fn build<'a>(
     let sprite_boards = boards.len() as u32;
     for e in extra.iter().filter(|e| e.layers & mask != 0) {
         let s = &e.sprite;
-        let mut inst = sprite_instance(s, [1.0, 1.0, 1.0, 0.0], e.glow, lit(s.layer), e.soft);
+        let mut inst = sprite_instance(s, [1.0, 1.0, 1.0, 0.0], e.glow, lit(s.layer, 1), e.soft);
         let array = match e.array {
             Some((array, layer)) => {
                 let layers = array_layers(array).ok_or_else(|| {
@@ -829,7 +832,7 @@ pub(crate) fn build<'a>(
     for (i, m) in scene.sprite_meshes.iter().enumerate() {
         let key = if m.key.is_finite() { m.key } else { 0.0 };
         let placeholder =
-            sprite_instance(&Sprite::default(), [1.0, 1.0, 1.0, 0.0], 0.0, false, false);
+            sprite_instance(&Sprite::default(), [1.0, 1.0, 1.0, 0.0], 0.0, 0.0, false);
         keyed.push((m.layer, key, RunSource::Mesh(i as u32), false, placeholder));
     }
     let sprites = keyed.len() as u32 - shadow_count - mesh_count + sprite_boards;
@@ -978,7 +981,16 @@ pub(crate) fn build<'a>(
                 let layer = &scene.tile_layers[i];
                 let first = instances.len() as u32;
                 // Lit as the sprites of its layer are, unless it opts out.
-                let (q, c) = tile_instances(layer, view, layer.lit && lit(layer.layer), instances);
+                let (q, c) = tile_instances(
+                    layer,
+                    view,
+                    if layer.lit {
+                        lit(layer.layer, layer.light_mask)
+                    } else {
+                        0.0
+                    },
+                    instances,
+                );
                 tiles += q;
                 tile_chunks += c;
                 push(
@@ -1124,7 +1136,7 @@ mod tests {
             0,
             |_| None,
             &[],
-            |_| false,
+            |_, _| 0.0,
             None,
             &[],
             1,
@@ -1164,7 +1176,7 @@ mod tests {
             0,
             |_| None,
             &[],
-            |_| false,
+            |_, _| 0.0,
             None,
             &[],
             1,
@@ -1213,7 +1225,7 @@ mod tests {
             0,
             |_| None,
             &[],
-            |_| false,
+            |_, _| 0.0,
             None,
             &[],
             1,
@@ -1261,7 +1273,7 @@ mod tests {
                 0,
                 |_| None,
                 &[],
-                |_| false,
+                |_, _| 0.0,
                 None,
                 &[],
                 1,
@@ -1467,7 +1479,7 @@ mod tests {
                 0,
                 |_| None,
                 &[],
-                |_| false,
+                |_, _| 0.0,
                 None,
                 &[],
                 1,

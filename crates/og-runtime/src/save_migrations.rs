@@ -140,7 +140,98 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         note: "G3-2: time became an f64 (an f32 sum fell behind the sound over a long stream); a save without a player drops the type, which is lazy now",
         run: Some(video_player_1_to_2),
     },
+    Migration {
+        target: Target::Record,
+        name: "og.Lighting2D",
+        from: 1,
+        to: 2,
+        note: "R11: gained shadowAngles; at its defaults (a game that never lit in 2D) it is dropped, as the record is lazy now",
+        run: Some(|e| lazy_2d(e, "og.Lighting2D")),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.Light2D",
+        from: 1,
+        to: 2,
+        note: "R11: gained kind, innerAngle, outerAngle, height and layers; dropped from a save without lights, as the record is lazy now",
+        run: Some(|e| lazy_2d(e, "og.Light2D")),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.Occluder2D",
+        from: 1,
+        to: 2,
+        note: "R11: gained points and layers; dropped from a save without occluders, as the record is lazy now",
+        run: Some(|e| lazy_2d(e, "og.Occluder2D")),
+    },
 ];
+
+/// R11's 2D lighting records, version 1 -> 2: dropped where they hold
+/// nothing a game set (no component, or the resource at its version 1
+/// defaults), so the save restores as a world that never had them; else
+/// each saved field kept by name and the new ones at their defaults.
+fn lazy_2d(edit: &mut SnapshotEdit, name: &str) -> Result<(), String> {
+    let err = |e: og_core::Error| e.reason().to_string();
+    let Some(old) = edit.schema(name).cloned() else {
+        return Ok(());
+    };
+    let decl = og_api::host::RECORDS
+        .iter()
+        .find(|d| d.schema == name)
+        .ok_or_else(|| format!("{name} is not an engine record"))?;
+    let layout = crate::codec::Layout::from_decl(decl)?;
+    let defaults = layout.encode(None, None)?;
+    let mut schema = layout.schema();
+    schema.version = 2;
+    // Each new field's default bytes, by name.
+    let mut at = 0;
+    let new: Vec<(String, Vec<u8>)> = schema
+        .fields
+        .iter()
+        .map(|f| {
+            let n = f.ty.size();
+            at += n;
+            (f.name.clone(), defaults[at - n..at].to_vec())
+        })
+        .collect();
+    // The saved fields' byte ranges, by name, where the type is unchanged.
+    let mut at = 0;
+    let saved: Vec<(String, std::ops::Range<usize>)> = old
+        .fields
+        .iter()
+        .map(|f| {
+            let n = f.ty.size();
+            at += n;
+            let same = schema
+                .fields
+                .iter()
+                .any(|g| g.name == f.name && g.ty == f.ty);
+            (
+                if same { f.name.clone() } else { String::new() },
+                at - n..at,
+            )
+        })
+        .collect();
+    let upgrade = |v: &[u8]| -> Vec<u8> {
+        let mut out = Vec::with_capacity(defaults.len());
+        for (field, default) in &new {
+            match saved.iter().find(|(n, _)| n == field) {
+                Some((_, r)) => out.extend_from_slice(&v[r.clone()]),
+                None => out.extend_from_slice(default),
+            }
+        }
+        out
+    };
+    let unused = match edit.resource(name) {
+        Some(v) => upgrade(v) == defaults,
+        None => edit.components(name).is_empty() && !edit.has_events(name),
+    };
+    if unused {
+        return edit.replace_types(&[name], Vec::new()).map_err(err);
+    }
+    edit.map_type(name, schema, &mut |v| Ok(upgrade(v)))
+        .map_err(err)
+}
 
 /// og.VideoPlayer 1 -> 2: `time` from f32 to f64, every other field as it
 /// was. A save that holds no player (every world's save before the type

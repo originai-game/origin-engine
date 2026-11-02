@@ -1057,14 +1057,34 @@ impl Default for Lighting2d {
     }
 }
 
+/// The most different receiver light masks one frame lights apart (a
+/// light map each); a further mask is lit as layer 0's (mask 1).
+pub const MAX_LIGHT_MASKS_2D: usize = 4;
+
 /// The most 2D lights and occluders one frame draws.
 pub const MAX_LIGHTS_2D: usize = 64;
 pub const MAX_OCCLUDERS_2D: usize = 128;
 
+/// What shape of light a [`Light2d`] is.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Light2dKind {
+    /// All around its position, to its radius.
+    #[default]
+    Point,
+    /// A cone along `direction`, full inside `inner_angle` of the axis and
+    /// fading to zero at `outer_angle`, to its radius.
+    Spot,
+    /// Every lit pixel of its layers at `color * intensity`: no radius, no
+    /// falloff, no shadows.
+    Global,
+}
+
 /// A light in the 2D plane (z = 0): `color * intensity` at its centre,
 /// falling to zero at `radius` with `(1 - d/r)^falloff`. With
 /// `cast_shadows`, occluders between it and a pixel shade the pixel; the
-/// penumbra comes from the light's own size `source_radius`.
+/// penumbra comes from the light's own size `source_radius`. It lights the
+/// receivers (sprites, meshes, tile layers) whose light mask shares a bit
+/// with `layers`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Light2d {
     pub position: Vec2,
@@ -1074,6 +1094,17 @@ pub struct Light2d {
     pub falloff: f32,
     pub source_radius: f32,
     pub cast_shadows: bool,
+    pub kind: Light2dKind,
+    /// A spot's axis (and a global light's direction), a unit vector.
+    pub direction: Vec2,
+    /// A spot's half-angles, radians: full inside `inner_angle`, zero past
+    /// `outer_angle`.
+    pub inner_angle: f32,
+    pub outer_angle: f32,
+    /// Height above the plane (normal-mapped receivers).
+    pub height: f32,
+    /// The light layers it lights.
+    pub layers: u32,
 }
 
 impl Default for Light2d {
@@ -1086,6 +1117,12 @@ impl Default for Light2d {
             falloff: 2.0,
             source_radius: 0.25,
             cast_shadows: true,
+            kind: Light2dKind::Point,
+            direction: Vec2::X,
+            inner_angle: 0.35,
+            outer_angle: 0.6,
+            height: 1.0,
+            layers: u32::MAX,
         }
     }
 }
@@ -1099,6 +1136,19 @@ pub struct Occluder2d {
     pub half_size: Vec2,
     /// Counter-clockwise, radians.
     pub rotation: f32,
+    /// The light layers whose lights it blocks.
+    pub layers: u32,
+}
+
+impl Default for Occluder2d {
+    fn default() -> Self {
+        Occluder2d {
+            center: Vec2::ZERO,
+            half_size: Vec2::splat(0.5),
+            rotation: 0.0,
+            layers: u32::MAX,
+        }
+    }
 }
 
 impl Occluder2d {
@@ -1113,6 +1163,7 @@ impl Occluder2d {
             center,
             half_size: (sprite.size * 0.5 - Vec2::splat(inset)).max(Vec2::ZERO),
             rotation: sprite.rotation,
+            layers: u32::MAX,
         }
     }
 }

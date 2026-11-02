@@ -269,8 +269,10 @@ fn hashes_are_pinned_without_prefabs_and_stable_across_a_re_cook_with_them() {
 /// `rejoin` fields; the seat events are lazy, so they do not; then U6d's
 /// UI state version 13 from 13d5d679aa3698ae: Hit.owner; then G3-2's lazy
 /// og.VideoPlayer from a99071b12db700c7: a world without footage no longer
-/// has the type, so its later changes leave this hash alone).
-const BY_HAND_HASH: &str = "fd4dddba26ef754a";
+/// has the type, so its later changes leave this hash alone; then R11's
+/// lazy og.Lighting2D, og.Light2D and og.Occluder2D from fd4dddba26ef754a,
+/// for the same reason).
+const BY_HAND_HASH: &str = "1069aa19a26d8691";
 
 #[test]
 fn apply_back_and_revert_round_trip_in_the_text() {

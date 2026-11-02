@@ -107,6 +107,7 @@ pub fn tilemap_256() -> RenderScene {
             repeat: [None, None],
             time: 0.0,
             lit: true,
+            light_mask: 1,
         });
     }
     scene.camera = Camera::orthographic_2d(Vec2::new(64.0, 128.0), 45.0);

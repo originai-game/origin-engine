@@ -146,6 +146,7 @@ fn checker_layer(texture: og_render::TextureHandle, layer: i32) -> TileLayer {
         repeat: [None, None],
         time: 0.0,
         lit: true,
+        light_mask: 1,
     }
 }
 
@@ -256,12 +257,14 @@ fn tile_layers_in_the_lit_range_take_the_2d_light() {
             falloff: 1.0,
             source_radius: 0.05,
             cast_shadows: true,
+            ..Default::default()
         });
         // A wall right of the light, across y 1.5..3.5.
         scene.occluders_2d.push(Occluder2d {
             center: Vec2::new(-2.0, 2.5),
             half_size: Vec2::new(0.2, 1.0),
             rotation: 0.0,
+            ..Default::default()
         });
         scene
     };
@@ -742,4 +745,101 @@ fn a_palette_swap_draws_an_index_texture_through_a_row() {
     assert!(scene.set_texture(palette, texels(1, 1, &[(0, 0, [0, 255, 255, 255])])));
     let again = scene.paletted_texture(index, palette, 0).expect("swap");
     assert_eq!(draw(&mut scene, again)[..2], [[0, 255, 255], [9, 9, 9]]);
+}
+
+/// R11: a spot light lights its cone along its axis and nothing behind
+/// it; a global light lights every lit pixel; a sprite with a light mask
+/// takes only the lights whose layers share a bit with it.
+///
+/// Ways this could fail: a spot drawn as a point light (lit behind it);
+/// the cone turned the other way; a global light clipped to its radius or
+/// shadowed; a mask ignored (the receiver lit by every light), or the
+/// strips mixed up so a mask-2 receiver reads mask 1's light.
+#[test]
+fn spot_global_and_masked_2d_lights() {
+    use og_render::{Light2d, Light2dKind, Lighting2d};
+    let white = |scene: &mut RenderScene, x: f32, mask: Option<u32>| {
+        let i = scene.sprites.len();
+        scene.add_sprite(Sprite {
+            position: Vec3::new(x, 0.0, 0.0),
+            size: Vec2::new(4.0, 8.0),
+            ..Default::default()
+        });
+        if let Some(m) = mask {
+            scene.sprite_light_masks.resize(i, 1);
+            scene.sprite_light_masks.push(m);
+        }
+    };
+    let lit = |scene: &mut RenderScene| {
+        scene.lighting_2d = Some(Lighting2d {
+            ambient: Vec3::splat(0.0),
+            min_layer: -10,
+            max_layer: 10,
+            resolution: 1.0,
+        });
+    };
+    // A spot at the origin pointing +x, 0.3..0.5 rad either side.
+    let mut scene = flat();
+    white(&mut scene, -4.0, None);
+    white(&mut scene, 4.0, None);
+    lit(&mut scene);
+    scene.lights_2d.push(Light2d {
+        position: Vec2::ZERO,
+        radius: 8.0,
+        falloff: 1.0,
+        kind: Light2dKind::Spot,
+        direction: Vec2::X,
+        inner_angle: 0.3,
+        outer_angle: 0.5,
+        cast_shadows: false,
+        ..Default::default()
+    });
+    let (img, _) = frame(&scene, 1);
+    let ahead = at(&img, 3.0, 0.0)[0];
+    let behind = at(&img, -3.0, 0.0)[0];
+    let off_axis = at(&img, 3.0, 3.0)[0];
+    assert!(ahead > 100, "on the axis the spot lights: {ahead}");
+    assert_eq!(behind, 0, "behind the spot: dark");
+    assert_eq!(off_axis, 0, "past its outer angle (45°): dark");
+
+    // A global light reaches every lit pixel at full colour, whatever its
+    // position and radius; a mask-2 sprite takes only a layer-2 light.
+    let mut scene = flat();
+    white(&mut scene, -4.0, None);
+    white(&mut scene, 4.0, Some(2));
+    lit(&mut scene);
+    scene.lights_2d.push(Light2d {
+        position: Vec2::new(100.0, 100.0),
+        radius: 0.1,
+        color: Vec3::new(1.0, 0.0, 0.0),
+        intensity: 0.5,
+        kind: Light2dKind::Global,
+        layers: 1,
+        ..Default::default()
+    });
+    scene.lights_2d.push(Light2d {
+        position: Vec2::ZERO,
+        radius: 0.1,
+        color: Vec3::new(0.0, 0.0, 1.0),
+        kind: Light2dKind::Global,
+        layers: 2,
+        ..Default::default()
+    });
+    let (img, _) = frame(&scene, 1);
+    let left = at(&img, -4.0, 2.0);
+    let right = at(&img, 4.0, 2.0);
+    assert!(
+        left[0] > 150 && left[2] == 0,
+        "mask 1 takes the red global light only: {left:?}"
+    );
+    assert!(
+        right[2] > 240 && right[0] == 0,
+        "mask 2 takes the blue global light only: {right:?}"
+    );
+    // The strip edge: the right sprite's left side still reads its strip.
+    let edge = at(&img, 2.1, -3.5);
+    assert!(
+        edge[2] > 240 && edge[0] == 0,
+        "no bleed from the next strip: {edge:?}"
+    );
 }

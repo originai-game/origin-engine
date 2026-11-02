@@ -3,7 +3,9 @@
 // `(1 - d/r)^falloff`, times its visibility past the occluders: for each
 // rotated-rectangle occluder between the pixel and the light, the fraction
 // of the light's disc (radius `source`) the rectangle hides as seen from
-// the pixel, so penumbrae widen away from the occluder.
+// the pixel, so penumbrae widen away from the occluder. A spot light
+// fades between the cosines of its outer and inner half-angles about its
+// axis; a global light covers the whole map at full colour, unshadowed.
 
 struct Lights2d {
   view_proj: mat4x4<f32>,
@@ -15,7 +17,8 @@ struct Lights2d {
 struct LightIn {
   @location(0) pos_radius: vec4<f32>,   // xy: position, z: radius, w: falloff
   @location(1) color_source: vec4<f32>, // rgb: colour x intensity, w: source radius
-  @location(2) flags: vec4<f32>,        // x: casts shadows
+  @location(2) flags: vec4<f32>,        // x: casts shadows, y: kind (0 point, 1 spot, 2 global), z, w: cos outer, cos inner
+  @location(3) direction: vec4<f32>,    // xy: axis, z: height
 };
 
 struct LightOut {
@@ -24,6 +27,7 @@ struct LightOut {
   @location(1) light: vec4<f32>,
   @location(2) color_source: vec4<f32>,
   @location(3) flags: vec4<f32>,
+  @location(4) direction: vec4<f32>,
 };
 
 @vertex
@@ -34,10 +38,15 @@ fn vs(@builtin(vertex_index) vi: u32, l: LightIn) -> LightOut {
   let p = l.pos_radius.xy + corners[vi] * l.pos_radius.z;
   var o: LightOut;
   o.clip = lights2d.view_proj * vec4<f32>(p, 0.0, 1.0);
+  if (l.flags.y > 1.5) {
+    // A global light: the whole strip.
+    o.clip = vec4<f32>(corners[vi], 0.0, 1.0);
+  }
   o.world = p;
   o.light = l.pos_radius;
   o.color_source = l.color_source;
   o.flags = l.flags;
+  o.direction = l.direction;
   return o;
 }
 
@@ -51,11 +60,20 @@ fn angle_from(base: vec2<f32>, v: vec2<f32>) -> f32 {
 
 @fragment
 fn fs(in: LightOut) -> @location(0) vec4<f32> {
+  if (in.flags.y > 1.5) {
+    return vec4<f32>(in.color_source.rgb, 0.0);
+  }
   let to_light = in.light.xy - in.world;
   let dist = length(to_light);
   let r = in.light.z;
   if (dist >= r) { discard; }
   var atten = pow(1.0 - dist / r, max(in.light.w, 0.01));
+  if (in.flags.y > 0.5) {
+    // A spot: the cosine of the pixel's angle off the axis.
+    let c = select(1.0, dot(-to_light / dist, in.direction.xy), dist > 1e-4);
+    atten *= smoothstep(in.flags.z, max(in.flags.w, in.flags.z + 1e-4), c);
+    if (atten <= 0.0) { discard; }
+  }
   if (in.flags.x > 0.5 && dist > 1e-4) {
     let alpha = atan(max(in.color_source.w, 1e-3) / dist);
     let count = u32(lights2d.info.x);

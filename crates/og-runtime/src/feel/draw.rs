@@ -283,6 +283,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         rs.feel.blob = Some(blob_texture(&mut rs.scene));
     }
     let blob = rs.feel.blob;
+    // og.LightMask2D by entity: the 2D lights each receiver takes.
+    let light_masks = crate::fx::light_masks(world, &rs.draw.fx);
     let textures = rs.textures.clone();
     let arrays = &rs.texture_arrays;
     let scene = &mut rs.scene;
@@ -515,10 +517,18 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
             masks.resize(first, 1);
             masks.resize(scene.sprites.len(), layers);
         }
+        // So do its 2D light layers.
+        if let Some(&m) = light_masks.get(&e)
+            && m != 1
+        {
+            let masks = &mut scene.sprite_light_masks;
+            masks.resize(first, 1);
+            masks.resize(scene.sprites.len(), m);
+        }
     }
     rs.ids.sprites = drawn;
     floating(rs, &feel, scaled_now);
-    tile_layers(world, rs, &feel, &r, h, scaled_now);
+    tile_layers(world, rs, &feel, &r, h, scaled_now, &light_masks);
 }
 
 // Rendering only: floating text's pop.
@@ -643,6 +653,7 @@ fn tile_layers(
     r: &Records,
     h: &mut Hierarchy,
     now: f64,
+    light_masks: &IdMap<u64, u32>,
 ) {
     let rows = byte_rows(world, r.tilemap.0, &r.tilemap.1);
     if rows.is_empty() {
@@ -773,6 +784,7 @@ fn tile_layers(
                 ],
                 time: now as f32,
                 lit: layer.lit,
+                light_mask: light_masks.get(&e).copied().unwrap_or(1),
             });
         }
     }

@@ -4209,8 +4209,11 @@
         "MaterialStyle",
         "LookInfo",
         "Lighting2D",
+        "Light2DKind",
+        "Light2DKind",
         "Light2D",
         "Occluder2D",
+        "LightMask2D",
         "Decal",
         "ParticleSystem",
         "Trail",
@@ -27084,9 +27087,34 @@
           "default": 0.5,
           "minimum": 0.25,
           "maximum": 1
+        },
+        "shadowAngles": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The angular resolution of each shadow-casting light's shadow: how many directions around it are traced against the occluders (more keeps a small occluder far from a large light sharp, at more cost).",
+          "default": 1024,
+          "minimum": 64,
+          "maximum": 4096
         }
       },
       "additionalProperties": false
+    },
+    "Light2DKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "What shape of light a Light2D is.",
+      "type": "string",
+      "enum": [
+        "point",
+        "spot",
+        "global"
+      ],
+      "x-og-variants": {
+        "point": "Light all around its position, to radius.",
+        "spot": "A cone along the entity's local +x (turned with its Transform about z), innerAngle to outerAngle either side of the axis, to radius.",
+        "global": "Light on every lit pixel of its layers at full intensity, from the direction of the entity's local +x at height (for normal maps); no radius and no shadows."
+      }
     },
     "Light2D": {
       "x-og-kind": "component",
@@ -27133,8 +27161,41 @@
         },
         "castShadows": {
           "type": "boolean",
-          "description": "Occluders between the light and a pixel shade it.",
+          "description": "Occluders between the light and a pixel shade it (point and spot lights).",
           "default": true
+        },
+        "kind": {
+          "$ref": "#/$defs/Light2DKind",
+          "description": "Point, spot or global.",
+          "default": "point"
+        },
+        "innerAngle": {
+          "type": "number",
+          "description": "A spot's half-angle at full intensity, in radians.",
+          "default": 0.35,
+          "minimum": 0,
+          "maximum": 3.14159
+        },
+        "outerAngle": {
+          "type": "number",
+          "description": "A spot's half-angle where it reaches zero, in radians (at least innerAngle).",
+          "default": 0.6,
+          "minimum": 0,
+          "maximum": 3.14159
+        },
+        "height": {
+          "type": "number",
+          "description": "How far above the 2D plane the light is, in world units: the slant normal-mapped sprites see it at (0 grazes the surface).",
+          "default": 1,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "layers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The light layers it lights: a bit per layer, matched against each sprite's, rig's or tilemap's og.LightMask2D (layer 0, bit 1, without one).",
+          "default": 4294967295
         }
       },
       "additionalProperties": false
@@ -27142,22 +27203,54 @@
     "Occluder2D": {
       "x-og-kind": "component",
       "x-og-module": "render",
-      "description": "A rectangle that blocks 2D light (walls, crates, characters), centred on the entity's position and turned with it about z. Pixels inside it are not shadowed by it. At most 128 are drawn.",
+      "description": "A shape that blocks 2D light (walls, crates, characters), centred on the entity's position and turned and scaled with it about z: a width by height rectangle, or the polygon `points` gives. Pixels inside it are not shadowed by it. At most 128 are drawn.",
       "type": "object",
       "properties": {
         "width": {
           "type": "number",
-          "description": "Its width in world units.",
+          "description": "Its width in world units (without points).",
           "default": 1,
           "minimum": 0,
           "x-og-unit": "m"
         },
         "height": {
           "type": "number",
-          "description": "Its height in world units.",
+          "description": "Its height in world units (without points).",
           "default": 1,
           "minimum": 0,
           "x-og-unit": "m"
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 32,
+          "description": "A polygon instead of the rectangle: up to 16 vertices as x, y pairs in the entity's frame, in order around it; concave is fine. Fewer than three vertices keeps the rectangle.",
+          "default": []
+        },
+        "layers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The light layers whose lights it blocks (a bit per layer, as Light2D.layers).",
+          "default": 4294967295
+        }
+      },
+      "additionalProperties": false
+    },
+    "LightMask2D": {
+      "x-og-kind": "component",
+      "x-og-module": "render",
+      "description": "The light layers that light the entity's sprite, flipbook, 2D rig or tilemap: a Light2D lights it when their `layers` share a bit. Without one an entity is on layer 0 (bit 1). At most four different masks are lit in one frame; any further mask is lit as layer 0.",
+      "type": "object",
+      "properties": {
+        "layers": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "A bit per light layer.",
+          "default": 1
         }
       },
       "additionalProperties": false

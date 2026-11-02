@@ -117,6 +117,9 @@ pub(crate) fn versioned(mut schema: og_core::Schema) -> og_core::Schema {
         "og.Joint" => og_physics::Joint::schema().version,
         "og.Vehicle" => og_physics::Vehicle::schema().version,
         crate::video::PLAYER => crate::video::PLAYER_VERSION,
+        // R11: Light2D's kind, cone, height and layers; Occluder2D's
+        // polygon and layers; Lighting2D's shadowAngles.
+        "og.Light2D" | "og.Occluder2D" | "og.Lighting2D" => 2,
         _ => return schema,
     };
     schema
@@ -348,7 +351,12 @@ pub(crate) fn assemble(
         .collect();
     for name in &lazy_named {
         if let Some(l) = layouts.get(*name) {
-            world.register_schema(versioned(l.schema())).map_err(err)?;
+            let id = world.register_schema(versioned(l.schema())).map_err(err)?;
+            if l.kind == RecordKind::Resource {
+                world
+                    .insert_resource_bytes(id, &l.encode(None, None)?)
+                    .map_err(err)?;
+            }
         }
     }
     let mut systems = Vec::new();

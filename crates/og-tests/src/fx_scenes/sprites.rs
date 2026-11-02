@@ -233,6 +233,7 @@ pub fn fx_2d_scene() -> Result<RenderScene, String> {
             falloff: 1.6,
             source_radius: 0.3,
             cast_shadows: true,
+            ..Default::default()
         },
         Light2d {
             position: Vec2::new(3.6, -3.2),
@@ -242,6 +243,7 @@ pub fn fx_2d_scene() -> Result<RenderScene, String> {
             falloff: 1.4,
             source_radius: 0.5,
             cast_shadows: true,
+            ..Default::default()
         },
         Light2d {
             position: Vec2::new(0.8, -0.2),
@@ -251,6 +253,7 @@ pub fn fx_2d_scene() -> Result<RenderScene, String> {
             falloff: 2.0,
             source_radius: 0.1,
             cast_shadows: false,
+            ..Default::default()
         },
     ];
     let font = crate::scenes::load_font(&mut scene)?;
@@ -363,6 +366,7 @@ fn cave_layer(
         repeat: [None, None],
         time: 0.0,
         lit,
+        light_mask: 1,
     }
 }
 
@@ -422,6 +426,7 @@ pub fn tilemap_lit_scene() -> RenderScene {
             falloff: 1.8,
             source_radius: 0.3,
             cast_shadows: true,
+            ..Default::default()
         },
         Light2d {
             position: Vec2::new(8.5, 0.6),
@@ -431,6 +436,7 @@ pub fn tilemap_lit_scene() -> RenderScene {
             falloff: 1.6,
             source_radius: 0.15,
             cast_shadows: true,
+            ..Default::default()
         },
     ];
     // The pillar (x 15..17, y 3..11) and the ledge (x 22..27, y 7), in world
@@ -440,11 +446,13 @@ pub fn tilemap_lit_scene() -> RenderScene {
             center: Vec2::new(0.0, -2.0),
             half_size: Vec2::new(1.0, 4.0),
             rotation: 0.0,
+            ..Default::default()
         },
         Occluder2d {
             center: Vec2::new(8.5, -1.5),
             half_size: Vec2::new(2.5, 0.5),
             rotation: 0.0,
+            ..Default::default()
         },
     ];
     scene.camera = Camera::orthographic_2d(Vec2::ZERO, 18.0);

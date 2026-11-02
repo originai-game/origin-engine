@@ -341,11 +341,13 @@ fn a_replay_and_a_restored_save_go_tick_for_tick_across_a_cell_load() {
 /// pins: the well's id as the village first loads and after it reloads, and
 /// the last tick's hash. The hash folds the world's type table, so it moved
 /// (2c17f3c42615a4b9 -> a4f0740b668ce590) when og.VideoPlayer became lazy
-/// (G3-2: a world without footage no longer has the type), with no change to
-/// the cells' own behaviour.
+/// (G3-2: a world without footage no longer has the type), and again
+/// (a4f0740b668ce590 -> 07d9679424bad231) when R11 made og.Lighting2D,
+/// og.Light2D and og.Occluder2D lazy, with no change to the cells' own
+/// behaviour.
 const WELL_FIRST: f64 = (1u64 << 32 | 4) as f64;
 const WELL_AFTER_RELOAD: f64 = (2u64 << 32 | 4) as f64;
-const END_HASH: &str = "a4f0740b668ce590";
+const END_HASH: &str = "07d9679424bad231";
 
 #[test]
 fn a_session_without_anchors_refuses_the_camera() {
