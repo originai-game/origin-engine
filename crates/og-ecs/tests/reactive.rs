@@ -643,3 +643,57 @@ fn a_world_without_reactivity_saves_and_hashes_as_before() {
 /// [`a_world_without_reactivity_saves_and_hashes_as_before`]'s hash on
 /// origin/main d89b3942, before change detection.
 const BEFORE: u64 = 10_469_614_763_969_903_971;
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
+struct Late {
+    n: u32,
+}
+
+#[test]
+fn a_granted_type_registered_after_the_schedule_is_readable_and_writable_then() {
+    let mut w = base();
+    let seen = log();
+    let s = seen.clone();
+    w.add_system(
+        SystemDesc::new("mover")
+            .write::<Pos>()
+            .query(QueryDesc::new().write::<Pos>()),
+        move |ctx| {
+            for a in ctx.query(0)? {
+                for &e in a.entities() {
+                    match ctx.get::<Late>(e) {
+                        Ok(t) => {
+                            s.lock().unwrap().push(format!("tag {}", t.n));
+                            ctx.insert(e, Late { n: t.n + 1 })?;
+                        }
+                        Err(err) => s.lock().unwrap().push(format!("{:?}", err.kind())),
+                    }
+                }
+            }
+            Ok(())
+        },
+    )
+    .unwrap();
+    let e = w.spawn((Pos::default(),)).unwrap();
+    assert!(
+        w.grant("mover", &["Late"]).is_err(),
+        "Late is not registered yet"
+    );
+    w.step().unwrap();
+    let before = take(&seen);
+    assert_eq!(before.len(), 1);
+    assert_ne!(before[0], "tag 0", "an undeclared read is refused");
+    w.register::<Late>().unwrap();
+    w.insert(e, Late { n: 0 }).unwrap();
+    w.step().unwrap();
+    assert!(
+        take(&seen)[0].contains("Access"),
+        "registered but not granted: still refused"
+    );
+    w.grant("mover", &["Late"]).unwrap();
+    w.step().unwrap();
+    w.step().unwrap();
+    assert_eq!(take(&seen), ["tag 0", "tag 1"]);
+    assert_eq!(w.get::<Late>(e).unwrap().n, 2, "the grant covers writes");
+    assert!(w.grant("nobody", &["Late"]).is_err());
+}

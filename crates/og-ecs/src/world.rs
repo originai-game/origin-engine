@@ -942,6 +942,52 @@ impl World {
         self.push_system(desc, Box::new(run), Some(Box::new(condition)))
     }
 
+    /// Widens scheduled system `system`'s declarations by `writes` (type
+    /// names; a write implies a read): a module whose system touches a type
+    /// registered only once a game uses it (og.nav's `og.Crowd`) grants it
+    /// then, so a world that never uses the type keeps its type table.
+    /// Refused, naming the system or type, for an unknown one, and for a
+    /// write to Time or og.TimeScale.
+    pub fn grant(&mut self, system: &str, writes: &[&str]) -> Result<()> {
+        let mut ids = Vec::with_capacity(writes.len());
+        for &n in writes {
+            let id = self.registry.id_by_name(n).map_err(|_| {
+                Error::new(
+                    ErrorKind::NotFound,
+                    format!("system '{system}' is granted unknown type '{n}'"),
+                )
+            })?;
+            if id == self.time_id || id == self.scale_id {
+                return Err(Error::new(
+                    ErrorKind::Access,
+                    format!("system '{system}' cannot be granted a write to '{n}'"),
+                ));
+            }
+            ids.push(id);
+        }
+        let s = self
+            .systems
+            .iter_mut()
+            .find(|s| s.name == system)
+            .ok_or_else(|| {
+                Error::new(
+                    ErrorKind::NotFound,
+                    format!("no system named '{system}' is scheduled"),
+                )
+            })?;
+        for list in [&mut s.writes, &mut s.reads] {
+            list.extend(&ids);
+            og_core::sort::sort(list);
+            list.dedup();
+        }
+        if let Some(c) = s.condition.as_mut() {
+            c.0.reads.extend(&ids);
+            og_core::sort::sort(&mut c.0.reads);
+            c.0.reads.dedup();
+        }
+        Ok(())
+    }
+
     fn push_system(
         &mut self,
         desc: SystemDesc,
