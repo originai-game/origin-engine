@@ -620,3 +620,95 @@ export function storyScript(phone: boolean): Script {
   b.cmd("demo:text:100");
   return b.end();
 }
+
+/** The roster and wider-game previews (src/genres.ts) in their states. `phone` keeps to what a finger does. */
+function genres(b: ReturnType<typeof builder>, phone: boolean): void {
+  // The lobby: the lineup not ready, Ready up tapped, in queue, the ready check, accepted.
+  b.cmd("show:lobby");
+  b.cmd("pat:reset");
+  b.shot("lobby-idle", 1.0);
+  b.dump("lobby");
+  b.seq((at) => tap(at, "Party/Bar/Action"), 0.3);
+  b.shot("lobby-ready", 0.6);
+  b.cmd("pat:lobby:search");
+  b.shot("lobby-search", 0.6);
+  b.cmd("pat:lobby:found");
+  b.shot("lobby-found", 0.8);
+  b.dump("lobby-found");
+  b.seq((at) => tap(at, "Check/Panel/Actions/Accept"), 0.3);
+  b.shot("lobby-accepted", 0.5);
+  b.cmd("pat:lobby:reset");
+  // The character select: Mira under the player's cursor and the rival's Kael locked, another hovered, then locked in.
+  b.cmd("show:select");
+  b.shot("select-idle", 1.0);
+  b.cmd("pat:chars:hover:vesper");
+  b.shot("select-hover", 0.5);
+  b.seq((at) => tap(at, "Chars/Foot/Lock"), 0.3);
+  b.shot("select-locked", 0.6);
+  b.dump("select-locked");
+  b.cmd("pat:chars:reset");
+  // The versus screen as it lands, then nearly loaded.
+  b.cmd("show:versus");
+  b.cmd("pat:vs:reset");
+  b.shot("versus", 1.2);
+  b.cmd("pat:vs:progress:0.92");
+  b.shot("versus-loading", 0.4);
+  // The draft: the player's turn with Vesper hovered, locked in (Red's turn), then the ban phase.
+  b.cmd("show:draft");
+  b.shot("draft-pick", 1.0);
+  b.seq((at) => tap(at, "Middle/Foot/Action"), 0.3);
+  b.shot("draft-locked", 0.6);
+  b.dump("draft-locked");
+  b.cmd("pat:draft:reset");
+  b.cmd("pat:draft:phase:ban");
+  b.cmd("pat:draft:hover:wren");
+  b.shot("draft-ban", 0.6);
+  b.cmd("pat:draft:reset");
+  // The world map: the realm under its fog, the old king's seat's detail (a fast-travel point), then two kinds turned off.
+  b.cmd("show:worldMap");
+  b.shot("map-idle", 1.0);
+  b.seq((at) => tap(at, "Pins/amberhold"), 0.3);
+  b.shot("map-detail", 0.6);
+  b.dump("map-detail");
+  b.cmd("pat:map:select:");
+  b.cmd("pat:map:hide:shop,poi");
+  b.shot("map-filtered", 0.5);
+  b.cmd("pat:map:reset");
+  // The song select: Crystal Echo on the wheel, a tap on the row above, the locked song, the preview paused.
+  b.cmd("show:songs");
+  b.shot("songs-idle", 1.0);
+  b.dump("songs");
+  b.seq((at) => tap(at, "Wheel/Wheel/desert-drum"), 0.3);
+  b.shot("songs-select", 0.6);
+  b.cmd("pat:song:select:phoenix");
+  b.shot("songs-locked", 0.6);
+  b.cmd("pat:song:playing:off");
+  b.shot("songs-paused", 0.4);
+  b.cmd("pat:song:reset");
+}
+
+const GENRE_SCREENS = ["lobby", "select", "versus", "draft", "worldMap", "songs"] as const;
+
+/** The roster and wider-game previews in their states, then each screen right to left, in Japanese, and at 200 % text. */
+export function genresScript(phone: boolean): Script {
+  const b = builder(0.3);
+  if (phone) b.cmd("viewport:phone");
+  genres(b, phone);
+  for (const loc of ["ar", "ja"]) {
+    b.cmd(`locale:${loc}`);
+    for (const s of GENRE_SCREENS) {
+      b.cmd(`show:${s}`);
+      b.cmd("pat:reset");
+      b.shot(`${loc === "ar" ? "rtl" : loc}-${s}`, 1.0);
+    }
+  }
+  b.cmd("locale:en");
+  b.cmd("demo:text:200");
+  for (const s of GENRE_SCREENS) {
+    b.cmd(`show:${s}`);
+    b.cmd("pat:reset");
+    b.shot(`text200-${s}`, 1.0);
+  }
+  b.cmd("demo:text:100");
+  return b.end();
+}
