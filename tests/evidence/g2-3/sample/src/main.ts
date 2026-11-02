@@ -85,7 +85,7 @@ export default og.game({
     const box = must(og.render.boxGeometry(world, {}));
     const ball = must(og.render.sphereGeometry(world, { radius: 0.5 }));
     const mat = (r: number, g: number, b: number, roughness = 0.7) => must(og.render.standardMaterial(world, { color: { r, g, b }, roughness }));
-    awake = mat(0.8, 0.55, 0.25);
+    awake = mat(0.9, 0.28, 0.04); // linear: a saturated orange (0.8, 0.55, 0.25 read tan)
     sleeping = mat(0.2, 0.45, 0.95);
     snapped = mat(0.95, 0.15, 0.1);
     const steel = mat(0.6, 0.62, 0.66, 0.35);
