@@ -8,8 +8,9 @@ import { SCREEN, demo, key, tap, tapText, ui } from "./lib.ts";
 export default playtest({
   name: "touch_move_to and move_to_text drive the gallery, the shop, results, idle and the cutscene",
   commands: [
+    // The shop is the eleventh row (88 px rows that hold a two-line blurb): 600 px brings it whole into the list's view.
     "0.3:touch_move_to:Screens",
-    "0.35:scroll:0,400",
+    "0.35:scroll:0,600",
     tapText(0.5, "=shop"),
     "1.2:dump_entity:demo:shop-open.json",
     tap(1.3, "Detail/Buy"),
