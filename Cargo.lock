@@ -2270,6 +2270,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "og-video-wasm"
+version = "0.7.7"
+dependencies = [
+ "og-video",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"

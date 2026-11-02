@@ -225,3 +225,5 @@ done
 set --
 cargo build --profile wasm -q --target wasm32-unknown-unknown -p og-host-web --lib
 wasm-bindgen --target web --out-dir "$here/dist/web" --out-name origin-engine "$wasm"
+# The AV1 fallback decoder (G3-2), its own module beside the engine's.
+sh "$here/scripts/build-av1.sh"

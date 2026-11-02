@@ -22,6 +22,17 @@ pub struct Picture {
     pub rgba: std::sync::Arc<Vec<u8>>,
 }
 
+/// A decoded picture as packed 8-bit 4:2:0 planes: Y (`width` x
+/// `height`), then U and V (each half the size, rounded up), BT.709
+/// limited range as the cook encodes it. The web fallback hands these to
+/// the browser (a `VideoFrame` of format I420), which converts on the GPU.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Planes {
+    pub width: u32,
+    pub height: u32,
+    pub i420: Vec<u8>,
+}
+
 /// One rav1d context.
 pub struct Decoder {
     ctx: Option<Dav1dContext>,
@@ -66,9 +77,22 @@ impl Decoder {
         }
     }
 
-    /// Decodes one temporal unit: the picture it shows, or `None` for a
-    /// unit that shows none.
+    /// Decodes one temporal unit: the picture it shows as RGBA8, or `None`
+    /// for a unit that shows none.
     pub fn decode(&mut self, unit: &[u8]) -> Result<Option<Picture>, String> {
+        self.decode_with(unit, convert)
+    }
+
+    /// [`Decoder::decode`] as packed I420 planes, unconverted.
+    pub fn decode_i420(&mut self, unit: &[u8]) -> Result<Option<Planes>, String> {
+        self.decode_with(unit, pack)
+    }
+
+    fn decode_with<T>(
+        &mut self,
+        unit: &[u8],
+        out: fn(&Dav1dPicture) -> Result<T, String>,
+    ) -> Result<Option<T>, String> {
         let c = self.ctx.ok_or("the decoder is closed")?;
         if unit.is_empty() {
             return Ok(None);
@@ -93,7 +117,7 @@ impl Decoder {
                 unsafe { dav1d_data_unref(Some(NonNull::from(&mut data))) };
                 return Err(format!("rav1d refused a unit ({})", r.0));
             }
-            if let Some(p) = self.picture(c)? {
+            if let Some(p) = self.picture(c, out)? {
                 shown = Some(p);
             }
             if data.sz == 0 {
@@ -103,7 +127,11 @@ impl Decoder {
         Ok(shown)
     }
 
-    fn picture(&mut self, c: Dav1dContext) -> Result<Option<Picture>, String> {
+    fn picture<T>(
+        &mut self,
+        c: Dav1dContext,
+        out: fn(&Dav1dPicture) -> Result<T, String>,
+    ) -> Result<Option<T>, String> {
         let mut pic = MaybeUninit::<Dav1dPicture>::zeroed();
         // SAFETY: `c` is open; `pic` is valid to write.
         let r =
@@ -116,14 +144,15 @@ impl Decoder {
         }
         // SAFETY: get_picture succeeded and wrote `pic`.
         let mut pic = unsafe { pic.assume_init() };
-        let out = convert(&pic);
+        let result = out(&pic);
         // SAFETY: `pic` came from get_picture.
         unsafe { dav1d_picture_unref(Some(NonNull::from(&mut pic))) };
-        out.map(Some)
+        result.map(Some)
     }
 }
 
-fn convert(pic: &Dav1dPicture) -> Result<Picture, String> {
+/// A picture's three planes and their strides, checked to be 8-bit 4:2:0.
+fn planes(pic: &Dav1dPicture) -> Result<[Plane<'_>; 3], String> {
     let (w, h) = (pic.p.w as usize, pic.p.h as usize);
     if pic.p.bpc != 8 || pic.p.layout != DAV1D_PIXEL_LAYOUT_I420 {
         return Err(format!(
@@ -131,6 +160,45 @@ fn convert(pic: &Dav1dPicture) -> Result<Picture, String> {
             pic.p.bpc, pic.p.layout
         ));
     }
+    let (ys, uvs) = (pic.stride[0] as usize, pic.stride[1] as usize);
+    let (cw, ch) = (w.div_ceil(2), h.div_ceil(2));
+    let plane = |i: usize, stride: usize, rows: usize, cols: usize| -> Result<Plane<'_>, String> {
+        let p = pic.data[i].ok_or("a picture without its planes")?;
+        // SAFETY: rav1d allocates `stride` bytes for each of a plane's rows,
+        // alive as long as the picture.
+        let data = unsafe {
+            std::slice::from_raw_parts(p.as_ptr() as *const u8, stride * (rows - 1) + cols)
+        };
+        Ok(Plane { data, stride })
+    };
+    Ok([
+        plane(0, ys, h, w)?,
+        plane(1, uvs, ch, cw)?,
+        plane(2, uvs, ch, cw)?,
+    ])
+}
+
+/// Packs a picture's planes row after row, without their strides' padding.
+fn pack(pic: &Dav1dPicture) -> Result<Planes, String> {
+    let [y, u, v] = planes(pic)?;
+    let (w, h) = (pic.p.w as usize, pic.p.h as usize);
+    let (cw, ch) = (w.div_ceil(2), h.div_ceil(2));
+    let mut i420 = Vec::with_capacity(w * h + 2 * cw * ch);
+    for (p, cols, rows) in [(y, w, h), (u, cw, ch), (v, cw, ch)] {
+        for r in 0..rows {
+            i420.extend_from_slice(&p.data[r * p.stride..r * p.stride + cols]);
+        }
+    }
+    Ok(Planes {
+        width: w as u32,
+        height: h as u32,
+        i420,
+    })
+}
+
+fn convert(pic: &Dav1dPicture) -> Result<Picture, String> {
+    let (w, h) = (pic.p.w as usize, pic.p.h as usize);
+    let [y, u, v] = planes(pic)?;
     let matrix = pic
         .seq_hdr
         // SAFETY: a picture's sequence header lives as long as the picture.
@@ -142,34 +210,8 @@ fn convert(pic: &Dav1dPicture) -> Result<Picture, String> {
                 Matrix::Bt709
             }
         });
-    let (ys, uvs) = (pic.stride[0] as usize, pic.stride[1] as usize);
-    let (cw, ch) = (w.div_ceil(2), h.div_ceil(2));
-    let plane = |i: usize, stride: usize, rows: usize, cols: usize| -> Result<&[u8], String> {
-        let p = pic.data[i].ok_or("a picture without its planes")?;
-        // SAFETY: rav1d allocates `stride` bytes for each of a plane's rows.
-        Ok(unsafe {
-            std::slice::from_raw_parts(p.as_ptr() as *const u8, stride * (rows - 1) + cols)
-        })
-    };
     let mut rgba = vec![0u8; w * h * 4];
-    yuv::i420_to_rgba(
-        Plane {
-            data: plane(0, ys, h, w)?,
-            stride: ys,
-        },
-        Plane {
-            data: plane(1, uvs, ch, cw)?,
-            stride: uvs,
-        },
-        Plane {
-            data: plane(2, uvs, ch, cw)?,
-            stride: uvs,
-        },
-        w,
-        h,
-        matrix,
-        &mut rgba,
-    );
+    yuv::i420_to_rgba(y, u, v, w, h, matrix, &mut rgba);
     Ok(Picture {
         width: w as u32,
         height: h as u32,

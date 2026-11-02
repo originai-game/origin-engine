@@ -1,0 +1,18 @@
+[package]
+name = "og-video-wasm"
+version = "0.7.7"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Origin Engine's software AV1 decoder for browsers without one: og-video's rav1d built for wasm32-wasip1, loaded by the web host's decoder Worker only when WebCodecs cannot decode AV1 (packages/engine/src/web/video-decoder.ts)."
+publish = false
+
+# A WASI reactor: the decoder Worker instantiates it with a few WASI
+# imports of its own (rav1d's std reads the clock and writes its log), and
+# calls the exports below. Built by packages/engine/scripts/build.sh into
+# dist/av1/og-av1.wasm; never part of the engine's own wasm.
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+og-video = { path = "../og-video" }

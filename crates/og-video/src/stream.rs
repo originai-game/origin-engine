@@ -14,6 +14,25 @@ use crate::ivf::Unit;
 /// Frames decoded ahead of the one wanted.
 pub const AHEAD: usize = 8;
 
+/// The largest stream the web's software fallback (rav1d in wasm, one
+/// thread) decodes in real time at 30 fps: measured in Safari 27 on Apple
+/// silicon, 720p held 46 fps on worst-case footage and 1080p 19.
+pub const FALLBACK_MAX: (u32, u32) = (1280, 720);
+
+/// The size of the rendition the cook adds beside a stream larger than
+/// [`FALLBACK_MAX`] (its aspect kept, even sides, at least 64): what the
+/// web's fallback decoder plays instead. `None` for a stream that fits.
+/// The cook and the runtime both derive it from the stream's size.
+pub fn fallback_size((w, h): (u32, u32)) -> Option<(u32, u32)> {
+    let (mw, mh) = FALLBACK_MAX;
+    if w <= mw && h <= mh {
+        return None;
+    }
+    let scale = (f64::from(mw) / f64::from(w)).min(f64::from(mh) / f64::from(h));
+    let side = |v: u32| (((f64::from(v) * scale).round() as u32) & !1).max(64);
+    Some((side(w), side(h)))
+}
+
 /// A stream's units, frame `n` its unit `n`.
 #[derive(Debug)]
 pub struct Units {
@@ -261,6 +280,14 @@ mod tests {
                 })
                 .collect(),
         )
+    }
+
+    #[test]
+    fn a_rendition_fits_the_fallback_keeping_the_aspect() {
+        assert_eq!(fallback_size((1280, 720)), None);
+        assert_eq!(fallback_size((1920, 1080)), Some((1280, 720)));
+        assert_eq!(fallback_size((3840, 1600)), Some((1280, 532)));
+        assert_eq!(fallback_size((1080, 1920)), Some((404, 720)));
     }
 
     #[test]
