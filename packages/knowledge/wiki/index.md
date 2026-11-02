@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2344 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2349 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -1713,6 +1713,7 @@ Field units the docs and Tune use.
 | [`og.ui.visualState`](ui.md#fn-visualState) | function | ui | `og_ui_visual_state` |
 | [`og.ui.wavePreview`](ui.md#fn-wavePreview) | function | ui | — |
 | [`og.ui.waypoint`](ui.md#fn-waypoint) | function | ui | — |
+| [`og.ui.worldMap`](ui.md#fn-worldMap) | function | ui | — |
 | [`og.ui.zoomView`](ui.md#fn-zoomView) | function | ui | `og_ui_zoom_view` |
 | [`og.Vehicle`](physics.md#record-Vehicle) | component | physics | — |
 | [`og.VehicleWheel`](physics.md#record-VehicleWheel) | component | physics | — |
@@ -2508,10 +2509,14 @@ Field units the docs and Tune use.
 | [`World.tick`](world.md#member-World-tick) | property | world | `og_world_get_tick` |
 | [`WorldAnchorDesc`](ui.md#type-WorldAnchorDesc) | desc struct | ui | — |
 | [`WorldDump`](probe.md#type-WorldDump) | struct | probe | — |
+| [`WorldMapDesc`](ui.md#type-WorldMapDesc) | desc struct | ui | — |
+| [`WorldMapResult`](ui.md#type-WorldMapResult) | struct | ui | — |
+| [`WorldMarker`](ui.md#type-WorldMarker) | desc struct | ui | — |
 | [`WorldOcclusion`](ui.md#type-WorldOcclusion) | enum | ui | — |
 | [`WorldOriginPlane`](transform.md#type-WorldOriginPlane) | enum | transform | — |
 | [`WorldOriginPlane()`](transform.md#column-WorldOriginPlane) | column kind | transform | — |
 | [`WorldPanelDesc`](ui.md#type-WorldPanelDesc) | desc struct | ui | — |
+| [`WorldRegion`](ui.md#type-WorldRegion) | desc struct | ui | — |
 | [`WorldTarget`](ui.md#type-WorldTarget) | desc struct | ui | — |
 | [`ZoomResult`](ui.md#type-ZoomResult) | struct | ui | — |
 | [`ZoomViewDesc`](ui.md#type-ZoomViewDesc) | desc struct | ui | — |

@@ -34112,6 +34112,253 @@ export interface DraftResult {
 
 
 /**
+ * One place on the world map.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface WorldMarker {
+  /**
+   * Its key: its pin's element id, so its probe path is <id>/Map/Pins/<key>.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * What it is, for its pin's mark and the legend: quest, objective, fastTravel, shop, poi, boss, custom (any other word is a poi).
+   *
+   * @default ""
+   */
+  readonly kind?: string;
+  /**
+   * Its name: the pin's label when zoomed in, and the detail's title.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * The detail's line (what is there, the quest's step).
+   *
+   * @default ""
+   */
+  readonly description?: string;
+  /**
+   * Where across the map, 0 to 1.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly x?: number;
+  /**
+   * Where down the map, 0 to 1.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly y?: number;
+  /**
+   * Found: undiscovered places show as a faint mark under the fog and cannot be travelled to.
+   *
+   * @default true
+   */
+  readonly discovered?: boolean;
+  /**
+   * The tracked quest's or the custom waypoint: its pin rings and pulses.
+   *
+   * @default false
+   */
+  readonly tracked?: boolean;
+  /**
+   * The detail's picture (art kind thumbnail); null shows none.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+}
+
+/**
+ * A region of the world: its name on the map, and its fog until discovered.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface WorldRegion {
+  /**
+   * Its key.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its name, set across the map at its centre in the display face's caps.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Its centre across the map, 0 to 1.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly x?: number;
+  /**
+   * Its centre down the map, 0 to 1.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly y?: number;
+  /**
+   * How far its fog reaches, as a fraction of the map's width; 0 is 0.18.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly radius?: number;
+  /**
+   * Discovered: its fog is lifted and its name shown; else a cloud of fog over it and its name ???.
+   *
+   * @default false
+   */
+  readonly discovered?: boolean;
+}
+
+/**
+ * A world map: the art, the regions and their fog, the places, the player.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface WorldMapDesc {
+  /**
+   * The map's art (art kind map); null draws the style's well with a grid.
+   *
+   * @default null
+   */
+  readonly texture?: Texture | null;
+  /**
+   * The map's width over its height; 0 is 16:9.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly aspect?: number;
+  /**
+   * The regions: their names and their fog.
+   *
+   * @default []
+   */
+  readonly regions?: readonly WorldRegion[];
+  /**
+   * The places.
+   *
+   * @default []
+   */
+  readonly markers?: readonly WorldMarker[];
+  /**
+   * The player's place across the map, 0 to 1; a negative value draws no player.
+   *
+   * @default -1
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly playerX?: number;
+  /**
+   * The player's place down the map, 0 to 1.
+   *
+   * @default 0
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly playerY?: number;
+  /**
+   * The player's facing, clockwise from north.
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly heading?: number;
+  /**
+   * The place whose detail is open (the game's: it passes WorldMapResult.selected back).
+   *
+   * @default ""
+   */
+  readonly selected?: string;
+  /**
+   * Kinds the legend has turned off: their pins are not drawn.
+   *
+   * @default []
+   */
+  readonly hidden?: readonly string[];
+  /**
+   * The map's title over the legend (the realm's name).
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * The most zoom; 0 is 4.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly maxZoom?: number;
+  /**
+   * The detail's action on a discovered fast-travel point.
+   *
+   * @default "Fast travel"
+   */
+  readonly travelLabel?: string;
+  /**
+   * The detail's action on another place.
+   *
+   * @default "Set waypoint"
+   */
+  readonly trackLabel?: string;
+  /**
+   * The detail's action on the tracked place.
+   *
+   * @default "Remove waypoint"
+   */
+  readonly untrackLabel?: string;
+  /**
+   * An undiscovered place's or region's name.
+   *
+   * @default "???"
+   */
+  readonly undiscoveredLabel?: string;
+  /**
+   * The legend's word for each kind, `{ quest: "Quests" }`; a kind without one shows its key.
+   *
+   * @default null
+   */
+  readonly kindLabels?: unknown;
+  /**
+   * The detail's close, to a screen reader.
+   *
+   * @default "Close"
+   */
+  readonly closeLabel?: string;
+}
+
+/** What the map was asked this tick, and where it is. */
+export interface WorldMapResult {
+  /**
+   * A pin was pressed (its key), or the detail was closed (empty): open or close its detail.
+   */
+  readonly selected: string | null;
+  /** Fast travel was pressed on a discovered fast-travel point. */
+  readonly travel: string | null;
+  /** Set or Remove waypoint was pressed: flip that place's tracking. */
+  readonly track: string | null;
+  /** A legend entry was pressed: show or hide that kind's pins. */
+  readonly toggled: string | null;
+  /** The map's zoom (1: the whole map). */
+  readonly zoom: number;
+  /** The middle of what it shows across the map, 0 to 1. */
+  readonly centerX: number;
+  /** The middle of what it shows down the map, 0 to 1. */
+  readonly centerY: number;
+}
+
+
+/**
  * A template's action, by its id (a menu item, `buy:<item>`, `share`).
  *
  * @param action The action's id.
@@ -54299,6 +54546,14 @@ export declare namespace og {
      * @param desc The teams, the roster, the phase and the words.
      */
     function draft(id: string, desc?: DraftDesc): DraftResult;
+    /**
+     * A world map (The Witcher 3, Breath of the Wild, Genshin Impact, Elden Ring): the painted map filling the screen, pinched, wheeled and dragged to zoom and pan (og.ui.zoomView); the regions' names set across it in the display face's caps while zoomed out, each undiscovered region under a cloud of fog with its name ???; the places as pins in their kind's mark, the tracked one ringed and pulsing, undiscovered ones faint under the fog, their names beside them once zoomed in; the player's arrow by its heading. A legend on the end side lists each kind with its count and turns it off and on; a pressed pin opens its detail as a card beside the legend: the place's picture, name and line, and Fast travel in the accent on a discovered fast-travel point, else Set or Remove waypoint. On a phone the legend is a row of chips at the top and the detail a card docked at the foot; where covering the screen would cut much of the map (a phone in portrait), the map sits whole across its width.
+     * Parts: WorldMap.frame, WorldMap.map, WorldMap.fog, WorldMap.region[discovered], WorldMap.pin[<kind>][tracked][undiscovered][selected], WorldMap.player, WorldMap.legend, WorldMap.entry[off], WorldMap.detail, WorldMap.action. Slots: the map (art kind map), each place's image (art kind thumbnail). States: on each pin, group find (discovered, undiscovered); on each legend entry, group shown (on, off). Motion: a tracked pin's ring pulses; the detail slides in on the panel spring; region names fade as the map zooms in and pin labels fade in (still under reduced motion). Sounds: select on a pin and a legend entry, confirm on travel and waypoint, back on closing the detail. Accessibility: the map an image named its title with its zoom as its value; each pin a button named its name (or ???) and kind, tracked; the legend a list of switches; the detail a region named the place. Probe ids: <id>/Map/Pins/<key>, <id>/Map/Pins/Player, <id>/Side/Legend/<kind>, <id>/Side/Detail, <id>/Side/Detail/Action.
+     *
+     * @param id Its id.
+     * @param desc The map, its regions and places, the player and the words.
+     */
+    function worldMap(id: string, desc?: WorldMapDesc): WorldMapResult;
     /**
      * The title screen template. Returns the item chosen this tick.
      *

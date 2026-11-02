@@ -20,7 +20,7 @@ module motion {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 28963</sub>
+<sub>`api.ogt` line 29065</sub>
 
 ## Contents
 
@@ -77,7 +77,7 @@ fn pose {
 }
 ```
 
-<sub>`api.ogt` line 29094</sub>
+<sub>`api.ogt` line 29196</sub>
 
 <a id="fn-place"></a>
 
@@ -109,7 +109,7 @@ fn place {
 }
 ```
 
-<sub>`api.ogt` line 29102</sub>
+<sub>`api.ogt` line 29204</sub>
 
 <a id="fn-face"></a>
 
@@ -141,7 +141,7 @@ fn face {
 }
 ```
 
-<sub>`api.ogt` line 29110</sub>
+<sub>`api.ogt` line 29212</sub>
 
 <a id="fn-walkTo"></a>
 
@@ -173,7 +173,7 @@ fn walkTo {
 }
 ```
 
-<sub>`api.ogt` line 29118</sub>
+<sub>`api.ogt` line 29220</sub>
 
 <a id="fn-clear"></a>
 
@@ -203,7 +203,7 @@ fn clear {
 }
 ```
 
-<sub>`api.ogt` line 29126</sub>
+<sub>`api.ogt` line 29228</sub>
 
 <a id="fn-status"></a>
 
@@ -233,7 +233,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 29133</sub>
+<sub>`api.ogt` line 29235</sub>
 
 <a id="fn-capabilities"></a>
 
@@ -261,7 +261,7 @@ fn capabilities {
 }
 ```
 
-<sub>`api.ogt` line 29140</sub>
+<sub>`api.ogt` line 29242</sub>
 
 <a id="fn-poses"></a>
 
@@ -284,7 +284,7 @@ fn poses {
 }
 ```
 
-<sub>`api.ogt` line 29146</sub>
+<sub>`api.ogt` line 29248</sub>
 
 ## Components, resources and events
 
@@ -325,7 +325,7 @@ component MotionAgent {
 }
 ```
 
-<sub>`api.ogt` line 28992</sub>
+<sub>`api.ogt` line 29094</sub>
 
 ## Types
 
@@ -356,7 +356,7 @@ enum MotionGoalKind {
 }
 ```
 
-<sub>`api.ogt` line 28970</sub>
+<sub>`api.ogt` line 29072</sub>
 
 <a id="type-MotionBackend"></a>
 
@@ -379,7 +379,7 @@ enum MotionBackend {
 }
 ```
 
-<sub>`api.ogt` line 28986</sub>
+<sub>`api.ogt` line 29088</sub>
 
 <a id="type-PoseGoalDesc"></a>
 
@@ -407,7 +407,7 @@ struct PoseGoalDesc {
 }
 ```
 
-<sub>`api.ogt` line 29012</sub>
+<sub>`api.ogt` line 29114</sub>
 
 <a id="type-PlaceGoalDesc"></a>
 
@@ -443,7 +443,7 @@ struct PlaceGoalDesc {
 }
 ```
 
-<sub>`api.ogt` line 29023</sub>
+<sub>`api.ogt` line 29125</sub>
 
 <a id="type-FaceGoalDesc"></a>
 
@@ -473,7 +473,7 @@ struct FaceGoalDesc {
 }
 ```
 
-<sub>`api.ogt` line 29040</sub>
+<sub>`api.ogt` line 29142</sub>
 
 <a id="type-WalkGoalDesc"></a>
 
@@ -506,7 +506,7 @@ struct WalkGoalDesc {
 }
 ```
 
-<sub>`api.ogt` line 29053</sub>
+<sub>`api.ogt` line 29155</sub>
 
 <a id="type-MotionStatus"></a>
 
@@ -543,7 +543,7 @@ struct MotionStatus {
 }
 ```
 
-<sub>`api.ogt` line 29068</sub>
+<sub>`api.ogt` line 29170</sub>
 
 <a id="type-MotionCapabilities"></a>
 
@@ -568,7 +568,7 @@ struct MotionCapabilities {
 }
 ```
 
-<sub>`api.ogt` line 29085</sub>
+<sub>`api.ogt` line 29187</sub>
 
 ## Column kinds
 
@@ -587,4 +587,4 @@ column MotionGoalKind {
 }
 ```
 
-<sub>`api.ogt` line 28979</sub>
+<sub>`api.ogt` line 29081</sub>
