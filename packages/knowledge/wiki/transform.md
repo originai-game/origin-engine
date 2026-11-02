@@ -14,7 +14,7 @@ module transform {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1412</sub>
+<sub>`api.ogt` line 1413</sub>
 
 ## Contents
 
@@ -23,6 +23,10 @@ module transform {
 | [`og.Transform`](#record-Transform) | component | Where an entity is, relative to its parent (or the world). |
 | [`og.Parent`](#record-Parent) | component | The entity this one's Transform is relative to. Set by SpawnDesc.parent. |
 | [`og.MatrixWorld`](#record-MatrixWorld) | component | The world matrix the engine composes after the systems run, as three.js Object3D.matrixWorld. |
+| [`WorldOriginPlane`](#type-WorldOriginPlane) | enum | The axes og.WorldOrigin moves the world's zero along. |
+| [`WorldOriginPlane()`](#column-WorldOriginPlane) | column kind | A WorldOriginPlane field: the variant's index. |
+| [`og.WorldOrigin`](#record-WorldOrigin) | resource | Large worlds (R12): naming it keeps every place in the world near its zero. As each tick starts, before any system runs, when the focus is farther from the zero than `step` along one of the plane's axes, the whole world shifts by the multiple of `step` nearest the focus, so the focus is within half a step of the zero again: every Transform of an entity without a parent, and every field the API marks `worldspace`, moves by the same amount (a body, its contacts and warm starts, a path, a particle, a tween to a place, the camera), and nothing in the world sees a change but the numbers. Precision then holds however far the world goes, while the zero's own place is kept here, in f64. |
+| [`og.OriginShifted`](#record-OriginShifted) | event | og.WorldOrigin shifted the world as this tick started, before any system ran: every marked place moved by `delta`. Add it to the world positions a game keeps of its own. |
 | [`og.transform.compose`](#fn-compose) | function | A matrix from position, rotation and scale, as three.js Matrix4.compose. |
 | [`og.transform.decompose`](#fn-decompose) | function | Position, rotation and scale from a matrix, as three.js Matrix4.decompose. |
 | [`og.transform.lookAt`](#fn-lookAt) | function | The rotation that points -Z from an eye towards a target, as three.js Object3D.lookAt for cameras. |
@@ -60,7 +64,7 @@ fn compose {
 }
 ```
 
-<sub>`api.ogt` line 1439</sub>
+<sub>`api.ogt` line 1500</sub>
 
 <a id="fn-decompose"></a>
 
@@ -88,7 +92,7 @@ fn decompose {
 }
 ```
 
-<sub>`api.ogt` line 1447</sub>
+<sub>`api.ogt` line 1508</sub>
 
 <a id="fn-lookAt"></a>
 
@@ -122,7 +126,7 @@ fn lookAt {
 }
 ```
 
-<sub>`api.ogt` line 1453</sub>
+<sub>`api.ogt` line 1514</sub>
 
 <a id="fn-fromAxisAngle"></a>
 
@@ -152,7 +156,7 @@ fn fromAxisAngle {
 }
 ```
 
-<sub>`api.ogt` line 1463</sub>
+<sub>`api.ogt` line 1524</sub>
 
 ## Components, resources and events
 
@@ -166,7 +170,7 @@ Token `og.Transform`, registered under the schema name `og.Transform`; its value
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `position` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The position, as three.js Object3D.position. |
+| `position` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `root` | The position, as three.js Object3D.position. |
 | `quaternion` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | — | The rotation, as three.js Object3D.quaternion. |
 | `scale` | `Vector3` | `{ x: 1, y: 1, z: 1 }` | — | — | — | The scale, as three.js Object3D.scale. |
 
@@ -174,6 +178,7 @@ Token `og.Transform`, registered under the schema name `og.Transform`; its value
 component Transform {
   doc "Where an entity is, relative to its parent (or the world)."
   field position Vector3 "The position, as three.js Object3D.position." {
+    worldspace root
     unit m
   }
   field quaternion Quaternion "The rotation, as three.js Object3D.quaternion."
@@ -183,7 +188,7 @@ component Transform {
 }
 ```
 
-<sub>`api.ogt` line 1416</sub>
+<sub>`api.ogt` line 1417</sub>
 
 <a id="record-Parent"></a>
 
@@ -204,7 +209,7 @@ component Parent {
 }
 ```
 
-<sub>`api.ogt` line 1427</sub>
+<sub>`api.ogt` line 1429</sub>
 
 <a id="record-MatrixWorld"></a>
 
@@ -227,4 +232,139 @@ component MatrixWorld {
 }
 ```
 
-<sub>`api.ogt` line 1432</sub>
+<sub>`api.ogt` line 1434</sub>
+
+<a id="record-WorldOrigin"></a>
+
+### `og.WorldOrigin` (resource)
+
+Large worlds (R12): naming it keeps every place in the world near its zero. As each tick starts, before any system runs, when the focus is farther from the zero than `step` along one of the plane's axes, the whole world shifts by the multiple of `step` nearest the focus, so the focus is within half a step of the zero again: every Transform of an entity without a parent, and every field the API marks `worldspace`, moves by the same amount (a body, its contacts and warm starts, a path, a particle, a tween to a place, the camera), and nothing in the world sees a change but the numbers. Precision then holds however far the world goes, while the zero's own place is kept here, in f64.
+
+The shift is world state, decided from world state alone (the focus's Transform, else the first og.StreamAnchor, else og.Camera.position), so a replay, a rollback, a restore and every peer of an og.net session shift on the same tick by the same amount; a session refuses the og.Camera fallback (each peer's camera is its own) and holds the zero until a focus or an anchor exists. A world that never names it keeps its hash and frames. Values a game keeps outside the marked fields (a world position in its own component, a key it set in an og.ai blackboard) are its own: OriginShifted says when to add its `delta` to them. 2D worlds shift too, on `xy`.
+
+Token `og.WorldOrigin`, registered under the schema name `og.WorldOrigin`; its value type is `WorldOrigin`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `step` | `number` | `2048` | ≥ 64 | `m` | — | How far the focus may stray from the zero along an axis before the world shifts, and the grid the zero moves on (whole metres). |
+| `plane` | `WorldOriginPlane` | `"xz"` | — | — | — | The axes the zero moves along: xz (the default), xyz, or xy for a 2D world. |
+| `focus` | `Entity` | `0` | — | — | — | The entity the zero follows (a player, a vehicle; a root). 0: the first og.StreamAnchor by entity id, else og.Camera.position. |
+| `off` | `boolean` | `false` | — | — | — | Hold the zero where it is. |
+| `x` | `number` | `0` | — | `m` | read only | Written: where the zero is in the world, along x (a place's absolute position is its own plus this). |
+| `y` | `number` | `0` | — | `m` | read only | Written: where the zero is, along y. |
+| `z` | `number` | `0` | — | `m` | read only | Written: where the zero is, along z. |
+| `shifts` | `number` | `0` | — | — | read only | Written: how many times the world has shifted. |
+
+```ogt
+resource WorldOrigin {
+  doc "Large worlds (R12): naming it keeps every place in the world near its zero. As each tick starts, before any system runs, when the focus is farther from the zero than `step` along one of the plane's axes, the whole world shifts by the multiple of `step` nearest the focus, so the focus is within half a step of the zero again: every Transform of an entity without a parent, and every field the API marks `worldspace`, moves by the same amount (a body, its contacts and warm starts, a path, a particle, a tween to a place, the camera), and nothing in the world sees a change but the numbers. Precision then holds however far the world goes, while the zero's own place is kept here, in f64."
+  doc "The shift is world state, decided from world state alone (the focus's Transform, else the first og.StreamAnchor, else og.Camera.position), so a replay, a rollback, a restore and every peer of an og.net session shift on the same tick by the same amount; a session refuses the og.Camera fallback (each peer's camera is its own) and holds the zero until a focus or an anchor exists. A world that never names it keeps its hash and frames. Values a game keeps outside the marked fields (a world position in its own component, a key it set in an og.ai blackboard) are its own: OriginShifted says when to add its `delta` to them. 2D worlds shift too, on `xy`."
+  field step f32 "How far the focus may stray from the zero along an axis before the world shifts, and the grid the zero moves on (whole metres)." {
+    default 2048
+    min 64
+    unit m
+  }
+  field plane WorldOriginPlane "The axes the zero moves along: xz (the default), xyz, or xy for a 2D world."
+  field focus Entity "The entity the zero follows (a player, a vehicle; a root). 0: the first og.StreamAnchor by entity id, else og.Camera.position."
+  field off bool "Hold the zero where it is."
+  field x f64 "Written: where the zero is in the world, along x (a place's absolute position is its own plus this)." {
+    readonly true
+    unit m
+  }
+  field y f64 "Written: where the zero is, along y." {
+    readonly true
+    unit m
+  }
+  field z f64 "Written: where the zero is, along z." {
+    readonly true
+    unit m
+  }
+  field shifts u32 "Written: how many times the world has shifted." {
+    readonly true
+  }
+}
+```
+
+<sub>`api.ogt` line 1455</sub>
+
+<a id="record-OriginShifted"></a>
+
+### `og.OriginShifted` (event)
+
+og.WorldOrigin shifted the world as this tick started, before any system ran: every marked place moved by `delta`. Add it to the world positions a game keeps of its own.
+
+Token `og.OriginShifted`, registered under the schema name `og.OriginShifted`; its value type is `OriginShifted`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `delta` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `none` | How far every place moved (a whole multiple of og.WorldOrigin.step along each axis of its plane). |
+| `x` | `number` | `0` | — | `m` | — | Where the zero is now in the world, along x (og.WorldOrigin.x). |
+| `y` | `number` | `0` | — | `m` | — | Along y. |
+| `z` | `number` | `0` | — | `m` | — | Along z. |
+
+```ogt
+event OriginShifted {
+  doc "og.WorldOrigin shifted the world as this tick started, before any system ran: every marked place moved by `delta`. Add it to the world positions a game keeps of its own."
+  field delta Vector3 "How far every place moved (a whole multiple of og.WorldOrigin.step along each axis of its plane)." {
+    worldspace none
+    unit m
+  }
+  field x f64 "Where the zero is now in the world, along x (og.WorldOrigin.x)." {
+    unit m
+  }
+  field y f64 "Along y." {
+    unit m
+  }
+  field z f64 "Along z." {
+    unit m
+  }
+}
+```
+
+<sub>`api.ogt` line 1483</sub>
+
+## Types
+
+<a id="type-WorldOriginPlane"></a>
+
+### `WorldOriginPlane` (enum)
+
+The axes og.WorldOrigin moves the world's zero along.
+
+A string: one of the variants below. The zero value is `"xz"`.
+
+| Variant | Doc |
+|---|---|
+| `"xz"` | x and z: the ground plane of a 3D world (heights stay absolute). |
+| `"xyz"` | x, y and z: a world that is also deep or high (space, flight). |
+| `"xy"` | x and y: a 2D world (its z, the drawing order, stays). |
+
+```ogt
+enum WorldOriginPlane {
+  doc "The axes og.WorldOrigin moves the world's zero along."
+  variant xz "x and z: the ground plane of a 3D world (heights stay absolute)."
+  variant xyz "x, y and z: a world that is also deep or high (space, flight)."
+  variant xy "x and y: a 2D world (its z, the drawing order, stays)."
+}
+```
+
+<sub>`api.ogt` line 1441</sub>
+
+## Column kinds
+
+Each is a factory, `WorldOriginPlane(value?, options?)`, that makes one field of a component or resource layout.
+
+| Column | Value | Typed array | Stride | Doc |
+|---|---|---|---|---|
+| <a id="column-WorldOriginPlane"></a>`WorldOriginPlane` | `WorldOriginPlane` | `Uint32Array` | 1 | A WorldOriginPlane field: the variant's index. |
+
+```ogt
+column WorldOriginPlane {
+  doc "A WorldOriginPlane field: the variant's index."
+  array Uint32Array
+  stride 1
+  value WorldOriginPlane
+}
+```
+
+<sub>`api.ogt` line 1448</sub>

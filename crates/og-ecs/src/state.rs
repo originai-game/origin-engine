@@ -23,6 +23,12 @@ pub trait StateBlock: Send {
     fn decode(&self, bytes: &[u8]) -> Result<Box<dyn Any + Send>>;
     /// Takes the decoded state (`Some`, from [`Self::decode`]) or resets.
     fn apply(&mut self, decoded: Option<Box<dyn Any + Send>>);
+    /// Moves every place in the world the block keeps by `shift.d`: the
+    /// world's zero moved ([`crate::World::shift`], R12's og.WorldOrigin).
+    /// A value in an entity's Transform frame moves only on a root
+    /// ([`crate::Shift::of`]). A block with no world positions does
+    /// nothing, and says so: there is no default, so a new block decides.
+    fn shift(&mut self, shift: &crate::Shift);
 }
 
 pub(crate) struct Block {

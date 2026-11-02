@@ -227,6 +227,9 @@ fn field_notes(f: &Field) -> String {
     if let Some(l) = &f.label {
         n.push(format!("label “{l}”"));
     }
+    if let Some(w) = &f.worldspace {
+        n.push(format!("worldspace `{w}`"));
+    }
     n.join(", ")
 }
 

@@ -29,7 +29,9 @@ module nav {
   component NavAgent {
     doc "An entity that moves itself towards `target` while `seeking`, by a path over `nav` (a grid, navmesh or flow field; 0 goes straight). og.nav re-plans when the target moved more than repathDistance, every repathTicks, or when the grid or navmesh changed, at most 32 plans a tick across agents."
     field nav Navigation "The grid, navmesh or flow field it plans on (og.nav.grid, og.nav.load, og.nav.flowField); 0 moves straight at the target."
-    field target Vector3 "Where it goes while seeking."
+    field target Vector3 "Where it goes while seeking." {
+      worldspace world
+    }
     field seeking bool "Moves towards the target while true."
     field speed f32 "Top speed." {
       default 3.5
@@ -99,6 +101,7 @@ module nav {
       readonly true
     }
     field waypoint Vector3 "The path corner it heads for (written by og.nav)." {
+      worldspace world
       unit m
       readonly true
     }
@@ -125,6 +128,7 @@ module nav {
       tunable true
     }
     field fleeFrom Vector3 "What it flees." {
+      worldspace world
       unit m
     }
     field fleeRadius f32 "It flees (and evades) only inside this distance (0: always)." {
@@ -283,9 +287,11 @@ module nav {
     field link u32 "The link's id."
     field kind u32 "Its NavLinkKind, by index: 0 jump, 1 ladder, 2 door, 3 teleport."
     field start Vector3 "Where the agent leaves the surface." {
+      worldspace world
       unit m
     }
     field end Vector3 "Where it lands." {
+      worldspace world
       unit m
     }
     field game bool "The game moves it across."

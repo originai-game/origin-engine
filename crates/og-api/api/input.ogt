@@ -716,6 +716,7 @@ module input {
     doc "The input state at the start of this tick (og-input's og.Input, version 2). Edges (pressed, released) last exactly one tick; read the state through the methods."
     doc "Key sets are 128 bits over og-input's KEY_CODES (KeyboardEvent.code names): code i is bit i % 32 of word i / 32. Button masks: left 1, middle 2, right 4."
     field pointer Vector2 "The pointer position." {
+      worldspace none
       readonly true
       unit cssPx
     }
@@ -848,42 +849,52 @@ module input {
       readonly true
     }
     field position0 Vector2 "Where pointer 0 is." {
+      worldspace none
       readonly true
       unit cssPx
     }
     field position1 Vector2 "Where pointer 1 is." {
+      worldspace none
       readonly true
       unit cssPx
     }
     field position2 Vector2 "Where pointer 2 is." {
+      worldspace none
       readonly true
       unit cssPx
     }
     field position3 Vector2 "Where pointer 3 is." {
+      worldspace none
       readonly true
       unit cssPx
     }
     field position4 Vector2 "Where pointer 4 is." {
+      worldspace none
       readonly true
       unit cssPx
     }
     field start0 Vector2 "Where pointer 0 went down." {
+      worldspace none
       readonly true
       unit cssPx
     }
     field start1 Vector2 "Where pointer 1 went down." {
+      worldspace none
       readonly true
       unit cssPx
     }
     field start2 Vector2 "Where pointer 2 went down." {
+      worldspace none
       readonly true
       unit cssPx
     }
     field start3 Vector2 "Where pointer 3 went down." {
+      worldspace none
       readonly true
       unit cssPx
     }
     field start4 Vector2 "Where pointer 4 went down." {
+      worldspace none
       readonly true
       unit cssPx
     }

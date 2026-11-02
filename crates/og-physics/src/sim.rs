@@ -412,6 +412,80 @@ pub(crate) struct Sim {
     pub(crate) ext: SimExt,
 }
 
+impl Sim {
+    /// Moves everything the simulation keeps in the world by `s.d`
+    /// (og.WorldOrigin, R12), in place: every body's pose (a kinematic
+    /// body's target with it) and every parentless collider's, the joints
+    /// anchored to the world (the ground body stays at the zero), what each
+    /// entity's components were (in its Transform frame), vehicles' wheel
+    /// points, and the points of ropes, cloths, fluids, soft volumes and
+    /// ragdoll targets. Contacts, warm starts and islands are relative to
+    /// the bodies and stay; the broad phase refits to the moved colliders
+    /// on the next step, as for any move, in handle order.
+    pub(crate) fn shift(&mut self, s: &og_ecs::Shift) {
+        let moved = |p: Vec3| s.moved(p);
+        let rpm = |t: rp::Vector| v(moved(unv(t)));
+        let ground = self.ground;
+        let w = &mut self.world;
+        for (h, rb) in w.bodies.iter_mut() {
+            if Some(h) == ground {
+                continue;
+            }
+            let kinematic = rb.body_type() == rp::RigidBodyType::KinematicPositionBased;
+            let next = *rb.next_position();
+            let mut at = *rb.position();
+            at.translation = rpm(at.translation);
+            rb.set_position(at, false);
+            if kinematic {
+                let mut to = next;
+                to.translation = rpm(to.translation);
+                rb.set_next_kinematic_position(to);
+            }
+        }
+        for (_, c) in w.colliders.iter_mut() {
+            if c.parent().is_none() {
+                let mut at = *c.position();
+                at.translation = rpm(at.translation);
+                c.set_position(at);
+            }
+        }
+        ext::shift_joints(self, s);
+        for (e, t) in self.bodies.iter_mut() {
+            t.position = s.moved_of(*e, t.position);
+        }
+        for (e, t) in self.statics.iter_mut() {
+            t.position = s.moved_of(*e, t.position);
+        }
+        for (_, v) in self.vehicles.iter_mut() {
+            v.shift(s);
+        }
+        let points = |p: &mut Vec<Vec3>| p.iter_mut().for_each(|p| *p = moved(*p));
+        for (_, r) in self.ropes.iter_mut() {
+            points(&mut r.points);
+            points(&mut r.previous);
+        }
+        for (_, c) in self.cloths.iter_mut() {
+            points(&mut c.points);
+            points(&mut c.previous);
+        }
+        for (_, f) in self.fluids.iter_mut() {
+            for p in &mut f.positions {
+                *p = moved(p.extend(0.0)).truncate();
+            }
+        }
+        for (_, f) in self.fluids3.iter_mut() {
+            points(&mut f.positions);
+        }
+        for (_, r) in self.ragdolls.iter_mut() {
+            r.shift(s);
+        }
+        for (_, b) in self.ext.softs.iter_mut() {
+            points(&mut b.points);
+            points(&mut b.previous);
+        }
+    }
+}
+
 /// Every body's pose at the start of the tick, by handle index (with the
 /// handle, so a slot reused by a rebuilt body is not mistaken for it): how
 /// far a platform moved this tick.

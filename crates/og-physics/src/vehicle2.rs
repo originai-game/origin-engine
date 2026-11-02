@@ -26,6 +26,11 @@ pub(crate) struct VehicleState {
     joints: [rp::ImpulseJointHandle; 2],
 }
 
+impl VehicleState {
+    /// Nothing to move: a 2D vehicle is its bodies and joints.
+    pub(crate) fn shift(&mut self, _: &og_ecs::Shift) {}
+}
+
 fn layout(v: &Vehicle) -> [u32; 6] {
     [
         v.wheel_base.to_bits(),

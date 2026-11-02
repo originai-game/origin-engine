@@ -646,6 +646,29 @@ impl<'a> Validator<'a, '_> {
                     format!("field `{owner}.{}` uses unknown unit `{unit}`", f.name),
                 );
             }
+            if let Some(space) = &f.worldspace {
+                let lanes = match f.ty.name() {
+                    "Vector3" => Some(3),
+                    "Vector2" => Some(2),
+                    "f32" | "f64" => Some(1),
+                    _ => None,
+                };
+                match lanes {
+                    _ if !matches!(site, FieldSite::Record(_)) => self.error(
+                        f.line,
+                        format!("field `{owner}.{}`: `worldspace` belongs to component, resource and event fields", f.name),
+                    ),
+                    None => self.error(
+                        f.line,
+                        format!("field `{owner}.{}`: `worldspace` belongs to Vector3, Vector2, f32 and f64 fields, not `{}`", f.name, f.ty),
+                    ),
+                    Some(n) => {
+                        if let Err(e) = og_core::Worldspace::parse(space, n) {
+                            self.error(f.line, format!("field `{owner}.{}`: {e}", f.name));
+                        }
+                    }
+                }
+            }
             let numeric = !matches!(self.ix.decl(f.ty.name()), Some(TypeDecl::Enum(_)))
                 && self
                     .ix

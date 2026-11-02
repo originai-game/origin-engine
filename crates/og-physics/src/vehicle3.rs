@@ -24,6 +24,13 @@ pub(crate) struct VehicleState {
     controller: super::ctl::DynamicRayCastVehicleController,
 }
 
+impl VehicleState {
+    /// Moves the controller's world-space wheel points by `s.d`.
+    pub(crate) fn shift(&mut self, s: &og_ecs::Shift) {
+        self.controller.shift(&|p| super::v(s.moved(super::unv(p))));
+    }
+}
+
 /// What rebuilds a vehicle: its geometry (inputs, tunables and outputs do not).
 fn layout(v: &Vehicle) -> [u32; 5] {
     [

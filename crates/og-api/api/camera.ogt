@@ -6,6 +6,7 @@ module camera {
   resource Camera {
     doc "The camera the frame is rendered from. Rendering reads it after the tick; it never feeds back into the simulation."
     field position Vector3 "Where the camera is." {
+      worldspace world
       unit m
     }
     field quaternion Quaternion "Its rotation; the camera looks down its local -Z."
@@ -95,16 +96,20 @@ module camera {
     }
     field zoneActive bool "The followed entity is in an og.CameraZone: the view keeps inside zoneMin to zoneMax. Written by the og.camera system."
     field zoneMin Vector2 "The zone the view keeps inside: its bottom-left corner." {
+      worldspace world
       unit m
     }
     field zoneMax Vector2 "Its top-right corner." {
+      worldspace world
       unit m
     }
     field zoneFromActive bool "A room transition is in progress from the zone zoneFromMin to zoneFromMax: the view scrolls from where that zone kept it to where the new one does."
     field zoneFromMin Vector2 "The zone being left: its bottom-left corner." {
+      worldspace world
       unit m
     }
     field zoneFromMax Vector2 "Its top-right corner." {
+      worldspace world
       unit m
     }
     field zoneScroll f32 "How far the transition has come, 0 to 1 (eased; 1 is settled)." {
@@ -141,6 +146,7 @@ module camera {
     doc "Camera controllers are game-level systems the engine ships in TypeScript (og.systems.cameras); list them in GameDesc.systems: `systems: [...og.systems.cameras, ...yours]`. The first entity carrying one, in query order, drives the camera."
     doc "The camera sits `distance` from the orbited point (the entity's position plus `target`) in the direction given by `azimuth` about +Y and `polar` from +Y, and looks at the point. Every angle is computed with deterministic arithmetic, so a replay moves the camera identically on every host."
     field target Vector3 "The orbited point, relative to the entity's position." {
+      worldspace none
       unit m
     }
     field distance f32 "How far the camera is from the orbited point, as three.js OrbitControls' distance." {
@@ -205,6 +211,7 @@ module camera {
       readonly true
     }
     field pointer Vector2 "Controller state: where the pointer was on the previous tick of a drag." {
+      worldspace none
       readonly true
       unit cssPx
     }
@@ -269,14 +276,17 @@ module camera {
       unit m
     }
     field last Vector2 "Controller state: the entity's position on the previous tick." {
+      worldspace root
       readonly true
       unit m
     }
     field clamp bool "Keep the camera centre between boundsMin and boundsMax."
     field boundsMin Vector2 "The smallest x and y the camera centre takes with clamp." {
+      worldspace world
       unit m
     }
     field boundsMax Vector2 "The largest x and y the camera centre takes with clamp." {
+      worldspace world
       unit m
     }
   }
@@ -284,9 +294,11 @@ module camera {
   component CameraZone {
     doc "A rectangle of the xy plane (min to max, world units, not moved by the entity's Transform) that keeps a 2D view inside it while the entity followed by og.Follow2D is in it: rooms, arenas, a level's bounds. Of overlapping zones the highest priority wins, then the first in query order. The engine's og.camera system picks the zone after the game's systems (into og.Camera's zone fields); entering another zone scrolls the view across over the new zone's scrollTime, or jumps when it is 0. A zone smaller than the view centres it."
     field min Vector2 "The bottom-left corner." {
+      worldspace world
       unit m
     }
     field max Vector2 "The top-right corner." {
+      worldspace world
       default 10 10
       unit m
     }
@@ -305,28 +317,36 @@ module camera {
       max 8
     }
     field p0 Vector3 "Rail point 0." {
+      worldspace world
       unit m
     }
     field p1 Vector3 "Rail point 1." {
+      worldspace world
       default 10 0 0
       unit m
     }
     field p2 Vector3 "Rail point 2." {
+      worldspace world
       unit m
     }
     field p3 Vector3 "Rail point 3." {
+      worldspace world
       unit m
     }
     field p4 Vector3 "Rail point 4." {
+      worldspace world
       unit m
     }
     field p5 Vector3 "Rail point 5." {
+      worldspace world
       unit m
     }
     field p6 Vector3 "Rail point 6." {
+      worldspace world
       unit m
     }
     field p7 Vector3 "Rail point 7." {
+      worldspace world
       unit m
     }
     field smoothTime f32 "Roughly how long the camera takes to catch up along the rail; 0 snaps." {

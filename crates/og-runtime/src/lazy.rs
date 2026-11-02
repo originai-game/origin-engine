@@ -168,6 +168,16 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: crate::stream::cells::ANCHOR,
         enable: |_, _| Ok(()),
     },
+    // R12: the runtime's before-tick hook reads and writes them
+    // (crate::origin); no module to grant. Naming either registers both.
+    Lazy {
+        name: crate::origin::RESOURCE,
+        enable: |_, _| Ok(()),
+    },
+    Lazy {
+        name: crate::origin::EVENT,
+        enable: |_, _| Ok(()),
+    },
     // G3-2: og.video plays it; a world without footage keeps its hash
     // whatever the player's layout becomes.
     Lazy {
@@ -179,6 +189,7 @@ pub(crate) const LAZY: &[Lazy] = &[
 /// Lazy records registered together: naming one registers the rest.
 const TOGETHER: &[&[&str]] = &[
     &["og.TimeGroup", "og.TimeGroups"],
+    &[crate::origin::RESOURCE, crate::origin::EVENT],
     &crate::story::RECORDS,
     &[
         crate::stream::cells::CELL,
@@ -243,6 +254,13 @@ pub(crate) fn ensure(eng: &Engine, world: &mut World, name: &str) -> Result<(), 
         }
     }
     (lazy.enable)(world, eng.id).map_err(|e| format!("{name}: {}", e.reason()))?;
+    // og.WorldOrigin is on once named: the resource at its defaults.
+    if name == crate::origin::RESOURCE && !world.has_resource_id(id) {
+        let bytes = layout.encode(None, None)?;
+        world
+            .insert_resource_bytes(id, &bytes)
+            .map_err(|e| e.reason().to_string())?;
+    }
     if name == crate::story::STORY {
         crate::story::attach(eng.id, world)?;
     }

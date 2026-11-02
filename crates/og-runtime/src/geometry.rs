@@ -121,6 +121,28 @@ pub(crate) struct GeoState {
 }
 
 impl GeoState {
+    /// Moves the debug draws and labels still showing by `d` (og.WorldOrigin
+    /// moved the world's zero): they were placed in the world as it was.
+    pub(crate) fn shift(&mut self, d: glam::DVec3) {
+        let moved = |p: Vec3| (p.as_dvec3() + d).as_vec3();
+        for (_, l) in &mut self.draws {
+            if l.screen {
+                continue;
+            }
+            if l.transform == Mat4::IDENTITY {
+                l.points.iter_mut().for_each(|p| *p = moved(*p));
+            } else {
+                let t = l.transform.w_axis.truncate();
+                l.transform.w_axis = moved(t).extend(l.transform.w_axis.w);
+            }
+        }
+        for t in &mut self.texts {
+            t.position = moved(t.position);
+        }
+    }
+}
+
+impl GeoState {
     /// The tick the raycast record was read as it started.
     pub(crate) fn record_tick(&self) -> Option<u64> {
         self.record.as_ref().map(|r| r.0)

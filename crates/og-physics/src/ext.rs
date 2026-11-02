@@ -121,6 +121,25 @@ pub(crate) struct TrackedJoint {
     second: rp::RigidBodyHandle,
 }
 
+/// Moves the joints anchored to the world (no `other`) by `s.d`: the
+/// ground body's frame of each, and the og.Joint it was built from (whose
+/// `otherAnchor` the shift moves the same way).
+pub(crate) fn shift_joints(sim: &mut Sim, s: &og_ecs::Shift) {
+    let Some(ground) = sim.ground else {
+        return;
+    };
+    for (_, t) in sim.joints.iter_mut() {
+        if t.second != ground {
+            continue;
+        }
+        t.joint.other_anchor = s.moved(t.joint.other_anchor);
+        if let Some(j) = sim.world.impulse_joints.get_mut(t.handle, false) {
+            let a = j.data.local_anchor1();
+            j.data.set_local_anchor1(v(s.moved(unv(a))));
+        }
+    }
+}
+
 /// The world anchor joints without `other` attach to: a fixed body at the
 /// origin, made the first time one needs it.
 pub(crate) fn ground(sim: &mut Sim) -> rp::RigidBodyHandle {

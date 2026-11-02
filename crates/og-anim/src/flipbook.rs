@@ -824,4 +824,7 @@ impl StateBlock for FlipState {
             })
             .unwrap_or_default();
     }
+
+    /// Frames and clips only: nothing in the world.
+    fn shift(&mut self, _: &og_ecs::Shift) {}
 }

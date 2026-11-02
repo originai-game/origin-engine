@@ -506,6 +506,12 @@ impl Nav {
 pub struct Navs {
     pub entries: IdMap<u64, Nav>,
     next: u64,
+    /// Per entry made in a world whose zero og.WorldOrigin had moved, that
+    /// world's nav origin ([`NavSystem::origin`]) as it was made: its data
+    /// is in the frame the world had then (R12). An entry without one
+    /// (loaded from a file, or made before any shift) is in the world's
+    /// first frame.
+    frames: IdMap<u64, Vec3>,
 }
 
 impl Navs {
@@ -515,6 +521,24 @@ impl Navs {
         let h = self.next | (1u64 << 32);
         self.entries.insert(h, nav);
         h
+    }
+
+    /// Stores `nav`, made in the frame of a world whose nav origin is
+    /// `at` ([`NavSystem::origin`]): its coordinates are that world's then.
+    pub fn insert_at(&mut self, nav: Nav, at: Vec3) -> u64 {
+        let h = self.insert(nav);
+        if at != Vec3::ZERO {
+            self.frames.insert(h, at);
+        }
+        h
+    }
+
+    /// What to add to a point of entry `h`'s data for the place it is in a
+    /// world whose nav origin is `origin` (subtract it from a world point
+    /// for the entry's): how far the world's zero moved since the entry's
+    /// frame. Exact: both are multiples of og.WorldOrigin's step.
+    pub fn offset(&self, h: u64, origin: Vec3) -> Vec3 {
+        origin - self.frames.get(&h).copied().unwrap_or(Vec3::ZERO)
     }
 
     pub fn get(&self, h: u64) -> Option<&Nav> {
@@ -634,6 +658,10 @@ fn locate(mesh: &NavMesh, poly: u32, pos: Vec3, radius: f32) -> u32 {
 #[derive(Debug, Default)]
 struct State {
     paths: IdMap<u64, PathState>,
+    /// How far og.WorldOrigin has moved the world's zero (R12, the sum of
+    /// its shifts): an entry of [`Navs`] is read at
+    /// [`Navs::offset`] of it.
+    origin: Vec3,
 }
 
 fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -648,6 +676,12 @@ pub struct NavSystem {
 }
 
 impl NavSystem {
+    /// How far og.WorldOrigin has moved this world's zero, as the nav data
+    /// sees it ([`Navs::offset`]).
+    pub fn origin(&self) -> Vec3 {
+        lock(&self.state).origin
+    }
+
     /// The path an agent follows now (for the probe's dumps).
     pub fn path_of(&self, e: Entity) -> Option<PathState> {
         lock(&self.state).paths.get(&e.to_bits()).cloned()
@@ -833,7 +867,7 @@ fn crowd_velocity(
     c: &Crowd,
     preferred: Vec2,
     speed: f32,
-    mesh: Option<(&NavMesh, u32)>,
+    mesh: Option<(&NavMesh, u32, Vec3)>,
     plane: Plane,
     dt: f32,
 ) -> Vec2 {
@@ -865,10 +899,10 @@ fn crowd_velocity(
         }
     }
     let walls: Vec<(Vec2, Vec2)> = match mesh {
-        Some((m, poly)) if c.obstacle_horizon > 0.0 => m
-            .walls_near(poly, row.pos, radius + c.obstacle_horizon * speed)
+        Some((m, poly, k)) if c.obstacle_horizon > 0.0 => m
+            .walls_near(poly, row.pos - k, radius + c.obstacle_horizon * speed)
             .into_iter()
-            .map(|(a, b)| (plane.to_plane(a), plane.to_plane(b)))
+            .map(|(a, b)| (plane.to_plane(a + k), plane.to_plane(b + k)))
             .collect(),
         _ => Vec::new(),
     };
@@ -992,6 +1026,9 @@ fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<(
         let mut v2 = plane.to_plane(vel.map_or(agent.velocity, |v| v.linear));
         let mut desired = Vec2::ZERO;
         let mut new_pos = pos;
+        // The nav data's frame: a point of it plus `k` is in the world's.
+        let k = navs.offset(agent.nav, state.origin);
+        let k2 = plane.to_plane(k);
         let ps = state.paths.entry(key).or_default();
         let nav = navs.get(agent.nav);
         // Part way across a link: the crossing goes on whatever the agent is
@@ -1047,9 +1084,10 @@ fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<(
         if agent.seeking {
             match nav {
                 Some(Nav::Flow { field, .. }) => {
-                    let d = field.sample(p2);
-                    if field.cost_at(p2) == Some(0) || d == Vec2::ZERO {
-                        status = if field.cost_at(p2).is_some() {
+                    let d = field.sample(p2 - k2);
+                    let cost = field.cost_at(p2 - k2);
+                    if cost == Some(0) || d == Vec2::ZERO {
+                        status = if cost.is_some() {
                             STATUS_ARRIVED
                         } else {
                             STATUS_UNREACHABLE
@@ -1058,9 +1096,7 @@ fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<(
                         desired = d * agent.speed;
                     }
                     agent.waypoint = plane.to_world(p2 + d, plane.height(pos));
-                    agent.remaining = field
-                        .cost_at(p2)
-                        .map_or(0.0, |c| c as f32 / 1000.0 * field.cell_size);
+                    agent.remaining = cost.map_or(0.0, |c| c as f32 / 1000.0 * field.cell_size);
                 }
                 _ => {
                     let version = match nav {
@@ -1098,7 +1134,10 @@ fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<(
                             links,
                         } = match nav {
                             Some(n) => {
-                                plan(n, plane, pos, agent.target, &agent, &filter, &mut scratch)
+                                let mut p =
+                                    plan(n, plane, pos - k, agent.target - k, &agent, &filter, &mut scratch);
+                                p.corners.iter_mut().for_each(|c| *c += k);
+                                p
                             }
                             None => (vec![pos, agent.target], STATUS_MOVING, NO_POLY).into(),
                         };
@@ -1149,9 +1188,9 @@ fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<(
                             match m.off_mesh_link(pl.link) {
                                 Some(l) if l.open => {
                                     let (a, b) = if pl.reverse {
-                                        (l.end, l.start)
+                                        (l.end + k, l.start + k)
                                     } else {
-                                        (l.start, l.end)
+                                        (l.start + k, l.end + k)
                                     };
                                     let land = m
                                         .link_ends(pl.link)
@@ -1362,7 +1401,7 @@ fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<(
                 desired.clamp_length_max(speed_cap),
                 speed_cap,
                 match nav {
-                    Some(Nav::Mesh(m)) => Some((m.as_ref(), ps.poly)),
+                    Some(Nav::Mesh(m)) => Some((m.as_ref(), ps.poly, k)),
                     _ => None,
                 },
                 plane,
@@ -1395,10 +1434,11 @@ fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<(
                     && dt > 0.0
                     && step != p2
                 {
-                    let poly = locate(m, ps.poly, pos, agent.radius);
+                    let poly = locate(m, ps.poly, pos - k, agent.radius);
                     ps.poly = poly;
                     if m.poly(poly).is_some() {
-                        let (np, at) = m.move_along(poly as PolyRef, pos, new_pos);
+                        let (np, at) = m.move_along(poly as PolyRef, pos - k, new_pos - k);
+                        let at = at + k;
                         ps.poly = np;
                         // The motion the surface allowed is the velocity.
                         let moved = plane.to_plane(at) - p2;
@@ -1480,6 +1520,8 @@ struct Saved {
     crossing: IdMap<u64, (Vec<PathLink>, Option<Traverse>)>,
     /// Per grid or navmesh whose edit count its paths do not give.
     versions: BTreeMap<u64, u64>,
+    /// [`State::origin`] (the trailer's, when not zero).
+    origin: Vec3,
 }
 
 /// The edit count each grid or navmesh had when its newest path was
@@ -1507,6 +1549,8 @@ mod tag {
     /// Per grid or navmesh edited after its newest path was planned: its
     /// edit count, which a restore cannot otherwise rebuild.
     pub const VERSIONS: u16 = 4;
+    /// The world's nav origin (R12), when og.WorldOrigin has moved it.
+    pub const ORIGIN: u16 = 5;
 }
 
 fn put_traverse(o: &mut Vec<u8>, t: &Traverse) {
@@ -1792,6 +1836,11 @@ impl StateBlock for NavBlock {
             }
             sections.push((tag::VERSIONS, b));
         }
+        if st.origin != Vec3::ZERO {
+            let mut b = Vec::new();
+            Writer(&mut b).v3(st.origin);
+            sections.push((tag::ORIGIN, b));
+        }
         og_ecs::trailer::write(out, &sections);
     }
 
@@ -1853,8 +1902,12 @@ impl StateBlock for NavBlock {
         let mut links = BTreeMap::new();
         let mut crossing = IdMap::new();
         let mut versions = BTreeMap::new();
+        let mut origin = Vec3::ZERO;
         for (t, body) in og_ecs::trailer::read(SYSTEM_NAME, &bytes[r.at..])? {
             let mut r = Reader { b: body, at: 0 };
+            if t == tag::ORIGIN {
+                origin = r.v3()?;
+            }
             if t == tag::LINKS {
                 for _ in 0..r.u32()? {
                     let h = r.u64()?;
@@ -1928,6 +1981,7 @@ impl StateBlock for NavBlock {
             links,
             crossing,
             versions,
+            origin,
         }))
     }
 
@@ -1935,8 +1989,10 @@ impl StateBlock for NavBlock {
         let mut st = lock(&self.0.state);
         let Some(saved) = decoded.and_then(|d| d.downcast::<Saved>().ok()) else {
             st.paths.clear();
+            st.origin = Vec3::ZERO;
             return;
         };
+        st.origin = saved.origin;
         let mut versions = path_versions(saved.paths.values());
         versions.extend(saved.versions);
         st.paths = saved.paths;
@@ -2011,5 +2067,24 @@ impl StateBlock for NavBlock {
             }
         }
         navs.refresh_flows();
+    }
+
+    /// Every path's corners, target and crossing (agents are roots: their
+    /// positions are in the world) and the nav origin the data is read at:
+    /// the grids, navmeshes and flow fields stay as they are, in their
+    /// frames ([`Navs::offset`]).
+    fn shift(&mut self, s: &og_ecs::Shift) {
+        let mut st = lock(&self.0.state);
+        for p in st.paths.values_mut() {
+            for c in &mut p.corners {
+                *c = s.moved(*c);
+            }
+            p.target = s.moved(p.target);
+            if let Some(t) = &mut p.traverse {
+                t.from = s.moved(t.from);
+                t.to = s.moved(t.to);
+            }
+        }
+        st.origin = s.moved(st.origin);
     }
 }

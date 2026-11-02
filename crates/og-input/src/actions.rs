@@ -2390,6 +2390,9 @@ impl og_ecs::StateBlock for ActionsBlock {
         };
         *map = next;
     }
+
+    /// Bindings and their state: nothing in the world.
+    fn shift(&mut self, _: &og_ecs::Shift) {}
 }
 
 /// Adds the map's sampling system and its state block to `world`, at the

@@ -833,6 +833,11 @@ pub struct FieldSchema {
     pub label: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub unit: Option<String>,
+    /// Where the field's numbers lie, for og.WorldOrigin's shift (R12): a
+    /// [`Worldspace`] in its text form (`world`, `root xz`, `none`); `None`
+    /// on a field that is not a coordinate.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub worldspace: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub min: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -859,12 +864,19 @@ impl FieldSchema {
             doc: String::new(),
             label: None,
             unit: None,
+            worldspace: None,
             min: None,
             max: None,
             tunable: false,
             default: None,
             variants: Vec::new(),
         }
+    }
+
+    /// The field's [`Worldspace`], `None` without one (or with one that does
+    /// not parse for its type, which declaration refuses).
+    pub fn space(&self) -> Option<Worldspace> {
+        Worldspace::of(self.worldspace.as_deref()?, self.ty).ok()
     }
 
     /// An `enum` field with these variant names.
@@ -950,6 +962,120 @@ impl FieldSchema {
     }
 }
 
+/// How a field's coordinates move when og.WorldOrigin shifts the world
+/// (R12, `docs/design.md` §2.4).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Frame {
+    /// A point in the world: every shift moves it.
+    World,
+    /// In the frame of its entity's Transform: a point in the world on an
+    /// entity without og.Parent (moved), relative to the parent on a child
+    /// (left).
+    Root,
+    /// A point in the world under a condition its module knows (og.Joint's
+    /// otherAnchor while `other` is 0): the module's state block moves it.
+    Hook,
+    /// Not a place: an offset, a size, a direction, a screen point.
+    None,
+}
+
+/// A field's [`Frame`] and the world axis of each of its lanes: the
+/// `worldspace` attribute of a Vector2, Vector3, f32 or f64 field, written
+/// `<frame> [axes]`: `world`, `root`, `hook` or `none`, then one of `x`,
+/// `y`, `z` per lane (a Vector3's default `xyz`, a Vector2's `xy`; a
+/// number names its axis, `world y` for an absolute height).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Worldspace {
+    pub frame: Frame,
+    /// Per lane, the world axis it moves along (0 x, 1 y, 2 z).
+    pub axes: [u8; 3],
+    pub lanes: u8,
+}
+
+impl Worldspace {
+    /// Parses the attribute's text for a field of `lanes` lanes (1 to 3).
+    pub fn parse(text: &str, lanes: usize) -> std::result::Result<Worldspace, String> {
+        let mut words = text.split_whitespace();
+        let frame = match words.next() {
+            Some("world") => Frame::World,
+            Some("root") => Frame::Root,
+            Some("hook") => Frame::Hook,
+            Some("none") => Frame::None,
+            other => {
+                return Err(format!(
+                    "worldspace `{}`: expected world, root, hook or none",
+                    other.unwrap_or("")
+                ));
+            }
+        };
+        let named = words.next();
+        if words.next().is_some() {
+            return Err(format!("worldspace `{text}`: a frame, then at most its axes"));
+        }
+        let axes = match (named, lanes) {
+            (Some(a), _) => a,
+            (None, 3) => "xyz",
+            (None, 2) => "xy",
+            (None, _) if frame == Frame::None => "x",
+            (None, _) => {
+                return Err(format!(
+                    "worldspace `{text}`: a number names its axis (`{} y` for a height)",
+                    text.trim()
+                ));
+            }
+        };
+        if !(1..=3).contains(&lanes) || axes.len() != lanes {
+            return Err(format!(
+                "worldspace `{text}`: {} axes for a field of {lanes} lane(s)",
+                axes.len()
+            ));
+        }
+        let mut out = [0u8; 3];
+        for (i, c) in axes.chars().enumerate() {
+            out[i] = match c {
+                'x' => 0,
+                'y' => 1,
+                'z' => 2,
+                _ => return Err(format!("worldspace `{text}`: an axis is x, y or z")),
+            };
+            if out[..i].contains(&out[i]) {
+                return Err(format!("worldspace `{text}`: axis `{c}` twice"));
+            }
+        }
+        Ok(Worldspace {
+            frame,
+            axes: out,
+            lanes: lanes as u8,
+        })
+    }
+
+    /// Parses the attribute for a field of type `ty`: a Vector2, Vector3,
+    /// f32 or f64, refused on any other.
+    pub fn of(text: &str, ty: FieldType) -> std::result::Result<Worldspace, String> {
+        let lanes = match ty {
+            FieldType::F32 | FieldType::F64 => 1,
+            FieldType::Vec2 => 2,
+            FieldType::Vec3 => 3,
+            _ => {
+                return Err(format!(
+                    "worldspace `{text}` is for a Vector2, Vector3, f32 or f64 field"
+                ));
+            }
+        };
+        Worldspace::parse(text, lanes)
+    }
+
+    /// Whether a shift moves the field on an entity with (`child`) or
+    /// without a parent: `world` always, `root` on a root only.
+    pub fn moves(&self, child: bool) -> bool {
+        match self.frame {
+            Frame::World => true,
+            Frame::Root => !child,
+            Frame::Hook | Frame::None => false,
+        }
+    }
+}
+
 /// The reflected description of a layout: a component, resource or event.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Schema {
@@ -970,6 +1096,7 @@ pub struct FieldDecl {
     pub doc: &'static str,
     pub label: Option<&'static str>,
     pub unit: Option<&'static str>,
+    pub worldspace: Option<&'static str>,
     pub min: Option<f64>,
     pub max: Option<f64>,
     pub tunable: bool,
@@ -994,6 +1121,7 @@ impl Schema {
                     doc: f.doc.to_owned(),
                     label: f.label.map(str::to_owned),
                     unit: f.unit.map(str::to_owned),
+                    worldspace: f.worldspace.map(str::to_owned),
                     min: f.min,
                     max: f.max,
                     tunable: f.tunable,
@@ -1052,6 +1180,11 @@ impl Schema {
                 && min > max
             {
                 return err(format!("field '{at}' has min {min} above max {max}"));
+            }
+            if let Some(w) = &f.worldspace
+                && let Err(e) = Worldspace::of(w, f.ty)
+            {
+                return err(format!("field '{at}': {e}"));
             }
             if f.ty == FieldType::Enum {
                 if f.variants.is_empty() {

@@ -373,6 +373,7 @@ pub struct AudioPlayback {
     /// The low-pass cutoff last sent, Hz (0: open).
     pub lowpass: f32,
     /// The source's world position in the last tick (its Doppler velocity is the change).
+    #[reflect(worldspace = "world")]
     pub position: Vec3,
     /// The direction last sent to the HRTF panner, in the listener's frame (zero: the stereo panner).
     pub direction: Vec3,
@@ -406,7 +407,7 @@ pub struct AudioStream {
     /// The listener heard from last tick (its entity's bits; 0: none).
     pub listener: u64,
     /// That listener's world position last tick (its Doppler velocity is the change).
-    #[reflect(name = "listenerAt")]
+    #[reflect(name = "listenerAt", worldspace = "world")]
     pub listener_at: Vec3,
 }
 

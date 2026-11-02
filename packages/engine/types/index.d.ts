@@ -131,6 +131,8 @@ export interface ColumnKinds {
   str: { readonly array: Uint8Array; readonly stride: number; readonly value: string };
   /** An Entity field: (index, generation) pairs. */
   Entity: { readonly array: Uint32Array; readonly stride: 2; readonly value: Entity };
+  /** A WorldOriginPlane field: the variant's index. */
+  WorldOriginPlane: { readonly array: Uint32Array; readonly stride: 1; readonly value: WorldOriginPlane };
   /** A Geometry handle field. */
   Geometry: { readonly array: Uint32Array; readonly stride: 2; readonly value: Geometry };
   /** A Material handle field. */
@@ -1038,6 +1040,12 @@ export interface FieldOptions {
    * @default false
    */
   readonly tunable?: boolean;
+  /**
+   * Where a Vector2, Vector3, f32 or f64 field's numbers lie when og.WorldOrigin shifts the world: `world` (a point in the world, moved by every shift), `root` (in its entity's Transform frame: moved on an entity without a parent), `none` (an offset, a size, a direction), then optionally its axes (`world y` for an absolute height); empty for a field that is not a coordinate.
+   *
+   * @default ""
+   */
+  readonly worldspace?: string;
 }
 
 /**
@@ -2165,6 +2173,7 @@ export interface Transform {
    * The position, as three.js Object3D.position.
    *
    * @unit m (metres)
+   * @worldspace root (how og.WorldOrigin's shift moves it)
    */
   position: Vector3;
   /** The rotation, as three.js Object3D.quaternion. */
@@ -2199,6 +2208,108 @@ export interface MatrixWorld {
    * @readonly written by the engine
    */
   readonly matrix: Matrix4;
+}
+
+/**
+ * The axes og.WorldOrigin moves the world's zero along.
+ * - `"xz"`: x and z: the ground plane of a 3D world (heights stay absolute).
+ * - `"xyz"`: x, y and z: a world that is also deep or high (space, flight).
+ * - `"xy"`: x and y: a 2D world (its z, the drawing order, stays).
+ */
+export type WorldOriginPlane = "xz" | "xyz" | "xy";
+
+/**
+ * A WorldOriginPlane field: the variant's index.
+ *
+ * A `WorldOriginPlane` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function WorldOriginPlane(value?: WorldOriginPlane, options?: FieldOptions): FieldSpec<"WorldOriginPlane">;
+
+/**
+ * Large worlds (R12): naming it keeps every place in the world near its zero. As each tick starts, before any system runs, when the focus is farther from the zero than `step` along one of the plane's axes, the whole world shifts by the multiple of `step` nearest the focus, so the focus is within half a step of the zero again: every Transform of an entity without a parent, and every field the API marks `worldspace`, moves by the same amount (a body, its contacts and warm starts, a path, a particle, a tween to a place, the camera), and nothing in the world sees a change but the numbers. Precision then holds however far the world goes, while the zero's own place is kept here, in f64.
+ * The shift is world state, decided from world state alone (the focus's Transform, else the first og.StreamAnchor, else og.Camera.position), so a replay, a rollback, a restore and every peer of an og.net session shift on the same tick by the same amount; a session refuses the og.Camera fallback (each peer's camera is its own) and holds the zero until a focus or an anchor exists. A world that never names it keeps its hash and frames. Values a game keeps outside the marked fields (a world position in its own component, a key it set in an og.ai blackboard) are its own: OriginShifted says when to add its `delta` to them. 2D worlds shift too, on `xy`.
+ *
+ * The `WorldOrigin` resource (token `og.WorldOrigin`).
+ */
+export interface WorldOrigin {
+  /**
+   * How far the focus may stray from the zero along an axis before the world shifts, and the grid the zero moves on (whole metres).
+   *
+   * @default 2048
+   * @range 64..
+   * @unit m (metres)
+   */
+  step: number;
+  /** The axes the zero moves along: xz (the default), xyz, or xy for a 2D world. */
+  plane: WorldOriginPlane;
+  /**
+   * The entity the zero follows (a player, a vehicle; a root). 0: the first og.StreamAnchor by entity id, else og.Camera.position.
+   */
+  focus: Entity;
+  /** Hold the zero where it is. */
+  off: boolean;
+  /**
+   * Written: where the zero is in the world, along x (a place's absolute position is its own plus this).
+   *
+   * @unit m (metres)
+   * @readonly written by the engine
+   */
+  readonly x: number;
+  /**
+   * Written: where the zero is, along y.
+   *
+   * @unit m (metres)
+   * @readonly written by the engine
+   */
+  readonly y: number;
+  /**
+   * Written: where the zero is, along z.
+   *
+   * @unit m (metres)
+   * @readonly written by the engine
+   */
+  readonly z: number;
+  /**
+   * Written: how many times the world has shifted.
+   *
+   * @readonly written by the engine
+   */
+  readonly shifts: number;
+}
+
+/**
+ * og.WorldOrigin shifted the world as this tick started, before any system ran: every marked place moved by `delta`. Add it to the world positions a game keeps of its own.
+ *
+ * The payload of the `OriginShifted` event (token `og.OriginShifted`).
+ */
+export interface OriginShifted {
+  /**
+   * How far every place moved (a whole multiple of og.WorldOrigin.step along each axis of its plane).
+   *
+   * @unit m (metres)
+   * @worldspace none (how og.WorldOrigin's shift moves it)
+   */
+  readonly delta: Vector3;
+  /**
+   * Where the zero is now in the world, along x (og.WorldOrigin.x).
+   *
+   * @unit m (metres)
+   */
+  readonly x: number;
+  /**
+   * Along y.
+   *
+   * @unit m (metres)
+   */
+  readonly y: number;
+  /**
+   * Along z.
+   *
+   * @unit m (metres)
+   */
+  readonly z: number;
 }
 
 
@@ -3651,6 +3762,7 @@ export interface Input {
    * The pointer position.
    *
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   * @worldspace none (how og.WorldOrigin's shift moves it)
    * @readonly written by the engine
    */
   readonly pointer: Vector2;
@@ -3876,6 +3988,7 @@ export interface Pointers {
    * Where pointer 0 is.
    *
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   * @worldspace none (how og.WorldOrigin's shift moves it)
    * @readonly written by the engine
    */
   readonly position0: Vector2;
@@ -3883,6 +3996,7 @@ export interface Pointers {
    * Where pointer 1 is.
    *
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   * @worldspace none (how og.WorldOrigin's shift moves it)
    * @readonly written by the engine
    */
   readonly position1: Vector2;
@@ -3890,6 +4004,7 @@ export interface Pointers {
    * Where pointer 2 is.
    *
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   * @worldspace none (how og.WorldOrigin's shift moves it)
    * @readonly written by the engine
    */
   readonly position2: Vector2;
@@ -3897,6 +4012,7 @@ export interface Pointers {
    * Where pointer 3 is.
    *
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   * @worldspace none (how og.WorldOrigin's shift moves it)
    * @readonly written by the engine
    */
   readonly position3: Vector2;
@@ -3904,6 +4020,7 @@ export interface Pointers {
    * Where pointer 4 is.
    *
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   * @worldspace none (how og.WorldOrigin's shift moves it)
    * @readonly written by the engine
    */
   readonly position4: Vector2;
@@ -3911,6 +4028,7 @@ export interface Pointers {
    * Where pointer 0 went down.
    *
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   * @worldspace none (how og.WorldOrigin's shift moves it)
    * @readonly written by the engine
    */
   readonly start0: Vector2;
@@ -3918,6 +4036,7 @@ export interface Pointers {
    * Where pointer 1 went down.
    *
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   * @worldspace none (how og.WorldOrigin's shift moves it)
    * @readonly written by the engine
    */
   readonly start1: Vector2;
@@ -3925,6 +4044,7 @@ export interface Pointers {
    * Where pointer 2 went down.
    *
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   * @worldspace none (how og.WorldOrigin's shift moves it)
    * @readonly written by the engine
    */
   readonly start2: Vector2;
@@ -3932,6 +4052,7 @@ export interface Pointers {
    * Where pointer 3 went down.
    *
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   * @worldspace none (how og.WorldOrigin's shift moves it)
    * @readonly written by the engine
    */
   readonly start3: Vector2;
@@ -3939,6 +4060,7 @@ export interface Pointers {
    * Where pointer 4 went down.
    *
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   * @worldspace none (how og.WorldOrigin's shift moves it)
    * @readonly written by the engine
    */
   readonly start4: Vector2;
@@ -4495,6 +4617,7 @@ export interface Camera {
    * Where the camera is.
    *
    * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
    */
   position: Vector3;
   /** Its rotation; the camera looks down its local -Z. */
@@ -4635,12 +4758,14 @@ export interface Camera {
    * The zone the view keeps inside: its bottom-left corner.
    *
    * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
    */
   zoneMin: Vector2;
   /**
    * Its top-right corner.
    *
    * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
    */
   zoneMax: Vector2;
   /**
@@ -4651,12 +4776,14 @@ export interface Camera {
    * The zone being left: its bottom-left corner.
    *
    * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
    */
   zoneFromMin: Vector2;
   /**
    * Its top-right corner.
    *
    * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
    */
   zoneFromMax: Vector2;
   /**
@@ -4713,6 +4840,7 @@ export interface OrbitCamera {
    * The orbited point, relative to the entity's position.
    *
    * @unit m (metres)
+   * @worldspace none (how og.WorldOrigin's shift moves it)
    */
   target: Vector3;
   /**
@@ -4816,6 +4944,7 @@ export interface OrbitCamera {
    * Controller state: where the pointer was on the previous tick of a drag.
    *
    * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   * @worldspace none (how og.WorldOrigin's shift moves it)
    * @readonly written by the engine
    */
   readonly pointer: Vector2;
@@ -4925,6 +5054,7 @@ export interface Follow2D {
    * Controller state: the entity's position on the previous tick.
    *
    * @unit m (metres)
+   * @worldspace root (how og.WorldOrigin's shift moves it)
    * @readonly written by the engine
    */
   readonly last: Vector2;
@@ -4934,12 +5064,14 @@ export interface Follow2D {
    * The smallest x and y the camera centre takes with clamp.
    *
    * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
    */
   boundsMin: Vector2;
   /**
    * The largest x and y the camera centre takes with clamp.
    *
    * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
    */
   boundsMax: Vector2;
 }
@@ -4954,6 +5086,7 @@ export interface CameraZone {
    * The bottom-left corner.
    *
    * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
    */
   min: Vector2;
   /**
@@ -4961,6 +5094,7 @@ export interface CameraZone {
    *
    * @default { x: 10, y: 10 }
    * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
    */
   max: Vector2;
   /** Higher wins where zones overlap. */
@@ -4991,6 +5125,7 @@ export interface CameraRail {
    * Rail point 0.
    *
    * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
    */
   p0: Vector3;
   /**
@@ -4998,42 +5133,49 @@ export interface CameraRail {
    *
    * @default { x: 10, y: 0, z: 0 }
    * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
    */
   p1: Vector3;
   /**
    * Rail point 2.
    *
    * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
    */
   p2: Vector3;
   /**
    * Rail point 3.
    *
    * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
    */
   p3: Vector3;
   /**
    * Rail point 4.
    *
    * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
    */
   p4: Vector3;
   /**
    * Rail point 5.
    *
    * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
    */
   p5: Vector3;
   /**
    * Rail point 6.
    *
    * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
    */
   p6: Vector3;
   /**
    * Rail point 7.
    *
    * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
    */
   p7: Vector3;
   /**
@@ -6653,6 +6795,7 @@ export interface PostEffects {
    * Zoom's and spin's centre, in fractions of the frame from the top left.
    *
    * @default { x: 0.5, y: 0.5 }
+   * @worldspace none (how og.WorldOrigin's shift moves it)
    * @tunable
    */
   screenBlurCenter: Vector2;
@@ -6879,6 +7022,7 @@ export interface PostEffects {
    * The lens's centre, in fractions of the frame from the top left.
    *
    * @default { x: 0.5, y: 0.5 }
+   * @worldspace none (how og.WorldOrigin's shift moves it)
    * @tunable
    */
   lensDistortionCenter: Vector2;
@@ -7653,12 +7797,17 @@ export interface Decal {
    * @tunable
    */
   opacity: number;
-  /** The atlas region's top-left corner, v down. */
+  /**
+   * The atlas region's top-left corner, v down.
+   *
+   * @worldspace none (how og.WorldOrigin's shift moves it)
+   */
   uvMin: Vector2;
   /**
    * The atlas region's bottom-right corner, v down.
    *
    * @default { x: 1, y: 1 }
+   * @worldspace none (how og.WorldOrigin's shift moves it)
    */
   uvMax: Vector2;
   /** Linear light added where the decal covers (glowing runes, lava). */
@@ -7818,6 +7967,7 @@ export interface Beam {
    * The far end, in world space.
    *
    * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
    */
   end: Vector3;
   /**
@@ -8310,6 +8460,7 @@ export interface Sprite {
    * The point of the quad at the entity's position, as a fraction from the bottom-left corner: (0.5, 0) stands it on its feet. A flipbook frame's pivot replaces it.
    *
    * @default { x: 0.5, y: 0.5 }
+   * @worldspace none (how og.WorldOrigin's shift moves it)
    */
   anchor: Vector2;
   /**
@@ -8326,12 +8477,17 @@ export interface Sprite {
    * @tunable
    */
   opacity: number;
-  /** The texture region's top-left corner, v down. */
+  /**
+   * The texture region's top-left corner, v down.
+   *
+   * @worldspace none (how og.WorldOrigin's shift moves it)
+   */
   uvMin: Vector2;
   /**
    * The texture region's bottom-right corner, v down.
    *
    * @default { x: 1, y: 1 }
+   * @worldspace none (how og.WorldOrigin's shift moves it)
    */
   uvMax: Vector2;
   /** Draw order among sprites, tiles and text; higher draws on top. */
@@ -11763,6 +11919,7 @@ export interface CollisionStarted {
    * The deepest contact point in world space (z is 0 in 2D).
    *
    * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
    */
   readonly point: Vector3;
   /** The contact normal, from a towards b. */
@@ -11969,12 +12126,14 @@ export interface Joint {
    * Where the joint sits on the first body, in its frame.
    *
    * @unit m (metres)
+   * @worldspace none (how og.WorldOrigin's shift moves it)
    */
   anchor: Vector3;
   /**
    * Where it sits on the second body, in its frame (a world point without `other`).
    *
    * @unit m (metres)
+   * @worldspace hook (how og.WorldOrigin's shift moves it)
    */
   otherAnchor: Vector3;
   /**
@@ -13013,6 +13172,7 @@ export interface Rope {
    * The far end's offset from `end`'s position.
    *
    * @unit m (metres)
+   * @worldspace none (how og.WorldOrigin's shift moves it)
    */
   endOffset: Vector3;
   /**
@@ -13353,6 +13513,7 @@ export interface SoftBody {
    * Written: the mean of its points, in world space.
    *
    * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
    * @readonly written by the engine
    */
   readonly center: Vector3;
@@ -13382,6 +13543,7 @@ export interface Fluid2D {
    * The container around the entity (0 0: none; colliders still hold it).
    *
    * @unit m (metres)
+   * @worldspace none (how og.WorldOrigin's shift moves it)
    */
   bounds: Vector2;
   /**
@@ -13522,6 +13684,7 @@ export interface Fluid3D {
    * The container around the entity (0 on an axis: open on that axis; colliders and the terrain still hold it).
    *
    * @unit m (metres)
+   * @worldspace none (how og.WorldOrigin's shift moves it)
    */
   bounds: Vector3;
   /**
@@ -13860,6 +14023,7 @@ export interface Splash {
    * Where it crossed the surface.
    *
    * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
    */
   readonly point: Vector3;
   /**
@@ -14530,6 +14694,7 @@ export interface Fog {
    * The world height below which height fog is densest.
    *
    * @unit m (metres)
+   * @worldspace world y (how og.WorldOrigin's shift moves it)
    * @tunable
    */
   height: number;
@@ -15560,12 +15725,14 @@ export interface IkChain {
    * Where the tip should be, in `space`: for `world`, the frame of the skeleton entity's og.Transform (its parent's frame when it has a parent, not true world).
    *
    * @unit m (metres)
+   * @worldspace hook (how og.WorldOrigin's shift moves it)
    */
   target: Vector3;
   /**
    * A point the middle joint bends towards (two-bone); the zero vector keeps the animated bend.
    *
    * @unit m (metres)
+   * @worldspace hook (how og.WorldOrigin's shift moves it)
    */
   pole: Vector3;
   /**
@@ -15635,6 +15802,7 @@ export interface LookAt {
    * The point to look at, in `space`.
    *
    * @unit m (metres)
+   * @worldspace hook (how og.WorldOrigin's shift moves it)
    */
   target: Vector3;
   /**
@@ -16419,6 +16587,7 @@ export interface IkTarget2D {
    * Where the chain's tip should be, in the frame the skeleton entity's og.Transform is written in (the world for an entity without a parent).
    *
    * @unit m (metres)
+   * @worldspace hook (how og.WorldOrigin's shift moves it)
    */
   target: Vector2;
   /**
@@ -18363,7 +18532,11 @@ export interface NavAgent {
    * The grid, navmesh or flow field it plans on (og.nav.grid, og.nav.load, og.nav.flowField); 0 moves straight at the target.
    */
   nav: Navigation;
-  /** Where it goes while seeking. */
+  /**
+   * Where it goes while seeking.
+   *
+   * @worldspace world (how og.WorldOrigin's shift moves it)
+   */
   target: Vector3;
   /** Moves towards the target while true. */
   seeking: boolean;
@@ -18469,6 +18642,7 @@ export interface NavAgent {
    * The path corner it heads for (written by og.nav).
    *
    * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
    * @readonly written by the engine
    */
   readonly waypoint: Vector3;
@@ -18512,6 +18686,7 @@ export interface Steering {
    * What it flees.
    *
    * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
    */
   fleeFrom: Vector3;
   /**
@@ -18771,12 +18946,14 @@ export interface NavLinkReached {
    * Where the agent leaves the surface.
    *
    * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
    */
   readonly start: Vector3;
   /**
    * Where it lands.
    *
    * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
    */
   readonly end: Vector3;
   /** The game moves it across. */
@@ -19367,6 +19544,7 @@ export interface Perception {
    * Where it last saw the target (written by og.ai).
    *
    * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
    * @readonly written by the engine
    */
   readonly lastSeen: Vector3;
@@ -19388,6 +19566,7 @@ export interface Perception {
    * Where it last heard something (written by og.ai).
    *
    * @unit m (metres)
+   * @worldspace world (how og.WorldOrigin's shift moves it)
    * @readonly written by the engine
    */
   readonly heardAt: Vector3;
@@ -45831,6 +46010,15 @@ export declare namespace og {
    * The world matrix the engine composes after the systems run, as three.js Object3D.matrixWorld.
    */
   const MatrixWorld: ComponentType<{ readonly matrix: FieldSpec<"Matrix4"> }, MatrixWorld>;
+  /**
+   * Large worlds (R12): naming it keeps every place in the world near its zero. As each tick starts, before any system runs, when the focus is farther from the zero than `step` along one of the plane's axes, the whole world shifts by the multiple of `step` nearest the focus, so the focus is within half a step of the zero again: every Transform of an entity without a parent, and every field the API marks `worldspace`, moves by the same amount (a body, its contacts and warm starts, a path, a particle, a tween to a place, the camera), and nothing in the world sees a change but the numbers. Precision then holds however far the world goes, while the zero's own place is kept here, in f64.
+   * The shift is world state, decided from world state alone (the focus's Transform, else the first og.StreamAnchor, else og.Camera.position), so a replay, a rollback, a restore and every peer of an og.net session shift on the same tick by the same amount; a session refuses the og.Camera fallback (each peer's camera is its own) and holds the zero until a focus or an anchor exists. A world that never names it keeps its hash and frames. Values a game keeps outside the marked fields (a world position in its own component, a key it set in an og.ai blackboard) are its own: OriginShifted says when to add its `delta` to them. 2D worlds shift too, on `xy`.
+   */
+  const WorldOrigin: ResourceType<{ readonly step: FieldSpec<"f32">; readonly plane: FieldSpec<"WorldOriginPlane">; readonly focus: FieldSpec<"Entity">; readonly off: FieldSpec<"bool">; readonly x: FieldSpec<"f64">; readonly y: FieldSpec<"f64">; readonly z: FieldSpec<"f64">; readonly shifts: FieldSpec<"u32"> }, WorldOrigin>;
+  /**
+   * og.WorldOrigin shifted the world as this tick started, before any system ran: every marked place moved by `delta`. Add it to the world positions a game keeps of its own.
+   */
+  const OriginShifted: EventType<OriginShifted>;
   /**
    * Transforms in the three.js vocabulary: position, quaternion and scale, composed into matrixWorld down the parent chain.
    */

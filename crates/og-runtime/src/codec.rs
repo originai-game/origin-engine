@@ -192,6 +192,17 @@ pub struct FieldLayout {
     pub doc: String,
     /// An enum field's variant names, in index order.
     pub variants: Vec<String>,
+    /// Where its coordinates lie, for og.WorldOrigin's shift (R12): the
+    /// IDL's `worldspace` attribute, or a game record's `worldspace` option.
+    pub worldspace: Option<String>,
+}
+
+/// The IDL's `worldspace` attribute of an engine record's field, for a
+/// layout read back from a module's derived schema.
+pub(crate) fn idl_worldspace(schema: &str, field: &str) -> Option<String> {
+    let decl = og_api::host::RECORDS.iter().find(|d| d.schema == schema)?;
+    let f = decl.fields.iter().find(|f| f.name == field)?;
+    (!f.worldspace.is_empty()).then(|| f.worldspace.to_string())
 }
 
 /// What a record is registered as.
@@ -306,6 +317,10 @@ impl Layout {
                     .filter(|s| !s.is_empty())
                     .map(str::to_string)
             };
+            let worldspace = opt_str("worldspace");
+            if let Some(w) = &worldspace {
+                og_core::Worldspace::of(w, ty).map_err(|e| format!("'{schema}.{name}': {e}"))?;
+            }
             out.push(FieldLayout {
                 name,
                 kind: k,
@@ -320,6 +335,7 @@ impl Layout {
                 label: opt_str("label"),
                 doc: opt_str("doc").unwrap_or_default(),
                 variants: variants.unwrap_or_default(),
+                worldspace,
             });
         }
         let layout = Layout {
@@ -374,6 +390,7 @@ impl Layout {
                 label: (!f.label.is_empty()).then(|| f.label.to_string()),
                 doc: f.doc.to_string(),
                 variants: f.variants.iter().map(|v| v.to_string()).collect(),
+                worldspace: (!f.worldspace.is_empty()).then(|| f.worldspace.to_string()),
             });
         }
         Ok(Layout {
@@ -408,6 +425,12 @@ impl Layout {
                     label: f.label.clone(),
                     doc: f.doc.clone(),
                     variants: f.variants.clone(),
+                    // A module's derive carries no attribute: the IDL's
+                    // declaration of the same record is the one place.
+                    worldspace: f
+                        .worldspace
+                        .clone()
+                        .or_else(|| idl_worldspace(&schema.name, &f.name)),
                 })
                 .collect::<Vec<_>>()
                 .into(),
@@ -434,6 +457,7 @@ impl Layout {
                     s.max = f.max;
                     s.tunable = f.tunable;
                     s.variants = f.variants.clone();
+                    s.worldspace = f.worldspace.clone();
                     s.default = default_lanes(f);
                     s
                 })
@@ -1003,6 +1027,7 @@ mod tests {
             variants: &[],
             capacity,
             list: 0,
+            worldspace: "",
         }
     }
 

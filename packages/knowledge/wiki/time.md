@@ -16,7 +16,7 @@ module time {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1473</sub>
+<sub>`api.ogt` line 1534</sub>
 
 ## Contents
 
@@ -60,7 +60,7 @@ fn setScale {
 }
 ```
 
-<sub>`api.ogt` line 1528</sub>
+<sub>`api.ogt` line 1589</sub>
 
 <a id="fn-hitStop"></a>
 
@@ -90,7 +90,7 @@ fn hitStop {
 }
 ```
 
-<sub>`api.ogt` line 1535</sub>
+<sub>`api.ogt` line 1596</sub>
 
 <a id="fn-setGroupScale"></a>
 
@@ -122,7 +122,7 @@ fn setGroupScale {
 }
 ```
 
-<sub>`api.ogt` line 1542</sub>
+<sub>`api.ogt` line 1603</sub>
 
 <a id="fn-groupDt"></a>
 
@@ -152,7 +152,7 @@ fn groupDt {
 }
 ```
 
-<sub>`api.ogt` line 1550</sub>
+<sub>`api.ogt` line 1611</sub>
 
 ## Components, resources and events
 
@@ -215,7 +215,7 @@ resource Time {
 }
 ```
 
-<sub>`api.ogt` line 1478</sub>
+<sub>`api.ogt` line 1539</sub>
 
 <a id="record-TimeGroup"></a>
 
@@ -238,7 +238,7 @@ component TimeGroup {
 }
 ```
 
-<sub>`api.ogt` line 1516</sub>
+<sub>`api.ogt` line 1577</sub>
 
 <a id="record-TimeGroups"></a>
 
@@ -259,4 +259,4 @@ resource TimeGroups {
 }
 ```
 
-<sub>`api.ogt` line 1523</sub>
+<sub>`api.ogt` line 1584</sub>

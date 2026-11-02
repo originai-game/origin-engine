@@ -972,6 +972,9 @@ impl StateBlock for CameraBlock {
             })
             .unwrap_or_default();
     }
+
+    /// Shakes, punches and kicks are offsets: nothing in the world.
+    fn shift(&mut self, _: &og_ecs::Shift) {}
 }
 
 /// A little-endian reader for the feel state blocks.
@@ -1320,6 +1323,19 @@ impl StateBlock for SpriteBlock {
             .unwrap_or_default();
         // The camera ops are the og.camera block's.
         sh.camera_ops = ops;
+    }
+
+    /// Afterimages and floating texts are at places in the world.
+    fn shift(&mut self, s: &og_ecs::Shift) {
+        let mut sh = lock(&self.0);
+        for list in sh.ghosts.values_mut() {
+            for g in list {
+                g.position = s.moved(g.position);
+            }
+        }
+        for t in &mut sh.floating {
+            t.position = s.moved(t.position);
+        }
     }
 }
 

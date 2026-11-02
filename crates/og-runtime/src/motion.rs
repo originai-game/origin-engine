@@ -463,6 +463,27 @@ impl StateBlock for Block {
             .map(|b| *b)
             .unwrap_or_default();
     }
+
+    /// A place's or a walk's target and the pose a goal started from are
+    /// in the agent's Transform frame: they move with a root.
+    fn shift(&mut self, s: &og_ecs::Shift) {
+        let mut goals = lock(&self.0);
+        for (bits, a) in goals.agents.iter_mut() {
+            let d = s.of(*bits);
+            let m = |p: &mut Vec3| *p = (p.as_dvec3() + d).as_vec3();
+            for g in &mut a.queue {
+                if matches!(g.kind, Kind::Place | Kind::WalkTo) {
+                    m(&mut g.target);
+                }
+            }
+            if let Some(c) = &mut a.current {
+                if matches!(c.goal.kind, Kind::Place | Kind::WalkTo) {
+                    m(&mut c.goal.target);
+                }
+                m(&mut c.start);
+            }
+        }
+    }
 }
 
 // ── the API ──────────────────────────────────────────────────────────────────

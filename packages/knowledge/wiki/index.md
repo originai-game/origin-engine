@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2208 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2212 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -1082,6 +1082,7 @@ Field units the docs and Tune use.
 | [`og.net.submit`](net.md#fn-submit) | function | net | `og_net_submit` |
 | [`og.Occluder2D`](render.md#record-Occluder2D) | component | render | — |
 | [`og.OrbitCamera`](camera.md#record-OrbitCamera) | component | camera | — |
+| [`og.OriginShifted`](transform.md#record-OriginShifted) | event | transform | — |
 | [`og.Parent`](transform.md#record-Parent) | component | transform | — |
 | [`og.ParticleSystem`](render.md#record-ParticleSystem) | component | render | — |
 | [`og.path.create`](path.md#fn-create) | function | path | `og_path_create` |
@@ -1636,6 +1637,7 @@ Field units the docs and Tune use.
 | [`og.Weather`](atmosphere.md#record-Weather) | resource | atmosphere | — |
 | [`og.Wheel`](input.md#record-Wheel) | event | input | — |
 | [`og.Wind`](atmosphere.md#record-Wind) | resource | atmosphere | — |
+| [`og.WorldOrigin`](transform.md#record-WorldOrigin) | resource | transform | — |
 | [`og.WorldRestored`](world.md#record-WorldRestored) | event | world | — |
 | [`OrbMeterDesc`](ui.md#type-OrbMeterDesc) | desc struct | ui | — |
 | [`Orientation`](ui.md#type-Orientation) | enum | ui | — |
@@ -2375,6 +2377,8 @@ Field units the docs and Tune use.
 | [`WorldAnchorDesc`](ui.md#type-WorldAnchorDesc) | desc struct | ui | — |
 | [`WorldDump`](probe.md#type-WorldDump) | struct | probe | — |
 | [`WorldOcclusion`](ui.md#type-WorldOcclusion) | enum | ui | — |
+| [`WorldOriginPlane`](transform.md#type-WorldOriginPlane) | enum | transform | — |
+| [`WorldOriginPlane()`](transform.md#column-WorldOriginPlane) | column kind | transform | — |
 | [`WorldPanelDesc`](ui.md#type-WorldPanelDesc) | desc struct | ui | — |
 | [`WorldTarget`](ui.md#type-WorldTarget) | desc struct | ui | — |
 | [`ZoomResult`](ui.md#type-ZoomResult) | struct | ui | — |

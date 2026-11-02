@@ -57,6 +57,7 @@ pub use lanes::{panic_report, record_panic, report as lanes_report};
 mod modules;
 mod motion;
 mod nav;
+mod origin;
 mod net;
 mod physics_ext;
 mod platform;

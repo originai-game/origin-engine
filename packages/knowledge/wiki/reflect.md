@@ -76,7 +76,7 @@ fn defineComponent {
 }
 ```
 
-<sub>`api.ogt` line 767</sub>
+<sub>`api.ogt` line 768</sub>
 
 <a id="fn-defineResource"></a>
 
@@ -107,7 +107,7 @@ fn defineResource {
 }
 ```
 
-<sub>`api.ogt` line 776</sub>
+<sub>`api.ogt` line 777</sub>
 
 ## Types
 
@@ -128,6 +128,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `label` | `string` | `""` | — | — | — | The person-facing name; empty uses the field name. |
 | `doc` | `string` | `""` | — | — | — | One sentence on what the field means. |
 | `tunable` | `boolean` | `false` | — | — | — | Publish the field to Tune and to the probe's bounds and patch. |
+| `worldspace` | `string` | `""` | — | — | — | Where a Vector2, Vector3, f32 or f64 field's numbers lie when og.WorldOrigin shifts the world: `world` (a point in the world, moved by every shift), `root` (in its entity's Transform frame: moved on an entity without a parent), `none` (an offset, a size, a direction), then optionally its axes (`world y` for an absolute height); empty for a field that is not a coordinate. |
 
 ```ogt
 struct FieldOptions {
@@ -140,6 +141,7 @@ struct FieldOptions {
   field label String "The person-facing name; empty uses the field name."
   field doc String "One sentence on what the field means."
   field tunable bool "Publish the field to Tune and to the probe's bounds and patch."
+  field worldspace String "Where a Vector2, Vector3, f32 or f64 field's numbers lie when og.WorldOrigin shifts the world: `world` (a point in the world, moved by every shift), `root` (in its entity's Transform frame: moved on an entity without a parent), `none` (an offset, a size, a direction), then optionally its axes (`world y` for an absolute height); empty for a field that is not a coordinate."
 }
 ```
 
@@ -173,7 +175,7 @@ column f32 {
 }
 ```
 
-<sub>`api.ogt` line 683</sub>
+<sub>`api.ogt` line 684</sub>
 
 ```ogt
 column f64 {
@@ -184,7 +186,7 @@ column f64 {
 }
 ```
 
-<sub>`api.ogt` line 690</sub>
+<sub>`api.ogt` line 691</sub>
 
 ```ogt
 column u32 {
@@ -195,7 +197,7 @@ column u32 {
 }
 ```
 
-<sub>`api.ogt` line 697</sub>
+<sub>`api.ogt` line 698</sub>
 
 ```ogt
 column i32 {
@@ -206,7 +208,7 @@ column i32 {
 }
 ```
 
-<sub>`api.ogt` line 704</sub>
+<sub>`api.ogt` line 705</sub>
 
 ```ogt
 column bool {
@@ -217,7 +219,7 @@ column bool {
 }
 ```
 
-<sub>`api.ogt` line 711</sub>
+<sub>`api.ogt` line 712</sub>
 
 ```ogt
 column Vector2 {
@@ -228,7 +230,7 @@ column Vector2 {
 }
 ```
 
-<sub>`api.ogt` line 718</sub>
+<sub>`api.ogt` line 719</sub>
 
 ```ogt
 column Vector3 {
@@ -239,7 +241,7 @@ column Vector3 {
 }
 ```
 
-<sub>`api.ogt` line 725</sub>
+<sub>`api.ogt` line 726</sub>
 
 ```ogt
 column Quaternion {
@@ -250,7 +252,7 @@ column Quaternion {
 }
 ```
 
-<sub>`api.ogt` line 732</sub>
+<sub>`api.ogt` line 733</sub>
 
 ```ogt
 column Matrix4 {
@@ -261,7 +263,7 @@ column Matrix4 {
 }
 ```
 
-<sub>`api.ogt` line 739</sub>
+<sub>`api.ogt` line 740</sub>
 
 ```ogt
 column Color {
@@ -272,7 +274,7 @@ column Color {
 }
 ```
 
-<sub>`api.ogt` line 746</sub>
+<sub>`api.ogt` line 747</sub>
 
 ```ogt
 column str {
@@ -284,7 +286,7 @@ column str {
 }
 ```
 
-<sub>`api.ogt` line 753</sub>
+<sub>`api.ogt` line 754</sub>
 
 ```ogt
 column list {
@@ -294,4 +296,4 @@ column list {
 }
 ```
 
-<sub>`api.ogt` line 761</sub>
+<sub>`api.ogt` line 762</sub>

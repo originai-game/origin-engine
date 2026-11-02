@@ -260,6 +260,17 @@ impl StateBlock for TimelineBlock {
             .unwrap_or_default();
         *lock(&self.0) = next;
     }
+
+    /// The camera a run hands back is a place in the world.
+    fn shift(&mut self, s: &og_ecs::Shift) {
+        let mut sh = lock(&self.0);
+        for r in sh.runs.values_mut() {
+            if let Some(c) = &mut r.camera {
+                let p = s.moved(glam::Vec3::new(c[0], c[1], c[2]));
+                c[..3].copy_from_slice(&p.to_array());
+            }
+        }
+    }
 }
 
 // ── installing ───────────────────────────────────────────────────────────────

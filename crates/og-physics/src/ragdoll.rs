@@ -34,6 +34,15 @@ pub(crate) struct RagdollState {
     rig: Vec<u32>,
 }
 
+impl RagdollState {
+    /// Moves the last tick's bone targets (world space) by `s.d`.
+    pub(crate) fn shift(&mut self, s: &og_ecs::Shift) {
+        for (p, _) in &mut self.last {
+            *p = s.moved(*p);
+        }
+    }
+}
+
 fn rig_key(rig: &RagdollRig) -> Vec<u32> {
     let mut key = vec![rig.bones.len() as u32];
     for b in &rig.bones {

@@ -37,6 +37,7 @@ module atmosphere {
       tunable true
     }
     field height f32 "The world height below which height fog is densest." {
+      worldspace world y
       unit m
       tunable true
     }

@@ -397,4 +397,11 @@ impl StateBlock for AnimState {
         sh.springs = saved.springs;
         sh.recompute_outputs();
     }
+
+    /// Foot locks and world-space spring tails are in the frame their
+    /// skeleton entity's Transform is written in: they move with a root.
+    fn shift(&mut self, s: &og_ecs::Shift) {
+        let mut sh = lock(&self.0);
+        sh.shift(s);
+    }
 }

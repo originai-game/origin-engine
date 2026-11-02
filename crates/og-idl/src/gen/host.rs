@@ -442,6 +442,8 @@ pub fn records_rs(ix: &Index<'_>) -> String {
          \x20   pub step: Option<f64>,\n\
          \x20   /// A unit of the API's unit table, or empty.\n\
          \x20   pub unit: &'static str,\n\
+         \x20   /// How og.WorldOrigin's shift moves it (og_core::Worldspace), or empty.\n\
+         \x20   pub worldspace: &'static str,\n\
          \x20   /// The person-facing name, or empty.\n\
          \x20   pub label: &'static str,\n\
          \x20   /// The field's docs, joined; empty in a publish build (og-api's\n\
@@ -496,7 +498,7 @@ pub fn records_rs(ix: &Index<'_>) -> String {
                     _ => String::new(),
                 };
                 out.push_str(&format!(
-                    "            FieldDecl {{\n                name: \"{}\",\n                column: \"{}\",\n                default: {:?},\n                readonly: {},\n                tunable: {},\n                min: {},\n                max: {},\n                step: {},\n                unit: {:?},\n                label: {:?},\n                doc: doc!({:?}),\n                variants: &[{}],\n                capacity: {},\n                list: {},\n            }},\n",
+                    "            FieldDecl {{\n                name: \"{}\",\n                column: \"{}\",\n                default: {:?},\n                readonly: {},\n                tunable: {},\n                min: {},\n                max: {},\n                step: {},\n                unit: {:?},\n                worldspace: {:?},\n                label: {:?},\n                doc: doc!({:?}),\n                variants: &[{}],\n                capacity: {},\n                list: {},\n            }},\n",
                     f.name,
                     ix.list(&f.ty).map_or(f.ty.name(), |(element, _)| element.name()),
                     default,
@@ -506,6 +508,7 @@ pub fn records_rs(ix: &Index<'_>) -> String {
                     opt(f.max),
                     opt(f.step),
                     f.unit.as_deref().unwrap_or_default(),
+                    f.worldspace.as_deref().unwrap_or_default(),
                     f.label.as_deref().unwrap_or_default(),
                     f.doc.join(" "),
                     variants,

@@ -245,9 +245,11 @@ module anim {
     }
     field solver IkSolver "twoBone (analytic, with a pole) or fabrik (iterative, any length)."
     field target Vector3 "Where the tip should be, in `space`: for `world`, the frame of the skeleton entity's og.Transform (its parent's frame when it has a parent, not true world)." {
+      worldspace hook
       unit m
     }
     field pole Vector3 "A point the middle joint bends towards (two-bone); the zero vector keeps the animated bend." {
+      worldspace hook
       unit m
     }
     field space IkSpace "What `target` and `pole` are relative to: world (the frame the skeleton entity's og.Transform is in, so its parent's frame for a child entity, not true world) or model."
@@ -288,6 +290,7 @@ module anim {
       max 8
     }
     field target Vector3 "The point to look at, in `space`." {
+      worldspace hook
       unit m
     }
     field space IkSpace "What `target` and `up` are relative to: world (the frame the skeleton entity's og.Transform is in) or model."
@@ -772,6 +775,7 @@ module anim {
       min 0
     }
     field target Vector2 "Where the chain's tip should be, in the frame the skeleton entity's og.Transform is written in (the world for an entity without a parent)." {
+      worldspace hook
       unit m
     }
     field weight f32 "How much of the solve applies (0 is the animated pose, 1 fully solved), times the constraint's own weight (its `weight` line, or its clip's IK keys)." {

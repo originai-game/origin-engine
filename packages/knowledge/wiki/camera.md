@@ -16,7 +16,7 @@ module camera {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 3083</sub>
+<sub>`api.ogt` line 3155</sub>
 
 ## Contents
 
@@ -62,7 +62,7 @@ fn shake {
 }
 ```
 
-<sub>`api.ogt` line 3423</sub>
+<sub>`api.ogt` line 3515</sub>
 
 <a id="fn-punch"></a>
 
@@ -92,7 +92,7 @@ fn punch {
 }
 ```
 
-<sub>`api.ogt` line 3430</sub>
+<sub>`api.ogt` line 3522</sub>
 
 <a id="fn-kick"></a>
 
@@ -124,7 +124,7 @@ fn kick {
 }
 ```
 
-<sub>`api.ogt` line 3437</sub>
+<sub>`api.ogt` line 3529</sub>
 
 ## Components, resources and events
 
@@ -138,7 +138,7 @@ Token `og.Camera`, registered under the schema name `og.Camera`; its value type 
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `position` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Where the camera is. |
+| `position` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `world` | Where the camera is. |
 | `quaternion` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | — | Its rotation; the camera looks down its local -Z. |
 | `fov` | `number` | `50` | 1 … 179 | `deg` | tunable | The vertical field of view of the perspective projection. |
 | `near` | `number` | `0.1` | ≥ 0.001 | `m` | — | The near clipping plane. |
@@ -158,11 +158,11 @@ Token `og.Camera`, registered under the schema name `og.Camera`; its value type 
 | `kick` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | A kick in progress (og.camera.kick): the view is offset by this, decaying by kickDecay. Visual only. |
 | `kickDecay` | `number` | `12` | ≥ 0 | `perSecond` | tunable | How fast a kick returns (exponential, per second). |
 | `zoneActive` | `boolean` | `false` | — | — | — | The followed entity is in an og.CameraZone: the view keeps inside zoneMin to zoneMax. Written by the og.camera system. |
-| `zoneMin` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | — | The zone the view keeps inside: its bottom-left corner. |
-| `zoneMax` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | — | Its top-right corner. |
+| `zoneMin` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | worldspace `world` | The zone the view keeps inside: its bottom-left corner. |
+| `zoneMax` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | worldspace `world` | Its top-right corner. |
 | `zoneFromActive` | `boolean` | `false` | — | — | — | A room transition is in progress from the zone zoneFromMin to zoneFromMax: the view scrolls from where that zone kept it to where the new one does. |
-| `zoneFromMin` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | — | The zone being left: its bottom-left corner. |
-| `zoneFromMax` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | — | Its top-right corner. |
+| `zoneFromMin` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | worldspace `world` | The zone being left: its bottom-left corner. |
+| `zoneFromMax` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | worldspace `world` | Its top-right corner. |
 | `zoneScroll` | `number` | `1` | 0 … 1 | — | — | How far the transition has come, 0 to 1 (eased; 1 is settled). |
 | `zoneScrollTime` | `number` | `0` | ≥ 0 | `s` | — | How long the transition takes: the entered zone's scrollTime. |
 | `layers` | `number` | `1` | — | — | — | Three.js layers, as Camera.layers.mask: the frame draws the meshes, models, world sprites, particle systems, lines and points whose layers share a bit with it. 1 (layer 0) by default, as every object's. |
@@ -171,6 +171,7 @@ Token `og.Camera`, registered under the schema name `og.Camera`; its value type 
 resource Camera {
   doc "The camera the frame is rendered from. Rendering reads it after the tick; it never feeds back into the simulation."
   field position Vector3 "Where the camera is." {
+    worldspace world
     unit m
   }
   field quaternion Quaternion "Its rotation; the camera looks down its local -Z."
@@ -260,16 +261,20 @@ resource Camera {
   }
   field zoneActive bool "The followed entity is in an og.CameraZone: the view keeps inside zoneMin to zoneMax. Written by the og.camera system."
   field zoneMin Vector2 "The zone the view keeps inside: its bottom-left corner." {
+    worldspace world
     unit m
   }
   field zoneMax Vector2 "Its top-right corner." {
+    worldspace world
     unit m
   }
   field zoneFromActive bool "A room transition is in progress from the zone zoneFromMin to zoneFromMax: the view scrolls from where that zone kept it to where the new one does."
   field zoneFromMin Vector2 "The zone being left: its bottom-left corner." {
+    worldspace world
     unit m
   }
   field zoneFromMax Vector2 "Its top-right corner." {
+    worldspace world
     unit m
   }
   field zoneScroll f32 "How far the transition has come, 0 to 1 (eased; 1 is settled)." {
@@ -302,7 +307,7 @@ resource Camera {
 }
 ```
 
-<sub>`api.ogt` line 3088</sub>
+<sub>`api.ogt` line 3160</sub>
 
 <a id="member-Camera-lookAt"></a>
 
@@ -329,7 +334,7 @@ fn lookAt {
 }
 ```
 
-<sub>`api.ogt` line 3201</sub>
+<sub>`api.ogt` line 3278</sub>
 
 <a id="member-Camera-worldToScreen"></a>
 
@@ -357,7 +362,7 @@ fn worldToScreen {
 }
 ```
 
-<sub>`api.ogt` line 3205</sub>
+<sub>`api.ogt` line 3282</sub>
 
 <a id="member-Camera-screenToRay"></a>
 
@@ -387,7 +392,7 @@ fn screenToRay {
 }
 ```
 
-<sub>`api.ogt` line 3210</sub>
+<sub>`api.ogt` line 3287</sub>
 
 <a id="record-OrbitCamera"></a>
 
@@ -403,7 +408,7 @@ Token `og.OrbitCamera`, registered under the schema name `og.OrbitCamera`; its v
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `target` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The orbited point, relative to the entity's position. |
+| `target` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `none` | The orbited point, relative to the entity's position. |
 | `distance` | `number` | `10` | ≥ 0.01 | `m` | tunable | How far the camera is from the orbited point, as three.js OrbitControls' distance. |
 | `minDistance` | `number` | `1` | ≥ 0.01 | `m` | — | The closest the wheel zooms in, as three.js OrbitControls.minDistance. |
 | `maxDistance` | `number` | `100` | ≥ 0.01 | `m` | — | The farthest the wheel zooms out, as three.js OrbitControls.maxDistance. |
@@ -417,7 +422,7 @@ Token `og.OrbitCamera`, registered under the schema name `og.OrbitCamera`; its v
 | `autoRotateSpeed` | `number` | `0.5` | — | `radps` | tunable | How fast autoRotate turns. |
 | `enabled` | `boolean` | `true` | — | — | — | Read the pointer and the wheel; false keeps only autoRotate and the fields' own values. |
 | `dragging` | `boolean` | `false` | — | — | read only | Controller state: a left-button drag that started on the play surface is in progress. |
-| `pointer` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only | Controller state: where the pointer was on the previous tick of a drag. |
+| `pointer` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only, worldspace `none` | Controller state: where the pointer was on the previous tick of a drag. |
 
 ```ogt
 component OrbitCamera {
@@ -425,6 +430,7 @@ component OrbitCamera {
   doc "Camera controllers are game-level systems the engine ships in TypeScript (og.systems.cameras); list them in GameDesc.systems: `systems: [...og.systems.cameras, ...yours]`. The first entity carrying one, in query order, drives the camera."
   doc "The camera sits `distance` from the orbited point (the entity's position plus `target`) in the direction given by `azimuth` about +Y and `polar` from +Y, and looks at the point. Every angle is computed with deterministic arithmetic, so a replay moves the camera identically on every host."
   field target Vector3 "The orbited point, relative to the entity's position." {
+    worldspace none
     unit m
   }
   field distance f32 "How far the camera is from the orbited point, as three.js OrbitControls' distance." {
@@ -489,13 +495,14 @@ component OrbitCamera {
     readonly true
   }
   field pointer Vector2 "Controller state: where the pointer was on the previous tick of a drag." {
+    worldspace none
     readonly true
     unit cssPx
   }
 }
 ```
 
-<sub>`api.ogt` line 3221</sub>
+<sub>`api.ogt` line 3298</sub>
 
 <a id="record-FollowCamera"></a>
 
@@ -533,7 +540,7 @@ component FollowCamera {
 }
 ```
 
-<sub>`api.ogt` line 3295</sub>
+<sub>`api.ogt` line 3374</sub>
 
 <a id="record-Follow2D"></a>
 
@@ -553,10 +560,10 @@ Token `og.Follow2D`, registered under the schema name `og.Follow2D`; its value t
 | `lookAheadMax` | `Vector2` | `{ x: 3, y: 1.5 }` | ≥ 0 | `m` | — | The largest lead along x and y. |
 | `lookAheadSmoothing` | `number` | `0.4` | ≥ 0 | `s` | tunable | Roughly how long the lead takes to turn when the entity does. |
 | `lead` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | read only | Controller state: the current lead. |
-| `last` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | read only | Controller state: the entity's position on the previous tick. |
+| `last` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | read only, worldspace `root` | Controller state: the entity's position on the previous tick. |
 | `clamp` | `boolean` | `false` | — | — | — | Keep the camera centre between boundsMin and boundsMax. |
-| `boundsMin` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | — | The smallest x and y the camera centre takes with clamp. |
-| `boundsMax` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | — | The largest x and y the camera centre takes with clamp. |
+| `boundsMin` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | worldspace `world` | The smallest x and y the camera centre takes with clamp. |
+| `boundsMax` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | worldspace `world` | The largest x and y the camera centre takes with clamp. |
 
 ```ogt
 component Follow2D {
@@ -599,20 +606,23 @@ component Follow2D {
     unit m
   }
   field last Vector2 "Controller state: the entity's position on the previous tick." {
+    worldspace root
     readonly true
     unit m
   }
   field clamp bool "Keep the camera centre between boundsMin and boundsMax."
   field boundsMin Vector2 "The smallest x and y the camera centre takes with clamp." {
+    worldspace world
     unit m
   }
   field boundsMax Vector2 "The largest x and y the camera centre takes with clamp." {
+    worldspace world
     unit m
   }
 }
 ```
 
-<sub>`api.ogt` line 3314</sub>
+<sub>`api.ogt` line 3393</sub>
 
 <a id="record-CameraZone"></a>
 
@@ -624,8 +634,8 @@ Token `og.CameraZone`, registered under the schema name `og.CameraZone`; its val
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `min` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | — | The bottom-left corner. |
-| `max` | `Vector2` | `{ x: 10, y: 10 }` | — | `m` | — | The top-right corner. |
+| `min` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | worldspace `world` | The bottom-left corner. |
+| `max` | `Vector2` | `{ x: 10, y: 10 }` | — | `m` | worldspace `world` | The top-right corner. |
 | `priority` | `number` | `0` | — | — | — | Higher wins where zones overlap. |
 | `scrollTime` | `number` | `0` | ≥ 0 | `s` | — | Seconds the view takes to scroll from the zone the entity left into this one (a room transition, eased in and out); 0 jumps at once. Visual only: the camera resource records the transition, so replays scroll the same. |
 
@@ -633,9 +643,11 @@ Token `og.CameraZone`, registered under the schema name `og.CameraZone`; its val
 component CameraZone {
   doc "A rectangle of the xy plane (min to max, world units, not moved by the entity's Transform) that keeps a 2D view inside it while the entity followed by og.Follow2D is in it: rooms, arenas, a level's bounds. Of overlapping zones the highest priority wins, then the first in query order. The engine's og.camera system picks the zone after the game's systems (into og.Camera's zone fields); entering another zone scrolls the view across over the new zone's scrollTime, or jumps when it is 0. A zone smaller than the view centres it."
   field min Vector2 "The bottom-left corner." {
+    worldspace world
     unit m
   }
   field max Vector2 "The top-right corner." {
+    worldspace world
     default 10 10
     unit m
   }
@@ -647,7 +659,7 @@ component CameraZone {
 }
 ```
 
-<sub>`api.ogt` line 3366</sub>
+<sub>`api.ogt` line 3448</sub>
 
 <a id="record-CameraRail"></a>
 
@@ -660,14 +672,14 @@ Token `og.CameraRail`, registered under the schema name `og.CameraRail`; its val
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `points` | `number` | `2` | 2 … 8 | — | — | How many of p0...p7 the rail uses (2 to 8). |
-| `p0` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Rail point 0. |
-| `p1` | `Vector3` | `{ x: 10, y: 0, z: 0 }` | — | `m` | — | Rail point 1. |
-| `p2` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Rail point 2. |
-| `p3` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Rail point 3. |
-| `p4` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Rail point 4. |
-| `p5` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Rail point 5. |
-| `p6` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Rail point 6. |
-| `p7` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Rail point 7. |
+| `p0` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `world` | Rail point 0. |
+| `p1` | `Vector3` | `{ x: 10, y: 0, z: 0 }` | — | `m` | worldspace `world` | Rail point 1. |
+| `p2` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `world` | Rail point 2. |
+| `p3` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `world` | Rail point 3. |
+| `p4` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `world` | Rail point 4. |
+| `p5` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `world` | Rail point 5. |
+| `p6` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `world` | Rail point 6. |
+| `p7` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `world` | Rail point 7. |
 | `smoothTime` | `number` | `0.2` | ≥ 0 | `s` | tunable | Roughly how long the camera takes to catch up along the rail; 0 snaps. |
 | `path` | `Path` | `0` | — | — | — | A path (og.path.create, or a scene's `path` by og.path.find) the rail follows instead of p0 to p(points - 1): any number of points, catmullRom, bezier or linear, closed or not. 0 uses the points. |
 
@@ -680,28 +692,36 @@ component CameraRail {
     max 8
   }
   field p0 Vector3 "Rail point 0." {
+    worldspace world
     unit m
   }
   field p1 Vector3 "Rail point 1." {
+    worldspace world
     default 10 0 0
     unit m
   }
   field p2 Vector3 "Rail point 2." {
+    worldspace world
     unit m
   }
   field p3 Vector3 "Rail point 3." {
+    worldspace world
     unit m
   }
   field p4 Vector3 "Rail point 4." {
+    worldspace world
     unit m
   }
   field p5 Vector3 "Rail point 5." {
+    worldspace world
     unit m
   }
   field p6 Vector3 "Rail point 6." {
+    worldspace world
     unit m
   }
   field p7 Vector3 "Rail point 7." {
+    worldspace world
     unit m
   }
   field smoothTime f32 "Roughly how long the camera takes to catch up along the rail; 0 snaps." {
@@ -714,4 +734,4 @@ component CameraRail {
 }
 ```
 
-<sub>`api.ogt` line 3382</sub>
+<sub>`api.ogt` line 3466</sub>

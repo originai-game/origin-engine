@@ -304,6 +304,9 @@ pub struct Field {
     pub max: Option<f64>,
     pub step: Option<f64>,
     pub unit: Option<String>,
+    /// `worldspace <frame> [axes]` (og_core::Worldspace): how og.WorldOrigin's
+    /// shift moves a record's coordinate field (R12).
+    pub worldspace: Option<String>,
     pub label: Option<String>,
     pub tunable: bool,
     pub readonly: bool,
