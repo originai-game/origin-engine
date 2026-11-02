@@ -81,7 +81,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 25864</sub>
+<sub>`api.ogt` line 25866</sub>
 
 <a id="fn-request"></a>
 
@@ -111,7 +111,7 @@ fn request {
 }
 ```
 
-<sub>`api.ogt` line 25871</sub>
+<sub>`api.ogt` line 25873</sub>
 
 <a id="fn-release"></a>
 
@@ -141,7 +141,7 @@ fn release {
 }
 ```
 
-<sub>`api.ogt` line 25878</sub>
+<sub>`api.ogt` line 25880</sub>
 
 <a id="fn-budget"></a>
 
@@ -169,7 +169,7 @@ fn budget {
 }
 ```
 
-<sub>`api.ogt` line 25885</sub>
+<sub>`api.ogt` line 25887</sub>
 
 <a id="fn-setBudget"></a>
 
@@ -199,7 +199,7 @@ fn setBudget {
 }
 ```
 
-<sub>`api.ogt` line 25891</sub>
+<sub>`api.ogt` line 25893</sub>
 
 ## Components, resources and events
 
@@ -218,6 +218,8 @@ Token `og.StreamCell`, registered under the schema name `og.StreamCell`; its val
 | `load` | `number` | `0` | ≥ 0 | `m` | — | Loads while an anchor is within this distance of the box (0: only while one is inside it). |
 | `unload` | `number` | `0` | ≥ 0 | `m` | — | Unloads once every anchor is farther than this from the box, so an anchor on the edge does not load and unload it every tick; 0: 1.25 × load. Less than `load` is taken as `load`. |
 | `pin` | `boolean` | `false` | — | — | — | Loaded whatever the anchors while true (a cell game code needs, such as a quest's destination); set it false and the anchors decide again. |
+| `persist` | `boolean` | `false` | — | — | — | Keep what happened in it: when it unloads, its entities as they are (moved, damaged, opened; every component and name) are kept in the world's og.cells state, carried by snapshots, saves and the hash, and they come back as they were when it loads again instead of its sub-scene as authored. False: it loads as authored every time. |
+| `budget` | `number` | `0` | — | — | — | The most of its entities spawned per tick while it loads, so a large cell spreads over consecutive ticks instead of one long one (0: all in one tick). `loaded` turns true, and CellEvent is sent, in the tick its last entity spawns; a cell that stops being wanted before then despawns what it spawned and sends nothing. |
 | `loaded` | `boolean` | `false` | — | — | read only | Written by the engine: true while the sub-scene's entities are in the world (from the tick it loaded until the tick it unloaded). |
 
 ```ogt
@@ -236,6 +238,8 @@ component StreamCell {
     min 0
   }
   field pin bool "Loaded whatever the anchors while true (a cell game code needs, such as a quest's destination); set it false and the anchors decide again."
+  field persist bool "Keep what happened in it: when it unloads, its entities as they are (moved, damaged, opened; every component and name) are kept in the world's og.cells state, carried by snapshots, saves and the hash, and they come back as they were when it loads again instead of its sub-scene as authored. False: it loads as authored every time."
+  field budget u32 "The most of its entities spawned per tick while it loads, so a large cell spreads over consecutive ticks instead of one long one (0: all in one tick). `loaded` turns true, and CellEvent is sent, in the tick its last entity spawns; a cell that stops being wanted before then despawns what it spawned and sends nothing."
   field loaded bool "Written by the engine: true while the sub-scene's entities are in the world (from the tick it loaded until the tick it unloaded)." {
     readonly true
   }
@@ -266,7 +270,7 @@ component StreamAnchor {
 }
 ```
 
-<sub>`api.ogt` line 25780</sub>
+<sub>`api.ogt` line 25782</sub>
 
 <a id="record-CellMember"></a>
 
@@ -289,7 +293,7 @@ component CellMember {
 }
 ```
 
-<sub>`api.ogt` line 25788</sub>
+<sub>`api.ogt` line 25790</sub>
 
 <a id="record-CellEvent"></a>
 
@@ -314,7 +318,7 @@ event CellEvent {
 }
 ```
 
-<sub>`api.ogt` line 25795</sub>
+<sub>`api.ogt` line 25797</sub>
 
 <a id="record-StreamEvent"></a>
 
@@ -337,7 +341,7 @@ event StreamEvent {
 }
 ```
 
-<sub>`api.ogt` line 25817</sub>
+<sub>`api.ogt` line 25819</sub>
 
 ## Types
 
@@ -368,7 +372,7 @@ enum StreamState {
 }
 ```
 
-<sub>`api.ogt` line 25802</sub>
+<sub>`api.ogt` line 25804</sub>
 
 <a id="type-StreamStatus"></a>
 
@@ -419,7 +423,7 @@ struct StreamStatus {
 }
 ```
 
-<sub>`api.ogt` line 25823</sub>
+<sub>`api.ogt` line 25825</sub>
 
 <a id="type-StreamBudget"></a>
 
@@ -454,7 +458,7 @@ struct StreamBudget {
 }
 ```
 
-<sub>`api.ogt` line 25847</sub>
+<sub>`api.ogt` line 25849</sub>
 
 ## Constants
 
@@ -470,28 +474,28 @@ struct StreamBudget {
 const STREAM_UNLOADED u32 0 "`StreamEvent.state`: the group is unloaded (StreamState unloaded)."
 ```
 
-<sub>`api.ogt` line 25811</sub>
+<sub>`api.ogt` line 25813</sub>
 
 ```ogt
 const STREAM_QUEUED u32 1 "`StreamEvent.state`: the group waits for room in the budget (StreamState queued)."
 ```
 
-<sub>`api.ogt` line 25812</sub>
+<sub>`api.ogt` line 25814</sub>
 
 ```ogt
 const STREAM_LOADING u32 2 "`StreamEvent.state`: the group's pack is being read (StreamState loading)."
 ```
 
-<sub>`api.ogt` line 25813</sub>
+<sub>`api.ogt` line 25815</sub>
 
 ```ogt
 const STREAM_RESIDENT u32 3 "`StreamEvent.state`: the group's assets are in place (StreamState resident)."
 ```
 
-<sub>`api.ogt` line 25814</sub>
+<sub>`api.ogt` line 25816</sub>
 
 ```ogt
 const STREAM_FAILED u32 4 "`StreamEvent.state`: the group failed (StreamState failed; og.stream.status says why)."
 ```
 
-<sub>`api.ogt` line 25815</sub>
+<sub>`api.ogt` line 25817</sub>

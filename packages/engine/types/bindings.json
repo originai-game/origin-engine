@@ -6449,6 +6449,16 @@
           "default": false
         },
         {
+          "name": "persist",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "budget",
+          "column": "u32",
+          "default": 0
+        },
+        {
           "name": "loaded",
           "column": "bool",
           "default": false,

@@ -45,7 +45,9 @@
 //! read completes at once, so nothing waits and only the order shows.
 //! `dump_stream`'s `fetch` lists what is in flight and what waits.
 
+pub(crate) mod cell_store;
 pub(crate) mod cells;
+mod kept;
 mod loading;
 mod residency;
 

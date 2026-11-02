@@ -342,10 +342,12 @@ fn a_replay_and_a_restored_save_go_tick_for_tick_across_a_cell_load() {
 /// the last tick's hash. The hash folds the world's type table, so it moved
 /// (2c17f3c42615a4b9 -> a4f0740b668ce590) when og.VideoPlayer became lazy
 /// (G3-2: a world without footage no longer has the type), with no change to
-/// the cells' own behaviour.
+/// the cells' own behaviour; then 3d363344a7c7987b when og.StreamCell gained
+/// `persist` and `budget` and a world with cells gained the og.cells state
+/// block (G3-3 batch 2), the ids unmoved.
 const WELL_FIRST: f64 = (1u64 << 32 | 4) as f64;
 const WELL_AFTER_RELOAD: f64 = (2u64 << 32 | 4) as f64;
-const END_HASH: &str = "a4f0740b668ce590";
+const END_HASH: &str = "3d363344a7c7987b";
 
 #[test]
 fn a_session_without_anchors_refuses_the_camera() {
@@ -383,4 +385,146 @@ fn a_plain_sub_scene_spawns_under_its_entity() {
     let barn = get(e, "barn", "og.Parent");
     assert_eq!(barn["entity"].as_f64(), find(e, "yard"));
     assert!(!has(e, "barn", "og.CellMember"));
+}
+
+/// The world with the village persisting and spawning `budget` entities a
+/// tick (0: all at once).
+/// The farm states the fields at their defaults: the test's cook has no
+/// og.StreamCell schema to fill in what one entity sets and another omits.
+fn world_with(persist: bool, budget: u32) -> String {
+    WORLD
+        .replace(
+            "    size 20 10 20\n    load 10\n",
+            &format!(
+                "    size 20 10 20\n    load 10\n    persist {persist}\n    budget {budget}\n"
+            ),
+        )
+        .replace(
+            "    size 10 10 10\n    load 5\n",
+            "    size 10 10 10\n    load 5\n    persist false\n    budget 0\n",
+        )
+}
+
+fn set(e: u32, name: &str, comp: &str, v: Value) {
+    value(og_world_set(
+        e,
+        find(e, name).unwrap(),
+        comp.into(),
+        v.to_string(),
+    ));
+}
+
+#[test]
+fn a_persisted_cell_keeps_its_edits_through_an_unload_and_a_save() {
+    let root = project("persist", &world_with(true, 0));
+    let a = placed(&root);
+    walk(a, 85.0);
+    step(a, 1);
+    assert!(loaded(a, "village"));
+    // The player hurts the well and moves it.
+    set(a, "well", "Health", json!({ "hp": 2 }));
+    set(
+        a,
+        "well",
+        "og.Transform",
+        json!({ "position": { "x": 104, "y": 0, "z": 7 } }),
+    );
+    walk(a, 77.0);
+    step(a, 1);
+    assert!(!loaded(a, "village"));
+    assert_eq!(find(a, "well"), None, "despawned while unloaded");
+    // A save taken while it is unloaded carries what it kept.
+    let save = value(og_world_snapshot(a, None))
+        .as_str()
+        .unwrap()
+        .to_string();
+    let b = placed(&root);
+    value(og_world_restore(b, save, None));
+    // The tick after a restore delivers og.WorldRestored: both take one.
+    step(a, 1);
+    step(b, 1);
+    for e in [a, b] {
+        walk(e, 95.0);
+        step(e, 1);
+        assert!(loaded(e, "village"));
+        assert_eq!(
+            get(e, "well", "Health")["hp"],
+            json!(2.0),
+            "kept, not authored"
+        );
+        assert_eq!(
+            get(e, "well", "og.Transform")["position"],
+            json!({ "x": 104.0, "y": 0.0, "z": 7.0 })
+        );
+        // The child points at the well's new id, and every entity is the
+        // village's member again.
+        assert_eq!(
+            get(e, "rope", "og.Parent")["entity"].as_f64(),
+            find(e, "well")
+        );
+        assert_eq!(
+            get(e, "hut", "og.CellMember")["cell"].as_f64(),
+            find(e, "village")
+        );
+        assert_eq!(cells(e)[0]["entities"], json!(3));
+    }
+    assert_eq!(
+        hash(a),
+        hash(b),
+        "the restored session goes on as the first"
+    );
+    // Without persist, the same edits are gone at the next load.
+    let root = project("authored", &world_with(false, 0));
+    let c = placed(&root);
+    walk(c, 85.0);
+    step(c, 1);
+    set(c, "well", "Health", json!({ "hp": 2 }));
+    walk(c, 77.0);
+    step(c, 1);
+    walk(c, 95.0);
+    step(c, 1);
+    assert_eq!(get(c, "well", "Health")["hp"], json!(5.0));
+}
+
+#[test]
+fn a_budgeted_cell_loads_over_ticks_and_resumes_after_a_restore() {
+    let root = project("budget", &world_with(false, 1));
+    let a = placed(&root);
+    walk(a, 85.0);
+    // One entity a tick, in the sub-scene's order: well, rope, hut.
+    step(a, 1);
+    assert!(find(a, "well").is_some() && find(a, "rope").is_none());
+    assert!(
+        !loaded(a, "village"),
+        "not loaded until its last entity is in"
+    );
+    let save = value(og_world_snapshot(a, None))
+        .as_str()
+        .unwrap()
+        .to_string();
+    let saved = hash(a);
+    step(a, 1);
+    assert!(find(a, "rope").is_some() && find(a, "hut").is_none());
+    assert!(!loaded(a, "village"));
+    step(a, 1);
+    assert!(loaded(a, "village"));
+    assert_eq!(cells(a)[0]["entities"], json!(3));
+    // Restored mid-load, it goes on from where the save was.
+    let b = placed(&root);
+    value(og_world_restore(b, save, None));
+    assert_eq!(hash(b), saved);
+    step(b, 2);
+    assert!(loaded(b, "village"));
+    assert_eq!(find(b, "hut"), find(a, "hut"), "the same ids");
+    // Wanted no more before it completes: what spawned goes, unannounced.
+    let c = placed(&root);
+    walk(c, 85.0);
+    step(c, 2);
+    walk(c, 0.0);
+    step(c, 1);
+    for n in ["well", "rope", "hut"] {
+        assert_eq!(find(c, n), None, "{n}");
+    }
+    assert!(!loaded(c, "village"));
+    assert_eq!(cells(c)[0]["loads"], json!(0));
 }

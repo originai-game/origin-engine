@@ -1392,6 +1392,26 @@ pub(crate) fn spawn_placed(
     scene: &SceneDesc,
     placement: Placement,
 ) -> Result<Vec<Entity>, String> {
+    let mut spawned = Vec::with_capacity(scene.entities.len());
+    spawn_part(eng, scene, placement, &mut spawned, scene.entities.len())?;
+    Ok(spawned)
+}
+
+/// [`spawn_placed`] in parts (a world cell's `budget`, G3-3): spawns the
+/// scene's entities from `spawned.len()` up to `end`, pushing each onto
+/// `spawned` (the entities earlier parts spawned, in order: parents and
+/// prefab roots are found there), and once the last one is in, what
+/// follows the entities (sub-scenes, resources, the instance record).
+/// The name check runs with the first part. On `Err`, `spawned` holds
+/// what spawned before the refusal.
+pub(crate) fn spawn_part(
+    eng: &Engine,
+    scene: &SceneDesc,
+    placement: Placement,
+    spawned: &mut Vec<Entity>,
+    end: usize,
+) -> Result<(), String> {
+    let end = end.min(scene.entities.len());
     let root = match placement {
         Placement::Under(root) => root,
         Placement::Cell { .. } => None,
@@ -1399,7 +1419,7 @@ pub(crate) fn spawn_placed(
     // A prefab's own blob (og.load.prefab) spawns unnamed: it is placed
     // many times.
     let prefab = scene.prefabs.first() == Some(&scene.id);
-    if !prefab {
+    if !prefab && spawned.is_empty() {
         let st = eng.state.borrow();
         let mut seen = std::collections::BTreeSet::new();
         for e in &scene.entities {
@@ -1414,7 +1434,9 @@ pub(crate) fn spawn_placed(
             }
         }
     }
-    super::timeline::register_scene_paths(eng.id, &scene.paths);
+    if spawned.is_empty() {
+        super::timeline::register_scene_paths(eng.id, &scene.paths);
+    }
     let layouts = eng.state.borrow().layouts.clone();
     let transform = resolve(&layouts, "Transform").cloned();
     let parent_layout = resolve(&layouts, "Parent").cloned();
@@ -1470,10 +1492,9 @@ pub(crate) fn spawn_placed(
         Placement::Under(_) => None,
     };
     let cell_layout = resolve(&layouts, super::stream::cells::CELL).cloned();
-    let mut subscenes: Vec<(Entity, String, bool)> = Vec::new();
-    let mut spawned: Vec<Entity> = Vec::with_capacity(scene.entities.len());
     before_structural(eng);
-    for (i, e) in scene.entities.iter().enumerate() {
+    for i in spawned.len()..end {
+        let e = &scene.entities[i];
         let world = eng.world()?;
         let mut components = Vec::new();
         // Its og.PrefabLink, spawned with it (an instance's root gets its
@@ -1487,7 +1508,6 @@ pub(crate) fn spawn_placed(
             components.push((*id, layout.encode(None, Some(&value))?));
         }
         let mut has_transform = false;
-        let mut is_cell = false;
         // A `Model` table beside a `model` line: its fields, with the
         // line's asset (`model_table`).
         let mut model_table = None;
@@ -1504,9 +1524,6 @@ pub(crate) fn spawn_placed(
                 {
                     value = super::stream::cells::placed(pose, &value);
                 }
-                is_cell |= cell_layout
-                    .as_ref()
-                    .is_some_and(|cl| cl.schema == layout.schema);
                 if e.instance.is_some()
                     && model_layout
                         .as_ref()
@@ -1593,15 +1610,20 @@ pub(crate) fn spawn_placed(
             spawn_lights(eng, index, entity)
                 .map_err(|r| format!("{}: entity '{}': {r}", scene.id, e.name))?;
         }
-        if let Some(sub) = &e.subscene {
-            subscenes.push((entity, sub.clone(), is_cell));
-        }
+    }
+    if spawned.len() < scene.entities.len() {
+        return Ok(());
     }
     // Sub-scenes, once the scene's own entities are in: a cell's handle
     // set for it to load; any other spawned under its entity now.
-    for (entity, sub, is_cell) in subscenes {
+    for (i, e) in scene.entities.iter().enumerate() {
+        let Some(sub) = &e.subscene else { continue };
+        let entity = spawned[i];
+        let is_cell = tables.iter().any(|(t, l)| {
+            t.get(i).is_some() && cell_layout.as_ref().is_some_and(|cl| cl.schema == l.schema)
+        });
         let index =
-            load_scene(eng, &sub).map_err(|r| format!("{}: sub-scene {sub}: {r}", scene.id))?;
+            load_scene(eng, sub).map_err(|r| format!("{}: sub-scene {sub}: {r}", scene.id))?;
         if is_cell {
             super::stream::cells::set_scene(eng, entity, handle(index))?;
             continue;
@@ -1620,7 +1642,7 @@ pub(crate) fn spawn_placed(
             dropped.join("; ")
         ));
     }
-    super::baked::scene_spawned(eng, scene, &spawned);
+    super::baked::scene_spawned(eng, scene, spawned);
     eng.state
         .borrow_mut()
         .scene_instances
@@ -1632,7 +1654,7 @@ pub(crate) fn spawn_placed(
             },
             entities: spawned.iter().map(|e| e.to_bits()).collect(),
         });
-    Ok(spawned)
+    Ok(())
 }
 
 /// A scene's `resource` blocks: each field it lists set on the world's

@@ -435,14 +435,27 @@ scenes that place the cells (GameDesc.scene does) before restoring. The
 four records are lazy (og-runtime's `lazy`): a world without cells keeps its
 type table, saves and hash.
 
+**Persisted cells and the spawn budget.** A cell with `persist` keeps what
+happened in it: as it unloads, its members and their descendants (parents
+first) are kept as rows (saved id, name, every component with its layout
+hash) in the `og.cells` state block, added with the cell's records, so a
+snapshot, a save, the hash and a rollback carry them. As it loads again the
+rows spawn instead of the sub-scene, every entity field that named a kept
+row pointed at that row's new entity, and the rows are dropped (the
+entities are in the world again); rows kept by a build whose components
+have another layout are refused with a warning and the cell loads as
+authored. `budget` caps the entities a load spawns per tick; the load in
+progress (its source and the ids spawned so far) is in the same block, so
+a restore taken mid-load goes on from there. `loaded` turns true and
+`og.CellEvent` is sent the tick the last entity spawns; a cell no longer
+wanted before then despawns what it spawned and sends nothing.
+
 **A cell that is not ready.** Batch 1 keeps a sub-scene's blob in the
 boot bundle, so a cell's entities are always ready at the tick that
 wants them; its models, textures and sounds draw their stand-ins until
 their streaming group is resident, as any grouped asset does, and
 physics only ever reads colliders from components and proxies. Later
-batches (in order): `persist` cells whose edits survive an unload in a
-state block, a per-tick entity budget that spreads a large cell over
-consecutive ticks, the cell's own asset group prefetched from the
+batches (in order): the cell's own asset group prefetched from the
 anchors' declared speed, sub-scene blobs in packs with a tick gate that
 holds the simulation (never skips or reorders it) when one has not
 landed, colliders baked by the cook, and texture mip streaming.

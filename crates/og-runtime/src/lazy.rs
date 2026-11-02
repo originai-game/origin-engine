@@ -246,6 +246,9 @@ pub(crate) fn ensure(eng: &Engine, world: &mut World, name: &str) -> Result<(), 
     if name == crate::story::STORY {
         crate::story::attach(eng.id, world)?;
     }
+    if name == crate::stream::cells::CELL {
+        crate::stream::cells::attach(eng.id, world)?;
+    }
     for partner in with_partners(lazy.name) {
         if partner != lazy.name {
             ensure(eng, world, partner)?;
@@ -262,6 +265,9 @@ pub(crate) fn enable(world: &mut World, engine: u32, name: &str) -> Result<(), S
             (l.enable)(world, engine).map_err(|e| format!("{name}: {}", e.reason()))?;
             if name == crate::story::STORY {
                 crate::story::attach(engine, world)?;
+            }
+            if name == crate::stream::cells::CELL {
+                crate::stream::cells::attach(engine, world)?;
             }
             Ok(())
         }

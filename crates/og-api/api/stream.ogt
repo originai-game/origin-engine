@@ -24,6 +24,8 @@ module stream {
       min 0
     }
     field pin bool "Loaded whatever the anchors while true (a cell game code needs, such as a quest's destination); set it false and the anchors decide again."
+    field persist bool "Keep what happened in it: when it unloads, its entities as they are (moved, damaged, opened; every component and name) are kept in the world's og.cells state, carried by snapshots, saves and the hash, and they come back as they were when it loads again instead of its sub-scene as authored. False: it loads as authored every time."
+    field budget u32 "The most of its entities spawned per tick while it loads, so a large cell spreads over consecutive ticks instead of one long one (0: all in one tick). `loaded` turns true, and CellEvent is sent, in the tick its last entity spawns; a cell that stops being wanted before then despawns what it spawned and sends nothing."
     field loaded bool "Written by the engine: true while the sub-scene's entities are in the world (from the tick it loaded until the tick it unloaded)." {
       readonly true
     }
