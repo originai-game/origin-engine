@@ -479,6 +479,7 @@ test("og.ui.standingsTower, lapTimer, rearView and a minimap's track: order, sig
 
 test("og.ui.rtsConsole and dragSelect: four zones side by side, a paged selection, a fixed command grid, a queue, the box", () => {
   let building = false;
+  let queued = true;
   let drag: { x: number; y: number } | null = null;
   let box: { dragging: boolean; x: number; y: number; width: number; height: number } | null = null;
   const e = engineFor("HudRts", () => {
@@ -490,7 +491,7 @@ test("og.ui.rtsConsole and dragSelect: four zones side by side, a paged selectio
         units: building ? [{ key: "b", name: "Barracks", health: 900, healthMax: 1000 }] : units, focus: building ? "b" : "u3",
         groups: [{ key: "g1", label: "1", count: 14 }, { key: "g2", label: "2", count: 0 }], group: "g1",
         stats: [{ key: "armour", label: "Armour", value: "1" }],
-        ...(building ? { queue: { items: [{ key: "q0", name: "Marine", remaining: 5, duration: 10 }, { key: "q1", name: "Marine", count: 3 }] } } : {}),
+        ...(building && queued ? { queue: { items: [{ key: "q0", name: "Marine", remaining: 5, duration: 10 }, { key: "q1", name: "Marine", count: 3 }] } } : {}),
       },
       commands: { commands, columns: 5 },
     });
@@ -539,6 +540,31 @@ test("og.ui.rtsConsole and dragSelect: four zones side by side, a paged selectio
   expect(box).toEqual({ dragging: true, released: false, x: 100, y: 120, width: 200, height: 140 } as never);
   const b = at(els, "DragHud/Drag")!;
   expect([b.x, b.y, b.width, b.height]).toEqual([100, 120, 200, 140]);
+  // Nothing queued: the card keeps its width and its stats take the grid's zone, rather than the card stretching over it.
+  queued = false;
+  e.advance(2);
+  els = dump(e);
+  expect(at(els, "RtsHud/Rts/Panel/Selection/Body/Card")!.width).toBe(card.width);
+  expect(at(els, "RtsHud/Rts/Panel/Selection/Body/Stats/Columns/Col#0/armour/Value")?.text).toBe("1");
+}, LOADED_MS);
+
+test("og.ui.rtsConsole: a minimap pushed out of a phone held sideways stays in its corner tick after tick", () => {
+  const e = engineFor("HudRtsLand", () => {
+    og.ui.rtsConsole("Rts", {
+      map: { shape: "square", zoom: 1 },
+      selection: { units: Array.from({ length: 8 }, (_, i) => ({ key: `u${i}`, name: `Unit ${i}`, health: 100, healthMax: 100 })), groups: [{ key: "g1", label: "1", count: 8 }], group: "g1" },
+      commands: { commands: [{ key: "a", name: "Attack", hotkey: "Q" }], columns: 5 },
+    });
+  }, VIEWPORTS.phoneLandscape);
+  e.advance(4);
+  // Sized by last tick's corner stack, the map once counted itself and so came and went on alternate ticks.
+  const sizes: number[] = [];
+  for (let i = 0; i < 4; i++) {
+    e.advance(1);
+    sizes.push(at(dump(e), "RtsMapHud")?.width ?? 0);
+  }
+  expect(sizes[0]).toBeGreaterThan(64);
+  expect(new Set(sizes).size).toBe(1);
 }, LOADED_MS);
 
 test("components anchored at one point stack in the order built instead of drawing over each other", () => {

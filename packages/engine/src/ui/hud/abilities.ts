@@ -10,7 +10,7 @@
 // the sweep running out.
 
 import type * as Api from "@origingame/engine";
-import { stepSize, hudRoom, shrunk, artTile, socketRim, hueOf, BLACK, WHITE, a11y, arc, inner, type Paint, absolute, anchorOf, box, bp, clamp01, close, drop, edge, frame, glow, groups, hudPlace, icon, innerGlow, keyId, kit, leaf, lit, mix, msToTicks, open, pct, pop, pulse, px, reduced, role, sel, shapeOf, shortTime, solid, sound, stroke, text, token, ts, u, vgrad, type Rgba, apply, textScale, tsFit } from "./core.ts";
+import { stepSize, hudRoom, shrunk, artTile, socketRim, hueOf, BLACK, WHITE, a11y, arc, inner, type Paint, absolute, anchorOf, box, bp, clamp01, close, drop, edge, frame, glow, groups, hudPlace, icon, innerGlow, keyId, kit, leaf, lit, mix, msToTicks, open, pct, pop, pulse, px, reduced, role, sel, shapeOf, shortTime, solid, sound, stroke, text, token, ts, u, vgrad, type Rgba, apply, textScale, tsFit, minText } from "./core.ts";
 
 const DEBUFF_TYPES: Record<string, string> = {
   magic: "#3d8bff", curse: "#a64dff", poison: "#3ccf4e", disease: "#c89a2c", bleed: "#e03030",
@@ -229,9 +229,12 @@ export function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc
       const k = desc.hotkey || (desc.action ? kit.frameGlyph(desc.action)?.text ?? "" : "");
       if (k) {
         // A small cap at any text size (about a fifth of the cell), so it never meets the cooldown's centred numeral.
-        const kStep = ts(10, true);
-        const kPx = Math.min(stepSize(kStep).size, size * 0.2);
-        const kk = Math.min(1, kPx / stepSize(kStep).size);
+        // The largest step within a fifth of the cell; at 200 % even the ramp's smallest step is larger than that, so
+        // it is drawn down to the fifth, but never under the smallest text the checks allow (§15.2): the key stays a
+        // corner cap while the rest of the HUD's text grows.
+        const kStep = tsFit(10, size * 0.2, true);
+        const kSize = stepSize(kStep).size;
+        const kk = Math.min(1, Math.max(minText(), size * 0.2) / kSize);
         text("Key", k, { step: kStep, font: "display", color: token("inkMuted", locked ? 0.6 : 1), nowrap: true, soft: true },
           absolute({ start: line + Math.max(2, u(3)), top: line + Math.max(1, u(2)) }, kk < 1 ? { transform: { scaleX: kk, scaleY: kk, pivotX: 0, pivotY: 0 } } : {}));
       }

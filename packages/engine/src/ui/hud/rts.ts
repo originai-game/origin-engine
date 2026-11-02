@@ -240,7 +240,7 @@ function tiles(desc: Api.SelectionPanelDesc, side: number, cols: number, rows: n
 }
 
 /** The focused unit's card: the portrait at full height, then name, type, health numeral over a bar, stats, tags. */
-function unitCard(desc: Api.SelectionPanelDesc, un: Api.SelectedUnit, h: number, w: number): void {
+function unitCard(desc: Api.SelectionPanelDesc, un: Api.SelectedUnit, h: number, w: number, withStats = true): void {
   const tk = frame().t;
   const nameStep = ts(16, true);
   const kindStep = ts(11);
@@ -268,9 +268,9 @@ function unitCard(desc: Api.SelectionPanelDesc, un: Api.SelectedUnit, h: number,
     const barH = Math.max(4, u(5));
     const fixedH = line(nameStep) + line(kindStep) + u(4) + line(hpStep) + barH + u(6);
     // The tags only where they fit under the health (a building's card, shortened by its queue, may drop them).
-    const tagH = (desc.tags ?? []).length > 0 && fixedH + line(tagStep) + u(4) <= h ? line(tagStep) + u(4) : 0;
+    const tagH = withStats && (desc.tags ?? []).length > 0 && fixedH + line(tagStep) + u(4) <= h ? line(tagStep) + u(4) : 0;
     const statLine = line(statStep) + u(2);
-    const nStats = Math.max(0, Math.min((desc.stats ?? []).length, Math.floor((h - fixedH - tagH) / statLine)));
+    const nStats = !withStats ? 0 : Math.max(0, Math.min((desc.stats ?? []).length, Math.floor((h - fixedH - tagH) / statLine)));
     kit.column("Info", { gap: 0, width: px(infoW), height: px(h) }, () => {
       text("Name", un.name ?? "", { step: nameStep, font: "display", color: token("ink"), nowrap: true, ellipsis: true, width: pct(1) });
       if (un.kind) text("Kind", un.kind, { step: kindStep, color: token("inkMuted"), nowrap: true, ellipsis: true, width: pct(1) });
@@ -304,6 +304,40 @@ function unitCard(desc: Api.SelectionPanelDesc, un: Api.SelectedUnit, h: number,
         text("Tags", (desc.tags ?? []).join("  ·  "), { step: tagStep, color: token("inkMuted"), nowrap: true, ellipsis: true, width: pct(1) });
       }
     });
+  });
+}
+
+/** A single selection's stats in the grid's zone: label and value pairs in as many columns as fit, the tags at the foot. */
+function statsZone(desc: Api.SelectionPanelDesc, h: number, w: number): void {
+  const step = ts(12);
+  const tagStep = ts(11);
+  const stats = desc.stats ?? [];
+  const tags = desc.tags ?? [];
+  const line = Math.ceil(stepSize(step).line) + u(6);
+  const colGap = u(24);
+  const tagH = tags.length > 0 ? Math.ceil(stepSize(tagStep).line) + u(6) : 0;
+  const perCol = Math.max(1, Math.floor((h - tagH) / line));
+  const cols = Math.max(1, Math.min(Math.ceil(stats.length / perCol), Math.floor((w + colGap) / (ut(150) + colGap))));
+  const colW = Math.floor((w - (cols - 1) * colGap) / cols);
+  const shown = stats.slice(0, cols * perCol);
+  kit.column("Stats", { gap: 0, width: px(w), height: px(h), part: sel("SelectionPanel", "stats") }, () => {
+    kit.row("Columns", { gap: colGap, cross: "start", width: pct(1) }, () => {
+      for (let c = 0; c < cols; c++) {
+        kit.column(kit.idi("Col", c), { gap: u(6), width: px(colW) }, () => {
+          for (const st of shown.slice(c * perCol, c * perCol + perCol)) {
+            kit.row(keyId(st.key ?? st.label ?? ""), { gap: u(8), cross: "center", width: pct(1), part: sel("SelectionPanel", "stat") }, () => {
+              if (st.icon) icon("Icon", st.icon, Math.round(stepSize(step).size * 1.05), token("inkMuted"));
+              text("Label", st.label ?? "", { step, color: token("inkMuted"), nowrap: true, ellipsis: true, width: { kind: "grow" } });
+              text("Value", st.value ?? "", { step, font: "mono", color: token("ink"), nowrap: true });
+            });
+          }
+        });
+      }
+    });
+    if (tagH > 0) {
+      leaf("Spacer", { width: px(1), height: { kind: "grow" } });
+      text("Tags", tags.join("  ·  "), { step: tagStep, color: token("inkMuted"), nowrap: true, ellipsis: true, width: pct(1) });
+    }
   });
 }
 
@@ -346,7 +380,7 @@ function queueZone(desc: Api.ProductionQueueDesc, h: number, w: number, small: n
         text("Name", first.name ?? "", { step: ts(13, true), font: "display", color: token("ink"), nowrap: true, ellipsis: true, width: pct(1) });
         kit.row("Progress", { gap: u(6), cross: "center", width: pct(1) }, () => {
           box("Bar", { width: { kind: "grow" }, height: px(barH), part: sel("ProductionQueue", "bar", paused ? "paused" : null) }, { shape: { kind: "rect", radii: [2, 2, 2, 2] }, fills: [solid(lit(BLACK, 0.7))] }, () => {
-            if (done > 0) leaf("Fill", { width: pct(done), height: pct(1) }, fillDraw(paused ? lit(role("warn")) : role("gold"), 2));
+            if (done > 0) leaf("Fill", { width: pct(done), height: pct(1) }, fillDraw(role(paused ? "warn" : "gold"), 2));
           });
           text("Left", paused ? (desc.pausedLabel ?? "Paused") : countdown(first.remaining ?? 0, false), { step: ts(11), font: "mono", color: paused ? lit(role("warn")) : token("inkMuted"), nowrap: true });
         });
@@ -379,7 +413,13 @@ function selectionBody(desc: Api.SelectionPanelDesc, h: number, lay: SelLayout, 
         rule("QueueRule", h);
         const q = queueZone(queue, h, gridW, lay.queueSide);
         if (q.cancelled) res.cancelled = q.cancelled;
-      } else kit.column("Card", { width: pct(1) }, () => unitCard(desc, focused, h, gridW + tk.md * 2 + 1 + lay.card));
+      } else {
+        // A unit or a building with nothing queued: the card keeps its width, and its stats and tags move into the
+        // grid's zone in columns, so neither a stretched card nor an empty zone stands beside it.
+        kit.column("Card", { width: px(lay.card) }, () => unitCard(desc, focused, h, lay.card, false));
+        rule("StatsRule", h);
+        statsZone(desc, h, gridW);
+      }
     });
     return;
   }
@@ -560,7 +600,10 @@ export function rtsConsole(id: string, desc: Api.RtsConsoleDesc = {}): Api.RtsCo
     const want = desc.map.size || (bp().phone ? 144 : 200);
     const chrome = tk.sm * 2 + u(28);
     const besidePx = Math.min((room - (console?.width ?? room)) / 2 - tk.gutter, consoleH) - chrome;
-    const above = kit.memory("~hudStack/topRight/total", 0);
+    // What the corner holds before the map this tick (its reach so far, plus the gap the map would start after):
+    // the stack's total of last tick counts the map itself, and sizing the map by it would make it flicker.
+    const placed = kit.memory("~hudStack/topRight/tick", -1) === kit.tick();
+    const above = placed ? kit.memory("~hudStack/topRight/reach", 0) + tk.sm : 0;
     const topPx = vp.height - vp.safeArea.top - vp.safeArea.bottom - consoleH - above - tk.gutter * 2 - chrome;
     const beside = Math.min(want, Math.floor(besidePx / k));
     const top = Math.min(want, Math.floor(topPx / k));
