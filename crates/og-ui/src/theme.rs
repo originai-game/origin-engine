@@ -698,8 +698,8 @@ dress "Slot.frame" {
   effect none
 }
 dress "Slot.frame[selected]" {
-  stroke 1.5 ink inside
-  effect outerGlow 12 sheen
+  stroke 1 "#ffffff8c" inside
+  effect outerGlow 8 "#ffffff1f"
   effect dropShadow 0 6 14 0 "#00000066"
 }
 dress "Meter.track" {

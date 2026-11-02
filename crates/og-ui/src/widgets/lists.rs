@@ -356,8 +356,8 @@ impl Ui {
     }
 
     /// Opens cell `index` of the open grid (`Cell#index`): a slot on `control`
-    /// (`controlStrong` and the style's ring when selected: one mark, no
-    /// second underline), focusable; its
+    /// (a step above `controlStrong` and the style's rim when selected: one
+    /// mark, no second underline), focusable; its
     /// content follows until [`Ui::close`].
     pub fn grid_item(&mut self, index: u32, selected: bool) -> Response {
         let t = self.theme;
@@ -390,13 +390,15 @@ impl Ui {
         let p = &t.palette;
         let amounts = self.state_amounts(i, &r);
         let hover = p.panel_hover.fade(0.6).over(p.control.over(p.panel));
-        let strong = crate::ui::mix_srgba(p.control_strong, p.ink, 0.12);
+        // A selected tile is lifted a step above a raised one: told apart
+        // by tone and lift, not only by its rim (docs/ui.md §15.5).
+        let lifted = |k: f32| crate::ui::mix_srgba(p.control_strong, p.ink, k);
         self.option_states(
             i,
             selected,
-            [p.control, p.control_strong],
-            [hover, p.control_strong],
-            [p.control_strong, strong],
+            [p.control, lifted(0.12)],
+            [hover, lifted(0.18)],
+            [p.control_strong, p.control_strong],
         );
         if let Some(part) = self.nodes[i].el.part.as_mut() {
             *part = part
