@@ -382,6 +382,10 @@ impl Ui {
                 pr
             };
         }
+        // Focus groups, explicit moves and gesture recognisers for the next frame.
+        let mut group_of = vec![0u64; self.nodes.len()];
+        let mut gesture_of = vec![0u64; self.nodes.len()];
+        self.collect_input_specs(&order, &mut group_of, &mut gesture_of);
         let mut hits = Vec::new();
         let mut elements = Vec::new();
         // The accessibility tree: each element's key (for its focus states)
@@ -458,7 +462,12 @@ impl Ui {
             if n.scrolls() && !n.el.interactive {
                 flags |= HIT_SCROLL;
             }
-            if n.el.interactive || n.backdrop || n.props.drag.is_some() || n.props.pinch.is_some() {
+            if n.el.interactive
+                || n.backdrop
+                || n.props.drag.is_some()
+                || n.props.pinch.is_some()
+                || n.props.gestures.is_some_and(|g| g.any())
+            {
                 flags |= HIT_POINTER;
             }
             if n.props.drop.is_some() {
@@ -504,6 +513,8 @@ impl Ui {
                     inv,
                     local: n.rect.outset(slop),
                     clip: n.clip,
+                    group: group_of[i],
+                    gesture: gesture_of[i],
                 }
             };
             let range = crate::a11y::range_of(n).filter(|_| !role.is_empty());
@@ -600,6 +611,8 @@ impl Ui {
                             inv: Affine::IDENTITY,
                             local: shown,
                             clip: n.clip,
+                            group: group_of[i],
+                            gesture: gesture_of[i],
                         });
                     }
                     let text: String = rc
@@ -775,6 +788,9 @@ impl Ui {
             focus_order,
         };
         self.state.hits = hits;
+        self.note_groups();
+        self.note_taps(&present);
+        let cursor = self.resolve_cursor(&present);
 
         self.build_part_draws(&order);
         let mut cmds = self.commands(&order);
@@ -826,6 +842,7 @@ impl Ui {
             },
             motion: motion_dump,
             unit: self.unit,
+            cursor,
         };
         &self.frame
     }

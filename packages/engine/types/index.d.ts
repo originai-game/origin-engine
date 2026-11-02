@@ -22117,6 +22117,22 @@ export interface Response {
    * The focus ring is up on it: the focus is on it and keys or a pad put it there (a press of the pointer, or a focus returned by a closing dialog to a pointer's player, puts it away). With ElementDesc.ownRing the component draws its own ring and what keys show (a cursor's card lifted).
    */
   readonly ring: boolean;
+  /**
+   * Its tap was recognised this tick (ElementProps.gestures): a press and a release inside it within the slop and, where it declares a double tap, once that double tap's window has passed without a second tap. Keys and pads tap it by activating it.
+   */
+  readonly tapped: boolean;
+  /** The second tap of its double tap landed this tick. */
+  readonly doubleTapped: boolean;
+  /**
+   * Its long press fired this tick; the press it took clicks and taps nothing when released.
+   */
+  readonly longPressed: boolean;
+  /**
+   * How far into its long press the held press is, 0 to 1 (0: none): a ring that fills while a touch is held.
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly longPress: number;
 }
 
 /** A slider's response and its value after this tick's input. */
@@ -23675,6 +23691,7 @@ export interface UiPointer {
   /** An Alt (Option) key is held. */
   readonly alt: boolean;
 }
+
 
 
 
@@ -34744,6 +34761,150 @@ export interface StateValue {
 }
 
 /**
+ * Explicit focus moves from an element (docs/ui.md §8.3), over the spatial pick: each a path (a full one, `Hud/Bag`, or a sibling's id); empty leaves that move to the layout. A path to a focus group lands on its remembered member (or its first); one to any other container, on its first focusable control.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface NavLinks {
+  /**
+   * Where Up goes.
+   *
+   * @default ""
+   */
+  readonly up?: string;
+  /**
+   * Where Down goes.
+   *
+   * @default ""
+   */
+  readonly down?: string;
+  /**
+   * Where Left goes (the screen's left, also under a right-to-left layout).
+   *
+   * @default ""
+   */
+  readonly left?: string;
+  /**
+   * Where Right goes.
+   *
+   * @default ""
+   */
+  readonly right?: string;
+  /**
+   * Where Tab goes.
+   *
+   * @default ""
+   */
+  readonly next?: string;
+  /**
+   * Where Shift+Tab goes.
+   *
+   * @default ""
+   */
+  readonly prev?: string;
+}
+
+/**
+ * A container whose focusable controls are one group for keys and pads (docs/ui.md §8.3): arrows move among its members first. At its edge a group that wraps goes round to its far side; one that does not leaves for the nearest control outside that way (the group around it first) and stays put when there is none. The zero value neither wraps nor remembers.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface FocusGroup {
+  /**
+   * At its edge the focus wraps round inside it.
+   *
+   * @default false
+   */
+  readonly wrap?: boolean;
+  /**
+   * Focus coming into it from outside lands on the member it last had.
+   *
+   * @default false
+   */
+  readonly memory?: boolean;
+}
+
+/**
+ * Tap, double tap and long press on any element (docs/ui.md §8.5), answered by Response (tapped, doubleTapped, longPressed, longPress), og.ui.gesture and the frame's motion events. Nested elements compete for one press: of those that declare a gesture, the highest priority wins it, the innermost of equals. A tap waits for a double tap only where one is declared; a long press that fires takes the press, so its release clicks nothing; travel past the slop (a drag, a scroll) fails all three. The zero value recognises nothing.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface GestureSpec {
+  /**
+   * Recognise a tap.
+   *
+   * @default false
+   */
+  readonly tap?: boolean;
+  /**
+   * Recognise a double tap (its tap then waits for the double tap's window).
+   *
+   * @default false
+   */
+  readonly doubleTap?: boolean;
+  /**
+   * Recognise a long press (the touch tooltip, a context menu).
+   *
+   * @default false
+   */
+  readonly longPress?: boolean;
+  /**
+   * How long a long press is held; 0 is 500.
+   *
+   * @default 0
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly longPressMs?: number;
+  /**
+   * The longest gap between a double tap's taps; 0 is 300.
+   *
+   * @default 0
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly doubleTapMs?: number;
+  /**
+   * Pointer travel that fails a tap and a long press; 0 is 10.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly slop?: number;
+  /**
+   * Among nested elements' recognisers of one press: higher wins (ties: the innermost).
+   *
+   * @default 0
+   */
+  readonly priority?: number;
+}
+
+/**
+ * The pointer's shape over an element (CSS cursor, docs/ui.md §6.1), inherited by its subtree.
+ * - `"auto"`: Its parent's; with none set above it, a text control's I-beam, a draggable element's open hand (closed while dragged), a link's hand, else the arrow.
+ * - `"default"`: The arrow.
+ * - `"pointer"`: The hand (a link).
+ * - `"text"`: The I-beam.
+ * - `"grab"`: An open hand.
+ * - `"grabbing"`: A closed hand.
+ * - `"move"`: The move arrows.
+ * - `"notAllowed"`: The slashed circle.
+ * - `"crosshair"`: The crosshair.
+ * - `"help"`: The question mark.
+ * - `"wait"`: Busy.
+ * - `"progress"`: Busy, still taking input.
+ * - `"resizeEw"`: Left and right.
+ * - `"resizeNs"`: Up and down.
+ * - `"resizeNesw"`: Up right and down left.
+ * - `"resizeNwse"`: Up left and down right.
+ * - `"zoomIn"`: The magnifier with a plus.
+ * - `"zoomOut"`: The magnifier with a minus.
+ * - `"none"`: Hidden (a game drawing its own).
+ */
+export type Cursor = "auto" | "default" | "pointer" | "text" | "grab" | "grabbing" | "move" | "notAllowed" | "crosshair" | "help" | "wait" | "progress" | "resizeEw" | "resizeNs" | "resizeNesw" | "resizeNwse" | "zoomIn" | "zoomOut" | "none";
+
+/**
  * Everything an element carries beyond its box (docs/ui.md §6.1): set with og.ui.props right after the element. The zero value is an element in the flow, unmoved and opaque, with no motion.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -34871,6 +35032,30 @@ export interface ElementProps {
    * @default null
    */
   readonly drop?: DropSpec | null;
+  /**
+   * Where keys and pads move the focus from it, over the spatial pick.
+   *
+   * @default {}
+   */
+  readonly nav?: NavLinks;
+  /**
+   * Its focusable controls are one focus group: arrows move among them first; at its edge it wraps or is left; it can remember its last member.
+   *
+   * @default null
+   */
+  readonly focusGroup?: FocusGroup | null;
+  /**
+   * Tap, double tap and long press on it.
+   *
+   * @default null
+   */
+  readonly gestures?: GestureSpec | null;
+  /**
+   * The pointer's shape over it and its subtree; auto takes its parent's.
+   *
+   * @default "auto"
+   */
+  readonly cursor?: Cursor;
   /**
    * How its animatable values move when they change; null is at once.
    *
@@ -35280,12 +35465,24 @@ export interface GestureInfo {
   readonly hovering: boolean;
   /** For a drop target: the element dropped on it this tick (empty: none). */
   readonly received: string;
+  /** Its tap this tick (ElementProps.gestures), as Response.tapped. */
+  readonly tapped: boolean;
+  /** Its double tap this tick. */
+  readonly doubleTapped: boolean;
+  /** Its long press this tick. */
+  readonly longPressed: boolean;
+  /**
+   * How far into its long press the held press is, 0 to 1.
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly longPress: number;
 }
 
 /** What happened in the UI's motion this tick. */
 export interface UiMotionEvent {
   /**
-   * sound, haptic, burst, state, callback, end (a play finished), dismiss (a swipe threw an element off), drop (a drag was dropped on a target) or snap (a released drag chose a snap point).
+   * sound, haptic, burst, state, callback, end (a play finished), dismiss (a swipe threw an element off), drop (a drag was dropped on a target), snap (a released drag chose a snap point), or tap, doubleTap and longPress (an element's ElementProps.gestures recognised one).
    */
   readonly kind: string;
   /**
@@ -49426,6 +49623,10 @@ export declare namespace og {
      * The primary pointer of the frame being built, without the world: for a component that hit-tests a shape it draws itself (a pie's wedges, a wheel's slices) by angle and radius rather than by rectangles. Keys and pads reach the same choices through focusable parts.
      */
     function framePointer(): UiPointer;
+    /**
+     * The pointer's shape the last frame resolved (never auto): the cursor set on what the press holds or the pointer is over, or around it, else its kind's. The web shell sets the canvas's CSS cursor from each frame's answer (`cursor`); a native host that draws its own window (og dev, Origin Desktop's shared frames) reads the same answer.
+     */
+    function frameCursor(): Cursor;
     /**
      * The play surface of the frame being built: og.ui.viewport without the world, for code that only builds UI.
      */

@@ -2559,6 +2559,12 @@ pub fn og_ui_frame_pointer(env: Env) -> String {
     <Host as UiApi>::og_ui_frame_pointer(&Host)
 }
 
+#[napi(js_name = "og_ui_frame_cursor")]
+pub fn og_ui_frame_cursor(env: Env) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_frame_cursor(&Host)
+}
+
 #[napi(js_name = "og_ui_frame_viewport")]
 pub fn og_ui_frame_viewport(env: Env) -> String {
     let _env = crate::EnvScope::enter(&env);

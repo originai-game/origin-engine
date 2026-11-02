@@ -42,6 +42,7 @@ mod nav;
 pub mod paint;
 pub mod paint_entry;
 mod probe;
+mod recognize;
 mod rich;
 mod scroll;
 pub mod shape;
@@ -66,9 +67,9 @@ pub use doc::build::{DocEvent, DocResponse};
 pub use draw::{DrawCmd, DrawItem, EmitDesc, LAYER_BASE, LAYER_SPAN, MAX_LAYERS};
 pub use dress::{DressFrame, Dressing, Selector};
 pub use element::{
-    Affine, Dismiss, DragAxis, DragSpec, DropSpec, Edges, GridFlow, GridPlace, GridSpec,
-    LayoutMode, LayoutStats, Orientation, Overlap, Patch, PinchSpec, Position, Prop, Props, Query,
-    Track, Transform, Values, Variant,
+    Affine, Cursor, Dismiss, DragAxis, DragSpec, DropSpec, Edges, FocusGroup, GestureSpec,
+    GridFlow, GridPlace, GridSpec, LayoutMode, LayoutStats, NavLinks, Orientation, Overlap, Patch,
+    PinchSpec, Position, Prop, Props, Query, Track, Transform, Values, Variant,
 };
 pub use id::{Id, ui_id, ui_idi};
 pub use input::{GamepadFrame, InputFrame, InputSource, Nav, OgInput, UiKey};

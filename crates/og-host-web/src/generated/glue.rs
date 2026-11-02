@@ -2134,6 +2134,11 @@ pub fn og_ui_frame_pointer() -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_ui_frame_cursor() -> String {
+    <Host as UiApi>::og_ui_frame_cursor(&Host)
+}
+
+#[wasm_bindgen]
 pub fn og_ui_frame_viewport() -> String {
     <Host as UiApi>::og_ui_frame_viewport(&Host)
 }

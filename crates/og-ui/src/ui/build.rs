@@ -155,12 +155,16 @@ impl Ui {
         Response {
             hovered,
             pressed: s.active == key && self.input.down,
-            clicked: (s.active == key && self.input.released && s.hot == key)
+            clicked: (s.active == key && self.input.released && s.hot == key && !s.tap.taken)
                 || (self.nav.activate == key && key != 0)
                 || by_pad.is_some(),
             focused: s.focus == key,
             pad,
             focused_by,
+            tapped: key != 0 && (self.nav.tapped == key || self.tapped_by_keys(key)),
+            double_tapped: key != 0 && self.nav.double_tapped == key,
+            long_pressed: key != 0 && self.nav.long_pressed == key,
+            long_press: self.long_press_progress(key),
             ..Response::default()
         }
     }

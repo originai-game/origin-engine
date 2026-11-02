@@ -1248,6 +1248,10 @@ impl UiApi for NodeHost {
     fn og_ui_frame_pointer(&self) -> String {
         rt::og_ui_frame_pointer()
     }
+
+    fn og_ui_frame_cursor(&self) -> String {
+        rt::og_ui_frame_cursor()
+    }
     fn og_ui_set_focus(&self, path: String) {
         rt::og_ui_set_focus(path)
     }

@@ -153,7 +153,7 @@ pub use modules::{
     og_ui_close, og_ui_close_list, og_ui_close_modal, og_ui_component, og_ui_configure,
     og_ui_cooldown, og_ui_counter, og_ui_define_action, og_ui_define_timeline, og_ui_device,
     og_ui_dialogue, og_ui_dismiss_toast, og_ui_divider, og_ui_doc_events, og_ui_document_schema,
-    og_ui_dpad, og_ui_dragging, og_ui_feedback, og_ui_focus, og_ui_force_state,
+    og_ui_dpad, og_ui_dragging, og_ui_feedback, og_ui_focus, og_ui_force_state, og_ui_frame_cursor,
     og_ui_frame_direction, og_ui_frame_glyph, og_ui_frame_pointer, og_ui_frame_theme,
     og_ui_frame_viewport, og_ui_game_input, og_ui_gesture, og_ui_glyph, og_ui_grid_item,
     og_ui_has_icon, og_ui_icon, og_ui_image, og_ui_joystick, og_ui_key_value, og_ui_label,

@@ -417,6 +417,11 @@ export class Shell {
         this.#text?.relabel();
         return;
       }
+      if (m.type === "cursor") {
+        // The UI's pointer shape over what the pointer is on (og.ui.frameCursor).
+        if (this.#canvas) this.#canvas.style.cursor = String((m as unknown as { cursor: string }).cursor || "default");
+        return;
+      }
       if (m.type === "pointer-lock") {
         const ask = m as unknown as { wanted: boolean; raw?: boolean };
         // Releasing needs no gesture: the lock ends at once. Taking it waits for the next press.

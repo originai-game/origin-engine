@@ -284,6 +284,11 @@ pub enum When {
     Change(Expr),
     /// A UI action fired while its layer is on top (`on action details push Details`).
     Action(String),
+    /// Its tap, double tap or long press was recognised (its `tap`,
+    /// `doubleTap` or `longPress` prop).
+    Tap,
+    DoubleTap,
+    LongPress,
 }
 
 #[derive(Clone, Debug, PartialEq)]

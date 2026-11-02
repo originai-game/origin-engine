@@ -203,6 +203,8 @@ pub(super) fn response(r: Response) -> Value {
         "hovered": r.hovered, "pressed": r.pressed, "clicked": r.clicked,
         "changed": r.changed, "focused": r.focused, "submitted": r.submitted,
         "dropped": r.dropped, "pad": r.pad, "focusedBy": r.focused_by, "adjust": r.adjust, "adjustY": r.adjust_y, "ring": r.ring,
+        "tapped": r.tapped, "doubleTapped": r.double_tapped, "longPressed": r.long_pressed,
+        "longPress": r.long_press,
     })
 }
 
@@ -266,6 +268,17 @@ pub fn og_ui_frame_viewport() -> String {
     })
     .unwrap_or((Viewport::default(), og_ui::HUD_MAX_ASPECT));
     viewport_json(&v, hud).to_string()
+}
+
+pub fn og_ui_frame_cursor() -> String {
+    // The last completed frame's: the one the host shows now.
+    let c = with_ui("og.ui.frameCursor", |ui| ui.frame().cursor).unwrap_or_default();
+    match c {
+        og_ui::Cursor::Auto => og_ui::Cursor::Default,
+        c => c,
+    }
+    .name()
+    .to_string()
 }
 
 pub fn og_ui_frame_pointer() -> String {

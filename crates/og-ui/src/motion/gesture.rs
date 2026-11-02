@@ -49,6 +49,12 @@ pub struct GestureInfo {
     pub hovering: bool,
     /// For a drop target: the element dropped on it this tick (empty: none).
     pub received: String,
+    /// Its tap, double tap and long press this tick ([`crate::GestureSpec`]).
+    pub tapped: bool,
+    pub double_tapped: bool,
+    pub long_pressed: bool,
+    /// How far into its long press the held press is, 0 to 1.
+    pub long_press: f32,
 }
 
 impl Ui {
@@ -368,6 +374,10 @@ impl Ui {
             received: source
                 .map(|k| self.drag_paths.get(&k).cloned().unwrap_or_default())
                 .unwrap_or_default(),
+            tapped: key != 0 && (self.nav.tapped == key || self.tapped_by_keys(key)),
+            double_tapped: key != 0 && self.nav.double_tapped == key,
+            long_pressed: key != 0 && self.nav.long_pressed == key,
+            long_press: self.long_press_progress(key),
         }
     }
 }

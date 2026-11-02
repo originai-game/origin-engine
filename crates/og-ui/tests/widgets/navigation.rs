@@ -1058,33 +1058,42 @@ fn a_version_12_state_upgrades_and_restores() {
     };
     let mut rig = Rig::new(());
     rig.idle(2, build);
-    let v13 = rig.ui.save_state();
-    // Version 13's layout: each hit's owner (8 bytes) after its key, rect,
-    // full rect, flags, scope and scroller; version 12 had none.
+    let now = rig.ui.save_state();
+    // This version's layout: each hit's owner (8 bytes) after its key, rect,
+    // full rect, flags, scope and scroller, and its focus group and
+    // recogniser (16) after its maps and rects; version 12 had neither, nor
+    // the groups, moves, recognisers and press (61 bytes here, all empty)
+    // before the layer stack.
     let u32_at =
         |b: &[u8], at: usize| u32::from_le_bytes(b[at..at + 4].try_into().unwrap()) as usize;
-    assert_eq!(u32_at(&v13, 0), 13);
-    let scrolls = u32_at(&v13, 44);
+    assert_eq!(u32_at(&now, 0), 14);
+    let scrolls = u32_at(&now, 44);
     let hits_at = 48 + scrolls * 12;
-    let hits = u32_at(&v13, hits_at);
+    let hits = u32_at(&now, hits_at);
     assert!(hits >= 3, "the grid and its two items are hit");
-    let (mut v12, mut zeroed) = (v13[..hits_at + 4].to_vec(), v13[..hits_at + 4].to_vec());
+    let (mut v12, mut zeroed) = (now[..hits_at + 4].to_vec(), now[..hits_at + 4].to_vec());
     v12[..4].copy_from_slice(&12u32.to_le_bytes());
     let mut at = hits_at + 4;
     let mut owners = 0;
     for _ in 0..hits {
         let head = 8 + 16 + 16 + 2 + 8 + 8;
-        v12.extend_from_slice(&v13[at..at + head]);
-        zeroed.extend_from_slice(&v13[at..at + head]);
-        owners += usize::from(v13[at + head..at + head + 8] != [0; 8]);
+        v12.extend_from_slice(&now[at..at + head]);
+        zeroed.extend_from_slice(&now[at..at + head]);
+        owners += usize::from(now[at + head..at + head + 8] != [0; 8]);
         zeroed.extend_from_slice(&[0; 8]);
         let tail = 24 + 16 + 16;
-        v12.extend_from_slice(&v13[at + head + 8..at + head + 8 + tail]);
-        zeroed.extend_from_slice(&v13[at + head + 8..at + head + 8 + tail]);
-        at += head + 8 + tail;
+        v12.extend_from_slice(&now[at + head + 8..at + head + 8 + tail]);
+        zeroed.extend_from_slice(&now[at + head + 8..at + head + 8 + tail + 16]);
+        at += head + 8 + tail + 16;
     }
-    v12.extend_from_slice(&v13[at..]);
-    zeroed.extend_from_slice(&v13[at..]);
+    zeroed.extend_from_slice(&now[at..]);
+    // The layer stack is the last string: its length, then its JSON.
+    let docs = (0..now.len() - 4)
+        .rev()
+        .find(|&k| u32_at(&now, k) + k + 4 == now.len() && now[k + 4] == b'{')
+        .expect("the layer stack");
+    v12.extend_from_slice(&now[at..docs - 61]);
+    v12.extend_from_slice(&now[docs..]);
     assert_eq!(owners, 2, "both items had the grid as their owner");
 
     assert!(

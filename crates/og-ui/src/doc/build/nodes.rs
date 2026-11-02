@@ -625,12 +625,28 @@ impl Ui {
         if resp.clicked {
             b.event(path, "click", &n.id, Value::Null);
         }
+        // A recogniser on a container that is not interactive answers
+        // through its gesture, not its response.
+        let g = self.gesture_of(key);
+        let (tap, double, long) = (
+            resp.tapped || g.tapped,
+            resp.double_tapped || g.double_tapped,
+            resp.long_pressed || g.long_pressed,
+        );
+        for (on, kind) in [(tap, "tap"), (double, "doubleTap"), (long, "longPress")] {
+            if on {
+                b.event(path, kind, &n.id, Value::Null);
+            }
+        }
         let appeared = !self.docs.seen.contains(&key);
         for (k, t) in n.triggers.iter().enumerate() {
             let go = match &t.when {
                 When::Click => resp.clicked,
                 When::Changed => resp.changed,
                 When::Appear => appeared,
+                When::Tap => tap,
+                When::DoubleTap => double,
+                When::LongPress => long,
                 When::Action(a) => self.docs.accepts && self.action_fired(a),
                 When::Change(e) => {
                     let v = b.eval(e);

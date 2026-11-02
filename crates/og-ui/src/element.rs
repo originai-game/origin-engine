@@ -452,6 +452,185 @@ pub struct DropSpec {
     pub accept: Vec<String>,
 }
 
+/// Where keys and pads move the focus from this element (docs/ui.md §8.3),
+/// over the spatial pick: each a path (a full one, `Hud/Bag`, or a
+/// sibling's id), empty to leave that move to the layout. A path naming a
+/// focus group lands on its remembered member (or its first); one naming
+/// any other container, on its first focusable control.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct NavLinks {
+    pub up: String,
+    pub down: String,
+    pub left: String,
+    pub right: String,
+    /// Tab and Shift+Tab.
+    pub next: String,
+    pub prev: String,
+}
+
+impl NavLinks {
+    pub fn is_empty(&self) -> bool {
+        [
+            &self.up,
+            &self.down,
+            &self.left,
+            &self.right,
+            &self.next,
+            &self.prev,
+        ]
+        .iter()
+        .all(|s| s.is_empty())
+    }
+}
+
+/// A container whose focusable controls are one group for keys and pads
+/// (docs/ui.md §8.3): arrows move among its members first. At its edge a
+/// group that wraps goes round to its far side; one that does not leaves
+/// it for the nearest control outside that way, and stays put when there
+/// is none. The zero value neither wraps nor remembers.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct FocusGroup {
+    /// At its edge the focus wraps round inside it.
+    pub wrap: bool,
+    /// Focus coming into it from outside lands on the member it last had.
+    pub memory: bool,
+}
+
+/// Tap, double tap and long press on any element (docs/ui.md §8.5),
+/// recognised from the press, its travel and the ticks it is held, in the
+/// UI state. Nested elements' recognisers compete for one press: of those
+/// that declare a gesture, the highest `priority` wins it (ties: the
+/// innermost). A tap waits for a double tap only where one is declared; a
+/// long press that fires takes the press, so its release clicks nothing;
+/// travel past `slop` (a drag, a scroll) fails all three. The zero value
+/// recognises nothing.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct GestureSpec {
+    pub tap: bool,
+    pub double_tap: bool,
+    pub long_press: bool,
+    /// How long a long press is held, ms (0: 500).
+    pub long_press_ms: f32,
+    /// The longest gap between a double tap's two taps, ms (0: 300).
+    pub double_tap_ms: f32,
+    /// Pointer travel that fails a tap and a long press, CSS px (0: 10).
+    pub slop: f32,
+    pub priority: i32,
+}
+
+impl GestureSpec {
+    pub fn any(&self) -> bool {
+        self.tap || self.double_tap || self.long_press
+    }
+}
+
+/// The pointer's shape over an element (CSS `cursor`, docs/ui.md §6.1),
+/// inherited by its subtree. `Auto` takes its parent's, and with none set
+/// above it a text control's I-beam, a draggable element's open hand (a
+/// closed one while dragged), a link's hand, else the arrow.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum Cursor {
+    #[default]
+    Auto,
+    Default,
+    Pointer,
+    Text,
+    Grab,
+    Grabbing,
+    Move,
+    NotAllowed,
+    Crosshair,
+    Help,
+    Wait,
+    Progress,
+    ResizeEw,
+    ResizeNs,
+    ResizeNesw,
+    ResizeNwse,
+    ZoomIn,
+    ZoomOut,
+    /// Hidden (a game drawing its own).
+    None,
+}
+
+impl Cursor {
+    pub const ALL: [Cursor; 19] = [
+        Cursor::Auto,
+        Cursor::Default,
+        Cursor::Pointer,
+        Cursor::Text,
+        Cursor::Grab,
+        Cursor::Grabbing,
+        Cursor::Move,
+        Cursor::NotAllowed,
+        Cursor::Crosshair,
+        Cursor::Help,
+        Cursor::Wait,
+        Cursor::Progress,
+        Cursor::ResizeEw,
+        Cursor::ResizeNs,
+        Cursor::ResizeNesw,
+        Cursor::ResizeNwse,
+        Cursor::ZoomIn,
+        Cursor::ZoomOut,
+        Cursor::None,
+    ];
+
+    /// Its CSS name (`auto` for `Auto`).
+    pub fn css(self) -> &'static str {
+        match self {
+            Cursor::Auto => "auto",
+            Cursor::Default => "default",
+            Cursor::Pointer => "pointer",
+            Cursor::Text => "text",
+            Cursor::Grab => "grab",
+            Cursor::Grabbing => "grabbing",
+            Cursor::Move => "move",
+            Cursor::NotAllowed => "not-allowed",
+            Cursor::Crosshair => "crosshair",
+            Cursor::Help => "help",
+            Cursor::Wait => "wait",
+            Cursor::Progress => "progress",
+            Cursor::ResizeEw => "ew-resize",
+            Cursor::ResizeNs => "ns-resize",
+            Cursor::ResizeNesw => "nesw-resize",
+            Cursor::ResizeNwse => "nwse-resize",
+            Cursor::ZoomIn => "zoom-in",
+            Cursor::ZoomOut => "zoom-out",
+            Cursor::None => "none",
+        }
+    }
+
+    /// Its IDL name (`notAllowed`, `resizeEw`…).
+    pub fn name(self) -> &'static str {
+        match self {
+            Cursor::Auto => "auto",
+            Cursor::Default => "default",
+            Cursor::Pointer => "pointer",
+            Cursor::Text => "text",
+            Cursor::Grab => "grab",
+            Cursor::Grabbing => "grabbing",
+            Cursor::Move => "move",
+            Cursor::NotAllowed => "notAllowed",
+            Cursor::Crosshair => "crosshair",
+            Cursor::Help => "help",
+            Cursor::Wait => "wait",
+            Cursor::Progress => "progress",
+            Cursor::ResizeEw => "resizeEw",
+            Cursor::ResizeNs => "resizeNs",
+            Cursor::ResizeNesw => "resizeNesw",
+            Cursor::ResizeNwse => "resizeNwse",
+            Cursor::ZoomIn => "zoomIn",
+            Cursor::ZoomOut => "zoomOut",
+            Cursor::None => "none",
+        }
+    }
+
+    pub fn from_name(name: &str) -> Option<Cursor> {
+        Cursor::ALL.into_iter().find(|c| c.name() == name)
+    }
+}
+
 /// An animatable value of an element (docs/ui.md §7.1). Colours are sRGB
 /// components 0–1 and alpha; rotation and skew radians.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -663,6 +842,14 @@ pub struct Props {
     pub drag: Option<DragSpec>,
     pub pinch: Option<PinchSpec>,
     pub drop: Option<DropSpec>,
+    /// Explicit focus moves from it (keys and pads), over the spatial pick.
+    pub nav: NavLinks,
+    /// Its focusable controls are one focus group.
+    pub focus_group: Option<FocusGroup>,
+    /// Tap, double tap and long press on it.
+    pub gestures: Option<GestureSpec>,
+    /// The pointer's shape over it and its subtree.
+    pub cursor: Cursor,
     /// How its animatable values move when they change (`None`: at once).
     pub motion: Option<Transition>,
     /// Moves from its last laid-out rectangle to its new one (FLIP).
@@ -704,6 +891,10 @@ impl Default for Props {
             drag: None,
             pinch: None,
             drop: None,
+            nav: NavLinks::default(),
+            focus_group: None,
+            gestures: None,
+            cursor: Cursor::Auto,
             motion: None,
             layout_motion: None,
             enter: None,
@@ -884,7 +1075,7 @@ impl Ui {
     }
 
     /// The node a path names: a full path, else one relative to `from`'s parent.
-    fn node_at(&self, path: &str, from: usize, order: &[usize]) -> Option<usize> {
+    pub(crate) fn node_at(&self, path: &str, from: usize, order: &[usize]) -> Option<usize> {
         let full = crate::id::key_of_path(path);
         let parent = self.nodes[from].parent;
         let sibling = if parent == NONE {
