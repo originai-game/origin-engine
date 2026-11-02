@@ -347,11 +347,31 @@ export function patternsScript(phone: boolean): Script {
   b.shot("rtl-gacha-summary", 1.2);
   b.seq((at) => key(at, "Escape"), 0.4);
   b.cmd("pat:reset");
-  // The rate line in Japanese and Korean: each locale's own sentence in its own face, no English fallback.
+  // Every pattern screen in Japanese, Korean and Chinese: each word the screen shows is the locale's (banner and
+  // character names stay proper nouns), in its own face, with no English fallback.
+  for (const loc of ["ja", "ko", "zh"]) {
+    b.cmd(`locale:${loc === "zh" ? "zh-CN" : loc}`);
+    b.cmd("show:gacha");
+    b.shot(`${loc}-gacha`, 0.8);
+    b.cmd("show:cards");
+    b.shot(`${loc}-cards`, 0.8);
+    b.cmd("show:rewards");
+    b.shot(`${loc}-rewards`, 1.0);
+    b.cmd("show:gear");
+    b.shot(`${loc}-gear`, 0.8);
+  }
+  // The pull's own words: the reveal's NEW badge and hint, then the summary's.
   b.cmd("locale:ja");
-  b.shot("ja-gacha", 0.8);
-  b.cmd("locale:ko");
-  b.shot("ko-gacha", 0.8);
+  b.cmd("show:gacha");
+  b.cmd("pat:pull:1");
+  b.shot("ja-gacha-reveal", 2.2);
+  b.seq((at) => key(at, "Escape"), 0.2);
+  b.seq((at) => key(at, "Escape"), 0.4);
+  b.cmd("pat:pull:10");
+  b.seq((at) => key(at, "Escape"), 0.2);
+  b.shot("ja-gacha-summary", 1.2);
+  b.seq((at) => key(at, "Escape"), 0.4);
+  b.cmd("pat:reset");
   b.cmd("locale:en");
   b.cmd("demo:text:200");
   b.cmd("show:gear");

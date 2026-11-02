@@ -73,8 +73,20 @@ type ArtName = (typeof ART_FILES)[number];
 const ART: Partial<Record<ArtName, number>> = {};
 let artOn = true;
 
-/** Load the kit's art set (the game's start). */
+/** The world whose string tables the previews read (the kit has one). */
+let words: World | null = null;
+
+/**
+ * A preview's words in the active locale (og.i18n, assets/strings): every string a pattern screen shows is the game's,
+ * keyed, so a locale frame has no English chrome. Banner and character names stay proper nouns.
+ */
+function L(key: string, args?: Record<string, string | number>): string {
+  return words ? og.i18n.t(words, key, args) : key;
+}
+
+/** Load the kit's art set (the game's start), and keep the world whose strings the previews read. */
 export function loadPatternArt(world: World): void {
+  words = world;
   for (const f of ART_FILES) {
     const r = og.load.texture(world, `textures/art/${f}.jpg`);
     if (r.ok) ART[f] = r.value as unknown as number;
@@ -135,8 +147,10 @@ const ITEM_ART: Record<string, ArtName> = {
   helm: "items/crown", plate: "items/arcane-staff", gem: "boons/star", boots: "items/boots", scroll: "items/iron-key", gloves: "items/gauntlets",
   ore: "boons/crystal", amulet: "items/sapphire-amulet", shield: "items/oak-shield", robe: "items/mage-robe", dagger: "items/iron-sword",
 };
-/** An item with its art. */
-const withArt = <T extends { key?: string; image?: unknown }>(it: T): T => ({ ...it, image: art(ITEM_ART[it.key ?? ""]) });
+/** An item with its art and its name in the active locale (a split stack keeps its source's name). */
+const withArt = <T extends { key?: string; image?: unknown; name?: string }>(it: T): T => ({ ...it, name: L(`gear.item.${(it.key ?? "").replace(/-\d+$/, "")}`), image: art(ITEM_ART[(it.key ?? "").replace(/-\d+$/, "")]) });
+/** The grids' own words. */
+const gridWords = () => ({ lockedLabel: L("gear.locked"), unusableLabel: L("gear.unusable"), emptyLabel: L("gear.empty"), rotateLabel: L("gear.rotate") });
 
 // ── state ───────────────────────────────────────────────────────────────
 
@@ -178,11 +192,11 @@ const SLOTS0: Slot[] = [
 
 /** What an item of each tag would change against what is worn in its slot: the compare column's deltas. */
 const COMPARE: Record<string, Partial<Record<string, number>>> = {
-  helmet: { Armor: 48, Strength: 12, "Fire resistance": -6 },
-  weapon: { Strength: 32, Cooldowns: -0.4 },
-  chest: { Armor: 160, "Move speed": -5 },
-  feet: { Armor: 22, "Move speed": 10 },
-  ring: { Strength: 8, "Fire resistance": 4 },
+  helmet: { armor: 48, strength: 12, fire: -6 },
+  weapon: { strength: 32, cooldowns: -0.4 },
+  chest: { armor: 160, speed: -5 },
+  feet: { armor: 22, speed: 10 },
+  ring: { strength: 8, fire: 4 },
 };
 
 const p = {
@@ -253,7 +267,7 @@ export function cardsScreen(world?: World): void {
   const ts = Math.max(1, t.textScale ?? 1);
   if (world && !endTurnDefined.has(world)) {
     endTurnDefined.add(world);
-    og.input.defineAction(world, { name: "endTurn", label: "End turn", bindings: [{ control: "KeyE" }, { control: "pad.y" }] });
+    og.input.defineAction(world, { name: "endTurn", label: L("cards.endTurn"), bindings: [{ control: "KeyE" }, { control: "pad.y" }] });
   }
   // On a phone the kit's Gallery button takes the top end corner (the start one is the web shell's Back): the header leaves it room.
   const galleryW = small ? (og.ui.bounds("Back")?.width ?? 100) + t.space.sm : 0;
@@ -261,7 +275,7 @@ export function cardsScreen(world?: World): void {
   const footH = og.ui.bounds("Foot")?.height ?? (small ? 260 : 320);
   const tablePath = landscape ? "Cards/Top" : "Cards/Table";
   // The enemies, as the game would project its units: their plates of last tick are the hand's targets.
-  const targets: CardTarget[] = c.foes.map((f) => ({ key: f.key, name: f.name, rect: og.ui.bounds(`${tablePath}/Foes/${f.key}/Plate`) ?? { x: -1000, y: -1000, width: 0, height: 0 } as UiRect, valid: !f.taunt }));
+  const targets: CardTarget[] = c.foes.map((f) => ({ key: f.key, name: L(`cards.foe.${f.key}`), rect: og.ui.bounds(`${tablePath}/Foes/${f.key}/Plate`) ?? { x: -1000, y: -1000, width: 0, height: 0 } as UiRect, valid: !f.taunt }));
   // A hit's ghost holds a moment, then falls to the health left.
   for (const f of c.foes) {
     if (f.ghost < f.hp) f.ghost = f.hp;
@@ -284,7 +298,8 @@ export function cardsScreen(world?: World): void {
   // names alone rather than run under the hand's bar.
   const room = tableH > 0 ? tableH - chrome : portrait ? 150 : figMax;
   const figH = landscape || room < 64 ? 0 : Math.round(Math.min(figMax, room));
-  const plate = (f: Foe): void => {
+  const plate = (f0: Foe): void => {
+    const f = { ...f0, name: L(`cards.foe.${f0.key}`) };
     const flash = c.refused === f.key && c.refusedT > 0;
     og.ui.column(f.key, { width: px(plateW), gap: t.space.xs, cross: "center" }, () => {
       // The intent above the plate: what it will do on its turn, its symbol and its number. A compact plate (no room
@@ -328,7 +343,7 @@ export function cardsScreen(world?: World): void {
             og.ui.setDraw({ shape: { kind: "rect", radii: [2, 2, 2, 2] }, fills: [{ kind: "solid", color: { token: "danger" } }, { kind: "gradient", type: "linear", from: { x: 0.5, y: 0 }, to: { x: 0.5, y: 1 }, stops: [{ offset: 0, color: { token: "sheen", alpha: 0.45 } }, { offset: 0.5, color: { token: "sheen", alpha: 0 } }] }] } as never);
             og.ui.props({ position: "absolute", insets: { start: 1, top: 1 } } as never);
           });
-          og.ui.semantics({ role: "meter", name: `${f.name} health`, value: `${f.hp} / ${f.max}` } as never);
+          og.ui.semantics({ role: "meter", name: L("cards.health", { name: f.name }), value: `${f.hp} / ${f.max}` } as never);
           og.ui.label("HpText", `${f.hp} / ${f.max}`, { step: small ? "sm" : big ? "lg" : "base", font: "mono", nowrap: true });
           if (f.taunt) {
             // Behind a taunt: a shield chip, lit in danger ink while a card it refused shakes.
@@ -336,8 +351,8 @@ export function cardsScreen(world?: World): void {
               const sh = Math.round((small ? 14 : big ? 20 : 16) * ts);
               og.ui.column("Shield", { width: px(sh), height: px(sh) }, () => {});
               og.ui.setDraw({ shape: marks(sh, SHIELD, true), fills: [{ kind: "solid", color: { token: flash ? "danger" : "inkMuted" } }] } as never);
-              if (figH === 0 && small) og.ui.semantics({ role: "image", name: "Behind a taunt" } as never);
-              else og.ui.label("Note", "Behind a taunt", { step: small ? "xs" : big ? "base" : "sm", color: { token: flash ? "danger" : "inkMuted" }, maxLines: 2 });
+              if (figH === 0 && small) og.ui.semantics({ role: "image", name: L("cards.taunt") } as never);
+              else og.ui.label("Note", L("cards.taunt"), { step: small ? "xs" : big ? "base" : "sm", color: { token: flash ? "danger" : "inkMuted" }, maxLines: 2 });
             });
           }
         });
@@ -353,7 +368,7 @@ export function cardsScreen(world?: World): void {
   const energy = (): void => {
     og.ui.row("Energy", { gap: t.space.xs, cross: "center", padding: { left: t.space.md, top: t.space.xs, right: t.space.md, bottom: t.space.xs }, radius: 999, background: { token: "panelRaised" } }, () => {
       og.ui.label("Value", `${c.energy} / 3`, { step: small ? "lg" : "xl2", font: "mono", color: { token: "highlight" }, nowrap: true });
-      og.ui.label("Label", "Energy", { step: big ? "lg" : "sm", color: { token: "inkMuted" }, nowrap: true });
+      og.ui.label("Label", L("cards.energy"), { step: big ? "lg" : "sm", color: { token: "inkMuted" }, nowrap: true });
     });
   };
   const endTurn = (): void => {
@@ -362,14 +377,14 @@ export function cardsScreen(world?: World): void {
     // On a phone it shares the bar with the energy: never wider than the room the energy leaves it.
     const want = Math.round(Math.max(ew * 1.5, (small ? 132 : 168) * ts));
     const room = W - 2 * t.space.xs - 3 * t.space.sm - t.space.md - ew;
-    const pressed = og.ui.heroButton("EndTurn", c.turn ? "End turn" : "Waiting…", { tone: "primary", size: "large", disabled: !c.turn, key: "E", width: px(portrait ? Math.max(96, Math.min(want, room)) : want) }).clicked;
+    const pressed = og.ui.heroButton("EndTurn", c.turn ? L("cards.endTurn") : L("cards.waiting"), { tone: "primary", size: "large", disabled: !c.turn, key: "E", width: px(portrait ? Math.max(96, Math.min(want, room)) : want) }).clicked;
     if (c.turn && (pressed || (world && og.input.actionPressed(world, "endTurn")))) c.turn = false;
   };
   og.ui.anchor("Cards", { anchor: "topLeft", margin: 0, width: px(W), height: px(Hs), direction: "column", gap: small ? t.space.sm : 0, padding: { left: small ? t.space.sm : t.space.xl, top: small ? t.space.sm : t.space.lg, right: small ? t.space.sm : t.space.xl, bottom: Math.round(footH + t.space.sm) } }, () => {
     og.ui.row("Top", { width: grow, gap: t.space.md, cross: "center", padding: { left: 0, top: 0, right: galleryW, bottom: 0 } }, () => {
       og.ui.column("Heading", { gap: 0, width: portrait ? grow : null }, () => {
-        og.ui.label("Title", "Combat", { step: small ? "xl2" : "xl4", heading: true, font: "display", nowrap: true });
-        og.ui.label("Turn", c.turn ? "Your turn" : "Enemy turn", { step: small ? "sm" : big ? "xl" : "base", color: { token: c.turn ? "success" : "warn" }, nowrap: true });
+        og.ui.label("Title", L("cards.title"), { step: small ? "xl2" : "xl4", heading: true, font: "display", nowrap: true });
+        og.ui.label("Turn", c.turn ? L("cards.yourTurn") : L("cards.enemyTurn"), { step: small ? "sm" : big ? "xl" : "base", color: { token: c.turn ? "success" : "warn" }, nowrap: true });
       });
       if (landscape) {
         og.ui.spacer("Gap", grow);
@@ -401,11 +416,15 @@ export function cardsScreen(world?: World): void {
 function hand(targets: CardTarget[]): void {
   {
     const r = og.ui.cardHand("Hand", {
-      cards: c.hand.map((x) => ({ ...x, image: art(`cards/${(x.key ?? "").replace(/\d+$/, "")}` as ArtName), playable: x.playable !== false && (x.cost ?? 0) <= c.energy })),
+      cards: c.hand.map((x) => {
+        const base = (x.key ?? "").replace(/\d+$/, "");
+        return { ...x, name: L(`cards.${base}.name`), typeLine: L(`cards.type.${base}`), text: L(`cards.${base}.text`), image: art(`cards/${base}` as ArtName), playable: x.playable !== false && (x.cost ?? 0) <= c.energy };
+      }),
       targets,
       disabled: !c.turn,
       inspect: c.inspect,
-      label: "Hand",
+      label: L("cards.hand"),
+      targetPrompt: L("cards.target"),
     });
     if (r.played) {
       const card = c.hand.find((x) => x.key === r.played!.key)!;
@@ -445,6 +464,20 @@ const OFFER1: RewardOption[] = [
   { key: "blade", title: "Stygian Edge", kind: "Weapon", text: "Your dash leaves a blade that deals [b]18[/b] damage.", rarity: "epic", tag: "Lv 3 → 4", icon: "sword" },
 ];
 
+/** A reward with its art and its words in the active locale. */
+function rewardWords(o: RewardOption): RewardOption {
+  const k = o.key ?? "";
+  return {
+    ...o,
+    title: L(`rewards.${k}.title`),
+    kind: L(`rewards.${k}.kind`),
+    text: L(`rewards.${k}.text`),
+    ...(o.tag ? { tag: L(`rewards.${k}.tag`) } : {}),
+    ...(o.lockedHint ? { lockedHint: L(`rewards.${k}.locked`) } : {}),
+    image: art(REWARD_ART[k]),
+  };
+}
+
 const r = {
   offer: OFFER0.map((o) => ({ ...o })),
   selected: [] as string[],
@@ -471,20 +504,23 @@ export function rewardsScreen(): void {
     const body = (build: () => void): void => (scrolls ? og.ui.scrollArea("Body", { width: grow, height: small ? grow : null, gap: t.space.md, fade: small ? 40 : 56, fadeInto: "shadow", padding: { left: 0, top: 0, right: 0, bottom: 0 } }, build) : build());
     body(() => {
     const res = og.ui.rewardChoice("Choice", {
-      options: r.offer.map((o) => ({ ...o, image: art(REWARD_ART[o.key ?? ""]) })),
-      title: "Chamber cleared",
-      subtitle: r.taken ? `Taken: ${r.taken}` : two ? "Choose two boons, then confirm" : "Choose a boon",
+      options: r.offer.map((o) => rewardWords(o)),
+      title: L("rewards.title"),
+      subtitle: r.taken ? L("rewards.taken", { list: r.taken }) : two ? L("rewards.chooseTwo") : L("rewards.choose"),
       picks: r.picks,
       selected: r.selected,
       rerolls: r.rerolls,
-      rerollCost: "50 gold",
+      rerollCost: L("rewards.rerollCost"),
       banishes: r.banishes,
-      skipLabel: "Skip · take 25 gold",
+      skipLabel: L("rewards.skip"),
+      rerollLabel: L("rewards.reroll"),
+      banishLabel: L("rewards.banish"),
+      confirmLabel: L("rewards.confirm"),
       cardWidth: vp.height >= 1000 ? 340 : 0,
     });
     r.selected = [...res.selected];
     if (res.picked.length > 0) {
-      r.taken = res.picked.map((k) => r.offer.find((o) => o.key === k)?.title ?? k).join(", ");
+      r.taken = res.picked.map((k) => L(`rewards.${k}.title`)).join(L("list.separator"));
       r.selected = [];
     }
     if (res.rerolled && r.rerolls > 0) {
@@ -496,9 +532,9 @@ export function rewardsScreen(): void {
       r.banishes -= 1;
       r.offer = r.offer.filter((o) => o.key !== res.banished);
     }
-    if (res.skipped) r.taken = "25 gold";
+    if (res.skipped) r.taken = L("rewards.skipped");
     });
-    if (!small) og.ui.actionHints("Hints", { hints: [{ action: "confirm", hint: "Take" }, { action: "back", hint: "Back" }] });
+    if (!small) og.ui.actionHints("Hints", { hints: [{ action: "confirm", hint: L("rewards.hint.take") }, { action: "back", hint: L("hint.back") }] });
   });
 }
 
@@ -509,7 +545,7 @@ const PULL10: PullItem[] = [
   { key: "p0", name: "Favonius Sword", kind: "Weapon", stars: 4, rarity: "epic" },
   { key: "p1", name: "Iron Sting", kind: "Weapon", stars: 3, rarity: "rare" },
   { key: "p2", name: "Slingshot", kind: "Weapon", stars: 3, rarity: "rare" },
-  { key: "p3", name: "Kael, the Ember", kind: "Character", stars: 4, rarity: "epic", extra: "+2 Starglitter" },
+  { key: "p3", name: "Kael, the Ember", kind: "Character", stars: 4, rarity: "epic", extra: "+2" },
   { key: "p4", name: "Debate Club", kind: "Weapon", stars: 3, rarity: "rare" },
   { key: "p5", name: "Aria, Tidecaller", kind: "Character", stars: 5, rarity: "legendary", isNew: true },
   { key: "p6", name: "Black Tassel", kind: "Weapon", stars: 3, rarity: "rare" },
@@ -528,11 +564,18 @@ const g = {
 };
 
 const BANNER_THUMB: Record<string, ArtName> = { event: "portraits/aria", weapon: "items/ashbringer", std: "portraits/kael" };
+/** Which unit each pull of the fixtures draws. */
+const PULL_UNIT: Record<string, string> = { aria: "aria", p0: "favonius", p1: "sting", p2: "slingshot", p3: "kael", p4: "club", p5: "aria", p6: "tassel", p7: "tales", p8: "mira", p9: "steel" };
 const PULL_ART: Record<string, ArtName> = {
-  "Aria, Tidecaller": "portraits/aria", "Kael, the Ember": "portraits/kael", "Mira of the Grove": "portraits/mira",
-  "Favonius Sword": "items/iron-sword", "Iron Sting": "boons/flame-blade", Slingshot: "items/hunters-bow", "Debate Club": "items/arcane-staff",
-  "Black Tassel": "items/elven-bow", "Thrilling Tales": "boons/rune-shield", "Cool Steel": "items/knight-helm",
+  aria: "portraits/aria", kael: "portraits/kael", mira: "portraits/mira",
+  favonius: "items/iron-sword", sting: "boons/flame-blade", slingshot: "items/hunters-bow", club: "items/arcane-staff",
+  tassel: "items/elven-bow", tales: "boons/rune-shield", steel: "items/knight-helm",
 };
+/** A pulled unit's art and words: its kind and the extra line in the active locale; a character keeps its name, a weapon is named in the locale. */
+function pullWords(x: PullItem): PullItem {
+  const u = PULL_UNIT[x.key ?? ""] ?? "";
+  return { ...x, name: L(`gacha.unit.${u}`), kind: L(x.kind === "Character" ? "gacha.kind.character" : "gacha.kind.weapon"), ...(x.extra ? { extra: L("gacha.extra.starglitter", { n: 2 }) } : {}), image: art(PULL_ART[u]) };
+}
 const BANNERS = [
   { key: "event", name: "Moonlit Tide", title: "Moonlit Tide", subtitle: "Event wish · Character", endsIn: 3 * 86400 + 5 * 3600, fresh: false },
   { key: "weapon", name: "Epitome", title: "Epitome Invocation", subtitle: "Event wish · Weapon", endsIn: 50 * 60, fresh: true },
@@ -543,7 +586,7 @@ const BANNERS = [
 /** The event banner wears its key art and the featured units their portraits; the weapon banner the kit's backdrop;
  * the standard one draws the style's placeholder (the path a game without its art takes). */
 /** The rate lines are the game's strings (og.i18n), so an RTL locale shows its own sentence. */
-export function gachaScreen(backdrop = 0, rate: { event: string; standard: string } = { event: "", standard: "" }): void {
+export function gachaScreen(backdrop = 0): void {
   const vp = og.ui.frameViewport();
   const sa = vp.safeArea;
   const small = phone();
@@ -557,16 +600,16 @@ export function gachaScreen(backdrop = 0, rate: { event: string; standard: strin
       banners: BANNERS.map((x) => ({ key: x.key, name: x.name, endsIn: x.endsIn, fresh: x.fresh, image: art(BANNER_THUMB[x.key]) })),
       current: b.key,
       title: b.title,
-      subtitle: b.subtitle,
+      subtitle: L(`gacha.banner.${b.key}`),
       image: keyArt ?? (b.key === "weapon" && backdrop && artOn ? (backdrop as never) : null),
       // Aria stands in the right 55 % of the key art; in portrait the crop keeps her face.
       ...(keyArt ? { focal: vp.breakpoint === "phonePortrait" ? { x: 0.74, y: 0.3 } : { x: 0.7, y: 0.36 } } : {}),
       featured: b.key === "std" ? [] : [
-        { name: "Aria", title: "Tidecaller of the Moon", stars: 5, rarity: "legendary", image: art("portraits/aria") },
-        { name: "Kael", title: "The Ember", stars: 4, rarity: "epic", image: art("portraits/kael") },
-        { name: "Mira", title: "Of the Grove", stars: 4, rarity: "epic", image: art("portraits/mira") },
+        { name: "Aria", title: L("gacha.title.aria"), stars: 5, rarity: "legendary", image: art("portraits/aria") },
+        { name: "Kael", title: L("gacha.title.kael"), stars: 4, rarity: "epic", image: art("portraits/kael") },
+        { name: "Mira", title: L("gacha.title.mira"), stars: 4, rarity: "epic", image: art("portraits/mira") },
       ],
-      rateText: b.key === "std" ? rate.standard : rate.event,
+      rateText: L(b.key === "std" ? "gacha.rate.standard" : "gacha.rate.event"),
       endsIn: b.endsIn,
       pity: g.pity,
       pityMax: 90,
@@ -575,6 +618,15 @@ export function gachaScreen(backdrop = 0, rate: { event: string; standard: strin
       multi: 1600,
       currency: "gem",
       currencyIcon: art("boons/crystal"),
+      pityLabel: L("gacha.pity"),
+      singleLabel: L("gacha.wish1"),
+      multiLabel: L("gacha.wishN"),
+      shortLabel: L("gacha.short"),
+      detailsLabel: L("gacha.details"),
+      historyLabel: L("gacha.history"),
+      daysLabel: L("time.days"),
+      hoursLabel: L("time.hours"),
+      minutesLabel: L("time.minutes"),
       topInset: bleed ? Math.round((og.ui.bounds("Back")?.height ?? 44) + og.ui.frameTheme().space.xs) : 0,
     }, () => {});
     if (res.banner) g.banner = res.banner;
@@ -586,7 +638,7 @@ export function gachaScreen(backdrop = 0, rate: { event: string; standard: strin
     }
     if (res.short) g.log = `short ${res.short}`;
   });
-  const seq = og.ui.pullSequence("Pull", { token: g.items.length > 0 ? g.token : 0, items: g.items.map((x) => ({ ...x, image: art(PULL_ART[x.name ?? ""]) })), againPrice: g.items.length * 160, affordable: g.balance >= g.items.length * 160, againLabel: "Wish ×{n}", currencyIcon: art("boons/crystal"), backdrop: b.key === "event" ? art("scenes/gacha-moonlit-tide") : null });
+  const seq = og.ui.pullSequence("Pull", { token: g.items.length > 0 ? g.token : 0, items: g.items.map(pullWords), againPrice: g.items.length * 160, affordable: g.balance >= g.items.length * 160, againLabel: L("gacha.wishN"), doneLabel: L("gacha.done"), skipLabel: L("gacha.skip"), tapLabel: L("gacha.tap"), continueLabel: L("gacha.continue"), newLabel: L("gacha.new"), currencyIcon: art("boons/crystal"), backdrop: b.key === "event" ? art("scenes/gacha-moonlit-tide") : null });
   if (seq.again && g.balance >= g.items.length * 160) {
     g.balance -= g.items.length * 160;
     g.token += 1;
@@ -698,9 +750,9 @@ function compareTag(): string {
 }
 
 /** A line of the attributes with its delta against the worn item, in the stat's unit; a lower cooldown is better. */
-function stat(label: string, value: string, unit: string, lowerIsBetter = false): { label: string; value: string; delta?: number; deltaText?: string; lowerIsBetter?: boolean } {
-  const d = COMPARE[compareTag()]?.[label] ?? 0;
-  return { label, value, ...(d ? { delta: d, deltaText: `${d > 0 ? "+" : "\u2212"}${Math.abs(d)}${unit}` } : {}), ...(lowerIsBetter ? { lowerIsBetter } : {}) };
+function stat(key: string, value: string, unit: string, lowerIsBetter = false): { label: string; value: string; delta?: number; deltaText?: string; lowerIsBetter?: boolean } {
+  const d = COMPARE[compareTag()]?.[key] ?? 0;
+  return { label: L(`gear.stat.${key}`), value, ...(d ? { delta: d, deltaText: `${d > 0 ? "+" : "\u2212"}${Math.abs(d)}${unit}` } : {}), ...(lowerIsBetter ? { lowerIsBetter } : {}) };
 }
 
 export function gearScreen(): void {
@@ -708,24 +760,26 @@ export function gearScreen(): void {
   const vp = og.ui.frameViewport();
   const portrait = vp.breakpoint === "phonePortrait";
   // Touch has no Shift and no R (a carried item shows its Rotate button): its line says only what a finger does.
-  screen("Gear", "Inventory", vp.coarsePointer ? "Drag to move · Hold for options" : "Drag to move · Shift splits a stack · R turns", () => {
+  screen("Gear", L("gear.title"), vp.coarsePointer ? L("gear.sub.touch") : L("gear.sub"), () => {
     const body = () => {
       const doll = og.ui.paperdoll("Doll", {
-        slots: p.slots.map((x) => (x.item ? { ...x, item: withArt(x.item) } : x)),
+        slots: p.slots.map((x) => ({ ...x, label: L(`gear.slot.${(x.key ?? "").replace(/\d$/, "")}`), ...(x.lockedHint ? { lockedHint: L("gear.relicLocked", { level: 30 }) } : {}), ...(x.item ? { item: withArt(x.item) } : {}) })),
         title: "Aria Vell",
-        subtitle: "Level 42 Paladin",
+        subtitle: L("gear.class", { level: 42 }),
         rating: "812",
-        ratingLabel: "Item power",
-        statsTitle: "Attributes",
+        ratingLabel: L("gear.power"),
+        statsTitle: L("gear.attributes"),
+        lockedLabel: L("gear.locked"),
+        emptyLabel: L("gear.empty"),
         figureAspect: 0.5,
         // The item in hand, else the one selected, against what is worn where it would go.
         compare: !!COMPARE[compareTag()],
         stats: [
-          stat("Armor", "1,240", ""),
-          stat("Strength", "312", ""),
-          stat("Fire resistance", "28%", "%"),
-          stat("Move speed", "100%", "%"),
-          stat("Cooldowns", "8.2 s", " s", true),
+          stat("armor", "1,240", ""),
+          stat("strength", "312", ""),
+          stat("fire", "28%", "%"),
+          stat("speed", "100%", "%"),
+          stat("cooldowns", "8.2 s", " s", true),
         ],
         ...(p.carry ? { carry: p.carry } : {}),
       }, () => {
@@ -749,14 +803,14 @@ export function gearScreen(): void {
         p.carry = null;
       }
       og.ui.column("Bags", { gap: t.space.sm }, () => {
-        og.ui.label("BagTitle", "Backpack", { step: "lg", font: "display", heading: true });
+        og.ui.label("BagTitle", L("gear.backpack"), { step: "lg", font: "display", heading: true });
         // Eight columns fill a phone in portrait at the finger's 44 px floor, so the grids need no sideways scroll.
         const cell = portrait ? { cellSize: Math.max(44, Math.floor((vp.width - vp.safeArea.left - vp.safeArea.right - 32) / 8)) } : {};
         const pick = p.pick;
         p.pick = null;
-        const bag = og.ui.inventoryGrid("Bag", { ...cell, columns: portrait ? 8 : 10, rows: portrait ? 7 : 6, items: p.bag.map(withArt), label: "Backpack", selected: p.selected, highlight: p.highlight, ...(p.carry && p.carry.source !== "Bag" ? { carry: p.carry } : {}), ...(pick ? { pick } : {}) });
-        og.ui.label("StashTitle", "Stash", { step: "lg", font: "display", heading: true });
-        const stash = og.ui.inventoryGrid("Stash", { ...cell, columns: portrait ? 8 : 10, rows: portrait ? 2 : 3, capacity: portrait ? 12 : 24, items: p.stash.map(withArt), label: "Stash", ...(p.carry && p.carry.source !== "Stash" ? { carry: p.carry } : {}) });
+        const bag = og.ui.inventoryGrid("Bag", { ...cell, columns: portrait ? 8 : 10, rows: portrait ? 7 : 6, items: p.bag.map(withArt), label: L("gear.backpack"), ...gridWords(), selected: p.selected, highlight: p.highlight, ...(p.carry && p.carry.source !== "Bag" ? { carry: p.carry } : {}), ...(pick ? { pick } : {}) });
+        og.ui.label("StashTitle", L("gear.stash"), { step: "lg", font: "display", heading: true });
+        const stash = og.ui.inventoryGrid("Stash", { ...cell, columns: portrait ? 8 : 10, rows: portrait ? 2 : 3, capacity: portrait ? 12 : 24, items: p.stash.map(withArt), label: L("gear.stash"), ...gridWords(), ...(p.carry && p.carry.source !== "Stash" ? { carry: p.carry } : {}) });
         for (const [r, list, other] of [[bag, p.bag, p.stash], [stash, p.stash, p.bag]] as const) {
           if (r.move) {
             const fromSlot = r.move.fromSlot ? p.slots.find((s) => s.key === r.move!.fromSlot) ?? null : null;
@@ -777,7 +831,7 @@ export function gearScreen(): void {
       });
       // The item's menu: a long press or the details action.
       const m = og.ui.contextMenu("ItemMenu", !!p.menu, p.menu?.at ?? { x: 0, y: 0 }, {
-        entries: [{ id: "use", label: "Use" }, { id: "split", label: "Split stack" }, { id: "drop", label: "Drop" }],
+        entries: [{ id: "use", label: L("gear.menu.use") }, { id: "split", label: L("gear.menu.split") }, { id: "drop", label: L("gear.menu.drop") }],
       });
       if (m.chosen === "split" && p.menu) p.pick = { key: p.menu.key, count: 1 };
       if (m.chosen || m.dismissed) p.menu = null;
@@ -785,5 +839,5 @@ export function gearScreen(): void {
     // Doll and grids side by side where both fit (a desktop), one above the other otherwise.
     if (vp.width >= 1100) og.ui.row("Split", { width: grow, gap: t.space.xl, cross: "start" }, body);
     else og.ui.column("Stack", { width: grow, gap: t.space.lg, cross: "start" }, body);
-  }, [{ action: "confirm", hint: "Pick up / place" }, { action: "rotate", hint: "Rotate" }, { action: "details", hint: "Item menu" }, { action: "back", hint: "Put back" }]);
+  }, [{ action: "confirm", hint: L("gear.hint.place") }, { action: "rotate", hint: L("gear.rotate") }, { action: "details", hint: L("gear.hint.menu") }, { action: "back", hint: L("gear.hint.putBack") }]);
 }
