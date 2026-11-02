@@ -199,8 +199,9 @@ fn a_world_without_virtual_cameras_keeps_its_hash() {
 
 /// [`a_world_without_virtual_cameras_keeps_its_hash`]'s world hashed on
 /// the code before og.VirtualCamera (main 00606971, re-pinned after R11
-/// made the 2D lighting records lazy; R10 leaves it unmoved on either side).
-const PINNED_HASH: &str = "3423066f58a783ed";
+/// made the 2D lighting records lazy and again after ui-gaps' UI state
+/// version 14; R10 leaves it unmoved on either side).
+const PINNED_HASH: &str = "4ce3690d8ccf1a59";
 
 #[test]
 fn the_brain_picks_by_priority_then_the_later_enabled_and_a_solo_outranks_both() {

@@ -271,8 +271,9 @@ fn hashes_are_pinned_without_prefabs_and_stable_across_a_re_cook_with_them() {
 /// og.VideoPlayer from a99071b12db700c7: a world without footage no longer
 /// has the type, so its later changes leave this hash alone; then R11's
 /// lazy og.Lighting2D, og.Light2D and og.Occluder2D from fd4dddba26ef754a,
-/// for the same reason).
-const BY_HAND_HASH: &str = "1069aa19a26d8691";
+/// for the same reason; then ui-gaps' UI state version 14 from
+/// 1069aa19a26d8691).
+const BY_HAND_HASH: &str = "e83b148c0f38efb5";
 
 #[test]
 fn apply_back_and_revert_round_trip_in_the_text() {
