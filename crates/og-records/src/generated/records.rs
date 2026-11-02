@@ -23847,7 +23847,7 @@ pub const RECORDS: &[RecordDecl] = &[
             },
             FieldDecl {
                 name: "time",
-                column: "f32",
+                column: "f64",
                 default: "0",
                 readonly: false,
                 tunable: false,
@@ -23856,7 +23856,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "s",
                 label: "",
-                doc: doc!("Seconds into the video; written every tick, set it to seek."),
+                doc: doc!("Seconds into the video; written every tick, set it to seek. Double precision, as the sound's playhead: summed in f32, an hour at 60 Hz would fall 2.8 s behind its sound."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

@@ -1257,10 +1257,23 @@ video is a command script played headless and recorded (docs/depth.md §3).
   19 (94 clean), so a stream larger than 1280x720 (720x1280 portrait) also cooks a 720p
   rendition (`<id>#stream720`, `og_video::stream::fallback_size`) which
   the fallback plays instead. `og.video.capabilities` reports which
-  decoder runs (`rav1d-wasm`, hardware false, max 1280x720). **Time:** `VideoPlayer.time` is world state advanced by the
+  decoder runs (`rav1d-wasm`, hardware false, max 1280x720).
+  **Time:** `VideoPlayer.time` is world state advanced by the
   tick (dt × speed), frame = floor(time × fps), exactly as for a clip;
   the sound is the AudioSource started at `startOffset` = time, so the
-  tick is the one clock and picture and sound cannot drift. Decoding is
+  tick is the one clock and picture and sound cannot drift. Three things
+  keep that true over a long stream: `time` is an f64 summed with og.audio's
+  tick length (1 / the whole tick rate), as the sound's playhead is (in
+  f32 an hour at 60 Hz fell 2.8 s behind it); the cook pads the sound
+  with silence to the picture's length; and the source's loop region ends
+  at the picture's end (`loopEnd` = frames / fps), so both wrap on the same
+  sample. Pausing is the player's `playing` (the sound stops, and resumes
+  at the frame it held) or the game's ticks stopping (a hidden page, the
+  shell's pause), which stops both; the time scale and hit stop leave
+  footage alone, as they leave its sound. Several players of one stream
+  each have a decoder of their own (natively a rav1d thread; on the web a
+  WebCodecs decoder, or a rav1d decoder in the one fallback Worker, which
+  takes the players' units in turn), so one never decodes for another. Decoding is
   presentation: what a decoder has ready never reaches the world. An
   executor (`og run`, `og render`, `og test`) waits for each player's
   exact frame before drawing, so captures are deterministic; a game in a

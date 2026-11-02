@@ -1170,3 +1170,13 @@ in real time. `rav1d-wasm` (Safari without AV1 hardware, for one) holds
 browser plays it instead: author footage at any size. The player's time is the tick's, as for a clip; decoding
 never changes the world, and `og run`, `og render` and `og test` wait for
 each frame, so captures are exact.
+
+Put an `og.AudioSource` on the player's entity for the footage's sound:
+og.video keeps it on the picture through seeks, `playing = false` pauses
+(both hold, and resume together), `loop` wraps both at the picture's end,
+and `speed` pitches it. Footage ignores the time scale and hit stop, as
+its sound does; stop the player's `playing` to freeze it with a pause
+menu. A TV wall of one stream is one `og.load.video` and a player per
+screen, each showing its own `VideoPlayer.texture`; every player decodes
+on its own, so a player off screen should stop (`playing = false`) and
+simultaneous streams stay few.

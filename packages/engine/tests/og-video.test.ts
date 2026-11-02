@@ -193,6 +193,8 @@ test.skipIf(!hasFfmpeg)("a streamed video shows its tick's frame, after a seek a
     const dump = (f: string) => (JSON.parse(readFileSync(join(out, f), "utf8")) as Dump).components;
     const at = dump("s90.json");
     expect(at["og.VideoPlayer"]!.frame).toBe(90);
+    // 90 ticks are 3 s to double precision (summed in f32 they were 2.9999998).
+    expect(Math.abs((at["og.VideoPlayer"]!.time as number) - 3)).toBeLessThan(1e-9);
     expect(at["og.VideoPlayer"]!.texture).toBeGreaterThan(0);
     expect(at["og.AudioSource"]!.sound).toBeGreaterThan(0);
     expect(dump("seek.json")["og.VideoPlayer"]!.frame).toBe(31);
@@ -207,6 +209,77 @@ test.skipIf(!hasFfmpeg)("a streamed video shows its tick's frame, after a seek a
       expect(own, shot).toBeLessThan(before!);
       expect(own, shot).toBeLessThan(after!);
       expect(own, shot).toBeLessThan(0.12);
+    }
+  } finally {
+    rmSync(out, { recursive: true, force: true });
+  }
+}, 300_000);
+
+// A stream's sound stays with its picture (G3-2 batch 3): the player's time
+// and og.AudioPlayback's cursor (the sound's playhead at the start of the
+// next tick) agree to a millisecond after a pause and a resume, and after
+// the loop wraps, with a second player of the same stream half a second
+// ahead showing its own frame from a decoder of its own. Paused, the frame
+// holds and the sound stops.
+//
+// Ways this could fail: a resume starts the sound at 0 or where it paused
+// minus a tick; the sound loops at its own length rather than the
+// picture's; the time is summed in f32 (an hour at 60 Hz falls 2.8 s
+// behind the sound); two players of one stream share one decoder (the
+// second shows the first's frame, or each waits on frames the other
+// skipped).
+test.skipIf(!hasFfmpeg)("a streamed video's sound stays with its picture through a pause, a loop and a second player", () => {
+  const out = mkdtempSync(join(tmpdir(), "og-video-sync-"));
+  try {
+    const script = [
+      "0.5:stream",
+      "0.5:set:screen.og.VideoPlayer.loop=true",
+      "1:set:screen.og.VideoPlayer.playing=false",
+      "1.1:dump_entity:screen:p1.json",
+      "1.9:dump_entity:screen:p2.json",
+      "2:set:screen.og.VideoPlayer.playing=true",
+      "2.2:dump_entity:screen:resumed.json",
+      "5.5:dump_entity:screen:looped.json",
+      "5.5:pair",
+      "6:screenshot:pair.png",
+      "6:dump_entity:screen:a.json",
+      "6:dump_entity:screen2:b.json",
+      "6.1:quit",
+    ].join(";");
+    const r = Bun.spawnSync([ogBin(), "run", "--headless", fixture, "--commands", script, "--out", out, "--json"], { cwd: repo });
+    if (r.exitCode !== 0) throw new Error(`og run exited ${r.exitCode}: ${text(r.stderr)}`);
+    const run = JSON.parse(text(r.stdout).trim().split("\n").pop()!) as { tier: string; warnings: string[] };
+    expect(run.warnings).toEqual([]);
+    const dump = (f: string) => (JSON.parse(readFileSync(join(out, f), "utf8")) as Dump).components;
+    // The sound's playhead, in seconds, against the picture's time.
+    const apart = (c: Dump["components"]) => Math.abs((c["og.AudioPlayback"]!.cursor as number) / 48000 - (c["og.VideoPlayer"]!.time as number));
+
+    const [p1, p2] = [dump("p1.json"), dump("p2.json")];
+    expect(p2["og.VideoPlayer"]!.frame).toBe(p1["og.VideoPlayer"]!.frame);
+    expect(p2["og.AudioSource"]!.playing).toBe(false);
+    expect(p2["og.AudioPlayback"]).toBeUndefined();
+
+    const resumed = dump("resumed.json");
+    expect(resumed["og.AudioSource"]!.playing).toBe(true);
+    expect(apart(resumed)).toBeLessThan(1e-3);
+
+    // 1 s played before the pause, 3.5 s since: wrapped at 4 s to 0.5 s.
+    const looped = dump("looped.json");
+    expect(looped["og.VideoPlayer"]!.time as number).toBeLessThan(1);
+    expect(apart(looped)).toBeLessThan(1e-3);
+
+    const [a, b] = [dump("a.json")["og.VideoPlayer"]!, dump("b.json")["og.VideoPlayer"]!];
+    expect(((b.frame as number) - (a.frame as number) + 120) % 120).toBe(15);
+    expect(b.texture).not.toBe(a.texture);
+    if (run.tier === "none") return;
+    const shot = join(out, "pair.png");
+    const half = (x: string) => rgb(["-i", shot], `crop=iw/2:ih/2:${x}:ih/4,`);
+    const src = (n: number) => rgb(["-i", join(fixture, "assets/clips/count.mp4")], `select=eq(n\\,${n % 120}),`);
+    for (const [region, n] of [[half("0"), a.frame as number], [half("iw/2"), b.frame as number]] as const) {
+      const [before, own, after] = [n + 119, n, n + 1].map((k) => rmse(region, src(k)));
+      expect(own).toBeLessThan(before!);
+      expect(own).toBeLessThan(after!);
+      expect(own).toBeLessThan(0.15);
     }
   } finally {
     rmSync(out, { recursive: true, force: true });

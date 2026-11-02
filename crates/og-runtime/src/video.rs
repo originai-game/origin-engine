@@ -42,7 +42,7 @@ const AUDIO: &str = "og.AudioSource";
 struct Clip {
     fps: u32,
     frames: u32,
-    seconds: f32,
+    seconds: f64,
     sound: u64,
 }
 
@@ -209,14 +209,14 @@ pub(crate) fn install(
         .map_err(|e| e.reason().to_string())
 }
 
-fn num(v: &Value, k: &str, or: f32) -> f32 {
-    v[k].as_f64().map_or(or, |x| x as f32)
+fn num(v: &Value, k: &str, or: f64) -> f64 {
+    v[k].as_f64().unwrap_or(or)
 }
 
-/// The frame shown at `time` (a hair of slack: 90 ticks of an f32 dt at
-/// 30 Hz add up to 2.9999998 s, which is frame 90, not 89).
-fn frame_at(time: f32, c: &Clip) -> u32 {
-    ((time * c.fps as f32 + 1e-3).floor().max(0.0) as u32).min(c.frames - 1)
+/// The frame shown at `time` (a hair of slack, so a sum of ticks that lands
+/// a rounding short of a frame's start shows that frame).
+fn frame_at(time: f64, c: &Clip) -> u32 {
+    ((time * f64::from(c.fps) + 1e-6).floor().max(0.0) as u32).min(c.frames - 1)
 }
 
 fn run(
@@ -226,7 +226,9 @@ fn run(
     player: &(SchemaId, Layout),
     audio: &(SchemaId, Layout),
 ) -> og_core::Result<()> {
-    let dt = ctx.time().dt;
+    // The tick's length as og.audio counts it (a whole number of ticks a
+    // second), so a player's time and its sound's playhead move together.
+    let dt = 1.0 / (1.0 / f64::from(ctx.time().dt)).round().max(1.0);
     let mut entities: Vec<Entity> = Vec::new();
     for a in ctx.query(0)? {
         entities.extend_from_slice(a.entities());
@@ -247,7 +249,7 @@ fn run(
         let Some(c) = clips.get(&handle).copied() else {
             continue;
         };
-        let fps = c.fps as f32;
+        let fps = f64::from(c.fps);
         let speed = num(&v, "speed", 1.0).clamp(0.0, 4.0);
         let playing = v["playing"].as_bool().unwrap_or(true);
         let looped = v["loop"].as_bool().unwrap_or(false);
@@ -255,7 +257,7 @@ fn run(
         // A player this system has not written yet starts where it says;
         // afterwards a time outside the frame last written is a seek.
         let fresh = v["texture"].as_f64().unwrap_or(0.0) == 0.0;
-        let last = v["frame"].as_f64().unwrap_or(0.0) as f32;
+        let last = v["frame"].as_f64().unwrap_or(0.0);
         let seek = !fresh && (start < last / fps - 1e-4 || start >= (last + 1.0) / fps + 1e-4);
         let mut time = start;
         if playing {
@@ -289,7 +291,11 @@ fn run(
         s["playing"] = json!(playing && !finished && !seek && speed > 0.0);
         s["pitch"] = json!(speed.max(0.0625));
         s["loop"] = json!(looped);
-        s["startOffset"] = json!(f64::from(start));
+        // The loop wraps where the picture does, never at the sound's own
+        // end (an encoder's last frame may run past it).
+        s["loopStart"] = json!(0.0);
+        s["loopEnd"] = json!(c.seconds);
+        s["startOffset"] = json!(start);
         let out = audio.1.encode(Some(&ab), Some(&s)).map_err(bad)?;
         ctx.set_bytes(e, audio.0, &out)?;
     }
@@ -616,7 +622,7 @@ fn load_video(eng: &Engine, path: &str) -> Result<Value, String> {
             Clip {
                 fps: meta.fps,
                 frames: meta.frames,
-                seconds: meta.frames as f32 / meta.fps as f32,
+                seconds: f64::from(meta.frames) / f64::from(meta.fps),
                 sound,
             },
         );

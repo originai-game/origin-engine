@@ -1,7 +1,7 @@
 // A cooked video on a sprite that fills the view, its sound on the same
 // entity (og-video.test.ts): og.load.video in start, og.VideoPlayer plays it.
-// `pair` halves it and adds a second player of the same video half a second ahead on
-// the right; Show puts each player's own texture (VideoPlayer.texture) on
+// `pair` halves it and adds a second player of the video the screen plays
+// (the clip, or the stream after `stream`) half a second ahead on the right; Show puts each player's own texture (VideoPlayer.texture) on
 // its sprite, so the two halves show different frames.
 // `stream` plays the streamed cook of the same source (count-stream.ogt:
 // AV1 decoded as it plays) on the screen from its current time.
@@ -29,7 +29,6 @@ export const Show = defineSystem("Show", { reads: [og.VideoPlayer], writes: [og.
   }
 });
 
-let video = 0 as unknown as Video;
 let streamed = 0 as unknown as Video;
 let surfaces = false;
 
@@ -54,7 +53,6 @@ export default og.game({
     camera.height = 9;
     camera.position = { x: 0, y: 0, z: 50 };
     const info = must(og.load.video(world, "clips/count.ogt"));
-    video = info.video;
     streamed = must(og.load.video(world, "clips/count-stream.ogt")).video;
     const screen = must(world.spawn({ name: "screen", position: { x: 0, y: 0, z: 0 } }));
     must(world.insert(screen, og.Sprite, { texture: info.texture, width: 16, height: 9 }));
@@ -70,10 +68,10 @@ export default og.game({
       const screen = world.find("screen")!;
       must(world.set(screen, og.Transform, { position: { x: -4, y: 0, z: 0 } }) as never);
       must(world.set(screen, og.Sprite, { width: 8, height: 4.5 }) as never);
-      const time = must(world.get(screen, og.VideoPlayer)).time;
+      const { time, video: playing, loop } = must(world.get(screen, og.VideoPlayer));
       const second = must(world.spawn({ name: "screen2", position: { x: 4, y: 0, z: 0 } }));
       must(world.insert(second, og.Sprite, { width: 8, height: 4.5 }));
-      must(world.insert(second, og.VideoPlayer, { video, time: time + 0.5 }));
+      must(world.insert(second, og.VideoPlayer, { video: playing, time: time + 0.5, loop }));
     },
     surfaces: (world: World) => {
       const screen = world.find("screen")!;
