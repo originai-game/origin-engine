@@ -1231,6 +1231,20 @@ impl Renderer {
             // reads the camera pass's survivors and the pyramid).
             if let Some(m) = self.meshlet.as_mut() {
                 let gc = self.gpu_cull.as_ref().expect("made above");
+                // Last frame's transforms at the same slots: with object
+                // motion, the previous-transform buffer (the regular
+                // prepass's rule), once it can be bound as storage.
+                let previous = if object_motion
+                    && self
+                        .prev_instance_buffer
+                        .usage()
+                        .contains(wgpu::BufferUsages::STORAGE)
+                {
+                    &self.prev_instance_buffer
+                } else {
+                    &gc.instances
+                };
+                let (meshes, materials) = (&self.cache.meshes, &self.cache.materials);
                 commands.extend(m.encode(
                     &self.device,
                     &self.queue,
@@ -1238,27 +1252,13 @@ impl Renderer {
                     &batches,
                     &meshlet_views,
                     gc,
-                    gc.pyramid(),
                     cam.jittered_view_proj,
                     (self.width, self.height),
+                    previous,
+                    |mesh| &meshes[mesh].vertices,
+                    |b| materials[b.material].occluder,
                 ));
                 if !m.frame.is_empty() {
-                    // Last frame's transforms at the same slots: with object
-                    // motion, the previous-transform buffer (the regular
-                    // prepass's rule), once it can be bound as storage.
-                    let previous = if object_motion
-                        && self
-                            .prev_instance_buffer
-                            .usage()
-                            .contains(wgpu::BufferUsages::STORAGE)
-                    {
-                        &self.prev_instance_buffer
-                    } else {
-                        &gc.instances
-                    };
-                    m.ensure_groups(&self.device, &batches, (&gc.instances, previous), |mesh| {
-                        &self.cache.meshes[mesh].vertices
-                    });
                     m.ensure_pipelines(
                         &self.device,
                         [&self.frame_layout, &self.material_layout, &self.fx_layout],

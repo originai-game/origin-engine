@@ -56,6 +56,30 @@ fn meshlet_occlusion_matches_its_reference() {
     check("meshlet-occlusion");
 }
 
+/// Two-phase occlusion never removes a visible pixel: the third frame
+/// through the meshlet path matches the regular path's. A cluster neither
+/// phase draws (a slot read from the wrong half, a late phase that skips
+/// what the early one did not draw) shows as a hole in the forest.
+#[test]
+fn meshlet_occlusion_matches_the_regular_path() {
+    let render = |meshlets: bool| {
+        let mut g = og_tests_cooked::scenes::build("meshlet-occlusion").expect("built");
+        g.scene = og_tests_cooked::meshlet_scenes::occlusion_scene(meshlets).expect("the forest");
+        og_tests::gfx::render_built(&mut g).expect("render")
+    };
+    let (on, off) = (render(true), render(false));
+    let c = compare(
+        &on.image.pixels,
+        &off.image.pixels,
+        on.image.width,
+        on.image.height,
+        &Tolerance::default(),
+    )
+    .expect("same size");
+    c.check(&Tolerance::default())
+        .unwrap_or_else(|e| panic!("meshlet occlusion against the regular path: {e}"));
+}
+
 /// `meshlet-near` (reference `meshlet-near.png`): one tree 6 m away.
 #[test]
 fn meshlet_near_matches_its_reference() {

@@ -65,8 +65,8 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         },
         #[cfg(not(target_arch = "wasm32"))]
         "meshlet-occlusion" => |g, _| {
-            g.scene = crate::meshlet_scenes::occlusion_scene()?;
-            // The third frame culls against the second's occluders.
+            g.scene = crate::meshlet_scenes::occlusion_scene(true)?;
+            // The second and third frames cull in two phases.
             g.frames = 3;
             Ok(())
         },

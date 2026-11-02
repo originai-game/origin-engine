@@ -11,8 +11,11 @@
 //!   culled wrongly shows as a hole in a crown).
 //! - `meshlet-occlusion`: the same forest without the tint, behind a wall
 //!   4 m away that hides the left two thirds of the view, three frames
-//!   so the third tests the clusters against the pyramid of the second's
-//!   visible occluders: the right third shows the forest whole.
+//!   so the second and third cull in two phases (the clusters visible
+//!   the frame before, drawn into the occluders' depth; the rest against
+//!   the pyramid built again from it): the right third shows the forest
+//!   whole, as `occlusion_scene(false)` draws it through the regular
+//!   path.
 //! - `meshlet-near`: one tree 6 m away, drawn through the meshlet path;
 //!   `meshlet_near_scene(false)` draws it through the regular path, and
 //!   the two frames match (the level is 0 at that distance).
@@ -95,8 +98,9 @@ pub fn forest_scene() -> Result<RenderScene, String> {
     Ok(scene)
 }
 
-/// `meshlet-occlusion` (module docs; render it three frames).
-pub fn occlusion_scene() -> Result<RenderScene, String> {
+/// `meshlet-occlusion` (module docs; render it three frames), through
+/// the meshlet path when `meshlets`.
+pub fn occlusion_scene(meshlets: bool) -> Result<RenderScene, String> {
     let (mut scene, parts) = base()?;
     plant_forest(&mut scene, &parts);
     let wall = scene.add_standard_material(StandardMaterial {
@@ -112,6 +116,7 @@ pub fn occlusion_scene() -> Result<RenderScene, String> {
         wall,
         Mat4::from_translation(Vec3::new(-8.6, 4.0, -4.0)),
     );
+    scene.meshlets = meshlets;
     Ok(scene)
 }
 

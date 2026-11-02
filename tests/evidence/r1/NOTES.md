@@ -58,3 +58,15 @@ gfx tests (new frame `meshlet-shadows`):
   paths as well.
 
 The same `og run` script as batch 2 exercises it (fx-showcase's sun).
+
+## Batch 3b: the meshlet pass's own two phases
+
+The camera's clusters are culled in two phases: those visible last frame
+are drawn first into GPU culling's occluder depth, the pyramid is built
+again, and the rest are tested against it (`docs/design.md` §2.6).
+
+- `meshlet-occlusion` (3 frames): unchanged in what it shows (the wall on
+  the left two thirds, the right third's forest whole). New:
+  `meshlet_occlusion_matches_the_regular_path` compares it with the
+  regular path at the default tolerance, so a cluster neither phase draws
+  fails as a hole.

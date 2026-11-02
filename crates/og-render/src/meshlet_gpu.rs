@@ -40,6 +40,15 @@ use std::sync::Arc;
 pub(crate) const MESHLET_WGSL: &str = wgsl!("meshlet.wgsl");
 pub(crate) const MESHLET_CULL_WGSL: &str = wgsl!("meshlet_cull.wgsl");
 pub(crate) const MESHLET_SHADOW_WGSL: &str = wgsl!("meshlet_shadow.wgsl");
+pub(crate) const MESHLET_DEPTH_WGSL: &str = wgsl!("meshlet_depth.wgsl");
+
+/// The early phase's depth module.
+pub(crate) fn depth_source() -> String {
+    format!("{}{MESHLET_DEPTH_WGSL}", crate::INSTANCE_WGSL)
+}
+
+/// The params buffer's second slot (the late phase's), a uniform offset.
+const PARAMS_SLOT: u64 = 256;
 
 /// The shadow casters' module: the standard shadow module (the built-in
 /// hooks) and the pulling entry points.
@@ -74,6 +83,7 @@ struct Params {
     eye: [f32; 4],
     lod: [f32; 4],
     sizes: [u32; 4],
+    phase: [u32; 4],
 }
 
 /// `struct BatchRow` in meshlet_cull.wgsl.
@@ -88,7 +98,9 @@ pub(crate) struct BatchRow {
     pub flags: u32,
     /// Its view: 0 the camera, then the frame's shadow views.
     pub view: u32,
-    pub _pad: u32,
+    /// Its mesh's most clusters at any level: the stride of an
+    /// instance's cluster slots (`meshlet_cull.wgsl` `vis`).
+    pub most: u32,
 }
 
 /// One clustered batch of this frame in one view.
@@ -157,7 +169,7 @@ pub(crate) fn plan<'a>(
             first_workgroup: workgroups,
             flags: (view == 0 && cone(batch)) as u32,
             view,
-            _pad: 0,
+            most,
         });
         draws.push(MeshletDraw {
             batch: b,
@@ -249,6 +261,17 @@ pub(crate) struct MeshletGpu {
     pools: Option<Pools>,
     params: wgpu::Buffer,
     views: wgpu::Buffer,
+    /// Whether each cluster slot was visible, two halves of `vis_half`
+    /// words (last frame's and this frame's, swapped by `vis_parity`);
+    /// `vis_clear`: clear both before the next use.
+    vis: wgpu::Buffer,
+    vis_half: u64,
+    vis_parity: bool,
+    vis_clear: bool,
+    depth_module: wgpu::ShaderModule,
+    depth_pipeline_layout: wgpu::PipelineLayout,
+    depth_group: wgpu::BindGroup,
+    depth_pipelines: HashMap<(Side, u32), wgpu::RenderPipeline>,
     draw_params: wgpu::Buffer,
     batches: wgpu::Buffer,
     items: wgpu::Buffer,
@@ -337,7 +360,16 @@ impl MeshletGpu {
         let cull_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("meshlet cull"),
             entries: &[
-                uniform(0, c),
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: c,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: true,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
                 storage(1, true, c),
                 storage(2, true, c),
                 storage(3, true, c),
@@ -355,6 +387,7 @@ impl MeshletGpu {
                     },
                     count: None,
                 },
+                storage(9, false, c),
             ],
         });
         let v = wgpu::ShaderStages::VERTEX;
@@ -412,6 +445,38 @@ impl MeshletGpu {
                 view_formats: &[],
             })
             .create_view(&Default::default());
+        let params = buffer(
+            device,
+            "meshlet params",
+            PARAMS_SLOT * 2,
+            wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        );
+        let depth_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("meshlet early depth"),
+            entries: &[uniform(0, v)],
+        });
+        let depth_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("meshlet early depth"),
+            layout: &depth_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                    buffer: &params,
+                    offset: 0,
+                    size: wgpu::BufferSize::new(64),
+                }),
+            }],
+        });
+        let depth_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("meshlet early depth"),
+                bind_group_layouts: &[Some(&depth_layout), Some(&draw_layout)],
+                immediate_size: 0,
+            });
+        let depth_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("meshlet early depth"),
+            source: wgpu::ShaderSource::Wgsl(depth_source().into()),
+        });
         MeshletGpu {
             cull_layout,
             cull,
@@ -421,12 +486,15 @@ impl MeshletGpu {
             shadow: HashMap::new(),
             shadow_module: None,
             pools: None,
-            params: buffer(
-                device,
-                "meshlet params",
-                std::mem::size_of::<Params>() as u64,
-                wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            ),
+            params,
+            vis: buffer(device, "meshlet visibility", 0, storage_usage()),
+            vis_half: 0,
+            vis_parity: false,
+            vis_clear: true,
+            depth_module,
+            depth_pipeline_layout,
+            depth_group,
+            depth_pipelines: HashMap::new(),
             draw_params: buffer(
                 device,
                 "meshlet draw params",
@@ -644,11 +712,16 @@ impl MeshletGpu {
     /// Plans the frame's clustered batches in each of `views` (the
     /// camera's first, then the shadow passes') and encodes their culling
     /// after GPU culling's commands, reading the sorted instances it
-    /// uploaded; `pyramid` is its depth pyramid this frame (`None`: no
-    /// occlusion test), `view_proj` the camera's. Leaves [`Self::frame`]
-    /// empty, and encodes nothing, when the work would not fit the device.
+    /// uploaded (`gc`), and makes the frame's draw groups (`previous`, the
+    /// previous transforms at the same slots; `vertices(mesh)`, a mesh's
+    /// f32 vertices). With GPU culling's pyramid this frame the camera's
+    /// clusters are culled in two phases: those visible last frame first,
+    /// drawn into the occluders' depth (the batches `occluder` names), the
+    /// pyramid built again, then the rest tested against it. `view_proj`
+    /// is the camera's. Leaves [`Self::frame`] empty, and encodes nothing,
+    /// when the work would not fit the device.
     #[allow(clippy::too_many_arguments)]
-    pub fn encode(
+    pub fn encode<'a>(
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
@@ -656,9 +729,11 @@ impl MeshletGpu {
         batches: &[Batch],
         views: &[MeshletView],
         gc: &crate::cull_gpu::GpuCulling,
-        pyramid: Option<(&wgpu::TextureView, u32)>,
         view_proj: Mat4,
         (width, height): (u32, u32),
+        previous: &wgpu::Buffer,
+        vertices: impl Fn(usize) -> &'a wgpu::Buffer,
+        occluder: impl Fn(&Batch) -> bool,
     ) -> Option<wgpu::CommandBuffer> {
         self.frame.clear();
         let pools = self.pools.as_ref()?;
@@ -692,6 +767,22 @@ impl MeshletGpu {
             (rows.len() * 16) as u64,
             Self::draws_usage(),
         );
+        // The visibility halves: a new size starts every slot hidden (the
+        // late phase then finds what the early one missed).
+        let half = (items as u64).max(1);
+        if half != self.vis_half || half * 8 > self.vis.size() {
+            if half * 8 > self.vis.size() {
+                self.vis = buffer(device, "meshlet visibility", half * 8, storage_usage());
+            }
+            self.vis_half = half;
+            self.vis_clear = true;
+        }
+        self.vis_parity = !self.vis_parity;
+        let (read, write) = if self.vis_parity {
+            (half, 0)
+        } else {
+            (0, half)
+        };
         let mut planes = vec![[0.0f32; 4]; views.len() * VIEW_PLANES];
         for (v, view) in views.iter().enumerate() {
             for (row, p) in planes[v * VIEW_PLANES..]
@@ -723,7 +814,10 @@ impl MeshletGpu {
             ),
             crate::Projection::Orthographic { height: h } => (0.0, height as f32 / h.max(1e-6)),
         };
-        let params = Params {
+        // Two phases with the pyramid and its depth, one without.
+        let pyramid = gc.pyramid();
+        let depth = gc.occluder_depth().filter(|_| pyramid.is_some());
+        let params = |phase: u32| Params {
             view_proj: view_proj.to_cols_array_2d(),
             eye: [
                 camera.position.x,
@@ -733,8 +827,15 @@ impl MeshletGpu {
             ],
             lod: [per_unit, scene.lod_bias.max(0.0), 0.0, 0.0],
             sizes: [width, height, pyramid.map_or(0, |p| p.1), rows.len() as u32],
+            phase: [phase, read as u32, write as u32, 0],
         };
-        queue.write_buffer(&self.params, 0, bytemuck::bytes_of(&params));
+        let (first, second) = if depth.is_some() { (1, 2) } else { (0, 0) };
+        queue.write_buffer(&self.params, 0, bytemuck::bytes_of(&params(first)));
+        queue.write_buffer(
+            &self.params,
+            PARAMS_SLOT,
+            bytemuck::bytes_of(&params(second)),
+        );
         queue.write_buffer(
             &self.draw_params,
             0,
@@ -747,6 +848,7 @@ impl MeshletGpu {
             self.items.clone(),
             self.draws.clone(),
             pools.meshes.clone(),
+            self.vis.clone(),
         ];
         let view = pyramid.map(|p| p.0.clone());
         if self
@@ -758,7 +860,14 @@ impl MeshletGpu {
                 label: Some("meshlet cull"),
                 layout: &self.cull_layout,
                 entries: &[
-                    entry(0, &self.params),
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                            buffer: &self.params,
+                            offset: 0,
+                            size: wgpu::BufferSize::new(std::mem::size_of::<Params>() as u64),
+                        }),
+                    },
                     entry(1, &gc.instances),
                     entry(2, &self.views),
                     entry(3, &self.batches),
@@ -772,34 +881,134 @@ impl MeshletGpu {
                             view.as_ref().unwrap_or(&self.no_pyramid),
                         ),
                     },
+                    entry(9, &self.vis),
                 ],
             });
             self.cull_group = Some((bound, view, group));
         }
+        self.frame = draws;
+        self.ensure_groups(device, batches, (&gc.instances, previous), vertices);
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("meshlet cull"),
         });
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("meshlet cull"),
-                timestamp_writes: None,
-            });
+        if std::mem::take(&mut self.vis_clear) {
+            encoder.clear_buffer(&self.vis, 0, None);
+        } else {
+            encoder.clear_buffer(&self.vis, write * 4, Some(half * 4));
+        }
+        let cull_group = &self.cull_group.as_ref().expect("made above").2;
+        let dispatch = |pass: &mut wgpu::ComputePass<'_>, slot: u64| {
             pass.set_pipeline(&self.cull);
-            pass.set_bind_group(0, &self.cull_group.as_ref().expect("made above").2, &[]);
+            pass.set_bind_group(0, cull_group, &[slot as u32]);
             pass.dispatch_workgroups(
                 workgroups.min(WORKGROUPS_PER_ROW),
                 workgroups.div_ceil(WORKGROUPS_PER_ROW),
                 1,
             );
+        };
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("meshlet cull"),
+                timestamp_writes: None,
+            });
+            dispatch(&mut pass, 0);
         }
-        self.frame = draws;
+        if let Some((depth, samples)) = depth {
+            // The early phase's camera clusters into the occluders' depth.
+            for d in self.frame.iter().filter(|d| d.view == 0) {
+                let b = &batches[d.batch as usize];
+                if occluder(b) {
+                    let key = (b.side, samples);
+                    if !self.depth_pipelines.contains_key(&key) {
+                        let pipeline = self.depth_pipeline(device, b.side, samples);
+                        self.depth_pipelines.insert(key, pipeline);
+                    }
+                }
+            }
+            {
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("meshlet early depth"),
+                    color_attachments: &[],
+                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                        view: depth,
+                        depth_ops: Some(wgpu::Operations {
+                            load: wgpu::LoadOp::Load,
+                            store: wgpu::StoreOp::Store,
+                        }),
+                        stencil_ops: None,
+                    }),
+                    timestamp_writes: None,
+                    occlusion_query_set: None,
+                    multiview_mask: None,
+                });
+                pass.set_bind_group(0, &self.depth_group, &[]);
+                for d in self.frame.iter().filter(|d| d.view == 0) {
+                    let b = &batches[d.batch as usize];
+                    let (Some(pipeline), Some((_, group))) = (
+                        self.depth_pipelines.get(&(b.side, samples)),
+                        self.mesh_groups.get(&b.mesh),
+                    ) else {
+                        continue;
+                    };
+                    if !occluder(b) {
+                        continue;
+                    }
+                    pass.set_pipeline(pipeline);
+                    pass.set_bind_group(1, group, &[d.first_item * 8]);
+                    pass.draw_indirect(&self.draws, d.row as u64 * 16);
+                }
+            }
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("meshlet late"),
+                timestamp_writes: None,
+            });
+            gc.rebuild_pyramid(&mut pass);
+            dispatch(&mut pass, PARAMS_SLOT);
+        }
         Some(encoder.finish())
+    }
+
+    /// The early phase's depth pipeline for `side` at `samples`.
+    fn depth_pipeline(
+        &self,
+        device: &wgpu::Device,
+        side: Side,
+        samples: u32,
+    ) -> wgpu::RenderPipeline {
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("meshlet early depth"),
+            layout: Some(&self.depth_pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &self.depth_module,
+                entry_point: Some("vs_depth"),
+                compilation_options: Default::default(),
+                buffers: &[],
+            },
+            primitive: wgpu::PrimitiveState {
+                cull_mode: crate::cull_mode(side),
+                ..Default::default()
+            },
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: crate::DEPTH_FORMAT,
+                depth_write_enabled: Some(true),
+                depth_compare: Some(wgpu::CompareFunction::Less),
+                stencil: Default::default(),
+                bias: Default::default(),
+            }),
+            multisample: wgpu::MultisampleState {
+                count: samples,
+                ..Default::default()
+            },
+            fragment: None,
+            multiview_mask: None,
+            cache: crate::pipeline_cache::of(device).as_ref(),
+        })
     }
 
     /// Makes the draw groups of the frame's meshes: `instances` the
     /// sorted instances, `previous` their previous transforms at the same
     /// slots, `vertices(mesh)` a mesh's f32 vertex buffer.
-    pub fn ensure_groups<'a>(
+    fn ensure_groups<'a>(
         &mut self,
         device: &wgpu::Device,
         batches: &[Batch],
@@ -982,6 +1191,8 @@ mod tests {
         assert_eq!(rows[1].first_workgroup, 3);
         assert_eq!((rows[1].first_instance, rows[1].instances), (3, 10));
         assert_eq!((rows[1].mesh_slot, rows[1].flags), (1, 1));
+        // An instance's cluster slots are its mesh's most clusters apart.
+        assert_eq!((rows[0].most, rows[1].most), (7, 40));
     }
 
     #[test]

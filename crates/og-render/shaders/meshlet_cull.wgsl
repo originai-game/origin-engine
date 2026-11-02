@@ -12,6 +12,16 @@
 // shadow passes (a cascade's or a local light's face), whose rows test
 // their own planes, never the cone or the pyramid, and draw the level the
 // camera picks (so a caster's shadow is the shape it is drawn with).
+//
+// The camera's occlusion runs in two phases (meshlet_gpu.rs), each a
+// dispatch of this entry point: the early phase draws the clusters
+// visible last frame (`vis`, one word per cluster slot of the row's
+// items) tested against the frustum and cone alone; they are drawn into
+// GPU culling's occluder depth and the pyramid is built again; the late
+// phase tests every cluster against that pyramid, records which are
+// visible for the next frame and appends those the early phase did not
+// draw. Without a pyramid one phase draws what the frustum and cone keep
+// and records it.
 
 struct Params {
   // The camera's (the pyramid's projection).
@@ -25,10 +35,14 @@ struct Params {
   // xy: the screen's size, z: the pyramid's levels (0: no occlusion
   // test), w: the batches.
   sizes: vec4<u32>,
+  // x: the phase (0 the only one, 1 early, 2 late), y: last frame's half
+  // of `vis` (its first word), z: this frame's.
+  phase: vec4<u32>,
 };
 
 // a: mesh slot, first instance (its sorted slot), instances, first work
-// item. b: first workgroup, flags (1: the cone may cull), view.
+// item. b: first workgroup, flags (1: the cone may cull), view, the
+// mesh's most clusters at any level (a cluster slot's stride).
 struct BatchRow {
   a: vec4<u32>,
   b: vec4<u32>,
@@ -50,6 +64,9 @@ struct BatchRow {
 // Per batch a draw: (vertices, instances, first vertex, first instance).
 @group(0) @binding(7) var<storage, read_write> draws: array<atomic<u32>>;
 @group(0) @binding(8) var pyramid: texture_2d<f32>;
+// Whether each cluster slot was visible: two halves, last frame's and
+// this frame's (phase.y, phase.z).
+@group(0) @binding(9) var<storage, read_write> vis: array<u32>;
 
 const WG: u32 = 64u;
 // meshlet_gpu.rs VIEW_PLANES (cull_gpu.rs MAX_PLANES).
@@ -165,9 +182,13 @@ fn cull_clusters(@builtin(workgroup_id) wid: vec3<u32>,
     }
   }
   let view = row.b.z;
-  // Occlusion: the camera's rows, on a frame with a pyramid.
-  let occlusion = view == 0u && params.sizes.z > 0u;
+  let phase = params.phase.x;
+  // The late phase is the camera's.
+  if (phase == 2u && view != 0u) { return; }
+  let occlusion = phase == 2u;
   if (outside(view, center, radius) || (occlusion && occluded(center, radius))) { return; }
+  // The instance's cluster slots.
+  let slots = row.a.w + local * row.b.w;
   let lv = meshes[mesh + 2u + level];
   let cone = (row.b.y & 1u) != 0u && even && perspective;
   for (var i = li; i < lv.y; i += WG) {
@@ -185,7 +206,17 @@ fn cull_clusters(@builtin(workgroup_id) wid: vec3<u32>,
         if (dot(to, axis) >= k.w * length(to) + wr) { continue; }
       }
     }
-    if (occlusion && occluded(wc, wr)) { continue; }
+    let slot = slots + i;
+    if (view == 0u) {
+      let before = vis[params.phase.y + slot] != 0u;
+      if (phase == 1u && !before) { continue; }
+      if (phase == 2u) {
+        if (occluded(wc, wr)) { continue; }
+        vis[params.phase.z + slot] = 1u;
+        if (before) { continue; }
+      }
+      if (phase == 0u) { vis[params.phase.z + slot] = 1u; }
+    }
     let n = atomicAdd(&draws[lo * 4u + 1u], 1u);
     items[row.a.w + n] = vec2<u32>(instance, ci);
   }

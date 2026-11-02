@@ -678,10 +678,18 @@ settings' `lodBias`), then tests each of the level's clusters on its
 own: its sphere against the frustum, its normal cone against the eye
 (not for two-sided materials, transforms that mirror or scale unevenly,
 or orthographic cameras), and its sphere
-against the depth pyramid GPU culling built from last frame's visible
-occluders (its two phases: those occluders are drawn first, at this frame's
-camera, and build the pyramid; there is no occlusion test on a frame without last
-frame's visibility or without an occluding material). The
+against a depth pyramid, in two phases of its own (`meshlet_cull.wgsl`
+`vis` keeps one bit per cluster slot across frames): the early phase
+takes the clusters visible last frame that pass the frustum and cone,
+and draws those of occluding materials into GPU culling's occluder depth
+(already holding last frame's visible occluders, drawn at this frame's
+camera); the pyramid is built again from it; the late phase tests every
+cluster against that pyramid, records the visible ones for the next
+frame, and adds those the early phase did not draw. The pyramid holds
+only depth drawn at this frame's camera, so occlusion never removes a
+visible pixel, whatever last frame left. A frame without GPU culling's
+pyramid (the first, or no occluding material) draws what the frustum and
+cone keep in one phase and records it. The
 visible clusters are appended as work items (instance, cluster), and
 each batch is drawn once, by `draw_indirect`, 64 × 3 vertices per
 visible cluster, by vertex pulling (`meshlet.wgsl`: no index or vertex
@@ -706,8 +714,8 @@ casters with their material). A view whose work would pass the
 device's storage binding limit keeps the per-instance casters. The
 cascades' setup, splits and maps are unchanged. Next, the planar
 reflection, views and probes go through the same culling with their own
-planes (they draw level 0 per instance until then), and a second
-occlusion phase of the meshlet pass itself; then a visibility buffer: the clusters write instance and
+planes (they draw level 0 per instance until then); then a visibility
+buffer: the clusters write instance and
 triangle ids, small triangles are rasterised in compute, and one
 material pass shades the buffer. The CPU statement of every test is
 `meshlet.rs`, whose unit tests check it.

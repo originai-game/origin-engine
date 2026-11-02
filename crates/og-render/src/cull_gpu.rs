@@ -552,6 +552,43 @@ impl GpuCulling {
             .map(|p| (&p.full, p.levels))
     }
 
+    /// The occluders' depth the last `encode` drew and its samples (the
+    /// meshlet path's first phase draws its clusters into it before
+    /// [`Self::rebuild_pyramid`]); `None` when it had no occluders.
+    pub fn occluder_depth(&self) -> Option<(&wgpu::TextureView, u32)> {
+        self.pyramid
+            .as_ref()
+            .filter(|_| self.occlusion)
+            .map(|p| (&p.depth, p.size.2))
+    }
+
+    /// Builds the pyramid again from the occluders' depth as it is now
+    /// (no-op without one this frame).
+    pub fn rebuild_pyramid(&self, pass: &mut wgpu::ComputePass<'_>) {
+        if let Some(pyramid) = self.pyramid.as_ref().filter(|_| self.occlusion) {
+            self.build_pyramid(pass, pyramid);
+        }
+    }
+
+    /// The pyramid's levels from the occluders' depth: the base (the
+    /// farthest sample per texel), then each level from the one below.
+    fn build_pyramid(&self, pass: &mut wgpu::ComputePass<'_>, pyramid: &Pyramid) {
+        let (width, height, samples) = pyramid.size;
+        pass.set_pipeline(
+            self.hiz_base[(samples > 1) as usize]
+                .as_ref()
+                .expect("made with the pyramid"),
+        );
+        pass.set_bind_group(0, &pyramid.base_group, &[]);
+        pass.dispatch_workgroups(width.div_ceil(8), height.div_ceil(8), 1);
+        pass.set_pipeline(&self.hiz_reduce);
+        for (l, group) in pyramid.reduce_groups.iter().enumerate() {
+            let (w, h) = pyramid.level_sizes[l + 1];
+            pass.set_bind_group(0, group, &[]);
+            pass.dispatch_workgroups(w.div_ceil(8), h.div_ceil(8), 1);
+        }
+    }
+
     /// Whether a readback holds a frame's counts not yet read.
     pub fn in_flight(&self) -> bool {
         self.readbacks.iter().any(|r| r.layout.is_some())
@@ -1152,19 +1189,7 @@ impl GpuCulling {
                 label: Some("cull: depth pyramid, camera"),
                 timestamp_writes: None,
             });
-            pass.set_pipeline(
-                self.hiz_base[(samples > 1) as usize]
-                    .as_ref()
-                    .expect("made with the pyramid"),
-            );
-            pass.set_bind_group(0, &pyramid.base_group, &[]);
-            pass.dispatch_workgroups(width.div_ceil(8), height.div_ceil(8), 1);
-            pass.set_pipeline(&self.hiz_reduce);
-            for (l, group) in pyramid.reduce_groups.iter().enumerate() {
-                let (w, h) = pyramid.level_sizes[l + 1];
-                pass.set_bind_group(0, group, &[]);
-                pass.dispatch_workgroups(w.div_ceil(8), h.div_ceil(8), 1);
-            }
+            self.build_pyramid(&mut pass, pyramid);
             if !main.is_empty() {
                 run(&mut pass, &groups[1], main.len() as u32);
             }
