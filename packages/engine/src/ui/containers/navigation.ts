@@ -6,7 +6,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  all, byText, chevron, clamp, fit, flags, frame, glyphCap, grow, kit, lastGesture, mark, over, pointerFrom, px, overProps, parentOf, rememberPath, role, rtl, spring, still, surface, target, text, token, xy,
+  all, byText, chevron, clamp, fit, flags, frame, glyphCap, grow, kit, lastGesture, mark, over, pointerFrom, px, overProps, parentOf, rememberPath, role, rtl, spring, still, surface, target, text, token, wholeWords, xy,
 } from "./base.ts";
 import { menu } from "./layers.ts";
 import { edge } from "./panels.ts";
@@ -636,8 +636,12 @@ export function radialMenu(id: string, open: boolean, desc: Api.RadialDesc): Api
     kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "solid", color: token("panelRaised") }], strokes: [{ width: 1, align: "inside", paint: { kind: "solid", color: token("line") } }] });
     {
       const it = items[hovered];
-      text("Name", it?.label ?? desc.title ?? "", { step: "base", heading: true, align: "center", width: grow(), maxLines: 2 });
-      if (it?.detail) text("Detail", it.detail, { step: "caption", color: "inkMuted", align: "center", width: grow(), maxLines: 2 });
+      // Whole words only ("Quick select" never breaks into "Quic / k"): the name on at most two
+      // lines and the detail on one, each at the largest step that keeps inside the square.
+      const ramp = frame().theme.typeRamp as Record<string, Api.TypeStep>;
+      const detailH = it?.detail ? (ramp.caption?.lineHeight ?? 16) + 2 : 0;
+      wholeWords("Name", it?.label ?? desc.title ?? "", { width: inner, height: inner - detailH, maxLines: 2, steps: ["base", "sm", "caption", "meta", "xs"], heading: true });
+      if (it?.detail) wholeWords("Detail", it.detail, { width: inner, height: detailH, maxLines: 1, steps: ["caption", "meta", "xs"], color: "inkMuted" });
     }
     kit.close();
     over({ insets: { start: radius - hole + 4, top: radius - hole + 4 }, inert: true, z: 2 });

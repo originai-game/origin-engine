@@ -380,6 +380,48 @@ export function text(id: string, value: string, d: { step?: Api.TypeStepName; co
 }
 
 /**
+ * Text that fits a `width` × `height` box whole, its words never split (a
+ * hub's name, a narrow cell): the largest of `steps` at which every word
+ * fits the width and the words, packed greedily, take at most `maxLines`
+ * lines within the height; the smallest step otherwise. Each word is its
+ * own unwrapped label in a wrapping row (`Word#i`), so a line breaks only
+ * between words. Word widths are last tick's per pixel of type size (a
+ * word not yet drawn guesses 0.6 em a character).
+ */
+export function wholeWords(id: string, value: string, d: { width: number; height: number; maxLines: number; steps: Api.TypeStepName[]; color?: Api.ThemeColor; heading?: boolean; align?: "start" | "center" }): void {
+  const ramp = frame().theme.typeRamp as Record<string, Api.TypeStep>;
+  const words = value.split(/\s+/).filter((w) => w.length > 0);
+  const perPx = words.map((w) => kit.memory(`~ww:${w}`, 0) || w.length * 0.6);
+  const fits = (s: Api.TypeStepName): boolean => {
+    const step = ramp[s];
+    if (!step) return false;
+    const space = step.size * 0.3;
+    let lines = 1;
+    let line = 0;
+    for (const k of perPx) {
+      const w = k * step.size;
+      if (w > d.width) return false;
+      if (line > 0 && line + space + w > d.width) {
+        lines++;
+        line = w;
+      } else line += (line > 0 ? space : 0) + w;
+    }
+    return lines <= d.maxLines && lines * step.lineHeight <= d.height + 0.5;
+  };
+  const chosen = d.steps.find(fits) ?? d.steps[d.steps.length - 1]!;
+  const size = ramp[chosen]?.size ?? 16;
+  kit.open(id, { direction: "row", wrap: true, width: px(d.width), align: d.align ?? "center", cross: "center", gap: Math.round(size * 0.3) });
+  words.forEach((w, i) => text(kit.idi("Word", i), w, { step: chosen, nowrap: true, ...(d.color ? { color: d.color } : {}), ...(d.heading ? { heading: true } : {}) }));
+  kit.close();
+  const row = kit.lastPath();
+  kit.semantics({ role: "text", name: value });
+  words.forEach((w, i) => {
+    const b = kit.bounds(`${row}/${kit.idi("Word", i)}`);
+    if (b && b.width > 0) kit.remember(`~ww:${w}`, b.width / size);
+  });
+}
+
+/**
  * A key cap or pad button glyph for an action hint (docs/ui.md §8.2),
  * drawn from the glyph's text: a keyboard key as a rounded cap, a pad face
  * button as a disc, a bumper or trigger as a pill.
