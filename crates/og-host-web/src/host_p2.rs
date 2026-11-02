@@ -1,4 +1,4 @@
-//! Phase 2's modules' trait implementations (TerrainApi, StreamApi, AudioApi, PathApi, TimelineApi): every member is
+//! Phase 2's modules' trait implementations (TerrainApi, VideoApi, StreamApi, AudioApi, PathApi, TimelineApi): every member is
 //! the host-neutral runtime's.
 
 use crate::WebHost;
@@ -36,6 +36,12 @@ impl TerrainApi for WebHost {
         layer: Option<String>,
     ) -> String {
         rt::og_terrain_set_layer(world, data, index, layer)
+    }
+}
+
+impl VideoApi for WebHost {
+    fn og_video_capabilities(&self, world: u32) -> String {
+        rt::og_video_capabilities(world)
     }
 }
 

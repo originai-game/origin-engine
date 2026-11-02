@@ -107,10 +107,10 @@ pub use display::{
     set_display_interval, set_fullscreen, set_mouse_report, set_power_preference,
 };
 pub use engine::{
-    ColumnPtr, Dispatch, Hooks, RenderBackend, advance, answer_call, antialias_name, begin_bundle,
-    call_rpc, command, create, destroy, frame, point_shadows_name, render_desc, render_options,
-    set_render_backend, take_log, take_outputs, view_columns, view_entities, warm_renderer,
-    write_resource,
+    ColumnPtr, Dispatch, Hooks, RenderBackend, VideoDecoder, advance, answer_call, antialias_name,
+    begin_bundle, call_rpc, command, create, destroy, frame, point_shadows_name, render_desc,
+    render_options, set_render_backend, take_log, take_outputs, view_columns, view_entities,
+    warm_renderer, write_resource,
 };
 pub use feel::{
     og_camera_kick, og_camera_punch, og_camera_shake, og_load_flipbook, og_load_tilemap,
@@ -238,7 +238,7 @@ pub use timeline::{
 };
 pub use trace::{BEFORE_ENGINE as TRACE_BEFORE_ENGINE, set as trace_set, take as trace_take};
 pub use ui_draw::{og_load_ui_material, og_load_vector, og_ui_set_draw};
-pub use video::{og_load_video, og_load_video_info};
+pub use video::{og_load_video, og_load_video_info, og_video_capabilities};
 pub use views::{
     og_load_post, og_render_post_errors, og_render_render_target, og_render_set_post_param,
 };

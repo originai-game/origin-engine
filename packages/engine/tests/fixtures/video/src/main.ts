@@ -3,6 +3,8 @@
 // `pair` halves it and adds a second player of the same video half a second ahead on
 // the right; Show puts each player's own texture (VideoPlayer.texture) on
 // its sprite, so the two halves show different frames.
+// `stream` plays the streamed cook of the same source (count-stream.ogt:
+// AV1 decoded as it plays) on the screen from its current time.
 // `surfaces` takes the sprite away and shows the player's texture twice:
 // as the map of an unlit og.Mesh plane on the left half of the view, and
 // on an og.ui image on the right half (Surfaces draws it every tick).
@@ -28,6 +30,7 @@ export const Show = defineSystem("Show", { reads: [og.VideoPlayer], writes: [og.
 });
 
 let video = 0 as unknown as Video;
+let streamed = 0 as unknown as Video;
 let surfaces = false;
 
 /** After `surfaces`: the screen's player texture on a UI image over the right half. */
@@ -52,12 +55,17 @@ export default og.game({
     camera.position = { x: 0, y: 0, z: 50 };
     const info = must(og.load.video(world, "clips/count.ogt"));
     video = info.video;
+    streamed = must(og.load.video(world, "clips/count-stream.ogt")).video;
     const screen = must(world.spawn({ name: "screen", position: { x: 0, y: 0, z: 0 } }));
     must(world.insert(screen, og.Sprite, { texture: info.texture, width: 16, height: 9 }));
     must(world.insert(screen, og.VideoPlayer, { video: info.video }));
     must(world.insert(screen, og.AudioSource, {}));
   },
   commands: {
+    stream: (world: World) => {
+      const screen = world.find("screen")!;
+      must(world.set(screen, og.VideoPlayer, { video: streamed }) as never);
+    },
     pair: (world: World) => {
       const screen = world.find("screen")!;
       must(world.set(screen, og.Transform, { position: { x: -4, y: 0, z: 0 } }) as never);

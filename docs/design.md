@@ -1234,6 +1234,32 @@ video is a command script played headless and recorded (docs/depth.md §3).
   starts it again there. A player's state is its component, so a restored
   snapshot plays on as the world that took it; at a 30 Hz tick, tick 90
   shows the source's frame 3 s in (`packages/engine/tests/og-video.test.ts`).
+- **Streams (G3-2).** A clip stays for short loops; `stream true` cooks
+  the source to AV1 (8-bit 4:2:0, BT.709 limited range; ffmpeg's
+  libsvtav1, else libaom-av1; a key frame every `keyframe` seconds, one
+  temporal unit per frame), read from the IVF ffmpeg writes into the
+  engine's own `og.VideoStream` blob (`<id>#stream`: the sequence header,
+  a frame table of offset, size and key, the units), so no container is
+  parsed at run time. Beside it, `<id>#poster` (frame 0 as rav1d decodes
+  it, an ordinary texture) and `<id>#audio` in Opus. The stream's file is
+  not part of the startup bundle: `og.load.video` reads it (on the web,
+  fetches it). Each player draws into a stream texture (og-render's
+  `add_stream_texture`: a GPU texture of the frame's size written in
+  place, so a new frame rebinds nothing). Natively each player has a
+  rav1d thread (`crates/og-video`; rav1d is BSD-2-Clause, the
+  memory-safe Rust port of dav1d) that decodes ahead of the player and
+  from the key frame at or before a seek; the web decodes with WebCodecs
+  in the engine Worker, or rav1d built for wasm in a Worker of its own
+  where the browser has no AV1 decoder. `og.video.capabilities` reports
+  which. **Time:** `VideoPlayer.time` is world state advanced by the
+  tick (dt × speed), frame = floor(time × fps), exactly as for a clip;
+  the sound is the AudioSource started at `startOffset` = time, so the
+  tick is the one clock and picture and sound cannot drift. Decoding is
+  presentation: what a decoder has ready never reaches the world. An
+  executor (`og run`, `og render`, `og test`) waits for each player's
+  exact frame before drawing, so captures are deterministic; a game in a
+  browser shows the newest frame decoded and keeps it while the next is
+  late.
 - **The CPU-only sandbox's cost.** On lavapipe (16 cores) the 3D template
   renders a 1280×720 frame in about 0.39 s in one job and 0.15 s a frame
   with `--jobs 4`; at 640×360 about 0.11 s. An 8 s clip at 30 fps is

@@ -1283,6 +1283,12 @@ pub trait StreamApi: Wire {
     fn og_stream_set_budget(&self, world: u32, bytes: f64) -> String;
 }
 
+/// `video`: packages/knowledge/wiki/video.md.
+pub trait VideoApi: Wire {
+    /// `og.video.capabilities`
+    fn og_video_capabilities(&self, world: u32) -> String;
+}
+
 /// `debug`: packages/knowledge/wiki/debug.md.
 pub trait DebugApi: Wire {
     /// `og.debug.line`
@@ -1352,9 +1358,9 @@ pub trait NetApi: Wire {
 }
 
 /// Every trait: a host is a type that implements all of them.
-pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + DebugApi + PathApi + TimelineApi + NetApi {}
+pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + PathApi + TimelineApi + NetApi {}
 
-impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + DebugApi + PathApi + TimelineApi + NetApi> Host for T {}
+impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + PathApi + TimelineApi + NetApi> Host for T {}
 
 /// Every binding symbol, in binding-table order (`bindings.json` ids).
 pub const SYMBOLS: &[&str] = &[
@@ -1909,6 +1915,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_stream_release",
     "og_stream_budget",
     "og_stream_set_budget",
+    "og_video_capabilities",
     "og_debug_line",
     "og_debug_box",
     "og_debug_sphere",

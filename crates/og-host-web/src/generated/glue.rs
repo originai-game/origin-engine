@@ -2891,6 +2891,11 @@ pub fn og_stream_set_budget(world: u32, bytes: f64) -> String {
     <Host as StreamApi>::og_stream_set_budget(&Host, world, bytes)
 }
 
+#[wasm_bindgen]
+pub fn og_video_capabilities(world: u32) -> String {
+    <Host as VideoApi>::og_video_capabilities(&Host, world)
+}
+
 #[cfg(not(feature = "publish"))]
 #[wasm_bindgen]
 pub fn og_debug_line(world: u32, from: String, to: String, desc: Option<String>) {

@@ -49,7 +49,7 @@ Grouped by the skill that teaches them: the skill says how much of each to use a
 | [`render`](render.md) | `og.render.*` | kept | What is drawn: meshes with materials. Draws are instanced by (geometry, material) automatically; there is no per-object draw call. |
 | [`atmosphere`](atmosphere.md) | `og.atmosphere.*` | kept | Fog, a procedural sky, the day-night cycle, weather, the wind that sways vegetation and water, declared as resources and components (the E5 round). Everything is off by default: a world that sets none of them draws exactly as before. |
 | [`terrain`](terrain.md) | `og.terrain.*` | kept | Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a 16-bit grey PNG or an EXR heightmap, an optional control map, up to four layered materials with slope and altitude rules, their maps separate textures or layers of two texture arrays: `layers` and `layerNormals` with each layer's `albedoLayer` and `normalLayer`, two sampled textures instead of up to eight) into tiles; drawn as a geometry clipmap around the camera (nested levels by distance, no cracks) that casts and receives shadows under the fog; collided with as a height field; baked into navmeshes by a navmesh file's `terrain` entry. |
-| [`video`](video.md) | types and tokens | kept | Footage in a game (docs/design.md §2.9): a `type video` asset cooked by ffmpeg into a texture array of its frames and its sound, loaded with og.load.video and played by og.VideoPlayer. The frame shown is a Texture (VideoInfo.texture, also VideoPlayer.texture) any material map, og.Sprite or UI image draws, and the sound plays on the entity's og.AudioSource in step with it. |
+| [`video`](video.md) | `og.video.*` | kept | Footage in a game (docs/design.md §2.9): a `type video` asset cooked by ffmpeg, loaded with og.load.video and played by og.VideoPlayer. A clip (the default, for short loops: at most 256 frames) is cooked into a texture array of its frames; a stream (`stream true`: any length) is cooked to AV1 and decoded as it plays, natively by rav1d on a thread of its own, on the web by WebCodecs, or by rav1d in a Worker of its own where the browser has no AV1 decoder (og.video.capabilities says which). Either way the frame shown is a Texture (VideoInfo.texture, also VideoPlayer.texture) any material map, og.Sprite or UI image draws, and the sound plays on the entity's og.AudioSource in step with it. |
 | [`debug`](debug.md) | `og.debug.*` | dropped | Debug draw: lines, boxes, spheres, arrows, axes and labels in the world, each for a number of ticks, drawn over the finished frame (after every post effect, before the UI) so they read in every capture and never hide behind geometry; and the debug views (physics, navigation, bounds, levels of detail, and the lit image's terms: shadow cascades, ambient occlusion, albedo, image-based and direct light) the command channel's `debug:` actions switch. |
 
 ### `og-model`
@@ -166,7 +166,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2168 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2170 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -1594,6 +1594,7 @@ Field units the docs and Tune use.
 | [`og.Vehicle`](physics.md#record-Vehicle) | component | physics | — |
 | [`og.VehicleWheel`](physics.md#record-VehicleWheel) | component | physics | — |
 | [`og.Velocity`](physics.md#record-Velocity) | component | physics | — |
+| [`og.video.capabilities`](video.md#fn-capabilities) | function | video | `og_video_capabilities` |
 | [`og.VideoPlayer`](video.md#record-VideoPlayer) | component | video | — |
 | [`og.Water`](atmosphere.md#record-Water) | component | atmosphere | — |
 | [`og.Water2D`](atmosphere.md#record-Water2D) | component | atmosphere | — |
@@ -2284,6 +2285,7 @@ Field units the docs and Tune use.
 | [`VEHICLE_DRIVETRAIN`](physics.md#const-VEHICLE_DRIVETRAIN) | constant | physics | — |
 | [`Video`](video.md#type-Video) | handle | video | — |
 | [`Video()`](video.md#column-Video) | column kind | video | — |
+| [`VideoCapabilities`](video.md#type-VideoCapabilities) | struct | video | — |
 | [`VideoInfo`](video.md#type-VideoInfo) | struct | video | — |
 | [`ViewFrameDesc`](ui.md#type-ViewFrameDesc) | desc struct | ui | — |
 | [`ViewFrameResult`](ui.md#type-ViewFrameResult) | struct | ui | — |

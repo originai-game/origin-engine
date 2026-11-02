@@ -43950,8 +43950,8 @@ export interface StreamBudget {
 
 
 // ── video ───────────────────────────────────────────────────────
-// Footage in a game (docs/design.md §2.9): a `type video` asset cooked by ffmpeg into a texture array of its frames and its sound, loaded with og.load.video and played by og.VideoPlayer. The frame shown is a Texture (VideoInfo.texture, also VideoPlayer.texture) any material map, og.Sprite or UI image draws, and the sound plays on the entity's og.AudioSource in step with it.
-// Playback is simulation: the og.video system (after the game's systems, before og.audio) advances VideoPlayer.time by the tick's dt times `speed` (not the time scale, so the picture stays with its sound), so the frame at a tick is the same on both hosts, in every run and after a snapshot is restored. With a 30 Hz tick a player started at 0 shows the source's frame 3 s in at tick 90.
+// Footage in a game (docs/design.md §2.9): a `type video` asset cooked by ffmpeg, loaded with og.load.video and played by og.VideoPlayer. A clip (the default, for short loops: at most 256 frames) is cooked into a texture array of its frames; a stream (`stream true`: any length) is cooked to AV1 and decoded as it plays, natively by rav1d on a thread of its own, on the web by WebCodecs, or by rav1d in a Worker of its own where the browser has no AV1 decoder (og.video.capabilities says which). Either way the frame shown is a Texture (VideoInfo.texture, also VideoPlayer.texture) any material map, og.Sprite or UI image draws, and the sound plays on the entity's og.AudioSource in step with it.
+// Playback is simulation, decoding is presentation: the og.video system (after the game's systems, before og.audio) advances VideoPlayer.time by the tick's dt times `speed` (not the time scale, so the picture stays with its sound; a paused game, whose ticks do not run, pauses both), so the frame a player is at on a tick is the same on both hosts, in every run and after a snapshot is restored. With a 30 Hz tick a player started at 0 is at the source's frame 3 s in at tick 90. A stream's texture shows that frame once it is decoded: an executor (og run, og render, og test) waits for it, so every capture shows exactly its tick's frame; a game on the web keeps the last frame decoded until it is, and nothing the decoder has or has not finished reaches the world.
 
 /**
  * Cooked footage: its frames as a texture array, its sound (og.load.video).
@@ -43993,18 +43993,55 @@ export interface VideoInfo {
    * @unit s (seconds of simulation time)
    */
   readonly seconds: number;
-  /** The frames' encoding on the GPU (`rgba8`, `bc7`, `astc4x4`, `etc2`). */
+  /**
+   * The frames' encoding on the GPU (`rgba8`, `bc7`, `astc4x4`, `etc2`; a stream's texture is `rgba8`).
+   */
   readonly format: string;
   /**
-   * Bytes its frames take on the GPU.
+   * Bytes its frames take on the GPU (a stream: its texture's, one frame).
    *
    * @unit bytes (bytes)
    */
   readonly bytes: number;
+  /**
+   * Whether it is a stream (`stream true`: decoded as it plays) rather than a clip of cooked frames.
+   */
+  readonly streamed: boolean;
+  /** A stream's codec (`av1`); empty for a clip. */
+  readonly codec: string;
+  /**
+   * A stream's first frame as an ordinary texture, ready as soon as the bundle is (a menu's thumbnail, the picture while the stream is fetched); for a clip, VideoInfo.texture.
+   */
+  readonly poster: Texture;
 }
 
 /**
- * Plays a loaded video: VideoInfo.texture shows its current frame (frame n is the source at n / fps seconds), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch and loop each tick so the sound plays in step: a seek or a restart starts the sound again at the new time on the next tick (AudioSource.startOffset). Each player has a texture of its own (written to `texture`): the first player of a video takes VideoInfo.texture, each further one a texture the og.video system makes for it over the same decoded frames (one frame of GPU memory each), so two players at different times show different frames. Show a player's `texture`, not VideoInfo.texture, once a video has more than one player.
+ * How this host plays streams. Backend limits are reported here, never by missing members: every host loads and plays a stream through the same API.
+ */
+export interface VideoCapabilities {
+  /**
+   * Whether streams decode here: false only on a host without a renderer (a headless run without a GPU), where a stream's texture shows nothing and its sound plays as usual.
+   */
+  readonly streamed: boolean;
+  /**
+   * The AV1 decoder: `rav1d` (native, a thread per stream), `webcodecs` (the browser's VideoDecoder), `rav1d-wasm` (rav1d in a Worker of its own, where the browser has no AV1 decoder) or `none`.
+   */
+  readonly decoder: string;
+  /**
+   * Whether the browser reports its decoder as hardware-accelerated (WebCodecs' `prefer-hardware` is supported); false for rav1d.
+   */
+  readonly hardware: boolean;
+  /**
+   * The widest stream this decoder plays in real time at 30 fps (wider ones still play, with frames held where decoding falls behind): 7680 for rav1d natively and WebCodecs, less for rav1d-wasm (measured; docs/design.md §2.9).
+   */
+  readonly maxWidth: number;
+  /** The tallest, as maxWidth. */
+  readonly maxHeight: number;
+}
+
+
+/**
+ * Plays a loaded video: VideoInfo.texture shows its current frame (frame n is the source at n / fps seconds; a stream's once decoded), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch and loop each tick so the sound plays in step: a seek or a restart starts the sound again at the new time on the next tick (AudioSource.startOffset). Each player has a texture of its own (written to `texture`): the first player of a video takes VideoInfo.texture, each further one a texture the og.video system makes for it over the same decoded frames (one frame of GPU memory each), so two players at different times show different frames. Show a player's `texture`, not VideoInfo.texture, once a video has more than one player.
  *
  * The value of the `VideoPlayer` component (token `og.VideoPlayer`).
  */
@@ -46411,7 +46448,7 @@ export declare namespace og {
      */
     function tilemap(world: World, path: string): Result<TilemapInfo>;
     /**
-     * Load cooked footage (an `.ogt` of `type video`: `source` an .mp4, .webm or .mov beside it or under assets/, `fps`, `maxSeconds`, `size W H`, `kind color|pixel`, `audio`), which og cook turns with ffmpeg into a texture array of its frames and its sound track. Uploads the frames as one 2D-array texture and makes the video's Texture (VideoInfo.texture), which shows the frame its og.VideoPlayer is at: a material map, an og.Sprite or a UI image draws it like any texture. Load it in GameDesc.start (every process of an og render --jobs run loads it the same way, so its handles agree). Loading the same path again answers the same handles.
+     * Load cooked footage (an `.ogt` of `type video`: `source` an .mp4, .webm or .mov beside it or under assets/, `fps`, `maxSeconds`, `size W H`, `kind color|pixel`, `audio`, and for a stream `stream true`, `keyframe`, `crf`), which og cook turns with ffmpeg into a clip (a texture array of its frames) or a stream (AV1, decoded as it plays) and its sound track. A clip's frames are uploaded as one 2D-array texture; a stream's units are fetched (on the web, from now: it is not part of the startup bundle) and decoded ahead of its players. Either way it makes the video's Texture (VideoInfo.texture), which shows the frame its og.VideoPlayer is at: a material map, an og.Sprite or a UI image draws it like any texture. Load it in GameDesc.start (every process of an og render --jobs run loads it the same way, so its handles agree). Loading the same path again answers the same handles.
      *
      * @param world The world whose renderer and audio own it.
      * @param path The video's asset id: the `.ogt`, such as `clips/intro.ogt`.
@@ -50303,9 +50340,21 @@ export declare namespace og {
     function setBudget(world: World, bytes: number): Result<void>;
   }
   /**
-   * Plays a loaded video: VideoInfo.texture shows its current frame (frame n is the source at n / fps seconds), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch and loop each tick so the sound plays in step: a seek or a restart starts the sound again at the new time on the next tick (AudioSource.startOffset). Each player has a texture of its own (written to `texture`): the first player of a video takes VideoInfo.texture, each further one a texture the og.video system makes for it over the same decoded frames (one frame of GPU memory each), so two players at different times show different frames. Show a player's `texture`, not VideoInfo.texture, once a video has more than one player.
+   * Plays a loaded video: VideoInfo.texture shows its current frame (frame n is the source at n / fps seconds; a stream's once decoded), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch and loop each tick so the sound plays in step: a seek or a restart starts the sound again at the new time on the next tick (AudioSource.startOffset). Each player has a texture of its own (written to `texture`): the first player of a video takes VideoInfo.texture, each further one a texture the og.video system makes for it over the same decoded frames (one frame of GPU memory each), so two players at different times show different frames. Show a player's `texture`, not VideoInfo.texture, once a video has more than one player.
    */
   const VideoPlayer: ComponentType<{ readonly video: FieldSpec<"Video">; readonly playing: FieldSpec<"bool">; readonly time: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly frame: FieldSpec<"u32">; readonly finished: FieldSpec<"bool">; readonly texture: FieldSpec<"Texture"> }, VideoPlayer>;
+  /**
+   * Footage in a game (docs/design.md §2.9): a `type video` asset cooked by ffmpeg, loaded with og.load.video and played by og.VideoPlayer. A clip (the default, for short loops: at most 256 frames) is cooked into a texture array of its frames; a stream (`stream true`: any length) is cooked to AV1 and decoded as it plays, natively by rav1d on a thread of its own, on the web by WebCodecs, or by rav1d in a Worker of its own where the browser has no AV1 decoder (og.video.capabilities says which). Either way the frame shown is a Texture (VideoInfo.texture, also VideoPlayer.texture) any material map, og.Sprite or UI image draws, and the sound plays on the entity's og.AudioSource in step with it.
+   * Playback is simulation, decoding is presentation: the og.video system (after the game's systems, before og.audio) advances VideoPlayer.time by the tick's dt times `speed` (not the time scale, so the picture stays with its sound; a paused game, whose ticks do not run, pauses both), so the frame a player is at on a tick is the same on both hosts, in every run and after a snapshot is restored. With a 30 Hz tick a player started at 0 is at the source's frame 3 s in at tick 90. A stream's texture shows that frame once it is decoded: an executor (og run, og render, og test) waits for it, so every capture shows exactly its tick's frame; a game on the web keeps the last frame decoded until it is, and nothing the decoder has or has not finished reaches the world.
+   */
+  namespace video {
+    /**
+     * How streams play on this host: the decoder, whether it is hardware and its largest real-time size.
+     *
+     * @param world The world asked.
+     */
+    function capabilities(world: World): VideoCapabilities;
+  }
   /**
    * Debug draw: lines, boxes, spheres, arrows, axes and labels in the world, each for a number of ticks, drawn over the finished frame (after every post effect, before the UI) so they read in every capture and never hide behind geometry; and the debug views (physics, navigation, bounds, levels of detail, and the lit image's terms: shadow cascades, ambient occlusion, albedo, image-based and direct light) the command channel's `debug:` actions switch.
    * Development only: not in publish builds, where every member does nothing and answers its default, so a game may leave its debug draws in. Debug draw is rendering: it never feeds back into the simulation, and its draws are not world state (a snapshot or a replay does not carry them).

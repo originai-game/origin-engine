@@ -161,3 +161,54 @@ test.skipIf(!hasFfmpeg)("a video frame shows as an og.Mesh material map and on a
     rmSync(out, { recursive: true, force: true });
   }
 }, 300_000);
+
+// A stream (count-stream.ogt: the same source cooked to AV1 with a key
+// frame every second, decoded by rav1d on a thread of its own as it plays)
+// shows the frame its player is at, exactly, in every capture: tick 90 the
+// source's frame 90; a seek back to 1 s the frame 31 on the next tick
+// (decoded from the key frame at 30, not from 90 onwards); a loop's wrap
+// the frame it wrapped to. Each is nearer its own source frame than either
+// neighbour, so a frame decoded a step late or from the wrong key frame
+// fails. Broken before: there were no streams (the cook refused `stream`).
+test.skipIf(!hasFfmpeg)("a streamed video shows its tick's frame, after a seek and across a loop", () => {
+  const out = mkdtempSync(join(tmpdir(), "og-video-stream-"));
+  try {
+    const script = [
+      "0.5:stream",
+      "3:screenshot:s90.png",
+      "3:dump_entity:screen:s90.json",
+      "3:set:screen.og.VideoPlayer.time=1",
+      "3.034:screenshot:seek.png",
+      "3.034:dump_entity:screen:seek.json",
+      "3.1:set:screen.og.VideoPlayer.loop=true",
+      "3.1:set:screen.og.VideoPlayer.time=3.9",
+      "3.267:screenshot:loop.png",
+      "3.267:dump_entity:screen:loop.json",
+      "3.3:quit",
+    ].join(";");
+    const r = Bun.spawnSync([ogBin(), "run", "--headless", fixture, "--commands", script, "--out", out, "--json"], { cwd: repo });
+    if (r.exitCode !== 0) throw new Error(`og run exited ${r.exitCode}: ${text(r.stderr)}`);
+    const run = JSON.parse(text(r.stdout).trim().split("\n").pop()!) as { tier: string; warnings: string[] };
+    expect(run.warnings).toEqual([]);
+    const dump = (f: string) => (JSON.parse(readFileSync(join(out, f), "utf8")) as Dump).components;
+    const at = dump("s90.json");
+    expect(at["og.VideoPlayer"]!.frame).toBe(90);
+    expect(at["og.VideoPlayer"]!.texture).toBeGreaterThan(0);
+    expect(at["og.AudioSource"]!.sound).toBeGreaterThan(0);
+    expect(dump("seek.json")["og.VideoPlayer"]!.frame).toBe(31);
+    const looped = dump("loop.json")["og.VideoPlayer"]!.frame as number;
+    expect(looped).toBeLessThan(10);
+    if (run.tier === "none") return;
+    const source = join(fixture, "assets/clips/count.mp4");
+    const src = (n: number) => rgb(["-i", source], `select=eq(n\\,${n}),`);
+    for (const [shot, n] of [["s90.png", 90], ["seek.png", 31], ["loop.png", looped]] as const) {
+      const frame = rgb(["-i", join(out, shot)], "");
+      const [before, own, after] = [n - 1, n, n + 1].map((k) => rmse(frame, src((k + 120) % 120)));
+      expect(own, shot).toBeLessThan(before!);
+      expect(own, shot).toBeLessThan(after!);
+      expect(own, shot).toBeLessThan(0.12);
+    }
+  } finally {
+    rmSync(out, { recursive: true, force: true });
+  }
+}, 300_000);

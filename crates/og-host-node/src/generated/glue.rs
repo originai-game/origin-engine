@@ -3464,6 +3464,12 @@ pub fn og_stream_set_budget(env: Env, world: u32, bytes: f64) -> String {
     <Host as StreamApi>::og_stream_set_budget(&Host, world, bytes)
 }
 
+#[napi(js_name = "og_video_capabilities")]
+pub fn og_video_capabilities(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as VideoApi>::og_video_capabilities(&Host, world)
+}
+
 #[cfg(not(feature = "publish"))]
 #[napi(js_name = "og_debug_line")]
 pub fn og_debug_line(env: Env, world: u32, from: String, to: String, desc: Option<String>) {

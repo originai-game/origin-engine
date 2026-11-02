@@ -133,6 +133,44 @@ pub trait Hooks {
     fn inflate_take(&self, key: u64) -> Fetch<Vec<u8>> {
         Fetch::Failed(format!("inflate {key} was never started"))
     }
+    /// The AV1 decoder streamed videos play with here (`og.video.capabilities`):
+    /// natively rav1d by default; the web host answers what its Worker found.
+    fn video_decoder(&self) -> VideoDecoder {
+        VideoDecoder::default()
+    }
+}
+
+/// A host's AV1 decoder, as `og.video.capabilities` reports it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct VideoDecoder {
+    /// `rav1d`, `webcodecs`, `rav1d-wasm` or `none`.
+    pub name: String,
+    pub hardware: bool,
+    /// The largest stream it decodes in real time at 30 fps.
+    pub max_width: u32,
+    pub max_height: u32,
+}
+
+impl Default for VideoDecoder {
+    /// rav1d natively (8K at 30 fps on a desktop CPU); none on the web
+    /// until the host says.
+    fn default() -> Self {
+        if cfg!(target_arch = "wasm32") {
+            VideoDecoder {
+                name: "none".into(),
+                hardware: false,
+                max_width: 0,
+                max_height: 0,
+            }
+        } else {
+            VideoDecoder {
+                name: "rav1d".into(),
+                hardware: false,
+                max_width: 7680,
+                max_height: 4320,
+            }
+        }
+    }
 }
 
 pub use super::extract::RenderBackend;

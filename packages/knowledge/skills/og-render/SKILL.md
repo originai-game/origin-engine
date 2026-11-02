@@ -1141,3 +1141,30 @@ player of a video has a texture of its own (the first takes
 `info.texture`, each further one a texture made for it over the same
 frames), so two players at different times show different frames. With
 more than one player, draw each player's `VideoPlayer.texture`. Every field and the loaders are in `og api show video`.
+
+**Long footage: streams.** A clip is for short loops. For anything
+longer (a cutscene, a trailer, a TV in the level) add `stream true`: the
+cook encodes it to AV1 (ffmpeg's libsvtav1 or libaom-av1) and it is
+decoded as it plays, with no frame limit, the sound in Opus:
+
+```text
+type video
+version 1
+---
+source "clips/intro.mp4"
+stream true                # decoded as it plays
+size 1280 720              # default the source's, at most 1920 wide; even, at least 64x64
+keyframe 1                 # seconds between key frames: what a seek decodes at most (default 1)
+crf 32                     # quality, 0 best to 63 (default 32)
+```
+
+The API is the same: `og.load.video`, `og.VideoPlayer`, its texture on a
+sprite, material or UI image. `info.streamed` is true and `info.poster`
+is the first frame as an ordinary texture, ready at once (a menu's
+thumbnail, the picture while the stream loads on the web, where it is
+fetched by `og.load.video` and not with the startup bundle).
+`og.video.capabilities(world)` names the decoder (`rav1d` natively,
+`webcodecs` or `rav1d-wasm` in a browser) and the largest size it plays
+in real time. The player's time is the tick's, as for a clip; decoding
+never changes the world, and `og run`, `og render` and `og test` wait for
+each frame, so captures are exact.

@@ -34,6 +34,8 @@ og-ai = { path = "../og-ai" }
 og-story = { path = "../og-story" }
 og-i18n = { path = "../og-i18n" }
 og-net = { path = "../og-net" }
+# Streamed video's decode plan; natively its rav1d decoder too (below).
+og-video = { path = "../og-video", default-features = false }
 
 [features]
 default = ["shaping", "physics2d", "physics3d"]
@@ -67,3 +69,8 @@ path = "tests/main.rs"
 [[test]]
 name = "extract_cost"
 path = "tests/extract_cost.rs"
+
+# Natively a stream decodes with rav1d on a thread of its own; the web host
+# decodes with WebCodecs (or rav1d's wasm module) beside the engine Worker.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+og-video = { path = "../og-video" }

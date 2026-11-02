@@ -1,0 +1,10 @@
+type video
+version 1
+---
+# The same source as count.ogt, streamed: AV1 decoded as it plays, a key
+# frame every second (frames 0, 30, 60, 90), its sound in Opus.
+source "count.mp4"
+stream true
+fps 30
+size 192 108
+keyframe 1

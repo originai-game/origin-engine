@@ -1151,6 +1151,8 @@ export interface HostAbi<A, V> {
   og_stream_budget(world: number): string;
   /** `og.stream.setBudget` */
   og_stream_set_budget(world: number, bytes: number): string;
+  /** `og.video.capabilities` */
+  og_video_capabilities(world: number): string;
   /** `og.debug.line` */
   og_debug_line(world: number, from: string, to: string, desc: string | undefined): void;
   /** `og.debug.box` */
@@ -1758,6 +1760,7 @@ export const SYMBOLS: readonly string[] = [
   "og_stream_release",
   "og_stream_budget",
   "og_stream_set_budget",
+  "og_video_capabilities",
   "og_debug_line",
   "og_debug_box",
   "og_debug_sphere",
