@@ -1,7 +1,7 @@
 // The genre patterns (docs/ui.md §11, U6d) on the native host, driven as a
 // player drives them: a drag, a tap, keys, a pad, Back. Each test names the
 // wrong implementation it would catch.
-import { expect, test } from "bun:test";
+import { expect, setDefaultTimeout, test } from "bun:test";
 import { og, defineSystem } from "@origingame/engine";
 import type * as Api from "@origingame/engine";
 import { existsSync } from "node:fs";
@@ -24,6 +24,11 @@ const kit = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "tem
 }
 
 type Element = { id: string; parent: string; path: string; kind: string; text: string; role: string; name: string; value: string; states: string[]; disabled: boolean; x: number; y: number; width: number; height: number };
+
+// A test here drives hundreds of ticks of a whole screen through the native host (a drag, a reveal, a scroll): 4 to 6 s
+// each on the r41 host, past bun's 5 s default, so which ones timed out varied from run to run. Each is given 20 s, as
+// the slowest already was; a test still fails on what it asserts, never on the machine's load.
+setDefaultTimeout(20000);
 
 let systems = 0;
 /** An engine whose one system builds `build` at the top start of a 1280×720 desktop surface. */
