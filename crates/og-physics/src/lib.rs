@@ -53,6 +53,7 @@
 #[cfg(not(any(feature = "physics2d", feature = "physics3d")))]
 compile_error!("og-physics needs the `physics2d` or the `physics3d` feature (both are default)");
 
+mod drivetrain;
 mod fluid;
 mod fluid3d;
 mod gather;
@@ -380,6 +381,8 @@ pub struct WheelPose {
     /// How fast the tyre's contact moves sideways over the ground, m/s
     /// (along the axle; 0 in the air and in 2D).
     pub side_speed: f32,
+    /// Its og.VehicleWheel entity's bits; 0 for an implicit wheel.
+    pub entity: u64,
 }
 
 /// A cloth's points as the last step left them, row-major.
@@ -595,11 +598,12 @@ pub const QUERY_SYSTEM_NAME: &str = "og.physics.queries";
 /// The physics types registered only once a game uses them, so a world
 /// that never does keeps the type table, saves and hash it had before
 /// G2-3 added them: [`install`] leaves them out and [`enable`] adds one.
-pub const LAZY: [&str; 4] = [
+pub const LAZY: [&str; 5] = [
     BodySlept::NAME,
     BodyWoke::NAME,
     JointBroken::NAME,
     ContactHook::NAME,
+    VehicleWheel::NAME,
 ];
 
 /// Registers lazy physics type `name` (one of [`LAZY`]) and grants it to
@@ -612,6 +616,7 @@ pub fn enable(world: &mut World, name: &str) -> Result<()> {
         BodyWoke::NAME => world.register::<BodyWoke>().map(drop)?,
         JointBroken::NAME => world.register::<JointBroken>().map(drop)?,
         ContactHook::NAME => world.register::<ContactHook>().map(drop)?,
+        VehicleWheel::NAME => world.register::<VehicleWheel>().map(drop)?,
         other => {
             return Err(Error::new(
                 ErrorKind::NotFound,
@@ -620,7 +625,7 @@ pub fn enable(world: &mut World, name: &str) -> Result<()> {
         }
     }
     world.grant(SYSTEM_NAME, &[name])?;
-    if name == ContactHook::NAME {
+    if name == ContactHook::NAME || name == VehicleWheel::NAME {
         match world.grant(QUERY_SYSTEM_NAME, &[name]) {
             Err(e) if e.kind() == ErrorKind::NotFound && !e.reason().contains("type") => {}
             r => r?,
@@ -678,9 +683,9 @@ impl PhysicsSystem {
         let (shared, ids) = (self.shared.clone(), self.ids.clone());
         let run = move |ctx: &mut SystemContext<'_>| {
             let settings = *ctx.resource::<Physics>()?;
-            let hook = ctx.id_by_name(ContactHook::NAME).ok();
+            let lazy = gather::LazyIds::of(|n| ctx.id_by_name(n).ok());
             let scene =
-                gather::gather(&|i| ctx.query(i), &|e, id| ctx.get_bytes(e, id), hook, &ids)?;
+                gather::gather(&|i| ctx.query(i), &|e, id| ctx.get_bytes(e, id), lazy, &ids)?;
             let mut shared = lock(&shared);
             shared.recorded = Some((settings, scene));
             shared.recorded_query = None;
@@ -963,7 +968,7 @@ impl PhysicsSystem {
         let scene = gather::gather(
             &|i| world.query(&QUERIES[i].desc(false)),
             &|e, id| world.get_bytes(e, id),
-            world.id_by_name(ContactHook::NAME).ok(),
+            gather::LazyIds::of(|n| world.id_by_name(n).ok()),
             &self.ids,
         )?;
         let inner = Arc::new(QueryInner::build_outside(
@@ -1383,8 +1388,8 @@ fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> Result
     }
     let started = stats::now_ms();
     let mut laps = stats::Laps::start();
-    let hook = ctx.id_by_name(ContactHook::NAME).ok();
-    let scene: Scene = gather::gather(&|i| ctx.query(i), &|e, id| ctx.get_bytes(e, id), hook, ids)?;
+    let lazy = gather::LazyIds::of(|n| ctx.id_by_name(n).ok());
+    let scene: Scene = gather::gather(&|i| ctx.query(i), &|e, id| ctx.get_bytes(e, id), lazy, ids)?;
     laps.lap(stats::Phase::Gather);
     let tick = ctx.time().tick;
     let threads = og_lanes::threads();

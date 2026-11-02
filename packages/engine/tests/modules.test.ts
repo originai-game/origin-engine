@@ -5,7 +5,7 @@
 // controllers (og.systems.cameras), and the world calls that run inside
 // systems through the system context.
 import { beforeAll, expect, test } from "bun:test";
-import { og, defineComponent, defineResource, defineSystem, f32, u32, SHAPE_BOX, SHAPE_SPHERE } from "@origingame/engine";
+import { og, defineComponent, defineResource, defineSystem, f32, u32, SHAPE_BOX, SHAPE_SPHERE, VEHICLE_DRIVETRAIN } from "@origingame/engine";
 import type { World } from "@origingame/engine";
 import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
@@ -167,6 +167,41 @@ test("a conveyor hook carries a box, and a joint past its breakForce breaks once
   expect(must(w.get(w.find("box")!, og.Velocity)).linear.x).toBeCloseTo(1, 1);
   expect(must(w.resource(Broke))).toMatchObject({ count: 1, joint: 1 });
   expect(must(w.get(w.find("heavy")!, og.Joint)).broken).toBeTrue();
+});
+
+test("a drivetrain truck on six wheel children shifts up through its gears", () => {
+  const engine = start(
+    og.game({
+      start: (world: World) => {
+        const floor = must(world.spawn({ name: "floor", position: { x: 0, y: -0.5, z: 0 } }));
+        world.insert(floor, og.Collider, { shape: SHAPE_BOX, size: { x: 400, y: 1, z: 400 } });
+        const truck = must(world.spawn({ name: "truck", position: { x: 0, y: 1.2, z: 0 } }));
+        world.insert(truck, og.RigidBody, { mass: 1500 });
+        world.insert(truck, og.Collider, { shape: SHAPE_BOX, size: { x: 1.8, y: 0.6, z: 5 } });
+        world.insert(truck, og.Vehicle, { model: VEHICLE_DRIVETRAIN });
+        let n = 0;
+        for (const z of [2, 0, -2]) {
+          for (const x of [0.8, -0.8]) {
+            const wheel = must(world.spawn({ name: `wheel-${n++}`, parent: truck, position: { x, y: -0.2, z } }));
+            world.insert(wheel, og.VehicleWheel, { steer: z > 0 ? 1 : 0, drive: z <= 0 });
+          }
+        }
+      },
+    }),
+  );
+  expect(engine.advance(60).ok).toBeTrue();
+  const w = engine.world;
+  const truck = w.find("truck")!;
+  w.set(truck, og.Vehicle, { throttle: 1 });
+  expect(engine.advance(480).ok).toBeTrue();
+  const v = must(w.get(truck, og.Vehicle));
+  expect(v.contacts).toBe(6);
+  expect(v.gear).toBeGreaterThanOrEqual(2);
+  expect(v.rpm).toBeGreaterThan(900);
+  expect(v.speed).toBeGreaterThan(5);
+  const wheels = must(og.physics.vehicleWheels(w, truck));
+  const ids = Array.from({ length: 6 }, (_, i) => w.find(`wheel-${i}`)!).sort((a, b) => Number(a) - Number(b));
+  expect(wheels.map((x) => x.entity)).toEqual(ids);
 });
 
 test("a restored snapshot continues the simulation exactly", () => {

@@ -150,6 +150,7 @@ Field units the docs and Tune use.
 | `mps` | metres per second |
 | `mps2` | metres per second squared |
 | `radps` | radians per second |
+| `rpm` | revolutions per minute |
 | `perSecond` | a rate per second: the fraction of a value that decays in one second |
 | `kgPerM3` | kilograms per cubic metre (per square metre in the 2D profile) |
 | `db` | decibels |
@@ -158,7 +159,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1955 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1958 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -1437,6 +1438,7 @@ Field units the docs and Tune use.
 | [`og.ui.waypoint`](ui.md#fn-waypoint) | function | ui | — |
 | [`og.ui.zoomView`](ui.md#fn-zoomView) | function | ui | `og_ui_zoom_view` |
 | [`og.Vehicle`](physics.md#record-Vehicle) | component | physics | — |
+| [`og.VehicleWheel`](physics.md#record-VehicleWheel) | component | physics | — |
 | [`og.Velocity`](physics.md#record-Velocity) | component | physics | — |
 | [`og.VideoPlayer`](video.md#record-VideoPlayer) | component | video | — |
 | [`og.Water`](atmosphere.md#record-Water) | component | atmosphere | — |
@@ -2066,6 +2068,8 @@ Field units the docs and Tune use.
 | [`VectorArt`](ui.md#type-VectorArt) | handle | ui | — |
 | [`VectorArt()`](ui.md#column-VectorArt) | column kind | ui | — |
 | [`VectorFill`](ui.md#type-VectorFill) | desc struct | ui | — |
+| [`VEHICLE_ARCADE`](physics.md#const-VEHICLE_ARCADE) | constant | physics | — |
+| [`VEHICLE_DRIVETRAIN`](physics.md#const-VEHICLE_DRIVETRAIN) | constant | physics | — |
 | [`Video`](video.md#type-Video) | handle | video | — |
 | [`Video()`](video.md#column-Video) | column kind | video | — |
 | [`VideoInfo`](video.md#type-VideoInfo) | struct | video | — |

@@ -11,6 +11,7 @@ mod character_ground;
 mod compound;
 mod contact_hits;
 mod controllers;
+mod drivetrain;
 mod edits;
 mod fluid3d;
 mod fluid_groups;

@@ -59,6 +59,17 @@ is one line here, written at the merge that changes
   `surfaceVelocity`, `friction`, `restitution`, `ignore`), data the solver
   reads, never a callback. og.Joint is version 2: saves of 0.7.7 restore
   with joints that never break. The unit `newtonMetre`.
+  og.BodySlept, og.BodyWoke, og.JointBroken and og.ContactHook are
+  registered only once a game names them.
+
+- Added (physics, G2-3): a drivetrain car. `Vehicle.model`
+  (`VEHICLE_ARCADE`, the default, or `VEHICLE_DRIVETRAIN`), `gears`,
+  `reverseRatio`, `finalDrive`, `idleRpm`, `maxRpm`, `torqueCurve`,
+  `automatic`, `shiftUpRpm`, `shiftDownRpm`, `clutchTime`, `gear` and
+  `rpm` (written); `handbrake`, `handbrakeGrip` and `driftGrip` for both
+  models; the component `og.VehicleWheel` (N wheels on child entities, up
+  to 16) and `WheelPose.entity`; the unit `rpm`. og.Vehicle is version 2:
+  saves of 0.7.7 restore as the arcade car they were.
 
 - **A reactive ECS with spatial queries (G2-2).** Added to the IDL:
   `SystemDesc.changed`, `added`, `removed`, `state`, `value`, `when`

@@ -285,12 +285,27 @@ pub(crate) struct SimExt {
     pub(crate) still: IdMap<u64, u32>,
     /// Whether some collider has its contact hooks on ([`sync_hooks`]).
     pub(crate) hooked: bool,
+    /// What a vehicle keeps beyond its controller, by entity: its
+    /// gearbox (drivetrain model) and the og.VehicleWheel children it was
+    /// built with; none for an arcade car on its four implicit wheels.
+    pub(crate) vehicles: IdMap<u64, VehicleExt>,
+}
+
+/// A vehicle's state beyond its controller ([`SimExt::vehicles`]).
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub(crate) struct VehicleExt {
+    pub(crate) gearbox: crate::drivetrain::Gearbox,
+    /// The og.VehicleWheel children its wheels were built from, in order:
+    /// each one's entity and what building bakes in (its mount's x, y and
+    /// z, radius and suspension rest, as bits). Empty: its implicit wheels.
+    pub(crate) wheels: Vec<(u64, [u32; 5])>,
 }
 
 /// Extension section tags of the og.physics block.
 pub(crate) const EXT_COMPOUNDS: u16 = 1;
 pub(crate) const EXT_SLEEP: u16 = 2;
 pub(crate) const EXT_HOOKS: u16 = 3;
+pub(crate) const EXT_VEHICLES: u16 = 4;
 
 impl SimExt {
     /// Its sections, each `(tag, bytes)`; none for what is empty.
@@ -310,6 +325,12 @@ impl SimExt {
         }
         if self.hooked {
             out.push((EXT_HOOKS, Vec::new()));
+        }
+        if !self.vehicles.is_empty() {
+            let mut bytes = Vec::new();
+            let list: Vec<(&u64, &VehicleExt)> = self.vehicles.iter().collect();
+            crate::encode(&mut bytes, &list).expect("vehicles serialize into memory");
+            out.push((EXT_VEHICLES, bytes));
         }
         out
     }
@@ -335,6 +356,10 @@ impl SimExt {
             } else if tag == EXT_SLEEP {
                 let list: Vec<(u64, u32)> = crate::codec().deserialize(bytes).map_err(parse)?;
                 ext.still = list.into_iter().collect();
+            } else if tag == EXT_VEHICLES {
+                let list: Vec<(u64, VehicleExt)> =
+                    crate::codec().deserialize(bytes).map_err(parse)?;
+                ext.vehicles = list.into_iter().collect();
             }
         }
         Ok(ext)

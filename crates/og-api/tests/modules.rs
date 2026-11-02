@@ -110,6 +110,8 @@ const VERSIONS: &[(&str, u32, u64)] = &[
     ("og.SpringCollider", 1, 0x4078f34f3ce7d3b3),
     ("og.Transform", 1, 0x1f6309afb81c85f3),
     ("og.TweenCompleted", 1, 0xe394841eee68bb0a),
+    ("og.Vehicle", 2, 0x45a35b63ff56d1d2),
+    ("og.VehicleWheel", 1, 0xc3aa8551ae5e84c4),
     ("og.Velocity", 1, 0x70aff545497a9c4d),
 ];
 
@@ -173,6 +175,8 @@ fn physics_audio_animation_and_input_records_have_the_idl_layouts() {
     check::<og_physics::Joint>(&mut failures);
     check::<og_physics::JointBroken>(&mut failures);
     check::<og_physics::ContactHook>(&mut failures);
+    check::<og_physics::Vehicle>(&mut failures);
+    check::<og_physics::VehicleWheel>(&mut failures);
     check::<og_physics::Fluid3D>(&mut failures);
     check::<og_audio::AudioSource>(&mut failures);
     check::<og_audio::AudioListener>(&mut failures);

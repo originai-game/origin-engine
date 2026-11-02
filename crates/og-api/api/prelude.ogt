@@ -27,6 +27,7 @@ unit newtonMetre "newton-metres: a torque, a newton pushing one metre from the a
 unit mps "metres per second"
 unit mps2 "metres per second squared"
 unit radps "radians per second"
+unit rpm "revolutions per minute"
 unit perSecond "a rate per second: the fraction of a value that decays in one second"
 unit kgPerM3 "kilograms per cubic metre (per square metre in the 2D profile)"
 unit db "decibels"

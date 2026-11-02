@@ -12054,8 +12054,14 @@ export declare const DRIVE_FRONT: 1;
 /** `Vehicle.drive`: every wheel drives. */
 export declare const DRIVE_ALL: 2;
 
+/** `Vehicle.model`: the arcade car: engineForce, faded out towards maxSpeed. */
+export declare const VEHICLE_ARCADE: 0;
+
+/** `Vehicle.model`: an engine with a torque curve driving through a gearbox. */
+export declare const VEHICLE_DRIVETRAIN: 1;
+
 /**
- * A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). 3D: a raycast car with four wheels (suspension, grip, steering on the front axle); its forward is the chassis's local +z (three.js Object3D.lookAt aims +z). 2D: two wheel bodies on sprung wheel joints (front at +x), driven by a motor. The wheels are not entities: og.physics.vehicleWheels gives their poses (and each tyre's slip) for drawing, smoke and skid marks.
+ * A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). 3D: a raycast car with four wheels (suspension, grip, steering on the front axle), or with the og.VehicleWheel children it has; its forward is the chassis's local +z (three.js Object3D.lookAt aims +z). 2D: two wheel bodies on sprung wheel joints (front at +x), driven by a motor. The implicit wheels are not entities: og.physics.vehicleWheels gives their poses (and each tyre's slip) for drawing, smoke and skid marks.
  * The defaults drive a road car of about 1,000 kg: give the chassis that mass (og.RigidBody.mass 1000), since a car-sized box at the collider's density 1 weighs a few kilograms and the engine's and brakes' newtons would throw it. The suspension and the grip scale with the chassis's mass (Bullet's units), the engine and the brakes do not: a heavier car wants proportionally more engineForce and brakeForce. og-feel §12 has the numbers a game starts from.
  * The wheel rays meet what the chassis's collider would (its og.Collider layers against the other's mask, and the other's layers against its mask), so two cars on layers that do not meet (a ghost beside the player) pass through each other.
  *
@@ -12233,6 +12239,202 @@ export interface Vehicle {
    * @readonly written by the engine
    */
   readonly slip: number;
+  /**
+   * VEHICLE_ARCADE 0 (engineForce, faded out towards maxSpeed) or VEHICLE_DRIVETRAIN 1 (an engine with a torque curve driving through a gearbox: gears, finalDrive, torqueCurve, the rpm fields; engineForce and maxSpeed are then unused). The drivetrain's torque at the driven wheels is the curve's at the engine's speed times throttle, the gear's ratio and finalDrive; the engine's speed follows the wheels while a gear is in.
+   *
+   * @range 0..1
+   */
+  model: number;
+  /**
+   * The handbrake, 0 to 1: it brakes the handbrake wheels (3D: the rear pair, or the og.VehicleWheel children flagged `handbrake`; 2D: the rear wheel) with that share of brakeForce, takes their drive and loosens their grip, sideways and in all, towards handbrakeGrip: in a bend at speed the tail steps out, and driftGrip keeps it loose while it slides. A handbrake turn is a pull and a release: held, the car slows and the slide dies with its speed.
+   *
+   * @range 0..1
+   */
+  handbrake: number;
+  /**
+   * The handbrake wheels' grip at full handbrake, sideways and in all, as a share of their own (3D): 0.2 lets the tail step out in a bend at speed; 1 holds the line.
+   *
+   * @default 0.2
+   * @range 0..1
+   * @tunable
+   */
+  handbrakeGrip: number;
+  /**
+   * Drift tuning: the handbrake wheels' sideways grip while the car drifts (the handbrake is on, or one of them slid last step), as a share of their own (3D). 1 is off; around 0.6 holds a slide that the throttle and steering balance.
+   *
+   * @default 1
+   * @range 0..1
+   * @tunable
+   */
+  driftGrip: number;
+  /**
+   * Drivetrain: the forward gears' ratios, first gear first; empty uses 3.4, 2.2, 1.6, 1.25, 1.0, 0.82.
+   *
+   * @capacity 8 elements (List.f32.8): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  gears: readonly number[];
+  /**
+   * Drivetrain: the reverse gear's ratio.
+   *
+   * @default 3.2
+   * @range 0..
+   * @tunable
+   */
+  reverseRatio: number;
+  /**
+   * Drivetrain: the final drive's ratio, after every gear.
+   *
+   * @default 3.6
+   * @range 0..
+   * @tunable
+   */
+  finalDrive: number;
+  /**
+   * Drivetrain: the engine's speed at rest.
+   *
+   * @default 900
+   * @range 0..
+   * @unit rpm (revolutions per minute)
+   * @tunable
+   */
+  idleRpm: number;
+  /**
+   * Drivetrain: the rev limit: the engine gives no torque at or above it.
+   *
+   * @default 6800
+   * @range 1..
+   * @unit rpm (revolutions per minute)
+   * @tunable
+   */
+  maxRpm: number;
+  /**
+   * Drivetrain: the engine's torque (N·m) at full throttle, at evenly spaced speeds from 0 to maxRpm, interpolated between them; empty uses 140, 170, 195, 210, 215, 205, 185, 150 (a 1,000 kg road car's).
+   *
+   * @capacity 8 elements (List.f32.8): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  torqueCurve: readonly number[];
+  /**
+   * Drivetrain: the gearbox shifts by itself, up at shiftUpRpm and down at shiftDownRpm, into reverse when throttle is negative at a standstill and back into first when it is positive. False leaves `gear` to the game (a manual gearbox).
+   *
+   * @default true
+   */
+  automatic: boolean;
+  /**
+   * Drivetrain, automatic: the engine speed it shifts up at.
+   *
+   * @default 6000
+   * @range 0..
+   * @unit rpm (revolutions per minute)
+   * @tunable
+   */
+  shiftUpRpm: number;
+  /**
+   * Drivetrain, automatic: the engine speed it shifts down at.
+   *
+   * @default 2800
+   * @range 0..
+   * @unit rpm (revolutions per minute)
+   * @tunable
+   */
+  shiftDownRpm: number;
+  /**
+   * Drivetrain: how long a gear change takes; the engine drives nothing meanwhile.
+   *
+   * @default 0.25
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  clutchTime: number;
+  /**
+   * Drivetrain: the gear, -1 reverse, 0 neutral, 1 and up forward. An automatic gearbox writes it; for a manual one the game sets it, and each change takes clutchTime.
+   *
+   * @range -1..8
+   */
+  gear: number;
+  /**
+   * Written, drivetrain: the engine's speed, for the engine's sound and the tachometer.
+   *
+   * @unit rpm (revolutions per minute)
+   * @readonly written by the engine
+   */
+  readonly rpm: number;
+}
+
+/**
+ * A wheel of the og.Vehicle it is a child of (down its og.Parent chain), at its og.Transform relative to the chassis: the hard point its suspension hangs from. A vehicle with og.VehicleWheel children (up to 16, in entity order) has those wheels in place of its four implicit ones, and og.physics.vehicleWheels lists them in that order: six-wheeled trucks, trikes, rear-wheel steering. 3D only; the 2D vehicle keeps its two wheels.
+ *
+ * The value of the `VehicleWheel` component (token `og.VehicleWheel`).
+ */
+export interface VehicleWheel {
+  /**
+   * The wheel's radius.
+   *
+   * @default 0.4
+   * @range 0.01..
+   * @unit m (metres)
+   * @tunable
+   */
+  radius: number;
+  /**
+   * The suspension's length at rest, down from the wheel's position.
+   *
+   * @default 0.35
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  suspensionRest: number;
+  /**
+   * How far the suspension compresses or extends from rest.
+   *
+   * @default 0.25
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  suspensionTravel: number;
+  /**
+   * The suspension's stiffness.
+   *
+   * @default 30
+   * @range 0..
+   * @tunable
+   */
+  suspensionStiffness: number;
+  /**
+   * The suspension's damping.
+   *
+   * @default 4
+   * @range 0..
+   * @tunable
+   */
+  suspensionDamping: number;
+  /**
+   * The tyre's grip, as og.Vehicle's `grip`.
+   *
+   * @default 2
+   * @range 0..
+   * @tunable
+   */
+  grip: number;
+  /**
+   * How much of the vehicle's steering it takes: 1 a front wheel, 0 none, negative steers the other way (rear-wheel steering).
+   *
+   * @range -1..1
+   * @tunable
+   */
+  steer: number;
+  /** Whether the engine drives it (og.Vehicle.drive is then unused). */
+  drive: boolean;
+  /**
+   * Whether the brake brakes it.
+   *
+   * @default true
+   */
+  brake: boolean;
+  /** Whether the handbrake brakes it, and driftGrip applies to it. */
+  handbrake: boolean;
 }
 
 /**
@@ -13415,6 +13617,8 @@ export interface WheelPose {
    * @unit mps (metres per second)
    */
   readonly sideSpeed: number;
+  /** The wheel's og.VehicleWheel entity; 0 for a vehicle's implicit wheels. */
+  readonly entity: Entity;
 }
 
 /**
@@ -41481,11 +41685,15 @@ export declare namespace og {
    */
   const CharacterEvent: EventType<CharacterEvent>;
   /**
-   * A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). 3D: a raycast car with four wheels (suspension, grip, steering on the front axle); its forward is the chassis's local +z (three.js Object3D.lookAt aims +z). 2D: two wheel bodies on sprung wheel joints (front at +x), driven by a motor. The wheels are not entities: og.physics.vehicleWheels gives their poses (and each tyre's slip) for drawing, smoke and skid marks.
+   * A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). 3D: a raycast car with four wheels (suspension, grip, steering on the front axle), or with the og.VehicleWheel children it has; its forward is the chassis's local +z (three.js Object3D.lookAt aims +z). 2D: two wheel bodies on sprung wheel joints (front at +x), driven by a motor. The implicit wheels are not entities: og.physics.vehicleWheels gives their poses (and each tyre's slip) for drawing, smoke and skid marks.
    * The defaults drive a road car of about 1,000 kg: give the chassis that mass (og.RigidBody.mass 1000), since a car-sized box at the collider's density 1 weighs a few kilograms and the engine's and brakes' newtons would throw it. The suspension and the grip scale with the chassis's mass (Bullet's units), the engine and the brakes do not: a heavier car wants proportionally more engineForce and brakeForce. og-feel §12 has the numbers a game starts from.
    * The wheel rays meet what the chassis's collider would (its og.Collider layers against the other's mask, and the other's layers against its mask), so two cars on layers that do not meet (a ghost beside the player) pass through each other.
    */
-  const Vehicle: ComponentType<{ readonly throttle: FieldSpec<"f32">; readonly steer: FieldSpec<"f32">; readonly brake: FieldSpec<"f32">; readonly wheelBase: FieldSpec<"f32">; readonly track: FieldSpec<"f32">; readonly wheelRadius: FieldSpec<"f32">; readonly mountHeight: FieldSpec<"f32">; readonly suspensionRest: FieldSpec<"f32">; readonly suspensionTravel: FieldSpec<"f32">; readonly suspensionStiffness: FieldSpec<"f32">; readonly suspensionDamping: FieldSpec<"f32">; readonly grip: FieldSpec<"f32">; readonly engineForce: FieldSpec<"f32">; readonly maxSpeed: FieldSpec<"f32">; readonly brakeForce: FieldSpec<"f32">; readonly maxSteer: FieldSpec<"f32">; readonly drive: FieldSpec<"u32">; readonly wheelMass: FieldSpec<"f32">; readonly rollInfluence: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly contacts: FieldSpec<"u32">; readonly slip: FieldSpec<"f32"> }, Vehicle>;
+  const Vehicle: ComponentType<{ readonly throttle: FieldSpec<"f32">; readonly steer: FieldSpec<"f32">; readonly brake: FieldSpec<"f32">; readonly wheelBase: FieldSpec<"f32">; readonly track: FieldSpec<"f32">; readonly wheelRadius: FieldSpec<"f32">; readonly mountHeight: FieldSpec<"f32">; readonly suspensionRest: FieldSpec<"f32">; readonly suspensionTravel: FieldSpec<"f32">; readonly suspensionStiffness: FieldSpec<"f32">; readonly suspensionDamping: FieldSpec<"f32">; readonly grip: FieldSpec<"f32">; readonly engineForce: FieldSpec<"f32">; readonly maxSpeed: FieldSpec<"f32">; readonly brakeForce: FieldSpec<"f32">; readonly maxSteer: FieldSpec<"f32">; readonly drive: FieldSpec<"u32">; readonly wheelMass: FieldSpec<"f32">; readonly rollInfluence: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly contacts: FieldSpec<"u32">; readonly slip: FieldSpec<"f32">; readonly model: FieldSpec<"u32">; readonly handbrake: FieldSpec<"f32">; readonly handbrakeGrip: FieldSpec<"f32">; readonly driftGrip: FieldSpec<"f32">; readonly gears: ListSpec<"f32">; readonly reverseRatio: FieldSpec<"f32">; readonly finalDrive: FieldSpec<"f32">; readonly idleRpm: FieldSpec<"f32">; readonly maxRpm: FieldSpec<"f32">; readonly torqueCurve: ListSpec<"f32">; readonly automatic: FieldSpec<"bool">; readonly shiftUpRpm: FieldSpec<"f32">; readonly shiftDownRpm: FieldSpec<"f32">; readonly clutchTime: FieldSpec<"f32">; readonly gear: FieldSpec<"i32">; readonly rpm: FieldSpec<"f32"> }, Vehicle>;
+  /**
+   * A wheel of the og.Vehicle it is a child of (down its og.Parent chain), at its og.Transform relative to the chassis: the hard point its suspension hangs from. A vehicle with og.VehicleWheel children (up to 16, in entity order) has those wheels in place of its four implicit ones, and og.physics.vehicleWheels lists them in that order: six-wheeled trucks, trikes, rear-wheel steering. 3D only; the 2D vehicle keeps its two wheels.
+   */
+  const VehicleWheel: ComponentType<{ readonly radius: FieldSpec<"f32">; readonly suspensionRest: FieldSpec<"f32">; readonly suspensionTravel: FieldSpec<"f32">; readonly suspensionStiffness: FieldSpec<"f32">; readonly suspensionDamping: FieldSpec<"f32">; readonly grip: FieldSpec<"f32">; readonly steer: FieldSpec<"f32">; readonly drive: FieldSpec<"bool">; readonly brake: FieldSpec<"bool">; readonly handbrake: FieldSpec<"bool"> }, VehicleWheel>;
   /**
    * A Verlet rope: `segments` links from the entity's world position (its og.Transform after its parents'; plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind, colliding with every solid collider at `radius`. It moves nothing (one-way: a rope joint ties bodies together, og.Joint JOINT_ROPE). Its points are world state (the og.physics state block); og.physics.ropePoints reads them and the renderer draws the rope as a strip of `width` and `color`.
    */
@@ -41653,7 +41861,7 @@ export declare namespace og {
      */
     function waterHeight(world: World, entity: Entity, x: number, z: number): Result<number>;
     /**
-     * An og.Vehicle's wheels after the last step (front left, front right, rear left, rear right), for drawing wheel models.
+     * An og.Vehicle's wheels after the last step (front left, front right, rear left, rear right; or its og.VehicleWheel children in entity order), for drawing wheel models.
      *
      * @param world The world.
      * @param entity The vehicle's entity.

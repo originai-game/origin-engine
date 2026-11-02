@@ -194,7 +194,7 @@ pub fn og_physics_vehicle_wheels(world: u32, e: f64) -> String {
             json!(
             wheels
                 .into_iter()
-                .map(|w| json!({ "position": v3(w.position), "rotation": q4(w.quaternion), "contact": w.contact, "slip": w.slip, "sideSpeed": w.side_speed }))
+                .map(|w| json!({ "position": v3(w.position), "rotation": q4(w.quaternion), "contact": w.contact, "slip": w.slip, "sideSpeed": w.side_speed, "entity": w.entity }))
                 .collect::<Vec<_>>()
         )
         },

@@ -37,6 +37,7 @@ const ADDED_TYPES: &[&str] = &[
     "og.BodyWoke",
     "og.JointBroken",
     "og.ContactHook",
+    "og.VehicleWheel",
 ];
 const ADDED_FIELDS: &[(&str, &str)] = &[
     ("og.Physics", "sleepTicks"),
@@ -46,6 +47,22 @@ const ADDED_FIELDS: &[(&str, &str)] = &[
     ("og.Joint", "breakForce"),
     ("og.Joint", "breakTorque"),
     ("og.Joint", "broken"),
+    ("og.Vehicle", "model"),
+    ("og.Vehicle", "handbrake"),
+    ("og.Vehicle", "handbrakeGrip"),
+    ("og.Vehicle", "driftGrip"),
+    ("og.Vehicle", "gears"),
+    ("og.Vehicle", "reverseRatio"),
+    ("og.Vehicle", "finalDrive"),
+    ("og.Vehicle", "idleRpm"),
+    ("og.Vehicle", "maxRpm"),
+    ("og.Vehicle", "torqueCurve"),
+    ("og.Vehicle", "automatic"),
+    ("og.Vehicle", "shiftUpRpm"),
+    ("og.Vehicle", "shiftDownRpm"),
+    ("og.Vehicle", "clutchTime"),
+    ("og.Vehicle", "gear"),
+    ("og.Vehicle", "rpm"),
 ];
 
 fn table(snapshot: &og_net::Snapshot) -> BTreeMap<String, Vec<String>> {

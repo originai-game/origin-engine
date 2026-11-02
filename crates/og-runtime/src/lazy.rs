@@ -68,6 +68,10 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: "og.ContactHook",
         enable: |w| og_physics::enable(w, "og.ContactHook"),
     },
+    Lazy {
+        name: "og.VehicleWheel",
+        enable: |w| og_physics::enable(w, "og.VehicleWheel"),
+    },
 ];
 
 /// Whether engine record `name` is registered lazily.

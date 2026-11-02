@@ -101,12 +101,13 @@ fn build(w: &mut rp::PhysicsWorld, chassis: rp::RigidBodyHandle, veh: &Vehicle) 
 
 pub(crate) fn vehicles(
     scene: &Scene,
-    _dt: f32,
+    dt: f32,
     sim: &mut Sim,
     handles: &super::sim::Handles<'_>,
     out: &mut StepOut,
 ) -> Result<()> {
     let live: BTreeSet<u64> = og_core::sort::set(scene.vehicles.iter().map(|v| v.0.to_bits()));
+    sim.ext.vehicles.retain(|e, _| live.contains(e));
     let gone: Vec<u64> = sim
         .vehicles
         .keys()
@@ -128,6 +129,7 @@ pub(crate) fn vehicles(
             if let Some(s) = sim.vehicles.remove(&key) {
                 remove(&mut sim.world, &s);
             }
+            sim.ext.vehicles.remove(&key);
             continue;
         };
         let stale = sim.vehicles.get(&key).is_none_or(|s| {
@@ -147,13 +149,41 @@ pub(crate) fn vehicles(
         // Bullet's units, as the 3D car: the spring's force is stiffness ×
         // compression × the chassis's mass.
         let chassis_mass = sim.world.bodies[chassis].mass().max(0.01);
-        let brake = veh.brake.clamp(0.0, 1.0);
+        let forward = {
+            let rb = &sim.world.bodies[chassis];
+            unv(rb.linvel()).dot(unv(rb.position().rotation * v(Vec3::X)))
+        };
+        // The drivetrain's torque and the gear's top wheel speed, the
+        // gearbox kept in the block's vehicle section.
+        let drive = if veh.model == VEHICLE_DRIVETRAIN {
+            let x = sim.ext.vehicles.entry(key).or_default();
+            Some((
+                crate::drivetrain::step(veh, &mut x.gearbox, forward, radius, dt),
+                x.gearbox,
+            ))
+        } else {
+            sim.ext.vehicles.remove(&key);
+            None
+        };
+        let brake = (veh.brake.clamp(0.0, 1.0) + drive.map_or(0.0, |d| d.0.brake)).min(1.0);
+        let handbrake = veh.handbrake.clamp(0.0, 1.0);
+        let driven_count = match veh.drive {
+            DRIVE_ALL => 2.0,
+            _ => 1.0,
+        };
         for (i, &j) in state.joints.iter().enumerate() {
             let front = i == 0;
             let driven = match veh.drive {
                 DRIVE_FRONT => front,
                 DRIVE_ALL => true,
                 _ => !front,
+            };
+            // The handbrake holds the rear wheel and takes its drive.
+            let held = !front && handbrake > 0.0;
+            let brake = if held {
+                (brake + handbrake).min(1.0)
+            } else {
+                brake
             };
             let Some(joint) = sim.world.impulse_joints.get_mut(j, true) else {
                 continue;
@@ -175,6 +205,16 @@ pub(crate) fn vehicles(
             if brake > 0.0 {
                 d.set_motor_velocity(rp::JointAxis::AngX, 0.0, 10.0);
                 d.set_motor_max_force(rp::JointAxis::AngX, brake * veh.brake_force.max(0.0) * 10.0);
+            } else if let Some((train, _)) = drive.filter(|_| driven) {
+                if train.torque != 0.0 {
+                    // Towards the gear's top speed with the curve's torque.
+                    let target = -train.torque.signum() * train.wheel_speed;
+                    d.set_motor_velocity(rp::JointAxis::AngX, target, 50.0);
+                    d.set_motor_max_force(rp::JointAxis::AngX, train.torque.abs() / driven_count);
+                } else {
+                    d.set_motor_velocity(rp::JointAxis::AngX, 0.0, 0.0);
+                    d.set_motor_max_force(rp::JointAxis::AngX, 0.0);
+                }
             } else if driven && veh.throttle != 0.0 {
                 // Rolling towards +x turns the wheel clockwise (negative about z).
                 let target = -veh.throttle.clamp(-1.0, 1.0) * veh.max_speed / radius;
@@ -208,6 +248,8 @@ pub(crate) fn vehicles(
                 speed,
                 contacts,
                 slip: 0.0,
+                gear: drive.map_or(veh.gear, |d| d.1.gear),
+                rpm: drive.map_or(veh.rpm, |d| d.1.rpm),
                 ..*veh
             },
         ));
@@ -236,6 +278,7 @@ pub(crate) fn wheels(sim: &Sim, entity: u64) -> Option<Vec<WheelPose>> {
                     contact,
                     slip: 0.0,
                     side_speed: 0.0,
+                    entity: 0,
                 }
             })
             .collect(),

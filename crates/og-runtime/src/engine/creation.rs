@@ -105,7 +105,7 @@ const REGISTERED_BY_MODULES: &[&str] = &[
 /// saves held it is at a later version (og-audio's og.AudioSource and
 /// og.AudioBusFx, version 2: the bus graph and the bus effects;
 /// og-physics's og.RigidBody and og.Physics, version 2: sleep; og.Joint,
-/// version 2: breaking).
+/// version 2: breaking; og.Vehicle, version 2: the drivetrain).
 fn versioned(mut schema: og_core::Schema) -> og_core::Schema {
     use og_core::Reflect;
     schema.version = match schema.name.as_str() {
@@ -114,6 +114,7 @@ fn versioned(mut schema: og_core::Schema) -> og_core::Schema {
         "og.RigidBody" => og_physics::RigidBody::schema().version,
         "og.Physics" => og_physics::Physics::schema().version,
         "og.Joint" => og_physics::Joint::schema().version,
+        "og.Vehicle" => og_physics::Vehicle::schema().version,
         _ => return schema,
     };
     schema

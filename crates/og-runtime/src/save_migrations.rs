@@ -116,6 +116,14 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         note: "0.7.7 and earlier: gained breakForce, breakTorque and broken (G2-3, breaking joints); the restore takes them at 0, 0 and false, a joint that never breaks",
         run: None,
     },
+    Migration {
+        target: Target::Record,
+        name: "og.Vehicle",
+        from: 1,
+        to: 2,
+        note: "0.7.7 and earlier: gained model, handbrake, handbrakeGrip, driftGrip and the drivetrain's fields (G2-3); the restore takes their defaults: model VEHICLE_ARCADE, the car it was",
+        run: None,
+    },
 ];
 
 fn ui_9_to_11(edit: &mut SnapshotEdit) -> Result<(), String> {

@@ -22,6 +22,7 @@
     "mps": "metres per second",
     "mps2": "metres per second squared",
     "radps": "radians per second",
+    "rpm": "revolutions per minute",
     "perSecond": "a rate per second: the fraction of a value that decays in one second",
     "kgPerM3": "kilograms per cubic metre (per square metre in the 2D profile)",
     "db": "decibels",
@@ -6469,6 +6470,7 @@
         "PlatformerController",
         "CharacterEvent",
         "Vehicle",
+        "VehicleWheel",
         "Rope",
         "Cloth",
         "Fluid2D",
@@ -6717,6 +6719,18 @@
           "type": "u32",
           "value": 2,
           "doc": "`Vehicle.drive`: every wheel drives."
+        },
+        {
+          "name": "VEHICLE_ARCADE",
+          "type": "u32",
+          "value": 0,
+          "doc": "`Vehicle.model`: the arcade car: engineForce, faded out towards maxSpeed."
+        },
+        {
+          "name": "VEHICLE_DRIVETRAIN",
+          "type": "u32",
+          "value": 1,
+          "doc": "`Vehicle.model`: an engine with a torque curve driving through a gearbox."
         },
         {
           "name": "PIN_TOP",
@@ -7114,7 +7128,7 @@
         },
         {
           "name": "vehicleWheels",
-          "doc": "An og.Vehicle's wheels after the last step (front left, front right, rear left, rear right), for drawing wheel models.",
+          "doc": "An og.Vehicle's wheels after the last step (front left, front right, rear left, rear right; or its og.VehicleWheel children in entity order), for drawing wheel models.",
           "params": [
             {
               "name": "world",
@@ -29844,7 +29858,7 @@
     "Vehicle": {
       "x-og-kind": "component",
       "x-og-module": "physics",
-      "description": "A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). 3D: a raycast car with four wheels (suspension, grip, steering on the front axle); its forward is the chassis's local +z (three.js Object3D.lookAt aims +z). 2D: two wheel bodies on sprung wheel joints (front at +x), driven by a motor. The wheels are not entities: og.physics.vehicleWheels gives their poses (and each tyre's slip) for drawing, smoke and skid marks.\nThe defaults drive a road car of about 1,000 kg: give the chassis that mass (og.RigidBody.mass 1000), since a car-sized box at the collider's density 1 weighs a few kilograms and the engine's and brakes' newtons would throw it. The suspension and the grip scale with the chassis's mass (Bullet's units), the engine and the brakes do not: a heavier car wants proportionally more engineForce and brakeForce. og-feel §12 has the numbers a game starts from.\nThe wheel rays meet what the chassis's collider would (its og.Collider layers against the other's mask, and the other's layers against its mask), so two cars on layers that do not meet (a ghost beside the player) pass through each other.",
+      "description": "A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). 3D: a raycast car with four wheels (suspension, grip, steering on the front axle), or with the og.VehicleWheel children it has; its forward is the chassis's local +z (three.js Object3D.lookAt aims +z). 2D: two wheel bodies on sprung wheel joints (front at +x), driven by a motor. The implicit wheels are not entities: og.physics.vehicleWheels gives their poses (and each tyre's slip) for drawing, smoke and skid marks.\nThe defaults drive a road car of about 1,000 kg: give the chassis that mass (og.RigidBody.mass 1000), since a car-sized box at the collider's density 1 weighs a few kilograms and the engine's and brakes' newtons would throw it. The suspension and the grip scale with the chassis's mass (Bullet's units), the engine and the brakes do not: a heavier car wants proportionally more engineForce and brakeForce. og-feel §12 has the numbers a game starts from.\nThe wheel rays meet what the chassis's collider would (its og.Collider layers against the other's mask, and the other's layers against its mask), so two cars on layers that do not meet (a ghost beside the player) pass through each other.",
       "type": "object",
       "properties": {
         "throttle": {
@@ -30014,6 +30028,208 @@
           "minimum": 0,
           "maximum": 1,
           "readOnly": true
+        },
+        "model": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "VEHICLE_ARCADE 0 (engineForce, faded out towards maxSpeed) or VEHICLE_DRIVETRAIN 1 (an engine with a torque curve driving through a gearbox: gears, finalDrive, torqueCurve, the rpm fields; engineForce and maxSpeed are then unused). The drivetrain's torque at the driven wheels is the curve's at the engine's speed times throttle, the gear's ratio and finalDrive; the engine's speed follows the wheels while a gear is in.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "handbrake": {
+          "type": "number",
+          "description": "The handbrake, 0 to 1: it brakes the handbrake wheels (3D: the rear pair, or the og.VehicleWheel children flagged `handbrake`; 2D: the rear wheel) with that share of brakeForce, takes their drive and loosens their grip, sideways and in all, towards handbrakeGrip: in a bend at speed the tail steps out, and driftGrip keeps it loose while it slides. A handbrake turn is a pull and a release: held, the car slows and the slide dies with its speed.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1
+        },
+        "handbrakeGrip": {
+          "type": "number",
+          "description": "The handbrake wheels' grip at full handbrake, sideways and in all, as a share of their own (3D): 0.2 lets the tail step out in a bend at speed; 1 holds the line.",
+          "default": 0.2,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "driftGrip": {
+          "type": "number",
+          "description": "Drift tuning: the handbrake wheels' sideways grip while the car drifts (the handbrake is on, or one of them slid last step), as a share of their own (3D). 1 is off; around 0.6 holds a slide that the throttle and steering balance.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "gears": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 8,
+          "description": "Drivetrain: the forward gears' ratios, first gear first; empty uses 3.4, 2.2, 1.6, 1.25, 1.0, 0.82.",
+          "default": []
+        },
+        "reverseRatio": {
+          "type": "number",
+          "description": "Drivetrain: the reverse gear's ratio.",
+          "default": 3.2,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "finalDrive": {
+          "type": "number",
+          "description": "Drivetrain: the final drive's ratio, after every gear.",
+          "default": 3.6,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "idleRpm": {
+          "type": "number",
+          "description": "Drivetrain: the engine's speed at rest.",
+          "default": 900,
+          "minimum": 0,
+          "x-og-unit": "rpm",
+          "x-og-tunable": true
+        },
+        "maxRpm": {
+          "type": "number",
+          "description": "Drivetrain: the rev limit: the engine gives no torque at or above it.",
+          "default": 6800,
+          "minimum": 1,
+          "x-og-unit": "rpm",
+          "x-og-tunable": true
+        },
+        "torqueCurve": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 8,
+          "description": "Drivetrain: the engine's torque (N·m) at full throttle, at evenly spaced speeds from 0 to maxRpm, interpolated between them; empty uses 140, 170, 195, 210, 215, 205, 185, 150 (a 1,000 kg road car's).",
+          "default": []
+        },
+        "automatic": {
+          "type": "boolean",
+          "description": "Drivetrain: the gearbox shifts by itself, up at shiftUpRpm and down at shiftDownRpm, into reverse when throttle is negative at a standstill and back into first when it is positive. False leaves `gear` to the game (a manual gearbox).",
+          "default": true
+        },
+        "shiftUpRpm": {
+          "type": "number",
+          "description": "Drivetrain, automatic: the engine speed it shifts up at.",
+          "default": 6000,
+          "minimum": 0,
+          "x-og-unit": "rpm",
+          "x-og-tunable": true
+        },
+        "shiftDownRpm": {
+          "type": "number",
+          "description": "Drivetrain, automatic: the engine speed it shifts down at.",
+          "default": 2800,
+          "minimum": 0,
+          "x-og-unit": "rpm",
+          "x-og-tunable": true
+        },
+        "clutchTime": {
+          "type": "number",
+          "description": "Drivetrain: how long a gear change takes; the engine drives nothing meanwhile.",
+          "default": 0.25,
+          "minimum": 0,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "gear": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Drivetrain: the gear, -1 reverse, 0 neutral, 1 and up forward. An automatic gearbox writes it; for a manual one the game sets it, and each change takes clutchTime.",
+          "default": 0,
+          "minimum": -1,
+          "maximum": 8
+        },
+        "rpm": {
+          "type": "number",
+          "description": "Written, drivetrain: the engine's speed, for the engine's sound and the tachometer.",
+          "default": 0,
+          "x-og-unit": "rpm",
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "VehicleWheel": {
+      "x-og-kind": "component",
+      "x-og-module": "physics",
+      "description": "A wheel of the og.Vehicle it is a child of (down its og.Parent chain), at its og.Transform relative to the chassis: the hard point its suspension hangs from. A vehicle with og.VehicleWheel children (up to 16, in entity order) has those wheels in place of its four implicit ones, and og.physics.vehicleWheels lists them in that order: six-wheeled trucks, trikes, rear-wheel steering. 3D only; the 2D vehicle keeps its two wheels.",
+      "type": "object",
+      "properties": {
+        "radius": {
+          "type": "number",
+          "description": "The wheel's radius.",
+          "default": 0.4,
+          "minimum": 0.01,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "suspensionRest": {
+          "type": "number",
+          "description": "The suspension's length at rest, down from the wheel's position.",
+          "default": 0.35,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "suspensionTravel": {
+          "type": "number",
+          "description": "How far the suspension compresses or extends from rest.",
+          "default": 0.25,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "suspensionStiffness": {
+          "type": "number",
+          "description": "The suspension's stiffness.",
+          "default": 30,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "suspensionDamping": {
+          "type": "number",
+          "description": "The suspension's damping.",
+          "default": 4,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "grip": {
+          "type": "number",
+          "description": "The tyre's grip, as og.Vehicle's `grip`.",
+          "default": 2,
+          "minimum": 0,
+          "x-og-tunable": true
+        },
+        "steer": {
+          "type": "number",
+          "description": "How much of the vehicle's steering it takes: 1 a front wheel, 0 none, negative steers the other way (rear-wheel steering).",
+          "default": 0,
+          "minimum": -1,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "drive": {
+          "type": "boolean",
+          "description": "Whether the engine drives it (og.Vehicle.drive is then unused).",
+          "default": false
+        },
+        "brake": {
+          "type": "boolean",
+          "description": "Whether the brake brakes it.",
+          "default": true
+        },
+        "handbrake": {
+          "type": "boolean",
+          "description": "Whether the handbrake brakes it, and driftGrip applies to it.",
+          "default": false
         }
       },
       "additionalProperties": false
@@ -31377,6 +31593,10 @@
           "type": "number",
           "description": "How fast the tyre's contact moves sideways over the ground (along its axle; 0 in the air and in 2D): a slide's speed, for the squeal's pitch or a skid mark's darkness.",
           "x-og-unit": "mps"
+        },
+        "entity": {
+          "$ref": "#/$defs/Entity",
+          "description": "The wheel's og.VehicleWheel entity; 0 for a vehicle's implicit wheels."
         }
       },
       "required": [
@@ -31384,7 +31604,8 @@
         "rotation",
         "contact",
         "slip",
-        "sideSpeed"
+        "sideSpeed",
+        "entity"
       ],
       "additionalProperties": false
     },

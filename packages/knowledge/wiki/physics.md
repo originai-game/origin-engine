@@ -18,7 +18,7 @@ module physics {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7216</sub>
+<sub>`api.ogt` line 7217</sub>
 
 ## Contents
 
@@ -78,7 +78,10 @@ module physics {
 | [`DRIVE_REAR`](#const-DRIVE_REAR) | constant | `Vehicle.drive`: the rear wheels drive. |
 | [`DRIVE_FRONT`](#const-DRIVE_FRONT) | constant | `Vehicle.drive`: the front wheels drive. |
 | [`DRIVE_ALL`](#const-DRIVE_ALL) | constant | `Vehicle.drive`: every wheel drives. |
-| [`og.Vehicle`](#record-Vehicle) | component | A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). 3D: a raycast car with four wheels (suspension, grip, steering on the front axle); its forward is the chassis's local +z (three.js Object3D.lookAt aims +z). 2D: two wheel bodies on sprung wheel joints (front at +x), driven by a motor. The wheels are not entities: og.physics.vehicleWheels gives their poses (and each tyre's slip) for drawing, smoke and skid marks. |
+| [`VEHICLE_ARCADE`](#const-VEHICLE_ARCADE) | constant | `Vehicle.model`: the arcade car: engineForce, faded out towards maxSpeed. |
+| [`VEHICLE_DRIVETRAIN`](#const-VEHICLE_DRIVETRAIN) | constant | `Vehicle.model`: an engine with a torque curve driving through a gearbox. |
+| [`og.Vehicle`](#record-Vehicle) | component | A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). 3D: a raycast car with four wheels (suspension, grip, steering on the front axle), or with the og.VehicleWheel children it has; its forward is the chassis's local +z (three.js Object3D.lookAt aims +z). 2D: two wheel bodies on sprung wheel joints (front at +x), driven by a motor. The implicit wheels are not entities: og.physics.vehicleWheels gives their poses (and each tyre's slip) for drawing, smoke and skid marks. |
+| [`og.VehicleWheel`](#record-VehicleWheel) | component | A wheel of the og.Vehicle it is a child of (down its og.Parent chain), at its og.Transform relative to the chassis: the hard point its suspension hangs from. A vehicle with og.VehicleWheel children (up to 16, in entity order) has those wheels in place of its four implicit ones, and og.physics.vehicleWheels lists them in that order: six-wheeled trucks, trikes, rear-wheel steering. 3D only; the 2D vehicle keeps its two wheels. |
 | [`og.Rope`](#record-Rope) | component | A Verlet rope: `segments` links from the entity's world position (its og.Transform after its parents'; plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind, colliding with every solid collider at `radius`. It moves nothing (one-way: a rope joint ties bodies together, og.Joint JOINT_ROPE). Its points are world state (the og.physics state block); og.physics.ropePoints reads them and the renderer draws the rope as a strip of `width` and `color`. |
 | [`PIN_TOP`](#const-PIN_TOP) | constant | `Cloth.pins` bit: the whole top row is pinned. |
 | [`PIN_TOP_CORNERS`](#const-PIN_TOP_CORNERS) | constant | `Cloth.pins` bit: the top-left and top-right corners are pinned. |
@@ -121,7 +124,7 @@ module physics {
 | [`og.physics.fluidParticles`](#fn-fluidParticles) | function | An og.Fluid2D's particle positions after the last step, in world space. |
 | [`og.physics.fluid3dParticles`](#fn-fluid3dParticles) | function | An og.Fluid3D's particle positions after the last step, in world space (emitted particles last, in the order they appeared). |
 | [`og.physics.waterHeight`](#fn-waterHeight) | function | The surface height of an og.WaterSurface (world y) or an og.WaterLine (world y at `x`; `z` ignored) at a point, as the last step left it: for boats that bob and spray that starts on the surface. |
-| [`og.physics.vehicleWheels`](#fn-vehicleWheels) | function | An og.Vehicle's wheels after the last step (front left, front right, rear left, rear right), for drawing wheel models. |
+| [`og.physics.vehicleWheels`](#fn-vehicleWheels) | function | An og.Vehicle's wheels after the last step (front left, front right, rear left, rear right; or its og.VehicleWheel children in entity order), for drawing wheel models. |
 | [`og.physics.ragdollRigFromSkeleton`](#fn-ragdollRigFromSkeleton) | function | A ragdoll rig from a loaded skeleton (og.load.animation's `skeleton`): a bone per joint of its first skin, parents first, each from its joint's rest pose to its first child joint, every bone naming its joint and the rig naming the skeleton. Pass it to og.physics.setRagdollRig, edited or not. |
 | [`og.physics.setRagdollRig`](#fn-setRagdollRig) | function | Give an entity with an og.Ragdoll its bones (and, from og.physics.ragdollRigFromSkeleton, the skeleton they stand for: its og.Model is then drawn blended from the animation towards the bones by og.Ragdoll.blend). While weight is 0 the bones follow the rig's rest pose at the entity. Rigs are assets, not world state: kept by the engine and given again to a reloaded world. |
 | [`og.physics.ragdollPose`](#fn-ragdollPose) | function | An og.Ragdoll's bones after the last step, in rig order (empty before its first step). |
@@ -159,7 +162,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 8673</sub>
+<sub>`api.ogt` line 8796</sub>
 
 <a id="fn-raycastAll"></a>
 
@@ -189,7 +192,7 @@ fn raycastAll {
 }
 ```
 
-<sub>`api.ogt` line 8680</sub>
+<sub>`api.ogt` line 8803</sub>
 
 <a id="fn-projectPoint"></a>
 
@@ -219,7 +222,7 @@ fn projectPoint {
 }
 ```
 
-<sub>`api.ogt` line 8687</sub>
+<sub>`api.ogt` line 8810</sub>
 
 <a id="fn-shapeCast"></a>
 
@@ -249,7 +252,7 @@ fn shapeCast {
 }
 ```
 
-<sub>`api.ogt` line 8694</sub>
+<sub>`api.ogt` line 8817</sub>
 
 <a id="fn-overlap"></a>
 
@@ -279,7 +282,7 @@ fn overlap {
 }
 ```
 
-<sub>`api.ogt` line 8701</sub>
+<sub>`api.ogt` line 8824</sub>
 
 <a id="fn-applyForce"></a>
 
@@ -315,7 +318,7 @@ fn applyForce {
 }
 ```
 
-<sub>`api.ogt` line 8708</sub>
+<sub>`api.ogt` line 8831</sub>
 
 <a id="fn-applyImpulse"></a>
 
@@ -351,7 +354,7 @@ fn applyImpulse {
 }
 ```
 
-<sub>`api.ogt` line 8719</sub>
+<sub>`api.ogt` line 8842</sub>
 
 <a id="fn-applyTorque"></a>
 
@@ -383,7 +386,7 @@ fn applyTorque {
 }
 ```
 
-<sub>`api.ogt` line 8730</sub>
+<sub>`api.ogt` line 8853</sub>
 
 <a id="fn-applyTorqueImpulse"></a>
 
@@ -415,7 +418,7 @@ fn applyTorqueImpulse {
 }
 ```
 
-<sub>`api.ogt` line 8738</sub>
+<sub>`api.ogt` line 8861</sub>
 
 <a id="fn-setMesh"></a>
 
@@ -447,7 +450,7 @@ fn setMesh {
 }
 ```
 
-<sub>`api.ogt` line 8746</sub>
+<sub>`api.ogt` line 8869</sub>
 
 <a id="fn-ropePoints"></a>
 
@@ -477,7 +480,7 @@ fn ropePoints {
 }
 ```
 
-<sub>`api.ogt` line 8807</sub>
+<sub>`api.ogt` line 8931</sub>
 
 <a id="fn-clothPoints"></a>
 
@@ -507,7 +510,7 @@ fn clothPoints {
 }
 ```
 
-<sub>`api.ogt` line 8814</sub>
+<sub>`api.ogt` line 8938</sub>
 
 <a id="fn-fluidParticles"></a>
 
@@ -537,7 +540,7 @@ fn fluidParticles {
 }
 ```
 
-<sub>`api.ogt` line 8821</sub>
+<sub>`api.ogt` line 8945</sub>
 
 <a id="fn-fluid3dParticles"></a>
 
@@ -567,7 +570,7 @@ fn fluid3dParticles {
 }
 ```
 
-<sub>`api.ogt` line 8828</sub>
+<sub>`api.ogt` line 8952</sub>
 
 <a id="fn-waterHeight"></a>
 
@@ -601,13 +604,13 @@ fn waterHeight {
 }
 ```
 
-<sub>`api.ogt` line 8835</sub>
+<sub>`api.ogt` line 8959</sub>
 
 <a id="fn-vehicleWheels"></a>
 
 ### `og.physics.vehicleWheels`
 
-An og.Vehicle's wheels after the last step (front left, front right, rear left, rear right), for drawing wheel models.
+An og.Vehicle's wheels after the last step (front left, front right, rear left, rear right; or its og.VehicleWheel children in entity order), for drawing wheel models.
 
 ```ts
 og.physics.vehicleWheels(world: World, entity: Entity): Result<readonly WheelPose[]>
@@ -624,14 +627,14 @@ Binding symbol `og_physics_vehicle_wheels` · publish builds: kept
 
 ```ogt
 fn vehicleWheels {
-  doc "An og.Vehicle's wheels after the last step (front left, front right, rear left, rear right), for drawing wheel models."
+  doc "An og.Vehicle's wheels after the last step (front left, front right, rear left, rear right; or its og.VehicleWheel children in entity order), for drawing wheel models."
   param world World "The world."
   param entity Entity "The vehicle's entity."
   returns Result.List.WheelPose "Refused for an entity without a vehicle."
 }
 ```
 
-<sub>`api.ogt` line 8844</sub>
+<sub>`api.ogt` line 8968</sub>
 
 <a id="fn-ragdollRigFromSkeleton"></a>
 
@@ -661,7 +664,7 @@ fn ragdollRigFromSkeleton {
 }
 ```
 
-<sub>`api.ogt` line 8851</sub>
+<sub>`api.ogt` line 8975</sub>
 
 <a id="fn-setRagdollRig"></a>
 
@@ -693,7 +696,7 @@ fn setRagdollRig {
 }
 ```
 
-<sub>`api.ogt` line 8858</sub>
+<sub>`api.ogt` line 8982</sub>
 
 <a id="fn-ragdollPose"></a>
 
@@ -723,7 +726,7 @@ fn ragdollPose {
 }
 ```
 
-<sub>`api.ogt` line 8866</sub>
+<sub>`api.ogt` line 8990</sub>
 
 <a id="fn-stats"></a>
 
@@ -751,7 +754,7 @@ fn stats {
 }
 ```
 
-<sub>`api.ogt` line 8894</sub>
+<sub>`api.ogt` line 9018</sub>
 
 ## Components, resources and events
 
@@ -829,7 +832,7 @@ component RigidBody {
 }
 ```
 
-<sub>`api.ogt` line 7242</sub>
+<sub>`api.ogt` line 7243</sub>
 
 <a id="record-Collider"></a>
 
@@ -919,7 +922,7 @@ component Collider {
 }
 ```
 
-<sub>`api.ogt` line 7291</sub>
+<sub>`api.ogt` line 7292</sub>
 
 <a id="record-Velocity"></a>
 
@@ -948,7 +951,7 @@ component Velocity {
 }
 ```
 
-<sub>`api.ogt` line 7351</sub>
+<sub>`api.ogt` line 7352</sub>
 
 <a id="record-Physics"></a>
 
@@ -1016,7 +1019,7 @@ resource Physics {
 }
 ```
 
-<sub>`api.ogt` line 7363</sub>
+<sub>`api.ogt` line 7364</sub>
 
 <a id="record-CollisionStarted"></a>
 
@@ -1054,7 +1057,7 @@ event CollisionStarted {
 }
 ```
 
-<sub>`api.ogt` line 7409</sub>
+<sub>`api.ogt` line 7410</sub>
 
 <a id="record-CollisionEnded"></a>
 
@@ -1077,7 +1080,7 @@ event CollisionEnded {
 }
 ```
 
-<sub>`api.ogt` line 7426</sub>
+<sub>`api.ogt` line 7427</sub>
 
 <a id="record-SensorEntered"></a>
 
@@ -1100,7 +1103,7 @@ event SensorEntered {
 }
 ```
 
-<sub>`api.ogt` line 7432</sub>
+<sub>`api.ogt` line 7433</sub>
 
 <a id="record-SensorExited"></a>
 
@@ -1123,7 +1126,7 @@ event SensorExited {
 }
 ```
 
-<sub>`api.ogt` line 7438</sub>
+<sub>`api.ogt` line 7439</sub>
 
 <a id="record-JointBroken"></a>
 
@@ -1156,7 +1159,7 @@ event JointBroken {
 }
 ```
 
-<sub>`api.ogt` line 7444</sub>
+<sub>`api.ogt` line 7445</sub>
 
 <a id="record-ContactHook"></a>
 
@@ -1198,7 +1201,7 @@ component ContactHook {
 }
 ```
 
-<sub>`api.ogt` line 7457</sub>
+<sub>`api.ogt` line 7458</sub>
 
 <a id="record-BodySlept"></a>
 
@@ -1219,7 +1222,7 @@ event BodySlept {
 }
 ```
 
-<sub>`api.ogt` line 7479</sub>
+<sub>`api.ogt` line 7480</sub>
 
 <a id="record-BodyWoke"></a>
 
@@ -1240,7 +1243,7 @@ event BodyWoke {
 }
 ```
 
-<sub>`api.ogt` line 7484</sub>
+<sub>`api.ogt` line 7485</sub>
 
 <a id="record-Contact"></a>
 
@@ -1265,7 +1268,7 @@ event Contact {
 }
 ```
 
-<sub>`api.ogt` line 7489</sub>
+<sub>`api.ogt` line 7490</sub>
 
 <a id="record-Joint"></a>
 
@@ -1384,7 +1387,7 @@ component Joint {
 }
 ```
 
-<sub>`api.ogt` line 7506</sub>
+<sub>`api.ogt` line 7507</sub>
 
 <a id="record-CharacterController"></a>
 
@@ -1505,7 +1508,7 @@ component CharacterController {
 }
 ```
 
-<sub>`api.ogt` line 7587</sub>
+<sub>`api.ogt` line 7588</sub>
 
 <a id="record-PlatformerController"></a>
 
@@ -1757,7 +1760,7 @@ component PlatformerController {
 }
 ```
 
-<sub>`api.ogt` line 7674</sub>
+<sub>`api.ogt` line 7675</sub>
 
 <a id="record-CharacterEvent"></a>
 
@@ -1787,13 +1790,13 @@ event CharacterEvent {
 }
 ```
 
-<sub>`api.ogt` line 7876</sub>
+<sub>`api.ogt` line 7877</sub>
 
 <a id="record-Vehicle"></a>
 
 ### `og.Vehicle` (component)
 
-A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). 3D: a raycast car with four wheels (suspension, grip, steering on the front axle); its forward is the chassis's local +z (three.js Object3D.lookAt aims +z). 2D: two wheel bodies on sprung wheel joints (front at +x), driven by a motor. The wheels are not entities: og.physics.vehicleWheels gives their poses (and each tyre's slip) for drawing, smoke and skid marks.
+A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). 3D: a raycast car with four wheels (suspension, grip, steering on the front axle), or with the og.VehicleWheel children it has; its forward is the chassis's local +z (three.js Object3D.lookAt aims +z). 2D: two wheel bodies on sprung wheel joints (front at +x), driven by a motor. The implicit wheels are not entities: og.physics.vehicleWheels gives their poses (and each tyre's slip) for drawing, smoke and skid marks.
 
 The defaults drive a road car of about 1,000 kg: give the chassis that mass (og.RigidBody.mass 1000), since a car-sized box at the collider's density 1 weighs a few kilograms and the engine's and brakes' newtons would throw it. The suspension and the grip scale with the chassis's mass (Bullet's units), the engine and the brakes do not: a heavier car wants proportionally more engineForce and brakeForce. og-feel §12 has the numbers a game starts from.
 
@@ -1825,10 +1828,26 @@ Token `og.Vehicle`, registered under the schema name `og.Vehicle`; its value typ
 | `speed` | `number` | `0` | — | `mps` | read only | Written: the forward speed (m/s; negative reversing). |
 | `contacts` | `number` | `0` | — | — | read only | Written: how many wheels touch the ground. |
 | `slip` | `number` | `0` | 0 … 1 | — | read only | Written: the largest slip of its wheels (og.physics.vehicleWheels' `slip`): 0 every tyre grips, towards 1 one slides; for a squeal's volume or smoke without reading the wheels (3D; 0 in 2D). |
+| `model` | `number` | `0` | 0 … 1 | — | — | VEHICLE_ARCADE 0 (engineForce, faded out towards maxSpeed) or VEHICLE_DRIVETRAIN 1 (an engine with a torque curve driving through a gearbox: gears, finalDrive, torqueCurve, the rpm fields; engineForce and maxSpeed are then unused). The drivetrain's torque at the driven wheels is the curve's at the engine's speed times throttle, the gear's ratio and finalDrive; the engine's speed follows the wheels while a gear is in. |
+| `handbrake` | `number` | `0` | 0 … 1 | — | — | The handbrake, 0 to 1: it brakes the handbrake wheels (3D: the rear pair, or the og.VehicleWheel children flagged `handbrake`; 2D: the rear wheel) with that share of brakeForce, takes their drive and loosens their grip, sideways and in all, towards handbrakeGrip: in a bend at speed the tail steps out, and driftGrip keeps it loose while it slides. A handbrake turn is a pull and a release: held, the car slows and the slide dies with its speed. |
+| `handbrakeGrip` | `number` | `0.2` | 0 … 1 | — | tunable | The handbrake wheels' grip at full handbrake, sideways and in all, as a share of their own (3D): 0.2 lets the tail step out in a bend at speed; 1 holds the line. |
+| `driftGrip` | `number` | `1` | 0 … 1 | — | tunable | Drift tuning: the handbrake wheels' sideways grip while the car drifts (the handbrake is on, or one of them slid last step), as a share of their own (3D). 1 is off; around 0.6 holds a slide that the throttle and steering balance. |
+| `gears` | `readonly number[]` | `[]` | — | — | a list of at most 8 `f32` (`List.f32.8`): reads a frozen copy, writes a whole array | Drivetrain: the forward gears' ratios, first gear first; empty uses 3.4, 2.2, 1.6, 1.25, 1.0, 0.82. |
+| `reverseRatio` | `number` | `3.2` | ≥ 0 | — | tunable | Drivetrain: the reverse gear's ratio. |
+| `finalDrive` | `number` | `3.6` | ≥ 0 | — | tunable | Drivetrain: the final drive's ratio, after every gear. |
+| `idleRpm` | `number` | `900` | ≥ 0 | `rpm` | tunable | Drivetrain: the engine's speed at rest. |
+| `maxRpm` | `number` | `6800` | ≥ 1 | `rpm` | tunable | Drivetrain: the rev limit: the engine gives no torque at or above it. |
+| `torqueCurve` | `readonly number[]` | `[]` | — | — | a list of at most 8 `f32` (`List.f32.8`): reads a frozen copy, writes a whole array | Drivetrain: the engine's torque (N·m) at full throttle, at evenly spaced speeds from 0 to maxRpm, interpolated between them; empty uses 140, 170, 195, 210, 215, 205, 185, 150 (a 1,000 kg road car's). |
+| `automatic` | `boolean` | `true` | — | — | — | Drivetrain: the gearbox shifts by itself, up at shiftUpRpm and down at shiftDownRpm, into reverse when throttle is negative at a standstill and back into first when it is positive. False leaves `gear` to the game (a manual gearbox). |
+| `shiftUpRpm` | `number` | `6000` | ≥ 0 | `rpm` | tunable | Drivetrain, automatic: the engine speed it shifts up at. |
+| `shiftDownRpm` | `number` | `2800` | ≥ 0 | `rpm` | tunable | Drivetrain, automatic: the engine speed it shifts down at. |
+| `clutchTime` | `number` | `0.25` | ≥ 0 | `s` | tunable | Drivetrain: how long a gear change takes; the engine drives nothing meanwhile. |
+| `gear` | `number` | `0` | -1 … 8 | — | — | Drivetrain: the gear, -1 reverse, 0 neutral, 1 and up forward. An automatic gearbox writes it; for a manual one the game sets it, and each change takes clutchTime. |
+| `rpm` | `number` | `0` | — | `rpm` | read only | Written, drivetrain: the engine's speed, for the engine's sound and the tachometer. |
 
 ```ogt
 component Vehicle {
-  doc "A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). 3D: a raycast car with four wheels (suspension, grip, steering on the front axle); its forward is the chassis's local +z (three.js Object3D.lookAt aims +z). 2D: two wheel bodies on sprung wheel joints (front at +x), driven by a motor. The wheels are not entities: og.physics.vehicleWheels gives their poses (and each tyre's slip) for drawing, smoke and skid marks."
+  doc "A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). 3D: a raycast car with four wheels (suspension, grip, steering on the front axle), or with the og.VehicleWheel children it has; its forward is the chassis's local +z (three.js Object3D.lookAt aims +z). 2D: two wheel bodies on sprung wheel joints (front at +x), driven by a motor. The implicit wheels are not entities: og.physics.vehicleWheels gives their poses (and each tyre's slip) for drawing, smoke and skid marks."
   doc "The defaults drive a road car of about 1,000 kg: give the chassis that mass (og.RigidBody.mass 1000), since a car-sized box at the collider's density 1 weighs a few kilograms and the engine's and brakes' newtons would throw it. The suspension and the grip scale with the chassis's mass (Bullet's units), the engine and the brakes do not: a heavier car wants proportionally more engineForce and brakeForce. og-feel §12 has the numbers a game starts from."
   doc "The wheel rays meet what the chassis's collider would (its og.Collider layers against the other's mask, and the other's layers against its mask), so two cars on layers that do not meet (a ghost beside the player) pass through each other."
   field throttle f32 "The accelerator, -1 (reverse) to 1. Set it every tick." {
@@ -1943,10 +1962,155 @@ component Vehicle {
     max 1
     readonly true
   }
+  field model u32 "VEHICLE_ARCADE 0 (engineForce, faded out towards maxSpeed) or VEHICLE_DRIVETRAIN 1 (an engine with a torque curve driving through a gearbox: gears, finalDrive, torqueCurve, the rpm fields; engineForce and maxSpeed are then unused). The drivetrain's torque at the driven wheels is the curve's at the engine's speed times throttle, the gear's ratio and finalDrive; the engine's speed follows the wheels while a gear is in." {
+    min 0
+    max 1
+  }
+  field handbrake f32 "The handbrake, 0 to 1: it brakes the handbrake wheels (3D: the rear pair, or the og.VehicleWheel children flagged `handbrake`; 2D: the rear wheel) with that share of brakeForce, takes their drive and loosens their grip, sideways and in all, towards handbrakeGrip: in a bend at speed the tail steps out, and driftGrip keeps it loose while it slides. A handbrake turn is a pull and a release: held, the car slows and the slide dies with its speed." {
+    min 0
+    max 1
+  }
+  field handbrakeGrip f32 "The handbrake wheels' grip at full handbrake, sideways and in all, as a share of their own (3D): 0.2 lets the tail step out in a bend at speed; 1 holds the line." {
+    default 0.2
+    min 0
+    max 1
+    tunable true
+  }
+  field driftGrip f32 "Drift tuning: the handbrake wheels' sideways grip while the car drifts (the handbrake is on, or one of them slid last step), as a share of their own (3D). 1 is off; around 0.6 holds a slide that the throttle and steering balance." {
+    default 1
+    min 0
+    max 1
+    tunable true
+  }
+  field gears List.f32.8 "Drivetrain: the forward gears' ratios, first gear first; empty uses 3.4, 2.2, 1.6, 1.25, 1.0, 0.82."
+  field reverseRatio f32 "Drivetrain: the reverse gear's ratio." {
+    default 3.2
+    min 0
+    tunable true
+  }
+  field finalDrive f32 "Drivetrain: the final drive's ratio, after every gear." {
+    default 3.6
+    min 0
+    tunable true
+  }
+  field idleRpm f32 "Drivetrain: the engine's speed at rest." {
+    default 900
+    min 0
+    unit rpm
+    tunable true
+  }
+  field maxRpm f32 "Drivetrain: the rev limit: the engine gives no torque at or above it." {
+    default 6800
+    min 1
+    unit rpm
+    tunable true
+  }
+  field torqueCurve List.f32.8 "Drivetrain: the engine's torque (N·m) at full throttle, at evenly spaced speeds from 0 to maxRpm, interpolated between them; empty uses 140, 170, 195, 210, 215, 205, 185, 150 (a 1,000 kg road car's)."
+  field automatic bool "Drivetrain: the gearbox shifts by itself, up at shiftUpRpm and down at shiftDownRpm, into reverse when throttle is negative at a standstill and back into first when it is positive. False leaves `gear` to the game (a manual gearbox)." {
+    default true
+  }
+  field shiftUpRpm f32 "Drivetrain, automatic: the engine speed it shifts up at." {
+    default 6000
+    min 0
+    unit rpm
+    tunable true
+  }
+  field shiftDownRpm f32 "Drivetrain, automatic: the engine speed it shifts down at." {
+    default 2800
+    min 0
+    unit rpm
+    tunable true
+  }
+  field clutchTime f32 "Drivetrain: how long a gear change takes; the engine drives nothing meanwhile." {
+    default 0.25
+    min 0
+    unit s
+    tunable true
+  }
+  field gear i32 "Drivetrain: the gear, -1 reverse, 0 neutral, 1 and up forward. An automatic gearbox writes it; for a manual one the game sets it, and each change takes clutchTime." {
+    min -1
+    max 8
+  }
+  field rpm f32 "Written, drivetrain: the engine's speed, for the engine's sound and the tachometer." {
+    unit rpm
+    readonly true
+  }
 }
 ```
 
-<sub>`api.ogt` line 7892</sub>
+<sub>`api.ogt` line 7895</sub>
+
+<a id="record-VehicleWheel"></a>
+
+### `og.VehicleWheel` (component)
+
+A wheel of the og.Vehicle it is a child of (down its og.Parent chain), at its og.Transform relative to the chassis: the hard point its suspension hangs from. A vehicle with og.VehicleWheel children (up to 16, in entity order) has those wheels in place of its four implicit ones, and og.physics.vehicleWheels lists them in that order: six-wheeled trucks, trikes, rear-wheel steering. 3D only; the 2D vehicle keeps its two wheels.
+
+Token `og.VehicleWheel`, registered under the schema name `og.VehicleWheel`; its value type is `VehicleWheel`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `radius` | `number` | `0.4` | ≥ 0.01 | `m` | tunable | The wheel's radius. |
+| `suspensionRest` | `number` | `0.35` | ≥ 0 | `m` | tunable | The suspension's length at rest, down from the wheel's position. |
+| `suspensionTravel` | `number` | `0.25` | ≥ 0 | `m` | tunable | How far the suspension compresses or extends from rest. |
+| `suspensionStiffness` | `number` | `30` | ≥ 0 | — | tunable | The suspension's stiffness. |
+| `suspensionDamping` | `number` | `4` | ≥ 0 | — | tunable | The suspension's damping. |
+| `grip` | `number` | `2` | ≥ 0 | — | tunable | The tyre's grip, as og.Vehicle's `grip`. |
+| `steer` | `number` | `0` | -1 … 1 | — | tunable | How much of the vehicle's steering it takes: 1 a front wheel, 0 none, negative steers the other way (rear-wheel steering). |
+| `drive` | `boolean` | `false` | — | — | — | Whether the engine drives it (og.Vehicle.drive is then unused). |
+| `brake` | `boolean` | `true` | — | — | — | Whether the brake brakes it. |
+| `handbrake` | `boolean` | `false` | — | — | — | Whether the handbrake brakes it, and driftGrip applies to it. |
+
+```ogt
+component VehicleWheel {
+  doc "A wheel of the og.Vehicle it is a child of (down its og.Parent chain), at its og.Transform relative to the chassis: the hard point its suspension hangs from. A vehicle with og.VehicleWheel children (up to 16, in entity order) has those wheels in place of its four implicit ones, and og.physics.vehicleWheels lists them in that order: six-wheeled trucks, trikes, rear-wheel steering. 3D only; the 2D vehicle keeps its two wheels."
+  field radius f32 "The wheel's radius." {
+    default 0.4
+    min 0.01
+    unit m
+    tunable true
+  }
+  field suspensionRest f32 "The suspension's length at rest, down from the wheel's position." {
+    default 0.35
+    min 0
+    unit m
+    tunable true
+  }
+  field suspensionTravel f32 "How far the suspension compresses or extends from rest." {
+    default 0.25
+    min 0
+    unit m
+    tunable true
+  }
+  field suspensionStiffness f32 "The suspension's stiffness." {
+    default 30
+    min 0
+    tunable true
+  }
+  field suspensionDamping f32 "The suspension's damping." {
+    default 4
+    min 0
+    tunable true
+  }
+  field grip f32 "The tyre's grip, as og.Vehicle's `grip`." {
+    default 2
+    min 0
+    tunable true
+  }
+  field steer f32 "How much of the vehicle's steering it takes: 1 a front wheel, 0 none, negative steers the other way (rear-wheel steering)." {
+    min -1
+    max 1
+    tunable true
+  }
+  field drive bool "Whether the engine drives it (og.Vehicle.drive is then unused)."
+  field brake bool "Whether the brake brakes it." {
+    default true
+  }
+  field handbrake bool "Whether the handbrake brakes it, and driftGrip applies to it."
+}
+```
+
+<sub>`api.ogt` line 8086</sub>
 
 <a id="record-Rope"></a>
 
@@ -2035,7 +2199,7 @@ component Rope {
 }
 ```
 
-<sub>`api.ogt` line 8010</sub>
+<sub>`api.ogt` line 8133</sub>
 
 <a id="record-Cloth"></a>
 
@@ -2141,7 +2305,7 @@ component Cloth {
 }
 ```
 
-<sub>`api.ogt` line 8076</sub>
+<sub>`api.ogt` line 8199</sub>
 
 <a id="record-Fluid2D"></a>
 
@@ -2265,7 +2429,7 @@ component Fluid2D {
 }
 ```
 
-<sub>`api.ogt` line 8152</sub>
+<sub>`api.ogt` line 8275</sub>
 
 <a id="record-Fluid3D"></a>
 
@@ -2434,7 +2598,7 @@ component Fluid3D {
 }
 ```
 
-<sub>`api.ogt` line 8241</sub>
+<sub>`api.ogt` line 8364</sub>
 
 <a id="record-WaterSurface"></a>
 
@@ -2499,7 +2663,7 @@ component WaterSurface {
 }
 ```
 
-<sub>`api.ogt` line 8367</sub>
+<sub>`api.ogt` line 8490</sub>
 
 <a id="record-WaterLine"></a>
 
@@ -2576,7 +2740,7 @@ component WaterLine {
 }
 ```
 
-<sub>`api.ogt` line 8410</sub>
+<sub>`api.ogt` line 8533</sub>
 
 <a id="record-Splash"></a>
 
@@ -2607,7 +2771,7 @@ event Splash {
 }
 ```
 
-<sub>`api.ogt` line 8463</sub>
+<sub>`api.ogt` line 8586</sub>
 
 <a id="record-Ragdoll"></a>
 
@@ -2675,7 +2839,7 @@ component Ragdoll {
 }
 ```
 
-<sub>`api.ogt` line 8475</sub>
+<sub>`api.ogt` line 8598</sub>
 
 ## Types
 
@@ -2703,7 +2867,7 @@ struct QueryFilter {
 }
 ```
 
-<sub>`api.ogt` line 8520</sub>
+<sub>`api.ogt` line 8643</sub>
 
 <a id="type-RaycastDesc"></a>
 
@@ -2738,7 +2902,7 @@ struct RaycastDesc {
 }
 ```
 
-<sub>`api.ogt` line 8528</sub>
+<sub>`api.ogt` line 8651</sub>
 
 <a id="type-RaycastHit"></a>
 
@@ -2767,7 +2931,7 @@ struct RaycastHit {
 }
 ```
 
-<sub>`api.ogt` line 8544</sub>
+<sub>`api.ogt` line 8667</sub>
 
 <a id="type-RaycastAllDesc"></a>
 
@@ -2807,7 +2971,7 @@ struct RaycastAllDesc {
 }
 ```
 
-<sub>`api.ogt` line 8555</sub>
+<sub>`api.ogt` line 8678</sub>
 
 <a id="type-ProjectPointDesc"></a>
 
@@ -2842,7 +3006,7 @@ struct ProjectPointDesc {
 }
 ```
 
-<sub>`api.ogt` line 8575</sub>
+<sub>`api.ogt` line 8698</sub>
 
 <a id="type-PointProjection"></a>
 
@@ -2875,7 +3039,7 @@ struct PointProjection {
 }
 ```
 
-<sub>`api.ogt` line 8591</sub>
+<sub>`api.ogt` line 8714</sub>
 
 <a id="type-ShapeDesc"></a>
 
@@ -2917,7 +3081,7 @@ struct ShapeDesc {
 }
 ```
 
-<sub>`api.ogt` line 8605</sub>
+<sub>`api.ogt` line 8728</sub>
 
 <a id="type-ShapeCastDesc"></a>
 
@@ -2956,7 +3120,7 @@ struct ShapeCastDesc {
 }
 ```
 
-<sub>`api.ogt` line 8627</sub>
+<sub>`api.ogt` line 8750</sub>
 
 <a id="type-ShapeCastHit"></a>
 
@@ -2983,7 +3147,7 @@ struct ShapeCastHit {
 }
 ```
 
-<sub>`api.ogt` line 8645</sub>
+<sub>`api.ogt` line 8768</sub>
 
 <a id="type-OverlapDesc"></a>
 
@@ -3013,7 +3177,7 @@ struct OverlapDesc {
 }
 ```
 
-<sub>`api.ogt` line 8655</sub>
+<sub>`api.ogt` line 8778</sub>
 
 <a id="type-MeshDesc"></a>
 
@@ -3037,7 +3201,7 @@ struct MeshDesc {
 }
 ```
 
-<sub>`api.ogt` line 8666</sub>
+<sub>`api.ogt` line 8789</sub>
 
 <a id="type-WheelPose"></a>
 
@@ -3052,6 +3216,7 @@ A wheel of an og.Vehicle as the last step left it, for drawing.
 | `contact` | `boolean` | `false` | — | — | — | Whether it touches the ground. |
 | `slip` | `number` | `0` | 0 … 1 | — | — | How much the tyre slides (rapier's skid info turned round): 0 it grips, towards 1 it asks for more than its grip holds (0.5 is twice as much); 0 in the air and in 2D. Start smoke and skid marks above about 0.2, and fade a squeal in with it. |
 | `sideSpeed` | `number` | `0` | — | `mps` | — | How fast the tyre's contact moves sideways over the ground (along its axle; 0 in the air and in 2D): a slide's speed, for the squeal's pitch or a skid mark's darkness. |
+| `entity` | `Entity` | `0` | — | — | — | The wheel's og.VehicleWheel entity; 0 for a vehicle's implicit wheels. |
 
 ```ogt
 struct WheelPose {
@@ -3068,10 +3233,11 @@ struct WheelPose {
   field sideSpeed f32 "How fast the tyre's contact moves sideways over the ground (along its axle; 0 in the air and in 2D): a slide's speed, for the squeal's pitch or a skid mark's darkness." {
     unit mps
   }
+  field entity Entity "The wheel's og.VehicleWheel entity; 0 for a vehicle's implicit wheels."
 }
 ```
 
-<sub>`api.ogt` line 8754</sub>
+<sub>`api.ogt` line 8877</sub>
 
 <a id="type-RagdollBoneDesc"></a>
 
@@ -3114,7 +3280,7 @@ struct RagdollBoneDesc {
 }
 ```
 
-<sub>`api.ogt` line 8770</sub>
+<sub>`api.ogt` line 8894</sub>
 
 <a id="type-RagdollRigDesc"></a>
 
@@ -3138,7 +3304,7 @@ struct RagdollRigDesc {
 }
 ```
 
-<sub>`api.ogt` line 8792</sub>
+<sub>`api.ogt` line 8916</sub>
 
 <a id="type-BonePose"></a>
 
@@ -3161,7 +3327,7 @@ struct BonePose {
 }
 ```
 
-<sub>`api.ogt` line 8799</sub>
+<sub>`api.ogt` line 8923</sub>
 
 <a id="type-PhysicsPhase"></a>
 
@@ -3186,7 +3352,7 @@ struct PhysicsPhase {
 }
 ```
 
-<sub>`api.ogt` line 8873</sub>
+<sub>`api.ogt` line 8997</sub>
 
 <a id="type-PhysicsStats"></a>
 
@@ -3217,7 +3383,7 @@ struct PhysicsStats {
 }
 ```
 
-<sub>`api.ogt` line 8882</sub>
+<sub>`api.ogt` line 9006</sub>
 
 ## Constants
 
@@ -3260,6 +3426,8 @@ struct PhysicsStats {
 | <a id="const-DRIVE_REAR"></a>`DRIVE_REAR` | `number` | `0` | `Vehicle.drive`: the rear wheels drive. |
 | <a id="const-DRIVE_FRONT"></a>`DRIVE_FRONT` | `number` | `1` | `Vehicle.drive`: the front wheels drive. |
 | <a id="const-DRIVE_ALL"></a>`DRIVE_ALL` | `number` | `2` | `Vehicle.drive`: every wheel drives. |
+| <a id="const-VEHICLE_ARCADE"></a>`VEHICLE_ARCADE` | `number` | `0` | `Vehicle.model`: the arcade car: engineForce, faded out towards maxSpeed. |
+| <a id="const-VEHICLE_DRIVETRAIN"></a>`VEHICLE_DRIVETRAIN` | `number` | `1` | `Vehicle.model`: an engine with a torque curve driving through a gearbox. |
 | <a id="const-PIN_TOP"></a>`PIN_TOP` | `number` | `1` | `Cloth.pins` bit: the whole top row is pinned. |
 | <a id="const-PIN_TOP_CORNERS"></a>`PIN_TOP_CORNERS` | `number` | `2` | `Cloth.pins` bit: the top-left and top-right corners are pinned. |
 | <a id="const-PIN_LEFT"></a>`PIN_LEFT` | `number` | `4` | `Cloth.pins` bit: the whole left column is pinned (a flag on a pole). |
@@ -3269,244 +3437,256 @@ struct PhysicsStats {
 const MAX_RAYCAST_HITS u32 256 "The most hits og.physics.raycastAll returns."
 ```
 
-<sub>`api.ogt` line 7222</sub>
+<sub>`api.ogt` line 7223</sub>
 
 ```ogt
 const BODY_DYNAMIC u32 0 "RigidBody.kind: moved by the solver; its Transform and Velocity are written back every tick."
 ```
 
-<sub>`api.ogt` line 7223</sub>
+<sub>`api.ogt` line 7224</sub>
 
 ```ogt
 const BODY_STATIC u32 1 "RigidBody.kind: never moves; collides with dynamic bodies."
 ```
 
-<sub>`api.ogt` line 7224</sub>
+<sub>`api.ogt` line 7225</sub>
 
 ```ogt
 const BODY_KINEMATIC u32 2 "RigidBody.kind: not moved by the solver. With an og.Velocity the step moves it by it each tick and writes its Transform back (a lift, a conveyor, a turning gear); a Transform game code writes moves it there first (a teleport). Without one it stays where its Transform puts it. Either way it pushes dynamic bodies and carries the controllers standing on it."
 ```
 
-<sub>`api.ogt` line 7225</sub>
+<sub>`api.ogt` line 7226</sub>
 
 ```ogt
 const LOCK_TRANSLATION_X u32 1 "RigidBody.lock bit: no translation along x."
 ```
 
-<sub>`api.ogt` line 7226</sub>
+<sub>`api.ogt` line 7227</sub>
 
 ```ogt
 const LOCK_TRANSLATION_Y u32 2 "RigidBody.lock bit: no translation along y."
 ```
 
-<sub>`api.ogt` line 7227</sub>
+<sub>`api.ogt` line 7228</sub>
 
 ```ogt
 const LOCK_TRANSLATION_Z u32 4 "RigidBody.lock bit: no translation along z."
 ```
 
-<sub>`api.ogt` line 7228</sub>
+<sub>`api.ogt` line 7229</sub>
 
 ```ogt
 const LOCK_ROTATION_X u32 8 "RigidBody.lock bit: no rotation about x."
 ```
 
-<sub>`api.ogt` line 7229</sub>
+<sub>`api.ogt` line 7230</sub>
 
 ```ogt
 const LOCK_ROTATION_Y u32 16 "RigidBody.lock bit: no rotation about y."
 ```
 
-<sub>`api.ogt` line 7230</sub>
+<sub>`api.ogt` line 7231</sub>
 
 ```ogt
 const LOCK_ROTATION_Z u32 32 "RigidBody.lock bit: no rotation about z (the 2D profile's only rotation)."
 ```
 
-<sub>`api.ogt` line 7231</sub>
+<sub>`api.ogt` line 7232</sub>
 
 ```ogt
 const SHAPE_BOX u32 0 "Collider.shape: a box of `size` (both profiles)."
 ```
 
-<sub>`api.ogt` line 7232</sub>
+<sub>`api.ogt` line 7233</sub>
 
 ```ogt
 const SHAPE_SPHERE u32 1 "Collider.shape: a sphere of `radius` (a circle in 2D)."
 ```
 
-<sub>`api.ogt` line 7233</sub>
+<sub>`api.ogt` line 7234</sub>
 
 ```ogt
 const SHAPE_CAPSULE u32 2 "Collider.shape: a capsule along y of `radius`, with `height` between the cap centres (both profiles)."
 ```
 
-<sub>`api.ogt` line 7234</sub>
+<sub>`api.ogt` line 7235</sub>
 
 ```ogt
 const SHAPE_CYLINDER u32 3 "Collider.shape: a cylinder along y of `radius` and `height` (3D only)."
 ```
 
-<sub>`api.ogt` line 7235</sub>
+<sub>`api.ogt` line 7236</sub>
 
 ```ogt
 const SHAPE_CONVEX u32 4 "Collider.shape: the convex hull of the vertices of `mesh` (3D), or of their xy (a convex polygon, 2D)."
 ```
 
-<sub>`api.ogt` line 7236</sub>
+<sub>`api.ogt` line 7237</sub>
 
 ```ogt
 const SHAPE_TRIMESH u32 5 "Collider.shape: the triangles of `mesh` (3D only; for static and kinematic bodies)."
 ```
 
-<sub>`api.ogt` line 7237</sub>
+<sub>`api.ogt` line 7238</sub>
 
 ```ogt
 const SHAPE_HEIGHTFIELD u32 6 "Collider.shape: the height field registered as `mesh`, centred on the entity (3D only; a terrain: og.terrain.load's TerrainInfo.geometry)."
 ```
 
-<sub>`api.ogt` line 7238</sub>
+<sub>`api.ogt` line 7239</sub>
 
 ```ogt
 const PROFILE_2D u32 2 "Physics.profile: rapier2d, bodies in the xy plane rotating about z."
 ```
 
-<sub>`api.ogt` line 7239</sub>
+<sub>`api.ogt` line 7240</sub>
 
 ```ogt
 const PROFILE_3D u32 3 "Physics.profile: rapier3d."
 ```
 
-<sub>`api.ogt` line 7240</sub>
+<sub>`api.ogt` line 7241</sub>
 
 ```ogt
 const JOINT_FIXED u32 0 "`Joint.kind`: the two bodies move as one."
 ```
 
-<sub>`api.ogt` line 7496</sub>
+<sub>`api.ogt` line 7497</sub>
 
 ```ogt
 const JOINT_REVOLUTE u32 1 "`Joint.kind`: a hinge about `axis` (2D: about z), with optional limits and a motor."
 ```
 
-<sub>`api.ogt` line 7497</sub>
+<sub>`api.ogt` line 7498</sub>
 
 ```ogt
 const JOINT_PRISMATIC u32 2 "`Joint.kind`: a slider along `axis`, with optional limits and a motor."
 ```
 
-<sub>`api.ogt` line 7498</sub>
+<sub>`api.ogt` line 7499</sub>
 
 ```ogt
 const JOINT_SPRING u32 3 "`Joint.kind`: a damped spring pulling the anchors to `restLength` apart."
 ```
 
-<sub>`api.ogt` line 7499</sub>
+<sub>`api.ogt` line 7500</sub>
 
 ```ogt
 const JOINT_ROPE u32 4 "`Joint.kind`: a rope: the anchors stay at most `length` apart, free inside it."
 ```
 
-<sub>`api.ogt` line 7500</sub>
+<sub>`api.ogt` line 7501</sub>
 
 ```ogt
 const JOINT_BALL u32 5 "`Joint.kind`: a ball and socket (3D; the 2D profile treats it as a hinge)."
 ```
 
-<sub>`api.ogt` line 7501</sub>
+<sub>`api.ogt` line 7502</sub>
 
 ```ogt
 const MOTOR_NONE u32 0 "`Joint.motor`: no motor."
 ```
 
-<sub>`api.ogt` line 7502</sub>
+<sub>`api.ogt` line 7503</sub>
 
 ```ogt
 const MOTOR_VELOCITY u32 1 "`Joint.motor`: drive towards `motorTarget` speed (rad/s or m/s)."
 ```
 
-<sub>`api.ogt` line 7503</sub>
+<sub>`api.ogt` line 7504</sub>
 
 ```ogt
 const MOTOR_POSITION u32 2 "`Joint.motor`: spring towards `motorTarget` angle or position (a servo)."
 ```
 
-<sub>`api.ogt` line 7504</sub>
+<sub>`api.ogt` line 7505</sub>
 
 ```ogt
 const CHARACTER_JUMPED u32 1 "`CharacterEvent.kind`: a jump from the ground (or in coyote time)."
 ```
 
-<sub>`api.ogt` line 7869</sub>
+<sub>`api.ogt` line 7870</sub>
 
 ```ogt
 const CHARACTER_LANDED u32 2 "`CharacterEvent.kind`: touched the ground after being in the air."
 ```
 
-<sub>`api.ogt` line 7870</sub>
+<sub>`api.ogt` line 7871</sub>
 
 ```ogt
 const CHARACTER_WALL_JUMPED u32 3 "`CharacterEvent.kind`: a jump off a wall."
 ```
 
-<sub>`api.ogt` line 7871</sub>
+<sub>`api.ogt` line 7872</sub>
 
 ```ogt
 const CHARACTER_AIR_JUMPED u32 4 "`CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps)."
 ```
 
-<sub>`api.ogt` line 7872</sub>
+<sub>`api.ogt` line 7873</sub>
 
 ```ogt
 const CHARACTER_LEFT_GROUND u32 5 "`CharacterEvent.kind`: left the ground without jumping (ran off an edge)."
 ```
 
-<sub>`api.ogt` line 7873</sub>
+<sub>`api.ogt` line 7874</sub>
 
 ```ogt
 const CHARACTER_BUMPED u32 6 "`CharacterEvent.kind`: hit a ceiling while rising."
 ```
 
-<sub>`api.ogt` line 7874</sub>
+<sub>`api.ogt` line 7875</sub>
 
 ```ogt
 const DRIVE_REAR u32 0 "`Vehicle.drive`: the rear wheels drive."
 ```
 
-<sub>`api.ogt` line 7888</sub>
+<sub>`api.ogt` line 7889</sub>
 
 ```ogt
 const DRIVE_FRONT u32 1 "`Vehicle.drive`: the front wheels drive."
 ```
 
-<sub>`api.ogt` line 7889</sub>
+<sub>`api.ogt` line 7890</sub>
 
 ```ogt
 const DRIVE_ALL u32 2 "`Vehicle.drive`: every wheel drives."
 ```
 
-<sub>`api.ogt` line 7890</sub>
+<sub>`api.ogt` line 7891</sub>
+
+```ogt
+const VEHICLE_ARCADE u32 0 "`Vehicle.model`: the arcade car: engineForce, faded out towards maxSpeed."
+```
+
+<sub>`api.ogt` line 7892</sub>
+
+```ogt
+const VEHICLE_DRIVETRAIN u32 1 "`Vehicle.model`: an engine with a torque curve driving through a gearbox."
+```
+
+<sub>`api.ogt` line 7893</sub>
 
 ```ogt
 const PIN_TOP u32 1 "`Cloth.pins` bit: the whole top row is pinned."
 ```
 
-<sub>`api.ogt` line 8071</sub>
+<sub>`api.ogt` line 8194</sub>
 
 ```ogt
 const PIN_TOP_CORNERS u32 2 "`Cloth.pins` bit: the top-left and top-right corners are pinned."
 ```
 
-<sub>`api.ogt` line 8072</sub>
+<sub>`api.ogt` line 8195</sub>
 
 ```ogt
 const PIN_LEFT u32 4 "`Cloth.pins` bit: the whole left column is pinned (a flag on a pole)."
 ```
 
-<sub>`api.ogt` line 8073</sub>
+<sub>`api.ogt` line 8196</sub>
 
 ```ogt
 const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
 ```
 
-<sub>`api.ogt` line 8074</sub>
+<sub>`api.ogt` line 8197</sub>

@@ -10,7 +10,7 @@ use crate::StepOut;
 use crate::schema::{BODY_KINEMATIC, Collider, Parent, RigidBody, Transform, Velocity};
 use crate::schema_ext::{
     CharacterController, Cloth, ContactHook, Fluid2D, Fluid3D, Joint, PlatformerController,
-    Ragdoll, Rope, Vehicle, WaterLine, WaterSurface,
+    Ragdoll, Rope, Vehicle, VehicleWheel, WaterLine, WaterSurface,
 };
 use og_core::glam::{Quat, Vec3};
 use og_core::{Layout, Reflect, Result};
@@ -258,6 +258,7 @@ pub(crate) struct Ids {
     ragdoll: Rows,
     fluid3: Rows,
     hook_layout: Layout,
+    wheel_layout: Layout,
 }
 
 fn fields_of<T: Reflect>(world: &World) -> Result<(Vec<FieldRef>, Layout)> {
@@ -324,6 +325,7 @@ impl Ids {
             ragdoll: Rows::of::<Ragdoll>(world)?,
             fluid3: Rows::of::<Fluid3D>(world)?,
             hook_layout: Layout::of(&ContactHook::schema()),
+            wheel_layout: Layout::of(&VehicleWheel::schema()),
         })
     }
 }
@@ -391,6 +393,39 @@ pub(crate) struct Scene {
     pub fluids3: Vec<(Entity, Vec3, Fluid3D)>,
     /// The contact hooks, by entity (ascending).
     pub hooks: og_core::IdMap<u64, ContactHook>,
+    /// Each vehicle's og.VehicleWheel children, by vehicle entity, in
+    /// entity order (at most [`MAX_WHEELS`]).
+    pub wheels: og_core::IdMap<u64, Vec<WheelChild>>,
+}
+
+/// The most og.VehicleWheel children a vehicle takes.
+pub(crate) const MAX_WHEELS: usize = 16;
+
+/// An og.VehicleWheel child: its mount in chassis space (the transforms
+/// between it and the chassis composed, the chassis's scale applied).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct WheelChild {
+    pub entity: Entity,
+    pub mount: Vec3,
+    pub wheel: VehicleWheel,
+}
+
+/// The lazily registered components the step reads, when registered
+/// (crate::LAZY): read per entity, since a system's queries are fixed when
+/// it is scheduled.
+#[derive(Clone, Copy, Default)]
+pub(crate) struct LazyIds {
+    pub hook: Option<SchemaId>,
+    pub wheel: Option<SchemaId>,
+}
+
+impl LazyIds {
+    pub fn of(id: impl Fn(&str) -> Option<SchemaId>) -> LazyIds {
+        LazyIds {
+            hook: id(ContactHook::NAME),
+            wheel: id(VehicleWheel::NAME),
+        }
+    }
 }
 
 /// Every row of component `T` in `a`, decoded from its columns, by ranges
@@ -541,7 +576,7 @@ fn ancestor_body(
 pub(crate) fn gather<'w>(
     q: &dyn Fn(usize) -> Result<QueryIter<'w>>,
     get: GetBytes<'_>,
-    hook: Option<SchemaId>,
+    lazy: LazyIds,
     ids: &Ids,
 ) -> Result<Scene> {
     let mut colliders = ByEntity::new();
@@ -648,11 +683,15 @@ pub(crate) fn gather<'w>(
     }
     let mut parents = ByEntity::new();
     let mut any_parent = false;
+    let mut parented = Vec::new();
     for a in q(Q_PARENTS)? {
         let p = a.read::<u64>(ids.parent)?;
         for (e, parent) in a.entities().iter().zip(p.iter()) {
             parents.insert(*e, *parent);
             any_parent = true;
+            if lazy.wheel.is_some() {
+                parented.push(*e);
+            }
         }
     }
     // The bodies a child collider can join: rigid bodies a controller
@@ -705,7 +744,7 @@ pub(crate) fn gather<'w>(
     }
     // og.ContactHook is registered only once a game uses it (lazy): read
     // then, per collider entity, as the step needs it by entity.
-    if let Some(id) = hook {
+    if let Some(id) = lazy.hook {
         let colliders = scene
             .bodies
             .iter()
@@ -728,6 +767,52 @@ pub(crate) fn gather<'w>(
         scene
             .vehicles
             .extend(a.entities().iter().copied().zip(rows));
+    }
+    // og.VehicleWheel children (lazy): the parented entities that have one,
+    // joined to the nearest vehicle up their chain.
+    if let Some(wheel_id) = lazy.wheel.filter(|_| !scene.vehicles.is_empty()) {
+        let mut cars = ByEntity::new();
+        for (i, (e, _)) in scene.vehicles.iter().enumerate() {
+            cars.insert(*e, i);
+        }
+        let scale_of = |e: Entity| {
+            scene
+                .bodies
+                .iter()
+                .find(|b| b.entity == e)
+                .map_or(Vec3::ONE, |b| b.scale)
+        };
+        let mut found: Vec<(u64, WheelChild)> = Vec::new();
+        for e in parented {
+            let Ok(bytes) = get(e, wheel_id) else {
+                continue;
+            };
+            let wheel = ids.wheel_layout.decode::<VehicleWheel>(&bytes)?;
+            let own = (get)(e, ids.transform)
+                .ok()
+                .and_then(|b| ids.transform_layout.decode::<Transform>(&b).ok())
+                .map_or((Vec3::ZERO, Quat::IDENTITY, Vec3::ONE), |t| {
+                    (t.position, t.quaternion, t.scale)
+                });
+            if let Some((i, (p, _, _))) = ancestor_body(e, own, &parents, &cars, get, ids) {
+                let car = scene.vehicles[i].0;
+                found.push((
+                    car.to_bits(),
+                    WheelChild {
+                        entity: e,
+                        mount: p * scale_of(car),
+                        wheel,
+                    },
+                ));
+            }
+        }
+        for (car, w) in found {
+            scene.wheels.entry(car).or_default().push(w);
+        }
+        for list in scene.wheels.values_mut() {
+            list.sort_unstable_by_key(|w| w.entity.to_bits());
+            list.truncate(MAX_WHEELS);
+        }
     }
     let chains = any_parent.then_some(Chains { parents, get, ids });
     macro_rules! placed {

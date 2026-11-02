@@ -14,7 +14,7 @@ module time {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1472</sub>
+<sub>`api.ogt` line 1473</sub>
 
 ## Contents
 
@@ -54,7 +54,7 @@ fn setScale {
 }
 ```
 
-<sub>`api.ogt` line 1514</sub>
+<sub>`api.ogt` line 1515</sub>
 
 <a id="fn-hitStop"></a>
 
@@ -84,7 +84,7 @@ fn hitStop {
 }
 ```
 
-<sub>`api.ogt` line 1521</sub>
+<sub>`api.ogt` line 1522</sub>
 
 ## Components, resources and events
 
@@ -147,4 +147,4 @@ resource Time {
 }
 ```
 
-<sub>`api.ogt` line 1476</sub>
+<sub>`api.ogt` line 1477</sub>
