@@ -608,6 +608,73 @@ module math {
     }
   }
 
+  interface ScalarMath {
+    doc "JavaScript's Math functions whose results differ between JavaScript engines (Math.sin, Math.pow and the rest are only approximations, and V8, JavaScriptCore and SpiderMonkey round them differently), written with + - * / and sqrt only: the same bits on every host and every browser. The value `math`: `math.sin(a)`. A system whose result reaches the world (lockstep, replays, saves) uses these; `og check` names each Math call that should be one in a game with og.Lockstep."
+    doc "Math.sqrt, Math.abs, Math.floor, Math.round, Math.min and Math.max are exact everywhere and stay as they are."
+    fn sin {
+      doc "The sine of x radians, as Math.sin."
+      host false
+      param x f64 "The angle, in radians."
+      returns f64
+    }
+    fn cos {
+      doc "The cosine of x radians, as Math.cos."
+      host false
+      param x f64 "The angle, in radians."
+      returns f64
+    }
+    fn tan {
+      doc "The tangent of x radians, as Math.tan."
+      host false
+      param x f64 "The angle, in radians."
+      returns f64
+    }
+    fn asin {
+      doc "The arcsine, as Math.asin: -pi/2 to pi/2, NaN outside -1 to 1."
+      host false
+      param x f64 "The sine."
+      returns f64
+    }
+    fn acos {
+      doc "The arccosine, as Math.acos: 0 to pi, NaN outside -1 to 1."
+      host false
+      param x f64 "The cosine."
+      returns f64
+    }
+    fn atan {
+      doc "The arctangent, as Math.atan: -pi/2 to pi/2."
+      host false
+      param x f64 "The tangent."
+      returns f64
+    }
+    fn atan2 {
+      doc "The angle of the point (x, y) from +x, as Math.atan2: -pi to pi, 0 at the origin."
+      host false
+      param y f64 "The y coordinate."
+      param x f64 "The x coordinate."
+      returns f64
+    }
+    fn exp {
+      doc "e to the x, as Math.exp."
+      host false
+      param x f64 "The exponent."
+      returns f64
+    }
+    fn log {
+      doc "The natural logarithm, as Math.log: -Infinity at 0, NaN below."
+      host false
+      param x f64 "The value."
+      returns f64
+    }
+    fn pow {
+      doc "x to the y, as Math.pow and `**`: an integer y is multiplication by squaring (x * x for 2), any other y exp(y log x), NaN for a negative x."
+      host false
+      param x f64 "The base."
+      param y f64 "The exponent."
+      returns f64
+    }
+  }
+
   value vec3 Vector3Math "Vector3's pure functions: `vec3.add(a, b)`, `vec3.normalize(v)`, `vec3.applyQuaternion(v, q)`."
   value vec2 Vector2Math "Vector2's pure functions: `vec2.add(a, b)`, `vec2.rotateAround(v, c, angle)`."
   value quat QuaternionMath "Quaternion's pure functions: `quat.multiply(a, b)`, `quat.slerp(a, b, t)`, `quat.fromEuler({ x, y, z })`."
@@ -618,6 +685,7 @@ module math {
   value frustum FrustumMath "Frustum's pure functions: `frustum.fromCamera(camera, aspect)`, `frustum.intersectsBox(f, box)`."
   value ray RayMath "Ray's pure functions: `ray.intersectBox(r, box)`, `ray.intersectTriangle(r, a, b, c)`."
   value color ColorMath "Color's pure functions: `color.fromHex(0xff8800)`, `color.toHex(c)`, `color.fromHsl(h, s, l)`."
+  value math ScalarMath "Math's functions with the same bits on every host: `math.sin(a)`, `math.atan2(y, x)`, `math.pow(x, y)`."
 }
 
 # ── reflect ───────────────────────────────────────────────────────────────

@@ -791,7 +791,48 @@ pub fn gate(p: &Project, package: &Path, json: bool) -> Result<Report, String> {
         eprint!("{}", report.raw);
         eprintln!("{}", report.summary());
     }
+    lockstep_lint(p, json, true);
     Ok(report)
+}
+
+/// The lockstep lint (`lockstep_lint`) over a project's sources, beside
+/// the entry: printed as warnings (`<file>(<line>,<col>): warning OG<code>:`)
+/// or, with `json`, as one `lockstep-lint` event. Never fails a check.
+fn lockstep_lint(p: &Project, json: bool, to_stderr: bool) {
+    let dir = p.entry.parent().unwrap_or(&p.root);
+    let found = crate::lockstep_lint::lint(&p.root, dir);
+    if found.is_empty() {
+        return;
+    }
+    let text = if json {
+        serde_json::json!({
+            "event": "lockstep-lint",
+            "warnings": found.iter().map(|(file, f)| serde_json::json!({
+                "file": file, "line": f.line, "col": f.col, "code": f.code, "message": f.message,
+            })).collect::<Vec<_>>(),
+        })
+        .to_string()
+    } else {
+        let mut t: Vec<String> = found
+            .iter()
+            .map(|(file, f)| {
+                format!(
+                    "{file}({},{}): warning OG{}: {}",
+                    f.line, f.col, f.code, f.message
+                )
+            })
+            .collect();
+        t.push(format!(
+            "og check: {} lockstep warning(s): a peer that runs these parts from the room (the og-net skill, §3); `// lockstep-ok` on a line that only draws",
+            found.len()
+        ));
+        t.join("\n")
+    };
+    if to_stderr && !json {
+        eprintln!("{text}");
+    } else {
+        println!("{text}");
+    }
 }
 
 /// `gate`, and `Err` on a type error as well: what stops a bundle.
@@ -864,6 +905,7 @@ pub fn run(args: &[&str]) -> ExitCode {
         || (path.is_dir()
             && !path.join("project.ogt").is_file()
             && path.join("tsconfig.json").is_file());
+    let mut project = None;
     let (target, package) = if as_config {
         let target = match Target::config(path) {
             Ok(t) => t,
@@ -877,10 +919,12 @@ pub fn run(args: &[&str]) -> ExitCode {
             Err(e) => return fail(e),
         };
         let package = project::engine_package(Some(&p.root));
-        match Target::of(&p, package.as_deref()) {
-            Ok(t) => (t, package),
+        let target = match Target::of(&p, package.as_deref()) {
+            Ok(t) => t,
             Err(e) => return fail(e),
-        }
+        };
+        project = Some(p);
+        (target, package)
     };
     let (checker, note) = match Checker::find(package.as_deref(), tool) {
         Ok(c) => c,
@@ -898,6 +942,9 @@ pub fn run(args: &[&str]) -> ExitCode {
     } else {
         print!("{}", report.raw);
         println!("{}", report.summary());
+    }
+    if let Some(p) = &project {
+        lockstep_lint(p, json, false);
     }
     if report.ok() {
         ExitCode::SUCCESS

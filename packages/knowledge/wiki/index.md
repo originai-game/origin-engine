@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2243 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2255 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -758,6 +758,7 @@ Field units the docs and Tune use.
 | [`MaterialName`](ui.md#type-MaterialName) | enum | ui | — |
 | [`MaterialSurface`](render.md#type-MaterialSurface) | enum | render | — |
 | [`MaterialSurface()`](render.md#column-MaterialSurface) | column kind | render | — |
+| [`math`](math.md#value-math) | value | math | — |
 | [`Matrix4`](math.md#type-Matrix4) | struct | math | — |
 | [`Matrix4()`](reflect.md#column-Matrix4) | column kind | reflect | — |
 | [`Matrix4Math`](math.md#type-Matrix4Math) | interface | math | — |
@@ -1977,6 +1978,17 @@ Field units the docs and Tune use.
 | [`SaveSlotDesc`](platform.md#type-SaveSlotDesc) | desc struct | platform | — |
 | [`SaveSpawnDesc`](world.md#type-SaveSpawnDesc) | desc struct | world | — |
 | [`SaveType`](world.md#type-SaveType) | struct | world | — |
+| [`ScalarMath`](math.md#type-ScalarMath) | interface | math | — |
+| [`ScalarMath.acos`](math.md#member-ScalarMath-acos) | method | math | — |
+| [`ScalarMath.asin`](math.md#member-ScalarMath-asin) | method | math | — |
+| [`ScalarMath.atan`](math.md#member-ScalarMath-atan) | method | math | — |
+| [`ScalarMath.atan2`](math.md#member-ScalarMath-atan2) | method | math | — |
+| [`ScalarMath.cos`](math.md#member-ScalarMath-cos) | method | math | — |
+| [`ScalarMath.exp`](math.md#member-ScalarMath-exp) | method | math | — |
+| [`ScalarMath.log`](math.md#member-ScalarMath-log) | method | math | — |
+| [`ScalarMath.pow`](math.md#member-ScalarMath-pow) | method | math | — |
+| [`ScalarMath.sin`](math.md#member-ScalarMath-sin) | method | math | — |
+| [`ScalarMath.tan`](math.md#member-ScalarMath-tan) | method | math | — |
 | [`SceneViewportDesc`](ui.md#type-SceneViewportDesc) | desc struct | ui | — |
 | [`SceneViewportInfo`](ui.md#type-SceneViewportInfo) | struct | ui | — |
 | [`Scheme`](ui.md#type-Scheme) | enum | ui | — |

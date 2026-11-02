@@ -1,6 +1,6 @@
 ---
 name: og-net
-description: Multiplayer on Origin Engine by deterministic lockstep over a room — og.Lockstep and og.PlayerInput, one system submitting inputs with og.net.submit, the rules that keep every peer's world identical, og relay and --room for native runs, Play links that join a room, playtests that play themselves in a room (netHash, run.peers), and finding a desync with og.Desync and dump_desync. Use when two or more players share a game over a room, or when peers' worlds part.
+description: Multiplayer on Origin Engine by deterministic lockstep over a room — determinism traps (Math.sin, Math.pow, Math.random, the clock) and og check's lockstep lint, og.Lockstep and og.PlayerInput, one system submitting inputs with og.net.submit, the rules that keep every peer's world identical, og relay and --room for native runs, Play links that join a room, playtests that play themselves in a room (netHash, run.peers), and finding a desync with og.Desync and dump_desync. Use when two or more players share a game over a room, or when peers' worlds part.
 ---
 
 Two players on Origin Engine run the same world on every peer and send
@@ -9,6 +9,7 @@ only inputs over a room; og-platform-sdk §2 lists the room calls.
 - §1 Two players over a room: the three rules, running and testing in a
   room, and a desync.
 - §2 A game's own input and commands (an RTS's orders).
+- §3 Determinism traps: what parts two peers' worlds, and `og check`'s lint.
 
 ## 1. Two players over a room: lockstep
 
@@ -93,3 +94,35 @@ must(og.net.shape(world, { input: Cursor, command: Order, maxCommands: 16 }));
   tick as seat 0's, so the game plays alone too.
 
 `packages/engine/tests/fixtures/rts-commands` is the worked example.
+
+## 3. Determinism traps
+
+Every peer runs the world, so every number a system stores must come out
+the same bits on every peer, in every browser and on the native host. The
+engine's own code is (og-core's math, the snapshot, physics); a game's
+TypeScript is where worlds part. The traps, with what to write instead:
+
+| Trap | Why it parts | Write |
+|---|---|---|
+| `Math.sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2`, `exp`, `log`, `pow`, `x ** 0.5` | The language leaves them approximate: V8, JavaScriptCore and SpiderMonkey round them differently | `math.sin(a)`, `math.atan2(y, x)`, `math.pow(x, y)` (`import { math } from "@origingame/engine"`), the same bits everywhere |
+| `Math.hypot`, `cbrt`, `log2`, `sinh` and the rest | Approximate too, with no `math` twin | `Math.sqrt(x * x + y * y)`; build others from `math.exp`, `math.log` |
+| `Math.random()` | Differs on every peer | `world.resource(og.Rng)` |
+| `Date.now()`, `performance.now()` | Each peer's clock | `og.Time` (`tick`, `dt`) |
+| A module variable a system writes | Not in the world: a late joiner's snapshot and a rollback's rewind do not carry it | A resource or component |
+| Iterating a `Map`/`Set` built from arrival order, `Object.keys` of a record filled from the network | Order differs by peer | Entity order (queries), or sort by a key first |
+| `og.RoomMessage`, og.Input or og.ui read by a world-changing system | One peer's own | og.PlayerInput, `og.net.commands` |
+
+`+ - * /`, `Math.sqrt`, `abs`, `floor`, `ceil`, `round`, `trunc`, `min`,
+`max`, `sign` and `fround` are exact in every engine and stay as they are.
+vec2, vec3, quat, mat4 and color are already free of the approximate
+functions, so their results may be stored.
+
+`og check` (and `og run`, `og test`, `og build`, which check first) lints a
+game whose sources name `og.Lockstep`: each trap above is a warning,
+`file(line,col): warning OG9001` for an approximate Math call, OG9002
+Math.random, OG9003 the clock, OG9004 a non-integer `**`; with `--json` one
+`lockstep-lint` event. Warnings never stop the build: code that only draws
+(a camera shake, a HUD tween) may keep Math, with `// lockstep-ok` on the
+line to quiet it. A warning in a system that writes the world is a desync
+waiting for two different browsers; §1's og.Desync and `dump_desync` find
+the one the lint cannot see (a module variable, an order).

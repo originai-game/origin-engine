@@ -16,7 +16,7 @@ module camera {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 3083</sub>
+<sub>`api.ogt` line 3151</sub>
 
 ## Contents
 
@@ -65,7 +65,7 @@ fn shake {
 }
 ```
 
-<sub>`api.ogt` line 3589</sub>
+<sub>`api.ogt` line 3657</sub>
 
 <a id="fn-punch"></a>
 
@@ -95,7 +95,7 @@ fn punch {
 }
 ```
 
-<sub>`api.ogt` line 3596</sub>
+<sub>`api.ogt` line 3664</sub>
 
 <a id="fn-kick"></a>
 
@@ -127,7 +127,7 @@ fn kick {
 }
 ```
 
-<sub>`api.ogt` line 3603</sub>
+<sub>`api.ogt` line 3671</sub>
 
 ## Components, resources and events
 
@@ -305,7 +305,7 @@ resource Camera {
 }
 ```
 
-<sub>`api.ogt` line 3088</sub>
+<sub>`api.ogt` line 3156</sub>
 
 <a id="member-Camera-lookAt"></a>
 
@@ -332,7 +332,7 @@ fn lookAt {
 }
 ```
 
-<sub>`api.ogt` line 3201</sub>
+<sub>`api.ogt` line 3269</sub>
 
 <a id="member-Camera-worldToScreen"></a>
 
@@ -360,7 +360,7 @@ fn worldToScreen {
 }
 ```
 
-<sub>`api.ogt` line 3205</sub>
+<sub>`api.ogt` line 3273</sub>
 
 <a id="member-Camera-screenToRay"></a>
 
@@ -390,7 +390,7 @@ fn screenToRay {
 }
 ```
 
-<sub>`api.ogt` line 3210</sub>
+<sub>`api.ogt` line 3278</sub>
 
 <a id="record-OrbitCamera"></a>
 
@@ -498,7 +498,7 @@ component OrbitCamera {
 }
 ```
 
-<sub>`api.ogt` line 3221</sub>
+<sub>`api.ogt` line 3289</sub>
 
 <a id="record-FollowCamera"></a>
 
@@ -536,7 +536,7 @@ component FollowCamera {
 }
 ```
 
-<sub>`api.ogt` line 3295</sub>
+<sub>`api.ogt` line 3363</sub>
 
 <a id="record-Follow2D"></a>
 
@@ -615,7 +615,7 @@ component Follow2D {
 }
 ```
 
-<sub>`api.ogt` line 3314</sub>
+<sub>`api.ogt` line 3382</sub>
 
 <a id="record-CameraZone"></a>
 
@@ -650,7 +650,7 @@ component CameraZone {
 }
 ```
 
-<sub>`api.ogt` line 3366</sub>
+<sub>`api.ogt` line 3434</sub>
 
 <a id="record-CameraRail"></a>
 
@@ -717,7 +717,7 @@ component CameraRail {
 }
 ```
 
-<sub>`api.ogt` line 3382</sub>
+<sub>`api.ogt` line 3450</sub>
 
 <a id="record-VirtualCamera"></a>
 
@@ -842,7 +842,7 @@ component VirtualCamera {
 }
 ```
 
-<sub>`api.ogt` line 3423</sub>
+<sub>`api.ogt` line 3491</sub>
 
 <a id="record-CameraBrain"></a>
 
@@ -949,7 +949,7 @@ resource CameraBrain {
 }
 ```
 
-<sub>`api.ogt` line 3509</sub>
+<sub>`api.ogt` line 3577</sub>
 
 <a id="record-CameraCut"></a>
 
@@ -976,4 +976,4 @@ event CameraCut {
 }
 ```
 
-<sub>`api.ogt` line 3580</sub>
+<sub>`api.ogt` line 3648</sub>

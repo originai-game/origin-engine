@@ -40,7 +40,7 @@ import { hud } from "./ui/hud/index.ts";
 import { worldUi } from "./ui/world/index.ts";
 
 // The math layer (IDL `math`): three.js's methods as pure functions over the plain structs.
-export { vec3, vec2, quat, mat4, box3, sphere, plane, frustum, ray, color } from "./math.ts";
+export { vec3, vec2, quat, mat4, box3, sphere, plane, frustum, ray, color, math } from "./math.ts";
 
 const spec = (kind: string, value: unknown, options: unknown): FieldSpec =>
   Object.freeze({ kind, default: value, options: Object.freeze({ ...((options as object | undefined) ?? {}) }) });
@@ -69,6 +69,7 @@ export const Geometry = ((value = 0 as Api.Geometry, options) => spec("Geometry"
 export const Material = ((value = 0 as Api.Material, options) => spec("Material", value, options)) as typeof Api.Material;
 export const ToneMapping = ((value = "aces" as Api.ToneMapping, options) => spec("ToneMapping", value, options)) as typeof Api.ToneMapping;
 export const QualityPreset = ((value = "none" as Api.QualityPreset, options) => spec("QualityPreset", value, options)) as typeof Api.QualityPreset;
+export const Light2DKind = ((value = "point" as Api.Light2DKind, options) => spec("Light2DKind", value, options)) as typeof Api.Light2DKind;
 export const Texture = ((value = 0 as Api.Texture, options) => spec("Texture", value, options)) as typeof Api.Texture;
 export const Lut = ((value = 0 as Api.Lut, options) => spec("Lut", value, options)) as typeof Api.Lut;
 export const EnvironmentMap = ((value = 0 as Api.EnvironmentMap, options) => spec("EnvironmentMap", value, options)) as typeof Api.EnvironmentMap;

@@ -40,6 +40,7 @@ module math {
 | [`FrustumMath`](#type-FrustumMath) | interface | Pure functions over Frustum, as three.js Frustum's methods. The value `frustum`: `frustum.intersectsBox(frustum.fromCamera(camera, 16 / 9), box)` culls as the renderer would. |
 | [`RayMath`](#type-RayMath) | interface | Pure functions over Ray, as three.js Ray's methods. The value `ray`. Each intersection answers the nearest point at or after the origin, or null. |
 | [`ColorMath`](#type-ColorMath) | interface | Pure functions over Color (linear RGB), as three.js Color's methods with colour management on: hex and HSL are sRGB, converted to and from linear as three.js does. The value `color`: `color.fromHex(0xff8800)`. The same bits on every host (no Math.pow). |
+| [`ScalarMath`](#type-ScalarMath) | interface | JavaScript's Math functions whose results differ between JavaScript engines (Math.sin, Math.pow and the rest are only approximations, and V8, JavaScriptCore and SpiderMonkey round them differently), written with + - * / and sqrt only: the same bits on every host and every browser. The value `math`: `math.sin(a)`. A system whose result reaches the world (lockstep, replays, saves) uses these; `og check` names each Math call that should be one in a game with og.Lockstep. |
 | [`vec3`](#value-vec3) | value | Vector3's pure functions: `vec3.add(a, b)`, `vec3.normalize(v)`, `vec3.applyQuaternion(v, q)`. |
 | [`vec2`](#value-vec2) | value | Vector2's pure functions: `vec2.add(a, b)`, `vec2.rotateAround(v, c, angle)`. |
 | [`quat`](#value-quat) | value | Quaternion's pure functions: `quat.multiply(a, b)`, `quat.slerp(a, b, t)`, `quat.fromEuler({ x, y, z })`. |
@@ -50,6 +51,7 @@ module math {
 | [`frustum`](#value-frustum) | value | Frustum's pure functions: `frustum.fromCamera(camera, aspect)`, `frustum.intersectsBox(f, box)`. |
 | [`ray`](#value-ray) | value | Ray's pure functions: `ray.intersectBox(r, box)`, `ray.intersectTriangle(r, a, b, c)`. |
 | [`color`](#value-color) | value | Color's pure functions: `color.fromHex(0xff8800)`, `color.toHex(c)`, `color.fromHsl(h, s, l)`. |
+| [`math`](#value-math) | value | Math's functions with the same bits on every host: `math.sin(a)`, `math.atan2(y, x)`, `math.pow(x, y)`. |
 
 ## Values
 
@@ -69,7 +71,7 @@ const vec3: Vector3Math
 value vec3 Vector3Math "Vector3's pure functions: `vec3.add(a, b)`, `vec3.normalize(v)`, `vec3.applyQuaternion(v, q)`."
 ```
 
-<sub>`api.ogt` line 649</sub>
+<sub>`api.ogt` line 716</sub>
 
 <a id="value-vec2"></a>
 
@@ -85,7 +87,7 @@ const vec2: Vector2Math
 value vec2 Vector2Math "Vector2's pure functions: `vec2.add(a, b)`, `vec2.rotateAround(v, c, angle)`."
 ```
 
-<sub>`api.ogt` line 650</sub>
+<sub>`api.ogt` line 717</sub>
 
 <a id="value-quat"></a>
 
@@ -101,7 +103,7 @@ const quat: QuaternionMath
 value quat QuaternionMath "Quaternion's pure functions: `quat.multiply(a, b)`, `quat.slerp(a, b, t)`, `quat.fromEuler({ x, y, z })`."
 ```
 
-<sub>`api.ogt` line 651</sub>
+<sub>`api.ogt` line 718</sub>
 
 <a id="value-mat4"></a>
 
@@ -117,7 +119,7 @@ const mat4: Matrix4Math
 value mat4 Matrix4Math "Matrix4's pure functions: `mat4.multiply(a, b)`, `mat4.invert(m)`, `mat4.transformPoint(m, p)`."
 ```
 
-<sub>`api.ogt` line 652</sub>
+<sub>`api.ogt` line 719</sub>
 
 <a id="value-box3"></a>
 
@@ -133,7 +135,7 @@ const box3: Box3Math
 value box3 Box3Math "Box3's pure functions: `box3.fromPoints(points)`, `box3.intersectsBox(a, b)`."
 ```
 
-<sub>`api.ogt` line 653</sub>
+<sub>`api.ogt` line 720</sub>
 
 <a id="value-sphere"></a>
 
@@ -149,7 +151,7 @@ const sphere: SphereMath
 value sphere SphereMath "Sphere's pure functions: `sphere.containsPoint(s, p)`."
 ```
 
-<sub>`api.ogt` line 654</sub>
+<sub>`api.ogt` line 721</sub>
 
 <a id="value-plane"></a>
 
@@ -165,7 +167,7 @@ const plane: PlaneMath
 value plane PlaneMath "Plane's pure functions: `plane.distanceToPoint(pl, p)`."
 ```
 
-<sub>`api.ogt` line 655</sub>
+<sub>`api.ogt` line 722</sub>
 
 <a id="value-frustum"></a>
 
@@ -181,7 +183,7 @@ const frustum: FrustumMath
 value frustum FrustumMath "Frustum's pure functions: `frustum.fromCamera(camera, aspect)`, `frustum.intersectsBox(f, box)`."
 ```
 
-<sub>`api.ogt` line 656</sub>
+<sub>`api.ogt` line 723</sub>
 
 <a id="value-ray"></a>
 
@@ -197,7 +199,7 @@ const ray: RayMath
 value ray RayMath "Ray's pure functions: `ray.intersectBox(r, box)`, `ray.intersectTriangle(r, a, b, c)`."
 ```
 
-<sub>`api.ogt` line 657</sub>
+<sub>`api.ogt` line 724</sub>
 
 <a id="value-color"></a>
 
@@ -213,7 +215,23 @@ const color: ColorMath
 value color ColorMath "Color's pure functions: `color.fromHex(0xff8800)`, `color.toHex(c)`, `color.fromHsl(h, s, l)`."
 ```
 
-<sub>`api.ogt` line 658</sub>
+<sub>`api.ogt` line 725</sub>
+
+<a id="value-math"></a>
+
+### `math`
+
+Math's functions with the same bits on every host: `math.sin(a)`, `math.atan2(y, x)`, `math.pow(x, y)`.
+
+```ts
+const math: ScalarMath
+```
+
+```ogt
+value math ScalarMath "Math's functions with the same bits on every host: `math.sin(a)`, `math.atan2(y, x)`, `math.pow(x, y)`."
+```
+
+<sub>`api.ogt` line 726</sub>
 
 ## Interfaces
 
@@ -2547,6 +2565,317 @@ fn fromHsl {
 ```
 
 <sub>`api.ogt` line 639</sub>
+
+<a id="type-ScalarMath"></a>
+
+### `ScalarMath` (interface)
+
+JavaScript's Math functions whose results differ between JavaScript engines (Math.sin, Math.pow and the rest are only approximations, and V8, JavaScriptCore and SpiderMonkey round them differently), written with + - * / and sqrt only: the same bits on every host and every browser. The value `math`: `math.sin(a)`. A system whose result reaches the world (lockstep, replays, saves) uses these; `og check` names each Math call that should be one in a game with og.Lockstep.
+
+Math.sqrt, Math.abs, Math.floor, Math.round, Math.min and Math.max are exact everywhere and stay as they are.
+
+```ogt
+interface ScalarMath {
+  doc "JavaScript's Math functions whose results differ between JavaScript engines (Math.sin, Math.pow and the rest are only approximations, and V8, JavaScriptCore and SpiderMonkey round them differently), written with + - * / and sqrt only: the same bits on every host and every browser. The value `math`: `math.sin(a)`. A system whose result reaches the world (lockstep, replays, saves) uses these; `og check` names each Math call that should be one in a game with og.Lockstep."
+  doc "Math.sqrt, Math.abs, Math.floor, Math.round, Math.min and Math.max are exact everywhere and stay as they are."
+  # members follow, each quoted below
+```
+
+<sub>`api.ogt` line 649</sub>
+
+<a id="member-ScalarMath-sin"></a>
+
+#### `ScalarMath.sin`
+
+The sine of x radians, as Math.sin.
+
+```ts
+ScalarMath.sin(x: number): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `x` | `number` | no | The angle, in radians. |
+
+**Returns** `number`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn sin {
+  doc "The sine of x radians, as Math.sin."
+  host false
+  param x f64 "The angle, in radians."
+  returns f64
+}
+```
+
+<sub>`api.ogt` line 652</sub>
+
+<a id="member-ScalarMath-cos"></a>
+
+#### `ScalarMath.cos`
+
+The cosine of x radians, as Math.cos.
+
+```ts
+ScalarMath.cos(x: number): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `x` | `number` | no | The angle, in radians. |
+
+**Returns** `number`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn cos {
+  doc "The cosine of x radians, as Math.cos."
+  host false
+  param x f64 "The angle, in radians."
+  returns f64
+}
+```
+
+<sub>`api.ogt` line 658</sub>
+
+<a id="member-ScalarMath-tan"></a>
+
+#### `ScalarMath.tan`
+
+The tangent of x radians, as Math.tan.
+
+```ts
+ScalarMath.tan(x: number): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `x` | `number` | no | The angle, in radians. |
+
+**Returns** `number`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn tan {
+  doc "The tangent of x radians, as Math.tan."
+  host false
+  param x f64 "The angle, in radians."
+  returns f64
+}
+```
+
+<sub>`api.ogt` line 664</sub>
+
+<a id="member-ScalarMath-asin"></a>
+
+#### `ScalarMath.asin`
+
+The arcsine, as Math.asin: -pi/2 to pi/2, NaN outside -1 to 1.
+
+```ts
+ScalarMath.asin(x: number): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `x` | `number` | no | The sine. |
+
+**Returns** `number`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn asin {
+  doc "The arcsine, as Math.asin: -pi/2 to pi/2, NaN outside -1 to 1."
+  host false
+  param x f64 "The sine."
+  returns f64
+}
+```
+
+<sub>`api.ogt` line 670</sub>
+
+<a id="member-ScalarMath-acos"></a>
+
+#### `ScalarMath.acos`
+
+The arccosine, as Math.acos: 0 to pi, NaN outside -1 to 1.
+
+```ts
+ScalarMath.acos(x: number): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `x` | `number` | no | The cosine. |
+
+**Returns** `number`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn acos {
+  doc "The arccosine, as Math.acos: 0 to pi, NaN outside -1 to 1."
+  host false
+  param x f64 "The cosine."
+  returns f64
+}
+```
+
+<sub>`api.ogt` line 676</sub>
+
+<a id="member-ScalarMath-atan"></a>
+
+#### `ScalarMath.atan`
+
+The arctangent, as Math.atan: -pi/2 to pi/2.
+
+```ts
+ScalarMath.atan(x: number): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `x` | `number` | no | The tangent. |
+
+**Returns** `number`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn atan {
+  doc "The arctangent, as Math.atan: -pi/2 to pi/2."
+  host false
+  param x f64 "The tangent."
+  returns f64
+}
+```
+
+<sub>`api.ogt` line 682</sub>
+
+<a id="member-ScalarMath-atan2"></a>
+
+#### `ScalarMath.atan2`
+
+The angle of the point (x, y) from +x, as Math.atan2: -pi to pi, 0 at the origin.
+
+```ts
+ScalarMath.atan2(y: number, x: number): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `y` | `number` | no | The y coordinate. |
+| `x` | `number` | no | The x coordinate. |
+
+**Returns** `number`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn atan2 {
+  doc "The angle of the point (x, y) from +x, as Math.atan2: -pi to pi, 0 at the origin."
+  host false
+  param y f64 "The y coordinate."
+  param x f64 "The x coordinate."
+  returns f64
+}
+```
+
+<sub>`api.ogt` line 688</sub>
+
+<a id="member-ScalarMath-exp"></a>
+
+#### `ScalarMath.exp`
+
+e to the x, as Math.exp.
+
+```ts
+ScalarMath.exp(x: number): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `x` | `number` | no | The exponent. |
+
+**Returns** `number`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn exp {
+  doc "e to the x, as Math.exp."
+  host false
+  param x f64 "The exponent."
+  returns f64
+}
+```
+
+<sub>`api.ogt` line 695</sub>
+
+<a id="member-ScalarMath-log"></a>
+
+#### `ScalarMath.log`
+
+The natural logarithm, as Math.log: -Infinity at 0, NaN below.
+
+```ts
+ScalarMath.log(x: number): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `x` | `number` | no | The value. |
+
+**Returns** `number`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn log {
+  doc "The natural logarithm, as Math.log: -Infinity at 0, NaN below."
+  host false
+  param x f64 "The value."
+  returns f64
+}
+```
+
+<sub>`api.ogt` line 701</sub>
+
+<a id="member-ScalarMath-pow"></a>
+
+#### `ScalarMath.pow`
+
+x to the y, as Math.pow and `**`: an integer y is multiplication by squaring (x * x for 2), any other y exp(y log x), NaN for a negative x.
+
+```ts
+ScalarMath.pow(x: number, y: number): number
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `x` | `number` | no | The base. |
+| `y` | `number` | no | The exponent. |
+
+**Returns** `number`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn pow {
+  doc "x to the y, as Math.pow and `**`: an integer y is multiplication by squaring (x * x for 2), any other y exp(y log x), NaN for a negative x."
+  host false
+  param x f64 "The base."
+  param y f64 "The exponent."
+  returns f64
+}
+```
+
+<sub>`api.ogt` line 707</sub>
 
 ## Types
 

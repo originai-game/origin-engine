@@ -98,6 +98,11 @@
           "name": "color",
           "type": "ColorMath",
           "doc": "Color's pure functions: `color.fromHex(0xff8800)`, `color.toHex(c)`, `color.fromHsl(h, s, l)`."
+        },
+        {
+          "name": "math",
+          "type": "ScalarMath",
+          "doc": "Math's functions with the same bits on every host: `math.sin(a)`, `math.atan2(y, x)`, `math.pow(x, y)`."
         }
       ],
       "functions": [],
@@ -1607,6 +1612,174 @@
                 }
               ],
               "returns": "Color",
+              "publish": true,
+              "host": false
+            }
+          ]
+        },
+        {
+          "name": "ScalarMath",
+          "doc": "JavaScript's Math functions whose results differ between JavaScript engines (Math.sin, Math.pow and the rest are only approximations, and V8, JavaScriptCore and SpiderMonkey round them differently), written with + - * / and sqrt only: the same bits on every host and every browser. The value `math`: `math.sin(a)`. A system whose result reaches the world (lockstep, replays, saves) uses these; `og check` names each Math call that should be one in a game with og.Lockstep.\nMath.sqrt, Math.abs, Math.floor, Math.round, Math.min and Math.max are exact everywhere and stay as they are.",
+          "members": [
+            {
+              "name": "sin",
+              "doc": "The sine of x radians, as Math.sin.",
+              "params": [
+                {
+                  "name": "x",
+                  "type": "f64",
+                  "optional": false,
+                  "doc": "The angle, in radians."
+                }
+              ],
+              "returns": "f64",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "cos",
+              "doc": "The cosine of x radians, as Math.cos.",
+              "params": [
+                {
+                  "name": "x",
+                  "type": "f64",
+                  "optional": false,
+                  "doc": "The angle, in radians."
+                }
+              ],
+              "returns": "f64",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "tan",
+              "doc": "The tangent of x radians, as Math.tan.",
+              "params": [
+                {
+                  "name": "x",
+                  "type": "f64",
+                  "optional": false,
+                  "doc": "The angle, in radians."
+                }
+              ],
+              "returns": "f64",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "asin",
+              "doc": "The arcsine, as Math.asin: -pi/2 to pi/2, NaN outside -1 to 1.",
+              "params": [
+                {
+                  "name": "x",
+                  "type": "f64",
+                  "optional": false,
+                  "doc": "The sine."
+                }
+              ],
+              "returns": "f64",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "acos",
+              "doc": "The arccosine, as Math.acos: 0 to pi, NaN outside -1 to 1.",
+              "params": [
+                {
+                  "name": "x",
+                  "type": "f64",
+                  "optional": false,
+                  "doc": "The cosine."
+                }
+              ],
+              "returns": "f64",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "atan",
+              "doc": "The arctangent, as Math.atan: -pi/2 to pi/2.",
+              "params": [
+                {
+                  "name": "x",
+                  "type": "f64",
+                  "optional": false,
+                  "doc": "The tangent."
+                }
+              ],
+              "returns": "f64",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "atan2",
+              "doc": "The angle of the point (x, y) from +x, as Math.atan2: -pi to pi, 0 at the origin.",
+              "params": [
+                {
+                  "name": "y",
+                  "type": "f64",
+                  "optional": false,
+                  "doc": "The y coordinate."
+                },
+                {
+                  "name": "x",
+                  "type": "f64",
+                  "optional": false,
+                  "doc": "The x coordinate."
+                }
+              ],
+              "returns": "f64",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "exp",
+              "doc": "e to the x, as Math.exp.",
+              "params": [
+                {
+                  "name": "x",
+                  "type": "f64",
+                  "optional": false,
+                  "doc": "The exponent."
+                }
+              ],
+              "returns": "f64",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "log",
+              "doc": "The natural logarithm, as Math.log: -Infinity at 0, NaN below.",
+              "params": [
+                {
+                  "name": "x",
+                  "type": "f64",
+                  "optional": false,
+                  "doc": "The value."
+                }
+              ],
+              "returns": "f64",
+              "publish": true,
+              "host": false
+            },
+            {
+              "name": "pow",
+              "doc": "x to the y, as Math.pow and `**`: an integer y is multiplication by squaring (x * x for 2), any other y exp(y log x), NaN for a negative x.",
+              "params": [
+                {
+                  "name": "x",
+                  "type": "f64",
+                  "optional": false,
+                  "doc": "The base."
+                },
+                {
+                  "name": "y",
+                  "type": "f64",
+                  "optional": false,
+                  "doc": "The exponent."
+                }
+              ],
+              "returns": "f64",
               "publish": true,
               "host": false
             }

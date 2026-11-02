@@ -6,7 +6,7 @@
 // to move a fighter would move it on this peer alone, and the other peer's
 // og.Desync would name the field.
 
-import { og, defineComponent, defineResource, defineSystem, f32, u32 } from "@origingame/engine";
+import { og, defineComponent, defineResource, defineSystem, f32, math, u32 } from "@origingame/engine";
 import type { Result, World } from "@origingame/engine";
 
 /** The arena's floor, world units: (0, 0) to (WIDTH, HEIGHT). */
@@ -110,8 +110,8 @@ export function setBot(n: number, tickOnly = false): void {
 function botInput(n: number, tick: number, from: { x: number; y: number }, to: { x: number; y: number }): { x: number; y: number; buttons: number } {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
-  const len = Math.max(Math.hypot(dx, dy), 1e-3);
-  const weave = 0.7 * Math.sin(tick * 0.045 * (1 + 0.3 * n) + n);
+  const len = Math.max(Math.sqrt(dx * dx + dy * dy), 1e-3);
+  const weave = 0.7 * math.sin(tick * 0.045 * (1 + 0.3 * n) + n);
   return { x: dx / len - (dy / len) * weave, y: dy / len + (dx / len) * weave, buttons: (tick + 23 * n) % 90 < 2 ? DASH : 0 };
 }
 
@@ -163,7 +163,8 @@ export const Move = defineSystem(
       for (let i = 0; i < a.count; i++) {
         let x = playing ? input.x[i]! : 0;
         let y = playing ? input.y[i]! : 0;
-        const len = Math.hypot(x, y);
+        // Not Math.hypot: each JavaScript engine rounds it its own way (og check).
+        const len = Math.sqrt(x * x + y * y);
         if (len > 1) {
           x /= len;
           y /= len;

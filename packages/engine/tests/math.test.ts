@@ -5,7 +5,7 @@
 // asymmetric so a swapped argument, a transposed matrix or a wrong
 // rotation order gives a different answer.
 import { describe, expect, test } from "bun:test";
-import { box3, color, frustum, mat4, plane, quat, ray, sphere, vec2, vec3 } from "../src/index.ts";
+import { box3, color, frustum, mat4, math, plane, quat, ray, sphere, vec2, vec3 } from "../src/index.ts";
 import type { Camera, Quaternion, Vector3 } from "@origingame/engine";
 
 const S = Math.SQRT1_2;
@@ -333,5 +333,57 @@ describe("color", () => {
   ] as const)("fromHsl: %s", (_name, [h, s, l], want) => near(color.fromHsl(h, s, l) as never, want, 1e-9));
   test("lerp in linear RGB", () => {
     near(color.lerp({ r: 0, g: 1, b: 0.5 }, { r: 1, g: 0, b: 0.5 }, 0.25) as never, { r: 0.25, g: 0.75, b: 0.5 });
+  });
+});
+
+describe("math (the scalar functions lockstep may store)", () => {
+  // Math.* is the reference here: these approximate it closely but are their
+  // own bits, the same on every JavaScript engine.
+  const close = (got: number, want: number, rel = 1e-14) => {
+    if (!(Math.abs(got - want) <= rel * Math.max(1, Math.abs(want)))) throw new Error(`got ${got}, want ${want}`);
+  };
+  test("each function follows Math's over a sweep of asymmetric inputs", () => {
+    for (let i = -400; i <= 400; i++) {
+      const x = i * 0.137 + 0.01;
+      close(math.sin(x), Math.sin(x));
+      close(math.cos(x), Math.cos(x));
+      close(math.atan(x), Math.atan(x));
+      close(math.atan2(x, 1.3 - x / 5), Math.atan2(x, 1.3 - x / 5));
+      close(math.exp(x / 3), Math.exp(x / 3), 1e-14);
+      if (x > 0) {
+        close(math.log(x), Math.log(x));
+        close(math.log(x * 1e-300), Math.log(x * 1e-300));
+        close(math.pow(x, 1.7), Math.pow(x, 1.7), 1e-13);
+        close(math.pow(x, -0.35), Math.pow(x, -0.35), 1e-13);
+      }
+      if (Math.abs(x) <= 50) close(math.tan(x / 50), Math.tan(x / 50));
+      if (Math.abs(x) <= 50) close(math.asin(x / 50), Math.asin(x / 50));
+      if (Math.abs(x) <= 50) close(math.acos(x / 50), Math.acos(x / 50));
+    }
+  });
+  test("quadrants, signs and the edges", () => {
+    expect(math.atan2(-1, -1)).toBeCloseTo((-3 * Math.PI) / 4, 15);
+    expect(math.atan2(1, -1)).toBeCloseTo((3 * Math.PI) / 4, 15);
+    expect(math.atan2(0, 0)).toBe(0);
+    expect(math.pow(-2, 3)).toBe(-8);
+    expect(math.pow(-2, 66)).toBe(2 ** 66);
+    expect(math.pow(3, -2)).toBe(1 / 9);
+    expect(math.pow(1.1, 2)).toBe(1.1 * 1.1);
+    expect(Number.isNaN(math.pow(-8, 1 / 3))).toBe(true);
+    expect(math.pow(0, -1)).toBe(Infinity);
+    expect(math.pow(Number.NaN, 0)).toBe(1);
+    expect(math.log(0)).toBe(-Infinity);
+    expect(Number.isNaN(math.log(-1))).toBe(true);
+    expect(math.log(5e-324)).toBeCloseTo(Math.log(5e-324), 12);
+    expect(math.exp(710)).toBe(Infinity);
+    expect(math.exp(-746)).toBe(0);
+    close(math.exp(-744), Math.exp(-744), 1e-1);
+    expect(Number.isNaN(math.asin(1.5))).toBe(true);
+    expect(Number.isNaN(math.sin(Infinity))).toBe(true);
+  });
+  test("the bits are pinned: a change here moves every lockstep game's world", () => {
+    expect([math.sin(1), math.cos(2.5), math.atan2(-3, 7), math.exp(-2.25), math.log(1234.5), math.pow(1.5, 2.7)]).toEqual([
+      0.8414709848078965, -0.8011436155469337, -0.40489178628508343, 0.10539922456186435, 7.118421308785234, 2.988452789872502,
+    ]);
   });
 });

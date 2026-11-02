@@ -23,6 +23,7 @@ mod device;
 mod doctor;
 mod doctor_project;
 mod i18n;
+mod lockstep_lint;
 mod migrate;
 mod polish;
 mod prefab;

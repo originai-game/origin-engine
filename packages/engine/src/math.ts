@@ -620,3 +620,127 @@ export const color: typeof Api.color = Object.freeze({
     return rgb(srgbToLinear(hue2rgb(q, p, h + 1 / 3)), srgbToLinear(hue2rgb(q, p, h)), srgbToLinear(hue2rgb(q, p, h - 1 / 3)));
   },
 });
+
+// ── math (scalar) ──────────────────────────────────────────────────────────
+// Math.sin, Math.exp, Math.log and Math.pow are implementation-approximated
+// (ECMA-262 §21.3.2): V8, JavaScriptCore and SpiderMonkey round them
+// differently, so a lockstep peer in another browser parts from the others.
+// These use + - * / and sqrt only, and the exponent bits through a DataView.
+
+const LN2_HI = 6.93147180369123816490e-1;
+const LN2_LO = 1.90821492927058770002e-10;
+const SQRT2 = 1.4142135623730951;
+const bits = new DataView(new ArrayBuffer(8));
+
+/** 2^k for an integer -1022 <= k <= 1023, exactly. */
+function pow2(k: number): number {
+  bits.setUint32(0, (k + 1023) << 20);
+  bits.setUint32(4, 0);
+  return bits.getFloat64(0);
+}
+
+function expImpl(x: number): number {
+  if (x !== x) return NaN;
+  if (x > 709.782712893384) return Infinity;
+  if (x < -745.1332191019412) return 0;
+  const k = Math.round(x / 0.6931471805599453);
+  // |r| <= ln2 / 2: the series to r^17 is below 1e-17 there.
+  const r = x - k * LN2_HI - k * LN2_LO;
+  let s = 1;
+  for (let n = 17; n >= 1; n--) s = 1 + (r / n) * s;
+  if (k > 1023) return s * pow2(1023) * pow2(k - 1023);
+  if (k < -1022) return s * pow2(k + 600) * pow2(-600);
+  return s * pow2(k);
+}
+
+function logImpl(x: number): number {
+  if (x !== x || x < 0) return NaN;
+  if (x === 0) return -Infinity;
+  if (x === Infinity) return Infinity;
+  let e = 0;
+  bits.setFloat64(0, x);
+  if ((bits.getUint32(0) & 0x7ff00000) === 0) {
+    // Subnormal: scaled into the normal range first.
+    bits.setFloat64(0, x * 18014398509481984);
+    e = -54;
+  }
+  const hi = bits.getUint32(0);
+  e += ((hi >>> 20) & 0x7ff) - 1023;
+  bits.setUint32(0, (hi & 0x000fffff) | 0x3ff00000);
+  let m = bits.getFloat64(0);
+  if (m > SQRT2) {
+    m /= 2;
+    e += 1;
+  }
+  // log(m) = 2 atanh(s), s = (m - 1) / (m + 1), |s| <= 0.172: the series to s^25.
+  const s = (m - 1) / (m + 1);
+  const z = s * s;
+  let t = 0;
+  for (let n = 12; n >= 0; n--) t = t * z + 1 / (2 * n + 1);
+  return e * LN2_HI + (2 * s * t + e * LN2_LO);
+}
+
+function powImpl(x: number, y: number): number {
+  if (y === 0) return 1;
+  if (x !== x || y !== y) return NaN;
+  if (Number.isInteger(y) && Math.abs(y) < 2147483648) {
+    let n = Math.abs(y);
+    let r = 1;
+    let b = x;
+    while (n > 0) {
+      if (n & 1) r *= b;
+      n >>>= 1;
+      if (n > 0) b *= b;
+    }
+    return y < 0 ? 1 / r : r;
+  }
+  if (x < 0) {
+    if (!Number.isInteger(y)) return NaN;
+    const p = powImpl(-x, y);
+    return y % 2 === 0 ? p : -p;
+  }
+  if (x === 0) return y > 0 ? 0 : Infinity;
+  if (x === 1) return 1;
+  if (x === Infinity) return y > 0 ? Infinity : 0;
+  return expImpl(y * logImpl(x));
+}
+
+// pi/2 in three parts of 33, 33 and 53 bits (fdlibm's PIO2_1, PIO2_2,
+// PIO2_2T): q * each of the first two is exact for |q| < 2^20.
+const PIO2_1 = 1.5707963267341256;
+const PIO2_2 = 6.077100506303966e-11;
+const PIO2_2T = 2.0222662487959506e-21;
+
+/** [sin x, cos x]: x reduced by q pi/2 (Cody and Waite) to [-pi/4, pi/4], then sincos's series. */
+function sinCos(x: number): [number, number] {
+  if (!(Math.abs(x) < 1e6 * PIO2_1)) return sincos(x);
+  const q = Math.round(x / (PIO2_1 + PIO2_2));
+  const r = x - q * PIO2_1 - q * PIO2_2 - q * PIO2_2T;
+  const [s, c] = sincos(r);
+  switch (((q % 4) + 4) % 4) {
+    case 0:
+      return [s, c];
+    case 1:
+      return [c, -s];
+    case 2:
+      return [-s, -c];
+    default:
+      return [-c, s];
+  }
+}
+
+export const math: typeof Api.math = Object.freeze({
+  sin: (x: number) => sinCos(x)[0],
+  cos: (x: number) => sinCos(x)[1],
+  tan: (x: number) => {
+    const [s, c] = sinCos(x);
+    return s / c;
+  },
+  asin: (x: number) => (Math.abs(x) <= 1 ? atan2(x, Math.sqrt((1 - x) * (1 + x))) : NaN),
+  acos: (x: number) => (Math.abs(x) <= 1 ? atan2(Math.sqrt((1 - x) * (1 + x)), x) : NaN),
+  atan: (x: number) => (x !== x ? NaN : atan2(x, 1)),
+  atan2: (y: number, x: number) => (x !== x || y !== y ? NaN : atan2(y, x)),
+  exp: expImpl,
+  log: logImpl,
+  pow: powImpl,
+});

@@ -949,6 +949,75 @@ export interface ColorMath {
 }
 
 /**
+ * JavaScript's Math functions whose results differ between JavaScript engines (Math.sin, Math.pow and the rest are only approximations, and V8, JavaScriptCore and SpiderMonkey round them differently), written with + - * / and sqrt only: the same bits on every host and every browser. The value `math`: `math.sin(a)`. A system whose result reaches the world (lockstep, replays, saves) uses these; `og check` names each Math call that should be one in a game with og.Lockstep.
+ * Math.sqrt, Math.abs, Math.floor, Math.round, Math.min and Math.max are exact everywhere and stay as they are.
+ */
+export interface ScalarMath {
+  /**
+   * The sine of x radians, as Math.sin.
+   *
+   * @param x The angle, in radians.
+   */
+  sin(x: number): number;
+  /**
+   * The cosine of x radians, as Math.cos.
+   *
+   * @param x The angle, in radians.
+   */
+  cos(x: number): number;
+  /**
+   * The tangent of x radians, as Math.tan.
+   *
+   * @param x The angle, in radians.
+   */
+  tan(x: number): number;
+  /**
+   * The arcsine, as Math.asin: -pi/2 to pi/2, NaN outside -1 to 1.
+   *
+   * @param x The sine.
+   */
+  asin(x: number): number;
+  /**
+   * The arccosine, as Math.acos: 0 to pi, NaN outside -1 to 1.
+   *
+   * @param x The cosine.
+   */
+  acos(x: number): number;
+  /**
+   * The arctangent, as Math.atan: -pi/2 to pi/2.
+   *
+   * @param x The tangent.
+   */
+  atan(x: number): number;
+  /**
+   * The angle of the point (x, y) from +x, as Math.atan2: -pi to pi, 0 at the origin.
+   *
+   * @param y The y coordinate.
+   * @param x The x coordinate.
+   */
+  atan2(y: number, x: number): number;
+  /**
+   * e to the x, as Math.exp.
+   *
+   * @param x The exponent.
+   */
+  exp(x: number): number;
+  /**
+   * The natural logarithm, as Math.log: -Infinity at 0, NaN below.
+   *
+   * @param x The value.
+   */
+  log(x: number): number;
+  /**
+   * x to the y, as Math.pow and `**`: an integer y is multiplication by squaring (x * x for 2), any other y exp(y log x), NaN for a negative x.
+   *
+   * @param x The base.
+   * @param y The exponent.
+   */
+  pow(x: number, y: number): number;
+}
+
+/**
  * Vector3's pure functions: `vec3.add(a, b)`, `vec3.normalize(v)`, `vec3.applyQuaternion(v, q)`.
  */
 export declare const vec3: Vector3Math;
@@ -987,6 +1056,11 @@ export declare const ray: RayMath;
  * Color's pure functions: `color.fromHex(0xff8800)`, `color.toHex(c)`, `color.fromHsl(h, s, l)`.
  */
 export declare const color: ColorMath;
+
+/**
+ * Math's functions with the same bits on every host: `math.sin(a)`, `math.atan2(y, x)`, `math.pow(x, y)`.
+ */
+export declare const math: ScalarMath;
 
 // ── reflect ─────────────────────────────────────────────────────
 // Reflection: components and resources are declared once with their field layout and metadata, and registered by name.
