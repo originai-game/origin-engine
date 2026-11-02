@@ -33036,6 +33036,12 @@ export interface UnitFrameDesc {
    */
   readonly portrait?: Texture | null;
   /**
+   * A pre-feathered soft rect from the style's art (a dark neutral, its feather baked into the alpha), drawn as a nine-slice from the portrait's centre to past the bars' end under the name and bars so their text holds on a bright scene; null draws none (the text's soft shadow alone).
+   *
+   * @default null
+   */
+  readonly scrim?: Texture | null;
+  /**
    * A class or role icon of the atlas.
    *
    * @default ""

@@ -6592,6 +6592,7 @@ module ui {
     field level String "Its level (60, ??); empty is none."
     field title String "A line under the name (a guild, a class)."
     field portrait Option.Texture "Its portrait (art kind portrait, 1:1)."
+    field scrim Option.Texture "A pre-feathered soft rect from the style's art (a dark neutral, its feather baked into the alpha), drawn as a nine-slice from the portrait's centre to past the bars' end under the name and bars so their text holds on a bright scene; null draws none (the text's soft shadow alone)."
     field icon String "A class or role icon of the atlas."
     field health f32 "Health."
     field healthMax f32 "Its maximum." {

@@ -31,8 +31,8 @@ function nameHue(name: string): Rgba {
 const SLATE: Rgba = { r: 0.36, g: 0.4, b: 0.47, a: 1 };
 
 /** A skull drawn from shapes (cranium, jaw, eyes), the same in every style whatever its icon set has. */
-function skull(side: number): void {
-  const ink = lit({ r: 0.86, g: 0.87, b: 0.9, a: 1 });
+function skull(side: number, alpha = 1): void {
+  const ink = lit({ r: 0.86, g: 0.87, b: 0.9, a: 1 }, alpha);
   const hole = lit(BLACK, 0.85);
   box("Skull", { width: px(side), height: px(side) }, undefined, () => {
     leaf("Cranium", { width: px(side), height: px(Math.round(side * 0.78)) }, { shape: ellipseShape(), fills: [solid(ink)], effects: [drop(1, 3, lit(BLACK, 0.8))] }, absolute({ start: 0, top: 0 }));
@@ -40,6 +40,18 @@ function skull(side: number): void {
     const eye = Math.round(side * 0.24);
     leaf("EyeL", { width: px(eye), height: px(eye) }, { shape: ellipseShape(), fills: [solid(hole)] }, absolute({ start: Math.round(side * 0.2), top: Math.round(side * 0.34) }));
     leaf("EyeR", { width: px(eye), height: px(eye) }, { shape: ellipseShape(), fills: [solid(hole)] }, absolute({ end: Math.round(side * 0.2), top: Math.round(side * 0.34) }));
+  });
+}
+
+/** A plug drawn from shapes (two prongs over a body and its cord): offline, the same in every style. */
+function plug(side: number, ink: Api.Paint): void {
+  box("Plug", { width: px(side), height: px(side) }, undefined, () => {
+    const pw = Math.max(1, Math.round(side * 0.12));
+    const ph = Math.round(side * 0.26);
+    leaf("ProngL", { width: px(pw), height: px(ph) }, { fills: [solid(ink)] }, absolute({ start: Math.round(side * 0.3), top: 0 }));
+    leaf("ProngR", { width: px(pw), height: px(ph) }, { fills: [solid(ink)] }, absolute({ end: Math.round(side * 0.3), top: 0 }));
+    leaf("Body", { width: px(Math.round(side * 0.66)), height: px(Math.round(side * 0.4)) }, { shape: { kind: "rect", radii: [1, 1, side * 0.2, side * 0.2] }, fills: [solid(ink)], effects: [drop(1, 2, lit(BLACK, 0.6))] }, absolute({ centerX: true, top: ph }));
+    leaf("Cord", { width: px(Math.max(1, Math.round(side * 0.14))), height: px(side - ph - Math.round(side * 0.4)) }, { fills: [solid(ink)] }, absolute({ centerX: true, bottom: 0 }));
   });
 }
 
@@ -117,6 +129,28 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
       part: sel("UnitFrame", "frame", size, hostile ? "hostile" : null, desc.targeted ? "targeted" : null, dead ? "dead" : null),
       partClass: "hud",
     });
+    // The style's soft rect under the name and bars, one nine-slice (it cannot band): from the portrait's centre to
+    // 12 px past the bars, its top 6 px over the name's and its foot a feather under the last bar (auras excluded).
+    // Sized by last frame's layout, so the first frame draws none.
+    const path = kit.openPath();
+    const fb = desc.scrim ? kit.bounds(path) : null;
+    const bb = fb ? kit.bounds(`${path}/Bars`) : null;
+    if (desc.scrim && fb && bb) {
+      const eb = kit.bounds(`${path}/Bars/Effects`);
+      const top = bb.y - fb.y - u(6);
+      const foot = (eb ? eb.y - u(3) : bb.y + bb.height) - fb.y + u(8);
+      const from = u(6) + pd / 2;
+      // On screen the portrait is on whichever side the bars are not (reverse and RTL both flip it).
+      const bx = bb.x - fb.x;
+      const w = Math.max(0, (bx + bb.width / 2 > fb.width / 2 ? bx + bb.width - from : fb.width - from - bx) + u(12));
+      const fx = u(16);
+      const fy = Math.min(u(10), (foot - top) / 2);
+      // No style part: an undressed part takes a card's hairline, corners and raised shadow, which drew the soft rect
+      // as a hard-edged card (the slot is the texture itself, which a style supplies).
+      leaf("Scrim", { width: px(w), height: px(Math.max(0, foot - top)) }, {
+        fills: [{ kind: "image", texture: desc.scrim, fit: "nineSlice", slice: [16, 16, 16, 16], border: [fx, fy, fx, fy], edges: "stretch" }],
+      }, absolute(desc.reverse ? { end: from, top } : { start: from, top }));
+    }
     // The placeholder's ground: the unit's hue, or plain slate when it is dead or offline (never a tinted state).
     const ground = dead || offline ? SLATE : nameHue(name);
     const portrait = () => {
@@ -197,7 +231,7 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
     if (!desc.reverse) portrait();
     kit.column("Bars", { gap: u(3), width: { kind: "grow" } }, () => {
       kit.row("Head", { gap: tk.xs, cross: "center", width: { kind: "grow" } }, () => {
-        text("Name", name, { step: ts(m.name), font: "display", color: dead || offline ? token("ink", 0.84) : hostile ? lit(mix(role("danger"), WHITE, 0.15)) : token("ink"), nowrap: true, ellipsis: true, width: { kind: "grow" }, soft: true });
+        text("Name", name, { step: ts(m.name), font: "display", color: dead || offline ? token("ink", 0.84) : hostile ? lit(mix(role("danger"), WHITE, 0.45)) : token("ink"), nowrap: true, ellipsis: true, width: { kind: "grow" }, soft: true });
         if (desc.combat) icon("Combat", "crossed-swords", u(14), lit(role("danger")), "In combat");
       });
       if (desc.title && size !== "small") {
@@ -323,7 +357,10 @@ function cell(id: string, m: Api.RaidMember, w: number, h: number): Api.Response
   if (hp > 0) leaf("Fill", { width: px(hp * room), height: pct(1), part: sel("RaidFrames", "fill", low ? "low" : null) }, fillDraw(fillInk, 2), absolute({ start: stripe, top: 0 }));
   // An incoming heal: a translucent extension at the fill's end, under the name.
   const hw = Math.min(heal, 1 - hp);
-  if (hw > 0) leaf("Heal", { width: px(hw * room), height: pct(1), part: sel("RaidFrames", "heal") }, { fills: [solid(lit(mix(fillInk, WHITE, 0.6), 0.5))] }, absolute({ start: at(hp), top: 0 }));
+  // The incoming heal: the fill's own hue a third lighter, opaque and at full saturation (a translucent white over the dark
+  // track greyed it to tan): pale amber beside amber, pale green beside green, never greyer than the fill.
+  const healInk: Rgba = { r: Math.min(1, fillInk.r * 1.35), g: Math.min(1, fillInk.g * 1.35), b: Math.min(1, fillInk.b * 1.35), a: 1 };
+  if (hw > 0) leaf("Heal", { width: px(hw * room), height: pct(1), part: sel("RaidFrames", "heal") }, fillDraw(healInk, 0), absolute({ start: at(hp), top: 0 }));
   if (absorb > 0) {
     // The absorb: the player frame's white-blue overlay past the health (and heal); what overflows lies back over the fill's end.
     const past = Math.min(absorb, 1 - hp - hw);
@@ -348,10 +385,26 @@ function cell(id: string, m: Api.RaidMember, w: number, h: number): Api.Response
   kit.row("Label", { gap: u(3), cross: "center", padding: { left: stripe + u(4), right: u(4), top: 0, bottom: 0 }, width: pct(1) }, () => {
     const roleName = ROLE_ICON[m.role ?? "none"];
     if (roleName) icon("Role", roleName, Math.max(10, Math.round(h * 0.3)), token("ink", out ? 0.62 : 0.85), m.role ?? "");
-    // The name first; the status takes what room is left at the cell's end and is cut before the name is.
-    // A status word is never cut: it keeps its width and the name is shortened first.
+    // The name keeps priority and the status is never cut: when both words do not fit, the status becomes a small
+    // muted glyph at the cell's end (the skull for dead, a plug for offline), its word kept for the tooltip and the
+    // screen reader.
     text("Name", m.name ?? "", { step: ts(11), color: ink, nowrap: true, ellipsis: true, width: { kind: "grow" }, soft: true });
-    if (out) text("Status", m.dead ? "Dead" : "Offline", { step: ts(9), color: token("ink", 0.62), nowrap: true, soft: true });
+    if (out) {
+      const word = m.dead ? "Dead" : "Offline";
+      const roleW = roleName ? Math.max(10, Math.round(h * 0.3)) + u(3) : 0;
+      const nameW = (m.name ?? "").length * stepSize(ts(11)).size * 0.6;
+      const wordW = word.length * stepSize(ts(9)).size * 0.6;
+      if (u(8) + roleW + nameW + u(3) + wordW <= room) {
+        text("Status", word, { step: ts(9), color: token("ink", 0.62), nowrap: true, soft: true });
+      } else {
+        const g = Math.max(10, Math.round(stepSize(ts(9)).size * 1.05));
+        box("Status", { width: px(g), height: px(g), align: "center", cross: "center", part: sel("RaidFrames", "status", state) }, undefined, () => {
+          if (m.dead) skull(g, 0.62);
+          else plug(g, token("ink", 0.62));
+        }, { a11y: a11y("image", word) });
+        kit.tooltip(word);
+      }
+    }
   });
   apply(absolute({ start: 0, top: 0, bottom: 0 }));
   return close({

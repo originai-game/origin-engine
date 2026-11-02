@@ -57076,6 +57076,18 @@
           "description": "Its portrait (art kind portrait, 1:1).",
           "default": null
         },
+        "scrim": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A pre-feathered soft rect from the style's art (a dark neutral, its feather baked into the alpha), drawn as a nine-slice from the portrait's centre to past the bars' end under the name and bars so their text holds on a bright scene; null draws none (the text's soft shadow alone).",
+          "default": null
+        },
         "icon": {
           "type": "string",
           "description": "A class or role icon of the atlas.",

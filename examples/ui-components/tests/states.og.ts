@@ -51,11 +51,16 @@ const steps = [
   // is placed by its own size from its first ticks (once a tall party lay half a screen low for a tick).
   "30.00:show:frames",
   "31.20:dump_ui:framesPhone200.json",
+  "31.22:screenshot:framesPhone200.png",
   "31.30:viewport:desktop",
   "31.35:show:abilities",
   "31.45:show:frames",
   "31.48:dump_ui:framesDesktop200.json",
-  "31.60:quit",
+  // The frames on a desktop at 100 % on the pale test ground, for the contrast of their names.
+  "31.50:text:100",
+  "32.70:dump_ui:framesDesktop.json",
+  "32.72:screenshot:framesDesktop.png",
+  "32.80:quit",
 ];
 
 export default playtest({
@@ -94,6 +99,33 @@ export default playtest({
     t.ok(player.length > 0 && boss.length > 0, "both frames are shown on the phone at 200 %");
     t.equal(hits.slice(0, 3).join("; "), "", "the player's and the boss's frames meet nowhere on the phone at 200 %");
     t.ok(player.every((e) => e.x >= 0 && e.x + e.width <= 390.5), "the player's frame lies across the phone, none of it past the edge");
+    // Each frame's name and class line holds on the scene behind it (a pale green ground here): the glyphs' ink
+    // (the 99th percentile of the box's relative luminance) against the ground they sit on (its median, with the
+    // frame's scrim and the text's shadow). Live names 4.5:1, a dead or offline name and the class line 3:1.
+    for (const [shot, dump] of [["framesDesktop.png", "framesDesktop.json"], ["framesPhone200.png", "framesPhone200.json"]] as const) {
+      t.frame(shot, () => {
+        const img = run.pixels(shot);
+        // The run's window is 1920x1080; an emulated phone (390x844) is drawn scaled to the window's height at its corner.
+        const k = shot.startsWith("framesPhone") ? img.height / 844 : img.width / 1920;
+        const lin = (v: number) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+        const lum = (i: number) => 0.2126 * lin(img.rgba[i]! / 255) + 0.7152 * lin(img.rgba[i + 1]! / 255) + 0.0722 * lin(img.rgba[i + 2]! / 255);
+        const labels = els(run, dump).filter((e) => /^(PlayerHud|TargetHud|PartyHud)\/.*\/(Name|Title)$/.test(e.path) && e.text && e.width > 4);
+        t.ok(labels.length >= 3, `${shot}: the frames' names are on screen`);
+        for (const e of labels) {
+          const ls: number[] = [];
+          for (let y = Math.max(0, Math.floor(e.y * k)); y < Math.min(img.height, Math.ceil((e.y + e.height) * k)); y++) {
+            for (let x = Math.max(0, Math.floor(e.x * k)); x < Math.min(img.width, Math.ceil((e.x + e.width) * k)); x++) ls.push(lum((y * img.width + x) * 4));
+          }
+          ls.sort((a, b) => a - b);
+          // A label's box runs the bars' width, so its glyphs are a few per cent of it: their ink is the brightest 1 %.
+          const ink = ls[Math.floor(ls.length * 0.99)] ?? 0;
+          const ground = ls[Math.floor(ls.length * 0.5)] ?? 0;
+          const ratio = (Math.max(ink, ground) + 0.05) / (Math.min(ink, ground) + 0.05);
+          const floor = /\/Title$/.test(e.path) || /\/(dead|off)\//.test(e.path) ? 3 : 4.5;
+          t.ok(ratio >= floor, `${shot}: "${e.text}" reads at ${ratio.toFixed(2)}:1 on its ground (at least ${floor}:1)`);
+        }
+      });
+    }
     const party = parts("framesDesktop200.json", "PartyHud");
     t.ok(party.length > 0 && party.every((e) => e.y >= 0 && e.y + e.height <= 1080.5), "on a desktop at 200 % the party lies on screen, its last member too");
   },
