@@ -4,6 +4,7 @@
     python3 tools/make-faces.py <inter-latin-opsz-normal.woff2> \\
         <nunito-latin-wght-normal.woff2> <NotoSansHebrew-Regular.woff2> \\
         <NotoSansDevanagari-Regular.woff2>
+    python3 tools/make-faces.py --garamond <EBGaramond[wght].ttf>
 
 Sources (SIL OFL 1.1): Inter Variable and Nunito Variable as the platform
 self-hosts them (@fontsource-variable/inter and /nunito 5.x: the design
@@ -15,7 +16,12 @@ assets/fonts/:
   32) and semibold (wght 600), the display steps' face;
 - Nunito-Rounded.ttf: Nunito at bold (wght 700), for levels and scores;
 - NotoSansHebrew-subset.ttf and NotoSansDevanagari-subset.ttf: the
-  characters of the kit's text screen (SAMPLES) and printable ASCII.
+  characters of the kit's text screen (SAMPLES) and printable ASCII;
+- EBGaramond-Medium.ttf (`--garamond`, google/fonts ofl/ebgaramond, SIL
+  OFL 1.1): EB Garamond at wght 500, Latin-1, with those of the OpenType
+  features og-ui applies (FEATURES) it has: small caps (its default
+  figures are already tabular lining). The kit's serif with small caps
+  and the fixture of og-ui's feature tests.
 
 Each keeps its layout features (kerning; Devanagari's conjuncts and mark
 positions, which og-ui shapes with rustybuzz), and gets import settings
@@ -40,9 +46,13 @@ SAMPLES = {
 }
 
 
-def write_subset(font: TTFont, text: str, out: Path) -> None:
+# The OpenType features og-ui's type steps can turn on, and kerning.
+FEATURES = ["kern", "smcp", "c2sc", "tnum", "lnum", "case"]
+
+
+def write_subset(font: TTFont, text: str, out: Path, features: list[str] | None = None) -> None:
     opts = subset.Options()
-    opts.layout_features = ["*"]
+    opts.layout_features = features or ["*"]
     opts.name_IDs = ["*"]
     opts.notdef_outline = True
     opts.glyph_names = False
@@ -54,7 +64,7 @@ def write_subset(font: TTFont, text: str, out: Path) -> None:
     font.save(out)
 
 
-def settings(out: Path, charset: str, chars: str, em_px: int) -> None:
+def settings(out: Path, charset: str, chars: str, em_px: int, features: str = "") -> None:
     out.with_name(out.name + ".ogt").write_text(
         "type import\n"
         "version 1\n"
@@ -65,12 +75,20 @@ def settings(out: Path, charset: str, chars: str, em_px: int) -> None:
         f'  chars "{chars}"\n'
         f"  em_px {em_px}\n"
         "  px_range 4\n"
-        "}\n",
+        + (f"  features {features}\n" if features else "")
+        + "}\n",
         encoding="utf-8",
     )
 
 
 def main() -> None:
+    if len(sys.argv) == 3 and sys.argv[1] == "--garamond":
+        f = instancer.instantiateVariableFont(TTFont(sys.argv[2]), {"wght": 500})
+        out = FONTS / "EBGaramond-Medium.ttf"
+        write_subset(f, ASCII + LATIN1 + PUNCT, out, FEATURES)
+        kept = {r.FeatureTag for r in TTFont(out)["GSUB"].table.FeatureList.FeatureRecord}
+        settings(out, "latin", PUNCT, 48, " ".join(t for t in FEATURES if t in kept and t != "kern"))
+        return
     if len(sys.argv) != 5:
         sys.exit(__doc__)
     inter, nunito, hebrew, devanagari = (Path(a) for a in sys.argv[1:])

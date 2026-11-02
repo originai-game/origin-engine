@@ -152,7 +152,7 @@ pub(super) fn truncate_lines(lines: &mut Vec<Line>, t: &TextContent, m: &FontMet
     loop {
         let body: String = chars.iter().collect();
         let text = format!("{}{dots}", body.trim_end());
-        let w = m.measure_tracked(&text, size, tracking);
+        let w = m.measure_with(&text, size, tracking, t.step.features);
         if w <= width || chars.is_empty() {
             last.text = text;
             last.width = w;

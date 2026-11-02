@@ -184,7 +184,8 @@ pub(crate) fn parse_colors(p: &P, icons: &[String]) -> Result<ColorTokens, Strin
     Ok(c)
 }
 
-/// `<role> <size> <lineHeight> <tracking em> <weight> <font> [{ <breakpoint> <size> <lineHeight> … }]`.
+/// `<role> <size> <lineHeight> <tracking em> <weight> <font> [<feature>…] [{ <breakpoint> <size> <lineHeight> … }]`,
+/// the features OpenType tags (`smcp c2sc tnum lnum case`).
 pub(crate) fn parse_typography(p: &P) -> Result<TypeScale, String> {
     let block = p.block()?;
     let zero = TypeToken {
@@ -193,6 +194,7 @@ pub(crate) fn parse_typography(p: &P) -> Result<TypeScale, String> {
         tracking_em: 0.0,
         weight: 400,
         font: FontRole::Body,
+        features: crate::shape::Features::NONE,
     };
     let mut scale = TypeScale {
         steps: [[zero; 4]; TypeRole::COUNT],
@@ -224,12 +226,17 @@ pub(crate) fn parse_typography(p: &P) -> Result<TypeScale, String> {
                 )));
             }
         };
+        let tags = (5..e.values.len())
+            .map(|i| q.word(i))
+            .collect::<Result<Vec<_>, _>>()?;
+        let features = crate::shape::Features::parse(tags).map_err(|m| q.err(&m))?;
         let base = TypeToken {
             size,
             line_height,
             tracking_em,
             weight: weight as u16,
             font,
+            features,
         };
         check_type(&q, &base)?;
         let mut at = [base; 4];

@@ -276,11 +276,22 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
                     let q = P { e: c };
                     let s = ramp_step(&mut theme.type_ramp, &c.key)
                         .ok_or_else(|| q.err("is not a TypeStepName"))?;
+                    // Numbers first, then the step's OpenType features as
+                    // words (`meta 12 16 20 0.04 0 tnum`, or `meta 12 16 tnum`).
+                    let words = c.values.iter().position(|v| v.as_word().is_some());
+                    let n = words.unwrap_or(c.values.len());
+                    let or = |i: usize, d: f32| if i < n { q.num(i) } else { Ok(d) };
                     s.size = q.num(0)?;
                     s.line_height = q.num(1)?;
-                    s.cjk_line_height = q.num_or(2, s.line_height.max(s.cjk_line_height))?;
-                    s.tracking_em = q.num_or(3, s.tracking_em)?;
-                    s.cjk_tracking_em = q.num_or(4, s.cjk_tracking_em)?;
+                    s.cjk_line_height = or(2, s.line_height.max(s.cjk_line_height))?;
+                    s.tracking_em = or(3, s.tracking_em)?;
+                    s.cjk_tracking_em = or(4, s.cjk_tracking_em)?;
+                    if let Some(first) = words {
+                        let tags = (first..c.values.len())
+                            .map(|i| q.word(i))
+                            .collect::<Result<Vec<_>, _>>()?;
+                        s.features = crate::shape::Features::parse(tags).map_err(|m| q.err(&m))?;
+                    }
                 }
             }
             "durations" => {

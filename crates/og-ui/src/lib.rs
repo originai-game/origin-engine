@@ -98,7 +98,9 @@ pub use style_file::{
     Art, Slice, SliceFill, StyleFile, StylePart, UiSound, default_dressings, parse_style,
     upgrade_style,
 };
-pub use text::{FontMetrics, Piece, UiFont, VisualGlyph, bidi_runs, needs_visual, pieces};
+pub use text::{
+    FontMetrics, Piece, UiFont, VisualGlyph, bidi_runs, needs_visual, pieces, pieces_with,
+};
 pub use tokens::StyleTokens;
 pub use ui::{
     ButtonDesc, ButtonVariant, ControlSize, FeedbackPlay, FieldDesc, Fonts, HUD_MAX_ASPECT,

@@ -671,7 +671,7 @@ fn configure {
 }
 ```
 
-<sub>`api.ogt` line 12762</sub>
+<sub>`api.ogt` line 12763</sub>
 
 <a id="fn-viewport"></a>
 
@@ -699,7 +699,7 @@ fn viewport {
 }
 ```
 
-<sub>`api.ogt` line 12769</sub>
+<sub>`api.ogt` line 12770</sub>
 
 <a id="fn-theme"></a>
 
@@ -727,7 +727,7 @@ fn theme {
 }
 ```
 
-<sub>`api.ogt` line 12775</sub>
+<sub>`api.ogt` line 12776</sub>
 
 <a id="fn-open"></a>
 
@@ -757,7 +757,7 @@ fn open {
 }
 ```
 
-<sub>`api.ogt` line 12781</sub>
+<sub>`api.ogt` line 12782</sub>
 
 <a id="fn-openPanel"></a>
 
@@ -787,7 +787,7 @@ fn openPanel {
 }
 ```
 
-<sub>`api.ogt` line 12788</sub>
+<sub>`api.ogt` line 12789</sub>
 
 <a id="fn-openScroll"></a>
 
@@ -817,7 +817,7 @@ fn openScroll {
 }
 ```
 
-<sub>`api.ogt` line 12795</sub>
+<sub>`api.ogt` line 12796</sub>
 
 <a id="fn-close"></a>
 
@@ -840,7 +840,7 @@ fn close {
 }
 ```
 
-<sub>`api.ogt` line 12802</sub>
+<sub>`api.ogt` line 12803</sub>
 
 <a id="fn-row"></a>
 
@@ -873,7 +873,7 @@ fn row {
 }
 ```
 
-<sub>`api.ogt` line 12807</sub>
+<sub>`api.ogt` line 12808</sub>
 
 <a id="fn-column"></a>
 
@@ -906,7 +906,7 @@ fn column {
 }
 ```
 
-<sub>`api.ogt` line 12816</sub>
+<sub>`api.ogt` line 12817</sub>
 
 <a id="fn-panel"></a>
 
@@ -939,7 +939,7 @@ fn panel {
 }
 ```
 
-<sub>`api.ogt` line 12825</sub>
+<sub>`api.ogt` line 12826</sub>
 
 <a id="fn-scroll"></a>
 
@@ -972,7 +972,7 @@ fn scroll {
 }
 ```
 
-<sub>`api.ogt` line 12834</sub>
+<sub>`api.ogt` line 12835</sub>
 
 <a id="fn-richText"></a>
 
@@ -1004,7 +1004,7 @@ fn richText {
 }
 ```
 
-<sub>`api.ogt` line 12861</sub>
+<sub>`api.ogt` line 12862</sub>
 
 <a id="fn-label"></a>
 
@@ -1036,7 +1036,7 @@ fn label {
 }
 ```
 
-<sub>`api.ogt` line 12869</sub>
+<sub>`api.ogt` line 12870</sub>
 
 <a id="fn-button"></a>
 
@@ -1068,7 +1068,7 @@ fn button {
 }
 ```
 
-<sub>`api.ogt` line 12877</sub>
+<sub>`api.ogt` line 12878</sub>
 
 <a id="fn-image"></a>
 
@@ -1098,7 +1098,7 @@ fn image {
 }
 ```
 
-<sub>`api.ogt` line 12885</sub>
+<sub>`api.ogt` line 12886</sub>
 
 <a id="fn-zoomView"></a>
 
@@ -1128,7 +1128,7 @@ fn zoomView {
 }
 ```
 
-<sub>`api.ogt` line 12892</sub>
+<sub>`api.ogt` line 12893</sub>
 
 <a id="fn-progress"></a>
 
@@ -1160,7 +1160,7 @@ fn progress {
 }
 ```
 
-<sub>`api.ogt` line 12899</sub>
+<sub>`api.ogt` line 12900</sub>
 
 <a id="fn-slider"></a>
 
@@ -1192,7 +1192,7 @@ fn slider {
 }
 ```
 
-<sub>`api.ogt` line 12907</sub>
+<sub>`api.ogt` line 12908</sub>
 
 <a id="fn-toggle"></a>
 
@@ -1224,7 +1224,7 @@ fn toggle {
 }
 ```
 
-<sub>`api.ogt` line 12915</sub>
+<sub>`api.ogt` line 12916</sub>
 
 <a id="fn-textField"></a>
 
@@ -1256,7 +1256,7 @@ fn textField {
 }
 ```
 
-<sub>`api.ogt` line 12923</sub>
+<sub>`api.ogt` line 12924</sub>
 
 <a id="fn-textArea"></a>
 
@@ -1288,7 +1288,7 @@ fn textArea {
 }
 ```
 
-<sub>`api.ogt` line 12931</sub>
+<sub>`api.ogt` line 12932</sub>
 
 <a id="fn-tooltip"></a>
 
@@ -1316,7 +1316,7 @@ fn tooltip {
 }
 ```
 
-<sub>`api.ogt` line 12939</sub>
+<sub>`api.ogt` line 12940</sub>
 
 <a id="fn-idi"></a>
 
@@ -1347,7 +1347,7 @@ fn idi {
 }
 ```
 
-<sub>`api.ogt` line 12945</sub>
+<sub>`api.ogt` line 12946</sub>
 
 <a id="fn-breakpoint"></a>
 
@@ -1370,7 +1370,7 @@ fn breakpoint {
 }
 ```
 
-<sub>`api.ogt` line 13410</sub>
+<sub>`api.ogt` line 13411</sub>
 
 <a id="fn-framePointer"></a>
 
@@ -1393,7 +1393,7 @@ fn framePointer {
 }
 ```
 
-<sub>`api.ogt` line 13427</sub>
+<sub>`api.ogt` line 13428</sub>
 
 <a id="fn-frameViewport"></a>
 
@@ -1416,7 +1416,7 @@ fn frameViewport {
 }
 ```
 
-<sub>`api.ogt` line 13432</sub>
+<sub>`api.ogt` line 13433</sub>
 
 <a id="fn-hasIcon"></a>
 
@@ -1444,7 +1444,7 @@ fn hasIcon {
 }
 ```
 
-<sub>`api.ogt` line 13437</sub>
+<sub>`api.ogt` line 13438</sub>
 
 <a id="fn-seconds"></a>
 
@@ -1467,7 +1467,7 @@ fn seconds {
 }
 ```
 
-<sub>`api.ogt` line 13443</sub>
+<sub>`api.ogt` line 13444</sub>
 
 <a id="fn-lastPath"></a>
 
@@ -1490,7 +1490,7 @@ fn lastPath {
 }
 ```
 
-<sub>`api.ogt` line 13448</sub>
+<sub>`api.ogt` line 13449</sub>
 
 <a id="fn-setFocus"></a>
 
@@ -1518,7 +1518,7 @@ fn setFocus {
 }
 ```
 
-<sub>`api.ogt` line 13453</sub>
+<sub>`api.ogt` line 13454</sub>
 
 <a id="fn-frameDirection"></a>
 
@@ -1541,7 +1541,7 @@ fn frameDirection {
 }
 ```
 
-<sub>`api.ogt` line 13459</sub>
+<sub>`api.ogt` line 13460</sub>
 
 <a id="fn-frameTheme"></a>
 
@@ -1564,7 +1564,7 @@ fn frameTheme {
 }
 ```
 
-<sub>`api.ogt` line 13464</sub>
+<sub>`api.ogt` line 13465</sub>
 
 <a id="fn-openAnchor"></a>
 
@@ -1594,7 +1594,7 @@ fn openAnchor {
 }
 ```
 
-<sub>`api.ogt` line 13469</sub>
+<sub>`api.ogt` line 13470</sub>
 
 <a id="fn-anchor"></a>
 
@@ -1627,7 +1627,7 @@ fn anchor {
 }
 ```
 
-<sub>`api.ogt` line 13476</sub>
+<sub>`api.ogt` line 13477</sub>
 
 <a id="fn-openTransition"></a>
 
@@ -1659,7 +1659,7 @@ fn openTransition {
 }
 ```
 
-<sub>`api.ogt` line 13485</sub>
+<sub>`api.ogt` line 13486</sub>
 
 <a id="fn-transition"></a>
 
@@ -1694,7 +1694,7 @@ fn transition {
 }
 ```
 
-<sub>`api.ogt` line 13493</sub>
+<sub>`api.ogt` line 13494</sub>
 
 <a id="fn-openModal"></a>
 
@@ -1726,7 +1726,7 @@ fn openModal {
 }
 ```
 
-<sub>`api.ogt` line 13503</sub>
+<sub>`api.ogt` line 13504</sub>
 
 <a id="fn-closeModal"></a>
 
@@ -1749,7 +1749,7 @@ fn closeModal {
 }
 ```
 
-<sub>`api.ogt` line 13511</sub>
+<sub>`api.ogt` line 13512</sub>
 
 <a id="fn-modal"></a>
 
@@ -1784,7 +1784,7 @@ fn modal {
 }
 ```
 
-<sub>`api.ogt` line 13516</sub>
+<sub>`api.ogt` line 13517</sub>
 
 <a id="fn-spotlight"></a>
 
@@ -1816,7 +1816,7 @@ fn spotlight {
 }
 ```
 
-<sub>`api.ogt` line 13526</sub>
+<sub>`api.ogt` line 13527</sub>
 
 <a id="fn-bounds"></a>
 
@@ -1844,7 +1844,7 @@ fn bounds {
 }
 ```
 
-<sub>`api.ogt` line 13534</sub>
+<sub>`api.ogt` line 13535</sub>
 
 <a id="fn-openList"></a>
 
@@ -1874,7 +1874,7 @@ fn openList {
 }
 ```
 
-<sub>`api.ogt` line 13540</sub>
+<sub>`api.ogt` line 13541</sub>
 
 <a id="fn-openGrid"></a>
 
@@ -1904,7 +1904,7 @@ fn openGrid {
 }
 ```
 
-<sub>`api.ogt` line 13547</sub>
+<sub>`api.ogt` line 13548</sub>
 
 <a id="fn-listItem"></a>
 
@@ -1934,7 +1934,7 @@ fn listItem {
 }
 ```
 
-<sub>`api.ogt` line 13554</sub>
+<sub>`api.ogt` line 13555</sub>
 
 <a id="fn-gridItem"></a>
 
@@ -1964,7 +1964,7 @@ fn gridItem {
 }
 ```
 
-<sub>`api.ogt` line 13561</sub>
+<sub>`api.ogt` line 13562</sub>
 
 <a id="fn-closeList"></a>
 
@@ -1987,7 +1987,7 @@ fn closeList {
 }
 ```
 
-<sub>`api.ogt` line 13568</sub>
+<sub>`api.ogt` line 13569</sub>
 
 <a id="fn-dragging"></a>
 
@@ -2015,7 +2015,7 @@ fn dragging {
 }
 ```
 
-<sub>`api.ogt` line 13573</sub>
+<sub>`api.ogt` line 13574</sub>
 
 <a id="fn-list"></a>
 
@@ -2048,7 +2048,7 @@ fn list {
 }
 ```
 
-<sub>`api.ogt` line 13579</sub>
+<sub>`api.ogt` line 13580</sub>
 
 <a id="fn-grid"></a>
 
@@ -2081,7 +2081,7 @@ fn grid {
 }
 ```
 
-<sub>`api.ogt` line 13588</sub>
+<sub>`api.ogt` line 13589</sub>
 
 <a id="fn-tabs"></a>
 
@@ -2115,7 +2115,7 @@ fn tabs {
 }
 ```
 
-<sub>`api.ogt` line 13597</sub>
+<sub>`api.ogt` line 13598</sub>
 
 <a id="fn-select"></a>
 
@@ -2149,7 +2149,7 @@ fn select {
 }
 ```
 
-<sub>`api.ogt` line 13606</sub>
+<sub>`api.ogt` line 13607</sub>
 
 <a id="fn-stepper"></a>
 
@@ -2181,7 +2181,7 @@ fn stepper {
 }
 ```
 
-<sub>`api.ogt` line 13615</sub>
+<sub>`api.ogt` line 13616</sub>
 
 <a id="fn-radio"></a>
 
@@ -2215,7 +2215,7 @@ fn radio {
 }
 ```
 
-<sub>`api.ogt` line 13623</sub>
+<sub>`api.ogt` line 13624</sub>
 
 <a id="fn-checkbox"></a>
 
@@ -2247,7 +2247,7 @@ fn checkbox {
 }
 ```
 
-<sub>`api.ogt` line 13632</sub>
+<sub>`api.ogt` line 13633</sub>
 
 <a id="fn-checkboxList"></a>
 
@@ -2279,7 +2279,7 @@ fn checkboxList {
 }
 ```
 
-<sub>`api.ogt` line 13640</sub>
+<sub>`api.ogt` line 13641</sub>
 
 <a id="fn-chip"></a>
 
@@ -2311,7 +2311,7 @@ fn chip {
 }
 ```
 
-<sub>`api.ogt` line 13648</sub>
+<sub>`api.ogt` line 13649</sub>
 
 <a id="fn-badge"></a>
 
@@ -2343,7 +2343,7 @@ fn badge {
 }
 ```
 
-<sub>`api.ogt` line 13656</sub>
+<sub>`api.ogt` line 13657</sub>
 
 <a id="fn-divider"></a>
 
@@ -2373,7 +2373,7 @@ fn divider {
 }
 ```
 
-<sub>`api.ogt` line 13664</sub>
+<sub>`api.ogt` line 13665</sub>
 
 <a id="fn-spacer"></a>
 
@@ -2403,7 +2403,7 @@ fn spacer {
 }
 ```
 
-<sub>`api.ogt` line 13671</sub>
+<sub>`api.ogt` line 13672</sub>
 
 <a id="fn-keyValue"></a>
 
@@ -2437,7 +2437,7 @@ fn keyValue {
 }
 ```
 
-<sub>`api.ogt` line 13678</sub>
+<sub>`api.ogt` line 13679</sub>
 
 <a id="fn-skeleton"></a>
 
@@ -2467,7 +2467,7 @@ fn skeleton {
 }
 ```
 
-<sub>`api.ogt` line 13687</sub>
+<sub>`api.ogt` line 13688</sub>
 
 <a id="fn-spinner"></a>
 
@@ -2497,7 +2497,7 @@ fn spinner {
 }
 ```
 
-<sub>`api.ogt` line 13694</sub>
+<sub>`api.ogt` line 13695</sub>
 
 <a id="fn-icon"></a>
 
@@ -2529,7 +2529,7 @@ fn icon {
 }
 ```
 
-<sub>`api.ogt` line 13701</sub>
+<sub>`api.ogt` line 13702</sub>
 
 <a id="fn-meter"></a>
 
@@ -2563,7 +2563,7 @@ fn meter {
 }
 ```
 
-<sub>`api.ogt` line 13709</sub>
+<sub>`api.ogt` line 13710</sub>
 
 <a id="fn-cooldown"></a>
 
@@ -2595,7 +2595,7 @@ fn cooldown {
 }
 ```
 
-<sub>`api.ogt` line 13718</sub>
+<sub>`api.ogt` line 13719</sub>
 
 <a id="fn-minimap"></a>
 
@@ -2625,7 +2625,7 @@ fn minimap {
 }
 ```
 
-<sub>`api.ogt` line 13726</sub>
+<sub>`api.ogt` line 13727</sub>
 
 <a id="fn-dialogue"></a>
 
@@ -2655,7 +2655,7 @@ fn dialogue {
 }
 ```
 
-<sub>`api.ogt` line 13733</sub>
+<sub>`api.ogt` line 13734</sub>
 
 <a id="fn-joystick"></a>
 
@@ -2685,7 +2685,7 @@ fn joystick {
 }
 ```
 
-<sub>`api.ogt` line 13740</sub>
+<sub>`api.ogt` line 13741</sub>
 
 <a id="fn-dpad"></a>
 
@@ -2715,7 +2715,7 @@ fn dpad {
 }
 ```
 
-<sub>`api.ogt` line 13747</sub>
+<sub>`api.ogt` line 13748</sub>
 
 <a id="fn-actionButton"></a>
 
@@ -2747,7 +2747,7 @@ fn actionButton {
 }
 ```
 
-<sub>`api.ogt` line 13754</sub>
+<sub>`api.ogt` line 13755</sub>
 
 <a id="fn-toast"></a>
 
@@ -2779,7 +2779,7 @@ fn toast {
 }
 ```
 
-<sub>`api.ogt` line 13762</sub>
+<sub>`api.ogt` line 13763</sub>
 
 <a id="fn-dismissToast"></a>
 
@@ -2809,7 +2809,7 @@ fn dismissToast {
 }
 ```
 
-<sub>`api.ogt` line 13770</sub>
+<sub>`api.ogt` line 13771</sub>
 
 <a id="fn-navigate"></a>
 
@@ -2839,7 +2839,7 @@ fn navigate {
 }
 ```
 
-<sub>`api.ogt` line 13777</sub>
+<sub>`api.ogt` line 13778</sub>
 
 <a id="fn-back"></a>
 
@@ -2862,7 +2862,7 @@ fn back {
 }
 ```
 
-<sub>`api.ogt` line 13784</sub>
+<sub>`api.ogt` line 13785</sub>
 
 <a id="fn-setPlayers"></a>
 
@@ -2890,7 +2890,7 @@ fn setPlayers {
 }
 ```
 
-<sub>`api.ogt` line 13789</sub>
+<sub>`api.ogt` line 13790</sub>
 
 <a id="fn-focus"></a>
 
@@ -2918,7 +2918,7 @@ fn focus {
 }
 ```
 
-<sub>`api.ogt` line 13795</sub>
+<sub>`api.ogt` line 13796</sub>
 
 <a id="fn-a11y"></a>
 
@@ -2941,7 +2941,7 @@ fn a11y {
 }
 ```
 
-<sub>`api.ogt` line 13834</sub>
+<sub>`api.ogt` line 13835</sub>
 
 <a id="fn-feedback"></a>
 
@@ -2971,7 +2971,7 @@ fn feedback {
 }
 ```
 
-<sub>`api.ogt` line 13839</sub>
+<sub>`api.ogt` line 13840</sub>
 
 <a id="fn-setHaptics"></a>
 
@@ -2999,7 +2999,7 @@ fn setHaptics {
 }
 ```
 
-<sub>`api.ogt` line 13846</sub>
+<sub>`api.ogt` line 13847</sub>
 
 <a id="fn-setNavigation"></a>
 
@@ -3027,7 +3027,7 @@ fn setNavigation {
 }
 ```
 
-<sub>`api.ogt` line 13852</sub>
+<sub>`api.ogt` line 13853</sub>
 
 <a id="fn-memory"></a>
 
@@ -3057,7 +3057,7 @@ fn memory {
 }
 ```
 
-<sub>`api.ogt` line 13858</sub>
+<sub>`api.ogt` line 13859</sub>
 
 <a id="fn-remember"></a>
 
@@ -3087,7 +3087,7 @@ fn remember {
 }
 ```
 
-<sub>`api.ogt` line 13865</sub>
+<sub>`api.ogt` line 13866</sub>
 
 <a id="fn-tick"></a>
 
@@ -3110,7 +3110,7 @@ fn tick {
 }
 ```
 
-<sub>`api.ogt` line 13872</sub>
+<sub>`api.ogt` line 13873</sub>
 
 <a id="fn-counter"></a>
 
@@ -3142,7 +3142,7 @@ fn counter {
 }
 ```
 
-<sub>`api.ogt` line 13895</sub>
+<sub>`api.ogt` line 13896</sub>
 
 <a id="fn-burst"></a>
 
@@ -3170,7 +3170,7 @@ fn burst {
 }
 ```
 
-<sub>`api.ogt` line 13922</sub>
+<sub>`api.ogt` line 13923</sub>
 
 <a id="fn-shake"></a>
 
@@ -3198,7 +3198,7 @@ fn shake {
 }
 ```
 
-<sub>`api.ogt` line 13942</sub>
+<sub>`api.ogt` line 13943</sub>
 
 <a id="fn-screenTransition"></a>
 
@@ -3230,7 +3230,7 @@ fn screenTransition {
 }
 ```
 
-<sub>`api.ogt` line 13988</sub>
+<sub>`api.ogt` line 13989</sub>
 
 <a id="fn-previewViewport"></a>
 
@@ -3260,7 +3260,7 @@ fn previewViewport {
 }
 ```
 
-<sub>`api.ogt` line 13996</sub>
+<sub>`api.ogt` line 13997</sub>
 
 <a id="fn-card"></a>
 
@@ -3293,7 +3293,7 @@ fn card {
 }
 ```
 
-<sub>`api.ogt` line 14970</sub>
+<sub>`api.ogt` line 14971</sub>
 
 <a id="fn-scrollArea"></a>
 
@@ -3326,7 +3326,7 @@ fn scrollArea {
 }
 ```
 
-<sub>`api.ogt` line 14979</sub>
+<sub>`api.ogt` line 14980</sub>
 
 <a id="fn-accordion"></a>
 
@@ -3359,7 +3359,7 @@ fn accordion {
 }
 ```
 
-<sub>`api.ogt` line 14988</sub>
+<sub>`api.ogt` line 14989</sub>
 
 <a id="fn-splitView"></a>
 
@@ -3394,7 +3394,7 @@ fn splitView {
 }
 ```
 
-<sub>`api.ogt` line 14997</sub>
+<sub>`api.ogt` line 14998</sub>
 
 <a id="fn-dialog"></a>
 
@@ -3429,7 +3429,7 @@ fn dialog {
 }
 ```
 
-<sub>`api.ogt` line 15007</sub>
+<sub>`api.ogt` line 15008</sub>
 
 <a id="fn-confirm"></a>
 
@@ -3462,7 +3462,7 @@ fn confirm {
 }
 ```
 
-<sub>`api.ogt` line 15017</sub>
+<sub>`api.ogt` line 15018</sub>
 
 <a id="fn-popover"></a>
 
@@ -3497,7 +3497,7 @@ fn popover {
 }
 ```
 
-<sub>`api.ogt` line 15026</sub>
+<sub>`api.ogt` line 15027</sub>
 
 <a id="fn-menu"></a>
 
@@ -3530,7 +3530,7 @@ fn menu {
 }
 ```
 
-<sub>`api.ogt` line 15036</sub>
+<sub>`api.ogt` line 15037</sub>
 
 <a id="fn-contextMenu"></a>
 
@@ -3565,7 +3565,7 @@ fn contextMenu {
 }
 ```
 
-<sub>`api.ogt` line 15045</sub>
+<sub>`api.ogt` line 15046</sub>
 
 <a id="fn-sheet"></a>
 
@@ -3600,7 +3600,7 @@ fn sheet {
 }
 ```
 
-<sub>`api.ogt` line 15055</sub>
+<sub>`api.ogt` line 15056</sub>
 
 <a id="fn-tabBar"></a>
 
@@ -3633,7 +3633,7 @@ fn tabBar {
 }
 ```
 
-<sub>`api.ogt` line 15065</sub>
+<sub>`api.ogt` line 15066</sub>
 
 <a id="fn-carousel"></a>
 
@@ -3666,7 +3666,7 @@ fn carousel {
 }
 ```
 
-<sub>`api.ogt` line 15074</sub>
+<sub>`api.ogt` line 15075</sub>
 
 <a id="fn-breadcrumbs"></a>
 
@@ -3697,7 +3697,7 @@ fn breadcrumbs {
 }
 ```
 
-<sub>`api.ogt` line 15083</sub>
+<sub>`api.ogt` line 15084</sub>
 
 <a id="fn-pagination"></a>
 
@@ -3728,7 +3728,7 @@ fn pagination {
 }
 ```
 
-<sub>`api.ogt` line 15091</sub>
+<sub>`api.ogt` line 15092</sub>
 
 <a id="fn-actionHints"></a>
 
@@ -3759,7 +3759,7 @@ fn actionHints {
 }
 ```
 
-<sub>`api.ogt` line 15099</sub>
+<sub>`api.ogt` line 15100</sub>
 
 <a id="fn-radialMenu"></a>
 
@@ -3792,7 +3792,7 @@ fn radialMenu {
 }
 ```
 
-<sub>`api.ogt` line 15107</sub>
+<sub>`api.ogt` line 15108</sub>
 
 <a id="fn-dataList"></a>
 
@@ -3825,7 +3825,7 @@ fn dataList {
 }
 ```
 
-<sub>`api.ogt` line 15116</sub>
+<sub>`api.ogt` line 15117</sub>
 
 <a id="fn-dataGrid"></a>
 
@@ -3858,7 +3858,7 @@ fn dataGrid {
 }
 ```
 
-<sub>`api.ogt` line 15125</sub>
+<sub>`api.ogt` line 15126</sub>
 
 <a id="fn-table"></a>
 
@@ -3889,7 +3889,7 @@ fn table {
 }
 ```
 
-<sub>`api.ogt` line 15134</sub>
+<sub>`api.ogt` line 15135</sub>
 
 <a id="fn-tree"></a>
 
@@ -3920,7 +3920,7 @@ fn tree {
 }
 ```
 
-<sub>`api.ogt` line 15142</sub>
+<sub>`api.ogt` line 15143</sub>
 
 <a id="fn-nodeGraph"></a>
 
@@ -3951,7 +3951,7 @@ fn nodeGraph {
 }
 ```
 
-<sub>`api.ogt` line 15150</sub>
+<sub>`api.ogt` line 15151</sub>
 
 <a id="fn-chart"></a>
 
@@ -3982,7 +3982,7 @@ fn chart {
 }
 ```
 
-<sub>`api.ogt` line 15158</sub>
+<sub>`api.ogt` line 15159</sub>
 
 <a id="fn-keyValueRows"></a>
 
@@ -4013,7 +4013,7 @@ fn keyValueRows {
 }
 ```
 
-<sub>`api.ogt` line 15166</sub>
+<sub>`api.ogt` line 15167</sub>
 
 <a id="fn-statCompare"></a>
 
@@ -4044,7 +4044,7 @@ fn statCompare {
 }
 ```
 
-<sub>`api.ogt` line 15174</sub>
+<sub>`api.ogt` line 15175</sub>
 
 <a id="fn-calendar"></a>
 
@@ -4075,7 +4075,7 @@ fn calendar {
 }
 ```
 
-<sub>`api.ogt` line 15182</sub>
+<sub>`api.ogt` line 15183</sub>
 
 <a id="fn-text"></a>
 
@@ -4108,7 +4108,7 @@ fn text {
 }
 ```
 
-<sub>`api.ogt` line 15237</sub>
+<sub>`api.ogt` line 15238</sub>
 
 <a id="fn-prose"></a>
 
@@ -4141,7 +4141,7 @@ fn prose {
 }
 ```
 
-<sub>`api.ogt` line 15261</sub>
+<sub>`api.ogt` line 15262</sub>
 
 <a id="fn-iconMark"></a>
 
@@ -4174,7 +4174,7 @@ fn iconMark {
 }
 ```
 
-<sub>`api.ogt` line 15291</sub>
+<sub>`api.ogt` line 15292</sub>
 
 <a id="fn-artSlot"></a>
 
@@ -4205,7 +4205,7 @@ fn artSlot {
 }
 ```
 
-<sub>`api.ogt` line 15338</sub>
+<sub>`api.ogt` line 15339</sub>
 
 <a id="fn-shapeBox"></a>
 
@@ -4236,7 +4236,7 @@ fn shapeBox {
 }
 ```
 
-<sub>`api.ogt` line 15398</sub>
+<sub>`api.ogt` line 15399</sub>
 
 <a id="fn-separator"></a>
 
@@ -4267,7 +4267,7 @@ fn separator {
 }
 ```
 
-<sub>`api.ogt` line 15418</sub>
+<sub>`api.ogt` line 15419</sub>
 
 <a id="fn-space"></a>
 
@@ -4298,7 +4298,7 @@ fn space {
 }
 ```
 
-<sub>`api.ogt` line 15445</sub>
+<sub>`api.ogt` line 15446</sub>
 
 <a id="fn-viewFrame"></a>
 
@@ -4329,7 +4329,7 @@ fn viewFrame {
 }
 ```
 
-<sub>`api.ogt` line 15510</sub>
+<sub>`api.ogt` line 15511</sub>
 
 <a id="fn-emitter"></a>
 
@@ -4360,7 +4360,7 @@ fn emitter {
 }
 ```
 
-<sub>`api.ogt` line 15545</sub>
+<sub>`api.ogt` line 15546</sub>
 
 <a id="fn-effectLayer"></a>
 
@@ -4393,7 +4393,7 @@ fn effectLayer {
 }
 ```
 
-<sub>`api.ogt` line 15571</sub>
+<sub>`api.ogt` line 15572</sub>
 
 <a id="fn-pushButton"></a>
 
@@ -4426,7 +4426,7 @@ fn pushButton {
 }
 ```
 
-<sub>`api.ogt` line 15597</sub>
+<sub>`api.ogt` line 15598</sub>
 
 <a id="fn-iconButton"></a>
 
@@ -4459,7 +4459,7 @@ fn iconButton {
 }
 ```
 
-<sub>`api.ogt` line 15621</sub>
+<sub>`api.ogt` line 15622</sub>
 
 <a id="fn-holdButton"></a>
 
@@ -4492,7 +4492,7 @@ fn holdButton {
 }
 ```
 
-<sub>`api.ogt` line 15660</sub>
+<sub>`api.ogt` line 15661</sub>
 
 <a id="fn-toggleSwitch"></a>
 
@@ -4525,7 +4525,7 @@ fn toggleSwitch {
 }
 ```
 
-<sub>`api.ogt` line 15695</sub>
+<sub>`api.ogt` line 15696</sub>
 
 <a id="fn-checkField"></a>
 
@@ -4558,7 +4558,7 @@ fn checkField {
 }
 ```
 
-<sub>`api.ogt` line 15718</sub>
+<sub>`api.ogt` line 15719</sub>
 
 <a id="fn-radioGroup"></a>
 
@@ -4589,7 +4589,7 @@ fn radioGroup {
 }
 ```
 
-<sub>`api.ogt` line 15763</sub>
+<sub>`api.ogt` line 15764</sub>
 
 <a id="fn-valueSlider"></a>
 
@@ -4622,7 +4622,7 @@ fn valueSlider {
 }
 ```
 
-<sub>`api.ogt` line 15819</sub>
+<sub>`api.ogt` line 15820</sub>
 
 <a id="fn-rangeSlider"></a>
 
@@ -4657,7 +4657,7 @@ fn rangeSlider {
 }
 ```
 
-<sub>`api.ogt` line 15856</sub>
+<sub>`api.ogt` line 15857</sub>
 
 <a id="fn-numberStepper"></a>
 
@@ -4690,7 +4690,7 @@ fn numberStepper {
 }
 ```
 
-<sub>`api.ogt` line 15888</sub>
+<sub>`api.ogt` line 15889</sub>
 
 <a id="fn-cycler"></a>
 
@@ -4725,7 +4725,7 @@ fn cycler {
 }
 ```
 
-<sub>`api.ogt` line 15914</sub>
+<sub>`api.ogt` line 15915</sub>
 
 <a id="fn-segmented"></a>
 
@@ -4756,7 +4756,7 @@ fn segmented {
 }
 ```
 
-<sub>`api.ogt` line 15947</sub>
+<sub>`api.ogt` line 15948</sub>
 
 <a id="fn-dropdown"></a>
 
@@ -4787,7 +4787,7 @@ fn dropdown {
 }
 ```
 
-<sub>`api.ogt` line 15993</sub>
+<sub>`api.ogt` line 15994</sub>
 
 <a id="fn-inputField"></a>
 
@@ -4820,7 +4820,7 @@ fn inputField {
 }
 ```
 
-<sub>`api.ogt` line 16029</sub>
+<sub>`api.ogt` line 16030</sub>
 
 <a id="fn-inputArea"></a>
 
@@ -4853,7 +4853,7 @@ fn inputArea {
 }
 ```
 
-<sub>`api.ogt` line 16054</sub>
+<sub>`api.ogt` line 16055</sub>
 
 <a id="fn-searchBox"></a>
 
@@ -4886,7 +4886,7 @@ fn searchBox {
 }
 ```
 
-<sub>`api.ogt` line 16088</sub>
+<sub>`api.ogt` line 16089</sub>
 
 <a id="fn-colorPicker"></a>
 
@@ -4919,7 +4919,7 @@ fn colorPicker {
 }
 ```
 
-<sub>`api.ogt` line 16129</sub>
+<sub>`api.ogt` line 16130</sub>
 
 <a id="fn-keyBindingRow"></a>
 
@@ -4952,7 +4952,7 @@ fn keyBindingRow {
 }
 ```
 
-<sub>`api.ogt` line 16174</sub>
+<sub>`api.ogt` line 16175</sub>
 
 <a id="fn-onScreenKeyboard"></a>
 
@@ -4985,7 +4985,7 @@ fn onScreenKeyboard {
 }
 ```
 
-<sub>`api.ogt` line 16216</sub>
+<sub>`api.ogt` line 16217</sub>
 
 <a id="fn-mainMenu"></a>
 
@@ -5016,7 +5016,7 @@ fn mainMenu {
 }
 ```
 
-<sub>`api.ogt` line 16998</sub>
+<sub>`api.ogt` line 16999</sub>
 
 <a id="fn-pauseMenu"></a>
 
@@ -5047,7 +5047,7 @@ fn pauseMenu {
 }
 ```
 
-<sub>`api.ogt` line 17006</sub>
+<sub>`api.ogt` line 17007</sub>
 
 <a id="fn-settingsScreen"></a>
 
@@ -5078,7 +5078,7 @@ fn settingsScreen {
 }
 ```
 
-<sub>`api.ogt` line 17014</sub>
+<sub>`api.ogt` line 17015</sub>
 
 <a id="fn-platformerHud"></a>
 
@@ -5109,7 +5109,7 @@ fn platformerHud {
 }
 ```
 
-<sub>`api.ogt` line 17022</sub>
+<sub>`api.ogt` line 17023</sub>
 
 <a id="fn-shooterHud"></a>
 
@@ -5140,7 +5140,7 @@ fn shooterHud {
 }
 ```
 
-<sub>`api.ogt` line 17030</sub>
+<sub>`api.ogt` line 17031</sub>
 
 <a id="fn-puzzleHud"></a>
 
@@ -5171,7 +5171,7 @@ fn puzzleHud {
 }
 ```
 
-<sub>`api.ogt` line 17038</sub>
+<sub>`api.ogt` line 17039</sub>
 
 <a id="fn-idleHud"></a>
 
@@ -5202,7 +5202,7 @@ fn idleHud {
 }
 ```
 
-<sub>`api.ogt` line 17046</sub>
+<sub>`api.ogt` line 17047</sub>
 
 <a id="fn-racingHud"></a>
 
@@ -5233,7 +5233,7 @@ fn racingHud {
 }
 ```
 
-<sub>`api.ogt` line 17054</sub>
+<sub>`api.ogt` line 17055</sub>
 
 <a id="fn-cutscene"></a>
 
@@ -5264,7 +5264,7 @@ fn cutscene {
 }
 ```
 
-<sub>`api.ogt` line 17062</sub>
+<sub>`api.ogt` line 17063</sub>
 
 <a id="fn-shopScreen"></a>
 
@@ -5295,7 +5295,7 @@ fn shopScreen {
 }
 ```
 
-<sub>`api.ogt` line 17070</sub>
+<sub>`api.ogt` line 17071</sub>
 
 <a id="fn-inventoryScreen"></a>
 
@@ -5326,7 +5326,7 @@ fn inventoryScreen {
 }
 ```
 
-<sub>`api.ogt` line 17078</sub>
+<sub>`api.ogt` line 17079</sub>
 
 <a id="fn-levelSelect"></a>
 
@@ -5357,7 +5357,7 @@ fn levelSelect {
 }
 ```
 
-<sub>`api.ogt` line 17086</sub>
+<sub>`api.ogt` line 17087</sub>
 
 <a id="fn-resultsScreen"></a>
 
@@ -5388,7 +5388,7 @@ fn resultsScreen {
 }
 ```
 
-<sub>`api.ogt` line 17094</sub>
+<sub>`api.ogt` line 17095</sub>
 
 <a id="fn-leaderboardScreen"></a>
 
@@ -5419,7 +5419,7 @@ fn leaderboardScreen {
 }
 ```
 
-<sub>`api.ogt` line 17102</sub>
+<sub>`api.ogt` line 17103</sub>
 
 <a id="fn-tutorialOverlay"></a>
 
@@ -5450,7 +5450,7 @@ fn tutorialOverlay {
 }
 ```
 
-<sub>`api.ogt` line 17110</sub>
+<sub>`api.ogt` line 17111</sub>
 
 <a id="fn-loadingScreen"></a>
 
@@ -5481,7 +5481,7 @@ fn loadingScreen {
 }
 ```
 
-<sub>`api.ogt` line 17118</sub>
+<sub>`api.ogt` line 17119</sub>
 
 <a id="fn-confirmDialog"></a>
 
@@ -5512,7 +5512,7 @@ fn confirmDialog {
 }
 ```
 
-<sub>`api.ogt` line 17126</sub>
+<sub>`api.ogt` line 17127</sub>
 
 <a id="fn-alertDialog"></a>
 
@@ -5543,7 +5543,7 @@ fn alertDialog {
 }
 ```
 
-<sub>`api.ogt` line 17134</sub>
+<sub>`api.ogt` line 17135</sub>
 
 <a id="fn-props"></a>
 
@@ -5571,7 +5571,7 @@ fn props {
 }
 ```
 
-<sub>`api.ogt` line 17804</sub>
+<sub>`api.ogt` line 17805</sub>
 
 <a id="fn-defineTimeline"></a>
 
@@ -5601,7 +5601,7 @@ fn defineTimeline {
 }
 ```
 
-<sub>`api.ogt` line 17810</sub>
+<sub>`api.ogt` line 17811</sub>
 
 <a id="fn-play"></a>
 
@@ -5633,7 +5633,7 @@ fn play {
 }
 ```
 
-<sub>`api.ogt` line 17817</sub>
+<sub>`api.ogt` line 17818</sub>
 
 <a id="fn-playTimeline"></a>
 
@@ -5665,7 +5665,7 @@ fn playTimeline {
 }
 ```
 
-<sub>`api.ogt` line 17825</sub>
+<sub>`api.ogt` line 17826</sub>
 
 <a id="fn-seek"></a>
 
@@ -5695,7 +5695,7 @@ fn seek {
 }
 ```
 
-<sub>`api.ogt` line 17833</sub>
+<sub>`api.ogt` line 17834</sub>
 
 <a id="fn-pause"></a>
 
@@ -5723,7 +5723,7 @@ fn pause {
 }
 ```
 
-<sub>`api.ogt` line 17840</sub>
+<sub>`api.ogt` line 17841</sub>
 
 <a id="fn-resume"></a>
 
@@ -5751,7 +5751,7 @@ fn resume {
 }
 ```
 
-<sub>`api.ogt` line 17846</sub>
+<sub>`api.ogt` line 17847</sub>
 
 <a id="fn-reverse"></a>
 
@@ -5779,7 +5779,7 @@ fn reverse {
 }
 ```
 
-<sub>`api.ogt` line 17852</sub>
+<sub>`api.ogt` line 17853</sub>
 
 <a id="fn-stop"></a>
 
@@ -5807,7 +5807,7 @@ fn stop {
 }
 ```
 
-<sub>`api.ogt` line 17858</sub>
+<sub>`api.ogt` line 17859</sub>
 
 <a id="fn-playInfo"></a>
 
@@ -5835,7 +5835,7 @@ fn playInfo {
 }
 ```
 
-<sub>`api.ogt` line 17864</sub>
+<sub>`api.ogt` line 17865</sub>
 
 <a id="fn-forceState"></a>
 
@@ -5867,7 +5867,7 @@ fn forceState {
 }
 ```
 
-<sub>`api.ogt` line 17870</sub>
+<sub>`api.ogt` line 17871</sub>
 
 <a id="fn-visualState"></a>
 
@@ -5897,7 +5897,7 @@ fn visualState {
 }
 ```
 
-<sub>`api.ogt` line 17878</sub>
+<sub>`api.ogt` line 17879</sub>
 
 <a id="fn-animate"></a>
 
@@ -5929,7 +5929,7 @@ fn animate {
 }
 ```
 
-<sub>`api.ogt` line 17885</sub>
+<sub>`api.ogt` line 17886</sub>
 
 <a id="fn-gesture"></a>
 
@@ -5957,7 +5957,7 @@ fn gesture {
 }
 ```
 
-<sub>`api.ogt` line 17893</sub>
+<sub>`api.ogt` line 17894</sub>
 
 <a id="fn-motionEvents"></a>
 
@@ -5980,7 +5980,7 @@ fn motionEvents {
 }
 ```
 
-<sub>`api.ogt` line 17899</sub>
+<sub>`api.ogt` line 17900</sub>
 
 <a id="fn-overlaps"></a>
 
@@ -6003,7 +6003,7 @@ fn overlaps {
 }
 ```
 
-<sub>`api.ogt` line 17904</sub>
+<sub>`api.ogt` line 17905</sub>
 
 <a id="fn-layoutStats"></a>
 
@@ -6026,7 +6026,7 @@ fn layoutStats {
 }
 ```
 
-<sub>`api.ogt` line 17909</sub>
+<sub>`api.ogt` line 17910</sub>
 
 <a id="fn-semantics"></a>
 
@@ -6054,7 +6054,7 @@ fn semantics {
 }
 ```
 
-<sub>`api.ogt` line 18380</sub>
+<sub>`api.ogt` line 18381</sub>
 
 <a id="fn-setDraw"></a>
 
@@ -6082,7 +6082,7 @@ fn setDraw {
 }
 ```
 
-<sub>`api.ogt` line 18386</sub>
+<sub>`api.ogt` line 18387</sub>
 
 <a id="fn-openWorldAnchor"></a>
 
@@ -6112,7 +6112,7 @@ fn openWorldAnchor {
 }
 ```
 
-<sub>`api.ogt` line 18516</sub>
+<sub>`api.ogt` line 18517</sub>
 
 <a id="fn-openWorldPanel"></a>
 
@@ -6142,7 +6142,7 @@ fn openWorldPanel {
 }
 ```
 
-<sub>`api.ogt` line 18571</sub>
+<sub>`api.ogt` line 18572</sub>
 
 <a id="fn-defineMass"></a>
 
@@ -6172,7 +6172,7 @@ fn defineMass {
 }
 ```
 
-<sub>`api.ogt` line 18716</sub>
+<sub>`api.ogt` line 18717</sub>
 
 <a id="fn-spawnMass"></a>
 
@@ -6202,7 +6202,7 @@ fn spawnMass {
 }
 ```
 
-<sub>`api.ogt` line 18723</sub>
+<sub>`api.ogt` line 18724</sub>
 
 <a id="fn-pushMass"></a>
 
@@ -6232,7 +6232,7 @@ fn pushMass {
 }
 ```
 
-<sub>`api.ogt` line 18730</sub>
+<sub>`api.ogt` line 18731</sub>
 
 <a id="fn-massCount"></a>
 
@@ -6260,7 +6260,7 @@ fn massCount {
 }
 ```
 
-<sub>`api.ogt` line 18737</sub>
+<sub>`api.ogt` line 18738</sub>
 
 <a id="fn-particles"></a>
 
@@ -6288,7 +6288,7 @@ fn particles {
 }
 ```
 
-<sub>`api.ogt` line 18810</sub>
+<sub>`api.ogt` line 18811</sub>
 
 <a id="fn-meta"></a>
 
@@ -6318,7 +6318,7 @@ fn meta {
 }
 ```
 
-<sub>`api.ogt` line 18860</sub>
+<sub>`api.ogt` line 18861</sub>
 
 <a id="fn-sceneViewport"></a>
 
@@ -6348,7 +6348,7 @@ fn sceneViewport {
 }
 ```
 
-<sub>`api.ogt` line 18911</sub>
+<sub>`api.ogt` line 18912</sub>
 
 <a id="fn-screen"></a>
 
@@ -6380,7 +6380,7 @@ fn screen {
 }
 ```
 
-<sub>`api.ogt` line 19001</sub>
+<sub>`api.ogt` line 19002</sub>
 
 <a id="fn-component"></a>
 
@@ -6414,7 +6414,7 @@ fn component {
 }
 ```
 
-<sub>`api.ogt` line 19010</sub>
+<sub>`api.ogt` line 19011</sub>
 
 <a id="fn-openSlot"></a>
 
@@ -6442,7 +6442,7 @@ fn openSlot {
 }
 ```
 
-<sub>`api.ogt` line 19020</sub>
+<sub>`api.ogt` line 19021</sub>
 
 <a id="fn-push"></a>
 
@@ -6476,7 +6476,7 @@ fn push {
 }
 ```
 
-<sub>`api.ogt` line 19026</sub>
+<sub>`api.ogt` line 19027</sub>
 
 <a id="fn-pop"></a>
 
@@ -6504,7 +6504,7 @@ fn pop {
 }
 ```
 
-<sub>`api.ogt` line 19036</sub>
+<sub>`api.ogt` line 19037</sub>
 
 <a id="fn-replace"></a>
 
@@ -6538,7 +6538,7 @@ fn replace {
 }
 ```
 
-<sub>`api.ogt` line 19042</sub>
+<sub>`api.ogt` line 19043</sub>
 
 <a id="fn-clear"></a>
 
@@ -6566,7 +6566,7 @@ fn clear {
 }
 ```
 
-<sub>`api.ogt` line 19052</sub>
+<sub>`api.ogt` line 19053</sub>
 
 <a id="fn-layers"></a>
 
@@ -6594,7 +6594,7 @@ fn layers {
 }
 ```
 
-<sub>`api.ogt` line 19058</sub>
+<sub>`api.ogt` line 19059</sub>
 
 <a id="fn-screenVm"></a>
 
@@ -6624,7 +6624,7 @@ fn screenVm {
 }
 ```
 
-<sub>`api.ogt` line 19064</sub>
+<sub>`api.ogt` line 19065</sub>
 
 <a id="fn-docEvents"></a>
 
@@ -6652,7 +6652,7 @@ fn docEvents {
 }
 ```
 
-<sub>`api.ogt` line 19071</sub>
+<sub>`api.ogt` line 19072</sub>
 
 <a id="fn-gameInput"></a>
 
@@ -6680,7 +6680,7 @@ fn gameInput {
 }
 ```
 
-<sub>`api.ogt` line 19077</sub>
+<sub>`api.ogt` line 19078</sub>
 
 <a id="fn-paused"></a>
 
@@ -6708,7 +6708,7 @@ fn paused {
 }
 ```
 
-<sub>`api.ogt` line 19083</sub>
+<sub>`api.ogt` line 19084</sub>
 
 <a id="fn-defineAction"></a>
 
@@ -6738,7 +6738,7 @@ fn defineAction {
 }
 ```
 
-<sub>`api.ogt` line 19089</sub>
+<sub>`api.ogt` line 19090</sub>
 
 <a id="fn-action"></a>
 
@@ -6766,7 +6766,7 @@ fn action {
 }
 ```
 
-<sub>`api.ogt` line 19096</sub>
+<sub>`api.ogt` line 19097</sub>
 
 <a id="fn-actionHeld"></a>
 
@@ -6794,7 +6794,7 @@ fn actionHeld {
 }
 ```
 
-<sub>`api.ogt` line 19102</sub>
+<sub>`api.ogt` line 19103</sub>
 
 <a id="fn-glyph"></a>
 
@@ -6824,7 +6824,7 @@ fn glyph {
 }
 ```
 
-<sub>`api.ogt` line 19108</sub>
+<sub>`api.ogt` line 19109</sub>
 
 <a id="fn-frameGlyph"></a>
 
@@ -6852,7 +6852,7 @@ fn frameGlyph {
 }
 ```
 
-<sub>`api.ogt` line 19115</sub>
+<sub>`api.ogt` line 19116</sub>
 
 <a id="fn-device"></a>
 
@@ -6880,7 +6880,7 @@ fn device {
 }
 ```
 
-<sub>`api.ogt` line 19121</sub>
+<sub>`api.ogt` line 19122</sub>
 
 <a id="fn-setDevice"></a>
 
@@ -6910,7 +6910,7 @@ fn setDevice {
 }
 ```
 
-<sub>`api.ogt` line 19127</sub>
+<sub>`api.ogt` line 19128</sub>
 
 <a id="fn-actionBar"></a>
 
@@ -6938,7 +6938,7 @@ fn actionBar {
 }
 ```
 
-<sub>`api.ogt` line 19134</sub>
+<sub>`api.ogt` line 19135</sub>
 
 <a id="fn-documentSchema"></a>
 
@@ -6961,7 +6961,7 @@ fn documentSchema {
 }
 ```
 
-<sub>`api.ogt` line 19140</sub>
+<sub>`api.ogt` line 19141</sub>
 
 <a id="fn-setProp"></a>
 
@@ -6995,7 +6995,7 @@ fn setProp {
 }
 ```
 
-<sub>`api.ogt` line 19145</sub>
+<sub>`api.ogt` line 19146</sub>
 
 <a id="fn-saveEdits"></a>
 
@@ -7023,7 +7023,7 @@ fn saveEdits {
 }
 ```
 
-<sub>`api.ogt` line 19154</sub>
+<sub>`api.ogt` line 19155</sub>
 
 ## Types
 
@@ -8319,6 +8319,7 @@ One step of the type ramp.
 | `lineHeight` | `number` | `0` | — | `cssPx` | — | The leading of Latin text. |
 | `trackingEm` | `number` | `0` | — | — | — | Latin tracking, in em. |
 | `cjkLineHeight` | `number` | `0` | — | `cssPx` | — | The leading text with Chinese, Japanese or Korean characters takes. |
+| `features` | `readonly string[]` | `[]` | — | — | — | The OpenType features the step turns on, as tags: smcp (small caps), c2sc (capitals to small caps), tnum (tabular figures), lnum (lining figures), case (case-sensitive forms). A style sets them after a type role's font (`display 42 48 0.02 700 display smcp`); they apply where the role's font is imported with the same `features` line, and a font without one draws its defaults. |
 
 ```ogt
 struct TypeStep {
@@ -8333,6 +8334,7 @@ struct TypeStep {
   field cjkLineHeight f32 "The leading text with Chinese, Japanese or Korean characters takes." {
     unit cssPx
   }
+  field features List.String "The OpenType features the step turns on, as tags: smcp (small caps), c2sc (capitals to small caps), tnum (tabular figures), lnum (lining figures), case (case-sensitive forms). A style sets them after a type role's font (`display 42 48 0.02 700 display smcp`); they apply where the role's font is imported with the same `features` line, and a font without one draws its defaults."
 }
 ```
 
@@ -8381,7 +8383,7 @@ struct ControlSizes {
 }
 ```
 
-<sub>`api.ogt` line 12715</sub>
+<sub>`api.ogt` line 12716</sub>
 
 <a id="type-UiTheme"></a>
 
@@ -8404,7 +8406,7 @@ The style values the UI draws with, read-only.
 | `textScale` | `number` | `0` | — | — | — | The player's text scale in effect (UiDesc.textScale, 1 to 2): typeRamp and sizes already carry it; tokens' typography is the style's as authored, so a game's own text drawn from it multiplies by this. |
 | `unit` | `number` | `0` | — | — | — | The og-ui unit in effect, in CSS px (UiDesc.unitScale; auto: 1 to 2 by the surface): what every length the UI reads and gives is in, og.ui.bounds and og.ui.viewport too. Only what leaves the UI for the page is CSS px: the probe's dump_ui and og.render's screen sprites; a game drawing its own screen sprites beside the UI multiplies by it. |
 | `reducedTransparency` | `boolean` | `false` | — | — | — | Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over panel (the scrim over backdrop) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too. |
-| `tokens` | `unknown` | `null` | — | — | — | The style's tokens (docs/ui.md §12.2), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric, at each breakpoint: size, lineHeight, trackingEm, weight, font), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses). |
+| `tokens` | `unknown` | `null` | — | — | — | The style's tokens (docs/ui.md §12.2), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric, at each breakpoint: size, lineHeight, trackingEm, weight, font, features), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses). |
 
 ```ogt
 struct UiTheme {
@@ -8422,11 +8424,11 @@ struct UiTheme {
   field textScale f32 "The player's text scale in effect (UiDesc.textScale, 1 to 2): typeRamp and sizes already carry it; tokens' typography is the style's as authored, so a game's own text drawn from it multiplies by this."
   field unit f32 "The og-ui unit in effect, in CSS px (UiDesc.unitScale; auto: 1 to 2 by the surface): what every length the UI reads and gives is in, og.ui.bounds and og.ui.viewport too. Only what leaves the UI for the page is CSS px: the probe's dump_ui and og.render's screen sprites; a game drawing its own screen sprites beside the UI multiplies by it."
   field reducedTransparency bool "Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over panel (the scrim over backdrop) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too."
-  field tokens Json "The style's tokens (docs/ui.md §12.2), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric, at each breakpoint: size, lineHeight, trackingEm, weight, font), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses)."
+  field tokens Json "The style's tokens (docs/ui.md §12.2), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric, at each breakpoint: size, lineHeight, trackingEm, weight, font, features), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses)."
 }
 ```
 
-<sub>`api.ogt` line 12740</sub>
+<sub>`api.ogt` line 12741</sub>
 
 <a id="type-UiBuild"></a>
 
@@ -8446,7 +8448,7 @@ callback UiBuild {
 }
 ```
 
-<sub>`api.ogt` line 12758</sub>
+<sub>`api.ogt` line 12759</sub>
 
 <a id="type-RichTextDesc"></a>
 
@@ -8478,7 +8480,7 @@ struct RichTextDesc {
 }
 ```
 
-<sub>`api.ogt` line 12843</sub>
+<sub>`api.ogt` line 12844</sub>
 
 <a id="type-RichTextResult"></a>
 
@@ -8501,7 +8503,7 @@ struct RichTextResult {
 }
 ```
 
-<sub>`api.ogt` line 12854</sub>
+<sub>`api.ogt` line 12855</sub>
 
 <a id="type-Anchor"></a>
 
@@ -8538,7 +8540,7 @@ enum Anchor {
 }
 ```
 
-<sub>`api.ogt` line 12955</sub>
+<sub>`api.ogt` line 12956</sub>
 
 <a id="type-TransitionKind"></a>
 
@@ -8571,7 +8573,7 @@ enum TransitionKind {
 }
 ```
 
-<sub>`api.ogt` line 12968</sub>
+<sub>`api.ogt` line 12969</sub>
 
 <a id="type-Tone"></a>
 
@@ -8604,7 +8606,7 @@ enum Tone {
 }
 ```
 
-<sub>`api.ogt` line 12979</sub>
+<sub>`api.ogt` line 12980</sub>
 
 <a id="type-MeterKind"></a>
 
@@ -8631,7 +8633,7 @@ enum MeterKind {
 }
 ```
 
-<sub>`api.ogt` line 12990</sub>
+<sub>`api.ogt` line 12991</sub>
 
 <a id="type-Breakpoint"></a>
 
@@ -8658,7 +8660,7 @@ enum Breakpoint {
 }
 ```
 
-<sub>`api.ogt` line 12998</sub>
+<sub>`api.ogt` line 12999</sub>
 
 <a id="type-Contrast"></a>
 
@@ -8681,7 +8683,7 @@ enum Contrast {
 }
 ```
 
-<sub>`api.ogt` line 13006</sub>
+<sub>`api.ogt` line 13007</sub>
 
 <a id="type-NavIntent"></a>
 
@@ -8716,7 +8718,7 @@ enum NavIntent {
 }
 ```
 
-<sub>`api.ogt` line 13012</sub>
+<sub>`api.ogt` line 13013</sub>
 
 <a id="type-UiRect"></a>
 
@@ -8749,7 +8751,7 @@ struct UiRect {
 }
 ```
 
-<sub>`api.ogt` line 13024</sub>
+<sub>`api.ogt` line 13025</sub>
 
 <a id="type-IconAtlasDesc"></a>
 
@@ -8785,7 +8787,7 @@ struct IconAtlasDesc {
 }
 ```
 
-<sub>`api.ogt` line 13040</sub>
+<sub>`api.ogt` line 13041</sub>
 
 <a id="type-AnchorDesc"></a>
 
@@ -8845,7 +8847,7 @@ struct AnchorDesc {
 }
 ```
 
-<sub>`api.ogt` line 13056</sub>
+<sub>`api.ogt` line 13057</sub>
 
 <a id="type-TransitionDesc"></a>
 
@@ -8879,7 +8881,7 @@ struct TransitionDesc {
 }
 ```
 
-<sub>`api.ogt` line 13085</sub>
+<sub>`api.ogt` line 13086</sub>
 
 <a id="type-Presence"></a>
 
@@ -8906,7 +8908,7 @@ struct Presence {
 }
 ```
 
-<sub>`api.ogt` line 13100</sub>
+<sub>`api.ogt` line 13101</sub>
 
 <a id="type-ModalDesc"></a>
 
@@ -8940,7 +8942,7 @@ struct ModalDesc {
 }
 ```
 
-<sub>`api.ogt` line 13110</sub>
+<sub>`api.ogt` line 13111</sub>
 
 <a id="type-ModalResult"></a>
 
@@ -8961,7 +8963,7 @@ struct ModalResult {
 }
 ```
 
-<sub>`api.ogt` line 13122</sub>
+<sub>`api.ogt` line 13123</sub>
 
 <a id="type-SpotlightDesc"></a>
 
@@ -8986,7 +8988,7 @@ struct SpotlightDesc {
 }
 ```
 
-<sub>`api.ogt` line 13128</sub>
+<sub>`api.ogt` line 13129</sub>
 
 <a id="type-ListDesc"></a>
 
@@ -9025,7 +9027,7 @@ struct ListDesc {
 }
 ```
 
-<sub>`api.ogt` line 13137</sub>
+<sub>`api.ogt` line 13138</sub>
 
 <a id="type-ListRange"></a>
 
@@ -9046,7 +9048,7 @@ struct ListRange {
 }
 ```
 
-<sub>`api.ogt` line 13154</sub>
+<sub>`api.ogt` line 13155</sub>
 
 <a id="type-ListResult"></a>
 
@@ -9069,7 +9071,7 @@ struct ListResult {
 }
 ```
 
-<sub>`api.ogt` line 13160</sub>
+<sub>`api.ogt` line 13161</sub>
 
 <a id="type-GridDesc"></a>
 
@@ -9116,7 +9118,7 @@ struct GridDesc {
 }
 ```
 
-<sub>`api.ogt` line 13167</sub>
+<sub>`api.ogt` line 13168</sub>
 
 <a id="type-TabsDesc"></a>
 
@@ -9142,7 +9144,7 @@ struct TabsDesc {
 }
 ```
 
-<sub>`api.ogt` line 13190</sub>
+<sub>`api.ogt` line 13191</sub>
 
 <a id="type-ChoiceResult"></a>
 
@@ -9163,7 +9165,7 @@ struct ChoiceResult {
 }
 ```
 
-<sub>`api.ogt` line 13198</sub>
+<sub>`api.ogt` line 13199</sub>
 
 <a id="type-SelectDesc"></a>
 
@@ -9191,7 +9193,7 @@ struct SelectDesc {
 }
 ```
 
-<sub>`api.ogt` line 13204</sub>
+<sub>`api.ogt` line 13205</sub>
 
 <a id="type-StepperDesc"></a>
 
@@ -9223,7 +9225,7 @@ struct StepperDesc {
 }
 ```
 
-<sub>`api.ogt` line 13213</sub>
+<sub>`api.ogt` line 13214</sub>
 
 <a id="type-StepperResult"></a>
 
@@ -9244,7 +9246,7 @@ struct StepperResult {
 }
 ```
 
-<sub>`api.ogt` line 13226</sub>
+<sub>`api.ogt` line 13227</sub>
 
 <a id="type-RadioDesc"></a>
 
@@ -9268,7 +9270,7 @@ struct RadioDesc {
 }
 ```
 
-<sub>`api.ogt` line 13232</sub>
+<sub>`api.ogt` line 13233</sub>
 
 <a id="type-CheckListResult"></a>
 
@@ -9289,7 +9291,7 @@ struct CheckListResult {
 }
 ```
 
-<sub>`api.ogt` line 13239</sub>
+<sub>`api.ogt` line 13240</sub>
 
 <a id="type-ToastDesc"></a>
 
@@ -9316,7 +9318,7 @@ struct ToastDesc {
 }
 ```
 
-<sub>`api.ogt` line 13245</sub>
+<sub>`api.ogt` line 13246</sub>
 
 <a id="type-ChipDesc"></a>
 
@@ -9340,7 +9342,7 @@ struct ChipDesc {
 }
 ```
 
-<sub>`api.ogt` line 13255</sub>
+<sub>`api.ogt` line 13256</sub>
 
 <a id="type-MeterDesc"></a>
 
@@ -9375,7 +9377,7 @@ struct MeterDesc {
 }
 ```
 
-<sub>`api.ogt` line 13262</sub>
+<sub>`api.ogt` line 13263</sub>
 
 <a id="type-CooldownDesc"></a>
 
@@ -9404,7 +9406,7 @@ struct CooldownDesc {
 }
 ```
 
-<sub>`api.ogt` line 13276</sub>
+<sub>`api.ogt` line 13277</sub>
 
 <a id="type-IconDesc"></a>
 
@@ -9433,7 +9435,7 @@ struct IconDesc {
 }
 ```
 
-<sub>`api.ogt` line 13287</sub>
+<sub>`api.ogt` line 13288</sub>
 
 <a id="type-MapMarker"></a>
 
@@ -9465,7 +9467,7 @@ struct MapMarker {
 }
 ```
 
-<sub>`api.ogt` line 13298</sub>
+<sub>`api.ogt` line 13299</sub>
 
 <a id="type-MinimapDesc"></a>
 
@@ -9498,7 +9500,7 @@ struct MinimapDesc {
 }
 ```
 
-<sub>`api.ogt` line 13311</sub>
+<sub>`api.ogt` line 13312</sub>
 
 <a id="type-DialogueDesc"></a>
 
@@ -9534,7 +9536,7 @@ struct DialogueDesc {
 }
 ```
 
-<sub>`api.ogt` line 13324</sub>
+<sub>`api.ogt` line 13325</sub>
 
 <a id="type-DialogueResult"></a>
 
@@ -9557,7 +9559,7 @@ struct DialogueResult {
 }
 ```
 
-<sub>`api.ogt` line 13338</sub>
+<sub>`api.ogt` line 13339</sub>
 
 <a id="type-JoystickDesc"></a>
 
@@ -9588,7 +9590,7 @@ struct JoystickDesc {
 }
 ```
 
-<sub>`api.ogt` line 13345</sub>
+<sub>`api.ogt` line 13346</sub>
 
 <a id="type-JoystickResult"></a>
 
@@ -9611,7 +9613,7 @@ struct JoystickResult {
 }
 ```
 
-<sub>`api.ogt` line 13359</sub>
+<sub>`api.ogt` line 13360</sub>
 
 <a id="type-DpadDesc"></a>
 
@@ -9636,7 +9638,7 @@ struct DpadDesc {
 }
 ```
 
-<sub>`api.ogt` line 13366</sub>
+<sub>`api.ogt` line 13367</sub>
 
 <a id="type-DpadResult"></a>
 
@@ -9661,7 +9663,7 @@ struct DpadResult {
 }
 ```
 
-<sub>`api.ogt` line 13375</sub>
+<sub>`api.ogt` line 13376</sub>
 
 <a id="type-ActionButtonDesc"></a>
 
@@ -9690,7 +9692,7 @@ struct ActionButtonDesc {
 }
 ```
 
-<sub>`api.ogt` line 13383</sub>
+<sub>`api.ogt` line 13384</sub>
 
 <a id="type-SkeletonDesc"></a>
 
@@ -9719,7 +9721,7 @@ struct SkeletonDesc {
 }
 ```
 
-<sub>`api.ogt` line 13394</sub>
+<sub>`api.ogt` line 13395</sub>
 
 <a id="type-UiItemBuild"></a>
 
@@ -9744,7 +9746,7 @@ callback UiItemBuild {
 }
 ```
 
-<sub>`api.ogt` line 13405</sub>
+<sub>`api.ogt` line 13406</sub>
 
 <a id="type-UiPointer"></a>
 
@@ -9773,7 +9775,7 @@ struct UiPointer {
 }
 ```
 
-<sub>`api.ogt` line 13415</sub>
+<sub>`api.ogt` line 13416</sub>
 
 <a id="type-A11yNode"></a>
 
@@ -9826,7 +9828,7 @@ struct A11yNode {
 }
 ```
 
-<sub>`api.ogt` line 13801</sub>
+<sub>`api.ogt` line 13802</sub>
 
 <a id="type-A11yTree"></a>
 
@@ -9849,7 +9851,7 @@ struct A11yTree {
 }
 ```
 
-<sub>`api.ogt` line 13827</sub>
+<sub>`api.ogt` line 13828</sub>
 
 <a id="type-CounterDesc"></a>
 
@@ -9892,7 +9894,7 @@ struct CounterDesc {
 }
 ```
 
-<sub>`api.ogt` line 13877</sub>
+<sub>`api.ogt` line 13878</sub>
 
 <a id="type-BurstDesc"></a>
 
@@ -9931,7 +9933,7 @@ struct BurstDesc {
 }
 ```
 
-<sub>`api.ogt` line 13903</sub>
+<sub>`api.ogt` line 13904</sub>
 
 <a id="type-ShakeDesc"></a>
 
@@ -9963,7 +9965,7 @@ struct ShakeDesc {
 }
 ```
 
-<sub>`api.ogt` line 13928</sub>
+<sub>`api.ogt` line 13929</sub>
 
 <a id="type-ScreenWipe"></a>
 
@@ -9992,7 +9994,7 @@ enum ScreenWipe {
 }
 ```
 
-<sub>`api.ogt` line 13948</sub>
+<sub>`api.ogt` line 13949</sub>
 
 <a id="type-WipeSide"></a>
 
@@ -10019,7 +10021,7 @@ enum WipeSide {
 }
 ```
 
-<sub>`api.ogt` line 13957</sub>
+<sub>`api.ogt` line 13958</sub>
 
 <a id="type-ScreenTransitionDesc"></a>
 
@@ -10052,7 +10054,7 @@ struct ScreenTransitionDesc {
 }
 ```
 
-<sub>`api.ogt` line 13965</sub>
+<sub>`api.ogt` line 13966</sub>
 
 <a id="type-ScreenTransitionResult"></a>
 
@@ -10079,7 +10081,7 @@ struct ScreenTransitionResult {
 }
 ```
 
-<sub>`api.ogt` line 13978</sub>
+<sub>`api.ogt` line 13979</sub>
 
 <a id="type-CardVariant"></a>
 
@@ -10106,7 +10108,7 @@ enum CardVariant {
 }
 ```
 
-<sub>`api.ogt` line 14010</sub>
+<sub>`api.ogt` line 14011</sub>
 
 <a id="type-CardMedia"></a>
 
@@ -10140,7 +10142,7 @@ struct CardMedia {
 }
 ```
 
-<sub>`api.ogt` line 14018</sub>
+<sub>`api.ogt` line 14019</sub>
 
 <a id="type-CardDesc"></a>
 
@@ -10188,7 +10190,7 @@ struct CardDesc {
 }
 ```
 
-<sub>`api.ogt` line 14032</sub>
+<sub>`api.ogt` line 14033</sub>
 
 <a id="type-ScrollAreaDesc"></a>
 
@@ -10229,7 +10231,7 @@ struct ScrollAreaDesc {
 }
 ```
 
-<sub>`api.ogt` line 14052</sub>
+<sub>`api.ogt` line 14053</sub>
 
 <a id="type-AccordionSection"></a>
 
@@ -10259,7 +10261,7 @@ struct AccordionSection {
 }
 ```
 
-<sub>`api.ogt` line 14070</sub>
+<sub>`api.ogt` line 14071</sub>
 
 <a id="type-AccordionDesc"></a>
 
@@ -10296,7 +10298,7 @@ struct AccordionDesc {
 }
 ```
 
-<sub>`api.ogt` line 14080</sub>
+<sub>`api.ogt` line 14081</sub>
 
 <a id="type-AccordionResult"></a>
 
@@ -10317,7 +10319,7 @@ struct AccordionResult {
 }
 ```
 
-<sub>`api.ogt` line 14096</sub>
+<sub>`api.ogt` line 14097</sub>
 
 <a id="type-SplitViewDesc"></a>
 
@@ -10366,7 +10368,7 @@ struct SplitViewDesc {
 }
 ```
 
-<sub>`api.ogt` line 14102</sub>
+<sub>`api.ogt` line 14103</sub>
 
 <a id="type-SplitResult"></a>
 
@@ -10389,7 +10391,7 @@ struct SplitResult {
 }
 ```
 
-<sub>`api.ogt` line 14127</sub>
+<sub>`api.ogt` line 14128</sub>
 
 <a id="type-DialogTone"></a>
 
@@ -10418,7 +10420,7 @@ enum DialogTone {
 }
 ```
 
-<sub>`api.ogt` line 14134</sub>
+<sub>`api.ogt` line 14135</sub>
 
 <a id="type-DialogAction"></a>
 
@@ -10448,7 +10450,7 @@ struct DialogAction {
 }
 ```
 
-<sub>`api.ogt` line 14143</sub>
+<sub>`api.ogt` line 14144</sub>
 
 <a id="type-DialogDesc"></a>
 
@@ -10486,7 +10488,7 @@ struct DialogDesc {
 }
 ```
 
-<sub>`api.ogt` line 14153</sub>
+<sub>`api.ogt` line 14154</sub>
 
 <a id="type-DialogResult"></a>
 
@@ -10509,7 +10511,7 @@ struct DialogResult {
 }
 ```
 
-<sub>`api.ogt` line 14167</sub>
+<sub>`api.ogt` line 14168</sub>
 
 <a id="type-ConfirmationDesc"></a>
 
@@ -10543,7 +10545,7 @@ struct ConfirmationDesc {
 }
 ```
 
-<sub>`api.ogt` line 14174</sub>
+<sub>`api.ogt` line 14175</sub>
 
 <a id="type-FloatSide"></a>
 
@@ -10570,7 +10572,7 @@ enum FloatSide {
 }
 ```
 
-<sub>`api.ogt` line 14186</sub>
+<sub>`api.ogt` line 14187</sub>
 
 <a id="type-FloatAlign"></a>
 
@@ -10595,7 +10597,7 @@ enum FloatAlign {
 }
 ```
 
-<sub>`api.ogt` line 14194</sub>
+<sub>`api.ogt` line 14195</sub>
 
 <a id="type-PopoverDesc"></a>
 
@@ -10639,7 +10641,7 @@ struct PopoverDesc {
 }
 ```
 
-<sub>`api.ogt` line 14201</sub>
+<sub>`api.ogt` line 14202</sub>
 
 <a id="type-PopoverResult"></a>
 
@@ -10660,7 +10662,7 @@ struct PopoverResult {
 }
 ```
 
-<sub>`api.ogt` line 14222</sub>
+<sub>`api.ogt` line 14223</sub>
 
 <a id="type-MenuEntryKind"></a>
 
@@ -10689,7 +10691,7 @@ enum MenuEntryKind {
 }
 ```
 
-<sub>`api.ogt` line 14228</sub>
+<sub>`api.ogt` line 14229</sub>
 
 <a id="type-MenuEntry"></a>
 
@@ -10727,7 +10729,7 @@ struct MenuEntry {
 }
 ```
 
-<sub>`api.ogt` line 14237</sub>
+<sub>`api.ogt` line 14238</sub>
 
 <a id="type-MenuDesc"></a>
 
@@ -10769,7 +10771,7 @@ struct MenuDesc {
 }
 ```
 
-<sub>`api.ogt` line 14251</sub>
+<sub>`api.ogt` line 14252</sub>
 
 <a id="type-MenuChoice"></a>
 
@@ -10790,7 +10792,7 @@ struct MenuChoice {
 }
 ```
 
-<sub>`api.ogt` line 14270</sub>
+<sub>`api.ogt` line 14271</sub>
 
 <a id="type-SheetEdge"></a>
 
@@ -10815,7 +10817,7 @@ enum SheetEdge {
 }
 ```
 
-<sub>`api.ogt` line 14276</sub>
+<sub>`api.ogt` line 14277</sub>
 
 <a id="type-SheetDesc"></a>
 
@@ -10864,7 +10866,7 @@ struct SheetDesc {
 }
 ```
 
-<sub>`api.ogt` line 14283</sub>
+<sub>`api.ogt` line 14284</sub>
 
 <a id="type-SheetResult"></a>
 
@@ -10887,7 +10889,7 @@ struct SheetResult {
 }
 ```
 
-<sub>`api.ogt` line 14307</sub>
+<sub>`api.ogt` line 14308</sub>
 
 <a id="type-TabVariant"></a>
 
@@ -10910,7 +10912,7 @@ enum TabVariant {
 }
 ```
 
-<sub>`api.ogt` line 14314</sub>
+<sub>`api.ogt` line 14315</sub>
 
 <a id="type-TabItem"></a>
 
@@ -10942,7 +10944,7 @@ struct TabItem {
 }
 ```
 
-<sub>`api.ogt` line 14320</sub>
+<sub>`api.ogt` line 14321</sub>
 
 <a id="type-TabBarDesc"></a>
 
@@ -10988,7 +10990,7 @@ struct TabBarDesc {
 }
 ```
 
-<sub>`api.ogt` line 14332</sub>
+<sub>`api.ogt` line 14333</sub>
 
 <a id="type-TabBarResult"></a>
 
@@ -11009,7 +11011,7 @@ struct TabBarResult {
 }
 ```
 
-<sub>`api.ogt` line 14353</sub>
+<sub>`api.ogt` line 14354</sub>
 
 <a id="type-CarouselDesc"></a>
 
@@ -11060,7 +11062,7 @@ struct CarouselDesc {
 }
 ```
 
-<sub>`api.ogt` line 14359</sub>
+<sub>`api.ogt` line 14360</sub>
 
 <a id="type-CarouselResult"></a>
 
@@ -11081,7 +11083,7 @@ struct CarouselResult {
 }
 ```
 
-<sub>`api.ogt` line 14384</sub>
+<sub>`api.ogt` line 14385</sub>
 
 <a id="type-Crumb"></a>
 
@@ -11105,7 +11107,7 @@ struct Crumb {
 }
 ```
 
-<sub>`api.ogt` line 14390</sub>
+<sub>`api.ogt` line 14391</sub>
 
 <a id="type-BreadcrumbsDesc"></a>
 
@@ -11135,7 +11137,7 @@ struct BreadcrumbsDesc {
 }
 ```
 
-<sub>`api.ogt` line 14397</sub>
+<sub>`api.ogt` line 14398</sub>
 
 <a id="type-BreadcrumbsResult"></a>
 
@@ -11154,7 +11156,7 @@ struct BreadcrumbsResult {
 }
 ```
 
-<sub>`api.ogt` line 14407</sub>
+<sub>`api.ogt` line 14408</sub>
 
 <a id="type-PaginationDesc"></a>
 
@@ -11194,7 +11196,7 @@ struct PaginationDesc {
 }
 ```
 
-<sub>`api.ogt` line 14412</sub>
+<sub>`api.ogt` line 14413</sub>
 
 <a id="type-PageResult"></a>
 
@@ -11215,7 +11217,7 @@ struct PageResult {
 }
 ```
 
-<sub>`api.ogt` line 14428</sub>
+<sub>`api.ogt` line 14429</sub>
 
 <a id="type-ActionHint"></a>
 
@@ -11251,7 +11253,7 @@ struct ActionHint {
 }
 ```
 
-<sub>`api.ogt` line 14434</sub>
+<sub>`api.ogt` line 14435</sub>
 
 <a id="type-ActionHintsDesc"></a>
 
@@ -11283,7 +11285,7 @@ struct ActionHintsDesc {
 }
 ```
 
-<sub>`api.ogt` line 14449</sub>
+<sub>`api.ogt` line 14450</sub>
 
 <a id="type-ActionHintsResult"></a>
 
@@ -11306,7 +11308,7 @@ struct ActionHintsResult {
 }
 ```
 
-<sub>`api.ogt` line 14462</sub>
+<sub>`api.ogt` line 14463</sub>
 
 <a id="type-RadialItem"></a>
 
@@ -11334,7 +11336,7 @@ struct RadialItem {
 }
 ```
 
-<sub>`api.ogt` line 14470</sub>
+<sub>`api.ogt` line 14471</sub>
 
 <a id="type-RadialDesc"></a>
 
@@ -11388,7 +11390,7 @@ struct RadialDesc {
 }
 ```
 
-<sub>`api.ogt` line 14479</sub>
+<sub>`api.ogt` line 14480</sub>
 
 <a id="type-RadialResult"></a>
 
@@ -11411,7 +11413,7 @@ struct RadialResult {
 }
 ```
 
-<sub>`api.ogt` line 14509</sub>
+<sub>`api.ogt` line 14510</sub>
 
 <a id="type-DataStateDesc"></a>
 
@@ -11447,7 +11449,7 @@ struct DataStateDesc {
 }
 ```
 
-<sub>`api.ogt` line 14516</sub>
+<sub>`api.ogt` line 14517</sub>
 
 <a id="type-DataListDesc"></a>
 
@@ -11504,7 +11506,7 @@ struct DataListDesc {
 }
 ```
 
-<sub>`api.ogt` line 14530</sub>
+<sub>`api.ogt` line 14531</sub>
 
 <a id="type-DataListResult"></a>
 
@@ -11525,7 +11527,7 @@ struct DataListResult {
 }
 ```
 
-<sub>`api.ogt` line 14557</sub>
+<sub>`api.ogt` line 14558</sub>
 
 <a id="type-DataGridDesc"></a>
 
@@ -11589,7 +11591,7 @@ struct DataGridDesc {
 }
 ```
 
-<sub>`api.ogt` line 14563</sub>
+<sub>`api.ogt` line 14564</sub>
 
 <a id="type-NumberFormat"></a>
 
@@ -11616,7 +11618,7 @@ enum NumberFormat {
 }
 ```
 
-<sub>`api.ogt` line 14595</sub>
+<sub>`api.ogt` line 14596</sub>
 
 <a id="type-TableColumn"></a>
 
@@ -11664,7 +11666,7 @@ struct TableColumn {
 }
 ```
 
-<sub>`api.ogt` line 14603</sub>
+<sub>`api.ogt` line 14604</sub>
 
 <a id="type-TableDesc"></a>
 
@@ -11742,7 +11744,7 @@ struct TableDesc {
 }
 ```
 
-<sub>`api.ogt` line 14625</sub>
+<sub>`api.ogt` line 14626</sub>
 
 <a id="type-TableResult"></a>
 
@@ -11771,7 +11773,7 @@ struct TableResult {
 }
 ```
 
-<sub>`api.ogt` line 14665</sub>
+<sub>`api.ogt` line 14666</sub>
 
 <a id="type-TreeItem"></a>
 
@@ -11805,7 +11807,7 @@ struct TreeItem {
 }
 ```
 
-<sub>`api.ogt` line 14675</sub>
+<sub>`api.ogt` line 14676</sub>
 
 <a id="type-TreeDesc"></a>
 
@@ -11849,7 +11851,7 @@ struct TreeDesc {
 }
 ```
 
-<sub>`api.ogt` line 14687</sub>
+<sub>`api.ogt` line 14688</sub>
 
 <a id="type-TreeResult"></a>
 
@@ -11872,7 +11874,7 @@ struct TreeResult {
 }
 ```
 
-<sub>`api.ogt` line 14707</sub>
+<sub>`api.ogt` line 14708</sub>
 
 <a id="type-GraphNodeState"></a>
 
@@ -11901,7 +11903,7 @@ enum GraphNodeState {
 }
 ```
 
-<sub>`api.ogt` line 14714</sub>
+<sub>`api.ogt` line 14715</sub>
 
 <a id="type-GraphNodeShape"></a>
 
@@ -11928,7 +11930,7 @@ enum GraphNodeShape {
 }
 ```
 
-<sub>`api.ogt` line 14723</sub>
+<sub>`api.ogt` line 14724</sub>
 
 <a id="type-GraphNode"></a>
 
@@ -11966,7 +11968,7 @@ struct GraphNode {
 }
 ```
 
-<sub>`api.ogt` line 14731</sub>
+<sub>`api.ogt` line 14732</sub>
 
 <a id="type-GraphLink"></a>
 
@@ -11992,7 +11994,7 @@ struct GraphLink {
 }
 ```
 
-<sub>`api.ogt` line 14745</sub>
+<sub>`api.ogt` line 14746</sub>
 
 <a id="type-NodeGraphDesc"></a>
 
@@ -12052,7 +12054,7 @@ struct NodeGraphDesc {
 }
 ```
 
-<sub>`api.ogt` line 14753</sub>
+<sub>`api.ogt` line 14754</sub>
 
 <a id="type-NodeGraphResult"></a>
 
@@ -12075,7 +12077,7 @@ struct NodeGraphResult {
 }
 ```
 
-<sub>`api.ogt` line 14784</sub>
+<sub>`api.ogt` line 14785</sub>
 
 <a id="type-ChartKind"></a>
 
@@ -12106,7 +12108,7 @@ enum ChartKind {
 }
 ```
 
-<sub>`api.ogt` line 14791</sub>
+<sub>`api.ogt` line 14792</sub>
 
 <a id="type-ChartSeries"></a>
 
@@ -12132,7 +12134,7 @@ struct ChartSeries {
 }
 ```
 
-<sub>`api.ogt` line 14801</sub>
+<sub>`api.ogt` line 14802</sub>
 
 <a id="type-ChartDesc"></a>
 
@@ -12225,7 +12227,7 @@ struct ChartDesc {
 }
 ```
 
-<sub>`api.ogt` line 14809</sub>
+<sub>`api.ogt` line 14810</sub>
 
 <a id="type-ChartResult"></a>
 
@@ -12248,7 +12250,7 @@ struct ChartResult {
 }
 ```
 
-<sub>`api.ogt` line 14858</sub>
+<sub>`api.ogt` line 14859</sub>
 
 <a id="type-KeyValueRow"></a>
 
@@ -12280,7 +12282,7 @@ struct KeyValueRow {
 }
 ```
 
-<sub>`api.ogt` line 14865</sub>
+<sub>`api.ogt` line 14866</sub>
 
 <a id="type-KeyValueRowsDesc"></a>
 
@@ -12321,7 +12323,7 @@ struct KeyValueRowsDesc {
 }
 ```
 
-<sub>`api.ogt` line 14876</sub>
+<sub>`api.ogt` line 14877</sub>
 
 <a id="type-StatCompareRow"></a>
 
@@ -12359,7 +12361,7 @@ struct StatCompareRow {
 }
 ```
 
-<sub>`api.ogt` line 14894</sub>
+<sub>`api.ogt` line 14895</sub>
 
 <a id="type-StatCompareDesc"></a>
 
@@ -12391,7 +12393,7 @@ struct StatCompareDesc {
 }
 ```
 
-<sub>`api.ogt` line 14908</sub>
+<sub>`api.ogt` line 14909</sub>
 
 <a id="type-CalendarMark"></a>
 
@@ -12419,7 +12421,7 @@ struct CalendarMark {
 }
 ```
 
-<sub>`api.ogt` line 14919</sub>
+<sub>`api.ogt` line 14920</sub>
 
 <a id="type-CalendarDesc"></a>
 
@@ -12490,7 +12492,7 @@ struct CalendarDesc {
 }
 ```
 
-<sub>`api.ogt` line 14928</sub>
+<sub>`api.ogt` line 14929</sub>
 
 <a id="type-CalendarResult"></a>
 
@@ -12515,7 +12517,7 @@ struct CalendarResult {
 }
 ```
 
-<sub>`api.ogt` line 14962</sub>
+<sub>`api.ogt` line 14963</sub>
 
 <a id="type-TextRole"></a>
 
@@ -12548,7 +12550,7 @@ enum TextRole {
 }
 ```
 
-<sub>`api.ogt` line 15201</sub>
+<sub>`api.ogt` line 15202</sub>
 
 <a id="type-TextTone"></a>
 
@@ -12585,7 +12587,7 @@ enum TextTone {
 }
 ```
 
-<sub>`api.ogt` line 15212</sub>
+<sub>`api.ogt` line 15213</sub>
 
 <a id="type-TextBlockDesc"></a>
 
@@ -12619,7 +12621,7 @@ struct TextBlockDesc {
 }
 ```
 
-<sub>`api.ogt` line 15225</sub>
+<sub>`api.ogt` line 15226</sub>
 
 <a id="type-ProseDesc"></a>
 
@@ -12655,7 +12657,7 @@ struct ProseDesc {
 }
 ```
 
-<sub>`api.ogt` line 15246</sub>
+<sub>`api.ogt` line 15247</sub>
 
 <a id="type-IconPlate"></a>
 
@@ -12680,7 +12682,7 @@ enum IconPlate {
 }
 ```
 
-<sub>`api.ogt` line 15270</sub>
+<sub>`api.ogt` line 15271</sub>
 
 <a id="type-IconMarkDesc"></a>
 
@@ -12715,7 +12717,7 @@ struct IconMarkDesc {
 }
 ```
 
-<sub>`api.ogt` line 15277</sub>
+<sub>`api.ogt` line 15278</sub>
 
 <a id="type-ArtFit"></a>
 
@@ -12740,7 +12742,7 @@ enum ArtFit {
 }
 ```
 
-<sub>`api.ogt` line 15300</sub>
+<sub>`api.ogt` line 15301</sub>
 
 <a id="type-ArtMask"></a>
 
@@ -12767,7 +12769,7 @@ enum ArtMask {
 }
 ```
 
-<sub>`api.ogt` line 15307</sub>
+<sub>`api.ogt` line 15308</sub>
 
 <a id="type-ArtSlotDesc"></a>
 
@@ -12817,7 +12819,7 @@ struct ArtSlotDesc {
 }
 ```
 
-<sub>`api.ogt` line 15315</sub>
+<sub>`api.ogt` line 15316</sub>
 
 <a id="type-ShapePreset"></a>
 
@@ -12852,7 +12854,7 @@ enum ShapePreset {
 }
 ```
 
-<sub>`api.ogt` line 15346</sub>
+<sub>`api.ogt` line 15347</sub>
 
 <a id="type-ShapeBoxDesc"></a>
 
@@ -12921,7 +12923,7 @@ struct ShapeBoxDesc {
 }
 ```
 
-<sub>`api.ogt` line 15358</sub>
+<sub>`api.ogt` line 15359</sub>
 
 <a id="type-SeparatorDesc"></a>
 
@@ -12952,7 +12954,7 @@ struct SeparatorDesc {
 }
 ```
 
-<sub>`api.ogt` line 15406</sub>
+<sub>`api.ogt` line 15407</sub>
 
 <a id="type-SpaceStep"></a>
 
@@ -12987,7 +12989,7 @@ enum SpaceStep {
 }
 ```
 
-<sub>`api.ogt` line 15426</sub>
+<sub>`api.ogt` line 15427</sub>
 
 <a id="type-SpaceDesc"></a>
 
@@ -13011,7 +13013,7 @@ struct SpaceDesc {
 }
 ```
 
-<sub>`api.ogt` line 15438</sub>
+<sub>`api.ogt` line 15439</sub>
 
 <a id="type-ViewFrameDesc"></a>
 
@@ -13088,7 +13090,7 @@ struct ViewFrameDesc {
 }
 ```
 
-<sub>`api.ogt` line 15453</sub>
+<sub>`api.ogt` line 15454</sub>
 
 <a id="type-ViewFrameResult"></a>
 
@@ -13117,7 +13119,7 @@ struct ViewFrameResult {
 }
 ```
 
-<sub>`api.ogt` line 15498</sub>
+<sub>`api.ogt` line 15499</sub>
 
 <a id="type-EmitterPreset"></a>
 
@@ -13148,7 +13150,7 @@ enum EmitterPreset {
 }
 ```
 
-<sub>`api.ogt` line 15518</sub>
+<sub>`api.ogt` line 15519</sub>
 
 <a id="type-EmitterDesc"></a>
 
@@ -13185,7 +13187,7 @@ struct EmitterDesc {
 }
 ```
 
-<sub>`api.ogt` line 15528</sub>
+<sub>`api.ogt` line 15529</sub>
 
 <a id="type-EffectLayerDesc"></a>
 
@@ -13225,7 +13227,7 @@ struct EffectLayerDesc {
 }
 ```
 
-<sub>`api.ogt` line 15553</sub>
+<sub>`api.ogt` line 15554</sub>
 
 <a id="type-PushButtonDesc"></a>
 
@@ -13269,7 +13271,7 @@ struct PushButtonDesc {
 }
 ```
 
-<sub>`api.ogt` line 15580</sub>
+<sub>`api.ogt` line 15581</sub>
 
 <a id="type-IconButtonDesc"></a>
 
@@ -13307,7 +13309,7 @@ struct IconButtonDesc {
 }
 ```
 
-<sub>`api.ogt` line 15606</sub>
+<sub>`api.ogt` line 15607</sub>
 
 <a id="type-HoldButtonDesc"></a>
 
@@ -13351,7 +13353,7 @@ struct HoldButtonDesc {
 }
 ```
 
-<sub>`api.ogt` line 15630</sub>
+<sub>`api.ogt` line 15631</sub>
 
 <a id="type-HoldResult"></a>
 
@@ -13378,7 +13380,7 @@ struct HoldResult {
 }
 ```
 
-<sub>`api.ogt` line 15650</sub>
+<sub>`api.ogt` line 15651</sub>
 
 <a id="type-LabelSide"></a>
 
@@ -13401,7 +13403,7 @@ enum LabelSide {
 }
 ```
 
-<sub>`api.ogt` line 15669</sub>
+<sub>`api.ogt` line 15670</sub>
 
 <a id="type-ToggleSwitchDesc"></a>
 
@@ -13437,7 +13439,7 @@ struct ToggleSwitchDesc {
 }
 ```
 
-<sub>`api.ogt` line 15675</sub>
+<sub>`api.ogt` line 15676</sub>
 
 <a id="type-SwitchResult"></a>
 
@@ -13460,7 +13462,7 @@ struct SwitchResult {
 }
 ```
 
-<sub>`api.ogt` line 15688</sub>
+<sub>`api.ogt` line 15689</sub>
 
 <a id="type-CheckFieldDesc"></a>
 
@@ -13496,7 +13498,7 @@ struct CheckFieldDesc {
 }
 ```
 
-<sub>`api.ogt` line 15704</sub>
+<sub>`api.ogt` line 15705</sub>
 
 <a id="type-RadioOption"></a>
 
@@ -13524,7 +13526,7 @@ struct RadioOption {
 }
 ```
 
-<sub>`api.ogt` line 15727</sub>
+<sub>`api.ogt` line 15728</sub>
 
 <a id="type-RadioVariant"></a>
 
@@ -13547,7 +13549,7 @@ enum RadioVariant {
 }
 ```
 
-<sub>`api.ogt` line 15736</sub>
+<sub>`api.ogt` line 15737</sub>
 
 <a id="type-RadioGroupDesc"></a>
 
@@ -13583,7 +13585,7 @@ struct RadioGroupDesc {
 }
 ```
 
-<sub>`api.ogt` line 15742</sub>
+<sub>`api.ogt` line 15743</sub>
 
 <a id="type-ChoiceIndexResult"></a>
 
@@ -13606,7 +13608,7 @@ struct ChoiceIndexResult {
 }
 ```
 
-<sub>`api.ogt` line 15756</sub>
+<sub>`api.ogt` line 15757</sub>
 
 <a id="type-SliderMark"></a>
 
@@ -13627,7 +13629,7 @@ struct SliderMark {
 }
 ```
 
-<sub>`api.ogt` line 15771</sub>
+<sub>`api.ogt` line 15772</sub>
 
 <a id="type-ValueFormat"></a>
 
@@ -13657,7 +13659,7 @@ struct ValueFormat {
 }
 ```
 
-<sub>`api.ogt` line 15777</sub>
+<sub>`api.ogt` line 15778</sub>
 
 <a id="type-ValueSliderDesc"></a>
 
@@ -13707,7 +13709,7 @@ struct ValueSliderDesc {
 }
 ```
 
-<sub>`api.ogt` line 15788</sub>
+<sub>`api.ogt` line 15789</sub>
 
 <a id="type-ValueSliderResult"></a>
 
@@ -13732,7 +13734,7 @@ struct ValueSliderResult {
 }
 ```
 
-<sub>`api.ogt` line 15811</sub>
+<sub>`api.ogt` line 15812</sub>
 
 <a id="type-RangeSliderDesc"></a>
 
@@ -13778,7 +13780,7 @@ struct RangeSliderDesc {
 }
 ```
 
-<sub>`api.ogt` line 15828</sub>
+<sub>`api.ogt` line 15829</sub>
 
 <a id="type-RangeResult"></a>
 
@@ -13803,7 +13805,7 @@ struct RangeResult {
 }
 ```
 
-<sub>`api.ogt` line 15848</sub>
+<sub>`api.ogt` line 15849</sub>
 
 <a id="type-NumberStepperDesc"></a>
 
@@ -13843,7 +13845,7 @@ struct NumberStepperDesc {
 }
 ```
 
-<sub>`api.ogt` line 15866</sub>
+<sub>`api.ogt` line 15867</sub>
 
 <a id="type-NumberResult"></a>
 
@@ -13864,7 +13866,7 @@ struct NumberResult {
 }
 ```
 
-<sub>`api.ogt` line 15882</sub>
+<sub>`api.ogt` line 15883</sub>
 
 <a id="type-CyclerDesc"></a>
 
@@ -13902,7 +13904,7 @@ struct CyclerDesc {
 }
 ```
 
-<sub>`api.ogt` line 15897</sub>
+<sub>`api.ogt` line 15898</sub>
 
 <a id="type-SegmentItem"></a>
 
@@ -13930,7 +13932,7 @@ struct SegmentItem {
 }
 ```
 
-<sub>`api.ogt` line 15924</sub>
+<sub>`api.ogt` line 15925</sub>
 
 <a id="type-SegmentedDesc"></a>
 
@@ -13966,7 +13968,7 @@ struct SegmentedDesc {
 }
 ```
 
-<sub>`api.ogt` line 15933</sub>
+<sub>`api.ogt` line 15934</sub>
 
 <a id="type-DropdownOption"></a>
 
@@ -13996,7 +13998,7 @@ struct DropdownOption {
 }
 ```
 
-<sub>`api.ogt` line 15955</sub>
+<sub>`api.ogt` line 15956</sub>
 
 <a id="type-DropdownDesc"></a>
 
@@ -14043,7 +14045,7 @@ struct DropdownDesc {
 }
 ```
 
-<sub>`api.ogt` line 15965</sub>
+<sub>`api.ogt` line 15966</sub>
 
 <a id="type-DropdownResult"></a>
 
@@ -14066,7 +14068,7 @@ struct DropdownResult {
 }
 ```
 
-<sub>`api.ogt` line 15986</sub>
+<sub>`api.ogt` line 15987</sub>
 
 <a id="type-InputFieldDesc"></a>
 
@@ -14112,7 +14114,7 @@ struct InputFieldDesc {
 }
 ```
 
-<sub>`api.ogt` line 16001</sub>
+<sub>`api.ogt` line 16002</sub>
 
 <a id="type-InputResult"></a>
 
@@ -14139,7 +14141,7 @@ struct InputResult {
 }
 ```
 
-<sub>`api.ogt` line 16020</sub>
+<sub>`api.ogt` line 16021</sub>
 
 <a id="type-InputAreaDesc"></a>
 
@@ -14179,7 +14181,7 @@ struct InputAreaDesc {
 }
 ```
 
-<sub>`api.ogt` line 16038</sub>
+<sub>`api.ogt` line 16039</sub>
 
 <a id="type-SearchBoxDesc"></a>
 
@@ -14217,7 +14219,7 @@ struct SearchBoxDesc {
 }
 ```
 
-<sub>`api.ogt` line 16063</sub>
+<sub>`api.ogt` line 16064</sub>
 
 <a id="type-SearchResult"></a>
 
@@ -14246,7 +14248,7 @@ struct SearchResult {
 }
 ```
 
-<sub>`api.ogt` line 16078</sub>
+<sub>`api.ogt` line 16079</sub>
 
 <a id="type-PickedColor"></a>
 
@@ -14276,7 +14278,7 @@ struct PickedColor {
 }
 ```
 
-<sub>`api.ogt` line 16097</sub>
+<sub>`api.ogt` line 16098</sub>
 
 <a id="type-ColorPickerDesc"></a>
 
@@ -14310,7 +14312,7 @@ struct ColorPickerDesc {
 }
 ```
 
-<sub>`api.ogt` line 16108</sub>
+<sub>`api.ogt` line 16109</sub>
 
 <a id="type-ColorPickerResult"></a>
 
@@ -14335,7 +14337,7 @@ struct ColorPickerResult {
 }
 ```
 
-<sub>`api.ogt` line 16121</sub>
+<sub>`api.ogt` line 16122</sub>
 
 <a id="type-KeyBindingRowDesc"></a>
 
@@ -14392,7 +14394,7 @@ struct KeyBindingRowDesc {
 }
 ```
 
-<sub>`api.ogt` line 16138</sub>
+<sub>`api.ogt` line 16139</sub>
 
 <a id="type-KeyBindingResult"></a>
 
@@ -14417,7 +14419,7 @@ struct KeyBindingResult {
 }
 ```
 
-<sub>`api.ogt` line 16166</sub>
+<sub>`api.ogt` line 16167</sub>
 
 <a id="type-KeyboardLayout"></a>
 
@@ -14444,7 +14446,7 @@ enum KeyboardLayout {
 }
 ```
 
-<sub>`api.ogt` line 16183</sub>
+<sub>`api.ogt` line 16184</sub>
 
 <a id="type-KeyboardDesc"></a>
 
@@ -14484,7 +14486,7 @@ struct KeyboardDesc {
 }
 ```
 
-<sub>`api.ogt` line 16191</sub>
+<sub>`api.ogt` line 16192</sub>
 
 <a id="type-KeyboardResult"></a>
 
@@ -14513,7 +14515,7 @@ struct KeyboardResult {
 }
 ```
 
-<sub>`api.ogt` line 16206</sub>
+<sub>`api.ogt` line 16207</sub>
 
 <a id="type-UiAction"></a>
 
@@ -14538,7 +14540,7 @@ callback UiAction {
 }
 ```
 
-<sub>`api.ogt` line 16227</sub>
+<sub>`api.ogt` line 16228</sub>
 
 <a id="type-SettingsChanged"></a>
 
@@ -14563,7 +14565,7 @@ callback SettingsChanged {
 }
 ```
 
-<sub>`api.ogt` line 16232</sub>
+<sub>`api.ogt` line 16233</sub>
 
 <a id="type-MenuItem"></a>
 
@@ -14591,7 +14593,7 @@ struct MenuItem {
 }
 ```
 
-<sub>`api.ogt` line 16237</sub>
+<sub>`api.ogt` line 16238</sub>
 
 <a id="type-MenuResult"></a>
 
@@ -14610,7 +14612,7 @@ struct MenuResult {
 }
 ```
 
-<sub>`api.ogt` line 16246</sub>
+<sub>`api.ogt` line 16247</sub>
 
 <a id="type-MainMenuDesc"></a>
 
@@ -14642,7 +14644,7 @@ struct MainMenuDesc {
 }
 ```
 
-<sub>`api.ogt` line 16251</sub>
+<sub>`api.ogt` line 16252</sub>
 
 <a id="type-PauseMenuDesc"></a>
 
@@ -14672,7 +14674,7 @@ struct PauseMenuDesc {
 }
 ```
 
-<sub>`api.ogt` line 16262</sub>
+<sub>`api.ogt` line 16263</sub>
 
 <a id="type-KeyBinding"></a>
 
@@ -14698,7 +14700,7 @@ struct KeyBinding {
 }
 ```
 
-<sub>`api.ogt` line 16273</sub>
+<sub>`api.ogt` line 16274</sub>
 
 <a id="type-LanguageOption"></a>
 
@@ -14722,7 +14724,7 @@ struct LanguageOption {
 }
 ```
 
-<sub>`api.ogt` line 16281</sub>
+<sub>`api.ogt` line 16282</sub>
 
 <a id="type-GameSettings"></a>
 
@@ -14804,7 +14806,7 @@ struct GameSettings {
 }
 ```
 
-<sub>`api.ogt` line 16288</sub>
+<sub>`api.ogt` line 16289</sub>
 
 <a id="type-SettingsDesc"></a>
 
@@ -14990,7 +14992,7 @@ struct SettingsDesc {
 }
 ```
 
-<sub>`api.ogt` line 16339</sub>
+<sub>`api.ogt` line 16340</sub>
 
 <a id="type-SettingsResult"></a>
 
@@ -15013,7 +15015,7 @@ struct SettingsResult {
 }
 ```
 
-<sub>`api.ogt` line 16465</sub>
+<sub>`api.ogt` line 16466</sub>
 
 <a id="type-Ability"></a>
 
@@ -15043,7 +15045,7 @@ struct Ability {
 }
 ```
 
-<sub>`api.ogt` line 16472</sub>
+<sub>`api.ogt` line 16473</sub>
 
 <a id="type-PlatformerHudDesc"></a>
 
@@ -15089,7 +15091,7 @@ struct PlatformerHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 16483</sub>
+<sub>`api.ogt` line 16484</sub>
 
 <a id="type-HudResult"></a>
 
@@ -15116,7 +15118,7 @@ struct HudResult {
 }
 ```
 
-<sub>`api.ogt` line 16504</sub>
+<sub>`api.ogt` line 16505</sub>
 
 <a id="type-ShooterHudDesc"></a>
 
@@ -15178,7 +15180,7 @@ struct ShooterHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 16513</sub>
+<sub>`api.ogt` line 16514</sub>
 
 <a id="type-PuzzleHudDesc"></a>
 
@@ -15224,7 +15226,7 @@ struct PuzzleHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 16544</sub>
+<sub>`api.ogt` line 16545</sub>
 
 <a id="type-Currency"></a>
 
@@ -15254,7 +15256,7 @@ struct Currency {
 }
 ```
 
-<sub>`api.ogt` line 16566</sub>
+<sub>`api.ogt` line 16567</sub>
 
 <a id="type-Generator"></a>
 
@@ -15290,7 +15292,7 @@ struct Generator {
 }
 ```
 
-<sub>`api.ogt` line 16576</sub>
+<sub>`api.ogt` line 16577</sub>
 
 <a id="type-IdleHudDesc"></a>
 
@@ -15330,7 +15332,7 @@ struct IdleHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 16590</sub>
+<sub>`api.ogt` line 16591</sub>
 
 <a id="type-RaceSplit"></a>
 
@@ -15356,7 +15358,7 @@ struct RaceSplit {
 }
 ```
 
-<sub>`api.ogt` line 16609</sub>
+<sub>`api.ogt` line 16610</sub>
 
 <a id="type-RacingHudDesc"></a>
 
@@ -15452,7 +15454,7 @@ struct RacingHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 16617</sub>
+<sub>`api.ogt` line 16618</sub>
 
 <a id="type-DialogueLine"></a>
 
@@ -15478,7 +15480,7 @@ struct DialogueLine {
 }
 ```
 
-<sub>`api.ogt` line 16675</sub>
+<sub>`api.ogt` line 16676</sub>
 
 <a id="type-CutsceneDesc"></a>
 
@@ -15516,7 +15518,7 @@ struct CutsceneDesc {
 }
 ```
 
-<sub>`api.ogt` line 16683</sub>
+<sub>`api.ogt` line 16684</sub>
 
 <a id="type-CutsceneResult"></a>
 
@@ -15539,7 +15541,7 @@ struct CutsceneResult {
 }
 ```
 
-<sub>`api.ogt` line 16700</sub>
+<sub>`api.ogt` line 16701</sub>
 
 <a id="type-ShopItem"></a>
 
@@ -15573,7 +15575,7 @@ struct ShopItem {
 }
 ```
 
-<sub>`api.ogt` line 16707</sub>
+<sub>`api.ogt` line 16708</sub>
 
 <a id="type-ShopDesc"></a>
 
@@ -15631,7 +15633,7 @@ struct ShopDesc {
 }
 ```
 
-<sub>`api.ogt` line 16719</sub>
+<sub>`api.ogt` line 16720</sub>
 
 <a id="type-ShopResult"></a>
 
@@ -15654,7 +15656,7 @@ struct ShopResult {
 }
 ```
 
-<sub>`api.ogt` line 16750</sub>
+<sub>`api.ogt` line 16751</sub>
 
 <a id="type-InventoryItem"></a>
 
@@ -15686,7 +15688,7 @@ struct InventoryItem {
 }
 ```
 
-<sub>`api.ogt` line 16757</sub>
+<sub>`api.ogt` line 16758</sub>
 
 <a id="type-InventoryDesc"></a>
 
@@ -15730,7 +15732,7 @@ struct InventoryDesc {
 }
 ```
 
-<sub>`api.ogt` line 16768</sub>
+<sub>`api.ogt` line 16769</sub>
 
 <a id="type-SlotMove"></a>
 
@@ -15751,7 +15753,7 @@ struct SlotMove {
 }
 ```
 
-<sub>`api.ogt` line 16790</sub>
+<sub>`api.ogt` line 16791</sub>
 
 <a id="type-InventoryResult"></a>
 
@@ -15776,7 +15778,7 @@ struct InventoryResult {
 }
 ```
 
-<sub>`api.ogt` line 16796</sub>
+<sub>`api.ogt` line 16797</sub>
 
 <a id="type-LevelInfo"></a>
 
@@ -15804,7 +15806,7 @@ struct LevelInfo {
 }
 ```
 
-<sub>`api.ogt` line 16804</sub>
+<sub>`api.ogt` line 16805</sub>
 
 <a id="type-LevelSelectDesc"></a>
 
@@ -15844,7 +15846,7 @@ struct LevelSelectDesc {
 }
 ```
 
-<sub>`api.ogt` line 16813</sub>
+<sub>`api.ogt` line 16814</sub>
 
 <a id="type-LevelSelectResult"></a>
 
@@ -15865,7 +15867,7 @@ struct LevelSelectResult {
 }
 ```
 
-<sub>`api.ogt` line 16832</sub>
+<sub>`api.ogt` line 16833</sub>
 
 <a id="type-StatRow"></a>
 
@@ -15889,7 +15891,7 @@ struct StatRow {
 }
 ```
 
-<sub>`api.ogt` line 16838</sub>
+<sub>`api.ogt` line 16839</sub>
 
 <a id="type-ScoreFormat"></a>
 
@@ -15912,7 +15914,7 @@ enum ScoreFormat {
 }
 ```
 
-<sub>`api.ogt` line 16845</sub>
+<sub>`api.ogt` line 16846</sub>
 
 <a id="type-ResultsDesc"></a>
 
@@ -15974,7 +15976,7 @@ struct ResultsDesc {
 }
 ```
 
-<sub>`api.ogt` line 16851</sub>
+<sub>`api.ogt` line 16852</sub>
 
 <a id="type-LeaderboardEntry"></a>
 
@@ -16002,7 +16004,7 @@ struct LeaderboardEntry {
 }
 ```
 
-<sub>`api.ogt` line 16882</sub>
+<sub>`api.ogt` line 16883</sub>
 
 <a id="type-LeaderboardDesc"></a>
 
@@ -16042,7 +16044,7 @@ struct LeaderboardDesc {
 }
 ```
 
-<sub>`api.ogt` line 16891</sub>
+<sub>`api.ogt` line 16892</sub>
 
 <a id="type-LeaderboardResult"></a>
 
@@ -16067,7 +16069,7 @@ struct LeaderboardResult {
 }
 ```
 
-<sub>`api.ogt` line 16909</sub>
+<sub>`api.ogt` line 16910</sub>
 
 <a id="type-TutorialStep"></a>
 
@@ -16093,7 +16095,7 @@ struct TutorialStep {
 }
 ```
 
-<sub>`api.ogt` line 16917</sub>
+<sub>`api.ogt` line 16918</sub>
 
 <a id="type-TutorialDesc"></a>
 
@@ -16135,7 +16137,7 @@ struct TutorialDesc {
 }
 ```
 
-<sub>`api.ogt` line 16925</sub>
+<sub>`api.ogt` line 16926</sub>
 
 <a id="type-TutorialResult"></a>
 
@@ -16158,7 +16160,7 @@ struct TutorialResult {
 }
 ```
 
-<sub>`api.ogt` line 16945</sub>
+<sub>`api.ogt` line 16946</sub>
 
 <a id="type-LoadingDesc"></a>
 
@@ -16191,7 +16193,7 @@ struct LoadingDesc {
 }
 ```
 
-<sub>`api.ogt` line 16952</sub>
+<sub>`api.ogt` line 16953</sub>
 
 <a id="type-ConfirmDesc"></a>
 
@@ -16227,7 +16229,7 @@ struct ConfirmDesc {
 }
 ```
 
-<sub>`api.ogt` line 16966</sub>
+<sub>`api.ogt` line 16967</sub>
 
 <a id="type-ConfirmResult"></a>
 
@@ -16248,7 +16250,7 @@ struct ConfirmResult {
 }
 ```
 
-<sub>`api.ogt` line 16981</sub>
+<sub>`api.ogt` line 16982</sub>
 
 <a id="type-AlertDesc"></a>
 
@@ -16278,7 +16280,7 @@ struct AlertDesc {
 }
 ```
 
-<sub>`api.ogt` line 16987</sub>
+<sub>`api.ogt` line 16988</sub>
 
 <a id="type-UiProp"></a>
 
@@ -16337,7 +16339,7 @@ enum UiProp {
 }
 ```
 
-<sub>`api.ogt` line 17142</sub>
+<sub>`api.ogt` line 17143</sub>
 
 <a id="type-LayoutMode"></a>
 
@@ -16362,7 +16364,7 @@ enum LayoutMode {
 }
 ```
 
-<sub>`api.ogt` line 17166</sub>
+<sub>`api.ogt` line 17167</sub>
 
 <a id="type-Position"></a>
 
@@ -16387,7 +16389,7 @@ enum Position {
 }
 ```
 
-<sub>`api.ogt` line 17173</sub>
+<sub>`api.ogt` line 17174</sub>
 
 <a id="type-GridFlow"></a>
 
@@ -16410,7 +16412,7 @@ enum GridFlow {
 }
 ```
 
-<sub>`api.ogt` line 17180</sub>
+<sub>`api.ogt` line 17181</sub>
 
 <a id="type-DragAxis"></a>
 
@@ -16437,7 +16439,7 @@ enum DragAxis {
 }
 ```
 
-<sub>`api.ogt` line 17186</sub>
+<sub>`api.ogt` line 17187</sub>
 
 <a id="type-EaseName"></a>
 
@@ -16464,7 +16466,7 @@ enum EaseName {
 }
 ```
 
-<sub>`api.ogt` line 17194</sub>
+<sub>`api.ogt` line 17195</sub>
 
 <a id="type-MotionToken"></a>
 
@@ -16495,7 +16497,7 @@ enum MotionToken {
 }
 ```
 
-<sub>`api.ogt` line 17202</sub>
+<sub>`api.ogt` line 17203</sub>
 
 <a id="type-ReducedMotion"></a>
 
@@ -16520,7 +16522,7 @@ enum ReducedMotion {
 }
 ```
 
-<sub>`api.ogt` line 17212</sub>
+<sub>`api.ogt` line 17213</sub>
 
 <a id="type-Orientation"></a>
 
@@ -16543,7 +16545,7 @@ enum Orientation {
 }
 ```
 
-<sub>`api.ogt` line 17219</sub>
+<sub>`api.ogt` line 17220</sub>
 
 <a id="type-Repeat"></a>
 
@@ -16568,7 +16570,7 @@ enum Repeat {
 }
 ```
 
-<sub>`api.ogt` line 17225</sub>
+<sub>`api.ogt` line 17226</sub>
 
 <a id="type-UiTransform"></a>
 
@@ -16620,7 +16622,7 @@ struct UiTransform {
 }
 ```
 
-<sub>`api.ogt` line 17232</sub>
+<sub>`api.ogt` line 17233</sub>
 
 <a id="type-Edges"></a>
 
@@ -16660,7 +16662,7 @@ struct Edges {
 }
 ```
 
-<sub>`api.ogt` line 17260</sub>
+<sub>`api.ogt` line 17261</sub>
 
 <a id="type-TrackPx"></a>
 
@@ -16681,7 +16683,7 @@ struct TrackPx {
 }
 ```
 
-<sub>`api.ogt` line 17279</sub>
+<sub>`api.ogt` line 17280</sub>
 
 <a id="type-TrackFr"></a>
 
@@ -16702,7 +16704,7 @@ struct TrackFr {
 }
 ```
 
-<sub>`api.ogt` line 17286</sub>
+<sub>`api.ogt` line 17287</sub>
 
 <a id="type-TrackRange"></a>
 
@@ -16727,7 +16729,7 @@ struct TrackRange {
 }
 ```
 
-<sub>`api.ogt` line 17293</sub>
+<sub>`api.ogt` line 17294</sub>
 
 <a id="type-TrackPercent"></a>
 
@@ -16748,7 +16750,7 @@ struct TrackPercent {
 }
 ```
 
-<sub>`api.ogt` line 17303</sub>
+<sub>`api.ogt` line 17304</sub>
 
 <a id="type-TrackAuto"></a>
 
@@ -16762,7 +16764,7 @@ struct TrackAuto {
 }
 ```
 
-<sub>`api.ogt` line 17310</sub>
+<sub>`api.ogt` line 17311</sub>
 
 <a id="type-Track"></a>
 
@@ -16792,7 +16794,7 @@ union Track {
 }
 ```
 
-<sub>`api.ogt` line 17314</sub>
+<sub>`api.ogt` line 17315</sub>
 
 <a id="type-GridSpec"></a>
 
@@ -16832,7 +16834,7 @@ struct GridSpec {
 }
 ```
 
-<sub>`api.ogt` line 17324</sub>
+<sub>`api.ogt` line 17325</sub>
 
 <a id="type-GridPlace"></a>
 
@@ -16862,7 +16864,7 @@ struct GridPlace {
 }
 ```
 
-<sub>`api.ogt` line 17341</sub>
+<sub>`api.ogt` line 17342</sub>
 
 <a id="type-PropValue"></a>
 
@@ -16883,7 +16885,7 @@ struct PropValue {
 }
 ```
 
-<sub>`api.ogt` line 17351</sub>
+<sub>`api.ogt` line 17352</sub>
 
 <a id="type-UiQuery"></a>
 
@@ -16917,7 +16919,7 @@ struct UiQuery {
 }
 ```
 
-<sub>`api.ogt` line 17357</sub>
+<sub>`api.ogt` line 17358</sub>
 
 <a id="type-UiPatch"></a>
 
@@ -16963,7 +16965,7 @@ struct UiPatch {
 }
 ```
 
-<sub>`api.ogt` line 17371</sub>
+<sub>`api.ogt` line 17372</sub>
 
 <a id="type-UiVariant"></a>
 
@@ -16984,7 +16986,7 @@ struct UiVariant {
 }
 ```
 
-<sub>`api.ogt` line 17390</sub>
+<sub>`api.ogt` line 17391</sub>
 
 <a id="type-SpringSpec"></a>
 
@@ -17014,7 +17016,7 @@ struct SpringSpec {
 }
 ```
 
-<sub>`api.ogt` line 17396</sub>
+<sub>`api.ogt` line 17397</sub>
 
 <a id="type-TweenSpec"></a>
 
@@ -17043,7 +17045,7 @@ struct TweenSpec {
 }
 ```
 
-<sub>`api.ogt` line 17409</sub>
+<sub>`api.ogt` line 17410</sub>
 
 <a id="type-TokenRef"></a>
 
@@ -17062,7 +17064,7 @@ struct TokenRef {
 }
 ```
 
-<sub>`api.ogt` line 17420</sub>
+<sub>`api.ogt` line 17421</sub>
 
 <a id="type-InstantSpec"></a>
 
@@ -17076,7 +17078,7 @@ struct InstantSpec {
 }
 ```
 
-<sub>`api.ogt` line 17425</sub>
+<sub>`api.ogt` line 17426</sub>
 
 <a id="type-Transition"></a>
 
@@ -17104,7 +17106,7 @@ union Transition {
 }
 ```
 
-<sub>`api.ogt` line 17429</sub>
+<sub>`api.ogt` line 17430</sub>
 
 <a id="type-DismissSpec"></a>
 
@@ -17130,7 +17132,7 @@ struct DismissSpec {
 }
 ```
 
-<sub>`api.ogt` line 17438</sub>
+<sub>`api.ogt` line 17439</sub>
 
 <a id="type-SnapPoint"></a>
 
@@ -17155,7 +17157,7 @@ struct SnapPoint {
 }
 ```
 
-<sub>`api.ogt` line 17447</sub>
+<sub>`api.ogt` line 17448</sub>
 
 <a id="type-DragSpec"></a>
 
@@ -17197,7 +17199,7 @@ struct DragSpec {
 }
 ```
 
-<sub>`api.ogt` line 17457</sub>
+<sub>`api.ogt` line 17458</sub>
 
 <a id="type-PinchSpec"></a>
 
@@ -17223,7 +17225,7 @@ struct PinchSpec {
 }
 ```
 
-<sub>`api.ogt` line 17474</sub>
+<sub>`api.ogt` line 17475</sub>
 
 <a id="type-DropSpec"></a>
 
@@ -17245,7 +17247,7 @@ struct DropSpec {
 }
 ```
 
-<sub>`api.ogt` line 17482</sub>
+<sub>`api.ogt` line 17483</sub>
 
 <a id="type-PresenceSpec"></a>
 
@@ -17279,7 +17281,7 @@ struct PresenceSpec {
 }
 ```
 
-<sub>`api.ogt` line 17488</sub>
+<sub>`api.ogt` line 17489</sub>
 
 <a id="type-VisualState"></a>
 
@@ -17304,7 +17306,7 @@ struct VisualState {
 }
 ```
 
-<sub>`api.ogt` line 17502</sub>
+<sub>`api.ogt` line 17503</sub>
 
 <a id="type-StateTransition"></a>
 
@@ -17327,7 +17329,7 @@ struct StateTransition {
 }
 ```
 
-<sub>`api.ogt` line 17510</sub>
+<sub>`api.ogt` line 17511</sub>
 
 <a id="type-StateGroup"></a>
 
@@ -17350,7 +17352,7 @@ struct StateGroup {
 }
 ```
 
-<sub>`api.ogt` line 17517</sub>
+<sub>`api.ogt` line 17518</sub>
 
 <a id="type-StateValue"></a>
 
@@ -17371,7 +17373,7 @@ struct StateValue {
 }
 ```
 
-<sub>`api.ogt` line 17524</sub>
+<sub>`api.ogt` line 17525</sub>
 
 <a id="type-ElementProps"></a>
 
@@ -17453,7 +17455,7 @@ struct ElementProps {
 }
 ```
 
-<sub>`api.ogt` line 17530</sub>
+<sub>`api.ogt` line 17531</sub>
 
 <a id="type-EaseKey"></a>
 
@@ -17472,7 +17474,7 @@ struct EaseKey {
 }
 ```
 
-<sub>`api.ogt` line 17569</sub>
+<sub>`api.ogt` line 17570</sub>
 
 <a id="type-HoldKey"></a>
 
@@ -17486,7 +17488,7 @@ struct HoldKey {
 }
 ```
 
-<sub>`api.ogt` line 17574</sub>
+<sub>`api.ogt` line 17575</sub>
 
 <a id="type-LinearKey"></a>
 
@@ -17500,7 +17502,7 @@ struct LinearKey {
 }
 ```
 
-<sub>`api.ogt` line 17578</sub>
+<sub>`api.ogt` line 17579</sub>
 
 <a id="type-BezierKey"></a>
 
@@ -17519,7 +17521,7 @@ struct BezierKey {
 }
 ```
 
-<sub>`api.ogt` line 17582</sub>
+<sub>`api.ogt` line 17583</sub>
 
 <a id="type-KeyEase"></a>
 
@@ -17549,7 +17551,7 @@ union KeyEase {
 }
 ```
 
-<sub>`api.ogt` line 17587</sub>
+<sub>`api.ogt` line 17588</sub>
 
 <a id="type-TimelineKey"></a>
 
@@ -17574,7 +17576,7 @@ struct TimelineKey {
 }
 ```
 
-<sub>`api.ogt` line 17597</sub>
+<sub>`api.ogt` line 17598</sub>
 
 <a id="type-TimelineTrack"></a>
 
@@ -17597,7 +17599,7 @@ struct TimelineTrack {
 }
 ```
 
-<sub>`api.ogt` line 17606</sub>
+<sub>`api.ogt` line 17607</sub>
 
 <a id="type-SoundEvent"></a>
 
@@ -17620,7 +17622,7 @@ struct SoundEvent {
 }
 ```
 
-<sub>`api.ogt` line 17613</sub>
+<sub>`api.ogt` line 17614</sub>
 
 <a id="type-HapticEvent"></a>
 
@@ -17639,7 +17641,7 @@ struct HapticEvent {
 }
 ```
 
-<sub>`api.ogt` line 17621</sub>
+<sub>`api.ogt` line 17622</sub>
 
 <a id="type-BurstEvent"></a>
 
@@ -17664,7 +17666,7 @@ struct BurstEvent {
 }
 ```
 
-<sub>`api.ogt` line 17626</sub>
+<sub>`api.ogt` line 17627</sub>
 
 <a id="type-StateEvent"></a>
 
@@ -17685,7 +17687,7 @@ struct StateEvent {
 }
 ```
 
-<sub>`api.ogt` line 17635</sub>
+<sub>`api.ogt` line 17636</sub>
 
 <a id="type-CallbackEvent"></a>
 
@@ -17704,7 +17706,7 @@ struct CallbackEvent {
 }
 ```
 
-<sub>`api.ogt` line 17641</sub>
+<sub>`api.ogt` line 17642</sub>
 
 <a id="type-TimelineAction"></a>
 
@@ -17734,7 +17736,7 @@ union TimelineAction {
 }
 ```
 
-<sub>`api.ogt` line 17646</sub>
+<sub>`api.ogt` line 17647</sub>
 
 <a id="type-TimelineEvent"></a>
 
@@ -17759,7 +17761,7 @@ struct TimelineEvent {
 }
 ```
 
-<sub>`api.ogt` line 17656</sub>
+<sub>`api.ogt` line 17657</sub>
 
 <a id="type-TimelineLabel"></a>
 
@@ -17782,7 +17784,7 @@ struct TimelineLabel {
 }
 ```
 
-<sub>`api.ogt` line 17665</sub>
+<sub>`api.ogt` line 17666</sub>
 
 <a id="type-UiTimeline"></a>
 
@@ -17812,7 +17814,7 @@ struct UiTimeline {
 }
 ```
 
-<sub>`api.ogt` line 17673</sub>
+<sub>`api.ogt` line 17674</sub>
 
 <a id="type-ChoreoPlay"></a>
 
@@ -17837,7 +17839,7 @@ struct ChoreoPlay {
 }
 ```
 
-<sub>`api.ogt` line 17684</sub>
+<sub>`api.ogt` line 17685</sub>
 
 <a id="type-ChoreoSteps"></a>
 
@@ -17856,7 +17858,7 @@ struct ChoreoSteps {
 }
 ```
 
-<sub>`api.ogt` line 17693</sub>
+<sub>`api.ogt` line 17694</sub>
 
 <a id="type-ChoreoStagger"></a>
 
@@ -17889,7 +17891,7 @@ struct ChoreoStagger {
 }
 ```
 
-<sub>`api.ogt` line 17698</sub>
+<sub>`api.ogt` line 17699</sub>
 
 <a id="type-ChoreoCascade"></a>
 
@@ -17910,7 +17912,7 @@ struct ChoreoCascade {
 }
 ```
 
-<sub>`api.ogt` line 17713</sub>
+<sub>`api.ogt` line 17714</sub>
 
 <a id="type-Choreo"></a>
 
@@ -17940,7 +17942,7 @@ union Choreo {
 }
 ```
 
-<sub>`api.ogt` line 17719</sub>
+<sub>`api.ogt` line 17720</sub>
 
 <a id="type-PlayDesc"></a>
 
@@ -17976,7 +17978,7 @@ struct PlayDesc {
 }
 ```
 
-<sub>`api.ogt` line 17729</sub>
+<sub>`api.ogt` line 17730</sub>
 
 <a id="type-PlayInfo"></a>
 
@@ -18007,7 +18009,7 @@ struct PlayInfo {
 }
 ```
 
-<sub>`api.ogt` line 17743</sub>
+<sub>`api.ogt` line 17744</sub>
 
 <a id="type-GestureInfo"></a>
 
@@ -18056,7 +18058,7 @@ struct GestureInfo {
 }
 ```
 
-<sub>`api.ogt` line 17756</sub>
+<sub>`api.ogt` line 17757</sub>
 
 <a id="type-UiMotionEvent"></a>
 
@@ -18085,7 +18087,7 @@ struct UiMotionEvent {
 }
 ```
 
-<sub>`api.ogt` line 17778</sub>
+<sub>`api.ogt` line 17779</sub>
 
 <a id="type-UiOverlap"></a>
 
@@ -18110,7 +18112,7 @@ struct UiOverlap {
 }
 ```
 
-<sub>`api.ogt` line 17788</sub>
+<sub>`api.ogt` line 17789</sub>
 
 <a id="type-UiLayoutStats"></a>
 
@@ -18135,7 +18137,7 @@ struct UiLayoutStats {
 }
 ```
 
-<sub>`api.ogt` line 17796</sub>
+<sub>`api.ogt` line 17797</sub>
 
 <a id="type-VectorArt"></a>
 
@@ -18149,7 +18151,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle VectorArt "A cooked vector (an `.ogt` of `type vector`: an SVG subset) from og.load.vector, drawn by a VectorFill."
 ```
 
-<sub>`api.ogt` line 17916</sub>
+<sub>`api.ogt` line 17917</sub>
 
 <a id="type-UiMaterial"></a>
 
@@ -18163,7 +18165,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle UiMaterial "A custom UI material (an `.ogt` of `type ui-material`) from og.load.uiMaterial, which a LayerDesc composites through."
 ```
 
-<sub>`api.ogt` line 17917</sub>
+<sub>`api.ogt` line 17918</sub>
 
 <a id="type-ShapeType"></a>
 
@@ -18192,7 +18194,7 @@ enum ShapeType {
 }
 ```
 
-<sub>`api.ogt` line 17933</sub>
+<sub>`api.ogt` line 17934</sub>
 
 <a id="type-CornerShape"></a>
 
@@ -18219,7 +18221,7 @@ enum CornerShape {
 }
 ```
 
-<sub>`api.ogt` line 17942</sub>
+<sub>`api.ogt` line 17943</sub>
 
 <a id="type-LineCap"></a>
 
@@ -18244,7 +18246,7 @@ enum LineCap {
 }
 ```
 
-<sub>`api.ogt` line 17950</sub>
+<sub>`api.ogt` line 17951</sub>
 
 <a id="type-LineJoin"></a>
 
@@ -18269,7 +18271,7 @@ enum LineJoin {
 }
 ```
 
-<sub>`api.ogt` line 17957</sub>
+<sub>`api.ogt` line 17958</sub>
 
 <a id="type-DrawShape"></a>
 
@@ -18357,7 +18359,7 @@ struct DrawShape {
 }
 ```
 
-<sub>`api.ogt` line 17964</sub>
+<sub>`api.ogt` line 17965</sub>
 
 <a id="type-GradientType"></a>
 
@@ -18384,7 +18386,7 @@ enum GradientType {
 }
 ```
 
-<sub>`api.ogt` line 18019</sub>
+<sub>`api.ogt` line 18020</sub>
 
 <a id="type-GradientSpread"></a>
 
@@ -18409,7 +18411,7 @@ enum GradientSpread {
 }
 ```
 
-<sub>`api.ogt` line 18027</sub>
+<sub>`api.ogt` line 18028</sub>
 
 <a id="type-GradientStop"></a>
 
@@ -18437,7 +18439,7 @@ struct GradientStop {
 }
 ```
 
-<sub>`api.ogt` line 18034</sub>
+<sub>`api.ogt` line 18035</sub>
 
 <a id="type-Gradient"></a>
 
@@ -18474,7 +18476,7 @@ struct Gradient {
 }
 ```
 
-<sub>`api.ogt` line 18045</sub>
+<sub>`api.ogt` line 18046</sub>
 
 <a id="type-ImageFit"></a>
 
@@ -18505,7 +18507,7 @@ enum ImageFit {
 }
 ```
 
-<sub>`api.ogt` line 18061</sub>
+<sub>`api.ogt` line 18062</sub>
 
 <a id="type-SliceEdges"></a>
 
@@ -18530,7 +18532,7 @@ enum SliceEdges {
 }
 ```
 
-<sub>`api.ogt` line 18071</sub>
+<sub>`api.ogt` line 18072</sub>
 
 <a id="type-SolidFill"></a>
 
@@ -18552,7 +18554,7 @@ struct SolidFill {
 }
 ```
 
-<sub>`api.ogt` line 18078</sub>
+<sub>`api.ogt` line 18079</sub>
 
 <a id="type-ImageFill"></a>
 
@@ -18611,7 +18613,7 @@ struct ImageFill {
 }
 ```
 
-<sub>`api.ogt` line 18084</sub>
+<sub>`api.ogt` line 18085</sub>
 
 <a id="type-VectorFill"></a>
 
@@ -18635,7 +18637,7 @@ struct VectorFill {
 }
 ```
 
-<sub>`api.ogt` line 18114</sub>
+<sub>`api.ogt` line 18115</sub>
 
 <a id="type-Fill"></a>
 
@@ -18663,7 +18665,7 @@ union Fill {
 }
 ```
 
-<sub>`api.ogt` line 18121</sub>
+<sub>`api.ogt` line 18122</sub>
 
 <a id="type-StrokeAlign"></a>
 
@@ -18688,7 +18690,7 @@ enum StrokeAlign {
 }
 ```
 
-<sub>`api.ogt` line 18130</sub>
+<sub>`api.ogt` line 18131</sub>
 
 <a id="type-Stroke"></a>
 
@@ -18734,7 +18736,7 @@ struct Stroke {
 }
 ```
 
-<sub>`api.ogt` line 18137</sub>
+<sub>`api.ogt` line 18138</sub>
 
 <a id="type-ShadowEffect"></a>
 
@@ -18771,7 +18773,7 @@ struct ShadowEffect {
 }
 ```
 
-<sub>`api.ogt` line 18161</sub>
+<sub>`api.ogt` line 18162</sub>
 
 <a id="type-GlowEffect"></a>
 
@@ -18803,7 +18805,7 @@ struct GlowEffect {
 }
 ```
 
-<sub>`api.ogt` line 18179</sub>
+<sub>`api.ogt` line 18180</sub>
 
 <a id="type-BlurEffect"></a>
 
@@ -18829,7 +18831,7 @@ struct BlurEffect {
 }
 ```
 
-<sub>`api.ogt` line 18193</sub>
+<sub>`api.ogt` line 18194</sub>
 
 <a id="type-BackdropEffect"></a>
 
@@ -18884,7 +18886,7 @@ struct BackdropEffect {
 }
 ```
 
-<sub>`api.ogt` line 18203</sub>
+<sub>`api.ogt` line 18204</sub>
 
 <a id="type-GlassWeight"></a>
 
@@ -18911,7 +18913,7 @@ enum GlassWeight {
 }
 ```
 
-<sub>`api.ogt` line 18233</sub>
+<sub>`api.ogt` line 18234</sub>
 
 <a id="type-Elevation"></a>
 
@@ -18938,7 +18940,7 @@ enum Elevation {
 }
 ```
 
-<sub>`api.ogt` line 18241</sub>
+<sub>`api.ogt` line 18242</sub>
 
 <a id="type-Effect"></a>
 
@@ -18970,7 +18972,7 @@ union Effect {
 }
 ```
 
-<sub>`api.ogt` line 18249</sub>
+<sub>`api.ogt` line 18250</sub>
 
 <a id="type-ClipMode"></a>
 
@@ -18995,7 +18997,7 @@ enum ClipMode {
 }
 ```
 
-<sub>`api.ogt` line 18260</sub>
+<sub>`api.ogt` line 18261</sub>
 
 <a id="type-MaskDesc"></a>
 
@@ -19021,7 +19023,7 @@ struct MaskDesc {
 }
 ```
 
-<sub>`api.ogt` line 18267</sub>
+<sub>`api.ogt` line 18268</sub>
 
 <a id="type-MaterialName"></a>
 
@@ -19062,7 +19064,7 @@ enum MaterialName {
 }
 ```
 
-<sub>`api.ogt` line 18275</sub>
+<sub>`api.ogt` line 18276</sub>
 
 <a id="type-LayerDesc"></a>
 
@@ -19088,7 +19090,7 @@ struct LayerDesc {
 }
 ```
 
-<sub>`api.ogt` line 18290</sub>
+<sub>`api.ogt` line 18291</sub>
 
 <a id="type-TextShadowDesc"></a>
 
@@ -19121,7 +19123,7 @@ struct TextShadowDesc {
 }
 ```
 
-<sub>`api.ogt` line 18298</sub>
+<sub>`api.ogt` line 18299</sub>
 
 <a id="type-TextOutlineDesc"></a>
 
@@ -19151,7 +19153,7 @@ struct TextOutlineDesc {
 }
 ```
 
-<sub>`api.ogt` line 18313</sub>
+<sub>`api.ogt` line 18314</sub>
 
 <a id="type-TextEffectsDesc"></a>
 
@@ -19177,7 +19179,7 @@ struct TextEffectsDesc {
 }
 ```
 
-<sub>`api.ogt` line 18325</sub>
+<sub>`api.ogt` line 18326</sub>
 
 <a id="type-DrawDesc"></a>
 
@@ -19221,7 +19223,7 @@ struct DrawDesc {
 }
 ```
 
-<sub>`api.ogt` line 18333</sub>
+<sub>`api.ogt` line 18334</sub>
 
 <a id="type-BlendMode"></a>
 
@@ -19254,7 +19256,7 @@ enum BlendMode {
 }
 ```
 
-<sub>`api.ogt` line 18352</sub>
+<sub>`api.ogt` line 18353</sub>
 
 <a id="type-SemanticsDesc"></a>
 
@@ -19298,7 +19300,7 @@ struct SemanticsDesc {
 }
 ```
 
-<sub>`api.ogt` line 18363</sub>
+<sub>`api.ogt` line 18364</sub>
 
 <a id="type-WorldTarget"></a>
 
@@ -19322,7 +19324,7 @@ struct WorldTarget {
 }
 ```
 
-<sub>`api.ogt` line 18394</sub>
+<sub>`api.ogt` line 18395</sub>
 
 <a id="type-AnchorScaleMode"></a>
 
@@ -19345,7 +19347,7 @@ enum AnchorScaleMode {
 }
 ```
 
-<sub>`api.ogt` line 18401</sub>
+<sub>`api.ogt` line 18402</sub>
 
 <a id="type-WorldOcclusion"></a>
 
@@ -19370,7 +19372,7 @@ enum WorldOcclusion {
 }
 ```
 
-<sub>`api.ogt` line 18407</sub>
+<sub>`api.ogt` line 18408</sub>
 
 <a id="type-Declutter"></a>
 
@@ -19397,7 +19399,7 @@ enum Declutter {
 }
 ```
 
-<sub>`api.ogt` line 18414</sub>
+<sub>`api.ogt` line 18415</sub>
 
 <a id="type-EdgeClampDesc"></a>
 
@@ -19431,7 +19433,7 @@ struct EdgeClampDesc {
 }
 ```
 
-<sub>`api.ogt` line 18422</sub>
+<sub>`api.ogt` line 18423</sub>
 
 <a id="type-WorldAnchorDesc"></a>
 
@@ -19524,7 +19526,7 @@ struct WorldAnchorDesc {
 }
 ```
 
-<sub>`api.ogt` line 18438</sub>
+<sub>`api.ogt` line 18439</sub>
 
 <a id="type-AnchorInfo"></a>
 
@@ -19571,7 +19573,7 @@ struct AnchorInfo {
 }
 ```
 
-<sub>`api.ogt` line 18492</sub>
+<sub>`api.ogt` line 18493</sub>
 
 <a id="type-WorldPanelDesc"></a>
 
@@ -19631,7 +19633,7 @@ struct WorldPanelDesc {
 }
 ```
 
-<sub>`api.ogt` line 18523</sub>
+<sub>`api.ogt` line 18524</sub>
 
 <a id="type-PanelInfo"></a>
 
@@ -19662,7 +19664,7 @@ struct PanelInfo {
 }
 ```
 
-<sub>`api.ogt` line 18557</sub>
+<sub>`api.ogt` line 18558</sub>
 
 <a id="type-MassKind"></a>
 
@@ -19691,7 +19693,7 @@ enum MassKind {
 }
 ```
 
-<sub>`api.ogt` line 18578</sub>
+<sub>`api.ogt` line 18579</sub>
 
 <a id="type-MassEase"></a>
 
@@ -19720,7 +19722,7 @@ enum MassEase {
 }
 ```
 
-<sub>`api.ogt` line 18587</sub>
+<sub>`api.ogt` line 18588</sub>
 
 <a id="type-MassSpace"></a>
 
@@ -19743,7 +19745,7 @@ enum MassSpace {
 }
 ```
 
-<sub>`api.ogt` line 18596</sub>
+<sub>`api.ogt` line 18597</sub>
 
 <a id="type-ParticleShape"></a>
 
@@ -19768,7 +19770,7 @@ enum ParticleShape {
 }
 ```
 
-<sub>`api.ogt` line 18602</sub>
+<sub>`api.ogt` line 18603</sub>
 
 <a id="type-MassKey"></a>
 
@@ -19815,7 +19817,7 @@ struct MassKey {
 }
 ```
 
-<sub>`api.ogt` line 18609</sub>
+<sub>`api.ogt` line 18610</sub>
 
 <a id="type-MassTemplateDesc"></a>
 
@@ -19915,7 +19917,7 @@ struct MassTemplateDesc {
 }
 ```
 
-<sub>`api.ogt` line 18635</sub>
+<sub>`api.ogt` line 18636</sub>
 
 <a id="type-MassInstance"></a>
 
@@ -19962,7 +19964,7 @@ struct MassInstance {
 }
 ```
 
-<sub>`api.ogt` line 18693</sub>
+<sub>`api.ogt` line 18694</sub>
 
 <a id="type-EmitFrom"></a>
 
@@ -19987,7 +19989,7 @@ enum EmitFrom {
 }
 ```
 
-<sub>`api.ogt` line 18743</sub>
+<sub>`api.ogt` line 18744</sub>
 
 <a id="type-ParticlesDesc"></a>
 
@@ -20081,7 +20083,7 @@ struct ParticlesDesc {
 }
 ```
 
-<sub>`api.ogt` line 18750</sub>
+<sub>`api.ogt` line 18751</sub>
 
 <a id="type-MetaKind"></a>
 
@@ -20106,7 +20108,7 @@ enum MetaKind {
 }
 ```
 
-<sub>`api.ogt` line 18816</sub>
+<sub>`api.ogt` line 18817</sub>
 
 <a id="type-MetaDesc"></a>
 
@@ -20168,7 +20170,7 @@ struct MetaDesc {
 }
 ```
 
-<sub>`api.ogt` line 18823</sub>
+<sub>`api.ogt` line 18824</sub>
 
 <a id="type-SceneViewportDesc"></a>
 
@@ -20216,7 +20218,7 @@ struct SceneViewportDesc {
 }
 ```
 
-<sub>`api.ogt` line 18867</sub>
+<sub>`api.ogt` line 18868</sub>
 
 <a id="type-SceneViewportInfo"></a>
 
@@ -20261,7 +20263,7 @@ struct SceneViewportInfo {
 }
 ```
 
-<sub>`api.ogt` line 18890</sub>
+<sub>`api.ogt` line 18891</sub>
 
 <a id="type-UiDocEvent"></a>
 
@@ -20288,7 +20290,7 @@ struct UiDocEvent {
 }
 ```
 
-<sub>`api.ogt` line 18919</sub>
+<sub>`api.ogt` line 18920</sub>
 
 <a id="type-UiDocResponse"></a>
 
@@ -20311,7 +20313,7 @@ struct UiDocResponse {
 }
 ```
 
-<sub>`api.ogt` line 18928</sub>
+<sub>`api.ogt` line 18929</sub>
 
 <a id="type-UiLayer"></a>
 
@@ -20354,7 +20356,7 @@ struct UiLayer {
 }
 ```
 
-<sub>`api.ogt` line 18935</sub>
+<sub>`api.ogt` line 18936</sub>
 
 <a id="type-UiActionTrigger"></a>
 
@@ -20379,7 +20381,7 @@ enum UiActionTrigger {
 }
 ```
 
-<sub>`api.ogt` line 18952</sub>
+<sub>`api.ogt` line 18953</sub>
 
 <a id="type-UiActionDesc"></a>
 
@@ -20416,7 +20418,7 @@ struct UiActionDesc {
 }
 ```
 
-<sub>`api.ogt` line 18959</sub>
+<sub>`api.ogt` line 18960</sub>
 
 <a id="type-UiDevice"></a>
 
@@ -20447,7 +20449,7 @@ enum UiDevice {
 }
 ```
 
-<sub>`api.ogt` line 18975</sub>
+<sub>`api.ogt` line 18976</sub>
 
 <a id="type-UiGlyph"></a>
 
@@ -20470,7 +20472,7 @@ struct UiGlyph {
 }
 ```
 
-<sub>`api.ogt` line 18985</sub>
+<sub>`api.ogt` line 18986</sub>
 
 <a id="type-UiActionHint"></a>
 
@@ -20497,7 +20499,7 @@ struct UiActionHint {
 }
 ```
 
-<sub>`api.ogt` line 18992</sub>
+<sub>`api.ogt` line 18993</sub>
 
 ## Column kinds
 
@@ -20517,7 +20519,7 @@ column VectorArt {
 }
 ```
 
-<sub>`api.ogt` line 17919</sub>
+<sub>`api.ogt` line 17920</sub>
 
 ```ogt
 column UiMaterial {
@@ -20528,4 +20530,4 @@ column UiMaterial {
 }
 ```
 
-<sub>`api.ogt` line 17926</sub>
+<sub>`api.ogt` line 17927</sub>

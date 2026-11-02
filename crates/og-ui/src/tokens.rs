@@ -376,6 +376,8 @@ pub struct TypeToken {
     /// 100 to 900, as CSS.
     pub weight: u16,
     pub font: FontRole,
+    /// OpenType features of the role (`… display smcp tnum`).
+    pub features: crate::shape::Features,
 }
 
 /// The type scale: every [`TypeRole`] at every [`Breakpoint`].
