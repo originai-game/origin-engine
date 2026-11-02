@@ -10,7 +10,7 @@
 // look.
 
 import type * as Api from "@origingame/engine";
-import { a11y, anchorOf, box, chip, clamp01, easeOut, edge, frame, groups, hudPlace, hudRoom, icon, keyId, kit, leaf, lit, mix, msToTicks, paintRgba, pct, px, reduced, role, sel, solid, stepSize, stroke, teamColor, text, token, ts, u, ut, type Rgba } from "./core.ts";
+import { a11y, absolute, anchorOf, box, chip, clamp01, easeOut, edge, frame, groups, hudPlace, hudRoom, icon, keyId, kit, leaf, lit, mix, msToTicks, paintRgba, pct, px, reduced, role, sel, solid, stepSize, stroke, teamColor, text, token, ts, u, ut, type Rgba } from "./core.ts";
 
 const BLACK: Rgba = { r: 0, g: 0, b: 0, a: 1 };
 
@@ -90,6 +90,9 @@ export function matchStats(id: string, desc: Api.MatchStatsDesc = {}): void {
               const r = barH / 2;
               leaf("Home", { width: pct(share), height: pct(1), part: sel("MatchStats", "fill", "home") }, { shape: { kind: "rect", radii: [r, 0, 0, r] }, fills: [solid(homeInk ? lit(homeInk) : muted)] });
               leaf("Away", { width: { kind: "grow" }, height: pct(1), part: sel("MatchStats", "fill", "away") }, { shape: { kind: "rect", radii: [0, r, r, 0] }, fills: [solid(awayInk ? lit(awayInk) : muted)] });
+              // A tick at the bar's middle, standing over it (B-sports-scoreboard): how far the split is from even reads at a glance.
+              const tickH = barH + Math.max(4, u(6));
+              leaf("Centre", { width: px(Math.max(1, u(2))), height: px(tickH), part: sel("MatchStats", "centre") }, { fills: [solid(token("ink", 0.7))] }, absolute({ centerX: true, top: barH - tickH }));
             });
           });
           text("Away", shown(st.awayText, a), { step: valStep, font: "display", color: valueInk(awayInk), nowrap: true, align: "end", width: px(valW) });
