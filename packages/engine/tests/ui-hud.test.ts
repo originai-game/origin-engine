@@ -45,6 +45,13 @@ const DESKTOP_SAFE = { width: 1280, height: 720, dpr: 1, safeArea: { left: 0, to
   if (!existsSync(join(kit, "cooked"))) throw new Error(`og cook ${kit} wrote no cooked/`);
 }
 
+// The frames and the misc HUD tests are CPU-bound and nothing else: ticks of
+// a dozen components on the dev (-O0) host, no sleep and no wall-clock wait.
+// 1.3–1.6 s idle; a loaded gate ran them past 8 s, so the limit leaves that
+// headroom three times over. Each advances only as far as its script needs:
+// the tick is fixed (60 Hz), so the counts hold on any machine.
+const LOADED_MS = 30_000;
+
 const below = (els: El[], prefix: string): El[] => els.filter((x) => x.path.startsWith(`${prefix}/`));
 const states = (el: El | undefined): Record<string, string> => el?.visualStates ?? {};
 
@@ -176,7 +183,8 @@ test("og.ui.unitFrame, raidFrames and castBar: health and states read, raids in 
   e.advance(2);
   expect(states(at(dump(e), "TargetHud/Target")).hurt).toBe("hit");
   expect(at(dump(e), "TargetHud/Target/Portrait/Hurt")).toBeDefined();
-  e.advance(30);
+  // The hit shows for 450 ms: 27 ticks.
+  e.advance(28);
   expect(states(at(dump(e), "TargetHud/Target")).hurt).toBe("none");
   // The portrait at the end when reversed.
   const portrait = at(els, "TargetHud/Target/Portrait");
@@ -193,9 +201,10 @@ test("og.ui.unitFrame, raidFrames and castBar: health and states read, raids in 
   els = dump(e);
   expect(at(els, "CastHud/Cast/Track/Text/Name")?.text).toBe("Interrupted");
   expect(states(at(els, "CastHud/Cast")).cast).toBe("interrupted");
-  e.advance(80);
+  // An interrupted cast holds 700 ms and fades 300: gone 60 ticks after it ended.
+  e.advance(59);
   expect(at(dump(e), "CastHud/Cast")).toBe(undefined);
-});
+}, LOADED_MS);
 
 test("og.ui.crosshair and ammoCounter: a hit marker flashes and leaves; low, empty and an infinite reserve", () => {
   let hitAt: number | null = null;
@@ -386,9 +395,10 @@ test("og.ui.comboCounter, judgement, turnOrder, scorebug, speedometer, flightHud
   els = dump(e);
   expect(states(at(els, "ComboHud/Combo")).combo).toBe("broken");
   expect(at(els, "JudgeHud/Judge/Word")).toBe(undefined);
-  e.advance(60);
+  // A broken combo shows for 600 ms: 36 ticks after it broke.
+  e.advance(35);
   expect(states(at(dump(e), "ComboHud/Combo")).combo).toBe("idle");
-});
+}, LOADED_MS);
 
 test("components anchored at one point stack in the order built instead of drawing over each other", () => {
   const e = engineFor("HudStack", () => {
