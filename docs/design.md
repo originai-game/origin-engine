@@ -154,6 +154,39 @@ and the fallback where tsrs has no package.
   hosts; the engine ships its own `sin`/`cos`/`atan2`/`exp` so results do not
   depend on the host's `Math`. Physics (rapier) is built with its
   `enhanced-determinism` feature.
+- Large worlds (R12): a world that names `og.WorldOrigin` keeps every
+  place near its zero by shifting as a tick starts (og-runtime's
+  `origin.rs`, a before-tick hook ahead of cell streaming), when its
+  focus (`WorldOrigin.focus`, else the first `og.StreamAnchor`, else
+  `og.Camera.position`; a net session refuses the camera) is farther than
+  `step` from the zero along an axis of the plane, by the multiple of
+  `step` nearest the focus. The shift is world state decided from world
+  state, so replays, restores, rollbacks and lockstep peers shift on the
+  same tick; the zero is kept in f64 (`WorldOrigin.x/y/z`) and
+  `og.OriginShifted` carries the delta for places a game keeps itself.
+  What moves is read from the schema, never listed twice: a field marked
+  `worldspace world` (a place in the world), `root` (a place in the
+  world while its entity has no parent), `hook` (a place under a
+  condition its module's state block knows, such as og.Joint's
+  `otherAnchor` while `other` is 0) or `none` (not a place), with its axes, in the IDL and the Reflect derive;
+  og-idl refuses a `Vector2`/`Vector3` record field whose name reads as a
+  place (position, point, target, centre, anchor, origin, pivot, focus,
+  eye) without one. `og_ecs::World::shift` moves the marked columns,
+  their change shadows with them (a shift is not a change), resources and
+  queued events; every `StateBlock` implements `shift` (required, so a new
+  block cannot forget it): rapier's bodies and parentless colliders move
+  in place, keeping contacts, warm starts and islands, with what slept
+  put back to sleep (rapier would wake every contact partner of a moved
+  collider), navigation keeps a per-nav frame offset, the og.cells block
+  its subtrees, and terrain brushes stay in the logged frame on purpose.
+  The render origin (§2.6) is laid on the absolute world's 8192 m grid,
+  so a shift never moves it and draws nothing different. 2D worlds shift
+  too, on `plane xy`. A power-of-two `step` (the default 2048) keeps every
+  shift exact in f32; another step rounds each place once per shift. A
+  world that never names it keeps its hash and frames
+  (`og-runtime/tests/world_origin.rs`: a scene 100 km out runs bit for
+  bit as at the zero, and boxes in contact go through a shift as if
+  nothing moved).
 - The presentation layer is outside this (the owner, 2026-11-01): what
   is computed for display only, such as a neural network's poses (§2.7,
   motion generation), may differ between devices, precisions and runs.
