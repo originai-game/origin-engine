@@ -160,7 +160,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2040 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2041 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -1716,6 +1716,7 @@ Field units the docs and Tune use.
 | [`RewardChoiceDesc`](ui.md#type-RewardChoiceDesc) | desc struct | ui | — |
 | [`RewardChoiceResult`](ui.md#type-RewardChoiceResult) | struct | ui | — |
 | [`RewardOption`](ui.md#type-RewardOption) | desc struct | ui | — |
+| [`RewardTagKind`](ui.md#type-RewardTagKind) | enum | ui | — |
 | [`RibbonDesc`](render.md#type-RibbonDesc) | desc struct | render | — |
 | [`RibbonPoint`](render.md#type-RibbonPoint) | desc struct | render | — |
 | [`RichTextDesc`](ui.md#type-RichTextDesc) | desc struct | ui | — |

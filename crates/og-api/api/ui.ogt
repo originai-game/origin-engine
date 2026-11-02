@@ -4395,6 +4395,13 @@ module ui {
 
   # ·· rewards: pick one of N ··
 
+  enum RewardTagKind {
+    doc "What a reward's corner tag says."
+    variant note "A plain note (Lv 3 → 4): the highlight."
+    variant new "Never taken before: the tier's own ink, as a pull's New."
+    variant upgrade "It improves one the player holds: the success ink with an up arrow."
+  }
+
   struct RewardOption {
     doc "One reward of a choice, as the game's viewmodel holds it."
     desc true
@@ -4406,6 +4413,7 @@ module ui {
     field icon String "An icon of the style's set for the placeholder."
     field rarity Rarity "Its tier: the frame's colour, a glow from epic, and its pips."
     field tag String "A short tag in its corner (New, Upgrade, Lv 3 → 4); empty draws none."
+    field tagKind RewardTagKind "What the tag says, which sets its ink: new in the tier's colour, upgrade in success ink with an up arrow."
     field locked bool "It cannot be taken (a requirement unmet): shaded with a lock, and a press shakes."
     field lockedHint String "Why, said under its text and to a screen reader."
   }
@@ -4498,6 +4506,10 @@ module ui {
     field subtitle String "A line under it (Event Wish · Character)."
     field image Option.Texture "The key art (art kind banner), across the frame around its focal point under the art builder's layer; null draws the style's placeholder: a figure on a gradient of two hues, lit at the focal point."
     field focal Option.Vector2 "The art's point kept in view, fractions from the top start; null is the featured unit's place on the art side (0.68, 0.36 on a desktop; 0.5, 0.3 in portrait)."
+    field topInset f32 "Room kept clear over the words and tabs for the game's own chrome on the art (a back button, a menu): the art and a short top shade run under it. Laid out to the screen's edges, the banner also keeps its words and controls inside the safe area while its art fills the notch and status bar." {
+      unit cssPx
+      min 0
+    }
     field featured List.GachaFeatured "The featured units: the first named large on the art (its name plate) and each in a row with its stars beside the title."
     field rateText String "The rate-up rule, as rich text ([b]50 %[/b] chance the 5★ is featured)."
     field endsIn Option.f32 "Seconds until it ends: a timer chip, urgent in its last hour." {
@@ -4580,6 +4592,7 @@ module ui {
       default "gem"
     }
     field currencyIcon Option.Texture "The currency's own art beside againPrice; null draws the style's icon, else a gem."
+    field backdrop Option.Texture "The banner's scene behind the charge and the reveal, blurred and dimmed under the tier's light (the banner's key art); null is the stage's dark."
     field affordable bool "The purse pays againPrice." {
       default true
     }

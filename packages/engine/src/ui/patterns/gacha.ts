@@ -52,22 +52,46 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
   const multiN = Math.max(1, desc.multiCount ?? 10);
   const currency = desc.currency ?? "gem";
 
+  // Laid out to the screen's edges (a phone's full-bleed banner), the art runs under the status bar and the notch while
+  // the words and controls keep inside the safe area, below the room the game keeps for its own chrome (topInset).
   kit.open(id, { direction: "column", width: grow(), height: grow(), part: "Gacha.frame", partClass: "panel", radius: t.panel });
+  const self = kit.bounds(kit.lastPath());
+  const sa = vp.safeArea;
+  const bleed = {
+    top: self ? Math.max(0, sa.top - self.y) : 0,
+    left: self ? Math.max(0, sa.left - self.x) : 0,
+    right: self ? Math.max(0, self.x + self.width - (vp.width - sa.right)) : 0,
+    bottom: self ? Math.max(0, self.y + self.height - (vp.height - sa.bottom)) : 0,
+  };
+  const edgeToEdge = !!self && self.y <= 0.5 && self.x <= 0.5;
+  const topInset = desc.topInset ?? 0;
   // The key art behind everything, and a scrim from the text's edge so the text reads on any art.
   // The key art: the game's texture, else the style's placeholder (a figure standing at the focal point on two hues);
   // the game's builder draws over it. The featured unit stands on the art side, the words on the other.
   const feat = desc.featured ?? [];
   const focal = desc.focal ?? (portrait ? { x: 0.5, y: 0.3 } : { x: 0.68, y: 0.36 });
-  artSlot("Art", "Gacha.art", { texture: desc.image ?? null, kind: "banner", focal, rarity: feat[0]?.rarity, radius: t.panel, width: grow(), height: grow() }, art);
+  artSlot("Art", "Gacha.art", { texture: desc.image ?? null, kind: "banner", focal, rarity: feat[0]?.rarity, radius: edgeToEdge ? 0 : t.panel, width: grow(), height: grow() }, art);
   over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, z: -2, layoutMotion: spring("ui") });
   kit.open("Scrim", { width: grow(), height: grow(), part: "Gacha.scrim", partClass: "panel" });
   // In portrait the words stand under the splash's face: the shade rises from the foot and leaves the face clear.
   kit.setDraw({ shape: { kind: "rect" }, fills: portrait ? [scrimFill("bottom", 0.94), scrimFill("bottom", 0.5)] : [scrimFill("start", 0.9), scrimFill("bottom", 0.7)] });
   kit.close();
   over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, z: -1 });
+  // Chrome floating on the art (the status bar, the game's buttons, the tabs): a short shade from the top edge.
+  const chromeH = bleed.top + topInset;
+  if (chromeH > 0 || (portrait && tabs.length > 1)) {
+    kit.open("TopScrim", { width: grow(), height: px(chromeH + u(portrait ? 96 : 64)), part: "Gacha.topScrim", partClass: "panel" });
+    kit.setDraw({ shape: { kind: "rect" }, fills: [vgrad([[0, token("shadow", 0.72)], [0.45, token("shadow", 0.4)], [1, token("shadow", 0)]])] });
+    kit.close();
+    over({ insets: { start: 0, top: 0, end: 0 }, inert: true, z: -1 });
+  }
 
-  kit.open("Body", { direction: portrait ? "column" : "row", width: grow(), height: grow(), gap: u(20), padding: xy(u(phone ? 12 : 28), u(phone ? 12 : 24)) });
-  // The banners: a rail at the start on a desktop, chips above on a phone.
+  const padX = u(phone ? 12 : 28);
+  const padY = u(phone ? 12 : 24);
+  kit.open("Body", { direction: portrait ? "column" : "row", width: grow(), height: grow(), gap: u(portrait ? 14 : 20), padding: { left: padX + bleed.left, top: padY + chromeH, right: padX + bleed.right, bottom: padY + bleed.bottom } });
+  // The banners: a rail at the start on a desktop; on a phone in portrait chips leading the words (under the
+  // splash's face, which the art's height fixes in the top third).
+  const tabsBlock = (): void => {
   if (tabs.length > 1) {
     kit.open("Tabs", { direction: portrait ? "row" : "column", wrap: portrait, gap: u(8), width: portrait ? grow() : null, part: "Gacha.tabs", partClass: "panel" });
     for (const b of tabs) {
@@ -76,9 +100,9 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
         part: "Gacha.tab",
         cls: "tab",
         flags: [on ? "current" : "", b.fresh ? "fresh" : ""],
-        fill: mix(role("panel"), role("shadow"), 0.2),
+        // The glass is the tab's own draw below: no surface fill under it.
+        fill: null,
         selected: on,
-        selectedFill: mix(role("panelRaised"), role("primary"), 0.22),
         direction: portrait ? "column" : "row",
         // On a phone in portrait three tabs share the row; at large text each takes its own.
         width: portrait ? (big ? grow() : px(Math.floor((vp.width - vp.safeArea.left - vp.safeArea.right - u(24) - u(8) * (tabs.length - 1)) / tabs.length))) : px(u(short ? 160 : 200)),
@@ -88,7 +112,19 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
         semantics: { role: "tab", name: b.name ?? b.key ?? "", selected: on },
       }, () => {
         // The current banner: an accent rim with a glow, lifted on its shadow (a white outline reads as a debug box).
-        kit.setDraw({ shape: { kind: "rect", radii: [t.control, t.control, t.control, t.control] }, fills: [{ kind: "solid", color: token(on ? "panelRaised" : "panel", 0.92) }], strokes: [line(on ? 2 : 1, on ? paint(accent()) : token("line", 0.6))], effects: on ? [glow(u(10), paint(accent(), 0.45)), shadow(u(4), u(10), 0.5)] : [] });
+        // Every tab a chip of the same dark glass over the art, a light falling across it and a faint rim; the current
+        // one lit: the accent laid into its glass, its rim in the accent with a glow, lifted on its shadow.
+        const white = hex("#ffffff");
+        kit.setDraw({
+          shape: { kind: "rect", radii: [t.control, t.control, t.control, t.control] },
+          fills: [
+            { kind: "solid", color: paint(mix(role("panel"), role("shadow"), 0.3), 0.46) },
+            ...(on ? [{ kind: "solid", color: paint(accent(), 0.3) } as Api.Fill] : []),
+            vgrad([[0, paint(white, on ? 0.2 : 0.14)], [0.5, paint(white, 0.05)], [1, paint(white, 0.02)]]),
+          ],
+          strokes: [line(on ? 1.5 : 1, on ? paint(accent()) : paint(white, 0.3))],
+          effects: on ? [glow(u(12), paint(accent(), 0.5)), shadow(u(4), u(10), 0.5)] : [shadow(u(2), u(6), 0.3)],
+        });
         if (!phone && !short) artSlot("Thumb", "Gacha.thumb", { texture: b.image ?? null, kind: "banner", width: px(u(44)), height: px(u(44)), radius: t.small });
         kit.column("Text", { width: grow(), gap: 2, cross: portrait ? "center" : "start" }, () => {
           text("Name", b.name ?? "", { step: st(14), font: "display", maxLines: 2, width: grow(), align: portrait ? "center" : "start" });
@@ -116,6 +152,8 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
       kit.feedback("tab", -1);
     }
   }
+  };
+  if (!portrait) tabsBlock();
 
   // The banner's words, at the start over the scrim.
   // Beside the art (a desktop, a phone on its side) the words and the purchase block under them are one column at the
@@ -123,8 +161,9 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
   const sideW = Math.min(u(480), Math.round(vp.width * 0.4));
   // In portrait the splash's face holds the top third and the words start under it, the purchase block straight after
   // them: the column stands on the frame's foot (no gap between the rate line and the pity meter).
-  kit.open("Main", { direction: "column", width: portrait ? grow() : px(sideW), height: grow(), gap: u(portrait ? 10 : 18), align: portrait ? "end" : short ? "start" : "center" });
+  kit.open("Main", { direction: "column", width: portrait ? grow() : px(sideW), height: grow(), gap: u(portrait ? 8 : 18), align: portrait ? "end" : short ? "start" : "center" });
   // The words scroll when they outgrow the frame (a phone on its side, 200 % text); the purchase block never leaves it.
+  if (portrait) tabsBlock();
   kit.openScroll("Info", { width: grow(), height: short || (portrait && big) ? grow() : fit(), gap: u(portrait ? 8 : 10), padding: xy(0, 0) });
   {
     if (desc.subtitle) text("Subtitle", desc.subtitle.toLocaleUpperCase(), { step: st(13), color: "highlight", font: "display", nowrap: true, ellipsis: true, width: grow() });
@@ -327,7 +366,19 @@ export function pullSequence(id: string, desc: Api.PullSequenceDesc): Api.PullSe
     }, () => {
       // Edge to edge: the layer is the screen, so it draws no outline round it.
       kit.setDraw({ shape: { kind: "rect" }, fills: [{ kind: "solid", color: paint(mix(role("well"), role("shadow"), 0.55)) }] });
-      kit.open("Content", { direction: "column", width: grow(), height: grow(), align: "center", cross: "center", padding: xy(u(16), u(16)) });
+      // The banner's scene behind the light, blurred and dimmed with a vignette: the pull happens in its world, and no
+      // half of the screen is a void.
+      if (desc.backdrop) {
+        // Sized to the stage (an absolute element's grow takes only the flow's leftover).
+        kit.open("Backdrop", { width: px(W), height: px(H), part: "Pull.backdrop", partClass: "panel" });
+        // One layer: the scene, dimmed, with a vignette, blurred together.
+        kit.setDraw({ shape: { kind: "rect" }, fills: [{ kind: "image", texture: desc.backdrop, fit: "cover" }, { kind: "solid", color: token("shadow", 0.62) }, radial([[0, token("shadow", 0)], [0.6, token("shadow", 0.25)], [1, token("shadow", 0.8)]], 0.5, 0.5, 0.75, 0.75)], effects: [{ kind: "layerBlur", radius: u(14) }] } as Api.DrawDesc);
+        kit.close();
+        // A blurred layer keeps its place in the flow (an absolute one loses its insets): it fills the stage, and the
+        // content is laid over it.
+        kit.props({ inert: true });
+      }
+      kit.open("Content", { direction: "column", width: px(W), height: px(H), align: "center", cross: "center", padding: xy(u(16), u(16)) });
       if (phase === 1) charge(top, tick - t0, W, H);
       else if (phase === 2) {
         const it = items[clamp(idx, 0, n - 1)]!;
@@ -337,6 +388,7 @@ export function pullSequence(id: string, desc: Api.PullSequenceDesc): Api.PullSe
         else out.done = true;
       });
       kit.close();
+      if (desc.backdrop) over({ insets: { start: 0, top: 0 } });
       // Skip, at the top end, until the summary.
       if (phase === 1 || phase === 2) {
         kit.row("Bar", { gap: u(8) }, () => {
@@ -416,16 +468,38 @@ function reveal(it: Api.PullItem, idx: number, n: number, dt: number, W: number,
   // brighter the higher the tier, so the result is felt before it is read.
   const pipsN = rarityPips(it.rarity);
   kit.open("Stage", { width: px(artW), height: px(artH) });
-  const rayD = Math.round(artH * (pipsN >= 5 ? 2.1 : pipsN >= 4 ? 1.8 : 1.45));
+  const rayD = Math.round(artH * (pipsN >= 5 ? 2.3 : pipsN >= 4 ? 1.9 : 1.5));
+  const centred = { start: Math.round((artW - rayD) / 2), top: Math.round((artH - rayD) / 2) };
+  // The light: added to the scene, strongest at the card and falling off smoothly to nothing (no disc's edge).
   kit.open("Glow", { width: px(rayD), height: px(rayD), part: "Pull.glow", partClass: "badge" });
-  kit.setDraw({ shape: { kind: "ellipse" }, fills: [radial([[0, paint(ink, pipsN >= 4 ? 0.7 : 0.45)], [0.45, paint(ink, 0.22)], [1, paint(ink, 0)]])] });
+  const g0 = pipsN >= 4 ? 0.62 : 0.4;
+  kit.setDraw({ shape: { kind: "ellipse" }, blend: "add", fills: [radial([[0, paint(ink, g0)], [0.2, paint(ink, g0 * 0.6)], [0.42, paint(ink, g0 * 0.24)], [0.66, paint(ink, g0 * 0.07)], [0.9, paint(ink, 0)]])] } as Api.DrawDesc);
   kit.close();
-  over({ insets: { start: Math.round((artW - rayD) / 2), top: Math.round((artH - rayD) / 2) }, inert: true, overlaps: ["*"] });
+  over({ insets: centred, inert: true, overlaps: ["*"] });
   if (pipsN >= 3) {
-    kit.open("Rays", { width: px(rayD), height: px(rayD), part: "Pull.rays", partClass: "badge" });
-    kit.setDraw({ shape: { kind: "polygon", sides: pipsN >= 5 ? 18 : 12, inner: 0.1, rotation: 0 }, fills: [{ kind: "solid", color: paint(mix(ink, role("ink"), 0.2), pipsN >= 5 ? 0.3 : 0.18) }] });
-    kit.close();
-    over({ insets: { start: Math.round((artW - rayD) / 2), top: Math.round((artH - rayD) / 2) }, inert: true, overlaps: ["*"], transform: { rotate: still() ? 0 : (dt / 60) * 0.12 } });
+    // Rays: two soft fans turning against each other, each ray thin, lit at the card and fading out with distance.
+    const rayInk = mix(ink, hex("#ffffff"), 0.25);
+    const a = pipsN >= 5 ? 0.42 : 0.26;
+    const turn = still() ? 0 : (dt / 60) * 0.1;
+    for (const [rid, sides, inner, k, rot] of [["Rays", pipsN >= 5 ? 16 : 12, 0.03, 1, turn], ["RaysFine", pipsN >= 5 ? 22 : 16, 0.015, 0.55, -turn * 0.7 + 0.11]] as const) {
+      kit.open(rid, { width: px(rayD), height: px(rayD), part: "Pull.rays", partClass: "badge" });
+      kit.setDraw({ shape: { kind: "polygon", sides, inner, rotation: 0 }, blend: "add", fills: [radial([[0, paint(rayInk, a * k)], [0.3, paint(rayInk, a * k * 0.55)], [0.62, paint(rayInk, a * k * 0.14)], [0.92, paint(rayInk, 0)]])] } as Api.DrawDesc);
+      kit.close();
+      over({ insets: centred, inert: true, overlaps: ["*"], transform: { rotate: rot } });
+    }
+    // Motes: a few sparks round the card, twinkling (still, they hold their light).
+    const motes = pipsN >= 5 ? 14 : pipsN >= 4 ? 9 : 5;
+    for (let m = 0; m < motes; m++) {
+      const h = (keyHash(`${it.key ?? it.name ?? ""}~${m}`) % 1000) / 1000;
+      const ang = (m / motes) * Math.PI * 2 + h * 0.9;
+      const rr = rayD * (0.24 + 0.2 * ((m * 37) % 11) / 11);
+      const sz = Math.round(u(5 + ((m * 13) % 7)));
+      const tw = still() ? 0.8 : 0.45 + 0.55 * Math.abs(Math.sin(dt * 0.07 + m * 1.7));
+      kit.open(kit.idi("Mote", m), { width: px(sz), height: px(sz), part: "Pull.mote", partClass: "badge" });
+      kit.setDraw({ shape: { kind: "polygon", sides: 4, inner: 0.28, rotation: 0 }, blend: "add", fills: [{ kind: "solid", color: paint(rayInk, 0.95 * tw) }], effects: [glow(sz, paint(ink, 0.7 * tw), 0)] } as Api.DrawDesc);
+      kit.close();
+      over({ insets: { start: Math.round(artW / 2 + Math.cos(ang) * rr - sz / 2), top: Math.round(artH / 2 + Math.sin(ang) * rr * 0.8 - sz / 2) }, inert: true, overlaps: ["*"] });
+    }
   }
   kit.open("Card", { width: px(artW), height: px(artH), part: "Pull.card", partClass: "card" });
   kit.setDraw({ shape: { kind: "rect", radii: [u(14), u(14), u(14), u(14)] }, fills: [{ kind: "solid", color: token("well") }], strokes: [line(3, paint(ink)), line(1, token("shadow", 0.7), "outside")], effects: [glow(u(28), paint(ink, 0.7), 4), shadow(u(10), u(24), 0.6)] });
@@ -441,10 +515,10 @@ function reveal(it: Api.PullItem, idx: number, n: number, dt: number, W: number,
   kit.column("Words", { gap: u(8), cross: landscape ? "start" : "center", width: landscape ? px(Math.min(u(440), Math.round(W * 0.36))) : grow() }, () => {
     if (it.kind) text("Kind", it.kind.toLocaleUpperCase(), { step: st(14), color: mix(ink, role("ink"), 0.4), font: "display", nowrap: true });
     // The name leads: larger than the stars under it.
-    text("Name", it.name ?? "", { step: st(phone ? 34 : 56), heading: true, font: "display", maxLines: 2, width: grow(), align: landscape ? "start" : "center" });
+    text("Name", it.name ?? "", { step: phone ? "displaySm" : "displayLg", heading: true, font: "display", maxLines: 2, width: grow(), align: landscape ? "start" : "center" });
     kit.props({ enter: { values: [{ prop: "opacity", value: 0 }, { prop: "x", value: u(-40) }], transition: spring("panel"), delayMs: 180 } });
     const ns = it.stars ?? 0;
-    stars("Stars", ns, u(phone ? 18 : 24), ink, ns, Array.from({ length: ns }, (_, k) => 320 + k * 110));
+    stars("Stars", ns, u(phone ? 16 : 22), ink, ns, Array.from({ length: ns }, (_, k) => 320 + k * 110));
     // Legendary and above: a burst from the stars as the last one lands (from the stars, not the art, so its rays
     // stay fine and clear of the art and its tag).
     if (rarityPips(it.rarity) >= 5 && !still()) kit.burst({ count: 12, color: paint(mix(ink, role("ink"), 0.25)), radius: u(phone ? 90 : 140), delayMs: 320 + ns * 110 });

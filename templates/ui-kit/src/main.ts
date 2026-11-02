@@ -771,7 +771,8 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
   if (PATTERN_SCREENS.has(screen)) patternScene(screen);
   if (screen !== "gallery" && screen !== "widgets" && !PATTERN_SCREENS.has(screen) && d.backdrop) og.render.sprite(world, { texture: d.backdrop as never, width: 640, height: 360, layer: -10 });
 
-  if (screen !== "gallery" && screen !== "loading") galleryButton(world, d);
+  // The gacha banner runs its art full-bleed on a phone: the Gallery button floats on it, so it is built after it.
+  if (screen !== "gallery" && screen !== "loading" && screen !== "gacha") galleryButton(world, d);
   let back = false;
   switch (screen) {
     case "gallery":
@@ -1207,6 +1208,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       og.ui.label("Text", tr(world, "menu.mixed"), { step: "lg", nowrap: true });
     });
   }
+  if (screen === "gacha") galleryButton(world, d);
   if (back) d.screen = 0;
 }
 

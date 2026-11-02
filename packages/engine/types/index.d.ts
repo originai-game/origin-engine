@@ -28668,6 +28668,14 @@ export interface HeroButtonDesc {
 
 
 /**
+ * What a reward's corner tag says.
+ * - `"note"`: A plain note (Lv 3 → 4): the highlight.
+ * - `"new"`: Never taken before: the tier's own ink, as a pull's New.
+ * - `"upgrade"`: It improves one the player holds: the success ink with an up arrow.
+ */
+export type RewardTagKind = "note" | "new" | "upgrade";
+
+/**
  * One reward of a choice, as the game's viewmodel holds it.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -28721,6 +28729,12 @@ export interface RewardOption {
    * @default ""
    */
   readonly tag?: string;
+  /**
+   * What the tag says, which sets its ink: new in the tier's colour, upgrade in success ink with an up arrow.
+   *
+   * @default "note"
+   */
+  readonly tagKind?: RewardTagKind;
   /**
    * It cannot be taken (a requirement unmet): shaded with a lock, and a press shakes.
    *
@@ -28971,6 +28985,14 @@ export interface GachaBannerDesc {
    */
   readonly focal?: Vector2 | null;
   /**
+   * Room kept clear over the words and tabs for the game's own chrome on the art (a back button, a menu): the art and a short top shade run under it. Laid out to the screen's edges, the banner also keeps its words and controls inside the safe area while its art fills the notch and status bar.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly topInset?: number;
+  /**
    * The featured units: the first named large on the art (its name plate) and each in a row with its stars beside the title.
    *
    * @default []
@@ -29190,6 +29212,12 @@ export interface PullSequenceDesc {
    * @default null
    */
   readonly currencyIcon?: Texture | null;
+  /**
+   * The banner's scene behind the charge and the reveal, blurred and dimmed under the tier's light (the banner's key art); null is the stage's dark.
+   *
+   * @default null
+   */
+  readonly backdrop?: Texture | null;
   /**
    * The purse pays againPrice.
    *

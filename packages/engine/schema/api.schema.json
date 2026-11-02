@@ -9952,6 +9952,7 @@
         "CardHandResult",
         "HeroTone",
         "HeroButtonDesc",
+        "RewardTagKind",
         "RewardOption",
         "RewardChoiceDesc",
         "RewardChoiceResult",
@@ -51484,6 +51485,22 @@
       },
       "additionalProperties": false
     },
+    "RewardTagKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "What a reward's corner tag says.",
+      "type": "string",
+      "enum": [
+        "note",
+        "new",
+        "upgrade"
+      ],
+      "x-og-variants": {
+        "note": "A plain note (Lv 3 → 4): the highlight.",
+        "new": "Never taken before: the tier's own ink, as a pull's New.",
+        "upgrade": "It improves one the player holds: the success ink with an up arrow."
+      }
+    },
     "RewardOption": {
       "x-og-kind": "desc",
       "x-og-module": "ui",
@@ -51536,6 +51553,11 @@
           "type": "string",
           "description": "A short tag in its corner (New, Upgrade, Lv 3 → 4); empty draws none.",
           "default": ""
+        },
+        "tagKind": {
+          "$ref": "#/$defs/RewardTagKind",
+          "description": "What the tag says, which sets its ink: new in the tier's colour, upgrade in success ink with an up arrow.",
+          "default": "note"
         },
         "locked": {
           "type": "boolean",
@@ -51862,6 +51884,13 @@
           "description": "The art's point kept in view, fractions from the top start; null is the featured unit's place on the art side (0.68, 0.36 on a desktop; 0.5, 0.3 in portrait).",
           "default": null
         },
+        "topInset": {
+          "type": "number",
+          "description": "Room kept clear over the words and tabs for the game's own chrome on the art (a back button, a menu): the art and a short top shade run under it. Laid out to the screen's edges, the banner also keeps its words and controls inside the safe area while its art fills the notch and status bar.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
         "featured": {
           "type": "array",
           "items": {
@@ -52133,6 +52162,18 @@
             }
           ],
           "description": "The currency's own art beside againPrice; null draws the style's icon, else a gem.",
+          "default": null
+        },
+        "backdrop": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The banner's scene behind the charge and the reveal, blurred and dimmed under the tier's light (the banner's key art); null is the stage's dark.",
           "default": null
         },
         "affordable": {

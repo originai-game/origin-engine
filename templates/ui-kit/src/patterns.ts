@@ -41,13 +41,15 @@ function screen(id: string, title: string, sub: string, build: () => void, hints
   const top = small ? t.space.sm : t.space.lg;
   const galleryW = small ? (og.ui.bounds("Back")?.width ?? 100) + t.space.sm : 0;
   // The action hints sit on the bottom edge (actionHints anchors itself), and grow with the text size.
-  const bottom = small ? t.space.sm : Math.round(72 * Math.max(1, t.textScale ?? 1));
-  og.ui.anchor(id, { anchor: "topLeft", margin: 0, width: px(vp.width - sa.left - sa.right), height: px(vp.height - sa.top - sa.bottom), direction: "column", gap: t.space.md, padding: { left: small ? t.space.sm : t.space.xl, top, right: small ? t.space.sm : t.space.xl, bottom } }, () => {
+  // On a phone the body runs to the screen's foot, so its fade ends at the edge rather than over a band of scene.
+  const bottom = small ? 0 : Math.round(72 * Math.max(1, t.textScale ?? 1));
+  og.ui.anchor(id, { anchor: "topLeft", margin: 0, width: px(vp.width - sa.left - sa.right), height: px(vp.height - sa.top - (small ? 0 : sa.bottom)), direction: "column", gap: t.space.md, padding: { left: small ? t.space.sm : t.space.xl, top, right: small ? t.space.sm : t.space.xl, bottom } }, () => {
     og.ui.column("Header", { width: grow, gap: 2, padding: { left: 0, top: 0, right: galleryW, bottom: 0 } }, () => {
       og.ui.label("Title", title, { step: small ? "xl2" : big ? "xl6" : "xl4", heading: true, font: "display", nowrap: true, ellipsis: true, width: grow });
       if (sub) og.ui.label("Sub", sub, { step: small ? "sm" : big ? "xl" : "base", color: { token: "inkMuted" }, width: grow, maxLines: 2 });
     });
-    og.ui.scroll("Body", { width: grow, height: grow, gap: t.space.md }, build);
+    // The body fades out at the foot where more lies below, so a row cut by the screen's edge reads as more to scroll.
+    og.ui.scrollArea("Body", { width: grow, height: grow, gap: t.space.md, fade: small ? 72 : 56, fadeInto: "shadow", padding: { left: 0, top: 0, right: 0, bottom: small ? sa.bottom : 0 } }, build);
     if (hints.length > 0 && !small) og.ui.actionHints("Hints", { hints });
   });
 }
@@ -275,7 +277,9 @@ export function cardsScreen(world?: World): void {
   const plateW = portrait ? Math.floor((W - 2 * t.space.sm - t.space.md) / 2) : landscape ? 150 : big ? 260 : 196;
   const tableH = og.ui.bounds(tablePath)?.height ?? 0;
   const chrome = Math.round((small ? 104 : big ? 128 : 108) * ts);
-  const figMax = plateW - 2 * frameW;
+  // A phone in portrait gives the portraits the table's height: up to a quarter taller than wide, as a mobile card
+  // game's enemies stand.
+  const figMax = Math.round((plateW - 2 * frameW) * (portrait ? 1.7 : 1));
   // Where the table has no room for a portrait (a phone on its side, a phone at 200 % text) the plates stand on their
   // names alone rather than run under the hand's bar.
   const room = tableH > 0 ? tableH - chrome : portrait ? 150 : figMax;
@@ -372,24 +376,24 @@ export function cardsScreen(world?: World): void {
         foes();
       }
     });
-    // The enemies in the table's middle (a phone's upper half), standing on its foot on a desktop.
-    // Centred over the play area (the hand's middle), standing on the table's foot on a desktop.
-    if (!landscape) og.ui.row("Table", { width: grow, height: grow, align: "center", cross: portrait ? "center" : "end", gap: small ? t.space.md : t.space.xl3 }, foes);
+    // The enemies centred over the play area: standing on the table's foot on a desktop, filling the table's middle on
+    // a phone (their portraits as tall as it allows).
+    if (!landscape) og.ui.row("Table", { width: grow, height: grow, align: "center", cross: "end", gap: small ? t.space.md : t.space.xl3 }, foes);
   });
   // The hand along the foot with the energy at its start and End turn at its end, as card games lay them: on a desktop
-  // and a phone on its side in the hand's own row; on a phone in portrait on a bar over it, above the band a lifted card
-  // rises into, so End turn sits at the thumb and the energy where the player reads it while choosing a card.
+  // and a phone on its side in the hand's own row; on a phone in portrait on a bar under it (Marvel Snap), so End turn
+  // sits at the thumb and the energy where the player reads it while choosing a card.
   og.ui.anchor("Foot", { anchor: "bottom", margin: 0, width: px(W), direction: portrait ? "column" : "row", cross: portrait ? "stretch" : "center", gap: portrait ? t.space.xs : t.space.lg, padding: { left: small ? t.space.xs : t.space.xl, top: 0, right: small ? t.space.xs : t.space.xl, bottom: small ? t.space.xs : t.space.md } }, () => {
+    if (!portrait) energy();
+    og.ui.column("HandArea", { width: grow, cross: "stretch" }, () => hand(targets));
+    // On a phone in portrait the bar docks under the hand, in the thumb's reach: a lifted card rises away from it.
     if (portrait) {
       og.ui.row("Bar", { width: grow, cross: "center", gap: t.space.md, padding: { left: t.space.sm, top: 0, right: t.space.sm, bottom: 0 } }, () => {
         energy();
         og.ui.spacer("Gap", grow);
         endTurn();
       });
-      og.ui.spacer("Lift", px(liftClear(W - 2 * t.space.xs, Hs, c.hand.length, ts)));
-    } else energy();
-    og.ui.column("HandArea", { width: grow, cross: "stretch" }, () => hand(targets));
-    if (!portrait) endTurn();
+    } else endTurn();
   });
 }
 
@@ -425,20 +429,6 @@ function hand(targets: CardTarget[]): void {
   }
 }
 
-/**
- * How far a lifted card rises over the fan on a phone, as og.ui.cardHand
- * sizes it (a phone's 96 px card narrowed to fit the hand, lifted to 168 or
- * more and grown with the text): the band End turn keeps clear of.
- */
-function liftClear(fanW: number, roomH: number, n: number, ts: number): number {
-  const w0 = Math.min(96, fanW * 0.34, (roomH * 0.3) / 1.4);
-  const w = Math.round(n > 1 ? Math.max(Math.min(w0, 80), Math.min(w0, (fanW * 0.9) / (1 + 0.62 * (n - 1)))) : w0);
-  const ch = Math.round(w * 1.4);
-  const liftW = Math.round(Math.min(Math.max(w * 1.45, 168) * Math.min(1.35, ts), fanW * 0.62, (roomH * 0.62) / 1.4));
-  const fanH = ch + 8 + Math.round(Math.max(26, w * 0.22) * 0.3 * Math.min(1.5, ts)) + 14 + 6;
-  return Math.max(0, Math.round(liftW * 1.4) + 12 - fanH);
-}
-
 // ── rewards: a run's reward after a fight ───────────────────────────────
 
 const REWARD_ART: Record<string, ArtName> = {
@@ -446,8 +436,8 @@ const REWARD_ART: Record<string, ArtName> = {
 };
 const OFFER0: RewardOption[] = [
   { key: "thunder", title: "Thunder Strike", kind: "Boon of Zeus", text: "Your attacks call down [b]bolts[/b] for [color=highlight]+30[/color] damage.", rarity: "rare", icon: "bolt" },
-  { key: "vigor", title: "Heart of the Titan", kind: "Boon of Ares", text: "[b]+25 %[/b] Max Health; heal [color=success]10[/color] on each room cleared.", rarity: "epic", tag: "Upgrade", icon: "heart" },
-  { key: "crown", title: "Crown of Ages", kind: "Relic", text: "Start each fight with [b]2[/b] extra [color=info]Energy[/color].", rarity: "legendary", tag: "New", locked: true, lockedHint: "Clear the second boss to unlock", icon: "crown" },
+  { key: "vigor", title: "Heart of the Titan", kind: "Boon of Ares", text: "[b]+25 %[/b] Max Health; heal [color=success]10[/color] on each room cleared.", rarity: "epic", tag: "Upgrade", tagKind: "upgrade", icon: "heart" },
+  { key: "crown", title: "Crown of Ages", kind: "Relic", text: "Start each fight with [b]2[/b] extra [color=info]Energy[/color].", rarity: "legendary", tag: "New", tagKind: "new", locked: true, lockedHint: "Clear the second boss to unlock", icon: "crown" },
 ];
 const OFFER1: RewardOption[] = [
   { key: "frost", title: "Frostbite", kind: "Boon of Demeter", text: "Hits [color=info]chill[/color] foes, slowing them by [b]20 %[/b].", rarity: "uncommon", icon: "shield" },
@@ -468,10 +458,22 @@ const r = {
 export function rewardsScreen(): void {
   const vp = og.ui.frameViewport();
   const two = r.picks > 1;
-  screen("Rewards", "Chamber cleared", r.taken ? `Taken: ${r.taken}` : two ? "Choose two boons, then confirm" : "Choose a boon", () => {
+  const t = og.ui.frameTheme();
+  const sa = vp.safeArea;
+  const small = phone();
+  const portrait = vp.breakpoint === "phonePortrait";
+  // The choice is the screen: its title the display line centred over the cards, what to do as the caption under it,
+  // the actions under the cards (docked at the foot on a phone in portrait). A phone keeps the Gallery's row clear; a
+  // short frame or large text scrolls.
+  const scrolls = !portrait || (t.textScale ?? 1) >= 1.5;
+  const top = small ? Math.round((og.ui.bounds("Back")?.height ?? 44) + t.space.lg) : t.space.xl;
+  og.ui.anchor("Rewards", { anchor: "topLeft", margin: 0, width: px(vp.width - sa.left - sa.right), height: px(vp.height - sa.top - sa.bottom), direction: "column", align: scrolls && !small ? "center" : "start", padding: { left: small ? t.space.sm : t.space.xl, top, right: small ? t.space.sm : t.space.xl, bottom: small ? t.space.sm : Math.round(72 * Math.max(1, t.textScale ?? 1)) } }, () => {
+    const body = (build: () => void): void => (scrolls ? og.ui.scrollArea("Body", { width: grow, height: small ? grow : null, gap: t.space.md, fade: small ? 40 : 56, fadeInto: "shadow", padding: { left: 0, top: 0, right: 0, bottom: 0 } }, build) : build());
+    body(() => {
     const res = og.ui.rewardChoice("Choice", {
       options: r.offer.map((o) => ({ ...o, image: art(REWARD_ART[o.key ?? ""]) })),
-      title: "",
+      title: "Chamber cleared",
+      subtitle: r.taken ? `Taken: ${r.taken}` : two ? "Choose two boons, then confirm" : "Choose a boon",
       picks: r.picks,
       selected: r.selected,
       rerolls: r.rerolls,
@@ -495,7 +497,9 @@ export function rewardsScreen(): void {
       r.offer = r.offer.filter((o) => o.key !== res.banished);
     }
     if (res.skipped) r.taken = "25 gold";
-  }, [{ action: "confirm", hint: "Take" }, { action: "back", hint: "Back" }]);
+    });
+    if (!small) og.ui.actionHints("Hints", { hints: [{ action: "confirm", hint: "Take" }, { action: "back", hint: "Back" }] });
+  });
 }
 
 // ── gacha: a banner and its pull ────────────────────────────────────────
@@ -544,7 +548,10 @@ export function gachaScreen(backdrop = 0, rate: { event: string; standard: strin
   const sa = vp.safeArea;
   const small = phone();
   const b = BANNERS.find((x) => x.key === g.banner) ?? BANNERS[0];
-  og.ui.anchor("Gacha", { anchor: "topLeft", margin: 0, width: px(vp.width - sa.left - sa.right), height: px(vp.height - sa.top - sa.bottom), direction: "column", padding: { left: 0, top: small ? Math.round((og.ui.bounds("Back")?.height ?? 44) + og.ui.frameTheme().space.sm) : 0, right: 0, bottom: 0 } }, () => {
+  // On a phone the banner is the screen: its art runs under the status bar and the notch (the banner keeps its words
+  // inside the safe area), the Gallery button floating on it over the tabs.
+  const bleed = small && vp.breakpoint === "phonePortrait";
+  og.ui.anchor("Gacha", { anchor: "topLeft", margin: 0, ...(bleed ? { offsetX: -sa.left, offsetY: -sa.top } : {}), width: px(bleed ? vp.width : vp.width - sa.left - sa.right), height: px(bleed ? vp.height : vp.height - sa.top - sa.bottom), direction: "column", padding: { left: 0, top: small && !bleed ? Math.round((og.ui.bounds("Back")?.height ?? 44) + og.ui.frameTheme().space.sm) : 0, right: 0, bottom: 0 } }, () => {
     const keyArt = b.key === "event" ? art("scenes/gacha-moonlit-tide") : null;
     const res = og.ui.gachaBanner("Banner", {
       banners: BANNERS.map((x) => ({ key: x.key, name: x.name, endsIn: x.endsIn, fresh: x.fresh, image: art(BANNER_THUMB[x.key]) })),
@@ -568,6 +575,7 @@ export function gachaScreen(backdrop = 0, rate: { event: string; standard: strin
       multi: 1600,
       currency: "gem",
       currencyIcon: art("boons/crystal"),
+      topInset: bleed ? Math.round((og.ui.bounds("Back")?.height ?? 44) + og.ui.frameTheme().space.xs) : 0,
     }, () => {});
     if (res.banner) g.banner = res.banner;
     if (res.pull > 0 && g.balance >= res.pull * 160) {
@@ -578,7 +586,7 @@ export function gachaScreen(backdrop = 0, rate: { event: string; standard: strin
     }
     if (res.short) g.log = `short ${res.short}`;
   });
-  const seq = og.ui.pullSequence("Pull", { token: g.items.length > 0 ? g.token : 0, items: g.items.map((x) => ({ ...x, image: art(PULL_ART[x.name ?? ""]) })), againPrice: g.items.length * 160, affordable: g.balance >= g.items.length * 160, againLabel: "Wish ×{n}", currencyIcon: art("boons/crystal") });
+  const seq = og.ui.pullSequence("Pull", { token: g.items.length > 0 ? g.token : 0, items: g.items.map((x) => ({ ...x, image: art(PULL_ART[x.name ?? ""]) })), againPrice: g.items.length * 160, affordable: g.balance >= g.items.length * 160, againLabel: "Wish ×{n}", currencyIcon: art("boons/crystal"), backdrop: b.key === "event" ? art("scenes/gacha-moonlit-tide") : null });
   if (seq.again && g.balance >= g.items.length * 160) {
     g.balance -= g.items.length * 160;
     g.token += 1;

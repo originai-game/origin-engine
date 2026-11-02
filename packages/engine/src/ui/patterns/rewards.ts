@@ -15,14 +15,22 @@ export function plainText(markup: string): string {
   return markup.replace(/\[\[/g, "\u0000").replace(/\[[^\]]*\]/g, "").replace(/\u0000/g, "[").replace(/\s+/g, " ").trim();
 }
 
-/** A small tag in a corner (New, Upgrade): ink on the highlight, outlined so it reads on any art. */
-export function cornerTag(id: string, s: string, tone: Api.ThemeColor | Rgba = "highlight"): void {
+/** A small tag in a corner (New, Upgrade): ink on the highlight, outlined so it reads on any art; `up` leads it with an up arrow. */
+export function cornerTag(id: string, s: string, tone: Api.ThemeColor | Rgba = "highlight", up = false): void {
   // A tier's own colour (a pull's New on a legendary card) takes the ink that reads on it.
   const fill = typeof tone === "string" ? role(tone) : tone;
-  kit.open(id, { direction: "row", padding: xy(u(8), u(3)), part: "Reward.tag", partClass: "badge" });
+  const ink = inkOn(fill);
+  kit.open(id, { direction: "row", gap: u(3), cross: "center", padding: xy(u(8), u(3)), part: "Reward.tag", partClass: "badge" });
   kit.setDraw({ shape: { kind: "rect", radii: [999, 999, 999, 999] }, fills: [{ kind: "solid", color: paint(fill) }], strokes: [line(1, token("shadow", 0.6), "outside")], effects: [shadow(2, 4, 0.45)] });
-  text("Text", s, { step: st(12), color: typeof tone === "string" ? "onPrimary" : inkOn(fill), nowrap: true, font: "display" });
+  if (up) symbol("Up", "arrowUp", u(12), ink);
+  text("Text", s, { step: st(12), color: ink, nowrap: true, font: "display" });
   kit.close();
+}
+
+/** A reward's tag in its kind's ink: new in the tier's colour, upgrade in success with an up arrow, a note in the highlight. */
+function rewardTag(o: Api.RewardOption): void {
+  const kind = o.tagKind ?? "note";
+  cornerTag("Tag", o.tag ?? "", kind === "new" ? rarityColor(o.rarity) ?? role("highlight") : kind === "upgrade" ? role("success") : "highlight", kind === "upgrade");
 }
 
 /**
@@ -41,7 +49,8 @@ export function rewardChoice(id: string, desc: Api.RewardChoiceDesc): Api.Reward
   const tick = kit.tick();
   const ts = Math.max(1, frame().theme.textScale ?? 1);
 
-  kit.open(id, { direction: "column", width: grow(), gap: u(20), cross: "center", part: "Reward.frame", partClass: "panel" });
+  // In portrait it takes the height it is given, its actions docked at its foot in the thumb's reach.
+  kit.open(id, { direction: "column", width: grow(), height: portrait ? grow() : null, gap: u(20), cross: "center", part: "Reward.frame", partClass: "panel" });
   // Armed banishing, a refusal's shake, and the deal (when this set of rewards was first shown).
   const armed = kit.memory("~r.armed", 0) === 1 && (desc.banishes ?? -1) > 0;
   const setKey = keyHash(opts.map((o) => o.key ?? "").join("|"));
@@ -59,8 +68,9 @@ export function rewardChoice(id: string, desc: Api.RewardChoiceDesc): Api.Reward
 
   if (desc.title || desc.subtitle) {
     kit.column("Header", { width: grow(), gap: u(4), cross: "center" }, () => {
-      if (desc.title) text("Title", desc.title, { step: st(phone ? 22 : 30), heading: true, font: "display", align: "center", width: grow(), maxLines: 2 });
-      if (desc.subtitle) text("Subtitle", desc.subtitle, { step: st(phone ? 14 : 16), color: "inkMuted", align: "center", width: grow(), maxLines: 2 });
+      // The screen's display line, centred over the choices (Hades' boon, Slay the Spire's reward); what to do under it.
+      if (desc.title) text("Title", desc.title, { step: phone ? "xl3" : "displayMd", heading: true, font: "display", align: "center", width: grow(), maxLines: 2 });
+      if (desc.subtitle) text("Subtitle", desc.subtitle, { step: st(phone ? 14 : 18), color: "inkMuted", align: "center", width: grow(), maxLines: 2 });
     });
   }
 
@@ -122,8 +132,10 @@ export function rewardChoice(id: string, desc: Api.RewardChoiceDesc): Api.Reward
       kit.setDraw({
         shape: { kind: "rect", radii: [t.panel, t.panel, t.panel, t.panel] },
         fills: [vgrad([[0, paint(mix(role("panelRaised"), edge, 0.16))], [1, paint(mix(role("panel"), edge, 0.05))]])],
-        strokes: [line(sel ? 3 : 2, paint(sel ? role("focus") : mix(edge, role("ink"), 0.1))), line(1, token("shadow", 0.5), "outside")],
-        effects: [shadow(u(6), u(16), 0.45), ...(high && !o.locked ? [glow(u(14), paint(edge, 0.55), 1)] : [])],
+        // Epic and above lit: a card side by side an even glow round it; a stacked row (a phone) a rim of the tier's light
+        // just outside it over a lift shadow, so no glow pools in the gap under it.
+        strokes: [line(sel ? 3 : 2, paint(sel ? role("focus") : mix(edge, role("ink"), 0.1))), ...(high && !o.locked && compact ? [line(u(3), paint(edge, 0.4), "outside")] : [line(1, token("shadow", 0.5), "outside")])],
+        effects: [shadow(u(compact ? 3 : 6), u(compact ? 10 : 16), 0.45), ...(high && !o.locked && !compact ? [glow(u(14), paint(edge, 0.5), 0)] : [])],
       });
       const artW = compact ? Math.round(Math.min(u(88), cw * 0.26) * Math.min(1.4, ts)) : cw - u(32);
       artSlot("Art", "Reward.art", { texture: o.image ?? null, kind: "item", icon: o.icon, rarity: o.rarity, width: px(artW), height: px(compact ? artW : Math.round(artW * 0.62)), radius: Math.max(4, t.small) }, () => {
@@ -135,7 +147,7 @@ export function rewardChoice(id: string, desc: Api.RewardChoiceDesc): Api.Reward
       });
       kit.column("Text", { width: grow(), gap: u(4), cross: compact ? "start" : "center" }, () => {
         // A compact row's tag leads its words (standing on the corner it would cover them at large text).
-        if (o.tag && compact) cornerTag("Tag", o.tag);
+        if (o.tag && compact) rewardTag(o);
         if (o.kind) text("Kind", o.kind.toLocaleUpperCase(), { step: st(12), color: tier ? mix(edge, role("ink"), 0.45) : "inkMuted", nowrap: true, ellipsis: true, width: grow(), align: compact ? "start" : "center", font: "display" });
         text("Title", o.title ?? "", { step: st(compact ? 17 : 20), heading: true, font: "display", width: grow(), align: compact ? "start" : "center", maxLines: 2, ellipsis: true });
         // Diamonds big enough to count (about 8 px drawn).
@@ -153,7 +165,7 @@ export function rewardChoice(id: string, desc: Api.RewardChoiceDesc): Api.Reward
         }
       });
       if (o.tag && !compact) {
-        cornerTag("Tag", o.tag);
+        rewardTag(o);
         over({ insets: { end: -u(6), top: -u(10) }, inert: true, z: 6 });
       }
       // Selected: a tick in a disc in the focus ink at the top start corner.
@@ -214,6 +226,7 @@ export function rewardChoice(id: string, desc: Api.RewardChoiceDesc): Api.Reward
   const showReroll = (desc.rerolls ?? -1) >= 0;
   const showBanish = (desc.banishes ?? -1) >= 0;
   if (showReroll || showBanish || desc.skipLabel || confirming) {
+    if (portrait) kit.spacer("Dock", grow());
     kit.row("Actions", { gap: u(12), cross: "center", align: "center", wrap: true, width: portrait ? grow() : null, part: "Reward.actions", partClass: "panel" }, () => {
       if (showReroll) {
         const left = desc.rerolls ?? 0;

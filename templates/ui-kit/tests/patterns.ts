@@ -48,6 +48,7 @@ function gear(b: ReturnType<typeof builder>, phone: boolean, prefix = ""): void 
   b.cmd("show:gear");
   b.cmd("pat:reset");
   b.shot(`${prefix}gear-idle`, 0.8);
+  b.dump(`${prefix}gear-idle`);
   // Without its art: the items' and the figure's placeholders (the standing figure, the kinds' marks).
   b.cmd("pat:art:off");
   b.shot(`${prefix}gear-placeholder`, 0.4);
@@ -282,7 +283,8 @@ function gacha(b: ReturnType<typeof builder>, phone: boolean, prefix = ""): void
     b.shot(`${prefix}gacha-hover`, 0.4);
   }
   // Another banner: its tab current, its art and title; then the purse too short for ten.
-  b.seq((at) => tap(at, "Banner/Body/Tabs/weapon"), 0.3);
+  // In portrait the tabs lead the words (under the splash's face); beside the art they are the rail.
+  b.seq((at) => tap(at, phone ? "Banner/Body/Main/Tabs/weapon" : "Banner/Body/Tabs/weapon"), 0.3);
   // The weapon banner wears a real texture as its key art (the others draw the placeholder).
   b.shot(`${prefix}gacha-weapon`, 0.6);
   b.cmd("pat:banner:event");
