@@ -338,7 +338,9 @@ was removed with that decision; the CPU culling and CPU particle paths
 remain as options on every device (`Culling::Cpu`, small frames under
 `Culling::Auto`, `ParticleSimulation::Cpu`). The engine is GPU only on
 every host (the owner, 2026-11-02): a player's device without a GPU is
-not supported, and no feature adds a CPU fallback for one.
+not supported, and no feature adds a CPU fallback for one. Developer
+tooling keeps running without a GPU (the owner, 2026-11-02): the logic
+tests in orbs and CI, and the probe's CPU description of a frame.
 
 - Forward+ (clustered), with a depth-normal prepass when an effect reads
   depth or normals (on every frame it cost the 20,000-sphere field two
