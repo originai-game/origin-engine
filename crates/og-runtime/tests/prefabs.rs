@@ -267,9 +267,10 @@ fn hashes_are_pinned_without_prefabs_and_stable_across_a_re_cook_with_them() {
 /// `mode` and `maxPrediction` fields change its layout in the type table;
 /// then G2-7's stall timeout from 93d4a11b9687d3b6: its `stallTimeout` and
 /// `rejoin` fields; the seat events are lazy, so they do not; then U6d's
-/// UI state version 13 from 13d5d679aa3698ae: Hit.owner; then G3-2's
-/// og.VideoPlayer.time as f64 from a99071b12db700c7).
-const BY_HAND_HASH: &str = "08346f93c7bc3352";
+/// UI state version 13 from 13d5d679aa3698ae: Hit.owner; then G3-2's lazy
+/// og.VideoPlayer from a99071b12db700c7: a world without footage no longer
+/// has the type, so its later changes leave this hash alone).
+const BY_HAND_HASH: &str = "fd4dddba26ef754a";
 
 #[test]
 fn apply_back_and_revert_round_trip_in_the_text() {

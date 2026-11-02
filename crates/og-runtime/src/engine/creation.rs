@@ -105,8 +105,9 @@ const REGISTERED_BY_MODULES: &[&str] = &[
 /// saves held it is at a later version (og-audio's og.AudioSource and
 /// og.AudioBusFx, version 2: the bus graph and the bus effects;
 /// og-physics's og.RigidBody and og.Physics, version 2: sleep; og.Joint,
-/// version 2: breaking; og.Vehicle, version 2: the drivetrain).
-fn versioned(mut schema: og_core::Schema) -> og_core::Schema {
+/// version 2: breaking; og.Vehicle, version 2: the drivetrain; the
+/// runtime's og.VideoPlayer, version 2: an f64 time).
+pub(crate) fn versioned(mut schema: og_core::Schema) -> og_core::Schema {
     use og_core::Reflect;
     schema.version = match schema.name.as_str() {
         "og.AudioSource" => og_audio::AudioSource::schema().version,
@@ -115,6 +116,7 @@ fn versioned(mut schema: og_core::Schema) -> og_core::Schema {
         "og.Physics" => og_physics::Physics::schema().version,
         "og.Joint" => og_physics::Joint::schema().version,
         "og.Vehicle" => og_physics::Vehicle::schema().version,
+        crate::video::PLAYER => crate::video::PLAYER_VERSION,
         _ => return schema,
     };
     schema
@@ -346,7 +348,7 @@ pub(crate) fn assemble(
         .collect();
     for name in &lazy_named {
         if let Some(l) = layouts.get(*name) {
-            world.register_schema(l.schema()).map_err(err)?;
+            world.register_schema(versioned(l.schema())).map_err(err)?;
         }
     }
     let mut systems = Vec::new();

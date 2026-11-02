@@ -3,7 +3,7 @@
 mod creation;
 #[cfg_attr(feature = "publish", allow(unused_imports))]
 pub(crate) use creation::assemble;
-pub(crate) use creation::{Assembled, extract_layouts};
+pub(crate) use creation::{Assembled, extract_layouts, versioned};
 pub use creation::{
     antialias_name, create, destroy, point_shadows_name, render_desc, render_options,
     set_render_backend, warm_renderer,

@@ -176,9 +176,9 @@ fn a_grouped_world_restores_its_scales_in_a_fresh_session() {
 /// A world that never names a time group: pinned on main e3ec45ab6, the
 /// code before G2-6 batch 3 (66118ec82a83f36d before G2-7 batch 3's
 /// og.Lockstep fields), then 808247095fefdc21 after U6d's UI state version
-/// 13 moved every raw world hash from 94fabc6049378510, then 0607ce0dc9b1517e
-/// after G3-2 made og.VideoPlayer.time f64 (its layout is in every
-/// world's type table); neither type is registered until a game uses it.
+/// 13 moved every raw world hash from 94fabc6049378510, then 83f0005d31df5c77
+/// once G3-2 made og.VideoPlayer lazy (it left the type table of every world
+/// without footage); neither type is registered until a game uses it.
 #[test]
 fn a_world_without_time_groups_keeps_its_hash() {
     set_hooks(Rc::new(Game));
@@ -191,5 +191,5 @@ fn a_world_without_time_groups_keeps_its_hash() {
         value(og_world_resource(engine, "og.TimeGroups".into())),
         json!({ "scales": [] })
     );
-    assert_eq!(hash(engine), "0607ce0dc9b1517e");
+    assert_eq!(hash(engine), "83f0005d31df5c77");
 }

@@ -1267,7 +1267,10 @@ video is a command script played headless and recorded (docs/depth.md §3).
   f32 an hour at 60 Hz fell 2.8 s behind it); the cook pads the sound
   with silence to the picture's length; and the source's loop region ends
   at the picture's end (`loopEnd` = frames / fps), so both wrap on the same
-  sample. Pausing is the player's `playing` (the sound stops, and resumes
+  sample. og.VideoPlayer is at version 2 for the f64 `time`
+  (`save_migrations` widens a version 1 save's f32) and lazy: registered
+  when a game first names it, so a world without footage has neither the
+  type nor a hash its changes move. Pausing is the player's `playing` (the sound stops, and resumes
   at the frame it held) or the game's ticks stopping (a hidden page, the
   shell's pause), which stops both; the time scale and hit stop leave
   footage alone, as they leave its sound. Several players of one stream

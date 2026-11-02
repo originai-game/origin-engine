@@ -115,8 +115,8 @@ fn set(engine: u32, entity: f64, x: u32, y: u32, tile: i32) {
 /// for G2-7 batch 2's og.Lockstep fields (3b30884ea43b16c7 to
 /// 69496dd3ffb3e378), batch 3's stallTimeout and rejoin (to
 /// 7d3e58d6b53fbd34), U6d's UI state version 13 (to a814ee913e53a5d5) and
-/// G3-2's f64 og.VideoPlayer.time (to c733d42df948b5a4), each of which
-/// moves every raw world hash.
+/// G3-2's lazy og.VideoPlayer (to d30157f0d09a1253, the type gone from a
+/// world without footage), each of which moves every raw world hash.
 #[test]
 fn a_world_of_loaded_maps_keeps_its_hash() {
     set_hooks(Rc::new(Game));
@@ -127,7 +127,7 @@ fn a_world_of_loaded_maps_keeps_its_hash() {
     frame(engine);
     set(engine, entity, 2, 1, 0);
     frame(engine);
-    assert_eq!(hash(engine), "c733d42df948b5a4");
+    assert_eq!(hash(engine), "d30157f0d09a1253");
 }
 
 #[test]

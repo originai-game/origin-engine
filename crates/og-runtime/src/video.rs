@@ -34,7 +34,10 @@ use std::sync::{Arc, Mutex};
 
 /// The system's name.
 pub(crate) const VIDEO_SYSTEM: &str = "og.video";
-const PLAYER: &str = "og.VideoPlayer";
+pub(crate) const PLAYER: &str = "og.VideoPlayer";
+/// og.VideoPlayer's schema version: 2 since G3-2 made `time` an f64
+/// (super::save_migrations upgrades a version 1 save).
+pub(crate) const PLAYER_VERSION: u32 = 2;
 const AUDIO: &str = "og.AudioSource";
 
 /// What the system needs of a loaded video.
@@ -184,24 +187,25 @@ fn record(
 }
 
 /// Schedules `og.video` here (after the game's systems, before og.audio).
+/// og.VideoPlayer is lazy (super::lazy): registered, and granted to this
+/// system, when a game first names it, so a world without footage keeps
+/// its type table and hash; until then the system has nothing to play.
 pub(crate) fn install(
     world: &mut World,
     engine_id: u32,
     layouts: &BTreeMap<String, Layout>,
 ) -> Result<(), String> {
-    let player = record(world, layouts, PLAYER)?;
+    let player = layouts
+        .get(PLAYER)
+        .cloned()
+        .ok_or_else(|| format!("{PLAYER} has no layout"))?;
     let audio = record(world, layouts, AUDIO)?;
     let shared = clips(engine_id);
     world
         .add_system(
             SystemDesc {
                 name: VIDEO_SYSTEM.into(),
-                reads: vec![PLAYER.into()],
-                writes: vec![PLAYER.into(), AUDIO.into()],
-                queries: vec![QueryDesc {
-                    write: vec![PLAYER.into()],
-                    ..QueryDesc::default()
-                }],
+                writes: vec![AUDIO.into()],
                 ..Default::default()
             },
             move |ctx| run(ctx, engine_id, &shared, &player, &audio),
@@ -223,14 +227,22 @@ fn run(
     ctx: &mut SystemContext<'_>,
     engine_id: u32,
     shared: &Mutex<IdMap<u64, Clip>>,
-    player: &(SchemaId, Layout),
+    layout: &Layout,
     audio: &(SchemaId, Layout),
 ) -> og_core::Result<()> {
+    let Ok(id) = ctx.id_by_name(PLAYER) else {
+        return Ok(());
+    };
+    let player = &(id, layout.clone());
     // The tick's length as og.audio counts it (a whole number of ticks a
     // second), so a player's time and its sound's playhead move together.
     let dt = 1.0 / (1.0 / f64::from(ctx.time().dt)).round().max(1.0);
     let mut entities: Vec<Entity> = Vec::new();
-    for a in ctx.query(0)? {
+    let players = QueryDesc {
+        write: vec![PLAYER.into()],
+        ..QueryDesc::default()
+    };
+    for a in ctx.query_with(&players)? {
         entities.extend_from_slice(a.entities());
     }
     let clips = shared.lock().unwrap_or_else(|e| e.into_inner()).clone();

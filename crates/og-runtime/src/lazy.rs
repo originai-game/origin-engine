@@ -160,6 +160,12 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: crate::stream::cells::ANCHOR,
         enable: |_| Ok(()),
     },
+    // G3-2: og.video plays it; a world without footage keeps its hash
+    // whatever the player's layout becomes.
+    Lazy {
+        name: crate::video::PLAYER,
+        enable: |w| w.grant(crate::video::VIDEO_SYSTEM, &[crate::video::PLAYER]),
+    },
 ];
 
 /// Lazy records registered together: naming one registers the rest.
@@ -219,7 +225,7 @@ pub(crate) fn ensure(eng: &Engine, world: &mut World, name: &str) -> Result<(), 
         .cloned()
         .ok_or_else(|| format!("{name} has no layout"))?;
     let id = world
-        .register_schema(layout.schema())
+        .register_schema(crate::engine::versioned(layout.schema()))
         .map_err(|e| e.reason().to_string())?;
     {
         // The runtime's table of names by id mirrors the registry's order.

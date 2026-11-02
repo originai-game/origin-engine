@@ -132,7 +132,58 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         note: "0.7.7 and earlier: gained model, handbrake, handbrakeGrip, driftGrip and the drivetrain's fields (G2-3); the restore takes their defaults: model VEHICLE_ARCADE, the car it was",
         run: None,
     },
+    Migration {
+        target: Target::Record,
+        name: "og.VideoPlayer",
+        from: 1,
+        to: 2,
+        note: "G3-2: time became an f64 (an f32 sum fell behind the sound over a long stream); a save without a player drops the type, which is lazy now",
+        run: Some(video_player_1_to_2),
+    },
 ];
+
+/// og.VideoPlayer 1 -> 2: `time` from f32 to f64, every other field as it
+/// was. A save that holds no player (every world's save before the type
+/// became lazy) drops it, so restoring it registers nothing.
+fn video_player_1_to_2(edit: &mut SnapshotEdit) -> Result<(), String> {
+    use og_core::reflect::FieldType;
+    let name = crate::video::PLAYER;
+    let Some(old) = edit.schema(name).cloned() else {
+        return Ok(());
+    };
+    let err = |e: og_core::Error| e.reason().to_string();
+    if edit.components(name).is_empty() && edit.resource(name).is_none() && !edit.has_events(name) {
+        return edit.replace_types(&[name], Vec::new()).map_err(err);
+    }
+    let mut schema = old.clone();
+    schema.version = 2;
+    for f in &mut schema.fields {
+        if f.name == "time" {
+            f.ty = FieldType::F64;
+        }
+    }
+    let fields: Vec<(bool, usize)> = old
+        .fields
+        .iter()
+        .map(|f| (f.name == "time" && f.ty == FieldType::F32, f.ty.size()))
+        .collect();
+    edit.map_type(name, schema, &mut |v| {
+        let mut out = Vec::with_capacity(v.len() + 4);
+        let mut at = 0;
+        for &(time, n) in &fields {
+            let b = &v[at..at + n];
+            if time {
+                let t = f32::from_le_bytes(b.try_into().expect("an f32 is 4 bytes"));
+                out.extend_from_slice(&f64::from(t).to_le_bytes());
+            } else {
+                out.extend_from_slice(b);
+            }
+            at += n;
+        }
+        Ok(out)
+    })
+    .map_err(err)
+}
 
 fn ui_9_to_11(edit: &mut SnapshotEdit) -> Result<(), String> {
     let bytes = edit.block("og.ui").ok_or("no og.ui block")?;
