@@ -1853,6 +1853,50 @@ fn seed(
     }
 }
 
+/// The choices `og style new` starts from when a look shares no word with
+/// any seed's family: a quiet light style of squircles and hairlines, with
+/// no ornament and calm motion. It is not a built-in pack (the owner dropped
+/// the `minimal` pack, 2026-11-02).
+fn fallback() -> StyleChoices {
+    use Finish as F;
+    use Motion as M;
+    use Ornament as O;
+    use Scheme::Light;
+    use ShapeLanguage as S;
+    seed(
+        "minimal",
+        "minimal modern",
+        "a clean, quiet strategy game where the numbers speak",
+        Light,
+        (0x3452ff, 0xf3f4f6, Some(0x0f9d8a)),
+        S::Squircle,
+        O::None,
+        M::Calm,
+        F::Flat,
+        fonts(
+            "paper/InstrumentSans-Regular.ttf",
+            "paper/InstrumentSans-Regular.ttf",
+            "paper/PTMono-Regular.ttf",
+            "NotoSansSC-Regular.ttf",
+            "NotoSansSC-Bold.ttf",
+        ),
+        "paper",
+        15.0,
+        0.0,
+        kit(
+            ("click", 16, 1.1),
+            ("select", 17, 1.0),
+            ("back", 18, 1.0),
+            ("whoosh", 16, 1.1),
+            ("error", 13, 1.0),
+            ("select", 19, 1.2),
+            0.4,
+            false,
+            0.03,
+        ),
+    )
+}
+
 /// The seed styles of `templates/styles` (docs/ui.md §12.5): one per look
 /// family of og-taste §12, each generated from these choices. Their
 /// directories are written by `og style new --seeds` and held to these
@@ -2153,38 +2197,6 @@ pub fn seeds() -> Vec<StyleChoices> {
             ),
         ),
         seed(
-            "minimal",
-            "minimal modern",
-            "a clean, quiet strategy game where the numbers speak",
-            Light,
-            (0x3452ff, 0xf3f4f6, Some(0x0f9d8a)),
-            S::Squircle,
-            O::None,
-            M::Calm,
-            F::Flat,
-            fonts(
-                "paper/InstrumentSans-Regular.ttf",
-                "paper/InstrumentSans-Regular.ttf",
-                "paper/PTMono-Regular.ttf",
-                "NotoSansSC-Regular.ttf",
-                "NotoSansSC-Bold.ttf",
-            ),
-            "paper",
-            15.0,
-            0.0,
-            kit(
-                ("click", 16, 1.1),
-                ("select", 17, 1.0),
-                ("back", 18, 1.0),
-                ("whoosh", 16, 1.1),
-                ("error", 13, 1.0),
-                ("select", 19, 1.2),
-                0.4,
-                false,
-                0.03,
-            ),
-        ),
-        seed(
             "dread",
             "diegetic horror",
             "a survival horror game read through notes, tapes and a dying torch",
@@ -2285,7 +2297,8 @@ pub fn seeds() -> Vec<StyleChoices> {
 
 impl StyleChoices {
     /// The choices of the seed style whose look family is nearest `look`
-    /// (the most words in common; `minimal modern` when none), renamed:
+    /// (the most words in common; [`fallback`]'s quiet light choices when
+    /// none), renamed:
     /// what `og style new` starts from before its flags.
     pub fn for_look(name: &str, look: &str, premise: &str) -> StyleChoices {
         let words = |s: &str| -> Vec<String> {
@@ -2310,11 +2323,7 @@ impl StyleChoices {
             .filter(|(h, _)| *h > 0)
             .max_by_key(|(h, _)| *h)
             .map(|(_, s)| s.clone());
-        let mut c = best.unwrap_or_else(|| {
-            all.into_iter()
-                .find(|s| s.name == "minimal")
-                .expect("the minimal seed")
-        });
+        let mut c = best.unwrap_or_else(fallback);
         c.name = name.into();
         c.look = look.into();
         c.premise = premise.into();

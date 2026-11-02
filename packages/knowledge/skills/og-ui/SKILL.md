@@ -412,7 +412,7 @@ paints, strokes, effects and materials (or nine-slices from its atlas). A
 part a style does not dress draws from its tokens and still looks
 finished. Choosing one is og-taste §1.
 
-The grammar, block by block (`templates/styles/minimal/style.ogt` is a
+The grammar, block by block (`templates/styles/craft/style.ogt` is a
 short complete one; `og style upgrade <file>` writes a version 1 style as
 version 2, keeping how it draws):
 
@@ -550,7 +550,7 @@ the style, and every catalogue preset already names one. `ui "pixel"` is a
 built-in style by slug (`og style list`: the atlas packs `pixel`, `cartoon`,
 `fantasy`, `scifi`, `paper`, `neon`, and the generated seeds `gilded`,
 `storybook`, `tactical`, `holo`, `cyber`, `bubbly`, `kawaii`, `arcade`,
-`craft`, `minimal`, `dread`, `broadcast`, `inkwash`, one per look family;
+`craft`, `dread`, `broadcast`, `inkwash`, one per look family;
 `og cook` bundles the one a look names and the fonts and icons it shares). `ui
 "styles/<name>/style.ogt"` is the game's own, and a game's
 `assets/styles/<slug>/style.ogt` wins over the built-in of that slug.

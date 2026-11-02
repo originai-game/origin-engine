@@ -3,7 +3,16 @@
   "about": "Machine-readable changelog of @origingame/engine (docs/release.md §3). kind: patch (0.x.y, compatible) or minor (0.x.0, has breaks). simulation: changed when a game's world can step differently (the golden replays' hashes moved, scripts/replay-gate.ts), else unchanged; versions before 0.6.1 were not measured and say changed. breaking: what a game may have to edit, each with the fix; find lists the identifiers og upgrade searches the game's sources for, codemod a mechanical rewrite it applies. CHANGELOG.md has the prose.",
   "unreleased": {
     "simulation": "changed",
-    "breaking": [],
+    "breaking": [
+      {
+        "member": "the built-in style minimal",
+        "change": "The minimal seed style is removed (the owner, 2026-11-02): no built-in pack @styles/minimal/ ships, og style list no longer names it, and a look with ui \"minimal\" no longer cooks. og style new still starts from its quiet light choices when a look matches no seed family. The engine is pre-release, so nothing migrates.",
+        "fix": "Name another built-in style in the look's ui line (og style list), or keep the old pack as the game's own: copy it from an earlier engine with og style eject minimal before upgrading, which writes assets/styles/minimal/, then write ui \"styles/minimal/style.ogt\".",
+        "find": [
+          "ui \"minimal\""
+        ]
+      }
+    ],
     "added": [
       {
         "member": "BackdropEffect.glass, BackdropEffect.elevation, BackdropEffect.edge, BackdropEffect.edgeColor, BackdropEffect.solid, BackdropEffect.cssMix, GlassWeight, Elevation",

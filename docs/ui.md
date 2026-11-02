@@ -693,8 +693,10 @@ Six built-in styles are not enough. The engine ships at least twelve seed
 styles covering the look families of `og-taste` §12 (for example ornate
 fantasy, storybook, tactical military, sci-fi holographic, cyberpunk neon,
 casual cartoon, kawaii and anime gacha, pixel retro, paper and craft,
-minimal modern, diegetic horror, sports broadcast, ink and eastern
-brush); the list is settled with the owner in phase U4.
+diegetic horror, sports broadcast, ink and eastern brush); the list is
+settled with the owner in phase U4. The minimal modern seed was dropped
+(the owner, 2026-11-02): its quiet light choices remain `og style new`'s
+start when a look matches no family, but no built-in pack ships them.
 
 A **style generator** (`og style new`) makes a game its own style from the
 look, the premise and a few choices (palette seed, shape language,

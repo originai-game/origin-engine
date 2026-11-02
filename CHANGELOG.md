@@ -15,6 +15,12 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Removed: the built-in `minimal` style** (the owner, 2026-11-02). No
+  `@styles/minimal/` pack ships and `og style list` no longer names it; a
+  look with `ui "minimal"` no longer cooks. `og style new` still starts
+  from its quiet light choices when a look matches no seed family.
+  Pre-release, so nothing migrates: name another built-in style, or eject
+  `minimal` from an earlier engine first and name the game's own copy.
 - **Tilemap orientations and run-time maps (G2-6, batch 2).** Maps are
   orthogonal, isometric, staggered or hex (pointy- or flat-top), from a
   `.ogt` `orientation` line or Tiled's isometric, staggered and hexagonal

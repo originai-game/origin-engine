@@ -615,38 +615,6 @@ pub static STYLES: &[(&str, &[u8])] = &[
         include_bytes!("../../../../templates/styles/kawaii/style.ogt"),
     ),
     (
-        "@styles/minimal/sfx-back.ogt",
-        include_bytes!("../../../../templates/styles/minimal/sfx-back.ogt"),
-    ),
-    (
-        "@styles/minimal/sfx-confirm.ogt",
-        include_bytes!("../../../../templates/styles/minimal/sfx-confirm.ogt"),
-    ),
-    (
-        "@styles/minimal/sfx-error.ogt",
-        include_bytes!("../../../../templates/styles/minimal/sfx-error.ogt"),
-    ),
-    (
-        "@styles/minimal/sfx-open.ogt",
-        include_bytes!("../../../../templates/styles/minimal/sfx-open.ogt"),
-    ),
-    (
-        "@styles/minimal/sfx-reward.ogt",
-        include_bytes!("../../../../templates/styles/minimal/sfx-reward.ogt"),
-    ),
-    (
-        "@styles/minimal/sfx-tap.ogt",
-        include_bytes!("../../../../templates/styles/minimal/sfx-tap.ogt"),
-    ),
-    (
-        "@styles/minimal/sfx-tap2.ogt",
-        include_bytes!("../../../../templates/styles/minimal/sfx-tap2.ogt"),
-    ),
-    (
-        "@styles/minimal/style.ogt",
-        include_bytes!("../../../../templates/styles/minimal/style.ogt"),
-    ),
-    (
         "@styles/storybook/sfx-back.ogt",
         include_bytes!("../../../../templates/styles/storybook/sfx-back.ogt"),
     ),

@@ -137,14 +137,6 @@ pub static STYLE_LICENCES: &[(&str, &[u8])] = &[
         include_bytes!("../../../../templates/styles/kawaii/art-requests.json"),
     ),
     (
-        "@styles/minimal/LICENSES.md",
-        include_bytes!("../../../../templates/styles/minimal/LICENSES.md"),
-    ),
-    (
-        "@styles/minimal/art-requests.json",
-        include_bytes!("../../../../templates/styles/minimal/art-requests.json"),
-    ),
-    (
         "@styles/storybook/LICENSES.md",
         include_bytes!("../../../../templates/styles/storybook/LICENSES.md"),
     ),

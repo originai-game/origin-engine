@@ -205,10 +205,6 @@ const ABOUT: &[(&str, &str)] = &[
         "paper and craft: round cut paper, dashed fields, snappy motion",
     ),
     (
-        "minimal",
-        "minimal modern: squircles, hairlines, no ornament, calm motion",
-    ),
-    (
         "dread",
         "diegetic horror: sharp ink-stained sheets, heavy motion, low sounds",
     ),
