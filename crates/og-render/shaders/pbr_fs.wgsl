@@ -13,6 +13,42 @@
 // must be the full path's.
 override DISCARD: bool = true;
 
+// The visibility buffer's resolve (meshlet.wgsl) shades pixels of one
+// full-screen pass whose 2x2 neighbours are other triangles, other
+// batches' or no one's, so screen derivatives there mean nothing (a
+// texture would sample its coarsest mip). With ANALYTIC the material's
+// texture samples and the position's derivatives take the gradients the
+// rasteriser computed for the pixel (`analytic_*`, set by the resolve).
+override ANALYTIC: bool = false;
+// d(uv)/dx and d(uv)/dy, and d(world)/dx and d(world)/dy.
+var<private> analytic_uv: vec4<f32>;
+var<private> analytic_dx: vec3<f32>;
+var<private> analytic_dy: vec3<f32>;
+
+// The gradient along `d` (uv per pixel) of slot `slot`'s uv.
+fn analytic_grad(slot: u32, uv: vec2<f32>, d: vec2<f32>) -> vec2<f32> {
+  return material_uv(slot, uv + d) - material_uv(slot, uv);
+}
+
+// A material map at slot `slot`'s uv (the analytic gradients with ANALYTIC).
+fn material_sample(t: texture_2d<f32>, slot: u32, uv: vec2<f32>) -> vec4<f32> {
+  let at = material_uv(slot, uv);
+  if (ANALYTIC) {
+    return textureSampleGrad(t, material_sampler, at, analytic_grad(slot, uv, analytic_uv.xy), analytic_grad(slot, uv, analytic_uv.zw));
+  }
+  return textureSample(t, material_sampler, at);
+}
+
+fn world_dx(p: vec3<f32>) -> vec3<f32> {
+  if (ANALYTIC) { return analytic_dx; }
+  return dpdx(p);
+}
+
+fn world_dy(p: vec3<f32>) -> vec3<f32> {
+  if (ANALYTIC) { return analytic_dy; }
+  return dpdy(p);
+}
+
 @fragment
 fn fs(in: VertexOut, @builtin(front_facing) front_facing: bool) -> @location(0) vec4<f32> {
   hook_front = select(-1.0, 1.0, front_facing);
@@ -23,7 +59,14 @@ fn fs(in: VertexOut, @builtin(front_facing) front_facing: bool) -> @location(0) 
 fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let uv = stylised_uv(in.uv, in.affine);
   let base_uv = material_uv(UV_MAP, uv);
-  let base_sample = textureSample(base_color_tex, material_sampler, base_uv);
+  var base_sample: vec4<f32>;
+  if (ANALYTIC) {
+    let gx = analytic_grad(UV_MAP, uv, analytic_uv.xy);
+    let gy = analytic_grad(UV_MAP, uv, analytic_uv.zw);
+    base_sample = textureSampleGrad(base_color_tex, material_sampler, base_uv, gx, gy);
+  } else {
+    base_sample = textureSample(base_color_tex, material_sampler, base_uv);
+  }
   // A material shader's hooks (identities with the built-in hooks).
   var hook: Hook;
   hook.world = in.world_pos;
@@ -54,7 +97,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let alpha = select(select(1.0, coverage, a2c), base.a, (mode & 4u) != 0u);
   if ((mode & 2u) != 0u) {
     // Unlit (MeshBasicMaterial): the colour plus the emissive term.
-    let e = surface_emissive(hook, params, material.emissive.rgb * textureSample(emissive_tex, material_sampler, material_uv(UV_EMISSIVE, uv)).rgb);
+    let e = surface_emissive(hook, params, material.emissive.rgb * material_sample(emissive_tex, UV_EMISSIVE, uv).rgb);
     var unlit = base.rgb + e + dissolve_edge;
     if (EFFECTS && material.toon.w > 0.0) { unlit = mix(unlit, material.flash.rgb, material.toon.w); }
     unlit = look_flash(unlit, in.look);
@@ -65,10 +108,10 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     }
     return vec4<f32>(apply_fog(unlit, in.world_pos), alpha);
   }
-  let metalness_sample = textureSample(metalness_tex, material_sampler, material_uv(UV_METALNESS, uv));
-  let roughness_sample = textureSample(roughness_tex, material_sampler, material_uv(UV_METALNESS, uv));
-  let dpx = dpdx(in.world_pos);
-  let dpy = dpdy(in.world_pos);
+  let metalness_sample = material_sample(metalness_tex, UV_METALNESS, uv);
+  let roughness_sample = material_sample(roughness_tex, UV_METALNESS, uv);
+  let dpx = world_dx(in.world_pos);
+  let dpy = world_dy(in.world_pos);
   var s: Surface;
   s.metallic = clamp(material.mr.x * metalness_sample.b, 0.0, 1.0);
   s.roughness = clamp(material.mr.y * roughness_sample.g, 0.04, 1.0);
@@ -95,7 +138,14 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   }
   s.f0 = mix(vec3<f32>(0.04), s.albedo, s.metallic);
   let normal_uv = material_uv(UV_NORMAL, uv);
-  let normal_sample = textureSample(normal_tex, material_sampler, normal_uv);
+  var normal_sample: vec4<f32>;
+  if (ANALYTIC) {
+    let gx = analytic_grad(UV_NORMAL, uv, analytic_uv.xy);
+    let gy = analytic_grad(UV_NORMAL, uv, analytic_uv.zw);
+    normal_sample = textureSampleGrad(normal_tex, material_sampler, normal_uv, gx, gy);
+  } else {
+    normal_sample = textureSample(normal_tex, material_sampler, normal_uv);
+  }
   if (material.flags.x > 0.5) {
     var map = normal_sample.xyz * 2.0 - 1.0;
     if (material.flags.x > 1.5) {
@@ -222,7 +272,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let prefiltered = reflected_light(r, in.world_pos, mip);
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
   let specular_ibl = prefiltered * (f_ibl * lut.x + lut.y) * frame.params.x;
-  let ao_sample = textureSample(ao_tex, material_sampler, material_uv(UV_AO, uv)).r;
+  let ao_sample = material_sample(ao_tex, UV_AO, uv).r;
   // What the material's AO and envMapIntensity keep of the image-based light (the environment's intensity is in
   // diffuse_ibl and specular_ibl already).
   var ibl_scale = material.flags.z * keep;
@@ -256,7 +306,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let dbg_direct = color;
   color += ibl * ibl_scale;
 
-  color += surface_emissive(hook, params, material.emissive.rgb * textureSample(emissive_tex, material_sampler, material_uv(UV_EMISSIVE, uv)).rgb) * ao_all;
+  color += surface_emissive(hook, params, material.emissive.rgb * material_sample(emissive_tex, UV_EMISSIVE, uv).rgb) * ao_all;
   if (EFFECTS && abs(fx.decal_info.x) > 0.5) { color += decal_emissive; }
   if (EFFECTS && material.rim.w > 0.0) { color += dissolve_edge; }
   if (EFFECTS && material.toon.y > 0.0) {

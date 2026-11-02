@@ -1092,21 +1092,27 @@ fn sample_layer(text: &str, texture: &str, layer: &str) -> String {
     out.push_str(rest);
     assert!(found > 0, "the standard module samples {texture} nowhere");
     // `textureSampleBias(<texture>, material_sampler, <coords>, <bias>)`
-    // (the material style's surface): the layer goes after the coords,
+    // (the material style's surface) and `textureSampleGrad(<texture>,
+    // material_sampler, <coords>, <ddx>, <ddy>)` (the visibility buffer's
+    // resolve, pbr_fs.wgsl `ANALYTIC`): the layer goes after the coords,
     // which hold no comma.
-    let call = format!("textureSampleBias({texture}, material_sampler, ");
-    let text = out;
-    let mut out = String::with_capacity(text.len());
-    let mut rest = text.as_str();
-    while let Some(at) = rest.find(&call) {
-        let args = at + call.len();
-        let comma = args + rest[args..].find(',').expect("a bias after the coords");
-        out.push_str(&rest[..comma]);
-        out.push_str(", ");
-        out.push_str(layer);
-        rest = &rest[comma..];
+    for kind in ["Bias", "Grad"] {
+        let call = format!("textureSample{kind}({texture}, material_sampler, ");
+        let text = std::mem::take(&mut out);
+        let mut rest = text.as_str();
+        while let Some(at) = rest.find(&call) {
+            let args = at + call.len();
+            let comma = args
+                + rest[args..]
+                    .find(',')
+                    .expect("an argument after the coords");
+            out.push_str(&rest[..comma]);
+            out.push_str(", ");
+            out.push_str(layer);
+            rest = &rest[comma..];
+        }
+        out.push_str(rest);
     }
-    out.push_str(rest);
     out
 }
 

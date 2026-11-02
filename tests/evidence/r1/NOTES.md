@@ -106,3 +106,14 @@ depth words), `meshlet_gpu.rs` (the soft list's plan).
   `-occlusion`, `-views` and `-shadows` where far trees' clusters are
   soft. Each should look as before; their regular-path comparisons should
   still pass. `meshlet-near` should not move (its tree is 6 m away).
+
+### Batch 4 fix: textured materials in the resolve
+
+macrunner's read of d22562cab: the cooked gltf-reference scene's jesters
+had cluster-shaped grey-violet blocks (RMSE 0.03313). The resolve sampled
+their maps with implicit derivatives across a full-screen pass, whose
+quads mix triangles, batches and empty pixels, so the coarsest mip. The
+setup now records analytic uv and position gradients and the resolve
+samples with them (`pbr_fs.wgsl` `ANALYTIC`). New:
+`template::cooked_models_draw_the_same_through_the_visibility_buffer`
+(the gltf-reference scene with the buffer on and off, default tolerance).

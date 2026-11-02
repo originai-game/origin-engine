@@ -44,7 +44,7 @@ const WORKGROUPS_PER_ROW: u32 = 65535u;
 // meshlet.rs SUBPIXEL and RASTER_MAX.
 const SUBPIXEL: i32 = 256;
 const RASTER_MAX: f32 = 64.0;
-const RECORD_WORDS: u32 = 20u;
+const RECORD_WORDS: u32 = 32u;
 
 fn transform_at(buf_index: u32, from_previous: bool) -> mat4x4<f32> {
   var t0: vec4<f32>;
@@ -223,10 +223,29 @@ fn raster_level_color(level: u32) -> f32 {
   return f32((q.x << 16u) | (q.y << 8u) | q.z);
 }
 
+// meshlet.rs `barycentrics`: the perspective-correct weights at `ndc`,
+// extrapolated past the triangle's edges as a quad's helper pixels are.
+fn raster_bary(clip: array<vec4<f32>, 3>, ndc: vec2<f32>) -> vec3<f32> {
+  let p0 = clip[0].xy / clip[0].w;
+  let p1 = clip[1].xy / clip[1].w;
+  let p2 = clip[2].xy / clip[2].w;
+  let area = (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x);
+  let l = vec3<f32>(
+    (p1.x - ndc.x) * (p2.y - ndc.y) - (p1.y - ndc.y) * (p2.x - ndc.x),
+    (p2.x - ndc.x) * (p0.y - ndc.y) - (p2.y - ndc.y) * (p0.x - ndc.x),
+    (p0.x - ndc.x) * (p1.y - ndc.y) - (p0.y - ndc.y) * (p1.x - ndc.x),
+  ) / area;
+  let q = l / vec3<f32>(clip[0].w, clip[1].w, clip[2].w);
+  return q / (q.x + q.y + q.z);
+}
+
 // One thread a pixel: the seen soft triangle's attributes at the pixel's
-// centre, perspective-correct (meshlet.rs `barycentrics`), as a record:
-// (world, depth), (normal oct, uv, colour), (tangent oct, tangent w, its
-// batch row, object id), the instance's look, (last frame's world, 0).
+// centre, perspective-correct, as a record: (world, depth), (normal oct,
+// uv, colour), (tangent oct, tangent w, its batch row, object id), the
+// instance's look, (last frame's world, 0), (d(uv)/dx, d(uv)/dy),
+// (d(world)/dx, 0), (d(world)/dy, 0): the gradients are the differences to the next pixel right and
+// down on the same triangle's plane, which the hardware's quads take and
+// the resolve's full-screen quads cannot (pbr_fs.wgsl `ANALYTIC`).
 @compute @workgroup_size(8, 8)
 fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
   if (gid.x >= raster.size.x || gid.y >= raster.size.y) { return; }
@@ -252,26 +271,26 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
     vi[j] = f.y + indices[c.x + tri * 3u + j];
     clip[j] = mul_point(raster.view_proj, model * vec4<f32>(vertices[vi[j] * 4u].xyz, 1.0));
   }
-  // meshlet.rs `barycentrics`.
-  let p0 = clip[0].xy / clip[0].w;
-  let p1 = clip[1].xy / clip[1].w;
-  let p2 = clip[2].xy / clip[2].w;
-  let area = (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x);
-  let l = vec3<f32>(
-    (p1.x - ndc.x) * (p2.y - ndc.y) - (p1.y - ndc.y) * (p2.x - ndc.x),
-    (p2.x - ndc.x) * (p0.y - ndc.y) - (p2.y - ndc.y) * (p0.x - ndc.x),
-    (p0.x - ndc.x) * (p1.y - ndc.y) - (p0.y - ndc.y) * (p1.x - ndc.x),
-  ) / area;
-  let q = l / vec3<f32>(clip[0].w, clip[1].w, clip[2].w);
-  let b = q / (q.x + q.y + q.z);
+  let b = raster_bary(clip, ndc);
+  // The next pixel right and down (framebuffer y runs down, ndc y up).
+  let bx = raster_bary(clip, ndc + vec2<f32>(2.0 / size.x, 0.0));
+  let by = raster_bary(clip, ndc - vec2<f32>(0.0, 2.0 / size.y));
   var position = vec3<f32>(0.0);
   var normal = vec3<f32>(0.0);
   var uv = vec2<f32>(0.0);
   var color = vec4<f32>(0.0);
   var tangent = vec4<f32>(0.0);
+  var dpos_x = vec3<f32>(0.0);
+  var dpos_y = vec3<f32>(0.0);
+  var duv_x = vec2<f32>(0.0);
+  var duv_y = vec2<f32>(0.0);
   for (var j = 0u; j < 3u; j++) {
     let a = vertices[vi[j] * 4u];
     let v = vertices[vi[j] * 4u + 1u];
+    dpos_x += a.xyz * (bx[j] - b[j]);
+    dpos_y += a.xyz * (by[j] - b[j]);
+    duv_x += v.zw * (bx[j] - b[j]);
+    duv_y += v.zw * (by[j] - b[j]);
     position += a.xyz * b[j];
     normal += vec3<f32>(a.w, v.xy) * b[j];
     uv += v.zw * b[j];
@@ -293,8 +312,10 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
     look.z = raster_level_color(c.z);
   }
   let depth = bitcast<f32>(~atomicLoad(&vbuf[pixel]));
+  let dwx = (model * vec4<f32>(dpos_x, 0.0)).xyz;
+  let dwy = (model * vec4<f32>(dpos_y, 0.0)).xyz;
   // A tangent of w 0 is none (pbr.wgsl `lit_vertex`).
-  let rows = array<vec4<u32>, 5>(
+  let rows = array<vec4<u32>, 8>(
     vec4<u32>(bitcast<vec3<u32>>(world), bitcast<u32>(depth)),
     vec4<u32>(pack2x16snorm(raster_oct(n)), bitcast<vec2<u32>>(uv), pack4x8unorm(color)),
     vec4<u32>(
@@ -305,10 +326,13 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
     ),
     bitcast<vec4<u32>>(look),
     vec4<u32>(bitcast<vec3<u32>>((prev * vec4<f32>(position, 1.0)).xyz), 0u),
+    bitcast<vec4<u32>>(vec4<f32>(duv_x, duv_y)),
+    vec4<u32>(bitcast<vec3<u32>>(dwx), 0u),
+    vec4<u32>(bitcast<vec3<u32>>(dwy), 0u),
   );
   // The records from the slots' end, rounded up to a vec4.
   let r = ((wh + 3u) & ~3u) + slot * RECORD_WORDS;
-  for (var i = 0u; i < 5u; i++) {
+  for (var i = 0u; i < 8u; i++) {
     for (var j = 0u; j < 4u; j++) { attrs[r + i * 4u + j] = rows[i][j]; }
   }
   attrs[pixel] = slot + 1u;

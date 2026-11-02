@@ -118,7 +118,7 @@ struct RasterParams {
 
 /// u32 words per visibility-buffer record (meshlet_raster.wgsl
 /// `RECORD_ROWS` vec4s).
-const RECORD_WORDS: u64 = 20;
+const RECORD_WORDS: u64 = 32;
 
 /// `struct BatchRow` in meshlet_cull.wgsl.
 #[repr(C)]
@@ -891,7 +891,7 @@ impl MeshletGpu {
                         b.side,
                         false,
                         None,
-                        Some(("vs_prepass_meshlet", "fs_prepass")),
+                        Some(("vs_prepass_meshlet", "fs_prepass", false)),
                     )
                 });
             }
@@ -989,8 +989,11 @@ impl MeshletGpu {
         // The visibility buffer takes the camera's small clusters of
         // occluder batches (opaque, depth exactly their triangles') under
         // a perspective camera without retro vertex snapping.
+        // Nor under the material style's surface, whose pattern takes
+        // screen derivatives of its own (pbr_fs.wgsl).
         let soft_on = scene.visibility_buffer
             && scene.stylise.retro.is_none()
+            && !scene.stylise.material.surface_on()
             && matches!(
                 scene.camera.projection,
                 crate::Projection::Perspective { .. }

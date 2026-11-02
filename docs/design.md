@@ -748,7 +748,15 @@ full-screen resolve per soft batch, in the camera's lit pass and its
 prepass, shades that batch's pixels with the same `lit_fragment` and
 `prepass_targets` as the hardware path, writing the rasteriser's depth,
 so the larger clusters, still drawn by the hardware, meet the resolved
-pixels by the depth test. three.js decides per triangle (8 pixels); per
+pixels by the depth test. A full-screen pass's 2x2 neighbours are other
+triangles' pixels, so its screen derivatives mean nothing (a texture would
+sample its coarsest mip): the setup also records each pixel's uv and
+world-position differences to the next pixel right and down on its
+triangle's plane, and the resolve's pipelines set `pbr_fs.wgsl`'s
+`ANALYTIC`, which samples the material's maps with those gradients
+(`textureSampleGrad`) and takes them as the position's derivatives. The
+material style's surface pattern takes derivatives of its own, so under it
+the camera's clusters stay on the hardware. three.js decides per triangle (8 pixels); per
 cluster keeps each hardware cluster in its batch's one indirect draw. The
 resolve's fragment stage adds one storage buffer (each pixel's record
 slot, then the records) and one uniform to the lit stage's, and no

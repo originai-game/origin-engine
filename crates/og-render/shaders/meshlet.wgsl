@@ -154,7 +154,7 @@ fn meshlet_record(pos: vec4<f32>, row: u32) -> MeshletRecord {
   r.ok = false;
   r.depth = 1.0;
   if (slot == 0u) { return r; }
-  let at = meshlet_screen.z / 4u + (slot - 1u) * 5u;
+  let at = meshlet_screen.z / 4u + (slot - 1u) * 8u;
   let a = meshlet_attrs[at];
   let b = meshlet_attrs[at + 1u];
   let c = meshlet_attrs[at + 2u];
@@ -174,6 +174,10 @@ fn meshlet_record(pos: vec4<f32>, row: u32) -> MeshletRecord {
   r.v.affine = vec3<f32>(r.v.uv, 1.0);
   r.v.look = bitcast<vec4<f32>>(meshlet_attrs[at + 3u]);
   r.prev_world = bitcast<vec3<f32>>(meshlet_attrs[at + 4u].xyz);
+  // The pixel's gradients (pbr_fs.wgsl `ANALYTIC`).
+  analytic_uv = bitcast<vec4<f32>>(meshlet_attrs[at + 5u]);
+  analytic_dx = bitcast<vec3<f32>>(meshlet_attrs[at + 6u].xyz);
+  analytic_dy = bitcast<vec3<f32>>(meshlet_attrs[at + 7u].xyz);
   r.object = c.w;
   return r;
 }

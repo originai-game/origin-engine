@@ -421,8 +421,10 @@ pub(crate) fn prepass_pipeline(
     skinned: bool,
     lean: Option<(bool, bool)>,
     // The meshlet path's (vertex, fragment) entry points: no vertex
-    // buffers (meshlet.wgsl pulls its vertices).
-    meshlet: Option<(&str, &str)>,
+    // buffers (meshlet.wgsl pulls its vertices); with the third true, the
+    // analytic gradients (pbr_fs.wgsl `ANALYTIC`: the visibility buffer's
+    // resolve).
+    meshlet: Option<(&str, &str, bool)>,
 ) -> wgpu::RenderPipeline {
     let (derivatives, compact) = lean.unwrap_or_default();
     let lean = lean.is_some();
@@ -436,9 +438,12 @@ pub(crate) fn prepass_pipeline(
         Some(PREV_INSTANCE_LAYOUT),
     ];
     let constants = [("DISCARD", 0.0)];
+    let analytic = [("ANALYTIC", 1.0)];
     let options = wgpu::PipelineCompilationOptions {
         constants: if lean && !derivatives {
             &constants
+        } else if meshlet.is_some_and(|m| m.2) {
+            &analytic
         } else {
             &[]
         },
@@ -462,7 +467,7 @@ pub(crate) fn prepass_pipeline(
         vertex: wgpu::VertexState {
             module,
             entry_point: Some(match (skinned, lean) {
-                _ if let Some((vs, _)) = meshlet => vs,
+                _ if let Some((vs, _, _)) = meshlet => vs,
                 (true, _) => "vs_prepass_skinned",
                 (false, true) if compact => "vs_prepass_lean_compact",
                 (false, true) => "vs_prepass_lean",
@@ -491,7 +496,7 @@ pub(crate) fn prepass_pipeline(
         fragment: Some(wgpu::FragmentState {
             module,
             entry_point: Some(match meshlet {
-                Some((_, fs)) => fs,
+                Some((_, fs, _)) => fs,
                 None if lean && !skinned => "fs_prepass_lean",
                 None => "fs_prepass",
             }),

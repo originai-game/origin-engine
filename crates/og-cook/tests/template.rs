@@ -828,8 +828,9 @@ fn sounds_fonts_and_scenes_load_as_authored() {
     assert_eq!(f32s, [0.0, 2.2, 0.0, 0.0, 0.0, 0.0, 1.0, 0.25, 0.25, 0.25]);
 }
 
-#[test]
-fn cooked_models_render_the_gltf_reference_scene() {
+/// og-tests' `gltf-reference` scene (its camera, lights, post settings and
+/// placements) with the cooked models in place of the source ones.
+fn cooked_gltf_reference() -> og_tests::scenes::GfxScene {
     use og_render::gltf::load_glb;
     let b = bundle();
     // og-tests' scene: its camera, lights, post settings and placements; only
@@ -889,6 +890,39 @@ fn cooked_models_render_the_gltf_reference_scene() {
         expected,
         "every reference instance has a cooked counterpart"
     );
+    gfx
+}
+
+/// The visibility buffer shades textured, multi-material models as the
+/// hardware does: the far trickster's soft clusters (several materials,
+/// each with its maps) through the compute rasteriser and the resolve,
+/// against every cluster drawn by the hardware. A resolve that shades
+/// another batch's pixels, or samples its maps with the full-screen
+/// pass's own screen derivatives (the coarsest mip), fails it.
+#[test]
+fn cooked_models_draw_the_same_through_the_visibility_buffer() {
+    let render = |vbuffer: bool| {
+        let mut gfx = cooked_gltf_reference();
+        gfx.scene.visibility_buffer = vbuffer;
+        og_tests::gfx::render_built(&mut gfx).unwrap()
+    };
+    let (on, off) = (render(true), render(false));
+    let tolerance = og_tests::compare::Tolerance::default();
+    let cmp = og_tests::compare::compare(
+        &on.image.pixels,
+        &off.image.pixels,
+        on.image.width,
+        on.image.height,
+        &tolerance,
+    )
+    .unwrap();
+    cmp.check(&tolerance)
+        .unwrap_or_else(|e| panic!("visibility buffer against the hardware: {e}"));
+}
+
+#[test]
+fn cooked_models_render_the_gltf_reference_scene() {
+    let mut gfx = cooked_gltf_reference();
     let rendered = og_tests::gfx::render_built(&mut gfx).unwrap();
     let tier = rendered.info.backend_tier();
     let reference_path = og_tests::gfx::reference_path(&tier, "gltf-reference");

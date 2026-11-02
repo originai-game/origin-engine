@@ -243,7 +243,7 @@ impl VisBuffer {
             self.lit.entry(e).or_insert_with(|| {
                 crate::hdr_pipeline_with(
                     device,
-                    &[("EFFECTS", e as u32 as f64)],
+                    &[("EFFECTS", e as u32 as f64), ("ANALYTIC", 1.0)],
                     crate::HdrPipeline {
                         alpha_to_coverage: false,
                         label: "meshlet resolve",
@@ -269,7 +269,7 @@ impl VisBuffer {
                 Side::Double,
                 false,
                 None,
-                Some(("vs_meshlet_resolve", "fs_prepass_meshlet_resolve")),
+                Some(("vs_meshlet_resolve", "fs_prepass_meshlet_resolve", true)),
             ));
         }
     }
