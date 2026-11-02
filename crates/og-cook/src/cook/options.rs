@@ -1,0 +1,361 @@
+use super::*;
+
+/// Mesh processing (meshoptimizer).
+#[derive(Clone, Debug, PartialEq)]
+pub struct MeshOptions {
+    /// LOD levels including the full mesh (LOD 0).
+    pub lod_levels: u32,
+    /// Each LOD targets this fraction of the previous one's triangles.
+    pub lod_ratio: f32,
+    /// The largest simplification error allowed, relative to the mesh extent.
+    pub lod_max_error: f32,
+    /// How much vertex-cache efficiency overdraw ordering may give up (1.05 = 5 %).
+    pub overdraw_threshold: f32,
+    /// Generate MikkTSpace tangents for normal-mapped primitives that lack them.
+    pub tangents: bool,
+    /// Each level's fraction of the full mesh's triangles, the first 1: a
+    /// model's import settings (`model { lods 1 0.5 0.25 }`). `None`: the
+    /// levels `lod_levels` and `lod_ratio` give (1, 0.5, 0.25 by default).
+    pub lods: Option<Vec<f32>>,
+    /// Cook each primitive's raycast BVH (og.render.raycast) into the
+    /// model's blob, so a raycast never builds one at run time: a model's
+    /// import settings turn it off (`model { raycast false }`) for a model
+    /// no ray is cast at, saving its bytes (about 13 per triangle).
+    pub raycast: bool,
+    /// The project's art contract as models are held to it (docs/art.md
+    /// §2.3, `conform::mesh`): set by the cook from project.ogt's `look`
+    /// for every asset that does not opt out; `None` conforms nothing.
+    pub conform: Option<conform::mesh::Conform>,
+}
+
+impl Default for MeshOptions {
+    fn default() -> Self {
+        MeshOptions {
+            lod_levels: 3,
+            lod_ratio: 0.5,
+            lod_max_error: 0.05,
+            overdraw_threshold: 1.05,
+            tangents: true,
+            lods: None,
+            raycast: true,
+            conform: None,
+        }
+    }
+}
+
+impl MeshOptions {
+    /// Each level's fraction of the full mesh's triangles, level 0 first (1).
+    pub fn fractions(&self) -> Vec<f32> {
+        match &self.lods {
+            Some(l) => l.clone(),
+            None => (0..self.lod_levels.max(1))
+                .map(|k| self.lod_ratio.powi(k as i32))
+                .collect(),
+        }
+    }
+
+    /// These options with a model's import settings (`model { lods 1 0.5
+    /// 0.25 lodError 0.05 }`) over them: `lods` the levels' triangle
+    /// fractions (the first 1, each below the one before; `lods 1` keeps the
+    /// full mesh alone), `lodError` the largest simplification error
+    /// relative to the mesh's extent.
+    pub fn for_model(&self, block: Option<&og_core::ogt::Block>) -> Result<MeshOptions, String> {
+        let mut o = self.clone();
+        let Some(b) = block else {
+            return Ok(o);
+        };
+        if let Some(e) = b.get("lods") {
+            let mut f = Vec::new();
+            for i in 0..e.values.len() {
+                f.push(
+                    e.f32(i)
+                        .map_err(|x| format!("line {}: lods: {x}", e.line))?,
+                );
+            }
+            let ok = f.first() == Some(&1.0)
+                && f.windows(2).all(|w| w[1] < w[0] && w[1] > 0.0)
+                && f.len() <= 8;
+            if !ok {
+                return Err(format!(
+                    "line {}: lods takes each level's fraction of the full mesh's triangles, the first 1 and each below the one before, at most 8 (`lods 1 0.5 0.25`)",
+                    e.line
+                ));
+            }
+            o.lods = Some(f);
+        }
+        if let Some(e) = b.get("lodError") {
+            let v = e
+                .f32(0)
+                .map_err(|x| format!("line {}: lodError: {x}", e.line))?;
+            if !(v > 0.0 && v <= 1.0) {
+                return Err(format!(
+                    "line {}: lodError is the largest error relative to the mesh's extent, above 0 and at most 1 (default 0.05)",
+                    e.line
+                ));
+            }
+            o.lod_max_error = v;
+        }
+        if let Some(e) = b.get("raycast") {
+            o.raycast = e.values.first().and_then(|v| v.as_bool()).ok_or_else(|| {
+                format!(
+                    "line {}: raycast takes true (cook the raycast BVH, the default) or false (build it at the first og.render.raycast that reaches the model)",
+                    e.line
+                )
+            })?;
+        }
+        Ok(o)
+    }
+
+    pub(super) fn describe(&self) -> String {
+        format!(
+            "lods {} ratio {} error {} overdraw {} tangents {} (bitangent up the image) quantize 16/oct16/uv16/rgba8 codec meshopt-v1 flat levels by position (S6)",
+            self.lod_levels,
+            self.lod_ratio,
+            self.lod_max_error,
+            self.overdraw_threshold,
+            self.tangents
+        )
+    }
+}
+
+/// Texture compression (Basis Universal).
+#[derive(Clone, Debug, PartialEq)]
+pub struct TextureOptions {
+    /// ETC1S quality 1..=255 (colour).
+    pub etc1s_quality: u32,
+    /// UASTC pack level 0..=4 (normals, linear data).
+    pub uastc_level: u32,
+    /// UASTC rate-distortion optimisation quality scalar (lower = higher quality), or none.
+    pub uastc_rdo: Option<f32>,
+    /// Zstandard supercompression of UASTC levels.
+    pub zstd: bool,
+    pub mipmaps: bool,
+    /// Encode with `toktx` even when the basis-universal crate is built in.
+    pub force_toktx: bool,
+    /// Encode colour textures as UASTC too (about 4x the size of ETC1S, without its 4x4 block colour loss on foliage,
+    /// bark and stone detail). Off by default; project.ogt's `cook { color_textures uastc }` turns it on and
+    /// `publish { color_textures etc1s }` off again for the web export (og-cli's `cook::texture_options`).
+    pub color_uastc: bool,
+}
+
+impl Default for TextureOptions {
+    fn default() -> Self {
+        TextureOptions {
+            etc1s_quality: 128,
+            uastc_level: 1,
+            uastc_rdo: Some(1.0),
+            zstd: true,
+            mipmaps: true,
+            force_toktx: false,
+            color_uastc: false,
+        }
+    }
+}
+
+impl TextureOptions {
+    pub(super) fn describe(&self) -> String {
+        format!(
+            "etc1s {} uastc {} rdo {} zstd {} mips {} normal y in alpha{}",
+            self.etc1s_quality,
+            self.uastc_level,
+            self.uastc_rdo.map_or("off".to_string(), |r| r.to_string()),
+            self.zstd,
+            self.mipmaps,
+            if self.color_uastc {
+                " colour uastc"
+            } else {
+                ""
+            }
+        )
+    }
+}
+
+/// Font atlas settings; a font's import settings (`<font>.ogt`) override them.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FontSettings {
+    /// Named code point sets: `ascii`, `latin` (ASCII + Latin-1), `punct`,
+    /// `cjk-punct`, `kana`, `all` (every code point the font maps).
+    pub charset: Vec<String>,
+    /// Extra characters to include (UI strings, a game's CJK text).
+    pub chars: String,
+    /// Atlas pixels per em.
+    pub em_px: f32,
+    /// Distance range in pixels.
+    pub px_range: f32,
+    /// Atlas page edge in pixels.
+    pub page_size: u32,
+    /// Ship the font file with the atlas, so characters outside the charset
+    /// are rendered from its outlines when a text needs them (CJK UIs that
+    /// show player text).
+    pub runtime: bool,
+}
+
+impl Default for FontSettings {
+    fn default() -> Self {
+        FontSettings {
+            charset: vec!["latin".into()],
+            chars: String::new(),
+            em_px: 32.0,
+            px_range: 4.0,
+            page_size: 1024,
+            runtime: false,
+        }
+    }
+}
+
+impl FontSettings {
+    pub(super) fn describe(&self) -> String {
+        format!(
+            "charset {} chars {:?} em {} range {} page {} mtsdf ec kern{}",
+            self.charset.join(" "),
+            self.chars,
+            self.em_px,
+            self.px_range,
+            self.page_size,
+            if self.runtime { " runtime" } else { "" }
+        )
+    }
+}
+
+/// Everything the cook's output depends on besides the sources.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct CookOptions {
+    /// Worker threads (0 = the machine's parallelism). Does not change output.
+    pub threads: usize,
+    pub mesh: MeshOptions,
+    pub texture: TextureOptions,
+    pub font: FontSettings,
+    /// Reflected component schemas scene tables are packed with (the engine's
+    /// and the game's, as `og schema` exports them). Components without one
+    /// get a layout inferred from the scene text.
+    pub schemas: Vec<Schema>,
+}
+
+pub(super) fn settings_block<'a>(s: &'a Source, key: &str) -> Option<&'a og_core::ogt::Block> {
+    s.settings.as_ref()?.1.body.get(key)?.block.as_ref()
+}
+
+/// An asset's own `conform off` (docs/art.md §2.3), at the top of its
+/// `.ogt` (a `type model`, a flipbook) or of its import settings: why it
+/// keeps its source as made. Read before the 2D pass takes the line out
+/// of a sheet's text.
+pub(super) fn own_conform_off(s: &Source) -> Option<String> {
+    let off = |b: &og_core::ogt::Block| {
+        b.get("conform")
+            .and_then(|e| e.values.first())
+            .and_then(|v| v.as_word())
+            == Some("off")
+    };
+    if s.settings.as_ref().is_some_and(|(_, d)| off(&d.body)) {
+        Some(format!("conform off (assets/{}.ogt)", s.rel))
+    } else if s.rel.ends_with(".ogt")
+        && Document::parse(&String::from_utf8_lossy(&s.bytes)).is_ok_and(|d| off(&d.body))
+    {
+        Some(format!("conform off (assets/{})", s.rel))
+    } else {
+        None
+    }
+}
+
+/// Whether the 3D pass keeps `s` as made: its own `conform off` or
+/// project.ogt's `conform { off ... }` (`conform::mesh::Conform::off`).
+pub(super) fn conform_off(s: &Source, options: &CookOptions) -> bool {
+    options
+        .mesh
+        .conform
+        .as_ref()
+        .is_some_and(|c| c.off.contains_key(&s.rel))
+}
+
+/// The art contract a texture `s` cooks under as a mesh's texture
+/// (`conform::TextureRole::Mesh`): none when it is not one, opted out, or
+/// the contract leaves textures as they are.
+///
+/// Without the look's paint: paint is for a model's own colour textures,
+/// and one no model claims (a sprite in a 3D game, the look's own canvas)
+/// keeps its strokes as drawn.
+pub(super) fn mesh_texture(s: &Source, options: &CookOptions) -> Option<conform::mesh::Conform> {
+    options
+        .mesh
+        .conform
+        .as_ref()
+        .filter(|c| c.textures.contains(&s.rel))
+        .filter(|_| !conform_off(s, options))
+        .map(|c| conform::mesh::Conform {
+            paint: None,
+            ..c.clone()
+        })
+        .filter(|c| !c.texture_desc().is_empty())
+}
+
+/// The mesh options of a model `s` under the art contract: its import
+/// settings', with the contract unless the model opts out.
+pub(super) fn mesh_for(s: &Source, options: &CookOptions) -> Result<MeshOptions, CookError> {
+    let mut m = options
+        .mesh
+        .for_model(settings_block(s, "model"))
+        .map_err(CookError)?;
+    if conform_off(s, options) {
+        m.conform = None;
+    }
+    Ok(m)
+}
+
+pub(super) fn texture_kind(s: &Source) -> Result<u32, String> {
+    match settings_block(s, "texture").and_then(|b| b.get("kind")) {
+        None => Ok(format::kind::COLOR),
+        Some(e) => match e.word(0).map_err(|x| x.to_string())? {
+            "color" => Ok(format::kind::COLOR),
+            "normal" => Ok(format::kind::NORMAL),
+            "linear" => Ok(format::kind::LINEAR),
+            "pixel" => Ok(format::kind::PIXEL),
+            w => Err(format!(
+                "line {}: texture kind '{w}' (expected color, normal, linear or pixel)",
+                e.line
+            )),
+        },
+    }
+}
+
+pub(super) fn anim_settings(s: &Source) -> Result<anim::AnimSettings, String> {
+    anim::AnimSettings::parse(settings_block(s, "animation"))
+}
+
+pub(super) fn font_settings(s: &Source, base: &FontSettings) -> Result<FontSettings, String> {
+    let mut f = base.clone();
+    if let Some(b) = settings_block(s, "font") {
+        for e in &b.entries {
+            let err = |x: og_core::Error| format!("line {}: {x}", e.line);
+            match e.key.as_str() {
+                "charset" => {
+                    f.charset = e
+                        .values
+                        .iter()
+                        .map(|v| {
+                            v.as_word()
+                                .map(str::to_string)
+                                .ok_or_else(|| format!("line {}: charset takes words", e.line))
+                        })
+                        .collect::<Result<_, _>>()?
+                }
+                "chars" => f.chars = e.string(0).map_err(err)?.to_string(),
+                "em_px" => f.em_px = e.f32(0).map_err(err)?,
+                "px_range" => f.px_range = e.f32(0).map_err(err)?,
+                "runtime" => {
+                    f.runtime =
+                        e.values.first().and_then(|v| v.as_bool()).ok_or_else(|| {
+                            format!("line {}: runtime takes true or false", e.line)
+                        })?
+                }
+                "page_size" => {
+                    f.page_size = e.number(0).map_err(err)?.as_u64().map_err(err)? as u32
+                }
+                k => return Err(format!("line {}: unknown font setting '{k}'", e.line)),
+            }
+        }
+    }
+    if !(4.0..=256.0).contains(&f.em_px) || !(1.0..=32.0).contains(&f.px_range) {
+        return Err("font em_px must be 4..=256 and px_range 1..=32".into());
+    }
+    Ok(f)
+}

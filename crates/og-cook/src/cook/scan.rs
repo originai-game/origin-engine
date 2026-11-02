@@ -1,0 +1,314 @@
+use super::*;
+
+fn walk(dir: &Path, rel: &str, out: &mut Vec<(String, PathBuf)>) -> std::io::Result<()> {
+    let mut entries: Vec<_> = std::fs::read_dir(dir)?.collect::<Result<_, _>>()?;
+    entries.sort_by_key(|e| e.file_name());
+    for e in entries {
+        let name = e.file_name().to_string_lossy().to_string();
+        if name.starts_with('.') {
+            continue;
+        }
+        let r = if rel.is_empty() {
+            name.clone()
+        } else {
+            format!("{rel}/{name}")
+        };
+        if e.file_type()?.is_dir() {
+            walk(&e.path(), &r, out)?;
+        } else {
+            out.push((r, e.path()));
+        }
+    }
+    Ok(())
+}
+
+pub(super) fn ext(rel: &str) -> String {
+    rel.rsplit_once('.')
+        .map(|(_, e)| e.to_ascii_lowercase())
+        .unwrap_or_default()
+}
+
+/// The project's assets as the cook first reads them: every file under
+/// `assets/` and the built-in ones its looks name, classified, with its
+/// import settings attached; the files it ignores; the errors found.
+pub(super) struct Scan {
+    pub(super) sources: Vec<Source>,
+    pub(super) ignored: Vec<String>,
+    pub(super) early_errors: Vec<(String, &'static str, String)>,
+}
+
+pub(super) fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
+    let mut files = Vec::new();
+    walk(assets_dir, "", &mut files)
+        .map_err(|e| CookError(format!("{}: {e}", assets_dir.display())))?;
+    // The engine's built-in assets the looks name join the bundle under
+    // their reserved ids (`@canvas/paper.png`, every file of
+    // `@styles/pixel/`), once each, read from the cook itself.
+    let mut builtins: BTreeMap<String, &'static [u8]> = BTreeMap::new();
+    for (rel, path) in &files {
+        if ext(rel) == "ogt"
+            && let Ok(text) = std::fs::read_to_string(path)
+            && Document::parse(&text).is_ok_and(|d| d.ty == crate::look::LOOK_TYPE)
+        {
+            for (id, bytes) in look::builtin_files(rel, &text, assets_dir) {
+                builtins.insert(id.to_string(), bytes);
+            }
+        }
+        // A game's own style may name the built-in packs' fonts and icons
+        // (a generated one does) and the shared Chinese companions too.
+        if ext(rel) == "ogt"
+            && let Ok(text) = std::fs::read_to_string(path)
+            && Document::parse(&text).is_ok_and(|d| d.ty == og_ui::style_file::STYLE_TYPE)
+        {
+            for (id, bytes) in look::shared_files(&text) {
+                builtins.insert(id.to_string(), bytes);
+            }
+            if look::shows_chinese(assets_dir) {
+                for (id, bytes) in look::companion_files(&text) {
+                    builtins.insert(id.to_string(), bytes);
+                }
+            }
+        }
+    }
+    for id in builtins.keys() {
+        files.push((id.clone(), assets_dir.join(id)));
+    }
+    let read = |rel: &str, path: &Path| -> Result<Vec<u8>, CookError> {
+        match builtins.get(rel) {
+            Some(b) => Ok(b.to_vec()),
+            None => std::fs::read(path).map_err(|e| CookError(format!("{}: {e}", path.display()))),
+        }
+    };
+
+    // Classify; import settings attach to the file they are named after.
+    let names: BTreeSet<&str> = files.iter().map(|(r, _)| r.as_str()).collect();
+    let mut sources: Vec<Source> = Vec::new();
+    let mut settings: BTreeMap<String, (String, Document)> = BTreeMap::new();
+    let mut ignored = Vec::new();
+    let mut early_errors: Vec<(String, &'static str, String)> = Vec::new();
+    for (rel, path) in &files {
+        if rel.starts_with('@') && !builtins.contains_key(rel) {
+            early_errors.push((
+                rel.clone(),
+                "asset",
+                "paths starting with '@' are the engine's built-in assets (a look names them: \"@canvas/<name>\", \"@palettes/<name>\", a built-in style by its slug); rename the file or its folder".into(),
+            ));
+            continue;
+        }
+        let kind = match ext(rel).as_str() {
+            "glb" | "gltf" | "vox" => Kind::Model,
+            "png" | "jpg" | "jpeg" | "ktx2" | "webp" | "tga" | "psd" | "dds" => Kind::Texture,
+            e if audio::EXTENSIONS.contains(&e) => Kind::Sound,
+            "ttf" | "otf" => Kind::Font,
+            "cube" => Kind::Lut,
+            "tmj" | "ldtk" => Kind::Tilemap,
+            "hex" | "gpl" => Kind::Palette,
+            "ogt" => {
+                let text = String::from_utf8(read(rel, path)?)
+                    .map_err(|_| CookError(format!("{}: not UTF-8 text", path.display())))?;
+                match Document::parse(&text) {
+                    Ok(doc) if doc.ty == "import" => {
+                        let target = rel.trim_end_matches(".ogt");
+                        if names.contains(target) {
+                            settings.insert(target.to_string(), (text, doc));
+                        } else {
+                            early_errors.push((
+                                rel.clone(),
+                                "import",
+                                format!("import settings for '{target}', which does not exist"),
+                            ));
+                        }
+                        continue;
+                    }
+                    Ok(doc) if doc.ty == "scene" => Kind::Scene,
+                    Ok(doc) if doc.ty == crate::fx::EMITTER_TYPE => Kind::Emitter,
+                    Ok(doc) if doc.ty == og_ui::style_file::STYLE_TYPE => Kind::Style,
+                    Ok(doc)
+                        if doc.ty == og_ui::doc::SCREEN_TYPE
+                            || doc.ty == og_ui::doc::COMPONENT_TYPE =>
+                    {
+                        Kind::Document
+                    }
+                    Ok(doc) if doc.ty == "tileset" => Kind::Tileset,
+                    Ok(doc) if doc.ty == "tilemap" => Kind::Tilemap,
+                    Ok(doc) if doc.ty == "flipbook" => Kind::Flipbook,
+                    Ok(doc) if doc.ty == og_anim::RIG2D_TYPE => Kind::Rig2d,
+                    Ok(doc) if doc.ty == crate::shader::SHADER_TYPE => Kind::Shader,
+                    Ok(doc) if doc.ty == crate::shader::POST_TYPE => Kind::Post,
+                    Ok(doc) if doc.ty == crate::shader::UI_MATERIAL_TYPE => Kind::UiMaterial,
+                    Ok(doc) if doc.ty == vector::VECTOR_TYPE => Kind::Vector,
+                    Ok(doc) if doc.ty == sfx::SFX_TYPE => Kind::Sound,
+                    Ok(doc) if doc.ty == e6::BEHAVIOUR_TYPE => Kind::Behaviour,
+                    Ok(doc) if doc.ty == og_i18n::STRINGS_TYPE => Kind::Strings,
+                    Ok(doc) if doc.ty == e6::NAVMESH_TYPE => Kind::NavMesh,
+                    Ok(doc) if doc.ty == anim::RIG_TYPE => Kind::Rig,
+                    Ok(doc) if doc.ty == terrain::TERRAIN_TYPE => Kind::Terrain,
+                    Ok(doc) if doc.ty == timeline::TIMELINE_TYPE => Kind::Timeline,
+                    Ok(doc) if doc.ty == lightmap::LIGHTMAP_TYPE => Kind::Lightmap,
+                    Ok(doc) if doc.ty == environment::ENVIRONMENT_TYPE => Kind::Environment,
+                    Ok(doc) if doc.ty == icons::ICONS_TYPE => Kind::Icons,
+                    Ok(doc) if doc.ty == crate::look::LOOK_TYPE => Kind::Look,
+                    Ok(doc) if doc.ty == texture_array::ARRAY_TYPE => Kind::TextureArray,
+                    Ok(doc) if doc.ty == video::VIDEO_TYPE => Kind::Video,
+                    Ok(doc) if doc.ty == model_text::MODEL_TYPE => Kind::Model,
+                    Ok(doc) => {
+                        early_errors.push((
+                            rel.clone(),
+                            "scene",
+                            format!(
+                                "an .ogt of type '{}' is not a cookable asset (scene, model, particles, style, icons, tileset, tilemap, flipbook, rig2d, shader, behaviour, navmesh, terrain, timeline, environment, texture-array, video, look, sfx, strings, rig or import)",
+                                doc.ty
+                            ),
+                        ));
+                        continue;
+                    }
+                    Err(e) => {
+                        early_errors.push((rel.clone(), "scene", e.to_string()));
+                        continue;
+                    }
+                }
+            }
+            _ => {
+                ignored.push(rel.clone());
+                continue;
+            }
+        };
+        let bytes = read(rel, path)?;
+        sources.push(Source {
+            rel: rel.clone(),
+            path: path.clone(),
+            kind,
+            bytes,
+            settings: None,
+            hash: 0,
+            gltf: None,
+            error: None,
+            encoded: std::sync::OnceLock::new(),
+            conformed: None,
+        });
+    }
+    for s in sources.iter_mut() {
+        s.settings = settings.remove(&s.rel);
+    }
+    Ok(Scan {
+        sources,
+        ignored,
+        early_errors,
+    })
+}
+
+/// The group of a planned output: its asset's, except a glTF's `#proxy`
+/// and `#anim`, which stay in the first group (the proxy draws while the
+/// group is away; clips are small and bound at load), and the chunks of a
+/// sound cooked in chunks after its first (`#chunk<n>`): its head goes in
+/// its group's pack and each other chunk stays a file of its own, read
+/// ahead of the sound's playheads once the group is resident, as a chunked
+/// sound of the first group's are.
+pub(super) fn output_group(
+    id: &str,
+    rel: &str,
+    group_of: &BTreeMap<String, String>,
+) -> Option<String> {
+    let chunk = id
+        .rsplit_once("#chunk")
+        .is_some_and(|(_, n)| n.parse::<u32>().is_ok());
+    if id.ends_with("#proxy") || id.ends_with("#anim") || chunk {
+        return None;
+    }
+    group_of.get(rel).cloned()
+}
+
+/// Every scene's streaming groups, checked across scenes: a group's name is
+/// taken once, an asset is in at most one group, and a group holds glTF
+/// models without skins or morph targets, textures and sounds (each swapped
+/// in behind a stand-in's handle), and texture arrays, flipbooks (an `array
+/// true` sheet with its array and layers), environment maps, palettes,
+/// looks and LUTs (loaded once the group is resident, let go when it
+/// unloads). A refusal is
+/// the scene's error, and its scene adds none of its groups.
+pub(super) fn plan_groups(
+    sources: &[Source],
+    known: &BTreeSet<String>,
+    errors: &mut Vec<(String, &'static str, String)>,
+) -> stream::Groups {
+    let mut groups: BTreeMap<String, stream::GroupDecl> = BTreeMap::new();
+    let mut group_of: BTreeMap<String, String> = BTreeMap::new();
+    for s in sources.iter().filter(|s| s.kind == Kind::Scene) {
+        let text = String::from_utf8_lossy(&s.bytes);
+        let decls = match stream::groups_of(&s.rel, &text, &|id| known.contains(id)) {
+            Ok(d) => d,
+            Err(e) => {
+                errors.push((s.rel.clone(), "scene", e));
+                continue;
+            }
+        };
+        // A scene with a refused group adds none of its groups.
+        let mut refused = None;
+        let mut mine: BTreeMap<String, stream::GroupDecl> = BTreeMap::new();
+        let mut mine_of: BTreeMap<String, String> = BTreeMap::new();
+        'groups: for g in &decls {
+            if let Some(other) = groups.get(&g.name).or_else(|| mine.get(&g.name)) {
+                refused = Some(format!(
+                    "stream \"{}\" is declared by {} too; a group's name is taken once",
+                    g.name, other.scene
+                ));
+                break;
+            }
+            for a in &g.assets {
+                if let Some(other) = group_of.get(a).or_else(|| mine_of.get(a)) {
+                    refused = Some(format!(
+                        "stream \"{}\": {a} is in stream \"{other}\" already; an asset is in one group",
+                        g.name
+                    ));
+                    break 'groups;
+                }
+                let Some(src) = sources.iter().find(|x| &x.rel == a) else {
+                    continue;
+                };
+                // A skinned or morphed mesh cannot be swapped in place.
+                let skinned = src.gltf.as_ref().is_some_and(|m| {
+                    m.doc.skins().next().is_some()
+                        || m.doc
+                            .meshes()
+                            .any(|x| x.primitives().any(|p| p.morph_targets().next().is_some()))
+                });
+                let fits = matches!(
+                    src.kind,
+                    Kind::Model
+                        | Kind::Texture
+                        | Kind::Sound
+                        | Kind::TextureArray
+                        | Kind::Flipbook
+                        | Kind::Environment
+                        | Kind::Palette
+                        | Kind::Look
+                        | Kind::Lut
+                );
+                if !fits || skinned {
+                    refused = Some(format!(
+                        "stream \"{}\": {a} is {}; a group holds glTF models without skins or morph targets, textures, texture arrays, flipbooks, sounds, environment maps, palettes, looks and colour LUTs",
+                        g.name,
+                        if skinned {
+                            "a skinned or morphed model".to_string()
+                        } else {
+                            format!("a {}", src.kind.name())
+                        }
+                    ));
+                    break 'groups;
+                }
+            }
+            for a in &g.assets {
+                mine_of.insert(a.clone(), g.name.clone());
+            }
+            mine.insert(g.name.clone(), g.clone());
+        }
+        if refused.is_none() {
+            groups.append(&mut mine);
+            group_of.append(&mut mine_of);
+        }
+        if let Some(e) = refused {
+            errors.push((s.rel.clone(), "scene", e));
+        }
+    }
+    (groups, group_of)
+}
