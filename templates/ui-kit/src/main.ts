@@ -118,7 +118,9 @@ export const Demo = defineComponent("Demo", {
   masterVolume: f32(1),
   musicVolume: f32(0.8),
   sfxVolume: f32(1),
+  uiVolume: f32(1),
   muted: bool(),
+  subtitles: bool(true),
   quality: u32(1),
   showFps: bool(),
   reducedMotion: bool(),
@@ -156,6 +158,10 @@ export const Demo = defineComponent("Demo", {
   inv3: u32(5),
   inv4: u32(9),
   inv5: u32(13),
+  inv6: u32(3),
+  inv7: u32(4),
+  inv8: u32(6),
+  inv9: u32(8),
   moves: u32(0),
   used: u32(0),
   // Idle.
@@ -195,7 +201,7 @@ export const Demo = defineComponent("Demo", {
 });
 type DemoState = { -readonly [K in keyof ReturnType<typeof demoDefaults>]: ReturnType<typeof demoDefaults>[K] };
 function demoDefaults() {
-  return { screen: 0, paused: false, font: 0, displayFont: 0, roundedFont: 0, hebrewFont: 0, devanagariFont: 0, icons: 0, iconSet: 0, iconoir: false, zoom: 1, quests: 0, backdrop: 0, hp: 72, mana: 40, coins: 128, score: 4250, lives: 2, time: 95, masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, muted: false, quality: 1, showFps: false, reducedMotion: false, highContrast: false, vibration: true, invertY: false, sensitivity: 1, language: 0, saves: 0, settingsRequest: 0, loads: 0, tab: 0, difficulty: 1, amount: 3, mode: 0, optA: true, optB: false, chip: 0, stickX: 0, stickY: 0, line: 0, step: 0, balance: 1250, owned: 0, bought: 0, refused: 0, inv0: 0, inv1: 1, inv2: 2, inv3: 5, inv4: 9, inv5: 13, moves: 0, used: 0, gold: 40, gen0: 1, gen1: 0, gen2: 0, taps: 0, scope: 0, scopeTick: 0, confirmed: 0, level: 0, pick0: 0, pick1: 0, pick2: 0, pick3: 0, focus0: 0, focus1: 0, focus2: 0, focus3: 0, rules: 0, a11yNodes: 0, a11yFocus: 0, style: 0, wipe: 0, sounds: true, mixed: false, offline: false };
+  return { screen: 0, paused: false, font: 0, displayFont: 0, roundedFont: 0, hebrewFont: 0, devanagariFont: 0, icons: 0, iconSet: 0, iconoir: false, zoom: 1, quests: 0, backdrop: 0, hp: 72, mana: 40, coins: 128, score: 4250, lives: 2, time: 95, masterVolume: 1, musicVolume: 0.8, sfxVolume: 1, uiVolume: 1, muted: false, subtitles: true, quality: 1, showFps: false, reducedMotion: false, highContrast: false, vibration: true, invertY: false, sensitivity: 1, language: 0, saves: 0, settingsRequest: 0, loads: 0, tab: 0, difficulty: 1, amount: 3, mode: 0, optA: true, optB: false, chip: 0, stickX: 0, stickY: 0, line: 0, step: 0, balance: 1250, owned: 0, bought: 0, refused: 0, inv0: 0, inv1: 1, inv2: 2, inv3: 5, inv4: 9, inv5: 13, inv6: 3, inv7: 4, inv8: 6, inv9: 8, moves: 0, used: 0, gold: 40, gen0: 1, gen1: 0, gen2: 0, taps: 0, scope: 0, scopeTick: 0, confirmed: 0, level: 0, pick0: 0, pick1: 0, pick2: 0, pick3: 0, focus0: 0, focus1: 0, focus2: 0, focus3: 0, rules: 0, a11yNodes: 0, a11yFocus: 0, style: 0, wipe: 0, sounds: true, mixed: false, offline: false };
 }
 
 export const ICONS = [
@@ -220,24 +226,106 @@ const LOCALES = ["en", "zh-CN", "ja", "ko", "ar"] as const;
 /** A key of the active locale's table, with its arguments (og.i18n). */
 const tr = (world: World, key: string, args?: Record<string, string | number>) => og.i18n.t(world, key, args);
 
+/**
+ * The kit's painted art (assets/textures/art, CC0; SOURCE.md): item and
+ * boon icons, portraits and scenes, by key, loaded in start(). A handle
+ * is 0 where the art did not load, and the screens show the line icon.
+ * (patterns.ts keeps its own set for the pattern previews, `pat:art:off`.)
+ */
+const ART_PATHS: Record<string, string> = {
+  ...Object.fromEntries(["iron-sword", "oak-shield", "crown", "hunters-bow", "healing-draught", "mana-vial", "ember-ring", "iron-key", "sapphire-amulet", "knight-helm", "boots", "ashbringer", "mage-robe"].map((k) => [k, `textures/art/items/${k}.jpg`])),
+  ...Object.fromEntries(["gold", "crystal", "bomb", "apple"].map((k) => [k, `textures/art/boons/${k}.jpg`])),
+  ...Object.fromEntries(["brann", "aria"].map((k) => [k, `textures/art/portraits/${k}.jpg`])),
+  ...Object.fromEntries(["title", "gacha-moonlit-tide", "paperdoll-aria-vell", "jade", "kawaii", "doodle-town", "midcore", "storybook-vale", "manuscript", "golden-valley", "tactical", "wasteland", "gothic-halls", "scifi", "cyber", "foundry", "broadcast"].map((k) => [k, `textures/art/scenes/${k}.jpg`])),
+  "pixel-dusk": "textures/art/scenes/pixel-dusk.png",
+};
+const KIT_ART: Record<string, number> = {};
+/** An art handle by key, or null where it did not load. */
+const kitArt = (key: string): never | null => (KIT_ART[key] ? (KIT_ART[key] as never) : null);
+
+/**
+ * Each style's backdrop: the key art or scene behind every screen but the
+ * gallery and the widget sheet (an ART key; a style without one, the default
+ * style among them, keeps the neutral dusk of textures/backdrop.png). A game
+ * declares its own the same way: the scene that belongs with its UI.
+ */
+const STYLE_BACKDROPS: Record<string, string> = {
+  fantasy: "title", jade: "jade", kawaii: "kawaii", cartoon: "doodle-town", midcore: "midcore", storybook: "storybook-vale",
+  craft: "manuscript", pixel: "pixel-dusk", gilded: "golden-valley", tactical: "tactical", wasteland: "wasteland", dread: "gothic-halls",
+  scifi: "scifi", cyber: "cyber", foundry: "foundry", broadcast: "broadcast",
+};
+
 const SHOP = [
-  { id: "sword", name: "Iron sword", price: 300, icon: "sword", category: "Gear", description: "A dependable blade. +4 attack." },
-  { id: "shield", name: "Oak shield", price: 220, icon: "shield", category: "Gear", description: "Blocks the first hit of every fight." },
-  { id: "crown", name: "Crown", price: 2400, icon: "crown", category: "Gear", description: "Pure vanity, sold once." },
-  { id: "potion", name: "Potion", price: 60, icon: "potion", category: "Items", description: "Restores 50 health." },
-  { id: "bomb", name: "Bomb", price: 90, icon: "bomb", category: "Items", description: "Clears a cracked wall." },
-  { id: "key", name: "Gold key", price: 500, icon: "key", category: "Items", description: "Opens one locked chest." },
-  { id: "gem", name: "Gem pack", price: 1000, icon: "gem", category: "Bundles", description: "Twenty gems for the wheel." },
-  { id: "map", name: "Treasure map", price: 180, icon: "map", category: "Bundles", description: "Marks every chest of a level." },
+  { id: "sword", name: "Iron sword", price: 300, icon: "sword", art: "iron-sword", category: "Gear", description: "A dependable blade. +4 attack." },
+  { id: "shield", name: "Oak shield", price: 220, icon: "shield", art: "oak-shield", category: "Gear", description: "Blocks the first hit of every fight." },
+  { id: "crown", name: "Crown", price: 2400, icon: "crown", art: "crown", category: "Gear", description: "Pure vanity, sold once." },
+  { id: "bow", name: "Hunter's bow", price: 450, icon: "bolt", art: "hunters-bow", category: "Gear", description: "Strikes from range. +3 attack." },
+  { id: "ring", name: "Ember ring", price: 900, icon: "fire", art: "ember-ring", category: "Gear", description: "Your hits burn for 2 seconds." },
+  { id: "helm", name: "Knight's helm", price: 640, icon: "shield", art: "knight-helm", category: "Gear", description: "+6 armour. Hard to see out of." },
+  { id: "potion", name: "Healing draught", price: 60, icon: "potion", art: "healing-draught", category: "Items", description: "Restores 50 health." },
+  { id: "mana", name: "Mana vial", price: 80, icon: "drop", art: "mana-vial", category: "Items", description: "Restores 40 mana." },
+  { id: "bomb", name: "Bomb", price: 90, icon: "bomb", art: "bomb", category: "Items", description: "Clears a cracked wall." },
+  { id: "key", name: "Iron key", price: 500, icon: "key", art: "iron-key", category: "Items", description: "Opens one locked chest." },
+  { id: "apple", name: "Apple", price: 15, icon: "apple", art: "apple", category: "Items", description: "A snack. Restores 5 health." },
+  { id: "gem", name: "Crystal pack", price: 1000, icon: "gem", art: "crystal", category: "Bundles", description: "Twenty crystals for the wheel." },
+  { id: "robe", name: "Mage's set", price: 1800, icon: "star", art: "mage-robe", category: "Bundles", description: "Robe, staff and a mana vial." },
+  { id: "amulet", name: "Sapphire amulet", price: 1500, icon: "gem", art: "sapphire-amulet", category: "Bundles", description: "+10% mana, and it suits you." },
+  { id: "ashbringer", name: "Ashbringer", price: 9000, icon: "sword", art: "ashbringer", category: "Bundles", description: "Legendary. Burns the undead." },
 ];
 
+/** The inventory's items, by Demo slot field (inv0 … inv9). */
 const ITEMS = [
-  { id: "potion", name: "Potion", icon: "potion", count: 3, description: "Restores 50 health." },
-  { id: "sword", name: "Iron sword", icon: "sword", count: 1, description: "A dependable blade." },
-  { id: "key", name: "Gold key", icon: "key", count: 2, description: "Opens one locked chest." },
-  { id: "apple", name: "Apple", icon: "apple", count: 12, description: "A snack. Restores 5 health." },
-  { id: "bomb", name: "Bomb", icon: "bomb", count: 4, description: "Clears a cracked wall." },
-  { id: "gem", name: "Gem", icon: "gem", count: 20, description: "Spent at the wheel." },
+  { id: "potion", name: "Healing draught", icon: "potion", art: "healing-draught", count: 3, description: "Restores 50 health." },
+  { id: "sword", name: "Iron sword", icon: "sword", art: "iron-sword", count: 1, description: "A dependable blade." },
+  { id: "key", name: "Iron key", icon: "key", art: "iron-key", count: 2, description: "Opens one locked chest." },
+  { id: "apple", name: "Apple", icon: "apple", art: "apple", count: 12, description: "A snack. Restores 5 health." },
+  { id: "bomb", name: "Bomb", icon: "bomb", art: "bomb", count: 4, description: "Clears a cracked wall." },
+  { id: "gem", name: "Crystal", icon: "gem", art: "crystal", count: 20, description: "Spent at the wheel." },
+  { id: "shield", name: "Oak shield", icon: "shield", art: "oak-shield", count: 1, description: "Blocks the first hit of every fight." },
+  { id: "mana", name: "Mana vial", icon: "drop", art: "mana-vial", count: 5, description: "Restores 40 mana." },
+  { id: "ring", name: "Ember ring", icon: "fire", art: "ember-ring", count: 1, description: "Your hits burn for 2 seconds." },
+  { id: "boots", name: "Leather boots", icon: "person", art: "boots", count: 1, description: "+5% move speed." },
+];
+
+/** The inventory's character: the paperdoll's hero and her attributes. */
+const CHARACTER = {
+  name: "Aria Vell",
+  title: "Level 42 Paladin",
+  stats: [{ label: "Armor", value: "1,240" }, { label: "Strength", value: "312" }, { label: "Fire resistance", value: "28%" }, { label: "Item power", value: "812" }],
+};
+
+/** What a settings row does (SettingsDesc.help): the pane beside the rows names the focused one. */
+const SETTINGS_HELP: Record<string, string> = {
+  Master: "Every sound in the game, music and effects alike.",
+  Music: "The score and the ambient tracks. Does not affect voices.",
+  Effects: "Combat, footsteps and the world around you.",
+  Interface: "Clicks, opens and confirms in the menus.",
+  Mute: "Silence everything at once, without losing the levels above.",
+  Subtitles: "Show every spoken line at the bottom of the screen.",
+  Quality: "Higher presets draw more shadows and effects; lower ones keep the frame rate up.",
+  Scale: "Draws the frame at a fraction of the screen's resolution, then scales it up.",
+  Cap: "Holds the frame rate under a limit, to save power or keep it even.",
+  Auto: "Lowers the render scale on its own when frames run long.",
+  Battery: "Caps the frame rate and quality while on battery.",
+  Fullscreen: "Fill the whole screen.",
+  Power: "Which graphics processor draws the game. Applies after a restart.",
+  Fps: "A frame-rate counter in the corner.",
+  Motion: "Screens fade instead of sliding, and the camera stops shaking.",
+  Contrast: "Stronger outlines and plain backgrounds behind text.",
+  TextSize: "Makes every label larger, up to twice the size.",
+  Sensitivity: "How far the view turns for a move of the mouse or stick.",
+  Invert: "Push up to look down, as a flight stick does.",
+  Raw: "Reads the mouse without the system's acceleration.",
+  Vibration: "Rumble on hits, on pads and phones that can.",
+  Languages: "The language of every menu and line of dialogue.",
+};
+
+/** The rewards a finished level shows. */
+const REWARDS = [
+  { name: "Gold", count: 86, art: "gold", icon: "coin" },
+  { name: "Healing draught", count: 2, art: "healing-draught", icon: "potion" },
+  { name: "Crystal", count: 5, art: "crystal", icon: "gem" },
+  { name: "Ember ring", count: 1, art: "ember-ring", icon: "fire" },
 ];
 
 // Their names are the tables' `hud.<id>`.
@@ -340,7 +428,9 @@ function settingsOf(world: World, d: DemoState): GameSettings {
     masterVolume: d.masterVolume,
     musicVolume: d.musicVolume,
     sfxVolume: d.sfxVolume,
+    uiVolume: d.uiVolume,
     muted: d.muted,
+    subtitles: d.subtitles,
     quality: QUALITIES[d.quality] ?? "medium",
     showFps: d.showFps,
     reducedMotion: d.reducedMotion,
@@ -371,7 +461,9 @@ function takeSettings(world: World, d: DemoState, s: Partial<GameSettings>, load
   d.masterVolume = num(s.masterVolume, d.masterVolume);
   d.musicVolume = num(s.musicVolume, d.musicVolume);
   d.sfxVolume = num(s.sfxVolume, d.sfxVolume);
+  d.uiVolume = num(s.uiVolume, d.uiVolume);
   d.muted = flag(s.muted, d.muted);
+  d.subtitles = flag(s.subtitles, d.subtitles);
   const quality = QUALITIES.indexOf((s.quality ?? (loaded ? "" : "medium")) as (typeof QUALITIES)[number]);
   if (quality >= 0 || !loaded) d.quality = Math.max(0, quality);
   d.showFps = flag(s.showFps, d.showFps);
@@ -603,6 +695,23 @@ function materialsScreen(d: DemoState): void {
 /** The genre patterns' preview screens (patterns.ts). */
 const PATTERN_SCREENS: ReadonlySet<string> = new Set(["gear", "cards", "rewards", "gacha", "saga", "board", "generators"]);
 
+/**
+ * The title's event card (a live game's banner beside its menu): the event's
+ * key art, its name and how long it runs, at the bottom end corner over the
+ * version line. Not on a phone, where the menu takes the bottom.
+ */
+function eventCard(world: World): void {
+  const vp = og.ui.frameViewport();
+  if (vp.breakpoint === "phonePortrait" || vp.breakpoint === "phoneLandscape") return;
+  const t = og.ui.frameTheme();
+  const grow = { kind: "grow" } as const;
+  og.ui.anchor("Event", { anchor: "bottomRight", offsetY: -40, direction: "column", width: { kind: "fixed", px: 280 }, gap: t.space.xs, padding: { left: t.space.sm, top: t.space.sm, right: t.space.sm, bottom: t.space.sm }, background: { token: "hud" }, radius: t.radius.panel, frame: "hud" }, () => {
+    og.ui.artSlot("Art", { texture: kitArt("gacha-moonlit-tide"), kind: "banner", aspect: 16 / 9, focal: { x: 0.72, y: 0.35 }, width: grow, label: "" });
+    og.ui.label("Name", tr(world, "menu.event"), { step: "lg", font: "display", nowrap: true });
+    og.ui.label("When", tr(world, "menu.eventWhen"), { step: "meta", color: { token: "inkMuted" }, nowrap: true });
+  });
+}
+
 /** The Gallery button over every screen. */
 function galleryButton(world: World, d: DemoState): void {
   const bp = og.ui.breakpoint();
@@ -777,10 +886,11 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
     // Screen changes cover the old screen, switch, and reveal the new one.
     screen = og.ui.screenTransition("Screens", screen, { kind: wipe, durationMs: 700 }).shown as Screen;
   }
-  // The game behind every screen but the gallery and the widget sheet: a dusk landscape.
-  // The genre patterns' screens paint their own scene (patterns.ts): the pixel dusk would clash with their art.
+  // The game behind every screen but the gallery and the widget sheet: the style's backdrop (STYLE_BACKDROPS), else a dusk landscape.
+  // The genre patterns' screens paint their own scene (patterns.ts): a backdrop would clash with their art.
   if (PATTERN_SCREENS.has(screen)) patternScene(screen);
-  if (screen !== "gallery" && screen !== "widgets" && !PATTERN_SCREENS.has(screen) && d.backdrop) og.render.sprite(world, { texture: d.backdrop as never, width: 640, height: 360, layer: -10 });
+  const backdrop = kitArt(STYLE_BACKDROPS[STYLES[d.style] ?? "default"] ?? "") ?? (d.backdrop ? (d.backdrop as never) : null);
+  if (screen !== "gallery" && screen !== "widgets" && !PATTERN_SCREENS.has(screen) && backdrop) og.render.sprite(world, { texture: backdrop, width: 640, height: 360, layer: -10 });
 
   // The gacha banner runs its art full-bleed on a phone: the Gallery button floats on it, so it is built after it.
   if (screen !== "gallery" && screen !== "loading" && screen !== "gacha" && screen !== "cutscene" && screen !== "saga") galleryButton(world, d);
@@ -805,7 +915,10 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
           { id: "quit", label: tr(world, "menu.quit") },
         ],
         footer: tr(world, "menu.footer", { version: "0.1.0" }),
+        // At the start edge: the key art behind keeps the rest of the screen.
+        align: "start",
       });
+      if (screen === "mainMenu") eventCard(world);
       // A greeting with characters no locale font cooked (zh-CN and ja): the
       // Chinese font draws them from its outlines at run time (runtime true).
       if (screen === "mainMenu") {
@@ -898,6 +1011,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
         invertLabel: tr(world, "settings.invert"),
         vibrationLabel: tr(world, "settings.vibration"),
         doneLabel: tr(world, "settings.done"),
+        help: SETTINGS_HELP,
         onSave: (saved) => {
           const req = og.platform.saveSettings(world, saved);
           if (!req.ok) throw new Error(req.reason);
@@ -1009,7 +1123,10 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
         currency: "coins",
         currencyIcon: "coin",
         categories: ["Gear", "Items", "Bundles"],
-        items: SHOP.map((s, i) => ({ ...s, owned: (d.owned & (1 << i)) !== 0 && s.category === "Gear" })),
+        items: SHOP.map(({ art: key, ...s }, i) => ({ ...s, image: kitArt(key), owned: (d.owned & (1 << i)) !== 0 && s.category === "Gear" })),
+        merchant: kitArt("brann"),
+        merchantName: "Brann, Smith",
+        merchantLine: "Good gear keeps good folk alive. What can I forge for you today?",
       });
       if (r.bought !== null) {
         const i = SHOP.findIndex((s) => s.id === r.bought);
@@ -1025,11 +1142,15 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       break;
     }
     case "inventory": {
-      const slots = [d.inv0, d.inv1, d.inv2, d.inv3, d.inv4, d.inv5];
+      const slots = [d.inv0, d.inv1, d.inv2, d.inv3, d.inv4, d.inv5, d.inv6, d.inv7, d.inv8, d.inv9];
       const r = og.ui.inventoryScreen("Inventory", {
-        slots: 24,
+        slots: 30,
         columns: 6,
-        items: ITEMS.map((it, i) => ({ ...it, slot: slots[i]! })),
+        items: ITEMS.map(({ art: key, ...it }, i) => ({ ...it, image: kitArt(key), slot: slots[i]! })),
+        character: kitArt("paperdoll-aria-vell"),
+        characterName: CHARACTER.name,
+        characterTitle: CHARACTER.title,
+        stats: CHARACTER.stats,
         hintLabel: tr(world, "inventory.hint"),
         countLabel: tr(world, "inventory.count"),
       });
@@ -1038,7 +1159,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
         const to = slots.indexOf(r.moved.to);
         if (from >= 0) slots[from] = r.moved.to;
         if (to >= 0) slots[to] = r.moved.from;
-        [d.inv0, d.inv1, d.inv2, d.inv3, d.inv4, d.inv5] = slots as [number, number, number, number, number, number];
+        [d.inv0, d.inv1, d.inv2, d.inv3, d.inv4, d.inv5, d.inv6, d.inv7, d.inv8, d.inv9] = slots as [number, number, number, number, number, number, number, number, number, number];
         d.moves += 1;
       }
       if (r.used !== null) {
@@ -1061,6 +1182,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       const r = og.ui.resultsScreen("Results", {
         open: true, score: 12840, best: 11200, newBest: true, stars: 2,
         stats: [{ label: "Time", value: "1:42" }, { label: "Coins", value: "86 / 100" }, { label: "Enemies", value: "14" }],
+        rewards: REWARDS.map(({ art: key, ...r }) => ({ ...r, image: kitArt(key) })),
         shareText: "I scored 12,840 in Origin Quest",
         onShare: (text) => og.ui.toast(world, `Shared: ${text}`, { tone: "info" }),
       });
@@ -1295,6 +1417,10 @@ export default og.game({
     const iconSet = og.load.font(world, "icons/iconoir.ogt");
     const backdrop = og.load.texture(world, "textures/backdrop.png");
     loadPatternArt(world);
+    for (const [key, path] of Object.entries(ART_PATHS)) {
+      const tex = og.load.texture(world, path);
+      KIT_ART[key] = tex.ok ? (tex.value as unknown as number) : 0;
+    }
     const handle = (r: { ok: boolean; value?: unknown }): number => (r.ok ? (r.value as number) : 0);
     const face = (path: string) => handle(og.load.font(world, path));
     world.insert(e.value, Demo, {

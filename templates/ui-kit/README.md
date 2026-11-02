@@ -21,7 +21,11 @@ Commands: `show:<screen>`, `viewport:<desktop|tablet|phone|landscape>`
 `style:<default|pixel|cartoon|fantasy|scifi|paper|neon>` dresses every screen
 in the engine's placeholder or a built-in style (`assets/looks/kit-<style>.ogt`,
 whose `ui "<style>"` the cook resolves to `@styles/<style>/style.ogt`),
-`transition:<none|fade|wipe|iris|dissolve|slide>` sends screen changes through
+Each style draws on its own backdrop (`STYLE_BACKDROPS` in `src/main.ts`:
+key art or a scene from `assets/textures/art/scenes`, the default style
+keeping the neutral dusk), and the shop, inventory and results show the kit's
+painted art (`assets/textures/art`): items, the merchant Brann, the paperdoll's
+Aria Vell with her attributes. `transition:<none|fade|wipe|iris|dissolve|slide>` sends screen changes through
 `og.ui.screenTransition`, `sounds:<on|off>` (on by default) hands `assets/audio/ui-*.wav` to
 the UI's event sounds, `offline:<on|off>` makes the leaderboard's rows fail
 to load (its error message and Retry, which loads again). `dump_entity:demo` reads the demo's state (the `Demo` component).
