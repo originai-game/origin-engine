@@ -526,9 +526,19 @@ fn test_filters_unit_and_playtest_paths_and_refuses_no_match() {
     ] {
         std::fs::write(game.join(path), source).unwrap();
     }
-    for (filter, suites) in [("chosen", 2), ("tests/nested/", 1), ("chosen.test.ts", 1)] {
+    // --skip leaves out what it names, after --filter; it may repeat.
+    for (args, suites) in [
+        (vec!["--filter", "chosen"], 2),
+        (vec!["--filter", "tests/nested/"], 1),
+        (vec!["--filter", "chosen.test.ts"], 1),
+        (vec!["--filter", "chosen", "--skip", ".test.ts"], 1),
+        (vec!["--skip", "rejected"], 2),
+        (vec!["--skip", "rejected.og", "--skip", "rejected.test"], 2),
+    ] {
+        let filter = args.join(" ");
         let out = og()
-            .args(["test", "--no-check", "--json", "--filter", filter])
+            .args(["test", "--no-check", "--json"])
+            .args(&args)
             .arg(&game)
             .env("OG_ENGINE_PACKAGE", &engine)
             .output()
@@ -541,17 +551,24 @@ fn test_filters_unit_and_playtest_paths_and_refuses_no_match() {
         vec!["--filter", "missing"],
         vec!["--filter", "game"],
         vec!["--filter"],
+        vec!["--filter", "chosen", "--skip", "chosen"],
+        vec!["--skip"],
     ] {
         let out = og()
             .arg("test")
             .arg(&game)
             .arg("--no-check")
-            .args(args)
+            .args(&args)
             .env("OG_ENGINE_PACKAGE", &engine)
             .output()
             .unwrap();
         assert!(!out.status.success(), "{}", text(&out));
-        assert!(text(&out).contains("--filter"), "{}", text(&out));
+        let flag = if args.contains(&"--skip") {
+            "--skip"
+        } else {
+            "--filter"
+        };
+        assert!(text(&out).contains(flag), "{}", text(&out));
     }
     let out = og()
         .arg("test")

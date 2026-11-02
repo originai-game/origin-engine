@@ -1,4 +1,4 @@
-//! `og test [project] [--filter <path>] [--jobs N] [--json] [--no-check]`: the project's type check
+//! `og test [project] [--filter <path>] [--skip <path>] [--jobs N] [--json] [--no-check]`: the project's type check
 //! (crate::check), its bun tests (`*.test.ts`), then each playtest script
 //! `tests/*.og.ts` through `og run --headless --commands` in its own process
 //! (`packages/engine/src/node/playtest-run.ts`). Fails when anything fails,
@@ -7,7 +7,9 @@
 //! `--json` prints the `check` event first and a `test` event last, with
 //! the check's `{ok, ms, errors}`.
 //! `--filter` selects suite files by a case-sensitive substring of their
-//! project-relative path (with `/` separators), before any tests execute.
+//! project-relative path (with `/` separators), before any tests execute;
+//! `--skip` (repeatable) leaves out the suites whose path contains its
+//! substring, after `--filter` (a kit's playtests but its style sheets).
 //! `--jobs N` runs up to N playtests at once (default 1), each process's
 //! output printed whole, in the playtests' order, once it and the ones
 //! before it have ended.
@@ -46,6 +48,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     let mut json = false;
     let mut check = true;
     let mut filter = None;
+    let mut skip: Vec<&str> = Vec::new();
     let mut jobs = 1;
     let mut args = args.iter();
     while let Some(a) = args.next() {
@@ -60,6 +63,14 @@ pub fn run(args: &[&str]) -> ExitCode {
                 };
                 filter = Some(*value);
             }
+            "--skip" => {
+                let Some(value) = args.next().filter(|v| !v.is_empty() && !v.starts_with('-'))
+                else {
+                    eprintln!("og test: --skip needs a nonempty suite path substring");
+                    return ExitCode::from(2);
+                };
+                skip.push(value);
+            }
             "--jobs" => {
                 let Some(n) = args
                     .next()
@@ -73,7 +84,7 @@ pub fn run(args: &[&str]) -> ExitCode {
             }
             a if a.starts_with('-') => {
                 eprintln!(
-                    "og test: unknown option `{a}`. usage: og test [project] [--filter <path>] [--jobs N] [--json] [--no-check]"
+                    "og test: unknown option `{a}`. usage: og test [project] [--filter <path>] [--skip <path>] [--jobs N] [--json] [--no-check]"
                 );
                 return ExitCode::from(2);
             }
@@ -98,18 +109,30 @@ pub fn run(args: &[&str]) -> ExitCode {
     files(&p.root, ".test.ts", &mut unit);
     let mut playtests = Vec::new();
     files(&p.root.join("tests"), ".og.ts", &mut playtests);
+    let rel = |path: &PathBuf| {
+        path.strip_prefix(&p.root)
+            .expect("discovered tests are inside the project")
+            .to_string_lossy()
+            .replace('\\', "/")
+    };
     if let Some(filter) = filter {
-        let matches = |path: &PathBuf| {
-            path.strip_prefix(&p.root)
-                .expect("discovered tests are inside the project")
-                .to_string_lossy()
-                .replace('\\', "/")
-                .contains(filter)
-        };
+        let matches = |path: &PathBuf| rel(path).contains(filter);
         unit.retain(matches);
         playtests.retain(matches);
         if unit.is_empty() && playtests.is_empty() {
             eprintln!("og test: no suite paths match --filter `{filter}`");
+            return ExitCode::FAILURE;
+        }
+    }
+    if !skip.is_empty() {
+        let kept = |path: &PathBuf| {
+            let r = rel(path);
+            !skip.iter().any(|s| r.contains(s))
+        };
+        unit.retain(kept);
+        playtests.retain(kept);
+        if unit.is_empty() && playtests.is_empty() {
+            eprintln!("og test: --skip `{}` leaves no suites", skip.join("`, `"));
             return ExitCode::FAILURE;
         }
     }
