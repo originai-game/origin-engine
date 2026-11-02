@@ -193,9 +193,9 @@ fn style_eject_writes_the_built_in_pack_that_cooks_the_same() {
         "style.ogt",
         "atlas.png",
         "icons.png",
-        "ChakraPetch-Medium.ttf",
-        "Orbitron-Bold.ttf",
-        "JetBrainsMono-Regular.ttf",
+        "IBMPlexSans-Regular.ttf",
+        "IBMPlexSans-Light.ttf",
+        "IBMPlexMono-Regular.ttf",
     ] {
         assert!(
             unstamped(&a, &format!("styles/keeper/{f}"))
@@ -203,13 +203,12 @@ fn style_eject_writes_the_built_in_pack_that_cooks_the_same() {
             "{f}: the ejected copy cooks differently from the built-in"
         );
     }
-    for f in ["NotoSansSC-Regular.ttf", "NotoSansSC-Bold.ttf"] {
-        let id = format!("@styles/cjk/{f}");
-        assert!(
-            unstamped(&a, &id) == unstamped(&b, &id),
-            "{id}: the ejected style's Chinese companion"
-        );
-    }
+    // scifi names one CJK face for body and display alike.
+    let id = "@styles/cjk/NotoSansSC-Regular.ttf";
+    assert!(
+        unstamped(&a, id) == unstamped(&b, id),
+        "{id}: the ejected style's Chinese companion"
+    );
     let _ = std::fs::remove_dir_all(&mine);
     let _ = std::fs::remove_dir_all(&builtin);
 }
