@@ -9,7 +9,7 @@ with per-frame foot contacts. Its poses are presentation (§2.4).
 
 ```rust
 let bundle = og_motion::Bundle::from_safetensors(&bytes)?;
-let model = og_motion::Model::new(&bundle)?;                 // CPU
+let model = og_motion::Model::new(&bundle)?;                 // CPU (the `reference` feature)
 let (generation, alignments) = model.generate_requests(&requests);
 let pose = og_motion::decode_frame(generation.frame(0, 10), &alignments[0]);
 
@@ -38,10 +38,11 @@ let on_rig = og_anim::retarget(&skeleton.asset(), &HumanoidMap::detect(&skeleton
 | `bundle` | `Bundle::from_safetensors` (F32 or F16 tensors, `config` metadata), `get`, `parameters`, `Config` |
 | `contract` | `Pose`, `Request`, `encode` (world poses → the seven inputs and an `Alignment`), `decode_frame`, `valid_frames`, the joint names and feature ranges |
 | `glue` | `Statics`, `student_inputs`, `decoder_inputs`, `finish`: everything around the two networks, shared by both paths |
-| `cpu` | `Cpu`: the student and the decoder in f32 loops, the reference path |
-| `gpu` | `Gpu` (`request`, `request_on`, `new`, async `student`, `decoder`, `generate`), `shader_sources` |
+| `cpu` | `Cpu`: the student and the decoder in f32 loops, the reference path (the `reference` feature: tests and tools only; the engine runs the model on the GPU only) |
+| `library` | `POSES` (idle, walk, run, jump, crouch, wave, cheer), `Library`: the poses og.motion's goals name, carried by the bundle |
+| `gpu` | `Gpu` (`request`, `request_on`, `new`, `set_blocking`, async `student`, `decoder`, `generate`), `shader_sources` |
 | `intent` | `Goal` (`placed`), `Motion` (`add`, `push`, `batch`, `accept`, `generate`, `generate_gpu`, `pop`), `Frame` |
-| `soma` | `Skeleton` (`from_bundle`, `asset`, `local`), `plant_feet`, `clip` |
+| `soma` | `Skeleton` (`from_bundle`, `asset`, `local`), `plant_feet`, `Planter` (frame by frame, anchors in the world), `clip` |
 | (root) | `Model` (CPU end to end), `Generation` |
 
 ## The bundle
@@ -123,7 +124,10 @@ The model's joint positions and its rotations on the rest bone lengths
 disagree, by 5 cm on average over joints and frames and up to 0.2–0.3 m at
 the hands and feet, the teacher's as much as the student's (og-motion-train's
 closed loop, `fk_gap_cm`): `soma` shows the rotations, as MotionBricks' own
-runtime does, and plants the feet. Open: kernel fusion for one character,
-a CPU path fast enough to stand in where there is no adapter, f16 storage,
-and the runtime's API (weights as a cooked asset, `og.motion` goals,
-generation beside og-render's device).
+runtime does, and plants the feet. The runtime's API is og-runtime's `og.motion` (`crates/og-api/api/motion.ogt`):
+goals kept by the simulation, the model on og-render's device, its weights
+(`og-motion-train`'s `weights/engine/model.safetensors`, f16 with the pose
+library, 35.4 MB) shipped in `@origingame/engine` and cooked as
+`cooked/motion/model.ogb` for a project that uses og.motion. The engine is
+GPU only (docs/design.md §2.6): no CPU path stands in. Open: kernel fusion
+for one character, f16 storage on the GPU.

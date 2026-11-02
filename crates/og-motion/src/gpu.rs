@@ -302,6 +302,10 @@ struct Plan {
     staging: wgpu::Buffer,
 }
 
+/// The most storage buffers one kernel binds (`assemble`): the device limit
+/// [`Gpu::new`] needs.
+pub const STORAGE_BUFFERS: u32 = 7;
+
 /// Batch sizes whose plans are kept; past it the cache starts over.
 const PLANS: usize = 8;
 
@@ -311,12 +315,18 @@ struct MapState {
     waker: Option<Waker>,
 }
 
-/// Resolves when `map_async`'s callback has run.
-struct Mapped(Arc<Mutex<MapState>>);
+/// Resolves when `map_async`'s callback has run. With a device, each poll
+/// polls it once first, without waiting (a non-blocking [`Gpu`]: natively the
+/// callback runs only inside a device poll).
+struct Mapped(Arc<Mutex<MapState>>, Option<wgpu::Device>);
 
 impl Future for Mapped {
     type Output = Result<(), wgpu::BufferAsyncError>;
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        if let Some(device) = &self.1 {
+            // An error here is a lost device: the map's callback reports it.
+            let _ = device.poll(wgpu::PollType::Poll);
+        }
         let mut state = self.0.lock().unwrap_or_else(|e| e.into_inner());
         match state.result.take() {
             Some(result) => Poll::Ready(result),
@@ -343,6 +353,8 @@ pub struct Gpu {
     statics: Statics,
     students: HashMap<usize, Plan>,
     decoders: HashMap<usize, Plan>,
+    /// Readbacks block in a device poll ([`Gpu::set_blocking`]).
+    blocking: bool,
 }
 
 impl Gpu {
@@ -390,9 +402,29 @@ impl Gpu {
         &self.device
     }
 
+    /// How a generation's readbacks wait. Blocking (the default, for tools
+    /// and tests driving a future with `pollster::block_on`): natively the
+    /// device is polled until the readback lands. Not blocking (a frame loop
+    /// on a device it shares with a renderer): the future never blocks, and
+    /// each poll of it polls the device once, so polling it every frame
+    /// completes it a frame or two after the GPU finishes. On the web the
+    /// browser completes readbacks on its own and nothing blocks either way.
+    pub fn set_blocking(&mut self, blocking: bool) {
+        self.blocking = blocking;
+    }
+
+    /// The model on `device` (one of its own, or a renderer's). Refused for
+    /// a device whose limits the kernels exceed: a stage binds up to
+    /// [`STORAGE_BUFFERS`] storage buffers.
     pub fn new(device: wgpu::Device, queue: wgpu::Queue, bundle: &Bundle) -> Result<Gpu, GpuError> {
         let config = bundle.config.clone();
         check_config(&config)?;
+        let have = device.limits().max_storage_buffers_per_shader_stage;
+        if have < STORAGE_BUFFERS {
+            return Err(GpuError::NoDevice(format!(
+                "the device allows {have} storage buffers a shader stage, and the kernels bind {STORAGE_BUFFERS}"
+            )));
+        }
         let pipelines = KERNELS
             .iter()
             .map(|(_, name, source)| {
@@ -471,6 +503,7 @@ impl Gpu {
             statics: Statics::new(bundle)?,
             students: HashMap::new(),
             decoders: HashMap::new(),
+            blocking: true,
         })
     }
 
@@ -555,10 +588,14 @@ impl Gpu {
                 }
             });
         #[cfg(not(target_arch = "wasm32"))]
-        self.device
-            .poll(wgpu::PollType::wait_indefinitely())
-            .map_err(|e| GpuError::Readback(e.to_string()))?;
-        Mapped(state)
+        if self.blocking {
+            self.device
+                .poll(wgpu::PollType::wait_indefinitely())
+                .map_err(|e| GpuError::Readback(e.to_string()))?;
+        }
+        let poll =
+            (!self.blocking && cfg!(not(target_arch = "wasm32"))).then(|| self.device.clone());
+        Mapped(state, poll)
             .await
             .map_err(|e| GpuError::Readback(e.to_string()))?;
         let words: Vec<u32> = {

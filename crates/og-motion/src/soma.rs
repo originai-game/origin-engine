@@ -107,36 +107,111 @@ impl Skeleton {
 /// model's four per frame (left heel, left toe, right heel, right toe).
 pub fn plant_feet(skeleton: &SkeletonAsset, poses: &mut [Vec<Trs>], contacts: &[[f32; 4]]) {
     debug_assert_eq!(poses.len(), contacts.len());
-    for (chain, contact) in LEGS {
-        let ankle = chain[2];
-        let generated: Vec<GVec3> = poses
-            .iter()
-            .map(|p| skeleton.model_space(p)[ankle].translation)
-            .collect();
-        let mut anchor: Option<GVec3> = None;
-        let mut released = RELEASE_FRAMES;
-        let mut last = GVec3::ZERO;
-        for (f, pose) in poses.iter_mut().enumerate() {
-            let down = contacts[f][contact] > CONTACT;
+    let mut planter = Planter::new(
+        LEGS.iter()
+            .map(|&(chain, contact)| Leg {
+                chain: chain.map(|j| j as u32),
+                contact,
+            })
+            .collect(),
+    );
+    for (pose, contact) in poses.iter_mut().zip(contacts) {
+        planter.step(skeleton, pose, &Trs::IDENTITY, contact);
+    }
+}
+
+/// A leg [`Planter`] plants: its thigh, shin and ankle nodes, and which of
+/// the model's contacts is its heel (0 left, 2 right).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Leg {
+    pub chain: [u32; 3],
+    pub contact: usize,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct Plant {
+    /// Where the ankle touched down, in the world.
+    anchor: Option<GVec3>,
+    /// Frames since the heel lifted.
+    released: usize,
+    /// Where the ankle was last held, in the world.
+    last: GVec3,
+}
+
+impl Plant {
+    /// Not planted, and long released: the ankle follows its generated path.
+    const FREE: Plant = Plant {
+        anchor: None,
+        released: RELEASE_FRAMES,
+        last: GVec3::ZERO,
+    };
+}
+
+/// Plants the feet of a character's frames one at a time, as
+/// [`plant_feet`] does a run of them, on any skeleton whose legs it is
+/// given, with the anchors held in the world: a character whose model
+/// space moves under it (re-rooted onto a moving entity) keeps a planted
+/// foot where it touched the ground.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Planter {
+    legs: Vec<(Leg, Plant)>,
+}
+
+impl Planter {
+    pub fn new(legs: Vec<Leg>) -> Planter {
+        Planter {
+            legs: legs.into_iter().map(|l| (l, Plant::FREE)).collect(),
+        }
+    }
+
+    /// Lets go of every planted foot at once (a cut: the character was moved).
+    pub fn release(&mut self) {
+        for (_, plant) in &mut self.legs {
+            *plant = Plant::FREE;
+        }
+    }
+
+    /// Plants one frame: `pose` (local transforms of `skeleton`), placed in
+    /// the world by `root` (model space to world, uniform scale), with the
+    /// model's four `contacts` of the frame.
+    pub fn step(
+        &mut self,
+        skeleton: &SkeletonAsset,
+        pose: &mut [Trs],
+        root: &Trs,
+        contacts: &[f32; 4],
+    ) {
+        let to_model = root.inverse();
+        for (leg, plant) in &mut self.legs {
+            let ankle = leg.chain[2] as usize;
+            let model = skeleton.model_space(pose);
+            let generated = root.transform_point(model[ankle].translation);
+            let down = contacts[leg.contact] > CONTACT;
             let target = if down {
-                let at = *anchor.get_or_insert(generated[f]);
-                released = 0;
-                last = at;
+                let at = *plant.anchor.get_or_insert(generated);
+                plant.released = 0;
+                plant.last = at;
                 at
             } else {
-                anchor = None;
-                if released >= RELEASE_FRAMES {
+                plant.anchor = None;
+                if plant.released >= RELEASE_FRAMES {
                     continue;
                 }
-                released += 1;
-                let k = released as f32 / (RELEASE_FRAMES + 1) as f32;
-                last + (generated[f] - last) * k
+                plant.released += 1;
+                let k = plant.released as f32 / (RELEASE_FRAMES + 1) as f32;
+                plant.last + (generated - plant.last) * k
             };
-            let model = skeleton.model_space(pose);
             let foot = model[ankle].rotation;
-            let joints = chain.map(|j| j as u32);
-            two_bone(skeleton, pose, &joints, target, None, 1.0, &[]);
-            let shin = skeleton.model_space(pose)[chain[1]].rotation;
+            two_bone(
+                skeleton,
+                pose,
+                &leg.chain,
+                to_model.transform_point(target),
+                None,
+                1.0,
+                &[],
+            );
+            let shin = skeleton.model_space(pose)[leg.chain[1] as usize].rotation;
             pose[ankle].rotation = (shin.conjugate() * foot).normalize();
         }
     }

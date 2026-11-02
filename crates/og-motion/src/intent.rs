@@ -17,12 +17,14 @@
 
 use std::collections::VecDeque;
 
+#[cfg(feature = "reference")]
+use crate::Model;
 use crate::contract::{
     LEFT_LEG, MOTION_CONTACTS, Pose, RIGHT_LEG, Request, encode, heading, mat_mul, mat_vec, rot_y,
     valid_frames,
 };
 use crate::gpu::{Gpu, GpuError};
-use crate::{Alignment, Generation, Inputs, Model, decode_frame};
+use crate::{Alignment, Generation, Inputs, decode_frame};
 
 /// What a character reaches next: one to four consecutive target poses (30
 /// Hz) in the world, and the token counts the generation may take (empty
@@ -188,7 +190,9 @@ impl Motion {
     }
 
     /// One generation on the CPU ([`Motion::batch`], then
-    /// [`Motion::accept`]); answers how many characters it moved.
+    /// [`Motion::accept`]); answers how many characters it moved. The
+    /// reference path (the `reference` feature).
+    #[cfg(feature = "reference")]
     pub fn generate(&mut self, model: &Model, lookahead: usize) -> usize {
         let Some(batch) = self.batch(lookahead) else {
             return 0;

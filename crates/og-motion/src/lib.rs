@@ -2,7 +2,7 @@
 //! humanoid motion model, a student distilled from NVIDIA MotionBricks.
 //!
 //! Given each character's four most recent poses and one to four target
-//! poses, [`Model::generate`] returns the motion between them: 6 to 16
+//! poses, [`gpu::Gpu::generate`] returns the motion between them: 6 to 16
 //! tokens of four frames at 30 Hz, per-frame foot contacts included. Its
 //! poses are presentation (§2.4): nothing the simulation reads.
 //!
@@ -11,9 +11,10 @@
 //! | [`bundle`] | [`Bundle`]: the weights (one safetensors file) and their [`Config`] |
 //! | [`contract`] | world poses to the graph inputs ([`encode`]) and motion frames back ([`decode_frame`]) |
 //! | [`glue`] | everything around the two networks, shared by every path |
-//! | [`cpu`] | the student and decoder on the CPU, the reference path |
+//! | [`cpu`] | the student and decoder on the CPU, the reference path (the `reference` feature) |
 //! | [`gpu`] | the same on wgpu compute, the shipping path ([`gpu::Gpu`]) |
 //! | [`intent`] | the intent API: [`intent::Goal`]s queued per character, [`intent::Motion`] chaining generations in batches |
+//! | [`library`] | the poses goals name ([`library::POSES`]), carried by the bundle |
 //! | [`soma`] | the generated skeleton for og-anim: its asset, poses as local transforms, feet planted from contacts, frames as a clip |
 //!
 //! The specification is og-motion-train's `ogm/reference.py`; the tests
@@ -29,6 +30,7 @@ pub mod cpu;
 pub mod glue;
 pub mod gpu;
 pub mod intent;
+pub mod library;
 pub mod soma;
 
 pub use bundle::{Bundle, BundleError, Config, DecoderConfig, StudentConfig, read_safetensors};
@@ -55,12 +57,15 @@ impl Generation {
     }
 }
 
-/// The model on the CPU.
+/// The model on the CPU, end to end: the reference path (the `reference`
+/// feature; the engine runs the model on the GPU only).
+#[cfg(feature = "reference")]
 pub struct Model {
     statics: glue::Statics,
     cpu: cpu::Cpu,
 }
 
+#[cfg(feature = "reference")]
 impl Model {
     pub fn new(bundle: &Bundle) -> Result<Model, BundleError> {
         Ok(Model {

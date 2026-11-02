@@ -27,5 +27,12 @@ pollster = { workspace = true }
 # The static DXC, as og-render: FXC compiles the kernels in about 30 s.
 wgpu = { workspace = true, features = ["static-dxc"] }
 
+[features]
+# The CPU path (`cpu::Cpu`, `Model`, `Motion::generate`): the reference the
+# tests check the GPU against, and the tools' baseline. The engine runs the
+# model on the GPU only (docs/design.md §2.7) and never turns it on.
+reference = []
+
 [dev-dependencies]
+og-motion = { path = ".", features = ["reference"] }
 naga = { version = "30.0.1", features = ["wgsl-in", "msl-out", "spv-out", "hlsl-out"] }

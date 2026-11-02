@@ -1,15 +1,22 @@
 //! The student and the decoder on the CPU: the reference path every other
 //! path is checked against, in plain f32 loops over PyTorch weight layouts.
+//! The engine runs the model on the GPU only (docs/design.md §2.7): [`Cpu`]
+//! is built with the `reference` feature alone, which the crate's tests,
+//! examples and tools turn on and no host does. The tables both paths read
+//! (the tensors' shapes, the supported architecture) are always built.
 
+#[cfg(feature = "reference")]
 use og_core::math::exp;
 
-use crate::bundle::{Bundle, BundleError, Config};
+#[cfg(feature = "reference")]
+use crate::bundle::Bundle;
+use crate::bundle::{BundleError, Config};
 use crate::contract::{COUNTS, FRAMES, MAX_TOKENS, SLOTS};
-use crate::glue::{
-    CODES, DecoderInputs, HEADS, LOCAL_FEATURES, SLOT_FEATURES, StudentInputs, StudentOutput,
-    TARGET_FEATURES,
-};
+use crate::glue::{CODES, HEADS, LOCAL_FEATURES, SLOT_FEATURES, TARGET_FEATURES};
+#[cfg(feature = "reference")]
+use crate::glue::{DecoderInputs, StudentInputs, StudentOutput};
 
+#[cfg(feature = "reference")]
 /// `y[r,o] = b[o] + Σk x[r,k]·w[o,k]` for `rows` rows.
 pub(crate) fn linear(x: &[f32], rows: usize, w: &[f32], b: &[f32]) -> Vec<f32> {
     let out = b.len();
@@ -26,6 +33,7 @@ pub(crate) fn linear(x: &[f32], rows: usize, w: &[f32], b: &[f32]) -> Vec<f32> {
     y
 }
 
+#[cfg(feature = "reference")]
 fn layer_norm(x: &mut [f32], width: usize, w: &[f32], b: &[f32]) {
     for row in x.chunks_exact_mut(width) {
         let mean = row.iter().sum::<f32>() / width as f32;
@@ -37,12 +45,14 @@ fn layer_norm(x: &mut [f32], width: usize, w: &[f32], b: &[f32]) {
     }
 }
 
+#[cfg(feature = "reference")]
 fn relu(x: &mut [f32]) {
     for v in x {
         *v = v.max(0.0);
     }
 }
 
+#[cfg(feature = "reference")]
 /// `x [C,T]`, `w [O,C,K]`, 'same' padding (`dilation · (K/2)` zeros each side).
 fn conv1d(x: &[f32], t: usize, w: &[f32], b: &[f32], kernel: usize, dilation: usize) -> Vec<f32> {
     let out = b.len();
@@ -69,6 +79,7 @@ fn conv1d(x: &[f32], t: usize, w: &[f32], b: &[f32], kernel: usize, dilation: us
     y
 }
 
+#[cfg(feature = "reference")]
 struct EncoderLayer {
     norm1: (Vec<f32>, Vec<f32>),
     in_proj: (Vec<f32>, Vec<f32>),
@@ -78,6 +89,7 @@ struct EncoderLayer {
     linear2: (Vec<f32>, Vec<f32>),
 }
 
+#[cfg(feature = "reference")]
 /// Both networks' weights, f32, PyTorch layouts.
 pub struct Cpu {
     config: Config,
@@ -211,6 +223,7 @@ pub(crate) fn check_config(config: &Config) -> Result<(), BundleError> {
     Ok(())
 }
 
+#[cfg(feature = "reference")]
 impl Cpu {
     pub fn new(bundle: &Bundle) -> Result<Cpu, BundleError> {
         let config = bundle.config.clone();
