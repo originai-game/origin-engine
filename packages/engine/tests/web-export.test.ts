@@ -115,7 +115,9 @@ test.skipIf(SLOW)("og-build.json names every file beside it, with bytes and sha2
   // file the page fetches by name is served as <stem>.<12 hex of its sha256>.<ext>,
   // and the page's configuration and og-build.json name it so.
   const names = m.names as Record<string, string>;
-  expect(Object.keys(names).sort()).toEqual([...HASHED_FILES].sort());
+  // The AV1 fallback ships when the package has it (scripts/build-av1.sh).
+  const av1 = existsSync(join(pkg, "dist/av1/og-av1.wasm"));
+  expect(Object.keys(names).sort()).toEqual(HASHED_FILES.filter((f) => av1 || f !== "av1/og-av1.wasm").sort());
   for (const [plain, served] of Object.entries(names)) {
     expect(served).toBe(hashedName(plain, hash(served)));
     expect(paths).toContain(served);
@@ -172,6 +174,15 @@ test.skipIf(SLOW)("og-build.json names every file beside it, with bytes and sha2
   expect(config.expect.lanes).toBe(m.files.find((f: { path: string }) => f.path === m.lanes.wasm).bytes);
   expect(precache.files).not.toContain("_headers");
   expect(precache.files).not.toContain("og-build.json");
+  // The AV1 fallback is content-hashed too, so a new decoder is never served
+  // from an old cache, and is still cached only when the engine fetches it.
+  if (av1) {
+    expect(names["av1/og-av1.wasm"]).toMatch(/^av1\/og-av1\.[0-9a-f]{12}\.wasm$/);
+    expect(paths).not.toContain("av1/og-av1.wasm");
+    const lazy = (JSON.parse(/^const OG_SW=(\{.*?\});/.exec(sw)![1]!) as { lazy: string[] }).lazy;
+    expect(lazy).toContain(names["av1/og-av1.wasm"]);
+    expect(precache.files).not.toContain(names["av1/og-av1.wasm"]);
+  }
   const web = JSON.parse(read(dir, "manifest.webmanifest"));
   expect(web.display).toBe("standalone");
   expect(web.icons.map((i: { sizes: string }) => i.sizes)).toEqual(["192x192", "512x512"]);

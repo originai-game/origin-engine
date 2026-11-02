@@ -661,6 +661,7 @@ export const HASHED_FILES = [
   "origin-engine-lanes_bg.wasm",
   "basis/basis_transcoder.js",
   "basis/basis_transcoder.wasm",
+  "av1/og-av1.wasm",
 ] as const;
 /**
  * Of those, the ones a publish build also writes under their plain name, a

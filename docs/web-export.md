@@ -159,8 +159,10 @@ A publish build serves every file the page or the engine Worker fetches by
 name under a name that carries its content: `<stem>.<the first 12 hex
 digits of its sha256>.<ext>` (`game.3f2a9c1e04b7.js`). This covers `play.js`,
 `game.js`, `audio-worklet.js`, `origin-engine.js`, `origin-engine_bg.wasm`,
-the lanes glue and module, and `basis/basis_transcoder.{js,wasm}`
-(`HASHED_FILES` in `src/node/web-build.ts`). A new build changes the URL of
+the lanes glue and module, `basis/basis_transcoder.{js,wasm}` and the AV1
+fallback decoder `av1/og-av1.wasm` (still fetched only where WebCodecs
+cannot decode AV1; the service worker caches it lazily under its served
+name) (`HASHED_FILES` in `src/node/web-build.ts`). A new build changes the URL of
 what changed and nothing else. The page finds them through its
 configuration's `files` (each file's own name to its served name, the same
 map as og-build.json's `names`), and og-build.json's `worker`, `wasm` and
