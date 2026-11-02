@@ -39,27 +39,33 @@ Each row names the components that implement the screen today: U6c's HUD
 rows (`packages/engine/src/ui/hud`, `world`, `feedback`), U6b's containers
 and data, U6d's patterns (`ui/patterns`, on u6d-patterns-screens) and the
 archetypes (`templates/archetypes`). **Gap** marks a part with no component
-yet.
+yet; the coordinator assigned each gap (2026-11-02), numbered as in its
+brief: U6d 1 loadout and gunsmith, 2 garage, 4 deck builder, 5 saga map,
+6 star-threshold bar and goal chips, 8 idle generator row and prestige,
+9 VN box and choices, 11 song select; U6c 3 race standings and splits
+(with the spline minimap and rear view), 7 RTS selection panel, command
+card, production queue and box select, 10 sports timeline and player of
+the match, 12 the small HUD items.
 
-| Genre | Sheet | Implemented by | Gaps |
-| --- | --- | --- | --- |
-| Shooter | `B-shooter-hud` | `crosshair`, `ammoCounter`, `killfeed`, `damageDirection`, `scorebug` and `hudTimer` (team scores and clock), `compass`, `minimapView`, `statBar` (health, armour), `abilitySlot` (grenade, gadget, the ultimate's ring), `damageNumbers` | objective diamonds on the compass row (A/B/C with team state), the operator portrait in `unitFrame`'s compact form |
-| Shooter | `B-shooter-loadout` | `tabBar` (loadouts), `statCompare` (stats with deltas), `inventoryGrid` rows | **Gap: loadout and gunsmith pattern**: slot list with art, a 3D weapon viewport (§5.5) with attachment sockets and leader lines, attachment list with rarity |
-| Racing | `B-racing-hud` | `speedometer` (speed, gear, revs), `statBar` segmented (nitro), `minimapView` | **Gap: race standings tower** (position, gap, car chip, the player's row), **gap: lap and split block** with signed deltas, track map as a spline outline (a `minimapView` mode), rear-view mirror (a render-to-texture view in the UI) |
-| Racing | `B-racing-garage` | `statCompare` (current and preview bars), badges (PI class), `tabBar` vertical | **Gap: garage pattern** (U6d's list): turntable viewport, category rail, part cards with tier pips, price and lock |
-| Card | `B-cards-combat` | `cardHand`, `unitFrame` with intent, `radialMeter` (energy), `statusGrid`, pile counters in `cardHand` | relic row (an icon strip with tooltips; `statusGrid` without timers may serve) |
-| Card | `B-cards-deck` | `inventoryGrid` (as a card grid), `chart` (mana curve), `tabBar`, search and segmented filters (U6a) | **Gap: deck builder and collection pattern**: owned counts, unowned dimmed, deck list rows with cost gem and art strip, the 30/30 counter |
-| Match-3 | `B-puzzle-board` | `radialMeter` and `numberCounter` (moves), `objectiveTracker` (goals), `abilitySlot` with charges (boosters), `match3` archetype (the board) | **Gap: star-threshold progress bar** (`statBar` with markers that fill), goal chips with item art |
-| Match-3 | `B-puzzle-map` | currency `numberCounter` with add buttons, banners (event card), primary button | **Gap: saga map pattern**: a scrolling painted map with a path of nodes, stars per node, the current node with the avatar pin, locked and boss nodes (the kit's `levels` screen is a grid) |
-| RTS | `B-rts-hud` | `minimapView` (fog, camera box, pings), `resourceBar`, `overheadBars`, `selectionRing`, `tabBar` (control groups) | **Gap: selection panel** (unit portrait grid with health, the primary unit's card), **gap: command card** (a hotkeyed grid of `abilitySlot`s), **gap: production queue**, drag-box select |
-| Tower defence | `B-td-build` | `radialMenu` (build options with cost and disabled), `tooltips` with `keyValueRows`, `telegraph` and `placementGhost` (range), `hudTimer` (wave), `resourceBar` (lives, gold), segmented speed control, `tower-defense` archetype | wave preview strip (`turnOrder` vertical may serve; to confirm), cost on `radialMenu` items turning red when unaffordable |
-| Idle | `B-idle-main` | `numberCounter` with notation, `damageNumbers` (floating gains), `statBar`, segmented buy multiplier, `idle` archetype | **Gap: generator row** (art, level, owned, cycle bar, rate, buy button with cost), **gap: prestige panel**, upgrade tiles (`inventoryGrid` may serve) |
-| Visual novel | `B-vn-dialogue` | none (`subtitles` is not a VN box) | **Gap: VN text box** (U6d's list): name plate, typewriter, advance mark, auto/skip/log/save/load row, backlog |
-| Visual novel | `B-vn-choice` | `hudTimer` (choice timer) | **Gap: choice list** with locked conditions ("Requires Trust 3") and a hovered lift |
-| Sports | `B-sports-hud` | `scorebug`, `minimapView` (pitch radar), `statBar` (stamina), banners (lower third), `statCompare` (possession) | player plate (compact `unitFrame` with number) |
-| Sports | `B-sports-scoreboard` | `scoreboard`, `statCompare` (if it draws centre-out two-sided bars; else a gap), results screen | **Gap: goal timeline** (scorers and minutes per side), player-of-the-match card (a `rewardChoice` card may serve) |
-| Rhythm | `B-rhythm-hud` | `judgement`, `comboCounter`, `numberCounter` (score), `statBar` (progress, fever), `rhythm` archetype (the highway) | lane keycaps on the hit line (`actionHints` glyphs at lane size) |
-| Rhythm | `B-rhythm-select` | `carousel` (vertical), segmented (difficulty), `radialMeter` (accuracy), badges (grade, full combo) | **Gap: song select pattern** (U6d's list): an angled wheel, jacket, preview waveform with play, difficulty chips with levels |
+| Genre | Sheet | Implemented by | Gaps | Gap owner |
+| --- | --- | --- | --- | --- |
+| Shooter | `B-shooter-hud` | `crosshair`, `ammoCounter`, `killfeed`, `damageDirection`, `scorebug` and `hudTimer` (team scores and clock), `compass`, `minimapView`, `statBar` (health, armour), `abilitySlot` (grenade, gadget, the ultimate's ring), `damageNumbers` | objective diamonds on the compass row (A/B/C with team state), the operator portrait in `unitFrame`'s compact form | U6c (12) |
+| Shooter | `B-shooter-loadout` | `tabBar` (loadouts), `statCompare` (stats with deltas), `inventoryGrid` rows | **Gap: loadout and gunsmith pattern**: slot list with art, a 3D weapon viewport (§5.5) with attachment sockets and leader lines, attachment list with rarity | U6d (1) |
+| Racing | `B-racing-hud` | `speedometer` (speed, gear, revs), `statBar` segmented (nitro), `minimapView` | **Gap: race standings tower** (position, gap, car chip, the player's row), **gap: lap and split block** with signed deltas, track map as a spline outline (a `minimapView` mode), rear-view mirror (a render-to-texture view in the UI) | U6c (3) |
+| Racing | `B-racing-garage` | `statCompare` (current and preview bars), badges (PI class), `tabBar` vertical | **Gap: garage pattern** (U6d's list): turntable viewport, category rail, part cards with tier pips, price and lock | U6d (2) |
+| Card | `B-cards-combat` | `cardHand`, `unitFrame` with intent, `radialMeter` (energy), `statusGrid`, pile counters in `cardHand` | relic row (an icon strip with tooltips; `statusGrid` without timers may serve) | U6c (12) |
+| Card | `B-cards-deck` | `inventoryGrid` (as a card grid), `chart` (mana curve), `tabBar`, search and segmented filters (U6a) | **Gap: deck builder and collection pattern**: owned counts, unowned dimmed, deck list rows with cost gem and art strip, the 30/30 counter | U6d (4) |
+| Match-3 | `B-puzzle-board` | `radialMeter` and `numberCounter` (moves), `objectiveTracker` (goals), `abilitySlot` with charges (boosters), `match3` archetype (the board) | **Gap: star-threshold progress bar** (`statBar` with markers that fill), goal chips with item art | U6d (6) |
+| Match-3 | `B-puzzle-map` | currency `numberCounter` with add buttons, banners (event card), primary button | **Gap: saga map pattern**: a scrolling painted map with a path of nodes, stars per node, the current node with the avatar pin, locked and boss nodes (the kit's `levels` screen is a grid) | U6d (5) |
+| RTS | `B-rts-hud` | `minimapView` (fog, camera box, pings), `resourceBar`, `overheadBars`, `selectionRing`, `tabBar` (control groups) | **Gap: selection panel** (unit portrait grid with health, the primary unit's card), **gap: command card** (a hotkeyed grid of `abilitySlot`s), **gap: production queue**, drag-box select | U6c (7) |
+| Tower defence | `B-td-build` | `radialMenu` (build options with cost and disabled), `tooltips` with `keyValueRows`, `telegraph` and `placementGhost` (range), `hudTimer` (wave), `resourceBar` (lives, gold), segmented speed control, `tower-defense` archetype | wave preview strip (`turnOrder` vertical may serve; to confirm), cost on `radialMenu` items turning red when unaffordable | U6c (12) |
+| Idle | `B-idle-main` | `numberCounter` with notation, `damageNumbers` (floating gains), `statBar`, segmented buy multiplier, `idle` archetype | **Gap: generator row** (art, level, owned, cycle bar, rate, buy button with cost), **gap: prestige panel**, upgrade tiles (`inventoryGrid` may serve) | U6d (8) |
+| Visual novel | `B-vn-dialogue` | none (`subtitles` is not a VN box) | **Gap: VN text box** (U6d's list): name plate, typewriter, advance mark, auto/skip/log/save/load row, backlog | U6d (9) |
+| Visual novel | `B-vn-choice` | `hudTimer` (choice timer) | **Gap: choice list** with locked conditions ("Requires Trust 3") and a hovered lift | U6d (9) |
+| Sports | `B-sports-hud` | `scorebug`, `minimapView` (pitch radar), `statBar` (stamina), banners (lower third), `statCompare` (possession) | player plate (compact `unitFrame` with number) | U6c (10) |
+| Sports | `B-sports-scoreboard` | `scoreboard`, `statCompare` (if it draws centre-out two-sided bars; else a gap), results screen | **Gap: goal timeline** (scorers and minutes per side), player-of-the-match card (a `rewardChoice` card may serve) | U6c (10) |
+| Rhythm | `B-rhythm-hud` | `judgement`, `comboCounter`, `numberCounter` (score), `statBar` (progress, fever), `rhythm` archetype (the highway) | lane keycaps on the hit line (`actionHints` glyphs at lane size) | U6c (12) |
+| Rhythm | `B-rhythm-select` | `carousel` (vertical), segmented (difficulty), `radialMeter` (accuracy), badges (grade, full combo) | **Gap: song select pattern** (U6d's list): an angled wheel, jacket, preview waveform with play, difficulty chips with levels | U6d (11) |
 
 ## Seed styles the genres need (proposals, 2026-11-02)
 
