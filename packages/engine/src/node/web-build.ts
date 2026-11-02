@@ -298,6 +298,8 @@ export interface Downloads {
     readonly packs: DownloadSum;
     /** The chunks of the sounds cooked in chunks after their first, fetched ahead of their playheads. */
     readonly chunks: DownloadSum;
+    /** Streamed textures' whole chains (`<id>#mips`), fetched when a texture is big on screen. */
+    readonly mips: DownloadSum;
     /** The AudioWorklet, fetched on the first gesture. */
     readonly worklet: DownloadSum;
     /** Streamed videos' AV1 units (`<id>#stream`), fetched by og.load.video. */
@@ -331,7 +333,7 @@ export function downloadsOf(files: readonly SizeRow[]): Downloads {
   const add = (...parts: DownloadSum[]): DownloadSum => parts.reduce((a, b) => ({ files: a.files + b.files, bytes: a.bytes + b.bytes, compressed: a.compressed + b.compressed }), { files: 0, bytes: 0, compressed: 0 });
   const isPack = (p: string) => /^cooked\/stream\/[^/]+\.ogb$/.test(p) || p === MOTION_MODEL;
   const isVideo = (p: string) => p.startsWith("cooked/") && VIDEO_STREAM.test(p);
-  const cooked = sum((p) => p.startsWith("cooked/") && !isPack(p) && !SOUND_CHUNK.test(p) && !isVideo(p));
+  const cooked = sum((p) => p.startsWith("cooked/") && !isPack(p) && !SOUND_CHUNK.test(p) && !TEXTURE_MIPS.test(p) && !isVideo(p));
   const shell = sum((p) => /^(index\.html|play\.js|game\.js)$/.test(p));
   const basis = sum((p) => /^basis\/basis_transcoder\.(js|wasm)$/.test(p));
   const page = (engine: DownloadSum): DownloadBoot => ({ ...add(engine, cooked, shell, basis), engine, cooked, shell, basis });
@@ -341,6 +343,7 @@ export function downloadsOf(files: readonly SizeRow[]): Downloads {
     later: {
       packs: sum(isPack),
       chunks: sum((p) => SOUND_CHUNK.test(p)),
+      mips: sum((p) => TEXTURE_MIPS.test(p)),
       worklet: sum((p) => p === "audio-worklet.js"),
       videos: sum(isVideo),
       av1: sum((p) => p.startsWith("av1/")),
@@ -353,12 +356,13 @@ export function downloadsOf(files: readonly SizeRow[]): Downloads {
  * The service worker's lists (`OG_SW` without its version) for a publish
  * build's file paths: `files`, precached at install, and each engine
  * variant's; `lazy`, cached when the engine first fetches them: the
- * streaming groups' packs, a long sound's chunks, a streamed video's units
+ * streaming groups' packs, a long sound's chunks, a streamed texture's
+ * whole chain (`<id>#mips`, read when it is big on screen), a streamed video's units
  * (a page fetches the main stream or, on the AV1 fallback, its 720p
  * rendition, never both) and the fallback decoder.
  */
 export function serviceWorkerLists(paths: readonly string[], packs: ReadonlySet<string>): { files: string[]; lazy: string[]; single: string[]; lanes: string[] } {
-  const onDemand = (f: string) => packs.has(f) || SOUND_CHUNK.test(f) || (f.startsWith("cooked/") && VIDEO_STREAM.test(f)) || f.startsWith("av1/");
+  const onDemand = (f: string) => packs.has(f) || SOUND_CHUNK.test(f) || TEXTURE_MIPS.test(f) || (f.startsWith("cooked/") && VIDEO_STREAM.test(f)) || f.startsWith("av1/");
   // A content-hashed file's plain copy is fetched by no page, so it is not precached.
   const aliases = aliasesOf(paths);
   const precache = paths.filter((f) => !NOT_PRECACHED.test(f) && !onDemand(f) && !aliases.has(f));
@@ -381,6 +385,7 @@ export function downloadLines(d: Downloads, codec: SizeRow["codec"]): string {
   const later = [
     d.later.packs.files ? `${d.later.packs.files} streaming packs ${d.later.packs.compressed} B (as their groups load)` : "",
     d.later.chunks.files ? `${d.later.chunks.files} sound chunks ${d.later.chunks.compressed} B (ahead of their playheads)` : "",
+    d.later.mips.files ? `${d.later.mips.files} texture mip chains ${d.later.mips.compressed} B (when big on screen)` : "",
     d.later.worklet.files ? `the audio worklet ${d.later.worklet.compressed} B (first gesture)` : "",
     d.later.pwa.files ? `the service worker and icons ${d.later.pwa.compressed} B` : "",
   ].filter(Boolean);
@@ -692,6 +697,8 @@ export function aliasesOf(paths: readonly string[]): Set<string> {
 const MOTION_MODEL = "cooked/motion/model.ogb";
 /** A chunk of a sound cooked in chunks: fetched as its playhead nears it, cached then. */
 const SOUND_CHUNK = /^cooked\/.*\.chunk\d+\.ogb$/;
+/** A streamed texture's whole chain (og-cook's `<id>#mips`; its tail `<id>` boots): fetched when the texture is big on screen, cached then. */
+const TEXTURE_MIPS = /^cooked\/.*[.#]mips\.ogb$/;
 
 /**
  * Why `out` may not be wiped for a build, or null. A build replaces its
@@ -820,11 +827,13 @@ export async function webBuild(project: string, entry: string, out: string, publ
 
   // What the boot fetches, so its progress is the bytes received: the first
   // group without the chunks of a chunked sound after its first, which the
-  // engine fetches ahead of the playheads (never at boot).
+  // engine fetches ahead of the playheads, nor streamed textures' whole
+  // chains (`#mips`), which it fetches when they are big on screen (never
+  // at boot).
   const wasmBytes = statSync(join(out, served("origin-engine_bg.wasm"))).size;
   const firstGroup = walk(join(out, "cooked")).filter((f) => {
     const path = relative(out, f).split("\\").join("/");
-    return !packs.has(path) && !SOUND_CHUNK.test(path) && !VIDEO_STREAM.test(path);
+    return !packs.has(path) && !SOUND_CHUNK.test(path) && !TEXTURE_MIPS.test(path) && !VIDEO_STREAM.test(path);
   });
   const cookedBytes = firstGroup.filter((f) => !f.endsWith(".cook.ogt")).reduce((n, f) => n + statSync(f).size, 0);
   // The build id a crash report names: the bundles whose stacks the maps resolve.
@@ -887,7 +896,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
     const sw = await bundleScript(join(SHELL_DIR, "sw.ts"), true);
     if (typeof sw !== "string") return fail(`bundling sw.js: ${sw.error}`);
     // The first group is precached; a streaming group's pack is cached when the engine fetches it.
-    // So is a long sound's chunk (cooked/<sound>.chunk<n>.ogb).
+    // So is a long sound's chunk (cooked/<sound>.chunk<n>.ogb), and a streamed texture's whole chain (cooked/<texture>.mips.ogb).
     const rows = fileRows();
     const lists = serviceWorkerLists(rows.map((f) => f.path), packs);
     // Each file's content, so a new build's worker carries what did not change over from the old cache.

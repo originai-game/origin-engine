@@ -192,6 +192,7 @@ pub(super) fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
             gltf: None,
             error: None,
             encoded: std::sync::OnceLock::new(),
+            whole: Default::default(),
             conformed: None,
         });
     }

@@ -239,6 +239,61 @@ pub fn with_metadata(bytes: &[u8], entries: &[(&str, &str)]) -> Result<Vec<u8>, 
     }))
 }
 
+/// The same texture from level `from` down: level `from` becomes level 0,
+/// its texels, DFD, key/value data and supercompression kept byte for
+/// byte, so the result is the lower levels of the whole chain exactly (a
+/// mip tail, G3-3). BasisLZ's global data keeps its codebooks and the
+/// image descriptors of the levels kept (their offsets are within each
+/// level, so none moves).
+pub fn tail(bytes: &[u8], from: usize) -> Result<Vec<u8>, String> {
+    let info = parse(bytes)?;
+    if from >= info.levels.len() {
+        return Err(format!(
+            "level {from} of a chain of {} levels",
+            info.levels.len()
+        ));
+    }
+    let mut sgd = bytes[info.sgd.0..info.sgd.0 + info.sgd.1].to_vec();
+    if info.supercompression == SS_BASISLZ && from > 0 {
+        // Header (20 bytes), then one 20-byte image descriptor per level.
+        const HEAD: usize = 20;
+        const DESC: usize = 20;
+        let n = info.levels.len();
+        if sgd.len() < HEAD + n * DESC {
+            return Err("BasisLZ global data shorter than its image descriptors".into());
+        }
+        sgd.drain(HEAD..HEAD + from * DESC);
+    }
+    let kv = metadata(bytes)?;
+    let writer = kv
+        .iter()
+        .find(|(k, _)| k == "KTXwriter")
+        .map(|(_, v)| String::from_utf8_lossy(v.strip_suffix(&[0]).unwrap_or(v)).into_owned())
+        .unwrap_or_default();
+    let (dfd_off, dfd_len) = (u32_at(bytes, 48)? as usize, u32_at(bytes, 52)? as usize);
+    Ok(assemble(Parts {
+        vk_format: info.vk_format,
+        type_size: u32_at(bytes, 16)?,
+        width: (info.width >> from).max(1),
+        height: (info.height >> from).max(1),
+        supercompression: info.supercompression,
+        dfd: bytes[dfd_off..dfd_off + dfd_len].to_vec(),
+        sgd,
+        levels: info.levels[from..]
+            .iter()
+            .map(|l| {
+                (
+                    bytes[l.offset..l.offset + l.length].to_vec(),
+                    l.uncompressed_length,
+                )
+            })
+            .collect(),
+        level_align: 16,
+        writer: &writer,
+        extra: kv,
+    }))
+}
+
 struct Parts<'a> {
     vk_format: u32,
     type_size: u32,

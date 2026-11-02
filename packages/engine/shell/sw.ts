@@ -84,8 +84,11 @@ const variants = { single: OG_SW.single ?? [], lanes: OG_SW.lanes ?? [] };
 const cores = (globalThis as { navigator?: { hardwareConcurrency?: number } }).navigator?.hardwareConcurrency ?? 0;
 const choice = laneChoice(variants.lanes.length > 0, (globalThis as { crossOriginIsolated?: boolean }).crossOriginIsolated === true, cores);
 const [mine, other] = "threads" in choice ? [variants.lanes, variants.single] : [variants.single, variants.lanes];
-const urls = new Set([...OG_SW.files, ...mine].map((f) => new URL(f, base).href));
-const lazy = new Set([...(OG_SW.lazy ?? []), ...other].map((f) => new URL(f, base).href));
+// A cooked file's name may hold a `#` (`m.gltf.tex0#mips.ogb`), which the
+// worker fetches as %23: keyed the same here, not cut off as a fragment.
+const href = (f: string) => new URL(f.replaceAll("#", "%23"), base).href;
+const urls = new Set([...OG_SW.files, ...mine].map(href));
+const lazy = new Set([...(OG_SW.lazy ?? []), ...other].map(href));
 const index = new URL("index.html", base).href;
 
 // Each cached file's content by its absolute URL, kept in the cache under
@@ -142,7 +145,7 @@ scope.addEventListener("install", (e) => {
 // The variant the page booted, cached whole: each of its files names its variant.
 const variantOf = new Map<string, readonly string[]>();
 for (const files of [variants.single, variants.lanes]) {
-  const hrefs = files.map((f) => new URL(f, base).href);
+  const hrefs = files.map(href);
   for (const h of hrefs) variantOf.set(h, hrefs);
 }
 scope.addEventListener("message", (e) => {

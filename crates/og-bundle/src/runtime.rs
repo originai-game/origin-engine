@@ -612,10 +612,18 @@ impl Bundle {
         let meta = one::<TextureMeta>(&blob)?;
         let ktx2 = blob.raw("ktx2")?.to_vec();
         ktx2::parse(&ktx2).map_err(|reason| invalid(&blob, reason))?;
+        let mips = match blob.raw_opt("mips") {
+            Some(b) => Some(
+                MipChain::from_bytes(b)
+                    .ok_or_else(|| invalid(&blob, "its `mips` section is not 12 bytes"))?,
+            ),
+            None => None,
+        };
         Ok(CookedTexture {
             id: asset_id(id).to_string(),
             meta,
             ktx2,
+            mips,
         })
     }
 

@@ -53,6 +53,78 @@ pub fn decode(bytes: &[u8]) -> Result<Image, String> {
     })
 }
 
+/// A source image's longest side, read from its header alone (a KTX2's,
+/// or what the `image` crate reads without decoding); `None` when that is
+/// not cheap (DDS, PSD, TGA) or the bytes are not an image.
+pub fn longest_side(bytes: &[u8]) -> Option<u32> {
+    if bytes.starts_with(&ktx2::IDENTIFIER) {
+        return ktx2::parse(bytes).ok().map(|i| i.width.max(i.height));
+    }
+    let (w, h) = image::ImageReader::new(std::io::Cursor::new(bytes))
+        .with_guessed_format()
+        .ok()?
+        .into_dimensions()
+        .ok()?;
+    Some(w.max(h))
+}
+
+/// A streamed texture's mip tail (G3-3), from the blob of its whole chain
+/// (what `<id>#mips` holds): the chain's levels from the first whose
+/// longest side is at most [`MIP_TAIL`](crate::runtime::MIP_TAIL), byte for
+/// byte, and the whole chain's size in the raw section `mips`. A chain
+/// with no such level (no mips) keeps its last. The report's line too.
+pub fn tail(whole: &[u8], stamp: u64) -> Result<(Vec<u8>, String), CookError> {
+    let bad = |e: String| CookError(format!("the whole chain's blob: {e}"));
+    let blob = og_blob::Blob::parse(whole, "texture").map_err(|e| bad(e.to_string()))?;
+    let meta = blob
+        .table::<TextureMeta>("meta", row_hash::<TextureMeta>())
+        .map_err(|e| bad(e.to_string()))?
+        .first()
+        .copied()
+        .ok_or_else(|| bad("no meta row".into()))?;
+    let ktx = blob.raw("ktx2").map_err(|e| bad(e.to_string()))?;
+    let levels = ktx2::parse(ktx).map_err(bad)?.levels.len() as u32;
+    let side = |l: u32| (meta.width >> l).max(1).max((meta.height >> l).max(1));
+    let from = (0..levels)
+        .find(|&l| side(l) <= crate::runtime::MIP_TAIL)
+        .unwrap_or(levels.saturating_sub(1));
+    let tail_meta = TextureMeta {
+        width: (meta.width >> from).max(1),
+        height: (meta.height >> from).max(1),
+        levels: levels - from,
+        ..meta
+    };
+    let chain = crate::runtime::MipChain {
+        width: meta.width,
+        height: meta.height,
+        levels,
+    };
+    let mut w = BlobWriter::new(
+        format::Texture::type_hash(),
+        format::Texture::schema_version(),
+        stamp,
+    );
+    w.table("meta", &[tail_meta], row_hash::<TextureMeta>())
+        .raw("ktx2", ktx2::tail(ktx, from as usize).map_err(bad)?, 16)
+        .raw("mips", chain.to_bytes(), 4);
+    let note = if side(from) > crate::runtime::MIP_TAIL {
+        format!(
+            "streamed: no level of its {levels} is at most {} texels (no mips), so its tail is the whole texture",
+            crate::runtime::MIP_TAIL
+        )
+    } else {
+        format!(
+            "streamed: the tail is levels {from} to {} ({}x{}), #mips the whole chain ({}x{}, {levels} levels)",
+            levels - 1,
+            tail_meta.width,
+            tail_meta.height,
+            meta.width,
+            meta.height
+        )
+    };
+    Ok((w.finish(), note))
+}
+
 /// Which encoder cooks textures, for the stamp and the report.
 pub fn encoder_name(opts: &TextureOptions) -> Result<String, CookError> {
     #[cfg(feature = "basis")]

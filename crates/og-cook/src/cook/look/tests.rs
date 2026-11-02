@@ -12,6 +12,7 @@ fn source(root: &Path, rel: &str) -> Source {
         gltf: None,
         error: None,
         encoded: Default::default(),
+        whole: Default::default(),
         conformed: None,
     }
 }

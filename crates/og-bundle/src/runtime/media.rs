@@ -8,6 +8,53 @@ pub struct CookedTexture {
     pub id: String,
     pub meta: TextureMeta,
     pub ktx2: Vec<u8>,
+    /// A streamed texture's whole chain, when this blob holds only its mip
+    /// tail (`texture { stream true }`, G3-3); [`mips_id`] holds every level.
+    pub mips: Option<MipChain>,
+}
+
+/// The whole mip chain of a texture whose blob holds its tail: level 0's
+/// size and the levels (the tail is the chain from level `levels - tail
+/// levels` down, byte for byte).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct MipChain {
+    pub width: u32,
+    pub height: u32,
+    pub levels: u32,
+}
+
+/// The longest side a streamed texture's mip tail keeps (its first level
+/// at or under it): what draws until the whole chain is wanted and read.
+pub const MIP_TAIL: u32 = 256;
+
+/// The output holding every level of streamed texture `id`.
+pub fn mips_id(id: &str) -> String {
+    format!("{id}#mips")
+}
+
+impl MipChain {
+    /// The blob section `mips` (three little-endian u32s), as the cook
+    /// writes it.
+    pub fn to_bytes(self) -> Vec<u8> {
+        [self.width, self.height, self.levels]
+            .iter()
+            .flat_map(|v| v.to_le_bytes())
+            .collect()
+    }
+
+    pub fn from_bytes(b: &[u8]) -> Option<MipChain> {
+        let v = |i: usize| {
+            Some(u32::from_le_bytes(
+                b.get(i * 4..i * 4 + 4)?.try_into().ok()?,
+            ))
+        };
+        (b.len() == 12).then_some(())?;
+        Some(MipChain {
+            width: v(0)?,
+            height: v(1)?,
+            levels: v(2)?,
+        })
+    }
 }
 
 impl CookedTexture {

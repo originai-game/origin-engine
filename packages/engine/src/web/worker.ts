@@ -314,7 +314,9 @@ const tellLoadFailure = (url: string, e: unknown) => {
 };
 
 async function bytesOf(url: string, received?: Received, onChunk?: () => void): Promise<Uint8Array> {
-  const r = await fetch(url, typeof AbortSignal?.timeout === "function" ? { signal: AbortSignal.timeout(FETCH_DEADLINE_MS) } : {});
+  // A cooked file's name may hold a `#` (`m.gltf.tex0#mips.ogb`, a flipbook's
+  // `#array#layer<n>`): sent as is, the browser takes the rest as a fragment.
+  const r = await fetch(url.replaceAll("#", "%23"), typeof AbortSignal?.timeout === "function" ? { signal: AbortSignal.timeout(FETCH_DEADLINE_MS) } : {});
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   if (!received || !r.body) {
     const bytes = new Uint8Array(await r.arrayBuffer());
@@ -397,7 +399,10 @@ export interface Fetched {
  * (`cooked/stream/<name>.ogb`) through the fetcher when the group loads;
  * nor are the chunks of a sound cooked in chunks, which the engine reads
  * through the fetcher ahead of the playheads, nor a streamed video's units
- * (og.VideoStream), which og.load.video asks the fetcher for. The engine asks for at most
+ * (og.VideoStream), which og.load.video asks the fetcher for, nor a
+ * streamed texture's whole chain (`<id>#mips`, `texture { stream true }`):
+ * the bundle carries its mip tail as `<id>`, and the engine reads `#mips`
+ * through the fetcher when the texture is big on screen. The engine asks for at most
  * four such files at a time (og-runtime's `stream::fetch`): the chunks a
  * playhead needs soonest first, then the packs by their group's priority.
  */
@@ -420,8 +425,9 @@ export async function preloadBundle(
   glue.og_web_put_file(manifestPath, new TextEncoder().encode(manifest));
   const all = JSON.parse(glue.og_web_bundle_files(manifest)) as Array<{ id: string; file: string; type: string; group?: string }> | { error: string };
   if (!Array.isArray(all)) throw new Error(`${manifestPath}: ${all.error}`);
-  // A long sound's chunks (og.SoundChunk) are fetched as its playheads near them.
-  const listed = all.filter((o) => o.group === undefined && o.type !== "og.SoundChunk" && o.type !== "og.VideoStream");
+  // A long sound's chunks (og.SoundChunk) are fetched as its playheads near
+  // them, a streamed texture's whole chain (`#mips`) when it is big on screen.
+  const listed = all.filter((o) => o.group === undefined && o.type !== "og.SoundChunk" && o.type !== "og.VideoStream" && !o.id.endsWith("#mips"));
   let fetched = 0;
   let failed = 0;
   const blobs = new Map<string, Uint8Array>();

@@ -127,6 +127,7 @@ fn decode(
             supercompression: info.supercompression,
         },
         ktx2: bytes.to_vec(),
+        mips: None,
     };
     t.to_texture_data()
         .map(|d| d.rgba)

@@ -341,6 +341,46 @@ pub(super) fn texture_kind(s: &Source) -> Result<u32, String> {
     }
 }
 
+/// A texture file's `texture { stream true }` (G3-3): its levels above
+/// the mip tail stream (`<id>` holds the tail, `<id>#mips` the whole
+/// chain). False or absent: one output, as ever. A `kind pixel` texture
+/// has no mips to stream and is refused.
+pub(super) fn texture_stream(s: &Source, k: u32) -> Result<bool, String> {
+    let Some(e) = settings_block(s, "texture").and_then(|b| b.get("stream")) else {
+        return Ok(false);
+    };
+    let on = e.values.first().and_then(|v| v.as_bool()).ok_or_else(|| {
+        format!(
+            "line {}: stream takes true (the levels above {} texels are read when the texture is big on screen) or false (every level loads with it, the default)",
+            e.line,
+            crate::runtime::MIP_TAIL
+        )
+    })?;
+    if on && k == format::kind::PIXEL {
+        return Err(format!(
+            "line {}: stream true streams a texture's mip levels, and a kind pixel texture has none (RGBA8, one level); leave stream out",
+            e.line
+        ));
+    }
+    Ok(on)
+}
+
+/// A model's `model { stream_textures true }`: its glTF textures stream
+/// their levels above the mip tail, as a texture file's `texture { stream
+/// true }` does.
+pub(super) fn model_stream_textures(s: &Source) -> Result<bool, String> {
+    let Some(e) = settings_block(s, "model").and_then(|b| b.get("stream_textures")) else {
+        return Ok(false);
+    };
+    e.values.first().and_then(|v| v.as_bool()).ok_or_else(|| {
+        format!(
+            "line {}: stream_textures takes true (the model's textures stream their levels above {} texels) or false (the default)",
+            e.line,
+            crate::runtime::MIP_TAIL
+        )
+    })
+}
+
 pub(super) fn anim_settings(s: &Source) -> Result<anim::AnimSettings, String> {
     anim::AnimSettings::parse(settings_block(s, "animation"))
 }

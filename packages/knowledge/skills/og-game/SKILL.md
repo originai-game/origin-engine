@@ -330,6 +330,12 @@ registered schema and refuses a model path that does not exist.
     kind normal
   }
   ```
+- A large texture that is often far away can stream its top levels:
+  `texture { stream true }` in its import settings (a model's textures:
+  `model { stream_textures true }`). The bundle then loads only its mip
+  tail (256 texels and down) and the engine reads the whole chain when
+  the texture is big on screen. Not for `kind pixel`; a texture of 256 or
+  less, or one in a streaming group, is cooked whole.
 - At load a cooked texture reaches the GPU block-compressed in the device's
   format with its mips (BC7, and BC5 for normal maps, on desktop GPUs; ASTC
   on Apple and most Android; ETC2 and EAC elsewhere), a quarter of RGBA8's

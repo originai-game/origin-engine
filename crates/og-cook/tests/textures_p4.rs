@@ -316,6 +316,240 @@ fn a_texture_array_cooks_its_layers_and_uploads_them_as_one_array() {
     );
 }
 
+/// `texture { stream true }` (G3-3): a large texture cooks its mip tail as
+/// `<id>` and its whole chain as `<id>#mips`, from one encode; a texture
+/// within the tail is not split.
+#[test]
+fn a_streamed_texture_cooks_its_mip_tail_and_its_whole_chain() {
+    let root = project("stream");
+    let import = |file: &str, body: &str| {
+        std::fs::write(
+            root.join(format!("assets/tex/{file}.ogt")),
+            format!("type import\nversion 1\n---\ntexture {{\n{body}}}\n"),
+        )
+        .unwrap();
+    };
+    png(
+        &root.join("assets/tex/big.png"),
+        1024,
+        1024,
+        &card(1024, 1024, 0),
+    );
+    import("big.png", "  stream true\n");
+    png(
+        &root.join("assets/tex/bump.png"),
+        1024,
+        1024,
+        &card(1024, 1024, 1),
+    );
+    import("bump.png", "  kind normal\n  stream true\n");
+    png(
+        &root.join("assets/tex/small.png"),
+        128,
+        128,
+        &card(128, 128, 2),
+    );
+    import("small.png", "  stream true\n");
+    // A model's textures, by `model { stream_textures true }`: 512, so
+    // its tail starts at level 1.
+    png(
+        &root.join("assets/tex/rock.png"),
+        512,
+        512,
+        &card(512, 512, 3),
+    );
+    std::fs::write(
+        root.join("assets/tex/m.gltf"),
+        r#"{"asset":{"version":"2.0"},"images":[{"uri":"rock.png"}],"textures":[{"source":0}],"materials":[{"pbrMetallicRoughness":{"baseColorTexture":{"index":0}}}]}"#,
+    )
+    .unwrap();
+    std::fs::write(
+        root.join("assets/tex/m.gltf.ogt"),
+        "type import\nversion 1\n---\nmodel {\n  stream_textures true\n}\n",
+    )
+    .unwrap();
+    // In a streaming group: the group's pack holds the whole chain.
+    png(
+        &root.join("assets/tex/far.png"),
+        512,
+        512,
+        &card(512, 512, 4),
+    );
+    import("far.png", "  stream true\n");
+    std::fs::write(
+        root.join("assets/world.ogt"),
+        "type scene\nversion 1\n---\nname \"World\"\nstream \"far\" {\n  asset \"tex/far.png\"\n}\n",
+    )
+    .unwrap();
+    let report =
+        og_cook::cook::cook_project_with_texture_cache(&root, &CookOptions::default(), None)
+            .unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let b = Bundle::open(&root.join("cooked")).unwrap();
+    let manifest = og_cook::runtime::Manifest::parse(
+        &std::fs::read_to_string(root.join("cooked/.cook.ogt")).unwrap(),
+    )
+    .unwrap();
+    let stamp = |id: &str| {
+        manifest
+            .outputs()
+            .find(|o| o.id == id)
+            .unwrap_or_else(|| panic!("no output {id}"))
+            .stamp
+    };
+    let mut lines = Vec::new();
+    for (id, codec) in [("tex/big.png", "etc1s"), ("tex/bump.png", "uastc")] {
+        let mips_id = og_cook::runtime::mips_id(id);
+        let tail = b.load_texture(id).unwrap();
+        let whole = b.load_texture(&mips_id).unwrap();
+        assert_ne!(stamp(id), stamp(&mips_id), "{id}: the two outputs' stamps");
+        // The whole chain is the ordinary blob: every level, no `mips`.
+        assert_eq!(
+            (whole.meta.width, whole.meta.height, whole.meta.levels),
+            (1024, 1024, 11),
+            "{id}#mips"
+        );
+        assert_eq!(whole.mips, None, "{id}#mips");
+        // The tail: level 2 (256) down, the whole chain's size beside it.
+        assert_eq!(
+            (tail.meta.width, tail.meta.height, tail.meta.levels),
+            (256, 256, 9),
+            "{id}"
+        );
+        assert_eq!(
+            (tail.meta.kind, tail.meta.codec, tail.meta.color_space),
+            (whole.meta.kind, whole.meta.codec, whole.meta.color_space)
+        );
+        assert_eq!(
+            tail.mips,
+            Some(og_cook::runtime::MipChain {
+                width: 1024,
+                height: 1024,
+                levels: 11
+            }),
+            "{id}"
+        );
+        let (ti, wi) = (
+            ktx2::parse(&tail.ktx2).unwrap(),
+            ktx2::parse(&whole.ktx2).unwrap(),
+        );
+        assert_eq!((ti.width, ti.height, ti.levels.len()), (256, 256, 9));
+        let level = |bytes: &[u8], l: &ktx2::Level| bytes[l.offset..l.offset + l.length].to_vec();
+        assert_eq!(
+            level(&tail.ktx2, &ti.levels[0]),
+            level(&whole.ktx2, &wi.levels[2]),
+            "{id}: the tail's level 0 is the whole chain's level 2"
+        );
+        for (n, l) in ti.levels.iter().enumerate() {
+            assert_eq!(
+                level(&tail.ktx2, l),
+                level(&whole.ktx2, &wi.levels[n + 2]),
+                "{id}: tail level {n}"
+            );
+        }
+        let decoded = tail.to_texture_data().unwrap();
+        assert_eq!((decoded.width, decoded.height), (256, 256), "{id}");
+        assert_eq!(decoded.rgba.len(), 256 * 256 * 4);
+        lines.push(format!(
+            "\"{id}\": {{\"codec\": \"{codec}\", \"tail_bytes\": {}, \"whole_bytes\": {}}}",
+            tail.ktx2.len(),
+            whole.ktx2.len()
+        ));
+    }
+    let (tail, whole) = (
+        b.load_texture("tex/m.gltf#tex0").unwrap(),
+        b.load_texture("tex/m.gltf#tex0#mips").unwrap(),
+    );
+    assert_eq!(
+        (
+            tail.meta.width,
+            tail.meta.levels,
+            whole.meta.width,
+            whole.meta.levels
+        ),
+        (256, 9, 512, 10)
+    );
+    assert_eq!(
+        tail.mips,
+        Some(og_cook::runtime::MipChain {
+            width: 512,
+            height: 512,
+            levels: 10
+        })
+    );
+    let (ti, wi) = (
+        ktx2::parse(&tail.ktx2).unwrap(),
+        ktx2::parse(&whole.ktx2).unwrap(),
+    );
+    let (t0, w1) = (&ti.levels[0], &wi.levels[1]);
+    assert_eq!(
+        tail.ktx2[t0.offset..t0.offset + t0.length],
+        whole.ktx2[w1.offset..w1.offset + w1.length],
+        "the model texture's tail starts at level 1"
+    );
+    // Within the tail: one ordinary output, and the report says why.
+    let small = b.load_texture("tex/small.png").unwrap();
+    assert_eq!(
+        (small.meta.width, small.meta.levels, small.mips),
+        (128, 8, None)
+    );
+    assert!(manifest.outputs().all(|o| o.id != "tex/small.png#mips"));
+    let notes: Vec<&String> = report.assets.iter().flat_map(|a| &a.notes).collect();
+    assert!(
+        notes
+            .iter()
+            .any(|n| n.starts_with("tex/small.png: not streamed by level")),
+        "{notes:?}"
+    );
+    let far = manifest.outputs().find(|o| o.id == "tex/far.png").unwrap();
+    assert_eq!(far.group.as_deref(), Some("far"));
+    assert!(manifest.outputs().all(|o| o.id != "tex/far.png#mips"));
+    assert_eq!(b.load_texture("tex/far.png").unwrap().meta.levels, 10);
+    assert!(
+        notes.iter().any(|n| n
+            .starts_with("tex/far.png: not streamed by level: it is in streaming group \"far\"")),
+        "{notes:?}"
+    );
+    evidence(
+        "textures-stream.json",
+        format!("{{{}}}\n", lines.join(", ")),
+    );
+
+    // Refused: stream on pixel art (no mips), and a value not a boolean.
+    let bad = project("stream-refused");
+    png(&bad.join("assets/tex/a.png"), 8, 8, &card(8, 8, 0));
+    png(&bad.join("assets/tex/b.png"), 8, 8, &card(8, 8, 0));
+    std::fs::write(
+        bad.join("assets/tex/a.png.ogt"),
+        "type import\nversion 1\n---\ntexture {\n  kind pixel\n  stream true\n}\n",
+    )
+    .unwrap();
+    std::fs::write(
+        bad.join("assets/tex/b.png.ogt"),
+        "type import\nversion 1\n---\ntexture {\n  stream yes\n}\n",
+    )
+    .unwrap();
+    let r = og_cook::cook::cook_project_with_texture_cache(&bad, &CookOptions::default(), None)
+        .unwrap();
+    let err = |rel: &str| {
+        r.assets
+            .iter()
+            .find(|a| a.source == rel)
+            .and_then(|a| a.error.clone())
+            .unwrap_or_default()
+    };
+    assert!(
+        err("tex/a.png").contains("kind pixel"),
+        "{:?}",
+        err("tex/a.png")
+    );
+    assert!(
+        err("tex/b.png").starts_with("line 5: stream takes true"),
+        "{:?}",
+        err("tex/b.png")
+    );
+}
+
 #[test]
 fn toktx_cooks_the_template_textures() {
     let version = match std::process::Command::new("toktx")

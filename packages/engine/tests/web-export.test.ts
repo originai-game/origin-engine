@@ -320,16 +320,19 @@ test("og build prints what each page downloads, not the directory's total", () =
     row("origin-engine.js", 25), row("origin-engine_bg.wasm", 3000), row("origin-engine-lanes.js", 26), row("origin-engine-lanes_bg.wasm", 3100), row("snippets/x/workerHelpers.no-bundler.js", 1),
     row("basis/basis_transcoder.js", 17), row("basis/basis_transcoder.wasm", 200), row("basis/LICENSE", 4), row("og-build.json", 6), row("_headers", 1),
     row("cooked/.cook.ogt", 9), row("cooked/music/song.wav.ogb", 150), row("cooked/music/song.wav.chunk1.ogb", 140), row("cooked/music/song.wav.chunk2.ogb", 140), row("cooked/stream/vale.ogb", 700), row("cooked/models/hero.glb.ogb", 300),
+    // A streamed texture: its mip tail boots, its whole chain (#mips) is fetched when big on screen.
+    row("cooked/tex/rock.png.ogb", 60), row("cooked/tex/rock.png.mips.ogb", 900), row("cooked/models/hero.glb.tex0#mips.ogb", 800),
     // A streamed video: its meta and poster boot, its units and the AV1 fallback never do.
     row("cooked/clips/intro.ogt.ogb", 2), row("cooked/clips/intro.ogt.poster.ogb", 40), row("cooked/clips/intro.ogt.stream.ogb", 9000), row("cooked/clips/intro.ogt.stream720.ogb", 4000), row("av1/og-av1.wasm", 311),
   ];
   const d = downloadsOf(files);
   // The lanes page: its own module and the rayon snippet, the shell, the transcoder and the first group (the song's first chunk only).
-  expect(d.boot.lanes!.compressed).toBe(26 + 3100 + 1 + 10 + 20 + 30 + 17 + 200 + 9 + 150 + 300 + 2 + 40);
-  expect(d.boot.single.compressed).toBe(25 + 3000 + 10 + 20 + 30 + 17 + 200 + 9 + 150 + 300 + 2 + 40);
+  expect(d.boot.lanes!.compressed).toBe(26 + 3100 + 1 + 10 + 20 + 30 + 17 + 200 + 9 + 150 + 300 + 2 + 40 + 60);
+  expect(d.boot.single.compressed).toBe(25 + 3000 + 10 + 20 + 30 + 17 + 200 + 9 + 150 + 300 + 2 + 40 + 60);
   expect(d.boot.single.engine.files).toBe(2);
   expect(d.later.packs).toEqual({ files: 1, bytes: 2100, compressed: 700 });
   expect(d.later.chunks.files).toBe(2);
+  expect(d.later.mips).toEqual({ files: 2, bytes: 5100, compressed: 1700 });
   expect(d.later.worklet.compressed).toBe(1);
   expect(d.later.pwa.files).toBe(3);
   expect(d.later.videos).toEqual({ files: 2, bytes: 39000, compressed: 13000 });
@@ -339,7 +342,8 @@ test("og build prints what each page downloads, not the directory's total", () =
   // each is cached when fetched.
   const sw = serviceWorkerLists(files.map((f) => f.path), new Set(["cooked/stream/vale.ogb"]));
   expect(sw.files).toContain("cooked/clips/intro.ogt.poster.ogb");
-  for (const f of ["cooked/clips/intro.ogt.stream.ogb", "cooked/clips/intro.ogt.stream720.ogb", "av1/og-av1.wasm", "cooked/stream/vale.ogb", "cooked/music/song.wav.chunk1.ogb"]) {
+  expect(sw.files).toContain("cooked/tex/rock.png.ogb");
+  for (const f of ["cooked/clips/intro.ogt.stream.ogb", "cooked/clips/intro.ogt.stream720.ogb", "av1/og-av1.wasm", "cooked/stream/vale.ogb", "cooked/music/song.wav.chunk1.ogb", "cooked/tex/rock.png.mips.ogb", "cooked/models/hero.glb.tex0#mips.ogb"]) {
     expect(sw.files).not.toContain(f);
     expect(sw.lazy).toContain(f);
   }

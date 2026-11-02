@@ -62,8 +62,8 @@ pub use execute::slice_tone;
 use execute::{read_sibling, run, style_atlas};
 pub use options::{CookOptions, FontSettings, MeshOptions, TextureOptions};
 use options::{
-    anim_settings, conform_off, font_settings, mesh_for, mesh_texture, own_conform_off,
-    settings_block, texture_kind,
+    anim_settings, conform_off, font_settings, mesh_for, mesh_texture, model_stream_textures,
+    own_conform_off, settings_block, texture_kind, texture_stream,
 };
 pub use report::{AssetReport, COOK_TIMES, CookTimes, KindTotals, OutputReport, Report};
 use report::{CONFORM_LOG, ConformLog, conform_log_text, conform_note, read_conform_log};
@@ -182,6 +182,10 @@ struct Source {
     /// A sound file's QOA encoding, made once by the first of its outputs to cook
     /// (a sound cooked in chunks has one output per chunk).
     encoded: std::sync::OnceLock<Result<std::sync::Arc<audio::Encoded>, String>>,
+    /// A streamed texture's whole chain (its blob and the cook's notes),
+    /// by glTF image (0 for a texture file) and the `#mips` output's
+    /// stamp: encoded once by the first of its two outputs to cook.
+    whole: Mutex<BTreeMap<(usize, u64), std::sync::Arc<WholeTexture>>>,
     /// The image the art contract conformed it to (`conform/`): a
     /// texture's own, a flipbook's texture's; read instead of the file,
     /// which is never written. `None`: as on disk.
@@ -207,13 +211,48 @@ impl Source {
     }
 }
 
+type WholeTexture = std::sync::OnceLock<Result<(Vec<u8>, Vec<String>), CookError>>;
+
+impl Source {
+    /// The whole chain of a streamed texture, cooked by `cook` once per
+    /// image and stamp however many outputs ask (the tail and `#mips`).
+    fn whole_texture(
+        &self,
+        image: usize,
+        stamp: u64,
+        cook: impl FnOnce() -> Result<(Vec<u8>, Vec<String>), CookError>,
+    ) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let cell = self
+            .whole
+            .lock()
+            .expect("no poisoning")
+            .entry((image, stamp))
+            .or_default()
+            .clone();
+        cell.get_or_init(cook).clone()
+    }
+}
+
+/// How a texture output stands to its source's mip chain (G3-3).
+#[derive(Clone, Debug)]
+enum Split {
+    /// The whole chain in one output, as ever; with the report's line on
+    /// why a texture that asks to stream does not.
+    Whole(Option<String>),
+    /// A streamed texture's `<id>`: its mip tail, cut from the whole chain
+    /// cooked under its `#mips` output's stamp (this one).
+    Tail(u64),
+    /// A streamed texture's `<id>#mips`: the whole chain.
+    Mips,
+}
+
 enum Work<'a> {
     Model(&'a Source, Vec<String>),
     /// A streaming group's glTF stand-in: its coarsest LOD, no textures.
     Proxy(&'a Source),
     Animation(&'a Source, anim::AnimSettings),
-    GltfTexture(&'a Source, usize, u32),
-    Texture(&'a Source, u32),
+    GltfTexture(&'a Source, usize, u32, Split),
+    Texture(&'a Source, u32, Split),
     /// A sound, whole or (QOA frames per chunk, chunks) the first of its chunks.
     Sound(&'a Source, Option<(u32, u32)>),
     /// Chunk `n` (1 and up) of a sound cooked in chunks of so many QOA frames.
@@ -299,6 +338,31 @@ fn assets_root(s: &Source) -> PathBuf {
         root.pop();
     }
     root
+}
+
+/// Why a texture that asks to stream its levels above the mip tail
+/// (`texture { stream true }`, `model { stream_textures true }`) is cooked
+/// whole after all, or `None` when it is split into its tail and `#mips`:
+/// a texture in a streaming group (the group's pack holds its whole chain),
+/// one with no mips (pixel art), or one whose source's header says it is no
+/// larger than the tail.
+fn not_split(bytes: &[u8], k: u32, group: Option<&String>) -> Option<String> {
+    if let Some(g) = group {
+        return Some(format!(
+            "not streamed by level: it is in streaming group \"{g}\", whose pack holds its whole chain"
+        ));
+    }
+    if k == format::kind::PIXEL {
+        return Some("not streamed by level: pixel art has no mips".into());
+    }
+    texture::longest_side(bytes)
+        .filter(|&n| n <= crate::runtime::MIP_TAIL)
+        .map(|n| {
+            format!(
+                "not streamed by level: its longest side, {n}, is within the mip tail ({})",
+                crate::runtime::MIP_TAIL
+            )
+        })
 }
 
 /// Cooks `<root>/assets` into `<root>/cooked`. Per-asset failures are in the
@@ -713,27 +777,52 @@ pub fn cook_project_with_texture_cache(
                     }
                     stamp(&v)
                 };
+                let stream_textures = match model_stream_textures(s) {
+                    Ok(b) => b,
+                    Err(e) => {
+                        early_errors.push((s.rel.clone(), "model", e));
+                        continue;
+                    }
+                };
                 let mut ids = Vec::new();
                 for (i, u) in g.textures.iter().enumerate() {
                     let id = format!("{}#tex{i}", s.rel);
                     let image_hash = hash_bytes(&g.images[u.image]).to_le_bytes();
                     // A density is per metre of the model: its hash too.
-                    let st = with(
-                        &[
-                            b"texture",
-                            tex_desc.as_bytes(),
-                            &image_hash,
-                            &u.kind.to_le_bytes(),
-                        ],
-                        &texture_desc,
-                        &hash,
-                    );
-                    outs.push((
-                        id.clone(),
-                        format::Texture::NAME,
-                        st,
-                        Work::GltfTexture(s, u.image, u.kind),
-                    ));
+                    let kind = u.kind.to_le_bytes();
+                    let st = |word: &[u8]| {
+                        let mut parts: Vec<&[u8]> =
+                            vec![b"texture", tex_desc.as_bytes(), &image_hash, &kind];
+                        if !word.is_empty() {
+                            parts.push(word);
+                        }
+                        with(&parts, &texture_desc, &hash)
+                    };
+                    let not_split = stream_textures
+                        .then(|| not_split(&g.images[u.image], u.kind, group_of.get(&s.rel)));
+                    match not_split {
+                        Some(None) => {
+                            let mips = st(b"mips");
+                            outs.push((
+                                id.clone(),
+                                format::Texture::NAME,
+                                st(b"tail"),
+                                Work::GltfTexture(s, u.image, u.kind, Split::Tail(mips)),
+                            ));
+                            outs.push((
+                                crate::runtime::mips_id(&id),
+                                format::Texture::NAME,
+                                mips,
+                                Work::GltfTexture(s, u.image, u.kind, Split::Mips),
+                            ));
+                        }
+                        why => outs.push((
+                            id.clone(),
+                            format::Texture::NAME,
+                            st(b""),
+                            Work::GltfTexture(s, u.image, u.kind, Split::Whole(why.flatten())),
+                        )),
+                    }
                     ids.push(id);
                 }
                 let joined = ids.join("\n");
@@ -816,29 +905,48 @@ pub fn cook_project_with_texture_cache(
                     }
                 }
             }
-            Kind::Texture => match texture_kind(s) {
-                Ok(k) => {
+            Kind::Texture => match texture_kind(s).and_then(|k| Ok((k, texture_stream(s, k)?))) {
+                Ok((k, stream)) => {
                     // A mesh's texture under the art contract: its desc too.
                     let mesh = mesh_texture(s, options)
                         .map(|c| c.texture_desc())
                         .unwrap_or_default();
-                    let st = if mesh.is_empty() {
-                        stamp(&[b"texture", tex_desc.as_bytes(), &hash, &k.to_le_bytes()])
-                    } else {
-                        stamp(&[
-                            b"texture",
-                            tex_desc.as_bytes(),
-                            &hash,
-                            &k.to_le_bytes(),
-                            mesh.as_bytes(),
-                        ])
+                    let kind = k.to_le_bytes();
+                    let st = |word: &[u8]| {
+                        let mut parts: Vec<&[u8]> =
+                            vec![b"texture", tex_desc.as_bytes(), &hash, &kind];
+                        if !mesh.is_empty() {
+                            parts.push(mesh.as_bytes());
+                        }
+                        if !word.is_empty() {
+                            parts.push(word);
+                        }
+                        stamp(&parts)
                     };
-                    outs.push((
-                        s.rel.clone(),
-                        format::Texture::NAME,
-                        st,
-                        Work::Texture(s, k),
-                    ));
+                    let source = s.conformed.as_deref().map_or(&s.bytes[..], |b| &b[..]);
+                    match stream.then(|| not_split(source, k, group_of.get(&s.rel))) {
+                        Some(None) => {
+                            let mips = st(b"mips");
+                            outs.push((
+                                s.rel.clone(),
+                                format::Texture::NAME,
+                                st(b"tail"),
+                                Work::Texture(s, k, Split::Tail(mips)),
+                            ));
+                            outs.push((
+                                crate::runtime::mips_id(&s.rel),
+                                format::Texture::NAME,
+                                mips,
+                                Work::Texture(s, k, Split::Mips),
+                            ));
+                        }
+                        why => outs.push((
+                            s.rel.clone(),
+                            format::Texture::NAME,
+                            st(b""),
+                            Work::Texture(s, k, Split::Whole(why.flatten())),
+                        )),
+                    }
                 }
                 Err(e) => early_errors.push((s.rel.clone(), "texture", e)),
             },

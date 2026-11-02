@@ -131,46 +131,49 @@ pub(super) fn run(
             let mesh = mesh_for(s, options)?;
             anim::cook(g, &s.bytes, &mesh, a, p.stamp, &assets_root(s))
         }
-        Work::GltfTexture(s, image, k) => {
-            let g = s.gltf.as_ref().expect("loaded");
-            let img = texture::decode(&g.images[*image])
-                .map_err(|e| CookError(format!("{}: image {image}: {e}", p.id)))?;
-            let mut notes = vec![format!(
-                "{}: {}x{} image {image}",
-                p.id, img.width, img.height
-            )];
-            let mut t = options.texture.clone();
-            let (img, k) = match options
-                .mesh
-                .conform
-                .as_ref()
-                .filter(|_| !conform_off(s, options))
-            {
-                Some(c) => {
-                    // The span of the image's longest side, from the span of
-                    // a side of its square equivalent (the check's measure).
-                    let (w, h) = (img.width as f32, img.height as f32);
-                    let extent = conform::mesh::texel_span(g, *image).map_or_else(
-                        || conform::mesh::extent(g),
-                        |s| s * w.max(h) / (w * h).sqrt(),
-                    );
-                    let (img, k, mips, note) =
-                        conform::mesh::texture(c, Some(extent), img, *k, t.mipmaps);
-                    t.mipmaps = mips;
-                    notes.extend(note.map(|n| format!("{}: {n}", p.id)));
-                    (img, k)
-                }
-                None => (img, *k),
+        Work::GltfTexture(s, image, k, split) => {
+            let id = p.id.strip_suffix("#mips").unwrap_or(&p.id);
+            let cook = |stamp| {
+                let g = s.gltf.as_ref().expect("loaded");
+                let img = texture::decode(&g.images[*image])
+                    .map_err(|e| CookError(format!("{id}: image {image}: {e}")))?;
+                let mut notes = vec![format!("{id}: {}x{} image {image}", img.width, img.height)];
+                let mut t = options.texture.clone();
+                let (img, k) = match options
+                    .mesh
+                    .conform
+                    .as_ref()
+                    .filter(|_| !conform_off(s, options))
+                {
+                    Some(c) => {
+                        // The span of the image's longest side, from the span of
+                        // a side of its square equivalent (the check's measure).
+                        let (w, h) = (img.width as f32, img.height as f32);
+                        let extent = conform::mesh::texel_span(g, *image).map_or_else(
+                            || conform::mesh::extent(g),
+                            |s| s * w.max(h) / (w * h).sqrt(),
+                        );
+                        let (img, k, mips, note) =
+                            conform::mesh::texture(c, Some(extent), img, *k, t.mipmaps);
+                        t.mipmaps = mips;
+                        notes.extend(note.map(|n| format!("{id}: {n}")));
+                        (img, k)
+                    }
+                    None => (img, *k),
+                };
+                texture::cook(&img, k, &t, stamp).map(|b| (b, notes))
             };
-            texture::cook(&img, k, &t, p.stamp).map(|b| (b, notes))
+            split_texture(s, *image, split, p, cook)
         }
-        Work::Texture(s, k) if s.rel.ends_with(".ktx2") => {
+        Work::Texture(s, k, split) if s.rel.ends_with(".ktx2") => {
             let explicit = settings_block(s, "texture")
                 .and_then(|b| b.get("kind"))
                 .map(|_| *k);
-            ktx2_source::cook(&s.bytes, explicit, &options.texture, p.stamp)
+            split_texture(s, 0, split, p, |stamp| {
+                ktx2_source::cook(&s.bytes, explicit, &options.texture, stamp)
+            })
         }
-        Work::Texture(s, k) => {
+        Work::Texture(s, k, split) => split_texture(s, 0, split, p, |stamp| {
             let img =
                 texture::decode(s.conformed.as_deref().unwrap_or(&s.bytes)).map_err(CookError)?;
             if let Some(c) = mesh_texture(s, options) {
@@ -184,7 +187,7 @@ pub(super) fn run(
                     }
                     _ => n,
                 }));
-                return texture::cook(&img, k, &t, p.stamp).map(|b| (b, notes));
+                return texture::cook(&img, k, &t, stamp).map(|b| (b, notes));
             }
             let note = format!(
                 "{}x{} {}",
@@ -197,8 +200,8 @@ pub(super) fn run(
                     _ => "colour (ETC1S)",
                 }
             );
-            texture::cook(&img, *k, &options.texture, p.stamp).map(|b| (b, vec![note]))
-        }
+            texture::cook(&img, *k, &options.texture, stamp).map(|b| (b, vec![note]))
+        }),
         Work::Sound(s, _) if s.rel.ends_with(".ogt") => {
             sfx::cook(&s.bytes, p.stamp).map(|(b, n)| (b, vec![n]))
         }
@@ -557,6 +560,36 @@ pub(super) fn run(
                 },
                 p.stamp,
             )
+        }
+    }
+}
+
+/// A texture output by how it stands to its source's mip chain (G3-3):
+/// `cook` makes the whole chain's blob under a stamp and its notes. A
+/// streamed texture's tail and `#mips` share one cook of the whole chain
+/// (under the `#mips` output's stamp, [`Source::whole_texture`]): `#mips`
+/// is that blob as it is, without the notes, which its tail reports with
+/// its own line.
+fn split_texture(
+    s: &Source,
+    image: usize,
+    split: &Split,
+    p: &Planned,
+    cook: impl FnOnce(u64) -> Result<(Vec<u8>, Vec<String>), CookError>,
+) -> Result<(Vec<u8>, Vec<String>), CookError> {
+    match split {
+        Split::Whole(why) => cook(p.stamp).map(|(b, mut notes)| {
+            notes.extend(why.iter().map(|w| format!("{}: {w}", p.id)));
+            (b, notes)
+        }),
+        Split::Mips => s
+            .whole_texture(image, p.stamp, || cook(p.stamp))
+            .map(|(b, _)| (b, Vec::new())),
+        Split::Tail(mips) => {
+            let (whole, mut notes) = s.whole_texture(image, *mips, || cook(*mips))?;
+            let (tail, note) = texture::tail(&whole, p.stamp)?;
+            notes.push(format!("{}: {note}", p.id));
+            Ok((tail, notes))
         }
     }
 }
