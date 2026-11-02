@@ -47,7 +47,34 @@ struct ImpCard {
   weights: vec3<f32>,
   // The model's sphere radius in the world.
   extent: f32,
+  // Per frame, the card's point's depth along it (imp_depths' `pd`, linear
+  // over the card) and the eye's (`vd`).
+  pd: vec3<f32>,
+  vd: vec3<f32>,
 };
+
+// The card's point `pr` (about the centre, the model's space, in radii)
+// against frames `frames`, seen along `v`: per frame, the point's own depth
+// along the frame's direction (`pd`) and how much of a unit step along `v`
+// is depth along it (`vd`, kept from 0.2 as imp_frame_par). A frame's
+// stored depth is along its own direction, so the step to the surface
+// along the eye is (depth - pd) / vd: the card's plane faces the eye, not
+// the frame, and reading the depth as the step itself tilted every frame's
+// sample by the angle between them (the far side's shading and rim).
+struct ImpDepths {
+  pd: vec3<f32>,
+  vd: vec3<f32>,
+};
+
+fn imp_depths(pr: vec3<f32>, v: vec3<f32>, frames: vec3<u32>) -> ImpDepths {
+  let d0 = imp_frame_dir(frames.x);
+  let d1 = imp_frame_dir(frames.y);
+  let d2 = imp_frame_dir(frames.z);
+  var o: ImpDepths;
+  o.pd = vec3<f32>(dot(pr, d0), dot(pr, d1), dot(pr, d2));
+  o.vd = max(vec3<f32>(dot(v, d0), dot(v, d1), dot(v, d2)), vec3<f32>(0.2));
+  return o;
+}
 
 // Frame `f`'s image of the point `x` (about the centre, the model's
 // space, in radii): its orthographic projection along the frame's
@@ -105,6 +132,9 @@ fn imp_card(model: mat4x4<f32>, vertex: u32, toward: vec3<f32>, is_dir: bool) ->
   o.uv2 = imp_frame_uv(pr, o.frames.z);
   o.par01 = vec4<f32>(imp_frame_par(v, o.frames.x), imp_frame_par(v, o.frames.y));
   o.par2 = imp_frame_par(v, o.frames.z);
+  let dd = imp_depths(pr, v, o.frames);
+  o.pd = dd.pd;
+  o.vd = dd.vd;
   o.extent = radius * max(length(model[0].xyz), max(length(model[1].xyz), length(model[2].xyz)));
   return o;
 }
@@ -130,9 +160,9 @@ fn imp_inside(uv: vec2<f32>) -> f32 {
 // falls steeply at the silhouette), and the moved point is kept in the
 // frame's square: a step past it (a model filling its sphere touches the
 // square's edge) would cut the rim in steps.
-fn imp_parallax(f: u32, uv: vec2<f32>, par: vec2<f32>) -> vec2<f32> {
+fn imp_parallax(f: u32, uv: vec2<f32>, par: vec2<f32>, pd: f32) -> vec2<f32> {
   let depth = textureSampleLevel(normal_tex, material_sampler, imp_atlas(f, uv), imp_level + 2.0).a * 2.0 - 1.0;
-  return clamp(uv + par * depth, vec2<f32>(-1.0), vec2<f32>(1.0));
+  return clamp(uv + par * (depth - pd), vec2<f32>(-1.0), vec2<f32>(1.0));
 }
 
 // The frames' images of the card's point, each moved by one parallax step.
@@ -141,10 +171,10 @@ struct ImpUvs {
   uv2: vec2<f32>,
 };
 
-fn imp_uvs(uv01: vec4<f32>, uv2: vec2<f32>, par01: vec4<f32>, par2: vec2<f32>, frames: vec3<u32>) -> ImpUvs {
+fn imp_uvs(uv01: vec4<f32>, uv2: vec2<f32>, par01: vec4<f32>, par2: vec2<f32>, frames: vec3<u32>, pd: vec3<f32>) -> ImpUvs {
   var o: ImpUvs;
-  o.uv01 = vec4<f32>(imp_parallax(frames.x, uv01.xy, par01.xy), imp_parallax(frames.y, uv01.zw, par01.zw));
-  o.uv2 = imp_parallax(frames.z, uv2, par2);
+  o.uv01 = vec4<f32>(imp_parallax(frames.x, uv01.xy, par01.xy, pd.x), imp_parallax(frames.y, uv01.zw, par01.zw, pd.y));
+  o.uv2 = imp_parallax(frames.z, uv2, par2, pd.z);
   return o;
 }
 
@@ -189,16 +219,16 @@ fn imp_coverage(uv01: vec4<f32>, uv2: vec2<f32>, frames: vec3<u32>, weights: vec
   return o;
 }
 
-// The blended depth the frames hold (radii towards their viewers, -1..1),
-// weighted as their coverage is.
-fn imp_blended_depth(c: ImpCoverage) -> f32 {
+// How far the surface stands from the card's point along the eye (radii),
+// each frame's from its depth (imp_depths), weighted as their coverage is.
+fn imp_blended_step(c: ImpCoverage, dd: ImpDepths) -> f32 {
   let total = max(c.wa.x + c.wa.y + c.wa.z, 1e-5);
   let d = vec3<f32>(
     textureSampleLevel(normal_tex, material_sampler, c.a0, imp_level).a,
     textureSampleLevel(normal_tex, material_sampler, c.a1, imp_level).a,
     textureSampleLevel(normal_tex, material_sampler, c.a2, imp_level).a,
   ) * 2.0 - 1.0;
-  return dot(d, c.wa) / total;
+  return dot((d - dd.pd) / dd.vd, c.wa) / total;
 }
 
 // The atlases' level of detail for this pixel (imp_set_level), shared by

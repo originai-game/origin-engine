@@ -78,7 +78,12 @@ fn imp_normal(f: u32, at: vec2<f32>) -> vec4<f32> {
 }
 
 fn imp_surface(in: ImpostorOut) -> ImpSurface {
-  let uvs = imp_uvs(in.uv01, in.uv2, in.par01, in.par2, in.frames);
+  // The card's point and the eye in the model's space (as imp_card has
+  // them; the turn's columns are normalised, so its transpose undoes it).
+  let m3 = mat3x3<f32>(in.m0, in.m1, in.m2);
+  let toward = normalize(frame.view_pos.xyz - in.centre);
+  let dd = imp_depths(transpose(m3) * (in.world - in.centre) / in.extent, transpose(m3) * toward, in.frames);
+  let uvs = imp_uvs(in.uv01, in.uv2, in.par01, in.par2, in.frames, dd.pd);
   let c = imp_coverage(uvs.uv01, uvs.uv2, in.frames, in.weights);
   let total = max(c.wa.x + c.wa.y + c.wa.z, 1e-5);
   let rgb = textureSampleLevel(base_color_tex, material_sampler, c.a0, imp_level).rgb * c.wa.x
@@ -90,10 +95,8 @@ fn imp_surface(in: ImpostorOut) -> ImpSurface {
   var s: ImpSurface;
   s.coverage = c;
   s.albedo = material.base_color.rgb * rgb / total;
-  let m3 = mat3x3<f32>(in.m0, in.m1, in.m2);
   s.normal = normalize(m3 * nd.xyz + vec3<f32>(0.0, 1e-6, 0.0));
-  let v = select(normalize(frame.view_pos.xyz - in.world), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
-  s.world = in.world + v * (nd.w / total) * in.extent;
+  s.world = in.world + toward * imp_blended_step(c, dd) * in.extent;
   return s;
 }
 

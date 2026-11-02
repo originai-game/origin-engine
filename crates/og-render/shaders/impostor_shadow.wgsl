@@ -17,6 +17,9 @@ struct ImpostorShadowOut {
   // the model's sphere radius in the world.
   @location(8) @interpolate(flat) toward: vec3<f32>,
   @location(9) @interpolate(flat) extent: f32,
+  // imp_depths of the card's point (pd linear over the card).
+  @location(10) pd: vec3<f32>,
+  @location(11) @interpolate(flat) vd: vec3<f32>,
 };
 
 @vertex
@@ -38,6 +41,8 @@ fn vs_impostor_shadow(@builtin(vertex_index) vertex: u32, i: ScatterInstance) ->
   o.weights = card.weights;
   o.toward = normalize(select(toward, toward - centre, local) + vec3<f32>(0.0, 1e-9, 0.0));
   o.extent = card.extent;
+  o.pd = card.pd;
+  o.vd = card.vd;
   return o;
 }
 
@@ -54,9 +59,12 @@ fn fs_impostor_shadow(in: ImpostorShadowOut) -> ImpostorShadowFrag {
   imp_set_level(in.uv01.xy);
   let dx = dpdx(in.world);
   let dy = dpdy(in.world);
-  let uvs = imp_uvs(in.uv01, in.uv2, in.par01, in.par2, in.frames);
+  var dd: ImpDepths;
+  dd.pd = in.pd;
+  dd.vd = in.vd;
+  let uvs = imp_uvs(in.uv01, in.uv2, in.par01, in.par2, in.frames, dd.pd);
   let cover = imp_coverage(uvs.uv01, uvs.uv2, in.frames, in.weights);
-  let surface = in.world + in.toward * imp_blended_depth(cover) * in.extent;
+  let surface = in.world + in.toward * imp_blended_step(cover, dd) * in.extent;
   if (cover.alpha < imp_cutoff() || imp_dropped(in.clip.xy, in.fade.x, in.fade.y)) {
     discard;
   }
