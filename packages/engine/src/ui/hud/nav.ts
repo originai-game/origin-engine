@@ -167,14 +167,19 @@ export function compass(id: string, desc: Api.CompassDesc = {}): void {
   const width = desc.width || (f.phone ? Math.round(f.viewport.width / 3) * 2 : u(560));
   const fov = desc.fov || Math.PI;
   const heading = desc.heading ?? 0;
-  const h = u(30);
+  // The strip's rows grow with the player's text size: the point names,
+  // the markers hung from their baseline, and the distances under them.
+  const k = Math.max(1, stepSize(ts(16)).size / u(16));
+  const s = u(16);
+  const markTop = u(2) + u(20) * k - s / 2;
+  const stripH = Math.max(u(52), markTop + s + stepSize(ts(10)).size * 1.3 + u(2));
   const pxPerRad = width / fov;
   const names = (desc.points ?? []).length === 8 ? desc.points! : POINTS;
   const deg = Math.round((((heading * 180) / Math.PI) % 360 + 360) % 360);
   const xOf = (bearing: number) => width / 2 + wrap(bearing - heading) * pxPerRad;
   hudPlace(id, anchorOf(desc, "top"), () => {
     kit.column(id, { gap: 0, cross: "center" }, () => {
-      box("Strip", { width: px(width), height: px(h + u(22)), part: sel("Compass", "strip") }, {
+      box("Strip", { width: px(width), height: px(stripH), part: sel("Compass", "strip") }, {
         // The ends fade, so the strip has no hard edge over the game.
         fills: [vgrad([[0, token("shadow", 0)], [0.18, token("shadow", 0.45)], [0.82, token("shadow", 0.45)], [1, token("shadow", 0)]], 90)],
         clip: "shape",
@@ -223,13 +228,13 @@ export function compass(id: string, desc: Api.CompassDesc = {}): void {
         }
         for (const { p, kind, x, clamped } of placed) {
           const ink = markerInk(kind, p.color);
-          const s = u(16);
-          box(keyId(p.key ?? ""), { direction: "column", cross: "center", gap: 0, width: px(u(48)), part: sel("Compass", "poi", kind, clamped ? "clamped" : null) }, undefined, () => {
+          const bw = Math.max(u(48), Math.ceil(`${Math.round(p.distance ?? 0)}${desc.units ?? "m"}`.length * stepSize(ts(10)).size * 0.62) + u(4));
+          box(keyId(p.key ?? ""), { direction: "column", cross: "center", gap: 0, width: px(bw), part: sel("Compass", "poi", kind, clamped ? "clamped" : null) }, undefined, () => {
             mark("Mark", kind, ink, s, 0, p.icon ?? "", sel("Compass", "mark", kind), "", {});
             if (p.distance !== null && p.distance !== undefined && labelled.has(p)) {
               text("Distance", `${Math.round(p.distance)}${desc.units ?? "m"}`, { step: ts(10), font: "mono", color: token("ink"), nowrap: true, outline: 1 });
             }
-          }, fixed({ start: x - u(24), top: u(22) - s / 2 }, { a11y: a11y("image", p.label ?? ""), ...(clamped ? { opacity: 0.8 } : {}) }));
+          }, fixed({ start: x - bw / 2, top: markTop }, { a11y: a11y("image", p.label ?? ""), ...(clamped ? { opacity: 0.8 } : {}) }));
         }
         // The notch at the centre.
         leaf("Notch", { width: px(u(12)), height: px(u(8)), part: sel("Compass", "notch") }, {

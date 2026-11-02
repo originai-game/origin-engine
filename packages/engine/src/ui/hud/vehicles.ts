@@ -67,11 +67,13 @@ export function speedometer(id: string, desc: Api.SpeedometerDesc = {}): void {
           }, fixed({ start: c - to, top: c - to }));
         }
         // Ticks and numbers.
-        const speedStep = tsFit(size >= 150 ? 30 : 22, size * 0.17, true);
-        const unitStep = tsFit(10, size * 0.07);
+        const speedStep = tsFit(size >= 150 ? 30 : 22, size * 0.15, true);
+        const unitStep = tsFit(10, size * 0.065);
         const readoutHalf = Math.max(String(Math.round(max)).length * stepSize(speedStep).size * 0.62, unit.length * stepSize(unitStep).size * 0.62 + size * 0.16) / 2 + size * 0.02;
         const step = niceStep(max);
         const n = Math.floor(max / step + 1e-6);
+        // Numerals placed so far: one that would touch its neighbour (the dial's top at a large text size) is left out.
+        const placedNums: Array<[number, number, number, number]> = [];
         for (let i = 0; i <= n * 2; i++) {
           const v = (i * step) / 2;
           if (v > max + 1e-6) break;
@@ -91,7 +93,10 @@ export function speedometer(id: string, desc: Api.SpeedometerDesc = {}): void {
           // A numeral that would reach the readout under the hub (large text, the dial's lowest marks) is left out.
           const numW = String(Math.round(v)).length * stepSize(numStep).size * 0.62;
           const hitsReadout = ny + stepSize(numStep).line > c + size * 0.06 && Math.abs(nx - c) - numW / 2 < readoutHalf;
-          if (major && size >= 120 && !hitsReadout) {
+          const nb: [number, number, number, number] = [nx - numW / 2 - 2, nx + numW / 2 + 2, ny, ny + stepSize(numStep).line];
+          const crowded = placedNums.some((q) => nb[0] < q[1] && nb[1] > q[0] && nb[2] < q[3] && nb[3] > q[2]);
+          if (major && size >= 120 && !hitsReadout && !crowded) {
+            placedNums.push(nb);
             text(kit.idi("Num", i), String(Math.round(v)), { step: numStep, font: "mono", color: token("inkMuted"), nowrap: true, width: px(lw), align: "center" },
               fixed({ start: nx - lw / 2, top: ny }));
           }
@@ -120,7 +125,7 @@ export function speedometer(id: string, desc: Api.SpeedometerDesc = {}): void {
             text("Unit", unit, { step: unitStep, font: "mono", color: token("inkMuted"), nowrap: true });
             if (desc.gear) {
               // The box holds its numeral at any text size: it grows past its share of the dial rather than let the gear spill.
-              const gearStep = tsFit(15, size * 0.09, true);
+              const gearStep = tsFit(15, size * 0.075, true);
               const gearBox = Math.max(size * 0.13, stepSize(gearStep).line + 2, Math.ceil((desc.gear ?? "").length * stepSize(gearStep).size * 0.62) + 8);
               box("Gear", { width: px(gearBox), height: px(gearBox), align: "center", cross: "center", part: sel("Speedometer", "gear") }, {
                 shape: { kind: "rect", radii: [3, 3, 3, 3] },
@@ -129,7 +134,7 @@ export function speedometer(id: string, desc: Api.SpeedometerDesc = {}): void {
               }, () => text("Text", desc.gear ?? "", { step: gearStep, font: "display", color: token("ink"), nowrap: true }));
             }
           });
-        }, fixed({ start: 0, top: c + size * 0.06 }));
+        }, fixed({ start: 0, top: c + size * 0.05 }));
         if (over) {
           leaf("Shift", { width: px(size * 0.1), height: px(size * 0.1), part: sel("Speedometer", "shift") }, {
             shape: ellipseShape(),
@@ -221,6 +226,28 @@ export function flightHud(id: string, desc: Api.FlightHudDesc = {}): void {
     box(id, { width: px(W), height: px(H), part: sel("FlightHud", "frame") }, undefined, () => {
       // The ladder turns with roll about the boresight, clipped to its central window.
       const lw = W * (narrow ? 0.62 : 0.56);
+      // A rung's numeral is left out where it would land on a boxed readout
+      // or the heading tape (large text, a steep pitch): the ladder turns
+      // about the boresight, so its place is turned the same way first.
+      const boxW = ut(76);
+      const boxH = ut(32);
+      const keepOut: Array<[number, number, number, number]> = [
+        [0, W, 0, ut(40) + ut(16) + boxH / 2],
+        [0, boxW, H / 2 - boxH / 2, H / 2 + boxH / 2],
+        [W - boxW, W, H / 2 - boxH / 2, H / 2 + boxH / 2],
+      ];
+      const rungClear = (lx: number, ly: number, label: string, dir: 1 | -1): boolean => {
+        const sz = stepSize(ts(14)).size;
+        const tw = label.length * sz * 0.62;
+        const x0 = lx + (W - lw) / 2 + (dir > 0 ? tw / 2 : -tw / 2) - c.x;
+        const y0 = ly + H * 0.13 - c.y;
+        const cs = Math.cos(-roll);
+        const sn = Math.sin(-roll);
+        const x = c.x + x0 * cs - y0 * sn;
+        const y = c.y + x0 * sn + y0 * cs;
+        const r = [x - tw / 2 - 2, x + tw / 2 + 2, y - sz * 0.7, y + sz * 0.7];
+        return !keepOut.some((k) => r[0]! < k[1] && r[1]! > k[0] && r[2]! < k[3] && r[3]! > k[2]);
+      };
       box("Ladder", { width: px(lw), height: px(H * 0.74), part: sel("FlightHud", "ladder") }, { clip: "shape" }, () => {
         const lc = { x: lw / 2, y: (H * 0.74) / 2 };
         box("Rungs", { width: pct(1), height: pct(1) }, undefined, () => {
@@ -252,8 +279,9 @@ export function flightHud(id: string, desc: Api.FlightHudDesc = {}): void {
               L(`${rid}b`, [[lc.x + gap + half, y], [lc.x + gap + half - piece, y]], 2, quiet, part);
               L(`${rid}d`, [[lc.x + gap + piece, y], [lc.x + gap, y], [lc.x + gap, y + tip]], 2, quiet, part);
             }
-            if (!narrow) num(`${rid}L`, String(Math.abs(d)), lc.x - gap - half - u(6), y, "end", ts(14), paint);
-            num(`${rid}N`, String(Math.abs(d)), lc.x + gap + half + u(6), y, "start", ts(14), paint);
+            const label = String(Math.abs(d));
+            if (!narrow && rungClear(lc.x - gap - half - u(6), y, label, -1)) num(`${rid}L`, label, lc.x - gap - half - u(6), y, "end", ts(14), paint);
+            if (rungClear(lc.x + gap + half + u(6), y, label, 1)) num(`${rid}N`, label, lc.x + gap + half + u(6), y, "start", ts(14), paint);
           }
         }, fixed({ start: 0, top: 0 }, { transform: { rotate: -roll, pivotX: 0.5, pivotY: 0.5 } }));
       }, fixed({ start: (W - lw) / 2, top: H * 0.13 }));

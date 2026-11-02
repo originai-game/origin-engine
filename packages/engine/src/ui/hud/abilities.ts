@@ -29,8 +29,13 @@ function pie(left: number): Api.DrawShape {
   return { kind: "arc", start: -Math.PI / 2 + (1 - r) * Math.PI * 2, sweep: Math.max(0.0001, r) * Math.PI * 2, thickness: 4096, cap: "butt" };
 }
 
+/** A slot's side: it grows a little with the player's text size (a third at 200 %), so its numerals and hotkey keep their room. */
+function slotSize(size: number | undefined): number {
+  return Math.round(u(size || (bp().phone ? 48 : 56)) * (1 + (Math.min(2, textScale()) - 1) / 3));
+}
+
 export function abilitySlot(id: string, desc: Api.AbilitySlotDesc = {}): Api.Response {
-  const size = u(desc.size || (bp().phone ? 48 : 56));
+  const size = slotSize(desc.size);
   const { radius, corner } = shapeOf("slot");
   const r = Math.min(radius, size / 4);
   const maxCharges = desc.maxCharges ?? 0;
@@ -97,7 +102,10 @@ export function abilitySlot(id: string, desc: Api.AbilitySlotDesc = {}): Api.Res
         shape: { kind: "arc", start: angle - 0.02, sweep: 0.04, thickness: size * 0.75, cap: "butt" },
         fills: [solid(token("sheen", 0.45))],
       }, absolute({ start: -size * 0.25, top: -size * 0.25 }));
-      text("Time", shortTime(cooldown, true), { step: tsFit(size >= 52 ? 18 : 15, size * 0.42, true), font: "display", color: token("ink"), nowrap: true, outline: 1.2 }, absolute({ centerX: true, centerY: true }));
+      // With a cost or a charge count along the slot's bottom, the cooldown sits above them rather than on them.
+      const below = !!desc.cost || charged;
+      text("Time", shortTime(cooldown, true), { step: tsFit(size >= 52 ? 18 : 15, size * (below ? 0.34 : 0.42), true), font: "display", color: token("ink"), nowrap: true, outline: 1.2 },
+        absolute(below ? { centerX: true, top: Math.round(size * 0.14) } : { centerX: true, centerY: true }));
     }
     if (flashT > 0) {
       leaf("Flash", { width: pct(1), height: pct(1), part: sel("AbilitySlot", "flash") }, {
@@ -120,7 +128,7 @@ export function abilitySlot(id: string, desc: Api.AbilitySlotDesc = {}): Api.Res
           leaf("Fill", { width: pct(p), height: pct(1) }, { fills: [solid(lit(role("gold")))] });
         }, absolute({ start: 0, bottom: 0 }));
       }
-      text("Charges", String(charges), { step: tsFit(14, size * 0.36, true), font: "display", color: charges === 0 ? lit(role("danger")) : token("ink"), nowrap: true, outline: 1.2 },
+      text("Charges", String(charges), { step: tsFit(14, size * 0.28, true), font: "display", color: charges === 0 ? lit(role("danger")) : token("ink"), nowrap: true, outline: 1.2 },
         absolute({ end: inset + 1, bottom: inset }));
     }
     if (desc.cost) {
@@ -144,15 +152,16 @@ export function abilitySlot(id: string, desc: Api.AbilitySlotDesc = {}): Api.Res
     const keyText = desc.hotkey || glyph?.text || "";
     const keyIcon = glyph && glyph.device !== "keyboardMouse" && kit.hasIcon(glyph.icon) ? glyph.icon : "";
     if (keyText || keyIcon) {
+      const keyStep = tsFit(11, Math.max(11, size * 0.24));
       const capInk = desc.outOfRange ? role("danger") : role("ink");
-      box("Hotkey", { padding: { left: u(4), right: u(4), top: 0, bottom: 0 }, height: px(Math.max(14, Math.round(size * 0.3)) * textScale()), cross: "center", align: "center", part: sel("AbilitySlot", "hotkey", desc.outOfRange ? "outOfRange" : null), partClass: "chip" }, {
+      box("Hotkey", { padding: { left: u(4), right: u(4), top: 0, bottom: 0 }, height: px(Math.max(14, Math.round(size * 0.3), Math.ceil(stepSize(keyStep).line))), cross: "center", align: "center", part: sel("AbilitySlot", "hotkey", desc.outOfRange ? "outOfRange" : null), partClass: "chip" }, {
         shape: { kind: "rect", radii: [3, 3, 3, 3] },
         fills: [solid(token("hud", 0.95))],
         strokes: [stroke(1, desc.outOfRange ? lit(role("danger")) : token("lineStrong"))],
         effects: [drop(1, 2, token("shadow", 0.6))],
       }, () => {
         if (keyIcon) icon("Glyph", keyIcon, Math.max(12, Math.round(size * 0.26)), lit(capInk));
-        else text("Key", keyText, { step: ts(11), font: "mono", color: lit(capInk), nowrap: true });
+        else text("Key", keyText, { step: keyStep, font: "mono", color: lit(capInk), nowrap: true });
       }, absolute({ start: -u(3), top: -u(4) }, { z: 2, overlaps: [path] }));
     }
     const maxLevel = desc.maxLevel ?? 0;
@@ -178,7 +187,7 @@ export function abilityBar(id: string, desc: Api.AbilityBarDesc = {}): Api.Abili
   const anchor = anchorOf(desc, "bottom");
   let clicked: string | null = null;
   const pressed: string[] = [];
-  const size = u(desc.size || (bp().phone ? 48 : 56));
+  const size = slotSize(desc.size);
   const gap = desc.gap || tk.sm;
   const row = (desc.direction ?? "row") === "row";
   // More slots than the safe area holds wrap into rows (a phone's bar), never off the screen.

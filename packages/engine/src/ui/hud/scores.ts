@@ -31,7 +31,9 @@ export function scoreboard(id: string, desc: Api.ScoreboardDesc = {}): void {
   const lines = teams.reduce((n, tm) => n + 1 + (tm.rows ?? []).length, 0);
   const roomH = vp.height - vp.safeArea.top - vp.safeArea.bottom - tk.gutter * 2;
   const chrome = (desc.title || desc.subtitle ? u(30) + tk.sm : 0) + tk.md * 2 + teams.length * tk.sm + lines * u(2);
-  const rowH = Math.max(ut(22), Math.min(ut(f.phone ? 30 : 34), Math.floor((roomH - chrome) / Math.max(1, lines))));
+  // Rows tighten to their text's line (and a little air) before the board has to scroll: a short
+  // screen at a large text size (a phone held sideways at 200 %) still shows every row.
+  const rowH = Math.max(Math.min(ut(22), stepSize(ts(13)).line + u(4)), Math.min(ut(f.phone ? 30 : 34), Math.floor((roomH - chrome) / Math.max(1, lines))));
   const scrolls = chrome + lines * rowH > roomH;
   // Each column is as wide as its widest value or label (measured at the
   // text size in effect, mono at 0.62 em), at least its design width. A
@@ -63,8 +65,12 @@ export function scoreboard(id: string, desc: Api.ScoreboardDesc = {}): void {
       fills: [solid(lit({ ...role("hud"), a: 1 })), vgrad([[0, token("sheen", 0.1)], [0.4, token("sheen", 0)]])],
     }, () => {
       if (desc.title || desc.subtitle) {
-        kit.row("Head", { gap: tk.sm, cross: "end", width: pct(1) }, () => {
-          text("Title", desc.title ?? "", { step: ts(20), font: "display", color: token("ink"), width: { kind: "grow" }, nowrap: true, ellipsis: true });
+        // Title and subtitle share a line only when both fit whole (display letters at 0.6 em, text at 0.55):
+        // else the subtitle goes under the title, which wraps rather than stubs.
+        const inner = width - tk.md * 2;
+        const together = (desc.title ?? "").length * stepSize(ts(20)).size * 0.6 + tk.sm + (desc.subtitle ?? "").length * stepSize(ts(13)).size * 0.55 <= inner;
+        box("Head", { gap: together ? tk.sm : u(2), cross: together ? "end" : "start", width: pct(1), direction: together ? "row" : "column" }, undefined, () => {
+          text("Title", desc.title ?? "", { step: ts(20), font: "display", color: token("ink"), width: together ? { kind: "grow" } : pct(1), nowrap: together, maxLines: 2, ellipsis: true });
           if (desc.subtitle) text("Subtitle", desc.subtitle, { step: ts(13), color: token("inkMuted"), nowrap: true });
         });
       }
