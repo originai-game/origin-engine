@@ -79,11 +79,13 @@ test("og.ui.abilityBar: the sweep's seconds, a charge left is ready, the ultimat
   const e = engineFor("HudAbilities", () => {
     og.ui.abilityBar("Bar", {
       slots: [
-        { key: "q", name: "Fireball", hotkey: "Q", cooldown: cd, cooldownMax: 8 },
+        { key: "q", name: "Fireball", hotkey: "Q", cooldown: cd, cooldownMax: 8, cost: "40" },
         { key: "w", name: "Blink", hotkey: "W", maxCharges: 3, charges: 1, cooldown: 4, cooldownMax: 10, chargeProgress: 0.6 },
         { key: "e", name: "Ward", action: "ward", maxCharges: 2, charges: 0, cooldown: 2, cooldownMax: 6 },
         { key: "r", name: "Meteor", hotkey: "R", ultimate: 0.62 },
         { key: "t", name: "Locked", locked: true },
+        { key: "h", name: "Hex", hotkey: "H", disabled: true, maxLevel: 0 },
+        { key: "p", name: "Pyroblast", hotkey: "P", cost: "120", unaffordable: true, level: 1, maxLevel: 3 },
       ],
     });
   });
@@ -96,7 +98,19 @@ test("og.ui.abilityBar: the sweep's seconds, a charge left is ready, the ultimat
   expect(states(at(els, "BarHud/Bar/q/Slot")).ready).toBe("cooling");
   expect(at(els, "BarHud/Bar/q/Slot")?.value).toBe("4s");
   expect(states(at(els, "BarHud/Bar/w/Slot")).ready).toBe("ready");
-  expect(at(els, "BarHud/Bar/w/Slot/Charges")?.text).toBe("1");
+  expect(at(els, "BarHud/Bar/w/Slot/ChargeBadge/Charges")?.text).toBe("1");
+  // One numeral per state: while cooling the cost is not drawn; ready, it is a corner figure.
+  expect(at(els, "BarHud/Bar/q/Slot/Cost")).toBe(undefined);
+  expect(at(els, "BarHud/Bar/p/Slot/Cost/Value")?.text).toBe("120");
+  expect(states(at(els, "BarHud/Bar/h/Slot")).ready).toBe("disabled");
+  expect(at(els, "BarHud/Bar/h/Slot")?.value).toBe("Unavailable");
+  expect(at(els, "BarHud/Bar/h/Slot/Slash")).toBeDefined();
+  // The hotkey is a label under its slot, never a cap on the art; every slot's label sits on one line,
+  // whether or not the slot has rank pips.
+  const slotQ = at(els, "BarHud/Bar/q/Slot")!;
+  const keyQ = at(els, "BarHud/Bar/q/Hotkey")!;
+  expect(keyQ.y).toBeGreaterThanOrEqual(slotQ.y + slotQ.height);
+  expect(at(els, "BarHud/Bar/p/Hotkey")!.y).toBe(keyQ.y);
   expect(states(at(els, "BarHud/Bar/e/Slot")).ready).toBe("cooling");
   expect(at(els, "BarHud/Bar/r/Slot/Ultimate")?.text).toBe("62%");
   expect(states(at(els, "BarHud/Bar/t/Slot")).ready).toBe("locked");

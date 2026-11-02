@@ -20,7 +20,7 @@
 // desktop film also runs each screen in Arabic and under the pseudo-locale.
 
 import { og, defineSystem, SHAPE_BOX } from "@origingame/engine";
-import type { DamageHitDesc, KillfeedEntry, UnitFrameDesc, Viewport, World } from "@origingame/engine";
+import type { DamageHitDesc, KillfeedEntry, Texture, UnitFrameDesc, Viewport, World } from "@origingame/engine";
 
 const SCREENS = ["feedback", "meters", "abilities", "frames", "shooter", "strategy", "racing", "flight", "world"] as const;
 type Screen = (typeof SCREENS)[number];
@@ -44,6 +44,8 @@ const state = {
   hits: 0,
   kills: [] as KillfeedEntry[],
   fonts: { body: 0, icons: 0 },
+  /** The abilities' painted art (assets/abilities), by name; empty before it loads. */
+  art: {} as Record<string, Texture>,
   /**
    * What commands asked for since the last frame. A command runs between
    * ticks, where og.ui.tick() answers 0 (it reads the frame being built),
@@ -214,16 +216,17 @@ function metersScreen(): void {
 function abilitiesScreen(): void {
   const s = seconds();
   const ready = did("ready");
+  const art = (k: string): Texture | null => state.art[k] ?? null;
   og.ui.abilityBar("Abilities", {
     slots: [
-      { key: "q", name: L("Fireball"), icon: "fire", hotkey: "Q", cooldown: ready ? 0 : Math.max(0, 6.4 - s), cooldownMax: 8, cost: "40" },
-      { key: "w", name: L("Blink"), icon: "flash", hotkey: "W", maxCharges: 3, charges: 1, cooldown: Math.max(0, 9 - s), cooldownMax: 12, chargeProgress: Math.min(1, s / 12) },
-      { key: "e", name: L("Frost Nova"), icon: "sparks", hotkey: "E", maxCharges: 2, charges: 0, cooldown: 3.2, cooldownMax: 10 },
-      { key: "r", name: L("Meteor"), icon: "rocket", hotkey: "R", ultimate: Math.min(1, 0.55 + s * 0.05), level: 2, maxLevel: 3 },
-      { key: "d", name: L("Shield Wall"), icon: "shield", hotkey: "D", active: true },
-      { key: "f", name: L("Pyroblast"), icon: "fire", hotkey: "F", unaffordable: true, cost: "120" },
-      { key: "g", name: L("Hex"), icon: "magic-wand", hotkey: "G", outOfRange: true },
-      { key: "h", name: L("Rune of Power"), icon: "star", hotkey: "H", locked: true },
+      { key: "q", name: L("Fireball"), image: art("fireball"), icon: "fire", hotkey: "Q", cooldown: ready ? 0 : Math.max(0, 6.4 - s), cooldownMax: 8, cost: "40" },
+      { key: "w", name: L("Blink"), image: art("blink"), icon: "flash", hotkey: "W", maxCharges: 3, charges: 1, cooldown: Math.max(0, 9 - s), cooldownMax: 12, chargeProgress: Math.min(1, s / 12), outOfRange: true },
+      { key: "e", name: L("Frost Nova"), image: art("frost-nova"), icon: "sparks", hotkey: "E", maxCharges: 2, charges: 0, cooldown: 3.2, cooldownMax: 10 },
+      { key: "r", name: L("Meteor"), image: art("meteor"), icon: "rocket", hotkey: "R", ultimate: Math.min(1, 0.55 + s * 0.05), level: 2, maxLevel: 3 },
+      { key: "d", name: L("Shield Wall"), image: art("shield-wall"), icon: "shield", hotkey: "D", active: true },
+      { key: "f", name: L("Pyroblast"), image: art("pyroblast"), icon: "fire", hotkey: "F", unaffordable: true, cost: "120" },
+      { key: "g", name: L("Hex"), image: art("hex"), icon: "magic-wand", hotkey: "G", disabled: true },
+      { key: "h", name: L("Rune of Power"), image: art("rune-of-power"), icon: "star", hotkey: "H", locked: true },
     ],
   });
   og.ui.statusGrid("Auras", {
@@ -231,12 +234,12 @@ function abilitiesScreen(): void {
     // A phone held sideways at 200 % text keeps one row of buffs (the rest fold into +n) over its cast bar.
     max: og.ui.frameViewport().breakpoint === "phoneLandscape" && state.textScale >= 1.5 ? 4 : 8,
     effects: [
-      { key: "haste", name: L("Haste"), icon: "flash", remaining: Math.max(0.1, 14 - s), duration: 20, mine: true },
-      { key: "might", name: L("Might"), icon: "fire", remaining: 0 },
+      { key: "haste", name: L("Haste"), icon: "flash", image: art("blink"), remaining: Math.max(0.1, 14 - s), duration: 20, mine: true },
+      { key: "might", name: L("Might"), icon: "fire", image: art("fireball"), remaining: 0 },
       { key: "regen", name: L("Regeneration"), icon: "heart", remaining: 1820, duration: 3600 },
-      { key: "ward", name: L("Ward"), icon: "shield", remaining: Math.max(0.1, 4.6 - s), duration: 12, stacks: 3 },
+      { key: "ward", name: L("Ward"), icon: "shield", image: art("shield-wall"), remaining: Math.max(0.1, 4.6 - s), duration: 12, stacks: 3 },
       ...Array.from({ length: 7 }, (_, i) => ({ key: `buff${i}`, name: `${L("Blessing")} ${i + 1}`, icon: "star", remaining: 300 + i * 40, duration: 600 })),
-      { key: "poison", name: L("Deadly Poison"), icon: "flask", debuff: true, type: "poison", stacks: 5, remaining: 8.2, duration: 12 },
+      { key: "poison", name: L("Deadly Poison"), icon: "flask", image: art("hex"), debuff: true, type: "poison", stacks: 5, remaining: 8.2, duration: 12 },
       { key: "curse", name: L("Curse of Agony"), icon: "skull", debuff: true, type: "curse", remaining: 2.4, duration: 24 },
       { key: "bleed", name: L("Rend"), icon: "drop", debuff: true, type: "bleed", stacks: 12, remaining: 15, duration: 15 },
     ],
@@ -572,6 +575,10 @@ export default og.game({
       if (!loaded.ok) throw new Error(loaded.reason);
     }
     og.i18n.setLocale(world, "en");
+    for (const k of ["fireball", "blink", "frost-nova", "meteor", "shield-wall", "pyroblast", "hex", "rune-of-power"]) {
+      const tex = og.load.texture(world, `abilities/${k}.jpg`);
+      if (tex.ok) state.art[k] = tex.value;
+    }
     const body = og.load.font(world, "fonts/Inter-Display.ttf");
     const icons = og.load.font(world, "icons/iconoir.ogt");
     state.fonts = { body: body.ok ? (body.value as unknown as number) : 0, icons: icons.ok ? (icons.value as unknown as number) : 0 };

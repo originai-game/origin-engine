@@ -31053,7 +31053,7 @@ export interface AbilitySlotDesc {
    */
   readonly icon?: string;
   /**
-   * Its art (art kind ability, 1:1) instead of the icon.
+   * Its art (art kind ability, 1:1), filling the slot edge to edge; null draws the icon large on a gradient in a hue of its own.
    *
    * @default null
    */
@@ -31112,44 +31112,50 @@ export interface AbilitySlotDesc {
    */
   readonly chargeProgress?: number;
   /**
-   * Its cost shown at the bottom (40); empty is none.
+   * Its cost (40): a small figure with a droplet at the bottom left corner while the slot is ready; empty is none.
    *
    * @default ""
    */
   readonly cost?: string;
   /**
-   * Not enough resource: tinted with the resource's colour.
+   * Not enough resource: the art washed out and tinted with the resource's colour, the cost in danger.
    *
    * @default false
    */
   readonly unaffordable?: boolean;
   /**
-   * The target is out of range: the hotkey turns danger.
+   * The target is out of range: the art tinted red and the hotkey in danger.
    *
    * @default false
    */
   readonly outOfRange?: boolean;
   /**
-   * Toggled on or channelling: a glowing border that breathes.
+   * Toggled on or channelling: a soft glow in the primary colour that breathes and a thin edge of it.
    *
    * @default false
    */
   readonly active?: boolean;
   /**
-   * Not learnt yet: dimmed with a lock.
+   * Not learnt yet: the art dark under a lock.
    *
    * @default false
    */
   readonly locked?: boolean;
   /**
-   * An ultimate's charge 0 to 1: a ring fills round it and the percent shows until it is ready.
+   * Cannot be used now (silenced, rooted, wrong stance): the art washed out under a red slash.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+  /**
+   * An ultimate's charge 0 to 1: a gold fill rises over the art with a small percent near the bottom; ready, a gold edge and glow breathe.
    *
    * @default null
    * @unit ratio (a fraction between 0 and 1)
    */
   readonly ultimate?: number | null;
   /**
-   * Ranks learnt (pips under it).
+   * Ranks learnt (pips right under it).
    *
    * @default 0
    */
@@ -43288,15 +43294,15 @@ export declare namespace og {
      */
     function radialMeter(id: string, desc?: RadialMeterDesc): void;
     /**
-     * An ability slot to the bar of MOBAs and MMOs: the icon in a frame cornered as the style's slots, a dark sweep shrinking clockwise as the cooldown runs with the seconds left in the middle (tenths under ten), a flash and a pop the tick it comes ready, charges at the corner with the next one's recharge along the bottom, the hotkey on a key cap, cost, unaffordable and out-of-range tints, a breathing border while active, an ultimate's ring and percent, rank pips, a lock. A press answers on touch and with the pointer.
-     * Parts: AbilitySlot.frame[ready|cooling|locked|active], AbilitySlot.icon, AbilitySlot.sweep, AbilitySlot.time, AbilitySlot.flash, AbilitySlot.charges, AbilitySlot.recharge, AbilitySlot.hotkey[outOfRange], AbilitySlot.cost, AbilitySlot.ultimate, AbilitySlot.pip[filled], AbilitySlot.lock. Slots: image (art kind ability). States: group ready (ready, cooling, locked), group use (idle, active, unaffordable). Sounds: focus (the style's ready chime) the tick it comes ready. Accessibility: button named by name, value its seconds left or Ready. Probe ids: <id>, <id>/Time, <id>/Hotkey, <id>/Charges.
+     * An ability slot as shipped action bars draw it (Diablo IV, League, Destiny 2, Genshin): the art fills the frame edge to edge and stays the dominant element in every state; one centred numeral per state, the cooldown's seconds (tenths under ten) over a clockwise radial darkening with a bright hand at its edge; a flash and a pop the tick it comes ready; charges in a small corner badge (none when the seconds show) with the next one's recharge along the bottom; the cost a small corner figure while ready; unaffordable, out-of-range, disabled (a red slash) and locked (a lock over dark art) treatments of the art; a soft glow and thin accent edge while active; an ultimate's rising fill and small percent; rank pips right under it and the hotkey a quiet label below. A press answers on touch and with the pointer.
+     * Parts: AbilitySlot.frame[ready|cooling|disabled|locked|active], AbilitySlot.icon, AbilitySlot.tint[locked|disabled|unaffordable|outOfRange], AbilitySlot.ultimate, AbilitySlot.sweep, AbilitySlot.flash, AbilitySlot.lock, AbilitySlot.slash, AbilitySlot.cost[unaffordable], AbilitySlot.recharge, AbilitySlot.charges, AbilitySlot.edge[active|ultimate], AbilitySlot.pip[filled], AbilitySlot.hotkey[outOfRange]. Slots: image (art kind ability). States: group ready (ready, cooling, disabled, locked), group use (idle, active, unaffordable). Sounds: focus (the style's ready chime) the tick it comes ready. Accessibility: button named by name, value its seconds left, Unavailable, Locked or Ready. Probe ids: <id>, <id>/Slot/Time, <id>/Slot/Ultimate, <id>/Slot/ChargeBadge/Charges, <id>/Hotkey.
      *
      * @param id Its id.
      * @param desc The ability's state.
      */
     function abilitySlot(id: string, desc?: AbilitySlotDesc): Response;
     /**
-     * An ability bar: abilitySlot for each slot, in a row (or a column) on the HUD frame; a row with more slots than the safe area holds wraps into even rows (eight slots on a phone are two rows of four).
+     * An ability bar: abilitySlot for each slot, in a row (or a column) straight on the scene (a style may dress AbilityBar.frame as a slim bar), evenly spaced; a row with more slots than the HUD band holds wraps into even rows whose columns line up (eight slots on a phone are two rows of four).
      * Parts: AbilityBar.frame and each slot's. Accessibility: a group named by its slots. Probe ids: <id>/<key>.
      *
      * @param id Its id.

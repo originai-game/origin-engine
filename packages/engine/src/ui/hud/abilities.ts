@@ -10,7 +10,7 @@
 // the sweep running out.
 
 import type * as Api from "@origingame/engine";
-import { stepSize, a11y, absolute, anchorOf, box, bp, chip, clamp01, close, drop, edge, frame, glow, groups, hudPlace, icon, innerGlow, keyId, kit, leaf, lit, mix, msToTicks, open, pct, pop, pulse, px, reduced, role, sel, shapeOf, shortTime, solid, sound, stroke, text, token, ts, u, vgrad, arc, type Rgba, apply, textScale, tsFit } from "./core.ts";
+import { stepSize, a11y, absolute, anchorOf, box, bp, chip, clamp01, close, drop, edge, frame, glow, groups, hudPlace, icon, innerGlow, keyId, kit, leaf, lit, mix, msToTicks, open, pct, pop, pulse, px, radial, reduced, role, sel, shapeOf, shortTime, solid, sound, stroke, teamColor, text, token, ts, u, vgrad, type Rgba, apply, textScale, tsFit } from "./core.ts";
 
 const DEBUFF_TYPES: Record<string, string> = {
   magic: "#3d8bff", curse: "#a64dff", poison: "#3ccf4e", disease: "#c89a2c", bleed: "#e03030",
@@ -29,15 +29,37 @@ function pie(left: number): Api.DrawShape {
   return { kind: "arc", start: -Math.PI / 2 + (1 - r) * Math.PI * 2, sweep: Math.max(0.0001, r) * Math.PI * 2, thickness: 4096, cap: "butt" };
 }
 
-/** A slot's side: it grows a little with the player's text size (a third at 200 %), so its numerals and hotkey keep their room. */
+/** A slot's side: it grows with the player's text size (half again at 200 %), so its numerals grow and the art stays the larger part. */
 function slotSize(size: number | undefined): number {
-  return Math.round(u(size || (bp().phone ? 48 : 56)) * (1 + (Math.min(2, textScale()) - 1) / 3));
+  return Math.round(u(size || (bp().phone ? 48 : 56)) * (1 + (Math.min(2, textScale()) - 1) / 2));
 }
 
+/** A stable hue for an ability without art, from its icon or name, so a placeholder bar is still told apart by colour as well as glyph. */
+function hueOf(key: string): Rgba {
+  let h = 0;
+  for (const ch of key) h = (h * 31 + ch.charCodeAt(0)) | 0;
+  return teamColor(Math.abs(h));
+}
+
+const NOTHING = { hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0 } as Api.Response;
+
 export function abilitySlot(id: string, desc: Api.AbilitySlotDesc = {}): Api.Response {
-  const size = slotSize(desc.size);
+  return slot(id, desc, (desc.maxLevel ?? 0) > 0);
+}
+
+/**
+ * One slot, as shipped action bars draw it (Diablo IV, League, Destiny 2,
+ * Genshin): the art fills the frame edge to edge and stays the dominant
+ * element in every state; one centred numeral per state (the cooldown's
+ * seconds over a clockwise darkening, or nothing); the cost and charges
+ * small in the corners; the hotkey a quiet label under the slot.
+ * `pipRow` keeps the rank pips' line under every slot of a bar, so slots
+ * with and without ranks line up; a bar passes its slots' `size` already
+ * resolved, so it is never scaled twice.
+ */
+function slot(id: string, desc: Api.AbilitySlotDesc, pipRow: boolean, size = slotSize(desc.size)): Api.Response {
   const { radius, corner } = shapeOf("slot");
-  const r = Math.min(radius, size / 4);
+  const r = Math.min(radius, size / 5);
   const maxCharges = desc.maxCharges ?? 0;
   const charged = maxCharges > 1;
   const charges = Math.min(desc.charges ?? 0, maxCharges);
@@ -45,11 +67,16 @@ export function abilitySlot(id: string, desc: Api.AbilitySlotDesc = {}): Api.Res
   // A charged ability is usable while it has a charge; its cooldown is the next charge's.
   const cooling = charged ? charges === 0 && cooldown > 0 : cooldown > 0;
   const locked = !!desc.locked;
-  const ready = !cooling && !locked;
+  const disabled = !!desc.disabled && !locked;
+  const ready = !cooling && !locked && !disabled;
   const ult = desc.ultimate ?? null;
   const ultReady = ult !== null && ult >= 1;
-  const readyState = locked ? "locked" : cooling ? "cooling" : "ready";
+  const readyState = locked ? "locked" : cooling ? "cooling" : disabled ? "disabled" : "ready";
   const use = desc.active ? "active" : desc.unaffordable ? "unaffordable" : "idle";
+  // The frame's line: thin, so the art reaches almost to the slot's edge.
+  const line = Math.max(1.5, Math.round(size / 36));
+  // The accent is a hue, never the neutral primary of a grey style: active in the info blue, an ultimate ready in gold.
+  const accent = desc.active ? role("info") : ultReady ? role("gold") : null;
   let r0: Api.Response | null = null;
   kit.column(id, { gap: u(3), cross: "center" }, () => {
     const e = edge("ready", ready && (ult === null || ultReady) ? 1 : 0);
@@ -58,8 +85,7 @@ export function abilitySlot(id: string, desc: Api.AbilitySlotDesc = {}): Api.Res
     kit.remember("seen", 1);
     const flashT = ready && e.since < msToTicks(380) && e.prev === 0 ? 1 - e.since / msToTicks(380) : 0;
     const s = ready && e.prev === 0 ? pop(e.since, 0.12, 340) : 1;
-    const ringInk = desc.active ? role("primary") : ultReady ? role("gold") : ready ? role("lineStrong") : role("line");
-    const breath = desc.active ? pulse(1.1) : ultReady ? pulse(0.9) : 0;
+    const breath = accent ? pulse(desc.active ? 1.1 : 0.9) : 0;
     const path = open("Slot", {
       width: px(size),
       height: px(size),
@@ -68,121 +94,181 @@ export function abilitySlot(id: string, desc: Api.AbilitySlotDesc = {}): Api.Res
       partClass: "slot",
     }, {
       shape: { kind: "rect", radii: [r, r, r, r], corner },
-      fills: [solid(token("shadow", 0.85)), vgrad([[0, token("panelRaised", 0.9)], [1, token("well", 0.95)]])],
-      strokes: [stroke(Math.max(2, size / 28), lit(ringInk, desc.active || ultReady ? 0.75 + 0.25 * breath : 1)), stroke(1, token("shadow", 0.9), "outside")],
-      effects: [drop(2, 6, token("shadow", 0.55)), ...(desc.active || ultReady ? [glow(6 + 6 * breath, lit(ringInk, 0.55))] : [])],
+      fills: [solid(token("shadow", 0.92))],
+      strokes: [stroke(1, token("shadow", 0.9), "outside")],
+      // Selected or active: a soft glow in its colour (never a white outline); otherwise a plain drop onto the scene.
+      effects: [drop(2, 6, token("shadow", 0.5)), ...(accent ? [glow(8 + 8 * breath, lit(accent, 0.45 + 0.25 * breath), 1)] : [])],
       clip: "shape",
     });
-    // The art, inset by the frame's ring.
-    const inset = Math.max(2, Math.round(size / 18));
+    // The art, edge to edge inside the frame's line.
+    const artSide = size - line * 2;
     if (desc.image) {
-      kit.image("Icon", { texture: desc.image, width: px(size - inset * 2), height: px(size - inset * 2), label: "" });
-      // Cooling, the art dims under the sweep so the countdown reads over it.
-      apply(absolute({ start: inset, top: inset }, { opacity: locked ? 0.35 : cooling ? 0.45 : 1 }));
+      kit.image("Icon", { texture: desc.image, width: px(artSide), height: px(artSide), label: "" });
+      apply(absolute({ start: line, top: line }));
     } else {
-      box("IconBox", { width: pct(1), height: pct(1), align: "center", cross: "center", part: sel("AbilitySlot", "icon") }, undefined, () => {
-        icon("Icon", desc.icon ?? "", Math.round(size * 0.58), locked ? token("inkFaint") : token("ink"));
-      }, absolute({ start: 0, top: 0 }, { opacity: locked ? 0.45 : cooling ? 0.4 : 1 }));
+      // No texture: a tinted gradient with the glyph large, never a dark square with a thin line icon.
+      const hue = hueOf(desc.icon || desc.name || id);
+      box("IconBox", { width: px(artSide), height: px(artSide), align: "center", cross: "center", part: sel("AbilitySlot", "icon") }, {
+        fills: [
+          radial([[0, lit(mix(hue, { r: 1, g: 1, b: 1, a: 1 }, 0.25))], [0.65, lit(mix(hue, { r: 0, g: 0, b: 0, a: 1 }, 0.35))], [1, lit(mix(hue, { r: 0, g: 0, b: 0, a: 1 }, 0.7))]], 0.5, 0.35, 0.75, 0.75),
+        ],
+      }, () => {
+        icon("Glyph", desc.icon ?? "", Math.round(artSide * 0.66), lit({ r: 1, g: 1, b: 1, a: 1 }, 0.95));
+      }, absolute({ start: line, top: line }));
     }
-    if (desc.unaffordable && !locked) {
-      leaf("Unaffordable", { width: pct(1), height: pct(1), part: sel("AbilitySlot", "tint", "unaffordable") }, {
-        fills: [solid(lit(role("mana"), 0.42))],
-        blend: "multiply",
-      }, absolute({ start: 0, top: 0 }));
+    const full = (insetBy = line) => absolute({ start: insetBy, top: insetBy });
+    const cover = { width: px(artSide), height: px(artSide) };
+    // What the state does to the art: dark when locked, washed out and slashed when disabled,
+    // washed and tinted when it cannot be paid for, reddened when its target is out of range.
+    if (locked || disabled || desc.unaffordable || (desc.outOfRange && ready)) {
+      const wash = locked ? 0.72 : disabled ? 0.5 : desc.unaffordable ? 0.5 : 0;
+      if (wash > 0) leaf("Wash", { ...cover, part: sel("AbilitySlot", "tint", locked ? "locked" : disabled ? "disabled" : "unaffordable") }, { fills: [solid(token("shadow", wash))] }, full());
+      if (desc.unaffordable && !locked && !disabled) leaf("Unaffordable", cover, { fills: [solid(lit(role("mana"), 0.5))], blend: "multiply" }, full());
+      if (desc.outOfRange && ready) leaf("OutOfRange", { ...cover, part: sel("AbilitySlot", "tint", "outOfRange") }, { fills: [solid(lit(role("danger"), 0.55))], blend: "multiply" }, full());
+    }
+    // An ultimate charging: a gold fill rising from the bottom of the art, with a bright line on its top.
+    if (ult !== null && !ultReady && !locked) {
+      const h = Math.round(artSide * clamp01(ult));
+      if (h > 0) {
+        box("UltFill", { width: px(artSide), height: px(h), part: sel("AbilitySlot", "ultimate") }, {
+          fills: [vgrad([[0, lit(role("gold"), 0.12)], [1, lit(role("gold"), 0.38)]])],
+          blend: "screen",
+        }, () => {
+          leaf("Crest", { width: pct(1), height: px(Math.max(1.5, line)) }, { fills: [solid(lit(mix(role("gold"), { r: 1, g: 1, b: 1, a: 1 }, 0.3), 0.95))], effects: [glow(4, lit(role("gold"), 0.8))] });
+        }, absolute({ start: line, bottom: line }));
+      }
     }
     if (cooling && !locked) {
       const max = desc.cooldownMax ?? 0;
       const left = max > 0 ? clamp01(cooldown / max) : 1;
+      // The art dims under the sweep (the part still to come darkens hardest), so the turning reads at a glance.
+      leaf("Dim", cover, { fills: [solid(token("shadow", 0.18))] }, full());
       leaf("Sweep", { width: px(size * 1.5), height: px(size * 1.5), part: sel("AbilitySlot", "sweep") }, {
         shape: pie(left),
-        fills: [solid(token("shadow", 0.68))],
+        fills: [solid(token("shadow", 0.72))],
       }, absolute({ start: -size * 0.25, top: -size * 0.25 }));
-      // The sweep's edge: a bright hand at the boundary, so the turning reads at a glance.
+      // The sweep's edge: a bright hand from the rim inward, drawn under the numerals so it never strikes through them.
       const angle = -Math.PI / 2 + (1 - left) * Math.PI * 2;
       leaf("Hand", { width: px(size * 1.5), height: px(size * 1.5) }, {
-        // From the slot's edge in to a little past its middle ring only: it never runs under the numerals at the centre.
-        shape: { kind: "arc", start: angle - 0.02, sweep: 0.04, thickness: size * 0.33, cap: "butt" },
-        fills: [solid(token("sheen", 0.45))],
+        shape: { kind: "arc", start: angle - 0.018, sweep: 0.036, thickness: size * 0.36, cap: "butt" },
+        fills: [solid(token("sheen", 0.55))],
       }, absolute({ start: -size * 0.25, top: -size * 0.25 }));
-      // With a cost or a charge count along the slot's bottom, the cooldown sits above them rather than on them.
-      const below = !!desc.cost || charged;
-      text("Time", shortTime(cooldown, true), { step: tsFit(size >= 52 ? 18 : 15, size * (below ? 0.34 : 0.42), true), font: "display", color: token("ink"), nowrap: true, outline: 1.6 },
-        absolute(below ? { centerX: true, top: Math.round(size * 0.14) } : { centerX: true, centerY: true }));
     }
+    // A soft vignette and a glint along the top, so the art sits in the slot as a lit, inset picture.
+    leaf("Bevel", cover, {
+      fills: [vgrad([[0, token("sheen", 0.16)], [0.35, token("sheen", 0)]])],
+      effects: [innerGlow(size * 0.14, token("shadow", 0.55))],
+    }, full());
     if (flashT > 0) {
       leaf("Flash", { width: pct(1), height: pct(1), part: sel("AbilitySlot", "flash") }, {
-        fills: [solid(token("sheen", 0.75 * flashT))],
+        fills: [solid(token("sheen", 0.6 * flashT))],
         effects: [innerGlow(size * 0.3, token("sheen", flashT))],
       }, absolute({ start: 0, top: 0 }));
     }
-    if (ult !== null && !ultReady) {
-      text("Ultimate", `${Math.floor(clamp01(ult) * 100)}%`, { step: tsFit(16, size * 0.36, true), font: "display", color: lit(role("gold")), nowrap: true, outline: 1.6 }, absolute({ centerX: true, centerY: true }));
-    }
     if (locked) {
-      box("Lock", { width: pct(1), height: pct(1), align: "center", cross: "center", part: sel("AbilitySlot", "lock") }, { fills: [solid(token("shadow", 0.5))] }, () => {
-        icon("Mark", "lock", Math.round(size * 0.36), token("inkMuted"));
+      box("Lock", { width: pct(1), height: pct(1), align: "center", cross: "center", part: sel("AbilitySlot", "lock") }, undefined, () => {
+        icon("Mark", "lock", Math.round(size * 0.4), lit({ r: 1, g: 1, b: 1, a: 1 }, 0.82));
       }, absolute({ start: 0, top: 0 }));
+    }
+    if (disabled) {
+      // A red slash corner to corner over the washed art.
+      const m = artSide * 0.16;
+      leaf("Slash", { ...cover, part: sel("AbilitySlot", "slash") }, {
+        shape: { kind: "path", points: [{ x: artSide - m, y: m }, { x: m, y: artSide - m }], width: Math.max(2.5, size / 16), cap: "round" },
+        fills: [solid(lit(role("danger")))],
+        effects: [glow(5, lit(role("danger"), 0.75))],
+      }, full());
+    }
+    // One centred numeral: the seconds left while cooling.
+    if (cooling && !locked) {
+      text("Time", shortTime(cooldown, true), { step: tsFit(size >= 52 ? 20 : 17, size * 0.4, true), font: "display", color: token("ink"), nowrap: true, outline: 2 },
+        absolute({ centerX: true, centerY: true }));
+    }
+    // The ultimate's percent: small, near the bottom, under the art's subject.
+    if (ult !== null && !ultReady && !locked) {
+      text("Ultimate", `${Math.floor(clamp01(ult) * 100)}%`, { step: tsFit(11, size * 0.19, true), font: "display", color: token("ink"), nowrap: true, outline: 2 },
+        absolute({ centerX: true, bottom: line + Math.round(size * 0.05) }));
+    }
+    // The cost: a small figure with a droplet at the bottom left, only while the slot could be pressed.
+    if (desc.cost && ready) {
+      const costStep = tsFit(10, size * 0.19);
+      box("Cost", { direction: "row", gap: 1, cross: "center", part: sel("AbilitySlot", "cost", desc.unaffordable ? "unaffordable" : null) }, undefined, () => {
+        const glyphName = ["drop", "droplet"].find((n) => kit.hasIcon(n));
+        if (glyphName) icon("Drop", glyphName, Math.round(stepSize(costStep).size * 0.95), lit(desc.unaffordable ? role("danger") : mix(role("mana"), { r: 1, g: 1, b: 1, a: 1 }, 0.25)));
+        text("Value", desc.cost ?? "", { step: costStep, font: "display", color: desc.unaffordable ? lit(role("danger")) : token("ink"), nowrap: true, outline: 1.6 });
+      }, absolute({ start: line + 2, bottom: line + 1 }));
     }
     if (charged) {
       if (charges < maxCharges) {
         const p = clamp01(desc.chargeProgress ?? 0);
-        box("Recharge", { width: pct(1), height: px(Math.max(3, Math.round(size / 14))), part: sel("AbilitySlot", "recharge") }, { fills: [solid(token("shadow", 0.7))] }, () => {
+        box("Recharge", { width: px(artSide), height: px(Math.max(2, Math.round(size / 20))), part: sel("AbilitySlot", "recharge") }, { fills: [solid(token("shadow", 0.7))] }, () => {
           leaf("Fill", { width: pct(p), height: pct(1) }, { fills: [solid(lit(role("gold")))] });
-        }, absolute({ start: 0, bottom: 0 }));
+        }, absolute({ start: line, bottom: line }));
       }
-      text("Charges", String(charges), { step: tsFit(14, size * 0.28, true), font: "display", color: charges === 0 ? lit(role("danger")) : token("ink"), nowrap: true, outline: 1.6 },
-        absolute({ end: inset + 1, bottom: inset }));
+      // Charges in a small badge at the bottom right corner, sized by its numeral so it stays a badge at any text size.
+      // With none left the slot is cooling and its seconds say so: a "0" beside them would be a second numeral.
+      if (charges > 0) {
+        const badgeStep = tsFit(9, size * 0.2, true);
+        const badge = Math.max(Math.round(size * 0.3), Math.ceil(stepSize(badgeStep).size * 1.35));
+        box("ChargeBadge", { width: px(badge), height: px(badge), part: sel("AbilitySlot", "charges") }, {
+          shape: { kind: "ellipse" },
+          fills: [solid(token("shadow", 0.85))],
+          strokes: [stroke(1, token("lineStrong", 0.9))],
+        }, () => {
+          text("Charges", String(charges), { step: badgeStep, font: "display", color: token("ink"), nowrap: true }, absolute({ centerX: true, centerY: true }));
+        }, absolute({ end: line + 1, bottom: line + 1 + (charges < maxCharges ? Math.max(2, Math.round(size / 20)) : 0) }));
+      }
     }
-    if (desc.cost) {
-      text("Cost", desc.cost, { step: ts(11), font: "mono", color: desc.unaffordable ? lit(role("danger")) : lit(role("mana")), nowrap: true, outline: 1.4 },
-        absolute(charged ? { start: inset + 1, bottom: inset } : { centerX: true, bottom: inset }));
-    }
-    // The ultimate's ring: inside the slot, just within its frame, so it never crosses into the gap,
-    // a neighbour or the pips below at any text size.
-    if (ult !== null) {
-      const ringD = size - inset * 2;
-      leaf("UltRing", { width: px(ringD), height: px(ringD), part: sel("AbilitySlot", "ultimate", ultReady ? "ready" : null) }, {
-        shape: arc(clamp01(ult), Math.max(2, Math.round(size / 18))),
-        fills: [solid(lit(role("gold"), ultReady ? 0.7 + 0.3 * pulse(0.9) : 0.95))],
-      }, absolute({ start: inset, top: inset }));
+    // Active or an ultimate ready: a thin accent edge inside the frame, over the art.
+    if (accent) {
+      leaf("Edge", { width: pct(1), height: pct(1), part: sel("AbilitySlot", "edge", desc.active ? "active" : "ultimate") }, {
+        shape: { kind: "rect", radii: [r, r, r, r], corner },
+        strokes: [stroke(Math.max(1.5, line), lit(accent, 0.8 + 0.2 * breath))],
+      }, absolute({ start: 0, top: 0 }));
+    } else {
+      leaf("Edge", { width: pct(1), height: pct(1), part: sel("AbilitySlot", "edge") }, {
+        shape: { kind: "rect", radii: [r, r, r, r], corner },
+        // A dark rim with a faint light line outside it: the slot reads as an inset frame, not an outlined box.
+        strokes: [stroke(line, token("shadow", 0.85)), stroke(1, token("lineStrong", ready ? 0.4 : 0.25), "outside")],
+      }, absolute({ start: 0, top: 0 }));
     }
     r0 = close({
       transform: { scaleX: s, scaleY: s },
-      a11y: a11y("button", desc.name ?? "", { value: locked ? "Locked" : cooling ? `${Math.ceil(cooldown)}s` : "Ready" }),
-      ...groups({ ready: readyState, use }, { ready: ["ready", "cooling", "locked"], use: ["idle", "active", "unaffordable"] }),
+      a11y: a11y("button", desc.name ?? "", { value: locked ? "Locked" : cooling ? `${Math.ceil(cooldown)}s` : disabled ? "Unavailable" : "Ready" }),
+      ...groups({ ready: readyState, use }, { ready: ["ready", "cooling", "disabled", "locked"], use: ["idle", "active", "unaffordable"] }),
     });
-    // The hotkey's cap, over the slot's top left corner: the label, else the action's glyph on the device used last.
+    // The ranks: pips right under the slot, centred, on a line every slot of the bar keeps.
+    const maxLevel = desc.maxLevel ?? 0;
+    const pipH = Math.max(3, Math.round(size / 16));
+    if (maxLevel > 0) {
+      kit.row("Pips", { gap: u(2), height: px(pipH) }, () => {
+        for (let i = 0; i < maxLevel; i++) {
+          const filled = i < (desc.level ?? 0);
+          leaf(kit.idi("Pip", i), { width: px(Math.max(6, Math.round(size / 7))), height: px(pipH), part: sel("AbilitySlot", "pip", filled ? "filled" : null) }, {
+            shape: { kind: "rect", radii: [1, 1, 1, 1] },
+            fills: [solid(filled ? lit(role("gold")) : token("shadow", 0.7))],
+            strokes: [stroke(1, filled ? lit(mix(role("gold"), { r: 1, g: 1, b: 1, a: 1 }, 0.4)) : token("line"))],
+            effects: filled ? [glow(3, lit(role("gold"), 0.5))] : [],
+          });
+        }
+      });
+    } else if (pipRow) {
+      leaf("NoPips", { width: px(1), height: px(pipH) });
+    }
+    // The hotkey: a small, quiet label under the slot, else the action's glyph on the device used last.
     const glyph = !desc.hotkey && desc.action ? kit.frameGlyph(desc.action) : null;
     const keyText = desc.hotkey || glyph?.text || "";
     const keyIcon = glyph && glyph.device !== "keyboardMouse" && kit.hasIcon(glyph.icon) ? glyph.icon : "";
     if (keyText || keyIcon) {
-      const keyStep = tsFit(11, Math.max(11, size * 0.24));
-      const capInk = desc.outOfRange ? role("danger") : role("ink");
-      box("Hotkey", { padding: { left: u(4), right: u(4), top: 0, bottom: 0 }, height: px(Math.max(14, Math.round(size * 0.3), Math.ceil(stepSize(keyStep).line))), cross: "center", align: "center", part: sel("AbilitySlot", "hotkey", desc.outOfRange ? "outOfRange" : null), partClass: "chip" }, {
-        shape: { kind: "rect", radii: [3, 3, 3, 3] },
-        fills: [solid(token("hud", 0.95))],
-        strokes: [stroke(1, desc.outOfRange ? lit(role("danger")) : token("lineStrong"))],
-        effects: [drop(1, 2, token("shadow", 0.6))],
-      }, () => {
-        if (keyIcon) icon("Glyph", keyIcon, Math.max(12, Math.round(size * 0.26)), lit(capInk));
-        else text("Key", keyText, { step: keyStep, font: "mono", color: lit(capInk), nowrap: true });
-      }, absolute({ start: -u(3), top: -u(4) }, { z: 2, overlaps: [path] }));
-    }
-    const maxLevel = desc.maxLevel ?? 0;
-    if (maxLevel > 0) {
-      kit.row("Pips", { gap: u(2) }, () => {
-        for (let i = 0; i < maxLevel; i++) {
-          const filled = i < (desc.level ?? 0);
-          leaf(kit.idi("Pip", i), { width: px(Math.max(4, Math.round(size / 9))), height: px(Math.max(3, Math.round(size / 16))), part: sel("AbilitySlot", "pip", filled ? "filled" : null) }, {
-            shape: { kind: "rect", radii: [1, 1, 1, 1] },
-            fills: [solid(filled ? lit(role("gold")) : token("shadow", 0.7))],
-            strokes: [stroke(1, filled ? lit(mix(role("gold"), { r: 1, g: 1, b: 1, a: 1 }, 0.4)) : token("line"))],
-          });
-        }
-      });
+      const keyStep = ts(10);
+      const capInk = desc.outOfRange ? lit(role("danger")) : accent ? lit(mix(accent, { r: 1, g: 1, b: 1, a: 1 }, 0.35)) : token("ink");
+      box("Hotkey", { height: px(Math.ceil(stepSize(keyStep).line)), cross: "center", align: "center", part: sel("AbilitySlot", "hotkey", desc.outOfRange ? "outOfRange" : null) }, undefined, () => {
+        if (keyIcon) icon("Glyph", keyIcon, Math.round(stepSize(keyStep).size * 1.1), capInk);
+        else text("Key", keyText, { step: keyStep, font: "display", color: capInk, nowrap: true, outline: 1.6 });
+      }, { overlaps: [path] });
     }
   });
-  return r0 ?? ({ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0 } as Api.Response);
+  return r0 ?? NOTHING;
 }
 
 export function abilityBar(id: string, desc: Api.AbilityBarDesc = {}): Api.AbilityBarResult {
@@ -192,30 +278,33 @@ export function abilityBar(id: string, desc: Api.AbilityBarDesc = {}): Api.Abili
   let clicked: string | null = null;
   const pressed: string[] = [];
   const size = slotSize(desc.size);
-  const gap = desc.gap || tk.sm;
+  const gap = desc.gap || Math.max(tk.sm, Math.round(size * 0.18));
   const row = (desc.direction ?? "row") === "row";
-  // More slots than the safe area holds wrap into rows (a phone's bar), never off the screen.
+  const slots = desc.slots ?? [];
+  // More slots than the safe area holds wrap into even rows (a phone's bar), never off the screen; each row's columns line up with the first's.
   const vp = frame().viewport;
   const room = vp.width - vp.safeArea.left - vp.safeArea.right - tk.gutter * 2 - tk.sm * 2;
   const perRow = Math.max(1, Math.floor((room + gap) / (size + gap)));
-  const count = (desc.slots ?? []).length;
+  const count = slots.length;
   const wraps = row && count > perRow;
   const cols = wraps ? Math.ceil(count / Math.ceil(count / perRow)) : count;
+  const pipRow = slots.some((x) => (x.maxLevel ?? 0) > 0);
   hudPlace(id, anchor, () => {
+    // No box behind the slots: they sit on the scene, or on what a style dresses AbilityBar.frame with.
     box(id, {
       direction: desc.direction ?? "row",
       gap,
       wrap: wraps,
-      ...(wraps ? { width: px(cols * size + (cols - 1) * gap + tk.sm * 2) } : {}),
-      align: "center",
-      padding: { left: tk.sm, right: tk.sm, top: u(10), bottom: tk.sm },
-      cross: "end",
+      ...(wraps ? { width: px(cols * size + (cols - 1) * gap + tk.xs * 2) } : {}),
+      align: wraps ? "start" : "center",
+      padding: { left: tk.xs, right: tk.xs, top: tk.xs, bottom: 0 },
+      cross: "start",
       part: sel("AbilityBar", "frame"),
       partClass: "hud",
-    }, chip(), () => {
-      for (const slot of desc.slots ?? []) {
-        const key = slot.key ?? "";
-        const res = abilitySlot(keyId(key), { ...slot, size });
+    }, undefined, () => {
+      for (const s of slots) {
+        const key = s.key ?? "";
+        const res = slot(keyId(key), s, pipRow, size);
         if (res.clicked) clicked = key;
         if (res.pressed) pressed.push(key);
       }
@@ -295,9 +384,13 @@ function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean): 
       kit.image("Icon", { texture: fx.image, width: px(size - 4), height: px(size - 4), label: "" });
       apply(absolute({ start: 2, top: 2 }));
     } else {
-      box("IconBox", { width: pct(1), height: pct(1), align: "center", cross: "center", part: sel("StatusGrid", "icon") }, undefined, () => {
-        icon("Icon", fx.icon ?? fx.name ?? "", Math.round(size * 0.62), lit(mix(ink, { r: 1, g: 1, b: 1, a: 1 }, 0.35)));
-      }, absolute({ start: 0, top: 0 }));
+      // No texture: a gradient in the effect's colour with the glyph large, not a line icon on a dark square.
+      const hue = fx.debuff ? ink : hueOf(fx.icon || fx.name || id);
+      box("IconBox", { width: px(size - 4), height: px(size - 4), align: "center", cross: "center", part: sel("StatusGrid", "icon") }, {
+        fills: [radial([[0, lit(mix(hue, { r: 1, g: 1, b: 1, a: 1 }, 0.2))], [0.7, lit(mix(hue, { r: 0, g: 0, b: 0, a: 1 }, 0.4))], [1, lit(mix(hue, { r: 0, g: 0, b: 0, a: 1 }, 0.7))]], 0.5, 0.35, 0.75, 0.75)],
+      }, () => {
+        icon("Icon", fx.icon ?? fx.name ?? "", Math.round(size * 0.66), lit({ r: 1, g: 1, b: 1, a: 1 }, 0.95));
+      }, absolute({ start: 2, top: 2 }));
     }
     if (!lasting && (fx.duration ?? 0) > 0) {
       leaf("Sweep", { width: px(size * 1.5), height: px(size * 1.5), part: sel("StatusGrid", "sweep") }, {

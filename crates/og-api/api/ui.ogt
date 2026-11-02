@@ -6424,7 +6424,7 @@ module ui {
     desc true
     field key String "Its key in an ability bar (and its probe id there)."
     field icon String "An icon of the atlas."
-    field image Option.Texture "Its art (art kind ability, 1:1) instead of the icon."
+    field image Option.Texture "Its art (art kind ability, 1:1), filling the slot edge to edge; null draws the icon large on a gradient in a hue of its own."
     field name String "What a screen reader calls it (Fireball)."
     field action String "The action whose glyph the hotkey cap shows on the device used last (og.ui.frameGlyph: a gameplay action's binding, else a UI action's), so it follows a rebinding and the pad the player picks up; a pad's button draws as its icon where the style has one. Empty is none."
     field hotkey String "A label for the cap instead of the action's glyph (Q, LB, 1); empty shows the action's."
@@ -6441,15 +6441,16 @@ module ui {
     field chargeProgress f32 "How far the next charge has come, 0 to 1." {
       unit ratio
     }
-    field cost String "Its cost shown at the bottom (40); empty is none."
-    field unaffordable bool "Not enough resource: tinted with the resource's colour."
-    field outOfRange bool "The target is out of range: the hotkey turns danger."
-    field active bool "Toggled on or channelling: a glowing border that breathes."
-    field locked bool "Not learnt yet: dimmed with a lock."
-    field ultimate Option.f32 "An ultimate's charge 0 to 1: a ring fills round it and the percent shows until it is ready." {
+    field cost String "Its cost (40): a small figure with a droplet at the bottom left corner while the slot is ready; empty is none."
+    field unaffordable bool "Not enough resource: the art washed out and tinted with the resource's colour, the cost in danger."
+    field outOfRange bool "The target is out of range: the art tinted red and the hotkey in danger."
+    field active bool "Toggled on or channelling: a soft glow in the primary colour that breathes and a thin edge of it."
+    field locked bool "Not learnt yet: the art dark under a lock."
+    field disabled bool "Cannot be used now (silenced, rooted, wrong stance): the art washed out under a red slash."
+    field ultimate Option.f32 "An ultimate's charge 0 to 1: a gold fill rises over the art with a small percent near the bottom; ready, a gold edge and glow breathe." {
       unit ratio
     }
-    field level u32 "Ranks learnt (pips under it)."
+    field level u32 "Ranks learnt (pips right under it)."
     field maxLevel u32 "Ranks it has; 0 draws no pips."
     field size f32 "Its side; 0 is 56 (48 on a phone)." {
       min 0
@@ -6458,8 +6459,8 @@ module ui {
   }
 
   fn abilitySlot {
-    doc "An ability slot to the bar of MOBAs and MMOs: the icon in a frame cornered as the style's slots, a dark sweep shrinking clockwise as the cooldown runs with the seconds left in the middle (tenths under ten), a flash and a pop the tick it comes ready, charges at the corner with the next one's recharge along the bottom, the hotkey on a key cap, cost, unaffordable and out-of-range tints, a breathing border while active, an ultimate's ring and percent, rank pips, a lock. A press answers on touch and with the pointer."
-    doc "Parts: AbilitySlot.frame[ready|cooling|locked|active], AbilitySlot.icon, AbilitySlot.sweep, AbilitySlot.time, AbilitySlot.flash, AbilitySlot.charges, AbilitySlot.recharge, AbilitySlot.hotkey[outOfRange], AbilitySlot.cost, AbilitySlot.ultimate, AbilitySlot.pip[filled], AbilitySlot.lock. Slots: image (art kind ability). States: group ready (ready, cooling, locked), group use (idle, active, unaffordable). Sounds: focus (the style's ready chime) the tick it comes ready. Accessibility: button named by name, value its seconds left or Ready. Probe ids: <id>, <id>/Time, <id>/Hotkey, <id>/Charges."
+    doc "An ability slot as shipped action bars draw it (Diablo IV, League, Destiny 2, Genshin): the art fills the frame edge to edge and stays the dominant element in every state; one centred numeral per state, the cooldown's seconds (tenths under ten) over a clockwise radial darkening with a bright hand at its edge; a flash and a pop the tick it comes ready; charges in a small corner badge (none when the seconds show) with the next one's recharge along the bottom; the cost a small corner figure while ready; unaffordable, out-of-range, disabled (a red slash) and locked (a lock over dark art) treatments of the art; a soft glow and thin accent edge while active; an ultimate's rising fill and small percent; rank pips right under it and the hotkey a quiet label below. A press answers on touch and with the pointer."
+    doc "Parts: AbilitySlot.frame[ready|cooling|disabled|locked|active], AbilitySlot.icon, AbilitySlot.tint[locked|disabled|unaffordable|outOfRange], AbilitySlot.ultimate, AbilitySlot.sweep, AbilitySlot.flash, AbilitySlot.lock, AbilitySlot.slash, AbilitySlot.cost[unaffordable], AbilitySlot.recharge, AbilitySlot.charges, AbilitySlot.edge[active|ultimate], AbilitySlot.pip[filled], AbilitySlot.hotkey[outOfRange]. Slots: image (art kind ability). States: group ready (ready, cooling, disabled, locked), group use (idle, active, unaffordable). Sounds: focus (the style's ready chime) the tick it comes ready. Accessibility: button named by name, value its seconds left, Unavailable, Locked or Ready. Probe ids: <id>, <id>/Slot/Time, <id>/Slot/Ultimate, <id>/Slot/ChargeBadge/Charges, <id>/Hotkey."
     host false
     param id String "Its id."
     param desc AbilitySlotDesc "The ability's state."
@@ -6491,7 +6492,7 @@ module ui {
   }
 
   fn abilityBar {
-    doc "An ability bar: abilitySlot for each slot, in a row (or a column) on the HUD frame; a row with more slots than the safe area holds wraps into even rows (eight slots on a phone are two rows of four)."
+    doc "An ability bar: abilitySlot for each slot, in a row (or a column) straight on the scene (a style may dress AbilityBar.frame as a slim bar), evenly spaced; a row with more slots than the HUD band holds wraps into even rows whose columns line up (eight slots on a phone are two rows of four)."
     doc "Parts: AbilityBar.frame and each slot's. Accessibility: a group named by its slots. Probe ids: <id>/<key>."
     host false
     param id String "Its id."
