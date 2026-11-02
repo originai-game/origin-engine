@@ -935,6 +935,77 @@ fn rect_shape(rect: Rect, radius: f32, color: [f32; 4]) -> UiShape {
 
 /// `item` moved by `d` CSS px: its map translated, its clip and depth
 /// test point with it.
+/// A frame's commands drawn `unit` times larger (the og-ui unit, docs/ui.md
+/// §15.2): laid out in units, emitted in CSS px. A command that keeps
+/// rectangles upright takes the scale into its values ([`crate::ui::bake`]);
+/// a turned, skewed or UI-pass command takes it over its map, its
+/// screen-space clip, layer rectangle and points scaled with it. Blur
+/// radii, a mass element's size and where screen-space ones stand grow too.
+pub(crate) fn zoom_items(mut items: Vec<DrawItem>, unit: f32) -> Vec<DrawItem> {
+    if unit == 1.0 {
+        return items;
+    }
+    let s = Affine::scale(unit, unit);
+    for item in &mut items {
+        let cmd = std::mem::replace(&mut item.cmd, DrawCmd::PopClip);
+        let (mut cmd, rest) = if item.transform.is_identity() {
+            crate::ui::bake(cmd, s)
+        } else {
+            (cmd, s.mul(&item.transform))
+        };
+        // Not baked: its clip is the screen's, and the screen is scaled.
+        if !rest.is_identity()
+            && let Some(c) = cmd.clip_mut()
+        {
+            *c = s.map_rect(c);
+        }
+        match &mut cmd {
+            DrawCmd::Glass { blur, .. } => *blur *= unit,
+            DrawCmd::Shape { shape, .. } => {
+                if let UiMode::Backdrop { blur, .. } = &mut shape.mode {
+                    *blur *= unit;
+                }
+            }
+            DrawCmd::BeginLayer { rect, expand, .. } => {
+                *rect = s.map_rect(rect);
+                *expand *= unit;
+            }
+            DrawCmd::World(w) => match &mut **w {
+                WorldCmd::Occlude { at, .. } => *at = (at.0 * unit, at.1 * unit),
+                WorldCmd::Mass { batch, bounds, .. } => {
+                    *bounds = s.map_rect(bounds);
+                    zoom_mass(batch, unit);
+                }
+                WorldCmd::BeginPanel { rect, .. } => *rect = s.map_rect(rect),
+                _ => {}
+            },
+            _ => {}
+        }
+        item.cmd = cmd;
+        item.transform = rest;
+    }
+    items
+}
+
+/// A mass batch drawn `unit` times larger ([`zoom_items`]): each
+/// instance's size, and for screen-space ones where it stands and how far
+/// it travels.
+pub(crate) fn zoom_mass(b: &mut og_render::UiMassBatch, unit: f32) {
+    let screen = b.space == og_render::UiMassSpace::Screen;
+    for i in &mut b.instances {
+        i.scale *= unit;
+        if screen {
+            i.position[0] *= unit;
+            i.position[1] *= unit;
+            i.aux[0] *= unit;
+            i.aux[1] *= unit;
+            i.aux[3] *= unit;
+            i.velocity[0] *= unit;
+            i.velocity[1] *= unit;
+        }
+    }
+}
+
 fn shifted(item: &DrawItem, d: Vec2) -> DrawItem {
     let mut out = item.clone();
     out.transform = Affine::translate(d.x, d.y).mul(&item.transform);

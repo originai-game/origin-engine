@@ -796,7 +796,7 @@ impl Ui {
         self.frame = UiFrame {
             viewport: vp,
             elements,
-            items: assign_levels(cmds),
+            items: crate::draw::zoom_items(assign_levels(cmds), self.unit),
             warnings: std::mem::take(&mut self.warnings),
             focus_paths,
             a11y,
@@ -808,6 +808,7 @@ impl Ui {
                 ..self.stats
             },
             motion: motion_dump,
+            unit: self.unit,
         };
         &self.frame
     }

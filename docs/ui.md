@@ -773,6 +773,16 @@ stay, and the bar rises to the Xbox Accessibility Guidelines:
   its text dense and go smaller, down to 12 px at 1080p, provided it grows
   with the player's text scale and passes the contrast rule (the owner,
   2026-11-02);
+  og-ui reaches the floor by its unit (`UiDesc.unitScale`, `UiTheme.unit`):
+  on a mouse or pad surface the UI lays out in units of its 1080p-equivalent
+  height over 720 CSS px, 1 to 2, and draws them at that size, so the whole
+  UI zooms with the surface: the style's lengths and a game's own px alike
+  (a 1280×720 layout fills a 1080p window; body 14 is 21 CSS px, the
+  smallest step 12 is 18), the player's text scale multiplying over it. A
+  touch surface keeps CSS px; a game may pin it. What the UI gives a game
+  (`og.ui.viewport`, `og.ui.bounds`) is in units; what leaves for the page
+  (the probe, the accessibility mirror, the input method's window) is CSS
+  px;
 - a high-contrast mode at 7:1;
 - no meaning by colour alone;
 - every hold has a toggle; every timed choice has a setting;

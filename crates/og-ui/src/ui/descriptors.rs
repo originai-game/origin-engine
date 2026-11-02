@@ -69,6 +69,36 @@ impl Viewport {
         }
     }
 
+    /// This surface in og-ui units of `unit` CSS px (docs/ui.md §15.2):
+    /// its size, safe area and covered region over `unit`, and `unit`
+    /// times as many device pixels to each, so what is laid out on it and
+    /// drawn `unit` times larger lands on the same device pixels.
+    pub fn zoomed(&self, unit: f32) -> Viewport {
+        if unit == 1.0 {
+            return *self;
+        }
+        let k = 1.0 / unit;
+        let s = self.safe_area;
+        Viewport {
+            width: self.width * k,
+            height: self.height * k,
+            dpr: self.dpr * unit,
+            safe_area: Insets {
+                left: s.left * k,
+                top: s.top * k,
+                right: s.right * k,
+                bottom: s.bottom * k,
+            },
+            covered: Rect::new(
+                self.covered.x * k,
+                self.covered.y * k,
+                self.covered.width * k,
+                self.covered.height * k,
+            ),
+            ..*self
+        }
+    }
+
     /// The size class of this surface.
     pub fn breakpoint(&self) -> Breakpoint {
         Breakpoint::of(self.width, self.height)
@@ -375,6 +405,12 @@ pub struct UiFrame {
     pub stats: LayoutStats,
     /// Elements in visual states and the animations in flight, for `dump_ui`.
     pub motion: Vec<crate::motion::run::MotionDump>,
+    /// The og-ui unit, CSS px per unit (docs/ui.md §15.2): `viewport`,
+    /// `elements`, `a11y`, `text_input` and `overlaps` are in units (the
+    /// game's coordinates); `items` are already in CSS px. A host that hands
+    /// a rectangle to the page (an input method's window, the accessibility
+    /// mirror, the probe) multiplies by it.
+    pub unit: f32,
 }
 
 /// What [`Ui::edit_marks`] draws one line's marks from.
@@ -450,7 +486,9 @@ impl UiFrame {
         overlay: &mut Overlay,
         shift: &dyn Fn(u64) -> Option<og_core::glam::Vec2>,
     ) {
-        emit(&self.items, desc, overlay, shift);
+        // The shift is in units (the frame's viewport); the items in CSS px.
+        let unit = self.unit.max(1.0);
+        emit(&self.items, desc, overlay, &|k| shift(k).map(|d| d * unit));
     }
 }
 

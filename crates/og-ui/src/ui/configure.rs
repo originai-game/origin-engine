@@ -16,6 +16,7 @@ impl Ui {
                 desc.ticks_per_second
             },
             viewport: Viewport::default(),
+            unit: 1.0,
             input: InputFrame::default(),
             nodes: Vec::new(),
             kinds: Vec::new(),
@@ -116,6 +117,12 @@ impl Ui {
     /// The play surface of the frame being built.
     pub fn viewport(&self) -> Viewport {
         self.viewport
+    }
+
+    /// The og-ui unit a frame on the CSS `viewport` would lay out in (the
+    /// game's pin, else the surface's: docs/ui.md §15.2).
+    pub fn unit_for(&self, viewport: &Viewport) -> f32 {
+        surface_unit(&self.configured, viewport)
     }
 
     /// Frames begun so far: the UI's clock.
@@ -420,6 +427,14 @@ impl Ui {
     /// Starts a frame with a root of your own (its size is the viewport; the
     /// safe area is added to its padding; its background covers the whole viewport).
     pub fn begin_with(&mut self, input: InputFrame, viewport: Viewport, root: Element) {
+        // The og-ui unit (docs/ui.md §15.2): the frame lays out in units of
+        // it on the surface's size over it and draws it times larger
+        // (`end`), so every length grows with the surface; input comes in
+        // in units too.
+        let unit = surface_unit(&self.configured, &viewport);
+        let viewport = viewport.zoomed(unit);
+        let input = input.zoomed(unit);
+        self.unit = unit;
         // Scrolling first: a press on a scrollbar grabs it before anything
         // under it, two touches scroll or zoom what is under them.
         let grabbed = self.scroll_input(&input);
@@ -436,7 +451,7 @@ impl Ui {
             );
         }
         self.viewport = viewport;
-        self.theme = effective_theme(self.configured, &viewport);
+        self.theme = effective_theme(self.configured, &viewport).to_unit(unit);
         // Last frame's nodes are kept to compare against (docs/ui.md §6.3).
         if !self.building {
             std::mem::swap(&mut self.kept.prev, &mut self.nodes);

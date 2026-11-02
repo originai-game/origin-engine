@@ -277,6 +277,8 @@ pub struct Ui {
     pub(crate) fonts: Fonts,
     pub(crate) ticks_per_second: u32,
     pub(crate) viewport: Viewport,
+    /// The og-ui unit of the frame being built, CSS px (`begin`).
+    pub(crate) unit: f32,
     pub(crate) input: InputFrame,
     pub(crate) nodes: Vec<Node>,
     pub(crate) kinds: Vec<(&'static str, bool)>,
@@ -407,6 +409,21 @@ fn effective_theme(theme: Theme, viewport: &Viewport) -> Theme {
         t = t.to_reduced_transparency();
     }
     t.to_text_scale()
+}
+
+/// The og-ui unit for a frame on the CSS `viewport`: the game's pin, else
+/// the surface's ([`Theme::auto_unit`]).
+pub(crate) fn surface_unit(theme: &Theme, viewport: &Viewport) -> f32 {
+    let u = if theme.unit_pin > 0.0 {
+        theme.unit_pin
+    } else {
+        Theme::auto_unit(viewport)
+    };
+    if u.is_finite() {
+        u.clamp(1.0, 2.0)
+    } else {
+        1.0
+    }
 }
 
 /// A style's `textGlow` size is how far the old four offset copies reached;

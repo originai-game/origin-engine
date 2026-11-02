@@ -81,8 +81,11 @@ impl UiTree for UiProbe {
     }
 
     fn surface(&self, _world: &World) -> Option<(f32, f32, f32)> {
-        let v = self.0.lock().viewport();
-        Some((v.width, v.height, if v.dpr > 0.0 { v.dpr } else { 1.0 }))
+        // CSS px, as the elements: the frame's viewport is in units.
+        let ui = self.0.lock();
+        let (v, u) = (ui.viewport(), ui.frame().unit.max(1.0));
+        let dpr = if v.dpr > 0.0 { v.dpr / u } else { 1.0 };
+        Some((v.width * u, v.height * u, dpr))
     }
 
     fn style(&self, _world: &World) -> Option<String> {
@@ -93,9 +96,20 @@ impl UiTree for UiProbe {
 impl Ui {
     /// The last frame's elements with what documents, layers and motion
     /// know of each (og-probe's `UiElement::detail`, docs/ui.md §16.1).
+    /// Its rectangles are CSS px (the frame's are in og-ui units), so the
+    /// probe's input (`touch_move_to`, `move_to_text`) lands on them.
     pub fn probe_elements(&self) -> Vec<UiElement> {
         use serde_json::{Value, json};
         let mut out = self.frame().elements.clone();
+        let u = self.frame().unit.max(1.0);
+        if u != 1.0 {
+            for e in &mut out {
+                e.x *= u;
+                e.y *= u;
+                e.width *= u;
+                e.height *= u;
+            }
+        }
         if self.docs.built.is_empty()
             && self.frame().motion.is_empty()
             && self.docs.layers.layers.is_empty()

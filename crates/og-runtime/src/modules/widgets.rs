@@ -364,13 +364,18 @@ pub(crate) fn emit(rs: &mut super::extract::RenderState, shifts: &og_core::IdMap
     if frame.items.is_empty() && world_frame.batches.is_empty() {
         return;
     }
-    let vp = frame.viewport;
+    // The frame lays out in og-ui units and emits CSS px (docs/ui.md
+    // §15.2): the overlay is the CSS surface, the unit times the frame's.
+    let (w, h) = (
+        frame.viewport.width * frame.unit,
+        frame.viewport.height * frame.unit,
+    );
     // Scale 0 fits the viewport's height to the target (as a capture at
     // another size needs).
     let overlay = rs
         .scene
         .overlay
-        .get_or_insert_with(|| og_render::Overlay::new(vp.width.max(1.0), vp.height.max(1.0), 0.0));
+        .get_or_insert_with(|| og_render::Overlay::new(w.max(1.0), h.max(1.0), 0.0));
     let first_text = overlay.texts.len();
     let first_sprite = overlay.sprites.len();
     let first_shape = overlay.ui.shapes.len();

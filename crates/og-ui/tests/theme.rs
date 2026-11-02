@@ -131,3 +131,149 @@ fn the_default_dressings_put_glass_on_floating_chrome_only() {
         );
     }
 }
+
+/// The og-ui unit (docs/ui.md §15.2) zooms the whole UI: a 1080p window
+/// lays out on 1280×720 units and draws them at 1.5 CSS px, so a fixed
+/// 300 px box a game writes is 450 CSS px wide, body text draws at 21 px
+/// and the smallest step at 18, a pointer at the CSS point lands on the
+/// box and the probe reports CSS px. 720p and touch keep CSS px, a pin
+/// wins, and the text scale multiplies over the unit.
+#[test]
+fn the_unit_zooms_the_whole_ui_on_a_mouse_surface() {
+    use crate::support::{add_test_font, ui_with_font};
+    use og_ui::{ButtonDesc, DrawCmd, InputFrame, Size, Theme, Viewport};
+    let frame = |vp: Viewport, configure: &dyn Fn(&mut Theme), input: InputFrame| {
+        let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
+        let mut t = *ui.theme();
+        configure(&mut t);
+        ui.set_theme(t);
+        let mut hovered = false;
+        for _ in 0..2 {
+            ui.begin(input.clone(), vp);
+            hovered = ui
+                .button(
+                    "Go",
+                    "Go",
+                    ButtonDesc {
+                        width: Some(Size::Fixed(300.0)),
+                        ..ButtonDesc::default()
+                    },
+                )
+                .hovered;
+            ui.end();
+        }
+        let text = ui
+            .frame()
+            .items
+            .iter()
+            .find_map(|i| {
+                let cmd = match &i.cmd {
+                    DrawCmd::StyledText { text, .. } => &**text,
+                    c => c,
+                };
+                match cmd {
+                    DrawCmd::Text { size, bounds, .. } => Some((*size, bounds.x)),
+                    _ => None,
+                }
+            })
+            .expect("the label is drawn");
+        (ui, hovered, text)
+    };
+    let body = Theme::dark().type_ramp.body.size;
+    let hd = Viewport::new(1920.0, 1080.0);
+    let (ui, _, (size, _)) = frame(hd, &|_| {}, InputFrame::default());
+    let (f, t) = (ui.frame(), *ui.theme());
+    assert_eq!(t.unit, 1.5);
+    assert_eq!(
+        (f.viewport.width, f.viewport.height, f.viewport.dpr),
+        (1280.0, 720.0, 1.5)
+    );
+    assert_eq!(
+        t.type_ramp.body.size, body,
+        "lengths stay the style's, in units"
+    );
+    assert_eq!(f.element("Go").expect("the button").width, 300.0);
+    assert_eq!(size, body * 1.5, "drawn at 1.5 CSS px a unit");
+    assert_eq!(
+        t.type_ramp.xs.size * 1.5,
+        18.0,
+        "the smallest step meets 18 px at 1080p"
+    );
+    let css = ui.probe_elements();
+    let go = css
+        .iter()
+        .find(|e| e.path == "Go")
+        .expect("the probe's button");
+    assert_eq!(go.width, 450.0, "the probe reports CSS px");
+    // A pointer at the button's CSS centre is over it; one past its CSS
+    // right edge (inside its width in units) is not.
+    let (cx, cy) = go.center();
+    assert!(frame(hd, &|_| {}, InputFrame::hover(cx, cy)).1);
+    assert!(!frame(hd, &|_| {}, InputFrame::hover(go.x + 460.0, cy)).1);
+    // An ultrawide 1080p is still 1.5 (its height), a 16:10 window by its
+    // 16:9 height, 720p and below 1, 4K at most 2.
+    let unit = |vp: Viewport| frame(vp, &|_| {}, InputFrame::default()).0.theme().unit;
+    assert_eq!(unit(Viewport::new(2560.0, 1080.0)), 1.5);
+    assert_eq!(unit(Viewport::new(1440.0, 900.0)), 1.125);
+    assert_eq!(unit(Viewport::new(1280.0, 720.0)), 1.0);
+    assert_eq!(unit(Viewport::new(3840.0, 2160.0)), 2.0);
+    // Touch keeps CSS px; a pin wins.
+    let touch = Viewport {
+        coarse_pointer: true,
+        ..hd
+    };
+    assert_eq!(frame(touch, &|_| {}, InputFrame::default()).2.0, body);
+    assert_eq!(
+        frame(hd, &|t| t.unit_pin = 1.0, InputFrame::default()).2.0,
+        body
+    );
+    // The text scale multiplies over the unit.
+    assert_eq!(
+        frame(hd, &|t| t.text_scale = 2.0, InputFrame::default())
+            .2
+            .0,
+        body * 3.0
+    );
+}
+
+/// A zoomed frame's shapes inside a scroll view are clipped where the view
+/// stands on the screen: every clip is the 1× frame's times the unit, from
+/// the origin (a clip scaled about its own centre cut the rows' fills).
+#[test]
+fn a_zoomed_scroll_view_clips_where_it_stands() {
+    use crate::support::{add_test_font, ui_with_font};
+    use og_ui::{ButtonDesc, EmitDesc, InputFrame, ScrollDesc, Size, Viewport};
+    let clips = |vp: Viewport| {
+        let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
+        for _ in 0..2 {
+            ui.begin(InputFrame::default(), vp);
+            ui.scroll(
+                "S",
+                ScrollDesc {
+                    width: Size::Fixed(300.0),
+                    height: Size::Fixed(200.0),
+                    ..ScrollDesc::default()
+                },
+                |ui| {
+                    for i in 0..8 {
+                        ui.button(format!("B{i}"), "Row", ButtonDesc::default());
+                    }
+                },
+            );
+            ui.end();
+        }
+        let mut overlay = og_render::Overlay::new(vp.width, vp.height, 0.0);
+        ui.frame().emit(&EmitDesc::default(), &mut overlay);
+        overlay
+            .ui
+            .shapes
+            .iter()
+            .map(|s| overlay.clips[s.clip.expect("clipped") as usize])
+            .collect::<Vec<_>>()
+    };
+    let one = clips(Viewport::new(1280.0, 720.0));
+    let zoomed = clips(Viewport::new(1920.0, 1080.0));
+    assert!(!one.is_empty());
+    let want: Vec<[f32; 4]> = one.iter().map(|c| c.map(|v| v * 1.5)).collect();
+    assert_eq!(zoomed, want);
+}

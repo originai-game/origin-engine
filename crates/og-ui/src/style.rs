@@ -327,6 +327,16 @@ pub struct Theme {
     /// nothing. 1 for a theme as a style made it.
     #[doc(hidden)]
     pub ramp_scale: f32,
+    /// The og-ui unit a game pins (IDL `UiDesc.unitScale`), 1 to 2; 0 (the
+    /// default) is auto: [`Theme::auto_unit`] of the play surface.
+    pub unit_pin: f32,
+    /// The og-ui unit in effect, in CSS px (docs/ui.md §15.2): the UI lays
+    /// out in units (a viewport of the surface's size over it) and draws
+    /// at it, so every length (the style's, a component's, a game's own
+    /// `px`) grows by it and the player's text scale multiplies over it.
+    /// 1 for a theme as a style made it; the frame's theme has the
+    /// surface's ([`crate::Ui::begin`]).
+    pub unit: f32,
     /// The style's art (`crate::style_file`: frames, ornaments, fonts, motion,
     /// sounds); the default dresses nothing.
     pub art: crate::style_file::Art,
@@ -389,6 +399,8 @@ impl Theme {
             reduced_transparency: false,
             text_scale: 1.0,
             ramp_scale: 1.0,
+            unit_pin: 0.0,
+            unit: 1.0,
             art,
             motion: crate::motion::MotionTokens::default(),
             tokens: derived,
@@ -444,6 +456,37 @@ impl Theme {
             p.scrim = p.scrim.over(p.backdrop);
         }
         t.reduced_transparency = true;
+        t
+    }
+
+    /// The og-ui unit of a play surface (docs/ui.md §15.2): on a mouse or
+    /// pad surface its 1080p-equivalent height (the shorter of the height
+    /// and the width's 16:9 height, as `og ui check` reads its text sizes)
+    /// over 720, 1 to 2, so the smallest step that is 12 px at 720p is
+    /// 18 px at 1080p; a touch surface keeps CSS px (1).
+    pub fn auto_unit(viewport: &crate::Viewport) -> f32 {
+        if viewport.coarse_pointer || viewport.breakpoint().is_phone() {
+            return 1.0;
+        }
+        let h = viewport.height.min(viewport.width * 9.0 / 16.0);
+        if h.is_finite() {
+            (h / 720.0).clamp(1.0, 2.0)
+        } else {
+            1.0
+        }
+    }
+
+    /// This theme recording og-ui unit `unit` (1 to 2): what the frame
+    /// lays out in units of, not a change to any length (`crate::Ui::begin`
+    /// zooms the whole UI, every length a game or a component authors
+    /// with it).
+    pub fn to_unit(self, unit: f32) -> Theme {
+        let mut t = self;
+        t.unit = if unit.is_finite() {
+            unit.clamp(1.0, 2.0)
+        } else {
+            1.0
+        };
         t
     }
 
@@ -541,7 +584,7 @@ impl Theme {
             }
         };
         // Text at 200 % needs taller controls: each grows by the leading
-        // body text gains, its padding kept.
+        // body text gains.
         let grow = (self.ramp_scale - 1.0) * self.type_ramp.body.line_height / self.ramp_scale;
         Density {
             control_lg: d.control_lg + grow,

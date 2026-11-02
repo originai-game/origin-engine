@@ -100,6 +100,13 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
         theme.reduced_motion = d["reducedMotion"].as_bool().unwrap_or(false);
         theme.reduced_transparency = d["reducedTransparency"].as_bool().unwrap_or(false);
         theme.text_scale = d["textScale"].as_f64().map_or(1.0, |v| v as f32);
+        theme.unit_pin = d["unitScale"].as_f64().map_or(0.0, |v| {
+            if v > 0.0 {
+                v.clamp(1.0, 2.0) as f32
+            } else {
+                0.0
+            }
+        });
         theme.density = d["density"]
             .as_str()
             .and_then(DensityMode::from_name)
