@@ -32230,6 +32230,13 @@ export interface StatBarDesc {
    */
   readonly heal?: number;
   /**
+   * An absorb on the health (World of Warcraft's, Diablo IV's): a white-blue overlay past the fill, laid back over its end when the bar is full.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly absorb?: number;
+  /**
    * Damage that can still come back (a fighting game's grey health): drawn between the value and this.
    *
    * @default 0
@@ -32254,6 +32261,12 @@ export interface StatBarDesc {
    * @default false
    */
   readonly showValue?: boolean;
+  /**
+   * The value inside the track at its end, over the fill, so the bar keeps its full length (a unit frame's health); the track grows to hold the text.
+   *
+   * @default false
+   */
+  readonly valueInside?: boolean;
   /**
    * The value as text instead (72%); empty formats value / max.
    *
@@ -33209,7 +33222,7 @@ export interface CastBarDesc {
    */
   readonly stateAt?: number;
   /**
-   * The latency zone at its end, a fraction of the bar (a cast can be queued in it).
+   * The latency zone at its end, a fraction of the bar (a cast can be queued in it), a pale tint of the fill.
    *
    * @default 0
    * @unit ratio (a fraction between 0 and 1)
@@ -44866,8 +44879,8 @@ export declare namespace og {
      */
     function subtitles(id: string, desc?: SubtitlesDesc): void;
     /**
-     * A health or resource bar to the bar of action games: blocks (segment), a ghost chunk that holds after a hit and then drains (Dark Souls, fighting games), a heal preview, grey recoverable damage, a row of shield cells in their tier's colour over it (Apex Legends), low and critical states (warn, then danger pulsing), a mirrored fill for the right player, flat, slanted or pill ends. A drop is instant, a rise moves on the ui spring.
-     * Parts: StatBar.frame[<style>][<level>], StatBar.track, StatBar.fill[<kind>][<level>], StatBar.ghost, StatBar.heal, StatBar.recoverable, StatBar.block[filled], StatBar.cell[filled][<tier>], StatBar.label, StatBar.value, StatBar.icon. States: group level (normal, low, critical, empty). Sounds: warning on crossing into critical. Accessibility: meter named by name, valueNow the value, valueMax max. Probe ids: <id>, <id>/Track, <id>/Track/Fill, <id>/Track/Ghost, <id>/Track/Block#i, <id>/Shield/Cell#i, <id>/Value.
+     * A health or resource bar to the bar of action games: blocks (segment), a ghost chunk that holds after a hit and then drains (Dark Souls, fighting games), a heal preview, an absorb overlay (World of Warcraft's white-blue), grey recoverable damage, the value inside its end or after it, a row of shield cells in their tier's colour over it (Apex Legends), low and critical states (warn, then danger pulsing), a mirrored fill for the right player, flat, slanted or pill ends. A drop is instant, a rise moves on the ui spring.
+     * Parts: StatBar.frame[<style>][<level>], StatBar.track, StatBar.fill[<kind>][<level>], StatBar.ghost, StatBar.heal, StatBar.absorb[over], StatBar.recoverable, StatBar.block[filled], StatBar.cell[filled][<tier>], StatBar.label, StatBar.value, StatBar.icon. States: group level (normal, low, critical, empty). Sounds: warning on crossing into critical. Accessibility: meter named by name, valueNow the value, valueMax max. Probe ids: <id>, <id>/Track, <id>/Track/Fill, <id>/Track/Ghost, <id>/Track/Block#i, <id>/Shield/Cell#i, <id>/Value (inside: <id>/Main/Track/Value/Text).
      *
      * @param id Its id.
      * @param desc The value and the look.
@@ -44914,7 +44927,7 @@ export declare namespace og {
      */
     function statusGrid(id: string, desc?: StatusGridDesc): StatusGridResult;
     /**
-     * A unit frame to the bar of World of Warcraft and Final Fantasy XIV: a round portrait (an art slot, else a bust silhouette on the unit's colour) ringed by the style and floating on its own shadow with no plate behind the frame, the level on a badge, an elite or boss dressing, the name over a health bar with its shield and ghost and a resource bar, the cast under them, small buffs, and states for the target, dead (grey, a skull), offline (dim), in combat and the leader's crown. A press selects it.
+     * A unit frame to the bar of World of Warcraft and Final Fantasy XIV: a round portrait (an art slot, else a bust silhouette on a slate ground) ringed by the style and floating on its own shadow with no plate behind the frame, the level on a badge at most 40 % of it seated on its rim, an elite or boss dressing, the name on one line over the dominant health bar (its absorb as an overlay, its ghost, its numerals inside its end) and a resource bar, the cast under them, small buffs, and states for the target, dead (the portrait greyed to about 40 %, a small skull), offline (dim), in combat and the leader's crown. A press selects it.
      * Parts: UnitFrame.frame[<size>][hostile][targeted][dead], UnitFrame.portrait[<class>], UnitFrame.level, UnitFrame.name, UnitFrame.title, UnitFrame.health (a StatBar), UnitFrame.resource, UnitFrame.cast, UnitFrame.crown, UnitFrame.combat. Slots: portrait (art kind portrait). States: group life (alive, dead, offline), group selection (none, targeted). Accessibility: button named name, level and health. Probe ids: <id>, <id>/Avatar/Portrait, <id>/Avatar/Level, <id>/Bars/Head/Name, <id>/Bars/Health, <id>/Bars/Resource, <id>/Bars/Cast.
      *
      * @param id Its id.
