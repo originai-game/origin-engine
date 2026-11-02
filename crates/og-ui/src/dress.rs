@@ -316,7 +316,7 @@ impl DressDraw {
         }
         match e.key.as_str() {
             "fill" => {
-                let vector = crate::paint_entry::vector_fill_from_entry(e)?;
+                let vector = crate::paint_entry::vector_fill_from_entry(e, atlas)?;
                 // The block's first fill replaces the list, its vectors too.
                 if !seen.fills {
                     self.vectors.clear();
@@ -345,9 +345,13 @@ impl DressDraw {
             }
             "effect" => {
                 self.cleared &= !CLEAR_EFFECTS;
-                push(&mut self.effects, &mut seen.effects, Effect::from_entry(e)?)
+                push(
+                    &mut self.effects,
+                    &mut seen.effects,
+                    Effect::from_entry(e, atlas)?,
+                )
             }
-            "material" => self.material = Some(DressMaterial::from_entry(e)?),
+            "material" => self.material = Some(DressMaterial::from_entry(e, atlas)?),
             "ornament" => self.ornaments = crate::paint_entry::ornaments_from_entry(e)?,
             "blend" => self.blend = Some(crate::paint_entry::blend_from_entry(e)?),
             "mask" => self.mask = Some(Mask::from_entry(e, atlas)?),

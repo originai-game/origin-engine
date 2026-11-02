@@ -96,7 +96,7 @@ impl Resolved {
 
 fn paint(ui: &Ui, p: &Paint) -> Option<Srgba> {
     match p {
-        Paint::Token(t) => ui.theme().palette.get(t),
+        Paint::Token(t) => ui.theme().color(t),
         Paint::Color(c) => Some(*c),
     }
 }

@@ -152,11 +152,12 @@ fn array4(v: &Value) -> Option<[f32; 4]> {
     Some([n(0), n(1), n(2), n(3)])
 }
 
-/// A Paint as a colour reference: its token, else its sRGB colour, else
-/// `default` (a token), with its alpha.
+/// A Paint as a colour reference: its token, else its role (one the style
+/// declares), else its sRGB colour, else `default` (a token), with its
+/// alpha.
 fn color(v: &Value, default: &str) -> ColorRef {
     let alpha = num(v, "alpha", 1.0).clamp(0.0, 1.0);
-    if let Some(t) = v["token"].as_str() {
+    if let Some(t) = v["token"].as_str().or(v["role"].as_str()) {
         return ColorRef::Token {
             name: t.to_string(),
             alpha,

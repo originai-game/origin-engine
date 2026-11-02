@@ -430,15 +430,10 @@ impl Ui {
                 base_color
             };
             if let Some(name) = &s.color {
-                let mut palette = t.palette;
-                match (
-                    crate::style_file::parse_color(name),
-                    crate::style_file::palette_color(&mut palette, name),
-                ) {
-                    (Some(c), _) => color = c,
-                    (None, Some(c)) => color = *c,
-                    _ => self.warnings.push(format!(
-                        "rich text: [color={name}] is neither a ThemeColor nor #rrggbb"
+                match crate::style_file::parse_color(name).or_else(|| t.color(name)) {
+                    Some(c) => color = c,
+                    None => self.warnings.push(format!(
+                        "rich text: [color={name}] is neither a colour role (a ThemeColor or one the style declares) nor #rrggbb"
                     )),
                 }
             }

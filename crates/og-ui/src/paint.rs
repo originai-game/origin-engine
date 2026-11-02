@@ -45,8 +45,7 @@ impl ColorRef {
     pub fn resolve(&self, theme: &Theme) -> [f32; 4] {
         match self {
             ColorRef::Token { name, alpha } => theme
-                .palette
-                .get(name)
+                .color(name)
                 .map_or(MISSING_TOKEN, |c| c.fade(alpha.clamp(0.0, 1.0)).linear()),
             ColorRef::Literal(c) => c.linear(),
         }

@@ -41,17 +41,31 @@ use crate::paint::{
     AtlasPaint, Blend, Builtin, Cap, ColorRef, Effect, Fit, Gradient, GradientKind, Layer, Mask,
     Paint, Spread, Stop, Stroke, StrokeAlign,
 };
-use crate::style::Palette;
+use crate::style::{Palette, Roles};
 use crate::style_file::{P, parse_color};
 use crate::tokens::SoundEvent;
 use og_core::ogt::{Entry, Value};
 
 /// What a dressing's atlas regions are cut from: the atlas's size in
 /// texels (`None`: the style has no `atlas` line) and the style's scale.
+/// It also carries the colour roles the style declares of its own
+/// (`roles { … }`, docs/ui.md §12.2), which a paint names like a palette
+/// role.
 #[derive(Clone, Copy, Debug)]
 pub struct AtlasContext {
     pub size: Option<(f32, f32)>,
     pub scale: f32,
+    pub roles: Roles,
+}
+
+impl Default for AtlasContext {
+    fn default() -> AtlasContext {
+        AtlasContext {
+            size: None,
+            scale: 1.0,
+            roles: Roles::NONE,
+        }
+    }
 }
 
 const BUILTINS: [(&str, Builtin); 9] = [
@@ -84,11 +98,28 @@ fn names<T>(all: &[(&str, T)]) -> String {
 struct Cursor<'a> {
     p: P<'a>,
     at: usize,
+    /// The style's own colour roles, named like palette roles.
+    roles: Option<&'a Roles>,
 }
 
 impl<'a> Cursor<'a> {
     fn new(e: &'a Entry, at: usize) -> Cursor<'a> {
-        Cursor { p: P { e }, at }
+        Cursor {
+            p: P { e },
+            at,
+            roles: None,
+        }
+    }
+    /// The same, naming the style's own roles too.
+    fn of(e: &'a Entry, ctx: &'a AtlasContext) -> Cursor<'a> {
+        Cursor {
+            roles: Some(&ctx.roles),
+            ..Cursor::new(e, 0)
+        }
+    }
+    /// `w` names a colour role: the palette's or one the style declares.
+    fn is_role(&self, w: &str) -> bool {
+        Palette::NAMES.contains(&w) || self.roles.is_some_and(|r| r.get(w).is_some())
     }
     fn peek(&self) -> Option<&'a Value> {
         self.p.e.values.get(self.at)
@@ -143,10 +174,10 @@ impl<'a> Cursor<'a> {
             Some(Value::String(s)) => ColorRef::Literal(parse_color(s).ok_or_else(|| {
                 self.err(&format!("takes \"#rrggbb\" or \"#rrggbbaa\", not \"{s}\""))
             })?),
-            Some(Value::Word(w)) if Palette::NAMES.contains(&w.as_str()) => ColorRef::token(w),
+            Some(Value::Word(w)) if self.is_role(w) => ColorRef::token(w),
             Some(Value::Word(w)) => {
                 return Err(self.err(&format!(
-                    "names '{w}', which is not a palette colour (a token such as primary or lineStrong, or a quoted \"#rrggbb\")"
+                    "names '{w}', which is not a palette colour (a token such as primary or lineStrong, a role the style declares in `roles {{ }}`, or a quoted \"#rrggbb\")"
                 )));
             }
             _ => {
@@ -163,7 +194,7 @@ impl<'a> Cursor<'a> {
     fn is_color(&self) -> bool {
         match self.peek() {
             Some(Value::String(_)) => true,
-            Some(Value::Word(w)) => Palette::NAMES.contains(&w.as_str()),
+            Some(Value::Word(w)) => self.is_role(w),
             _ => false,
         }
     }
@@ -385,7 +416,7 @@ impl<'a> Cursor<'a> {
                 }))
             }
             w => Err(self.err(&format!(
-                "has '{w}', which is not a paint: a colour, linear, radial, conic, diamond, image or pattern"
+                "has '{w}', which is not a paint: a colour (a palette role, a role the style declares in `roles {{ }}`, or \"#rrggbb\"), linear, radial, conic, diamond, image or pattern"
             ))),
         }
     }
@@ -394,8 +425,11 @@ impl<'a> Cursor<'a> {
 /// `fill vector "<asset>" [tint <colour>]`: a `type vector` asset the
 /// style's assets bind ([`crate::StyleFile::vectors`]), contained in the
 /// part and tinted (white: its own colours); `None` for any other fill.
-pub fn vector_fill_from_entry(e: &Entry) -> Result<Option<(String, ColorRef)>, String> {
-    let mut c = Cursor::new(e, 0);
+pub fn vector_fill_from_entry(
+    e: &Entry,
+    atlas: &AtlasContext,
+) -> Result<Option<(String, ColorRef)>, String> {
+    let mut c = Cursor::of(e, atlas);
     if !c.eat("vector") {
         return Ok(None);
     }
@@ -413,7 +447,7 @@ pub fn vector_fill_from_entry(e: &Entry) -> Result<Option<(String, ColorRef)>, S
 impl Paint {
     /// `fill <paint>` (see the module documentation).
     pub fn from_entry(e: &Entry, atlas: &AtlasContext) -> Result<Paint, String> {
-        let mut c = Cursor::new(e, 0);
+        let mut c = Cursor::of(e, atlas);
         let p = c.paint(atlas)?;
         c.end()?;
         Ok(p)
@@ -423,7 +457,7 @@ impl Paint {
 impl Stroke {
     /// `stroke <width> <paint> [align] [dash <len> <gap> [offset <o>]] [cap]`.
     pub fn from_entry(e: &Entry, atlas: &AtlasContext) -> Result<Stroke, String> {
-        let mut c = Cursor::new(e, 0);
+        let mut c = Cursor::of(e, atlas);
         let width = c.num()?;
         if width <= 0.0 {
             return Err(c.err("takes a width above 0"));
@@ -467,8 +501,8 @@ impl Stroke {
 
 impl Effect {
     /// `effect <kind> …` (see the module documentation).
-    pub fn from_entry(e: &Entry) -> Result<Effect, String> {
-        let mut c = Cursor::new(e, 0);
+    pub fn from_entry(e: &Entry, atlas: &AtlasContext) -> Result<Effect, String> {
+        let mut c = Cursor::of(e, atlas);
         let fx = match c.word()? {
             k @ ("dropShadow" | "innerShadow") => {
                 let offset = [c.num()?, c.num()?];
@@ -556,12 +590,7 @@ impl Effect {
                         });
                     } else if c.eat("edge") {
                         glass.edge = c.num()?.max(0.0);
-                        let colour = match c.peek() {
-                            Some(Value::String(_)) => true,
-                            Some(Value::Word(w)) => Palette::NAMES.contains(&w.as_str()),
-                            _ => false,
-                        };
-                        if colour {
+                        if c.is_color() {
                             glass.edge_color = Some(c.color()?);
                         }
                     } else if c.eat("solid") {
@@ -594,7 +623,7 @@ impl Effect {
 impl Mask {
     /// `mask <gradient>` (its colours' alpha) or `mask image <x> <y> <w> <h>`.
     pub fn from_entry(e: &Entry, atlas: &AtlasContext) -> Result<Mask, String> {
-        let mut c = Cursor::new(e, 0);
+        let mut c = Cursor::of(e, atlas);
         let kind = c.word()?;
         let m = if kind == "image" {
             Mask::Atlas {
@@ -617,8 +646,8 @@ impl Mask {
 
 impl DressMaterial {
     /// `material <builtin>|"<asset>" [<param>…]`.
-    pub fn from_entry(e: &Entry) -> Result<DressMaterial, String> {
-        let mut c = Cursor::new(e, 0);
+    pub fn from_entry(e: &Entry, atlas: &AtlasContext) -> Result<DressMaterial, String> {
+        let mut c = Cursor::of(e, atlas);
         let (layer, asset) = match c.peek() {
             Some(Value::String(path)) => {
                 c.at += 1;

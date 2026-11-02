@@ -18489,7 +18489,13 @@ export interface Paint {
    */
   readonly token?: ThemeColor | null;
   /**
-   * An sRGB colour as authored, when no token is given.
+   * A colour role the style declares of its own (its `roles` block, docs/ui.md §12.2: a game's corruption or faction colour) by name, when no token is given; a name the style lacks draws magenta.
+   *
+   * @default null
+   */
+  readonly role?: string | null;
+  /**
+   * An sRGB colour as authored, when no token or role is given.
    *
    * @default null
    */
@@ -19452,7 +19458,9 @@ export interface ControlSizes {
 export interface UiTheme {
   /** The palette in use. */
   readonly scheme: Scheme;
-  /** Each ThemeColor as `#rrggbb` or `#rrggbbaa` (sRGB as authored). */
+  /**
+   * Each ThemeColor, then each colour role the style declares of its own (docs/ui.md §12.2), as `#rrggbb` or `#rrggbbaa` (sRGB as authored).
+   */
   readonly palette: Readonly<Record<string, string>>;
   /** The spacing scale by name (xxs, xs, sm, md, lg, xl, xxl, xl3), in CSS pixels. */
   readonly space: Readonly<Record<string, number>>;
