@@ -584,7 +584,10 @@ replace anything above the accessibility floor of §15.2.
 
 - **Colour**: the 33 roles of today, plus rarity tiers (common, uncommon,
   rare, epic, legendary, mythic), team and player colours (8), damage and
-  element types, and chart series. Each status and rarity colour is paired
+  element types, and chart series. A style may also declare roles of its
+  own (a game's corruption, sanity or faction colours) beside the named
+  ones; components and game code read them by name like any role, and
+  contrast and completeness checks cover them (the owner, 2026-11-02). Each status and rarity colour is paired
   with an icon or pattern, so no meaning is carried by colour alone (XAG
   103).
 - **Type**: a scale of display, title, heading, body, label, caption and
@@ -709,7 +712,11 @@ The accessibility tree, its ARIA mirror and reduced motion and transparency
 stay, and the bar rises to the Xbox Accessibility Guidelines:
 
 - text scale to 200 % without loss of content; minimum text 18 px at 1080p
-  on desktop and phone-equivalent sizes on touch;
+  on desktop and phone-equivalent sizes on touch, for menus, body text and
+  controls. A dense HUD (strategy, MMO, simulation readouts) may declare
+  its text dense and go smaller, down to 12 px at 1080p, provided it grows
+  with the player's text scale and passes the contrast rule (the owner,
+  2026-11-02);
 - a high-contrast mode at 7:1;
 - no meaning by colour alone;
 - every hold has a toggle; every timed choice has a setting;
