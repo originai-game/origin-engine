@@ -111,9 +111,10 @@ fn set(engine: u32, entity: f64, x: u32, y: u32, tile: i32) {
 }
 
 /// A world that only loads a map (and edits it) hashes as it did before
-/// run-time maps: pinned on the code before G2-6 batch 2 (main ad70e4af,
-/// after G2-7 batch 2's og.Lockstep fields moved every raw world hash from
-/// 3b30884ea43b16c7).
+/// run-time maps: pinned on the code before G2-6 batch 2, then re-pinned
+/// for G2-7 batch 2's og.Lockstep fields (3b30884ea43b16c7 to
+/// 69496dd3ffb3e378) and batch 3's stallTimeout and rejoin (to
+/// 7d3e58d6b53fbd34), each of which moves every raw world hash.
 #[test]
 fn a_world_of_loaded_maps_keeps_its_hash() {
     set_hooks(Rc::new(Game));
@@ -124,7 +125,7 @@ fn a_world_of_loaded_maps_keeps_its_hash() {
     frame(engine);
     set(engine, entity, 2, 1, 0);
     frame(engine);
-    assert_eq!(hash(engine), "69496dd3ffb3e378");
+    assert_eq!(hash(engine), "7d3e58d6b53fbd34");
 }
 
 #[test]
