@@ -46,6 +46,7 @@ fn goals_chain_through_generations_from_the_last_four_frames() {
         .map(|i| Goal {
             targets: poses(&case, "target", i, num_targets[i] as usize),
             token_counts: counts[i].clone(),
+            tag: i as u32,
         })
         .collect();
 
@@ -77,6 +78,7 @@ fn goals_chain_through_generations_from_the_last_four_frames() {
         let mut frames = Vec::new();
         for f in valid.start + 1..valid.end {
             let frame = motion.pop(i).unwrap();
+            assert_eq!(frame.tag, i as u32, "a frame carries its goal's tag");
             let at = (i * FRAMES + f) * MOTION_FEATURES;
             let want = decode_frame(&expected.motion[at..at + MOTION_FEATURES], &alignments[i]);
             assert_eq!(frame.pose, want, "character {i} frame {f}");

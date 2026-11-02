@@ -208,6 +208,11 @@ pub struct RenderDesc {
     /// (og.render.setDisplay's `powerPreference`), which only a new
     /// renderer takes (an adapter is chosen once).
     pub low_power: bool,
+    /// Ask for timestamp queries where the adapter has them, in a `publish`
+    /// build too: og.motion measures its compute slices with them (the
+    /// engine sets it for a game whose bundle declares og.motion). Outside
+    /// `publish` they are asked for anyway, for the GPU pass timing.
+    pub timestamps: bool,
 }
 
 /// The most planar reflections one frame draws
@@ -263,6 +268,7 @@ impl Default for RenderDesc {
             volumetric: None,
             planar_reflections: 1,
             low_power: false,
+            timestamps: false,
         }
     }
 }

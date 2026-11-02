@@ -25,7 +25,7 @@
 //   cooked/                    the project's cooked bundle: the first group (everything no streaming
 //                              group holds, the proxies included) and each streaming group's pack,
 //                              cooked/stream/<name>.ogb; a grouped output's own file is left out;
-//                              og.motion's model, cooked/motion/model.ogb, fetched on first use
+//                              og.motion's model, cooked/motion/model.ogb, fetched after boot
 //   icons/                     the project's icon, or the brand tile at 192 and 512 px
 //   og-build.json              the build manifest (the Player's contract; shape in docs/web-export.md)
 //   _headers                   COOP/COEP/CORP and caching for static hosts (Netlify/Cloudflare Pages format)
@@ -688,7 +688,7 @@ export function aliasesOf(paths: readonly string[]): Set<string> {
   const plain = new Set(paths.filter((p) => plainOf(p) !== p).map(plainOf));
   return new Set(paths.filter((p) => plain.has(p) && (ALIASED_FILES as readonly string[]).includes(p)));
 }
-/** og.motion's model (og cook writes it for a project that uses og.motion): fetched the first time an agent is drawn, never at boot, cached then. */
+/** og.motion's model (og cook writes it for a project that uses og.motion): fetched in the background once the bundle is open (the manifest's motion entry), never in the boot bundle, cached then. */
 const MOTION_MODEL = "cooked/motion/model.ogb";
 /** A chunk of a sound cooked in chunks: fetched as its playhead nears it, cached then. */
 const SOUND_CHUNK = /^cooked\/.*\.chunk\d+\.ogb$/;

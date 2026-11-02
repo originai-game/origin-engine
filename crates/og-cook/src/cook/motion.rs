@@ -1,8 +1,9 @@
 //! og.motion's model as an optional pack: `cooked/motion/model.ogb`, the
 //! engine's motion weights (`motion/model.safetensors` inside a stream
-//! pack), written only for a project whose code uses og.motion. It is not
-//! in the manifest, so the boot bundle never fetches it: the runtime reads
-//! it the first time an agent is drawn (og-runtime's `motion::present`).
+//! pack), written only for a project whose code uses og.motion. The
+//! manifest names it in its `motion` entry, outside the outputs, so the
+//! boot bundle never fetches it: the runtime reads it in the background
+//! once the bundle is open (og-runtime's `motion::present`).
 //!
 //! The weights ship inside `@origingame/engine` (`motion/model.safetensors`,
 //! put there by `scripts/pack.sh`; docs/design.md §2.7). They are looked
@@ -15,6 +16,7 @@ use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 use super::CookError;
+use og_bundle::runtime::ManifestFile;
 use og_core::hash::hash_bytes;
 
 /// The pack, under `cooked/`.
@@ -81,20 +83,24 @@ fn model_path() -> Result<PathBuf, String> {
     })
 }
 
-/// Writes (or removes) the pack: kept in `keep` when written; a warning
-/// when the project uses og.motion and no weights are found.
+/// Writes (or removes) the pack: kept in `keep` and answered as the
+/// manifest's `motion` entry when written; a warning when the project uses
+/// og.motion and no weights are found (the pack is then removed).
 pub(super) fn cook(
     root: &Path,
     cooked_dir: &Path,
     keep: &mut BTreeSet<String>,
     warnings: &mut Vec<String>,
-) -> Result<(), CookError> {
+) -> Result<Option<ManifestFile>, CookError> {
     let path = cooked_dir.join(FILE);
-    if !uses_motion(root) {
+    let remove = || -> Result<Option<ManifestFile>, CookError> {
         if path.exists() {
             std::fs::remove_file(&path).map_err(|e| CookError(format!("cooked/{FILE}: {e}")))?;
         }
-        return Ok(());
+        Ok(None)
+    };
+    if !uses_motion(root) {
+        return remove();
     }
     let model = match model_path() {
         Ok(p) => p,
@@ -102,7 +108,7 @@ pub(super) fn cook(
             warnings.push(format!(
                 "src/ uses og.motion, but {why}: its agents draw og.anim's pose (og.motion.capabilities answers none)"
             ));
-            return Ok(());
+            return remove();
         }
     };
     let bytes =
@@ -116,5 +122,9 @@ pub(super) fn cook(
         std::fs::write(&path, &pack).map_err(|e| CookError(format!("{}: {e}", path.display())))?;
     }
     keep.insert(FILE.to_string());
-    Ok(())
+    Ok(Some(ManifestFile {
+        file: FILE.to_string(),
+        bytes: pack.len() as u64,
+        hash: hash_bytes(&pack),
+    }))
 }

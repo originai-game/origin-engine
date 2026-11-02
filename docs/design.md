@@ -1022,8 +1022,10 @@ later.
   the engine targets devices with a GPU and does not natively support
   devices without one (the owner, 2026-11-02). Its weights (35 MB in
   f16) ship inside `@origingame/engine`; a game that uses `og.motion`
-  cooks them as an optional pack, fetched on first use and never in the
-  boot bundle (the owner, 2026-11-02).
+  cooks them as an optional pack, named in the manifest outside its
+  outputs and never in the boot bundle (the owner, 2026-11-02), read and
+  uploaded in the background as soon as the bundle loads (the
+  coordinator, 2026-11-02).
 - **Physics**: rapier3d (and rapier2d for 2D projects), fixed-tick stepping
   inside the engine tick, a kinematic character controller, vehicle later.
   A kinematic body with an `og.Velocity` moves by it each tick and its

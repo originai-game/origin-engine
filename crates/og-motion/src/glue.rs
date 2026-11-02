@@ -253,7 +253,31 @@ pub fn finish(
 ) -> Vec<f32> {
     let n = inputs.n;
     let mut motion = vec![0.0; n * FRAMES * MOTION_FEATURES];
+    let per = FRAMES * MOTION_FEATURES;
     for i in 0..n {
+        finish_character(
+            statics,
+            inputs,
+            student,
+            local,
+            i,
+            &mut motion[i * per..(i + 1) * per],
+        );
+    }
+    motion
+}
+
+/// [`finish`] for character `i` alone, into `motion` (its `[64,366]`):
+/// what a frame loop runs a few characters a frame.
+pub fn finish_character(
+    statics: &Statics,
+    inputs: &Inputs,
+    student: &StudentOutput,
+    local: &[f32],
+    i: usize,
+    motion: &mut [f32],
+) {
+    {
         let count = student.counts[i] as usize;
         let g0 = &inputs.global_root_values[i * SLOTS * 5..i * SLOTS * 5 + 5];
         let (ox, oz) = (g0[0], g0[2]);
@@ -291,8 +315,7 @@ pub fn finish(
         }
 
         for f in 0..FRAMES {
-            let out = &mut motion
-                [(i * FRAMES + f) * MOTION_FEATURES..(i * FRAMES + f + 1) * MOTION_FEATURES];
+            let out = &mut motion[f * MOTION_FEATURES..(f + 1) * MOTION_FEATURES];
             let r = global_root[f];
             // Back to the caller's frame: the first frame's heading and ground position.
             let (sa, ca) = sin_cos(atan2(r[4], r[3]) + reference_heading);
@@ -309,5 +332,4 @@ pub fn finish(
             );
         }
     }
-    motion
 }

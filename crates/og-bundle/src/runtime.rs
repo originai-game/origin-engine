@@ -177,6 +177,20 @@ pub struct Manifest {
     pub assets: Vec<ManifestAsset>,
     /// The streaming groups, by name.
     pub streams: Vec<ManifestStream>,
+    /// og.motion's model (`motion/model.ogb`), for a project whose code
+    /// uses og.motion: not an output, so the boot bundle never loads it;
+    /// the runtime reads it in the background once the bundle is open.
+    pub motion: Option<ManifestFile>,
+}
+
+/// A file of the bundle outside its outputs and groups.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ManifestFile {
+    /// Under `cooked/`.
+    pub file: String,
+    pub bytes: u64,
+    /// FNV-1a of its bytes.
+    pub hash: u64,
 }
 
 fn hex(v: u64) -> String {
@@ -353,6 +367,17 @@ impl Manifest {
                     .collect::<Result<_, LoadError>>()?,
             });
         }
+        if let Some(e) = doc.body.get("motion") {
+            let b = e
+                .block
+                .as_ref()
+                .ok_or_else(|| bad(format!("line {}: motion without a block", e.line)))?;
+            m.motion = Some(ManifestFile {
+                file: e.string(0).map_err(|e| bad(e.to_string()))?.to_string(),
+                bytes: num(b, "bytes", e.line)?,
+                hash: hexf(b, "hash", e.line)?,
+            });
+        }
         Ok(m)
     }
 
@@ -429,6 +454,13 @@ impl Manifest {
             }
             doc.body
                 .push(Entry::new("stream").with(s(&g.name)).with_block(b));
+        }
+        if let Some(m) = &self.motion {
+            let b = Block::new()
+                .with(Entry::new("bytes").with(n(m.bytes)))
+                .with(Entry::new("hash").with(s(&hex(m.hash))));
+            doc.body
+                .push(Entry::new("motion").with(s(&m.file)).with_block(b));
         }
         doc.to_text()
             .expect("manifest keys and words are identifiers")
@@ -1517,4 +1549,30 @@ pub fn unpack(bytes: &[u8]) -> Result<Vec<(String, Vec<u8>)>, LoadError> {
         out.push((name.to_string(), bytes.to_vec()));
     }
     Ok(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Manifest, ManifestFile};
+
+    /// og.motion's model is named in the manifest's text and read back; a
+    /// manifest without it (a game that does not use og.motion, or one
+    /// cooked before the entry existed) has none.
+    #[test]
+    fn the_motion_entry_round_trips() {
+        let mut m = Manifest {
+            cooker: "test".into(),
+            ..Manifest::default()
+        };
+        assert_eq!(Manifest::parse(&m.to_text()).unwrap().motion, None);
+        m.motion = Some(ManifestFile {
+            file: "motion/model.ogb".into(),
+            bytes: 35_354_000,
+            hash: 0x0123_4567_89ab_cdef,
+        });
+        let text = m.to_text();
+        assert!(text.contains("motion \"motion/model.ogb\""), "{text}");
+        assert_eq!(Manifest::parse(&text).unwrap(), m);
+        assert_eq!(Manifest::parse(&text).unwrap().outputs().count(), 0);
+    }
 }

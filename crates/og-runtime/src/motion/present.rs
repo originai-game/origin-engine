@@ -3,24 +3,27 @@
 //!
 //! Before each frame is drawn ([`present`], from `engine::tick`'s render):
 //!
-//! 1. **The weights.** The first frame an og.MotionAgent exists (or
-//!    og.motion.capabilities asks), `cooked/motion/model.ogb` is read
-//!    through the host (natively at once; on the web a fetch that lands at
-//!    a later frame), unpacked, and the two networks are put on the
-//!    renderer's device ([`RenderBackend::compute`]). Until then, or when
-//!    that fails, the backend is none and og.anim's pose is drawn.
+//! 1. **The weights.** As soon as the open bundle declares the model (its
+//!    manifest's `motion` entry, a game that uses og.motion) and a
+//!    renderer is attached, `cooked/motion/model.ogb` is read, unpacked
+//!    and its two networks put on the renderer's device
+//!    ([`RenderBackend::compute`]): natively on a thread of its own, on
+//!    the web from a fetch that lands at a later frame. Until then, or
+//!    when that fails, the backend is none and og.anim's pose is drawn.
 //! 2. **Goals for the model.** An agent whose generated frames run short
-//!    of its `lookahead` gets the next model goal: where the simulation's
-//!    goals will have it about [`HORIZON`] seconds on (the mover run ahead
-//!    with [`super::advance`]; without drive, its Transform's velocity),
-//!    in the pose it will be in there (walking, running, or the goal's).
+//!    of its `lookahead` (or of two batches' measured latency) gets the
+//!    next model goal: where the simulation's goals will have it at the
+//!    first change of its pose, at most [`HORIZON`] seconds on (the mover
+//!    run ahead with [`super::advance`]; without drive, its Transform's
+//!    velocity), in the pose it will be in there.
 //! 3. **One batch for every agent** runs at a time, never blocking the
 //!    frame: it is submitted in slices of about [`FRAME_BUDGET_MS`] of GPU
-//!    time, one a frame, so no frame misses its vsync for it, and its
-//!    readback is polled each frame and lands a frame or two after the
-//!    last slice finishes. A native host blocks only when an agent has
-//!    nothing left to show (`og run` stepping faster than real time draws
-//!    every frame that way, so its frames do not depend on timing).
+//!    time, one a frame, its readback polled each frame, and its
+//!    characters decoded into frames a few a frame ([`DECODE_BUDGET_MS`]).
+//!    Until an agent's first frames land, og.anim's pose is drawn; after
+//!    that a native host blocks when the agent has nothing left to show
+//!    (`og run` stepping faster than real time draws every frame that way,
+//!    so its frames after the first batch do not depend on timing).
 //! 4. **The pose.** Each agent plays its frames at 30 Hz on the frame's
 //!    clock, blending the two around it: re-rooted onto og.Transform (the
 //!    hips over the entity, facing its heading), retargeted to its rig
@@ -41,15 +44,19 @@ use crate::extract::rows;
 use glam::{Mat4, Vec3};
 use og_anim::{HumanoidMap, NONE, Pose as AnimPose, RetargetOptions, SkeletonAsset, Trs};
 use og_core::IdMap;
+use og_motion::Bundle;
+use og_motion::contract::{
+    BOUNDARY_FRAMES, FRAMES, MAX_TOKENS, MIN_TOKENS, MOTION_FEATURES, POSES_PER_TOKEN,
+};
 use og_motion::contract::{LEFT_LEG, Pose, RIGHT_LEG, heading};
+use og_motion::glue::{Statics, StudentOutput, decoder_inputs, finish_character, student_inputs};
 use og_motion::gpu::{Gpu, GpuError};
 use og_motion::intent::{Batch, Frame, Goal, Motion};
 use og_motion::library::{Library, POSES};
 use og_motion::soma::{Leg, Planter, Skeleton};
-use og_motion::{Bundle, Generation};
 use og_render::wgpu;
 use serde_json::{Value, json};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -67,10 +74,27 @@ const SEGMENT: f32 = 0.3;
 /// about this much, one a frame (`Gpu::set_frame_budget`), so a frame of
 /// 16.7 ms keeps room for the scene.
 const FRAME_BUDGET_MS: f64 = 3.0;
+/// The CPU time a landed batch's decoding may take in one frame, ms: its
+/// characters are decoded in turn until this is spent (one at least), the
+/// rest in the next frames (16 agents took 16.5 ms in one frame).
+const DECODE_BUDGET_MS: f64 = 3.0;
 /// The model's frame rate.
 const RATE: f32 = 30.0;
+/// The most an agent's body leans from upright (hips to head) in the frames
+/// of a jump goal, rad (30°).
+const JUMP_LEAN: f32 = 0.524;
+/// Tokens either side of a model goal's own duration it may take
+/// ([`token_counts`]).
+const TOKEN_SLACK: usize = 2;
+/// The library's jump pose.
+const JUMP: usize = 3;
+/// How far behind the frame clock a drawn frame may fall before frames are
+/// skipped to catch up, s.
+const MAX_LAG: f64 = 0.25;
+/// SOMA's head joint.
+const HEAD: usize = 6;
 
-type Running = Pin<Box<dyn Future<Output = (Gpu, Result<Generation, GpuError>)>>>;
+type Running = Pin<Box<dyn Future<Output = (Gpu, Result<(StudentOutput, Vec<f32>), GpuError>)>>>;
 
 /// A batch on the GPU.
 struct Flight {
@@ -79,11 +103,31 @@ struct Flight {
     started: f64,
 }
 
+/// A batch read back, its characters decoded a few a frame
+/// ([`DECODE_BUDGET_MS`]) into their agents' frames.
+struct Landing {
+    batch: Batch,
+    student: StudentOutput,
+    local: Vec<f32>,
+    /// The next character to decode.
+    next: usize,
+    /// One character's motion, reused.
+    motion: Vec<f32>,
+    started: f64,
+    /// Waited for (a starved agent on a native host): its latency is not
+    /// the sliced one.
+    forced: bool,
+}
+
 struct Ready {
     /// None while a batch has it.
     gpu: Option<Gpu>,
+    /// Polled to wait for a batch (native only).
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     device: wgpu::Device,
     flight: Option<Flight>,
+    landing: Option<Landing>,
+    statics: Arc<Statics>,
     motion: Motion,
     library: Library,
     soma: SkeletonAsset,
@@ -91,6 +135,9 @@ struct Ready {
     soma_map: HumanoidMap,
     /// The device's rate as the last batch measured it, GFLOP/s.
     rate: f64,
+    /// A sliced batch's latency, start to decoded, as the last one not
+    /// waited for measured (ms; 500 before one has).
+    latency: f64,
 }
 
 #[derive(Default)]
@@ -129,6 +176,25 @@ struct Shown {
     /// `plantedSlide`, the foot plant's own measure).
     planted: [Option<Vec3>; 2],
     slide: (f32, u32, f32),
+    /// The model goals asked for, oldest first, until their frames are
+    /// shown: what each frame's tag names.
+    issued: VecDeque<Issued>,
+    next_id: u32,
+}
+
+/// A model goal asked for: its id (the frames' tag), its library pose and
+/// the frame clock its first frame is for (now plus the frames queued
+/// before it).
+struct Issued {
+    id: u32,
+    pose: usize,
+    start: f64,
+}
+
+impl Shown {
+    fn issued(&self, f: &Frame) -> Option<&Issued> {
+        self.issued.iter().find(|g| g.id == f.tag)
+    }
 }
 
 /// og.motion's presentation state (in `RenderState`, never the world).
@@ -141,6 +207,8 @@ pub(crate) struct Presenter {
     pub palettes: IdMap<u64, Vec<Mat4>>,
     /// og.motion.capabilities asked: load even without an agent.
     wanted: bool,
+    #[cfg(not(target_arch = "wasm32"))]
+    loading: Option<Loading>,
     /// The frame clock of the last frame presented.
     clock: Option<f64>,
     model_bytes: u64,
@@ -162,67 +230,155 @@ fn now_ms() -> f64 {
     hooks().map_or(0.0, |h| h.now_ms())
 }
 
-/// The cooked bundle's directory.
-fn cooked_dir(eng: &Engine) -> Option<String> {
+/// The model file the open bundle declares (its manifest's `motion` entry,
+/// which og cook writes for a project whose code uses og.motion): `None`
+/// while no bundle is open, else the path or why there is none.
+fn declared(eng: &Engine) -> Option<Result<String, String>> {
     let a = eng.assets.borrow();
     let i = a.default_bundle?;
-    match &a.entries[i].payload {
-        crate::assets::Payload::Bundle { dir, .. } => Some(dir.clone()),
-        _ => None,
-    }
+    let crate::assets::Payload::Bundle { bundle, dir } = &a.entries[i].payload else {
+        return None;
+    };
+    Some(match &bundle.manifest().motion {
+        Some(m) => Ok(format!("{dir}/{}", m.file)),
+        None => Err(format!(
+            "{dir} declares no og.motion model: og cook writes {MODEL_FILE} for a project whose src/ uses og.motion and finds the engine's weights"
+        )),
+    })
 }
 
-/// Reads and puts the model on the renderer's device; answers the state.
-fn load(eng: &Engine, backend: Option<&dyn RenderBackend>, bytes_out: &mut u64) -> Model {
+/// Whether the open bundle declares og.motion's model (the game uses it).
+pub(crate) fn declares(eng: &Engine) -> bool {
+    matches!(declared(eng), Some(Ok(_)))
+}
+
+/// What [`build`] makes off the engine thread: everything of [`Ready`] but
+/// the batch state.
+struct Parts {
+    gpu: Gpu,
+    statics: Statics,
+    device: wgpu::Device,
+    library: Library,
+    soma: SkeletonAsset,
+    soma_skeleton: Skeleton,
+    soma_map: HumanoidMap,
+}
+
+/// The model from its pack's bytes, on `device`.
+fn build(bytes: &[u8], device: wgpu::Device, queue: wgpu::Queue) -> Result<Parts, String> {
+    let files = og_bundle::runtime::unpack(bytes).map_err(|e| e.to_string())?;
+    let (_, weights) = files
+        .iter()
+        .find(|(n, _)| n == MODEL_ENTRY)
+        .ok_or_else(|| format!("it holds no {MODEL_ENTRY}"))?;
+    let bundle = Bundle::from_safetensors(weights).map_err(|e| e.to_string())?;
+    let library = Library::from_bundle(&bundle).map_err(|e| e.to_string())?;
+    let soma_skeleton = Skeleton::from_bundle(&bundle).map_err(|e| e.to_string())?;
+    let soma = soma_skeleton.asset();
+    let soma_map = HumanoidMap::detect(&soma);
+    let statics = Statics::new(&bundle).map_err(|e| e.to_string())?;
+    let mut gpu = Gpu::new(device.clone(), queue, &bundle).map_err(|e| e.to_string())?;
+    gpu.set_blocking(false);
+    gpu.set_frame_budget(Some(FRAME_BUDGET_MS));
+    Ok(Parts {
+        gpu,
+        statics,
+        device,
+        library,
+        soma,
+        soma_skeleton,
+        soma_map,
+    })
+}
+
+fn ready(parts: Parts) -> Model {
+    Model::Ready(Box::new(Ready {
+        rate: parts.gpu.rate(),
+        gpu: Some(parts.gpu),
+        device: parts.device,
+        flight: None,
+        landing: None,
+        latency: 500.0,
+        statics: Arc::new(parts.statics),
+        motion: Motion::default(),
+        library: parts.library,
+        soma: parts.soma,
+        soma_skeleton: parts.soma_skeleton,
+        soma_map: parts.soma_map,
+    }))
+}
+
+/// A load on a native host's background thread: the pack's size, then the
+/// model or why it failed.
+#[cfg(not(target_arch = "wasm32"))]
+type Loading = std::sync::mpsc::Receiver<(u64, Result<Parts, String>)>;
+
+/// Starts or continues reading the model and putting it on the renderer's
+/// device; answers the state. Natively the file is read, unpacked and
+/// uploaded on a thread of its own (wgpu's device takes buffers and
+/// pipelines from any thread), so no frame waits for it; on the web the
+/// host's fetch lands at a later frame, which then unpacks and uploads it.
+fn load(p: &mut Presenter, eng: &Engine, backend: Option<&dyn RenderBackend>) -> Model {
+    #[cfg(not(target_arch = "wasm32"))]
+    if let Some(rx) = &p.loading {
+        return match rx.try_recv() {
+            Ok((bytes, r)) => {
+                p.loading = None;
+                p.model_bytes = p.model_bytes.max(bytes);
+                r.map_or_else(Model::Failed, ready)
+            }
+            Err(std::sync::mpsc::TryRecvError::Empty) => {
+                Model::Waiting("loading: the weights are being read and uploaded".into())
+            }
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                p.loading = None;
+                Model::Failed("the model's loading thread ended without an answer".into())
+            }
+        };
+    }
     let Some((device, queue)) = backend.and_then(|b| b.compute()) else {
         return Model::Waiting(
             "no renderer is attached: the motion model runs on the renderer's GPU".into(),
         );
     };
-    let Some(dir) = cooked_dir(eng) else {
-        return Model::Waiting("the cooked bundle is not open yet".into());
+    let path = match declared(eng) {
+        None => return Model::Waiting("the cooked bundle is not open yet".into()),
+        Some(Err(why)) => return Model::Failed(why),
+        Some(Ok(path)) => path,
     };
-    let path = format!("{dir}/{MODEL_FILE}");
-    let bytes = match hooks().map(|h| h.read_asset(&path)) {
-        Some(crate::assets::Fetch::Ready(b)) => b,
-        Some(crate::assets::Fetch::Pending) => return Model::Waiting(format!("loading {path}")),
-        Some(crate::assets::Fetch::Failed(e)) => {
-            return Model::Failed(format!(
-                "{path}: {e} (og cook writes it for a project that uses og.motion)"
-            ));
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let (tx, rx) = std::sync::mpsc::channel();
+        let spawned = std::thread::Builder::new()
+            .name("og-motion load".into())
+            .spawn(move || {
+                let answer = match std::fs::read(&path) {
+                    Ok(bytes) => (
+                        bytes.len() as u64,
+                        build(&bytes, device, queue).map_err(|e| format!("{path}: {e}")),
+                    ),
+                    Err(e) => (0, Err(format!("{path}: {e}"))),
+                };
+                let _ = tx.send(answer);
+            });
+        if let Err(e) = spawned {
+            return Model::Failed(format!("the model's loading thread: {e}"));
         }
-        None => return Model::Failed("no host is installed to read assets".into()),
-    };
-    *bytes_out = bytes.len() as u64;
-    let r = (|| {
-        let files = og_bundle::runtime::unpack(&bytes).map_err(|e| e.to_string())?;
-        let (_, weights) = files
-            .iter()
-            .find(|(n, _)| n == MODEL_ENTRY)
-            .ok_or_else(|| format!("{path} holds no {MODEL_ENTRY}"))?;
-        let bundle = Bundle::from_safetensors(weights).map_err(|e| e.to_string())?;
-        let library = Library::from_bundle(&bundle).map_err(|e| e.to_string())?;
-        let soma_skeleton = Skeleton::from_bundle(&bundle).map_err(|e| e.to_string())?;
-        let soma = soma_skeleton.asset();
-        let soma_map = HumanoidMap::detect(&soma);
-        let mut gpu = Gpu::new(device.clone(), queue, &bundle).map_err(|e| e.to_string())?;
-        gpu.set_blocking(false);
-        gpu.set_frame_budget(Some(FRAME_BUDGET_MS));
-        Ok::<_, String>(Ready {
-            rate: gpu.rate(),
-            gpu: Some(gpu),
-            device,
-            flight: None,
-            motion: Motion::default(),
-            library,
-            soma,
-            soma_skeleton,
-            soma_map,
-        })
-    })();
-    match r {
-        Ok(ready) => Model::Ready(Box::new(ready)),
-        Err(e) => Model::Failed(format!("{path}: {e}")),
+        p.loading = Some(rx);
+        Model::Waiting("loading: the weights are being read and uploaded".into())
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        let bytes = match hooks().map(|h| h.read_asset(&path)) {
+            Some(crate::assets::Fetch::Ready(b)) => b,
+            Some(crate::assets::Fetch::Pending) => {
+                return Model::Waiting(format!("loading {path}"));
+            }
+            Some(crate::assets::Fetch::Failed(e)) => return Model::Failed(format!("{path}: {e}")),
+            None => return Model::Failed("no host is installed to read assets".into()),
+        };
+        p.model_bytes = p.model_bytes.max(bytes.len() as u64);
+        build(&bytes, device, queue).map_or_else(|e| Model::Failed(format!("{path}: {e}")), ready)
     }
 }
 
@@ -292,19 +448,24 @@ fn pose_of(agent: &super::Agent, speed: f32) -> usize {
     }
 }
 
-/// Where the simulation will have an agent [`HORIZON`] seconds on, its
-/// heading there and the library pose it will be in. A driven agent's goal
-/// ends sooner, where its pose first changes at least [`SEGMENT`] seconds
-/// on: the model then reaches each pose of the course in turn (a run, then
-/// the jump at its landing) instead of skipping a short goal for the one
-/// after it (a run straight into the crouch that follows the jump).
-fn predict(goals: &Goals, a: &Seen, shown: &Shown) -> (Vec3, f32, usize) {
+/// The next model goal of an agent whose generated frames run `queued`
+/// seconds past now: where and facing which way the simulation will have
+/// it, the library pose it will be in, and how many seconds after those
+/// frames that is. A driven agent's mover is run past the queued frames,
+/// then on to where its pose first changes at least [`SEGMENT`] seconds
+/// later, at most [`HORIZON`]: the model reaches each pose of the course in
+/// turn (a run, then the jump at its landing) when the simulation does,
+/// instead of skipping a short goal for the one after it.
+fn predict(goals: &Goals, a: &Seen, shown: &Shown, queued: f32) -> (Vec3, f32, usize, f32) {
     let h0 = heading_of(a.rotation);
     match goals.agents.get(&a.entity) {
         Some(agent) if a.settings.drive => {
             let mut agent = agent.clone();
             let (mut p, mut h) = (a.position, h0);
             let step = 1.0 / RATE;
+            for _ in 0..(queued * RATE) as usize {
+                advance(&mut agent, &a.settings, &mut p, &mut h, step);
+            }
             let mut last = None;
             for k in 0..(HORIZON * RATE) as usize {
                 let (p0, h0) = (p, h);
@@ -314,39 +475,46 @@ fn predict(goals: &Goals, a: &Seen, shown: &Shown) -> (Vec3, f32, usize) {
                     && pose != prev
                     && k as f32 * step >= SEGMENT
                 {
-                    return (p0, h0, prev);
+                    return (p0, h0, prev, k as f32 * step);
                 }
                 last = Some(pose);
             }
-            (p, h, last.unwrap_or(agent.hold as usize))
+            (p, h, last.unwrap_or(agent.hold as usize), HORIZON)
         }
         agent => {
             let v = Vec3::new(shown.velocity.x, 0.0, shown.velocity.z);
             let speed = v.length();
             if speed > 0.3 {
                 (
-                    a.position + v * HORIZON,
+                    a.position + v * (queued + HORIZON),
                     og_core::math::atan2(v.x, v.z),
                     gait(speed),
+                    HORIZON,
                 )
             } else {
                 let pose = agent.map_or(0, |g| match g.current {
                     Some(c) if c.goal.kind == Kind::Pose => c.goal.pose as usize,
                     _ => g.hold as usize,
                 });
-                (a.position, h0, pose)
+                (a.position, h0, pose, HORIZON)
             }
         }
     }
 }
 
+/// The token counts a model goal `seconds` long may take: about as many
+/// as make its motion frames last that long (the model reaches the goal's
+/// pose at its last frame, so the drawn motion keeps the simulation's
+/// time), with a little room either side for the model's own timing.
+fn token_counts(seconds: f32) -> Vec<usize> {
+    let frames = seconds * RATE + (2 * BOUNDARY_FRAMES + 1) as f32;
+    let n = (frames / POSES_PER_TOKEN as f32).round() as usize;
+    let lo = n.saturating_sub(TOKEN_SLACK).clamp(MIN_TOKENS, MAX_TOKENS);
+    (lo..=(n + TOKEN_SLACK).clamp(MIN_TOKENS, MAX_TOKENS)).collect()
+}
+
 /// Polls the batch in flight once; `block` waits for it (native only).
-fn poll_flight(
-    r: &mut Ready,
-    block: bool,
-    stats: &mut (u64, (usize, f64)),
-    errors: &mut Vec<String>,
-) -> bool {
+fn poll_flight(r: &mut Ready, block: bool, errors: &mut Vec<String>) -> bool {
     let Some(flight) = r.flight.as_mut() else {
         return false;
     };
@@ -367,10 +535,16 @@ fn poll_flight(
     r.rate = gpu.rate();
     r.gpu = Some(gpu);
     match result {
-        Ok(g) => {
-            r.motion.accept(&flight.batch, &g);
-            stats.0 += 1;
-            stats.1 = (flight.batch.characters.len(), now_ms() - flight.started);
+        Ok((student, local)) => {
+            r.landing = Some(Landing {
+                batch: flight.batch,
+                student,
+                local,
+                next: 0,
+                motion: vec![0.0; FRAMES * MOTION_FEATURES],
+                started: flight.started,
+                forced: block,
+            });
         }
         Err(e) => {
             if errors.len() < 8 {
@@ -381,8 +555,46 @@ fn poll_flight(
     true
 }
 
+/// Decodes the landed batch's characters into their frames for about
+/// `budget` ms (`None`: all of them); answers whether none are left.
+fn decode(r: &mut Ready, budget: Option<f64>, stats: &mut (u64, (usize, f64))) -> bool {
+    let Some(l) = r.landing.as_mut() else {
+        return true;
+    };
+    let t0 = now_ms();
+    let n = l.batch.characters.len();
+    while l.next < n {
+        let i = l.next;
+        finish_character(
+            &r.statics,
+            &l.batch.inputs,
+            &l.student,
+            &l.local,
+            i,
+            &mut l.motion,
+        );
+        r.motion
+            .accept_character(&l.batch, i, l.student.counts[i], &l.motion);
+        l.next += 1;
+        if budget.is_some_and(|b| now_ms() - t0 >= b) {
+            break;
+        }
+    }
+    if l.next < n {
+        return false;
+    }
+    let latency = now_ms() - l.started;
+    if !(l.forced || budget.is_none()) {
+        r.latency = latency;
+    }
+    stats.0 += 1;
+    stats.1 = (n, latency);
+    r.landing = None;
+    true
+}
+
 fn start_flight(r: &mut Ready) {
-    if r.flight.is_some() {
+    if r.flight.is_some() || r.landing.is_some() {
         return;
     }
     let Some(batch) = r.motion.batch(usize::MAX) else {
@@ -392,9 +604,17 @@ fn start_flight(r: &mut Ready) {
         return;
     };
     let inputs = batch.inputs.clone();
+    let statics = r.statics.clone();
     r.flight = Some(Flight {
         future: Box::pin(async move {
-            let result = gpu.generate(&inputs).await;
+            let result = async {
+                let student = gpu.student(&student_inputs(&statics, &inputs)).await?;
+                let local = gpu
+                    .decoder(&decoder_inputs(&statics, &inputs, &student))
+                    .await?;
+                Ok((student, local))
+            }
+            .await;
             (gpu, result)
         }),
         batch,
@@ -403,12 +623,23 @@ fn start_flight(r: &mut Ready) {
 }
 
 /// `pose` re-rooted: the hips over the origin at their height, facing +Z.
-fn rerooted(skeleton: &Skeleton, pose: &Pose) -> Vec<Trs> {
+/// With `upright`, a body leaning further than [`JUMP_LEAN`] from upright
+/// (hips to head) is turned about its hips back to that lean.
+fn rerooted(skeleton: &Skeleton, pose: &Pose, upright: bool) -> Vec<Trs> {
     let h = heading(pose.positions[RIGHT_LEG], pose.positions[LEFT_LEG]);
     let mut local = skeleton.local(pose);
     let undo = rotation_of(-h);
     local[0].translation = Vec3::new(0.0, local[0].translation.y, 0.0);
     local[0].rotation = (undo * local[0].rotation).normalize();
+    if upright {
+        let up = undo * (Vec3::from(pose.positions[HEAD]) - Vec3::from(pose.positions[0]));
+        let lean = og_core::math::acos(up.normalize_or_zero().y.clamp(-1.0, 1.0));
+        let axis = up.cross(Vec3::Y);
+        if lean > JUMP_LEAN && axis.length_squared() > 1e-12 {
+            let back = og_core::math::quat_from_axis_angle(axis.normalize(), lean - JUMP_LEAN);
+            local[0].rotation = (back * local[0].rotation).normalize();
+        }
+    }
     local
 }
 
@@ -417,9 +648,12 @@ fn palette(r: &Ready, a: &Seen, s: &mut Shown) -> Option<Vec<Mat4>> {
     let (target, map) = s.target.as_ref()?;
     let prev = s.prev?;
     let next = s.next.unwrap_or(prev);
+    // A jump's frames keep the body near upright: the model's jump can
+    // pitch it close to horizontal, which reads as a dive.
+    let upright = |f: &Frame| s.issued(f).is_some_and(|g| g.pose == JUMP);
     let frames = [
-        rerooted(&r.soma_skeleton, &prev.pose),
-        rerooted(&r.soma_skeleton, &next.pose),
+        rerooted(&r.soma_skeleton, &prev.pose, upright(&prev)),
+        rerooted(&r.soma_skeleton, &next.pose, upright(&next)),
     ];
     let clip = og_motion::soma::clip("motion", &r.soma, &frames);
     let out = og_anim::retarget(
@@ -484,14 +718,18 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
     let rs = &mut *rs;
     let p = &mut rs.motion;
     p.palettes.clear();
-    if agents.is_empty() && !p.wanted {
+    // The model loads as soon as the bundle declares it (a game that uses
+    // og.motion), before any agent needs it.
+    if agents.is_empty() && !p.wanted && !declares(eng) {
         p.agents.clear();
         return;
     }
     if matches!(p.model, Model::Unloaded | Model::Waiting(_)) {
-        let mut bytes = 0;
-        p.model = load(eng, rs.backend.as_deref(), &mut bytes);
-        p.model_bytes = p.model_bytes.max(bytes);
+        p.model = load(p, eng, rs.backend.as_deref());
+    }
+    if agents.is_empty() {
+        p.agents.clear();
+        return;
     }
     let elapsed = p.clock.map_or(0.0, |c| (now - c).clamp(0.0, 0.25)) as f32;
     p.clock = Some(now);
@@ -499,7 +737,8 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
         return;
     };
     let mut stats = (p.batches, p.last_batch);
-    poll_flight(r, false, &mut stats, &mut p.errors);
+    poll_flight(r, false, &mut p.errors);
+    decode(r, Some(DECODE_BUDGET_MS), &mut stats);
     p.agents
         .retain(|e, _| agents.iter().any(|a| a.entity == *e));
     for a in &agents {
@@ -527,6 +766,8 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
                 facing: 0.0,
                 planted: [None; 2],
                 slide: (0.0, 0, 0.0),
+                issued: VecDeque::new(),
+                next_id: 0,
             }
         });
         if s.skeleton != a.skeleton || s.rig != a.settings.rig {
@@ -556,13 +797,30 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
             s.serial = serial;
             r.motion.clear_goals(s.character);
         }
-        let lookahead = (a.settings.lookahead * RATE) as usize;
+        // At least the agent's lookahead, and enough to cover two batches'
+        // latency (sliced across frames, 0.5 to 0.6 s for 16 agents): one
+        // batch runs at a time, so a goal asked for while another is on its
+        // way waits for it, then for its own.
+        let ahead = a.settings.lookahead.max(2.0 * r.latency as f32 / 1000.0);
+        let lookahead = (ahead * RATE) as usize;
         if r.motion.goals(s.character) == 0 && r.motion.queued(s.character) < lookahead.max(1) {
-            let (at, h, pose) = predict(&goals, a, s);
-            r.motion.push(
-                s.character,
-                Goal::placed(r.library.frames(pose), [at.x, at.z], h),
-            );
+            let queued = r.motion.queued(s.character) as f32 / RATE;
+            let (at, h, pose, seconds) = predict(&goals, a, s, queued);
+            let mut goal = Goal::placed(r.library.frames(pose), [at.x, at.z], h);
+            goal.tag = s.next_id;
+            // A walk or run keeps time by its distance; forced short, the
+            // model crawled into a run. A pose (jump, crouch, wave) has no
+            // distance to keep time by: its length is the segment's.
+            if pose != gait(RUN_SPEED) && pose != gait(0.0) {
+                goal.token_counts = token_counts(seconds);
+            }
+            s.issued.push_back(Issued {
+                id: s.next_id,
+                pose,
+                start: now + f64::from(queued),
+            });
+            s.next_id += 1;
+            r.motion.push(s.character, goal);
         }
     }
     start_flight(r);
@@ -590,11 +848,34 @@ pub(crate) fn present(eng: &Engine, alpha: Option<f32>) {
             let starved = s.prev.is_none() || (s.next.is_none() || s.phase >= 1.0);
             // A native host draws the generated motion, never a gap: it
             // waits for the batch in flight when the agent ran out.
-            if !(starved && cfg!(not(target_arch = "wasm32")) && r.flight.is_some()) {
+            // Until its first frames land an agent is drawn as og.anim
+            // poses it: the fallback covers the model's start, as its load.
+            let pending = r.flight.is_some() || r.landing.is_some();
+            if !(starved && cfg!(not(target_arch = "wasm32")) && pending && s.prev.is_some()) {
                 break;
             }
-            poll_flight(r, true, &mut stats, &mut p.errors);
+            poll_flight(r, true, &mut p.errors);
+            decode(r, None, &mut stats);
             start_flight(r);
+        }
+        // Behind the clock (the first batch's latency, a goal the model
+        // took longer over): frames are skipped until the drawn one is
+        // within MAX_LAG of the time it was generated for.
+        while let Some(next) = s.next
+            && let Some(at) = s
+                .issued(&next)
+                .map(|g| g.start + f64::from(next.index) / f64::from(RATE))
+            && now - at > MAX_LAG
+            && let Some(f) = r.motion.pop(s.character)
+        {
+            s.prev = s.next;
+            s.next = Some(f);
+        }
+        if let Some(prev) = s.prev {
+            // Goals before the drawn frame's are done with (ids ascend).
+            while s.issued.front().is_some_and(|g| g.id < prev.tag) {
+                s.issued.pop_front();
+            }
         }
         if s.next.is_none() || s.phase >= 1.0 {
             s.phase = s.phase.min(1.0);
@@ -657,6 +938,10 @@ pub(crate) fn dump(eng: &Engine) -> Value {
                     "maxMm": 1000.0 * s.slide.2,
                 },
                 "rig": s.target.as_ref().map(|(_, m)| m.scheme.clone()),
+                // The drawn frame: the pose its model goal asked for, and
+                // how far behind the frame clock it is (s).
+                "drawnPose": s.next.and_then(|f| s.issued(&f)).map(|g| POSES[g.pose]),
+                "lag": s.next.and_then(|f| s.issued(&f).map(|g| p.clock.unwrap_or(0.0) - (g.start + f64::from(f.index) / f64::from(RATE)))),
                 "drawn": p.palettes.contains_key(e),
             })
         })

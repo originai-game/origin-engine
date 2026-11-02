@@ -152,6 +152,7 @@ fn main() {
             Goal {
                 targets,
                 token_counts: Vec::new(),
+                tag: 0,
             },
         );
     }

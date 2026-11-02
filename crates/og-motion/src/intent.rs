@@ -20,8 +20,8 @@ use std::collections::VecDeque;
 #[cfg(feature = "reference")]
 use crate::Model;
 use crate::contract::{
-    LEFT_LEG, MOTION_CONTACTS, Pose, RIGHT_LEG, Request, encode, heading, mat_mul, mat_vec, rot_y,
-    valid_frames,
+    FRAMES, LEFT_LEG, MOTION_CONTACTS, MOTION_FEATURES, Pose, RIGHT_LEG, Request, encode, heading,
+    mat_mul, mat_vec, rot_y, valid_frames,
 };
 use crate::gpu::{Gpu, GpuError};
 use crate::{Alignment, Generation, Inputs, decode_frame};
@@ -33,6 +33,9 @@ use crate::{Alignment, Generation, Inputs, decode_frame};
 pub struct Goal {
     pub targets: Vec<Pose>,
     pub token_counts: Vec<usize>,
+    /// The caller's own mark, carried to every frame generated toward it
+    /// ([`Frame::tag`]): which library pose it asked for, say.
+    pub tag: u32,
 }
 
 impl Goal {
@@ -61,6 +64,7 @@ impl Goal {
         Goal {
             targets,
             token_counts: Vec::new(),
+            tag: 0,
         }
     }
 }
@@ -72,6 +76,10 @@ impl Goal {
 pub struct Frame {
     pub pose: Pose,
     pub contacts: [f32; 4],
+    /// The [`Goal::tag`] of the goal it was generated toward.
+    pub tag: u32,
+    /// Its place among that goal's frames, from 0 (30 Hz).
+    pub index: u32,
 }
 
 #[derive(Clone, Debug)]
@@ -170,23 +178,33 @@ impl Motion {
     /// context are queued, its goal is done, and its next generation starts
     /// from the last four.
     pub fn accept(&mut self, batch: &Batch, generation: &Generation) {
-        for (i, &c) in batch.characters.iter().enumerate() {
-            let ch = &mut self.characters[c];
-            ch.goals.pop_front();
-            let valid = valid_frames(generation.counts[i] as usize);
-            // The first valid frame is the context's last, already shown.
-            let mut recent: Vec<Pose> = ch.context.to_vec();
-            for f in valid.start + 1..valid.end {
-                let frame = generation.frame(i, f);
-                let pose = decode_frame(frame, &batch.alignments[i]);
-                ch.frames.push_back(Frame {
-                    pose,
-                    contacts: std::array::from_fn(|k| frame[MOTION_CONTACTS.start + k]),
-                });
-                recent.push(pose);
-            }
-            ch.context = std::array::from_fn(|k| recent[recent.len() - 4 + k]);
+        let per = FRAMES * MOTION_FEATURES;
+        for i in 0..batch.characters.len() {
+            let motion = &generation.motion[i * per..(i + 1) * per];
+            self.accept_character(batch, i, generation.counts[i], motion);
         }
+    }
+
+    /// [`Motion::accept`] for the batch's character `i` alone: its token
+    /// count and its `[64,366]` motion (`glue::finish_character`).
+    pub fn accept_character(&mut self, batch: &Batch, i: usize, count: u32, motion: &[f32]) {
+        let ch = &mut self.characters[batch.characters[i]];
+        let tag = ch.goals.pop_front().map_or(0, |g| g.tag);
+        let valid = valid_frames(count as usize);
+        // The first valid frame is the context's last, already shown.
+        let mut recent: Vec<Pose> = ch.context.to_vec();
+        for (index, f) in (valid.start + 1..valid.end).enumerate() {
+            let frame = &motion[f * MOTION_FEATURES..(f + 1) * MOTION_FEATURES];
+            let pose = decode_frame(frame, &batch.alignments[i]);
+            ch.frames.push_back(Frame {
+                pose,
+                contacts: std::array::from_fn(|k| frame[MOTION_CONTACTS.start + k]),
+                tag,
+                index: index as u32,
+            });
+            recent.push(pose);
+        }
+        ch.context = std::array::from_fn(|k| recent[recent.len() - 4 + k]);
     }
 
     /// One generation on the CPU ([`Motion::batch`], then

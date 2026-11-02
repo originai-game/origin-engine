@@ -1460,6 +1460,7 @@ pub fn cook_project_with_texture_cache(
         ]),
         assets: Vec::new(),
         streams: Vec::new(),
+        motion: None,
     };
     let mut keep: BTreeSet<String> = BTreeSet::new();
     for (si, outs) in new_outputs {
@@ -1561,14 +1562,16 @@ pub fn cook_project_with_texture_cache(
         }
         manifest.streams.push(entry);
     }
-    // og.motion's model, for a project whose code uses it (not in the manifest).
+    // og.motion's model, for a project whose code uses it (in the manifest,
+    // outside its outputs: never in the boot bundle).
     let mut motion_warnings = Vec::new();
-    motion::cook(root, &cooked_dir, &mut keep, &mut motion_warnings)?;
+    manifest.motion = motion::cook(root, &cooked_dir, &mut keep, &mut motion_warnings)?;
     let mut removed = Vec::new();
     let old_files = old
         .outputs()
         .map(|o| &o.file)
-        .chain(old.streams.iter().map(|g| &g.file));
+        .chain(old.streams.iter().map(|g| &g.file))
+        .chain(old.motion.iter().map(|m| &m.file));
     for f in old_files {
         if !keep.contains(f) && cooked_dir.join(f).exists() {
             std::fs::remove_file(cooked_dir.join(f))

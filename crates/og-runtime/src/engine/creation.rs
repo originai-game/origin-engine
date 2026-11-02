@@ -860,6 +860,10 @@ pub fn render_desc(id: u32, base: og_render::RenderDesc) -> og_render::RenderDes
     desc.planar_reflections = options["planarReflections"].as_u64().map_or(1, |n| {
         n.clamp(1, u64::from(og_render::MAX_PLANAR_REFLECTIONS)) as u32
     });
+    // og.motion times its compute slices where the adapter can (its
+    // `Gpu::set_frame_budget`): a publish build asks only for a game whose
+    // bundle declares the model.
+    desc.timestamps = engine(id).is_ok_and(|e| crate::motion::present::declares(&e));
     desc
 }
 
