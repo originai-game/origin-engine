@@ -75,7 +75,7 @@ only looks:
 | `pixel` | platformers, roguelikes, retro and arcade shooters, jam games | square frames, 2 px bevels, hard shadows, a bitmap face | `16bit-pixel` |
 | `cartoon` | casual, match-3, party, kids, idle | thick outlines, cream panels, squash on press, pops | `bold-comic-illustration` |
 | `fantasy` | RPGs, card battlers, quest and dungeon games | parchment, gold corners and flourishes, a serif display | `illuminated-manuscript` |
-| `scifi` | space, tactics, hacking, mech | hairlines, cut corners, brackets, scanlines, mono numerals | `cinematic-realism` |
+| `scifi` | space, strategy, simulation, mech | flat near-black glass, 1 px hairlines, one ice-blue accent, a thin sans, mono telemetry | `cinematic-realism` |
 | `storybook` | narrative, visual novels, puzzle, cosy, mystery, word games | soft paper sheets, ink lines, ornaments, floaty motion | `pencil-hatching` |
 | `cyber` | racing, rhythm, cyberpunk, hacking | notched frames on black, hot accents, dense data, snappy motion | `neon-vector` |
 

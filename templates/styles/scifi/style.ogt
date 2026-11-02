@@ -7,86 +7,89 @@ scheme dark
 atlas "atlas.png" 384 256
 scale 1
 palette {
-  backdrop "#03080f"
-  well "#071220"
-  panel "#1a4a66"
-  panelHover "#225a7a"
-  panelRaised "#1a4a66"
-  line "#2c6a88"
-  lineStrong "#6fd3f5"
-  ink "#e2f7ff"
-  inkMuted "#a6cde0"
-  inkFaint "#6f93a6"
-  inkInverse "#03080f"
-  control "#3f8fb3"
-  controlStrong "#5aaed4"
-  primary "#38e1ff"
-  primaryHover "#30d4f0"
-  primaryActive "#16c4e6"
-  onPrimary "#e2f7ff"
-  primarySoft "#38e1ff2d"
-  highlight "#7fecff"
-  focus "#ffd23f"
-  knob "#2f7194"
-  hud "#1a4a66"
-  scrim "#010409cc"
-  shadow "#00000099"
-  sheen "#ffffff52"
-  success "#3dffa0"
-  warn "#ffc53d"
-  danger "#ff4d6a"
-  info "#38e1ff"
-  health "#3dffa0"
-  mana "#0a84ff"
-  xp "#bf5af2"
-  gold "#38e1ff"
+  backdrop "#05080c"
+  well "#0a0e13"
+  panel "#252d36"
+  panelHover "#2c3540"
+  panelRaised "#29323c"
+  line "#2a323c"
+  lineStrong "#46525f"
+  ink "#eef2f6"
+  inkMuted "#a8b2bd"
+  inkFaint "#808b97"
+  inkInverse "#0a0e13"
+  control "#2f3842"
+  controlStrong "#3c4652"
+  primary "#9ccdf5"
+  primaryHover "#b5dbf9"
+  primaryActive "#86bdea"
+  onPrimary "#0b1520"
+  primarySoft "#9ccdf526"
+  highlight "#9ccdf5"
+  focus "#d2e8fb"
+  knob "#9ccdf5"
+  hud "#0f1318e6"
+  scrim "#000000b3"
+  shadow "#000000aa"
+  sheen "#ffffff1f"
+  success "#5fd38a"
+  warn "#e8b84a"
+  danger "#ea6b5f"
+  info "#9ccdf5"
+  health "#5fd38a"
+  mana "#6aa8ff"
+  xp "#b49cf0"
+  gold "#e8c46a"
 }
 colors {
   success icon "check"
   warn pattern stripes
   danger pattern chevrons
   info pattern grid
-  common "#8aa4b4" pips 1
-  uncommon "#3dffa0" pips 2
-  rare "#38c8ff" pips 3
-  epic "#a87cff" pips 4
-  legendary "#ffc53d" pips 5
-  mythic "#ff516d" pips 6
-  team1 "#38c8ff"
-  team2 "#ff516d"
-  team3 "#3dffa0"
-  team4 "#ffc53d"
-  team5 "#a87cff"
-  team6 "#ff8a3d"
-  team7 "#3df0e0"
-  team8 "#ff6ad8"
-  physical "#a6cde0" pattern hatch
-  fire "#ff7a3d" icon "fire"
-  ice "#7fecff" icon "drop"
-  lightning "#ffe03d" icon "bolt"
-  poison "#9dff3d" pattern dots
-  holy "#fff4c0" icon "star"
-  shadow "#9a7cff" pattern grid
-  arcane "#ff6ad8" pattern diamonds
-  series1 "#38e1ff"
-  series2 "#ffc53d"
-  series3 "#ff516d"
-  series4 "#3dffa0"
-  series5 "#a87cff"
-  series6 "#ff8a3d"
-  series7 "#3df0e0"
-  series8 "#a6cde0"
+  common "#8a96a3" pips 1
+  uncommon "#5fd38a" pips 2
+  rare "#9ccdf5" pips 3
+  epic "#b49cf0" pips 4
+  legendary "#e8c46a" pips 5
+  mythic "#d0584c" pips 6
+  team1 "#9ccdf5"
+  team2 "#d0584c"
+  team3 "#5fd38a"
+  team4 "#e8c46a"
+  team5 "#b49cf0"
+  team6 "#e89a5a"
+  team7 "#6ad6c8"
+  team8 "#e88ab8"
+  physical "#a8b2bd" pattern hatch
+  fire "#e8845a" icon "fire"
+  ice "#9ccdf5" icon "drop"
+  lightning "#e8d06a" icon "bolt"
+  poison "#9fd36a" pattern dots
+  holy "#f4ecc8" icon "star"
+  shadow "#a896f0" pattern grid
+  arcane "#e88ab8" pattern diamonds
+  series1 "#9ccdf5"
+  series2 "#e8c46a"
+  series3 "#d0584c"
+  series4 "#5fd38a"
+  series5 "#b49cf0"
+  series6 "#e89a5a"
+  series7 "#6ad6c8"
+  series8 "#a8b2bd"
 }
 typography {
-  display 38 44 0.08 700 display {
-    phonePortrait 30 35
-    phoneLandscape 34 40
+  display 42 48 0.0 300 display {
+    phonePortrait 34 38
+    phoneLandscape 38 43
   }
-  title 26 32 0.06 700 display
-  heading 19 26 0.04 500 display
-  body 14 20 0 500 body
-  label 14 20 0.06 500 body
-  caption 12 16 0.04 500 body
+  title 28 34 0.0 300 display {
+    phonePortrait 24 30
+    phoneLandscape 26 32
+  }
+  heading 19 26 0.01 400 display
+  body 14 20 0 400 body
+  label 14 20 0.08 400 body
+  caption 12 16 0.04 400 body
   numeric 17 24 0 400 numeric
 }
 space {
@@ -111,7 +114,7 @@ size {
 radius {
   xs 1
   sm 2
-  md 2
+  md 3
   lg 4
   xl 6
   pill 9999
@@ -125,35 +128,32 @@ stroke {
 }
 elevation {
   raised {
-    shadow 0 0 8 0 "#00000080"
+    shadow 0 4 12 0 "#00000066"
   }
   floating {
-    shadow 0 0 12 0 "#00000099"
-    shadow 0 0 4 0 "#38e1ff26"
+    shadow 0 8 24 0 "#00000080"
   }
   overlay {
-    shadow 0 0 18 0 "#000000aa"
-    shadow 0 0 6 0 "#38e1ff33"
+    shadow 0 12 32 0 "#00000099"
   }
   top {
-    shadow 0 0 24 0 "#000000bb"
-    shadow 0 0 8 0 "#38e1ff40"
+    shadow 0 16 40 0 "#000000aa"
   }
 }
 shape {
-  panel bevel 2
-  dialog bevel 16
-  card bevel 10
-  tooltip bevel 6
-  button bevel 2
-  field bevel 2
-  chip bevel 6
-  badge notch 4
-  tab bevel 6
-  slot bevel 2
-  bar bevel 2
-  hud bevel 8
-  avatar bevel 8
+  panel round 4
+  dialog round 6
+  card round 4
+  tooltip round 3
+  button round 3
+  field round 3
+  chip round 3
+  badge round 2
+  tab round 3
+  slot round 2
+  bar round 2
+  hud round 3
+  avatar round pill
 }
 ramp {
   body 14 20
@@ -163,36 +163,32 @@ ramp {
   xl 19 26
   xl2 22 28
   xl3 26 30
-  displaySm 26 32
-  displayMd 32 38
-  displayLg 38 44
+  displaySm 28 34
+  displayMd 34 40
+  displayLg 42 48
 }
 fonts {
-  body "ChakraPetch-Medium.ttf"
-  display "Orbitron-Bold.ttf"
-  numeric "JetBrainsMono-Regular.ttf"
+  body "IBMPlexSans-Regular.ttf"
+  display "IBMPlexSans-Light.ttf"
+  numeric "IBMPlexMono-Regular.ttf"
   cjk "@styles/cjk/NotoSansSC-Regular.ttf"
-  cjkDisplay "@styles/cjk/NotoSansSC-Bold.ttf"
+  cjkDisplay "@styles/cjk/NotoSansSC-Regular.ttf"
 }
 icons "icons.png" 8 4 {
   names "heart" "star" "coin" "lock" "pause" "gear" "sword" "shield" "potion" "gem" "key" "map" "bolt" "clock" "trophy" "home" "plus" "close" "check" "play" "back" "bag" "bomb" "crown" "flag" "apple" "leaf" "fire" "drop" "skull" "music" "person"
 }
 soft 252 104 64 64 24
-corner 320 104 32 32 18 18 primary 4
-divider 4 172 128 24 128 24 primary
-flourish 136 172 64 24 32 14 primary 0
-tile 204 172 64 64 64 64 0.08 3
-textGlow display 1.5 primary 0.55
+divider 4 172 128 24 128 24 line
 motion {
   enter fade
   toast slideLeft
   progress 300
-  shake 6
-  pop 0.1
-  spring ui 140 0
-  spring panel 240 0
-  spring emphasis 360 0.1
-  spring playful 420 0.15
+  shake 4
+  pop 0.06
+  spring ui 160 0
+  spring panel 260 0
+  spring emphasis 320 0.05
+  spring playful 360 0.08
   ease standard 0.4 0 0.2 1
   ease enter 0 0 0.2 1
   ease exit 0.4 0 1 1
@@ -205,7 +201,7 @@ motion {
   duration bounce 640
   stagger 30
   staggerCap 240
-  overshoot 0.02
+  overshoot 0.0
 }
 sounds {
   hover none haptic none
@@ -237,61 +233,57 @@ sounds {
   revealMythic none haptic buzz
 }
 dress "Panel.frame" {
-  slice 4 4 96 96 18 tint
-  tone 0.027 0.027 0.027 0.94
-  shadow 0 0 18 0 "#000000aa"
-  glow 10 primary 0.12
-  glass 16 0.85 0.15
-  corners
-  tile
+  slice 4 4 96 96 8 tint
+  tone 0.171 0.171 0.171 1.00
+  shadow 0 12 32 0 "#00000080"
+  glass 20 0.92 0.1
 }
 dress "Card.frame" {
-  slice 104 4 64 64 12 tint
-  tone 0.040 0.040 0.040 0.94
-  corners
+  slice 104 4 64 64 8 tint
+  tone 0.262 0.262 0.262 1.00
 }
 dress "Button.base" {
-  slice 172 4 48 48 12 tint
-  tone 0.074 0.074 0.074 0.95
-  glow 5 primary 0.22
+  slice 172 4 48 48 8 tint
+  tone 0.791 0.791 0.791 1.00
   press 0.98 0.98 0
-  hover 0 1.02
+  hover 0 1.0
 }
 dress "Button.base[hover]" {
-  slice 224 4 48 48 12 tint
-  tone 0.147 0.147 0.147 0.96
+  slice 224 4 48 48 8 tint
 }
 dress "Button.base[pressed]" {
-  slice 276 4 48 48 12 tint
-  tone 0.319 0.319 0.319 1.00
+  slice 276 4 48 48 8 tint
+  tone 0.571 0.571 0.571 1.00
 }
 dress "Button.base[disabled]" {
-  slice 328 4 48 48 12 tint
-  tone 0.054 0.054 0.054 0.85
+  slice 328 4 48 48 8 tint
+  tone 0.319 0.319 0.319 1.00
 }
 dress "Field.frame" {
-  slice 4 104 48 48 8 tint
-  tone 0.018 0.018 0.018 0.94
+  slice 4 104 48 48 6 tint
+  tone 0.216 0.216 0.216 1.00
 }
 dress "Slot.frame" {
-  slice 56 104 48 48 10 tint
-  tone 0.033 0.033 0.033 0.90
-  corners
+  slice 56 104 48 48 6 tint
+  tone 0.216 0.216 0.216 1.00
 }
 dress "Tooltip.frame" {
-  slice 108 104 32 32 8 tint
-  tone 0.033 0.033 0.033 0.96
+  slice 108 104 32 32 6 tint
+  tone 0.319 0.319 0.319 1.00
 }
 dress "Hud.frame" {
-  slice 144 104 32 32 10 tint
-  tone 0.040 0.040 0.040 0.94
-  glow 4 primary 0.18
+  slice 144 104 32 32 6 tint
+  tone 0.262 0.262 0.262 1.00
 }
 dress "Meter.track" {
-  slice 180 104 32 16 5 tint
-  tone 0.072 0.072 0.072 0.90
+  slice 180 104 32 16 4 tint
 }
 dress "Meter.fill" {
-  slice 216 104 32 16 2 tint
-  tone 0.790 0.790 0.790 1.00
+  slice 216 104 32 16 4 tint
+}
+dress "Toggle.knob[on]" {
+  fill "#f4f7fa"
+}
+dress "Toggle.knob[off]" {
+  fill "#8e98a3"
 }

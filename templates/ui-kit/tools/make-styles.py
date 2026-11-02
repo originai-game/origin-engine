@@ -594,90 +594,70 @@ def fantasy_pack():
 
 
 def scifi_pack():
+    # Real-world spaceflight operations (the owner's direction, 2026-11-02;
+    # the approved sheet ui-art-2 59079f25d): flat near-black glass, a 1 px
+    # hairline, small radii, one ice-blue accent; no brackets, scanlines or
+    # glow. The frames take the element's colour: the edge at full strength,
+    # the body a darker shade of it (a button's nearly the same, so a primary
+    # stays flat ice blue).
     p = {}
-    # Tinted frames: a white hairline edge with corner cuts over a dark,
-    # translucent body (the tint makes the edge the element's colour and
-    # the body a deep shade of it).
-    def hud(w, h, cut, edge=1.5, body=0.32, body_a=0.92, notch=True):
-        cv = Canvas(w, h)
-        outer = sd_chamfer(cv.px, cv.py, 0.5, 0.5, w - 0.5, h - 0.5, cut, (1, 0, 1, 0))
-        cv.paint(cv.inside(outer), grey(1.0))
-        inner = sd_chamfer(cv.px, cv.py, 0.5 + edge, 0.5 + edge, w - 0.5 - edge, h - 0.5 - edge, cut - edge * 0.4, (1, 0, 1, 0))
-        cv.rgba[..., :3] *= 1
-        body_mask = cv.inside(inner)
-        # Replace the body (not over: the edge stays only on the rim).
-        for c in range(3):
-            cv.rgba[..., c] = np.where(body_mask > 0, body, cv.rgba[..., c])
-        cv.rgba[..., 3] = np.where(body_mask > 0, body_a, cv.rgba[..., 3])
-        if notch:
-            tick = cv.inside(sd_box(cv.px, cv.py, w - 10, h - 4, w - 3, h - 2.5))
-            cv.paint(tick, grey(1.0))
-        return cv.image()
 
-    p["panel"] = hud(96, 96, 16, edge=1.5, body=0.18, body_a=0.94)
-    p["card"] = hud(64, 64, 10, edge=1.2, body=0.22, body_a=0.94)
-    p["button"] = hud(48, 48, 10, edge=1.6, body=0.3, body_a=0.95)
-    p["buttonHover"] = hud(48, 48, 10, edge=2.0, body=0.42, body_a=0.96)
-    p["buttonPressed"] = hud(48, 48, 10, edge=2.0, body=0.6, body_a=1.0, notch=False)
-    p["buttonDisabled"] = hud(48, 48, 10, edge=1.0, body=0.26, body_a=0.85, notch=False)
-    p["field"] = hud(48, 48, 6, edge=1.2, body=0.14, body_a=0.94, notch=False)
-    p["slot"] = hud(48, 48, 8, edge=1.2, body=0.2, body_a=0.9, notch=False)
-    p["tooltip"] = hud(32, 32, 6, edge=1.2, body=0.2, body_a=0.96, notch=False)
-    p["hud"] = hud(32, 32, 8, edge=1.2, body=0.22, body_a=0.94, notch=False)
-    p["track"] = hud(32, 16, 4, edge=1.0, body=0.3, body_a=0.9, notch=False)
-    p["fill"] = frame(32, 16, r=0, fill=(grey(1.0), grey(0.8)))
+    def flat(w, h, r, body):
+        return frame(w, h, r=r, outline=1.0, outline_c=grey(1.0), fill=(grey(body), grey(body)))
+
+    p["panel"] = flat(96, 96, 4, 0.45)
+    p["card"] = flat(64, 64, 4, 0.55)
+    p["button"] = flat(48, 48, 3, 0.9)
+    p["buttonHover"] = flat(48, 48, 3, 1.0)
+    p["buttonPressed"] = flat(48, 48, 3, 0.78)
+    p["buttonDisabled"] = flat(48, 48, 3, 0.6)
+    p["field"] = flat(48, 48, 3, 0.5)
+    p["slot"] = flat(48, 48, 3, 0.5)
+    p["tooltip"] = flat(32, 32, 3, 0.6)
+    p["hud"] = flat(32, 32, 3, 0.55)
+    p["track"] = frame(32, 16, r=1.5, fill=(grey(1.0), grey(1.0)))
+    p["fill"] = frame(32, 16, r=1.5, fill=(grey(1.0), grey(1.0)))
     p["soft"] = soft_rect(64, 64, 20)
 
-    def corner(cv):
-        bars(cv, [(2, 2, 18, 2), (2, 2, 2, 18)], 2.4)
-        disc(cv, 7.5, 7.5, 1.6)
-
     def divider(cv):
-        bars(cv, [(4, 12, 124, 12)], 1.0, grey(1.0), 0.5)
-        for x in (4, 34, 64, 94, 124):
-            bars(cv, [(x, 8, x, 16)], 1.6)
-        cv.paint(cv.inside(sd_box(cv.px, cv.py, 56, 10, 72, 14)), grey(1.0))
+        # A hairline, faint at its ends.
+        for x in range(4, 125):
+            a = min(1.0, (x - 4) / 24, (124 - x) / 24)
+            bars(cv, [(x, 12, x + 1, 12)], 1.0, grey(1.0), max(a, 0.0))
 
-    def flourish(cv):
-        # Two chevrons pointing at the heading.
-        for x in (36, 46):
-            bars(cv, [(x, 5, x + 7, 12), (x + 7, 12, x, 19)], 2.4)
-
-    p["corner"] = ornament(32, 32, corner)
+    p["corner"] = np.zeros((32, 32, 4))
     p["divider"] = ornament(128, 24, divider)
-    p["flourish"] = ornament(64, 24, flourish)
-    tile = np.zeros((64, 64, 4))
-    ys, xs = np.mgrid[0:64, 0:64]
-    tile[..., :3] = hexc("#7fe8ff")
-    tile[..., 3] = ((ys % 3) == 0) * 0.5
-    p["tile"] = tile
+    p["flourish"] = np.zeros((24, 64, 4))
+    p["tile"] = np.zeros((64, 64, 4))
     style = dict(
         name="scifi", base="dark",
         palette=dict(
-            backdrop="#03080f", well="#071220", panel="#1a4a66", panelHover="#225a7a", panelRaised="#1a4a66", line="#2c6a88",
-            lineStrong="#6fd3f5", ink="#e2f7ff", inkMuted="#a6cde0", inkFaint="#6f93a6", inkInverse="#03080f", control="#3f8fb3",
-            controlStrong="#5aaed4", primary="#38e1ff", primaryHover="#30d4f0", primaryActive="#16c4e6", onPrimary="#e2f7ff",
-            primarySoft="#38e1ff2d", highlight="#7fecff", focus="#ffd23f", knob="#2f7194", hud="#1a4a66", scrim="#010409cc",
-            shadow="#00000099", sheen="#ffffff52", success="#3dffa0", warn="#ffc53d", danger="#ff4d6a", info="#38e1ff",
-            health="#3dffa0", mana="#0a84ff", xp="#bf5af2", gold="#38e1ff",
+            backdrop="#05080c", well="#0a0e13", panel="#252d36", panelHover="#2c3540", panelRaised="#29323c", line="#2a323c",
+            lineStrong="#46525f", ink="#eef2f6", inkMuted="#a8b2bd", inkFaint="#808b97", inkInverse="#0a0e13", control="#2f3842",
+            controlStrong="#3c4652", primary="#9ccdf5", primaryHover="#b5dbf9", primaryActive="#86bdea", onPrimary="#0b1520",
+            primarySoft="#9ccdf526", highlight="#9ccdf5", focus="#d2e8fb", knob="#9ccdf5", hud="#0f1318e6", scrim="#000000b3",
+            shadow="#000000aa", sheen="#ffffff1f", success="#5fd38a", warn="#e8b84a", danger="#ea6b5f", info="#9ccdf5",
+            health="#5fd38a", mana="#6aa8ff", xp="#b49cf0", gold="#e8c46a",
         ),
-        radius=dict(small=2, control=2, bar=2, panel=2),
+        radius=dict(small=2, control=3, bar=2, panel=4),
         ramp=dict(body=(14, 20), meta=(12, 16), caption=(12, 16), lg=(17, 24), xl=(19, 26), xl2=(22, 28), xl3=(26, 30),
-                  displaySm=(26, 32), displayMd=(32, 38), displayLg=(38, 44)),
+                  displaySm=(28, 34), displayMd=(34, 40), displayLg=(42, 48)),
         durations=dict(instant=90, fast=140, base=220, slow=360),
-        fonts=dict(body="ChakraPetch-Medium.ttf", display="Orbitron-Bold.ttf", numeric="JetBrainsMono-Regular.ttf", cjk="NotoSansSC-Regular.ttf", cjkDisplay="NotoSansSC-Bold.ttf"),
-        slices=dict(panel=(18,), card=(12,), button=(12,), buttonHover=(12,), buttonPressed=(12,), buttonDisabled=(12,),
-                    field=(8,), slot=(10,), tooltip=(8,), hud=(10,), track=(5,), fill=(2,)),
-        scale=1, corner=(18, 18, "primary", 4), corners=["panel", "card", "slot"], divider=(128, 24, "primary"), flourish=(32, 14, "primary", 0),
-        tile=(64, 64, 0.08, 3, ["panel"]),
-        shadows=dict(panel=(0, 0, 18, 0, "#000000aa")),
-        # Glass panels: the game behind blurred 16 px, the panel's frame at 85 %.
-        glass=dict(panel=(16, 0.85, 0.15)),
-        glows=dict(button=(5, "primary", 0.22), panel=(10, "primary", 0.12), hud=(4, "primary", 0.18)),
-        text=dict(textGlow=[("display", 1.5, "primary", 0.55)]),
-        press=(0.98, 0.98, 0), hover=(0, 1.02),
-        motion=dict(enter="fade", stagger=30, toast="slideLeft", progress=300, shake=6, pop=0.1),
+        fonts=dict(body="IBMPlexSans-Regular.ttf", display="IBMPlexSans-Light.ttf", numeric="IBMPlexMono-Regular.ttf", cjk="NotoSansSC-Regular.ttf", cjkDisplay="NotoSansSC-Regular.ttf"),
+        slices=dict(panel=(8,), card=(8,), button=(8,), buttonHover=(8,), buttonPressed=(8,), buttonDisabled=(8,),
+                    field=(6,), slot=(6,), tooltip=(6,), hud=(6,), track=(4,), fill=(4,)),
+        scale=1, divider=(128, 24, "line"),
+        tile=None,
+        shadows=dict(panel=(0, 12, 32, 0, "#00000080")),
+        # Glass: the scene behind blurred 20 px under a near-opaque panel.
+        glass=dict(panel=(20, 0.92, 0.1)),
+        text=dict(),
+        press=(0.98, 0.98, 0), hover=(0, 1.0),
+        motion=dict(enter="fade", stagger=30, toast="slideLeft", progress=300, shake=4, pop=0.06),
         icons="scifi",
+        # The sheet's toggles: a white knob on the ice track, a grey one off;
+        # slider thumbs and the selected segment keep `knob`'s ice.
+        dresses={"Toggle.knob[on]": ['fill "#f4f7fa"'], "Toggle.knob[off]": ['fill "#8e98a3"']},
     )
     return p, style
 
@@ -840,30 +820,29 @@ TOKENS = {
         sounds=dict(press="volume 0.85 1 pitch 0.97 1.03", counterTick="pitch 1 1.3"),
     ),
     "scifi": dict(
-        # Display-panel tiers: cyan to magenta along the spectrum, cues as HUD patterns.
+        # Mission control: calm status colours, cues as plain marks.
         status=dict(success='icon "check"', warn="pattern stripes", danger="pattern chevrons", info="pattern grid"),
-        rarity=[("#8aa4b4", "pips 1"), ("#3dffa0", "pips 2"), ("#38c8ff", "pips 3"), ("#a87cff", "pips 4"),
-                ("#ffc53d", "pips 5"), ("#ff4d6a", "pips 6")],
-        teams=["#38c8ff", "#ff4d6a", "#3dffa0", "#ffc53d", "#a87cff", "#ff8a3d", "#3df0e0", "#ff6ad8"],
-        damage=[("#a6cde0", "pattern hatch"), ("#ff7a3d", 'icon "fire"'), ("#7fecff", 'icon "drop"'),
-                ("#ffe03d", 'icon "bolt"'), ("#9dff3d", "pattern dots"), ("#fff4c0", 'icon "star"'),
-                ("#9a7cff", "pattern grid"), ("#ff6ad8", "pattern diamonds")],
-        series=["#38e1ff", "#ffc53d", "#ff4d6a", "#3dffa0", "#a87cff", "#ff8a3d", "#3df0e0", "#a6cde0"],
-        weights=dict(display=700, title=700, heading=500, body=500, label=500, caption=500, numeric=400),
-        tracking=dict(display=0.08, title=0.06, heading=0.04, label=0.06, caption=0.04),
+        rarity=[("#8a96a3", "pips 1"), ("#5fd38a", "pips 2"), ("#9ccdf5", "pips 3"), ("#b49cf0", "pips 4"),
+                ("#e8c46a", "pips 5"), ("#d0584c", "pips 6")],
+        teams=["#9ccdf5", "#d0584c", "#5fd38a", "#e8c46a", "#b49cf0", "#e89a5a", "#6ad6c8", "#e88ab8"],
+        damage=[("#a8b2bd", "pattern hatch"), ("#e8845a", 'icon "fire"'), ("#9ccdf5", 'icon "drop"'),
+                ("#e8d06a", 'icon "bolt"'), ("#9fd36a", "pattern dots"), ("#f4ecc8", 'icon "star"'),
+                ("#a896f0", "pattern grid"), ("#e88ab8", "pattern diamonds")],
+        series=["#9ccdf5", "#e8c46a", "#d0584c", "#5fd38a", "#b49cf0", "#e89a5a", "#6ad6c8", "#a8b2bd"],
+        weights=dict(display=300, title=300, heading=400, body=400, label=400, caption=400, numeric=400),
+        tracking=dict(display=0.0, title=0.0, heading=0.01, label=0.08, caption=0.04),
         sizes=dict(xs=16, sm=24, md=32, lg=48, xl=64, xxl=96, touch=44),
-        radius=dict(xs=1, sm=2, md=2, lg=4, xl=6, pill=9999),
+        radius=dict(xs=1, sm=2, md=3, lg=4, xl=6, pill=9999),
         stroke=dict(hairline=1, thin=1, regular=1.5, thick=2, focus=2),
-        # Lit from inside: a dark falloff and a faint cyan rim.
-        elevation=dict(raised=[(0, 0, 8, 0, "#00000080")], floating=[(0, 0, 12, 0, "#00000099"), (0, 0, 4, 0, "#38e1ff26")],
-                       overlay=[(0, 0, 18, 0, "#000000aa"), (0, 0, 6, 0, "#38e1ff33")],
-                       top=[(0, 0, 24, 0, "#000000bb"), (0, 0, 8, 0, "#38e1ff40")]),
-        shape=dict(panel="bevel 2", dialog="bevel 16", card="bevel 10", tooltip="bevel 6", button="bevel 2",
-                   field="bevel 2", chip="bevel 6", badge="notch 4", tab="bevel 6", slot="bevel 2",
-                   bar="bevel 2", hud="bevel 8", avatar="bevel 8"),
-        springs=dict(ui=(140, 0), panel=(240, 0), emphasis=(360, 0.1), playful=(420, 0.15)),
+        # A soft falloff under floating glass, no coloured rim.
+        elevation=dict(raised=[(0, 4, 12, 0, "#00000066")], floating=[(0, 8, 24, 0, "#00000080")],
+                       overlay=[(0, 12, 32, 0, "#00000099")], top=[(0, 16, 40, 0, "#000000aa")]),
+        shape=dict(panel="round 4", dialog="round 6", card="round 4", tooltip="round 3", button="round 3",
+                   field="round 3", chip="round 3", badge="round 2", tab="round 3", slot="round 2",
+                   bar="round 2", hud="round 3", avatar="round pill"),
+        springs=dict(ui=(160, 0), panel=(260, 0), emphasis=(320, 0.05), playful=(360, 0.08)),
         eases=dict(standard="0.4 0 0.2 1", enter="0 0 0.2 1", exit="0.4 0 1 1", emphasis="0.2 0 0 1"),
-        stagger_cap=240, overshoot=0.02,
+        stagger_cap=240, overshoot=0.0,
         haptics=dict(HAPTICS, focus="tick", scrollTick="tick", typewriter="tick", counterTick="tick"),
         sounds=dict(focus="volume 0.5 0.6", typewriter="volume 0.4 0.5 pitch 0.95 1.05", counterTick="pitch 1 1.4"),
     ),
@@ -1073,6 +1052,9 @@ def style_text(s, d, parts=None):
             D.append("  press {} {} {}".format(*s["press"]))
             D.append("  hover {} {}".format(*s["hover"]))
         L += [f'dress "{SELECTORS[part]}" {{'] + D + ["}"]
+    # Parts no atlas slice draws (a toggle's knob by state): their lines as given.
+    for sel, lines in s.get("dresses", {}).items():
+        L += [f'dress "{sel}" {{'] + [f"  {l}" for l in lines] + ["}"]
     return "\n".join(L) + "\n"
 
 
