@@ -288,6 +288,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     let model_lods = std::mem::take(&mut rs.model_lods);
     let last_drawn = std::mem::take(&mut rs.lod_drawn);
     let mut drawn = IdMap::new();
+    // The meshlet path draws the level picked here too (one per model, with
+    // hysteresis), so both paths draw the same picture.
+    rs.scene.instance_levels.clear();
     for (e, asset, parts, mut look, bias) in model_parts {
         let m = h.world_of(e);
         let level = match model_lods.get(&asset) {
@@ -334,11 +337,18 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 continue;
             }
             // A part with fewer levels than the model draws its coarsest.
-            // One the meshlet path draws keeps level 0: the renderer picks
-            // its level per instance on the GPU (og-render's `meshlet`).
+            // One the meshlet path draws keeps level 0's mesh and is told
+            // the level (`RenderScene::instance_levels`): its clusters
+            // hold every level, the same as the part's meshes.
+            let meshlet = rs.scene.meshlet_drawable(mesh, material);
+            if meshlet {
+                let at = rs.scene.instances.len();
+                rs.scene.instance_levels.resize(at + 1, u8::MAX);
+                rs.scene.instance_levels[at] = level as u8;
+            }
             let mesh = match (level, levels.and_then(|l| l.get(k))) {
                 (0, _) | (_, None) => mesh,
-                _ if rs.scene.meshlet_drawable(mesh, material) => mesh,
+                _ if meshlet => mesh,
                 (_, Some(p)) if p.is_empty() => mesh,
                 (l, Some(p)) => p[(l - 1).min(p.len() - 1)].0,
             };

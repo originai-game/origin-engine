@@ -11,20 +11,27 @@ fn meshlet_forest_matches_its_reference() {
     check("meshlet-forest");
 }
 
-/// The forest's frame holds all three tints, the full mesh's green below
-/// the coarser levels' (nearer trees stand lower in the frame from an eye
-/// above the ground looking level): a GPU that drew every tree at level 0
-/// shows only green, one that inverted the choice puts orange nearest.
+/// The forest's frame holds all three tints, the coarser levels nearer
+/// the horizon: the canopies stand above the eye, so a nearer one stands
+/// higher in the frame; only the sky side of the horizon is counted (the
+/// trunks, whose levels barely differ, draw the coarsest everywhere, and
+/// stand mostly below it). A GPU that drew every tree at level 0 shows
+/// only green, one that inverted the choice puts orange highest. Lit, the
+/// tints read green (77, 211, 99), yellow (215, 211, 77) and orange
+/// (218, 176, 50) on Metal: told apart by hue, not by a fixed channel.
 #[test]
 fn meshlet_forest_tints_coarser_levels_farther() {
     let img = gfx::render("meshlet-forest").expect("render").image;
+    // The horizon is at row 352 of 720; the canopies' bottoms above it.
+    let sky_side = img.height * 350 / 720;
     // The mean row of the pixels `is` picks, and how many.
-    let rows = |is: &dyn Fn(&[u8]) -> bool| {
+    let rows = |is: &dyn Fn(i32, i32, i32) -> bool| {
         let (mut sum, mut n) = (0.0f64, 0.0f64);
-        for y in 0..img.height {
+        for y in 0..sky_side {
             for x in 0..img.width {
                 let i = ((y * img.width + x) * 4) as usize;
-                if is(&img.pixels[i..i + 3]) {
+                let p = &img.pixels[i..i + 3];
+                if is(p[0] as i32, p[1] as i32, p[2] as i32) {
                     sum += y as f64;
                     n += 1.0;
                 }
@@ -32,9 +39,9 @@ fn meshlet_forest_tints_coarser_levels_farther() {
         }
         (sum / n.max(1.0), n)
     };
-    let green = |p: &[u8]| p[1] > 120 && p[0] < 100 && p[2] < 100;
-    let yellow = |p: &[u8]| p[0] > 150 && p[1] > 130 && p[2] < 80;
-    let orange = |p: &[u8]| p[0] > 150 && p[1] > 50 && p[1] < 120 && p[2] < 60;
+    let green = |r: i32, g: i32, b: i32| g > 120 && g > r + 60 && g > b + 60;
+    let yellow = |r: i32, g: i32, b: i32| r > 150 && (r - g).abs() < 20 && b < r - 80;
+    let orange = |r: i32, g: i32, b: i32| r > 150 && (25..80).contains(&(r - g)) && b < g - 60;
     let (g, ng) = rows(&green);
     let (yl, ny) = rows(&yellow);
     let (o, no) = rows(&orange);
@@ -43,7 +50,7 @@ fn meshlet_forest_tints_coarser_levels_farther() {
         "tints: green {ng}, yellow {ny}, orange {no}"
     );
     assert!(
-        g > yl && yl > o,
+        g < yl && g < o,
         "rows: green {g:.0}, yellow {yl:.0}, orange {o:.0}"
     );
 }

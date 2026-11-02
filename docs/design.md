@@ -674,7 +674,11 @@ culling (`cull_gpu.rs`) has culled and compacted a clustered batch's
 instances, one compute pass runs a workgroup per instance: it tests the
 instance's sphere against the frustum and the depth pyramid, picks its
 level by screen-space error (`lod::select` without hysteresis, with the
-settings' `lodBias`), then tests each of the level's clusters on its
+settings' `lodBias`) unless its caller picked it
+(`RenderScene::instance_levels`; og-runtime picks one level per model, by
+its parts' largest error, its own `lodBias` and hysteresis, as for the
+regular path's parts, so both paths draw the same picture and every view
+and shadow pass draws that level), then tests each of the level's clusters on its
 own: its sphere against the frustum, its normal cone against the eye
 (not for two-sided materials, transforms that mirror or scale unevenly,
 or orthographic cameras), and its sphere

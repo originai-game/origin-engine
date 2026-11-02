@@ -211,6 +211,21 @@ impl MeshletView {
     }
 }
 
+/// The levels callers picked per sorted slot (`u8::MAX`: none), four
+/// slots a row of the views buffer (meshlet_cull.wgsl `params.lod`).
+pub(crate) fn level_rows(levels: &[u8]) -> Vec<[f32; 4]> {
+    levels
+        .chunks(4)
+        .map(|c| {
+            let mut row = [u8::MAX as f32; 4];
+            for (r, &l) in row.iter_mut().zip(c) {
+                *r = l as f32;
+            }
+            row
+        })
+        .collect()
+}
+
 /// The frame's batch table and the work its dispatch covers, from each
 /// view's clustered batches' instances (their range of the sorted
 /// instances) and their meshes' most clusters at any level: (rows, draws,
@@ -851,6 +866,7 @@ impl MeshletGpu {
         view_proj: Mat4,
         (width, height): (u32, u32),
         previous: &wgpu::Buffer,
+        levels: &[u8],
         vertices: impl Fn(usize) -> &'a wgpu::Buffer,
         occluder: impl Fn(&Batch) -> bool,
     ) -> Option<wgpu::CommandBuffer> {
@@ -917,6 +933,12 @@ impl MeshletGpu {
             rows[VIEW_PLANES] = view.eye.extend(view.per_unit).to_array();
             rows[VIEW_PLANES + 1] = [view.perspective as u32 as f32, 0.0, 0.0, 0.0];
         }
+        // The levels callers picked, after the views' rows.
+        let level_row = planes.len();
+        let picked = levels.iter().any(|&l| l != u8::MAX);
+        if picked {
+            planes.extend(level_rows(levels));
+        }
         grow(
             device,
             &mut self.views,
@@ -936,7 +958,12 @@ impl MeshletGpu {
         let depth = gc.occluder_depth().filter(|_| pyramid.is_some());
         let params = |phase: u32| Params {
             view_proj: view_proj.to_cols_array_2d(),
-            lod: [scene.lod_bias.max(0.0), 0.0, 0.0, 0.0],
+            lod: [
+                scene.lod_bias.max(0.0),
+                level_row as f32,
+                picked as u32 as f32,
+                0.0,
+            ],
             sizes: [width, height, pyramid.map_or(0, |p| p.1), rows.len() as u32],
             phase: [phase, read as u32, write as u32, 0],
         };
@@ -1381,6 +1408,16 @@ mod tests {
         let last = rows.iter().map(|r| r.first_item).max().unwrap() as u64 * 8;
         assert_eq!(buffer, last + window);
         assert!(buffer > items as u64 * 8);
+    }
+
+    /// The picked levels pack four sorted slots a row, slot `s` at row
+    /// `s / 4` lane `s % 4` (the shader's read), the last row's unused
+    /// lanes left unpicked.
+    #[test]
+    fn picked_levels_pack_four_slots_a_row() {
+        let rows = level_rows(&[0, 1, 2, u8::MAX, 3, 7]);
+        assert_eq!(rows, vec![[0.0, 1.0, 2.0, 255.0], [3.0, 7.0, 255.0, 255.0]]);
+        assert!(level_rows(&[]).is_empty());
     }
 
     /// A secondary view's pixels per unit, from its view-projection

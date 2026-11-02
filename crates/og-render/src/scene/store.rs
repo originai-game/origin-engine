@@ -92,6 +92,7 @@ impl RenderScene {
             reflection_probes: Vec::new(),
             shake: CameraShake::default(),
             previous_transforms: Vec::new(),
+            instance_levels: Vec::new(),
             previous_joint_palettes: Vec::new(),
             camera_cut: false,
             joint_palettes: Vec::new(),

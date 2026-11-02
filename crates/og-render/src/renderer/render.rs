@@ -1320,6 +1320,18 @@ impl Renderer {
                 } else {
                     &gc.instances
                 };
+                // The levels callers picked, at the sorted slots.
+                let levels: Vec<u8> = if scene.instance_levels.is_empty() {
+                    Vec::new()
+                } else {
+                    origins[..sorted as usize]
+                        .iter()
+                        .map(|&i| {
+                            let i = i as usize;
+                            scene.instance_levels.get(i).copied().unwrap_or(u8::MAX)
+                        })
+                        .collect()
+                };
                 let (meshes, materials) = (&self.cache.meshes, &self.cache.materials);
                 commands.extend(m.encode(
                     &self.device,
@@ -1331,6 +1343,7 @@ impl Renderer {
                     cam.jittered_view_proj,
                     (self.width, self.height),
                     previous,
+                    &levels,
                     |mesh| &meshes[mesh].vertices,
                     |b| materials[b.material].occluder,
                 ));

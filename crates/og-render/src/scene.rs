@@ -280,6 +280,16 @@ pub struct RenderScene {
     /// full mesh, yellow, orange, red: [`crate::lod::debug_color`]), as
     /// og-runtime's `debugView lod` colours the others.
     pub lod_debug: bool,
+    /// The level each clustered instance draws on the meshlet path, by
+    /// instance index (same order as `instances`), when its caller picked
+    /// it: og-runtime picks one level per model by its largest error and
+    /// keeps it near a boundary (`lod.rs` [`crate::lod::select`] with
+    /// hysteresis), so the meshlet path draws what the regular path draws
+    /// for its parts. Every view and shadow pass draws that level (a
+    /// level past the mesh's coarsest draws the coarsest); `u8::MAX`, or
+    /// an instance past the end, leaves it to the renderer, which picks
+    /// each instance's level by its own screen-space error per view.
+    pub instance_levels: Vec<u8>,
     /// Secondary cameras drawn into render targets or viewports of the
     /// frame, before it in [`crate::View::order`] (`views.rs`).
     pub views: Vec<crate::View>,

@@ -6,8 +6,10 @@
 //!
 //! - `meshlet-forest`: 132 trees on a grid 11 wide and 12 deep, 6 m to
 //!   116 m from an eye 1.7 m up, each tinted by the level the GPU picked
-//!   (`RenderScene::lod_debug`): the near rows green (the full mesh),
-//!   then yellow, then orange; no tree missing or cut open (a cluster
+//!   (`RenderScene::lod_debug`): the near rows' canopies green (the full
+//!   mesh), from about 20 m yellow, from about 40 m orange (by the
+//!   horizon); the trunks orange everywhere (their levels stand
+//!   micrometres apart); no tree missing or cut open (a cluster
 //!   culled wrongly shows as a hole in a crown).
 //! - `meshlet-occlusion`: the same forest without the tint, behind a wall
 //!   4 m away that hides the left two thirds of the view, three frames
@@ -25,8 +27,9 @@
 //!   cascade's and the spot's face), and `shadow_scene(false)` draws the
 //!   same frame through the regular path; the two match.
 //! - `meshlet-views`: the forest from the camera, with a view from high
-//!   above over the right half of the frame and a chrome ball inside a
-//!   reflection probe's box among the near trees, each tinted by the level
+//!   above over the right half of the frame and a chrome ball 4 m ahead
+//!   and 2.5 m left (in the left half, in front of the first row, low in
+//!   the frame) inside a reflection probe's box among the near trees, each tinted by the level
 //!   its own view picked: the main view's near rows green, the view from
 //!   above coarser (yellow, orange), the ball's reflection of the trees
 //!   around it green (the probe is among them). `views_scene(false, 0)`
@@ -197,12 +200,12 @@ pub fn views_scene(meshlets: bool, bias: f32) -> Result<RenderScene, String> {
             // 0.8 m across the unit sphere's 0.5.
             Vec3::splat(1.6),
             Quat::IDENTITY,
-            Vec3::new(2.5, 1.2, -9.0),
+            Vec3::new(-2.5, 0.9, -4.0),
         ),
     );
     scene.reflection_probes.push(ReflectionProbe::new(
         1,
-        Vec3::new(2.5, 1.6, -9.0),
+        Vec3::new(-2.5, 1.6, -5.0),
         Vec3::new(14.0, 6.0, 14.0),
     ));
     scene.views.push(View {

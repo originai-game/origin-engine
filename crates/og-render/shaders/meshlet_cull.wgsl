@@ -4,7 +4,8 @@
 // 0 of its buffer, so a work item keeps the instance's sorted slot, where
 // its previous transform also is): it tests the instance's sphere against
 // the frustum and GPU culling's depth pyramid, picks its level by
-// screen-space error (lod.rs `select` without hysteresis), then its 64
+// screen-space error (lod.rs `select` without hysteresis) unless its
+// caller picked it (RenderScene::instance_levels), then its 64
 // threads test the level's clusters (frustum, normal cone, the pyramid)
 // and append the visible ones as work items (instance, cluster) to the
 // batch's draw, whose instance count is the batch's visible clusters.
@@ -29,7 +30,9 @@
 struct Params {
   // The camera's (the pyramid's projection).
   view_proj: mat4x4<f32>,
-  // x: the scene's LOD bias.
+  // x: the scene's LOD bias; y: the first of `views`' rows holding the
+  // levels callers picked, four sorted slots a row (255: none), when z
+  // is 1.
   lod: vec4<f32>,
   // xy: the screen's size, z: the pyramid's levels (0: no occlusion
   // test), w: the batches.
@@ -54,7 +57,8 @@ struct BatchRow {
 // rows past them never cull), then (the eye, pixels per unit of length at
 // distance 1: perspective, the view's height over 2 tan(fov / 2);
 // orthographic, its height over the view's height in units), then (1 for
-// a perspective view, 0 orthographic; 0, 0, 0).
+// a perspective view, 0 orthographic; 0, 0, 0). After every view's rows,
+// the picked levels (`params.lod`).
 @group(0) @binding(2) var<storage, read> views: array<vec4<f32>>;
 @group(0) @binding(3) var<storage, read> batches: array<BatchRow>;
 // Per mesh slot 10 x vec4: its sphere, (levels, 0, 0, 0), then per level
@@ -180,7 +184,13 @@ fn cull_clusters(@builtin(workgroup_id) wid: vec3<u32>,
   let levels = meshes[mesh + 1u].x;
   let bias = params.lod.x;
   var level = 0u;
-  if (!inside && bias > 0.0) {
+  var picked = 255u;
+  if (params.lod.z > 0.5) {
+    picked = u32(views[u32(params.lod.y) + instance / 4u][instance % 4u]);
+  }
+  if (picked < 255u) {
+    level = min(picked, levels - 1u);
+  } else if (!inside && bias > 0.0) {
     var error = 0.0;
     for (var k = 1u; k < levels; k++) {
       error = max(error, bitcast<f32>(meshes[mesh + 2u + k].z));
