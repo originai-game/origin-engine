@@ -8,8 +8,8 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  artSlot, btn, clamp, flags, frame, glow, grow, inside, keyHash, keyOf, kit, lastInteraction, line, mix, over, overProps, paint, pips, pointer, px,
-  rarityColor, rarityPips, recallPath, rememberPath, role, rtl, shadow, st, still, surface, symbol, text, token, u, vgrad, vstate, xy, type Mut,
+  artSlot, btn, clamp, flags, frame, grow, inside, keyHash, keyOf, kit, lastInteraction, line, mix, over, overProps, paint, pips, pointer, px,
+  rarityColor, rarityPips, recallPath, rememberPath, role, rtl, shadow, st, still, surface, symbol, text, token, u, vgrad, vstate, xy, type Mut, type SymbolKind,
 } from "./core.ts";
 
 // ── the hand: what is carried ───────────────────────────────────────────
@@ -119,7 +119,7 @@ function tile(it: Api.GridItem, wpx: number, hpx: number, cs: number, opts: { li
       ...(it.unusable ? [{ kind: "solid", color: paint(role("danger"), 0.22) } as Api.Fill] : []),
     ],
     strokes: [line(rarityPips(it.rarity) >= 4 ? 2 : 1, paint(tier ? mix(base, role("ink"), 0.1) : role("line"), opts.dim ? 0.4 : 0.95))],
-    ...(opts.raised ? { effects: [shadow(u(10), u(18), 0.55)] } : {}),
+    ...(opts.raised ? { effects: [shadow(u(10), u(18), 0.55)] } : opts.selected ? { effects: [shadow(u(4), u(10), 0.6)] } : {}),
   });
   // The art, turned with the item when it lies turned: it is laid out unturned and rotated a quarter.
   const aw = it.rotated ? hpx : wpx;
@@ -178,8 +178,10 @@ function tile(it: Api.GridItem, wpx: number, hpx: number, cs: number, opts: { li
     over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, z: 2 });
   }
   if (opts.selected) {
-    kit.open("Selected", { width: grow(), height: grow() });
-    kit.setDraw({ shape: { kind: "rect", radii: [r, r, r, r] }, strokes: [line(2, token("focus"))] });
+    // Selected: an edge lit in the focus ink with a halo fading outward, the art left clear (the tile also lifts on
+    // its shadow, above).
+    kit.open("Selected", { width: grow(), height: grow(), part: "Inventory.selected", partClass: "slot" });
+    kit.setDraw({ shape: { kind: "rect", radii: [r, r, r, r] }, strokes: [line(2, token("focus")), line(2, token("focus", 0.45), "outside"), line(6, token("focus", 0.14), "outside")] });
     kit.close();
     over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, z: 3 });
   }
@@ -569,7 +571,8 @@ export function inventoryGrid(id: string, desc: Api.InventoryGridDesc): Api.Inve
     if (gridFocused && !(carrying && byFocus)) {
       const b = cursorBox;
       kit.open("Cursor", { width: px(b.w * cs), height: px(b.h * cs), part: "Inventory.cursor", partClass: "slot" });
-      kit.setDraw({ shape: { kind: "rect", radii: [4, 4, 4, 4] }, strokes: [line(3, token("focus"), "inside")], effects: [glow(8, token("focus", 0.5))] });
+      // A ring and a soft halo outside it, both strokes: a glow effect on a shape with no fill floods the item under it.
+      kit.setDraw({ shape: { kind: "rect", radii: [4, 4, 4, 4] }, strokes: [line(3, token("focus"), "inside"), line(3, token("focus", 0.35), "outside"), line(7, token("focus", 0.12), "outside")] });
       kit.close();
       kit.props(overProps({ insets: { start: b.x * cs, top: b.y * cs }, inert: true, z: 30, layoutMotion: { kind: "token", token: "ui" } }));
     }
@@ -717,6 +720,27 @@ export function inventoryGrid(id: string, desc: Api.InventoryGridDesc): Api.Inve
   return out;
 }
 
+/**
+ * The silhouette an empty slot shows: its icon's name when it names a
+ * drawn kind, else the kind its key and accepted tags say (a helmet slot
+ * a helm, a ring slot a ring), else none (a plain socket, never a letter).
+ */
+function slotGlyph(s: Api.PaperdollSlot): SymbolKind | null {
+  const words = [s.icon ?? "", s.key ?? "", ...(s.accept ?? [])].join(" ").toLowerCase();
+  const kinds: Array<[RegExp, SymbolKind]> = [
+    [/helm|head|hat|hood/, "helm"],
+    [/amulet|neck|pendant/, "amulet"],
+    [/shield|off/, "shield"],
+    [/weapon|sword|blade|main/, "sword"],
+    [/ring/, "gemRing"],
+    [/glove|gauntlet|hands?\b|wrist/, "glove"],
+    [/feet|boot|shoe|leg/, "boot"],
+    [/chest|armou?r|body|torso|robe/, "armor"],
+    [/relic|trinket|charm|artifact/, "star"],
+  ];
+  return kinds.find(([re]) => re.test(words))?.[1] ?? null;
+}
+
 /** The hand's report for the other places on the screen. */
 function carryOf(source: string, it: Api.GridItem, h: Hand, p: Api.UiPointer, released: boolean, slot = ""): Api.InventoryCarry {
   const f = footprintOf({ ...it, rotated: h.rot === 1 });
@@ -828,9 +852,20 @@ export function paperdoll(id: string, desc: Api.PaperdollDesc, figure: Api.UiBui
         else {
           if (s.locked) lockedCell(sw, sh);
           else {
-            kit.setDraw({ shape: { kind: "rect" }, fills: [{ kind: "solid", color: token("panel") }], strokes: [line(1.5, token(target === "hint" || target === "accepts" ? "success" : "lineStrong"))] });
-            if (s.icon && kit.hasIcon(s.icon)) kit.icon("Icon", s.icon, { size: Math.round(sz * 0.46), tint: token("inkFaint"), label: "" });
-            else text("Initial", (s.label ?? key).slice(0, 1).toLocaleUpperCase(), { step: st(sz * 0.34), color: "inkFaint", font: "display", nowrap: true });
+            // An open socket: recessed into the doll's ground (a shade falling from its top edge), its kind's
+            // silhouette faint in it.
+            kit.setDraw({
+              shape: { kind: "rect" },
+              fills: [{ kind: "solid", color: token("well") }, vgrad([[0, token("shadow", 0.5)], [0.45, token("shadow", 0)]])],
+              strokes: [line(1.5, token(target === "hint" || target === "accepts" ? "success" : "line")), line(1, paint(role("ink"), 0.08), "outside")],
+              effects: [{ kind: "innerShadow", offset: { x: 0, y: 2 }, blur: 6, spread: 0, color: token("shadow", 0.8) }],
+            });
+            const glyph = Math.round(Math.min(sw, sh) * 0.56);
+            if (s.icon && kit.hasIcon(s.icon)) kit.icon("Icon", s.icon, { size: glyph, tint: token("inkFaint"), label: "" });
+            else {
+              const kind = slotGlyph(s);
+              if (kind) symbol("Glyph", kind, glyph, mix(role("well"), role("ink"), 0.34));
+            }
           }
         }
         if (target === "accepts" || target === "rejects") {

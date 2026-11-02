@@ -9950,6 +9950,8 @@
         "CardPlay",
         "CardAim",
         "CardHandResult",
+        "HeroTone",
+        "HeroButtonDesc",
         "RewardOption",
         "RewardChoiceDesc",
         "RewardChoiceResult",
@@ -13462,6 +13464,33 @@
             }
           ],
           "returns": "CardHandResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "heroButton",
+          "doc": "The one action a genre screen leads with (End turn, Wish, Play, Ready): a raised face lit from the top over a ledge of its own dark and a soft shadow on the scene, so it reads as a thing to press over any backdrop, beside the flat controls of og.ui.button. It lifts under the pointer and the focus and sinks when pressed; disabled it lies flat. A keycap after the label shows the action's binding on a desktop.\nParts: Pattern.button[primary|premium|secondary|danger][sm|md|lg], Pattern.buttonFace, Pattern.keycap. States: group interaction (normal, hover, pressed, focused, disabled). Motion: the ui token's lift and press. Sounds: the style's press. Accessibility: a button named by its label (and key). Probe id: <id>.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "label",
+              "type": "String",
+              "optional": false,
+              "doc": "What it does."
+            },
+            {
+              "name": "desc",
+              "type": "HeroButtonDesc",
+              "optional": true,
+              "doc": "Tone, size, keycap, disabled and width."
+            }
+          ],
+          "returns": "Response",
           "publish": true,
           "host": false
         },
@@ -47770,7 +47799,7 @@
         },
         "kind": {
           "type": "string",
-          "description": "Its kind (Appendix F: keyArt, portrait, itemIcon, cardArt, banner…): the placeholder's silhouette icon is the kind's (an icon of that name in the style's set, else `image`).",
+          "description": "Its kind (Appendix F: keyArt, portrait, itemIcon, cardArt, banner…): the placeholder's silhouette is the kind's. A portrait, bust, character, splash, avatar, banner or keyArt waits as head and shoulders on a wash of two hues, a body (a paperdoll's figure) as a whole standing figure with no box; any other kind as an icon of its name in the style's set, else `image`.",
           "default": ""
         },
         "aspect": {
@@ -50776,7 +50805,7 @@
         },
         "icon": {
           "type": "string",
-          "description": "The empty slot's silhouette, an icon of the style's set; empty draws the slot's initial.",
+          "description": "The empty slot's silhouette, an icon of the style's set; without one (or one the set lacks) the kind its icon name, key or accepted tags say is drawn as a shape: helm, amulet, sword, shield, ring, glove, boot, armor or a relic's star, else a plain socket.",
           "default": ""
         },
         "locked": {
@@ -51394,6 +51423,65 @@
         "dismissed",
         "refused"
       ],
+      "additionalProperties": false
+    },
+    "HeroTone": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "A call to action's material.",
+      "type": "string",
+      "enum": [
+        "primary",
+        "premium",
+        "secondary",
+        "danger"
+      ],
+      "x-og-variants": {
+        "primary": "The style's primary, lit from the top (End turn, Done, Play).",
+        "premium": "Gold: the purchase a screen leads with (Wish ×10).",
+        "secondary": "A raised neutral beside a primary or premium one (Wish ×1).",
+        "danger": "A destructive action, raised in the danger colour."
+      }
+    },
+    "HeroButtonDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A call to action: tone, height, a keycap and whether it can be pressed now.",
+      "type": "object",
+      "properties": {
+        "tone": {
+          "$ref": "#/$defs/HeroTone",
+          "description": "Its material.",
+          "default": "primary"
+        },
+        "size": {
+          "$ref": "#/$defs/ControlSize",
+          "description": "Its height: the control heights of the density, at least 44 CSS px on touch.",
+          "default": "medium"
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Not now (the enemy's turn): it lies flat and inert, its label in the faint ink.",
+          "default": false
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Size"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its width; null fits the label.",
+          "default": null
+        },
+        "key": {
+          "type": "string",
+          "description": "The key or pad glyph of its action, in a keycap after the label (E, Space); empty shows none.",
+          "default": ""
+        }
+      },
       "additionalProperties": false
     },
     "RewardOption": {

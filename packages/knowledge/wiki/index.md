@@ -160,7 +160,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2037 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2040 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -565,6 +565,8 @@ Field units the docs and Tune use.
 | [`HapticEvent`](ui.md#type-HapticEvent) | struct | ui | — |
 | [`Heard`](probe.md#type-Heard) | struct | probe | — |
 | [`Hello`](probe.md#type-Hello) | struct | probe | — |
+| [`HeroButtonDesc`](ui.md#type-HeroButtonDesc) | desc struct | ui | — |
+| [`HeroTone`](ui.md#type-HeroTone) | enum | ui | — |
 | [`HitKind`](ui.md#type-HitKind) | enum | ui | — |
 | [`HoldButtonDesc`](ui.md#type-HoldButtonDesc) | desc struct | ui | — |
 | [`HoldKey`](ui.md#type-HoldKey) | struct | ui | — |
@@ -1306,6 +1308,7 @@ Field units the docs and Tune use.
 | [`og.ui.grid`](ui.md#fn-grid) | function | ui | — |
 | [`og.ui.gridItem`](ui.md#fn-gridItem) | function | ui | `og_ui_grid_item` |
 | [`og.ui.hasIcon`](ui.md#fn-hasIcon) | function | ui | `og_ui_has_icon` |
+| [`og.ui.heroButton`](ui.md#fn-heroButton) | function | ui | — |
 | [`og.ui.holdButton`](ui.md#fn-holdButton) | function | ui | — |
 | [`og.ui.hudTimer`](ui.md#fn-hudTimer) | function | ui | — |
 | [`og.ui.icon`](ui.md#fn-icon) | function | ui | `og_ui_icon` |

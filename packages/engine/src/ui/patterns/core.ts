@@ -11,7 +11,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  clamp, fit, flags, frame, grow, hex, kit, mix, over, paint, parentOf, pct, px, role, rtl, surface, text, token, xy, type Rgba,
+  clamp, fit, flags, frame, grow, hex, kit, lastInteraction, mix, over, paint, parentOf, pct, px, role, rtl, surface, text, token, xy, type Rgba,
 } from "../containers/base.ts";
 
 export * from "../containers/base.ts";
@@ -113,7 +113,7 @@ export function scrimFill(edge: "bottom" | "top" | "start" | "end", strength = 0
 export type SymbolKind =
   | "lock" | "star" | "starOutline" | "coin" | "gem" | "crown" | "check" | "cross" | "plus" | "minus" | "dot" | "ring"
   | "clock" | "heart" | "shield" | "sword" | "flag" | "pin" | "eye" | "rotate" | "split" | "chat" | "speaker" | "camera" | "grid" | "bolt"
-  | "swap" | "ban";
+  | "swap" | "ban" | "helm" | "amulet" | "glove" | "gemRing" | "boot" | "armor";
 
 /**
  * A symbol drawn as shapes, `size` square, in `color`: what a style's icon
@@ -239,6 +239,37 @@ export function symbol(id: string, kind: SymbolKind, size: number, color: Rgba, 
       kit.close();
       kit.props({ position: "absolute", insets: { start: 0, top: 0 } });
       break;
+    // Equipment kinds, for an empty slot's silhouette (a paperdoll's head, neck, hands, ring, feet, chest).
+    case "helm":
+      // A dome with cheek guards round a T-shaped opening.
+      kit.setDraw({ shape: { kind: "path", points: [p(0.18, 0.6), p(0.18, 0.42), p(0.26, 0.22), p(0.4, 0.12), p(0.6, 0.12), p(0.74, 0.22), p(0.82, 0.42), p(0.82, 0.6), p(0.7, 0.9), p(0.58, 0.9), p(0.58, 0.54), p(0.42, 0.54), p(0.42, 0.9), p(0.3, 0.9)], closed: true, filled: true }, fills: fill });
+      break;
+    case "amulet":
+      // A chain falling to a pendant.
+      kit.setDraw({ shape: path([p(0.2, 0.1), p(0.5, 0.52), p(0.8, 0.1)], w * 0.7), fills: fill });
+      kit.open("Gem", { width: px(s), height: px(s) });
+      kit.setDraw({ shape: { kind: "path", points: [p(0.5, 0.46), p(0.7, 0.68), p(0.5, 0.94), p(0.3, 0.68)], closed: true, filled: true }, fills: fill });
+      kit.close();
+      kit.props({ position: "absolute", insets: { start: 0, top: 0 } });
+      break;
+    case "glove":
+      kit.setDraw({ shape: { kind: "path", points: [p(0.32, 0.92), p(0.3, 0.6), p(0.14, 0.46), p(0.2, 0.37), p(0.34, 0.44), p(0.34, 0.2), p(0.44, 0.1), p(0.58, 0.1), p(0.68, 0.16), p(0.72, 0.3), p(0.72, 0.92)], closed: true, filled: true }, fills: fill });
+      break;
+    case "gemRing":
+      // A band with a stone set on top.
+      kit.setDraw({ shape: { kind: "path", points: [p(0.5, 0.06), p(0.66, 0.2), p(0.5, 0.36), p(0.34, 0.2)], closed: true, filled: true }, fills: fill });
+      kit.open("Band", { width: px(s * 0.62), height: px(s * 0.62) });
+      kit.setDraw({ shape: { kind: "arc", thickness: Math.max(1.5, s * 0.1) }, fills: fill });
+      kit.close();
+      kit.props({ position: "absolute", insets: { start: s * 0.19, top: s * 0.32 } });
+      break;
+    case "boot":
+      kit.setDraw({ shape: { kind: "path", points: [p(0.3, 0.08), p(0.58, 0.08), p(0.58, 0.58), p(0.82, 0.7), p(0.88, 0.8), p(0.88, 0.9), p(0.22, 0.9), p(0.26, 0.6)], closed: true, filled: true }, fills: fill });
+      break;
+    case "armor":
+      // A cuirass: shoulders, a neck notch, the body.
+      kit.setDraw({ shape: { kind: "path", points: [p(0.2, 0.14), p(0.38, 0.1), p(0.5, 0.22), p(0.62, 0.1), p(0.8, 0.14), p(0.92, 0.34), p(0.78, 0.42), p(0.76, 0.9), p(0.24, 0.9), p(0.22, 0.42), p(0.08, 0.34)], closed: true, filled: true }, fills: fill });
+      break;
     case "split":
       kit.setDraw({ shape: path([p(0.5, 0.86), p(0.5, 0.5), p(0.2, 0.18), p(0.5, 0.5), p(0.8, 0.18)]), fills: fill });
       break;
@@ -299,7 +330,7 @@ const KIND_SYMBOL: Record<string, SymbolKind> = {
 };
 
 /** Kinds whose placeholder is a figure (head and shoulders) rather than a symbol. */
-export const FIGURE_KINDS: ReadonlySet<string> = new Set(["portrait", "bust", "character", "splash", "avatar", "banner", "keyArt"]);
+export const FIGURE_KINDS: ReadonlySet<string> = new Set(["portrait", "bust", "character", "splash", "avatar", "banner", "keyArt", "body"]);
 
 /**
  * A slot's placeholder, drawn in the open slot (docs/ui.md §13.1): a
@@ -310,6 +341,10 @@ export const FIGURE_KINDS: ReadonlySet<string> = new Set(["portrait", "bust", "c
  * og.ui.artSlot draws it for the figure kinds, with its frame's stroke.
  */
 export function placeholderArt(s: Slot, tier: Rgba | null, radii: [number, number, number, number], strokes?: Api.Stroke[]): void {
+  if (s.kind === "body") {
+    standingFigure(s, tier);
+    return;
+  }
   const base = tier ?? role("primary");
   // The second hue: the highlight against the primary, the primary against a tier's colour.
   const other = tier ? role("primary") : role("highlight");
@@ -364,6 +399,52 @@ export function placeholderArt(s: Slot, tier: Rgba | null, radii: [number, numbe
     kit.close();
     over({ insets: { start: Math.round(f.x * w - box / 2), top: Math.round(f.y * h - box / 2) }, inert: true, opacity: 0.6 });
   }
+}
+
+/** Half a standing figure's outline from the neck down, as (across from the middle, down) in units of its height. */
+const BODY_HALF: Array<[number, number]> = [
+  [0.034, 0.122], [0.04, 0.152], [0.11, 0.172], [0.146, 0.2], [0.16, 0.3], [0.166, 0.4], [0.17, 0.48], [0.165, 0.53],
+  [0.172, 0.57], [0.152, 0.602], [0.13, 0.578], [0.13, 0.53], [0.124, 0.45], [0.118, 0.38], [0.104, 0.262], [0.096, 0.38],
+  [0.09, 0.44], [0.106, 0.5], [0.1, 0.62], [0.086, 0.73], [0.086, 0.8], [0.066, 0.94], [0.082, 0.982], [0.076, 0.996],
+  [0.02, 0.996], [0.03, 0.94], [0.03, 0.73], [0.0, 0.535],
+];
+
+/**
+ * A body slot's placeholder (a paperdoll's figure): a whole standing
+ * figure on the slot's ground, lit at its rim in the tier's colour or the
+ * primary, on a soft shadow at its feet. No box: it stands on whatever the
+ * slot sits on.
+ */
+function standingFigure(s: Slot, tier: Rgba | null): void {
+  const base = tier ?? role("primary");
+  const fixed = (z: Api.Size | null | undefined): number | null => (z && z.kind === "fixed" ? z.px : null);
+  kit.open("Sizer", { width: px(0), height: px(0) });
+  kit.close();
+  over({ insets: { start: 0, top: 0 }, inert: true });
+  const was = kit.bounds(parentOf(kit.lastPath()));
+  const w = was?.width || fixed(s.width) || 120;
+  const h = was?.height || fixed(s.height) || w * 2;
+  const H = Math.min(h * 0.98, w / 0.4);
+  const top = (h - H) / 2;
+  const cx = (s.focal?.x ?? 0.5) * w;
+  const pt = (dx: number, y: number) => ({ x: Math.round((cx + dx * H) * 10) / 10, y: Math.round((top + y * H) * 10) / 10 });
+  const outline = [...BODY_HALF.map(([dx, y]) => pt(dx, y)), ...BODY_HALF.slice().reverse().map(([dx, y]) => pt(-dx, y))];
+  const rim = paint(mix(base, role("ink"), 0.4), 0.5);
+  kit.open("Floor", { width: px(Math.round(H * 0.42)), height: px(Math.max(4, Math.round(H * 0.045))) });
+  kit.setDraw({ shape: { kind: "ellipse" }, fills: [radial([[0, token("shadow", 0.6)], [1, token("shadow", 0)]])] });
+  kit.close();
+  over({ insets: { start: Math.round(cx - H * 0.21), top: Math.round(top + H * 0.975) }, inert: true });
+  kit.open("Body", { width: px(w), height: px(h) });
+  // A solid fill: a gradient on a path paints the element's whole rectangle, not the outline.
+  kit.setDraw({ shape: { kind: "path", points: outline, closed: true, filled: true }, fills: [solid(mix(role("well"), role("ink"), 0.3))], strokes: [line(Math.max(1.2, H * 0.005), rim)] });
+  kit.close();
+  over({ insets: { start: 0, top: 0 }, inert: true });
+  const hw = Math.round(H * 0.1);
+  const hh = Math.round(H * 0.118);
+  kit.open("Head", { width: px(hw), height: px(hh) });
+  kit.setDraw({ shape: { kind: "ellipse" }, fills: [solid(mix(role("well"), role("ink"), 0.32))], strokes: [line(Math.max(1.2, H * 0.005), rim)] });
+  kit.close();
+  over({ insets: { start: Math.round(cx - hw / 2), top: Math.round(top + H * 0.012) }, inert: true });
 }
 
 /**
@@ -653,6 +734,29 @@ export function fitStep(s: string, width: number, px0: number, min = 11): Api.Ty
 /** A colour at full opacity. */
 const opaque = (c: Rgba): Rgba => ({ ...c, a: 1 });
 
+/**
+ * A raised button's face, laid under its label: the fill lit from the top
+ * (brighter under the pointer, flatter pressed), a thin light along its top
+ * edge, a ledge of the fill's own dark under it and a soft shadow on the
+ * scene, so it reads as a thing to press over any backdrop.
+ */
+function raisedFace(base: Rgba, radius: number, hot: boolean, down: boolean): void {
+  const white = hex("#ffffff");
+  const black = hex("#000000");
+  kit.open("Face", { width: grow(), height: grow(), part: "Pattern.buttonFace", partClass: "button" });
+  kit.setDraw({
+    shape: { kind: "rect", radii: [radius, radius, radius, radius] },
+    fills: [vgrad([[0, paint(mix(base, white, down ? 0.04 : hot ? 0.3 : 0.18))], [0.55, paint(mix(base, white, hot && !down ? 0.08 : 0))], [1, paint(mix(base, black, down ? 0.02 : 0.12))]])],
+    effects: [
+      { kind: "innerShadow", offset: { x: 0, y: down ? 0 : 1.5 }, blur: 0, spread: 0, color: paint(white, down ? 0 : 0.35) },
+      { kind: "dropShadow", offset: { x: 0, y: down ? 1 : u(4) }, blur: 0, spread: 0, color: paint(mix(base, black, 0.5)) },
+      { kind: "dropShadow", offset: { x: 0, y: down ? 2 : u(8) }, blur: u(down ? 6 : 16), spread: 0, color: token("shadow", 0.45) },
+    ],
+  } as Api.DrawDesc);
+  kit.close();
+  over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true });
+}
+
 export type BtnVariant = "primary" | "secondary" | "quiet" | "danger" | "premium";
 
 /**
@@ -661,7 +765,7 @@ export type BtnVariant = "primary" | "secondary" | "quiet" | "danger" | "premium
  * it), the style's part `<part>[<variant>]` with its interaction states, at
  * least 44 CSS px on touch. Answers its response (zero while disabled).
  */
-export function btn(id: string, label: string, d: { variant?: BtnVariant; part?: string; disabled?: boolean; size?: "sm" | "md" | "lg"; width?: Api.Size | null; sym?: SymbolKind; before?: () => void; name?: string; selected?: boolean } = {}): Api.Response {
+export function btn(id: string, label: string, d: { variant?: BtnVariant; part?: string; disabled?: boolean; size?: "sm" | "md" | "lg"; width?: Api.Size | null; sym?: SymbolKind; before?: () => void; name?: string; selected?: boolean; raised?: boolean; key?: string } = {}): Api.Response {
   const { t, touch } = frame();
   const v = d.variant ?? "secondary";
   const size = d.size ?? "md";
@@ -669,13 +773,21 @@ export function btn(id: string, label: string, d: { variant?: BtnVariant; part?:
   const fillRole: Api.ThemeColor | null = v === "primary" ? "primary" : v === "danger" ? "danger" : v === "premium" ? "gold" : v === "secondary" ? "control" : null;
   const inkRole: Api.ThemeColor = v === "primary" || v === "danger" ? "onPrimary" : "ink";
   const ink = v === "premium" ? hex("#1d1406") : role(inkRole);
+  const base = fillRole ? opaque(fillRole === "control" ? mix(role("panelRaised"), role("ink"), 0.12) : role(fillRole)) : null;
+  // A call to action stands out of its screen (End turn, Wish, Done): a raised face over a ledge, lifting under the
+  // pointer and sinking when pressed. Disabled it lies flat, which reads as inert.
+  const raised = !!base && !d.disabled && d.selected === undefined && (v === "primary" || v === "premium" || v === "danger" || !!d.raised);
+  const was = lastInteraction(id);
+  const hot = raised && (was.hovered || was.focused) && !was.pressed;
+  const down = raised && was.pressed;
   return surface(id, {
     part: d.part ?? "Pattern.button",
     cls: "button",
     flags: [v, size],
     // Opaque: a style's control fill may be translucent, and a button over a busy scene must not vanish into it.
     // A secondary button is the raised panel lifted toward the ink (a style's control colour is meant to be laid thin).
-    fill: fillRole ? opaque(fillRole === "control" ? mix(role("panelRaised"), role("ink"), 0.12) : role(fillRole)) : null,
+    fill: base,
+    ...(raised ? { lift: -2, pressScale: 0.97 } : {}),
     wash: v === "primary" || v === "danger" || v === "premium" ? hex("#ffffff") : undefined,
     washBy: 0.14,
     disabled: d.disabled ?? false,
@@ -690,8 +802,29 @@ export function btn(id: string, label: string, d: { variant?: BtnVariant; part?:
     // A toggle (Banish armed) is said selected as it is drawn: the tree has no pressed state.
     semantics: { role: "button", name: d.name ?? label, ...(d.selected === undefined ? {} : { selected: d.selected }) },
   }, () => {
+    if (raised) raisedFace(base!, t.control, hot, down);
     if (d.sym) symbol("Sym", d.sym, u(size === "sm" ? 14 : 18), ink);
     d.before?.();
     if (label) text("Label", label, { step: st(size === "lg" ? 16 : size === "sm" ? 13 : 14), color: d.disabled ? "inkFaint" : ink, nowrap: true, font: "display" });
+    // The action's binding in a keycap after the label, where there are keys to press (not on a touch screen).
+    if (d.key && !touch) {
+      kit.open("Key", { direction: "row", align: "center", cross: "center", padding: xy(u(6), 0), height: px(u(size === "lg" ? 24 : 20)), radius: u(4), part: "Pattern.keycap", partClass: "badge" });
+      kit.setDraw({ shape: { kind: "rect", radii: [u(4), u(4), u(4), u(4)] }, fills: [solid(d.disabled ? role("well") : ink, 0.14)], strokes: [line(1, paint(d.disabled ? role("inkFaint") : ink, 0.55))] });
+      text("Text", d.key, { step: st(12), color: d.disabled ? "inkFaint" : ink, nowrap: true, font: "mono" });
+      kit.close();
+    }
+  });
+}
+
+/** og.ui.heroButton: see `fn heroButton` in crates/og-api/api/ui.ogt. */
+export function heroButton(id: string, label: string, desc: Api.HeroButtonDesc = {}): Api.Response {
+  const size = desc.size === "large" ? "lg" : desc.size === "small" ? "sm" : "md";
+  return btn(id, label, {
+    variant: desc.tone === "premium" ? "premium" : desc.tone === "secondary" ? "secondary" : desc.tone === "danger" ? "danger" : "primary",
+    raised: true,
+    size,
+    disabled: desc.disabled ?? false,
+    width: desc.width ?? null,
+    ...(desc.key ? { key: desc.key, name: `${label}, ${desc.key}` } : {}),
   });
 }

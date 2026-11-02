@@ -124,7 +124,8 @@ export function artSlot(id: string, desc: Api.ArtSlotDesc = {}): void {
     cross: "center",
     radius: desc.mask === "circle" ? 9999 : radius,
     part: `Art.frame${flags(!tex && "placeholder", loading && "loading")}`,
-    partClass: "slot",
+    // A body stands on whatever the slot sits on (a paperdoll's ground): no slot dressing round it.
+    ...(desc.kind === "body" && !tex ? {} : { partClass: "slot" as const }),
   });
   try {
     const strokes: Api.Stroke[] = [{ width: 1, align: "inside", paint: { kind: "solid", color: token(desc.frame ?? "line", desc.frame ? 1 : 0.8) } }];

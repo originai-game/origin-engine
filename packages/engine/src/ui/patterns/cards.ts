@@ -9,7 +9,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  artSlot, clamp, fitStep, flags, floating, floatingContent, frame, glow, grow, inside, keyHash, keyOf, kit, lastInteraction, line, mix, over, overProps,
+  artSlot, clamp, fitStep, flags, floating, floatingContent, frame, glow, grow, hex, inside, keyHash, keyOf, kit, lastInteraction, line, mix, over, overProps,
   paint, pips, pointer, px, rarityColor, recallPath, rememberPath, role, rtl, shadow, spring, st, stIn, still, surface, symbol, text, token, u, vgrad, vstate, xy, type Mut,
 } from "./core.ts";
 
@@ -97,7 +97,8 @@ function cardFace(c: Api.HandCard, cw: number, ch: number, o: FaceOpts): void {
   });
   const pad = Math.max(4, Math.round(cw * 0.045));
   const artH = Math.round(ch * (o.rules ? 0.4 : 0.56));
-  artSlot("Art", "Card.art", { texture: c.image ?? null, kind: "card", rarity: c.rarity, radius: Math.max(3, r - pad), width: px(cw - pad * 2), height: px(artH) });
+  // Without its rules (a covered card at rest) the art takes the card down to its name banner: no empty half.
+  artSlot("Art", "Card.art", { texture: c.image ?? null, kind: "card", rarity: c.rarity, radius: Math.max(3, r - pad), width: px(cw - pad * 2), height: o.rules ? px(artH) : grow() });
   // The banner: the name on a band of the frame's edge colour, darkened so the ink reads on any tier.
   const band = mix(role("well"), edge, 0.3);
   kit.open("Name", { width: grow(), direction: "row", align: "center", cross: "center", padding: xy(Math.round(pad * 1.2), Math.max(2, Math.round(pad * 0.6))), radius: Math.max(3, Math.round(r * 0.5)), background: paint(band), part: "Card.name", partClass: "badge" });
@@ -135,15 +136,19 @@ function cardFace(c: Api.HandCard, cw: number, ch: number, o: FaceOpts): void {
     const never = !hasCost;
     const tone: Api.ThemeColor = never || !o.playable || c.costUp ? "danger" : c.costDown ? "success" : "ink";
     kit.open("Cost", { width: px(g), height: px(g), align: "center", cross: "center", part: `Card.cost${flags(c.costUp && "up", c.costDown && "down", hasCost && !o.playable && "unaffordable", never && "unplayable")}`, partClass: "badge" });
-    const gem = never ? role("danger") : role("primary");
+    // A gem in the energy colour (the highlight, as the energy counter wears it), lit from its top start with a light rim;
+    // out of reach this turn it dulls to a dark stone so its danger number reads; a card never playable wears a danger gem.
+    // A changed cost darkens its gem a step, so the green or red number on it holds its contrast.
+    const gem = never ? role("danger") : !o.playable ? mix(role("lineStrong"), role("well"), 0.5) : c.costUp || c.costDown ? mix(role("highlight"), role("well"), 0.45) : role("highlight");
+    const white = hex("#ffffff");
     kit.setDraw({
       shape: { kind: "ellipse" },
-      fills: [{ kind: "gradient", type: "radial", from: { x: 0.4, y: 0.35 }, to: { x: 0.5, y: 0.5 }, stops: [{ offset: 0, color: paint(mix(gem, role("well"), never ? 0.55 : 0.35)) }, { offset: 1, color: paint(mix(gem, role("well"), 0.8)) }] }],
-      strokes: [line(2, paint(mix(never || !o.playable ? role("danger") : role("primary"), role("ink"), 0.3))), line(1, token("shadow", 0.6), "outside")],
-      effects: [shadow(2, 4, 0.5)],
+      fills: [{ kind: "gradient", type: "radial", from: { x: 0.36, y: 0.3 }, to: { x: 0.62, y: 0.62 }, stops: [{ offset: 0, color: paint(mix(gem, white, 0.3)) }, { offset: 0.45, color: paint(mix(gem, role("well"), 0.38)) }, { offset: 1, color: paint(mix(gem, role("well"), 0.62)) }] }],
+      strokes: [line(Math.max(1.5, g * 0.06), paint(mix(gem, white, 0.55))), line(1, token("shadow", 0.75), "outside")],
+      effects: [shadow(2, 5, 0.6)],
     });
     if (never) symbol("Never", "cross", Math.round(g * 0.5), role("ink"));
-    else text("Value", `${c.cost}`, { step: stIn(g >= u(40) ? 20 : 15, Math.round(g * 0.6)), color: tone, font: "mono", nowrap: true });
+    else text("Value", `${c.cost}`, { step: stIn(g >= u(40) ? 22 : 16, Math.round(g * 0.62)), color: tone, font: "display", nowrap: true });
     kit.close();
     // Seated inside the card's corner, so the frame's line never runs through it.
     const seat = Math.max(3, Math.round(pad * 0.5));
@@ -399,7 +404,9 @@ export function cardHand(id: string, desc: Api.CardHandDesc): Api.CardHandResult
       playable,
       ready,
       // At rest at large text the rules are left to the lifted card (they would not fit the rest card).
-      rules: pl.w >= u(140) && (pl.mode !== "rest" || ts < 1.5),
+      // At rest the rules show only on a card no neighbour covers (the last of the fan): a covered card's lines would be cut
+      // at the next card's edge, so it reads its rules on lift.
+      rules: pl.w >= u(140) && (pl.mode !== "rest" || (ts < 1.5 && !(places[i + 1]?.mode === "rest" && places[i + 1]!.x - pl.x < pl.w * 0.92))),
       big: pl.mode !== "rest" && pl.w >= u(200),
       focused: fanIx.focused && focusVisible && i === h.cur,
       ...(pl.mode === "rest" && places[i + 1]?.mode === "rest" ? { shows: Math.max(0, places[i + 1]!.x - pl.x) } : {}),

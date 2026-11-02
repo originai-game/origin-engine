@@ -7,9 +7,11 @@ import { cardHand } from "./cards.ts";
 import { inventoryGrid, paperdoll } from "./inventory.ts";
 import { rewardChoice } from "./rewards.ts";
 import { gachaBanner, pullSequence } from "./gacha.ts";
+import { heroButton } from "./core.ts";
 
 export const patterns = Object.freeze({
   cardHand,
+  heroButton,
   inventoryGrid,
   paperdoll,
   rewardChoice,

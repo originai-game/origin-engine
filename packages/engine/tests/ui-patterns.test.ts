@@ -316,6 +316,37 @@ test("paperdoll: a compared stat's change is one signed run, sign first, in both
   }
 });
 
+test("paperdoll: an empty slot shows its kind's silhouette, never a letter; a slot of no known kind is a plain socket", () => {
+  // Wrong: an empty slot draws the first letter of its name (N, H, R read as debug output), or an off hand that also takes
+  // weapons is drawn as a sword.
+  const e = run(() => {
+    og.ui.paperdoll("Doll", { slots: [{ key: "neck", label: "Neck", accept: ["amulet"] }, { key: "off", label: "Off hand", accept: ["weapon", "shield"] }, { key: "x", label: "Xyz" }] }, () => {});
+  });
+  expect(byPath(e, "neck/Glyph")).toBeDefined();
+  expect(byPath(e, "off/Glyph")).toBeDefined();
+  expect(byPath(e, "x/Glyph") === undefined).toBe(true);
+  expect(elements(e).some((el) => /^(N|O|X)$/.test(el.text))).toBe(false);
+});
+
+test("heroButton: a press is a click; disabled it is inert; a desktop shows its keycap and says it", () => {
+  // Wrong: a disabled call to action still answers clicked, or the keycap claims a key the name never says.
+  let clicked = 0;
+  let off = 0;
+  const e = run(() => {
+    if (og.ui.heroButton("Go", "End turn", { tone: "primary", key: "E" }).clicked) clicked += 1;
+    if (og.ui.heroButton("Wait", "Waiting", { disabled: true }).clicked) off += 1;
+  }, {});
+  const go = byPath(e, "Root/Go")!;
+  expect(go.name).toBe("End turn, E");
+  expect(byPath(e, "Go/Key/Text")!.text).toBe("E");
+  for (const b of [go, byPath(e, "Root/Wait")!]) {
+    e.probe.commands(`0:touch_move:${centre(b)};0.05:touch_start;0.1:touch_end`);
+    e.advance(10);
+  }
+  expect(clicked).toBe(1);
+  expect(off).toBe(0);
+});
+
 test("inventoryGrid: right to left, columns count from the right edge", () => {
   // Wrong: a pointer's cell read from the left of a mirrored grid (the item lands in the mirror cell).
   const b = bag(true);

@@ -25775,7 +25775,7 @@ export interface ArtSlotDesc {
    */
   readonly texture?: Texture | null;
   /**
-   * Its kind (Appendix F: keyArt, portrait, itemIcon, cardArt, banner…): the placeholder's silhouette icon is the kind's (an icon of that name in the style's set, else `image`).
+   * Its kind (Appendix F: keyArt, portrait, itemIcon, cardArt, banner…): the placeholder's silhouette is the kind's. A portrait, bust, character, splash, avatar, banner or keyArt waits as head and shoulders on a wash of two hues, a body (a paperdoll's figure) as a whole standing figure with no box; any other kind as an icon of its name in the style's set, else `image`.
    *
    * @default ""
    */
@@ -28193,7 +28193,7 @@ export interface PaperdollSlot {
    */
   readonly aspect?: number;
   /**
-   * The empty slot's silhouette, an icon of the style's set; empty draws the slot's initial.
+   * The empty slot's silhouette, an icon of the style's set; without one (or one the set lacks) the kind its icon name, key or accepted tags say is drawn as a shape: helm, amulet, sword, shield, ring, glove, boot, armor or a relic's star, else a plain socket.
    *
    * @default ""
    */
@@ -28616,6 +28616,54 @@ export interface CardHandResult {
   readonly dismissed: boolean;
   /** An unplayable card the player tried to play: it shook, and the game may say why. */
   readonly refused: string | null;
+}
+
+
+/**
+ * A call to action's material.
+ * - `"primary"`: The style's primary, lit from the top (End turn, Done, Play).
+ * - `"premium"`: Gold: the purchase a screen leads with (Wish ×10).
+ * - `"secondary"`: A raised neutral beside a primary or premium one (Wish ×1).
+ * - `"danger"`: A destructive action, raised in the danger colour.
+ */
+export type HeroTone = "primary" | "premium" | "secondary" | "danger";
+
+/**
+ * A call to action: tone, height, a keycap and whether it can be pressed now.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface HeroButtonDesc {
+  /**
+   * Its material.
+   *
+   * @default "primary"
+   */
+  readonly tone?: HeroTone;
+  /**
+   * Its height: the control heights of the density, at least 44 CSS px on touch.
+   *
+   * @default "medium"
+   */
+  readonly size?: ControlSize;
+  /**
+   * Not now (the enemy's turn): it lies flat and inert, its label in the faint ink.
+   *
+   * @default false
+   */
+  readonly disabled?: boolean;
+  /**
+   * Its width; null fits the label.
+   *
+   * @default null
+   */
+  readonly width?: Size | null;
+  /**
+   * The key or pad glyph of its action, in a keycap after the label (E, Space); empty shows none.
+   *
+   * @default ""
+   */
+  readonly key?: string;
 }
 
 
@@ -46401,6 +46449,15 @@ export declare namespace og {
      * @param desc The cards and their targets.
      */
     function cardHand(id: string, desc?: CardHandDesc): CardHandResult;
+    /**
+     * The one action a genre screen leads with (End turn, Wish, Play, Ready): a raised face lit from the top over a ledge of its own dark and a soft shadow on the scene, so it reads as a thing to press over any backdrop, beside the flat controls of og.ui.button. It lifts under the pointer and the focus and sinks when pressed; disabled it lies flat. A keycap after the label shows the action's binding on a desktop.
+     * Parts: Pattern.button[primary|premium|secondary|danger][sm|md|lg], Pattern.buttonFace, Pattern.keycap. States: group interaction (normal, hover, pressed, focused, disabled). Motion: the ui token's lift and press. Sounds: the style's press. Accessibility: a button named by its label (and key). Probe id: <id>.
+     *
+     * @param id Its id.
+     * @param label What it does.
+     * @param desc Tone, size, keycap, disabled and width.
+     */
+    function heroButton(id: string, label: string, desc?: HeroButtonDesc): Response;
     /**
      * A choice of N rewards (Slay the Spire's card reward, Hades' boons, Vampire Survivors' level-up, Balatro's shop packs): each reward a card in its tier's colour with its art, kind, title, tag and rich-text effect, dealt in one after another and flipped face up. The card under the pointer or the focus lifts and its edge brightens; a press takes it (or selects it, with confirm or several picks, its ring and a tick in the focus ink), the taken one rises and grows while the others fall away. Reroll, Banish (armed, every card shows a cross until one is pressed) and Skip sit under the cards. Keys and pads move along the cards, confirm takes or selects, Back disarms banishing. Side by side on a desktop and a phone on its side; one above another, compact, on a phone in portrait.
      * Parts: Reward.frame, Reward.card[rarity=<tier>][selected][banishing][locked], Reward.art, Reward.kind, Reward.title, Reward.text, Reward.tag, Reward.check, Reward.banishMark, Reward.actions, Reward.reroll, Reward.banish[armed], Reward.skip, Reward.confirm. Slots: each reward's art (art kind item or card). States: on each card, group selection (off, on) and fate (offered, banishing, locked). Motion: cards deal in with a stagger and turn face up on the emphasis spring; hover lifts on the ui spring; a taken card rises and the others fall and fade. Sounds: open as they deal, hover, select, confirm on a take, error on a locked one, toggle for banishing. Accessibility: a radiogroup (one pick) or group named by title; each reward a radio or checkbox named by its title, kind and tier, its effect as its description; locked said disabled with its hint. Probe ids: <id>/Options/<key>, <id>/Actions/Reroll, <id>/Actions/Banish, <id>/Actions/Skip, <id>/Actions/Confirm.

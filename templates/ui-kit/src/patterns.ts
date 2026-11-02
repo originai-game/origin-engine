@@ -37,12 +37,13 @@ function screen(id: string, title: string, sub: string, build: () => void, hints
   const small = phone();
   // A 1080p desktop reads from further away: the header steps up (18 px is the floor there, docs/ui.md §15.2).
   const big = !small && vp.height >= 1000;
-  // On a phone in portrait the kit's Gallery button sits at the top, under the notch; it grows with the text size.
-  const top = small ? (vp.breakpoint === "phonePortrait" ? 60 + Math.round(52 * Math.max(1, t.textScale ?? 1)) : 68) : t.space.lg;
+  // On a phone the kit's Gallery button takes the top end corner: the header leaves it room.
+  const top = small ? t.space.sm : t.space.lg;
+  const galleryW = small ? (og.ui.bounds("Back")?.width ?? 100) + t.space.sm : 0;
   // The action hints sit on the bottom edge (actionHints anchors itself), and grow with the text size.
   const bottom = small ? t.space.sm : Math.round(72 * Math.max(1, t.textScale ?? 1));
   og.ui.anchor(id, { anchor: "topLeft", margin: 0, width: px(vp.width - sa.left - sa.right), height: px(vp.height - sa.top - sa.bottom), direction: "column", gap: t.space.md, padding: { left: small ? t.space.sm : t.space.xl, top, right: small ? t.space.sm : t.space.xl, bottom } }, () => {
-    og.ui.column("Header", { width: grow, gap: 2 }, () => {
+    og.ui.column("Header", { width: grow, gap: 2, padding: { left: 0, top: 0, right: galleryW, bottom: 0 } }, () => {
       og.ui.label("Title", title, { step: small ? "xl2" : big ? "xl6" : "xl4", heading: true, font: "display", nowrap: true, ellipsis: true, width: grow });
       if (sub) og.ui.label("Sub", sub, { step: small ? "sm" : big ? "xl" : "base", color: { token: "inkMuted" }, width: grow, maxLines: 2 });
     });
@@ -68,17 +69,27 @@ const BAG0: Item[] = [
 
 const STASH0: Item[] = [{ key: "ore", name: "Iron Ore", x: 0, y: 0, count: 40, maxStack: 50, tag: "ore" }, { key: "amulet", name: "Amulet of Dawn", x: 1, y: 0, tag: "amulet", rarity: "legendary" }];
 
+// Two columns flanking the figure (Diablo IV, Baldur's Gate 3): armour and jewellery at the end, the hands at the start.
 const SLOTS0: Slot[] = [
-  { key: "head", label: "Head", accept: ["helmet"], x: 0.5, y: 0.1, icon: "crown" },
-  { key: "neck", label: "Neck", accept: ["amulet"], x: 0.78, y: 0.2 },
-  { key: "chest", label: "Chest", accept: ["chest"], x: 0.5, y: 0.36, item: { key: "robe", name: "Silk Robe", rarity: "uncommon", tag: "chest" } },
-  { key: "hands", label: "Hands", accept: ["gloves"], x: 0.16, y: 0.42 },
-  { key: "main", label: "Main hand", accept: ["weapon"], x: 0.14, y: 0.66, aspect: 0.6, size: 0, item: { key: "dagger", name: "Rusty Dagger", rarity: "common", tag: "weapon", charge: 0.5 } },
-  { key: "off", label: "Off hand", accept: ["weapon", "shield"], x: 0.86, y: 0.66, aspect: 0.6 },
-  { key: "ring1", label: "Ring", accept: ["ring"], x: 0.84, y: 0.44 },
-  { key: "feet", label: "Feet", accept: ["feet"], x: 0.5, y: 0.9 },
-  { key: "relic", label: "Relic", x: 0.2, y: 0.12, locked: true, lockedHint: "Unlocks at level 30" },
+  { key: "relic", label: "Relic", x: 0.11, y: 0.1, locked: true, lockedHint: "Unlocks at level 30" },
+  { key: "hands", label: "Hands", accept: ["gloves"], x: 0.11, y: 0.32 },
+  { key: "chest", label: "Chest", accept: ["chest"], x: 0.11, y: 0.54, item: { key: "robe", name: "Silk Robe", rarity: "uncommon", tag: "chest" } },
+  { key: "main", label: "Main hand", accept: ["weapon"], x: 0.11, y: 0.81, aspect: 0.6, size: 0, item: { key: "dagger", name: "Rusty Dagger", rarity: "common", tag: "weapon", charge: 0.5 } },
+  { key: "head", label: "Head", accept: ["helmet"], x: 0.89, y: 0.1 },
+  { key: "neck", label: "Neck", accept: ["amulet"], x: 0.89, y: 0.3 },
+  { key: "ring1", label: "Ring", accept: ["ring"], x: 0.89, y: 0.5 },
+  { key: "off", label: "Off hand", accept: ["weapon", "shield"], x: 0.89, y: 0.71, aspect: 0.6 },
+  { key: "feet", label: "Feet", accept: ["feet"], x: 0.89, y: 0.91 },
 ];
+
+/** What an item of each tag would change against what is worn in its slot: the compare column's deltas. */
+const COMPARE: Record<string, Partial<Record<string, number>>> = {
+  helmet: { Armor: 48, Strength: 12, "Fire resistance": -6 },
+  weapon: { Strength: 32, Cooldowns: -0.4 },
+  chest: { Armor: 160, "Move speed": -5 },
+  feet: { Armor: 22, "Move speed": 10 },
+  ring: { Strength: 8, "Fire resistance": 4 },
+};
 
 const p = {
   bag: BAG0.map((i) => ({ ...i })),
@@ -103,8 +114,12 @@ const HAND0: HandCard[] = [
   { key: "wound", name: "Wound", typeLine: "Status", text: "Unplayable.", playable: false },
 ];
 
-interface Foe { key: string; name: string; hp: number; max: number; taunt: boolean }
-const FOES0: Foe[] = [{ key: "cultist", name: "Cultist", hp: 48, max: 50, taunt: false }, { key: "louse", name: "Red Louse", hp: 12, max: 15, taunt: true }];
+/** An enemy as the game holds it: its health, the health its bar's ghost still shows (falling to it after a hit), and its intent. */
+interface Foe { key: string; name: string; hp: number; max: number; taunt: boolean; ghost: number; hit: number; intent: "attack" | "defend"; intentValue: number }
+const FOES0: Foe[] = [
+  { key: "cultist", name: "Cultist", hp: 48, max: 50, taunt: false, ghost: 48, hit: 0, intent: "attack", intentValue: 6 },
+  { key: "louse", name: "Red Louse", hp: 12, max: 15, taunt: true, ghost: 12, hit: 0, intent: "defend", intentValue: 5 },
+];
 
 const c = {
   hand: HAND0.map((x) => ({ ...x })) as Array<Mut<HandCard>>,
@@ -120,83 +135,161 @@ const c = {
   refusedT: 0,
 };
 
+/** A path in a `size` box, its points given as fractions of it. */
+function marks(size: number, pts: Array<[number, number]>, filled: boolean): { kind: "path"; points: Array<{ x: number; y: number }>; closed: boolean; filled: boolean; width: number; cap: "round"; join: "round" } {
+  return { kind: "path", points: pts.map(([x, y]) => ({ x: x * size, y: y * size })), closed: filled, filled, width: Math.max(1.5, size * 0.13), cap: "round", join: "round" };
+}
+
+/** The kit's intent and taunt symbols, drawn (a style's icon set may lack them). */
+const SWORD: Array<[number, number]> = [[0.18, 0.82], [0.8, 0.2], [0.5, 0.5], [0.34, 0.5], [0.5, 0.66]];
+const SHIELD: Array<[number, number]> = [[0.5, 0.04], [0.9, 0.18], [0.84, 0.6], [0.5, 0.96], [0.16, 0.6], [0.1, 0.18]];
+
+/** The End turn action (E, the pad's Y), defined once in each world the table is shown in. */
+const endTurnDefined = new WeakSet<object>();
+
 /** The combat table: two enemies (the second behind a taunt, so it cannot be targeted), the energy, the piles, and the hand. */
 /** `pat:art:on` gives the enemies the kit's backdrop as their portraits (the art path); else the style's placeholder. */
-export function cardsScreen(backdrop = 0): void {
+export function cardsScreen(backdrop = 0, world?: World): void {
   const t = og.ui.frameTheme();
   const vp = og.ui.frameViewport();
   const sa = vp.safeArea;
   const small = phone();
   const portrait = vp.breakpoint === "phonePortrait";
-  const W = vp.width - sa.left - sa.right;
-  const big = !small && vp.height >= 1000;
   const landscape = vp.breakpoint === "phoneLandscape";
+  const W = vp.width - sa.left - sa.right;
+  const Hs = vp.height - sa.top - sa.bottom;
+  const big = !small && vp.height >= 1000;
+  const ts = Math.max(1, t.textScale ?? 1);
+  if (world && !endTurnDefined.has(world)) {
+    endTurnDefined.add(world);
+    og.input.defineAction(world, { name: "endTurn", label: "End turn", bindings: [{ control: "KeyE" }, { control: "pad.y" }] });
+  }
+  // On a phone the kit's Gallery button takes the top end corner (the start one is the web shell's Back): the header leaves it room.
+  const galleryW = small ? (og.ui.bounds("Back")?.width ?? 100) + t.space.sm : 0;
   // The table stops above the foot (its height of last tick): the enemies never stand behind the hand.
-  const footH = og.ui.bounds("Foot")?.height ?? (small ? 220 : 320);
-  // The enemies, as the game would project its units: their rectangles of last tick are the hand's targets.
-  const targets: CardTarget[] = c.foes.map((f) => ({ key: f.key, name: f.name, rect: og.ui.bounds(`${landscape ? "Cards/Top" : "Cards/Table"}/Foes/${f.key}`) ?? { x: -1000, y: -1000, width: 0, height: 0 } as UiRect, valid: !f.taunt }));
-  const foes = (): void => {
-    // Where the table is short (a phone on its side, 200 % text), the enemies stand without their figures.
-    const ts = Math.max(1, t.textScale ?? 1);
-    const room = vp.height - sa.top - sa.bottom - (small ? (portrait ? 60 + Math.round(56 * ts) : 64) : t.space.lg) - footH - t.space.sm - 48 * ts - (portrait ? 56 * ts : 0);
-    const figH = small ? 60 : big ? 148 : 112;
-    const figure = !landscape && room >= figH + 110 * ts;
-    const foeW = portrait ? Math.floor((W - 2 * t.space.sm - t.space.md) / 2) : small ? 150 : big ? 240 : 176;
-    og.ui.row("Foes", { gap: small ? t.space.md : t.space.xl, cross: "end" }, () => {
-      for (const f of c.foes) {
-        const flash = c.refused === f.key && c.refusedT > 0;
-        og.ui.column(f.key, { width: px(foeW), gap: t.space.xs, cross: "center", padding: { left: t.space.sm, top: t.space.sm, right: t.space.sm, bottom: t.space.sm }, radius: t.radius.panel, background: { token: "panel" } }, () => {
-          // A card refused on it: its edge in danger ink while the card shakes.
-          if (flash) og.ui.setDraw({ shape: { kind: "rect", radii: [t.radius.panel, t.radius.panel, t.radius.panel, t.radius.panel] }, fills: [{ kind: "solid", color: { token: "panel" } }], strokes: [{ width: 3, align: "inside", paint: { kind: "solid", color: { token: "danger" } } }] } as never);
-          if (figure) og.ui.artSlot("Figure", { kind: "portrait", texture: c.art && backdrop ? (backdrop as never) : null, focal: { x: 0.5, y: 0.4 }, frame: f.taunt ? "lineStrong" : "primary", width: px(small ? 64 : big ? 148 : 112), height: px(small ? 64 : big ? 148 : 112), radius: 12, label: f.name });
-          og.ui.label("Name", f.name, { step: small ? "sm" : big ? "xl2" : "lg", font: "display", maxLines: 2, ellipsis: true, width: grow, align: "center" });
-          // The hit points under the bar, not in it: a bar's inner label is small and would be cut at 200 %.
-          og.ui.meter("Hp", f.hp, f.max, { kind: "health", width: grow });
-          og.ui.label("HpText", `${f.hp} / ${f.max}`, { step: small ? "sm" : big ? "xl" : "base", font: "mono", nowrap: true });
+  const footH = og.ui.bounds("Foot")?.height ?? (small ? 260 : 320);
+  const tablePath = landscape ? "Cards/Top" : "Cards/Table";
+  // The enemies, as the game would project its units: their plates of last tick are the hand's targets.
+  const targets: CardTarget[] = c.foes.map((f) => ({ key: f.key, name: f.name, rect: og.ui.bounds(`${tablePath}/Foes/${f.key}/Plate`) ?? { x: -1000, y: -1000, width: 0, height: 0 } as UiRect, valid: !f.taunt }));
+  // A hit's ghost holds a moment, then falls to the health left.
+  for (const f of c.foes) {
+    if (f.ghost < f.hp) f.ghost = f.hp;
+    if (f.ghost > f.hp) {
+      if (f.hit > 0) f.hit -= 1;
+      else f.ghost = Math.max(f.hp, f.ghost - Math.max(0.15, (f.ghost - f.hp) * 0.08));
+    }
+  }
+  const pad = small ? t.space.xs : t.space.sm;
+  const frameW = 3;
+  // The plates: as wide as the table allows (two side by side on a phone in portrait), the portrait as tall as the
+  // table's height leaves once the intent, the name and the health have theirs.
+  const plateW = portrait ? Math.floor((W - 2 * t.space.sm - t.space.md) / 2) : landscape ? 150 : big ? 260 : 196;
+  const tableH = og.ui.bounds(tablePath)?.height ?? 0;
+  const chrome = Math.round((small ? 92 : big ? 128 : 108) * ts);
+  const figMax = plateW - 2 * frameW;
+  const figH = landscape ? 0 : Math.round(Math.max(56, Math.min(figMax, tableH > 0 ? tableH - chrome : portrait ? 150 : figMax)));
+  const plate = (f: Foe): void => {
+    const flash = c.refused === f.key && c.refusedT > 0;
+    og.ui.column(f.key, { width: px(plateW), gap: t.space.xs, cross: "center" }, () => {
+      // The intent above the plate: what it will do on its turn, its symbol and its number.
+      og.ui.row("Intent", { gap: t.space.xxs, cross: "center", padding: { left: t.space.sm, top: 2, right: t.space.sm, bottom: 2 }, radius: 999, background: { token: "shadow", alpha: 0.72 } as never }, () => {
+        const z = Math.round((small ? 16 : big ? 22 : 18) * ts);
+        og.ui.column("Mark", { width: px(z), height: px(z) }, () => {});
+        og.ui.setDraw({ shape: marks(z, f.intent === "attack" ? SWORD : SHIELD, f.intent !== "attack"), fills: [{ kind: "solid", color: { token: f.intent === "attack" ? "danger" : "info" } }] } as never);
+        og.ui.label("Value", `${f.intentValue}`, { step: small ? "base" : big ? "xl" : "lg", font: "display", color: { token: f.intent === "attack" ? "danger" : "info" }, nowrap: true });
+      });
+      // The plate: a frame round the portrait, full-bleed, the name on a scrim over its foot; the health inset under it.
+      og.ui.column("Plate", { width: grow, gap: 0, padding: { left: frameW, top: frameW, right: frameW, bottom: pad }, radius: t.radius.panel }, () => {
+        og.ui.setDraw({
+          shape: { kind: "rect", radii: [t.radius.panel, t.radius.panel, t.radius.panel, t.radius.panel] },
+          fills: [{ kind: "gradient", type: "linear", from: { x: 0.5, y: 0 }, to: { x: 0.5, y: 1 }, stops: [{ offset: 0, color: { token: "panelRaised" } }, { offset: 1, color: { token: "panel" } }] }],
+          strokes: [{ width: flash ? 3 : 1.5, align: "inside", paint: { kind: "solid", color: { token: flash ? "danger" : f.taunt ? "lineStrong" : "line" } } }, { width: 1, align: "outside", paint: { kind: "solid", color: { token: "shadow", alpha: 0.8 } } }],
+          effects: [{ kind: "dropShadow", offset: { x: 0, y: 6 }, blur: 16, spread: 0, color: { token: "shadow", alpha: 0.55 } }],
+        } as never);
+        const ir = Math.max(2, t.radius.panel - frameW);
+        if (figH > 0) {
+          og.ui.artSlot("Figure", { kind: "portrait", texture: c.art && backdrop ? (backdrop as never) : null, focal: { x: 0.5, y: 0.4 }, width: grow, height: px(figH), radius: ir, label: f.name });
+          // The name over the portrait's foot, on a scrim that keeps it legible on any art.
+          const nameH = Math.round((small ? 30 : big ? 44 : 36) * ts);
+          og.ui.column("Name", { width: px(plateW - 2 * frameW), height: px(Math.min(figH, nameH + 14)), align: "end", cross: "center", padding: { left: t.space.xs, top: 0, right: t.space.xs, bottom: t.space.xxs } }, () => {
+            og.ui.setDraw({ shape: { kind: "rect", radii: [0, 0, ir, ir] }, fills: [{ kind: "gradient", type: "linear", from: { x: 0.5, y: 0 }, to: { x: 0.5, y: 1 }, stops: [{ offset: 0, color: { token: "shadow", alpha: 0 } }, { offset: 0.55, color: { token: "shadow", alpha: 0.72 } }, { offset: 1, color: { token: "shadow", alpha: 0.9 } }] }] } as never);
+            og.ui.label("Text", f.name, { step: small ? "base" : big ? "xl2" : "lg", font: "display", maxLines: 2, ellipsis: false, width: grow, align: "center" });
+          });
+          og.ui.props({ position: "absolute", insets: { start: frameW, top: frameW + figH - Math.min(figH, nameH + 14) } } as never);
+        } else og.ui.label("NameText", f.name, { step: "base", font: "display", maxLines: 2, width: grow, align: "center" });
+        og.ui.column("Health", { width: grow, gap: 2, cross: "center", padding: { left: pad, top: pad, right: pad, bottom: 0 } }, () => {
+          // The bar inset in a dark track with a 1 px edge; behind the health, the ghost of a recent hit falling to it.
+          const barW = plateW - 2 * frameW - 2 * pad;
+          const barH = Math.round((small ? 8 : 10) * Math.min(1.5, ts));
+          og.ui.row("Bar", { width: px(barW), height: px(barH), radius: 3 }, () => {
+            og.ui.setDraw({ shape: { kind: "rect", radii: [3, 3, 3, 3] }, fills: [{ kind: "solid", color: { token: "shadow", alpha: 0.85 } }], strokes: [{ width: 1, align: "outside", paint: { kind: "solid", color: { token: "shadow" } } }] } as never);
+            const inner = barW - 2;
+            og.ui.column("Ghost", { width: px(Math.max(0, Math.round((inner * f.ghost) / f.max))), height: px(barH - 2), radius: 2, background: { token: "warn", alpha: 0.85 } as never }, () => {});
+            og.ui.props({ position: "absolute", insets: { start: 1, top: 1 } } as never);
+            og.ui.column("Fill", { width: px(Math.max(0, Math.round((inner * f.hp) / f.max))), height: px(barH - 2), radius: 2 }, () => {});
+            // An enemy's health in the danger red, a light along its top so it reads as a filled tube.
+            og.ui.setDraw({ shape: { kind: "rect", radii: [2, 2, 2, 2] }, fills: [{ kind: "solid", color: { token: "danger" } }, { kind: "gradient", type: "linear", from: { x: 0.5, y: 0 }, to: { x: 0.5, y: 1 }, stops: [{ offset: 0, color: { token: "sheen", alpha: 0.45 } }, { offset: 0.5, color: { token: "sheen", alpha: 0 } }] }] } as never);
+            og.ui.props({ position: "absolute", insets: { start: 1, top: 1 } } as never);
+          });
+          og.ui.semantics({ role: "meter", name: `${f.name} health`, value: `${f.hp} / ${f.max}` } as never);
+          og.ui.label("HpText", `${f.hp} / ${f.max}`, { step: small ? "sm" : big ? "lg" : "base", font: "mono", nowrap: true });
           if (f.taunt) {
-            // Behind a taunt: a shield and the words, lit in danger ink while a card it refused shakes.
-            og.ui.row("Taunt", { gap: t.space.xxs, cross: "center", align: "center", width: grow }, () => {
-              // A shield drawn as a path (an icon set may not have one), growing with the words beside it.
-              const sh = Math.round((small ? 16 : big ? 24 : 18) * Math.max(1, ts));
-              const q = (x: number, y: number) => ({ x: x * sh, y: y * sh });
+            // Behind a taunt: a shield chip, lit in danger ink while a card it refused shakes.
+            og.ui.row("Taunt", { gap: t.space.xxs, cross: "center", align: "center", padding: { left: t.space.xs, top: 2, right: t.space.sm, bottom: 2 }, radius: 999, background: { token: flash ? "danger" : "well", alpha: flash ? 0.25 : 1 } as never }, () => {
+              const sh = Math.round((small ? 14 : big ? 20 : 16) * ts);
               og.ui.column("Shield", { width: px(sh), height: px(sh) }, () => {});
-              og.ui.setDraw({ shape: { kind: "path", points: [q(0.5, 0.04), q(0.9, 0.18), q(0.84, 0.6), q(0.5, 0.96), q(0.16, 0.6), q(0.1, 0.18)], closed: true, filled: true }, fills: [{ kind: "solid", color: { token: flash ? "danger" : "inkMuted" } }] } as never);
-              og.ui.label("Note", "Behind a taunt", { step: small ? "sm" : big ? "lg" : "sm", color: { token: flash ? "danger" : "inkMuted" }, maxLines: 2 });
+              og.ui.setDraw({ shape: marks(sh, SHIELD, true), fills: [{ kind: "solid", color: { token: flash ? "danger" : "inkMuted" } }] } as never);
+              og.ui.label("Note", "Behind a taunt", { step: small ? "xs" : big ? "base" : "sm", color: { token: flash ? "danger" : "inkMuted" }, maxLines: 2 });
             });
           }
         });
-      }
+      });
+    });
+  };
+  const foes = (): void => {
+    og.ui.row("Foes", { gap: small ? t.space.md : t.space.xl, cross: "end" }, () => {
+      for (const f of c.foes) plate(f);
     });
   };
   if (c.refusedT > 0) c.refusedT -= 1;
-  // The energy and End turn. On a phone in portrait a lifted card stands over the foot, so they sit under the title.
-  const barTop = portrait;
-  const bar = (): void => {
-    og.ui.row("Bar", { width: grow, cross: "center", gap: t.space.md }, () => {
-      og.ui.row("Energy", { gap: t.space.xs, cross: "center", padding: { left: t.space.md, top: t.space.xs, right: t.space.md, bottom: t.space.xs }, radius: 999, background: { token: "panelRaised" } }, () => {
-        og.ui.label("Value", `${c.energy} / 3`, { step: small ? "lg" : "xl2", font: "mono", color: { token: "highlight" }, nowrap: true });
-        og.ui.label("Label", "Energy", { step: big ? "lg" : "sm", color: { token: "inkMuted" }, nowrap: true });
-      });
-      og.ui.spacer("Gap", grow);
-      if (og.ui.button("EndTurn", c.turn ? "End turn" : "Waiting…", { variant: "primary", disabled: !c.turn, size: big ? "large" : "medium" }).clicked) c.turn = false;
+  const energy = (): void => {
+    og.ui.row("Energy", { gap: t.space.xs, cross: "center", padding: { left: t.space.md, top: t.space.xs, right: t.space.md, bottom: t.space.xs }, radius: 999, background: { token: "panelRaised" } }, () => {
+      og.ui.label("Value", `${c.energy} / 3`, { step: small ? "lg" : "xl2", font: "mono", color: { token: "highlight" }, nowrap: true });
+      og.ui.label("Label", "Energy", { step: big ? "lg" : "sm", color: { token: "inkMuted" }, nowrap: true });
     });
   };
-  og.ui.anchor("Cards", { anchor: "topLeft", margin: 0, width: px(W), height: px(vp.height - sa.top - sa.bottom), direction: "column", padding: { left: small ? t.space.sm : t.space.xl, top: small ? (portrait ? 60 + Math.round(56 * Math.max(1, t.textScale ?? 1)) : 64) : t.space.lg, right: small ? t.space.sm : t.space.xl, bottom: Math.round(footH + t.space.sm) } }, () => {
-    og.ui.row("Top", { width: grow, gap: t.space.md, cross: "center" }, () => {
-      og.ui.label("Title", "Combat", { step: small ? "xl2" : "xl4", heading: true, font: "display", nowrap: true });
-      og.ui.label("Turn", c.turn ? "Your turn" : "Enemy turn", { step: small ? "sm" : big ? "xl" : "base", color: { token: c.turn ? "success" : "warn" }, nowrap: true });
+  const endTurn = (): void => {
+    // The screen's primary action, raised, half again the energy counter's width; E or the pad's Y on a desktop.
+    const ew = og.ui.bounds(portrait ? "Cards/Top/Energy" : "Foot/Bar/Energy")?.width ?? 120;
+    const pressed = og.ui.heroButton("EndTurn", c.turn ? "End turn" : "Waiting…", { tone: "primary", size: "large", disabled: !c.turn, key: "E", width: px(Math.round(Math.max(ew * 1.5, (small ? 132 : 168) * ts))) }).clicked;
+    if (c.turn && (pressed || (world && og.input.actionPressed(world, "endTurn")))) c.turn = false;
+  };
+  og.ui.anchor("Cards", { anchor: "topLeft", margin: 0, width: px(W), height: px(Hs), direction: "column", gap: small ? t.space.sm : 0, padding: { left: small ? t.space.sm : t.space.xl, top: small ? t.space.sm : t.space.lg, right: small ? t.space.sm : t.space.xl, bottom: Math.round(footH + t.space.sm) } }, () => {
+    og.ui.row("Top", { width: grow, gap: t.space.md, cross: "center", padding: { left: 0, top: 0, right: galleryW, bottom: 0 } }, () => {
+      og.ui.column("Heading", { gap: 0, width: portrait ? grow : null }, () => {
+        og.ui.label("Title", "Combat", { step: small ? "xl2" : "xl4", heading: true, font: "display", nowrap: true });
+        og.ui.label("Turn", c.turn ? "Your turn" : "Enemy turn", { step: small ? "sm" : big ? "xl" : "base", color: { token: c.turn ? "success" : "warn" }, nowrap: true });
+      });
+      // On a phone in portrait the energy stands in the header, by the title (under it at a large text size).
+      if (portrait && ts <= 1.25) energy();
       if (landscape) {
         og.ui.spacer("Gap", grow);
         foes();
       }
     });
-    if (barTop) bar();
-    // On a phone on its side the table has no height to spare: the enemies stand in the title's row.
-    if (!landscape) og.ui.row("Table", { width: grow, height: grow, align: "end", cross: "center", gap: small ? t.space.md : t.space.xl3, padding: { left: 0, top: 0, right: small ? 0 : t.space.xl3, bottom: 0 } }, foes);
+    if (portrait && ts > 1.25) og.ui.row("Status", { width: grow }, energy);
+    // The enemies in the table's middle (a phone's upper half), standing on its foot on a desktop.
+    if (!landscape) og.ui.row("Table", { width: grow, height: grow, align: portrait ? "center" : "end", cross: portrait ? "center" : "end", gap: small ? t.space.md : t.space.xl3, padding: { left: 0, top: 0, right: small ? 0 : t.space.xl3, bottom: 0 } }, foes);
   });
-  // The hand along the foot, the energy at its start and End turn at its end.
+  // The hand along the foot. On a desktop and a phone on its side the energy and End turn stand on a bar over it; on a
+  // phone in portrait End turn alone, at the thumb's end, over the band a lifted card rises into.
   og.ui.anchor("Foot", { anchor: "bottom", margin: 0, width: px(W), direction: "column", gap: t.space.xs, padding: { left: small ? t.space.xs : t.space.lg, top: 0, right: small ? t.space.xs : t.space.lg, bottom: small ? t.space.xs : t.space.md } }, () => {
-    if (!barTop) bar();
+    og.ui.row("Bar", { width: grow, cross: "center", gap: t.space.md, padding: { left: portrait ? 0 : 0, top: 0, right: portrait ? t.space.sm : 0, bottom: 0 } }, () => {
+      if (!portrait) energy();
+      og.ui.spacer("Gap", grow);
+      endTurn();
+    });
+    if (portrait) og.ui.spacer("Lift", px(liftClear(W - 2 * t.space.xs, Hs, c.hand.length, ts)));
     const r = og.ui.cardHand("Hand", {
       cards: c.hand.map((x) => ({ ...x, playable: x.playable !== false && (x.cost ?? 0) <= c.energy })),
       targets,
@@ -209,7 +302,11 @@ export function cardsScreen(backdrop = 0): void {
       c.energy -= card.cost ?? 0;
       c.hand.splice(c.hand.indexOf(card), 1);
       const foe = c.foes.find((f) => f.key === r.played!.target);
-      if (foe) foe.hp = Math.max(0, foe.hp - 6);
+      if (foe) {
+        foe.ghost = Math.max(foe.ghost, foe.hp);
+        foe.hp = Math.max(0, foe.hp - 6);
+        foe.hit = 30;
+      }
       c.log = `${card.name}${foe ? ` → ${foe.name}` : ""}`;
     }
     // Refused on a target (a foe behind a taunt): that foe flashes while the card shakes.
@@ -220,6 +317,20 @@ export function cardsScreen(backdrop = 0): void {
     if (r.inspect) c.inspect = r.inspect;
     if (r.dismissed) c.inspect = "";
   });
+}
+
+/**
+ * How far a lifted card rises over the fan on a phone, as og.ui.cardHand
+ * sizes it (a phone's 96 px card narrowed to fit the hand, lifted to 168 or
+ * more and grown with the text): the band End turn keeps clear of.
+ */
+function liftClear(fanW: number, roomH: number, n: number, ts: number): number {
+  const w0 = Math.min(96, fanW * 0.34, (roomH * 0.3) / 1.4);
+  const w = Math.round(n > 1 ? Math.max(Math.min(w0, 80), Math.min(w0, (fanW * 0.9) / (1 + 0.62 * (n - 1)))) : w0);
+  const ch = Math.round(w * 1.4);
+  const liftW = Math.round(Math.min(Math.max(w * 1.45, 168) * Math.min(1.35, ts), fanW * 0.62, (roomH * 0.62) / 1.4));
+  const fanH = ch + 8 + Math.round(Math.max(26, w * 0.22) * 0.3 * Math.min(1.5, ts)) + 14 + 6;
+  return Math.max(0, Math.round(liftW * 1.4) + 12 - fanH);
 }
 
 // ── rewards: a run's reward after a fight ───────────────────────────────
@@ -317,7 +428,7 @@ export function gachaScreen(backdrop = 0, rate: { event: string; standard: strin
   const sa = vp.safeArea;
   const small = phone();
   const b = BANNERS.find((x) => x.key === g.banner) ?? BANNERS[0];
-  og.ui.anchor("Gacha", { anchor: "topLeft", margin: 0, width: px(vp.width - sa.left - sa.right), height: px(vp.height - sa.top - sa.bottom), direction: "column", padding: { left: 0, top: small ? (vp.breakpoint === "phonePortrait" ? 112 : 60) : 0, right: 0, bottom: small ? 0 : 52 } }, () => {
+  og.ui.anchor("Gacha", { anchor: "topLeft", margin: 0, width: px(vp.width - sa.left - sa.right), height: px(vp.height - sa.top - sa.bottom), direction: "column", padding: { left: 0, top: small ? Math.round((og.ui.bounds("Back")?.height ?? 44) + og.ui.frameTheme().space.sm) : 0, right: 0, bottom: small ? 0 : 52 } }, () => {
     const res = og.ui.gachaBanner("Banner", {
       banners: BANNERS.map((x) => ({ key: x.key, name: x.name, endsIn: x.endsIn, fresh: x.fresh })),
       current: b.key,
@@ -447,6 +558,19 @@ function applyMove(list: Item[], from: Item[] | null, m: InventoryMove, fromSlot
 
 // ── gear: paperdoll, backpack and stash ─────────────────────────────────
 
+/** The tag the compare column reads: the item in hand, else the selected one. */
+function compareTag(): string {
+  if (p.carry) return p.carry.tag ?? "";
+  const it = [...p.bag, ...p.stash].find((i) => i.key === p.selected);
+  return it?.tag ?? "";
+}
+
+/** A line of the attributes with its delta against the worn item, in the stat's unit; a lower cooldown is better. */
+function stat(label: string, value: string, unit: string, lowerIsBetter = false): { label: string; value: string; delta?: number; deltaText?: string; lowerIsBetter?: boolean } {
+  const d = COMPARE[compareTag()]?.[label] ?? 0;
+  return { label, value, ...(d ? { delta: d, deltaText: `${d > 0 ? "+" : "\u2212"}${Math.abs(d)}${unit}` } : {}), ...(lowerIsBetter ? { lowerIsBetter } : {}) };
+}
+
 export function gearScreen(): void {
   const t = og.ui.frameTheme();
   const vp = og.ui.frameViewport();
@@ -461,25 +585,19 @@ export function gearScreen(): void {
         ratingLabel: "Item power",
         statsTitle: "Attributes",
         figureAspect: 0.5,
-        compare: !!p.carry || p.selected === "helm",
+        // The item in hand, else the one selected, against what is worn where it would go.
+        compare: !!COMPARE[compareTag()],
         stats: [
-          { label: "Armor", value: "1,240", delta: p.carry?.tag === "helmet" || p.selected === "helm" ? 48 : 0 },
-          { label: "Strength", value: "312", delta: p.carry?.tag === "helmet" || p.selected === "helm" ? 12 : 0 },
-          { label: "Fire resistance", value: "28%", delta: p.carry?.tag === "helmet" || p.selected === "helm" ? -6 : 0, deltaText: "−6%" },
-          { label: "Move speed", value: "100%" },
-          { label: "Cooldowns", value: "8.2 s", delta: -0.4, deltaText: "−0.4 s", lowerIsBetter: true },
+          stat("Armor", "1,240", ""),
+          stat("Strength", "312", ""),
+          stat("Fire resistance", "28%", "%"),
+          stat("Move speed", "100%", "%"),
+          stat("Cooldowns", "8.2 s", " s", true),
         ],
         ...(p.carry ? { carry: p.carry } : {}),
       }, () => {
-        // The figure: the game's character art; the kit draws a standing silhouette that fills the box.
-        og.ui.column("Body", { width: grow, height: grow, align: "end", cross: "center", gap: 4 }, () => {
-          og.ui.column("Head", { width: { kind: "percent", fraction: 0.26 }, aspect: 1, radius: 999, background: { token: "control" } }, () => {});
-          og.ui.column("Torso", { width: { kind: "percent", fraction: 0.5 }, height: { kind: "percent", fraction: 0.4 }, radius: 24, background: { token: "control" } }, () => {});
-          og.ui.row("Legs", { width: { kind: "percent", fraction: 0.44 }, height: { kind: "percent", fraction: 0.36 }, gap: 6 }, () => {
-            og.ui.column("L", { width: grow, height: grow, radius: 12, background: { token: "control" } }, () => {});
-            og.ui.column("R", { width: grow, height: grow, radius: 12, background: { token: "control" } }, () => {});
-          });
-        });
+        // The figure: the game's character art in a body slot (the style's standing silhouette until it is set).
+        og.ui.artSlot("Figure", { kind: "body", width: grow, height: grow, label: "Aria Vell" });
       });
       if (doll.equip) {
         const slot = p.slots.find((s) => s.key === doll.equip!.slot)!;

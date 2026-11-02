@@ -597,6 +597,9 @@ function materialsScreen(d: DemoState): void {
   });
 }
 
+/** The genre patterns' preview screens (patterns.ts). */
+const PATTERN_SCREENS: ReadonlySet<string> = new Set(["gear", "cards", "rewards", "gacha"]);
+
 /** The Gallery button over every screen. */
 function galleryButton(world: World, d: DemoState): void {
   const bp = og.ui.breakpoint();
@@ -604,7 +607,11 @@ function galleryButton(world: World, d: DemoState): void {
   // On a phone the bottom corners belong to the touch controls, and on the
   // shooter's to its vitals (the button sat between Health and Armor: a
   // stray label in the HUD at every desktop aspect); its top middle is free.
-  const top = bp === "phonePortrait" || bp === "phoneLandscape" || SCREENS[d.screen] === "shooter";
+  const phone = bp === "phonePortrait" || bp === "phoneLandscape";
+  const top = phone || SCREENS[d.screen] === "shooter";
+  // The genre patterns' screens lay their header round it: on a phone it takes the top end corner, as a shipped game's
+  // menu button does (the start corner is the web shell's Back).
+  const corner = phone && PATTERN_SCREENS.has(SCREENS[d.screen]!);
   // A tablet's or a desktop's top edge is the HUD's (timers, wallets, scores), so where touch controls or a
   // letterbox took the bottom-left corner last tick, the button stands mid-way down the left edge.
   const taken = !top && ["TouchMove", "Steer", "Story.Bottom"].some((p) => og.ui.bounds(p) !== null);
@@ -612,7 +619,7 @@ function galleryButton(world: World, d: DemoState): void {
   // last tick's place of the bar, when the screen has one.
   const bar = og.ui.bounds("Hints");
   const lift = !top && bar && bar.y + bar.height >= vp.height - 1 && bar.width >= vp.width - 1 ? vp.height - bar.y : 0;
-  og.ui.anchor("Back", { anchor: top ? "top" : taken ? "left" : "bottomLeft", offsetY: bp === "phonePortrait" ? 52 : taken ? 0 : -lift }, () => {
+  og.ui.anchor("Back", { anchor: corner ? "topRight" : top ? "top" : taken ? "left" : "bottomLeft", offsetY: corner ? 0 : bp === "phonePortrait" ? 52 : taken ? 0 : -lift }, () => {
     // The medium size: its label at the body's 16 px at 1080p, never under it.
     if (og.ui.button("Gallery", tr(world, "gallery.button"), { variant: "secondary" }).clicked) d.screen = 0;
   });
@@ -1167,7 +1174,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       break;
     case "cards":
       // Back stops aiming first (the hand takes it).
-      cardsScreen(d.backdrop as number);
+      cardsScreen(d.backdrop as number, world);
       break;
     case "rewards":
       // Back disarms banishing first (the choice takes it).

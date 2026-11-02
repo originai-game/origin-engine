@@ -204,7 +204,7 @@ function cards(b: ReturnType<typeof builder>, phone: boolean, prefix = ""): void
     // Keys: a click on Strike puts the focus on the hand; the cursor walks it, Enter aims Bash, Right steps
     // the target onto the enemy behind a taunt (the arc says invalid), Back stops aiming.
     b.seq((at) => tap(at, "Hand/Fan/strike"), 0.2);
-    b.cmd("touch_move_to:Cards/Top/Title", 0.2);
+    b.cmd("touch_move_to:Cards/Top/Heading/Title", 0.2);
     b.seq((at) => key(at, "ArrowRight"), 0.2);
     b.seq((at) => key(at, "ArrowRight"), 0.2);
     b.shot(`${prefix}cards-keys-cursor`, 0.4);
