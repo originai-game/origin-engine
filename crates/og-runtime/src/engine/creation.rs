@@ -336,6 +336,13 @@ pub(crate) fn assemble(
                 })
             })
         })
+        .flat_map(crate::lazy::with_partners)
+        .collect();
+    // In LAZY's order, once each (a partner joins at its own place).
+    let lazy_named: Vec<&'static str> = crate::lazy::LAZY
+        .iter()
+        .map(|l| l.name)
+        .filter(|n| lazy_named.contains(n))
         .collect();
     for name in &lazy_named {
         if let Some(l) = layouts.get(*name) {

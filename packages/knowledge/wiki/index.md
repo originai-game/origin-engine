@@ -160,7 +160,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2058 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2071 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -392,6 +392,8 @@ Field units the docs and Tune use.
 | [`DataListDesc`](ui.md#type-DataListDesc) | desc struct | ui | — |
 | [`DataListResult`](ui.md#type-DataListResult) | struct | ui | — |
 | [`DataStateDesc`](ui.md#type-DataStateDesc) | desc struct | ui | — |
+| [`DateFormat`](i18n.md#type-DateFormat) | desc struct | i18n | — |
+| [`DateStyle`](i18n.md#type-DateStyle) | enum | i18n | — |
 | [`DeadzoneDesc`](input.md#type-DeadzoneDesc) | desc struct | input | — |
 | [`DebugDrawDesc`](debug.md#type-DebugDrawDesc) | desc struct | debug | — |
 | [`DebugView`](render.md#type-DebugView) | enum | render | — |
@@ -893,6 +895,11 @@ Field units the docs and Tune use.
 | [`og.FootLock`](anim.md#record-FootLock) | component | anim | — |
 | [`og.game`](game.md#fn-game) | function | game | `og_game_game` |
 | [`og.Gamepad`](input.md#record-Gamepad) | resource | input | — |
+| [`og.i18n.formatCompact`](i18n.md#fn-formatCompact) | function | i18n | `og_i18n_format_compact` |
+| [`og.i18n.formatCurrency`](i18n.md#fn-formatCurrency) | function | i18n | `og_i18n_format_currency` |
+| [`og.i18n.formatDate`](i18n.md#fn-formatDate) | function | i18n | `og_i18n_format_date` |
+| [`og.i18n.formatDuration`](i18n.md#fn-formatDuration) | function | i18n | `og_i18n_format_duration` |
+| [`og.i18n.formatTime`](i18n.md#fn-formatTime) | function | i18n | `og_i18n_format_time` |
 | [`og.i18n.has`](i18n.md#fn-has) | function | i18n | `og_i18n_has` |
 | [`og.i18n.load`](i18n.md#fn-load) | function | i18n | `og_i18n_load` |
 | [`og.i18n.locale`](i18n.md#fn-locale) | function | i18n | `og_i18n_locale` |
@@ -1198,8 +1205,12 @@ Field units the docs and Tune use.
 | [`og.tilemap.resize`](tilemap.md#fn-resize) | function | tilemap | `og_tilemap_resize` |
 | [`og.tilemap.setTile`](tilemap.md#fn-setTile) | function | tilemap | `og_tilemap_set_tile` |
 | [`og.Time`](time.md#record-Time) | resource | time | — |
+| [`og.time.groupDt`](time.md#fn-groupDt) | function | time | `og_time_group_dt` |
 | [`og.time.hitStop`](time.md#fn-hitStop) | function | time | `og_time_hit_stop` |
+| [`og.time.setGroupScale`](time.md#fn-setGroupScale) | function | time | `og_time_set_group_scale` |
 | [`og.time.setScale`](time.md#fn-setScale) | function | time | `og_time_set_scale` |
+| [`og.TimeGroup`](time.md#record-TimeGroup) | component | time | — |
+| [`og.TimeGroups`](time.md#record-TimeGroups) | resource | time | — |
 | [`og.Timeline`](timeline.md#record-Timeline) | component | timeline | — |
 | [`og.timeline.info`](timeline.md#fn-info) | function | timeline | `og_timeline_info` |
 | [`og.timeline.pause`](timeline.md#fn-pause) | function | timeline | `og_timeline_pause` |
@@ -2046,6 +2057,7 @@ Field units the docs and Tune use.
 | [`TilemapInfo`](tilemap.md#type-TilemapInfo) | struct | tilemap | — |
 | [`TileObject`](tilemap.md#type-TileObject) | struct | tilemap | — |
 | [`TileOrientation`](tilemap.md#type-TileOrientation) | enum | tilemap | — |
+| [`TimeFormat`](i18n.md#type-TimeFormat) | desc struct | i18n | — |
 | [`TimelineAction`](ui.md#type-TimelineAction) | union | ui | — |
 | [`TimelineAsset`](timeline.md#type-TimelineAsset) | handle | timeline | — |
 | [`TimelineAsset()`](timeline.md#column-TimelineAsset) | column kind | timeline | — |
@@ -2056,6 +2068,7 @@ Field units the docs and Tune use.
 | [`TimelineTrack`](ui.md#type-TimelineTrack) | struct | ui | — |
 | [`TimelineTrackInfo`](timeline.md#type-TimelineTrackInfo) | struct | timeline | — |
 | [`TimerMode`](ui.md#type-TimerMode) | enum | ui | — |
+| [`TimeStyle`](i18n.md#type-TimeStyle) | enum | i18n | — |
 | [`ToastDesc`](ui.md#type-ToastDesc) | desc struct | ui | — |
 | [`ToggleResult`](ui.md#type-ToggleResult) | struct | ui | — |
 | [`ToggleSwitchDesc`](ui.md#type-ToggleSwitchDesc) | desc struct | ui | — |

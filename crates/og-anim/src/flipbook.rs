@@ -653,6 +653,7 @@ const MAX_EVENTS: u64 = 64;
 
 fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
     let dt = ctx.scaled_dt();
+    let groups = ctx.time_groups();
     let mut entities: Vec<Entity> = Vec::new();
     for a in ctx.query(0)? {
         entities.extend_from_slice(a.entities());
@@ -692,7 +693,7 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
             }
         };
         if f.playing && !f.finished {
-            f.time += dt * f.speed.clamp(0.0, 10.0);
+            f.time += ctx.group_dt(groups.as_ref(), e, dt) * f.speed.clamp(0.0, 10.0);
         }
         // Keep `time` inside one cycle; the cycles go to `base`.
         if clip.mode != FlipMode::Once && total > 0.0 && f.time >= total {

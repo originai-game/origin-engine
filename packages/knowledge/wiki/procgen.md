@@ -16,7 +16,7 @@ module procgen {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1627</sub>
+<sub>`api.ogt` line 1655</sub>
 
 ## Contents
 
@@ -73,7 +73,7 @@ fn noise {
 }
 ```
 
-<sub>`api.ogt` line 1687</sub>
+<sub>`api.ogt` line 1715</sub>
 
 <a id="fn-noiseGrid"></a>
 
@@ -101,7 +101,7 @@ fn noiseGrid {
 }
 ```
 
-<sub>`api.ogt` line 1696</sub>
+<sub>`api.ogt` line 1724</sub>
 
 <a id="fn-poissonDisk"></a>
 
@@ -129,7 +129,7 @@ fn poissonDisk {
 }
 ```
 
-<sub>`api.ogt` line 1731</sub>
+<sub>`api.ogt` line 1759</sub>
 
 <a id="fn-bsp"></a>
 
@@ -157,7 +157,7 @@ fn bsp {
 }
 ```
 
-<sub>`api.ogt` line 1787</sub>
+<sub>`api.ogt` line 1815</sub>
 
 <a id="fn-wfc"></a>
 
@@ -185,7 +185,7 @@ fn wfc {
 }
 ```
 
-<sub>`api.ogt` line 1845</sub>
+<sub>`api.ogt` line 1873</sub>
 
 ## Types
 
@@ -210,7 +210,7 @@ enum NoiseKind {
 }
 ```
 
-<sub>`api.ogt` line 1632</sub>
+<sub>`api.ogt` line 1660</sub>
 
 <a id="type-FbmDesc"></a>
 
@@ -258,7 +258,7 @@ struct FbmDesc {
 }
 ```
 
-<sub>`api.ogt` line 1638</sub>
+<sub>`api.ogt` line 1666</sub>
 
 <a id="type-NoiseGridDesc"></a>
 
@@ -303,7 +303,7 @@ struct NoiseGridDesc {
 }
 ```
 
-<sub>`api.ogt` line 1664</sub>
+<sub>`api.ogt` line 1692</sub>
 
 <a id="type-PoissonDesc"></a>
 
@@ -353,7 +353,7 @@ struct PoissonDesc {
 }
 ```
 
-<sub>`api.ogt` line 1702</sub>
+<sub>`api.ogt` line 1730</sub>
 
 <a id="type-CellRect"></a>
 
@@ -378,7 +378,7 @@ struct CellRect {
 }
 ```
 
-<sub>`api.ogt` line 1737</sub>
+<sub>`api.ogt` line 1765</sub>
 
 <a id="type-BspDesc"></a>
 
@@ -436,7 +436,7 @@ struct BspDesc {
 }
 ```
 
-<sub>`api.ogt` line 1745</sub>
+<sub>`api.ogt` line 1773</sub>
 
 <a id="type-BspResult"></a>
 
@@ -459,7 +459,7 @@ struct BspResult {
 }
 ```
 
-<sub>`api.ogt` line 1780</sub>
+<sub>`api.ogt` line 1808</sub>
 
 <a id="type-WfcTile"></a>
 
@@ -491,7 +491,7 @@ struct WfcTile {
 }
 ```
 
-<sub>`api.ogt` line 1793</sub>
+<sub>`api.ogt` line 1821</sub>
 
 <a id="type-WfcCell"></a>
 
@@ -516,7 +516,7 @@ struct WfcCell {
 }
 ```
 
-<sub>`api.ogt` line 1806</sub>
+<sub>`api.ogt` line 1834</sub>
 
 <a id="type-WfcDesc"></a>
 
@@ -562,7 +562,7 @@ struct WfcDesc {
 }
 ```
 
-<sub>`api.ogt` line 1814</sub>
+<sub>`api.ogt` line 1842</sub>
 
 <a id="type-WfcResult"></a>
 
@@ -585,4 +585,4 @@ struct WfcResult {
 }
 ```
 
-<sub>`api.ogt` line 1838</sub>
+<sub>`api.ogt` line 1866</sub>

@@ -21,6 +21,18 @@ is one line here, written at the merge that changes
   from its quiet light choices when a look matches no seed family.
   Pre-release, so nothing migrates: name another built-in style, or eject
   `minimal` from an earlier engine first and name the game's own copy.
+- **Formatting and time groups (G2-6, batch 3).** `og.i18n` formats
+  compact numbers, currencies, dates, times and durations
+  (`formatCompact`, `formatCurrency`, `formatDate`, `formatTime`,
+  `formatDuration`; in messages `{n, number, compact}`,
+  `{p, number, currency/EUR}`, `{d, date, short}`, `{t, time}`) from a
+  CLDR 49 subset in the engine: og-i18n's 45 plural languages plus
+  zh-Hant, 40 currencies, about 61 KB of data. Moments are seconds the
+  game passes in, never a clock. `og.TimeGroup` and
+  `og.time.setGroupScale` slow or freeze one group of entities (their
+  animation, flipbooks, 2D skeletons, tweens and nav agents) on top of
+  the global scale; physics stays global. Both types are lazy, so a world
+  without them hashes and saves as before.
 - **Tilemap orientations and run-time maps (G2-6, batch 2).** Maps are
   orthogonal, isometric, staggered or hex (pointy- or flat-top), from a
   `.ogt` `orientation` line or Tiled's isometric, staggered and hexagonal

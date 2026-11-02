@@ -2205,6 +2205,7 @@ export interface MatrixWorld {
 
 // ── time ────────────────────────────────────────────────────────
 // Simulation time. Game code never reads the wall clock; it reads Time.
+// Time groups slow or freeze some entities and not others (a bullet-time enemy beside a player at full speed, a frozen boss, a paused UI diorama): put an entity in a group with og.TimeGroup and set the group's scale with og.time.setGroupScale. og.anim, flipbooks, 2D skeletons, the entity's scaled tweens and its og.nav agent then advance by scaledDt times its group's scale. Physics stays on the global scale (one solver steps every body together; slow a body's motion with its velocity, or move it kinematically), and particles, timelines and the UI keep their own pace. A world that never names og.TimeGroup or og.TimeGroups keeps its saves and hash.
 
 /**
  * The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers. The world keeps the time scale in a second resource, og.TimeScale (`scale`, `hitStop`, and `elapsed`, which is scaledElapsed), set through og.time.setScale and og.time.hitStop; read og.Time, which carries all of it. The probe's `get:og.Time` answers every field here, as a system's `time` does; `set:og.TimeScale.scale=0.5` slows time from a script.
@@ -2270,6 +2271,36 @@ export interface Time {
    */
   readonly scaledElapsed: number;
 }
+
+/**
+ * Which time group the entity is in (0 to 15): its animation (og.anim, flipbooks, 2D skeletons), its scaled tweens and its og.nav agent advance by scaledDt times og.time.setGroupScale's scale for the group. Physics stays on the global scale: a body in a slowed group falls at the world's pace. An entity without one is at the global pace.
+ *
+ * The value of the `TimeGroup` component (token `og.TimeGroup`).
+ */
+export interface TimeGroup {
+  /**
+   * The group, 0 to 15.
+   *
+   * @range ..15
+   */
+  group: number;
+}
+
+/**
+ * Each time group's scale on top of the global one, set with og.time.setGroupScale (every group starts at 1). Registered when a game first names og.TimeGroup or og.TimeGroups. Physics stays on the global scale.
+ *
+ * The `TimeGroups` resource (token `og.TimeGroups`).
+ */
+export interface TimeGroups {
+  /**
+   * Per group, its scale (0 to 10); past the list's length 1.
+   *
+   * @capacity 16 elements (List.f32.16): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  scales: readonly number[];
+}
+
+
 
 
 
@@ -19811,6 +19842,63 @@ export interface RoomMessage {
 // ── i18n ────────────────────────────────────────────────────────
 // Localization: one string table per locale (`.ogt` of `type strings`: `locale "ja"`, its font chain `fonts "..."`, `string "key" "message"`), messages in a subset of ICU MessageFormat (`{name}`, `{n, number}`, `{n, plural, =0 {..} one {..} other {..}}` with `#`, `{g, select, a {..} other {..}}`), CLDR plural rules, and the locale the host asks for (the browser's `navigator.language` on the web, `og run --locale` natively).
 // The active locale is the best loaded table for the request (ja-JP takes ja; zh-TW takes zh-Hant or zh-TW), else the base table (`base true`, else en, else the first). A key it lacks is read from its `fallback` table, then the base. It also sets the UI's font chain (its fonts first, then the other tables') and direction: a right-to-left locale (ar, he, fa, ur) mirrors og.ui's layout, and og-ui shapes Arabic words with the font's own tables (a font cooked with the `arabic` charset carries them). `og cook` warns about every key a locale lacks, or takes other arguments for, than the base.
+// Formatting (formatCompact, formatCurrency, formatDate, formatTime, formatDuration, and the message styles `{n, number, compact}`, `{p, number, currency/EUR}`, `{d, date, short}`, `{d, time}`) writes from a CLDR subset built into the engine, for the languages the plural rules cover and zh-Hant; another language is written as en. It follows the active locale (else the requested one, else en). A date or time is seconds since 1970-01-01 00:00 UTC that the game passes in (a save's timestamp, a server's event time): nothing reads a clock, so the same value gives the same text on every host and in a replay. A message's dates are UTC; formatDate and formatTime take an offset.
+
+/**
+ * How much of a date to write (CLDR's styles; en shown).
+ * - `"medium"`: `Nov 2, 2026`.
+ * - `"short"`: `11/2/26`.
+ * - `"long"`: `November 2, 2026`.
+ * - `"full"`: `Monday, November 2, 2026`.
+ */
+export type DateStyle = "medium" | "short" | "long" | "full";
+
+/**
+ * How much of a time of day to write (en shown).
+ * - `"short"`: `3:05 PM`.
+ * - `"medium"`: `3:05:09 PM`, with seconds.
+ */
+export type TimeStyle = "short" | "medium";
+
+/**
+ * How formatDate writes a moment.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DateFormat {
+  /**
+   * How much of the date.
+   *
+   * @default "medium"
+   */
+  readonly style?: DateStyle;
+  /**
+   * Minutes ahead of UTC to show it in (a player's time zone, which the game passes in; 540 for Tokyo).
+   *
+   * @default 0
+   */
+  readonly offsetMinutes?: number;
+}
+
+/**
+ * How formatTime writes a moment.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface TimeFormat {
+  /**
+   * With or without seconds.
+   *
+   * @default "short"
+   */
+  readonly style?: TimeStyle;
+  /**
+   * Minutes ahead of UTC to show it in.
+   *
+   * @default 0
+   */
+  readonly offsetMinutes?: number;
+}
 
 /** The localization state. */
 export interface LocaleInfo {
@@ -19825,6 +19913,11 @@ export interface LocaleInfo {
   /** The UI's font chain, first first. */
   readonly fonts: readonly string[];
 }
+
+
+
+
+
 
 
 
@@ -43501,7 +43594,18 @@ export declare namespace og {
    * The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers. The world keeps the time scale in a second resource, og.TimeScale (`scale`, `hitStop`, and `elapsed`, which is scaledElapsed), set through og.time.setScale and og.time.hitStop; read og.Time, which carries all of it. The probe's `get:og.Time` answers every field here, as a system's `time` does; `set:og.TimeScale.scale=0.5` slows time from a script.
    */
   const Time: ResourceType<{ readonly tick: FieldSpec<"u32">; readonly dt: FieldSpec<"f32">; readonly elapsed: FieldSpec<"f64">; readonly rate: FieldSpec<"u32">; readonly scale: FieldSpec<"f32">; readonly hitStop: FieldSpec<"u32">; readonly scaledDt: FieldSpec<"f32">; readonly scaledElapsed: FieldSpec<"f64"> }, Time>;
-  /** Simulation time. Game code never reads the wall clock; it reads Time. */
+  /**
+   * Which time group the entity is in (0 to 15): its animation (og.anim, flipbooks, 2D skeletons), its scaled tweens and its og.nav agent advance by scaledDt times og.time.setGroupScale's scale for the group. Physics stays on the global scale: a body in a slowed group falls at the world's pace. An entity without one is at the global pace.
+   */
+  const TimeGroup: ComponentType<{ readonly group: FieldSpec<"u32"> }, TimeGroup>;
+  /**
+   * Each time group's scale on top of the global one, set with og.time.setGroupScale (every group starts at 1). Registered when a game first names og.TimeGroup or og.TimeGroups. Physics stays on the global scale.
+   */
+  const TimeGroups: ResourceType<{ readonly scales: ListSpec<"f32"> }, TimeGroups>;
+  /**
+   * Simulation time. Game code never reads the wall clock; it reads Time.
+   * Time groups slow or freeze some entities and not others (a bullet-time enemy beside a player at full speed, a frozen boss, a paused UI diorama): put an entity in a group with og.TimeGroup and set the group's scale with og.time.setGroupScale. og.anim, flipbooks, 2D skeletons, the entity's scaled tweens and its og.nav agent then advance by scaledDt times its group's scale. Physics stays on the global scale (one solver steps every body together; slow a body's motion with its velocity, or move it kinematically), and particles, timelines and the UI keep their own pace. A world that never names og.TimeGroup or og.TimeGroups keeps its saves and hash.
+   */
   namespace time {
     /**
      * Set the global time scale (slow motion): physics, og.anim, flipbooks and tweens advance by dt * scale from the system after the call; systems may call it.
@@ -43518,6 +43622,22 @@ export declare namespace og {
      * @param ticks Ticks to hold.
      */
     function hitStop(world: World, ticks: number): Result<void>;
+    /**
+     * Set one time group's scale on top of the global one: 0.25 a quarter speed, 0 frozen, 1 the global pace. Entities with og.TimeGroup in it animate, tween and walk at the new pace from the system after the call; physics stays on the global scale. Outside a system the first call registers og.TimeGroups; inside one it must be registered already (name og.TimeGroup or og.TimeGroups in a system's reads or writes, or call it once in setup).
+     *
+     * @param world The world.
+     * @param group The group, 0 to 15.
+     * @param scale 0 to 10: 1 is the global pace.
+     * @returns Refused for a group past 15, a scale outside 0..10, or inside a system before og.TimeGroups is registered.
+     */
+    function setGroupScale(world: World, group: number, scale: number): Result<void>;
+    /**
+     * This tick's scaled length for an entity: scaledDt times its time group's scale (scaledDt for an entity in no group). Move an entity's own gameplay by it so a slowed group slows everything it does.
+     *
+     * @param world The world.
+     * @param entity The entity.
+     */
+    function groupDt(world: World, entity: Entity): number;
   }
   /**
    * The world's main random stream, seeded from GameDesc.seed (or the replay seed). Its state is part of every snapshot.
@@ -45920,6 +46040,7 @@ export declare namespace og {
   /**
    * Localization: one string table per locale (`.ogt` of `type strings`: `locale "ja"`, its font chain `fonts "..."`, `string "key" "message"`), messages in a subset of ICU MessageFormat (`{name}`, `{n, number}`, `{n, plural, =0 {..} one {..} other {..}}` with `#`, `{g, select, a {..} other {..}}`), CLDR plural rules, and the locale the host asks for (the browser's `navigator.language` on the web, `og run --locale` natively).
    * The active locale is the best loaded table for the request (ja-JP takes ja; zh-TW takes zh-Hant or zh-TW), else the base table (`base true`, else en, else the first). A key it lacks is read from its `fallback` table, then the base. It also sets the UI's font chain (its fonts first, then the other tables') and direction: a right-to-left locale (ar, he, fa, ur) mirrors og.ui's layout, and og-ui shapes Arabic words with the font's own tables (a font cooked with the `arabic` charset carries them). `og cook` warns about every key a locale lacks, or takes other arguments for, than the base.
+   * Formatting (formatCompact, formatCurrency, formatDate, formatTime, formatDuration, and the message styles `{n, number, compact}`, `{p, number, currency/EUR}`, `{d, date, short}`, `{d, time}`) writes from a CLDR subset built into the engine, for the languages the plural rules cover and zh-Hant; another language is written as en. It follows the active locale (else the requested one, else en). A date or time is seconds since 1970-01-01 00:00 UTC that the game passes in (a save's timestamp, a server's event time): nothing reads a clock, so the same value gives the same text on every host and in a replay. A message's dates are UTC; formatDate and formatTime take an offset.
    */
   namespace i18n {
     /**
@@ -45958,6 +46079,44 @@ export declare namespace og {
      * @param key The key.
      */
     function has(world: World, key: string): boolean;
+    /**
+     * A number written short in the active locale: `1.2K`, `12K`, `1.2M` (en), `1,2 Mio.` (de), `1.2万` (ja). Below the locale's first compact size (de compacts no thousands) the whole number, grouped.
+     *
+     * @param world The world (its active locale).
+     * @param value The number.
+     */
+    function formatCompact(world: World, value: number): string;
+    /**
+     * An amount of money in the active locale: `$1,234.50` (en), `1.234,50 €` (de), `￥1,235` (ja), with the currency's own fraction digits (none for JPY and KRW). A code the subset lacks is written as itself.
+     *
+     * @param world The world (its active locale).
+     * @param amount The amount, in the currency's whole units (dollars, not cents).
+     * @param currency An ISO 4217 code: `USD`, `EUR`, `JPY`.
+     */
+    function formatCurrency(world: World, amount: number, currency: string): string;
+    /**
+     * A date in the active locale, in the style asked for: `Nov 2, 2026` (en), `02.11.2026` (de).
+     *
+     * @param world The world (its active locale).
+     * @param seconds Seconds since 1970-01-01 00:00 UTC; fractions are dropped.
+     * @param format The style and offset (medium, UTC).
+     */
+    function formatDate(world: World, seconds: number, format?: DateFormat): string;
+    /**
+     * A time of day in the active locale: `3:05 PM` (en), `15:05` (de).
+     *
+     * @param world The world (its active locale).
+     * @param seconds Seconds since 1970-01-01 00:00 UTC; fractions are dropped.
+     * @param format The style and offset (short, UTC).
+     */
+    function formatTime(world: World, seconds: number, format?: TimeFormat): string;
+    /**
+     * A length of time as a clock face, `1:02:03` from an hour and `2:05` below, in the locale's digits; whole seconds, rounded down. og.ui's `duration` and `clock` formats are the in-document equivalents.
+     *
+     * @param world The world (its active locale).
+     * @param seconds The length in seconds; negative is written with a minus.
+     */
+    function formatDuration(world: World, seconds: number): string;
   }
   /**
    * The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, styles it with the game's UI style (the engine's default style, for prototypes only, until the game picks one), draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it.

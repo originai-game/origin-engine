@@ -1787,6 +1787,8 @@ export const anim = Object.freeze({
 export const time = Object.freeze({
   setScale: (world: WorldImpl, scale: number) => parse(abi().og_time_set_scale(world.id, scale)),
   hitStop: (world: WorldImpl, ticks: number) => parse(abi().og_time_hit_stop(world.id, ticks)),
+  setGroupScale: (world: WorldImpl, group: number, scale: number) => parse(abi().og_time_set_group_scale(world.id, group, scale)),
+  groupDt: (world: WorldImpl, entity: number) => abi().og_time_group_dt(world.id, entity),
 });
 
 export const camera = Object.freeze({

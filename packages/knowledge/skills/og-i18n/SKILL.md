@@ -56,14 +56,23 @@ string "results.time" "タイム {time}"
 |---|---|
 | an argument | `"Hello, {name}"` |
 | a number, grouped for the locale | `"{score, number} pts"` |
+| a number written short (1.2K, 1,2 Mio., 1.2万) | `"{gold, number, compact} gold"` |
+| money in an ISO 4217 currency | `"{price, number, currency/EUR}"` |
+| a date (`full`, `long`, `medium`, `short`) or a time (`medium`, `short`), from epoch seconds in UTC | `"Saved {at, date, short} {at, time}"` |
 | plural (CLDR categories `zero one two few many other`, `=N` exact, `#` the number) | `"{n, plural, =0 {No coins} one {# coin} other {# coins}}"` |
 | select | `"{g, select, f {She won} m {He won} other {They won}}"` |
 | a literal brace or quote | `'{'`, `''` |
 
 - Big numbers in a locale's own units (K, M, B in English; 万, 亿 in
-  Chinese) are table data too: a key for how many digits a unit spans and
-  a key per unit, read by one formatter (`templates/archetypes/idle`'s
-  `big` in `src/numbers.ts`).
+  Chinese) come from the engine's CLDR data: `{n, number, compact}` in a
+  message, `og.i18n.formatCompact(world, n)` in code. Prices are
+  `og.i18n.formatCurrency(world, 4.99, "USD")` (the currency's own
+  digits: no cents for JPY), dates and times
+  `og.i18n.formatDate(world, seconds, { style: "long", offsetMinutes })`
+  and `formatTime`, a timer `formatDuration(world, s)` ("1:02:03"). A
+  moment is seconds since 1970 UTC that the game passes in (a save's
+  stamp, a server's event time): game code never reads the clock, and a
+  message's dates are UTC. Every one follows the active locale.
 - Whole sentences per key, never concatenated pieces: word order differs
   (Japanese puts the verb last, Arabic reads right to left).
 - Plurals in every table, even where the language has one form

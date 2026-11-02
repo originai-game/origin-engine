@@ -892,7 +892,9 @@ fn crowd_velocity(
 fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<()> {
     let plane = desc.plane;
     let tick = ctx.time().tick;
-    let dt = ctx.scaled_dt();
+    let scaled = ctx.scaled_dt();
+    // An agent in a time group (og.TimeGroup) moves at its group's pace.
+    let groups = ctx.time_groups();
     let mut rows: Vec<Row> = Vec::new();
     // og.NavFilter is read only once a game has registered it.
     let filters = ctx.id_by_name(NavFilter::NAME).is_ok();
@@ -982,6 +984,7 @@ fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<(
             filter,
             crowd: crowding,
         } = *row;
+        let dt = ctx.group_dt(groups.as_ref(), e, scaled);
         let filter = filter.map(|f| f.filter()).unwrap_or_default();
         let key = e.to_bits();
         let p2 = plane.to_plane(pos);

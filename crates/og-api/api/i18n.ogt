@@ -2,6 +2,35 @@ module i18n {
   skill og-i18n
   doc "Localization: one string table per locale (`.ogt` of `type strings`: `locale \"ja\"`, its font chain `fonts \"...\"`, `string \"key\" \"message\"`), messages in a subset of ICU MessageFormat (`{name}`, `{n, number}`, `{n, plural, =0 {..} one {..} other {..}}` with `#`, `{g, select, a {..} other {..}}`), CLDR plural rules, and the locale the host asks for (the browser's `navigator.language` on the web, `og run --locale` natively)."
   doc "The active locale is the best loaded table for the request (ja-JP takes ja; zh-TW takes zh-Hant or zh-TW), else the base table (`base true`, else en, else the first). A key it lacks is read from its `fallback` table, then the base. It also sets the UI's font chain (its fonts first, then the other tables') and direction: a right-to-left locale (ar, he, fa, ur) mirrors og.ui's layout, and og-ui shapes Arabic words with the font's own tables (a font cooked with the `arabic` charset carries them). `og cook` warns about every key a locale lacks, or takes other arguments for, than the base."
+  doc "Formatting (formatCompact, formatCurrency, formatDate, formatTime, formatDuration, and the message styles `{n, number, compact}`, `{p, number, currency/EUR}`, `{d, date, short}`, `{d, time}`) writes from a CLDR subset built into the engine, for the languages the plural rules cover and zh-Hant; another language is written as en. It follows the active locale (else the requested one, else en). A date or time is seconds since 1970-01-01 00:00 UTC that the game passes in (a save's timestamp, a server's event time): nothing reads a clock, so the same value gives the same text on every host and in a replay. A message's dates are UTC; formatDate and formatTime take an offset."
+
+  enum DateStyle {
+    doc "How much of a date to write (CLDR's styles; en shown)."
+    variant medium "`Nov 2, 2026`."
+    variant short "`11/2/26`."
+    variant long "`November 2, 2026`."
+    variant full "`Monday, November 2, 2026`."
+  }
+
+  enum TimeStyle {
+    doc "How much of a time of day to write (en shown)."
+    variant short "`3:05 PM`."
+    variant medium "`3:05:09 PM`, with seconds."
+  }
+
+  struct DateFormat {
+    doc "How formatDate writes a moment."
+    desc true
+    field style DateStyle "How much of the date."
+    field offsetMinutes i32 "Minutes ahead of UTC to show it in (a player's time zone, which the game passes in; 540 for Tokyo)."
+  }
+
+  struct TimeFormat {
+    doc "How formatTime writes a moment."
+    desc true
+    field style TimeStyle "With or without seconds."
+    field offsetMinutes i32 "Minutes ahead of UTC to show it in."
+  }
 
   struct LocaleInfo {
     doc "The localization state."
@@ -47,6 +76,48 @@ module i18n {
     param world World "The world."
     param key String "The key."
     returns bool
+  }
+
+  fn formatCompact {
+    doc "A number written short in the active locale: `1.2K`, `12K`, `1.2M` (en), `1,2 Mio.` (de), `1.2万` (ja). Below the locale's first compact size (de compacts no thousands) the whole number, grouped."
+    param world World "The world (its active locale)."
+    param value f64 "The number."
+    returns String
+  }
+
+  fn formatCurrency {
+    doc "An amount of money in the active locale: `$1,234.50` (en), `1.234,50 €` (de), `￥1,235` (ja), with the currency's own fraction digits (none for JPY and KRW). A code the subset lacks is written as itself."
+    param world World "The world (its active locale)."
+    param amount f64 "The amount, in the currency's whole units (dollars, not cents)."
+    param currency String "An ISO 4217 code: `USD`, `EUR`, `JPY`."
+    returns String
+  }
+
+  fn formatDate {
+    doc "A date in the active locale, in the style asked for: `Nov 2, 2026` (en), `02.11.2026` (de)."
+    param world World "The world (its active locale)."
+    param seconds f64 "Seconds since 1970-01-01 00:00 UTC; fractions are dropped."
+    param format DateFormat "The style and offset (medium, UTC)." {
+      optional true
+    }
+    returns String
+  }
+
+  fn formatTime {
+    doc "A time of day in the active locale: `3:05 PM` (en), `15:05` (de)."
+    param world World "The world (its active locale)."
+    param seconds f64 "Seconds since 1970-01-01 00:00 UTC; fractions are dropped."
+    param format TimeFormat "The style and offset (short, UTC)." {
+      optional true
+    }
+    returns String
+  }
+
+  fn formatDuration {
+    doc "A length of time as a clock face, `1:02:03` from an hour and `2:05` below, in the locale's digits; whole seconds, rounded down. og.ui's `duration` and `clock` formats are the in-document equivalents."
+    param world World "The world (its active locale)."
+    param seconds f64 "The length in seconds; negative is written with a minus."
+    returns String
   }
 }
 

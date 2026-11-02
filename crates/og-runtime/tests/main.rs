@@ -41,6 +41,7 @@ mod stream_release;
 mod text_facing;
 mod tilemap_reload;
 mod tilemap_runtime;
+mod time_groups;
 mod timeline;
 mod timeline_sound;
 mod tube_path;

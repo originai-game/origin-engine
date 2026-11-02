@@ -42,13 +42,8 @@ fn info(engine: u32) -> Value {
 /// The active locale's language (its primary subtag, `en` with none): what
 /// UI documents format numbers and plurals by.
 pub(crate) fn language(engine: u32) -> String {
-    with(engine, |s| {
-        let l = s
-            .catalog
-            .active()
-            .map(|t| t.locale.clone())
-            .or_else(|| s.catalog.requested().map(str::to_string))
-            .unwrap_or_default();
+    {
+        let l = tag(engine);
         let primary = l
             .split(['-', '_'])
             .next()
@@ -59,6 +54,18 @@ pub(crate) fn language(engine: u32) -> String {
         } else {
             primary
         }
+    }
+}
+
+/// The active table's locale, else the requested one (empty: none): what
+/// og.i18n's format functions write in.
+fn tag(engine: u32) -> String {
+    with(engine, |s| {
+        s.catalog
+            .active()
+            .map(|t| t.locale.clone())
+            .or_else(|| s.catalog.requested().map(str::to_string))
+            .unwrap_or_default()
     })
 }
 
@@ -201,4 +208,38 @@ pub fn og_i18n_has(world: u32, key: String) -> bool {
 
 pub(crate) fn retire(engine: u32) {
     STATES.with(|s| s.borrow_mut().remove(&engine));
+}
+
+pub fn og_i18n_format_compact(world: u32, value: f64) -> String {
+    og_i18n::format_compact(value, &tag(world))
+}
+
+pub fn og_i18n_format_currency(world: u32, amount: f64, currency: String) -> String {
+    og_i18n::format_currency(amount, &currency, &tag(world))
+}
+
+/// A format desc's style name and offset.
+fn moment(format: Option<&str>) -> (String, i32) {
+    let v = parse(format).unwrap_or(Value::Null);
+    let style = v["style"].as_str().unwrap_or("").to_string();
+    let offset = v["offsetMinutes"]
+        .as_f64()
+        .map_or(0, |m| m.clamp(-1440.0, 1440.0) as i32);
+    (style, offset)
+}
+
+pub fn og_i18n_format_date(world: u32, seconds: f64, format: Option<String>) -> String {
+    let (style, offset) = moment(format.as_deref());
+    let style = og_i18n::DateStyle::named(&style).unwrap_or(og_i18n::DateStyle::Medium);
+    og_i18n::format_date(seconds, offset, style, &tag(world))
+}
+
+pub fn og_i18n_format_time(world: u32, seconds: f64, format: Option<String>) -> String {
+    let (style, offset) = moment(format.as_deref());
+    let style = og_i18n::TimeStyle::named(&style).unwrap_or(og_i18n::TimeStyle::Short);
+    og_i18n::format_time(seconds, offset, style, &tag(world))
+}
+
+pub fn og_i18n_format_duration(world: u32, seconds: f64) -> String {
+    og_i18n::format_duration(seconds, &tag(world))
 }

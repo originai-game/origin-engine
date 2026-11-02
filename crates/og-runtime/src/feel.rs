@@ -620,6 +620,50 @@ pub fn og_time_hit_stop(world: u32, ticks: u32) -> String {
     )
 }
 
+pub fn og_time_set_group_scale(world: u32, group: u32, scale: f64) -> String {
+    wire_void(engine(world).and_then(|eng| {
+        let s = scale as f32;
+        let name = "og.TimeGroups";
+        if running(eng.id).is_none() {
+            crate::lazy::ensure(&eng, eng.world()?, name)?;
+        }
+        with_world(
+            &eng,
+            |c| {
+                c.set_group_scale(group, s).map_err(|e| {
+                    if e.kind() == og_core::ErrorKind::NotFound {
+                        og_core::Error::new(
+                            og_core::ErrorKind::NotFound,
+                            format!(
+                                "{name} is not registered yet: inside a system, name og.TimeGroup or {name} in a system's reads or writes, or call og.time.setGroupScale once in setup"
+                            ),
+                        )
+                    } else {
+                        e
+                    }
+                })
+            },
+            |w| w.set_group_scale(group, s),
+        )
+    }))
+}
+
+pub fn og_time_group_dt(world: u32, entity: f64) -> f64 {
+    let e = Entity::from_bits(entity as u64);
+    engine(world)
+        .and_then(|eng| {
+            with_world(
+                &eng,
+                |c| Ok(c.group_dt(c.time_groups().as_ref(), e, c.scaled_dt())),
+                |w| {
+                    let dt = w.scaled_dt();
+                    Ok(w.time_groups().map_or(dt, |g| dt * w.group_scale(&g, e)))
+                },
+            )
+        })
+        .map_or(0.0, f64::from)
+}
+
 // ── camera ─────────────────────────────────────────────────────────────────
 
 fn camera_op(world: u32, op: CameraOp) -> String {

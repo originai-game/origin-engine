@@ -429,6 +429,16 @@ pub fn og_time_hit_stop(world: u32, ticks: u32) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_time_set_group_scale(world: u32, group: u32, scale: f64) -> String {
+    <Host as TimeApi>::og_time_set_group_scale(&Host, world, group, scale)
+}
+
+#[wasm_bindgen]
+pub fn og_time_group_dt(world: u32, entity: f64) -> f64 {
+    <Host as TimeApi>::og_time_group_dt(&Host, world, entity)
+}
+
+#[wasm_bindgen]
 pub fn og_rng_stream_get_seed(rng_stream: u32) -> u32 {
     <Host as RngApi>::og_rng_stream_get_seed(&Host, rng_stream)
 }
@@ -1746,6 +1756,31 @@ pub fn og_i18n_t(world: u32, key: String, args: Option<String>) -> String {
 #[wasm_bindgen]
 pub fn og_i18n_has(world: u32, key: String) -> bool {
     <Host as I18nApi>::og_i18n_has(&Host, world, key)
+}
+
+#[wasm_bindgen]
+pub fn og_i18n_format_compact(world: u32, value: f64) -> String {
+    <Host as I18nApi>::og_i18n_format_compact(&Host, world, value)
+}
+
+#[wasm_bindgen]
+pub fn og_i18n_format_currency(world: u32, amount: f64, currency: String) -> String {
+    <Host as I18nApi>::og_i18n_format_currency(&Host, world, amount, currency)
+}
+
+#[wasm_bindgen]
+pub fn og_i18n_format_date(world: u32, seconds: f64, format: Option<String>) -> String {
+    <Host as I18nApi>::og_i18n_format_date(&Host, world, seconds, format)
+}
+
+#[wasm_bindgen]
+pub fn og_i18n_format_time(world: u32, seconds: f64, format: Option<String>) -> String {
+    <Host as I18nApi>::og_i18n_format_time(&Host, world, seconds, format)
+}
+
+#[wasm_bindgen]
+pub fn og_i18n_format_duration(world: u32, seconds: f64) -> String {
+    <Host as I18nApi>::og_i18n_format_duration(&Host, world, seconds)
 }
 
 #[wasm_bindgen]

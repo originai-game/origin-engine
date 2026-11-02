@@ -85,6 +85,12 @@ moving. It never shortens one already running.
   miss, then back to 1 after 0.5–1 s of real time (count ticks, not
   scaled time). Never leave the scale below 1 by accident: assert it in a
   test.
+- Slow one group, not the world: `og.TimeGroup { group: 1 }` on the
+  enemies and `og.time.setGroupScale(world, 1, 0.25)` (0 freezes them)
+  slows their og.anim, flipbooks, 2D skeletons, tweens and nav agents
+  while the player keeps full speed; it multiplies the global scale.
+  Move their own gameplay by `og.time.groupDt(world, e)`. Physics stays
+  on the global scale, so slow a grouped body through its velocity.
 - Where it lives: `world.resource(og.Time)` and a system's `time` carry
   `scale`, `hitStop`, `scaledDt` and `scaledElapsed` beside `tick`, `dt`,
   `elapsed` and `rate`. The world keeps the scale in a second resource,

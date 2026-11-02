@@ -676,7 +676,14 @@ pub(crate) fn resource_value(eng: &Engine, name: &str) -> Result<Value, String> 
         .filter(|l| l.kind == RecordKind::Resource)
         .cloned()
         .ok_or_else(|| format!("'{name}' is not a registered resource"))?;
-    let id = w.id_by_name(name).map_err(err)?;
+    // A lazy resource no game has named yet (og.TimeGroups): its default,
+    // read without registering it, so reading leaves the hash alone.
+    let Ok(id) = w.id_by_name(name) else {
+        if crate::lazy::is_lazy(name) {
+            return Ok(layout.decode(&layout.encode(None, None)?));
+        }
+        return Err(format!("no type named '{name}'"));
+    };
     let bytes = w.resource_bytes(id).map_err(err)?;
     Ok(layout.decode(&bytes))
 }

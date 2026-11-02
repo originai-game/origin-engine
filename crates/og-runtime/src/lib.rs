@@ -115,9 +115,9 @@ pub use feel::{
     og_camera_kick, og_camera_punch, og_camera_shake, og_load_flipbook, og_load_tilemap,
     og_render_floating_text, og_tilemap_cell_at, og_tilemap_cell_center, og_tilemap_create,
     og_tilemap_fill, og_tilemap_get_tile, og_tilemap_neighbours, og_tilemap_resize,
-    og_tilemap_set_tile, og_time_hit_stop, og_time_set_scale, og_tween_active, og_tween_cancel,
-    og_tween_cancel_entity, og_tween_flash, og_tween_parallel, og_tween_sequence, og_tween_squash,
-    og_tween_to,
+    og_tilemap_set_tile, og_time_group_dt, og_time_hit_stop, og_time_set_group_scale,
+    og_time_set_scale, og_tween_active, og_tween_cancel, og_tween_cancel_entity, og_tween_flash,
+    og_tween_parallel, og_tween_sequence, og_tween_squash, og_tween_to,
 };
 pub use geometry::{
     og_debug_arrow, og_debug_axes, og_debug_box, og_debug_clear, og_debug_enabled, og_debug_line,
@@ -131,7 +131,10 @@ pub use geometry::{
     og_render_shape_geometry, og_render_sweep_geometry, og_render_tetrahedron_geometry,
     og_render_torus_geometry, og_render_tube_geometry, og_render_update_geometry,
 };
-pub use i18n::{og_i18n_has, og_i18n_load, og_i18n_locale, og_i18n_set_locale, og_i18n_t};
+pub use i18n::{
+    og_i18n_format_compact, og_i18n_format_currency, og_i18n_format_date, og_i18n_format_duration,
+    og_i18n_format_time, og_i18n_has, og_i18n_load, og_i18n_locale, og_i18n_set_locale, og_i18n_t,
+};
 pub use memory::memory_report;
 pub use modules::ui_world::{
     og_ui_define_mass, og_ui_mass_count, og_ui_meta, og_ui_open_world_anchor,

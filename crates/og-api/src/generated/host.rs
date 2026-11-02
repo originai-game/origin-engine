@@ -217,6 +217,10 @@ pub trait TimeApi: Wire {
     fn og_time_set_scale(&self, world: u32, scale: f64) -> String;
     /// `og.time.hitStop`
     fn og_time_hit_stop(&self, world: u32, ticks: u32) -> String;
+    /// `og.time.setGroupScale`
+    fn og_time_set_group_scale(&self, world: u32, group: u32, scale: f64) -> String;
+    /// `og.time.groupDt`
+    fn og_time_group_dt(&self, world: u32, entity: f64) -> f64;
 }
 
 /// `rng`: packages/knowledge/wiki/rng.md.
@@ -809,6 +813,16 @@ pub trait I18nApi: Wire {
     fn og_i18n_t(&self, world: u32, key: String, args: Option<String>) -> String;
     /// `og.i18n.has`
     fn og_i18n_has(&self, world: u32, key: String) -> bool;
+    /// `og.i18n.formatCompact`
+    fn og_i18n_format_compact(&self, world: u32, value: f64) -> String;
+    /// `og.i18n.formatCurrency`
+    fn og_i18n_format_currency(&self, world: u32, amount: f64, currency: String) -> String;
+    /// `og.i18n.formatDate`
+    fn og_i18n_format_date(&self, world: u32, seconds: f64, format: Option<String>) -> String;
+    /// `og.i18n.formatTime`
+    fn og_i18n_format_time(&self, world: u32, seconds: f64, format: Option<String>) -> String;
+    /// `og.i18n.formatDuration`
+    fn og_i18n_format_duration(&self, world: u32, seconds: f64) -> String;
 }
 
 /// `ui`: packages/knowledge/wiki/ui.md.
@@ -1316,6 +1330,8 @@ pub const SYMBOLS: &[&str] = &[
     "og_transform_from_axis_angle",
     "og_time_set_scale",
     "og_time_hit_stop",
+    "og_time_set_group_scale",
+    "og_time_group_dt",
     "og_rng_stream_get_seed",
     "og_rng_stream_next",
     "og_rng_stream_range",
@@ -1580,6 +1596,11 @@ pub const SYMBOLS: &[&str] = &[
     "og_i18n_locale",
     "og_i18n_t",
     "og_i18n_has",
+    "og_i18n_format_compact",
+    "og_i18n_format_currency",
+    "og_i18n_format_date",
+    "og_i18n_format_time",
+    "og_i18n_format_duration",
     "og_ui_configure",
     "og_ui_viewport",
     "og_ui_theme",

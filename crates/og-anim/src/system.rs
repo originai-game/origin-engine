@@ -697,6 +697,9 @@ struct Work {
     pose: Pose,
     /// The clips posing the legs this tick, for foot locks.
     stance: Stance,
+    /// This tick's scaled length for the entity: the global scaled dt
+    /// times its time group's scale (og.TimeGroup).
+    dt: f32,
 }
 
 /// One skeleton entity on its way through the tick: what was read (serially,
@@ -790,6 +793,7 @@ fn gather(
     let pose = Pose::rest(&asset);
     Ok(Eval {
         work: Work {
+            dt: 0.0,
             entity: e,
             skeleton,
             asset,
@@ -878,8 +882,10 @@ fn run(
     shared: &Mutex<Shared>,
     step: Option<(og_ecs::SchemaId, usize)>,
 ) -> Result<()> {
-    // Scaled time: slow motion plays slower, a hit stop holds the pose.
+    // Scaled time: slow motion plays slower, a hit stop holds the pose;
+    // an entity in a time group (og.TimeGroup) by its group's scale too.
     let dt = ctx.scaled_dt();
+    let groups = ctx.time_groups();
     // The stepped playback of players without their own (StepDefault).
     let step_default = match step {
         Some((id, at)) => {
@@ -915,6 +921,7 @@ fn run(
         match gather(ctx, &sh, e, &players, &graphs, &blends, &transforms) {
             Ok(mut ev) => {
                 ev.step_default = step_default;
+                ev.work.dt = ctx.group_dt(groups.as_ref(), e, dt);
                 evals.push(ev)
             }
             Err(err) => {
@@ -926,6 +933,7 @@ fn run(
     {
         let sh: &Shared = &sh;
         og_lanes::for_each_mut(og_lanes::Site::Anim, &mut evals, GRAIN, |ev| {
+            let dt = ev.work.dt;
             ev.out = evaluate(sh, ev, dt)
         });
     }
@@ -983,7 +991,7 @@ fn run(
                 .get(&f.to_bits())
                 .filter(|l| l.skeleton == fl.skeleton)
                 .map_or(Lock::Free, |l| l.lock);
-            let lock = foot_lock(&sh, w, &mut fl, prev, dt, &limits)?;
+            let lock = foot_lock(&sh, w, &mut fl, prev, w.dt, &limits)?;
             if lock != Lock::Free {
                 locks.insert(
                     f.to_bits(),
@@ -1048,6 +1056,7 @@ fn run(
                 .springs
                 .get(&s.to_bits())
                 .filter(|p| p.skeleton == sb.skeleton && p.space == sb.space);
+            let dt = w.dt;
             springs.insert(s.to_bits(), spring(w, &mut sb, prev, &colliders, dt)?);
         }
         swung.push((s, sb));

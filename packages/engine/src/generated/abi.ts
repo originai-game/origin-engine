@@ -175,6 +175,10 @@ export interface HostAbi<A, V> {
   og_time_set_scale(world: number, scale: number): string;
   /** `og.time.hitStop` */
   og_time_hit_stop(world: number, ticks: number): string;
+  /** `og.time.setGroupScale` */
+  og_time_set_group_scale(world: number, group: number, scale: number): string;
+  /** `og.time.groupDt` */
+  og_time_group_dt(world: number, entity: number): number;
   /** `RngStream.seed` */
   og_rng_stream_get_seed(rng_stream: number): number;
   /** `RngStream.next` */
@@ -703,6 +707,16 @@ export interface HostAbi<A, V> {
   og_i18n_t(world: number, key: string, args: string | undefined): string;
   /** `og.i18n.has` */
   og_i18n_has(world: number, key: string): boolean;
+  /** `og.i18n.formatCompact` */
+  og_i18n_format_compact(world: number, value: number): string;
+  /** `og.i18n.formatCurrency` */
+  og_i18n_format_currency(world: number, amount: number, currency: string): string;
+  /** `og.i18n.formatDate` */
+  og_i18n_format_date(world: number, seconds: number, format: string | undefined): string;
+  /** `og.i18n.formatTime` */
+  og_i18n_format_time(world: number, seconds: number, format: string | undefined): string;
+  /** `og.i18n.formatDuration` */
+  og_i18n_format_duration(world: number, seconds: number): string;
   /** `og.ui.configure` */
   og_ui_configure(world: number, desc: string | undefined): string;
   /** `og.ui.viewport` */
@@ -1169,6 +1183,8 @@ export const SYMBOLS: readonly string[] = [
   "og_transform_from_axis_angle",
   "og_time_set_scale",
   "og_time_hit_stop",
+  "og_time_set_group_scale",
+  "og_time_group_dt",
   "og_rng_stream_get_seed",
   "og_rng_stream_next",
   "og_rng_stream_range",
@@ -1433,6 +1449,11 @@ export const SYMBOLS: readonly string[] = [
   "og_i18n_locale",
   "og_i18n_t",
   "og_i18n_has",
+  "og_i18n_format_compact",
+  "og_i18n_format_currency",
+  "og_i18n_format_date",
+  "og_i18n_format_time",
+  "og_i18n_format_duration",
   "og_ui_configure",
   "og_ui_viewport",
   "og_ui_theme",
@@ -1708,6 +1729,10 @@ export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {
     og_world_name_of(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("world.nameOf", "entity", entity);
       return abi.og_world_name_of(world, entity);
+    },
+    og_time_group_dt(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("og.time.groupDt", "entity", entity);
+      return abi.og_time_group_dt(world, entity);
     },
     og_render_snap(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("og.render.snap", "entity", entity);

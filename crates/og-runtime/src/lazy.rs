@@ -11,6 +11,7 @@
 //! type (the same layout) and widens its system's declarations.
 
 use crate::engine::Engine;
+use og_core::Reflect;
 use og_ecs::World;
 
 /// One lazily registered record and what its module does when it is.
@@ -89,7 +90,43 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: "og.SoftBody",
         enable: |w| og_physics::enable(w, "og.SoftBody"),
     },
+    // G2-6: time groups, read by the modules that scale an entity's dt.
+    // Naming either registers both (TOGETHER).
+    Lazy {
+        name: "og.TimeGroup",
+        enable: |w| enable_time_groups(w, og_core::TimeGroup::NAME),
+    },
+    Lazy {
+        name: "og.TimeGroups",
+        enable: |w| enable_time_groups(w, og_core::TimeGroups::NAME),
+    },
 ];
+
+/// Lazy records registered together: naming one registers the rest.
+const TOGETHER: &[&[&str]] = &[&["og.TimeGroup", "og.TimeGroups"]];
+
+/// Lazy record `name` and the ones registered with it.
+pub(crate) fn with_partners(name: &'static str) -> Vec<&'static str> {
+    TOGETHER
+        .iter()
+        .find(|g| g.contains(&name))
+        .map_or_else(|| vec![name], |g| g.to_vec())
+}
+
+/// Registers og.TimeGroup or og.TimeGroups (the resource at its default,
+/// every group at 1). The modules that scale an entity's dt read them as
+/// an engine service, as they read og.TimeScale, so no system is granted.
+fn enable_time_groups(world: &mut World, name: &str) -> og_core::Result<()> {
+    if name == og_core::TimeGroups::NAME {
+        world.register::<og_core::TimeGroups>()?;
+        if !world.has_resource::<og_core::TimeGroups>() {
+            world.insert_resource(og_core::TimeGroups::default())?;
+        }
+    } else {
+        world.register::<og_core::TimeGroup>()?;
+    }
+    Ok(())
+}
 
 /// Whether engine record `name` is registered lazily.
 pub(crate) fn is_lazy(name: &str) -> bool {
@@ -123,7 +160,13 @@ pub(crate) fn ensure(eng: &Engine, world: &mut World, name: &str) -> Result<(), 
             st.names_by_id.push(name.to_string());
         }
     }
-    (lazy.enable)(world).map_err(|e| format!("{name}: {}", e.reason()))
+    (lazy.enable)(world).map_err(|e| format!("{name}: {}", e.reason()))?;
+    for partner in with_partners(lazy.name) {
+        if partner != lazy.name {
+            ensure(eng, world, partner)?;
+        }
+    }
+    Ok(())
 }
 
 /// Runs lazy record `name`'s module grant on a world that has registered

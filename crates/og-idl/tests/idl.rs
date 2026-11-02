@@ -161,7 +161,10 @@ fn the_repository_idl_is_valid_and_covers_the_design() {
         ]
     );
     // E4: time scale, camera feel, tweens, tilemaps, floating text.
-    assert_eq!(fns("time"), ["setScale", "hitStop"]);
+    assert_eq!(
+        fns("time"),
+        ["setScale", "hitStop", "setGroupScale", "groupDt"]
+    );
     assert_eq!(fns("camera"), ["shake", "punch", "kick"]);
     assert_eq!(
         fns("tween"),
@@ -206,6 +209,21 @@ fn the_repository_idl_is_valid_and_covers_the_design() {
     assert_eq!(fns("reflect"), ["defineComponent", "defineResource"]);
     assert_eq!(fns("system"), ["defineHook", "defineSystem"]);
     assert_eq!(fns("game"), ["game"]);
+    assert_eq!(
+        fns("i18n"),
+        [
+            "load",
+            "setLocale",
+            "locale",
+            "t",
+            "has",
+            "formatCompact",
+            "formatCurrency",
+            "formatDate",
+            "formatTime",
+            "formatDuration"
+        ]
+    );
     assert!(fns("commands").contains(&"register".to_string()));
     assert!(fns("commands").contains(&"schedule".to_string()));
 }

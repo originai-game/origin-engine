@@ -97,3 +97,65 @@ impl TimeScale {
         self.hit_stop = self.hit_stop.saturating_sub(1);
     }
 }
+
+/// How many time groups there are (og.TimeGroups).
+pub const TIME_GROUPS: usize = 16;
+
+/// Which time group an entity is in (og.TimeGroup): og.anim, flipbooks, 2D
+/// skeletons, tweens on it and its og.nav agent advance by the global scaled
+/// `dt` times its group's scale. Physics stays on the global scale.
+/// Registered with a world only once a game uses it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
+#[reflect(name = "og.TimeGroup")]
+pub struct TimeGroup {
+    /// The group, 0 to 15.
+    #[reflect(max = 15)]
+    pub group: u32,
+}
+
+/// Each time group's scale on top of the global one (og.TimeGroups), set
+/// with `og.time.setGroupScale`: 1 is the global pace, 0.25 a quarter of it,
+/// 0 frozen. Registered with a world only once a game uses it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
+#[reflect(name = "og.TimeGroups")]
+pub struct TimeGroups {
+    /// Per group, its scale; past the list's length 1.
+    pub scales: crate::List<f32, TIME_GROUPS>,
+}
+
+impl TimeGroups {
+    /// Group `group`'s scale (1 past the list, and for a group past 15).
+    pub fn scale(&self, group: u32) -> f32 {
+        self.scales
+            .as_slice()
+            .get(group as usize)
+            .copied()
+            .filter(|s| s.is_finite() && *s >= 0.0)
+            .unwrap_or(1.0)
+    }
+
+    /// Sets group `group`'s scale: refused for a group past 15 or a scale
+    /// outside 0..10.
+    pub fn set(&mut self, group: u32, scale: f32) -> crate::Result<()> {
+        if group as usize >= TIME_GROUPS {
+            return Err(crate::Error::new(
+                crate::ErrorKind::Invalid,
+                format!("time group {group} is outside 0..15"),
+            ));
+        }
+        if !(scale.is_finite() && (0.0..=MAX_TIME_SCALE).contains(&scale)) {
+            return Err(crate::Error::new(
+                crate::ErrorKind::Invalid,
+                format!("time group scale {scale} is outside 0..10"),
+            ));
+        }
+        let mut all: Vec<f32> = (0..TIME_GROUPS as u32).map(|g| self.scale(g)).collect();
+        all[group as usize] = scale;
+        // The shortest list that keeps every scale: trailing 1s are implied.
+        while all.last() == Some(&1.0) {
+            all.pop();
+        }
+        self.scales = crate::List::from_slice(&all)?;
+        Ok(())
+    }
+}

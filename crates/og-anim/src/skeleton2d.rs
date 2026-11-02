@@ -238,6 +238,7 @@ const MAX_EVENTS: usize = 64;
 
 fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
     let dt = ctx.scaled_dt();
+    let groups = ctx.time_groups();
     let mut skeletons: Vec<Entity> = Vec::new();
     for a in ctx.query(0)? {
         skeletons.extend_from_slice(a.entities());
@@ -274,7 +275,7 @@ fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<Shared>) -> Result<()> {
             s.finished = false;
         }
         let d = clip.duration;
-        let step = dt * s.speed.clamp(-10.0, 10.0);
+        let step = ctx.group_dt(groups.as_ref(), e, dt) * s.speed.clamp(-10.0, 10.0);
         let mut fired = Vec::new();
         // The stretches of the clip's time played this tick (forward, or
         // backward when `step` is negative), for child armatures' events.

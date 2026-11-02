@@ -596,13 +596,19 @@ fn step_group(ctx: &SystemContext<'_>, g: &mut Group, dt: f32, alive: &mut bool)
 fn run(ctx: &mut SystemContext<'_>, shared: &Mutex<State>) -> Result<()> {
     let scaled = ctx.scaled_dt();
     let raw = ctx.time().dt;
+    let groups = ctx.time_groups();
     let mut st = lock(shared);
     let mut ended: Vec<u64> = Vec::new();
     let mut completed: Vec<TweenCompleted> = Vec::new();
     for (&handle, r) in st.running.iter_mut() {
-        let dt = if r.unscaled { raw } else { scaled };
-        let mut alive = true;
         let entity = r.node.entity();
+        // A scaled tween also runs at its target's time group's pace.
+        let dt = if r.unscaled {
+            raw
+        } else {
+            ctx.group_dt(groups.as_ref(), Entity::from_bits(entity), scaled)
+        };
+        let mut alive = true;
         let done = match &mut r.node {
             Node::Leaf(l) => step_leaf(ctx, l, dt, &mut alive)?,
             Node::Group(g) => step_group(ctx, g, dt, &mut alive)?,

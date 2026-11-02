@@ -355,6 +355,41 @@ impl<'w> SystemContext<'w> {
         self.world.scaled_dt()
     }
 
+    /// The time groups' scales (og.TimeGroups) once the world uses them;
+    /// `None` keeps every entity on the global scale. Like Time, readable by
+    /// every system without a declaration. Read once per run, then
+    /// [`Self::group_dt`] per entity.
+    pub fn time_groups(&self) -> Option<og_core::TimeGroups> {
+        self.world.time_groups()
+    }
+
+    /// `dt` times the scale of `e`'s time group (its og.TimeGroup, read as
+    /// an engine service): `dt` itself without `groups` or a group.
+    pub fn group_dt(&self, groups: Option<&og_core::TimeGroups>, e: Entity, dt: f32) -> f32 {
+        groups.map_or(dt, |g| dt * self.world.group_scale(g, e))
+    }
+
+    /// Sets a time group's scale (og.TimeGroups, once registered); any
+    /// system may, as it may the global scale. Later systems of this tick
+    /// see it.
+    pub fn set_group_scale(&self, group: u32, scale: f32) -> Result<()> {
+        let name = og_core::TimeGroups::NAME;
+        let id = self.world.id::<og_core::TimeGroups>()?;
+        let cell = self.world.resource_cell(id)?;
+        let mut value = cell
+            .try_borrow_mut()
+            .map_err(|_| crate::world::busy(name))?;
+        match &mut *value {
+            crate::world::ResourceValue::Typed(b) => {
+                match b.downcast_mut::<og_core::TimeGroups>() {
+                    Some(g) => g.set(group, scale),
+                    None => Err(crate::world::no_resource(name)),
+                }
+            }
+            crate::world::ResourceValue::Raw(_) => Err(crate::world::no_resource(name)),
+        }
+    }
+
     /// Sets the global time scale; any system may (an engine service, like
     /// reading `Time`). Later systems of this tick see it.
     pub fn set_time_scale(&self, scale: f32) -> Result<()> {

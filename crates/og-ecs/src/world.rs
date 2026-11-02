@@ -747,6 +747,25 @@ impl World {
         self.resource::<TimeScale>().map(|s| *s).unwrap_or_default()
     }
 
+    /// The time groups' scales (og.TimeGroups) once a game uses them.
+    pub fn time_groups(&self) -> Option<og_core::TimeGroups> {
+        self.resource::<og_core::TimeGroups>().ok().map(|g| *g)
+    }
+
+    /// The scale of `e`'s time group under `groups`: 1 for an entity in
+    /// none (no og.TimeGroup, or the type not registered).
+    pub fn group_scale(&self, groups: &og_core::TimeGroups, e: Entity) -> f32 {
+        self.get::<og_core::TimeGroup>(e)
+            .map_or(1.0, |t| groups.scale(t.group))
+    }
+
+    /// Sets a time group's scale, refused before og.TimeGroups is
+    /// registered, for a group past 15 or a scale outside 0..10.
+    pub fn set_group_scale(&mut self, group: u32, scale: f32) -> Result<()> {
+        self.resource_mut::<og_core::TimeGroups>()?
+            .set(group, scale)
+    }
+
     /// The scaled length of the current tick ([`TimeScale::dt`]).
     pub fn scaled_dt(&self) -> f32 {
         self.time_scale().dt(&self.time())

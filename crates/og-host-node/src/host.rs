@@ -851,6 +851,12 @@ impl TimeApi for NodeHost {
     fn og_time_hit_stop(&self, world: u32, ticks: u32) -> String {
         rt::og_time_hit_stop(world, ticks)
     }
+    fn og_time_set_group_scale(&self, world: u32, group: u32, scale: f64) -> String {
+        rt::og_time_set_group_scale(world, group, scale)
+    }
+    fn og_time_group_dt(&self, world: u32, entity: f64) -> f64 {
+        rt::og_time_group_dt(world, entity)
+    }
 }
 
 impl TweenApi for NodeHost {

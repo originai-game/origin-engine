@@ -190,6 +190,21 @@ impl I18nApi for NodeHost {
     fn og_i18n_has(&self, world: u32, key: String) -> bool {
         rt::og_i18n_has(world, key)
     }
+    fn og_i18n_format_compact(&self, world: u32, value: f64) -> String {
+        rt::og_i18n_format_compact(world, value)
+    }
+    fn og_i18n_format_currency(&self, world: u32, amount: f64, currency: String) -> String {
+        rt::og_i18n_format_currency(world, amount, currency)
+    }
+    fn og_i18n_format_date(&self, world: u32, seconds: f64, format: Option<String>) -> String {
+        rt::og_i18n_format_date(world, seconds, format)
+    }
+    fn og_i18n_format_time(&self, world: u32, seconds: f64, format: Option<String>) -> String {
+        rt::og_i18n_format_time(world, seconds, format)
+    }
+    fn og_i18n_format_duration(&self, world: u32, seconds: f64) -> String {
+        rt::og_i18n_format_duration(world, seconds)
+    }
 }
 
 impl NetApi for NodeHost {

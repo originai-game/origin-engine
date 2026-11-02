@@ -513,6 +513,18 @@ pub fn og_time_hit_stop(env: Env, world: u32, ticks: u32) -> String {
     <Host as TimeApi>::og_time_hit_stop(&Host, world, ticks)
 }
 
+#[napi(js_name = "og_time_set_group_scale")]
+pub fn og_time_set_group_scale(env: Env, world: u32, group: u32, scale: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TimeApi>::og_time_set_group_scale(&Host, world, group, scale)
+}
+
+#[napi(js_name = "og_time_group_dt")]
+pub fn og_time_group_dt(env: Env, world: u32, entity: f64) -> f64 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TimeApi>::og_time_group_dt(&Host, world, entity)
+}
+
 #[napi(js_name = "og_rng_stream_get_seed")]
 pub fn og_rng_stream_get_seed(env: Env, rng_stream: u32) -> u32 {
     let _env = crate::EnvScope::enter(&env);
@@ -2095,6 +2107,36 @@ pub fn og_i18n_t(env: Env, world: u32, key: String, args: Option<String>) -> Str
 pub fn og_i18n_has(env: Env, world: u32, key: String) -> bool {
     let _env = crate::EnvScope::enter(&env);
     <Host as I18nApi>::og_i18n_has(&Host, world, key)
+}
+
+#[napi(js_name = "og_i18n_format_compact")]
+pub fn og_i18n_format_compact(env: Env, world: u32, value: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as I18nApi>::og_i18n_format_compact(&Host, world, value)
+}
+
+#[napi(js_name = "og_i18n_format_currency")]
+pub fn og_i18n_format_currency(env: Env, world: u32, amount: f64, currency: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as I18nApi>::og_i18n_format_currency(&Host, world, amount, currency)
+}
+
+#[napi(js_name = "og_i18n_format_date")]
+pub fn og_i18n_format_date(env: Env, world: u32, seconds: f64, format: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as I18nApi>::og_i18n_format_date(&Host, world, seconds, format)
+}
+
+#[napi(js_name = "og_i18n_format_time")]
+pub fn og_i18n_format_time(env: Env, world: u32, seconds: f64, format: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as I18nApi>::og_i18n_format_time(&Host, world, seconds, format)
+}
+
+#[napi(js_name = "og_i18n_format_duration")]
+pub fn og_i18n_format_duration(env: Env, world: u32, seconds: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as I18nApi>::og_i18n_format_duration(&Host, world, seconds)
 }
 
 #[napi(js_name = "og_ui_configure")]
