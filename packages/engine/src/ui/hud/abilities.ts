@@ -137,18 +137,20 @@ export function abilitySlot(id: string, desc: Api.AbilitySlotDesc = {}): Api.Res
       text("Cost", desc.cost, { step: ts(11), font: "mono", color: desc.unaffordable ? lit(role("danger")) : lit(role("mana")), nowrap: true, outline: 1.4 },
         absolute(charged ? { start: inset + 1, bottom: inset } : { centerX: true, bottom: inset }));
     }
+    // The ultimate's ring: inside the slot, just within its frame, so it never crosses into the gap,
+    // a neighbour or the pips below at any text size.
+    if (ult !== null) {
+      const ringD = size - inset * 2;
+      leaf("UltRing", { width: px(ringD), height: px(ringD), part: sel("AbilitySlot", "ultimate", ultReady ? "ready" : null) }, {
+        shape: arc(clamp01(ult), Math.max(2, Math.round(size / 18))),
+        fills: [solid(lit(role("gold"), ultReady ? 0.7 + 0.3 * pulse(0.9) : 0.95))],
+      }, absolute({ start: inset, top: inset }));
+    }
     r0 = close({
       transform: { scaleX: s, scaleY: s },
       a11y: a11y("button", desc.name ?? "", { value: locked ? "Locked" : cooling ? `${Math.ceil(cooldown)}s` : "Ready" }),
       ...groups({ ready: readyState, use }, { ready: ["ready", "cooling", "locked"], use: ["idle", "active", "unaffordable"] }),
     });
-    // The ultimate's ring, round the outside.
-    if (ult !== null) {
-      leaf("UltRing", { width: px(size + u(8)), height: px(size + u(8)), part: sel("AbilitySlot", "ultimate", ultReady ? "ready" : null) }, {
-        shape: arc(clamp01(ult), u(3)),
-        fills: [solid(lit(role("gold"), ultReady ? 0.7 + 0.3 * pulse(0.9) : 0.95))],
-      }, absolute({ start: -u(4), top: -u(4) }, { overlaps: [path] }));
-    }
     // The hotkey's cap, over the slot's top left corner: the label, else the action's glyph on the device used last.
     const glyph = !desc.hotkey && desc.action ? kit.frameGlyph(desc.action) : null;
     const keyText = desc.hotkey || glyph?.text || "";
