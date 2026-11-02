@@ -46,11 +46,11 @@ steps.push(`${(t + 0.7).toFixed(2)}:dump_ui:settings-zh-CN.json`);
 steps.push(`${(t + 0.75).toFixed(2)}:show:shop`);
 steps.push(`${(t + 1.4).toFixed(2)}:dump_ui:shop-zh-CN.json`);
 t += 1.45;
-// The inventory with nothing selected (its hint), then its first slot (a stack of three: Count).
+// The inventory opens on its first slot (a stack of three: Count), then an empty slot (its hint).
 steps.push(`${t.toFixed(2)}:show:inventory`);
-steps.push(`${(t + 0.65).toFixed(2)}:dump_ui:inventory-hint-zh-CN.json`);
-steps.push(tap(t + 0.7, "Slots/Cell#0"));
-steps.push(`${(t + 1.1).toFixed(2)}:dump_ui:inventory-zh-CN.json`);
+steps.push(`${(t + 0.65).toFixed(2)}:dump_ui:inventory-zh-CN.json`);
+steps.push(tap(t + 0.7, "Slots/Cell#29"));
+steps.push(`${(t + 1.1).toFixed(2)}:dump_ui:inventory-hint-zh-CN.json`);
 t += 1.15;
 // The leaderboard whose rows failed to load (Retry), the tutorial's first and last steps, the cutscene.
 steps.push(`${t.toFixed(2)}:offline:on`);
@@ -127,7 +127,7 @@ export default playtest({
     t.ok(hint.has("选择一件物品。把它拖到另一个格子即可移动。"), "the inventory's hint is Chinese in zh-CN");
     t.ok(![...hint].some((x) => x.startsWith("Select an item")), "and not the English hint");
     const inventory = texts("inventory-zh-CN.json");
-    t.ok(inventory.has("数量") && !inventory.has("Count"), "a selected stack's count line reads 数量, not Count");
+    t.ok(inventory.has("数量") && !inventory.has("Count"), "the stack it opens on has a count line reading 数量, not Count");
     const board = texts("leaderboard-zh-CN.json");
     t.ok(board.has("无法加载分数。") && board.has("重试") && !board.has("Retry"), "the leaderboard's error has 重试, not Retry");
     const tutorial = texts("tutorial-zh-CN.json");

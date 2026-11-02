@@ -30,3 +30,12 @@ the shop's merchant, so each style's screens sit on their own scene:
 | `scenes/scifi.jpg`, `cyber.jpg`, `tactical.jpg`, `broadcast.jpg`, `kawaii.jpg`, `jade.jpg`, `wasteland.jpg`, `midcore.jpg`, `foundry.jpg` | menuBackground (16:9, the left 40 % calm for the menu) | origin MCP `generate_image` (gpt-image-2.5-sunburst), one prompt per style direction, cut to 1280×720 |
 | `scenes/gothic-halls.jpg`, `storybook-vale.jpg`, `doodle-town.jpg`, `golden-valley.jpg`, `manuscript.jpg` | menuBackground | copies of the art samples' far layers (`examples/art-paint-2d/styles/<gothic-contour, decorative-storybook, detailed-doodle, classical-painting-collage, illuminated-manuscript>/art/backdrop.jpg`), made for this repository with Painter (`tests/evidence/art/samples/NOTES.md`) |
 | `scenes/pixel-dusk.png` | menuBackground | `examples/art-pixel-side/styles/detailed-pixel/art/backdrop.png`, scaled ×3 by nearest neighbour |
+
+## Round 2 (2026-11-02, the art review's notes)
+
+| File | Kind | Origin |
+|---|---|---|
+| `cutouts/*.png` (20 items) | itemIcon, cut out | origin MCP `generate_image` (gpt-image-2.5-sunburst, transparent), the same direction as `items/`; where the model returned a flat magenta ground it was keyed out (ImageMagick flood fill from the corners, the edge eroded 2 px and feathered), 320 px. The kit's shop, inventory and rewards draw these on the slot's rarity ground. |
+| `events/kawaii.jpg`, `cartoon.jpg`, `storybook.jpg` | banner (the title's limited-banner card) | origin MCP `generate_image`, one featured character per style in its own look, 640×360 |
+| `scenes/scifi.jpg`, `cyber.jpg` | menuBackground | regenerated to the owner's redirected pack sheets (ui-art/70c6e287e1a1: a crewed launch pad at dawn; ui-art/46b39cda6040: acid yellow, signal red and cyan, no magenta) |
+| `scenes/neutral.jpg` | menuBackground | self-made: a dark radial gradient with a vignette (ImageMagick), the default style's neutral ground |

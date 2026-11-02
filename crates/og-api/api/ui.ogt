@@ -5608,7 +5608,8 @@ module ui {
     field price f64 "Its price in the shop's currency."
     field description String "A line about it."
     field icon String "An icon of the atlas; empty is none."
-    field image Option.Texture "Its art (an item icon, og.load.texture): it fills its cell and heads the detail panel, in place of the icon. Null shows the icon."
+    field image Option.Texture "Its art (an item icon, og.load.texture), best cut out on transparent ground: it stands on its cell and heads the detail panel, in place of the icon. Null shows the icon."
+    field rarity Rarity "Its tier: the cell's and the detail's ground take the style's rarity colour."
     field category String "Its category tab; empty is the first."
     field owned bool "Already owned (one-off items): shown, not for sale."
   }
@@ -5662,7 +5663,8 @@ module ui {
     field name String "Its name."
     field count u32 "How many (stacks); 0 or 1 hides the count."
     field icon String "An icon of the atlas; empty is its initial."
-    field image Option.Texture "Its art (an item icon, og.load.texture): it fills its slot and heads the detail panel, in place of the icon. Null shows the icon."
+    field image Option.Texture "Its art (an item icon, og.load.texture), best cut out on transparent ground: it stands on its slot and heads the detail panel, in place of the icon. Null shows the icon."
+    field rarity Rarity "Its tier: the slot's and the detail's ground take the style's rarity colour."
     field description String "A line about it."
   }
 
@@ -5686,7 +5688,8 @@ module ui {
     field countLabel String "The detail panel's count line, beside a stacked item's count." {
       default "Count"
     }
-    field character Option.Texture "The character's art (a full-body picture, 2:3): on a desktop or tablet a pane at the start with characterName, characterTitle and stats under it, on a phone a row over the slots. Null is no pane."
+    field selected Option.u32 "The slot selected when the screen opens, so the detail shows its item at once; null opens with none (the hint)."
+    field character Option.Texture "The character's art (a full-body picture, 2:3): on a desktop or tablet a pane at the start with characterName, characterTitle and stats under it, on a phone a row over the slots with the first and last stats beside the name. Null is no pane."
     field characterName String "The character's name."
     field characterTitle String "A line under it (Level 42 Paladin)."
     field stats List.StatRow "The character's attributes, under the art."

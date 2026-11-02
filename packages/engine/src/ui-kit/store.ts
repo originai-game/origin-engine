@@ -4,9 +4,50 @@
 
 import type * as Api from "@origingame/engine";
 import { kit } from "./bind.ts";
-import { hudBox, fit, fmt, frame, grow, iconOr, px, token, xy } from "./util.ts";
+import { all as edges, hudBox, fit, fmt, frame, grow, iconOr, px, token, xy } from "./util.ts";
 import { artSlot } from "../ui/foundations/media.ts";
 import { over } from "../ui/containers/base.ts";
+import { rarityColor } from "../ui/feedback/core.ts";
+
+/**
+ * A slot's ground in its rarity's colour (the style's rarity roles): a glow
+ * from the centre under the art, so a cut-out item stands on its tier and no
+ * square of its own. Built first in the cell, under what follows.
+ */
+export function rarityGround(id: string, rarity: Api.Rarity | undefined): void {
+  const c = rarityColor(rarity);
+  if (!c) return;
+  const ink = (alpha: number): Api.Paint => ({ color: { r: c.r, g: c.g, b: c.b }, alpha });
+  kit.open(id, { width: grow(), height: grow() });
+  kit.setDraw({ shape: { kind: "rect", radii: [6, 6, 6, 6] }, clip: "shape", fills: [{ kind: "gradient", type: "radial", from: { x: 0.5, y: 0.55 }, to: { x: 1.05, y: 1.05 }, stops: [{ offset: 0, color: ink(0.55) }, { offset: 1, color: ink(0.12) }] }], strokes: [{ width: 1, align: "inside", paint: { kind: "solid", color: ink(0.7) } }] } as Api.DrawDesc);
+  kit.close();
+  over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, z: 0 });
+}
+
+/** A cut-out item (square art on transparent ground): no frame of its own, the ground under it shows through. */
+function cutout(id: string, image: Api.Texture, width: Api.Size, label = ""): void {
+  kit.image(id, { texture: image, width, aspect: 1, label });
+}
+
+/** The detail panel's head: the item's cut-out large on its rarity's ground. */
+function showcase(id: string, image: Api.Texture, rarity: Api.Rarity | undefined): void {
+  kit.column(id, { width: grow(), aspect: 1.25, align: "center", cross: "center", padding: edges(8) }, () => {
+    rarityGround("Ground", rarity);
+    cutout("Image", image, grow());
+  });
+}
+
+/** A portrait in the style's card frame, its lower edge fading into the panel's ground. */
+function portrait(id: string, art: Api.Texture, aspect: number, label: string): void {
+  const { t } = frame();
+  kit.column(id, { width: grow(), padding: edges(0), radius: t.panel, frame: "card" }, () => {
+    artSlot("Art", { texture: art, kind: "portrait", aspect, focal: { x: 0.5, y: 0.25 }, radius: t.panel, width: grow(), label });
+    kit.open("Vignette", { width: grow(), height: grow() });
+    kit.setDraw({ shape: { kind: "rect", radii: [t.panel, t.panel, t.panel, t.panel] }, clip: "shape", fills: [{ kind: "gradient", type: "linear", from: { x: 0.5, y: 0.5 }, to: { x: 0.5, y: 1 }, stops: [{ offset: 0, color: token("panel", 0) }, { offset: 1, color: token("panel", 0.85) }] }] } as Api.DrawDesc);
+    kit.close();
+    over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, z: 3 });
+  });
+}
 
 /** A screen panel: a dialog over the game, wide on desktop, full width on a phone. With `scrim` a press on the backdrop closes it too. */
 function screen(id: string, title: string, width: number, build: () => void, scrim = false): boolean {
@@ -23,7 +64,7 @@ function picture(id: string, icon: string | undefined, name: string, size: numbe
 
 /** A thing's art: its painted image filling a `size` square, else its icon (or initial) at `iconSize`. */
 export function artOr(id: string, image: Api.Texture | null | undefined, icon: string | undefined, name: string, size: number, iconSize: number, label = ""): void {
-  if (image) artSlot(id, { texture: image, kind: "itemIcon", width: px(size), height: px(size), label });
+  if (image) cutout(id, image, px(size), label);
   else picture(id, icon, name, iconSize);
 }
 
@@ -40,20 +81,31 @@ export function cornerCount(id: string, n: number): void {
  * on a desktop or tablet a column of `width` with the art at `aspect` and
  * the words under it, on a phone a row with a round portrait.
  */
-function figure(id: string, art: Api.Texture, aspect: number, width: number, name: string, line: string, after?: () => void): void {
+function figure(id: string, art: Api.Texture, aspect: number, width: number, name: string, line: string, after?: () => void, brief: readonly Api.StatRow[] = []): void {
   const { t, phone } = frame();
   if (phone) {
+    // A phone: the bust large enough to carry the face, the words and the first stats beside it.
     kit.row(id, { width: grow(), gap: t.md, cross: "center" }, () => {
-      artSlot("Art", { texture: art, kind: "portrait", mask: "circle", width: px(64), height: px(64), focal: { x: 0.5, y: 0.22 }, label: name });
+      kit.column("Bust", { width: px(76), height: px(76), padding: edges(0), radius: 38, frame: "card" }, () => {
+        artSlot("Art", { texture: art, kind: "portrait", mask: "circle", width: px(76), height: px(76), focal: { x: 0.5, y: 0.2 }, label: name });
+      });
       kit.column("Words", { width: grow(), gap: t.xxs }, () => {
         if (name) kit.label("Name", name, { step: "lg", font: "display", width: grow(), nowrap: true, ellipsis: true });
         if (line) kit.label("Line", line, { step: "meta", color: token("inkMuted"), width: grow(), maxLines: 2, ellipsis: true });
+        if (brief.length > 0) {
+          kit.row("Brief", { width: grow(), gap: t.md }, () => {
+            brief.slice(0, 2).forEach((s, i) => kit.row(kit.idi("Stat", i), { gap: t.xs, cross: "baseline" }, () => {
+              kit.label("Key", s.label ?? "", { step: "meta", color: token("inkMuted"), nowrap: true });
+              kit.label("Value", s.value ?? "", { step: "meta", font: "mono", nowrap: true });
+            }));
+          });
+        }
       });
     });
     return;
   }
   kit.column(id, { width: px(width), gap: t.sm }, () => {
-    artSlot("Art", { texture: art, kind: "portrait", aspect, focal: { x: 0.5, y: 0.25 }, width: grow(), label: name });
+    portrait("Portrait", art, aspect, name);
     kit.column("Words", { width: grow(), gap: t.xxs }, () => {
       if (name) kit.label("Name", name, { step: "xl", font: "display", width: grow() });
       if (line) kit.label("Line", line, { color: token("inkMuted"), width: grow() });
@@ -103,14 +155,16 @@ export function shopScreen(id: string, desc: Api.ShopDesc = {}): Api.ShopResult 
     };
     const body = (): void => {
       const cw = painted ? (phone ? 104 : 128) : phone ? 96 : 112;
-      const ch = painted ? (phone ? 136 : 160) : phone ? 112 : 124;
+      const ch = painted ? (phone ? 156 : 168) : phone ? 112 : 124;
       // Painted, the grid is three cells wide and the detail takes the rest (no dead band between them).
       const wide = painted && !phone;
       const gw = 3 * (cw + t.sm) + t.sm;
       const g = kit.grid("Items", { count: items.length, cellWidth: cw, cellHeight: ch, columns: wide ? 3 : 0, height: fit(0, phone ? 290 : 340), width: wide ? px(gw) : grow(), selected: sel }, (i) => {
         const it = items[i]!;
+        rarityGround("Ground", it.rarity);
         artOr("Picture", it.image, it.icon, it.name ?? "", phone ? 64 : 84, 36);
-        kit.label("Name", it.name ?? "", { step: "base", nowrap: true, ellipsis: true, width: px(cw - 12), align: "center" });
+        // A product's name is never cut: two lines, a step smaller on a phone.
+        kit.label("Name", it.name ?? "", { step: phone ? "meta" : "base", maxLines: 2, width: px(cw - 12), align: "center" });
         if (it.owned) kit.badge("Owned", desc.ownedLabel ?? "Owned", "success");
         else price("Price", it.price ?? 0, balance >= (it.price ?? 0) ? "ink" : "inkFaint", "meta", 14);
       });
@@ -122,10 +176,13 @@ export function shopScreen(id: string, desc: Api.ShopDesc = {}): Api.ShopResult 
           return;
         }
         // The item's art heads the panel, as large as the column (a row beside its name on a phone).
-        if (it.image && !phone) artSlot("Art", { texture: it.image, kind: "itemIcon", aspect: 1.25, width: grow(), label: "" });
+        if (it.image && !phone) showcase("Art", it.image, it.rarity);
         if (it.image && phone) {
           kit.row("Head", { width: grow(), gap: t.md, cross: "center" }, () => {
-            artSlot("Art", { texture: it.image!, kind: "itemIcon", width: px(56), height: px(56), label: "" });
+            kit.column("Art", { width: px(60), height: px(60), align: "center", cross: "center" }, () => {
+              rarityGround("Ground", it.rarity);
+              cutout("Image", it.image!, px(56));
+            });
             kit.label("Name", it.name ?? "", { step: "lg", font: "display", width: grow() });
           });
         } else {
@@ -174,7 +231,8 @@ export function inventoryScreen(id: string, desc: Api.InventoryDesc = {}): Api.I
   const slots = desc.slots ?? 24;
   const bySlot = new Map<number, Api.InventoryItem>();
   for (const it of desc.items ?? []) bySlot.set(it.slot ?? 0, it);
-  let sel = kit.memory(`${id}.sel`, -1);
+  // The slot selected when it opens (InventoryDesc.selected), so the detail shows an item at once.
+  let sel = kit.memory(`${id}.sel`, desc.selected ?? -1);
   const out: { selected: number | null; moved: Api.SlotMove | null; used: string | null; closed: boolean } = { selected: null, moved: null, used: null, closed: false };
   const cell = phone ? 64 : 72;
   const columns = desc.columns ?? 0;
@@ -192,9 +250,10 @@ export function inventoryScreen(id: string, desc: Api.InventoryDesc = {}): Api.I
       const g = kit.grid("Slots", { count: slots, cellWidth: cell, cellHeight: cell, columns, height: px(phone ? 300 : pane ? 420 : 340), width: grow(), selected: sel >= 0 ? sel : null }, (i) => {
         const it = bySlot.get(i);
         if (!it) return;
+        rarityGround("Ground", it.rarity);
         if (it.image) {
-          // The art fills the slot; a stack's count sits on a plate in its corner.
-          artSlot("Picture", { texture: it.image, kind: "itemIcon", width: px(cell - 10), height: px(cell - 10), label: "" });
+          // The cut-out stands on the slot's ground; a stack's count sits on a plate in its corner.
+          cutout("Picture", it.image, px(cell - 10));
           if ((it.count ?? 0) > 1) cornerCount("Count", it.count!);
           return;
         }
@@ -212,7 +271,7 @@ export function inventoryScreen(id: string, desc: Api.InventoryDesc = {}): Api.I
           kit.label("Hint", desc.hintLabel ?? "Select an item. Drag it to another slot to move it.", { step: "meta", color: token("inkMuted"), width: grow() });
           return;
         }
-        if (it.image && !phone) artSlot("Art", { texture: it.image, kind: "itemIcon", aspect: 1.25, width: grow(), label: "" });
+        if (it.image && !phone) showcase("Art", it.image, it.rarity);
         kit.label("Name", it.name ?? "", { step: "lg", font: it.image ? "display" : "body", width: grow() });
         if (it.description) kit.label("Description", it.description, { step: "meta", color: token("inkMuted"), width: grow() });
         if ((it.count ?? 0) > 1) kit.keyValue("Count", desc.countLabel ?? "Count", `${it.count}`, true);
@@ -228,7 +287,7 @@ export function inventoryScreen(id: string, desc: Api.InventoryDesc = {}): Api.I
         stats.forEach((s, i) => kit.keyValue(kit.idi("Stat", i), s.label ?? "", s.value ?? "", true));
       });
     };
-    const who = (): void => figure("Character", character!, 0.75, pane, desc.characterName ?? "", desc.characterTitle ?? "", attributes);
+    const who = (): void => figure("Character", character!, 0.75, pane, desc.characterName ?? "", desc.characterTitle ?? "", attributes, [stats[0], stats[stats.length - 1]].filter((s): s is Api.StatRow => !!s && stats.length > 0).slice(0, stats.length > 1 ? 2 : 1));
     if (pane) {
       // The character at the start, the slots and the detail beside it.
       kit.row("Stage", { width: grow(), gap: t.lg }, () => {

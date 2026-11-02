@@ -32203,11 +32203,17 @@ export interface ShopItem {
    */
   readonly icon?: string;
   /**
-   * Its art (an item icon, og.load.texture): it fills its cell and heads the detail panel, in place of the icon. Null shows the icon.
+   * Its art (an item icon, og.load.texture), best cut out on transparent ground: it stands on its cell and heads the detail panel, in place of the icon. Null shows the icon.
    *
    * @default null
    */
   readonly image?: Texture | null;
+  /**
+   * Its tier: the cell's and the detail's ground take the style's rarity colour.
+   *
+   * @default "none"
+   */
+  readonly rarity?: Rarity;
   /**
    * Its category tab; empty is the first.
    *
@@ -32369,11 +32375,17 @@ export interface InventoryItem {
    */
   readonly icon?: string;
   /**
-   * Its art (an item icon, og.load.texture): it fills its slot and heads the detail panel, in place of the icon. Null shows the icon.
+   * Its art (an item icon, og.load.texture), best cut out on transparent ground: it stands on its slot and heads the detail panel, in place of the icon. Null shows the icon.
    *
    * @default null
    */
   readonly image?: Texture | null;
+  /**
+   * Its tier: the slot's and the detail's ground take the style's rarity colour.
+   *
+   * @default "none"
+   */
+  readonly rarity?: Rarity;
   /**
    * A line about it.
    *
@@ -32431,7 +32443,13 @@ export interface InventoryDesc {
    */
   readonly countLabel?: string;
   /**
-   * The character's art (a full-body picture, 2:3): on a desktop or tablet a pane at the start with characterName, characterTitle and stats under it, on a phone a row over the slots. Null is no pane.
+   * The slot selected when the screen opens, so the detail shows its item at once; null opens with none (the hint).
+   *
+   * @default null
+   */
+  readonly selected?: number | null;
+  /**
+   * The character's art (a full-body picture, 2:3): on a desktop or tablet a pane at the start with characterName, characterTitle and stats under it, on a phone a row over the slots with the first and last stats beside the name. Null is no pane.
    *
    * @default null
    */
