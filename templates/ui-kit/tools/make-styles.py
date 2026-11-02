@@ -506,13 +506,14 @@ def fantasy_pack():
         disc(cv, 78, 12, 2.2, GOLD)
 
     def flourish(cv):
-        # A scroll swirl: an arc and a tail toward the heading.
-        r = np.hypot(cv.px - 20, cv.py - 12)
-        ring = cv.inside(np.abs(r - 7) - 1.4) * (cv.py < 14)
-        cv.paint(ring, GOLD_DARK)
-        bars(cv, [(26, 13, 58, 13)], 2.0, GOLD_DARK)
-        disc(cv, 13, 13, 2.4, GOLD_DARK)
-        diamond(cv, 58, 13, 3.5, GOLD)
+        # A heading's rule, drawn for its left side (the heading to the
+        # right; the right copy mirrors it): a gold diamond beside the text
+        # and a rule that thins and fades away from it, a bead on the way.
+        t = np.clip((cv.px - 2) / 50, 0, 1) ** 1.4
+        cv.paint(cv.inside(np.abs(cv.py - 12) - 0.45 - 0.55 * t) * t, GOLD_DARK)
+        diamond(cv, 34, 12, 2.4, GOLD, 0.8)
+        diamond(cv, 56, 12, 5.5, GOLD_DARK)
+        diamond(cv, 56, 12, 3.8, GOLD)
 
     def crest(cv):
         # A crest for a panel's top centre: a gem in a gold mount between
