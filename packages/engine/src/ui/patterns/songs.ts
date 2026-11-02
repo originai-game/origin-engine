@@ -9,7 +9,7 @@
 import type * as Api from "@origingame/engine";
 import {
   artSlot, btn, clamp, eyebrow, flags, frame, glow, grouped, grow, keyHash, kit, lastInteraction, line, mix, over, paint, px, recallPath, rememberPath, role,
-  safeHeight, safeWidth,
+  rememberRoom, safeHeight, safeWidth,
   shadow, spring, st, still, surface, symbol, text, token, u, vgrad, vstate, xy, type Mut,
 } from "./core.ts";
 import { cornerTag } from "./rewards.ts";
@@ -345,10 +345,6 @@ export function songSelect(id: string, desc: Api.SongSelectDesc): Api.SongSelect
     kit.remember("~g.rk", keyHash(out.refused));
   }
   kit.close();
-  const self = kit.bounds(kit.lastPath());
-  if (self && self.width > 0 && self.height > 0) {
-    kit.remember(`~g.w.${id}`, Math.round(self.width));
-    kit.remember(`~g.h.${id}`, Math.round(self.height));
-  }
+  rememberRoom("g", id);
   return out;
 }

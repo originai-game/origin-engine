@@ -622,6 +622,23 @@ export function isPhone(): boolean {
   return frame().phone;
 }
 
+/**
+ * Keep the room a screen-filling pattern was laid out in, for next tick's sizes (`~<tag>.w.<id>`, `~<tag>.h.<id>`): its
+ * own box, as wide and tall as its parent leaves it from where it starts. A pattern sizes its parts from this room, and
+ * its box (grown to fit them) is never smaller than they are: kept whole, a first guess larger than the room it was given
+ * (the safe area, under a game's header) would lay out past the parent's foot on every tick after.
+ */
+export function rememberRoom(tag: string, id: string): void {
+  const path = kit.lastPath();
+  const self = kit.bounds(path);
+  if (!self || self.width <= 0 || self.height <= 0) return;
+  const parent = kit.bounds(parentOf(path));
+  const w = parent && parent.width > 0 ? Math.min(self.width, parent.x + parent.width - self.x) : self.width;
+  const h = parent && parent.height > 0 ? Math.min(self.height, parent.y + parent.height - self.y) : self.height;
+  kit.remember(`~${tag}.w.${id}`, Math.max(1, Math.round(w)));
+  kit.remember(`~${tag}.h.${id}`, Math.max(1, Math.round(h)));
+}
+
 /** The surface's width less its safe area. */
 export function safeWidth(): number {
   const v = frame().viewport;

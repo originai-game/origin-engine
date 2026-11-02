@@ -9,7 +9,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  artSlot, btn, clamp, eyebrow, flags, frame, glow, grow, keyHash, kit, lastInteraction, line, over, paint, px, role, safeHeight, safeWidth, shadow, spring,
+  artSlot, btn, clamp, eyebrow, flags, frame, glow, grow, keyHash, kit, lastInteraction, line, over, paint, px, rememberRoom, role, safeHeight, safeWidth, shadow, spring,
   st, still, surface, symbol, text, token, u, vgrad, vstate, xy, type Mut, type Rgba, type SymbolKind,
 } from "./core.ts";
 
@@ -270,10 +270,6 @@ export function worldMap(id: string, desc: Api.WorldMapDesc): Api.WorldMapResult
   over(phone ? { insets: { start: u(8), top: u(8) }, z: 8 } : { insets: { end: u(20), top: u(20) }, z: 8 });
 
   kit.close();
-  const self = kit.bounds(kit.lastPath());
-  if (self && self.width > 0 && self.height > 0) {
-    kit.remember(`~w.w.${id}`, Math.round(self.width));
-    kit.remember(`~w.h.${id}`, Math.round(self.height));
-  }
+  rememberRoom("w", id);
   return out;
 }
