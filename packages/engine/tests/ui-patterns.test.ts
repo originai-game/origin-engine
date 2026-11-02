@@ -1368,6 +1368,29 @@ test("a screen-filling pattern given less than the safe area (under a game's hea
   }
 });
 
+test("on a phone in portrait the draft leaves the roster two rows, the map's legend is one row, the song wheel only whole rows", () => {
+  // Wrong: the draft's two teams of tall portraits leave the roster one row (117 px of 691), the legend's chips wrap
+  // into rows over the map, or a song row past the wheel's edge stands over the detail above it.
+  const phone = { width: 390, height: 844, dpr: 3, coarsePointer: true, breakpoint: "phonePortrait", safeArea: { left: 0, top: 47, right: 0, bottom: 34 } } as const;
+  const box = (build: () => void) => run(() => og.ui.column("Box", { width: { kind: "fixed", px: 374 }, height: { kind: "fixed", px: 691 } }, build), phone);
+  const roster = [...ROSTER, ...ROSTER.map((e) => ({ ...e, key: `${e.key}2` }))].map((e) => ({ ...e, locked: false, taken: false }));
+  const team = (n: number): Api.DraftTeam => ({ name: `Team ${n}`, team: n, picks: [{ player: "A" }, { player: "B" }, { player: "C" }], bans: ["", ""] });
+  const d = box(() => og.ui.draft("Draft", { teams: [team(0), team(1)], roster, phase: "pick", secondsLeft: 10, yourTurn: true }));
+  d.advance(10);
+  expect(byPath(d, "Middle/Room")!.height).toBeGreaterThanOrEqual(200);
+  const kinds = ["quest", "objective", "fastTravel", "shop", "poi", "boss"];
+  const m = box(() => og.ui.worldMap("Map", { markers: kinds.map((k, i) => ({ key: k, kind: k, name: k, x: 0.1 + i * 0.15, y: 0.5 })) }));
+  m.advance(10);
+  expect(byPath(m, "Side/Legend")!.height).toBeLessThanOrEqual(60);
+  const songs: Api.SongEntry[] = ["a", "b", "c", "d", "e", "f", "g"].map((k) => ({ key: k, title: `Song ${k}`, artist: "Artist", difficulties: [{ key: "easy", name: "Easy", level: 3 }] }));
+  const s = box(() => og.ui.songSelect("Songs", { songs, selected: "d", difficulty: "easy", preview: {} }));
+  s.advance(10);
+  const wheel = byPath(s, "Songs/Wheel")!;
+  const rows = elements(s).filter((e) => e.role === "option" && e.path.includes("/Wheel/"));
+  expect(rows.length).toBeGreaterThan(1);
+  for (const r of rows) expect(r.y).toBeGreaterThanOrEqual(wheel.y - 0.5);
+});
+
 test("versus: both sides named in one region; confirm skips only once the sides have landed", () => {
   // Wrong: a skip answered the first tick (the press that opened it skips it at once), or a side left unnamed.
   const results: Api.VersusResult[] = [];
@@ -1456,14 +1479,16 @@ test("worldMap: a pin opens its detail; a fast-travel point travels, another pla
   expect(byPath(engine, "Detail/Action/Label")!.text).toBe("Set waypoint");
   tapOn(engine, byPath(engine, "Detail/Action")!);
   expect(results.filter((r) => r.track).map((r) => r.track)).toEqual(["far"]);
+  // On a desktop the open detail stands in the legend's place; Back closes it and the legend returns.
+  expect(byPath(engine, "Legend/shop") === undefined).toBeTrue();
+  key(engine, "Escape");
+  expect(st.selected).toBe("");
   tapOn(engine, byPath(engine, "Legend/shop")!);
   expect(results.filter((r) => r.toggled).map((r) => r.toggled)).toEqual(["shop"]);
   expect(byPath(engine, "Pins/mill")).toBeDefined();
   st.hidden = ["shop"];
   engine.advance(2);
   expect(byPath(engine, "Pins/mill") === undefined).toBeTrue();
-  key(engine, "Escape");
-  expect(st.selected).toBe("");
 });
 
 // ── song select ─────────────────────────────────────────────────────────
