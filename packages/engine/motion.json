@@ -2,6 +2,7 @@
   "file": "motion/model.safetensors",
   "bytes": 35353882,
   "sha256": "2b5ae84c3f02a33326faac3672f83a4d2b1c1fbffa7a0f6abadf4c2589d93a15",
+  "key": "motion/2b5ae84c3f02a33326faac3672f83a4d2b1c1fbffa7a0f6abadf4c2589d93a15.safetensors",
   "source": "og-motion-train a9b9065, weights/engine/model.safetensors (scripts/export_engine.py: run3's bundle in f16 with og.motion's pose library)",
   "attribution": "Licensed by NVIDIA Corporation under the NVIDIA Open Model Agreement."
 }

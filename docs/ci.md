@@ -1061,7 +1061,11 @@ in git, which is already near a gigabyte. They live in the private S3 bucket
 Cloud project, region BHS, endpoint `https://s3.bhs.io.cloud.ovh.net`; the
 owner's choice of 2026-11-02 over Cloudflare R2), under
 `sha256/<2 hex>/<sha256>.<ext>`, so a file is stored once however often it
-is added. Git holds only
+is added. The same bucket holds og.motion's weights, which `packages/engine`
+ships, under `motion/<sha256>.safetensors`: `packages/engine/motion.json`
+pins the file, `pack.sh` fetches it with the same S3 user when neither
+`OG_MOTION_MODEL` nor `motion/` holds it, and refuses a file whose sha
+differs (`packages/engine/scripts/motion-model.ts fetch|upload`). Git holds only
 `showcase/manifest.jsonl`, one JSON entry per line:
 
 | Field | What it is |
