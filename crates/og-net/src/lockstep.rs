@@ -411,6 +411,20 @@ impl Lockstep {
     }
 
     /// Whether the world takes its ticks in lockstep (or rollback) now.
+    /// Whether [`Self::gate`] would start a run now: lockstep is enabled,
+    /// none runs or is being handed over, and this peer is the authority
+    /// of a room that holds `players` peers. A host refuses a start it
+    /// cannot share by not calling the gate (the room stays a lobby).
+    pub fn would_start(&self, cfg: &Config) -> bool {
+        cfg.enabled
+            && self.run.is_none()
+            && self.handover.is_none()
+            && !self.rejoining
+            && self.me.is_some()
+            && self.authority() == self.me
+            && self.peers.len() as u32 >= cfg.players.max(1)
+    }
+
     pub fn running(&self) -> bool {
         self.run.is_some()
     }

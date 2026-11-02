@@ -181,7 +181,7 @@ fn anchors(eng: &Engine, world: &World) -> Result<Vec<Anchor>, String> {
         return Ok(out);
     }
     if in_session(eng, world) {
-        return Err("cells in an og.net session need an og.StreamAnchor on each player's entity: the og.Camera fallback would load each peer's cells by its own camera and desync".into());
+        return Err(NEEDS_ANCHOR.into());
     }
     let camera = layout(eng, "og.Camera").and_then(|l| {
         let id = world.id_by_name("og.Camera").ok()?;
@@ -190,6 +190,28 @@ fn anchors(eng: &Engine, world: &World) -> Result<Vec<Anchor>, String> {
     Ok(camera
         .map(|c| vec![(vec3(&c["position"]), 0.0)])
         .unwrap_or_default())
+}
+
+const NEEDS_ANCHOR: &str = "cells in an og.net session need an og.StreamAnchor on each player's entity: the og.Camera fallback would load each peer's cells by its own camera and desync";
+
+/// Why a lockstep or rollback session cannot start on this world: it has
+/// cells and no og.StreamAnchor, so they would load by each peer's own
+/// camera. Asked as the session would start (og.net's gate), so it is
+/// refused there and not at a tick of the session.
+pub(crate) fn session_refusal(eng: &Engine, world: &World) -> Option<String> {
+    if cells(eng, world).is_empty() {
+        return None;
+    }
+    let anchored = world.id_by_name(ANCHOR).is_ok_and(|_| {
+        let q = QueryDesc {
+            read: vec![ANCHOR.into()],
+            ..QueryDesc::default()
+        };
+        world
+            .query(&q)
+            .is_ok_and(|mut it| it.any(|a| !a.entities().is_empty()))
+    });
+    (!anchored).then(|| NEEDS_ANCHOR.to_string())
 }
 
 /// Whether the world runs an og.net session (og.Lockstep.enabled): world
