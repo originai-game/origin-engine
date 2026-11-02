@@ -548,6 +548,7 @@ export function characterSelect(id: string, desc: Api.CharacterSelectDesc): Api.
   const rows = Math.ceil(tiles.length / cols);
   const roomH = portrait ? stageH - splashH - u(12) : stageH;
   const wholeH = Math.min(rows * (th + gap) - gap, Math.max(th, Math.floor((roomH + gap) / (th + gap)) * (th + gap) - gap));
+  let hot = "";
   kit.openScroll("Roster", { width: px(gridW), height: px(wholeH + u(12)), gap, padding: xy(u(6), u(6)), part: "Select.roster" } as never);
   for (let row = 0; row < rows; row++) {
     kit.row(kit.idi("Row", row), { gap, width: grow() }, () => {
@@ -568,8 +569,11 @@ export function characterSelect(id: string, desc: Api.CharacterSelectDesc): Api.
         const e = byKey.get(k)!;
         const on = cursors.filter((c) => c.entry === k);
         const mine = !!me && me.entry === k;
-        const blocked = !!e.locked || (!!e.taken && !mine);
-        const state = e.locked ? "locked" : e.taken && !mine ? "taken" : on.some((c) => c.confirmed) ? "confirmed" : on.length > 0 ? "cursor" : "open";
+        // Taken stays taken under the local cursor (it may rest there); only the player's own locked-in pick, which the
+        // game may list as taken, is not refused.
+        const own = mine && !!me?.confirmed;
+        const blocked = !!e.locked || (!!e.taken && !own);
+        const state = e.locked ? "locked" : e.taken && !own ? "taken" : on.some((c) => c.confirmed) ? "confirmed" : on.length > 0 ? "cursor" : "open";
         const shaking = rt > 0 && tick - rt < 18 && rk === keyHash(k) && !still() ? Math.sin((tick - rt) * 1.6) * (18 - (tick - rt)) * 0.5 : 0;
         const ix = lastInteraction(k);
         const r = rosterTile(k, e, {
@@ -581,9 +585,10 @@ export function characterSelect(id: string, desc: Api.CharacterSelectDesc): Api.
           banned: false,
           tags: on.map((c) => ({ name: c.name ?? c.key ?? "", team: c.team ?? 0, confirmed: !!c.confirmed })),
           shake: shaking,
-          name: [e.name ?? k, e.role ?? "", e.locked ? e.lockedHint || "locked" : e.taken && !mine ? desc.takenLabel ?? "Taken" : "", ...on.map((c) => c.name ?? c.key ?? "")].filter(Boolean).join(", "),
+          name: [e.name ?? k, e.role ?? "", e.locked ? e.lockedHint || "locked" : e.taken && !own ? desc.takenLabel ?? "Taken" : "", ...on.map((c) => c.name ?? c.key ?? "")].filter(Boolean).join(", "),
         });
-        if ((ix.hovered || ix.focused) && !me?.confirmed && me?.entry !== k) out.hovered = k;
+        if (ix.hovered) hot = k;
+        else if (ix.focused && !hot) hot = k;
         if (r.clicked) {
           if (blocked || me?.confirmed) {
             if (blocked) {
@@ -601,6 +606,11 @@ export function characterSelect(id: string, desc: Api.CharacterSelectDesc): Api.
     });
   }
   kit.close();
+  // The cursor follows the tile the pointer or the focus moves onto: asked once, when that tile changes, so a cursor the
+  // game moves by other means (a pad's stick, a random pick) is not pulled back to a focus that stayed where it was.
+  const hotHash = hot ? keyHash(hot) : 0;
+  if (hot && hotHash !== kit.memory(`~s.hot.${id}`, 0) && !me?.confirmed && me?.entry !== hot) out.hovered = hot;
+  kit.remember(`~s.hot.${id}`, hotHash);
   kit.remember(`~s.f.${id}`, me?.entry ? 1 : 0);
   kit.semantics({ role: "grid", name: desc.title ?? "Roster" });
   if (rival && !portrait) splashPanel("End", byKey.get(rival.entry ?? "") ?? null, rival, "end", splashW, splashH, desc);
@@ -898,6 +908,7 @@ export function draft(id: string, desc: Api.DraftDesc): Api.DraftResult {
   // A room under one row (a phone at 200 % text) shows the row it can, cut: still the grid, never pushing the action off.
   const viewH = Math.min(rows, fitRows) * (th + gap) - gap + u(12);
   kit.open("Room", { direction: "column", width: grow(), height: grow() });
+  let focusKey = "";
   kit.openScroll("Roster", { width: grow(), height: px(viewH), gap, padding: xy(u(6), u(6)), part: "Draft.roster" } as never);
   for (let row = 0; row < rows; row++) {
     kit.row(kit.idi("Row", row), { gap, width: grow() }, () => {
@@ -923,7 +934,8 @@ export function draft(id: string, desc: Api.DraftDesc): Api.DraftResult {
           shake,
           name: [e.name ?? k, isBanned ? desc.bannedLabel ?? "Banned" : isPicked ? desc.pickedLabel ?? "Picked" : ""].filter(Boolean).join(", "),
         });
-        if ((ix.focused || r.clicked) && desc.yourTurn && !blocked && hov !== k) out.hovered = k;
+        if (ix.focused && !blocked) focusKey = k;
+        if (r.clicked && desc.yourTurn && !blocked && hov !== k) out.hovered = k;
         if (r.clicked) {
           if (blocked) {
             out.refused = k;
@@ -934,6 +946,11 @@ export function draft(id: string, desc: Api.DraftDesc): Api.DraftResult {
     });
   }
   kit.close();
+  // The focus moving onto an open character hovers it: asked once, when the focus changes tile, so a hover the game
+  // sets by other means is not pulled back to a focus that stayed where it was.
+  const focusHash = focusKey ? keyHash(focusKey) : 0;
+  if (focusKey && focusHash !== kit.memory(`~d.hot.${id}`, 0) && desc.yourTurn && hov !== focusKey && out.hovered === null) out.hovered = focusKey;
+  kit.remember(`~d.hot.${id}`, focusHash);
   kit.semantics({ role: "grid", name: desc.phaseLabel ?? "Roster" });
   // Laid over its room, so the room is what the column leaves it, never what the rows ask.
   over({ insets: { start: 0, top: 0, end: 0 } });

@@ -130,6 +130,7 @@ export function worldMap(id: string, desc: Api.WorldMapDesc): Api.WorldMapResult
     const isSel = !!sel && sel.key === key;
     const ix = lastInteraction(key);
     const size = u(phone ? 34 : 38) * (isSel ? 1.15 : 1);
+    const pad = Math.max(0, Math.ceil((44 - size) / 2));
     const r = surface(key, {
       part: "WorldMap.pin",
       cls: "badge",
@@ -138,6 +139,8 @@ export function worldMap(id: string, desc: Api.WorldMapDesc): Api.WorldMapResult
       direction: "row",
       gap: u(6),
       cross: "center",
+      // A whole touch target round the disc (a phone's pins are drawn smaller than a finger).
+      padding: xy(pad, pad),
       radius: 999,
       lift: -u(3),
       semantics: { role: "button", name: [found ? m.name ?? key : desc.undiscoveredLabel ?? "???", word(desc.kindLabels, m.kind ?? ""), m.tracked ? "tracked" : ""].filter(Boolean).join(", "), selected: isSel },
@@ -174,7 +177,7 @@ export function worldMap(id: string, desc: Api.WorldMapDesc): Api.WorldMapResult
         kit.props({ opacity: isSel ? 1 : labelA });
       }
     });
-    over({ insets: { start: p.x - size / 2, top: p.y - size / 2 }, z: isSel ? 4 : 3 });
+    over({ insets: { start: p.x - size / 2 - pad, top: p.y - size / 2 - pad }, z: isSel ? 4 : 3 });
     if (r.clicked) {
       out.selected = isSel ? "" : key;
       kit.feedback(isSel ? "back" : "select", -1);
@@ -264,7 +267,7 @@ export function worldMap(id: string, desc: Api.WorldMapDesc): Api.WorldMapResult
         eyebrow("Kind", word(desc.kindLabels, sel.kind ?? ""));
         text("Name", found ? sel.name ?? "" : desc.undiscoveredLabel ?? "???", { step: st(phone ? 18 : 22), font: "display", heading: true, maxLines: 2, width: grow() });
       });
-      const c = surface("Close", { part: "WorldMap.close", cls: "button", fill: null, washBy: 0.14, width: px(u(32)), height: px(u(32)), align: "center", cross: "center", radius: 999, semantics: { role: "button", name: desc.closeLabel ?? "Close" } }, () => {
+      const c = surface("Close", { part: "WorldMap.close", cls: "button", fill: null, washBy: 0.14, width: px(Math.max(44, u(32))), height: px(Math.max(44, u(32))), align: "center", cross: "center", radius: 999, semantics: { role: "button", name: desc.closeLabel ?? "Close" } }, () => {
         symbol("Cross", "cross", u(14), role("inkMuted"));
       });
       if (c.clicked) {

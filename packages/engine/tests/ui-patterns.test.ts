@@ -1347,6 +1347,19 @@ test("characterSelect: a taken or locked tile is refused, an open one picked; th
   expect(s.results.some((r) => r.cancelled)).toBeTrue();
 });
 
+test("characterSelect: a cursor the game moves stays where it put it; the focus asks to move it only when it changes tile", () => {
+  // Wrong: the focused tile asked for the cursor every tick, so a cursor the game moved by other means (a pad's stick,
+  // a random pick) snapped back to the tile the focus had stayed on.
+  const s = selectScreen();
+  expect(byPath(s.engine, "Stage/Start/Words/Name")!.text).toBe("Kael");
+  s.me.entry = "aria";
+  s.engine.advance(10);
+  expect(s.me.entry).toBe("aria");
+  expect(byPath(s.engine, "Stage/Start/Words/Name")!.text).toBe("Aria");
+  key(s.engine, "ArrowRight");
+  expect(s.me.entry).not.toBe("aria");
+});
+
 test("a screen-filling pattern given less than the safe area (under a game's header) lays out within its box, its action inside", () => {
   // Wrong: the pattern sizes its parts from its first guess (the whole safe area), its box grows to fit them, and the
   // grown box is kept as its room from then on, so its foot stands past the parent's on every tick (the kit's phone
