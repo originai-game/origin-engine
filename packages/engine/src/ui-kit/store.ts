@@ -13,25 +13,79 @@ import { luminance, rarityColor, role } from "../ui/feedback/core.ts";
  * A slot's ground for its rarity, as commercial inventories draw it: the
  * slot's own ground stays, a common item adds nothing, and a higher tier
  * adds a glow in its hue (the style's rarity roles) rising from the bottom
- * centre, stronger on a dark panel than a light one, and a hairline round
- * the slot (`line`; the detail's showcase has none). Built first in the
+ * centre, and a tier line. One stroke per cell: where the style dresses the
+ * slot by its tier (`Slot.frame[rarity=…]`, og.ui.partAttr) its own frame
+ * carries the tier and the glow is all this adds; else a hairline, 1 px at
+ * 60 % on a dark panel, the full tier colour at 1.5 px on a light one, where
+ * the glow is stronger too so the tier still reads on parchment. `line`
+ * false (the detail's showcase) draws the glow alone. Built first in the
  * cell, under what follows.
  */
 export function rarityGround(id: string, rarity: Api.Rarity | undefined, line = true): void {
   const c = rarityColor(rarity);
   if (!c || rarity === "common") return;
+  const dressed = line && kit.partAttr("rarity", rarity!);
   const dark = luminance(role("panel")) < 0.36;
-  const glow = (rarity === "legendary" || rarity === "mythic" ? 0.35 : 0.25) * (dark ? 1 : 0.72);
+  const top = rarity === "legendary" || rarity === "mythic";
+  const glow = dark ? (top ? 0.35 : 0.25) : top ? 0.4 : 0.28;
   const ink = (alpha: number): Api.Paint => ({ color: { r: c.r, g: c.g, b: c.b }, alpha });
   const r = frame().t.small;
   kit.open(id, { width: grow(), height: grow() });
   kit.setDraw({
     shape: { kind: "rect", radii: [r, r, r, r] }, clip: "shape",
     fills: [{ kind: "gradient", type: "radial", from: { x: 0.5, y: 1 }, to: { x: 0.5, y: 0.05 }, stops: [{ offset: 0, color: ink(glow) }, { offset: 0.6, color: ink(glow * 0.35) }, { offset: 1, color: ink(0) }] }],
-    strokes: line ? [{ width: 1, align: "inside", paint: { kind: "solid", color: ink(0.6) } }] : [],
+    strokes: line && !dressed ? [{ width: dark ? 1 : 1.5, align: "inside", paint: { kind: "solid", color: ink(dark ? 0.6 : 1) } }] : [],
   } as Api.DrawDesc);
   kit.close();
   over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, z: 0 });
+}
+
+/**
+ * The selected tile (docs/ui.md §15.5): a soft light rim at 55 % white and an
+ * 8 px glow round it, over the lift og-ui's grid already gives it, so the
+ * selection reads in every style, even one whose selected frame is its plain one.
+ */
+function selectedRim(id: string): void {
+  const r = frame().t.small;
+  const white = (alpha: number): Api.Paint => ({ color: { r: 1, g: 1, b: 1 }, alpha });
+  kit.open(id, { width: grow(), height: grow() });
+  kit.setDraw({
+    shape: { kind: "rect", radii: [r, r, r, r] },
+    // The glow as rings outside the edge, fading out to 8 px: an outerGlow is a
+    // blurred copy of the whole shape and would veil the art inside the tile.
+    strokes: [
+      ...[[8, 0.05], [5.5, 0.07], [3, 0.1]].map(([width, alpha]) => ({ width, align: "outside", paint: { kind: "solid", color: white(alpha) } })),
+      { width: 1.5, align: "inside", paint: { kind: "solid", color: white(0.55) } },
+    ],
+  } as Api.DrawDesc);
+  kit.close();
+  over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, z: 3 });
+}
+
+/**
+ * A grid's height in whole rows: every row when they fit under `limit`, else
+ * as many whole rows as fit and a third of the next (`more`), which the grid
+ * fades out under a soft scrim, its scrollbar in a gutter of its own. Never a
+ * height that cuts through a cell's frame.
+ */
+function rowsView(count: number, columns: number, cell: number, gap: number, limit: number): { height: number; more: boolean } {
+  const rows = Math.ceil(count / Math.max(1, columns));
+  const stride = cell + gap;
+  const all = rows * stride - gap;
+  if (all <= limit) return { height: all, more: false };
+  const whole = Math.max(1, Math.floor((limit - cell / 3 + gap) / stride));
+  return { height: whole * stride + cell / 3, more: true };
+}
+
+/** The scrollbar's gutter beside a grid with more rows than it shows: its bar's width and a margin either side, no more (a phone's bag keeps six touch-sized slots a row). */
+const gutterOf = (t: { xs: number; xxs: number }): number => t.xs + 2 * t.xxs;
+
+/** A grid in its view: with more rows than show, the last third-row fades out (an alpha mask, the panel's own ground showing through). */
+function gridView(id: string, more: boolean, width: Api.Size, build: () => void): void {
+  kit.open(id, { width });
+  if (more) kit.setDraw({ clip: "mask", mask: { gradient: { type: "linear", from: { x: 0.5, y: 0.78 }, to: { x: 0.5, y: 1 }, stops: [{ offset: 0, color: { color: { r: 1, g: 1, b: 1 }, alpha: 1 } }, { offset: 1, color: { color: { r: 1, g: 1, b: 1 }, alpha: 0 } }] } } } as Api.DrawDesc);
+  build();
+  kit.close();
 }
 
 /** A cut-out item (square art on transparent ground): no frame of its own, the ground under it shows through. */
@@ -171,15 +225,22 @@ export function shopScreen(id: string, desc: Api.ShopDesc = {}): Api.ShopResult 
       const ch = painted ? (phone ? 156 : 168) : phone ? 112 : 124;
       // Painted, the grid is three cells wide and the detail takes the rest (no dead band between them).
       const wide = painted && !phone;
-      const gw = 3 * (cw + t.sm) + t.sm;
-      const g = kit.grid("Items", { count: items.length, cellWidth: cw, cellHeight: ch, columns: wide ? 3 : 0, height: fit(0, phone ? 290 : 340), width: wide ? px(gw) : grow(), selected: sel }, (i) => {
+      // Whole rows only: two rows of three show a category whole; more fade under a scrim, the scrollbar in its own gutter.
+      const view = rowsView(items.length, 3, ch, t.sm, phone ? 330 : 352);
+      const gutter = view.more ? gutterOf(t) : 0;
+      const gw = 3 * (cw + t.sm) + t.sm + gutter;
+      let g: Api.ListResult = {} as Api.ListResult;
+      gridView("ItemsView", view.more, wide ? fit() : grow(), () => {
+      g = kit.grid("Items", { count: items.length, cellWidth: cw, cellHeight: ch, columns: 3, height: px(view.height), width: wide ? px(gw) : grow(), padding: { left: 0, top: 0, right: gutter, bottom: 0 }, selected: sel }, (i) => {
         const it = items[i]!;
         rarityGround("Ground", it.rarity);
+        if (i === sel) selectedRim("Selected");
         artOr("Picture", it.image, it.icon, it.name ?? "", phone ? 64 : 84, 36);
         // A product's name is never cut: two lines, a step smaller on a phone.
         kit.label("Name", it.name ?? "", { step: phone ? "meta" : "base", maxLines: 2, width: px(cw - 12), align: "center" });
         if (it.owned) kit.badge("Owned", desc.ownedLabel ?? "Owned", "success");
         else price("Price", it.price ?? 0, balance >= (it.price ?? 0) ? "ink" : "inkFaint", "meta", 14);
+      });
       });
       if (g.clicked !== null && g.clicked !== undefined) sel = g.clicked;
       const it = items[sel];
@@ -260,8 +321,18 @@ export function inventoryScreen(id: string, desc: Api.InventoryDesc = {}): Api.I
   out.closed = screen(id, desc.title ?? "Inventory", width, () => {
     const body = (): void => {
       // Beside a character pane the slots run as tall as it.
-      const g = kit.grid("Slots", { count: slots, cellWidth: cell, cellHeight: cell, columns, height: px(phone ? 300 : pane ? 420 : 340), width: grow(), selected: sel >= 0 ? sel : null }, (i) => {
+      // Whole rows only (rowsView); with no stated columns, as many as the panel's width holds.
+      const across = columns > 0 ? columns : Math.max(1, Math.floor((frame().viewport.width - 2 * t.xl + t.sm) / (cell + t.sm)));
+      const limit = phone ? 300 : pane ? 420 : 340;
+      const gutter = rowsView(slots, across, cell, t.sm, limit).more ? gutterOf(t) : 0;
+      // On a phone the slots are at the touch target already: the gutter comes out of the gaps between them, not the slots.
+      const gap = phone && gutter ? Math.max(t.xxs, t.sm - gutter / Math.max(1, across - 1)) : t.sm;
+      const view = rowsView(slots, across, cell, gap, limit);
+      let g: Api.ListResult = {} as Api.ListResult;
+      gridView("SlotsView", view.more, grow(), () => {
+      g = kit.grid("Slots", { count: slots, cellWidth: cell, cellHeight: cell, columns, height: px(view.height), width: grow(), gap, padding: { left: 0, top: 0, right: gutter, bottom: 0 }, selected: sel >= 0 ? sel : null }, (i) => {
         const it = bySlot.get(i);
+        if (i === sel) selectedRim("Selected");
         if (!it) return;
         rarityGround("Ground", it.rarity);
         if (it.image) {
@@ -272,6 +343,7 @@ export function inventoryScreen(id: string, desc: Api.InventoryDesc = {}): Api.I
         }
         picture("Picture", it.icon, it.name ?? "", cell * 0.5);
         if ((it.count ?? 0) > 1) kit.label("Count", `${it.count}`, { step: "xs", font: "mono", color: token("inkMuted"), nowrap: true });
+      });
       });
       if (g.clicked !== null && g.clicked !== undefined) sel = g.clicked;
       if (g.dropFrom !== null && g.dropFrom !== undefined && g.dropTo !== null && g.dropTo !== undefined && bySlot.has(g.dropFrom)) {

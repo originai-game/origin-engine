@@ -45,3 +45,9 @@ the shop's merchant, so each style's screens sit on their own scene:
 | File | Kind | Origin |
 |---|---|---|
 | `scenes/midcore.jpg` | menuBackground | regenerated after the originality gate refused the first (character trade dress, real heraldry, a pasted seam): origin MCP `generate_image` (gpt-image-2.5-sunburst), a landscape with no characters, a stone fort on a bright hill behind a palisade, invented frog-on-lily-pad banners, thick-outlined stylised terrain; cut to 1280×720 |
+
+## Round 4 (2026-11-02, the art review's notes)
+
+| File | Kind | Origin |
+|---|---|---|
+| `scenes/cyber.jpg` | menuBackground | regenerated after the originality gate refused the r3 scene (a lone figure facing the city, a face billboard): origin MCP `generate_image` (gpt-image-2.5-sunburst), an empty wet rooftop, acid-yellow and cyan towers with signal-red lights, invented Latin signage only (no katakana, no faces, no people); cut to 1280×720 |
