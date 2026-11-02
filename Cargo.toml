@@ -155,9 +155,15 @@ opt-level = 3
 # its optimised 56 us and a 3-minute track's test minutes.
 [profile.dev.package.opus-pure]
 opt-level = 3
-# The AV1 decoder: at -O0 a 720p frame takes most of a second.
+# The AV1 decoder: at -O0 a 720p frame takes most of a second. Without
+# debug assertions, as it ships (release, wasm): they switch on rav1d's
+# DisjointMut overlap checker, which aborts the process on a false
+# positive under tile threading, cdef's top-row borrow taking the two
+# left-padding pixels it never reads at a picture's left edge, which
+# another worker's cdef_apply line backup is writing.
 [profile.dev.package.rav1d]
 opt-level = 3
+debug-assertions = false
 [profile.dev.package.fdsm]
 opt-level = 3
 # Physics at -O0 runs the 500-body determinism pile for a quarter of an hour.
