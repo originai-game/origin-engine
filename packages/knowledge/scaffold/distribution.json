@@ -11,8 +11,8 @@
     },
     {
       "path": "assets/fonts/NotoSansSC-Regular-subset.ttf",
-      "bytes": 2513672,
-      "sha256": "9235b106a17bed31a2b28acc6deccb3d45a6aa02848c96fd2cc1d8540211a1e6",
+      "bytes": 2514328,
+      "sha256": "c89bbf776c088b6a85759a59f9bbeb1ca3114e121a8f00c45cc6b03b1a9bc969",
       "licence": "SIL Open Font License 1.1 (`assets/fonts/OFL.txt`) (LICENSES.md)",
       "source": "templates/game/assets/fonts/NotoSansSC-Regular-subset.ttf of origingame/origin-engine; shipped in @origingame/create-game's template/"
     },
