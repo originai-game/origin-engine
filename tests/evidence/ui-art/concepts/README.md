@@ -80,3 +80,72 @@ owner to choose:
 | Tactical military | `tactical` | shooter, battle royale, tactics | `seeds/tactical-shooter-hud.jpg` |
 | Retro pixel | `pixel` | platformer, roguelike, indie RPG | `seeds/pixel-hud.jpg` |
 | Sports broadcast | `broadcast` | sports, racing, party results | `seeds/broadcast-scoreboard.jpg` |
+
+## Every pack a seed (owner, 2026-11-02)
+
+The owner's answer on the seed proposals: "cover the styles as completely
+as possible". All four proposals are approved, and every style pack under
+`templates/styles` becomes a seed with an approved concept sheet: three
+screens, its genre's HUD, a menu or shop, and settings
+(`packs/<pack>-{hud,menu,settings}.jpg`). A and C stay the fantasy and
+kawaii (anime) sheets. B stays the default style's; the `scifi` pack has
+its own harder sheet (hairlines, brackets, scanlines) so the two read
+apart.
+
+### Coverage
+
+**P** is a genre's primary seed, S a secondary one. Every pack is primary
+or secondary somewhere; the last column names the genres no pack carries
+well and the new pack proposed for each.
+
+| Genre | arcade | broadcast | bubbly | cartoon | craft | cyber | dread | fantasy | gilded | holo | inkwash | kawaii | minimal | neon | paper | pixel | scifi | storybook | tactical | Gap |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| RPG and ARPG |  |  |  |  |  |  | S | **P** | S |  |  |  |  |  |  |  |  |  |  |  |
+| Gacha |  |  |  |  |  |  |  |  | S | S |  | **P** |  |  |  |  |  |  |  |  |
+| Shooter and battle royale |  |  |  |  |  | S |  |  |  |  |  |  |  |  |  |  | S |  | **P** |  |
+| Racing | S | S |  |  |  |  |  |  |  |  |  |  |  | **P** |  |  |  |  |  |  |
+| Cards and deckbuilder |  |  |  |  |  |  |  | S | **P** |  |  |  |  |  |  |  |  | S |  |  |
+| Match-3 and casual puzzle |  |  | S | **P** |  |  |  |  |  |  |  | S |  |  |  |  |  |  |  |  |
+| Saga (level-map meta) |  |  | **P** | S |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| Idle and incremental |  |  |  | **P** |  |  |  |  |  | S |  |  | S |  |  |  |  |  |  |  |
+| RTS |  |  |  |  |  |  |  |  | S |  |  |  |  |  |  |  | **P** |  | S | foundry (industrial), midcore (mobile) |
+| Tower defence |  |  |  | **P** |  |  |  | S |  |  |  |  |  |  |  |  | S |  |  | midcore (mobile) |
+| Tactics |  |  |  |  |  |  |  | S |  | S |  |  |  |  |  |  |  |  | **P** |  |
+| Roguelike |  |  |  |  |  |  | S |  |  |  |  |  |  |  |  | **P** |  | S |  |  |
+| Platformer | S |  |  |  |  |  |  |  |  |  |  |  |  |  |  | **P** |  | S |  |  |
+| Survival and crafting |  |  |  |  | **P** |  | S |  |  |  |  |  |  |  |  |  |  |  |  | **wasteland**: craft is cosy and dread is horror; neither is grunge survival |
+| Farming and cozy |  |  |  |  | **P** |  |  |  |  |  |  |  |  |  | S |  |  | S |  |  |
+| Horror |  |  |  |  |  |  | **P** |  |  |  |  |  |  |  | S |  |  |  |  |  |
+| VN and romance |  |  |  |  |  |  |  |  |  |  | S | **P** |  |  | S |  |  |  |  |  |
+| Sports | S | **P** |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| Rhythm |  |  |  |  |  | S |  |  |  |  |  | S |  | **P** |  |  |  |  |  |  |
+| Party | S |  | **P** | S |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| Casino and board |  |  |  |  |  |  |  |  | **P** |  |  |  | S |  | S |  |  |  |  |  |
+| MMO and raid |  |  |  |  |  |  | S | **P** | S |  |  |  |  |  |  |  |  |  |  |  |
+| Kids and education |  |  | **P** | S |  |  |  |  |  |  |  |  |  |  |  |  |  | S |  |  |
+| Wuxia and xianxia |  |  |  |  |  |  |  |  | S |  | **P** |  |  |  |  |  |  |  |  | **jade**: inkwash is restrained monochrome ink; xianxia wants carved jade and gold ornament |
+
+### New packs for the gaps (proposals, one sample each in `proposals/`)
+
+| Proposal | For | Why no pack carries it | Sample |
+| --- | --- | --- | --- |
+| `wasteland`: rusted plate, duct tape, stencils, warning orange, radiation green | survival and crafting, extraction shooters, post-apocalyptic RPG | craft is cosy, dread is gothic horror, tactical is clean military | `proposals/wasteland-hud.jpg` |
+| `foundry`: dark iron, brass, rivets, gauges, furnace orange | city builders, factory and management sims, industrial RTS, 4X | gilded is luxury, fantasy is parchment; nothing is mechanical | `proposals/foundry-build.jpg` |
+| `midcore`: thick outlines, bevelled stone and wood, heavy stroked type, glossy 3D icons | mobile strategy, auto-battler, tower defence, base building | cartoon and bubbly read soft and casual; this is competitive and chunky | `proposals/midcore-battle.jpg` (original units; a first draft that copied another game's characters is kept out of the repository) |
+| `jade`: carved jade panels, gold cloud filigree, calligraphic titles, seal stamps | wuxia and xianxia, eastern fantasy gacha and MMO | inkwash is restrained monochrome ink; gilded is western | `proposals/jade-cultivation.jpg` |
+
+### Sheets
+
+Batches go to the coordinator for the owner's veto; a sheet not vetoed is
+approved. Order is the style-art pipeline's: fantasy, kawaii, scifi,
+cartoon, tactical, pixel, broadcast, then the rest by genre reach.
+
+| Batch | Pack | HUD | Menu or shop | Settings | Status |
+| --- | --- | --- | --- | --- | --- |
+| 1 | fantasy | `A-hud` | `A-shop` | `A-settings` | approved (A) |
+| 1 | kawaii | `C-hud` | `C-shop` | `C-settings` | approved (C) |
+| 1 | scifi | `packs/scifi-hud` (mech cockpit) | `packs/scifi-menu` (requisitions) | `packs/scifi-settings` | sent for veto |
+| 1 | cartoon | `packs/cartoon-hud` (match-3 board) | `packs/cartoon-menu` (saga map) | `packs/cartoon-settings` | sent for veto |
+| 1 | tactical | `packs/tactical-hud` (shooter) | `packs/tactical-menu` (loadout) | `packs/tactical-settings` | sent for veto |
+| 1 | pixel | `packs/pixel-hud` (ability bar) | `packs/pixel-menu` (main menu) | `packs/pixel-settings` | sent for veto |
+| 1 | broadcast | `packs/broadcast-hud` (football) | `packs/broadcast-menu` (full time) | `packs/broadcast-settings` | sent for veto |

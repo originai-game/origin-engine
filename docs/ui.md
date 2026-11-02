@@ -847,6 +847,23 @@ stays painted, and the showcase frames wear the seed styles with the
 default as one column beside them. The concepts' README lists every
 approved image and the genre sheets that extend the set.
 
+**Every pack a seed (owner, 2026-11-02).** Each style pack under
+`templates/styles` is a seed with an approved sheet of three screens (its
+genre's HUD, a menu or shop, settings) in
+`tests/evidence/ui-art/concepts/packs/`, read like the table above; the
+README's coverage matrix gives each genre a primary and secondary seed and
+names the packs proposed for the gaps (wasteland, foundry, midcore, jade).
+
+| Pack | HUD | Menu or shop | Settings |
+| --- | --- | --- | --- |
+| fantasy | `A-hud` | `A-shop` | `A-settings` |
+| kawaii | `C-hud` | `C-shop` | `C-settings` |
+| scifi | `packs/scifi-hud` | `packs/scifi-menu` | `packs/scifi-settings` |
+| cartoon | `packs/cartoon-hud` | `packs/cartoon-menu` | `packs/cartoon-settings` |
+| tactical | `packs/tactical-hud` | `packs/tactical-menu` | `packs/tactical-settings` |
+| pixel | `packs/pixel-hud` | `packs/pixel-menu` | `packs/pixel-settings` |
+| broadcast | `packs/broadcast-hud` | `packs/broadcast-menu` | `packs/broadcast-settings` |
+
 The checklist:
 
 1. **Hierarchy.** Each screen has one dominant element (the key art and
