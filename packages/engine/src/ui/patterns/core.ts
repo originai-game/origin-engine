@@ -11,7 +11,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  clamp, fit, flags, frame, grow, hex, kit, mix, paint, pct, px, role, rtl, surface, text, token, xy, type Rgba,
+  clamp, fit, flags, frame, grow, hex, kit, mix, over, paint, parentOf, pct, px, role, rtl, surface, text, token, xy, type Rgba,
 } from "../containers/base.ts";
 
 export * from "../containers/base.ts";
@@ -296,6 +296,72 @@ const KIND_SYMBOL: Record<string, SymbolKind> = {
   emblem: "shield", avatar: "heart", cg: "eye", screenshot: "camera", thumbnail: "camera", currency: "coin", gem: "gem",
 };
 
+/** Kinds whose placeholder is a figure (head and shoulders) rather than a symbol. */
+const FIGURE_KINDS = new Set(["portrait", "bust", "character", "splash", "avatar", "banner", "keyArt"]);
+
+/**
+ * A slot's placeholder, drawn in the open slot (docs/ui.md §13.1): a
+ * gradient of two hues (the tier's or the primary's, and a second turned
+ * from it), a light at the focal point, and the kind's silhouette standing
+ * on it: a figure for a portrait, bust, character or key art, else the
+ * kind's symbol, both sized to the slot (its size as laid out last tick).
+ */
+function placeholderArt(s: Slot, tier: Rgba | null, radii: [number, number, number, number]): void {
+  const base = tier ?? role("primary");
+  // The second hue: the highlight against the primary, the primary against a tier's colour.
+  const other = tier ? role("primary") : role("highlight");
+  const deep = (c: Rgba, k: number): Rgba => mix(role("well"), c, k);
+  const figure = FIGURE_KINDS.has(s.kind ?? "");
+  const f = s.focal ?? { x: 0.5, y: figure ? 0.36 : 0.45 };
+  kit.setDraw({
+    shape: { kind: "rect", radii },
+    fills: [
+      vgrad([[0, paint(deep(base, 0.5))], [0.55, paint(deep(mix(base, other, 0.45), 0.34))], [1, paint(deep(other, 0.22))]], 135),
+      radial([[0, paint(mix(base, role("ink"), 0.25), 0.55)], [0.45, paint(base, 0.18)], [1, paint(base, 0)]], f.x, f.y, 0.55, 0.55),
+    ],
+    clip: "shape",
+  });
+  // Its size as laid out last tick (the first tick: what the slot asked for, or a small default).
+  const fixed = (z: Api.Size | null | undefined): number | null => (z && z.kind === "fixed" ? z.px : null);
+  // An empty first child names the slot's path (its parent's), whose rectangle last tick is the size to draw at.
+  kit.open("Sizer", { width: px(0), height: px(0) });
+  kit.close();
+  over({ insets: { start: 0, top: 0 }, inert: true });
+  const was = kit.bounds(parentOf(kit.lastPath()));
+  const w = was?.width || fixed(s.width) || 96;
+  const h = was?.height || fixed(s.height) || (s.aspect ? w / s.aspect : w);
+  const ink = mix(deep(base, 0.2), role("shadow"), 0.35);
+  const rim = mix(base, role("ink"), 0.45);
+  if (figure) {
+    // Head and shoulders standing on the slot's foot, the head at the focal point.
+    const S = Math.min(w * 0.9, h * 0.95);
+    const head = Math.round(S * 0.34);
+    const shW = Math.round(S * 0.86);
+    const top = Math.round(f.y * h - head / 2);
+    const shH = Math.max(0, Math.round(h - top - head * 0.92));
+    const x = (k: number) => Math.round(f.x * w - k / 2);
+    // The shoulders first: the head stands over their top edge.
+    if (shH > 0) {
+      const r = Math.round(shW * 0.42);
+      kit.open("Shoulders", { width: px(shW), height: px(shH) });
+      kit.setDraw({ shape: { kind: "rect", radii: [r, r, 0, 0] }, fills: [vgrad([[0, paint(ink, 0.92)], [1, paint(ink, 0.6)]])], strokes: [line(Math.max(1, S * 0.008), paint(rim, 0.45))] });
+      kit.close();
+      over({ insets: { start: x(shW), top: Math.round(top + head * 0.98) }, inert: true });
+    }
+    kit.open("Head", { width: px(head), height: px(Math.round(head * 1.12)) });
+    kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "solid", color: paint(ink, 0.92) }], strokes: [line(Math.max(1, S * 0.008), paint(rim, 0.55))] });
+    kit.close();
+    over({ insets: { start: x(head), top }, inert: true });
+  } else {
+    const sym = KIND_SYMBOL[s.kind ?? ""] ?? "star";
+    const box = Math.round(clamp(Math.min(w, h) * 0.36, 14, 160));
+    kit.open("Mark", { width: px(box), height: px(box) });
+    symbol("Kind", sym, box, mix(base, role("ink"), 0.35), { icon: s.icon });
+    kit.close();
+    over({ insets: { start: Math.round(f.x * w - box / 2), top: Math.round(f.y * h - box / 2) }, inert: true, opacity: 0.6 });
+  }
+}
+
 /**
  * An art slot (docs/ui.md §13): the game's texture covering the slot
  * around its focal point, or a placeholder drawn from the style and the
@@ -321,20 +387,7 @@ export function artSlot(id: string, part: string, s: Slot, build?: () => void): 
   if (!placeholder) {
     kit.setDraw({ shape: { kind: "rect", radii }, fills: [{ kind: "image", texture: s.texture!, fit: s.fit ?? "cover", focal: s.focal ?? { x: 0.5, y: 0.5 } }], clip: "shape" });
   } else {
-    const base = tier ?? role("primary");
-    const deep = mix(role("well"), base, 0.32);
-    kit.setDraw({
-      shape: { kind: "rect", radii },
-      fills: [
-        vgrad([[0, paint(mix(deep, role("panelRaised"), 0.25))], [1, paint(mix(role("well"), base, 0.12))]]),
-        radial([[0, paint(base, 0.35)], [1, paint(base, 0)]], 0.5, 0.42, 0.62, 0.62),
-      ],
-      clip: "shape",
-    });
-    const sym = KIND_SYMBOL[s.kind ?? ""] ?? "star";
-    const box = Math.round(Math.max(16, Math.min(48, frame().t.controlMd * 0.62)));
-    symbol("Kind", sym, box, mix(base, role("ink"), 0.35), { icon: s.icon });
-    kit.props({ opacity: 0.55 });
+    placeholderArt(s, tier, radii);
   }
   try {
     build?.();

@@ -28905,7 +28905,19 @@ export interface GachaBannerDesc {
    */
   readonly subtitle?: string;
   /**
-   * The featured units, beside the art.
+   * The key art (art kind banner), across the frame around its focal point under the art builder's layer; null draws the style's placeholder: a figure on a gradient of two hues, lit at the focal point.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * The art's point kept in view, fractions from the top start; null is the featured unit's place on the art side (0.68, 0.36 on a desktop; 0.5, 0.3 in portrait).
+   *
+   * @default null
+   */
+  readonly focal?: Vector2 | null;
+  /**
+   * The featured units: the first named large on the art (its name plate) and each in a row with its stars beside the title.
    *
    * @default []
    */
@@ -46398,12 +46410,12 @@ export declare namespace og {
      */
     function rewardChoice(id: string, desc?: RewardChoiceDesc): RewardChoiceResult;
     /**
-     * A gacha banner (Genshin Impact, Honkai: Star Rail, Fate/Grand Order, Marvel Snap's spotlight): the key art the game builds across the screen under a scrim that keeps its text readable on any art, the title and subtitle, the featured units with their stars in their tier's colour, the rate-up rule, the time left (a timer chip, urgent in its last minute; a tab's time in warn ink in its last hour), the pity meter, the purse, and the one and ten pull buttons with their prices (a price the purse cannot pay in danger ink, said not only shown). A switcher of banners sits at the start edge on a desktop and above on a phone. Bumpers or Q and E switch banners; keys and pads move between the buttons.
-     * Parts: Gacha.frame, Gacha.art, Gacha.scrim, Gacha.featured, Gacha.unit[rarity=<tier>], Gacha.stars, Gacha.rate, Timer.chip[urgent], Gacha.pity, Gacha.purse, Gacha.pull[single|multi][short], Gacha.tabs, Gacha.tab[current][fresh], Gacha.details, Gacha.history. Slots: the key art (built by the game: art kind banner, the full frame); each tab's thumbnail. States: on each tab, group selection (off, on); on each pull button, group purse (afford, short). Motion: the art and text cross-fade when the banner changes (layout motion on the ui spring); the pull buttons lift under the pointer. Sounds: tab on a switch, press on a pull, error when short. Accessibility: a tablist of banners; the pulls are buttons named by their label and price (and not enough when short); the pity meter a meter; the timer a timer. Probe ids: <id>/Body/Tabs/<key>, <id>/Body/Main/Info/Title, <id>/Body/Main/Info/Timer, <id>/Body/Main/Info/Featured/Unit#<n>, <id>/Body/Main/Foot/Pulls/Buttons/Single, …/Buttons/Multi, …/Pulls/Status/Pity, …/Pulls/Status/Purse, <id>/Body/Main/Foot/Bar/Details, …/Bar/History.
+     * A gacha banner (Genshin Impact, Honkai: Star Rail, Fate/Grand Order, Marvel Snap's spotlight): the key art across the screen (the game's texture, or the style's placeholder figure) with the first featured unit's name plate large on the art side, and, on the other side over a scrim that keeps its text readable on any art, the title and subtitle, the featured units with their stars in their tier's colour, the rate-up rule, the time left (a timer chip, urgent in its last minute; a tab's time in warn ink in its last hour), and under them the purchase block: the pity meter, the purse, and the one and ten pull buttons with their prices (a price the purse cannot pay in danger ink, said not only shown). On a phone in portrait the purchase block sits at the foot, under the thumb. A switcher of banners sits at the start edge on a desktop and above on a phone. Bumpers or Q and E switch banners; keys and pads move between the buttons.
+     * Parts: Gacha.frame, Gacha.art, Gacha.scrim, Gacha.featured, Gacha.unit[rarity=<tier>], Gacha.stars, Gacha.rate, Timer.chip[urgent], Gacha.pity, Gacha.purse, Gacha.pull[single|multi][short], Gacha.tabs, Gacha.tab[current][fresh], Gacha.details, Gacha.history. Slots: the key art (desc.image, art kind banner, the full frame; the art builder draws over it); each tab's thumbnail. Parts also: Gacha.spotlight (the name plate). States: on each tab, group selection (off, on); on each pull button, group purse (afford, short). Motion: the art and text cross-fade when the banner changes (layout motion on the ui spring); the pull buttons lift under the pointer. Sounds: tab on a switch, press on a pull, error when short. Accessibility: a tablist of banners; the pulls are buttons named by their label and price (and not enough when short); the pity meter a meter; the timer a timer. Probe ids: <id>/Spotlight, <id>/Body/Tabs/<key>, <id>/Body/Main/Info/Title, <id>/Body/Main/Info/Timer, <id>/Body/Main/Info/Featured/Unit#<n>, <id>/Body/Main/Foot/Pulls/Buttons/Single, …/Buttons/Multi, …/Pulls/Status/Pity, …/Pulls/Status/Purse, <id>/Body/Main/Foot/Bar/Details, …/Bar/History.
      *
      * @param id Its id.
      * @param desc The banner and the purse.
-     * @param art Builds the key art filling the frame (an art slot, a sceneViewport).
+     * @param art Builds over the key art, filling the frame (a sceneViewport, particles, a second figure); may build nothing.
      */
     function gachaBanner(id: string, desc: GachaBannerDesc, art: UiBuild): GachaBannerResult;
     /**
