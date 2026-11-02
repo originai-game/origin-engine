@@ -41,11 +41,20 @@ export function card(id: string, desc: Api.CardDesc, build: Api.UiBuild): Api.Re
     build();
   };
   const body = (): void => {
-    if (desc.media) media("Media", desc.media, t.panel, !!desc.badge);
+    // With art the cost disc sits on the art's bottom end corner (the number plate's opposite), so the body's
+    // text keeps the card's whole width: a narrow card in a script without spaces wrapped its effect short of it.
+    const costDisc = (): void => {
+      kit.open("Cost", { direction: "column", width: px(disc), height: px(disc), align: "center", cross: "center", part: "Card.cost", partClass: "badge" });
+      kit.setDraw({ shape: { kind: "ellipse" }, fills: [{ kind: "solid", color: token("well") }], strokes: [{ width: 1.5, align: "inside", paint: { kind: "solid", color: token("lineStrong") } }] });
+      text("Text", desc.cost ?? "", { step: "lg", font: "rounded", nowrap: true });
+      kit.close();
+      over({ insets: { bottom: t.sm, end: t.sm }, z: 2 });
+    };
+    if (desc.media) media("Media", desc.media, t.panel, !!desc.badge, desc.cost ? costDisc : undefined);
     // With no media the number plate stands over the body's top: the body starts under it.
     const padding = desc.number && !desc.media ? { ...all(pad), top: t.sm + plateH + t.xs } : all(pad);
-    if (desc.cost) {
-      // The cost disc beside the body at its bottom end, so the game's text wraps short of it.
+    if (desc.cost && !desc.media) {
+      // With no art the cost disc beside the body at its bottom end, so the game's text wraps short of it.
       kit.row("Body", { width: grow(), padding, gap: t.sm, cross: "end" }, () => {
         kit.column("Content", { width: grow(), gap: t.xs }, content);
         kit.open("Cost", { direction: "column", width: px(disc), height: px(disc), align: "center", cross: "center", part: "Card.cost", partClass: "badge" });
@@ -124,7 +133,7 @@ export function ring(id: string, width = 2, ink: Api.ThemeColor = "focus"): void
 }
 
 /** A media slot: the game's texture covering the slot at its aspect around its focal point, or a placeholder drawn from the style and the slot's kind (never a grey box). */
-export function media(id: string, m: Api.CardMedia, radius: number, badged = false): void {
+export function media(id: string, m: Api.CardMedia, radius: number, badged = false, corner?: () => void): void {
   const aspect = m.aspect && m.aspect > 0 ? m.aspect : 16 / 9;
   // Under a corner badge the placeholder's mark sits low in the slot, clear of the badge.
   const low = badged && !m.texture;
@@ -142,6 +151,8 @@ export function media(id: string, m: Api.CardMedia, radius: number, badged = fal
     });
     kit.icon("Kind", m.icon || "image", { size: 32, tint: token("inkFaint"), label: "" });
   }
+  // A mark the card pins to the art (its cost disc), laid out with it.
+  corner?.();
   kit.close();
   if (m.label) kit.semantics({ role: "image", name: m.label });
 }

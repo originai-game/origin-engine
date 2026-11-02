@@ -3937,7 +3937,7 @@ A card over a body the game builds. Answers its response (clicked when interacti
 
 Its corners: a badge at the top end, a number plate at the top start, a cost disc at the bottom end; each mirrors right to left.
 
-Parts: Card.frame[selected][<variant>], Card.media[placeholder], Card.number, Card.cost. Accessibility: a button (interactive) or group named by its eyebrow, title and subtitle, else its text; the number and the cost are read as text. Probe ids: <id>/Media, <id>/Body (with a cost, the game's body in <id>/Body/Content and the disc at <id>/Body/Cost/Text), <id>/Number/Text, <id>/Badge, <id>/Selected.
+Parts: Card.frame[selected][<variant>], Card.media[placeholder], Card.number, Card.cost. Accessibility: a button (interactive) or group named by its eyebrow, title and subtitle, else its text; the number and the cost are read as text. Probe ids: <id>/Media, <id>/Body (with a cost and media, the disc at <id>/Media/Cost/Text; with a cost and no media, the game's body in <id>/Body/Content and the disc at <id>/Body/Cost/Text), <id>/Number/Text, <id>/Badge, <id>/Selected.
 
 ```ts
 og.ui.card(id: string, desc: CardDesc, build: UiBuild): Response
@@ -3957,7 +3957,7 @@ Implemented by the TypeScript runtime over the members of this module: no bindin
 fn card {
   doc "A card over a body the game builds. Answers its response (clicked when interactive)."
   doc "Its corners: a badge at the top end, a number plate at the top start, a cost disc at the bottom end; each mirrors right to left."
-  doc "Parts: Card.frame[selected][<variant>], Card.media[placeholder], Card.number, Card.cost. Accessibility: a button (interactive) or group named by its eyebrow, title and subtitle, else its text; the number and the cost are read as text. Probe ids: <id>/Media, <id>/Body (with a cost, the game's body in <id>/Body/Content and the disc at <id>/Body/Cost/Text), <id>/Number/Text, <id>/Badge, <id>/Selected."
+  doc "Parts: Card.frame[selected][<variant>], Card.media[placeholder], Card.number, Card.cost. Accessibility: a button (interactive) or group named by its eyebrow, title and subtitle, else its text; the number and the cost are read as text. Probe ids: <id>/Media, <id>/Body (with a cost and media, the disc at <id>/Media/Cost/Text; with a cost and no media, the game's body in <id>/Body/Content and the disc at <id>/Body/Cost/Text), <id>/Number/Text, <id>/Badge, <id>/Selected."
   host false
   param id String "Its id."
   param desc CardDesc "Variant, media, titles and state."
@@ -14016,7 +14016,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `badge` | `string` | `""` | — | — | — | A badge in the top end corner; empty is none. |
 | `badgeTone` | `Tone` | `"neutral"` | — | — | — | The badge's tone. |
 | `number` | `string` | `""` | — | — | — | A number on a small plate at the top start corner (its place in a hand, its slot), over the media's corner when there is media, else above the body; small, so the art stays the card's one dominant element. Empty is none. |
-| `cost` | `string` | `""` | — | — | — | A numeral in a disc at the bottom end corner (a cost, a level), beside the body so the game's text never runs under it; small, so the art stays the card's one dominant element. Empty is none. |
+| `cost` | `string` | `""` | — | — | — | A numeral in a disc (a cost, a level): with media on the art's bottom end corner, opposite the number plate, so the body's text keeps the card's whole width; with none at the body's bottom end, beside it, so the game's text never runs under it. Small, so the art stays the card's one dominant element. Empty is none. |
 | `interactive` | `boolean` | `false` | — | — | — | The whole card is a button: it lifts under the pointer and the focus, sinks when pressed, and answers clicked. |
 | `selected` | `boolean` | `false` | — | — | — | Ringed in the focus ink (Card.frame[selected]). |
 | `disabled` | `boolean` | `false` | — | — | — | Shown but inert. |
@@ -14036,7 +14036,7 @@ struct CardDesc {
   field badge String "A badge in the top end corner; empty is none."
   field badgeTone Tone "The badge's tone."
   field number String "A number on a small plate at the top start corner (its place in a hand, its slot), over the media's corner when there is media, else above the body; small, so the art stays the card's one dominant element. Empty is none."
-  field cost String "A numeral in a disc at the bottom end corner (a cost, a level), beside the body so the game's text never runs under it; small, so the art stays the card's one dominant element. Empty is none."
+  field cost String "A numeral in a disc (a cost, a level): with media on the art's bottom end corner, opposite the number plate, so the body's text keeps the card's whole width; with none at the body's bottom end, beside it, so the game's text never runs under it. Small, so the art stays the card's one dominant element. Empty is none."
   field interactive bool "The whole card is a button: it lifts under the pointer and the focus, sinks when pressed, and answers clicked."
   field selected bool "Ringed in the focus ink (Card.frame[selected])."
   field disabled bool "Shown but inert."
