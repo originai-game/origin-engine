@@ -594,15 +594,38 @@ test("table: 10,000 rows build only a screenful; the score header sorts high to 
   expect(byPath(engine, "Header/Col#2")?.value).toBe("sorted ascending");
 });
 
-test("table: a tick over 10,000 sorted rows stays within budget once the order is cached", () => {
+test("table: over 10,000 sorted rows a tick reads only the rows in view; the filter and sort run once per change", () => {
+  // The cost is counted, not timed: every read of a row goes through this
+  // proxy, so a cache that misses (or a sort run every tick) reads all
+  // 10,000 again and fails on any machine, however loaded.
+  let reads = 0;
+  const rows = new Proxy(ROWS, {
+    get(target, p, recv) {
+      if (typeof p === "string" && /^\d+$/.test(p)) reads++;
+      return Reflect.get(target, p, recv);
+    },
+  });
+  let sortBy = 2;
   const engine = run(() => {
-    og.ui.table("Board", { rows: ROWS, columns: COLUMNS, sortBy: 2, descending: true, filter: "1", height: { kind: "fixed", px: 400 } });
+    og.ui.table("Board", { rows, columns: COLUMNS, sortBy, descending: true, filter: "1", height: { kind: "fixed", px: 400 } });
   }, 720);
+  const tick = (): number => {
+    reads = 0;
+    engine.advance(1);
+    return reads;
+  };
+  // Cached: a screenful of rows by three columns (and a few reads beside), never the table.
+  const screenful = 30 * (COLUMNS.length + 1);
+  const steady = Array.from({ length: 30 }, tick);
+  expect(Math.max(...steady)).toBeLessThan(screenful);
+  // A new sort reads every row once, on the tick it changes; the ticks after it are cheap again.
+  sortBy = 0;
+  expect(tick()).toBeGreaterThanOrEqual(ROWS.length);
+  expect(Math.max(...Array.from({ length: 10 }, tick))).toBeLessThan(screenful);
+  // The wall-clock time is the perf lane's to judge; here it is only reported.
   const t0 = performance.now();
   engine.advance(60);
-  const per = (performance.now() - t0) / 60;
-  // A tick of the whole UI (layout and the a11y tree too), well under a frame.
-  expect(per).toBeLessThan(8);
+  console.info(`table: ${((performance.now() - t0) / 60).toFixed(2)} ms per tick over 10,000 sorted rows (not asserted)`);
 });
 
 test("tableOrder: filters by every filterable column, sorts numbers by value, keeps equal keys in row order", () => {
