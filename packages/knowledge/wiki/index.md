@@ -70,7 +70,7 @@ Grouped by the skill that teaches them: the skill says how much of each to use a
 |---|---|---|---|
 | [`anim`](anim.md) | `og.anim.*` | kept | Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics. |
 | [`path`](path.md) | `og.path.*` | kept | Paths: a curve through or controlled by points, measured by arc length so a parameter t from 0 to 1 moves along it at an even speed however its points are spaced. catmullRom passes through every point (three.js CatmullRomCurve3, tension 0.5), bezier chains cubic segments `p0 c0 c1 p1 c2 c3 p2 ...` (three.js CubicBezierCurve3 in a CurvePath), linear joins the points with straight segments. A closed path joins its last point to its first and wraps t. |
-| [`timeline`](timeline.md) | `og.timeline.*` | kept | Timelines: cutscenes and sequences as data, Unity's Timeline and Godot's AnimationPlayer as an `.ogt` the agent reads and diffs. A `type timeline` file has a `duration` in seconds, `path "<name>" { ... }` blocks (as og.path's) and `track <kind> ["<entity>"] { key <seconds> { ... } }` blocks; `og cook` cooks it (importing caption files) and og.load.timeline loads it. Tracks: `camera` (position and target keys, or `rail "<path>"` with `at` 0..1 along it, or `follow "<entity>"` with offsets; fov; eased), `transform "<entity>"` (position, rotation in degrees or quaternion, scale; eased), `animation "<entity>"` (clip, speed, blendIn, loop; `model` names the glTF whose clips they are, else the entity's og.Model), `audio` (sound, volume, pitch, bus), `music` (sound, volume, fadeIn, fadeOut, end, loop, bus), `caption` (text from `key` to `end` with a UI type step `style` and an `anchor`; `captions "narration.srt" [offset]` imports a SubRip file or word timestamps `.json`), `event` (`do "<command-channel action>"`: teleport, set, a game's registered command; `retroactive true` runs it when a seek passes it), `transition` (kind cut, fade, wipe, dissolve, iris or slide; mode through, in or out; duration, color, from, over og.ui's screen cover) `marker` (`name`, sending og.TimelineMarker when played past), `property ["<entity>"]` (`field "og.PointLight.distance"`, keys of `value`: any reflected field of a component on the entity, or of a resource without one), `light "<entity>"` (its og.DirectionalLight, og.PointLight, og.SpotLight, og.RectLight or og.Light2D: color, intensity, distance, angle, ...), `visibility "<entity>"` (`visible true\|false` of whatever it draws, stepped), `post` (og.PostEffects' fields), `blendshape "<entity>"` (og.Blendshapes w0 to w7; its source becomes component), `material "<entity>"` (its og.Mesh's material, or its og.Model's material `index N`: StandardMaterialDesc fields by name, other names the material shader's parameters) and `timeline` (`play "<timeline>"`, speed, loop: from its key until the next, another timeline plays nested at (time − key) × speed, its markers sent as `<file>/<marker>`, at most four deep) and `shot` (`camera "<entity>"`, a virtual camera's name, or `none`; `blend` seconds and `ease`: from its key until the next, that og.VirtualCamera is og.CameraBrain.solo, blended to over the key's blend by its ease or by the camera's own; `none` and the timeline's end hand back the solo it found). Camera keys also take `roll` (degrees about the view direction), `focus` (a distance) or `focusOn "<entity>"` and `focusRange`, which set og.PostEffects' depth of field while the track owns the camera. The cook checks every field against the engine's records (a field the record lacks, one a timeline cannot drive, a value of the wrong shape) and refuses nesting in a cycle or deeper than four; a track kind this engine does not read is refused naming it and the engine's version. |
+| [`timeline`](timeline.md) | `og.timeline.*` | kept | Timelines: cutscenes and sequences as data, Unity's Timeline and Godot's AnimationPlayer as an `.ogt` the agent reads and diffs. A `type timeline` file has a `duration` in seconds, `path "<name>" { ... }` blocks (as og.path's) and `track <kind> ["<entity>"] { key <seconds> { ... } }` blocks; `og cook` cooks it (importing caption files) and og.load.timeline loads it. Tracks: `camera` (position and target keys, or `rail "<path>"` with `at` 0..1 along it, or `follow "<entity>"` with offsets; fov; eased), `transform "<entity>"` (position, rotation in degrees or quaternion, scale; eased), `animation "<entity>"` (clip, speed, blendIn, loop; `model` names the glTF whose clips they are, else the entity's og.Model), `audio` (sound, volume, pitch, bus), `music` (sound, volume, fadeIn, fadeOut, end, loop, bus), `caption` (text from `key` to `end` with a UI type step `style` and an `anchor`; `captions "narration.srt" [offset]` imports a SubRip file or word timestamps `.json`), `event` (`do "<command-channel action>"`: teleport, set, a game's registered command; `retroactive true` runs it when a seek passes it), `transition` (kind cut, fade, wipe, dissolve, iris or slide; mode through, in or out; duration, color, from, over og.ui's screen cover) `marker` (`name`, sending og.TimelineMarker when played past), `property ["<entity>"]` (`field "og.PointLight.distance"`, keys of `value`: any reflected field of a component on the entity, or of a resource without one), `light "<entity>"` (its og.DirectionalLight, og.PointLight, og.SpotLight, og.RectLight or og.Light2D: color, intensity, distance, angle, ...), `visibility "<entity>"` (`visible true\|false` of whatever it draws, stepped), `post` (og.PostEffects' fields), `blendshape "<entity>"` (og.Blendshapes w0 to w7; its source becomes component), `material "<entity>"` (its og.Mesh's material, or its og.Model's material `index N`: StandardMaterialDesc fields by name, other names the material shader's parameters) and `timeline` (`play "<timeline>"`, speed, loop: from its key until the next, another timeline plays nested at (time − key) × speed, its markers sent as `<file>/<marker>`, at most four deep). Camera keys also take `roll` (degrees about the view direction), `focus` (a distance) or `focusOn "<entity>"` and `focusRange`, which set og.PostEffects' depth of field while the track owns the camera. The cook checks every field against the engine's records (a field the record lacks, one a timeline cannot drive, a value of the wrong shape) and refuses nesting in a cycle or deeper than four; a track kind this engine does not read is refused naming it and the engine's version. |
 | [`motion`](motion.md) | `og.motion.*` | kept | Generated motion for humanoids: the engine's motion model (a 17.6M-parameter student distilled from NVIDIA MotionBricks, og-motion) moves a character between the goals the game gives it, on the GPU. Give an entity with an og.Skeleton (a humanoid rig og.anim.humanoid recognises, or one an og.MotionAgent.rig names) an og.MotionAgent, then queue goals: og.motion.pose (a pose of the model's library where the character stands), og.motion.place (a pose at a place, facing a heading), og.motion.face (turn to a heading) and og.motion.walkTo (walk or run to a point). og.motion.poses lists the library: idle, walk, run, jump, crouch, wave, cheer. |
 
 ### `og-2d`
@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2291 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2261 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -372,7 +372,6 @@ Field units the docs and Tune use.
 | [`ColorPickerDesc`](ui.md#type-ColorPickerDesc) | desc struct | ui | — |
 | [`ColorPickerResult`](ui.md#type-ColorPickerResult) | struct | ui | — |
 | [`ComboDesc`](ui.md#type-ComboDesc) | desc struct | ui | — |
-| [`CommandCardDesc`](ui.md#type-CommandCardDesc) | desc struct | ui | — |
 | [`CommandDesc`](commands.md#type-CommandDesc) | desc struct | commands | — |
 | [`CommandHandler`](commands.md#type-CommandHandler) | callback | commands | — |
 | [`CommandInfo`](commands.md#type-CommandInfo) | struct | commands | — |
@@ -386,7 +385,6 @@ Field units the docs and Tune use.
 | [`ConfirmResult`](ui.md#type-ConfirmResult) | struct | ui | — |
 | [`ConflictPolicy`](input.md#type-ConflictPolicy) | enum | input | — |
 | [`Contrast`](ui.md#type-Contrast) | enum | ui | — |
-| [`ControlGroup`](ui.md#type-ControlGroup) | desc struct | ui | — |
 | [`ControlSize`](ui.md#type-ControlSize) | enum | ui | — |
 | [`ControlSizes`](ui.md#type-ControlSizes) | struct | ui | — |
 | [`ConversationDesc`](ui.md#type-ConversationDesc) | desc struct | ui | — |
@@ -456,8 +454,6 @@ Field units the docs and Tune use.
 | [`DpadDesc`](ui.md#type-DpadDesc) | desc struct | ui | — |
 | [`DpadResult`](ui.md#type-DpadResult) | struct | ui | — |
 | [`DragAxis`](ui.md#type-DragAxis) | enum | ui | — |
-| [`DragSelectDesc`](ui.md#type-DragSelectDesc) | desc struct | ui | — |
-| [`DragSelectResult`](ui.md#type-DragSelectResult) | struct | ui | — |
 | [`DragSpec`](ui.md#type-DragSpec) | desc struct | ui | — |
 | [`DrawDesc`](ui.md#type-DrawDesc) | desc struct | ui | — |
 | [`DrawShape`](ui.md#type-DrawShape) | desc struct | ui | — |
@@ -581,7 +577,6 @@ Field units the docs and Tune use.
 | [`GltfDesc`](load.md#type-GltfDesc) | desc struct | load | — |
 | [`GltfInfo`](load.md#type-GltfInfo) | struct | load | — |
 | [`GoalChipsDesc`](ui.md#type-GoalChipsDesc) | desc struct | ui | — |
-| [`GoalTimelineDesc`](ui.md#type-GoalTimelineDesc) | desc struct | ui | — |
 | [`GpuMemory`](render.md#type-GpuMemory) | struct | render | — |
 | [`Gradient`](ui.md#type-Gradient) | desc struct | ui | — |
 | [`GradientSpread`](ui.md#type-GradientSpread) | enum | ui | — |
@@ -695,8 +690,6 @@ Field units the docs and Tune use.
 | [`KillfeedEntry`](ui.md#type-KillfeedEntry) | desc struct | ui | — |
 | [`LabelDesc`](ui.md#type-LabelDesc) | desc struct | ui | — |
 | [`LabelSide`](ui.md#type-LabelSide) | enum | ui | — |
-| [`LaneKey`](ui.md#type-LaneKey) | desc struct | ui | — |
-| [`LaneKeysDesc`](ui.md#type-LaneKeysDesc) | desc struct | ui | — |
 | [`LanguageOption`](ui.md#type-LanguageOption) | desc struct | ui | — |
 | [`LapTimerDesc`](ui.md#type-LapTimerDesc) | desc struct | ui | — |
 | [`LatheGeometryDesc`](render.md#type-LatheGeometryDesc) | desc struct | render | — |
@@ -728,6 +721,10 @@ Field units the docs and Tune use.
 | [`LoadingDesc`](ui.md#type-LoadingDesc) | desc struct | ui | — |
 | [`LoadSlotDesc`](platform.md#type-LoadSlotDesc) | desc struct | platform | — |
 | [`LoadStatus`](load.md#type-LoadStatus) | enum | load | — |
+| [`LobbyDesc`](ui.md#type-LobbyDesc) | desc struct | ui | — |
+| [`LobbyMember`](ui.md#type-LobbyMember) | desc struct | ui | — |
+| [`LobbyMode`](ui.md#type-LobbyMode) | desc struct | ui | — |
+| [`LobbyResult`](ui.md#type-LobbyResult) | struct | ui | — |
 | [`LocaleInfo`](i18n.md#type-LocaleInfo) | struct | i18n | — |
 | [`LOCK_ROTATION_X`](physics.md#const-LOCK_ROTATION_X) | constant | physics | — |
 | [`LOCK_ROTATION_Y`](physics.md#const-LOCK_ROTATION_Y) | constant | physics | — |
@@ -760,9 +757,6 @@ Field units the docs and Tune use.
 | [`MassSpace`](ui.md#type-MassSpace) | enum | ui | — |
 | [`MassTemplateDesc`](ui.md#type-MassTemplateDesc) | desc struct | ui | — |
 | [`mat4`](math.md#value-mat4) | value | math | — |
-| [`MatchEvent`](ui.md#type-MatchEvent) | desc struct | ui | — |
-| [`MatchStat`](ui.md#type-MatchStat) | desc struct | ui | — |
-| [`MatchStatsDesc`](ui.md#type-MatchStatsDesc) | desc struct | ui | — |
 | [`Material`](render.md#type-Material) | handle | render | — |
 | [`Material()`](render.md#column-Material) | column kind | render | — |
 | [`MaterialName`](ui.md#type-MaterialName) | enum | ui | — |
@@ -1419,7 +1413,6 @@ Field units the docs and Tune use.
 | [`og.ui.colorPicker`](ui.md#fn-colorPicker) | function | ui | — |
 | [`og.ui.column`](ui.md#fn-column) | function | ui | — |
 | [`og.ui.comboCounter`](ui.md#fn-comboCounter) | function | ui | — |
-| [`og.ui.commandCard`](ui.md#fn-commandCard) | function | ui | — |
 | [`og.ui.compass`](ui.md#fn-compass) | function | ui | — |
 | [`og.ui.component`](ui.md#fn-component) | function | ui | `og_ui_component` |
 | [`og.ui.configure`](ui.md#fn-configure) | function | ui | `og_ui_configure` |
@@ -1449,7 +1442,6 @@ Field units the docs and Tune use.
 | [`og.ui.documentSchema`](ui.md#fn-documentSchema) | function | ui | `og_ui_document_schema` |
 | [`og.ui.dpad`](ui.md#fn-dpad) | function | ui | `og_ui_dpad` |
 | [`og.ui.dragging`](ui.md#fn-dragging) | function | ui | `og_ui_dragging` |
-| [`og.ui.dragSelect`](ui.md#fn-dragSelect) | function | ui | — |
 | [`og.ui.dropdown`](ui.md#fn-dropdown) | function | ui | — |
 | [`og.ui.effectLayer`](ui.md#fn-effectLayer) | function | ui | — |
 | [`og.ui.emitter`](ui.md#fn-emitter) | function | ui | — |
@@ -1469,7 +1461,6 @@ Field units the docs and Tune use.
 | [`og.ui.gesture`](ui.md#fn-gesture) | function | ui | `og_ui_gesture` |
 | [`og.ui.glyph`](ui.md#fn-glyph) | function | ui | `og_ui_glyph` |
 | [`og.ui.goalChips`](ui.md#fn-goalChips) | function | ui | — |
-| [`og.ui.goalTimeline`](ui.md#fn-goalTimeline) | function | ui | — |
 | [`og.ui.grid`](ui.md#fn-grid) | function | ui | — |
 | [`og.ui.gridItem`](ui.md#fn-gridItem) | function | ui | `og_ui_grid_item` |
 | [`og.ui.hasIcon`](ui.md#fn-hasIcon) | function | ui | `og_ui_has_icon` |
@@ -1495,7 +1486,6 @@ Field units the docs and Tune use.
 | [`og.ui.keyValueRows`](ui.md#fn-keyValueRows) | function | ui | — |
 | [`og.ui.killfeed`](ui.md#fn-killfeed) | function | ui | — |
 | [`og.ui.label`](ui.md#fn-label) | function | ui | `og_ui_label` |
-| [`og.ui.laneKeys`](ui.md#fn-laneKeys) | function | ui | — |
 | [`og.ui.lapTimer`](ui.md#fn-lapTimer) | function | ui | — |
 | [`og.ui.lastPath`](ui.md#fn-lastPath) | function | ui | `og_ui_last_path` |
 | [`og.ui.layers`](ui.md#fn-layers) | function | ui | `og_ui_layers` |
@@ -1505,11 +1495,11 @@ Field units the docs and Tune use.
 | [`og.ui.list`](ui.md#fn-list) | function | ui | — |
 | [`og.ui.listItem`](ui.md#fn-listItem) | function | ui | `og_ui_list_item` |
 | [`og.ui.loadingScreen`](ui.md#fn-loadingScreen) | function | ui | — |
+| [`og.ui.lobby`](ui.md#fn-lobby) | function | ui | — |
 | [`og.ui.lootLabel`](ui.md#fn-lootLabel) | function | ui | — |
 | [`og.ui.lowHealthVignette`](ui.md#fn-lowHealthVignette) | function | ui | — |
 | [`og.ui.mainMenu`](ui.md#fn-mainMenu) | function | ui | — |
 | [`og.ui.massCount`](ui.md#fn-massCount) | function | ui | `og_ui_mass_count` |
-| [`og.ui.matchStats`](ui.md#fn-matchStats) | function | ui | — |
 | [`og.ui.memory`](ui.md#fn-memory) | function | ui | `og_ui_memory` |
 | [`og.ui.menu`](ui.md#fn-menu) | function | ui | — |
 | [`og.ui.meta`](ui.md#fn-meta) | function | ui | `og_ui_meta` |
@@ -1554,14 +1544,12 @@ Field units the docs and Tune use.
 | [`og.ui.placementGhost`](ui.md#fn-placementGhost) | function | ui | — |
 | [`og.ui.platformerHud`](ui.md#fn-platformerHud) | function | ui | — |
 | [`og.ui.play`](ui.md#fn-play) | function | ui | `og_ui_play` |
-| [`og.ui.playerPlate`](ui.md#fn-playerPlate) | function | ui | — |
 | [`og.ui.playInfo`](ui.md#fn-playInfo) | function | ui | `og_ui_play_info` |
 | [`og.ui.playTimeline`](ui.md#fn-playTimeline) | function | ui | `og_ui_play_timeline` |
 | [`og.ui.pop`](ui.md#fn-pop) | function | ui | `og_ui_pop` |
 | [`og.ui.popover`](ui.md#fn-popover) | function | ui | — |
 | [`og.ui.prestigePanel`](ui.md#fn-prestigePanel) | function | ui | — |
 | [`og.ui.previewViewport`](ui.md#fn-previewViewport) | function | ui | `og_ui_preview_viewport` |
-| [`og.ui.productionQueue`](ui.md#fn-productionQueue) | function | ui | — |
 | [`og.ui.progress`](ui.md#fn-progress) | function | ui | `og_ui_progress` |
 | [`og.ui.progressBar`](ui.md#fn-progressBar) | function | ui | — |
 | [`og.ui.progressRing`](ui.md#fn-progressRing) | function | ui | — |
@@ -1592,7 +1580,6 @@ Field units the docs and Tune use.
 | [`og.ui.ribbon`](ui.md#fn-ribbon) | function | ui | — |
 | [`og.ui.richText`](ui.md#fn-richText) | function | ui | `og_ui_rich_text` |
 | [`og.ui.row`](ui.md#fn-row) | function | ui | — |
-| [`og.ui.rtsConsole`](ui.md#fn-rtsConsole) | function | ui | — |
 | [`og.ui.sagaMap`](ui.md#fn-sagaMap) | function | ui | — |
 | [`og.ui.saveEdits`](ui.md#fn-saveEdits) | function | ui | `og_ui_save_edits` |
 | [`og.ui.sceneViewport`](ui.md#fn-sceneViewport) | function | ui | `og_ui_scene_viewport` |
@@ -1609,7 +1596,6 @@ Field units the docs and Tune use.
 | [`og.ui.seek`](ui.md#fn-seek) | function | ui | `og_ui_seek` |
 | [`og.ui.segmented`](ui.md#fn-segmented) | function | ui | — |
 | [`og.ui.select`](ui.md#fn-select) | function | ui | `og_ui_select` |
-| [`og.ui.selectionPanel`](ui.md#fn-selectionPanel) | function | ui | — |
 | [`og.ui.selectionRing`](ui.md#fn-selectionRing) | function | ui | — |
 | [`og.ui.semantics`](ui.md#fn-semantics) | function | ui | `og_ui_semantics` |
 | [`og.ui.separator`](ui.md#fn-separator) | function | ui | — |
@@ -1646,7 +1632,6 @@ Field units the docs and Tune use.
 | [`og.ui.stepper`](ui.md#fn-stepper) | function | ui | `og_ui_stepper` |
 | [`og.ui.stop`](ui.md#fn-stop) | function | ui | `og_ui_stop` |
 | [`og.ui.storeFront`](ui.md#fn-storeFront) | function | ui | — |
-| [`og.ui.substitution`](ui.md#fn-substitution) | function | ui | — |
 | [`og.ui.subtitles`](ui.md#fn-subtitles) | function | ui | — |
 | [`og.ui.tabBar`](ui.md#fn-tabBar) | function | ui | — |
 | [`og.ui.table`](ui.md#fn-table) | function | ui | — |
@@ -1671,7 +1656,6 @@ Field units the docs and Tune use.
 | [`og.ui.viewFrame`](ui.md#fn-viewFrame) | function | ui | — |
 | [`og.ui.viewport`](ui.md#fn-viewport) | function | ui | `og_ui_viewport` |
 | [`og.ui.visualState`](ui.md#fn-visualState) | function | ui | `og_ui_visual_state` |
-| [`og.ui.wavePreview`](ui.md#fn-wavePreview) | function | ui | — |
 | [`og.ui.waypoint`](ui.md#fn-waypoint) | function | ui | — |
 | [`og.ui.zoomView`](ui.md#fn-zoomView) | function | ui | `og_ui_zoom_view` |
 | [`og.Vehicle`](physics.md#record-Vehicle) | component | physics | — |
@@ -1776,7 +1760,6 @@ Field units the docs and Tune use.
 | [`PlatformOrder`](platform.md#type-PlatformOrder) | enum | platform | — |
 | [`PlatformResult`](platform.md#type-PlatformResult) | struct | platform | — |
 | [`PlayDesc`](ui.md#type-PlayDesc) | desc struct | ui | — |
-| [`PlayerPlateDesc`](ui.md#type-PlayerPlateDesc) | desc struct | ui | — |
 | [`PlayInfo`](ui.md#type-PlayInfo) | struct | ui | — |
 | [`PLAYTEST_MAX_TICKS`](probe.md#const-PLAYTEST_MAX_TICKS) | constant | probe | — |
 | [`PointDesc`](platform.md#type-PointDesc) | desc struct | platform | — |
@@ -1822,8 +1805,6 @@ Field units the docs and Tune use.
 | [`ProbeTimings`](probe.md#type-ProbeTimings) | struct | probe | — |
 | [`ProbeTunable`](probe.md#type-ProbeTunable) | struct | probe | — |
 | [`ProbeWorldMemory`](probe.md#type-ProbeWorldMemory) | struct | probe | — |
-| [`ProductionQueueDesc`](ui.md#type-ProductionQueueDesc) | desc struct | ui | — |
-| [`ProductionQueueResult`](ui.md#type-ProductionQueueResult) | struct | ui | — |
 | [`ProductsDesc`](platform.md#type-ProductsDesc) | desc struct | platform | — |
 | [`PROFILE_2D`](physics.md#const-PROFILE_2D) | constant | physics | — |
 | [`PROFILE_3D`](physics.md#const-PROFILE_3D) | constant | physics | — |
@@ -1863,7 +1844,6 @@ Field units the docs and Tune use.
 | [`QuestTab`](ui.md#type-QuestTab) | desc struct | ui | — |
 | [`QuestTrackerDesc`](ui.md#type-QuestTrackerDesc) | desc struct | ui | — |
 | [`QuestView`](story.md#type-QuestView) | struct | story | — |
-| [`QueueItem`](ui.md#type-QueueItem) | desc struct | ui | — |
 | [`QuickPlayDesc`](platform.md#type-QuickPlayDesc) | desc struct | platform | — |
 | [`RaceSplit`](ui.md#type-RaceSplit) | desc struct | ui | — |
 | [`RacingHudDesc`](ui.md#type-RacingHudDesc) | desc struct | ui | — |
@@ -1897,6 +1877,7 @@ Field units the docs and Tune use.
 | [`RayMath.intersectSphere`](math.md#member-RayMath-intersectSphere) | method | math | — |
 | [`RayMath.intersectTriangle`](math.md#member-RayMath-intersectTriangle) | method | math | — |
 | [`Reaction`](ui.md#type-Reaction) | enum | ui | — |
+| [`ReadyCheckView`](ui.md#type-ReadyCheckView) | desc struct | ui | — |
 | [`RearViewDesc`](ui.md#type-RearViewDesc) | desc struct | ui | — |
 | [`RebindAnswer`](input.md#type-RebindAnswer) | struct | input | — |
 | [`RebindDesc`](input.md#type-RebindDesc) | desc struct | input | — |
@@ -1963,8 +1944,6 @@ Field units the docs and Tune use.
 | [`RoomPeer`](platform.md#type-RoomPeer) | struct | platform | — |
 | [`RootMotion`](anim.md#type-RootMotion) | enum | anim | — |
 | [`RootMotion()`](anim.md#column-RootMotion) | column kind | anim | — |
-| [`RtsConsoleDesc`](ui.md#type-RtsConsoleDesc) | desc struct | ui | — |
-| [`RtsConsoleResult`](ui.md#type-RtsConsoleResult) | struct | ui | — |
 | [`RumbleDesc`](input.md#type-RumbleDesc) | desc struct | input | — |
 | [`RunCondition`](system.md#type-RunCondition) | callback | system | — |
 | [`RuntimeProbe`](probe.md#type-RuntimeProbe) | interface | probe | — |
@@ -2041,9 +2020,6 @@ Field units the docs and Tune use.
 | [`SegmentedDesc`](ui.md#type-SegmentedDesc) | desc struct | ui | — |
 | [`SegmentItem`](ui.md#type-SegmentItem) | desc struct | ui | — |
 | [`SelectDesc`](ui.md#type-SelectDesc) | desc struct | ui | — |
-| [`SelectedUnit`](ui.md#type-SelectedUnit) | desc struct | ui | — |
-| [`SelectionPanelDesc`](ui.md#type-SelectionPanelDesc) | desc struct | ui | — |
-| [`SelectionPanelResult`](ui.md#type-SelectionPanelResult) | struct | ui | — |
 | [`SelectionRingDesc`](ui.md#type-SelectionRingDesc) | desc struct | ui | — |
 | [`SemanticsDesc`](ui.md#type-SemanticsDesc) | desc struct | ui | — |
 | [`SensitivityDesc`](input.md#type-SensitivityDesc) | desc struct | input | — |
@@ -2208,8 +2184,6 @@ Field units the docs and Tune use.
 | [`StylePart`](ui.md#type-StylePart) | enum | ui | — |
 | [`StyliseSpace`](render.md#type-StyliseSpace) | enum | render | — |
 | [`StyliseSpace()`](render.md#column-StyliseSpace) | column kind | render | — |
-| [`SubPlayer`](ui.md#type-SubPlayer) | desc struct | ui | — |
-| [`SubstitutionDesc`](ui.md#type-SubstitutionDesc) | desc struct | ui | — |
 | [`SubtitleLine`](ui.md#type-SubtitleLine) | desc struct | ui | — |
 | [`SubtitlesDesc`](ui.md#type-SubtitlesDesc) | desc struct | ui | — |
 | [`SubtitleSettings`](ui.md#type-SubtitleSettings) | desc struct | ui | — |
@@ -2317,7 +2291,6 @@ Field units the docs and Tune use.
 | [`TreeResult`](ui.md#type-TreeResult) | struct | ui | — |
 | [`TubeGeometryDesc`](render.md#type-TubeGeometryDesc) | desc struct | render | — |
 | [`TurnOrderDesc`](ui.md#type-TurnOrderDesc) | desc struct | ui | — |
-| [`TurnOrderStyle`](ui.md#type-TurnOrderStyle) | enum | ui | — |
 | [`TurnUnit`](ui.md#type-TurnUnit) | desc struct | ui | — |
 | [`TutorialDesc`](ui.md#type-TutorialDesc) | desc struct | ui | — |
 | [`TutorialResult`](ui.md#type-TutorialResult) | struct | ui | — |
@@ -2365,7 +2338,6 @@ Field units the docs and Tune use.
 | [`UnitClass`](ui.md#type-UnitClass) | enum | ui | — |
 | [`UnitFrameDesc`](ui.md#type-UnitFrameDesc) | desc struct | ui | — |
 | [`UnitFrameSize`](ui.md#type-UnitFrameSize) | enum | ui | — |
-| [`UnitStat`](ui.md#type-UnitStat) | desc struct | ui | — |
 | [`ValueFormat`](ui.md#type-ValueFormat) | desc struct | ui | — |
 | [`ValueSliderDesc`](ui.md#type-ValueSliderDesc) | desc struct | ui | — |
 | [`ValueSliderResult`](ui.md#type-ValueSliderResult) | struct | ui | — |
@@ -2413,8 +2385,6 @@ Field units the docs and Tune use.
 | [`VolumetricFog`](render.md#type-VolumetricFog) | enum | render | — |
 | [`WalkGoalDesc`](motion.md#type-WalkGoalDesc) | desc struct | motion | — |
 | [`WalletEntry`](ui.md#type-WalletEntry) | desc struct | ui | — |
-| [`WaveEntry`](ui.md#type-WaveEntry) | desc struct | ui | — |
-| [`WavePreviewDesc`](ui.md#type-WavePreviewDesc) | desc struct | ui | — |
 | [`WaypointDesc`](ui.md#type-WaypointDesc) | desc struct | ui | — |
 | [`WaypointKind`](ui.md#type-WaypointKind) | enum | ui | — |
 | [`WEATHER_DUST`](atmosphere.md#const-WEATHER_DUST) | constant | atmosphere | — |
