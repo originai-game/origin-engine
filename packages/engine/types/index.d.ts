@@ -22388,7 +22388,7 @@ export interface Presence {
  */
 export interface ModalDesc {
   /**
-   * A title over the content; empty is none.
+   * A title over the content, set in the style's heading type role (its step and face); empty is none.
    *
    * @default ""
    */

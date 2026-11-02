@@ -287,8 +287,11 @@ impl Ui {
             self.label(
                 "Title",
                 &desc.title,
+                // The heading type role: its step and its face, so a style's
+                // display face (a fantasy's capitals) reaches every panel's title.
                 crate::LabelDesc {
-                    step: Some(t.type_ramp.xl),
+                    step: Some(self.type_step(crate::tokens::TypeRole::Heading)),
+                    font: self.type_font(crate::tokens::TypeRole::Heading),
                     heading: true,
                     ..Default::default()
                 },

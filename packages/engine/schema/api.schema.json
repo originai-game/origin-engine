@@ -45290,7 +45290,7 @@
       "properties": {
         "title": {
           "type": "string",
-          "description": "A title over the content; empty is none.",
+          "description": "A title over the content, set in the style's heading type role (its step and face); empty is none.",
           "default": ""
         },
         "width": {
