@@ -51,7 +51,7 @@ test("the committed package is valid against the platform rules", () => {
     "skill:level-texturing",
     "skill:localization",
     "skill:og-2d", "skill:og-ai", "skill:og-anim", "skill:og-audio", "skill:og-build", "skill:og-core", "skill:og-feel", "skill:og-game", "skill:og-i18n", "skill:og-model", "skill:og-net",
-    "skill:og-physics", "skill:og-platform-sdk", "skill:og-render", "skill:og-taste", "skill:og-ui",
+    "skill:og-physics", "skill:og-platform-sdk", "skill:og-render", "skill:og-story", "skill:og-taste", "skill:og-ui",
     "skill:recipe-craft",
     "skill:ui-craft",
     "skill:visual-acceptance",
