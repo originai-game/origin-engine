@@ -1,8 +1,9 @@
 //! The engine's default style: the colour roles of a game UI and the values
 //! of the design language the engine shares with origin-agent
-//! (`packages/design`, docs/ui.md §12.1): the neutral ladder, amber as ink,
-//! focus and the one primary, flat glass on floating chrome only, and
-//! borderless controls told apart by tone.
+//! (`packages/design`, docs/ui.md §12.1): the neutral ladder, a
+//! neutral primary set apart by fill and weight (2026-11-02), hue only where
+//! it means something, flat glass on floating chrome only, and borderless
+//! controls told apart by tone.
 //!
 //! **Generated** from `packages/design/tokens.json` by
 //! `crates/og-ui/scripts/gen-theme.sh`; never edit it by hand (`tests/theme.rs`
@@ -153,13 +154,13 @@ pub const LIGHT: Palette = Palette {
     ink_inverse: c(0xfa, 0xfa, 0xfa),
     control: ca(0x78, 0x78, 0x80, 0.169),
     control_strong: ca(0x78, 0x78, 0x80, 0.271),
-    primary: c(0xf5, 0xa3, 0x0a),
-    primary_hover: c(0xe6, 0x95, 0x00),
-    primary_active: c(0xc7, 0x7d, 0x00),
-    on_primary: c(0x1d, 0x13, 0x00),
-    primary_soft: ca(0xf5, 0xa3, 0x0a, 0.183),
-    highlight: c(0x7a, 0x48, 0x00),
-    focus: c(0xb8, 0x72, 0x00),
+    primary: c(0x1c, 0x1c, 0x1e),
+    primary_hover: c(0x3a, 0x3a, 0x3c),
+    primary_active: c(0x00, 0x00, 0x00),
+    on_primary: c(0xfa, 0xfa, 0xfa),
+    primary_soft: ca(0x00, 0x00, 0x00, 0.131),
+    highlight: c(0x18, 0x18, 0x1a),
+    focus: c(0x3a, 0x3a, 0x3c),
     knob: c(0xff, 0xff, 0xff),
     hud: ca(0xfa, 0xfa, 0xfc, 0.86),
     scrim: ca(0x00, 0x00, 0x00, 0.416),
@@ -191,13 +192,13 @@ pub const DARK: Palette = Palette {
     ink_inverse: c(0x18, 0x18, 0x1a),
     control: ca(0x78, 0x78, 0x80, 0.115),
     control_strong: ca(0x78, 0x78, 0x80, 0.195),
-    primary: c(0xff, 0xb2, 0x24),
-    primary_hover: c(0xff, 0xc0, 0x4d),
-    primary_active: c(0xff, 0xd3, 0x8a),
-    on_primary: c(0x1d, 0x13, 0x00),
-    primary_soft: ca(0xff, 0xb2, 0x24, 0.048),
-    highlight: c(0xff, 0xb2, 0x24),
-    focus: c(0xff, 0xb2, 0x24),
+    primary: c(0xe8, 0xe8, 0xed),
+    primary_hover: c(0xff, 0xff, 0xff),
+    primary_active: c(0xc7, 0xc7, 0xcc),
+    on_primary: c(0x11, 0x11, 0x13),
+    primary_soft: ca(0xff, 0xff, 0xff, 0.028),
+    highlight: c(0xf5, 0xf5, 0xf7),
+    focus: c(0xf5, 0xf5, 0xf7),
     knob: c(0xf5, 0xf5, 0xf7),
     hud: ca(0x16, 0x16, 0x18, 0.8),
     scrim: ca(0x00, 0x00, 0x00, 0.687),
@@ -610,9 +611,13 @@ pub const PRESS_SCALE: f32 = 0.96;
 /// carries text over the game, `regular` on HUD capsules and hints), its
 /// own hairline and no second border; content flat (cards keep their
 /// hairline and cast no shadow); controls borderless, a fill told apart by
-/// tone, the focus ring the only outline. `crate::theme_dressings` parses
-/// them.
-pub const DRESSINGS: &str = r#"
+/// tone, the focus ring the only outline. One selection grammar, all
+/// neutral (2026-11-02): a selected tab is a raised chip (lineStrong, a
+/// lit top edge and a short shadow, its label semibold), a selected tile a
+/// light rim with a glow and a lift, a checked control the primary's fill;
+/// a slider's remainder holds 3:1 on the panel. `crate::theme_dressings`
+/// parses them.
+pub const DRESSINGS: &str = r##"
 dress "Panel.frame" {
   fill none
   stroke none
@@ -653,6 +658,15 @@ dress "Hud.frame" {
   stroke none
   effect backdrop glass regular elevation float
 }
+dress "Minimap.frame" {
+  fill "#16161899"
+  stroke 0.5 "#ffffff14" inside
+  effect dropShadow 0 6 16 0 "#00000073"
+}
+dress "ScrollArea.frame" {
+  stroke none
+  effect none
+}
 dress "ActionBar.hint" {
   fill none
   stroke none
@@ -684,7 +698,9 @@ dress "Slot.frame" {
   effect none
 }
 dress "Slot.frame[selected]" {
-  stroke 2 primary inside
+  stroke 1.5 ink inside
+  effect outerGlow 12 sheen
+  effect dropShadow 0 6 14 0 "#00000066"
 }
 dress "Meter.track" {
   effect none
@@ -693,12 +709,15 @@ dress "Meter.fill" {
   effect none
 }
 dress "Slider.track" {
+  fill "#707075"
   effect none
 }
 dress "Toggle.track" {
   effect none
 }
 dress "Tabs.tab[selected]" {
-  effect none
+  fill lineStrong
+  effect dropShadow 0 2 4 0 "#00000073"
+  effect innerShadow 0 1 0 0 "#ffffff26"
 }
-"#;
+"##;

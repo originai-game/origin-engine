@@ -41,8 +41,9 @@ alike.
   edge; nothing on the content layer is lit, glossed or raised (owner,
   2026-10-25: Apple keeps content flat and depth to the floating layer). Hairlines only where material separation
   is insufficient (tables, lists, split panes).
-- **Amber is ink, focus and the one primary.** Never a wash over a large area;
-  selection is a neutral fill.
+- **The chrome is neutral; meaning has hue.** The one primary is the
+  high-contrast neutral (2026-11-02); selection is a neutral fill or light
+  edge; only semantic and game roles are coloured.
 - **Glass is for floating chrome only**: never on content cards or rows; at
   most three glass layers on screen; solid under `prefers-reduced-transparency`.
 - **Editorial type.** A display face with optical sizing for large titles and
@@ -90,15 +91,23 @@ Light and dark are peers; dark is `data-theme="dark"` on any element, never
   tracks, skeletons, hover and **selection**. A selected row, current
   navigation item or palette option sits on `fill-strong`; a segmented thumb
   is `thumb`; a selected filter chip inverts to `fg`.
-- **Amber** (`accent`, `accent-hover`, `accent-active`) is ink, focus and the
+- **The primary is neutral** (the owner, 2026-11-02: every game brings its
+  own colours, so the default chrome carries no hue). `accent`,
+  `accent-hover` and `accent-active` are the high-contrast neutral: a
+  near-white fill (#e8e8ed) with dark ink (`accent-fg` #111113) on dark
+  surfaces, a near-black fill with light ink on light ones. It marks the
   **one** primary action per surface (Start, Create, Publish, Play, the
-  composer's send). Amber text uses `accent-ink`, text on amber `accent-fg`,
-  never `accent` as a text colour. `accent-soft` marks only tiny things (a
-  badge, an avatar, a dot, a step halo); an attention card is a neutral surface
-  with an amber rail, glyph or title ink. A disabled primary turns neutral,
-  never a dim amber. `lint:design` rejects amber washes on large surfaces.
-- **Focus** is the amber `focus` ring (non-text contrast ≥ 3:1, enforced).
-- **Warning is orange**, distinct from amber, and always paired with an icon.
+  composer's send) by fill and weight, never by colour; secondaries stay on
+  the translucent `fill`. Emphasised text uses `accent-ink` (the strongest
+  ink), text on the primary `accent-fg`. `accent-soft` marks only tiny things
+  (a badge, a dot, a step halo). A disabled primary drops to `fill`.
+  Amber survives only where a role needs it (`gold`, `warn`, rarity hues).
+- **Focus and selection** are a neutral light edge or glow: the `focus` ring
+  is `fg` (non-text contrast ≥ 3:1, enforced), a selected card a light rim.
+- **Meaning keeps its hues**: `danger`, `success`, `warn`, `info` and the game
+  roles (`health`, `mana`, `xp`, `gold`) stay coloured, and a test fails the
+  day the chrome takes a hue or a meaning loses one. Warning is orange and
+  always paired with an icon.
 - **Hues** colour categories, levels, badges, chart series and collections —
   never body text. Art-backed surfaces take their tint from the cover
   (`--art-glow`, `--tint`).
@@ -130,9 +139,9 @@ Light and dark are peers; dark is `data-theme="dark"` on any element, never
   over the brightest and darkest scenes og-tests measures (#e4e4e4 under a
   bright sky, #151515 under a dark scene), a selected row's `fill-strong`
   included, in either scheme over either scene. `glass-thin` carries no
-  text. Amber text (`accent-ink`) sits on solid surfaces and thick glass;
-  on a bar (`glass` regular) the current item is `fg` with an amber glyph
-  or indicator: no amber holds 4.5:1 on a dark bar over a bright sky.
+  text. Emphasised text (`accent-ink`) and the neutral primary hold 4.5:1 on
+  solid surfaces and every glass weight; on a bar (`glass` regular) the
+  current item is `fg` with a light glyph or indicator.
 
 ## Density and type
 
@@ -243,7 +252,7 @@ rings. A
 selection inside a bar is concentric: the same inset on every side, so its
 radius is the bar's minus the inset. Standalone controls on a page (chips,
 `secondary` buttons, the segmented thumb on a plain track) take at most
-`shadow-rim`, a hairline. The amber `primary` is flat amber. Glass over art lives in a `data-theme="dark"` scope so it stays
+`shadow-rim`, a hairline. The `primary` is the flat neutral fill. Glass over art lives in a `data-theme="dark"` scope so it stays
 dark in both themes. The **scrim** dims and blurs (`scrim`, `--scrim-blur`).
 Where content passes under floating chrome it fades instead of cutting
 (`scroll-edge-b`, `scroll-edge-t`, `scroll-edge-y`, `scroll-edge-x` for
@@ -330,7 +339,7 @@ draw-in, stagger, burst).
 
 The editorial grammar of the shared components:
 
-- **Button**: a rounded rectangle (`rounded-button`); `primary` flat amber (one
+- **Button**: a rounded rectangle (`rounded-button`); `primary` the flat neutral fill (one
   per surface; disabled turns neutral), `secondary` a neutral fill, `quiet` text until hovered, `glass`
   over art and media, `inverse` neutral emphasis (approve, sign in), `danger`.
   `IconButton` has the same variants; `glass` is the play disc over art.
@@ -361,7 +370,7 @@ The editorial grammar of the shared components:
   the blurred scrim; menus are concentric (12px outer, 8px items inside a 4px
   inset); highlighted and selected rows sit on `fill-strong`.
 - **TabBar** (phone) and **TopBar**: `glass` bars; the current tab or
-  item is a flat `fill-strong` (concentric) with an amber glyph. The
+  item is a flat `fill-strong` (concentric) with an `fg` glyph. The
   portal header is one glass bar across the page (logo, primary entries,
   then the tools: search, the language switch — a globe opening each
   language in its own name, the current one checked — notifications and the
@@ -374,13 +383,13 @@ The editorial grammar of the shared components:
   portaled out of the bar — never a glass nested in glass — stands under the
   open trigger, keeps the bar's theme scope, morphs to each group's size, and
   Tab leaves it for the next entry.
-  **CapsuleNav**: the glass capsule with a gliding lens and amber ink.
+  **CapsuleNav**: the glass capsule with a gliding lens and `fg` ink.
 - **StatusCapsule**: dot and word on `fill` (or thin glass over art).
 - **EmptyState**: unboxed (like Apple's unavailable-content view); `boxed` for a
   slot in a dense layout. **Skeleton**: the neutral fill with a sheen that stops
   under reduced motion.
 - **Markdown**: the reading style — 15px text in `fg`, headings on the weight
-  ladder, links in amber ink, code on the stage plate, tables as a quiet fill
+  ladder, links in `accent-ink` underlined, code on the stage plate, tables as a quiet fill
   block with regular-weight meta headers, tabular figures and hairline rows.
 
 **One selection grammar**: a segmented control for 2–5 views of the same
@@ -390,7 +399,7 @@ filters (`FilterChip`), the glass capsule for navigation (`CapsuleNav`, the
 titlebar). No underline tabs on product surfaces.
 
 Button variants: `primary`
-(amber, one per surface), `secondary`, `quiet`, `glass`, `danger`, `inverse`.
+(the neutral fill, one per surface), `secondary`, `quiet`, `glass`, `danger`, `inverse`.
 A style or a page never overrides the shared variants of the default.
 
 ## Agent workspace: symbols, not sentences

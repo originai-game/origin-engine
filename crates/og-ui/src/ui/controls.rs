@@ -34,6 +34,7 @@ impl Ui {
             font: desc.font,
             ellipsis: desc.ellipsis,
             max_lines: desc.max_lines,
+            emphasis: 0.0,
         });
         // The probe and screen readers read the whole text, cut or not.
         n.probe_text = text.to_owned();

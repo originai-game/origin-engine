@@ -106,3 +106,19 @@ test("the dark scheme names only keys the light one has", () => {
   expect(Object.keys(dark).filter((k) => !(k in colors))).toEqual([]);
   expect(Object.keys(tokens.linear.dark.color).filter((k) => !(k in tokens.linear.color))).toEqual([]);
 });
+
+test("the chrome has no hue: the primary, its states, the highlight and focus are neutral; meaning keeps its colours", () => {
+  // The owner, 2026-11-02: every game brings its own colours, so the default chrome is neutral and set apart by
+  // fill and weight; the semantic and game roles (danger, success, warn, info, health, mana, xp, gold) keep theirs.
+  const chroma = (c: Rgba) => Math.max(c[0], c[1], c[2]) - Math.min(c[0], c[1], c[2]);
+  const hued: string[] = [];
+  for (const s of SCHEMES) {
+    for (const k of ["accent", "accent-hover", "accent-active", "accent-soft", "accent-fg", "accent-ink", "focus"]) {
+      if (chroma(color(k, s)) > 8) hued.push(`${s}: ${k}`);
+    }
+    for (const k of ["danger", "success", "warn", "info", "health", "mana", "xp", "gold"]) {
+      if (chroma(color(k, s)) < 60) hued.push(`${s}: ${k} lost its hue`);
+    }
+  }
+  expect(hued).toEqual([]);
+});

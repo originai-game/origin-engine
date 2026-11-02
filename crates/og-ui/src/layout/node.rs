@@ -108,6 +108,9 @@ pub(crate) struct TextContent {
     pub ellipsis: bool,
     /// The most lines a wrapping text shows (0: no limit).
     pub max_lines: u32,
+    /// Extra faux-bold weight, em, over the style's own (a selected tab's
+    /// label reads semibold); 0 for most text.
+    pub emphasis: f32,
 }
 
 impl TextContent {

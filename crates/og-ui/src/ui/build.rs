@@ -347,6 +347,7 @@ impl Ui {
             font: FontRole::Body,
             ellipsis: false,
             max_lines: 0,
+            emphasis: 0.0,
         }
     }
 }

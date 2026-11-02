@@ -377,17 +377,18 @@ pub fn generate(tokens: &str) -> Result<String, String> {
 
     o.push_str(DRESS_HEAD);
     let card = unit(&t, &["radius", "card"], "px")?;
-    o.push_str("pub const DRESSINGS: &str = r#\"");
+    o.push_str("pub const DRESSINGS: &str = r##\"");
     o.push_str(&DRESSINGS.replace("{card}", &num(card).replace(".0", "")));
-    o.push_str("\"#;\n");
+    o.push_str("\"##;\n");
     Ok(o)
 }
 
 const HEAD: &str = r##"//! The engine's default style: the colour roles of a game UI and the values
 //! of the design language the engine shares with origin-agent
-//! (`packages/design`, docs/ui.md §12.1): the neutral ladder, amber as ink,
-//! focus and the one primary, flat glass on floating chrome only, and
-//! borderless controls told apart by tone.
+//! (`packages/design`, docs/ui.md §12.1): the neutral ladder, a
+//! neutral primary set apart by fill and weight (2026-11-02), hue only where
+//! it means something, flat glass on floating chrome only, and borderless
+//! controls told apart by tone.
 //!
 //! **Generated** from `packages/design/tokens.json` by
 //! `crates/og-ui/scripts/gen-theme.sh`; never edit it by hand (`tests/theme.rs`
@@ -680,12 +681,16 @@ const DRESS_HEAD: &str = r#"/// The default style's part dressings (docs/ui.md �
 /// carries text over the game, `regular` on HUD capsules and hints), its
 /// own hairline and no second border; content flat (cards keep their
 /// hairline and cast no shadow); controls borderless, a fill told apart by
-/// tone, the focus ring the only outline. `crate::theme_dressings` parses
-/// them.
+/// tone, the focus ring the only outline. One selection grammar, all
+/// neutral (2026-11-02): a selected tab is a raised chip (lineStrong, a
+/// lit top edge and a short shadow, its label semibold), a selected tile a
+/// light rim with a glow and a lift, a checked control the primary's fill;
+/// a slider's remainder holds 3:1 on the panel. `crate::theme_dressings`
+/// parses them.
 "#;
 
 /// The dressings' text (`{card}`: the tokens' `radius.card`).
-const DRESSINGS: &str = r#"
+const DRESSINGS: &str = r##"
 dress "Panel.frame" {
   fill none
   stroke none
@@ -726,6 +731,15 @@ dress "Hud.frame" {
   stroke none
   effect backdrop glass regular elevation float
 }
+dress "Minimap.frame" {
+  fill "#16161899"
+  stroke 0.5 "#ffffff14" inside
+  effect dropShadow 0 6 16 0 "#00000073"
+}
+dress "ScrollArea.frame" {
+  stroke none
+  effect none
+}
 dress "ActionBar.hint" {
   fill none
   stroke none
@@ -757,7 +771,9 @@ dress "Slot.frame" {
   effect none
 }
 dress "Slot.frame[selected]" {
-  stroke 2 primary inside
+  stroke 1.5 ink inside
+  effect outerGlow 12 sheen
+  effect dropShadow 0 6 14 0 "#00000066"
 }
 dress "Meter.track" {
   effect none
@@ -766,12 +782,15 @@ dress "Meter.fill" {
   effect none
 }
 dress "Slider.track" {
+  fill "#707075"
   effect none
 }
 dress "Toggle.track" {
   effect none
 }
 dress "Tabs.tab[selected]" {
-  effect none
+  fill lineStrong
+  effect dropShadow 0 2 4 0 "#00000073"
+  effect innerShadow 0 1 0 0 "#ffffff26"
 }
-"#;
+"##;

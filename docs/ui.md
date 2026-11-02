@@ -642,6 +642,16 @@ screens still draw in the default style. The design language binds the
 default style alone; a game's style may restyle, re-dress, re-shape or
 replace anything above the accessibility floor of §15.2.
 
+The default style carries no hue in its chrome (the owner, 2026-11-02):
+its primary is the high-contrast neutral, a near-white fill with dark ink
+on dark surfaces, set apart from secondaries by fill and weight, and focus
+and selection are a neutral light edge or glow. Hierarchy, frames,
+material, type and spacing follow the clean sci-fi direction (concept B):
+deep navy surfaces, glass with a lit top edge, letter-spaced uppercase
+titles. Semantic roles (danger, success, warn, info) and game roles
+(health, mana, xp, gold, rarity) keep their hues because they carry
+meaning; a game brings every other colour in its own style.
+
 ### 12.2 Tokens
 
 - **Colour**: the 33 roles of today, plus rarity tiers (common, uncommon,

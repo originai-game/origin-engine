@@ -251,6 +251,7 @@ impl Ui {
             font: desc.font,
             ellipsis: false,
             max_lines: 0,
+            emphasis: 0.0,
         });
         n.probe_text = text;
         // The landing pop: a bump of `pop` over `motion.duration.fast`.

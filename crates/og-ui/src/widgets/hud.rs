@@ -232,11 +232,9 @@ impl Ui {
         let done = 1.0 - rem;
         let behind = self.behind(i);
         let track = p.control_strong.over(p.panel_raised.over(behind));
-        let fill = if rem <= 0.0 {
-            p.primary
-        } else {
-            p.primary.mix(track, 0.25)
-        };
+        // Only a ready ability takes the primary; the cooling sweep is muted
+        // ink, so ready, cooling and partial never all shout at once.
+        let fill = if rem <= 0.0 { p.primary } else { p.ink_muted };
         let inner = p.panel_raised.over(behind);
         let full = Frame::centered(0.0, 0.0, size, size);
         let mut shapes = vec![Shape::Rect {
@@ -400,25 +398,21 @@ impl Ui {
                 width: Size::Fixed(size),
                 height: Size::Fixed(size),
                 padding: Insets::all(2.0),
-                background: Some(p.line_strong),
-                radius: t.radius.small,
+                // Floating chrome over the game, a HUD plate with a lift in
+                // the default style (not glass: a minimap also sits in
+                // panels, and glass never nests), not a control's outline
+                // round a black well: the map's own texture fills it.
+                background: Some(p.hud),
+                radius: t.radius.control,
+                part: Some(crate::dress::PartRef::new(
+                    "Minimap",
+                    "frame",
+                    crate::tokens::ElementClass::Hud,
+                )),
                 ..Element::default()
             },
         );
-        let inner = Frame {
-            x: 2.0,
-            y: 2.0,
-            fw: 1.0,
-            fh: 1.0,
-            w: -4.0,
-            h: -4.0,
-            ..Frame::default()
-        };
-        let mut shapes = vec![Shape::Rect {
-            frame: inner,
-            radius: t.radius.small - 2.0,
-            color: p.well,
-        }];
+        let mut shapes = Vec::new();
         if let Some(tex) = desc.texture {
             shapes.push(Shape::Image {
                 frame: Frame {

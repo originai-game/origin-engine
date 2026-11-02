@@ -298,7 +298,7 @@ impl Ui {
                         let tracking = tc.tracking();
                         // The style's thickening for the role (`textWeight`, device
                         // pixels: what a stroke between two pixels lacks), shadow included.
-                        let weight = t.art.text_weights[role] * sk / dpr;
+                        let weight = t.art.text_weights[role] * sk / dpr + tc.emphasis * size;
                         // A style's text glow: the font's distance field, under the glyphs.
                         let glow = t.art.text_glows[role].map(|g| {
                             let c = g.ink.color(p).fade(g.alpha * tc.color.alpha * alpha);

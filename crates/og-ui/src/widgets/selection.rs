@@ -78,11 +78,25 @@ impl Ui {
             out.clicked |= r.clicked;
             let on = *selected == k;
             let p = &t.palette;
-            // The selected tab's label sits on `knob`, which a dark palette
-            // makes as light as its `ink` (the prototype's dark: both f0,
-            // 1:1): it takes whichever ink reads 4.5:1 there.
+            let mut part =
+                crate::dress::PartRef::new("Tabs", "tab", crate::tokens::ElementClass::Tab)
+                    .flag_if(on, "selected")
+                    .flag_if(r.hovered && !r.pressed, "hover")
+                    .flag_if(r.pressed, "pressed")
+                    .flag_if(r.focused, "focused");
+            part.hover = amounts.0;
+            part.press = amounts.1;
+            // The selected tab's label sits on `knob`, or on what the style
+            // paints the selected tab with (the default style's raised
+            // neutral chip): it takes whichever ink reads 4.5:1 there.
+            let resolved = self.dress.resolve(&part);
             let ink = if on {
-                let ground = p.knob.fade(1.0);
+                let ground = if resolved.draw.fills.is_empty() {
+                    p.knob.fade(1.0)
+                } else {
+                    let d = resolved.element_draw(&part, &t, None);
+                    crate::dress::ground_of(&d, &t, track)
+                };
                 [p.ink, p.ink_inverse, p.on_primary]
                     .into_iter()
                     .find(|c| c.contrast(ground) >= 4.5)
@@ -93,6 +107,11 @@ impl Ui {
             };
             let mut c = self.role_text(label, crate::tokens::TypeRole::Label, ink);
             c.align = TextAlign::Center;
+            // The selected label reads semibold beside the muted others: the
+            // tab is told by its ink and weight, not by its chip alone.
+            if on {
+                c.emphasis = 0.018;
+            }
             // The selected tab's ground slides in on the `ui` spring.
             let sel = self.spring_to(
                 crate::id::child_key(self.nodes[i].key, "on"),
@@ -104,14 +123,6 @@ impl Ui {
                 p.knob,
                 sel,
             );
-            let mut part =
-                crate::dress::PartRef::new("Tabs", "tab", crate::tokens::ElementClass::Tab)
-                    .flag_if(on, "selected")
-                    .flag_if(r.hovered && !r.pressed, "hover")
-                    .flag_if(r.pressed, "pressed")
-                    .flag_if(r.focused, "focused");
-            part.hover = amounts.0;
-            part.press = amounts.1;
             let n = &mut self.nodes[i];
             n.el.background = (bg.alpha > 0.004).then_some(bg);
             n.el.part = Some(part);

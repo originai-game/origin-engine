@@ -333,7 +333,8 @@ impl Ui {
     }
 
     /// Opens cell `index` of the open grid (`Cell#index`): a slot on `control`
-    /// (`controlStrong` and the accent ring when selected), focusable; its
+    /// (`controlStrong` and the style's ring when selected: one mark, no
+    /// second underline), focusable; its
     /// content follows until [`Ui::close`].
     pub fn grid_item(&mut self, index: u32, selected: bool) -> Response {
         let t = self.theme;
@@ -387,22 +388,6 @@ impl Ui {
         }
         if self.drop_target(grid, i) {
             self.nodes[i].ring = true;
-        }
-        if selected {
-            let w = t.space.xxs;
-            self.nodes[i].shapes.push(Shape::Rect {
-                frame: Frame {
-                    fw: 1.0,
-                    h: w,
-                    fy: 1.0,
-                    y: -w - t.space.xs,
-                    x: t.space.md,
-                    w: -2.0 * t.space.md,
-                    ..Frame::default()
-                },
-                radius: w,
-                color: p.primary,
-            });
         }
         r
     }
