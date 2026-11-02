@@ -299,16 +299,17 @@ test("paperdoll: while an item is carried, the slot under it says no in danger, 
   release(engine);
 });
 
-test("paperdoll: a compared stat's change is one signed run, sign first, in both directions; its text holds no U+2212", () => {
-  // Wrong: right to left the drawn sign lands after the number ("48 +"), or the game's "−6%" drawn with a minus a font lacks.
+test("paperdoll: a compared stat's change is one signed run, sign first, in both directions, with the real minus", () => {
+  // Wrong: right to left the sign lands after the number ("48 +"), or a minus set as a hyphen.
   for (const rtl of [false, true]) {
     const e = run(() => {
       og.ui.paperdoll("Doll", { slots: [], compare: true, stats: [{ label: "Armor", value: "120", delta: 48 }, { label: "Speed", value: "12%", delta: -6, deltaText: "−6%" }] }, () => {});
     }, undefined, rtl);
     for (const k of [0, 1]) {
-      const mark = byPath(e, `Stat#${k}/Delta/Mark`)!;
+      const mark = byPath(e, `Stat#${k}/Delta/Sign`)!;
       const digits = byPath(e, `Stat#${k}/Delta/Text`)!;
       expect(mark.x < digits.x).toBe(true);
+      expect(mark.text).toBe(k === 0 ? "+" : "\u2212");
       expect(digits.text.includes("\u2212") || digits.text.startsWith("+") || digits.text.startsWith("-")).toBe(false);
     }
     expect(byPath(e, "Stat#1/Delta/Text")!.text).toBe("6%");

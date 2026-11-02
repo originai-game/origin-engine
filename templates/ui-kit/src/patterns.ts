@@ -148,7 +148,7 @@ export function cardsScreen(backdrop = 0): void {
         og.ui.column(f.key, { width: px(foeW), gap: t.space.xs, cross: "center", padding: { left: t.space.sm, top: t.space.sm, right: t.space.sm, bottom: t.space.sm }, radius: t.radius.panel, background: { token: "panel" } }, () => {
           // A card refused on it: its edge in danger ink while the card shakes.
           if (flash) og.ui.setDraw({ shape: { kind: "rect", radii: [t.radius.panel, t.radius.panel, t.radius.panel, t.radius.panel] }, fills: [{ kind: "solid", color: { token: "panel" } }], strokes: [{ width: 3, align: "inside", paint: { kind: "solid", color: { token: "danger" } } }] } as never);
-          if (figure) og.ui.artSlot("Figure", { kind: "portrait", texture: c.art && backdrop ? (backdrop as never) : null, focal: { x: 0.5, y: 0.4 }, rarity: f.taunt ? "rare" : "epic", width: px(small ? 64 : big ? 148 : 112), height: px(small ? 64 : big ? 148 : 112), radius: 12, label: f.name });
+          if (figure) og.ui.artSlot("Figure", { kind: "portrait", texture: c.art && backdrop ? (backdrop as never) : null, focal: { x: 0.5, y: 0.4 }, frame: f.taunt ? "lineStrong" : "primary", width: px(small ? 64 : big ? 148 : 112), height: px(small ? 64 : big ? 148 : 112), radius: 12, label: f.name });
           og.ui.label("Name", f.name, { step: small ? "sm" : big ? "xl2" : "lg", font: "display", maxLines: 2, ellipsis: true, width: grow, align: "center" });
           // The hit points under the bar, not in it: a bar's inner label is small and would be cut at 200 %.
           og.ui.meter("Hp", f.hp, f.max, { kind: "health", width: grow });

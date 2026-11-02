@@ -973,11 +973,11 @@ export function statLine(id: string, s: Api.PaperdollStat, compare: boolean): vo
     if (compare) {
       kit.row("Delta", { width: px(u(64)), gap: 0, cross: "center", align: "end", part: `Paperdoll.delta${flags(d > 0 ? "up" : d < 0 ? "down" : "")}`, partClass: "badge" }, () => {
         if (d === 0) return;
-        // A signed number is one left-to-right run in every script (+48, −6 %): its sign drawn as a shape
-        // (a font may lack U+2212) before its digits, and built the other way round right to left so the
-        // mirrored row still reads sign first.
+        // A signed number is one left-to-right run in every script (+48, −6 %): its sign (the real minus,
+        // U+2212) before its digits, built the other way round right to left so the mirrored row still
+        // reads sign first (the bidi algorithm would put a lone sign after the digits).
         const digits = signedDigits(s.deltaText || `${Math.abs(d)}`);
-        const mark = () => symbol("Mark", d > 0 ? "plus" : "minus", u(9), role(tone));
+        const mark = () => text("Sign", d > 0 ? "+" : "\u2212", { step: st(13), color: tone, font: "mono", nowrap: true });
         const num = () => text("Text", digits, { step: st(13), color: tone, font: "mono", nowrap: true });
         if (rtl()) {
           num();
@@ -992,7 +992,7 @@ export function statLine(id: string, s: Api.PaperdollStat, compare: boolean): vo
   if (compare && d !== 0) kit.semantics({ role: "text", name: `${s.label}: ${s.value}, ${d > 0 ? "plus" : "minus"} ${signedDigits(s.deltaText || `${Math.abs(d)}`)}` });
 }
 
-/** A delta's digits without its sign (the sign is drawn): "−6%" and "+48" give "6%" and "48". */
+/** A delta's digits without its sign (set on its own): "−6%" and "+48" give "6%" and "48". */
 export function signedDigits(t: string): string {
   return t.trim().replace(/^[+\-\u2212\u2013±]\s*/, "");
 }
