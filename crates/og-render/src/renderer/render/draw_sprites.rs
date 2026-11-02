@@ -66,6 +66,24 @@ impl Renderer {
             }
             if let RunSource::Mesh(i) = run.source {
                 let mesh = &scene.sprite_meshes[i as usize];
+                if let Some(group) = self.normal_group(scene, mesh.texture) {
+                    let normals = self.sprite_normals.as_ref().expect("made with the group");
+                    pass.set_pipeline(normals.mesh(mesh.blend));
+                    pass.set_bind_group(1, group, &[]);
+                    let start = run.first as u64 * sprite_mesh::MESH_STRIDE;
+                    pass.set_vertex_buffer(
+                        0,
+                        self.sprite_meshes
+                            .as_ref()
+                            .expect("made before the pass")
+                            .buffer
+                            .slice(start..start + run.count as u64 * sprite_mesh::MESH_STRIDE),
+                    );
+                    pass.draw(0..run.count, 0..1);
+                    draws += 1;
+                    current = None;
+                    continue;
+                }
                 pass.set_bind_group(
                     1,
                     match mesh.texture {
@@ -90,6 +108,23 @@ impl Renderer {
                 let (group, _) = self.cache.sprite_array_groups[a.index()]
                     .as_ref()
                     .expect("made before the pass");
+                pass.set_bind_group(1, group, &[]);
+                let start = run.first as u64 * SPRITE_STRIDE;
+                pass.set_vertex_buffer(
+                    0,
+                    self.sprite_buffer
+                        .slice(start..start + run.count as u64 * SPRITE_STRIDE),
+                );
+                pass.draw(0..6, 0..run.count);
+                draws += 1;
+                current = None;
+                continue;
+            }
+            if let RunSource::Sprite(blend, t) = run.source
+                && let Some(group) = self.normal_group(scene, t)
+            {
+                let normals = self.sprite_normals.as_ref().expect("made with the group");
+                pass.set_pipeline(normals.sprite(blend, tone_mapped));
                 pass.set_bind_group(1, group, &[]);
                 let start = run.first as u64 * SPRITE_STRIDE;
                 pass.set_vertex_buffer(

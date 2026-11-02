@@ -143,6 +143,7 @@ impl Renderer {
         // Made as batches need them: made again at the new count.
         self.forget_lit_pipelines();
         self.sprite_meshes = None;
+        self.sprite_normals = None;
     }
 
     /// Forgets the lit pipelines, which batches make again as they need

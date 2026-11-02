@@ -223,6 +223,9 @@ impl LightSlots {
 
 pub(crate) struct Light2dRenderer {
     pipeline: Deferred<wgpu::RenderPipeline>,
+    /// The same into the light map and its directions (`fs_dir`), for
+    /// frames with normal-mapped receivers.
+    pipeline_dir: Deferred<wgpu::RenderPipeline>,
     shadows: Shadows,
     layout: wgpu::BindGroupLayout,
     uniform: wgpu::Buffer,
@@ -242,7 +245,7 @@ pub(crate) struct Light2dRenderer {
 impl Light2dRenderer {
     /// Makes its pipeline if no frame used it yet (Renderer::warm).
     pub(crate) fn warm(&self) -> bool {
-        crate::deferred::warm_one(&[&self.pipeline, &self.shadows.pipeline])
+        crate::deferred::warm_one(&[&self.pipeline, &self.shadows.pipeline, &self.pipeline_dir])
     }
 
     pub fn new(device: &wgpu::Device) -> Light2dRenderer {
@@ -293,10 +296,32 @@ impl Light2dRenderer {
             bind_group_layouts: &[Some(&layout)],
             immediate_size: 0,
         });
-        let pipeline = {
-            let (device, pl) = (device.clone(), pl.clone());
+        let sum = wgpu::BlendComponent {
+            src_factor: wgpu::BlendFactor::One,
+            dst_factor: wgpu::BlendFactor::One,
+            operation: wgpu::BlendOperation::Add,
+        };
+        let add = Some(wgpu::BlendState {
+            color: sum,
+            alpha: wgpu::BlendComponent::REPLACE,
+        });
+        // The directions add their weight in alpha too.
+        let add_all = Some(wgpu::BlendState {
+            color: sum,
+            alpha: sum,
+        });
+        let pipeline_with = |fs: &'static str, dir: bool| {
+            let (device, pl, module) = (device.clone(), pl.clone(), module.clone());
             Deferred::new(move || {
                 let module = module.module();
+                let target = |blend| {
+                    Some(wgpu::ColorTargetState {
+                        format: HDR_FORMAT,
+                        blend,
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })
+                };
+                let targets = [target(add), target(add_all)];
                 device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                     label: Some("lights 2d"),
                     layout: Some(&pl),
@@ -311,20 +336,9 @@ impl Light2dRenderer {
                     multisample: Default::default(),
                     fragment: Some(wgpu::FragmentState {
                         module,
-                        entry_point: Some("fs"),
+                        entry_point: Some(fs),
                         compilation_options: Default::default(),
-                        targets: &[Some(wgpu::ColorTargetState {
-                            format: HDR_FORMAT,
-                            blend: Some(wgpu::BlendState {
-                                color: wgpu::BlendComponent {
-                                    src_factor: wgpu::BlendFactor::One,
-                                    dst_factor: wgpu::BlendFactor::One,
-                                    operation: wgpu::BlendOperation::Add,
-                                },
-                                alpha: wgpu::BlendComponent::REPLACE,
-                            }),
-                            write_mask: wgpu::ColorWrites::ALL,
-                        })],
+                        targets: &targets[..if dir { 2 } else { 1 }],
                     }),
                     multiview_mask: None,
                     cache: crate::pipeline_cache::of(&device).as_ref(),
@@ -332,7 +346,8 @@ impl Light2dRenderer {
             })
         };
         Light2dRenderer {
-            pipeline,
+            pipeline: pipeline_with("fs", false),
+            pipeline_dir: pipeline_with("fs_dir", true),
             shadows,
             layout,
             uniform,
@@ -419,57 +434,66 @@ impl Light2dRenderer {
         queue.write_buffer(&self.views[k].0, 0, bytemuck::bytes_of(&u));
     }
 
-    /// Clears `target` (`size`: its strips side by side) to `ambient` and
-    /// adds the lights as view `k` sees them
-    /// ([`Light2dRenderer::write_view`]).
+    /// Clears `target` (`size`: its strips side by side) to `ambient`,
+    /// and `dir` (the lights' directions, the same size) to zero, and adds
+    /// the lights as view `k` sees them ([`Light2dRenderer::write_view`]).
     pub fn encode_view(
         &self,
         encoder: &mut crate::Encoder,
         target: &wgpu::TextureView,
+        dir: Option<&wgpu::TextureView>,
         size: (u32, u32),
         ambient: Vec3,
         k: usize,
     ) {
-        self.encode_with(encoder, target, size, ambient, &self.views[k].1);
+        self.encode_with(encoder, (target, dir), size, ambient, &self.views[k].1);
     }
 
-    /// Clears `target` (`size`: its strips side by side) to `ambient` and
-    /// adds the lights.
+    /// Clears `target` (`size`: its strips side by side) to `ambient`,
+    /// and `dir` to zero, and adds the lights.
     pub fn encode(
         &self,
         encoder: &mut crate::Encoder,
         target: &wgpu::TextureView,
+        dir: Option<&wgpu::TextureView>,
         size: (u32, u32),
         ambient: Vec3,
     ) {
-        self.encode_with(encoder, target, size, ambient, &self.group);
+        self.encode_with(encoder, (target, dir), size, ambient, &self.group);
     }
 
     fn encode_with(
         &self,
         encoder: &mut crate::Encoder,
-        target: &wgpu::TextureView,
+        (target, dir): (&wgpu::TextureView, Option<&wgpu::TextureView>),
         size: (u32, u32),
         ambient: Vec3,
         group: &wgpu::BindGroup,
     ) {
         self.shadows.trace(encoder);
-        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("lights 2d"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: target,
+        let attachment = |view, c: Vec3, a: f64| {
+            Some(wgpu::RenderPassColorAttachment {
+                view,
                 depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: ambient.x as f64,
-                        g: ambient.y as f64,
-                        b: ambient.z as f64,
-                        a: 1.0,
+                        r: c.x as f64,
+                        g: c.y as f64,
+                        b: c.z as f64,
+                        a,
                     }),
                     store: wgpu::StoreOp::Store,
                 },
-            })],
+            })
+        };
+        let attachments = [
+            attachment(target, ambient, 1.0),
+            dir.and_then(|d| attachment(d, Vec3::ZERO, 0.0)),
+        ];
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("lights 2d"),
+            color_attachments: &attachments[..1 + dir.is_some() as usize],
             depth_stencil_attachment: None,
             timestamp_writes: None,
             occlusion_query_set: None,
@@ -478,7 +502,11 @@ impl Light2dRenderer {
         if self.count == 0 {
             return;
         }
-        pass.set_pipeline(&self.pipeline);
+        pass.set_pipeline(if dir.is_some() {
+            &self.pipeline_dir
+        } else {
+            &self.pipeline
+        });
         pass.set_bind_group(0, group, &[]);
         pass.set_vertex_buffer(0, self.instances.slice(..));
         let strips = self.ranges.len().max(1) as u32;

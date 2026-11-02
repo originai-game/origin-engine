@@ -119,6 +119,7 @@ impl RenderScene {
             sprite_outlines: Vec::new(),
             texture_filters: Vec::new(),
             texture_sizes: Default::default(),
+            texture_normals: Vec::new(),
             paletted: std::collections::HashMap::new(),
             mesh_slots: Slots::default(),
             texture_slots: Slots::default(),
@@ -148,6 +149,39 @@ impl RenderScene {
         }
         self.texture_filters[i] = filter;
         true
+    }
+
+    /// Shades `texture` with the tangent-space normal map `normal` wherever
+    /// a lit 2D layer draws it (sprites, tiles, 2D rig meshes): red towards
+    /// +u, green up the image. `None` lights it flat. `false` for a handle
+    /// of another scene.
+    pub fn set_texture_normal(
+        &mut self,
+        texture: TextureHandle,
+        normal: Option<TextureHandle>,
+    ) -> bool {
+        let i = texture.index();
+        if !self.texture_slots.live(i, texture.generation())
+            || normal.is_some_and(|n| !self.texture_slots.live(n.index(), n.generation()))
+        {
+            return false;
+        }
+        if self.texture_normals.len() <= i {
+            self.texture_normals.resize(i + 1, None);
+        }
+        self.texture_normals[i] = normal;
+        true
+    }
+
+    /// `texture`'s normal map, if any.
+    pub fn texture_normal(&self, texture: TextureHandle) -> Option<TextureHandle> {
+        self.texture_normals.get(texture.index()).copied().flatten()
+    }
+
+    /// Whether any texture has a normal map (the light map then keeps its
+    /// light's direction too).
+    pub fn has_texture_normals(&self) -> bool {
+        self.texture_normals.iter().any(Option::is_some)
     }
 
     /// How sprites sample `texture`.
@@ -977,6 +1011,9 @@ impl RenderScene {
             if let Some(f) = self.texture_filters.get_mut(i) {
                 *f = TextureFilter::Linear;
             }
+            if let Some(n) = self.texture_normals.get_mut(i) {
+                *n = None;
+            }
         } else {
             self.textures.push(source);
             self.texture_revisions.push(0);
@@ -1015,6 +1052,9 @@ impl RenderScene {
             *f = TextureFilter::Linear;
         }
         self.texture_sizes.remove(&handle);
+        if let Some(n) = self.texture_normals.get_mut(i) {
+            *n = None;
+        }
         let slot = handle.slot();
         for (m, revision) in self
             .materials

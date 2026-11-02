@@ -137,6 +137,7 @@ pub mod shapes;
 mod skin;
 mod sprite_array;
 mod sprite_mesh;
+mod sprite_normals;
 mod sprites;
 mod stylise;
 mod stylise_object;
@@ -483,4 +484,7 @@ pub struct Renderer {
     sprite_arrays: Option<sprite_array::SpriteArrayPipelines>,
     /// The sprite mesh pipelines and buffer, made on the first frame that draws one.
     sprite_meshes: Option<sprite_mesh::SpriteMeshRenderer>,
+    /// The normal-mapped sprite pipelines and texture groups, made on the
+    /// first frame that draws a normal-mapped texture lit.
+    sprite_normals: Option<sprite_normals::SpriteNormals>,
 }

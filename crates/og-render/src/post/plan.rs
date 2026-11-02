@@ -202,6 +202,9 @@ pub(crate) struct GraphConfig {
     pub taa: bool,
     /// The 2D light map's size.
     pub lightmap: (u32, u32),
+    /// The 2D light map keeps the lights' directions too (`lightdir`, the
+    /// same size), for normal-mapped receivers.
+    pub lightdir: bool,
     /// GTAO (or SSAO).
     pub gtao: bool,
     /// The main pass draws water or a 3D fluid: it copies the scene drawn
@@ -445,6 +448,9 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
     if has(FramePass::Light2d) {
         let (lw, lh) = cfg.lightmap;
         g.transient("lightmap", desc(lw, lh, HDR_FORMAT, 1, attach_bind));
+        if cfg.lightdir {
+            g.transient("lightdir", desc(lw, lh, HDR_FORMAT, 1, attach_bind));
+        }
     }
     let fields = &FIELD_NAMES[..(cfg.fluid_fields as usize).clamp(1, FIELD_NAMES.len())];
     if has(FramePass::Metaballs) {
@@ -620,6 +626,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 g.pass(name, &["lindepth", "gbuffer"], &["particles"])
             }
             FramePass::Particles => g.pass(name, &[], &["particles"]),
+            FramePass::Light2d if cfg.lightdir => g.pass(name, &[], &["lightmap", "lightdir"]),
             FramePass::Light2d => g.pass(name, &[], &["lightmap"]),
             FramePass::Metaballs => g.pass(name, &[], fields),
             FramePass::Fluid3d => g.pass(
@@ -666,6 +673,9 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 }
                 if has(FramePass::Light2d) {
                     reads.push("lightmap");
+                    if cfg.lightdir {
+                        reads.push("lightdir");
+                    }
                 }
                 if has(FramePass::Metaballs) {
                     reads.extend_from_slice(fields);

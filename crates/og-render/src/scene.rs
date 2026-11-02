@@ -316,6 +316,8 @@ pub struct RenderScene {
     /// The size a streamed texture reports while it holds only its mip
     /// tail ([`RenderScene::set_texture_size`]): its whole chain's.
     texture_sizes: std::collections::HashMap<TextureHandle, (u32, u32)>,
+    /// Each texture's normal map for 2D lighting (by texture index).
+    texture_normals: Vec<Option<TextureHandle>>,
     /// The textures [`RenderScene::paletted_texture`] made, by (index
     /// texture, palette texture, row): the revisions of both it was made
     /// at, and the texture.

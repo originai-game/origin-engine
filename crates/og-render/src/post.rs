@@ -386,7 +386,8 @@ pub(crate) struct PostPasses {
     /// TAA's depth read: nearest at the pixel's centre, which reads exactly
     /// its texel (taa.wgsl `depth_sampler`).
     nearest_sampler: wgpu::Sampler,
-    black: wgpu::TextureView,
+    /// Black and clear: also the 2D light directions' placeholder (none).
+    pub(crate) black: wgpu::TextureView,
     /// The identity 32³ grading LUT (bound when no grading is set).
     pub identity_lut: wgpu::TextureView,
     /// The table the tonemap samples while [`crate::ColorAdjust`] is on:

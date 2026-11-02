@@ -134,14 +134,11 @@ impl Renderer {
         let p = &view_plans[i];
         let frustum = Frustum::from_view_proj(p.frame.view_proj);
         // Its 2D light map, as its camera sees the lights.
-        if let (Some(l), Some((size, map))) = (
-            scene.lighting_2d,
-            self.views.slots[p.index]
-                .as_ref()
-                .and_then(|s| s.light_map.as_ref()),
-        ) {
+        if let (Some(l), Some(slot)) = (scene.lighting_2d, self.views.slots[p.index].as_ref())
+            && let Some((size, map)) = slot.light_map.as_ref()
+        {
             self.lights_2d
-                .encode_view(encoder, map, *size, l.ambient, i);
+                .encode_view(encoder, map, slot.light_dir.as_ref(), *size, l.ambient, i);
             stats.draw_calls += (lights_2d > 0) as u32;
         }
         // Its 2D fluids' fields, the kernels through its camera.

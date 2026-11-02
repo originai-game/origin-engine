@@ -877,7 +877,31 @@ pub(crate) fn load_texture(eng: &Engine, path: &str) -> Result<usize, String> {
         .by_path
         .insert(format!("texture:{id}"), i);
     link_index(eng, &id, handle);
+    link_normal(eng, &id, handle);
     Ok(i)
+}
+
+/// A 2D texture's normal map: the cook's `<id>#normal` beside it (a
+/// `normal` line in its import settings, og-cook's normal2d.rs), added to
+/// the renderer only and named its normal, so 2D lighting shades every
+/// sprite, tile and 2D rig drawn with it in relief. None without one.
+fn link_normal(eng: &Engine, id: &str, texture: og_render::TextureHandle) {
+    let name = format!("{id}#normal");
+    if eng.assets.borrow().blob(&name).is_err() {
+        return;
+    }
+    let decoded = decode_texture(eng, &name);
+    let mut rs = eng.render.borrow_mut();
+    match decoded {
+        Ok((data, _)) => {
+            let h = rs.scene.add_texture_source(data);
+            rs.decoded.ids.insert(h, name);
+            rs.scene.set_texture_normal(texture, Some(h));
+        }
+        Err(e) => rs
+            .notes
+            .push(format!("{name}: not loaded ({e}); the texture is lit flat")),
+    }
 }
 
 /// A cooked texture decoded through the host's texture hook, and whether

@@ -654,3 +654,52 @@ fn toktx_cooks_the_template_textures() {
         ),
     );
 }
+
+/// `normal auto` in a texture's import settings cooks `<id>#normal`
+/// beside it: a bevel up from the clear edge, so the normal leans out of
+/// the shape on each side (red below half on its left edge, above on its
+/// right, green above half at its top) and is flat at its middle.
+#[test]
+fn normal_auto_cooks_a_bevelled_normal_map_beside_the_texture() {
+    let root = project("normal-auto");
+    let (w, h) = (48u32, 48u32);
+    let mut rgba = vec![0u8; (w * h * 4) as usize];
+    for y in 0..h {
+        for x in 0..w {
+            let (dx, dy) = (x as f32 - 23.5, y as f32 - 23.5);
+            if dx * dx + dy * dy < 20.0 * 20.0 {
+                let i = ((y * w + x) * 4) as usize;
+                rgba[i..i + 4].copy_from_slice(&[200, 200, 200, 255]);
+            }
+        }
+    }
+    png(&root.join("assets/tex/disc.png"), w, h, &rgba);
+    std::fs::write(
+        root.join("assets/tex/disc.png.ogt"),
+        "type import\nversion 1\n---\ntexture {\n  normal auto\n}\n",
+    )
+    .unwrap();
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let b = Bundle::open(&root.join("cooked")).unwrap();
+    let n = b
+        .load_texture("tex/disc.png#normal")
+        .unwrap()
+        .to_texture_data()
+        .unwrap();
+    let at = |x: u32, y: u32| {
+        let i = ((y * n.width + x) * 4) as usize;
+        [n.rgba[i] as i32, n.rgba[i + 1] as i32, n.rgba[i + 2] as i32]
+    };
+    let (left, right, top, mid) = (at(6, 24), at(41, 24), at(24, 6), at(24, 24));
+    println!("left {left:?}, right {right:?}, top {top:?}, middle {mid:?}");
+    assert!(left[0] < 110, "the left edge leans left: {left:?}");
+    assert!(right[0] > 146, "the right edge leans right: {right:?}");
+    assert!(top[1] > 146, "the top edge leans up the image: {top:?}");
+    assert!(
+        (mid[0] - 128).abs() < 24 && mid[2] > 200,
+        "the middle is about flat: {mid:?}"
+    );
+    // The texture itself is as before.
+    assert!(b.load_texture("tex/disc.png").is_ok());
+}

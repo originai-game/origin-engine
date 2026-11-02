@@ -743,6 +743,7 @@ fn transient_names(cfg: &GraphConfig) -> Vec<String> {
         "ao.blur",
         "ao",
         "lightmap",
+        "lightdir",
         "metaballs",
         "metaballs.1",
         "metaballs.2",

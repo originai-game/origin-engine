@@ -8,6 +8,13 @@
 // shadowed by it. A spot light fades between the cosines of its outer and
 // inner half-angles about its axis; a global light covers the whole map at
 // full colour, unshadowed.
+//
+// With normal-mapped receivers (`fs_dir`) a second target keeps where the
+// light comes from: each light adds its luminance-weighted unit direction
+// to it (xyz, world space: towards the light at its height above the
+// plane, a global light from its axis at its height) and the weight (w),
+// so the receivers read the weighted mean direction (sprite.wgsl
+// `normal_light`).
 
 struct Lights2d {
   view_proj: mat4x4<f32>,
@@ -104,10 +111,10 @@ fn visibility(row: i32, theta: f32, d: f32, source: f32) -> f32 {
   return lit / 9.0;
 }
 
-@fragment
-fn fs(in: LightOut) -> @location(0) vec4<f32> {
+// The light this light adds at the pixel (discarded where it adds none).
+fn light_of(in: LightOut) -> vec3<f32> {
   if (in.flags.y > 1.5) {
-    return vec4<f32>(in.color_source.rgb, 0.0);
+    return in.color_source.rgb;
   }
   let to_light = in.light.xy - in.world;
   let dist = length(to_light);
@@ -126,5 +133,28 @@ fn fs(in: LightOut) -> @location(0) vec4<f32> {
     let theta = atan2(-to_light.y, -to_light.x);
     atten *= visibility(i32(in.direction.w), theta, dist, max(in.color_source.w, 1e-3));
   }
-  return vec4<f32>(in.color_source.rgb * atten, 0.0);
+  return in.color_source.rgb * atten;
+}
+
+@fragment
+fn fs(in: LightOut) -> @location(0) vec4<f32> {
+  return vec4<f32>(light_of(in), 0.0);
+}
+
+struct LightDirOut {
+  @location(0) light: vec4<f32>,
+  @location(1) dir: vec4<f32>,
+};
+
+@fragment
+fn fs_dir(in: LightOut) -> LightDirOut {
+  let c = light_of(in);
+  var to_light = in.direction.xy;
+  if (in.flags.y < 1.5) { to_light = in.light.xy - in.world; }
+  let d = normalize(vec3<f32>(to_light, in.direction.z) + vec3<f32>(0.0, 0.0, 1e-6));
+  let w = dot(c, vec3<f32>(0.2126, 0.7152, 0.0722));
+  var o: LightDirOut;
+  o.light = vec4<f32>(c, 0.0);
+  o.dir = vec4<f32>(d * w, w);
+  return o;
 }

@@ -49,3 +49,17 @@ fn fs_mesh(in: MeshOut) -> @location(0) vec4<f32> {
   }
   return vec4<f32>(apply_fog(c.rgb, in.world), c.a);
 }
+
+// `fs_mesh` with the texture's normal map (sprite_normals.rs): the tangent
+// frame from the screen derivatives follows the bent mesh.
+@fragment
+fn fs_mesh_normal(in: MeshOut) -> @location(0) vec4<f32> {
+  let n = normal_at(in.uv, in.world.xy);
+  var c = max(textureSample(sprite_tex, sprite_sampler, in.uv) * in.color + in.offset, vec4<f32>(0.0));
+  c.a = min(c.a, 1.0);
+  if (c.a <= 0.0) { discard; }
+  if (in.lit > 0.5) {
+    c = vec4<f32>(c.rgb * normal_light(in.clip.xy, in.lit, n), c.a);
+  }
+  return vec4<f32>(apply_fog(c.rgb, in.world), c.a);
+}

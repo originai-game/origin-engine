@@ -389,6 +389,9 @@ pub(crate) struct ViewSlot {
     /// sprite layers multiply with the lights as its camera sees them.
     pub sprite_fx_buffer: wgpu::Buffer,
     pub light_map: Option<((u32, u32), wgpu::TextureView)>,
+    /// The lights' directions beside it, the same size, when the scene
+    /// has normal-mapped textures (light2d.wgsl `fs_dir`).
+    pub light_dir: Option<wgpu::TextureView>,
     /// Its 2D fluids' field targets of its size (`metaballs.rs`), as many
     /// as the frame's: the kernels drawn through its camera, composited in
     /// its sprite order.
@@ -548,6 +551,7 @@ impl Views {
                 ),
                 sprite_fx_buffer: buffer("view sprite fx", 32),
                 light_map: None,
+                light_dir: None,
                 fields: Vec::new(),
                 fields_size: (0, 0),
                 glow: None,
@@ -728,10 +732,11 @@ impl Views {
             f.screen = [w, h, 1.0 / w, 1.0 / h];
             queue.write_buffer(&slot.fx_buffer, 0, bytemuck::bytes_of(&f));
             let strips = light_map.map_or(1, |(_, s)| s.max(1));
+            let ambient = scene.lighting_2d.map_or(glam::Vec3::ONE, |l| l.ambient);
             queue.write_buffer(
                 &slot.sprite_fx_buffer,
                 0,
-                bytemuck::bytes_of(&[f.screen, [strips as f32, 0.0, 0.0, 0.0]]),
+                bytemuck::bytes_of(&[f.screen, [strips as f32, ambient.x, ambient.y, ambient.z]]),
             );
             // The 2D light map at the frame's share of the view's size,
             // its strips side by side (light2d.rs).
@@ -746,9 +751,20 @@ impl Views {
                 );
                 match slot.light_map.take() {
                     Some((s, v)) if s == size => (s, v),
-                    _ => (size, hdr_texture(device, "view light map", size)),
+                    _ => {
+                        slot.light_dir = None;
+                        (size, hdr_texture(device, "view light map", size))
+                    }
                 }
             });
+            slot.light_dir = match &slot.light_map {
+                Some((size, _)) if scene.has_texture_normals() => Some(
+                    slot.light_dir
+                        .take()
+                        .unwrap_or_else(|| hdr_texture(device, "view light directions", *size)),
+                ),
+                _ => None,
+            };
             // Field targets follow the attachments' size (`slot` remade
             // them with a new key).
             if slot.fields.len() != fields || slot.fields_size != p.size {

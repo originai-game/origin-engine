@@ -511,10 +511,17 @@ impl Renderer {
             match run.source {
                 RunSource::Sprite(_, t) => {
                     self.sprite_group(t);
+                    if let Some(t) = t {
+                        self.sprite_normal_group(scene, t);
+                    }
                 }
                 RunSource::Array(_, a) => self.sprite_array_group(scene, a),
                 RunSource::Mesh(i) => {
-                    self.sprite_group(scene.sprite_meshes[i as usize].texture);
+                    let t = scene.sprite_meshes[i as usize].texture;
+                    self.sprite_group(t);
+                    if let Some(t) = t {
+                        self.sprite_normal_group(scene, t);
+                    }
                 }
                 _ => {}
             }
@@ -1501,11 +1508,18 @@ impl Renderer {
             );
             ui_uniform = Some(u);
         }
-        // The sprite shaders' light map strips (`SpriteFxFrame::light`).
+        // The sprite shaders' light map strips and ambient
+        // (`SpriteFxFrame::light`).
+        let ambient_2d = scene.lighting_2d.map_or(Vec3::ONE, |l| l.ambient);
         self.queue.write_buffer(
             &self.sprite_fx_buffer,
             16,
-            bytemuck::bytes_of(&[light_slots.count() as f32, 0.0, 0.0, 0.0]),
+            bytemuck::bytes_of(&[
+                light_slots.count() as f32,
+                ambient_2d.x,
+                ambient_2d.y,
+                ambient_2d.z,
+            ]),
         );
         let (lights_2d, occluders_2d) = match scene.lighting_2d {
             Some(l) => self.lights_2d.write(
@@ -1959,6 +1973,9 @@ impl Renderer {
         let lightmap_scale = scene
             .lighting_2d
             .map_or(0.5, |l| l.resolution.clamp(0.25, 1.0));
+        // The lights' directions beside the light map, for normal-mapped
+        // receivers (sprite_normals.rs).
+        let lightdir_on = scene.lighting_2d.is_some() && scene.has_texture_normals();
         // The light map: its strips side by side (light2d.rs).
         let lightmap_size = light2d::strips_size(
             (
@@ -2043,6 +2060,7 @@ impl Renderer {
                     samples: self.samples,
                     taa,
                     lightmap: lightmap_size,
+                    lightdir: lightdir_on,
                     gtao,
                     water: !scene_water.is_empty() || fluids_3d,
                     water_ao: !scene_water.is_empty() && ao.is_some_and(|a| a.direct > 0.0),
@@ -2266,7 +2284,10 @@ impl Renderer {
             } else {
                 &self.default_white
             };
-            let sprite_group = |light: &wgpu::TextureView, label: &str| {
+            // The lights' directions (normal-mapped receivers), black
+            // (none) without.
+            let lightdir_view = self.graph.try_view("lightdir").unwrap_or(&self.post.black);
+            let sprite_group = |light: &wgpu::TextureView, dir, label: &str| {
                 bind_group(
                     &self.device,
                     label,
@@ -2275,6 +2296,7 @@ impl Renderer {
                         wgpu::BindingResource::TextureView(light),
                         wgpu::BindingResource::Sampler(&self.trilinear_sampler),
                         self.sprite_fx_buffer.as_entire_binding(),
+                        wgpu::BindingResource::TextureView(dir),
                     ],
                 )
             };
@@ -2293,10 +2315,10 @@ impl Renderer {
                     ][..if self.planar_slot() { 5 } else { 4 }],
                 ),
                 fx_lean: self.fx_lean_group(&self.fx_buffer, ao_view, atlas_view),
-                sprite: sprite_group(lightmap_view, "sprite fx"),
+                sprite: sprite_group(lightmap_view, lightdir_view, "sprite fx"),
                 // The glow pass draws into a target that may alias the light
                 // map: its sprites read a placeholder instead.
-                glow: sprite_group(&self.default_white, "sprite fx (glow)"),
+                glow: sprite_group(&self.default_white, &self.post.black, "sprite fx (glow)"),
             };
             self.fx_groups = Some(groups);
         }
@@ -2600,6 +2622,9 @@ impl Renderer {
                         ),
                         wgpu::BindingResource::Sampler(&self.sprite_sampler),
                         slot.sprite_fx_buffer.as_entire_binding(),
+                        wgpu::BindingResource::TextureView(
+                            slot.light_dir.as_ref().unwrap_or(&self.post.black),
+                        ),
                     ],
                 )
             })
@@ -3130,6 +3155,7 @@ impl Renderer {
                     self.lights_2d.encode(
                         &mut encoder,
                         self.graph.view("lightmap"),
+                        self.graph.try_view("lightdir"),
                         lightmap_size,
                         ambient,
                     );

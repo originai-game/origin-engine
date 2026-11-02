@@ -202,6 +202,23 @@ pub(super) fn run(
             );
             texture::cook(&img, *k, &options.texture, stamp).map(|b| (b, vec![note]))
         }),
+        Work::TextureNormal(s, file) => {
+            let img = match file {
+                Some(bytes) => texture::decode(bytes).map_err(CookError)?,
+                None => super::normal2d::auto(
+                    &texture::decode(s.conformed.as_deref().unwrap_or(&s.bytes))
+                        .map_err(CookError)?,
+                ),
+            };
+            let note = format!(
+                "{}x{} 2D normal map ({})",
+                img.width,
+                img.height,
+                if file.is_some() { "its file" } else { "auto" }
+            );
+            texture::cook(&img, format::kind::NORMAL, &options.texture, p.stamp)
+                .map(|b| (b, vec![note]))
+        }
         Work::Sound(s, _) if s.rel.ends_with(".ogt") => {
             sfx::cook(&s.bytes, p.stamp).map(|(b, n)| (b, vec![n]))
         }

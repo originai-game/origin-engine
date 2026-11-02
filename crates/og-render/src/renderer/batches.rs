@@ -231,6 +231,79 @@ impl Renderer {
         ((lo + hi) * 0.5, ((hi - lo).length() * 0.5).max(1e-3))
     }
 
+    /// Texture `t`'s normal-mapped group (sprite_normals.rs) when 2D
+    /// lighting is on and it has a normal map, made or made again when
+    /// what it reads changed; the pipelines on first use.
+    pub(crate) fn sprite_normal_group(&mut self, scene: &RenderScene, t: TextureHandle) {
+        let Some(n) = scene
+            .texture_normal(t)
+            .filter(|_| scene.lighting_2d.is_some())
+        else {
+            return;
+        };
+        let (i, ni) = (t.index(), n.index());
+        if ni >= self.cache.textures.len() {
+            return;
+        }
+        let filter = self.cache.filters.get(i).copied().unwrap_or_default();
+        let key = (
+            self.cache.texture_revisions[i],
+            ni,
+            self.cache.texture_revisions[ni],
+            filter.is_nearest(),
+            filter == TextureFilter::CleanEdge,
+        );
+        let normals = self.sprite_normals.get_or_insert_with(|| {
+            sprite_normals::SpriteNormals::new(
+                &self.device,
+                [&self.frame_layout, &self.sprite_fx_layout],
+                self.samples,
+            )
+        });
+        if normals.groups.len() <= i {
+            normals.groups.resize_with(i + 1, || None);
+        }
+        if normals.groups[i].as_ref().is_some_and(|(_, k)| *k == key) {
+            return;
+        }
+        let params = [0.0, 0.0, 0.0, key.4 as u32 as f32];
+        let buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("sprite params (normal map)"),
+                contents: bytemuck::bytes_of(&params),
+                usage: wgpu::BufferUsages::UNIFORM,
+            });
+        let group = bind_group(
+            &self.device,
+            "sprite (normal map)",
+            &normals.layout,
+            &[
+                wgpu::BindingResource::TextureView(&self.cache.textures[i].view),
+                wgpu::BindingResource::Sampler(if key.3 {
+                    &self.sprite_sampler_nearest
+                } else {
+                    &self.sprite_sampler
+                }),
+                buffer.as_entire_binding(),
+                wgpu::BindingResource::TextureView(&self.cache.textures[ni].view),
+            ],
+        );
+        normals.groups[i] = Some((group, key));
+    }
+
+    /// Texture `t`'s normal-mapped group if this frame draws it so.
+    pub(crate) fn normal_group(
+        &self,
+        scene: &RenderScene,
+        t: Option<TextureHandle>,
+    ) -> Option<&wgpu::BindGroup> {
+        let t = t?;
+        scene.lighting_2d?;
+        scene.texture_normal(t)?;
+        self.sprite_normals.as_ref()?.group(t.index())
+    }
+
     pub(crate) fn sprite_group(&mut self, texture: Option<TextureHandle>) -> &wgpu::BindGroup {
         let Some(t) = texture else {
             return &self.white_sprite_group;

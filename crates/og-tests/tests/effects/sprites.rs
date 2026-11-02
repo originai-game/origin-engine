@@ -314,3 +314,90 @@ fn a_concave_polygon_occluder_shadows_behind_its_body_only() {
     );
     assert!(arm > 0.5 * open, "the U shadows its own arm: {arm}");
 }
+
+/// Normal-mapped sprites (R11 batch 3): a sprite whose normal map tilts
+/// towards +u is brighter lit from its right than from its left, the same
+/// map on a mirrored sprite (its uvs flipped) turns with the art, and a
+/// flat map draws exactly as no map does.
+#[test]
+fn a_normal_mapped_sprite_is_lit_by_where_its_normal_faces() {
+    let enc = |c: f32| ((c * 0.5 + 0.5) * 255.0).round() as u8;
+    let map = |n: Vec3| og_render::TextureData {
+        width: 4,
+        height: 4,
+        rgba: [enc(n.x), enc(n.y), enc(n.z), 255].repeat(16),
+        color_space: og_render::ColorSpace::Linear,
+        mips: og_render::Mips::None,
+    };
+    // Lit from x = light_x at height 1; `normal` None draws without a map.
+    let lit = |light_x: f32, normal: Option<Vec3>, mirrored: bool| {
+        let mut scene = RenderScene::new();
+        let white = scene.add_texture(og_render::TextureData {
+            width: 4,
+            height: 4,
+            rgba: [255u8; 4].repeat(16),
+            color_space: og_render::ColorSpace::Srgb,
+            mips: og_render::Mips::None,
+        });
+        if let Some(n) = normal {
+            let n = scene.add_texture(map(n));
+            assert!(scene.set_texture_normal(white, Some(n)));
+        }
+        scene.add_sprite(Sprite {
+            texture: Some(white),
+            size: Vec2::new(4.0, 4.0),
+            color: [0.8, 0.8, 0.8, 1.0],
+            uv_rect: if mirrored {
+                [1.0, 0.0, 0.0, 1.0]
+            } else {
+                [0.0, 0.0, 1.0, 1.0]
+            },
+            ..Default::default()
+        });
+        scene.lighting_2d = Some(Lighting2d {
+            ambient: Vec3::splat(0.05),
+            ..Default::default()
+        });
+        scene.lights_2d.push(Light2d {
+            position: Vec2::new(light_x, 0.0),
+            radius: 8.0,
+            falloff: 1.0,
+            height: 1.0,
+            cast_shadows: false,
+            ..Default::default()
+        });
+        scene.camera = Camera::orthographic_2d(Vec2::ZERO, 8.0);
+        scene.environment.background = Background::Color(Vec3::ZERO);
+        scene.post.tonemap = Tonemap::None;
+        frame(&small(), &scene).0
+    };
+    let cam = Camera::orthographic_2d(Vec2::ZERO, 8.0);
+    let centre = project(&cam, 320, 180, Vec3::ZERO);
+    let at = |img: &RgbaImage| luma(px(img, centre.0, centre.1));
+    let tilt = Some(Vec3::new(0.7, 0.0, 0.7).normalize());
+    let (right, left) = (lit(2.0, tilt, false), lit(-2.0, tilt, false));
+    save("light2d-normal", &right);
+    let (r, l) = (at(&right), at(&left));
+    let (mr, ml) = (at(&lit(2.0, tilt, true)), at(&lit(-2.0, tilt, true)));
+    let flat = lit(2.0, Some(Vec3::Z), false);
+    let none = lit(2.0, None, false);
+    println!("tilted +u: from the right {r}, the left {l}; mirrored: {mr}, {ml}");
+    assert!(
+        r > l + 20.0,
+        "a normal towards +x is not lit more from +x: {r} vs {l}"
+    );
+    assert!(
+        ml > mr + 20.0,
+        "the mirrored sprite's normal did not turn: {mr} vs {ml}"
+    );
+    let worst = flat
+        .pixels
+        .iter()
+        .zip(&none.pixels)
+        .map(|(a, b)| (*a as i32 - *b as i32).abs())
+        .max()
+        .unwrap_or(0);
+    println!("flat map against no map: worst channel difference {worst}");
+    // An 8-bit 128 is 1/255 off flat.
+    assert!(worst <= 2, "a flat normal map changes the light: {worst}");
+}

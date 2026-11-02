@@ -15,24 +15,73 @@ struct SpriteParams {
 @group(1) @binding(0) var sprite_tex: texture_2d<f32>;
 @group(1) @binding(1) var sprite_sampler: sampler;
 @group(1) @binding(2) var<uniform> sprite_params: SpriteParams;
+// A normal-mapped texture's tangent-space normal map (the `fs_normal`
+// entry points only: their group 1 has it, sprite_normals.rs).
+@group(1) @binding(3) var sprite_normal: texture_2d<f32>;
 
 struct SpriteFxFrame {
   screen: vec4<f32>,  // w, h, 1/w, 1/h
-  light: vec4<f32>,   // x: the light map's strips
+  light: vec4<f32>,   // x: the light map's strips, yzw: the ambient light
 };
 @group(2) @binding(0) var light_map: texture_2d<f32>;
 @group(2) @binding(1) var light_sampler: sampler;
 @group(2) @binding(2) var<uniform> sprite_fx: SpriteFxFrame;
+// Where the light comes from (light2d.wgsl `fs_dir`): the weighted sum of
+// the lights' directions (xyz) and their weight (w); black without one.
+@group(2) @binding(3) var light_dir_map: texture_2d<f32>;
 
-// The 2D light a lit receiver takes: `lit` is 1 + its strip of the light
-// map (light2d.rs: one strip per light mask, side by side), sampled inside
-// its strip so the filter never reads the next one.
-fn light_at(clip: vec2<f32>, lit: f32) -> vec3<f32> {
+// Where a lit receiver reads the light map: `lit` is 1 + its strip
+// (light2d.rs: one strip per light mask, side by side), inside its strip
+// so the filter never reads the next one.
+fn light_uv(clip: vec2<f32>, lit: f32) -> vec2<f32> {
   let strips = max(sprite_fx.light.x, 1.0);
   let half = 0.5 / f32(textureDimensions(light_map).x);
   let u = clamp(clip.x * sprite_fx.screen.z, half * strips, 1.0 - half * strips);
-  let uv = vec2<f32>((floor(lit - 0.5) + u) / strips, clip.y * sprite_fx.screen.w);
-  return textureSampleLevel(light_map, light_sampler, uv, 0.0).rgb;
+  return vec2<f32>((floor(lit - 0.5) + u) / strips, clip.y * sprite_fx.screen.w);
+}
+
+// The 2D light a lit receiver takes.
+fn light_at(clip: vec2<f32>, lit: f32) -> vec3<f32> {
+  return textureSampleLevel(light_map, light_sampler, light_uv(clip, lit), 0.0).rgb;
+}
+
+// The same on a surface facing `n` (world space, z out of the plane): the
+// lights' part of it scaled by how `n` faces their mean direction `d`,
+// (n.d + 1/2) / (d.z + 1/2), so a flat normal takes exactly light_at's
+// light, and the ambient as it is.
+fn normal_light(clip: vec2<f32>, lit: f32, n: vec3<f32>) -> vec3<f32> {
+  let uv = light_uv(clip, lit);
+  let l = textureSampleLevel(light_map, light_sampler, uv, 0.0).rgb;
+  let dir = textureSampleLevel(light_dir_map, light_sampler, uv, 0.0);
+  if (dir.w <= 1e-6) { return l; }
+  let d = dir.xyz / dir.w;
+  let s = max(dot(n, d) + 0.5, 0.0) / (max(d.z, 0.0) + 0.5);
+  let ambient = sprite_fx.light.yzw;
+  return ambient + max(l - ambient, vec3<f32>(0.0)) * s;
+}
+
+// The world normal (z out of the plane) the normal map gives at uv on a
+// receiver at `world` (its xy): the map's red along the direction +u runs
+// in the world, its green along the image's up (-v), both from the screen
+// derivatives, so a turned, mirrored or bent receiver is lit right. Its
+// z is rebuilt from x and y (two-channel encodings keep only those).
+fn normal_at(uv: vec2<f32>, world: vec2<f32>) -> vec3<f32> {
+  let dpx = dpdx(world);
+  let dpy = dpdy(world);
+  let dux = dpdx(uv);
+  let duy = dpdy(uv);
+  let m = textureSample(sprite_normal, sprite_sampler, uv).xy * 2.0 - 1.0;
+  let det = dux.x * duy.y - duy.x * dux.y;
+  if (abs(det) < 1e-20) { return vec3<f32>(0.0, 0.0, 1.0); }
+  // world = J uv locally: J = [dpx dpy] [dux duy]^-1.
+  let j = mat2x2<f32>(dpx, dpy) * (mat2x2<f32>(duy.y, -dux.y, -duy.x, dux.x) * (1.0 / det));
+  let t = j[0];
+  let b = -j[1];
+  let tl = length(t);
+  let bl = length(b);
+  if (tl < 1e-20 || bl < 1e-20) { return vec3<f32>(0.0, 0.0, 1.0); }
+  let z = sqrt(max(1.0 - dot(m, m), 0.0));
+  return normalize(vec3<f32>(t / tl * m.x + b / bl * m.y, max(z, 1e-4)));
 }
 
 struct SpriteIn {
@@ -285,6 +334,33 @@ fn fs_untonemapped(in: SpriteOut) -> @location(0) vec4<f32> {
   if (in.fx.y > 0.5) {
     let light = light_at(in.clip.xy, in.fx.y);
     c = vec4<f32>(c.rgb * light, c.a);
+  }
+  return c;
+}
+
+// `fs` with the texture's normal map (sprite_normals.rs).
+@fragment
+fn fs_normal(in: SpriteOut) -> @location(0) vec4<f32> {
+  let n = normal_at(in.uv, in.world.xy);
+  var c = sprite_color(in);
+  if (in.shadow > 0.5) {
+    c.a *= drop_shadow_visible(in.world);
+  }
+  if (c.a <= 0.0) { discard; }
+  if (in.fx.y > 0.5) {
+    c = vec4<f32>(c.rgb * normal_light(in.clip.xy, in.fx.y, n), c.a);
+  }
+  return vec4<f32>(apply_fog(c.rgb, in.world), c.a);
+}
+
+// `fs_untonemapped` with the texture's normal map.
+@fragment
+fn fs_normal_untonemapped(in: SpriteOut) -> @location(0) vec4<f32> {
+  let n = normal_at(in.uv, in.world.xy);
+  var c = sprite_color(in);
+  if (c.a <= 0.0) { discard; }
+  if (in.fx.y > 0.5) {
+    c = vec4<f32>(c.rgb * normal_light(in.clip.xy, in.fx.y, n), c.a);
   }
   return c;
 }

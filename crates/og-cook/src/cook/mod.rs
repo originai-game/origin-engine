@@ -31,6 +31,7 @@ mod look_styles;
 mod model;
 pub mod model_text;
 mod motion;
+mod normal2d;
 pub mod prefab;
 pub mod probes;
 mod psd;
@@ -253,6 +254,9 @@ enum Work<'a> {
     Animation(&'a Source, anim::AnimSettings),
     GltfTexture(&'a Source, usize, u32, Split),
     Texture(&'a Source, u32, Split),
+    /// A 2D texture's `#normal` (normal2d.rs): made from it, or from the
+    /// file its `normal` line names (its bytes).
+    TextureNormal(&'a Source, Option<Vec<u8>>),
     /// A sound, whole or (QOA frames per chunk, chunks) the first of its chunks.
     Sound(&'a Source, Option<(u32, u32)>),
     /// Chunk `n` (1 and up) of a sound cooked in chunks of so many QOA frames.
@@ -946,6 +950,39 @@ pub fn cook_project_with_texture_cache(
                             st(b""),
                             Work::Texture(s, k, Split::Whole(why.flatten())),
                         )),
+                    }
+                    // Its normal map for 2D lighting (`normal auto` or a file).
+                    match normal2d::setting(settings_block(s, "texture")) {
+                        Ok(None) => {}
+                        Ok(Some(setting)) => {
+                            let file = match &setting {
+                                normal2d::NormalSetting::Auto => Ok(None),
+                                normal2d::NormalSetting::File(name) => {
+                                    let path = s.path.parent().unwrap_or(Path::new(".")).join(name);
+                                    std::fs::read(&path)
+                                        .map(Some)
+                                        .map_err(|e| format!("normal \"{name}\": {e}"))
+                                }
+                            };
+                            match file {
+                                Ok(file) => {
+                                    let st = stamp(&[
+                                        b"texture normal",
+                                        tex_desc.as_bytes(),
+                                        &hash,
+                                        file.as_deref().unwrap_or(b"auto"),
+                                    ]);
+                                    outs.push((
+                                        format!("{}#normal", s.rel),
+                                        format::Texture::NAME,
+                                        st,
+                                        Work::TextureNormal(s, file),
+                                    ));
+                                }
+                                Err(e) => early_errors.push((s.rel.clone(), "texture", e)),
+                            }
+                        }
+                        Err(e) => early_errors.push((s.rel.clone(), "texture", e)),
                     }
                 }
                 Err(e) => early_errors.push((s.rel.clone(), "texture", e)),

@@ -328,6 +328,7 @@ impl Renderer {
                 tex2d(0),
                 sampler_entry(1, wgpu::SamplerBindingType::Filtering),
                 uniform_entry(2, wgpu::ShaderStages::FRAGMENT),
+                tex2d(3),
             ],
         });
         let palette_layout = skin::palette_layout(&device);
@@ -951,6 +952,7 @@ impl Renderer {
             stylise_chain: None,
             sprite_arrays: None,
             sprite_meshes: None,
+            sprite_normals: None,
         })
     }
 }
