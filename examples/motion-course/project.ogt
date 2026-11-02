@@ -1,0 +1,12 @@
+type project
+version 1
+---
+# og-motion's demo course on two game rigs (crates/og-motion/README.md):
+# assets/anims/course.glb is generated, not committed (README.md says how).
+name "Motion course"
+id "motion-course"
+engine "0.7.7"
+entry "src/main.ts"
+profile "3d"
+tick 60
+seed 1
