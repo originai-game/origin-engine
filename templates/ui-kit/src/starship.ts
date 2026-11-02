@@ -22,7 +22,7 @@ const ART_FILES = [
   "ships/valiant.png", "ships/aegis.png", "ships/kestrel.png", "ships/sentinel.png", "ships/vanguard.png", "ships/carrier.png", "ships/module.png",
   "ships/dreadnought.png", "ships/ravager.png", "ships/marauder.png", "ships/skirmisher.png",
   "space/kinetic-strike.jpg", "space/deflector-screen.jpg", "space/squadron-launch.jpg", "space/repair-drones.jpg", "space/gravity-well.jpg", "space/overcharge.jpg",
-  "scenes/vanguard-orbit.jpg",
+  "scenes/vanguard-orbit.jpg", "space/star-dust.png",
 ] as const;
 type ArtFile = (typeof ART_FILES)[number];
 const ART: Partial<Record<ArtFile, number>> = {};
@@ -107,14 +107,15 @@ export function shipStatusScreen(): void {
         og.ui.row("Value", { width: px(valueW), align: "end", cross: "center", gap: 2 }, value);
       });
     };
+    // Every row's mark as tall as its name's line (the names are labels of the screen's, at base, outside the bars).
     og.ui.column("Systems", { width: grow, gap: t.space.sm }, () => {
-      row("Hull", L("ship.hull"), () => og.ui.statBar("Bar", { value: 78, max: 100, kind: "health", ghost: false, width: grow, thickness: Math.round(12 * k), name: L("ship.hull") }), () => {
+      row("Hull", L("ship.hull"), () => og.ui.statBar("Bar", { value: 78, max: 100, kind: "health", icon: "heart", iconStep: "base", ghost: false, width: grow, thickness: Math.round(12 * k), name: L("ship.hull") }), () => {
         og.ui.label("N", "78", { step: "lg", font: "mono", nowrap: true });
         og.ui.label("Unit", "%", { step: "sm", color: { token: "inkMuted" }, nowrap: true });
       });
       // Shields as discrete pips, three of four; the reactor's mark before its slimmer bar.
-      row("Shields", L("ship.shields"), () => og.ui.statBar("Bar", { value: 3, max: 4, style: "pips", color: { token: "info" }, width: grow, thickness: Math.round(12 * k), valueText: "3 / 4", name: L("ship.shields") }), () => {});
-      row("Reactor", L("ship.reactor"), () => og.ui.statBar("Bar", { value: 64, max: 100, kind: "mana", icon: "bolt", ghost: false, width: grow, thickness: Math.round(8 * k), name: L("ship.reactor") }), () => {});
+      row("Shields", L("ship.shields"), () => og.ui.statBar("Bar", { value: 3, max: 4, style: "pips", color: { token: "info" }, icon: "shield", iconStep: "base", width: grow, thickness: Math.round(12 * k), valueText: "3 / 4", name: L("ship.shields") }), () => {});
+      row("Reactor", L("ship.reactor"), () => og.ui.statBar("Bar", { value: 64, max: 100, kind: "mana", icon: "bolt", iconStep: "base", ghost: false, width: grow, thickness: Math.round(8 * k), name: L("ship.reactor") }), () => {});
     });
   });
 }
@@ -148,7 +149,9 @@ export function turnOrderScreen(): void {
     og.ui.turnOrder("Units", {
       style: "list",
       units: UNITS.map((u, i) => ({ key: u.name.toLowerCase(), name: u.name, portrait: art(u.art), team: u.hostile ? 1 : 0, current: i === 0 })),
-      size: Math.round(36 * k),
+      // The cut-outs are wide and drawn contained in the portrait: at this size a ship stands about twice the
+      // name's cap height.
+      size: Math.round(44 * k),
       nowLabel: L("turn.acting"),
       hostileLabel: L("turn.hostile"),
       anchor: null,
@@ -171,10 +174,16 @@ const ABILITIES: ReadonlyArray<{ key: string; art: ArtFile; cost: number; hotkey
 function abilityCard(i: number, cw: number, keys: boolean): void {
   const { t } = frame();
   const a = ABILITIES[i]!;
+  // The cards of a row one height (the tallest body's), their hotkeys on one line under them.
   og.ui.column(`Slot${i}`, { width: px(cw), gap: t.space.xs, cross: "center" }, () => {
-    const r = og.ui.card("Card", { interactive: true, selected: st.card === i, width: px(cw), padding: t.space.sm, media: { texture: art(a.art) ?? 0, aspect: 4 / 3 } as never, number: `${i + 1}`, cost: `${a.cost}` }, () => {
-      og.ui.label("Name", L(`ab.${a.key}`).toLocaleUpperCase(), { step: "caption", font: "display", maxLines: 2, ellipsis: true, width: grow });
-      og.ui.label("Effect", L(`ab.${a.key}.text`), { step: "sm", color: { token: "inkMuted" }, maxLines: 2, ellipsis: true, width: grow });
+    const r = og.ui.card("Card", { interactive: true, selected: st.card === i, width: px(cw), height: grow, padding: t.space.sm, media: { texture: art(a.art) ?? 0, aspect: 4 / 3 } as never, number: `${i + 1}`, cost: `${a.cost}` }, () => {
+      // The name wraps to a second line before anything is cut; a name in a script without spaces (ja, zh) stays on
+      // one line a step smaller rather than breaking a word (攻|撃).
+      const name = L(`ab.${a.key}`);
+      const cjk = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(name);
+      og.ui.label("Name", name.toLocaleUpperCase(), cjk ? { step: "meta", font: "display", nowrap: true, ellipsis: true, width: grow } : { step: "caption", font: "display", maxLines: 2, ellipsis: true, width: grow });
+      // The effect at the caption step, whole: the body grows to hold it (three lines at most on a narrow card).
+      og.ui.label("Effect", L(`ab.${a.key}.text`), { step: "caption", color: { token: "inkMuted" }, maxLines: 3, ellipsis: true, width: grow });
     });
     if (r.clicked) st.card = st.card === i ? -1 : i;
     // The hotkey: a quiet cap under the card, never a boxed key on its art (a finger has none).
@@ -200,7 +209,7 @@ export function abilityCardsScreen(): void {
   if (fit >= ABILITIES.length) {
     const cw = Math.floor(Math.min(196 * k * Math.min(ts, 1.4), (room - 5 * gap) / 6));
     og.ui.anchor("Abilities", { anchor: "bottomLeft", margin: m, width: px(f.innerW - 2 * m), direction: "row", gap, cross: "end", padding: { left: f.footW, top: 0, right: 0, bottom: 0 } }, () => {
-      og.ui.row("Hand", { width: grow, gap, align: "center", cross: "end" }, () => {
+      og.ui.row("Hand", { width: grow, gap, align: "center", cross: "stretch" }, () => {
         for (let i = 0; i < ABILITIES.length; i++) abilityCard(i, cw, keys);
       });
       og.ui.semantics({ role: "list", name: L("ab.title") });
@@ -252,11 +261,14 @@ export function sectorMapScreen(): void {
   const plate = f.line(small ? "base" : "lg", 26) + 2 * t.space.xs;
   // On a desktop the panel stands clear of the Gallery button below it (centred, so the same room above).
   const room = small ? f.innerH - f.top - 2 * m : f.innerH - 2 * (f.foot + m);
-  const fh = Math.max(200, Math.min(small ? fw * 1.25 : fw * 0.6, room - 2 * pad - head - plate - 2 * t.space.md));
+  // On a phone the field takes the screen's height under the title, down to the caption plate; on a desktop a
+  // landscape field in the panel, centred.
+  const fill = room - 2 * pad - head - plate - 2 * t.space.md;
+  const fh = Math.max(200, small ? fill : Math.min(fw * 0.6, fill));
   // The systems in graph units shaped like the graph's window (its zoom bar, and the room nodeGraph keeps round its
-  // nodes and their captions, taken off), so at its fit the sector fills the window instead of a band of it.
+  // nodes, a node and its fade at each end, taken off), so at its fit the sector fills the window with that margin.
   const node = Math.round((small ? 20 : 24) * k);
-  const aspect = Math.max(0.3, (fh - (small ? 56 : 52) - 2 * node - 64 - 36 * f.ts) / Math.max(1, fw - node - 2 * t.space.sm));
+  const aspect = Math.max(0.3, (fh - (small ? 56 : 52) - node - 60) / Math.max(1, fw - node - 2 * t.space.sm));
   const xs = NODES.map((n) => n.x);
   const ys = NODES.map((n) => n.y);
   const x0 = Math.min(...xs);
@@ -283,6 +295,7 @@ export function sectorMapScreen(): void {
       nodeSize: node,
       width: grow,
       height: px(fh),
+      ground: art("space/star-dust.png"),
       label: L("sector.title"),
     });
     st.zoom = r.zoom;
@@ -305,16 +318,17 @@ const CLASSES: ReadonlyArray<{ key: string; art: ArtFile; hero: string; heroArt:
 ];
 
 /** The hero's stats as bars with tabular values, and its upgrade pips. */
-function heroStats(cls: (typeof CLASSES)[number], stacked: boolean): void {
+function heroStats(cls: (typeof CLASSES)[number]): void {
   const f = frame();
   const { t, k } = f;
-  og.ui.panel("Stats", { row: !stacked, width: grow, gap: stacked ? t.space.md : t.space.xl, padding: all(f.small ? t.space.md : t.space.lg), cross: stacked ? "stretch" : "center" }, () => {
+  // The bars run the panel's width, the upgrade pips under them.
+  og.ui.panel("Stats", { width: grow, gap: t.space.md, padding: all(f.small ? t.space.md : t.space.lg), cross: "stretch" }, () => {
     og.ui.statCompare("Bars", {
       rows: (["hull", "shields", "speed", "firepower"] as const).map((s, i) => ({ label: L(`hangar.${s}`), current: cls.stats[i]!, max: 100, icon: ["heart", "shield", "play", "fire"][i]! })),
       width: grow,
       label: L("hangar.stats"),
     });
-    og.ui.column("Upgrade", { width: stacked ? grow : px(200 * k * Math.min(f.ts, 1.5)), gap: t.space.xs }, () => {
+    og.ui.column("Upgrade", { width: grow, gap: t.space.xs }, () => {
       eyebrow("Label", L("hangar.upgrade"));
       og.ui.row("Pips", { width: grow, gap: t.space.sm, cross: "center" }, () => {
         og.ui.statBar("Bar", { value: cls.upgrade, max: 6, style: "pips", kind: "primary", width: grow, thickness: Math.round(10 * k), valueText: `${cls.upgrade} / 6`, name: L("hangar.upgrade") });
@@ -341,8 +355,27 @@ function heroDetail(world: World, cls: (typeof CLASSES)[number]): void {
       og.ui.label("Value", og.ui.formatNumber(cls.price), { step: "xl2", font: "mono", nowrap: true });
       og.ui.label("Unit", L("hangar.alloy"), { step: "sm", color: { token: "inkMuted" }, nowrap: true });
     });
-    if (og.ui.button("Commission", L("hangar.commission"), { variant: "primary", size: "large", width: grow }).clicked) og.ui.toast(world, L("hangar.commissioned", { name: cls.hero }), { tone: "success" });
+    // Commission: the screen's one filled button.
+    if (og.ui.heroButton("Commission", L("hangar.commission"), { tone: "primary", size: "large", width: grow }).clicked) og.ui.toast(world, L("hangar.commissioned", { name: cls.hero }), { tone: "success" });
     og.ui.button("Compare", L("hangar.compare"), { variant: "secondary", width: grow });
+  });
+}
+
+/**
+ * The hero ship's own ground: a dark vignette over the screen's backdrop and a soft floor glow under the ship, so
+ * the ship stands in its bay instead of in front of another scene.
+ */
+function stage(hero: () => void, tall: boolean): void {
+  const { t } = frame();
+  og.ui.column("Stage", { width: grow, height: tall ? grow : null, cross: "stretch", align: "center" }, () => {
+    og.ui.setDraw({
+      shape: { kind: "rect", radii: Array(4).fill(t.radius["panel"] ?? 12) as never },
+      fills: [
+        { kind: "gradient", type: "radial", from: { x: 0.5, y: 0.5 }, to: { x: 1.05, y: 1.05 }, stops: [{ offset: 0, color: { token: "shadow", alpha: 0.55 } }, { offset: 1, color: { token: "shadow", alpha: 0.88 } }] },
+        { kind: "gradient", type: "radial", from: { x: 0.5, y: 0.8 }, to: { x: 0.92, y: 0.8 }, stops: [{ offset: 0, color: { token: "primary", alpha: 0.22 } }, { offset: 1, color: { token: "primary", alpha: 0 } }] },
+      ],
+    } as never);
+    hero();
   });
 }
 
@@ -387,8 +420,8 @@ export function hangarScreen(world: World): void {
       og.ui.scrollArea("Body", { width: grow, height: grow, gap: t.space.lg, fade: 56, fadeInto: "shadow", padding: { left: 0, top: 0, right: 0, bottom: small ? f.sa.bottom + t.space.md : 0 } }, () => {
         if (small) og.ui.label("Title", L("hangar.title"), { step: "xl2", heading: true, font: "display", nowrap: true, ellipsis: true, width: grow });
         heroHead();
-        og.ui.artSlot("Hero", { texture: art(cls.heroArt), kind: "unitPortrait", aspect: 640 / 417, fit: "contain", mask: "none", width: grow, label: cls.hero });
-        heroStats(cls, small);
+        stage(() => og.ui.artSlot("Hero", { texture: art(cls.heroArt), kind: "unitPortrait", aspect: 640 / 417, fit: "contain", mask: "none", width: grow, label: cls.hero }), false);
+        heroStats(cls);
         heroDetail(world, cls);
         classes({ kind: "fit" });
       });
@@ -399,8 +432,8 @@ export function hangarScreen(world: World): void {
       og.ui.column("Start", { width: px(side), height: grow }, () => classes(grow));
       og.ui.column("Centre", { width: grow, height: grow, gap: t.space.md }, () => {
         heroHead();
-        og.ui.artSlot("Hero", { texture: art(cls.heroArt), kind: "unitPortrait", aspect: 640 / 417, fit: "contain", mask: "none", width: grow, height: grow, label: cls.hero });
-        heroStats(cls, false);
+        stage(() => og.ui.artSlot("Hero", { texture: art(cls.heroArt), kind: "unitPortrait", aspect: 640 / 417, fit: "contain", mask: "none", width: grow, height: grow, label: cls.hero }), true);
+        heroStats(cls);
       });
       og.ui.column("End", { width: px(side), height: grow }, () => heroDetail(world, cls));
     });

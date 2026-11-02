@@ -1,0 +1,7 @@
+type import
+version 1
+---
+# The sector map's field (og.ui.nodeGraph ground): white star dust on transparent, a seamless 256 px tile, generated (CC0).
+texture {
+  kind color
+}
