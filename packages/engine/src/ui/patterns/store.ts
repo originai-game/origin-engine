@@ -7,7 +7,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  artSlot, countdown, fill, frame, grouped, grow, hex, keyHash, kit, lastInteraction, line, mix, over, paint, priceTag, px, rarityColor, role,
+  artSlot, countdown, fill, frame, grouped, grow, hex, keyHash, kit, lastInteraction, line, mix, over, paint, pct, priceTag, px, rarityColor, role,
   scrimFill, shadow, glow, st, still, surface, symbol, text, token, u, vgrad, vstate, xy, isPhone, safeWidth, type Mut, type Rgba, type TimeWords,
 } from "./core.ts";
 import { cornerTag } from "./rewards.ts";
@@ -160,16 +160,24 @@ export function storeFront(id: string, desc: Api.StoreFrontDesc): Api.StoreFront
         },
       }, () => {
         const radii: [number, number, number, number] = [t.panel, t.panel, t.panel, t.panel];
-        // The tile's own face: the tier's colour rising from its foot behind the art (Fortnite's rarity wash), its rim
-        // in the tier's colour; selected or hovered a light rim with a soft glow (the selection grammar).
+        // The tile's own face: the tier's colour rising from its foot over the art (a store's rarity wash); no rim at
+        // rest (a coloured box round every tile read as debug); selected or hovered a light rim with a soft glow (the
+        // selection grammar).
         kit.setDraw({
           shape: { kind: "rect", radii },
           fills: [vgrad([[0, paint(mix(role("panel"), rim, 0.22))], [1, paint(mix(role("panel"), rim, 0.5))]])],
-          strokes: [line(sel ? 2.5 : 1.5, paint(sel || hot ? mix(rim, hex("#ffffff"), 0.55) : mix(rim, role("panel"), 0.15)))],
+          strokes: sel || hot ? [line(sel ? 2.5 : 1.5, paint(mix(rim, hex("#ffffff"), 0.55)))] : [line(1, token("shadow", 0.55), "outside")],
           effects: [shadow(u(hot ? 10 : 5), u(hot ? 22 : 12), 0.5), ...(sel || hot ? [glow(u(14), paint(mix(rim, hex("#ffffff"), 0.3), 0.45), 0)] : [])],
         });
         // The art over the whole tile, under a shade at the foot (and the start, on a featured tile) so the words read.
         artSlot("Art", "Store.art", { texture: o.image ?? null, kind: o.featured ? "splash" : "item", rarity: o.rarity, focal: o.focal ?? { x: 0.5, y: 0.42 }, width: grow(), height: grow(), radius: radii }, () => {
+          // The tier as light rising from the tile's foot, behind the words (no box round the tile).
+          if (tier) {
+            kit.open("Tier", { width: grow(), height: pct(0.42), part: "Store.tier", partClass: "badge" });
+            kit.setDraw({ shape: { kind: "rect", radii: [0, 0, radii[2], radii[3]] }, fills: [vgrad([[0, paint(tier, 0)], [0.45, paint(tier, 0.22)], [1, paint(tier, 0.6)]])] });
+            kit.close();
+            over({ insets: { start: 0, end: 0, bottom: 0 }, inert: true });
+          }
           if (av === "soldOut" || av === "owned") {
             kit.open("Dim", { width: grow(), height: grow(), part: "Store.dim", partClass: "badge" });
             kit.setDraw({ shape: { kind: "rect", radii }, fills: [{ kind: "solid", color: paint(mix(role("well"), role("inkMuted"), 0.2), av === "soldOut" ? 0.68 : 0.32) }] });

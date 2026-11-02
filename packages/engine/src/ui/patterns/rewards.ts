@@ -6,8 +6,8 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  artSlot, btn, frame, glow, grow, keyHash, kit, lastInteraction, line, mix, over, paint, pips, px, rarityColor, rarityPips, role, shadow, st, still,
-  inkOn, spring, surface, symbol, text, token, u, vgrad, vstate, xy, type Mut, type Rgba,
+  artSlot, btn, frame, glow, grow, keyHash, kit, lastInteraction, line, mix, over, paint, pips, px, rarityColor, rarityPips, role, rtl, shadow, st, still,
+  flags, inkOn, spring, surface, symbol, text, token, u, vgrad, vstate, xy, type Mut, type Rgba,
 } from "./core.ts";
 
 /** A card's rules as words for a screen reader: the markup's tags left out. */
@@ -68,7 +68,7 @@ export function rewardChoice(id: string, desc: Api.RewardChoiceDesc): Api.Reward
 
   if (desc.title || desc.subtitle) {
     kit.column("Header", { width: grow(), gap: u(4), cross: "center" }, () => {
-      // The screen's display line, centred over the choices (Hades' boon, Slay the Spire's reward); what to do under it.
+      // The screen's display line, centred over the choices (a roguelite's blessing, a deckbuilder's reward); what to do under it.
       if (desc.title) text("Title", desc.title, { step: phone ? "xl3" : "displayMd", heading: true, font: "display", align: "center", width: grow(), maxLines: 2 });
       if (desc.subtitle) text("Subtitle", desc.subtitle, { step: st(phone ? 14 : 18), color: "inkMuted", align: "center", width: grow(), maxLines: 2 });
     });
@@ -104,9 +104,9 @@ export function rewardChoice(id: string, desc: Api.RewardChoiceDesc): Api.Reward
       part: "Reward.card",
       cls: "card",
       flags: [`rarity=${o.rarity ?? "none"}`, sel ? "selected" : "", armed ? "banishing" : "", o.locked ? "locked" : ""],
-      fill: mix(role("panelRaised"), edge, 0.1),
+      fill: role("panelRaised"),
       wash: edge,
-      washBy: 0.18,
+      washBy: 0.08,
       direction: compact ? "row" : "column",
       width: portrait ? grow() : px(cw),
       padding: xy(u(compact ? 12 : 16), u(compact ? 12 : 16)),
@@ -128,15 +128,36 @@ export function rewardChoice(id: string, desc: Api.RewardChoiceDesc): Api.Reward
         state: [{ group: "fate", state: o.locked ? "locked" : armed ? "banishing" : "offered" }],
       },
     }, () => {
-      // The frame: a gradient in the tier's colour, an edge in it, a glow from epic.
+      // The ground stays neutral; the tier is carried by a stripe along the start edge and a soft light from the top
+      // in its hue (never a box round the card: a coloured outline on every card read as a debug rectangle). Epic and
+      // above add an even glow round the card, low enough that the ground stays neutral.
+      const cardW = portrait ? room : cw;
+      const f = Math.min(0.5, u(4) / Math.max(1, cardW));
+      const startAngle = rtl() ? 90 : 270;
       kit.setDraw({
         shape: { kind: "rect", radii: [t.panel, t.panel, t.panel, t.panel] },
-        fills: [vgrad([[0, paint(mix(role("panelRaised"), edge, 0.16))], [1, paint(mix(role("panel"), edge, 0.05))]])],
-        // Epic and above lit: a card side by side an even glow round it; a stacked row (a phone) a rim of the tier's light
-        // just outside it over a lift shadow, so no glow pools in the gap under it.
-        strokes: [line(sel ? 3 : 2, paint(sel ? role("focus") : mix(edge, role("ink"), 0.1))), ...(high && !o.locked && compact ? [line(u(3), paint(edge, 0.4), "outside")] : [line(1, token("shadow", 0.5), "outside")])],
-        effects: [shadow(u(compact ? 3 : 6), u(compact ? 10 : 16), 0.45), ...(high && !o.locked && !compact ? [glow(u(14), paint(edge, 0.5), 0)] : [])],
+        fills: [vgrad([[0, token("panelRaised")], [1, token("panel")]])],
+        strokes: sel ? [line(3, token("focus"))] : [line(1, token("shadow", 0.5), "outside")],
+        effects: [shadow(u(compact ? 3 : 6), u(compact ? 10 : 16), 0.45), ...(high && !o.locked ? [glow(u(compact ? 10 : 14), paint(edge, 0.32), 0)] : [])],
       });
+      // The tier's light, a layer of its own under the card's content (a style dresses the card's fills, not this).
+      if (tier) {
+        kit.open("Tier", { width: grow(), height: grow(), part: `Reward.tier${flags(`rarity=${o.rarity ?? "none"}`)}`, partClass: "badge" });
+        kit.setDraw({
+          shape: { kind: "rect", radii: [t.panel, t.panel, t.panel, t.panel] },
+          clip: "shape",
+          fills: [
+            // A card's light falls from its top; a row's (a phone) from its start edge, over its art, so no half of
+            // the row is filled with the tier's hue.
+            compact
+              ? vgrad([[0, paint(tier, 0)], [0.72, paint(tier, 0)], [1, paint(tier, high ? 0.24 : 0.18)]], startAngle)
+              : vgrad([[0, paint(tier, high ? 0.3 : 0.22)], [0.32, paint(tier, 0)]]),
+            vgrad([[0, paint(tier, 0)], [1 - f - 0.0005, paint(tier, 0)], [1 - f, paint(tier)], [1, paint(tier)]], startAngle),
+          ],
+        } as Api.DrawDesc);
+        kit.close();
+        over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, z: -1 });
+      }
       const artW = compact ? Math.round(Math.min(u(88), cw * 0.26) * Math.min(1.4, ts)) : cw - u(32);
       artSlot("Art", "Reward.art", { texture: o.image ?? null, kind: "item", icon: o.icon, rarity: o.rarity, width: px(artW), height: px(compact ? artW : Math.round(artW * 0.62)), radius: Math.max(4, t.small) }, () => {
         // Locked: the art drained of its colour and down to about a third of its value; the lock line says why.

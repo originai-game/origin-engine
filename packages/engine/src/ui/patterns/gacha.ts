@@ -131,7 +131,7 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
         if (!phone && !short) artSlot("Thumb", "Gacha.thumb", { texture: b.image ?? null, kind: "banner", width: px(u(44)), height: px(u(44)), radius: t.small });
         kit.column("Text", { width: grow(), gap: 2, cross: portrait ? "center" : "start" }, () => {
           text("Name", b.name ?? "", { step: st(14), font: "display", maxLines: 2, width: grow(), align: portrait ? "center" : "start", color: on ? "ink" : "inkMuted" });
-          if (b.endsIn !== undefined && b.endsIn !== null && !portrait && !short) text("Ends", countdownShort(b.endsIn, timeWords(desc)), { step: st(12), color: b.endsIn < 3600 ? "warn" : "inkMuted", nowrap: true, font: "mono" });
+          if (b.endsIn !== undefined && b.endsIn !== null && !portrait && !short) text("Ends", countdownShort(b.endsIn, timeWords(desc)), { step: st(12), color: b.endsIn < 3600 ? "warn" : on ? "ink" : "inkMuted", nowrap: true, font: "mono" });
         });
         if (b.fresh) {
           kit.open("Dot", { width: px(u(8)), height: px(u(8)) });
@@ -174,38 +174,61 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
     if (desc.endsIn !== undefined && desc.endsIn !== null) {
       timerChip("Timer", desc.endsIn, "", timeWords(desc));
     }
-    if (feat.length > 0) {
+    // A phone in portrait at large text keeps the words and the purchase: the featured units are on the art already,
+    // and squeezed into what is left they showed as slivers.
+    if (feat.length > 0 && !(portrait && big)) {
       kit.column("Featured", { width: grow(), gap: u(6), part: "Gacha.featured", partClass: "panel" }, () => {
-        // Each unit a quiet strip of dark glass (Star Rail, Genshin): its portrait at the start carries the tier on its
-        // rim, the stars under the title carry it too; the strip itself stays neutral so the splash leads the screen.
-        // In portrait the units stand side by side, each a portrait over its name and stars.
-        const tileH = u(short ? 52 : portrait ? 76 : 84);
-        kit.open("Units", { direction: portrait ? "row" : "column", gap: u(portrait ? 8 : 6), width: grow() });
+        // Each unit's portrait carries its tier as light rising from its foot (about a third of its height), under its
+        // name and stars; no box and no rim. Beside the art (a desktop) each unit is a quiet strip of dark glass with its
+        // words at the portrait's side; in portrait the units stand side by side as portraits, their words laid on that
+        // light, with nothing framing them.
+        const tileH = u(short ? 52 : portrait ? 104 : 84);
+        kit.open("Units", { direction: portrait ? "row" : "column", gap: u(portrait ? 12 : 6), width: grow() });
         feat.forEach((f, k) => {
           const ink = tierInk(f.rarity);
-          kit.open(kit.idi("Unit", k), { direction: portrait ? "column" : "row", width: grow(), height: portrait ? null : px(tileH), gap: u(portrait ? 4 : 12), cross: portrait ? "stretch" : "center", padding: portrait ? xy(u(4), u(4)) : { left: 0, top: 0, right: u(10), bottom: 0 }, radius: t.small, part: `Gacha.unit${flags(`rarity=${f.rarity ?? "none"}`)}`, partClass: "panel" });
-          kit.setDraw({
-            shape: { kind: "rect", radii: [t.small, t.small, t.small, t.small] },
-            fills: [{ kind: "solid", color: token("shadow", 0.55) }, vgrad([[0, token("sheen", 0.06)], [1, token("sheen", 0)]])],
-            strokes: [line(1, token("sheen", 0.16))],
-          });
-          artSlot("Portrait", "Gacha.unitPortrait", { texture: f.image ?? null, kind: "portrait", rarity: f.rarity, focal: { x: 0.5, y: 0.35 }, width: portrait ? grow() : px(Math.round(tileH * 1.15)), height: px(portrait ? tileH : tileH), radius: t.small }, () => {
-            // The tier's rim round the portrait.
-            kit.open("Rim", { width: grow(), height: grow(), part: `Gacha.unitRim${flags(`rarity=${f.rarity ?? "none"}`)}`, partClass: "slot" });
-            kit.setDraw({ shape: { kind: "rect", radii: [t.small, t.small, t.small, t.small] }, strokes: [line(2, paint(ink)), line(4, paint(ink, 0.2), "outside")] });
+          const tierLight = (h: number, strength: number): void => {
+            kit.open("Tier", { width: grow(), height: px(Math.round(h)), part: `Gacha.unitTier${flags(`rarity=${f.rarity ?? "none"}`)}`, partClass: "badge" });
+            kit.setDraw({ shape: { kind: "rect", radii: [0, 0, t.small, t.small] }, fills: [vgrad([[0, paint(ink, 0)], [0.4, paint(ink, strength * 0.25)], [0.75, paint(ink, strength * 0.6)], [1, paint(ink, strength)]])] });
             kit.close();
+          };
+          kit.open(kit.idi("Unit", k), { direction: portrait ? "column" : "row", width: grow(), height: portrait ? null : px(tileH), gap: u(12), cross: portrait ? "stretch" : "center", padding: portrait ? xy(0, 0) : { left: 0, top: 0, right: u(10), bottom: 0 }, radius: t.small, part: `Gacha.unit${flags(`rarity=${f.rarity ?? "none"}`)}`, partClass: "badge" });
+          if (!portrait) {
+            kit.setDraw({
+              shape: { kind: "rect", radii: [t.small, t.small, t.small, t.small] },
+              fills: [{ kind: "solid", color: token("shadow", 0.55) }, vgrad([[0, token("sheen", 0.06)], [1, token("sheen", 0)]])],
+              strokes: [],
+            });
+          }
+          artSlot("Portrait", "Gacha.unitPortrait", { texture: f.image ?? null, kind: "portrait", rarity: f.rarity, focal: { x: 0.5, y: 0.3 }, width: portrait ? grow() : px(Math.round(tileH * 1.15)), height: px(tileH), radius: t.small }, () => {
+            if (!portrait) {
+              tierLight(tileH * 0.38, 0.55);
+              over({ insets: { start: 0, end: 0, bottom: 0 }, inert: true });
+              return;
+            }
+            // In portrait the words stand on the light at the portrait's foot.
+            kit.column("Plate", { width: grow(), gap: u(2), cross: "center", padding: { left: u(4), right: u(4), top: u(10), bottom: u(5) }, part: `Gacha.unitTier${flags(`rarity=${f.rarity ?? "none"}`)}`, partClass: "badge" }, () => {
+              kit.setDraw({ shape: { kind: "rect", radii: [0, 0, t.small, t.small] }, fills: [vgrad([[0, token("shadow", 0)], [0.35, token("shadow", 0.3)], [1, token("shadow", 0.62)]]), vgrad([[0, paint(ink, 0)], [0.4, paint(ink, 0.14)], [0.75, paint(ink, 0.34)], [1, paint(ink, 0.5)]])] });
+              text("Name", f.name ?? "", { step: st(14), font: "display", nowrap: true, ellipsis: true, width: grow(), align: "center" });
+              stars("Stars", f.stars ?? 0, u(11), mix(ink, hex("#ffffff"), 0.25));
+            });
+            over({ insets: { start: 0, end: 0, bottom: 0 }, inert: true });
           });
-          kit.column("Text", { width: grow(), gap: u(2), cross: portrait ? "center" : "start" }, () => {
-            text("Name", f.name ?? "", { step: st(portrait ? 14 : 17), font: "display", nowrap: true, ellipsis: true, width: grow(), align: portrait ? "center" : "start" });
-            if (f.title && !short && !portrait) text("Title", f.title, { step: st(12), color: "inkMuted", maxLines: 1, ellipsis: true, width: grow() });
-            stars("Stars", f.stars ?? 0, u(portrait ? 11 : 13), ink);
-          });
+          if (!portrait) {
+            kit.column("Text", { width: grow(), gap: u(2), cross: "start" }, () => {
+              text("Name", f.name ?? "", { step: st(17), font: "display", nowrap: true, ellipsis: true, width: grow(), align: "start" });
+              if (f.title && !short) text("Title", f.title, { step: st(12), color: "inkMuted", maxLines: 1, ellipsis: true, width: grow() });
+              stars("Stars", f.stars ?? 0, u(13), ink);
+            });
+          }
           kit.close();
+          kit.semantics({ role: "text", name: [f.name ?? "", f.title ?? "", `${f.stars ?? 0} stars`].filter(Boolean).join(", ") });
         });
         kit.close();
       });
     }
-    if (desc.rateText) {
+    // The same at large text in portrait for the rate line: Details opens the rules in full (a scrolled sliver of it
+    // read as broken text).
+    if (desc.rateText && !(portrait && big)) {
       kit.open("Rate", { width: grow(), direction: "column", padding: xy(u(10), u(6)), part: "Gacha.rate", partClass: "panel" });
       kit.setDraw({ shape: { kind: "rect", radii: [t.small, t.small, t.small, t.small] }, fills: [{ kind: "solid", color: token("shadow", 0.55) }] });
       kit.richText("Body", desc.rateText, { step: st(13), color: token("inkMuted"), width: grow() });
@@ -220,7 +243,9 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
     kit.column("Pulls", { gap: u(8), cross: "stretch", width: grow() }, () => {
       kit.row("Status", { gap: u(14), cross: "center", wrap: big, align: "spaceBetween", width: grow() }, () => {
         if ((desc.pityMax ?? 0) > 0) pityMeter("Pity", desc.pity ?? 0, desc.pityMax!, desc.pityLabel ?? "Guaranteed in {left}");
-        kit.row("Purse", { gap: u(6), cross: "center", padding: xy(u(10), u(4)), radius: 999, background: token("shadow", 0.55), part: "Gacha.purse", partClass: "chip" }, () => {
+        // The purse as the shop shows it: the currency's art and the numeral, no box round them (the scrim under the
+        // column keeps them readable).
+        kit.row("Purse", { gap: u(6), cross: "center", part: "Gacha.purse", partClass: "badge" }, () => {
           priceTag("Balance", { amount: balance, currency, size: "md", image: desc.currencyIcon ?? null });
         });
       });
@@ -229,15 +254,27 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
         const pull = (key: string, label: string, n: number, cost: number): void => {
           const can = balance >= cost;
           // The ten-pull leads (gold, the wider); the single is glass beside it.
-          const r = btn(key, label, {
+          // On a phone in portrait the two share the row, each its label over its price (side by side the two did not fit).
+          const stack = portrait;
+          const ink = n > 1 ? hex("#1d1406") : role("ink");
+          const r = btn(key, stack ? "" : label, {
             variant: n > 1 ? "premium" : "glass",
             size: "lg",
-            width: n > 1 || big ? grow() : null,
+            width: n > 1 || big || stack ? grow() : null,
             part: `Gacha.pull${flags(n > 1 ? "multi" : "single", !can && "short")}`,
             name: `${label}, ${cost} ${currency}${can ? "" : `, ${desc.shortLabel ?? "not enough"}`}`,
             before: () => {
+              if (stack) {
+                kit.column("Stack", { gap: u(2), cross: "center", padding: xy(0, u(6)) }, () => {
+                  // On the premium gold the label is bold, as og.ui's buttons set it.
+                  if (n > 1) kit.richText("Label", `[b]${label.replace(/\[/g, "[[")}[/b]`, { step: st(16), color: paint(ink), nowrap: true, font: "display" } as Api.RichTextDesc);
+                  else text("Label", label, { step: st(16), color: ink, nowrap: true, font: "display" });
+                  priceTag("Price", { amount: cost, currency, affordable: can, size: "sm", shortLabel: desc.shortLabel ?? "not enough", ink, image: desc.currencyIcon ?? null });
+                });
+                return;
+              }
               // In the button's ink and face (dark on the premium gold), its gem too.
-              priceTag("Price", { amount: cost, currency, affordable: can, size: "sm", shortLabel: desc.shortLabel ?? "not enough", ink: n > 1 ? hex("#1d1406") : role("ink"), image: desc.currencyIcon ?? null });
+              priceTag("Price", { amount: cost, currency, affordable: can, size: "sm", shortLabel: desc.shortLabel ?? "not enough", ink, image: desc.currencyIcon ?? null });
               // The rule between price and label in the label's own ink (a light line on the gold reads as a grey smear).
               kit.open("Sep", { width: px(1), height: px(u(18)), background: n > 1 ? paint(hex("#1d1406"), 0.45) : token("line") });
               kit.close();
@@ -252,8 +289,8 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
             }
           }
         };
-        if ((desc.single ?? 0) > 0) pull("Single", desc.singleLabel ?? "Wish ×1", 1, desc.single!);
-        if ((desc.multi ?? 0) > 0) pull("Multi", fill(desc.multiLabel ?? "Wish ×{n}", { n: multiN }), multiN, desc.multi!);
+        if ((desc.single ?? 0) > 0) pull("Single", desc.singleLabel ?? "Summon ×1", 1, desc.single!);
+        if ((desc.multi ?? 0) > 0) pull("Multi", fill(desc.multiLabel ?? "Summon ×{n}", { n: multiN }), multiN, desc.multi!);
       }
       kit.close();
     });
@@ -475,21 +512,18 @@ function reveal(it: Api.PullItem, idx: number, n: number, dt: number, W: number,
   // brighter the higher the tier, so the result is felt before it is read.
   const pipsN = rarityPips(it.rarity);
   kit.open("Stage", { width: px(artW), height: px(artH) });
-  const rayD = Math.round(artH * (pipsN >= 5 ? 2.3 : pipsN >= 4 ? 1.9 : 1.5));
+  // The light is one radial bloom centred on the card, about 1.6 times its height across and never wider than about
+  // 40 % of the screen, falling smoothly to nothing (no disc's edge, no wash over half the screen): the banner's scene
+  // reads round it.
+  const rayD = Math.round(Math.min(artH * (pipsN >= 5 ? 1.6 : pipsN >= 4 ? 1.45 : 1.3), W * 0.42));
   const centred = { start: Math.round((artW - rayD) / 2), top: Math.round((artH - rayD) / 2) };
-  // The light: added to the scene, strongest at the card and falling off smoothly to nothing (no disc's edge).
+  const g0 = pipsN >= 5 ? 0.62 : pipsN >= 4 ? 0.48 : 0.3;
   kit.open("Glow", { width: px(rayD), height: px(rayD), part: "Pull.glow", partClass: "badge" });
-  const g0 = pipsN >= 4 ? 0.62 : 0.4;
-  kit.setDraw({ shape: { kind: "ellipse" }, blend: "add", fills: [radial([[0, paint(ink, g0)], [0.2, paint(ink, g0 * 0.6)], [0.42, paint(ink, g0 * 0.24)], [0.66, paint(ink, g0 * 0.07)], [0.9, paint(ink, 0)]])] } as Api.DrawDesc);
+  kit.setDraw({ shape: { kind: "ellipse" }, blend: "add", fills: [radial([[0, paint(mix(ink, hex("#ffffff"), 0.25), g0)], [0.15, paint(ink, g0 * 0.72)], [0.3, paint(ink, g0 * 0.44)], [0.45, paint(ink, g0 * 0.24)], [0.6, paint(ink, g0 * 0.11)], [0.75, paint(ink, g0 * 0.04)], [0.9, paint(ink, g0 * 0.01)], [1, paint(ink, 0)]])] } as Api.DrawDesc);
   kit.close();
   over({ insets: centred, inert: true, overlaps: ["*"] });
   if (pipsN >= 3) {
-    // A second, wider bloom in the tier's light (soft, no rays), and motes drifting up through it, twinkling.
-    kit.open("Bloom", { width: px(rayD), height: px(rayD), part: "Pull.bloom", partClass: "badge" });
-    const b0 = pipsN >= 5 ? 0.34 : pipsN >= 4 ? 0.24 : 0.14;
-    kit.setDraw({ shape: { kind: "ellipse" }, blend: "add", fills: [radial([[0, paint(mix(ink, hex("#ffffff"), 0.3), b0)], [0.3, paint(ink, b0 * 0.5)], [0.65, paint(ink, b0 * 0.12)], [1, paint(ink, 0)]], 0.5, 0.5, 0.5, 0.5)] } as Api.DrawDesc);
-    kit.close();
-    over({ insets: centred, inert: true, overlaps: ["*"] });
+    // Motes drifting up through the bloom, twinkling.
     const moteInk = mix(ink, hex("#ffffff"), 0.35);
     const motes = pipsN >= 5 ? 12 : pipsN >= 4 ? 8 : 5;
     const t = still() ? 0 : dt / 60;
@@ -498,8 +532,8 @@ function reveal(it: Api.PullItem, idx: number, n: number, dt: number, W: number,
       // Each rises slowly from below the card and fades in and out over its climb, then starts again.
       const period = 5 + 3 * h;
       const life = ((t / period + h) % 1 + 1) % 1;
-      const x = artW / 2 + (h - 0.5) * rayD * 0.7 + Math.sin((t + m) * 0.6) * u(10);
-      const y = artH * (1.05 - 1.2 * life);
+      const x = artW / 2 + (h - 0.5) * rayD * 0.62 + Math.sin((t + m) * 0.6) * u(10);
+      const y = artH / 2 + rayD * (0.38 - 0.76 * life);
       const sz = Math.round(u(3 + ((m * 13) % 4)));
       const a = still() ? 0.6 : Math.sin(life * Math.PI);
       kit.open(kit.idi("Mote", m), { width: px(sz), height: px(sz), part: "Pull.mote", partClass: "badge" });
@@ -509,7 +543,7 @@ function reveal(it: Api.PullItem, idx: number, n: number, dt: number, W: number,
     }
   }
   kit.open("Card", { width: px(artW), height: px(artH), part: "Pull.card", partClass: "card" });
-  kit.setDraw({ shape: { kind: "rect", radii: [u(14), u(14), u(14), u(14)] }, fills: [{ kind: "solid", color: token("well") }], strokes: [line(3, paint(ink)), line(1, token("shadow", 0.7), "outside")], effects: [glow(u(28), paint(ink, 0.7), 4), shadow(u(10), u(24), 0.6)] });
+  kit.setDraw({ shape: { kind: "rect", radii: [u(14), u(14), u(14), u(14)] }, fills: [{ kind: "solid", color: token("well") }], strokes: [line(3, paint(ink)), line(1, token("shadow", 0.7), "outside")], effects: [glow(u(16), paint(ink, 0.5), 0), shadow(u(10), u(24), 0.6)] });
   artSlot("Art", "Pull.art", { texture: it.image ?? null, kind: "character", rarity: it.rarity, width: px(artW - 6), height: px(artH - 6), radius: u(12) });
   over({ insets: { start: 3, top: 3 }, inert: true });
   if (it.isNew) {
@@ -520,10 +554,23 @@ function reveal(it: Api.PullItem, idx: number, n: number, dt: number, W: number,
   kit.close();
   kit.close();
   kit.column("Words", { gap: u(8), cross: landscape ? "start" : "center", width: landscape ? px(Math.min(u(440), Math.round(W * 0.36))) : grow() }, () => {
-    if (it.kind) text("Kind", it.kind.toLocaleUpperCase(), { step: st(14), color: mix(ink, role("ink"), 0.4), font: "display", nowrap: true });
+    // The tier in a word as well as in colour and stars (Legendary · Character): the word in the tier's ink, bold.
+    const tierWord = it.rarityLabel || (it.rarity && it.rarity !== "none" ? it.rarity[0]!.toUpperCase() + it.rarity.slice(1) : "");
+    if (tierWord || it.kind) {
+      kit.row("Kind", { gap: u(8), cross: "center" }, () => {
+        if (tierWord) kit.richText("Tier", `[b]${tierWord.toLocaleUpperCase().replace(/\[/g, "[[")}[/b]`, { step: st(15), color: paint(mix(ink, hex("#ffffff"), 0.15)), font: "display", nowrap: true } as Api.RichTextDesc);
+        if (tierWord && it.kind) text("Dot", "·", { step: st(15), color: "inkMuted", nowrap: true });
+        if (it.kind) text("Text", it.kind.toLocaleUpperCase(), { step: st(14), color: "inkMuted", font: "display", nowrap: true });
+      });
+    }
     // The name leads: larger than the stars under it.
     text("Name", it.name ?? "", { step: phone ? "displaySm" : "displayLg", heading: true, font: "display", maxLines: 2, width: grow(), align: landscape ? "start" : "center" });
     kit.props({ enter: { values: [{ prop: "opacity", value: 0 }, { prop: "x", value: u(-40) }], transition: spring("panel"), delayMs: 180 } });
+    // The banner's grammar: the name large, the epithet a caption under it in the tier's ink, the stars under that.
+    if (it.title) {
+      text("Title", it.title, { step: st(phone ? 16 : 22), font: "display", color: mix(ink, hex("#ffffff"), 0.2), maxLines: 2, width: grow(), align: landscape ? "start" : "center" });
+      kit.props({ enter: { values: [{ prop: "opacity", value: 0 }, { prop: "x", value: u(-30) }], transition: spring("panel"), delayMs: 240 } });
+    }
     const ns = it.stars ?? 0;
     stars("Stars", ns, u(phone ? 16 : 22), ink, ns, Array.from({ length: ns }, (_, k) => 320 + k * 110));
     // Legendary and above: a burst from the stars as the last one lands (from the stars, not the art, so its rays
@@ -532,7 +579,7 @@ function reveal(it: Api.PullItem, idx: number, n: number, dt: number, W: number,
     if (it.extra) text("Extra", it.extra, { step: st(15), color: "highlight", maxLines: 2, width: grow(), align: landscape ? "start" : "center" });
   });
   kit.close();
-  kit.semantics({ role: "status", name: [it.name, `${it.stars ?? 0} stars`, it.isNew ? "new" : "", it.extra ?? ""].filter(Boolean).join(", ") });
+  kit.semantics({ role: "status", name: [it.name, it.title ?? "", `${it.stars ?? 0} stars`, it.isNew ? "new" : "", it.extra ?? ""].filter(Boolean).join(", ") });
   // How far along, and how to go on.
   kit.row("Hint", { gap: u(10), cross: "center", part: "Pull.hint", partClass: "badge", padding: xy(u(16), u(8)) }, () => {
     // A pill on the stage, no outline: a hint, not a control.
@@ -578,7 +625,7 @@ function summary(items: readonly Api.PullItem[], desc: Api.PullSequenceDesc, W: 
   order.forEach((it, k) => {
     const ink = tierInk(it.rarity);
     kit.open(it.key ?? kit.idi("Tile", k), { width: px(tw), direction: portrait ? "row" : "column", gap: u(8), padding: xy(u(8), u(8)), cross: portrait ? "center" : "stretch", part: `Pull.tile${flags(`rarity=${it.rarity ?? "none"}`, it.isNew && "new")}`, partClass: "card" });
-    kit.setDraw({ shape: { kind: "rect", radii: [u(10), u(10), u(10), u(10)] }, fills: [{ kind: "gradient", type: "linear", from: { x: 0.5, y: 1 }, to: { x: 0.5, y: 0 }, stops: [{ offset: 0, color: paint(mix(role("panelRaised"), ink, 0.4)) }, { offset: 1, color: paint(mix(role("panel"), ink, 0.08)) }] }], strokes: [line(2, paint(ink)), line(1, token("shadow", 0.6), "outside")], ...(rarityPips(it.rarity) >= 5 ? { effects: [glow(u(12), paint(ink, 0.6), 1)] } : {}) });
+    kit.setDraw({ shape: { kind: "rect", radii: [u(10), u(10), u(10), u(10)] }, fills: [{ kind: "gradient", type: "linear", from: { x: 0.5, y: 1 }, to: { x: 0.5, y: 0 }, stops: [{ offset: 0, color: paint(mix(role("panelRaised"), ink, 0.24)) }, { offset: 0.4, color: paint(mix(role("panelRaised"), ink, 0.04)) }, { offset: 1, color: token("panel") }] }], strokes: [line(1, token("shadow", 0.6), "outside")], ...(rarityPips(it.rarity) >= 5 ? { effects: [glow(u(12), paint(ink, 0.6), 1)] } : {}) });
     artSlot("Art", "Pull.art", { texture: it.image ?? null, kind: "character", rarity: it.rarity, width: portrait ? px(artH) : grow(), height: px(artH), radius: u(6) });
     kit.column("Text", { width: grow(), gap: 2, cross: portrait ? "start" : "center" }, () => {
       text("Name", it.name ?? "", { step: st(14), font: "display", maxLines: 2, width: grow(), align: portrait ? "start" : "center" });

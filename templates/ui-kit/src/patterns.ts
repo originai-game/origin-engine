@@ -44,7 +44,9 @@ function screen(id: string, title: string, sub: string, build: () => void, hints
   // On a phone the body runs to the screen's foot, so its fade ends at the edge rather than over a band of scene.
   const bottom = small ? 0 : Math.round(72 * Math.max(1, t.textScale ?? 1));
   og.ui.anchor(id, { anchor: "topLeft", margin: 0, width: px(vp.width - sa.left - sa.right), height: px(vp.height - sa.top - (small ? 0 : sa.bottom)), direction: "column", gap: t.space.md, padding: { left: small ? t.space.sm : t.space.xl, top, right: small ? t.space.sm : t.space.xl, bottom } }, () => {
-    og.ui.column("Header", { width: grow, gap: 2, padding: { left: 0, top: 0, right: galleryW, bottom: 0 } }, () => {
+    // At least the Gallery button's height on a phone, so the body starts under it (a pass's header ran up into it).
+    const galleryH = small ? og.ui.bounds("Back")?.height ?? 0 : 0;
+    og.ui.column("Header", { width: grow, height: { kind: "fit", min: galleryH }, gap: 2, align: "center", padding: { left: 0, top: 0, right: galleryW, bottom: 0 } }, () => {
       og.ui.label("Title", title, { step: small ? "xl2" : big ? "xl6" : "xl4", heading: true, font: "display", nowrap: true, ellipsis: true, width: grow });
       if (sub) og.ui.label("Sub", sub, { step: small ? "sm" : big ? "xl" : "base", color: { token: "inkMuted" }, width: grow, maxLines: 2 });
     });
@@ -460,14 +462,14 @@ const REWARD_ART: Record<string, ArtName> = {
   thunder: "boons/thunder-strike", vigor: "boons/titan-heart", crown: "boons/crown-of-ages", frost: "boons/frost", gold: "boons/gold", blade: "boons/flame-blade",
 };
 const OFFER0: RewardOption[] = [
-  { key: "thunder", title: "Thunder Strike", kind: "Boon of Zeus", text: "Your attacks call down [b]bolts[/b] for [color=highlight]+30[/color] damage.", rarity: "rare", icon: "bolt" },
-  { key: "vigor", title: "Heart of the Titan", kind: "Boon of Ares", text: "[b]+25 %[/b] Max Health; heal [color=success]10[/color] on each room cleared.", rarity: "epic", tag: "Upgrade", tagKind: "upgrade", icon: "heart" },
+  { key: "thunder", title: "Thunder Strike", kind: "Gift of the Storm Warden", text: "Your attacks call down [b]bolts[/b] for [color=highlight]+30[/color] damage.", rarity: "rare", icon: "bolt" },
+  { key: "vigor", title: "Ironbloom Heart", kind: "Gift of the Iron Matron", text: "[b]+25 %[/b] Max Health; heal [color=success]10[/color] on each room cleared.", rarity: "epic", tag: "Upgrade", tagKind: "upgrade", icon: "heart" },
   { key: "crown", title: "Crown of Ages", kind: "Relic", text: "Start each fight with [b]2[/b] extra [color=info]Energy[/color].", rarity: "legendary", tag: "New", tagKind: "new", locked: true, lockedHint: "Clear the second boss to unlock", icon: "crown" },
 ];
 const OFFER1: RewardOption[] = [
-  { key: "frost", title: "Frostbite", kind: "Boon of Demeter", text: "Hits [color=info]chill[/color] foes, slowing them by [b]20 %[/b].", rarity: "uncommon", icon: "shield" },
-  { key: "gold", title: "Midas Touch", kind: "Boon of Hermes", text: "Gain [b]40[/b] gold now and [b]5[/b] per kill.", rarity: "rare", icon: "coin" },
-  { key: "blade", title: "Stygian Edge", kind: "Weapon", text: "Your dash leaves a blade that deals [b]18[/b] damage.", rarity: "epic", tag: "Lv 3 → 4", icon: "sword" },
+  { key: "frost", title: "Frostbite", kind: "Gift of the Frost Weaver", text: "Hits [color=info]chill[/color] foes, slowing them by [b]20 %[/b].", rarity: "uncommon", icon: "shield" },
+  { key: "gold", title: "Gilded Touch", kind: "Gift of the Coin Saint", text: "Gain [b]40[/b] gold now and [b]5[/b] per kill.", rarity: "rare", icon: "coin" },
+  { key: "blade", title: "Duskward Edge", kind: "Weapon", text: "Your dash leaves a blade that deals [b]18[/b] damage.", rarity: "epic", tag: "Lv 3 → 4", icon: "sword" },
 ];
 
 /** A reward with its art and its words in the active locale. */
@@ -493,7 +495,7 @@ const r = {
   taken: "",
 };
 
-/** The reward after a fight (Hades' boons, Slay the Spire's card reward): three rewards, Reroll, Banish and Skip. */
+/** The reward after a fight (a roguelite's blessings, a deckbuilder's card reward): three rewards, Reroll, Banish and Skip. */
 export function rewardsScreen(): void {
   const vp = og.ui.frameViewport();
   const two = r.picks > 1;
@@ -546,18 +548,18 @@ export function rewardsScreen(): void {
 
 // ── gacha: a banner and its pull ────────────────────────────────────────
 
-const PULL1: PullItem[] = [{ key: "aria", name: "Aria, Tidecaller", kind: "Character", stars: 5, rarity: "legendary", isNew: true }];
+const PULL1: PullItem[] = [{ key: "aria", name: "Aria", kind: "Character", stars: 5, rarity: "legendary", isNew: true }];
 const PULL10: PullItem[] = [
-  { key: "p0", name: "Favonius Sword", kind: "Weapon", stars: 4, rarity: "epic" },
-  { key: "p1", name: "Iron Sting", kind: "Weapon", stars: 3, rarity: "rare" },
-  { key: "p2", name: "Slingshot", kind: "Weapon", stars: 3, rarity: "rare" },
-  { key: "p3", name: "Kael, the Ember", kind: "Character", stars: 4, rarity: "epic", extra: "+2" },
-  { key: "p4", name: "Debate Club", kind: "Weapon", stars: 3, rarity: "rare" },
-  { key: "p5", name: "Aria, Tidecaller", kind: "Character", stars: 5, rarity: "legendary", isNew: true },
-  { key: "p6", name: "Black Tassel", kind: "Weapon", stars: 3, rarity: "rare" },
-  { key: "p7", name: "Thrilling Tales", kind: "Weapon", stars: 3, rarity: "rare" },
-  { key: "p8", name: "Mira of the Grove", kind: "Character", stars: 4, rarity: "epic", isNew: true },
-  { key: "p9", name: "Cool Steel", kind: "Weapon", stars: 3, rarity: "rare" },
+  { key: "p0", name: "Warden's Blade", kind: "Weapon", stars: 4, rarity: "epic" },
+  { key: "p1", name: "Ember Fang", kind: "Weapon", stars: 3, rarity: "rare" },
+  { key: "p2", name: "Hunter's Sling", kind: "Weapon", stars: 3, rarity: "rare" },
+  { key: "p3", name: "Kael", kind: "Character", stars: 4, rarity: "epic", extra: "+2" },
+  { key: "p4", name: "Oak Cudgel", kind: "Weapon", stars: 3, rarity: "rare" },
+  { key: "p5", name: "Aria", kind: "Character", stars: 5, rarity: "legendary", isNew: true },
+  { key: "p6", name: "Night Spear", kind: "Weapon", stars: 3, rarity: "rare" },
+  { key: "p7", name: "Tome of Tides", kind: "Weapon", stars: 3, rarity: "rare" },
+  { key: "p8", name: "Mira", kind: "Character", stars: 4, rarity: "epic", isNew: true },
+  { key: "p9", name: "Plain Steel", kind: "Weapon", stars: 3, rarity: "rare" },
 ];
 
 const g = {
@@ -571,21 +573,32 @@ const g = {
 
 const BANNER_THUMB: Record<string, ArtName> = { event: "portraits/aria", weapon: "items/ashbringer", std: "portraits/kael" };
 /** Which unit each pull of the fixtures draws. */
-const PULL_UNIT: Record<string, string> = { aria: "aria", p0: "favonius", p1: "sting", p2: "slingshot", p3: "kael", p4: "club", p5: "aria", p6: "tassel", p7: "tales", p8: "mira", p9: "steel" };
+const PULL_UNIT: Record<string, string> = { aria: "aria", p0: "warden", p1: "fang", p2: "sling", p3: "kael", p4: "cudgel", p5: "aria", p6: "spear", p7: "tome", p8: "mira", p9: "steel" };
 const PULL_ART: Record<string, ArtName> = {
   aria: "portraits/aria", kael: "portraits/kael", mira: "portraits/mira",
-  favonius: "items/iron-sword", sting: "boons/flame-blade", slingshot: "items/hunters-bow", club: "items/arcane-staff",
-  tassel: "items/elven-bow", tales: "boons/rune-shield", steel: "items/knight-helm",
+  warden: "items/iron-sword", fang: "boons/flame-blade", sling: "items/hunters-bow", cudgel: "items/arcane-staff",
+  spear: "items/elven-bow", tome: "boons/rune-shield", steel: "items/knight-helm",
 };
-/** A pulled unit's art and words: its kind and the extra line in the active locale; a character keeps its name, a weapon is named in the locale. */
+/** The characters, by name (a proper noun in every locale); their epithets are the locale's. */
+const CHARACTER_NAME: Record<string, string> = { aria: "Aria", kael: "Kael", mira: "Mira" };
+/** A pulled unit's art and words: its kind and the extra line in the active locale; a character keeps its name with
+ * its epithet as the banner says it, a weapon is named in the locale. */
 function pullWords(x: PullItem): PullItem {
   const u = PULL_UNIT[x.key ?? ""] ?? "";
-  return { ...x, name: L(`gacha.unit.${u}`), kind: L(x.kind === "Character" ? "gacha.kind.character" : "gacha.kind.weapon"), ...(x.extra ? { extra: L("gacha.extra.starglitter", { n: 2 }) } : {}), image: art(PULL_ART[u]) };
+  const who = CHARACTER_NAME[u];
+  return {
+    ...x,
+    ...(who ? { name: who, title: L(`gacha.title.${u}`) } : { name: L(`gacha.unit.${u}`) }),
+    kind: L(x.kind === "Character" ? "gacha.kind.character" : "gacha.kind.weapon"),
+    rarityLabel: L(`gacha.rarity.${x.rarity ?? "rare"}`),
+    ...(x.extra ? { extra: L("gacha.extra.shards", { n: 2 }) } : {}),
+    image: art(PULL_ART[u]),
+  };
 }
 const BANNERS = [
-  { key: "event", name: "Moonlit Tide", title: "Moonlit Tide", subtitle: "Event wish · Character", endsIn: 3 * 86400 + 5 * 3600, fresh: false },
-  { key: "weapon", name: "Epitome", title: "Epitome Invocation", subtitle: "Event wish · Weapon", endsIn: 50 * 60, fresh: true },
-  { key: "std", name: "Wanderlust", title: "Wanderlust Invocation", subtitle: "Standard wish", endsIn: null, fresh: false },
+  { key: "event", name: "Moonlit Tide", title: "Moonlit Tide", subtitle: "Limited banner · Character", endsIn: 3 * 86400 + 5 * 3600, fresh: false },
+  { key: "weapon", name: "Forged Oath", title: "Forged Oath", subtitle: "Limited banner · Weapon", endsIn: 50 * 60, fresh: true },
+  { key: "std", name: "Open Road", title: "Open Road", subtitle: "Standard banner", endsIn: null, fresh: false },
 ] as const;
 
 /** A gacha banner and its pull: the pull is the game's (it spends the purse and draws the results) and the reveal the pattern's. */
@@ -625,8 +638,8 @@ export function gachaScreen(backdrop = 0): void {
       currency: "gem",
       currencyIcon: art("boons/crystal"),
       pityLabel: L("gacha.pity"),
-      singleLabel: L("gacha.wish1"),
-      multiLabel: L("gacha.wishN"),
+      singleLabel: L("gacha.summon1"),
+      multiLabel: L("gacha.summonN"),
       shortLabel: L("gacha.short"),
       detailsLabel: L("gacha.details"),
       historyLabel: L("gacha.history"),
@@ -644,7 +657,7 @@ export function gachaScreen(backdrop = 0): void {
     }
     if (res.short) g.log = `short ${res.short}`;
   });
-  const seq = og.ui.pullSequence("Pull", { token: g.items.length > 0 ? g.token : 0, items: g.items.map(pullWords), againPrice: g.items.length * 160, affordable: g.balance >= g.items.length * 160, againLabel: L("gacha.wishN"), doneLabel: L("gacha.done"), skipLabel: L("gacha.skip"), tapLabel: L("gacha.tap"), continueLabel: L("gacha.continue"), newLabel: L("gacha.new"), currencyIcon: art("boons/crystal"), backdrop: b.key === "event" ? art("scenes/gacha-moonlit-tide") : null });
+  const seq = og.ui.pullSequence("Pull", { token: g.items.length > 0 ? g.token : 0, items: g.items.map(pullWords), againPrice: g.items.length * 160, affordable: g.balance >= g.items.length * 160, againLabel: L("gacha.summonN"), doneLabel: L("gacha.done"), skipLabel: L("gacha.skip"), tapLabel: L("gacha.tap"), continueLabel: L("gacha.continue"), newLabel: L("gacha.new"), currencyIcon: art("boons/crystal"), backdrop: b.key === "event" ? art("scenes/gacha-moonlit-tide") : null });
   if (seq.again && g.balance >= g.items.length * 160) {
     g.balance -= g.items.length * 160;
     g.token += 1;
@@ -895,6 +908,8 @@ export function sagaScreen(): void {
       starsLabel: L("saga.stars"),
       lockedLabel: L("gear.locked"),
       currentLabel: L("saga.here"),
+      // On a phone Play is docked at the thumb: the path stops above it (last tick's place of the button and its margin).
+      footInset: small ? Math.round((og.ui.bounds("SagaPlay")?.height ?? 64) + 2 * t.space.md) : 0,
     });
     if (r.picked) s.picked = r.picked;
   });

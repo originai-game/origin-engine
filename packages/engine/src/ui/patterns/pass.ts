@@ -8,7 +8,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  artSlot, btn, clamp, countdown, fitStep, recallPath, rememberPath, rtl, fill, frame, glow, grouped, grow, hex, keyHash, kit, line, mix, over, paint, px, radial, rarityColor, role,
+  artSlot, btn, clamp, countdown, pct, fitStep, recallPath, rememberPath, rtl, fill, frame, glow, grouped, grow, hex, keyHash, kit, line, mix, over, paint, px, radial, rarityColor, role,
   scrimFill, shadow, spring, st, still, surface, symbol, text, token, u, vgrad, vstate, xy, isPhone, type Mut, type Rgba, type TimeWords,
 } from "./core.ts";
 import { STAR_GOLD } from "./saga.ts";
@@ -79,7 +79,8 @@ function header(desc: Api.BattlePassDesc, out: Mut<Api.BattlePassResult>, phone:
   kit.open("Xp", { direction: "row", width: grow(), gap: u(10), cross: "center", part: "Pass.xp", partClass: "badge" });
   kit.open("Track", { direction: "row", width: small ? grow() : px(u(280)), height: px(u(10)), radius: 999, part: "Pass.xpTrack", partClass: "badge" });
   kit.setDraw({ shape: { kind: "rect", radii: [999, 999, 999, 999] }, fills: [{ kind: "solid", color: token("shadow", 0.7) }], strokes: [line(1, paint(hex("#ffffff"), 0.12))] });
-  kit.open("Fill", { width: px(Math.max(u(10), Math.round(u(small ? 160 : 280) * frac))), height: grow(), part: "Pass.xpFill", partClass: "badge" });
+  // A share of the track (a phone's track grows with the header, so a fixed basis overfilled it).
+  kit.open("Fill", { width: pct(Math.max(0.04, frac)), height: grow(), part: "Pass.xpFill", partClass: "badge" });
   kit.setDraw({ shape: { kind: "rect", radii: [999, 999, 999, 999] }, fills: [vgrad([[0, paint(mix(STAR_GOLD, hex("#ffffff"), 0.35))], [1, paint(STAR_GOLD)]])], effects: [glow(u(6), paint(STAR_GOLD, 0.5), 0)] });
   kit.props({ motion: spring("ui") });
   kit.close();
@@ -91,7 +92,9 @@ function header(desc: Api.BattlePassDesc, out: Mut<Api.BattlePassResult>, phone:
   kit.close();
 
   // The actions: Claim all while anything is ready, Unlock Premium until the track is owned.
-  kit.open("Actions", { direction: "row", gap: u(10), cross: "center", width: small ? grow() : null, align: small ? "stretch" : "end", part: "Pass.actions", partClass: "badge" });
+  // A phone in portrait (and large text) stacks them, each the width of the header: side by side they ran off the screen.
+  const stackActs = frame().viewport.breakpoint === "phonePortrait" || (theme.textScale ?? 1) > 1.4;
+  kit.open("Actions", { direction: stackActs ? "column" : "row", gap: u(10), cross: stackActs ? "stretch" : "center", width: small ? grow() : null, align: small ? "stretch" : "end", part: "Pass.actions", partClass: "badge" });
   if (ready.length > 0) {
     if (btn("ClaimAll", fill(desc.claimAllLabel ?? "Claim all ({n})", { n: ready.length }), { variant: "primary", size: small ? "md" : "lg", part: "Pass.claimAll", width: small ? grow() : null }).clicked) {
       out.claimed = ready;
@@ -216,9 +219,10 @@ export function battlePass(id: string, desc: Api.BattlePassDesc): Api.BattlePass
     kit.open(`L${lv}`, { direction: vertical ? "row" : "column", width: tierW, height: tierH, gap: 0, cross: "center", part: `Pass.tier${current ? "[current]" : reached ? "[reached]" : ""}${big ? "[milestone]" : ""}`, partClass: "badge" });
     kit.props({ states: [{ name: "progress", states: [vstate("ahead"), vstate("reached"), vstate("current")], transitions: [] }], state: [{ group: "progress", state: progress }] });
     if (current) {
-      // The player's tier stands out of the track: a lit glass column behind it.
+      // The player's tier stands out of the track: a soft pool of the level's gold behind it on a darker ground (a pale
+      // pane with a white rim read as a grey slab over the scene).
       kit.open("Here", { width: grow(), height: grow(), part: "Pass.here", partClass: "badge" });
-      kit.setDraw({ shape: { kind: "rect", radii: [t.panel, t.panel, t.panel, t.panel] }, fills: [vgrad([[0, paint(hex("#ffffff"), 0.12)], [1, paint(hex("#ffffff"), 0.04)]])], strokes: [line(1, paint(hex("#ffffff"), 0.18))] });
+      kit.setDraw({ shape: { kind: "rect", radii: [t.panel, t.panel, t.panel, t.panel] }, fills: [{ kind: "solid", color: token("shadow", 0.32) }, radial([[0, paint(STAR_GOLD, 0.16)], [0.55, paint(STAR_GOLD, 0.05)], [1, paint(STAR_GOLD, 0)]], 0.5, 0.5, 0.7, 0.7)], strokes: [] });
       kit.close();
       over({ insets: { start: u(2), top: 0, end: u(2), bottom: 0 }, inert: true });
     }
@@ -262,14 +266,21 @@ export function battlePass(id: string, desc: Api.BattlePassDesc): Api.BattlePass
         },
       }, () => {
         const radii: [number, number, number, number] = [t.small, t.small, t.small, t.small];
-        // Ready: a glow in the star gold that breathes, and a lit rim; else the tier's rim.
+        // Ready: a glow in the star gold that breathes, and a lit rim; else no rim, the tier rising from the foot.
         kit.setDraw({
           shape: { kind: "rect", radii },
           fills: [vgrad([[0, paint(mix(role("panel"), rim, 0.3))], [1, paint(mix(role("panel"), rim, 0.12))]])],
-          strokes: [line(state === "ready" ? 2.5 : 1.5, paint(state === "ready" ? mix(STAR_GOLD, hex("#ffffff"), 0.3) : mix(rim, role("panel"), state === "ahead" ? 0.45 : 0.1)))],
+          strokes: state === "ready" ? [line(2.5, paint(mix(STAR_GOLD, hex("#ffffff"), 0.3)))] : [line(1, token("shadow", 0.55), "outside")],
           effects: [shadow(u(3), u(8), 0.45), ...(state === "ready" ? [glow(u(10 + 8 * breathe), paint(STAR_GOLD, 0.35 + 0.35 * breathe), 0)] : [])],
         });
         artSlot("Art", "Pass.art", { texture: rw.image ?? null, kind: "item", rarity: rw.rarity, width: grow(), height: grow(), radius: radii }, () => {
+          // The tier as light rising from the tile's foot, behind the words (no box round the tile).
+          if (tier) {
+            kit.open("Tier", { width: grow(), height: pct(0.42), part: "Pass.tier", partClass: "badge" });
+            kit.setDraw({ shape: { kind: "rect", radii: [0, 0, radii[2], radii[3]] }, fills: [vgrad([[0, paint(tier, 0)], [0.45, paint(tier, 0.22)], [1, paint(tier, 0.6)]])] });
+            kit.close();
+            over({ insets: { start: 0, end: 0, bottom: 0 }, inert: true });
+          }
           if (state === "claimed" || state === "locked" || state === "ahead") {
             kit.open("Dim", { width: grow(), height: grow(), part: "Pass.dim", partClass: "badge" });
             kit.setDraw({ shape: { kind: "rect", radii }, fills: [{ kind: "solid", color: paint(mix(role("well"), role("inkMuted"), 0.15), state === "ahead" ? 0.2 : 0.62) }] });

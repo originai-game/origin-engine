@@ -33,7 +33,7 @@ export default playtest({
     t.ok(ui(run, "rewards-banish.json").some((e) => e.id === "Banish" && e.role === "button" && e.states.includes("selected")), "Banish armed is said selected");
     t.ok(ui(run, "rewards-selected.json").filter((e) => e.role === "checkbox" && e.states.includes("checked")).length === 2, "two rewards selected for a two-pick choice");
     t.ok(ui(run, "gacha-short.json").some((e) => e.role === "button" && e.name.includes("not enough")), "a ten-pull the purse cannot pay is said not enough");
-    t.ok(ui(run, "gacha-reveal.json").some((e) => e.role === "status" && e.name.startsWith("Aria, Tidecaller, 5 stars, new")), "the fifth tap reached the 5★ reveal");
+    t.ok(ui(run, "gacha-reveal.json").some((e) => e.role === "status" && e.name.startsWith("Aria, Tidecaller of the Moon, 5 stars, new")), "the fifth tap reached the 5★ reveal");
     t.ok(ui(run, "gacha-summary.json").filter((e) => e.role === "listitem").length === 10, "Skip went to a summary of all ten");
     t.ok(ui(run, "cards-refused.json").some((e) => e.id === "Note" && e.text === "Behind a taunt"), "a card let go on the taunted foe is refused there and the foe says why");
     t.ok(ui(run, "cards-unaffordable.json").some((e) => e.role === "option" && e.name.startsWith("Bash") && e.states.includes("disabled")), "with one energy, Bash (2) is said disabled");

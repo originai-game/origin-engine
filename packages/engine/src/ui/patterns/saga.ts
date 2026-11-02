@@ -236,6 +236,8 @@ export function sagaMap(id: string, desc: Api.SagaMapDesc): Api.SagaMapResult {
     kit.scrollIntoView(curPath, true);
     if (kit.bounds(curPath)) kit.remember("~s.shown", want);
   }
+  // The game's docked chrome at the foot: the view stops above it (the backdrop runs on behind it).
+  if ((desc.footInset ?? 0) > 0) kit.spacer("Foot", px(Math.round(desc.footInset!)));
   kit.close();
   const me = kit.lastPath();
   const box = kit.bounds(me);

@@ -804,12 +804,12 @@ export function btn(id: string, label: string, d: { variant?: BtnVariant; part?:
   const inkRole: Api.ThemeColor = v === "primary" || v === "danger" ? "onPrimary" : "ink";
   const ink = v === "premium" ? hex("#1d1406") : v === "primary" && !d.disabled && d.selected === undefined ? inkOn(accent()) : role(inkRole);
   // Glass: a dark pane the scene shows through with a bright rim, for the second action beside a primary or premium
-  // one (Wish ×1, Reroll, Banish): every secondary button at rest wears it, so the pair reads as one family.
+  // one (Summon ×1, Reroll, Banish): every secondary button at rest wears it, so the pair reads as one family.
   const accentRaised = v === "primary" && !d.disabled && d.selected === undefined;
   // A toggle not set (Banish unarmed) is glass too; set, it takes its selected fill.
   const glassy = v === "glass" || (v === "secondary" && !d.disabled && !d.selected);
   const base = glassy ? { ...mix(role("panel"), role("shadow"), 0.45), a: 0.74 } : accentRaised ? opaque(accent()) : fillRole ? opaque(fillRole === "control" ? mix(role("panelRaised"), role("ink"), 0.12) : role(fillRole)) : null;
-  // A call to action stands out of its screen (End turn, Wish, Done): a raised face over a ledge, lifting under the
+  // A call to action stands out of its screen (End turn, Summon, Done): a raised face over a ledge, lifting under the
   // pointer and sinking when pressed. Disabled it lies flat, which reads as inert.
   const raised = !!base && !d.disabled && ((d.selected === undefined && (v === "primary" || v === "premium" || v === "danger" || !!d.raised)) || glassy);
   const was = lastInteraction(id);

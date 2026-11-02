@@ -28716,8 +28716,8 @@ export interface CardHandResult {
 /**
  * A call to action's material.
  * - `"primary"`: The style's primary, lit from the top (End turn, Done, Play).
- * - `"premium"`: Gold: the purchase a screen leads with (Wish ×10).
- * - `"secondary"`: A raised neutral beside a primary or premium one (Wish ×1).
+ * - `"premium"`: Gold: the purchase a screen leads with (Summon ×10).
+ * - `"secondary"`: A raised neutral beside a primary or premium one (Summon ×1).
  * - `"danger"`: A destructive action, raised in the danger colour.
  */
 export type HeroTone = "primary" | "premium" | "secondary" | "danger";
@@ -28788,7 +28788,7 @@ export interface RewardOption {
    */
   readonly title?: string;
   /**
-   * Its kind or source over the title (Relic, Boon of Zeus, Weapon).
+   * Its kind or source over the title (Relic, Gift of the Storm Warden, Weapon).
    *
    * @default ""
    */
@@ -29061,7 +29061,7 @@ export interface GachaBannerDesc {
    */
   readonly title?: string;
   /**
-   * A line under it (Event Wish · Character).
+   * A line under it (Limited banner · Character).
    *
    * @default ""
    */
@@ -29162,13 +29162,13 @@ export interface GachaBannerDesc {
   /**
    * The one-pull button.
    *
-   * @default "Wish ×1"
+   * @default "Summon ×1"
    */
   readonly singleLabel?: string;
   /**
    * The ten-pull button ({n} is multiCount).
    *
-   * @default "Wish ×{n}"
+   * @default "Summon ×{n}"
    */
   readonly multiLabel?: string;
   /**
@@ -29275,11 +29275,23 @@ export interface PullItem {
    */
   readonly isNew?: boolean;
   /**
-   * What a duplicate turned into (+10 Starglitter); empty for none.
+   * What a duplicate turned into (+10 Star Shards); empty for none.
    *
    * @default ""
    */
   readonly extra?: string;
+  /**
+   * Its tier's word in the player's language (Legendary), set in the tier's ink before its kind on the reveal, so the tier is read in a word as well as in colour and stars; empty takes the tier's English name.
+   *
+   * @default ""
+   */
+  readonly rarityLabel?: string;
+  /**
+   * A character's epithet, a caption in its tier's ink under the name (the banner's grammar: the name large, the epithet under it); empty for none.
+   *
+   * @default ""
+   */
+  readonly title?: string;
 }
 
 /**
@@ -29523,6 +29535,13 @@ export interface SagaMapDesc {
    * @default "You are here"
    */
   readonly currentLabel?: string;
+  /**
+   * Room at the map's foot that the game's own chrome takes (a Play button docked at the thumb): the view of the path stops above it, so no level sits under the button, while the map's art runs on behind it; 0 is none.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly footInset?: number;
 }
 
 /** What the map did this tick. */
@@ -47882,7 +47901,7 @@ export declare namespace og {
      */
     function cardHand(id: string, desc?: CardHandDesc): CardHandResult;
     /**
-     * The one action a genre screen leads with (End turn, Wish, Play, Ready): a raised face lit from the top over a ledge of its own dark and a soft shadow on the scene, so it reads as a thing to press over any backdrop, beside the flat controls of og.ui.button. It lifts under the pointer and the focus and sinks when pressed; disabled it lies flat. A keycap after the label shows the action's binding on a desktop.
+     * The one action a genre screen leads with (End turn, Summon, Play, Ready): a raised face lit from the top over a ledge of its own dark and a soft shadow on the scene, so it reads as a thing to press over any backdrop, beside the flat controls of og.ui.button. It lifts under the pointer and the focus and sinks when pressed; disabled it lies flat. A keycap after the label shows the action's binding on a desktop.
      * Parts: Pattern.button[primary|premium|secondary|danger][sm|md|lg], Pattern.buttonFace, Pattern.keycap. States: group interaction (normal, hover, pressed, focused, disabled). Motion: the ui token's lift and press. Sounds: the style's press. Accessibility: a button named by its label (and key). Probe id: <id>.
      *
      * @param id Its id.
@@ -47908,7 +47927,7 @@ export declare namespace og {
      */
     function gachaBanner(id: string, desc: GachaBannerDesc, art: UiBuild): GachaBannerResult;
     /**
-     * A gacha pull's reveal (Genshin Impact's wish, Honkai: Star Rail's warp, a card pack opening), over everything as a modal layer: first the charge, a light that gathers and tints toward the pull's highest tier (blue, purple, gold) so the tier is felt before it is shown; then each result large, its art, name, kind and stars landing one by one in its tier's colour, a burst for legendary and above, a New tag or what a duplicate became; then every result in a summary grid, the highest tiers first in reading order. A press, a tap or confirm goes on; Skip (and Back during the charge or reveal) goes to the summary; Done or Back there closes it. Under reduced motion every step appears at once.
+     * A gacha pull's reveal (Genshin Impact's wish, Honkai: Star Rail's warp, a card pack opening), over everything as a modal layer: first the charge, a light that gathers and tints toward the pull's highest tier (blue, purple, gold) so the tier is felt before it is shown; then each result large, its art, name, epithet, kind and stars landing one by one in its tier's colour, a burst for legendary and above, a New tag or what a duplicate became; then every result in a summary grid, the highest tiers first in reading order. A press, a tap or confirm goes on; Skip (and Back during the charge or reveal) goes to the summary; Done or Back there closes it. Under reduced motion every step appears at once.
      * Parts: Pull.layer, Pull.charge[rarity=<tier>], Pull.reveal[rarity=<tier>], Pull.art, Pull.name, Pull.kind, Pull.stars, Pull.star, Pull.new, Pull.extra, Pull.summary, Pull.tile[rarity=<tier>][new], Pull.skip, Pull.again[short], Pull.done, Pull.hint. Slots: each result's art (art kind character or item). States: on the layer, group phase (charge, reveal, summary); on each star, group lit (off, on). Motion: the charge grows and brightens on the emphasis spring; a revealed card enters scaled and turned, its stars land with a stagger; summary tiles deal in with a stagger. Sounds: open at the charge, reward on each reveal (success for legendary and above), select on each tile, close on Done. Accessibility: a dialog named for the pull; each result announced as it is revealed (a status: name, stars, new); the summary a list. Probe ids: <id>Layer/Panel/Stage (a press goes on), …/Stage/Content/Charge, …/Content/Reveal, …/Content/Summary/Grid/Tiles/<key> (the grid scrolls when it outgrows the screen), …/Summary/Bar/Again, …/Summary/Bar/Done, …/Stage/Bar/Skip.
      *
      * @param id Its id.

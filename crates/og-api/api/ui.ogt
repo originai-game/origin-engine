@@ -4375,8 +4375,8 @@ module ui {
   enum HeroTone {
     doc "A call to action's material."
     variant primary "The style's primary, lit from the top (End turn, Done, Play)."
-    variant premium "Gold: the purchase a screen leads with (Wish ×10)."
-    variant secondary "A raised neutral beside a primary or premium one (Wish ×1)."
+    variant premium "Gold: the purchase a screen leads with (Summon ×10)."
+    variant secondary "A raised neutral beside a primary or premium one (Summon ×1)."
     variant danger "A destructive action, raised in the danger colour."
   }
 
@@ -4391,7 +4391,7 @@ module ui {
   }
 
   fn heroButton {
-    doc "The one action a genre screen leads with (End turn, Wish, Play, Ready): a raised face lit from the top over a ledge of its own dark and a soft shadow on the scene, so it reads as a thing to press over any backdrop, beside the flat controls of og.ui.button. It lifts under the pointer and the focus and sinks when pressed; disabled it lies flat. A keycap after the label shows the action's binding on a desktop."
+    doc "The one action a genre screen leads with (End turn, Summon, Play, Ready): a raised face lit from the top over a ledge of its own dark and a soft shadow on the scene, so it reads as a thing to press over any backdrop, beside the flat controls of og.ui.button. It lifts under the pointer and the focus and sinks when pressed; disabled it lies flat. A keycap after the label shows the action's binding on a desktop."
     doc "Parts: Pattern.button[primary|premium|secondary|danger][sm|md|lg], Pattern.buttonFace, Pattern.keycap. States: group interaction (normal, hover, pressed, focused, disabled). Motion: the ui token's lift and press. Sounds: the style's press. Accessibility: a button named by its label (and key). Probe id: <id>."
     host false
     param id String "Its id."
@@ -4414,7 +4414,7 @@ module ui {
     desc true
     field key String "Its key, stable while offered: its element id, so its probe path is <id>/Options/<key>."
     field title String "What it is (Thunder Strike, +20 % Max Health)."
-    field kind String "Its kind or source over the title (Relic, Boon of Zeus, Weapon)."
+    field kind String "Its kind or source over the title (Relic, Gift of the Storm Warden, Weapon)."
     field text String "What it does, as rich-text markup (og.ui.richText): [b], [color=…] and [icon=…] are honoured."
     field image Option.Texture "Its art (art kind item or card); without it a placeholder in its tier's colour."
     field icon String "An icon of the style's set for the placeholder."
@@ -4510,7 +4510,7 @@ module ui {
     field banners List.GachaBannerTab "The banners; one or none draws no switcher."
     field current String "The key of the banner shown."
     field title String "The banner's title over the art."
-    field subtitle String "A line under it (Event Wish · Character)."
+    field subtitle String "A line under it (Limited banner · Character)."
     field image Option.Texture "The key art (art kind banner), across the frame around its focal point under the art builder's layer; null draws the style's placeholder: a figure on a gradient of two hues, lit at the focal point."
     field focal Option.Vector2 "The art's point kept in view, fractions from the top start; null is the featured unit's place on the art side (0.68, 0.36 on a desktop; 0.5, 0.3 in portrait)."
     field topInset f32 "Room kept clear over the words and tabs for the game's own chrome on the art (a back button, a menu): the art and a short top shade run under it. Laid out to the screen's edges, the banner also keeps its words and controls inside the safe area while its art fills the notch and status bar." {
@@ -4538,10 +4538,10 @@ module ui {
       default 10
     }
     field singleLabel String "The one-pull button." {
-      default "Wish ×1"
+      default "Summon ×1"
     }
     field multiLabel String "The ten-pull button ({n} is multiCount)." {
-      default "Wish ×{n}"
+      default "Summon ×{n}"
     }
     field shortLabel String "Said with a price the balance cannot pay." {
       default "not enough"
@@ -4592,7 +4592,9 @@ module ui {
     field rarity Rarity "Its tier: the reveal's colour (the highest tier of a pull tints its charge), its glow, its burst from legendary."
     field image Option.Texture "Its art (art kind character or item)."
     field isNew bool "Drawn for the first time: a New tag."
-    field extra String "What a duplicate turned into (+10 Starglitter); empty for none."
+    field extra String "What a duplicate turned into (+10 Star Shards); empty for none."
+    field rarityLabel String "Its tier's word in the player's language (Legendary), set in the tier's ink before its kind on the reveal, so the tier is read in a word as well as in colour and stars; empty takes the tier's English name."
+    field title String "A character's epithet, a caption in its tier's ink under the name (the banner's grammar: the name large, the epithet under it); empty for none."
   }
 
   struct PullSequenceDesc {
@@ -4647,7 +4649,7 @@ module ui {
   }
 
   fn pullSequence {
-    doc "A gacha pull's reveal (Genshin Impact's wish, Honkai: Star Rail's warp, a card pack opening), over everything as a modal layer: first the charge, a light that gathers and tints toward the pull's highest tier (blue, purple, gold) so the tier is felt before it is shown; then each result large, its art, name, kind and stars landing one by one in its tier's colour, a burst for legendary and above, a New tag or what a duplicate became; then every result in a summary grid, the highest tiers first in reading order. A press, a tap or confirm goes on; Skip (and Back during the charge or reveal) goes to the summary; Done or Back there closes it. Under reduced motion every step appears at once."
+    doc "A gacha pull's reveal (Genshin Impact's wish, Honkai: Star Rail's warp, a card pack opening), over everything as a modal layer: first the charge, a light that gathers and tints toward the pull's highest tier (blue, purple, gold) so the tier is felt before it is shown; then each result large, its art, name, epithet, kind and stars landing one by one in its tier's colour, a burst for legendary and above, a New tag or what a duplicate became; then every result in a summary grid, the highest tiers first in reading order. A press, a tap or confirm goes on; Skip (and Back during the charge or reveal) goes to the summary; Done or Back there closes it. Under reduced motion every step appears at once."
     doc "Parts: Pull.layer, Pull.charge[rarity=<tier>], Pull.reveal[rarity=<tier>], Pull.art, Pull.name, Pull.kind, Pull.stars, Pull.star, Pull.new, Pull.extra, Pull.summary, Pull.tile[rarity=<tier>][new], Pull.skip, Pull.again[short], Pull.done, Pull.hint. Slots: each result's art (art kind character or item). States: on the layer, group phase (charge, reveal, summary); on each star, group lit (off, on). Motion: the charge grows and brightens on the emphasis spring; a revealed card enters scaled and turned, its stars land with a stagger; summary tiles deal in with a stagger. Sounds: open at the charge, reward on each reveal (success for legendary and above), select on each tile, close on Done. Accessibility: a dialog named for the pull; each result announced as it is revealed (a status: name, stars, new); the summary a list. Probe ids: <id>Layer/Panel/Stage (a press goes on), …/Stage/Content/Charge, …/Content/Reveal, …/Content/Summary/Grid/Tiles/<key> (the grid scrolls when it outgrows the screen), …/Summary/Bar/Again, …/Summary/Bar/Done, …/Stage/Bar/Skip."
     host false
     param id String "Its id."
@@ -4703,6 +4705,9 @@ module ui {
     }
     field currentLabel String "What the current level adds." {
       default "You are here"
+    }
+    field footInset f32 "Room at the map's foot that the game's own chrome takes (a Play button docked at the thumb): the view of the path stops above it, so no level sits under the button, while the map's art runs on behind it; 0 is none." {
+      unit cssPx
     }
   }
 

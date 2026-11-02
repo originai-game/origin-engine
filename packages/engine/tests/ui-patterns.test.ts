@@ -516,7 +516,7 @@ test("cardHand: right to left, the hand fans from the right", () => {
 
 const REWARDS: Api.RewardOption[] = [
   { key: "strike", title: "Thunder Strike", kind: "Attack", text: "Deal [b]12[/b] damage.", rarity: "rare" },
-  { key: "vigor", title: "Vigor", kind: "Boon", text: "+20 % Max Health.", rarity: "epic", tag: "New" },
+  { key: "vigor", title: "Vigor", kind: "Blessing", text: "+20 % Max Health.", rarity: "epic", tag: "New" },
   { key: "crown", title: "Crown", kind: "Relic", text: "Gain a crown.", rarity: "legendary", locked: true, lockedHint: "Reach floor 3" },
 ];
 
@@ -681,7 +681,7 @@ test("gachaBanner: tabs and the bumpers switch banners, wrapping at the ends", (
 const PULL: Api.PullItem[] = [
   { key: "p1", name: "Iron Sword", stars: 3, rarity: "common" },
   { key: "p2", name: "Aria", stars: 5, rarity: "legendary", isNew: true },
-  { key: "p3", name: "Bow", stars: 4, rarity: "epic", extra: "+2 Starglitter" },
+  { key: "p3", name: "Bow", stars: 4, rarity: "epic", extra: "+2 Star Shards" },
 ];
 
 function pull() {

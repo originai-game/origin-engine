@@ -112,3 +112,20 @@ test("og.i18n: format functions follow the active locale, else the requested one
   og.i18n.setLocale(w, "en-US");
   expect(og.i18n.formatTime(w, t, { style: "medium" })).toBe("3:05:09\u202fPM");
 });
+
+test("the kit's words echo no shipped game: its tables and pattern screens name invented patrons, banners and items", () => {
+  // Wrong: a roguelite's gods and boons, a gacha's wish, its banners and its weapons, in English or as they ship
+  // localized (祈願, 祈愿, 기원, أمنية are that gacha's wish).
+  const echoes = [
+    "Zeus", "Ares", "Demeter", "Hermes", "Boon", "boon", "Chamber cleared", "Heart of the Titan", "Stygian", "Midas",
+    "Wish", "wish", "Epitome", "Wanderlust", "Starglitter", "Favonius", "Debate Club", "Black Tassel", "Thrilling Tales", "Cool Steel",
+    "祈願", "祈愿", "기원", "أمنية", "西风", "西風", "스타글리터", "スターグリッター", "星辉", "ゼウス", "제우스", "宙斯", "زيوس",
+  ];
+  const files = [...["en", "ja", "ko", "zh-CN", "ar"].map((l) => join(kit, "assets", "strings", `${l}.ogt`)), join(kit, "src", "patterns.ts")];
+  const found = files.flatMap((f) => {
+    // Asset paths (boons/…) are file names, not words a player reads.
+    const body = readFileSync(f, "utf8").replace(/boons\//g, "");
+    return echoes.filter((w) => body.includes(w)).map((w) => `${f.split("/").pop()}: ${w}`);
+  });
+  expect(found).toEqual([]);
+});
