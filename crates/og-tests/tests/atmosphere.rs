@@ -594,6 +594,13 @@ fn physical_sky_scenes_match_their_references_and_read_as_sky() {
         dusk_top[2] >= dusk_top[0],
         "and blue overhead: {dusk_top:?}"
     );
+    // The land keeps a little of the twilight sky's light (the art
+    // director's 3–6 % of noon), not the tone curve's black.
+    let dusk_land = mean(&twilight, 200, 640, 1080, 720);
+    assert!(
+        dusk_land > 6.0,
+        "the twilight land is not black: {dusk_land}"
+    );
     let hazy = frame(&sky_scene("sky-physical-hazy"));
     let h = rgb(&hazy, 560, 0, 720, 40);
     let blueness = |c: [f32; 3]| (c[2] - c[0]) / luma(c).max(1.0);
@@ -616,11 +623,13 @@ fn cloud_scenes_match_their_references_and_read_as_clouds() {
     }
     let clear = frame(&sky_scene("sky-physical-noon"));
     let fair = frame(&sky_scene("clouds-fair"));
+    // The upper sky above the colonnade (y 0–320): flat-based cumulus sit
+    // in its lower part, at 15–35° up, not overhead.
     assert!(
-        contrast(&fair, 120, 0, 1160, 160) > 2.0 * contrast(&clear, 120, 0, 1160, 160),
+        contrast(&fair, 120, 0, 1160, 320) > 2.0 * contrast(&clear, 120, 0, 1160, 320),
         "cumulus break up the sky: {} vs {}",
-        contrast(&fair, 120, 0, 1160, 160),
-        contrast(&clear, 120, 0, 1160, 160)
+        contrast(&fair, 120, 0, 1160, 320),
+        contrast(&clear, 120, 0, 1160, 320)
     );
     let overcast = frame(&sky_scene("clouds-overcast"));
     let top = px(&overcast, 640, 30);

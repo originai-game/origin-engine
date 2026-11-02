@@ -390,7 +390,7 @@ pub fn add_lightning(
     let bolt_light = 2.0 * flash;
     // The cloud over the root glows from inside (the clouds' own flash).
     if let Some(c) = scene.clouds.as_mut() {
-        c.flash = Vec3::new(at.x, top + 150.0, at.z).extend(40.0 * flash);
+        c.flash = Vec3::new(at.x, top + 150.0, at.z).extend(100.0 * flash);
     }
     let own = scene.light.intensity * scene.light.color.max_element();
     if bolt_light > own {

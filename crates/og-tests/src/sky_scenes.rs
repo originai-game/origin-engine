@@ -275,7 +275,7 @@ pub fn sky_scene(name: &str) -> RenderScene {
         "clouds-fair" => clouded(
             physical_sky_scene(11.0, earth, false),
             Clouds {
-                coverage: 0.4,
+                coverage: 0.5,
                 ..Clouds::default()
             },
         ),

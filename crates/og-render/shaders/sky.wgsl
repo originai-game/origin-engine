@@ -53,16 +53,20 @@ fn sky_viewer_km() -> f32 {
 
 // A strongly coloured highlight rolled off keeping its hue: past `knee`
 // its largest channel approaches twice the knee, every channel scaled
-// alike, and only as far as the colour is saturated (a pale sky is left as
-// it is). The tone curve maps each channel alone, so an orange sunset glow
-// bright enough to push its green up the shoulder read yellow-white; held
-// below it, it stays orange.
-fn sky_rolloff(c: vec3<f32>, knee: f32) -> vec3<f32> {
+// alike, and the weaker channels pushed down by `chroma` (the tone curve
+// maps each channel alone and lifts the weaker ones of a bright colour
+// relative to the strongest, so a sunset aureole of hue (1, 0.53, 0.14)
+// read pale yellow; pre-darkened, it reads that hue), all only as far as
+// the colour is saturated (a pale sky is left as it is).
+fn sky_rolloff(c: vec3<f32>, knee: f32, chroma: f32) -> vec3<f32> {
   let m = max(max(c.r, c.g), c.b);
   if (m <= knee) { return c; }
   let saturation = 1.0 - min(min(c.r, c.g), c.b) / m;
+  let w = smoothstep(0.3, 0.7, saturation);
   let rolled = knee + (m - knee) / (1.0 + (m - knee) / knee);
-  return c * mix(1.0, rolled / m, smoothstep(0.5, 0.9, saturation));
+  let over = smoothstep(knee, 3.0 * knee, m);
+  let hue = pow(c / m, vec3<f32>(1.0 + chroma * w * over));
+  return mix(c, hue * rolled, w);
 }
 
 // The look drawn by the physical sky (sky_scatter.wgsl): the scattered
@@ -73,7 +77,7 @@ fn sky_physical_look(d: vec3<f32>) -> vec3<f32> {
   let h0 = sky_viewer_km();
   let up = clamp(d.y, -1.0, 1.0);
   let light = frame.sky_glow.yzw;
-  let sky = sky_rolloff((physical_sky(d, sun, h0, 24u) * light + frame.sky_scatter[5].rgb) * frame.sky_horizon.w, 0.6);
+  let sky = sky_rolloff((physical_sky(d, sun, h0, 24u) * light + frame.sky_scatter[5].rgb) * frame.sky_horizon.w, 0.6, 0.8);
   // The disc is the sunlight through the air, the same transmittance as
   // the sky's (deep orange at sunset), replacing the glow under it a little
   // brighter than that glow, rolled off as the glow is (at a higher knee:
@@ -90,7 +94,7 @@ fn sky_physical_look(d: vec3<f32>) -> vec3<f32> {
   // How far from the centre to the limb, 0 to 1 (by the disc's outer cosine).
   let edge = clamp(sqrt(max(1.0 - cos_d, 0.0) / max(1.0 - frame.sky_sun.x, 1e-7)), 0.0, 1.0);
   let limb = 0.75 + 0.25 * sqrt(max(1.0 - edge * edge, 0.0));
-  var color = mix(sky, sky_rolloff(light * hue * max(strength, glow), 0.9) * limb, disc);
+  var color = mix(sky, sky_rolloff(light * hue * max(strength, glow), 0.9, 0.3) * limb, disc);
   let moon = moon_at(d, up);
   if (frame.sky_ground.w > 0.0 && up > 0.0) {
     let g = d * 220.0;
@@ -221,8 +225,8 @@ fn clouds_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f3
       let n = textureSampleLevel(cloud_noise, cloud_sampler, vec3<f32>(uv.x * 0.35, uv.y, 0.37), 0.0);
       let wisp = cloud_remap(n.r * 0.7 + n.g * 0.3, 1.0 - c[3].x, 1.0 - c[3].x * 0.3) * (0.5 + 0.5 * n.b);
       let fade = exp(-t / 120000.0);
-      let lit = cloud_sun(p, radius, to_light, light, physical) * (0.25 + phase * 1.5) * 0.35 + sky_top * 0.8;
-      color = mix(color, lit * c[2].rgb, clamp(wisp, 0.0, 1.0) * 0.85 * fade);
+      let lit = cloud_sun(p, radius, to_light, light, physical) * (0.25 + phase * 1.5) * 0.2 + sky_top * 0.8;
+      color = mix(color, lit * c[2].rgb, clamp(wisp, 0.0, 1.0) * 0.6 * fade);
     }
   }
 
@@ -288,11 +292,12 @@ fn clouds_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f3
       }
       if (flash.w > 0.0) {
         // The flash lights the cloud from inside about the root: falling
-        // off over half a kilometre and dimmed by the cloud between,
-        // scattered evenly (it has bounced many times), no streaks.
+        // off over two kilometres (a strike lights the deck for miles) and
+        // dimmed by the cloud between, scattered evenly (it has bounced many
+        // times), no streaks.
         let to = flash_at - p;
         let dist2 = dot(to, to);
-        sun += vec3<f32>(0.75, 0.82, 1.0) * flash.w * 0.0795775 * exp(-sqrt(dist2) * c[0].y * 0.05) / (1.0 + dist2 / 250000.0);
+        sun += vec3<f32>(0.75, 0.82, 1.0) * flash.w * 0.0795775 * exp(-sqrt(dist2) * c[0].y * 0.01) / (1.0 + dist2 / 4.0e6);
       }
       let hf = clamp((h - c[0].z) / c[0].w, 0.0, 1.0);
       var ambient = mix(sky_side * 0.6, sky_top, hf) * (0.35 + 0.65 * hf);

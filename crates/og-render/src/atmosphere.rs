@@ -306,7 +306,13 @@ impl DayNightLook {
             self.light_color /= k;
             self.light_intensity = 3.0 * k;
         }
-        self.ambient = 1.0;
+        // The image-based light at full strength by day, and up to four
+        // times it as the sun sets: the eye's adaptation to the shade (as
+        // an exposure opened for the land, not the sky), so land under a
+        // twilight sky keeps a deep blue-grey instead of falling into the
+        // tone curve's toe (its scene light is already a few percent of
+        // noon's; the curve maps that to black).
+        self.ambient = 1.0 + 3.0 * (1.0 - ramp(-0.1, 0.15, self.sun_direction.y));
         // The fog's colour: the light the air scatters towards a point, the
         // sky's mean over the upper hemisphere (cosine-weighted, three
         // bearings at three heights), not its bright horizon.
