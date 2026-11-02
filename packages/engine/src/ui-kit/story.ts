@@ -3,7 +3,7 @@
 
 import type * as Api from "@origingame/engine";
 import { kit } from "./bind.ts";
-import { all, frame, grow, pct, px, token } from "./util.ts";
+import { all, frame, grow, px, token } from "./util.ts";
 
 export function cutscene(id: string, desc: Api.CutsceneDesc = {}): Api.CutsceneResult {
   const { t, phone } = frame();
@@ -14,25 +14,28 @@ export function cutscene(id: string, desc: Api.CutsceneDesc = {}): Api.CutsceneR
   if (!open) return out;
   kit.setNavigation(true);
   const letterbox = desc.letterbox ?? true;
+  const vp = frame().viewport;
+  const sa = vp.safeArea;
+  // Each bar a tenth of the picture, run out to the screen's edge (under a notch and the home indicator, as a film's
+  // bars are), and the box a step above the bottom one, never over it.
+  const barH = letterbox ? Math.round((vp.height - sa.top - sa.bottom) * 0.1) : 0;
   if (letterbox) {
     // Cinematic bars are black in every style: not a token, which a light
     // style (kestrel's paper) would turn into cream panels, and not the
-    // anchor's own fill, which takes the style's panel frame (glass in the
-    // default style), but a plain box inside it.
-    for (const [name, anchor] of [["Top", "top"], ["Bottom", "bottom"]] as const) {
-      kit.anchor(`${id}.${name}`, { anchor, margin: 0, width: grow(), height: pct(0.1) }, () => {
+    // anchor's style frame (glass in the default style): the anchor draws
+    // plain, with a plain black box inside it.
+    for (const [name, anchor, y, h] of [["Top", "topLeft", -sa.top, barH + sa.top], ["Bottom", "bottomLeft", sa.bottom, barH + sa.bottom]] as const) {
+      kit.anchor(`${id}.${name}`, { anchor, margin: 0, offsetX: -sa.left, offsetY: y, width: px(vp.width), height: px(h) }, () => {
+        kit.setDraw({ shape: { kind: "rect" }, fills: [{ kind: "solid", color: { color: { r: 0, g: 0, b: 0 } } }], strokes: [], effects: [] } as Api.DrawDesc);
         kit.open("Bar", { width: grow(), height: grow(), background: { color: { r: 0, g: 0, b: 0 } } });
         kit.close();
       });
     }
   }
   const line = lines[index]!;
-  // Over the letterbox, its bottom a small gap above the bottom bar (the anchor stands a gutter above the safe
-  // area): straddling the bar's edge read as a box slipping off the screen.
-  const vp = frame().viewport;
-  // The bar's top as it stood last tick (it reaches into the safe area), else a tenth of the height.
-  const barTop = kit.bounds(`${id}.Bottom`)?.y ?? vp.height * 0.9;
-  const lift = letterbox ? Math.max(0, vp.height - vp.safeArea.bottom - t.gutter - (barTop - t.sm)) : 0;
+  // The box's bottom a step above the bottom bar's top (the anchor stands a gutter above the safe area): straddling
+  // the bar's edge read as a box slipping off the screen.
+  const lift = letterbox ? Math.max(0, barH + t.md - t.gutter) : 0;
   kit.anchor(`${id}.box`, { anchor: "bottom", width: phone ? grow() : px(Math.min(760, vp.width - 64)), offsetY: -lift }, () => {
     const r = kit.dialogue("Dialogue", { speaker: line.speaker ?? "", text: line.text ?? "", portraitIcon: line.portrait ?? "" });
     if (r.advanced) {
@@ -41,7 +44,7 @@ export function cutscene(id: string, desc: Api.CutsceneDesc = {}): Api.CutsceneR
     }
   });
   if (desc.skippable ?? true) {
-    kit.anchor(`${id}.skip`, { anchor: "topRight", offsetY: letterbox ? frame().viewport.height * 0.1 : 0 }, () => {
+    kit.anchor(`${id}.skip`, { anchor: "topRight", offsetY: letterbox ? barH + t.sm : 0 }, () => {
       if ((kit.button("Skip", desc.skipLabel ?? "Skip", { variant: "quiet", size: "small" }) as Api.Response).clicked) out.skipped = true;
     });
     if (kit.back()) out.skipped = true;
