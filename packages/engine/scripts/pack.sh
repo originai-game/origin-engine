@@ -19,7 +19,7 @@
 # exists), then @origingame/engine itself (the TypeScript API, the runtime,
 # the web hosts in dist/web, dist/web-publish and dist/web-publish-2d (each
 # publish directory with its profile's lanes variant), the player shell, the Basis
-# transcoder, the knowledge in knowledge/; no native code: npm installs the platform package through
+# transcoder, the knowledge in knowledge/, the built-in UI styles in styles/; no native code: npm installs the platform package through
 # optionalDependencies). Prints each tarball with its size and sha256.
 set -eu
 here="$(cd "$(dirname "$0")/.." && pwd)"
@@ -99,6 +99,17 @@ for f in $(bun -e 'console.log(require(process.argv[1]).files.join(" "))' "$know
   cp -R "$knowledge/$f" "$here/knowledge/$f"
 done
 rm -rf "$here/knowledge/scripts/sync-rules.ts" "$here/knowledge/scaffold/template/node_modules"
+# The built-in UI styles (templates/styles: each pack's style.ogt, atlases at
+# every density, icons, fonts, licences; not its art/ sources) ship as files
+# in styles/, read by og's cook (og-cook's look_styles.rs) rather than
+# compiled into og; the copy is ignored by Git.
+rm -rf "$here/styles"
+for pack in "$here"/../../templates/styles/*/; do
+  name=$(basename "$pack")
+  mkdir -p "$here/styles/$name"
+  find "$pack" -maxdepth 1 -type f ! -name '.*' -exec cp {} "$here/styles/$name/" \;
+done
+[ -f "$here/styles/fantasy/style.ogt" ] || { echo "pack: templates/styles was not copied into styles/" >&2; exit 1; }
 # The main package: its files list leaves native/ and the test pages out.
 (cd "$here" && bun pm pack --destination "$out" --quiet --ignore-scripts >/dev/null)
 rm -rf "$out/stage"

@@ -85,10 +85,18 @@ struct Piece {
     at: (u32, u32),
 }
 
+/// What `og style list` and `eject` say when the engine's built-in styles
+/// are not on disk.
+const NO_STYLES: &str = "the engine's built-in styles were not found: no styles/ in the @origingame/engine package (reinstall it) and no templates/styles in a checkout; OG_STYLES_DIR names another directory";
+
 pub fn run(args: &[&str]) -> ExitCode {
     match args {
         ["check", rest @ ..] => crate::style_check::run(rest),
         ["list"] => {
+            if og_cook::cook::look::styles_dir().is_none() {
+                eprintln!("og style list: {NO_STYLES}");
+                return ExitCode::FAILURE;
+            }
             for slug in og_cook::cook::look::style_slugs() {
                 let about = ABOUT
                     .iter()
@@ -404,6 +412,9 @@ fn eject(args: &[&str]) -> Result<(), String> {
         [slug, name] => (*slug, *name),
         _ => return Err(usage.into()),
     };
+    if og_cook::cook::look::styles_dir().is_none() {
+        return Err(NO_STYLES.into());
+    }
     let slugs = og_cook::cook::look::style_slugs();
     if !slugs.contains(&slug) {
         return Err(format!(
@@ -430,10 +441,10 @@ fn eject(args: &[&str]) -> Result<(), String> {
     let mut files: Vec<(&str, &[u8])> =
         og_cook::cook::look::style_files(&format!("{prefix}style.ogt"));
     files.extend(
-        og_cook::cook::look::STYLE_LICENCES
+        og_cook::cook::look::style_licences()
             .iter()
-            .filter(|(id, _)| id.starts_with(&prefix))
-            .copied(),
+            .filter(|f| f.id().starts_with(&prefix))
+            .map(og_cook::cook::look::StyleFile::pair),
     );
     files.sort();
     let rel_dir = format!("assets/styles/{name}");

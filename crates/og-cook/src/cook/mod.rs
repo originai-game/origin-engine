@@ -25,7 +25,6 @@ pub mod ktx2_source;
 mod lightmap;
 pub mod look;
 mod look_assets;
-mod look_licences;
 mod look_styles;
 mod model;
 pub mod model_text;

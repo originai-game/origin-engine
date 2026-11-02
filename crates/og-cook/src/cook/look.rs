@@ -24,8 +24,7 @@
 //!   the looks built on it.
 
 pub use super::look_assets::{BUILTINS, PRESETS};
-pub use super::look_licences::STYLE_LICENCES;
-pub use super::look_styles::STYLES;
+pub use super::look_styles::{StyleFile, style_licences, styles, styles_dir};
 use super::{CookError, Source};
 use crate::format::{self, BlobKind};
 use crate::look::{LookFile, MAX_EXTENDS, hex_to_linear};
@@ -35,9 +34,9 @@ use std::path::Path;
 
 /// The built-in styles' slugs.
 pub fn style_slugs() -> Vec<&'static str> {
-    let mut out: Vec<&'static str> = STYLES
+    let mut out: Vec<&'static str> = styles()
         .iter()
-        .filter_map(|(id, _)| id.strip_prefix("@styles/")?.strip_suffix("/style.ogt"))
+        .filter_map(|f| f.id().strip_prefix("@styles/")?.strip_suffix("/style.ogt"))
         .collect();
     out.sort();
     out
@@ -62,8 +61,13 @@ pub fn resolve_style(name: &str, own: &dyn Fn(&str) -> bool) -> Result<String, S
         return Ok(mine);
     }
     let builtin = format!("@styles/{name}/style.ogt");
-    if STYLES.iter().any(|(id, _)| *id == builtin) {
+    if styles().iter().any(|f| f.id() == builtin) {
         return Ok(builtin);
+    }
+    if styles_dir().is_none() {
+        return Err(format!(
+            "ui \"{name}\": neither assets/{mine} nor a built-in style: the engine's built-in styles were not found (no styles/ in the @origingame/engine package; OG_STYLES_DIR names another directory)"
+        ));
     }
     Err(format!(
         "ui \"{name}\": neither assets/{mine} nor a built-in style ({})",
@@ -80,10 +84,10 @@ pub fn style_files(id: &str) -> Vec<(&'static str, &'static [u8])> {
     else {
         return Vec::new();
     };
-    STYLES
+    styles()
         .iter()
-        .filter(|(f, _)| f.starts_with(dir))
-        .copied()
+        .filter(|f| f.id().starts_with(dir))
+        .map(StyleFile::pair)
         .collect()
 }
 
@@ -96,9 +100,13 @@ pub fn companion_files(style_text: &str) -> Vec<(&'static str, &'static [u8])> {
     let mut out: Vec<(&'static str, &'static [u8])> = Vec::new();
     for r in file.fonts[4..].iter().flatten() {
         let settings = format!("{r}.ogt");
-        for f in STYLES.iter().filter(|(f, _)| *f == r || *f == settings) {
-            if !out.contains(f) {
-                out.push(*f);
+        for f in styles()
+            .iter()
+            .filter(|f| f.id() == r || f.id() == settings)
+        {
+            let f = f.pair();
+            if !out.contains(&f) {
+                out.push(f);
             }
         }
     }
@@ -118,9 +126,13 @@ pub fn shared_files(style_text: &str) -> Vec<(&'static str, &'static [u8])> {
     let mut out: Vec<(&'static str, &'static [u8])> = Vec::new();
     for r in file.fonts[..4].iter().flatten().chain(icons) {
         let settings = format!("{r}.ogt");
-        for f in STYLES.iter().filter(|(f, _)| *f == r || *f == settings) {
-            if !out.contains(f) {
-                out.push(*f);
+        for f in styles()
+            .iter()
+            .filter(|f| f.id() == r || f.id() == settings)
+        {
+            let f = f.pair();
+            if !out.contains(&f) {
+                out.push(f);
             }
         }
     }

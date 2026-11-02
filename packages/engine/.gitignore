@@ -3,3 +3,5 @@ dist/
 node_modules/
 # Copied from packages/knowledge at pack (scripts/pack.sh).
 knowledge/
+# Copied from templates/styles at pack (scripts/pack.sh).
+styles/

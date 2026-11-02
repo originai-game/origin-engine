@@ -1,14 +1,14 @@
 use super::*;
 
 /// `assets/`, from a source's path and its path under it.
-/// The atlas bytes a style names: a built-in style's from the cook itself,
+/// The atlas bytes a style names: a built-in style's from the engine's styles,
 /// a game's from its assets.
 pub(super) fn style_atlas(id: &str, root: &Path) -> Option<Vec<u8>> {
     if id.starts_with('@') {
-        look::STYLES
+        look::styles()
             .iter()
-            .find(|(f, _)| *f == id)
-            .map(|(_, b)| b.to_vec())
+            .find(|f| f.id() == id)
+            .map(|f| f.bytes().to_vec())
     } else {
         std::fs::read(root.join(id)).ok()
     }

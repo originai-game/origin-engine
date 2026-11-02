@@ -319,11 +319,11 @@ fn fixed_layouts(root: &Path, bundle: &Bundle) -> Vec<(String, bool)> {
         .iter()
         .filter(|a| a.kind == "rig2d" || a.kind == "style")
     {
-        let text = match og_cook::cook::look::STYLES
+        let text = match og_cook::cook::look::styles()
             .iter()
-            .find(|(id, _)| *id == a.source)
+            .find(|f| f.id() == a.source)
         {
-            Some((_, bytes)) => String::from_utf8_lossy(bytes).to_string(),
+            Some(f) => String::from_utf8_lossy(f.bytes()).to_string(),
             None => {
                 std::fs::read_to_string(root.join("assets").join(&a.source)).unwrap_or_default()
             }

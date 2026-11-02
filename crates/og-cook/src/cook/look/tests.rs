@@ -396,34 +396,53 @@ fn the_built_ins_are_the_template_assets() {
     assert_eq!(builtin("canvas/paper"), None);
 }
 
-/// Every file of a built-in style's directory is compiled in, as a
-/// cooked file or a licence, so `og style eject` writes the whole pack.
+/// A checkout reads its own packs from disk (nothing is compiled into
+/// `og`): a pack's cooked files, its densities included, are what a game
+/// naming it gets; its licences are `og style eject`'s only; its `art/`
+/// sources are neither.
 #[test]
-fn every_built_in_style_file_is_compiled_in() {
+fn a_built_in_style_is_its_packs_files_read_from_the_checkout() {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates/styles");
-    for slug in style_slugs() {
-        // Files only: a pack's `art/` sources are not built in.
-        let mut on_disk: Vec<String> = std::fs::read_dir(dir.join(slug))
-            .unwrap()
-            .filter(|e| e.as_ref().unwrap().file_type().unwrap().is_file())
-            .map(|e| {
-                format!(
-                    "@styles/{slug}/{}",
-                    e.unwrap().file_name().to_string_lossy()
-                )
-            })
-            .collect();
-        on_disk.sort();
-        let prefix = format!("@styles/{slug}/");
-        let mut ids: Vec<String> = STYLES
-            .iter()
-            .chain(STYLE_LICENCES)
-            .filter(|(id, _)| id.starts_with(&prefix))
-            .map(|(id, _)| id.to_string())
-            .collect();
-        ids.sort();
-        assert_eq!(ids, on_disk, "{slug}");
+    assert_eq!(
+        styles_dir().map(|d| d.canonicalize().unwrap()),
+        Some(dir.canonicalize().unwrap())
+    );
+    let ids: Vec<&str> = style_files("@styles/fantasy/style.ogt")
+        .into_iter()
+        .map(|(id, _)| id)
+        .collect();
+    for want in [
+        "style.ogt",
+        "atlas.png",
+        "atlas@2x.png",
+        "atlas@3x.png",
+        "Cinzel-Bold.ttf",
+    ] {
+        assert!(
+            ids.contains(&format!("@styles/fantasy/{want}").as_str()),
+            "{ids:?}"
+        );
     }
+    assert!(
+        !ids.iter()
+            .any(|id| id.contains("/art/") || id.ends_with(".md") || id.ends_with("OFL.txt")),
+        "{ids:?}"
+    );
+    let style = style_files("@styles/fantasy/style.ogt")
+        .into_iter()
+        .find(|(id, _)| *id == "@styles/fantasy/style.ogt")
+        .unwrap()
+        .1;
+    assert_eq!(style, std::fs::read(dir.join("fantasy/style.ogt")).unwrap());
+    let licences: Vec<&str> = style_licences().iter().map(|f| f.id()).collect();
+    assert!(
+        licences.contains(&"@styles/fantasy/LICENSES.md"),
+        "{licences:?}"
+    );
+    assert!(
+        licences.contains(&"@styles/fantasy/art-requests.json"),
+        "{licences:?}"
+    );
 }
 
 /// A built-in style's Chinese companions join the bundle of a game that
@@ -500,7 +519,11 @@ fn a_seed_styles_shared_fonts_and_icons_ride_with_the_game() {
 
 #[test]
 fn every_preset_checks_against_the_records_with_the_built_ins() {
-    let builtin_ids: Vec<&str> = BUILTINS.iter().chain(STYLES).map(|(id, _)| *id).collect();
+    let builtin_ids: Vec<&str> = BUILTINS
+        .iter()
+        .map(|(id, _)| *id)
+        .chain(styles().iter().map(StyleFile::id))
+        .collect();
     for (slug, _) in PRESETS {
         let root = project(&[("looks/x.ogt", &format!("{HEAD}extends \"{slug}\"\n"))]);
         let s = source(&root, "looks/x.ogt");

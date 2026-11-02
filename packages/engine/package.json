@@ -48,6 +48,7 @@
     "dist/web-publish-2d",
     "vendor",
     "knowledge",
+    "styles",
     "changelog.json"
   ],
   "engines": {

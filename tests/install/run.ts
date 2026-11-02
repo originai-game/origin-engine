@@ -21,6 +21,8 @@
 //      mount.ts --package into a stand-in origin-agent knowledge/ tree, then --check
 //   8. a project with an MP3 sound (fixtures/tone.mp3): og run cooks it, plays
 //      it (og.AudioPlayback's playhead at 0.5 s) and the mix is not silent
+//   9. a look naming the built-in fantasy style: og cook reads it from the
+//      package's styles/ and the bundle carries that pack only
 //
 // --container builds tests/install/Dockerfile (node 22, bun) and runs this
 // script inside it with --host-only, the tarballs mounted read-only. With
@@ -282,6 +284,21 @@ export default og.game({
     const rms = wavRms(join(heard, "tone.wav"));
     if (rms < 0.2) step.fail(`the mixer's last 0.5 s is near silent (RMS ${rms.toFixed(3)})`);
     log(`   tone.mp3: cursor ${playback.cursor} of ${playback.loopEnd} frames at 0.5 s, mix RMS ${rms.toFixed(3)}`);
+
+    // 9. A built-in style, read from the installed package's styles/ (og
+    // compiles none in): a look naming fantasy cooks that pack, its three
+    // densities, and no other pack.
+    step = new Step("9 a built-in UI style from the package's styles/");
+    if (!existsSync(join(enginePkg, "styles", "fantasy", "atlas@3x.png"))) step.fail(`${enginePkg} carries no styles/fantasy/atlas@3x.png`);
+    writeFileSync(join(demo, "assets", "looks", "fantasy-ui.ogt"), "type look\nversion 1\n---\nui \"fantasy\"\n");
+    og(step, demo, "cook", ".");
+    const cooked = readFileSync(join(demo, "cooked", ".cook.ogt"), "utf8");
+    for (const f of ["style.ogt", "atlas.png", "atlas@2x.png", "atlas@3x.png"]) {
+      if (!cooked.includes(`@styles/fantasy/${f}`)) step.fail(`the cook has no @styles/fantasy/${f}`);
+    }
+    const others = [...new Set([...cooked.matchAll(/@styles\/([a-z0-9-]+)\//g)].map(m => m[1]))].filter(p => p !== "fantasy");
+    if (others.length) step.fail(`a game naming fantasy cooked other packs too: ${others.join(", ")}`);
+    rmSync(join(demo, "assets", "looks", "fantasy-ui.ogt"));
 
     log(`PASS on ${PLATFORM}`);
     if (!KEEP) rmSync(work, { recursive: true, force: true });
