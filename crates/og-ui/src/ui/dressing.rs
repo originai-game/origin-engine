@@ -165,6 +165,23 @@ impl Ui {
                 self.ornament(o, Rect::new(x, y, w, h), fx, fy, alpha, clip, cmds);
             }
         }
+        // A crest and the edge ornaments scale with their part: never past
+        // the size they were authored at (the art's own resolution), and
+        // down so each takes at most a third of the edge it sits on.
+        if let Some(o) = art.crest.filter(|_| frame.crest) {
+            let k = (rect.width / (3.0 * o.w)).min(1.0);
+            let (w, h, d) = (o.w * k, o.h * k, o.offset * k);
+            let at = Rect::new(rect.x + (rect.width - w) / 2.0, rect.y - d, w, h);
+            self.ornament(o, at, false, false, alpha, clip, cmds);
+        }
+        if let Some(o) = art.edge.filter(|_| frame.edges) {
+            let k = (rect.height / (3.0 * o.h)).min(1.0);
+            let (w, h, d) = (o.w * k, o.h * k, o.offset * k);
+            let y = rect.y + (rect.height - h) / 2.0;
+            for (x, fx) in [(rect.x - d, false), (rect.right() + d - w, true)] {
+                self.ornament(o, Rect::new(x, y, w, h), fx, false, alpha, clip, cmds);
+            }
+        }
     }
 
     /// An ornament in `rect`, mirrored across x and or y.

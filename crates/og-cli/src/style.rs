@@ -812,7 +812,7 @@ fn style_text(
                     placed = true;
                 }
             }
-            "corner" | "divider" | "flourish" | "tile" => {
+            "corner" | "divider" | "flourish" | "crest" | "edge" | "tile" => {
                 match pieces.iter().find(|p| p.name == key && p.insets.is_none()) {
                     Some(p) => {
                         let rest: Vec<&str> = t.split_whitespace().skip(5).collect();
@@ -901,7 +901,7 @@ fn style_text_v2(
                     None => block.entries.insert(0, e),
                 }
             }
-            (None, key @ ("corner" | "divider" | "flourish" | "tile")) => {
+            (None, key @ ("corner" | "divider" | "flourish" | "crest" | "edge" | "tile")) => {
                 for e in body.entries.iter_mut().filter(|e| e.key == key) {
                     let rest: Vec<Value> = e.values.iter().skip(4).cloned().collect();
                     e.values = region(p);

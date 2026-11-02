@@ -630,7 +630,7 @@ pub fn upgrade_style(text: &str) -> Result<String, String> {
     }
     out.entries.extend(token_blocks);
     for k in [
-        "ramp", "fonts", "icons", "soft", "corner", "divider", "flourish",
+        "ramp", "fonts", "icons", "soft", "corner", "divider", "flourish", "crest", "edge",
     ] {
         copy(&mut out, k);
     }

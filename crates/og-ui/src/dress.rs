@@ -25,7 +25,8 @@
 //!
 //! - [`DressFrame`]: what version 1 could already say of a part, typed
 //!   (the nine-slice and its tone, the shadow, glow and glass, corner
-//!   ornaments and the tile, the shape, and a button's press and hover).
+//!   ornaments, the crest and edge ornaments and the tile, the shape, and
+//!   a button's press and hover).
 //!   The twelve version 1 parts ([`crate::StylePart`]) are the dressings of
 //!   [`crate::StylePart::selector`]: a style's `dress "Button.base[hover]"`
 //!   is what version 1 called `slice buttonHover`, and those land in the
@@ -213,6 +214,11 @@ pub struct DressFrame {
     pub glass: Option<Glass>,
     /// `corners`: the style's corner ornament at its corners.
     pub corners: bool,
+    /// `crest`: the style's crest at its top centre.
+    pub crest: bool,
+    /// `edges`: the style's edge ornament at the middle of its left and
+    /// right edges, the right one mirrored.
+    pub edges: bool,
     /// `tile`: the style's tile over its fill.
     pub tile: bool,
     /// `shape <corner> <radius>`: its corner, over its element class's.
@@ -589,6 +595,8 @@ impl DressSet {
             g.glow = f.glow.or(g.glow);
             g.glass = f.glass.or(g.glass);
             g.corners |= f.corners;
+            g.crest |= f.crest;
+            g.edges |= f.edges;
             g.tile |= f.tile;
             g.shape = f.shape.or(g.shape);
             g.press = f.press.or(g.press);

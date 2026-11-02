@@ -1339,6 +1339,88 @@ fn og_style_upgrade_writes_version_2_that_draws_as_version_1() {
     assert!(again.contains("version 2 already"), "{again}");
 }
 
+/// A crest sits at a part's top centre and an edge ornament at the middle
+/// of its left edge and, mirrored, its right; each keeps its authored size
+/// until it would take more than a third of its edge, then shrinks with it.
+#[test]
+fn a_crest_and_edge_ornaments_sit_mid_edge_mirrored_and_scale_with_their_part() {
+    let text = upgrade_style(&v1_style())
+        .expect("it upgrades")
+        .replacen(
+            "corner 0 32 16 16 16 16 primary 2",
+            "corner 0 32 16 16 16 16 primary 2\ncrest 16 32 16 8 24 12 authored 4\nedge 32 32 8 32 12 600 authored 2",
+            1,
+        )
+        // Every part that takes the corners (the panel's frame among them).
+        .replace("  corners\n", "  corners\n  crest\n  edges\n");
+    let file = parse_style(&text).unwrap_or_else(|e| panic!("{e}\n{text}"));
+    assert!(
+        file.dressings.iter().any(|d| d.frame.crest && d.frame.edges),
+        "the frames' dressings ask for both: {text}"
+    );
+    let tex = atlas();
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.set_theme(file.theme(Some(tex), [0; 6]));
+    ui.set_dressings(file.dressings.clone());
+    for _ in 0..30 {
+        step(&mut ui, InputFrame::default(), false);
+    }
+    let menu = ui.frame().element("Menu").expect("the panel").clone();
+    let pieces: Vec<(Rect, [f32; 4])> = ui
+        .frame()
+        .items
+        .iter()
+        .filter_map(|i| match &i.cmd {
+            DrawCmd::Image {
+                rect,
+                texture: Some(t),
+                uv,
+                ..
+            } if *t == tex => Some((*rect, *uv)),
+            _ => None,
+        })
+        .collect();
+    let near = |a: f32, b: f32| (a - b).abs() < 0.01;
+    // The crest: 24 × 12 (the panel is wider than three of it), centred,
+    // 4 px above the panel's top.
+    assert!(menu.width > 3.0 * 24.0, "the panel is {menu:?}");
+    let crest: Vec<_> = pieces
+        .iter()
+        .filter(|(r, _)| near(r.width, 24.0) && near(r.height, 12.0))
+        .collect();
+    assert_eq!(crest.len(), 1, "one crest: {pieces:?}");
+    let (r, _) = crest[0];
+    assert!(near(r.x + r.width / 2.0, menu.x + menu.width / 2.0), "centred: {r:?} on {menu:?}");
+    assert!(near(r.y, menu.y - 4.0), "4 px above the top: {r:?} on {menu:?}");
+    // The edges: authored 600 px tall, so each shrinks to a third of the
+    // panel's height, its width with it, centred on the edge; the right one
+    // is the left one's art mirrored.
+    let k = menu.height / (3.0 * 600.0);
+    assert!(k < 1.0);
+    let edges: Vec<_> = pieces
+        .iter()
+        .filter(|(r, _)| near(r.height, menu.height / 3.0) && near(r.width, 12.0 * k))
+        .collect();
+    assert_eq!(edges.len(), 2, "two edge ornaments: {pieces:?}");
+    let (left, right) = if edges[0].0.x < edges[1].0.x {
+        (edges[0], edges[1])
+    } else {
+        (edges[1], edges[0])
+    };
+    let d = 2.0 * k;
+    assert!(near(left.0.x, menu.x - d), "{left:?} on {menu:?}");
+    assert!(near(right.0.right(), menu.x + menu.width + d), "{right:?} on {menu:?}");
+    for (r, _) in [left, right] {
+        assert!(near(r.y + r.height / 2.0, menu.y + menu.height / 2.0), "mid-edge: {r:?}");
+    }
+    assert!(left.1[0] < left.1[2], "the left edge is drawn as authored");
+    assert_eq!([right.1[2], right.1[1], right.1[0], right.1[3]], left.1, "the right edge mirrors it");
+    // A dressing that asks for a crest needs the style's crest art.
+    let e = parse_style(&text.replacen("crest 16 32 16 8 24 12 authored 4\n", "", 1))
+        .expect_err("a crest with no art is refused");
+    assert!(e.contains("no `crest` line"), "{e}");
+}
+
 /// The upgraded test style with `from` replaced by `to` (which must be there).
 fn v2_with(from: &str, to: &str) -> Result<StyleFile, String> {
     let text = upgrade_style(&v1_style()).expect("it upgrades");
