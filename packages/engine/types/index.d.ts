@@ -32876,6 +32876,12 @@ export interface UnitFrameDesc {
    */
   readonly resourceMax?: number;
   /**
+   * The resource's own colour instead of its kind's (rage red, energy yellow).
+   *
+   * @default null
+   */
+  readonly resourceColor?: Paint | null;
+  /**
    * Its colour.
    *
    * @default "mana"
@@ -32925,7 +32931,7 @@ export interface UnitFrameDesc {
    */
   readonly dead?: boolean;
   /**
-   * Disconnected: dimmed.
+   * Disconnected: the portrait and bar greyed.
    *
    * @default false
    */
@@ -44880,7 +44886,7 @@ export declare namespace og {
     function subtitles(id: string, desc?: SubtitlesDesc): void;
     /**
      * A health or resource bar to the bar of action games: blocks (segment), a ghost chunk that holds after a hit and then drains (Dark Souls, fighting games), a heal preview, an absorb overlay (World of Warcraft's white-blue), grey recoverable damage, the value inside its end or after it, a row of shield cells in their tier's colour over it (Apex Legends), low and critical states (warn, then danger pulsing), a mirrored fill for the right player, flat, slanted or pill ends. A drop is instant, a rise moves on the ui spring.
-     * Parts: StatBar.frame[<style>][<level>], StatBar.track, StatBar.fill[<kind>][<level>], StatBar.ghost, StatBar.heal, StatBar.absorb[over], StatBar.recoverable, StatBar.block[filled], StatBar.cell[filled][<tier>], StatBar.label, StatBar.value, StatBar.icon. States: group level (normal, low, critical, empty). Sounds: warning on crossing into critical. Accessibility: meter named by name, valueNow the value, valueMax max. Probe ids: <id>, <id>/Track, <id>/Track/Fill, <id>/Track/Ghost, <id>/Track/Block#i, <id>/Shield/Cell#i, <id>/Value (inside: <id>/Main/Track/Value/Text, over a soft scrim, StatBar.scrim, that keeps any edge under the figures).
+     * Parts: StatBar.frame[<style>][<level>], StatBar.track, StatBar.fill[<kind>][<level>], StatBar.ghost, StatBar.heal, StatBar.absorb[over], StatBar.recoverable, StatBar.block[filled], StatBar.cell[filled][<tier>], StatBar.label, StatBar.value, StatBar.icon. States: group level (normal, low, critical, empty). Sounds: warning on crossing into critical. Accessibility: meter named by name, valueNow the value, valueMax max. Probe ids: <id>, <id>/Track, <id>/Track/Fill, <id>/Track/Ghost, <id>/Track/Block#i, <id>/Shield/Cell#i, <id>/Value (inside: <id>/Main/Track/Value/Text, outlined, with no absorb seam under it).
      *
      * @param id Its id.
      * @param desc The value and the look.
@@ -44927,7 +44933,7 @@ export declare namespace og {
      */
     function statusGrid(id: string, desc?: StatusGridDesc): StatusGridResult;
     /**
-     * A unit frame to the bar of World of Warcraft and Final Fantasy XIV: a round portrait (an art slot, else a bust silhouette on a slate ground) ringed by the style and floating on its own shadow with no plate behind the frame, the level on a badge at most 40 % of it seated on its rim, an elite or boss dressing, the name on one line over the dominant health bar (its absorb as an overlay, its ghost, its numerals inside its end) and a resource bar, the cast under them (compact: its name clipped inside the bar, no edge line across it), small buffs, and states for the target, dead (the portrait greyed to about 40 %, a small skull), offline (dim), in combat and the leader's crown. A frame at a top or bottom corner takes half the HUD band beside the opposite corner's stack; where that leaves its bars too narrow (a phone at 200 % text) the later-built frame steps under the other onto its own row, so the two never share space. A press selects it.
+     * A unit frame to the bar of World of Warcraft and Final Fantasy XIV: a round portrait (an art slot, else a bust silhouette on a slate ground) in a neutral ring (danger for a hostile unit, gold for an elite or boss; targeted a step thicker with a light glow) ringed by the style and floating on its own shadow with no plate behind the frame, the level on a dark disc at most 40 % of it seated on its rim at the bottom inner side, a filled crown on the rim's upper outer side for a leader, an elite or boss dressing, the name on one line over the dominant health bar (its absorb as an overlay, its ghost, its numerals inside its end) and a resource bar on a faint dark scrim that keeps their text at 3:1 on a bright scene, the cast under them (compact: a slim bar about 60 % of the health's height in a darker amber, its name a step smaller over it), small buffs, and states for the target, dead (the portrait greyed to about 40 %, a small skull), offline (the portrait and bar greyed, the name readable), in combat and the leader's crown. A frame at a top or bottom corner takes half the HUD band beside the opposite corner's stack; where that leaves its bars too narrow (a phone at 200 % text) the later-built frame steps under the other onto its own row, so the two never share space. A press selects it.
      * Parts: UnitFrame.frame[<size>][hostile][targeted][dead], UnitFrame.portrait[<class>], UnitFrame.level, UnitFrame.name, UnitFrame.title, UnitFrame.health (a StatBar), UnitFrame.resource, UnitFrame.cast, UnitFrame.crown, UnitFrame.combat. Slots: portrait (art kind portrait). States: group life (alive, dead, offline), group selection (none, targeted). Accessibility: button named name, level and health. Probe ids: <id>, <id>/Avatar/Portrait, <id>/Avatar/Level, <id>/Bars/Head/Name, <id>/Bars/Health, <id>/Bars/Resource, <id>/Bars/Cast.
      *
      * @param id Its id.
@@ -44943,8 +44949,8 @@ export declare namespace og {
      */
     function partyFrames(id: string, desc?: PartyFramesDesc): FramesResult;
     /**
-     * Raid frames to the bar of World of Warcraft's: up to 40 compact cells in columns of five, each a health fill in the class colour with its absorb and incoming heal, the name cut to fit, a role mark, dead and offline states, faded out of range, a danger border on aggro, a dispellable debuff glowing in its type's colour, the target outlined, the name's ink chosen by the cell's luminance (dark on a pale class colour that covers it; past it, the pale fill deepened under light ink). A press targets.
-     * Parts: RaidFrames.cell[dead|offline|outOfRange][aggro][dispel=<type>][selected], RaidFrames.fill, RaidFrames.absorb, RaidFrames.heal, RaidFrames.name, RaidFrames.role. Accessibility: grid of buttons named name and health. Probe ids: <id>/<key>, its Name.
+     * Raid frames to the bar of World of Warcraft's: up to 40 compact cells in columns of five, each a dark cell with health in one muted green (warming toward danger when low), the class as a stripe at its start, the incoming heal a translucent extension and the absorb a white-blue overlay, the name cut to fit, a role mark, dead and offline said small under the name with no fill, faded out of range, a danger border on aggro, a dispellable debuff glowing in its type's colour, the target outlined. A press targets.
+     * Parts: RaidFrames.cell[dead|offline|outOfRange][aggro][dispel=<type>][selected], RaidFrames.fill[low], RaidFrames.class, RaidFrames.absorb[over], RaidFrames.heal, RaidFrames.name, RaidFrames.role. Accessibility: grid of buttons named name and health. Probe ids: <id>/<key>, its Name.
      *
      * @param id Its id.
      * @param desc The members.
@@ -44952,7 +44958,7 @@ export declare namespace og {
     function raidFrames(id: string, desc?: RaidFramesDesc): FramesResult;
     /**
      * A cast bar to the bar of MMOs (Diablo IV, Destiny 2, WoW): the spell's art in a framed socket, its name in the display face and the seconds left on a line over a slim dark well, a fill with a bright leading edge, the seconds left, a channel draining with its tick marks, the latency zone, an uninterruptible shield, a success flash and an interrupted state in danger that fade out.
-     * Parts: CastBar.frame[<state>][channel][uninterruptible], CastBar.icon, CastBar.track, CastBar.fill, CastBar.spark, CastBar.latency, CastBar.tick, CastBar.name, CastBar.time, CastBar.shield. States: group cast (casting, success, interrupted, failed, gone). Sounds: error on interrupted. Accessibility: progressbar named by the name. Probe ids: <id>, <id>/Body/Head/Name, <id>/Body/Head/Time, <id>/Body/Track/Fill (compact: <id>/Track/Text/Name).
+     * Parts: CastBar.frame[<state>][channel][uninterruptible], CastBar.icon, CastBar.track, CastBar.fill, CastBar.spark, CastBar.latency, CastBar.tick, CastBar.name, CastBar.time, CastBar.shield. States: group cast (casting, success, interrupted, failed, gone). Sounds: error on interrupted. Accessibility: progressbar named by the name. Probe ids: <id>, <id>/Body/Head/Name, <id>/Body/Head/Time, <id>/Body/Track/Fill (a unit frame's compact cast the same: <id>/Body/Head/Name, <id>/Body/Track).
      *
      * @param id Its id.
      * @param desc The cast.
