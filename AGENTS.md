@@ -210,33 +210,22 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   suites, the wasm build, the size gate and determinism, and is what a
   commit to main must pass. Changes to rendering, animation, physics, the
   tick or the export run the full lane before they are called done.
-- **Real GPUs only; no lavapipe.** The compatibility baseline is current
-  hardware and browsers (`docs/design.md` §8, the owner, 2026-10-27).
-  Every GPU run happens on the two runners' GPUs: `metal` on macrunner,
-  DX12 natively and with Chrome and Edge on WebGPU on studio-win; the web
-  is WebGPU only, with no WebGL2 tier (the owner, 2026-11-01). Nothing runs
-  on lavapipe any more (the owner, 2026-11-01: it was slow, ui-styles took
-  25 min on an orb against 2 on macrunner, and judged nothing): an orb
-  runs nothing that draws on its own Linux machine. It draws on its Mac
-  satellite instead (`mac_sidecar`, mac.medium, macos-27; the owner,
-  2026-11-02, medium since large was used too often): a native dev build there (`RUSTC_WRAPPER= cargo build -p
-  og-host-node -p og-cli`, then `OG_GATE=1 sh scripts/build.sh --native`,
-  bun 1.4.4) draws `og test` playtests, `og run` films and `og ui check`
-  pixel-identical to macrunner's `metal` references (measured 2026-11-02:
-  RMSE 0 on every kit phone frame). The satellite is used sparingly (the owner, 2026-11-02): only
-  for a change that moves pixels, once at the end of a batch, never per
-  iteration, and stopped (`mac_sidecar stop`) when the frames are read.
-  Logic changes are checked with `cargo check -p` and the unit tests of the
-  crate on the orb, with no satellite. No contact sheets or films unless
-  the coordinator asks for one. There an agent draws the frames its
-  change moves, one playtest at a time (`--jobs 2` dropped frames), reads
-  them against `docs/ui.md` §15.4 and fixes them before reporting; it
-  never runs `scripts/check.sh`, a wasm build or a recording there. The
-  coordinator still runs the gate and records references on macrunner
-  (and studio-win for DX12 and the browsers) when it lands a branch. No
-  `references/vulkan-cpu/` frame is recorded. After each
-  batch of merges the coordinator runs both lanes on the runners, and a
-  publish needs both green on its commit.
+- **Features first; compatibility at the end (the owner, 2026-11-02).**
+  Until the feature work is done, one platform judges pixels: `metal` on
+  macrunner, whose references already exist. DX12 and Chrome or Edge on
+  studio-win, Safari, phones (iPhone, Android with Adreno and Mali) and any
+  per-backend references are a compatibility phase after the features,
+  not per merge or per wave. The web stays WebGPU only, with no WebGL2
+  tier, and nothing runs on lavapipe. **Authors never touch a GPU**: no
+  Mac satellite, no Modal, no cloud GPU. An author checks its work on its
+  orb with `cargo check -p`, the edited crates' unit tests, typecheck and
+  the logic tests, names in its report the frames its change should
+  move, and pushes. macrunner draws and records the moved frames when it
+  lands the branch (reading only the ones that fail tolerance) and sends
+  the moved frames of visual work to the art director, whose notes fold
+  into the author's next round. Only macrunner runs `scripts/check.sh`,
+  wasm builds and references. No contact sheets or films unless the
+  coordinator asks for one. No `references/vulkan-cpu/` frame is recorded.
 - **Landing on the author's word (the owner, 2026-11-02).** To speed
   development, a branch whose author reports it drawn, read and tested
   is merged on that report, with no second review by the coordinator.
@@ -254,8 +243,8 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   native host) and that is what a merge must pass. Landing is kept short
   (the owner, 2026-11-02): a merge builds native only and never rebuilds
   the wasm (with a stale web module the cross-host tests skip, and the
-  wave's end runs them); branches whose authors have drawn and read
-  their frames clean on a Mac satellite are landed in batches, rebased
+  wave's end runs them); branches whose authors report them
+  complete and tested are landed in batches, rebased
   one after another and passed through one functional run; and the
   session that lands draws no review frames, reading only the frames
   that fail tolerance before recording them. The wasm build and its
