@@ -58,8 +58,10 @@ fn an_impostor_draws_as_the_mesh_it_stands_for() {
             "{name}: above {above:?}"
         );
         // Its shadow on the floor under it, along the sun (the sky's
-        // light keeps it at about three quarters of the open floor's).
-        let shadow = at(c - sun * (c.y / sun.y));
+        // light keeps it at about three quarters of the open floor's):
+        // sampled 0.6 m left of its centre, where neither ball covers it
+        // (the centre itself is behind the mesh ball from this camera).
+        let shadow = at(c - sun * (c.y / sun.y) + Vec3::new(-0.6, 0.0, 0.0));
         assert!(
             luma(shadow) < luma(open) * 0.85,
             "{name}: shadow {shadow:?} vs {open:?}"

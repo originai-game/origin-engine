@@ -190,6 +190,18 @@ fn imp_coverage(uv01: vec4<f32>, uv2: vec2<f32>, frames: vec3<u32>, weights: vec
   return o;
 }
 
+// The blended depth the frames hold (radii towards their viewers, -1..1),
+// weighted as their coverage is.
+fn imp_blended_depth(c: ImpCoverage) -> f32 {
+  let total = max(c.wa.x + c.wa.y + c.wa.z, 1e-5);
+  let d = vec3<f32>(
+    textureSample(normal_tex, material_sampler, c.a0).a,
+    textureSample(normal_tex, material_sampler, c.a1).a,
+    textureSample(normal_tex, material_sampler, c.a2).a,
+  ) * 2.0 - 1.0;
+  return dot(d, c.wa) / total;
+}
+
 // The cut: the material's alpha test, half coverage without one.
 fn imp_cutoff() -> f32 {
   return select(0.5, material.emissive.w, material.emissive.w >= 0.0);

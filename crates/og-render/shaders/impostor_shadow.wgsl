@@ -13,6 +13,10 @@ struct ImpostorShadowOut {
   @location(5) @interpolate(flat) fade: vec2<f32>,
   @location(6) @interpolate(flat) par01: vec4<f32>,
   @location(7) @interpolate(flat) par2: vec2<f32>,
+  // Towards the light from the copy's centre (the frames' depth axis) and
+  // the model's sphere radius in the world.
+  @location(8) @interpolate(flat) toward: vec3<f32>,
+  @location(9) @interpolate(flat) extent: f32,
 };
 
 @vertex
@@ -21,6 +25,7 @@ fn vs_impostor_shadow(@builtin(vertex_index) vertex: u32, i: ScatterInstance) ->
   let local = shadow_pass.light.w > 0.0;
   let toward = select(scatter.impostor_light.xyz, shadow_pass.light.xyz, local);
   let card = imp_card(model, vertex, toward, !local);
+  let centre = mul_point(model, vec4<f32>(scatter.impostor.xyz, 1.0)).xyz;
   var o: ImpostorShadowOut;
   o.fade = imp_fade(i.m3);
   o.clip = select(SCATTER_GONE, shadow_project(card.world, mul_point(shadow_pass.view_proj, card.world)), o.fade.y > o.fade.x);
@@ -31,20 +36,40 @@ fn vs_impostor_shadow(@builtin(vertex_index) vertex: u32, i: ScatterInstance) ->
   o.par2 = card.par2;
   o.frames = card.frames;
   o.weights = card.weights;
+  o.toward = normalize(select(toward, toward - centre, local) + vec3<f32>(0.0, 1e-9, 0.0));
+  o.extent = card.extent;
   return o;
 }
 
+struct ImpostorShadowFrag {
+  @location(0) value: vec4<f32>,
+  @builtin(frag_depth) depth: f32,
+};
+
+// The card stores the depth of the surface it stands for, not its own
+// plane's through the model's centre: otherwise every point the lit card
+// shows behind that plane (a palm's drooping fronds) shadows itself.
 @fragment
-fn fs_impostor_shadow(in: ImpostorShadowOut) -> @location(0) vec4<f32> {
+fn fs_impostor_shadow(in: ImpostorShadowOut) -> ImpostorShadowFrag {
   let dx = dpdx(in.world);
   let dy = dpdy(in.world);
   let uvs = imp_uvs(in.uv01, in.uv2, in.par01, in.par2, in.frames);
   let cover = imp_coverage(uvs.uv01, uvs.uv2, in.frames, in.weights);
+  let surface = in.world + in.toward * imp_blended_depth(cover) * in.extent;
   if (cover.alpha < imp_cutoff() || imp_dropped(in.clip.xy, in.fade.x, in.fade.y)) {
     discard;
   }
-  if (shadow_pass.light.w > 0.0) {
-    return vec4<f32>(local_distance(in.world, in.clip, dx, dy), 0.0, 0.0, 1.0);
+  var o: ImpostorShadowFrag;
+  if (shadow_pass.paraboloid.x > 0.5) {
+    o.depth = clamp(length(surface - shadow_pass.light.xyz) / shadow_pass.light.w, 0.0, 1.0);
+  } else {
+    let c = mul_point(shadow_pass.view_proj, vec4<f32>(surface, 1.0));
+    o.depth = clamp(c.z / c.w, 0.0, 1.0);
   }
-  return vec4<f32>(in.clip.z, 0.0, 0.0, 1.0);
+  if (shadow_pass.light.w > 0.0) {
+    o.value = vec4<f32>(local_distance(surface, in.clip, dx, dy), 0.0, 0.0, 1.0);
+  } else {
+    o.value = vec4<f32>(o.depth, 0.0, 0.0, 1.0);
+  }
+  return o;
 }

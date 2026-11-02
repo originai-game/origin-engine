@@ -513,16 +513,18 @@ struct ScatterGpu {
     wind_shape: [f32; 4],
     /// The impostor's sphere in the model's space (xyz centre, w radius),
     /// its grid and distance (x frames per side, y the distance past which
-    /// copies draw as it: 0 never), and the direction to the sun (xyz).
+    /// copies draw as it: 0 never, z 1 when the lit pass has MSAA and so
+    /// alpha to coverage, else its edge is the cut), and the direction to
+    /// the sun (xyz).
     impostor: [f32; 4],
     impostor_grid: [f32; 4],
     impostor_light: [f32; 4],
 }
 
 impl ScatterGpu {
-    fn impostor(&mut self, i: &crate::Impostor, distance: f32, light: Vec3) {
+    fn impostor(&mut self, i: &crate::Impostor, distance: f32, light: Vec3, msaa: bool) {
         self.impostor = i.center.extend(i.radius).to_array();
-        self.impostor_grid = [i.grid as f32, distance, 0.0, 0.0];
+        self.impostor_grid = [i.grid as f32, distance, f32::from(u8::from(msaa)), 0.0];
         self.impostor_light = light.extend(0.0).to_array();
     }
 }
@@ -1016,7 +1018,7 @@ impl ScatterRenderer {
             }
             let slot = first_slot + k;
             let mut gpu = base;
-            gpu.impostor(imp, 0.0, light);
+            gpu.impostor(imp, 0.0, light, self.samples > 1);
             queue.write_buffer(&self.uniform, slot as u64 * SLOT, bytemuck::bytes_of(&gpu));
             out.push(ImpostorBatch {
                 material: imp.material.index(),
@@ -1337,7 +1339,7 @@ impl ScatterRenderer {
             };
             let impostor = d.impostor.filter(|_| d.impostor_distance > 0.0);
             if let Some(i) = &impostor {
-                gpu.impostor(i, d.impostor_distance, light);
+                gpu.impostor(i, d.impostor_distance, light, self.samples > 1);
                 for pass in [ScatterPass::Lit, ScatterPass::Prepass, ScatterPass::Shadow] {
                     self.pipeline(device, None, Side::Double, pass, true);
                 }

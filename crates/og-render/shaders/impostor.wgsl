@@ -110,10 +110,13 @@ struct ImpostorLit {
 fn fs_impostor(in: ImpostorOut) -> ImpostorLit {
   let surface = imp_surface(in);
   let alpha = surface.coverage.alpha;
-  // Alpha to coverage: the blended coverage past the cut over one pixel's
-  // change of it is the share of the samples covered.
+  // Alpha to coverage under MSAA: the blended coverage past the cut over
+  // one pixel's change of it is the share of the samples covered. Without
+  // MSAA (the pipeline then has none) the edge is the cut, as a cut-out
+  // copy's is (scatter.wgsl).
+  let a2c = scatter.impostor_grid.z > 0.5;
   let coverage = clamp((alpha - imp_cutoff()) / max(fwidth(alpha), 1e-4) + 0.5, 0.0, 1.0);
-  if (coverage <= 0.0 || imp_dropped(in.clip.xy, in.fade.x, in.fade.y)) {
+  if (select(alpha < imp_cutoff(), coverage <= 0.0, a2c) || imp_dropped(in.clip.xy, in.fade.x, in.fade.y)) {
     discard;
   }
   var o: ImpostorLit;
@@ -121,7 +124,7 @@ fn fs_impostor(in: ImpostorOut) -> ImpostorLit {
   let mode = u32(material.flags.w);
   let emissive = material.emissive.rgb;
   if ((mode & 2u) != 0u) {
-    o.color = vec4<f32>(apply_fog(surface.albedo + emissive, surface.world), coverage);
+    o.color = vec4<f32>(apply_fog(surface.albedo + emissive, surface.world), select(1.0, coverage, a2c));
     return o;
   }
   var s: Surface;
@@ -148,7 +151,7 @@ fn fs_impostor(in: ImpostorOut) -> ImpostorLit {
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
   color += (kd_ibl * irradiance * s.albedo + prefiltered * (f_ibl * lut.x + lut.y)) * material.flags.z;
   color += emissive;
-  o.color = vec4<f32>(apply_fog(color, surface.world), coverage);
+  o.color = vec4<f32>(apply_fog(color, surface.world), select(1.0, coverage, a2c));
   return o;
 }
 
