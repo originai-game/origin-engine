@@ -16443,6 +16443,55 @@ export interface Skeleton {
 }
 
 /**
+ * Plays a clip on a model on the GPU, for crowds: put it on an entity with og.Model (and no og.Skeleton, which og.anim would pose on the CPU instead) and the model is drawn skinned by `clip` baked into joint palettes, shared by every entity playing the same clip on the same skeleton. Each entity costs no animation work on the CPU, so thousands can walk at once; the price is that nothing reads the pose (no markers, root motion, IK, blendshapes or attachments to joints) and a change of `clip` cuts without a fade.
+ * The clip's time is `offset` plus `speed` times the world's time, so give each member of a crowd its own `offset` to keep them out of step. It is drawn only: it never feeds back into the simulation, and TAA gets its motion vectors from the frame before. The camera culls each entity by its bounds on the CPU, as a model posed by og.anim; crowds do not go through GPU culling or the meshlet path yet.
+ *
+ * The value of the `CrowdAnimation` component (token `og.CrowdAnimation`).
+ */
+export interface CrowdAnimation {
+  /**
+   * The skeleton asset of the model (og.load.animation's `skeleton`); 0 draws nothing posed.
+   */
+  skeleton: SkeletonAsset;
+  /**
+   * Which of the skeleton's skins poses the model (glTF skin index).
+   *
+   * @range 0..
+   */
+  skin: number;
+  /** The clip played (og.load.animation's `clips`); 0 holds the rest pose. */
+  clip: ClipAsset;
+  /**
+   * Seconds into the clip at the world's time 0.
+   *
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  offset: number;
+  /**
+   * Playback rate (1 = as authored, negative plays backwards).
+   *
+   * @default 1
+   * @range -10..10
+   * @tunable
+   */
+  speed: number;
+  /**
+   * Wrap at the end of the clip; otherwise hold its last frame.
+   *
+   * @default true
+   */
+  loop: boolean;
+  /**
+   * Frames per second the clip is baked at (the GPU blends between them): more is smoother and costs more memory, `rate` × the clip's seconds × its joints × 64 bytes, once per clip.
+   *
+   * @default 30
+   * @range 1..120
+   */
+  rate: number;
+}
+
+/**
  * Plays one clip on a skeleton. Alone it poses the skeleton from its rest pose; with an og.AnimationGraph it plays over the graph's result with `weight`. Changing `clip` cross-fades from the previous one over `fade`; a clip change starts the new clip at 0 (or at `time` if the game wrote it in the same tick).
  *
  * The value of the `AnimationPlayer` component (token `og.AnimationPlayer`).
@@ -50757,6 +50806,11 @@ export declare namespace og {
    * A posed skeleton: the entity is drawn skinned by the joint palette og.anim writes each tick. The pose itself (every node's local transform) is world state kept by the `og.anim` state block.
    */
   const Skeleton: ComponentType<{ readonly asset: FieldSpec<"SkeletonAsset">; readonly skin: FieldSpec<"u32">; readonly rootMotion: FieldSpec<"RootMotion">; readonly rootJoint: FieldSpec<"u32">; readonly jointCount: FieldSpec<"u32"> }, Skeleton>;
+  /**
+   * Plays a clip on a model on the GPU, for crowds: put it on an entity with og.Model (and no og.Skeleton, which og.anim would pose on the CPU instead) and the model is drawn skinned by `clip` baked into joint palettes, shared by every entity playing the same clip on the same skeleton. Each entity costs no animation work on the CPU, so thousands can walk at once; the price is that nothing reads the pose (no markers, root motion, IK, blendshapes or attachments to joints) and a change of `clip` cuts without a fade.
+   * The clip's time is `offset` plus `speed` times the world's time, so give each member of a crowd its own `offset` to keep them out of step. It is drawn only: it never feeds back into the simulation, and TAA gets its motion vectors from the frame before. The camera culls each entity by its bounds on the CPU, as a model posed by og.anim; crowds do not go through GPU culling or the meshlet path yet.
+   */
+  const CrowdAnimation: ComponentType<{ readonly skeleton: FieldSpec<"SkeletonAsset">; readonly skin: FieldSpec<"u32">; readonly clip: FieldSpec<"ClipAsset">; readonly offset: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly rate: FieldSpec<"f32"> }, CrowdAnimation>;
   /**
    * Plays one clip on a skeleton. Alone it poses the skeleton from its rest pose; with an og.AnimationGraph it plays over the graph's result with `weight`. Changing `clip` cross-fades from the previous one over `fade`; a clip change starts the new clip at 0 (or at `time` if the game wrote it in the same tick).
    */

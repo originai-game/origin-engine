@@ -103,6 +103,11 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: "og.SoftBody",
         enable: |w, _| og_physics::enable(w, "og.SoftBody"),
     },
+    // R9: GPU crowds, read by extraction alone (no system is granted it).
+    Lazy {
+        name: "og.CrowdAnimation",
+        enable: |_, _| Ok(()),
+    },
     // R9: og.physics steps it; the garment system poses it.
     Lazy {
         name: "og.Garment",

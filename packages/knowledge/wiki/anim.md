@@ -39,6 +39,7 @@ module anim {
 | [`IkSpace`](#type-IkSpace) | enum | What an IK chain's target and pole are relative to. |
 | [`IkSpace()`](#column-IkSpace) | column kind | An IkSpace field: the variant's index. |
 | [`og.Skeleton`](#record-Skeleton) | component | A posed skeleton: the entity is drawn skinned by the joint palette og.anim writes each tick. The pose itself (every node's local transform) is world state kept by the `og.anim` state block. |
+| [`og.CrowdAnimation`](#record-CrowdAnimation) | component | Plays a clip on a model on the GPU, for crowds: put it on an entity with og.Model (and no og.Skeleton, which og.anim would pose on the CPU instead) and the model is drawn skinned by `clip` baked into joint palettes, shared by every entity playing the same clip on the same skeleton. Each entity costs no animation work on the CPU, so thousands can walk at once; the price is that nothing reads the pose (no markers, root motion, IK, blendshapes or attachments to joints) and a change of `clip` cuts without a fade. |
 | [`og.AnimationPlayer`](#record-AnimationPlayer) | component | Plays one clip on a skeleton. Alone it poses the skeleton from its rest pose; with an og.AnimationGraph it plays over the graph's result with `weight`. Changing `clip` cross-fades from the previous one over `fade`; a clip change starts the new clip at 0 (or at `time` if the game wrote it in the same tick). |
 | [`og.AnimationGraph`](#record-AnimationGraph) | component | Runs a blend-tree graph (og.anim.graph) on a skeleton: its layers' state machines pick motions by the parameters p0...p7, which the graph names in `param` order (`param speed` is p0, the next `param` is p1, ...). |
 | [`og.Blendshapes`](#record-Blendshapes) | component | Morph-target weights of the skeleton entity's mesh, in the order of the glTF mesh's targets, up to 64 targets (w0...w7, then `influences`). With `source` clips the playing clips' weight channels write them; with `component` game code does. Under TAA a morphing mesh has motion vectors from its previous weights, so a talking face does not ghost. |
@@ -118,7 +119,7 @@ fn graph {
 }
 ```
 
-<sub>`api.ogt` line 11259</sub>
+<sub>`api.ogt` line 11287</sub>
 
 <a id="fn-humanoid"></a>
 
@@ -148,7 +149,7 @@ fn humanoid {
 }
 ```
 
-<sub>`api.ogt` line 11294</sub>
+<sub>`api.ogt` line 11322</sub>
 
 <a id="fn-retarget"></a>
 
@@ -178,7 +179,7 @@ fn retarget {
 }
 ```
 
-<sub>`api.ogt` line 11314</sub>
+<sub>`api.ogt` line 11342</sub>
 
 <a id="fn-mirror"></a>
 
@@ -208,7 +209,7 @@ fn mirror {
 }
 ```
 
-<sub>`api.ogt` line 11328</sub>
+<sub>`api.ogt` line 11356</sub>
 
 <a id="fn-clip"></a>
 
@@ -239,7 +240,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 11413</sub>
+<sub>`api.ogt` line 11441</sub>
 
 <a id="fn-clip-2"></a>
 
@@ -270,7 +271,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 11421</sub>
+<sub>`api.ogt` line 11449</sub>
 
 <a id="fn-clip-3"></a>
 
@@ -301,7 +302,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 11429</sub>
+<sub>`api.ogt` line 11457</sub>
 
 <a id="fn-rig2dInfo"></a>
 
@@ -331,7 +332,7 @@ fn rig2dInfo {
 }
 ```
 
-<sub>`api.ogt` line 11540</sub>
+<sub>`api.ogt` line 11568</sub>
 
 <a id="fn-skeleton2dBoxes"></a>
 
@@ -361,7 +362,7 @@ fn skeleton2dBoxes {
 }
 ```
 
-<sub>`api.ogt` line 11554</sub>
+<sub>`api.ogt` line 11582</sub>
 
 ## Components, resources and events
 
@@ -399,6 +400,58 @@ component Skeleton {
 ```
 
 <sub>`api.ogt` line 10800</sub>
+
+<a id="record-CrowdAnimation"></a>
+
+### `og.CrowdAnimation` (component)
+
+Plays a clip on a model on the GPU, for crowds: put it on an entity with og.Model (and no og.Skeleton, which og.anim would pose on the CPU instead) and the model is drawn skinned by `clip` baked into joint palettes, shared by every entity playing the same clip on the same skeleton. Each entity costs no animation work on the CPU, so thousands can walk at once; the price is that nothing reads the pose (no markers, root motion, IK, blendshapes or attachments to joints) and a change of `clip` cuts without a fade.
+
+The clip's time is `offset` plus `speed` times the world's time, so give each member of a crowd its own `offset` to keep them out of step. It is drawn only: it never feeds back into the simulation, and TAA gets its motion vectors from the frame before. The camera culls each entity by its bounds on the CPU, as a model posed by og.anim; crowds do not go through GPU culling or the meshlet path yet.
+
+Token `og.CrowdAnimation`, registered under the schema name `og.CrowdAnimation`; its value type is `CrowdAnimation`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `skeleton` | `SkeletonAsset` | `0` | — | — | — | The skeleton asset of the model (og.load.animation's `skeleton`); 0 draws nothing posed. |
+| `skin` | `number` | `0` | ≥ 0 | — | — | Which of the skeleton's skins poses the model (glTF skin index). |
+| `clip` | `ClipAsset` | `0` | — | — | — | The clip played (og.load.animation's `clips`); 0 holds the rest pose. |
+| `offset` | `number` | `0` | — | `s` | tunable | Seconds into the clip at the world's time 0. |
+| `speed` | `number` | `1` | -10 … 10 | — | tunable | Playback rate (1 = as authored, negative plays backwards). |
+| `loop` | `boolean` | `true` | — | — | — | Wrap at the end of the clip; otherwise hold its last frame. |
+| `rate` | `number` | `30` | 1 … 120 | — | — | Frames per second the clip is baked at (the GPU blends between them): more is smoother and costs more memory, `rate` × the clip's seconds × its joints × 64 bytes, once per clip. |
+
+```ogt
+component CrowdAnimation {
+  doc "Plays a clip on a model on the GPU, for crowds: put it on an entity with og.Model (and no og.Skeleton, which og.anim would pose on the CPU instead) and the model is drawn skinned by `clip` baked into joint palettes, shared by every entity playing the same clip on the same skeleton. Each entity costs no animation work on the CPU, so thousands can walk at once; the price is that nothing reads the pose (no markers, root motion, IK, blendshapes or attachments to joints) and a change of `clip` cuts without a fade."
+  doc "The clip's time is `offset` plus `speed` times the world's time, so give each member of a crowd its own `offset` to keep them out of step. It is drawn only: it never feeds back into the simulation, and TAA gets its motion vectors from the frame before. The camera culls each entity by its bounds on the CPU, as a model posed by og.anim; crowds do not go through GPU culling or the meshlet path yet."
+  field skeleton SkeletonAsset "The skeleton asset of the model (og.load.animation's `skeleton`); 0 draws nothing posed."
+  field skin u32 "Which of the skeleton's skins poses the model (glTF skin index)." {
+    min 0
+  }
+  field clip ClipAsset "The clip played (og.load.animation's `clips`); 0 holds the rest pose."
+  field offset f32 "Seconds into the clip at the world's time 0." {
+    unit s
+    tunable true
+  }
+  field speed f32 "Playback rate (1 = as authored, negative plays backwards)." {
+    default 1
+    min -10
+    max 10
+    tunable true
+  }
+  field loop bool "Wrap at the end of the clip; otherwise hold its last frame." {
+    default true
+  }
+  field rate f32 "Frames per second the clip is baked at (the GPU blends between them): more is smoother and costs more memory, `rate` × the clip's seconds × its joints × 64 bytes, once per clip." {
+    default 30
+    min 1
+    max 120
+  }
+}
+```
+
+<sub>`api.ogt` line 10815</sub>
 
 <a id="record-AnimationPlayer"></a>
 
@@ -460,7 +513,7 @@ component AnimationPlayer {
 }
 ```
 
-<sub>`api.ogt` line 10815</sub>
+<sub>`api.ogt` line 10843</sub>
 
 <a id="record-AnimationGraph"></a>
 
@@ -536,7 +589,7 @@ component AnimationGraph {
 }
 ```
 
-<sub>`api.ogt` line 10854</sub>
+<sub>`api.ogt` line 10882</sub>
 
 <a id="record-Blendshapes"></a>
 
@@ -611,7 +664,7 @@ component Blendshapes {
 }
 ```
 
-<sub>`api.ogt` line 10902</sub>
+<sub>`api.ogt` line 10930</sub>
 
 <a id="record-IkChain"></a>
 
@@ -684,7 +737,7 @@ component IkChain {
 }
 ```
 
-<sub>`api.ogt` line 10951</sub>
+<sub>`api.ogt` line 10979</sub>
 
 <a id="record-LookAt"></a>
 
@@ -761,7 +814,7 @@ component LookAt {
 }
 ```
 
-<sub>`api.ogt` line 10997</sub>
+<sub>`api.ogt` line 11025</sub>
 
 <a id="record-JointLimit"></a>
 
@@ -814,7 +867,7 @@ component JointLimit {
 }
 ```
 
-<sub>`api.ogt` line 11047</sub>
+<sub>`api.ogt` line 11075</sub>
 
 <a id="record-FootLock"></a>
 
@@ -869,7 +922,7 @@ component FootLock {
 }
 ```
 
-<sub>`api.ogt` line 11079</sub>
+<sub>`api.ogt` line 11107</sub>
 
 <a id="record-SpringBone"></a>
 
@@ -957,7 +1010,7 @@ component SpringBone {
 }
 ```
 
-<sub>`api.ogt` line 11125</sub>
+<sub>`api.ogt` line 11153</sub>
 
 <a id="record-SpringCollider"></a>
 
@@ -1003,7 +1056,7 @@ component SpringCollider {
 }
 ```
 
-<sub>`api.ogt` line 11198</sub>
+<sub>`api.ogt` line 11226</sub>
 
 <a id="record-AnimationEvent"></a>
 
@@ -1034,7 +1087,7 @@ event AnimationEvent {
 }
 ```
 
-<sub>`api.ogt` line 11222</sub>
+<sub>`api.ogt` line 11250</sub>
 
 <a id="record-Flipbook"></a>
 
@@ -1090,7 +1143,7 @@ component Flipbook {
 }
 ```
 
-<sub>`api.ogt` line 11351</sub>
+<sub>`api.ogt` line 11379</sub>
 
 <a id="record-FlipbookEvent"></a>
 
@@ -1117,7 +1170,7 @@ event FlipbookEvent {
 }
 ```
 
-<sub>`api.ogt` line 11382</sub>
+<sub>`api.ogt` line 11410</sub>
 
 <a id="record-Skeleton2D"></a>
 
@@ -1173,7 +1226,7 @@ component Skeleton2D {
 }
 ```
 
-<sub>`api.ogt` line 11446</sub>
+<sub>`api.ogt` line 11474</sub>
 
 <a id="record-Skeleton2DEvent"></a>
 
@@ -1204,7 +1257,7 @@ event Skeleton2DEvent {
 }
 ```
 
-<sub>`api.ogt` line 11476</sub>
+<sub>`api.ogt` line 11504</sub>
 
 <a id="record-IkTarget2D"></a>
 
@@ -1256,7 +1309,7 @@ component IkTarget2D {
 }
 ```
 
-<sub>`api.ogt` line 11487</sub>
+<sub>`api.ogt` line 11515</sub>
 
 ## Types
 
@@ -1417,7 +1470,7 @@ enum SpringSpace {
 }
 ```
 
-<sub>`api.ogt` line 11112</sub>
+<sub>`api.ogt` line 11140</sub>
 
 <a id="type-SpringColliderShape"></a>
 
@@ -1440,7 +1493,7 @@ enum SpringColliderShape {
 }
 ```
 
-<sub>`api.ogt` line 11185</sub>
+<sub>`api.ogt` line 11213</sub>
 
 <a id="type-ClipInfo"></a>
 
@@ -1467,7 +1520,7 @@ struct ClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 11233</sub>
+<sub>`api.ogt` line 11261</sub>
 
 <a id="type-Animation"></a>
 
@@ -1494,7 +1547,7 @@ struct Animation {
 }
 ```
 
-<sub>`api.ogt` line 11243</sub>
+<sub>`api.ogt` line 11271</sub>
 
 <a id="type-GraphDesc"></a>
 
@@ -1518,7 +1571,7 @@ struct GraphDesc {
 }
 ```
 
-<sub>`api.ogt` line 11252</sub>
+<sub>`api.ogt` line 11280</sub>
 
 <a id="type-Rig"></a>
 
@@ -1532,7 +1585,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Rig "A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow, the standard bones it names outright and, with `footHeight`, how high its ankles stand above the ground."
 ```
 
-<sub>`api.ogt` line 11266</sub>
+<sub>`api.ogt` line 11294</sub>
 
 <a id="type-HumanBone"></a>
 
@@ -1553,7 +1606,7 @@ struct HumanBone {
 }
 ```
 
-<sub>`api.ogt` line 11275</sub>
+<sub>`api.ogt` line 11303</sub>
 
 <a id="type-Humanoid"></a>
 
@@ -1574,7 +1627,7 @@ struct Humanoid {
 }
 ```
 
-<sub>`api.ogt` line 11281</sub>
+<sub>`api.ogt` line 11309</sub>
 
 <a id="type-HumanoidDesc"></a>
 
@@ -1598,7 +1651,7 @@ struct HumanoidDesc {
 }
 ```
 
-<sub>`api.ogt` line 11287</sub>
+<sub>`api.ogt` line 11315</sub>
 
 <a id="type-RetargetDesc"></a>
 
@@ -1632,7 +1685,7 @@ struct RetargetDesc {
 }
 ```
 
-<sub>`api.ogt` line 11301</sub>
+<sub>`api.ogt` line 11329</sub>
 
 <a id="type-MirrorDesc"></a>
 
@@ -1656,7 +1709,7 @@ struct MirrorDesc {
 }
 ```
 
-<sub>`api.ogt` line 11321</sub>
+<sub>`api.ogt` line 11349</sub>
 
 <a id="type-FlipbookSheet"></a>
 
@@ -1670,7 +1723,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle FlipbookSheet "A sprite sheet's frames and clips (a cooked `.ogt` of `type flipbook`), from og.load.flipbook."
 ```
 
-<sub>`api.ogt` line 11335</sub>
+<sub>`api.ogt` line 11363</sub>
 
 <a id="type-FlipMode"></a>
 
@@ -1695,7 +1748,7 @@ enum FlipMode {
 }
 ```
 
-<sub>`api.ogt` line 11344</sub>
+<sub>`api.ogt` line 11372</sub>
 
 <a id="type-FlipbookClipInfo"></a>
 
@@ -1726,7 +1779,7 @@ struct FlipbookClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 11390</sub>
+<sub>`api.ogt` line 11418</sub>
 
 <a id="type-FlipbookInfo"></a>
 
@@ -1757,7 +1810,7 @@ struct FlipbookInfo {
 }
 ```
 
-<sub>`api.ogt` line 11402</sub>
+<sub>`api.ogt` line 11430</sub>
 
 <a id="type-Rig2D"></a>
 
@@ -1771,7 +1824,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Rig2D "A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region, mesh, bounding-box and child-armature attachments, IK constraints, child armatures and clips, from og.load.rig2d."
 ```
 
-<sub>`api.ogt` line 11437</sub>
+<sub>`api.ogt` line 11465</sub>
 
 <a id="type-Rig2DClipInfo"></a>
 
@@ -1800,7 +1853,7 @@ struct Rig2DClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 11517</sub>
+<sub>`api.ogt` line 11545</sub>
 
 <a id="type-Rig2DInfo"></a>
 
@@ -1833,7 +1886,7 @@ struct Rig2DInfo {
 }
 ```
 
-<sub>`api.ogt` line 11528</sub>
+<sub>`api.ogt` line 11556</sub>
 
 <a id="type-Skeleton2DBox"></a>
 
@@ -1856,7 +1909,7 @@ struct Skeleton2DBox {
 }
 ```
 
-<sub>`api.ogt` line 11547</sub>
+<sub>`api.ogt` line 11575</sub>
 
 ## Column kinds
 
@@ -1963,7 +2016,7 @@ column SpringSpace {
 }
 ```
 
-<sub>`api.ogt` line 11118</sub>
+<sub>`api.ogt` line 11146</sub>
 
 ```ogt
 column SpringColliderShape {
@@ -1974,7 +2027,7 @@ column SpringColliderShape {
 }
 ```
 
-<sub>`api.ogt` line 11191</sub>
+<sub>`api.ogt` line 11219</sub>
 
 ```ogt
 column Rig {
@@ -1985,7 +2038,7 @@ column Rig {
 }
 ```
 
-<sub>`api.ogt` line 11268</sub>
+<sub>`api.ogt` line 11296</sub>
 
 ```ogt
 column FlipbookSheet {
@@ -1996,7 +2049,7 @@ column FlipbookSheet {
 }
 ```
 
-<sub>`api.ogt` line 11337</sub>
+<sub>`api.ogt` line 11365</sub>
 
 ```ogt
 column Rig2D {
@@ -2007,4 +2060,4 @@ column Rig2D {
 }
 ```
 
-<sub>`api.ogt` line 11439</sub>
+<sub>`api.ogt` line 11467</sub>

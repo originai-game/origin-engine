@@ -41,6 +41,18 @@ strike, a bite or a fall at weight 1, back to 0 when `finished`.
 Transform by the root joint's xz travel and yaw, `full` by all of it,
 `off` (the default) leaves the hips travelling inside the model; switch it
 to `planar` for a lunge's clip and back to `off` after.
+**Crowds on the GPU.** For hundreds or thousands of animated
+characters (a stadium, an army, a market), put
+`og.CrowdAnimation { skeleton, clip, offset, speed }` on each model's
+entity instead of og.Skeleton and og.AnimationPlayer: the clip is baked
+once into joint palettes shared by every entity that plays it, and the
+GPU poses each one at its own time, so the CPU does no animation work for
+them. Give each member its own `offset` (seconds) so they are out of
+step. Nothing reads the pose (no markers, root motion, IK, blendshapes or
+attachments), a new `clip` cuts without a fade, and the camera culls them
+on the CPU (not through GPU culling or meshlets yet): keep the few the
+player interacts with on og.AnimationPlayer. A clip costs `rate` (30) ×
+its seconds × its joints × 64 bytes once, whatever the crowd's size.
 **Look-at and joint limits.** `og.LookAt { skeleton, joint, target }`
 on its own entity turns a joint (a head, an eye, a turret's barrel) so its
 `axis` (default +Z, as three.js `lookAt`) points at `target` after the

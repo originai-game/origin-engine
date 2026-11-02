@@ -1,0 +1,14 @@
+type project
+version 1
+---
+# The R9 GPU crowd sample (batch 5): 400 template walkers on a plain, each
+# playing the walk on the GPU (og.CrowdAnimation) at its own offset, and
+# one beside the camera posed by og.anim for comparison.
+# tests/evidence/r9/NOTES.md has the commands and what each frame shows.
+name "R9 crowd"
+id "r9-crowd"
+engine "0.7.7"
+entry "src/main.ts"
+profile "3d"
+tick 60
+seed 1

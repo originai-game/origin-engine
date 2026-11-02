@@ -354,6 +354,10 @@
       {
         "member": "og.physics.garmentPoints",
         "summary": "An og.Garment's simulated points after the last step, in the world (R9)."
+      },
+      {
+        "member": "og.CrowdAnimation",
+        "summary": "Plays a clip on a model on the GPU from a shared baked clip, for crowds (R9)."
       }
     ],
     "fixed": [

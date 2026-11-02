@@ -16,6 +16,7 @@ mod camera_projection;
 mod cells;
 mod contact_hit;
 mod cookie_cap;
+mod crowd;
 mod display;
 mod drop_shadows;
 mod garment;

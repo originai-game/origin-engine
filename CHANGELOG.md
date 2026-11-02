@@ -546,6 +546,15 @@ is one line here, written at the merge that changes
   the skinned instance's own vertices (`SkinnedInstance::deformed`, in
   the joint palette buffer, with the previous frame's for TAA's motion
   vectors). `og.physics.garmentPoints` reads them.
+- **GPU crowds (R9, batch 5).** `og.CrowdAnimation` (lazy) on a model's
+  entity plays a clip on the GPU: the runtime bakes the clip once per
+  skeleton, skin, clip and `rate` into joint palettes
+  (`RenderScene::baked_clips`, shared by every entity that plays it), and
+  each entity is a skinned instance at its own frame (`offset` + `speed` ×
+  the world's time), blended between baked frames by the shader. No
+  og-anim work per entity. The previous frame's clip, frame and transform
+  give TAA its motion vectors. Drawing only, CPU frustum culling as other
+  skinned instances; not GPU-culled or on the meshlet path yet.
 
 ## 0.7.7 — 2026-10-31
 

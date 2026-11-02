@@ -35,6 +35,7 @@ pub(crate) struct FxLayouts {
     pub trail: Option<Layout>,
     pub beam: Option<Layout>,
     pub skeleton: Option<Layout>,
+    pub crowd: Option<Layout>,
     pub stylise: Option<Layout>,
     pub material_style: Option<Layout>,
     /// The art contract's resources the runtime reads (`super::art`).
@@ -57,6 +58,7 @@ impl FxLayouts {
             trail: get("og.Trail"),
             beam: get("og.Beam"),
             skeleton: get("og.Skeleton"),
+            crowd: get("og.CrowdAnimation"),
             stylise: get("og.Stylise"),
             material_style: get("og.MaterialStyle"),
             art_line: get("og.ArtLine"),
@@ -188,6 +190,14 @@ pub(crate) struct FxState {
     /// The last frame's garment vertices by (entity, primitive), in the
     /// world: TAA's motion of a swinging garment.
     pub drawn_deformed: BTreeMap<(u64, usize), Vec<Vec3>>,
+    /// Clips baked for og.CrowdAnimation, by (skeleton, skin, clip, rate
+    /// bits): their index in `RenderScene::baked_clips`, its frames and
+    /// the clip's seconds.
+    pub baked: BTreeMap<(u64, u32, u64, u32), Baked>,
+    /// Each crowd entity's baked clip, frame and transform as the last
+    /// frame drew it (TAA's motion), and this frame's.
+    pub drawn_baked: IdMap<u64, (u32, f32, Mat4)>,
+    pub baked_now: IdMap<u64, (u32, f32, Mat4)>,
 }
 
 pub(crate) fn f(v: &Value, key: &str, default: f32) -> f32 {
@@ -1182,6 +1192,207 @@ pub(crate) fn posed_model(
                     let n = inst.morph_weights.len().min(out.weights.len());
                     inst.morph_weights[..n].copy_from_slice(&out.weights[..n]);
                 }
+                scene.skinned_instances.push(inst);
+            }
+            None => {
+                scene.instances.push(og_render::Instance {
+                    mesh,
+                    material,
+                    transform: world_matrix * local,
+                    material_layer: None,
+                    fx: look.fx,
+                    cast_shadows: look.cast,
+                    receive_shadows: look.receive,
+                });
+                keys.push((entity, k as u32));
+            }
+        }
+    }
+    true
+}
+
+/// A baked clip of og.CrowdAnimation: its index in
+/// `RenderScene::baked_clips`, its frames and the clip's seconds.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Baked {
+    pub index: u32,
+    pub frames: usize,
+    pub seconds: f32,
+}
+
+/// One og.CrowdAnimation's fields.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct CrowdPlay {
+    pub skeleton: u64,
+    pub skin: u32,
+    pub clip: u64,
+    pub offset: f32,
+    pub speed: f32,
+    pub looping: bool,
+    pub rate: f32,
+}
+
+/// The entities with og.CrowdAnimation and its fields, read in place (a
+/// crowd is thousands of rows: no JSON a row).
+pub(crate) fn crowds(world: &World, rs: &RenderState) -> IdMap<u64, CrowdPlay> {
+    use super::codec::{Rec, Row, Slot};
+    let Some(layout) = rs.draw.fx.crowd.as_ref() else {
+        return IdMap::new();
+    };
+    let Ok(id) = world.id_by_name(&layout.schema) else {
+        return IdMap::new();
+    };
+    let slot = |key| Slot::of(layout, key);
+    let (skeleton, skin, clip) = (slot("skeleton"), slot("skin"), slot("clip"));
+    let (offset, speed, looping, rate) =
+        (slot("offset"), slot("speed"), slot("loop"), slot("rate"));
+    super::feel::byte_rows(world, id, layout)
+        .iter()
+        .map(|(e, bytes)| {
+            let v = Row::new(layout, bytes);
+            let num = |s: &Slot, d: f64| v.num(s).unwrap_or(d);
+            (
+                *e,
+                CrowdPlay {
+                    skeleton: num(&skeleton, 0.0) as u64,
+                    skin: num(&skin, 0.0) as u32,
+                    clip: num(&clip, 0.0) as u64,
+                    offset: num(&offset, 0.0) as f32,
+                    speed: num(&speed, 1.0) as f32,
+                    looping: v.flag(&looping).unwrap_or(true),
+                    rate: num(&rate, 30.0) as f32,
+                },
+            )
+        })
+        .collect()
+}
+
+/// The baked clip of an og.CrowdAnimation (`crowd`): baked from og-anim's
+/// skeleton and clip the first time it is drawn, at `rate` frames a
+/// second evenly over the clip, and shared from then on; `None` while the
+/// skeleton is not loaded, or its skin has no joints.
+fn baked_clip(
+    fx: &mut FxState,
+    scene: &mut og_render::RenderScene,
+    crowd: &CrowdPlay,
+) -> Option<Baked> {
+    let (skeleton, clip, skin) = (crowd.skeleton, crowd.clip, crowd.skin);
+    let rate = if crowd.rate.is_finite() {
+        crowd.rate.clamp(1.0, 120.0)
+    } else {
+        30.0
+    };
+    let key = (skeleton, skin, clip, rate.to_bits());
+    if let Some(&b) = fx.baked.get(&key) {
+        return Some(b);
+    }
+    let anim = fx.anim.as_ref()?;
+    let skel = anim.skeleton(skeleton)?;
+    let clip = anim.clip(clip);
+    let seconds = clip.as_ref().map_or(0.0, |c| c.duration.max(0.0));
+    let count = (((seconds * rate).ceil() as usize) + 1).clamp(2, 4096);
+    let binding = clip.as_ref().map(|c| og_anim::bind(&skel, c));
+    let mut frames = Vec::new();
+    let mut palette = Vec::new();
+    for k in 0..count {
+        let mut pose = og_anim::Pose::rest(&skel);
+        if let (Some(c), Some(b)) = (&clip, &binding) {
+            let t = seconds * k as f32 / (count - 1) as f32;
+            og_anim::sample(&skel, c, b, t, og_anim::NONE, &mut pose);
+        }
+        skel.palette(skin, &pose.nodes, &mut palette);
+        frames.extend_from_slice(&palette);
+    }
+    if palette.is_empty() {
+        return None;
+    }
+    let index = scene.baked_clips.len() as u32;
+    scene.baked_clips.push(og_render::BakedClip {
+        joints: palette.len() as u32,
+        frames,
+    });
+    let b = Baked {
+        index,
+        frames: count,
+        seconds,
+    };
+    fx.baked.insert(key, b);
+    Some(b)
+}
+
+/// Draws a model played by og.CrowdAnimation (`crowd`) on the GPU: its
+/// skinned primitives as skinned instances posed by the shared baked clip
+/// at the frame of `seconds` (the world's time, between ticks on a frame
+/// drawn between them), with the frame before's clip, frame and transform
+/// for TAA; its other parts as instances, as [`posed_model`] draws them.
+/// `false` when it cannot (no skin data or skeleton yet): the caller draws
+/// the model at its bind pose.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn crowd_model(
+    rs: &mut RenderState,
+    entity: u64,
+    asset: u64,
+    world_matrix: Mat4,
+    seconds: f64,
+    crowd: &CrowdPlay,
+    parts: &[(MeshHandle, og_render::MaterialHandle, Mat4)],
+    look: ModelLook,
+    keys: &mut Vec<(u64, u32)>,
+) -> bool {
+    let RenderState { scene, fx, .. } = rs;
+    let Some(info) = fx.models.get(&asset).cloned() else {
+        return false;
+    };
+    let Some(Baked {
+        index: clip,
+        frames: count,
+        seconds: length,
+    }) = baked_clip(fx, scene, crowd)
+    else {
+        return false;
+    };
+    let Some(skin) = fx.skins.get_mut(&info.id) else {
+        return false;
+    };
+    let meshes = skinned_meshes(scene, &info, skin, info.prim_mesh.len());
+    // The clip's time, then its frame (in f64: a world hours old keeps
+    // its sub-frame precision).
+    let t = f64::from(crowd.offset) + f64::from(crowd.speed) * seconds;
+    let length = f64::from(length);
+    let t = if length <= 0.0 {
+        0.0
+    } else if crowd.looping {
+        t.rem_euclid(length)
+    } else {
+        t.clamp(0.0, length)
+    };
+    let frame = if length > 0.0 {
+        (t / length * (count - 1) as f64) as f32
+    } else {
+        0.0
+    };
+    let (previous_clip, previous_frame, previous_transform) = fx
+        .drawn_baked
+        .get(&entity)
+        .copied()
+        .unwrap_or((clip, frame, world_matrix));
+    fx.baked_now.insert(entity, (clip, frame, world_matrix));
+    let pose = og_render::BakedPose {
+        clip,
+        frame,
+        previous_clip,
+        previous_frame,
+        previous_transform,
+    };
+    for (k, &(mesh, material, local)) in parts.iter().enumerate() {
+        let p = mesh.index().wrapping_sub(info.base);
+        match meshes.get(p).copied().flatten() {
+            Some(skinned) => {
+                let mut inst = SkinnedInstance::new(skinned, material, world_matrix, 0);
+                inst.fx = look.fx;
+                inst.cast_shadows = look.cast;
+                inst.receive_shadows = look.receive;
+                inst.baked = Some(pose);
                 scene.skinned_instances.push(inst);
             }
             None => {

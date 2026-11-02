@@ -51,6 +51,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     scene.deformed_vertices.clear();
     scene.previous_deformed_vertices.clear();
     rs.fx.deformed_keys.clear();
+    rs.fx.drawn_baked = std::mem::take(&mut rs.fx.baked_now);
     scene.sprite_order.clear();
     scene.sprite_fx.clear();
     scene.sprite_arrays.clear();
@@ -198,6 +199,17 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     super::baked::apply(world, &mut rs.scene, &mut rs.baked, baked);
     // Models: posed by og-anim when the entity has a Skeleton.
     let posed = super::fx::skeletons(world, rs);
+    // GPU crowds (og.CrowdAnimation): the world's time of this frame,
+    // between ticks on a frame drawn between them.
+    let crowds = super::fx::crowds(world, rs);
+    let crowd_time = |alpha: Option<f32>| {
+        let t = world.time();
+        let ticks = match alpha {
+            Some(a) => t.tick as f64 - 1.0 + f64::from(a),
+            None => t.tick as f64,
+        };
+        ticks * f64::from(t.dt)
+    };
     let mut keys: Vec<(u64, u32)> = Vec::new();
     // Each model's own tint and flash ride in its instances' records
     // (kestrel-stair #11: a glTF's materials are shared by every instance),
@@ -324,6 +336,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             && super::fx::posed_model(rs, e, asset, m, h.blend_alpha(e), &parts, look, &mut keys)
         {
             continue;
+        }
+        if let Some(crowd) = crowds.get(&e) {
+            let seconds = crowd_time(h.blend_alpha(e));
+            if super::fx::crowd_model(rs, e, asset, m, seconds, crowd, &parts, look, &mut keys) {
+                continue;
+            }
         }
         let levels = model_lods.get(&asset).map(|l| &l.parts);
         // Drawn without a pose: a part whose node the glTF hides at rest
