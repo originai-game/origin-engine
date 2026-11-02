@@ -382,7 +382,8 @@ test("og.ui.killfeed, resourceBar and scoreboard: newest first within max and ti
   const lines = below(els, "FeedHud/Feed").filter((x) => x.path.split("/").length === 3);
   expect(lines.map((x) => x.id)).toEqual(["k6", "k5", "k4", "k3"]);
   expect(at(els, "FeedHud/Feed")?.role).toBe("log");
-  expect(at(els, "ResHud/Res/sup/Amount")?.text).toBe("190/200");
+  expect(at(els, "ResHud/Res/sup/Count/Amount")?.text).toBe("190");
+  expect(at(els, "ResHud/Res/sup/Count/Cap")?.text).toBe(" / 200");
   expect(at(els, "ResHud/Res/min/Rate/Text")?.text).toBe("12.5/s");
   expect(at(els, "ResHud/Res/min/Rate/Mark")).toBeDefined();
   expect(at(els, "BoardHud/Board/Team#0/a/Value#0")?.text).toBe("12");
@@ -474,6 +475,62 @@ test("og.ui.standingsTower, lapTimer, rearView and a minimap's track: order, sig
   expect(at(els, "TowerHud/Tower/c5/Gap")?.text).toBe("PIT");
   expect(at(els, "LapHud/Lap/Split/Time")?.text).toBe("−0.42");
   expect(states(at(els, "LapHud/Lap")).split).toBe("ahead");
+}, LOADED_MS);
+
+test("og.ui.rtsConsole and dragSelect: four zones side by side, a paged selection, a fixed command grid, a queue, the box", () => {
+  let building = false;
+  let drag: { x: number; y: number } | null = null;
+  let box: { dragging: boolean; x: number; y: number; width: number; height: number } | null = null;
+  const e = engineFor("HudRts", () => {
+    const units = Array.from({ length: 14 }, (_, i) => ({ key: `u${i}`, name: `Unit ${i}`, health: i === 3 ? 20 : 100, healthMax: 100 }));
+    const commands = [{ key: "a", name: "Attack", hotkey: "Q" }, { key: "" }, { key: "s", name: "Stop", hotkey: "S", cooldown: 4, cooldownMax: 8 }, ...Array.from({ length: 4 }, (_, i) => ({ key: `c${i}`, name: `C${i}` }))];
+    og.ui.rtsConsole("Rts", {
+      map: { shape: "square", zoom: 1 },
+      selection: {
+        units: building ? [{ key: "b", name: "Barracks", health: 900, healthMax: 1000 }] : units, focus: building ? "b" : "u3",
+        groups: [{ key: "g1", label: "1", count: 14 }, { key: "g2", label: "2", count: 0 }], group: "g1",
+        stats: [{ key: "armour", label: "Armour", value: "1" }],
+        ...(building ? { queue: { items: [{ key: "q0", name: "Marine", remaining: 5, duration: 10 }, { key: "q1", name: "Marine", count: 3 }] } } : {}),
+      },
+      commands: { commands, columns: 5 },
+    });
+    if (drag) box = og.ui.dragSelect("Drag", { from: { x: 100, y: 120 }, to: drag });
+  });
+  e.advance(4);
+  let els = dump(e);
+  const zone = (p: string) => at(els, `RtsHud/Rts/Panel/${p}`)!;
+  const map = zone("Map");
+  const sel = zone("Selection");
+  const cmd = zone("Commands");
+  // Minimap, selection and command card in that order along one panel, none over another.
+  expect(map.x + map.width).toBeLessThanOrEqual(sel.x);
+  expect(sel.x + sel.width).toBeLessThanOrEqual(cmd.x);
+  // Fourteen units in a two-row grid: the last tile of the page counts what does not fit.
+  const tiles = below(els, "RtsHud/Rts/Panel/Selection/Body/Grid/Tiles").filter((x) => x.path.split("/").length === 8);
+  const more = tiles.find((x) => x.id === "More");
+  expect(more).toBeDefined();
+  const shown = tiles.filter((x) => x.id.startsWith("u")).length;
+  expect(at(els, "RtsHud/Rts/Panel/Selection/Body/Grid/Tiles/More/Count")?.text).toBe(`+${14 - shown}`);
+  expect(at(els, "RtsHud/Rts/Panel/Selection/Body/Grid/Tiles/u3")?.role).toBe("button");
+  expect(at(els, "RtsHud/Rts/Panel/Selection/Body/Card/Detail/Info/Name")?.text).toBe("Unit 3");
+  expect(at(els, "RtsHud/Rts/Panel/Selection/Body/Card/Queue")).toBe(undefined);
+  // The command card keeps its places: an empty key leaves a well where the second command would be, so Stop is third.
+  const row0 = below(els, "RtsHud/Rts/Panel/Commands/Grid/Row#0").filter((x) => x.path.split("/").length === 7).map((x) => x.id);
+  expect(row0).toEqual(["a", "Empty#1", "s", "c0", "c1"]);
+  expect(at(els, "RtsHud/Rts/Panel/Commands/Grid/Row#0/a/Slot/Key")?.text).toBe("Q");
+  expect(at(els, "RtsHud/Rts/Panel/Commands/Grid/Row#1/Empty#9")).toBeDefined();
+  // A building: its queue above the card, the first item counting down, a stacked slot's count.
+  building = true;
+  drag = { x: 300, y: 260 };
+  e.advance(3);
+  els = dump(e);
+  expect(at(els, "RtsHud/Rts/Panel/Selection/Body/Card/Queue/q0/Time")?.text).toBe("5");
+  expect(at(els, "RtsHud/Rts/Panel/Selection/Body/Card/Queue/q1/Count")?.text).toBe("3");
+  expect(states(at(els, "RtsHud/Rts/Panel/Selection/Body/Card/Queue")).queue).toBe("building");
+  // The drag box: the rectangle between its corners, drawn where it says.
+  expect(box).toEqual({ dragging: true, released: false, x: 100, y: 120, width: 200, height: 140 } as never);
+  const b = at(els, "DragHud/Drag")!;
+  expect([b.x, b.y, b.width, b.height]).toEqual([100, 120, 200, 140]);
 }, LOADED_MS);
 
 test("components anchored at one point stack in the order built instead of drawing over each other", () => {

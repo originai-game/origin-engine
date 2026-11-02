@@ -369,9 +369,14 @@ export function resourceBar(id: string, desc: Api.ResourceBarDesc = {}): void {
           const e = edge("amount", amount);
           const s = e.since < msToTicks(300) && amount > e.prev ? pop(e.since, 0.1, 300) : 1;
           const ink = capped ? lit(role("danger")) : near ? lit(role("warn")) : token("ink");
-          text("Amount", cap !== null ? `${formatNumber(Math.round(shown), fmt)}/${formatNumber(cap, fmt)}` : formatNumber(Math.abs(amount - shown) < 0.5 ? amount : Math.round(shown), fmt), {
+          // The amount and its cap on one line, folded or not.
+          if (cap !== null) open("Count", { direction: "row", gap: 0, cross: "end" });
+          text("Amount", cap !== null ? formatNumber(Math.round(shown), fmt) : formatNumber(Math.abs(amount - shown) < 0.5 ? amount : Math.round(shown), fmt), {
             step: ts(15), font: "mono", color: ink, nowrap: true, outline: 1,
           }, { transform: { scaleX: s, scaleY: s }, ...(capped ? { opacity: 0.6 + 0.4 * pulse(1.5) } : {}) });
+          // A cap reads as amount / cap with the cap a step quieter, unless the cap is near or reached (folded, without the spaces).
+          if (cap !== null) text("Cap", `${fit > 0 ? "/" : " / "}${formatNumber(cap, fmt)}`, { step: ts(15), font: "mono", color: capped || near ? ink : token("inkMuted"), nowrap: true, outline: 1 });
+          if (cap !== null) close();
           const rate = r.rate ?? 0;
           if (desc.rates !== false && rate !== 0) {
             // The direction as a drawn mark (no font need carry ▲▼), then the amount a second.
@@ -385,6 +390,14 @@ export function resourceBar(id: string, desc: Api.ResourceBarDesc = {}): void {
           }
           if (fit > 0) close();
         }, { a11y: a11y("text", r.name ?? r.key ?? "", { value: `${formatNumber(amount, fmt)}${cap !== null ? ` of ${formatNumber(cap, fmt)}` : ""}${rate(r)}` }) });
+      }
+      const clock = desc.clock ?? null;
+      if (clock !== null) {
+        leaf("Rule", { width: px(1), height: px(Math.ceil(stepSize(ts(15)).line * 0.8)), part: sel("ResourceBar", "rule") }, { fills: [solid(token("line", 0.9))] });
+        const t = Math.max(0, Math.floor(clock));
+        const h = Math.floor(t / 3600);
+        const mm = String(Math.floor((t % 3600) / 60)).padStart(h > 0 ? 2 : 1, "0");
+        text("Clock", `${h > 0 ? `${h}:` : ""}${mm}:${String(t % 60).padStart(2, "0")}`, { step: ts(15), font: "mono", color: token("ink"), nowrap: true, outline: 1 }, { a11y: a11y("timer", "Game time") });
       }
     }, { a11y: a11y("list", "Resources") });
   });
