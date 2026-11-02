@@ -287,10 +287,11 @@ fn lit_mesh_and_distorting_particles_match_their_reference() {
     );
     assert_eq!(s.particle_collision_skipped, 0);
     // The lit debris is brown rock and its dust tan: nothing in the debris
-    // area is near-white grey (lit particles once read as white there).
+    // area, the ground below the wall's bottom edge (y 416) right of the
+    // smoke (x 405), is near-white grey (lit particles once read as white).
     let img = gfx::render("particles-lit").expect("render").image;
-    let white = (340..680u32)
-        .flat_map(|y| (380..920u32).map(move |x| ((y * img.width + x) * 4) as usize))
+    let white = (430..680u32)
+        .flat_map(|y| (430..920u32).map(move |x| ((y * img.width + x) * 4) as usize))
         .filter(|&i| {
             let p = [0, 1, 2].map(|c| img.pixels[i + c]);
             let (lo, hi) = (*p.iter().min().unwrap(), *p.iter().max().unwrap());

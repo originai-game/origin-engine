@@ -34,6 +34,11 @@ struct ParticleOut {
   @location(3) depth: f32,
   @location(4) world: vec3<f32>,
   @location(5) normal: vec3<f32>,
+  // Where the fragment lies on a billboard as drawn (turned by the
+  // particle's rotation, along the camera's right and up, a half-size
+  // from the centre at 0.5): its lit normal (`ball_normal`). `local` is
+  // the corner before the rotation, which the texture and the round dot use.
+  @location(6) facing: vec2<f32>,
 };
 
 @vertex
@@ -75,6 +80,7 @@ fn vs(@builtin(vertex_index) vi: u32, p: ParticleIn) -> ParticleOut {
   }
   let world = center + offset;
   o.clip = frame.view_proj * vec4<f32>(world, 1.0);
+  o.facing = vec2<f32>(dot(offset, right), dot(offset, up)) / max(size, 1e-6);
   // The sprite sheet frame.
   let columns = max(emitter.sheet.x, 1.0);
   let rows = max(emitter.sheet.y, 1.0);
@@ -118,8 +124,9 @@ fn particle_light(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>) -> vec3<f32> {
   return c;
 }
 
-// A billboard's normal: a ball facing the camera, so a lit puff shades
-// away from the light. The ball spans the middle of the quad (its rim at
+// A billboard's normal at `facing` (ParticleOut's, the rotation applied:
+// a puff's lit side faces the light whatever its spin): a ball facing the
+// camera, so a lit puff shades away from the light. The ball spans the middle of the quad (its rim at
 // 0.6 of the half-size), where a soft texture is still dense: a ball as
 // wide as the quad tilts only at the edges, which a puff's alpha has
 // already faded, and both sides then read alike.
@@ -250,7 +257,7 @@ fn fs(in: ParticleOut) -> @location(0) vec4<f32> {
     c.a *= d * d;
   }
   if (emitter.look.x > 0.5) {
-    c = vec4<f32>(c.rgb * particle_light(in.clip.xy, in.world, ball_normal(in.local)), c.a);
+    c = vec4<f32>(c.rgb * particle_light(in.clip.xy, in.world, ball_normal(in.facing)), c.a);
   }
   if (emitter.render.z > 0.0) {
     // Clamped: a pass without a depth of its own binds a 1x1 far plane.
