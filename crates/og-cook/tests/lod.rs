@@ -323,11 +323,28 @@ fn every_level_is_cut_into_clusters_that_bound_and_face_their_triangles() {
         })
         .collect();
     let mut culled = 0;
-    for level in &mc.levels {
+    for (k, level) in mc.levels.iter().enumerate() {
+        // Selection per cluster in the per-level chain: the level's error
+        // (never under the one before), the next level's as the parent's,
+        // the level as the group, one sphere holding the whole mesh.
+        let chain = mc.levels[..=k].iter().map(|l| l.error).fold(0.0, f32::max);
+        let parent = mc
+            .levels
+            .get(k + 1)
+            .map_or(f32::MAX, |l| l.error.max(chain));
         for c in &mc.clusters[level.clusters.start as usize..level.clusters.end as usize] {
+            assert_eq!(
+                (c.error, c.parent_error, c.group),
+                (chain, parent, k as u32)
+            );
+            assert_eq!(
+                (c.error_center, c.error_radius),
+                (mc.clusters[0].error_center, mc.clusters[0].error_radius)
+            );
             let tris = &p.indices[c.first as usize..(c.first + c.triangles * 3) as usize];
             for tri in tris.chunks(3) {
                 for &i in tri {
+                    assert!(pos(i).distance(c.error_center) <= c.error_radius * 1.001 + 1e-5);
                     assert!(
                         pos(i).distance(c.center) <= c.radius * 1.001 + 1e-5,
                         "a vertex outside its cluster's sphere: {} > {} ({:?}, level at {})",

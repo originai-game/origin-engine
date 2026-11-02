@@ -54,6 +54,37 @@ pub struct Cluster {
     /// ([`backfacing`]); a cutoff of 1 or more never culls.
     pub cone_axis: Vec3,
     pub cone_cutoff: f32,
+    /// Selection per cluster ([`selected`]): its error and its parents',
+    /// in the mesh's units, both projected from the sphere
+    /// `error_center`/`error_radius`, and the group it was simplified with.
+    /// The cook's per-level chain gives every cluster of a level the same
+    /// values (the level's error, the next level's, the mesh's sphere, the
+    /// level as the group); a cluster DAG gives each its own.
+    pub error: f32,
+    pub parent_error: f32,
+    pub error_center: Vec3,
+    pub error_radius: f32,
+    pub group: u32,
+}
+
+/// Whether a cluster is drawn at its detail: its error, projected at
+/// `pixels_per_unit` ([`crate::lod::pixels_per_unit`] of its error sphere,
+/// the instance's scale folded in) times `bias`, stays under
+/// [`crate::lod::LOD_PIXEL_ERROR`] and its parents' does not. In the
+/// per-level chain exactly one level passes, the one [`crate::lod::select`]
+/// picks (without hysteresis). An error of 0 projects to 0 at any distance.
+pub fn selected(error: f32, parent_error: f32, pixels_per_unit: f32, bias: f32) -> bool {
+    let screen = |e: f32| {
+        if e <= 0.0 {
+            0.0
+        } else if bias <= 0.0 || !pixels_per_unit.is_finite() {
+            f32::INFINITY
+        } else {
+            e * pixels_per_unit * bias
+        }
+    };
+    let t = crate::lod::LOD_PIXEL_ERROR;
+    screen(error) < t && screen(parent_error) >= t
 }
 
 /// One level of detail of a clustered mesh.
@@ -281,6 +312,30 @@ mod tests {
         m.clusters[0].triangles = 65;
         m.clusters[1] = cluster(195, 35);
         assert!(m.validate(330).is_err());
+    }
+
+    #[test]
+    fn per_cluster_selection_draws_the_level_lod_select_picks() {
+        // A chain like lod.rs's tree: each level's clusters carry its error
+        // and the next level's.
+        let chain = [0.0, 0.03, 0.12, 0.5];
+        let parent = |k: usize| chain.get(k + 1).copied().unwrap_or(f32::MAX);
+        for per_unit in [0.5, 1.9, 2.1, 3.9, 8.0, 19.0, 33.0, 34.0, 77.0, 1e4] {
+            for bias in [0.5, 1.0, 2.0] {
+                let drawn: Vec<usize> = (0..chain.len())
+                    .filter(|&k| selected(chain[k], parent(k), per_unit, bias))
+                    .collect();
+                let picked = crate::lod::select(&chain, per_unit, bias, None);
+                assert_eq!(drawn, vec![picked], "{per_unit} px/unit, bias {bias}");
+            }
+        }
+        // Bias 0 or the eye inside the sphere: the full mesh alone.
+        for (per_unit, bias) in [(19.0, 0.0), (f32::INFINITY, 1.0)] {
+            let drawn: Vec<usize> = (0..chain.len())
+                .filter(|&k| selected(chain[k], parent(k), per_unit, bias))
+                .collect();
+            assert_eq!(drawn, vec![0]);
+        }
     }
 
     #[test]

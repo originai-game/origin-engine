@@ -656,7 +656,20 @@ cluster keeps its bounding sphere (widened to its farthest vertex) and
 its normal cone (the model blob's `clusters` table, each `lods` row
 naming its range). The levels are the ones per-instance LOD already uses
 (`lod.rs`): simplified levels with their measured error, not a cluster
-DAG. Per frame, the GPU picks each clustered instance's level by
+DAG (the owner, 2026-11-02: three.js#35191's model, as the roadmap's R1
+names it). Its limit: one level is chosen for a whole instance, from the
+error projected at its nearest point, so one huge mesh (a building, a
+terrain chunk, a long wall) draws its nearest part's detail everywhere:
+the far end of a building seen along its length keeps the full mesh, and
+only the culling of its clusters saves work there. Large assets are
+best authored in parts. A cluster DAG (Nanite's: clusters of each level
+simplified in groups, each choosing its own detail) lifts the limit
+without another blob format: every cluster row already carries its own
+error, its parents' error, the sphere both are projected from and its
+group, and a cluster is drawn when its error projects under a pixel and
+its parents' does not (`meshlet::selected`); the cook's per-level chain
+writes those fields so that exactly the level `lod::select` picks is
+drawn. Per frame, the GPU picks each clustered instance's level by
 screen-space error (`lod::select` without hysteresis), then tests each
 of the level's clusters on its own: its sphere against the frustum, its
 normal cone against the eye (not for two-sided materials, transforms

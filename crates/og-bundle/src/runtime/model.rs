@@ -406,6 +406,15 @@ impl CookedModel {
                             radius: c.radius,
                             cone_axis: Vec3::new(c.cone_x, c.cone_y, c.cone_z),
                             cone_cutoff: c.cone_cutoff,
+                            error: c.error,
+                            parent_error: c.parent_error,
+                            error_center: Vec3::new(
+                                c.error_center_x,
+                                c.error_center_y,
+                                c.error_center_z,
+                            ),
+                            error_radius: c.error_radius,
+                            group: c.group,
                         }),
                 );
             }

@@ -48,7 +48,7 @@ use og_core::{Reflect, Schema};
 
 /// Changes whenever the bytes the cook writes for the same input change.
 /// Part of every cook stamp, so a new cooker re-cooks everything.
-pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r8");
+pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r9");
 
 /// "None" in a u32 index field.
 pub const NONE: u32 = u32::MAX;
@@ -264,13 +264,31 @@ row!(
     /// against the eye (every triangle faces away when
     /// `dot(normalize(center - eye), cone_axis) >= cone_cutoff + radius /
     /// distance`; a `cone_cutoff` of 1 never culls).
-    ClusterRow, "og.ModelCluster", 1 {
+    ///
+    /// The error fields state selection per cluster, so a cluster DAG
+    /// (Nanite's) needs no other format: a cluster is drawn when its
+    /// `error`, projected from the sphere `error_center`/`error_radius`,
+    /// stays under a pixel and its `parent_error`, projected from the same
+    /// sphere, does not (og-render's `meshlet::selected`). The cook writes
+    /// the per-level chain in that form: every cluster of level k has the
+    /// level's error (the largest of levels 0 to k), the next level's as
+    /// its parent's (`f32::MAX` for the coarsest), the primitive's bounding
+    /// sphere and `group` k, so exactly one level is drawn, the one
+    /// og-render's `lod::select` picks. A DAG writes each cluster's own
+    /// error and group and its parents' error and bounds.
+    ClusterRow, "og.ModelCluster", 2 {
         index_first: u32,
         triangle_count: u32,
         center_x: f32, center_y: f32, center_z: f32,
         radius: f32,
         cone_x: f32, cone_y: f32, cone_z: f32,
         cone_cutoff: f32,
+        error: f32,
+        parent_error: f32,
+        error_center_x: f32, error_center_y: f32, error_center_z: f32,
+        error_radius: f32,
+        /// The group it was simplified with (a DAG's), the level index here.
+        group: u32,
     }
 );
 

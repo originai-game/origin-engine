@@ -328,6 +328,7 @@ pub(crate) fn clusterize(pos: &[[f32; 3]], level: &[u32]) -> (Vec<u32>, Vec<Clus
             cone_y: b.cone_axis[1],
             cone_z: b.cone_axis[2],
             cone_cutoff: b.cone_cutoff,
+            ..Default::default()
         });
         indices.extend(m.triangles.iter().map(|&t| m.vertices[t as usize]));
     }
@@ -712,11 +713,40 @@ pub(crate) fn cook_primitive(
     let mut all: Vec<u32> = Vec::new();
     let mut lods = Vec::new();
     let mut clusters = Vec::new();
-    for (l, error) in &levels {
+    // Selection per cluster in the per-level chain (format's ClusterRow):
+    // each level's error at least the one before, the next level's as the
+    // parent's, all projected from the primitive's bounding sphere.
+    let chain: Vec<f32> = levels
+        .iter()
+        .scan(0.0f32, |e, l| {
+            *e = e.max(l.1);
+            Some(*e)
+        })
+        .collect();
+    let used = levels.iter().flat_map(|l| l.0.iter());
+    let (blo, bhi) = used.clone().fold(
+        (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN)),
+        |(lo, hi), &i| {
+            (
+                lo.min(pos_all[i as usize].into()),
+                hi.max(pos_all[i as usize].into()),
+            )
+        },
+    );
+    let sphere_center = (blo + bhi) * 0.5;
+    let sphere_radius = used
+        .map(|&i| Vec3::from(pos_all[i as usize]).distance(sphere_center))
+        .fold(0.0f32, f32::max);
+    for (k, (l, error)) in levels.iter().enumerate() {
         let (ordered, mut cut) = clusterize(&pos_all, l);
         let first = all.len() as u32;
         for c in &mut cut {
             c.index_first += first;
+            c.error = chain[k];
+            c.parent_error = chain.get(k + 1).copied().unwrap_or(f32::MAX);
+            [c.error_center_x, c.error_center_y, c.error_center_z] = sphere_center.to_array();
+            c.error_radius = sphere_radius;
+            c.group = k as u32;
         }
         lods.push(LodRow {
             index_first: first,
