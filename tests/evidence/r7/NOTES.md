@@ -9,7 +9,7 @@ sRGB colour texture whose right half is the normal map), and two large
 craters on the ground under a low sun from the left: `crater-a` with
 `normalScale` 1, `crater-b` with 2.
 
-Without a renderer it runs to `tick 12 hash 217676836f4c5adc entities 605`
+Without a renderer it runs to `tick 12 hash c2a3be922ea877ac entities 605`
 (OG_RENDERER=none on the orb; decals are presentation only, so the hash
 does not depend on them).
 
@@ -31,6 +31,14 @@ og run tests/evidence/r7/decals --headless --size 1280x720 --out /tmp/r7 \
   relief clearly stronger;
 - no seams or blocky tiles where decals cross cluster boundaries (the
   screen's 16 × 9 tiles), no decal leaking off the wall's top edge.
+
+Fix (macrunner's first draw of 03331ea6a): thin blue lines ran from the
+ground's holes along their boxes' edges. A tap of the colour region's
+filter past u 0.5 reached the atlas's normal-map half (opaque blue) at
+grazing angles. Each decal sample is now clamped inside its region by its
+filter's reach (`decal_sample` in pbr.wgsl). The bullet-hole normal map is
+gentler (the pit's lip leans 40° at most, against about 60° before), so
+`crater-b`'s normalScale 2 reads clearly deeper than `crater-a`.
 
 og-tests frames (gfx references, `scripts/check.sh --only test`):
 

@@ -461,6 +461,26 @@ fn frame_decals(frag: vec2<f32>, p: vec3<f32>) -> vec2<u32> {
   return vec2<u32>(word & 0xffffffu, word >> 24u);
 }
 
+// Atlas region `rect` (u0, v0, u1, v1) at `t` (0..1 across the box), with
+// the box's screen gradients `gx`, `gy`. The sample stays inside the region
+// by its filter's reach (half the footprint's longer side, at least half a
+// texel, plus half a texel of the level the minor side picks): at a grazing
+// angle the footprint is long, and a bilinear or anisotropic tap past the
+// region's edge would draw the atlas's next region (a normal map's opaque
+// blue) as a line along the box's edge.
+fn decal_sample(rect: vec4<f32>, t: vec2<f32>, gx: vec2<f32>, gy: vec2<f32>) -> vec4<f32> {
+  let span = rect.zw - rect.xy;
+  let dx = gx * span;
+  let dy = gy * span;
+  let texel = 1.0 / vec2<f32>(textureDimensions(decal_atlas));
+  let reach = 0.5 * (abs(dx) + abs(dy)) + 0.5 * texel;
+  let lo = min(rect.xy, rect.zw);
+  let hi = max(rect.xy, rect.zw);
+  let mid = (lo + hi) * 0.5;
+  let uv = clamp(mix(rect.xy, rect.zw, t), min(lo + reach, mid), max(hi - reach, mid));
+  return textureSampleGrad(decal_atlas, fx_sampler, uv, dx, dy);
+}
+
 // Projected decals: the boxes covering the point blend their image over
 // the surface's albedo (and roughness) before it is lit, in record order;
 // those with a normal map bend the normal (DecalResult.normal, blended over
@@ -483,13 +503,11 @@ fn apply_decals(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, albedo: vec3<f32>, 
     let fade = smoothstep(d.axis.w, d.axis.w + fx.decal_info.z, facing) * (1.0 - smoothstep(0.35, 0.5, abs(local.z)));
     if (fade <= 0.0) { continue; }
     let t = vec2<f32>(local.x + 0.5, 0.5 - local.y);
-    let uv = mix(d.uv_rect.xy, d.uv_rect.zw, t);
     var texel = vec4<f32>(1.0);
     let gx = (d.inv * vec4<f32>(dpx, 0.0)).xy * vec2<f32>(1.0, -1.0);
     let gy = (d.inv * vec4<f32>(dpy, 0.0)).xy * vec2<f32>(1.0, -1.0);
     if (fx.decal_info.y > 0.5) {
-      let span = d.uv_rect.zw - d.uv_rect.xy;
-      texel = textureSampleGrad(decal_atlas, fx_sampler, uv, gx * span, gy * span);
+      texel = decal_sample(d.uv_rect, t, gx, gy);
     }
     let c = d.color * texel;
     let a = clamp(c.a * fade, 0.0, 1.0);
@@ -498,8 +516,7 @@ fn apply_decals(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, albedo: vec3<f32>, 
     r.emissive += d.emissive.rgb * texel.rgb * a;
     if (d.normal.x != 0.0 && fx.decal_info.y > 0.5) {
       // The box's +x (u) and +y (up the image) in the world, on the surface.
-      let span = d.normal_rect.zw - d.normal_rect.xy;
-      var m = textureSampleGrad(decal_atlas, fx_sampler, mix(d.normal_rect.xy, d.normal_rect.zw, t), gx * span, gy * span).xyz;
+      var m = decal_sample(d.normal_rect, t, gx, gy).xyz;
       if (fx.decal_info.y > 1.5) { m = decal_stored(m); }
       let ts = vec3<f32>((m.xy * 2.0 - 1.0) * d.normal.x, max(m.z * 2.0 - 1.0, 1e-3));
       let ux = vec3<f32>(d.inv[0].x, d.inv[1].x, d.inv[2].x);

@@ -262,7 +262,9 @@ pub fn bullet_hole_atlas(scene: &mut RenderScene) -> TextureHandle {
         } else {
             // The slope of h along the radius, as a normal.
             let e = 0.01;
-            let g = (h(d + e) - h(d - e)) / (2.0 * e) * 0.6;
+            // Gentle at normalScale 1 (40° at the steepest, the pit's lip), so a
+            // normalScale of 2 visibly deepens it.
+            let g = (h(d + e) - h(d - e)) / (2.0 * e) * 0.15;
             let (dx, dy) = if d > 1e-4 {
                 (x / (d * 0.5) * 0.5, y / (d * 0.5) * 0.5)
             } else {
