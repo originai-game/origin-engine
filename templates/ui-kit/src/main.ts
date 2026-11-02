@@ -18,7 +18,7 @@
 
 import { og, defineComponent, defineResource, defineSystem, bool, f32, f64, str, u32 } from "@origingame/engine";
 import type { Entity, GameSettings, Viewport, World } from "@origingame/engine";
-import { cardsScreen, gachaScreen, gearScreen, loadPatternArt, patternScene, patternsCommand, rewardsScreen } from "./patterns.ts";
+import { art, cardsScreen, gachaScreen, gearScreen, loadPatternArt, patternScene, patternsCommand, rewardsScreen } from "./patterns.ts";
 import { chartsScreen, containersScreen, dataScreen, demoCommand, graphScreen, navigationScreen, overlaysScreen } from "./components.ts";
 import { bindingsScreen, controlsDemo, controlsScreen, fieldsScreen, foundationsScreen, rangesScreen } from "./controls.ts";
 
@@ -976,7 +976,9 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       break;
     }
     case "cutscene": {
-      const r = og.ui.cutscene("Story", { open: true, lines: CUTSCENE, index: d.line, skipLabel: tr(world, "cutscene.skip") });
+      // The speakers' painted portraits from the kit's art set (Mira, and Aria Vell as the player).
+      const lines = CUTSCENE.map((l) => ({ ...l, image: art(l.speaker === "Mira" ? "portraits/mira" : "portraits/aria-vell") }));
+      const r = og.ui.cutscene("Story", { open: true, lines, index: d.line, skipLabel: tr(world, "cutscene.skip") });
       d.line = r.index;
       if (r.finished || r.skipped) {
         d.line = 0;

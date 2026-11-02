@@ -37,7 +37,7 @@ export function cutscene(id: string, desc: Api.CutsceneDesc = {}): Api.CutsceneR
   // the bar's edge read as a box slipping off the screen.
   const lift = letterbox ? Math.max(0, barH + t.md - t.gutter) : 0;
   kit.anchor(`${id}.box`, { anchor: "bottom", width: phone ? grow() : px(Math.min(760, vp.width - 64)), offsetY: -lift }, () => {
-    const r = kit.dialogue("Dialogue", { speaker: line.speaker ?? "", text: line.text ?? "", portraitIcon: line.portrait ?? "" });
+    const r = kit.dialogue("Dialogue", { speaker: line.speaker ?? "", text: line.text ?? "", portrait: line.image ?? null, portraitIcon: line.portrait ?? "" });
     if (r.advanced) {
       if (index + 1 >= lines.length) out.finished = true;
       else index += 1;

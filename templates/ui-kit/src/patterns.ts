@@ -82,7 +82,7 @@ export function loadPatternArt(world: World): void {
 }
 
 /** A texture of the art set, or null (art off, or not loaded): the art slot then draws the style's placeholder. */
-function art(name: ArtName | undefined): never | null {
+export function art(name: ArtName | undefined): never | null {
   if (!artOn || !name) return null;
   const h = ART[name];
   return h ? (h as never) : null;

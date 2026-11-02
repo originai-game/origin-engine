@@ -53563,8 +53563,20 @@
         },
         "portrait": {
           "type": "string",
-          "description": "An icon of the atlas as the portrait; empty is the speaker's initial.",
+          "description": "An icon of the atlas as the portrait, when no image is given; empty is the speaker's initial.",
           "default": ""
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The speaker's painted portrait (art kind portrait); null takes the icon.",
+          "default": null
         }
       },
       "additionalProperties": false

@@ -5100,7 +5100,8 @@ module ui {
     desc true
     field speaker String "Who speaks."
     field text String "What they say."
-    field portrait String "An icon of the atlas as the portrait; empty is the speaker's initial."
+    field portrait String "An icon of the atlas as the portrait, when no image is given; empty is the speaker's initial."
+    field image Option.Texture "The speaker's painted portrait (art kind portrait); null takes the icon."
   }
 
   struct CutsceneDesc {

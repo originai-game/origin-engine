@@ -30458,11 +30458,17 @@ export interface DialogueLine {
    */
   readonly text?: string;
   /**
-   * An icon of the atlas as the portrait; empty is the speaker's initial.
+   * An icon of the atlas as the portrait, when no image is given; empty is the speaker's initial.
    *
    * @default ""
    */
   readonly portrait?: string;
+  /**
+   * The speaker's painted portrait (art kind portrait); null takes the icon.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
 }
 
 /**
