@@ -53,8 +53,6 @@ function writeHand(h: Hand): void {
   for (const k of KEYS) kit.remember(`~c.${k}`, h[k]);
 }
 
-const LONG_PRESS = 30;
-
 /** A card's rules as words for a screen reader: the markup's tags left out. */
 function plain(markup: string): string {
   return markup.replace(/\[\[/g, "\u0000").replace(/\[[^\]]*\]/g, "").replace(/\u0000/g, "[").replace(/\s+/g, " ").trim();
@@ -301,9 +299,6 @@ export function cardHand(id: string, desc: Api.CardHandDesc): Api.CardHandResult
         h.aim = 0;
         kit.feedback("select", -1);
       }
-    } else if (tick - h.pt >= LONG_PRESS) {
-      out.inspect = held;
-      h.held = 0;
     }
   }
   const dragging = held && h.drag ? card(held) : null;
@@ -443,6 +438,8 @@ export function cardHand(id: string, desc: Api.CardHandDesc): Api.CardHandResult
         // Moving between places on the ui spring; under the pointer it follows exactly.
         ...(following ? {} : { layoutMotion: spring("ui"), motion: spring("ui") }),
         ...(pl.mode === "rest" ? {} : { overlaps: ["*"] }),
+        // The long press (inspect) is og-ui's recogniser: its timing and slop, shared with every element.
+        gestures: { longPress: true },
         ...(c.fresh ? { enter: { values: [{ prop: "opacity", value: 0 }, { prop: "x", value: -u(260) }, { prop: "y", value: u(40) }, { prop: "rotate", value: -0.5 }], transition: spring("panel") } } : {}),
         exit: { values: [{ prop: "opacity", value: 0 }, { prop: "y", value: -u(120) }, { prop: "scale", value: 1.08 }], transition: { kind: "tween", durationMs: 220, ease: "exit" } },
         states: [
@@ -469,6 +466,10 @@ export function cardHand(id: string, desc: Api.CardHandDesc): Api.CardHandResult
       selected: k === lifted,
       disabled: !playable,
     });
+    if (r.longPressed && h.held === keyHash(k) && !h.drag) {
+      out.inspect = k;
+      h.held = 0;
+    }
     if (r.pressed && p.pressed && !pAiming) {
       h.held = keyHash(k);
       h.px = p.x;

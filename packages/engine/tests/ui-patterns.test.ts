@@ -299,6 +299,36 @@ test("paperdoll: while an item is carried, the slot under it says no in danger, 
   release(engine);
 });
 
+test("long press: an item's menu and a card's inspect are og-ui's recogniser, timed in ms whatever the tick rate", () => {
+  // Wrong: a hand-counted 30 ticks (a second at 30 Hz, not og-ui's 500 ms), so a 600 ms hold opens nothing.
+  const menus: string[] = [];
+  const inspects: string[] = [];
+  const sys = defineSystem(`UpLong${systems++}`, {}, () => {
+    og.ui.anchor("Root", { anchor: "topLeft", direction: "column", padding: { left: 24, top: 24, right: 24, bottom: 24 } } as never, () => {
+      const r = og.ui.inventoryGrid("Bag", { columns: 8, rows: 4, cellSize: 50, items: BAG, label: "Backpack" });
+      if (r.menu) menus.push(r.menu);
+    });
+    og.ui.anchor("Table", { anchor: "bottom", width: { kind: "fixed", px: 1200 }, direction: "column" } as never, () => {
+      const r = og.ui.cardHand("Hand", { cards: HAND, targets: TARGETS, cardWidth: 150 });
+      if (r.inspect) inspects.push(r.inspect);
+    });
+  });
+  const made = createEngine(og.game({ tick: 30, systems: [sys] }) as unknown as GameToken);
+  if (!made.ok) throw new Error(made.reason);
+  const engine = made.value;
+  og.ui.previewViewport(engine.world, { width: 1280, height: 720, dpr: 1, coarsePointer: false, breakpoint: "desktop", safeArea: { left: 0, top: 0, right: 0, bottom: 0 } } as never);
+  engine.advance(4);
+  const holdOn = (el: Element): void => {
+    engine.probe.commands(`0:touch_move:${centre(el)};0.05:touch_start;0.7:touch_end`);
+    engine.advance(18);
+  };
+  holdOn(byPath(engine, "Cells/helm")!);
+  expect(menus).toEqual(["helm"]);
+  engine.advance(8);
+  holdOn(cardEl(engine, "defend"));
+  expect(inspects).toEqual(["defend"]);
+});
+
 test("paperdoll: a compared stat's change is one signed run, sign first, in both directions, with the real minus", () => {
   // Wrong: right to left the sign lands after the number ("48 +"), or a minus set as a hyphen.
   for (const rtl of [false, true]) {
