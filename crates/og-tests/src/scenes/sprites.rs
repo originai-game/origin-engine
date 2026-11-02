@@ -867,3 +867,110 @@ pub fn move_sprites(scene: &mut RenderScene, frame: u32) {
         s.rotation = a;
     }
 }
+
+/// R11's 2D lighting cost: 64 shadow-casting lights (points and spots)
+/// over a 64 x 36 room of 128 occluders (boxes, turned boxes and concave
+/// polygons), each shadow row traced at `angles`; with `normals`, the 128
+/// crate sprites on the occluders carry an auto-style dome normal map, so
+/// the frame also draws the light directions. The lights drift each frame
+/// ([`drift_lights_2d`]). Perf only (no reference).
+pub fn lights_2d_scene(angles: u32, normals: bool) -> RenderScene {
+    use og_render::{Light2d, Light2dKind, Lighting2d, Occluder2d};
+    let mut scene = RenderScene::new();
+    scene.add_sprite(Sprite {
+        size: Vec2::new(64.0, 36.0),
+        color: [0.7, 0.7, 0.7, 1.0],
+        ..Default::default()
+    });
+    let crate_tex = scene.add_texture(texture(64, ColorSpace::Srgb, |u, v| {
+        let edge = u.min(v).min(1.0 - u).min(1.0 - v) < 0.08;
+        if edge {
+            [90, 60, 30, 255]
+        } else {
+            [170, 120, 70, 255]
+        }
+    }));
+    if normals {
+        let map = scene.add_texture(texture(64, ColorSpace::Linear, |u, v| {
+            let (x, y) = (u * 2.0 - 1.0, 1.0 - v * 2.0);
+            let n = Vec3::new(x * 0.6, y * 0.6, 1.0).normalize();
+            let enc = |c: f32| ((c * 0.5 + 0.5) * 255.0).round() as u8;
+            [enc(n.x), enc(n.y), enc(n.z), 255]
+        }));
+        scene.set_texture_normal(crate_tex, Some(map));
+    }
+    for i in 0..128 {
+        let (col, row) = ((i % 16) as f32, (i / 16) as f32);
+        let center = Vec2::new(-30.0 + col * 4.0, -15.5 + row * 4.4);
+        let occluder = match i % 3 {
+            0 => Occluder2d {
+                center,
+                half_size: Vec2::new(0.6, 0.6),
+                ..Default::default()
+            },
+            1 => Occluder2d {
+                center,
+                half_size: Vec2::new(0.9, 0.3),
+                rotation: 0.4 + i as f32 * 0.1,
+                ..Default::default()
+            },
+            _ => Occluder2d::polygon(
+                center,
+                i as f32 * 0.3,
+                &[
+                    (-0.7, -0.5),
+                    (0.7, -0.5),
+                    (0.7, 0.6),
+                    (0.2, 0.6),
+                    (0.2, 0.0),
+                    (-0.2, 0.0),
+                    (-0.2, 0.6),
+                    (-0.7, 0.6),
+                ]
+                .map(|(x, y)| Vec2::new(x, y)),
+            ),
+        };
+        scene.occluders_2d.push(occluder);
+        scene.add_sprite(Sprite {
+            texture: Some(crate_tex),
+            position: center.extend(0.0),
+            size: Vec2::splat(1.2),
+            layer: 1,
+            ..Default::default()
+        });
+    }
+    scene.lighting_2d = Some(Lighting2d {
+        ambient: Vec3::splat(0.08),
+        shadow_angles: angles,
+        ..Default::default()
+    });
+    for i in 0..64 {
+        let t = i as f32 / 64.0;
+        scene.lights_2d.push(Light2d {
+            position: Vec2::new(-30.0 + 60.0 * t, 14.0 * (t * 37.0).sin()),
+            color: Vec3::new(1.0, 0.6 + 0.4 * (t * 9.0).sin().abs(), 0.5 + 0.5 * t),
+            radius: 6.0 + 4.0 * (t * 13.0).cos().abs(),
+            intensity: 0.8,
+            kind: if i % 4 == 3 {
+                Light2dKind::Spot
+            } else {
+                Light2dKind::Point
+            },
+            direction: Vec2::from_angle(t * 20.0),
+            ..Default::default()
+        });
+    }
+    scene.camera = Camera::orthographic_2d(Vec2::ZERO, 18.0);
+    scene.environment.background = Background::Color(Vec3::ZERO);
+    scene.post.tonemap = Tonemap::None;
+    scene
+}
+
+/// Moves [`lights_2d_scene`]'s lights a little each frame, so every frame
+/// traces its shadow rows anew.
+pub fn drift_lights_2d(scene: &mut RenderScene, frame: u32) {
+    for (i, l) in scene.lights_2d.iter_mut().enumerate() {
+        let a = frame as f32 * 0.02 + i as f32;
+        l.position += Vec2::new(a.cos(), a.sin()) * 0.05;
+    }
+}

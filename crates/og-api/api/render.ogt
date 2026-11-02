@@ -1443,7 +1443,7 @@ module render {
   }
 
   resource Lighting2D {
-    doc "2D lighting of the sprite layers minLayer to maxLayer (sprites, 2D particles and og.Tilemap layers there, a map layer unless its `lit` property is false): their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. Other layers (and the overlay) are drawn as authored. Off by default."
+    doc "2D lighting of the sprite layers minLayer to maxLayer (sprites, 2D particles and og.Tilemap layers there, a map layer unless its `lit` property is false): their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. A texture with a normal map (`normal auto` or `normal \"file.png\"` in its import settings' texture block) is shaded by where its surface faces each light, which stands Light2D.height above the plane; a flat area keeps exactly the light it had. Other layers (and the overlay) are drawn as authored. Off by default."
     field enabled bool "Light the layers."
     field ambient Color "Light everywhere (0 is darkness outside the lights)." {
       default 0.15 0.15 0.15

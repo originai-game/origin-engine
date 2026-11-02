@@ -63,9 +63,30 @@ Every effect is off until the game turns it on, as data:
   polyline this tick.
 - **Decals** — `og.Decal` projects an atlas rectangle
   (`og.RenderSettings.decalAtlas`) onto what its box covers.
-- **2D lighting** — `og.Lighting2D` (ambient, the lit layer range),
-  `og.Light2D` and `og.Occluder2D` components, `castShadow` on sprites;
-  sprites also take `flash`, `glow` and `blend`.
+- **2D lighting** — `og.Lighting2D` (ambient, the lit layer range,
+  `resolution`, `shadowAngles`), `og.Light2D` and `og.Occluder2D`
+  components, `castShadow` on sprites; sprites also take `flash`, `glow`
+  and `blend`.
+  - A `Light2D` is a `point`, a `spot` (a cone along the entity's local +x
+    between `innerAngle` and `outerAngle`) or a `global` light (every lit
+    pixel, unshadowed). It fades `(1 - d/r)^falloff` to zero at `radius`.
+    Shadows soften with `sourceRadius`, and the penumbra widens away from
+    the occluder.
+  - An `Occluder2D` is a `width` × `height` box or a polygon of up to 16
+    `points` (concave is fine), turned and scaled with its entity. A pixel
+    inside an occluder is not shadowed by it.
+  - Light layers: `Light2D.layers` and `Occluder2D.layers` are bit masks
+    matched against a receiver's `og.LightMask2D` (layer 0 without one). A
+    frame lights at most 4 different receiver masks apart.
+  - Normal maps: a texture whose import settings say `normal auto` (a bevel
+    raised from the art's silhouette) or `normal "hero_n.png"` (red towards
+    +u, green up the image) is shaded by where its surface faces each
+    light, which stands `Light2D.height` above the plane. This covers its
+    sprites, tiles and 2D rig meshes; a flat area keeps exactly the light it
+    had. The direction pass runs only while some texture has a normal map.
+  - Game rules ask `og.render.light2dAt(world, point, layers)`: the same
+    lights and hard shadows, as the same bits on every host (no ambient).
+    Use it inside a system for a stealth check, never a pixel read.
 - **Materials** — toon, rim, dissolve, hit flash and outline are
   `og.render.standardMaterial` fields; animate them with
   `og.render.updateMaterial(world, material, { dissolve: t })`. Beside

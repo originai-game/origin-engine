@@ -1022,6 +1022,39 @@ tone curve. Each pass compiles in an error scope. One the device refuses
 is skipped and reported (`og.render.postErrors`); the frame draws as if
 the pass were absent.
 
+**2D lighting (R11).** `light2d.rs` draws the light map that lit sprite
+layers multiply with. It is cleared to the ambient, and each `Light2d`
+adds an instanced quad over its radius. One strip per receiver light
+mask sits side by side in one target (`LightSlots`, at most four).
+- **Shadows.** Each shadow-casting light owns a row of a polar shadow
+  map (`light2d_shadow.wgsl`, `Lighting2D.shadowAngles` texels wide,
+  RG32F). The row is traced once a frame against the edges of the
+  occluders that reach the light: boxes and polygons, concave ones too.
+  Each texel keeps the first hit and the far side of the first occluder
+  met, so a pixel inside an occluder is not shadowed by it. The cost per
+  light-map pixel does not grow with the occluders. The light pass
+  samples the row with PCSS: a blocker search over the light's angular
+  size, then a filter whose width is the penumbra at the blocker's
+  distance. The column wraps at ±π.
+- **Normal maps.** A texture with a `<id>#normal` (`normal auto`, made
+  by the cook from the silhouette in `normal2d.rs`, or `normal "file"`)
+  is linked by the runtime (`RenderScene::set_texture_normal`). While
+  any texture has one, the light pass also writes `lightdir` (`fs_dir`):
+  each light's luminance-weighted unit direction, towards the light at
+  `Light2D.height` above the plane. Its draws (`sprite_normals.rs`:
+  `fs_normal`, `fs_mesh_normal`) light by
+  `ambient + (L − ambient)·(n·d + ½)/(d.z + ½)`, with `d` the mean
+  direction and `n` the map's normal turned into the world by the uv's
+  screen derivatives (so turned, mirrored and bent receivers are lit
+  right). A flat normal gives exactly `L`. Every other draw keeps the
+  plain sprite pipelines, and a frame without normal maps makes no
+  `lightdir`.
+- **`og.render.light2dAt`** (og-runtime `light2d_at.rs`) answers the
+  light at a point for game rules: the same falloff, cone and fade, hard
+  shadows through the same outlines, in og-core's deterministic math, so
+  the answer is the same bits on every host. The GPU's `atan2` and `pow`
+  are never its reference.
+
 Baked lighting, volumetrics and area lights (depth S7).
 
 - **Baked lighting** (`og bake lightmaps [project]`, the og-bake crate).

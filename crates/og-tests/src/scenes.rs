@@ -493,6 +493,24 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.update = Some(pan_tilemap);
             Ok(())
         },
+        // R11: 64 shadowed 2D lights over 128 occluders at the default 1024
+        // shadow angles, at 4096, and with normal-mapped crates (the
+        // light directions drawn too). Perf only (no reference).
+        "lights-2d-64" => |g, _| {
+            g.scene = lights_2d_scene(1024, false);
+            g.update = Some(drift_lights_2d);
+            Ok(())
+        },
+        "lights-2d-64-4096" => |g, _| {
+            g.scene = lights_2d_scene(4096, false);
+            g.update = Some(drift_lights_2d);
+            Ok(())
+        },
+        "lights-2d-64-normal" => |g, _| {
+            g.scene = lights_2d_scene(1024, true);
+            g.update = Some(drift_lights_2d);
+            Ok(())
+        },
         // The same map zoomed out until every chunk of every layer is in view
         // (the worst case: about 170,000 quads; for the record, not a budget).
         "tilemap-256-all" => |g, _| {

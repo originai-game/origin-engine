@@ -80,7 +80,10 @@ and the platformer controller are og-physics, 2D skeletons og-anim §6,
   clips; `og.Flipbook { sheet, clip: og.anim.clip(info, "walk") }` on the
   sprite's entity plays it, and `og.FlipbookEvent` reports the frames named
   by `event` (footsteps, the frame a hit lands). Give pixel art
-  `texture { kind pixel }` import settings (lossless, nearest).
+  `texture { kind pixel }` import settings (lossless, nearest). A
+  `normal auto` (or `normal "hero_n.png"`) line in the same block gives
+  the texture a normal map that og.Lighting2D shades in relief
+  (og-render §1).
 - **Texture arrays** batch frames: `og.load.textureArray` (a `type
   texture-array` of same-sized images) and `og.Sprite { array, arrayLayer }`
   (or `og.render.sprite`'s `array`, world or `screen`) draw every sprite of

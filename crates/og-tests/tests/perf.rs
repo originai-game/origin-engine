@@ -216,3 +216,15 @@ fn perf_tilemap_256() {
         );
     }
 }
+
+/// R11's 2D lighting: 64 shadowed lights over 128 occluders, at the default
+/// shadow angles, at 4096, and with normal-mapped receivers (for the
+/// record: the baselines catch a regression).
+#[test]
+#[ignore]
+fn perf_lights_2d() {
+    for scene in ["lights-2d-64", "lights-2d-64-4096", "lights-2d-64-normal"] {
+        let (ms, adapter) = perf(scene);
+        println!("{scene}: {ms:.3} ms per frame on {adapter}");
+    }
+}
