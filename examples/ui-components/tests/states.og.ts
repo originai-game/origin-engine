@@ -135,7 +135,7 @@ export default playtest({
         }
       });
     }
-    for (const [path, word] of [["LapTimeHud/LapTime/Head/Position/Caption", "المركز"], ["LapTimeHud/LapTime/Best/Label", "أفضل لفة"], ["LapTimeHud/LapTime/Last/Label", "اللفة السابقة"], ["TowerHud/Tower/moreno/Gap", "المتصدر"], ["TowerHud/Tower/alvarez/Gap", "صيانة"]] as const) {
+    for (const [path, word] of [["LapTimeHud/LapTime/Head/Position/Caption", "المركز"], ["LapTimeHud/LapTime/Best/Label", "أفضل لفة"], ["LapTimeHud/LapTime/Last/Label", "اللفة السابقة"], ["TowerHud/Tower/moreno/Gap", "المتصدر"], ["TowerHud/Tower/alvarez/Gap", "صيانة"], ["TowerHud/Tower/you/Name", "أنت"]] as const) {
       t.equal(at(run, "raceAr.json", path)?.text, word, `in Arabic ${path} reads from the string table`);
     }
     const party = parts("framesDesktop200.json", "PartyHud");

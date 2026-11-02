@@ -426,7 +426,7 @@ function racingScreen(world: World): void {
   const grid = [
     { key: "moreno", name: "K. Moreno", gap: 0, change: 1, fastest: !best },
     { key: "chen", name: "L. Chen", gap: passed ? 0.42 : 0.31, change: passed ? -1 : 0 },
-    { key: "you", name: L("You"), gap: passed ? 0.31 : 0.42, change: passed ? 3 : 2, player: true, fastest: best },
+    { key: "you", name: tr("you", "You"), gap: passed ? 0.31 : 0.42, change: passed ? 3 : 2, player: true, fastest: best },
     { key: "tanaka", name: "R. Tanaka", gap: 1.17, change: -1 },
     { key: "ross", name: "M. Ross", gap: 2.06 },
     { key: "alvarez", name: "S. Alvarez", gap: 2.84, pit: true },
@@ -442,11 +442,11 @@ function racingScreen(world: World): void {
     bestMs: best ? 99812 : 101226, lastMs: best ? 99812 : 102450, deltaMs: best ? -420 : 180,
     positionLabel: tr("position", "Position"), lapLabel: tr("lap", "Lap"), finalLabel: tr("final", "Final lap"), currentLabel: tr("current", "Current lap"), bestLabel: tr("best", "Best lap"), lastLabel: tr("last", "Last lap"), splitLabel: tr("split", "Split"),
   });
-  // The tower stacks under the lap block at the top-start corner, one column, so the driving view's middle stays clear;
-  // a phone held sideways has no height for both and puts it bottom-left. The circuit goes bottom-left on an upright phone.
+  // The tower stacks under the lap block at the top-start corner at the section gap, one column, so the driving view's
+  // middle stays clear. The circuit goes bottom-left on an upright phone.
   const upright = vp.breakpoint === "phonePortrait";
   og.ui.standingsTower("Tower", {
-    entries: grid, rows: upright ? 4 : small() ? 3 : 10, anchor: !upright && small() ? "bottomLeft" : "topLeft",
+    entries: grid, rows: upright ? 4 : small() ? 3 : 10, anchor: "topLeft",
     leaderLabel: tr("leader", "Leader"), pitLabel: tr("pit", "PIT"), outLabel: tr("out", "OUT"), fastestLabel: tr("fastest", "FL"),
   });
   // Rivals on the circuit as dots in their colours, the player's arrow along the track.
@@ -457,7 +457,9 @@ function racingScreen(world: World): void {
     return { x: a.x + (b.x - a.x) * (t % 1), y: a.y + (b.y - a.y) * (t % 1) };
   };
   og.ui.minimapView("Circuit", {
-    track: CIRCUIT, zoom: 1, centerX: 0.5, centerY: 0.5, shape: "square", size: small() ? 120 : 180, zone: tr("track", "Saltmarsh Ring"), anchor: upright ? "bottomLeft" : "topRight",
+    track: CIRCUIT, zoom: 1, centerX: 0.5, centerY: 0.5, shape: "square", size: small() ? 120 : 180, anchor: upright ? "bottomLeft" : "topRight",
+    // A phone held sideways at large text has no height for the caption plate above the dial: the map alone.
+    ...(vp.breakpoint === "phoneLandscape" && state.textScale >= 1.5 ? {} : { zone: tr("track", "Saltmarsh Ring") }),
     markers: [
       { key: "me", kind: "player", ...along(0.34 + s * 0.01), heading: 2.2 },
       { key: "a", kind: "poi", ...along(0.42 + s * 0.01), color: { color: { r: 0.9, g: 0.25, b: 0.2 } } },

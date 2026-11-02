@@ -115,13 +115,25 @@ export function standingsTower(id: string, desc: Api.StandingsTowerDesc = {}): v
           } : undefined, () => text("Position", String(i + 1), { step: ts(14), font: "display", color: en.player ? lit(BLACK) : token("ink"), nowrap: true }));
           leaf("Stripe", { width: px(Math.max(3, u(3))), height: pct(0.62), part: sel("StandingsTower", "stripe") }, { shape: { kind: "rect", radii: [1, 1, 1, 1] }, fills: [solid(lit(ink))] });
           text("Name", en.name ?? "", { step: ts(13), font: en.player ? "display" : "body", color: en.out ? token("inkFaint") : token("ink"), nowrap: true, ellipsis: true, width: { kind: "grow" } });
-          if (en.fastest) {
-            box("Fastest", { padding: { left: u(4), right: u(4), top: 0, bottom: 0 }, cross: "center", part: sel("StandingsTower", "fastest") }, {
-              shape: { kind: "rect", radii: [u(3), u(3), u(3), u(3)] }, fills: [solid(lit(PURPLE))],
-            }, () => text("Label", desc.fastestLabel ?? "FL", { step: ts(9), font: "display", color: lit(WHITE), nowrap: true }), { a11y: a11y("image", "Fastest lap") });
-          }
+          // Names win over marks: where the name would be cut, a rival's change arrow goes first, then the leader's
+          // fastest-lap chip moves into the gap column in place of the leader label.
           const ch = en.change ?? 0;
-          if (ch !== 0 && !en.out) {
+          const fl = desc.fastestLabel ?? "FL";
+          const flW = Math.ceil(fl.length * stepSize(ts(9)).size * 0.68) + u(8) + tk.sm;
+          const chW = Math.ceil(stepSize(ts(10)).size * 1.4) + tk.sm;
+          const nameW = (en.name ?? "").length * stepSize(ts(13)).size * 0.56;
+          let room = w - posW - Math.max(3, u(3)) - tk.sm * 3 - gapW - tk.sm;
+          let showCh = ch !== 0 && !en.out;
+          let flIn: "name" | "gap" | "none" = en.fastest ? "name" : "none";
+          if (flIn === "name") room -= flW;
+          if (showCh) room -= chW;
+          if (nameW > room && showCh && !en.player) { showCh = false; room += chW; }
+          if (nameW > room && flIn === "name" && g === (desc.leaderLabel ?? "Leader")) { flIn = "gap"; room += flW; }
+          const flChip = () => box("Fastest", { padding: { left: u(4), right: u(4), top: 0, bottom: 0 }, cross: "center", part: sel("StandingsTower", "fastest") }, {
+            shape: { kind: "rect", radii: [u(3), u(3), u(3), u(3)] }, fills: [solid(lit(PURPLE))],
+          }, () => text("Label", fl, { step: ts(9), font: "display", color: lit(WHITE), nowrap: true }), { a11y: a11y("image", "Fastest lap") });
+          if (flIn === "name") flChip();
+          if (showCh) {
             box("Change", { direction: "row", gap: 1, cross: "center", part: sel("StandingsTower", "change", ch > 0 ? "up" : "down") }, undefined, () => {
               const c = ch > 0 ? role("success") : role("danger");
               // Sized off the count's text, so it grows with the player's text size.
@@ -130,7 +142,8 @@ export function standingsTower(id: string, desc: Api.StandingsTowerDesc = {}): v
             });
           }
           const gInk = en.pit ? lit(role("warn")) : en.out ? token("inkFaint") : desc.relative && !en.player ? lit((en.gap ?? 0) < 0 ? role("danger") : role("success")) : token("ink");
-          text("Gap", g, { step: ts(12), font: "mono", color: gInk, nowrap: true, width: px(gapW), align: "end" });
+          if (flIn === "gap") box("GapCell", { width: px(gapW), direction: "row", align: "end", cross: "center" }, undefined, flChip);
+          else text("Gap", g, { step: ts(12), font: "mono", color: gInk, nowrap: true, width: px(gapW), align: "end" });
         }, {
           opacity: en.out ? 0.6 : 1,
           ...(slide !== 0 ? { transform: { y: slide } } : {}),

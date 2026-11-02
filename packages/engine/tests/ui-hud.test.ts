@@ -272,12 +272,12 @@ test("og.ui.minimapView: out of range is dropped, an objective is held on the ri
   });
   e.advance(3);
   const els = dump(e);
-  const map = at(els, "MapHud/Map/Map")!;
+  const map = at(els, "MapHud/Map/Bezel/Map")!;
   expect(map.role).toBe("image");
-  expect(at(els, "MapHud/Map/Map/far")).toBe(undefined);
-  const near = at(els, "MapHud/Map/Map/near")!;
+  expect(at(els, "MapHud/Map/Bezel/Map/far")).toBe(undefined);
+  const near = at(els, "MapHud/Map/Bezel/Map/near")!;
   expect(near.x + near.width / 2).toBeGreaterThan(map.x + map.width / 2 + 30);
-  const goal = at(els, "MapHud/Map/Map/goal")!;
+  const goal = at(els, "MapHud/Map/Bezel/Map/goal")!;
   const cx = map.x + map.width / 2;
   const cy = map.y + map.height / 2;
   const gx = goal.x + goal.width / 2;
@@ -286,8 +286,12 @@ test("og.ui.minimapView: out of range is dropped, an objective is held on the ri
   expect(Math.abs(gx - cx)).toBeLessThan(2);
   expect(Math.hypot(gx - cx, gy - cy)).toBeLessThan(map.width / 2);
   expect(Math.hypot(gx - cx, gy - cy)).toBeGreaterThan(map.width / 2 - 25);
-  expect(at(els, "MapHud/Map/pingPulse") ?? at(els, "MapHud/Map/Map/pingPulse")).toBeDefined();
+  expect(at(els, "MapHud/Map/Bezel/pingPulse") ?? at(els, "MapHud/Map/Bezel/Map/pingPulse")).toBeDefined();
   expect(at(els, "MapHud/Map/Zone")?.text).toBe("Kings Canyon");
+  // North straddles the bezel above the map: its centre outside the map's glass, so it covers nothing on the map.
+  const north = at(els, "MapHud/Map/Bezel/North")!;
+  expect(Math.abs(north.x + north.width / 2 - cx)).toBeLessThan(2);
+  expect(north.y + north.height / 2).toBeLessThan(map.y);
 });
 
 /** An engine over the UI kit's project, its string tables loaded (Arabic lays out right to left). */
@@ -459,7 +463,7 @@ test("og.ui.standingsTower, lapTimer, rearView and a minimap's track: order, sig
   expect(states(at(els, "LapHud/Lap")).split).toBe("behind");
   expect(states(at(els, "LapHud/Lap")).lap).toBe("final");
   expect(at(els, "MirrorHud/Mirror")?.role).toBe("image");
-  expect(at(els, "MapHud/Map/Map/Track")).toBeDefined();
+  expect(at(els, "MapHud/Map/Bezel/Map/Track")).toBeDefined();
   // The player moves up into the leaders: the field is no longer cut; the split turns ahead.
   player = 2;
   delta = -420;

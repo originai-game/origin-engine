@@ -9,7 +9,7 @@
 // tick with a pop, counts, a countdown, the tracked one marked).
 
 import type * as Api from "@origingame/engine";
-import { TAU, textScale, a11y, arc, inner, absolute, fixed, anchorOf, box, bp, chip, clamp01, close, edge, ellipseShape, fillDraw, frame, glow, groups, hudPlace, hudRoom, icon, keyId, kit, leaf, lit, msToTicks, now, open, paintRgba, pct, pop, pulse, px, rarityColor, reduced, role, sel, shapeOf, solid, sound, stroke, teamColor, text, token, trackDraw, ts, u, vgrad, countdown, type Rgba, apply, type Props, tsFit, sideSpan, stepSize, isolate } from "./core.ts";
+import { TAU, textScale, a11y, arc, inner, absolute, fixed, anchorOf, box, bp, chip, clamp01, close, edge, ellipseShape, fillDraw, frame, glow, groups, hudPlace, hudRoom, icon, keyId, kit, leaf, lit, msToTicks, now, open, paintRgba, pct, pop, pulse, px, rarityColor, reduced, role, sel, shapeOf, solid, sound, stroke, teamColor, text, token, trackDraw, ts, u, vgrad, countdown, type Rgba, apply, type Props, tsFit, sideSpan, stepSize, isolate, drop } from "./core.ts";
 
 const WHITE: Rgba = { r: 1, g: 1, b: 1, a: 1 };
 
@@ -78,14 +78,28 @@ export function minimapView(id: string, desc: Api.MinimapViewDesc = {}): Api.Min
   const R = size / 2;
   const rim = Math.max(3, Math.round(size / 40));
   let result: Api.MinimapResult = { clicked: false };
+  // A dark bezel round the map, the rear mirror's family: rounded, a soft drop under it. A square map's caption sits
+  // in the bezel as a bottom plate; a round one's under it, outlined over the scene.
+  const bezel = Math.max(5, u(7));
+  const plate = shape !== "circle" && !!desc.zone;
+  const capStep = ts(11);
+  // The north badge straddles the bezel's top edge, a tenth of the map across.
+  const nb = Math.max(u(14), Math.round(size * 0.1));
   hudPlace(id, anchorOf(desc, "topRight"), () => {
-    kit.column(id, { gap: u(4), cross: "center" }, () => {
+    kit.column(id, { gap: u(4), cross: "center", padding: { top: Math.ceil(nb / 2), bottom: 0, left: 0, right: 0 } }, () => {
       const { radius, corner } = shapeOf("hud");
       const outline: Api.DrawShape = shape === "circle" ? ellipseShape() : { kind: "rect", radii: [radius, radius, radius, radius], corner };
+      const ro = radius + bezel;
+      box("Bezel", { direction: "column", gap: 0, cross: "center", width: px(size + bezel * 2), padding: { left: bezel, right: bezel, top: bezel, bottom: plate ? 0 : bezel }, part: sel("Minimap", "bezel") }, {
+        shape: shape === "circle" ? ellipseShape() : { kind: "rect", radii: [ro, ro, ro, ro], corner },
+        fills: [solid(lit({ r: 0.043, g: 0.05, b: 0.063, a: 1 }, 0.96)), vgrad([[0, lit(WHITE, 0.07)], [0.5, lit(WHITE, 0)]])],
+        strokes: [stroke(1, lit(WHITE, 0.08)), stroke(1, lit({ r: 0, g: 0, b: 0, a: 1 }, 0.6), "outside")],
+        effects: [drop(u(4), u(16), token("shadow", 0.55))],
+      }, () => {
       const path = open("Map", { width: px(size), height: px(size), interactive: true, part: sel("Minimap", "frame", shape), partClass: "hud" }, {
         shape: outline,
         fills: [solid(token("well", 0.92))],
-        strokes: [stroke(rim, token("lineStrong")), stroke(1, token("shadow", 0.9), "outside")],
+        strokes: [stroke(1, lit(WHITE, 0.06))],
         effects: [inner(0, size * 0.08, token("shadow", 0.6))],
         clip: "shape",
       });
@@ -172,21 +186,28 @@ export function minimapView(id: string, desc: Api.MinimapViewDesc = {}): Api.Min
         mark(k, kind, ink, s, hd, m.icon ?? "", sel("Minimap", "marker", kind, clamped ? "clamped" : null), m.label ?? "",
           fixed({ start: R + dx - s / 2, top: R + dy - s / 2 }, clamped ? { opacity: 0.75 + 0.25 * pulse(1.2) } : {}));
       }
-      // North on the rim.
-      const nAng = -Math.PI / 2 + turn;
-      // The badge is sized by its letter (which grows with the text) and seated inside the rim, never cut by the frame's edge.
-      const nStep = tsFit(10, u(10));
-      const nb = Math.max(u(16), Math.ceil(stepSize(nStep).line) + u(4));
-      const nr = R - rim - nb / 2 - u(2);
-      box("North", { width: px(nb), height: px(nb), align: "center", cross: "center", part: sel("Minimap", "north") }, {
-        shape: ellipseShape(),
-        fills: [solid(token("hud", 0.95))],
-        strokes: [stroke(1, token("lineStrong"))],
-      }, () => text("Letter", desc.north ?? "N", { step: nStep, font: "display", color: lit(role("danger")), nowrap: true }),
-        fixed({ start: R + Math.cos(nAng) * nr - nb / 2, top: R + Math.sin(nAng) * nr - nb / 2 }));
       const r = close({ a11y: a11y("image", desc.zone || "Minimap") });
       result = { clicked: r.clicked };
-      if (desc.zone) text("Zone", desc.zone, { step: ts(12), font: "display", color: token("ink"), nowrap: true, outline: 1 });
+      if (plate) {
+        // A long name at a large text size takes a second line rather than an ellipsis.
+        box("Plate", { width: pct(1), padding: { left: u(4), right: u(4), top: u(2), bottom: u(2) }, align: "center", cross: "center", part: sel("Minimap", "plate") }, undefined, () =>
+          text("Zone", desc.zone ?? "", { step: capStep, font: "display", color: token("ink", 0.9), align: "center", width: pct(1), maxLines: 2, ellipsis: true }));
+      }
+      // North on the rim: centred on the bezel's ring, half outside the map, so it covers nothing on the map.
+      const nAng = -Math.PI / 2 + turn;
+      const ring = R + bezel / 2;
+      const nStep = tsFit(10, u(10));
+      // The letter fits the badge at any text size (the badge keeps its share of the map).
+      const fitK = Math.min(1, (nb * 0.62) / Math.max(1, stepSize(nStep).size));
+      box("North", { width: px(nb), height: px(nb), align: "center", cross: "center", part: sel("Minimap", "north") }, {
+        shape: ellipseShape(),
+        fills: [solid(lit({ r: 0.043, g: 0.05, b: 0.063, a: 1 }))],
+        strokes: [stroke(1, lit(WHITE, 0.18))],
+        effects: [drop(u(1), u(4), token("shadow", 0.5))],
+      }, () => text("Letter", desc.north ?? "N", { step: nStep, font: "display", color: lit(role("danger")), nowrap: true }, fitK < 1 ? { transform: { scaleX: fitK, scaleY: fitK } } : undefined),
+        fixed({ start: bezel + R + Math.cos(nAng) * ring - nb / 2, top: bezel + R + Math.sin(nAng) * ring - nb / 2 }));
+      });
+      if (desc.zone && !plate) text("Zone", desc.zone, { step: capStep, font: "display", color: token("ink"), nowrap: true, name: true });
     });
   });
   return result;
