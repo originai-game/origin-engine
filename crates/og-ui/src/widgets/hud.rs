@@ -231,7 +231,9 @@ impl Ui {
         };
         let done = 1.0 - rem;
         let behind = self.behind(i);
-        let track = p.control_strong.over(p.panel_raised.over(behind));
+        // The empty track is the panel's well, a step darker than what it
+        // sits on, so the muted sweep has a ground to read against.
+        let track = p.well.over(behind);
         // Only a ready ability takes the primary; the cooling sweep is muted
         // ink, so ready, cooling and partial never all shout at once.
         let fill = if rem <= 0.0 { p.primary } else { p.ink_muted };
