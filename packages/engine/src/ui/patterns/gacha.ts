@@ -6,7 +6,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  accent, artSlot, btn, clamp, fit, flags, floating, frame, glow, grow, hex, keyHash, kit, line, mix, over, paint, priceTag, px, radial, rarityColor, rarityPips,
+  accent, artSlot, btn, clamp, fit, flags, pct, floating, frame, glow, grow, hex, keyHash, kit, line, mix, over, paint, priceTag, px, radial, rarityColor, rarityPips,
   role, rtl, scrimFill, shadow, spring, st, still, surface, symbol, text, timerChip, token, u, vgrad, vstate, xy, type Mut, type Rgba, type TimeWords,
 } from "./core.ts";
 import { cornerTag, plainText } from "./rewards.ts";
@@ -195,8 +195,10 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
         feat.forEach((f, k) => {
           const ink = tierInk(f.rarity);
           const tierLight = (h: number, strength: number): void => {
-            kit.open("Tier", { width: grow(), height: px(Math.round(h)), part: `Gacha.unitTier${flags(`rarity=${f.rarity ?? "none"}`)}`, partClass: "badge" });
-            kit.setDraw({ shape: { kind: "rect", radii: [0, 0, t.small, t.small] }, fills: [vgrad([[0, paint(ink, 0)], [0.4, paint(ink, strength * 0.25)], [0.75, paint(ink, strength * 0.6)], [1, paint(ink, strength)]])] });
+            // Undressed (a style's badge dress would lay its own flat fill over the gradient): light rising from the
+            // foot, quadratic, so it reads as glow on the art and not as a coloured block.
+            kit.open("Tier", { width: grow(), height: px(Math.round(h)) });
+            kit.setDraw({ shape: { kind: "rect", radii: [0, 0, t.small, t.small] }, fills: [vgrad([[0, paint(ink, 0)], [0.3, paint(ink, strength * 0.08)], [0.55, paint(ink, strength * 0.25)], [0.8, paint(ink, strength * 0.6)], [1, paint(ink, strength)]])] });
             kit.close();
           };
           kit.open(kit.idi("Unit", k), { direction: portrait ? "column" : "row", width: grow(), height: portrait ? null : px(tileH), gap: u(12), cross: portrait ? "stretch" : "center", padding: portrait ? xy(0, 0) : { left: 0, top: 0, right: u(10), bottom: 0 }, radius: t.small, part: `Gacha.unit${flags(`rarity=${f.rarity ?? "none"}`)}`, partClass: "badge" });
@@ -214,8 +216,12 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
               return;
             }
             // In portrait the words stand on the light at the portrait's foot.
-            kit.column("Plate", { width: grow(), gap: u(2), cross: "center", padding: { left: u(4), right: u(4), top: u(10), bottom: u(5) }, part: `Gacha.unitTier${flags(`rarity=${f.rarity ?? "none"}`)}`, partClass: "badge" }, () => {
-              kit.setDraw({ shape: { kind: "rect", radii: [0, 0, t.small, t.small] }, fills: [vgrad([[0, token("shadow", 0)], [0.35, token("shadow", 0.3)], [1, token("shadow", 0.62)]]), vgrad([[0, paint(ink, 0)], [0.4, paint(ink, 0.14)], [0.75, paint(ink, 0.34)], [1, paint(ink, 0.5)]])] });
+            // The tier's light over the lower 40 % of the portrait (55 % at the foot, none at its top), and the name and
+            // stars on a dark contact shadow over it, never on the colour itself.
+            tierLight(tileH * 0.4, 0.55);
+            over({ insets: { start: 0, end: 0, bottom: 0 }, inert: true });
+            kit.column("Plate", { width: grow(), gap: u(2), cross: "center", padding: { left: u(4), right: u(4), top: u(14), bottom: u(5) } }, () => {
+              kit.setDraw({ shape: { kind: "rect", radii: [0, 0, t.small, t.small] }, fills: [vgrad([[0, token("shadow", 0)], [0.4, token("shadow", 0.42)], [1, token("shadow", 0.7)]])] });
               text("Name", f.name ?? "", { step: st(14), font: "display", nowrap: true, ellipsis: true, width: grow(), align: "center" });
               stars("Stars", f.stars ?? 0, u(11), mix(ink, hex("#ffffff"), 0.25));
             });
@@ -341,17 +347,22 @@ const timeWords = (desc: Api.GachaBannerDesc): TimeWords => ({ days: desc.daysLa
 /** The pity meter: a thin bar toward the guarantee and how many pulls are left. */
 function pityMeter(id: string, pity: number, max: number, label: string): void {
   const f = clamp(pity / max, 0, 1);
-  const w = u(140);
-  kit.column(id, { gap: u(4), cross: "end", padding: xy(u(10), u(6)), part: "Gacha.pity", partClass: "badge" }, () => {
-    // On a dark pill, as the purse beside it: it reads on any key art.
-    kit.setDraw({ shape: { kind: "rect", radii: [u(10), u(10), u(10), u(10)] }, fills: [{ kind: "solid", color: token("shadow", 0.6) }] });
-    text("Label", fill(label, { left: Math.max(0, max - pity), max, pity }), { step: st(13), nowrap: true, color: f > 0.8 ? "highlight" : "ink" });
-    kit.open("Track", { width: px(w), height: px(u(6)), radius: 999, background: token("shadow", 0.6) });
-    kit.open("Fill", { width: px(Math.max(u(6), Math.round(w * f))), height: px(u(6)), radius: 999, background: token(f > 0.8 ? "highlight" : "primary") });
+  const words = fill(label, { left: Math.max(0, max - pity), max, pity });
+  // The label at the start over a well track the meter's whole width, the fill its share of it: a meter, not an
+  // underline. Lit in the highlight once the guarantee is near.
+  kit.column(id, { gap: u(5), cross: "stretch", width: grow(), part: "Gacha.pity", partClass: "badge" }, () => {
+    kit.row("Words", { gap: u(8), cross: "center", width: grow(), align: "spaceBetween" }, () => {
+      text("Label", words, { step: st(13), nowrap: true, ellipsis: true, color: f > 0.8 ? "highlight" : "ink" });
+      text("Count", `${pity} / ${max}`, { step: st(12), nowrap: true, font: "mono", color: "inkMuted" });
+    });
+    kit.open("Track", { width: grow(), height: px(u(6)), radius: 999 });
+    kit.setDraw({ shape: { kind: "rect", radii: [999, 999, 999, 999] }, fills: [{ kind: "solid", color: token("well", 0.9) }], strokes: [line(1, token("shadow", 0.6), "outside")] });
+    kit.open("Fill", { width: pct(Math.max(0.03, f)), height: grow() });
+    kit.setDraw({ shape: { kind: "rect", radii: [999, 999, 999, 999] }, fills: [{ kind: "solid", color: token(f > 0.8 ? "highlight" : "primary") }] });
     kit.close();
     kit.close();
   });
-  kit.semantics({ role: "meter", name: fill(label, { left: Math.max(0, max - pity), max, pity }), valueMin: 0, valueMax: max, valueNow: pity });
+  kit.semantics({ role: "meter", name: words, valueMin: 0, valueMax: max, valueNow: pity });
 }
 
 // ── the pull ────────────────────────────────────────────────────────────
@@ -527,9 +538,11 @@ function reveal(it: Api.PullItem, idx: number, n: number, dt: number, W: number,
   // past the card's edges to be seen (capped so it never washes half the screen).
   const rayD = Math.round(Math.min(artH * (pipsN >= 5 ? 1.9 : pipsN >= 4 ? 1.7 : 1.5), W * 0.6));
   const centred = { start: Math.round((artW - rayD) / 2), top: Math.round((artH - rayD) / 2) };
-  const g0 = pipsN >= 5 ? 0.35 : pipsN >= 4 ? 0.28 : 0.2;
+  const g0 = pipsN >= 5 ? 0.42 : pipsN >= 4 ? 0.32 : 0.22;
   kit.open("Glow", { width: px(rayD), height: px(rayD), part: "Pull.glow", partClass: "badge" });
-  kit.setDraw({ shape: { kind: "ellipse" }, blend: "add", fills: [radial([[0, paint(mix(ink, hex("#ffffff"), 0.2), g0)], [0.3, paint(ink, g0 * 0.9)], [0.45, paint(ink, g0 * 0.6)], [0.58, paint(ink, g0 * 0.32)], [0.7, paint(ink, g0 * 0.13)], [0.82, paint(ink, g0 * 0.03)], [0.92, paint(ink, 0)], [1, paint(ink, 0)]])] } as Api.DrawDesc);
+  // Quadratic from the card's edge (about 0.35 of the radius, under the card) to nothing: the light hugs the card and
+  // its outer third is barely there.
+  kit.setDraw({ shape: { kind: "ellipse" }, blend: "add", fills: [radial([[0, paint(mix(ink, hex("#ffffff"), 0.2), g0)], [0.35, paint(ink, g0)], [0.48, paint(ink, g0 * 0.64)], [0.61, paint(ink, g0 * 0.36)], [0.74, paint(ink, g0 * 0.16)], [0.87, paint(ink, g0 * 0.04)], [1, paint(ink, 0)]])] } as Api.DrawDesc);
   kit.close();
   over({ insets: centred, inert: true, overlaps: ["*"] });
   if (pipsN >= 3) {

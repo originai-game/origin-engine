@@ -236,7 +236,6 @@ export function sagaMap(id: string, desc: Api.SagaMapDesc): Api.SagaMapResult {
     kit.scrollIntoView(curPath, true);
     if (kit.bounds(curPath)) kit.remember("~s.shown", want);
   }
-  // The game's docked chrome at the foot: the view stops above it (the backdrop runs on behind it).
   // The game's docked chrome at the foot: the view stops above it (the backdrop runs on behind it), and a little more
   // where that leaves a level cut by the view's edge. The view opens centred on the current level and the levels are
   // evenly spaced along it, so a level's distance from either edge is the half view less a whole number of spacings:
@@ -255,6 +254,13 @@ export function sagaMap(id: string, desc: Api.SagaMapDesc): Api.SagaMapResult {
       extra = Math.round(2 * d);
     }
     kit.spacer("Foot", px(foot + extra));
+    // The path runs on past the view's edge: its last 80 px fade into a shade that holds on behind the button, so the
+    // edge reads as the way going on, not a cut (undressed: a style's dress would replace the gradient).
+    const fadeH = foot + extra + u(80);
+    kit.open("FootFade", { width: px(vertical ? crossSize : vp.width), height: px(fadeH) });
+    kit.setDraw({ shape: { kind: "rect" }, fills: [vgrad([[0, token("shadow", 0)], [(u(80) * 0.5) / fadeH, token("shadow", 0.3)], [u(80) / fadeH, token("shadow", 0.62)], [1, token("shadow", 0.72)]])] });
+    kit.close();
+    over({ insets: { start: 0, bottom: 0 }, inert: true, z: 3 });
   }
   kit.close();
   const me = kit.lastPath();
