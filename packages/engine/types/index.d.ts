@@ -28881,6 +28881,12 @@ export interface GachaFeatured {
    * @default "none"
    */
   readonly rarity?: Rarity;
+  /**
+   * Its portrait (art kind portrait), in its tile; without it the style's placeholder figure.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
 }
 
 /**
@@ -29007,6 +29013,12 @@ export interface GachaBannerDesc {
    * @default "gem"
    */
   readonly currency?: string;
+  /**
+   * The currency's own art, drawn wherever a price or the purse names it; null draws the style's icon of that name, else a gem drawn as a shape.
+   *
+   * @default null
+   */
+  readonly currencyIcon?: Texture | null;
   /**
    * How much of it the player has.
    *
@@ -29172,6 +29184,12 @@ export interface PullSequenceDesc {
    * @default "gem"
    */
   readonly currency?: string;
+  /**
+   * The currency's own art beside againPrice; null draws the style's icon, else a gem.
+   *
+   * @default null
+   */
+  readonly currencyIcon?: Texture | null;
   /**
    * The purse pays againPrice.
    *

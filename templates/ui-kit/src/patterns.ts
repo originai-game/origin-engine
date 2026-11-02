@@ -52,6 +52,48 @@ function screen(id: string, title: string, sub: string, build: () => void, hints
   });
 }
 
+// ── the kit's art set ───────────────────────────────────────────────────
+
+// Painted for the kit (templates/ui-kit/assets/textures/art, docs/ui.md §15.5.3): loaded once at the start and shown by
+// every preview; `pat:art:off` takes it away so the previews show the style's placeholders (the path a game without its
+// art yet takes).
+const ART_FILES = [
+  "cards/strike", "cards/defend", "cards/bash", "cards/anger", "cards/inflame", "cards/wound",
+  "portraits/cultist", "portraits/red-louse", "portraits/aria", "portraits/kael", "portraits/mira", "portraits/aria-vell",
+  "scenes/gacha-moonlit-tide", "scenes/paperdoll-aria-vell",
+  "items/ashbringer", "items/elven-bow", "items/hunters-bow", "items/healing-draught", "items/mana-vial", "items/ember-ring", "items/crown",
+  "items/arcane-staff", "items/boots", "items/iron-key", "items/sapphire-amulet", "items/mage-robe", "items/iron-sword", "items/oak-shield",
+  "items/gauntlets", "items/knight-helm",
+  "boons/thunder-strike", "boons/titan-heart", "boons/crown-of-ages", "boons/frost", "boons/gold", "boons/flame-blade", "boons/crystal",
+  "boons/star", "boons/rune-shield",
+] as const;
+type ArtName = (typeof ART_FILES)[number];
+const ART: Partial<Record<ArtName, number>> = {};
+let artOn = true;
+
+/** Load the kit's art set (the game's start). */
+export function loadPatternArt(world: World): void {
+  for (const f of ART_FILES) {
+    const r = og.load.texture(world, `textures/art/${f}.jpg`);
+    if (r.ok) ART[f] = r.value as unknown as number;
+  }
+}
+
+/** A texture of the art set, or null (art off, or not loaded): the art slot then draws the style's placeholder. */
+function art(name: ArtName | undefined): never | null {
+  if (!artOn || !name) return null;
+  const h = ART[name];
+  return h ? (h as never) : null;
+}
+
+const ITEM_ART: Record<string, ArtName> = {
+  greatsword: "items/ashbringer", bow: "items/elven-bow", potions: "items/healing-draught", mana: "items/mana-vial", ring: "items/ember-ring",
+  helm: "items/crown", plate: "items/arcane-staff", gem: "boons/star", boots: "items/boots", scroll: "items/iron-key", gloves: "items/gauntlets",
+  ore: "boons/crystal", amulet: "items/sapphire-amulet", shield: "items/oak-shield", robe: "items/mage-robe", dagger: "items/iron-sword",
+};
+/** An item with its art. */
+const withArt = <T extends { key?: string; image?: unknown }>(it: T): T => ({ ...it, image: art(ITEM_ART[it.key ?? ""]) });
+
 // ── state ───────────────────────────────────────────────────────────────
 
 const BAG0: Item[] = [
@@ -61,20 +103,25 @@ const BAG0: Item[] = [
   { key: "mana", name: "Mana Potion", x: 3, y: 0, count: 4, maxStack: 20, tag: "potion", rarity: "uncommon", fresh: true },
   { key: "ring", name: "Signet of the Vale", x: 2, y: 1, tag: "ring", rarity: "rare", locked: true },
   { key: "helm", name: "Crown of Thorns", x: 4, y: 0, w: 2, h: 2, tag: "helmet", rarity: "rare" },
-  { key: "plate", name: "Dragonscale Plate", x: 6, y: 0, w: 2, h: 3, tag: "chest", rarity: "epic", unusable: true },
-  { key: "gem", name: "Flawless Ruby", x: 3, y: 1, tag: "gem", rarity: "mythic" },
+  { key: "plate", name: "Arcane Staff", x: 6, y: 0, w: 1, h: 3, tag: "weapon", rarity: "epic", unusable: true },
+  { key: "gloves", name: "Gauntlets", x: 7, y: 0, tag: "gloves", rarity: "uncommon" },
+  { key: "gem", name: "Star Shard", x: 3, y: 1, tag: "gem", rarity: "mythic" },
   { key: "boots", name: "Boots of Haste", x: 4, y: 2, w: 2, h: 2, tag: "feet", rarity: "uncommon", rotated: false },
-  { key: "scroll", name: "Town Portal", x: 2, y: 3, count: 3, maxStack: 10, tag: "scroll" },
+  { key: "scroll", name: "Iron Key", x: 2, y: 3, count: 3, maxStack: 10, tag: "scroll" },
 ];
 
-const STASH0: Item[] = [{ key: "ore", name: "Iron Ore", x: 0, y: 0, count: 40, maxStack: 50, tag: "ore" }, { key: "amulet", name: "Amulet of Dawn", x: 1, y: 0, tag: "amulet", rarity: "legendary" }];
+const STASH0: Item[] = [
+  { key: "ore", name: "Raw Crystal", x: 0, y: 0, count: 40, maxStack: 50, tag: "ore" },
+  { key: "amulet", name: "Sapphire Amulet", x: 1, y: 0, tag: "amulet", rarity: "legendary" },
+  { key: "shield", name: "Oak Shield", x: 2, y: 0, tag: "shield", rarity: "common" },
+];
 
 // Two columns flanking the figure (Diablo IV, Baldur's Gate 3): armour and jewellery at the end, the hands at the start.
 const SLOTS0: Slot[] = [
   { key: "relic", label: "Relic", x: 0.11, y: 0.1, locked: true, lockedHint: "Unlocks at level 30" },
   { key: "hands", label: "Hands", accept: ["gloves"], x: 0.11, y: 0.32 },
-  { key: "chest", label: "Chest", accept: ["chest"], x: 0.11, y: 0.54, item: { key: "robe", name: "Silk Robe", rarity: "uncommon", tag: "chest" } },
-  { key: "main", label: "Main hand", accept: ["weapon"], x: 0.11, y: 0.81, aspect: 0.6, size: 0, item: { key: "dagger", name: "Rusty Dagger", rarity: "common", tag: "weapon", charge: 0.5 } },
+  { key: "chest", label: "Chest", accept: ["chest"], x: 0.11, y: 0.54, item: { key: "robe", name: "Mage Robe", rarity: "uncommon", tag: "chest" } },
+  { key: "main", label: "Main hand", accept: ["weapon"], x: 0.11, y: 0.81, aspect: 0.6, size: 0, item: { key: "dagger", name: "Iron Sword", rarity: "common", tag: "weapon", charge: 0.5 } },
   { key: "head", label: "Head", accept: ["helmet"], x: 0.89, y: 0.1 },
   { key: "neck", label: "Neck", accept: ["amulet"], x: 0.89, y: 0.3 },
   { key: "ring1", label: "Ring", accept: ["ring"], x: 0.89, y: 0.5 },
@@ -128,8 +175,6 @@ const c = {
   turn: true,
   inspect: "",
   log: "",
-  /** The enemies wear real art (`pat:art:on`). */
-  art: false,
   /** A foe that refused a card (behind a taunt) and how many ticks its flash has left. */
   refused: "",
   refusedT: 0,
@@ -148,8 +193,7 @@ const SHIELD: Array<[number, number]> = [[0.5, 0.04], [0.9, 0.18], [0.84, 0.6], 
 const endTurnDefined = new WeakSet<object>();
 
 /** The combat table: two enemies (the second behind a taunt, so it cannot be targeted), the energy, the piles, and the hand. */
-/** `pat:art:on` gives the enemies the kit's backdrop as their portraits (the art path); else the style's placeholder. */
-export function cardsScreen(backdrop = 0, world?: World): void {
+export function cardsScreen(world?: World): void {
   const t = og.ui.frameTheme();
   const vp = og.ui.frameViewport();
   const sa = vp.safeArea;
@@ -208,7 +252,7 @@ export function cardsScreen(backdrop = 0, world?: World): void {
         } as never);
         const ir = Math.max(2, t.radius.panel - frameW);
         if (figH > 0) {
-          og.ui.artSlot("Figure", { kind: "portrait", texture: c.art && backdrop ? (backdrop as never) : null, focal: { x: 0.5, y: 0.4 }, width: grow, height: px(figH), radius: ir, label: f.name });
+          og.ui.artSlot("Figure", { kind: "portrait", texture: art(f.key === "cultist" ? "portraits/cultist" : "portraits/red-louse"), focal: { x: 0.5, y: 0.35 }, width: grow, height: px(figH), radius: ir, label: f.name });
           // The name over the portrait's foot, on a scrim that keeps it legible on any art.
           const nameH = Math.round((small ? 30 : big ? 44 : 36) * ts);
           og.ui.column("Name", { width: px(plateW - 2 * frameW), height: px(Math.min(figH, nameH + 14)), align: "end", cross: "center", padding: { left: t.space.xs, top: 0, right: t.space.xs, bottom: t.space.xxs } }, () => {
@@ -291,7 +335,7 @@ export function cardsScreen(backdrop = 0, world?: World): void {
     });
     if (portrait) og.ui.spacer("Lift", px(liftClear(W - 2 * t.space.xs, Hs, c.hand.length, ts)));
     const r = og.ui.cardHand("Hand", {
-      cards: c.hand.map((x) => ({ ...x, playable: x.playable !== false && (x.cost ?? 0) <= c.energy })),
+      cards: c.hand.map((x) => ({ ...x, image: art(`cards/${(x.key ?? "").replace(/\d+$/, "")}` as ArtName), playable: x.playable !== false && (x.cost ?? 0) <= c.energy })),
       targets,
       disabled: !c.turn,
       inspect: c.inspect,
@@ -335,6 +379,9 @@ function liftClear(fanW: number, roomH: number, n: number, ts: number): number {
 
 // ── rewards: a run's reward after a fight ───────────────────────────────
 
+const REWARD_ART: Record<string, ArtName> = {
+  thunder: "boons/thunder-strike", vigor: "boons/titan-heart", crown: "boons/crown-of-ages", frost: "boons/frost", gold: "boons/gold", blade: "boons/flame-blade",
+};
 const OFFER0: RewardOption[] = [
   { key: "thunder", title: "Thunder Strike", kind: "Boon of Zeus", text: "Your attacks call down [b]bolts[/b] for [color=highlight]+30[/color] damage.", rarity: "rare", icon: "bolt" },
   { key: "vigor", title: "Heart of the Titan", kind: "Boon of Ares", text: "[b]+25 %[/b] Max Health; heal [color=success]10[/color] on each room cleared.", rarity: "epic", tag: "Upgrade", icon: "heart" },
@@ -361,7 +408,7 @@ export function rewardsScreen(): void {
   const two = r.picks > 1;
   screen("Rewards", "Chamber cleared", r.taken ? `Taken: ${r.taken}` : two ? "Choose two boons, then confirm" : "Choose a boon", () => {
     const res = og.ui.rewardChoice("Choice", {
-      options: r.offer,
+      options: r.offer.map((o) => ({ ...o, image: art(REWARD_ART[o.key ?? ""]) })),
       title: "",
       picks: r.picks,
       selected: r.selected,
@@ -414,6 +461,12 @@ const g = {
   log: "",
 };
 
+const BANNER_THUMB: Record<string, ArtName> = { event: "portraits/aria", weapon: "items/ashbringer", std: "portraits/kael" };
+const PULL_ART: Record<string, ArtName> = {
+  "Aria, Tidecaller": "portraits/aria", "Kael, the Ember": "portraits/kael", "Mira of the Grove": "portraits/mira",
+  "Favonius Sword": "items/iron-sword", "Iron Sting": "boons/flame-blade", Slingshot: "items/hunters-bow", "Debate Club": "items/arcane-staff",
+  "Black Tassel": "items/elven-bow", "Thrilling Tales": "boons/rune-shield", "Cool Steel": "items/knight-helm",
+};
 const BANNERS = [
   { key: "event", name: "Moonlit Tide", title: "Moonlit Tide", subtitle: "Event wish · Character", endsIn: 3 * 86400 + 5 * 3600, fresh: false },
   { key: "weapon", name: "Epitome", title: "Epitome Invocation", subtitle: "Event wish · Weapon", endsIn: 50 * 60, fresh: true },
@@ -421,7 +474,8 @@ const BANNERS = [
 ] as const;
 
 /** A gacha banner and its pull: the pull is the game's (it spends the purse and draws the results) and the reveal the pattern's. */
-/** The weapon banner wears the kit's backdrop (the art path); the others draw the style's placeholder. */
+/** The event banner wears its key art and the featured units their portraits; the weapon banner the kit's backdrop;
+ * the standard one draws the style's placeholder (the path a game without its art takes). */
 /** The rate lines are the game's strings (og.i18n), so an RTL locale shows its own sentence. */
 export function gachaScreen(backdrop = 0, rate: { event: string; standard: string } = { event: "", standard: "" }): void {
   const vp = og.ui.frameViewport();
@@ -429,13 +483,20 @@ export function gachaScreen(backdrop = 0, rate: { event: string; standard: strin
   const small = phone();
   const b = BANNERS.find((x) => x.key === g.banner) ?? BANNERS[0];
   og.ui.anchor("Gacha", { anchor: "topLeft", margin: 0, width: px(vp.width - sa.left - sa.right), height: px(vp.height - sa.top - sa.bottom), direction: "column", padding: { left: 0, top: small ? Math.round((og.ui.bounds("Back")?.height ?? 44) + og.ui.frameTheme().space.sm) : 0, right: 0, bottom: small ? 0 : 52 } }, () => {
+    const keyArt = b.key === "event" ? art("scenes/gacha-moonlit-tide") : null;
     const res = og.ui.gachaBanner("Banner", {
-      banners: BANNERS.map((x) => ({ key: x.key, name: x.name, endsIn: x.endsIn, fresh: x.fresh })),
+      banners: BANNERS.map((x) => ({ key: x.key, name: x.name, endsIn: x.endsIn, fresh: x.fresh, image: art(BANNER_THUMB[x.key]) })),
       current: b.key,
       title: b.title,
       subtitle: b.subtitle,
-      image: b.key === "weapon" && backdrop ? (backdrop as never) : null,
-      featured: b.key === "std" ? [] : [{ name: "Aria", title: "Tidecaller of the Moon", stars: 5, rarity: "legendary" }, { name: "Kael", title: "The Ember", stars: 4, rarity: "epic" }, { name: "Mira", title: "Of the Grove", stars: 4, rarity: "epic" }],
+      image: keyArt ?? (b.key === "weapon" && backdrop && artOn ? (backdrop as never) : null),
+      // Aria stands in the right 55 % of the key art; in portrait the crop keeps her face.
+      ...(keyArt ? { focal: vp.breakpoint === "phonePortrait" ? { x: 0.74, y: 0.3 } : { x: 0.7, y: 0.36 } } : {}),
+      featured: b.key === "std" ? [] : [
+        { name: "Aria", title: "Tidecaller of the Moon", stars: 5, rarity: "legendary", image: art("portraits/aria") },
+        { name: "Kael", title: "The Ember", stars: 4, rarity: "epic", image: art("portraits/kael") },
+        { name: "Mira", title: "Of the Grove", stars: 4, rarity: "epic", image: art("portraits/mira") },
+      ],
       rateText: b.key === "std" ? rate.standard : rate.event,
       endsIn: b.endsIn,
       pity: g.pity,
@@ -444,6 +505,7 @@ export function gachaScreen(backdrop = 0, rate: { event: string; standard: strin
       single: 160,
       multi: 1600,
       currency: "gem",
+      currencyIcon: art("boons/crystal"),
     }, () => {});
     if (res.banner) g.banner = res.banner;
     if (res.pull > 0 && g.balance >= res.pull * 160) {
@@ -454,7 +516,7 @@ export function gachaScreen(backdrop = 0, rate: { event: string; standard: strin
     }
     if (res.short) g.log = `short ${res.short}`;
   });
-  const seq = og.ui.pullSequence("Pull", { token: g.items.length > 0 ? g.token : 0, items: g.items, againPrice: g.items.length * 160, affordable: g.balance >= g.items.length * 160, againLabel: "Wish ×{n}" });
+  const seq = og.ui.pullSequence("Pull", { token: g.items.length > 0 ? g.token : 0, items: g.items.map((x) => ({ ...x, image: art(PULL_ART[x.name ?? ""]) })), againPrice: g.items.length * 160, affordable: g.balance >= g.items.length * 160, againLabel: "Wish ×{n}", currencyIcon: art("boons/crystal") });
   if (seq.again && g.balance >= g.items.length * 160) {
     g.balance -= g.items.length * 160;
     g.token += 1;
@@ -475,7 +537,7 @@ export function patternsCommand(_world: World, args: readonly string[]): void {
     r.picks = Number(value) || 1;
     r.selected = [];
   } else if (key === "rselect") r.selected = value ? value.split(",") : [];
-  else if (key === "art") c.art = value === "on";
+  else if (key === "art") artOn = value !== "off";
   else if (key === "balance") g.balance = Number(value) || 0;
   else if (key === "banner") g.banner = value;
   else if (key === "pull") {
@@ -494,7 +556,7 @@ export function patternsCommand(_world: World, args: readonly string[]): void {
     c.inspect = "";
     c.refused = "";
     c.refusedT = 0;
-    c.art = false;
+    artOn = true;
     p.bag = BAG0.map((i) => ({ ...i }));
     p.slots = SLOTS0.map((s) => ({ ...s }));
     p.stash = STASH0.map((i) => ({ ...i }));
@@ -578,7 +640,7 @@ export function gearScreen(): void {
   screen("Gear", "Inventory", "Drag to move · Shift splits a stack · R turns", () => {
     const body = () => {
       const doll = og.ui.paperdoll("Doll", {
-        slots: p.slots,
+        slots: p.slots.map((x) => (x.item ? { ...x, item: withArt(x.item) } : x)),
         title: "Aria Vell",
         subtitle: "Level 42 Paladin",
         rating: "812",
@@ -597,7 +659,7 @@ export function gearScreen(): void {
         ...(p.carry ? { carry: p.carry } : {}),
       }, () => {
         // The figure: the game's character art in a body slot (the style's standing silhouette until it is set).
-        og.ui.artSlot("Figure", { kind: "body", width: grow, height: grow, label: "Aria Vell" });
+        og.ui.artSlot("Figure", { kind: "body", texture: art("scenes/paperdoll-aria-vell"), focal: { x: 0.5, y: 0.4 }, width: grow, height: grow, label: "Aria Vell" });
       });
       if (doll.equip) {
         const slot = p.slots.find((s) => s.key === doll.equip!.slot)!;
@@ -621,9 +683,9 @@ export function gearScreen(): void {
         const cell = portrait ? { cellSize: Math.max(44, Math.floor((vp.width - vp.safeArea.left - vp.safeArea.right - 32) / 8)) } : {};
         const pick = p.pick;
         p.pick = null;
-        const bag = og.ui.inventoryGrid("Bag", { ...cell, columns: portrait ? 8 : 10, rows: portrait ? 7 : 6, items: p.bag, label: "Backpack", selected: p.selected, highlight: p.highlight, ...(p.carry && p.carry.source !== "Bag" ? { carry: p.carry } : {}), ...(pick ? { pick } : {}) });
+        const bag = og.ui.inventoryGrid("Bag", { ...cell, columns: portrait ? 8 : 10, rows: portrait ? 7 : 6, items: p.bag.map(withArt), label: "Backpack", selected: p.selected, highlight: p.highlight, ...(p.carry && p.carry.source !== "Bag" ? { carry: p.carry } : {}), ...(pick ? { pick } : {}) });
         og.ui.label("StashTitle", "Stash", { step: "lg", font: "display", heading: true });
-        const stash = og.ui.inventoryGrid("Stash", { ...cell, columns: portrait ? 8 : 10, rows: portrait ? 2 : 3, capacity: portrait ? 12 : 24, items: p.stash, label: "Stash", ...(p.carry && p.carry.source !== "Stash" ? { carry: p.carry } : {}) });
+        const stash = og.ui.inventoryGrid("Stash", { ...cell, columns: portrait ? 8 : 10, rows: portrait ? 2 : 3, capacity: portrait ? 12 : 24, items: p.stash.map(withArt), label: "Stash", ...(p.carry && p.carry.source !== "Stash" ? { carry: p.carry } : {}) });
         for (const [r, list, other] of [[bag, p.bag, p.stash], [stash, p.stash, p.bag]] as const) {
           if (r.move) {
             const fromSlot = r.move.fromSlot ? p.slots.find((s) => s.key === r.move!.fromSlot) ?? null : null;

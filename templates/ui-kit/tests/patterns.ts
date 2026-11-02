@@ -48,6 +48,10 @@ function gear(b: ReturnType<typeof builder>, phone: boolean, prefix = ""): void 
   b.cmd("show:gear");
   b.cmd("pat:reset");
   b.shot(`${prefix}gear-idle`, 0.8);
+  // Without its art: the items' and the figure's placeholders (the standing figure, the kinds' marks).
+  b.cmd("pat:art:off");
+  b.shot(`${prefix}gear-placeholder`, 0.4);
+  b.cmd("pat:art:on");
   if (!phone) {
     // Hover: the item lifts and its tooltip names it.
     b.cmd(`touch_move_to:${BAG}/helm`, 0.1);
@@ -142,10 +146,11 @@ function cards(b: ReturnType<typeof builder>, phone: boolean, prefix = ""): void
   b.cmd("show:cards");
   b.cmd("pat:reset");
   b.shot(`${prefix}cards-idle`, 0.8);
-  // The enemies' portraits from a real texture (the art path beside the placeholder above).
-  b.cmd("pat:art:on");
-  b.shot(`${prefix}cards-art`, 0.4);
+  // Without its art: the style's placeholders where the portraits and the cards' art go (the path a game takes
+  // before its art lands, beside the painted one above).
   b.cmd("pat:art:off");
+  b.shot(`${prefix}cards-placeholder`, 0.4);
+  b.cmd("pat:art:on");
   if (!phone) {
     // Hover: the card lifts clear of the fan, straight and larger; its neighbours part.
     b.cmd(`touch_move_to:${FAN}/bash`, 0.1);

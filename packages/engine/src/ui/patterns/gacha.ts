@@ -131,22 +131,24 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
     }
     if (feat.length > 0) {
       kit.column("Featured", { width: grow(), gap: u(6), part: "Gacha.featured", partClass: "panel" }, () => {
+        // Each unit a tile (Star Rail, Genshin): its portrait at the start in a rim of its tier, its name, title and stars
+        // on an opaque ground beside it (the ground reads on any key art; the tier is the rim and the stars, not a wash).
+        const tileH = u(short ? 52 : portrait ? 64 : 84);
         feat.forEach((f, k) => {
           const ink = tierInk(f.rarity);
-          kit.row(kit.idi("Unit", k), { width: grow(), gap: u(10), cross: "center", padding: xy(u(10), u(6)), radius: t.small, part: `Gacha.unit${flags(`rarity=${f.rarity ?? "none"}`)}`, partClass: "panel" }, () => {
-            kit.setDraw({ shape: { kind: "rect", radii: [t.small, t.small, t.small, t.small] }, fills: [
-              // An opaque ground first, so the row reads on pale key art; the tier's ink washes in from the start.
-              { kind: "solid", color: paint(mix(role("panel"), role("shadow"), 0.25), 0.94) },
-              { kind: "gradient", type: "linear", from: { x: rtl() ? 1 : 0, y: 0.5 }, to: { x: rtl() ? 0 : 1, y: 0.5 }, stops: [{ offset: 0, color: paint(ink, 0.34) }, { offset: 1, color: paint(ink, 0) }] },
-            ] });
-            kit.open("Edge", { width: px(3), height: grow() });
-            kit.setDraw({ shape: { kind: "rect" }, fills: [{ kind: "solid", color: paint(ink) }] });
-            kit.close();
-            kit.column("Text", { width: grow(), gap: 1 }, () => {
-              text("Name", f.name ?? "", { step: st(16), font: "display", nowrap: true, ellipsis: true, width: grow() });
-              if (f.title && !short) text("Title", f.title, { step: st(12), color: "inkMuted", maxLines: 2, width: grow() });
+          kit.row(kit.idi("Unit", k), { width: grow(), height: px(tileH), gap: u(12), cross: "center", padding: { left: 0, top: 0, right: u(10), bottom: 0 }, radius: t.small, part: `Gacha.unit${flags(`rarity=${f.rarity ?? "none"}`)}`, partClass: "panel" }, () => {
+            kit.setDraw({
+              shape: { kind: "rect", radii: [t.small, t.small, t.small, t.small] },
+              fills: [{ kind: "solid", color: paint(mix(role("panel"), role("shadow"), 0.35), 0.92) }, { kind: "gradient", type: "linear", from: { x: rtl() ? 1 : 0, y: 0.5 }, to: { x: rtl() ? 0 : 1, y: 0.5 }, stops: [{ offset: 0, color: paint(ink, 0.16) }, { offset: 0.5, color: paint(ink, 0) }] }],
+              strokes: [line(k === 0 ? 2 : 1.5, paint(ink, k === 0 ? 1 : 0.8)), line(1, token("shadow", 0.7), "outside")],
+              effects: k === 0 ? [glow(u(10), paint(ink, 0.35))] : [],
             });
-            stars("Stars", f.stars ?? 0, u(14), ink);
+            artSlot("Portrait", "Gacha.unitPortrait", { texture: f.image ?? null, kind: "portrait", rarity: f.rarity, focal: { x: 0.5, y: 0.35 }, width: px(Math.round(tileH * 1.15)), height: px(tileH), radius: t.small });
+            kit.column("Text", { width: grow(), gap: u(2) }, () => {
+              text("Name", f.name ?? "", { step: st(17), font: "display", nowrap: true, ellipsis: true, width: grow() });
+              if (f.title && !short) text("Title", f.title, { step: st(12), color: "inkMuted", maxLines: 1, ellipsis: true, width: grow() });
+              stars("Stars", f.stars ?? 0, u(13), ink);
+            });
           });
         });
       });
@@ -167,22 +169,23 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
       kit.row("Status", { gap: u(14), cross: "center", wrap: big, align: "spaceBetween", width: grow() }, () => {
         if ((desc.pityMax ?? 0) > 0) pityMeter("Pity", desc.pity ?? 0, desc.pityMax!, desc.pityLabel ?? "Guaranteed in {left}");
         kit.row("Purse", { gap: u(6), cross: "center", padding: xy(u(10), u(4)), radius: 999, background: token("shadow", 0.55), part: "Gacha.purse", partClass: "chip" }, () => {
-          priceTag("Balance", { amount: balance, currency, size: "md" });
+          priceTag("Balance", { amount: balance, currency, size: "md", image: desc.currencyIcon ?? null });
         });
       });
       kit.open("Buttons", { direction: big ? "column" : "row", gap: u(10), cross: "stretch", width: grow() });
       {
         const pull = (key: string, label: string, n: number, cost: number): void => {
           const can = balance >= cost;
+          // The ten-pull leads (gold, the wider); the single is glass beside it.
           const r = btn(key, label, {
-            variant: n > 1 ? "premium" : "secondary",
+            variant: n > 1 ? "premium" : "glass",
             size: "lg",
-            width: grow(),
+            width: n > 1 || big ? grow() : null,
             part: `Gacha.pull${flags(n > 1 ? "multi" : "single", !can && "short")}`,
             name: `${label}, ${cost} ${currency}${can ? "" : `, ${desc.shortLabel ?? "not enough"}`}`,
             before: () => {
               // In the button's ink and face (dark on the premium gold), its gem too.
-              priceTag("Price", { amount: cost, currency, affordable: can, size: "sm", shortLabel: desc.shortLabel ?? "not enough", ink: n > 1 ? hex("#1d1406") : role("ink") });
+              priceTag("Price", { amount: cost, currency, affordable: can, size: "sm", shortLabel: desc.shortLabel ?? "not enough", ink: n > 1 ? hex("#1d1406") : role("ink"), image: desc.currencyIcon ?? null });
               kit.open("Sep", { width: px(1), height: px(u(18)), background: token("line") });
               kit.close();
             },
@@ -399,7 +402,21 @@ function reveal(it: Api.PullItem, idx: number, n: number, dt: number, W: number,
   const artW = Math.round(artH * 0.72);
   kit.open("Reveal", { direction: landscape ? "row" : "column", gap: u(phone ? 16 : 40), align: "center", cross: "center", part: `Pull.reveal${flags(`rarity=${it.rarity ?? "none"}`)}`, partClass: "panel" });
   kit.props({ enter: { values: [{ prop: "opacity", value: 0 }, { prop: "scale", value: 0.7 }, { prop: "rotate", value: -0.08 }], transition: spring("emphasis") } });
-  // A light behind the art in its tier's colour.
+  // Behind the card, in its tier's colour: a glow and rays turning slowly (still under reduced motion), wider and
+  // brighter the higher the tier, so the result is felt before it is read.
+  const pipsN = rarityPips(it.rarity);
+  kit.open("Stage", { width: px(artW), height: px(artH) });
+  const rayD = Math.round(artH * (pipsN >= 5 ? 2.1 : pipsN >= 4 ? 1.8 : 1.45));
+  kit.open("Glow", { width: px(rayD), height: px(rayD), part: "Pull.glow", partClass: "badge" });
+  kit.setDraw({ shape: { kind: "ellipse" }, fills: [radial([[0, paint(ink, pipsN >= 4 ? 0.7 : 0.45)], [0.45, paint(ink, 0.22)], [1, paint(ink, 0)]])] });
+  kit.close();
+  over({ insets: { start: Math.round((artW - rayD) / 2), top: Math.round((artH - rayD) / 2) }, inert: true, overlaps: ["*"] });
+  if (pipsN >= 3) {
+    kit.open("Rays", { width: px(rayD), height: px(rayD), part: "Pull.rays", partClass: "badge" });
+    kit.setDraw({ shape: { kind: "polygon", sides: pipsN >= 5 ? 18 : 12, inner: 0.1, rotation: 0 }, fills: [{ kind: "solid", color: paint(mix(ink, role("ink"), 0.2), pipsN >= 5 ? 0.3 : 0.18) }] });
+    kit.close();
+    over({ insets: { start: Math.round((artW - rayD) / 2), top: Math.round((artH - rayD) / 2) }, inert: true, overlaps: ["*"], transform: { rotate: still() ? 0 : (dt / 60) * 0.12 } });
+  }
   kit.open("Card", { width: px(artW), height: px(artH), part: "Pull.card", partClass: "card" });
   kit.setDraw({ shape: { kind: "rect", radii: [u(14), u(14), u(14), u(14)] }, fills: [{ kind: "solid", color: token("well") }], strokes: [line(3, paint(ink)), line(1, token("shadow", 0.7), "outside")], effects: [glow(u(28), paint(ink, 0.7), 4), shadow(u(10), u(24), 0.6)] });
   artSlot("Art", "Pull.art", { texture: it.image ?? null, kind: "character", rarity: it.rarity, width: px(artW - 6), height: px(artH - 6), radius: u(12) });
@@ -409,12 +426,14 @@ function reveal(it: Api.PullItem, idx: number, n: number, dt: number, W: number,
     over({ insets: { end: -u(8), top: -u(10) }, inert: true, z: 4 });
   }
   kit.close();
+  kit.close();
   kit.column("Words", { gap: u(8), cross: landscape ? "start" : "center", width: landscape ? px(Math.min(u(440), Math.round(W * 0.36))) : grow() }, () => {
     if (it.kind) text("Kind", it.kind.toLocaleUpperCase(), { step: st(14), color: mix(ink, role("ink"), 0.4), font: "display", nowrap: true });
-    text("Name", it.name ?? "", { step: st(phone ? 28 : 44), heading: true, font: "display", maxLines: 2, width: grow(), align: landscape ? "start" : "center" });
+    // The name leads: larger than the stars under it.
+    text("Name", it.name ?? "", { step: st(phone ? 34 : 56), heading: true, font: "display", maxLines: 2, width: grow(), align: landscape ? "start" : "center" });
     kit.props({ enter: { values: [{ prop: "opacity", value: 0 }, { prop: "x", value: u(-40) }], transition: spring("panel"), delayMs: 180 } });
     const ns = it.stars ?? 0;
-    stars("Stars", ns, u(phone ? 22 : 30), ink, ns, Array.from({ length: ns }, (_, k) => 320 + k * 110));
+    stars("Stars", ns, u(phone ? 18 : 24), ink, ns, Array.from({ length: ns }, (_, k) => 320 + k * 110));
     // Legendary and above: a burst from the stars as the last one lands (from the stars, not the art, so its rays
     // stay fine and clear of the art and its tag).
     if (rarityPips(it.rarity) >= 5 && !still()) kit.burst({ count: 12, color: paint(mix(ink, role("ink"), 0.25)), radius: u(phone ? 90 : 140), delayMs: 320 + ns * 110 });
@@ -487,7 +506,7 @@ function summary(items: readonly Api.PullItem[], desc: Api.PullSequenceDesc, W: 
         variant: "secondary",
         size: "lg",
         part: `Pull.again${flags(!can && "short")}`,
-        before: () => priceTag("Price", { amount: desc.againPrice ?? 0, currency: desc.currency ?? "gem", affordable: can, size: "sm" }),
+        before: () => priceTag("Price", { amount: desc.againPrice ?? 0, currency: desc.currency ?? "gem", affordable: can, size: "sm", image: desc.currencyIcon ?? null }),
       });
       if (r.clicked) {
         if (can) done(true);

@@ -51744,6 +51744,18 @@
           "$ref": "#/$defs/Rarity",
           "description": "Its tier's colour.",
           "default": "none"
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its portrait (art kind portrait), in its tile; without it the style's placeholder figure.",
+          "default": null
         }
       },
       "additionalProperties": false
@@ -51899,6 +51911,18 @@
           "type": "string",
           "description": "The pull currency's name (its icon when the style has one).",
           "default": "gem"
+        },
+        "currencyIcon": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The currency's own art, drawn wherever a price or the purse names it; null draws the style's icon of that name, else a gem drawn as a shape.",
+          "default": null
         },
         "balance": {
           "type": "integer",
@@ -52098,6 +52122,18 @@
           "type": "string",
           "description": "The currency of againPrice.",
           "default": "gem"
+        },
+        "currencyIcon": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The currency's own art beside againPrice; null draws the style's icon, else a gem.",
+          "default": null
         },
         "affordable": {
           "type": "boolean",

@@ -517,7 +517,7 @@ function currencyLook(currency: string): { sym: SymbolKind; color: Rgba } {
  * a struck-through original price when discounted, and the amount in the
  * danger ink with `short` when it cannot be paid (said, not only coloured).
  */
-export function priceTag(id: string, d: { amount: number; currency?: string; original?: number; affordable?: boolean; free?: string; text?: string; size?: "sm" | "md" | "lg"; shortLabel?: string; ink?: Rgba }): void {
+export function priceTag(id: string, d: { amount: number; currency?: string; original?: number; affordable?: boolean; free?: string; text?: string; size?: "sm" | "md" | "lg"; shortLabel?: string; ink?: Rgba; image?: Api.Texture | null }): void {
   const { t } = frame();
   // Scaled with the surface (st, u): a price is read in play, 18 px at 1080p.
   const step = st(d.size === "lg" ? 20 : d.size === "sm" ? 14 : 16);
@@ -531,7 +531,13 @@ export function priceTag(id: string, d: { amount: number; currency?: string; ori
   } else {
     const look = currencyLook(d.currency ?? "");
     // Set inside a control (`ink`): the gem in the control's ink too, so it holds 4.5:1 on any fill (a pale gem on gold did not).
-    symbol("Currency", look.sym, iconSize, d.ink ?? look.color, { icon: d.ink ? undefined : d.currency, label: "", flat: !!d.ink });
+    if (d.image) {
+      // The currency's own art, a little larger than a drawn mark (a painted icon carries its own edge).
+      const z = Math.round(iconSize * 1.3);
+      kit.open("Currency", { width: px(z), height: px(z), part: "Price.currency", partClass: "badge" });
+      kit.setDraw({ shape: { kind: "rect", radii: [z * 0.22, z * 0.22, z * 0.22, z * 0.22] }, clip: "shape", fills: [{ kind: "image", texture: d.image, fit: "cover", focal: { x: 0.5, y: 0.5 } }], strokes: [line(1, token("shadow", 0.6), "outside")] } as Api.DrawDesc);
+      kit.close();
+    } else symbol("Currency", look.sym, iconSize, d.ink ?? look.color, { icon: d.ink ? undefined : d.currency, label: "", flat: !!d.ink });
     if (d.original && d.original > d.amount) {
       kit.open("Was", { direction: "row" });
       text("Value", grouped(d.original), { step: st(14), color: "inkMuted", nowrap: true, font: "mono" });
@@ -757,7 +763,21 @@ function raisedFace(base: Rgba, radius: number, hot: boolean, down: boolean): vo
   over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true });
 }
 
-export type BtnVariant = "primary" | "secondary" | "quiet" | "danger" | "premium";
+/** A glass button's face: a light falling across a dark pane, a bright rim, a soft shadow; no ledge (it is not a slab). */
+function glassFace(_base: Rgba, radius: number, hot: boolean, down: boolean): void {
+  const white = hex("#ffffff");
+  kit.open("Face", { width: grow(), height: grow(), part: "Pattern.buttonFace[glass]", partClass: "button" });
+  kit.setDraw({
+    shape: { kind: "rect", radii: [radius, radius, radius, radius] },
+    fills: [vgrad([[0, paint(white, down ? 0.04 : hot ? 0.24 : 0.16)], [0.5, paint(white, hot && !down ? 0.08 : 0.04)], [1, paint(white, 0.02)]])],
+    strokes: [line(1, paint(white, hot ? 0.6 : 0.4))],
+    effects: [{ kind: "dropShadow", offset: { x: 0, y: down ? 2 : u(6) }, blur: u(down ? 6 : 14), spread: 0, color: token("shadow", 0.4) }],
+  } as Api.DrawDesc);
+  kit.close();
+  over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true });
+}
+
+export type BtnVariant = "primary" | "secondary" | "quiet" | "danger" | "premium" | "glass";
 
 /**
  * A button the patterns draw at the reference scale: a surface in its
@@ -773,10 +793,11 @@ export function btn(id: string, label: string, d: { variant?: BtnVariant; part?:
   const fillRole: Api.ThemeColor | null = v === "primary" ? "primary" : v === "danger" ? "danger" : v === "premium" ? "gold" : v === "secondary" ? "control" : null;
   const inkRole: Api.ThemeColor = v === "primary" || v === "danger" ? "onPrimary" : "ink";
   const ink = v === "premium" ? hex("#1d1406") : role(inkRole);
-  const base = fillRole ? opaque(fillRole === "control" ? mix(role("panelRaised"), role("ink"), 0.12) : role(fillRole)) : null;
+  // Glass: a dark pane the scene shows through, for the second action beside a primary or premium one (Wish ×1).
+  const base = v === "glass" ? { ...mix(role("panel"), role("shadow"), 0.4), a: 0.62 } : fillRole ? opaque(fillRole === "control" ? mix(role("panelRaised"), role("ink"), 0.12) : role(fillRole)) : null;
   // A call to action stands out of its screen (End turn, Wish, Done): a raised face over a ledge, lifting under the
   // pointer and sinking when pressed. Disabled it lies flat, which reads as inert.
-  const raised = !!base && !d.disabled && d.selected === undefined && (v === "primary" || v === "premium" || v === "danger" || !!d.raised);
+  const raised = !!base && !d.disabled && d.selected === undefined && (v === "primary" || v === "premium" || v === "danger" || v === "glass" || !!d.raised);
   const was = lastInteraction(id);
   const hot = raised && (was.hovered || was.focused) && !was.pressed;
   const down = raised && was.pressed;
@@ -802,7 +823,7 @@ export function btn(id: string, label: string, d: { variant?: BtnVariant; part?:
     // A toggle (Banish armed) is said selected as it is drawn: the tree has no pressed state.
     semantics: { role: "button", name: d.name ?? label, ...(d.selected === undefined ? {} : { selected: d.selected }) },
   }, () => {
-    if (raised) raisedFace(base!, t.control, hot, down);
+    if (raised) (v === "glass" ? glassFace : raisedFace)(base!, t.control, hot, down);
     if (d.sym) symbol("Sym", d.sym, u(size === "sm" ? 14 : 18), ink);
     d.before?.();
     if (label) text("Label", label, { step: st(size === "lg" ? 16 : size === "sm" ? 13 : 14), color: d.disabled ? "inkFaint" : ink, nowrap: true, font: "display" });

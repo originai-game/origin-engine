@@ -18,7 +18,7 @@
 
 import { og, defineComponent, defineResource, defineSystem, bool, f32, f64, str, u32 } from "@origingame/engine";
 import type { Entity, GameSettings, Viewport, World } from "@origingame/engine";
-import { cardsScreen, gachaScreen, gearScreen, patternsCommand, rewardsScreen } from "./patterns.ts";
+import { cardsScreen, gachaScreen, gearScreen, loadPatternArt, patternsCommand, rewardsScreen } from "./patterns.ts";
 import { chartsScreen, containersScreen, dataScreen, demoCommand, graphScreen, navigationScreen, overlaysScreen } from "./components.ts";
 import { bindingsScreen, controlsDemo, controlsScreen, fieldsScreen, foundationsScreen, rangesScreen } from "./controls.ts";
 
@@ -1174,7 +1174,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       break;
     case "cards":
       // Back stops aiming first (the hand takes it).
-      cardsScreen(d.backdrop as number, world);
+      cardsScreen(world);
       break;
     case "rewards":
       // Back disarms banishing first (the choice takes it).
@@ -1264,6 +1264,7 @@ export default og.game({
     const icons = og.load.texture(world, "textures/icons.png");
     const iconSet = og.load.font(world, "icons/iconoir.ogt");
     const backdrop = og.load.texture(world, "textures/backdrop.png");
+    loadPatternArt(world);
     const handle = (r: { ok: boolean; value?: unknown }): number => (r.ok ? (r.value as number) : 0);
     const face = (path: string) => handle(og.load.font(world, path));
     world.insert(e.value, Demo, {

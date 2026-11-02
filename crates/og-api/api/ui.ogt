@@ -4474,6 +4474,7 @@ module ui {
     field title String "A line under it (Lightning Swordswoman)."
     field stars u32 "Its stars, drawn as stars (never a glyph a font may lack)."
     field rarity Rarity "Its tier's colour."
+    field image Option.Texture "Its portrait (art kind portrait), in its tile; without it the style's placeholder figure."
   }
 
   struct GachaBannerTab {
@@ -4510,6 +4511,7 @@ module ui {
     field currency String "The pull currency's name (its icon when the style has one)." {
       default "gem"
     }
+    field currencyIcon Option.Texture "The currency's own art, drawn wherever a price or the purse names it; null draws the style's icon of that name, else a gem drawn as a shape."
     field balance u32 "How much of it the player has."
     field single u32 "What one pull costs."
     field multi u32 "What ten cost; 0 hides the ten-pull."
@@ -4577,6 +4579,7 @@ module ui {
     field currency String "The currency of againPrice." {
       default "gem"
     }
+    field currencyIcon Option.Texture "The currency's own art beside againPrice; null draws the style's icon, else a gem."
     field affordable bool "The purse pays againPrice." {
       default true
     }
