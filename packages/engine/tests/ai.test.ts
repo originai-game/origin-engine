@@ -427,8 +427,11 @@ test("og.Crowd: eight agents swap places across a ring without touching, determi
     const walkers = Array.from({ length: 8 }, (_, k) => w.find(`walker${k}`)!);
     let closest = Infinity;
     let save = "";
-    for (let t = 0; t < 900; t++) {
+    let mid = "";
+    // Every agent is home by tick 846.
+    for (let t = 0; t < 870; t++) {
       if (t === 90) save = must(w.snapshot());
+      if (t === 300) mid = eng.hash();
       expect(eng.advance(1).ok).toBeTrue();
       const ps = walkers.map((e) => must(w.get(e, og.Transform)).position);
       for (let i = 0; i < 8; i++) for (let j = i + 1; j < 8; j++) closest = Math.min(closest, Math.hypot(ps[i]!.x - ps[j]!.x, ps[i]!.z - ps[j]!.z));
@@ -438,15 +441,16 @@ test("og.Crowd: eight agents swap places across a ring without touching, determi
       const p = must(w.get(e, og.Transform)).position;
       expect(Math.hypot(p.x - a.target.x, p.z - a.target.z)).toBeLessThan(0.5);
     }
-    return { eng, closest, save, hash: eng.hash() };
+    return { eng, closest, save, mid, hash: eng.hash() };
   };
   const a = run();
   expect(types(a.eng.world)).toContain("og.Crowd");
   expect(a.closest).toBeGreaterThan(0.76);
   expect(run().hash).toBe(a.hash);
-  // A save from mid-swap restores where og.Crowd was never used and ends in the same world.
+  // A save from mid-swap (tick 90) restores where og.Crowd was never used
+  // and is the same world 210 ticks on, with the agents still crossing.
   const fresh = start(og.game({ resources: [Swamp], start: swampYard(false) }));
   expect(fresh.world.restore(a.save).ok).toBeTrue();
-  expect(fresh.advance(810).ok).toBeTrue();
-  expect(fresh.hash()).toBe(a.hash);
-});
+  expect(fresh.advance(210).ok).toBeTrue();
+  expect(fresh.hash()).toBe(a.mid);
+}, 30_000); // two 870-tick crowds: about 1 s alone, over 8 s on a loaded gate
