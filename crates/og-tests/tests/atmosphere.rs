@@ -680,7 +680,8 @@ fn weather_surface_scenes_match_their_references_and_read_as_weather() {
     );
 }
 
-/// R4's shelter: the ground under the canopy stays free of snow and dry.
+/// R4's shelter: the ground under the canopy stays free of snow and dry,
+/// whether the canopy is plain meshes or clustered ones (the meshlet path).
 /// With the weather occlusion map turned off (shelter 0) the snow lies
 /// under it too, so the frame's lower half is brighter; with it the ground
 /// under the canopy is darker than the open snow; and in the rain (its
@@ -706,6 +707,21 @@ fn a_canopy_keeps_the_snow_and_the_rain_off_the_ground_under_it() {
         lower(&snow),
         lower(&snowed_under)
     );
+    // A canopy of clustered meshes (the meshlet path) shelters the same:
+    // the snow is kept off as without the map it is not, and the ground
+    // under it matches the plain canopy's to a few percent.
+    let clustered = frame(&sky_scene("weather-shelter-meshlet"));
+    assert!(
+        lower(&clustered) < 0.95 * lower(&open("weather-shelter-meshlet")),
+        "a clustered canopy keeps the snow off"
+    );
+    let under = |img: &RgbaImage| mean(img, 300, 435, 900, 495);
+    assert!(
+        (under(&clustered) - under(&snow)).abs() < 0.05 * under(&snow),
+        "as the plain canopy does: {} vs {}",
+        under(&clustered),
+        under(&snow)
+    );
     // The ground under the canopy, with and without the map, the puddles
     // and ripples left out of both (mirrors of the sky, brighter than any
     // ground) and the sun's shadows off in both (the weather map is drawn
@@ -725,7 +741,6 @@ fn a_canopy_keeps_the_snow_and_the_rain_off_the_ground_under_it() {
         }
         frame(&s)
     };
-    let under = |img: &RgbaImage| mean(img, 300, 435, 900, 495);
     let (dry, soaked) = (damp(true), damp(false));
     assert!(
         under(&dry) > 1.1 * under(&soaked),

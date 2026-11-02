@@ -1164,11 +1164,16 @@ impl Renderer {
             })
             .collect();
         // The weather occlusion map's casters (not the skinned or the
-        // scattered copies: see `shadow_pass`), when it is drawn again.
+        // scattered copies: see `shadow_pass`), when it is drawn again: its
+        // clustered casters through a shadow view of the meshlet dispatch,
+        // as a cascade's (its own planes, no cone or occlusion, the
+        // camera's level per model), and its meshlet view (0: none).
+        let mut shelter_view = 0;
         let shelter_list: Option<DrawList> = shelter.as_ref().filter(|s| s.3).map(|s| {
             if gpu_cull {
                 let g = gpu_pass(cull_gpu::PassKind::Shadow, &s.1);
-                indirect_list(&batches, sorted, g, |b| b.cast)
+                shelter_view = shadow_view(&mut meshlet_view, &s.1);
+                caster_list(g, shelter_view)
             } else {
                 self.cull(
                     &batches,
@@ -3260,9 +3265,7 @@ impl Renderer {
                         SHELTER_SLOT,
                         shelter_list.as_ref().expect("a list when redrawn"),
                         &s.1,
-                        // No view: clustered (meshlet) casters are not drawn
-                        // into the weather map yet.
-                        0,
+                        shelter_view,
                         &mut stats,
                         false,
                     )

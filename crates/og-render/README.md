@@ -2271,7 +2271,8 @@ softens the drip line over `DRIP_EDGE`. It is the cascade array's last
 layer (`fit_shelter_layer` adds it only while the scene has surface
 weather, so the array otherwise keeps its size; its index comes from
 `frame.weather_shelter.x`, never a constant), takes only static casters
-and terrain (no skinned or scattered copies), and is drawn again only
+and terrain (no skinned or scattered copies; clustered casters through a
+shadow view of the meshlet dispatch, as a cascade's), and is drawn again only
 when `shelter_key` changes: the camera crosses an eighth of the square,
 the fall turns, or a caster inside moves, appears or goes (a static
 shadow cache, when the shadows have one, is where that test belongs).
@@ -2281,7 +2282,7 @@ double flash of the sky's light, a light over the strike and a bolt by
 midpoint displacement seeded by the strike's number. The state they draw
 is the runtime's og.WeatherState, simulated in the tick (og-runtime
 `weather.rs`). Frames: `weather-wet`, `-snow-cover`, `-lightning`,
-`-shelter-snow`, `-shelter-rain`.
+`-shelter-snow`, `-shelter-rain`, `-shelter-meshlet`.
 
 ## Reflection probe faces
 

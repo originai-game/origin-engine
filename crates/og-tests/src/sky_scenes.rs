@@ -26,6 +26,7 @@ pub const SKY_SCENES: &[&str] = &[
     "weather-lightning",
     "weather-shelter-snow",
     "weather-shelter-rain",
+    "weather-shelter-meshlet",
 ];
 
 /// The colonnade at `hours` under the physical sky of `air`, lit by the
@@ -108,9 +109,19 @@ fn weathered(hours: f32, weather: SurfaceWeather) -> RenderScene {
 /// A flat canopy 8 m wide (x -4 to 4) and 6 m deep (z -9 to -3), its
 /// underside 3 m up, on four posts: in front of the weathered camera, which
 /// sees the ground under it.
-pub fn canopy(scene: &mut RenderScene) {
-    let slab = scene.add_mesh(shapes::cuboid(Vec3::new(8.0, 0.2, 6.0)));
-    let post = scene.add_mesh(shapes::cuboid(Vec3::new(0.2, 3.0, 0.2)));
+/// `clustered`: its slab and posts are clustered meshes, drawn through
+/// the meshlet path (one level, a cluster per 64 triangles).
+pub fn canopy(scene: &mut RenderScene, clustered: bool) {
+    let mut mesh = |data: og_render::MeshData| {
+        let clusters = clustered.then(|| one_level(&data));
+        let m = scene.add_mesh(data);
+        if clusters.is_some() {
+            scene.set_mesh_clusters(m, clusters);
+        }
+        m
+    };
+    let slab = mesh(shapes::cuboid(Vec3::new(8.0, 0.2, 6.0)));
+    let post = mesh(shapes::cuboid(Vec3::new(0.2, 3.0, 0.2)));
     let wood = scene.add_material(Material {
         base_color: [0.42, 0.3, 0.2, 1.0],
         roughness: 0.8,
@@ -125,6 +136,49 @@ pub fn canopy(scene: &mut RenderScene) {
         for z in [-8.8f32, -3.2] {
             scene.add_instance(post, wood, Mat4::from_translation(Vec3::new(x, 1.5, z)));
         }
+    }
+}
+
+/// `data` as one level of clusters, each of up to 64 of its triangles in
+/// order (their bounds from their vertices; a cone that never culls).
+fn one_level(data: &og_render::MeshData) -> og_render::meshlet::MeshClusters {
+    use og_render::meshlet::{CLUSTER_TRIANGLES, Cluster, ClusterLevel, MeshClusters};
+    let pos = |i: &u32| Vec3::from(data.vertices[*i as usize].position);
+    let clusters: Vec<Cluster> = data
+        .indices
+        .chunks(CLUSTER_TRIANGLES * 3)
+        .enumerate()
+        .map(|(k, ix)| {
+            let (lo, hi) = ix
+                .iter()
+                .map(pos)
+                .fold((Vec3::MAX, Vec3::MIN), |(a, b), p| (a.min(p), b.max(p)));
+            let center = (lo + hi) * 0.5;
+            Cluster {
+                first: (k * CLUSTER_TRIANGLES * 3) as u32,
+                triangles: (ix.len() / 3) as u32,
+                center,
+                radius: ix
+                    .iter()
+                    .map(|i| pos(i).distance(center))
+                    .fold(0.0, f32::max),
+                cone_axis: Vec3::Y,
+                cone_cutoff: 1.0,
+                error_center: center,
+                error_radius: 1.0,
+                ..Default::default()
+            }
+        })
+        .collect();
+    MeshClusters {
+        levels: vec![ClusterLevel {
+            first: 0,
+            count: data.indices.len() as u32,
+            error: 0.0,
+            clusters: 0..clusters.len() as u32,
+        }],
+        clusters,
+        indices: data.indices.clone(),
     }
 }
 
@@ -185,7 +239,21 @@ pub fn sky_scene(name: &str) -> RenderScene {
                     ..SurfaceWeather::default()
                 },
             );
-            canopy(&mut scene);
+            canopy(&mut scene, false);
+            scene
+        }
+        // The snow's shelter under a canopy of clustered meshes (the
+        // meshlet path draws them into the weather map through a shadow
+        // view of its dispatch).
+        "weather-shelter-meshlet" => {
+            let mut scene = weathered(
+                11.0,
+                SurfaceWeather {
+                    snow: 0.8,
+                    ..SurfaceWeather::default()
+                },
+            );
+            canopy(&mut scene, true);
             scene
         }
         "weather-shelter-rain" => {
@@ -201,7 +269,7 @@ pub fn sky_scene(name: &str) -> RenderScene {
                     ..SurfaceWeather::default()
                 },
             );
-            canopy(&mut scene);
+            canopy(&mut scene, false);
             scene
         }
         "clouds-fair" => clouded(
