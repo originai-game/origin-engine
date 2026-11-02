@@ -16,7 +16,7 @@ module atmosphere {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 9803</sub>
+<sub>`api.ogt` line 9804</sub>
 
 ## Contents
 
@@ -64,7 +64,7 @@ fn timeOfDay {
 }
 ```
 
-<sub>`api.ogt` line 10254</sub>
+<sub>`api.ogt` line 10255</sub>
 
 ## Components, resources and events
 
@@ -178,7 +178,7 @@ resource Fog {
 }
 ```
 
-<sub>`api.ogt` line 9814</sub>
+<sub>`api.ogt` line 9815</sub>
 
 <a id="record-Sky"></a>
 
@@ -285,7 +285,7 @@ resource Sky {
 }
 ```
 
-<sub>`api.ogt` line 9895</sub>
+<sub>`api.ogt` line 9896</sub>
 
 <a id="record-DayNight"></a>
 
@@ -367,7 +367,7 @@ resource DayNight {
 }
 ```
 
-<sub>`api.ogt` line 9970</sub>
+<sub>`api.ogt` line 9971</sub>
 
 <a id="record-Weather"></a>
 
@@ -429,7 +429,7 @@ resource Weather {
 }
 ```
 
-<sub>`api.ogt` line 10027</sub>
+<sub>`api.ogt` line 10028</sub>
 
 <a id="record-Wind"></a>
 
@@ -475,7 +475,7 @@ resource Wind {
 }
 ```
 
-<sub>`api.ogt` line 10067</sub>
+<sub>`api.ogt` line 10068</sub>
 
 <a id="record-Water"></a>
 
@@ -644,7 +644,7 @@ component Water {
 }
 ```
 
-<sub>`api.ogt` line 10094</sub>
+<sub>`api.ogt` line 10095</sub>
 
 <a id="record-Water2D"></a>
 
@@ -698,7 +698,7 @@ component Water2D {
 }
 ```
 
-<sub>`api.ogt` line 10222</sub>
+<sub>`api.ogt` line 10223</sub>
 
 ## Constants
 
@@ -714,28 +714,28 @@ component Water2D {
 const WEATHER_NONE u32 0 "Weather.kind: clear."
 ```
 
-<sub>`api.ogt` line 9808</sub>
+<sub>`api.ogt` line 9809</sub>
 
 ```ogt
 const WEATHER_RAIN u32 1 "Weather.kind: rain streaks falling with the wind, the light dimmed and a grey distance fog."
 ```
 
-<sub>`api.ogt` line 9809</sub>
+<sub>`api.ogt` line 9810</sub>
 
 ```ogt
 const WEATHER_SNOW u32 2 "Weather.kind: flakes drifting down on gusts, a pale fog."
 ```
 
-<sub>`api.ogt` line 9810</sub>
+<sub>`api.ogt` line 9811</sub>
 
 ```ogt
 const WEATHER_DUST u32 3 "Weather.kind: dust blowing along the wind near the ground, a warm thick fog."
 ```
 
-<sub>`api.ogt` line 9811</sub>
+<sub>`api.ogt` line 9812</sub>
 
 ```ogt
 const WEATHER_MIST u32 4 "Weather.kind: no particles, a dense low height fog."
 ```
 
-<sub>`api.ogt` line 9812</sub>
+<sub>`api.ogt` line 9813</sub>

@@ -65,7 +65,7 @@ fn shake {
 }
 ```
 
-<sub>`api.ogt` line 3657</sub>
+<sub>`api.ogt` line 3658</sub>
 
 <a id="fn-punch"></a>
 
@@ -95,7 +95,7 @@ fn punch {
 }
 ```
 
-<sub>`api.ogt` line 3664</sub>
+<sub>`api.ogt` line 3665</sub>
 
 <a id="fn-kick"></a>
 
@@ -127,7 +127,7 @@ fn kick {
 }
 ```
 
-<sub>`api.ogt` line 3671</sub>
+<sub>`api.ogt` line 3672</sub>
 
 ## Components, resources and events
 
@@ -749,7 +749,7 @@ Token `og.VirtualCamera`, registered under the schema name `og.VirtualCamera`; i
 | `radius` | `number` | `0.2` | ≥ 0 | `m` | — | The sphere collision keeps clear. |
 | `damping` | `number` | `0.4` | ≥ 0 | `s` | tunable | Roughly how long it takes to ease back out once the way is clear; 0 snaps. |
 | `collisionLayers` | `number` | `0` | — | — | — | The physics layers collision considers (a collider counts when its layers meet these); 0 every layer. |
-| `eased` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | read only | Controller state: the followed point after smoothing, before collision. |
+| `eased` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | read only | Controller state: the followed point after smoothing, before collision, in world space (a floating-origin rebase shifts it). |
 | `pull` | `number` | `0` | — | `m` | read only | Controller state: how far collision has pulled it in towards the look point. |
 | `activated` | `number` | `0` | — | — | read only | Controller state: og.CameraBrain.activations when it was last enabled (the later wins a priority tie). |
 | `primed` | `boolean` | `false` | — | — | read only | Controller state: it was evaluated last tick (enabled, live or blended from); one that was not snaps to its goal and, if enabled, takes the next activation. |
@@ -825,7 +825,7 @@ component VirtualCamera {
     tunable true
   }
   field collisionLayers u32 "The physics layers collision considers (a collider counts when its layers meet these); 0 every layer."
-  field eased Vector3 "Controller state: the followed point after smoothing, before collision." {
+  field eased Vector3 "Controller state: the followed point after smoothing, before collision, in world space (a floating-origin rebase shifts it)." {
     readonly true
     unit m
   }
@@ -852,6 +852,8 @@ Picks the live og.VirtualCamera every tick and blends og.Camera to it, as Cinema
 
 Registered with og.VirtualCamera. Its state fields are world state, saved and restored with the world, so a replay or a restore mid-blend continues the same blend.
 
+Read and write it as any resource: `const brain = world.resource(og.CameraBrain)`; when `brain.ok`, `brain.value.live` is the live shot and `brain.value.solo = shot` makes one solo (0 releases it). A system that reads it lists og.CameraBrain among its reads, one that sets solo among its writes.
+
 Token `og.CameraBrain`, registered under the schema name `og.CameraBrain`; its value type is `CameraBrain`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -865,7 +867,7 @@ Token `og.CameraBrain`, registered under the schema name `og.CameraBrain`; its v
 | `blend` | `number` | `1` | — | — | read only | How far the blend has come, 0 to 1 (1: settled on the live camera); the weight is the curve at this time. |
 | `blendDuration` | `number` | `0` | — | `s` | read only | The current blend's length. |
 | `blendCurve` | `Ease` | `"quadOut"` | — | — | read only | The current blend's curve. |
-| `fromPosition` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | read only | A held pose to blend from: its position. |
+| `fromPosition` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | read only | A held pose to blend from: its position, in world space (a floating-origin rebase shifts it). |
 | `fromQuaternion` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | read only | Its rotation. |
 | `fromFov` | `number` | `0` | — | `deg` | read only | Its field of view. |
 | `fromFocus` | `number` | `0` | — | `m` | read only | Its focus distance (0: none). |
@@ -880,6 +882,7 @@ Token `og.CameraBrain`, registered under the schema name `og.CameraBrain`; its v
 resource CameraBrain {
   doc "Picks the live og.VirtualCamera every tick and blends og.Camera to it, as Cinemachine's brain: the solo shot if one is set, else the enabled one with the highest priority. A change of live camera blends from the previous camera (still moving) over the incoming one's blendTime by its blendEase; a change during a blend starts from the blended pose, so the view never jumps. The first live camera of a world cuts. With no live camera og.Camera is left where it is."
   doc "Registered with og.VirtualCamera. Its state fields are world state, saved and restored with the world, so a replay or a restore mid-blend continues the same blend."
+  doc "Read and write it as any resource: `const brain = world.resource(og.CameraBrain)`; when `brain.ok`, `brain.value.live` is the live shot and `brain.value.solo = shot` makes one solo (0 releases it). A system that reads it lists og.CameraBrain among its reads, one that sets solo among its writes."
   field enabled bool "Drive og.Camera; false leaves it to the game (the vcams' state still updates)." {
     default true
   }
@@ -910,7 +913,7 @@ resource CameraBrain {
   field blendCurve Ease "The current blend's curve." {
     readonly true
   }
-  field fromPosition Vector3 "A held pose to blend from: its position." {
+  field fromPosition Vector3 "A held pose to blend from: its position, in world space (a floating-origin rebase shifts it)." {
     readonly true
     unit m
   }
@@ -976,4 +979,4 @@ event CameraCut {
 }
 ```
 
-<sub>`api.ogt` line 3648</sub>
+<sub>`api.ogt` line 3649</sub>

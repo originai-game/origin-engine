@@ -221,10 +221,14 @@ floating text: it is screen text where the og.Camera resource's
   `damping` 0.3–0.5 s): it pulls in at once when a wall comes between the
   player and the camera and eases back out, so the player is never hidden.
   Other shots (a lock-on, an aim view, a cutscene angle) are more vcams:
-  raise one's `priority` or set `og.CameraBrain.solo` to it, and the brain
-  blends over its `blendTime` (0.3–0.6 s `cubicInOut` for gameplay
-  changes, 0 to cut). `world.resource(og.CameraBrain)` says which is live
-  and how far a blend has come; og.CameraCut reports each change.
+  raise one's `priority`, or make it solo, and the brain blends over its
+  `blendTime` (0.3–0.6 s `cubicInOut` for gameplay changes, 0 to cut).
+  The brain is a resource like any other, the one way to read and steer
+  it: `const brain = world.resource(og.CameraBrain)`, then (when
+  `brain.ok`) `brain.value.live` is the live shot, `brain.value.blend`
+  how far a blend has come, and `brain.value.solo = aimCam` makes a shot
+  solo until you set it back to 0 (list og.CameraBrain in the system's
+  writes). og.CameraCut reports each change.
 - `og.OrbitCamera` (drag to turn, wheel to zoom) and `og.FollowCamera`
   remain for existing games, driven by `og.systems.cameras` listed in
   `GameDesc.systems`; do not mix them with virtual cameras (the brain runs
