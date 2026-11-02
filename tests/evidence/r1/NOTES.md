@@ -37,3 +37,24 @@ og run templates/fx-showcase --headless --size 1280x720 --out /tmp/r1 \
 
 `plain` should match fx-showcase's reference within tolerance; `lod`
 tints every model by its level.
+
+## Batch 3: shadows through the meshlet path
+
+Each cascade and each local light's shadow face is a view of the same
+meshlet dispatch: clustered casters are culled per cluster against the
+pass's planes (no cone, no pyramid) at the camera's level and drawn by
+vertex pulling in the shadow pipeline (`meshlet_shadow.wgsl`).
+
+gfx tests (new frame `meshlet-shadows`):
+
+- `meshlet-shadows`: five trees on a plain from above and in front, a
+  low sun from the left throwing long shadows to the right, and a warm
+  shadowed spot over the middle tree throwing its shadow forward (towards
+  the camera). Every shadow whole, the crowns' shadows dappled as the
+  regular path's, no acne on the trees, no shadow missing.
+  `meshlet_shadows_match_the_regular_path` compares it with the regular
+  path at the default tolerance.
+- `meshlet-near`'s comparison now covers its sun's cascades through both
+  paths as well.
+
+The same `og run` script as batch 2 exercises it (fx-showcase's sun).

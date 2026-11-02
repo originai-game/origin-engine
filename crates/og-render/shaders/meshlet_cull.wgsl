@@ -8,10 +8,14 @@
 // threads test the level's clusters (frustum, normal cone, the pyramid)
 // and append the visible ones as work items (instance, cluster) to the
 // batch's draw, whose instance count is the batch's visible clusters.
+// A row is one batch in one view: view 0 is the camera, the others are
+// shadow passes (a cascade's or a local light's face), whose rows test
+// their own planes, never the cone or the pyramid, and draw the level the
+// camera picks (so a caster's shadow is the shape it is drawn with).
 
 struct Params {
+  // The camera's (the pyramid's projection).
   view_proj: mat4x4<f32>,
-  planes: array<vec4<f32>, 6>,
   // xyz: the eye; w: 1 for a perspective camera, 0 orthographic.
   eye: vec4<f32>,
   // x: pixels per unit of length at distance 1 (perspective: the view's
@@ -24,7 +28,7 @@ struct Params {
 };
 
 // a: mesh slot, first instance (its sorted slot), instances, first work
-// item. b: first workgroup, flags (1: the cone may cull).
+// item. b: first workgroup, flags (1: the cone may cull), view.
 struct BatchRow {
   a: vec4<u32>,
   b: vec4<u32>,
@@ -32,6 +36,10 @@ struct BatchRow {
 
 @group(0) @binding(0) var<uniform> params: Params;
 @group(0) @binding(1) var<storage, read> instances: array<vec4<f32>>;
+// Per view VIEW_PLANES planes (frame.rs `Frustum`: a cascade's box and
+// its swept camera slice; zero rows past them never cull), view 0 the
+// camera's.
+@group(0) @binding(2) var<storage, read> views: array<vec4<f32>>;
 @group(0) @binding(3) var<storage, read> batches: array<BatchRow>;
 // Per mesh slot 10 x vec4: its sphere, (levels, 0, 0, 0), then per level
 // (first cluster, clusters, error as bits, 0).
@@ -44,14 +52,16 @@ struct BatchRow {
 @group(0) @binding(8) var pyramid: texture_2d<f32>;
 
 const WG: u32 = 64u;
+// meshlet_gpu.rs VIEW_PLANES (cull_gpu.rs MAX_PLANES).
+const VIEW_PLANES: u32 = 12u;
 const MESH_ROWS: u32 = 10u;
 // lod.rs LOD_PIXEL_ERROR.
 const PIXEL_ERROR: f32 = 1.0;
 
 // meshlet.rs `outside`.
-fn outside(c: vec3<f32>, r: f32) -> bool {
-  for (var i = 0u; i < 6u; i++) {
-    let p = params.planes[i];
+fn outside(view: u32, c: vec3<f32>, r: f32) -> bool {
+  for (var i = 0u; i < VIEW_PLANES; i++) {
+    let p = views[view * VIEW_PLANES + i];
     if (dot(p.xyz, c) + p.w < -r * length(p.xyz)) { return true; }
   }
   return false;
@@ -154,7 +164,10 @@ fn cull_clusters(@builtin(workgroup_id) wid: vec3<u32>,
       if (error * per_unit * scale * bias < PIXEL_ERROR) { level = k; } else { break; }
     }
   }
-  if (outside(center, radius) || (params.sizes.z > 0u && occluded(center, radius))) { return; }
+  let view = row.b.z;
+  // Occlusion: the camera's rows, on a frame with a pyramid.
+  let occlusion = view == 0u && params.sizes.z > 0u;
+  if (outside(view, center, radius) || (occlusion && occluded(center, radius))) { return; }
   let lv = meshes[mesh + 2u + level];
   let cone = (row.b.y & 1u) != 0u && even && perspective;
   for (var i = li; i < lv.y; i += WG) {
@@ -162,7 +175,7 @@ fn cull_clusters(@builtin(workgroup_id) wid: vec3<u32>,
     let s = bitcast<vec4<f32>>(clusters[ci * 3u + 1u]);
     let wc = (m * vec4<f32>(s.xyz, 1.0)).xyz;
     let wr = s.w * scale;
-    if (outside(wc, wr)) { continue; }
+    if (outside(view, wc, wr)) { continue; }
     if (cone) {
       // meshlet.rs `backfacing`.
       let k = bitcast<vec4<f32>>(clusters[ci * 3u + 2u]);
@@ -172,7 +185,7 @@ fn cull_clusters(@builtin(workgroup_id) wid: vec3<u32>,
         if (dot(to, axis) >= k.w * length(to) + wr) { continue; }
       }
     }
-    if (params.sizes.z > 0u && occluded(wc, wr)) { continue; }
+    if (occlusion && occluded(wc, wr)) { continue; }
     let n = atomicAdd(&draws[lo * 4u + 1u], 1u);
     items[row.a.w + n] = vec2<u32>(instance, ci);
   }

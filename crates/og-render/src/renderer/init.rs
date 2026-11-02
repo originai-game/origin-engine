@@ -879,6 +879,7 @@ impl Renderer {
             pbr_skinned_layout,
             pbr_shader,
             shadow_layouts,
+            shadow_bind_layout,
             shadow_shader,
             pbr_pipelines,
             shadow_pipelines,

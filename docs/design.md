@@ -694,10 +694,20 @@ a batch exists); what it cannot take keeps the per-instance path:
 skinned, morphed, lightmapped or compact meshes, custom shaders,
 transparent and physical materials, texture arrays, runtime geometry
 without clusters, object-space stylise, and `Culling.cpu`
-(`meshlet_gpu::takes`, `RenderScene.meshlets` turns it off). Next, the
-shadow maps, the planar reflection, views and probes go through the
-same culling with their own planes (they draw level 0 per instance
-until then); then a visibility buffer: the clusters write instance and
+(`meshlet_gpu::takes`, `RenderScene.meshlets` turns it off). The shadow
+maps go through the same dispatch: each cascade and each local light's
+face is a view of its own, whose rows test the clustered casters (on
+every layer) against that pass's planes alone, with no normal cone (a
+front-sided caster draws its back faces) and no pyramid (it is the
+camera's), at the level the camera picked, so a caster's shadow has the
+shape it is drawn with; they are drawn by vertex pulling in the shadow
+pipeline's state (`meshlet_shadow.wgsl`; alpha-tested and dissolving
+casters with their material). A view whose work would pass the
+device's storage binding limit keeps the per-instance casters. The
+cascades' setup, splits and maps are unchanged. Next, the planar
+reflection, views and probes go through the same culling with their own
+planes (they draw level 0 per instance until then), and a second
+occlusion phase of the meshlet pass itself; then a visibility buffer: the clusters write instance and
 triangle ids, small triangles are rasterised in compute, and one
 material pass shades the buffer. The CPU statement of every test is
 `meshlet.rs`, whose unit tests check it.

@@ -17,6 +17,7 @@ pub const NATIVE_SCENES: &[&str] = &[
     "meshlet-forest",
     "meshlet-occlusion",
     "meshlet-near",
+    "meshlet-shadows",
     "probe-interior",
     "ssr-wet-floor",
     "baked-cornell",
@@ -72,6 +73,11 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         #[cfg(not(target_arch = "wasm32"))]
         "meshlet-near" => |g, _| {
             g.scene = crate::meshlet_scenes::near_scene(true)?;
+            Ok(())
+        },
+        #[cfg(not(target_arch = "wasm32"))]
+        "meshlet-shadows" => |g, _| {
+            g.scene = crate::meshlet_scenes::shadow_scene(true)?;
             Ok(())
         },
         // Round 3: a terrain the cook generated (noise, erosion, a sea,

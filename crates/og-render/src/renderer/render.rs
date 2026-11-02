@@ -631,12 +631,18 @@ impl Renderer {
             }
             _ => Vec::new(),
         };
-        if !self
-            .meshlet
-            .as_ref()
-            .is_some_and(|m| m.fits(&batches, &meshlet_taken))
-        {
+        // The work items the dispatch writes, within the device's storage
+        // binding limit: the camera's first, then each shadow view while
+        // they fit (a view past it culls and draws its casters as before).
+        let meshlet_max = self.meshlet.as_ref().map_or(0, |m| m.max_items());
+        let mut meshlet_items = match self.meshlet.as_ref() {
+            Some(m) => m.items(&batches, &meshlet_taken),
+            None => None,
+        }
+        .unwrap_or(u64::MAX);
+        if meshlet_items > meshlet_max {
             meshlet_taken.clear();
+            meshlet_items = 0;
         }
         // Clustered batches draw only under GPU culling: they turn it on
         // under `Culling::Auto` however few the instances.
@@ -661,6 +667,17 @@ impl Renderer {
         // Under GPU culling (the meshlet path's batches included) TAA
         // reprojects the camera's motion alone.
         let object_motion = previous_valid && (blur_motion || (taa && !gpu_cull));
+        // The shadow casters among them: every shadow pass takes each one
+        // (on any layer) through its own view of the dispatch.
+        let meshlet_casters: Vec<u32> = meshlet_taken
+            .iter()
+            .copied()
+            .filter(|&b| batches[b as usize].cast)
+            .collect();
+        let meshlet_caster_items = match self.meshlet.as_ref() {
+            Some(m) if !meshlet_casters.is_empty() => m.items(&batches, &meshlet_casters),
+            _ => None,
+        };
         let mut cull_passes: Vec<cull_gpu::CullPass> = Vec::new();
         let mut gpu_pass = |kind, frustum: &Frustum| {
             cull_passes.push(cull_gpu::CullPass {
@@ -713,6 +730,25 @@ impl Renderer {
                 true,
                 |b| !b.transparent && b.layers & mask != 0,
             )
+        };
+        // The meshlet dispatch's views: the camera's, then a shadow view
+        // per shadow pass that fits (`shadow_view`: its index, 0 none).
+        let mut meshlet_views = vec![meshlet_gpu::MeshletView {
+            planes: view_frustum.planes().to_vec(),
+            taken: std::mem::take(&mut meshlet_taken),
+        }];
+        let mut shadow_view = |f: &Frustum| -> u32 {
+            match meshlet_caster_items {
+                Some(n) if meshlet_items + n <= meshlet_max => {
+                    meshlet_items += n;
+                    meshlet_views.push(meshlet_gpu::MeshletView {
+                        planes: f.planes().to_vec(),
+                        taken: meshlet_casters.clone(),
+                    });
+                    meshlet_views.len() as u32 - 1
+                }
+                _ => 0,
+            }
         };
         let (mut blended_list, blended_culled) = self.sort_transparent(
             &batches,
@@ -975,12 +1011,26 @@ impl Renderer {
         } else {
             Vec::new()
         };
+        // Each shadow pass's meshlet view (0: none), by cascade and by
+        // local layer; its clustered casters leave the pass's list.
+        let mut cascade_views: Vec<u32> = Vec::new();
+        let mut local_views = [0u32; LOCAL_SHADOW_LAYERS];
+        let caster_list = |g: u32, view: u32| {
+            let mut list = indirect_list(&batches, sorted, g, |b| b.cast);
+            if view > 0 {
+                list.ranges
+                    .retain(|r| meshlet_casters.binary_search(&r.0).is_err());
+            }
+            list
+        };
         let cascade_lists: Vec<DrawList> = cascades
             .iter()
             .map(|c| {
                 if gpu_cull {
                     let g = gpu_pass(cull_gpu::PassKind::Shadow, &c.frustum);
-                    indirect_list(&batches, sorted, g, |b| b.cast)
+                    let view = shadow_view(&c.frustum);
+                    cascade_views.push(view);
+                    caster_list(g, view)
                 } else {
                     self.cull(
                         &batches,
@@ -1105,7 +1155,9 @@ impl Renderer {
                 local_frustums[ls.layer + face] = Some(f.clone());
                 let list = if gpu_cull {
                     let g = gpu_pass(cull_gpu::PassKind::Shadow, f);
-                    indirect_list(&batches, sorted, g, |b| b.cast)
+                    let view = shadow_view(f);
+                    local_views[ls.layer + face] = view;
+                    caster_list(g, view)
                 } else {
                     self.cull(
                         &batches,
@@ -1184,11 +1236,10 @@ impl Renderer {
                     &self.queue,
                     scene,
                     &batches,
-                    &meshlet_taken,
+                    &meshlet_views,
                     gc,
                     gc.pyramid(),
                     cam.jittered_view_proj,
-                    view_frustum.planes(),
                     (self.width, self.height),
                 ));
                 if !m.frame.is_empty() {
@@ -1215,6 +1266,11 @@ impl Renderer {
                         &batches,
                         prepass,
                         self.samples,
+                    );
+                    m.ensure_shadow_pipelines(
+                        &self.device,
+                        (&self.shadow_bind_layout, &self.material_layout),
+                        &batches,
                     );
                 }
             }
@@ -2807,6 +2863,7 @@ impl Renderer {
                            slot: usize,
                            list: &DrawList,
                            frustum: &Frustum,
+                           view: u32,
                            stats: &mut FrameStats| {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("shadow"),
@@ -2842,6 +2899,15 @@ impl Renderer {
             stats.draw_calls += list.ranges.len() as u32;
             stats.shadow_casters += list.instances;
             stats.shadow_passes += 1;
+            // The clustered casters (meshlet_gpu.rs), each one draw of the
+            // clusters the pass's view kept.
+            if view > 0
+                && let Some(m) = self.meshlet.as_ref()
+            {
+                stats.draw_calls += m.draw_shadow(&mut pass, &batches, view, |b| {
+                    &self.cache.materials[b.material].bind_group
+                });
+            }
             // Skinned casters, unculled.
             let n = draw_skinned(
                 &mut pass,
@@ -2905,6 +2971,7 @@ impl Renderer {
                     i as usize,
                     &cascade_lists[i as usize],
                     &cascades[i as usize].frustum,
+                    cascade_views.get(i as usize).copied().unwrap_or(0),
                     &mut stats,
                 ),
                 FramePass::LocalFace(layer) => shadow_pass(
@@ -2918,6 +2985,7 @@ impl Renderer {
                     local_frustums[layer as usize]
                         .as_ref()
                         .expect("a frustum per shadowed face"),
+                    local_views[layer as usize],
                     &mut stats,
                 ),
                 FramePass::Prepass => self.encode_prepass(PrepassPassInputs {

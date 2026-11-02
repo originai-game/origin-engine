@@ -16,12 +16,17 @@
 //! - `meshlet-near`: one tree 6 m away, drawn through the meshlet path;
 //!   `meshlet_near_scene(false)` draws it through the regular path, and
 //!   the two frames match (the level is 0 at that distance).
+//! - `meshlet-shadows` (batch 3): five trees under a low sun and a
+//!   shadowed spot light, seen from above so their long shadows lie on the
+//!   ground: the casters go through the meshlet path's shadow views (each
+//!   cascade's and the spot's face), and `shadow_scene(false)` draws the
+//!   same frame through the regular path; the two match.
 
 use glam::{Mat4, Quat, Vec3};
 use og_cook::runtime::Bundle;
 use og_render::{
-    Camera, DirectionalLight, Exposure, MaterialHandle, MeshHandle, RenderScene, StandardMaterial,
-    shapes,
+    Camera, DirectionalLight, Exposure, Light, LightKind, MaterialHandle, MeshHandle, RenderScene,
+    StandardMaterial, shapes,
 };
 
 /// A model's parts: each mesh, its material and its place in the model.
@@ -119,6 +124,42 @@ pub fn near_scene(meshlets: bool) -> Result<RenderScene, String> {
     for &(mesh, material, local) in &parts {
         scene.add_instance(mesh, material, at * local);
     }
+    scene.meshlets = meshlets;
+    Ok(scene)
+}
+
+/// `meshlet-shadows` (module docs), through the meshlet path when
+/// `meshlets`.
+pub fn shadow_scene(meshlets: bool) -> Result<RenderScene, String> {
+    let (mut scene, parts) = base()?;
+    let sun = Vec3::new(-0.8, 0.35, 0.3);
+    scene.light.direction_to_light = sun;
+    scene.environment.sky.sun_direction = sun;
+    scene.environment.intensity = 0.3;
+    for (k, x) in [-8.0f32, -4.0, 0.0, 4.0, 8.0].into_iter().enumerate() {
+        let at = Mat4::from_rotation_translation(
+            Quat::from_rotation_y(0.9 * k as f32),
+            Vec3::new(x, 0.0, -14.0 - 2.0 * k as f32),
+        );
+        for &(mesh, material, local) in &parts {
+            scene.add_instance(mesh, material, at * local);
+        }
+    }
+    // A spot over the middle tree, its shadow cast forward on the ground.
+    scene.lights.push(Light {
+        kind: LightKind::Spot {
+            direction: Vec3::new(0.0, -1.0, 0.35).normalize(),
+            angle_degrees: 40.0,
+            penumbra: 0.3,
+        },
+        position: Vec3::new(0.0, 9.0, -21.0),
+        color: Vec3::new(1.0, 0.85, 0.7),
+        intensity: 120.0,
+        range: 25.0,
+        cast_shadows: true,
+    });
+    scene.camera.position = Vec3::new(0.0, 9.0, 2.0);
+    scene.camera.target = Vec3::new(0.0, 0.0, -18.0);
     scene.meshlets = meshlets;
     Ok(scene)
 }

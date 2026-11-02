@@ -18,11 +18,18 @@
 //! mesh's sphere and levels), the clusters and their indices. Each mesh's
 //! own f32 vertices are read where they are.
 //!
+//! The shadow passes (each cascade and local light face) are views of the
+//! same dispatch: a row per batch and view, each view's planes in a table
+//! (view 0 the camera's). A shadow view's clusters are tested against its
+//! planes alone (no normal cone: a caster's back faces are what a front-
+//! sided caster draws; no pyramid: it is the camera's), at the level the
+//! camera picks, and drawn with the shadow module's pulling entry points
+//! (`meshlet_shadow.wgsl`).
+//!
 //! What the path takes is [`RenderScene::meshlet_drawable`] plus what only
 //! the renderer knows (a lightmapped or compact mesh stays on the regular
-//! path), and only under GPU culling; the other passes (shadows, the
-//! planar reflection, views, probes) draw the same instances' level 0 as
-//! before.
+//! path), and only under GPU culling; the planar reflection, views and
+//! probes draw the same instances' level 0 as before.
 
 use crate::meshlet::{CLUSTER_TRIANGLES, MeshClusters};
 use crate::{Batch, RenderScene, Side};
@@ -32,6 +39,21 @@ use std::sync::Arc;
 
 pub(crate) const MESHLET_WGSL: &str = wgsl!("meshlet.wgsl");
 pub(crate) const MESHLET_CULL_WGSL: &str = wgsl!("meshlet_cull.wgsl");
+pub(crate) const MESHLET_SHADOW_WGSL: &str = wgsl!("meshlet_shadow.wgsl");
+
+/// The shadow casters' module: the standard shadow module (the built-in
+/// hooks) and the pulling entry points.
+pub(crate) fn shadow_source() -> String {
+    format!(
+        "{}{MESHLET_SHADOW_WGSL}",
+        crate::shadow_source(&crate::hooks::default_hooks())
+    )
+}
+
+/// Planes per view in the view table (`meshlet_cull.wgsl` `VIEW_PLANES`):
+/// a cascade's frustum is its box and the camera slice it sweeps, at most
+/// cull_gpu.rs's 12.
+pub(crate) const VIEW_PLANES: usize = 12;
 
 /// vec4 rows per mesh in the mesh table: its sphere, its level count, then
 /// one per level (`meshlet_cull.wgsl` `MESH_ROWS`).
@@ -49,7 +71,6 @@ const WORKGROUPS_PER_ROW: u32 = 65535;
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct Params {
     view_proj: [[f32; 4]; 4],
-    planes: [[f32; 4]; 6],
     eye: [f32; 4],
     lod: [f32; 4],
     sizes: [u32; 4],
@@ -65,14 +86,18 @@ pub(crate) struct BatchRow {
     pub first_item: u32,
     pub first_workgroup: u32,
     pub flags: u32,
-    pub _pad: [u32; 2],
+    /// Its view: 0 the camera, then the frame's shadow views.
+    pub view: u32,
+    pub _pad: u32,
 }
 
-/// One clustered batch of this frame's camera pass.
+/// One clustered batch of this frame in one view.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct MeshletDraw {
     /// Its index in the frame's batches.
     pub batch: u32,
+    /// The view it is drawn in (0: the camera).
+    pub view: u32,
     /// Its row in the batch table: its draw's offset in `draws`.
     pub row: u32,
     pub first_item: u32,
@@ -91,19 +116,31 @@ pub(crate) fn takes(scene: &RenderScene, b: &Batch, clustered: bool, lightmapped
         && !lightmapped
 }
 
+/// One view of the frame's dispatch: its planes and the batches it takes
+/// (indices into the frame's batches). The first is the camera's.
+pub(crate) struct MeshletView {
+    pub planes: Vec<Vec4>,
+    pub taken: Vec<u32>,
+}
+
 /// The frame's batch table and the work its dispatch covers, from each
-/// clustered batch's instances (its range of the sorted instances) and
-/// its mesh's most clusters at any level: (rows, draws, items, workgroups).
-pub(crate) fn plan(
+/// view's clustered batches' instances (their range of the sorted
+/// instances) and their meshes' most clusters at any level: (rows, draws,
+/// items, workgroups). Only the camera's rows (view 0) may cull by `cone`.
+pub(crate) fn plan<'a>(
     batches: &[Batch],
-    taken: &[u32],
+    views: impl IntoIterator<Item = &'a [u32]>,
     slot: impl Fn(usize) -> Option<(u32, u32)>,
     cone: impl Fn(&Batch) -> bool,
 ) -> (Vec<BatchRow>, Vec<MeshletDraw>, u32, u32) {
     let mut rows = Vec::new();
     let mut draws = Vec::new();
     let (mut items, mut workgroups) = (0u32, 0u32);
-    for &b in taken {
+    for (view, &b) in views
+        .into_iter()
+        .enumerate()
+        .flat_map(|(v, taken)| taken.iter().map(move |b| (v as u32, b)))
+    {
         let batch = &batches[b as usize];
         let Some((mesh_slot, most)) = slot(batch.mesh) else {
             continue;
@@ -118,11 +155,13 @@ pub(crate) fn plan(
             instances: batch.count,
             first_item,
             first_workgroup: workgroups,
-            flags: cone(batch) as u32,
-            _pad: [0; 2],
+            flags: (view == 0 && cone(batch)) as u32,
+            view,
+            _pad: 0,
         });
         draws.push(MeshletDraw {
             batch: b,
+            view,
             row: rows.len() as u32 - 1,
             first_item,
         });
@@ -203,8 +242,13 @@ pub(crate) struct MeshletGpu {
     pub(crate) draw_layout: wgpu::BindGroupLayout,
     lit: HashMap<(Side, bool), wgpu::RenderPipeline>,
     prepass: HashMap<Side, wgpu::RenderPipeline>,
+    /// The shadow casters' pipelines by (side, the whole vertex for an
+    /// alpha-tested or dissolving material), and their module.
+    shadow: HashMap<(Side, bool), wgpu::RenderPipeline>,
+    shadow_module: Option<wgpu::ShaderModule>,
     pools: Option<Pools>,
     params: wgpu::Buffer,
+    views: wgpu::Buffer,
     draw_params: wgpu::Buffer,
     batches: wgpu::Buffer,
     items: wgpu::Buffer,
@@ -295,6 +339,7 @@ impl MeshletGpu {
             entries: &[
                 uniform(0, c),
                 storage(1, true, c),
+                storage(2, true, c),
                 storage(3, true, c),
                 storage(4, true, c),
                 storage(5, true, c),
@@ -373,6 +418,8 @@ impl MeshletGpu {
             draw_layout,
             lit: HashMap::new(),
             prepass: HashMap::new(),
+            shadow: HashMap::new(),
+            shadow_module: None,
             pools: None,
             params: buffer(
                 device,
@@ -386,6 +433,7 @@ impl MeshletGpu {
                 16,
                 wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             ),
+            views: buffer(device, "meshlet views", 0, storage_usage()),
             batches: buffer(device, "meshlet batches", 0, storage_usage()),
             items: buffer(device, "meshlet items", 0, storage_usage()),
             draws: buffer(device, "meshlet draws", 0, Self::draws_usage()),
@@ -480,7 +528,8 @@ impl MeshletGpu {
         prepass: bool,
         samples: u32,
     ) {
-        let missing = self.frame.iter().any(|d| {
+        let camera = || self.frame.iter().filter(|d| d.view == 0);
+        let missing = camera().any(|d| {
             let b = &batches[d.batch as usize];
             !self.lit.contains_key(&(b.side, b.effects))
                 || (prepass && !self.prepass.contains_key(&b.side))
@@ -498,7 +547,7 @@ impl MeshletGpu {
             ],
             immediate_size: 0,
         });
-        for d in &self.frame {
+        for d in self.frame.iter().filter(|d| d.view == 0) {
             let b = &batches[d.batch as usize];
             self.lit.entry((b.side, b.effects)).or_insert_with(|| {
                 crate::hdr_pipeline_with(
@@ -536,22 +585,68 @@ impl MeshletGpu {
         }
     }
 
-    /// Whether `taken`'s work items fit the device's storage binding
-    /// limit (checked before the frame's lists leave them out).
-    pub fn fits(&self, batches: &[Batch], taken: &[u32]) -> bool {
-        let Some(pools) = self.pools.as_ref() else {
-            return false;
+    /// The shadow casters' pipelines for the frame's shadow views: groups
+    /// 0 the shadow pass's slot, 1 the material (alpha-tested and
+    /// dissolving casters), 3 the meshlet draw group.
+    pub fn ensure_shadow_pipelines(
+        &mut self,
+        device: &wgpu::Device,
+        (pass, material): (&wgpu::BindGroupLayout, &wgpu::BindGroupLayout),
+        batches: &[Batch],
+    ) {
+        let key = |d: &MeshletDraw| {
+            let b = &batches[d.batch as usize];
+            (b.side, b.dissolve)
         };
-        let (_, _, items, _) = plan(batches, taken, |m| pools.slots.get(&m).copied(), |_| false);
-        items as u64 * 8 <= self.max_binding
+        let shadows = || self.frame.iter().filter(|d| d.view > 0);
+        if shadows().all(|d| self.shadow.contains_key(&key(d))) {
+            return;
+        }
+        let module = self.shadow_module.get_or_insert_with(|| {
+            device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("shadow meshlet"),
+                source: wgpu::ShaderSource::Wgsl(shadow_source().into()),
+            })
+        });
+        let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("shadow meshlet"),
+            bind_group_layouts: &[Some(pass), Some(material), None, Some(&self.draw_layout)],
+            immediate_size: 0,
+        });
+        let keys: Vec<(Side, bool)> = self.frame.iter().filter(|d| d.view > 0).map(key).collect();
+        for k in keys {
+            self.shadow.entry(k).or_insert_with(|| {
+                crate::meshlet_shadow_pipeline(device, &layout, module, k.0, k.1)
+            });
+        }
     }
 
-    /// Plans the frame's clustered batches (`taken`, indices into
-    /// `batches`) and encodes their culling after GPU culling's commands,
-    /// reading the sorted instances it uploaded; `pyramid` is its depth
-    /// pyramid this frame (`None`: no occlusion test). Leaves
-    /// [`Self::frame`] empty, and encodes nothing, when the work would not
-    /// fit the device.
+    /// The work items `taken` adds to a frame's dispatch, rounded up to a
+    /// batch's alignment (`None` before the pools exist): the renderer
+    /// adds views while their sum fits [`Self::max_items`].
+    pub fn items(&self, batches: &[Batch], taken: &[u32]) -> Option<u64> {
+        let pools = self.pools.as_ref()?;
+        let (_, _, items, _) = plan(
+            batches,
+            [taken],
+            |m| pools.slots.get(&m).copied(),
+            |_| false,
+        );
+        Some(items.div_ceil(ITEM_ALIGN) as u64 * ITEM_ALIGN as u64)
+    }
+
+    /// The most work items one frame's dispatch may write (the device's
+    /// storage binding limit).
+    pub fn max_items(&self) -> u64 {
+        self.max_binding / 8
+    }
+
+    /// Plans the frame's clustered batches in each of `views` (the
+    /// camera's first, then the shadow passes') and encodes their culling
+    /// after GPU culling's commands, reading the sorted instances it
+    /// uploaded; `pyramid` is its depth pyramid this frame (`None`: no
+    /// occlusion test), `view_proj` the camera's. Leaves [`Self::frame`]
+    /// empty, and encodes nothing, when the work would not fit the device.
     #[allow(clippy::too_many_arguments)]
     pub fn encode(
         &mut self,
@@ -559,18 +654,17 @@ impl MeshletGpu {
         queue: &wgpu::Queue,
         scene: &RenderScene,
         batches: &[Batch],
-        taken: &[u32],
+        views: &[MeshletView],
         gc: &crate::cull_gpu::GpuCulling,
         pyramid: Option<(&wgpu::TextureView, u32)>,
         view_proj: Mat4,
-        planes: &[Vec4],
         (width, height): (u32, u32),
     ) -> Option<wgpu::CommandBuffer> {
         self.frame.clear();
         let pools = self.pools.as_ref()?;
         let (rows, draws, items, workgroups) = plan(
             batches,
-            taken,
+            views.iter().map(|v| v.taken.as_slice()),
             |m| pools.slots.get(&m).copied(),
             |b| b.side == Side::Front,
         );
@@ -598,6 +692,23 @@ impl MeshletGpu {
             (rows.len() * 16) as u64,
             Self::draws_usage(),
         );
+        let mut planes = vec![[0.0f32; 4]; views.len() * VIEW_PLANES];
+        for (v, view) in views.iter().enumerate() {
+            for (row, p) in planes[v * VIEW_PLANES..]
+                .iter_mut()
+                .zip(view.planes.iter().take(VIEW_PLANES))
+            {
+                *row = p.to_array();
+            }
+        }
+        grow(
+            device,
+            &mut self.views,
+            "meshlet views",
+            (planes.len() * 16) as u64,
+            storage_usage(),
+        );
+        queue.write_buffer(&self.views, 0, bytemuck::cast_slice(&planes));
         queue.write_buffer(&self.batches, 0, bytemuck::cast_slice(&rows));
         let draw_args: Vec<[u32; 4]> = rows
             .iter()
@@ -612,13 +723,8 @@ impl MeshletGpu {
             ),
             crate::Projection::Orthographic { height: h } => (0.0, height as f32 / h.max(1e-6)),
         };
-        let mut plane_rows = [[0.0f32; 4]; 6];
-        for (row, p) in plane_rows.iter_mut().zip(planes) {
-            *row = p.to_array();
-        }
         let params = Params {
             view_proj: view_proj.to_cols_array_2d(),
-            planes: plane_rows,
             eye: [
                 camera.position.x,
                 camera.position.y,
@@ -636,6 +742,7 @@ impl MeshletGpu {
         );
         let bound = vec![
             gc.instances.clone(),
+            self.views.clone(),
             self.batches.clone(),
             self.items.clone(),
             self.draws.clone(),
@@ -653,6 +760,7 @@ impl MeshletGpu {
                 entries: &[
                     entry(0, &self.params),
                     entry(1, &gc.instances),
+                    entry(2, &self.views),
                     entry(3, &self.batches),
                     entry(4, &pools.meshes),
                     entry(5, &pools.clusters),
@@ -756,7 +864,7 @@ impl MeshletGpu {
         mut probe: impl FnMut(&mut wgpu::RenderPass<'_>, &Batch),
     ) -> u32 {
         let mut n = 0;
-        for d in &self.frame {
+        for d in self.frame.iter().filter(|d| d.view == 0) {
             let b = &batches[d.batch as usize];
             let pipeline = if prepass {
                 self.prepass.get(&b.side)
@@ -768,6 +876,35 @@ impl MeshletGpu {
                 continue;
             };
             probe(pass, b);
+            pass.set_pipeline(pipeline);
+            pass.set_bind_group(1, material(b), &[]);
+            pass.set_bind_group(3, group, &[d.first_item * 8]);
+            pass.draw_indirect(&self.draws, d.row as u64 * 16);
+            n += 1;
+        }
+        n
+    }
+
+    /// Draws the clustered casters of shadow view `view` into a shadow
+    /// pass whose slot (group 0) the caller bound; `material(b)` is batch
+    /// `b`'s material group (read by alpha-tested and dissolving casters).
+    /// Returns the draws made.
+    pub fn draw_shadow<'m>(
+        &self,
+        pass: &mut wgpu::RenderPass<'_>,
+        batches: &[Batch],
+        view: u32,
+        material: impl Fn(&Batch) -> &'m wgpu::BindGroup,
+    ) -> u32 {
+        let mut n = 0;
+        for d in self.frame.iter().filter(|d| d.view == view) {
+            let b = &batches[d.batch as usize];
+            let (Some(pipeline), Some((_, group))) = (
+                self.shadow.get(&(b.side, b.dissolve)),
+                self.mesh_groups.get(&b.mesh),
+            ) else {
+                continue;
+            };
             pass.set_pipeline(pipeline);
             pass.set_bind_group(1, material(b), &[]);
             pass.set_bind_group(3, group, &[d.first_item * 8]);
@@ -830,7 +967,7 @@ mod tests {
             5 => Some((2, 1)),
             _ => None,
         };
-        let (rows, draws, items, workgroups) = plan(&batches, &[0, 1, 2, 3], slot, |_| true);
+        let (rows, draws, items, workgroups) = plan(&batches, [&[0, 1, 2, 3][..]], slot, |_| true);
         assert_eq!(rows.len(), 2);
         assert_eq!(
             draws
@@ -845,6 +982,33 @@ mod tests {
         assert_eq!(rows[1].first_workgroup, 3);
         assert_eq!((rows[1].first_instance, rows[1].instances), (3, 10));
         assert_eq!((rows[1].mesh_slot, rows[1].flags), (1, 1));
+    }
+
+    #[test]
+    fn shadow_views_get_rows_of_their_own_that_never_cull_by_the_cone() {
+        let batches = [batch(0, 0, 3), batch(1, 3, 10)];
+        let slot = |m: usize| Some((m as u32, if m == 0 { 7 } else { 40 }));
+        // The camera takes both; two shadow views take batch 1 only.
+        let views: [&[u32]; 3] = [&[0, 1], &[1], &[1]];
+        let (rows, draws, items, workgroups) = plan(&batches, views, slot, |_| true);
+        assert_eq!(
+            rows.iter()
+                .map(|r| (r.view, r.flags, r.first_instance))
+                .collect::<Vec<_>>(),
+            [(0, 1, 0), (0, 1, 3), (1, 0, 3), (2, 0, 3)]
+        );
+        // Each view's batch has its own items and draw, each from a
+        // multiple of 32: 21 from 0, then 400 from 32, 448 and 864.
+        assert_eq!(
+            draws
+                .iter()
+                .map(|d| (d.batch, d.view, d.row, d.first_item))
+                .collect::<Vec<_>>(),
+            [(0, 0, 0, 0), (1, 0, 1, 32), (1, 1, 2, 448), (1, 2, 3, 864)]
+        );
+        assert_eq!(items, 1264);
+        assert_eq!(workgroups, 3 + 10 * 3);
+        assert_eq!(rows[3].first_workgroup, 23);
     }
 
     #[test]

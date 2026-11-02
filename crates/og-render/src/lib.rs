@@ -349,6 +349,8 @@ pub struct Renderer {
     pbr_shader: wgpu::ShaderModule,
     /// Shadow layouts: plain, with the material (dissolve), skinned.
     shadow_layouts: [wgpu::PipelineLayout; 3],
+    /// The shadow pass's slot (group 0 of every caster's pipeline).
+    shadow_bind_layout: wgpu::BindGroupLayout,
     shadow_shader: wgpu::ShaderModule,
     /// Lit pipelines; front opaque made up front.
     pbr_pipelines: HashMap<PbrKey, wgpu::RenderPipeline>,

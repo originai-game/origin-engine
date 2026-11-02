@@ -594,3 +594,59 @@ pub(crate) fn shadow_pipeline(
         cache: crate::pipeline_cache::of(device).as_ref(),
     })
 }
+
+/// [`shadow_pipeline`]'s state for the meshlet path's casters
+/// (`meshlet_shadow.wgsl`), pulled with no vertex buffer: the lean entry
+/// points, or with `full` the whole vertex and the alpha-tested and
+/// dissolving casters' fragment.
+pub(crate) fn meshlet_shadow_pipeline(
+    device: &wgpu::Device,
+    layout: &wgpu::PipelineLayout,
+    module: &wgpu::ShaderModule,
+    side: Side,
+    full: bool,
+) -> wgpu::RenderPipeline {
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("shadow meshlet"),
+        layout: Some(layout),
+        vertex: wgpu::VertexState {
+            module,
+            entry_point: Some(if full {
+                "vs_meshlet"
+            } else {
+                "vs_meshlet_lean"
+            }),
+            compilation_options: Default::default(),
+            buffers: &[],
+        },
+        // As `shadow_pipeline`'s casters.
+        primitive: wgpu::PrimitiveState {
+            cull_mode: match side {
+                Side::Front => Some(wgpu::Face::Front),
+                Side::Back => Some(wgpu::Face::Back),
+                Side::Double => None,
+            },
+            ..Default::default()
+        },
+        depth_stencil: Some(wgpu::DepthStencilState {
+            format: DEPTH_FORMAT,
+            depth_write_enabled: Some(true),
+            depth_compare: Some(wgpu::CompareFunction::Less),
+            stencil: Default::default(),
+            bias: Default::default(),
+        }),
+        multisample: Default::default(),
+        fragment: Some(wgpu::FragmentState {
+            module,
+            entry_point: Some(if full { "fs_dissolve" } else { "fs_lean" }),
+            compilation_options: Default::default(),
+            targets: &[Some(wgpu::ColorTargetState {
+                format: wgpu::TextureFormat::R32Float,
+                blend: None,
+                write_mask: wgpu::ColorWrites::RED,
+            })],
+        }),
+        multiview_mask: None,
+        cache: crate::pipeline_cache::of(device).as_ref(),
+    })
+}

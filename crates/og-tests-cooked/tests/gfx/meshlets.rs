@@ -1,4 +1,4 @@
-//! The meshlet path (R1 batch 2; og_tests_cooked::meshlet_scenes): the
+//! The meshlet path (R1 batches 2 and 3; og_tests_cooked::meshlet_scenes): the
 //! clustered tree's level picked and its clusters culled on the GPU.
 
 use super::*;
@@ -84,4 +84,35 @@ fn meshlet_near_matches_the_regular_path() {
     .expect("same size");
     c.check(&Tolerance::default())
         .unwrap_or_else(|e| panic!("meshlet path against the regular path: {e}"));
+}
+
+/// `meshlet-shadows` (reference `meshlet-shadows.png`): five trees' long
+/// sun shadows and the spot's, cast through the meshlet path.
+#[test]
+fn meshlet_shadows_match_their_reference() {
+    check("meshlet-shadows");
+}
+
+/// The clustered casters' shadows (every cascade and the spot's face) as
+/// the regular path casts them: a shadow view that culled a cluster it
+/// should keep shows as a hole in a shadow, a caster drawn twice or with
+/// the wrong pipeline as acne or a missing shadow.
+#[test]
+fn meshlet_shadows_match_the_regular_path() {
+    let render = |meshlets: bool| {
+        let mut g = og_tests_cooked::scenes::build("meshlet-shadows").expect("built");
+        g.scene = og_tests_cooked::meshlet_scenes::shadow_scene(meshlets).expect("the trees");
+        og_tests::gfx::render_built(&mut g).expect("render")
+    };
+    let (on, off) = (render(true), render(false));
+    let c = compare(
+        &on.image.pixels,
+        &off.image.pixels,
+        on.image.width,
+        on.image.height,
+        &Tolerance::default(),
+    )
+    .expect("same size");
+    c.check(&Tolerance::default())
+        .unwrap_or_else(|e| panic!("meshlet shadows against the regular path: {e}"));
 }
