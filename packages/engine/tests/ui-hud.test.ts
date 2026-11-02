@@ -431,6 +431,42 @@ test("og.ui.comboCounter, judgement, turnOrder, scorebug, speedometer, flightHud
   expect(states(at(dump(e), "ComboHud/Combo")).combo).toBe("idle");
 }, LOADED_MS);
 
+test("og.ui.statBar as pips: n of max lit with a gap between equal pips, its value read; an icon as tall as its label on a thin track", () => {
+  // Wrong: pips drawn as one bar with notches (no gap), counted off by one, a part of a pip lit for a part of its
+  // value, or pips of unequal widths that do not line up row over row; an icon sized by a thin track (an 8 px
+  // reactor bar's 11 px speck).
+  const e = engineFor("HudPips", () => {
+    og.ui.anchor("Side", { anchor: "topLeft", direction: "column", width: { kind: "fixed", px: 300 } } as never, () => {
+      og.ui.statBar("Shields", { value: 3.6, max: 4, style: "pips", kind: "mana", thickness: 12, showValue: true, valueText: "3 / 4", width: { kind: "grow" } });
+      og.ui.statBar("Upgrade", { value: 4, max: 60, segment: 10, style: "pips", kind: "xp", thickness: 12, width: { kind: "grow" } });
+      og.ui.statBar("Reactor", { value: 64, max: 100, kind: "mana", icon: "bolt", label: "Reactor", thickness: 8, width: { kind: "grow" } });
+    });
+  });
+  e.advance(2);
+  const draws = drawsDuring(() => e.advance(1));
+  const els = dump(e);
+  const pips = (id: string) => below(els, `Side/${id}/Main/Pips`).filter((x) => x.id.startsWith("Pip#"));
+  const shields = pips("Shields");
+  expect(shields.length).toBe(4);
+  // A gap between pips, every pip one width.
+  for (let i = 1; i < shields.length; i++) expect(shields[i]!.x - (shields[i - 1]!.x + shields[i - 1]!.width)).toBeGreaterThanOrEqual(2);
+  expect(new Set(shields.map((x) => Math.round(x.width))).size).toBe(1);
+  // 3.6 of 4 lights three whole pips: lit ones share one draw, the rest another.
+  const fill = (id: string, i: number) => JSON.stringify(draws.get(`Side/${id}/Main/Pips/Pip#${i}`)?.[0]?.fills ?? null);
+  expect([0, 1, 2, 3].map((i) => fill("Shields", i) === fill("Shields", 0))).toEqual([true, true, true, false]);
+  expect(at(els, "Side/Shields")?.value).toBe("3 / 4");
+  expect(at(els, "Side/Shields/Main/Value")?.text).toBe("3 / 4");
+  // A segment per pip: 60 by tens is six pips, no Track and no blocks.
+  expect(pips("Upgrade").length).toBe(6);
+  expect(at(els, "Side/Upgrade/Main/Track")).toBe(undefined);
+  // The reactor's mark stands as tall as its label's text, well past its 8 px track.
+  const mark = at(els, "Side/Reactor/Main/Icon")!;
+  const label = at(els, "Side/Reactor/Main/Label")!;
+  const track = at(els, "Side/Reactor/Main/Track")!;
+  expect(mark.height).toBeGreaterThanOrEqual(label.height * 0.75);
+  expect(mark.height).toBeGreaterThan(track.height * 1.8);
+}, LOADED_MS);
+
 test("og.ui.turnOrder as a list: rows top to bottom, the acting one first and selected, an enemy's stripe on the start edge, allies lined up, mirrored right to left", () => {
   // Wrong: the list drawn as the strip (no rows, no names), numbers on the rows, an ally's portrait set in where
   // an enemy's stripe would be, the stripe left of the portrait right to left, or a screen reader told neither

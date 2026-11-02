@@ -37326,8 +37326,9 @@ export interface SubtitlesDesc {
  * - `"flat"`: A rounded track (the default).
  * - `"slanted"`: Ends cut on a slant (sci-fi, fighting games).
  * - `"pill"`: Fully round ends.
+ * - `"pips"`: Discrete pips with a gap between them (a ship's shield cells, upgrade levels): one per segment (one per unit of max when segment is 0, at most 40), lit whole as the value reaches each, sharing the bar's length equally so bars of one width and count line up row over row.
  */
-export type StatBarStyle = "flat" | "slanted" | "pill";
+export type StatBarStyle = "flat" | "slanted" | "pill" | "pips";
 
 /**
  * A health or resource bar.
@@ -37360,7 +37361,7 @@ export interface StatBarDesc {
    */
   readonly color?: Paint | null;
   /**
-   * Value per segment: the bar is blocks of this much (Overwatch's 25-point blocks); 0 is one bar.
+   * Value per segment: the bar is blocks of this much (Overwatch's 25-point blocks); 0 is one bar. With style pips, the value per pip (0 is 1).
    *
    * @default 0
    * @range 0..
@@ -37445,7 +37446,7 @@ export interface StatBarDesc {
    */
   readonly valueText?: string;
   /**
-   * An icon of the atlas before it.
+   * An icon of the atlas before it, as tall as its label's text at least (never only the track's height).
    *
    * @default ""
    */
@@ -52602,8 +52603,8 @@ export declare namespace og {
      */
     function subtitles(id: string, desc?: SubtitlesDesc): void;
     /**
-     * A health or resource bar to the bar of action games: blocks (segment), a ghost chunk that holds after a hit and then drains (Dark Souls, fighting games), a heal preview, an absorb overlay (World of Warcraft's white-blue), grey recoverable damage, the value inside its end or after it, a row of shield cells in their tier's colour over it (Apex Legends), low and critical states (warn, then danger pulsing), a mirrored fill for the right player, flat, slanted or pill ends. A drop is instant, a rise moves on the ui spring.
-     * Parts: StatBar.frame[<style>][<level>], StatBar.track, StatBar.fill[<kind>][<level>], StatBar.ghost, StatBar.heal, StatBar.absorb[over], StatBar.recoverable, StatBar.block[filled], StatBar.cell[filled][<tier>], StatBar.label, StatBar.value, StatBar.icon. States: group level (normal, low, critical, empty). Sounds: warning on crossing into critical. Accessibility: meter named by name, valueNow the value, valueMax max. Probe ids: <id>, <id>/Track, <id>/Track/Fill, <id>/Track/Ghost, <id>/Track/Block#i, <id>/Shield/Cell#i, <id>/Value (inside: <id>/Main/Track/Value/Text, outlined over a soft dark band that fades at both ends, with no absorb seam under it).
+     * A health or resource bar to the bar of action games: blocks (segment), a ghost chunk that holds after a hit and then drains (Dark Souls, fighting games), a heal preview, an absorb overlay (World of Warcraft's white-blue), grey recoverable damage, the value inside its end or after it, a row of shield cells in their tier's colour over it (Apex Legends), low and critical states (warn, then danger pulsing), a mirrored fill for the right player, flat, slanted or pill ends, or discrete pips with a gap (style pips: n of max lit, the value after them). A drop is instant, a rise moves on the ui spring.
+     * Parts: StatBar.frame[<style>][<level>], StatBar.track, StatBar.fill[<kind>][<level>], StatBar.ghost, StatBar.heal, StatBar.absorb[over], StatBar.recoverable, StatBar.block[filled], StatBar.cell[filled][<tier>], StatBar.track[pips], StatBar.pip[filled], StatBar.label, StatBar.value, StatBar.icon. States: group level (normal, low, critical, empty). Sounds: warning on crossing into critical. Accessibility: meter named by name, valueNow the value, valueMax max. Probe ids: <id>, <id>/Track, <id>/Track/Fill, <id>/Track/Ghost, <id>/Track/Block#i, <id>/Shield/Cell#i, <id>/Main/Pips/Pip#i (style pips), <id>/Main/Icon, <id>/Value (inside: <id>/Main/Track/Value/Text, outlined over a soft dark band that fades at both ends, with no absorb seam under it).
      *
      * @param id Its id.
      * @param desc The value and the look.

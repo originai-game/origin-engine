@@ -60,7 +60,7 @@ export function statBar(id: string, desc: Api.StatBarDesc = {}): void {
   const ink = kindColor(kind, level, desc.color);
   const style: Api.StatBarStyle = desc.style ?? "flat";
   // A value inside the track: the track grows to hold its numerals (at 200 % too), the bar keeps its length.
-  const inside = !!desc.showValue && !!desc.valueInside;
+  const inside = !!desc.showValue && !!desc.valueInside && style !== "pips";
   const valueStep = ts(11);
   const h = Math.max(u(desc.thickness || 14), inside ? Math.ceil(stepSize(valueStep).size * 1.3) : 0);
   const radius = style === "pill" ? h / 2 : style === "slanted" ? 1 : Math.min(shapeOf("bar").radius, h / 3);
@@ -73,10 +73,12 @@ export function statBar(id: string, desc: Api.StatBarDesc = {}): void {
     box(id, { direction: "column", gap: u(3), width: desc.width ?? px(u(240)), part: sel("StatBar", "frame", style, level), partClass: "hud" }, undefined, (path) => {
       if ((desc.shieldMax ?? 0) > 0) shieldRow(desc, h, radius, style);
       kit.row("Main", { gap: tk.sm, cross: "center", width: { kind: "grow" } }, () => {
-        if (desc.icon) icon("Icon", desc.icon, Math.round(h * 1.4), lit(ink), "");
+        // As tall as the label's text at least: a thin track (a reactor's 8 px) left its mark a speck.
+        if (desc.icon) icon("Icon", desc.icon, Math.max(Math.round(h * 1.4), Math.round(stepSize(ts(14)).size * 1.2)), lit(ink), "");
         // Over the scene, not a card: full ink a step up, with the HUD's outline and halo (4.5:1 on a bright ground).
         if (desc.label) text("Label", desc.label, { step: ts(14), font: "display", color: token("ink"), nowrap: true, outline: 1.2 });
-        track(path, desc, frac, level, ink, h, radius, style, inside ? { text: valueText, step: valueStep, critical: level === "critical" } : null);
+        if (style === "pips") pips(desc, value, max, ink, h, radius);
+        else track(path, desc, frac, level, ink, h, radius, style, inside ? { text: valueText, step: valueStep, critical: level === "critical" } : null);
         if (desc.showValue && !inside) text("Value", valueText, { step: ts(14), font: "mono", color: level === "critical" ? lit(role("danger")) : token("ink"), nowrap: true, outline: 1.2 });
       });
     }, {
@@ -174,6 +176,30 @@ function track(parent: string, desc: Api.StatBarDesc, frac: number, level: Level
   }
   // A slanted bar leans its whole track; its text sits outside it, upright.
   close(style === "slanted" ? { transform: { skewX: desc.reverse ? 0.36 : -0.36 } } : undefined);
+}
+
+/**
+ * The bar as discrete pips (style pips): one per segment, a gap between
+ * them, each lit whole as the value reaches its end, sharing the bar's
+ * length equally so bars of one width and count line up row over row.
+ */
+function pips(desc: Api.StatBarDesc, value: number, max: number, ink: Rgba, h: number, radius: number): void {
+  const per = (desc.segment ?? 0) > 0 ? desc.segment! : 1;
+  const n = Math.max(1, Math.min(40, Math.ceil(max / per - 1e-6)));
+  const on = Math.max(0, Math.min(n, Math.floor(value / per + 1e-6)));
+  const r = Math.min(radius, h / 2);
+  const gap = Math.max(u(2), Math.round(h * 0.3));
+  box("Pips", { direction: "row", gap, width: { kind: "grow" }, height: px(h), part: sel("StatBar", "track", "pips") }, undefined, (path) => {
+    // Whole pixels each, from the row's length last tick (the leftover after the last), so every pip is one
+    // width and bars of one width and count line up; until it is laid out they share it.
+    const w = kit.bounds(path)?.width ?? 0;
+    const pw = w > 0 ? Math.max(1, Math.floor((w - (n - 1) * gap) / n)) : 0;
+    for (let i = 0; i < n; i++) {
+      // Reverse lights them from the end (the right player's bar).
+      const full = desc.reverse ? n - 1 - i < on : i < on;
+      leaf(kit.idi("Pip", i), { width: pw > 0 ? px(pw) : { kind: "grow" }, height: pct(1), part: sel("StatBar", "pip", full ? "filled" : null), partClass: "bar" }, full ? fillDraw(ink, r) : trackDraw(r));
+    }
+  });
 }
 
 function shieldRow(desc: Api.StatBarDesc, h: number, radius: number, style: Api.StatBarStyle): void {
