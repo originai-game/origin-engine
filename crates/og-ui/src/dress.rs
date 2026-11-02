@@ -418,7 +418,10 @@ pub fn intern(s: &str) -> &'static str {
 pub struct PartRef {
     pub component: &'static str,
     pub part: &'static str,
-    pub class: ElementClass,
+    /// The element class whose tokens an undressed part takes (its corner,
+    /// outline and elevation); `None`: a game's decoration, which takes
+    /// nothing from the tokens, only what a style dresses it with.
+    pub class: Option<ElementClass>,
     pub level: Option<Level>,
     /// Empty entries are unused.
     pub flags: [&'static str; MAX_FLAGS],
@@ -435,6 +438,15 @@ impl Default for PartRef {
 
 impl PartRef {
     pub const fn new(component: &'static str, part: &'static str, class: ElementClass) -> PartRef {
+        PartRef::of(component, part, Some(class))
+    }
+
+    /// A part of `class`, or of none (see [`PartRef::class`]).
+    pub const fn of(
+        component: &'static str,
+        part: &'static str,
+        class: Option<ElementClass>,
+    ) -> PartRef {
         PartRef {
             component,
             part,
@@ -508,9 +520,9 @@ impl PartRef {
 
     /// A part from its selector text (`ShopCard.frame[rarity=epic][selected]`),
     /// its names interned: how game code and documents name their own parts.
-    pub fn parse(text: &str, class: ElementClass) -> Result<PartRef, String> {
+    pub fn parse(text: &str, class: impl Into<Option<ElementClass>>) -> Result<PartRef, String> {
         let s = Selector::parse(text)?;
-        let mut p = PartRef::new(intern(&s.component), intern(&s.part), class);
+        let mut p = PartRef::of(intern(&s.component), intern(&s.part), class.into());
         for f in &s.flags {
             p = p.flag(intern(f));
         }
@@ -690,7 +702,7 @@ fn default_level(part: &PartRef) -> Option<Level> {
     if part.level.is_some() {
         return part.level;
     }
-    match part.class {
+    match part.class? {
         ElementClass::Dialog => Some(Level::Overlay),
         ElementClass::Tooltip => Some(Level::Floating),
         ElementClass::Card => Some(Level::Raised),
@@ -712,7 +724,10 @@ pub fn token_strokes(part: &PartRef, theme: &Theme) -> Vec<Stroke> {
     let hair = t.stroke(StrokeWidth::Hairline);
     let thin = t.stroke(StrokeWidth::Thin);
     use ElementClass as C;
-    match part.class {
+    let Some(class) = part.class else {
+        return Vec::new();
+    };
+    match class {
         C::Panel | C::Dialog | C::Card | C::Tooltip => vec![stroke(hair, tok("line", 1.0))],
         C::Hud => vec![stroke(hair, tok("line", 0.7))],
         C::Button if part.has("disabled") || part.has("quiet") => Vec::new(),
@@ -747,7 +762,10 @@ pub fn token_effects(part: &PartRef, theme: &Theme) -> Vec<Effect> {
         }
     }
     use ElementClass as C;
-    match part.class {
+    let Some(class) = part.class else {
+        return out;
+    };
+    match class {
         C::Button if part.has("disabled") || part.has("quiet") || part.has("ghost") => {}
         C::Button if part.has("pressed") => out.push(inner(1.0, 3.0, tok("shadow", 0.45))),
         C::Button => out.push(inner(1.0, 0.0, tok("sheen", 0.6))),
@@ -767,7 +785,8 @@ pub fn token_effects(part: &PartRef, theme: &Theme) -> Vec<Effect> {
 
 impl Resolved {
     /// The corner the part draws with: its dressing's `shape`, else its
-    /// element class's in the style's shape language.
+    /// element class's in the style's shape language (a classless part's
+    /// is square: its element's own radius applies, [`Resolved::element_draw`]).
     pub fn shape(&self, part: &PartRef, theme: &Theme) -> ShapeToken {
         self.frame.shape.unwrap_or_else(|| {
             // A part round by what it is (a radio's mark, a knob, a switch's
@@ -778,7 +797,13 @@ impl Resolved {
                     radius: 9999.0,
                 }
             } else {
-                theme.tokens.shape(part.class)
+                part.class.map_or(
+                    ShapeToken {
+                        corner: crate::tokens::CornerShape::Square,
+                        radius: 0.0,
+                    },
+                    |c| theme.tokens.shape(c),
+                )
             }
         })
     }
@@ -800,7 +825,7 @@ impl Resolved {
         };
         let strokes = if !d.strokes.is_empty() || d.cleared & CLEAR_STROKES != 0 {
             d.strokes.clone()
-        } else if fills.is_empty() && surface(part.class) {
+        } else if fills.is_empty() && part.class.is_some_and(surface) {
             // A surface with no fill is a layout group a pattern named
             // (so a style can dress it): undressed, it draws no outline.
             Vec::new()
@@ -825,9 +850,11 @@ impl Resolved {
         if layer.is_none() && d.mask.is_some() {
             layer = Some(Layer::default());
         }
+        // A classless part the style gave no shape keeps its element's radius.
+        let classless = part.class.is_none() && self.frame.shape.is_none() && !part.has("round");
         ElementDraw {
             shape: ShapeKind::Rect {
-                radii: Some([radius; 4]),
+                radii: (!classless).then_some([radius; 4]),
                 corner,
             },
             fills,

@@ -163,11 +163,12 @@ pub(super) fn element(theme: &Theme, d: &Value) -> Element {
         background: paint(theme, &d["background"]),
         radius: f(d, "radius", 0.0),
         frame: frame_part(&d["frame"]),
+        // No partClass: a decoration, which takes nothing from the tokens
+        // (no outline, corner or elevation); a card or panel names its class.
         part: d["part"].as_str().and_then(|sel| {
             let class = d["partClass"]
                 .as_str()
-                .and_then(og_ui::tokens::ElementClass::from_name)
-                .unwrap_or(og_ui::tokens::ElementClass::Card);
+                .and_then(og_ui::tokens::ElementClass::from_name);
             og_ui::dress::PartRef::parse(sel, class).ok()
         }),
         aspect: f(d, "aspect", 0.0).max(0.0),
@@ -590,4 +591,22 @@ pub(super) fn uv_of(v: &Value) -> Option<[f32; 4]> {
         let n = |i: usize| a[i].as_f64().unwrap_or(0.0) as f32;
         [n(0), n(1), n(2), n(3)]
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use og_ui::tokens::ElementClass;
+    use serde_json::json;
+
+    /// A part with no partClass is a decoration (no class, so nothing from
+    /// the tokens); one that names its class keeps it. Defaulting to card
+    /// drew every undressed scrim, sweep and node as a hairline card.
+    #[test]
+    fn a_part_without_a_class_is_a_decoration() {
+        let theme = og_ui::Theme::dark();
+        let el = super::element(&theme, &json!({ "part": "UnitFrame.scrim" }));
+        assert_eq!(el.part.map(|p| p.class), Some(None));
+        let el = super::element(&theme, &json!({ "part": "Shop.card", "partClass": "card" }));
+        assert_eq!(el.part.map(|p| p.class), Some(Some(ElementClass::Card)));
+    }
 }

@@ -648,3 +648,68 @@ fn a_components_dressable_draw_takes_the_dressing_and_keeps_its_shape() {
         arcs[1]
     );
 }
+
+/// A part with no element class is a game's decoration: undressed, it
+/// takes nothing from the tokens (no outline, no elevation, no recess),
+/// with or without a fill of its own, and keeps its element's corner. A
+/// part that declares itself a card keeps the card's hairline and raised
+/// shadow, and a stroke the style dresses a classless part with draws.
+///
+/// Ways it could fail: a classless part falls back to a card (the old
+/// default: the hairline round U6c's unit-frame scrim and U6d's saga
+/// nodes), or a declared card loses its outline with the fix, or the
+/// style's own dressing stops reaching a classless part.
+#[test]
+fn a_part_without_a_class_takes_nothing_from_the_tokens() {
+    use og_render::UiMode;
+    let modes = |ui: &mut Ui, sel: &str, class: Option<ElementClass>, fill: Option<Srgba>| {
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.open(
+            "Part",
+            Element {
+                width: Size::px(100.0),
+                height: Size::px(60.0),
+                background: fill,
+                radius: 6.0,
+                part: Some(PartRef::parse(sel, class).unwrap()),
+                ..Element::default()
+            },
+        );
+        ui.close();
+        ui.end();
+        ui.frame()
+            .items
+            .iter()
+            .filter_map(|it| match &it.cmd {
+                DrawCmd::Shape { shape, .. } => Some(shape.mode),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+    };
+    let stroke = |m: &[UiMode]| m.iter().any(|m| matches!(m, UiMode::Stroke(_)));
+    let shadow = |m: &[UiMode]| m.iter().any(|m| matches!(m, UiMode::Shadow { .. }));
+    let mut ui = dressed("dress \"Node.ring\" {\n  stroke 2 \"#ffd34a\" inside\n}\n");
+    let ground = Some(Srgba::rgb(40, 40, 40));
+    let bare = modes(&mut ui, "UnitFrame.scrim", None, None);
+    assert!(
+        bare.is_empty(),
+        "a classless part without a fill draws {bare:?}"
+    );
+    let filled = modes(&mut ui, "UnitFrame.scrim", None, ground);
+    assert_eq!(
+        filled,
+        vec![UiMode::Fill],
+        "a classless part draws only its fill"
+    );
+    let card = modes(&mut ui, "Shop.card", Some(ElementClass::Card), ground);
+    assert!(
+        stroke(&card) && shadow(&card),
+        "a declared card keeps its hairline and shadow: {card:?}"
+    );
+    let ring = modes(&mut ui, "Node.ring", None, None);
+    assert!(
+        ring.iter()
+            .any(|m| matches!(m, UiMode::Stroke(s) if (s.width - 2.0).abs() < 0.01)),
+        "the style's stroke on a classless part draws: {ring:?}"
+    );
+}

@@ -40870,7 +40870,7 @@
               "type": "null"
             }
           ],
-          "description": "The element class whose shape language and elevation an undressed part takes: panel, dialog, card, tooltip, button, field, chip, badge, tab, slot, bar, hud, avatar; null is card.",
+          "description": "The element class whose corner, outline and elevation an undressed part takes from the tokens: panel, dialog, card, tooltip, button, field, chip, badge, tab, slot, bar, hud, avatar. Null: a decoration (a scrim, a sweep, a node's art), which takes nothing from the tokens, only what a style dresses it with; a part that is a card or a panel names its class.",
           "default": null
         },
         "aspect": {
