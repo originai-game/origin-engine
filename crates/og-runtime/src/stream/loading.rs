@@ -47,7 +47,8 @@ pub(crate) fn update(eng: &Engine) {
         let s = &mut a.stream;
         for g in &mut s.groups {
             let trigger = match &g.desc.trigger {
-                StreamTrigger::Manual => false,
+                // WIP (G3-3): cell groups load with their cells' anchors.
+                StreamTrigger::Manual | StreamTrigger::Cell => false,
                 StreamTrigger::Distance {
                     anchor,
                     radius,

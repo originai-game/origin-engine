@@ -446,6 +446,7 @@ fn trigger_json(t: &StreamTrigger) -> Value {
             unload,
         } => json!({ "kind": "distance", "anchor": anchor, "radius": radius, "unload": unload }),
         StreamTrigger::Volume(e) => json!({ "kind": "volume", "entity": e }),
+        StreamTrigger::Cell => json!({ "kind": "cell" }),
     }
 }
 
