@@ -580,7 +580,7 @@ export interface HostAbi<A, V> {
   /** `og.nav.flowAt` */
   og_nav_flow_at(world: number, field: number, point: string): string;
   /** `og.nav.load` */
-  og_nav_load(world: number, path: string): string;
+  og_nav_load(world: number, path: string, profile: string | undefined): string;
   /** `og.nav.build` */
   og_nav_build(world: number, desc: string | undefined): string;
   /** `og.nav.setObstacle` */

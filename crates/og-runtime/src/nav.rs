@@ -594,25 +594,49 @@ pub fn og_nav_flow_at(world: u32, field: f64, point: String) -> String {
 /// not where a baked level's terraces are).
 fn mesh_info(h: u64, m: &NavMesh) -> Value {
     let (min, max) = m.bounds();
-    json!({ "mesh": h, "polygons": m.poly_count(), "tiles": m.tiles.len(), "min": j3(min), "max": j3(max), "cellSize": m.field.params.cell_size })
+    json!({ "mesh": h, "polygons": m.poly_count(), "tiles": m.tiles.len(), "min": j3(min), "max": j3(max), "cellSize": m.field.params.cell_size, "profile": "" })
 }
 
-pub fn og_nav_load(world: u32, path: String) -> String {
+pub fn og_nav_load(world: u32, path: String, profile: Option<String>) -> String {
     wire(engine(world).and_then(|eng| {
         let id = og_bundle::runtime::asset_id(&path).to_string();
-        let (field, tiles, areas, links) = {
+        let want = profile.unwrap_or_default();
+        let (field, tiles, areas, links, profile) = {
             let assets = eng.assets.borrow();
             let (bytes, bundle) = assets.blob(&id)?;
-            let (field, tiles) = bundle
-                .navmesh(&id, bytes.bytes())
+            let names = bundle
+                .navmesh_profiles(&id, bytes.bytes())
                 .map_err(|e| e.to_string())?;
+            let bytes = bundle
+                .navmesh_profile(&id, bytes.bytes(), &want)
+                .map_err(|e| e.to_string())?
+                .ok_or_else(|| {
+                    if names.is_empty() {
+                        format!("{id} has one unnamed agent, no profile '{want}': omit the profile")
+                    } else {
+                        format!(
+                            "{id} has no agent profile '{want}': {}",
+                            names
+                                .iter()
+                                .map(|n| if n.is_empty() { "(unnamed)" } else { n })
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        )
+                    }
+                })?;
+            let (field, tiles) = bundle.navmesh(&id, bytes).map_err(|e| e.to_string())?;
             let areas = bundle
-                .navmesh_areas(&id, bytes.bytes())
+                .navmesh_areas(&id, bytes)
                 .map_err(|e| e.to_string())?;
             let links = bundle
-                .navmesh_links(&id, bytes.bytes())
+                .navmesh_links(&id, bytes)
                 .map_err(|e| e.to_string())?;
-            (field, tiles, areas, links)
+            let profile = if want.is_empty() {
+                names.into_iter().next().unwrap_or_default()
+            } else {
+                want
+            };
+            (field, tiles, areas, links, profile)
         };
         let mesh = NavMesh::from_tiles_with_areas(field, tiles, areas)
             .ok_or_else(|| {
@@ -632,6 +656,7 @@ pub fn og_nav_load(world: u32, path: String) -> String {
         let h = n.insert(Nav::Mesh(Box::new(mesh)));
         let mut info = info;
         info["mesh"] = json!(h);
+        info["profile"] = json!(profile);
         Ok(info)
     }))
 }

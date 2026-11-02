@@ -48,6 +48,14 @@ keeps it out (`og.nav.findPath` takes the same two fields): a wolf with
 `areaCosts: [1, 1, 1, 8]` wades area 3 only when going round is eight
 times longer, a guard with `excluded: [4]` never steps into area 4.
 
+Bodies of different sizes get a mesh each from one file: every `agent
+"<name>" { ... }` block is an agent profile, baked with its own radius,
+height, climb and slope over the same geometry, areas and links.
+`og.nav.load(world, path, "rat")` loads the rat's mesh (a doorway the
+ogre's mesh closes stays open in it); without a profile it loads the
+first agent block (the unnamed one, if any). Give each NavAgent the mesh
+of its body; an unknown profile is refused naming the ones the file has.
+
 A gap the floor does not join (a jump, a ladder, a door, a teleporter)
 is an off-mesh link: a `link` line in the navmesh file, or
 `og.nav.setLink(world, mesh, id, { start, end, kind })` at run time.
@@ -73,6 +81,9 @@ agent {                        # the agent the mesh is for
   height 1.8                   # headroom: floor under a lower ceiling is left out
   climb 0.4                    # the highest step or ledge walked up or down
   slope 45                     # degrees: a steeper triangle is not floor
+}
+agent "small" {                # another body size, baked into its own mesh (repeatable; same lines)
+  radius 0.2                   # og.nav.load(world, path, "small") loads it
 }
 cellSize 0.2                   # metres across a voxel column (half the radius or less keeps narrow doors open)
 cellHeight 0.1                 # metres of a voxel's height

@@ -101,7 +101,7 @@ fn grid {
 }
 ```
 
-<sub>`api.ogt` line 11581</sub>
+<sub>`api.ogt` line 11582</sub>
 
 <a id="fn-gridFromTilemap"></a>
 
@@ -131,7 +131,7 @@ fn gridFromTilemap {
 }
 ```
 
-<sub>`api.ogt` line 11588</sub>
+<sub>`api.ogt` line 11589</sub>
 
 <a id="fn-setCost"></a>
 
@@ -167,7 +167,7 @@ fn setCost {
 }
 ```
 
-<sub>`api.ogt` line 11595</sub>
+<sub>`api.ogt` line 11596</sub>
 
 <a id="fn-cellAt"></a>
 
@@ -199,7 +199,7 @@ fn cellAt {
 }
 ```
 
-<sub>`api.ogt` line 11605</sub>
+<sub>`api.ogt` line 11606</sub>
 
 <a id="fn-findPath"></a>
 
@@ -229,7 +229,7 @@ fn findPath {
 }
 ```
 
-<sub>`api.ogt` line 11613</sub>
+<sub>`api.ogt` line 11614</sub>
 
 <a id="fn-flowField"></a>
 
@@ -259,7 +259,7 @@ fn flowField {
 }
 ```
 
-<sub>`api.ogt` line 11620</sub>
+<sub>`api.ogt` line 11621</sub>
 
 <a id="fn-setFlowTargets"></a>
 
@@ -291,7 +291,7 @@ fn setFlowTargets {
 }
 ```
 
-<sub>`api.ogt` line 11627</sub>
+<sub>`api.ogt` line 11628</sub>
 
 <a id="fn-flowAt"></a>
 
@@ -323,7 +323,7 @@ fn flowAt {
 }
 ```
 
-<sub>`api.ogt` line 11635</sub>
+<sub>`api.ogt` line 11636</sub>
 
 <a id="fn-load"></a>
 
@@ -332,15 +332,16 @@ fn flowAt {
 A cooked navmesh: an `.ogt` of `type navmesh` (the agent, the cell sizes, the bounds and the geometry: a scene's static colliders and models, glTF models, terrains, boxes; og-ai §1 has every line) baked by og cook.
 
 ```ts
-og.nav.load(world: World, path: string): Result<NavMeshInfo>
+og.nav.load(world: World, path: string, profile?: string): Result<NavMeshInfo>
 ```
 
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
 | `world` | `World` | no | The world. |
 | `path` | `string` | no | The navmesh asset, such as `levels/arena.nav.ogt`. |
+| `profile` | `string` | yes | The agent profile, an `agent <name>` block's name: one mesh per body size (a rat under the table, an ogre round it). Omitted: the asset's first agent block (its unnamed one, if any). |
 
-**Returns** `Result<NavMeshInfo>`: Refused for a path that is not a cooked navmesh.
+**Returns** `Result<NavMeshInfo>`: Refused for a path that is not a cooked navmesh, or a profile it has no agent block for (naming the ones it has).
 
 Binding symbol `og_nav_load` · publish builds: kept
 
@@ -349,11 +350,14 @@ fn load {
   doc "A cooked navmesh: an `.ogt` of `type navmesh` (the agent, the cell sizes, the bounds and the geometry: a scene's static colliders and models, glTF models, terrains, boxes; og-ai §1 has every line) baked by og cook."
   param world World "The world."
   param path String "The navmesh asset, such as `levels/arena.nav.ogt`."
-  returns Result.NavMeshInfo "Refused for a path that is not a cooked navmesh."
+  param profile String "The agent profile, an `agent <name>` block's name: one mesh per body size (a rat under the table, an ogre round it). Omitted: the asset's first agent block (its unnamed one, if any)." {
+    optional true
+  }
+  returns Result.NavMeshInfo "Refused for a path that is not a cooked navmesh, or a profile it has no agent block for (naming the ones it has)."
 }
 ```
 
-<sub>`api.ogt` line 11643</sub>
+<sub>`api.ogt` line 11644</sub>
 
 <a id="fn-build"></a>
 
@@ -383,7 +387,7 @@ fn build {
 }
 ```
 
-<sub>`api.ogt` line 11650</sub>
+<sub>`api.ogt` line 11654</sub>
 
 <a id="fn-setObstacle"></a>
 
@@ -419,7 +423,7 @@ fn setObstacle {
 }
 ```
 
-<sub>`api.ogt` line 11657</sub>
+<sub>`api.ogt` line 11661</sub>
 
 <a id="fn-carve"></a>
 
@@ -455,7 +459,7 @@ fn carve {
 }
 ```
 
-<sub>`api.ogt` line 11668</sub>
+<sub>`api.ogt` line 11672</sub>
 
 <a id="fn-setArea"></a>
 
@@ -491,7 +495,7 @@ fn setArea {
 }
 ```
 
-<sub>`api.ogt` line 11679</sub>
+<sub>`api.ogt` line 11683</sub>
 
 <a id="fn-setLink"></a>
 
@@ -527,7 +531,7 @@ fn setLink {
 }
 ```
 
-<sub>`api.ogt` line 11690</sub>
+<sub>`api.ogt` line 11694</sub>
 
 <a id="fn-setLinkOpen"></a>
 
@@ -561,7 +565,7 @@ fn setLinkOpen {
 }
 ```
 
-<sub>`api.ogt` line 11701</sub>
+<sub>`api.ogt` line 11705</sub>
 
 <a id="fn-finishLink"></a>
 
@@ -591,7 +595,7 @@ fn finishLink {
 }
 ```
 
-<sub>`api.ogt` line 11710</sub>
+<sub>`api.ogt` line 11714</sub>
 
 <a id="fn-nearest"></a>
 
@@ -627,7 +631,7 @@ fn nearest {
 }
 ```
 
-<sub>`api.ogt` line 11717</sub>
+<sub>`api.ogt` line 11721</sub>
 
 <a id="fn-pathOf"></a>
 
@@ -657,7 +661,7 @@ fn pathOf {
 }
 ```
 
-<sub>`api.ogt` line 11728</sub>
+<sub>`api.ogt` line 11732</sub>
 
 ## Components, resources and events
 
@@ -1487,6 +1491,7 @@ A navmesh's shape.
 | `min` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The lowest corner of the box around its polygons. |
 | `max` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The highest corner of the box around its polygons (its highest walkable floor's y). |
 | `cellSize` | `number` | `0` | — | `m` | — | Its voxel width. |
+| `profile` | `string` | `""` | — | — | — | The agent profile it was baked for (og.nav.load's profile); empty for a navmesh of one unnamed agent and for og.nav.build. |
 
 ```ogt
 struct NavMeshInfo {
@@ -1503,6 +1508,7 @@ struct NavMeshInfo {
   field cellSize f32 "Its voxel width." {
     unit m
   }
+  field profile String "The agent profile it was baked for (og.nav.load's profile); empty for a navmesh of one unnamed agent and for og.nav.build."
 }
 ```
 
@@ -1527,7 +1533,7 @@ struct NavRebuild {
 }
 ```
 
-<sub>`api.ogt` line 11575</sub>
+<sub>`api.ogt` line 11576</sub>
 
 ## Column kinds
 

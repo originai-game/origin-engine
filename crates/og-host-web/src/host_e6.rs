@@ -30,8 +30,8 @@ impl NavApi for WebHost {
     fn og_nav_flow_at(&self, world: u32, field: f64, point: String) -> String {
         rt::og_nav_flow_at(world, field, point)
     }
-    fn og_nav_load(&self, world: u32, path: String) -> String {
-        rt::og_nav_load(world, path)
+    fn og_nav_load(&self, world: u32, path: String, profile: Option<String>) -> String {
+        rt::og_nav_load(world, path, profile)
     }
     fn og_nav_build(&self, world: u32, desc: Option<String>) -> String {
         rt::og_nav_build(world, desc)

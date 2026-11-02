@@ -453,6 +453,7 @@ module nav {
     field cellSize f32 "Its voxel width." {
       unit m
     }
+    field profile String "The agent profile it was baked for (og.nav.load's profile); empty for a navmesh of one unnamed agent and for og.nav.build."
   }
 
   struct NavRebuild {
@@ -527,7 +528,10 @@ module nav {
     doc "A cooked navmesh: an `.ogt` of `type navmesh` (the agent, the cell sizes, the bounds and the geometry: a scene's static colliders and models, glTF models, terrains, boxes; og-ai §1 has every line) baked by og cook."
     param world World "The world."
     param path String "The navmesh asset, such as `levels/arena.nav.ogt`."
-    returns Result.NavMeshInfo "Refused for a path that is not a cooked navmesh."
+    param profile String "The agent profile, an `agent <name>` block's name: one mesh per body size (a rat under the table, an ogre round it). Omitted: the asset's first agent block (its unnamed one, if any)." {
+      optional true
+    }
+    returns Result.NavMeshInfo "Refused for a path that is not a cooked navmesh, or a profile it has no agent block for (naming the ones it has)."
   }
 
   fn build {

@@ -670,7 +670,7 @@ pub trait NavApi: Wire {
     /// `og.nav.flowAt`
     fn og_nav_flow_at(&self, world: u32, field: f64, point: String) -> String;
     /// `og.nav.load`
-    fn og_nav_load(&self, world: u32, path: String) -> String;
+    fn og_nav_load(&self, world: u32, path: String, profile: Option<String>) -> String;
     /// `og.nav.build`
     fn og_nav_build(&self, world: u32, desc: Option<String>) -> String;
     /// `og.nav.setObstacle`

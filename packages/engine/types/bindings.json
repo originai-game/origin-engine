@@ -15690,6 +15690,11 @@
           "name": "path",
           "type": "String",
           "optional": false
+        },
+        {
+          "name": "profile",
+          "type": "String",
+          "optional": true
         }
       ],
       "returns": "Result<NavMeshInfo>",

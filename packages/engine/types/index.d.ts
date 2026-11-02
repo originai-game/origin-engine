@@ -17746,6 +17746,10 @@ export interface NavMeshInfo {
    * @unit m (metres)
    */
   readonly cellSize: number;
+  /**
+   * The agent profile it was baked for (og.nav.load's profile); empty for a navmesh of one unnamed agent and for og.nav.build.
+   */
+  readonly profile: string;
 }
 
 /** What an obstacle change rebuilt. */
@@ -41794,9 +41798,10 @@ export declare namespace og {
      *
      * @param world The world.
      * @param path The navmesh asset, such as `levels/arena.nav.ogt`.
-     * @returns Refused for a path that is not a cooked navmesh.
+     * @param profile The agent profile, an `agent <name>` block's name: one mesh per body size (a rat under the table, an ogre round it). Omitted: the asset's first agent block (its unnamed one, if any).
+     * @returns Refused for a path that is not a cooked navmesh, or a profile it has no agent block for (naming the ones it has).
      */
-    function load(world: World, path: string): Result<NavMeshInfo>;
+    function load(world: World, path: string, profile?: string): Result<NavMeshInfo>;
     /**
      * A navmesh over a flat floor with boxes carved out, built now: for procedural levels (a level with slopes and stairs is baked at cook time with og.nav.load).
      *

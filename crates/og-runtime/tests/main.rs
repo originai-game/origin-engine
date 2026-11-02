@@ -21,6 +21,7 @@ mod mid_tick_save;
 mod missing_glyphs;
 mod model_clips;
 mod model_reload;
+mod nav_profiles;
 mod no_renderer;
 mod prefabs;
 mod profile2d;

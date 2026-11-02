@@ -1439,8 +1439,8 @@ pub fn og_nav_flow_at(world: u32, field: f64, point: String) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_nav_load(world: u32, path: String) -> String {
-    <Host as NavApi>::og_nav_load(&Host, world, path)
+pub fn og_nav_load(world: u32, path: String, profile: Option<String>) -> String {
+    <Host as NavApi>::og_nav_load(&Host, world, path, profile)
 }
 
 #[wasm_bindgen]

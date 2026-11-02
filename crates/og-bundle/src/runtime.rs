@@ -1372,6 +1372,40 @@ impl Bundle {
         Ok(out)
     }
 
+    /// A navmesh blob's agent profiles (G2-4: the `profiles` section, the
+    /// names one per line, the blob's own tables' first): empty for a
+    /// navmesh of one unnamed agent.
+    pub fn navmesh_profiles(&self, id: &str, bytes: &[u8]) -> Result<Vec<String>, LoadError> {
+        let blob = self.blob::<format::NavMesh>(id, bytes)?;
+        let Some(list) = blob.raw_opt("profiles") else {
+            return Ok(Vec::new());
+        };
+        let text = std::str::from_utf8(list)
+            .map_err(|_| invalid(&blob, "the profiles section is not UTF-8"))?;
+        Ok(text.split('\n').map(str::to_string).collect())
+    }
+
+    /// The navmesh blob of agent profile `profile` inside `bytes` (the
+    /// blob itself for its first profile, or `""`), which
+    /// [`Self::navmesh`], [`Self::navmesh_areas`] and [`Self::navmesh_links`]
+    /// read like any other; `None` for a profile it does not have.
+    pub fn navmesh_profile<'b>(
+        &self,
+        id: &str,
+        bytes: &'b [u8],
+        profile: &str,
+    ) -> Result<Option<&'b [u8]>, LoadError> {
+        let names = self.navmesh_profiles(id, bytes)?;
+        if profile.is_empty() || names.first().is_some_and(|n| n == profile) {
+            return Ok(Some(bytes));
+        }
+        if !names.iter().any(|n| n == profile) {
+            return Ok(None);
+        }
+        let blob = self.blob::<format::NavMesh>(id, bytes)?;
+        Ok(Some(blob.raw(&format!("profile.{profile}"))?))
+    }
+
     /// A navmesh blob's baked off-mesh links (G2-4: the `links` section,
     /// each a `u32` id then the link; empty in a blob without links).
     pub fn navmesh_links(

@@ -529,8 +529,53 @@ pub(super) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
     let areas = navmesh_areas(body)?;
     let links = navmesh_links(body)?;
     let root = assets_root(s);
-    let agent = body.get("agent").and_then(entry_block);
-    let params = og_nav::NavParams {
+    // The agent profiles (G2-4): `agent { }` or `agent <name> { }`, one
+    // mesh each. The first is the unnamed one (else the first named): it
+    // fills the blob's tables as a navmesh of one agent always has; every
+    // other is a whole navmesh blob in a `profile.<name>` section.
+    let mut profiles: Vec<(String, Option<&Block>, usize)> = Vec::new();
+    for e in body.get_all("agent") {
+        let name = match e.values.first() {
+            None => String::new(),
+            Some(v) => v
+                .as_word()
+                .or(v.as_str())
+                .filter(|n| {
+                    !n.is_empty()
+                        && n.chars()
+                            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+                })
+                .ok_or_else(|| {
+                    CookError(format!(
+                        "line {}: an agent profile's name is letters, digits, '_' and '-'",
+                        e.line
+                    ))
+                })?
+                .to_string(),
+        };
+        if let Some((_, _, line)) = profiles.iter().find(|(n, ..)| *n == name) {
+            return Err(CookError(if name.is_empty() {
+                format!(
+                    "line {}: a second unnamed agent (the first is on line {line}); name the others: agent small {{ ... }}",
+                    e.line
+                )
+            } else {
+                format!(
+                    "line {}: agent profile '{name}' is also on line {line}",
+                    e.line
+                )
+            }));
+        }
+        profiles.push((name, e.block.as_ref(), e.line));
+    }
+    if let Some(i) = profiles.iter().position(|(n, ..)| n.is_empty()) {
+        let unnamed = profiles.remove(i);
+        profiles.insert(0, unnamed);
+    }
+    if profiles.is_empty() {
+        profiles.push((String::new(), None, 0));
+    }
+    let params_of = |agent: Option<&Block>| og_nav::NavParams {
         cell_size: f32_of(Some(body), "cellSize", 0.2),
         cell_height: f32_of(Some(body), "cellHeight", 0.1),
         agent_radius: f32_of(agent, "radius", 0.4),
@@ -602,8 +647,55 @@ pub(super) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
         .map_err(|e| CookError(format!("terrain '{p}': {e}")))?;
         notes.push(format!("terrain '{p}': {n} triangles"));
     }
-    let field = og_nav::bake::bake(&tris, &params, bounds).map_err(CookError)?;
-    let mesh = og_nav::NavMesh::build_with_areas(field.clone(), areas.clone());
+    let mut baked = Vec::with_capacity(profiles.len());
+    for (name, agent, _) in &profiles {
+        let params = params_of(*agent);
+        let field = og_nav::bake::bake(&tris, &params, bounds).map_err(CookError)?;
+        let mut own = Vec::new();
+        let (w, polys, tiles) = navmesh_blob(&field, &params, &areas, &links, stamp, &mut own)?;
+        baked.push((name.clone(), field, w, polys, tiles, own));
+    }
+    let (_, field, mut w, polys, tiles, own) = baked.remove(0);
+    notes.extend(own);
+    if profiles.len() > 1 || !profiles[0].0.is_empty() {
+        let mut names = profiles[0].0.clone();
+        for (name, _, b, polys, tiles, own) in baked {
+            notes.push(format!(
+                "agent profile '{name}': {polys} polygons in {tiles} tiles"
+            ));
+            notes.extend(
+                own.into_iter()
+                    .map(|n| format!("agent profile '{name}': {n}")),
+            );
+            w.raw(&format!("profile.{name}"), b.finish(), 16);
+            names.push('\n');
+            names.push_str(&name);
+        }
+        w.raw("profiles", names.into_bytes(), 1);
+    }
+    notes.insert(
+        0,
+        format!(
+            "navmesh: {} triangles into {} × {} cells, {polys} polygons in {tiles} tiles",
+            tris.len(),
+            field.width,
+            field.depth,
+        ),
+    );
+    Ok((w.finish(), notes))
+}
+
+/// One agent profile's navmesh blob (its tables, areas and links), and its
+/// polygon and tile counts; its notes go into `notes`.
+fn navmesh_blob(
+    field: &og_nav::Heightfield,
+    params: &og_nav::NavParams,
+    areas: &[(og_nav::Shape, u8)],
+    links: &[(u32, og_nav::Link)],
+    stamp: u64,
+    notes: &mut Vec<String>,
+) -> Result<(BlobWriter, usize, usize), CookError> {
+    let mesh = og_nav::NavMesh::build_with_areas(field.clone(), areas.to_vec());
     let meta = format::NavMeshMeta {
         cell_size: params.cell_size,
         cell_height: params.cell_height,
@@ -689,7 +781,7 @@ pub(super) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
             .flat_map(|t| t.polys.iter().map(|p| p.area))
             .collect();
         let mut shapes = Vec::new();
-        for (shape, area) in &areas {
+        for (shape, area) in areas {
             shapes.push(*area);
             shape.write(&mut shapes);
         }
@@ -707,9 +799,9 @@ pub(super) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
     // G2-4's links, only in a navmesh that has some.
     if !links.is_empty() {
         let linked = og_nav::NavMesh::from_tiles(field.clone(), mesh.tiles.clone())
-            .map(|m| m.with_links(links.clone()));
+            .map(|m| m.with_links(links.to_vec()));
         let mut bytes = Vec::new();
-        for (id, l) in &links {
+        for (id, l) in links {
             bytes.extend_from_slice(&id.to_le_bytes());
             l.write(&mut bytes);
         }
@@ -727,18 +819,7 @@ pub(super) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
             ));
         }
     }
-    notes.insert(
-        0,
-        format!(
-            "navmesh: {} triangles into {} × {} cells, {} polygons in {} tiles",
-            tris.len(),
-            field.width,
-            field.depth,
-            mesh.poly_count(),
-            mesh.tiles.len()
-        ),
-    );
-    Ok((w.finish(), notes))
+    Ok((w, mesh.poly_count(), mesh.tiles.len()))
 }
 
 /// Cooks a string table (`type strings`): validated by og-i18n, kept as text.

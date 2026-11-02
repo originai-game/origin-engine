@@ -1726,9 +1726,9 @@ pub fn og_nav_flow_at(env: Env, world: u32, field: f64, point: String) -> String
 }
 
 #[napi(js_name = "og_nav_load")]
-pub fn og_nav_load(env: Env, world: u32, path: String) -> String {
+pub fn og_nav_load(env: Env, world: u32, path: String, profile: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as NavApi>::og_nav_load(&Host, world, path)
+    <Host as NavApi>::og_nav_load(&Host, world, path, profile)
 }
 
 #[napi(js_name = "og_nav_build")]

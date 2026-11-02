@@ -8214,10 +8214,16 @@
               "type": "String",
               "optional": false,
               "doc": "The navmesh asset, such as `levels/arena.nav.ogt`."
+            },
+            {
+              "name": "profile",
+              "type": "String",
+              "optional": true,
+              "doc": "The agent profile, an `agent <name>` block's name: one mesh per body size (a rat under the table, an ogre round it). Omitted: the asset's first agent block (its unnamed one, if any)."
             }
           ],
           "returns": "Result<NavMeshInfo>",
-          "returnsDoc": "Refused for a path that is not a cooked navmesh.",
+          "returnsDoc": "Refused for a path that is not a cooked navmesh, or a profile it has no agent block for (naming the ones it has).",
           "publish": true
         },
         {
@@ -36435,6 +36441,10 @@
           "type": "number",
           "description": "Its voxel width.",
           "x-og-unit": "m"
+        },
+        "profile": {
+          "type": "string",
+          "description": "The agent profile it was baked for (og.nav.load's profile); empty for a navmesh of one unnamed agent and for og.nav.build."
         }
       },
       "required": [
@@ -36443,7 +36453,8 @@
         "tiles",
         "min",
         "max",
-        "cellSize"
+        "cellSize",
+        "profile"
       ],
       "additionalProperties": false
     },
