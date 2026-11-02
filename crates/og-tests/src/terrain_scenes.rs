@@ -662,15 +662,16 @@ pub fn holes_scene() -> RenderScene {
 }
 
 /// Where `terrain-layers` paints its four extra layers (world x, z), each
-/// a disc of [`LAYER_DISC`] metres clear of the boulders and their
-/// shadows, and their colours: clay, heather, mud and gold flowers.
+/// a disc of [`LAYER_DISC`] metres (seven control texels) clear of the
+/// boulders, their shadows and each other, and their colours: clay,
+/// heather, mud and gold flowers.
 pub const LAYER_SPOTS: [(f32, f32); 4] = [
-    (-122.0, 96.0),
-    (-84.0, 104.0),
-    (-124.0, 136.0),
-    (-72.0, 120.0),
+    (-134.0, 92.0),
+    (-66.0, 92.0),
+    (-134.0, 132.0),
+    (-66.0, 132.0),
 ];
-pub const LAYER_DISC: f32 = 9.0;
+pub const LAYER_DISC: f32 = 14.0;
 pub const LAYER_TINTS: [[f32; 3]; 4] = [
     [0.62, 0.2, 0.08],
     [0.4, 0.14, 0.5],
@@ -693,8 +694,11 @@ pub fn layers_scene(painted: bool) -> RenderScene {
     scene.camera = camera_at(below + Vec3::new(0.0, 70.0, 26.0), below);
     let handle = scene.terrains[0].terrain;
     let mut data = scene.terrain(handle).expect("the island").clone();
-    // Both pages at 512 texels (4 m): the first resampled from the island's.
-    let m = 512u32;
+    // Both pages at 1024 texels (2 m): the first resampled from the
+    // island's. Each disc's layer fades from its full weight at 60 % of
+    // the radius to none at the rim, the first page's weights scaled down
+    // under it by as much.
+    let m = 1024u32;
     let page = (m * m * 4) as usize;
     let mut rgba = vec![0u8; page * 2];
     for y in 0..m {
@@ -703,16 +707,16 @@ pub fn layers_scene(painted: bool) -> RenderScene {
                 (Vec2::new(x as f32, y as f32) + 0.5) / m as f32 * ISLAND_SIZE - ISLAND_SIZE * 0.5;
             let c = data.control_at(p);
             let at = ((y * m + x) * 4) as usize;
-            let spot = LAYER_SPOTS
-                .iter()
-                .position(|s| (p - Vec2::new(s.0, s.1)).length() < LAYER_DISC);
-            for k in 0..4 {
-                rgba[at + k] = (c[k] * 255.0).round() as u8;
+            let mut keep = 1.0;
+            for (i, s) in LAYER_SPOTS.iter().enumerate().filter(|_| painted) {
+                let d = (p - Vec2::new(s.0, s.1)).length() / LAYER_DISC;
+                let t = ((1.0 - d) / 0.4).clamp(0.0, 1.0);
+                let w = t * t * (3.0 - 2.0 * t);
+                rgba[page + at + i] = (w * 255.0).round() as u8;
+                keep -= w;
             }
-            if let (true, Some(i)) = (painted, spot) {
-                rgba[at] = 0;
-                rgba[at + 2] = 0;
-                rgba[page + at + i] = 255;
+            for k in 0..4 {
+                rgba[at + k] = (c[k] * keep.max(0.0) * 255.0).round() as u8;
             }
         }
     }
