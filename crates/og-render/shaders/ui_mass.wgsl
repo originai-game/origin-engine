@@ -435,7 +435,7 @@ fn fs_mass(in: MassOut) -> @location(0) vec4<f32> {
     let reach = 0.5 * px_range - 0.5;
     let d = px_range * (median3(sample.r, sample.g, sample.b) - 0.5);
     let true_d = px_range * (min(median3(sample.r, sample.g, sample.b), sample.a) - 0.5);
-    let fill = clamp(d + 0.5, 0.0, 1.0);
+    let fill = ink_cover(clamp(d + 0.5, 0.0, 1.0), rgb);
     if ((tp.head.w & FLAG_OUTLINE) != 0u) {
       let w = min(tp.misc.x * frame.output.z, reach);
       let od = select(d, true_d, d < 0.0);

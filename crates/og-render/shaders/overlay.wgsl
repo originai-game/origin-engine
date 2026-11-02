@@ -150,7 +150,7 @@ fn fs_msdf(in: OverlayOut) -> @location(0) vec4<f32> {
         let c = gradient_color(gi, (css - g.box.xy) / max(g.box.zw, vec2<f32>(1e-4)), g.box.zw, in.position.xy);
         color = vec4<f32>(c.rgb, c.a * in.color.a);
       }
-      return finish(color.rgb, fill * color.a, in.position.xy, in.clip, in.clip_shape);
+      return finish(color.rgb, ink_cover(fill, color.rgb) * color.a, in.position.xy, in.clip, in.clip_shape);
     }
   }
 }

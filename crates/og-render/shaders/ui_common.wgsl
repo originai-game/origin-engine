@@ -105,6 +105,37 @@ fn decode(c: vec3<f32>) -> vec3<f32> {
   return select(hi, lo, c <= vec3<f32>(0.04045));
 }
 
+// A mask's fraction `m` restated for linear-light blending of the layer's
+// colour `rgb`: the alpha drawing the luminance CSS's sRGB blend draws
+// with `m` over the colour's opposite (sRGB 1 − its own: white under a
+// dark scrim, black under light text), the ground a fade shows against.
+// Dark content is close to exact over any ground; mid grey has no
+// contrast to fade and keeps `m`. Applying `m` directly fades in linear
+// light, where a dark scrim barely darkens until the mask is nearly
+// whole and light text stays bright until its very edge: either fade
+// reads as a line, not a fade.
+fn mask_weight(m: f32, rgb: vec3<f32>) -> f32 {
+  let lc = dot(rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
+  let cs = encode(vec3<f32>(lc)).x;
+  let gs = 1.0 - cs;
+  let lg = decode(vec3<f32>(gs)).x;
+  if (abs(lc - lg) < 1e-3) {
+    return m;
+  }
+  let drawn = decode(vec3<f32>(mix(gs, cs, m))).x;
+  return clamp((drawn - lg) / (lc - lg), 0.0, 1.0);
+}
+
+// A text fill's coverage for its ink `rgb`: never less than `fill`,
+// raised toward the coverage CSS's sRGB blend shows for dark ink
+// (mask_weight). Linear-light coverage thins dark strokes on a light
+// ground (a 14 px label on a light primary reads pale grey, though its
+// ink is near black) and fattens light ones on a dark ground; only the
+// first is a loss of legibility, so light ink keeps its coverage.
+fn ink_cover(fill: f32, rgb: vec3<f32>) -> f32 {
+  return max(fill, mask_weight(fill, rgb));
+}
+
 // The target's encoding of a straight-alpha linear colour.
 fn finish_color(rgb: vec3<f32>, a: f32) -> vec4<f32> {
   if (frame.output.w > 0.5) {

@@ -315,6 +315,16 @@ type StepOf = fn(&TypeRamp) -> TypeStep;
 
 /// One line of rich text rendered through og-render at a type step.
 fn rich_frame(markup: &str, step: StepOf) -> (Vec<u8>, usize, usize, [u8; 3]) {
+    inked_frame(markup, step, None)
+}
+
+/// [`rich_frame`] in an ink over a ground (`None`: the theme's ink over
+/// its backdrop).
+fn inked_frame(
+    markup: &str,
+    step: StepOf,
+    colors: Option<(Srgba, Srgba)>,
+) -> (Vec<u8>, usize, usize, [u8; 3]) {
     let vp = Viewport {
         dpr: 1.0,
         ..Viewport::new(360.0, 120.0)
@@ -332,7 +342,7 @@ fn rich_frame(markup: &str, step: StepOf) -> (Vec<u8>, usize, usize, [u8; 3]) {
                 height: Size::grow(),
                 padding: Insets::all(t.space.md),
                 gap: t.space.md,
-                background: Some(t.palette.backdrop),
+                background: Some(colors.map_or(t.palette.backdrop, |c| c.1)),
                 ..Element::default()
             },
             |ui| {
@@ -342,6 +352,7 @@ fn rich_frame(markup: &str, step: StepOf) -> (Vec<u8>, usize, usize, [u8; 3]) {
                     markup,
                     RichTextDesc {
                         step: Some(step),
+                        color: colors.map(|c| c.0),
                         ..RichTextDesc::default()
                     },
                 );
@@ -352,7 +363,7 @@ fn rich_frame(markup: &str, step: StepOf) -> (Vec<u8>, usize, usize, [u8; 3]) {
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, vp.dpr);
     ui.frame().emit(&EmitDesc::default(), &mut overlay);
     scene.overlay = Some(overlay);
-    let bg = ui.theme().palette.backdrop.linear();
+    let bg = colors.map_or(ui.theme().palette.backdrop, |c| c.1).linear();
     scene.environment.background = Background::Color(Vec3::new(bg[0], bg[1], bg[2]));
     scene.post.tonemap = Tonemap::None;
     let desc = RenderDesc {
@@ -456,6 +467,47 @@ fn bold_rich_text_is_heavier_ink_never_a_box() {
             }
         }
         assert_eq!(stray, 0, "bold ink at the {name} size stays on its glyphs");
+    }
+}
+
+/// Small dark text on a light ground keeps its weight: a label in the
+/// neutral primary's near-black ink on its near-white fill draws, judged
+/// in sRGB as a reader sees it, at least two thirds of the ink the same
+/// label draws in near-white on near-black. Light on dark keeps the
+/// linear blend's slightly heavier edge (the engine's established look),
+/// so the pair need not be equal.
+///
+/// Ways it could fail: dark ink's coverage blends in linear light, which
+/// keeps its antialiased edge nearly as light as the ground: the label
+/// then draws half the ink of its light twin (0.49 at `text-xs`) and a
+/// 14 px Play on the default style's primary reads pale grey though its
+/// ink is #111113 (mainMenu at 1280×720).
+#[test]
+fn dark_small_text_on_light_keeps_its_weight() {
+    let dark = Srgba::rgb(0x11, 0x11, 0x13);
+    let light = Srgba::rgb(0xec, 0xec, 0xee);
+    // Ink drawn: each pixel's sRGB distance from its ground, as a fraction
+    // of the ink's own.
+    let mass = |ink: Srgba, ground: Srgba, step: StepOf| {
+        let (px, w, h, bg) = inked_frame("Play Continue 42", step, Some((ink, ground)));
+        let full: f64 = (ink.rgb[0] as f64 - bg[0] as f64).abs();
+        (0..w * h)
+            .map(|i| (px[i * 4] as f64 - bg[0] as f64).abs() / full)
+            .sum::<f64>()
+    };
+    let steps: [(&str, StepOf); 2] = [("xs", |r| r.xs), ("reading", |r| r.reading)];
+    for (name, step) in steps {
+        let on_light = mass(dark, light, step);
+        let on_dark = mass(light, dark, step);
+        let ratio = on_light / on_dark;
+        eprintln!(
+            "{name}: dark on light {on_light:.0}, light on dark {on_dark:.0}, ratio {ratio:.3}"
+        );
+        assert!(on_dark > 40.0, "the {name} line drew ink ({on_dark:.0})");
+        assert!(
+            (0.65..=1.15).contains(&ratio),
+            "at the {name} size dark-on-light ink weighs {ratio:.2} of light-on-dark"
+        );
     }
 }
 
