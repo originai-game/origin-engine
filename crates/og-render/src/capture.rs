@@ -27,8 +27,33 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll, Waker};
 
-/// How long [`Renderer::capture`] waits natively before it gives up.
+/// How long [`Renderer::capture`] waits natively for its own copy, once
+/// the GPU has finished the frames drawn before it.
 pub const CAPTURE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// How long [`Renderer::capture`] waits natively, before its copy, for the
+/// GPU to finish the frames drawn before it. A cold GPU can take many
+/// seconds over a frame that first draws a pass: on a fresh Mac
+/// satellite (paravirtual Metal, 2026-11-02) the ui-kit's first frame with
+/// a world sprite took 18.8 s on the GPU, every later frame about 2 ms,
+/// and the 10 s that bounded the whole wait then failed the first
+/// screenshot. A GPU that never finishes still fails, with its own message.
+pub const BACKLOG_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(120);
+
+/// The native capture's two bounds, the copy's and the frames' before it:
+/// ([`CAPTURE_TIMEOUT`], [`BACKLOG_TIMEOUT`]), or both the seconds
+/// `OG_CAPTURE_TIMEOUT` gives (a slower VM; a test of the failure).
+pub fn capture_timeouts() -> (std::time::Duration, std::time::Duration) {
+    let set = std::env::var("OG_CAPTURE_TIMEOUT")
+        .ok()
+        .and_then(|v| v.trim().parse::<f64>().ok())
+        .filter(|s| s.is_finite() && *s > 0.0)
+        .map(std::time::Duration::from_secs_f64);
+    match set {
+        Some(t) => (t, t),
+        None => (CAPTURE_TIMEOUT, BACKLOG_TIMEOUT),
+    }
+}
 
 #[derive(Default)]
 struct MapState {
@@ -118,9 +143,11 @@ impl CaptureRequest {
                 timeout: Some(timeout),
             })
             .map_err(|e| match e {
-                wgpu::PollError::Timeout => {
-                    RenderError::Readback(format!("capture timed out after {timeout:?}"))
-                }
+                wgpu::PollError::Timeout => RenderError::Readback(format!(
+                    "the capture's copy did not land in {timeout:?} after the GPU \
+                     finished the frames before it (OG_CAPTURE_TIMEOUT=<seconds> \
+                     waits longer)"
+                )),
                 other => RenderError::Readback(other.to_string()),
             })?;
         match self.try_finish(renderer)? {
@@ -331,16 +358,33 @@ impl Renderer {
 
     /// The last frame drawn to [`crate::RenderTarget::Offscreen`] as RGBA8,
     /// rows top to bottom (BGRA outputs are swizzled). Works on every host;
-    /// natively it waits at most [`CAPTURE_TIMEOUT`]; in the browser it
+    /// natively it waits for the frames drawn before it (at most
+    /// [`BACKLOG_TIMEOUT`]) and then for its copy (at most
+    /// [`CAPTURE_TIMEOUT`]; [`capture_timeouts`]); in the browser it
     /// resolves when the mapping does (drop the future to cancel).
     pub async fn capture(&self) -> Result<RgbaImage, RenderError> {
-        let request = self.begin_capture()?;
         #[cfg(not(target_arch = "wasm32"))]
         {
-            request.wait(self, CAPTURE_TIMEOUT)
+            let (copy, frames) = capture_timeouts();
+            // The frames first, on their own bound: the copy's bound is
+            // for the copy, not for a cold GPU's first draw of a pass.
+            self.device
+                .poll(wgpu::PollType::Wait {
+                    submission_index: None,
+                    timeout: Some(frames),
+                })
+                .map_err(|e| match e {
+                    wgpu::PollError::Timeout => RenderError::Readback(format!(
+                        "the GPU had not finished the frames before the capture in \
+                         {frames:?} (OG_CAPTURE_TIMEOUT=<seconds> waits longer)"
+                    )),
+                    other => RenderError::Readback(other.to_string()),
+                })?;
+            self.begin_capture()?.wait(self, copy)
         }
         #[cfg(target_arch = "wasm32")]
         {
+            let request = self.begin_capture()?;
             self.poll();
             request.finish().await
         }
