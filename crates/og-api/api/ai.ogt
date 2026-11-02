@@ -16,6 +16,7 @@ module ai {
   const AI_RUNNING u32 1 "AiAgent.status: the tree or state is still running."
   const AI_SUCCESS u32 2 "AiAgent.status: the tree succeeded on the last think."
   const AI_FAILURE u32 3 "AiAgent.status: the tree failed on the last think."
+  const AI_INTERRUPTED u32 4 "AiActionStopped.result: the action stopped before the game finished it (another branch won, the state changed, the agent restarted)."
 
   component AiAgent {
     doc "An entity that thinks with a behaviour. Give it an og.NavAgent to move and an og.Perception to see and hear."
@@ -133,6 +134,22 @@ module ai {
     field status u32 "AI_RUNNING, AI_SUCCESS or AI_FAILURE."
   }
 
+  event AiActionStarted {
+    doc "A game action (`action <name> args` in a behaviour) started: play it (a reload, a door, a line of dialogue) and call og.ai.finish when it is over; until then the node runs. Read the tick after. Joins the world's types only once a behaviour with a game action is loaded."
+    field entity Entity "The agent."
+    field node u32 "The action's node, an index into BehaviourInfo.nodes."
+    field name String "The action's name (at most 63 bytes)."
+    field args String "Its arguments as written, separated by spaces (at most 255 bytes; longer ones are refused when the behaviour is parsed)."
+  }
+
+  event AiActionStopped {
+    doc "A game action stopped: the game finished it (og.ai.finish), or the behaviour moved on first (stop playing it). Read the tick after."
+    field entity Entity "The agent."
+    field node u32 "The action's node."
+    field name String "The action's name (at most 63 bytes)."
+    field result u32 "AI_SUCCESS or AI_FAILURE, as og.ai.finish said, or AI_INTERRUPTED."
+  }
+
   struct BehaviourInfo {
     doc "A loaded behaviour."
     field behaviour Behaviour "What AiAgent.behaviour takes."
@@ -140,7 +157,8 @@ module ai {
     field kind String "tree or machine."
     field states List.String "A machine's states, by index (AiAgent.state)."
     field nodes List.String "Its nodes' names, by index (AiAgent.node)."
-    field keys List.String "Its declared blackboard keys."
+    field keys List.String "Its declared blackboard keys (its subtrees' too)."
+    field subtrees List.String "The behaviours its `use` nodes inline, every one reached, in the order first met."
   }
 
   struct NoiseDesc {
@@ -171,14 +189,14 @@ module ai {
   }
 
   fn load {
-    doc "A cooked behaviour (an `.ogt` of `type behaviour`, validated by og cook)."
+    doc "A cooked behaviour (an `.ogt` of `type behaviour`, validated by og cook); its `use` subtrees are read from their own cooked assets."
     param world World "The world."
     param path String "The behaviour asset, such as `ai/slime.ogt`."
     returns Result.BehaviourInfo "Refused for a path that is not a cooked behaviour."
   }
 
   fn parse {
-    doc "A behaviour from text, now (tests and generated behaviours; assets go through og cook)."
+    doc "A behaviour from text, now (tests and generated behaviours; assets go through og cook). Its `use` subtrees are read from cooked assets."
     param world World "The world."
     param text String "The behaviour's `.ogt` text."
     returns Result.BehaviourInfo "Refused with the first error's line and the fix."
@@ -206,6 +224,17 @@ module ai {
     param world World "The world."
     param entity Entity "The agent."
     returns Result.Void "Refused for a world without og.ai."
+  }
+
+  fn finish {
+    doc "End an agent's running game actions (og.AiActionStarted): each answers success or failure at the agent's next think and sends og.AiActionStopped. With `action`, only the running ones of that name. World state, in saves."
+    param world World "The world."
+    param entity Entity "The agent."
+    param success bool "Whether it worked: the node succeeds, or fails."
+    param action String "The action's name; omitted: every game action it runs." {
+      optional true
+    }
+    returns bool "False when it runs no such action."
   }
 
   fn noise {

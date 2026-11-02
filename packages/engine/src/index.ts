@@ -191,6 +191,7 @@ export const NAV_ON_LINK: typeof Api.NAV_ON_LINK = 5;
 export const AI_RUNNING: typeof Api.AI_RUNNING = 1;
 export const AI_SUCCESS: typeof Api.AI_SUCCESS = 2;
 export const AI_FAILURE: typeof Api.AI_FAILURE = 3;
+export const AI_INTERRUPTED: typeof Api.AI_INTERRUPTED = 4;
 
 // The E5 round: physics beyond rigid bodies and the atmosphere.
 export const WEATHER_NONE: typeof Api.WEATHER_NONE = 0;

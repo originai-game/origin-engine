@@ -16,13 +16,15 @@ pub mod system;
 pub mod tree;
 
 pub use asset::{
-    Action, BEHAVIOUR_TYPE, BUILTIN_KEYS, Behaviour, Check, Kind, Op, Root, Speed, Value,
+    Action, BEHAVIOUR_TYPE, BUILTIN_KEYS, Behaviour, Check, Consideration, Curve, Kind, Op,
+    Resolve, Root, Speed, Value,
 };
 pub use system::{
-    AiAgent, AiChanged, AiDesc, AiSystem, Behaviours, CommandSink, Description, NEVER, Noise,
-    Parent, Perceivable, Perception, SYSTEM_NAME, SightRay, install,
+    AiActionStarted, AiActionStopped, AiAgent, AiChanged, AiDesc, AiSystem, Behaviours,
+    CommandSink, Description, NEVER, Noise, Parent, Perceivable, Perception, SYSTEM_NAME, SightRay,
+    enable_action_started, enable_action_stopped, enable_actions, has_actions, install,
 };
-pub use tree::{AgentMem, Status};
+pub use tree::{AI_INTERRUPTED, AgentMem, Status};
 
 /// `AiAgent.status` after a think that is still running.
 pub const AI_RUNNING: u32 = 1;

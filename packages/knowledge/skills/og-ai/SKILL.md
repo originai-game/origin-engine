@@ -416,6 +416,50 @@ machine {
 }
 ```
 
+### Game actions, subtrees and utility
+
+```text
+type behaviour
+version 1
+---
+name "gunner"
+tree {
+  utility {                    # runs the option that scores highest, re-scored every think
+    inertia 0.1                # the running option's score gains this, so a near tie does not flip (default 0)
+    option fight {             # option <name>: its score lines, then its nodes (run as a sequence)
+      score sees               # a constant (`score 0.3`) or an input alone: a key, Component.field or Resource.field, true is 1
+      score targetDistance inverse 0 12   # <input> <curve> <lo> <hi>: the input mapped from lo..hi to 0..1 by a curve
+      action reload 2 fast     # the game plays it; the node runs until og.ai.finish answers
+      command shoot
+    }
+    option roam {
+      score 0.2
+      use "ai/patrol.ogt"      # another behaviour's tree inlined here, its keys and routes joined to this one's
+    }
+  }
+}
+```
+
+- An option's score is its score lines multiplied; the highest runs, a
+  tie goes to the first written, and when none scores above 0 the
+  utility fails. Curves: `linear`, `inverse` (1 − t), `quadratic`,
+  `sqrt`, `smooth` (an S) and `step` (1 from `hi` on).
+- `action <name> args` hands a long action to the game: a reload, a
+  door, a line of dialogue. og.ai sends `og.AiActionStarted` (entity,
+  node, name, args) and the node runs until the game calls
+  `og.ai.finish(world, agent, success, name?)`; then the node succeeds
+  or fails at the next think. When the tree moves on first (a higher
+  branch, a machine's transition, `og.ai.restart`), og.ai sends
+  `og.AiActionStopped` with `result` `AI_INTERRUPTED`: stop the
+  animation there. A pending result is world state, so a save taken
+  between `finish` and the next think keeps it. A name is under 64
+  bytes, its arguments at most 255.
+- `use "<path>"` reads another cooked behaviour (a tree, never a
+  machine). The cook refuses a cycle (`use makes a cycle: ai/a.ogt →
+  ai/b.ogt → ai/a.ogt`) and a route of the same name with other points,
+  and re-checks a tree whenever a subtree it reaches changes.
+  `og.ai.parse` text may `use` cooked files too.
+
 ## 4. Perception
 
 - `fov` 90–140 for guards (360 for things that sense all round), `sight`

@@ -1827,6 +1827,12 @@ pub fn og_ai_restart(env: Env, world: u32, entity: f64) -> String {
     <Host as AiApi>::og_ai_restart(&Host, world, entity)
 }
 
+#[napi(js_name = "og_ai_finish")]
+pub fn og_ai_finish(env: Env, world: u32, entity: f64, success: bool, action: Option<String>) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as AiApi>::og_ai_finish(&Host, world, entity, success, action)
+}
+
 #[napi(js_name = "og_ai_noise")]
 pub fn og_ai_noise(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);

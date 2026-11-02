@@ -85,7 +85,8 @@ mod video;
 mod views;
 
 pub use ai::{
-    og_ai_describe, og_ai_get, og_ai_load, og_ai_noise, og_ai_parse, og_ai_restart, og_ai_set,
+    og_ai_describe, og_ai_finish, og_ai_get, og_ai_load, og_ai_noise, og_ai_parse, og_ai_restart,
+    og_ai_set,
 };
 pub use anim::{
     og_anim_graph, og_anim_humanoid, og_anim_mirror, og_anim_retarget, og_load_animation,

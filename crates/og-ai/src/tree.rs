@@ -64,6 +64,29 @@ pub struct AgentMem {
     pub status: u32,
     /// The path to `leaf`, root first.
     pub path: Vec<u32>,
+    /// Game actions the game ended (og.ai.finish) that have not answered
+    /// yet: node → success. Taken at the action's next think.
+    pub results: BTreeMap<u32, bool>,
+}
+
+/// `AiActionStopped.result` for an action stopped before the game ended
+/// it (another branch won, the state changed, the agent restarted).
+pub const AI_INTERRUPTED: u32 = 4;
+
+/// The game action nodes running in `mem`, in node order, with their names.
+pub fn running_actions(b: &Behaviour, mem: &AgentMem) -> Vec<(u32, String)> {
+    b.nodes
+        .iter()
+        .enumerate()
+        .filter_map(|(i, n)| match &n.kind {
+            Kind::Action(Action::Game { name, .. })
+                if mem.nodes.get(i).is_some_and(|m| m.running) =>
+            {
+                Some((i as u32, name.clone()))
+            }
+            _ => None,
+        })
+        .collect()
 }
 
 /// Where the running action wants the agent this tick.
@@ -96,6 +119,13 @@ pub struct Effects {
     pub motion: Motion,
     pub commands: Vec<(String, Vec<String>)>,
     pub warnings: Vec<String>,
+    /// Game actions this think started, in the order they started: (node, name, args).
+    pub started: Vec<(u32, String, Vec<String>)>,
+    /// Game actions that stopped this think, in node order: (node, name,
+    /// AI_SUCCESS, AI_FAILURE or [`AI_INTERRUPTED`]).
+    pub stopped: Vec<(u32, String, u32)>,
+    /// Results taken this think: (node, success).
+    finished: Vec<(u32, bool)>,
 }
 
 fn hash3(a: u64, b: u64, c: u64) -> u64 {
@@ -229,7 +259,7 @@ impl Walker<'_, '_> {
                 }
                 Status::Failure
             }
-            Kind::Sequence => {
+            Kind::Sequence | Kind::Option { .. } => {
                 for (k, &c) in kids.iter().enumerate() {
                     let st = self.tick(c, mem);
                     if st != Status::Success {
@@ -339,6 +369,57 @@ impl Walker<'_, '_> {
                 }
             }
             Kind::Action(a) => self.act(i, a, mem, starting),
+            Kind::Subtree { .. } => self.tick(kids[0], mem),
+            Kind::Utility { inertia } => {
+                // The running option, if any (index is it plus one).
+                let current = mem.nodes[i].index as usize;
+                let mut best: Option<(f32, usize)> = None;
+                for (k, &c) in kids.iter().enumerate() {
+                    let Kind::Option { scores } = &self.b.nodes[c].kind else {
+                        continue;
+                    };
+                    let mut score = 1.0f32;
+                    for f in scores {
+                        score *= match &f.operand {
+                            None => f.constant,
+                            Some(o) => {
+                                let v = match (self.s.resolve)(o, mem) {
+                                    Some(Value::Num(n)) => n as f32,
+                                    Some(Value::Bool(b)) => f32::from(u8::from(b)),
+                                    _ => f32::NAN,
+                                };
+                                if v.is_nan() {
+                                    0.0
+                                } else {
+                                    f.curve.score(v, f.lo, f.hi)
+                                }
+                            }
+                        };
+                    }
+                    if current == k + 1 && mem.nodes[c].running {
+                        score += inertia;
+                    }
+                    if score > 0.0 && best.is_none_or(|(b, _)| score > b) {
+                        best = Some((score, k));
+                    }
+                }
+                let Some((_, k)) = best else {
+                    if current > 0 && mem.nodes[kids[current - 1]].running {
+                        reset(self.b, mem, kids[current - 1]);
+                    }
+                    mem.nodes[i].index = 0;
+                    return Status::Failure;
+                };
+                if current > 0 && current != k + 1 && mem.nodes[kids[current - 1]].running {
+                    reset(self.b, mem, kids[current - 1]);
+                }
+                mem.nodes[i].index = k as u32 + 1;
+                let st = self.tick(kids[k], mem);
+                if st != Status::Running {
+                    mem.nodes[i].index = 0;
+                }
+                st
+            }
         }
     }
 
@@ -472,6 +553,20 @@ impl Walker<'_, '_> {
                 mem.keys.insert(key.clone(), *value);
                 Status::Success
             }
+            Action::Game { name, args } => {
+                let node = i as u32;
+                if starting {
+                    mem.results.remove(&node);
+                    self.fx.started.push((node, name.clone(), args.clone()));
+                }
+                match mem.results.remove(&node) {
+                    Some(ok) => {
+                        self.fx.finished.push((node, ok));
+                        if ok { Status::Success } else { Status::Failure }
+                    }
+                    None => Status::Running,
+                }
+            }
             Action::Command {
                 name,
                 args,
@@ -505,6 +600,7 @@ impl Walker<'_, '_> {
 /// One think: a machine's transitions then its state's body, or the tree.
 /// Returns the status; `mem.leaf`/`mem.path` name the node it ran.
 pub fn think(b: &Behaviour, mem: &mut AgentMem, s: &Senses, fx: &mut Effects) -> Status {
+    let before = running_actions(b, mem);
     let mut w = Walker {
         b,
         s,
@@ -556,6 +652,24 @@ pub fn think(b: &Behaviour, mem: &mut AgentMem, s: &Senses, fx: &mut Effects) ->
         }
     }
     mem.status = st.code();
+    // Game actions that were running, or started, and are not now.
+    for (i, n) in b.nodes.iter().enumerate() {
+        let Kind::Action(Action::Game { name, .. }) = &n.kind else {
+            continue;
+        };
+        let node = i as u32;
+        let was =
+            before.iter().any(|(k, _)| *k == node) || fx.started.iter().any(|(k, ..)| *k == node);
+        if was && !mem.nodes[i].running {
+            let result = match fx.finished.iter().find(|(k, _)| *k == node) {
+                Some((_, true)) => Status::Success.code(),
+                Some((_, false)) => Status::Failure.code(),
+                None => AI_INTERRUPTED,
+            };
+            fx.stopped.push((node, name.clone(), result));
+            mem.results.remove(&node);
+        }
+    }
     st
 }
 

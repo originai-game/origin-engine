@@ -747,8 +747,8 @@ export const GRAMMARS: readonly Grammar[] = [
     source: "crates/og-ai/src/asset.rs",
     reads: readKeys,
     home: "og-ai",
-    // A label, a route, a state, a key, an operand or a speed's field are the author's; a command's arguments too.
-    names: { selector: 1, sequence: 1, steps: 1, parallel: 1, route: 1, patrol: 1, state: 1, initial: 1, to: 1, key: 1, set: 1, check: 1, move_to: 1, chase: 1, flee: 1, speed: 1, command: Infinity },
+    // A label, a route, a state, a key, an operand or a speed's field are the author's; a command's and an action's arguments too.
+    names: { selector: 1, sequence: 1, steps: 1, parallel: 1, utility: 1, option: 1, score: 1, route: 1, patrol: 1, state: 1, initial: 1, to: 1, key: 1, set: 1, check: 1, move_to: 1, chase: 1, flee: 1, speed: 1, command: Infinity, action: Infinity },
   },
 ];
 

@@ -5,7 +5,7 @@
 // on a behaviour tree that patrols, sees, chases at a resource's speed and
 // bites through the game's command; a machine restarted by og.ai.restart.
 import { beforeAll, expect, test } from "bun:test";
-import { og, defineResource, f32, f64, u32, NAV_ARRIVED, NAV_MOVING, NAV_ON_LINK } from "@origingame/engine";
+import { og, defineResource, f32, f64, u32, AI_INTERRUPTED, AI_SUCCESS, NAV_ARRIVED, NAV_MOVING, NAV_ON_LINK } from "@origingame/engine";
 import type { Entity, World } from "@origingame/engine";
 import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
@@ -454,3 +454,61 @@ test("og.Crowd: eight agents swap places across a ring without touching, determi
   expect(fresh.advance(210).ok).toBeTrue();
   expect(fresh.hash()).toBe(a.mid);
 }, 30_000); // two 870-tick crowds: about 1 s alone, over 8 s on a loaded gate
+
+const RELOADER = `type behaviour
+version 1
+---
+name "reloader"
+tree {
+  sequence {
+    action reload 2 fast
+    set reloaded true
+  }
+}
+`;
+
+test("og.ai: a game action runs until og.ai.finish, its events carry the name and result, and they join the type table only with an action", () => {
+  expect(types(start(og.game({ resources: [Pace], start: (world: World) => void must(og.ai.parse(world, MOOD)) })).world)).not.toContain("og.AiActionStarted");
+
+  let subtrees: readonly string[] | undefined;
+  const eng = start(og.game({ start: (world: World) => {
+    const b = must(og.ai.parse(world, RELOADER));
+    subtrees = b.subtrees;
+    const e = must(world.spawn({ name: "gunner" }));
+    world.insert(e, og.AiAgent, { behaviour: b.behaviour });
+  } }));
+  const w = eng.world;
+  expect(types(w)).toContain("og.AiActionStarted");
+  expect(types(w)).toContain("og.AiActionStopped");
+  const gunner = w.find("gunner")! as Entity;
+  const started: string[] = [];
+  const stopped: [string, number][] = [];
+  const read = () => {
+    for (const ev of w.events(og.AiActionStarted)) started.push(`${ev.name} ${ev.args}`);
+    for (const ev of w.events(og.AiActionStopped)) stopped.push([ev.name, ev.result]);
+  };
+  for (let t = 0; t < 30; t++) {
+    expect(eng.advance(1).ok).toBeTrue();
+    read();
+  }
+  // Started once, and still running: nothing finished it.
+  expect(started).toEqual(["reload 2 fast"]);
+  expect(stopped).toEqual([]);
+  expect(og.ai.finish(w, gunner, true, "jump")).toBeFalse();
+  expect(og.ai.finish(w, gunner, true, "reload")).toBeTrue();
+  for (let t = 0; t < 30; t++) {
+    expect(eng.advance(1).ok).toBeTrue();
+    read();
+  }
+  expect(stopped[0]).toEqual(["reload", AI_SUCCESS]);
+  // The tree loops: the next reload starts; a restart interrupts it.
+  expect(started.length).toBeGreaterThan(1);
+  const before = stopped.length;
+  must(og.ai.restart(w, gunner));
+  for (let t = 0; t < 30; t++) {
+    expect(eng.advance(1).ok).toBeTrue();
+    read();
+  }
+  expect(stopped.slice(before).some(([, r]) => r === AI_INTERRUPTED)).toBeTrue();
+  expect(subtrees).toEqual([]);
+});

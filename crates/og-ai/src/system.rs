@@ -19,11 +19,11 @@
 //! The memories, blackboards and pending noises are the `og.ai` state
 //! block, so snapshots replay an agent's decisions exactly.
 
-use crate::asset::{Behaviour, Root, Value};
+use crate::asset::{Action, Behaviour, Kind, Root, Value};
 use crate::tree::{self, AgentMem, Effects, NodeMem, Senses};
 use og_core::IdMap;
 use og_core::glam::{Vec2, Vec3};
-use og_core::reflect::FieldType;
+use og_core::reflect::{FieldType, Str256};
 use og_core::{Error, ErrorKind, Reflect, Result};
 use og_ecs::{Entity, QueryDesc, SchemaId, StateBlock, SystemContext, SystemDesc, World};
 use og_nav::Plane;
@@ -180,6 +180,65 @@ pub struct AiChanged {
     pub status: u32,
 }
 
+/// A game action (`action <name> args` in a behaviour) started: the game
+/// plays it (a reload, a door, a dialogue) and calls og.ai.finish when it
+/// is over. Registered only once a behaviour with one is loaded
+/// ([`enable_actions`]).
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+#[reflect(name = "og.AiActionStarted")]
+pub struct AiActionStarted {
+    /// The agent.
+    pub entity: u64,
+    /// The action's node (BehaviourInfo.nodes).
+    pub node: u32,
+    /// The action's name.
+    pub name: Str256,
+    /// Its arguments, as written, separated by spaces.
+    pub args: Str256,
+}
+
+/// A game action stopped: the game finished it, or something else won
+/// (another branch, a state change, a restart).
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+#[reflect(name = "og.AiActionStopped")]
+pub struct AiActionStopped {
+    /// The agent.
+    pub entity: u64,
+    /// The action's node.
+    pub node: u32,
+    /// The action's name.
+    pub name: Str256,
+    /// AI_SUCCESS or AI_FAILURE (what og.ai.finish said), or AI_INTERRUPTED.
+    pub result: u32,
+}
+
+/// Registers og.AiActionStarted and og.AiActionStopped and grants og.ai
+/// their writes: what a host calls when it first loads a behaviour with a
+/// game action.
+pub fn enable_actions(world: &mut World) -> Result<()> {
+    enable_action_started(world)?;
+    enable_action_stopped(world)
+}
+
+/// [`enable_actions`] for og.AiActionStarted alone (a host's lazy record).
+pub fn enable_action_started(world: &mut World) -> Result<()> {
+    world.register::<AiActionStarted>()?;
+    world.grant(SYSTEM_NAME, &[AiActionStarted::NAME])
+}
+
+/// [`enable_actions`] for og.AiActionStopped alone.
+pub fn enable_action_stopped(world: &mut World) -> Result<()> {
+    world.register::<AiActionStopped>()?;
+    world.grant(SYSTEM_NAME, &[AiActionStopped::NAME])
+}
+
+/// Whether a behaviour has a game action (needs [`enable_actions`]).
+pub fn has_actions(b: &Behaviour) -> bool {
+    b.nodes
+        .iter()
+        .any(|n| matches!(n.kind, Kind::Action(Action::Game { .. })))
+}
+
 /// The engine's `og.Parent`, mirrored (same name and layout): a sound
 /// made by an agent's child is the agent's own.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
@@ -285,6 +344,27 @@ impl AiSystem {
     /// centre) where it then stands and what it saw and heard forgotten.
     /// Actions without a speed keep the speed it started with. False for an
     /// entity that has not thought yet (its first think starts afresh anyway).
+    /// Ends an agent's running game actions (or only those named `action`)
+    /// with `success`: each answers at the agent's next think. False when
+    /// none is running.
+    pub fn finish(&self, e: Entity, success: bool, action: Option<&str>) -> bool {
+        let mut st = lock(&self.state);
+        let Some(m) = st.mems.get_mut(&e.to_bits()) else {
+            return false;
+        };
+        let Some(b) = lock(&self.behaviours).get(m.behaviour) else {
+            return false;
+        };
+        let mut any = false;
+        for (node, name) in tree::running_actions(&b, m) {
+            if action.is_none_or(|a| a == name) {
+                m.results.insert(node, success);
+                any = true;
+            }
+        }
+        any
+    }
+
     pub fn restart(&self, e: Entity) -> bool {
         let mut st = lock(&self.state);
         let key = e.to_bits();
@@ -555,6 +635,10 @@ fn run(
     let plane = desc.plane;
     let time = ctx.time();
     let tick = time.tick;
+    // og.AiActionStarted and og.AiActionStopped are sent only once a
+    // behaviour with a game action registered them.
+    let actions = ctx.id_by_name(AiActionStarted::NAME).is_ok()
+        && ctx.id_by_name(AiActionStopped::NAME).is_ok();
     let rate = if time.dt > 0.0 { 1.0 / time.dt } else { 60.0 };
     let mut agents: Vec<Entity> = Vec::new();
     for a in ctx.query(0)? {
@@ -735,6 +819,7 @@ fn run(
         }
         let perception = ctx.get::<Perception>(e).ok();
         let mut mem = st.mems.remove(&key).unwrap_or_default();
+        let mut interrupted: Vec<(u32, String)> = Vec::new();
         if !mem.started || mem.behaviour != agent.behaviour || mem.nodes.len() != b.nodes.len() {
             // A first think, another behaviour or a restart: start afresh, at
             // the speed it started with unless this is its first think.
@@ -743,6 +828,12 @@ fn run(
             } else {
                 nav.map_or(3.5, |a| a.speed)
             };
+            // Game actions the old memory was running stop, interrupted.
+            if let Some(old) = behaviours.get(mem.behaviour) {
+                for (node, name) in tree::running_actions(&old, &mem) {
+                    interrupted.push((node, name));
+                }
+            }
             mem = AgentMem {
                 behaviour: agent.behaviour,
                 ..AgentMem::default()
@@ -839,6 +930,32 @@ fn run(
             })?;
         }
         ctx.set(e, agent)?;
+        // Game actions: what stopped (a restart's first), then what started.
+        if actions {
+            // The parse bounds a name under 64 bytes and the arguments
+            // under 256, so nothing is cut.
+            let text = |t: &str| Str256::new(t).unwrap_or_default();
+            let stops = interrupted
+                .into_iter()
+                .map(|(n, name)| (n, name, tree::AI_INTERRUPTED))
+                .chain(std::mem::take(&mut fx.stopped));
+            for (node, name, result) in stops {
+                ctx.send(AiActionStopped {
+                    entity: key,
+                    node,
+                    name: text(&name),
+                    result,
+                })?;
+            }
+            for (node, name, args) in std::mem::take(&mut fx.started) {
+                ctx.send(AiActionStarted {
+                    entity: key,
+                    node,
+                    name: text(&name),
+                    args: text(&args.join(" ")),
+                })?;
+            }
+        }
         match &desc.sink {
             Some(sink) => {
                 for (c, a) in fx.commands {
@@ -860,6 +977,9 @@ fn run(
 // ── the state block ────────────────────────────────────────────────────────
 
 struct AiBlock(AiSystem);
+
+/// The og.ai trailer's tag for game actions' pending results (G2-4).
+const TAG_RESULTS: u16 = 1;
 
 #[derive(Debug)]
 struct Saved {
@@ -1007,6 +1127,29 @@ impl StateBlock for AiBlock {
             put_f32(o, n.loudness);
             put_u64(o, n.source);
         }
+        // The trailer (og_ecs::trailer), written only when a section has
+        // something: tag 1, game actions the game finished that have not
+        // answered yet.
+        let pending: Vec<(&u64, &AgentMem)> = st
+            .mems
+            .iter()
+            .filter(|(_, m)| !m.results.is_empty())
+            .collect();
+        let mut sections = Vec::new();
+        if !pending.is_empty() {
+            let mut b = Vec::new();
+            put_u32(&mut b, pending.len() as u32);
+            for (k, m) in pending {
+                put_u64(&mut b, *k);
+                put_u32(&mut b, m.results.len() as u32);
+                for (node, ok) in &m.results {
+                    put_u32(&mut b, *node);
+                    b.push(u8::from(*ok));
+                }
+            }
+            sections.push((TAG_RESULTS, b));
+        }
+        og_ecs::trailer::write(o, &sections);
     }
 
     fn decode(&self, bytes: &[u8]) -> Result<Box<dyn Any + Send>> {
@@ -1065,6 +1208,22 @@ impl StateBlock for AiBlock {
                 loudness: r.f32()?,
                 source: r.u64()?,
             });
+        }
+        for (tag, body) in og_ecs::trailer::read(SYSTEM_NAME, &r.b[r.at..])? {
+            if tag == TAG_RESULTS {
+                let mut r = Rd { b: body, at: 0 };
+                for _ in 0..r.u32()? {
+                    let k = r.u64()?;
+                    let mut results = BTreeMap::new();
+                    for _ in 0..r.u32()? {
+                        let node = r.u32()?;
+                        results.insert(node, r.u8()? != 0);
+                    }
+                    if let Some(m) = mems.get_mut(&k) {
+                        m.results = results;
+                    }
+                }
+            }
         }
         let [seen, heard] = maps;
         Ok(Box::new(Saved {

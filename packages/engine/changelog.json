@@ -168,6 +168,10 @@
       {
         "member": "ContactHook",
         "summary": "Contact hooks (G2-3) on a collider's entity: oneWay (solid only from one side, within 45°, what came in from elsewhere passing until clear: a platform jumped through from below), surfaceVelocity (a conveyor), friction and restitution in place of the pair's mean (negative keeps them), and ignore (up to eight entities, colliders or their bodies, it never collides with). The solver reads them from a table frozen at the start of the step, on its worker threads, so they are data rather than game callbacks, the same on both hosts and in replays. A world without hooks steps as before."
+      },
+      {
+        "member": "og.ai game actions, subtrees and utility (G2-4)",
+        "summary": "Behaviour trees gain three nodes. `action <name> args` hands a long action to the game: og.ai sends og.AiActionStarted { entity, node, name, args } and the node stays running until og.ai.finish(world, entity, success, action?) answers it at the next think; when the tree leaves it first (a higher branch, a machine transition, og.ai.restart) og.AiActionStopped carries result AI_INTERRUPTED (new constant, 4). `use \"<path>\"` inlines another cooked behaviour's tree, its keys and routes joined (a differing route of one name, a machine, and a cycle are refused naming the chain; the cook's stamp covers every subtree reached, so editing one re-checks the trees using it; BehaviourInfo.subtrees lists them). `utility { inertia x; option <name> { score ...; nodes } }` runs the option whose score lines multiply highest (constants, or an input mapped by linear, inverse, quadratic, sqrt, smooth or step over a range), the running one gaining inertia, ties to the first written, failing when none scores above 0. Hash and save: the two events are lazy records, registered only once a behaviour with an action is loaded (or a save holding them restored); a finished action's pending result is og.ai's trailer section 1 (og_ecs::trailer), written only while one is pending. A game using none of this keeps its type table, saves and hash (the yard pin is unchanged)."
       }
     ],
     "fixed": [

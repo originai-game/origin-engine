@@ -76,3 +76,70 @@ fn a_check_against_a_tuning_field_cooks_and_a_malformed_one_is_refused_with_its_
         .collect();
     assert_eq!(against, vec!["Tuning.impFleeHp", "reach"]);
 }
+
+const PATROL: &str = "type behaviour\nversion 1\n---\nname \"patrol\"\nkey lap 0\nroute beat {\n  point 0 0 0\n  point 4 0 0\n}\ntree {\n  patrol beat\n}\n";
+
+fn guard(sub: &str) -> String {
+    format!(
+        "type behaviour\nversion 1\n---\nname \"guard\"\ntree {{\n  selector {{\n    sequence fight {{\n      check targetDistance atMost 2\n      command bite\n    }}\n    use \"{sub}\"\n  }}\n}}\n"
+    )
+}
+
+/// `use` through the cook: the subtree is read from the assets root, the
+/// stamp covers it (an edited subtree re-validates the tree using it), and
+/// a cycle through files is refused naming the chain.
+#[test]
+fn use_reads_subtrees_from_files_recooks_on_their_edit_and_refuses_a_cycle() {
+    let guard_text = guard("ai/patrol.ogt");
+    let root = project(
+        "use",
+        &[("ai/patrol.ogt", PATROL), ("ai/guard.ogt", &guard_text)],
+    );
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.errors().is_empty(), "{:?}", report.errors());
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let text = bundle
+        .behaviour_text("ai/guard.ogt", &bundle.read("ai/guard.ogt").unwrap())
+        .unwrap();
+    let mut read = |p: &str| {
+        bundle
+            .behaviour_text(p, &bundle.read(p).map_err(|e| e.to_string())?)
+            .map_err(|e| e.to_string())
+    };
+    let b = Behaviour::parse_with(&text, "ai/guard.ogt", &mut read).unwrap();
+    assert_eq!(b.subtrees, ["ai/patrol.ogt"]);
+    assert!(b.keys.iter().any(|(k, _)| k == "lap"), "the subtree's keys");
+
+    let cooked = |r: &og_cook::Report, src: &str| {
+        r.assets
+            .iter()
+            .find(|a| a.source.ends_with(src))
+            .map(|a| a.outputs.iter().any(|o| o.cooked))
+    };
+    // Unchanged: nothing re-cooks.
+    let again = cook_project(&root, &CookOptions::default()).unwrap();
+    assert_eq!(cooked(&again, "ai/guard.ogt"), Some(false));
+    // The subtree becomes a machine: the guard re-cooks and is refused.
+    let machine = "type behaviour\nversion 1\n---\nmachine {\n  initial idle\n  state idle {\n    wait 1\n  }\n}\n";
+    std::fs::write(root.join("assets/ai/patrol.ogt"), machine).unwrap();
+    let edited = cook_project(&root, &CookOptions::default()).unwrap();
+    let errors = edited.errors();
+    assert!(
+        errors
+            .iter()
+            .any(|e| e.starts_with("assets/ai/guard.ogt") && e.contains("is a machine")),
+        "{errors:?}"
+    );
+
+    // a → b → a.
+    let a = "type behaviour\nversion 1\n---\ntree {\n  use \"ai/b.ogt\"\n}\n";
+    let b = "type behaviour\nversion 1\n---\ntree {\n  use \"ai/a.ogt\"\n}\n";
+    let root = project("use-cycle", &[("ai/a.ogt", a), ("ai/b.ogt", b)]);
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    let errors = report.errors();
+    assert!(
+        errors.iter().any(|e| e.starts_with("assets/ai/a.ogt")
+            && e.contains("use makes a cycle: ai/a.ogt → ai/b.ogt → ai/a.ogt")),
+        "{errors:?}"
+    );
+}

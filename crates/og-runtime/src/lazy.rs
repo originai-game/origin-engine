@@ -36,6 +36,15 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: "og.Crowd",
         enable: og_nav::enable_crowds,
     },
+    // G2-4: og.ai sends them once a behaviour with a game action is loaded.
+    Lazy {
+        name: "og.AiActionStarted",
+        enable: og_ai::enable_action_started,
+    },
+    Lazy {
+        name: "og.AiActionStopped",
+        enable: og_ai::enable_action_stopped,
+    },
     // G2-4: og.nav sends it once a navmesh has an off-mesh link.
     Lazy {
         name: "og.NavLinkReached",

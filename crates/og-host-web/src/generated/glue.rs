@@ -1524,6 +1524,11 @@ pub fn og_ai_restart(world: u32, entity: f64) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_ai_finish(world: u32, entity: f64, success: bool, action: Option<String>) -> bool {
+    <Host as AiApi>::og_ai_finish(&Host, world, entity, success, action)
+}
+
+#[wasm_bindgen]
 pub fn og_ai_noise(world: u32, desc: Option<String>) -> String {
     <Host as AiApi>::og_ai_noise(&Host, world, desc)
 }

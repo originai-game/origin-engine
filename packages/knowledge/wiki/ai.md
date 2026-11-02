@@ -29,18 +29,22 @@ module ai {
 | [`AI_RUNNING`](#const-AI_RUNNING) | constant | AiAgent.status: the tree or state is still running. |
 | [`AI_SUCCESS`](#const-AI_SUCCESS) | constant | AiAgent.status: the tree succeeded on the last think. |
 | [`AI_FAILURE`](#const-AI_FAILURE) | constant | AiAgent.status: the tree failed on the last think. |
+| [`AI_INTERRUPTED`](#const-AI_INTERRUPTED) | constant | AiActionStopped.result: the action stopped before the game finished it (another branch won, the state changed, the agent restarted). |
 | [`og.AiAgent`](#record-AiAgent) | component | An entity that thinks with a behaviour. Give it an og.NavAgent to move and an og.Perception to see and hear. |
 | [`og.Perception`](#record-Perception) | component | What an agent sees and hears. It sees the nearest og.Perceivable of another team within `sight`, inside the `fov` cone around `forward` (or the way it last moved), unless a collider is in the way; it hears a spatial sound that starts (og.SoundStarted) or a game noise (og.ai.noise) within `hearing` times its loudness, except its own: a sound of its entity or of an entity under it (og.Parent), or a noise whose NoiseDesc.source is one of them. |
 | [`og.Perceivable`](#record-Perceivable) | component | Something agents of other teams can see. |
 | [`og.AiChanged`](#record-AiChanged) | event | An agent's state or running node changed (systems read it the tick after). |
+| [`og.AiActionStarted`](#record-AiActionStarted) | event | A game action (`action <name> args` in a behaviour) started: play it (a reload, a door, a line of dialogue) and call og.ai.finish when it is over; until then the node runs. Read the tick after. Joins the world's types only once a behaviour with a game action is loaded. |
+| [`og.AiActionStopped`](#record-AiActionStopped) | event | A game action stopped: the game finished it (og.ai.finish), or the behaviour moved on first (stop playing it). Read the tick after. |
 | [`BehaviourInfo`](#type-BehaviourInfo) | struct | A loaded behaviour. |
 | [`NoiseDesc`](#type-NoiseDesc) | desc struct | A noise agents may hear next tick. |
 | [`AiDescription`](#type-AiDescription) | struct | What an agent is doing. |
-| [`og.ai.load`](#fn-load) | function | A cooked behaviour (an `.ogt` of `type behaviour`, validated by og cook). |
-| [`og.ai.parse`](#fn-parse) | function | A behaviour from text, now (tests and generated behaviours; assets go through og cook). |
+| [`og.ai.load`](#fn-load) | function | A cooked behaviour (an `.ogt` of `type behaviour`, validated by og cook); its `use` subtrees are read from their own cooked assets. |
+| [`og.ai.parse`](#fn-parse) | function | A behaviour from text, now (tests and generated behaviours; assets go through og cook). Its `use` subtrees are read from cooked assets. |
 | [`og.ai.get`](#fn-get) | function | A blackboard value of an agent as of its last think. |
 | [`og.ai.set`](#fn-set) | function | Set a blackboard value of an agent: a number, a boolean, a point `{x, y, z}` or an entity handle `{entity}`. |
 | [`og.ai.restart`](#fn-restart) | function | Start an agent's behaviour afresh at its next think, as a new behaviour would: a machine in its initial state (its enter actions run again), a tree at its root, every timer and cooldown reset, the blackboard back to the declared keys, wander's centre where it then stands, and what it saw and heard forgotten. Actions without a speed keep the speed it first started with. For a new run or a respawn; an agent that has not thought yet starts afresh anyway. |
+| [`og.ai.finish`](#fn-finish) | function | End an agent's running game actions (og.AiActionStarted): each answers success or failure at the agent's next think and sends og.AiActionStopped. With `action`, only the running ones of that name. World state, in saves. |
 | [`og.ai.noise`](#fn-noise) | function | Make a noise agents may hear next tick (a gunshot, a door, a thrown stone). |
 | [`og.ai.describe`](#fn-describe) | function | What an agent is doing: its state, the node it runs and the path to it, its status, its blackboard and its target. |
 
@@ -50,7 +54,7 @@ module ai {
 
 ### `og.ai.load`
 
-A cooked behaviour (an `.ogt` of `type behaviour`, validated by og cook).
+A cooked behaviour (an `.ogt` of `type behaviour`, validated by og cook); its `use` subtrees are read from their own cooked assets.
 
 ```ts
 og.ai.load(world: World, path: string): Result<BehaviourInfo>
@@ -67,20 +71,20 @@ Binding symbol `og_ai_load` · publish builds: kept
 
 ```ogt
 fn load {
-  doc "A cooked behaviour (an `.ogt` of `type behaviour`, validated by og cook)."
+  doc "A cooked behaviour (an `.ogt` of `type behaviour`, validated by og cook); its `use` subtrees are read from their own cooked assets."
   param world World "The world."
   param path String "The behaviour asset, such as `ai/slime.ogt`."
   returns Result.BehaviourInfo "Refused for a path that is not a cooked behaviour."
 }
 ```
 
-<sub>`api.ogt` line 12084</sub>
+<sub>`api.ogt` line 12102</sub>
 
 <a id="fn-parse"></a>
 
 ### `og.ai.parse`
 
-A behaviour from text, now (tests and generated behaviours; assets go through og cook).
+A behaviour from text, now (tests and generated behaviours; assets go through og cook). Its `use` subtrees are read from cooked assets.
 
 ```ts
 og.ai.parse(world: World, text: string): Result<BehaviourInfo>
@@ -97,14 +101,14 @@ Binding symbol `og_ai_parse` · publish builds: kept
 
 ```ogt
 fn parse {
-  doc "A behaviour from text, now (tests and generated behaviours; assets go through og cook)."
+  doc "A behaviour from text, now (tests and generated behaviours; assets go through og cook). Its `use` subtrees are read from cooked assets."
   param world World "The world."
   param text String "The behaviour's `.ogt` text."
   returns Result.BehaviourInfo "Refused with the first error's line and the fix."
 }
 ```
 
-<sub>`api.ogt` line 12091</sub>
+<sub>`api.ogt` line 12109</sub>
 
 <a id="fn-get"></a>
 
@@ -136,7 +140,7 @@ fn get {
 }
 ```
 
-<sub>`api.ogt` line 12098</sub>
+<sub>`api.ogt` line 12116</sub>
 
 <a id="fn-set"></a>
 
@@ -170,7 +174,7 @@ fn set {
 }
 ```
 
-<sub>`api.ogt` line 12106</sub>
+<sub>`api.ogt` line 12124</sub>
 
 <a id="fn-restart"></a>
 
@@ -200,7 +204,43 @@ fn restart {
 }
 ```
 
-<sub>`api.ogt` line 12115</sub>
+<sub>`api.ogt` line 12133</sub>
+
+<a id="fn-finish"></a>
+
+### `og.ai.finish`
+
+End an agent's running game actions (og.AiActionStarted): each answers success or failure at the agent's next think and sends og.AiActionStopped. With `action`, only the running ones of that name. World state, in saves.
+
+```ts
+og.ai.finish(world: World, entity: Entity, success: boolean, action?: string): boolean
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `entity` | `Entity` | no | The agent. |
+| `success` | `boolean` | no | Whether it worked: the node succeeds, or fails. |
+| `action` | `string` | yes | The action's name; omitted: every game action it runs. |
+
+**Returns** `boolean`: False when it runs no such action.
+
+Binding symbol `og_ai_finish` · publish builds: kept
+
+```ogt
+fn finish {
+  doc "End an agent's running game actions (og.AiActionStarted): each answers success or failure at the agent's next think and sends og.AiActionStopped. With `action`, only the running ones of that name. World state, in saves."
+  param world World "The world."
+  param entity Entity "The agent."
+  param success bool "Whether it worked: the node succeeds, or fails."
+  param action String "The action's name; omitted: every game action it runs." {
+    optional true
+  }
+  returns bool "False when it runs no such action."
+}
+```
+
+<sub>`api.ogt` line 12140</sub>
 
 <a id="fn-noise"></a>
 
@@ -230,7 +270,7 @@ fn noise {
 }
 ```
 
-<sub>`api.ogt` line 12122</sub>
+<sub>`api.ogt` line 12151</sub>
 
 <a id="fn-describe"></a>
 
@@ -260,7 +300,7 @@ fn describe {
 }
 ```
 
-<sub>`api.ogt` line 12129</sub>
+<sub>`api.ogt` line 12158</sub>
 
 ## Components, resources and events
 
@@ -310,7 +350,7 @@ component AiAgent {
 }
 ```
 
-<sub>`api.ogt` line 11931</sub>
+<sub>`api.ogt` line 11932</sub>
 
 <a id="record-Perception"></a>
 
@@ -411,7 +451,7 @@ component Perception {
 }
 ```
 
-<sub>`api.ogt` line 11957</sub>
+<sub>`api.ogt` line 11958</sub>
 
 <a id="record-Perceivable"></a>
 
@@ -440,7 +480,7 @@ component Perceivable {
 }
 ```
 
-<sub>`api.ogt` line 12027</sub>
+<sub>`api.ogt` line 12028</sub>
 
 <a id="record-AiChanged"></a>
 
@@ -467,7 +507,61 @@ event AiChanged {
 }
 ```
 
-<sub>`api.ogt` line 12039</sub>
+<sub>`api.ogt` line 12040</sub>
+
+<a id="record-AiActionStarted"></a>
+
+### `og.AiActionStarted` (event)
+
+A game action (`action <name> args` in a behaviour) started: play it (a reload, a door, a line of dialogue) and call og.ai.finish when it is over; until then the node runs. Read the tick after. Joins the world's types only once a behaviour with a game action is loaded.
+
+Token `og.AiActionStarted`, registered under the schema name `og.AiActionStarted`; its value type is `AiActionStarted`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `entity` | `Entity` | `0` | — | — | — | The agent. |
+| `node` | `number` | `0` | — | — | — | The action's node, an index into BehaviourInfo.nodes. |
+| `name` | `string` | `""` | — | — | — | The action's name (at most 63 bytes). |
+| `args` | `string` | `""` | — | — | — | Its arguments as written, separated by spaces (at most 255 bytes; longer ones are refused when the behaviour is parsed). |
+
+```ogt
+event AiActionStarted {
+  doc "A game action (`action <name> args` in a behaviour) started: play it (a reload, a door, a line of dialogue) and call og.ai.finish when it is over; until then the node runs. Read the tick after. Joins the world's types only once a behaviour with a game action is loaded."
+  field entity Entity "The agent."
+  field node u32 "The action's node, an index into BehaviourInfo.nodes."
+  field name String "The action's name (at most 63 bytes)."
+  field args String "Its arguments as written, separated by spaces (at most 255 bytes; longer ones are refused when the behaviour is parsed)."
+}
+```
+
+<sub>`api.ogt` line 12048</sub>
+
+<a id="record-AiActionStopped"></a>
+
+### `og.AiActionStopped` (event)
+
+A game action stopped: the game finished it (og.ai.finish), or the behaviour moved on first (stop playing it). Read the tick after.
+
+Token `og.AiActionStopped`, registered under the schema name `og.AiActionStopped`; its value type is `AiActionStopped`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `entity` | `Entity` | `0` | — | — | — | The agent. |
+| `node` | `number` | `0` | — | — | — | The action's node. |
+| `name` | `string` | `""` | — | — | — | The action's name (at most 63 bytes). |
+| `result` | `number` | `0` | — | — | — | AI_SUCCESS or AI_FAILURE, as og.ai.finish said, or AI_INTERRUPTED. |
+
+```ogt
+event AiActionStopped {
+  doc "A game action stopped: the game finished it (og.ai.finish), or the behaviour moved on first (stop playing it). Read the tick after."
+  field entity Entity "The agent."
+  field node u32 "The action's node."
+  field name String "The action's name (at most 63 bytes)."
+  field result u32 "AI_SUCCESS or AI_FAILURE, as og.ai.finish said, or AI_INTERRUPTED."
+}
+```
+
+<sub>`api.ogt` line 12056</sub>
 
 ## Types
 
@@ -498,7 +592,8 @@ A loaded behaviour.
 | `kind` | `string` | `""` | — | — | — | tree or machine. |
 | `states` | `readonly string[]` | `[]` | — | — | — | A machine's states, by index (AiAgent.state). |
 | `nodes` | `readonly string[]` | `[]` | — | — | — | Its nodes' names, by index (AiAgent.node). |
-| `keys` | `readonly string[]` | `[]` | — | — | — | Its declared blackboard keys. |
+| `keys` | `readonly string[]` | `[]` | — | — | — | Its declared blackboard keys (its subtrees' too). |
+| `subtrees` | `readonly string[]` | `[]` | — | — | — | The behaviours its `use` nodes inline, every one reached, in the order first met. |
 
 ```ogt
 struct BehaviourInfo {
@@ -508,11 +603,12 @@ struct BehaviourInfo {
   field kind String "tree or machine."
   field states List.String "A machine's states, by index (AiAgent.state)."
   field nodes List.String "Its nodes' names, by index (AiAgent.node)."
-  field keys List.String "Its declared blackboard keys."
+  field keys List.String "Its declared blackboard keys (its subtrees' too)."
+  field subtrees List.String "The behaviours its `use` nodes inline, every one reached, in the order first met."
 }
 ```
 
-<sub>`api.ogt` line 12047</sub>
+<sub>`api.ogt` line 12064</sub>
 
 <a id="type-NoiseDesc"></a>
 
@@ -544,7 +640,7 @@ struct NoiseDesc {
 }
 ```
 
-<sub>`api.ogt` line 12057</sub>
+<sub>`api.ogt` line 12075</sub>
 
 <a id="type-AiDescription"></a>
 
@@ -579,7 +675,7 @@ struct AiDescription {
 }
 ```
 
-<sub>`api.ogt` line 12071</sub>
+<sub>`api.ogt` line 12089</sub>
 
 ## Column kinds
 
@@ -607,6 +703,7 @@ column Behaviour {
 | <a id="const-AI_RUNNING"></a>`AI_RUNNING` | `number` | `1` | AiAgent.status: the tree or state is still running. |
 | <a id="const-AI_SUCCESS"></a>`AI_SUCCESS` | `number` | `2` | AiAgent.status: the tree succeeded on the last think. |
 | <a id="const-AI_FAILURE"></a>`AI_FAILURE` | `number` | `3` | AiAgent.status: the tree failed on the last think. |
+| <a id="const-AI_INTERRUPTED"></a>`AI_INTERRUPTED` | `number` | `4` | AiActionStopped.result: the action stopped before the game finished it (another branch won, the state changed, the agent restarted). |
 
 ```ogt
 const AI_RUNNING u32 1 "AiAgent.status: the tree or state is still running."
@@ -625,3 +722,9 @@ const AI_FAILURE u32 3 "AiAgent.status: the tree failed on the last think."
 ```
 
 <sub>`api.ogt` line 11929</sub>
+
+```ogt
+const AI_INTERRUPTED u32 4 "AiActionStopped.result: the action stopped before the game finished it (another branch won, the state changed, the agent restarted)."
+```
+
+<sub>`api.ogt` line 11930</sub>

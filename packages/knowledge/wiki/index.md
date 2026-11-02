@@ -158,7 +158,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1951 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1955 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -183,6 +183,7 @@ Field units the docs and Tune use.
 | [`ActionState`](input.md#type-ActionState) | struct | input | — |
 | [`AdvanceOperation`](probe.md#type-AdvanceOperation) | struct | probe | — |
 | [`AI_FAILURE`](ai.md#const-AI_FAILURE) | constant | ai | — |
+| [`AI_INTERRUPTED`](ai.md#const-AI_INTERRUPTED) | constant | ai | — |
 | [`AI_RUNNING`](ai.md#const-AI_RUNNING) | constant | ai | — |
 | [`AI_SUCCESS`](ai.md#const-AI_SUCCESS) | constant | ai | — |
 | [`AiDescription`](ai.md#type-AiDescription) | struct | ai | — |
@@ -766,12 +767,15 @@ Field units the docs and Tune use.
 | [`og.A11yAction`](input.md#record-A11yAction) | event | input | — |
 | [`og.Afterimage`](render.md#record-Afterimage) | component | render | — |
 | [`og.ai.describe`](ai.md#fn-describe) | function | ai | `og_ai_describe` |
+| [`og.ai.finish`](ai.md#fn-finish) | function | ai | `og_ai_finish` |
 | [`og.ai.get`](ai.md#fn-get) | function | ai | `og_ai_get` |
 | [`og.ai.load`](ai.md#fn-load) | function | ai | `og_ai_load` |
 | [`og.ai.noise`](ai.md#fn-noise) | function | ai | `og_ai_noise` |
 | [`og.ai.parse`](ai.md#fn-parse) | function | ai | `og_ai_parse` |
 | [`og.ai.restart`](ai.md#fn-restart) | function | ai | `og_ai_restart` |
 | [`og.ai.set`](ai.md#fn-set) | function | ai | `og_ai_set` |
+| [`og.AiActionStarted`](ai.md#record-AiActionStarted) | event | ai | — |
+| [`og.AiActionStopped`](ai.md#record-AiActionStopped) | event | ai | — |
 | [`og.AiAgent`](ai.md#record-AiAgent) | component | ai | — |
 | [`og.AiChanged`](ai.md#record-AiChanged) | event | ai | — |
 | [`og.anim.clip`](anim.md#fn-clip) | function | anim | — |

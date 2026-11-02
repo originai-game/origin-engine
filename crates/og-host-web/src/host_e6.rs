@@ -93,6 +93,10 @@ impl AiApi for WebHost {
     fn og_ai_restart(&self, world: u32, entity: f64) -> String {
         rt::og_ai_restart(world, entity)
     }
+
+    fn og_ai_finish(&self, world: u32, entity: f64, success: bool, action: Option<String>) -> bool {
+        rt::og_ai_finish(world, entity, success, action)
+    }
     fn og_ai_describe(&self, world: u32, entity: f64) -> String {
         rt::og_ai_describe(world, entity)
     }

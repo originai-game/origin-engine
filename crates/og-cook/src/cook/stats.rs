@@ -639,13 +639,20 @@ fn other_stats(bundle: &Bundle, id: &str, ty: &str) -> Result<Option<(String, Va
             )
         }
         "og.Behaviour" => {
-            let b = og_ai::Behaviour::parse(&bundle.behaviour_text(id, &bytes()?).map_err(e)?)?;
+            let text = bundle.behaviour_text(id, &bytes()?).map_err(e)?;
+            let mut read = |p: &str| {
+                let id = crate::runtime::asset_id(p);
+                let blob = bundle.read(id).map_err(|e| e.to_string())?;
+                bundle.behaviour_text(id, &blob).map_err(|e| e.to_string())
+            };
+            let b = og_ai::Behaviour::parse_with(&text, id, &mut read)?;
             (
                 "behaviour",
                 json!({
                     "nodes": b.nodes.len(),
                     "keys": b.keys.len(),
                     "routes": b.routes.len(),
+                    "subtrees": b.subtrees,
                 }),
             )
         }

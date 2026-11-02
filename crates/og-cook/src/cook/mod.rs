@@ -993,7 +993,9 @@ pub fn cook_project_with_texture_cache(
                 }
             }
             Kind::Behaviour => {
-                let st = stamp(&[b"behaviour", &hash]);
+                // The stamp covers every subtree its `use` nodes reach.
+                let deps = e6::behaviour_dependencies(s);
+                let st = stamp(&[b"behaviour", &hash, deps.as_bytes()]);
                 outs.push((
                     s.rel.clone(),
                     format::Behaviour::NAME,

@@ -41,10 +41,19 @@ fn info(h: u64, b: &Behaviour) -> Value {
         "behaviour": h, "name": b.name, "kind": kind, "states": states,
         "nodes": b.nodes.iter().map(|n| n.name.clone()).collect::<Vec<_>>(),
         "keys": b.keys.iter().map(|k| k.0.clone()).collect::<Vec<_>>(),
+        "subtrees": b.subtrees,
     })
 }
 
 fn insert(world: u32, b: Behaviour) -> Result<Value, String> {
+    // A behaviour with a game action: og.AiActionStarted and
+    // og.AiActionStopped join the world (lazy records).
+    if og_ai::has_actions(&b) {
+        let eng = engine(world)?;
+        for name in ["og.AiActionStarted", "og.AiActionStopped"] {
+            super::lazy::ensure(&eng, eng.world()?, name)?;
+        }
+    }
     let reg = super::e6::with(world, |m| m.behaviours.clone())
         .ok_or_else(|| format!("no engine {world}"))?;
     let mut r = reg.lock().unwrap_or_else(|e| e.into_inner());
@@ -53,23 +62,42 @@ fn insert(world: u32, b: Behaviour) -> Result<Value, String> {
     Ok(info(h, &b))
 }
 
+/// A cooked behaviour's text (what `use` subtrees read).
+fn cooked_text(world: u32, path: &str) -> Result<String, String> {
+    let eng = engine(world)?;
+    let id = og_bundle::runtime::asset_id(path).to_string();
+    let assets = eng.assets.borrow();
+    let (bytes, bundle) = assets.blob(&id)?;
+    bundle
+        .behaviour_text(&id, bytes.bytes())
+        .map_err(|e| e.to_string())
+}
+
 pub fn og_ai_load(world: u32, path: String) -> String {
-    wire(engine(world).and_then(|eng| {
+    wire((|| {
         let id = og_bundle::runtime::asset_id(&path).to_string();
-        let text = {
-            let assets = eng.assets.borrow();
-            let (bytes, bundle) = assets.blob(&id)?;
-            bundle
-                .behaviour_text(&id, bytes.bytes())
-                .map_err(|e| e.to_string())?
-        };
-        let b = Behaviour::parse(&text).map_err(|e| format!("{id}: {e}"))?;
+        let text = cooked_text(world, &id)?;
+        let mut read = |p: &str| cooked_text(world, p);
+        let b = Behaviour::parse_with(&text, &id, &mut read).map_err(|e| format!("{id}: {e}"))?;
         insert(world, b)
-    }))
+    })())
 }
 
 pub fn og_ai_parse(world: u32, text: String) -> String {
-    wire(engine(world).and_then(|_| insert(world, Behaviour::parse(&text)?)))
+    wire(engine(world).and_then(|_| {
+        let mut read = |p: &str| cooked_text(world, p);
+        insert(world, Behaviour::parse_with(&text, "", &mut read)?)
+    }))
+}
+
+pub fn og_ai_finish(world: u32, entity: f64, success: bool, action: Option<String>) -> bool {
+    system(world).is_some_and(|s| {
+        s.finish(
+            Entity::from_bits(handle(entity)),
+            success,
+            action.as_deref(),
+        )
+    })
 }
 
 fn to_json(v: AiValue) -> Value {

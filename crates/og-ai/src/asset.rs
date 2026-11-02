@@ -183,6 +183,77 @@ pub enum Action {
         args: Vec<String>,
         cooldown: f32,
     },
+    /// A game action (`action <name> args`): running from when it starts
+    /// (og.AiActionStarted) until the game ends it with og.ai.finish, then
+    /// success or failure as the game said (og.AiActionStopped).
+    Game { name: String, args: Vec<String> },
+}
+
+/// How a consideration's input maps onto its score: `t` is the input
+/// placed between `lo` (0) and `hi` (1) and clamped to that range.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Curve {
+    /// `t`.
+    Linear,
+    /// `1 - t`.
+    Inverse,
+    /// `t * t`: low inputs matter little.
+    Quadratic,
+    /// `sqrt t`: low inputs already matter.
+    Sqrt,
+    /// `3t² - 2t³`: an S between the two ends.
+    Smooth,
+    /// 1 from `hi` on, else 0.
+    Step,
+}
+
+impl Curve {
+    const NAMES: &[(&str, Curve)] = &[
+        ("linear", Curve::Linear),
+        ("inverse", Curve::Inverse),
+        ("quadratic", Curve::Quadratic),
+        ("sqrt", Curve::Sqrt),
+        ("smooth", Curve::Smooth),
+        ("step", Curve::Step),
+    ];
+
+    /// The score for input `v` between `lo` and `hi` (plain f32 arithmetic and sqrt).
+    pub fn score(self, v: f32, lo: f32, hi: f32) -> f32 {
+        let t = if hi != lo {
+            (v - lo) / (hi - lo)
+        } else if v >= hi {
+            1.0
+        } else {
+            0.0
+        };
+        let t = if t.is_nan() { 0.0 } else { t.clamp(0.0, 1.0) };
+        match self {
+            Curve::Linear => t,
+            Curve::Inverse => 1.0 - t,
+            Curve::Quadratic => t * t,
+            Curve::Sqrt => t.sqrt(),
+            Curve::Smooth => t * t * (3.0 - 2.0 * t),
+            Curve::Step => {
+                if t >= 1.0 {
+                    1.0
+                } else {
+                    0.0
+                }
+            }
+        }
+    }
+}
+
+/// One factor of a utility option's score: a constant, or a key or field
+/// read each think through a curve.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Consideration {
+    /// None: `constant`.
+    pub operand: Option<String>,
+    pub constant: f32,
+    pub curve: Curve,
+    pub lo: f32,
+    pub hi: f32,
 }
 
 /// One node of a tree.
@@ -215,6 +286,21 @@ pub enum Kind {
     },
     Check(Check),
     Action(Action),
+    /// Another behaviour's tree, inlined (`use "ai/patrol.ogt"`): its one child.
+    Subtree {
+        path: String,
+    },
+    /// Its children are options; each think the option with the highest
+    /// score runs (the running one gets `inertia` more; ties to the first;
+    /// none above 0 fails).
+    Utility {
+        inertia: f32,
+    },
+    /// A utility's option: its score is the product of its considerations;
+    /// its children run as a sequence.
+    Option {
+        scores: Vec<Consideration>,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -262,7 +348,13 @@ pub struct Behaviour {
     pub routes: Vec<(String, Vec<Vec3>)>,
     pub nodes: Vec<Node>,
     pub root: Root,
+    /// The behaviours its `use` nodes inline, every one reached, in the
+    /// order first met.
+    pub subtrees: Vec<String>,
 }
+
+/// Reads a subtree's text by its asset path (`use "ai/patrol.ogt"`).
+pub type Resolve<'a> = &'a mut dyn FnMut(&str) -> Result<String, String>;
 
 /// The keys og.ai writes every tick from the agent's perception and body.
 pub const BUILTIN_KEYS: &[&str] = &[
@@ -422,16 +514,98 @@ pub(crate) fn parse_check(e: &Entry) -> Result<Check, String> {
     })
 }
 
-struct Parser {
+struct Parser<'r, 'a> {
     nodes: Vec<Node>,
     routes: Vec<(String, Vec<Vec3>)>,
+    /// Keys the subtrees declare that the behaviour does not.
+    keys: Vec<(String, Value)>,
+    subtrees: Vec<String>,
+    resolve: Option<&'r mut Resolve<'a>>,
+    /// The files whose `use` led here, the behaviour's own first.
+    chain: Vec<String>,
 }
 
-impl Parser {
+fn parse_consideration(e: &Entry) -> Result<Consideration, String> {
+    let bad = || {
+        err(
+            e,
+            "score takes a constant (`score 0.3`) or an input, a curve and its range: `score targetDistance inverse 0 10` (curves: linear, inverse, quadratic, sqrt, smooth, step)",
+        )
+    };
+    match e.values.as_slice() {
+        [v] => {
+            let c = num(v).ok_or_else(bad)? as f32;
+            Ok(Consideration {
+                operand: None,
+                constant: c,
+                curve: Curve::Linear,
+                lo: 0.0,
+                hi: 1.0,
+            })
+        }
+        [o, c, lo, hi] => {
+            let operand = word_or_string(o).ok_or_else(bad)?.to_string();
+            let curve_word = c.as_word().ok_or_else(bad)?;
+            let curve = Curve::NAMES
+                .iter()
+                .find(|(n, _)| *n == curve_word)
+                .map(|(_, c)| *c)
+                .ok_or_else(|| {
+                    err(
+                        e,
+                        format!(
+                            "'{curve_word}' is not a curve: linear, inverse, quadratic, sqrt, smooth or step"
+                        ),
+                    )
+                })?;
+            Ok(Consideration {
+                operand: Some(operand),
+                constant: 0.0,
+                curve,
+                lo: num(lo).ok_or_else(bad)? as f32,
+                hi: num(hi).ok_or_else(bad)? as f32,
+            })
+        }
+        _ => Err(bad()),
+    }
+}
+
+impl Parser<'_, '_> {
     fn action(&self, e: &Entry) -> Result<Option<Action>, String> {
         let b = e.block.as_ref();
         let arg = e.values.first().and_then(word_or_string);
         Ok(Some(match e.key.as_str() {
+            "action" => {
+                check_options(e, &[])?;
+                let name = e
+                    .values
+                    .first()
+                    .and_then(word_or_string)
+                    .filter(|n| !n.is_empty() && n.len() < 64)
+                    .ok_or_else(|| {
+                        err(
+                            e,
+                            "action takes a name (under 64 bytes) and the game's arguments: action reload 2",
+                        )
+                    })?
+                    .to_string();
+                let args = e.values[1..]
+                    .iter()
+                    .map(|v| {
+                        v.as_number().map_or_else(
+                            || word_or_string(v).unwrap_or("").to_string(),
+                            |n| n.text().to_string(),
+                        )
+                    })
+                    .collect::<Vec<String>>();
+                if args.join(" ").len() > 255 {
+                    return Err(err(
+                        e,
+                        "an action's arguments are at most 255 bytes, written with a space between them (og.AiActionStarted carries them)",
+                    ));
+                }
+                Action::Game { name, args }
+            }
             "move_to" => {
                 check_options(e, &["speed"])?;
                 if e.values.len() == 3 {
@@ -628,6 +802,44 @@ impl Parser {
             Ok(p.nodes.len() - 1)
         };
         match e.key.as_str() {
+            "use" => self.subtree(e),
+            "utility" => {
+                let b = e
+                    .block
+                    .as_ref()
+                    .ok_or_else(|| err(e, "utility needs a block of `option <name> { ... }`"))?;
+                let mut inertia = 0.0;
+                let mut children = Vec::new();
+                for c in &b.entries {
+                    match c.key.as_str() {
+                        "inertia" => {
+                            inertia = c.f32(0).map_err(|_| {
+                                err(c, "inertia takes the score the running option gains")
+                            })?
+                        }
+                        "option" => children.push(self.option(c)?),
+                        other => {
+                            return Err(err(
+                                c,
+                                format!("'{other}' is not a utility entry: inertia or option"),
+                            ));
+                        }
+                    }
+                }
+                if children.is_empty() {
+                    return Err(err(e, "utility needs at least one option"));
+                }
+                self.nodes.push(Node {
+                    kind: Kind::Utility { inertia },
+                    name: match label {
+                        Some(l) => format!("utility {l}"),
+                        None => "utility".into(),
+                    },
+                    children,
+                    line: e.line,
+                });
+                Ok(self.nodes.len() - 1)
+            }
             "selector" => composite(self, Kind::Selector, e),
             "sequence" => composite(self, Kind::Sequence, e),
             "steps" => composite(self, Kind::Steps, e),
@@ -707,7 +919,7 @@ impl Parser {
                 None => Err(err(
                     e,
                     format!(
-                        "'{}' is not a node: selector, sequence, steps, parallel, invert, succeed, repeat, cooldown, timeout, check, move_to, chase, flee, patrol, wander, wait, stop, set or command",
+                        "'{}' is not a node: selector, sequence, steps, parallel, utility, invert, succeed, repeat, cooldown, timeout, check, use, move_to, chase, flee, patrol, wander, wait, stop, set, command or action",
                         e.key
                     ),
                 )),
@@ -726,8 +938,25 @@ fn describe(v: Value) -> String {
 }
 
 impl Behaviour {
-    /// Parses and validates a behaviour's text.
+    /// Parses and validates a behaviour's text; `use` is refused (it
+    /// needs [`Behaviour::parse_with`]).
     pub fn parse(text: &str) -> Result<Behaviour, String> {
+        Self::parse_inner(text, None, vec![String::new()])
+    }
+
+    /// Parses a behaviour whose `use` nodes read other behaviours through
+    /// `resolve` (by asset path). `own` is its own path (empty for text),
+    /// so a cycle back to it is refused naming the chain.
+    pub fn parse_with(text: &str, own: &str, resolve: Resolve<'_>) -> Result<Behaviour, String> {
+        let mut r = resolve;
+        Self::parse_inner(text, Some(&mut r), vec![own.to_string()])
+    }
+
+    fn parse_inner(
+        text: &str,
+        resolve: Option<&mut Resolve<'_>>,
+        chain: Vec<String>,
+    ) -> Result<Behaviour, String> {
         let doc = Document::parse(text).map_err(|e| e.to_string())?;
         if doc.ty != BEHAVIOUR_TYPE {
             return Err(format!(
@@ -804,6 +1033,10 @@ impl Behaviour {
         let mut p = Parser {
             nodes: Vec::new(),
             routes,
+            keys: keys.clone(),
+            subtrees: Vec::new(),
+            resolve,
+            chain,
         };
         let root = match (body.get("tree"), body.get("machine")) {
             (Some(_), Some(m)) => {
@@ -824,10 +1057,11 @@ impl Behaviour {
         };
         Ok(Behaviour {
             name,
-            keys,
+            keys: p.keys,
             routes: p.routes,
             nodes: p.nodes,
             root,
+            subtrees: p.subtrees,
         })
     }
 
@@ -838,37 +1072,169 @@ impl Behaviour {
 
     /// Every operand a check names (either side) that is not a key: `Component.field` or `Resource.field`.
     pub fn field_operands(&self) -> Vec<String> {
-        let mut out = Vec::new();
-        let mut push = |c: &Check| {
-            for o in std::iter::once(&c.operand).chain(c.against.as_ref()) {
-                if !self.keys.iter().any(|k| &k.0 == o)
-                    && !BUILTIN_KEYS.contains(&o.as_str())
-                    && o.contains('.')
-                    && !out.contains(o)
-                {
-                    out.push(o.clone());
-                }
-            }
-        };
+        let mut named: Vec<&String> = Vec::new();
         for n in &self.nodes {
-            if let Kind::Check(c) = &n.kind {
-                push(c);
+            match &n.kind {
+                Kind::Check(c) => named.extend(std::iter::once(&c.operand).chain(&c.against)),
+                Kind::Option { scores } => {
+                    named.extend(scores.iter().filter_map(|f| f.operand.as_ref()))
+                }
+                _ => {}
             }
         }
         if let Root::Machine { states, .. } = &self.root {
-            for s in states {
-                for t in &s.transitions {
-                    for c in &t.checks {
-                        push(c);
-                    }
-                }
+            for c in states
+                .iter()
+                .flat_map(|s| &s.transitions)
+                .flat_map(|t| &t.checks)
+            {
+                named.extend(std::iter::once(&c.operand).chain(&c.against));
+            }
+        }
+        let mut out: Vec<String> = Vec::new();
+        for o in named {
+            if !self.keys.iter().any(|k| &k.0 == o)
+                && !BUILTIN_KEYS.contains(&o.as_str())
+                && o.contains('.')
+                && !out.contains(o)
+            {
+                out.push(o.clone());
             }
         }
         out
     }
 }
 
-impl Parser {
+impl Parser<'_, '_> {
+    /// `option <name> { score ...; nodes }`.
+    fn option(&mut self, e: &Entry) -> Result<usize, String> {
+        let label = e
+            .values
+            .first()
+            .and_then(word_or_string)
+            .ok_or_else(|| err(e, "option takes a name: option attack { ... }"))?
+            .to_string();
+        let b = e
+            .block
+            .as_ref()
+            .ok_or_else(|| err(e, "option needs a block: its scores, then its nodes"))?;
+        let mut scores = Vec::new();
+        let mut children = Vec::new();
+        for c in &b.entries {
+            if c.key == "score" {
+                scores.push(parse_consideration(c)?);
+            } else {
+                children.push(self.node(c)?);
+            }
+        }
+        if scores.is_empty() {
+            return Err(err(e, format!("option {label} needs a score line")));
+        }
+        if children.is_empty() {
+            return Err(err(e, format!("option {label} needs a node to run")));
+        }
+        self.nodes.push(Node {
+            kind: Kind::Option { scores },
+            name: format!("option {label}"),
+            children,
+            line: e.line,
+        });
+        Ok(self.nodes.len() - 1)
+    }
+
+    /// `use "<path>"`: the behaviour at `path` (a tree) inlined, its keys
+    /// and routes joined to this one's.
+    fn subtree(&mut self, e: &Entry) -> Result<usize, String> {
+        check_options(e, &[])?;
+        let path = e
+            .values
+            .first()
+            .and_then(word_or_string)
+            .ok_or_else(|| err(e, "use takes a behaviour's path: use \"ai/patrol.ogt\""))?
+            .to_string();
+        let chain = |c: &[String]| {
+            c.iter()
+                .chain(std::iter::once(&path))
+                .map(|p| {
+                    if p.is_empty() {
+                        "(this behaviour)"
+                    } else {
+                        p.as_str()
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(" → ")
+        };
+        if self.chain.contains(&path) {
+            return Err(err(e, format!("use makes a cycle: {}", chain(&self.chain))));
+        }
+        let Some(resolve) = self.resolve.as_deref_mut() else {
+            return Err(err(
+                e,
+                "use reads another behaviour asset: cook it (og cook) and load it with og.ai.load",
+            ));
+        };
+        let text = resolve(&path).map_err(|m| err(e, format!("use \"{path}\": {m}")))?;
+        let mut sub_chain = self.chain.clone();
+        sub_chain.push(path.clone());
+        let sub = Behaviour::parse_inner(&text, Some(resolve), sub_chain).map_err(|m| {
+            if m.contains("use makes a cycle") {
+                m
+            } else {
+                format!("{path}: {m}")
+            }
+        })?;
+        let Root::Tree(root) = sub.root else {
+            return Err(err(e, format!("{path} is a machine; use takes a tree")));
+        };
+        // Its routes, by name: the same name must be the same points.
+        let mut remap = Vec::new();
+        for (name, pts) in sub.routes {
+            match self.routes.iter().position(|(n, _)| *n == name) {
+                Some(k) if self.routes[k].1 == pts => remap.push(k),
+                Some(_) => {
+                    return Err(err(
+                        e,
+                        format!(
+                            "{path}'s route '{name}' differs from this behaviour's route of that name"
+                        ),
+                    ));
+                }
+                None => {
+                    self.routes.push((name, pts));
+                    remap.push(self.routes.len() - 1);
+                }
+            }
+        }
+        for (k, v) in sub.keys {
+            if !self.keys.iter().any(|(n, _)| *n == k) {
+                self.keys.push((k, v));
+            }
+        }
+        let offset = self.nodes.len();
+        for mut n in sub.nodes {
+            for c in &mut n.children {
+                *c += offset;
+            }
+            if let Kind::Action(Action::Patrol { route, .. }) = &mut n.kind {
+                *route = remap[*route];
+            }
+            self.nodes.push(n);
+        }
+        for p in std::iter::once(path.clone()).chain(sub.subtrees) {
+            if !self.subtrees.contains(&p) {
+                self.subtrees.push(p);
+            }
+        }
+        self.nodes.push(Node {
+            kind: Kind::Subtree { path: path.clone() },
+            name: format!("use {path}"),
+            children: vec![root + offset],
+            line: e.line,
+        });
+        Ok(self.nodes.len() - 1)
+    }
+
     fn machine(&mut self, m: &Entry) -> Result<Root, String> {
         let b = m
             .block

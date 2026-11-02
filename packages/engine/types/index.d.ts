@@ -18097,6 +18097,11 @@ export declare const AI_SUCCESS: 2;
 export declare const AI_FAILURE: 3;
 
 /**
+ * AiActionStopped.result: the action stopped before the game finished it (another branch won, the state changed, the agent restarted).
+ */
+export declare const AI_INTERRUPTED: 4;
+
+/**
  * An entity that thinks with a behaviour. Give it an og.NavAgent to move and an og.Perception to see and hear.
  *
  * The value of the `AiAgent` component (token `og.AiAgent`).
@@ -18294,6 +18299,40 @@ export interface AiChanged {
   readonly status: number;
 }
 
+/**
+ * A game action (`action <name> args` in a behaviour) started: play it (a reload, a door, a line of dialogue) and call og.ai.finish when it is over; until then the node runs. Read the tick after. Joins the world's types only once a behaviour with a game action is loaded.
+ *
+ * The payload of the `AiActionStarted` event (token `og.AiActionStarted`).
+ */
+export interface AiActionStarted {
+  /** The agent. */
+  readonly entity: Entity;
+  /** The action's node, an index into BehaviourInfo.nodes. */
+  readonly node: number;
+  /** The action's name (at most 63 bytes). */
+  readonly name: string;
+  /**
+   * Its arguments as written, separated by spaces (at most 255 bytes; longer ones are refused when the behaviour is parsed).
+   */
+  readonly args: string;
+}
+
+/**
+ * A game action stopped: the game finished it (og.ai.finish), or the behaviour moved on first (stop playing it). Read the tick after.
+ *
+ * The payload of the `AiActionStopped` event (token `og.AiActionStopped`).
+ */
+export interface AiActionStopped {
+  /** The agent. */
+  readonly entity: Entity;
+  /** The action's node. */
+  readonly node: number;
+  /** The action's name (at most 63 bytes). */
+  readonly name: string;
+  /** AI_SUCCESS or AI_FAILURE, as og.ai.finish said, or AI_INTERRUPTED. */
+  readonly result: number;
+}
+
 /** A loaded behaviour. */
 export interface BehaviourInfo {
   /** What AiAgent.behaviour takes. */
@@ -18306,8 +18345,10 @@ export interface BehaviourInfo {
   readonly states: readonly string[];
   /** Its nodes' names, by index (AiAgent.node). */
   readonly nodes: readonly string[];
-  /** Its declared blackboard keys. */
+  /** Its declared blackboard keys (its subtrees' too). */
   readonly keys: readonly string[];
+  /** The behaviours its `use` nodes inline, every one reached, in the order first met. */
+  readonly subtrees: readonly string[];
 }
 
 /**
@@ -18359,6 +18400,7 @@ export interface AiDescription {
   /** Its target (0: none). */
   readonly target: Entity;
 }
+
 
 
 
@@ -42225,13 +42267,21 @@ export declare namespace og {
   /** An agent's state or running node changed (systems read it the tick after). */
   const AiChanged: EventType<AiChanged>;
   /**
+   * A game action (`action <name> args` in a behaviour) started: play it (a reload, a door, a line of dialogue) and call og.ai.finish when it is over; until then the node runs. Read the tick after. Joins the world's types only once a behaviour with a game action is loaded.
+   */
+  const AiActionStarted: EventType<AiActionStarted>;
+  /**
+   * A game action stopped: the game finished it (og.ai.finish), or the behaviour moved on first (stop playing it). Read the tick after.
+   */
+  const AiActionStopped: EventType<AiActionStopped>;
+  /**
    * Enemy and NPC AI as data: behaviour trees and state machines in `.ogt` files of `type behaviour` (og-ai §3 has every line), perception (sight cones checked against physics occlusion, hearing of spatial sounds and game noises) and a blackboard per agent.
    * An entity with an og.AiAgent (and an og.Transform) thinks in the og.ai system before the game's systems: perception first, then its tree or machine, whose running action moves it through its og.NavAgent (og.nav plans and walks after the game's systems) or runs one of the game's commands (GameDesc.commands, with the agent's entity handle as its first argument) before the next tick.
    * Conditions read blackboard keys (declared, set by actions or og.ai.set, or built in: self, position, sees, heard, target, targetPosition, targetDistance, lastSeen, sinceSeen, heardAt, sinceHeard, elapsed), the agent's component fields (`Health.hp`) and resource fields (`Game.alarm`), and compare them with a literal or with another key or field read each time (`check Foe.hp below Tuning.fleeHp`), so thresholds live in a tuning resource. og.ai.restart starts a behaviour afresh. Deterministic; memories and blackboards are in snapshots. `dump_ai:<entity>` writes an agent's state, running node and blackboard.
    */
   namespace ai {
     /**
-     * A cooked behaviour (an `.ogt` of `type behaviour`, validated by og cook).
+     * A cooked behaviour (an `.ogt` of `type behaviour`, validated by og cook); its `use` subtrees are read from their own cooked assets.
      *
      * @param world The world.
      * @param path The behaviour asset, such as `ai/slime.ogt`.
@@ -42239,7 +42289,7 @@ export declare namespace og {
      */
     function load(world: World, path: string): Result<BehaviourInfo>;
     /**
-     * A behaviour from text, now (tests and generated behaviours; assets go through og cook).
+     * A behaviour from text, now (tests and generated behaviours; assets go through og cook). Its `use` subtrees are read from cooked assets.
      *
      * @param world The world.
      * @param text The behaviour's `.ogt` text.
@@ -42273,6 +42323,16 @@ export declare namespace og {
      * @returns Refused for a world without og.ai.
      */
     function restart(world: World, entity: Entity): Result<void>;
+    /**
+     * End an agent's running game actions (og.AiActionStarted): each answers success or failure at the agent's next think and sends og.AiActionStopped. With `action`, only the running ones of that name. World state, in saves.
+     *
+     * @param world The world.
+     * @param entity The agent.
+     * @param success Whether it worked: the node succeeds, or fails.
+     * @param action The action's name; omitted: every game action it runs.
+     * @returns False when it runs no such action.
+     */
+    function finish(world: World, entity: Entity, success: boolean, action?: string): boolean;
     /**
      * Make a noise agents may hear next tick (a gunshot, a door, a thrown stone).
      *

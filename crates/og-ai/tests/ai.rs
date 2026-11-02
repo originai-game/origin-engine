@@ -1034,3 +1034,353 @@ fn a_yard_without_g2_4_features_hashes_and_moves_as_before_it() {
 /// hash and trajectory digest on main 67a07d57 (before G2-4).
 const YARD_HASH: &str = "10c3d2daa0248e7e";
 const YARD_TRAIL: &str = "944e29cc07af861e";
+
+// ── G2-4: game actions, subtrees, utility ───────────────────────────────────
+
+const WORKER: &str = r#"
+type behaviour
+version 1
+---
+name "worker"
+tree {
+  selector {
+    sequence alarm {
+      check Game.alarm
+      action shout loud 2
+    }
+    sequence work {
+      action reload 2
+      command reloaded
+    }
+  }
+}
+"#;
+
+/// The game-action events og.ai sent, as `started reload 2` and
+/// `stopped reload 2` (the result code), in the order the watcher read them.
+fn watch(s: &mut Scene) -> Arc<Mutex<Vec<String>>> {
+    use og_ai::{AiActionStarted, AiActionStopped};
+    og_ai::enable_actions(&mut s.world).unwrap();
+    let log = Arc::new(Mutex::new(Vec::new()));
+    let l = log.clone();
+    s.world
+        .add_system(
+            og_ecs::SystemDesc::new("watch")
+                .read::<AiActionStarted>()
+                .read::<AiActionStopped>(),
+            move |ctx| {
+                let mut l = l.lock().unwrap();
+                for e in ctx.events::<AiActionStopped>()? {
+                    l.push(format!("stopped {} {}", e.name.as_str(), e.result));
+                }
+                for e in ctx.events::<AiActionStarted>()? {
+                    l.push(format!("started {} {}", e.name.as_str(), e.args.as_str()));
+                }
+                Ok(())
+            },
+        )
+        .unwrap();
+    log
+}
+
+fn drain(log: &Arc<Mutex<Vec<String>>>) -> Vec<String> {
+    std::mem::take(&mut *log.lock().unwrap())
+}
+
+#[test]
+fn a_game_action_runs_until_finished_is_interrupted_by_a_higher_branch_and_its_result_survives_a_save()
+ {
+    let mut s = scene(WORKER, false);
+    let log = watch(&mut s);
+    steps(&mut s, 3);
+    assert_eq!(drain(&log), ["started reload 2"]);
+    assert!(path(&s).ends_with("action reload"), "{}", path(&s));
+    // It stays running however long the game takes.
+    assert!(steps(&mut s, 60).is_empty());
+    assert!(drain(&log).is_empty());
+    assert!(!s.ai.finish(s.guard, true, Some("shout")), "not running");
+    assert!(s.ai.finish(s.guard, true, Some("reload")));
+    let cmds = steps(&mut s, 3);
+    assert_eq!(cmds.iter().filter(|c| c.0 == "reloaded").count(), 1);
+    // Success, then the tree starts it again at its next think.
+    assert_eq!(drain(&log), ["stopped reload 2", "started reload 2"]);
+    // The alarm branch wins: reload is interrupted, shout starts.
+    s.world.resource_mut::<Game>().unwrap().alarm = true;
+    steps(&mut s, 2);
+    assert_eq!(
+        drain(&log),
+        [
+            format!("stopped reload {}", og_ai::AI_INTERRUPTED),
+            "started shout loud 2".to_string()
+        ]
+    );
+    // Finished but not yet answered: a save holds the pending result, and a
+    // world restored from it answers the same at its next think.
+    assert!(s.ai.finish(s.guard, false, None));
+    let snap = s.world.snapshot();
+    // The shout failed: the alarm branch fails, so the selector starts
+    // reload in the same think; the next think the alarm wins again.
+    let after_failure = [
+        "stopped shout 3".to_string(),
+        "started reload 2".to_string(),
+        format!("stopped reload {}", og_ai::AI_INTERRUPTED),
+        "started shout loud 2".to_string(),
+    ];
+    steps(&mut s, 3);
+    assert_eq!(drain(&log), after_failure);
+    let mut fresh = scene(WORKER, false);
+    let flog = watch(&mut fresh);
+    fresh.world.restore(&snap).unwrap();
+    steps(&mut fresh, 3);
+    assert_eq!(drain(&flog), after_failure);
+    assert_eq!(fresh.world.world_hash(), s.world.world_hash());
+    // A restart interrupts what was running.
+    assert!(s.ai.restart(s.guard));
+    steps(&mut s, 2);
+    assert_eq!(
+        drain(&log)[0],
+        format!("stopped shout {}", og_ai::AI_INTERRUPTED)
+    );
+}
+
+#[test]
+fn an_action_is_refused_when_its_event_cannot_carry_it() {
+    let head = "type behaviour\nversion 1\n---\ntree {\n  action ";
+    let long = "x".repeat(64);
+    assert!(errors(&format!("{head}{long}\n}}\n")).contains("under 64 bytes"));
+    // 2 × 128 bytes and a space: 257, over og.AiActionStarted's 255.
+    let arg = "a".repeat(128);
+    let e = errors(&format!("{head}say {arg} {arg}\n}}\n"));
+    assert!(
+        e.contains("line 5") && e.contains("at most 255 bytes"),
+        "{e}"
+    );
+    let ok = "a".repeat(127);
+    Behaviour::parse(&format!(
+        "type behaviour\nversion 1\n---\ntree {{\n  action say {ok} {ok}\n}}\n"
+    ))
+    .unwrap();
+}
+
+#[test]
+fn without_the_action_events_registered_a_game_action_still_runs() {
+    let mut s = scene(WORKER, false);
+    steps(&mut s, 3);
+    assert!(s.ai.finish(s.guard, true, None));
+    assert_eq!(
+        steps(&mut s, 2)
+            .iter()
+            .filter(|c| c.0 == "reloaded")
+            .count(),
+        1
+    );
+}
+
+fn files(map: &[(&str, &str)]) -> impl FnMut(&str) -> Result<String, String> + use<> {
+    let map: Vec<(String, String)> = map
+        .iter()
+        .map(|(a, b)| (a.to_string(), b.to_string()))
+        .collect();
+    move |p: &str| {
+        map.iter()
+            .find(|(k, _)| k == p)
+            .map(|(_, v)| v.clone())
+            .ok_or_else(|| format!("no behaviour asset '{p}'"))
+    }
+}
+
+const BEAT: &str = r#"
+type behaviour
+version 1
+---
+name "beat"
+key laps 0
+route beat {
+  point 3 2 0
+  point 8 2 0
+}
+tree {
+  sequence {
+    use "ai/look.ogt"
+    patrol beat
+  }
+}
+"#;
+
+const LOOK: &str = r#"
+type behaviour
+version 1
+---
+name "look"
+key looked 0
+tree {
+  set looked 1
+}
+"#;
+
+#[test]
+fn subtrees_inline_their_nodes_keys_and_routes_and_a_cycle_is_refused_naming_the_chain() {
+    let main = r#"
+type behaviour
+version 1
+---
+name "sentry"
+route home {
+  point 2 2 0
+}
+tree {
+  selector {
+    sequence {
+      check Game.alarm
+      patrol home
+    }
+    use "ai/beat.ogt"
+  }
+}
+"#;
+    let mut r = files(&[("ai/beat.ogt", BEAT), ("ai/look.ogt", LOOK)]);
+    let b = Behaviour::parse_with(main, "ai/sentry.ogt", &mut r).unwrap();
+    assert_eq!(b.subtrees, ["ai/beat.ogt", "ai/look.ogt"]);
+    let keys: Vec<&str> = b.keys.iter().map(|k| k.0.as_str()).collect();
+    assert_eq!(keys, ["laps", "looked"]);
+    let routes: Vec<&str> = b.routes.iter().map(|r| r.0.as_str()).collect();
+    assert_eq!(routes, ["home", "beat"]);
+    // The subtree's patrol names its own route, now at index 1.
+    assert!(b.nodes.iter().any(|n| matches!(
+        &n.kind,
+        Kind::Action(og_ai::Action::Patrol { route: 1, .. })
+    )));
+    // Run it: the beat's patrol, under its `use` node, and look's key set.
+    let mut s = scene(GUARD, false);
+    let h = s.ai.behaviours.lock().unwrap().insert(b);
+    let mut a = s.world.get::<AiAgent>(s.guard).unwrap();
+    a.behaviour = h;
+    s.world.insert(s.guard, a).unwrap();
+    steps(&mut s, 120);
+    assert_eq!(
+        path(&s),
+        "selector > use ai/beat.ogt > sequence > patrol beat"
+    );
+    assert_eq!(s.ai.get(s.guard, "looked"), Some(Value::Num(1.0)));
+    assert!(pos(&s, s.guard).x > 3.5, "it walks the beat");
+
+    // A cycle through two files, refused naming every one.
+    let a = "type behaviour\nversion 1\n---\ntree {\n  use \"ai/b.ogt\"\n}\n";
+    let bb = "type behaviour\nversion 1\n---\ntree {\n  use \"ai/a.ogt\"\n}\n";
+    let mut r = files(&[("ai/a.ogt", a), ("ai/b.ogt", bb)]);
+    let e = Behaviour::parse_with(a, "ai/a.ogt", &mut r).unwrap_err();
+    assert!(
+        e.contains("use makes a cycle: ai/a.ogt → ai/b.ogt → ai/a.ogt"),
+        "{e}"
+    );
+    // A file using itself.
+    let mut r = files(&[(
+        "ai/a.ogt",
+        "type behaviour\nversion 1\n---\ntree {\n  use \"ai/a.ogt\"\n}\n",
+    )]);
+    let e = Behaviour::parse_with(
+        "type behaviour\nversion 1\n---\ntree {\n  use \"ai/a.ogt\"\n}\n",
+        "ai/a.ogt",
+        &mut r,
+    )
+    .unwrap_err();
+    assert!(e.contains("ai/a.ogt → ai/a.ogt"), "{e}");
+    // A machine, a missing file, a clashing route, and text without a resolver.
+    let machine = "type behaviour\nversion 1\n---\nmachine {\n  state idle {\n    wait 1\n  }\n}\n";
+    let clash = "type behaviour\nversion 1\n---\nroute beat {\n  point 0 0 0\n}\ntree {\n  sequence {\n    patrol beat\n    use \"ai/beat.ogt\"\n  }\n}\n";
+    let mut r = files(&[
+        ("ai/m.ogt", machine),
+        ("ai/beat.ogt", BEAT),
+        ("ai/look.ogt", LOOK),
+    ]);
+    for (text, want) in [
+        (
+            "type behaviour\nversion 1\n---\ntree {\n  use \"ai/m.ogt\"\n}\n",
+            "ai/m.ogt is a machine",
+        ),
+        (
+            "type behaviour\nversion 1\n---\ntree {\n  use \"ai/none.ogt\"\n}\n",
+            "no behaviour asset 'ai/none.ogt'",
+        ),
+        (clash, "route 'beat' differs"),
+    ] {
+        let e = Behaviour::parse_with(text, "ai/x.ogt", &mut r).unwrap_err();
+        assert!(e.contains(want), "{e}");
+    }
+    let e = Behaviour::parse(main).unwrap_err();
+    assert!(e.contains("use reads another behaviour asset"), "{e}");
+}
+
+const CHORES: &str = r#"
+type behaviour
+version 1
+---
+name "chores"
+key hunger 0
+tree {
+  utility {
+    inertia 0.2
+    option eat {
+      score hunger linear 0 10
+      command eat {
+        cooldown 5
+      }
+      wait 1
+    }
+    option idle {
+      score 0.3
+      wait 1
+    }
+  }
+}
+"#;
+
+#[test]
+fn a_utility_runs_its_best_option_keeps_the_running_one_by_its_inertia_and_ties_go_to_the_first() {
+    let mut s = scene(CHORES, false);
+    steps(&mut s, 2);
+    assert_eq!(path(&s), "utility > option idle > wait");
+    // Eat scores 0.4, idle 0.3 + 0.2 while it runs: idle keeps going.
+    assert!(s.ai.set(s.guard, "hunger", Value::Num(4.0)));
+    let eats = |c: &[(String, Vec<String>)]| c.iter().filter(|c| c.0 == "eat").count();
+    assert_eq!(eats(&steps(&mut s, 20)), 0);
+    assert_eq!(path(&s), "utility > option idle > wait");
+    // Its wait over, idle has no inertia: eat wins.
+    assert_eq!(eats(&steps(&mut s, 60)), 1);
+    assert!(path(&s).starts_with("utility > option eat"), "{}", path(&s));
+    // A tie (0.3 against 0.3) goes to the first option, eat.
+    let mut s = scene(CHORES, false);
+    assert!(
+        !s.ai.set(s.guard, "hunger", Value::Num(3.0)),
+        "not thought yet"
+    );
+    steps(&mut s, 1);
+    assert!(s.ai.set(s.guard, "hunger", Value::Num(3.0)));
+    // Idle runs out its second (its inertia keeps it), then the tie is decided.
+    steps(&mut s, 120);
+    assert!(path(&s).starts_with("utility > option eat"), "{}", path(&s));
+    // Curves place the input between its ends.
+    use og_ai::Curve;
+    assert_eq!(Curve::Inverse.score(2.5, 0.0, 10.0), 0.75);
+    assert_eq!(Curve::Quadratic.score(5.0, 0.0, 10.0), 0.25);
+    assert_eq!(Curve::Smooth.score(5.0, 0.0, 10.0), 0.5);
+    assert_eq!(Curve::Step.score(9.9, 0.0, 10.0), 0.0);
+    assert_eq!(Curve::Linear.score(20.0, 0.0, 10.0), 1.0);
+    for (bad, want) in [
+        (
+            "utility {\n    option a {\n      wait 1\n    }\n  }",
+            "needs a score line",
+        ),
+        (
+            "utility {\n    option a {\n      score x wobbly 0 1\n      wait 1\n    }\n  }",
+            "'wobbly' is not a curve",
+        ),
+        ("utility {\n    inertia 0.1\n  }", "at least one option"),
+        ("action", "action takes a name"),
+    ] {
+        let e = errors(&format!(
+            "type behaviour\nversion 1\n---\ntree {{\n  {bad}\n}}\n"
+        ));
+        assert!(e.contains(want), "{e}");
+    }
+}
