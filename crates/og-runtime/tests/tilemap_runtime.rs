@@ -119,7 +119,8 @@ fn set(engine: u32, entity: f64, x: u32, y: u32, tile: i32) {
 /// world without footage) and R11's lazy 2D lighting records (to
 /// cb4cb2e1c4e0f7e1, og.Lighting2D, og.Light2D and og.Occluder2D gone from
 /// a world without 2D lights) and ui-gaps' UI state version 14 (to
-/// 40cb7e39b84923d5) and version 15 (to cdd436f5674a3768), each of which moves every raw world hash.
+/// 40cb7e39b84923d5) and version 15 (to cdd436f5674a3768) and R9's og.Blendshapes version 2
+/// (`influences`, to d09658f91e092780), each of which moves every raw world hash.
 #[test]
 fn a_world_of_loaded_maps_keeps_its_hash() {
     set_hooks(Rc::new(Game));
@@ -130,7 +131,7 @@ fn a_world_of_loaded_maps_keeps_its_hash() {
     frame(engine);
     set(engine, entity, 2, 1, 0);
     frame(engine);
-    assert_eq!(hash(engine), "cdd436f5674a3768");
+    assert_eq!(hash(engine), "d09658f91e092780");
 }
 
 #[test]

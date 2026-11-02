@@ -41,7 +41,7 @@ module anim {
 | [`og.Skeleton`](#record-Skeleton) | component | A posed skeleton: the entity is drawn skinned by the joint palette og.anim writes each tick. The pose itself (every node's local transform) is world state kept by the `og.anim` state block. |
 | [`og.AnimationPlayer`](#record-AnimationPlayer) | component | Plays one clip on a skeleton. Alone it poses the skeleton from its rest pose; with an og.AnimationGraph it plays over the graph's result with `weight`. Changing `clip` cross-fades from the previous one over `fade`; a clip change starts the new clip at 0 (or at `time` if the game wrote it in the same tick). |
 | [`og.AnimationGraph`](#record-AnimationGraph) | component | Runs a blend-tree graph (og.anim.graph) on a skeleton: its layers' state machines pick motions by the parameters p0...p7, which the graph names in `param` order (`param speed` is p0, the next `param` is p1, ...). |
-| [`og.Blendshapes`](#record-Blendshapes) | component | Morph-target weights of the skeleton entity's mesh, in the order of the glTF mesh's targets. With `source` clips the playing clips' weight channels write them; with `component` game code does. |
+| [`og.Blendshapes`](#record-Blendshapes) | component | Morph-target weights of the skeleton entity's mesh, in the order of the glTF mesh's targets, up to 64 targets (w0...w7, then `influences`). With `source` clips the playing clips' weight channels write them; with `component` game code does. Under TAA a morphing mesh has motion vectors from its previous weights, so a talking face does not ghost. |
 | [`og.IkChain`](#record-IkChain) | component | An inverse-kinematics constraint on a skeleton, applied after its clips and graph: the chain of `bones` bones ending at joint `tip` turns so the tip reaches `target`. Put it on its own entity (a skeleton can have many chains); chains apply in query order. |
 | [`og.LookAt`](#record-LookAt) | component | An aim constraint on a skeleton, applied after its clips, graph and IK chains: `joint` turns so its `axis` points at `target` and its `upAxis` leans towards `up` (three.js Object3D.lookAt: +Z at the target, +Y up). The direction is held within maxYaw and maxPitch of the animated forward; with `bones` above 1 the joint's parents share the turn. Put it on its own entity (a head, the eyes, a turret's barrel); constraints apply in query order, and og.JointLimit clamps the joints it turns. |
 | [`og.JointLimit`](#record-JointLimit) | component | How far a joint may turn from its rest rotation when og.anim's solvers (og.IkChain, og.LookAt, og.FootLock) turn it: a swing of `axis` within a cone and a twist about it within a range. A hinge (a knee, an elbow) is `axis` along the hinge, `swing` 0 (or a little play) and the bend range as twistMin...twistMax. Put it on its own entity, one per joint; the animated pose itself is never clamped. |
@@ -118,7 +118,7 @@ fn graph {
 }
 ```
 
-<sub>`api.ogt` line 10945</sub>
+<sub>`api.ogt` line 10946</sub>
 
 <a id="fn-humanoid"></a>
 
@@ -148,7 +148,7 @@ fn humanoid {
 }
 ```
 
-<sub>`api.ogt` line 10980</sub>
+<sub>`api.ogt` line 10981</sub>
 
 <a id="fn-retarget"></a>
 
@@ -178,7 +178,7 @@ fn retarget {
 }
 ```
 
-<sub>`api.ogt` line 11000</sub>
+<sub>`api.ogt` line 11001</sub>
 
 <a id="fn-mirror"></a>
 
@@ -208,7 +208,7 @@ fn mirror {
 }
 ```
 
-<sub>`api.ogt` line 11014</sub>
+<sub>`api.ogt` line 11015</sub>
 
 <a id="fn-clip"></a>
 
@@ -239,7 +239,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 11099</sub>
+<sub>`api.ogt` line 11100</sub>
 
 <a id="fn-clip-2"></a>
 
@@ -270,7 +270,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 11107</sub>
+<sub>`api.ogt` line 11108</sub>
 
 <a id="fn-clip-3"></a>
 
@@ -301,7 +301,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 11115</sub>
+<sub>`api.ogt` line 11116</sub>
 
 <a id="fn-rig2dInfo"></a>
 
@@ -331,7 +331,7 @@ fn rig2dInfo {
 }
 ```
 
-<sub>`api.ogt` line 11226</sub>
+<sub>`api.ogt` line 11227</sub>
 
 <a id="fn-skeleton2dBoxes"></a>
 
@@ -361,7 +361,7 @@ fn skeleton2dBoxes {
 }
 ```
 
-<sub>`api.ogt` line 11240</sub>
+<sub>`api.ogt` line 11241</sub>
 
 ## Components, resources and events
 
@@ -542,7 +542,7 @@ component AnimationGraph {
 
 ### `og.Blendshapes` (component)
 
-Morph-target weights of the skeleton entity's mesh, in the order of the glTF mesh's targets. With `source` clips the playing clips' weight channels write them; with `component` game code does.
+Morph-target weights of the skeleton entity's mesh, in the order of the glTF mesh's targets, up to 64 targets (w0...w7, then `influences`). With `source` clips the playing clips' weight channels write them; with `component` game code does. Under TAA a morphing mesh has motion vectors from its previous weights, so a talking face does not ghost.
 
 Token `og.Blendshapes`, registered under the schema name `og.Blendshapes`; its value type is `Blendshapes`.
 
@@ -558,10 +558,11 @@ Token `og.Blendshapes`, registered under the schema name `og.Blendshapes`; its v
 | `w5` | `number` | `0` | -1 … 2 | — | tunable | Weight of target 5. |
 | `w6` | `number` | `0` | -1 … 2 | — | tunable | Weight of target 6. |
 | `w7` | `number` | `0` | -1 … 2 | — | tunable | Weight of target 7. |
+| `influences` | `readonly number[]` | `[]` | — | — | a list of at most 56 `f32` (`List.f32.56`): reads a frozen copy, writes a whole array | Weights of targets 8 to 63, as three.js morphTargetInfluences past the first eight (w0...w7): influences[k] drives target 8 + k; past the list's length 0. A face rig's 52 ARKit shapes fit. Clips write it with `source` clips, as they write w0...w7. |
 
 ```ogt
 component Blendshapes {
-  doc "Morph-target weights of the skeleton entity's mesh, in the order of the glTF mesh's targets. With `source` clips the playing clips' weight channels write them; with `component` game code does."
+  doc "Morph-target weights of the skeleton entity's mesh, in the order of the glTF mesh's targets, up to 64 targets (w0...w7, then `influences`). With `source` clips the playing clips' weight channels write them; with `component` game code does. Under TAA a morphing mesh has motion vectors from its previous weights, so a talking face does not ghost."
   field source BlendshapeSource "Who decides the weights: component (game code writes w0...w7) or clips (the animation writes them)."
   field mesh u32 "The glTF mesh index whose targets the weights drive (0 is the first mesh)." {
     min 0
@@ -606,6 +607,7 @@ component Blendshapes {
     max 2
     tunable true
   }
+  field influences List.f32.56 "Weights of targets 8 to 63, as three.js morphTargetInfluences past the first eight (w0...w7): influences[k] drives target 8 + k; past the list's length 0. A face rig's 52 ARKit shapes fit. Clips write it with `source` clips, as they write w0...w7."
 }
 ```
 
@@ -682,7 +684,7 @@ component IkChain {
 }
 ```
 
-<sub>`api.ogt` line 10637</sub>
+<sub>`api.ogt` line 10638</sub>
 
 <a id="record-LookAt"></a>
 
@@ -759,7 +761,7 @@ component LookAt {
 }
 ```
 
-<sub>`api.ogt` line 10683</sub>
+<sub>`api.ogt` line 10684</sub>
 
 <a id="record-JointLimit"></a>
 
@@ -812,7 +814,7 @@ component JointLimit {
 }
 ```
 
-<sub>`api.ogt` line 10733</sub>
+<sub>`api.ogt` line 10734</sub>
 
 <a id="record-FootLock"></a>
 
@@ -867,7 +869,7 @@ component FootLock {
 }
 ```
 
-<sub>`api.ogt` line 10765</sub>
+<sub>`api.ogt` line 10766</sub>
 
 <a id="record-SpringBone"></a>
 
@@ -955,7 +957,7 @@ component SpringBone {
 }
 ```
 
-<sub>`api.ogt` line 10811</sub>
+<sub>`api.ogt` line 10812</sub>
 
 <a id="record-SpringCollider"></a>
 
@@ -1001,7 +1003,7 @@ component SpringCollider {
 }
 ```
 
-<sub>`api.ogt` line 10884</sub>
+<sub>`api.ogt` line 10885</sub>
 
 <a id="record-AnimationEvent"></a>
 
@@ -1032,7 +1034,7 @@ event AnimationEvent {
 }
 ```
 
-<sub>`api.ogt` line 10908</sub>
+<sub>`api.ogt` line 10909</sub>
 
 <a id="record-Flipbook"></a>
 
@@ -1088,7 +1090,7 @@ component Flipbook {
 }
 ```
 
-<sub>`api.ogt` line 11037</sub>
+<sub>`api.ogt` line 11038</sub>
 
 <a id="record-FlipbookEvent"></a>
 
@@ -1115,7 +1117,7 @@ event FlipbookEvent {
 }
 ```
 
-<sub>`api.ogt` line 11068</sub>
+<sub>`api.ogt` line 11069</sub>
 
 <a id="record-Skeleton2D"></a>
 
@@ -1171,7 +1173,7 @@ component Skeleton2D {
 }
 ```
 
-<sub>`api.ogt` line 11132</sub>
+<sub>`api.ogt` line 11133</sub>
 
 <a id="record-Skeleton2DEvent"></a>
 
@@ -1202,7 +1204,7 @@ event Skeleton2DEvent {
 }
 ```
 
-<sub>`api.ogt` line 11162</sub>
+<sub>`api.ogt` line 11163</sub>
 
 <a id="record-IkTarget2D"></a>
 
@@ -1254,7 +1256,7 @@ component IkTarget2D {
 }
 ```
 
-<sub>`api.ogt` line 11173</sub>
+<sub>`api.ogt` line 11174</sub>
 
 ## Types
 
@@ -1415,7 +1417,7 @@ enum SpringSpace {
 }
 ```
 
-<sub>`api.ogt` line 10798</sub>
+<sub>`api.ogt` line 10799</sub>
 
 <a id="type-SpringColliderShape"></a>
 
@@ -1438,7 +1440,7 @@ enum SpringColliderShape {
 }
 ```
 
-<sub>`api.ogt` line 10871</sub>
+<sub>`api.ogt` line 10872</sub>
 
 <a id="type-ClipInfo"></a>
 
@@ -1465,7 +1467,7 @@ struct ClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 10919</sub>
+<sub>`api.ogt` line 10920</sub>
 
 <a id="type-Animation"></a>
 
@@ -1492,7 +1494,7 @@ struct Animation {
 }
 ```
 
-<sub>`api.ogt` line 10929</sub>
+<sub>`api.ogt` line 10930</sub>
 
 <a id="type-GraphDesc"></a>
 
@@ -1516,7 +1518,7 @@ struct GraphDesc {
 }
 ```
 
-<sub>`api.ogt` line 10938</sub>
+<sub>`api.ogt` line 10939</sub>
 
 <a id="type-Rig"></a>
 
@@ -1530,7 +1532,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Rig "A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow, the standard bones it names outright and, with `footHeight`, how high its ankles stand above the ground."
 ```
 
-<sub>`api.ogt` line 10952</sub>
+<sub>`api.ogt` line 10953</sub>
 
 <a id="type-HumanBone"></a>
 
@@ -1551,7 +1553,7 @@ struct HumanBone {
 }
 ```
 
-<sub>`api.ogt` line 10961</sub>
+<sub>`api.ogt` line 10962</sub>
 
 <a id="type-Humanoid"></a>
 
@@ -1572,7 +1574,7 @@ struct Humanoid {
 }
 ```
 
-<sub>`api.ogt` line 10967</sub>
+<sub>`api.ogt` line 10968</sub>
 
 <a id="type-HumanoidDesc"></a>
 
@@ -1596,7 +1598,7 @@ struct HumanoidDesc {
 }
 ```
 
-<sub>`api.ogt` line 10973</sub>
+<sub>`api.ogt` line 10974</sub>
 
 <a id="type-RetargetDesc"></a>
 
@@ -1630,7 +1632,7 @@ struct RetargetDesc {
 }
 ```
 
-<sub>`api.ogt` line 10987</sub>
+<sub>`api.ogt` line 10988</sub>
 
 <a id="type-MirrorDesc"></a>
 
@@ -1654,7 +1656,7 @@ struct MirrorDesc {
 }
 ```
 
-<sub>`api.ogt` line 11007</sub>
+<sub>`api.ogt` line 11008</sub>
 
 <a id="type-FlipbookSheet"></a>
 
@@ -1668,7 +1670,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle FlipbookSheet "A sprite sheet's frames and clips (a cooked `.ogt` of `type flipbook`), from og.load.flipbook."
 ```
 
-<sub>`api.ogt` line 11021</sub>
+<sub>`api.ogt` line 11022</sub>
 
 <a id="type-FlipMode"></a>
 
@@ -1693,7 +1695,7 @@ enum FlipMode {
 }
 ```
 
-<sub>`api.ogt` line 11030</sub>
+<sub>`api.ogt` line 11031</sub>
 
 <a id="type-FlipbookClipInfo"></a>
 
@@ -1724,7 +1726,7 @@ struct FlipbookClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 11076</sub>
+<sub>`api.ogt` line 11077</sub>
 
 <a id="type-FlipbookInfo"></a>
 
@@ -1755,7 +1757,7 @@ struct FlipbookInfo {
 }
 ```
 
-<sub>`api.ogt` line 11088</sub>
+<sub>`api.ogt` line 11089</sub>
 
 <a id="type-Rig2D"></a>
 
@@ -1769,7 +1771,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Rig2D "A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region, mesh, bounding-box and child-armature attachments, IK constraints, child armatures and clips, from og.load.rig2d."
 ```
 
-<sub>`api.ogt` line 11123</sub>
+<sub>`api.ogt` line 11124</sub>
 
 <a id="type-Rig2DClipInfo"></a>
 
@@ -1798,7 +1800,7 @@ struct Rig2DClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 11203</sub>
+<sub>`api.ogt` line 11204</sub>
 
 <a id="type-Rig2DInfo"></a>
 
@@ -1831,7 +1833,7 @@ struct Rig2DInfo {
 }
 ```
 
-<sub>`api.ogt` line 11214</sub>
+<sub>`api.ogt` line 11215</sub>
 
 <a id="type-Skeleton2DBox"></a>
 
@@ -1854,7 +1856,7 @@ struct Skeleton2DBox {
 }
 ```
 
-<sub>`api.ogt` line 11233</sub>
+<sub>`api.ogt` line 11234</sub>
 
 ## Column kinds
 
@@ -1961,7 +1963,7 @@ column SpringSpace {
 }
 ```
 
-<sub>`api.ogt` line 10804</sub>
+<sub>`api.ogt` line 10805</sub>
 
 ```ogt
 column SpringColliderShape {
@@ -1972,7 +1974,7 @@ column SpringColliderShape {
 }
 ```
 
-<sub>`api.ogt` line 10877</sub>
+<sub>`api.ogt` line 10878</sub>
 
 ```ogt
 column Rig {
@@ -1983,7 +1985,7 @@ column Rig {
 }
 ```
 
-<sub>`api.ogt` line 10954</sub>
+<sub>`api.ogt` line 10955</sub>
 
 ```ogt
 column FlipbookSheet {
@@ -1994,7 +1996,7 @@ column FlipbookSheet {
 }
 ```
 
-<sub>`api.ogt` line 11023</sub>
+<sub>`api.ogt` line 11024</sub>
 
 ```ogt
 column Rig2D {
@@ -2005,4 +2007,4 @@ column Rig2D {
 }
 ```
 
-<sub>`api.ogt` line 11125</sub>
+<sub>`api.ogt` line 11126</sub>

@@ -33,7 +33,8 @@ puppet looks, while events and root motion stay smooth).
 tree with layered state machines registered by `og.anim.graph` (parameters
 such as speed pick the motion; its grammar is §5), `og.IkChain`
 turns a chain of bones to a target after the clips, `og.Blendshapes` weighs
-morph targets, and `og.AnimationEvent` reports a clip's markers (below).
+morph targets (up to 64 a mesh: `w0`…`w7`, then `influences` for the
+9th to the 64th; a face's visemes and expressions), and `og.AnimationEvent` reports a clip's markers (below).
 An `og.AnimationPlayer` beside a graph plays over it by its `weight`: a
 strike, a bite or a fall at weight 1, back to 0 when `finished`.
 **Root motion** is `og.Skeleton.rootMotion`: `planar` moves the entity's

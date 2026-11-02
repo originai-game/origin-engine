@@ -4787,6 +4787,12 @@
           "column": "f32",
           "default": 0,
           "tunable": true
+        },
+        {
+          "name": "influences",
+          "column": "f32",
+          "list": 56,
+          "default": []
         }
       ]
     },

@@ -4,6 +4,40 @@
 //! joint matrices the animation system writes every frame. The palette is a
 //! storage buffer; the vertex shader blends the four matrices of each
 //! vertex.
+//!
+//! # The palette buffer
+//!
+//! One `array<mat4x4<f32>>` per frame (skin group, binding 0), read by every
+//! skinned vertex stage (`skin_storage.wgsl`). Every other module that reads
+//! or extends it follows this layout:
+//!
+//! 1. **The current section**, `section` slots:
+//!    - each [`crate::RenderScene::joint_palettes`] entry's joints, in
+//!      palette order (a skinned instance's `palette.x` is its first slot,
+//!      `palette.y` its count);
+//!    - then the blendshape weights of each skinned instance whose mesh has
+//!      morph targets and whose weights are not all zero, in draw order:
+//!      [`weight_slots`] of its targets, 16 weights a slot in column-major
+//!      order (target `t` at slot `t / 16`, column `(t % 16) / 4`, row
+//!      `t % 4`); its `morph0.x` is its first slot plus one (0: none).
+//! 2. **The previous section** (TAA only, [`append_previous`]): the same
+//!    layout again from slot `section`, holding the previous frame's joints
+//!    (in the world, [`crate::RenderScene::previous_joint_palettes`]) and
+//!    the previous frame's weights
+//!    ([`crate::RenderScene::previous_morph_weights`]). The skinned prepass
+//!    reads `section` at `Fx::decal_info.w` (0: no previous section) and
+//!    finds an instance's previous joints at `palette.x + section` and its
+//!    previous weights at `morph0.x - 1 + section`, so a morphing face has
+//!    motion vectors under TAA.
+//!
+//! Both sections together hold at most [`MAX_JOINTS`] slots.
+//!
+//! The morph deltas (binding 1, `array<vec4<f32>>`) are static per mesh:
+//! from the mesh's base (`palette.z`), one header per vertex (x: its first
+//! entry, y: its entries; exact f32 indices), then each vertex's entries,
+//! two slots each, only for the targets that move it: (position delta,
+//! target) and (normal delta, 0). `palette.w` is the mesh's target count
+//! (0: no morph targets).
 
 use crate::scene::{MaterialHandle, MeshHandle};
 use glam::{Mat4, Vec3};
@@ -41,8 +75,9 @@ impl From<Vec<Mat4>> for JointPalette {
     }
 }
 
-/// The most blendshape (morph) targets a mesh can have (og-anim's `BLENDSHAPES`).
-pub const MAX_MORPH_TARGETS: usize = 8;
+/// The most blendshape (morph) targets a mesh can have (og-anim's
+/// `BLENDSHAPES`): a face rig's 52 ARKit shapes and more.
+pub const MAX_MORPH_TARGETS: usize = 64;
 
 /// Blendshape targets of a mesh: per target, per vertex, the position (and
 /// optionally normal) delta added at the target's weight before skinning
@@ -150,8 +185,18 @@ pub(crate) fn posed_centre(boxes: &[JointBox], palette: &[Mat4], transform: &Mat
     lo.is_finite().then(|| (lo + hi) * 0.5)
 }
 
-/// The most joints one frame's palettes may hold together.
+/// The most slots one frame's palette buffer may hold: joints and
+/// blendshape weights, both sections together (see the module's layout).
 pub const MAX_JOINTS: usize = 256 * 256;
+
+/// The palette slots of `targets` blendshape weights: 16 to a slot.
+pub(crate) fn weight_slots(weights: &[f32], targets: usize) -> Vec<[[f32; 4]; 4]> {
+    let mut slots = vec![[[0.0; 4]; 4]; targets.div_ceil(16)];
+    for (t, &w) in weights.iter().take(targets).enumerate() {
+        slots[t / 16][(t % 16) / 4][t % 4] = w;
+    }
+    slots
+}
 
 /// `SkinIn` in pbr.wgsl / shadow.wgsl: joints (Uint16x4) and weights.
 #[repr(C)]
@@ -168,9 +213,10 @@ pub(crate) const SKIN_VERTEX_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::V
 };
 
 /// `SkinnedInstanceIn`: the transform (its columns' xyz, as
-/// [`crate::instances::GpuTransform::columns`]), (first joint, joint count, first
-/// morph element, morph targets), the eight morph weights and the
-/// instance's look ([`crate::instances::layer_bits`] of no layer, then
+/// [`crate::instances::GpuTransform::columns`]), (first joint, joint count,
+/// the mesh's first morph header, its morph targets), `morph0.x` its first
+/// weight slot plus one (0: no weights; the module's layout), `morph1`
+/// unused, and the instance's look ([`crate::instances::layer_bits`] of no layer, then
 /// [`crate::instances::fx_bits`]).
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -327,24 +373,32 @@ impl GpuPalette {
     }
 }
 
-/// The previous frame's joints for TAA's skinned motion vectors, appended
-/// after the frame's own `joints` (one section of the same layout, at
-/// `joints.len()` before the call, which the prepass reads through
+/// The previous section of the palette buffer for TAA's motion vectors
+/// (the module's layout), appended after the current section `slots`
+/// (at `slots.len()` before the call, which the prepass reads through
 /// `Fx::decal_info.w`): each palette's
 /// [`crate::RenderScene::previous_joint_palettes`] entry, in the world,
 /// or, where it has none of the same length, its joints this frame times
 /// the transform its first instance is drawn at (motion with the camera
-/// only). `None` without previous palettes or room for a second section;
-/// else whether any joint moved since the previous frame.
+/// only); then `previous_weights`, the previous frame's weight slots in
+/// the current section's order. `None` without previous palettes or room
+/// for a second section; else whether any joint or weight moved since the
+/// previous frame.
 pub(crate) fn append_previous(
     palettes: &[JointPalette],
     previous: &[JointPalette],
     instances: &[SkinnedInstance],
-    joints: &mut Vec<[[f32; 4]; 4]>,
+    previous_weights: &[[[f32; 4]; 4]],
+    slots: &mut Vec<[[f32; 4]; 4]>,
 ) -> Option<bool> {
-    if previous.is_empty() || previous.len() != palettes.len() || joints.len() * 2 > MAX_JOINTS {
+    if previous.is_empty() || previous.len() != palettes.len() || slots.len() * 2 > MAX_JOINTS {
         return None;
     }
+    let joints: usize = palettes.iter().map(|p| p.matrices.len()).sum();
+    if slots.len() != joints + previous_weights.len() {
+        return None;
+    }
+    let weights_moved = slots[joints..] != *previous_weights;
     let mut at = vec![None; palettes.len()];
     for s in instances {
         if let Some(t) = at.get_mut(s.palette as usize) {
@@ -360,12 +414,13 @@ pub(crate) fn append_previous(
                 .iter()
                 .zip(&q.matrices)
                 .any(|(m, w)| !(t * *m).abs_diff_eq(*w, 1e-6));
-            joints.extend(q.matrices.iter().map(Mat4::to_cols_array_2d));
+            slots.extend(q.matrices.iter().map(Mat4::to_cols_array_2d));
         } else {
-            joints.extend(p.matrices.iter().map(|m| (t * *m).to_cols_array_2d()));
+            slots.extend(p.matrices.iter().map(|m| (t * *m).to_cols_array_2d()));
         }
     }
-    Some(moved)
+    slots.extend_from_slice(previous_weights);
+    Some(moved || weights_moved)
 }
 
 #[cfg(test)]
@@ -406,7 +461,7 @@ mod motion_tests {
         // Palette 0 unmoved (its world joints as now), palette 1 lost a joint.
         let before = [palette(&[j]), palette(&[j])];
         assert_eq!(
-            append_previous(&now, &before, &instances, &mut joints),
+            append_previous(&now, &before, &instances, &[], &mut joints),
             Some(false)
         );
         assert_eq!(joints.len(), 6);
@@ -418,7 +473,7 @@ mod motion_tests {
             palette(&[t * j, t * j]),
         ];
         assert_eq!(
-            append_previous(&now, &before, &instances, &mut joints),
+            append_previous(&now, &before, &instances, &[], &mut joints),
             Some(true)
         );
         assert_eq!(
@@ -427,11 +482,51 @@ mod motion_tests {
         );
         // No previous palettes, or a count that does not match: no section.
         assert_eq!(
-            append_previous(&now, &before[1..], &instances, &mut joints),
+            append_previous(&now, &before[1..], &instances, &[], &mut joints),
             None
         );
         let mut joints = Vec::new();
-        assert_eq!(append_previous(&now, &[], &instances, &mut joints), None);
+        assert_eq!(
+            append_previous(&now, &[], &instances, &[], &mut joints),
+            None
+        );
         assert!(joints.is_empty());
+    }
+
+    /// The previous section carries the previous frame's weight slots after
+    /// its joints, at the same offset as the current ones; a change of
+    /// weight alone counts as motion; mismatched slots give no section.
+    #[test]
+    fn previous_weights_follow_the_joints() {
+        let j = Mat4::IDENTITY;
+        let inst = [SkinnedInstance::new(
+            MeshHandle::from_index(0),
+            MaterialHandle::from_index(0),
+            Mat4::IDENTITY,
+            0,
+        )];
+        let now = [palette(&[j])];
+        let w_now = weight_slots(&[0.5; 20], 20);
+        let w_before = weight_slots(&[0.25; 20], 20);
+        let mut slots = vec![j.to_cols_array_2d()];
+        slots.extend_from_slice(&w_now);
+        assert_eq!(
+            append_previous(&now, &now, &inst, &w_before, &mut slots),
+            Some(true)
+        );
+        assert_eq!(slots.len(), 6);
+        assert_eq!(slots[3..4], [j.to_cols_array_2d()]);
+        assert_eq!(slots[4..], w_before[..]);
+        // The same weights and joints: nothing moved.
+        let mut slots = vec![j.to_cols_array_2d()];
+        slots.extend_from_slice(&w_now);
+        assert_eq!(
+            append_previous(&now, &now, &inst, &w_now, &mut slots),
+            Some(false)
+        );
+        // Weight slots that do not match the current section's: none.
+        let mut slots = vec![j.to_cols_array_2d()];
+        slots.extend_from_slice(&w_now);
+        assert_eq!(append_previous(&now, &now, &inst, &[], &mut slots), None);
     }
 }

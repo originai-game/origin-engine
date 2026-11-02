@@ -512,6 +512,14 @@ is one line here, written at the merge that changes
   walks only the decals whose box can reach it; at most 255 overlap in one
   cluster (the newest kept, the rest counted in `decals_dropped`). Later
   decals still blend over earlier ones. Existing decals draw as before.
+- **Up to 64 blendshapes (R9, batch 3).** A mesh keeps up to 64 morph
+  targets (eight before), their deltas packed sparsely per vertex.
+  `og.Blendshapes` (version 2) keeps `w0`…`w7` and adds `influences`, the
+  weights of targets 9…64; the state block writes them only when one is
+  non-zero. The weights ride in the joint palette buffer after the joints,
+  and the previous frame's weights in its previous section, so the
+  skinned prepass's motion vectors follow a morphing face under TAA. A
+  save of version 1 restores through the migrating restore.
 
 ## 0.7.7 — 2026-10-31
 

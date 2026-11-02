@@ -1263,7 +1263,11 @@ default records no pass and costs nothing (`effects_off_add_no_passes`).
   a window's sky layer kept as authored).
 - **Skinning and blendshapes**: `SkinData` + `JointPalette` (a storage
   buffer, the morph deltas beside the palette),
-  `MorphTargets` weighted per instance; og-anim writes the palettes.
+  `MorphTargets` weighted per instance, up to 64 targets per mesh, their
+  deltas packed sparsely and their weights in the palette buffer after the
+  joints, this frame's and the previous one's (for the skinned prepass's
+  motion vectors); the buffer's sections are laid out in one place, the
+  module doc of `skin.rs` (§The palette buffer). og-anim writes the palettes.
 - **Stylised**: toon ramp, rim light, dissolve per material. Every
   fragment entry point has one `discard` (`dissolve_at` returns a flag the
   caller folds in): on Metal a second discard in an entry point did not take

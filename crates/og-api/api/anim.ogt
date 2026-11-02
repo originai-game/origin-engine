@@ -185,7 +185,7 @@ module anim {
   }
 
   component Blendshapes {
-    doc "Morph-target weights of the skeleton entity's mesh, in the order of the glTF mesh's targets. With `source` clips the playing clips' weight channels write them; with `component` game code does."
+    doc "Morph-target weights of the skeleton entity's mesh, in the order of the glTF mesh's targets, up to 64 targets (w0...w7, then `influences`). With `source` clips the playing clips' weight channels write them; with `component` game code does. Under TAA a morphing mesh has motion vectors from its previous weights, so a talking face does not ghost."
     field source BlendshapeSource "Who decides the weights: component (game code writes w0...w7) or clips (the animation writes them)."
     field mesh u32 "The glTF mesh index whose targets the weights drive (0 is the first mesh)." {
       min 0
@@ -230,6 +230,7 @@ module anim {
       max 2
       tunable true
     }
+    field influences List.f32.56 "Weights of targets 8 to 63, as three.js morphTargetInfluences past the first eight (w0...w7): influences[k] drives target 8 + k; past the list's length 0. A face rig's 52 ARKit shapes fit. Clips write it with `source` clips, as they write w0...w7."
   }
 
   component IkChain {

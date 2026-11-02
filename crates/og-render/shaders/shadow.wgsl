@@ -29,8 +29,8 @@ struct SkinnedInstanceIn {
   @location(6) m2: vec3<f32>,
   @location(7) m3: vec3<f32>,
   @location(8) palette: vec4<f32>,
-  @location(11) morph0: vec4<f32>,
-  @location(12) morph1: vec4<f32>,
+  @location(11) morph0: vec4<f32>,  // x: first weight slot + 1 (skin.rs)
+  @location(12) morph1: vec4<f32>,  // unused
 };
 struct SkinIn {
   @location(9) joints: vec4<u32>,
@@ -143,33 +143,11 @@ fn skin_matrix(s: SkinIn, palette: vec4<f32>) -> mat4x4<f32> {
 }
 
 
-struct Morphed {
-  position: vec3<f32>,
-  normal: vec3<f32>,
-};
 
-// Blendshapes: the weighted position and normal deltas of vertex `vi`
-// (palette.z: the mesh's first delta, palette.w: its targets).
-fn morphed(position: vec3<f32>, normal: vec3<f32>, vi: u32, palette: vec4<f32>, w0: vec4<f32>, w1: vec4<f32>) -> Morphed {
-  var m: Morphed;
-  m.position = position;
-  m.normal = normal;
-  let targets = u32(palette.w);
-  if (targets == 0u) { return m; }
-  let base = u32(palette.z) + vi * targets * 2u;
-  var w = array<f32, 8>(w0.x, w0.y, w0.z, w0.w, w1.x, w1.y, w1.z, w1.w);
-  for (var t = 0u; t < min(targets, 8u); t++) {
-    if (w[t] != 0.0) {
-      m.position += morph_delta(base + t * 2u).xyz * w[t];
-      m.normal += morph_delta(base + t * 2u + 1u).xyz * w[t];
-    }
-  }
-  return m;
-}
 
 @vertex
 fn vs_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInstanceIn, s: SkinIn) -> VsOut {
-  let m = morphed(v.position, v.normal, vi, i.palette, i.morph0, i.morph1);
+  let m = morphed(v.position, v.normal, vi, i.palette, i.morph0.x);
   var mv = v;
   mv.position = m.position;
   return shadow_vertex(instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s, i.palette), mv);
@@ -177,7 +155,7 @@ fn vs_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInstanceIn,
 
 @vertex
 fn vs_skinned_hooked(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInstanceIn, s: SkinIn) -> VsOut {
-  let m = morphed(v.position, v.normal, vi, i.palette, i.morph0, i.morph1);
+  let m = morphed(v.position, v.normal, vi, i.palette, i.morph0.x);
   var mv = v;
   mv.position = m.position;
   mv.normal = m.normal;

@@ -302,6 +302,46 @@ fn blendshapes_move_vertices_by_their_weights() {
     let (tall, _) = frame(&desc, &build(1.0));
     println!("top row: rest {}, weight 1 {}", top(&rest), top(&tall));
     assert!(top(&tall) + 10 < top(&rest));
+    // 64 targets (the old cap was eight): the same push split into 64
+    // equal targets, every one at weight 1, draws the single target's
+    // frame; and the last target alone, carrying the whole push, too.
+    let many = |weights: &dyn Fn(usize) -> f32, last_whole: bool| {
+        let mut scene = build(0.0);
+        let positions = (0..64)
+            .map(|t| {
+                let k = if last_whole {
+                    if t == 63 { 1.0 } else { 0.0 }
+                } else {
+                    1.0 / 64.0
+                };
+                deltas.iter().map(|d| *d * k).collect()
+            })
+            .collect();
+        let h = scene.skinned_instances[0].mesh;
+        assert!(scene.set_morph_targets(
+            h,
+            MorphTargets {
+                positions,
+                normals: None,
+            }
+        ));
+        for t in 0..64 {
+            scene.skinned_instances[0].morph_weights[t] = weights(t);
+        }
+        scene
+    };
+    let (split, _) = frame(&desc, &many(&|_| 1.0, false));
+    save("blendshapes-64", &split);
+    let d = differing(&split, &tall, 8.0);
+    println!("64 split targets vs one: {d} pixels differ");
+    assert!(d < 40, "64 targets summed differ from one ({d} pixels)");
+    let (last, _) = frame(&desc, &many(&|t| if t == 63 { 1.0 } else { 0.0 }, true));
+    let d = differing(&last, &tall, 8.0);
+    println!("target 64 alone vs one: {d} pixels differ");
+    assert!(
+        d < 40,
+        "the 64th target differs from the first ({d} pixels)"
+    );
     // A bad target count is refused.
     let mut bad = RenderScene::new();
     let h = bad.add_mesh(mesh.clone());

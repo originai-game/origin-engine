@@ -116,6 +116,8 @@ pub(crate) fn versioned(mut schema: og_core::Schema) -> og_core::Schema {
         "og.Physics" => og_physics::Physics::schema().version,
         "og.Joint" => og_physics::Joint::schema().version,
         "og.Vehicle" => og_physics::Vehicle::schema().version,
+        // R9: 64 blendshape weights (`influences`).
+        "og.Blendshapes" => og_anim::Blendshapes::schema().version,
         crate::video::PLAYER => crate::video::PLAYER_VERSION,
         // R11: Light2D's kind, cone, height and layers; Occluder2D's
         // polygon and layers; Lighting2D's shadowAngles.

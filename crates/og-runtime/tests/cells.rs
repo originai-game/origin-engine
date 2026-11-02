@@ -365,10 +365,11 @@ fn a_replay_and_a_restored_save_go_tick_for_tick_across_a_cell_load() {
 /// the cells' own behaviour;
 /// then (d68afb5b35367aa5 -> 4dc7f88be39d4fd9) G3-3 batch 2's og.StreamCell
 /// persist and budget, the og.cells state block and StreamAnchor.maxSpeed,
-/// the ids unmoved.
+/// the ids unmoved; then (4dc7f88be39d4fd9 -> 6470ecdb2d6381ad) R9's
+/// og.Blendshapes version 2 (`influences`), which changes the type table.
 const WELL_FIRST: f64 = (1u64 << 32 | 4) as f64;
 const WELL_AFTER_RELOAD: f64 = (2u64 << 32 | 4) as f64;
-const END_HASH: &str = "4dc7f88be39d4fd9";
+const END_HASH: &str = "6470ecdb2d6381ad";
 
 #[test]
 fn a_session_without_anchors_refuses_the_camera() {

@@ -154,6 +154,12 @@ pub struct RenderScene {
     /// `joint_palettes`'; a palette whose joint count differs, or a mesh
     /// with morph targets alone, moves with the camera only.
     pub previous_joint_palettes: Vec<JointPalette>,
+    /// Each skinned instance's blendshape weights as the previous frame drew
+    /// them, same order as `skinned_instances`: TAA's motion vectors of a
+    /// morphing mesh (the palette buffer's previous section, `skin.rs`).
+    /// Ignored unless its length equals `skinned_instances`'; then the
+    /// morph moves with the camera only.
+    pub previous_morph_weights: Vec<[f32; crate::MAX_MORPH_TARGETS]>,
     /// The camera cut into this frame (a teleport or a cut between shots):
     /// motion blur takes no camera motion from the frame before, and TAA
     /// starts from this frame's samples ([`crate::Renderer::reset_history`]).

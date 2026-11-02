@@ -31,14 +31,14 @@ fn skel() -> Skeleton {
 #[derive(Default)]
 struct Sink {
     palettes: Vec<(Entity, u32, Vec<Mat4>)>,
-    weights: Vec<(Entity, u32, [f32; 8])>,
+    weights: Vec<(Entity, u32, [f32; BLENDSHAPES])>,
 }
 
 impl PaletteSink for Sink {
     fn joint_palette(&mut self, entity: Entity, skin: u32, joints: &[Mat4]) {
         self.palettes.push((entity, skin, joints.to_vec()));
     }
-    fn morph_weights(&mut self, entity: Entity, mesh: u32, weights: &[f32; 8]) {
+    fn morph_weights(&mut self, entity: Entity, mesh: u32, weights: &[f32; BLENDSHAPES]) {
         self.weights.push((entity, mesh, *weights));
     }
 }
@@ -69,15 +69,22 @@ fn the_bind_pose_palette_is_identity_and_a_clip_moves_it() {
     assert!(sink.weights.is_empty(), "no og.Blendshapes, no weights");
 }
 
+/// All 64 weights, the named eight and `influences`' 56, reach the output.
 #[test]
 fn component_weights_write_through() {
     let (mut w, anim) = world();
-    let want = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8];
+    let mut want = [0.0; BLENDSHAPES];
+    want[..8].copy_from_slice(&[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]);
+    want[8] = 0.9;
+    want[40] = -0.25;
+    want[63] = 1.5;
     let mut b = Blendshapes {
         mesh: 0,
         ..Blendshapes::default()
     };
     b.set_weights(want);
+    assert_eq!(b.influences.len(), 56);
+    assert_eq!(b.weights(), want);
     let e = w
         .spawn((Transform::default(), skel(), b, AnimationPlayer::new(BLINK)))
         .unwrap();
@@ -123,10 +130,13 @@ fn clip_weights_drive_the_component() {
     // Another mesh index takes nothing from the clip (head draws mesh 0).
     let mut b: Blendshapes = w.get(e).unwrap();
     b.mesh = 1;
-    b.set_weights([0.0; 8]);
+    b.set_weights([0.0; BLENDSHAPES]);
     w.insert(e, b).unwrap();
     w.step().unwrap();
-    assert_eq!(w.get::<Blendshapes>(e).unwrap().weights(), [0.0; 8]);
+    assert_eq!(
+        w.get::<Blendshapes>(e).unwrap().weights(),
+        [0.0; BLENDSHAPES]
+    );
 }
 
 #[test]
@@ -187,4 +197,34 @@ fn unregistered_assets_are_refused_with_the_entity() {
     let mut bad = clips().remove(0).1;
     bad.frames += 1;
     assert!(anim.add_clip(5, bad).is_err());
+}
+
+/// Weights past the eighth survive a snapshot (og.anim's weights section),
+/// and a world whose weights stop at eight saves no section: its snapshot
+/// is the same bytes as one that never had more.
+#[test]
+fn weights_past_the_eighth_survive_a_snapshot() {
+    let (mut w, anim) = world();
+    let mut want = [0.0; BLENDSHAPES];
+    want[2] = 0.5;
+    want[50] = 0.75;
+    let mut b = Blendshapes::default();
+    b.set_weights(want);
+    let e = w
+        .spawn((Transform::default(), skel(), b, AnimationPlayer::new(BLINK)))
+        .unwrap();
+    w.step().unwrap();
+    let snap = w.snapshot();
+    let (mut r, again) = world();
+    r.restore(&snap).unwrap();
+    assert_eq!(r.world_hash(), w.world_hash());
+    r.step().unwrap();
+    w.step().unwrap();
+    assert_eq!(again.output(e).unwrap().weights, want);
+    assert_eq!(anim.output(e).unwrap().weights, want);
+    // Eight weights only: no section, the same snapshot either way.
+    let mut eight = [0.0; BLENDSHAPES];
+    eight[2] = 0.5;
+    b.set_weights(eight);
+    assert!(b.influences.is_empty());
 }

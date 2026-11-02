@@ -693,6 +693,7 @@ impl Renderer {
         let mut batches: Vec<Batch> = Vec::new();
         let mut data = Vec::with_capacity(order.len());
         let mut spheres = Vec::with_capacity(order.len());
+        let mut previous_weights = Vec::new();
         for &i in &order {
             let s = &scene.skinned_instances[i];
             let (mesh, material, cast) = (s.mesh.index(), s.material.index(), s.cast_shadows);
@@ -752,7 +753,20 @@ impl Renderer {
             });
             let (first, count) = offsets[s.palette as usize];
             let (morph_first, targets) = self.cache.morph_ranges[mesh];
-            let w = s.morph_weights;
+            // Its weights' slots after the joints (`skin.rs`, the layout);
+            // none while every weight is zero.
+            let targets_n = targets as usize;
+            let mut weights_at = 0.0;
+            if targets_n > 0 && s.morph_weights[..targets_n].iter().any(|&w| w != 0.0) {
+                weights_at = (matrices.len() + 1) as f32;
+                matrices.extend(skin::weight_slots(&s.morph_weights, targets_n));
+                let before = scene
+                    .previous_morph_weights
+                    .get(i)
+                    .filter(|_| scene.previous_morph_weights.len() == scene.skinned_instances.len())
+                    .unwrap_or(&s.morph_weights);
+                previous_weights.extend(skin::weight_slots(before, targets_n));
+            }
             data.push(skin::SkinnedInstanceGpu {
                 transform: instances::gpu_columns(&s.transform),
                 palette: [
@@ -761,8 +775,8 @@ impl Renderer {
                     morph_first as f32,
                     targets as f32,
                 ],
-                morph0: [w[0], w[1], w[2], w[3]],
-                morph1: [w[4], w[5], w[6], w[7]],
+                morph0: [weights_at, 0.0, 0.0, 0.0],
+                morph1: [0.0; 4],
                 look: {
                     let [flash, color, tint] = instances::fx_bits(&s.fx);
                     [
@@ -774,11 +788,18 @@ impl Renderer {
                 },
             });
         }
+        if matrices.len() > MAX_JOINTS {
+            return Err(RenderError::InvalidData(format!(
+                "{} joints and blendshape weight slots in the frame's palette (at most {MAX_JOINTS})",
+                matrices.len()
+            )));
+        }
         Ok(SkinnedFrame {
             batches,
             data,
             spheres,
             matrices,
+            previous_weights,
         })
     }
 

@@ -338,6 +338,10 @@
       {
         "member": "og.Decal normalMin, normalMax and normalScale; decals past 32 per frame",
         "summary": "Decals, R7 batch 1: a decal can carry a tangent-space normal map from a region of the decal atlas (normalMin to normalMax, strength normalScale as three.js normalScale) that bends the surface's normal; a frame draws up to 65,536 decals (they were capped at 32), binned into the light clusters so each pixel walks only the decals that can cover it, at most 255 in one cluster (the newest kept). Existing decals draw as before; off by default (an empty normal region)."
+      },
+      {
+        "member": "og.Blendshapes.influences",
+        "summary": "Up to 64 blendshapes: weights of targets 9…64, carried with the previous frame's weights for motion vectors."
       }
     ],
     "fixed": [

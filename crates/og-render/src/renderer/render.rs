@@ -107,15 +107,16 @@ impl Renderer {
         let skinned_data = std::mem::take(&mut skinned.data);
         let mut joint_matrices = std::mem::take(&mut skinned.matrices);
         let joints_drawn = joint_matrices.len() as u32;
-        // TAA's skinned motion vectors: the previous frame's joints in a
-        // second section of the palette (skin.rs `append_previous`), read by
-        // the skinned prepass at `Fx::decal_info.w`.
+        // TAA's skinned motion vectors: the previous frame's joints and
+        // blendshape weights in a second section of the palette (skin.rs,
+        // its layout), read by the skinned prepass at `Fx::decal_info.w`.
         let taa_on = self.info.antialias == Antialias::Taa;
         let skinned_motion = if taa_on {
             skin::append_previous(
                 &scene.joint_palettes,
                 &scene.previous_joint_palettes,
                 &scene.skinned_instances,
+                &skinned.previous_weights,
                 &mut joint_matrices,
             )
         } else {

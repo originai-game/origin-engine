@@ -225,17 +225,8 @@ impl Renderer {
             self.cache.meshes.push(gpu);
             let mut range = (0u32, 0u32);
             if let Some(m) = morph {
-                let targets = m.positions.len();
-                range = (self.cache.morph_data.len() as u32, targets as u32);
-                for v in 0..n {
-                    for t in 0..targets {
-                        self.cache
-                            .morph_data
-                            .push(m.positions[t][v].extend(0.0).to_array());
-                        let nd = m.normals.as_ref().map_or(Vec3::ZERO, |ns| ns[t][v]);
-                        self.cache.morph_data.push(nd.extend(0.0).to_array());
-                    }
-                }
+                range = (self.cache.morph_data.len() as u32, m.positions.len() as u32);
+                pack_morphs(m, n, &mut self.cache.morph_data);
                 self.cache.morphs_dirty = true;
             }
             self.cache.morph_ranges.push(range);
@@ -601,5 +592,89 @@ impl Renderer {
                 f.close();
             }
         }
+    }
+}
+
+/// Appends a mesh's morph targets to the morph deltas in their sparse form
+/// (`skin.rs`, the palette buffer's layout): `vertices` headers (first
+/// entry, entries), then each vertex's entries for the targets that move
+/// it, (position delta, target) and (normal delta, 0).
+pub(crate) fn pack_morphs(m: &MorphTargets, vertices: usize, out: &mut Vec<[f32; 4]>) {
+    let base = out.len();
+    out.resize(base + vertices, [0.0; 4]);
+    for v in 0..vertices {
+        let first = out.len();
+        for (t, positions) in m.positions.iter().enumerate() {
+            let dp = positions[v];
+            let dn = m.normals.as_ref().map_or(Vec3::ZERO, |ns| ns[t][v]);
+            if dp != Vec3::ZERO || dn != Vec3::ZERO {
+                out.push(dp.extend(t as f32).to_array());
+                out.push(dn.extend(0.0).to_array());
+            }
+        }
+        out[base + v] = [first as f32, ((out.len() - first) / 2) as f32, 0.0, 0.0];
+    }
+}
+
+#[cfg(test)]
+mod morph_tests {
+    use super::*;
+
+    /// The shader's walk (`skin_storage.wgsl` `morphed`) over the packed
+    /// deltas and weight slots: what a vertex moves by.
+    fn walk(deltas: &[[f32; 4]], base: usize, v: usize, slots: &[[[f32; 4]; 4]]) -> Vec3 {
+        let h = deltas[base + v];
+        let (first, count) = (h[0] as usize, h[1] as usize);
+        let mut p = Vec3::ZERO;
+        for k in 0..count {
+            let d = deltas[first + k * 2];
+            let t = d[3] as usize;
+            let w = slots[t / 16][(t % 16) / 4][t % 4];
+            p += Vec3::new(d[0], d[1], d[2]) * w;
+        }
+        p
+    }
+
+    /// 40 targets, each moving a few vertices: the sparse deltas and the
+    /// 16-a-slot weights give every vertex the dense weighted sum, past the
+    /// old limit of 8 targets and after another mesh's deltas.
+    #[test]
+    fn sparse_morphs_sum_every_weighted_target() {
+        let (n, targets) = (7, 40);
+        let positions: Vec<Vec<Vec3>> = (0..targets)
+            .map(|t| {
+                (0..n)
+                    .map(|v| {
+                        if (t + v) % 5 == 0 {
+                            Vec3::new(t as f32, v as f32, 1.0)
+                        } else {
+                            Vec3::ZERO
+                        }
+                    })
+                    .collect()
+            })
+            .collect();
+        let m = MorphTargets {
+            positions: positions.clone(),
+            normals: None,
+        };
+        let mut deltas = vec![[9.0; 4]; 3];
+        pack_morphs(&m, n, &mut deltas);
+        let weights: Vec<f32> = (0..targets).map(|t| 0.1 + t as f32 * 0.01).collect();
+        let slots = crate::skin::weight_slots(&weights, targets);
+        assert_eq!(slots.len(), 3);
+        for v in 0..n {
+            let dense: Vec3 = positions.iter().zip(&weights).map(|(t, w)| t[v] * w).sum();
+            assert!(
+                walk(&deltas, 3, v, &slots).abs_diff_eq(dense, 1e-4),
+                "vertex {v}"
+            );
+        }
+        // Only the moving (vertex, target) pairs are stored.
+        let moving = (0..targets)
+            .flat_map(|t| (0..n).map(move |v| (t, v)))
+            .filter(|(t, v)| (t + v) % 5 == 0)
+            .count();
+        assert_eq!(deltas.len(), 3 + n + moving * 2);
     }
 }

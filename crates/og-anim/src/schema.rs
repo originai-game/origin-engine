@@ -234,15 +234,20 @@ impl AnimationGraph {
     }
 }
 
-/// The number of blendshape weights (`Blendshapes.w0` … `w7`).
-pub const BLENDSHAPES: usize = 8;
+/// The number of blendshape weights (`Blendshapes.w0` … `w7`, then
+/// `influences`): og-render's `MAX_MORPH_TARGETS`.
+pub const BLENDSHAPES: usize = 64;
+
+/// The weights `Blendshapes` names one by one (`w0` … `w7`); the rest are
+/// `influences`.
+pub const NAMED_BLENDSHAPES: usize = 8;
 
 /// Morph-target weights of the skeleton entity's mesh, in the order of the
 /// glTF mesh's targets. With `source` clips the playing clips' weight
 /// channels write them; with `component` game code does. The renderer reads
 /// the result from the animation system's output every frame.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
-#[reflect(name = "og.Blendshapes")]
+#[reflect(name = "og.Blendshapes", version = 2)]
 pub struct Blendshapes {
     /// Who decides the weights: component (game code writes w0…w7) or clips (the animation writes them).
     #[reflect(variants = ["component", "clips"])]
@@ -274,6 +279,10 @@ pub struct Blendshapes {
     /// Weight of target 7.
     #[reflect(min = -1, max = 2, tunable)]
     pub w7: f32,
+    /// Weights of targets 8 to 63, as three.js morphTargetInfluences past
+    /// the first eight (w0…w7): influences[k] drives target 8 + k; past the
+    /// list's length 0.
+    pub influences: og_core::List<f32, { BLENDSHAPES - NAMED_BLENDSHAPES }>,
 }
 
 /// `Blendshapes.source`: game code writes the weights.
@@ -283,15 +292,25 @@ pub const BLENDSHAPES_FROM_CLIPS: u32 = 1;
 
 impl Blendshapes {
     pub fn weights(&self) -> [f32; BLENDSHAPES] {
-        [
+        let mut w = [0.0; BLENDSHAPES];
+        w[..NAMED_BLENDSHAPES].copy_from_slice(&[
             self.w0, self.w1, self.w2, self.w3, self.w4, self.w5, self.w6, self.w7,
-        ]
+        ]);
+        let rest = self.influences.as_slice();
+        w[NAMED_BLENDSHAPES..NAMED_BLENDSHAPES + rest.len()].copy_from_slice(rest);
+        w
     }
 
+    /// Sets every weight; `influences` holds up to the last non-zero one, so
+    /// eight targets save as they did before it existed.
     pub fn set_weights(&mut self, w: [f32; BLENDSHAPES]) {
+        let named: [f32; NAMED_BLENDSHAPES] = w[..NAMED_BLENDSHAPES].try_into().unwrap_or_default();
         [
             self.w0, self.w1, self.w2, self.w3, self.w4, self.w5, self.w6, self.w7,
-        ] = w;
+        ] = named;
+        let rest = &w[NAMED_BLENDSHAPES..];
+        let len = rest.iter().rposition(|&x| x != 0.0).map_or(0, |i| i + 1);
+        self.influences = og_core::List::from_slice(&rest[..len]).unwrap_or_default();
     }
 }
 

@@ -38,6 +38,9 @@ const SECTION_GUARDS: u32 = 2;
 const SECTION_SPRINGS: u32 = 3;
 /// Skeleton entities with a hidden node: the hidden nodes of each.
 const SECTION_HIDDEN: u32 = 4;
+/// Blendshape weights past the eighth (R9): per entity with one non-zero,
+/// its weights 8 up to the last non-zero one.
+const SECTION_WEIGHTS: u32 = 5;
 
 fn guard_code(g: Interrupt) -> u8 {
     match g {
@@ -74,8 +77,8 @@ fn encode(
                 w.f32(v);
             }
         }
-        for v in s.weights {
-            w.f32(v);
+        for v in &s.weights[..NAMED_BLENDSHAPES] {
+            w.f32(*v);
         }
         let p = &s.player;
         w.u64(p.clip);
@@ -171,6 +174,25 @@ fn encode(
             }
         }
     }
+    let extra: Vec<(u64, &[f32])> = states
+        .iter()
+        .filter_map(|(&e, s)| {
+            let rest = &s.weights[NAMED_BLENDSHAPES..];
+            let len = rest.iter().rposition(|&x| x != 0.0)? + 1;
+            Some((e, &rest[..len]))
+        })
+        .collect();
+    if !extra.is_empty() {
+        w.u32(SECTION_WEIGHTS);
+        w.u32(extra.len() as u32);
+        for (e, rest) in extra {
+            w.u64(e);
+            w.u32(rest.len() as u32);
+            for v in rest {
+                w.f32(*v);
+            }
+        }
+    }
 }
 
 fn decode(bytes: &[u8]) -> Result<Saved> {
@@ -214,7 +236,7 @@ fn decode(bytes: &[u8]) -> Result<Saved> {
             ));
         }
         let mut weights = [0f32; BLENDSHAPES];
-        for v in weights.iter_mut() {
+        for v in weights[..NAMED_BLENDSHAPES].iter_mut() {
             *v = r.f32()?;
         }
         let player = PlayerState {
@@ -362,6 +384,28 @@ fn decode(bytes: &[u8]) -> Result<Saved> {
                             )
                         })?;
                         *v = false;
+                    }
+                }
+            }
+            SECTION_WEIGHTS => {
+                let n = r.count(12)?;
+                for _ in 0..n {
+                    let e = r.u64()?;
+                    let count = r.count(4)?;
+                    if count > BLENDSHAPES - NAMED_BLENDSHAPES {
+                        return Err(Error::new(
+                            ErrorKind::Parse,
+                            format!("og.anim entity {e} has {count} weights past the eighth"),
+                        ));
+                    }
+                    let s = saved.states.get_mut(&e).ok_or_else(|| {
+                        Error::new(
+                            ErrorKind::Parse,
+                            format!("og.anim blendshape weights for entity {e}, which it lacks"),
+                        )
+                    })?;
+                    for k in 0..count {
+                        s.weights[NAMED_BLENDSHAPES + k] = r.f32()?;
                     }
                 }
             }

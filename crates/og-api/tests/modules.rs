@@ -74,7 +74,7 @@ const VERSIONS: &[(&str, u32, u64)] = &[
     ("og.AudioListener", 1, 0x51f48da421d73dc2),
     ("og.AudioSnapshot", 1, 0x515c0d8ddf345f37),
     ("og.AudioSource", 2, 0x35081d41554c04b2),
-    ("og.Blendshapes", 1, 0xbc3663f9e80b3bc0),
+    ("og.Blendshapes", 2, 0x4f86806f3bbd31a0),
     ("og.BodySlept", 1, 0x316a96ff6521a2ed),
     ("og.BodyWoke", 1, 0x268b8a476bcb2864),
     ("og.Collider", 1, 0xe83c74a0520778bc),

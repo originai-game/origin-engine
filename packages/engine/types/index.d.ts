@@ -16117,7 +16117,7 @@ export interface AnimationGraph {
 }
 
 /**
- * Morph-target weights of the skeleton entity's mesh, in the order of the glTF mesh's targets. With `source` clips the playing clips' weight channels write them; with `component` game code does.
+ * Morph-target weights of the skeleton entity's mesh, in the order of the glTF mesh's targets, up to 64 targets (w0...w7, then `influences`). With `source` clips the playing clips' weight channels write them; with `component` game code does. Under TAA a morphing mesh has motion vectors from its previous weights, so a talking face does not ghost.
  *
  * The value of the `Blendshapes` component (token `og.Blendshapes`).
  */
@@ -16188,6 +16188,12 @@ export interface Blendshapes {
    * @tunable
    */
   w7: number;
+  /**
+   * Weights of targets 8 to 63, as three.js morphTargetInfluences past the first eight (w0...w7): influences[k] drives target 8 + k; past the list's length 0. A face rig's 52 ARKit shapes fit. Clips write it with `source` clips, as they write w0...w7.
+   *
+   * @capacity 56 elements (List.f32.56): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  influences: readonly number[];
 }
 
 /**
@@ -50254,9 +50260,9 @@ export declare namespace og {
    */
   const AnimationGraph: ComponentType<{ readonly asset: FieldSpec<"GraphAsset">; readonly weight: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly p0: FieldSpec<"f32">; readonly p1: FieldSpec<"f32">; readonly p2: FieldSpec<"f32">; readonly p3: FieldSpec<"f32">; readonly p4: FieldSpec<"f32">; readonly p5: FieldSpec<"f32">; readonly p6: FieldSpec<"f32">; readonly p7: FieldSpec<"f32">; readonly state: FieldSpec<"u32">; readonly stateTime: FieldSpec<"f32"> }, AnimationGraph>;
   /**
-   * Morph-target weights of the skeleton entity's mesh, in the order of the glTF mesh's targets. With `source` clips the playing clips' weight channels write them; with `component` game code does.
+   * Morph-target weights of the skeleton entity's mesh, in the order of the glTF mesh's targets, up to 64 targets (w0...w7, then `influences`). With `source` clips the playing clips' weight channels write them; with `component` game code does. Under TAA a morphing mesh has motion vectors from its previous weights, so a talking face does not ghost.
    */
-  const Blendshapes: ComponentType<{ readonly source: FieldSpec<"BlendshapeSource">; readonly mesh: FieldSpec<"u32">; readonly w0: FieldSpec<"f32">; readonly w1: FieldSpec<"f32">; readonly w2: FieldSpec<"f32">; readonly w3: FieldSpec<"f32">; readonly w4: FieldSpec<"f32">; readonly w5: FieldSpec<"f32">; readonly w6: FieldSpec<"f32">; readonly w7: FieldSpec<"f32"> }, Blendshapes>;
+  const Blendshapes: ComponentType<{ readonly source: FieldSpec<"BlendshapeSource">; readonly mesh: FieldSpec<"u32">; readonly w0: FieldSpec<"f32">; readonly w1: FieldSpec<"f32">; readonly w2: FieldSpec<"f32">; readonly w3: FieldSpec<"f32">; readonly w4: FieldSpec<"f32">; readonly w5: FieldSpec<"f32">; readonly w6: FieldSpec<"f32">; readonly w7: FieldSpec<"f32">; readonly influences: ListSpec<"f32"> }, Blendshapes>;
   /**
    * An inverse-kinematics constraint on a skeleton, applied after its clips and graph: the chain of `bones` bones ending at joint `tip` turns so the tip reaches `target`. Put it on its own entity (a skeleton can have many chains); chains apply in query order.
    */

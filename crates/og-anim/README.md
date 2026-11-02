@@ -106,7 +106,8 @@ snapshots and restores as before.
 |---|---|---|---|
 | `source` | enum `component` `clips` | component | component: game code writes `w0…w7`; clips: the clips' weight channels write them |
 | `mesh` | u32 | 0 | the glTF mesh index the weights drive |
-| `w0` … `w7` | f32, −1…2, tunable | 0 | weights in the mesh's target order |
+| `w0` … `w7` | f32, −1…2, tunable | 0 | the first eight weights in the mesh's target order |
+| `influences` | list of f32, up to 56 | empty | the weights of targets 9…64 (a mesh has up to 64); clips write it, trimmed after the last non-zero weight |
 
 ### `og.IkChain` (component, on its own entity; many per skeleton)
 

@@ -37538,7 +37538,7 @@
     "Blendshapes": {
       "x-og-kind": "component",
       "x-og-module": "anim",
-      "description": "Morph-target weights of the skeleton entity's mesh, in the order of the glTF mesh's targets. With `source` clips the playing clips' weight channels write them; with `component` game code does.",
+      "description": "Morph-target weights of the skeleton entity's mesh, in the order of the glTF mesh's targets, up to 64 targets (w0...w7, then `influences`). With `source` clips the playing clips' weight channels write them; with `component` game code does. Under TAA a morphing mesh has motion vectors from its previous weights, so a talking face does not ghost.",
       "type": "object",
       "properties": {
         "source": {
@@ -37617,6 +37617,15 @@
           "minimum": -1,
           "maximum": 2,
           "x-og-tunable": true
+        },
+        "influences": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 56,
+          "description": "Weights of targets 8 to 63, as three.js morphTargetInfluences past the first eight (w0...w7): influences[k] drives target 8 + k; past the list's length 0. A face rig's 52 ARKit shapes fit. Clips write it with `source` clips, as they write w0...w7.",
+          "default": []
         }
       },
       "additionalProperties": false

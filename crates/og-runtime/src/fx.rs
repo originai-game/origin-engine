@@ -169,6 +169,9 @@ pub(crate) struct FxState {
     /// The last frame's joints of each posed model by entity, in the world
     /// (its instance's transform times its palette): TAA's skinned motion.
     pub drawn_joints: IdMap<u64, Vec<Mat4>>,
+    /// The last frame's blendshape weights of each posed model's skinned
+    /// mesh, by (entity, mesh index): TAA's motion of a morphing face.
+    pub drawn_weights: BTreeMap<(u64, usize), [f32; og_render::MAX_MORPH_TARGETS]>,
 }
 
 pub(crate) fn f(v: &Value, key: &str, default: f32) -> f32 {
@@ -1198,6 +1201,7 @@ pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64, cut: 
     );
     scene.previous_transforms.clear();
     scene.previous_joint_palettes.clear();
+    scene.previous_morph_weights.clear();
     let blur = scene.post.motion_blur.is_some();
     let keyed = keys.len() == scene.instances.len();
     if blur && keyed {
@@ -1215,12 +1219,14 @@ pub(crate) fn motion(rs: &mut RenderState, keys: &[(u64, u32)], tick: u64, cut: 
     if !blur && !taa {
         fx.drawn.clear();
         fx.drawn_joints.clear();
+        fx.drawn_weights.clear();
         return;
     }
     if taa {
         joints(scene, atmo, fx);
     } else {
         fx.drawn_joints.clear();
+        fx.drawn_weights.clear();
     }
     if !interp.display && !taa {
         return;
@@ -1298,6 +1304,25 @@ fn joints(
         })
         .collect();
     fx.drawn_joints = now;
+    // Each skinned instance's weights the frame before (its own where it
+    // was not drawn then: no morph motion), and this frame's kept.
+    let mut weights = BTreeMap::new();
+    scene.previous_morph_weights = scene
+        .skinned_instances
+        .iter()
+        .map(|s| {
+            let Some(e) = entity_of.get(s.palette as usize).copied().flatten() else {
+                return s.morph_weights;
+            };
+            let key = (e, s.mesh.index());
+            weights.insert(key, s.morph_weights);
+            fx.drawn_weights
+                .get(&key)
+                .copied()
+                .unwrap_or(s.morph_weights)
+        })
+        .collect();
+    fx.drawn_weights = weights;
 }
 
 /// The overlay's size in CSS pixels: the host's viewport, else the target.
