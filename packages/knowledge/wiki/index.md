@@ -157,7 +157,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1736 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1757 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -204,6 +204,7 @@ Field units the docs and Tune use.
 | [`ArchetypeView.entities`](world.md#member-ArchetypeView-entities) | property | world | `og_archetype_view_get_entities` |
 | [`ArchetypeView.entity`](world.md#member-ArchetypeView-entity) | method | world | `og_archetype_view_entity` |
 | [`ArchetypeView.has`](world.md#member-ArchetypeView-has) | method | world | `og_archetype_view_has` |
+| [`ArchetypeView.rows`](world.md#member-ArchetypeView-rows) | property | world | `og_archetype_view_get_rows` |
 | [`ArchetypeView.tick`](world.md#member-ArchetypeView-tick) | property | world | `og_archetype_view_get_tick` |
 | [`ArtBrush`](art.md#type-ArtBrush) | enum | art | — |
 | [`ArtBrush()`](art.md#column-ArtBrush) | column kind | art | — |
@@ -358,6 +359,7 @@ Field units the docs and Tune use.
 | [`DebugView`](render.md#type-DebugView) | enum | render | — |
 | [`Declutter`](ui.md#type-Declutter) | enum | ui | — |
 | [`defineComponent`](reflect.md#fn-defineComponent) | function | reflect | `og_reflect_define_component` |
+| [`defineHook`](system.md#fn-defineHook) | function | system | `og_system_define_hook` |
 | [`defineResource`](reflect.md#fn-defineResource) | function | reflect | `og_reflect_define_resource` |
 | [`defineSystem`](system.md#fn-defineSystem) | function | system | `og_system_define_system` |
 | [`DensityMode`](ui.md#type-DensityMode) | enum | ui | — |
@@ -515,6 +517,11 @@ Field units the docs and Tune use.
 | [`HoldButtonDesc`](ui.md#type-HoldButtonDesc) | desc struct | ui | — |
 | [`HoldKey`](ui.md#type-HoldKey) | struct | ui | — |
 | [`HoldResult`](ui.md#type-HoldResult) | struct | ui | — |
+| [`Hook`](system.md#type-Hook) | interface | system | — |
+| [`Hook.name`](system.md#member-Hook-name) | property | system | `og_hook_get_name` |
+| [`HookDesc`](system.md#type-HookDesc) | desc struct | system | — |
+| [`HookEvent`](system.md#type-HookEvent) | enum | system | — |
+| [`HookRun`](system.md#type-HookRun) | callback | system | — |
 | [`HudResult`](ui.md#type-HudResult) | struct | ui | — |
 | [`HumanBone`](anim.md#type-HumanBone) | struct | anim | — |
 | [`Humanoid`](anim.md#type-Humanoid) | struct | anim | — |
@@ -685,6 +692,7 @@ Field units the docs and Tune use.
 | [`NavMeshInfo`](nav.md#type-NavMeshInfo) | struct | nav | — |
 | [`NavPath`](nav.md#type-NavPath) | struct | nav | — |
 | [`NavRebuild`](nav.md#type-NavRebuild) | struct | nav | — |
+| [`Neighbour`](world.md#type-Neighbour) | struct | world | — |
 | [`NodeGraphDesc`](ui.md#type-NodeGraphDesc) | desc struct | ui | — |
 | [`NodeGraphResult`](ui.md#type-NodeGraphResult) | struct | ui | — |
 | [`NoiseDesc`](ai.md#type-NoiseDesc) | desc struct | ai | — |
@@ -1510,6 +1518,7 @@ Field units the docs and Tune use.
 | [`RootMotion`](anim.md#type-RootMotion) | enum | anim | — |
 | [`RootMotion()`](anim.md#column-RootMotion) | column kind | anim | — |
 | [`RumbleDesc`](input.md#type-RumbleDesc) | desc struct | input | — |
+| [`RunCondition`](system.md#type-RunCondition) | callback | system | — |
 | [`RuntimeProbe`](probe.md#type-RuntimeProbe) | interface | probe | — |
 | [`RuntimeProbe.accepted`](probe.md#member-RuntimeProbe-accepted) | method | probe | `og_runtime_probe_accepted` |
 | [`RuntimeProbe.advance`](probe.md#member-RuntimeProbe-advance) | method | probe | `og_runtime_probe_advance` |
@@ -1632,6 +1641,11 @@ Field units the docs and Tune use.
 | [`SoundInfo`](load.md#type-SoundInfo) | struct | load | — |
 | [`SpaceDesc`](ui.md#type-SpaceDesc) | desc struct | ui | — |
 | [`SpaceStep`](ui.md#type-SpaceStep) | enum | ui | — |
+| [`SpatialDesc`](world.md#type-SpatialDesc) | desc struct | world | — |
+| [`SpatialIndex`](world.md#type-SpatialIndex) | interface | world | — |
+| [`SpatialIndex.count`](world.md#member-SpatialIndex-count) | property | world | `og_spatial_index_get_count` |
+| [`SpatialIndex.nearest`](world.md#member-SpatialIndex-nearest) | method | world | `og_spatial_index_nearest` |
+| [`SpatialIndex.within`](world.md#member-SpatialIndex-within) | method | world | `og_spatial_index_within` |
 | [`SpawnDesc`](world.md#type-SpawnDesc) | desc struct | world | — |
 | [`Sphere`](math.md#type-Sphere) | struct | math | — |
 | [`sphere`](math.md#value-sphere) | value | math | — |
@@ -1663,10 +1677,12 @@ Field units the docs and Tune use.
 | [`StartFn`](game.md#type-StartFn) | callback | game | — |
 | [`StatCompareDesc`](ui.md#type-StatCompareDesc) | desc struct | ui | — |
 | [`StatCompareRow`](ui.md#type-StatCompareRow) | desc struct | ui | — |
+| [`StateDesc`](system.md#type-StateDesc) | struct | system | — |
 | [`StateEvent`](ui.md#type-StateEvent) | struct | ui | — |
 | [`StateGroup`](ui.md#type-StateGroup) | struct | ui | — |
 | [`StateTransition`](ui.md#type-StateTransition) | struct | ui | — |
 | [`StateValue`](ui.md#type-StateValue) | struct | ui | — |
+| [`StateWhen`](system.md#type-StateWhen) | enum | system | — |
 | [`StatRow`](ui.md#type-StatRow) | desc struct | ui | — |
 | [`StepperDesc`](ui.md#type-StepperDesc) | desc struct | ui | — |
 | [`StepperResult`](ui.md#type-StepperResult) | struct | ui | — |
@@ -1872,6 +1888,7 @@ Field units the docs and Tune use.
 | [`WipeSide`](ui.md#type-WipeSide) | enum | ui | — |
 | [`World`](world.md#type-World) | interface | world | — |
 | [`World.alive`](world.md#member-World-alive) | method | world | `og_world_alive` |
+| [`World.children`](world.md#member-World-children) | method | world | `og_world_children` |
 | [`World.despawn`](world.md#member-World-despawn) | method | world | `og_world_despawn` |
 | [`World.emit`](world.md#member-World-emit) | method | world | `og_world_emit` |
 | [`World.events`](world.md#member-World-events) | method | world | `og_world_events` |
@@ -1884,11 +1901,15 @@ Field units the docs and Tune use.
 | [`World.openSave`](world.md#member-World-openSave) | method | world | `og_world_open_save` |
 | [`World.query`](world.md#member-World-query) | method | world | `og_world_query` |
 | [`World.remove`](world.md#member-World-remove) | method | world | `og_world_remove` |
+| [`World.removed`](world.md#member-World-removed) | method | world | `og_world_removed` |
 | [`World.resource`](world.md#member-World-resource) | method | world | `og_world_resource` |
 | [`World.restore`](world.md#member-World-restore) | method | world | `og_world_restore` |
 | [`World.set`](world.md#member-World-set) | method | world | `og_world_set` |
+| [`World.setState`](world.md#member-World-setState) | method | world | `og_world_set_state` |
 | [`World.snapshot`](world.md#member-World-snapshot) | method | world | `og_world_snapshot` |
+| [`World.spatial`](world.md#member-World-spatial) | method | world | `og_world_spatial` |
 | [`World.spawn`](world.md#member-World-spawn) | method | world | `og_world_spawn` |
+| [`World.state`](world.md#member-World-state) | method | world | `og_world_state` |
 | [`World.tick`](world.md#member-World-tick) | property | world | `og_world_get_tick` |
 | [`WorldAnchorDesc`](ui.md#type-WorldAnchorDesc) | desc struct | ui | — |
 | [`WorldDump`](probe.md#type-WorldDump) | struct | probe | — |

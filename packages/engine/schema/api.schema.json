@@ -16239,13 +16239,12 @@
         },
         "initial": {
           "type": "string",
-          "description": "The value it starts in; empty: the first."
+          "description": "The value it starts in; empty or omitted: the first."
         }
       },
       "required": [
         "name",
-        "values",
-        "initial"
+        "values"
       ],
       "additionalProperties": false
     },

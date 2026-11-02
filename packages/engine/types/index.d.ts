@@ -1820,8 +1820,8 @@ export interface StateDesc {
   readonly name: string;
   /** Its values, at least one, each unique. */
   readonly values: readonly string[];
-  /** The value it starts in; empty: the first. */
-  readonly initial: string;
+  /** The value it starts in; empty or omitted: the first. */
+  readonly initial?: string;
 }
 
 /**

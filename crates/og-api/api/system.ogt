@@ -17,7 +17,9 @@ module system {
     doc "A state machine (GameDesc.states): a name and the values it moves between; it holds one at a time, and world.setState moves it as the next tick begins. Its value is world state: saves, the hash and replays carry it."
     field name String "Its unique name."
     field values List.String "Its values, at least one, each unique."
-    field initial String "The value it starts in; empty: the first."
+    field initial String "The value it starts in; empty or omitted: the first." {
+      optional true
+    }
   }
 
   callback RunCondition {

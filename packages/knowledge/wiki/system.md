@@ -74,7 +74,7 @@ fn defineHook {
 }
 ```
 
-<sub>`api.ogt` line 1299</sub>
+<sub>`api.ogt` line 1301</sub>
 
 <a id="fn-defineSystem"></a>
 
@@ -106,7 +106,7 @@ fn defineSystem {
 }
 ```
 
-<sub>`api.ogt` line 1323</sub>
+<sub>`api.ogt` line 1325</sub>
 
 ## Interfaces
 
@@ -122,7 +122,7 @@ interface Hook {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1294</sub>
+<sub>`api.ogt` line 1296</sub>
 
 <a id="member-Hook-name"></a>
 
@@ -140,7 +140,7 @@ Binding symbol `og_hook_get_name` · publish builds: kept
 prop name String "The hook's unique name."
 ```
 
-<sub>`api.ogt` line 1296</sub>
+<sub>`api.ogt` line 1298</sub>
 
 <a id="type-System"></a>
 
@@ -154,7 +154,7 @@ interface System {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 1316</sub>
+<sub>`api.ogt` line 1318</sub>
 
 <a id="member-System-name"></a>
 
@@ -172,7 +172,7 @@ Binding symbol `og_system_get_name` · publish builds: kept
 prop name String "The system's unique name."
 ```
 
-<sub>`api.ogt` line 1318</sub>
+<sub>`api.ogt` line 1320</sub>
 
 <a id="member-System-reads"></a>
 
@@ -190,7 +190,7 @@ Binding symbol `og_system_get_reads` · publish builds: kept
 prop reads List.AnyReflected "What it reads."
 ```
 
-<sub>`api.ogt` line 1319</sub>
+<sub>`api.ogt` line 1321</sub>
 
 <a id="member-System-writes"></a>
 
@@ -208,7 +208,7 @@ Binding symbol `og_system_get_writes` · publish builds: kept
 prop writes List.AnyReflected "What it writes."
 ```
 
-<sub>`api.ogt` line 1320</sub>
+<sub>`api.ogt` line 1322</sub>
 
 ## Types
 
@@ -247,14 +247,16 @@ A state machine (GameDesc.states): a name and the values it moves between; it ho
 |---|---|---|---|---|---|---|
 | `name` | `string` | `""` | — | — | — | Its unique name. |
 | `values` | `readonly string[]` | `[]` | — | — | — | Its values, at least one, each unique. |
-| `initial` | `string` | `""` | — | — | — | The value it starts in; empty: the first. |
+| `initial` | `string` | `""` | — | — | optional | The value it starts in; empty or omitted: the first. |
 
 ```ogt
 struct StateDesc {
   doc "A state machine (GameDesc.states): a name and the values it moves between; it holds one at a time, and world.setState moves it as the next tick begins. Its value is world state: saves, the hash and replays carry it."
   field name String "Its unique name."
   field values List.String "Its values, at least one, each unique."
-  field initial String "The value it starts in; empty: the first."
+  field initial String "The value it starts in; empty or omitted: the first." {
+    optional true
+  }
 }
 ```
 
@@ -284,7 +286,7 @@ callback RunCondition {
 }
 ```
 
-<sub>`api.ogt` line 1251</sub>
+<sub>`api.ogt` line 1253</sub>
 
 <a id="type-SystemDesc"></a>
 
@@ -328,7 +330,7 @@ struct SystemDesc {
 }
 ```
 
-<sub>`api.ogt` line 1257</sub>
+<sub>`api.ogt` line 1259</sub>
 
 <a id="type-HookEvent"></a>
 
@@ -351,7 +353,7 @@ enum HookEvent {
 }
 ```
 
-<sub>`api.ogt` line 1274</sub>
+<sub>`api.ogt` line 1276</sub>
 
 <a id="type-HookDesc"></a>
 
@@ -377,7 +379,7 @@ struct HookDesc {
 }
 ```
 
-<sub>`api.ogt` line 1280</sub>
+<sub>`api.ogt` line 1282</sub>
 
 <a id="type-HookRun"></a>
 
@@ -404,7 +406,7 @@ callback HookRun {
 }
 ```
 
-<sub>`api.ogt` line 1288</sub>
+<sub>`api.ogt` line 1290</sub>
 
 <a id="type-SystemRun"></a>
 
@@ -433,4 +435,4 @@ callback SystemRun {
 }
 ```
 
-<sub>`api.ogt` line 1309</sub>
+<sub>`api.ogt` line 1311</sub>
