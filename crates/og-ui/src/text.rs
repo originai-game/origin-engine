@@ -75,7 +75,7 @@ fn kern_key(a: char, b: char) -> u64 {
 
 /// Brackets a right-to-left run draws mirrored (Unicode's Bidi_Mirrored
 /// pairs the UI's fonts carry).
-fn mirror(c: char) -> char {
+pub(crate) fn mirror(c: char) -> char {
     match c {
         '(' => ')',
         ')' => '(',
@@ -489,9 +489,15 @@ impl FontMetrics {
         features: Features,
     ) -> Vec<VisualGlyph> {
         let script = text.chars().any(og_i18n::needs_shaping);
+        // A glyph the atlas has, or a character the file renders at run time.
+        let has = |c: char| {
+            self.in_atlas(c)
+                || ((c as u32) < crate::shape::GLYPH_PUA
+                    && self.file.as_ref().is_some_and(|f| f.advance(c).is_some()))
+        };
         if (script || !features.is_empty())
             && let Some(file) = &self.file
-            && let Some(shaped) = file.shape_with(text, rtl, features, &|c| self.in_atlas(c))
+            && let Some(shaped) = file.shape_with(text, rtl, features, &has)
         {
             // A shaped script keeps its joins untracked (step_tracking); a
             // run shaped only for its features tracks as written.
@@ -508,6 +514,28 @@ impl FontMetrics {
                     font,
                 })
                 .collect();
+        }
+        // A shaped run that cannot be drawn whole (its atlas lacks a form)
+        // falls back word by word: only the word that lacks it is drawn as
+        // written, and the line is as wide as its words measured alone (as
+        // a rich text's line breaking measures them).
+        if script && self.file.is_some() && text.contains(' ') {
+            let mut words: Vec<Vec<VisualGlyph>> = Vec::new();
+            let mut at = 0;
+            for piece in text.split_inclusive(' ') {
+                let (word, space) = piece.split_at(piece.trim_end_matches(' ').len());
+                for part in [word, space] {
+                    if !part.is_empty() {
+                        let f = first + text[..at].chars().count();
+                        words.push(self.run_one(part, rtl, tracking, f, font, features));
+                        at += part.len();
+                    }
+                }
+            }
+            if rtl {
+                words.reverse();
+            }
+            return words.concat();
         }
         let n = text.chars().count();
         let mut out: Vec<VisualGlyph> = Vec::with_capacity(n);

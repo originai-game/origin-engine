@@ -149,7 +149,11 @@ impl FontFile {
 
     /// A run shaped in its direction, in visual order; `None` when this
     /// build does not shape or the atlas lacks a glyph the result needs
-    /// (`has`), so the run is drawn as written.
+    /// (`has`), so the run is drawn as written. A glyph that is its
+    /// character's own (the font's character map gives it, as for a full
+    /// stop or a digit inside an Arabic run, or the mirror of a bracket) is
+    /// drawn as that character when `has` it: the cook keeps such glyphs
+    /// under their code points, not as shaped forms.
     pub fn shape(&self, run: &str, rtl: bool, has: &dyn Fn(char) -> bool) -> ShapedRun {
         self.shape_with(run, rtl, Features::NONE, has)
     }
@@ -213,9 +217,13 @@ impl FontFile {
         let em = self.units_per_em;
         let mut glyphs = Vec::with_capacity(out.len());
         for (g, p) in out.glyph_infos().iter().zip(out.glyph_positions()) {
-            let ch = char::from_u32(GLYPH_PUA + g.glyph_id)?;
+            let mut ch = char::from_u32(GLYPH_PUA + g.glyph_id)?;
             if !has(ch) {
-                return None;
+                // The character's own glyph, kept under its code point.
+                let c = run.get(g.cluster as usize..)?.chars().next()?;
+                ch = [c, crate::text::mirror(c)].into_iter().find(|&c| {
+                    face.glyph_index(c).map(|i| u32::from(i.0)) == Some(g.glyph_id) && has(c)
+                })?;
             }
             glyphs.push(Shaped {
                 ch,
