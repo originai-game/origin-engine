@@ -64,6 +64,27 @@ fn value_noise(p: vec2<f32>) -> f32 {
   return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
 }
 
+// A mask's fraction `m` restated for linear-light blending of the layer's
+// colour `rgb`: the alpha drawing the luminance CSS's sRGB blend draws
+// with `m` over the colour's opposite (sRGB 1 − its own: white under a
+// dark scrim, black under light text), the ground a fade shows against.
+// Dark content is close to exact over any ground; mid grey has no
+// contrast to fade and keeps `m`. Applying `m` directly fades in linear
+// light, where a dark scrim barely darkens until the mask is nearly
+// whole and light text stays bright until its very edge: either fade
+// reads as a line, not a fade.
+fn mask_weight(m: f32, rgb: vec3<f32>) -> f32 {
+  let lc = dot(rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
+  let cs = encode(vec3<f32>(lc)).x;
+  let gs = 1.0 - cs;
+  let lg = decode(vec3<f32>(gs)).x;
+  if (abs(lc - lg) < 1e-3) {
+    return m;
+  }
+  let drawn = decode(vec3<f32>(mix(gs, cs, m))).x;
+  return clamp((drawn - lg) / (lc - lg), 0.0, 1.0);
+}
+
 fn composite(in: UiOut, c: vec4<f32>) -> vec4<f32> {
   let s = instances[in.instance];
   let px = local_px(in.local);
@@ -78,6 +99,9 @@ fn composite(in: UiOut, c: vec4<f32>) -> vec4<f32> {
   } else if (mk == 2u) {
     let m = mix(layer_params.mask_uv.xy, layer_params.mask_uv.zw, clamp(uv, vec2<f32>(0.0), vec2<f32>(1.0)));
     mask = textureSampleLevel(mask_tex, layer_sampler, m, 0.0).a;
+  }
+  if (mk != 0u) {
+    mask = mask_weight(mask, c.rgb);
   }
   let a = clamp(cov * c.a * mask * s.extra.x * instance_clip(s, in.position.xy), 0.0, 1.0);
   return finish_color(c.rgb, a);

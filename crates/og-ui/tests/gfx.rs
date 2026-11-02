@@ -1087,3 +1087,132 @@ fn a_skewed_element_draws_its_parallelogram() {
         }
     }
 }
+
+/// A gradient mask (`clip: mask`) fades the element's subtree as CSS's
+/// mask does over the ground it fades against: halfway along a mask going
+/// from whole to none, a black fill over white and a white fill over
+/// black each draw CSS's sRGB 128, and the faded edge is the ground. The
+/// black box masks its own fill; the white box masks a child's (its
+/// parent draws nothing itself, over an opaque black backing).
+///
+/// Ways it could fail: the mask never reaches the layer (both boxes
+/// solid), or it fades in linear light (188 halfway in both): a dark
+/// scrim then hardly darkens until the mask is nearly whole, so its fade
+/// reads as a line (U6c's frame scrim in round 13).
+#[test]
+fn a_gradient_mask_fades_as_it_reads() {
+    use og_ui::paint::{Clip, ElementDraw, Gradient, Mask, Paint, Stop};
+    let vp = Viewport {
+        width: 400.0,
+        height: 200.0,
+        dpr: 1.0,
+        ..Viewport::default()
+    };
+    let white = Srgba::rgb(255, 255, 255);
+    let black = Srgba::rgb(0, 0, 0);
+    let fade = || {
+        Clip::Mask(Mask::Gradient(Gradient {
+            from: [0.0, 0.0],
+            to: [1.0, 0.0],
+            stops: vec![
+                Stop {
+                    offset: 0.0,
+                    color: white.into(),
+                },
+                Stop {
+                    offset: 1.0,
+                    color: white.fade(0.0).into(),
+                },
+            ],
+            dither: false,
+            ..Gradient::default()
+        }))
+    };
+    let mut ui = Ui::new(UiDesc::default());
+    ui.begin(InputFrame::default(), vp);
+    ui.open(
+        "Row",
+        Element {
+            direction: Direction::Row,
+            padding: Insets::all(50.0),
+            gap: 50.0,
+            ..Element::default()
+        },
+    );
+    let boxed = Element {
+        width: Size::Fixed(125.0),
+        height: Size::Fixed(100.0),
+        radius: 0.0,
+        ..Element::default()
+    };
+    ui.open("Own", boxed);
+    ui.set_draw(ElementDraw {
+        fills: vec![Paint::Solid(black.into())],
+        clip: fade(),
+        ..Default::default()
+    });
+    ui.close();
+    ui.open(
+        "Backing",
+        Element {
+            background: Some(black),
+            ..boxed
+        },
+    );
+    ui.open("Parent", boxed);
+    ui.set_draw(ElementDraw {
+        clip: fade(),
+        ..Default::default()
+    });
+    ui.open(
+        "Child",
+        Element {
+            background: Some(white),
+            ..boxed
+        },
+    );
+    ui.close();
+    ui.close();
+    ui.close();
+    ui.close();
+    ui.end();
+    let boxes: Vec<[f32; 4]> = ["Row/Own", "Row/Backing/Parent"]
+        .iter()
+        .map(|p| {
+            let e = ui.frame().element(p).expect("laid out");
+            [e.x, e.y, e.width, e.height]
+        })
+        .collect();
+    let mut scene = RenderScene::new();
+    let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
+    ui.frame().emit(&EmitDesc::default(), &mut overlay);
+    scene.overlay = Some(overlay);
+    scene.environment.background = Background::Color(Vec3::ONE);
+    scene.post.tonemap = Tonemap::None;
+    let desc = RenderDesc {
+        width: 400,
+        height: 200,
+        ..RenderDesc::default()
+    };
+    let (pixels, _) = rendered(&scene, &desc);
+    if let Ok(dir) = std::env::var("OG_UI_SHOT") {
+        let path = PathBuf::from(dir).join("mask-fade.png");
+        image::save_buffer(&path, &pixels, 400, 200, image::ColorType::Rgba8).expect("saved");
+    }
+    let lum = |x: f32, y: f32| f32::from(pixels[(y as usize * 400 + x as usize) * 4]);
+    for (k, ([x, y, w, h], (whole, ground))) in boxes
+        .into_iter()
+        .zip([(0.0, 255.0), (255.0, 0.0)])
+        .enumerate()
+    {
+        let half = 128.0;
+        let cy = y + h / 2.0;
+        let (start, mid, end) = (lum(x + 1.0, cy), lum(x + w / 2.0, cy), lum(x + w - 1.0, cy));
+        assert!(
+            (start - whole).abs() <= 6.0
+                && (mid - half).abs() <= 6.0
+                && (end - ground).abs() <= 6.0,
+            "box {k}: sRGB {start} at its start (want {whole}), {mid} halfway (want {half}, as CSS draws it), {end} at its faded edge (want the ground's {ground})"
+        );
+    }
+}

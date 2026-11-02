@@ -254,7 +254,11 @@ glass is not the cause, most fail on solid glass too):
 - Any element can clip its children to its own shape (rounded, squircle,
   polygon, path), antialiased, not only to its rectangle.
 - Alpha masks from an image or a gradient: a list fading at its scroll
-  edges, a portrait in a brush-stroke shape.
+  edges, a portrait in a brush-stroke shape. A mask's alpha fades as CSS's
+  does, not by linear coverage: the composite restates it for the
+  engine's linear-light blending against the content's opposite ground
+  (white under a dark scrim, black under light text), so a dark scrim
+  darkens evenly through its fade instead of cutting in at its end.
 - An element marked `layer` draws its subtree into an offscreen target
   that is then composited with a **UI material**. Built-in materials:
   dissolve (noise threshold with an edge glow), shine sweep, hologram
