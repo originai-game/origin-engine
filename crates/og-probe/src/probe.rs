@@ -265,6 +265,11 @@ pub struct Probe {
     before_tick: Option<AfterTickFn>,
     /// The host's tick gate ([`Probe::set_gate`]).
     gate: Option<GateFn>,
+    /// After a rollback's rewind (the gate moved `Time` back): the tick the
+    /// world had reached. The ticks below it run again: they take no share
+    /// of a frame's ticks, and the input's edges, which belong to the
+    /// present tick, stay for it.
+    replay_until: u64,
 }
 
 /// The host's tick gate: asked before every tick the clock takes (a frame's
@@ -494,6 +499,7 @@ impl Probe {
             after_tick: None,
             before_tick: None,
             gate: None,
+            replay_until: 0,
         })
     }
 
@@ -578,7 +584,18 @@ impl Probe {
         let Some(gate) = self.gate.as_mut() else {
             return false;
         };
-        !gate(world)
+        let before = world.time().tick;
+        let go = gate(world);
+        let after = world.time().tick;
+        if after < before {
+            self.replay_until = self.replay_until.max(before);
+        }
+        !go
+    }
+
+    /// Whether the next tick runs again after a rollback's rewind.
+    fn replaying(&self, world: &World) -> bool {
+        world.time().tick < self.replay_until
     }
 
     /// The world's clock jumped from `from` to `to` outside a tick (a game
@@ -990,8 +1007,12 @@ impl Probe {
             if self.quit || self.shot.is_some() || self.held(world) {
                 break;
             }
+            // A re-simulated tick is the past again, not one of the frame's.
+            let again = self.replaying(world);
             self.tick_once(world)?;
-            taken += 1;
+            if !again {
+                taken += 1;
+            }
         }
         Ok(taken)
     }
@@ -1038,6 +1059,7 @@ impl Probe {
     }
 
     fn tick_once(&mut self, world: &mut World) -> og_core::Result<()> {
+        let replaying = self.replaying(world);
         if let Some(before) = self.before_tick.as_mut() {
             before(world);
         }
@@ -1049,7 +1071,9 @@ impl Probe {
         if counting {
             self.count_events(world, false);
         }
-        self.input.end_tick(world);
+        if !replaying {
+            self.input.end_tick(world);
+        }
         if let Some(after) = self.after_tick.as_mut() {
             let next = world.time().tick;
             after(world);

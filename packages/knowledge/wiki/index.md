@@ -160,7 +160,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1986 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1990 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -755,6 +755,8 @@ Field units the docs and Tune use.
 | [`NavShape`](nav.md#type-NavShape) | desc struct | nav | — |
 | [`NavShapeKind`](nav.md#type-NavShapeKind) | enum | nav | — |
 | [`Neighbour`](world.md#type-Neighbour) | struct | world | — |
+| [`NetMode`](net.md#type-NetMode) | enum | net | — |
+| [`NetMode()`](net.md#column-NetMode) | column kind | net | — |
 | [`NodeGraphDesc`](ui.md#type-NodeGraphDesc) | desc struct | ui | — |
 | [`NodeGraphResult`](ui.md#type-NodeGraphResult) | struct | ui | — |
 | [`NoiseDesc`](ai.md#type-NoiseDesc) | desc struct | ai | — |
@@ -985,7 +987,9 @@ Field units the docs and Tune use.
 | [`og.NavAgent`](nav.md#record-NavAgent) | component | nav | — |
 | [`og.NavFilter`](nav.md#record-NavFilter) | component | nav | — |
 | [`og.NavLinkReached`](nav.md#record-NavLinkReached) | event | nav | — |
+| [`og.net.finalHash`](net.md#fn-finalHash) | function | net | `og_net_final_hash` |
 | [`og.net.hash`](net.md#fn-hash) | function | net | `og_net_hash` |
+| [`og.net.resimulating`](net.md#fn-resimulating) | function | net | `og_net_resimulating` |
 | [`og.net.status`](net.md#fn-status) | function | net | `og_net_status` |
 | [`og.net.submit`](net.md#fn-submit) | function | net | `og_net_submit` |
 | [`og.Occluder2D`](render.md#record-Occluder2D) | component | render | — |

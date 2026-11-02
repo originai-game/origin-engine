@@ -1087,6 +1087,10 @@ export interface HostAbi<A, V> {
   og_net_submit(world: number, input: string | undefined): string;
   /** `og.net.status` */
   og_net_status(world: number): string;
+  /** `og.net.resimulating` */
+  og_net_resimulating(world: number): boolean;
+  /** `og.net.finalHash` */
+  og_net_final_hash(world: number, tick: number): string;
   /** `og.net.hash` */
   og_net_hash(world: number): string;
 }
@@ -1613,6 +1617,8 @@ export const SYMBOLS: readonly string[] = [
   "og_timeline_stop",
   "og_net_submit",
   "og_net_status",
+  "og_net_resimulating",
+  "og_net_final_hash",
   "og_net_hash",
   "og_host_set_dispatcher",
   "og_engine_create",

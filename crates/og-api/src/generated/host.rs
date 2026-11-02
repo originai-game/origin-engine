@@ -1229,6 +1229,10 @@ pub trait NetApi: Wire {
     fn og_net_submit(&self, world: u32, input: Option<String>) -> String;
     /// `og.net.status`
     fn og_net_status(&self, world: u32) -> String;
+    /// `og.net.resimulating`
+    fn og_net_resimulating(&self, world: u32) -> bool;
+    /// `og.net.finalHash`
+    fn og_net_final_hash(&self, world: u32, tick: f64) -> String;
     /// `og.net.hash`
     fn og_net_hash(&self, world: u32) -> String;
 }
@@ -1760,6 +1764,8 @@ pub const SYMBOLS: &[&str] = &[
     "og_timeline_stop",
     "og_net_submit",
     "og_net_status",
+    "og_net_resimulating",
+    "og_net_final_hash",
     "og_net_hash",
 ];
 

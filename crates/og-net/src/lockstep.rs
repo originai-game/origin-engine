@@ -88,6 +88,10 @@ pub struct Config {
     pub rollback: bool,
     /// In rollback, the most ticks a peer runs past its last confirmed one.
     pub max_prediction: u32,
+    /// This peer's own cap on prediction (what it can re-simulate in half
+    /// a frame, measured by the runtime): it decides only when this peer
+    /// waits, never what the room's confirmed world is.
+    pub budget: u32,
 }
 
 impl Default for Config {
@@ -99,6 +103,7 @@ impl Default for Config {
             hash_every: 10,
             rollback: false,
             max_prediction: 8,
+            budget: u32::MAX,
         }
     }
 }
@@ -208,6 +213,8 @@ const KEEP_OWN: u64 = 256;
 const MAX_KEPT: usize = 2048;
 /// The most of its own inputs one input message carries.
 const MAX_RESEND: u64 = 64;
+/// The final worlds' hashes kept for [`Lockstep::final_hash`].
+const KEEP_FINALS: usize = 1024;
 /// How far past the last tick run the confirmed tick is looked for (a room
 /// whose every seat is empty confirms every tick).
 const CONFIRM_AHEAD: u64 = 4096;
@@ -270,8 +277,7 @@ pub struct Lockstep {
     waiting_for: Vec<u32>,
     /// Lines for the engine's log.
     notes: Vec<String>,
-    /// Every final world's hash, for the tests.
-    #[cfg(test)]
+    /// The last final worlds' hashes, by tick ([`Lockstep::final_hash`]).
     finals: IdMap<u64, u64>,
 }
 
@@ -310,6 +316,24 @@ impl Lockstep {
     /// sounds and effects were already presented once.
     pub fn resimulating(&self, tick: u64) -> bool {
         self.run.is_some() && tick < self.frontier
+    }
+
+    /// The last tick whose world is final (every input it ran on real and
+    /// confirmed), while running.
+    pub fn final_tick(&self) -> Option<u64> {
+        self.run.as_ref().map(|_| self.hashed)
+    }
+
+    /// The shared hash of the final world at `tick`, while kept (the last
+    /// 1024, when hashing): `None` before the tick is final.
+    pub fn final_hash(&self, tick: u64) -> Option<u64> {
+        self.finals.get(&tick).copied()
+    }
+
+    /// The tick the world reached furthest (the present, below which a
+    /// tick is re-simulated).
+    pub fn frontier(&self) -> u64 {
+        self.frontier
     }
 
     /// This peer's seat at `tick` (`None`: watching, or not running).
@@ -772,7 +796,8 @@ impl Lockstep {
         }
         self.advance_confirmed();
         let run = self.run.as_ref().expect("running");
-        if tick > self.confirmed + run.max_prediction {
+        let predict = run.max_prediction.min(u64::from(cfg.budget));
+        if tick > self.confirmed + predict {
             let next = self.confirmed + 1;
             let have = self.inputs.get(&next);
             self.waiting_for = (0..run.seats.len())
@@ -943,8 +968,11 @@ impl Lockstep {
             let Some((hv, snapshot)) = self.ring.get(&h).cloned() else {
                 continue;
             };
-            #[cfg(test)]
             self.finals.insert(h, hv);
+            if self.finals.len() > KEEP_FINALS {
+                let first = *self.finals.keys().next().expect("non-empty");
+                self.finals.remove(&first);
+            }
             self.mine.insert(h, (hv, snapshot));
             self.batch.push(json!(hex(hv)));
             if h.is_multiple_of(every) && !self.batch.is_empty() {
@@ -1035,6 +1063,8 @@ impl Lockstep {
             "waitingFor": self.waiting_for,
             "waits": self.waits,
             "confirmedTick": run.map(|_| self.confirmed),
+            "finalTick": run.map(|_| self.hashed),
+            "acknowledged": run.and(self.acks.values().copied().min()),
             "predicted": run.map(|_| self.frontier.saturating_sub(1).saturating_sub(self.confirmed)),
             "rollbacks": self.rollbacks,
             "resimulatedTicks": self.resimulated,

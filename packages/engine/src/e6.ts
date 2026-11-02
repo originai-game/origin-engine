@@ -82,6 +82,8 @@ export const net = Object.freeze({
   submit: (world: W, input?: unknown) => parse(abi().og_net_submit(world.id, json(input))),
   status: (world: W) => parse(abi().og_net_status(world.id)),
   hash: (world: W) => parse<string>(abi().og_net_hash(world.id)),
+  resimulating: (world: W) => abi().og_net_resimulating(world.id) as boolean,
+  finalHash: (world: W, tick: number) => parse<string | null>(abi().og_net_final_hash(world.id, tick)),
 });
 
 function toBase64(bytes: Uint8Array): string {

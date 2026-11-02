@@ -196,6 +196,26 @@
       {
         "member": "og relay --latency, --jitter, --loss, --seed",
         "summary": "`og relay` can play a bad network to test netcode against (G2-7): every frame to a peer held the latency plus up to the jitter in milliseconds, in order, and a send marked unreliable (lockstep's inputs) dropped the loss percentage of the time and free to overtake others, the draws from one seed."
+      },
+      {
+        "member": "og.Lockstep.mode, og.Lockstep.maxPrediction, og.NetMode",
+        "summary": "Rollback netcode (G2-7): with mode `rollback` a tick runs on predicted inputs (each missing player's last input) up to maxPrediction ticks (default 8) past the last tick whose inputs are all in, and when a real input differs the world is rewound to the engine's own snapshot of that tick and re-simulated within the frame. A peer also predicts no further than it can re-simulate in half a frame. The zero value (`lockstep`) keeps today's behaviour; the confirmed world, which every peer agrees on, is the same as lockstep's for the same inputs."
+      },
+      {
+        "member": "og.net.resimulating, og.net.finalHash",
+        "summary": "resimulating(world) tells a system that the running tick is a rollback's re-run, so a game's own presentation (a shake, a haptic) fires once; finalHash(world, tick) is the shared hash of a tick's final world, run on real inputs only, kept for the last 1024 final ticks."
+      },
+      {
+        "member": "og.net.status: rollback, maxPrediction, confirmedTick, finalTick, acknowledged, predicted, rollbacks, resimulatedTicks, snapshotBytes",
+        "summary": "The status reports the rollback state: how far the world runs ahead of its confirmed inputs, how many rewinds and re-simulated ticks it took, and the bytes the rewind ring holds."
+      },
+      {
+        "member": "og.Audio during a rollback",
+        "summary": "A re-simulated tick plays each sound once: a play already sent for the same voice and sound is dropped, a new one is kept only if at most 100 ms late, and a voice the re-run no longer plays is stopped. Wall-clock presentation only: never in the tick or the hash."
+      },
+      {
+        "member": "og run: confirmedHash",
+        "summary": "og run's summary gives the confirmed (final) hash of its last tick in a room; in rollback the run continues past --ticks until that tick is final and acknowledged by every peer."
       }
     ],
     "fixed": [

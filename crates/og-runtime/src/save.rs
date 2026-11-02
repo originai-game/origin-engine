@@ -755,6 +755,67 @@ pub(crate) fn restore_session(
     apply_keeping(eng, world, &pending, keep)
 }
 
+/// Rollback's rewind (og.net, G2-7): the world back to `snapshot`, which
+/// is this process's own snapshot of tick `tick` from lockstep's ring
+/// (og-net's `Gate::Rewind`), never a save and never a peer's bytes. So
+/// nothing is checked against a game's saves or migrated (the bytes are
+/// this build's, taken from this world a few ticks ago), no og.WorldRestored
+/// is sent (the game did not load anything: the past runs again), and the
+/// platform's timers and the renderer's history keep their ticks (the
+/// ticks run forward again to where they were). The session (input, the
+/// view, og.Lockstep and the player's bindings) is kept, as for a restore;
+/// names, views and queries follow the world. Only og.net calls it.
+pub(crate) fn rewind(
+    eng: &Engine,
+    world: &mut World,
+    snapshot: &[u8],
+    tick: u64,
+    keep: &[&str],
+) -> Result<(), String> {
+    let kept: Vec<(og_ecs::SchemaId, Vec<u8>)> = SESSION
+        .iter()
+        .chain(keep.iter())
+        .filter_map(|name| {
+            let id = world.id_by_name(name).ok()?;
+            Some((id, world.resource_bytes(id).ok()?))
+        })
+        .collect();
+    let actions = eng.state.borrow().actions.clone();
+    let kept_actions = actions.as_ref().map(|a| og_input::actions::lock(a).clone());
+    world
+        .restore(snapshot)
+        .map_err(|e| e.reason().to_string())?;
+    debug_assert_eq!(
+        world.time().tick,
+        tick,
+        "a rewind's bytes are the ring's snapshot of its tick"
+    );
+    for (id, bytes) in kept {
+        let _ = world.insert_resource_bytes(id, &bytes);
+    }
+    og_audio::restored(world).map_err(|e| e.reason().to_string())?;
+    if let (Some(a), Some(map)) = (actions, kept_actions) {
+        og_input::actions::lock(&a).keep_player(&map);
+    }
+    // The renderer snaps to the corrected world: nothing to blend from.
+    if let Ok(mut rs) = eng.render.try_borrow_mut() {
+        rs.interp.forget();
+    }
+    {
+        let mut st = eng.state.borrow_mut();
+        st.names.clear();
+        st.name_of.clear();
+        st.name_ops.clear();
+        for (e, name) in world.names() {
+            st.names.insert(name.to_string(), e.to_bits());
+            st.name_of.insert(e.to_bits(), name.to_string());
+        }
+    }
+    super::engine::invalidate(true);
+    super::engine::clear_world_queries();
+    Ok(())
+}
+
 /// Restores a selection: the entities carrying its tags are replaced by
 /// its own, its resources set, the rest of the world (the session too)
 /// left as it is. References to a saved entity in an Entity field follow

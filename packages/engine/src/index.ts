@@ -124,6 +124,7 @@ export const BlendshapeSource = ((value = "component" as Api.BlendshapeSource, o
 export const IkSolver = ((value = "twoBone" as Api.IkSolver, options) => spec("IkSolver", value, options)) as typeof Api.IkSolver;
 export const IkSpace = ((value = "world" as Api.IkSpace, options) => spec("IkSpace", value, options)) as typeof Api.IkSpace;
 export const AudioBus = ((value = "master" as Api.AudioBus, options) => spec("AudioBus", value, options)) as typeof Api.AudioBus;
+export const NetMode = ((value = "lockstep" as Api.NetMode, options) => spec("NetMode", value, options)) as typeof Api.NetMode;
 export const PanningModel = ((value = "equalpower" as Api.PanningModel, options) => spec("PanningModel", value, options)) as typeof Api.PanningModel;
 export const AudioResampler = ((value = "linear" as Api.AudioResampler, options) => spec("AudioResampler", value, options)) as typeof Api.AudioResampler;
 export const AudioEventOrder = ((value = "random" as Api.AudioEventOrder, options) => spec("AudioEventOrder", value, options)) as typeof Api.AudioEventOrder;

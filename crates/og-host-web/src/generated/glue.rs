@@ -2743,6 +2743,16 @@ pub fn og_net_status(world: u32) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_net_resimulating(world: u32) -> bool {
+    <Host as NetApi>::og_net_resimulating(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_net_final_hash(world: u32, tick: f64) -> String {
+    <Host as NetApi>::og_net_final_hash(&Host, world, tick)
+}
+
+#[wasm_bindgen]
 pub fn og_net_hash(world: u32) -> String {
     <Host as NetApi>::og_net_hash(&Host, world)
 }

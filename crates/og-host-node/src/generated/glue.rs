@@ -3283,6 +3283,18 @@ pub fn og_net_status(env: Env, world: u32) -> String {
     <Host as NetApi>::og_net_status(&Host, world)
 }
 
+#[napi(js_name = "og_net_resimulating")]
+pub fn og_net_resimulating(env: Env, world: u32) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as NetApi>::og_net_resimulating(&Host, world)
+}
+
+#[napi(js_name = "og_net_final_hash")]
+pub fn og_net_final_hash(env: Env, world: u32, tick: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as NetApi>::og_net_final_hash(&Host, world, tick)
+}
+
 #[napi(js_name = "og_net_hash")]
 pub fn og_net_hash(env: Env, world: u32) -> String {
     let _env = crate::EnvScope::enter(&env);

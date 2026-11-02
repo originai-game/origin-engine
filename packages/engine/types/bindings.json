@@ -435,6 +435,12 @@
       "value": "TimelineAsset"
     },
     {
+      "name": "NetMode",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "NetMode"
+    },
+    {
       "name": "ArtRotation",
       "array": "Uint32Array",
       "stride": 1,
@@ -9179,6 +9185,16 @@
           "column": "bool",
           "default": false,
           "readonly": true
+        },
+        {
+          "name": "mode",
+          "column": "NetMode",
+          "default": "lockstep"
+        },
+        {
+          "name": "maxPrediction",
+          "column": "u32",
+          "default": 8
         }
       ]
     },
@@ -21565,6 +21581,45 @@
     },
     {
       "id": 520,
+      "kind": "fn",
+      "path": "og.net.resimulating",
+      "symbol": "og_net_resimulating",
+      "module": "net",
+      "name": "resimulating",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        }
+      ],
+      "returns": "bool",
+      "publish": true
+    },
+    {
+      "id": 521,
+      "kind": "fn",
+      "path": "og.net.finalHash",
+      "symbol": "og_net_final_hash",
+      "module": "net",
+      "name": "finalHash",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "tick",
+          "type": "f64",
+          "optional": false
+        }
+      ],
+      "returns": "Option<String>",
+      "publish": true
+    },
+    {
+      "id": 522,
       "kind": "fn",
       "path": "og.net.hash",
       "symbol": "og_net_hash",

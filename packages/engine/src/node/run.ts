@@ -308,8 +308,13 @@ function abiRoomInfo(): string {
   return boundHost()!.abi.og_platform_room_info(engine.id);
 }
 
-type NetStatus = { running: boolean; startTick: number | null; waits: number; desync: number | null };
+type NetStatus = { running: boolean; startTick: number | null; waits: number; desync: number | null; rollback: boolean; acknowledged: number | null };
 const netStatus = (): NetStatus => JSON.parse(boundHost()!.abi.og_net_status(engine.id)) as NetStatus;
+const finalHash = (t: number): string | null => JSON.parse(boundHost()!.abi.og_net_final_hash(engine.id, t)) as string | null;
+const rollbackDone = (t: number): boolean => {
+  const s = netStatus();
+  return !s.rollback || (finalHash(t) !== null && (s.acknowledged ?? t) >= t - 1);
+};
 
 let untilTick = -1;
 if (commands !== undefined) {
@@ -429,7 +434,11 @@ if (!probing) {
       quit = true;
       break;
     }
-    if (ticks !== undefined && tick >= ticks) break;
+    // In rollback the world reaches --ticks on predicted inputs: the run
+    // goes on (predicting at most maxPrediction ahead) until that tick's
+    // world is final and every peer acknowledged this one's inputs for it
+    // (they may have been lost), so `confirmedHash` is the room's (finalHash).
+    if (ticks !== undefined && tick >= ticks && (room === undefined || rollbackDone(ticks) || tick > ticks + 600)) break;
     // The script ends once its last step has run: a restore moving og.Time
     // forward or back moves the steps with it (they keep their delays), so
     // the tick its last step was scheduled for is no end (brasswick #13).
@@ -501,8 +510,9 @@ const summary = {
   hash: dump.hash,
   // og.net's shared hash: the world without this peer's session, what lockstep peers compare.
   netHash: JSON.parse(boundHost()!.abi.og_net_hash(engine.id)) as string,
-  // With --room: lockstep's state at the end (the tick it started, the waits, the first divergent tick).
-  ...(room !== undefined ? { lockstep: netStatus() } : {}),
+  // With --room: lockstep's state at the end (the tick it started, the waits, the first divergent tick),
+  // and the shared hash of the final world at --ticks (in rollback the world may run past it).
+  ...(room !== undefined ? { lockstep: netStatus(), confirmedHash: finalHash(ticks ?? dump.tick) } : {}),
   entities: dump.entities,
   advanceMs: +ms.toFixed(2),
   frames,

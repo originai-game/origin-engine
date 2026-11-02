@@ -62,7 +62,25 @@ struct LinkState {
     dropped: u64,
     /// The tick the world will run next (the end of the audio produced so far).
     next_tick: u64,
+    /// A rollback's replay of ticks the sink already heard ([`AudioLink::rewound`]).
+    replay: Option<Replay>,
+    /// The plays each recent tick sent the sink: (voice, sound).
+    sent: std::collections::BTreeMap<u64, Vec<(u32, u64)>>,
 }
+
+/// The ticks a rollback runs again (presentation only: nothing here reaches
+/// the world, its stream hash or the command stream it hashes).
+#[derive(Clone, Copy, Debug)]
+struct Replay {
+    /// The present: the ticks below it were heard once already.
+    until: u64,
+    /// A play the first run did not send is still worth sending this many
+    /// ticks late (about 100 ms); later, it is dropped.
+    late: u64,
+}
+
+/// The ticks of plays kept to recognise a replayed one.
+const KEEP_SENT: u64 = 256;
 
 /// The connection between one world's audio system and its sink (a mixer
 /// on the web Worker, cpal, or the null sink). Cloning shares it.
@@ -133,6 +151,36 @@ impl AudioLink {
         self.state.lock().expect("audio link").next_tick
     }
 
+    /// A rollback put the world back to tick `to` and runs it forward again
+    /// to `until`, the present: the sink already heard those ticks. Until
+    /// then a replayed tick's packet drops each play the first run sent for
+    /// the same voice and sound on that tick, keeps a new one only when it
+    /// is at most `late` ticks old (else it would start too late to belong:
+    /// about 100 ms), and the last replayed tick names the live voices, so
+    /// a voice only the mispredicted run started stops. No gap resync (the
+    /// mixer's voices are right but for those). Packets of those ticks the
+    /// sink has not drained yet are dropped first: it never heard them.
+    /// This is presentation only; the world's audio is the world's.
+    pub fn rewound(&self, to: u64, until: u64, late: u64) {
+        let mut s = self.state.lock().expect("audio link");
+        if to >= until {
+            return;
+        }
+        let dropped: Vec<u64> = s
+            .packets
+            .iter()
+            .filter(|p| p.tick >= to)
+            .map(|p| p.tick)
+            .collect();
+        s.packets.retain(|p| p.tick < to);
+        for t in dropped {
+            s.sent.remove(&t);
+        }
+        let until = s.replay.map_or(until, |r| r.until.max(until));
+        s.replay = Some(Replay { until, late });
+        s.last_tick = to.checked_sub(1);
+    }
+
     /// Packets dropped because the sink did not drain.
     pub fn dropped(&self) -> u64 {
         self.state.lock().expect("audio link").dropped
@@ -158,7 +206,52 @@ impl AudioLink {
             return;
         }
         let mut packet = packet;
-        if packet.resync || live != s.last_live {
+        let tick = packet.tick;
+        let mut name_live = false;
+        match s.replay {
+            Some(r) if tick < r.until && !packet.resync => {
+                let heard = s.sent.remove(&tick).unwrap_or_default();
+                let mut again = Vec::new();
+                packet.commands.retain(|c| {
+                    if c.op != Op::Play {
+                        return true;
+                    }
+                    let key = (c.voice, c.sound);
+                    if heard.contains(&key) {
+                        again.push(key);
+                        return false;
+                    }
+                    let fresh = r.until - tick <= r.late;
+                    if fresh {
+                        again.push(key);
+                    }
+                    fresh
+                });
+                s.sent.insert(tick, again);
+                if tick + 1 >= r.until {
+                    s.replay = None;
+                    name_live = true;
+                }
+            }
+            _ => {
+                if s.replay.is_some_and(|r| tick >= r.until) {
+                    s.replay = None;
+                    name_live = true;
+                }
+                let plays: Vec<(u32, u64)> = packet
+                    .commands
+                    .iter()
+                    .filter(|c| c.op == Op::Play)
+                    .map(|c| (c.voice, c.sound))
+                    .collect();
+                if !plays.is_empty() {
+                    s.sent.insert(tick, plays);
+                }
+            }
+        }
+        let floor = tick.saturating_sub(KEEP_SENT);
+        s.sent.retain(|t, _| *t >= floor);
+        if packet.resync || name_live || live != s.last_live {
             packet.live = Some(live.clone());
         }
         s.last_live = live;

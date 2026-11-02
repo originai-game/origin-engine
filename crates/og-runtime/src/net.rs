@@ -15,6 +15,16 @@
 //! writes every og.PlayerInput from the seats' inputs for the tick; after
 //! the tick [`after_tick`] sends this peer's input for the tick
 //! `inputDelay` on and hashes the world.
+//!
+//! Rollback (og.Lockstep `mode` rollback): the gate lets a tick run up to
+//! `maxPrediction` past the last confirmed one on predicted inputs, and
+//! when a real input differs it rewinds the world to this process's own
+//! snapshot ([`super::save::rewind`]) and the ticks run again in the same
+//! frame. A re-simulated tick sends the game the room events its first run
+//! did, and the audio link drops the plays the sink already heard. How far
+//! this peer predicts is also capped by what it can re-simulate in half a
+//! frame (measured on the wall clock: it decides only when the peer waits,
+//! never the confirmed world).
 
 use super::engine::{Engine, engine, running};
 use super::{ok_void, parse, refuse};
@@ -48,6 +58,35 @@ enum Stage {
     In,
 }
 
+/// What re-simulating costs this peer, on the wall clock (ms).
+#[derive(Default)]
+struct Cost {
+    /// A tick, and a rewind, smoothed.
+    tick_ms: f64,
+    rewind_ms: f64,
+    /// When the tick now running started.
+    started: Option<f64>,
+}
+
+impl Cost {
+    fn note(v: &mut f64, ms: f64) {
+        *v = if *v == 0.0 { ms } else { *v * 0.9 + ms * 0.1 };
+    }
+
+    /// The ticks this peer can re-simulate after a rewind in half a frame.
+    fn budget(&self, dt: f64) -> u32 {
+        if self.tick_ms <= 0.0 {
+            return u32::MAX;
+        }
+        let half = dt * 500.0;
+        (((half - self.rewind_ms) / self.tick_ms).floor()).max(1.0) as u32
+    }
+}
+
+/// A play a replayed tick's first run did not send is still worth sending
+/// this late (the link's `late`, in ms).
+const LATE_PLAY_MS: u64 = 100;
+
 struct Message {
     id: u32,
     from: u32,
@@ -74,6 +113,10 @@ struct Net {
     messages: VecDeque<Message>,
     next_message: u32,
     ls: Lockstep,
+    /// The game's events each recent tick's first run delivered, so a
+    /// re-simulated tick delivers them again.
+    delivered: BTreeMap<u64, Vec<(&'static str, Value)>>,
+    cost: Cost,
 }
 
 thread_local! {
@@ -481,8 +524,30 @@ pub fn og_net_status(world: u32) -> String {
             "waitingFor": s["waitingFor"],
             "waits": s["waits"],
             "desync": s["desync"]["tick"],
+            "rollback": s["rollback"].as_bool().unwrap_or(false),
+            "maxPrediction": s["maxPrediction"],
+            "confirmedTick": s["confirmedTick"],
+            "finalTick": s["finalTick"],
+            "acknowledged": s["acknowledged"],
+            "predicted": s["predicted"].as_u64().unwrap_or(0),
+            "rollbacks": s["rollbacks"],
+            "resimulatedTicks": s["resimulatedTicks"],
+            "snapshotBytes": s["snapshotBytes"],
         })
         .to_string()
+    })
+}
+
+pub fn og_net_resimulating(world: u32) -> bool {
+    with(world, |n| n.ls.resimulating(tick_of(world)))
+}
+
+pub fn og_net_final_hash(world: u32, tick: f64) -> String {
+    with(world, |n| {
+        let h = (tick >= 0.0 && tick.fract() == 0.0)
+            .then(|| n.ls.final_hash(tick as u64))
+            .flatten();
+        json!(h.map(|h| format!("{h:016x}"))).to_string()
     })
 }
 
@@ -530,7 +595,9 @@ fn config(eng: &Engine, world: &World) -> Config {
         players: u("players", 2).clamp(1, 16),
         input_delay: u("inputDelay", 2).clamp(1, 30),
         hash_every: u("hashEvery", 10),
-        ..Config::default()
+        rollback: v["mode"] == json!("rollback"),
+        max_prediction: u("maxPrediction", 8).clamp(1, 30),
+        budget: with(eng.id, |n| n.cost.budget(f64::from(world.time().dt))),
     }
 }
 
@@ -551,11 +618,29 @@ pub(crate) fn gate(engine: u32, world: &mut World) -> bool {
             g
         });
         match gate {
-            Gate::Go => return true,
+            Gate::Go => {
+                with(engine, |n| n.cost.started = Some(super::probe::now_ms()));
+                return true;
+            }
             Gate::Wait => return false,
-            // Nothing turns rollback on yet (og.Lockstep's `mode` comes
-            // with the runtime's rewind ring), so no rewind is asked for.
-            Gate::Restore { snapshot, .. } | Gate::Rewind { snapshot, .. } => {
+            Gate::Rewind { snapshot, tick: to } => {
+                let t0 = super::probe::now_ms();
+                if let Err(e) = super::save::rewind(&eng, world, &snapshot, to, &[LOCKSTEP]) {
+                    eng.state.borrow_mut().log.push(json!({
+                        "tick": tick, "warning": true,
+                        "text": format!("rollback: the rewind to tick {to} failed: {e}; this peer leaves the room"),
+                    }));
+                    with(engine, |n| n.outbox.push(protocol::leave()));
+                    return true;
+                }
+                if let Some(link) = og_audio::link(engine) {
+                    let tick_ms = (f64::from(world.time().dt) * 1000.0).max(1.0);
+                    link.rewound(to, tick, (LATE_PLAY_MS as f64 / tick_ms).ceil() as u64);
+                }
+                let ms = super::probe::now_ms() - t0;
+                with(engine, |n| Cost::note(&mut n.cost.rewind_ms, ms));
+            }
+            Gate::Restore { snapshot, .. } => {
                 if let Err(e) = super::save::restore_session(&eng, world, &snapshot, &[LOCKSTEP]) {
                     eng.state.borrow_mut().log.push(json!({
                         "tick": tick, "warning": true,
@@ -577,6 +662,9 @@ pub(crate) fn after_tick(engine: u32, world: &mut World) {
     }
     let tick = world.time().tick;
     with(engine, |n| {
+        if let Some(t0) = n.cost.started.take() {
+            Cost::note(&mut n.cost.tick_ms, super::probe::now_ms() - t0);
+        }
         n.ls.after_tick(tick, &mut || {
             let bytes = world.snapshot();
             (shared_hash(&bytes).unwrap_or(0), bytes)
@@ -643,8 +731,23 @@ pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
                 for m in n.messages.iter_mut().filter(|m| m.tick.is_none()) {
                     m.tick = Some(tick);
                 }
+                // A re-simulated tick hears what its first run heard; a new
+                // tick takes what arrived, kept while it may run again.
+                let events = if n.ls.resimulating(tick) {
+                    n.delivered.get(&tick).cloned().unwrap_or_default()
+                } else {
+                    let e = std::mem::take(&mut n.pending);
+                    if n.ls.running() {
+                        if !e.is_empty() {
+                            n.delivered.insert(tick, e.clone());
+                        }
+                        let floor = n.ls.final_tick().unwrap_or(tick);
+                        n.delivered.retain(|t, _| *t >= floor);
+                    }
+                    e
+                };
                 (
-                    std::mem::take(&mut n.pending),
+                    events,
                     n.ls.take_desync(),
                     n.ls.running(),
                     n.ls.seat(tick),

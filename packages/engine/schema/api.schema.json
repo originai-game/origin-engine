@@ -17212,10 +17212,12 @@
     },
     {
       "name": "net",
-      "doc": "Deterministic lockstep over a room (docs/design.md §2.10): every peer runs the whole world, and what crosses the room is each player's input, one per tick, and the world's hash. Turn it on with og.Lockstep (`enabled`, `players`); join a room (og.platform.roomJoin, or `og run --room ws://127.0.0.1:P/<room>` with `og relay` natively). Until the room holds `players` peers the world runs freely on each (a lobby, the local input driving the local player); then the authority (the lowest peer number) starts: every other peer takes its world's snapshot, the seats go to the peers in number order, and from then on tick t runs only when every seated player's input for t is in. A peer that joins a running room takes a free seat (or watches) from a snapshot a running peer hands it.\nInputs are og.PlayerInput: one entity per player carries it with `player` set to its seat; the engine writes every other field at the start of each tick from that seat's input for the tick. A system reads the inputs from og.PlayerInput, never from og.Input, and gives this peer's own with og.net.submit (from a system that reads og.Input: what the local player holds now, sent for the tick inputDelay ticks on). Without a room, or with lockstep off, og.net.submit drives the local player's og.PlayerInput the next tick, so the same game plays alone.\nEvery tick each peer hashes its world without its own session (og.Input, og.Pointers, og.Gamepad, og.PointerLock, og.Audio, og.Camera, og.Lockstep, the gameplay actions of og.input, the input, room, platform, asset and stream events, the UI's focus and hover) and every hashEvery ticks sends the hashes since its last batch; the first tick whose hashes differ is reported once as og.Desync, and the probe's `desync` dump (`dump_desync`) names it with the component-level diff of the two peers' snapshots of that tick: the answer to what is not deterministic (Math.random, Date.now, a wall clock, iteration over a Set of objects, a module variable, input read from og.Input or og.input's actions).",
+      "doc": "Deterministic lockstep over a room (docs/design.md §2.10): every peer runs the whole world, and what crosses the room is each player's input, one per tick, and the world's hash. Turn it on with og.Lockstep (`enabled`, `players`); join a room (og.platform.roomJoin, or `og run --room ws://127.0.0.1:P/<room>` with `og relay` natively). Until the room holds `players` peers the world runs freely on each (a lobby, the local input driving the local player); then the authority (the lowest peer number) starts: every other peer takes its world's snapshot, the seats go to the peers in number order, and from then on tick t runs only when every seated player's input for t is in. A peer that joins a running room takes a free seat (or watches) from a snapshot a running peer hands it.\nInputs are og.PlayerInput: one entity per player carries it with `player` set to its seat; the engine writes every other field at the start of each tick from that seat's input for the tick. A system reads the inputs from og.PlayerInput, never from og.Input, and gives this peer's own with og.net.submit (from a system that reads og.Input: what the local player holds now, sent for the tick inputDelay ticks on). Without a room, or with lockstep off, og.net.submit drives the local player's og.PlayerInput the next tick, so the same game plays alone.\nRollback (og.Lockstep.mode `rollback`, maxPrediction) keeps the same seats, inputs and hashes but does not wait for a late input: the tick runs on a prediction (the player's last input) and, when the real one differs, the world is rewound to the engine's own snapshot of that tick and runs forward again in the same frame, sounds played once and the view snapped. The peers agree on the confirmed world (og.net.finalHash); og.net.resimulating tells a game's own presentation that a tick runs again. Inputs cross the room unreliably and are repeated until acknowledged, so a lost message costs time, not the room.\nEvery tick each peer hashes its world without its own session (og.Input, og.Pointers, og.Gamepad, og.PointerLock, og.Audio, og.Camera, og.Lockstep, the gameplay actions of og.input, the input, room, platform, asset and stream events, the UI's focus and hover) and every hashEvery ticks sends the hashes since its last batch; the first tick whose hashes differ is reported once as og.Desync, and the probe's `desync` dump (`dump_desync`) names it with the component-level diff of the two peers' snapshots of that tick: the answer to what is not deterministic (Math.random, Date.now, a wall clock, iteration over a Set of objects, a module variable, input read from og.Input or og.input's actions).",
       "place": "namespace",
       "publish": true,
       "types": [
+        "NetMode",
+        "NetMode",
         "Lockstep",
         "PlayerInput",
         "Desync",
@@ -17258,6 +17260,40 @@
             }
           ],
           "returns": "LockstepStatus",
+          "publish": true
+        },
+        {
+          "name": "resimulating",
+          "doc": "Whether the tick running is a rollback's re-simulation: the world was rewound and this tick runs again, so its presentation already happened once. The engine already plays each sound once and snaps the view; a game that triggers its own presentation from a system (a screen shake, a haptic) checks this first. False in lockstep and alone. Callable from a system.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "bool",
+          "publish": true
+        },
+        {
+          "name": "finalHash",
+          "doc": "The shared hash (og.net.hash) of the final world of `tick`, hex: the world every peer agrees on once each input for the ticks before it arrived, kept for the last 1024 final ticks while hashing (hashEvery above 0). In lockstep every tick run is final; in rollback a tick is final some ticks after it first ran. Null before the tick is final, after it is no longer kept, or outside lockstep.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "tick",
+              "type": "f64",
+              "optional": false,
+              "doc": "The tick, in ticks: the world after tick - 1 ran, as og.Time.tick reads."
+            }
+          ],
+          "returns": "Option<String>",
           "publish": true
         },
         {
@@ -67556,6 +67592,20 @@
       ],
       "additionalProperties": false
     },
+    "NetMode": {
+      "x-og-kind": "enum",
+      "x-og-module": "net",
+      "description": "How a room's peers take their ticks (og.Lockstep.mode).",
+      "type": "string",
+      "enum": [
+        "lockstep",
+        "rollback"
+      ],
+      "x-og-variants": {
+        "lockstep": "Each tick waits until every seated player's input for it is in: no prediction, no rollback; a late input holds the world.",
+        "rollback": "A tick runs on a missing input predicted as that player's last one, up to maxPrediction ticks past the last tick whose inputs are all in; when the real input differs the world is rewound to its own snapshot and the ticks run again within the frame (GGPO-style). Every peer agrees on the confirmed world, so hashes and og.Desync cover it alone."
+      }
+    },
     "Lockstep": {
       "x-og-kind": "resource",
       "x-og-module": "net",
@@ -67609,6 +67659,21 @@
           "description": "Whether lockstep runs: the room filled the seats and the authority started (until this peer leaves the room or turns it off).",
           "default": false,
           "readOnly": true
+        },
+        "mode": {
+          "$ref": "#/$defs/NetMode",
+          "description": "lockstep (the default: every tick waits for every input) or rollback (ticks run on predicted inputs and are rewound when an input differs; set before the room starts, the authority's is the room's).",
+          "default": "lockstep"
+        },
+        "maxPrediction": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "In rollback, the most ticks this peer runs past the last tick whose inputs are all in before it waits (a peer also predicts no further than it can re-simulate in half a frame). 8 (133 ms at 60 Hz) covers most internet latency on top of inputDelay.",
+          "default": 8,
+          "minimum": 1,
+          "maximum": 30,
+          "x-og-unit": "ticks"
         }
       },
       "additionalProperties": false
@@ -67878,6 +67943,81 @@
             }
           ],
           "description": "The first divergent tick, once og.Desync was sent."
+        },
+        "rollback": {
+          "type": "boolean",
+          "description": "Whether the room runs in rollback (og.Lockstep.mode, the authority's)."
+        },
+        "maxPrediction": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The room's maxPrediction while running in rollback; 0 in lockstep.",
+          "x-og-unit": "ticks"
+        },
+        "confirmedTick": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The last tick whose every seat's input has arrived.",
+          "x-og-unit": "ticks"
+        },
+        "finalTick": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The last tick whose world is final: run on real inputs only, the world og.net.finalHash and the hashes the peers compare cover.",
+          "x-og-unit": "ticks"
+        },
+        "acknowledged": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The last tick through which every other running peer has all of this peer's inputs (each input message acknowledges); null alone or before the start.",
+          "x-og-unit": "ticks"
+        },
+        "predicted": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Ticks the world now runs past its last confirmed tick (0 in lockstep).",
+          "x-og-unit": "ticks"
+        },
+        "rollbacks": {
+          "type": "number",
+          "description": "Rewinds this peer made since lockstep started."
+        },
+        "resimulatedTicks": {
+          "type": "number",
+          "description": "Ticks this peer ran again after a rewind.",
+          "x-og-unit": "ticks"
+        },
+        "snapshotBytes": {
+          "type": "number",
+          "description": "The bytes of the snapshots kept for a rewind: one per tick not yet final.",
+          "x-og-unit": "bytes"
         }
       },
       "required": [
@@ -67890,7 +68030,16 @@
         "spectators",
         "waitingFor",
         "waits",
-        "desync"
+        "desync",
+        "rollback",
+        "maxPrediction",
+        "confirmedTick",
+        "finalTick",
+        "acknowledged",
+        "predicted",
+        "rollbacks",
+        "resimulatedTicks",
+        "snapshotBytes"
       ],
       "additionalProperties": false
     },

@@ -91,9 +91,14 @@ export function must<T>(r: Result<T>): T {
  * so it lives outside the world: each peer's bot drives only its own seat.
  */
 let bot = 0;
-export function setBot(n: number): void {
+/** The ticks a tick-only bot holds still: a room started before then plays the same inputs. */
+export const BOT_HOLD = 60;
+/** Whether the bot reads only the tick and its seat (`bot:<n>:tick`), not where the fighters are. */
+let byTick = false;
+export function setBot(n: number, tickOnly = false): void {
   if (!Number.isInteger(n) || n < 0) throw new Error("write bot:<n> with a whole number (0 hands the keys back)");
   bot = n;
+  byTick = tickOnly;
 }
 
 /** The bot's input at a tick: towards the coin, weaving by its number, a dash every 90 ticks. */
@@ -110,7 +115,20 @@ export const Submit = defineSystem("Submit", { reads: [og.Input, og.Gamepad, og.
   if (bot > 0) {
     const d = must(world.resource(Duel));
     const me = must(world.resource(og.Lockstep)).localPlayer === 1 ? { x: d.x1, y: d.y1 } : { x: d.x0, y: d.y0 };
-    const input = botInput(bot, time.tick, me, { x: d.coinX, y: d.coinY });
+    // By the tick alone the input is the same whatever the world is: a
+    // rollback session (whose bot sees a predicted world) and a lockstep
+    // one then get the same inputs and end on the same world. It holds
+    // still for the first BOT_HOLD ticks, so the lobby (whose length is
+    // when the other peer connected) and the start's empty ticks are the
+    // same in every session that starts before then.
+    // It plays as its seat, not its number: which peer joins first (and
+    // so takes seat 0) is a race.
+    const seat = must(world.resource(og.Lockstep)).localPlayer;
+    const input = byTick
+      ? time.tick < BOT_HOLD
+        ? { x: 0, y: 0, buttons: 0 }
+        : botInput(seat + 1, time.tick, { x: 0, y: 0 }, { x: 1, y: 0.5 })
+      : botInput(bot, time.tick, me, { x: d.coinX, y: d.coinY });
     must(og.net.submit(world, { x: Math.max(-1, Math.min(1, input.x)), y: Math.max(-1, Math.min(1, input.y)), buttons: input.buttons }));
     return;
   }

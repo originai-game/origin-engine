@@ -202,4 +202,10 @@ impl NetApi for WebHost {
     fn og_net_hash(&self, world: u32) -> String {
         rt::og_net_hash(world)
     }
+    fn og_net_resimulating(&self, world: u32) -> bool {
+        rt::og_net_resimulating(world)
+    }
+    fn og_net_final_hash(&self, world: u32, tick: f64) -> String {
+        rt::og_net_final_hash(world, tick)
+    }
 }

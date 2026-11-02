@@ -1162,6 +1162,22 @@ cross the room. Lockstep rests on §1's determinism and snapshot.
   t is in. The gate is og-probe's (`set_gate`, consulted by step, frame
   and advance), so the tick itself is unchanged and a frame that cannot
   run a tick simply runs none.
+- **Rollback.** With `og.Lockstep.mode` `rollback` (the authority's is the
+  room's), lockstep is the case of prediction depth 0: a tick whose inputs
+  are not all in runs on each missing player's last input, up to
+  `maxPrediction` ticks (and no more than the peer can re-simulate in half
+  a frame) past the last confirmed tick. The engine keeps a snapshot of
+  every tick not yet final in a ring of its own; when a real input
+  differs from its prediction, the gate rewinds the world to that tick's
+  snapshot (`save::rewind`, crate-internal: ring bytes only, never a
+  game's save, so no check, migration or `og.WorldRestored`) and runs the
+  ticks again in the same frame. A tick is final once it ran on real
+  inputs only; the hashes the peers compare, and `og.net.finalHash`, cover
+  final ticks alone, so the confirmed world equals lockstep's for the
+  same inputs. Presentation is deduplicated outside the tick: a
+  re-simulated tick replays each sound once (a new play is kept only if
+  at most 100 ms of wall time late), the view snaps, and
+  `og.net.resimulating` tells a game's own effects to hold.
 - **Late join.** A peer that joins a running room asks for a snapshot. A
   running peer sends one, and the new peer takes a free seat (or watches)
   from the tick named in the `admit` message.

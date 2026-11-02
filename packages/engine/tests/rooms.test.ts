@@ -22,9 +22,9 @@ declare const Bun: {
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
-/** `og relay --port 0`, and the port it printed. */
-async function relay(): Promise<{ port: number; stop: () => void }> {
-  const p = Bun.spawn([ogBin(), "relay", "--port", "0"], { cwd: repo, stdout: "pipe", stderr: "pipe" });
+/** `og relay --port 0` (with `shaping`: --latency, --jitter, --loss, --seed), and the port it printed. */
+async function relay(shaping: string[] = []): Promise<{ port: number; stop: () => void }> {
+  const p = Bun.spawn([ogBin(), "relay", "--port", "0", ...shaping], { cwd: repo, stdout: "pipe", stderr: "pipe" });
   const reader = p.stdout.getReader();
   let text = "";
   while (!/:(\d+)\//.test(text)) {
@@ -35,11 +35,16 @@ async function relay(): Promise<{ port: number; stop: () => void }> {
   return { port: Number(/:(\d+)\//.exec(text)![1]), stop: () => p.kill() };
 }
 
-type Summary = { tick: number; netHash: string; lockstep: { running: boolean; peer: number; desync: number | null } };
+type Summary = {
+  tick: number;
+  netHash: string;
+  confirmedHash: string | null;
+  lockstep: { running: boolean; peer: number; startTick: number | null; desync: number | null; rollback: boolean; rollbacks: number; resimulatedTicks: number; finalTick: number | null };
+};
 
 /** Two `og run --room` processes at once, each with its own extra arguments. */
-async function pair(project: string, room: string, args: string[][]): Promise<Summary[]> {
-  const r = await relay();
+async function pair(project: string, room: string, args: string[][], shaping: string[] = []): Promise<Summary[]> {
+  const r = await relay(shaping);
   try {
     return await Promise.all(
       args.map(async (extra) => {
@@ -125,4 +130,42 @@ test("a room playtest's quit and its then step land on one tick for every place"
   } finally {
     rmSync(out, { recursive: true, force: true });
   }
+}, 300_000);
+
+// G2-7: rollback over a bad network ends on the world lockstep makes from
+// the same inputs. The bots read the tick alone (`bot:<n>:tick`), so both
+// sessions get the same inputs; through 80 ms of latency, 30 of jitter and
+// 5 % of input messages lost, the rollback peers predict, rewind and run
+// ticks again, and the final world of tick 600 must hash as lockstep's.
+test("rollback through latency, jitter and loss confirms tick 600 as lockstep does from the same inputs", async () => {
+  const bots = [
+    ["--ticks", "600", "--setup", "bot:1:tick"],
+    ["--ticks", "600", "--setup", "bot:2:tick"],
+  ];
+  const lock = await pair("templates/archetypes/arena", "duel-lockstep", bots);
+  // The bots hold still for 60 ticks: any start before tick 58 plays the same inputs.
+  for (const r of lock) expect(r.lockstep.startTick!).toBeLessThan(58);
+  expect(lock[0]!.tick).toBe(600);
+  // A frame may take two ticks, so a run ends at 600 or 601: the final
+  // world of tick 600 itself (og.net.finalHash) is what the peers compare.
+  expect(lock[0]!.confirmedHash).not.toBeNull();
+  expect(lock[1]!.confirmedHash).toBe(lock[0]!.confirmedHash);
+  expect(lock[0]!.lockstep.rollbacks).toBe(0);
+
+  const roll = await pair(
+    "templates/archetypes/arena",
+    "duel-rollback",
+    bots.map((b) => [...b, "--setup", "rollback:8"]),
+    ["--latency", "80", "--jitter", "30", "--loss", "5", "--seed", "7"],
+  );
+  for (const r of roll) {
+    expect(r.lockstep.startTick!).toBeLessThan(58);
+    expect(r.lockstep.rollback).toBe(true);
+    expect(r.lockstep.desync).toBeNull();
+    expect(r.lockstep.finalTick!).toBeGreaterThanOrEqual(600);
+    expect(r.confirmedHash).toBe(lock[0]!.confirmedHash);
+  }
+  // It did roll back: predictions went wrong and ticks ran again.
+  expect(roll[0]!.lockstep.rollbacks + roll[1]!.lockstep.rollbacks).toBeGreaterThan(10);
+  expect(roll[0]!.lockstep.resimulatedTicks + roll[1]!.lockstep.resimulatedTicks).toBeGreaterThan(roll[0]!.lockstep.rollbacks);
 }, 300_000);

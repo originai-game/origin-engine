@@ -656,3 +656,95 @@ fn the_scripted_scene_renders_to_a_wav() {
     }
     img.save(dir.join("audio-scene.png")).unwrap();
 }
+
+/// The plays of `sound` in `packets`, and the last packet's live voices.
+fn plays(packets: &[og_audio::TickPacket], sound: u64) -> usize {
+    packets
+        .iter()
+        .flat_map(|p| &p.commands)
+        .filter(|c| c.op == Op::Play && c.sound == sound)
+        .count()
+}
+
+/// G2-7: a rollback rewinds the world and runs its ticks again; the sink
+/// heard them once. Ways it could fail: the replay plays a one-shot a
+/// second time, a play only the mispredicted run made keeps sounding, or
+/// the dedupe reaches the world (the stream hash, which lockstep compares,
+/// would then depend on whether a sink listened).
+#[test]
+fn a_rollback_replay_plays_each_sound_once_stops_a_mispredicted_one_and_leaves_the_world_alone() {
+    let bank = SoundBank::new();
+    let sound = insert(&bank, "hit", 1, &synth(48_000, 1, sine(440.0, 0.4)));
+    // The run without a sink, and without any rollback: the reference world.
+    let straight = {
+        let (mut world, _link) = world_with(&bank, |_| {});
+        for t in 0..20 {
+            if t == 8 {
+                world.spawn((AudioSource::new(sound),)).unwrap();
+            }
+            world.step().unwrap();
+        }
+        (
+            world.resource::<AudioStream>().unwrap().hash,
+            world.world_hash(),
+        )
+    };
+    for predicted_right in [true, false] {
+        let (mut world, link) = world_with(&bank, |_| {});
+        link.attach();
+        let mut heard = Vec::new();
+        for _ in 0..5 {
+            world.step().unwrap();
+            heard.extend(link.drain());
+        }
+        let back = world.snapshot();
+        // The first run: the sound starts at tick 8 (in the mispredicted
+        // case, a play the corrected run will not make).
+        for t in 5..12 {
+            if t == 8 {
+                world.spawn((AudioSource::new(sound),)).unwrap();
+            }
+            world.step().unwrap();
+            heard.extend(link.drain());
+        }
+        assert_eq!(plays(&heard, sound), 1);
+        // The rewind to tick 5 and the replay to 12, then on to 20.
+        world.restore(&back).unwrap();
+        og_audio::restored(&mut world).unwrap();
+        link.rewound(5, 12, 6);
+        for t in 5..20 {
+            if t == 8 && predicted_right {
+                world.spawn((AudioSource::new(sound),)).unwrap();
+            }
+            world.step().unwrap();
+            let packets = link.drain();
+            assert!(
+                packets.iter().all(|p| !p.resync),
+                "a rewind is no gap: tick {t}"
+            );
+            if t == 11 {
+                let live = packets
+                    .last()
+                    .and_then(|p| p.live.clone())
+                    .expect("the replay's last tick names the live voices");
+                assert_eq!(live.is_empty(), !predicted_right, "{live:?}");
+            }
+            heard.extend(packets);
+        }
+        assert_eq!(
+            plays(&heard, sound),
+            1,
+            "predicted right: {predicted_right}"
+        );
+        if predicted_right {
+            assert_eq!(
+                (
+                    world.resource::<AudioStream>().unwrap().hash,
+                    world.world_hash()
+                ),
+                straight,
+                "the world's audio is the straight run's, sink or not"
+            );
+        }
+    }
+}

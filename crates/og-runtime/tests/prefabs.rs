@@ -263,8 +263,9 @@ fn hashes_are_pinned_without_prefabs_and_stable_across_a_re_cook_with_them() {
 /// 8321f6acb96a66be when those four types became lazy, registered only
 /// once a game names them, so only the version-2 layouts remain; then
 /// from 8c463e75e426e15b for og.Vehicle's version-2 layout, the
-/// drivetrain).
-const BY_HAND_HASH: &str = "fd13375581ba26c1";
+/// drivetrain; then G2-7's rollback from fd13375581ba26c1: og.Lockstep's
+/// `mode` and `maxPrediction` fields change its layout in the type table).
+const BY_HAND_HASH: &str = "93d4a11b9687d3b6";
 
 #[test]
 fn apply_back_and_revert_round_trip_in_the_text() {

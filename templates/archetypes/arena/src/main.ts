@@ -82,7 +82,15 @@ export default og.game({
   start,
   commands: {
     /** `bot:<n>`: this peer's input comes from scripted bot n (0 hands it back to the keys). */
-    bot: (_world, args) => setBot(Number(args[0])),
+    bot: (_world, args) => setBot(Number(args[0]), args[1] === "tick"),
+    /** `rollback:<maxPrediction>`: the room runs in rollback instead of lockstep. */
+    rollback: (world, args) => {
+      const n = Number(args[0] ?? 8);
+      if (!Number.isInteger(n) || n < 1 || n > 30) throw new Error("write rollback:<maxPrediction>, 1 to 30 ticks");
+      const lock = must(world.resource(og.Lockstep));
+      lock.mode = "rollback";
+      lock.maxPrediction = n;
+    },
     /** `warp:<player>:<x>:<y>`: put a fighter there. */
     warp: (world, args) => {
       const e = world.find(`fighter-${Number(args[0])}`);
@@ -93,7 +101,8 @@ export default og.game({
     },
   },
   commandHelp: {
-    bot: { usage: "<n>", doc: "Drive this peer's player by scripted bot n (1, 2, ...); 0 gives it back to the keys." },
+    bot: { usage: "<n>[:tick]", doc: "Drive this peer's player by scripted bot n (1, 2, ...); 0 gives it back to the keys. With :tick the bot plays its seat by the tick alone, not the world (still for the first 60 ticks), so every session gets the same inputs." },
+    rollback: { usage: "<maxPrediction>", doc: "Run the room in rollback, predicting up to maxPrediction ticks (1 to 30), instead of lockstep." },
     warp: { usage: "<player>:<x>:<y>", doc: "Put fighter 0 (Red) or 1 (Blue) at a point of the floor." },
   },
   facts,
