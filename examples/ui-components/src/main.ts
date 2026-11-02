@@ -128,7 +128,8 @@ function feedbackScreen(): void {
     if (crowded && sideways) return;
     if (!sideways) {
       og.ui.progressBar("Steps", { value: 0.6, style: "steps", steps: 5, label: L("Chapter progress"), showValue: true, tone: "success" });
-      og.ui.progressBar("Busy", { style: "indeterminate", label: L("Matchmaking") });
+      // An upright phone at a large text size has room over the captions for two bars, not three.
+      if (!crowded) og.ui.progressBar("Busy", { style: "indeterminate", label: L("Matchmaking") });
     }
     if (crowded) return;
     // Large text on a short screen: the rings give their room to the counters.
@@ -154,14 +155,16 @@ function feedbackScreen(): void {
     });
   });
   // A store card: the ribbon wraps its corner, the card clips the band.
-  if (tall()) og.ui.anchor("Offer", { anchor: "bottomRight", direction: "column", width: { kind: "fixed", px: 280 }, gap: 4, padding: { top: 16, bottom: 16, left: 72, right: 72 } }, () => {
+  // At 200 % text the toasts' wrapped titles fill the right column: the store card waits for a larger screen.
+  if (tall() && state.textScale < 1.5) og.ui.anchor("Offer", { anchor: "bottomRight", direction: "column", width: { kind: "fixed", px: 280 }, gap: 4, padding: { top: 16, bottom: 16, left: 72, right: 72 } }, () => {
     og.ui.setDraw({ shape: { kind: "rect", radii: [12, 12, 12, 12] }, fills: [{ kind: "solid", color: { token: "panelRaised" } }], strokes: [], effects: [], clip: "shape" });
     og.ui.label("Name", L("Starter bundle"), { step: "lg" });
     og.ui.label("Price", "4.99", { step: "base", color: { token: "inkMuted" } });
     og.ui.ribbon("Sale", { text: L("-50%"), corner: "topLeft", tone: "danger", shownAt: state.t0 + 30 });
   });
-  if (did("complete")) og.ui.banner("Wave", { kind: "victory", eyebrow: L("Stage clear"), title: L("Victory"), subtitle: L("3 stars · 12,480 points"), shownAt: state.acts.complete!, durationMs: 2600 });
-  if (did("complete")) og.ui.celebration("Party", { kind: "levelUp", at: state.acts.complete!, title: L("Level up!"), value: "24" });
+  // One celebration at a time on the stage: the level-up follows the victory banner rather than land on it.
+  if (did("complete")) og.ui.banner("Wave", { kind: "victory", eyebrow: L("Stage clear"), title: L("Victory"), subtitle: L("3 stars · 12,480 points"), shownAt: state.acts.complete!, durationMs: 1800 });
+  if (did("complete")) og.ui.celebration("Party", { kind: "levelUp", at: state.acts.complete! + 180, title: L("Level up!"), value: "24" });
   if (!small() || !did("complete")) og.ui.subtitles("Subs", {
     lines: [
       { key: "a", speaker: L("Captain Reyes"), text: L("Hold this position until the convoy is through."), color: { token: "info" } },
@@ -225,7 +228,8 @@ function abilitiesScreen(): void {
   });
   og.ui.statusGrid("Auras", {
     anchor: "topRight",
-    max: 8,
+    // A phone held sideways at 200 % text keeps one row of buffs (the rest fold into +n) over its cast bar.
+    max: og.ui.frameViewport().breakpoint === "phoneLandscape" && state.textScale >= 1.5 ? 4 : 8,
     effects: [
       { key: "haste", name: L("Haste"), icon: "flash", remaining: Math.max(0.1, 14 - s), duration: 20, mine: true },
       { key: "might", name: L("Might"), icon: "fire", remaining: 0 },
@@ -303,7 +307,8 @@ function shooterScreen(world: World): void {
       { key: "ping", bearing: 3.0, kind: "ping", distance: 120, label: "Ping" },
     ],
   });
-  og.ui.minimapView("Map", {
+  // An upright phone at 200 % text has no room for the map: the top stack (compass, timer, killfeed) reaches its middle.
+  if (og.ui.frameViewport().breakpoint !== "phonePortrait" || state.textScale < 1.5) og.ui.minimapView("Map", {
     anchor: og.ui.frameViewport().breakpoint === "phonePortrait" ? "left" : small() ? "bottomLeft" : "topRight",
     zone: L("Kings Canyon"),
     heading: s * 0.25,
