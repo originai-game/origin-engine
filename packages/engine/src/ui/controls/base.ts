@@ -208,8 +208,9 @@ export function control(id: string, d: ControlDesc, build: (ix: Interaction) => 
   const path = kit.lastPath();
   rememberPath(key, path);
   kit.remember(mine, pathNumber(path));
-  const b = kit.bounds(path);
   const want = frame().touch ? (d.touch ?? TOUCH) : 0;
+  // Only a reach to grow asks for the bounds (a keyboard's 70 keys pass touch 0: one host call each, every tick).
+  const b = want > 0 ? kit.bounds(path) : null;
   const slop = b && want > 0 ? Math.max(0, Math.ceil((want - Math.min(b.width, b.height)) / 2)) : 0;
   const extra = d.props ?? {};
   kit.props({

@@ -55,18 +55,22 @@ const find = (engine: Engine, pred: (e: Element) => boolean) => elements(engine)
 const byPath = (engine: Engine, end: string) => find(engine, (e) => e.path.endsWith(end));
 const focused = (engine: Engine) => find(engine, (e) => e.states.includes("focused"))?.path ?? "";
 
+// The helpers advance only as far as their script ends plus two ticks for the
+// click to land and the build to see it: the tick is fixed (60 Hz), so these
+// counts hold on any machine, and every tick spent here is CPU a loaded gate
+// multiplies (a keyboard's tick is ~70 controls on the dev host).
 function tap(engine: Engine, path: string): void {
   const r = engine.probe.commands(`0:touch_move_to:${path};0.05:touch_start;0.1:touch_end`) as unknown as { warnings: string[] };
   expect(r.warnings).toEqual([]);
-  engine.advance(12);
+  engine.advance(8);
 }
 function key(engine: Engine, code: string): void {
   engine.probe.commands(`0:key_down:${code};0.05:key_up:${code}`);
-  engine.advance(8);
+  engine.advance(5);
 }
 function pad(engine: Engine, button: string): void {
   engine.probe.commands(`0:gamepad:${button};0.05:gamepad:-`);
-  engine.advance(10);
+  engine.advance(5);
 }
 /** The focus is on a path ending in `end` (a failure shows the path it is on). */
 function expectFocus(engine: Engine, end: string): void {
@@ -558,6 +562,12 @@ test("keyBindingRow: Escape cancels a capture and the focus stays on the slot", 
 
 // ── the on-screen keyboard ──────────────────────────────────────────────
 
+// A keyboard's test is CPU-bound and nothing else: ~60 ticks of ~70 keys on
+// the dev (-O0) host, no sleep and no wall-clock wait. 1.2–2.3 s idle; a gate
+// at load 23 ran the kana one 6× slower (10.4 s when it took 114 ticks), so
+// the limit leaves that headroom twice over.
+const KEYBOARD_MS = 30_000;
+
 test("onScreenKeyboard: taps type at the caret, shift types one capital, backspace erases, Done submits", () => {
   let value = "";
   let submitted = false;
@@ -566,7 +576,6 @@ test("onScreenKeyboard: taps type at the caret, shift types one capital, backspa
     value = r.value;
     if (r.submitted) submitted = true;
   });
-  engine.advance(20);
   const keyNamed = (n: string) => find(engine, (e) => e.role === "button" && e.name === n)!;
   tap(engine, keyNamed("Shift").path);
   tap(engine, keyNamed("A").path);
@@ -576,7 +585,7 @@ test("onScreenKeyboard: taps type at the caret, shift types one capital, backspa
   expect(value).toBe("Ab");
   tap(engine, keyNamed("Done").path);
   expect(submitted).toBeTrue();
-});
+}, KEYBOARD_MS);
 
 test("onScreenKeyboard: kana compose underlined until a candidate commits; a pad walks the keys and the bumpers move the caret", () => {
   // Wrong: kana going straight into the text (no composition), or the katakana candidate missing.
@@ -587,7 +596,6 @@ test("onScreenKeyboard: kana compose underlined until a candidate commits; a pad
     value = r.value;
     comp = r.composition;
   });
-  engine.advance(20);
   const keyNamed = (n: string) => find(engine, (e) => e.role === "button" && e.name === n)!;
   tap(engine, keyNamed("ゆ").path);
   tap(engine, keyNamed("う").path);
@@ -608,7 +616,7 @@ test("onScreenKeyboard: kana compose underlined until a candidate commits; a pad
   pad(engine, "leftBumper");
   pad(engine, "y");
   expect(value).toBe(`ユ${typed}`);
-});
+}, KEYBOARD_MS);
 
 // ── every breakpoint, direction, locale and text size ──────────────────
 
