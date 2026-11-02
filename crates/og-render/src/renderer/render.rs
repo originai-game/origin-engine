@@ -3019,11 +3019,19 @@ impl Renderer {
                 pass_queries.push((pass.name(), q0..encoder.used()));
             }
         }
-        let gpu_queries = encoder.used();
-        self.pass_ms = pass_ms;
         for &(slot, _) in &probe_frame.due {
             self.probes.slots[slot].captured = Some(scene.tick);
         }
+        // The passes after the graph's are timed as its own are, each listed
+        // only in a frame where it drew: the viewport views, the UI layers,
+        // and the overlay with the glass and the lines drawn among it, so
+        // the UI's budget (`docs/ui.md` §15.1) reads from `gpuPasses`.
+        let mut timings = Timings {
+            clock,
+            pass_ms,
+            pass_queries,
+        };
+        let views_at = timings.begin(&encoder, &stats);
         // Viewport views (split-screen, views.rs) over the finished frame,
         // under the lines and the overlay.
         for p in view_plans
@@ -3043,6 +3051,8 @@ impl Renderer {
             );
             stats.draw_calls += 1;
         }
+        timings.end("views", views_at, &encoder, &stats);
+        let layers_at = timings.begin(&encoder, &stats);
         // UI layers (src/ui/pass.rs): each drawn into its own target before
         // the overlay that composites it.
         if let Some(of) = &overlay_frame
@@ -3050,6 +3060,8 @@ impl Renderer {
         {
             stats.draw_calls += self.draw_ui_layers(&mut encoder, scene, of);
         }
+        timings.end("ui-layers", layers_at, &encoder, &stats);
+        let overlay_at = timings.begin(&encoder, &stats);
         // Glass over overlay content (src/glass.rs): when overlay runs come
         // before a glass run (or a UI backdrop), the overlay draws into the
         // glass source, the pyramid is rebuilt before each such run, and the
@@ -3170,6 +3182,14 @@ impl Renderer {
         if let (Some(g), Some(_)) = (&self.glass_targets, layered) {
             stats.draw_calls += self.glass.blit(&mut encoder, g, output);
         }
+        timings.end("overlay", overlay_at, &encoder, &stats);
+        let Timings {
+            pass_ms,
+            pass_queries,
+            ..
+        } = timings;
+        let gpu_queries = encoder.used();
+        self.pass_ms = pass_ms;
         if let Some((frame, ..)) = surface_frame.as_ref().filter(|_| self.keep_frame) {
             self.keep_presented(&mut encoder, &frame.texture);
         }
@@ -3203,5 +3223,48 @@ impl Renderer {
             cache.save();
         }
         Ok(stats)
+    }
+}
+
+/// The frame's pass timings while it is encoded: each render-graph pass's
+/// CPU encoding and the queries of the passes it opened (`timing.rs`).
+struct Timings {
+    clock: Option<fn() -> f64>,
+    pass_ms: Vec<PassTiming>,
+    pass_queries: Vec<(String, std::ops::Range<u32>)>,
+}
+
+/// Where a pass outside the graph began: the clock, the encoder's queries
+/// and the frame's draws.
+struct PassStart {
+    t0: Option<f64>,
+    q0: u32,
+    draws: u32,
+}
+
+impl Timings {
+    fn begin(&self, encoder: &Encoder, stats: &FrameStats) -> PassStart {
+        PassStart {
+            t0: self.clock.map(|c| c()),
+            q0: encoder.used(),
+            draws: stats.draw_calls,
+        }
+    }
+
+    /// Lists `name` from `at` to now when it drew anything.
+    fn end(&mut self, name: &str, at: PassStart, encoder: &Encoder, stats: &FrameStats) {
+        if stats.draw_calls == at.draws {
+            return;
+        }
+        if let (Some(c), Some(t0)) = (self.clock, at.t0) {
+            self.pass_ms.push(PassTiming {
+                name: name.into(),
+                start: t0,
+                ms: (c() - t0).max(0.0),
+            });
+        }
+        if encoder.timed() {
+            self.pass_queries.push((name.into(), at.q0..encoder.used()));
+        }
     }
 }

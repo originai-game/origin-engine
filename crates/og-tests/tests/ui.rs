@@ -578,3 +578,68 @@ fn blurs_are_smooth_on_the_finest_detail() {
     }
     assert!(failures.is_empty(), "blocky: {failures:?}");
 }
+
+/// The UI's passes are timed like the render graph's (`docs/ui.md` §15.1):
+/// a frame with UI layers lists `ui-layers` and then `overlay` after the
+/// graph's passes, on the CPU and, where the device has timestamps, in its
+/// GPU frames; a frame without UI lists neither.
+#[test]
+fn the_ui_passes_are_in_the_pass_timings() {
+    fn clock() -> f64 {
+        static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+        START
+            .get_or_init(std::time::Instant::now)
+            .elapsed()
+            .as_secs_f64()
+            * 1e3
+    }
+    let ui = ["ui-layers", "overlay"];
+    for (scene, drawn) in [("ui-layers", true), ("fxaa", false)] {
+        let built: GfxScene = scenes::build(scene).expect("scene");
+        let mut renderer = og_render::Renderer::new_blocking(&built.desc).expect("renderer");
+        renderer.set_clock(Some(clock));
+        for _ in 0..4 {
+            renderer
+                .render(&built.scene, &og_render::RenderTarget::Offscreen)
+                .expect("render");
+        }
+        let cpu: Vec<String> = renderer
+            .pass_timings()
+            .iter()
+            .map(|p| p.name.clone())
+            .collect();
+        let gpu: Option<Vec<String>> = match renderer.gpu_timing_absent() {
+            Some(why) => {
+                println!("{scene}: no GPU pass timing ({why})");
+                None
+            }
+            None => {
+                let frames = renderer.gpu_timings(true);
+                let last = frames.last().expect("a frame timed on the GPU");
+                for p in &last.passes {
+                    println!("{scene} gpu {}: {:.3} ms", p.name, p.ms());
+                }
+                Some(last.passes.iter().map(|p| p.name.clone()).collect())
+            }
+        };
+        println!("{scene} cpu: {cpu:?}");
+        for names in std::iter::once(cpu).chain(gpu) {
+            let tail: Vec<&str> = names
+                .iter()
+                .rev()
+                .take(2)
+                .rev()
+                .map(String::as_str)
+                .collect();
+            if drawn {
+                assert_eq!(tail, ui, "{scene}: the UI's passes close the frame");
+            } else {
+                assert!(
+                    !names.iter().any(|n| ui.contains(&n.as_str())),
+                    "{scene} draws no UI and lists no UI pass: {names:?}"
+                );
+                assert!(!names.is_empty(), "{scene} lists its graph's passes");
+            }
+        }
+    }
+}

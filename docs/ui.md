@@ -799,7 +799,9 @@ Measured by the perf lane on the reference machines (metal, DX12):
   records its commands in ≤ 0.5 ms of CPU per tick;
 - a HUD plus 2,000 mass elements and 100 anchored elements in ≤ 1 ms of
   CPU per tick;
-- the UI pass in ≤ 1 ms of GPU at 2560×1440, with layers and backdrops;
+- the UI pass in ≤ 1 ms of GPU at 2560×1440, with layers and backdrops:
+  the `ui-layers` and `overlay` passes of `ProbeTimings.gpuPasses` (the
+  overlay's glass and screen lines included);
 - a 10,000-row table scrolls without a frame over budget.
 
 ### 15.2 Accessibility
