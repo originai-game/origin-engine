@@ -35,6 +35,13 @@
 //!   around it green (the probe is among them). `views_scene(false, 0)`
 //!   and `views_scene(true, 0)` draw it with every level 0 (bias 0)
 //!   through the regular and the meshlet path; the two match.
+//! - `meshlet-far` (batch 4): the forest from 40 m up and 60 m behind its
+//!   first row, untinted, so nearly every cluster covers a few pixels and
+//!   goes through the visibility buffer (rasterised in compute, shaded by
+//!   each batch's resolve): 132 whole trees with their shadows, no holes,
+//!   specks or seams between a tree's compute and hardware clusters.
+//!   `far_scene(false)` draws it with every cluster by the hardware; the
+//!   two match.
 
 use glam::{Mat4, Quat, Vec3};
 use og_cook::runtime::Bundle;
@@ -221,5 +228,16 @@ pub fn views_scene(meshlets: bool, bias: f32) -> Result<RenderScene, String> {
     scene.meshlets = meshlets;
     scene.lod_bias = bias;
     scene.lod_debug = bias > 0.0;
+    Ok(scene)
+}
+
+/// `meshlet-far` (module docs), its small clusters through the visibility
+/// buffer when `visibility_buffer`.
+pub fn far_scene(visibility_buffer: bool) -> Result<RenderScene, String> {
+    let (mut scene, parts) = base()?;
+    plant_forest(&mut scene, &parts);
+    scene.camera.position = Vec3::new(0.0, 40.0, 54.0);
+    scene.camera.target = Vec3::new(0.0, 0.0, -50.0);
+    scene.visibility_buffer = visibility_buffer;
     Ok(scene)
 }

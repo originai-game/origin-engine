@@ -678,7 +678,7 @@ impl Renderer {
         // they fit (a view past it culls and draws its casters as before).
         let meshlet_max = self.meshlet.as_ref().map_or(0, |m| m.max_items());
         let mut meshlet_items = match self.meshlet.as_ref() {
-            Some(m) => m.items(&batches, &meshlet_taken),
+            Some(m) => m.items(&batches, &meshlet_taken, true),
             None => None,
         }
         .unwrap_or(u64::MAX);
@@ -809,7 +809,7 @@ impl Renderer {
             if v.taken.is_empty() {
                 return 0;
             }
-            match meshlet_gpu.and_then(|m| m.items(&batches, &v.taken)) {
+            match meshlet_gpu.and_then(|m| m.items(&batches, &v.taken, false)) {
                 Some(n) if meshlet_items + n <= meshlet_max => {
                     meshlet_items += n;
                     meshlet_views.push(v);

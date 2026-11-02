@@ -41,6 +41,12 @@ pub(crate) const MESHLET_WGSL: &str = wgsl!("meshlet.wgsl");
 pub(crate) const MESHLET_CULL_WGSL: &str = wgsl!("meshlet_cull.wgsl");
 pub(crate) const MESHLET_SHADOW_WGSL: &str = wgsl!("meshlet_shadow.wgsl");
 pub(crate) const MESHLET_DEPTH_WGSL: &str = wgsl!("meshlet_depth.wgsl");
+pub(crate) const MESHLET_RASTER_WGSL: &str = wgsl!("meshlet_raster.wgsl");
+
+/// The visibility buffer's rasteriser and setup (after instance.wgsl).
+pub(crate) fn raster_source() -> String {
+    format!("{}{MESHLET_RASTER_WGSL}", crate::INSTANCE_WGSL)
+}
 
 /// The lit and prepass module of the meshlet path: the standard lit module
 /// (the built-in hooks; with `planar` its planar reflection slot) and the
@@ -98,7 +104,21 @@ struct Params {
     lod: [f32; 4],
     sizes: [u32; 4],
     phase: [u32; 4],
+    soft: [u32; 4],
 }
+
+/// `struct RasterParams` in meshlet_raster.wgsl.
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct RasterParams {
+    view_proj: [[f32; 4]; 4],
+    size: [u32; 4],
+    soft: [u32; 4],
+}
+
+/// u32 words per visibility-buffer record (meshlet_raster.wgsl
+/// `RECORD_ROWS` vec4s).
+const RECORD_WORDS: u64 = 20;
 
 /// `struct BatchRow` in meshlet_cull.wgsl.
 #[repr(C)]
@@ -129,6 +149,9 @@ pub(crate) struct MeshletDraw {
     /// Its row in the batch table: its draw's offset in `draws`.
     pub row: u32,
     pub first_item: u32,
+    /// Its small clusters go to the visibility buffer and are drawn by
+    /// its resolve (the camera's row of an occluder batch).
+    pub soft: bool,
 }
 
 /// Whether `b` draws through the meshlet path, given the scene and what
@@ -226,20 +249,53 @@ pub(crate) fn level_rows(levels: &[u8]) -> Vec<[f32; 4]> {
         .collect()
 }
 
+/// [`BatchRow::flags`]: the normal cone may cull.
+const FLAG_CONE: u32 = 1;
+/// [`BatchRow::flags`]: its small clusters go to the visibility buffer
+/// (the camera's row of an occluder batch, `meshlet_cull.wgsl`).
+const FLAG_SOFT: u32 = 2;
+/// [`BatchRow::flags`]: the side its material draws, from bit 2 (0 the
+/// front, 1 the back, 2 both): the compute rasteriser's face culling.
+const FLAG_SIDE_SHIFT: u32 = 2;
+/// The most clusters one frame rasterises in compute; past them the
+/// cull draws the rest by the hardware.
+pub(crate) const SOFT_CAP: u32 = 1 << 16;
+
+/// A batch row's capacity in work items, every cluster slot of its
+/// instances, rounded up to the item alignment.
+fn capacity(r: &BatchRow) -> u32 {
+    r.instances.saturating_mul(r.most).div_ceil(ITEM_ALIGN) * ITEM_ALIGN
+}
+
+/// [`plan`]'s (rows, draws, items, workgroups, the soft list).
+pub(crate) type Plan = (
+    Vec<BatchRow>,
+    Vec<MeshletDraw>,
+    u32,
+    u32,
+    Option<(u32, u32)>,
+);
+
 /// The frame's batch table and the work its dispatch covers, from each
 /// view's clustered batches' instances (their range of the sorted
 /// instances) and their meshes' most clusters at any level: (rows, draws,
-/// items, workgroups). Only the rows of lit views (`true` beside their
-/// batches) may cull by `cone`.
+/// items, workgroups, the soft list). Only the rows of lit views (`true`
+/// beside their batches) may cull by `cone`; only the camera's (view 0,
+/// lit) may send their small clusters to the visibility buffer (`soft`).
+/// The soft list, after every row's items, holds two items per cluster
+/// rasterised in compute ((instance, cluster), (row with its side from
+/// bit 28, the mesh's first vertex), written by the cull): its first item
+/// and its capacity in clusters, `None` without a soft row.
 pub(crate) fn plan<'a>(
     batches: &[Batch],
     views: impl IntoIterator<Item = (&'a [u32], bool)>,
     slot: impl Fn(usize) -> Option<(u32, u32)>,
     cone: impl Fn(&Batch) -> bool,
-) -> (Vec<BatchRow>, Vec<MeshletDraw>, u32, u32) {
+    soft: impl Fn(&Batch) -> bool,
+) -> Plan {
     let mut rows = Vec::new();
     let mut draws = Vec::new();
-    let (mut items, mut workgroups) = (0u32, 0u32);
+    let (mut items, mut workgroups, mut listed) = (0u32, 0u32, 0u32);
     for (view, lit, &b) in views
         .into_iter()
         .enumerate()
@@ -253,27 +309,46 @@ pub(crate) fn plan<'a>(
             continue;
         }
         let first_item = items.div_ceil(ITEM_ALIGN) * ITEM_ALIGN;
-        rows.push(BatchRow {
+        let is_soft = view == 0 && lit && soft(batch);
+        let side = match batch.side {
+            Side::Front => 0,
+            Side::Back => 1,
+            Side::Double => 2,
+        };
+        let row = BatchRow {
             mesh_slot,
             first_instance: batch.first,
             instances: batch.count,
             first_item,
             first_workgroup: workgroups,
-            flags: (lit && cone(batch)) as u32,
+            flags: if lit && cone(batch) { FLAG_CONE } else { 0 }
+                | if is_soft { FLAG_SOFT } else { 0 }
+                | side << FLAG_SIDE_SHIFT,
             view,
             most,
-        });
+        };
+        if is_soft {
+            listed = listed.saturating_add(capacity(&row));
+        }
+        rows.push(row);
         draws.push(MeshletDraw {
             batch: b,
             view,
             lit,
             row: rows.len() as u32 - 1,
             first_item,
+            soft: is_soft,
         });
         items = first_item + batch.count * most;
         workgroups += batch.count;
     }
-    (rows, draws, items, workgroups)
+    let list = (listed > 0).then(|| {
+        let first = items.div_ceil(ITEM_ALIGN) * ITEM_ALIGN;
+        let cap = listed.min(SOFT_CAP);
+        items = first + 2 * cap;
+        (first, cap)
+    });
+    (rows, draws, items, workgroups, list)
 }
 
 /// The bytes a draw group binds of the work items from a batch's first
@@ -282,13 +357,7 @@ pub(crate) fn plan<'a>(
 /// window lies inside it (wgpu refuses an offset whose window would pass
 /// the buffer's end). `items` is the plan's total.
 pub(crate) fn item_window(rows: &[BatchRow], items: u32) -> (u64, u64) {
-    let window = rows
-        .iter()
-        .map(|r| r.instances.saturating_mul(r.most).div_ceil(ITEM_ALIGN) * ITEM_ALIGN)
-        .max()
-        .unwrap_or(0)
-        .max(ITEM_ALIGN) as u64
-        * 8;
+    let window = rows.iter().map(capacity).max().unwrap_or(0).max(ITEM_ALIGN) as u64 * 8;
     let last = rows.iter().map(|r| r.first_item).max().unwrap_or(0) as u64 * 8;
     (window, (items as u64 * 8).max(last + window))
 }
@@ -297,12 +366,14 @@ pub(crate) fn item_window(rows: &[BatchRow], items: u32) -> (u64, u64) {
 type MeshRows = [[u32; 4]; MESH_ROWS];
 
 /// The mesh table's rows and the cluster pool's for one mesh, its
-/// clusters' first indices offset by `index_base` and its levels' first
-/// clusters by `cluster_base`; `None` past [`MAX_LEVELS`] levels.
+/// clusters' first indices offset by `index_base`, its levels' first
+/// clusters by `cluster_base`, its vertices at `vertex_base` of the vertex
+/// pool; `None` past [`MAX_LEVELS`] levels.
 pub(crate) fn pool_rows(
     c: &MeshClusters,
     index_base: u32,
     cluster_base: u32,
+    vertex_base: u32,
 ) -> Option<(MeshRows, Vec<[u32; 4]>)> {
     if c.levels.len() > MAX_LEVELS || c.clusters.is_empty() {
         return None;
@@ -316,7 +387,7 @@ pub(crate) fn pool_rows(
         bits(first.error_center.z),
         bits(first.error_radius),
     ];
-    mesh[1] = [c.levels.len() as u32, 0, 0, 0];
+    mesh[1] = [c.levels.len() as u32, vertex_base, 0, 0];
     for (k, l) in c.levels.iter().enumerate() {
         mesh[2 + k] = [
             cluster_base + l.clusters.start,
@@ -356,9 +427,17 @@ struct Pools {
     meshes: wgpu::Buffer,
     clusters: wgpu::Buffer,
     indices: wgpu::Buffer,
+    /// Every clustered mesh's f32 vertices, for the visibility buffer
+    /// (its rasteriser reads any mesh's in one dispatch).
+    vertices: wgpu::Buffer,
 }
 
+mod vis;
+
 pub(crate) struct MeshletGpu {
+    /// The visibility buffer: the camera's small clusters rasterised in
+    /// compute and resolved per batch ([`vis`]).
+    vis_buffer: vis::VisBuffer,
     cull_layout: wgpu::BindGroupLayout,
     cull: wgpu::ComputePipeline,
     pub(crate) draw_layout: wgpu::BindGroupLayout,
@@ -632,11 +711,16 @@ impl MeshletGpu {
             items_bytes: 0,
             frame: Vec::new(),
             max_binding,
+            vis_buffer: vis::VisBuffer::new(device),
         }
     }
 
     fn draws_usage() -> wgpu::BufferUsages {
-        wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::COPY_DST
+        // COPY_SRC: the soft list's count, into the rasteriser's params.
+        wgpu::BufferUsages::STORAGE
+            | wgpu::BufferUsages::INDIRECT
+            | wgpu::BufferUsages::COPY_DST
+            | wgpu::BufferUsages::COPY_SRC
     }
 
     /// Rebuilds the pools when the scene's clustered meshes changed.
@@ -661,18 +745,33 @@ impl MeshletGpu {
         let mut mesh_rows: Vec<[u32; 4]> = Vec::new();
         let mut cluster_rows: Vec<[u32; 4]> = Vec::new();
         let mut indices: Vec<u32> = Vec::new();
+        let mut vertices: Vec<crate::Vertex> = Vec::new();
         for (i, c) in &key {
+            let Some(source) = scene.meshes().get(*i) else {
+                continue;
+            };
             let Some((mesh, rows)) = pool_rows(
                 c,
                 indices.len() as u32,
                 (cluster_rows.len() / CLUSTER_ROWS) as u32,
+                vertices.len() as u32,
             ) else {
                 continue;
             };
             let bytes = ((indices.len() + c.indices.len()) * 4)
-                .max((cluster_rows.len() + rows.len()) * 16) as u64;
+                .max((cluster_rows.len() + rows.len()) * 16)
+                .max((vertices.len() + source.vertices.len()) * 64) as u64;
             if bytes > self.max_binding {
                 break;
+            }
+            // As the mesh's own buffer holds them (uploads.rs): with
+            // tangents generated where it has none.
+            if source.lacks_tangents() {
+                let mut m = source.clone();
+                m.generate_tangents();
+                vertices.extend_from_slice(&m.vertices);
+            } else {
+                vertices.extend_from_slice(&source.vertices);
             }
             let most = c
                 .levels
@@ -696,6 +795,7 @@ impl MeshletGpu {
             meshes: make("meshlet meshes", bytemuck::cast_slice(&mesh_rows)),
             clusters: make("meshlet clusters", bytemuck::cast_slice(&cluster_rows)),
             indices: make("meshlet indices", bytemuck::cast_slice(&indices)),
+            vertices: make("meshlet vertex pool", bytemuck::cast_slice(&vertices)),
         });
         self.cull_group = None;
         self.mesh_groups.clear();
@@ -721,6 +821,7 @@ impl MeshletGpu {
         if self.lit_module.as_ref().is_none_or(|(p, _)| *p != planar) {
             self.lit.clear();
             self.prepass.clear();
+            self.vis_buffer.clear_pipelines();
             self.lit_module = Some((
                 planar,
                 device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -730,6 +831,16 @@ impl MeshletGpu {
             ));
         }
         let module = &self.lit_module.as_ref().expect("made above").1;
+        let soft: Vec<bool> = self
+            .frame
+            .iter()
+            .filter(|d| d.soft)
+            .map(|d| batches[d.batch as usize].effects)
+            .collect();
+        if !soft.is_empty() {
+            self.vis_buffer
+                .ensure_pipelines(device, layouts, module, soft, prepass, samples);
+        }
         let camera = || self.frame.iter().filter(|d| d.lit);
         let missing = camera().any(|d| {
             let b = &batches[d.batch as usize];
@@ -780,7 +891,7 @@ impl MeshletGpu {
                         b.side,
                         false,
                         None,
-                        true,
+                        Some(("vs_prepass_meshlet", "fs_prepass")),
                     )
                 });
             }
@@ -826,13 +937,16 @@ impl MeshletGpu {
     /// The work items `taken` adds to a frame's dispatch, rounded up to a
     /// batch's alignment (`None` before the pools exist): the renderer
     /// adds views while their sum fits [`Self::max_items`].
-    pub fn items(&self, batches: &[Batch], taken: &[u32]) -> Option<u64> {
+    /// With `soft`, as the camera's view with every batch sending its
+    /// small clusters to the visibility buffer (the most it may take).
+    pub fn items(&self, batches: &[Batch], taken: &[u32], soft: bool) -> Option<u64> {
         let pools = self.pools.as_ref()?;
-        let (_, _, items, _) = plan(
+        let (_, _, items, _, _) = plan(
             batches,
-            [(taken, false)],
+            [(taken, soft)],
             |m| pools.slots.get(&m).copied(),
             |_| false,
+            |_| soft,
         );
         Some(items.div_ceil(ITEM_ALIGN) as u64 * ITEM_ALIGN as u64)
     }
@@ -872,11 +986,21 @@ impl MeshletGpu {
     ) -> Option<wgpu::CommandBuffer> {
         self.frame.clear();
         let pools = self.pools.as_ref()?;
-        let (rows, draws, items, workgroups) = plan(
+        // The visibility buffer takes the camera's small clusters of
+        // occluder batches (opaque, depth exactly their triangles') under
+        // a perspective camera without retro vertex snapping.
+        let soft_on = scene.visibility_buffer
+            && scene.stylise.retro.is_none()
+            && matches!(
+                scene.camera.projection,
+                crate::Projection::Perspective { .. }
+            );
+        let (rows, draws, items, workgroups, list) = plan(
             batches,
             views.iter().map(|v| (v.taken.as_slice(), v.lit)),
             |m| pools.slots.get(&m).copied(),
             |b| b.side == Side::Front,
+            |b| soft_on && occluder(b),
         );
         if rows.is_empty() || items as u64 * 8 > self.max_binding {
             return None;
@@ -905,7 +1029,8 @@ impl MeshletGpu {
             device,
             &mut self.draws,
             "meshlet draws",
-            (rows.len() * 16) as u64,
+            // And the soft list's count.
+            (rows.len() * 16 + 16) as u64,
             Self::draws_usage(),
         );
         // The visibility halves: a new size starts every slot hidden (the
@@ -951,6 +1076,7 @@ impl MeshletGpu {
         let draw_args: Vec<[u32; 4]> = rows
             .iter()
             .map(|_| [(CLUSTER_TRIANGLES * 3) as u32, 0, 0, 0])
+            .chain(std::iter::once([0; 4]))
             .collect();
         queue.write_buffer(&self.draws, 0, bytemuck::cast_slice(&draw_args));
         // Two phases with the pyramid and its depth, one without.
@@ -962,10 +1088,14 @@ impl MeshletGpu {
                 scene.lod_bias.max(0.0),
                 level_row as f32,
                 picked as u32 as f32,
-                0.0,
+                scene.camera.near,
             ],
             sizes: [width, height, pyramid.map_or(0, |p| p.1), rows.len() as u32],
             phase: [phase, read as u32, write as u32, 0],
+            soft: match list {
+                Some((first, cap)) => [first, cap, rows.len() as u32 * 4, 0],
+                None => [0; 4],
+            },
         };
         let (first, second) = if depth.is_some() { (1, 2) } else { (0, 0) };
         queue.write_buffer(&self.params, 0, bytemuck::bytes_of(&params(first)));
@@ -1114,6 +1244,28 @@ impl MeshletGpu {
             gc.rebuild_pyramid(&mut pass);
             dispatch(&mut pass, PARAMS_SLOT);
         }
+        // The soft list both phases appended, rasterised once.
+        if let (Some(list), Some(pools)) = (list, self.pools.as_ref()) {
+            self.vis_buffer.encode(
+                device,
+                queue,
+                &mut encoder,
+                vis::VisFrame {
+                    view_proj,
+                    size: (width, height),
+                    list,
+                    count: (&self.draws, rows.len() as u64 * 16),
+                    instances: &gc.instances,
+                    previous,
+                    items: &self.items,
+                    clusters: &pools.clusters,
+                    indices: &pools.indices,
+                    vertices: &pools.vertices,
+                    lod_debug: scene.lod_debug,
+                    max_binding: self.max_binding,
+                },
+            );
+        }
         Some(encoder.finish())
     }
 
@@ -1249,6 +1401,42 @@ impl MeshletGpu {
         n
     }
 
+    /// Draws the camera's soft batches' resolves into `pass` (the camera's
+    /// lit pass, or its prepass with `prepass`): one full-screen triangle
+    /// each, shading the visibility buffer's pixels of its batch; groups 0
+    /// and 2 bound by the caller. Returns the draws made.
+    pub fn draw_resolve<'m>(
+        &self,
+        pass: &mut wgpu::RenderPass<'_>,
+        batches: &[Batch],
+        prepass: bool,
+        material: impl Fn(&Batch) -> &'m wgpu::BindGroup,
+        mut probe: impl FnMut(&mut wgpu::RenderPass<'_>, &Batch),
+    ) -> u32 {
+        let Some(group) = self.vis_buffer.resolve_group.as_ref() else {
+            return 0;
+        };
+        let mut n = 0;
+        for d in self.frame.iter().filter(|d| d.soft) {
+            let b = &batches[d.batch as usize];
+            let pipeline = if prepass {
+                self.vis_buffer.prepass.as_ref()
+            } else {
+                self.vis_buffer.lit.get(&b.effects)
+            };
+            let Some(pipeline) = pipeline else {
+                continue;
+            };
+            probe(pass, b);
+            pass.set_pipeline(pipeline);
+            pass.set_bind_group(1, material(b), &[]);
+            pass.set_bind_group(3, group, &[]);
+            pass.draw(0..3, d.row..d.row + 1);
+            n += 1;
+        }
+        n
+    }
+
     /// Draws the clustered casters of shadow view `view` into a shadow
     /// pass whose slot (group 0) the caller bound; `material(b)` is batch
     /// `b`'s material group (read by alpha-tested and dissolving casters).
@@ -1331,8 +1519,13 @@ mod tests {
             5 => Some((2, 1)),
             _ => None,
         };
-        let (rows, draws, items, workgroups) =
-            plan(&batches, [(&[0, 1, 2, 3][..], true)], slot, |_| true);
+        let (rows, draws, items, workgroups, _) = plan(
+            &batches,
+            [(&[0, 1, 2, 3][..], true)],
+            slot,
+            |_| true,
+            |_| false,
+        );
         assert_eq!(rows.len(), 2);
         assert_eq!(
             draws
@@ -1358,7 +1551,7 @@ mod tests {
         // The camera takes both; a reflection (lit) and a shadow view take
         // batch 1 only.
         let views: [(&[u32], bool); 3] = [(&[0, 1], true), (&[1], true), (&[1], false)];
-        let (rows, draws, items, workgroups) = plan(&batches, views, slot, |_| true);
+        let (rows, draws, items, workgroups, _) = plan(&batches, views, slot, |_| true, |_| false);
         assert_eq!(
             rows.iter()
                 .map(|r| (r.view, r.flags, r.first_instance))
@@ -1391,7 +1584,7 @@ mod tests {
         let batches = [batch(0, 0, 3), batch(1, 3, 10), batch(0, 13, 1)];
         let slot = |m: usize| Some((m as u32, if m == 0 { 7 } else { 40 }));
         let views: [(&[u32], bool); 2] = [(&[0, 1, 2], true), (&[2, 0], false)];
-        let (rows, _, items, _) = plan(&batches, views, slot, |_| true);
+        let (rows, _, items, _, _) = plan(&batches, views, slot, |_| true, |_| false);
         let (window, buffer) = item_window(&rows, items);
         assert_eq!(window, 416 * 8, "batch 1's 400 items, aligned");
         for r in &rows {
@@ -1408,6 +1601,37 @@ mod tests {
         let last = rows.iter().map(|r| r.first_item).max().unwrap() as u64 * 8;
         assert_eq!(buffer, last + window);
         assert!(buffer > items as u64 * 8);
+    }
+
+    /// Only the camera's rows of soft batches send clusters to the
+    /// visibility buffer; the soft list sits after every row's items with
+    /// two items for each cluster slot of those rows (capped), and each
+    /// row's flags carry its side for the rasteriser's face culling.
+    #[test]
+    fn only_the_camera_s_soft_rows_feed_the_soft_list_after_every_row() {
+        let mut back = batch(1, 3, 10);
+        back.side = Side::Back;
+        let batches = [batch(0, 0, 3), back];
+        let slot = |m: usize| Some((m as u32, if m == 0 { 7 } else { 40 }));
+        // The camera, a reflection (lit) and a shadow view all take batch 1.
+        let views: [(&[u32], bool); 3] = [(&[0, 1], true), (&[1], true), (&[1], false)];
+        let (rows, draws, items, _, list) = plan(&batches, views, slot, |_| false, |b| b.mesh == 1);
+        assert_eq!(
+            draws.iter().map(|d| d.soft).collect::<Vec<_>>(),
+            [false, true, false, false]
+        );
+        assert_eq!(rows[1].flags, FLAG_SOFT | 1 << FLAG_SIDE_SHIFT);
+        assert_eq!(rows[0].flags, 0);
+        // The rows end at 864 + 400; the list starts aligned after them,
+        // 416 clusters (batch 1's 10 x 40 slots, aligned to 32) of two
+        // items each.
+        let (first, cap) = list.expect("a soft row");
+        assert_eq!((first, cap), (1280, 416));
+        assert_eq!(items, first + 2 * cap);
+        // No soft row: no list, the same rows.
+        let (_, _, plain, _, none) = plan(&batches, views, slot, |_| false, |_| false);
+        assert!(none.is_none());
+        assert_eq!(plain, 1264);
     }
 
     /// The picked levels pack four sorted slots a row, slot `s` at row
@@ -1493,9 +1717,9 @@ mod tests {
             clusters: vec![cl(0, 64), cl(192, 36), cl(300, 10)],
             indices: Vec::new(),
         };
-        let (mesh, rows) = pool_rows(&c, 1000, 50).unwrap();
+        let (mesh, rows) = pool_rows(&c, 1000, 50, 7).unwrap();
         assert_eq!(mesh[0], [0.0f32, 1.0, 0.0, 4.0].map(f32::to_bits));
-        assert_eq!(mesh[1][0], 2);
+        assert_eq!(mesh[1], [2, 7, 0, 0], "levels, the first vertex");
         assert_eq!(mesh[2], [50, 2, 0, 0]);
         assert_eq!(mesh[3], [52, 1, 0.2f32.to_bits(), 0]);
         assert_eq!(rows.len(), 9);
@@ -1506,6 +1730,6 @@ mod tests {
         // Past eight levels: refused.
         let mut many = c.clone();
         many.levels = vec![c.levels[0].clone(); MAX_LEVELS + 1];
-        assert!(pool_rows(&many, 0, 0).is_none());
+        assert!(pool_rows(&many, 0, 0, 0).is_none());
     }
 }

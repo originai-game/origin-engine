@@ -84,3 +84,25 @@ clusters culled (frustum, cone) and drawn by vertex pulling in its pass.
   reflection probe (green: the probe is among them). No tree missing in
   any of the three. `meshlet_views_match_the_regular_path` compares it at
   LOD bias 0 (every level 0) with the regular path.
+
+## Batch 4: the visibility buffer
+
+The camera's small clusters of opaque batches (a sphere of at most 24 px
+across, past the near plane) are rasterised in compute into a depth and an
+id word per pixel and shaded by one full-screen resolve per batch, which
+writes their depth; larger clusters stay hardware draws (`docs/design.md`
+§2.6). CPU statement and tests: `meshlet.rs` (`soft`, `raster_class`,
+`covers` with the top-left rule over a fan, `barycentrics`, the id and
+depth words), `meshlet_gpu.rs` (the soft list's plan).
+
+- `meshlet-far` (new): the forest from 40 m up and 54 m behind the eye of
+  `meshlet-forest`, untinted, so almost every cluster is soft. Expect 132
+  whole trees in 12 rows with their shadows, nothing speckled, cracked or
+  doubled, no seam between a tree's compute-drawn and hardware-drawn
+  clusters. `meshlet_visibility_buffer_matches_the_hardware` compares it
+  with `far_scene(false)` (every cluster by the hardware) at the default
+  tolerance.
+- Moved by default (the visibility buffer is on): `meshlet-forest`,
+  `-occlusion`, `-views` and `-shadows` where far trees' clusters are
+  soft. Each should look as before; their regular-path comparisons should
+  still pass. `meshlet-near` should not move (its tree is 6 m away).

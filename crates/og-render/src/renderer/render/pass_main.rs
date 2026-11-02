@@ -259,6 +259,14 @@ impl Renderer {
                 |b| &self.cache.materials[b.material].bind_group,
                 |p, b| binder.bind(p, b.probe),
             );
+            // The visibility buffer's pixels of each soft batch.
+            stats.draw_calls += m.draw_resolve(
+                &mut pass,
+                batches,
+                false,
+                |b| &self.cache.materials[b.material].bind_group,
+                |p, b| binder.bind(p, b.probe),
+            );
             binder.reset(&mut pass);
         }
         stats.draw_calls += draw_skinned(

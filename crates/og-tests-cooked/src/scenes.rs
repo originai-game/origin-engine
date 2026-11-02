@@ -19,6 +19,7 @@ pub const NATIVE_SCENES: &[&str] = &[
     "meshlet-near",
     "meshlet-shadows",
     "meshlet-views",
+    "meshlet-far",
     "probe-interior",
     "ssr-wet-floor",
     "baked-cornell",
@@ -86,6 +87,11 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = crate::meshlet_scenes::views_scene(true, 1.0)?;
             // The probe's capture, then the frame that shows it.
             g.frames = 2;
+            Ok(())
+        },
+        #[cfg(not(target_arch = "wasm32"))]
+        "meshlet-far" => |g, _| {
+            g.scene = crate::meshlet_scenes::far_scene(true)?;
             Ok(())
         },
         // Round 3: a terrain the cook generated (noise, erosion, a sea,

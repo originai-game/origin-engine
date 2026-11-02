@@ -273,6 +273,212 @@ pub fn occluded(
     r.near > far + 1e-6
 }
 
+// The visibility buffer (R1 batch 4, three.js#35191's
+// `VisibilityBufferDrawingPipeline`): the camera's visible clusters of
+// opaque materials whose clusters are small on the screen ([`soft`]) are
+// rasterised in compute, one thread a triangle ([`raster_class`],
+// [`covers`]), into two words per pixel, the depth and the id of the
+// triangle seen there; a resolve per batch shades each of its pixels once
+// from them, writing its depth, so the hardware's clusters (the larger
+// ones, drawn as before) and the resolved pixels meet by the depth test.
+// The rasteriser first takes the nearest depth ([`vis_depth`], an atomic
+// max), then, in a second pass, writes its id where its depth is the
+// pixel's ([`vis_id`], an atomic max again, so equal depths keep one id):
+// WebGPU has no 64-bit atomics to take both at once. three.js decides per
+// triangle (up to 8 pixels in compute); deciding per cluster keeps the
+// hardware's clusters one indirect draw each, as before.
+
+/// The most pixels across a cluster's sphere may cover to be rasterised
+/// in compute ([`soft`]): 64 triangles over it are a few pixels each.
+pub const SOFT_PIXELS: f32 = 24.0;
+
+/// The widest and tallest triangle (its box, in pixels) the compute
+/// rasteriser covers; a soft cluster's triangles stay well inside it
+/// (its sphere's projection, stretched at most a little off the axis).
+pub const RASTER_MAX: f32 = 64.0;
+
+/// Whether a cluster is rasterised in compute: its sphere (radius
+/// `radius`, its centre `depth` in front of the eye along the view axis,
+/// a perspective view's clip w) lies wholly past the `near` plane, and
+/// covers at most [`SOFT_PIXELS`] across at `pixels_per_unit` (pixels per
+/// unit of length at distance 1).
+pub fn soft(depth: f32, radius: f32, pixels_per_unit: f32, near: f32) -> bool {
+    let d = depth - radius;
+    d > near && 2.0 * radius * pixels_per_unit <= SOFT_PIXELS * d
+}
+
+/// Subpixel steps per pixel a rasterised vertex snaps to (a hardware
+/// rasteriser's 8 bits): with vertices taken relative to the triangle's
+/// box, the edge functions of a triangle up to [`RASTER_MAX`] across are
+/// exact in 32-bit integers (64 x 256 squared is under 2^31).
+pub const SUBPIXEL: i32 = 256;
+
+/// A depth's word in the visibility buffer: nearer is larger (an atomic
+/// max keeps the nearest), and 0 is a pixel nothing covered.
+pub fn vis_depth(z: f32) -> u32 {
+    !z.max(0.0).to_bits()
+}
+
+/// The depth a [`vis_depth`] word holds.
+pub fn vis_depth_value(word: u32) -> f32 {
+    f32::from_bits(!word)
+}
+
+/// A pixel's id word: a work item (an instance's cluster) and the
+/// triangle in its cluster, 0 for none.
+pub fn vis_id(item: u32, triangle: u32) -> u32 {
+    debug_assert!(item < 1 << 26 && (triangle as usize) < CLUSTER_TRIANGLES);
+    ((item << 6) | triangle) + 1
+}
+
+/// The (item, triangle) a [`vis_id`] word names.
+pub fn vis_item(word: u32) -> Option<(u32, u32)> {
+    (word != 0).then(|| ((word - 1) >> 6, (word - 1) & 63))
+}
+
+/// A clip position's pixel position (x right, y down, in pixels) and
+/// depth, for a `size` pixels screen; `None` behind the eye or before the
+/// near plane (the hardware clips those triangles).
+pub fn to_screen(clip: Vec4, size: Vec2) -> Option<Vec3> {
+    if clip.w <= 1e-6 || clip.z < 0.0 {
+        return None;
+    }
+    let ndc = clip.truncate() / clip.w;
+    Some(Vec3::new(
+        (ndc.x * 0.5 + 0.5) * size.x,
+        (0.5 - ndc.y * 0.5) * size.y,
+        ndc.z,
+    ))
+}
+
+/// What becomes of a triangle in the visibility pass.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Raster {
+    /// Covers no pixel centre, or faces the way its side culls.
+    Skip,
+    /// Too large, or crossing the near plane: not the compute
+    /// rasteriser's ([`soft`] keeps those clusters on the hardware).
+    Hardware,
+    /// Rasterised in compute over these pixels (inclusive).
+    Pixels { x0: i32, y0: i32, x1: i32, y1: i32 },
+}
+
+/// A triangle's fate ([`Raster`]) from its corners' clip positions, the
+/// screen's `size` and the side its material draws.
+pub fn raster_class(clip: [Vec4; 3], size: Vec2, side: crate::Side) -> Raster {
+    let (Some(a), Some(b), Some(c)) = (
+        to_screen(clip[0], size),
+        to_screen(clip[1], size),
+        to_screen(clip[2], size),
+    ) else {
+        return Raster::Hardware;
+    };
+    // Counter-clockwise as seen is the front (wgpu's default): a negative
+    // signed area with the screen's y down.
+    let area = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+    let front = area < 0.0;
+    let culled = match side {
+        crate::Side::Front => !front,
+        crate::Side::Back => front,
+        crate::Side::Double => false,
+    };
+    if area == 0.0 || culled {
+        return Raster::Skip;
+    }
+    let lo = a.min(b).min(c);
+    let hi = a.max(b).max(c);
+    // Entirely before the screen or past the far plane.
+    if lo.z > 1.0 || hi.x < 0.0 || hi.y < 0.0 || lo.x > size.x || lo.y > size.y {
+        return Raster::Skip;
+    }
+    if hi.x - lo.x > RASTER_MAX || hi.y - lo.y > RASTER_MAX {
+        return Raster::Hardware;
+    }
+    // The pixel centres in the box, on the screen.
+    let x0 = ((lo.x - 0.5).ceil() as i32).max(0);
+    let y0 = ((lo.y - 0.5).ceil() as i32).max(0);
+    let x1 = ((hi.x - 0.5).floor() as i32).min(size.x as i32 - 1);
+    let y1 = ((hi.y - 0.5).floor() as i32).min(size.y as i32 - 1);
+    if x0 > x1 || y0 > y1 {
+        return Raster::Skip;
+    }
+    Raster::Pixels { x0, y0, x1, y1 }
+}
+
+/// Whether the edge from `a` to `b` of a positively wound triangle owns
+/// the pixel centres on it: of two triangles sharing an edge (walked in
+/// opposite directions), exactly one does.
+fn owns(a: [i32; 2], b: [i32; 2]) -> bool {
+    let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
+    dy < 0 || (dy == 0 && dx > 0)
+}
+
+/// `p`'s side of the edge from `a` to `b` (positive inside a positively
+/// wound triangle).
+fn edge(a: [i32; 2], b: [i32; 2], p: [i32; 2]) -> i32 {
+    (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0])
+}
+
+/// The depth at pixel `(x, y)` of a triangle given in screen space ([`to_screen`]:
+/// pixels and depth), or `None` when the pixel's centre is outside it.
+/// Its vertices snap to [`SUBPIXEL`] steps relative to the box's whole
+/// pixel corner, so its edge functions are exact and two triangles sharing
+/// an edge cover each centre on it once ([`owns`]).
+pub fn covers(p: [Vec3; 3], x: i32, y: i32) -> Option<f32> {
+    let ox = p[0].x.min(p[1].x).min(p[2].x).floor();
+    let oy = p[0].y.min(p[1].y).min(p[2].y).floor();
+    let snap = |v: Vec3| {
+        [
+            ((v.x - ox) * SUBPIXEL as f32).round() as i32,
+            ((v.y - oy) * SUBPIXEL as f32).round() as i32,
+        ]
+    };
+    let mut v = [snap(p[0]), snap(p[1]), snap(p[2])];
+    let mut z = [p[0].z, p[1].z, p[2].z];
+    let mut area = edge(v[0], v[1], v[2]);
+    if area == 0 {
+        return None;
+    }
+    if area < 0 {
+        v.swap(1, 2);
+        z.swap(1, 2);
+        area = -area;
+    }
+    let half = SUBPIXEL / 2;
+    let c = [
+        (x - ox as i32) * SUBPIXEL + half,
+        (y - oy as i32) * SUBPIXEL + half,
+    ];
+    let e = [
+        edge(v[1], v[2], c),
+        edge(v[2], v[0], c),
+        edge(v[0], v[1], c),
+    ];
+    let inside = |e: i32, a: [i32; 2], b: [i32; 2]| e > 0 || (e == 0 && owns(a, b));
+    if !(inside(e[0], v[1], v[2]) && inside(e[1], v[2], v[0]) && inside(e[2], v[0], v[1])) {
+        return None;
+    }
+    let depth = (e[0] as f32 * z[0] + e[1] as f32 * z[1] + e[2] as f32 * z[2]) / area as f32;
+    (0.0..=1.0).contains(&depth).then_some(depth)
+}
+
+/// The perspective-correct barycentric weights of a pixel at `ndc` on the
+/// triangle of clip positions `clip`: what the hardware interpolates a
+/// varying with (the resolve rebuilds a pixel's attributes with them).
+pub fn barycentrics(clip: [Vec4; 3], ndc: Vec2) -> Vec3 {
+    let p = clip.map(|c| c.truncate().truncate() / c.w);
+    let cross = |a: Vec2, b: Vec2| a.x * b.y - a.y * b.x;
+    let area = cross(p[1] - p[0], p[2] - p[0]);
+    // The screen weights, then each over its corner's w.
+    let l = Vec3::new(
+        cross(p[1] - ndc, p[2] - ndc),
+        cross(p[2] - ndc, p[0] - ndc),
+        cross(p[0] - ndc, p[1] - ndc),
+    ) / area;
+    let q = l / Vec3::new(clip[0].w, clip[1].w, clip[2].w);
+    q / (q.x + q.y + q.z)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -454,5 +660,188 @@ mod tests {
             None
         );
         assert!(!occluded(None, size, 9, |_, _, _| 0.0));
+    }
+    #[test]
+    fn nearer_depths_win_the_atomic_max_and_nothing_is_zero() {
+        assert!(vis_depth(0.25) > vis_depth(0.5));
+        assert!(vis_depth(0.0) > vis_depth(f32::MIN_POSITIVE));
+        assert_ne!(vis_depth(1.0), 0);
+        assert_eq!(vis_depth_value(vis_depth(0.375)), 0.375);
+        assert_eq!(vis_item(vis_id(70_000, 63)), Some((70_000, 63)));
+        assert_eq!(vis_item(vis_id(0, 0)), Some((0, 0)));
+        assert_eq!(vis_item(0), None);
+    }
+
+    fn clip_at(x: f32, y: f32, z: f32, w: f32, size: Vec2) -> Vec4 {
+        // The clip position whose pixel is (x, y), at depth z.
+        let ndc = Vec2::new(x / size.x * 2.0 - 1.0, 1.0 - y / size.y * 2.0);
+        Vec4::new(ndc.x * w, ndc.y * w, z * w, w)
+    }
+
+    #[test]
+    fn small_front_faces_rasterise_and_the_rest_go_elsewhere() {
+        let size = Vec2::new(64.0, 48.0);
+        // Counter-clockwise as seen (down the left edge, then right): the
+        // front.
+        let front =
+            [(10.0, 10.0), (10.0, 14.0), (14.0, 10.0)].map(|(x, y)| clip_at(x, y, 0.5, 2.0, size));
+        let back = [front[0], front[2], front[1]];
+        assert_eq!(
+            raster_class(front, size, crate::Side::Front),
+            Raster::Pixels {
+                x0: 10,
+                y0: 10,
+                x1: 13,
+                y1: 13
+            }
+        );
+        assert_eq!(raster_class(back, size, crate::Side::Front), Raster::Skip);
+        assert!(matches!(
+            raster_class(back, size, crate::Side::Back),
+            Raster::Pixels { .. }
+        ));
+        assert_eq!(raster_class(front, size, crate::Side::Back), Raster::Skip);
+        assert!(matches!(
+            raster_class(back, size, crate::Side::Double),
+            Raster::Pixels { .. }
+        ));
+        // Past RASTER_MAX across: not the rasteriser's.
+        let wide = [(-10.0, 10.0), (-10.0, 12.0), (55.0, 10.0)]
+            .map(|(x, y)| clip_at(x, y, 0.5, 2.0, size));
+        assert_eq!(
+            raster_class(wide, size, crate::Side::Front),
+            Raster::Hardware
+        );
+        // A corner before the near plane: the hardware clips it.
+        let mut near = front;
+        near[1].z = -0.1;
+        assert_eq!(
+            raster_class(near, size, crate::Side::Front),
+            Raster::Hardware
+        );
+        // Between pixel centres: nothing to draw.
+        let sliver =
+            [(10.6, 10.6), (10.6, 11.4), (11.4, 10.6)].map(|(x, y)| clip_at(x, y, 0.5, 2.0, size));
+        assert_eq!(raster_class(sliver, size, crate::Side::Front), Raster::Skip);
+    }
+
+    /// A cluster is rasterised in compute while its sphere covers at most
+    /// SOFT_PIXELS and lies wholly past the near plane: at 1000 pixels per
+    /// unit, a 0.1 m sphere is soft from 8.43 m (2 x 0.1 x 1000 / 24 =
+    /// 8.33 m to its near side), never nearer, and never while it crosses
+    /// the near plane.
+    #[test]
+    fn small_clusters_past_the_near_plane_are_rasterised_in_compute() {
+        assert!(soft(8.44, 0.1, 1000.0, 0.1));
+        assert!(!soft(8.42, 0.1, 1000.0, 0.1));
+        assert!(!soft(0.15, 0.1, 1.0, 0.1), "crosses the near plane");
+        assert!(soft(0.25, 0.1, 1.0, 0.1));
+    }
+
+    /// Triangles sharing edges cover every pixel centre of their union
+    /// exactly once, including centres on the shared edges and corners:
+    /// a fan of eight around an interior vertex, at subpixel offsets.
+    #[test]
+    fn a_fan_of_triangles_covers_each_pixel_once() {
+        let mut seed = 12345u32;
+        let mut rnd = || {
+            seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
+            (seed >> 8) as f32 / (1u32 << 24) as f32
+        };
+        for _ in 0..40 {
+            let centre = Vec3::new(20.0 + rnd() * 2.0, 20.0 + rnd() * 2.0, 0.5);
+            // Some rim vertices on exact pixel centres, the rest anywhere.
+            let rim: Vec<Vec3> = (0..8)
+                .map(|k| {
+                    let a = k as f32 / 8.0 * std::f32::consts::TAU;
+                    let r = 3.0 + rnd() * 0.9;
+                    let mut v = centre + Vec3::new(a.cos() * r, a.sin() * r, 0.0);
+                    if k % 3 == 0 {
+                        v.x = v.x.floor() + 0.5;
+                        v.y = v.y.floor() + 0.5;
+                    }
+                    v
+                })
+                .collect();
+            let mut count = std::collections::HashMap::new();
+            for k in 0..8 {
+                let t = [centre, rim[k], rim[(k + 1) % 8]];
+                for y in 10..32 {
+                    for x in 10..32 {
+                        if covers(t, x, y).is_some() {
+                            *count.entry((x, y)).or_insert(0) += 1;
+                        }
+                    }
+                }
+            }
+            assert!(count.values().all(|&n| n == 1), "a pixel covered twice");
+            // Every centre well inside the polygon is covered.
+            for y in 10..32 {
+                for x in 10..32 {
+                    let p = Vec2::new(x as f32 + 0.5, y as f32 + 0.5);
+                    if (p - centre.truncate()).length() < 2.5 {
+                        assert_eq!(count.get(&(x, y)), Some(&1), "a hole at {x},{y}");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_covered_pixel_s_depth_is_the_plane_s_and_off_edges_agree_with_the_triangle() {
+        let t = [
+            Vec3::new(2.2, 1.3, 0.2),
+            Vec3::new(8.9, 3.1, 0.6),
+            Vec3::new(3.7, 9.4, 0.9),
+        ];
+        let cross = |a: Vec2, b: Vec2| a.x * b.y - a.y * b.x;
+        let (a, b, c) = (t[0].truncate(), t[1].truncate(), t[2].truncate());
+        let area = cross(b - a, c - a);
+        for y in 0..12 {
+            for x in 0..12 {
+                let p = Vec2::new(x as f32 + 0.5, y as f32 + 0.5);
+                let l = Vec3::new(
+                    cross(b - p, c - p),
+                    cross(c - p, a - p),
+                    cross(a - p, b - p),
+                ) / area;
+                let inside = l.min_element() > 0.01;
+                let outside = l.min_element() < -0.01;
+                let got = covers(t, x, y);
+                if inside {
+                    let z = l.x * t[0].z + l.y * t[1].z + l.z * t[2].z;
+                    let d = got.expect("an inside centre covered");
+                    assert!((d - z).abs() < 1e-3, "{x},{y}: {d} against {z}");
+                }
+                if outside {
+                    assert!(got.is_none(), "{x},{y} outside but covered");
+                }
+            }
+        }
+    }
+
+    /// The perspective-correct weights put the interpolated clip position
+    /// back on the pixel: what the hardware's interpolation does.
+    #[test]
+    fn perspective_weights_interpolate_onto_the_pixel() {
+        let clip = [
+            Vec4::new(-1.0, -0.5, 0.2, 1.0),
+            Vec4::new(3.0, -1.0, 2.0, 4.0),
+            Vec4::new(0.5, 6.0, 4.5, 7.0),
+        ];
+        for ndc in [
+            Vec2::new(-0.3, -0.1),
+            Vec2::new(0.2, 0.3),
+            Vec2::new(0.0, 0.5),
+        ] {
+            let b = barycentrics(clip, ndc);
+            assert!((b.x + b.y + b.z - 1.0).abs() < 1e-5);
+            let c = clip[0] * b.x + clip[1] * b.y + clip[2] * b.z;
+            let at = c.truncate().truncate() / c.w;
+            assert!((at - ndc).length() < 1e-4, "{ndc:?}: {at:?}");
+        }
+        // At a corner, that corner's attributes.
+        let b = barycentrics(clip, clip[1].truncate().truncate() / clip[1].w);
+        assert!((b - Vec3::Y).length() < 1e-5);
     }
 }

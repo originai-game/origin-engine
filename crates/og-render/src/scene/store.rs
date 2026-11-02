@@ -65,6 +65,7 @@ impl RenderScene {
             meshlets: true,
             lod_bias: 1.0,
             lod_debug: false,
+            visibility_buffer: true,
             posts: Vec::new(),
             post_params: Vec::new(),
             ui_vectors: Vec::new(),

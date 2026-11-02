@@ -53,6 +53,7 @@ pub fn shader_sources() -> Vec<ShaderSource> {
     add("meshlet lit (planar)", crate::meshlet_gpu::lit_source(true));
     add("meshlet shadow", crate::meshlet_gpu::shadow_source());
     add("meshlet early depth", crate::meshlet_gpu::depth_source());
+    add("meshlet raster", crate::meshlet_gpu::raster_source());
     add(
         "shadow array maps",
         crate::material::array_shadow_source(&crate::shadow_source(&hooks)),

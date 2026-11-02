@@ -312,6 +312,11 @@ pub struct RenderScene {
     /// full mesh, yellow, orange, red: [`crate::lod::debug_color`]), as
     /// og-runtime's `debugView lod` colours the others.
     pub lod_debug: bool,
+    /// Whether the meshlet path rasterises the camera's small clusters of
+    /// opaque materials in compute into a visibility buffer and shades
+    /// them in one resolve per batch (`meshlet.rs`); true by default.
+    /// False draws every cluster by the hardware.
+    pub visibility_buffer: bool,
     /// The level each clustered instance draws on the meshlet path, by
     /// instance index (same order as `instances`), when its caller picked
     /// it: og-runtime picks one level per model by its largest error and

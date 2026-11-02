@@ -1,4 +1,4 @@
-//! The meshlet path (R1 batches 2 and 3; og_tests_cooked::meshlet_scenes): the
+//! The meshlet path (R1 batches 2 to 4; og_tests_cooked::meshlet_scenes): the
 //! clustered tree's level picked and its clusters culled on the GPU.
 
 use super::*;
@@ -178,4 +178,37 @@ fn meshlet_views_match_the_regular_path() {
     .expect("same size");
     c.check(&Tolerance::default())
         .unwrap_or_else(|e| panic!("meshlet views against the regular path: {e}"));
+}
+
+/// `meshlet-far` (reference `meshlet-far.png`): the forest from above and
+/// behind, its small clusters through the visibility buffer.
+#[test]
+fn meshlet_far_matches_its_reference() {
+    check("meshlet-far");
+}
+
+/// The visibility buffer draws what the hardware draws: the compute
+/// rasteriser's coverage (a fill rule that covers a shared edge twice or
+/// never shows as specks or cracks), its depth (a word that loses to the
+/// wrong triangle, a seam with the hardware's clusters) and the resolve's
+/// rebuilt attributes (a wrong barycentric, normal or uv) all fail the
+/// comparison with every cluster drawn by the hardware.
+#[test]
+fn meshlet_visibility_buffer_matches_the_hardware() {
+    let render = |vbuffer: bool| {
+        let mut g = og_tests_cooked::scenes::build("meshlet-far").expect("built");
+        g.scene = og_tests_cooked::meshlet_scenes::far_scene(vbuffer).expect("the forest");
+        og_tests::gfx::render_built(&mut g).expect("render")
+    };
+    let (on, off) = (render(true), render(false));
+    let c = compare(
+        &on.image.pixels,
+        &off.image.pixels,
+        on.image.width,
+        on.image.height,
+        &Tolerance::default(),
+    )
+    .expect("same size");
+    c.check(&Tolerance::default())
+        .unwrap_or_else(|e| panic!("visibility buffer against the hardware: {e}"));
 }

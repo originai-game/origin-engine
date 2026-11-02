@@ -727,10 +727,36 @@ holds for perspective, orthographic, mirrored and oblique projections),
 so each picks its own levels and culls by the cone from its own eye; only
 the camera tests the pyramid. A view or a probe face with a depth prepass
 (a depth texture, soft particles) keeps the per-instance path, as does
-any view past the storage binding limit. Then a visibility buffer: the clusters write instance and
-triangle ids, small triangles are rasterised in compute, and one
-material pass shades the buffer. The CPU statement of every test is
-`meshlet.rs`, whose unit tests check it.
+any view past the storage binding limit.
+
+The visibility buffer (`meshlet_gpu/vis.rs`, `meshlet_raster.wgsl`)
+takes the camera's small clusters: of an occluder batch (opaque, with no
+alpha cut, dissolve or material shader), under a perspective camera
+without retro vertex snapping (`RenderScene::visibility_buffer`, on by
+default), a cluster wholly past the near plane whose sphere covers at
+most 24 pixels across (`meshlet::soft`) goes to a soft list instead of
+its batch's indirect draw. One workgroup per soft cluster and one thread
+per triangle rasterise it in compute, in two passes because WebGPU has no
+64-bit atomics: an atomic max of the depth word, then an atomic max of the
+id word (the cluster's slot in the list and the triangle) where the depth
+is the pixel's. Vertices snap to 1/256 of a pixel inside the triangle's
+box, and the top-left rule makes triangles that share an edge cover each
+pixel centre once (`meshlet::covers`). A setup pass, one thread per
+pixel, rebuilds the seen triangle's attributes with perspective-correct
+barycentrics (`meshlet::barycentrics`) into a record. Then one
+full-screen resolve per soft batch, in the camera's lit pass and its
+prepass, shades that batch's pixels with the same `lit_fragment` and
+`prepass_targets` as the hardware path, writing the rasteriser's depth,
+so the larger clusters, still drawn by the hardware, meet the resolved
+pixels by the depth test. three.js decides per triangle (8 pixels); per
+cluster keeps each hardware cluster in its batch's one indirect draw. The
+resolve's fragment stage adds one storage buffer (each pixel's record
+slot, then the records) and one uniform to the lit stage's, and no
+texture, since the lit fragment stage already samples 15 of WebGPU's 16.
+Reflections, views, probe faces and shadows keep the hardware path, as do
+orthographic cameras.
+
+The CPU statement of every test is `meshlet.rs`, whose unit tests check it.
 
 Runtime geometry and debug draw (depth S1). Games can make geometry from
 attribute arrays (`og.render.bufferGeometry`, three.js BufferGeometry's

@@ -32,7 +32,7 @@ struct Params {
   view_proj: mat4x4<f32>,
   // x: the scene's LOD bias; y: the first of `views`' rows holding the
   // levels callers picked, four sorted slots a row (255: none), when z
-  // is 1.
+  // is 1; w: the camera's near plane.
   lod: vec4<f32>,
   // xy: the screen's size, z: the pyramid's levels (0: no occlusion
   // test), w: the batches.
@@ -40,10 +40,14 @@ struct Params {
   // x: the phase (0 the only one, 1 early, 2 late), y: last frame's half
   // of `vis` (its first word), z: this frame's.
   phase: vec4<u32>,
+  // The soft list (meshlet_gpu.rs `plan`): x its first item, y its
+  // capacity in clusters (0: none), z its count's word in `draws`.
+  soft: vec4<u32>,
 };
 
 // a: mesh slot, first instance (its sorted slot), instances, first work
-// item. b: first workgroup, flags (1: the cone may cull), view, the
+// item. b: first workgroup, flags (1: the cone may cull; 2: soft, its
+// small clusters go to the soft list; from bit 2 its side), view, the
 // mesh's most clusters at any level (a cluster slot's stride).
 struct BatchRow {
   a: vec4<u32>,
@@ -61,7 +65,8 @@ struct BatchRow {
 // the picked levels (`params.lod`).
 @group(0) @binding(2) var<storage, read> views: array<vec4<f32>>;
 @group(0) @binding(3) var<storage, read> batches: array<BatchRow>;
-// Per mesh slot 10 x vec4: its sphere, (levels, 0, 0, 0), then per level
+// Per mesh slot 10 x vec4: its sphere, (levels, its first vertex in the
+// vertex pool, 0, 0), then per level
 // (first cluster, clusters, error as bits, 0).
 @group(0) @binding(4) var<storage, read> meshes: array<vec4<u32>>;
 // Per cluster 3 x vec4: (first index, triangles, level, 0), sphere, cone.
@@ -81,6 +86,8 @@ const VIEW_ROWS: u32 = VIEW_PLANES + 2u;
 const MESH_ROWS: u32 = 10u;
 // lod.rs LOD_PIXEL_ERROR.
 const PIXEL_ERROR: f32 = 1.0;
+// meshlet.rs SOFT_PIXELS.
+const SOFT_PIXELS: f32 = 24.0;
 
 // meshlet.rs `outside`.
 fn outside(view: u32, c: vec3<f32>, r: f32) -> bool {
@@ -231,6 +238,23 @@ fn cull_clusters(@builtin(workgroup_id) wid: vec3<u32>,
         if (before) { continue; }
       }
       if (phase == 0u) { vis[params.phase.z + slot] = 1u; }
+    }
+    // meshlet.rs `soft`: a small cluster past the near plane goes to the
+    // visibility buffer (while the list has room).
+    if ((row.b.y & 2u) != 0u && perspective) {
+      let depth = (params.view_proj * vec4<f32>(wc, 1.0)).w;
+      let d = depth - wr;
+      if (d > params.lod.w && 2.0 * wr * seen.w <= SOFT_PIXELS * d) {
+        let k = atomicAdd(&draws[params.soft.z], 1u);
+        if (k < params.soft.y) {
+          items[params.soft.x + k * 2u] = vec2<u32>(instance, ci);
+          // meshlet_raster.wgsl's entry: the row and its side, the
+          // mesh's first vertex.
+          let side = (row.b.y >> 2u) & 3u;
+          items[params.soft.x + k * 2u + 1u] = vec2<u32>(lo | (side << 28u), meshes[mesh + 1u].y);
+          continue;
+        }
+      }
     }
     let n = atomicAdd(&draws[lo * 4u + 1u], 1u);
     items[row.a.w + n] = vec2<u32>(instance, ci);

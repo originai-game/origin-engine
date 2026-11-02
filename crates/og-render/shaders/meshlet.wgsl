@@ -103,3 +103,125 @@ fn vs_prepass_meshlet(@builtin(vertex_index) vi: u32, @builtin(instance_index) i
   let prev = meshlet_transform(meshlet_previous[q], meshlet_previous[q + 1u], meshlet_previous[q + 2u]);
   return prepass_vertex(p.model, prev, p.v);
 }
+
+// The visibility buffer's resolve (meshlet_raster.wgsl): one full-screen
+// triangle per soft batch, its row the instance index. A pixel whose
+// record is the batch's is shaded as the hardware path shades a fragment
+// (`lit_fragment`, `prepass_targets`) at the rasteriser's depth; any
+// other is discarded.
+// Per pixel its record's slot plus one, then the records
+// (meshlet_raster.wgsl `setup`); binding 15 its screen width.
+@group(3) @binding(15) var<uniform> meshlet_screen: vec4<u32>;
+@group(3) @binding(16) var<storage, read> meshlet_attrs: array<vec4<u32>>;
+
+struct MeshletResolveOut {
+  @builtin(position) clip: vec4<f32>,
+  @location(0) @interpolate(flat) row: u32,
+};
+
+@vertex
+fn vs_meshlet_resolve(@builtin(vertex_index) vi: u32, @builtin(instance_index) row: u32) -> MeshletResolveOut {
+  var o: MeshletResolveOut;
+  let p = vec2<f32>(f32((vi << 1u) & 2u), f32(vi & 2u));
+  o.clip = vec4<f32>(p * 2.0 - 1.0, 0.0, 1.0);
+  o.row = row;
+  return o;
+}
+
+// stylise.wgsl's `oct_decode`.
+fn meshlet_oct(e: vec2<f32>) -> vec3<f32> {
+  var n = vec3<f32>(e, 1.0 - abs(e.x) - abs(e.y));
+  if (n.z < 0.0) {
+    n = vec3<f32>((1.0 - abs(n.yx)) * select(vec2<f32>(-1.0), vec2<f32>(1.0), n.xy >= vec2<f32>(0.0)), n.z);
+  }
+  return normalize(n);
+}
+
+struct MeshletRecord {
+  // The pixel is this batch's.
+  ok: bool,
+  depth: f32,
+  v: VertexOut,
+  prev_world: vec3<f32>,
+  object: u32,
+};
+
+fn meshlet_record(pos: vec4<f32>, row: u32) -> MeshletRecord {
+  var r: MeshletRecord;
+  // meshlet_screen: (width, height, its pixels rounded up to a row).
+  let pixel = u32(pos.y) * meshlet_screen.x + u32(pos.x);
+  let slot = meshlet_attrs[pixel / 4u][pixel % 4u];
+  r.ok = false;
+  r.depth = 1.0;
+  if (slot == 0u) { return r; }
+  let at = meshlet_screen.z / 4u + (slot - 1u) * 5u;
+  let a = meshlet_attrs[at];
+  let b = meshlet_attrs[at + 1u];
+  let c = meshlet_attrs[at + 2u];
+  if (c.z != row) { return r; }
+  r.ok = true;
+  r.depth = bitcast<f32>(a.w);
+  r.v.clip = pos;
+  r.v.world_pos = bitcast<vec3<f32>>(a.xyz);
+  r.v.normal = meshlet_oct(unpack2x16snorm(b.x));
+  r.v.uv = bitcast<vec2<f32>>(b.yz);
+  r.v.color = unpack4x8unorm(b.w);
+  // Read only by a material shader's hooks and the dissolve, neither of
+  // which a soft batch has.
+  r.v.local_pos = r.v.world_pos;
+  r.v.tangent = vec4<f32>(meshlet_oct(unpack2x16snorm(c.x)), bitcast<f32>(c.y));
+  if (r.v.tangent.w == 0.0) { r.v.tangent = vec4<f32>(0.0); }
+  r.v.affine = vec3<f32>(r.v.uv, 1.0);
+  r.v.look = bitcast<vec4<f32>>(meshlet_attrs[at + 3u]);
+  r.prev_world = bitcast<vec3<f32>>(meshlet_attrs[at + 4u].xyz);
+  r.object = c.w;
+  return r;
+}
+
+struct MeshletResolveLit {
+  @location(0) color: vec4<f32>,
+  @builtin(frag_depth) depth: f32,
+};
+
+@fragment
+fn fs_meshlet_resolve(in: MeshletResolveOut) -> MeshletResolveLit {
+  let r = meshlet_record(in.clip, in.row);
+  if (!r.ok) { discard; }
+  var o: MeshletResolveLit;
+  o.depth = r.depth;
+  // Read only by a material shader's hooks, which no soft batch has.
+  hook_front = 1.0;
+  o.color = lit_fragment(r.v);
+  return o;
+}
+
+struct MeshletResolvePrepass {
+  @location(0) gbuffer: vec4<f32>,
+  @location(1) depth: vec4<f32>,
+  @location(2) outline: vec4<f32>,
+  @builtin(frag_depth) frag_depth: f32,
+};
+
+@fragment
+fn fs_prepass_meshlet_resolve(in: MeshletResolveOut) -> MeshletResolvePrepass {
+  let r = meshlet_record(in.clip, in.row);
+  if (!r.ok) { discard; }
+  var p: PrepassOut;
+  p.clip = in.clip;
+  p.world_pos = r.v.world_pos;
+  p.normal = r.v.normal;
+  p.uv = r.v.uv;
+  p.color = r.v.color;
+  p.local_pos = r.v.local_pos;
+  p.cur_clip = fx.view_proj_unjittered * vec4<f32>(r.v.world_pos, 1.0);
+  p.prev_clip = mul_point(fx.prev_view_proj, vec4<f32>(r.prev_world, 1.0));
+  p.object = r.object;
+  hook_front = 1.0;
+  let t = prepass_targets(p);
+  var o: MeshletResolvePrepass;
+  o.gbuffer = t.gbuffer;
+  o.depth = t.depth;
+  o.outline = t.outline;
+  o.frag_depth = r.depth;
+  return o;
+}

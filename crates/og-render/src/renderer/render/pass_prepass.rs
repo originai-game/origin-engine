@@ -169,6 +169,13 @@ impl Renderer {
                 |b| &self.cache.materials[b.material].bind_group,
                 |_, _| {},
             );
+            stats.prepass_draws += m.draw_resolve(
+                &mut p,
+                batches,
+                true,
+                |b| &self.cache.materials[b.material].bind_group,
+                |_, _| {},
+            );
         }
         stats.prepass_draws += draw_skinned(
             &mut p,
