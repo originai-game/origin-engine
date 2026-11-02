@@ -187,7 +187,7 @@
       },
       {
         "member": "og.procgen.noise, og.procgen.noiseGrid, og.procgen.poissonDisk, og.procgen.bsp, og.procgen.wfc, NoiseKind, FbmDesc, NoiseGridDesc, PoissonDesc, CellRect, BspDesc, BspResult, WfcTile, WfcCell, WfcDesc, WfcResult",
-        "summary": "Procedural generation (G2-6): Perlin and simplex noise in 2D and 3D with fractal octaves, Poisson-disk points (Bridson), BSP rooms joined by corridors, and wave function collapse (the simple tiled model, with rotations, fixed cells and wrapping, retried on forks of the seed). Each is a pure function of its desc: it takes a seed (og.Rng's `rng.fork(\"label\").seed`, a u32 as og.Rng's own) and draws only from og.Rng streams of it, in integer and IEEE f32 arithmetic with no host libm, so equal descs give bit-identical results on both hosts. They need no world and touch no state."
+        "summary": "Procedural generation (G2-6): Perlin and simplex noise in 2D and 3D with fractal octaves, Poisson-disk points (Bridson), BSP rooms joined by corridors, and wave function collapse (the simple tiled model, with rotations, fixed cells and wrapping, retried on forks of the seed). Each is a pure function of its desc: it takes a seed (`world.resource(og.Rng)`'s value `.fork(\"label\").seed`, a u32 as og.Rng's own) and draws only from og.Rng streams of it, in integer and IEEE f32 arithmetic with no host libm, so equal descs give bit-identical results on both hosts. They need no world and touch no state."
       },
       {
         "member": "og.tilemap.fill, FillDesc",

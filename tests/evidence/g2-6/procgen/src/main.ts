@@ -11,7 +11,8 @@
 // - 6-9 s, the village: a 16 × 10 WFC of roads, houses, fields and trees
 //   (each WFC tile drawn as 3 × 3 cells), a new seed every 0.75 s.
 //
-// Every seed is a fork of og.Rng (`rng.fork(label).seed`), so the world
+// Every seed is a fork of og.Rng (`world.resource(og.Rng)`'s value
+// `.fork(label).seed`), so the world
 // replays exactly.
 
 import { og, defineComponent, defineSystem, u32 } from "@origingame/engine";

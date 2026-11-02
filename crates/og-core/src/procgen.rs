@@ -3,9 +3,9 @@
 //! points, BSP rooms and wave function collapse.
 //!
 //! Determinism: every generator takes a seed (idiomatically
-//! og.Rng's `rng.fork("label").seed`) and draws only from an [`Rng`] on it, in
-//! a fixed order, so the main stream never moves and the same seed gives
-//! the same output on every host. The arithmetic is `+ - * /`, `floor` and
+//! `world.resource(og.Rng)`'s value `.fork("label").seed`) and draws only
+//! from an [`Rng`] on it, in a fixed order, so the main stream never moves
+//! and the same seed gives the same output on every host. The arithmetic is `+ - * /`, `floor` and
 //! `sqrt` on f32 (correctly rounded on wasm and native alike), never a
 //! transcendental function, and every loop walks a fixed order; ties are
 //! broken by index.

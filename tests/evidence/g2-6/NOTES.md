@@ -3,7 +3,7 @@
 `procgen/` is one 2D world with three tilemaps. Each map is generated with
 `og.procgen` and written with `og.tilemap.fill`. The `Generate` system
 regenerates them live, and the camera visits one map every three seconds.
-Every seed is a fork of og.Rng (`rng.fork(label).seed`), so the run replays
+Every seed is a fork of og.Rng (`world.resource(og.Rng)`'s value `.fork(label).seed`), so the run replays
 exactly: two logic runs in the orb (`OG_RENDERER=none`) ended on the same
 hash, `b6ed545b41534979` at tick 511.
 

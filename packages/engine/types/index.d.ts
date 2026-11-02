@@ -2384,7 +2384,7 @@ export interface Rng {
 }
 
 // ── procgen ─────────────────────────────────────────────────────
-// Procedural generation: gradient noise (Perlin, simplex, FBM), Poisson-disk points, BSP dungeons and wave function collapse, all deterministic. Each generator takes a `seed`; give it a stream's, og.Rng's fork `rng.fork("dungeon").seed` (with `rng` from `world.resource(og.Rng)`; a fork needs og.Rng among a system's reads only), so the same world and label give the same output and the main stream does not move. A generator draws only from a stream on that seed, in a fixed order, with arithmetic that is bit-identical on every host: the same seed gives the same map natively and on the web, in a replay and after a restore.
+// Procedural generation: gradient noise (Perlin, simplex, FBM), Poisson-disk points, BSP dungeons and wave function collapse, all deterministic. Each generator takes a `seed`; give it the seed of a fork of og.Rng, `world.resource(og.Rng)`'s value `.fork("dungeon").seed` (a fork needs og.Rng among a system's reads only), so the same world and label give the same output and the main stream does not move. A generator draws only from a stream on that seed, in a fixed order, with arithmetic that is bit-identical on every host: the same seed gives the same map natively and on the web, in a replay and after a restore.
 // Weighted picks and shuffles are og.Rng's and RngStream's own (`weighted`, `permutation`; a shuffle is a permutation applied to an array). og.tilemap.fill writes a generated grid into a tilemap layer.
 
 /**
@@ -2401,7 +2401,7 @@ export type NoiseKind = "perlin" | "simplex";
  */
 export interface FbmDesc {
   /**
-   * The stream's seed: og.Rng's `rng.fork("terrain").seed`. Each octave reads its own table derived from it.
+   * The stream's seed: `world.resource(og.Rng)`'s value `.fork("terrain").seed`. Each octave reads its own table derived from it.
    *
    * @default 0
    */
@@ -2510,7 +2510,7 @@ export interface NoiseGridDesc {
  */
 export interface PoissonDesc {
   /**
-   * The stream's seed: og.Rng's `rng.fork("trees").seed`.
+   * The stream's seed: `world.resource(og.Rng)`'s value `.fork("trees").seed`.
    *
    * @default 0
    */
@@ -2575,7 +2575,7 @@ export interface CellRect {
  */
 export interface BspDesc {
   /**
-   * The stream's seed: og.Rng's `rng.fork("dungeon").seed`.
+   * The stream's seed: `world.resource(og.Rng)`'s value `.fork("dungeon").seed`.
    *
    * @default 0
    */
@@ -2687,7 +2687,7 @@ export interface WfcCell {
  */
 export interface WfcDesc {
   /**
-   * The stream's seed: og.Rng's `rng.fork("village").seed`.
+   * The stream's seed: `world.resource(og.Rng)`'s value `.fork("village").seed`.
    *
    * @default 0
    */
@@ -41080,7 +41080,7 @@ export declare namespace og {
    */
   const Rng: ResourceType<{ readonly seed: FieldSpec<"u32">; readonly state: FieldSpec<"u32"> }, Rng>;
   /**
-   * Procedural generation: gradient noise (Perlin, simplex, FBM), Poisson-disk points, BSP dungeons and wave function collapse, all deterministic. Each generator takes a `seed`; give it a stream's, og.Rng's fork `rng.fork("dungeon").seed` (with `rng` from `world.resource(og.Rng)`; a fork needs og.Rng among a system's reads only), so the same world and label give the same output and the main stream does not move. A generator draws only from a stream on that seed, in a fixed order, with arithmetic that is bit-identical on every host: the same seed gives the same map natively and on the web, in a replay and after a restore.
+   * Procedural generation: gradient noise (Perlin, simplex, FBM), Poisson-disk points, BSP dungeons and wave function collapse, all deterministic. Each generator takes a `seed`; give it the seed of a fork of og.Rng, `world.resource(og.Rng)`'s value `.fork("dungeon").seed` (a fork needs og.Rng among a system's reads only), so the same world and label give the same output and the main stream does not move. A generator draws only from a stream on that seed, in a fixed order, with arithmetic that is bit-identical on every host: the same seed gives the same map natively and on the web, in a replay and after a restore.
    * Weighted picks and shuffles are og.Rng's and RngStream's own (`weighted`, `permutation`; a shuffle is a permutation applied to an array). og.tilemap.fill writes a generated grid into a tilemap layer.
    */
   namespace procgen {

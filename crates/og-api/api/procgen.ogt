@@ -1,6 +1,6 @@
 module procgen {
   skill og-core
-  doc "Procedural generation: gradient noise (Perlin, simplex, FBM), Poisson-disk points, BSP dungeons and wave function collapse, all deterministic. Each generator takes a `seed`; give it a stream's, og.Rng's fork `rng.fork(\"dungeon\").seed` (with `rng` from `world.resource(og.Rng)`; a fork needs og.Rng among a system's reads only), so the same world and label give the same output and the main stream does not move. A generator draws only from a stream on that seed, in a fixed order, with arithmetic that is bit-identical on every host: the same seed gives the same map natively and on the web, in a replay and after a restore."
+  doc "Procedural generation: gradient noise (Perlin, simplex, FBM), Poisson-disk points, BSP dungeons and wave function collapse, all deterministic. Each generator takes a `seed`; give it the seed of a fork of og.Rng, `world.resource(og.Rng)`'s value `.fork(\"dungeon\").seed` (a fork needs og.Rng among a system's reads only), so the same world and label give the same output and the main stream does not move. A generator draws only from a stream on that seed, in a fixed order, with arithmetic that is bit-identical on every host: the same seed gives the same map natively and on the web, in a replay and after a restore."
   doc "Weighted picks and shuffles are og.Rng's and RngStream's own (`weighted`, `permutation`; a shuffle is a permutation applied to an array). og.tilemap.fill writes a generated grid into a tilemap layer."
 
   enum NoiseKind {
@@ -12,7 +12,7 @@ module procgen {
   struct FbmDesc {
     doc "Fractal noise (FBM): `octaves` layers, each `lacunarity` times the frequency and `gain` times the amplitude of the last, divided by the amplitudes' sum, so the value stays about -1 to 1. One octave is plain noise."
     desc true
-    field seed u32 "The stream's seed: og.Rng's `rng.fork(\"terrain\").seed`. Each octave reads its own table derived from it."
+    field seed u32 "The stream's seed: `world.resource(og.Rng)`'s value `.fork(\"terrain\").seed`. Each octave reads its own table derived from it."
     field kind NoiseKind "Perlin or simplex."
     field octaves u32 "Layers summed." {
       default 1
@@ -76,7 +76,7 @@ module procgen {
   struct PoissonDesc {
     doc "Points no closer than `radius` to each other, filling an area evenly with no grid look (Bridson 2007): trees in a forest, loot in a field."
     desc true
-    field seed u32 "The stream's seed: og.Rng's `rng.fork(\"trees\").seed`."
+    field seed u32 "The stream's seed: `world.resource(og.Rng)`'s value `.fork(\"trees\").seed`."
     field width f32 "The area's width, from x 0." {
       min 0
       unit m
@@ -119,7 +119,7 @@ module procgen {
   struct BspDesc {
     doc "A dungeon by binary space partition: the area is split in two along its longer side, again and again, each leaf gets a room and every split's halves are joined by an L-shaped corridor."
     desc true
-    field seed u32 "The stream's seed: og.Rng's `rng.fork(\"dungeon\").seed`."
+    field seed u32 "The stream's seed: `world.resource(og.Rng)`'s value `.fork(\"dungeon\").seed`."
     field width u32 "Columns." {
       default 48
       min 1
@@ -188,7 +188,7 @@ module procgen {
   struct WfcDesc {
     doc "Wave function collapse, the simple tiled model: a grid filled with tiles whose edges all fit. The cell with the fewest tiles left (ties: the first) is decided by a weighted draw and the choice spreads to its neighbours; a dead end restarts on a fork of the seed."
     desc true
-    field seed u32 "The stream's seed: og.Rng's `rng.fork(\"village\").seed`."
+    field seed u32 "The stream's seed: `world.resource(og.Rng)`'s value `.fork(\"village\").seed`."
     field width u32 "Columns." {
       default 16
       min 1

@@ -2,7 +2,7 @@
 
 # The `procgen` module
 
-Procedural generation: gradient noise (Perlin, simplex, FBM), Poisson-disk points, BSP dungeons and wave function collapse, all deterministic. Each generator takes a `seed`; give it a stream's, og.Rng's fork `rng.fork("dungeon").seed` (with `rng` from `world.resource(og.Rng)`; a fork needs og.Rng among a system's reads only), so the same world and label give the same output and the main stream does not move. A generator draws only from a stream on that seed, in a fixed order, with arithmetic that is bit-identical on every host: the same seed gives the same map natively and on the web, in a replay and after a restore.
+Procedural generation: gradient noise (Perlin, simplex, FBM), Poisson-disk points, BSP dungeons and wave function collapse, all deterministic. Each generator takes a `seed`; give it the seed of a fork of og.Rng, `world.resource(og.Rng)`'s value `.fork("dungeon").seed` (a fork needs og.Rng among a system's reads only), so the same world and label give the same output and the main stream does not move. A generator draws only from a stream on that seed, in a fixed order, with arithmetic that is bit-identical on every host: the same seed gives the same map natively and on the web, in a replay and after a restore.
 
 Weighted picks and shuffles are og.Rng's and RngStream's own (`weighted`, `permutation`; a shuffle is a permutation applied to an array). og.tilemap.fill writes a generated grid into a tilemap layer.
 
@@ -222,7 +222,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `seed` | `number` | `0` | — | — | — | The stream's seed: og.Rng's `rng.fork("terrain").seed`. Each octave reads its own table derived from it. |
+| `seed` | `number` | `0` | — | — | — | The stream's seed: `world.resource(og.Rng)`'s value `.fork("terrain").seed`. Each octave reads its own table derived from it. |
 | `kind` | `NoiseKind` | `"perlin"` | — | — | — | Perlin or simplex. |
 | `octaves` | `number` | `1` | 1 … 16 | — | — | Layers summed. |
 | `frequency` | `number` | `1` | ≥ 0 | — | — | The first octave's frequency: features about 1 / frequency apart. |
@@ -234,7 +234,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 struct FbmDesc {
   doc "Fractal noise (FBM): `octaves` layers, each `lacunarity` times the frequency and `gain` times the amplitude of the last, divided by the amplitudes' sum, so the value stays about -1 to 1. One octave is plain noise."
   desc true
-  field seed u32 "The stream's seed: og.Rng's `rng.fork(\"terrain\").seed`. Each octave reads its own table derived from it."
+  field seed u32 "The stream's seed: `world.resource(og.Rng)`'s value `.fork(\"terrain\").seed`. Each octave reads its own table derived from it."
   field kind NoiseKind "Perlin or simplex."
   field octaves u32 "Layers summed." {
     default 1
@@ -315,7 +315,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `seed` | `number` | `0` | — | — | — | The stream's seed: og.Rng's `rng.fork("trees").seed`. |
+| `seed` | `number` | `0` | — | — | — | The stream's seed: `world.resource(og.Rng)`'s value `.fork("trees").seed`. |
 | `width` | `number` | `0` | ≥ 0 | `m` | — | The area's width, from x 0. |
 | `height` | `number` | `0` | ≥ 0 | `m` | — | The area's height, from y 0. |
 | `radius` | `number` | `1` | ≥ 0 | `m` | — | The least distance between two points. |
@@ -326,7 +326,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 struct PoissonDesc {
   doc "Points no closer than `radius` to each other, filling an area evenly with no grid look (Bridson 2007): trees in a forest, loot in a field."
   desc true
-  field seed u32 "The stream's seed: og.Rng's `rng.fork(\"trees\").seed`."
+  field seed u32 "The stream's seed: `world.resource(og.Rng)`'s value `.fork(\"trees\").seed`."
   field width f32 "The area's width, from x 0." {
     min 0
     unit m
@@ -390,7 +390,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `seed` | `number` | `0` | — | — | — | The stream's seed: og.Rng's `rng.fork("dungeon").seed`. |
+| `seed` | `number` | `0` | — | — | — | The stream's seed: `world.resource(og.Rng)`'s value `.fork("dungeon").seed`. |
 | `width` | `number` | `48` | 1 … 4096 | — | — | Columns. |
 | `height` | `number` | `32` | 1 … 4096 | — | — | Rows. |
 | `minRoom` | `number` | `4` | ≥ 1 | — | — | A room's least side, in cells. |
@@ -403,7 +403,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 struct BspDesc {
   doc "A dungeon by binary space partition: the area is split in two along its longer side, again and again, each leaf gets a room and every split's halves are joined by an L-shaped corridor."
   desc true
-  field seed u32 "The stream's seed: og.Rng's `rng.fork(\"dungeon\").seed`."
+  field seed u32 "The stream's seed: `world.resource(og.Rng)`'s value `.fork(\"dungeon\").seed`."
   field width u32 "Columns." {
     default 48
     min 1
@@ -528,7 +528,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `seed` | `number` | `0` | — | — | — | The stream's seed: og.Rng's `rng.fork("village").seed`. |
+| `seed` | `number` | `0` | — | — | — | The stream's seed: `world.resource(og.Rng)`'s value `.fork("village").seed`. |
 | `width` | `number` | `16` | 1 … 1024 | — | — | Columns. |
 | `height` | `number` | `16` | 1 … 1024 | — | — | Rows. |
 | `tiles` | `readonly WfcTile[]` | `[]` | — | — | — | The tiles (with rotations, at most 1,024 variants). |
@@ -540,7 +540,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 struct WfcDesc {
   doc "Wave function collapse, the simple tiled model: a grid filled with tiles whose edges all fit. The cell with the fewest tiles left (ties: the first) is decided by a weighted draw and the choice spreads to its neighbours; a dead end restarts on a fork of the seed."
   desc true
-  field seed u32 "The stream's seed: og.Rng's `rng.fork(\"village\").seed`."
+  field seed u32 "The stream's seed: `world.resource(og.Rng)`'s value `.fork(\"village\").seed`."
   field width u32 "Columns." {
     default 16
     min 1
