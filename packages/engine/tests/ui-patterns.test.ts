@@ -1403,3 +1403,44 @@ test("draft: a banned or picked character is refused; in the local turn a press 
   tapOn(engine, byPath(engine, "Foot/Action")!);
   expect(results.filter((r) => r.locked).map((r) => r.locked)).toEqual(["aria"]);
 });
+
+// ── world map ───────────────────────────────────────────────────────────
+
+test("worldMap: a pin opens its detail; a fast-travel point travels, another place takes a waypoint; a kind turned off draws no pins", () => {
+  // Wrong: Fast travel offered on an undiscovered point or a shop, a hidden kind's pins still pressable, or the legend flipping state itself.
+  const results: Api.WorldMapResult[] = [];
+  const st = { selected: "", hidden: [] as string[] };
+  const engine = run(() => {
+    og.ui.column("Box", { width: { kind: "fixed", px: 1232 }, height: { kind: "fixed", px: 672 } }, () => {
+      const r = og.ui.worldMap("World", {
+        title: "Realm",
+        markers: [
+          { key: "gate", kind: "fastTravel", name: "Gate", x: 0.3, y: 0.4 },
+          { key: "far", kind: "fastTravel", name: "Far", x: 0.5, y: 0.6, discovered: false },
+          { key: "mill", kind: "shop", name: "Mill", x: 0.45, y: 0.7 },
+        ],
+        selected: st.selected,
+        hidden: st.hidden,
+      });
+      results.push(r);
+      if (r.selected !== null) st.selected = r.selected;
+    });
+  });
+  tapOn(engine, byPath(engine, "Pins/gate")!);
+  expect(st.selected).toBe("gate");
+  expect(byPath(engine, "Detail/Action/Label")!.text).toBe("Fast travel");
+  tapOn(engine, byPath(engine, "Detail/Action")!);
+  expect(results.filter((r) => r.travel).map((r) => r.travel)).toEqual(["gate"]);
+  tapOn(engine, byPath(engine, "Pins/far")!);
+  expect(byPath(engine, "Detail/Action/Label")!.text).toBe("Set waypoint");
+  tapOn(engine, byPath(engine, "Detail/Action")!);
+  expect(results.filter((r) => r.track).map((r) => r.track)).toEqual(["far"]);
+  tapOn(engine, byPath(engine, "Legend/shop")!);
+  expect(results.filter((r) => r.toggled).map((r) => r.toggled)).toEqual(["shop"]);
+  expect(byPath(engine, "Pins/mill")).toBeDefined();
+  st.hidden = ["shop"];
+  engine.advance(2);
+  expect(byPath(engine, "Pins/mill")).toBeUndefined();
+  key(engine, "Escape");
+  expect(st.selected).toBe("");
+});

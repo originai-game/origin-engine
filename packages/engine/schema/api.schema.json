@@ -11475,6 +11475,10 @@
         "DraftTeam",
         "DraftDesc",
         "DraftResult",
+        "WorldMarker",
+        "WorldRegion",
+        "WorldMapDesc",
+        "WorldMapResult",
         "MenuItem",
         "MenuResult",
         "MainMenuDesc",
@@ -15469,6 +15473,27 @@
             }
           ],
           "returns": "DraftResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "worldMap",
+          "doc": "A world map (The Witcher 3, Breath of the Wild, Genshin Impact, Elden Ring): the painted map filling the screen, pinched, wheeled and dragged to zoom and pan (og.ui.zoomView); the regions' names set across it in the display face's caps while zoomed out, each undiscovered region under a cloud of fog with its name ???; the places as pins in their kind's mark, the tracked one ringed and pulsing, undiscovered ones faint under the fog, their names beside them once zoomed in; the player's arrow by its heading. A legend on the end side lists each kind with its count and turns it off and on; a pressed pin opens its detail as a card beside the legend: the place's picture, name and line, and Fast travel in the accent on a discovered fast-travel point, else Set or Remove waypoint. On a phone the legend is a row of chips at the top and the detail a card docked at the foot; where covering the screen would cut much of the map (a phone in portrait), the map sits whole across its width.\nParts: WorldMap.frame, WorldMap.map, WorldMap.fog, WorldMap.region[discovered], WorldMap.pin[<kind>][tracked][undiscovered][selected], WorldMap.player, WorldMap.legend, WorldMap.entry[off], WorldMap.detail, WorldMap.action. Slots: the map (art kind map), each place's image (art kind thumbnail). States: on each pin, group find (discovered, undiscovered); on each legend entry, group shown (on, off). Motion: a tracked pin's ring pulses; the detail slides in on the panel spring; region names fade as the map zooms in and pin labels fade in (still under reduced motion). Sounds: select on a pin and a legend entry, confirm on travel and waypoint, back on closing the detail. Accessibility: the map an image named its title with its zoom as its value; each pin a button named its name (or ???) and kind, tracked; the legend a list of switches; the detail a region named the place. Probe ids: <id>/Map/Pins/<key>, <id>/Map/Pins/Player, <id>/Side/Legend/<kind>, <id>/Side/Detail, <id>/Side/Detail/Action.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "WorldMapDesc",
+              "optional": true,
+              "doc": "The map, its regions and places, the player and the words."
+            }
+          ],
+          "returns": "WorldMapResult",
           "publish": true,
           "host": false
         },
@@ -59687,6 +59712,299 @@
         "hovered",
         "locked",
         "refused"
+      ],
+      "additionalProperties": false
+    },
+    "WorldMarker": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One place on the world map.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key: its pin's element id, so its probe path is <id>/Map/Pins/<key>.",
+          "default": ""
+        },
+        "kind": {
+          "type": "string",
+          "description": "What it is, for its pin's mark and the legend: quest, objective, fastTravel, shop, poi, boss, custom (any other word is a poi).",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name: the pin's label when zoomed in, and the detail's title.",
+          "default": ""
+        },
+        "description": {
+          "type": "string",
+          "description": "The detail's line (what is there, the quest's step).",
+          "default": ""
+        },
+        "x": {
+          "type": "number",
+          "description": "Where across the map, 0 to 1.",
+          "default": 0,
+          "x-og-unit": "ratio"
+        },
+        "y": {
+          "type": "number",
+          "description": "Where down the map, 0 to 1.",
+          "default": 0,
+          "x-og-unit": "ratio"
+        },
+        "discovered": {
+          "type": "boolean",
+          "description": "Found: undiscovered places show as a faint mark under the fog and cannot be travelled to.",
+          "default": true
+        },
+        "tracked": {
+          "type": "boolean",
+          "description": "The tracked quest's or the custom waypoint: its pin rings and pulses.",
+          "default": false
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The detail's picture (art kind thumbnail); null shows none.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "WorldRegion": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A region of the world: its name on the map, and its fog until discovered.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key.",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name, set across the map at its centre in the display face's caps.",
+          "default": ""
+        },
+        "x": {
+          "type": "number",
+          "description": "Its centre across the map, 0 to 1.",
+          "default": 0,
+          "x-og-unit": "ratio"
+        },
+        "y": {
+          "type": "number",
+          "description": "Its centre down the map, 0 to 1.",
+          "default": 0,
+          "x-og-unit": "ratio"
+        },
+        "radius": {
+          "type": "number",
+          "description": "How far its fog reaches, as a fraction of the map's width; 0 is 0.18.",
+          "default": 0,
+          "x-og-unit": "ratio"
+        },
+        "discovered": {
+          "type": "boolean",
+          "description": "Discovered: its fog is lifted and its name shown; else a cloud of fog over it and its name ???.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "WorldMapDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A world map: the art, the regions and their fog, the places, the player.",
+      "type": "object",
+      "properties": {
+        "texture": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The map's art (art kind map); null draws the style's well with a grid.",
+          "default": null
+        },
+        "aspect": {
+          "type": "number",
+          "description": "The map's width over its height; 0 is 16:9.",
+          "default": 0,
+          "minimum": 0
+        },
+        "regions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WorldRegion"
+          },
+          "description": "The regions: their names and their fog.",
+          "default": []
+        },
+        "markers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WorldMarker"
+          },
+          "description": "The places.",
+          "default": []
+        },
+        "playerX": {
+          "type": "number",
+          "description": "The player's place across the map, 0 to 1; a negative value draws no player.",
+          "default": -1,
+          "x-og-unit": "ratio"
+        },
+        "playerY": {
+          "type": "number",
+          "description": "The player's place down the map, 0 to 1.",
+          "default": 0,
+          "x-og-unit": "ratio"
+        },
+        "heading": {
+          "type": "number",
+          "description": "The player's facing, clockwise from north.",
+          "default": 0,
+          "x-og-unit": "rad"
+        },
+        "selected": {
+          "type": "string",
+          "description": "The place whose detail is open (the game's: it passes WorldMapResult.selected back).",
+          "default": ""
+        },
+        "hidden": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Kinds the legend has turned off: their pins are not drawn.",
+          "default": []
+        },
+        "title": {
+          "type": "string",
+          "description": "The map's title over the legend (the realm's name).",
+          "default": ""
+        },
+        "maxZoom": {
+          "type": "number",
+          "description": "The most zoom; 0 is 4.",
+          "default": 0,
+          "minimum": 0
+        },
+        "travelLabel": {
+          "type": "string",
+          "description": "The detail's action on a discovered fast-travel point.",
+          "default": "Fast travel"
+        },
+        "trackLabel": {
+          "type": "string",
+          "description": "The detail's action on another place.",
+          "default": "Set waypoint"
+        },
+        "untrackLabel": {
+          "type": "string",
+          "description": "The detail's action on the tracked place.",
+          "default": "Remove waypoint"
+        },
+        "undiscoveredLabel": {
+          "type": "string",
+          "description": "An undiscovered place's or region's name.",
+          "default": "???"
+        },
+        "kindLabels": {
+          "description": "The legend's word for each kind, `{ quest: \"Quests\" }`; a kind without one shows its key.",
+          "default": null
+        },
+        "closeLabel": {
+          "type": "string",
+          "description": "The detail's close, to a screen reader.",
+          "default": "Close"
+        }
+      },
+      "additionalProperties": false
+    },
+    "WorldMapResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What the map was asked this tick, and where it is.",
+      "type": "object",
+      "properties": {
+        "selected": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A pin was pressed (its key), or the detail was closed (empty): open or close its detail."
+        },
+        "travel": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Fast travel was pressed on a discovered fast-travel point."
+        },
+        "track": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Set or Remove waypoint was pressed: flip that place's tracking."
+        },
+        "toggled": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A legend entry was pressed: show or hide that kind's pins."
+        },
+        "zoom": {
+          "type": "number",
+          "description": "The map's zoom (1: the whole map)."
+        },
+        "centerX": {
+          "type": "number",
+          "description": "The middle of what it shows across the map, 0 to 1."
+        },
+        "centerY": {
+          "type": "number",
+          "description": "The middle of what it shows down the map, 0 to 1."
+        }
+      },
+      "required": [
+        "selected",
+        "travel",
+        "track",
+        "toggled",
+        "zoom",
+        "centerX",
+        "centerY"
       ],
       "additionalProperties": false
     },
