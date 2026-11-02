@@ -2,7 +2,7 @@
 // og.ui.substitution: the sports rows of the genre sheets (B-sports-hud,
 // B-sports-scoreboard). Read against EA FC's and NBA 2K's broadcast
 // graphics: match facts as two sides' values at the ends of one bar split
-// at their shares, the leader in its colour and the other muted; the
+// at their shares, each side in its team colour; the
 // scorers set against a centre rule; the controlled player's plate with a
 // segmented stamina bar; a substitution's lower third with a down mark for
 // the player going off and an up mark for the one coming on. The pack
@@ -36,8 +36,6 @@ export function matchStats(id: string, desc: Api.MatchStatsDesc = {}): void {
   const home = sideColor(desc.home, 0);
   const away = sideColor(desc.away, 1);
   const anchor = anchorOf(desc, null);
-  // The trailing side's part of a bar: the ink, muted, so the leader's colour is the bar's one hue.
-  const muted = token("inkMuted", 0.45);
   hudPlace(id, anchor, (plate) => {
     const valStep = ts(plate ? 17 : 20, true);
     // Both value columns as wide as the widest value, so every row's bar starts and ends at the same x.
@@ -75,21 +73,22 @@ export function matchStats(id: string, desc: Api.MatchStatsDesc = {}): void {
         const a = Math.max(0, st.away ?? 0);
         const share = h + a > 0 ? h / (h + a) : 0.5;
         const worse = !!st.worse;
-        // The leader takes its colour; the other is muted. A stat where more is worse marks its larger side in danger.
-        const lead = h === a ? 0 : h > a ? 1 : -1;
-        const danger = role("danger");
-        const homeInk = lead >= 0 ? (worse ? (lead > 0 ? danger : null) : home) : null;
-        const awayInk = lead <= 0 ? (worse ? (lead < 0 ? danger : null) : away) : null;
+        // The bar is always both teams' colours (EA FC's split); the leader's numeral takes its colour, lightened, and
+        // a stat where more is worse (fouls) tints neither numeral: leading it is nothing to light up.
+        const lead = worse || h === a ? 0 : h > a ? 1 : -1;
         const valueInk = (c: Rgba | null) => (c ? lit(mix(c, { r: 1, g: 1, b: 1, a: 1 }, 0.35)) : token("ink"));
+        const homeInk = lead > 0 ? home : null;
+        const awayInk = lead < 0 ? away : null;
         kit.row(keyId(st.key ?? st.label ?? ""), { gap: tk.sm, cross: "end", width: plate ? null : pct(1), part: sel("MatchStats", "row", worse ? "worse" : null) }, () => {
           if (crests) crest("HomeCrest", desc.home?.logo, crestSide);
           text("Home", shown(st.homeText, h), { step: valStep, font: "display", color: valueInk(homeInk), nowrap: true, width: px(valW) });
           kit.column("Mid", { gap: u(4), cross: "stretch", width: plate ? px(plateBar) : { kind: "grow" }, padding: { left: 0, right: 0, top: 0, bottom: Math.round((stepSize(valStep).line - barH) / 2) } }, () => {
             if (!plate && st.label) text("Label", st.label, { step: ts(11, true), font: "display", color: token("inkMuted"), nowrap: true, ellipsis: true, align: "center", width: pct(1) });
-            kit.row("Bar", { gap: Math.max(1, u(2)), width: pct(1), height: px(barH), part: sel("MatchStats", "bar") }, () => {
+            // The home colour from the start to its share, the away colour from the end, a 2 px gap where they meet.
+            kit.row("Bar", { gap: 2, width: pct(1), height: px(barH), part: sel("MatchStats", "bar") }, () => {
               const r = barH / 2;
-              leaf("Home", { width: pct(share), height: pct(1), part: sel("MatchStats", "fill", "home") }, { shape: { kind: "rect", radii: [r, 0, 0, r] }, fills: [solid(homeInk ? lit(homeInk) : muted)] });
-              leaf("Away", { width: { kind: "grow" }, height: pct(1), part: sel("MatchStats", "fill", "away") }, { shape: { kind: "rect", radii: [0, r, r, 0] }, fills: [solid(awayInk ? lit(awayInk) : muted)] });
+              leaf("Home", { width: pct(share), height: pct(1), part: sel("MatchStats", "fill", "home") }, { shape: { kind: "rect", radii: [r, 0, 0, r] }, fills: [solid(lit(home))] });
+              leaf("Away", { width: { kind: "grow" }, height: pct(1), part: sel("MatchStats", "fill", "away") }, { shape: { kind: "rect", radii: [0, r, r, 0] }, fills: [solid(lit(away))] });
               // A tick at the bar's middle, standing over it (B-sports-scoreboard): how far the split is from even reads at a glance.
               const tickH = barH + Math.max(4, u(6));
               leaf("Centre", { width: px(Math.max(1, u(2))), height: px(tickH), part: sel("MatchStats", "centre") }, { fills: [solid(token("ink", 0.7))] }, absolute({ centerX: true, top: barH - tickH }));

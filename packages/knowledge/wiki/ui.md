@@ -770,7 +770,7 @@ module ui {
 | [`og.ui.scorebug`](#fn-scorebug) | function | A broadcast scorebug to the bar of sports games (EA FC, NBA 2K, Rocket League): each side's colour block with its crest and short name, the scores in tabular digits that flip and flash when they change, possession and time-out pips, the clock and period, a shot clock, added time beside the clock, a situation line sliding out under it. |
 | [`MatchStat`](#type-MatchStat) | desc struct | One row of og.ui.matchStats: a stat for both sides. |
 | [`MatchStatsDesc`](#type-MatchStatsDesc) | desc struct | Two sides' stats face to face. |
-| [`og.ui.matchStats`](#fn-matchStats) | function | Two sides' stats face to face, to the bar of EA FC's and NBA 2K's match facts: each row's values at the two ends in tabular figures, its name centred over one bar running start to end and split at the home side's share, a tick at its middle marking even, the leading side's value and part in its colour and the other's muted (a stat where more is worse shows its larger side in the danger hue). Anchored, it is the HUD's possession plate: the crests at the ends of its one row on the HUD chip. |
+| [`og.ui.matchStats`](#fn-matchStats) | function | Two sides' stats face to face, to the bar of EA FC's and NBA 2K's match facts: each row's values at the two ends in tabular figures, its name centred over one two-colour bar (EA FC's split): the home side's team colour from the start to its share and the away side's from the end, a 2 px gap where they meet, on every row whichever side leads; a tick at its middle marking even; the leading side's numeral in its colour, lightened (a stat where more is worse tints neither). Anchored, it is the HUD's possession plate: the crests at the ends of its one row on the HUD chip. |
 | [`MatchEvent`](#type-MatchEvent) | desc struct | One event on og.ui.goalTimeline. |
 | [`GoalTimelineDesc`](#type-GoalTimelineDesc) | desc struct | The scorers by side. |
 | [`og.ui.goalTimeline`](#fn-goalTimeline) | function | The scorers of a match by side, as a full-time board lists them: the home side's names, minutes and marks set against a centre rule, the away side's mirrored after it, each side in match order, the minutes in tabular figures beside their marks so the two columns meet at the rule. |
@@ -8649,7 +8649,7 @@ fn scorebug {
 
 ### `og.ui.matchStats`
 
-Two sides' stats face to face, to the bar of EA FC's and NBA 2K's match facts: each row's values at the two ends in tabular figures, its name centred over one bar running start to end and split at the home side's share, a tick at its middle marking even, the leading side's value and part in its colour and the other's muted (a stat where more is worse shows its larger side in the danger hue). Anchored, it is the HUD's possession plate: the crests at the ends of its one row on the HUD chip.
+Two sides' stats face to face, to the bar of EA FC's and NBA 2K's match facts: each row's values at the two ends in tabular figures, its name centred over one two-colour bar (EA FC's split): the home side's team colour from the start to its share and the away side's from the end, a 2 px gap where they meet, on every row whichever side leads; a tick at its middle marking even; the leading side's numeral in its colour, lightened (a stat where more is worse tints neither). Anchored, it is the HUD's possession plate: the crests at the ends of its one row on the HUD chip.
 
 Parts: MatchStats.frame, MatchStats.header, MatchStats.row[worse], MatchStats.bar, MatchStats.fill[home|away], MatchStats.centre. Accessibility: table named title; each row text named its label with both values. Probe ids: <id>/<key>, its Home and Away; <id>/<key>/Mid/Label; <id>/<key>/Mid/Bar/Home and Mid/Bar/Away (their widths are the shares).
 
@@ -8668,7 +8668,7 @@ Implemented by the TypeScript runtime over the members of this module: no bindin
 
 ```ogt
 fn matchStats {
-  doc "Two sides' stats face to face, to the bar of EA FC's and NBA 2K's match facts: each row's values at the two ends in tabular figures, its name centred over one bar running start to end and split at the home side's share, a tick at its middle marking even, the leading side's value and part in its colour and the other's muted (a stat where more is worse shows its larger side in the danger hue). Anchored, it is the HUD's possession plate: the crests at the ends of its one row on the HUD chip."
+  doc "Two sides' stats face to face, to the bar of EA FC's and NBA 2K's match facts: each row's values at the two ends in tabular figures, its name centred over one two-colour bar (EA FC's split): the home side's team colour from the start to its share and the away side's from the end, a 2 px gap where they meet, on every row whichever side leads; a tick at its middle marking even; the leading side's numeral in its colour, lightened (a stat where more is worse tints neither). Anchored, it is the HUD's possession plate: the crests at the ends of its one row on the HUD chip."
   doc "Parts: MatchStats.frame, MatchStats.header, MatchStats.row[worse], MatchStats.bar, MatchStats.fill[home|away], MatchStats.centre. Accessibility: table named title; each row text named its label with both values. Probe ids: <id>/<key>, its Home and Away; <id>/<key>/Mid/Label; <id>/<key>/Mid/Bar/Home and Mid/Bar/Away (their widths are the shares)."
   host false
   param id String "Its id."
@@ -28051,7 +28051,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `away` | `number` | `0` | — | — | — | The away side's value. |
 | `homeText` | `string` | `""` | — | — | — | The home value as shown (58%); empty prints the value. |
 | `awayText` | `string` | `""` | — | — | — | The away value as shown; empty prints the value. |
-| `worse` | `boolean` | `false` | — | — | — | More is worse (fouls, cards): the larger side in the danger hue instead of its own. |
+| `worse` | `boolean` | `false` | — | — | — | More is worse (fouls, cards): the bar stays both teams' colours and neither numeral is tinted (the larger side is not lit as a lead). |
 
 ```ogt
 struct MatchStat {
@@ -28063,7 +28063,7 @@ struct MatchStat {
   field away f32 "The away side's value."
   field homeText String "The home value as shown (58%); empty prints the value."
   field awayText String "The away value as shown; empty prints the value."
-  field worse bool "More is worse (fouls, cards): the larger side in the danger hue instead of its own."
+  field worse bool "More is worse (fouls, cards): the bar stays both teams' colours and neither numeral is tinted (the larger side is not lit as a lead)."
 }
 ```
 

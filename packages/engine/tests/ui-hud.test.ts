@@ -747,9 +747,20 @@ test("og.ui.matchStats, goalTimeline, playerPlate, substitution and the scorebug
     og.ui.playerPlate("Me", { number: "10", name: "Martin", stamina });
     og.ui.substitution("Sub", { off: { number: "7", name: "Reyes" }, on: { number: "19", name: "Kova" } });
   });
-  e.advance(30);
+  e.advance(29);
+  const draws = drawsDuring(() => e.advance(1));
   let els = dump(e);
   expect(at(els, "BugHud/Bug/Bar/Clock/Added/Text")?.text).toBe("+3");
+  // A two-colour bar on every row: the home colour from the start, the away colour from the end, whichever side leads,
+  // and fouls (more is worse) in the same two colours, never the danger hue; a 2 px gap where they meet.
+  const paint = (p: string) => JSON.stringify(draws.get(p)?.[0]?.fills ?? null);
+  for (const side of ["Home", "Away"]) {
+    const rows = ["Stats/shots", "Stats/fouls", "Stats/none", "PossHud/Poss/poss"].map((r) => paint(`${r}/Mid/Bar/${side}`));
+    expect(new Set(rows).size).toBe(1);
+  }
+  expect(paint("Stats/shots/Mid/Bar/Home")).not.toBe(paint("Stats/shots/Mid/Bar/Away"));
+  const [fh, fa] = [at(els, "Stats/fouls/Mid/Bar/Home")!, at(els, "Stats/fouls/Mid/Bar/Away")!];
+  expect(fa.x - (fh.x + fh.width)).toBeCloseTo(2, 0);
   // The bar splits at the home side's share, measured from the start: 58 of 100, not 58 against the larger.
   const share = (p: string) => {
     const h = at(els, `${p}/Mid/Bar/Home`)!.width;
