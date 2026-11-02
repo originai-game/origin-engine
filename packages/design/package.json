@@ -1,0 +1,33 @@
+{
+  "name": "@origingame/design",
+  "version": "0.7.7",
+  "description": "The design language Origin Engine and origin-agent share: the document and its tokens (the neutral ladder, flat glass on floating chrome only, borderless controls, the game roles). The engine's default UI style is generated from these tokens; origin-agent pins this package by version.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/originai-game/origin-engine.git",
+    "directory": "packages/design"
+  },
+  "homepage": "https://github.com/originai-game/origin-engine#readme",
+  "bugs": {
+    "url": "https://github.com/originai-game/origin-engine/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "main": "tokens.json",
+  "exports": {
+    ".": "./tokens.json",
+    "./tokens.json": "./tokens.json",
+    "./design-language.md": "./design-language.md"
+  },
+  "files": [
+    "tokens.json",
+    "design-language.md",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "bun test ${OG_BUN_TEST_TIMEOUT:+--timeout=$OG_BUN_TEST_TIMEOUT} tests/"
+  }
+}

@@ -5,7 +5,8 @@
 #   scripts/release.sh check                    every occurrence of the version equals packages/engine's
 #   scripts/release.sh bump <version>           the golden replays (scripts/replay-gate.ts), then write the version everywhere (scripts/release-bump.ts), Cargo.lock through cargo update
 #   scripts/release.sh pack                     OG_RELEASE=1 packages/engine/scripts/pack.sh --linux-x64 (the engine with its knowledge/,
-#                                               this machine's platform package and linux-x64's), then @origingame/create-game:
+#                                               this machine's platform package and linux-x64's), then @origingame/create-game and
+#                                               @origingame/design:
 #                                               dist/release/<version>/*.tgz and manifest.json (sizes, sha256, the commit built from).
 #                                               Run on the Mac (docs/release.md §3); the Windows host adds win32-x64 with
 #                                               `build.sh --native` and `pack.sh --native`. .github/workflows/release.yml is the fallback
@@ -77,6 +78,7 @@ cmd_pack() {
   (cd packages/engine && sh scripts/pack.sh --linux-x64) || { og_err "release: packages/engine/scripts/pack.sh failed"; return 1; }
   cp packages/engine/dist/pack/*.tgz "$out/" || return 1
   (cd packages/create && bun scripts/pack-template.ts >/dev/null && bun pm pack --destination "$out" --quiet --ignore-scripts >/dev/null) || { og_err "release: packing @origingame/create-game failed"; return 1; }
+  (cd packages/design && bun pm pack --destination "$out" --quiet --ignore-scripts >/dev/null) || { og_err "release: packing @origingame/design failed"; return 1; }
   cmd_manifest "$out" || return 1
   og_say "release: packed $v (${out#"$OG_ROOT"/}/manifest.json)"
 }
@@ -95,8 +97,8 @@ cmd_manifest() {
     n=$((n + 1))
     case "$(basename "$tgz")" in origingame-engine-*-"$v".tgz) platforms=$((platforms + 1)) ;; esac
   done
-  [ -f "$out/origingame-engine-$v.tgz" ] && [ -f "$out/origingame-create-game-$v.tgz" ] && [ "$platforms" -ge 1 ] \
-    || { og_err "release: $out needs origingame-engine-$v.tgz, origingame-create-game-$v.tgz and a platform package; it has $n tarballs:"; ls "$out" >&2; return 1; }
+  [ -f "$out/origingame-engine-$v.tgz" ] && [ -f "$out/origingame-create-game-$v.tgz" ] && [ -f "$out/origingame-design-$v.tgz" ] && [ "$platforms" -ge 1 ] \
+    || { og_err "release: $out needs origingame-engine-$v.tgz, origingame-create-game-$v.tgz, origingame-design-$v.tgz and a platform package; it has $n tarballs:"; ls "$out" >&2; return 1; }
   # shellcheck disable=SC2016 # the bun script takes its arguments from argv
   bun -e '
     const { readdirSync, readFileSync, statSync, writeFileSync } = require("node:fs");
@@ -207,7 +209,7 @@ cmd_publish() {
   # Platform packages first (the engine's optionalDependencies name them at this
   # version); the win32-x64 tarball is packed on the Windows host and copied into
   # dist/release/<v>/ beside the Mac's (tests/evidence/release/windows-x64.md).
-  local pkgs="engine-darwin-arm64 engine-linux-x64 engine-win32-x64 engine create-game" name tgz published local_sum
+  local pkgs="engine-darwin-arm64 engine-linux-x64 engine-win32-x64 engine create-game design" name tgz published local_sum
   for name in $pkgs; do
     tgz="$out/origingame-$name-$v.tgz"
     [ -f "$tgz" ] || { og_err "release: no $tgz"; return 1; }
@@ -256,7 +258,7 @@ cmd_dev() {
   fi
   npm whoami >/dev/null 2>&1 || { og_err "release: not logged in to npm (NPM_TOKEN)"; return 1; }
   local name tgz
-  for name in engine-darwin-arm64 engine-linux-x64 engine-win32-x64 engine create-game; do
+  for name in engine-darwin-arm64 engine-linux-x64 engine-win32-x64 engine create-game design; do
     tgz="$out/origingame-$name-$v.tgz"
     [ -f "$tgz" ] || { og_err "release: no $tgz"; return 1; }
     if [ -n "$(npm view "@origingame/$name@$v" version 2>/dev/null)" ]; then og_say "release: @origingame/$name@$v is already published; skipped"; continue; fi

@@ -57,7 +57,7 @@ interface Site {
 
 function sites(): Site[] {
   const s: Site[] = [];
-  for (const p of ["packages/engine/package.json", "packages/create/package.json", "packages/knowledge/package.json"]) {
+  for (const p of ["packages/engine/package.json", "packages/create/package.json", "packages/design/package.json", "packages/knowledge/package.json"]) {
     s.push({ path: p, re: /("version":\s*")([^"]+)(")/g });
   }
   s.push({ path: "packages/engine/package.json", re: /("@origingame\/engine-(?:darwin-arm64|linux-x64|win32-x64)":\s*")([^"]+)(")/g });
