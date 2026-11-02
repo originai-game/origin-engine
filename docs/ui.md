@@ -841,8 +841,15 @@ anime seed style. Each is approved for every screen it was drawn for:
 | Dialogue | `B-dialogue` | `A-dialogue` | `C-dialogue` |
 
 B sets the default's hierarchy, frames, material and art; its colour
-values stay the design language's (`packages/design`), so the default
-draws B in the tokens' primary, not the concept's cyan. The kit's art
+values stay the design language's (`packages/design`). **The default's
+primary is neutral (owner, 2026-11-02)**: neither the concept's cyan nor
+amber. Its chrome (panels, controls, the primary button, selection,
+focus, tabs, sliders, rings) is drawn from the neutral ladder and told
+apart by tone, lift and weight; hue appears only on semantic roles
+(success, warning, danger, info) and game roles (health, mana, xp, gold,
+rarity, team), never on the chrome itself. Each game colours itself
+through its style; the seed styles keep their own palettes. A default
+frame is read against this rule: any hued chrome is a finding. The kit's art
 stays painted, and the showcase frames wear the seed styles with the
 default as one column beside them. The concepts' README lists every
 approved image and the genre sheets that extend the set.

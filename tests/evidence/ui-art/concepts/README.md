@@ -18,8 +18,14 @@ Screens: hud, menu, gacha, shop, inventory, settings, dialogue.
 - The showcase frames (the gallery, the store and docs images) wear the
   seed styles, with the default style as one column beside them.
 - B sets the default's hierarchy, material, frames and art; its colour
-  values are the design language's (`packages/design/tokens.json`), so its
-  accent is the tokens' primary, not the concept's cyan.
+  values are the design language's (`packages/design/tokens.json`).
+- The default's primary is neutral (owner, 2026-11-02): neither the
+  concept's cyan nor amber. B is drawn with neutral chrome (the primary
+  button, selection, focus, tabs, sliders and rings told apart by tone,
+  lift and weight), and hues appear only on semantic roles (success,
+  warning, danger, info) and game roles (health, mana, xp, gold, rarity,
+  team). Each game colours itself through its style; the seeds keep their
+  own palettes. Hued chrome in a default frame is a review finding.
 
 A frame is read side by side with the approved concept of its style's
 direction and screen (docs/ui.md §15.5). A screen with no concept of its
