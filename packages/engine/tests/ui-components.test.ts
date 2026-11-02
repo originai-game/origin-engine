@@ -708,7 +708,8 @@ test("nodeGraph: a graph wider than its window opens centred on its root, fades 
     { id: "rage", x: 340, y: 110, label: "Rage" }, { id: "whirl", x: 60, y: 220, label: "Whirlwind" }, { id: "wall", x: 200, y: 220, label: "Iron wall" }, { id: "berserk", x: 340, y: 220, label: "Berserk" },
   ];
   const links = [{ from: "root", to: "cleave" }, { from: "root", to: "guard" }, { from: "root", to: "rage" }];
-  const engine = run(() => og.ui.nodeGraph("Skills", { nodes, links, height: { kind: "fixed", px: 340 } } as never), 358);
+  // Nested in a page, as games and the kit place it: its window is found by its full path.
+  const engine = run(() => og.ui.column("Page", { width: { kind: "grow" } } as never, () => og.ui.nodeGraph("Skills", { nodes, links, height: { kind: "fixed", px: 340 } } as never)), 358);
   og.ui.previewViewport(engine.world, { width: 390, height: 844, dpr: 3, safeArea: { left: 0, top: 47, right: 0, bottom: 34 }, coarsePointer: true, breakpoint: "phonePortrait" } as never);
   og.ui.configure(engine.world, { textScale: 2 });
   engine.advance(30);
@@ -716,12 +717,29 @@ test("nodeGraph: a graph wider than its window opens centred on its root, fades 
   const root = () => find(engine, (e) => e.path.endsWith("Canvas/Node#0"))!;
   const r0 = root();
   expect(Math.abs(r0.x + r0.width / 2 - (view.x + view.width / 2))).toBeLessThan(2);
+  // Centred on the top row, the root is whole and clear of the top fade (28 px), not cut by the window.
+  expect(r0.y).toBeGreaterThanOrEqual(view.y + 28 - 0.5);
   // Panned, any node may lie anywhere in the window: the zoom controls sit in a bar below it.
   const zoomBar = find(engine, (e) => /\/Zoom$/.test(e.path))!;
   expect(zoomBar.y).toBeGreaterThanOrEqual(view.y + view.height - 0.5);
+  // With a node of the second row selected (it and the root do not both fit at 200 %), its row
+  // starts the window below the top fade: the row above is out of view, never a node cut in half.
+  {
+    const e2 = run(() => og.ui.column("Page", { width: { kind: "grow" } } as never, () => og.ui.nodeGraph("Skills", { nodes, links, selected: "guard", height: { kind: "fixed", px: 340 } } as never)), 358);
+    og.ui.previewViewport(e2.world, { width: 390, height: 844, dpr: 3, safeArea: { left: 0, top: 47, right: 0, bottom: 34 }, coarsePointer: true, breakpoint: "phonePortrait" } as never);
+    og.ui.configure(e2.world, { textScale: 2 });
+    e2.advance(30);
+    const v2 = find(e2, (e) => e.path.endsWith("Skills/Window/View"))!;
+    const sel = find(e2, (e) => e.path.endsWith("Canvas/Node#2"))!;
+    expect(sel.y + sel.height).toBeLessThanOrEqual(v2.y + v2.height + 0.5);
+    // No node is shown cut at the top: each one in view starts below the top fade.
+    const cut = elements(e2).filter((e) => /Canvas\/Node#\d+$/.test(e.path) && e.height > 0 && e.y < v2.y + 28 - 0.5);
+    expect(cut.map((e) => `${e.path} ${e.y}`)).toEqual([]);
+    e2.destroy();
+  }
   // Cut on both sides: a fade over each.
-  expect(byPath(engine, "Skills/Window/FadeStart")).toBeDefined();
-  expect(byPath(engine, "Skills/Window/FadeEnd")).toBeDefined();
+  expect(find(engine, (e) => e.path.endsWith("Skills/Window/FadeStart"))).toBeDefined();
+  expect(find(engine, (e) => e.path.endsWith("Skills/Window/FadeEnd"))).toBeDefined();
   // A drag to the left pans the graph with the finger.
   const y = Math.round(view.y + view.height - 20);
   engine.probe.commands(`0:touch_move:${Math.round(view.x + view.width / 2)},${y};0.05:touch_start;0.1:touch_move:${Math.round(view.x + view.width / 2 - 60)},${y};0.15:touch_move:${Math.round(view.x + view.width / 2 - 120)},${y};0.2:touch_end`);
@@ -730,7 +748,7 @@ test("nodeGraph: a graph wider than its window opens centred on its root, fades 
   const r1 = find(engine, (e) => e.path.endsWith("Canvas/Node#0"));
   expect(r1 === undefined || r1.x < r0.x - 40).toBeTrue();
   // More of it now lies before the window: the start fade shows.
-  expect(byPath(engine, "Skills/Window/FadeStart")).toBeDefined();
+  expect(find(engine, (e) => e.path.endsWith("Skills/Window/FadeStart"))).toBeDefined();
 });
 
 test("chart: a figure described from its data; each category a target that answers its press", () => {
