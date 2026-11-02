@@ -347,6 +347,11 @@ export function patternsScript(phone: boolean): Script {
   b.shot("rtl-gacha-summary", 1.2);
   b.seq((at) => key(at, "Escape"), 0.4);
   b.cmd("pat:reset");
+  // The rate line in Japanese and Korean: each locale's own sentence in its own face, no English fallback.
+  b.cmd("locale:ja");
+  b.shot("ja-gacha", 0.8);
+  b.cmd("locale:ko");
+  b.shot("ko-gacha", 0.8);
   b.cmd("locale:en");
   b.cmd("demo:text:200");
   b.cmd("show:gear");

@@ -86,5 +86,5 @@ string "hud.left" "左"
 string "hud.right" "右"
 string "hud.unit" "km/h"
 # The rate lines stay English here: the kit's Japanese subset (tools/make-locale-fonts.py) does not hold their words yet.
-string "gacha.rate.event" "[b]50 %[/b] chance your next 5-star is [color=highlight]Aria[/color]; a lost one makes the next one hers."
-string "gacha.rate.standard" "A [b]5-star[/b] is guaranteed within [b]90[/b] wishes."
+string "gacha.rate.event" "次の星5が[color=highlight]アリア[/color]になる確率は[b]50%[/b]。逃しても次の星5は必ずアリアです。"
+string "gacha.rate.standard" "[b]90[/b]回の祈願以内に[b]星5[/b]が必ず1体出ます。"
