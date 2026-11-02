@@ -585,7 +585,8 @@ pub fn cook_frame(
     texture::cook(&img, plan.decl.kind, &frame_options(opts), stamp)
 }
 
-/// The sound track as 48 kHz 16-bit stereo WAV bytes, cut at maxSeconds.
+/// The sound track as 48 kHz 16-bit stereo WAV bytes, exactly as long as
+/// the picture: cut at maxSeconds, padded with silence where it ends first.
 pub fn audio_wav(path: &Path, plan: &VideoPlan) -> Result<Vec<u8>, CookError> {
     // One file per call: two videos of one source (a clip and its stream)
     // cook their sounds at once, each cut at its own length.
@@ -604,6 +605,10 @@ pub fn audio_wav(path: &Path, plan: &VideoPlan) -> Result<Vec<u8>, CookError> {
             "-t",
             &seconds.to_string(),
             "-vn",
+            // Silence past a sound that ends first: the sound lasts as long
+            // as the picture, so the two loop together.
+            "-af",
+            "apad",
             "-ac",
             "2",
             "-ar",
