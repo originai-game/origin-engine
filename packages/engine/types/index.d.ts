@@ -34610,6 +34610,448 @@ export interface SongSelectResult {
 
 
 /**
+ * One category of the garage's rail (Engine, Turbo, Tyres; Livery).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface GarageCategory {
+  /**
+   * Its key: its rail entry's element id, so its probe path is <id>/Rail/<key>.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its name beside its art.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Its art (art kind itemIcon), a part of the kind; null draws the style's placeholder mark.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * A line under the name or at the list's head (4 / 8 owned); empty shows none.
+   *
+   * @default ""
+   */
+  readonly count?: string;
+  /**
+   * The livery editor: the parts list becomes the car's layers and the side the selected layer's colour.
+   *
+   * @default false
+   */
+  readonly livery?: boolean;
+}
+
+/**
+ * One part on offer in the selected category, as the game holds it.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface GaragePart {
+  /**
+   * Its key: its row's element id, so its probe path is <id>/Parts/List/<key>.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its name, the row's reading.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Its art (art kind itemIcon) on the row's tile; null draws the style's placeholder.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * Its tier: the tile's rim and the detail's tier word.
+   *
+   * @default "none"
+   */
+  readonly rarity?: Rarity;
+  /**
+   * The tier's word in the detail (Rare); empty shows none.
+   *
+   * @default ""
+   */
+  readonly rarityLabel?: string;
+  /**
+   * Its upgrade level, as lit pips.
+   *
+   * @default 0
+   */
+  readonly tier?: number;
+  /**
+   * The pips in all; 0 is 3.
+   *
+   * @default 0
+   */
+  readonly tierMax?: number;
+  /**
+   * Its price in the garage's currency; 0 is free.
+   *
+   * @default 0
+   */
+  readonly price?: number;
+  /**
+   * Owned: no price; its action is Equip.
+   *
+   * @default false
+   */
+  readonly owned?: boolean;
+  /**
+   * On the car now: a tick and the equipped word; its action is inert.
+   *
+   * @default false
+   */
+  readonly equipped?: boolean;
+  /**
+   * Not available yet: dimmed with a lock and lockedHint in place of the price; pressing it is refused.
+   *
+   * @default false
+   */
+  readonly locked?: boolean;
+  /**
+   * Why it is locked (Reach driver level 30).
+   *
+   * @default ""
+   */
+  readonly lockedHint?: string;
+  /**
+   * The detail's paragraph.
+   *
+   * @default ""
+   */
+  readonly description?: string;
+}
+
+/**
+ * One of the car's performance figures, now and with the selected part fitted.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface GarageStat {
+  /**
+   * Its key.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its name (Speed).
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Its value now.
+   *
+   * @default 0
+   */
+  readonly value?: number;
+  /**
+   * Its value with the selected part fitted; a negative value shows none.
+   *
+   * @default -1
+   */
+  readonly preview?: number;
+  /**
+   * The bar's whole; 0 is 10.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly max?: number;
+}
+
+/**
+ * One layer of the car's livery, topmost first.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LiveryLayer {
+  /**
+   * Its key: its row's element id, so its probe path is <id>/Layers/List/<key>.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its name (Stripe, Number 7).
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * What it is, the row's second line (Decal, Shape, Text).
+   *
+   * @default ""
+   */
+  readonly kind?: string;
+  /**
+   * Its colour: the row's swatch, and the picker's while it is selected.
+   *
+   * @default {}
+   */
+  readonly color?: PickedColor;
+  /**
+   * Shown on the car; a hidden layer's row is dimmed and its eye is shut.
+   *
+   * @default true
+   */
+  readonly visible?: boolean;
+  /**
+   * Not editable: no colour, no moves (a manufacturer's badge).
+   *
+   * @default false
+   */
+  readonly locked?: boolean;
+}
+
+/** A layer asked to move in the stack. */
+export interface LayerMove {
+  /** The layer. */
+  readonly key: string;
+  /** Up (−1, towards the top) or down (+1). */
+  readonly by: number;
+}
+
+/**
+ * A garage: the categories, the selected category's parts, the car's figures, the livery's layers.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface GarageDesc {
+  /**
+   * The screen's title (Garage); empty shows none (the game titles it).
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * The purse the parts are priced in.
+   *
+   * @default 0
+   */
+  readonly balance?: number;
+  /**
+   * The currency's art beside the balance and on prices; null draws a coin.
+   *
+   * @default null
+   */
+  readonly currencyImage?: Texture | null;
+  /**
+   * The rail, top to bottom.
+   *
+   * @default []
+   */
+  readonly categories?: readonly GarageCategory[];
+  /**
+   * The selected category's key.
+   *
+   * @default ""
+   */
+  readonly category?: string;
+  /**
+   * The selected category's parts.
+   *
+   * @default []
+   */
+  readonly parts?: readonly GaragePart[];
+  /**
+   * The part whose detail and preview are shown (the game's: it passes GarageResult.selected back).
+   *
+   * @default ""
+   */
+  readonly selected?: string;
+  /**
+   * The car (art kind vehicle, a cut-out) standing on its turntable in the middle; null leaves the middle to the game's own view (og.ui.sceneViewport built under the garage).
+   *
+   * @default null
+   */
+  readonly vehicle?: Texture | null;
+  /**
+   * The car's figures, each a bar of its value with the preview's change lit.
+   *
+   * @default []
+   */
+  readonly stats?: readonly GarageStat[];
+  /**
+   * The car's class letter (A, S1) in its badge; empty shows no badge.
+   *
+   * @default ""
+   */
+  readonly ratingClass?: string;
+  /**
+   * The car's rating beside the class (742).
+   *
+   * @default 0
+   */
+  readonly rating?: number;
+  /**
+   * The rating with the selected part fitted; 0 shows none.
+   *
+   * @default 0
+   */
+  readonly ratingPreview?: number;
+  /**
+   * The livery's layers, for a livery category.
+   *
+   * @default []
+   */
+  readonly layers?: readonly LiveryLayer[];
+  /**
+   * The selected layer's key.
+   *
+   * @default ""
+   */
+  readonly layer?: string;
+  /**
+   * The colour picker's swatches (`#rrggbb`).
+   *
+   * @default []
+   */
+  readonly swatches?: readonly string[];
+  /**
+   * The figures' heading.
+   *
+   * @default "Performance"
+   */
+  readonly performanceLabel?: string;
+  /**
+   * The rating's caption.
+   *
+   * @default "Class"
+   */
+  readonly classLabel?: string;
+  /**
+   * The legend's word for the value now.
+   *
+   * @default "Current"
+   */
+  readonly currentLabel?: string;
+  /**
+   * The legend's word for the change.
+   *
+   * @default "Preview"
+   */
+  readonly previewLabel?: string;
+  /**
+   * The action on an owned part.
+   *
+   * @default "Equip"
+   */
+  readonly equipLabel?: string;
+  /**
+   * An equipped part's word.
+   *
+   * @default "Equipped"
+   */
+  readonly equippedLabel?: string;
+  /**
+   * The action on a part to buy.
+   *
+   * @default "Buy"
+   */
+  readonly buyLabel?: string;
+  /**
+   * A locked part's word.
+   *
+   * @default "Locked"
+   */
+  readonly lockedLabel?: string;
+  /**
+   * A free part's price.
+   *
+   * @default "Free"
+   */
+  readonly freeLabel?: string;
+  /**
+   * Said after a price the purse cannot pay.
+   *
+   * @default "not enough"
+   */
+  readonly shortLabel?: string;
+  /**
+   * The layers list's heading.
+   *
+   * @default "Layers"
+   */
+  readonly layersLabel?: string;
+  /**
+   * The colour picker's heading.
+   *
+   * @default "Colour"
+   */
+  readonly colorLabel?: string;
+  /**
+   * The action adding a layer.
+   *
+   * @default "Add layer"
+   */
+  readonly addLayerLabel?: string;
+  /**
+   * The action deleting the selected layer.
+   *
+   * @default "Delete"
+   */
+  readonly deleteLabel?: string;
+  /**
+   * Moving a layer up, to a screen reader.
+   *
+   * @default "Move up"
+   */
+  readonly upLabel?: string;
+  /**
+   * Moving a layer down, to a screen reader.
+   *
+   * @default "Move down"
+   */
+  readonly downLabel?: string;
+  /**
+   * A layer's eye, to a screen reader.
+   *
+   * @default "Visible"
+   */
+  readonly visibleLabel?: string;
+}
+
+/** What the player asked for this tick, for the game to apply. */
+export interface GarageResult {
+  /** Another category was pressed: show its parts. */
+  readonly category: string | null;
+  /** A part was pressed or focused: show its detail and preview. */
+  readonly selected: string | null;
+  /** Equip was pressed on an owned part. */
+  readonly equip: string | null;
+  /** Buy was pressed on a part the purse pays (the game charges it and fits it). */
+  readonly buy: string | null;
+  /** A locked part, or one the purse cannot pay, was asked for: it shook. */
+  readonly refused: string | null;
+  /** A layer was pressed: select it. */
+  readonly layer: string | null;
+  /** The selected layer's colour was changed in the picker. */
+  readonly layerColor: PickedColor | null;
+  /** A layer's up or down was pressed. */
+  readonly layerMove: LayerMove | null;
+  /** A layer's eye was pressed: show or hide it. */
+  readonly layerVisible: string | null;
+  /** Add layer was pressed. */
+  readonly addLayer: boolean;
+  /** Delete was pressed on the selected layer. */
+  readonly deleteLayer: string | null;
+}
+
+
+/**
  * A template's action, by its id (a menu item, `buy:<item>`, `share`).
  *
  * @param action The action's id.
@@ -54813,6 +55255,14 @@ export declare namespace og {
      * @param desc The songs, the selection, the preview and the words.
      */
     function songSelect(id: string, desc?: SongSelectDesc): SongSelectResult;
+    /**
+     * A garage (Forza Horizon, Gran Turismo, Need for Speed): the car standing large on its lit turntable in the middle; a rail of categories at the start, each its part's art and name, the selected one lit; beside it the category's parts, each a row of its art on a tier-rimmed tile, its name, its upgrade pips and its price (a lock and why in its place when locked, a tick when fitted); at the end the performance card, the class badge and rating with the preview's change, each figure a bar of its value with the selected part's change lit in success (or danger where it falls) and the legend, and under it the selected part's detail, its name in the display face, its tier word, its paragraph, its price and one action (Equip, Buy, or Equipped inert). A livery category turns the parts list into the car's layers (a swatch, the name and kind, an eye, up and down) and the detail into the selected layer's colour picker with Add layer and Delete. On a phone in portrait the rail is a row of chips over the car, the list scrolls under it and the action docks at the foot.
+     * Parts: Garage.frame, Garage.rail, Garage.category[selected], Garage.parts, Garage.part[selected|equipped|locked], Garage.pips, Garage.stage (the turntable), Garage.performance, Garage.badge, Garage.stat, Garage.bar, Garage.detail, Garage.layer[selected|hidden], Garage.swatch. Slots: each category's and part's art (itemIcon), the car (vehicle). State groups: part (open, selected, equipped, locked) on each row. Motion: the car eases in when the preview changes; a refused part shakes. Sounds: select on a category or part, confirm on Equip or Buy, error on a refusal. Accessibility: the rail a tablist, each part a button named with its tier, price or state; each figure a meter named with its value and change. Probe ids: <id>/Rail/<key>, <id>/Parts/List/<key>, <id>/Side/Performance/Stats/<key>, <id>/Side/Detail/Action, <id>/Layers/List/<key>, <id>/Side/Livery/Picker.
+     *
+     * @param id Its id.
+     * @param desc The categories, parts, figures and layers, and the words.
+     */
+    function garage(id: string, desc?: GarageDesc): GarageResult;
     /**
      * The title screen template. Returns the item chosen this tick.
      *

@@ -6018,6 +6018,155 @@ module ui {
     returns SongSelectResult
   }
 
+  # ·· garage, tuning and livery ··
+  struct GarageCategory {
+    doc "One category of the garage's rail (Engine, Turbo, Tyres; Livery)."
+    desc true
+    field key String "Its key: its rail entry's element id, so its probe path is <id>/Rail/<key>."
+    field name String "Its name beside its art."
+    field image Option.Texture "Its art (art kind itemIcon), a part of the kind; null draws the style's placeholder mark."
+    field count String "A line under the name or at the list's head (4 / 8 owned); empty shows none."
+    field livery bool "The livery editor: the parts list becomes the car's layers and the side the selected layer's colour."
+  }
+  struct GaragePart {
+    doc "One part on offer in the selected category, as the game holds it."
+    desc true
+    field key String "Its key: its row's element id, so its probe path is <id>/Parts/List/<key>."
+    field name String "Its name, the row's reading."
+    field image Option.Texture "Its art (art kind itemIcon) on the row's tile; null draws the style's placeholder."
+    field rarity Rarity "Its tier: the tile's rim and the detail's tier word."
+    field rarityLabel String "The tier's word in the detail (Rare); empty shows none."
+    field tier u32 "Its upgrade level, as lit pips."
+    field tierMax u32 "The pips in all; 0 is 3."
+    field price f64 "Its price in the garage's currency; 0 is free."
+    field owned bool "Owned: no price; its action is Equip."
+    field equipped bool "On the car now: a tick and the equipped word; its action is inert."
+    field locked bool "Not available yet: dimmed with a lock and lockedHint in place of the price; pressing it is refused."
+    field lockedHint String "Why it is locked (Reach driver level 30)."
+    field description String "The detail's paragraph."
+  }
+  struct GarageStat {
+    doc "One of the car's performance figures, now and with the selected part fitted."
+    desc true
+    field key String "Its key."
+    field label String "Its name (Speed)."
+    field value f32 "Its value now."
+    field preview f32 "Its value with the selected part fitted; a negative value shows none." {
+      default -1
+    }
+    field max f32 "The bar's whole; 0 is 10." {
+      min 0
+    }
+  }
+  struct LiveryLayer {
+    doc "One layer of the car's livery, topmost first."
+    desc true
+    field key String "Its key: its row's element id, so its probe path is <id>/Layers/List/<key>."
+    field name String "Its name (Stripe, Number 7)."
+    field kind String "What it is, the row's second line (Decal, Shape, Text)."
+    field color PickedColor "Its colour: the row's swatch, and the picker's while it is selected."
+    field visible bool "Shown on the car; a hidden layer's row is dimmed and its eye is shut." {
+      default true
+    }
+    field locked bool "Not editable: no colour, no moves (a manufacturer's badge)."
+  }
+  struct LayerMove {
+    doc "A layer asked to move in the stack."
+    field key String "The layer."
+    field by i32 "Up (−1, towards the top) or down (+1)."
+  }
+  struct GarageDesc {
+    doc "A garage: the categories, the selected category's parts, the car's figures, the livery's layers."
+    desc true
+    field title String "The screen's title (Garage); empty shows none (the game titles it)."
+    field balance f64 "The purse the parts are priced in."
+    field currencyImage Option.Texture "The currency's art beside the balance and on prices; null draws a coin."
+    field categories List.GarageCategory "The rail, top to bottom."
+    field category String "The selected category's key."
+    field parts List.GaragePart "The selected category's parts."
+    field selected String "The part whose detail and preview are shown (the game's: it passes GarageResult.selected back)."
+    field vehicle Option.Texture "The car (art kind vehicle, a cut-out) standing on its turntable in the middle; null leaves the middle to the game's own view (og.ui.sceneViewport built under the garage)."
+    field stats List.GarageStat "The car's figures, each a bar of its value with the preview's change lit."
+    field ratingClass String "The car's class letter (A, S1) in its badge; empty shows no badge."
+    field rating u32 "The car's rating beside the class (742)."
+    field ratingPreview u32 "The rating with the selected part fitted; 0 shows none."
+    field layers List.LiveryLayer "The livery's layers, for a livery category."
+    field layer String "The selected layer's key."
+    field swatches List.String "The colour picker's swatches (`#rrggbb`)."
+    field performanceLabel String "The figures' heading." {
+      default "Performance"
+    }
+    field classLabel String "The rating's caption." {
+      default "Class"
+    }
+    field currentLabel String "The legend's word for the value now." {
+      default "Current"
+    }
+    field previewLabel String "The legend's word for the change." {
+      default "Preview"
+    }
+    field equipLabel String "The action on an owned part." {
+      default "Equip"
+    }
+    field equippedLabel String "An equipped part's word." {
+      default "Equipped"
+    }
+    field buyLabel String "The action on a part to buy." {
+      default "Buy"
+    }
+    field lockedLabel String "A locked part's word." {
+      default "Locked"
+    }
+    field freeLabel String "A free part's price." {
+      default "Free"
+    }
+    field shortLabel String "Said after a price the purse cannot pay." {
+      default "not enough"
+    }
+    field layersLabel String "The layers list's heading." {
+      default "Layers"
+    }
+    field colorLabel String "The colour picker's heading." {
+      default "Colour"
+    }
+    field addLayerLabel String "The action adding a layer." {
+      default "Add layer"
+    }
+    field deleteLabel String "The action deleting the selected layer." {
+      default "Delete"
+    }
+    field upLabel String "Moving a layer up, to a screen reader." {
+      default "Move up"
+    }
+    field downLabel String "Moving a layer down, to a screen reader." {
+      default "Move down"
+    }
+    field visibleLabel String "A layer's eye, to a screen reader." {
+      default "Visible"
+    }
+  }
+  struct GarageResult {
+    doc "What the player asked for this tick, for the game to apply."
+    field category Option.String "Another category was pressed: show its parts."
+    field selected Option.String "A part was pressed or focused: show its detail and preview."
+    field equip Option.String "Equip was pressed on an owned part."
+    field buy Option.String "Buy was pressed on a part the purse pays (the game charges it and fits it)."
+    field refused Option.String "A locked part, or one the purse cannot pay, was asked for: it shook."
+    field layer Option.String "A layer was pressed: select it."
+    field layerColor Option.PickedColor "The selected layer's colour was changed in the picker."
+    field layerMove Option.LayerMove "A layer's up or down was pressed."
+    field layerVisible Option.String "A layer's eye was pressed: show or hide it."
+    field addLayer bool "Add layer was pressed."
+    field deleteLayer Option.String "Delete was pressed on the selected layer."
+  }
+  fn garage {
+    doc "A garage (Forza Horizon, Gran Turismo, Need for Speed): the car standing large on its lit turntable in the middle; a rail of categories at the start, each its part's art and name, the selected one lit; beside it the category's parts, each a row of its art on a tier-rimmed tile, its name, its upgrade pips and its price (a lock and why in its place when locked, a tick when fitted); at the end the performance card, the class badge and rating with the preview's change, each figure a bar of its value with the selected part's change lit in success (or danger where it falls) and the legend, and under it the selected part's detail, its name in the display face, its tier word, its paragraph, its price and one action (Equip, Buy, or Equipped inert). A livery category turns the parts list into the car's layers (a swatch, the name and kind, an eye, up and down) and the detail into the selected layer's colour picker with Add layer and Delete. On a phone in portrait the rail is a row of chips over the car, the list scrolls under it and the action docks at the foot."
+    doc "Parts: Garage.frame, Garage.rail, Garage.category[selected], Garage.parts, Garage.part[selected|equipped|locked], Garage.pips, Garage.stage (the turntable), Garage.performance, Garage.badge, Garage.stat, Garage.bar, Garage.detail, Garage.layer[selected|hidden], Garage.swatch. Slots: each category's and part's art (itemIcon), the car (vehicle). State groups: part (open, selected, equipped, locked) on each row. Motion: the car eases in when the preview changes; a refused part shakes. Sounds: select on a category or part, confirm on Equip or Buy, error on a refusal. Accessibility: the rail a tablist, each part a button named with its tier, price or state; each figure a meter named with its value and change. Probe ids: <id>/Rail/<key>, <id>/Parts/List/<key>, <id>/Side/Performance/Stats/<key>, <id>/Side/Detail/Action, <id>/Layers/List/<key>, <id>/Side/Livery/Picker."
+    host false
+    param id String "Its id."
+    param desc GarageDesc "The categories, parts, figures and layers, and the words."
+    returns GarageResult
+  }
   # ── end of the genre patterns ────────────────────────────────────────
 
   # ── the UI kit: screen templates (TypeScript over the calls above) ──────

@@ -18,6 +18,7 @@ import { questLog, questTracker } from "./quests.ts";
 import { characterSelect, draft, lobby, versus } from "./roster.ts";
 import { worldMap } from "./maps.ts";
 import { songSelect } from "./songs.ts";
+import { garage } from "./garage.ts";
 
 export const patterns = Object.freeze({
   cardHand,
@@ -45,4 +46,5 @@ export const patterns = Object.freeze({
   draft,
   worldMap,
   songSelect,
+  garage,
 });

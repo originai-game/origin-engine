@@ -11552,6 +11552,13 @@
         "SongPreview",
         "SongSelectDesc",
         "SongSelectResult",
+        "GarageCategory",
+        "GaragePart",
+        "GarageStat",
+        "LiveryLayer",
+        "LayerMove",
+        "GarageDesc",
+        "GarageResult",
         "MenuItem",
         "MenuResult",
         "MainMenuDesc",
@@ -15747,6 +15754,27 @@
             }
           ],
           "returns": "SongSelectResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "garage",
+          "doc": "A garage (Forza Horizon, Gran Turismo, Need for Speed): the car standing large on its lit turntable in the middle; a rail of categories at the start, each its part's art and name, the selected one lit; beside it the category's parts, each a row of its art on a tier-rimmed tile, its name, its upgrade pips and its price (a lock and why in its place when locked, a tick when fitted); at the end the performance card, the class badge and rating with the preview's change, each figure a bar of its value with the selected part's change lit in success (or danger where it falls) and the legend, and under it the selected part's detail, its name in the display face, its tier word, its paragraph, its price and one action (Equip, Buy, or Equipped inert). A livery category turns the parts list into the car's layers (a swatch, the name and kind, an eye, up and down) and the detail into the selected layer's colour picker with Add layer and Delete. On a phone in portrait the rail is a row of chips over the car, the list scrolls under it and the action docks at the foot.\nParts: Garage.frame, Garage.rail, Garage.category[selected], Garage.parts, Garage.part[selected|equipped|locked], Garage.pips, Garage.stage (the turntable), Garage.performance, Garage.badge, Garage.stat, Garage.bar, Garage.detail, Garage.layer[selected|hidden], Garage.swatch. Slots: each category's and part's art (itemIcon), the car (vehicle). State groups: part (open, selected, equipped, locked) on each row. Motion: the car eases in when the preview changes; a refused part shakes. Sounds: select on a category or part, confirm on Equip or Buy, error on a refusal. Accessibility: the rail a tablist, each part a button named with its tier, price or state; each figure a meter named with its value and change. Probe ids: <id>/Rail/<key>, <id>/Parts/List/<key>, <id>/Side/Performance/Stats/<key>, <id>/Side/Detail/Action, <id>/Layers/List/<key>, <id>/Side/Livery/Picker.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "GarageDesc",
+              "optional": true,
+              "doc": "The categories, parts, figures and layers, and the words."
+            }
+          ],
+          "returns": "GarageResult",
           "publish": true,
           "host": false
         },
@@ -61680,6 +61708,567 @@
         "play",
         "preview",
         "refused"
+      ],
+      "additionalProperties": false
+    },
+    "GarageCategory": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One category of the garage's rail (Engine, Turbo, Tyres; Livery).",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key: its rail entry's element id, so its probe path is <id>/Rail/<key>.",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name beside its art.",
+          "default": ""
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its art (art kind itemIcon), a part of the kind; null draws the style's placeholder mark.",
+          "default": null
+        },
+        "count": {
+          "type": "string",
+          "description": "A line under the name or at the list's head (4 / 8 owned); empty shows none.",
+          "default": ""
+        },
+        "livery": {
+          "type": "boolean",
+          "description": "The livery editor: the parts list becomes the car's layers and the side the selected layer's colour.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "GaragePart": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One part on offer in the selected category, as the game holds it.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key: its row's element id, so its probe path is <id>/Parts/List/<key>.",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name, the row's reading.",
+          "default": ""
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its art (art kind itemIcon) on the row's tile; null draws the style's placeholder.",
+          "default": null
+        },
+        "rarity": {
+          "$ref": "#/$defs/Rarity",
+          "description": "Its tier: the tile's rim and the detail's tier word.",
+          "default": "none"
+        },
+        "rarityLabel": {
+          "type": "string",
+          "description": "The tier's word in the detail (Rare); empty shows none.",
+          "default": ""
+        },
+        "tier": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its upgrade level, as lit pips.",
+          "default": 0
+        },
+        "tierMax": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The pips in all; 0 is 3.",
+          "default": 0
+        },
+        "price": {
+          "type": "number",
+          "description": "Its price in the garage's currency; 0 is free.",
+          "default": 0
+        },
+        "owned": {
+          "type": "boolean",
+          "description": "Owned: no price; its action is Equip.",
+          "default": false
+        },
+        "equipped": {
+          "type": "boolean",
+          "description": "On the car now: a tick and the equipped word; its action is inert.",
+          "default": false
+        },
+        "locked": {
+          "type": "boolean",
+          "description": "Not available yet: dimmed with a lock and lockedHint in place of the price; pressing it is refused.",
+          "default": false
+        },
+        "lockedHint": {
+          "type": "string",
+          "description": "Why it is locked (Reach driver level 30).",
+          "default": ""
+        },
+        "description": {
+          "type": "string",
+          "description": "The detail's paragraph.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "GarageStat": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One of the car's performance figures, now and with the selected part fitted.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key.",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "Its name (Speed).",
+          "default": ""
+        },
+        "value": {
+          "type": "number",
+          "description": "Its value now.",
+          "default": 0
+        },
+        "preview": {
+          "type": "number",
+          "description": "Its value with the selected part fitted; a negative value shows none.",
+          "default": -1
+        },
+        "max": {
+          "type": "number",
+          "description": "The bar's whole; 0 is 10.",
+          "default": 0,
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "LiveryLayer": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One layer of the car's livery, topmost first.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key: its row's element id, so its probe path is <id>/Layers/List/<key>.",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name (Stripe, Number 7).",
+          "default": ""
+        },
+        "kind": {
+          "type": "string",
+          "description": "What it is, the row's second line (Decal, Shape, Text).",
+          "default": ""
+        },
+        "color": {
+          "$ref": "#/$defs/PickedColor",
+          "description": "Its colour: the row's swatch, and the picker's while it is selected.",
+          "default": {}
+        },
+        "visible": {
+          "type": "boolean",
+          "description": "Shown on the car; a hidden layer's row is dimmed and its eye is shut.",
+          "default": true
+        },
+        "locked": {
+          "type": "boolean",
+          "description": "Not editable: no colour, no moves (a manufacturer's badge).",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "LayerMove": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A layer asked to move in the stack.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "The layer."
+        },
+        "by": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Up (−1, towards the top) or down (+1)."
+        }
+      },
+      "required": [
+        "key",
+        "by"
+      ],
+      "additionalProperties": false
+    },
+    "GarageDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A garage: the categories, the selected category's parts, the car's figures, the livery's layers.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The screen's title (Garage); empty shows none (the game titles it).",
+          "default": ""
+        },
+        "balance": {
+          "type": "number",
+          "description": "The purse the parts are priced in.",
+          "default": 0
+        },
+        "currencyImage": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The currency's art beside the balance and on prices; null draws a coin.",
+          "default": null
+        },
+        "categories": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GarageCategory"
+          },
+          "description": "The rail, top to bottom.",
+          "default": []
+        },
+        "category": {
+          "type": "string",
+          "description": "The selected category's key.",
+          "default": ""
+        },
+        "parts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GaragePart"
+          },
+          "description": "The selected category's parts.",
+          "default": []
+        },
+        "selected": {
+          "type": "string",
+          "description": "The part whose detail and preview are shown (the game's: it passes GarageResult.selected back).",
+          "default": ""
+        },
+        "vehicle": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The car (art kind vehicle, a cut-out) standing on its turntable in the middle; null leaves the middle to the game's own view (og.ui.sceneViewport built under the garage).",
+          "default": null
+        },
+        "stats": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GarageStat"
+          },
+          "description": "The car's figures, each a bar of its value with the preview's change lit.",
+          "default": []
+        },
+        "ratingClass": {
+          "type": "string",
+          "description": "The car's class letter (A, S1) in its badge; empty shows no badge.",
+          "default": ""
+        },
+        "rating": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The car's rating beside the class (742).",
+          "default": 0
+        },
+        "ratingPreview": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The rating with the selected part fitted; 0 shows none.",
+          "default": 0
+        },
+        "layers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LiveryLayer"
+          },
+          "description": "The livery's layers, for a livery category.",
+          "default": []
+        },
+        "layer": {
+          "type": "string",
+          "description": "The selected layer's key.",
+          "default": ""
+        },
+        "swatches": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The colour picker's swatches (`#rrggbb`).",
+          "default": []
+        },
+        "performanceLabel": {
+          "type": "string",
+          "description": "The figures' heading.",
+          "default": "Performance"
+        },
+        "classLabel": {
+          "type": "string",
+          "description": "The rating's caption.",
+          "default": "Class"
+        },
+        "currentLabel": {
+          "type": "string",
+          "description": "The legend's word for the value now.",
+          "default": "Current"
+        },
+        "previewLabel": {
+          "type": "string",
+          "description": "The legend's word for the change.",
+          "default": "Preview"
+        },
+        "equipLabel": {
+          "type": "string",
+          "description": "The action on an owned part.",
+          "default": "Equip"
+        },
+        "equippedLabel": {
+          "type": "string",
+          "description": "An equipped part's word.",
+          "default": "Equipped"
+        },
+        "buyLabel": {
+          "type": "string",
+          "description": "The action on a part to buy.",
+          "default": "Buy"
+        },
+        "lockedLabel": {
+          "type": "string",
+          "description": "A locked part's word.",
+          "default": "Locked"
+        },
+        "freeLabel": {
+          "type": "string",
+          "description": "A free part's price.",
+          "default": "Free"
+        },
+        "shortLabel": {
+          "type": "string",
+          "description": "Said after a price the purse cannot pay.",
+          "default": "not enough"
+        },
+        "layersLabel": {
+          "type": "string",
+          "description": "The layers list's heading.",
+          "default": "Layers"
+        },
+        "colorLabel": {
+          "type": "string",
+          "description": "The colour picker's heading.",
+          "default": "Colour"
+        },
+        "addLayerLabel": {
+          "type": "string",
+          "description": "The action adding a layer.",
+          "default": "Add layer"
+        },
+        "deleteLabel": {
+          "type": "string",
+          "description": "The action deleting the selected layer.",
+          "default": "Delete"
+        },
+        "upLabel": {
+          "type": "string",
+          "description": "Moving a layer up, to a screen reader.",
+          "default": "Move up"
+        },
+        "downLabel": {
+          "type": "string",
+          "description": "Moving a layer down, to a screen reader.",
+          "default": "Move down"
+        },
+        "visibleLabel": {
+          "type": "string",
+          "description": "A layer's eye, to a screen reader.",
+          "default": "Visible"
+        }
+      },
+      "additionalProperties": false
+    },
+    "GarageResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What the player asked for this tick, for the game to apply.",
+      "type": "object",
+      "properties": {
+        "category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Another category was pressed: show its parts."
+        },
+        "selected": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A part was pressed or focused: show its detail and preview."
+        },
+        "equip": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Equip was pressed on an owned part."
+        },
+        "buy": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Buy was pressed on a part the purse pays (the game charges it and fits it)."
+        },
+        "refused": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A locked part, or one the purse cannot pay, was asked for: it shook."
+        },
+        "layer": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A layer was pressed: select it."
+        },
+        "layerColor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PickedColor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The selected layer's colour was changed in the picker."
+        },
+        "layerMove": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LayerMove"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A layer's up or down was pressed."
+        },
+        "layerVisible": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A layer's eye was pressed: show or hide it."
+        },
+        "addLayer": {
+          "type": "boolean",
+          "description": "Add layer was pressed."
+        },
+        "deleteLayer": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Delete was pressed on the selected layer."
+        }
+      },
+      "required": [
+        "category",
+        "selected",
+        "equip",
+        "buy",
+        "refused",
+        "layer",
+        "layerColor",
+        "layerMove",
+        "layerVisible",
+        "addLayer",
+        "deleteLayer"
       ],
       "additionalProperties": false
     },

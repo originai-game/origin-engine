@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2355 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2363 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -574,6 +574,11 @@ Field units the docs and Tune use.
 | [`GamepadButton`](input.md#type-GamepadButton) | enum | input | — |
 | [`GamepadInput`](input.md#type-GamepadInput) | struct | input | — |
 | [`GameSettings`](ui.md#type-GameSettings) | desc struct | ui | — |
+| [`GarageCategory`](ui.md#type-GarageCategory) | desc struct | ui | — |
+| [`GarageDesc`](ui.md#type-GarageDesc) | desc struct | ui | — |
+| [`GaragePart`](ui.md#type-GaragePart) | desc struct | ui | — |
+| [`GarageResult`](ui.md#type-GarageResult) | struct | ui | — |
+| [`GarageStat`](ui.md#type-GarageStat) | desc struct | ui | — |
 | [`Generator`](ui.md#type-Generator) | desc struct | ui | — |
 | [`Geometry`](render.md#type-Geometry) | handle | render | — |
 | [`Geometry()`](render.md#column-Geometry) | column kind | render | — |
@@ -712,6 +717,7 @@ Field units the docs and Tune use.
 | [`LapTimerDesc`](ui.md#type-LapTimerDesc) | desc struct | ui | — |
 | [`LatheGeometryDesc`](render.md#type-LatheGeometryDesc) | desc struct | render | — |
 | [`LayerDesc`](ui.md#type-LayerDesc) | desc struct | ui | — |
+| [`LayerMove`](ui.md#type-LayerMove) | struct | ui | — |
 | [`LayoutMode`](ui.md#type-LayoutMode) | enum | ui | — |
 | [`LeaderboardDesc`](ui.md#type-LeaderboardDesc) | desc struct | ui | — |
 | [`LeaderboardEntry`](ui.md#type-LeaderboardEntry) | desc struct | ui | — |
@@ -734,6 +740,7 @@ Field units the docs and Tune use.
 | [`ListDesc`](ui.md#type-ListDesc) | desc struct | ui | — |
 | [`ListRange`](ui.md#type-ListRange) | struct | ui | — |
 | [`ListResult`](ui.md#type-ListResult) | struct | ui | — |
+| [`LiveryLayer`](ui.md#type-LiveryLayer) | desc struct | ui | — |
 | [`LoadBudget`](load.md#type-LoadBudget) | desc struct | load | — |
 | [`LoadCompletion`](load.md#type-LoadCompletion) | struct | load | — |
 | [`LoadingDesc`](ui.md#type-LoadingDesc) | desc struct | ui | — |
@@ -1493,6 +1500,7 @@ Field units the docs and Tune use.
 | [`og.ui.frameViewport`](ui.md#fn-frameViewport) | function | ui | `og_ui_frame_viewport` |
 | [`og.ui.gachaBanner`](ui.md#fn-gachaBanner) | function | ui | — |
 | [`og.ui.gameInput`](ui.md#fn-gameInput) | function | ui | `og_ui_game_input` |
+| [`og.ui.garage`](ui.md#fn-garage) | function | ui | — |
 | [`og.ui.gesture`](ui.md#fn-gesture) | function | ui | `og_ui_gesture` |
 | [`og.ui.glyph`](ui.md#fn-glyph) | function | ui | `og_ui_glyph` |
 | [`og.ui.goalChips`](ui.md#fn-goalChips) | function | ui | — |
