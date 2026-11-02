@@ -31,7 +31,7 @@
 //!   read from the IVF ffmpeg writes ([`og_video::ivf`]) into the engine's
 //!   own blob, so no container is read at run time; the runtime fetches it
 //!   when `og.load.video` runs, not with the startup bundle;
-//! - `<id>#stream720`, beside a stream larger than 1280x720: the same at
+//! - `<id>#stream720`, beside a stream larger than 1280x720 (720x1280 portrait): the same at
 //!   that size or less (its aspect kept), which the web's software
 //!   fallback decoder plays instead (it holds 30 fps at 720p, not 1080p);
 //! - `<id>#poster`: frame 0 as rav1d decodes it, a texture of the video's
@@ -587,10 +587,14 @@ pub fn cook_frame(
 
 /// The sound track as 48 kHz 16-bit stereo WAV bytes, cut at maxSeconds.
 pub fn audio_wav(path: &Path, plan: &VideoPlan) -> Result<Vec<u8>, CookError> {
+    // One file per call: two videos of one source (a clip and its stream)
+    // cook their sounds at once, each cut at its own length.
+    static CALLS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
     let tmp = std::env::temp_dir().join(format!(
-        "og-video-{}-{:016x}.wav",
+        "og-video-{}-{:016x}-{}.wav",
         std::process::id(),
-        og_core::hash::hash_bytes(path.display().to_string().as_bytes())
+        og_core::hash::hash_bytes(path.display().to_string().as_bytes()),
+        CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
     ));
     let seconds = f64::from(plan.frames) / f64::from(plan.decl.fps);
     let out = Command::new(ffmpeg_bin())
