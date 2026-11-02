@@ -300,7 +300,11 @@ pick, entity, input, capture) and the command channel is gone. A `2d`
 project publishes the 2D module, which has no 3D world
 (`RenderCapabilities.world3d` false): the build refuses scenes holding
 `Terrain`, `TerrainScatter`, `Water`, `WaterSurface` or `Fluid3D`, naming
-each by scene file and line (og-game §2).
+each by scene file and line (og-game §2). A publish build also refuses a
+game still in the engine's default style, which is for prototypes only
+(docs/ui.md §12.1): give the game's look a `ui` line (its own style, `og
+style new`, or a built-in; every catalogue preset names one, so a look
+that `extends` a slug has it) or load one in code with `og.load.style`.
 What ships is still checked by script, through what it keeps: real input
 on the published page and the probe's `tick`, `state` and `capture`. A
 playtest written in input steps (`key_down`, `type`, `touch_move_to` an

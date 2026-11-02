@@ -219,10 +219,27 @@ fn a_2d_publish_build_refuses_the_3d_world_by_scene_and_line() {
     assert!(t.contains("RenderCapabilities.world3d is false"), "{t}");
     assert!(t.contains("profile \"3d\""), "{t}");
 
-    // The dev build has every subsystem; a 3D project's publish keeps them.
+    // The dev build has every subsystem; a 3D project's publish keeps them,
+    // once the game is out of the default style (docs/ui.md §12.1): a
+    // look that picks none is named, and one whose `ui` line picks a
+    // style publishes.
     let (code, t, exported) = build(&["build"]);
     assert_eq!((code, exported), (Some(0), true), "{t}");
     project("3d");
+    std::fs::create_dir_all(game.join("assets/looks")).unwrap();
+    let look = |ui: &str| {
+        std::fs::write(
+            game.join("assets/looks/main.ogt"),
+            format!("type look\nversion 1\n---\nname \"Main\"\n{ui}"),
+        )
+        .unwrap();
+    };
+    look("");
+    let (code, t, exported) = build(&["build", "--publish"]);
+    assert_eq!((code, exported), (Some(1), false), "{t}");
+    assert!(t.contains("still draws its UI in the default style"), "{t}");
+    assert!(t.contains("assets/looks/main.ogt"), "{t}");
+    look("ui \"@styles/paper/style.ogt\"\n");
     let (code, t, exported) = build(&["build", "--publish"]);
     assert_eq!((code, exported), (Some(0), true), "{t}");
     // A 2D project without them publishes as before.

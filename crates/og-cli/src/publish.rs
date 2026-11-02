@@ -246,6 +246,61 @@ pub fn refuse_3d_world(root: &Path, settings: &Value) -> Result<(), String> {
     ))
 }
 
+/// `og build --publish`'s refusal of a game still in the default style
+/// (docs/ui.md §12.1): the default style is origin-agent's and a
+/// prototype's, and every game ships its own. A game picks one by a look
+/// whose `ui` line names it (its own, or a catalogue preset's through
+/// `extends`; the cooked look has the chain flattened) or by loading one
+/// in its code (`og.load.style`, for `og.ui.configure({ style })`). `Err`
+/// names the looks that pick none and the two ways out. Run after the cook.
+pub fn refuse_default_style(root: &Path) -> Result<(), String> {
+    fn loads_style(dir: &Path) -> bool {
+        let Ok(read) = std::fs::read_dir(dir) else {
+            return false;
+        };
+        read.flatten().any(|e| {
+            let p = e.path();
+            if p.is_dir() {
+                return e.file_name() != "node_modules" && loads_style(&p);
+            }
+            p.extension()
+                .is_some_and(|x| ["ts", "tsx", "js", "mjs"].iter().any(|k| x == *k))
+                && std::fs::read_to_string(&p).is_ok_and(|t| t.contains("og.load.style("))
+        })
+    }
+    if loads_style(&root.join("src")) {
+        return Ok(());
+    }
+    let mut bare = Vec::new();
+    if let Ok(bundle) = og_cook::runtime::Bundle::open(&root.join("cooked")) {
+        for out in bundle.manifest().outputs().filter(|o| o.ty == "og.Look") {
+            let look = bundle
+                .read(&out.id)
+                .map_err(|e| e.to_string())
+                .and_then(|b| bundle.look(&out.id, &b).map_err(|e| e.to_string()))
+                .map_err(|e| format!("{}: {e}", out.id))?;
+            if look.ui.is_some() {
+                return Ok(());
+            }
+            bare.push(format!(
+                "  assets/{} (no `ui` line in it or its bases)",
+                out.id
+            ));
+        }
+    }
+    let looks = if bare.is_empty() {
+        "the project has no look and its code loads no style".to_string()
+    } else {
+        format!(
+            "no look picks a style and the code loads none:\n{}",
+            bare.join("\n")
+        )
+    };
+    Err(format!(
+        "the game still draws its UI in the default style, which is for prototypes only (docs/ui.md §12.1): {looks}\ngive the game's look a style (`ui \"styles/<name>/style.ogt\"`, `og style new`, or a built-in such as `ui \"@styles/paper/style.ogt\"`), or load one in code (og.load.style, then og.ui.configure({{ style }}))"
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     /// `settings` of a project.ogt whose publish block is `publish`.
