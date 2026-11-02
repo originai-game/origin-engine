@@ -154,8 +154,26 @@ impl Ui {
             clip: n.clip,
             alpha: n.alpha,
         };
+        // Game draws whose strokes were drawn before their subtree ended.
+        let mut stroked = vec![false; self.nodes.len()];
         for (k, &i) in order.iter().enumerate() {
-            let world = self.nodes[i].world;
+            let n = &self.nodes[i];
+            let world = n.world;
+            // A child raised above its siblings (z > 0: a badge, a corner
+            // tag, a cost gem standing over the frame's edge) draws over its
+            // parent's border: a game's draw strokes before such children,
+            // after the rest of its subtree (they sort last).
+            let p = n.parent;
+            if p != NONE
+                && n.props.z > 0
+                && !stroked[p]
+                && let Some(d) = self.draws.get(&p).filter(|d| d.strokes_movable())
+            {
+                stroked[p] = true;
+                let np = &self.nodes[p];
+                let at = placed(np);
+                cmds.extend(d.strokes(&theme, &at).into_iter().map(|c| (c, np.world)));
+            }
             let start = cmds.len();
             let game_draw = self.draws.contains_key(&i);
             let draw = self
@@ -256,7 +274,12 @@ impl Ui {
                 let w = self.nodes[j].world;
                 if let Some(d) = self.draws.get(&j) {
                     let at = placed(&self.nodes[j]);
-                    cmds.extend(d.leave(&theme, &at).into_iter().map(|c| (c, w)));
+                    let leave = if stroked[j] {
+                        d.leave_stroked(&at)
+                    } else {
+                        d.leave(&theme, &at)
+                    };
+                    cmds.extend(leave.into_iter().map(|c| (c, w)));
                 } else if let Some(d) = self.part_draws.get(&j) {
                     let at = placed(&self.nodes[j]);
                     cmds.extend(d.leave_stroked(&at).into_iter().map(|c| (c, w)));

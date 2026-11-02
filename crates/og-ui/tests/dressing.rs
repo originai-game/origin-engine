@@ -193,6 +193,67 @@ fn an_undressed_surface_part_with_no_fill_draws_no_outline() {
 }
 
 #[test]
+fn a_raised_child_draws_over_its_parents_border_and_the_rest_under_it() {
+    // A game's draw strokes over its subtree (art does not cover the
+    // frame), but a child raised above its siblings (a corner tag, a cost
+    // gem over the frame's edge) stands over that border.
+    let mut ui = ui_with_font(test_font_metrics());
+    let (blue, gold) = (Srgba::rgb(0, 0, 255), Srgba::rgb(255, 200, 0));
+    ui.begin(InputFrame::default(), Viewport::new(400.0, 300.0));
+    ui.open(
+        "Card",
+        Element {
+            width: Size::Fixed(200.0),
+            height: Size::Fixed(120.0),
+            ..Element::column()
+        },
+    );
+    ui.set_draw(og_ui::paint::ElementDraw {
+        fills: vec![og_ui::paint::Paint::Solid(Srgba::rgb(50, 50, 50).into())],
+        strokes: vec![og_ui::paint::Stroke {
+            width: 3.0,
+            align: og_ui::paint::StrokeAlign::Inside,
+            dash: [0.0; 2],
+            dash_offset: 0.0,
+            dash_cap: og_ui::paint::Cap::Butt,
+            paint: og_ui::paint::Paint::Solid(Srgba::rgb(0, 255, 0).into()),
+        }],
+        ..Default::default()
+    });
+    for (id, z, color) in [("Tag", 1, gold), ("Art", 0, blue)] {
+        ui.open_with(
+            id,
+            Element {
+                width: Size::Fixed(40.0),
+                height: Size::Fixed(20.0),
+                background: Some(color),
+                ..Element::default()
+            },
+            Props {
+                z,
+                ..Props::default()
+            },
+        );
+        ui.close();
+    }
+    ui.close();
+    ui.end();
+    let items = &ui.frame().items;
+    let at = |want: Srgba| {
+        items
+            .iter()
+            .position(|i| i.cmd.filled().is_some_and(|(_, c)| near(c, want)))
+            .expect("drawn")
+    };
+    let stroke = items
+        .iter()
+        .position(|i| matches!(&i.cmd, DrawCmd::Shape { shape, .. } if matches!(shape.mode, og_render::UiMode::Stroke(_))))
+        .expect("the border");
+    assert!(at(blue) < stroke, "a child in the flow is under the border");
+    assert!(stroke < at(gold), "a raised child is over it");
+}
+
+#[test]
 fn a_hover_moves_the_buttons_fill_on_the_ui_spring() {
     let mut ui = ui_with_font(test_font_metrics());
     let p = Theme::default().palette;
