@@ -529,7 +529,7 @@ module ui {
 | [`LayerMove`](#type-LayerMove) | struct | A layer asked to move in the stack. |
 | [`GarageDesc`](#type-GarageDesc) | desc struct | A garage: the categories, the selected category's parts, the car's figures, the livery's layers. |
 | [`GarageResult`](#type-GarageResult) | struct | What the player asked for this tick, for the game to apply. |
-| [`og.ui.garage`](#fn-garage) | function | A garage (Forza Horizon, Gran Turismo, Need for Speed): the car standing large on its lit turntable in the middle; a rail of categories at the start, each its part's art and name, the selected one lit; beside it the category's parts, each a row of its art on a tier-rimmed tile, its name, its upgrade pips and its price (a lock and why in its place when locked, a tick when fitted); at the end the performance card, the class badge and rating with the preview's change, each figure a bar of its value with the selected part's change lit in success (or danger where it falls) and the legend, and under it the selected part's detail, its name in the display face, its tier word, its paragraph, its price and one action (Equip, Buy, or Equipped inert). A livery category turns the parts list into the car's layers (a swatch, the name and kind, an eye, up and down) and the detail into the selected layer's colour picker with Add layer and Delete. On a phone in portrait the rail is a row of chips over the car, the list scrolls under it and the action docks at the foot. |
+| [`og.ui.garage`](#fn-garage) | function | A garage (Forza Horizon, Gran Turismo, Need for Speed): the car standing large on its lit turntable in the middle; a rail of categories at the start, each its part's art and name, the selected one lit; beside it the category's parts, each a row of its art on a tier-rimmed tile, its name, its upgrade pips and its price (a lock and why in its place when locked, a tick when fitted); at the end the performance card, the class badge and rating with the preview's change, each figure a bar of its value with the selected part's change lit in success (or danger where it falls) and the legend, and under it the selected part's detail, its name in the display face, its tier word, its paragraph and its price; the cards scroll, and one action (Equip, Buy, or Equipped inert) stands at their foot. The pad's tab actions step the categories. A livery category turns the parts list into the car's layers (a swatch, the name and kind, an eye, up and down) and the detail into the selected layer's colour picker with Add layer and Delete. On a phone in portrait the rail is a row of chips over the car, the list scrolls under it and the action docks at the foot. |
 | [`UiAction`](#type-UiAction) | callback | A template's action, by its id (a menu item, `buy:<item>`, `share`). |
 | [`SettingsChanged`](#type-SettingsChanged) | callback | The settings after a change: persist them (cloud save, local storage through the shell) and apply them. |
 | [`MenuItem`](#type-MenuItem) | desc struct | An item of a menu: an id the game acts on and the label a player reads. |
@@ -6565,9 +6565,9 @@ fn songSelect {
 
 ### `og.ui.garage`
 
-A garage (Forza Horizon, Gran Turismo, Need for Speed): the car standing large on its lit turntable in the middle; a rail of categories at the start, each its part's art and name, the selected one lit; beside it the category's parts, each a row of its art on a tier-rimmed tile, its name, its upgrade pips and its price (a lock and why in its place when locked, a tick when fitted); at the end the performance card, the class badge and rating with the preview's change, each figure a bar of its value with the selected part's change lit in success (or danger where it falls) and the legend, and under it the selected part's detail, its name in the display face, its tier word, its paragraph, its price and one action (Equip, Buy, or Equipped inert). A livery category turns the parts list into the car's layers (a swatch, the name and kind, an eye, up and down) and the detail into the selected layer's colour picker with Add layer and Delete. On a phone in portrait the rail is a row of chips over the car, the list scrolls under it and the action docks at the foot.
+A garage (Forza Horizon, Gran Turismo, Need for Speed): the car standing large on its lit turntable in the middle; a rail of categories at the start, each its part's art and name, the selected one lit; beside it the category's parts, each a row of its art on a tier-rimmed tile, its name, its upgrade pips and its price (a lock and why in its place when locked, a tick when fitted); at the end the performance card, the class badge and rating with the preview's change, each figure a bar of its value with the selected part's change lit in success (or danger where it falls) and the legend, and under it the selected part's detail, its name in the display face, its tier word, its paragraph and its price; the cards scroll, and one action (Equip, Buy, or Equipped inert) stands at their foot. The pad's tab actions step the categories. A livery category turns the parts list into the car's layers (a swatch, the name and kind, an eye, up and down) and the detail into the selected layer's colour picker with Add layer and Delete. On a phone in portrait the rail is a row of chips over the car, the list scrolls under it and the action docks at the foot.
 
-Parts: Garage.frame, Garage.rail, Garage.category[selected], Garage.parts, Garage.part[selected|equipped|locked], Garage.pips, Garage.stage (the turntable), Garage.performance, Garage.badge, Garage.stat, Garage.bar, Garage.detail, Garage.layer[selected|hidden], Garage.swatch. Slots: each category's and part's art (itemIcon), the car (vehicle). State groups: part (open, selected, equipped, locked) on each row. Motion: the car eases in when the preview changes; a refused part shakes. Sounds: select on a category or part, confirm on Equip or Buy, error on a refusal. Accessibility: the rail a tablist, each part a button named with its tier, price or state; each figure a meter named with its value and change. Probe ids: <id>/Rail/<key>, <id>/Parts/List/<key>, <id>/Side/Performance/Stats/<key>, <id>/Side/Detail/Action, <id>/Layers/List/<key>, <id>/Side/Livery/Picker.
+Parts: Garage.frame, Garage.rail, Garage.category[selected], Garage.parts, Garage.part[selected|equipped|locked], Garage.pips, Garage.stage (the turntable), Garage.performance, Garage.badge, Garage.stat, Garage.bar, Garage.detail, Garage.layer[selected|hidden], Garage.swatch. Slots: each category's and part's art (itemIcon), the car (vehicle). State groups: part (open, selected, equipped, locked) on each row. Motion: the car eases in when the preview changes; a refused part shakes. Sounds: select on a category or part, confirm on Equip or Buy, error on a refusal. Accessibility: the rail a tablist, each part a button named with its tier, price or state; each figure a meter named with its value and change. Probe ids: <id>/Body/Rail/<key>, <id>/Body/Parts/List/<key>, <id>/Body/Side/Cards/Performance, <id>/Body/Side/Action, <id>/Body/Layers/List/<key>, <id>/Body/Side/Cards/Livery/Picker; on a phone in portrait <id>/Rail/Chips/<key>, <id>/Body/Parts/<key>, <id>/Body/<layer>, <id>/Action.
 
 ```ts
 og.ui.garage(id: string, desc?: GarageDesc): GarageResult
@@ -6584,8 +6584,8 @@ Implemented by the TypeScript runtime over the members of this module: no bindin
 
 ```ogt
 fn garage {
-  doc "A garage (Forza Horizon, Gran Turismo, Need for Speed): the car standing large on its lit turntable in the middle; a rail of categories at the start, each its part's art and name, the selected one lit; beside it the category's parts, each a row of its art on a tier-rimmed tile, its name, its upgrade pips and its price (a lock and why in its place when locked, a tick when fitted); at the end the performance card, the class badge and rating with the preview's change, each figure a bar of its value with the selected part's change lit in success (or danger where it falls) and the legend, and under it the selected part's detail, its name in the display face, its tier word, its paragraph, its price and one action (Equip, Buy, or Equipped inert). A livery category turns the parts list into the car's layers (a swatch, the name and kind, an eye, up and down) and the detail into the selected layer's colour picker with Add layer and Delete. On a phone in portrait the rail is a row of chips over the car, the list scrolls under it and the action docks at the foot."
-  doc "Parts: Garage.frame, Garage.rail, Garage.category[selected], Garage.parts, Garage.part[selected|equipped|locked], Garage.pips, Garage.stage (the turntable), Garage.performance, Garage.badge, Garage.stat, Garage.bar, Garage.detail, Garage.layer[selected|hidden], Garage.swatch. Slots: each category's and part's art (itemIcon), the car (vehicle). State groups: part (open, selected, equipped, locked) on each row. Motion: the car eases in when the preview changes; a refused part shakes. Sounds: select on a category or part, confirm on Equip or Buy, error on a refusal. Accessibility: the rail a tablist, each part a button named with its tier, price or state; each figure a meter named with its value and change. Probe ids: <id>/Rail/<key>, <id>/Parts/List/<key>, <id>/Side/Performance/Stats/<key>, <id>/Side/Detail/Action, <id>/Layers/List/<key>, <id>/Side/Livery/Picker."
+  doc "A garage (Forza Horizon, Gran Turismo, Need for Speed): the car standing large on its lit turntable in the middle; a rail of categories at the start, each its part's art and name, the selected one lit; beside it the category's parts, each a row of its art on a tier-rimmed tile, its name, its upgrade pips and its price (a lock and why in its place when locked, a tick when fitted); at the end the performance card, the class badge and rating with the preview's change, each figure a bar of its value with the selected part's change lit in success (or danger where it falls) and the legend, and under it the selected part's detail, its name in the display face, its tier word, its paragraph and its price; the cards scroll, and one action (Equip, Buy, or Equipped inert) stands at their foot. The pad's tab actions step the categories. A livery category turns the parts list into the car's layers (a swatch, the name and kind, an eye, up and down) and the detail into the selected layer's colour picker with Add layer and Delete. On a phone in portrait the rail is a row of chips over the car, the list scrolls under it and the action docks at the foot."
+  doc "Parts: Garage.frame, Garage.rail, Garage.category[selected], Garage.parts, Garage.part[selected|equipped|locked], Garage.pips, Garage.stage (the turntable), Garage.performance, Garage.badge, Garage.stat, Garage.bar, Garage.detail, Garage.layer[selected|hidden], Garage.swatch. Slots: each category's and part's art (itemIcon), the car (vehicle). State groups: part (open, selected, equipped, locked) on each row. Motion: the car eases in when the preview changes; a refused part shakes. Sounds: select on a category or part, confirm on Equip or Buy, error on a refusal. Accessibility: the rail a tablist, each part a button named with its tier, price or state; each figure a meter named with its value and change. Probe ids: <id>/Body/Rail/<key>, <id>/Body/Parts/List/<key>, <id>/Body/Side/Cards/Performance, <id>/Body/Side/Action, <id>/Body/Layers/List/<key>, <id>/Body/Side/Cards/Livery/Picker; on a phone in portrait <id>/Rail/Chips/<key>, <id>/Body/Parts/<key>, <id>/Body/<layer>, <id>/Action."
   host false
   param id String "Its id."
   param desc GarageDesc "The categories, parts, figures and layers, and the words."
@@ -22180,7 +22180,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its key: its rail entry's element id, so its probe path is <id>/Rail/<key>. |
+| `key` | `string` | `""` | — | — | — | Its key: its rail entry's element id, so its probe path is <id>/Body/Rail/<key> (<id>/Rail/Chips/<key> on a phone in portrait). |
 | `name` | `string` | `""` | — | — | — | Its name beside its art. |
 | `image` | `Texture \| null` | `null` | — | — | — | Its art (art kind itemIcon), a part of the kind; null draws the style's placeholder mark. |
 | `count` | `string` | `""` | — | — | — | A line under the name or at the list's head (4 / 8 owned); empty shows none. |
@@ -22190,7 +22190,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 struct GarageCategory {
   doc "One category of the garage's rail (Engine, Turbo, Tyres; Livery)."
   desc true
-  field key String "Its key: its rail entry's element id, so its probe path is <id>/Rail/<key>."
+  field key String "Its key: its rail entry's element id, so its probe path is <id>/Body/Rail/<key> (<id>/Rail/Chips/<key> on a phone in portrait)."
   field name String "Its name beside its art."
   field image Option.Texture "Its art (art kind itemIcon), a part of the kind; null draws the style's placeholder mark."
   field count String "A line under the name or at the list's head (4 / 8 owned); empty shows none."
@@ -22210,7 +22210,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its key: its row's element id, so its probe path is <id>/Parts/List/<key>. |
+| `key` | `string` | `""` | — | — | — | Its key: its row's element id, so its probe path is <id>/Body/Parts/List/<key> (<id>/Body/Parts/<key> on a phone in portrait). |
 | `name` | `string` | `""` | — | — | — | Its name, the row's reading. |
 | `image` | `Texture \| null` | `null` | — | — | — | Its art (art kind itemIcon) on the row's tile; null draws the style's placeholder. |
 | `rarity` | `Rarity` | `"none"` | — | — | — | Its tier: the tile's rim and the detail's tier word. |
@@ -22228,7 +22228,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 struct GaragePart {
   doc "One part on offer in the selected category, as the game holds it."
   desc true
-  field key String "Its key: its row's element id, so its probe path is <id>/Parts/List/<key>."
+  field key String "Its key: its row's element id, so its probe path is <id>/Body/Parts/List/<key> (<id>/Body/Parts/<key> on a phone in portrait)."
   field name String "Its name, the row's reading."
   field image Option.Texture "Its art (art kind itemIcon) on the row's tile; null draws the style's placeholder."
   field rarity Rarity "Its tier: the tile's rim and the detail's tier word."
@@ -22290,7 +22290,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `key` | `string` | `""` | — | — | — | Its key: its row's element id, so its probe path is <id>/Layers/List/<key>. |
+| `key` | `string` | `""` | — | — | — | Its key: its row's element id, so its probe path is <id>/Body/Layers/List/<key> (<id>/Body/<key> on a phone in portrait). |
 | `name` | `string` | `""` | — | — | — | Its name (Stripe, Number 7). |
 | `kind` | `string` | `""` | — | — | — | What it is, the row's second line (Decal, Shape, Text). |
 | `color` | `PickedColor` | `{}` | — | — | — | Its colour: the row's swatch, and the picker's while it is selected. |
@@ -22301,7 +22301,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 struct LiveryLayer {
   doc "One layer of the car's livery, topmost first."
   desc true
-  field key String "Its key: its row's element id, so its probe path is <id>/Layers/List/<key>."
+  field key String "Its key: its row's element id, so its probe path is <id>/Body/Layers/List/<key> (<id>/Body/<key> on a phone in portrait)."
   field name String "Its name (Stripe, Number 7)."
   field kind String "What it is, the row's second line (Decal, Shape, Text)."
   field color PickedColor "Its colour: the row's swatch, and the picker's while it is selected."

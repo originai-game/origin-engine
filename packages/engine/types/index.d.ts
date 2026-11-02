@@ -34616,7 +34616,7 @@ export interface SongSelectResult {
  */
 export interface GarageCategory {
   /**
-   * Its key: its rail entry's element id, so its probe path is <id>/Rail/<key>.
+   * Its key: its rail entry's element id, so its probe path is <id>/Body/Rail/<key> (<id>/Rail/Chips/<key> on a phone in portrait).
    *
    * @default ""
    */
@@ -34654,7 +34654,7 @@ export interface GarageCategory {
  */
 export interface GaragePart {
   /**
-   * Its key: its row's element id, so its probe path is <id>/Parts/List/<key>.
+   * Its key: its row's element id, so its probe path is <id>/Body/Parts/List/<key> (<id>/Body/Parts/<key> on a phone in portrait).
    *
    * @default ""
    */
@@ -34779,7 +34779,7 @@ export interface GarageStat {
  */
 export interface LiveryLayer {
   /**
-   * Its key: its row's element id, so its probe path is <id>/Layers/List/<key>.
+   * Its key: its row's element id, so its probe path is <id>/Body/Layers/List/<key> (<id>/Body/<key> on a phone in portrait).
    *
    * @default ""
    */
@@ -55256,8 +55256,8 @@ export declare namespace og {
      */
     function songSelect(id: string, desc?: SongSelectDesc): SongSelectResult;
     /**
-     * A garage (Forza Horizon, Gran Turismo, Need for Speed): the car standing large on its lit turntable in the middle; a rail of categories at the start, each its part's art and name, the selected one lit; beside it the category's parts, each a row of its art on a tier-rimmed tile, its name, its upgrade pips and its price (a lock and why in its place when locked, a tick when fitted); at the end the performance card, the class badge and rating with the preview's change, each figure a bar of its value with the selected part's change lit in success (or danger where it falls) and the legend, and under it the selected part's detail, its name in the display face, its tier word, its paragraph, its price and one action (Equip, Buy, or Equipped inert). A livery category turns the parts list into the car's layers (a swatch, the name and kind, an eye, up and down) and the detail into the selected layer's colour picker with Add layer and Delete. On a phone in portrait the rail is a row of chips over the car, the list scrolls under it and the action docks at the foot.
-     * Parts: Garage.frame, Garage.rail, Garage.category[selected], Garage.parts, Garage.part[selected|equipped|locked], Garage.pips, Garage.stage (the turntable), Garage.performance, Garage.badge, Garage.stat, Garage.bar, Garage.detail, Garage.layer[selected|hidden], Garage.swatch. Slots: each category's and part's art (itemIcon), the car (vehicle). State groups: part (open, selected, equipped, locked) on each row. Motion: the car eases in when the preview changes; a refused part shakes. Sounds: select on a category or part, confirm on Equip or Buy, error on a refusal. Accessibility: the rail a tablist, each part a button named with its tier, price or state; each figure a meter named with its value and change. Probe ids: <id>/Rail/<key>, <id>/Parts/List/<key>, <id>/Side/Performance/Stats/<key>, <id>/Side/Detail/Action, <id>/Layers/List/<key>, <id>/Side/Livery/Picker.
+     * A garage (Forza Horizon, Gran Turismo, Need for Speed): the car standing large on its lit turntable in the middle; a rail of categories at the start, each its part's art and name, the selected one lit; beside it the category's parts, each a row of its art on a tier-rimmed tile, its name, its upgrade pips and its price (a lock and why in its place when locked, a tick when fitted); at the end the performance card, the class badge and rating with the preview's change, each figure a bar of its value with the selected part's change lit in success (or danger where it falls) and the legend, and under it the selected part's detail, its name in the display face, its tier word, its paragraph and its price; the cards scroll, and one action (Equip, Buy, or Equipped inert) stands at their foot. The pad's tab actions step the categories. A livery category turns the parts list into the car's layers (a swatch, the name and kind, an eye, up and down) and the detail into the selected layer's colour picker with Add layer and Delete. On a phone in portrait the rail is a row of chips over the car, the list scrolls under it and the action docks at the foot.
+     * Parts: Garage.frame, Garage.rail, Garage.category[selected], Garage.parts, Garage.part[selected|equipped|locked], Garage.pips, Garage.stage (the turntable), Garage.performance, Garage.badge, Garage.stat, Garage.bar, Garage.detail, Garage.layer[selected|hidden], Garage.swatch. Slots: each category's and part's art (itemIcon), the car (vehicle). State groups: part (open, selected, equipped, locked) on each row. Motion: the car eases in when the preview changes; a refused part shakes. Sounds: select on a category or part, confirm on Equip or Buy, error on a refusal. Accessibility: the rail a tablist, each part a button named with its tier, price or state; each figure a meter named with its value and change. Probe ids: <id>/Body/Rail/<key>, <id>/Body/Parts/List/<key>, <id>/Body/Side/Cards/Performance, <id>/Body/Side/Action, <id>/Body/Layers/List/<key>, <id>/Body/Side/Cards/Livery/Picker; on a phone in portrait <id>/Rail/Chips/<key>, <id>/Body/Parts/<key>, <id>/Body/<layer>, <id>/Action.
      *
      * @param id Its id.
      * @param desc The categories, parts, figures and layers, and the words.
