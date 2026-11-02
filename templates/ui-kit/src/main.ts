@@ -18,7 +18,7 @@
 
 import { og, defineComponent, defineResource, defineSystem, bool, f32, f64, str, u32 } from "@origingame/engine";
 import type { Entity, GameSettings, Viewport, World } from "@origingame/engine";
-import { cardsScreen, gachaScreen, gearScreen, loadPatternArt, patternsCommand, rewardsScreen } from "./patterns.ts";
+import { cardsScreen, gachaScreen, gearScreen, loadPatternArt, patternScene, patternsCommand, rewardsScreen } from "./patterns.ts";
 import { chartsScreen, containersScreen, dataScreen, demoCommand, graphScreen, navigationScreen, overlaysScreen } from "./components.ts";
 import { bindingsScreen, controlsDemo, controlsScreen, fieldsScreen, foundationsScreen, rangesScreen } from "./controls.ts";
 
@@ -623,8 +623,6 @@ function galleryButton(world: World, d: DemoState): void {
     // The medium size: its label at the body's 16 px at 1080p, never under it.
     if (og.ui.button("Gallery", tr(world, "gallery.button"), { variant: "secondary" }).clicked) d.screen = 0;
   });
-  // Over every screen's own layers (a pattern screen's painted scene, a full-bleed banner).
-  og.ui.props({ z: 100 });
 }
 
 /** The raw widget set on one scrolling panel. */
@@ -770,6 +768,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
   }
   // The game behind every screen but the gallery and the widget sheet: a dusk landscape.
   // The genre patterns' screens paint their own scene (patterns.ts): the pixel dusk would clash with their art.
+  if (PATTERN_SCREENS.has(screen)) patternScene(screen);
   if (screen !== "gallery" && screen !== "widgets" && !PATTERN_SCREENS.has(screen) && d.backdrop) og.render.sprite(world, { texture: d.backdrop as never, width: 640, height: 360, layer: -10 });
 
   if (screen !== "gallery" && screen !== "loading") galleryButton(world, d);

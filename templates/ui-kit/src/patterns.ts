@@ -91,6 +91,19 @@ function art(name: ArtName | undefined): never | null {
  * surface (under the notch too), blurred and dimmed with a vignette so the
  * screen's art and text stand in front of it; without art, a dark wash.
  */
+const SCENES: Record<string, [ArtName, { x: number; y: number }]> = {
+  cards: ["scenes/title", { x: 0.62, y: 0.55 }],
+  rewards: ["scenes/title", { x: 0.4, y: 0.5 }],
+  gacha: ["scenes/gacha-moonlit-tide", { x: 0.72, y: 0.3 }],
+  gear: ["scenes/paperdoll-aria-vell", { x: 0.5, y: 0.3 }],
+};
+
+/** The pattern screen's painted scene, built before anything over it (the kit's Gallery button among them). */
+export function patternScene(screen: string): void {
+  const sc = SCENES[screen];
+  if (sc) scene(sc[0], sc[1]);
+}
+
 function scene(name: ArtName, focal = { x: 0.5, y: 0.5 }): void {
   const vp = og.ui.frameViewport();
   const sa = vp.safeArea;
@@ -112,7 +125,7 @@ function scene(name: ArtName, focal = { x: 0.5, y: 0.5 }): void {
     } as never);
     og.ui.props({ position: "absolute", insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true } as never);
   });
-  og.ui.props({ inert: true, z: -100 } as never);
+  og.ui.props({ inert: true } as never);
 }
 
 const ITEM_ART: Record<string, ArtName> = {
@@ -226,7 +239,6 @@ const endTurnDefined = new WeakSet<object>();
 
 /** The combat table: two enemies (the second behind a taunt, so it cannot be targeted), the energy, the piles, and the hand. */
 export function cardsScreen(world?: World): void {
-  scene("scenes/title", { x: 0.62, y: 0.55 });
   const t = og.ui.frameTheme();
   const vp = og.ui.frameViewport();
   const sa = vp.safeArea;
@@ -454,7 +466,6 @@ const r = {
 
 /** The reward after a fight (Hades' boons, Slay the Spire's card reward): three rewards, Reroll, Banish and Skip. */
 export function rewardsScreen(): void {
-  scene("scenes/title", { x: 0.4, y: 0.5 });
   const vp = og.ui.frameViewport();
   const two = r.picks > 1;
   screen("Rewards", "Chamber cleared", r.taken ? `Taken: ${r.taken}` : two ? "Choose two boons, then confirm" : "Choose a boon", () => {
@@ -529,8 +540,6 @@ const BANNERS = [
  * the standard one draws the style's placeholder (the path a game without its art takes). */
 /** The rate lines are the game's strings (og.i18n), so an RTL locale shows its own sentence. */
 export function gachaScreen(backdrop = 0, rate: { event: string; standard: string } = { event: "", standard: "" }): void {
-  // Behind the banner (under the notch and the Gallery's row on a phone): the key art again, blurred and dimmed.
-  scene("scenes/gacha-moonlit-tide", { x: 0.72, y: 0.3 });
   const vp = og.ui.frameViewport();
   const sa = vp.safeArea;
   const small = phone();
@@ -687,7 +696,6 @@ function stat(label: string, value: string, unit: string, lowerIsBetter = false)
 }
 
 export function gearScreen(): void {
-  scene("scenes/paperdoll-aria-vell", { x: 0.5, y: 0.3 });
   const t = og.ui.frameTheme();
   const vp = og.ui.frameViewport();
   const portrait = vp.breakpoint === "phonePortrait";
