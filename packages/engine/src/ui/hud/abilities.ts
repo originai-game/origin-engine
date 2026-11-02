@@ -10,7 +10,7 @@
 // the sweep running out.
 
 import type * as Api from "@origingame/engine";
-import { stepSize, hudRoom, artTile, socketRim, hueOf, BLACK, WHITE, a11y, arc, inner, type Paint, absolute, anchorOf, box, bp, chip, clamp01, close, drop, edge, frame, glow, groups, hudPlace, icon, innerGlow, keyId, kit, leaf, lit, mix, msToTicks, open, pct, pop, pulse, px, reduced, role, sel, shapeOf, shortTime, solid, sound, stroke, text, token, ts, u, vgrad, type Rgba, apply, textScale, tsFit } from "./core.ts";
+import { stepSize, hudRoom, shrunk, artTile, socketRim, hueOf, BLACK, WHITE, a11y, arc, inner, type Paint, absolute, anchorOf, box, bp, clamp01, close, drop, edge, frame, glow, groups, hudPlace, icon, innerGlow, keyId, kit, leaf, lit, mix, msToTicks, open, pct, pop, pulse, px, reduced, role, sel, shapeOf, shortTime, solid, sound, stroke, text, token, ts, u, vgrad, type Rgba, apply, textScale, tsFit } from "./core.ts";
 
 const DEBUFF_TYPES: Record<string, string> = {
   magic: "#3d8bff", curse: "#a64dff", poison: "#3ccf4e", disease: "#c89a2c", bleed: "#e03030",
@@ -24,16 +24,6 @@ function typeColor(type: string | undefined): Rgba {
 }
 
 
-/**
- * Text shrunk below the type ramp's smallest step: at 200 % even the ramp's
- * least step outgrows a corner figure, so it is drawn at a step and scaled
- * to `target` px about its centre; `h` is its box's height, and the move
- * keeps its bottom where layout put it.
- */
-function shrunk(step: Api.TypeStepName, target: number, h: number): { k: number; transform?: Api.UiTransform } {
-  const k = Math.min(1, target / stepSize(step).size);
-  return k >= 1 ? { k } : { k, transform: { x: 0, y: ((1 - k) * h) / 2, scaleX: k, scaleY: k } };
-}
 
 /** A pie over a square slot: the dark part of a sweep that has `left` of its turn to go, shrinking clockwise. */
 function pie(left: number): Api.DrawShape {
@@ -275,14 +265,14 @@ function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc.size))
     const keyIcon = glyph && glyph.device !== "keyboardMouse" && kit.hasIcon(glyph.icon) ? glyph.icon : "";
     if (keyText || keyIcon) {
       const keyStep = ts(10);
-      // One quiet ink: state lives on the slot (the tints, the glow), never on the key's label.
-      const capInk = token("inkMuted");
+      // One neutral ink at full strength: quiet means small, not faint (it reads at 4.5:1 on a light scene with its shadow);
+      // state lives on the slot (the tints, the glow), never on the key's label.
+      const capInk = token("ink");
       box("Hotkey", { height: px(Math.ceil(stepSize(keyStep).size)), cross: "center", align: "center", part: sel("AbilitySlot", "hotkey") }, undefined, () => {
         if (keyIcon) icon("Glyph", keyIcon, Math.round(stepSize(keyStep).size * 1.1), capInk);
         else {
           // No outline (at 200 % one makes the letters look hollow): a soft shadow holds them on a bright scene.
-          text("Key", keyText, { step: keyStep, font: "display", color: capInk, nowrap: true });
-          kit.setDraw({ text: { shadows: [{ offset: { x: 0, y: 1 }, blur: 3, color: lit(BLACK, 0.75) }, { offset: { x: 0, y: 0 }, blur: 6, color: lit(BLACK, 0.4) }] } });
+          text("Key", keyText, { step: keyStep, font: "display", color: capInk, nowrap: true, soft: true });
         }
       }, { overlaps: [path] });
     }
@@ -372,8 +362,16 @@ export function statusGrid(id: string, desc: Api.StatusGridDesc = {}): Api.Statu
         if (res.clicked) clicked = fx.key ?? "";
       }
       if (more > 0) {
-        box("More", { width: px(size), height: px(size), align: "center", cross: "center", part: sel("StatusGrid", "more"), partClass: "slot" }, chip(shapeOf("slot").radius), () => {
-          text("Count", `+${more}`, { step: tsFit(13, size * 0.42), font: "mono", color: token("ink"), nowrap: true });
+        // The overflow in the tiles' own glass: the dark socket, a hairline, the top light, a small count in the display face.
+        const r = Math.min(shapeOf("slot").radius, size / 5);
+        box("More", { width: px(size), height: px(size), align: "center", cross: "center", part: sel("StatusGrid", "more"), partClass: "slot" }, {
+          shape: { kind: "rect", radii: [r, r, r, r] },
+          fills: [solid(lit(BLACK, 0.9)), vgrad([[0, lit(WHITE, 0.1)], [0.55, lit(WHITE, 0.02)]])],
+          strokes: [stroke(1, lit(BLACK, 0.85)), stroke(1, lit(BLACK, 0.6), "outside")],
+          effects: [drop(u(2), u(6), lit(BLACK, 0.5))],
+        }, () => {
+          socketRim("Rim", size - 2, Math.max(0, r - 1), undefined, 1, absolute({ start: 1, top: 1 }), 0.35);
+          text("Count", `+${more}`, { step: tsFit(11, size * 0.34), font: "display", color: token("ink"), nowrap: true, soft: true });
         }, { a11y: a11y("text", `${more} more`) });
       }
     }, { a11y: a11y("list", label) });
@@ -406,7 +404,9 @@ function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean): 
   // With a gutter, so neighbouring timers read as numbers apart ("5m 6m"), never one run ("5m6m").
   const timeWidth = timeText ? Math.ceil(timeText.length * stepSize(timeStep).size * 0.62) + frame().t.sm + 4 : 0;
   kit.column(id, { gap: 0, cross: "center", width: px(Math.max(size, base, timeWidth)) }, () => {
-    const rim = Math.max(1.5, Math.round(size / 18));
+    // A debuff's rim carries its dispel type; a buff's is a dark hairline under the socket's top light,
+    // so type colour belongs to debuffs alone (WoW's and Diablo IV's auras).
+    const rim = fx.debuff ? Math.max(1.5, Math.round(size / 18)) : 1;
     const art = size - rim * 2;
     open("Tile", {
       width: px(size), height: px(size), interactive: true,
@@ -417,7 +417,7 @@ function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean): 
       shape: { kind: "rect", radii: fx.debuff ? [r, size * 0.3, r, r] : [r, r, r, r], corner: fx.debuff ? "bevel" : "round" },
       fills: [solid(lit(BLACK, 0.9))],
       // The rim in the effect's colour (a debuff's dispel type), on the tile's own float shadow.
-      strokes: [stroke(rim, lit(ink, fx.debuff ? 1 : 0.85)), stroke(1, lit(BLACK, 0.6), "outside")],
+      strokes: [stroke(rim, fx.debuff ? lit(ink) : lit(BLACK, 0.85)), stroke(1, lit(BLACK, 0.6), "outside")],
       effects: [drop(u(2), u(6), lit(BLACK, 0.5))],
       clip: "shape",
     });
@@ -439,7 +439,7 @@ function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean): 
       ...groups({ time }, { time: ["lasting", "running", "expiring"] }),
     });
     if (timers && !lasting) {
-      text("Time", timeText, { step: timeStep, font: "display", color: expiring ? lit(role("warn")) : token("ink"), nowrap: true, outline: 1.4 });
+      text("Time", timeText, { step: timeStep, font: "display", color: expiring ? lit(role("warn")) : token("ink"), nowrap: true, soft: true });
     }
   });
   return res ?? ({ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0 } as Api.Response);

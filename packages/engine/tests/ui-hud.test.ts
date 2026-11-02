@@ -175,12 +175,22 @@ test("og.ui.unitFrame, raidFrames and castBar: health and states read, raids in 
     og.ui.unitFrame("Target", { name: "Grull the Ogre", level: "62", health, hostile: true, unitClass: "elite", reverse: true, targeted: true, anchor: "top" });
     og.ui.raidFrames("Raid", { members: Array.from({ length: 12 }, (_, i) => ({ key: `m${i}`, name: `Member ${i}`, health: 10 * i, dead: i === 0, role: i % 3 === 0 ? "tank" as const : "damage" as const })) });
     og.ui.castBar("Cast", { name: "Pyroblast", progress: 0.4, remaining: 2.1, state, stateAt: endedAt, anchor: "bottom" });
-    og.ui.unitFrame("Boss", { name: "Grull the Devourer", health: 800_000, healthMax: 1_250_000, anchor: "topRight" });
+    og.ui.unitFrame("Boss", { name: "Grull the Devourer", level: "??", health: 800_000, healthMax: 1_250_000, shield: 150_000, anchor: "topRight" });
   });
   e.advance(3);
   let els = dump(e);
   // A boss's health is shortened as shipped frames write it, and a frame with no art shows no initials.
-  expect(at(els, "BossHud/Boss/Bars/Health/Main/Value")?.text).toBe("800K / 1.25M");
+  // Health is the dominant bar: its numerals sit inside its end, so its track spans the frame's whole bar column.
+  const value = at(els, "BossHud/Boss/Bars/Health/Main/Track/Value/Text");
+  const track = at(els, "BossHud/Boss/Bars/Health/Main/Track")!;
+  expect(value?.text).toBe("800K / 1.25M");
+  expect(track.width).toBeCloseTo(at(els, "BossHud/Boss/Bars")!.width, 0);
+  expect(value!.x + value!.width).toBeLessThanOrEqual(track.x + track.width + 0.5);
+  // The absorb lies on the health bar, not on a row of its own.
+  expect(at(els, "BossHud/Boss/Bars/Health/Main/Track/Absorb")).toBeDefined();
+  expect(at(els, "BossHud/Boss/Bars/Health/Shield")).toBe(undefined);
+  // The level badge is at most 40 % of the portrait, at 100 % text.
+  expect(at(els, "BossHud/Boss/Avatar/Level")!.height).toBeLessThanOrEqual(at(els, "BossHud/Boss/Avatar/Portrait")!.width * 0.4 + 0.5);
   expect(els.some((x) => x.path.startsWith("BossHud/Boss/") && x.id === "Initials")).toBe(false);
   // The cast's name and seconds on their own line over the bar.
   expect([at(els, "CastHud/Cast/Body/Head/Name")?.text, at(els, "CastHud/Cast/Body/Head/Time")?.text]).toEqual(["Pyroblast", "2.1"]);

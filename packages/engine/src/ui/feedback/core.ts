@@ -279,19 +279,35 @@ export function hudText(strength = 1): Api.TextEffectsDesc {
   };
 }
 
+/**
+ * The HUD's quiet text effect: no outline, a tight drop and a soft halo, for
+ * names, hotkeys and durations, which an outline makes read hollow at 200 %
+ * (the outline is for numerals over art). It holds 4.5:1 on a light scene.
+ */
+export function softText(): Api.TextEffectsDesc {
+  return {
+    shadows: [
+      { offset: { x: 0, y: 1 }, blur: 3, color: token("shadow", 0.8) },
+      { offset: { x: 0, y: 0 }, blur: 6, color: token("shadow", 0.45) },
+    ],
+  };
+}
+
 export interface TextDesc extends Api.LabelDesc {
   /** Draw it with the HUD's outline and shadow. */
   outline?: boolean | number;
+  /** Draw it with the soft shadow alone (softText); an outline wins. */
+  soft?: boolean;
   /** A gradient over its glyphs. */
   gradient?: Api.Gradient;
 }
 
 /** A label, optionally outlined for the HUD. */
 export function text(id: string, s: string, desc: TextDesc = {}, props?: Props): void {
-  const { outline, gradient, ...label } = desc;
+  const { outline, soft, gradient, ...label } = desc;
   kit.label(id, s, label);
-  if (outline || gradient) {
-    const fx = outline ? hudText(typeof outline === "number" ? outline : 1) : {};
+  if (outline || soft || gradient) {
+    const fx = outline ? hudText(typeof outline === "number" ? outline : 1) : soft ? softText() : {};
     kit.setDraw({ text: gradient ? { ...fx, fill: gradient } : fx });
   }
   apply(props);

@@ -4,7 +4,7 @@
 // colours by kind and level, and a stable id for a list item.
 
 import type * as Api from "@origingame/engine";
-import { absolute, type Props, frame, kit, role, type Rgba, solid, token, drop, stroke, inner, vgrad, lit, mix, shapeOf, box, icon, leaf, px, radial, teamColor, innerGlow, apply } from "../feedback/core.ts";
+import { absolute, type Props, frame, kit, role, type Rgba, solid, token, drop, stroke, inner, vgrad, lit, mix, shapeOf, box, icon, leaf, px, radial, teamColor, innerGlow, apply, stepSize } from "../feedback/core.ts";
 
 export * from "../feedback/core.ts";
 
@@ -149,6 +149,17 @@ export function trackDraw(r: number, shape: Api.DrawShape | null = null): Api.Dr
 
 export const BLACK: Rgba = { r: 0, g: 0, b: 0, a: 1 };
 export const WHITE: Rgba = { r: 1, g: 1, b: 1, a: 1 };
+
+/**
+ * Text shrunk below the type ramp's smallest step: at 200 % even the ramp's
+ * least step outgrows a corner figure, so it is drawn at a step and scaled
+ * to `target` px about its centre; `h` is its box's height, and the move
+ * keeps its bottom where layout put it.
+ */
+export function shrunk(step: Api.TypeStepName, target: number, h: number): { k: number; transform?: Api.UiTransform } {
+  const k = Math.min(1, target / stepSize(step).size);
+  return k >= 1 ? { k } : { k, transform: { x: 0, y: ((1 - k) * h) / 2, scaleX: k, scaleY: k } };
+}
 
 /** A stable hue for a thing without art, from its icon or name, so a placeholder is still told apart by colour as well as glyph. */
 export function hueOf(key: string): Rgba {

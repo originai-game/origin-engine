@@ -262,14 +262,14 @@ function framesScreen(): void {
   og.ui.unitFrame("Player", { size: small() ? "medium" : "large", portrait: art("aria-vell"), name: L("Aria Vale"), level: "60", title: L("Archmage"), health: h * 380, healthMax: 38000, shield: did("hit") ? 0 : 6000, resource: 21400, resourceMax: 30000, leader: true, combat: did("hit"), anchor: "topLeft", effects: [{ key: "a", icon: "flash", image: art("thunder-strike"), remaining: 9, duration: 20 }, { key: "b", icon: "heart", image: art("titan-heart"), remaining: 0 }] });
   og.ui.unitFrame("Target", {
     name: L("Grull the Devourer"), portrait: art("cultist"), level: "??", unitClass: "boss", hostile: true, reverse: true, targeted: true, health: 0.64 * 1_250_000, healthMax: 1_250_000,
-    castName: L("Earthshatter"), castProgress: Math.min(1, s / 3) % 1, anchor: og.ui.frameViewport().breakpoint === "phonePortrait" ? "topLeft" : small() ? "topRight" : "top", size: small() ? "medium" : "large",
+    castName: L("Earthshatter"), castProgress: Math.min(1, s / 3) % 1, anchor: small() ? "topRight" : "top", size: small() ? "medium" : "large",
   });
   og.ui.partyFrames("Party", {
     anchor: small() ? "bottomLeft" : "left",
     members: ([
-      { key: "tank", name: L("Borin"), portrait: art("kael"), level: "60", icon: "shield", health: 82, resource: 40, resourceKind: "primary" },
+      { key: "tank", name: L("Borin"), portrait: art("aria"), level: "60", icon: "shield", health: 82, resource: 40, resourceKind: "primary" },
       { key: "heal", name: L("Seraphine"), portrait: art("mira"), level: "60", icon: "plus", health: 34, resource: 12, leader: false, effects: [{ key: "p", debuff: true, type: "magic", image: art("curse"), remaining: 5, duration: 8 }] },
-      { key: "dead", name: L("Kael"), portrait: art("aria"), level: "59", health: 0, dead: true },
+      { key: "dead", name: L("Kael"), portrait: art("kael"), level: "59", health: 0, dead: true },
       { key: "off", name: L("Nyx"), level: "60", health: 100, offline: true },
     ] satisfies UnitFrameDesc[]).slice(0, small() ? 2 : 4),
   });

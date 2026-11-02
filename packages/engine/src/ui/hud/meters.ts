@@ -8,7 +8,7 @@
 // extended stamina, red and slow while exhausted, gone once full.
 
 import type * as Api from "@origingame/engine";
-import { TAU, a11y, absolute, box, clamp01, close, easeInOut, edge, ellipseShape, fillDraw, frame, glow, groups, hudPlace, icon, kindColor, kit, leaf, levelOf, lit, mix, msToTicks, now, open, paintRgba, pct, phase, pulse, px, radial, rarityColor, reduced, role, sel, solid, sound, spring, stroke, text, token, trackDraw, ts, u, vgrad, anchorOf, inner, drop, shapeOf, arc, type Level, type Rgba, apply, type Props } from "./core.ts";
+import { TAU, a11y, absolute, box, clamp01, close, easeInOut, edge, ellipseShape, fillDraw, frame, glow, groups, hudPlace, icon, kindColor, kit, leaf, levelOf, lit, mix, msToTicks, now, open, paintRgba, pct, phase, pulse, px, radial, rarityColor, reduced, role, sel, solid, sound, spring, stroke, text, token, trackDraw, ts, u, vgrad, anchorOf, inner, drop, shapeOf, arc, type Level, type Rgba, apply, type Props, stepSize, WHITE } from "./core.ts";
 
 const GHOST_HOLD_MS = 450;
 const GHOST_DRAIN_MS = 650;
@@ -59,7 +59,10 @@ export function statBar(id: string, desc: Api.StatBarDesc = {}): void {
   const kind = desc.kind ?? "health";
   const ink = kindColor(kind, level, desc.color);
   const style: Api.StatBarStyle = desc.style ?? "flat";
-  const h = u(desc.thickness || 14);
+  // A value inside the track: the track grows to hold its numerals (at 200 % too), the bar keeps its length.
+  const inside = !!desc.showValue && !!desc.valueInside;
+  const valueStep = ts(11);
+  const h = Math.max(u(desc.thickness || 14), inside ? Math.ceil(stepSize(valueStep).size * 1.3) : 0);
   const radius = style === "pill" ? h / 2 : style === "slanted" ? 1 : Math.min(shapeOf("bar").radius, h / 3);
   const name = desc.name || desc.label || "Health";
   const valueText = desc.valueText || `${Math.round(value)} / ${Math.round(max)}`;
@@ -73,8 +76,8 @@ export function statBar(id: string, desc: Api.StatBarDesc = {}): void {
         if (desc.icon) icon("Icon", desc.icon, Math.round(h * 1.4), lit(ink), "");
         // Over the scene, not a card: full ink a step up, with the HUD's outline and halo (4.5:1 on a bright ground).
         if (desc.label) text("Label", desc.label, { step: ts(14), font: "display", color: token("ink"), nowrap: true, outline: 1.2 });
-        track(path, desc, frac, level, ink, h, radius, style);
-        if (desc.showValue) text("Value", valueText, { step: ts(14), font: "mono", color: level === "critical" ? lit(role("danger")) : token("ink"), nowrap: true, outline: 1.2 });
+        track(path, desc, frac, level, ink, h, radius, style, inside ? { text: valueText, step: valueStep, critical: level === "critical" } : null);
+        if (desc.showValue && !inside) text("Value", valueText, { step: ts(14), font: "mono", color: level === "critical" ? lit(role("danger")) : token("ink"), nowrap: true, outline: 1.2 });
       });
     }, {
       a11y: a11y("meter", name, { value: valueText, valueMin: 0, valueMax: max, valueNow: value }),
@@ -83,7 +86,7 @@ export function statBar(id: string, desc: Api.StatBarDesc = {}): void {
   });
 }
 
-function track(parent: string, desc: Api.StatBarDesc, frac: number, level: Level, ink: Rgba, h: number, radius: number, style: Api.StatBarStyle): void {
+function track(parent: string, desc: Api.StatBarDesc, frac: number, level: Level, ink: Rgba, h: number, radius: number, style: Api.StatBarStyle, inside: { text: string; step: Api.TypeStepName; critical: boolean } | null): void {
   const max = desc.max ?? 100;
   const path = open("Track", {
     width: { kind: "grow" },
@@ -120,10 +123,25 @@ function track(parent: string, desc: Api.StatBarDesc, frac: number, level: Level
   }
   const crit = level === "critical";
   const fd = fillDraw(ink, radius);
+  const absorb = clamp01((desc.absorb ?? 0) / Math.max(1e-6, max));
   leaf("Fill", { width: pct(shown), height: pct(1), part: sel("StatBar", "fill", desc.kind ?? "health", level), partClass: "bar" }, {
     ...fd,
     effects: crit ? [glow(6 + 6 * pulse(2.2), lit(ink, 0.5 + 0.4 * pulse(2.2)))] : [],
   }, side(0, shown, crit && !reduced() ? { opacity: 0.78 + 0.22 * pulse(2.2) } : {}));
+  if (absorb > 0) {
+    // The absorb: white-blue past the fill; what overflows a full bar lies back over the fill's end, with a bright seam.
+    const past = Math.min(absorb, 1 - shown);
+    const over = Math.min(shown, absorb - past);
+    const paint = (a: number): Api.Fill[] => [solid(lit({ r: 0.78, g: 0.9, b: 1, a: 1 }, a)), vgrad([[0, lit(WHITE, 0.35)], [0.5, lit(WHITE, 0)]])];
+    if (past > 0) leaf("Absorb", { width: pct(past), height: pct(1), part: sel("StatBar", "absorb"), partClass: "bar" }, { fills: paint(0.62) }, side(shown, past));
+    if (over > 0.001) {
+      leaf("Overabsorb", { width: pct(over), height: pct(1), part: sel("StatBar", "absorb", "over"), partClass: "bar" }, {
+        fills: paint(0.5),
+        strokes: [],
+      }, side(shown - over, over));
+      leaf("Seam", { width: px(2), height: pct(1) }, { fills: [solid(lit(WHITE, 0.9))], effects: [glow(4, lit({ r: 0.7, g: 0.88, b: 1, a: 1 }, 0.8))] }, side(shown - over, 1));
+    }
+  }
   // Blocks: a dark notch at every segment's end (Overwatch), only when they stay readable.
   const seg = desc.segment ?? 0;
   if (seg > 0 && max / seg <= 40 && max / seg >= 2) {
@@ -139,6 +157,12 @@ function track(parent: string, desc: Api.StatBarDesc, frac: number, level: Level
   leaf("Gloss", { width: pct(1), height: pct(0.42) }, {
     fills: [vgrad([[0, token("sheen", 0.22)], [1, token("sheen", 0)]])],
   }, absolute({ start: 0, top: 0 }));
+  if (inside) {
+    // The value over the fill at the track's end, in the HUD's outline so it reads over any fill or the empty track.
+    box("Value", { width: pct(1), height: pct(1), direction: "row", align: "end", cross: "center", padding: { left: u(6), right: u(6), top: 0, bottom: 0 } }, undefined, () => {
+      text("Text", inside.text, { step: inside.step, font: "mono", color: inside.critical ? lit(mix(role("danger"), WHITE, 0.35)) : token("ink"), nowrap: true, outline: 1 });
+    }, absolute({ start: 0, top: 0 }));
+  }
   // A slanted bar leans its whole track; its text sits outside it, upright.
   close(style === "slanted" ? { transform: { skewX: desc.reverse ? 0.36 : -0.36 } } : undefined);
 }

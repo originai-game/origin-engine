@@ -10,7 +10,7 @@
 // a grey shield on what cannot be interrupted, interrupted in red).
 
 import type * as Api from "@origingame/engine";
-import { formatNumber, artTile, socketRim, hueOf, BLACK, WHITE, shapeOf, a11y, absolute, anchorOf, box, inner, radial, innerGlow, reduced, clamp01, close, drop, easeOut, edge, fillDraw, frame, glow, groups, hudPlace, icon, keyId, kit, leaf, lit, mix, msToTicks, now, open, paintRgba, pct, px, role, sel, solid, sound, stroke, text, token, trackDraw, ts, u, vgrad, ellipseShape, type Rgba, apply, textScale, stepSize } from "./core.ts";
+import { formatNumber, hudRoom, shrunk, artTile, socketRim, hueOf, BLACK, WHITE, shapeOf, a11y, absolute, anchorOf, box, inner, radial, innerGlow, reduced, clamp01, close, drop, easeOut, edge, fillDraw, frame, glow, groups, hudPlace, icon, keyId, kit, leaf, lit, mix, msToTicks, now, open, paintRgba, pct, px, role, sel, solid, sound, stroke, text, token, trackDraw, ts, u, vgrad, ellipseShape, type Rgba, apply, textScale, stepSize } from "./core.ts";
 import { statBar } from "./meters.ts";
 import { statusGrid } from "./abilities.ts";
 
@@ -28,6 +28,21 @@ function nameHue(name: string): Rgba {
   return { r: f(0), g: f(8), b: f(4), a: 1 };
 }
 
+const SLATE: Rgba = { r: 0.36, g: 0.4, b: 0.47, a: 1 };
+
+/** A skull drawn from shapes (cranium, jaw, eyes), the same in every style whatever its icon set has. */
+function skull(side: number): void {
+  const ink = lit({ r: 0.86, g: 0.87, b: 0.9, a: 1 });
+  const hole = lit(BLACK, 0.85);
+  box("Skull", { width: px(side), height: px(side) }, undefined, () => {
+    leaf("Cranium", { width: px(side), height: px(Math.round(side * 0.78)) }, { shape: ellipseShape(), fills: [solid(ink)], effects: [drop(1, 3, lit(BLACK, 0.8))] }, absolute({ start: 0, top: 0 }));
+    leaf("Jaw", { width: px(Math.round(side * 0.5)), height: px(Math.round(side * 0.3)) }, { shape: { kind: "rect", radii: [2, 2, side * 0.12, side * 0.12] }, fills: [solid(ink)] }, absolute({ centerX: true, bottom: 0 }));
+    const eye = Math.round(side * 0.24);
+    leaf("EyeL", { width: px(eye), height: px(eye) }, { shape: ellipseShape(), fills: [solid(hole)] }, absolute({ start: Math.round(side * 0.2), top: Math.round(side * 0.34) }));
+    leaf("EyeR", { width: px(eye), height: px(eye) }, { shape: ellipseShape(), fills: [solid(hole)] }, absolute({ end: Math.round(side * 0.2), top: Math.round(side * 0.34) }));
+  });
+}
+
 /** Health as a frame writes it: grouped under a hundred thousand, compact above (by the larger of the two, so both halves match). */
 function hpText(v: number, max: number): string {
   return formatNumber(Math.round(v), { notation: max >= 100_000 ? "compact" : "grouped" });
@@ -43,7 +58,8 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
   const tk = frame().t;
   const size: Api.UnitFrameSize = desc.size ?? "large";
   const m = SIZES[size];
-  const pd = u(m.portrait);
+  // The portrait grows with the player's text size (half again at 200 %), so its badge and crown keep their room on it.
+  const pd = Math.round(u(m.portrait) * (1 + (Math.min(2, textScale()) - 1) / 2));
   const dead = !!desc.dead;
   const offline = !!desc.offline;
   const hostile = !!desc.hostile;
@@ -54,6 +70,7 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
   const healthMax = desc.healthMax ?? 100;
   const ringInk = cls === "elite" || cls === "boss" ? role("gold") : cls === "rare" ? { r: 0.82, g: 0.86, b: 0.92, a: 1 } : hostile ? role("danger") : role("lineStrong");
   const anchor = anchorOf(desc, null);
+  const corner = anchor === "topLeft" || anchor === "topRight" || anchor === "bottomLeft" || anchor === "bottomRight";
   let res: Api.Response = NO_RESPONSE;
   hudPlace(id, anchor, () => {
     // A hit: the health fell this tick. For 450 ms the frame's edge flashes
@@ -65,14 +82,16 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
     // No plate behind the frame (§15.5.6): the portrait, the name and the bars float on their own shadows.
     // Targeted lights the portrait's ring with the highlight and a glow; a hit flashes it danger.
     const ring = desc.targeted ? role("highlight") : ringInk;
-    const badgeH = Math.round(Math.max(14, Math.round(pd * 0.3)) * textScale());
+    // The level badge at most 40 % of the portrait, seated on its rim; its figure shrunk to fit at any text size.
+    const badgeH = Math.round(Math.min(pd * 0.4, Math.max(14, pd * 0.3) * textScale()));
     open(id, {
       direction: "row",
       gap: tk.sm,
       cross: "start",
       interactive: true,
-      padding: { left: u(6), right: tk.md, top: u(6), bottom: u(6) + (desc.level ? Math.round(badgeH * 0.45) : 0) },
-      width: px(u(m.width) + pd),
+      padding: { left: u(6), right: tk.md, top: u(6), bottom: u(6) + (desc.level ? Math.round(badgeH * 0.5) : 0) },
+      // At a top or bottom corner a frame takes at most half the HUD band, so a player's and a target's frames sit side by side.
+      width: px(corner ? Math.min(u(m.width) + pd, (hudRoom() - tk.sm) / 2) : u(m.width) + pd),
       part: sel("UnitFrame", "frame", size, hostile ? "hostile" : null, desc.targeted ? "targeted" : null, dead ? "dead" : null),
       partClass: "hud",
     });
@@ -82,7 +101,8 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
     open("Avatar", { width: px(pd), height: px(pd) });
     box("Portrait", { width: px(pd), height: px(pd), align: "center", cross: "center", part: sel("UnitFrame", "portrait", cls), partClass: "avatar" }, {
       shape: ellipseShape(),
-      fills: [radial([[0, lit(mix(nameHue(name), WHITE, 0.2))], [0.7, lit(mix(nameHue(name), BLACK, 0.35))], [1, lit(mix(nameHue(name), BLACK, 0.6))]], 0.5, 0.3, 0.8, 0.8)],
+      // Behind the art (and the placeholder's ground): the unit's hue, muted toward slate so a bust never reads as a tinted state.
+      fills: [radial([[0, lit(mix(mix(nameHue(name), SLATE, 0.6), WHITE, 0.1))], [0.7, lit(mix(mix(nameHue(name), SLATE, 0.6), BLACK, 0.4))], [1, lit(mix(SLATE, BLACK, 0.65))]], 0.5, 0.3, 0.8, 0.8)],
       strokes: [stroke(Math.max(2, pd / 18) + (desc.targeted ? 1 : 0), lit(hurt > 0 ? mix(ring, role("danger"), hurt) : ring)), stroke(1, lit(BLACK, 0.8), "outside")],
       effects: [
         drop(u(2), u(8), lit(BLACK, 0.55)),
@@ -98,7 +118,7 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
       } else if (desc.icon && kit.hasIcon(desc.icon)) icon("Art", desc.icon, Math.round(pd * 0.56), lit(WHITE, 0.95));
       else {
         // No art: a bust's silhouette on the unit's colour (§15.5.3: never initials in an empty slot).
-        const ink = lit(mix(nameHue(name), WHITE, 0.55), 0.9);
+        const ink = lit(mix(SLATE, WHITE, 0.45), 0.85);
         leaf("Head", { width: px(Math.round(pd * 0.34)), height: px(Math.round(pd * 0.38)) }, { shape: ellipseShape(), fills: [solid(ink)] }, absolute({ centerX: true, top: Math.round(pd * 0.2) }));
         leaf("Shoulders", { width: px(Math.round(pd * 0.7)), height: px(Math.round(pd * 0.5)) }, { shape: ellipseShape(), fills: [solid(ink)] }, absolute({ centerX: true, top: Math.round(pd * 0.62) }));
       }
@@ -108,46 +128,55 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
         leaf("Hurt", { width: pct(1), height: pct(1) }, { fills: [solid(lit(role("danger"), 0.5 * hurt))] }, absolute({ start: 0, top: 0 }));
       }
       if (dead) {
-        // Dead: the art greyed and darkened to about a third under the skull.
-        box("Dead", { width: pct(1), height: pct(1), align: "center", cross: "center" }, { fills: [solid(lit({ r: 0.12, g: 0.12, b: 0.14, a: 1 }, 0.78))] }, () => {
-          icon("Skull", "skull", Math.round(pd * 0.5), token("inkMuted"));
+        // Dead: the portrait itself, its colour taken by a neutral grey and its light to about 40 %, a small skull on it.
+        leaf("Grey", { width: pct(1), height: pct(1), part: sel("UnitFrame", "dead") }, { fills: [solid(lit({ r: 0.2, g: 0.2, b: 0.21, a: 1 }, 0.72))] }, absolute({ start: 0, top: 0 }));
+        leaf("Dim", { width: pct(1), height: pct(1) }, { fills: [solid(lit({ r: 0.55, g: 0.55, b: 0.56, a: 1 }))], blend: "multiply" }, absolute({ start: 0, top: 0 }));
+        box("Dead", { width: pct(1), height: pct(1), align: "center", cross: "center" }, undefined, () => {
+          skull(Math.round(pd * 0.32));
         }, absolute({ start: 0, top: 0 }));
       }
     });
     const portraitPath = `${kit.openPath()}/Portrait`;
     if (desc.level) {
-      box("Level", { padding: { left: u(4), right: u(4), top: 0, bottom: 0 }, height: px(badgeH), align: "center", cross: "center", part: sel("UnitFrame", "level"), partClass: "badge" }, {
+      box("Level", { padding: { left: Math.round(badgeH * 0.25), right: Math.round(badgeH * 0.25), top: 0, bottom: 0 }, height: px(badgeH), align: "center", cross: "center", part: sel("UnitFrame", "level"), partClass: "badge" }, {
         shape: { kind: "rect", radii: [999, 999, 999, 999] },
         fills: [solid(token("hud", 0.98))],
         strokes: [stroke(1.5, lit(ringInk))],
       }, () => {
-        text("Text", desc.level ?? "", { step: ts(11), font: "mono", color: hostile ? lit(role("danger")) : token("ink"), nowrap: true });
-      }, absolute({ centerX: true, bottom: -Math.round(badgeH * 0.45) }, { z: 2, overlaps: [portraitPath] }));
+        const step = ts(11);
+        const fit = shrunk(step, badgeH * 0.62, stepSize(step).line);
+        text("Text", desc.level ?? "", { step, font: "display", color: hostile ? lit(role("danger")) : token("ink"), nowrap: true }, fit.transform ? { transform: { ...fit.transform, y: 0 } } : undefined);
+      }, absolute({ centerX: true, bottom: -Math.round(badgeH / 2) }, { z: 2, overlaps: [portraitPath] }));
     }
     if (desc.leader) {
-      box("Crown", { width: px(u(18)), height: px(u(18)), align: "center", cross: "center", part: sel("UnitFrame", "crown") }, undefined, () => {
-        icon("Mark", "crown", u(16), lit(role("gold")));
-      }, absolute(desc.reverse ? { end: -u(4), top: -u(8) } : { start: -u(4), top: -u(8) }, { z: 2, overlaps: [portraitPath] }));
+      // Seated on the rim at its upper outer corner (45°), sized by the portrait.
+      const cs = Math.round(pd * 0.34);
+      const at = Math.round(pd * 0.146 - cs / 2);
+      box("Crown", { width: px(cs), height: px(cs), align: "center", cross: "center", part: sel("UnitFrame", "crown") }, undefined, () => {
+        icon("Mark", "crown", Math.round(cs * 0.9), lit(role("gold")));
+      }, absolute(desc.reverse ? { end: at, top: at } : { start: at, top: at }, { z: 2, overlaps: [portraitPath] }));
     }
     close(hurt > 0 && !reduced() ? { transform: { x: Math.sin(hurtAge * 1.9) * u(3) * hurt } } : undefined);
     };
     if (!desc.reverse) portrait();
     kit.column("Bars", { gap: u(3), width: { kind: "grow" } }, () => {
       kit.row("Head", { gap: tk.xs, cross: "center", width: { kind: "grow" } }, () => {
-        text("Name", name, { step: ts(m.name), font: "display", color: dead || offline ? token("inkMuted") : hostile ? lit(mix(role("danger"), WHITE, 0.15)) : token("ink"), nowrap: textScale() < 1.5, maxLines: 2, ellipsis: true, width: { kind: "grow" }, outline: 1.4 });
+        text("Name", name, { step: ts(m.name), font: "display", color: dead || offline ? token("inkMuted") : hostile ? lit(mix(role("danger"), WHITE, 0.15)) : token("ink"), nowrap: true, ellipsis: true, width: { kind: "grow" }, soft: true });
         if (desc.combat) icon("Combat", "crossed-swords", u(14), lit(role("danger")), "In combat");
       });
-      if (desc.title && size !== "small") text("Title", desc.title, { step: ts(11), color: token("ink", 0.85), nowrap: true, ellipsis: true, width: { kind: "grow" }, outline: 1.2 });
+      if (desc.title && size !== "small") text("Title", desc.title, { step: ts(11), color: token("ink", 0.9), nowrap: true, ellipsis: true, width: { kind: "grow" }, soft: true });
       statBar("Health", {
         value: dead ? 0 : health,
         max: healthMax,
         kind: "health",
         ...(hostile ? { color: token("danger") } : {}),
-        shield: desc.shield ?? 0,
-        shieldMax: (desc.shield ?? 0) > 0 ? healthMax : 0,
+        // The absorb lies on the health as a white-blue overlay (World of Warcraft, Diablo IV), never a bar of its own.
+        absorb: dead ? 0 : desc.shield ?? 0,
+        // Health is the frame's dominant bar: full length, the tallest, its numerals inside its end.
         thickness: m.bar,
         width: { kind: "grow" },
         showValue: size === "large",
+        valueInside: true,
         // A boss's millions shortened as shipped frames do (800K / 1.25M); a hero's thousands grouped (34,960 / 38,000).
         valueText: size === "large" ? `${hpText(health, healthMax)} / ${hpText(healthMax, healthMax)}` : "",
         name: `${name} health`,
@@ -242,7 +271,7 @@ function cell(id: string, m: Api.RaidMember, w: number, h: number): Api.Response
     // At a large text size the status takes its own line under the name, so neither is cut to nothing.
     const stacked = textScale() >= 1.5 && !!(m.dead || m.offline);
     if (stacked) open("Names", { direction: "column", gap: 0, width: { kind: "grow" } });
-    text("Name", m.name ?? "", { step: ts(11), color: ink, nowrap: true, ellipsis: true, width: { kind: "grow" }, outline: 1 });
+    text("Name", m.name ?? "", { step: ts(11), color: ink, nowrap: true, ellipsis: true, width: { kind: "grow" }, soft: true });
     if (m.dead || m.offline) text("Status", m.dead ? "Dead" : "Offline", { step: ts(10), color: token("inkMuted"), nowrap: true, ellipsis: stacked });
     if (stacked) close();
   });
@@ -291,10 +320,15 @@ function cast(id: string, desc: Api.CastBarDesc, compact: boolean): void {
     const trackPath = open("Track", { width: { kind: "grow" }, height: px(h), cross: "center", part: sel("CastBar", "track"), partClass: "bar" }, {
       ...trackDraw(Math.min(h / 2, u(3))),
       ...(desc.uninterruptible ? { strokes: [stroke(1.5, token("inkMuted"), "outside")] } : {}),
+      // Compact, the name sits inside the bar: the bar clips it (an ellipsis first), so no text leaves its box.
+      ...(withText ? { clip: "shape" as const } : {}),
     });
     const w = kit.bounds(trackPath)?.width ?? u(240);
     leaf("Fill", { width: pct(shown), height: pct(1), part: sel("CastBar", "fill") }, fillDraw(ink, Math.min(h / 2, u(3))), absolute({ start: 0, top: 0 }));
-    if (!ended && shown > 0.01 && shown < 0.995) {
+    if (!ended && shown > 0.01 && shown < 0.995 && withText) {
+      // Under its name: a faint edge, never a bright tick across the letters.
+      leaf("Spark", { width: px(2), height: pct(1), part: sel("CastBar", "spark") }, { fills: [solid(lit(WHITE, 0.45))] }, absolute({ start: shown * w - 1, top: 0 }));
+    } else if (!ended && shown > 0.01 && shown < 0.995) {
       // The spark at the leading edge.
       leaf("Spark", { width: px(u(10)), height: pct(1.8), part: sel("CastBar", "spark") }, {
         shape: ellipseShape(),
@@ -303,7 +337,7 @@ function cast(id: string, desc: Api.CastBarDesc, compact: boolean): void {
       }, absolute({ start: shown * w - u(5), top: -h * 0.4 }));
     }
     if ((desc.latency ?? 0) > 0 && !desc.channel && !ended) {
-      leaf("Latency", { width: pct(clamp01(desc.latency ?? 0)), height: pct(1), part: sel("CastBar", "latency") }, { fills: [solid(lit(role("danger"), 0.45))] }, absolute({ end: 0, top: 0 }));
+      leaf("Latency", { width: pct(clamp01(desc.latency ?? 0)), height: pct(1), part: sel("CastBar", "latency") }, { fills: [solid(lit(mix(ink, WHITE, 0.6), 0.5))] }, absolute({ end: 0, top: 0 }));
     }
     if (desc.channel && (desc.ticks ?? 0) > 1) {
       for (let i = 1; i < (desc.ticks ?? 0); i++) {

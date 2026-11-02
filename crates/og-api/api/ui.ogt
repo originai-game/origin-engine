@@ -6330,6 +6330,9 @@ module ui {
     field heal f32 "Healing on its way, a pale preview past the fill." {
       min 0
     }
+    field absorb f32 "An absorb on the health (World of Warcraft's, Diablo IV's): a white-blue overlay past the fill, laid back over its end when the bar is full." {
+      min 0
+    }
     field recoverable f32 "Damage that can still come back (a fighting game's grey health): drawn between the value and this." {
       min 0
     }
@@ -6338,6 +6341,7 @@ module ui {
     }
     field label String "A short name at its start (HP); empty is none."
     field showValue bool "The value as text at its end (72 / 100)."
+    field valueInside bool "The value inside the track at its end, over the fill, so the bar keeps its full length (a unit frame's health); the track grows to hold the text."
     field valueText String "The value as text instead (72%); empty formats value / max."
     field icon String "An icon of the atlas before it."
     field width Option.Size "Its width; null is 240 (grows with the surface)."
@@ -6360,8 +6364,8 @@ module ui {
   }
 
   fn statBar {
-    doc "A health or resource bar to the bar of action games: blocks (segment), a ghost chunk that holds after a hit and then drains (Dark Souls, fighting games), a heal preview, grey recoverable damage, a row of shield cells in their tier's colour over it (Apex Legends), low and critical states (warn, then danger pulsing), a mirrored fill for the right player, flat, slanted or pill ends. A drop is instant, a rise moves on the ui spring."
-    doc "Parts: StatBar.frame[<style>][<level>], StatBar.track, StatBar.fill[<kind>][<level>], StatBar.ghost, StatBar.heal, StatBar.recoverable, StatBar.block[filled], StatBar.cell[filled][<tier>], StatBar.label, StatBar.value, StatBar.icon. States: group level (normal, low, critical, empty). Sounds: warning on crossing into critical. Accessibility: meter named by name, valueNow the value, valueMax max. Probe ids: <id>, <id>/Track, <id>/Track/Fill, <id>/Track/Ghost, <id>/Track/Block#i, <id>/Shield/Cell#i, <id>/Value."
+    doc "A health or resource bar to the bar of action games: blocks (segment), a ghost chunk that holds after a hit and then drains (Dark Souls, fighting games), a heal preview, an absorb overlay (World of Warcraft's white-blue), grey recoverable damage, the value inside its end or after it, a row of shield cells in their tier's colour over it (Apex Legends), low and critical states (warn, then danger pulsing), a mirrored fill for the right player, flat, slanted or pill ends. A drop is instant, a rise moves on the ui spring."
+    doc "Parts: StatBar.frame[<style>][<level>], StatBar.track, StatBar.fill[<kind>][<level>], StatBar.ghost, StatBar.heal, StatBar.absorb[over], StatBar.recoverable, StatBar.block[filled], StatBar.cell[filled][<tier>], StatBar.label, StatBar.value, StatBar.icon. States: group level (normal, low, critical, empty). Sounds: warning on crossing into critical. Accessibility: meter named by name, valueNow the value, valueMax max. Probe ids: <id>, <id>/Track, <id>/Track/Fill, <id>/Track/Ghost, <id>/Track/Block#i, <id>/Shield/Cell#i, <id>/Value (inside: <id>/Main/Track/Value/Text)."
     host false
     param id String "Its id."
     param desc StatBarDesc "The value and the look."
@@ -6621,7 +6625,7 @@ module ui {
   }
 
   fn unitFrame {
-    doc "A unit frame to the bar of World of Warcraft and Final Fantasy XIV: a round portrait (an art slot, else a bust silhouette on the unit's colour) ringed by the style and floating on its own shadow with no plate behind the frame, the level on a badge, an elite or boss dressing, the name over a health bar with its shield and ghost and a resource bar, the cast under them, small buffs, and states for the target, dead (grey, a skull), offline (dim), in combat and the leader's crown. A press selects it."
+    doc "A unit frame to the bar of World of Warcraft and Final Fantasy XIV: a round portrait (an art slot, else a bust silhouette on a slate ground) ringed by the style and floating on its own shadow with no plate behind the frame, the level on a badge at most 40 % of it seated on its rim, an elite or boss dressing, the name on one line over the dominant health bar (its absorb as an overlay, its ghost, its numerals inside its end) and a resource bar, the cast under them, small buffs, and states for the target, dead (the portrait greyed to about 40 %, a small skull), offline (dim), in combat and the leader's crown. A press selects it."
     doc "Parts: UnitFrame.frame[<size>][hostile][targeted][dead], UnitFrame.portrait[<class>], UnitFrame.level, UnitFrame.name, UnitFrame.title, UnitFrame.health (a StatBar), UnitFrame.resource, UnitFrame.cast, UnitFrame.crown, UnitFrame.combat. Slots: portrait (art kind portrait). States: group life (alive, dead, offline), group selection (none, targeted). Accessibility: button named name, level and health. Probe ids: <id>, <id>/Avatar/Portrait, <id>/Avatar/Level, <id>/Bars/Head/Name, <id>/Bars/Health, <id>/Bars/Resource, <id>/Bars/Cast."
     host false
     param id String "Its id."
@@ -6741,7 +6745,7 @@ module ui {
     field uninterruptible bool "A shield on its icon and a grey border: it cannot be interrupted."
     field state CastState "Where it is."
     field stateAt u32 "og.ui.tick() when it ended (success, interrupted, failed): it fades out after."
-    field latency f32 "The latency zone at its end, a fraction of the bar (a cast can be queued in it)." {
+    field latency f32 "The latency zone at its end, a fraction of the bar (a cast can be queued in it), a pale tint of the fill." {
       unit ratio
     }
     field interruptedLabel String "The interrupted word." {
