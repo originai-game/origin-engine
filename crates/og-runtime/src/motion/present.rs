@@ -61,6 +61,8 @@ pub(crate) const MODEL_FILE: &str = "motion/model.ogb";
 pub(crate) const MODEL_ENTRY: &str = "motion/model.safetensors";
 /// How far ahead of the simulation the model's next goal is placed.
 const HORIZON: f32 = 1.2;
+/// The shortest model goal a change of pose ends ([`predict`]), s.
+const SEGMENT: f32 = 0.3;
 /// The GPU time a batch may add to one frame, ms: a batch runs in slices of
 /// about this much, one a frame (`Gpu::set_frame_budget`), so a frame of
 /// 16.7 ms keeps room for the scene.
@@ -278,8 +280,24 @@ fn gait(speed: f32) -> usize {
     if speed >= RUN_SPEED { 2 } else { 1 }
 }
 
+/// The library pose a driven agent is in, moving at `speed`: a place or
+/// pose goal asks for its own pose even while the mover carries the
+/// character there; only a walk is walked or run.
+fn pose_of(agent: &super::Agent, speed: f32) -> usize {
+    match agent.current {
+        Some(c) if matches!(c.goal.kind, Kind::Place | Kind::Pose) => c.goal.pose as usize,
+        _ if speed > 0.3 => gait(speed),
+        Some(c) if c.goal.kind == Kind::WalkTo => c.goal.pose as usize,
+        _ => agent.hold as usize,
+    }
+}
+
 /// Where the simulation will have an agent [`HORIZON`] seconds on, its
-/// heading there and the library pose it will be in.
+/// heading there and the library pose it will be in. A driven agent's goal
+/// ends sooner, where its pose first changes at least [`SEGMENT`] seconds
+/// on: the model then reaches each pose of the course in turn (a run, then
+/// the jump at its landing) instead of skipping a short goal for the one
+/// after it (a run straight into the crouch that follows the jump).
 fn predict(goals: &Goals, a: &Seen, shown: &Shown) -> (Vec3, f32, usize) {
     let h0 = heading_of(a.rotation);
     match goals.agents.get(&a.entity) {
@@ -287,21 +305,20 @@ fn predict(goals: &Goals, a: &Seen, shown: &Shown) -> (Vec3, f32, usize) {
             let mut agent = agent.clone();
             let (mut p, mut h) = (a.position, h0);
             let step = 1.0 / RATE;
-            let mut speed = 0.0;
-            for _ in 0..(HORIZON * RATE) as usize {
-                let before = p;
+            let mut last = None;
+            for k in 0..(HORIZON * RATE) as usize {
+                let (p0, h0) = (p, h);
                 advance(&mut agent, &a.settings, &mut p, &mut h, step);
-                speed = (p - before).length() / step;
+                let pose = pose_of(&agent, (p - p0).length() / step);
+                if let Some(prev) = last
+                    && pose != prev
+                    && k as f32 * step >= SEGMENT
+                {
+                    return (p0, h0, prev);
+                }
+                last = Some(pose);
             }
-            // A place or pose goal asks for its own pose even while the mover
-            // carries the character there; only a walk is walked or run.
-            let pose = match agent.current {
-                Some(c) if matches!(c.goal.kind, Kind::Place | Kind::Pose) => c.goal.pose as usize,
-                _ if speed > 0.3 => gait(speed),
-                Some(c) if c.goal.kind == Kind::WalkTo => c.goal.pose as usize,
-                _ => agent.hold as usize,
-            };
-            (p, h, pose)
+            (p, h, last.unwrap_or(agent.hold as usize))
         }
         agent => {
             let v = Vec3::new(shown.velocity.x, 0.0, shown.velocity.z);
