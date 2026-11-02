@@ -86,6 +86,7 @@ module load {
 | [`LoadCompletion`](#type-LoadCompletion) | struct | When an uncooked load was put in place: the journal a replay applies again (og.load.completions). |
 | [`og.load.imageData`](#fn-imageData) | function | Load an image from bytes, uncooked, at run time: a PNG or JPEG a player drew, uploaded or a generator made. Its size, width and height are read from its header and checked against the budget before it is decoded. On the web the browser decodes it off the engine's thread (createImageBitmap in the engine's Worker), and no decoder is in the wasm; natively a worker thread decodes it. The handle is pending until the image is in place, then ready (og.load.imageInfo gives its texture) or failed (og.load.error says why). |
 | [`og.load.gltfData`](#fn-gltfData) | function | Load a glTF 2.0 model from bytes, uncooked, at run time: a .glb, or a .gltf whose buffers and images are data: URIs, that a player made or a generator wrote. At the call its JSON is read and its size, its triangles (every triangle primitive of every mesh) and each image's header are checked against the budget before anything is decoded. Then its images decode off the engine's thread, as og.load.imageData's do, while its primitives are converted at the tick boundaries, one at a time within LoadBudget.frameMs on the web. The handle is pending until the model is in place, then ready: world.instantiate spawns it (from a system, which cannot instantiate, insert og.Model { asset } on an entity it spawns) and og.load.gltfInfo describes it, as for a cooked glTF. Or it is failed, and og.load.error says why. |
+| [`og.load.release`](#fn-release) | function | Free an uncooked asset (og.load.imageData, og.load.gltfData): a load still pending is dropped (it never completes, so it is never journaled), and a ready one's textures and meshes are emptied under their handles, so what still names them draws nothing and nothing breaks, while their memory on the GPU and their copies on the CPU go (the probe's memory report and `dump_memory` show both). An og.Model of a released model draws nothing; a sprite or material of a released texture draws one clear texel. The handle then answers failed, naming the release. Physics shapes built from its geometries are world state and stay. Releasing again does nothing. |
 | [`og.load.imageInfo`](#fn-imageInfo) | function | A ready uncooked image's texture and size. |
 | [`og.load.completions`](#fn-completions) | function | The world's journal of uncooked loads put in place, oldest first: what a replay hands og.load.replayCompletions to put each in place at the same tick. og replay --record keeps it in the trace. |
 | [`og.load.replayCompletions`](#fn-replayCompletions) | function | Put this world's uncooked loads in place at the ticks a recorded run did (its og.load.completions), not when this host finishes them: a load is held back until its tick, and at its tick the engine waits for it. Call it before the first tick; og replay --compare does. A load the journal names as failed fails at its tick whatever this host made of it. |
@@ -1236,6 +1237,36 @@ fn gltfData {
 
 <sub>`api.ogt` line 7543</sub>
 
+<a id="fn-release"></a>
+
+### `og.load.release`
+
+Free an uncooked asset (og.load.imageData, og.load.gltfData): a load still pending is dropped (it never completes, so it is never journaled), and a ready one's textures and meshes are emptied under their handles, so what still names them draws nothing and nothing breaks, while their memory on the GPU and their copies on the CPU go (the probe's memory report and `dump_memory` show both). An og.Model of a released model draws nothing; a sprite or material of a released texture draws one clear texel. The handle then answers failed, naming the release. Physics shapes built from its geometries are world state and stay. Releasing again does nothing.
+
+```ts
+og.load.release(world: World, asset: Asset): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world that owns the asset. |
+| `asset` | `Asset` | no | A handle og.load.imageData or og.load.gltfData answered. |
+
+**Returns** `Result<void>`: Refused for a cooked asset, which stays with its bundle (a streamed one with its group).
+
+Binding symbol `og_load_release` · publish builds: kept
+
+```ogt
+fn release {
+  doc "Free an uncooked asset (og.load.imageData, og.load.gltfData): a load still pending is dropped (it never completes, so it is never journaled), and a ready one's textures and meshes are emptied under their handles, so what still names them draws nothing and nothing breaks, while their memory on the GPU and their copies on the CPU go (the probe's memory report and `dump_memory` show both). An og.Model of a released model draws nothing; a sprite or material of a released texture draws one clear texel. The handle then answers failed, naming the release. Physics shapes built from its geometries are world state and stay. Releasing again does nothing."
+  param world World "The world that owns the asset."
+  param asset Asset "A handle og.load.imageData or og.load.gltfData answered."
+  returns Result.Void "Refused for a cooked asset, which stays with its bundle (a streamed one with its group)."
+}
+```
+
+<sub>`api.ogt` line 7554</sub>
+
 <a id="fn-imageInfo"></a>
 
 ### `og.load.imageInfo`
@@ -1264,7 +1295,7 @@ fn imageInfo {
 }
 ```
 
-<sub>`api.ogt` line 7554</sub>
+<sub>`api.ogt` line 7561</sub>
 
 <a id="fn-completions"></a>
 
@@ -1292,7 +1323,7 @@ fn completions {
 }
 ```
 
-<sub>`api.ogt` line 7561</sub>
+<sub>`api.ogt` line 7568</sub>
 
 <a id="fn-replayCompletions"></a>
 
@@ -1322,7 +1353,7 @@ fn replayCompletions {
 }
 ```
 
-<sub>`api.ogt` line 7567</sub>
+<sub>`api.ogt` line 7574</sub>
 
 ## Components, resources and events
 
@@ -1447,7 +1478,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 7574</sub>
+<sub>`api.ogt` line 7581</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -1472,7 +1503,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 7580</sub>
+<sub>`api.ogt` line 7587</sub>
 
 ## Types
 

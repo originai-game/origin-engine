@@ -290,6 +290,10 @@ pub fn og_load_image_info(world: u32, asset: f64) -> String {
     result(engine(world).and_then(|eng| crate::uncooked::image_info(&eng, index_of(asset))))
 }
 
+pub fn og_load_release(world: u32, asset: f64) -> String {
+    result_void(engine(world).and_then(|eng| crate::uncooked::release(&eng, index_of(asset))))
+}
+
 pub fn og_load_completions(world: u32) -> String {
     match engine(world) {
         Ok(eng) => crate::uncooked::completions(&eng).to_string(),

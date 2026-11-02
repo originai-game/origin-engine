@@ -481,7 +481,7 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
         }
         (model, textures)
     };
-    insert_model(eng, &id, group, model, &textures, into, true)
+    insert_model(eng, &id, group, model, &textures, into, true).map(|(i, _)| i)
 }
 
 /// Adds a decoded model and its textures (in [`CookedModel::textures`]
@@ -489,6 +489,7 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
 /// index. A cooked model is `registered` under its path (og.load.gltf of it
 /// answers this asset, a hot reload refreshes it); an uncooked one
 /// (og.load.gltfData) is not. A streamed model (`group`) is its proxy.
+/// Answers the asset index and the model's textures in the scene.
 pub(crate) fn insert_model(
     eng: &Engine,
     id: &str,
@@ -497,7 +498,7 @@ pub(crate) fn insert_model(
     textures: &[og_render::TextureSource],
     into: Option<usize>,
     registered: bool,
-) -> Result<usize, String> {
+) -> Result<(usize, Vec<og_render::TextureHandle>), String> {
     let id = id.to_string();
     let source = match &group {
         Some(_) => format!("{id}#proxy"),
@@ -519,6 +520,7 @@ pub(crate) fn insert_model(
     for (h, t) in parts.textures.iter().zip(&model.textures) {
         rs.decoded.ids.insert(*h, t.id.clone());
     }
+    let texture_handles = parts.textures.clone();
     // Each primitive's raycast BVH, cooked into the blob: loaded with the
     // mesh, so the first og.render.raycast builds nothing.
     for (p, prim) in model.primitives.iter().enumerate() {
@@ -660,7 +662,7 @@ pub(crate) fn insert_model(
     if let (Some(group), Some((meshes, materials))) = (group, stand_in) {
         super::stream::add_model(eng, &group, &id, meshes, materials);
     }
-    Ok(index)
+    Ok((index, texture_handles))
 }
 
 /// After a hot reload (`og dev` cooks before it rebuilds the bundle): every

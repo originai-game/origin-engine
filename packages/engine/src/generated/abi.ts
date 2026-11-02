@@ -513,6 +513,8 @@ export interface HostAbi<A, V> {
   og_load_image_data(world: number, name: string, bytes: Uint8Array, desc: string | undefined): string;
   /** `og.load.gltfData` */
   og_load_gltf_data(world: number, name: string, bytes: Uint8Array, desc: string | undefined): string;
+  /** `og.load.release` */
+  og_load_release(world: number, asset: number): string;
   /** `og.load.imageInfo` */
   og_load_image_info(world: number, asset: number): string;
   /** `og.load.completions` */
@@ -1469,6 +1471,7 @@ export const SYMBOLS: readonly string[] = [
   "og_load_rig2d",
   "og_load_image_data",
   "og_load_gltf_data",
+  "og_load_release",
   "og_load_image_info",
   "og_load_completions",
   "og_load_replay_completions",

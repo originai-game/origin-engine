@@ -19,6 +19,9 @@
 //   info, its spawned Model and the bounds its child node moves agree
 // - a web-timed glTF completion replayed when this host finishes it →
 //   pending until its recorded tick, then ready
+// - a released asset still holding its texels and vertices → the counted
+//   heap gives back what the loads took (the GPU side: uncooked-release)
+// - a released pending load completing anyway → never journaled, failed
 import { beforeAll, expect, test } from "bun:test";
 import { og, type World } from "@origingame/engine";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
@@ -29,6 +32,7 @@ import { loadNativeHost } from "../src/node/index.ts";
 import { encodePng } from "../src/node/png.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 import uncooked, { image, Probe } from "./fixtures/uncooked/game.ts";
+import { gridGlb, quadGlb } from "./fixtures/uncooked/glb.ts";
 import type { Asset } from "@origingame/engine";
 
 declare const Bun: { spawnSync(cmd: string[], o: { cwd: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array } };
@@ -124,57 +128,6 @@ test("og replay keeps the loads journal: a trace recorded with a web session's j
   expect(JSON.parse(off.out.trim().split("\n").at(-1)!).firstDivergentTick).toBeLessThanOrEqual(5);
 });
 
-/** A .glb: a textured quad (two triangles, sampling a 3x2 PNG) on a root node, and a child node 5 m along x drawing it again. */
-function quadGlb(extra: Record<string, unknown> = {}, png: Uint8Array = image): Uint8Array {
-  // Four corners, then their texture coordinates: the corner's x and y.
-  const f32 = new Float32Array([0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 1]);
-  const positions = new Uint8Array(f32.buffer, 0, 48);
-  const uvs = new Uint8Array(f32.buffer, 48, 32);
-  const indices = new Uint8Array(new Uint16Array([0, 1, 2, 0, 2, 3]).buffer);
-  const pad = (n: number) => (4 - (n % 4)) % 4;
-  const parts = [positions, uvs, indices, new Uint8Array(pad(12)), png, new Uint8Array(pad(png.length))];
-  const bin = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
-  let at = 0;
-  for (const p of parts) (bin.set(p, at), (at += p.length));
-  const json = {
-    asset: { version: "2.0" },
-    scene: 0,
-    scenes: [{ nodes: [0] }],
-    nodes: [{ mesh: 0, children: [1] }, { mesh: 0, translation: [5, 0, 0] }],
-    meshes: [{ primitives: [{ attributes: { POSITION: 0, TEXCOORD_0: 1 }, indices: 2, material: 0 }] }],
-    materials: [{ pbrMetallicRoughness: { baseColorTexture: { index: 0 }, metallicFactor: 0 } }],
-    textures: [{ source: 0 }],
-    images: [{ bufferView: 3, mimeType: "image/png" }],
-    buffers: [{ byteLength: bin.length }],
-    bufferViews: [
-      { buffer: 0, byteOffset: 0, byteLength: 48 },
-      { buffer: 0, byteOffset: 48, byteLength: 32 },
-      { buffer: 0, byteOffset: 80, byteLength: 12 },
-      { buffer: 0, byteOffset: 92 + pad(12), byteLength: png.length },
-    ],
-    accessors: [
-      { bufferView: 0, componentType: 5126, count: 4, type: "VEC3", min: [0, 0, 0], max: [1, 1, 0] },
-      { bufferView: 1, componentType: 5126, count: 4, type: "VEC2" },
-      { bufferView: 2, componentType: 5123, count: 6, type: "SCALAR" },
-    ],
-    ...extra,
-  };
-  let text = new TextEncoder().encode(JSON.stringify(json));
-  text = Uint8Array.from([...text, ...new Array(pad(text.length)).fill(0x20)]);
-  const out = new Uint8Array(12 + 8 + text.length + 8 + bin.length);
-  const v = new DataView(out.buffer);
-  v.setUint32(0, 0x46546c67, true);
-  v.setUint32(4, 2, true);
-  v.setUint32(8, out.length, true);
-  v.setUint32(12, text.length, true);
-  v.setUint32(16, 0x4e4f534a, true);
-  out.set(text, 20);
-  v.setUint32(20 + text.length, bin.length, true);
-  v.setUint32(24 + text.length, 0x004e4942, true);
-  out.set(bin, 28 + text.length);
-  return out;
-}
-
 test("a glTF over its budget, or holding what the reader does not decode, is refused at the call by name", () => {
   const made = createEngine(game);
   if (!made.ok) throw new Error(made.reason);
@@ -184,16 +137,16 @@ test("a glTF over its budget, or holding what the reader does not decode, is ref
     return r.ok ? "accepted" : r.reason;
   };
   // Two triangles a node, but the budget counts each mesh once.
-  expect(reason(quadGlb(), { budget: { triangles: 1 } })).toBe(
+  expect(reason(quadGlb(image), { budget: { triangles: 1 } })).toBe(
     "creations/kite.glb: 2 triangles is over LoadBudget.triangles (1); simplify the model (a decimate modifier, fewer subdivisions) or raise the budget",
   );
-  expect(reason(quadGlb(), { budget: { textureSize: 2 } })).toContain("creations/kite.glb: image 0: 3x2 is over LoadBudget.textureSize (2)");
-  expect(reason(quadGlb(), { budget: { bytes: 100 } })).toMatch(/creations\/kite\.glb: \d+ bytes is over LoadBudget\.bytes \(100\)/);
-  expect(reason(quadGlb({ extensionsRequired: ["KHR_draco_mesh_compression"], extensionsUsed: ["KHR_draco_mesh_compression"] }))).toContain("Draco");
-  expect(reason(quadGlb({ buffers: [{ uri: "kite.bin", byteLength: 4 }] }))).toContain("pack the model as a .glb");
-  expect(reason(quadGlb({}, new TextEncoder().encode("GIF89a\x03\x00\x02\x00")))).toContain("image 0: not a PNG or JPEG");
+  expect(reason(quadGlb(image), { budget: { textureSize: 2 } })).toContain("creations/kite.glb: image 0: 3x2 is over LoadBudget.textureSize (2)");
+  expect(reason(quadGlb(image), { budget: { bytes: 100 } })).toMatch(/creations\/kite\.glb: \d+ bytes is over LoadBudget\.bytes \(100\)/);
+  expect(reason(quadGlb(image, { extensionsRequired: ["KHR_draco_mesh_compression"], extensionsUsed: ["KHR_draco_mesh_compression"] }))).toContain("Draco");
+  expect(reason(quadGlb(image, { buffers: [{ uri: "kite.bin", byteLength: 4 }] }))).toContain("pack the model as a .glb");
+  expect(reason(quadGlb(new TextEncoder().encode("GIF89a\x03\x00\x02\x00")))).toContain("image 0: not a PNG or JPEG");
   expect(reason(new TextEncoder().encode("solid kite\nendsolid"))).toContain("not a glTF");
-  expect(reason(quadGlb())).toBe("accepted");
+  expect(reason(quadGlb(image))).toBe("accepted");
 });
 
 test("natively a glTF is in place at the boundary after its call, drawn as og.load.gltf's model would be", () => {
@@ -201,7 +154,7 @@ test("natively a glTF is in place at the boundary after its call, drawn as og.lo
     const made = createEngine(game);
     if (!made.ok) throw new Error(made.reason);
     const world = made.value.world as unknown as World;
-    const r = og.load.gltfData(world, "creations/kite.glb", quadGlb(), {});
+    const r = og.load.gltfData(world, "creations/kite.glb", quadGlb(image), {});
     if (!r.ok) throw new Error(r.reason);
     expect(og.load.status(world, r.value)).toBe("pending");
     expect(made.value.advance(1).ok).toBe(true);
@@ -241,7 +194,7 @@ test("a web-timed glTF completion replays at its recorded tick: pending until it
   const world = made.value.world as unknown as World;
   const journal = [{ request: 0, tick: 0, ok: true }, { request: 1, tick: 4, ok: true }];
   expect(og.load.replayCompletions(world, journal as never)).toEqual({ ok: true });
-  const r = og.load.gltfData(world, "creations/kite.glb", quadGlb(), {});
+  const r = og.load.gltfData(world, "creations/kite.glb", quadGlb(image), {});
   if (!r.ok) throw new Error(r.reason);
   const seen: string[] = [];
   for (let i = 0; i < 6; i++) {
@@ -251,4 +204,45 @@ test("a web-timed glTF completion replays at its recorded tick: pending until it
   // The boundary before tick 4 is the fifth advance's.
   expect(seen).toEqual(["pending", "pending", "pending", "pending", "ready", "ready"]);
   expect(og.load.completions(world)).toEqual(journal);
+});
+
+test("og.load.release gives back the memory an uncooked image and model took, and drops a pending load unjournaled", () => {
+  const made = createEngine(game);
+  if (!made.ok) throw new Error(made.reason);
+  const engine = made.value;
+  const world = engine.world as unknown as World;
+  const live = () => {
+    const m = engine.probe.memory() as { heap: { live: number } | null } | null;
+    if (!m?.heap) throw new Error("this host counts no heap");
+    return m.heap.live;
+  };
+  expect(engine.advance(1).ok).toBe(true);
+  const before = live();
+  // 4 MiB of texels and a grid of 131,072 triangles (66,049 vertices).
+  const size = 1024;
+  const texels = new Uint8Array(size * size * 4).map((_, i) => (i * 7) & 0xff);
+  const picture = og.load.imageData(world, "drawings/wall.png", encodePng({ width: size, height: size, rgba: texels }), {});
+  const grid = og.load.gltfData(world, "creations/field.glb", gridGlb(256), {});
+  if (!picture.ok || !grid.ok) throw new Error("refused");
+  expect(engine.advance(1).ok).toBe(true);
+  expect([og.load.status(world, picture.value), og.load.status(world, grid.value)]).toEqual(["ready", "ready"]);
+  const loaded = live();
+  expect(loaded - before).toBeGreaterThan(8_000_000);
+  for (const a of [picture.value, grid.value]) expect(og.load.release(world, a)).toEqual({ ok: true });
+  expect(engine.advance(1).ok).toBe(true);
+  // What stays is the handles' bookkeeping, not the content.
+  expect(loaded - live()).toBeGreaterThan(0.95 * (loaded - before));
+  expect(og.load.status(world, grid.value)).toBe("failed");
+  expect(og.load.error(world, grid.value)).toBe("creations/field.glb was released (og.load.release)");
+  const again = world.instantiate(grid.value, {});
+  expect(!again.ok && again.reason).toBe("creations/field.glb was released (og.load.release)");
+  expect(!og.load.imageInfo(world, picture.value).ok).toBe(true);
+  expect(og.load.release(world, grid.value)).toEqual({ ok: true });
+  // A pending load released before its boundary never lands and is never journaled.
+  const pending = og.load.imageData(world, "drawings/late.png", image, {});
+  if (!pending.ok) throw new Error(pending.reason);
+  expect(og.load.release(world, pending.value)).toEqual({ ok: true });
+  expect(engine.advance(2).ok).toBe(true);
+  expect(og.load.status(world, pending.value)).toBe("failed");
+  expect(og.load.completions(world).map((c) => c.request)).toEqual([0, 1, 2]);
 });

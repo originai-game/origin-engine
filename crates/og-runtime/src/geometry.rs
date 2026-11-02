@@ -423,6 +423,13 @@ fn bvh_of(g: &mut GeoState, scene: &og_render::RenderScene, mesh: MeshHandle) ->
 /// A loaded model's primitive takes the BVH its cook built (over the mesh
 /// the scene now holds at `mesh`), so no raycast builds one; a primitive
 /// cooked with `raycast false` keeps the lazy build.
+/// Drops what was cached for a mesh (its raycast BVH, its bounds): a
+/// released uncooked model's meshes (og.load.release).
+pub(crate) fn forget_mesh(rs: &mut RenderState, mesh: MeshHandle) {
+    rs.geo.bvh.remove(&mesh.index());
+    rs.geo.bounds.remove(&mesh.index());
+}
+
 pub(crate) fn adopt_cooked_bvh(
     rs: &mut RenderState,
     mesh: MeshHandle,

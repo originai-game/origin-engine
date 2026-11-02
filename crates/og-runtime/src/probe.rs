@@ -265,6 +265,7 @@ pub(crate) const MODULE_ACTIONS: &[&str] = &[
     "dump_desync",
     "dump_lanes",
     "dump_motion",
+    "dump_memory",
     "dump_nav",
     "dump_platform",
     "dump_pulse",

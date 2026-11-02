@@ -222,6 +222,11 @@ pub(crate) struct Uncooked {
     pub journal: Vec<Completion>,
     /// A recorded journal to replay (og.load.replayCompletions), by request.
     schedule: Option<BTreeMap<u32, Completion>>,
+    /// The entries uncooked loads made and not released (og.load.release
+    /// frees these alone), with a ready glTF's textures in the scene.
+    owned: BTreeMap<usize, Vec<og_render::TextureHandle>>,
+    /// Host decodes of released loads, taken and dropped as they land.
+    discard: Vec<u64>,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -273,6 +278,7 @@ fn queue(
     let u = &mut assets.uncooked;
     let request = u.next;
     u.next += 1;
+    u.owned.insert(entry, Vec::new());
     let work = work(u);
     u.jobs.push(Job {
         request,
@@ -478,6 +484,14 @@ pub(crate) fn poll(eng: &Engine, tick: u64) {
         worked: false,
     };
     let wait_all = cfg!(not(target_arch = "wasm32"));
+    // A released load's host decode is dropped once it lands.
+    if let Some(h) = h.as_deref() {
+        eng.assets
+            .borrow_mut()
+            .uncooked
+            .discard
+            .retain(|&key| matches!(h.image_decode_take(key), Fetch::Pending));
+    }
     let mut jobs = std::mem::take(&mut eng.assets.borrow_mut().uncooked.jobs);
     let schedule = eng.assets.borrow().uncooked.schedule.clone();
     let mut kept = Vec::new();
@@ -623,7 +637,88 @@ fn put_gltf(eng: &Engine, name: &str, entry: usize, g: Gltf) -> Result<(), Strin
         })
         .collect();
     let model = g.file.finish(g.prims);
-    super::assets::insert_model(eng, name, None, model, &textures, Some(entry), false)?;
+    let (_, handles) =
+        super::assets::insert_model(eng, name, None, model, &textures, Some(entry), false)?;
+    if let Some(owned) = eng.assets.borrow_mut().uncooked.owned.get_mut(&entry) {
+        *owned = handles;
+    }
+    Ok(())
+}
+
+/// What a released texture is replaced with, under its handle: one clear
+/// texel, so whatever still names it draws nothing and holds nothing.
+fn released_texture() -> og_render::TextureData {
+    og_render::TextureData {
+        width: 1,
+        height: 1,
+        rgba: vec![0; 4],
+        color_space: og_render::ColorSpace::Srgb,
+        mips: og_render::Mips::None,
+    }
+}
+
+/// `og.load.release`: frees an uncooked asset. A pending load is dropped
+/// (it never completes, so it is never journaled); a ready image's texture
+/// and a ready model's meshes and textures are emptied under their handles,
+/// so nothing that still names them breaks or draws, and their GPU and CPU
+/// copies go; the model's draw parts and cached raycast BVHs go too. The
+/// handle then answers failed. Physics shapes built from its geometries are
+/// world state and stay. Releasing again is a no-op.
+pub(crate) fn release(eng: &Engine, index: Option<usize>) -> Result<(), String> {
+    let i = index.ok_or("not an asset handle")?;
+    let mut a = eng.assets.borrow_mut();
+    let path = a.entries.get(i).ok_or("not an asset handle")?.path.clone();
+    let released = format!("{path} was released (og.load.release)");
+    if a.entries[i].status == Status::Failed(released.clone()) {
+        return Ok(());
+    }
+    let Some(textures) = a.uncooked.owned.remove(&i) else {
+        return Err(format!(
+            "{path} is a cooked asset: og.load.release frees what og.load.imageData and og.load.gltfData loaded (a cooked asset stays with its bundle, a streamed one with its group)"
+        ));
+    };
+    if let Some(at) = a.uncooked.jobs.iter().position(|j| j.entry == i) {
+        let job = a.uncooked.jobs.remove(at);
+        let images: Vec<Image> = match job.work {
+            Work::Image { image, .. } => vec![image],
+            Work::Gltf(g) => g.images.into_iter().map(|(_, image)| image).collect(),
+        };
+        for image in images {
+            if let Decode::Host(key) = image.decode {
+                a.uncooked.discard.push(key);
+            }
+        }
+    }
+    let payload = std::mem::replace(&mut a.entries[i].payload, Payload::Uncooked);
+    a.entries[i].status = Status::Failed(released);
+    drop(a);
+    let mut rs = eng.render.borrow_mut();
+    let rs = &mut *rs;
+    match payload {
+        Payload::Image { texture, .. } => {
+            if let Some(&h) = rs.textures.get(texture) {
+                rs.scene.set_texture(h, released_texture());
+            }
+        }
+        Payload::Gltf { .. } => {
+            let key = super::assets::handle(i);
+            let parts = rs.models.insert(key, Vec::new()).unwrap_or_default();
+            rs.model_lods.remove(&key);
+            rs.fx.models.remove(&key);
+            let mut meshes: Vec<og_render::MeshHandle> = parts.iter().map(|p| p.0).collect();
+            meshes.sort_by_key(|m| m.index());
+            meshes.dedup();
+            for m in meshes {
+                rs.scene.set_mesh(m, og_render::MeshData::default());
+                super::geometry::forget_mesh(rs, m);
+            }
+            for h in textures {
+                rs.scene.set_texture(h, released_texture());
+                rs.decoded.ids.remove(&h);
+            }
+        }
+        _ => {}
+    }
     Ok(())
 }
 

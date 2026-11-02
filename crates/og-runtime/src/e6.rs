@@ -288,6 +288,15 @@ pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine: u32) {
         move |_world, _args| Ok(super::platform::dump(engine)),
     );
     let _ = probe.register_dump(
+        "dump_memory",
+        og_probe::CommandDesc {
+            usage: "dump_memory[:path]".into(),
+            doc: "what the engine holds, as the probe's memory: the process's resident memory (the wasm linear memory on the web), the counted heap's live bytes and peak, the world's entities, the streaming budget, the audio bank, and the renderer's GPU memory by textures, meshes, render targets and buffers".into(),
+        },
+        0,
+        move |world, _args| Ok(super::memory::report(engine, world)),
+    );
+    let _ = probe.register_dump(
         "dump_stream",
         og_probe::CommandDesc {
             usage: "dump_stream[:path]".into(),

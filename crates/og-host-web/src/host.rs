@@ -949,6 +949,10 @@ impl LoadApi for WebHost {
         rt::og_load_gltf_data(world, name, bytes, desc)
     }
 
+    fn og_load_release(&self, world: u32, asset: f64) -> String {
+        rt::og_load_release(world, asset)
+    }
+
     fn og_load_image_info(&self, world: u32, asset: f64) -> String {
         rt::og_load_image_info(world, asset)
     }

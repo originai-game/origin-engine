@@ -11377,6 +11377,7 @@ export interface LoadCompletion {
 
 
 
+
 /**
  * A load completed.
  *
@@ -47144,6 +47145,14 @@ export declare namespace og {
      * @returns The handle (pending), or why it was refused now: over the budget's bytes, triangles or textureSize, not a glTF 2.0, an image that is not a PNG or JPEG, or something the reader refuses by name.
      */
     function gltfData(world: World, name: string, bytes: Uint8Array, desc?: GltfDataDesc): Result<Asset>;
+    /**
+     * Free an uncooked asset (og.load.imageData, og.load.gltfData): a load still pending is dropped (it never completes, so it is never journaled), and a ready one's textures and meshes are emptied under their handles, so what still names them draws nothing and nothing breaks, while their memory on the GPU and their copies on the CPU go (the probe's memory report and `dump_memory` show both). An og.Model of a released model draws nothing; a sprite or material of a released texture draws one clear texel. The handle then answers failed, naming the release. Physics shapes built from its geometries are world state and stay. Releasing again does nothing.
+     *
+     * @param world The world that owns the asset.
+     * @param asset A handle og.load.imageData or og.load.gltfData answered.
+     * @returns Refused for a cooked asset, which stays with its bundle (a streamed one with its group).
+     */
+    function release(world: World, asset: Asset): Result<void>;
     /**
      * A ready uncooked image's texture and size.
      *

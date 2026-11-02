@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2207 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2208 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -1018,6 +1018,7 @@ Field units the docs and Tune use.
 | [`og.load.palette`](load.md#fn-palette) | function | load | `og_load_palette` |
 | [`og.load.post`](load.md#fn-post) | function | load | `og_load_post` |
 | [`og.load.prefab`](load.md#fn-prefab) | function | load | `og_load_prefab` |
+| [`og.load.release`](load.md#fn-release) | function | load | `og_load_release` |
 | [`og.load.replayCompletions`](load.md#fn-replayCompletions) | function | load | `og_load_replay_completions` |
 | [`og.load.rig`](load.md#fn-rig) | function | load | `og_load_rig` |
 | [`og.load.rig2d`](load.md#fn-rig2d) | function | load | `og_load_rig2d` |
