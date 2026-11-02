@@ -236,11 +236,11 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
         let mut ui = ui.lock();
         ui.set_theme(theme);
         // The style's dressings, its vector fills bound when it loaded
-        // (none: the prototype's tokens dress every part).
+        // (none: the default style's, the design language's).
         ui.set_dressings(
             style
                 .as_ref()
-                .map_or_else(Vec::new, |s| s.0.dressings.clone()),
+                .map_or_else(og_ui::default_dressings, |s| s.0.dressings.clone()),
         );
         let chain = ui.fonts().chain.clone();
         let fonts = Fonts { chain, ..fonts };

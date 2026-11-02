@@ -23,7 +23,7 @@
 //! radii, its motion durations the durations).
 //!
 //! The grammar is [`crate::style_file::parse_style`]'s; [`StyleTokens::derive`]
-//! makes a complete set from a palette and scheme (the prototype style's,
+//! makes a complete set from a palette and scheme (the default style's,
 //! and `og style upgrade`'s for a version 1 style), and
 //! [`StyleTokens::entries`] writes one back as `.ogt` blocks.
 

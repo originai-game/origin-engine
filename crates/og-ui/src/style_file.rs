@@ -11,8 +11,8 @@
 //!
 //! A style is complete: it sets every palette role and every radius, so
 //! nothing of another look shows through it. There is no base to fall back
-//! on; before a game picks a style it has the engine's placeholder
-//! `prototype` ([`crate::theme`]). [`Art::default`] dresses nothing and
+//! on; before a game picks a style it has the engine's default style
+//! ([`crate::theme`], [`default_dressings`]). [`Art::default`] dresses nothing and
 //! moves nothing: every draw path checks for a slice, an ornament or a
 //! motion value first, so a style without art draws flat.
 //!
@@ -547,6 +547,51 @@ pub(crate) fn v1_dressings(art: &Art) -> Vec<Dressing> {
         }
     }
     out
+}
+
+/// The default style's part dressings ([`crate::theme::DRESSINGS`], the
+/// design language's: glass on floating chrome, borderless controls),
+/// parsed once: what a UI without a style is dressed with.
+pub fn default_dressings() -> Vec<Dressing> {
+    static PARSED: std::sync::OnceLock<Vec<Dressing>> = std::sync::OnceLock::new();
+    PARSED
+        .get_or_init(|| {
+            use std::fmt::Write;
+            // A complete style around them: the dark palette and radii as a
+            // version 1 file, upgraded, then the dressings.
+            let p = &crate::theme::DARK;
+            let r = &crate::theme::RADIUS;
+            let mut v1 = String::from(
+                "type style\nversion 1\n---\nname \"default\"\nscheme dark\npalette {\n",
+            );
+            for name in Palette::NAMES {
+                let c = p.get(name).unwrap_or(Srgba::BLACK);
+                let a = (c.alpha.clamp(0.0, 1.0) * 255.0).round() as u8;
+                let [x, y, z] = c.rgb;
+                let _ = writeln!(v1, "  {name} \"#{x:02x}{y:02x}{z:02x}{a:02x}\"");
+            }
+            let _ = write!(
+                v1,
+                "}}\nradius {{\n  small {}\n  control {}\n  bar {}\n  panel {}\n}}\n",
+                r.small, r.control, r.bar, r.panel
+            );
+            let v2 = upgrade_style(&v1).expect("the default style upgrades");
+            parse_style(&(v2 + crate::theme::DRESSINGS))
+                .expect("the default style's dressings parse")
+                .dressings
+        })
+        .clone()
+}
+
+/// The dressings a theme draws with until a style sets its own: a
+/// version 1 style's art ([`v1_dressings`]), or the default style's for a
+/// theme with none.
+pub(crate) fn theme_dressings(art: &Art) -> Vec<Dressing> {
+    if *art == Art::default() {
+        default_dressings()
+    } else {
+        v1_dressings(art)
+    }
 }
 
 /// `og style upgrade`: a version 1 style written as version 2. Every

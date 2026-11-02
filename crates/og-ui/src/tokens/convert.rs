@@ -37,7 +37,7 @@ impl StyleTokens {
     /// language), its ramp (the type scale), its durations and the motion
     /// and shadows of its art. `icons` are the style's icon names (a status
     /// takes an icon cue when the set has a fitting one, a pattern
-    /// otherwise). The prototype style's tokens are this of its palette;
+    /// otherwise). The default style's tokens are this of its palette;
     /// `og style upgrade` writes this for a version 1 style.
     pub fn derive(t: &Theme, icons: &[String]) -> StyleTokens {
         StyleTokens::derive_from(

@@ -340,7 +340,7 @@ pub trait UiTree {
     }
 
     /// The name of the UI style the game configured: empty for the
-    /// engine's placeholder `prototype`. `None` when unknown.
+    /// engine's default style. `None` when unknown.
     fn style(&self, _world: &World) -> Option<String> {
         None
     }

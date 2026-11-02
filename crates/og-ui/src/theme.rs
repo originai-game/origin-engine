@@ -1,15 +1,20 @@
-//! The engine's own UI values: the colour roles of a game UI and the
-//! `prototype` style, the look a game has before it chooses one. These are
-//! owned here and by no one else: the platform's design language styles the
-//! platform's pages and the player shell, never a game's screens.
+//! The engine's default style: the colour roles of a game UI and the values
+//! of the design language the engine shares with origin-agent
+//! (`packages/design`, docs/ui.md §12.1): the neutral ladder, amber as ink,
+//! focus and the one primary, flat glass on floating chrome only, and
+//! borderless controls told apart by tone.
 //!
-//! `prototype` is deliberately a placeholder: greys, square corners, no
-//! glass, a single wireframe cyan for focus and highlights. A game that
-//! ships it looks unfinished, and `og polish` says so. A game's own look is
-//! a style (`crate::style_file`, `type style`), usually the one its look names.
+//! **Generated** from `packages/design/tokens.json` by
+//! `crates/og-ui/scripts/gen-theme.sh`; never edit it by hand (`tests/theme.rs`
+//! fails on drift). The default style is for origin-agent's surfaces and for
+//! prototyping: every game ships its own style (`crate::style_file`, `type
+//! style`, usually the one its look names), and `og build --publish`
+//! refuses a game still drawn in this one.
 //!
-//! Lengths are CSS pixels, durations milliseconds, colours sRGB as authored
-//! (straight alpha); `crate::style` converts them for the renderer.
+//! Lengths are og-ui units (CSS pixels at a unit scale of 1), durations
+//! milliseconds, colours sRGB as authored (straight alpha); the translucent
+//! fills are the tokens' `linear` values, restated for the UI pass's
+//! linear-light blending. `crate::style` converts them for the renderer.
 
 /// An sRGB colour as a style authors it: 8-bit channels, straight alpha.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -133,82 +138,82 @@ palette! {
     gold "gold",
 }
 
-/// The prototype style's light variant.
+/// The default style's light scheme.
 pub const LIGHT: Palette = Palette {
-    backdrop: c(0xe4, 0xe4, 0xe4),
-    well: c(0xd8, 0xd8, 0xd8),
-    panel: c(0xf4, 0xf4, 0xf4),
-    panel_hover: c(0xe8, 0xe8, 0xe8),
+    backdrop: c(0xf2, 0xf2, 0xf7),
+    well: c(0xe9, 0xe9, 0xee),
+    panel: c(0xff, 0xff, 0xff),
+    panel_hover: c(0xe5, 0xe5, 0xea),
     panel_raised: c(0xff, 0xff, 0xff),
-    line: c(0xc4, 0xc4, 0xc4),
-    line_strong: c(0x8c, 0x8c, 0x8c),
-    ink: c(0x16, 0x16, 0x16),
-    ink_muted: c(0x50, 0x50, 0x50),
-    ink_faint: c(0x60, 0x60, 0x60),
-    ink_inverse: c(0xf4, 0xf4, 0xf4),
-    control: ca(0x00, 0x00, 0x00, 0.08),
-    control_strong: ca(0x00, 0x00, 0x00, 0.16),
-    primary: c(0x1e, 0x1e, 0x1e),
-    primary_hover: c(0x38, 0x38, 0x38),
-    primary_active: c(0x00, 0x00, 0x00),
-    on_primary: c(0xf4, 0xf4, 0xf4),
-    primary_soft: ca(0x1e, 0x1e, 0x1e, 0.10),
-    highlight: c(0x00, 0x62, 0x7a),
-    focus: c(0x00, 0x7c, 0x99),
+    line: c(0xdc, 0xdc, 0xe1),
+    line_strong: c(0xc4, 0xc4, 0xc9),
+    ink: c(0x18, 0x18, 0x1a),
+    ink_muted: c(0x46, 0x46, 0x4c),
+    ink_faint: c(0x63, 0x63, 0x69),
+    ink_inverse: c(0xfa, 0xfa, 0xfa),
+    control: ca(0x78, 0x78, 0x80, 0.169),
+    control_strong: ca(0x78, 0x78, 0x80, 0.271),
+    primary: c(0xf5, 0xa3, 0x0a),
+    primary_hover: c(0xe6, 0x95, 0x00),
+    primary_active: c(0xc7, 0x7d, 0x00),
+    on_primary: c(0x1d, 0x13, 0x00),
+    primary_soft: ca(0xf5, 0xa3, 0x0a, 0.183),
+    highlight: c(0x7a, 0x48, 0x00),
+    focus: c(0xb8, 0x72, 0x00),
     knob: c(0xff, 0xff, 0xff),
-    hud: ca(0xf4, 0xf4, 0xf4, 0.88),
-    scrim: ca(0x00, 0x00, 0x00, 0.35),
+    hud: ca(0xfa, 0xfa, 0xfc, 0.86),
+    scrim: ca(0x00, 0x00, 0x00, 0.416),
     shadow: c(0x00, 0x00, 0x00),
-    sheen: ca(0xff, 0xff, 0xff, 0.32),
-    success: c(0x16, 0x6e, 0x3a),
-    warn: c(0x9a, 0x4a, 0x00),
-    danger: c(0x9a, 0x0c, 0x14),
-    info: c(0x10, 0x52, 0xa8),
-    health: c(0x1c, 0x74, 0x32),
-    mana: c(0x23, 0x5c, 0xd6),
-    xp: c(0x7a, 0x3c, 0xc8),
-    gold: c(0x8a, 0x62, 0x00),
+    sheen: ca(0xff, 0xff, 0xff, 0.5),
+    success: c(0x1a, 0x7a, 0x37),
+    warn: c(0xc2, 0x41, 0x0c),
+    danger: c(0xb2, 0x00, 0x11),
+    info: c(0x00, 0x62, 0xc4),
+    health: c(0x1b, 0x7a, 0x38),
+    mana: c(0x00, 0x62, 0xc4),
+    xp: c(0x7d, 0x3f, 0xc4),
+    gold: c(0x8a, 0x5a, 0x00),
 };
 
-/// The prototype style's dark variant (the default: games run on a dark
+/// The default style's dark scheme (the default: games run on a dark
 /// screen more often than not).
 pub const DARK: Palette = Palette {
-    backdrop: c(0x10, 0x10, 0x10),
-    well: c(0x16, 0x16, 0x16),
-    panel: c(0x1e, 0x1e, 0x1e),
-    panel_hover: c(0x2a, 0x2a, 0x2a),
-    panel_raised: c(0x26, 0x26, 0x26),
-    line: c(0x3a, 0x3a, 0x3a),
-    line_strong: c(0x60, 0x60, 0x60),
-    ink: c(0xf0, 0xf0, 0xf0),
-    ink_muted: c(0xb4, 0xb4, 0xb4),
-    ink_faint: c(0x9c, 0x9c, 0x9c),
-    ink_inverse: c(0x16, 0x16, 0x16),
-    control: ca(0xff, 0xff, 0xff, 0.06),
-    control_strong: ca(0xff, 0xff, 0xff, 0.10),
-    primary: c(0xe8, 0xe8, 0xe8),
-    primary_hover: c(0xff, 0xff, 0xff),
-    primary_active: c(0xc8, 0xc8, 0xc8),
-    on_primary: c(0x16, 0x16, 0x16),
-    primary_soft: ca(0xff, 0xff, 0xff, 0.12),
-    highlight: c(0x6a, 0xd8, 0xec),
-    focus: c(0x5a, 0xd1, 0xe6),
-    knob: c(0xf0, 0xf0, 0xf0),
-    hud: ca(0x10, 0x10, 0x10, 0.82),
-    scrim: ca(0x00, 0x00, 0x00, 0.55),
+    backdrop: c(0x00, 0x00, 0x00),
+    well: c(0x11, 0x11, 0x13),
+    panel: c(0x1c, 0x1c, 0x1e),
+    panel_hover: c(0x3a, 0x3a, 0x3c),
+    panel_raised: c(0x2c, 0x2c, 0x2e),
+    line: c(0x38, 0x38, 0x3a),
+    line_strong: c(0x54, 0x54, 0x58),
+    ink: c(0xf5, 0xf5, 0xf7),
+    ink_muted: c(0xc8, 0xc8, 0xcd),
+    ink_faint: c(0x9e, 0x9e, 0xa3),
+    ink_inverse: c(0x18, 0x18, 0x1a),
+    control: ca(0x78, 0x78, 0x80, 0.115),
+    control_strong: ca(0x78, 0x78, 0x80, 0.195),
+    primary: c(0xff, 0xb2, 0x24),
+    primary_hover: c(0xff, 0xc0, 0x4d),
+    primary_active: c(0xff, 0xd3, 0x8a),
+    on_primary: c(0x1d, 0x13, 0x00),
+    primary_soft: ca(0xff, 0xb2, 0x24, 0.048),
+    highlight: c(0xff, 0xb2, 0x24),
+    focus: c(0xff, 0xb2, 0x24),
+    knob: c(0xf5, 0xf5, 0xf7),
+    hud: ca(0x16, 0x16, 0x18, 0.8),
+    scrim: ca(0x00, 0x00, 0x00, 0.687),
     shadow: c(0x00, 0x00, 0x00),
-    sheen: ca(0xff, 0xff, 0xff, 0.24),
-    success: c(0x4c, 0xc3, 0x8a),
-    warn: c(0xf0, 0xa0, 0x50),
+    sheen: ca(0xff, 0xff, 0xff, 0.12),
+    success: c(0x3d, 0xd6, 0x8c),
+    warn: c(0xff, 0x8a, 0x3d),
     danger: c(0xff, 0x8a, 0x82),
-    info: c(0x7a, 0xb8, 0xff),
-    health: c(0x5c, 0xcf, 0x6e),
-    mana: c(0x5a, 0x9c, 0xff),
-    xp: c(0xb0, 0x7c, 0xff),
-    gold: c(0xf2, 0xc1, 0x4e),
+    info: c(0x5c, 0xc8, 0xff),
+    health: c(0x30, 0xd1, 0x58),
+    mana: c(0x40, 0x9c, 0xff),
+    xp: c(0xbf, 0x5a, 0xf2),
+    gold: c(0xff, 0xd6, 0x0a),
 };
 
-/// The spacing scale, CSS pixels.
+/// The spacing scale, og-ui units.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Space {
     pub xl3: f32,
@@ -232,9 +237,10 @@ pub const SPACE: Space = Space {
     xxs: 2.0,
 };
 
-/// The corner radii, CSS pixels. A style sets them; the prototype's are
-/// nearly square. A radius at or past half an element's short side draws
-/// it round, so a style that wants pills says so with a large `control`.
+/// The corner radii, og-ui units. A style sets them; the default's are
+/// the tokens' `control` (small), `button` (controls), `capsule` (bars,
+/// round at any height) and `panel`. A radius at or past half an
+/// element's short side draws it round.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Radius {
     /// Small parts: checkboxes, slots, tiles, the minimap.
@@ -248,13 +254,13 @@ pub struct Radius {
 }
 
 pub const RADIUS: Radius = Radius {
-    small: 1.0,
-    control: 2.0,
-    bar: 1.0,
-    panel: 3.0,
+    small: 4.0,
+    control: 6.0,
+    bar: 9999.0,
+    panel: 12.0,
 };
 
-/// One step of the type ramp: size and leading in CSS pixels, Latin
+/// One step of the type ramp: size and leading in og-ui units, Latin
 /// tracking in em, and the leading Chinese, Japanese and Korean text takes.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TypeStep {
@@ -326,41 +332,157 @@ impl TypeRamp {
     }
 }
 
-const fn step(size: f32, line_height: f32, cjk_line_height: f32) -> TypeStep {
-    TypeStep {
-        size,
-        line_height,
-        tracking_em: 0.0,
-        cjk_line_height,
-        cjk_tracking_em: 0.0,
-    }
-}
-
 pub const TYPE_RAMP: TypeRamp = TypeRamp {
-    xl2: step(22.0, 28.0, 32.0),
-    xl3: step(26.0, 32.0, 36.0),
-    xl4: step(30.0, 36.0, 40.0),
-    xl5: step(36.0, 40.0, 46.0),
-    xl6: step(44.0, 48.0, 54.0),
-    xl7: step(52.0, 56.0, 62.0),
-    xl8: step(64.0, 64.0, 74.0),
-    base: step(16.0, 24.0, 24.0),
-    body: step(14.0, 20.0, 20.0),
-    caption: step(13.0, 18.0, 18.0),
-    display_xl2: step(56.0, 60.0, 68.0),
-    display_lg: step(40.0, 44.0, 50.0),
-    display_md: step(34.0, 38.0, 44.0),
-    display_sm: step(28.0, 32.0, 38.0),
-    display_xl: step(48.0, 52.0, 60.0),
-    lg: step(18.0, 26.0, 26.0),
-    meta: step(13.0, 18.0, 18.0),
-    reading: step(15.0, 24.0, 24.0),
-    sm: step(14.0, 20.0, 20.0),
-    xl: step(20.0, 28.0, 30.0),
-    xs: step(12.0, 16.0, 16.0),
+    xl2: TypeStep {
+        size: 22.0,
+        line_height: 28.0,
+        tracking_em: -0.015,
+        cjk_line_height: 32.0,
+        cjk_tracking_em: 0.0,
+    },
+    xl3: TypeStep {
+        size: 26.0,
+        line_height: 32.0,
+        tracking_em: -0.02,
+        cjk_line_height: 36.0,
+        cjk_tracking_em: 0.0,
+    },
+    xl4: TypeStep {
+        size: 30.0,
+        line_height: 36.0,
+        tracking_em: -0.022,
+        cjk_line_height: 40.0,
+        cjk_tracking_em: 0.0,
+    },
+    xl5: TypeStep {
+        size: 36.0,
+        line_height: 40.0,
+        tracking_em: -0.025,
+        cjk_line_height: 46.0,
+        cjk_tracking_em: 0.0,
+    },
+    xl6: TypeStep {
+        size: 44.0,
+        line_height: 48.0,
+        tracking_em: -0.03,
+        cjk_line_height: 54.0,
+        cjk_tracking_em: 0.0,
+    },
+    xl7: TypeStep {
+        size: 52.0,
+        line_height: 56.0,
+        tracking_em: -0.032,
+        cjk_line_height: 62.0,
+        cjk_tracking_em: 0.0,
+    },
+    xl8: TypeStep {
+        size: 64.0,
+        line_height: 64.0,
+        tracking_em: -0.035,
+        cjk_line_height: 74.0,
+        cjk_tracking_em: 0.0,
+    },
+    base: TypeStep {
+        size: 16.0,
+        line_height: 24.0,
+        tracking_em: 0.0,
+        cjk_line_height: 24.0,
+        cjk_tracking_em: 0.0,
+    },
+    body: TypeStep {
+        size: 14.0,
+        line_height: 20.0,
+        tracking_em: 0.0,
+        cjk_line_height: 20.0,
+        cjk_tracking_em: 0.0,
+    },
+    caption: TypeStep {
+        size: 13.0,
+        line_height: 18.0,
+        tracking_em: 0.0,
+        cjk_line_height: 18.0,
+        cjk_tracking_em: 0.0,
+    },
+    display_xl2: TypeStep {
+        size: 56.0,
+        line_height: 60.0,
+        tracking_em: -0.025,
+        cjk_line_height: 68.0,
+        cjk_tracking_em: 0.0,
+    },
+    display_lg: TypeStep {
+        size: 40.0,
+        line_height: 44.0,
+        tracking_em: -0.02,
+        cjk_line_height: 50.0,
+        cjk_tracking_em: 0.0,
+    },
+    display_md: TypeStep {
+        size: 34.0,
+        line_height: 38.0,
+        tracking_em: -0.016,
+        cjk_line_height: 44.0,
+        cjk_tracking_em: 0.0,
+    },
+    display_sm: TypeStep {
+        size: 28.0,
+        line_height: 32.0,
+        tracking_em: -0.012,
+        cjk_line_height: 38.0,
+        cjk_tracking_em: 0.0,
+    },
+    display_xl: TypeStep {
+        size: 48.0,
+        line_height: 52.0,
+        tracking_em: -0.022,
+        cjk_line_height: 60.0,
+        cjk_tracking_em: 0.0,
+    },
+    lg: TypeStep {
+        size: 18.0,
+        line_height: 26.0,
+        tracking_em: 0.0,
+        cjk_line_height: 26.0,
+        cjk_tracking_em: 0.0,
+    },
+    meta: TypeStep {
+        size: 13.0,
+        line_height: 18.0,
+        tracking_em: 0.0,
+        cjk_line_height: 18.0,
+        cjk_tracking_em: 0.0,
+    },
+    reading: TypeStep {
+        size: 15.0,
+        line_height: 24.0,
+        tracking_em: 0.0,
+        cjk_line_height: 24.0,
+        cjk_tracking_em: 0.0,
+    },
+    sm: TypeStep {
+        size: 14.0,
+        line_height: 20.0,
+        tracking_em: 0.0,
+        cjk_line_height: 20.0,
+        cjk_tracking_em: 0.0,
+    },
+    xl: TypeStep {
+        size: 20.0,
+        line_height: 28.0,
+        tracking_em: -0.01,
+        cjk_line_height: 30.0,
+        cjk_tracking_em: 0.0,
+    },
+    xs: TypeStep {
+        size: 12.0,
+        line_height: 16.0,
+        tracking_em: 0.0,
+        cjk_line_height: 16.0,
+        cjk_tracking_em: 0.0,
+    },
 };
 
-/// Control, row and header heights and the gutter, CSS pixels.
+/// Control, row and header heights and the gutter, og-ui units.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Density {
     pub control_lg: f32,
@@ -372,7 +494,7 @@ pub struct Density {
     pub section: f32,
 }
 
-/// A mouse and keyboard: the tightest sizes.
+/// A mouse and keyboard: the tightest sizes (the tokens' `compact`).
 pub const MOUSE: Density = Density {
     control_lg: 36.0,
     control_md: 32.0,
@@ -384,7 +506,7 @@ pub const MOUSE: Density = Density {
 };
 
 /// A gamepad across a room: larger controls and rows, wider gutters, so
-/// a focused control reads from a couch.
+/// a focused control reads from a couch (the tokens' `pad`).
 pub const PAD: Density = Density {
     control_lg: 52.0,
     control_md: 48.0,
@@ -395,7 +517,8 @@ pub const PAD: Density = Density {
     section: 40.0,
 };
 
-/// Touch: every control at least 44 CSS px, a finger's target.
+/// Touch: every control at least 44 CSS px, a finger's target (the
+/// tokens' `touch`, its gutter and section `compact`'s).
 pub const TOUCH: Density = Density {
     control_lg: 48.0,
     control_md: 44.0,
@@ -434,12 +557,17 @@ pub struct Spring {
     pub response_ms: f32,
 }
 
-/// Hover lifts and highlights: no overshoot.
+/// Overlays, menus and highlights: no overshoot.
 pub const SPRING_DEFAULT: Spring = Spring {
     damping: 1.0,
     response_ms: 350.0,
 };
-/// A fling's release.
+/// Sheets and drawers.
+pub const SPRING_SHEET: Spring = Spring {
+    damping: 0.85,
+    response_ms: 300.0,
+};
+/// A release that carried velocity (a fling, a throw).
 pub const SPRING_MOMENTUM: Spring = Spring {
     damping: 0.8,
     response_ms: 400.0,
@@ -452,3 +580,101 @@ pub const EASE_OUT: [f32; 4] = [0.23, 1.0, 0.32, 1.0];
 
 /// How far a pressed control shrinks.
 pub const PRESS_SCALE: f32 = 0.96;
+
+/// The default style's part dressings (docs/ui.md §12.3), in a style
+/// file's grammar: flat glass on floating chrome only (`thick` on what
+/// carries text over the game, `regular` on HUD capsules and hints), its
+/// own hairline and no second border; content flat (cards keep their
+/// hairline and cast no shadow); controls borderless, a fill told apart by
+/// tone, the focus ring the only outline. `crate::theme_dressings` parses
+/// them.
+pub const DRESSINGS: &str = r#"
+dress "Panel.frame" {
+  fill none
+  stroke none
+  effect backdrop glass thick elevation lift
+}
+dress "Sheet.frame" {
+  fill none
+  stroke none
+  effect backdrop glass thick elevation lift
+}
+dress "Radial.frame" {
+  fill none
+  stroke none
+  effect backdrop glass thick elevation lift
+}
+dress "Menu.frame" {
+  fill none
+  stroke none
+  effect backdrop glass thick elevation float
+}
+dress "Popover.frame" {
+  fill none
+  stroke none
+  effect backdrop glass thick elevation float
+}
+dress "Tooltip.frame" {
+  fill none
+  stroke none
+  effect backdrop glass thick elevation float
+}
+dress "Chart.tooltip" {
+  fill none
+  stroke none
+  effect backdrop glass thick elevation float
+}
+dress "Hud.frame" {
+  fill none
+  stroke none
+  effect backdrop glass regular elevation float
+}
+dress "ActionBar.hint" {
+  fill none
+  stroke none
+  effect backdrop glass regular elevation float
+}
+dress "Card.frame" {
+  effect none
+  shape round 10
+}
+dress "Button.base" {
+  stroke none
+  effect none
+}
+dress "Button.base[ghost]" {
+  stroke 1 lineStrong inside
+}
+dress "Field.frame" {
+  stroke none
+  effect none
+}
+dress "Field.frame[invalid]" {
+  stroke 1 danger inside
+}
+dress "Chip.base" {
+  stroke none
+}
+dress "Slot.frame" {
+  stroke none
+  effect none
+}
+dress "Slot.frame[selected]" {
+  stroke 2 primary inside
+}
+dress "Meter.track" {
+  effect none
+}
+dress "Meter.fill" {
+  effect none
+}
+dress "Slider.track" {
+  effect none
+}
+dress "Toggle.track" {
+  effect none
+}
+dress "Tabs.tab[selected]" {
+  effect none
+}
+"#;

@@ -1,6 +1,6 @@
 //! og-ui's materials frame (`references/<tier>/materials.png`), rendered
 //! headless and compared under og-tests' tolerance (`OG_UI_CAPTURE=1`
-//! records this tier's): a card in the dark prototype style, a row of the
+//! records this tier's): a card in the dark default style, a row of the
 //! UI kit's iconoir icons cooked by og-cook's icon cook (a distance-field
 //! set drawn as glyphs, at 24 and 48 px, in two inks) and one inline in
 //! rich text, a picture keeping 16:9 across a growing column, a zoom view

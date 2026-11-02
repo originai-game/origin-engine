@@ -356,7 +356,7 @@ impl Ui {
     /// glow); until the art is there, a placeholder drawn from the style
     /// and the kind ([`crate::slot::SlotKind::placeholder`]: a gradient of
     /// the palette, the kind's silhouette from the icon set, the slot's
-    /// name in the prototype style only), never an empty grey box. With a
+    /// name in the default style only), never an empty grey box. With a
     /// height left to fit it takes the slot's aspect.
     pub fn art(&mut self, id: impl Into<Id>, desc: &ArtDesc) {
         use crate::paint::{ColorRef, Effect, ElementDraw, Gradient, Paint, ShapeKind, Stop};

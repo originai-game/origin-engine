@@ -771,7 +771,7 @@ fn style_text(
             "type style".to_string(),
             "version 1".into(),
             "---".into(),
-            "# Packed by og style pack from the parts drawn by hand. The palette and radii start as the prototype's: make them the game's, then add fonts and motion."
+            "# Packed by og style pack from the parts drawn by hand. The palette and radii start as the default style's: make them the game's, then add fonts and motion."
                 .into(),
             format!("name \"{name}\""),
             "scheme dark".into(),

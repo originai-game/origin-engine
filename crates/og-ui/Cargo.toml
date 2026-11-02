@@ -42,3 +42,8 @@ image = { workspace = true }
 [[test]]
 name = "tests"
 path = "tests/main.rs"
+
+# The default style's generator (scripts/gen-theme.sh runs it).
+[[example]]
+name = "gen-theme"
+path = "scripts/gen_theme.rs"

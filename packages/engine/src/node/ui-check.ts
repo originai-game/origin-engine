@@ -45,7 +45,7 @@ export interface UiDump {
   tick: number;
   /** The surface the CSS-pixel bounds are on (dpr: device pixels per CSS pixel). */
   surface?: { width: number; height: number; dpr: number } | null;
-  /** The configured UI style's name: "" is the engine's placeholder, prototype. */
+  /** The configured UI style's name: "" is the engine's default style. */
   style?: string | null;
   elements: UiElementDump[];
 }
@@ -65,7 +65,7 @@ export interface UiFrameSnapshot {
     covered: Rect4;
     breakpoint: string;
   };
-  /** The configured style's name ("": the placeholder, prototype). */
+  /** The configured style's name ("": the default style). */
   style: string;
   contrast: "standard" | "high";
   /** The style's event sounds, by event (hover, press, open, close, success, error): whether one is set. */

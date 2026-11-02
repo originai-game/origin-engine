@@ -116,7 +116,7 @@ export function resetLooks(world: World): void {
   }
   // A look owns only what it names: the none look has no `ui` line, so the
   // style the last preset dressed the HUD in stays until the UI is told
-  // otherwise. Null is the prototype style (UiDesc.style).
+  // otherwise. Null is the default style (UiDesc.style).
   must(og.ui.configure(world, { style: null }));
   // The render settings a preset may set, back at their defaults (the
   // none look leaves RenderSettings alone: it holds the decal atlas).

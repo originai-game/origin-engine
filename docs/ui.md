@@ -697,7 +697,7 @@ rectangle where nothing important may sit because text or controls are
 laid over it, a fit, a mask, and a treatment from the style (vignette,
 duotone, frame, rarity glow). Its placeholder is drawn from the style and
 the kind (a gradient, the kind's silhouette icon, the slot's name in
-`prototype` only), never an empty grey box, and `og ui check` reports
+the default style only), never an empty grey box, and `og ui check` reports
 placeholders still present at publish.
 
 ### 13.2 Kinds
