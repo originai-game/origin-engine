@@ -36,7 +36,7 @@ fn project() -> &'static Path {
         let _ = std::fs::remove_dir_all(&root);
         let dir = root.join("assets/fonts");
         std::fs::create_dir_all(&dir).unwrap();
-        let style = repo().join("templates/styles/neon");
+        let style = repo().join("templates/styles/shared");
         std::fs::copy(
             style.join("ChakraPetch-BoldItalic.ttf"),
             dir.join("ChakraPetch-BoldItalic.ttf"),
