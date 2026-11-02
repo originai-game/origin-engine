@@ -39312,7 +39312,7 @@ export interface RaidMember {
    */
   readonly offline?: boolean;
   /**
-   * Out of range: faded.
+   * Out of range: its bar and class stripe faded to 45 % and its name muted (the name keeps its outline).
    *
    * @default false
    */
@@ -53885,8 +53885,8 @@ export declare namespace og {
      */
     function partyFrames(id: string, desc?: PartyFramesDesc): FramesResult;
     /**
-     * Raid frames to the bar of World of Warcraft's: up to 40 compact cells in columns of five, each a dark cell with health in one muted tint ramping green, amber, red as it falls, the class as a stripe at its start, the incoming heal a lighter translucent extension and the absorb a white-blue overlay, the name cut to fit, a role mark, dead and offline said at the cell's end on the name's line with no fill (the name shortened first, the status never cut), a soft band under the name where a pale absorb or heal lies under it, faded to 45 % out of range, one rim by priority (the target a neutral light rim, aggro danger, a dispellable debuff its type's colour, pulsing). A press targets.
-     * Parts: RaidFrames.cell[dead|offline|outOfRange][aggro][dispel=<type>][selected], RaidFrames.fill[low], RaidFrames.class, RaidFrames.absorb[over], RaidFrames.heal, RaidFrames.name, RaidFrames.role. Accessibility: grid of buttons named name and health. Probe ids: <id>/<key>, its Name.
+     * Raid frames to the bar of World of Warcraft's: up to 40 compact cells in columns of five, each a cell on the HUD's dark neutral ground with health a bar along its foot, the cell's one hue, in one muted tint ramping green, amber, red as it falls, the class as a stripe at its start, the incoming heal a lighter extension and the absorb a white-blue overlay on that bar, the name on its own line over the bar, cut to fit, a role mark, dead and offline a near-black cell with no bar, said at the cell's end on the name's line (the name shortened first, the status never cut), out of range its bar and stripe faded to 45 % and its name muted in solid ink with its outline kept, one rim by priority (the target a neutral light rim, aggro danger, a dispellable debuff its type's colour, pulsing). A press targets.
+     * Parts: RaidFrames.cell[dead|offline|outOfRange][aggro][dispel=<type>][selected], RaidFrames.bar, RaidFrames.fill[low], RaidFrames.class, RaidFrames.absorb[over], RaidFrames.heal, RaidFrames.name, RaidFrames.role. Accessibility: grid of buttons named name and health. Probe ids: <id>/<key>, its Name.
      *
      * @param id Its id.
      * @param desc The members.

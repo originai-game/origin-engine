@@ -26,7 +26,8 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineSystem, og } from "@origingame/engine";
-import type { KillfeedEntry, World } from "@origingame/engine";
+import type { DrawDesc, KillfeedEntry, World } from "@origingame/engine";
+import { kit as uiKit } from "../src/ui-kit/bind.ts";
 import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 import { ogBin } from "./support/og-bin.ts";
@@ -230,6 +231,48 @@ test("og.ui.unitFrame, raidFrames and castBar: health and states read, raids in 
   // An interrupted cast holds 700 ms and fades 300: gone 60 ticks after it ended.
   e.advance(59);
   expect(at(dump(e), "CastHud/Cast")).toBe(undefined);
+}, LOADED_MS);
+
+test("og.ui.raidFrames: health a bar along a neutral cell's foot under the name; out of range fades the bar, never the name's outline", () => {
+  // Wrong: a cell flooded with its health's green (the grid the loudest thing on screen); the name drawn over the
+  // fill; an out-of-range cell faded as a whole element, which fades its name's outline with the fill.
+  const e = engineFor("HudRaid", () => {
+    og.ui.raidFrames("Raid", { anchor: "left", members: [
+      { key: "full", name: "Aldric", health: 100 },
+      { key: "far", name: "Brenna", health: 80, outOfRange: true },
+      { key: "dead", name: "Corvin", health: 0, dead: true },
+    ] });
+  });
+  e.advance(2);
+  const opacities: number[] = [];
+  const k = uiKit as { props: (p: Record<string, unknown>) => void };
+  const was = k.props;
+  k.props = (p) => {
+    if (typeof p.opacity === "number") opacities.push(p.opacity);
+    was(p);
+  };
+  let draws: Map<string, DrawDesc[]>;
+  try {
+    draws = drawsDuring(() => e.advance(1));
+  } finally {
+    k.props = was;
+  }
+  const els = dump(e);
+  const cell = at(els, "RaidHud/Raid/Group#0/full")!;
+  const fill = at(els, "RaidHud/Raid/Group#0/full/Bar/Fill")!;
+  const name = at(els, "RaidHud/Raid/Group#0/full/Label/Name")!;
+  // Full health is a bar along the foot, not a fill across the cell; the name's line sits over it.
+  expect(fill.height).toBeLessThan(cell.height * 0.4);
+  expect(fill.y + fill.height).toBeLessThanOrEqual(cell.y + cell.height);
+  expect(name.y + name.height).toBeLessThanOrEqual(fill.y + 0.5);
+  // The cell's ground is the HUD's neutral token, not a hue.
+  expect(JSON.stringify(draws.get("RaidHud/Raid/Group#0/full")?.[0]?.fills?.[0])).toContain("\"hud\"");
+  // Dead keeps its dark cell with no bar.
+  expect(at(els, "RaidHud/Raid/Group#0/dead/Bar")).toBe(undefined);
+  // Out of range: the bar's paint is faded; no element of the raid is faded as a whole.
+  const farFill = JSON.stringify(draws.get("RaidHud/Raid/Group#0/far/Bar/Fill")?.[0]?.fills ?? null);
+  expect(farFill).toContain("\"alpha\":0.45");
+  expect(opacities.filter((o) => o < 1)).toEqual([]);
 }, LOADED_MS);
 
 test("og.ui.crosshair and ammoCounter: a hit marker flashes and leaves; low, empty and an infinite reserve", () => {

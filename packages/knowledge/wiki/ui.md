@@ -716,7 +716,7 @@ module ui {
 | [`RaidRole`](#type-RaidRole) | enum | A raid member's role. |
 | [`RaidMember`](#type-RaidMember) | desc struct | One cell of raid frames. |
 | [`RaidFramesDesc`](#type-RaidFramesDesc) | desc struct | Raid frames: a grid of compact cells. |
-| [`og.ui.raidFrames`](#fn-raidFrames) | function | Raid frames to the bar of World of Warcraft's: up to 40 compact cells in columns of five, each a dark cell with health in one muted tint ramping green, amber, red as it falls, the class as a stripe at its start, the incoming heal a lighter translucent extension and the absorb a white-blue overlay, the name cut to fit, a role mark, dead and offline said at the cell's end on the name's line with no fill (the name shortened first, the status never cut), a soft band under the name where a pale absorb or heal lies under it, faded to 45 % out of range, one rim by priority (the target a neutral light rim, aggro danger, a dispellable debuff its type's colour, pulsing). A press targets. |
+| [`og.ui.raidFrames`](#fn-raidFrames) | function | Raid frames to the bar of World of Warcraft's: up to 40 compact cells in columns of five, each a cell on the HUD's dark neutral ground with health a bar along its foot, the cell's one hue, in one muted tint ramping green, amber, red as it falls, the class as a stripe at its start, the incoming heal a lighter extension and the absorb a white-blue overlay on that bar, the name on its own line over the bar, cut to fit, a role mark, dead and offline a near-black cell with no bar, said at the cell's end on the name's line (the name shortened first, the status never cut), out of range its bar and stripe faded to 45 % and its name muted in solid ink with its outline kept, one rim by priority (the target a neutral light rim, aggro danger, a dispellable debuff its type's colour, pulsing). A press targets. |
 | [`CastState`](#type-CastState) | enum | Where a cast is. |
 | [`CastBarDesc`](#type-CastBarDesc) | desc struct | A cast or channel bar. |
 | [`og.ui.castBar`](#fn-castBar) | function | A cast bar to the bar of MMOs (Diablo IV, Destiny 2, WoW): the spell's art in a framed socket, its name in the display face and the seconds left on a line over a slim dark well, a fill with a bright leading edge, the seconds left, a channel draining with its tick marks, the latency zone, an uninterruptible shield, a success flash and an interrupted state in danger that fade out. |
@@ -8102,9 +8102,9 @@ fn partyFrames {
 
 ### `og.ui.raidFrames`
 
-Raid frames to the bar of World of Warcraft's: up to 40 compact cells in columns of five, each a dark cell with health in one muted tint ramping green, amber, red as it falls, the class as a stripe at its start, the incoming heal a lighter translucent extension and the absorb a white-blue overlay, the name cut to fit, a role mark, dead and offline said at the cell's end on the name's line with no fill (the name shortened first, the status never cut), a soft band under the name where a pale absorb or heal lies under it, faded to 45 % out of range, one rim by priority (the target a neutral light rim, aggro danger, a dispellable debuff its type's colour, pulsing). A press targets.
+Raid frames to the bar of World of Warcraft's: up to 40 compact cells in columns of five, each a cell on the HUD's dark neutral ground with health a bar along its foot, the cell's one hue, in one muted tint ramping green, amber, red as it falls, the class as a stripe at its start, the incoming heal a lighter extension and the absorb a white-blue overlay on that bar, the name on its own line over the bar, cut to fit, a role mark, dead and offline a near-black cell with no bar, said at the cell's end on the name's line (the name shortened first, the status never cut), out of range its bar and stripe faded to 45 % and its name muted in solid ink with its outline kept, one rim by priority (the target a neutral light rim, aggro danger, a dispellable debuff its type's colour, pulsing). A press targets.
 
-Parts: RaidFrames.cell[dead|offline|outOfRange][aggro][dispel=<type>][selected], RaidFrames.fill[low], RaidFrames.class, RaidFrames.absorb[over], RaidFrames.heal, RaidFrames.name, RaidFrames.role. Accessibility: grid of buttons named name and health. Probe ids: <id>/<key>, its Name.
+Parts: RaidFrames.cell[dead|offline|outOfRange][aggro][dispel=<type>][selected], RaidFrames.bar, RaidFrames.fill[low], RaidFrames.class, RaidFrames.absorb[over], RaidFrames.heal, RaidFrames.name, RaidFrames.role. Accessibility: grid of buttons named name and health. Probe ids: <id>/<key>, its Name.
 
 ```ts
 og.ui.raidFrames(id: string, desc?: RaidFramesDesc): FramesResult
@@ -8121,8 +8121,8 @@ Implemented by the TypeScript runtime over the members of this module: no bindin
 
 ```ogt
 fn raidFrames {
-  doc "Raid frames to the bar of World of Warcraft's: up to 40 compact cells in columns of five, each a dark cell with health in one muted tint ramping green, amber, red as it falls, the class as a stripe at its start, the incoming heal a lighter translucent extension and the absorb a white-blue overlay, the name cut to fit, a role mark, dead and offline said at the cell's end on the name's line with no fill (the name shortened first, the status never cut), a soft band under the name where a pale absorb or heal lies under it, faded to 45 % out of range, one rim by priority (the target a neutral light rim, aggro danger, a dispellable debuff its type's colour, pulsing). A press targets."
-  doc "Parts: RaidFrames.cell[dead|offline|outOfRange][aggro][dispel=<type>][selected], RaidFrames.fill[low], RaidFrames.class, RaidFrames.absorb[over], RaidFrames.heal, RaidFrames.name, RaidFrames.role. Accessibility: grid of buttons named name and health. Probe ids: <id>/<key>, its Name."
+  doc "Raid frames to the bar of World of Warcraft's: up to 40 compact cells in columns of five, each a cell on the HUD's dark neutral ground with health a bar along its foot, the cell's one hue, in one muted tint ramping green, amber, red as it falls, the class as a stripe at its start, the incoming heal a lighter extension and the absorb a white-blue overlay on that bar, the name on its own line over the bar, cut to fit, a role mark, dead and offline a near-black cell with no bar, said at the cell's end on the name's line (the name shortened first, the status never cut), out of range its bar and stripe faded to 45 % and its name muted in solid ink with its outline kept, one rim by priority (the target a neutral light rim, aggro danger, a dispellable debuff its type's colour, pulsing). A press targets."
+  doc "Parts: RaidFrames.cell[dead|offline|outOfRange][aggro][dispel=<type>][selected], RaidFrames.bar, RaidFrames.fill[low], RaidFrames.class, RaidFrames.absorb[over], RaidFrames.heal, RaidFrames.name, RaidFrames.role. Accessibility: grid of buttons named name and health. Probe ids: <id>/<key>, its Name."
   host false
   param id String "Its id."
   param desc RaidFramesDesc "The members."
@@ -26598,7 +26598,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `classColor` | `Paint \| null` | `null` | — | — | — | Its class colour for the bar (a WoW raid's), null is the health colour. |
 | `dead` | `boolean` | `false` | — | — | — | Dead. |
 | `offline` | `boolean` | `false` | — | — | — | Disconnected. |
-| `outOfRange` | `boolean` | `false` | — | — | — | Out of range: faded. |
+| `outOfRange` | `boolean` | `false` | — | — | — | Out of range: its bar and class stripe faded to 45 % and its name muted (the name keeps its outline). |
 | `aggro` | `boolean` | `false` | — | — | — | It has the enemy's attention: a danger border. |
 | `dispel` | `string` | `""` | — | — | — | A debuff a healer can dispel: its type (magic, curse, poison, disease) glows on the cell's border. |
 | `selected` | `boolean` | `false` | — | — | — | The player's target. |
@@ -26623,7 +26623,7 @@ struct RaidMember {
   field classColor Option.Paint "Its class colour for the bar (a WoW raid's), null is the health colour."
   field dead bool "Dead."
   field offline bool "Disconnected."
-  field outOfRange bool "Out of range: faded."
+  field outOfRange bool "Out of range: its bar and class stripe faded to 45 % and its name muted (the name keeps its outline)."
   field aggro bool "It has the enemy's attention: a danger border."
   field dispel String "A debuff a healer can dispel: its type (magic, curse, poison, disease) glows on the cell's border."
   field selected bool "The player's target."

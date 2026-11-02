@@ -301,7 +301,8 @@ const ROLE_ICON: Record<Api.RaidRole, string> = { none: "", tank: "shield", heal
 export function raidFrames(id: string, desc: Api.RaidFramesDesc = {}): Api.FramesResult {
   const per = Math.max(1, desc.columns || 5);
   const cw = u(desc.cellWidth || 96);
-  const ch = u(desc.cellHeight || 36);
+  // Tall enough for the name's line over the health bar at any text size.
+  const ch = Math.max(u(desc.cellHeight || 36), Math.ceil(stepSize(ts(11)).line) + raidBar() + raidInset() * 2);
   const members = (desc.members ?? []).slice(0, 40);
   let clicked: string | null = null;
   hudPlace(id, anchorOf(desc, "left"), () => {
@@ -317,6 +318,10 @@ export function raidFrames(id: string, desc: Api.RaidFramesDesc = {}): Api.Frame
   });
   return { clicked };
 }
+
+/** A raid cell's health bar: its height, and its inset from the cell's edges. */
+const raidBar = (): number => Math.max(4, Math.round(u(9)));
+const raidInset = (): number => Math.max(2, u(3));
 
 function cell(id: string, m: Api.RaidMember, w: number, h: number): Api.Response {
   const max = Math.max(1, m.healthMax ?? 100);
@@ -340,49 +345,50 @@ function cell(id: string, m: Api.RaidMember, w: number, h: number): Api.Response
   const ramp = clamp01((0.6 - hp) / 0.45);
   const fillInk = ramp <= 0 ? GREEN : ramp < 0.5 ? mix(GREEN, AMBER, ramp * 2) : mix(AMBER, RED, (ramp - 0.5) * 2);
   const stripe = Math.max(3, u(3));
+  // Out of range dims what the cell shows (its bar and stripe) and mutes its name, never the whole element: an element
+  // opacity would fade the name's outline with its fill, and a dimmed name keeps its outline at full strength.
+  const far = m.outOfRange && !out ? 0.45 : 1;
   open(id, {
     width: px(w), height: px(h), interactive: true, cross: "center",
     part: sel("RaidFrames", "cell", state, m.aggro ? "aggro" : null, m.dispel ? ["dispel", m.dispel] : null, m.selected ? "selected" : null),
     partClass: "bar",
   }, {
     ...trackDraw(3),
-    // Near-opaque: a scene behind a raid cell never tints its missing health.
-    fills: [solid(lit({ r: 0.05, g: 0.055, b: 0.065, a: 1 })), vgrad([[0, lit(BLACK, 0.25)], [0.6, lit(BLACK, 0)], [1, lit(WHITE, 0.05)]])],
+    // A neutral ground (the HUD's dark neutral) with the health a bar along its foot, the cell's one hue; dead and
+    // offline keep the near-black well. Near-opaque either way: a scene behind a raid cell never tints it.
+    fills: [solid(out ? lit({ r: 0.05, g: 0.055, b: 0.065, a: 1 }) : token("hud", 0.97)), vgrad([[0, lit(WHITE, out ? 0 : 0.06)], [0.5, lit(BLACK, 0)], [1, lit(BLACK, 0.2)]])],
     strokes: border ? [stroke(m.selected ? 2 : 1.5, lit(border, dispel && !m.selected && !m.aggro ? 0.6 + 0.4 * (0.5 + 0.5 * Math.cos(kit.seconds() * 6)) : m.selected ? 0.9 : 1))] : [stroke(1, token("shadow", 0.9), "outside")],
   });
-  const room = Math.max(0, w - stripe);
-  const at = (f: number) => stripe + f * room;
-  if (hp > 0) leaf("Fill", { width: px(hp * room), height: pct(1), part: sel("RaidFrames", "fill", low ? "low" : null) }, fillDraw(fillInk, 2), absolute({ start: stripe, top: 0 }));
-  // An incoming heal: a translucent extension at the fill's end, under the name.
-  const hw = Math.min(heal, 1 - hp);
-  // The incoming heal: the fill's own hue a third lighter, opaque and at full saturation (a translucent white over the dark
-  // track greyed it to tan): pale amber beside amber, pale green beside green, never greyer than the fill.
-  const healInk: Rgba = { r: Math.min(1, fillInk.r * 1.35), g: Math.min(1, fillInk.g * 1.35), b: Math.min(1, fillInk.b * 1.35), a: 1 };
-  if (hw > 0) leaf("Heal", { width: px(hw * room), height: pct(1), part: sel("RaidFrames", "heal") }, fillDraw(healInk, 0), absolute({ start: at(hp), top: 0 }));
-  if (absorb > 0) {
-    // The absorb: the player frame's white-blue overlay past the health (and heal); what overflows lies back over the fill's end.
-    const past = Math.min(absorb, 1 - hp - hw);
-    const over = Math.min(hp, absorb - past);
-    const paint = (a: number): Api.Fill[] => [solid(lit({ r: 0.82, g: 0.93, b: 1, a: 1 }, a)), vgrad([[0, lit(WHITE, 0.45)], [0.5, lit(WHITE, 0.1)]])];
-    if (past > 0) leaf("Absorb", { width: px(past * room), height: pct(1), part: sel("RaidFrames", "absorb") }, { fills: paint(0.62) }, absolute({ start: at(hp + hw), top: 0 }));
-    if (over > 0.001) leaf("Overabsorb", { width: px(over * room), height: pct(1), part: sel("RaidFrames", "absorb", "over") }, { fills: paint(0.45) }, absolute({ start: at(hp - over), top: 0 }));
-  }
-  // Where a pale absorb or heal lies under the name, a short soft band (as a bar's inside value has) keeps its ink.
-  const nameEnd = (u(4) + (ROLE_ICON[m.role ?? "none"] ? Math.max(10, Math.round(h * 0.3)) + u(3) : 0) + (m.name ?? "").length * stepSize(ts(11)).size * 0.6) / Math.max(1, room);
-  if ((absorb > 0 || hw > 0) && hp + (absorb > 0 ? 0 : hw) < nameEnd + 0.04) {
-    leaf("NameBand", { width: px(Math.min(room, nameEnd * room + u(16))), height: pct(1), part: sel("RaidFrames", "band") }, {
-      fills: [vgrad([[0, lit(BLACK, 0.55)], [0.8, lit(BLACK, 0.5)], [1, lit(BLACK, 0)]], 90)],
-    }, absolute({ start: stripe, top: 0 }));
+  // The bar: inset along the cell's foot from the stripe to the end.
+  const inset = raidInset();
+  const barH = raidBar();
+  const room = Math.max(0, w - stripe - inset * 2);
+  if (!out) {
+    box("Bar", { width: px(room), height: px(barH), part: sel("RaidFrames", "bar") }, { shape: { kind: "rect", radii: [2, 2, 2, 2] }, fills: [solid(lit(BLACK, 0.7))], strokes: [stroke(1, token("line", 0.6), "outside")], clip: "shape" }, () => {
+      if (hp > 0) leaf("Fill", { width: px(hp * room), height: pct(1), part: sel("RaidFrames", "fill", low ? "low" : null) }, fillDraw(fillInk, 2, far), absolute({ start: 0, top: 0 }));
+      // The incoming heal: the fill's own hue a third lighter, opaque and at full saturation, at the fill's end.
+      const hw = Math.min(heal, 1 - hp);
+      const healInk: Rgba = { r: Math.min(1, fillInk.r * 1.35), g: Math.min(1, fillInk.g * 1.35), b: Math.min(1, fillInk.b * 1.35), a: 1 };
+      if (hw > 0) leaf("Heal", { width: px(hw * room), height: pct(1), part: sel("RaidFrames", "heal") }, fillDraw(healInk, 0, far), absolute({ start: hp * room, top: 0 }));
+      if (absorb > 0) {
+        // The absorb: the player frame's white-blue overlay past the health (and heal); what overflows lies back over the fill's end.
+        const past = Math.min(absorb, 1 - hp - hw);
+        const over = Math.min(hp, absorb - past);
+        const paint = (a: number): Api.Fill[] => [solid(lit({ r: 0.82, g: 0.93, b: 1, a: 1 }, a * far)), vgrad([[0, lit(WHITE, 0.45 * far)], [0.5, lit(WHITE, 0.1 * far)]])];
+        if (past > 0) leaf("Absorb", { width: px(past * room), height: pct(1), part: sel("RaidFrames", "absorb") }, { fills: paint(0.62) }, absolute({ start: (hp + hw) * room, top: 0 }));
+        if (over > 0.001) leaf("Overabsorb", { width: px(over * room), height: pct(1), part: sel("RaidFrames", "absorb", "over") }, { fills: paint(0.45) }, absolute({ start: (hp - over) * room, top: 0 }));
+      }
+    }, absolute({ start: stripe + inset, bottom: inset }));
   }
   leaf("Class", { width: px(stripe), height: pct(1), part: sel("RaidFrames", "class") }, {
     shape: { kind: "rect", radii: [3, 0, 0, 3] },
-    fills: [solid(lit(cls, out ? 0.4 : 1))],
+    fills: [solid(lit(cls, out ? 0.4 : far))],
   }, absolute({ start: 0, top: 0 }));
   // The name keeps its line and place; dead or offline says so at the cell's end on that line, a step smaller and muted.
-  const ink = out ? lit(MUTED) : token("ink");
+  const ink = out || far < 1 ? lit(MUTED) : token("ink");
   kit.row("Label", { gap: u(3), cross: "center", padding: { left: stripe + u(4), right: u(4), top: 0, bottom: 0 }, width: pct(1) }, () => {
     const roleName = ROLE_ICON[m.role ?? "none"];
-    if (roleName) icon("Role", roleName, Math.max(10, Math.round(h * 0.3)), token("ink", out ? 0.62 : 0.85), m.role ?? "");
+    if (roleName) icon("Role", roleName, Math.max(10, Math.round(h * 0.3)), token("ink", out || far < 1 ? 0.62 : 0.85), m.role ?? "");
     // The name keeps priority and the status is never cut: when both words do not fit, the status becomes a small
     // muted glyph at the cell's end (the skull for dead, a plug for offline), its word kept for the tooltip and the
     // screen reader.
@@ -404,9 +410,9 @@ function cell(id: string, m: Api.RaidMember, w: number, h: number): Api.Response
       }
     }
   });
-  apply(absolute({ start: 0, top: 0, bottom: 0 }));
+  // The name's line over the bar (the whole cell when there is no bar).
+  apply(absolute({ start: 0, top: 0, bottom: out ? 0 : barH + inset }));
   return close({
-    opacity: m.outOfRange ? 0.45 : 1,
     a11y: a11y("button", m.name ?? "", { value: m.dead ? "Dead" : m.offline ? "Offline" : `${Math.round(hp * 100)}%`, selected: !!m.selected }),
   });
 }
