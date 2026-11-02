@@ -1,9 +1,0 @@
-type import
-version 1
----
-# The unit frames' name scrim: a 256 px soft rect of #0B0D10, 90 % at its core (og-ui blends in linear light, where 90 % darkens a pale ground about as 60 % does in sRGB), its 64 px feather baked into
-# the alpha (smoothstep), drawn as a nine-slice under a frame's name and class line (UnitFrameDesc.scrim); large so a 48 px feather is never magnified.
-# Linear (UASTC), not colour (ETC1S): a smooth alpha ramp must not band, and near black has no gamma to keep.
-texture {
-  kind linear
-}

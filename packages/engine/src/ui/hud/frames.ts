@@ -129,56 +129,6 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
       part: sel("UnitFrame", "frame", size, hostile ? "hostile" : null, desc.targeted ? "targeted" : null, dead ? "dead" : null),
       partClass: "hud",
     });
-    // The style's soft rect under the name (and the class line) only, one nine-slice that cannot band: its core runs
-    // from the portrait's centre to 16 px past the longer text line and from 6 px over the name's caps to 6 px under the
-    // last line's baseline; a smoothstep feather of 24 px (scaled with the text) lies outside it on every side. The
-    // bars' tracks are dark already and get none. Sized by last frame's layout, so the first frame draws none.
-    const path = kit.openPath();
-    const fb = desc.scrim ? kit.bounds(path) : null;
-    const hb = fb ? kit.bounds(`${path}/Bars/Head`) : null;
-    if (desc.scrim && fb && hb) {
-      const tb = kit.bounds(`${path}/Bars/TitleRow`);
-      const nameSize = stepSize(ts(m.name)).size;
-      const titleSize = Math.min(stepSize(ts(11)).size, nameSize * 0.74);
-      // A ribbon, not a slab: a long horizontal fade (24 px, 48 px at 200 % text) and a short vertical one (a third of the
-      // name's line) that ends before the first bar's track.
-      const feather = Math.round(u(24) * Math.min(2, Math.max(1, textScale())));
-      const fy = Math.max(2, Math.round(stepSize(ts(m.name)).line * 0.35));
-      const pad = Math.round(fy / 2);
-      // Caps sit about a fifth of a line below its top, the baseline about a fifth above its foot.
-      const coreTop = hb.y - fb.y + (hb.height - nameSize) / 2 + nameSize * 0.12 - pad;
-      const last = tb ?? hb;
-      const lastSize = tb ? titleSize : nameSize;
-      const coreFoot = last.y - fb.y + (last.height + lastSize) / 2 - lastSize * 0.08 + pad;
-      const textW = Math.min(hb.width, Math.max(name.length * nameSize * 0.56, tb ? (desc.title ?? "").length * titleSize * 0.56 : 0));
-      const from = u(6) + pd / 2;
-      // On screen the portrait is on whichever side the bars are not (reverse and RTL both flip it).
-      const hx = hb.x - fb.x;
-      const portraitStart = hx + hb.width / 2 > fb.width / 2;
-      const gap = portraitStart ? hx - from : fb.width - from - hx - hb.width;
-      // Logical sides: a frame's text starts at its bars' start, beside the portrait unless the frame is reversed (a target's
-      // name lies at the far end from its portrait, so its band hugs the text and leaves the portrait).
-      const rtl = portraitStart === !!desc.reverse;
-      const barsStart = rtl ? fb.width - hx - hb.width : hx;
-      const band = (bid: string, top: number, foot: number, w: number) => {
-        const startAt = desc.reverse ? barsStart - u(8) : from;
-        const coreW = desc.reverse ? w + u(16) : gap + w + u(8);
-        // No style part: an undressed part takes a card's hairline, corners and raised shadow (the slot is the texture).
-        leaf(bid, { width: px(Math.max(0, coreW) + 2 * feather), height: px(Math.max(0, foot - top) + 2 * fy) }, {
-          fills: [{ kind: "image", texture: desc.scrim!, fit: "nineSlice", slice: [64, 64, 64, 64], border: [feather, fy, feather, fy], edges: "stretch" }],
-        }, absolute({ start: startAt - feather, top: top - fy }));
-      };
-      band("Scrim", coreTop, coreFoot, textW);
-      // A boss's cast label sits on the scene above its bar, not on the track: it gets a band of its own.
-      const cb = desc.castName ? kit.bounds(`${path}/Bars/Cast/Body/Head`) : null;
-      if (cb) {
-        const cs = cb.height / 1.3;
-        const ct = cb.y - fb.y + (cb.height - cs) / 2 + cs * 0.12 - pad;
-        // Never under the name band: a stacked overlap reads as a darker step, so its feather starts where the name's ends.
-        const cf = ct + cs * 0.8 + 2 * pad;
-        band("CastScrim", Math.min(cf, Math.max(ct, coreFoot + 2 * fy)), cf, Math.min(cb.width, (desc.castName ?? "").length * cs * 0.56));
-      }
-    }
     // The placeholder's ground: the unit's hue, or plain slate when it is dead or offline (never a tinted state).
     const ground = dead || offline ? SLATE : nameHue(name);
     const portrait = () => {
@@ -271,11 +221,11 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
           const tw = Math.max(0, room / fit.k);
           const tl = stepSize(nStep).line;
           box("NameFit", { height: px(Math.ceil(tl * fit.k)), width: { kind: "grow" }, cross: "start" }, undefined, () => {
-            text("Name", name, { step: nStep, font: "display", color: nameInk, nowrap: true, ellipsis: true, width: px(tw), soft: true },
+            text("Name", name, { step: nStep, font: "display", color: nameInk, nowrap: true, ellipsis: true, width: px(tw), name: true },
               absolute(desc.reverse ? { end: 0, top: 0 } : { start: 0, top: 0 }, fit.transform ? { transform: { scaleX: fit.k, scaleY: fit.k, x: (desc.reverse ? 1 : -1) * ((1 - fit.k) * tw) / 2, y: -((1 - fit.k) * tl) / 2 } } : {}));
           });
         } else {
-          text("Name", name, { step: nStep, font: "display", color: nameInk, nowrap: true, ellipsis: true, width: { kind: "grow" }, soft: true });
+          text("Name", name, { step: nStep, font: "display", color: nameInk, nowrap: true, ellipsis: true, width: { kind: "grow" }, name: true });
         }
         if (desc.combat) icon("Combat", "crossed-swords", u(14), lit(role("danger")), "In combat");
       });
@@ -289,7 +239,7 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
         const tl = stepSize(tStep).line;
         box("TitleRow", { height: px(Math.ceil(want * 1.25)), width: { kind: "grow" }, cross: "start" }, undefined, () => {
           // Scaled about its own centre, then moved back so it keeps the name's start and sits at the row's top.
-          text("Title", desc.title ?? "", { step: tStep, color: token("ink", 0.86), nowrap: true, ellipsis: true, width: px(tw), soft: true },
+          text("Title", desc.title ?? "", { step: tStep, color: token("ink", 0.86), nowrap: true, ellipsis: true, width: px(tw), name: true },
             absolute(desc.reverse ? { end: 0, top: 0 } : { start: 0, top: 0 }, fit.transform ? { transform: { scaleX: fit.k, scaleY: fit.k, x: (desc.reverse ? 1 : -1) * ((1 - fit.k) * tw) / 2, y: -((1 - fit.k) * tl) / 2 } } : {}));
         });
       }
@@ -535,7 +485,7 @@ function cast(id: string, desc: Api.CastBarDesc, compact: boolean, healthH = 0):
           const under = hudRoom() < u(600);
           if (under) bar();
           kit.row("Head", { width: { kind: "grow" } }, () => {
-            text("Name", label, { step: nameStep, font: "display", color: bad ? lit(mix(role("danger"), WHITE, 0.25)) : token("ink"), nowrap: true, ellipsis: true, width: { kind: "grow" }, soft: true });
+            text("Name", label, { step: nameStep, font: "display", color: bad ? lit(mix(role("danger"), WHITE, 0.25)) : token("ink"), nowrap: true, ellipsis: true, width: { kind: "grow" }, name: true });
           });
           if (!under) bar();
         });

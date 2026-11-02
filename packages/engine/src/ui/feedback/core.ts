@@ -293,7 +293,23 @@ export function softText(): Api.TextEffectsDesc {
   };
 }
 
+/**
+ * The HUD's name treatment (unit frames' names, class lines, cast labels): a thin outline in a dark neutral and a soft
+ * drop, both scaled with the HUD and the player's text size (1.5 px and 1 px / 4 px at 1080p, 2 px and 2 px / 8 px at
+ * phone 200 %). Names sit on the scene with no band behind them, as shipped HUDs' nameplates do.
+ */
+export function nameText(): Api.TextEffectsDesc {
+  const k = Math.min(2, Math.max(1, textScale()));
+  const dark = { r: 0.043, g: 0.051, b: 0.063, a: 1 };
+  return {
+    outline: { width: Math.max(1, Math.round(scale() * k * 2) / 2), color: lit(dark, 0.85), align: "outside" },
+    shadows: [{ offset: { x: 0, y: k }, blur: 4 * k, color: lit(dark, 0.6) }],
+  };
+}
+
 export interface TextDesc extends Api.LabelDesc {
+  /** Draw it with the HUD's name treatment (nameText): a thin outline and a soft drop; an outline wins. */
+  name?: boolean;
   /** Draw it with the HUD's outline and shadow. */
   outline?: boolean | number;
   /** Draw it with the soft shadow alone (softText); an outline wins. */
@@ -304,10 +320,10 @@ export interface TextDesc extends Api.LabelDesc {
 
 /** A label, optionally outlined for the HUD. */
 export function text(id: string, s: string, desc: TextDesc = {}, props?: Props): void {
-  const { outline, soft, gradient, ...label } = desc;
+  const { outline, soft, name, gradient, ...label } = desc;
   kit.label(id, s, label);
-  if (outline || soft || gradient) {
-    const fx = outline ? hudText(typeof outline === "number" ? outline : 1) : soft ? softText() : {};
+  if (outline || soft || name || gradient) {
+    const fx = outline ? hudText(typeof outline === "number" ? outline : 1) : name ? nameText() : soft ? softText() : {};
     kit.setDraw({ text: gradient ? { ...fx, fill: gradient } : fx });
   }
   apply(props);

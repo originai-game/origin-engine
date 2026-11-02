@@ -91,8 +91,7 @@ export default playtest({
       t.ok(roots.every((a, i) => roots.every((b, j) => i >= j || !overlap(a, b))), `${file}: none covers another`);
     }
     // The player's and the boss's frames never share space on a phone at 200 %: every part of one clear of every part of the other.
-    // A name band's feather is a soft shadow that may bleed past its frame by design; what must not meet is content.
-    const parts = (file: string, root: string) => els(run, file).filter((e) => e.path.startsWith(`${root}/`) && e.width > 0 && e.height > 0 && !/Scrim$/.test(e.path));
+    const parts = (file: string, root: string) => els(run, file).filter((e) => e.path.startsWith(`${root}/`) && e.width > 0 && e.height > 0);
     const meet = (a: El, b: El) => a.x < b.x + b.width - 0.5 && b.x < a.x + a.width - 0.5 && a.y < b.y + b.height - 0.5 && b.y < a.y + a.height - 0.5;
     const player = parts("framesPhone200.json", "PlayerHud");
     const boss = parts("framesPhone200.json", "TargetHud");
@@ -100,9 +99,8 @@ export default playtest({
     t.ok(player.length > 0 && boss.length > 0, "both frames are shown on the phone at 200 %");
     t.equal(hits.slice(0, 3).join("; "), "", "the player's and the boss's frames meet nowhere on the phone at 200 %");
     t.ok(player.every((e) => e.x >= 0 && e.x + e.width <= 390.5), "the player's frame lies across the phone, none of it past the edge");
-    // Each frame's name and class line holds on the scene behind it (a pale green ground here): the glyphs' ink
-    // (the 99th percentile of the box's relative luminance) against the ground they sit on (its median, with the
-    // frame's scrim and the text's shadow). Live text under 3:1 is an error (docs/ui.md §15.4); dimmed names, class lines
+    // Each frame's live name holds against its outline on a pale green ground: the glyphs' ink
+    // (the 99th percentile of the box's relative luminance) against their outline. Live text under 3:1 is an error (docs/ui.md §15.4); dimmed names, class lines
     // and other text over the scene are judged by eye, not by a number.
     for (const [shot, dump] of [["framesDesktop.png", "framesDesktop.json"], ["framesPhone200.png", "framesPhone200.json"]] as const) {
       t.frame(shot, () => {
@@ -124,18 +122,14 @@ export default playtest({
           ls.sort((a, b) => a - b);
           // Glyphs cover a fifth of their run or less: their ink is the brightest 2 %.
           const ink = ls[Math.floor(ls.length * 0.98)] ?? 0;
-          const ground = ls[Math.floor(ls.length * 0.5)] ?? 0;
+          // Names sit on the scene with an outline round their glyphs and no band: a live name reads against its outline
+          // (the darkest 1 % of its run: a 1.5 px outline is a thin, antialiased line), whatever the scene; the scene is judged by eye.
+          const ground = ls[Math.floor(ls.length * 0.01)] ?? 0;
           const ratio = (Math.max(ink, ground) + 0.05) / (Math.min(ink, ground) + 0.05);
           const floor = 3;
           t.ok(ratio >= floor, `${shot}: "${e.text}" reads at ${ratio.toFixed(2)}:1 on its ground (at least ${floor}:1)`);
         }
       });
-    }
-    // A boss's name band and its cast label's band never overlap (stacked, the overlap would read as a darker step).
-    for (const dump of ["framesDesktop.json", "framesPhone200.json"]) {
-      const nb = at(run, dump, "TargetHud/Target/Scrim");
-      const cb = at(run, dump, "TargetHud/Target/CastScrim");
-      t.ok(!!nb && !!cb && !meet(nb, cb), `${dump}: the boss's name band and cast band do not overlap`);
     }
     const party = parts("framesDesktop200.json", "PartyHud");
     t.ok(party.length > 0 && party.every((e) => e.y >= 0 && e.y + e.height <= 1080.5), "on a desktop at 200 % the party lies on screen, its last member too");

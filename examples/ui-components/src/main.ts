@@ -259,11 +259,9 @@ function framesScreen(): void {
   const s = seconds();
   const art = (k: string): Texture | null => state.art[k] ?? null;
   const h = hp();
-  // The style's soft rect under each frame's name and bars (assets/kit-art/ui/name-scrim.png).
-  const scrim = art("name-scrim");
-  og.ui.unitFrame("Player", { scrim, size: small() ? "medium" : "large", portrait: art("aria-vell"), name: L("Aria Vale"), level: "60", title: L("Archmage"), health: h * 380, healthMax: 38000, shield: did("hit") ? 0 : 6000, resource: 21400, resourceMax: 30000, leader: true, combat: did("hit"), anchor: "topLeft", effects: [{ key: "a", icon: "flash", image: art("thunder-strike"), remaining: 9, duration: 20 }, { key: "b", icon: "heart", image: art("titan-heart"), remaining: 0 }] });
+  og.ui.unitFrame("Player", { size: small() ? "medium" : "large", portrait: art("aria-vell"), name: L("Aria Vale"), level: "60", title: L("Archmage"), health: h * 380, healthMax: 38000, shield: did("hit") ? 0 : 6000, resource: 21400, resourceMax: 30000, leader: true, combat: did("hit"), anchor: "topLeft", effects: [{ key: "a", icon: "flash", image: art("thunder-strike"), remaining: 9, duration: 20 }, { key: "b", icon: "heart", image: art("titan-heart"), remaining: 0 }] });
   og.ui.unitFrame("Target", {
-    scrim, name: L("Grull the Devourer"), portrait: art("cultist"), level: "??", unitClass: "boss", hostile: true, reverse: true, targeted: true, health: 0.64 * 1_250_000, healthMax: 1_250_000,
+    name: L("Grull the Devourer"), portrait: art("cultist"), level: "??", unitClass: "boss", hostile: true, reverse: true, targeted: true, health: 0.64 * 1_250_000, healthMax: 1_250_000,
     castName: L("Earthshatter"), castProgress: Math.min(1, s / 3) % 1, anchor: small() ? "topRight" : "top", size: small() ? "medium" : "large",
   });
   og.ui.partyFrames("Party", {
@@ -273,7 +271,7 @@ function framesScreen(): void {
       { key: "heal", name: L("Seraphine"), portrait: art("mira"), level: "60", icon: "plus", health: 34, resource: 12, leader: false, effects: [{ key: "p", debuff: true, type: "magic", image: art("curse"), remaining: 5, duration: 8 }] },
       { key: "dead", name: L("Kael"), portrait: art("kael"), level: "59", health: 0, dead: true },
       { key: "off", name: L("Nyx"), level: "60", health: 100, offline: true },
-    ] satisfies UnitFrameDesc[]).slice(0, small() ? 2 : 4).map((m) => ({ ...m, scrim })),
+    ] satisfies UnitFrameDesc[]).slice(0, small() ? 2 : 4),
   });
   if (small()) return;
   og.ui.raidFrames("Raid", {
@@ -584,7 +582,6 @@ export default og.game({
     for (const k of ["fireball", "blink", "frost-nova", "meteor", "shield-wall", "pyroblast", "hex", "rune-of-power"]) paths[k] = `abilities/${k}.jpg`;
     for (const k of ["flame-blade", "poison", "curse", "frost", "rune-shield", "star", "broken-chain", "titan-heart", "thunder-strike"]) paths[k] = `kit-art/boons/${k}.jpg`;
     for (const k of ["aria", "kael", "mira", "aria-vell", "cultist"]) paths[k] = `kit-art/portraits/${k}.jpg`;
-    paths["name-scrim"] = "kit-art/ui/name-scrim.png";
     for (const [k, path] of Object.entries(paths)) {
       const tex = og.load.texture(world, path);
       if (tex.ok) state.art[k] = tex.value;

@@ -14776,7 +14776,7 @@
         },
         {
           "name": "unitFrame",
-          "doc": "A unit frame to the bar of World of Warcraft and Final Fantasy XIV: a round portrait (an art slot, else a bust silhouette on a slate ground) in a neutral ring (danger for a hostile unit, gold for an elite or boss; targeted a step thicker with a light glow) ringed by the style and floating on its own shadow with no plate behind the frame, the level on a dark disc at most 40 % of it seated on its rim at the bottom inner side, a filled crown on the rim's upper outer side for a leader, an elite or boss dressing, the name on one line over the dominant health bar (its absorb as an overlay, its ghost, its numerals inside its end) and a resource bar, their text in the HUD's soft shadow, the cast under them (compact: a slim bar about 60 % of the health's height in a darker amber, its name a step smaller over it), small buffs, and states for the target, dead (the portrait greyed to about 40 %, a small skull), offline (the portrait and bar greyed, the name readable), in combat and the leader's crown. A frame at a top or bottom corner takes half the HUD band beside the opposite corner's stack; where that leaves its bars too narrow (a phone at 200 % text) the later-built frame steps under the other onto its own row, so the two never share space. A press selects it.\nParts: UnitFrame.frame[<size>][hostile][targeted][dead], UnitFrame.portrait[<class>], UnitFrame.level, UnitFrame.name, UnitFrame.title, UnitFrame.health (a StatBar), UnitFrame.resource, UnitFrame.cast, UnitFrame.crown, UnitFrame.combat. Slots: portrait (art kind portrait). States: group life (alive, dead, offline), group selection (none, targeted). Accessibility: button named name, level and health. Probe ids: <id>, <id>/Avatar/Portrait, <id>/Avatar/Level, <id>/Bars/Head/Name, <id>/Bars/Health, <id>/Bars/Resource, <id>/Bars/Cast.",
+          "doc": "A unit frame to the bar of World of Warcraft and Final Fantasy XIV: a round portrait (an art slot, else a bust silhouette on a slate ground) in a neutral ring (danger for a hostile unit, gold for an elite or boss; targeted a step thicker with a light glow) ringed by the style and floating on its own shadow with no plate behind the frame, the level on a dark disc at most 40 % of it seated on its rim at the bottom inner side, a filled crown on the rim's upper outer side for a leader, an elite or boss dressing, the name on one line over the dominant health bar (its absorb as an overlay, its ghost, its numerals inside its end) and a resource bar, their names in the HUD's name treatment (a thin dark outline and a soft drop, no band behind them), the cast under them (compact: a slim bar about 60 % of the health's height in a darker amber, its name a step smaller over it), small buffs, and states for the target, dead (the portrait greyed to about 40 %, a small skull), offline (the portrait and bar greyed, the name readable), in combat and the leader's crown. A frame at a top or bottom corner takes half the HUD band beside the opposite corner's stack; where that leaves its bars too narrow (a phone at 200 % text) the later-built frame steps under the other onto its own row, so the two never share space. A press selects it.\nParts: UnitFrame.frame[<size>][hostile][targeted][dead], UnitFrame.portrait[<class>], UnitFrame.level, UnitFrame.name, UnitFrame.title, UnitFrame.health (a StatBar), UnitFrame.resource, UnitFrame.cast, UnitFrame.crown, UnitFrame.combat. Slots: portrait (art kind portrait). States: group life (alive, dead, offline), group selection (none, targeted). Accessibility: button named name, level and health. Probe ids: <id>, <id>/Avatar/Portrait, <id>/Avatar/Level, <id>/Bars/Head/Name, <id>/Bars/Health, <id>/Bars/Resource, <id>/Bars/Cast.",
           "params": [
             {
               "name": "id",
@@ -60154,18 +60154,6 @@
             }
           ],
           "description": "Its portrait (art kind portrait, 1:1).",
-          "default": null
-        },
-        "scrim": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Texture"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "A pre-feathered soft rect from the style's art (a dark neutral, its feather baked into the alpha), drawn as a nine-slice under the name and class line only (from the portrait's centre to 16 px past the longer line, its feather 24 px scaled with the text and lying outside that) so the text holds on a bright scene; the bars' dark tracks get none; null draws none (the text's soft shadow alone).",
           "default": null
         },
         "icon": {
