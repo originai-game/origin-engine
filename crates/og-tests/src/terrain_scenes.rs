@@ -642,9 +642,9 @@ pub fn holes_scene() -> RenderScene {
     });
     let floor = scene.add_mesh(shapes::cuboid(Vec3::new(60.0, 1.0, 60.0)));
     let rock = scene.add_material(Material {
-        base_color: [0.9, 0.42, 0.12, 1.0],
+        // A deep red-orange: it stays saturated after the tonemap under the overhead sun.
+        base_color: [0.5, 0.08, 0.01, 1.0],
         roughness: 0.8,
-        emissive: [0.03, 0.01, 0.0],
         ..Default::default()
     });
     let c = pit_center();

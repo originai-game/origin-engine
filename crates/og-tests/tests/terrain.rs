@@ -420,7 +420,7 @@ fn holes_cut_the_drawn_surface_and_its_shadow() {
     let floor = Vec3::new(c.x, ts::pit_floor(), c.z);
     let pit = color_at(&holed, project(&scene.camera, floor));
     assert!(
-        pit[0] > pit[1] * 1.4 && pit[0] > 60.0,
+        pit[0] > pit[1] * 1.25 && pit[0] > pit[2] * 1.6 && pit[0] > 60.0,
         "the lit cave floor through the hole: {pit:?}"
     );
     let x = ts::PIT_X[1] + 6.0;

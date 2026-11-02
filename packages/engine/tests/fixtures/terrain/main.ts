@@ -1,7 +1,8 @@
 // The fixture terrain.test.ts cooks for its assets (the tests drive their
 // own worlds). Run on its own it shows the hill from above, and `hole`
 // cuts a pit into it (R6's holes):
-//   og run packages/engine/tests/fixtures/terrain --size 1280x720 --out og-out \
+// (--no-check: the fixture has no src/ for og check to read)
+//   og run packages/engine/tests/fixtures/terrain --no-check --size 1280x720 --out og-out \
 //     --commands "0.2:screenshot:hill.png;0.3:hole:20:20:4;0.6:screenshot:hole.png;0.7:quit"
 import { og, SHAPE_HEIGHTFIELD } from "@origingame/engine";
 
