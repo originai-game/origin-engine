@@ -851,3 +851,121 @@ fn a_rigs_foot_height_puts_its_feet_on_the_ground_not_where_its_rest_pose_has_th
     let e = RigAsset::parse("type rig\nversion 1\n---\nfootHeight 1 2 3\n").unwrap_err();
     assert!(e.reason().contains("line 4"), "{e}");
 }
+
+/// SOMA's names (og-motion's skeleton) with its neck leaning 17° forward
+/// at rest under an upright head, or a plain upright rig with Blender names.
+fn neck_rig(soma: bool) -> SkeletonAsset {
+    let lean = 17f32.to_radians();
+    let neck = Vec3::new(0.0, 1.45, 0.0);
+    let head = if soma {
+        let (sin, cos) = og_core::math::sin_cos(lean);
+        neck + Vec3::new(0.0, cos, sin) * 0.15
+    } else {
+        neck + Vec3::new(0.0, 0.15, 0.0)
+    };
+    let id = og_core::glam::Quat::IDENTITY;
+    let names: [&str; 13] = if soma {
+        [
+            "Root",
+            "Hips",
+            "Spine1",
+            "Spine2",
+            "Chest",
+            "Neck1",
+            "Head",
+            "LeftLeg",
+            "LeftShin",
+            "LeftFoot",
+            "RightLeg",
+            "RightShin",
+            "RightFoot",
+        ]
+    } else {
+        [
+            "root",
+            "hips",
+            "spine",
+            "chest",
+            "upper_chest",
+            "neck",
+            "head",
+            "thigh.L",
+            "shin.L",
+            "foot.L",
+            "thigh.R",
+            "shin.R",
+            "foot.R",
+        ]
+    };
+    let at = [
+        Vec3::ZERO,
+        Vec3::new(0.0, 1.0, 0.0),
+        Vec3::new(0.0, 1.1, 0.0),
+        Vec3::new(0.0, 1.2, 0.0),
+        Vec3::new(0.0, 1.3, 0.0),
+        neck,
+        head,
+        Vec3::new(0.1, 0.95, 0.0),
+        Vec3::new(0.1, 0.5, 0.0),
+        Vec3::new(0.1, 0.08, 0.0),
+        Vec3::new(-0.1, 0.95, 0.0),
+        Vec3::new(-0.1, 0.5, 0.0),
+        Vec3::new(-0.1, 0.08, 0.0),
+    ];
+    let parents = [NONE, 0, 1, 2, 3, 4, 5, 1, 7, 8, 1, 10, 11];
+    let defs: Vec<support::NodeDef> = (0..13).map(|i| (names[i], parents[i], at[i], id)).collect();
+    support::skeleton_from_model(&defs, 1.0)
+}
+
+#[test]
+fn somas_names_are_read_and_its_leaning_neck_leaves_the_head_upright() {
+    let s = neck_rig(true);
+    let sm = HumanoidMap::detect(&s);
+    assert_eq!(sm.scheme, "soma");
+    assert_eq!(sm.node("leftUpperLeg"), s.node("LeftLeg"));
+    assert_eq!(sm.node("leftLowerLeg"), s.node("LeftShin"));
+    assert_eq!(sm.node("neck"), s.node("Neck1"));
+    assert_eq!(sm.node("upperChest"), s.node("Chest"));
+    for (name, bone) in [
+        ("LeftHandThumb1", Some("leftThumbMetacarpal")),
+        ("RightHandIndex2", Some("rightIndexProximal")),
+        ("LeftHandPinky4", Some("leftLittleDistal")),
+        ("LeftHandMiddle1", None),
+    ] {
+        let one = chain_of(&[name]);
+        let m = HumanoidMap::with_scheme(&one, "soma").unwrap();
+        assert_eq!(m.bones(&one).first().map(|b| b.0), bone, "{name}");
+    }
+
+    // A clip holding the source's rest pose: the target's head stays as
+    // upright as its rest, however the source's neck leans.
+    let t = neck_rig(false);
+    let tm = HumanoidMap::detect(&t);
+    let rest = s.rest_pose();
+    let channels: Vec<support::ChannelFn> = (1..s.nodes.len())
+        .map(|n| {
+            let r = rest[n].rotation;
+            (
+                n as u32,
+                s.nodes[n].name.as_str(),
+                ChannelPath::Rotation,
+                4,
+                Box::new(move |_| r.to_array().to_vec()) as Box<dyn Fn(f32) -> Vec<f32>>,
+            )
+        })
+        .collect();
+    let held = support::clip("held", 1.0, &[], channels);
+    let out = retarget(&s, &sm, &t, &tm, &held, &RetargetOptions::default()).unwrap();
+    let pose = frame_pose(&t, &out.clip, 10);
+    let head = tm.node("head").unwrap() as usize;
+    let up = pose[head].rotation * Vec3::Y;
+    assert!(
+        angle(up, Vec3::Y) < 1e-3,
+        "head pitched {:.2}°",
+        angle(up, Vec3::Y).to_degrees()
+    );
+    // The neck itself follows the source's lean.
+    let neck = tm.node("neck").unwrap() as usize;
+    let dir = pose[head].translation - pose[neck].translation;
+    assert!((angle(dir, Vec3::Y) - 17f32.to_radians()).abs() < 1e-3);
+}

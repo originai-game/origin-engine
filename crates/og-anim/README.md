@@ -547,7 +547,7 @@ scheme and names bones outright:
 type rig
 version 1
 ---
-scheme auto                 # auto (default) | mixamo | vrm | unity | rigify | ue | blender
+scheme auto                 # auto (default) | mixamo | vrm | unity | rigify | ue | blender | soma
 hips "Root_Pelvis"          # a standard bone and the node it is
 leftToes none               # this rig has no such bone
 footHeight 0.08             # the ankles above the ground standing: one height, or the left's and the right's

@@ -34533,7 +34533,7 @@
       "properties": {
         "scheme": {
           "type": "string",
-          "description": "The naming scheme the bones were read in: mixamo, vrm, unity, rigify, ue or blender; custom when a rig named them, none when nothing matched."
+          "description": "The naming scheme the bones were read in: mixamo, vrm, unity, rigify, ue, blender or soma; custom when a rig named them, none when nothing matched."
         },
         "bones": {
           "type": "array",
@@ -34562,7 +34562,7 @@
         },
         "rig": {
           "$ref": "#/$defs/Rig",
-          "description": "A humanoid map from og.load.rig; 0 detects the bones from the node names (Mixamo, VRM, Unity, Rigify, Unreal or Blender names).",
+          "description": "A humanoid map from og.load.rig; 0 detects the bones from the node names (Mixamo, VRM, Unity, Rigify, Unreal, Blender or SOMA names).",
           "default": 0
         }
       },

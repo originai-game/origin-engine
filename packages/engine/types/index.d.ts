@@ -15913,7 +15913,7 @@ export interface HumanBone {
 /** Which node of a skeleton is each standard humanoid bone (what retargeting maps). */
 export interface Humanoid {
   /**
-   * The naming scheme the bones were read in: mixamo, vrm, unity, rigify, ue or blender; custom when a rig named them, none when nothing matched.
+   * The naming scheme the bones were read in: mixamo, vrm, unity, rigify, ue, blender or soma; custom when a rig named them, none when nothing matched.
    */
   readonly scheme: string;
   /** The bones found, in the standard order (hips first). */
@@ -15933,7 +15933,7 @@ export interface HumanoidDesc {
    */
   readonly skeleton?: SkeletonAsset;
   /**
-   * A humanoid map from og.load.rig; 0 detects the bones from the node names (Mixamo, VRM, Unity, Rigify, Unreal or Blender names).
+   * A humanoid map from og.load.rig; 0 detects the bones from the node names (Mixamo, VRM, Unity, Rigify, Unreal, Blender or SOMA names).
    *
    * @default 0
    */
