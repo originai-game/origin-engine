@@ -119,8 +119,9 @@ test.skipIf(SLOW)("og-build.json names every file beside it, with bytes and sha2
   for (const [plain, served] of Object.entries(names)) {
     expect(served).toBe(hashedName(plain, hash(served)));
     expect(paths).toContain(served);
-    // A plain copy stays only where the platform still reads the plain name (docs/platform-asks.md #10).
-    expect([plain, paths.includes(plain)]).toEqual([plain, (ALIASED_FILES as readonly string[]).includes(plain)]);
+    // A plain copy stays only where the platform still reads the plain name (docs/platform-asks.md #18),
+    // and play.js as the page's entry.
+    expect([plain, paths.includes(plain)]).toEqual([plain, plain === "play.js" || (ALIASED_FILES as readonly string[]).includes(plain)]);
   }
   expect(m.worker).toBe(names["game.js"]);
   expect(m.wasm).toBe(names["origin-engine_bg.wasm"]);
@@ -131,13 +132,16 @@ test.skipIf(SLOW)("og-build.json names every file beside it, with bytes and sha2
   expect(m.crossOriginIsolation).toBe("preferred");
   expect(m.game).toEqual({ name: "Runner", id: "runner", profile: "2d" });
   const html = read(dir, "index.html");
-  expect(html).toContain(`<script type="module" src="./${names["play.js"]}"></script>`);
-  expect(html).not.toContain('src="./play.js"');
+  // The entry keeps its name (origin-agent's deploy and Stage checks read `./play.js`): a loader of the hashed shell.
+  expect(html).toContain('<script type="module" src="./play.js"></script>');
+  expect(html).toContain(`<link rel="modulepreload" href="./${names["play.js"]}">`);
+  expect(read(dir, "play.js")).toBe(`import "./${names["play.js"]}";\n`);
   expect(JSON.parse(/<script type="application\/json" id="og-config">(.*?)<\/script>/.exec(html)![1]!).files).toEqual(names);
   // Hashed files are cached for a year; the entry points are revalidated.
   const headers = read(dir, "_headers");
   for (const served of Object.values(names)) expect(headers).toContain(`/${served}\n  Cache-Control: public, max-age=31536000, immutable`);
   expect(headers).toContain("/sw.js\n  Cache-Control: no-cache");
+  expect(headers).toContain("/play.js\n  Cache-Control: no-cache");
   expect(html).toContain(`<meta name="og-engine" content="${m.engine.version}">`);
   // The Player transports: what the platform reads to open the page at the top level.
   expect(m.player).toEqual({ protocol: 2, transports: ["frame", "page"] });
@@ -149,6 +153,7 @@ test.skipIf(SLOW)("og-build.json names every file beside it, with bytes and sha2
   const precache = JSON.parse(/^const OG_SW=(\{.*?\});/.exec(sw)![1]!) as { version: string; files: string[]; single: string[]; lanes: string[]; hashes: Record<string, string> };
   expect(precache.files).toContain("cooked/.cook.ogt");
   expect(precache.files).toContain(names["game.js"]);
+  expect(precache.files).toContain("play.js");
   // The plain copies are fetched by no page: not precached.
   for (const plain of ALIASED_FILES) expect(precache.files).not.toContain(plain);
   // Each precached file's content, which the next build's worker carries over by.

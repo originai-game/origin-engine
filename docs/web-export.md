@@ -163,8 +163,10 @@ the lanes glue and module, and `basis/basis_transcoder.{js,wasm}`
 (`HASHED_FILES` in `src/node/web-build.ts`). A new build changes the URL of
 what changed and nothing else. The page finds them through its
 configuration's `files` (each file's own name to its served name, the same
-map as og-build.json's `names`), `index.html` loads `./play.<hash>.js`, and
-og-build.json's `worker`, `wasm` and `lanes` give the served names.
+map as og-build.json's `names`), and og-build.json's `worker`, `wasm` and
+`lanes` give the served names. `index.html` still loads `./play.js`, which in
+a publish build is a one-line loader of `./play.<hash>.js`. It is
+revalidated like `index.html`, and the page also preloads the hashed shell.
 
 Some names stay as they are: the entry points (`index.html`, `sw.js`,
 `og-build.json`, `manifest.webmanifest`), the icons, `snippets/` (the lanes
@@ -173,10 +175,11 @@ pool's helper, which imports the glue by the URL it is given) and
 carries an unchanged cooked file over by its content instead (§The shell,
 PWA). A dev build keeps every plain name, because `og dev`, the tests and
 its linked source maps read them. Until the platform reads og-build.json
-(`docs/platform-asks.md` #18), a publish build also writes `play.js`,
-`game.js`, `origin-engine.js` and `origin-engine_bg.wasm` under their plain
-names. No page fetches these copies, the service worker does not precache
-them, and the download figures do not count them.
+(`docs/platform-asks.md` #18), a publish build also writes
+`origin-engine.js` and `origin-engine_bg.wasm` under their plain names. No
+page fetches these copies, the service worker does not precache them, and
+the download figures do not count them. The copies and the `play.js` loader
+go only once that ask has landed, as a breaking minor.
 - Without isolation everything still works: input and probe calls cross
   `postMessage` instead of the SharedArrayBuffer rings; audio uses a
   MessagePort to the worklet; the engine runs single-threaded (§Lanes).
