@@ -42,7 +42,10 @@ impl Features {
         let mut bits = 0u8;
         for t in tags {
             let i = Self::TAGS.iter().position(|k| *k == t).ok_or_else(|| {
-                format!("unknown OpenType feature '{t}' (known: {})", Self::TAGS.join(", "))
+                format!(
+                    "unknown OpenType feature '{t}' (known: {})",
+                    Self::TAGS.join(", ")
+                )
             })?;
             bits |= 1 << i;
         }

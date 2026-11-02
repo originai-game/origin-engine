@@ -275,7 +275,9 @@ pub fn generate(tokens: &str) -> Result<String, String> {
                 let tags = v
                     .as_array()
                     .and_then(|a| a.iter().map(Value::as_str).collect::<Option<Vec<_>>>())
-                    .ok_or_else(|| format!("font.scale.{key}.fontFeatures is not a list of tags"))?;
+                    .ok_or_else(|| {
+                        format!("font.scale.{key}.fontFeatures is not a list of tags")
+                    })?;
                 og_ui::shape::Features::parse(tags)
                     .map_err(|e| format!("font.scale.{key}.fontFeatures: {e}"))?
                     .bits()

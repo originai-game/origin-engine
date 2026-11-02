@@ -26,7 +26,10 @@ fn feature_lookups(face: &ttf_parser::Face, tags: &[String]) -> std::collections
     let mut out = std::collections::BTreeSet::new();
     if let Some(gsub) = face.tables().gsub {
         for f in gsub.features {
-            if tags.iter().any(|t| ttf_parser::Tag::from_bytes_lossy(t.as_bytes()) == f.tag) {
+            if tags
+                .iter()
+                .any(|t| ttf_parser::Tag::from_bytes_lossy(t.as_bytes()) == f.tag)
+            {
                 out.extend(f.lookup_indices);
             }
         }
@@ -666,7 +669,10 @@ mod tests {
         };
         let (with, ships) = cooked(&["smcp"]);
         assert!(ships, "the file ships for run-time shaping");
-        assert!(with.contains(&(GLYPH_PUA + u32::from(small_a[0]))), "a.sc by id");
+        assert!(
+            with.contains(&(GLYPH_PUA + u32::from(small_a[0]))),
+            "a.sc by id"
+        );
         assert!(with.contains(&(GLYPH_PUA + u32::from(a.0))), "a by id too");
         let (without, ships) = cooked(&[]);
         assert!(!ships && without.iter().all(|&c| c < GLYPH_PUA));

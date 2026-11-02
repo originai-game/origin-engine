@@ -285,8 +285,7 @@ impl Ui {
                         };
                         // Bidi runs in visual order, shaped runs shaped, one
                         // piece per font of a mixed text (crate::text).
-                        let pieces =
-                            crate::text::pieces_with(
+                        let pieces = crate::text::pieces_with(
                             font,
                             &line.text,
                             self.direction,

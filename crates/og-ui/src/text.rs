@@ -13,7 +13,7 @@
 //! with the run before them, and each run is measured, kerned, shaped and
 //! drawn with its own font.
 
-use crate::shape::{FontFile, Features};
+use crate::shape::{Features, FontFile};
 use og_i18n::Direction;
 use og_render::{FontHandle, GlyphPlacement, MsdfFont};
 use std::ops::Range;
@@ -1059,7 +1059,8 @@ pub(crate) fn break_lines(
             // that fits whole stays whole.
             let fits_whole = |line: &str| {
                 (m.kerns() || m.is_mixed() || needs_visual(line))
-                    && m.measure_with(&format!("{line}{spaces}{unit}"), size, tracking, features) <= max
+                    && m.measure_with(&format!("{line}{spaces}{unit}"), size, tracking, features)
+                        <= max
             };
             if !line.is_empty() && width + spaces_w + w > max && !fits_whole(&line) {
                 lines.push(Line {

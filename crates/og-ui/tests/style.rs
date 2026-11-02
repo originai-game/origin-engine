@@ -1355,7 +1355,9 @@ fn a_crest_and_edge_ornaments_sit_mid_edge_mirrored_and_scale_with_their_part() 
         .replace("  corners\n", "  corners\n  crest\n  edges\n");
     let file = parse_style(&text).unwrap_or_else(|e| panic!("{e}\n{text}"));
     assert!(
-        file.dressings.iter().any(|d| d.frame.crest && d.frame.edges),
+        file.dressings
+            .iter()
+            .any(|d| d.frame.crest && d.frame.edges),
         "the frames' dressings ask for both: {text}"
     );
     let tex = atlas();
@@ -1390,8 +1392,14 @@ fn a_crest_and_edge_ornaments_sit_mid_edge_mirrored_and_scale_with_their_part() 
         .collect();
     assert_eq!(crest.len(), 1, "one crest: {pieces:?}");
     let (r, _) = crest[0];
-    assert!(near(r.x + r.width / 2.0, menu.x + menu.width / 2.0), "centred: {r:?} on {menu:?}");
-    assert!(near(r.y, menu.y - 4.0), "4 px above the top: {r:?} on {menu:?}");
+    assert!(
+        near(r.x + r.width / 2.0, menu.x + menu.width / 2.0),
+        "centred: {r:?} on {menu:?}"
+    );
+    assert!(
+        near(r.y, menu.y - 4.0),
+        "4 px above the top: {r:?} on {menu:?}"
+    );
     // The edges: authored 600 px tall, so each shrinks to a third of the
     // panel's height, its width with it, centred on the edge; the right one
     // is the left one's art mirrored.
@@ -1409,12 +1417,22 @@ fn a_crest_and_edge_ornaments_sit_mid_edge_mirrored_and_scale_with_their_part() 
     };
     let d = 2.0 * k;
     assert!(near(left.0.x, menu.x - d), "{left:?} on {menu:?}");
-    assert!(near(right.0.right(), menu.x + menu.width + d), "{right:?} on {menu:?}");
+    assert!(
+        near(right.0.right(), menu.x + menu.width + d),
+        "{right:?} on {menu:?}"
+    );
     for (r, _) in [left, right] {
-        assert!(near(r.y + r.height / 2.0, menu.y + menu.height / 2.0), "mid-edge: {r:?}");
+        assert!(
+            near(r.y + r.height / 2.0, menu.y + menu.height / 2.0),
+            "mid-edge: {r:?}"
+        );
     }
     assert!(left.1[0] < left.1[2], "the left edge is drawn as authored");
-    assert_eq!([right.1[2], right.1[1], right.1[0], right.1[3]], left.1, "the right edge mirrors it");
+    assert_eq!(
+        [right.1[2], right.1[1], right.1[0], right.1[3]],
+        left.1,
+        "the right edge mirrors it"
+    );
     // A dressing that asks for a crest needs the style's crest art.
     let e = parse_style(&text.replacen("crest 16 32 16 8 24 12 authored 4\n", "", 1))
         .expect_err("a crest with no art is refused");

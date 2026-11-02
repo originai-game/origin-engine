@@ -11,14 +11,17 @@
 
 use og_i18n::Direction;
 use og_render::{Glyph, MsdfFont, TextureHandle};
-use og_ui::shape::{FontFile, GLYPH_PUA, Features};
+use og_ui::shape::{Features, FontFile, GLYPH_PUA};
 use og_ui::*;
 use std::sync::Arc;
 
 /// A kit font as the cook makes it with `features`: its printable ASCII by
 /// code point and every glyph by id (U+F0000 + id), advances from `hmtx`.
 fn font(file: &str) -> UiFont {
-    let path = format!("{}/../../templates/ui-kit/assets/fonts/{file}", env!("CARGO_MANIFEST_DIR"));
+    let path = format!(
+        "{}/../../templates/ui-kit/assets/fonts/{file}",
+        env!("CARGO_MANIFEST_DIR")
+    );
     let bytes = std::fs::read(&path).expect("a kit font");
     let face = ttf_parser::Face::parse(&bytes, 0).expect("a font ttf-parser reads");
     let em = f32::from(face.units_per_em());
@@ -34,7 +37,10 @@ fn font(file: &str) -> UiFont {
         .filter_map(|c| Some(glyph(c, advance(face.glyph_index(c)?))))
         .collect();
     glyphs.extend((0..face.number_of_glyphs()).filter_map(|g| {
-        Some(glyph(char::from_u32(GLYPH_PUA + u32::from(g))?, advance(ttf_parser::GlyphId(g))))
+        Some(glyph(
+            char::from_u32(GLYPH_PUA + u32::from(g))?,
+            advance(ttf_parser::GlyphId(g)),
+        ))
     }));
     let msdf = MsdfFont {
         atlas: TextureHandle::from_slot(1).expect("a handle"),
@@ -94,7 +100,11 @@ fn a_small_caps_line_measures_as_it_draws() {
         let pieces = pieces_with(&f, line, Direction::Ltr, tracking, smcp);
         assert_eq!(pieces.len(), 1);
         let p = &pieces[0];
-        assert_eq!(p.placements.len(), p.text.chars().count(), "placed glyph by glyph");
+        assert_eq!(
+            p.placements.len(),
+            p.text.chars().count(),
+            "placed glyph by glyph"
+        );
         let drawn: f32 = p.placements.iter().map(|g| g.advance).sum::<f32>() * 20.0;
         let measured = f.metrics.measure_with(line, 20.0, tracking, smcp);
         assert!(
@@ -105,6 +115,9 @@ fn a_small_caps_line_measures_as_it_draws() {
         let plain = pieces_with(&f, line, Direction::Ltr, tracking, Features::NONE);
         assert_ne!(p.text, plain[0].text, "the small-cap forms are drawn");
         let plain_w = f.metrics.measure_with(line, 20.0, tracking, Features::NONE);
-        assert!((plain_w - measured).abs() > 1.0, "small caps change the width");
+        assert!(
+            (plain_w - measured).abs() > 1.0,
+            "small caps change the width"
+        );
     }
 }
