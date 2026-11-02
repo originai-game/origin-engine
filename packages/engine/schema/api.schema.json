@@ -7941,6 +7941,9 @@
         "NavAgent",
         "Steering",
         "NavFilter",
+        "NavLinkKind",
+        "NavLinkDesc",
+        "NavLinkReached",
         "NavShapeKind",
         "NavShape",
         "NavAreaDesc",
@@ -7985,6 +7988,12 @@
           "type": "u32",
           "value": 4,
           "doc": "NavAgent.status: the target is cut off; moving to the reachable point nearest it."
+        },
+        {
+          "name": "NAV_ON_LINK",
+          "type": "u32",
+          "value": 5,
+          "doc": "NavAgent.status: crossing an off-mesh link (a jump, a ladder, a door, a teleport)."
         }
       ],
       "functions": [
@@ -8329,6 +8338,93 @@
           ],
           "returns": "Result<NavRebuild>",
           "returnsDoc": "Refused for an unknown navmesh or an area past 63.",
+          "publish": true
+        },
+        {
+          "name": "setLink",
+          "doc": "Set, move or (with no desc) remove an off-mesh link on a navmesh. Paths cross it where it is cheaper than walking; an agent that reaches its start crosses it (NAV_ON_LINK, og.NavLinkReached) and lands at its end. Links baked in the navmesh asset (`link` lines) have the ids they were given. World state.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "mesh",
+              "type": "Navigation",
+              "optional": false,
+              "doc": "The navmesh."
+            },
+            {
+              "name": "id",
+              "type": "u32",
+              "optional": false,
+              "doc": "The link's id, the game's own."
+            },
+            {
+              "name": "desc",
+              "type": "NavLinkDesc",
+              "optional": true,
+              "doc": "The link; omitted removes it."
+            }
+          ],
+          "returns": "Result<bool>",
+          "returnsDoc": "Whether both ends are on the mesh (a link with an end off it is kept but never crossed). Refused for an unknown navmesh.",
+          "publish": true
+        },
+        {
+          "name": "setLinkOpen",
+          "doc": "Open or close an off-mesh link (a door): a closed one is never planned across, and agents on the mesh re-plan. World state.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "mesh",
+              "type": "Navigation",
+              "optional": false,
+              "doc": "The navmesh."
+            },
+            {
+              "name": "id",
+              "type": "u32",
+              "optional": false,
+              "doc": "The link's id."
+            },
+            {
+              "name": "open",
+              "type": "bool",
+              "optional": false,
+              "doc": "Open."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an unknown navmesh or link.",
+          "publish": true
+        },
+        {
+          "name": "finishLink",
+          "doc": "End a crossing the game moves (NavLinkDesc.game): the agent lands at the link's end as og.nav next runs and goes on along its path.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The agent."
+            }
+          ],
+          "returns": "bool",
+          "returnsDoc": "False when it is not crossing such a link.",
           "publish": true
         },
         {
@@ -35691,6 +35787,139 @@
       },
       "additionalProperties": false
     },
+    "NavLinkKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "nav",
+      "description": "How an agent crosses an off-mesh link.",
+      "type": "string",
+      "enum": [
+        "jump",
+        "ladder",
+        "door",
+        "teleport"
+      ],
+      "x-og-variants": {
+        "jump": "Through the air on an arc, in its length over the agent's speed (at least 0.3 s).",
+        "ladder": "Climbing, at half the agent's speed.",
+        "door": "Walking through at the agent's speed, while the link is open (og.nav.setLinkOpen).",
+        "teleport": "At once: on the far side the tick after it is reached."
+      }
+    },
+    "NavLinkDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "nav",
+      "description": "An off-mesh link: a way between two points of a navmesh its surface does not join (a gap to jump, a ladder, a door, a teleporter). Each end snaps to the polygon under it within 1 m.",
+      "type": "object",
+      "properties": {
+        "start": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where the agent leaves the surface.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "end": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where it lands.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "kind": {
+          "$ref": "#/$defs/NavLinkKind",
+          "description": "How it crosses.",
+          "default": "jump"
+        },
+        "bidirectional": {
+          "type": "boolean",
+          "description": "Crossed both ways; false: from start to end only.",
+          "default": true
+        },
+        "cost": {
+          "type": "number",
+          "description": "What crossing costs a path, in metres of walking; 0 is the link's length. A dear link loses to a shorter walk round.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "open": {
+          "type": "boolean",
+          "description": "A closed link is never planned across (a shut door); agents re-plan when it opens or closes.",
+          "default": true
+        },
+        "duration": {
+          "type": "number",
+          "description": "Seconds a crossing takes; 0 is the kind's own.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s"
+        },
+        "game": {
+          "type": "boolean",
+          "description": "The game moves the agent across (an animation, a cutscene): og.nav holds it at the start until og.nav.finishLink, then lands it at the end.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "NavLinkReached": {
+      "x-og-kind": "event",
+      "x-og-module": "nav",
+      "description": "An agent reached an off-mesh link and started across it (systems read it the tick after): play the jump or the climb here. With `game`, move it and call og.nav.finishLink when it is over.",
+      "type": "object",
+      "properties": {
+        "agent": {
+          "$ref": "#/$defs/Entity",
+          "description": "The agent."
+        },
+        "mesh": {
+          "$ref": "#/$defs/Navigation",
+          "description": "The navmesh."
+        },
+        "link": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The link's id."
+        },
+        "kind": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its NavLinkKind, by index: 0 jump, 1 ladder, 2 door, 3 teleport."
+        },
+        "start": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where the agent leaves the surface.",
+          "x-og-unit": "m"
+        },
+        "end": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where it lands.",
+          "x-og-unit": "m"
+        },
+        "game": {
+          "type": "boolean",
+          "description": "The game moves it across."
+        }
+      },
+      "required": [
+        "agent",
+        "mesh",
+        "link",
+        "kind",
+        "start",
+        "end",
+        "game"
+      ],
+      "additionalProperties": false
+    },
     "NavShapeKind": {
       "x-og-kind": "enum",
       "x-og-module": "nav",
@@ -36028,6 +36257,15 @@
         "algorithm": {
           "type": "string",
           "description": "What ran: jps, astar or navmesh."
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "description": "Where it crosses off-mesh links: each an index into points, the link's start (the next point is where it lands)."
         }
       },
       "required": [
@@ -36035,7 +36273,8 @@
         "length",
         "complete",
         "expanded",
-        "algorithm"
+        "algorithm",
+        "links"
       ],
       "additionalProperties": false
     },

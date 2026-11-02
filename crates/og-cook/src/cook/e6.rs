@@ -373,11 +373,12 @@ pub(super) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
             "terrain",
             "bounds",
             "area",
+            "link",
         ]
         .contains(&e.key.as_str())
         {
             return Err(CookError(format!(
-                "line {}: '{}' is not a navmesh entry: scene, agent, cellSize, cellHeight, tileSize, maxError, box, model, terrain, bounds or area",
+                "line {}: '{}' is not a navmesh entry: scene, agent, cellSize, cellHeight, tileSize, maxError, box, model, terrain, bounds, area or link",
                 e.line, e.key
             )));
         }
@@ -448,7 +449,85 @@ pub(super) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
         }
         Ok(out)
     }
+    /// A navmesh's `link` entries: `id` (1 or more, unique), `start`, `end`,
+    /// `kind` (jump, ladder, door or teleport), `bidirectional`, `cost`,
+    /// `duration`, `open` and `traverse game` (the game moves the agent).
+    fn navmesh_links(body: &Block) -> Result<Vec<(u32, og_nav::Link)>, CookError> {
+        let mut out: Vec<(u32, og_nav::Link)> = Vec::new();
+        for e in body.get_all("link") {
+            let b = e.block.as_ref();
+            let id = f32_of(b, "id", 0.0);
+            if id < 1.0 || id.fract() != 0.0 || id > u32::MAX as f32 {
+                return Err(CookError(format!(
+                    "line {}: a link needs an id, a whole number from 1",
+                    e.line
+                )));
+            }
+            let id = id as u32;
+            if out.iter().any(|(k, _)| *k == id) {
+                return Err(CookError(format!(
+                    "line {}: link id {id} is used twice",
+                    e.line
+                )));
+            }
+            let word = |key: &str| {
+                b.and_then(|b| b.get(key))
+                    .and_then(|e| e.values.first())
+                    .and_then(|v| v.as_word().or(v.as_str()))
+                    .map(str::to_string)
+            };
+            let flag = |key: &str, default: bool| {
+                b.and_then(|b| b.get(key))
+                    .and_then(|e| e.values.first())
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(default)
+            };
+            let kind = match word("kind").as_deref().unwrap_or("jump") {
+                "jump" => og_nav::LinkKind::Jump,
+                "ladder" => og_nav::LinkKind::Ladder,
+                "door" => og_nav::LinkKind::Door,
+                "teleport" => og_nav::LinkKind::Teleport,
+                k => {
+                    return Err(CookError(format!(
+                        "line {}: '{k}' is not a link kind: jump, ladder, door or teleport",
+                        e.line
+                    )));
+                }
+            };
+            let game = match word("traverse").as_deref() {
+                None | Some("engine") => false,
+                Some("game") => true,
+                Some(t) => {
+                    return Err(CookError(format!(
+                        "line {}: traverse is engine or game, not '{t}'",
+                        e.line
+                    )));
+                }
+            };
+            if b.and_then(|b| b.get("start")).is_none() || b.and_then(|b| b.get("end")).is_none() {
+                return Err(CookError(format!(
+                    "line {}: a link needs a start and an end",
+                    e.line
+                )));
+            }
+            out.push((
+                id,
+                og_nav::Link {
+                    start: vec3_of(b, "start", Vec3::ZERO),
+                    end: vec3_of(b, "end", Vec3::ZERO),
+                    kind,
+                    bidirectional: flag("bidirectional", true),
+                    cost: f32_of(b, "cost", 0.0).max(0.0),
+                    open: flag("open", true),
+                    duration: f32_of(b, "duration", 0.0).max(0.0),
+                    game,
+                },
+            ));
+        }
+        Ok(out)
+    }
     let areas = navmesh_areas(body)?;
+    let links = navmesh_links(body)?;
     let root = assets_root(s);
     let agent = body.get("agent").and_then(entry_block);
     let params = og_nav::NavParams {
@@ -624,6 +703,29 @@ pub(super) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
                 .filter(|p| p.area != 0)
                 .count()
         ));
+    }
+    // G2-4's links, only in a navmesh that has some.
+    if !links.is_empty() {
+        let linked = og_nav::NavMesh::from_tiles(field.clone(), mesh.tiles.clone())
+            .map(|m| m.with_links(links.clone()));
+        let mut bytes = Vec::new();
+        for (id, l) in &links {
+            bytes.extend_from_slice(&id.to_le_bytes());
+            l.write(&mut bytes);
+        }
+        w.raw("links", bytes, 4);
+        let off: Vec<String> = links
+            .iter()
+            .filter(|(id, _)| linked.as_ref().is_none_or(|m| m.link_ends(*id).is_none()))
+            .map(|(id, _)| id.to_string())
+            .collect();
+        notes.push(format!("links: {}", links.len()));
+        if !off.is_empty() {
+            notes.push(format!(
+                "warning: links {} have an end more than 1 m from the mesh; agents never cross them",
+                off.join(", ")
+            ));
+        }
     }
     notes.insert(
         0,

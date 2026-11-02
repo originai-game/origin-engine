@@ -147,6 +147,12 @@ impl Grid {
         self.version
     }
 
+    /// Sets the edit count a restore found saved, so the paths planned on
+    /// it before the save stay current.
+    pub fn restore_version(&mut self, version: u64) {
+        self.version = version;
+    }
+
     /// Whether every walkable cell costs 1.
     pub fn uniform(&self) -> bool {
         self.weighted == 0

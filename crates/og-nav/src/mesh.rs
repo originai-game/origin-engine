@@ -26,7 +26,10 @@
 //! tiles it touches. Areas (`set_area`, and the baked ones the mesh is
 //! built with) mark spans with an area id (0 is ground): regions never mix
 //! areas, so every polygon has one ([`Poly::area`]), and a path's [`Filter`]
-//! weighs each area's length by its cost or keeps out of it.
+//! weighs each area's length by its cost or keeps out of it. Off-mesh
+//! links ([`Link`]: a jump, a ladder, a door, a teleport) join two points
+//! the surface does not: A* crosses an open one at its cost, and a path
+//! splits at each, its corners funnelled per stretch ([`MeshPath::links`]).
 //! Everything is integer or f32 arithmetic in a fixed order: the same
 //! heightfield builds the same polygons on every host.
 
@@ -252,11 +255,126 @@ impl Filter {
     }
 }
 
+/// How an agent crosses an off-mesh link.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LinkKind {
+    /// Through the air, on an arc.
+    Jump = 0,
+    /// Climbing, at half its speed.
+    Ladder = 1,
+    /// Walking through, while it is open.
+    Door = 2,
+    /// At once.
+    Teleport = 3,
+}
+
+impl LinkKind {
+    pub fn from_index(i: u32) -> LinkKind {
+        match i {
+            1 => LinkKind::Ladder,
+            2 => LinkKind::Door,
+            3 => LinkKind::Teleport,
+            _ => LinkKind::Jump,
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            LinkKind::Jump => "jump",
+            LinkKind::Ladder => "ladder",
+            LinkKind::Door => "door",
+            LinkKind::Teleport => "teleport",
+        }
+    }
+}
+
+/// An off-mesh link: from `start` to `end` (and back while `bidirectional`),
+/// each snapped to the polygon under it within a metre.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Link {
+    pub start: Vec3,
+    pub end: Vec3,
+    pub kind: LinkKind,
+    pub bidirectional: bool,
+    /// What crossing costs a path, in metres; 0 is the link's length.
+    pub cost: f32,
+    /// A closed link is never planned across (a shut door).
+    pub open: bool,
+    /// Seconds a crossing takes; 0 is the kind's own (by the agent's speed; a teleport is instant).
+    pub duration: f32,
+    /// The game moves the agent across and says when it is over.
+    pub game: bool,
+}
+
+impl Link {
+    /// What crossing costs a path.
+    pub fn path_cost(&self) -> f32 {
+        if self.cost > 0.0 {
+            self.cost
+        } else {
+            self.start.distance(self.end)
+        }
+    }
+
+    /// Appends its byte form.
+    pub fn write(&self, out: &mut Vec<u8>) {
+        for c in [
+            self.start.x,
+            self.start.y,
+            self.start.z,
+            self.end.x,
+            self.end.y,
+            self.end.z,
+            self.cost,
+            self.duration,
+        ] {
+            out.extend_from_slice(&c.to_le_bytes());
+        }
+        out.push(self.kind as u8);
+        out.push(
+            u8::from(self.bidirectional) | u8::from(self.open) << 1 | u8::from(self.game) << 2,
+        );
+    }
+
+    /// Reads one link off the front of `b`.
+    pub fn read(b: &mut &[u8]) -> Option<Link> {
+        if b.len() < 34 {
+            return None;
+        }
+        let f = |i: usize| f32::from_le_bytes(b[i * 4..i * 4 + 4].try_into().unwrap());
+        let flags = b[33];
+        let l = Link {
+            start: Vec3::new(f(0), f(1), f(2)),
+            end: Vec3::new(f(3), f(4), f(5)),
+            cost: f(6),
+            duration: f(7),
+            kind: LinkKind::from_index(b[32] as u32),
+            bidirectional: flags & 1 != 0,
+            open: flags & 2 != 0,
+            game: flags & 4 != 0,
+        };
+        *b = &b[34..];
+        Some(l)
+    }
+}
+
+/// Where a path crosses a link: `points[corner]` is where it starts and
+/// `points[corner + 1]` where it lands.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PathLink {
+    pub corner: u32,
+    pub link: u32,
+    /// Crossed from its end to its start.
+    pub reverse: bool,
+}
+
 /// A path through the navmesh.
 #[derive(Clone, Debug, PartialEq)]
 pub struct MeshPath {
     /// The corners, start and end included.
     pub points: Vec<Vec3>,
+    /// The links it crosses, in order.
+    pub links: Vec<PathLink>,
     /// The polygons crossed.
     pub polys: Vec<PolyRef>,
     /// Polygons taken off the open list.
@@ -282,6 +400,13 @@ pub struct NavMesh {
     blocked: Vec<bool>,
     /// Per span: its area.
     span_area: Vec<u8>,
+    /// The links it was built with, and its links now, by id.
+    base_links: IdMap<u32, Link>,
+    links: IdMap<u32, Link>,
+    /// Per link, the polygons its start and end stand on (a link with an
+    /// end off the mesh is left out), and per polygon the links leaving it.
+    link_ends: IdMap<u32, (PolyRef, PolyRef)>,
+    link_from: BTreeMap<PolyRef, Vec<(u32, bool)>>,
     /// Per span: its region in its tile (0: none).
     span_region: Vec<u32>,
     /// Per tile: each region's rows of cells.
@@ -341,6 +466,7 @@ impl NavMesh {
         }
         mesh.tiles = tiles;
         mesh.link();
+        mesh.resolve_links();
         Some(mesh)
     }
 
@@ -361,6 +487,10 @@ impl NavMesh {
             areas: IdMap::new(),
             blocked: vec![false; spans],
             span_area: Vec::new(),
+            base_links: IdMap::new(),
+            links: IdMap::new(),
+            link_ends: IdMap::new(),
+            link_from: BTreeMap::new(),
             span_region: vec![0; spans],
             rows: vec![RegionRows::new(); n],
             version: 1,
@@ -374,6 +504,12 @@ impl NavMesh {
 
     pub fn version(&self) -> u64 {
         self.version
+    }
+
+    /// Sets the edit count a restore found saved, so the paths planned on
+    /// it before the save stay current.
+    pub fn restore_version(&mut self, version: u64) {
+        self.version = version;
     }
 
     pub fn poly_count(&self) -> usize {
@@ -410,6 +546,104 @@ impl NavMesh {
     /// The obstacles set now, by id.
     pub fn obstacles(&self) -> impl Iterator<Item = (u32, &Shape)> {
         self.obstacles.iter().map(|(k, v)| (*k, v))
+    }
+
+    /// The mesh with `links` as the ones it was built with (the cook's).
+    pub fn with_links(mut self, links: Vec<(u32, Link)>) -> NavMesh {
+        self.base_links = links.into_iter().collect();
+        self.links = self.base_links.clone();
+        self.resolve_links();
+        self
+    }
+
+    /// Its links now, by id.
+    pub fn links(&self) -> impl Iterator<Item = (u32, &Link)> {
+        self.links.iter().map(|(k, v)| (*k, v))
+    }
+
+    /// The links it was built with, by id.
+    pub fn base_links(&self) -> impl Iterator<Item = (u32, &Link)> {
+        self.base_links.iter().map(|(k, v)| (*k, v))
+    }
+
+    pub fn off_mesh_link(&self, id: u32) -> Option<&Link> {
+        self.links.get(&id)
+    }
+
+    /// The polygons link `id`'s start and end stand on; `None` while either is off the mesh.
+    pub fn link_ends(&self, id: u32) -> Option<(PolyRef, PolyRef)> {
+        self.link_ends.get(&id).copied()
+    }
+
+    /// Sets, moves or removes (`None`) a link; agents on the mesh re-plan.
+    /// Whether both its ends are on the mesh.
+    pub fn set_link(&mut self, id: u32, link: Option<Link>) -> bool {
+        match link {
+            Some(l) => {
+                self.links.insert(id, l);
+            }
+            None => {
+                self.links.remove(&id);
+            }
+        }
+        self.resolve_links();
+        self.version += 1;
+        self.link_ends.contains_key(&id)
+    }
+
+    /// Opens or closes link `id` (a door); false for an unknown link.
+    pub fn set_link_open(&mut self, id: u32, open: bool) -> bool {
+        let Some(l) = self.links.get_mut(&id) else {
+            return false;
+        };
+        if l.open != open {
+            l.open = open;
+            self.version += 1;
+        }
+        true
+    }
+
+    /// Whether its links differ from the ones it was built with (what a save holds).
+    pub fn links_moved(&self) -> bool {
+        self.links != self.base_links
+    }
+
+    /// Replaces every link (a restore): the base ones when `links` is `None`.
+    pub fn restore_links(&mut self, links: Option<Vec<(u32, Link)>>) {
+        let want: IdMap<u32, Link> = match links {
+            Some(l) => l.into_iter().collect(),
+            None => self.base_links.clone(),
+        };
+        if want != self.links {
+            self.links = want;
+            self.resolve_links();
+            self.version += 1;
+        }
+    }
+
+    /// Snaps every link's ends to the polygons under them.
+    fn resolve_links(&mut self) {
+        self.link_ends.clear();
+        self.link_from.clear();
+        if self.links.is_empty() {
+            return;
+        }
+        let ext = Vec3::new(1.0, self.field.params.agent_height.max(1.0), 1.0);
+        let mut ends = Vec::new();
+        for (&id, l) in &self.links {
+            if let (Some((s, _)), Some((e, _))) =
+                (self.nearest(l.start, ext), self.nearest(l.end, ext))
+            {
+                ends.push((id, s, e, l.bidirectional));
+            }
+        }
+        for (id, s, e, both) in ends {
+            self.link_ends.insert(id, (s, e));
+            self.link_from.entry(s).or_default().push((id, false));
+            if both {
+                self.link_from.entry(e).or_default().push((id, true));
+            }
+        }
     }
 
     /// The areas set at run time, by id (not the baked ones).
@@ -598,6 +832,7 @@ impl NavMesh {
             self.tiles[t] = self.build_tile(t);
         }
         self.link();
+        self.resolve_links();
         self.version += 1;
         rebuild
     }
@@ -1067,6 +1302,9 @@ impl NavMesh {
         let mut seq = 0u32;
         let mut expanded = 0u32;
         let mut best_end = (spt.distance(ept), sref);
+        // Polygons last reached across a link: (link, reversed).
+        let links = !self.link_from.is_empty();
+        let mut via: BTreeMap<PolyRef, (u32, bool)> = BTreeMap::new();
         let mut found = false;
         while let Some(Reverse((_, _, cur))) = open.pop() {
             if closed.insert(cur, ()).is_some() {
@@ -1103,8 +1341,41 @@ impl NavMesh {
                     };
                 if g.get(&nb).is_none_or(|old| ng < old.0) {
                     g.insert(nb, (ng, cur, mid));
+                    if links {
+                        via.remove(&nb);
+                    }
                     seq += 1;
                     open.push(Reverse((key(ng + mid.distance(ept) * least), seq, nb)));
+                }
+            }
+            if links && let Some(out) = self.link_from.get(&cur) {
+                for &(id, reverse) in out {
+                    let l = &self.links[&id];
+                    let (s, e) = self.link_ends[&id];
+                    let nb = if reverse { s } else { e };
+                    let there = area_of(nb);
+                    if !l.open || nb == cur || closed.contains_key(&nb) || filter.excludes(there) {
+                        continue;
+                    }
+                    let (a, b) = if reverse {
+                        (l.end, l.start)
+                    } else {
+                        (l.start, l.end)
+                    };
+                    let ng = gc
+                        + pos.distance(a) * here
+                        + l.path_cost()
+                        + if nb == eref {
+                            b.distance(ept) * filter.cost(there)
+                        } else {
+                            0.0
+                        };
+                    if g.get(&nb).is_none_or(|old| ng < old.0) {
+                        g.insert(nb, (ng, cur, b));
+                        via.insert(nb, (id, reverse));
+                        seq += 1;
+                        open.push(Reverse((key(ng + b.distance(ept) * least), seq, nb)));
+                    }
                 }
             }
         }
@@ -1122,9 +1393,37 @@ impl NavMesh {
             let (tile, poly) = self.poly(last).expect("a live polygon");
             Self::closest_on(tile, poly, ept)
         };
-        let points = self.funnel(&polys, spt, goal);
+        let (points, crossed) = if via.is_empty() {
+            (self.funnel(&polys, spt, goal), Vec::new())
+        } else {
+            // A stretch of surface per link, funnelled on its own.
+            let mut points = Vec::new();
+            let mut crossed = Vec::new();
+            let (mut first, mut from) = (0usize, spt);
+            for i in 1..polys.len() {
+                let Some(&(id, reverse)) = via.get(&polys[i]) else {
+                    continue;
+                };
+                let l = &self.links[&id];
+                let (a, b) = if reverse {
+                    (l.end, l.start)
+                } else {
+                    (l.start, l.end)
+                };
+                points.extend(self.funnel(&polys[first..i], from, a));
+                crossed.push(PathLink {
+                    corner: points.len() as u32 - 1,
+                    link: id,
+                    reverse,
+                });
+                (first, from) = (i, b);
+            }
+            points.extend(self.funnel(&polys[first..], from, goal));
+            (points, crossed)
+        };
         Some(MeshPath {
             points,
+            links: crossed,
             polys,
             expanded,
             complete: found,

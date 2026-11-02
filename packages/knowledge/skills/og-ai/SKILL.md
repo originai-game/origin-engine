@@ -48,6 +48,16 @@ keeps it out (`og.nav.findPath` takes the same two fields): a wolf with
 `areaCosts: [1, 1, 1, 8]` wades area 3 only when going round is eight
 times longer, a guard with `excluded: [4]` never steps into area 4.
 
+A gap the floor does not join (a jump, a ladder, a door, a teleporter)
+is an off-mesh link: a `link` line in the navmesh file, or
+`og.nav.setLink(world, mesh, id, { start, end, kind })` at run time.
+Paths cross open links (`og.nav.setLinkOpen` shuts a door), and an agent
+reaching one reports `NAV_ON_LINK` and sends `og.NavLinkReached { agent,
+link }`. The engine animates the crossing (an arc for a jump, half speed
+on a ladder, a blink for a teleport); with `traverse game` the agent
+waits on the link until the game plays its own animation and calls
+`og.nav.finishLink(world, agent)`.
+
 ### The navmesh file
 
 The geometry is every `scene`, `model`, `terrain` and `box` entry
@@ -97,6 +107,17 @@ area {                         # floor marked with an area (repeatable; a later 
   point 0 0 0                  # three or more (x and z): a convex outline instead
   bottom -1                    # the outline's floor range (default -1 to 2)
   top 2
+}
+link {                         # an off-mesh link: a gap jumped, a ladder, a door, a teleport (repeatable)
+  id 1                         # a whole number from 1, unique: og.nav.setLink and NavLinkReached name it (required)
+  start 0 0 0                  # each end snaps to the floor within a metre (required)
+  end 0 0 0                    # (required)
+  kind jump                    # jump, ladder, door or teleport (default jump)
+  bidirectional true           # false: start to end only (default true)
+  cost 0                       # metres a path pays to cross; 0 is the link's length (default 0)
+  duration 0                   # seconds a crossing takes; 0 is the kind's own (default 0)
+  open true                    # false: shut, never planned across until og.nav.setLinkOpen (default true)
+  traverse engine              # engine animates the crossing; game moves the agent and calls og.nav.finishLink (default engine)
 }
 ```
 

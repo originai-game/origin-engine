@@ -19,7 +19,7 @@
 
 use crate::flow::FlowField;
 use crate::grid::{Algorithm, Grid, Scratch};
-use crate::mesh::{Filter, NONE as NO_POLY, NavMesh, PolyRef, Shape};
+use crate::mesh::{Filter, Link, LinkKind, NONE as NO_POLY, NavMesh, PathLink, PolyRef, Shape};
 use crate::steer;
 use og_core::IdMap;
 use og_core::glam::{Quat, Vec2, Vec3};
@@ -42,6 +42,72 @@ pub const STATUS_ARRIVED: u32 = 2;
 pub const STATUS_UNREACHABLE: u32 = 3;
 /// The target is unreachable; moving to the reachable point nearest it.
 pub const STATUS_PARTIAL: u32 = 4;
+/// Crossing an off-mesh link (a jump, a ladder, a door, a teleport).
+pub const STATUS_ON_LINK: u32 = 5;
+
+/// Sent when an agent reaches an off-mesh link and starts across it (G2-4;
+/// registered only once a navmesh has a link, [`enable_links`]).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
+#[reflect(name = "og.NavLinkReached")]
+pub struct NavLinkReached {
+    /// The agent.
+    pub agent: u64,
+    /// The navmesh.
+    pub mesh: u64,
+    /// The link's id.
+    pub link: u32,
+    /// Its kind: 0 jump, 1 ladder, 2 door, 3 teleport.
+    pub kind: u32,
+    /// Where the agent leaves the surface, and where it lands.
+    pub start: Vec3,
+    pub end: Vec3,
+    /// The game moves the agent across (`og.nav.finishLink` ends it).
+    pub game: bool,
+}
+
+/// Registers `og.NavLinkReached` and grants og.nav its sends: what a host
+/// calls the first time a navmesh has an off-mesh link.
+pub fn enable_links(world: &mut World) -> Result<()> {
+    world.register::<NavLinkReached>()?;
+    world.grant(SYSTEM_NAME, &[NavLinkReached::NAME])
+}
+
+/// An agent part way across a link.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Traverse {
+    pub link: u32,
+    pub kind: LinkKind,
+    pub from: Vec3,
+    pub to: Vec3,
+    /// Seconds since it left `from`, and what the crossing takes.
+    pub elapsed: f32,
+    pub duration: f32,
+    /// The game moves it; `finished` once the game said it is over.
+    pub game: bool,
+    pub finished: bool,
+    /// The path corner the link starts at.
+    pub corner: u32,
+    /// The polygon it lands on.
+    pub land: u32,
+}
+
+impl Traverse {
+    /// Where an engine-moved agent is now: on an arc for a jump, straight otherwise.
+    fn at(&self) -> Vec3 {
+        let t = if self.duration > 0.0 {
+            (self.elapsed / self.duration).min(1.0)
+        } else {
+            1.0
+        };
+        let mut p = self.from.lerp(self.to, t);
+        if self.kind == LinkKind::Jump {
+            let d = Vec2::new(self.to.x - self.from.x, self.to.z - self.from.z).length();
+            let h = 0.5 + 0.25 * d;
+            p.y += 4.0 * h * t * (1.0 - t);
+        }
+        p
+    }
+}
 
 /// An agent that moves itself: towards `target` while `seeking`, by a path
 /// over `nav` (a grid, navmesh or flow field handle; 0 goes straight).
@@ -475,6 +541,10 @@ pub struct PathState {
     /// located (an agent that has never planned stands on none).
     pub poly: u32,
     pub status: u32,
+    /// The links the path crosses (G2-4).
+    pub links: Vec<PathLink>,
+    /// The link it is crossing now.
+    pub traverse: Option<Traverse>,
 }
 
 impl Default for PathState {
@@ -488,6 +558,8 @@ impl Default for PathState {
             age: 0,
             poly: NO_POLY,
             status: 0,
+            links: Vec::new(),
+            traverse: None,
         }
     }
 }
@@ -532,6 +604,24 @@ impl NavSystem {
     /// The path an agent follows now (for the probe's dumps).
     pub fn path_of(&self, e: Entity) -> Option<PathState> {
         lock(&self.state).paths.get(&e.to_bits()).cloned()
+    }
+
+    /// Ends a game crossing of a link (`og.nav.finishLink`): the agent lands
+    /// at the link's end as og.nav next runs. False when it is not on one
+    /// the game moves.
+    pub fn finish_link(&self, e: Entity) -> bool {
+        let mut st = lock(&self.state);
+        match st
+            .paths
+            .get_mut(&e.to_bits())
+            .and_then(|p| p.traverse.as_mut())
+        {
+            Some(t) if t.game => {
+                t.finished = true;
+                true
+            }
+            _ => false,
+        }
     }
 
     /// Every agent's path now, by entity bits (the debug view's `nav`).
@@ -579,6 +669,27 @@ fn noise(e: u64, tick: u64) -> f32 {
     ((h >> 40) as f32 / (1u64 << 24) as f32) * 2.0 - 1.0
 }
 
+/// What [`plan`] answers: world corners, a status, the navmesh polygon
+/// the start stands on and the links the path crosses.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Plan {
+    pub corners: Vec<Vec3>,
+    pub status: u32,
+    pub poly: u32,
+    pub links: Vec<PathLink>,
+}
+
+impl From<(Vec<Vec3>, u32, u32)> for Plan {
+    fn from((corners, status, poly): (Vec<Vec3>, u32, u32)) -> Plan {
+        Plan {
+            corners,
+            status,
+            poly,
+            links: Vec::new(),
+        }
+    }
+}
+
 /// Plans a path on `nav` from `from` to `to` for `agent` (its radius and
 /// smoothing) through `filter`: world corners and a status.
 pub fn plan(
@@ -589,7 +700,7 @@ pub fn plan(
     agent: &NavAgent,
     filter: &Filter,
     scratch: &mut Scratch,
-) -> (Vec<Vec3>, u32, u32) {
+) -> Plan {
     let (radius, smooth) = (agent.radius, agent.smooth);
     match nav {
         Nav::Grid(g) => {
@@ -597,10 +708,10 @@ pub fn plan(
             let reach = 4;
             let (Some(sc), Some(gc)) = (g.nearest_walkable(a, reach), g.nearest_walkable(b, reach))
             else {
-                return (Vec::new(), STATUS_UNREACHABLE, NO_POLY);
+                return (Vec::new(), STATUS_UNREACHABLE, NO_POLY).into();
             };
             let Some(path) = g.find_path(sc, gc, Algorithm::Jps, scratch) else {
-                return (Vec::new(), STATUS_UNREACHABLE, NO_POLY);
+                return (Vec::new(), STATUS_UNREACHABLE, NO_POLY).into();
             };
             let end = if g.cell_at(b) == Some(gc) {
                 b
@@ -620,6 +731,7 @@ pub fn plan(
                 status,
                 NO_POLY,
             )
+                .into()
         }
         Nav::Mesh(m) => {
             let extent = Vec3::new(2.0, m.field.params.agent_height.max(2.0), 2.0);
@@ -630,16 +742,17 @@ pub fn plan(
                     } else {
                         STATUS_PARTIAL
                     };
-                    (
-                        p.points,
+                    Plan {
+                        corners: p.points,
                         status,
-                        p.polys.first().copied().unwrap_or(NO_POLY),
-                    )
+                        poly: p.polys.first().copied().unwrap_or(NO_POLY),
+                        links: p.links,
+                    }
                 }
-                None => (Vec::new(), STATUS_UNREACHABLE, NO_POLY),
+                None => (Vec::new(), STATUS_UNREACHABLE, NO_POLY).into(),
             }
         }
-        Nav::Flow { .. } => (Vec::new(), STATUS_MOVING, NO_POLY),
+        Nav::Flow { .. } => (Vec::new(), STATUS_MOVING, NO_POLY).into(),
     }
 }
 
@@ -705,6 +818,8 @@ fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<(
     } else {
         desc.plans_per_tick
     };
+    // Links reached this tick, in agent order (og.NavLinkReached).
+    let mut reached: Vec<NavLinkReached> = Vec::new();
     for (i, row) in rows.iter().enumerate() {
         let Row {
             e,
@@ -723,6 +838,50 @@ fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<(
         let mut new_pos = pos;
         let ps = state.paths.entry(key).or_default();
         let nav = navs.get(agent.nav);
+        // Part way across a link: the crossing goes on whatever the agent is
+        // told, and nothing else moves it (the game, for a game crossing).
+        if let Some(mut tr) = ps.traverse {
+            let over = if tr.game {
+                tr.finished
+            } else {
+                tr.elapsed += dt;
+                tr.elapsed >= tr.duration
+            };
+            let mut t = ctx.get::<Transform>(e)?;
+            let at = if over {
+                tr.to
+            } else if tr.game {
+                t.position
+            } else {
+                tr.at()
+            };
+            agent.velocity = if dt > 0.0 {
+                (at - pos) / dt
+            } else {
+                Vec3::ZERO
+            };
+            if over {
+                ps.traverse = None;
+                ps.next = (tr.corner + 2).min(ps.corners.len().saturating_sub(1) as u32);
+                ps.poly = tr.land;
+                agent.status = STATUS_MOVING;
+            } else {
+                ps.traverse = Some(tr);
+                agent.status = STATUS_ON_LINK;
+            }
+            if t.position != at {
+                t.position = at;
+                ctx.set(e, t)?;
+            }
+            if let Some(mut v) = vel
+                && v.linear != Vec3::ZERO
+            {
+                v.linear = Vec3::ZERO;
+                ctx.set(e, v)?;
+            }
+            ctx.set(e, agent)?;
+            continue;
+        }
         let mut status = if agent.seeking {
             STATUS_MOVING
         } else {
@@ -776,13 +935,19 @@ fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<(
                         || off;
                     if (moved || due || stale) && budget > 0 {
                         budget -= 1;
-                        let (corners, st, poly) = match nav {
+                        let Plan {
+                            corners,
+                            status: st,
+                            poly,
+                            links,
+                        } = match nav {
                             Some(n) => {
                                 plan(n, plane, pos, agent.target, &agent, &filter, &mut scratch)
                             }
-                            None => (vec![pos, agent.target], STATUS_MOVING, NO_POLY),
+                            None => (vec![pos, agent.target], STATUS_MOVING, NO_POLY).into(),
                         };
                         ps.corners = corners;
+                        ps.links = links;
                         ps.next = 1.min(ps.corners.len().saturating_sub(1) as u32);
                         ps.target = agent.target;
                         ps.nav = agent.nav;
@@ -813,8 +978,77 @@ fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<(
                             let past = (p2 - c).dot(n - c) > 0.0 && d < reach * 4.0 + agent.radius;
                             if d <= reach || past {
                                 ps.next += 1;
+                                // Never past a link's start: it is crossed, not walked.
+                                if ps.links.iter().any(|l| l.corner + 1 == ps.next) {
+                                    break;
+                                }
                             } else {
                                 break;
+                            }
+                        }
+                        // At a link's start: across it from the next tick.
+                        if let Some(pl) = ps.links.iter().find(|l| l.corner + 1 == ps.next).copied()
+                            && let Some(Nav::Mesh(m)) = nav
+                        {
+                            match m.off_mesh_link(pl.link) {
+                                Some(l) if l.open => {
+                                    let (a, b) = if pl.reverse {
+                                        (l.end, l.start)
+                                    } else {
+                                        (l.start, l.end)
+                                    };
+                                    let land = m
+                                        .link_ends(pl.link)
+                                        .map_or(NO_POLY, |(s, en)| if pl.reverse { s } else { en });
+                                    let speed = agent.speed.max(0.1);
+                                    let dist = a.distance(b);
+                                    let duration = if l.duration > 0.0 {
+                                        l.duration
+                                    } else {
+                                        match l.kind {
+                                            LinkKind::Jump => (dist / speed).max(0.3),
+                                            LinkKind::Ladder => dist / (speed * 0.5),
+                                            LinkKind::Door => dist / speed,
+                                            LinkKind::Teleport => 0.0,
+                                        }
+                                    };
+                                    ps.traverse = Some(Traverse {
+                                        link: pl.link,
+                                        kind: l.kind,
+                                        from: pos,
+                                        to: b,
+                                        elapsed: 0.0,
+                                        duration,
+                                        game: l.game,
+                                        finished: false,
+                                        corner: pl.corner,
+                                        land,
+                                    });
+                                    reached.push(NavLinkReached {
+                                        agent: key,
+                                        mesh: agent.nav,
+                                        link: pl.link,
+                                        kind: l.kind as u32,
+                                        start: a,
+                                        end: b,
+                                        game: l.game,
+                                    });
+                                    agent.status = STATUS_ON_LINK;
+                                    agent.velocity = Vec3::ZERO;
+                                    agent.waypoint = b;
+                                    if let Some(mut v) = vel
+                                        && v.linear != Vec3::ZERO
+                                    {
+                                        v.linear = Vec3::ZERO;
+                                        ctx.set(e, v)?;
+                                    }
+                                    ctx.set(e, agent)?;
+                                    continue;
+                                }
+                                // Shut (or gone) since the plan: back to its start to
+                                // wait; the re-plan the change asked for finds
+                                // another way, or none.
+                                _ => ps.next = pl.corner,
                             }
                         }
                         let wp = ps.corners[ps.next as usize];
@@ -1042,6 +1276,11 @@ fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<(
         }
         ctx.set(e, agent)?;
     }
+    if !reached.is_empty() && ctx.id_by_name(NavLinkReached::NAME).is_ok() {
+        for r in reached {
+            ctx.send(r)?;
+        }
+    }
     Ok(())
 }
 
@@ -1056,15 +1295,74 @@ struct Saved {
     grids: Vec<(u64, Vec<u8>)>,
     obstacles: Vec<(u64, Vec<(u32, Shape)>)>,
     flows: Vec<(u64, Vec<(u32, u32)>)>,
-    /// The trailer's (G2-4): per navmesh, its run-time areas.
+    /// The trailer's (G2-4): per navmesh, its run-time areas, and its
+    /// links where they moved from the built ones.
     areas: BTreeMap<u64, Vec<(u32, Shape, u8)>>,
+    links: BTreeMap<u64, Vec<(u32, Link)>>,
+    /// Per agent, the links its path crosses and the one it is crossing.
+    crossing: IdMap<u64, (Vec<PathLink>, Option<Traverse>)>,
+    /// Per grid or navmesh whose edit count its paths do not give.
+    versions: BTreeMap<u64, u64>,
+}
+
+/// The edit count each grid or navmesh had when its newest path was
+/// planned: what a restore sets it back to, and what the trailer need not
+/// hold. A nav no path was planned on is left out (nothing saved reads its
+/// count).
+fn path_versions<'a>(paths: impl Iterator<Item = &'a PathState>) -> BTreeMap<u64, u64> {
+    let mut out = BTreeMap::new();
+    for p in paths {
+        let v = out.entry(p.nav).or_insert(p.version);
+        *v = (*v).max(p.version);
+    }
+    out
 }
 
 /// The `og.nav` trailer's tags (`og_ecs::trailer`): what a world using no
 /// G2-4 feature never writes, so its block is byte for byte as before.
 mod tag {
+    /// Per navmesh whose links moved from the built ones: its links.
+    pub const LINKS: u16 = 1;
     /// Per navmesh: its obstacles that are not boxes, and its run-time areas.
     pub const SHAPES: u16 = 2;
+    /// Per agent whose path crosses a link: those links, and its crossing.
+    pub const CROSSING: u16 = 3;
+    /// Per grid or navmesh edited after its newest path was planned: its
+    /// edit count, which a restore cannot otherwise rebuild.
+    pub const VERSIONS: u16 = 4;
+}
+
+fn put_traverse(o: &mut Vec<u8>, t: &Traverse) {
+    let mut w = Writer(o);
+    w.u32(t.link);
+    w.0.push(t.kind as u8);
+    w.v3(t.from);
+    w.v3(t.to);
+    w.f32(t.elapsed);
+    w.f32(t.duration);
+    w.0.push(u8::from(t.game) | u8::from(t.finished) << 1);
+    w.u32(t.corner);
+    w.u32(t.land);
+}
+
+fn get_traverse(r: &mut Reader<'_>) -> Result<Traverse> {
+    let link = r.u32()?;
+    let kind = LinkKind::from_index(r.take(1)?[0] as u32);
+    let (from, to) = (r.v3()?, r.v3()?);
+    let (elapsed, duration) = (r.f32()?, r.f32()?);
+    let flags = r.take(1)?[0];
+    Ok(Traverse {
+        link,
+        kind,
+        from,
+        to,
+        elapsed,
+        duration,
+        game: flags & 1 != 0,
+        finished: flags & 2 != 0,
+        corner: r.u32()?,
+        land: r.u32()?,
+    })
 }
 
 fn put_shape(o: &mut Vec<u8>, s: &Shape) {
@@ -1181,10 +1479,24 @@ impl StateBlock for NavBlock {
             })
             .collect();
         w.u32(meshes.len() as u32);
-        // Boxes in the block's first form; other shapes and areas in the trailer.
+        // Boxes in the block's first form; other shapes, areas and moved
+        // links in the trailer.
         let mut shapes = Vec::new();
         let mut shaped = 0u32;
+        let mut links = Vec::new();
+        let mut linked = 0u32;
         for (h, m) in &meshes {
+            if m.links_moved() {
+                linked += 1;
+                let mut x = Writer(&mut links);
+                x.u64(**h);
+                let list: Vec<(u32, &Link)> = m.links().collect();
+                x.u32(list.len() as u32);
+                for (id, l) in list {
+                    x.u32(id);
+                    l.write(x.0);
+                }
+            }
             w.u64(**h);
             let boxes: Vec<(u32, Vec3, Vec3)> = m
                 .obstacles()
@@ -1243,10 +1555,65 @@ impl StateBlock for NavBlock {
             }
         }
         let mut sections = Vec::new();
+        if linked > 0 {
+            let mut b = linked.to_le_bytes().to_vec();
+            b.extend_from_slice(&links);
+            sections.push((tag::LINKS, b));
+        }
         if shaped > 0 {
             let mut b = shaped.to_le_bytes().to_vec();
             b.extend_from_slice(&shapes);
             sections.push((tag::SHAPES, b));
+        }
+        let crossing: Vec<(&u64, &PathState)> = st
+            .paths
+            .iter()
+            .filter(|(_, p)| !p.links.is_empty() || p.traverse.is_some())
+            .collect();
+        if !crossing.is_empty() {
+            let mut b = Vec::new();
+            let mut x = Writer(&mut b);
+            x.u32(crossing.len() as u32);
+            for (k, p) in crossing {
+                x.u64(*k);
+                x.u32(p.links.len() as u32);
+                for l in &p.links {
+                    x.u32(l.corner);
+                    x.u32(l.link);
+                    x.0.push(u8::from(l.reverse));
+                }
+                match &p.traverse {
+                    Some(t) => {
+                        x.0.push(1);
+                        put_traverse(x.0, t);
+                    }
+                    None => x.0.push(0),
+                }
+            }
+            sections.push((tag::CROSSING, b));
+        }
+        let planned = path_versions(st.paths.values());
+        let stale: Vec<(u64, u64)> = navs
+            .entries
+            .iter()
+            .filter_map(|(h, n)| {
+                let v = match n {
+                    Nav::Grid(g) => g.version(),
+                    Nav::Mesh(m) => m.version(),
+                    Nav::Flow { .. } => return None,
+                };
+                planned.get(h).is_some_and(|&p| p != v).then_some((*h, v))
+            })
+            .collect();
+        if !stale.is_empty() {
+            let mut b = Vec::new();
+            let mut x = Writer(&mut b);
+            x.u32(stale.len() as u32);
+            for (h, v) in stale {
+                x.u64(h);
+                x.u64(v);
+            }
+            sections.push((tag::VERSIONS, b));
         }
         og_ecs::trailer::write(out, &sections);
     }
@@ -1270,6 +1637,8 @@ impl StateBlock for NavBlock {
                 age: r.u32()?,
                 poly: r.u32()?,
                 status: r.u32()?,
+                links: Vec::new(),
+                traverse: None,
             };
             paths.insert(k, p);
         }
@@ -1304,8 +1673,54 @@ impl StateBlock for NavBlock {
             flows.push((h, t));
         }
         let mut areas = BTreeMap::new();
+        let mut links = BTreeMap::new();
+        let mut crossing = IdMap::new();
+        let mut versions = BTreeMap::new();
         for (t, body) in og_ecs::trailer::read(SYSTEM_NAME, &bytes[r.at..])? {
             let mut r = Reader { b: body, at: 0 };
+            if t == tag::LINKS {
+                for _ in 0..r.u32()? {
+                    let h = r.u64()?;
+                    let mut list = Vec::new();
+                    for _ in 0..r.u32()? {
+                        let id = r.u32()?;
+                        let mut b = &r.b[r.at..];
+                        let before = b.len();
+                        let l = Link::read(&mut b).ok_or_else(|| {
+                            Error::new(
+                                ErrorKind::Invalid,
+                                "the og.nav state block's links are cut short",
+                            )
+                        })?;
+                        r.at += before - b.len();
+                        list.push((id, l));
+                    }
+                    links.insert(h, list);
+                }
+            }
+            if t == tag::CROSSING {
+                for _ in 0..r.u32()? {
+                    let k = r.u64()?;
+                    let mut list = Vec::new();
+                    for _ in 0..r.u32()? {
+                        list.push(PathLink {
+                            corner: r.u32()?,
+                            link: r.u32()?,
+                            reverse: r.take(1)?[0] != 0,
+                        });
+                    }
+                    let tr = match r.take(1)?[0] {
+                        0 => None,
+                        _ => Some(get_traverse(&mut r)?),
+                    };
+                    crossing.insert(k, (list, tr));
+                }
+            }
+            if t == tag::VERSIONS {
+                for _ in 0..r.u32()? {
+                    versions.insert(r.u64()?, r.u64()?);
+                }
+            }
             if t == tag::SHAPES {
                 for _ in 0..r.u32()? {
                     let h = r.u64()?;
@@ -1333,6 +1748,9 @@ impl StateBlock for NavBlock {
             obstacles,
             flows,
             areas,
+            links,
+            crossing,
+            versions,
         }))
     }
 
@@ -1342,8 +1760,17 @@ impl StateBlock for NavBlock {
             st.paths.clear();
             return;
         };
+        let mut versions = path_versions(saved.paths.values());
+        versions.extend(saved.versions);
         st.paths = saved.paths;
+        for (k, (links, traverse)) in saved.crossing {
+            if let Some(p) = st.paths.get_mut(&k) {
+                p.links = links;
+                p.traverse = traverse;
+            }
+        }
         let mut navs = lock(&self.0.navs);
+        let mut saved_links = saved.links;
         for (h, costs) in saved.grids {
             if let Some(Nav::Grid(g)) = navs.get_mut(h)
                 && g.costs() != costs.as_slice()
@@ -1366,6 +1793,7 @@ impl StateBlock for NavBlock {
                         m.carve(k, Some(o));
                     }
                 }
+                m.restore_links(saved_links.remove(&h));
                 let want = saved.areas.get(&h).cloned().unwrap_or_default();
                 let have: Vec<(u32, Shape, u8)> =
                     m.areas().map(|(k, (s, a))| (k, s.clone(), *a)).collect();
@@ -1377,6 +1805,15 @@ impl StateBlock for NavBlock {
                         m.set_area(k, Some((s, a)));
                     }
                 }
+            }
+        }
+        // Rebuilding the grids and meshes above counted edits of its own:
+        // the saved counts keep every restored path current (or stale) as it was.
+        for (h, v) in versions {
+            match navs.get_mut(h) {
+                Some(Nav::Grid(g)) => g.restore_version(v),
+                Some(Nav::Mesh(m)) => m.restore_version(v),
+                _ => {}
             }
         }
         for (h, targets) in saved.flows {

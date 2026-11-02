@@ -31,6 +31,11 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: "og.NavFilter",
         enable: og_nav::enable_filters,
     },
+    // G2-4: og.nav sends it once a navmesh has an off-mesh link.
+    Lazy {
+        name: "og.NavLinkReached",
+        enable: og_nav::enable_links,
+    },
 ];
 
 /// Whether engine record `name` is registered lazily.

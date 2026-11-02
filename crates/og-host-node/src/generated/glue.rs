@@ -1755,6 +1755,24 @@ pub fn og_nav_set_area(env: Env, world: u32, mesh: f64, id: u32, desc: Option<St
     <Host as NavApi>::og_nav_set_area(&Host, world, mesh, id, desc)
 }
 
+#[napi(js_name = "og_nav_set_link")]
+pub fn og_nav_set_link(env: Env, world: u32, mesh: f64, id: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as NavApi>::og_nav_set_link(&Host, world, mesh, id, desc)
+}
+
+#[napi(js_name = "og_nav_set_link_open")]
+pub fn og_nav_set_link_open(env: Env, world: u32, mesh: f64, id: u32, open: bool) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as NavApi>::og_nav_set_link_open(&Host, world, mesh, id, open)
+}
+
+#[napi(js_name = "og_nav_finish_link")]
+pub fn og_nav_finish_link(env: Env, world: u32, entity: f64) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as NavApi>::og_nav_finish_link(&Host, world, entity)
+}
+
 #[napi(js_name = "og_nav_nearest")]
 pub fn og_nav_nearest(env: Env, world: u32, mesh: f64, point: String, extent: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);

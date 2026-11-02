@@ -31,10 +31,14 @@ module nav {
 | [`NAV_ARRIVED`](#const-NAV_ARRIVED) | constant | NavAgent.status: within stopDistance of the target. |
 | [`NAV_UNREACHABLE`](#const-NAV_UNREACHABLE) | constant | NavAgent.status: no path reaches the target, or the agent is off its grid or navmesh. |
 | [`NAV_PARTIAL`](#const-NAV_PARTIAL) | constant | NavAgent.status: the target is cut off; moving to the reachable point nearest it. |
+| [`NAV_ON_LINK`](#const-NAV_ON_LINK) | constant | NavAgent.status: crossing an off-mesh link (a jump, a ladder, a door, a teleport). |
 | [`NavAlgorithm`](#type-NavAlgorithm) | enum | The grid search a path query runs. |
 | [`og.NavAgent`](#record-NavAgent) | component | An entity that moves itself towards `target` while `seeking`, by a path over `nav` (a grid, navmesh or flow field; 0 goes straight). og.nav re-plans when the target moved more than repathDistance, every repathTicks, or when the grid or navmesh changed, at most 32 plans a tick across agents. |
 | [`og.Steering`](#record-Steering) | component | Steering behaviours an og.NavAgent adds to its path following, each by weight (0 is off): flee, wander, pursue, evade, separation from other agents and avoidance of colliders ahead (three physics rays). |
 | [`og.NavFilter`](#record-NavFilter) | component | Which navmesh areas an agent crosses and what a metre in each costs: beside an og.NavAgent, its plans weigh every polygon's length by its area's cost and never enter an excluded area. Areas are marked at cook time (`area` in a navmesh asset) or at run time (og.nav.setArea); 0 is ground. Without one every area costs 1. |
+| [`NavLinkKind`](#type-NavLinkKind) | enum | How an agent crosses an off-mesh link. |
+| [`NavLinkDesc`](#type-NavLinkDesc) | desc struct | An off-mesh link: a way between two points of a navmesh its surface does not join (a gap to jump, a ladder, a door, a teleporter). Each end snaps to the polygon under it within 1 m. |
+| [`og.NavLinkReached`](#record-NavLinkReached) | event | An agent reached an off-mesh link and started across it (systems read it the tick after): play the jump or the climb here. With `game`, move it and call og.nav.finishLink when it is over. |
 | [`NavShapeKind`](#type-NavShapeKind) | enum | What a NavShape is. |
 | [`NavShape`](#type-NavShape) | desc struct | A volume over a navmesh's floor: an obstacle (og.nav.carve) or an area (og.nav.setArea). |
 | [`NavAreaDesc`](#type-NavAreaDesc) | desc struct | A run-time area: the spans under `shape` (their floors from the agent's climb below its bottom to its top) take area `area`, over the baked areas and over run-time areas of lower ids. |
@@ -61,6 +65,9 @@ module nav {
 | [`og.nav.setObstacle`](#fn-setObstacle) | function | Set, move or (with no box) remove an obstacle on a navmesh: the spans under the box (grown by the agent radius) are blocked and only the tiles it touches, and their neighbours, are rebuilt. Agents on the mesh re-plan. World state. |
 | [`og.nav.carve`](#fn-carve) | function | og.nav.setObstacle for any shape: a turned box (a door ajar, a fallen log), a cylinder (a pillar, a barrel) or a convex prism. The cells whose centres the shape covers, grown by the agent radius, are blocked and only the tiles it touches, and their neighbours, are rebuilt. Shares og.nav.setObstacle's ids. World state. |
 | [`og.nav.setArea`](#fn-setArea) | function | Set, move or (with no desc) remove a run-time area on a navmesh (water, mud, a road): its tiles rebuild so no polygon mixes areas, and agents re-plan, weighing it by their og.NavFilter. World state. |
+| [`og.nav.setLink`](#fn-setLink) | function | Set, move or (with no desc) remove an off-mesh link on a navmesh. Paths cross it where it is cheaper than walking; an agent that reaches its start crosses it (NAV_ON_LINK, og.NavLinkReached) and lands at its end. Links baked in the navmesh asset (`link` lines) have the ids they were given. World state. |
+| [`og.nav.setLinkOpen`](#fn-setLinkOpen) | function | Open or close an off-mesh link (a door): a closed one is never planned across, and agents on the mesh re-plan. World state. |
+| [`og.nav.finishLink`](#fn-finishLink) | function | End a crossing the game moves (NavLinkDesc.game): the agent lands at the link's end as og.nav next runs and goes on along its path. |
 | [`og.nav.nearest`](#fn-nearest) | function | The point on a navmesh nearest a world point, within `extent` (half sizes). |
 | [`og.nav.pathOf`](#fn-pathOf) | function | The path an agent follows now (its corners from where it planned), for debugging and playtests; `dump_nav:<entity>` writes the same. |
 
@@ -94,7 +101,7 @@ fn grid {
 }
 ```
 
-<sub>`api.ogt` line 11529</sub>
+<sub>`api.ogt` line 11581</sub>
 
 <a id="fn-gridFromTilemap"></a>
 
@@ -124,7 +131,7 @@ fn gridFromTilemap {
 }
 ```
 
-<sub>`api.ogt` line 11536</sub>
+<sub>`api.ogt` line 11588</sub>
 
 <a id="fn-setCost"></a>
 
@@ -160,7 +167,7 @@ fn setCost {
 }
 ```
 
-<sub>`api.ogt` line 11543</sub>
+<sub>`api.ogt` line 11595</sub>
 
 <a id="fn-cellAt"></a>
 
@@ -192,7 +199,7 @@ fn cellAt {
 }
 ```
 
-<sub>`api.ogt` line 11553</sub>
+<sub>`api.ogt` line 11605</sub>
 
 <a id="fn-findPath"></a>
 
@@ -222,7 +229,7 @@ fn findPath {
 }
 ```
 
-<sub>`api.ogt` line 11561</sub>
+<sub>`api.ogt` line 11613</sub>
 
 <a id="fn-flowField"></a>
 
@@ -252,7 +259,7 @@ fn flowField {
 }
 ```
 
-<sub>`api.ogt` line 11568</sub>
+<sub>`api.ogt` line 11620</sub>
 
 <a id="fn-setFlowTargets"></a>
 
@@ -284,7 +291,7 @@ fn setFlowTargets {
 }
 ```
 
-<sub>`api.ogt` line 11575</sub>
+<sub>`api.ogt` line 11627</sub>
 
 <a id="fn-flowAt"></a>
 
@@ -316,7 +323,7 @@ fn flowAt {
 }
 ```
 
-<sub>`api.ogt` line 11583</sub>
+<sub>`api.ogt` line 11635</sub>
 
 <a id="fn-load"></a>
 
@@ -346,7 +353,7 @@ fn load {
 }
 ```
 
-<sub>`api.ogt` line 11591</sub>
+<sub>`api.ogt` line 11643</sub>
 
 <a id="fn-build"></a>
 
@@ -376,7 +383,7 @@ fn build {
 }
 ```
 
-<sub>`api.ogt` line 11598</sub>
+<sub>`api.ogt` line 11650</sub>
 
 <a id="fn-setObstacle"></a>
 
@@ -412,7 +419,7 @@ fn setObstacle {
 }
 ```
 
-<sub>`api.ogt` line 11605</sub>
+<sub>`api.ogt` line 11657</sub>
 
 <a id="fn-carve"></a>
 
@@ -448,7 +455,7 @@ fn carve {
 }
 ```
 
-<sub>`api.ogt` line 11616</sub>
+<sub>`api.ogt` line 11668</sub>
 
 <a id="fn-setArea"></a>
 
@@ -484,7 +491,107 @@ fn setArea {
 }
 ```
 
-<sub>`api.ogt` line 11627</sub>
+<sub>`api.ogt` line 11679</sub>
+
+<a id="fn-setLink"></a>
+
+### `og.nav.setLink`
+
+Set, move or (with no desc) remove an off-mesh link on a navmesh. Paths cross it where it is cheaper than walking; an agent that reaches its start crosses it (NAV_ON_LINK, og.NavLinkReached) and lands at its end. Links baked in the navmesh asset (`link` lines) have the ids they were given. World state.
+
+```ts
+og.nav.setLink(world: World, mesh: Navigation, id: number, desc?: NavLinkDesc): Result<boolean>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `mesh` | `Navigation` | no | The navmesh. |
+| `id` | `number` | no | The link's id, the game's own. |
+| `desc` | `NavLinkDesc` | yes | The link; omitted removes it. |
+
+**Returns** `Result<boolean>`: Whether both ends are on the mesh (a link with an end off it is kept but never crossed). Refused for an unknown navmesh.
+
+Binding symbol `og_nav_set_link` · publish builds: kept
+
+```ogt
+fn setLink {
+  doc "Set, move or (with no desc) remove an off-mesh link on a navmesh. Paths cross it where it is cheaper than walking; an agent that reaches its start crosses it (NAV_ON_LINK, og.NavLinkReached) and lands at its end. Links baked in the navmesh asset (`link` lines) have the ids they were given. World state."
+  param world World "The world."
+  param mesh Navigation "The navmesh."
+  param id u32 "The link's id, the game's own."
+  param desc NavLinkDesc "The link; omitted removes it." {
+    optional true
+  }
+  returns Result.bool "Whether both ends are on the mesh (a link with an end off it is kept but never crossed). Refused for an unknown navmesh."
+}
+```
+
+<sub>`api.ogt` line 11690</sub>
+
+<a id="fn-setLinkOpen"></a>
+
+### `og.nav.setLinkOpen`
+
+Open or close an off-mesh link (a door): a closed one is never planned across, and agents on the mesh re-plan. World state.
+
+```ts
+og.nav.setLinkOpen(world: World, mesh: Navigation, id: number, open: boolean): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `mesh` | `Navigation` | no | The navmesh. |
+| `id` | `number` | no | The link's id. |
+| `open` | `boolean` | no | Open. |
+
+**Returns** `Result<void>`: Refused for an unknown navmesh or link.
+
+Binding symbol `og_nav_set_link_open` · publish builds: kept
+
+```ogt
+fn setLinkOpen {
+  doc "Open or close an off-mesh link (a door): a closed one is never planned across, and agents on the mesh re-plan. World state."
+  param world World "The world."
+  param mesh Navigation "The navmesh."
+  param id u32 "The link's id."
+  param open bool "Open."
+  returns Result.Void "Refused for an unknown navmesh or link."
+}
+```
+
+<sub>`api.ogt` line 11701</sub>
+
+<a id="fn-finishLink"></a>
+
+### `og.nav.finishLink`
+
+End a crossing the game moves (NavLinkDesc.game): the agent lands at the link's end as og.nav next runs and goes on along its path.
+
+```ts
+og.nav.finishLink(world: World, entity: Entity): boolean
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `entity` | `Entity` | no | The agent. |
+
+**Returns** `boolean`: False when it is not crossing such a link.
+
+Binding symbol `og_nav_finish_link` · publish builds: kept
+
+```ogt
+fn finishLink {
+  doc "End a crossing the game moves (NavLinkDesc.game): the agent lands at the link's end as og.nav next runs and goes on along its path."
+  param world World "The world."
+  param entity Entity "The agent."
+  returns bool "False when it is not crossing such a link."
+}
+```
+
+<sub>`api.ogt` line 11710</sub>
 
 <a id="fn-nearest"></a>
 
@@ -520,7 +627,7 @@ fn nearest {
 }
 ```
 
-<sub>`api.ogt` line 11638</sub>
+<sub>`api.ogt` line 11717</sub>
 
 <a id="fn-pathOf"></a>
 
@@ -550,7 +657,7 @@ fn pathOf {
 }
 ```
 
-<sub>`api.ogt` line 11649</sub>
+<sub>`api.ogt` line 11728</sub>
 
 ## Components, resources and events
 
@@ -671,7 +778,7 @@ component NavAgent {
 }
 ```
 
-<sub>`api.ogt` line 11145</sub>
+<sub>`api.ogt` line 11146</sub>
 
 <a id="record-Steering"></a>
 
@@ -798,7 +905,7 @@ component Steering {
 }
 ```
 
-<sub>`api.ogt` line 11230</sub>
+<sub>`api.ogt` line 11231</sub>
 
 <a id="record-NavFilter"></a>
 
@@ -821,7 +928,44 @@ component NavFilter {
 }
 ```
 
-<sub>`api.ogt` line 11324</sub>
+<sub>`api.ogt` line 11325</sub>
+
+<a id="record-NavLinkReached"></a>
+
+### `og.NavLinkReached` (event)
+
+An agent reached an off-mesh link and started across it (systems read it the tick after): play the jump or the climb here. With `game`, move it and call og.nav.finishLink when it is over.
+
+Token `og.NavLinkReached`, registered under the schema name `og.NavLinkReached`; its value type is `NavLinkReached`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `agent` | `Entity` | `0` | — | — | — | The agent. |
+| `mesh` | `Navigation` | `0` | — | — | — | The navmesh. |
+| `link` | `number` | `0` | — | — | — | The link's id. |
+| `kind` | `number` | `0` | — | — | — | Its NavLinkKind, by index: 0 jump, 1 ladder, 2 door, 3 teleport. |
+| `start` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Where the agent leaves the surface. |
+| `end` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Where it lands. |
+| `game` | `boolean` | `false` | — | — | — | The game moves it across. |
+
+```ogt
+event NavLinkReached {
+  doc "An agent reached an off-mesh link and started across it (systems read it the tick after): play the jump or the climb here. With `game`, move it and call og.nav.finishLink when it is over."
+  field agent Entity "The agent."
+  field mesh Navigation "The navmesh."
+  field link u32 "The link's id."
+  field kind u32 "Its NavLinkKind, by index: 0 jump, 1 ladder, 2 door, 3 teleport."
+  field start Vector3 "Where the agent leaves the surface." {
+    unit m
+  }
+  field end Vector3 "Where it lands." {
+    unit m
+  }
+  field game bool "The game moves it across."
+}
+```
+
+<sub>`api.ogt` line 11366</sub>
 
 ## Types
 
@@ -860,7 +1004,84 @@ enum NavAlgorithm {
 }
 ```
 
-<sub>`api.ogt` line 11139</sub>
+<sub>`api.ogt` line 11140</sub>
+
+<a id="type-NavLinkKind"></a>
+
+### `NavLinkKind` (enum)
+
+How an agent crosses an off-mesh link.
+
+A string: one of the variants below. The zero value is `"jump"`.
+
+| Variant | Doc |
+|---|---|
+| `"jump"` | Through the air on an arc, in its length over the agent's speed (at least 0.3 s). |
+| `"ladder"` | Climbing, at half the agent's speed. |
+| `"door"` | Walking through at the agent's speed, while the link is open (og.nav.setLinkOpen). |
+| `"teleport"` | At once: on the far side the tick after it is reached. |
+
+```ogt
+enum NavLinkKind {
+  doc "How an agent crosses an off-mesh link."
+  variant jump "Through the air on an arc, in its length over the agent's speed (at least 0.3 s)."
+  variant ladder "Climbing, at half the agent's speed."
+  variant door "Walking through at the agent's speed, while the link is open (og.nav.setLinkOpen)."
+  variant teleport "At once: on the far side the tick after it is reached."
+}
+```
+
+<sub>`api.ogt` line 11331</sub>
+
+<a id="type-NavLinkDesc"></a>
+
+### `NavLinkDesc` (desc struct)
+
+An off-mesh link: a way between two points of a navmesh its surface does not join (a gap to jump, a ladder, a door, a teleporter). Each end snaps to the polygon under it within 1 m.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `start` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Where the agent leaves the surface. |
+| `end` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Where it lands. |
+| `kind` | `NavLinkKind` | `"jump"` | — | — | — | How it crosses. |
+| `bidirectional` | `boolean` | `true` | — | — | — | Crossed both ways; false: from start to end only. |
+| `cost` | `number` | `0` | ≥ 0 | `m` | — | What crossing costs a path, in metres of walking; 0 is the link's length. A dear link loses to a shorter walk round. |
+| `open` | `boolean` | `true` | — | — | — | A closed link is never planned across (a shut door); agents re-plan when it opens or closes. |
+| `duration` | `number` | `0` | ≥ 0 | `s` | — | Seconds a crossing takes; 0 is the kind's own. |
+| `game` | `boolean` | `false` | — | — | — | The game moves the agent across (an animation, a cutscene): og.nav holds it at the start until og.nav.finishLink, then lands it at the end. |
+
+```ogt
+struct NavLinkDesc {
+  doc "An off-mesh link: a way between two points of a navmesh its surface does not join (a gap to jump, a ladder, a door, a teleporter). Each end snaps to the polygon under it within 1 m."
+  desc true
+  field start Vector3 "Where the agent leaves the surface." {
+    unit m
+  }
+  field end Vector3 "Where it lands." {
+    unit m
+  }
+  field kind NavLinkKind "How it crosses."
+  field bidirectional bool "Crossed both ways; false: from start to end only." {
+    default true
+  }
+  field cost f32 "What crossing costs a path, in metres of walking; 0 is the link's length. A dear link loses to a shorter walk round." {
+    min 0
+    unit m
+  }
+  field open bool "A closed link is never planned across (a shut door); agents re-plan when it opens or closes." {
+    default true
+  }
+  field duration f32 "Seconds a crossing takes; 0 is the kind's own." {
+    min 0
+    unit s
+  }
+  field game bool "The game moves the agent across (an animation, a cutscene): og.nav holds it at the start until og.nav.finishLink, then lands it at the end."
+}
+```
+
+<sub>`api.ogt` line 11339</sub>
 
 <a id="type-NavShapeKind"></a>
 
@@ -887,7 +1108,7 @@ enum NavShapeKind {
 }
 ```
 
-<sub>`api.ogt` line 11330</sub>
+<sub>`api.ogt` line 11381</sub>
 
 <a id="type-NavShape"></a>
 
@@ -941,7 +1162,7 @@ struct NavShape {
 }
 ```
 
-<sub>`api.ogt` line 11338</sub>
+<sub>`api.ogt` line 11389</sub>
 
 <a id="type-NavAreaDesc"></a>
 
@@ -967,7 +1188,7 @@ struct NavAreaDesc {
 }
 ```
 
-<sub>`api.ogt` line 11368</sub>
+<sub>`api.ogt` line 11419</sub>
 
 <a id="type-NavGridDesc"></a>
 
@@ -1012,7 +1233,7 @@ struct NavGridDesc {
 }
 ```
 
-<sub>`api.ogt` line 11377</sub>
+<sub>`api.ogt` line 11428</sub>
 
 <a id="type-TilemapGridDesc"></a>
 
@@ -1040,7 +1261,7 @@ struct TilemapGridDesc {
 }
 ```
 
-<sub>`api.ogt` line 11402</sub>
+<sub>`api.ogt` line 11453</sub>
 
 <a id="type-NavCell"></a>
 
@@ -1063,7 +1284,7 @@ struct NavCell {
 }
 ```
 
-<sub>`api.ogt` line 11412</sub>
+<sub>`api.ogt` line 11463</sub>
 
 <a id="type-PathDesc"></a>
 
@@ -1109,7 +1330,7 @@ struct PathDesc {
 }
 ```
 
-<sub>`api.ogt` line 11419</sub>
+<sub>`api.ogt` line 11470</sub>
 
 <a id="type-NavPath"></a>
 
@@ -1124,6 +1345,7 @@ A path.
 | `complete` | `boolean` | `false` | — | — | — | Whether it reaches the end (false: it stops at the reachable point nearest it). |
 | `expanded` | `number` | `0` | — | — | — | Cells or polygons the search took off its open list. |
 | `algorithm` | `string` | `""` | — | — | — | What ran: jps, astar or navmesh. |
+| `links` | `readonly number[]` | `[]` | — | — | — | Where it crosses off-mesh links: each an index into points, the link's start (the next point is where it lands). |
 
 ```ogt
 struct NavPath {
@@ -1135,10 +1357,11 @@ struct NavPath {
   field complete bool "Whether it reaches the end (false: it stops at the reachable point nearest it)."
   field expanded u32 "Cells or polygons the search took off its open list."
   field algorithm String "What ran: jps, astar or navmesh."
+  field links List.u32 "Where it crosses off-mesh links: each an index into points, the link's start (the next point is where it lands)."
 }
 ```
 
-<sub>`api.ogt` line 11442</sub>
+<sub>`api.ogt` line 11493</sub>
 
 <a id="type-FlowDesc"></a>
 
@@ -1162,7 +1385,7 @@ struct FlowDesc {
 }
 ```
 
-<sub>`api.ogt` line 11453</sub>
+<sub>`api.ogt` line 11505</sub>
 
 <a id="type-NavBox"></a>
 
@@ -1190,7 +1413,7 @@ struct NavBox {
 }
 ```
 
-<sub>`api.ogt` line 11460</sub>
+<sub>`api.ogt` line 11512</sub>
 
 <a id="type-NavMeshDesc"></a>
 
@@ -1248,7 +1471,7 @@ struct NavMeshDesc {
 }
 ```
 
-<sub>`api.ogt` line 11471</sub>
+<sub>`api.ogt` line 11523</sub>
 
 <a id="type-NavMeshInfo"></a>
 
@@ -1283,7 +1506,7 @@ struct NavMeshInfo {
 }
 ```
 
-<sub>`api.ogt` line 11507</sub>
+<sub>`api.ogt` line 11559</sub>
 
 <a id="type-NavRebuild"></a>
 
@@ -1304,7 +1527,7 @@ struct NavRebuild {
 }
 ```
 
-<sub>`api.ogt` line 11523</sub>
+<sub>`api.ogt` line 11575</sub>
 
 ## Column kinds
 
@@ -1334,6 +1557,7 @@ column Navigation {
 | <a id="const-NAV_ARRIVED"></a>`NAV_ARRIVED` | `number` | `2` | NavAgent.status: within stopDistance of the target. |
 | <a id="const-NAV_UNREACHABLE"></a>`NAV_UNREACHABLE` | `number` | `3` | NavAgent.status: no path reaches the target, or the agent is off its grid or navmesh. |
 | <a id="const-NAV_PARTIAL"></a>`NAV_PARTIAL` | `number` | `4` | NavAgent.status: the target is cut off; moving to the reachable point nearest it. |
+| <a id="const-NAV_ON_LINK"></a>`NAV_ON_LINK` | `number` | `5` | NavAgent.status: crossing an off-mesh link (a jump, a ladder, a door, a teleport). |
 
 ```ogt
 const NAV_IDLE u32 0 "NavAgent.status: not seeking."
@@ -1364,3 +1588,9 @@ const NAV_PARTIAL u32 4 "NavAgent.status: the target is cut off; moving to the r
 ```
 
 <sub>`api.ogt` line 11137</sub>
+
+```ogt
+const NAV_ON_LINK u32 5 "NavAgent.status: crossing an off-mesh link (a jump, a ladder, a door, a teleport)."
+```
+
+<sub>`api.ogt` line 11138</sub>

@@ -51,6 +51,15 @@ impl NavApi for NodeHost {
     fn og_nav_set_area(&self, world: u32, mesh: f64, id: u32, desc: Option<String>) -> String {
         rt::og_nav_set_area(world, mesh, id, desc)
     }
+    fn og_nav_set_link(&self, world: u32, mesh: f64, id: u32, desc: Option<String>) -> String {
+        rt::og_nav_set_link(world, mesh, id, desc)
+    }
+    fn og_nav_set_link_open(&self, world: u32, mesh: f64, id: u32, open: bool) -> String {
+        rt::og_nav_set_link_open(world, mesh, id, open)
+    }
+    fn og_nav_finish_link(&self, world: u32, entity: f64) -> bool {
+        rt::og_nav_finish_link(world, entity)
+    }
     fn og_nav_nearest(
         &self,
         world: u32,

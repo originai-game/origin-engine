@@ -186,6 +186,7 @@ export const NAV_MOVING: typeof Api.NAV_MOVING = 1;
 export const NAV_ARRIVED: typeof Api.NAV_ARRIVED = 2;
 export const NAV_UNREACHABLE: typeof Api.NAV_UNREACHABLE = 3;
 export const NAV_PARTIAL: typeof Api.NAV_PARTIAL = 4;
+export const NAV_ON_LINK: typeof Api.NAV_ON_LINK = 5;
 export const AI_RUNNING: typeof Api.AI_RUNNING = 1;
 export const AI_SUCCESS: typeof Api.AI_SUCCESS = 2;
 export const AI_FAILURE: typeof Api.AI_FAILURE = 3;

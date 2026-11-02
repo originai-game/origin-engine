@@ -5,7 +5,7 @@
 // on a behaviour tree that patrols, sees, chases at a resource's speed and
 // bites through the game's command; a machine restarted by og.ai.restart.
 import { beforeAll, expect, test } from "bun:test";
-import { og, defineResource, f32, f64, u32, NAV_ARRIVED, NAV_MOVING } from "@origingame/engine";
+import { og, defineResource, f32, f64, u32, NAV_ARRIVED, NAV_MOVING, NAV_ON_LINK } from "@origingame/engine";
 import type { Entity, World } from "@origingame/engine";
 import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
@@ -296,7 +296,7 @@ test("og.nav: areas reroute filtered paths and agents, shapes carve, and og.NavF
   expect(types(w)).not.toContain("og.NavFilter");
   const mesh = must(w.resource(Swamp)).mesh as never;
   const ends = { nav: mesh, from: { x: 2, y: 0, z: 4 }, to: { x: 18, y: 0, z: 4 } };
-  const maxZ = (pts: { z: number }[]) => Math.max(...pts.map((p) => p.z));
+  const maxZ = (pts: readonly { z: number }[]) => Math.max(...pts.map((p) => p.z));
   expect(maxZ(must(og.nav.findPath(w, ends)).points)).toBeLessThan(6);
   expect(maxZ(must(og.nav.findPath(w, { ...ends, areaCosts: [1, 1, 1, 10] })).points)).toBeGreaterThan(7.9);
   expect(maxZ(must(og.nav.findPath(w, { ...ends, excluded: [3] })).points)).toBeGreaterThan(7.9);
@@ -338,4 +338,69 @@ test("og.nav: areas reroute filtered paths and agents, shapes carve, and og.NavF
   expect(fresh.world.restore(save).ok).toBeTrue();
   expect(fresh.advance(300).ok).toBeTrue();
   expect(fresh.hash()).toBe(after);
+});
+
+function linkYard(game: boolean) {
+  return (world: World) => {
+    const info = must(og.nav.build(world, { min: { x: 0, y: 0, z: 0 }, max: { x: 20, y: 0, z: 10 }, cellSize: 0.25, tileSize: 16 }));
+    must(world.resource(Swamp)).mesh = info.mesh as unknown as number;
+    // A chasm across x 9–11 from wall to wall: only the link crosses it.
+    must(og.nav.carve(world, info.mesh, 1, { kind: "box" as never, min: { x: 9, y: -1, z: -1 }, max: { x: 11, y: 1, z: 11 } }));
+    expect(must(og.nav.setLink(world, info.mesh, 1, { start: { x: 8, y: 0, z: 4 }, end: { x: 12, y: 0, z: 4 }, kind: "jump", game }))).toBeTrue();
+    const e = must(world.spawn({ name: "jumper", position: { x: 2, y: 0, z: 4 } }));
+    world.insert(e, og.NavAgent, { nav: info.mesh, target: { x: 18, y: 0, z: 4 }, seeking: true, speed: 4 });
+  };
+}
+
+test("og.nav: paths and agents cross off-mesh links, a shut link is not planned, a game crossing waits for finishLink, and og.NavLinkReached joins the type table only with a link", () => {
+  expect(types(start(og.game({ resources: [Swamp], start: swampYard(false) })).world)).not.toContain("og.NavLinkReached");
+
+  const eng = start(og.game({ resources: [Swamp], start: linkYard(false) }));
+  const w = eng.world;
+  expect(types(w)).toContain("og.NavLinkReached");
+  const mesh = must(w.resource(Swamp)).mesh as never;
+  const ends = { nav: mesh, from: { x: 2, y: 0, z: 4 }, to: { x: 18, y: 0, z: 4 } };
+  const path = must(og.nav.findPath(w, ends));
+  expect(path.complete).toBeTrue();
+  expect(path.links).toEqual([1]);
+  // Shut, the chasm has no way over; open again, it has.
+  must(og.nav.setLinkOpen(w, mesh, 1, false));
+  const shut = og.nav.findPath(w, ends);
+  expect(!shut.ok || !shut.value.complete || shut.value.links.length === 0).toBeTrue();
+  must(og.nav.setLinkOpen(w, mesh, 1, true));
+  expect(og.nav.setLink(w, mesh, 2, { start: { x: 8, y: 0, z: 6 }, end: { x: 12, y: 0, z: 6 }, kind: "rope" as never }).ok).toBeFalse();
+
+  const jumper = w.find("jumper")!;
+  const reached: number[] = [];
+  let onLink = 0;
+  for (let t = 0; t < 300; t++) {
+    expect(eng.advance(1).ok).toBeTrue();
+    for (const ev of w.events(og.NavLinkReached)) reached.push(Number(ev.link));
+    if (must(w.get(jumper, og.NavAgent)).status === NAV_ON_LINK) onLink += 1;
+  }
+  expect(reached).toEqual([1]);
+  expect(onLink).toBeGreaterThan(0);
+  expect(must(w.get(jumper, og.NavAgent)).status).toBe(NAV_ARRIVED);
+  expect(must(w.get(jumper, og.Transform)).position.x).toBeGreaterThan(17);
+
+  // `game`: the agent holds at the start until the game ends the crossing,
+  // and a save taken mid-crossing restores into the same world.
+  const held = start(og.game({ resources: [Swamp], start: linkYard(true) }));
+  const hw = held.world;
+  const h = hw.find("jumper")!;
+  expect(held.advance(200).ok).toBeTrue();
+  expect(must(hw.get(h, og.NavAgent)).status).toBe(NAV_ON_LINK);
+  expect(must(hw.get(h, og.Transform)).position.x).toBeLessThan(9);
+  const save = must(hw.snapshot());
+  expect(og.nav.finishLink(hw, h)).toBeTrue();
+  expect(held.advance(200).ok).toBeTrue();
+  expect(must(hw.get(h, og.NavAgent)).status).toBe(NAV_ARRIVED);
+  const after = held.hash();
+  const fresh = start(og.game({ resources: [Swamp], start: swampYard(false) }));
+  expect(fresh.world.restore(save).ok).toBeTrue();
+  const fh = fresh.world.find("jumper")!;
+  expect(og.nav.finishLink(fresh.world, fh)).toBeTrue();
+  expect(fresh.advance(200).ok).toBeTrue();
+  expect(fresh.hash()).toBe(after);
+  expect(og.nav.finishLink(fresh.world, fh)).toBeFalse();
 });

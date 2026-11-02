@@ -1371,6 +1371,29 @@ impl Bundle {
         }
         Ok(out)
     }
+
+    /// A navmesh blob's baked off-mesh links (G2-4: the `links` section,
+    /// each a `u32` id then the link; empty in a blob without links).
+    pub fn navmesh_links(
+        &self,
+        id: &str,
+        bytes: &[u8],
+    ) -> Result<Vec<(u32, og_nav::Link)>, LoadError> {
+        let blob = self.blob::<format::NavMesh>(id, bytes)?;
+        let mut b = blob.raw_opt("links").unwrap_or_default();
+        let mut out = Vec::new();
+        while b.len() >= 4 {
+            let link = u32::from_le_bytes(b[..4].try_into().unwrap());
+            b = &b[4..];
+            let l =
+                og_nav::Link::read(&mut b).ok_or_else(|| invalid(&blob, "a link is cut short"))?;
+            out.push((link, l));
+        }
+        if !b.is_empty() {
+            return Err(invalid(&blob, "the links section ends inside a link"));
+        }
+        Ok(out)
+    }
 }
 
 // ── E6: string tables ────────────────────────────────────────────────────

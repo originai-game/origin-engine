@@ -16958,6 +16958,9 @@ export declare const NAV_UNREACHABLE: 3;
 /** NavAgent.status: the target is cut off; moving to the reachable point nearest it. */
 export declare const NAV_PARTIAL: 4;
 
+/** NavAgent.status: crossing an off-mesh link (a jump, a ladder, a door, a teleport). */
+export declare const NAV_ON_LINK: 5;
+
 /**
  * The grid search a path query runs.
  * - `"jps"`: Jump point search: the same optimal paths as A* with fewer nodes; on a grid with weighted cells it runs A*.
@@ -17253,6 +17256,107 @@ export interface NavFilter {
 }
 
 /**
+ * How an agent crosses an off-mesh link.
+ * - `"jump"`: Through the air on an arc, in its length over the agent's speed (at least 0.3 s).
+ * - `"ladder"`: Climbing, at half the agent's speed.
+ * - `"door"`: Walking through at the agent's speed, while the link is open (og.nav.setLinkOpen).
+ * - `"teleport"`: At once: on the far side the tick after it is reached.
+ */
+export type NavLinkKind = "jump" | "ladder" | "door" | "teleport";
+
+/**
+ * An off-mesh link: a way between two points of a navmesh its surface does not join (a gap to jump, a ladder, a door, a teleporter). Each end snaps to the polygon under it within 1 m.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface NavLinkDesc {
+  /**
+   * Where the agent leaves the surface.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly start?: Vector3;
+  /**
+   * Where it lands.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly end?: Vector3;
+  /**
+   * How it crosses.
+   *
+   * @default "jump"
+   */
+  readonly kind?: NavLinkKind;
+  /**
+   * Crossed both ways; false: from start to end only.
+   *
+   * @default true
+   */
+  readonly bidirectional?: boolean;
+  /**
+   * What crossing costs a path, in metres of walking; 0 is the link's length. A dear link loses to a shorter walk round.
+   *
+   * @default 0
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly cost?: number;
+  /**
+   * A closed link is never planned across (a shut door); agents re-plan when it opens or closes.
+   *
+   * @default true
+   */
+  readonly open?: boolean;
+  /**
+   * Seconds a crossing takes; 0 is the kind's own.
+   *
+   * @default 0
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly duration?: number;
+  /**
+   * The game moves the agent across (an animation, a cutscene): og.nav holds it at the start until og.nav.finishLink, then lands it at the end.
+   *
+   * @default false
+   */
+  readonly game?: boolean;
+}
+
+/**
+ * An agent reached an off-mesh link and started across it (systems read it the tick after): play the jump or the climb here. With `game`, move it and call og.nav.finishLink when it is over.
+ *
+ * The payload of the `NavLinkReached` event (token `og.NavLinkReached`).
+ */
+export interface NavLinkReached {
+  /** The agent. */
+  readonly agent: Entity;
+  /** The navmesh. */
+  readonly mesh: Navigation;
+  /** The link's id. */
+  readonly link: number;
+  /** Its NavLinkKind, by index: 0 jump, 1 ladder, 2 door, 3 teleport. */
+  readonly kind: number;
+  /**
+   * Where the agent leaves the surface.
+   *
+   * @unit m (metres)
+   */
+  readonly start: Vector3;
+  /**
+   * Where it lands.
+   *
+   * @unit m (metres)
+   */
+  readonly end: Vector3;
+  /** The game moves it across. */
+  readonly game: boolean;
+}
+
+/**
  * What a NavShape is.
  * - `"box"`: An axis-aligned box from `min` to `max`.
  * - `"orientedBox"`: A box of size `size` round `center`, turned `yaw` radians about +y.
@@ -17509,6 +17613,10 @@ export interface NavPath {
   readonly expanded: number;
   /** What ran: jps, astar or navmesh. */
   readonly algorithm: string;
+  /**
+   * Where it crosses off-mesh links: each an index into points, the link's start (the next point is where it lands).
+   */
+  readonly links: readonly number[];
 }
 
 /**
@@ -17647,6 +17755,9 @@ export interface NavRebuild {
   /** The navmesh's polygons now. */
   readonly polygons: number;
 }
+
+
+
 
 
 
@@ -41601,6 +41712,10 @@ export declare namespace og {
    */
   const NavFilter: ComponentType<{ readonly areaCosts: ListSpec<"f32">; readonly excluded: ListSpec<"u32"> }, NavFilter>;
   /**
+   * An agent reached an off-mesh link and started across it (systems read it the tick after): play the jump or the climb here. With `game`, move it and call og.nav.finishLink when it is over.
+   */
+  const NavLinkReached: EventType<NavLinkReached>;
+  /**
    * Navigation: grids (A* and jump point search with eight-way moves that never cut a blocked corner, line-of-sight smoothing), flow fields for crowds, and navmeshes (baked at cook time from a level's static colliders and models, or built at runtime for a flat procedural level) with funnel paths and box obstacles that rebuild only the tiles they touch.
    * Agents are entities with an og.NavAgent (and an og.Transform): the og.nav system, after the game's systems and before physics, plans their paths, follows them and adds the og.Steering behaviours; an entity with an og.Velocity (a physics body) gets its velocity written, any other its Transform moved. Everything is deterministic and in snapshots: paths, grid edits, obstacles and flow targets.
    * Agents move on the profile's plane: x and y in 2D (a grid's rows run up), x and z in 3D (y kept on grids, from the surface on a navmesh).
@@ -41720,6 +41835,34 @@ export declare namespace og {
      * @returns Refused for an unknown navmesh or an area past 63.
      */
     function setArea(world: World, mesh: Navigation, id: number, desc?: NavAreaDesc): Result<NavRebuild>;
+    /**
+     * Set, move or (with no desc) remove an off-mesh link on a navmesh. Paths cross it where it is cheaper than walking; an agent that reaches its start crosses it (NAV_ON_LINK, og.NavLinkReached) and lands at its end. Links baked in the navmesh asset (`link` lines) have the ids they were given. World state.
+     *
+     * @param world The world.
+     * @param mesh The navmesh.
+     * @param id The link's id, the game's own.
+     * @param desc The link; omitted removes it.
+     * @returns Whether both ends are on the mesh (a link with an end off it is kept but never crossed). Refused for an unknown navmesh.
+     */
+    function setLink(world: World, mesh: Navigation, id: number, desc?: NavLinkDesc): Result<boolean>;
+    /**
+     * Open or close an off-mesh link (a door): a closed one is never planned across, and agents on the mesh re-plan. World state.
+     *
+     * @param world The world.
+     * @param mesh The navmesh.
+     * @param id The link's id.
+     * @param open Open.
+     * @returns Refused for an unknown navmesh or link.
+     */
+    function setLinkOpen(world: World, mesh: Navigation, id: number, open: boolean): Result<void>;
+    /**
+     * End a crossing the game moves (NavLinkDesc.game): the agent lands at the link's end as og.nav next runs and goes on along its path.
+     *
+     * @param world The world.
+     * @param entity The agent.
+     * @returns False when it is not crossing such a link.
+     */
+    function finishLink(world: World, entity: Entity): boolean;
     /**
      * The point on a navmesh nearest a world point, within `extent` (half sizes).
      *

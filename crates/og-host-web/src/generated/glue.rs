@@ -1464,6 +1464,21 @@ pub fn og_nav_set_area(world: u32, mesh: f64, id: u32, desc: Option<String>) -> 
 }
 
 #[wasm_bindgen]
+pub fn og_nav_set_link(world: u32, mesh: f64, id: u32, desc: Option<String>) -> String {
+    <Host as NavApi>::og_nav_set_link(&Host, world, mesh, id, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_nav_set_link_open(world: u32, mesh: f64, id: u32, open: bool) -> String {
+    <Host as NavApi>::og_nav_set_link_open(&Host, world, mesh, id, open)
+}
+
+#[wasm_bindgen]
+pub fn og_nav_finish_link(world: u32, entity: f64) -> bool {
+    <Host as NavApi>::og_nav_finish_link(&Host, world, entity)
+}
+
+#[wasm_bindgen]
 pub fn og_nav_nearest(world: u32, mesh: f64, point: String, extent: Option<String>) -> String {
     <Host as NavApi>::og_nav_nearest(&Host, world, mesh, point, extent)
 }

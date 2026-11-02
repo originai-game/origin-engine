@@ -132,9 +132,17 @@
       {
         "member": "og.nav.carve, NavShape, NavShapeKind (G2-4)",
         "summary": "Obstacle shapes beyond boxes: a box turned about +y (orientedBox), an upright cylinder and a convex prism, carved into a navmesh by id like og.nav.setObstacle (which stays the axis-aligned box and carves exactly as before). A shape blocks the cells whose centres it covers, grown by the agent radius, and rebuilds only its tiles; the shapes are in the og.nav state block's trailer, so a save restores them."
+      },
+      {
+        "member": "og.nav.setLink, og.nav.setLinkOpen, og.nav.finishLink, NavLinkDesc, NavLinkKind, NAV_ON_LINK, og.NavLinkReached, NavPath.links; type navmesh `link` (G2-4)",
+        "summary": "Off-mesh links: a jump, a ladder, a door or a teleport from one point of a navmesh to another (both ways unless bidirectional is false), baked from a navmesh asset's `link` lines or set at run time by id. A* crosses an open link where it is cheaper than walking (cost in metres, 0 its length); a shut one (og.nav.setLinkOpen) is never planned and agents re-plan when it opens or closes. An agent reaching a link reports NAV_ON_LINK and sends og.NavLinkReached; the engine animates the crossing (an arc for a jump, half speed on a ladder, walking through a door, a teleport at once, or the link's duration), and a link with game (`traverse game`) holds the agent until og.nav.finishLink. og.NavLinkReached is registered only once a mesh has a link (or a save holding one is restored), so a world without links keeps its type table, saves and hash. Run-time links (where they moved from the baked ones) and agents crossing them are in the og.nav state block's trailer (tags 1 and 3); cooked links are an optional `links` section, so the navmesh blob keeps its version."
       }
     ],
     "fixed": [
+      {
+        "member": "world.restore (og.nav)",
+        "summary": "A restored grid or navmesh keeps the edit count its agents planned on. A restore rebuilds a mesh's obstacles, areas and links (or a grid's costs) with edits of its own, so its count only matched the saved paths by chance, and when it did not every agent planned again on the tick after a load (the same motion, a different world hash). The count is now set back from the saved paths; a nav edited after its newest path was planned also writes its count in the og.nav trailer (tag 4), so a path that was stale at the save is stale after it. A state whose paths are current saves byte for byte as before."
+      },
       {
         "member": "world.snapshot, world.spawn",
         "summary": "A save holds the names given since the last tick began: an entity named by world.spawn between ticks (GameDesc.start, a command) and then saved, or named by a system and saved by a later system in the same tick, restores with its name instead of losing it for good (a restore drops the names still queued for the world). A name given in a system now goes into the world when that system returns, with its spawn, so the world hash of that tick includes it (it used to from the next tick on)."

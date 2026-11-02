@@ -18,6 +18,7 @@ module nav {
   const NAV_ARRIVED u32 2 "NavAgent.status: within stopDistance of the target."
   const NAV_UNREACHABLE u32 3 "NavAgent.status: no path reaches the target, or the agent is off its grid or navmesh."
   const NAV_PARTIAL u32 4 "NavAgent.status: the target is cut off; moving to the reachable point nearest it."
+  const NAV_ON_LINK u32 5 "NavAgent.status: crossing an off-mesh link (a jump, a ladder, a door, a teleport)."
 
   enum NavAlgorithm {
     doc "The grid search a path query runs."
@@ -210,6 +211,56 @@ module nav {
     field excluded List.u32.64 "Area ids the agent never enters (0 to 63): `{ excluded: [4] }` keeps it out of area 4 (lava)."
   }
 
+  enum NavLinkKind {
+    doc "How an agent crosses an off-mesh link."
+    variant jump "Through the air on an arc, in its length over the agent's speed (at least 0.3 s)."
+    variant ladder "Climbing, at half the agent's speed."
+    variant door "Walking through at the agent's speed, while the link is open (og.nav.setLinkOpen)."
+    variant teleport "At once: on the far side the tick after it is reached."
+  }
+
+  struct NavLinkDesc {
+    doc "An off-mesh link: a way between two points of a navmesh its surface does not join (a gap to jump, a ladder, a door, a teleporter). Each end snaps to the polygon under it within 1 m."
+    desc true
+    field start Vector3 "Where the agent leaves the surface." {
+      unit m
+    }
+    field end Vector3 "Where it lands." {
+      unit m
+    }
+    field kind NavLinkKind "How it crosses."
+    field bidirectional bool "Crossed both ways; false: from start to end only." {
+      default true
+    }
+    field cost f32 "What crossing costs a path, in metres of walking; 0 is the link's length. A dear link loses to a shorter walk round." {
+      min 0
+      unit m
+    }
+    field open bool "A closed link is never planned across (a shut door); agents re-plan when it opens or closes." {
+      default true
+    }
+    field duration f32 "Seconds a crossing takes; 0 is the kind's own." {
+      min 0
+      unit s
+    }
+    field game bool "The game moves the agent across (an animation, a cutscene): og.nav holds it at the start until og.nav.finishLink, then lands it at the end."
+  }
+
+  event NavLinkReached {
+    doc "An agent reached an off-mesh link and started across it (systems read it the tick after): play the jump or the climb here. With `game`, move it and call og.nav.finishLink when it is over."
+    field agent Entity "The agent."
+    field mesh Navigation "The navmesh."
+    field link u32 "The link's id."
+    field kind u32 "Its NavLinkKind, by index: 0 jump, 1 ladder, 2 door, 3 teleport."
+    field start Vector3 "Where the agent leaves the surface." {
+      unit m
+    }
+    field end Vector3 "Where it lands." {
+      unit m
+    }
+    field game bool "The game moves it across."
+  }
+
   enum NavShapeKind {
     doc "What a NavShape is."
     variant box "An axis-aligned box from `min` to `max`."
@@ -331,6 +382,7 @@ module nav {
     field complete bool "Whether it reaches the end (false: it stops at the reachable point nearest it)."
     field expanded u32 "Cells or polygons the search took off its open list."
     field algorithm String "What ran: jps, astar or navmesh."
+    field links List.u32 "Where it crosses off-mesh links: each an index into points, the link's start (the next point is where it lands)."
   }
 
   struct FlowDesc {
@@ -516,6 +568,33 @@ module nav {
       optional true
     }
     returns Result.NavRebuild "Refused for an unknown navmesh or an area past 63."
+  }
+
+  fn setLink {
+    doc "Set, move or (with no desc) remove an off-mesh link on a navmesh. Paths cross it where it is cheaper than walking; an agent that reaches its start crosses it (NAV_ON_LINK, og.NavLinkReached) and lands at its end. Links baked in the navmesh asset (`link` lines) have the ids they were given. World state."
+    param world World "The world."
+    param mesh Navigation "The navmesh."
+    param id u32 "The link's id, the game's own."
+    param desc NavLinkDesc "The link; omitted removes it." {
+      optional true
+    }
+    returns Result.bool "Whether both ends are on the mesh (a link with an end off it is kept but never crossed). Refused for an unknown navmesh."
+  }
+
+  fn setLinkOpen {
+    doc "Open or close an off-mesh link (a door): a closed one is never planned across, and agents on the mesh re-plan. World state."
+    param world World "The world."
+    param mesh Navigation "The navmesh."
+    param id u32 "The link's id."
+    param open bool "Open."
+    returns Result.Void "Refused for an unknown navmesh or link."
+  }
+
+  fn finishLink {
+    doc "End a crossing the game moves (NavLinkDesc.game): the agent lands at the link's end as og.nav next runs and goes on along its path."
+    param world World "The world."
+    param entity Entity "The agent."
+    returns bool "False when it is not crossing such a link."
   }
 
   fn nearest {

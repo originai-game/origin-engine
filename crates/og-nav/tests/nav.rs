@@ -1119,3 +1119,334 @@ fn filtered_agents_keep_out_of_an_area_and_shapes_and_areas_come_back_with_a_sav
     }
     assert_eq!(fresh.world_hash(), w.world_hash());
 }
+
+/// A mesh edited more often than a restore edits it (a crate set, moved
+/// and moved again) restores at the edit count its agents planned on, and
+/// one edited after they planned restores as stale: both worlds go on tick
+/// for tick (before, the restore's own count made every agent plan again).
+#[test]
+fn a_restored_mesh_keeps_the_edit_count_its_agents_planned_on() {
+    use og_nav::Shape;
+    let crate_at = |x: f32| Shape::Box {
+        min: Vec3::new(x, -1.0, 3.0),
+        max: Vec3::new(x + 1.0, 1.0, 5.0),
+    };
+    let make = || {
+        let mut navs = Navs::default();
+        let h = navs.insert(Nav::Mesh(Box::new(NavMesh::build_with_areas(
+            floor(),
+            vec![],
+        ))));
+        let navs = Arc::new(Mutex::new(navs));
+        let mut w = world_with(navs.clone(), Plane::Xz);
+        w.spawn((
+            og_nav::system::Transform {
+                position: Vec3::new(2.0, 0.0, 4.0),
+                ..Default::default()
+            },
+            NavAgent {
+                nav: h,
+                target: Vec3::new(18.0, 0.0, 4.0),
+                seeking: true,
+                speed: 2.0,
+                ..Default::default()
+            },
+        ))
+        .unwrap();
+        (w, navs, h)
+    };
+    let edit = |navs: &Arc<Mutex<Navs>>, h, x| {
+        if let Some(Nav::Mesh(m)) = navs.lock().unwrap().get_mut(h) {
+            m.carve(1, Some(crate_at(x)));
+        }
+    };
+    for stale in [false, true] {
+        let (mut w, navs, h) = make();
+        for x in [6.0, 8.0, 12.0] {
+            edit(&navs, h, x);
+            w.step().unwrap();
+        }
+        for _ in 0..20 {
+            w.step().unwrap();
+        }
+        if stale {
+            edit(&navs, h, 13.0);
+        }
+        let snap = w.snapshot();
+        let (mut fresh, ..) = make();
+        fresh.restore(&snap).unwrap();
+        for t in 0..200 {
+            w.step().unwrap();
+            fresh.step().unwrap();
+            assert_eq!(
+                fresh.world_hash(),
+                w.world_hash(),
+                "stale {stale}: diverged {t} ticks after the restore"
+            );
+        }
+    }
+}
+
+// ── G2-4: off-mesh links ────────────────────────────────────────────────────
+
+/// Two floors of 18 × 10 m split by a gap at x 8–10 from z 0 to 8: the way
+/// round is a corridor across the gap's far end (z 8–10).
+fn gap() -> NavMesh {
+    let p = NavParams {
+        cell_size: 0.25,
+        tile_size: 16,
+        ..Default::default()
+    };
+    NavMesh::build(
+        og_nav::Heightfield::flat(p, Vec3::ZERO, 72, 40).without(|x, z| {
+            let (wx, wz) = (x as f32 * 0.25, z as f32 * 0.25);
+            (8.0..10.0).contains(&wx) && wz < 8.0
+        }),
+    )
+}
+
+fn jump(cost: f32) -> og_nav::Link {
+    og_nav::Link {
+        start: Vec3::new(7.3, 0.0, 2.0),
+        end: Vec3::new(10.7, 0.0, 2.0),
+        kind: og_nav::LinkKind::Jump,
+        bidirectional: true,
+        cost,
+        open: true,
+        duration: 0.0,
+        game: false,
+    }
+}
+
+#[test]
+fn a_path_crosses_an_open_link_when_it_is_cheaper_and_each_stretch_is_funnelled() {
+    let mut m = gap();
+    let (a, b) = (Vec3::new(4.0, 0.0, 2.0), Vec3::new(14.0, 0.0, 2.0));
+    let ext = Vec3::new(1.0, 2.0, 1.0);
+    let round = m.find_path(a, b, ext).unwrap();
+    assert!(round.complete && round.links.is_empty());
+    assert!(max_z(&round.points) > 7.9, "without a link it goes round");
+    assert!(m.set_link(1, Some(jump(0.0))), "both ends on the mesh");
+    let over = m.find_path(a, b, ext).unwrap();
+    assert!(
+        over.complete && max_z(&over.points) < 3.0,
+        "the jump is shorter"
+    );
+    assert_eq!(over.links.len(), 1);
+    let l = over.links[0];
+    assert!(!l.reverse && l.link == 1);
+    let (s, e) = (
+        over.points[l.corner as usize],
+        over.points[l.corner as usize + 1],
+    );
+    assert!(
+        s.distance(Vec3::new(7.3, 0.0, 2.0)) < 1e-3 && e.distance(Vec3::new(10.7, 0.0, 2.0)) < 1e-3
+    );
+    // Back the other way it crosses reversed; one way, it goes round.
+    let back = m.find_path(b, a, ext).unwrap();
+    assert!(back.links[0].reverse);
+    let mut one_way = jump(0.0);
+    one_way.bidirectional = false;
+    m.set_link(1, Some(one_way));
+    assert!(m.find_path(b, a, ext).unwrap().links.is_empty());
+    // A dear link loses to the corridor; a shut one is never crossed.
+    m.set_link(1, Some(jump(100.0)));
+    assert!(m.find_path(a, b, ext).unwrap().links.is_empty());
+    m.set_link(1, Some(jump(0.0)));
+    let v = m.version();
+    assert!(m.set_link_open(1, false));
+    assert!(m.version() > v, "agents re-plan when a door shuts");
+    assert!(m.find_path(a, b, ext).unwrap().links.is_empty());
+    // An end off the mesh leaves the link out.
+    let mut nowhere = jump(0.0);
+    nowhere.end = Vec3::new(9.0, 0.0, -3.0);
+    assert!(!m.set_link(2, Some(nowhere)));
+    // A rebuild re-snaps the links: an obstacle by the landing keeps it.
+    m.set_link_open(1, true);
+    m.set_obstacle(
+        5,
+        Some(Obstacle {
+            min: Vec3::new(12.0, 0.0, 4.0),
+            max: Vec3::new(13.0, 1.0, 6.0),
+        }),
+    );
+    assert_eq!(m.find_path(a, b, ext).unwrap().links.len(), 1);
+}
+
+fn link_world(link: og_nav::Link) -> (World, Arc<Mutex<Navs>>, u64, og_ecs::Entity) {
+    let mut navs = Navs::default();
+    let mut m = gap();
+    m.set_link(1, Some(link));
+    let h = navs.insert(Nav::Mesh(Box::new(m)));
+    let navs = Arc::new(Mutex::new(navs));
+    let mut w = world_with(navs.clone(), Plane::Xz);
+    og_nav::enable_links(&mut w).unwrap();
+    let e = w
+        .spawn((
+            og_nav::system::Transform {
+                position: Vec3::new(4.0, 0.0, 2.0),
+                ..Default::default()
+            },
+            NavAgent {
+                nav: h,
+                target: Vec3::new(14.0, 0.0, 2.0),
+                seeking: true,
+                speed: 4.0,
+                ..Default::default()
+            },
+        ))
+        .unwrap();
+    (w, navs, h, e)
+}
+
+fn reached(w: &World) -> Vec<og_nav::NavLinkReached> {
+    w.pending_events::<og_nav::NavLinkReached>().unwrap()
+}
+
+#[test]
+fn an_agent_jumps_a_link_on_an_arc_and_a_restore_mid_jump_lands_alike() {
+    let (mut w, _, h, e) = link_world(jump(0.0));
+    let pos = |w: &World| w.get::<og_nav::system::Transform>(e).unwrap().position;
+    let (mut top, mut on_link, mut events, mut snap) = (0.0f32, 0, Vec::new(), None);
+    for _ in 0..240 {
+        w.step().unwrap();
+        events.extend(reached(&w));
+        let p = pos(&w);
+        top = top.max(p.y);
+        if w.get::<NavAgent>(e).unwrap().status == og_nav::STATUS_ON_LINK {
+            on_link += 1;
+            if on_link == 5 {
+                snap = Some(w.snapshot());
+            }
+            assert!(p.x > 7.0 && p.x < 11.0, "mid-jump over the gap at {p}");
+        } else {
+            assert!(p.y.abs() < 1e-3, "off the link, on the floor at {p}");
+            assert!(p.z < 3.5, "it jumped rather than going round at {p}");
+        }
+    }
+    assert_eq!(events.len(), 1, "one og.NavLinkReached");
+    let ev = events[0];
+    assert_eq!(
+        (ev.agent, ev.mesh, ev.link, ev.kind),
+        (e.to_bits(), h, 1, 0)
+    );
+    assert!(
+        on_link >= 10,
+        "a jump of 3.4 m at 4 m/s lasts some ticks: {on_link}"
+    );
+    assert!(top > 0.8, "on an arc: {top}");
+    assert_eq!(w.get::<NavAgent>(e).unwrap().status, STATUS_ARRIVED);
+    assert!(pos(&w).distance(Vec3::new(14.0, 0.0, 2.0)) < 0.3);
+    let hash = w.world_hash();
+    // A fresh world restored mid-jump lands and arrives the same.
+    let (mut z, ..) = link_world(jump(0.0));
+    z.restore(&snap.unwrap()).unwrap();
+    assert_eq!(z.get::<NavAgent>(e).unwrap().status, og_nav::STATUS_ON_LINK);
+    while z.time().tick < w.time().tick {
+        z.step().unwrap();
+    }
+    assert_eq!(z.world_hash(), hash);
+}
+
+#[test]
+fn a_game_crossing_waits_for_finish_a_teleport_is_instant_and_a_shut_door_reroutes() {
+    // The game moves the agent across: it waits on the link until told.
+    let mut game = jump(0.0);
+    game.kind = og_nav::LinkKind::Ladder;
+    game.game = true;
+    let mut navs = Navs::default();
+    let mut m = gap();
+    m.set_link(1, Some(game));
+    let h = navs.insert(Nav::Mesh(Box::new(m)));
+    let navs = Arc::new(Mutex::new(navs));
+    let mut w = World::new(&WorldDesc {
+        tick_rate: 60,
+        seed: 3,
+    })
+    .unwrap();
+    let sys = install(
+        &mut w,
+        navs.clone(),
+        NavDesc {
+            plane: Plane::Xz,
+            raycast: None,
+            plans_per_tick: og_nav::PLANS_PER_TICK,
+        },
+    )
+    .unwrap();
+    og_nav::enable_links(&mut w).unwrap();
+    let e = w
+        .spawn((
+            og_nav::system::Transform {
+                position: Vec3::new(4.0, 0.0, 2.0),
+                ..Default::default()
+            },
+            NavAgent {
+                nav: h,
+                target: Vec3::new(14.0, 0.0, 2.0),
+                seeking: true,
+                speed: 4.0,
+                ..Default::default()
+            },
+        ))
+        .unwrap();
+    let mut events = Vec::new();
+    for _ in 0..120 {
+        w.step().unwrap();
+        events.extend(reached(&w));
+    }
+    assert_eq!(events.len(), 1);
+    assert!(events[0].game && events[0].kind == 1);
+    assert_eq!(w.get::<NavAgent>(e).unwrap().status, og_nav::STATUS_ON_LINK);
+    let held = w.get::<og_nav::system::Transform>(e).unwrap().position;
+    assert!(held.x < 8.0, "it waits at the ladder's foot: {held}");
+    assert!(sys.finish_link(e));
+    assert!(!sys.finish_link(og_ecs::Entity::from_bits(0xdead)));
+    w.step().unwrap();
+    let landed = w.get::<og_nav::system::Transform>(e).unwrap().position;
+    assert!(
+        landed.distance(Vec3::new(10.7, 0.0, 2.0)) < 1e-3,
+        "landed at {landed}"
+    );
+    for _ in 0..120 {
+        w.step().unwrap();
+    }
+    assert_eq!(w.get::<NavAgent>(e).unwrap().status, STATUS_ARRIVED);
+
+    // A teleport: on the far side the tick after it is reached.
+    let mut tp = jump(0.0);
+    tp.kind = og_nav::LinkKind::Teleport;
+    let (mut w, _, _, e) = link_world(tp);
+    let mut last_x = 4.0f32;
+    for _ in 0..200 {
+        w.step().unwrap();
+        let x = w.get::<og_nav::system::Transform>(e).unwrap().position.x;
+        assert!(
+            !(x > 7.6 && x < 10.4),
+            "a teleport passes no point over the gap: {x}"
+        );
+        if last_x < 8.0 && x > 10.0 {
+            assert!(x - last_x > 3.0, "one tick from start to end");
+        }
+        last_x = x;
+    }
+    assert!(last_x > 13.5);
+
+    // A door shut as the agent walks to it: it goes round by the corridor.
+    let mut door = jump(0.0);
+    door.kind = og_nav::LinkKind::Door;
+    let (mut w, navs, h, e) = link_world(door);
+    let mut top = 0.0f32;
+    for t in 0..600 {
+        if t == 20
+            && let Some(Nav::Mesh(m)) = navs.lock().unwrap().get_mut(h)
+        {
+            assert!(m.set_link_open(1, false));
+        }
+        w.step().unwrap();
+        assert!(reached(&w).is_empty(), "never crosses a shut door");
+        top = top.max(w.get::<og_nav::system::Transform>(e).unwrap().position.z);
+    }
+    assert!(top > 7.9, "round by the corridor: {top}");
+    assert_eq!(w.get::<NavAgent>(e).unwrap().status, STATUS_ARRIVED);
+}

@@ -589,6 +589,12 @@ export interface HostAbi<A, V> {
   og_nav_carve(world: number, mesh: number, id: number, shape: string | undefined): string;
   /** `og.nav.setArea` */
   og_nav_set_area(world: number, mesh: number, id: number, desc: string | undefined): string;
+  /** `og.nav.setLink` */
+  og_nav_set_link(world: number, mesh: number, id: number, desc: string | undefined): string;
+  /** `og.nav.setLinkOpen` */
+  og_nav_set_link_open(world: number, mesh: number, id: number, open: boolean): string;
+  /** `og.nav.finishLink` */
+  og_nav_finish_link(world: number, entity: number): boolean;
   /** `og.nav.nearest` */
   og_nav_nearest(world: number, mesh: number, point: string, extent: string | undefined): string;
   /** `og.nav.pathOf` */
@@ -1330,6 +1336,9 @@ export const SYMBOLS: readonly string[] = [
   "og_nav_set_obstacle",
   "og_nav_carve",
   "og_nav_set_area",
+  "og_nav_set_link",
+  "og_nav_set_link_open",
+  "og_nav_finish_link",
   "og_nav_nearest",
   "og_nav_path_of",
   "og_ai_load",
@@ -1711,6 +1720,10 @@ export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {
     og_tilemap_cell_center(world: number, entity: number, x: number, y: number) {
       if (typeof entity !== "number") notEntity("og.tilemap.cellCenter", "entity", entity);
       return abi.og_tilemap_cell_center(world, entity, x, y);
+    },
+    og_nav_finish_link(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("og.nav.finishLink", "entity", entity);
+      return abi.og_nav_finish_link(world, entity);
     },
     og_nav_path_of(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("og.nav.pathOf", "entity", entity);

@@ -343,12 +343,102 @@ pub fn og_nav_cell_at(world: u32, grid: f64, point: String) -> String {
     .to_string()
 }
 
-fn path_value(points: &[Vec3], complete: bool, expanded: u32, algorithm: &str) -> Value {
+fn path_value(
+    points: &[Vec3],
+    complete: bool,
+    expanded: u32,
+    algorithm: &str,
+    links: &[og_nav::PathLink],
+) -> Value {
     let length: f32 = points.windows(2).map(|w| w[0].distance(w[1])).sum();
     json!({
         "points": points.iter().map(|p| j3(*p)).collect::<Vec<_>>(),
         "length": length, "complete": complete, "expanded": expanded, "algorithm": algorithm,
+        "links": links.iter().map(|l| l.corner).collect::<Vec<_>>(),
     })
+}
+
+/// An off-mesh link from its NavLinkDesc JSON.
+fn link_desc(v: &Value) -> Result<og_nav::Link, String> {
+    let kind = match v["kind"].as_str().unwrap_or("jump") {
+        "jump" => og_nav::LinkKind::Jump,
+        "ladder" => og_nav::LinkKind::Ladder,
+        "door" => og_nav::LinkKind::Door,
+        "teleport" => og_nav::LinkKind::Teleport,
+        k => {
+            return Err(format!(
+                "'{k}' is not a NavLinkKind: jump, ladder, door or teleport"
+            ));
+        }
+    };
+    Ok(og_nav::Link {
+        start: v3(&v["start"]),
+        end: v3(&v["end"]),
+        kind,
+        bidirectional: v["bidirectional"].as_bool().unwrap_or(true),
+        cost: f(v, "cost", 0.0).max(0.0),
+        open: v["open"].as_bool().unwrap_or(true),
+        duration: f(v, "duration", 0.0).max(0.0),
+        game: v["game"].as_bool().unwrap_or(false),
+    })
+}
+
+/// og.NavLinkReached joins the world (a lazy record) once a mesh has a link.
+fn links_used(world: u32) -> Result<(), String> {
+    let eng = engine(world)?;
+    super::lazy::ensure(
+        &eng,
+        eng.world()?,
+        <og_nav::NavLinkReached as og_core::Reflect>::NAME,
+    )
+}
+
+pub fn og_nav_set_link(world: u32, mesh: f64, id: u32, desc: Option<String>) -> String {
+    wire((|| {
+        let l = match desc.as_deref().map(|t| parse(Some(t))).transpose()? {
+            Some(v) if v.is_object() => Some(link_desc(&v)?),
+            _ => None,
+        };
+        if l.is_some() {
+            links_used(world)?;
+        }
+        let n = navs(world)?;
+        let mut n = lock(&n);
+        match n.get_mut(handle(mesh)) {
+            Some(Nav::Mesh(m)) => Ok(json!(m.set_link(id, l))),
+            _ => Err(format!(
+                "{mesh} is not a navmesh (og.nav.load, og.nav.build)"
+            )),
+        }
+    })())
+}
+
+pub fn og_nav_set_link_open(world: u32, mesh: f64, id: u32, open: bool) -> String {
+    wire((|| {
+        let n = navs(world)?;
+        let mut n = lock(&n);
+        match n.get_mut(handle(mesh)) {
+            Some(Nav::Mesh(m)) => {
+                if m.set_link_open(id, open) {
+                    Ok(Value::Null)
+                } else {
+                    Err(format!("navmesh {mesh} has no link {id}"))
+                }
+            }
+            _ => Err(format!(
+                "{mesh} is not a navmesh (og.nav.load, og.nav.build)"
+            )),
+        }
+    })())
+}
+
+pub fn og_nav_finish_link(world: u32, entity: f64) -> bool {
+    super::e6::with(world, |m| {
+        m.nav
+            .as_ref()
+            .is_some_and(|n| n.finish_link(Entity::from_bits(handle(entity))))
+    })
+    .unwrap_or(false)
 }
 
 pub fn og_nav_find_path(world: u32, desc: Option<String>) -> String {
@@ -386,6 +476,7 @@ pub fn og_nav_find_path(world: u32, desc: Option<String>) -> String {
                             } else {
                                 "astar"
                             },
+                            &[],
                         ));
                     }
                 };
@@ -410,6 +501,7 @@ pub fn og_nav_find_path(world: u32, desc: Option<String>) -> String {
                     } else {
                         "astar"
                     },
+                    &[],
                 ))
             }
             Some(Nav::Mesh(m)) => {
@@ -417,7 +509,9 @@ pub fn og_nav_find_path(world: u32, desc: Option<String>) -> String {
                 let p = m
                     .find_path_filtered(from, to, extent, &filter(&d))
                     .ok_or("the start is not on the navmesh (within 2 m)")?;
-                Ok(path_value(&p.points, p.complete, p.expanded, "navmesh"))
+                Ok(path_value(
+                    &p.points, p.complete, p.expanded, "navmesh", &p.links,
+                ))
             }
             Some(Nav::Flow { .. }) => {
                 Err("a flow field answers directions, not paths: use og.nav.flowAt".into())
@@ -506,7 +600,7 @@ fn mesh_info(h: u64, m: &NavMesh) -> Value {
 pub fn og_nav_load(world: u32, path: String) -> String {
     wire(engine(world).and_then(|eng| {
         let id = og_bundle::runtime::asset_id(&path).to_string();
-        let (field, tiles, areas) = {
+        let (field, tiles, areas, links) = {
             let assets = eng.assets.borrow();
             let (bytes, bundle) = assets.blob(&id)?;
             let (field, tiles) = bundle
@@ -515,11 +609,23 @@ pub fn og_nav_load(world: u32, path: String) -> String {
             let areas = bundle
                 .navmesh_areas(&id, bytes.bytes())
                 .map_err(|e| e.to_string())?;
-            (field, tiles, areas)
+            let links = bundle
+                .navmesh_links(&id, bytes.bytes())
+                .map_err(|e| e.to_string())?;
+            (field, tiles, areas, links)
         };
-        let mesh = NavMesh::from_tiles_with_areas(field, tiles, areas).ok_or_else(|| {
-            format!("{id}: the navmesh's tiles do not fit its heightfield; cook it again")
-        })?;
+        let mesh = NavMesh::from_tiles_with_areas(field, tiles, areas)
+            .ok_or_else(|| {
+                format!("{id}: the navmesh's tiles do not fit its heightfield; cook it again")
+            })?
+            .with_links(links.clone());
+        if !links.is_empty() {
+            super::lazy::ensure(
+                &eng,
+                eng.world()?,
+                <og_nav::NavLinkReached as og_core::Reflect>::NAME,
+            )?;
+        }
         let n = navs(world)?;
         let mut n = lock(&n);
         let info = mesh_info(0, &mesh);
@@ -634,9 +740,14 @@ fn path_of(engine: u32, e: Entity) -> Option<og_nav::system::PathState> {
 
 pub fn og_nav_path_of(world: u32, entity: f64) -> String {
     match path_of(world, Entity::from_bits(handle(entity))) {
-        Some(p) if !p.corners.is_empty() => {
-            path_value(&p.corners, p.status != og_nav::STATUS_PARTIAL, 0, "agent").to_string()
-        }
+        Some(p) if !p.corners.is_empty() => path_value(
+            &p.corners,
+            p.status != og_nav::STATUS_PARTIAL,
+            0,
+            "agent",
+            &p.links,
+        )
+        .to_string(),
         _ => "null".into(),
     }
 }
@@ -644,16 +755,31 @@ pub fn og_nav_path_of(world: u32, entity: f64) -> String {
 /// `dump_nav`'s JSON: the agent's path, the corner it heads for and its status.
 pub(crate) fn path_json(engine: u32, world: &World, e: Entity) -> Option<Value> {
     let p = path_of(engine, e)?;
-    let status = ["idle", "moving", "arrived", "unreachable", "partial"]
-        .get(p.status as usize)
-        .copied()
-        .unwrap_or("idle");
-    Some(json!({
+    let status = [
+        "idle",
+        "moving",
+        "arrived",
+        "unreachable",
+        "partial",
+        "onLink",
+    ]
+    .get(p.status as usize)
+    .copied()
+    .unwrap_or("idle");
+    let mut v = json!({
         "entity": og_probe::Names.id_of(world, e),
         "status": status,
         "corners": p.corners.iter().map(|c| j3(*c)).collect::<Vec<_>>(),
         "next": p.next,
         "target": j3(p.target),
         "age": p.age,
-    }))
+    });
+    // Off-mesh links (G2-4), only on a path that crosses one.
+    if !p.links.is_empty() {
+        v["links"] = json!(p.links.iter().map(|l| l.corner).collect::<Vec<_>>());
+    }
+    if let Some(t) = p.traverse {
+        v["crossing"] = json!({ "link": t.link, "kind": t.kind.name(), "to": j3(t.to) });
+    }
+    Some(v)
 }
