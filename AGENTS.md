@@ -289,3 +289,7 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
 - Every change that alters rendering, animation, physics or the tick carries a
   scripted `og run --commands` run whose frame was read and described in the
   change.
+- Every stream adds the frames it read and the numbers it measured to the
+  showcase archive (`bun scripts/showcase.ts add`, `docs/ci.md` §Showcase);
+  nothing under a `rejected/` directory, and withdrawn work is marked with
+  `showcase.ts exclude`.

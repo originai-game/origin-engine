@@ -1049,6 +1049,67 @@ with no second tier. It catches accidental growth (a dependency pulled in by
 mistake, monomorphisation, doc strings in a publish build) and is never a
 reason to cut a feature down.
 
+## Showcase
+
+Every frame a stream reads, every film it records and every number it
+measures (gate timings, size-gate figures, perf runs, replay results and
+hashes) goes into the showcase archive, from which a web showcase of the
+engine's features is built later (the owner, 2026-11-02). The files are not
+in git, which is already near a gigabyte. They live in the private Cloudflare
+R2 bucket `origin-engine-showcase`, under `sha256/<2 hex>/<sha256>.<ext>`, so
+a file is stored once however often it is added. Git holds only
+`showcase/manifest.jsonl`, one JSON entry per line:
+
+| Field | What it is |
+|---|---|
+| `id` | `<feature>/<12 hex>`, from the file's hash, the feature and the title |
+| `feature` | the roadmap row (`U6c`, `G2-3`) or stream (`ui-art`, `gate`) it shows |
+| `title` | what the artifact shows, in a few words |
+| `kind` | `frame`, `film`, `before-after`, `benchmark` or `concept` |
+| `commit`, `date`, `thread` | the commit it shows, the day, the Amp thread that made it |
+| `key`, `sha256`, `bytes`, `type` | the object in the bucket, its hash, size and media type |
+| `width`, `height`, `duration` | an image's or film's pixels, a film's seconds |
+| `metrics`, `machine` | a benchmark's `{ name, value, unit }` list (a value may be a string, such as a hash) and where it ran |
+| `pair`, `side` | a before-after pair's shared name and `before` or `after` |
+| `source` | where the file came from (a path, an attachment URL) |
+| `excluded`, `reason` | `true` and why, for withdrawn work: never shown, its bytes refused by `add` |
+
+```
+bun scripts/showcase.ts add <file> --feature U6c --title "phone HUD at 200 % text"
+bun scripts/showcase.ts add before.png --feature G2-3 --title "stack before sleep" --pair "stack" --side before
+bun scripts/showcase.ts add --feature gate --title "functional lane" --machine macrunner \
+  --metric wall=169 s --metric tests=1500 count        # a benchmark: its metrics are stored as JSON
+bun scripts/showcase.ts list [--feature U6c] [--kind film] [--json]
+bun scripts/showcase.ts exclude <id|file|sha256> --reason "…"   # withdraw it (below)
+bun scripts/showcase.ts verify                          # every live entry's key is in the bucket at its size
+bun scripts/showcase.ts index                           # showcase/index.html from the manifest
+bun scripts/showcase.ts serve                           # the index on localhost:8780, files proxied from R2
+```
+
+`add` defaults `--commit` to HEAD, `--date` to today (UTC) and `--thread` to
+`$AMP_THREAD_ID`; it uploads only bytes the bucket does not hold and never
+repeats an entry of the same file, feature and title. It reaches the bucket
+through the Cloudflare API with `CLOUDFLARE_API_TOKEN` (R2 read and write)
+and `CLOUDFLARE_ACCOUNT_ID`, both orb secrets; widths and heights come from
+the PNG header, else `ffprobe`. Commit the manifest lines with the change
+they show; `showcase/index.html` is regenerated with them. The first backfill
+(2026-11-02) took every attachment and artifact of that day's streams, the
+committed `references/` frames and `tests/evidence/` images where they are
+(by key; nothing moved), the perf baselines and golden replays, and
+macrunner's reported gate, size and replay figures.
+
+Withdrawn work never enters the archive (the owner, 2026-11-02). `add`, and
+so any backfill built on it, refuses a file or `--source` under a
+`rejected/` directory, where a thread keeps a concept it was told not to
+publish (ui-art's first midcore draft copied Supercell's characters). What
+is withdrawn after the fact is marked with `exclude`: by id, or by content
+(a file or its sha256, every entry of those bytes), as `excluded: true` with
+a `reason`; content not yet in the manifest gets an excluded entry with no
+`key` and nothing uploaded, so the same bytes are refused when they arrive
+again by another path (a message attachment has no `rejected/` in its URL).
+`index` and `serve`, and the public site after them, leave excluded entries
+out.
+
 ## Re-capturing gfx references
 
 gfx tests in `og-tests` render a scene headless and compare it with a
