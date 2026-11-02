@@ -7,7 +7,7 @@ import { kit } from "./bind.ts";
 import { all as edges, hudBox, fit, fmt, frame, grow, iconOr, px, token, xy } from "./util.ts";
 import { artSlot } from "../ui/foundations/media.ts";
 import { over } from "../ui/containers/base.ts";
-import { luminance, rarityColor, role } from "../ui/feedback/core.ts";
+import { luminance, mix, rarityColor, role } from "../ui/feedback/core.ts";
 
 /**
  * A slot's ground for its rarity, as commercial inventories draw it: the
@@ -21,43 +21,52 @@ import { luminance, rarityColor, role } from "../ui/feedback/core.ts";
  * false (the detail's showcase) draws the glow alone. Built first in the
  * cell, under what follows.
  */
-export function rarityGround(id: string, rarity: Api.Rarity | undefined, line = true): void {
+export function rarityGround(id: string, rarity: Api.Rarity | undefined, line = true): boolean {
+  const dressed = line && kit.partAttr("rarity", rarity ?? "common");
   const c = rarityColor(rarity);
-  if (!c || rarity === "common") return;
-  const dressed = line && kit.partAttr("rarity", rarity!);
+  if (!c || !rarity || rarity === "common") return dressed;
   const dark = luminance(role("panel")) < 0.36;
-  const top = rarity === "legendary" || rarity === "mythic";
-  const glow = dark ? (top ? 0.35 : 0.25) : top ? 0.4 : 0.28;
+  // By tier: an uncommon barely tinted, rare and epic plain, the top tiers
+  // strongest, so the legendary is the first thing the eye finds in a bag.
+  const glow = (dark ? 1 : 1.12) * (rarity === "uncommon" ? 0.12 : rarity === "legendary" || rarity === "mythic" ? 0.35 : 0.25);
   const ink = (alpha: number): Api.Paint => ({ color: { r: c.r, g: c.g, b: c.b }, alpha });
   const r = frame().t.small;
   kit.open(id, { width: grow(), height: grow() });
   kit.setDraw({
     shape: { kind: "rect", radii: [r, r, r, r] }, clip: "shape",
-    // A radial's `to` is its radii: wide, and up to the top of the slot.
-    fills: [{ kind: "gradient", type: "radial", from: { x: 0.5, y: 1 }, to: { x: 0.8, y: 1 }, stops: [{ offset: 0, color: ink(glow) }, { offset: 0.6, color: ink(glow * 0.35) }, { offset: 1, color: ink(0) }] }],
+    // A radial's `to` is its radii: wide, and gone by 65 % of the slot's
+    // height, so its top third stays the pack's own well.
+    fills: [{ kind: "gradient", type: "radial", from: { x: 0.5, y: 1 }, to: { x: 0.8, y: 0.65 }, stops: [{ offset: 0, color: ink(glow) }, { offset: 0.6, color: ink(glow * 0.35) }, { offset: 1, color: ink(0) }] }],
     strokes: line && !dressed ? [{ width: dark ? 1 : 1.5, align: "inside", paint: { kind: "solid", color: ink(dark ? 0.6 : 1) } }] : [],
   } as Api.DrawDesc);
   kit.close();
   over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, z: 0 });
+  return dressed;
 }
 
 /**
- * The selected tile (docs/ui.md §15.5): a soft light rim at 55 % white 2 px
- * outside the slot's edge and a glow round it to 8 px, over the lift og-ui's
- * grid already gives it. Outside, so a pack's own frame (gilded's gold) stays
- * whole and the selection adds to it, in every style.
+ * The selected tile (docs/ui.md §15.5): a soft rim 2 px outside the slot's
+ * edge and a glow round it to 8 px, over the lift og-ui's grid already gives
+ * it. Outside, so a pack's own frame stays whole and the selection adds to
+ * it, in every style. Its ink is never a tier hue: white at 55 % on a dark
+ * panel, warmed toward the style's focus where the slot has a frame of its
+ * own (`framed`: gilded's gold reads as the frame lit up, not a second
+ * border); the style's ink at 60 % on a light panel, where white vanishes.
  */
-function selectedRim(id: string): void {
+function selectedRim(id: string, framed: boolean): void {
   const r = frame().t.small + RIM;
-  const white = (alpha: number): Api.Paint => ({ color: { r: 1, g: 1, b: 1 }, alpha });
+  const dark = luminance(role("panel")) < 0.36;
+  const white = { r: 1, g: 1, b: 1, a: 1 };
+  const c = !dark ? role("ink") : framed ? mix(white, role("focus"), 0.25) : white;
+  const ink = (alpha: number): Api.Paint => ({ color: { r: c.r, g: c.g, b: c.b }, alpha });
   kit.open(id, { width: grow(), height: grow() });
   kit.setDraw({
     shape: { kind: "rect", radii: [r, r, r, r] },
     // The glow as rings outside the rim, fading out to 8 px from the slot: an
     // outerGlow is a blurred copy of the whole shape and would veil the art.
     strokes: [
-      ...[[8 - RIM, 0.05], [5, 0.07], [2.5, 0.1]].map(([width, alpha]) => ({ width, align: "outside", paint: { kind: "solid", color: white(alpha) } })),
-      { width: 1.5, align: "inside", paint: { kind: "solid", color: white(0.55) } },
+      ...[[8 - RIM, dark ? 0.05 : 0.04], [5, 0.07], [2.5, dark ? 0.1 : 0.12]].map(([width, alpha]) => ({ width, align: "outside", paint: { kind: "solid", color: ink(alpha!) } })),
+      { width: 1.5, align: "inside", paint: { kind: "solid", color: ink(dark ? 0.55 : 0.6) } },
     ],
   } as Api.DrawDesc);
   kit.close();
@@ -240,8 +249,8 @@ export function shopScreen(id: string, desc: Api.ShopDesc = {}): Api.ShopResult 
       gridView("ItemsView", view.more, wide ? fit() : grow(), () => {
       g = kit.grid("Items", { count: items.length, cellWidth: cw, cellHeight: ch, columns: 3, height: px(view.height + 2 * EDGE), width: wide ? px(gw) : grow(), padding: { left: EDGE, top: EDGE, right: EDGE + gutter, bottom: EDGE }, selected: sel }, (i) => {
         const it = items[i]!;
-        rarityGround("Ground", it.rarity);
-        if (i === sel) selectedRim("Selected");
+        const framed = rarityGround("Ground", it.rarity);
+        if (i === sel) selectedRim("Selected", framed);
         artOr("Picture", it.image, it.icon, it.name ?? "", phone ? 64 : 84, 36);
         // A product's name is never cut: two lines, a step smaller on a phone.
         kit.label("Name", it.name ?? "", { step: phone ? "meta" : "base", maxLines: 2, width: px(cw - 12), align: "center" });
@@ -339,9 +348,9 @@ export function inventoryScreen(id: string, desc: Api.InventoryDesc = {}): Api.I
       gridView("SlotsView", view.more, grow(), () => {
       g = kit.grid("Slots", { count: slots, cellWidth: cell, cellHeight: cell, columns, height: px(view.height + 2 * EDGE), width: grow(), gap, padding: { left: EDGE, top: EDGE, right: EDGE + gutter, bottom: EDGE }, selected: sel >= 0 ? sel : null }, (i) => {
         const it = bySlot.get(i);
-        if (i === sel) selectedRim("Selected");
+        const framed = rarityGround("Ground", it?.rarity);
+        if (i === sel) selectedRim("Selected", framed);
         if (!it) return;
-        rarityGround("Ground", it.rarity);
         if (it.image) {
           // The cut-out stands on the slot's ground; a stack's count sits on a plate in its corner.
           cutout("Picture", it.image, px(cell - 10));
