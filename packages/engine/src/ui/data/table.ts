@@ -114,7 +114,9 @@ export function dataGrid(id: string, desc: Api.DataGridDesc, build: Api.UiItemBu
         const sel = desc.selected === i;
         const resp = kit.gridItem(i, sel) as Api.Response;
         try {
-          kit.open("Cell", { direction: "column", width: grow(), height: grow(), align: "center", cross: "center", part: `Grid.cell${flags(sel && "selected")}`, partClass: "slot" });
+          // The slot round it (gridItem's Slot.frame) is the cell's frame and its selection: the content
+          // takes no class, so the tokens draw no second outline inside it (a style may still dress Grid.cell).
+          kit.open("Cell", { direction: "column", width: grow(), height: grow(), align: "center", cross: "center", part: `Grid.cell${flags(sel && "selected")}` });
           try {
             build(i);
           } finally {
