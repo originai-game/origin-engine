@@ -16,12 +16,16 @@ export default playtest({
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
     t.ok(run.quit, "the script reached quit");
-    for (const f of ["garage.json", "garage-layer.json"]) {
+    for (const f of ["garage.json", "garage-layer.json", "ledger.json", "citymap-power.json"]) {
       for (const e of ui(run, f).filter((x) => x.role === "button" && !x.states.includes("disabled"))) {
         t.ok(e.width >= 43.5 && e.height >= 43.5, `${f}: ${e.id} (${e.name}) is a whole touch target: ${Math.round(e.width)}×${Math.round(e.height)}`);
       }
     }
     t.ok(ui(run, "garage-bought.json").some((e) => e.role === "button" && e.name === "Equip"), "the bought sport tier offers Equip");
+    const rows = (f: string): string[] => ui(run, f).filter((e) => e.role === "row").map((e) => e.name);
+    t.ok(rows("ledger-sorted.json")[0]?.startsWith("Education"), "Amount sorted the services high to low: the dearest first");
+    t.ok(rows("ledger-underfunded.json").some((n) => n.startsWith("Fire") && n.includes("60%")), "fire's budget at 60 % is in its row");
+    t.ok(ui(run, "citymap-power.json").some((e) => e.role === "status" && e.name.startsWith("Power")), "a press on Power showed its legend");
     t.frame(script.files, () => {
       for (const f of script.files) t.equal(run.png(f).width, 1170, `${f} is 1170 wide`);
     });

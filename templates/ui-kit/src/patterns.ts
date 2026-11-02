@@ -82,6 +82,8 @@ const ART_FILES = [
   "loadout/raven", "loadout/sidearm", "loadout/frag", "loadout/stim", "loadout/knife", "loadout/drone", "loadout/shield", "loadout/optic",
   "loadout/suppressor", "loadout/grip", "loadout/magazine", "loadout/stock", "loadout/laser",
   "cg/riverboat", "cg/storm-ferry", "cg/dawn-gate",
+  "city/residential", "city/commercial", "city/industrial", "city/tourism", "city/police", "city/fire", "city/health", "city/education",
+  "city/transit", "city/parks", "city/power", "city/water", "scenes/city",
 ] as const;
 /** The cut-outs on transparent ground (PNG); the rest is painted edge to edge (JPEG). */
 const CUTOUTS: ReadonlySet<string> = new Set(["garage/coupe", "loadout/raven"]);
@@ -138,6 +140,7 @@ const SCENES: Record<string, [ArtName, { x: number; y: number }]> = {
   select: ["scenes/gothic-halls", { x: 0.5, y: 0.4 }],
   draft: ["scenes/gothic-halls", { x: 0.5, y: 0.6 }],
   garage: ["scenes/garage", { x: 0.5, y: 0.55 }],
+  ledger: ["scenes/city", { x: 0.5, y: 0.6 }],
 };
 
 /** The pattern screen's painted scene, built before anything over it (the kit's Gallery button among them). */

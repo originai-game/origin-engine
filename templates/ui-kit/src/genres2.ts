@@ -9,7 +9,10 @@
 import { og } from "@origingame/engine";
 import { art, L, type ArtName } from "./patterns.ts";
 import { frame } from "./genres.ts";
-import type { GarageCategory, GaragePart, GarageStat, LiveryLayer, PickedColor } from "@origingame/engine";
+import type { ChartSeries, GarageCategory, GaragePart, GarageStat, LedgerLine, LiveryLayer, MapOverlay, PickedColor, Size } from "@origingame/engine";
+
+const grow: Size = { kind: "grow" };
+const px = (n: number): Size => ({ kind: "fixed", px: n });
 
 // ── garage: parts, tuning and the livery ───────────────────────────────
 
@@ -152,7 +155,135 @@ export function garageScreen(): void {
   }, [{ action: "tabNext", hint: L("garage.cat.next") }, ...(ga.category === "livery" ? [] : [{ action: "confirm", hint: L("garage.buy") }]), { action: "back", hint: L("hint.back") }]);
 }
 
-/** The previews' commands: `pat:garage:<key>:<value>`; false when the area is not one of these. */
+// ── ledger: a city's budget, and the map's overlays ───────────────────
+
+/** The city's taxes and services as the game holds them: this period's base amount, last period's, the budget. */
+const TAXES = [["residential", 52400, 49800], ["commercial", 31200, 33900], ["industrial", 24800, 23100], ["tourism", 8600, 6100]] as const;
+const SERVICES = [
+  ["police", 14200, 13600, 100], ["fire", 11800, 12100, 75], ["health", 16400, 15200, 105], ["education", 19600, 18800, 110],
+  ["transit", 12900, 11400, 120], ["parks", 4100, 4300, 90], ["power", 9800, 9900, 100], ["water", 7300, 7100, 100],
+] as const;
+const PERIODS: Record<string, number> = { month: 12, quarter: 8, year: 6 };
+
+const ld0 = () => ({ tab: "month", sort: "", descending: false, funding: Object.fromEntries(SERVICES.map(([k, , , f]) => [k, f as number])) as Record<string, number>, overlay: "traffic" });
+let ld = ld0();
+
+/** A history the game keeps: income and expenses per period, a slow climb with a wobble, its last period this one's. */
+function history(n: number, scale: number, inc: number, exp: number): ChartSeries[] {
+  const wave = (i: number, k: number): number => 1 - (n - 1 - i) * 0.035 * scale + Math.sin(i * 1.3 + k) * 0.04 * scale;
+  return [
+    { label: L("ledger.income"), values: Array.from({ length: n }, (_, i) => Math.round(inc * scale * wave(i, 0))) },
+    { label: L("ledger.expenses"), values: Array.from({ length: n }, (_, i) => Math.round(exp * scale * wave(i, 2))) },
+  ];
+}
+
+/** A management ledger (Cities: Skylines' budget): the treasury's figures, taxes and services with their budgets, the history. */
+export function ledgerScreen(): void {
+  frame("Ledger", L("ledger.title"), () => {
+    const scale = ld.tab === "year" ? 12 : ld.tab === "quarter" ? 3 : 1;
+    const lines: LedgerLine[] = [
+      ...SERVICES.map(([k, a, p]) => {
+        const f = ld.funding[k] ?? 100;
+        return {
+          key: k,
+          section: "expenses",
+          name: L(`ledger.line.${k}`),
+          image: art(`city/${k}` as ArtName),
+          amount: Math.round((a * f) / 100) * scale,
+          previous: p * scale,
+          funding: f,
+          warning: f < 80 ? L(`ledger.warn.${k}`) : "",
+          locked: k === "water",
+        };
+      }),
+      ...TAXES.map(([k, a, p]) => ({ key: k, section: "income", name: L(`ledger.line.${k}`), image: art(`city/${k}` as ArtName), amount: a * scale, previous: p * scale })),
+    ];
+    const inc = lines.filter((l) => l.section === "income").reduce((n, l) => n + (l.amount ?? 0), 0);
+    const exp = lines.filter((l) => l.section === "expenses").reduce((n, l) => n + (l.amount ?? 0), 0);
+    const incPrev = lines.filter((l) => l.section === "income").reduce((n, l) => n + (l.previous ?? 0), 0);
+    const expPrev = lines.filter((l) => l.section === "expenses").reduce((n, l) => n + (l.previous ?? 0), 0);
+    const n = PERIODS[ld.tab] ?? 12;
+    const r = og.ui.ledger("Budget", {
+      tabs: Object.keys(PERIODS).map((k) => ({ key: k, label: L(`ledger.tab.${k}`) })),
+      tab: ld.tab,
+      figures: [
+        { key: "treasury", label: L("ledger.treasury"), value: 1284600, delta: inc - exp, unit: "", image: art("city/commercial") },
+        { key: "income", label: L("ledger.income"), value: inc, delta: inc - incPrev },
+        { key: "expenses", label: L("ledger.expenses"), value: exp, delta: exp - expPrev, lowerIsBetter: true },
+        { key: "population", label: L("ledger.population"), value: 184320, delta: 2140, format: "compact", image: art("city/residential") },
+      ],
+      // The services first: their budgets are what the player comes to move.
+      sections: [{ key: "expenses", name: L("ledger.expenses"), expense: true }, { key: "income", name: L("ledger.income") }],
+      lines,
+      sort: ld.sort,
+      descending: ld.descending,
+      fundingMin: 50,
+      fundingMax: 150,
+      fundingStep: 5,
+      periods: Array.from({ length: n }, (_, i) => L(`ledger.period.${ld.tab}`, { n: i + 1 })),
+      history: history(n, scale, inc / scale, exp / scale),
+      breakdown: "expenses",
+      currency: "$",
+      nameLabel: L("ledger.col.name"),
+      amountLabel: L("ledger.col.amount"),
+      changeLabel: L("ledger.col.change"),
+      fundingLabel: L("ledger.col.budget"),
+      totalLabel: L("ledger.total"),
+      netLabel: L("ledger.net"),
+      historyLabel: L("ledger.history"),
+      breakdownLabel: L("ledger.breakdown"),
+      lockedLabel: L("ledger.locked"),
+    });
+    if (r.tab !== null) ld.tab = r.tab;
+    if (r.sort !== null) {
+      ld.sort = r.sort;
+      ld.descending = r.descending;
+    }
+    if (r.funding !== null) ld.funding[r.funding.key] = r.funding.value;
+    // A service pressed shows its overlay on the map, as a city builder's budget links to its info view.
+    if (r.selected !== null && OVERLAYS.some((o) => o.key === OVERLAY_OF[r.selected!])) ld.overlay = OVERLAY_OF[r.selected]!;
+  }, [{ action: "tabNext", hint: L("ledger.hint.period") }, { action: "back", hint: L("hint.back") }]);
+}
+
+const OVERLAYS = [
+  { key: "traffic", art: "city/transit", ramp: ["#2ecc71", "#f1c40f", "#e74c3c"] },
+  { key: "power", art: "city/power", ramp: ["#1b1f3b", "#3a6df0", "#ffd23f"] },
+  { key: "water", art: "city/water", ramp: ["#3b2a1b", "#1f8fd6", "#7fe3ff"] },
+  { key: "pollution", art: "city/industrial", ramp: ["#5fd38d", "#b8a24a", "#6b3f2a"] },
+  { key: "landValue", art: "city/residential", ramp: ["#6b5a3a", "#d6b24a", "#fff3a8"] },
+  { key: "crime", art: "city/police", ramp: ["#2d6cdf", "#9b59b6", "#e74c3c"] },
+] as const;
+const OVERLAY_OF: Record<string, string> = { transit: "traffic", power: "power", water: "water", police: "crime", industrial: "pollution", residential: "landValue" };
+
+/** The city's map with its overlays (Cities: Skylines' info views): the picture, the shown overlay's wash, the bar and legend. */
+export function cityMapScreen(): void {
+  frame("CityMap", "", () => {
+    const shown = OVERLAYS.find((o) => o.key === ld.overlay) ?? null;
+    og.ui.column("Map", { width: grow, height: grow, align: "end", cross: "center", padding: { left: 12, top: 12, right: 12, bottom: 16 } }, () => {
+      const tex = art("scenes/city");
+      og.ui.setDraw({ shape: { kind: "rect" }, fills: tex ? [{ kind: "image", texture: tex, fit: "cover", focal: { x: 0.5, y: 0.6 } }] : [{ kind: "solid", color: { token: "backdrop" } }] } as never);
+      // The game's overlay over its map: here a wash of the ramp's colours, high in the middle and low at the edges.
+      if (shown) {
+        og.ui.column("Wash", { width: grow, height: grow }, () => {});
+        og.ui.setDraw({
+          shape: { kind: "rect" },
+          fills: [{ kind: "gradient", type: "radial", from: { x: 0.55, y: 0.55 }, to: { x: 0.7, y: 0.7 }, stops: shown.ramp.slice().reverse().map((c, i, a) => ({ offset: i / (a.length - 1), color: { color: hexRgb(c), alpha: 0.42 } })) }],
+        } as never);
+        og.ui.props({ position: "absolute", insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true } as never);
+      }
+      const overlays: MapOverlay[] = OVERLAYS.map((o) => ({ key: o.key, name: L(`ledger.overlay.${o.key}`), image: art(o.art as ArtName), ramp: [...o.ramp], low: L(`ledger.overlay.${o.key}.low`), high: L(`ledger.overlay.${o.key}.high`) }));
+      const r = og.ui.overlayBar("Lenses", { overlays, selected: ld.overlay, label: L("ledger.overlays"), offLabel: L("ledger.overlay.off") });
+      if (r.selected !== null) ld.overlay = r.selected;
+    });
+  }, [], true);
+}
+
+function hexRgb(s: string): { r: number; g: number; b: number } {
+  const n = (k: number): number => parseInt(s.slice(1 + k, 3 + k), 16) / 255;
+  return { r: n(0), g: n(2), b: n(4) };
+}
+
+/** The previews' commands: `pat:<garage|ledger>:<key>:<value>`; false when the area is not one of these. */
 export function genres2Command(area: string, key: string, value: string): boolean {
   if (area === "garage") {
     if (key === "category") {
@@ -163,6 +294,17 @@ export function genres2Command(area: string, key: string, value: string): boolea
     else if (key === "balance") ga.balance = Number(value) || 0;
     else if (key === "reset") ga = ga0();
     else return false;
+  } else if (area === "ledger") {
+    if (key === "tab") ld.tab = value;
+    else if (key === "sort") {
+      ld.sort = value;
+      ld.descending = value !== "name";
+    } else if (key === "fund") {
+      const [k, v] = value.split("=");
+      ld.funding[k ?? ""] = Number(v) || 0;
+    } else if (key === "overlay") ld.overlay = value;
+    else if (key === "reset") ld = ld0();
+    else return false;
   } else return false;
   return true;
 }
@@ -170,4 +312,5 @@ export function genres2Command(area: string, key: string, value: string): boolea
 /** Every preview of this file back to its start (pat:reset). */
 export function resetGenres2(): void {
   ga = ga0();
+  ld = ld0();
 }

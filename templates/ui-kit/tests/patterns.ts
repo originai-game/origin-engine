@@ -736,9 +736,31 @@ function genres2(b: ReturnType<typeof builder>, phone: boolean): void {
   b.shot("garage-layer", 0.5);
   b.dump("garage-layer");
   b.cmd("pat:garage:reset");
+  // The ledger: the month's budget, fire underfunded (its warning), sorted by amount, the year's tab.
+  b.cmd("show:ledger");
+  b.shot("ledger-idle", 1.0);
+  b.dump("ledger");
+  b.cmd("pat:ledger:fund:fire=60");
+  b.shot("ledger-underfunded", 0.5);
+  b.dump("ledger-underfunded");
+  b.seq((at) => tap(at, "Header/amount"), 0.3);
+  b.shot("ledger-sorted", 0.5);
+  b.dump("ledger-sorted");
+  b.seq((at) => tap(at, "Tabs/year"), 0.3);
+  b.shot("ledger-year", 0.8);
+  b.cmd("pat:ledger:reset");
+  // The city's overlays: traffic shown, power pressed (its legend), power pressed again (none).
+  b.cmd("show:cityMap");
+  b.shot("citymap-traffic", 1.0);
+  b.seq((at) => tap(at, "Row/power"), 0.3);
+  b.shot("citymap-power", 0.5);
+  b.dump("citymap-power");
+  b.seq((at) => tap(at, "Row/power"), 0.3);
+  b.shot("citymap-off", 0.5);
+  b.cmd("pat:ledger:reset");
 }
 
-const GENRE2_SCREENS = ["garage"] as const;
+const GENRE2_SCREENS = ["garage", "ledger", "cityMap"] as const;
 
 /** The systems games' previews in their states, then each screen right to left, in Japanese, and at 200 % text. */
 export function genres2Script(phone: boolean): Script {
