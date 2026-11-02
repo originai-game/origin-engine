@@ -342,7 +342,8 @@ export function racingHud(id: string, desc: Api.RacingHudDesc = {}): Api.HudResu
       const r = kit.actionButton("right", desc.rightLabel ?? "Right", { size: 72 });
       out.moveX = (r.pressed ? 1 : 0) - (l.pressed ? 1 : 0);
     });
-    kit.anchor("Pedals", { anchor: "bottomRight", gap: t.md, cross: "end" }, () => {
+    // Centred on one line: Boost stays the larger, primary pedal and both labels share a line.
+    kit.anchor("Pedals", { anchor: "bottomRight", gap: t.md, cross: "center" }, () => {
       const pedals = [{ id: "brake", label: desc.brakeLabel ?? "Brake", primary: false }];
       if (boost !== null) pedals.push({ id: "boost", label: boostLabel, primary: true });
       for (const b of pedals) {
