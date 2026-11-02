@@ -1978,6 +1978,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "og-motion"
+version = "0.7.7"
+dependencies = [
+ "bytemuck",
+ "naga",
+ "og-core",
+ "pollster",
+ "serde",
+ "serde_json",
+ "wgpu",
+]
+
+[[package]]
 name = "og-nav"
 version = "0.7.7"
 dependencies = [

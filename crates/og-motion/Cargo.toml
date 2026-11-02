@@ -1,0 +1,26 @@
+[package]
+name = "og-motion"
+version = "0.7.7"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Origin Engine motion generation: a pose-conditioned humanoid motion model (a student distilled from NVIDIA MotionBricks) run on the CPU and on wgpu compute, with the encoding of world poses into its inputs and the decoding of its motion."
+
+# The weights are a bundle (one safetensors file, the og-motion-train
+# repository's export), parsed here; the model runs in Rust on the CPU
+# (the reference path) and on wgpu compute (the shipping path), with one
+# implementation of everything around the two networks. Builds for
+# wasm32-unknown-unknown.
+[dependencies]
+og-core = { path = "../og-core" }
+wgpu = { workspace = true }
+bytemuck = { workspace = true }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+wgpu = { workspace = true, features = ["metal", "vulkan", "dx12"] }
+pollster = { workspace = true }
+
+[dev-dependencies]
+naga = { version = "30.0.1", features = ["wgsl-in", "msl-out", "spv-out", "hlsl-out"] }
