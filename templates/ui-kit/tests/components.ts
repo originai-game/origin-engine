@@ -131,6 +131,12 @@ export function componentsScript(phone: boolean): Script {
   // Data: rows, sorted by a header, then loading, empty and error.
   b.cmd("show:data");
   b.shot("data-rows", 0.8);
+  if (!phone) {
+    // A list row under the pointer: its hover state (§7.3), beside the selected row.
+    b.cmd("touch_move_to:Mail/Rows/Row#3", 0.1);
+    b.shot("data-list-hover", 0.4);
+    b.cmd("touch_move_to:Data/Body", 0.1);
+  }
   b.seq((at) => tap(at, "Header/Col#3"), 0.2);
   b.shot("data-sorted", 0.5);
   b.dump("data");
@@ -201,6 +207,10 @@ export function componentsScript(phone: boolean): Script {
   for (const s of ["empty", "error"]) {
     b.cmd(`demo:data:${s}`);
     b.shot(`text200-data-${s}`, 0.5);
+    // The page's lower panels (the tree, the grid's and the stats' states), scrolled into view.
+    b.scroll("Data", 600);
+    b.shot(`text200-data-${s}-end`, 0.5);
+    b.scroll("Data", -600);
   }
   b.cmd("demo:data:rows");
   b.cmd("show:charts");
