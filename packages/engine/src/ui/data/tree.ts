@@ -4,7 +4,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  byText, chevron, target, wrapRow, clamp, fit, flags, frame, grow, kit, lastGesture, mark, over, overProps, px, rememberPath, role, rtl, spring, still, surface, text, token, xy,
+  byText, chevron, target, wrapRow, clamp, fit, flags, frame, grow, kit, lastGesture, mark, over, overProps, px, recallPath, rememberPath, role, rtl, spring, still, surface, text, token, xy,
 } from "../containers/base.ts";
 import { edge } from "../containers/panels.ts";
 
@@ -152,12 +152,18 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
     }
   }
   const padX = Math.max(s / 2, ...capWs.map((w) => w / 2)) + t.sm;
-  const padTop = s / 2 + t.sm;
-  const padBottom = s / 2 + 4 + capH + t.sm;
+  // Room past the top row's nodes and the bottom row's captions as deep as the fade, so at either
+  // end of the pan every node (and its caption) is whole and clear of the fade.
+  const fade = 28;
+  const padTop = s / 2 + fade;
+  const padBottom = s / 2 + 4 + capH + fade;
   // Zoom 1 fits the whole graph in its view (as laid out last tick): it opens with every node in
   // sight, and zooming in from there pans. Never tighter than its captions can stand apart: past
   // that the graph pans instead, and zoomed out further the captions hide (as maps drop labels).
-  const view = kit.bounds(`${id}/Window/View`) ?? kit.bounds(id);
+  // The window as laid out last tick, by its full path (a path under `id` alone finds nothing
+  // when the graph is nested in a page: no fit and no centring ran there).
+  const viewPath = recallPath(`${key}/View`);
+  const view = viewPath ? kit.bounds(viewPath) : null;
   const fitK = view ? Math.min(1, x1 > 0 ? Math.max(0.1, (view.width - 2 * padX) / x1) : 1, y1 > 0 ? Math.max(0.1, (view.height - padTop - padBottom) / y1) : 1) : 1;
   const k = Math.max(kNode, live * Math.max(fitK, labelled ? kCap : kNode));
   const captions = labelled && k >= kCap - 1e-6;
@@ -189,7 +195,11 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
     if (!n || vw <= 0) return;
     const p = at(n);
     panX = p.x - vw / 2;
-    panY = p.y - vh / 2;
+    // At the top (the root whole) while the node fits whole above the bottom fade, its caption too;
+    // past that its row starts the window, just below the top fade, so the row above is out of
+    // view (its caption's tail under the fade) and never a node cut in half.
+    const fromTop = p.y + s / 2 + 4 + capH + fade - vh;
+    panY = fromTop <= 0 ? 0 : p.y - s / 2 - fade;
   };
   // Until the player pans it (a drag, the focus moving off screen), it stays centred there, as
   // its size settles and the text size changes.
@@ -312,8 +322,8 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
     } finally {
       kit.close();
     }
+    rememberPath(`${key}/View`, kit.lastPath());
     // The fades: over the graph's sides where more of it lies beyond the window.
-    const fade = 28;
     edge("FadeStart", true, kit.animate("~fs", panX > 0.5 ? 1 : 0, spring("ui")), true, fade, "well");
     edge("FadeEnd", false, kit.animate("~fe", panX < maxX - 0.5 ? 1 : 0, spring("ui")), true, fade, "well");
     edge("FadeTop", true, kit.animate("~ft", panY > 0.5 ? 1 : 0, spring("ui")), false, fade, "well");
@@ -337,7 +347,8 @@ export function nodeGraph(id: string, desc: Api.NodeGraphDesc): Api.NodeGraphRes
   // A node the focus moves to (keys, a pad) is brought into view.
   if (focusedNode >= 0 && focusedNode !== Math.round(kit.memory("~focused", -1))) {
     const p = at(nodes[focusedNode]!);
-    const m = s / 2 + t.lg;
+    // Clear of the fades too, so the node it lands on is never under one.
+    const m = s / 2 + fade;
     if (p.x - m < panX) panX = p.x - m;
     else if (p.x + m > panX + vw) panX = p.x + m - vw;
     if (p.y - m < panY) panY = p.y - m;

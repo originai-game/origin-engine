@@ -338,7 +338,8 @@ export function graphScreen(): void {
         links: [{ from: "root", to: "cleave" }, { from: "root", to: "guard" }, { from: "root", to: "rage" }, { from: "cleave", to: "whirl" }, { from: "guard", to: "wall" }, { from: "rage", to: "berserk" }],
         zoom: s.zoom,
         selected: s.node,
-        height: px(340),
+        // Tall enough for the whole tree at 100 % (it pans once zoomed or at a large text size).
+        height: px(420),
         label: "Warrior skills",
       });
       s.zoom = r.zoom;
