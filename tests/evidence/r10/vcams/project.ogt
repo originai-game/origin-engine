@@ -1,0 +1,16 @@
+type project
+version 1
+---
+# The R10 virtual cameras sample (batch 2): a runner crossing a room seen
+# by four og.VirtualCamera shots. The brain blends from a wide shot to a
+# close one, an interrupted blend turns back without a jump, and a chase
+# shot with collision pulls in front of a wall the runner passes behind
+# and eases back out. tests/evidence/r10/NOTES.md has the commands and
+# what each frame shows.
+name "R10 virtual cameras"
+id "r10-vcams"
+engine "0.7.7"
+entry "src/main.ts"
+profile "3d"
+tick 60
+seed 1

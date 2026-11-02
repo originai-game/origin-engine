@@ -44,3 +44,40 @@ Frames in the showcase archive (feature R10):
   (the pillar blurs), the vignette is in, and the nested door timeline has
   opened on the yard.
 - `cinematic.mp4`: the whole 8 s (240 frames in 2.7 s on metal).
+
+## Batch 2: virtual cameras
+
+`vcams/` is a room with a runner (a blue pillar tweened from x -4 to 4
+and back every 3 s) and four og.VirtualCamera shots that a `Director`
+system enables and disables at fixed ticks:
+
+- "wide", priority 10: a high corner shot looking at the runner. It is
+  live from the first tick; the first live shot cuts.
+- "close", priority 20, enabled at 2 s: follows the runner from the
+  front left (`smoothTime` 0.2). The brain blends to it over 1.5 s,
+  `cubicInOut`.
+- "side", priority 30, enabled at 4.5 s with a 1.5 s linear blend, then
+  disabled at 5 s, a third of the way in. The brain turns back to "close"
+  from the pose the camera showed (og.CameraBrain.from is 0, a held pose).
+  In the clip the frame-to-frame change runs 545, 440, 241 (mean absolute
+  difference, frames 149 to 151) across that tick: no jump.
+- "chase", priority 40, enabled at 7 s with `blendTime` 0 (a cut): behind
+  the runner with `collide` on (`radius` 0.25, `damping` 0.45 s). When the
+  runner passes behind the red wall, the shot pulls in front of it at
+  once and eases back out: its `pull` reads 0 at 7.2 s, 2.909 m at 7.7 s,
+  0.935 m at 8.5 s and 0.301 m at 9 s.
+
+The run ends on `tick 720 hash afd0317a057016a4 entities 13` both on the
+Mac satellite (metal) and headless in the orb (linux-x64, no renderer).
+
+```sh
+og run tests/evidence/r10/vcams --headless --size 1280x720 --out /tmp/r10v \
+  --commands "1.0:screenshot:a-wide;2.8:screenshot:b-blend;3.8:screenshot:c-close;4.95:screenshot:d-side-mid;5.4:screenshot:e-turned-back;7.2:screenshot:f-chase-clear;7.7:screenshot:g-pulled-in;8.5:screenshot:h-easing-out;12:quit"
+og render tests/evidence/r10/vcams --commands "12:quit" --fps 30 --from 0 --to 12 \
+  --size 1280x720 --out vcams.mp4
+```
+
+Frames in the showcase archive (feature R10): `a-wide`, `b-blend`
+(halfway to "close"), `c-close`, `d-side-mid`, `e-turned-back`,
+`f-chase-clear`, `g-pulled-in` (the camera in front of the wall, the
+runner in view), `h-easing-out`, and `vcams.mp4`, the whole 12 s.
