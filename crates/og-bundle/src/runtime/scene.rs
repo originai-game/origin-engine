@@ -36,16 +36,19 @@ pub struct ComponentTable {
     /// its registered layout by field name.
     pub schema: og_core::Schema,
     pub inferred: bool,
-    /// `(entity index, packed field bytes)`.
+    /// `(entity index, packed field bytes)`, by entity index.
     pub rows: Vec<(usize, Vec<u8>)>,
 }
 
 impl ComponentTable {
-    /// The packed value of `entity`, if it has this component.
+    /// The packed value of `entity`, if it has this component (the first
+    /// row for it). A binary search: a scene's spawn asks every table for
+    /// every entity, and a linear one made a 5,000-entity scene quadratic.
     pub fn get(&self, entity: usize) -> Option<&[u8]> {
+        let i = self.rows.partition_point(|r| r.0 < entity);
         self.rows
-            .iter()
-            .find(|r| r.0 == entity)
+            .get(i)
+            .filter(|r| r.0 == entity)
             .map(|r| r.1.as_slice())
     }
 }
@@ -197,6 +200,9 @@ impl SceneDesc {
                 }
                 rows.push((entity, r[4..].to_vec()));
             }
+            // By entity for ComponentTable::get (stable: the first row for
+            // an entity stays first).
+            rows.sort_by_key(|r| r.0);
             components.push(ComponentTable {
                 name,
                 schema,
