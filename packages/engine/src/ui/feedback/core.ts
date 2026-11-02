@@ -294,16 +294,20 @@ export function softText(): Api.TextEffectsDesc {
 }
 
 /**
- * The HUD's name treatment (unit frames' names, class lines, cast labels): a thin outline in a dark neutral and a soft
- * drop, both scaled with the HUD and the player's text size (1.5 px and 1 px / 4 px at 1080p, 2 px and 2 px / 8 px at
- * phone 200 %). Names sit on the scene with no band behind them, as shipped HUDs' nameplates do.
+ * The HUD's name treatment (unit frames' names, class lines, cast labels, raid names): an outline in a dark neutral
+ * and a drop, both scaled with the HUD and the player's text size, with no band behind them, as shipped HUDs' nameplates
+ * have. Text of 16 px or less at 1080p takes a 2 px outline and a tight drop (0/+1 px, 2 px blur, 80 %), since a thin
+ * outline and a wide blur turn to haze at that size; larger names a 1.5 px outline and a soft drop (0/+1 px, 4 px, 60 %).
+ * A dimmed name dims its fill only; the outline keeps its strength so the letter shape holds.
  */
-export function nameText(): Api.TextEffectsDesc {
+export function nameText(size = 16): Api.TextEffectsDesc {
   const k = Math.min(2, Math.max(1, textScale()));
+  const at1080 = (size / (scale() * k)) * 1.5;
+  const small = at1080 <= 16.5;
   const dark = { r: 0.043, g: 0.051, b: 0.063, a: 1 };
   return {
-    outline: { width: Math.max(1, Math.round(scale() * k * 2) / 2), color: lit(dark, 0.85), align: "outside" },
-    shadows: [{ offset: { x: 0, y: k }, blur: 4 * k, color: lit(dark, 0.6) }],
+    outline: { width: Math.round(scale() * k * (small ? 4 / 3 : 1) * 2) / 2, color: lit(dark, small ? 0.9 : 0.85), align: "outside" },
+    shadows: [small ? { offset: { x: 0, y: k }, blur: 2 * k, color: lit(dark, 0.8) } : { offset: { x: 0, y: k }, blur: 4 * k, color: lit(dark, 0.6) }],
   };
 }
 
@@ -323,7 +327,7 @@ export function text(id: string, s: string, desc: TextDesc = {}, props?: Props):
   const { outline, soft, name, gradient, ...label } = desc;
   kit.label(id, s, label);
   if (outline || soft || name || gradient) {
-    const fx = outline ? hudText(typeof outline === "number" ? outline : 1) : name ? nameText() : soft ? softText() : {};
+    const fx = outline ? hudText(typeof outline === "number" ? outline : 1) : name ? nameText(label.step ? stepSize(label.step).size : 16) : soft ? softText() : {};
     kit.setDraw({ text: gradient ? { ...fx, fill: gradient } : fx });
   }
   apply(props);
