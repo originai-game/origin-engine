@@ -712,13 +712,16 @@ test("nodeGraph: a graph wider than its window opens centred on its root, fades 
   og.ui.previewViewport(engine.world, { width: 390, height: 844, dpr: 3, safeArea: { left: 0, top: 47, right: 0, bottom: 34 }, coarsePointer: true, breakpoint: "phonePortrait" } as never);
   og.ui.configure(engine.world, { textScale: 2 });
   engine.advance(30);
-  const view = find(engine, (e) => e.path.endsWith("Skills/View"))!;
+  const view = find(engine, (e) => e.path.endsWith("Skills/Window/View"))!;
   const root = () => find(engine, (e) => e.path.endsWith("Canvas/Node#0"))!;
   const r0 = root();
   expect(Math.abs(r0.x + r0.width / 2 - (view.x + view.width / 2))).toBeLessThan(2);
+  // Panned, any node may lie anywhere in the window: the zoom controls sit in a bar below it.
+  const zoomBar = find(engine, (e) => /\/Zoom$/.test(e.path))!;
+  expect(zoomBar.y).toBeGreaterThanOrEqual(view.y + view.height - 0.5);
   // Cut on both sides: a fade over each.
-  expect(byPath(engine, "Skills/FadeStart")).toBeDefined();
-  expect(byPath(engine, "Skills/FadeEnd")).toBeDefined();
+  expect(byPath(engine, "Skills/Window/FadeStart")).toBeDefined();
+  expect(byPath(engine, "Skills/Window/FadeEnd")).toBeDefined();
   // A drag to the left pans the graph with the finger.
   const y = Math.round(view.y + view.height - 20);
   engine.probe.commands(`0:touch_move:${Math.round(view.x + view.width / 2)},${y};0.05:touch_start;0.1:touch_move:${Math.round(view.x + view.width / 2 - 60)},${y};0.15:touch_move:${Math.round(view.x + view.width / 2 - 120)},${y};0.2:touch_end`);
@@ -727,7 +730,7 @@ test("nodeGraph: a graph wider than its window opens centred on its root, fades 
   const r1 = find(engine, (e) => e.path.endsWith("Canvas/Node#0"));
   expect(r1 === undefined || r1.x < r0.x - 40).toBeTrue();
   // More of it now lies before the window: the start fade shows.
-  expect(byPath(engine, "Skills/FadeStart")).toBeDefined();
+  expect(byPath(engine, "Skills/Window/FadeStart")).toBeDefined();
 });
 
 test("chart: a figure described from its data; each category a target that answers its press", () => {
@@ -880,6 +883,8 @@ test("200 % text: the containers, navigation and data components grow with the t
   };
   const data = () => {
     og.ui.statCompare("Compare", { rows: [{ label: "Attack", current: 120, next: 138 }, { label: "Weight", current: 12, next: 9, lowerIsBetter: true }] });
+    // A narrow compare with headings: at 200 % its labels go above their values, inside the panel.
+    og.ui.statCompare("Narrow", { currentLabel: "Equipped", nextLabel: "Moonblade", width: { kind: "fixed", px: 316 }, rows: [{ label: "Attack", current: 120, next: 142 }, { label: "Speed", current: 1.4, next: 1.2, digits: 1 }] } as never);
     // The guild drops first where the columns do not fit (a phone at 200 %); the score stays.
     og.ui.table("Board", { columns: COLUMNS.map((c, k) => ({ ...c, priority: [2, 0, 1][k] })), rows: ROWS.slice(0, 40), height: { kind: "fixed", px: 220 } as never });
     og.ui.keyValueRows("Stats", { title: "Run", rows: [{ label: "Time", value: "12:40", mono: true }, { label: "Gold", value: "1,280", hint: "+120 today" }] });
@@ -936,6 +941,18 @@ test("200 % text: the containers, navigation and data components grow with the t
       }
     });
     expect(spills).toEqual([]);
+    // The narrow stat compare keeps every part inside its width (its columns and chips once ran past it).
+    const at = els.findIndex((e) => e.id === "Narrow");
+    if (at >= 0) {
+      const narrow = els[at]!;
+      const under = (i: number): boolean => {
+        for (let j = parentOf(i); j >= 0; j = parentOf(j)) if (j === at) return true;
+        return false;
+      };
+      const inside = els.filter((e, i) => i > at && e.width > 0 && under(i));
+      expect(inside.length).toBeGreaterThan(4);
+      expect(inside.filter((e) => e.x < narrow.x - 0.5 || e.x + e.width > narrow.x + narrow.width + 0.5).map((e) => `${bp} ${e.id}`)).toEqual([]);
+    }
     // Nothing truncated to a stub but data in a fixed column (a table's cells): headers, menus,
     // crumbs, tabs, cards, the tree and the list's rows wrap or reflow instead.
     const cut = checkFrame(frames[1]!, cell).filter((f) => f.rule === "text-truncated" && !f.paths.some((p) => p.includes("/Cell#")));

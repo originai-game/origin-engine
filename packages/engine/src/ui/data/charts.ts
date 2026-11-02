@@ -8,7 +8,7 @@
 
 import type * as Api from "@origingame/engine";
 import {
-  clamp, fit, flags, frame, grow, kit, mix, over, paint, pointerFrom, px, rememberPath, role, rtl, series, spring, still, surface, target, text, token, xy,
+  byText, clamp, fit, flags, frame, grow, kit, mix, over, paint, pointerFrom, px, rememberPath, role, rtl, series, spring, still, surface, target, text, token, wholeWords, xy,
   type Rgba,
 } from "../containers/base.ts";
 import { dataState } from "./table.ts";
@@ -354,7 +354,8 @@ function cartesian(cx: Ctx, W: number, H: number): { hovered: number | null; cli
     const W = kit.memory("~w", 0);
     const axisStart = kit.memory("~ax", 0);
     kit.row("CategoryAxis", { width: grow(), cross: "start" }, () => {
-      kit.spacer("Inset", px(axisStart));
+      kit.open("Inset", { width: px(axisStart), height: px(0) });
+      kit.close();
       kit.open("Labels", { width: grow(), direction: "row" });
       text("Strut", "\u00a0", { step: "caption", width: px(1) });
       if (W > 0) {
@@ -527,7 +528,13 @@ function pie(cx: Ctx, W0: number, H: number): { hovered: number | null; clicked:
   const pct = (x: number) => formatNumber(total > 0 ? x / total : 0, "percent", (desc.digits ?? 0) > 0 ? 1 : 0);
   let hovered: number | null = null;
   let clicked: number | null = null;
-  const stack = phone;
+  // The legend beside the plot while its rows fit there whole (swatch, the longest name, value
+  // and share at this text size), else under it: at 200 % a side legend ran out of its panel.
+  const sm = (frame().theme.typeRamp as Record<string, Api.TypeStep>).sm?.size ?? 14;
+  const longest = Math.max(0, ...cx.cats.map((c) => c.length));
+  const digits = Math.max(0, ...v.map((x) => cx.fmt(x).length));
+  const legendNeed = 10 + 5 * t.sm + longest * sm * 0.55 + digits * sm * 0.6 + byText(44);
+  const stack = phone || W0 - D - t.lg < legendNeed;
   // Every wedge's start and sweep, in the reading direction from 12 o'clock (mirrored under a
   // right-to-left locale).
   const sweepAll = Math.PI * 2 * cx.reveal;
@@ -579,9 +586,14 @@ function pie(cx: Ctx, W0: number, H: number): { hovered: number | null; clicked:
     });
     if (donut) {
       const k = hot >= 0 && hot < v.length ? hot : -1;
+      // The hole names the total, or the wedge in hand by its share and name: its text keeps to the
+      // hole's inscribed square, the name in whole words (“Common · …” stubbed it).
+      const side = Math.floor((2 * R * hole - 12) * 0.7071);
+      const ramp = frame().theme.typeRamp as Record<string, Api.TypeStep>;
+      const big: Api.TypeStepName = phone ? "lg" : "xl";
       kit.column("Centre", { width: px(2 * R * hole - 12), height: px(2 * R * hole - 12), align: "center", cross: "center", gap: 0 }, () => {
-        text("Value", k >= 0 ? cx.fmt(cx.values[0]![k]!) : cx.fmt(total), { step: phone ? "lg" : "xl", font: "display", nowrap: true, ellipsis: true, align: "center", width: grow() });
-        text("Label", k >= 0 ? `${cx.cats[k] ?? ""} · ${pct(v[k]!)}` : desc.totalLabel || "Total", { step: "caption", color: "inkMuted", nowrap: true, ellipsis: true, align: "center", width: grow() });
+        text("Value", k >= 0 ? pct(v[k]!) : cx.fmt(total), { step: big, font: "display", nowrap: true, align: "center" });
+        wholeWords("Label", k >= 0 ? (cx.cats[k] ?? "") : desc.totalLabel || "Total", { width: side, height: side - (ramp[big]?.lineHeight ?? 28), maxLines: 2, steps: ["caption", "meta", "xs"], color: "inkMuted" });
       });
       over({ insets: { start: c - R * hole + 6, top: c - R * hole + 6 }, inert: true, z: 3 });
     }
@@ -609,7 +621,7 @@ function pie(cx: Ctx, W0: number, H: number): { hovered: number | null; clicked:
         swatch("Swatch", colour(k), 10);
         text("Label", cx.cats[k] ?? `${k + 1}`, { step: "sm", width: grow(), color: on ? "ink" : "inkMuted" });
         text("Value", cx.fmt(cx.values[0]![k]!), { step: "sm", font: "mono", nowrap: true });
-        text("Share", pct(val), { step: "caption", font: "mono", color: "inkFaint", nowrap: true, width: px(44), align: "end" });
+        text("Share", pct(val), { step: "caption", font: "mono", color: "inkFaint", nowrap: true, width: fit(byText(44)), align: "end" });
       });
       if (r.hovered || r.focused || r.pressed) hovered = k;
       if (r.clicked) clicked = k;
