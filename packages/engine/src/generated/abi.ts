@@ -487,6 +487,10 @@ export interface HostAbi<A, V> {
   og_load_rig2d(world: number, path: string): string;
   /** `og.physics.raycast` */
   og_physics_raycast(world: number, desc: string | undefined): string;
+  /** `og.physics.raycastAll` */
+  og_physics_raycast_all(world: number, desc: string | undefined): string;
+  /** `og.physics.projectPoint` */
+  og_physics_project_point(world: number, desc: string | undefined): string;
   /** `og.physics.shapeCast` */
   og_physics_shape_cast(world: number, desc: string | undefined): string;
   /** `og.physics.overlap` */
@@ -1285,6 +1289,8 @@ export const SYMBOLS: readonly string[] = [
   "og_load_timeline",
   "og_load_rig2d",
   "og_physics_raycast",
+  "og_physics_raycast_all",
+  "og_physics_project_point",
   "og_physics_shape_cast",
   "og_physics_overlap",
   "og_physics_apply_force",

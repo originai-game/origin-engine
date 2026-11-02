@@ -2004,6 +2004,7 @@ dependencies = [
  "og-core",
  "og-ecs",
  "og-lanes",
+ "og-net",
  "og-tilemap",
  "rapier2d",
  "rapier3d",

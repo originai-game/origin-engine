@@ -34,6 +34,14 @@ is one line here, written at the merge that changes
   without prefabs never registers the link and saves and hashes as
   before, so no save migration is needed.
 
+- Added (physics, G2-3): compound colliders, an og.Collider on a child
+  entity of an og.RigidBody being part of that body (`RaycastHit.body`
+  names it); `og.physics.raycastAll` (`RaycastAllDesc`,
+  `MAX_RAYCAST_HITS`) and `og.physics.projectPoint` (`ProjectPointDesc`,
+  `PointProjection`). The og.physics state block gains a tagged extension
+  trailer, written only when used: a world without compounds saves and
+  hashes as before.
+
 - **A reactive ECS with spatial queries (G2-2).** Added to the IDL:
   `SystemDesc.changed`, `added`, `removed`, `state`, `value`, `when`
   (`StateWhen`) and `runIf` (`RunCondition`); `QueryDesc.changed`,

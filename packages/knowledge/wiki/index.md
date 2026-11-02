@@ -157,7 +157,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1941 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1947 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -693,6 +693,7 @@ Field units the docs and Tune use.
 | [`MAX_GAMEPADS`](input.md#const-MAX_GAMEPADS) | constant | input | — |
 | [`MAX_LIGHTS`](render.md#const-MAX_LIGHTS) | constant | render | — |
 | [`MAX_POINTERS`](input.md#const-MAX_POINTERS) | constant | input | — |
+| [`MAX_RAYCAST_HITS`](physics.md#const-MAX_RAYCAST_HITS) | constant | physics | — |
 | [`MAX_REFLECTION_PROBES`](render.md#const-MAX_REFLECTION_PROBES) | constant | render | — |
 | [`MenuChoice`](ui.md#type-MenuChoice) | struct | ui | — |
 | [`MenuDesc`](ui.md#type-MenuDesc) | desc struct | ui | — |
@@ -991,9 +992,11 @@ Field units the docs and Tune use.
 | [`og.physics.fluid3dParticles`](physics.md#fn-fluid3dParticles) | function | physics | `og_physics_fluid3d_particles` |
 | [`og.physics.fluidParticles`](physics.md#fn-fluidParticles) | function | physics | `og_physics_fluid_particles` |
 | [`og.physics.overlap`](physics.md#fn-overlap) | function | physics | `og_physics_overlap` |
+| [`og.physics.projectPoint`](physics.md#fn-projectPoint) | function | physics | `og_physics_project_point` |
 | [`og.physics.ragdollPose`](physics.md#fn-ragdollPose) | function | physics | `og_physics_ragdoll_pose` |
 | [`og.physics.ragdollRigFromSkeleton`](physics.md#fn-ragdollRigFromSkeleton) | function | physics | `og_physics_ragdoll_rig_from_skeleton` |
 | [`og.physics.raycast`](physics.md#fn-raycast) | function | physics | `og_physics_raycast` |
+| [`og.physics.raycastAll`](physics.md#fn-raycastAll) | function | physics | `og_physics_raycast_all` |
 | [`og.physics.ropePoints`](physics.md#fn-ropePoints) | function | physics | `og_physics_rope_points` |
 | [`og.physics.setMesh`](physics.md#fn-setMesh) | function | physics | `og_physics_set_mesh` |
 | [`og.physics.setRagdollRig`](physics.md#fn-setRagdollRig) | function | physics | `og_physics_set_ragdoll_rig` |
@@ -1525,6 +1528,7 @@ Field units the docs and Tune use.
 | [`Pointers.pressed`](input.md#member-Pointers-pressed) | method | input | `og_pointers_pressed` |
 | [`Pointers.released`](input.md#member-Pointers-released) | method | input | `og_pointers_released` |
 | [`Pointers.start`](input.md#member-Pointers-start) | method | input | `og_pointers_start` |
+| [`PointProjection`](physics.md#type-PointProjection) | struct | physics | — |
 | [`PointsDesc`](render.md#type-PointsDesc) | desc struct | render | — |
 | [`PointShadows`](render.md#type-PointShadows) | enum | render | — |
 | [`PolyhedronGeometryDesc`](render.md#type-PolyhedronGeometryDesc) | desc struct | render | — |
@@ -1558,6 +1562,7 @@ Field units the docs and Tune use.
 | [`ProgressDesc`](ui.md#type-ProgressDesc) | desc struct | ui | — |
 | [`ProgressRingDesc`](ui.md#type-ProgressRingDesc) | desc struct | ui | — |
 | [`ProgressStyle`](ui.md#type-ProgressStyle) | enum | ui | — |
+| [`ProjectPointDesc`](physics.md#type-ProjectPointDesc) | desc struct | physics | — |
 | [`PropValue`](ui.md#type-PropValue) | struct | ui | — |
 | [`ProseDesc`](ui.md#type-ProseDesc) | desc struct | ui | — |
 | [`PushButtonDesc`](ui.md#type-PushButtonDesc) | desc struct | ui | — |
@@ -1598,6 +1603,7 @@ Field units the docs and Tune use.
 | [`Rarity`](ui.md#type-Rarity) | enum | ui | — |
 | [`Ray`](math.md#type-Ray) | struct | math | — |
 | [`ray`](math.md#value-ray) | value | math | — |
+| [`RaycastAllDesc`](physics.md#type-RaycastAllDesc) | desc struct | physics | — |
 | [`RaycastDesc`](physics.md#type-RaycastDesc) | desc struct | physics | — |
 | [`RaycastGeometryDesc`](render.md#type-RaycastGeometryDesc) | desc struct | render | — |
 | [`RaycastHit`](physics.md#type-RaycastHit) | struct | physics | — |

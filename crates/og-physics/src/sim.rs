@@ -246,6 +246,77 @@ pub(crate) struct Tracked {
     velocity: Option<Velocity>,
 }
 
+/// A compound child collider as the last build of its body placed it
+/// ([`crate::gather::Child`], its entity by bits).
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub(crate) struct TrackedChild {
+    entity: u64,
+    position: Vec3,
+    quaternion: Quat,
+    scale: Vec3,
+    collider: Collider,
+}
+
+impl TrackedChild {
+    fn of(c: &crate::gather::Child) -> TrackedChild {
+        TrackedChild {
+            entity: c.entity.to_bits(),
+            position: c.position,
+            quaternion: c.quaternion,
+            scale: c.scale,
+            collider: c.collider,
+        }
+    }
+}
+
+/// What the simulation keeps beyond its first form (G2-3 and later):
+/// saved in the block's extension sections ([`crate::ext_sections`]), not
+/// in [`Sim`]'s own bytes, so a world that uses none of it saves and
+/// hashes as before.
+#[derive(Default)]
+pub(crate) struct SimExt {
+    /// Each compound body's child colliders, by body entity, as built.
+    pub(crate) compounds: IdMap<u64, Vec<TrackedChild>>,
+}
+
+/// Extension section tags of the og.physics block.
+pub(crate) const EXT_COMPOUNDS: u16 = 1;
+
+impl SimExt {
+    /// Its sections, each `(tag, bytes)`; none for what is empty.
+    pub(crate) fn sections(&self) -> Vec<(u16, Vec<u8>)> {
+        let mut out = Vec::new();
+        if !self.compounds.is_empty() {
+            let mut bytes = Vec::new();
+            let list: Vec<(&u64, &Vec<TrackedChild>)> = self.compounds.iter().collect();
+            crate::encode(&mut bytes, &list).expect("compounds serialize into memory");
+            out.push((EXT_COMPOUNDS, bytes));
+        }
+        out
+    }
+
+    /// From the sections a save held; a tag this build does not know is
+    /// skipped (a later build's).
+    pub(crate) fn from_sections(sections: &[(u16, &[u8])]) -> Result<SimExt> {
+        use bincode::Options;
+        let parse = |e: bincode::Error| {
+            Error::new(
+                ErrorKind::Parse,
+                format!("the physics block's extension does not decode: {e}"),
+            )
+        };
+        let mut ext = SimExt::default();
+        for &(tag, bytes) in sections {
+            if tag == EXT_COMPOUNDS {
+                let list: Vec<(u64, Vec<TrackedChild>)> =
+                    crate::codec().deserialize(bytes).map_err(parse)?;
+                ext.compounds = list.into_iter().collect();
+            }
+        }
+        Ok(ext)
+    }
+}
+
 /// A static collider (no body) as the last tick left it.
 #[derive(Clone, Serialize, Deserialize)]
 struct TrackedStatic {
@@ -275,6 +346,9 @@ pub(crate) struct Sim {
     pub(crate) lines: IdMap<u64, crate::water::LineState>,
     pub(crate) ragdolls: IdMap<u64, super::RagdollState>,
     pub(crate) fluids3: IdMap<u64, crate::fluid3d::Fluid3State>,
+    /// Saved in the block's extension sections, not here.
+    #[serde(skip)]
+    pub(crate) ext: SimExt,
 }
 
 /// Every body's pose at the start of the tick, by handle index (with the
@@ -442,14 +516,29 @@ fn insert_body(
 ) -> Result<rp::RigidBodyHandle> {
     let (e, body) = (b.entity, &b.body);
     let kind = body_kind(b)?;
-    let collider = match &b.collider {
+    // A compound body's mass is shared among its colliders by their own
+    // (density times volume); alone, its collider takes it whole.
+    let masses = compound_masses(b, shared)?;
+    let own = match &b.collider {
         Some(c) => {
             let local = local_pose(c, b.scale);
-            let built = collider(c, b.scale, local, e, body.mass, shared)?;
+            let mass = masses.as_ref().map_or(body.mass, |m| m[0]);
+            let built = collider(c, b.scale, local, e, mass, shared)?;
             Some(centred(built, c, body, b.scale, local)?)
         }
         None => None,
     };
+    let mut children = Vec::with_capacity(b.children.len());
+    for (k, child) in b.children.iter().enumerate() {
+        let at = pose(child.position, child.quaternion) * local_pose(&child.collider, child.scale);
+        let mass = masses
+            .as_ref()
+            .map_or(0.0, |m| m[k + usize::from(b.collider.is_some())]);
+        let built = collider(&child.collider, child.scale, at, child.entity, mass, shared)?
+            // Its body in the high bits (entity_of reads the low ones).
+            .user_data(child.entity.to_bits() as u128 | (e.to_bits() as u128) << 64);
+        children.push(built);
+    }
     let mut builder = rp::RigidBodyBuilder::new(kind)
         .pose(pose(b.position, b.quaternion))
         .linear_damping(body.linear_damping)
@@ -466,14 +555,60 @@ fn insert_body(
             .linvel(v(flat(vel.linear)))
             .angvel(angvel(vel.angular));
     }
-    if collider.is_none() && kind == rp::RigidBodyType::Dynamic {
+    if own.is_none() && children.is_empty() && kind == rp::RigidBodyType::Dynamic {
         builder = builder.additional_mass(if body.mass > 0.0 { body.mass } else { 1.0 });
     }
     let h = w.bodies.insert(builder);
-    if let Some(c) = collider {
+    if let Some(c) = own {
+        w.colliders.insert_with_parent(c, h, &mut w.bodies);
+    }
+    for c in children {
         w.colliders.insert_with_parent(c, h, &mut w.bodies);
     }
     Ok(h)
+}
+
+/// Each collider's share of a compound body's `mass` (its own first, then
+/// its children's), in proportion to their masses at their densities;
+/// None when the body is not a compound or takes its mass from them.
+fn compound_masses(b: &Body, shared: &mut Shared) -> Result<Option<Vec<f32>>> {
+    if b.children.is_empty() || b.body.mass <= 0.0 {
+        return Ok(None);
+    }
+    let mut own = Vec::with_capacity(b.children.len() + 1);
+    if let Some(c) = &b.collider {
+        own.push(shape(c, b.scale, shared)?.mass_properties(c.density).mass());
+    }
+    for child in &b.children {
+        let c = &child.collider;
+        own.push(
+            shape(c, child.scale, shared)?
+                .mass_properties(c.density)
+                .mass(),
+        );
+    }
+    let total: f32 = own.iter().sum();
+    let n = own.len() as f32;
+    Ok(Some(
+        own.iter()
+            .map(|&m| {
+                if total > 0.0 {
+                    b.body.mass * m / total
+                } else {
+                    b.body.mass / n
+                }
+            })
+            .collect(),
+    ))
+}
+
+/// The entity of the body a collider belongs to: a compound child's body
+/// (the user data's high bits), else the collider's own entity.
+fn body_of(c: &rp::Collider) -> Entity {
+    match (c.user_data >> 64) as u64 {
+        0 => entity_of(c),
+        body => Entity::from_bits(body),
+    }
 }
 
 /// Brings the persistent rapier world in line with `scene`, steps it
@@ -659,17 +794,39 @@ enum Plan {
     Build,
 }
 
-fn plan(b: &Body, tracked: &IdMap<u64, Tracked>, stale: &BTreeSet<u64>) -> Plan {
+/// Whether `b`'s child colliders are those its body was built with.
+fn same_children(b: &Body, built: Option<&Vec<TrackedChild>>) -> bool {
+    match built {
+        None => b.children.is_empty(),
+        Some(built) => {
+            built.len() == b.children.len()
+                && built
+                    .iter()
+                    .zip(&b.children)
+                    .all(|(t, c)| *t == TrackedChild::of(c))
+        }
+    }
+}
+
+fn plan(
+    b: &Body,
+    tracked: &IdMap<u64, Tracked>,
+    compounds: &IdMap<u64, Vec<TrackedChild>>,
+    stale: &BTreeSet<u64>,
+) -> Plan {
     let stale_mesh = |c: &Collider| {
         matches!(c.shape, SHAPE_CONVEX | SHAPE_TRIMESH | SHAPE_HEIGHTFIELD)
             && stale.contains(&c.mesh)
     };
-    match tracked.get(&b.entity.to_bits()) {
+    let key = b.entity.to_bits();
+    match tracked.get(&key) {
         Some(t)
             if t.body == b.body
                 && t.collider == b.collider
                 && t.scale == b.scale
-                && !b.collider.as_ref().is_some_and(stale_mesh) =>
+                && !b.collider.as_ref().is_some_and(stale_mesh)
+                && same_children(b, compounds.get(&key))
+                && !b.children.iter().any(|c| stale_mesh(&c.collider)) =>
         {
             let kind = b.body.kind;
             let (mut next, mut position) = (None, None);
@@ -739,8 +896,10 @@ fn sync<'s>(
         world: w,
         bodies: tracked,
         statics: tracked_statics,
+        ext,
         ..
     } = sim;
+    let compounds = &mut ext.compounds;
     w.gravity = v(settings.gravity);
     w.integration_parameters.dt = dt / substeps as f32;
     w.integration_parameters.num_solver_iterations =
@@ -751,6 +910,9 @@ fn sync<'s>(
     retain_live(tracked, &live, |t| {
         w.remove_body(t.handle);
     });
+    if !compounds.is_empty() {
+        retain_live(compounds, &live, |_| {});
+    }
     let live = sorted_keys(scene.statics.iter().map(|s| s.entity.to_bits()));
     retain_live(tracked_statics, &live, |t| {
         w.remove_collider(t.handle);
@@ -767,11 +929,12 @@ fn sync<'s>(
     // removed and inserted in the order one thread would.
     let plans = {
         let tracked = &*tracked;
+        let compounds = &*compounds;
         let stale = &stale;
         by_bodies(scene.bodies.len(), |r| {
             scene.bodies[r]
                 .iter()
-                .map(|b| plan(b, tracked, stale))
+                .map(|b| plan(b, tracked, compounds, stale))
                 .collect()
         })
     };
@@ -797,8 +960,14 @@ fn sync<'s>(
                 handle
             }
             Plan::Build => {
-                if let Some(t) = tracked.remove(&b.entity.to_bits()) {
+                let key = b.entity.to_bits();
+                if let Some(t) = tracked.remove(&key) {
                     w.remove_body(t.handle);
+                }
+                if b.children.is_empty() {
+                    compounds.remove(&key);
+                } else {
+                    compounds.insert(key, b.children.iter().map(TrackedChild::of).collect());
                 }
                 insert_body(w, b, shared)?
             }
@@ -1173,15 +1342,39 @@ impl QueryWorld {
         let mut placed = Vec::with_capacity(scene.bodies.len() + scene.statics.len());
         for b in &scene.bodies {
             if let Some(c) = &b.collider {
-                placed.push((b.entity, b.position, b.quaternion, b.scale, c));
+                placed.push((b.entity, None, b.position, b.quaternion, b.scale, c));
+            }
+            for child in &b.children {
+                let (p, r) = (
+                    b.position + b.quaternion * child.position,
+                    b.quaternion * child.quaternion,
+                );
+                placed.push((
+                    child.entity,
+                    Some(b.entity),
+                    p,
+                    r,
+                    child.scale,
+                    &child.collider,
+                ));
             }
         }
         for s in &scene.statics {
-            placed.push((s.entity, s.position, s.quaternion, s.scale, &s.collider));
+            placed.push((
+                s.entity,
+                None,
+                s.position,
+                s.quaternion,
+                s.scale,
+                &s.collider,
+            ));
         }
-        for (e, position, quaternion, scale, c) in placed {
+        for (e, body, position, quaternion, scale, c) in placed {
             let at = pose(position, quaternion) * local_pose(c, scale);
-            let built = collider(c, scale, at, e, 0.0, shared)?.build();
+            let mut built = collider(c, scale, at, e, 0.0, shared)?.build();
+            if let Some(body) = body {
+                built.user_data |= (body.to_bits() as u128) << 64;
+            }
             let aabb = built.compute_aabb();
             let h = q.colliders.insert(built);
             q.broad.set_aabb(&params, h, aabb);
@@ -1217,10 +1410,79 @@ impl QueryWorld {
             p.cast_ray_and_get_normal(&ray, max, true)
                 .map(|(h, hit)| RaycastHit {
                     entity: entity_of(&self.colliders[h]),
+                    body: body_of(&self.colliders[h]),
                     distance: hit.time_of_impact,
                     point: unv(ray.point_at(hit.time_of_impact)),
                     normal: unv(hit.normal),
                 })
+        }))
+    }
+
+    pub(crate) fn raycast_all(
+        &self,
+        origin: Vec3,
+        direction: Vec3,
+        max: f32,
+        f: &QueryFilter,
+        cap: usize,
+    ) -> Result<Vec<RaycastHit>> {
+        let dir = crate::direction(flat(direction), "RaycastDesc", PROFILE_NAME)?;
+        let ray = rp::Ray::new(v(origin), v(dir));
+        let mut hits = self.with(f, |p| {
+            p.intersect_ray(ray, max, true)
+                .map(|(_, c, hit)| RaycastHit {
+                    entity: entity_of(c),
+                    body: body_of(c),
+                    distance: hit.time_of_impact,
+                    point: unv(ray.point_at(hit.time_of_impact)),
+                    normal: unv(hit.normal),
+                })
+                .collect::<Vec<_>>()
+        });
+        // The BVH's leaf order is not an order a game should see: nearest
+        // first, ties by entity bits, so every host and run lists the same.
+        hits.sort_unstable_by(|a, b| {
+            a.distance
+                .total_cmp(&b.distance)
+                .then(a.entity.to_bits().cmp(&b.entity.to_bits()))
+                .then(a.body.to_bits().cmp(&b.body.to_bits()))
+        });
+        hits.truncate(cap);
+        Ok(hits)
+    }
+
+    pub(crate) fn project_point(
+        &self,
+        d: &crate::ProjectPointDesc,
+        max: f32,
+    ) -> Result<Option<crate::PointProjection>> {
+        if !d.point.is_finite() {
+            return Err(Error::new(
+                ErrorKind::Invalid,
+                format!("ProjectPointDesc.point must be finite, got {}", d.point),
+            ));
+        }
+        let at = flat(d.point);
+        Ok(self.with(&d.filter, |p| {
+            let (h, proj) = p.project_point(v(at), max, d.solid)?;
+            let c = &self.colliders[h];
+            let point = unv(proj.point);
+            let to = at - point;
+            let distance = to.length();
+            let normal = if distance > 0.0 {
+                let n = to / distance;
+                if proj.is_inside { -n } else { n }
+            } else {
+                Vec3::ZERO
+            };
+            Some(crate::PointProjection {
+                entity: entity_of(c),
+                body: body_of(c),
+                point,
+                normal,
+                distance,
+                inside: proj.is_inside,
+            })
         }))
     }
 
@@ -1317,11 +1579,23 @@ pub(crate) fn save(sim: &Sim) -> (Vec<Hole>, Vec<u8>) {
     let w = &sim.world;
     // Which colliders' shapes come from assets, by handle.
     let mut keyed: BTreeMap<(u32, u32), ShapeKey> = BTreeMap::new();
-    for t in sim.bodies.values() {
+    for (key, t) in sim.bodies.iter() {
+        let Some(rb) = w.bodies.get(t.handle) else {
+            continue;
+        };
         if let Some(c) = t.collider.as_ref().filter(|c| from_asset(c))
-            && let Some(&h) = w.bodies.get(t.handle).and_then(|rb| rb.colliders().first())
+            && let Some(&h) = rb.colliders().first()
         {
             keyed.insert(h.into_raw_parts(), asset_key(c, t.scale));
+        }
+        // A compound's children follow its own collider, in build order.
+        if let Some(children) = sim.ext.compounds.get(key) {
+            let skip = usize::from(t.collider.is_some());
+            for (child, &h) in children.iter().zip(rb.colliders().iter().skip(skip)) {
+                if from_asset(&child.collider) {
+                    keyed.insert(h.into_raw_parts(), asset_key(&child.collider, child.scale));
+                }
+            }
         }
     }
     for t in sim.statics.values() {

@@ -344,6 +344,22 @@ pub(crate) struct Body {
     pub velocity: Option<Velocity>,
     /// Its controller (the body is then kinematic, moved by it).
     pub control: Option<Control>,
+    /// Compound colliders: the colliders of child entities (no body of
+    /// their own) whose `og.Parent` chain reaches this body, in entity-bits
+    /// order, each placed relative to the body.
+    pub children: Vec<Child>,
+}
+
+/// A collider on a child entity, part of its ancestor body: its pose
+/// relative to the body (the transforms between them composed, the body's
+/// scale applied) and its scale.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Child {
+    pub entity: Entity,
+    pub position: Vec3,
+    pub quaternion: Quat,
+    pub scale: Vec3,
+    pub collider: Collider,
 }
 
 /// A collider without a body: static at its transform.
@@ -479,6 +495,42 @@ pub fn world_pose(
     (p, q)
 }
 
+/// The body a child collider joins: the nearest ancestor down `e`'s
+/// `og.Parent` chain that is in `bodies` (its index), with `e`'s pose
+/// relative to it (position, rotation, scale: the transforms between them
+/// composed, the body's own excluded). None when no ancestor within 256
+/// links is a body; a parent without `og.Transform` counts as identity.
+fn ancestor_body(
+    e: Entity,
+    own: (Vec3, Quat, Vec3),
+    parents: &ByEntity<u64>,
+    bodies: &ByEntity<usize>,
+    get: GetBytes<'_>,
+    ids: &Ids,
+) -> Option<(usize, (Vec3, Quat, Vec3))> {
+    let (mut p, mut r, mut s) = own;
+    let mut at = e;
+    for _ in 0..256 {
+        let parent = Entity::from_bits(parents.get(at)?);
+        if parent == e {
+            return None;
+        }
+        if let Some(i) = bodies.get(parent) {
+            return Some((i, (p, r, s)));
+        }
+        if let Some(t) = (get)(parent, ids.transform)
+            .ok()
+            .and_then(|b| ids.transform_layout.decode::<Transform>(&b).ok())
+        {
+            p = t.position + t.quaternion * (t.scale * p);
+            r = t.quaternion * r;
+            s *= t.scale;
+        }
+        at = parent;
+    }
+    None
+}
+
 /// Reads the scene through the system's queries (`q(i)` is query `i` of
 /// [`QUERIES`]); `get` reads the transforms of the parents soft bodies
 /// hang from.
@@ -550,6 +602,7 @@ pub(crate) fn gather<'w>(
                     velocities.get(*e)
                 },
                 control,
+                children: Vec::new(),
             });
         }
     }
@@ -583,23 +636,66 @@ pub(crate) fn gather<'w>(
                     collider: Some(colliders[row]),
                     velocity: None,
                     control: Some(control[row]),
+                    children: Vec::new(),
                 });
             }
         }
     }
+    let mut parents = ByEntity::new();
+    let mut any_parent = false;
+    for a in q(Q_PARENTS)? {
+        let p = a.read::<u64>(ids.parent)?;
+        for (e, parent) in a.entities().iter().zip(p.iter()) {
+            parents.insert(*e, *parent);
+            any_parent = true;
+        }
+    }
+    // The bodies a child collider can join: rigid bodies a controller
+    // does not move (a controller moves its own shape alone).
+    let mut joinable = ByEntity::new();
+    if any_parent {
+        for (i, b) in scene.bodies.iter().enumerate() {
+            if b.control.is_none() {
+                joinable.insert(b.entity, i);
+            }
+        }
+    }
+    let mut joined = false;
     for a in q(Q_STATIC_COLLIDERS)? {
         let position = a.read::<Vec3>(ids.t_position)?;
         let quaternion = a.read::<Quat>(ids.t_quaternion)?;
         let scale = a.read::<Vec3>(ids.t_scale)?;
         let rows: Vec<Collider> = read_rows(&a, &ids.collider_fields, &ids.collider_layout)?;
         for (row, (e, collider)) in a.entities().iter().zip(rows).enumerate() {
+            let own = (position[row], quaternion[row], scale[row]);
+            if any_parent
+                && let Some((i, (p, r, s))) = ancestor_body(*e, own, &parents, &joinable, get, ids)
+            {
+                let body = &mut scene.bodies[i];
+                body.children.push(Child {
+                    entity: *e,
+                    position: p * body.scale,
+                    quaternion: r,
+                    scale: s * body.scale,
+                    collider,
+                });
+                joined = true;
+                continue;
+            }
             scene.statics.push(Static {
                 entity: *e,
-                position: position[row],
-                quaternion: quaternion[row],
-                scale: scale[row],
+                position: own.0,
+                quaternion: own.1,
+                scale: own.2,
                 collider,
             });
+        }
+    }
+    if joined {
+        for b in &mut scene.bodies {
+            if b.children.len() > 1 {
+                b.children.sort_unstable_by_key(|c| c.entity.to_bits());
+            }
         }
     }
     for a in q(Q_JOINTS)? {
@@ -611,15 +707,6 @@ pub(crate) fn gather<'w>(
         scene
             .vehicles
             .extend(a.entities().iter().copied().zip(rows));
-    }
-    let mut parents = ByEntity::new();
-    let mut any_parent = false;
-    for a in q(Q_PARENTS)? {
-        let p = a.read::<u64>(ids.parent)?;
-        for (e, parent) in a.entities().iter().zip(p.iter()) {
-            parents.insert(*e, *parent);
-            any_parent = true;
-        }
     }
     let chains = any_parent.then_some(Chains { parents, get, ids });
     macro_rules! placed {

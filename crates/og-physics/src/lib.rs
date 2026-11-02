@@ -173,11 +173,53 @@ pub struct RaycastDesc {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RaycastHit {
     pub entity: Entity,
+    /// The body the collider belongs to: the entity itself, or for a
+    /// compound child collider the ancestor body it is part of.
+    pub body: Entity,
     /// Distance from the origin along the normalised direction.
     pub distance: f32,
     pub point: Vec3,
     /// The surface normal at `point` (z = 0 in 2D).
     pub normal: Vec3,
+}
+
+/// Every collider along a ray ([`PhysicsQuery::raycast_all`]): the ray, and
+/// at most `max_hits` hits (0: [`MAX_RAYCAST_HITS`]).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct RaycastAllDesc {
+    pub ray: RaycastDesc,
+    pub max_hits: u32,
+}
+
+/// The most hits [`PhysicsQuery::raycast_all`] returns.
+pub const MAX_RAYCAST_HITS: u32 = 256;
+
+/// The nearest point on a collider to a point ([`PhysicsQuery::project_point`]).
+/// `max_distance` 0 means unbounded; `solid`: a point inside a collider is
+/// its own projection (else it projects onto the surface).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct ProjectPointDesc {
+    pub point: Vec3,
+    pub max_distance: f32,
+    pub solid: bool,
+    pub filter: QueryFilter,
+}
+
+/// Where a point projects onto the nearest collider.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PointProjection {
+    pub entity: Entity,
+    pub body: Entity,
+    /// The projected point, in world space.
+    pub point: Vec3,
+    /// The direction from the surface towards the queried point (out of the
+    /// collider; into it when the point is inside); zero when the point is
+    /// on the surface or a solid projection of a point inside.
+    pub normal: Vec3,
+    /// From the queried point to the projection.
+    pub distance: f32,
+    /// Whether the point is inside the collider.
+    pub inside: bool,
 }
 
 /// A shape swept along a direction. `max_distance` 0 means unbounded.
@@ -423,6 +465,56 @@ pub(crate) fn encode<T: serde::Serialize + ?Sized>(
     codec().serialize_into(out, value)
 }
 
+/// The extension trailer of a saved `og.physics` block, after its first
+/// form's bytes (G2-3): `OGX` and a format byte (1), then sections of a
+/// `u16` tag, a `u32` length and that many bytes, all little-endian.
+/// Written only when a section is non-empty, so a world using no
+/// extension saves (and hashes) byte for byte as before; a decoder skips
+/// a tag it does not know, so a later extension adds a tag, not a format.
+const EXT_MAGIC: [u8; 4] = *b"OGX\x01";
+
+fn write_sections(out: &mut Vec<u8>, sections: &[(u16, Vec<u8>)]) {
+    if sections.is_empty() {
+        return;
+    }
+    out.extend_from_slice(&EXT_MAGIC);
+    for (tag, bytes) in sections {
+        out.extend_from_slice(&tag.to_le_bytes());
+        out.extend_from_slice(&(bytes.len() as u32).to_le_bytes());
+        out.extend_from_slice(bytes);
+    }
+}
+
+fn read_sections(mut rest: &[u8]) -> Result<Vec<(u16, &[u8])>> {
+    let bad = |why: &str| {
+        Error::new(
+            ErrorKind::Parse,
+            format!("the physics block's extension trailer {why}"),
+        )
+    };
+    let mut out = Vec::new();
+    if rest.is_empty() {
+        return Ok(out);
+    }
+    rest = rest
+        .strip_prefix(&EXT_MAGIC)
+        .ok_or_else(|| bad("does not start with OGX 1"))?;
+    while !rest.is_empty() {
+        if rest.len() < 6 {
+            return Err(bad("ends inside a section header"));
+        }
+        let tag = u16::from_le_bytes([rest[0], rest[1]]);
+        let len = u32::from_le_bytes([rest[2], rest[3], rest[4], rest[5]]) as usize;
+        rest = &rest[6..];
+        if rest.len() < len {
+            return Err(bad("ends inside a section"));
+        }
+        out.push((tag, &rest[..len]));
+        rest = &rest[len..];
+    }
+    Ok(out)
+}
+
 /// What follows the profile tag in a saved `og.physics` block: the pushes
 /// not yet applied, then the simulation's bytes without its asset shapes
 /// and where they go (empty with tag 0, no simulation yet).
@@ -432,15 +524,20 @@ impl StateBlock for PhysicsState {
     fn save(&self, out: &mut Vec<u8>) {
         let shared = lock(&self.0);
         let pushes = shared.pushes.clone();
+        let mut sections = Vec::new();
         let block: Option<(u8, Block)> = match () {
             #[cfg(feature = "physics3d")]
             _ if shared.sim3.is_some() => {
-                let (holes, bytes) = dim3::save(shared.sim3.as_deref().unwrap());
+                let sim = shared.sim3.as_deref().unwrap();
+                sections = sim.ext.sections();
+                let (holes, bytes) = dim3::save(sim);
                 Some((PROFILE_3D as u8, (pushes, holes, bytes)))
             }
             #[cfg(feature = "physics2d")]
             _ if shared.sim2.is_some() => {
-                let (holes, bytes) = dim2::save(shared.sim2.as_deref().unwrap());
+                let sim = shared.sim2.as_deref().unwrap();
+                sections = sim.ext.sections();
+                let (holes, bytes) = dim2::save(sim);
                 Some((PROFILE_2D as u8, (pushes, holes, bytes)))
             }
             _ if !pushes.is_empty() => Some((0, (pushes, Vec::new(), Vec::new()))),
@@ -449,6 +546,7 @@ impl StateBlock for PhysicsState {
         if let Some((tag, block)) = block {
             out.push(tag);
             encode(out, &block).expect("a physics world always serializes into memory");
+            write_sections(out, &sections);
         }
     }
 
@@ -463,19 +561,26 @@ impl StateBlock for PhysicsState {
         let Some((&tag, rest)) = bytes.split_first() else {
             return Ok(Box::new(Saved::Empty));
         };
-        let (pushes, holes, sim): Block = codec().deserialize(rest).map_err(parse)?;
+        let mut reader = rest;
+        let (pushes, holes, sim): Block = codec()
+            .allow_trailing_bytes()
+            .deserialize_from(&mut reader)
+            .map_err(parse)?;
+        let sections = read_sections(reader)?;
         // The asset shapes are rebuilt from the registered meshes, as a
         // step builds them (outside the step, like a query view).
         let saved = match tag as u32 {
             0 => Saved::Pushes(pushes),
             #[cfg(feature = "physics3d")]
             PROFILE_3D => {
-                let sim = outside(|| dim3::load(&sim, &holes, &mut lock(&self.0)))?;
+                let mut sim = outside(|| dim3::load(&sim, &holes, &mut lock(&self.0)))?;
+                sim.ext = dim3::SimExt::from_sections(&sections)?;
                 Saved::D3(Box::new(sim), pushes)
             }
             #[cfg(feature = "physics2d")]
             PROFILE_2D => {
-                let sim = outside(|| dim2::load(&sim, &holes, &mut lock(&self.0)))?;
+                let mut sim = outside(|| dim2::load(&sim, &holes, &mut lock(&self.0)))?;
+                sim.ext = dim2::SimExt::from_sections(&sections)?;
                 Saved::D2(Box::new(sim), pushes)
             }
             _ => {
@@ -1142,6 +1247,35 @@ impl PhysicsQuery {
             QueryInner::D3(q) => q.raycast(desc.origin, desc.direction, max, &desc.filter),
             #[cfg(feature = "physics2d")]
             QueryInner::D2(q) => q.raycast(desc.origin, desc.direction, max, &desc.filter),
+        })
+    }
+
+    /// Every collider a ray meets within its reach, nearest first (ties by
+    /// collider entity, then body), at most `max_hits`: one hit per
+    /// collider, at its first crossing.
+    pub fn raycast_all(&self, desc: &RaycastAllDesc) -> Result<Vec<RaycastHit>> {
+        let r = &desc.ray;
+        let max = max_distance(r.max_distance);
+        let cap = match desc.max_hits {
+            0 => MAX_RAYCAST_HITS,
+            n => n.min(MAX_RAYCAST_HITS),
+        } as usize;
+        outside(|| match &*self.inner {
+            #[cfg(feature = "physics3d")]
+            QueryInner::D3(q) => q.raycast_all(r.origin, r.direction, max, &r.filter, cap),
+            #[cfg(feature = "physics2d")]
+            QueryInner::D2(q) => q.raycast_all(r.origin, r.direction, max, &r.filter, cap),
+        })
+    }
+
+    /// The nearest point on any collider to a point, within its reach.
+    pub fn project_point(&self, desc: &ProjectPointDesc) -> Result<Option<PointProjection>> {
+        let max = max_distance(desc.max_distance);
+        outside(|| match &*self.inner {
+            #[cfg(feature = "physics3d")]
+            QueryInner::D3(q) => q.project_point(desc, max),
+            #[cfg(feature = "physics2d")]
+            QueryInner::D2(q) => q.project_point(desc, max),
         })
     }
 

@@ -27,7 +27,7 @@ bodies move in the xy plane and rotate about z; a transform keeps its z.
 | `PhysicsStats`, `PhaseStats`, `Phase` | what the last step cost: its tick, bodies, threads, whether it ran on the lanes pool, the whole system's ms and each phase's ms and whether it split (`og.physics.stats` in TypeScript; below) |
 | `set_clock(fn() -> f64)` | the wall clock the stats are timed with (`Instant` natively; the web host gives each Worker's `performance.now`) |
 | `Grains`, `grains`, `set_grains`, `pool_bodies` | where the step's work runs on the lanes (below) |
-| `PhysicsQuery` | `raycast(&RaycastDesc)`, `shape_cast(&ShapeCastDesc)`, `overlap(&OverlapDesc)` over the colliders as the world holds them when it was built; `QueryFilter { mask, include_sensors, exclude }` |
+| `PhysicsQuery` | `raycast(&RaycastDesc)`, `raycast_all(&RaycastAllDesc)` (every hit, nearest first, ties by entity, at most `MAX_RAYCAST_HITS`), `project_point(&ProjectPointDesc) -> Option<PointProjection>`, `shape_cast(&ShapeCastDesc)`, `overlap(&OverlapDesc)` over the colliders as the world holds them when it was built; `QueryFilter { mask, include_sensors, exclude }`; hits name the collider's `entity` and its `body` |
 | `raycast`, `shape_cast`, `overlap` | the same, on a view built for one call |
 | `world_pose(e, local, parent_of, transform_of)` | an entity's world position and rotation down the `og.Parent` chain (`og.Parent` is registered here by schema, like `og.Transform`) |
 | `SYSTEM_NAME` | `og.physics`, the system's and the state block's name |
@@ -50,7 +50,15 @@ are `u32` constants in `src/schema.rs`.
 | `og.SensorEntered`, `og.SensorExited` | event | `sensor`, `other` |
 | `og.Contact` | event | `a`, `b`, `sensor` (bit 0: a is a sensor, bit 1: b); every touching pair, each tick |
 
-A collider without a `RigidBody` is static at its transform. Bodies and
+A collider without a `RigidBody` is static at its transform, unless its
+entity's `og.Parent` chain reaches a `RigidBody`: then it is a compound
+child of the nearest such body (G2-3, `gather::ancestor_body`), placed at
+its pose relative to it (the transforms between them composed, the body's
+scale applied), in entity order. Its mass adds by density, or the body's
+`mass` is shared among its colliders by theirs; it keeps its own friction,
+restitution, layers and sensor flag; a change to it rebuilds the body.
+Rapier colliders of children carry the body's entity in their user data's
+high 64 bits, so `RaycastHit.body` and `PointProjection.body` name it. Bodies and
 colliders are roots: their `og.Transform` is world space. Ropes, cloths,
 fluids, water and ragdolls may sit on a child entity: the gather places
 them at the entity's world pose, its transform after its parents' down
@@ -106,6 +114,19 @@ back, so the restored world is rapier's byte for byte (`tests/saves.rs`: a
 630 KB). Register them in a fresh engine before restoring: a save naming
 one that is not is refused, naming it.
 
+
+### The block's extension trailer (G2-3)
+
+What G2-3 keeps beyond the first form of the simulation (compound
+children's built poses; sleep, joint breaking, the drivetrain and soft
+volumes to come) is not in `Sim`'s bincode but in a trailer after the
+block: `OGX` and a format byte 1, then sections of a little-endian `u16`
+tag, `u32` length and bytes (`write_sections`, `read_sections`,
+`sim::SimExt`). It is written only when a section is non-empty, so a world
+using none of it saves and hashes byte for byte as before
+(`tests/unchanged.rs` pins the beyond scenario's hashes from cb1d65bf), and
+a decoder skips a tag it does not know: a later extension adds a tag.
+Tags: 1 compounds.
 
 ## The step on the lanes
 

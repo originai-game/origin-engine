@@ -10879,6 +10879,9 @@ export interface AssetFailed {
 // The profile is the project's (`profile "2d"` or `"3d"` in project.ogt). In 2D, bodies move in the xy plane and rotate about z; a transform keeps its z. A collider without a RigidBody is static at its transform.
 // The rapier world persists between ticks and is world state: snapshots, restore and the world hash cover the whole simulation. Events sent in tick N are read in tick N + 1.
 
+/** The most hits og.physics.raycastAll returns. */
+export declare const MAX_RAYCAST_HITS: 256;
+
 /**
  * RigidBody.kind: moved by the solver; its Transform and Velocity are written back every tick.
  */
@@ -11012,6 +11015,7 @@ export interface RigidBody {
 
 /**
  * The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). Sizes are scaled by og.Transform.scale.
+ * Compound colliders: a Collider without a RigidBody on a child entity whose og.Parent chain reaches a RigidBody is part of that body (the nearest such ancestor), placed at its transform relative to the body (the transforms between them composed, the body's scale applied): a table of a top and four legs, a ship of a hull and a mast, are one body. Its mass adds to the body's from its density, or the body's RigidBody.mass is shared among its colliders by theirs; its friction, restitution, layers and sensor flag are its own. Children join in entity order, whatever the query order. Changing a child (its collider, or its transform relative to the body) rebuilds the body, which loses its contacts' warm starts. Events and queries name the collider's entity; RaycastHit.body and PointProjection.body name the body. A controller's body takes no children; a collider whose chain reaches no body stays static at its world transform.
  *
  * The value of the `Collider` component (token `og.Collider`).
  */
@@ -12968,6 +12972,10 @@ export interface RaycastHit {
   /** The collider's entity. */
   readonly entity: Entity;
   /**
+   * The body the collider belongs to: its own entity, or for a compound child collider (an og.Collider on a child of an og.RigidBody) the ancestor body it is part of.
+   */
+  readonly body: Entity;
+  /**
    * From the origin along the normalised direction.
    *
    * @unit m (metres)
@@ -12977,6 +12985,109 @@ export interface RaycastHit {
   readonly point: Vector3;
   /** The surface normal there (z is 0 in 2D). */
   readonly normal: Vector3;
+}
+
+/**
+ * A ray for og.physics.raycastAll: og.physics.raycast's fields and a cap on the hits.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RaycastAllDesc {
+  /**
+   * Where the ray starts.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly origin?: Vector3;
+  /**
+   * Where it points; it need not be normalised and must not be zero (in 2D, not zero in xy).
+   *
+   * @default { x: 0, y: -1, z: 0 }
+   */
+  readonly direction?: Vector3;
+  /**
+   * How far it reaches; 0 is unbounded.
+   *
+   * @default 0
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly maxDistance?: number;
+  /**
+   * Which colliders count.
+   *
+   * @default {}
+   */
+  readonly filter?: QueryFilter;
+  /**
+   * The most hits returned, nearest first; 0 is MAX_RAYCAST_HITS (256), and more is held to it.
+   *
+   * @default 0
+   * @range 0..256
+   */
+  readonly maxHits?: number;
+}
+
+/**
+ * A point for og.physics.projectPoint.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ProjectPointDesc {
+  /**
+   * The point to project (its z is ignored in 2D).
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly point?: Vector3;
+  /**
+   * How far a collider may be; 0 is unbounded.
+   *
+   * @default 0
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly maxDistance?: number;
+  /**
+   * A point inside a collider is its own projection (distance 0); false projects it onto the collider's surface.
+   *
+   * @default true
+   */
+  readonly solid?: boolean;
+  /**
+   * Which colliders count.
+   *
+   * @default {}
+   */
+  readonly filter?: QueryFilter;
+}
+
+/** Where a point projects onto the nearest collider. */
+export interface PointProjection {
+  /** The collider's entity. */
+  readonly entity: Entity;
+  /** The body it belongs to (RaycastHit.body). */
+  readonly body: Entity;
+  /**
+   * The nearest point on the collider, in world space.
+   *
+   * @unit m (metres)
+   */
+  readonly point: Vector3;
+  /**
+   * Unit direction out of the collider at the point, towards a point outside it (from a point inside, still outward); zero when the distance is 0.
+   */
+  readonly normal: Vector3;
+  /**
+   * From the queried point to `point`.
+   *
+   * @unit m (metres)
+   */
+  readonly distance: number;
+  /** Whether the queried point is inside the collider. */
+  readonly inside: boolean;
 }
 
 /**
@@ -13136,6 +13247,8 @@ export interface MeshDesc {
    */
   readonly indices?: readonly number[];
 }
+
+
 
 
 
@@ -41135,6 +41248,7 @@ export declare namespace og {
   const RigidBody: ComponentType<{ readonly kind: FieldSpec<"u32">; readonly mass: FieldSpec<"f32">; readonly linearDamping: FieldSpec<"f32">; readonly angularDamping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly lock: FieldSpec<"u32">; readonly ccd: FieldSpec<"u32">; readonly centerOfMass: FieldSpec<"Vector3"> }, RigidBody>;
   /**
    * The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). Sizes are scaled by og.Transform.scale.
+   * Compound colliders: a Collider without a RigidBody on a child entity whose og.Parent chain reaches a RigidBody is part of that body (the nearest such ancestor), placed at its transform relative to the body (the transforms between them composed, the body's scale applied): a table of a top and four legs, a ship of a hull and a mast, are one body. Its mass adds to the body's from its density, or the body's RigidBody.mass is shared among its colliders by theirs; its friction, restitution, layers and sensor flag are its own. Children join in entity order, whatever the query order. Changing a child (its collider, or its transform relative to the body) rebuilds the body, which loses its contacts' warm starts. Events and queries name the collider's entity; RaycastHit.body and PointProjection.body name the body. A controller's body takes no children; a collider whose chain reaches no body stays static at its world transform.
    */
   const Collider: ComponentType<{ readonly shape: FieldSpec<"u32">; readonly size: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly mesh: FieldSpec<"Geometry">; readonly offset: FieldSpec<"Vector3">; readonly rotation: FieldSpec<"Quaternion">; readonly friction: FieldSpec<"f32">; readonly restitution: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly sensor: FieldSpec<"u32">; readonly layers: FieldSpec<"u32">; readonly mask: FieldSpec<"u32"> }, Collider>;
   /**
@@ -41227,6 +41341,22 @@ export declare namespace og {
      * @returns The hit, or null when nothing is hit; refused for a zero direction.
      */
     function raycast(world: World, desc?: RaycastDesc): Result<RaycastHit | null>;
+    /**
+     * Every collider along a ray within its reach, one hit each at its first crossing, nearest first (ties in collider entity order, so every host and run list them alike), at most `maxHits`: what a piercing shot passes through, everything under a cursor. The same view of the colliders as og.physics.raycast; its first hit is raycast's.
+     *
+     * @param world The world.
+     * @param desc The ray, the filter and the cap.
+     * @returns The hits, nearest first; empty when nothing is hit; refused for a zero direction.
+     */
+    function raycastAll(world: World, desc?: RaycastAllDesc): Result<readonly RaycastHit[]>;
+    /**
+     * The nearest point on any collider to a point, within maxDistance: snapping to a surface, the closest cover, whether a point is inside a solid. The same view of the colliders as og.physics.raycast.
+     *
+     * @param world The world.
+     * @param desc The point, its reach, solid or surface, and the filter.
+     * @returns The projection, or null when no collider is within reach; refused for a point that is not finite.
+     */
+    function projectPoint(world: World, desc?: ProjectPointDesc): Result<PointProjection | null>;
     /**
      * The first collider a shape meets when swept along a direction; the same view of the colliders as raycast.
      *

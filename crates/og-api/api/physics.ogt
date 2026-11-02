@@ -4,6 +4,7 @@ module physics {
   doc "The profile is the project's (`profile \"2d\"` or `\"3d\"` in project.ogt). In 2D, bodies move in the xy plane and rotate about z; a transform keeps its z. A collider without a RigidBody is static at its transform."
   doc "The rapier world persists between ticks and is world state: snapshots, restore and the world hash cover the whole simulation. Events sent in tick N are read in tick N + 1."
 
+  const MAX_RAYCAST_HITS u32 256 "The most hits og.physics.raycastAll returns."
   const BODY_DYNAMIC u32 0 "RigidBody.kind: moved by the solver; its Transform and Velocity are written back every tick."
   const BODY_STATIC u32 1 "RigidBody.kind: never moves; collides with dynamic bodies."
   const BODY_KINEMATIC u32 2 "RigidBody.kind: not moved by the solver. With an og.Velocity the step moves it by it each tick and writes its Transform back (a lift, a conveyor, a turning gear); a Transform game code writes moves it there first (a teleport). Without one it stays where its Transform puts it. Either way it pushes dynamic bodies and carries the controllers standing on it."
@@ -70,6 +71,7 @@ module physics {
 
   component Collider {
     doc "The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). Sizes are scaled by og.Transform.scale."
+    doc "Compound colliders: a Collider without a RigidBody on a child entity whose og.Parent chain reaches a RigidBody is part of that body (the nearest such ancestor), placed at its transform relative to the body (the transforms between them composed, the body's scale applied): a table of a top and four legs, a ship of a hull and a mast, are one body. Its mass adds to the body's from its density, or the body's RigidBody.mass is shared among its colliders by theirs; its friction, restitution, layers and sensor flag are its own. Children join in entity order, whatever the query order. Changing a child (its collider, or its transform relative to the body) rebuilds the body, which loses its contacts' warm starts. Events and queries name the collider's entity; RaycastHit.body and PointProjection.body name the body. A controller's body takes no children; a collider whose chain reaches no body stays static at its world transform."
     field shape u32 "One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (3D), 6 the height field `mesh` (3D: a terrain)." {
       min 0
       max 6
@@ -1255,11 +1257,62 @@ module physics {
   struct RaycastHit {
     doc "The nearest collider a ray meets."
     field entity Entity "The collider's entity."
+    field body Entity "The body the collider belongs to: its own entity, or for a compound child collider (an og.Collider on a child of an og.RigidBody) the ancestor body it is part of."
     field distance f32 "From the origin along the normalised direction." {
       unit m
     }
     field point Vector3 "Where the ray meets the collider."
     field normal Vector3 "The surface normal there (z is 0 in 2D)."
+  }
+
+  struct RaycastAllDesc {
+    doc "A ray for og.physics.raycastAll: og.physics.raycast's fields and a cap on the hits."
+    desc true
+    field origin Vector3 "Where the ray starts." {
+      unit m
+    }
+    field direction Vector3 "Where it points; it need not be normalised and must not be zero (in 2D, not zero in xy)." {
+      default 0 -1 0
+    }
+    field maxDistance f32 "How far it reaches; 0 is unbounded." {
+      min 0
+      unit m
+    }
+    field filter QueryFilter "Which colliders count."
+    field maxHits u32 "The most hits returned, nearest first; 0 is MAX_RAYCAST_HITS (256), and more is held to it." {
+      min 0
+      max 256
+    }
+  }
+
+  struct ProjectPointDesc {
+    doc "A point for og.physics.projectPoint."
+    desc true
+    field point Vector3 "The point to project (its z is ignored in 2D)." {
+      unit m
+    }
+    field maxDistance f32 "How far a collider may be; 0 is unbounded." {
+      min 0
+      unit m
+    }
+    field solid bool "A point inside a collider is its own projection (distance 0); false projects it onto the collider's surface." {
+      default true
+    }
+    field filter QueryFilter "Which colliders count."
+  }
+
+  struct PointProjection {
+    doc "Where a point projects onto the nearest collider."
+    field entity Entity "The collider's entity."
+    field body Entity "The body it belongs to (RaycastHit.body)."
+    field point Vector3 "The nearest point on the collider, in world space." {
+      unit m
+    }
+    field normal Vector3 "Unit direction out of the collider at the point, towards a point outside it (from a point inside, still outward); zero when the distance is 0."
+    field distance f32 "From the queried point to `point`." {
+      unit m
+    }
+    field inside bool "Whether the queried point is inside the collider."
   }
 
   struct ShapeDesc {
@@ -1335,6 +1388,20 @@ module physics {
     param world World "The world."
     param desc RaycastDesc "The ray and the filter."
     returns Result.Option.RaycastHit "The hit, or null when nothing is hit; refused for a zero direction."
+  }
+
+  fn raycastAll {
+    doc "Every collider along a ray within its reach, one hit each at its first crossing, nearest first (ties in collider entity order, so every host and run list them alike), at most `maxHits`: what a piercing shot passes through, everything under a cursor. The same view of the colliders as og.physics.raycast; its first hit is raycast's."
+    param world World "The world."
+    param desc RaycastAllDesc "The ray, the filter and the cap."
+    returns Result.List.RaycastHit "The hits, nearest first; empty when nothing is hit; refused for a zero direction."
+  }
+
+  fn projectPoint {
+    doc "The nearest point on any collider to a point, within maxDistance: snapping to a surface, the closest cover, whether a point is inside a solid. The same view of the colliders as og.physics.raycast."
+    param world World "The world."
+    param desc ProjectPointDesc "The point, its reach, solid or surface, and the filter."
+    returns Result.Option.PointProjection "The projection, or null when no collider is within reach; refused for a point that is not finite."
   }
 
   fn shapeCast {

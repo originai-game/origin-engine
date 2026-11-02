@@ -24,6 +24,7 @@ module physics {
 
 | Name | Kind | Summary |
 |---|---|---|
+| [`MAX_RAYCAST_HITS`](#const-MAX_RAYCAST_HITS) | constant | The most hits og.physics.raycastAll returns. |
 | [`BODY_DYNAMIC`](#const-BODY_DYNAMIC) | constant | RigidBody.kind: moved by the solver; its Transform and Velocity are written back every tick. |
 | [`BODY_STATIC`](#const-BODY_STATIC) | constant | RigidBody.kind: never moves; collides with dynamic bodies. |
 | [`BODY_KINEMATIC`](#const-BODY_KINEMATIC) | constant | RigidBody.kind: not moved by the solver. With an og.Velocity the step moves it by it each tick and writes its Transform back (a lift, a conveyor, a turning gear); a Transform game code writes moves it there first (a teleport). Without one it stays where its Transform puts it. Either way it pushes dynamic bodies and carries the controllers standing on it. |
@@ -89,12 +90,17 @@ module physics {
 | [`QueryFilter`](#type-QueryFilter) | desc struct | Which colliders a scene query considers. The zero value considers every solid collider on every layer. |
 | [`RaycastDesc`](#type-RaycastDesc) | desc struct | A ray for og.physics.raycast. |
 | [`RaycastHit`](#type-RaycastHit) | struct | The nearest collider a ray meets. |
+| [`RaycastAllDesc`](#type-RaycastAllDesc) | desc struct | A ray for og.physics.raycastAll: og.physics.raycast's fields and a cap on the hits. |
+| [`ProjectPointDesc`](#type-ProjectPointDesc) | desc struct | A point for og.physics.projectPoint. |
+| [`PointProjection`](#type-PointProjection) | struct | Where a point projects onto the nearest collider. |
 | [`ShapeDesc`](#type-ShapeDesc) | desc struct | The shape of a shape cast or an overlap test: the shape fields of a Collider. The zero value is a 1 m box. |
 | [`ShapeCastDesc`](#type-ShapeCastDesc) | desc struct | A shape swept along a direction for og.physics.shapeCast. |
 | [`ShapeCastHit`](#type-ShapeCastHit) | struct | The first collider a swept shape meets. |
 | [`OverlapDesc`](#type-OverlapDesc) | desc struct | A shape placed in the world for og.physics.overlap. |
 | [`MeshDesc`](#type-MeshDesc) | desc struct | Geometry for convex and triangle-mesh colliders, in the mesh's own space. |
 | [`og.physics.raycast`](#fn-raycast) | function | The nearest collider along a ray. Inside a system it sees the colliders as they were at the start of the tick (og.physics.queries records them before the game's systems); between ticks, as the world holds them. |
+| [`og.physics.raycastAll`](#fn-raycastAll) | function | Every collider along a ray within its reach, one hit each at its first crossing, nearest first (ties in collider entity order, so every host and run list them alike), at most `maxHits`: what a piercing shot passes through, everything under a cursor. The same view of the colliders as og.physics.raycast; its first hit is raycast's. |
+| [`og.physics.projectPoint`](#fn-projectPoint) | function | The nearest point on any collider to a point, within maxDistance: snapping to a surface, the closest cover, whether a point is inside a solid. The same view of the colliders as og.physics.raycast. |
 | [`og.physics.shapeCast`](#fn-shapeCast) | function | The first collider a shape meets when swept along a direction; the same view of the colliders as raycast. |
 | [`og.physics.overlap`](#fn-overlap) | function | Every collider overlapping a shape, sorted by entity id; the same view of the colliders as raycast. |
 | [`og.physics.applyForce`](#fn-applyForce) | function | Push a dynamic body with a force (N, world axes) over the next physics step, at a world point or its centre of mass: call it every tick for a steady force (thrust, wind, a car's downforce or an anti-roll assist). Applied by the og.physics step after the systems, in the order given, then gone; a hit stop drops it. Kinematic and static bodies ignore it. Pushes not yet applied are world state (in snapshots and the hash). |
@@ -149,7 +155,67 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 8547</sub>
+<sub>`api.ogt` line 8600</sub>
+
+<a id="fn-raycastAll"></a>
+
+### `og.physics.raycastAll`
+
+Every collider along a ray within its reach, one hit each at its first crossing, nearest first (ties in collider entity order, so every host and run list them alike), at most `maxHits`: what a piercing shot passes through, everything under a cursor. The same view of the colliders as og.physics.raycast; its first hit is raycast's.
+
+```ts
+og.physics.raycastAll(world: World, desc?: RaycastAllDesc): Result<readonly RaycastHit[]>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `desc` | `RaycastAllDesc` | yes | The ray, the filter and the cap. |
+
+**Returns** `Result<readonly RaycastHit[]>`: The hits, nearest first; empty when nothing is hit; refused for a zero direction.
+
+Binding symbol `og_physics_raycast_all` · publish builds: kept
+
+```ogt
+fn raycastAll {
+  doc "Every collider along a ray within its reach, one hit each at its first crossing, nearest first (ties in collider entity order, so every host and run list them alike), at most `maxHits`: what a piercing shot passes through, everything under a cursor. The same view of the colliders as og.physics.raycast; its first hit is raycast's."
+  param world World "The world."
+  param desc RaycastAllDesc "The ray, the filter and the cap."
+  returns Result.List.RaycastHit "The hits, nearest first; empty when nothing is hit; refused for a zero direction."
+}
+```
+
+<sub>`api.ogt` line 8607</sub>
+
+<a id="fn-projectPoint"></a>
+
+### `og.physics.projectPoint`
+
+The nearest point on any collider to a point, within maxDistance: snapping to a surface, the closest cover, whether a point is inside a solid. The same view of the colliders as og.physics.raycast.
+
+```ts
+og.physics.projectPoint(world: World, desc?: ProjectPointDesc): Result<PointProjection | null>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `desc` | `ProjectPointDesc` | yes | The point, its reach, solid or surface, and the filter. |
+
+**Returns** `Result<PointProjection | null>`: The projection, or null when no collider is within reach; refused for a point that is not finite.
+
+Binding symbol `og_physics_project_point` · publish builds: kept
+
+```ogt
+fn projectPoint {
+  doc "The nearest point on any collider to a point, within maxDistance: snapping to a surface, the closest cover, whether a point is inside a solid. The same view of the colliders as og.physics.raycast."
+  param world World "The world."
+  param desc ProjectPointDesc "The point, its reach, solid or surface, and the filter."
+  returns Result.Option.PointProjection "The projection, or null when no collider is within reach; refused for a point that is not finite."
+}
+```
+
+<sub>`api.ogt` line 8614</sub>
 
 <a id="fn-shapeCast"></a>
 
@@ -179,7 +245,7 @@ fn shapeCast {
 }
 ```
 
-<sub>`api.ogt` line 8554</sub>
+<sub>`api.ogt` line 8621</sub>
 
 <a id="fn-overlap"></a>
 
@@ -209,7 +275,7 @@ fn overlap {
 }
 ```
 
-<sub>`api.ogt` line 8561</sub>
+<sub>`api.ogt` line 8628</sub>
 
 <a id="fn-applyForce"></a>
 
@@ -245,7 +311,7 @@ fn applyForce {
 }
 ```
 
-<sub>`api.ogt` line 8568</sub>
+<sub>`api.ogt` line 8635</sub>
 
 <a id="fn-applyImpulse"></a>
 
@@ -281,7 +347,7 @@ fn applyImpulse {
 }
 ```
 
-<sub>`api.ogt` line 8579</sub>
+<sub>`api.ogt` line 8646</sub>
 
 <a id="fn-applyTorque"></a>
 
@@ -313,7 +379,7 @@ fn applyTorque {
 }
 ```
 
-<sub>`api.ogt` line 8590</sub>
+<sub>`api.ogt` line 8657</sub>
 
 <a id="fn-applyTorqueImpulse"></a>
 
@@ -345,7 +411,7 @@ fn applyTorqueImpulse {
 }
 ```
 
-<sub>`api.ogt` line 8598</sub>
+<sub>`api.ogt` line 8665</sub>
 
 <a id="fn-setMesh"></a>
 
@@ -377,7 +443,7 @@ fn setMesh {
 }
 ```
 
-<sub>`api.ogt` line 8606</sub>
+<sub>`api.ogt` line 8673</sub>
 
 <a id="fn-ropePoints"></a>
 
@@ -407,7 +473,7 @@ fn ropePoints {
 }
 ```
 
-<sub>`api.ogt` line 8667</sub>
+<sub>`api.ogt` line 8734</sub>
 
 <a id="fn-clothPoints"></a>
 
@@ -437,7 +503,7 @@ fn clothPoints {
 }
 ```
 
-<sub>`api.ogt` line 8674</sub>
+<sub>`api.ogt` line 8741</sub>
 
 <a id="fn-fluidParticles"></a>
 
@@ -467,7 +533,7 @@ fn fluidParticles {
 }
 ```
 
-<sub>`api.ogt` line 8681</sub>
+<sub>`api.ogt` line 8748</sub>
 
 <a id="fn-fluid3dParticles"></a>
 
@@ -497,7 +563,7 @@ fn fluid3dParticles {
 }
 ```
 
-<sub>`api.ogt` line 8688</sub>
+<sub>`api.ogt` line 8755</sub>
 
 <a id="fn-waterHeight"></a>
 
@@ -531,7 +597,7 @@ fn waterHeight {
 }
 ```
 
-<sub>`api.ogt` line 8695</sub>
+<sub>`api.ogt` line 8762</sub>
 
 <a id="fn-vehicleWheels"></a>
 
@@ -561,7 +627,7 @@ fn vehicleWheels {
 }
 ```
 
-<sub>`api.ogt` line 8704</sub>
+<sub>`api.ogt` line 8771</sub>
 
 <a id="fn-ragdollRigFromSkeleton"></a>
 
@@ -591,7 +657,7 @@ fn ragdollRigFromSkeleton {
 }
 ```
 
-<sub>`api.ogt` line 8711</sub>
+<sub>`api.ogt` line 8778</sub>
 
 <a id="fn-setRagdollRig"></a>
 
@@ -623,7 +689,7 @@ fn setRagdollRig {
 }
 ```
 
-<sub>`api.ogt` line 8718</sub>
+<sub>`api.ogt` line 8785</sub>
 
 <a id="fn-ragdollPose"></a>
 
@@ -653,7 +719,7 @@ fn ragdollPose {
 }
 ```
 
-<sub>`api.ogt` line 8726</sub>
+<sub>`api.ogt` line 8793</sub>
 
 <a id="fn-stats"></a>
 
@@ -681,7 +747,7 @@ fn stats {
 }
 ```
 
-<sub>`api.ogt` line 8754</sub>
+<sub>`api.ogt` line 8821</sub>
 
 ## Components, resources and events
 
@@ -753,13 +819,15 @@ component RigidBody {
 }
 ```
 
-<sub>`api.ogt` line 7240</sub>
+<sub>`api.ogt` line 7241</sub>
 
 <a id="record-Collider"></a>
 
 ### `og.Collider` (component)
 
 The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). Sizes are scaled by og.Transform.scale.
+
+Compound colliders: a Collider without a RigidBody on a child entity whose og.Parent chain reaches a RigidBody is part of that body (the nearest such ancestor), placed at its transform relative to the body (the transforms between them composed, the body's scale applied): a table of a top and four legs, a ship of a hull and a mast, are one body. Its mass adds to the body's from its density, or the body's RigidBody.mass is shared among its colliders by theirs; its friction, restitution, layers and sensor flag are its own. Children join in entity order, whatever the query order. Changing a child (its collider, or its transform relative to the body) rebuilds the body, which loses its contacts' warm starts. Events and queries name the collider's entity; RaycastHit.body and PointProjection.body name the body. A controller's body takes no children; a collider whose chain reaches no body stays static at its world transform.
 
 Token `og.Collider`, registered under the schema name `og.Collider`; its value type is `Collider`.
 
@@ -782,6 +850,7 @@ Token `og.Collider`, registered under the schema name `og.Collider`; its value t
 ```ogt
 component Collider {
   doc "The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). Sizes are scaled by og.Transform.scale."
+  doc "Compound colliders: a Collider without a RigidBody on a child entity whose og.Parent chain reaches a RigidBody is part of that body (the nearest such ancestor), placed at its transform relative to the body (the transforms between them composed, the body's scale applied): a table of a top and four legs, a ship of a hull and a mast, are one body. Its mass adds to the body's from its density, or the body's RigidBody.mass is shared among its colliders by theirs; its friction, restitution, layers and sensor flag are its own. Children join in entity order, whatever the query order. Changing a child (its collider, or its transform relative to the body) rebuilds the body, which loses its contacts' warm starts. Events and queries name the collider's entity; RaycastHit.body and PointProjection.body name the body. A controller's body takes no children; a collider whose chain reaches no body stays static at its world transform."
   field shape u32 "One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (3D), 6 the height field `mesh` (3D: a terrain)." {
     min 0
     max 6
@@ -840,7 +909,7 @@ component Collider {
 }
 ```
 
-<sub>`api.ogt` line 7285</sub>
+<sub>`api.ogt` line 7286</sub>
 
 <a id="record-Velocity"></a>
 
@@ -869,7 +938,7 @@ component Velocity {
 }
 ```
 
-<sub>`api.ogt` line 7344</sub>
+<sub>`api.ogt` line 7346</sub>
 
 <a id="record-Physics"></a>
 
@@ -923,7 +992,7 @@ resource Physics {
 }
 ```
 
-<sub>`api.ogt` line 7356</sub>
+<sub>`api.ogt` line 7358</sub>
 
 <a id="record-CollisionStarted"></a>
 
@@ -961,7 +1030,7 @@ event CollisionStarted {
 }
 ```
 
-<sub>`api.ogt` line 7390</sub>
+<sub>`api.ogt` line 7392</sub>
 
 <a id="record-CollisionEnded"></a>
 
@@ -984,7 +1053,7 @@ event CollisionEnded {
 }
 ```
 
-<sub>`api.ogt` line 7407</sub>
+<sub>`api.ogt` line 7409</sub>
 
 <a id="record-SensorEntered"></a>
 
@@ -1007,7 +1076,7 @@ event SensorEntered {
 }
 ```
 
-<sub>`api.ogt` line 7413</sub>
+<sub>`api.ogt` line 7415</sub>
 
 <a id="record-SensorExited"></a>
 
@@ -1030,7 +1099,7 @@ event SensorExited {
 }
 ```
 
-<sub>`api.ogt` line 7419</sub>
+<sub>`api.ogt` line 7421</sub>
 
 <a id="record-Contact"></a>
 
@@ -1055,7 +1124,7 @@ event Contact {
 }
 ```
 
-<sub>`api.ogt` line 7425</sub>
+<sub>`api.ogt` line 7427</sub>
 
 <a id="record-Joint"></a>
 
@@ -1160,7 +1229,7 @@ component Joint {
 }
 ```
 
-<sub>`api.ogt` line 7442</sub>
+<sub>`api.ogt` line 7444</sub>
 
 <a id="record-CharacterController"></a>
 
@@ -1281,7 +1350,7 @@ component CharacterController {
 }
 ```
 
-<sub>`api.ogt` line 7512</sub>
+<sub>`api.ogt` line 7514</sub>
 
 <a id="record-PlatformerController"></a>
 
@@ -1533,7 +1602,7 @@ component PlatformerController {
 }
 ```
 
-<sub>`api.ogt` line 7599</sub>
+<sub>`api.ogt` line 7601</sub>
 
 <a id="record-CharacterEvent"></a>
 
@@ -1563,7 +1632,7 @@ event CharacterEvent {
 }
 ```
 
-<sub>`api.ogt` line 7801</sub>
+<sub>`api.ogt` line 7803</sub>
 
 <a id="record-Vehicle"></a>
 
@@ -1722,7 +1791,7 @@ component Vehicle {
 }
 ```
 
-<sub>`api.ogt` line 7817</sub>
+<sub>`api.ogt` line 7819</sub>
 
 <a id="record-Rope"></a>
 
@@ -1811,7 +1880,7 @@ component Rope {
 }
 ```
 
-<sub>`api.ogt` line 7935</sub>
+<sub>`api.ogt` line 7937</sub>
 
 <a id="record-Cloth"></a>
 
@@ -1917,7 +1986,7 @@ component Cloth {
 }
 ```
 
-<sub>`api.ogt` line 8001</sub>
+<sub>`api.ogt` line 8003</sub>
 
 <a id="record-Fluid2D"></a>
 
@@ -2041,7 +2110,7 @@ component Fluid2D {
 }
 ```
 
-<sub>`api.ogt` line 8077</sub>
+<sub>`api.ogt` line 8079</sub>
 
 <a id="record-Fluid3D"></a>
 
@@ -2210,7 +2279,7 @@ component Fluid3D {
 }
 ```
 
-<sub>`api.ogt` line 8166</sub>
+<sub>`api.ogt` line 8168</sub>
 
 <a id="record-WaterSurface"></a>
 
@@ -2275,7 +2344,7 @@ component WaterSurface {
 }
 ```
 
-<sub>`api.ogt` line 8292</sub>
+<sub>`api.ogt` line 8294</sub>
 
 <a id="record-WaterLine"></a>
 
@@ -2352,7 +2421,7 @@ component WaterLine {
 }
 ```
 
-<sub>`api.ogt` line 8335</sub>
+<sub>`api.ogt` line 8337</sub>
 
 <a id="record-Splash"></a>
 
@@ -2383,7 +2452,7 @@ event Splash {
 }
 ```
 
-<sub>`api.ogt` line 8388</sub>
+<sub>`api.ogt` line 8390</sub>
 
 <a id="record-Ragdoll"></a>
 
@@ -2451,7 +2520,7 @@ component Ragdoll {
 }
 ```
 
-<sub>`api.ogt` line 8400</sub>
+<sub>`api.ogt` line 8402</sub>
 
 ## Types
 
@@ -2479,7 +2548,7 @@ struct QueryFilter {
 }
 ```
 
-<sub>`api.ogt` line 8445</sub>
+<sub>`api.ogt` line 8447</sub>
 
 <a id="type-RaycastDesc"></a>
 
@@ -2514,7 +2583,7 @@ struct RaycastDesc {
 }
 ```
 
-<sub>`api.ogt` line 8453</sub>
+<sub>`api.ogt` line 8455</sub>
 
 <a id="type-RaycastHit"></a>
 
@@ -2525,6 +2594,7 @@ The nearest collider a ray meets.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `entity` | `Entity` | `0` | — | — | — | The collider's entity. |
+| `body` | `Entity` | `0` | — | — | — | The body the collider belongs to: its own entity, or for a compound child collider (an og.Collider on a child of an og.RigidBody) the ancestor body it is part of. |
 | `distance` | `number` | `0` | — | `m` | — | From the origin along the normalised direction. |
 | `point` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | — | Where the ray meets the collider. |
 | `normal` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | — | The surface normal there (z is 0 in 2D). |
@@ -2533,6 +2603,7 @@ The nearest collider a ray meets.
 struct RaycastHit {
   doc "The nearest collider a ray meets."
   field entity Entity "The collider's entity."
+  field body Entity "The body the collider belongs to: its own entity, or for a compound child collider (an og.Collider on a child of an og.RigidBody) the ancestor body it is part of."
   field distance f32 "From the origin along the normalised direction." {
     unit m
   }
@@ -2541,7 +2612,115 @@ struct RaycastHit {
 }
 ```
 
-<sub>`api.ogt` line 8469</sub>
+<sub>`api.ogt` line 8471</sub>
+
+<a id="type-RaycastAllDesc"></a>
+
+### `RaycastAllDesc` (desc struct)
+
+A ray for og.physics.raycastAll: og.physics.raycast's fields and a cap on the hits.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `origin` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Where the ray starts. |
+| `direction` | `Vector3` | `{ x: 0, y: -1, z: 0 }` | — | — | — | Where it points; it need not be normalised and must not be zero (in 2D, not zero in xy). |
+| `maxDistance` | `number` | `0` | ≥ 0 | `m` | — | How far it reaches; 0 is unbounded. |
+| `filter` | `QueryFilter` | `{}` | — | — | — | Which colliders count. |
+| `maxHits` | `number` | `0` | 0 … 256 | — | — | The most hits returned, nearest first; 0 is MAX_RAYCAST_HITS (256), and more is held to it. |
+
+```ogt
+struct RaycastAllDesc {
+  doc "A ray for og.physics.raycastAll: og.physics.raycast's fields and a cap on the hits."
+  desc true
+  field origin Vector3 "Where the ray starts." {
+    unit m
+  }
+  field direction Vector3 "Where it points; it need not be normalised and must not be zero (in 2D, not zero in xy)." {
+    default 0 -1 0
+  }
+  field maxDistance f32 "How far it reaches; 0 is unbounded." {
+    min 0
+    unit m
+  }
+  field filter QueryFilter "Which colliders count."
+  field maxHits u32 "The most hits returned, nearest first; 0 is MAX_RAYCAST_HITS (256), and more is held to it." {
+    min 0
+    max 256
+  }
+}
+```
+
+<sub>`api.ogt` line 8482</sub>
+
+<a id="type-ProjectPointDesc"></a>
+
+### `ProjectPointDesc` (desc struct)
+
+A point for og.physics.projectPoint.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `point` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The point to project (its z is ignored in 2D). |
+| `maxDistance` | `number` | `0` | ≥ 0 | `m` | — | How far a collider may be; 0 is unbounded. |
+| `solid` | `boolean` | `true` | — | — | — | A point inside a collider is its own projection (distance 0); false projects it onto the collider's surface. |
+| `filter` | `QueryFilter` | `{}` | — | — | — | Which colliders count. |
+
+```ogt
+struct ProjectPointDesc {
+  doc "A point for og.physics.projectPoint."
+  desc true
+  field point Vector3 "The point to project (its z is ignored in 2D)." {
+    unit m
+  }
+  field maxDistance f32 "How far a collider may be; 0 is unbounded." {
+    min 0
+    unit m
+  }
+  field solid bool "A point inside a collider is its own projection (distance 0); false projects it onto the collider's surface." {
+    default true
+  }
+  field filter QueryFilter "Which colliders count."
+}
+```
+
+<sub>`api.ogt` line 8502</sub>
+
+<a id="type-PointProjection"></a>
+
+### `PointProjection` (struct)
+
+Where a point projects onto the nearest collider.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `entity` | `Entity` | `0` | — | — | — | The collider's entity. |
+| `body` | `Entity` | `0` | — | — | — | The body it belongs to (RaycastHit.body). |
+| `point` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The nearest point on the collider, in world space. |
+| `normal` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | — | — | Unit direction out of the collider at the point, towards a point outside it (from a point inside, still outward); zero when the distance is 0. |
+| `distance` | `number` | `0` | — | `m` | — | From the queried point to `point`. |
+| `inside` | `boolean` | `false` | — | — | — | Whether the queried point is inside the collider. |
+
+```ogt
+struct PointProjection {
+  doc "Where a point projects onto the nearest collider."
+  field entity Entity "The collider's entity."
+  field body Entity "The body it belongs to (RaycastHit.body)."
+  field point Vector3 "The nearest point on the collider, in world space." {
+    unit m
+  }
+  field normal Vector3 "Unit direction out of the collider at the point, towards a point outside it (from a point inside, still outward); zero when the distance is 0."
+  field distance f32 "From the queried point to `point`." {
+    unit m
+  }
+  field inside bool "Whether the queried point is inside the collider."
+}
+```
+
+<sub>`api.ogt` line 8518</sub>
 
 <a id="type-ShapeDesc"></a>
 
@@ -2583,7 +2762,7 @@ struct ShapeDesc {
 }
 ```
 
-<sub>`api.ogt` line 8479</sub>
+<sub>`api.ogt` line 8532</sub>
 
 <a id="type-ShapeCastDesc"></a>
 
@@ -2622,7 +2801,7 @@ struct ShapeCastDesc {
 }
 ```
 
-<sub>`api.ogt` line 8501</sub>
+<sub>`api.ogt` line 8554</sub>
 
 <a id="type-ShapeCastHit"></a>
 
@@ -2649,7 +2828,7 @@ struct ShapeCastHit {
 }
 ```
 
-<sub>`api.ogt` line 8519</sub>
+<sub>`api.ogt` line 8572</sub>
 
 <a id="type-OverlapDesc"></a>
 
@@ -2679,7 +2858,7 @@ struct OverlapDesc {
 }
 ```
 
-<sub>`api.ogt` line 8529</sub>
+<sub>`api.ogt` line 8582</sub>
 
 <a id="type-MeshDesc"></a>
 
@@ -2703,7 +2882,7 @@ struct MeshDesc {
 }
 ```
 
-<sub>`api.ogt` line 8540</sub>
+<sub>`api.ogt` line 8593</sub>
 
 <a id="type-WheelPose"></a>
 
@@ -2737,7 +2916,7 @@ struct WheelPose {
 }
 ```
 
-<sub>`api.ogt` line 8614</sub>
+<sub>`api.ogt` line 8681</sub>
 
 <a id="type-RagdollBoneDesc"></a>
 
@@ -2780,7 +2959,7 @@ struct RagdollBoneDesc {
 }
 ```
 
-<sub>`api.ogt` line 8630</sub>
+<sub>`api.ogt` line 8697</sub>
 
 <a id="type-RagdollRigDesc"></a>
 
@@ -2804,7 +2983,7 @@ struct RagdollRigDesc {
 }
 ```
 
-<sub>`api.ogt` line 8652</sub>
+<sub>`api.ogt` line 8719</sub>
 
 <a id="type-BonePose"></a>
 
@@ -2827,7 +3006,7 @@ struct BonePose {
 }
 ```
 
-<sub>`api.ogt` line 8659</sub>
+<sub>`api.ogt` line 8726</sub>
 
 <a id="type-PhysicsPhase"></a>
 
@@ -2852,7 +3031,7 @@ struct PhysicsPhase {
 }
 ```
 
-<sub>`api.ogt` line 8733</sub>
+<sub>`api.ogt` line 8800</sub>
 
 <a id="type-PhysicsStats"></a>
 
@@ -2883,12 +3062,13 @@ struct PhysicsStats {
 }
 ```
 
-<sub>`api.ogt` line 8742</sub>
+<sub>`api.ogt` line 8809</sub>
 
 ## Constants
 
 | Constant | Type | Value | Doc |
 |---|---|---|---|
+| <a id="const-MAX_RAYCAST_HITS"></a>`MAX_RAYCAST_HITS` | `number` | `256` | The most hits og.physics.raycastAll returns. |
 | <a id="const-BODY_DYNAMIC"></a>`BODY_DYNAMIC` | `number` | `0` | RigidBody.kind: moved by the solver; its Transform and Velocity are written back every tick. |
 | <a id="const-BODY_STATIC"></a>`BODY_STATIC` | `number` | `1` | RigidBody.kind: never moves; collides with dynamic bodies. |
 | <a id="const-BODY_KINEMATIC"></a>`BODY_KINEMATIC` | `number` | `2` | RigidBody.kind: not moved by the solver. With an og.Velocity the step moves it by it each tick and writes its Transform back (a lift, a conveyor, a turning gear); a Transform game code writes moves it there first (a teleport). Without one it stays where its Transform puts it. Either way it pushes dynamic bodies and carries the controllers standing on it. |
@@ -2931,241 +3111,247 @@ struct PhysicsStats {
 | <a id="const-PIN_TOP_RINGS"></a>`PIN_TOP_RINGS` | `number` | `8` | `Cloth.pins` bit: every fourth point of the top row (curtain rings). |
 
 ```ogt
-const BODY_DYNAMIC u32 0 "RigidBody.kind: moved by the solver; its Transform and Velocity are written back every tick."
+const MAX_RAYCAST_HITS u32 256 "The most hits og.physics.raycastAll returns."
 ```
 
 <sub>`api.ogt` line 7221</sub>
 
 ```ogt
-const BODY_STATIC u32 1 "RigidBody.kind: never moves; collides with dynamic bodies."
+const BODY_DYNAMIC u32 0 "RigidBody.kind: moved by the solver; its Transform and Velocity are written back every tick."
 ```
 
 <sub>`api.ogt` line 7222</sub>
 
 ```ogt
-const BODY_KINEMATIC u32 2 "RigidBody.kind: not moved by the solver. With an og.Velocity the step moves it by it each tick and writes its Transform back (a lift, a conveyor, a turning gear); a Transform game code writes moves it there first (a teleport). Without one it stays where its Transform puts it. Either way it pushes dynamic bodies and carries the controllers standing on it."
+const BODY_STATIC u32 1 "RigidBody.kind: never moves; collides with dynamic bodies."
 ```
 
 <sub>`api.ogt` line 7223</sub>
 
 ```ogt
-const LOCK_TRANSLATION_X u32 1 "RigidBody.lock bit: no translation along x."
+const BODY_KINEMATIC u32 2 "RigidBody.kind: not moved by the solver. With an og.Velocity the step moves it by it each tick and writes its Transform back (a lift, a conveyor, a turning gear); a Transform game code writes moves it there first (a teleport). Without one it stays where its Transform puts it. Either way it pushes dynamic bodies and carries the controllers standing on it."
 ```
 
 <sub>`api.ogt` line 7224</sub>
 
 ```ogt
-const LOCK_TRANSLATION_Y u32 2 "RigidBody.lock bit: no translation along y."
+const LOCK_TRANSLATION_X u32 1 "RigidBody.lock bit: no translation along x."
 ```
 
 <sub>`api.ogt` line 7225</sub>
 
 ```ogt
-const LOCK_TRANSLATION_Z u32 4 "RigidBody.lock bit: no translation along z."
+const LOCK_TRANSLATION_Y u32 2 "RigidBody.lock bit: no translation along y."
 ```
 
 <sub>`api.ogt` line 7226</sub>
 
 ```ogt
-const LOCK_ROTATION_X u32 8 "RigidBody.lock bit: no rotation about x."
+const LOCK_TRANSLATION_Z u32 4 "RigidBody.lock bit: no translation along z."
 ```
 
 <sub>`api.ogt` line 7227</sub>
 
 ```ogt
-const LOCK_ROTATION_Y u32 16 "RigidBody.lock bit: no rotation about y."
+const LOCK_ROTATION_X u32 8 "RigidBody.lock bit: no rotation about x."
 ```
 
 <sub>`api.ogt` line 7228</sub>
 
 ```ogt
-const LOCK_ROTATION_Z u32 32 "RigidBody.lock bit: no rotation about z (the 2D profile's only rotation)."
+const LOCK_ROTATION_Y u32 16 "RigidBody.lock bit: no rotation about y."
 ```
 
 <sub>`api.ogt` line 7229</sub>
 
 ```ogt
-const SHAPE_BOX u32 0 "Collider.shape: a box of `size` (both profiles)."
+const LOCK_ROTATION_Z u32 32 "RigidBody.lock bit: no rotation about z (the 2D profile's only rotation)."
 ```
 
 <sub>`api.ogt` line 7230</sub>
 
 ```ogt
-const SHAPE_SPHERE u32 1 "Collider.shape: a sphere of `radius` (a circle in 2D)."
+const SHAPE_BOX u32 0 "Collider.shape: a box of `size` (both profiles)."
 ```
 
 <sub>`api.ogt` line 7231</sub>
 
 ```ogt
-const SHAPE_CAPSULE u32 2 "Collider.shape: a capsule along y of `radius`, with `height` between the cap centres (both profiles)."
+const SHAPE_SPHERE u32 1 "Collider.shape: a sphere of `radius` (a circle in 2D)."
 ```
 
 <sub>`api.ogt` line 7232</sub>
 
 ```ogt
-const SHAPE_CYLINDER u32 3 "Collider.shape: a cylinder along y of `radius` and `height` (3D only)."
+const SHAPE_CAPSULE u32 2 "Collider.shape: a capsule along y of `radius`, with `height` between the cap centres (both profiles)."
 ```
 
 <sub>`api.ogt` line 7233</sub>
 
 ```ogt
-const SHAPE_CONVEX u32 4 "Collider.shape: the convex hull of the vertices of `mesh` (3D), or of their xy (a convex polygon, 2D)."
+const SHAPE_CYLINDER u32 3 "Collider.shape: a cylinder along y of `radius` and `height` (3D only)."
 ```
 
 <sub>`api.ogt` line 7234</sub>
 
 ```ogt
-const SHAPE_TRIMESH u32 5 "Collider.shape: the triangles of `mesh` (3D only; for static and kinematic bodies)."
+const SHAPE_CONVEX u32 4 "Collider.shape: the convex hull of the vertices of `mesh` (3D), or of their xy (a convex polygon, 2D)."
 ```
 
 <sub>`api.ogt` line 7235</sub>
 
 ```ogt
-const SHAPE_HEIGHTFIELD u32 6 "Collider.shape: the height field registered as `mesh`, centred on the entity (3D only; a terrain: og.terrain.load's TerrainInfo.geometry)."
+const SHAPE_TRIMESH u32 5 "Collider.shape: the triangles of `mesh` (3D only; for static and kinematic bodies)."
 ```
 
 <sub>`api.ogt` line 7236</sub>
 
 ```ogt
-const PROFILE_2D u32 2 "Physics.profile: rapier2d, bodies in the xy plane rotating about z."
+const SHAPE_HEIGHTFIELD u32 6 "Collider.shape: the height field registered as `mesh`, centred on the entity (3D only; a terrain: og.terrain.load's TerrainInfo.geometry)."
 ```
 
 <sub>`api.ogt` line 7237</sub>
 
 ```ogt
-const PROFILE_3D u32 3 "Physics.profile: rapier3d."
+const PROFILE_2D u32 2 "Physics.profile: rapier2d, bodies in the xy plane rotating about z."
 ```
 
 <sub>`api.ogt` line 7238</sub>
 
 ```ogt
+const PROFILE_3D u32 3 "Physics.profile: rapier3d."
+```
+
+<sub>`api.ogt` line 7239</sub>
+
+```ogt
 const JOINT_FIXED u32 0 "`Joint.kind`: the two bodies move as one."
-```
-
-<sub>`api.ogt` line 7432</sub>
-
-```ogt
-const JOINT_REVOLUTE u32 1 "`Joint.kind`: a hinge about `axis` (2D: about z), with optional limits and a motor."
-```
-
-<sub>`api.ogt` line 7433</sub>
-
-```ogt
-const JOINT_PRISMATIC u32 2 "`Joint.kind`: a slider along `axis`, with optional limits and a motor."
 ```
 
 <sub>`api.ogt` line 7434</sub>
 
 ```ogt
-const JOINT_SPRING u32 3 "`Joint.kind`: a damped spring pulling the anchors to `restLength` apart."
+const JOINT_REVOLUTE u32 1 "`Joint.kind`: a hinge about `axis` (2D: about z), with optional limits and a motor."
 ```
 
 <sub>`api.ogt` line 7435</sub>
 
 ```ogt
-const JOINT_ROPE u32 4 "`Joint.kind`: a rope: the anchors stay at most `length` apart, free inside it."
+const JOINT_PRISMATIC u32 2 "`Joint.kind`: a slider along `axis`, with optional limits and a motor."
 ```
 
 <sub>`api.ogt` line 7436</sub>
 
 ```ogt
-const JOINT_BALL u32 5 "`Joint.kind`: a ball and socket (3D; the 2D profile treats it as a hinge)."
+const JOINT_SPRING u32 3 "`Joint.kind`: a damped spring pulling the anchors to `restLength` apart."
 ```
 
 <sub>`api.ogt` line 7437</sub>
 
 ```ogt
-const MOTOR_NONE u32 0 "`Joint.motor`: no motor."
+const JOINT_ROPE u32 4 "`Joint.kind`: a rope: the anchors stay at most `length` apart, free inside it."
 ```
 
 <sub>`api.ogt` line 7438</sub>
 
 ```ogt
-const MOTOR_VELOCITY u32 1 "`Joint.motor`: drive towards `motorTarget` speed (rad/s or m/s)."
+const JOINT_BALL u32 5 "`Joint.kind`: a ball and socket (3D; the 2D profile treats it as a hinge)."
 ```
 
 <sub>`api.ogt` line 7439</sub>
 
 ```ogt
-const MOTOR_POSITION u32 2 "`Joint.motor`: spring towards `motorTarget` angle or position (a servo)."
+const MOTOR_NONE u32 0 "`Joint.motor`: no motor."
 ```
 
 <sub>`api.ogt` line 7440</sub>
 
 ```ogt
+const MOTOR_VELOCITY u32 1 "`Joint.motor`: drive towards `motorTarget` speed (rad/s or m/s)."
+```
+
+<sub>`api.ogt` line 7441</sub>
+
+```ogt
+const MOTOR_POSITION u32 2 "`Joint.motor`: spring towards `motorTarget` angle or position (a servo)."
+```
+
+<sub>`api.ogt` line 7442</sub>
+
+```ogt
 const CHARACTER_JUMPED u32 1 "`CharacterEvent.kind`: a jump from the ground (or in coyote time)."
-```
-
-<sub>`api.ogt` line 7794</sub>
-
-```ogt
-const CHARACTER_LANDED u32 2 "`CharacterEvent.kind`: touched the ground after being in the air."
-```
-
-<sub>`api.ogt` line 7795</sub>
-
-```ogt
-const CHARACTER_WALL_JUMPED u32 3 "`CharacterEvent.kind`: a jump off a wall."
 ```
 
 <sub>`api.ogt` line 7796</sub>
 
 ```ogt
-const CHARACTER_AIR_JUMPED u32 4 "`CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps)."
+const CHARACTER_LANDED u32 2 "`CharacterEvent.kind`: touched the ground after being in the air."
 ```
 
 <sub>`api.ogt` line 7797</sub>
 
 ```ogt
-const CHARACTER_LEFT_GROUND u32 5 "`CharacterEvent.kind`: left the ground without jumping (ran off an edge)."
+const CHARACTER_WALL_JUMPED u32 3 "`CharacterEvent.kind`: a jump off a wall."
 ```
 
 <sub>`api.ogt` line 7798</sub>
 
 ```ogt
-const CHARACTER_BUMPED u32 6 "`CharacterEvent.kind`: hit a ceiling while rising."
+const CHARACTER_AIR_JUMPED u32 4 "`CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps)."
 ```
 
 <sub>`api.ogt` line 7799</sub>
 
 ```ogt
+const CHARACTER_LEFT_GROUND u32 5 "`CharacterEvent.kind`: left the ground without jumping (ran off an edge)."
+```
+
+<sub>`api.ogt` line 7800</sub>
+
+```ogt
+const CHARACTER_BUMPED u32 6 "`CharacterEvent.kind`: hit a ceiling while rising."
+```
+
+<sub>`api.ogt` line 7801</sub>
+
+```ogt
 const DRIVE_REAR u32 0 "`Vehicle.drive`: the rear wheels drive."
-```
-
-<sub>`api.ogt` line 7813</sub>
-
-```ogt
-const DRIVE_FRONT u32 1 "`Vehicle.drive`: the front wheels drive."
-```
-
-<sub>`api.ogt` line 7814</sub>
-
-```ogt
-const DRIVE_ALL u32 2 "`Vehicle.drive`: every wheel drives."
 ```
 
 <sub>`api.ogt` line 7815</sub>
 
 ```ogt
+const DRIVE_FRONT u32 1 "`Vehicle.drive`: the front wheels drive."
+```
+
+<sub>`api.ogt` line 7816</sub>
+
+```ogt
+const DRIVE_ALL u32 2 "`Vehicle.drive`: every wheel drives."
+```
+
+<sub>`api.ogt` line 7817</sub>
+
+```ogt
 const PIN_TOP u32 1 "`Cloth.pins` bit: the whole top row is pinned."
-```
-
-<sub>`api.ogt` line 7996</sub>
-
-```ogt
-const PIN_TOP_CORNERS u32 2 "`Cloth.pins` bit: the top-left and top-right corners are pinned."
-```
-
-<sub>`api.ogt` line 7997</sub>
-
-```ogt
-const PIN_LEFT u32 4 "`Cloth.pins` bit: the whole left column is pinned (a flag on a pole)."
 ```
 
 <sub>`api.ogt` line 7998</sub>
 
 ```ogt
-const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
+const PIN_TOP_CORNERS u32 2 "`Cloth.pins` bit: the top-left and top-right corners are pinned."
 ```
 
 <sub>`api.ogt` line 7999</sub>
+
+```ogt
+const PIN_LEFT u32 4 "`Cloth.pins` bit: the whole left column is pinned (a flag on a pole)."
+```
+
+<sub>`api.ogt` line 8000</sub>
+
+```ogt
+const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
+```
+
+<sub>`api.ogt` line 8001</sub>

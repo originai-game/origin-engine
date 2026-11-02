@@ -528,8 +528,57 @@ pub fn og_physics_raycast(world: u32, desc: Option<String>) -> String {
             filter: filter(&d["filter"])?,
         };
         let hit = query(world)?.raycast(&desc).map_err(err)?;
-        Ok(hit.map_or(Value::Null, |h| {
-            json!({ "entity": h.entity.to_bits(), "distance": h.distance, "point": v3(h.point), "normal": v3(h.normal) })
+        Ok(hit.map_or(Value::Null, |h| hit_json(&h)))
+    })();
+    match answer {
+        Ok(v) => ok(v),
+        Err(e) => refuse(e),
+    }
+}
+
+fn hit_json(h: &og_physics::RaycastHit) -> Value {
+    json!({
+        "entity": h.entity.to_bits(), "body": h.body.to_bits(), "distance": h.distance,
+        "point": v3(h.point), "normal": v3(h.normal),
+    })
+}
+
+pub fn og_physics_raycast_all(world: u32, desc: Option<String>) -> String {
+    let answer = (|| -> Result<_, String> {
+        let d = parse(desc.as_deref())?;
+        let ray = RaycastDesc {
+            origin: vec3(&d["origin"], Vec3::ZERO),
+            direction: vec3(&d["direction"], Vec3::NEG_Y),
+            max_distance: d["maxDistance"].as_f64().unwrap_or(0.0) as f32,
+            filter: filter(&d["filter"])?,
+        };
+        let max_hits = d["maxHits"].as_u64().unwrap_or(0).min(u64::from(u32::MAX)) as u32;
+        let hits = query(world)?
+            .raycast_all(&og_physics::RaycastAllDesc { ray, max_hits })
+            .map_err(err)?;
+        Ok(Value::Array(hits.iter().map(hit_json).collect()))
+    })();
+    match answer {
+        Ok(v) => ok(v),
+        Err(e) => refuse(e),
+    }
+}
+
+pub fn og_physics_project_point(world: u32, desc: Option<String>) -> String {
+    let answer = (|| -> Result<_, String> {
+        let d = parse(desc.as_deref())?;
+        let desc = og_physics::ProjectPointDesc {
+            point: vec3(&d["point"], Vec3::ZERO),
+            max_distance: d["maxDistance"].as_f64().unwrap_or(0.0) as f32,
+            solid: d["solid"].as_bool().unwrap_or(true),
+            filter: filter(&d["filter"])?,
+        };
+        let p = query(world)?.project_point(&desc).map_err(err)?;
+        Ok(p.map_or(Value::Null, |p| {
+            json!({
+                "entity": p.entity.to_bits(), "body": p.body.to_bits(), "point": v3(p.point),
+                "normal": v3(p.normal), "distance": p.distance, "inside": p.inside,
+            })
         }))
     })();
     match answer {

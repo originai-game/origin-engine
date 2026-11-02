@@ -5,7 +5,7 @@
 // controllers (og.systems.cameras), and the world calls that run inside
 // systems through the system context.
 import { beforeAll, expect, test } from "bun:test";
-import { og, defineComponent, defineResource, defineSystem, f32, u32, SHAPE_BOX } from "@origingame/engine";
+import { og, defineComponent, defineResource, defineSystem, f32, u32, SHAPE_BOX, SHAPE_SPHERE } from "@origingame/engine";
 import type { World } from "@origingame/engine";
 import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
@@ -64,6 +64,43 @@ test("a dynamic box falls, rests on a static collider, and its collision reaches
   expect(down!.point.y).toBeCloseTo(t.position.y + 0.5, 3);
   const touching = must(og.physics.overlap(engine.world, { shape: { shape: SHAPE_BOX, size: { x: 0.5, y: 0.5, z: 0.5 } }, position: { x: 0, y: 0.5, z: 0 } }));
   expect(touching).toEqual([box]);
+});
+
+test("a compound of child colliders is one body, and raycastAll and projectPoint see its parts", () => {
+  const engine = start(
+    og.game({
+      start: (world: World) => {
+        floorAndBox(world);
+        // A dumbbell 5 m to the right: a body with two child spheres.
+        const bell = must(world.spawn({ name: "bell", position: { x: 5, y: 3, z: 0 } }));
+        world.insert(bell, og.RigidBody);
+        for (const [name, x] of [["left", -1], ["right", 1]] as const) {
+          const ball = must(world.spawn({ name, position: { x, y: 0, z: 0 } }));
+          world.insert(ball, og.Collider, { shape: SHAPE_SPHERE, radius: 0.5 });
+          world.insert(ball, og.Parent, { entity: bell });
+        }
+      },
+    }),
+  );
+  expect(engine.advance(180).ok).toBeTrue();
+  const w = engine.world;
+  const [bell, left, right, box, floor] = ["bell", "left", "right", "box", "floor"].map((n) => w.find(n)!);
+  // It rests on both spheres, its centre at their radius.
+  expect(must(w.get(bell, og.Transform)).position.y).toBeCloseTo(0.5, 2);
+  // A ray along the floor's top at the spheres' centre height crosses the box, then both spheres.
+  const hits = must(og.physics.raycastAll(w, { origin: { x: -5, y: 0.5, z: 0 }, direction: { x: 1, y: 0, z: 0 } }));
+  expect(hits.map((h) => h.entity)).toEqual([box, left, right]);
+  expect(hits.map((h) => h.body)).toEqual([box, bell, bell]);
+  expect(hits[1]!.distance).toBeCloseTo(8.5, 2);
+  expect(must(og.physics.raycastAll(w, { origin: { x: -5, y: 0.5, z: 0 }, direction: { x: 1, y: 0, z: 0 }, maxHits: 1 })).length).toBe(1);
+  // A point above the right sphere projects onto its top.
+  const p = must(og.physics.projectPoint(w, { point: { x: 6, y: 3, z: 0 } }));
+  expect(p?.entity).toBe(right);
+  expect(p!.point.y).toBeCloseTo(1, 2);
+  expect(p!.normal.y).toBeCloseTo(1, 3);
+  expect(p!.inside).toBeFalse();
+  expect(must(og.physics.projectPoint(w, { point: { x: 0, y: -0.25, z: 0 } }))?.entity).toBe(floor);
+  expect(must(og.physics.projectPoint(w, { point: { x: 6, y: 3, z: 0 }, maxDistance: 1 }))).toBeNull();
 });
 
 test("a restored snapshot continues the simulation exactly", () => {

@@ -1823,6 +1823,8 @@ export const commands = Object.freeze({
 
 export const physics = Object.freeze({
   raycast: (world: WorldImpl, desc?: unknown) => parse(abi().og_physics_raycast(world.id, json(desc))),
+  raycastAll: (world: WorldImpl, desc?: unknown) => parse(abi().og_physics_raycast_all(world.id, json(desc))),
+  projectPoint: (world: WorldImpl, desc?: unknown) => parse(abi().og_physics_project_point(world.id, json(desc))),
   shapeCast: (world: WorldImpl, desc?: unknown) => parse(abi().og_physics_shape_cast(world.id, json(desc))),
   overlap: (world: WorldImpl, desc?: unknown) => parse(abi().og_physics_overlap(world.id, json(desc))),
   applyForce: (world: WorldImpl, entity: number, force: unknown, point?: unknown) =>

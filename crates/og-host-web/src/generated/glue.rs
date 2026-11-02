@@ -1209,6 +1209,16 @@ pub fn og_physics_raycast(world: u32, desc: Option<String>) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_physics_raycast_all(world: u32, desc: Option<String>) -> String {
+    <Host as PhysicsApi>::og_physics_raycast_all(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_physics_project_point(world: u32, desc: Option<String>) -> String {
+    <Host as PhysicsApi>::og_physics_project_point(&Host, world, desc)
+}
+
+#[wasm_bindgen]
 pub fn og_physics_shape_cast(world: u32, desc: Option<String>) -> String {
     <Host as PhysicsApi>::og_physics_shape_cast(&Host, world, desc)
 }

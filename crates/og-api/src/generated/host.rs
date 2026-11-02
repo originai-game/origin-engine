@@ -553,6 +553,10 @@ pub trait LoadApi: Wire {
 pub trait PhysicsApi: Wire {
     /// `og.physics.raycast`
     fn og_physics_raycast(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.physics.raycastAll`
+    fn og_physics_raycast_all(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.physics.projectPoint`
+    fn og_physics_project_point(&self, world: u32, desc: Option<String>) -> String;
     /// `og.physics.shapeCast`
     fn og_physics_shape_cast(&self, world: u32, desc: Option<String>) -> String;
     /// `og.physics.overlap`
@@ -1428,6 +1432,8 @@ pub const SYMBOLS: &[&str] = &[
     "og_load_timeline",
     "og_load_rig2d",
     "og_physics_raycast",
+    "og_physics_raycast_all",
+    "og_physics_project_point",
     "og_physics_shape_cast",
     "og_physics_overlap",
     "og_physics_apply_force",

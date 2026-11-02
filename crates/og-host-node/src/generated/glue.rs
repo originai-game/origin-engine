@@ -1449,6 +1449,18 @@ pub fn og_physics_raycast(env: Env, world: u32, desc: Option<String>) -> String 
     <Host as PhysicsApi>::og_physics_raycast(&Host, world, desc)
 }
 
+#[napi(js_name = "og_physics_raycast_all")]
+pub fn og_physics_raycast_all(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_raycast_all(&Host, world, desc)
+}
+
+#[napi(js_name = "og_physics_project_point")]
+pub fn og_physics_project_point(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_project_point(&Host, world, desc)
+}
+
 #[napi(js_name = "og_physics_shape_cast")]
 pub fn og_physics_shape_cast(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);

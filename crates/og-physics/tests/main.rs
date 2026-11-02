@@ -7,6 +7,7 @@
 mod beyond_determinism;
 mod bodies;
 mod character_ground;
+mod compound;
 mod contact_hits;
 mod controllers;
 mod edits;
@@ -24,4 +25,5 @@ mod self_collision;
 mod soft;
 mod support;
 mod time_scale;
+mod unchanged;
 mod vehicles;

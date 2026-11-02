@@ -157,6 +157,7 @@ export const MAX_CLUSTER_LIGHTS: typeof Api.MAX_CLUSTER_LIGHTS = 64;
 export const MAX_REFLECTION_PROBES: typeof Api.MAX_REFLECTION_PROBES = 8;
 export const PARTICLES_ARMED: typeof Api.PARTICLES_ARMED = 4294967295;
 export const UI_LAYER: typeof Api.UI_LAYER = 1000;
+export const MAX_RAYCAST_HITS: typeof Api.MAX_RAYCAST_HITS = 256;
 export const BODY_DYNAMIC: typeof Api.BODY_DYNAMIC = 0;
 export const BODY_STATIC: typeof Api.BODY_STATIC = 1;
 export const BODY_KINEMATIC: typeof Api.BODY_KINEMATIC = 2;

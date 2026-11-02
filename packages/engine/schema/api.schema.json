@@ -6475,6 +6475,9 @@
         "QueryFilter",
         "RaycastDesc",
         "RaycastHit",
+        "RaycastAllDesc",
+        "ProjectPointDesc",
+        "PointProjection",
         "ShapeDesc",
         "ShapeCastDesc",
         "ShapeCastHit",
@@ -6488,6 +6491,12 @@
         "PhysicsStats"
       ],
       "consts": [
+        {
+          "name": "MAX_RAYCAST_HITS",
+          "type": "u32",
+          "value": 256,
+          "doc": "The most hits og.physics.raycastAll returns."
+        },
         {
           "name": "BODY_DYNAMIC",
           "type": "u32",
@@ -6749,6 +6758,48 @@
           ],
           "returns": "Result<Option<RaycastHit>>",
           "returnsDoc": "The hit, or null when nothing is hit; refused for a zero direction.",
+          "publish": true
+        },
+        {
+          "name": "raycastAll",
+          "doc": "Every collider along a ray within its reach, one hit each at its first crossing, nearest first (ties in collider entity order, so every host and run list them alike), at most `maxHits`: what a piercing shot passes through, everything under a cursor. The same view of the colliders as og.physics.raycast; its first hit is raycast's.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "RaycastAllDesc",
+              "optional": true,
+              "doc": "The ray, the filter and the cap."
+            }
+          ],
+          "returns": "Result<List<RaycastHit>>",
+          "returnsDoc": "The hits, nearest first; empty when nothing is hit; refused for a zero direction.",
+          "publish": true
+        },
+        {
+          "name": "projectPoint",
+          "doc": "The nearest point on any collider to a point, within maxDistance: snapping to a surface, the closest cover, whether a point is inside a solid. The same view of the colliders as og.physics.raycast.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "ProjectPointDesc",
+              "optional": true,
+              "doc": "The point, its reach, solid or surface, and the filter."
+            }
+          ],
+          "returns": "Result<Option<PointProjection>>",
+          "returnsDoc": "The projection, or null when no collider is within reach; refused for a point that is not finite.",
           "publish": true
         },
         {
@@ -28571,7 +28622,7 @@
     "Collider": {
       "x-og-kind": "component",
       "x-og-module": "physics",
-      "description": "The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). Sizes are scaled by og.Transform.scale.",
+      "description": "The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). Sizes are scaled by og.Transform.scale.\nCompound colliders: a Collider without a RigidBody on a child entity whose og.Parent chain reaches a RigidBody is part of that body (the nearest such ancestor), placed at its transform relative to the body (the transforms between them composed, the body's scale applied): a table of a top and four legs, a ship of a hull and a mast, are one body. Its mass adds to the body's from its density, or the body's RigidBody.mass is shared among its colliders by theirs; its friction, restitution, layers and sensor flag are its own. Children join in entity order, whatever the query order. Changing a child (its collider, or its transform relative to the body) rebuilds the body, which loses its contacts' warm starts. Events and queries name the collider's entity; RaycastHit.body and PointProjection.body name the body. A controller's body takes no children; a collider whose chain reaches no body stays static at its world transform.",
       "type": "object",
       "properties": {
         "shape": {
@@ -30724,6 +30775,10 @@
           "$ref": "#/$defs/Entity",
           "description": "The collider's entity."
         },
+        "body": {
+          "$ref": "#/$defs/Entity",
+          "description": "The body the collider belongs to: its own entity, or for a compound child collider (an og.Collider on a child of an og.RigidBody) the ancestor body it is part of."
+        },
         "distance": {
           "type": "number",
           "description": "From the origin along the normalised direction.",
@@ -30740,9 +30795,138 @@
       },
       "required": [
         "entity",
+        "body",
         "distance",
         "point",
         "normal"
+      ],
+      "additionalProperties": false
+    },
+    "RaycastAllDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "physics",
+      "description": "A ray for og.physics.raycastAll: og.physics.raycast's fields and a cap on the hits.",
+      "type": "object",
+      "properties": {
+        "origin": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where the ray starts.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "direction": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where it points; it need not be normalised and must not be zero (in 2D, not zero in xy).",
+          "default": {
+            "x": 0,
+            "y": -1,
+            "z": 0
+          }
+        },
+        "maxDistance": {
+          "type": "number",
+          "description": "How far it reaches; 0 is unbounded.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "filter": {
+          "$ref": "#/$defs/QueryFilter",
+          "description": "Which colliders count.",
+          "default": {}
+        },
+        "maxHits": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most hits returned, nearest first; 0 is MAX_RAYCAST_HITS (256), and more is held to it.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 256
+        }
+      },
+      "additionalProperties": false
+    },
+    "ProjectPointDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "physics",
+      "description": "A point for og.physics.projectPoint.",
+      "type": "object",
+      "properties": {
+        "point": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The point to project (its z is ignored in 2D).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "maxDistance": {
+          "type": "number",
+          "description": "How far a collider may be; 0 is unbounded.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "solid": {
+          "type": "boolean",
+          "description": "A point inside a collider is its own projection (distance 0); false projects it onto the collider's surface.",
+          "default": true
+        },
+        "filter": {
+          "$ref": "#/$defs/QueryFilter",
+          "description": "Which colliders count.",
+          "default": {}
+        }
+      },
+      "additionalProperties": false
+    },
+    "PointProjection": {
+      "x-og-kind": "struct",
+      "x-og-module": "physics",
+      "description": "Where a point projects onto the nearest collider.",
+      "type": "object",
+      "properties": {
+        "entity": {
+          "$ref": "#/$defs/Entity",
+          "description": "The collider's entity."
+        },
+        "body": {
+          "$ref": "#/$defs/Entity",
+          "description": "The body it belongs to (RaycastHit.body)."
+        },
+        "point": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The nearest point on the collider, in world space.",
+          "x-og-unit": "m"
+        },
+        "normal": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Unit direction out of the collider at the point, towards a point outside it (from a point inside, still outward); zero when the distance is 0."
+        },
+        "distance": {
+          "type": "number",
+          "description": "From the queried point to `point`.",
+          "x-og-unit": "m"
+        },
+        "inside": {
+          "type": "boolean",
+          "description": "Whether the queried point is inside the collider."
+        }
+      },
+      "required": [
+        "entity",
+        "body",
+        "point",
+        "normal",
+        "distance",
+        "inside"
       ],
       "additionalProperties": false
     },

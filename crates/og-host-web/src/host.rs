@@ -960,6 +960,12 @@ impl PhysicsApi for WebHost {
     fn og_physics_raycast(&self, world: u32, desc: Option<String>) -> String {
         rt::og_physics_raycast(world, desc)
     }
+    fn og_physics_raycast_all(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_physics_raycast_all(world, desc)
+    }
+    fn og_physics_project_point(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_physics_project_point(world, desc)
+    }
     fn og_physics_shape_cast(&self, world: u32, desc: Option<String>) -> String {
         rt::og_physics_shape_cast(world, desc)
     }
