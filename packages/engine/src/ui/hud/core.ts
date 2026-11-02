@@ -4,7 +4,7 @@
 // colours by kind and level, and a stable id for a list item.
 
 import type * as Api from "@origingame/engine";
-import { absolute, type Props, frame, kit, role, type Rgba, solid, token, drop, stroke, inner, vgrad, lit, mix, shapeOf } from "../feedback/core.ts";
+import { absolute, type Props, frame, kit, role, type Rgba, solid, token, drop, stroke, inner, vgrad, lit, mix, shapeOf, box, icon, leaf, px, radial, teamColor, innerGlow, apply } from "../feedback/core.ts";
 
 export * from "../feedback/core.ts";
 
@@ -136,13 +136,57 @@ export function chip(radius?: number, strong = false): Api.DrawDesc {
 
 /** A track a fill sits in: recessed, dark. */
 export function trackDraw(r: number, shape: Api.DrawShape | null = null): Api.DrawDesc {
+  // A dark well, not a grey wash: near-black (og-ui blends in linear light, so 80 % reads as a deep well over any scene),
+  // a 2 px inner shadow along its top, a faint lit lip along its bottom and a hairline outside.
   return {
     shape: shape ?? { kind: "rect", radii: [r, r, r, r] },
-    fills: [solid(token("shadow", 0.55)), solid(token("controlStrong", 0.35))],
-    effects: [inner(1, 3, token("shadow", 0.7))],
-    strokes: [stroke(1, token("lineStrong", 0.5), "outside")],
+    fills: [solid(lit(BLACK, 0.8)), vgrad([[0, lit(BLACK, 0.25)], [0.6, lit(BLACK, 0)], [1, lit(WHITE, 0.06)]])],
+    effects: [inner(1, 2, lit(BLACK, 0.8)), drop(1, 4, lit(BLACK, 0.45))],
+    strokes: [stroke(1, token("lineStrong", 0.35), "outside")],
     clip: "shape",
   };
+}
+
+export const BLACK: Rgba = { r: 0, g: 0, b: 0, a: 1 };
+export const WHITE: Rgba = { r: 1, g: 1, b: 1, a: 1 };
+
+/** A stable hue for a thing without art, from its icon or name, so a placeholder is still told apart by colour as well as glyph. */
+export function hueOf(key: string): Rgba {
+  let h = 0;
+  for (const ch of key) h = (h * 31 + ch.charCodeAt(0)) | 0;
+  return teamColor(Math.abs(h));
+}
+
+/**
+ * A thing's art filling a `side` square (an ability, a buff, a cast): the
+ * texture when there is one, else a gradient in `hue` with the icon's
+ * glyph large in white, never a line icon on a dark square (§15.5.3).
+ */
+export function artTile(id: string, image: Api.Texture | null | undefined, iconName: string, side: number, hue: Rgba, props: Props, part?: string): void {
+  if (image) {
+    kit.image(id, { texture: image, width: px(side), height: px(side), label: "" });
+    apply(props);
+    return;
+  }
+  box(`${id}Box`, { width: px(side), height: px(side), align: "center", cross: "center", ...(part ? { part } : {}) }, {
+    fills: [radial([[0, lit(mix(hue, WHITE, 0.25))], [0.65, lit(mix(hue, BLACK, 0.35))], [1, lit(mix(hue, BLACK, 0.7))]], 0.5, 0.35, 0.75, 0.75)],
+  }, () => {
+    icon("Glyph", iconName, Math.round(side * 0.66), lit(WHITE, 0.95));
+  }, props);
+}
+
+/**
+ * A socket's material over the art it frames (§15.5.6): a top-lit rim
+ * (light along the top, dark along the bottom), a 2 px inner shadow and a
+ * soft vignette, so a picture reads set into its frame rather than pasted.
+ */
+export function socketRim(id: string, side: number, radius: number, corner: Api.CornerShape | undefined, rim: number, props: Props, lift = 0.42): void {
+  leaf(id, { width: px(side), height: px(side) }, {
+    shape: { kind: "rect", radii: [radius, radius, radius, radius], ...(corner ? { corner } : {}) },
+    fills: [vgrad([[0, lit(WHITE, 0.1)], [0.3, lit(WHITE, 0)]])],
+    strokes: [{ width: rim, align: "inside", paint: vgrad([[0, lit(WHITE, lift)], [0.5, lit(WHITE, 0.08)], [1, lit(BLACK, 0.7)]]) }],
+    effects: [inner(1, 2, lit(BLACK, 0.7), 1), innerGlow(side * 0.12, lit(BLACK, 0.4))],
+  }, props);
 }
 
 export type Level = "normal" | "low" | "critical" | "empty";

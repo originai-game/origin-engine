@@ -175,21 +175,31 @@ test("og.ui.unitFrame, raidFrames and castBar: health and states read, raids in 
     og.ui.unitFrame("Target", { name: "Grull the Ogre", level: "62", health, hostile: true, unitClass: "elite", reverse: true, targeted: true, anchor: "top" });
     og.ui.raidFrames("Raid", { members: Array.from({ length: 12 }, (_, i) => ({ key: `m${i}`, name: `Member ${i}`, health: 10 * i, dead: i === 0, role: i % 3 === 0 ? "tank" as const : "damage" as const })) });
     og.ui.castBar("Cast", { name: "Pyroblast", progress: 0.4, remaining: 2.1, state, stateAt: endedAt, anchor: "bottom" });
+    og.ui.unitFrame("Boss", { name: "Grull the Devourer", health: 800_000, healthMax: 1_250_000, anchor: "topRight" });
   });
   e.advance(3);
   let els = dump(e);
+  // A boss's health is shortened as shipped frames write it, and a frame with no art shows no initials.
+  expect(at(els, "BossHud/Boss/Bars/Health/Main/Value")?.text).toBe("800K / 1.25M");
+  expect(els.some((x) => x.path.startsWith("BossHud/Boss/") && x.id === "Initials")).toBe(false);
+  // The cast's name and seconds on their own line over the bar.
+  expect([at(els, "CastHud/Cast/Body/Head/Name")?.text, at(els, "CastHud/Cast/Body/Head/Time")?.text]).toEqual(["Pyroblast", "2.1"]);
   const target = at(els, "TargetHud/Target");
   expect([target?.role, target?.value, states(target).selection, states(target).hurt]).toEqual(["button", "Level 62, 30% health", "targeted", "none"]);
   // A hit: the health falls, the frame shows it for a moment.
   health = 18;
   e.advance(2);
   expect(states(at(dump(e), "TargetHud/Target")).hurt).toBe("hit");
-  expect(at(dump(e), "TargetHud/Target/Portrait/Hurt")).toBeDefined();
+  expect(at(dump(e), "TargetHud/Target/Avatar/Portrait/Hurt")).toBeDefined();
   // The hit shows for 450 ms: 27 ticks.
   e.advance(28);
   expect(states(at(dump(e), "TargetHud/Target")).hurt).toBe("none");
   // The portrait at the end when reversed.
-  const portrait = at(els, "TargetHud/Target/Portrait");
+  const portrait = at(els, "TargetHud/Target/Avatar/Portrait");
+  // The level badge stays centred on its portrait's foot.
+  const badge = at(els, "TargetHud/Target/Avatar/Level")!;
+  expect(badge.x + badge.width / 2).toBeCloseTo(portrait!.x + portrait!.width / 2, 0);
+  expect(badge.y).toBeGreaterThan(portrait!.y + portrait!.height / 2);
   const bars = at(els, "TargetHud/Target/Bars");
   expect(portrait && bars && portrait.x > bars.x).toBe(true);
   const groupsOf = below(els, "RaidHud/Raid").filter((x) => /^Group#\d+$/.test(x.id));
@@ -201,7 +211,7 @@ test("og.ui.unitFrame, raidFrames and castBar: health and states read, raids in 
   endedAt = og.ui.tick();
   e.advance(2);
   els = dump(e);
-  expect(at(els, "CastHud/Cast/Track/Text/Name")?.text).toBe("Interrupted");
+  expect(at(els, "CastHud/Cast/Body/Head/Name")?.text).toBe("Interrupted");
   expect(states(at(els, "CastHud/Cast")).cast).toBe("interrupted");
   // An interrupted cast holds 700 ms and fades 300: gone 60 ticks after it ended.
   e.advance(59);

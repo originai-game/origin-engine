@@ -234,41 +234,42 @@ function abilitiesScreen(): void {
     // A phone held sideways at 200 % text keeps one row of buffs (the rest fold into +n) over its cast bar.
     max: og.ui.frameViewport().breakpoint === "phoneLandscape" && state.textScale >= 1.5 ? 4 : 8,
     effects: [
-      { key: "haste", name: L("Haste"), icon: "flash", image: art("blink"), remaining: Math.max(0.1, 14 - s), duration: 20, mine: true },
-      { key: "might", name: L("Might"), icon: "fire", image: art("fireball"), remaining: 0 },
-      { key: "regen", name: L("Regeneration"), icon: "heart", remaining: 1820, duration: 3600 },
-      { key: "ward", name: L("Ward"), icon: "shield", image: art("shield-wall"), remaining: Math.max(0.1, 4.6 - s), duration: 12, stacks: 3 },
-      ...Array.from({ length: 7 }, (_, i) => ({ key: `buff${i}`, name: `${L("Blessing")} ${i + 1}`, icon: "star", remaining: 300 + i * 40, duration: 600 })),
-      { key: "poison", name: L("Deadly Poison"), icon: "flask", image: art("hex"), debuff: true, type: "poison", stacks: 5, remaining: 8.2, duration: 12 },
-      { key: "curse", name: L("Curse of Agony"), icon: "skull", debuff: true, type: "curse", remaining: 2.4, duration: 24 },
-      { key: "bleed", name: L("Rend"), icon: "drop", debuff: true, type: "bleed", stacks: 12, remaining: 15, duration: 15 },
+      { key: "haste", name: L("Haste"), icon: "flash", image: art("thunder-strike"), remaining: Math.max(0.1, 14 - s), duration: 20, mine: true },
+      { key: "might", name: L("Might"), icon: "fire", image: art("flame-blade"), remaining: 0 },
+      { key: "regen", name: L("Regeneration"), icon: "heart", image: art("titan-heart"), remaining: 1820, duration: 3600 },
+      { key: "ward", name: L("Ward"), icon: "shield", image: art("rune-shield"), remaining: Math.max(0.1, 4.6 - s), duration: 12, stacks: 3 },
+      ...Array.from({ length: 7 }, (_, i) => ({ key: `buff${i}`, name: `${L("Blessing")} ${i + 1}`, icon: "star", image: art("star"), remaining: 300 + i * 40, duration: 600 })),
+      { key: "poison", name: L("Deadly Poison"), icon: "flask", image: art("poison"), debuff: true, type: "poison", stacks: 5, remaining: 8.2, duration: 12 },
+      { key: "curse", name: L("Curse of Agony"), icon: "skull", image: art("curse"), debuff: true, type: "curse", remaining: 2.4, duration: 24 },
+      { key: "bleed", name: L("Rend"), icon: "drop", image: art("broken-chain"), debuff: true, type: "bleed", stacks: 12, remaining: 15, duration: 15 },
     ],
   });
   const interrupted = did("interrupt");
   // Built after the ability bar at the same anchor: they stack above it.
-  og.ui.castBar("Cast", { name: L("Pyroblast"), icon: "fire", progress: Math.min(0.97, (s % 3.5) / 3.5), remaining: 3.5 - (s % 3.5), latency: 0.08, state: interrupted ? "interrupted" : "casting", stateAt: state.acts.interrupt ?? 0, anchor: "bottom", width: { kind: "fixed", px: 340 } });
+  og.ui.castBar("Cast", { name: L("Pyroblast"), icon: "fire", image: art("pyroblast"), progress: Math.min(0.97, (s % 3.5) / 3.5), remaining: 3.5 - (s % 3.5), latency: 0.08, state: interrupted ? "interrupted" : "casting", stateAt: state.acts.interrupt ?? 0, anchor: "bottom", width: { kind: "fixed", px: 340 } });
   // A phone held sideways has room over its ability bar for two bars, not three.
-  if (og.ui.frameViewport().breakpoint !== "phoneLandscape") og.ui.castBar("Channel", { name: L("Arcane Missiles"), icon: "sparks", channel: true, ticks: 5, progress: Math.min(1, (s % 2.5) / 2.5), remaining: 2.5 - (s % 2.5), anchor: "bottom", width: { kind: "fixed", px: 340 } });
+  if (og.ui.frameViewport().breakpoint !== "phoneLandscape") og.ui.castBar("Channel", { name: L("Arcane Missiles"), icon: "sparks", image: art("thunder-strike"), channel: true, ticks: 5, progress: Math.min(1, (s % 2.5) / 2.5), remaining: 2.5 - (s % 2.5), anchor: "bottom", width: { kind: "fixed", px: 340 } });
   // At 200 % text the sideways phone's bars reach the aura grid: it keeps the player's own cast.
-  if (og.ui.frameViewport().breakpoint !== "phoneLandscape" || state.textScale < 1.5) og.ui.castBar("Boss", { name: L("Cataclysm"), icon: "skull", uninterruptible: true, progress: 0.42, remaining: 4.2, anchor: "bottom", width: { kind: "fixed", px: 340 } });
+  if (og.ui.frameViewport().breakpoint !== "phoneLandscape" || state.textScale < 1.5) og.ui.castBar("Boss", { name: L("Cataclysm"), icon: "skull", image: art("frost"), uninterruptible: true, progress: 0.42, remaining: 4.2, anchor: "bottom", width: { kind: "fixed", px: 340 } });
 }
 
 // ── unit, party and raid frames ───────────────────────────────────────────
 
 function framesScreen(): void {
   const s = seconds();
+  const art = (k: string): Texture | null => state.art[k] ?? null;
   const h = hp();
-  og.ui.unitFrame("Player", { size: small() ? "medium" : "large", name: L("Aria Vale"), level: "60", title: L("Archmage"), health: h * 380, healthMax: 38000, shield: did("hit") ? 0 : 6000, resource: 21400, resourceMax: 30000, leader: true, combat: did("hit"), anchor: "topLeft", effects: [{ key: "a", icon: "flash", remaining: 9, duration: 20 }, { key: "b", icon: "heart", remaining: 0 }] });
+  og.ui.unitFrame("Player", { size: small() ? "medium" : "large", portrait: art("aria-vell"), name: L("Aria Vale"), level: "60", title: L("Archmage"), health: h * 380, healthMax: 38000, shield: did("hit") ? 0 : 6000, resource: 21400, resourceMax: 30000, leader: true, combat: did("hit"), anchor: "topLeft", effects: [{ key: "a", icon: "flash", image: art("thunder-strike"), remaining: 9, duration: 20 }, { key: "b", icon: "heart", image: art("titan-heart"), remaining: 0 }] });
   og.ui.unitFrame("Target", {
-    name: L("Grull the Devourer"), level: "??", unitClass: "boss", hostile: true, reverse: true, targeted: true, health: 0.64 * 1_250_000, healthMax: 1_250_000,
+    name: L("Grull the Devourer"), portrait: art("cultist"), level: "??", unitClass: "boss", hostile: true, reverse: true, targeted: true, health: 0.64 * 1_250_000, healthMax: 1_250_000,
     castName: L("Earthshatter"), castProgress: Math.min(1, s / 3) % 1, anchor: og.ui.frameViewport().breakpoint === "phonePortrait" ? "topLeft" : small() ? "topRight" : "top", size: small() ? "medium" : "large",
   });
   og.ui.partyFrames("Party", {
     anchor: small() ? "bottomLeft" : "left",
     members: ([
-      { key: "tank", name: L("Borin"), level: "60", icon: "shield", health: 82, resource: 40, resourceKind: "primary" },
-      { key: "heal", name: L("Seraphine"), level: "60", icon: "plus", health: 34, resource: 12, leader: false, effects: [{ key: "p", debuff: true, type: "magic", remaining: 5, duration: 8 }] },
-      { key: "dead", name: L("Kael"), level: "59", health: 0, dead: true },
+      { key: "tank", name: L("Borin"), portrait: art("kael"), level: "60", icon: "shield", health: 82, resource: 40, resourceKind: "primary" },
+      { key: "heal", name: L("Seraphine"), portrait: art("mira"), level: "60", icon: "plus", health: 34, resource: 12, leader: false, effects: [{ key: "p", debuff: true, type: "magic", image: art("curse"), remaining: 5, duration: 8 }] },
+      { key: "dead", name: L("Kael"), portrait: art("aria"), level: "59", health: 0, dead: true },
       { key: "off", name: L("Nyx"), level: "60", health: 100, offline: true },
     ] satisfies UnitFrameDesc[]).slice(0, small() ? 2 : 4),
   });
@@ -575,8 +576,13 @@ export default og.game({
       if (!loaded.ok) throw new Error(loaded.reason);
     }
     og.i18n.setLocale(world, "en");
-    for (const k of ["fireball", "blink", "frost-nova", "meteor", "shield-wall", "pyroblast", "hex", "rune-of-power"]) {
-      const tex = og.load.texture(world, `abilities/${k}.jpg`);
+    // The abilities' own art, then the kit's boons and portraits (assets/kit-art, CC0).
+    const paths: Record<string, string> = {};
+    for (const k of ["fireball", "blink", "frost-nova", "meteor", "shield-wall", "pyroblast", "hex", "rune-of-power"]) paths[k] = `abilities/${k}.jpg`;
+    for (const k of ["flame-blade", "poison", "curse", "frost", "rune-shield", "star", "broken-chain", "titan-heart", "thunder-strike"]) paths[k] = `kit-art/boons/${k}.jpg`;
+    for (const k of ["aria", "kael", "mira", "aria-vell", "cultist"]) paths[k] = `kit-art/portraits/${k}.jpg`;
+    for (const [k, path] of Object.entries(paths)) {
+      const tex = og.load.texture(world, path);
       if (tex.ok) state.art[k] = tex.value;
     }
     const body = og.load.font(world, "fonts/Inter-Display.ttf");

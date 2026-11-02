@@ -10,18 +10,11 @@
 // a grey shield on what cannot be interrupted, interrupted in red).
 
 import type * as Api from "@origingame/engine";
-import { a11y, absolute, anchorOf, box, chip, innerGlow, reduced, clamp01, close, drop, easeOut, edge, fillDraw, frame, glow, groups, hudPlace, icon, inkOn, keyId, kit, leaf, lit, mix, msToTicks, now, open, paintRgba, pct, px, role, sel, solid, sound, stroke, text, token, trackDraw, ts, u, vgrad, ellipseShape, type Rgba, apply, textScale, ut, tsFit, stepSize } from "./core.ts";
+import { formatNumber, artTile, socketRim, hueOf, BLACK, WHITE, shapeOf, a11y, absolute, anchorOf, box, inner, radial, innerGlow, reduced, clamp01, close, drop, easeOut, edge, fillDraw, frame, glow, groups, hudPlace, icon, keyId, kit, leaf, lit, mix, msToTicks, now, open, paintRgba, pct, px, role, sel, solid, sound, stroke, text, token, trackDraw, ts, u, vgrad, ellipseShape, type Rgba, apply, textScale, stepSize } from "./core.ts";
 import { statBar } from "./meters.ts";
 import { statusGrid } from "./abilities.ts";
 
 const NO_RESPONSE: Api.Response = { hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0, adjust: 0 };
-
-/** Initials for a portrait with no art. */
-function initials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return "?";
-  return (words.length === 1 ? words[0]!.slice(0, 2) : words[0]![0]! + words[1]![0]!).toUpperCase();
-}
 
 /** A colour from a name, so a unit without a class colour keeps one across frames. */
 function nameHue(name: string): Rgba {
@@ -33,6 +26,11 @@ function nameHue(name: string): Rgba {
     return 0.45 - 0.3 * Math.max(-1, Math.min(k - 3, 9 - k, 1));
   };
   return { r: f(0), g: f(8), b: f(4), a: 1 };
+}
+
+/** Health as a frame writes it: grouped under a hundred thousand, compact above (by the larger of the two, so both halves match). */
+function hpText(v: number, max: number): string {
+  return formatNumber(Math.round(v), { notation: max >= 100_000 ? "compact" : "grouped" });
 }
 
 const SIZES: Record<Api.UnitFrameSize, { portrait: number; width: number; bar: number; name: number }> = {
@@ -64,69 +62,82 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
     if (hp.changed && health < hp.prev && !dead) kit.remember(`${id}:hurtAt`, now());
     const hurtAge = now() - kit.memory(`${id}:hurtAt`, -1e9);
     const hurt = hurtAge < msToTicks(450) ? 1 - hurtAge / msToTicks(450) : 0;
-    const baseStrokes = desc.targeted ? [stroke(2, lit(role("highlight"))), stroke(1, token("shadow", 0.8), "outside")] : chip().strokes ?? [];
-    const baseEffects = desc.targeted ? [drop(2, 8, token("shadow", 0.45)), glow(8, lit(role("highlight"), 0.45))] : chip().effects ?? [];
+    // No plate behind the frame (§15.5.6): the portrait, the name and the bars float on their own shadows.
+    // Targeted lights the portrait's ring with the highlight and a glow; a hit flashes it danger.
+    const ring = desc.targeted ? role("highlight") : ringInk;
+    const badgeH = Math.round(Math.max(14, Math.round(pd * 0.3)) * textScale());
     open(id, {
       direction: "row",
       gap: tk.sm,
-      cross: "center",
+      cross: "start",
       interactive: true,
-      padding: { left: u(6), right: tk.md, top: u(6), bottom: u(6) },
+      padding: { left: u(6), right: tk.md, top: u(6), bottom: u(6) + (desc.level ? Math.round(badgeH * 0.45) : 0) },
       width: px(u(m.width) + pd),
       part: sel("UnitFrame", "frame", size, hostile ? "hostile" : null, desc.targeted ? "targeted" : null, dead ? "dead" : null),
       partClass: "hud",
-    }, {
-      ...chip(),
-      strokes: hurt > 0 ? [stroke(2.5, lit(role("danger"), 0.4 + 0.6 * hurt)), ...baseStrokes.slice(1)] : baseStrokes,
-      effects: hurt > 0 ? [...baseEffects, glow(10 * hurt, lit(role("danger"), 0.7 * hurt)), innerGlow(14, lit(role("danger"), 0.45 * hurt))] : baseEffects,
     });
     const portrait = () => {
-    // The portrait: round, ringed by its class, the level on a badge at its foot.
+    // The portrait: round, ringed by its class, the level on a badge centred at its foot and the crown on its
+    // shoulder, all held by the avatar so they stay with it at any text size or frame height.
+    open("Avatar", { width: px(pd), height: px(pd) });
     box("Portrait", { width: px(pd), height: px(pd), align: "center", cross: "center", part: sel("UnitFrame", "portrait", cls), partClass: "avatar" }, {
       shape: ellipseShape(),
-      fills: [vgrad([[0, lit(mix(nameHue(name), { r: 1, g: 1, b: 1, a: 1 }, 0.15))], [1, lit(mix(nameHue(name), { r: 0, g: 0, b: 0, a: 1 }, 0.35))]])],
-      strokes: [stroke(Math.max(2, pd / 18), lit(ringInk)), stroke(1, token("shadow", 0.9), "outside")],
-      effects: cls === "boss" || cls === "elite" ? [glow(5, lit(ringInk, 0.5))] : [],
+      fills: [radial([[0, lit(mix(nameHue(name), WHITE, 0.2))], [0.7, lit(mix(nameHue(name), BLACK, 0.35))], [1, lit(mix(nameHue(name), BLACK, 0.6))]], 0.5, 0.3, 0.8, 0.8)],
+      strokes: [stroke(Math.max(2, pd / 18) + (desc.targeted ? 1 : 0), lit(hurt > 0 ? mix(ring, role("danger"), hurt) : ring)), stroke(1, lit(BLACK, 0.8), "outside")],
+      effects: [
+        drop(u(2), u(8), lit(BLACK, 0.55)),
+        ...(cls === "boss" || cls === "elite" ? [glow(u(5), lit(ringInk, 0.5))] : []),
+        ...(desc.targeted ? [glow(u(7), lit(role("highlight"), 0.55))] : []),
+        ...(hurt > 0 ? [glow(u(10) * hurt, lit(role("danger"), 0.75 * hurt))] : []),
+      ],
       clip: "shape",
     }, () => {
       if (desc.portrait) {
         kit.image("Art", { texture: desc.portrait, width: px(pd), height: px(pd), label: name });
-        apply(absolute({ start: 0, top: 0 }, { opacity: dead ? 0.45 : 1 }));
-      } else if (desc.icon && kit.hasIcon(desc.icon)) icon("Art", desc.icon, Math.round(pd * 0.56), token("ink"));
-      else text("Initials", initials(name), { step: tsFit(Math.round(m.portrait * 0.34), pd * 0.48, true), font: "display", color: lit(inkOn(nameHue(name))), nowrap: true });
+        apply(absolute({ start: 0, top: 0 }, {}));
+      } else if (desc.icon && kit.hasIcon(desc.icon)) icon("Art", desc.icon, Math.round(pd * 0.56), lit(WHITE, 0.95));
+      else {
+        // No art: a bust's silhouette on the unit's colour (§15.5.3: never initials in an empty slot).
+        const ink = lit(mix(nameHue(name), WHITE, 0.55), 0.9);
+        leaf("Head", { width: px(Math.round(pd * 0.34)), height: px(Math.round(pd * 0.38)) }, { shape: ellipseShape(), fills: [solid(ink)] }, absolute({ centerX: true, top: Math.round(pd * 0.2) }));
+        leaf("Shoulders", { width: px(Math.round(pd * 0.7)), height: px(Math.round(pd * 0.5)) }, { shape: ellipseShape(), fills: [solid(ink)] }, absolute({ centerX: true, top: Math.round(pd * 0.62) }));
+      }
+      // Set into its ring: an inner shadow and a soft vignette over the art.
+      leaf("Inset", { width: pct(1), height: pct(1) }, { shape: ellipseShape(), effects: [inner(1, 2, lit(BLACK, 0.7), 1), innerGlow(pd * 0.12, lit(BLACK, 0.35))] }, absolute({ start: 0, top: 0 }));
       if (hurt > 0 && !reduced()) {
         leaf("Hurt", { width: pct(1), height: pct(1) }, { fills: [solid(lit(role("danger"), 0.5 * hurt))] }, absolute({ start: 0, top: 0 }));
       }
       if (dead) {
-        box("Dead", { width: pct(1), height: pct(1), align: "center", cross: "center" }, { fills: [solid(token("shadow", 0.55))] }, () => {
+        // Dead: the art greyed and darkened to about a third under the skull.
+        box("Dead", { width: pct(1), height: pct(1), align: "center", cross: "center" }, { fills: [solid(lit({ r: 0.12, g: 0.12, b: 0.14, a: 1 }, 0.78))] }, () => {
           icon("Skull", "skull", Math.round(pd * 0.5), token("inkMuted"));
         }, absolute({ start: 0, top: 0 }));
       }
     });
-    if (hurt > 0 && !reduced()) apply({ transform: { x: Math.sin(hurtAge * 1.9) * u(3) * hurt } });
     const portraitPath = `${kit.openPath()}/Portrait`;
     if (desc.level) {
-      box("Level", { padding: { left: u(4), right: u(4), top: 0, bottom: 0 }, height: px(Math.max(14, Math.round(pd * 0.3)) * textScale()), align: "center", cross: "center", part: sel("UnitFrame", "level"), partClass: "badge" }, {
+      box("Level", { padding: { left: u(4), right: u(4), top: 0, bottom: 0 }, height: px(badgeH), align: "center", cross: "center", part: sel("UnitFrame", "level"), partClass: "badge" }, {
         shape: { kind: "rect", radii: [999, 999, 999, 999] },
         fills: [solid(token("hud", 0.98))],
         strokes: [stroke(1.5, lit(ringInk))],
       }, () => {
         text("Text", desc.level ?? "", { step: ts(11), font: "mono", color: hostile ? lit(role("danger")) : token("ink"), nowrap: true });
-      }, absolute(desc.reverse ? { end: u(6) + pd / 2, bottom: u(2) } : { start: u(6) + pd / 2, bottom: u(2) }, { transform: { x: desc.reverse ? pd * 0.25 : -pd * 0.25 }, z: 2, overlaps: [portraitPath] }));
+      }, absolute({ centerX: true, bottom: -Math.round(badgeH * 0.45) }, { z: 2, overlaps: [portraitPath] }));
     }
     if (desc.leader) {
       box("Crown", { width: px(u(18)), height: px(u(18)), align: "center", cross: "center", part: sel("UnitFrame", "crown") }, undefined, () => {
         icon("Mark", "crown", u(16), lit(role("gold")));
-      }, absolute(desc.reverse ? { end: u(2), top: -u(6) } : { start: u(2), top: -u(6) }, { z: 2, overlaps: [portraitPath] }));
+      }, absolute(desc.reverse ? { end: -u(4), top: -u(8) } : { start: -u(4), top: -u(8) }, { z: 2, overlaps: [portraitPath] }));
     }
+    close(hurt > 0 && !reduced() ? { transform: { x: Math.sin(hurtAge * 1.9) * u(3) * hurt } } : undefined);
     };
     if (!desc.reverse) portrait();
     kit.column("Bars", { gap: u(3), width: { kind: "grow" } }, () => {
       kit.row("Head", { gap: tk.xs, cross: "center", width: { kind: "grow" } }, () => {
-        text("Name", name, { step: ts(m.name), font: "display", color: dead ? token("inkFaint") : hostile ? lit(role("danger")) : token("ink"), nowrap: textScale() < 1.5, maxLines: 2, ellipsis: true, width: { kind: "grow" }, outline: 1 });
+        text("Name", name, { step: ts(m.name), font: "display", color: dead || offline ? token("inkMuted") : hostile ? lit(mix(role("danger"), WHITE, 0.15)) : token("ink"), nowrap: textScale() < 1.5, maxLines: 2, ellipsis: true, width: { kind: "grow" }, outline: 1.4 });
         if (desc.combat) icon("Combat", "crossed-swords", u(14), lit(role("danger")), "In combat");
       });
-      if (desc.title && size !== "small") text("Title", desc.title, { step: ts(11), color: token("inkMuted"), nowrap: true, ellipsis: true, width: { kind: "grow" } });
+      if (desc.title && size !== "small") text("Title", desc.title, { step: ts(11), color: token("ink", 0.85), nowrap: true, ellipsis: true, width: { kind: "grow" }, outline: 1.2 });
       statBar("Health", {
         value: dead ? 0 : health,
         max: healthMax,
@@ -137,7 +148,8 @@ export function unitFrame(id: string, desc: Api.UnitFrameDesc = {}): Api.Respons
         thickness: m.bar,
         width: { kind: "grow" },
         showValue: size === "large",
-        valueText: size === "large" ? `${Math.round(health)} / ${Math.round(healthMax)}` : "",
+        // A boss's millions shortened as shipped frames do (800K / 1.25M); a hero's thousands grouped (34,960 / 38,000).
+        valueText: size === "large" ? `${hpText(health, healthMax)} / ${hpText(healthMax, healthMax)}` : "",
         name: `${name} health`,
         anchor: null,
       });
@@ -269,55 +281,84 @@ function cast(id: string, desc: Api.CastBarDesc, compact: boolean): void {
   const p = clamp01(desc.progress ?? 0);
   const bad = state === "interrupted" || state === "failed";
   const ink = bad ? role("danger") : state === "success" ? role("success") : desc.uninterruptible ? { r: 0.62, g: 0.64, b: 0.68, a: 1 } : desc.channel ? role("info") : role("gold");
-  // The bar is at least as tall as the line of its name, at any text size.
-  const h = compact ? Math.max(u(10), stepSize(ts(10)).line) : Math.max(ut(18), stepSize(ts(13)).line);
+  // Compact (under a unit frame): the name inside a bar as tall as its line. Full: the name and seconds on a line
+  // of their own over a slim bar, the spell's art beside both (Diablo IV, Destiny 2, WoW's modern cast bar).
+  const nameStep = compact ? ts(10) : ts(14);
+  const h = compact ? Math.max(u(10), stepSize(nameStep).line) : Math.max(u(8), Math.round(stepSize(nameStep).size * 0.55));
+  const label = state === "interrupted" ? desc.interruptedLabel ?? "Interrupted" : state === "failed" ? desc.failedLabel ?? "Failed" : desc.name ?? "";
+  const shown = bad ? 1 : state === "success" ? 1 : desc.channel ? 1 - p : p;
+  const bar = (withText: boolean) => {
+    const trackPath = open("Track", { width: { kind: "grow" }, height: px(h), cross: "center", part: sel("CastBar", "track"), partClass: "bar" }, {
+      ...trackDraw(Math.min(h / 2, u(3))),
+      ...(desc.uninterruptible ? { strokes: [stroke(1.5, token("inkMuted"), "outside")] } : {}),
+    });
+    const w = kit.bounds(trackPath)?.width ?? u(240);
+    leaf("Fill", { width: pct(shown), height: pct(1), part: sel("CastBar", "fill") }, fillDraw(ink, Math.min(h / 2, u(3))), absolute({ start: 0, top: 0 }));
+    if (!ended && shown > 0.01 && shown < 0.995) {
+      // The spark at the leading edge.
+      leaf("Spark", { width: px(u(10)), height: pct(1.8), part: sel("CastBar", "spark") }, {
+        shape: ellipseShape(),
+        fills: [vgrad([[0, lit(WHITE, 0)], [0.5, lit(WHITE, 0.95)], [1, lit(WHITE, 0)]], 90)],
+        blend: "screen",
+      }, absolute({ start: shown * w - u(5), top: -h * 0.4 }));
+    }
+    if ((desc.latency ?? 0) > 0 && !desc.channel && !ended) {
+      leaf("Latency", { width: pct(clamp01(desc.latency ?? 0)), height: pct(1), part: sel("CastBar", "latency") }, { fills: [solid(lit(role("danger"), 0.45))] }, absolute({ end: 0, top: 0 }));
+    }
+    if (desc.channel && (desc.ticks ?? 0) > 1) {
+      for (let i = 1; i < (desc.ticks ?? 0); i++) {
+        leaf(kit.idi("Tick", i), { width: px(2), height: pct(1), part: sel("CastBar", "tick") }, { fills: [solid(lit(BLACK, 0.85))] }, absolute({ start: (i / (desc.ticks ?? 1)) * w - 1, top: 0 }));
+      }
+    }
+    if (state === "success" && since < hold) {
+      leaf("Flash", { width: pct(1), height: pct(1) }, { fills: [solid(lit(WHITE, 0.6 * (1 - since / hold)))] }, absolute({ start: 0, top: 0 }));
+    }
+    if (withText) {
+      kit.row("Text", { gap: tk.xs, cross: "center", padding: { left: u(6), right: u(6), top: 0, bottom: 0 }, width: pct(1) }, () => {
+        text("Name", label, { step: nameStep, font: "display", color: token("ink"), nowrap: true, ellipsis: true, width: { kind: "grow" }, outline: 1.2 });
+      });
+      apply(absolute({ start: 0, top: 0, bottom: 0 }));
+    }
+    close();
+  };
   hudPlace(id, anchorOf(desc, null), () => {
     box(id, {
-      direction: "row", gap: tk.xs, cross: "center", width: desc.width ?? px(u(280)),
+      direction: "row", gap: tk.sm, cross: "end", width: desc.width ?? px(u(280)),
       part: sel("CastBar", "frame", state, desc.channel ? "channel" : null, desc.uninterruptible ? "uninterruptible" : null),
       partClass: "hud",
     }, undefined, () => {
-      if (desc.icon && !compact) {
-        box("IconBox", { width: px(h + u(8)), height: px(h + u(8)), align: "center", cross: "center", part: sel("CastBar", "icon"), partClass: "slot" }, chip(3, true), () => {
-          icon("Icon", desc.icon ?? "", h, token("ink"));
-          if (desc.uninterruptible) box("Shield", { width: px(u(14)), height: px(u(14)), part: sel("CastBar", "shield") }, undefined, () => icon("Mark", "shield", u(14), token("inkMuted")), absolute({ end: -u(4), bottom: -u(4) }));
+      if (compact) {
+        bar(true);
+        return;
+      }
+      if (desc.icon || desc.image) {
+        // The spell's art in a small framed socket as tall as the name and bar together.
+        const side = Math.round(stepSize(nameStep).line + u(3) + h);
+        const rim = Math.max(1.5, Math.round(side / 20));
+        const r = Math.min(shapeOf("slot").radius, Math.max(3, side / 8));
+        box("IconBox", { width: px(side), height: px(side), part: sel("CastBar", "icon"), partClass: "slot" }, {
+          shape: { kind: "rect", radii: [r, r, r, r] },
+          fills: [solid(lit(BLACK, 0.9))],
+          strokes: [stroke(1, token("lineStrong", 0.45), "outside")],
+          effects: [drop(u(2), u(6), lit(BLACK, 0.5))],
+          clip: "shape",
+        }, () => {
+          artTile("Icon", desc.image, desc.icon ?? "", side - rim * 2, hueOf(desc.icon || desc.name || id), absolute({ start: rim, top: rim }));
+          if (bad) leaf("Wash", { width: pct(1), height: pct(1) }, { fills: [solid(lit(role("danger"), 0.55))], blend: "multiply" }, absolute({ start: 0, top: 0 }));
+          socketRim("Rim", side - rim * 2, Math.max(0, r - rim), undefined, 1, absolute({ start: rim, top: rim }), 0.35);
         });
-      }
-      const trackPath = open("Track", { width: { kind: "grow" }, height: px(h), cross: "center", part: sel("CastBar", "track"), partClass: "bar" }, {
-        ...trackDraw(2),
-        strokes: [stroke(desc.uninterruptible ? 2 : 1, desc.uninterruptible ? token("inkMuted") : token("lineStrong", 0.6))],
-      });
-      const w = kit.bounds(trackPath)?.width ?? u(240);
-      const shown = bad ? 1 : state === "success" ? 1 : desc.channel ? 1 - p : p;
-      leaf("Fill", { width: pct(shown), height: pct(1), part: sel("CastBar", "fill") }, fillDraw(ink, 2), absolute({ start: 0, top: 0 }));
-      if (!ended && shown > 0.01 && shown < 0.995) {
-        // The spark at the leading edge.
-        leaf("Spark", { width: px(u(10)), height: pct(1.6), part: sel("CastBar", "spark") }, {
-          shape: ellipseShape(),
-          fills: [vgrad([[0, token("sheen", 0)], [0.5, token("sheen", 0.95)], [1, token("sheen", 0)]], 90)],
-          blend: "screen",
-        }, absolute({ start: shown * w - u(5), top: -h * 0.3 }));
-      }
-      if ((desc.latency ?? 0) > 0 && !desc.channel && !ended) {
-        leaf("Latency", { width: pct(clamp01(desc.latency ?? 0)), height: pct(1), part: sel("CastBar", "latency") }, { fills: [solid(lit(role("danger"), 0.4))] }, absolute({ end: 0, top: 0 }));
-      }
-      if (desc.channel && (desc.ticks ?? 0) > 1) {
-        for (let i = 1; i < (desc.ticks ?? 0); i++) {
-          leaf(kit.idi("Tick", i), { width: px(2), height: pct(1), part: sel("CastBar", "tick") }, { fills: [solid(token("shadow", 0.85))] }, absolute({ start: (i / (desc.ticks ?? 1)) * w - 1, top: 0 }));
+        if (desc.uninterruptible) {
+          box("Shield", { width: px(u(16)), height: px(u(16)), align: "center", cross: "center", part: sel("CastBar", "shield") }, { shape: ellipseShape(), fills: [solid(lit(BLACK, 0.85))], strokes: [stroke(1, token("inkMuted"))] }, () => icon("Mark", "shield", u(11), token("ink")), absolute({ start: side - u(11), bottom: -u(4) }, { z: 2 }));
         }
       }
-      if (state === "success" && since < hold) {
-        leaf("Flash", { width: pct(1), height: pct(1) }, { fills: [solid(token("sheen", 0.6 * (1 - since / hold)))] }, absolute({ start: 0, top: 0 }));
-      }
-      const label = state === "interrupted" ? desc.interruptedLabel ?? "Interrupted" : state === "failed" ? desc.failedLabel ?? "Failed" : desc.name ?? "";
-      if (!compact || h >= 10) {
-        kit.row("Text", { gap: tk.xs, cross: "center", padding: { left: u(6), right: u(6), top: 0, bottom: 0 }, width: pct(1) }, () => {
-          text("Name", label, { step: compact ? ts(10) : ts(13), color: token("ink"), nowrap: true, ellipsis: true, width: { kind: "grow" }, outline: 1 });
-          if (!ended && (desc.remaining ?? 0) > 0 && !compact) text("Time", (desc.remaining ?? 0).toFixed(1), { step: ts(12), font: "mono", color: token("ink"), nowrap: true, outline: 1 });
+      kit.column("Body", { gap: u(3), width: { kind: "grow" } }, () => {
+        kit.row("Head", { gap: tk.sm, cross: "end", width: { kind: "grow" } }, () => {
+          // The name in the style's display face, the line's dominant text; the seconds a quieter tabular figure at its end.
+          text("Name", label, { step: nameStep, font: "display", color: bad ? lit(mix(role("danger"), WHITE, 0.25)) : token("ink"), nowrap: true, ellipsis: true, width: { kind: "grow" }, outline: 1.4 });
+          if (!ended && (desc.remaining ?? 0) > 0) text("Time", (desc.remaining ?? 0).toFixed(1), { step: ts(12), font: "display", color: token("ink"), nowrap: true, outline: 1.4 });
         });
-        apply(absolute({ start: 0, top: 0, bottom: 0 }));
-      }
-      close();
+        bar(false);
+      });
     }, {
       opacity: alpha,
       transform: bad && since < msToTicks(240) ? { x: Math.sin(since * 1.9) * u(4) * (1 - easeOut(since / msToTicks(240))) } : {},

@@ -33153,11 +33153,17 @@ export interface CastBarDesc {
    */
   readonly name?: string;
   /**
-   * Its icon.
+   * Its icon, drawn large on a gradient of its own hue when there is no image.
    *
    * @default ""
    */
   readonly icon?: string;
+  /**
+   * Its art (art kind ability, 1:1), filling the tile at the bar's start; null draws the icon.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
   /**
    * How far: a cast fills, a channel drains.
    *
@@ -44908,8 +44914,8 @@ export declare namespace og {
      */
     function statusGrid(id: string, desc?: StatusGridDesc): StatusGridResult;
     /**
-     * A unit frame to the bar of World of Warcraft and Final Fantasy XIV: a round portrait (an art slot, else the initials on the class colour) ringed by the style, the level on a badge, an elite or boss dressing, the name over a health bar with its shield and ghost and a resource bar, the cast under them, small buffs, and states for the target, dead (grey, a skull), offline (dim), in combat and the leader's crown. A press selects it.
-     * Parts: UnitFrame.frame[<size>][hostile][targeted][dead], UnitFrame.portrait[<class>], UnitFrame.level, UnitFrame.name, UnitFrame.title, UnitFrame.health (a StatBar), UnitFrame.resource, UnitFrame.cast, UnitFrame.crown, UnitFrame.combat. Slots: portrait (art kind portrait). States: group life (alive, dead, offline), group selection (none, targeted). Accessibility: button named name, level and health. Probe ids: <id>, <id>/Name, <id>/Health, <id>/Resource, <id>/Cast.
+     * A unit frame to the bar of World of Warcraft and Final Fantasy XIV: a round portrait (an art slot, else a bust silhouette on the unit's colour) ringed by the style and floating on its own shadow with no plate behind the frame, the level on a badge, an elite or boss dressing, the name over a health bar with its shield and ghost and a resource bar, the cast under them, small buffs, and states for the target, dead (grey, a skull), offline (dim), in combat and the leader's crown. A press selects it.
+     * Parts: UnitFrame.frame[<size>][hostile][targeted][dead], UnitFrame.portrait[<class>], UnitFrame.level, UnitFrame.name, UnitFrame.title, UnitFrame.health (a StatBar), UnitFrame.resource, UnitFrame.cast, UnitFrame.crown, UnitFrame.combat. Slots: portrait (art kind portrait). States: group life (alive, dead, offline), group selection (none, targeted). Accessibility: button named name, level and health. Probe ids: <id>, <id>/Avatar/Portrait, <id>/Avatar/Level, <id>/Bars/Head/Name, <id>/Bars/Health, <id>/Bars/Resource, <id>/Bars/Cast.
      *
      * @param id Its id.
      * @param desc The unit.
@@ -44932,8 +44938,8 @@ export declare namespace og {
      */
     function raidFrames(id: string, desc?: RaidFramesDesc): FramesResult;
     /**
-     * A cast bar to the bar of MMOs: the icon, the spell's name, a fill with a bright leading edge, the seconds left, a channel draining with its tick marks, the latency zone, an uninterruptible shield, a success flash and an interrupted state in danger that fade out.
-     * Parts: CastBar.frame[<state>][channel][uninterruptible], CastBar.icon, CastBar.track, CastBar.fill, CastBar.spark, CastBar.latency, CastBar.tick, CastBar.name, CastBar.time, CastBar.shield. States: group cast (casting, success, interrupted, failed, gone). Sounds: error on interrupted. Accessibility: progressbar named by the name. Probe ids: <id>, <id>/Name, <id>/Time, <id>/Track/Fill.
+     * A cast bar to the bar of MMOs (Diablo IV, Destiny 2, WoW): the spell's art in a framed socket, its name in the display face and the seconds left on a line over a slim dark well, a fill with a bright leading edge, the seconds left, a channel draining with its tick marks, the latency zone, an uninterruptible shield, a success flash and an interrupted state in danger that fade out.
+     * Parts: CastBar.frame[<state>][channel][uninterruptible], CastBar.icon, CastBar.track, CastBar.fill, CastBar.spark, CastBar.latency, CastBar.tick, CastBar.name, CastBar.time, CastBar.shield. States: group cast (casting, success, interrupted, failed, gone). Sounds: error on interrupted. Accessibility: progressbar named by the name. Probe ids: <id>, <id>/Body/Head/Name, <id>/Body/Head/Time, <id>/Body/Track/Fill (compact: <id>/Track/Text/Name).
      *
      * @param id Its id.
      * @param desc The cast.

@@ -10,7 +10,7 @@
 // the sweep running out.
 
 import type * as Api from "@origingame/engine";
-import { stepSize, hudRoom, a11y, arc, inner, type Paint, absolute, anchorOf, box, bp, chip, clamp01, close, drop, edge, frame, glow, groups, hudPlace, icon, innerGlow, keyId, kit, leaf, lit, mix, msToTicks, open, pct, pop, pulse, px, radial, reduced, role, sel, shapeOf, shortTime, solid, sound, stroke, teamColor, text, token, ts, u, vgrad, type Rgba, apply, textScale, tsFit } from "./core.ts";
+import { stepSize, hudRoom, artTile, socketRim, hueOf, BLACK, WHITE, a11y, arc, inner, type Paint, absolute, anchorOf, box, bp, chip, clamp01, close, drop, edge, frame, glow, groups, hudPlace, icon, innerGlow, keyId, kit, leaf, lit, mix, msToTicks, open, pct, pop, pulse, px, reduced, role, sel, shapeOf, shortTime, solid, sound, stroke, text, token, ts, u, vgrad, type Rgba, apply, textScale, tsFit } from "./core.ts";
 
 const DEBUFF_TYPES: Record<string, string> = {
   magic: "#3d8bff", curse: "#a64dff", poison: "#3ccf4e", disease: "#c89a2c", bleed: "#e03030",
@@ -23,8 +23,6 @@ function typeColor(type: string | undefined): Rgba {
   return { r: n(1), g: n(3), b: n(5), a: 1 };
 }
 
-const BLACK = { r: 0, g: 0, b: 0, a: 1 };
-const WHITE = { r: 1, g: 1, b: 1, a: 1 };
 
 /**
  * Text shrunk below the type ramp's smallest step: at 200 % even the ramp's
@@ -48,12 +46,6 @@ function slotSize(size: number | undefined): number {
   return Math.round(u(size || (bp().phone ? 48 : 56)) * (1 + (Math.min(2, textScale()) - 1) / 2));
 }
 
-/** A stable hue for an ability without art, from its icon or name, so a placeholder bar is still told apart by colour as well as glyph. */
-function hueOf(key: string): Rgba {
-  let h = 0;
-  for (const ch of key) h = (h * 31 + ch.charCodeAt(0)) | 0;
-  return teamColor(Math.abs(h));
-}
 
 const NOTHING = { hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0 } as Api.Response;
 
@@ -118,20 +110,7 @@ function slot(id: string, desc: Api.AbilitySlotDesc, base = slotSize(desc.size))
     });
     // The art, edge to edge inside the frame's line.
     const artSide = size - line * 2;
-    if (desc.image) {
-      kit.image("Icon", { texture: desc.image, width: px(artSide), height: px(artSide), label: "" });
-      apply(absolute({ start: line, top: line }));
-    } else {
-      // No texture: a tinted gradient with the glyph large, never a dark square with a thin line icon.
-      const hue = hueOf(desc.icon || desc.name || id);
-      box("IconBox", { width: px(artSide), height: px(artSide), align: "center", cross: "center", part: sel("AbilitySlot", "icon") }, {
-        fills: [
-          radial([[0, lit(mix(hue, { r: 1, g: 1, b: 1, a: 1 }, 0.25))], [0.65, lit(mix(hue, { r: 0, g: 0, b: 0, a: 1 }, 0.35))], [1, lit(mix(hue, { r: 0, g: 0, b: 0, a: 1 }, 0.7))]], 0.5, 0.35, 0.75, 0.75),
-        ],
-      }, () => {
-        icon("Glyph", desc.icon ?? "", Math.round(artSide * 0.66), lit({ r: 1, g: 1, b: 1, a: 1 }, 0.95));
-      }, absolute({ start: line, top: line }));
-    }
+    artTile("Icon", desc.image, desc.icon ?? "", artSide, hueOf(desc.icon || desc.name || id), absolute({ start: line, top: line }), sel("AbilitySlot", "icon"));
     const full = (insetBy = line) => absolute({ start: insetBy, top: insetBy });
     const cover = { width: px(artSide), height: px(artSide) };
     // What the state does to the art: dark when locked, washed out and slashed when disabled,
@@ -427,6 +406,8 @@ function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean): 
   // With a gutter, so neighbouring timers read as numbers apart ("5m 6m"), never one run ("5m6m").
   const timeWidth = timeText ? Math.ceil(timeText.length * stepSize(timeStep).size * 0.62) + frame().t.sm + 4 : 0;
   kit.column(id, { gap: 0, cross: "center", width: px(Math.max(size, base, timeWidth)) }, () => {
+    const rim = Math.max(1.5, Math.round(size / 18));
+    const art = size - rim * 2;
     open("Tile", {
       width: px(size), height: px(size), interactive: true,
       part: sel("StatusGrid", "tile", fx.debuff ? "debuff" : "buff", fx.type ? ["type", fx.type] : null, expiring ? "expiring" : null),
@@ -434,31 +415,23 @@ function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean): 
     }, {
       // A debuff's notch at its top right corner, so its kind is not told by colour alone.
       shape: { kind: "rect", radii: fx.debuff ? [r, size * 0.3, r, r] : [r, r, r, r], corner: fx.debuff ? "bevel" : "round" },
-      fills: [solid(token("shadow", 0.85))],
-      strokes: [stroke(Math.max(1.5, size / 16), lit(ink, fx.debuff ? 1 : 0.6))],
-      effects: [drop(1, 3, token("shadow", 0.5))],
+      fills: [solid(lit(BLACK, 0.9))],
+      // The rim in the effect's colour (a debuff's dispel type), on the tile's own float shadow.
+      strokes: [stroke(rim, lit(ink, fx.debuff ? 1 : 0.85)), stroke(1, lit(BLACK, 0.6), "outside")],
+      effects: [drop(u(2), u(6), lit(BLACK, 0.5))],
       clip: "shape",
     });
-    if (fx.image) {
-      kit.image("Icon", { texture: fx.image, width: px(size - 4), height: px(size - 4), label: "" });
-      apply(absolute({ start: 2, top: 2 }));
-    } else {
-      // No texture: a gradient in the effect's colour with the glyph large, not a line icon on a dark square.
-      const hue = fx.debuff ? ink : hueOf(fx.icon || fx.name || id);
-      box("IconBox", { width: px(size - 4), height: px(size - 4), align: "center", cross: "center", part: sel("StatusGrid", "icon") }, {
-        fills: [radial([[0, lit(mix(hue, { r: 1, g: 1, b: 1, a: 1 }, 0.2))], [0.7, lit(mix(hue, { r: 0, g: 0, b: 0, a: 1 }, 0.4))], [1, lit(mix(hue, { r: 0, g: 0, b: 0, a: 1 }, 0.7))]], 0.5, 0.35, 0.75, 0.75)],
-      }, () => {
-        icon("Icon", fx.icon ?? fx.name ?? "", Math.round(size * 0.66), lit({ r: 1, g: 1, b: 1, a: 1 }, 0.95));
-      }, absolute({ start: 2, top: 2 }));
-    }
+    artTile("Icon", fx.image, fx.icon ?? fx.name ?? "", art, fx.debuff ? ink : hueOf(fx.icon || fx.name || id), absolute({ start: rim, top: rim }), sel("StatusGrid", "icon"));
     if (!lasting && (fx.duration ?? 0) > 0) {
+      // The time gone darkens clockwise (linear-light blending: 75 % reads as about half).
       leaf("Sweep", { width: px(size * 1.5), height: px(size * 1.5), part: sel("StatusGrid", "sweep") }, {
         shape: pie(1 - clamp01(remaining / (fx.duration ?? 1))),
-        fills: [solid(token("shadow", 0.55))],
+        fills: [solid(lit(BLACK, 0.75))],
       }, absolute({ start: -size * 0.25, top: -size * 0.25 }));
     }
+    socketRim("Rim", art, Math.max(0, r - rim), undefined, 1, absolute({ start: rim, top: rim }), 0.35);
     if ((fx.stacks ?? 0) >= 2) {
-      text("Stacks", String(fx.stacks), { step: tsFit(12, size * 0.5, true), font: "display", color: token("ink"), nowrap: true, outline: 1.2 }, absolute({ end: 1, bottom: 0 }));
+      text("Stacks", String(fx.stacks), { step: tsFit(12, size * 0.5, true), font: "display", color: token("ink"), nowrap: true, outline: 1.6 }, absolute({ end: rim + 1, bottom: 0 }));
     }
     res = close({
       opacity: blink,
@@ -466,7 +439,7 @@ function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean): 
       ...groups({ time }, { time: ["lasting", "running", "expiring"] }),
     });
     if (timers && !lasting) {
-      text("Time", timeText, { step: timeStep, font: "mono", color: expiring ? lit(role("warn")) : token("ink"), nowrap: true, outline: 1 });
+      text("Time", timeText, { step: timeStep, font: "display", color: expiring ? lit(role("warn")) : token("ink"), nowrap: true, outline: 1.4 });
     }
   });
   return res ?? ({ hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0 } as Api.Response);
