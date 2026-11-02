@@ -164,6 +164,35 @@ fn an_undressed_panel_draws_its_line_and_elevation_from_the_tokens() {
 }
 
 #[test]
+fn an_undressed_surface_part_with_no_fill_draws_no_outline() {
+    // A pattern names its layout groups as parts (so a style can dress
+    // them); undressed and unfilled they are invisible, not hairline boxes.
+    let strokes = |background: Option<Srgba>| {
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        let el = Element {
+            part: PartRef::parse("Group.frame", ElementClass::Panel).ok(),
+            background,
+            ..Element::column()
+        };
+        ui.column("Group", el, |ui| {
+            ui.label("T", "Title", LabelDesc::default());
+        });
+        ui.end();
+        ui.frame()
+            .items
+            .iter()
+            .filter(|i| matches!(&i.cmd, DrawCmd::Shape { shape, .. } if matches!(shape.mode, og_render::UiMode::Stroke(_))))
+            .count()
+    };
+    assert_eq!(strokes(None), 0, "a bare group draws no line");
+    assert!(
+        strokes(Some(Theme::default().palette.panel)) > 0,
+        "a filled panel keeps its line"
+    );
+}
+
+#[test]
 fn a_hover_moves_the_buttons_fill_on_the_ui_spring() {
     let mut ui = ui_with_font(test_font_metrics());
     let p = Theme::default().palette;

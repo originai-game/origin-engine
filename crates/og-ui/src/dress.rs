@@ -698,6 +698,12 @@ fn default_level(part: &PartRef) -> Option<Level> {
     }
 }
 
+/// Whether a class is a surface (it bounds content), not a control.
+fn surface(class: ElementClass) -> bool {
+    use ElementClass as C;
+    matches!(class, C::Panel | C::Dialog | C::Card | C::Tooltip | C::Hud)
+}
+
 /// What an undressed part's outline is drawn with: the style's stroke
 /// widths in its line colours, by class and state (docs/ui.md §12.3: a
 /// part no style dressed is drawn from the tokens).
@@ -794,6 +800,10 @@ impl Resolved {
         };
         let strokes = if !d.strokes.is_empty() || d.cleared & CLEAR_STROKES != 0 {
             d.strokes.clone()
+        } else if fills.is_empty() && surface(part.class) {
+            // A surface with no fill is a layout group a pattern named
+            // (so a style can dress it): undressed, it draws no outline.
+            Vec::new()
         } else {
             token_strokes(part, theme)
         };
