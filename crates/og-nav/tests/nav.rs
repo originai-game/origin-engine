@@ -855,3 +855,267 @@ fn a_facing_agent_turns_the_short_way_at_its_turn_speed() {
         "faces {was}, walks {facing}"
     );
 }
+
+// ── G2-4: areas, filters and shapes ─────────────────────────────────────────
+
+/// A flat 20 × 10 m floor from the origin, 0.25 m cells.
+fn floor() -> og_nav::Heightfield {
+    let p = NavParams {
+        cell_size: 0.25,
+        tile_size: 16,
+        ..Default::default()
+    };
+    og_nav::Heightfield::flat(p, Vec3::ZERO, 80, 40)
+}
+
+/// A swamp across the floor at x 9–11, from the near edge to z 8 (a gap from z 8 to 10).
+fn swamp() -> og_nav::Shape {
+    og_nav::Shape::Box {
+        min: Vec3::new(9.0, -1.0, -1.0),
+        max: Vec3::new(11.0, 1.0, 8.0),
+    }
+}
+
+fn max_z(points: &[Vec3]) -> f32 {
+    points.iter().fold(f32::MIN, |m, p| m.max(p.z))
+}
+
+#[test]
+fn areas_split_polygons_and_a_filter_s_costs_and_exclusions_reroute_paths() {
+    use og_nav::{Filter, Shape};
+    let mesh = NavMesh::build_with_areas(floor(), vec![(swamp(), 3)]);
+    // Every polygon has one area, and the swamp's lie inside it.
+    let mut swampy = 0;
+    for t in &mesh.tiles {
+        for p in &t.polys {
+            let c = p
+                .verts
+                .iter()
+                .fold(Vec3::ZERO, |a, &v| a + t.verts[v as usize])
+                / p.verts.len() as f32;
+            let inside = c.x > 9.0 && c.x < 11.0 && c.z < 8.0;
+            assert_eq!(p.area == 3, inside, "a polygon at {c} has area {}", p.area);
+            swampy += usize::from(p.area == 3);
+        }
+    }
+    assert!(swampy > 0);
+    let (a, b) = (Vec3::new(2.0, 0.0, 4.0), Vec3::new(18.0, 0.0, 4.0));
+    let ext = Vec3::new(1.0, 2.0, 1.0);
+    let plain = mesh.find_path(a, b, ext).unwrap();
+    assert!(
+        plain.complete && max_z(&plain.points) < 6.0,
+        "cost 1 wades straight through"
+    );
+    let costly = Filter {
+        costs: vec![1.0, 1.0, 1.0, 10.0],
+        excluded: 0,
+    };
+    let round = mesh.find_path_filtered(a, b, ext, &costly).unwrap();
+    assert!(
+        round.complete && max_z(&round.points) > 7.9,
+        "cost 10 goes round by the gap"
+    );
+    let keep_out = Filter {
+        costs: Vec::new(),
+        excluded: 1 << 3,
+    };
+    let out = mesh.find_path_filtered(a, b, ext, &keep_out).unwrap();
+    assert!(out.complete && max_z(&out.points) > 7.9);
+    assert!(
+        out.polys.iter().all(|&r| mesh.poly(r).unwrap().1.area != 3),
+        "an excluded area is never entered"
+    );
+    // A run-time area closes the gap: kept out, the far side is cut off;
+    // at cost 10 the path wades again; removed, the mesh is as it was.
+    let mut m = mesh.clone();
+    let rebuilt = m.set_area(
+        1,
+        Some((
+            Shape::Box {
+                min: Vec3::new(9.0, -1.0, 7.5),
+                max: Vec3::new(11.0, 1.0, 11.0),
+            },
+            3,
+        )),
+    );
+    assert!(
+        !rebuilt.is_empty() && rebuilt.len() < m.tiles.len(),
+        "only its tiles"
+    );
+    assert!(!m.find_path_filtered(a, b, ext, &keep_out).unwrap().complete);
+    let wade = m.find_path_filtered(a, b, ext, &costly).unwrap();
+    assert!(wade.complete && max_z(&wade.points) < 6.0);
+    m.set_area(1, None);
+    assert_eq!(m.tiles, mesh.tiles, "removing the area restores the tiles");
+}
+
+#[test]
+fn turned_boxes_cylinders_and_convex_shapes_carve_what_they_cover() {
+    use og_nav::Shape;
+    let base = NavMesh::build(floor());
+    let mut m = base.clone();
+    let near = |m: &NavMesh, x: f32, z: f32| {
+        m.nearest(Vec3::new(x, 0.0, z), Vec3::new(0.05, 1.0, 0.05))
+            .is_some()
+    };
+    // A wall 6 m long turned a quarter: it lies along z, not x.
+    m.carve(
+        1,
+        Some(Shape::Oriented {
+            center: Vec3::new(4.0, 1.0, 5.0),
+            half: Vec3::new(3.0, 1.0, 0.2),
+            yaw: std::f32::consts::FRAC_PI_2,
+        }),
+    );
+    assert!(!near(&m, 4.0, 7.5) && near(&m, 6.5, 5.0));
+    // A pillar: the disc grown by the agent's radius, no more.
+    m.carve(
+        2,
+        Some(Shape::Cylinder {
+            base: Vec3::new(12.0, 0.0, 5.0),
+            radius: 1.0,
+            height: 2.0,
+        }),
+    );
+    assert!(!near(&m, 12.0, 5.0) && !near(&m, 12.0, 6.3));
+    assert!(near(&m, 12.0, 7.0), "outside radius + agent radius");
+    assert!(
+        near(&m, 13.3, 6.3),
+        "the pillar is round, not its bounding box"
+    );
+    // A convex outline.
+    m.carve(
+        3,
+        Some(Shape::Convex {
+            points: vec![
+                Vec2::new(16.0, 2.0),
+                Vec2::new(19.0, 2.0),
+                Vec2::new(16.0, 5.0),
+            ],
+            bottom: 0.0,
+            top: 1.0,
+        }),
+    );
+    assert!(!near(&m, 16.5, 2.5) && near(&m, 18.8, 4.8));
+    let path = m
+        .find_path(
+            Vec3::new(1.0, 0.0, 5.0),
+            Vec3::new(8.0, 0.0, 5.0),
+            Vec3::new(1.0, 2.0, 1.0),
+        )
+        .unwrap();
+    assert!(
+        path.complete && path.points.len() > 2,
+        "round the turned wall"
+    );
+    for id in 1..=3 {
+        m.carve(id, None);
+    }
+    assert_eq!(
+        m.tiles, base.tiles,
+        "removing every shape restores the tiles"
+    );
+}
+
+#[test]
+fn filtered_agents_keep_out_of_an_area_and_shapes_and_areas_come_back_with_a_save() {
+    use og_nav::{NavFilter, Shape};
+    let make = || {
+        let mut navs = Navs::default();
+        let h = navs.insert(Nav::Mesh(Box::new(NavMesh::build_with_areas(
+            floor(),
+            vec![(swamp(), 3)],
+        ))));
+        let navs = Arc::new(Mutex::new(navs));
+        let mut w = world_with(navs.clone(), Plane::Xz);
+        og_nav::enable_filters(&mut w).unwrap();
+        let agent = |w: &mut World, z: f32, filter: Option<NavFilter>| {
+            let e = w
+                .spawn((
+                    og_nav::system::Transform {
+                        position: Vec3::new(2.0, 0.0, z),
+                        ..Default::default()
+                    },
+                    NavAgent {
+                        nav: h,
+                        target: Vec3::new(18.0, 0.0, z),
+                        seeking: true,
+                        speed: 4.0,
+                        ..Default::default()
+                    },
+                ))
+                .unwrap();
+            if let Some(f) = filter {
+                w.insert(e, f).unwrap();
+            }
+            e
+        };
+        let mut keep_out = NavFilter::default();
+        keep_out.excluded.push(3).unwrap();
+        let careful = agent(&mut w, 4.0, Some(keep_out));
+        let bold = agent(&mut w, 2.0, None);
+        (w, navs, h, careful, bold)
+    };
+    let pos = |w: &World, e| w.get::<og_nav::system::Transform>(e).unwrap().position;
+    let (mut w, navs, h, careful, bold) = make();
+    let (mut careful_z, mut bold_z) = (f32::MIN, f32::MIN);
+    let mut snap = None;
+    for t in 0..400 {
+        if t == 100
+            && let Some(Nav::Mesh(m)) = navs.lock().unwrap().get_mut(h)
+        {
+            m.carve(
+                9,
+                Some(Shape::Cylinder {
+                    base: Vec3::new(15.0, 0.0, 2.0),
+                    radius: 0.6,
+                    height: 1.0,
+                }),
+            );
+            m.set_area(
+                4,
+                Some((
+                    Shape::Box {
+                        min: Vec3::new(13.0, -1.0, 6.0),
+                        max: Vec3::new(14.0, 1.0, 10.0),
+                    },
+                    5,
+                )),
+            );
+        }
+        if t == 150 {
+            snap = Some(w.snapshot());
+        }
+        w.step().unwrap();
+        let (c, b) = (pos(&w, careful), pos(&w, bold));
+        assert!(
+            !(c.x > 9.3 && c.x < 10.7 && c.z < 7.7),
+            "the filtered agent waded the swamp at {c}"
+        );
+        careful_z = careful_z.max(c.z);
+        bold_z = bold_z.max(b.z);
+    }
+    assert!(careful_z > 7.9, "it went round by the gap");
+    assert!(bold_z < 5.0, "without a filter it went straight");
+    assert!(pos(&w, careful).distance(Vec3::new(18.0, 0.0, 4.0)) < 0.5);
+    // A fresh world restored at tick 150: its mesh takes the pillar and
+    // the area back, and it goes on to the same world.
+    let (mut fresh, fresh_navs, ..) = make();
+    fresh.restore(&snap.unwrap()).unwrap();
+    {
+        let n = fresh_navs.lock().unwrap();
+        let Some(Nav::Mesh(m)) = n.get(h) else {
+            panic!("the mesh")
+        };
+        let Some(Nav::Mesh(orig)) = navs.lock().unwrap().get(h).cloned() else {
+            panic!("the mesh")
+        };
+        assert_eq!(m.obstacles().count(), 1);
+        assert_eq!(m.areas().count(), 1);
+        assert_eq!(m.tiles, orig.tiles);
+    }
+    for _ in 150..400 {
+        fresh.step().unwrap();
+    }
+    assert_eq!(fresh.world_hash(), w.world_hash());
+}

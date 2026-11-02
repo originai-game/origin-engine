@@ -21,11 +21,16 @@
 //!    at heights within the agent's climb) are neighbours, inside a tile and
 //!    across tiles.
 //!
-//! A runtime obstacle (`set_obstacle`) blocks the spans under its box,
-//! grown by the agent radius, and rebuilds only the tiles it touches.
+//! A runtime obstacle (`set_obstacle`, `carve` for any [`Shape`]) blocks
+//! the spans under it, grown by the agent radius, and rebuilds only the
+//! tiles it touches. Areas (`set_area`, and the baked ones the mesh is
+//! built with) mark spans with an area id (0 is ground): regions never mix
+//! areas, so every polygon has one ([`Poly::area`]), and a path's [`Filter`]
+//! weighs each area's length by its cost or keeps out of it.
 //! Everything is integer or f32 arithmetic in a fixed order: the same
 //! heightfield builds the same polygons on every host.
 
+pub use crate::shape::Shape;
 use og_core::IdMap;
 use og_core::glam::{Vec2, Vec3};
 use std::cmp::Reverse;
@@ -191,6 +196,8 @@ pub struct Poly {
     /// Per edge `verts[i] → verts[i+1]`: the neighbour across it, or [`NONE`].
     pub links: Vec<u32>,
     pub region: u32,
+    /// Its area (0: ground).
+    pub area: u8,
 }
 
 /// One tile's polygons.
@@ -211,6 +218,38 @@ pub fn poly_ref(tile: usize, poly: usize) -> PolyRef {
 
 pub fn split_ref(r: PolyRef) -> (usize, usize) {
     ((r >> 16) as usize, (r & 0xffff) as usize)
+}
+
+/// Which areas a path may cross and what each costs per metre (an
+/// agent's `og.NavFilter`); the default is every area at 1.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Filter {
+    /// Per area id, its cost (past the list: 1). At least [`MIN_COST`].
+    pub costs: Vec<f32>,
+    /// Bit `a` set: area `a` (0 to 63) is never entered.
+    pub excluded: u64,
+}
+
+/// The least area cost a filter takes.
+pub const MIN_COST: f32 = 0.01;
+
+impl Filter {
+    /// The cost of a metre in area `a`.
+    pub fn cost(&self, a: u8) -> f32 {
+        self.costs
+            .get(a as usize)
+            .map_or(1.0, |&c| if c.is_finite() { c.max(MIN_COST) } else { 1.0 })
+    }
+
+    /// Whether area `a` is kept out of.
+    pub fn excludes(&self, a: u8) -> bool {
+        a < 64 && self.excluded & (1u64 << a) != 0
+    }
+
+    /// The cheapest cost of any area (1 when none is cheaper).
+    fn least(&self) -> f32 {
+        (0..self.costs.len()).fold(1.0f32, |m, a| m.min(self.cost(a as u8)))
+    }
 }
 
 /// A path through the navmesh.
@@ -234,9 +273,15 @@ pub struct NavMesh {
     pub tiles_x: u32,
     pub tiles_z: u32,
     pub tiles: Vec<Tile>,
-    obstacles: IdMap<u32, Obstacle>,
+    obstacles: IdMap<u32, Shape>,
+    /// The areas it was built with (the cook's), in order.
+    base_areas: Vec<(Shape, u8)>,
+    /// The areas set at run time, by id, after the base ones.
+    areas: IdMap<u32, (Shape, u8)>,
     /// Per span: blocked by an obstacle now.
     blocked: Vec<bool>,
+    /// Per span: its area.
+    span_area: Vec<u8>,
     /// Per span: its region in its tile (0: none).
     span_region: Vec<u32>,
     /// Per tile: each region's rows of cells.
@@ -266,7 +311,12 @@ enum Across {
 impl NavMesh {
     /// Builds every tile of a heightfield.
     pub fn build(field: Heightfield) -> NavMesh {
-        let mut mesh = NavMesh::empty(field);
+        NavMesh::build_with_areas(field, Vec::new())
+    }
+
+    /// [`Self::build`] with areas marked (later entries over earlier ones).
+    pub fn build_with_areas(field: Heightfield, areas: Vec<(Shape, u8)>) -> NavMesh {
+        let mut mesh = NavMesh::empty(field, areas);
         for t in 0..mesh.tiles.len() {
             mesh.tiles[t] = mesh.build_tile(t);
         }
@@ -276,7 +326,16 @@ impl NavMesh {
 
     /// A navmesh from tiles built earlier (the cook's), linked here.
     pub fn from_tiles(field: Heightfield, tiles: Vec<Tile>) -> Option<NavMesh> {
-        let mut mesh = NavMesh::empty(field);
+        NavMesh::from_tiles_with_areas(field, tiles, Vec::new())
+    }
+
+    /// [`Self::from_tiles`] for tiles built with `areas`.
+    pub fn from_tiles_with_areas(
+        field: Heightfield,
+        tiles: Vec<Tile>,
+        areas: Vec<(Shape, u8)>,
+    ) -> Option<NavMesh> {
+        let mut mesh = NavMesh::empty(field, areas);
         if tiles.len() != mesh.tiles.len() {
             return None;
         }
@@ -286,7 +345,7 @@ impl NavMesh {
     }
 
     /// The tiles' regions, no polygons yet.
-    fn empty(field: Heightfield) -> NavMesh {
+    fn empty(field: Heightfield, base_areas: Vec<(Shape, u8)>) -> NavMesh {
         let ts = field.params.tile_size.max(4);
         let tiles_x = field.width.div_ceil(ts).max(1);
         let tiles_z = field.depth.div_ceil(ts).max(1);
@@ -298,11 +357,15 @@ impl NavMesh {
             tiles_z,
             tiles: vec![Tile::default(); n],
             obstacles: IdMap::new(),
+            base_areas,
+            areas: IdMap::new(),
             blocked: vec![false; spans],
+            span_area: Vec::new(),
             span_region: vec![0; spans],
             rows: vec![RegionRows::new(); n],
             version: 1,
         };
+        mesh.mark_areas();
         for t in 0..n {
             mesh.assign_regions(t);
         }
@@ -344,8 +407,48 @@ impl NavMesh {
         (lo, hi)
     }
 
-    pub fn obstacles(&self) -> impl Iterator<Item = (u32, &Obstacle)> {
+    /// The obstacles set now, by id.
+    pub fn obstacles(&self) -> impl Iterator<Item = (u32, &Shape)> {
         self.obstacles.iter().map(|(k, v)| (*k, v))
+    }
+
+    /// The areas set at run time, by id (not the baked ones).
+    pub fn areas(&self) -> impl Iterator<Item = (u32, &(Shape, u8))> {
+        self.areas.iter().map(|(k, v)| (*k, v))
+    }
+
+    /// The areas the mesh was built with.
+    pub fn base_areas(&self) -> &[(Shape, u8)] {
+        &self.base_areas
+    }
+
+    /// Marks every span with the area of the last area shape over it: under
+    /// its outline on x and z (the cell's centre), its floor from the
+    /// agent's climb below the shape's bottom to its top.
+    fn mark_areas(&mut self) {
+        let p = self.field.params;
+        let mut marks = vec![0u8; self.field.spans.len()];
+        for (shape, area) in self.base_areas.iter().chain(self.areas.values()) {
+            let (min, max) = shape.bounds();
+            let (x0, z0, x1, z1) = self.cells_of(min, max);
+            for z in z0..z1 {
+                for x in x0..x1 {
+                    let cx = self.field.origin.x + (x as f32 + 0.5) * p.cell_size;
+                    let cz = self.field.origin.z + (z as f32 + 0.5) * p.cell_size;
+                    if !shape.covers(cx, cz, 0.0) {
+                        continue;
+                    }
+                    for s in self.field.column(x, z) {
+                        let y =
+                            self.field.origin.y + self.field.spans[s].floor as f32 * p.cell_height;
+                        if y >= min.y - p.agent_climb && y <= max.y {
+                            marks[s] = *area;
+                        }
+                    }
+                }
+            }
+        }
+        self.span_area = marks;
     }
 
     fn walkable(&self, s: usize) -> bool {
@@ -379,35 +482,70 @@ impl NavMesh {
     /// obstacle, and rebuilds the tiles under its old and new boxes. The
     /// tiles rebuilt, in order.
     pub fn set_obstacle(&mut self, id: u32, obstacle: Option<Obstacle>) -> Vec<usize> {
-        let old = match obstacle {
-            Some(o) => self.obstacles.insert(id, o),
+        self.carve(
+            id,
+            obstacle.map(|o| Shape::Box {
+                min: o.min,
+                max: o.max,
+            }),
+        )
+    }
+
+    /// [`Self::set_obstacle`] for any shape.
+    pub fn carve(&mut self, id: u32, shape: Option<Shape>) -> Vec<usize> {
+        let mut bounds: Vec<(Vec3, Vec3)> = shape.iter().map(Shape::bounds).collect();
+        let old = match shape {
+            Some(s) => self.obstacles.insert(id, s),
             None => self.obstacles.remove(&id),
         };
-        let mut boxes: Vec<Obstacle> = old.into_iter().collect();
-        boxes.extend(obstacle);
-        self.rebuild_boxes(&boxes)
+        bounds.splice(0..0, old.iter().map(Shape::bounds));
+        self.rebuild_bounds(&bounds)
+    }
+
+    /// Sets, moves or removes (`None`) a run-time area: the spans under
+    /// `shape` take area `area` (over the baked areas and lower ids), and
+    /// the tiles under its old and new shapes rebuild. The tiles rebuilt.
+    pub fn set_area(&mut self, id: u32, area: Option<(Shape, u8)>) -> Vec<usize> {
+        let mut bounds: Vec<(Vec3, Vec3)> = area.iter().map(|a| a.0.bounds()).collect();
+        let old = match area {
+            Some(a) => self.areas.insert(id, a),
+            None => self.areas.remove(&id),
+        };
+        bounds.splice(0..0, old.iter().map(|a| a.0.bounds()));
+        self.mark_areas();
+        self.rebuild_bounds(&bounds)
     }
 
     /// Rebuilds the tiles that overlap `min..max` (after a change to the
     /// level there): the region rebuild an editor or a procedural level calls.
     pub fn rebuild_region(&mut self, min: Vec3, max: Vec3) -> Vec<usize> {
-        self.rebuild_boxes(&[Obstacle { min, max }])
+        self.rebuild_bounds(&[(min, max)])
     }
 
-    fn rebuild_boxes(&mut self, boxes: &[Obstacle]) -> Vec<usize> {
+    fn rebuild_bounds(&mut self, boxes: &[(Vec3, Vec3)]) -> Vec<usize> {
         let p = self.field.params;
         let r = p.agent_radius;
+        let grow = Vec3::new(r, 0.0, r);
         // Spans under every obstacle (grown by the radius), from scratch.
         let mut blocked = vec![false; self.field.spans.len()];
         for o in self.obstacles.values() {
-            let (x0, z0, x1, z1) =
-                self.cells_of(o.min - Vec3::new(r, 0.0, r), o.max + Vec3::new(r, 0.0, r));
+            let (min, max) = o.bounds();
+            let (x0, z0, x1, z1) = self.cells_of(min - grow, max + grow);
             for z in z0..z1 {
                 for x in x0..x1 {
+                    // A box blocks every cell it touches; another shape the
+                    // cells whose centre it covers, grown by the radius.
+                    if !matches!(o, Shape::Box { .. }) {
+                        let cx = self.field.origin.x + (x as f32 + 0.5) * p.cell_size;
+                        let cz = self.field.origin.z + (z as f32 + 0.5) * p.cell_size;
+                        if !o.covers(cx, cz, r) {
+                            continue;
+                        }
+                    }
                     for s in self.field.column(x, z) {
                         let sp = self.field.spans[s];
                         let y = self.field.origin.y + sp.floor as f32 * p.cell_height;
-                        if y + p.agent_height >= o.min.y && y <= o.max.y + p.agent_climb {
+                        if y + p.agent_height >= min.y && y <= max.y + p.agent_climb {
                             blocked[s] = true;
                         }
                     }
@@ -417,9 +555,8 @@ impl NavMesh {
         self.blocked = blocked;
         let ts = p.tile_size.max(4) as i32;
         let mut tiles = Vec::new();
-        for b in boxes {
-            let (x0, z0, x1, z1) =
-                self.cells_of(b.min - Vec3::new(r, 0.0, r), b.max + Vec3::new(r, 0.0, r));
+        for &(bmin, bmax) in boxes {
+            let (x0, z0, x1, z1) = self.cells_of(bmin - grow, bmax + grow);
             // One cell of margin: a neighbour tile's border cells see across.
             let (tx0, tz0) = (((x0 - 1).max(0)) / ts, ((z0 - 1).max(0)) / ts);
             let (tx1, tz1) = (
@@ -508,8 +645,10 @@ impl NavMesh {
                         continue;
                     }
                     let sp = self.field.spans[s];
+                    let area = self.span_area[s];
                     let left = if x > x0 {
                         self.step(sp, x - 1, z)
+                            .filter(|&l| self.span_area[l] == area)
                             .and_then(|l| run_of.get(&l).copied())
                     } else {
                         None
@@ -527,6 +666,7 @@ impl NavMesh {
                     };
                     if z > z0
                         && let Some(d) = self.step(sp, x, z - 1)
+                        && self.span_area[d] == area
                         && let Some(&nr) = region.get(&d)
                     {
                         let sw = &mut sweeps[run];
@@ -588,6 +728,10 @@ impl NavMesh {
             let pts: Vec<(i64, i64)> = contour.iter().map(|c| (c.0 as i64, c.1 as i64)).collect();
             let tris = triangulate(&pts);
             let polys = merge(&pts, tris);
+            let area = rws
+                .first()
+                .and_then(|r| r.1.first())
+                .map_or(0, |&(_, s)| self.span_area[s]);
             // Vertex heights: the highest floor of this region's cells around the vertex.
             let height = |(ix, iz): (i32, i32)| -> u32 {
                 let mut best: Option<u32> = None;
@@ -623,6 +767,7 @@ impl NavMesh {
                     verts,
                     links: vec![NONE; n],
                     region: rid,
+                    area,
                 });
             }
         }
@@ -895,14 +1040,30 @@ impl NavMesh {
     /// polygons through edge midpoints), then the funnel's corners.
     /// `extent` is the search box for the end points' polygons.
     pub fn find_path(&self, start: Vec3, end: Vec3, extent: Vec3) -> Option<MeshPath> {
+        self.find_path_filtered(start, end, extent, &Filter::default())
+    }
+
+    /// [`Self::find_path`] weighing each polygon's length by its area's
+    /// cost in `filter`, through no polygon of an excluded area.
+    pub fn find_path_filtered(
+        &self,
+        start: Vec3,
+        end: Vec3,
+        extent: Vec3,
+        filter: &Filter,
+    ) -> Option<MeshPath> {
         let (sref, spt) = self.nearest(start, extent)?;
         let (eref, ept) = self.nearest(end, extent)?;
         let mut g: BTreeMap<PolyRef, (f32, PolyRef, Vec3)> = BTreeMap::new();
         let mut closed: BTreeMap<PolyRef, ()> = BTreeMap::new();
         let mut open: BinaryHeap<Reverse<(u32, u32, PolyRef)>> = BinaryHeap::new();
         let key = |x: f32| x.max(0.0).to_bits();
+        // The heuristic at the cheapest area's cost, so it never overestimates
+        // (1 without a filter: the distance itself).
+        let least = filter.least();
+        let area_of = |r: PolyRef| self.poly(r).map_or(0, |(_, p)| p.area);
         g.insert(sref, (0.0, NONE, spt));
-        open.push(Reverse((key(spt.distance(ept)), 0, sref)));
+        open.push(Reverse((key(spt.distance(ept) * least), 0, sref)));
         let mut seq = 0u32;
         let mut expanded = 0u32;
         let mut best_end = (spt.distance(ept), sref);
@@ -922,17 +1083,28 @@ impl NavMesh {
                 best_end = (h, cur);
             }
             let (_, poly) = self.poly(cur).expect("a live polygon");
+            let here = filter.cost(poly.area);
             for (e, &nb) in poly.links.iter().enumerate() {
                 if nb == NONE || closed.contains_key(&nb) {
                     continue;
                 }
+                let there = area_of(nb);
+                if filter.excludes(there) {
+                    continue;
+                }
                 let (a, b) = self.edge(cur, e);
                 let mid = (a + b) * 0.5;
-                let ng = gc + pos.distance(mid) + if nb == eref { mid.distance(ept) } else { 0.0 };
+                let ng = gc
+                    + pos.distance(mid) * here
+                    + if nb == eref {
+                        mid.distance(ept) * filter.cost(there)
+                    } else {
+                        0.0
+                    };
                 if g.get(&nb).is_none_or(|old| ng < old.0) {
                     g.insert(nb, (ng, cur, mid));
                     seq += 1;
-                    open.push(Reverse((key(ng + mid.distance(ept)), seq, nb)));
+                    open.push(Reverse((key(ng + mid.distance(ept) * least), seq, nb)));
                 }
             }
         }

@@ -7940,6 +7940,10 @@
         "NavAlgorithm",
         "NavAgent",
         "Steering",
+        "NavFilter",
+        "NavShapeKind",
+        "NavShape",
+        "NavAreaDesc",
         "NavGridDesc",
         "TilemapGridDesc",
         "NavCell",
@@ -8259,6 +8263,72 @@
           ],
           "returns": "Result<NavRebuild>",
           "returnsDoc": "Refused for an unknown navmesh.",
+          "publish": true
+        },
+        {
+          "name": "carve",
+          "doc": "og.nav.setObstacle for any shape: a turned box (a door ajar, a fallen log), a cylinder (a pillar, a barrel) or a convex prism. The cells whose centres the shape covers, grown by the agent radius, are blocked and only the tiles it touches, and their neighbours, are rebuilt. Shares og.nav.setObstacle's ids. World state.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "mesh",
+              "type": "Navigation",
+              "optional": false,
+              "doc": "The navmesh."
+            },
+            {
+              "name": "id",
+              "type": "u32",
+              "optional": false,
+              "doc": "The obstacle's id."
+            },
+            {
+              "name": "shape",
+              "type": "NavShape",
+              "optional": true,
+              "doc": "The shape; omitted removes the obstacle."
+            }
+          ],
+          "returns": "Result<NavRebuild>",
+          "returnsDoc": "Refused for an unknown navmesh or a convex shape of fewer than three points.",
+          "publish": true
+        },
+        {
+          "name": "setArea",
+          "doc": "Set, move or (with no desc) remove a run-time area on a navmesh (water, mud, a road): its tiles rebuild so no polygon mixes areas, and agents re-plan, weighing it by their og.NavFilter. World state.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "mesh",
+              "type": "Navigation",
+              "optional": false,
+              "doc": "The navmesh."
+            },
+            {
+              "name": "id",
+              "type": "u32",
+              "optional": false,
+              "doc": "The area's id, the game's own."
+            },
+            {
+              "name": "desc",
+              "type": "NavAreaDesc",
+              "optional": true,
+              "doc": "The shape and the area; omitted removes it."
+            }
+          ],
+          "returns": "Result<NavRebuild>",
+          "returnsDoc": "Refused for an unknown navmesh or an area past 63.",
           "publish": true
         },
         {
@@ -35592,6 +35662,157 @@
       },
       "additionalProperties": false
     },
+    "NavFilter": {
+      "x-og-kind": "component",
+      "x-og-module": "nav",
+      "description": "Which navmesh areas an agent crosses and what a metre in each costs: beside an og.NavAgent, its plans weigh every polygon's length by its area's cost and never enter an excluded area. Areas are marked at cook time (`area` in a navmesh asset) or at run time (og.nav.setArea); 0 is ground. Without one every area costs 1.",
+      "type": "object",
+      "properties": {
+        "areaCosts": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 64,
+          "description": "Per area id, the cost of a metre in it (past the list's length 1, and at least 0.01): `{ areaCosts: [1, 1, 1, 8] }` makes area 3 (water) eight times dearer, so a path wades only when going round is longer than that.",
+          "default": []
+        },
+        "excluded": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "maxItems": 64,
+          "description": "Area ids the agent never enters (0 to 63): `{ excluded: [4] }` keeps it out of area 4 (lava).",
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "NavShapeKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "nav",
+      "description": "What a NavShape is.",
+      "type": "string",
+      "enum": [
+        "box",
+        "orientedBox",
+        "cylinder",
+        "convex"
+      ],
+      "x-og-variants": {
+        "box": "An axis-aligned box from `min` to `max`.",
+        "orientedBox": "A box of size `size` round `center`, turned `yaw` radians about +y.",
+        "cylinder": "An upright cylinder of `radius` and `height` standing on `center`.",
+        "convex": "A convex prism: `points` (x and z, either winding) from `min.y` to `max.y`."
+      }
+    },
+    "NavShape": {
+      "x-og-kind": "desc",
+      "x-og-module": "nav",
+      "description": "A volume over a navmesh's floor: an obstacle (og.nav.carve) or an area (og.nav.setArea).",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/NavShapeKind",
+          "description": "Which shape.",
+          "default": "box"
+        },
+        "min": {
+          "$ref": "#/$defs/Vector3",
+          "description": "box: its lowest corner; convex: its bottom (min.y).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "max": {
+          "$ref": "#/$defs/Vector3",
+          "description": "box: its highest corner; convex: its top (max.y).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "center": {
+          "$ref": "#/$defs/Vector3",
+          "description": "orientedBox: its centre; cylinder: the middle of its base.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "size": {
+          "$ref": "#/$defs/Vector3",
+          "description": "orientedBox: its full size before the turn.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "yaw": {
+          "type": "number",
+          "description": "orientedBox: its turn about +y.",
+          "default": 0,
+          "x-og-unit": "rad"
+        },
+        "radius": {
+          "type": "number",
+          "description": "cylinder: its radius.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "height": {
+          "type": "number",
+          "description": "cylinder: its height.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Vector3"
+          },
+          "description": "convex: its outline's corners (their y is ignored).",
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "NavAreaDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "nav",
+      "description": "A run-time area: the spans under `shape` (their floors from the agent's climb below its bottom to its top) take area `area`, over the baked areas and over run-time areas of lower ids.",
+      "type": "object",
+      "properties": {
+        "shape": {
+          "$ref": "#/$defs/NavShape",
+          "description": "Where.",
+          "default": {}
+        },
+        "area": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The area id, 0 to 63 (0 is ground).",
+          "default": 0,
+          "maximum": 63
+        }
+      },
+      "additionalProperties": false
+    },
     "NavGridDesc": {
       "x-og-kind": "desc",
       "x-og-module": "nav",
@@ -35754,6 +35975,24 @@
           "minimum": 0,
           "maximum": 10,
           "x-og-unit": "m"
+        },
+        "areaCosts": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "On a navmesh: per area id, the cost of a metre in it, as og.NavFilter's.",
+          "default": []
+        },
+        "excluded": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "description": "On a navmesh: area ids the path never enters.",
+          "default": []
         }
       },
       "additionalProperties": false

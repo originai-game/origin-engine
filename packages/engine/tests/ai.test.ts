@@ -267,3 +267,75 @@ test("og.ai.restart: a machine goes back to its initial state at its next think"
   expect(must(w.get(moody, og.AiAgent)).state).toBe(0);
   expect((og.ai.describe(w, moody) as { state: string }).state).toBe("calm");
 });
+
+// G2-4: areas, filters and shapes through the API, and og.NavFilter
+// registered only once a game uses it.
+const Swamp = defineResource("NavSwamp", { mesh: f64(0), careful: f64(0) });
+
+function swampYard(filtered: boolean) {
+  return (world: World) => {
+    const info = must(og.nav.build(world, { min: { x: 0, y: 0, z: 0 }, max: { x: 20, y: 0, z: 10 }, cellSize: 0.25, tileSize: 16 }));
+    must(world.resource(Swamp)).mesh = info.mesh as unknown as number;
+    // Water across x 9–11, open only from z 8 to 10.
+    must(og.nav.setArea(world, info.mesh, 1, { shape: { kind: "box" as never, min: { x: 9, y: -1, z: -1 }, max: { x: 11, y: 1, z: 8 } }, area: 3 }));
+    const e = must(world.spawn({ name: "careful", position: { x: 2, y: 0, z: 4 } }));
+    world.insert(e, og.NavAgent, { nav: info.mesh, target: { x: 18, y: 0, z: 4 }, seeking: true, speed: 4 });
+    if (filtered) world.insert(e, og.NavFilter, { excluded: [3] });
+  };
+}
+
+function types(world: World): string[] {
+  return must(world.openSave(must(world.snapshot())))
+    .types()
+    .map((t) => t.name);
+}
+
+test("og.nav: areas reroute filtered paths and agents, shapes carve, and og.NavFilter joins the type table only when used", () => {
+  const plain = start(og.game({ resources: [Swamp], start: swampYard(false) }));
+  const w = plain.world;
+  expect(types(w)).not.toContain("og.NavFilter");
+  const mesh = must(w.resource(Swamp)).mesh as never;
+  const ends = { nav: mesh, from: { x: 2, y: 0, z: 4 }, to: { x: 18, y: 0, z: 4 } };
+  const maxZ = (pts: { z: number }[]) => Math.max(...pts.map((p) => p.z));
+  expect(maxZ(must(og.nav.findPath(w, ends)).points)).toBeLessThan(6);
+  expect(maxZ(must(og.nav.findPath(w, { ...ends, areaCosts: [1, 1, 1, 10] })).points)).toBeGreaterThan(7.9);
+  expect(maxZ(must(og.nav.findPath(w, { ...ends, excluded: [3] })).points)).toBeGreaterThan(7.9);
+  // A pillar is round, a convex outline needs three points, an area past 63 is refused.
+  must(og.nav.carve(w, mesh, 7, { kind: "cylinder" as never, center: { x: 15, y: 0, z: 2 }, radius: 1, height: 2 }));
+  expect(og.nav.nearest(w, mesh, { x: 15, y: 0, z: 2 }, { x: 0.05, y: 1, z: 0.05 })).toBeNull();
+  expect(og.nav.nearest(w, mesh, { x: 16.3, y: 0, z: 3.3 }, { x: 0.05, y: 1, z: 0.05 })).not.toBeNull();
+  expect(og.nav.carve(w, mesh, 8, { kind: "convex" as never, points: [{ x: 1, y: 0, z: 1 }, { x: 2, y: 0, z: 1 }] }).ok).toBeFalse();
+  expect(og.nav.setArea(w, mesh, 2, { shape: { kind: "box" as never }, area: 64 }).ok).toBeFalse();
+  must(og.nav.carve(w, mesh, 7));
+  expect(og.nav.nearest(w, mesh, { x: 15, y: 0, z: 2 }, { x: 0.05, y: 1, z: 0.05 })).not.toBeNull();
+
+  // The filtered agent goes round by the gap; a save of its world restores
+  // in a session that never used og.NavFilter and goes on to the same world.
+  const careful = start(og.game({ resources: [Swamp], start: swampYard(true) }));
+  const cw = careful.world;
+  expect(types(cw)).toContain("og.NavFilter");
+  const walker_ = cw.find("careful")!;
+  let top = 0;
+  for (let t = 0; t < 30; t++) {
+    expect(careful.advance(2).ok).toBeTrue();
+    const p = must(cw.get(walker_, og.Transform)).position;
+    expect(p.x > 9.3 && p.x < 10.7 && p.z < 7.7).toBeFalse();
+    top = Math.max(top, p.z);
+  }
+  must(og.nav.carve(cw, must(cw.resource(Swamp)).mesh as never, 9, { kind: "orientedBox" as never, center: { x: 14, y: 1, z: 9 }, size: { x: 2, y: 2, z: 0.4 }, yaw: 0.7 }));
+  const save = must(cw.snapshot());
+  for (let t = 0; t < 150; t++) {
+    expect(careful.advance(2).ok).toBeTrue();
+    const p = must(cw.get(walker_, og.Transform)).position;
+    expect(p.x > 9.3 && p.x < 10.7 && p.z < 7.7).toBeFalse();
+    top = Math.max(top, p.z);
+  }
+  const after = careful.hash();
+  expect(top).toBeGreaterThan(7.9);
+  expect(must(cw.get(walker_, og.NavAgent)).status).toBe(NAV_ARRIVED);
+  const fresh = start(og.game({ resources: [Swamp], start: swampYard(false) }));
+  expect(types(fresh.world)).not.toContain("og.NavFilter");
+  expect(fresh.world.restore(save).ok).toBeTrue();
+  expect(fresh.advance(300).ok).toBeTrue();
+  expect(fresh.hash()).toBe(after);
+});

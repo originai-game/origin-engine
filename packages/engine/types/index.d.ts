@@ -17233,6 +17233,127 @@ export interface Steering {
 }
 
 /**
+ * Which navmesh areas an agent crosses and what a metre in each costs: beside an og.NavAgent, its plans weigh every polygon's length by its area's cost and never enter an excluded area. Areas are marked at cook time (`area` in a navmesh asset) or at run time (og.nav.setArea); 0 is ground. Without one every area costs 1.
+ *
+ * The value of the `NavFilter` component (token `og.NavFilter`).
+ */
+export interface NavFilter {
+  /**
+   * Per area id, the cost of a metre in it (past the list's length 1, and at least 0.01): `{ areaCosts: [1, 1, 1, 8] }` makes area 3 (water) eight times dearer, so a path wades only when going round is longer than that.
+   *
+   * @capacity 64 elements (List.f32.64): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  areaCosts: readonly number[];
+  /**
+   * Area ids the agent never enters (0 to 63): `{ excluded: [4] }` keeps it out of area 4 (lava).
+   *
+   * @capacity 64 elements (List.u32.64): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  excluded: readonly number[];
+}
+
+/**
+ * What a NavShape is.
+ * - `"box"`: An axis-aligned box from `min` to `max`.
+ * - `"orientedBox"`: A box of size `size` round `center`, turned `yaw` radians about +y.
+ * - `"cylinder"`: An upright cylinder of `radius` and `height` standing on `center`.
+ * - `"convex"`: A convex prism: `points` (x and z, either winding) from `min.y` to `max.y`.
+ */
+export type NavShapeKind = "box" | "orientedBox" | "cylinder" | "convex";
+
+/**
+ * A volume over a navmesh's floor: an obstacle (og.nav.carve) or an area (og.nav.setArea).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface NavShape {
+  /**
+   * Which shape.
+   *
+   * @default "box"
+   */
+  readonly kind?: NavShapeKind;
+  /**
+   * box: its lowest corner; convex: its bottom (min.y).
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly min?: Vector3;
+  /**
+   * box: its highest corner; convex: its top (max.y).
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly max?: Vector3;
+  /**
+   * orientedBox: its centre; cylinder: the middle of its base.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly center?: Vector3;
+  /**
+   * orientedBox: its full size before the turn.
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly size?: Vector3;
+  /**
+   * orientedBox: its turn about +y.
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly yaw?: number;
+  /**
+   * cylinder: its radius.
+   *
+   * @default 0
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly radius?: number;
+  /**
+   * cylinder: its height.
+   *
+   * @default 0
+   * @range 0..
+   * @unit m (metres)
+   */
+  readonly height?: number;
+  /**
+   * convex: its outline's corners (their y is ignored).
+   *
+   * @default []
+   */
+  readonly points?: readonly Vector3[];
+}
+
+/**
+ * A run-time area: the spans under `shape` (their floors from the agent's climb below its bottom to its top) take area `area`, over the baked areas and over run-time areas of lower ids.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface NavAreaDesc {
+  /**
+   * Where.
+   *
+   * @default {}
+   */
+  readonly shape?: NavShape;
+  /**
+   * The area id, 0 to 63 (0 is ground).
+   *
+   * @default 0
+   * @range ..63
+   */
+  readonly area?: number;
+}
+
+/**
  * A grid of square cells over the plane: cell (0, 0)'s lower corner at `origin`, rows running up.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -17358,6 +17479,18 @@ export interface PathDesc {
    * @unit m (metres)
    */
   readonly radius?: number;
+  /**
+   * On a navmesh: per area id, the cost of a metre in it, as og.NavFilter's.
+   *
+   * @default []
+   */
+  readonly areaCosts?: readonly number[];
+  /**
+   * On a navmesh: area ids the path never enters.
+   *
+   * @default []
+   */
+  readonly excluded?: readonly number[];
 }
 
 /** A path. */
@@ -17514,6 +17647,8 @@ export interface NavRebuild {
   /** The navmesh's polygons now. */
   readonly polygons: number;
 }
+
+
 
 
 
@@ -41462,6 +41597,10 @@ export declare namespace og {
    */
   const Steering: ComponentType<{ readonly seek: FieldSpec<"f32">; readonly flee: FieldSpec<"f32">; readonly fleeFrom: FieldSpec<"Vector3">; readonly fleeRadius: FieldSpec<"f32">; readonly wander: FieldSpec<"f32">; readonly wanderRadius: FieldSpec<"f32">; readonly wanderDistance: FieldSpec<"f32">; readonly wanderJitter: FieldSpec<"f32">; readonly pursue: FieldSpec<"Entity">; readonly pursueWeight: FieldSpec<"f32">; readonly evade: FieldSpec<"Entity">; readonly evadeWeight: FieldSpec<"f32">; readonly separation: FieldSpec<"f32">; readonly separationRadius: FieldSpec<"f32">; readonly avoidance: FieldSpec<"f32">; readonly avoidDistance: FieldSpec<"f32">; readonly avoidMask: FieldSpec<"u32">; readonly wanderAngle: FieldSpec<"f32"> }, Steering>;
   /**
+   * Which navmesh areas an agent crosses and what a metre in each costs: beside an og.NavAgent, its plans weigh every polygon's length by its area's cost and never enter an excluded area. Areas are marked at cook time (`area` in a navmesh asset) or at run time (og.nav.setArea); 0 is ground. Without one every area costs 1.
+   */
+  const NavFilter: ComponentType<{ readonly areaCosts: ListSpec<"f32">; readonly excluded: ListSpec<"u32"> }, NavFilter>;
+  /**
    * Navigation: grids (A* and jump point search with eight-way moves that never cut a blocked corner, line-of-sight smoothing), flow fields for crowds, and navmeshes (baked at cook time from a level's static colliders and models, or built at runtime for a flat procedural level) with funnel paths and box obstacles that rebuild only the tiles they touch.
    * Agents are entities with an og.NavAgent (and an og.Transform): the og.nav system, after the game's systems and before physics, plans their paths, follows them and adds the og.Steering behaviours; an entity with an og.Velocity (a physics body) gets its velocity written, any other its Transform moved. Everything is deterministic and in snapshots: paths, grid edits, obstacles and flow targets.
    * Agents move on the profile's plane: x and y in 2D (a grid's rows run up), x and z in 3D (y kept on grids, from the surface on a navmesh).
@@ -41561,6 +41700,26 @@ export declare namespace og {
      * @returns Refused for an unknown navmesh.
      */
     function setObstacle(world: World, mesh: Navigation, id: number, obstacle?: NavBox): Result<NavRebuild>;
+    /**
+     * og.nav.setObstacle for any shape: a turned box (a door ajar, a fallen log), a cylinder (a pillar, a barrel) or a convex prism. The cells whose centres the shape covers, grown by the agent radius, are blocked and only the tiles it touches, and their neighbours, are rebuilt. Shares og.nav.setObstacle's ids. World state.
+     *
+     * @param world The world.
+     * @param mesh The navmesh.
+     * @param id The obstacle's id.
+     * @param shape The shape; omitted removes the obstacle.
+     * @returns Refused for an unknown navmesh or a convex shape of fewer than three points.
+     */
+    function carve(world: World, mesh: Navigation, id: number, shape?: NavShape): Result<NavRebuild>;
+    /**
+     * Set, move or (with no desc) remove a run-time area on a navmesh (water, mud, a road): its tiles rebuild so no polygon mixes areas, and agents re-plan, weighing it by their og.NavFilter. World state.
+     *
+     * @param world The world.
+     * @param mesh The navmesh.
+     * @param id The area's id, the game's own.
+     * @param desc The shape and the area; omitted removes it.
+     * @returns Refused for an unknown navmesh or an area past 63.
+     */
+    function setArea(world: World, mesh: Navigation, id: number, desc?: NavAreaDesc): Result<NavRebuild>;
     /**
      * The point on a navmesh nearest a world point, within `extent` (half sizes).
      *

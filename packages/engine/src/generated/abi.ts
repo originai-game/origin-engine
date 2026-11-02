@@ -585,6 +585,10 @@ export interface HostAbi<A, V> {
   og_nav_build(world: number, desc: string | undefined): string;
   /** `og.nav.setObstacle` */
   og_nav_set_obstacle(world: number, mesh: number, id: number, obstacle: string | undefined): string;
+  /** `og.nav.carve` */
+  og_nav_carve(world: number, mesh: number, id: number, shape: string | undefined): string;
+  /** `og.nav.setArea` */
+  og_nav_set_area(world: number, mesh: number, id: number, desc: string | undefined): string;
   /** `og.nav.nearest` */
   og_nav_nearest(world: number, mesh: number, point: string, extent: string | undefined): string;
   /** `og.nav.pathOf` */
@@ -1324,6 +1328,8 @@ export const SYMBOLS: readonly string[] = [
   "og_nav_load",
   "og_nav_build",
   "og_nav_set_obstacle",
+  "og_nav_carve",
+  "og_nav_set_area",
   "og_nav_nearest",
   "og_nav_path_of",
   "og_ai_load",

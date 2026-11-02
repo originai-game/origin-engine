@@ -124,6 +124,14 @@
       {
         "member": "probe (protocol 5, additive): apply_prefab, revert_prefab actions; dump_entity.prefab; save_scene keeps instances",
         "summary": "Strictly additive to probe protocol 5: two new command-channel actions, apply_prefab:<entity>[:<Component>[.<field>]][:base] (an instance's overrides, or a value set at run time, moved into the prefab's .ogt at the entity's node and out of the scene, so every instance takes them; :base writes a variant's through to its base) and revert_prefab:<entity>[:<Component>[.<field>]] (the overrides dropped and the live values set back to the prefab's); dump_entity gains an optional `prefab` ({ prefab, node, root, overrides }) for entities placed from one. save_scene writes a placed entity's tuned field as an override of its instance, only when it differs from the prefab's value, and removes one back at it. No member, field or answer that exists changes shape; publish builds serve neither action."
+      },
+      {
+        "member": "og.NavFilter, og.nav.setArea, NavAreaDesc, PathDesc.areaCosts, PathDesc.excluded; type navmesh `area` (G2-4)",
+        "summary": "Navmesh area types and costs: spans under an area's shape take an area id (0 is ground, up to 63), set at run time with og.nav.setArea (rebuilding only the tiles it touches) or baked; regions never mix areas, so every polygon has one. An agent's og.NavFilter weighs each polygon's length by its area's cost (areaCosts, at least 0.01; past the list 1) and keeps out of its excluded areas; og.nav.findPath takes the same two fields. A* stays admissible (its heuristic at the cheapest cost). og.NavFilter is registered with the world only once a game inserts it, declares it in a system or hook, or restores a save holding it, so a world without it keeps its type table, saves and hash; run-time areas are in the og.nav state block's trailer (og_ecs::trailer, tag 2), written only when a mesh has one. Cooked navmeshes keep their blob version: areas are optional sections a blob without them loads as all ground."
+      },
+      {
+        "member": "og.nav.carve, NavShape, NavShapeKind (G2-4)",
+        "summary": "Obstacle shapes beyond boxes: a box turned about +y (orientedBox), an upright cylinder and a convex prism, carved into a navmesh by id like og.nav.setObstacle (which stays the axis-aligned box and carves exactly as before). A shape blocks the cells whose centres it covers, grown by the agent radius, and rebuilds only its tiles; the shapes are in the og.nav state block's trailer, so a save restores them."
       }
     ],
     "fixed": [

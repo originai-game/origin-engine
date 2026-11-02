@@ -34,8 +34,19 @@ end on one world hash.
 | Many units to one goal (crowds, tower defence) | a flow field | `og.nav.flowField(world, { grid, targets })`; one field serves every agent |
 
 Doors and crates that block for a while are navmesh obstacles
-(`og.nav.setObstacle`): only the tiles under them rebuild. Never bake a
-navmesh at run time; the wasm does not carry the voxeliser.
+(`og.nav.setObstacle` for a box, `og.nav.carve` for a turned box, a
+pillar's cylinder or a convex outline): only the tiles under them
+rebuild. Never bake a navmesh at run time; the wasm does not carry the
+voxeliser.
+
+Ground that is walkable but dear or forbidden (water, mud, lava, a road
+the guards keep to) is an area, not an obstacle: an `area` line in the
+navmesh file, or `og.nav.setArea(world, mesh, id, { shape, area })` at
+run time, marks it with an id from 1 to 63 (0 is the ground). An agent's
+`og.NavFilter { areaCosts, excluded }` prices each area per metre or
+keeps it out (`og.nav.findPath` takes the same two fields): a wolf with
+`areaCosts: [1, 1, 1, 8]` wades area 3 only when going round is eight
+times longer, a guard with `excluded: [4]` never steps into area 4.
 
 ### The navmesh file
 
@@ -75,6 +86,17 @@ box {                          # a solid box the level lacks: a plinth, a crate 
 bounds {                       # the box baked; left out: the triangles' own bounds
   min -10 -10 -10              # (default -10 -10 -10 inside the block)
   max 10 10 10                 # (default 10 10 10)
+}
+area {                         # floor marked with an area (repeatable; a later one wins where they overlap)
+  id 3                         # 1 to 63, the id og.NavFilter prices (required)
+  center 0 0 0                 # a box by default: its centre (default 0 0 0)
+  size 1 1 1                   # whole sizes (default 1 1 1)
+  yaw 0                        # radians about +y (default 0)
+  radius 1.5                   # given: an upright cylinder standing on `center` instead
+  height 2                     # the cylinder's height (default 2)
+  point 0 0 0                  # three or more (x and z): a convex outline instead
+  bottom -1                    # the outline's floor range (default -1 to 2)
+  top 2
 }
 ```
 

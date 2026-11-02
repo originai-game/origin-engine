@@ -1454,6 +1454,16 @@ pub fn og_nav_set_obstacle(world: u32, mesh: f64, id: u32, obstacle: Option<Stri
 }
 
 #[wasm_bindgen]
+pub fn og_nav_carve(world: u32, mesh: f64, id: u32, shape: Option<String>) -> String {
+    <Host as NavApi>::og_nav_carve(&Host, world, mesh, id, shape)
+}
+
+#[wasm_bindgen]
+pub fn og_nav_set_area(world: u32, mesh: f64, id: u32, desc: Option<String>) -> String {
+    <Host as NavApi>::og_nav_set_area(&Host, world, mesh, id, desc)
+}
+
+#[wasm_bindgen]
 pub fn og_nav_nearest(world: u32, mesh: f64, point: String, extent: Option<String>) -> String {
     <Host as NavApi>::og_nav_nearest(&Host, world, mesh, point, extent)
 }

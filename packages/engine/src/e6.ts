@@ -27,6 +27,8 @@ export const nav = Object.freeze({
   load: (world: W, path: string) => parse(abi().og_nav_load(world.id, path)),
   build: (world: W, desc?: unknown) => parse(abi().og_nav_build(world.id, json(desc))),
   setObstacle: (world: W, mesh: number, id: number, obstacle?: unknown) => parse(abi().og_nav_set_obstacle(world.id, mesh, id, json(obstacle))),
+  carve: (world: W, mesh: number, id: number, shape?: unknown) => parse(abi().og_nav_carve(world.id, mesh, id, json(shape))),
+  setArea: (world: W, mesh: number, id: number, desc?: unknown) => parse(abi().og_nav_set_area(world.id, mesh, id, json(desc))),
   nearest: (world: W, mesh: number, point: unknown, extent?: unknown) => parse(abi().og_nav_nearest(world.id, mesh, JSON.stringify(point), json(extent))),
   pathOf: (world: W, entity: number) => parse(abi().og_nav_path_of(world.id, entity)),
 });

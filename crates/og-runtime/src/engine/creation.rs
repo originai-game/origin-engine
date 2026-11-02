@@ -178,10 +178,10 @@ pub(crate) fn assemble(
         {
             continue;
         }
-        // og.PrefabLink: its layout now, registered with the world when the
-        // first prefab entity spawns (super::prefab), so a world without
-        // prefabs keeps its type table and hash.
-        if decl.schema == crate::prefab::LINK {
+        // A lazy record (super::lazy): its layout now, registered with the
+        // world when a game first uses it, so a world without it keeps its
+        // type table and hash.
+        if crate::lazy::is_lazy(decl.schema) {
             match Layout::from_decl(decl) {
                 Ok(l) => {
                     layouts.insert(l.schema.clone(), l);
@@ -310,24 +310,31 @@ pub(crate) fn assemble(
                 .ok_or_else(|| format!("the game lists system {s}, which was never declared"))?,
         );
     }
-    // og.PrefabLink, registered now when a system or hook names it (it is
-    // otherwise registered as the first prefab entity spawns).
-    let link = crate::prefab::LINK;
-    let names_link = systems_decl.iter().any(|s| {
-        s.reads.iter().chain(&s.writes).any(|t| t.name == link)
-            || s.without
-                .iter()
-                .chain(&s.changed)
-                .chain(&s.added)
-                .chain(&s.removed)
-                .any(|n| n == link)
-    }) || game.hooks.iter().any(|&h| {
-        all_hooks.get(h as usize).is_some_and(|h| {
-            h.component == link || h.reads.iter().chain(&h.writes).any(|t| t.name == link)
+    // Lazy records a game system or hook names: registered before the
+    // systems that declare them, their modules granted them once mounted.
+    let lazy_named: Vec<&'static str> = crate::lazy::LAZY
+        .iter()
+        .map(|l| l.name)
+        .filter(|&name| {
+            systems_decl.iter().any(|s| {
+                s.reads.iter().chain(&s.writes).any(|t| t.name == name)
+                    || s.without
+                        .iter()
+                        .chain(&s.changed)
+                        .chain(&s.added)
+                        .chain(&s.removed)
+                        .any(|n| n == name)
+            }) || game.hooks.iter().any(|&h| {
+                all_hooks.get(h as usize).is_some_and(|h| {
+                    h.component == name || h.reads.iter().chain(&h.writes).any(|t| t.name == name)
+                })
+            })
         })
-    });
-    if names_link && let Some(l) = layouts.get(link) {
-        world.register_schema(l.schema()).map_err(err)?;
+        .collect();
+    for name in &lazy_named {
+        if let Some(l) = layouts.get(*name) {
+            world.register_schema(l.schema()).map_err(err)?;
+        }
     }
     let mut systems = Vec::new();
     for i in order(&systems_decl)? {
@@ -491,6 +498,9 @@ pub(crate) fn assemble(
         actions,
     )?;
     super::feel::install_back(&mut world, &feel, &feel_records)?;
+    for name in lazy_named {
+        crate::lazy::enable(&mut world, name)?;
+    }
     let names_by_id = world.schemas().into_iter().map(|s| s.name).collect();
     Ok(Assembled {
         world,

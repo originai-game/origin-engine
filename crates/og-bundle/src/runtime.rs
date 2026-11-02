@@ -1306,6 +1306,15 @@ impl Bundle {
         {
             return Err(invalid(&blob, "a column's spans are out of range"));
         }
+        // G2-4's polygon areas, one byte per row of `polys` (absent before:
+        // every polygon is ground).
+        let poly_areas = blob.raw_opt("poly_areas").unwrap_or_default();
+        if !poly_areas.is_empty() && poly_areas.len() != polys.len() {
+            return Err(invalid(
+                &blob,
+                "poly_areas does not hold one area per polygon",
+            ));
+        }
         let mut out = Vec::with_capacity(tiles.len());
         for t in &tiles {
             let vs = verts
@@ -1319,7 +1328,11 @@ impl Bundle {
                 lattice: vs.iter().map(|v| (v.lx, v.lz)).collect(),
                 polys: Vec::with_capacity(ps.len()),
             };
-            for p in ps {
+            for (k, p) in ps.iter().enumerate() {
+                let area = poly_areas
+                    .get(t.poly_first as usize + k)
+                    .copied()
+                    .unwrap_or(0);
                 let idx = indices
                     .get(p.index_first as usize..(p.index_first + p.index_count) as usize)
                     .ok_or_else(|| invalid(&blob, "a polygon's vertices are out of range"))?;
@@ -1330,11 +1343,33 @@ impl Bundle {
                     verts: idx.iter().map(|&i| i as u16).collect(),
                     links: vec![og_nav::mesh::NONE; idx.len()],
                     region: p.region,
+                    area,
                 });
             }
             out.push(tile);
         }
         Ok((field, out))
+    }
+
+    /// A navmesh blob's baked areas (G2-4: the `areas` section, each a
+    /// byte area id then its shape; empty in a blob without areas), which
+    /// the mesh re-marks when an obstacle rebuilds a tile
+    /// (`og_nav::NavMesh::from_tiles_with_areas`).
+    pub fn navmesh_areas(
+        &self,
+        id: &str,
+        bytes: &[u8],
+    ) -> Result<Vec<(og_nav::Shape, u8)>, LoadError> {
+        let blob = self.blob::<format::NavMesh>(id, bytes)?;
+        let mut b = blob.raw_opt("areas").unwrap_or_default();
+        let mut out = Vec::new();
+        while let Some((&area, rest)) = b.split_first() {
+            b = rest;
+            let shape = og_nav::Shape::read(&mut b)
+                .ok_or_else(|| invalid(&blob, "an area's shape is cut short"))?;
+            out.push((shape, area));
+        }
+        Ok(out)
     }
 }
 

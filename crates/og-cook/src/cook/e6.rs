@@ -372,15 +372,83 @@ pub(super) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
             "model",
             "terrain",
             "bounds",
+            "area",
         ]
         .contains(&e.key.as_str())
         {
             return Err(CookError(format!(
-                "line {}: '{}' is not a navmesh entry: scene, agent, cellSize, cellHeight, tileSize, maxError, box, model, terrain or bounds",
+                "line {}: '{}' is not a navmesh entry: scene, agent, cellSize, cellHeight, tileSize, maxError, box, model, terrain, bounds or area",
                 e.line, e.key
             )));
         }
     }
+    /// A navmesh's `area` entries, in order (a later one wins where they
+    /// overlap): `id` (1 to 63) and a shape, a box by default (`center`,
+    /// `size`, turned by `yaw` radians about +y), a cylinder with `radius`
+    /// (standing on `center`, `height` tall), or a convex prism of three or
+    /// more `point` lines from `bottom` to `top`.
+    fn navmesh_areas(body: &Block) -> Result<Vec<(og_nav::Shape, u8)>, CookError> {
+        let mut out = Vec::new();
+        for e in body.get_all("area") {
+            let b = e.block.as_ref();
+            let id = f32_of(b, "id", -1.0);
+            if !(1.0..=63.0).contains(&id) || id.fract() != 0.0 {
+                return Err(CookError(format!(
+                    "line {}: an area needs an id from 1 to 63 (0 is the ground)",
+                    e.line
+                )));
+            }
+            let center = vec3_of(b, "center", Vec3::ZERO);
+            let points: Vec<og_core::glam::Vec2> = b
+                .map(|b| b.get_all("point"))
+                .into_iter()
+                .flatten()
+                .map(|p| {
+                    let n = |i: usize| {
+                        p.values
+                            .get(i)
+                            .and_then(|v| v.as_number())
+                            .map(|n| n.as_f32())
+                    };
+                    og_core::glam::Vec2::new(n(0).unwrap_or(0.0), n(2).unwrap_or(0.0))
+                })
+                .collect();
+            let shape = if b.and_then(|b| b.get("radius")).is_some() {
+                og_nav::Shape::Cylinder {
+                    base: center,
+                    radius: f32_of(b, "radius", 0.0).max(0.0),
+                    height: f32_of(b, "height", 2.0).max(0.0),
+                }
+            } else if !points.is_empty() {
+                if points.len() < 3 {
+                    return Err(CookError(format!(
+                        "line {}: a convex area needs three or more points, it has {}",
+                        e.line,
+                        points.len()
+                    )));
+                }
+                og_nav::Shape::Convex {
+                    points,
+                    bottom: f32_of(b, "bottom", -1.0),
+                    top: f32_of(b, "top", 2.0),
+                }
+            } else {
+                let half = vec3_of(b, "size", Vec3::ONE) * 0.5;
+                let yaw = f32_of(b, "yaw", 0.0);
+                if yaw == 0.0 {
+                    og_nav::Shape::Box {
+                        min: center - half,
+                        max: center + half,
+                    }
+                } else {
+                    og_nav::Shape::Oriented { center, half, yaw }
+                }
+            };
+            out.push((shape, id as u8));
+        }
+        Ok(out)
+    }
+    let areas = navmesh_areas(body)?;
     let root = assets_root(s);
     let agent = body.get("agent").and_then(entry_block);
     let params = og_nav::NavParams {
@@ -456,7 +524,7 @@ pub(super) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
         notes.push(format!("terrain '{p}': {n} triangles"));
     }
     let field = og_nav::bake::bake(&tris, &params, bounds).map_err(CookError)?;
-    let mesh = og_nav::NavMesh::build(field.clone());
+    let mesh = og_nav::NavMesh::build_with_areas(field.clone(), areas.clone());
     let meta = format::NavMeshMeta {
         cell_size: params.cell_size,
         cell_height: params.cell_height,
@@ -533,6 +601,30 @@ pub(super) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
         .table("verts", &verts, format::row_hash::<format::NavVertRow>())
         .table("polys", &polys, format::row_hash::<format::NavPolyRow>())
         .raw("poly_verts", index_bytes, 16);
+    // G2-4's areas, only in a navmesh that has some (a blob without them
+    // loads as all ground, so earlier cooks stay as they were).
+    if !areas.is_empty() {
+        let poly_areas: Vec<u8> = mesh
+            .tiles
+            .iter()
+            .flat_map(|t| t.polys.iter().map(|p| p.area))
+            .collect();
+        let mut shapes = Vec::new();
+        for (shape, area) in &areas {
+            shapes.push(*area);
+            shape.write(&mut shapes);
+        }
+        w.raw("poly_areas", poly_areas, 1).raw("areas", shapes, 4);
+        notes.push(format!(
+            "areas: {} shapes, {} polygons off the ground area",
+            areas.len(),
+            mesh.tiles
+                .iter()
+                .flat_map(|t| &t.polys)
+                .filter(|p| p.area != 0)
+                .count()
+        ));
+    }
     notes.insert(
         0,
         format!(

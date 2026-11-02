@@ -45,6 +45,12 @@ impl NavApi for NodeHost {
     ) -> String {
         rt::og_nav_set_obstacle(world, mesh, id, obstacle)
     }
+    fn og_nav_carve(&self, world: u32, mesh: f64, id: u32, shape: Option<String>) -> String {
+        rt::og_nav_carve(world, mesh, id, shape)
+    }
+    fn og_nav_set_area(&self, world: u32, mesh: f64, id: u32, desc: Option<String>) -> String {
+        rt::og_nav_set_area(world, mesh, id, desc)
+    }
     fn og_nav_nearest(
         &self,
         world: u32,

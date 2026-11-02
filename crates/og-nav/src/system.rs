@@ -19,7 +19,7 @@
 
 use crate::flow::FlowField;
 use crate::grid::{Algorithm, Grid, Scratch};
-use crate::mesh::{NONE as NO_POLY, NavMesh, Obstacle, PolyRef};
+use crate::mesh::{Filter, NONE as NO_POLY, NavMesh, PolyRef, Shape};
 use crate::steer;
 use og_core::IdMap;
 use og_core::glam::{Quat, Vec2, Vec3};
@@ -269,6 +269,42 @@ impl Default for Steering {
             wander_angle: 0.0,
         }
     }
+}
+
+/// Which navmesh areas an agent crosses and at what cost (G2-4). Registered
+/// with the world only once a game uses it ([`enable_filters`]), so a world
+/// without it keeps its type table and hash.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
+#[reflect(name = "og.NavFilter")]
+pub struct NavFilter {
+    /// Per area id (0 is ground, then the areas a navmesh marks), the cost of a metre in it; past the list's length 1, and at least 0.01.
+    #[reflect(name = "areaCosts")]
+    pub area_costs: og_core::List<f32, 64>,
+    /// Area ids the agent never enters (0 to 63).
+    pub excluded: og_core::List<u32, 64>,
+}
+
+impl NavFilter {
+    /// The path filter it describes.
+    pub fn filter(&self) -> Filter {
+        let mut excluded = 0u64;
+        for &a in self.excluded.as_slice() {
+            if a < 64 {
+                excluded |= 1u64 << a;
+            }
+        }
+        Filter {
+            costs: self.area_costs.as_slice().to_vec(),
+            excluded,
+        }
+    }
+}
+
+/// Registers `og.NavFilter` and grants og.nav its reads: what a host calls
+/// the first time a game uses the component.
+pub fn enable_filters(world: &mut World) -> Result<()> {
+    world.register::<NavFilter>()?;
+    world.grant(SYSTEM_NAME, &[NavFilter::NAME])
 }
 
 /// The engine's `og.Transform`, mirrored (same name and layout).
@@ -543,16 +579,18 @@ fn noise(e: u64, tick: u64) -> f32 {
     ((h >> 40) as f32 / (1u64 << 24) as f32) * 2.0 - 1.0
 }
 
-/// Plans a path on `nav` from `from` to `to`: world corners and a status.
+/// Plans a path on `nav` from `from` to `to` for `agent` (its radius and
+/// smoothing) through `filter`: world corners and a status.
 pub fn plan(
     nav: &Nav,
     plane: Plane,
     from: Vec3,
     to: Vec3,
-    radius: f32,
-    smooth: bool,
+    agent: &NavAgent,
+    filter: &Filter,
     scratch: &mut Scratch,
 ) -> (Vec<Vec3>, u32, u32) {
+    let (radius, smooth) = (agent.radius, agent.smooth);
     match nav {
         Nav::Grid(g) => {
             let (a, b) = (plane.to_plane(from), plane.to_plane(to));
@@ -585,7 +623,7 @@ pub fn plan(
         }
         Nav::Mesh(m) => {
             let extent = Vec3::new(2.0, m.field.params.agent_height.max(2.0), 2.0);
-            match m.find_path(from, to, extent) {
+            match m.find_path_filtered(from, to, extent, filter) {
                 Some(p) => {
                     let status = if p.complete {
                         STATUS_MOVING
@@ -612,6 +650,7 @@ struct Row {
     pos: Vec3,
     steer: Option<Steering>,
     vel: Option<Velocity>,
+    filter: Option<NavFilter>,
 }
 
 fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<()> {
@@ -619,6 +658,8 @@ fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<(
     let tick = ctx.time().tick;
     let dt = ctx.scaled_dt();
     let mut rows: Vec<Row> = Vec::new();
+    // og.NavFilter is read only once a game has registered it.
+    let filters = ctx.id_by_name(NavFilter::NAME).is_ok();
     for a in ctx.query(0)? {
         for &e in a.entities() {
             let agent = ctx.get::<NavAgent>(e)?;
@@ -629,6 +670,11 @@ fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<(
                 pos: t.position,
                 steer: ctx.get::<Steering>(e).ok(),
                 vel: ctx.get::<Velocity>(e).ok(),
+                filter: if filters {
+                    ctx.get::<NavFilter>(e).ok()
+                } else {
+                    None
+                },
             });
         }
     }
@@ -666,7 +712,9 @@ fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<(
             pos,
             steer: steering,
             vel,
+            filter,
         } = *row;
+        let filter = filter.map(|f| f.filter()).unwrap_or_default();
         let key = e.to_bits();
         let p2 = plane.to_plane(pos);
         // A body's actual velocity (physics, or the game, may have changed it).
@@ -729,15 +777,9 @@ fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<(
                     if (moved || due || stale) && budget > 0 {
                         budget -= 1;
                         let (corners, st, poly) = match nav {
-                            Some(n) => plan(
-                                n,
-                                plane,
-                                pos,
-                                agent.target,
-                                agent.radius,
-                                agent.smooth,
-                                &mut scratch,
-                            ),
+                            Some(n) => {
+                                plan(n, plane, pos, agent.target, &agent, &filter, &mut scratch)
+                            }
                             None => (vec![pos, agent.target], STATUS_MOVING, NO_POLY),
                         };
                         ps.corners = corners;
@@ -1012,8 +1054,34 @@ struct NavBlock(NavSystem);
 struct Saved {
     paths: IdMap<u64, PathState>,
     grids: Vec<(u64, Vec<u8>)>,
-    obstacles: Vec<(u64, Vec<(u32, Obstacle)>)>,
+    obstacles: Vec<(u64, Vec<(u32, Shape)>)>,
     flows: Vec<(u64, Vec<(u32, u32)>)>,
+    /// The trailer's (G2-4): per navmesh, its run-time areas.
+    areas: BTreeMap<u64, Vec<(u32, Shape, u8)>>,
+}
+
+/// The `og.nav` trailer's tags (`og_ecs::trailer`): what a world using no
+/// G2-4 feature never writes, so its block is byte for byte as before.
+mod tag {
+    /// Per navmesh: its obstacles that are not boxes, and its run-time areas.
+    pub const SHAPES: u16 = 2;
+}
+
+fn put_shape(o: &mut Vec<u8>, s: &Shape) {
+    s.write(o);
+}
+
+fn get_shape(r: &mut Reader<'_>) -> Result<Shape> {
+    let mut b = &r.b[r.at..];
+    let before = b.len();
+    let s = Shape::read(&mut b).ok_or_else(|| {
+        Error::new(
+            ErrorKind::Invalid,
+            "the og.nav state block holds a shape it cannot read",
+        )
+    })?;
+    r.at += before - b.len();
+    Ok(s)
 }
 
 struct Writer<'a>(&'a mut Vec<u8>);
@@ -1113,14 +1181,45 @@ impl StateBlock for NavBlock {
             })
             .collect();
         w.u32(meshes.len() as u32);
-        for (h, m) in meshes {
-            w.u64(*h);
-            let obs: Vec<(u32, &Obstacle)> = m.obstacles().collect();
-            w.u32(obs.len() as u32);
-            for (id, o) in obs {
+        // Boxes in the block's first form; other shapes and areas in the trailer.
+        let mut shapes = Vec::new();
+        let mut shaped = 0u32;
+        for (h, m) in &meshes {
+            w.u64(**h);
+            let boxes: Vec<(u32, Vec3, Vec3)> = m
+                .obstacles()
+                .filter_map(|(id, o)| match o {
+                    Shape::Box { min, max } => Some((id, *min, *max)),
+                    _ => None,
+                })
+                .collect();
+            w.u32(boxes.len() as u32);
+            for (id, min, max) in boxes {
                 w.u32(id);
-                w.v3(o.min);
-                w.v3(o.max);
+                w.v3(min);
+                w.v3(max);
+            }
+            let others: Vec<(u32, &Shape)> = m
+                .obstacles()
+                .filter(|(_, o)| !matches!(o, Shape::Box { .. }))
+                .collect();
+            let areas: Vec<(u32, &(Shape, u8))> = m.areas().collect();
+            if others.is_empty() && areas.is_empty() {
+                continue;
+            }
+            shaped += 1;
+            let mut x = Writer(&mut shapes);
+            x.u64(**h);
+            x.u32(others.len() as u32);
+            for (id, o) in others {
+                x.u32(id);
+                put_shape(x.0, o);
+            }
+            x.u32(areas.len() as u32);
+            for (id, (shape, area)) in areas {
+                x.u32(id);
+                x.0.push(*area);
+                put_shape(x.0, shape);
             }
         }
         let flows: Vec<(&u64, &Vec<(u32, u32)>)> = navs
@@ -1143,6 +1242,13 @@ impl StateBlock for NavBlock {
                 w.u32(y);
             }
         }
+        let mut sections = Vec::new();
+        if shaped > 0 {
+            let mut b = shaped.to_le_bytes().to_vec();
+            b.extend_from_slice(&shapes);
+            sections.push((tag::SHAPES, b));
+        }
+        og_ecs::trailer::write(out, &sections);
     }
 
     fn decode(&self, bytes: &[u8]) -> Result<Box<dyn Any + Send>> {
@@ -1180,7 +1286,7 @@ impl StateBlock for NavBlock {
             for _ in 0..r.u32()? {
                 list.push((
                     r.u32()?,
-                    Obstacle {
+                    Shape::Box {
                         min: r.v3()?,
                         max: r.v3()?,
                     },
@@ -1197,11 +1303,36 @@ impl StateBlock for NavBlock {
             }
             flows.push((h, t));
         }
+        let mut areas = BTreeMap::new();
+        for (t, body) in og_ecs::trailer::read(SYSTEM_NAME, &bytes[r.at..])? {
+            let mut r = Reader { b: body, at: 0 };
+            if t == tag::SHAPES {
+                for _ in 0..r.u32()? {
+                    let h = r.u64()?;
+                    let mut shapes = Vec::new();
+                    for _ in 0..r.u32()? {
+                        shapes.push((r.u32()?, get_shape(&mut r)?));
+                    }
+                    if let Some((_, list)) = obstacles.iter_mut().find(|(m, _)| *m == h) {
+                        list.extend(shapes);
+                        og_core::sort::sort_by_key(list, |(id, _)| *id);
+                    }
+                    let mut list = Vec::new();
+                    for _ in 0..r.u32()? {
+                        let id = r.u32()?;
+                        let area = r.take(1)?[0];
+                        list.push((id, get_shape(&mut r)?, area));
+                    }
+                    areas.insert(h, list);
+                }
+            }
+        }
         Ok(Box::new(Saved {
             paths,
             grids,
             obstacles,
             flows,
+            areas,
         }))
     }
 
@@ -1226,13 +1357,24 @@ impl StateBlock for NavBlock {
         }
         for (h, list) in saved.obstacles {
             if let Some(Nav::Mesh(m)) = navs.get_mut(h) {
-                let have: Vec<(u32, Obstacle)> = m.obstacles().map(|(k, o)| (k, *o)).collect();
+                let have: Vec<(u32, Shape)> = m.obstacles().map(|(k, o)| (k, o.clone())).collect();
                 if have != list {
                     for (k, _) in have {
-                        m.set_obstacle(k, None);
+                        m.carve(k, None);
                     }
                     for (k, o) in list {
-                        m.set_obstacle(k, Some(o));
+                        m.carve(k, Some(o));
+                    }
+                }
+                let want = saved.areas.get(&h).cloned().unwrap_or_default();
+                let have: Vec<(u32, Shape, u8)> =
+                    m.areas().map(|(k, (s, a))| (k, s.clone(), *a)).collect();
+                if have != want {
+                    for (k, ..) in have {
+                        m.set_area(k, None);
+                    }
+                    for (k, s, a) in want {
+                        m.set_area(k, Some((s, a)));
                     }
                 }
             }

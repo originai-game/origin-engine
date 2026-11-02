@@ -675,6 +675,10 @@ pub trait NavApi: Wire {
     fn og_nav_build(&self, world: u32, desc: Option<String>) -> String;
     /// `og.nav.setObstacle`
     fn og_nav_set_obstacle(&self, world: u32, mesh: f64, id: u32, obstacle: Option<String>) -> String;
+    /// `og.nav.carve`
+    fn og_nav_carve(&self, world: u32, mesh: f64, id: u32, shape: Option<String>) -> String;
+    /// `og.nav.setArea`
+    fn og_nav_set_area(&self, world: u32, mesh: f64, id: u32, desc: Option<String>) -> String;
     /// `og.nav.nearest`
     fn og_nav_nearest(&self, world: u32, mesh: f64, point: String, extent: Option<String>) -> String;
     /// `og.nav.pathOf`
@@ -1467,6 +1471,8 @@ pub const SYMBOLS: &[&str] = &[
     "og_nav_load",
     "og_nav_build",
     "og_nav_set_obstacle",
+    "og_nav_carve",
+    "og_nav_set_area",
     "og_nav_nearest",
     "og_nav_path_of",
     "og_ai_load",

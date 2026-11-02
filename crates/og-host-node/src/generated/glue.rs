@@ -1743,6 +1743,18 @@ pub fn og_nav_set_obstacle(env: Env, world: u32, mesh: f64, id: u32, obstacle: O
     <Host as NavApi>::og_nav_set_obstacle(&Host, world, mesh, id, obstacle)
 }
 
+#[napi(js_name = "og_nav_carve")]
+pub fn og_nav_carve(env: Env, world: u32, mesh: f64, id: u32, shape: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as NavApi>::og_nav_carve(&Host, world, mesh, id, shape)
+}
+
+#[napi(js_name = "og_nav_set_area")]
+pub fn og_nav_set_area(env: Env, world: u32, mesh: f64, id: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as NavApi>::og_nav_set_area(&Host, world, mesh, id, desc)
+}
+
 #[napi(js_name = "og_nav_nearest")]
 pub fn og_nav_nearest(env: Env, world: u32, mesh: f64, point: String, extent: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);

@@ -48,6 +48,7 @@ mod glyphs;
 mod i18n;
 mod interpolate;
 mod lanes;
+mod lazy;
 mod look;
 mod memory;
 mod probes;
@@ -161,9 +162,9 @@ pub use modules::{
     og_ui_viewport, og_ui_visual_state, og_ui_zoom_view, set_viewport,
 };
 pub use nav::{
-    og_nav_build, og_nav_cell_at, og_nav_find_path, og_nav_flow_at, og_nav_flow_field, og_nav_grid,
-    og_nav_grid_from_tilemap, og_nav_load, og_nav_nearest, og_nav_path_of, og_nav_set_cost,
-    og_nav_set_flow_targets, og_nav_set_obstacle,
+    og_nav_build, og_nav_carve, og_nav_cell_at, og_nav_find_path, og_nav_flow_at,
+    og_nav_flow_field, og_nav_grid, og_nav_grid_from_tilemap, og_nav_load, og_nav_nearest,
+    og_nav_path_of, og_nav_set_area, og_nav_set_cost, og_nav_set_flow_targets, og_nav_set_obstacle,
 };
 pub use net::{
     og_net_hash, og_net_status, og_net_submit, og_platform_room_create, og_platform_room_info,

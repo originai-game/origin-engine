@@ -18,6 +18,7 @@ mod gltf_formats;
 mod lod;
 mod look_builtins;
 mod model_text;
+mod navmesh;
 mod physical;
 mod prefab;
 mod raycast_bvh;

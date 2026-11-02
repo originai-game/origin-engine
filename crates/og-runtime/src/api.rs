@@ -105,6 +105,7 @@ fn entity_number(e: Entity) -> Value {
 
 /// A component layout by schema name, or why the token is not usable.
 pub(crate) fn component(eng: &Engine, name: &str) -> Result<(Layout, og_ecs::SchemaId), String> {
+    super::lazy::ensure(eng, eng.world()?, name)?;
     let st = eng.state.borrow();
     let layout = st.layouts.get(name).cloned();
     let warning = st
@@ -770,6 +771,7 @@ pub fn og_world_query(world: u32, desc: Option<String>) -> String {
 }
 
 fn event_layout(eng: &Engine, name: &str) -> Result<(Layout, og_ecs::SchemaId), String> {
+    super::lazy::ensure(eng, eng.world()?, name)?;
     let st = eng.state.borrow();
     match st.layouts.get(name) {
         Some(l) if l.kind == RecordKind::Event => {

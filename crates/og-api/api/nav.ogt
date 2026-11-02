@@ -204,6 +204,59 @@ module nav {
     }
   }
 
+  component NavFilter {
+    doc "Which navmesh areas an agent crosses and what a metre in each costs: beside an og.NavAgent, its plans weigh every polygon's length by its area's cost and never enter an excluded area. Areas are marked at cook time (`area` in a navmesh asset) or at run time (og.nav.setArea); 0 is ground. Without one every area costs 1."
+    field areaCosts List.f32.64 "Per area id, the cost of a metre in it (past the list's length 1, and at least 0.01): `{ areaCosts: [1, 1, 1, 8] }` makes area 3 (water) eight times dearer, so a path wades only when going round is longer than that."
+    field excluded List.u32.64 "Area ids the agent never enters (0 to 63): `{ excluded: [4] }` keeps it out of area 4 (lava)."
+  }
+
+  enum NavShapeKind {
+    doc "What a NavShape is."
+    variant box "An axis-aligned box from `min` to `max`."
+    variant orientedBox "A box of size `size` round `center`, turned `yaw` radians about +y."
+    variant cylinder "An upright cylinder of `radius` and `height` standing on `center`."
+    variant convex "A convex prism: `points` (x and z, either winding) from `min.y` to `max.y`."
+  }
+
+  struct NavShape {
+    doc "A volume over a navmesh's floor: an obstacle (og.nav.carve) or an area (og.nav.setArea)."
+    desc true
+    field kind NavShapeKind "Which shape."
+    field min Vector3 "box: its lowest corner; convex: its bottom (min.y)." {
+      unit m
+    }
+    field max Vector3 "box: its highest corner; convex: its top (max.y)." {
+      unit m
+    }
+    field center Vector3 "orientedBox: its centre; cylinder: the middle of its base." {
+      unit m
+    }
+    field size Vector3 "orientedBox: its full size before the turn." {
+      unit m
+    }
+    field yaw f32 "orientedBox: its turn about +y." {
+      unit rad
+    }
+    field radius f32 "cylinder: its radius." {
+      min 0
+      unit m
+    }
+    field height f32 "cylinder: its height." {
+      min 0
+      unit m
+    }
+    field points List.Vector3 "convex: its outline's corners (their y is ignored)."
+  }
+
+  struct NavAreaDesc {
+    doc "A run-time area: the spans under `shape` (their floors from the agent's climb below its bottom to its top) take area `area`, over the baked areas and over run-time areas of lower ids."
+    desc true
+    field shape NavShape "Where."
+    field area u32 "The area id, 0 to 63 (0 is ground)." {
+      max 63
+    }
+  }
+
   struct NavGridDesc {
     doc "A grid of square cells over the plane: cell (0, 0)'s lower corner at `origin`, rows running up."
     desc true
@@ -265,6 +318,8 @@ module nav {
       max 10
       unit m
     }
+    field areaCosts List.f32 "On a navmesh: per area id, the cost of a metre in it, as og.NavFilter's."
+    field excluded List.u32 "On a navmesh: area ids the path never enters."
   }
 
   struct NavPath {
@@ -439,6 +494,28 @@ module nav {
       optional true
     }
     returns Result.NavRebuild "Refused for an unknown navmesh."
+  }
+
+  fn carve {
+    doc "og.nav.setObstacle for any shape: a turned box (a door ajar, a fallen log), a cylinder (a pillar, a barrel) or a convex prism. The cells whose centres the shape covers, grown by the agent radius, are blocked and only the tiles it touches, and their neighbours, are rebuilt. Shares og.nav.setObstacle's ids. World state."
+    param world World "The world."
+    param mesh Navigation "The navmesh."
+    param id u32 "The obstacle's id."
+    param shape NavShape "The shape; omitted removes the obstacle." {
+      optional true
+    }
+    returns Result.NavRebuild "Refused for an unknown navmesh or a convex shape of fewer than three points."
+  }
+
+  fn setArea {
+    doc "Set, move or (with no desc) remove a run-time area on a navmesh (water, mud, a road): its tiles rebuild so no polygon mixes areas, and agents re-plan, weighing it by their og.NavFilter. World state."
+    param world World "The world."
+    param mesh Navigation "The navmesh."
+    param id u32 "The area's id, the game's own."
+    param desc NavAreaDesc "The shape and the area; omitted removes it." {
+      optional true
+    }
+    returns Result.NavRebuild "Refused for an unknown navmesh or an area past 63."
   }
 
   fn nearest {

@@ -4,10 +4,11 @@
 //!
 //! The cook flattens a scene's instances into its entities and records,
 //! per entity, the prefab and node it came from; [`super::assets::spawn_scene`]
-//! writes that as an `og.PrefabLink`. The component is registered with
-//! the world only when the first such entity spawns (or a save holding one
-//! is restored, or a system or hook declares it), so a world that never
-//! places a prefab has the same type table, saves and hash as before.
+//! writes that as an `og.PrefabLink`. The component is a lazy record
+//! ([`crate::lazy`]): registered with the world only when the first such
+//! entity spawns (or a save holding one is restored, or a system or hook
+//! declares it), so a world that never places a prefab has the same type
+//! table, saves and hash as before.
 
 use super::engine::Engine;
 use og_ecs::{SchemaId, World};
@@ -16,39 +17,11 @@ use serde_json::json;
 /// The component's name.
 pub(crate) const LINK: &str = "og.PrefabLink";
 
-/// Registers `og.PrefabLink` with `world` if it is not yet, from its
-/// layout; its id.
+/// Registers `og.PrefabLink` with `world` if it is not yet (a lazy
+/// record, [`crate::lazy`]); its id.
 pub(crate) fn register(eng: &Engine, world: &mut World) -> Result<SchemaId, String> {
-    if let Ok(id) = world.id_by_name(LINK) {
-        return Ok(id);
-    }
-    let layout = eng
-        .state
-        .borrow()
-        .layouts
-        .get(LINK)
-        .cloned()
-        .ok_or_else(|| format!("{LINK} has no layout"))?;
-    let id = world
-        .register_schema(layout.schema())
-        .map_err(|e| e.reason().to_string())?;
-    let mut st = eng.state.borrow_mut();
-    // The runtime's table of names by id mirrors the registry's order.
-    if st.names_by_id.len() == id.index() as usize {
-        st.names_by_id.push(LINK.to_string());
-    }
-    Ok(id)
-}
-
-/// Before a restore: registers `og.PrefabLink` when the snapshot's type
-/// table names it and the world lacks it (a save of a world that placed
-/// prefabs, restored in a session that has not yet).
-pub(crate) fn before_restore(eng: &Engine, world: &mut World, snapshot: &[u8]) {
-    if world.id_by_name(LINK).is_err()
-        && og_ecs::snapshot_type_names(snapshot).is_ok_and(|n| n.iter().any(|n| n == LINK))
-    {
-        let _ = register(eng, world);
-    }
+    crate::lazy::ensure(eng, world, LINK)?;
+    world.id_by_name(LINK).map_err(|e| e.reason().to_string())
 }
 
 /// `og.load.prefab`: the prefab's cooked blob (a scene blob whose

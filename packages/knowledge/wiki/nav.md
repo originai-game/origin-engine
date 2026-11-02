@@ -34,6 +34,10 @@ module nav {
 | [`NavAlgorithm`](#type-NavAlgorithm) | enum | The grid search a path query runs. |
 | [`og.NavAgent`](#record-NavAgent) | component | An entity that moves itself towards `target` while `seeking`, by a path over `nav` (a grid, navmesh or flow field; 0 goes straight). og.nav re-plans when the target moved more than repathDistance, every repathTicks, or when the grid or navmesh changed, at most 32 plans a tick across agents. |
 | [`og.Steering`](#record-Steering) | component | Steering behaviours an og.NavAgent adds to its path following, each by weight (0 is off): flee, wander, pursue, evade, separation from other agents and avoidance of colliders ahead (three physics rays). |
+| [`og.NavFilter`](#record-NavFilter) | component | Which navmesh areas an agent crosses and what a metre in each costs: beside an og.NavAgent, its plans weigh every polygon's length by its area's cost and never enter an excluded area. Areas are marked at cook time (`area` in a navmesh asset) or at run time (og.nav.setArea); 0 is ground. Without one every area costs 1. |
+| [`NavShapeKind`](#type-NavShapeKind) | enum | What a NavShape is. |
+| [`NavShape`](#type-NavShape) | desc struct | A volume over a navmesh's floor: an obstacle (og.nav.carve) or an area (og.nav.setArea). |
+| [`NavAreaDesc`](#type-NavAreaDesc) | desc struct | A run-time area: the spans under `shape` (their floors from the agent's climb below its bottom to its top) take area `area`, over the baked areas and over run-time areas of lower ids. |
 | [`NavGridDesc`](#type-NavGridDesc) | desc struct | A grid of square cells over the plane: cell (0, 0)'s lower corner at `origin`, rows running up. |
 | [`TilemapGridDesc`](#type-TilemapGridDesc) | desc struct | A grid over a placed og.Tilemap: one cell per map cell, blocked where a collision layer has a solid tile. |
 | [`NavCell`](#type-NavCell) | struct | A grid cell. |
@@ -55,6 +59,8 @@ module nav {
 | [`og.nav.load`](#fn-load) | function | A cooked navmesh: an `.ogt` of `type navmesh` (the agent, the cell sizes, the bounds and the geometry: a scene's static colliders and models, glTF models, terrains, boxes; og-ai §1 has every line) baked by og cook. |
 | [`og.nav.build`](#fn-build) | function | A navmesh over a flat floor with boxes carved out, built now: for procedural levels (a level with slopes and stairs is baked at cook time with og.nav.load). |
 | [`og.nav.setObstacle`](#fn-setObstacle) | function | Set, move or (with no box) remove an obstacle on a navmesh: the spans under the box (grown by the agent radius) are blocked and only the tiles it touches, and their neighbours, are rebuilt. Agents on the mesh re-plan. World state. |
+| [`og.nav.carve`](#fn-carve) | function | og.nav.setObstacle for any shape: a turned box (a door ajar, a fallen log), a cylinder (a pillar, a barrel) or a convex prism. The cells whose centres the shape covers, grown by the agent radius, are blocked and only the tiles it touches, and their neighbours, are rebuilt. Shares og.nav.setObstacle's ids. World state. |
+| [`og.nav.setArea`](#fn-setArea) | function | Set, move or (with no desc) remove a run-time area on a navmesh (water, mud, a road): its tiles rebuild so no polygon mixes areas, and agents re-plan, weighing it by their og.NavFilter. World state. |
 | [`og.nav.nearest`](#fn-nearest) | function | The point on a navmesh nearest a world point, within `extent` (half sizes). |
 | [`og.nav.pathOf`](#fn-pathOf) | function | The path an agent follows now (its corners from where it planned), for debugging and playtests; `dump_nav:<entity>` writes the same. |
 
@@ -88,7 +94,7 @@ fn grid {
 }
 ```
 
-<sub>`api.ogt` line 11474</sub>
+<sub>`api.ogt` line 11529</sub>
 
 <a id="fn-gridFromTilemap"></a>
 
@@ -118,7 +124,7 @@ fn gridFromTilemap {
 }
 ```
 
-<sub>`api.ogt` line 11481</sub>
+<sub>`api.ogt` line 11536</sub>
 
 <a id="fn-setCost"></a>
 
@@ -154,7 +160,7 @@ fn setCost {
 }
 ```
 
-<sub>`api.ogt` line 11488</sub>
+<sub>`api.ogt` line 11543</sub>
 
 <a id="fn-cellAt"></a>
 
@@ -186,7 +192,7 @@ fn cellAt {
 }
 ```
 
-<sub>`api.ogt` line 11498</sub>
+<sub>`api.ogt` line 11553</sub>
 
 <a id="fn-findPath"></a>
 
@@ -216,7 +222,7 @@ fn findPath {
 }
 ```
 
-<sub>`api.ogt` line 11506</sub>
+<sub>`api.ogt` line 11561</sub>
 
 <a id="fn-flowField"></a>
 
@@ -246,7 +252,7 @@ fn flowField {
 }
 ```
 
-<sub>`api.ogt` line 11513</sub>
+<sub>`api.ogt` line 11568</sub>
 
 <a id="fn-setFlowTargets"></a>
 
@@ -278,7 +284,7 @@ fn setFlowTargets {
 }
 ```
 
-<sub>`api.ogt` line 11520</sub>
+<sub>`api.ogt` line 11575</sub>
 
 <a id="fn-flowAt"></a>
 
@@ -310,7 +316,7 @@ fn flowAt {
 }
 ```
 
-<sub>`api.ogt` line 11528</sub>
+<sub>`api.ogt` line 11583</sub>
 
 <a id="fn-load"></a>
 
@@ -340,7 +346,7 @@ fn load {
 }
 ```
 
-<sub>`api.ogt` line 11536</sub>
+<sub>`api.ogt` line 11591</sub>
 
 <a id="fn-build"></a>
 
@@ -370,7 +376,7 @@ fn build {
 }
 ```
 
-<sub>`api.ogt` line 11543</sub>
+<sub>`api.ogt` line 11598</sub>
 
 <a id="fn-setObstacle"></a>
 
@@ -406,7 +412,79 @@ fn setObstacle {
 }
 ```
 
-<sub>`api.ogt` line 11550</sub>
+<sub>`api.ogt` line 11605</sub>
+
+<a id="fn-carve"></a>
+
+### `og.nav.carve`
+
+og.nav.setObstacle for any shape: a turned box (a door ajar, a fallen log), a cylinder (a pillar, a barrel) or a convex prism. The cells whose centres the shape covers, grown by the agent radius, are blocked and only the tiles it touches, and their neighbours, are rebuilt. Shares og.nav.setObstacle's ids. World state.
+
+```ts
+og.nav.carve(world: World, mesh: Navigation, id: number, shape?: NavShape): Result<NavRebuild>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `mesh` | `Navigation` | no | The navmesh. |
+| `id` | `number` | no | The obstacle's id. |
+| `shape` | `NavShape` | yes | The shape; omitted removes the obstacle. |
+
+**Returns** `Result<NavRebuild>`: Refused for an unknown navmesh or a convex shape of fewer than three points.
+
+Binding symbol `og_nav_carve` · publish builds: kept
+
+```ogt
+fn carve {
+  doc "og.nav.setObstacle for any shape: a turned box (a door ajar, a fallen log), a cylinder (a pillar, a barrel) or a convex prism. The cells whose centres the shape covers, grown by the agent radius, are blocked and only the tiles it touches, and their neighbours, are rebuilt. Shares og.nav.setObstacle's ids. World state."
+  param world World "The world."
+  param mesh Navigation "The navmesh."
+  param id u32 "The obstacle's id."
+  param shape NavShape "The shape; omitted removes the obstacle." {
+    optional true
+  }
+  returns Result.NavRebuild "Refused for an unknown navmesh or a convex shape of fewer than three points."
+}
+```
+
+<sub>`api.ogt` line 11616</sub>
+
+<a id="fn-setArea"></a>
+
+### `og.nav.setArea`
+
+Set, move or (with no desc) remove a run-time area on a navmesh (water, mud, a road): its tiles rebuild so no polygon mixes areas, and agents re-plan, weighing it by their og.NavFilter. World state.
+
+```ts
+og.nav.setArea(world: World, mesh: Navigation, id: number, desc?: NavAreaDesc): Result<NavRebuild>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `mesh` | `Navigation` | no | The navmesh. |
+| `id` | `number` | no | The area's id, the game's own. |
+| `desc` | `NavAreaDesc` | yes | The shape and the area; omitted removes it. |
+
+**Returns** `Result<NavRebuild>`: Refused for an unknown navmesh or an area past 63.
+
+Binding symbol `og_nav_set_area` · publish builds: kept
+
+```ogt
+fn setArea {
+  doc "Set, move or (with no desc) remove a run-time area on a navmesh (water, mud, a road): its tiles rebuild so no polygon mixes areas, and agents re-plan, weighing it by their og.NavFilter. World state."
+  param world World "The world."
+  param mesh Navigation "The navmesh."
+  param id u32 "The area's id, the game's own."
+  param desc NavAreaDesc "The shape and the area; omitted removes it." {
+    optional true
+  }
+  returns Result.NavRebuild "Refused for an unknown navmesh or an area past 63."
+}
+```
+
+<sub>`api.ogt` line 11627</sub>
 
 <a id="fn-nearest"></a>
 
@@ -442,7 +520,7 @@ fn nearest {
 }
 ```
 
-<sub>`api.ogt` line 11561</sub>
+<sub>`api.ogt` line 11638</sub>
 
 <a id="fn-pathOf"></a>
 
@@ -472,7 +550,7 @@ fn pathOf {
 }
 ```
 
-<sub>`api.ogt` line 11572</sub>
+<sub>`api.ogt` line 11649</sub>
 
 ## Components, resources and events
 
@@ -722,6 +800,29 @@ component Steering {
 
 <sub>`api.ogt` line 11230</sub>
 
+<a id="record-NavFilter"></a>
+
+### `og.NavFilter` (component)
+
+Which navmesh areas an agent crosses and what a metre in each costs: beside an og.NavAgent, its plans weigh every polygon's length by its area's cost and never enter an excluded area. Areas are marked at cook time (`area` in a navmesh asset) or at run time (og.nav.setArea); 0 is ground. Without one every area costs 1.
+
+Token `og.NavFilter`, registered under the schema name `og.NavFilter`; its value type is `NavFilter`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `areaCosts` | `readonly number[]` | `[]` | — | — | a list of at most 64 `f32` (`List.f32.64`): reads a frozen copy, writes a whole array | Per area id, the cost of a metre in it (past the list's length 1, and at least 0.01): `{ areaCosts: [1, 1, 1, 8] }` makes area 3 (water) eight times dearer, so a path wades only when going round is longer than that. |
+| `excluded` | `readonly number[]` | `[]` | — | — | a list of at most 64 `u32` (`List.u32.64`): reads a frozen copy, writes a whole array | Area ids the agent never enters (0 to 63): `{ excluded: [4] }` keeps it out of area 4 (lava). |
+
+```ogt
+component NavFilter {
+  doc "Which navmesh areas an agent crosses and what a metre in each costs: beside an og.NavAgent, its plans weigh every polygon's length by its area's cost and never enter an excluded area. Areas are marked at cook time (`area` in a navmesh asset) or at run time (og.nav.setArea); 0 is ground. Without one every area costs 1."
+  field areaCosts List.f32.64 "Per area id, the cost of a metre in it (past the list's length 1, and at least 0.01): `{ areaCosts: [1, 1, 1, 8] }` makes area 3 (water) eight times dearer, so a path wades only when going round is longer than that."
+  field excluded List.u32.64 "Area ids the agent never enters (0 to 63): `{ excluded: [4] }` keeps it out of area 4 (lava)."
+}
+```
+
+<sub>`api.ogt` line 11324</sub>
+
 ## Types
 
 <a id="type-Navigation"></a>
@@ -760,6 +861,113 @@ enum NavAlgorithm {
 ```
 
 <sub>`api.ogt` line 11139</sub>
+
+<a id="type-NavShapeKind"></a>
+
+### `NavShapeKind` (enum)
+
+What a NavShape is.
+
+A string: one of the variants below. The zero value is `"box"`.
+
+| Variant | Doc |
+|---|---|
+| `"box"` | An axis-aligned box from `min` to `max`. |
+| `"orientedBox"` | A box of size `size` round `center`, turned `yaw` radians about +y. |
+| `"cylinder"` | An upright cylinder of `radius` and `height` standing on `center`. |
+| `"convex"` | A convex prism: `points` (x and z, either winding) from `min.y` to `max.y`. |
+
+```ogt
+enum NavShapeKind {
+  doc "What a NavShape is."
+  variant box "An axis-aligned box from `min` to `max`."
+  variant orientedBox "A box of size `size` round `center`, turned `yaw` radians about +y."
+  variant cylinder "An upright cylinder of `radius` and `height` standing on `center`."
+  variant convex "A convex prism: `points` (x and z, either winding) from `min.y` to `max.y`."
+}
+```
+
+<sub>`api.ogt` line 11330</sub>
+
+<a id="type-NavShape"></a>
+
+### `NavShape` (desc struct)
+
+A volume over a navmesh's floor: an obstacle (og.nav.carve) or an area (og.nav.setArea).
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `kind` | `NavShapeKind` | `"box"` | — | — | — | Which shape. |
+| `min` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | box: its lowest corner; convex: its bottom (min.y). |
+| `max` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | box: its highest corner; convex: its top (max.y). |
+| `center` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | orientedBox: its centre; cylinder: the middle of its base. |
+| `size` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | orientedBox: its full size before the turn. |
+| `yaw` | `number` | `0` | — | `rad` | — | orientedBox: its turn about +y. |
+| `radius` | `number` | `0` | ≥ 0 | `m` | — | cylinder: its radius. |
+| `height` | `number` | `0` | ≥ 0 | `m` | — | cylinder: its height. |
+| `points` | `readonly Vector3[]` | `[]` | — | — | — | convex: its outline's corners (their y is ignored). |
+
+```ogt
+struct NavShape {
+  doc "A volume over a navmesh's floor: an obstacle (og.nav.carve) or an area (og.nav.setArea)."
+  desc true
+  field kind NavShapeKind "Which shape."
+  field min Vector3 "box: its lowest corner; convex: its bottom (min.y)." {
+    unit m
+  }
+  field max Vector3 "box: its highest corner; convex: its top (max.y)." {
+    unit m
+  }
+  field center Vector3 "orientedBox: its centre; cylinder: the middle of its base." {
+    unit m
+  }
+  field size Vector3 "orientedBox: its full size before the turn." {
+    unit m
+  }
+  field yaw f32 "orientedBox: its turn about +y." {
+    unit rad
+  }
+  field radius f32 "cylinder: its radius." {
+    min 0
+    unit m
+  }
+  field height f32 "cylinder: its height." {
+    min 0
+    unit m
+  }
+  field points List.Vector3 "convex: its outline's corners (their y is ignored)."
+}
+```
+
+<sub>`api.ogt` line 11338</sub>
+
+<a id="type-NavAreaDesc"></a>
+
+### `NavAreaDesc` (desc struct)
+
+A run-time area: the spans under `shape` (their floors from the agent's climb below its bottom to its top) take area `area`, over the baked areas and over run-time areas of lower ids.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `shape` | `NavShape` | `{}` | — | — | — | Where. |
+| `area` | `number` | `0` | ≤ 63 | — | — | The area id, 0 to 63 (0 is ground). |
+
+```ogt
+struct NavAreaDesc {
+  doc "A run-time area: the spans under `shape` (their floors from the agent's climb below its bottom to its top) take area `area`, over the baked areas and over run-time areas of lower ids."
+  desc true
+  field shape NavShape "Where."
+  field area u32 "The area id, 0 to 63 (0 is ground)." {
+    max 63
+  }
+}
+```
+
+<sub>`api.ogt` line 11368</sub>
 
 <a id="type-NavGridDesc"></a>
 
@@ -804,7 +1012,7 @@ struct NavGridDesc {
 }
 ```
 
-<sub>`api.ogt` line 11324</sub>
+<sub>`api.ogt` line 11377</sub>
 
 <a id="type-TilemapGridDesc"></a>
 
@@ -832,7 +1040,7 @@ struct TilemapGridDesc {
 }
 ```
 
-<sub>`api.ogt` line 11349</sub>
+<sub>`api.ogt` line 11402</sub>
 
 <a id="type-NavCell"></a>
 
@@ -855,7 +1063,7 @@ struct NavCell {
 }
 ```
 
-<sub>`api.ogt` line 11359</sub>
+<sub>`api.ogt` line 11412</sub>
 
 <a id="type-PathDesc"></a>
 
@@ -873,6 +1081,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `algorithm` | `NavAlgorithm` | `"jps"` | — | — | — | The grid search. |
 | `smooth` | `boolean` | `true` | — | — | — | Pull a grid path straight where nothing is in the way. |
 | `radius` | `number` | `0` | 0 … 10 | `m` | — | Keep this clear of grid walls when smoothing. |
+| `areaCosts` | `readonly number[]` | `[]` | — | — | — | On a navmesh: per area id, the cost of a metre in it, as og.NavFilter's. |
+| `excluded` | `readonly number[]` | `[]` | — | — | — | On a navmesh: area ids the path never enters. |
 
 ```ogt
 struct PathDesc {
@@ -894,10 +1104,12 @@ struct PathDesc {
     max 10
     unit m
   }
+  field areaCosts List.f32 "On a navmesh: per area id, the cost of a metre in it, as og.NavFilter's."
+  field excluded List.u32 "On a navmesh: area ids the path never enters."
 }
 ```
 
-<sub>`api.ogt` line 11366</sub>
+<sub>`api.ogt` line 11419</sub>
 
 <a id="type-NavPath"></a>
 
@@ -926,7 +1138,7 @@ struct NavPath {
 }
 ```
 
-<sub>`api.ogt` line 11387</sub>
+<sub>`api.ogt` line 11442</sub>
 
 <a id="type-FlowDesc"></a>
 
@@ -950,7 +1162,7 @@ struct FlowDesc {
 }
 ```
 
-<sub>`api.ogt` line 11398</sub>
+<sub>`api.ogt` line 11453</sub>
 
 <a id="type-NavBox"></a>
 
@@ -978,7 +1190,7 @@ struct NavBox {
 }
 ```
 
-<sub>`api.ogt` line 11405</sub>
+<sub>`api.ogt` line 11460</sub>
 
 <a id="type-NavMeshDesc"></a>
 
@@ -1036,7 +1248,7 @@ struct NavMeshDesc {
 }
 ```
 
-<sub>`api.ogt` line 11416</sub>
+<sub>`api.ogt` line 11471</sub>
 
 <a id="type-NavMeshInfo"></a>
 
@@ -1071,7 +1283,7 @@ struct NavMeshInfo {
 }
 ```
 
-<sub>`api.ogt` line 11452</sub>
+<sub>`api.ogt` line 11507</sub>
 
 <a id="type-NavRebuild"></a>
 
@@ -1092,7 +1304,7 @@ struct NavRebuild {
 }
 ```
 
-<sub>`api.ogt` line 11468</sub>
+<sub>`api.ogt` line 11523</sub>
 
 ## Column kinds
 

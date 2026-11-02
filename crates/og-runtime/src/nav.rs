@@ -8,7 +8,8 @@ use super::{ok, parse, refuse};
 use og_core::glam::{Vec2, Vec3};
 use og_ecs::{Entity, World};
 use og_nav::{
-    Algorithm, FlowField, Grid, Heightfield, Nav, NavMesh, NavParams, Obstacle, Plane, Scratch,
+    Algorithm, Filter, FlowField, Grid, Heightfield, Nav, NavMesh, NavParams, Obstacle, Plane,
+    Scratch, Shape,
 };
 use serde_json::{Value, json};
 
@@ -29,6 +30,112 @@ fn wire(r: Result<Value, String>) -> String {
         Ok(v) => ok(v),
         Err(e) => refuse(e),
     }
+}
+
+/// A NavShape from its JSON.
+fn shape(v: &Value) -> Result<Shape, String> {
+    Ok(match v["kind"].as_str().unwrap_or("box") {
+        "box" => Shape::Box {
+            min: v3(&v["min"]),
+            max: v3(&v["max"]),
+        },
+        "orientedBox" => Shape::Oriented {
+            center: v3(&v["center"]),
+            half: v3(&v["size"]) * 0.5,
+            yaw: f(v, "yaw", 0.0),
+        },
+        "cylinder" => Shape::Cylinder {
+            base: v3(&v["center"]),
+            radius: f(v, "radius", 0.0).max(0.0),
+            height: f(v, "height", 0.0).max(0.0),
+        },
+        "convex" => {
+            let points: Vec<Vec2> = v["points"]
+                .as_array()
+                .map(|a| {
+                    a.iter()
+                        .map(|p| Vec2::new(f(p, "x", 0.0), f(p, "z", 0.0)))
+                        .collect()
+                })
+                .unwrap_or_default();
+            if points.len() < 3 {
+                return Err(format!(
+                    "a convex shape needs at least three points, got {}",
+                    points.len()
+                ));
+            }
+            Shape::Convex {
+                points,
+                bottom: f(&v["min"], "y", 0.0),
+                top: f(&v["max"], "y", 0.0),
+            }
+        }
+        k => {
+            return Err(format!(
+                "'{k}' is not a NavShapeKind: box, orientedBox, cylinder or convex"
+            ));
+        }
+    })
+}
+
+/// A path filter from areaCosts and excluded (PathDesc, og.NavFilter).
+fn filter(d: &Value) -> Filter {
+    let costs = d["areaCosts"]
+        .as_array()
+        .map(|a| a.iter().map(|c| c.as_f64().unwrap_or(1.0) as f32).collect())
+        .unwrap_or_default();
+    let mut excluded = 0u64;
+    for a in d["excluded"].as_array().into_iter().flatten() {
+        if let Some(a) = a.as_u64().filter(|&a| a < 64) {
+            excluded |= 1 << a;
+        }
+    }
+    Filter { costs, excluded }
+}
+
+/// A navmesh edit on mesh handle `mesh`: what it rebuilt.
+fn edit_mesh(
+    world: u32,
+    mesh: f64,
+    edit: impl FnOnce(&mut NavMesh) -> Vec<usize>,
+) -> Result<Value, String> {
+    let n = navs(world)?;
+    let mut n = lock(&n);
+    match n.get_mut(handle(mesh)) {
+        Some(Nav::Mesh(m)) => {
+            let tiles = edit(m);
+            Ok(json!({ "tiles": tiles, "polygons": m.poly_count() }))
+        }
+        _ => Err(format!(
+            "{mesh} is not a navmesh (og.nav.load, og.nav.build)"
+        )),
+    }
+}
+
+pub fn og_nav_carve(world: u32, mesh: f64, id: u32, desc: Option<String>) -> String {
+    wire((|| {
+        let s = match desc.as_deref().map(|t| parse(Some(t))).transpose()? {
+            Some(v) if v.is_object() => Some(shape(&v)?),
+            _ => None,
+        };
+        edit_mesh(world, mesh, |m| m.carve(id, s))
+    })())
+}
+
+pub fn og_nav_set_area(world: u32, mesh: f64, id: u32, desc: Option<String>) -> String {
+    wire((|| {
+        let a = match desc.as_deref().map(|t| parse(Some(t))).transpose()? {
+            Some(v) if v.is_object() => {
+                let area = v["area"].as_u64().unwrap_or(0);
+                if area > 63 {
+                    return Err(format!("an area id is 0 to 63, got {area}"));
+                }
+                Some((shape(&v["shape"])?, area as u8))
+            }
+            _ => None,
+        };
+        edit_mesh(world, mesh, |m| m.set_area(id, a))
+    })())
 }
 
 fn plane_of(engine: u32) -> Plane {
@@ -308,7 +415,7 @@ pub fn og_nav_find_path(world: u32, desc: Option<String>) -> String {
             Some(Nav::Mesh(m)) => {
                 let extent = Vec3::new(2.0, m.field.params.agent_height.max(2.0), 2.0);
                 let p = m
-                    .find_path(from, to, extent)
+                    .find_path_filtered(from, to, extent, &filter(&d))
                     .ok_or("the start is not on the navmesh (within 2 m)")?;
                 Ok(path_value(&p.points, p.complete, p.expanded, "navmesh"))
             }
@@ -399,14 +506,18 @@ fn mesh_info(h: u64, m: &NavMesh) -> Value {
 pub fn og_nav_load(world: u32, path: String) -> String {
     wire(engine(world).and_then(|eng| {
         let id = og_bundle::runtime::asset_id(&path).to_string();
-        let (field, tiles) = {
+        let (field, tiles, areas) = {
             let assets = eng.assets.borrow();
             let (bytes, bundle) = assets.blob(&id)?;
-            bundle
+            let (field, tiles) = bundle
                 .navmesh(&id, bytes.bytes())
-                .map_err(|e| e.to_string())?
+                .map_err(|e| e.to_string())?;
+            let areas = bundle
+                .navmesh_areas(&id, bytes.bytes())
+                .map_err(|e| e.to_string())?;
+            (field, tiles, areas)
         };
-        let mesh = NavMesh::from_tiles(field, tiles).ok_or_else(|| {
+        let mesh = NavMesh::from_tiles_with_areas(field, tiles, areas).ok_or_else(|| {
             format!("{id}: the navmesh's tiles do not fit its heightfield; cook it again")
         })?;
         let n = navs(world)?;

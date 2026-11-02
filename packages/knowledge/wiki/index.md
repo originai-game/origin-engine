@@ -157,7 +157,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1927 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1933 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -728,6 +728,7 @@ Field units the docs and Tune use.
 | [`NAV_PARTIAL`](nav.md#const-NAV_PARTIAL) | constant | nav | — |
 | [`NAV_UNREACHABLE`](nav.md#const-NAV_UNREACHABLE) | constant | nav | — |
 | [`NavAlgorithm`](nav.md#type-NavAlgorithm) | enum | nav | — |
+| [`NavAreaDesc`](nav.md#type-NavAreaDesc) | desc struct | nav | — |
 | [`NavBox`](nav.md#type-NavBox) | desc struct | nav | — |
 | [`NavCell`](nav.md#type-NavCell) | struct | nav | — |
 | [`NavGridDesc`](nav.md#type-NavGridDesc) | desc struct | nav | — |
@@ -738,6 +739,8 @@ Field units the docs and Tune use.
 | [`NavMeshInfo`](nav.md#type-NavMeshInfo) | struct | nav | — |
 | [`NavPath`](nav.md#type-NavPath) | struct | nav | — |
 | [`NavRebuild`](nav.md#type-NavRebuild) | struct | nav | — |
+| [`NavShape`](nav.md#type-NavShape) | desc struct | nav | — |
+| [`NavShapeKind`](nav.md#type-NavShapeKind) | enum | nav | — |
 | [`Neighbour`](world.md#type-Neighbour) | struct | world | — |
 | [`NodeGraphDesc`](ui.md#type-NodeGraphDesc) | desc struct | ui | — |
 | [`NodeGraphResult`](ui.md#type-NodeGraphResult) | struct | ui | — |
@@ -939,6 +942,7 @@ Field units the docs and Tune use.
 | [`og.Music`](audio.md#record-Music) | component | audio | — |
 | [`og.MusicBeat`](audio.md#record-MusicBeat) | event | audio | — |
 | [`og.nav.build`](nav.md#fn-build) | function | nav | `og_nav_build` |
+| [`og.nav.carve`](nav.md#fn-carve) | function | nav | `og_nav_carve` |
 | [`og.nav.cellAt`](nav.md#fn-cellAt) | function | nav | `og_nav_cell_at` |
 | [`og.nav.findPath`](nav.md#fn-findPath) | function | nav | `og_nav_find_path` |
 | [`og.nav.flowAt`](nav.md#fn-flowAt) | function | nav | `og_nav_flow_at` |
@@ -948,10 +952,12 @@ Field units the docs and Tune use.
 | [`og.nav.load`](nav.md#fn-load) | function | nav | `og_nav_load` |
 | [`og.nav.nearest`](nav.md#fn-nearest) | function | nav | `og_nav_nearest` |
 | [`og.nav.pathOf`](nav.md#fn-pathOf) | function | nav | `og_nav_path_of` |
+| [`og.nav.setArea`](nav.md#fn-setArea) | function | nav | `og_nav_set_area` |
 | [`og.nav.setCost`](nav.md#fn-setCost) | function | nav | `og_nav_set_cost` |
 | [`og.nav.setFlowTargets`](nav.md#fn-setFlowTargets) | function | nav | `og_nav_set_flow_targets` |
 | [`og.nav.setObstacle`](nav.md#fn-setObstacle) | function | nav | `og_nav_set_obstacle` |
 | [`og.NavAgent`](nav.md#record-NavAgent) | component | nav | — |
+| [`og.NavFilter`](nav.md#record-NavFilter) | component | nav | — |
 | [`og.net.hash`](net.md#fn-hash) | function | net | `og_net_hash` |
 | [`og.net.status`](net.md#fn-status) | function | net | `og_net_status` |
 | [`og.net.submit`](net.md#fn-submit) | function | net | `og_net_submit` |

@@ -17,14 +17,17 @@ pub mod bake;
 pub mod flow;
 pub mod grid;
 pub mod mesh;
+pub mod shape;
 pub mod steer;
 pub mod system;
 
 pub use flow::FlowField;
 pub use grid::{Algorithm, BLOCKED, Grid, GridPath, Scratch};
-pub use mesh::{Heightfield, MeshPath, NavMesh, NavParams, Obstacle, Poly, PolyRef, Span, Tile};
+pub use mesh::{
+    Filter, Heightfield, MeshPath, NavMesh, NavParams, Obstacle, Poly, PolyRef, Shape, Span, Tile,
+};
 pub use system::{
-    Nav, NavAgent, NavDesc, NavSystem, Navs, OFF_PATH, PLANS_PER_TICK, Plane, Raycaster,
+    Nav, NavAgent, NavDesc, NavFilter, NavSystem, Navs, OFF_PATH, PLANS_PER_TICK, Plane, Raycaster,
     STATUS_ARRIVED, STATUS_IDLE, STATUS_MOVING, STATUS_PARTIAL, STATUS_UNREACHABLE, SYSTEM_NAME,
-    SharedNavs, Steering, install, plan,
+    SharedNavs, Steering, enable_filters, install, plan,
 };
