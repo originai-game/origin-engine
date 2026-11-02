@@ -847,6 +847,10 @@ fn cooked_models_render_the_gltf_reference_scene() {
         .collect();
     let mut scene = og_render::RenderScene::new();
     let mut parts = Vec::new();
+    // The reference draws every part's full mesh (og-tests builds it
+    // without levels); bias 0 keeps the meshlet path at level 0 too, where
+    // it would otherwise pick each part's level by its screen-space error.
+    scene.lod_bias = 0.0;
     for id in ["models/trickster.glb", "models/dropship.glb"] {
         let (model, textures) = b.load_model_with_textures(id).unwrap();
         parts.push(model.add_to(&mut scene, &textures));
