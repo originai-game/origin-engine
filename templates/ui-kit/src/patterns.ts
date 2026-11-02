@@ -9,7 +9,7 @@
 // a gallery, never saved.
 
 import { og } from "@origingame/engine";
-import type { CardTarget, GridItem, HandCard, InventoryCarry, InventoryMove, PaperdollSlot, PullItem, RewardOption, Size, UiRect, World } from "@origingame/engine";
+import type { CardTarget, GridItem, HandCard, InventoryCarry, InventoryMove, PaperdollSlot, PullItem, RewardOption, Size, StoreOffer, UiRect, World } from "@origingame/engine";
 
 /** A fixture the preview changes: its readonly fields writable. */
 type Mut<T> = { -readonly [K in keyof T]: T[K] };
@@ -30,7 +30,7 @@ function phone(): boolean {
  * the kit's Gallery button its corner (bottom start on a desktop, the top
  * on a phone).
  */
-function screen(id: string, title: string, sub: string, build: () => void, hints: Array<{ action: string; hint: string }> = []): void {
+function screen(id: string, title: string, sub: string, build: () => void, hints: Array<{ action: string; hint: string }> = [], scroll = true): void {
   const t = og.ui.frameTheme();
   const vp = og.ui.frameViewport();
   const sa = vp.safeArea;
@@ -49,7 +49,9 @@ function screen(id: string, title: string, sub: string, build: () => void, hints
       if (sub) og.ui.label("Sub", sub, { step: small ? "sm" : big ? "xl" : "base", color: { token: "inkMuted" }, width: grow, maxLines: 2 });
     });
     // The body fades out at the foot where more lies below, so a row cut by the screen's edge reads as more to scroll.
-    og.ui.scrollArea("Body", { width: grow, height: grow, gap: t.space.md, fade: small ? 72 : 56, fadeInto: "shadow", padding: { left: 0, top: 0, right: 0, bottom: small ? sa.bottom : 0 } }, build);
+    // A screen whose pattern scrolls itself (a battle pass's track) takes the room as it is, so its own view scrolls.
+    if (scroll) og.ui.scrollArea("Body", { width: grow, height: grow, gap: t.space.md, fade: small ? 72 : 56, fadeInto: "shadow", padding: { left: 0, top: 0, right: 0, bottom: small ? sa.bottom : 0 } }, build);
+    else og.ui.column("Body", { width: grow, height: grow, gap: t.space.md, padding: { left: 0, top: 0, right: 0, bottom: small ? sa.bottom : 0 } }, build);
     if (hints.length > 0 && !small) og.ui.actionHints("Hints", { hints });
   });
 }
@@ -112,6 +114,8 @@ const SCENES: Record<string, [ArtName, { x: number; y: number }]> = {
   gear: ["scenes/paperdoll-aria-vell", { x: 0.5, y: 0.3 }],
   board: ["scenes/title", { x: 0.5, y: 0.6 }],
   generators: ["scenes/gacha-moonlit-tide", { x: 0.3, y: 0.5 }],
+  store: ["scenes/paperdoll-aria-vell", { x: 0.5, y: 0.25 }],
+  pass: ["scenes/title", { x: 0.6, y: 0.4 }],
 };
 
 /** The pattern screen's painted scene, built before anything over it (the kit's Gallery button among them). */
@@ -666,6 +670,10 @@ export function patternsCommand(_world: World, args: readonly string[]): void {
   else if (key === "score") b.score = Number(value) || 0;
   else if (key === "goal") b.have = value.split(",").map((x) => Number(x) || 0);
   else if (key === "purse") ig.energy = Number(value) || 0;
+  else if (key === "gems") sto.gems = Number(value) || 0;
+  else if (key === "storeConfirm") sto.confirm = value;
+  else if (key === "premium") ps.premium = value !== "off";
+  else if (key === "level") ps.level = Number(value) || 1;
   else if (key === "balance") g.balance = Number(value) || 0;
   else if (key === "banner") g.banner = value;
   else if (key === "pull") {
@@ -711,6 +719,8 @@ export function patternsCommand(_world: World, args: readonly string[]): void {
     ig.energy = 4.82e15;
     ig.mult = 0;
     ig.gens = GEN0.map((x) => ({ ...x }));
+    sto = st0();
+    ps = pass0();
   }
 }
 
@@ -1061,4 +1071,174 @@ export function generatorsScreen(): void {
       prestige();
     }
   }, [{ action: "confirm", hint: L("idle.hint.buy") }, { action: "back", hint: L("hint.back") }]);
+}
+
+// ── store: a store front with a featured rotation and a daily one ───────
+
+type Offer = Mut<StoreOffer>;
+/** The store as the game holds it: the purse, each offer's price and what the player has bought or owns. */
+const STORE0 = {
+  gems: 2400,
+  coins: 3250,
+  featured: [
+    { key: "tide", art: "scenes/gacha-moonlit-tide", focal: { x: 0.72, y: 0.3 }, rarity: "legendary", price: 2800, original: 4200, currency: "gems", featured: true, badge: "limited", limit: 1, endsIn: 3 * 3600 + 1200, contents: ["aria", "lantern", "glitter", "frame"] },
+    { key: "ashbringer", art: "items/ashbringer", rarity: "legendary", price: 1800, currency: "gems", badge: "new", badgeKind: "new" },
+    { key: "crown", art: "items/crown", rarity: "epic", price: 1200, currency: "gems", owned: true },
+  ],
+  daily: [
+    { key: "potions", art: "items/healing-draught", rarity: "common", price: 250, currency: "coins", limit: 3, bought: 1 },
+    { key: "mana", art: "items/mana-vial", rarity: "uncommon", price: 300, currency: "coins" },
+    { key: "ember", art: "items/ember-ring", rarity: "rare", price: 1500, currency: "coins", badge: "new", badgeKind: "new" },
+    { key: "amulet", art: "items/sapphire-amulet", rarity: "epic", price: 4000, currency: "coins" },
+    { key: "key", art: "items/iron-key", rarity: "uncommon", price: 600, currency: "coins", limit: 1, bought: 1 },
+  ],
+  packs: [
+    { key: "gems1", art: "boons/crystal", rarity: "rare", priceText: "$4.99", amount: 980 },
+    { key: "gems2", art: "boons/crystal", rarity: "epic", priceText: "$14.99", amount: 3280, badge: "popular" },
+    { key: "gems3", art: "boons/gold", rarity: "legendary", priceText: "$29.99", amount: 6480, badge: "best" },
+  ],
+} as const;
+const st0 = () => ({ gems: STORE0.gems as number, coins: STORE0.coins as number, bought: {} as Record<string, number>, owned: new Set<string>(["crown"]), selected: "", confirm: "" });
+let sto = st0();
+
+/** The store (Fortnite's item shop, Genshin's): the purse, the featured rotation, the daily one and the gem packs; a press asks to confirm, and the game charges it. */
+export function storeScreen(): void {
+  const small = phone();
+  const offer = (o: (typeof STORE0.featured)[number] | (typeof STORE0.daily)[number]): Offer => {
+    const purse = o.currency === "gems" ? sto.gems : sto.coins;
+    const x: Offer = {
+      key: o.key,
+      name: L(`store.item.${o.key}`),
+      kind: L(`store.kind.${o.key}`),
+      image: art(o.art as ArtName),
+      rarity: o.rarity,
+      price: o.price,
+      currency: o.currency,
+      original: "original" in o ? o.original : 0,
+      limit: "limit" in o ? o.limit : 0,
+      bought: ("bought" in o ? o.bought : 0) + (sto.bought[o.key] ?? 0),
+      owned: sto.owned.has(o.key),
+      affordable: purse >= o.price,
+      featured: "featured" in o && o.featured,
+      badge: "badge" in o ? L(`store.badge.${o.badge}`) : "",
+      badgeKind: "badgeKind" in o ? o.badgeKind : "note",
+    };
+    if ("focal" in o) x.focal = o.focal;
+    if ("endsIn" in o) x.endsIn = o.endsIn;
+    if ("contents" in o) x.contents = o.contents.map((c) => L(`store.contents.${c}`));
+    return x;
+  };
+  screen("Shop", L("store.title"), L("store.sub"), () => {
+    const r = og.ui.storeFront("Store", {
+      wallet: [
+        { key: "gems", name: L("store.gems"), amount: sto.gems, image: art("boons/crystal"), topUp: true },
+        { key: "coins", name: L("store.coins"), amount: sto.coins, image: art("boons/gold"), topUp: true },
+      ],
+      sections: [
+        { key: "featured", title: L("store.featured"), endsIn: 2 * 86400 + 4 * 3600, offers: STORE0.featured.map(offer) },
+        { key: "daily", title: L("store.daily"), endsIn: 7 * 3600 + 720, offers: STORE0.daily.map(offer) },
+        {
+          key: "packs",
+          title: L("store.packs"),
+          offers: STORE0.packs.map((o) => ({ key: o.key, name: L("store.gemPack", { n: og.ui.formatNumber(o.amount, { notation: "grouped" } as never) }), kind: L(`store.kind.${o.key}`), image: art(o.art as ArtName), rarity: o.rarity, priceText: o.priceText, ...("badge" in o ? { badge: L(`store.badge.${o.badge}`) } : {}) })),
+        },
+      ],
+      selected: sto.selected,
+      columns: small ? 2 : 0,
+      label: L("store.title"),
+      freeLabel: L("store.free"),
+      ownedLabel: L("store.owned"),
+      soldOutLabel: L("store.soldOut"),
+      leftLabel: L("store.left"),
+      saveLabel: L("store.save"),
+      refreshLabel: L("store.refresh"),
+      shortLabel: L("gacha.short"),
+      topUpLabel: L("store.topUp"),
+      daysLabel: L("time.days"),
+      hoursLabel: L("time.hours"),
+    });
+    if (r.chosen) {
+      sto.selected = r.chosen;
+      sto.confirm = r.chosen;
+    }
+  }, [{ action: "confirm", hint: L("store.hint.buy") }, { action: "back", hint: L("hint.back") }]);
+  // The game's confirm: what it costs, then the charge.
+  const o = [...STORE0.featured, ...STORE0.daily].find((x) => x.key === sto.confirm);
+  const c = og.ui.confirm("Buy", !!o, {
+    title: o ? L(`store.item.${o.key}`) : "",
+    message: o ? L("store.confirm", { price: og.ui.formatNumber(o.price, { notation: "grouped" } as never), currency: L(o.currency === "gems" ? "store.gems" : "store.coins") }) : "",
+    confirmLabel: L("store.buy"),
+    cancelLabel: L("store.cancel"),
+  });
+  if (o && c.confirmed) {
+    if (o.currency === "gems") sto.gems -= o.price;
+    else sto.coins -= o.price;
+    sto.bought[o.key] = (sto.bought[o.key] ?? 0) + 1;
+    if (!("limit" in o)) sto.owned.add(o.key);
+    sto.confirm = "";
+    sto.selected = "";
+  } else if (c.cancelled) {
+    sto.confirm = "";
+    sto.selected = "";
+  }
+}
+
+// ── pass: a season's battle pass ────────────────────────────────────────
+
+const PASS_FREE = ["boons/gold", "boons/crystal", "items/healing-draught", "boons/gold", "items/mana-vial"] as const;
+const PASS_PREM = ["items/ember-ring", "boons/crystal", "items/sapphire-amulet", "items/boots", "items/arcane-staff", "items/gauntlets"] as const;
+const PASS_RARITY = ["common", "uncommon", "rare", "epic"] as const;
+/** The season: thirty tiers, a milestone every tenth (the season's characters), the player at level 12. */
+const pass0 = () => ({
+  level: 12,
+  xp: 640,
+  premium: false,
+  claimed: new Set<string>([...Array.from({ length: 10 }, (_, i) => `${i + 1}/f`).filter((k) => k !== "8/f")]),
+});
+let ps = pass0();
+
+/** A battle pass (Fortnite, Brawl Stars): the season's header, then its track, a free and a premium reward each tier. */
+export function passScreen(): void {
+  const tiers = Array.from({ length: 30 }, (_, i) => {
+    const lv = i + 1;
+    const mile = lv % 10 === 0;
+    const fa = PASS_FREE[i % PASS_FREE.length]!;
+    const pa = PASS_PREM[i % PASS_PREM.length]!;
+    return {
+      level: lv,
+      milestone: mile,
+      free: i % 3 === 2 && !mile ? null : { key: `f${lv}`, name: L(`pass.reward.${mile ? "chest" : fa.split("/")[1]}`), amountText: fa.startsWith("boons/") && !mile ? `×${fa === "boons/gold" ? 200 : 50}` : "", image: art(mile ? "items/crown" : fa), rarity: mile ? "epic" : PASS_RARITY[i % 2] },
+      premium: { key: `p${lv}`, name: L(`pass.reward.${mile ? (lv === 10 ? "aria" : lv === 20 ? "kael" : "mira") : pa.split("/")[1]}`), image: art(mile ? (lv === 10 ? "portraits/aria" : lv === 20 ? "portraits/kael" : "portraits/mira") : pa), rarity: mile ? ("legendary" as const) : PASS_RARITY[(i % 3) + 1]! },
+      freeClaimed: ps.claimed.has(`${lv}/f`),
+      premiumClaimed: ps.claimed.has(`${lv}/p`),
+    };
+  });
+  screen("Pass", L("pass.title"), "", () => {
+    const r = og.ui.battlePass("Pass", {
+      title: L("pass.season"),
+      image: art("scenes/gacha-moonlit-tide"),
+      endsIn: 18 * 86400 + 6 * 3600,
+      level: ps.level,
+      xp: ps.xp,
+      xpNext: 1000,
+      premium: ps.premium,
+      tiers,
+      unlockPriceText: "$9.99",
+      label: L("pass.title"),
+      freeLabel: L("pass.free"),
+      premiumLabel: L("pass.premium"),
+      levelLabel: L("pass.level"),
+      xpLabel: L("pass.xp"),
+      claimLabel: L("pass.claim"),
+      claimAllLabel: L("pass.claimAll"),
+      claimedLabel: L("pass.claimed"),
+      unlockLabel: L("pass.unlock"),
+      lockedLabel: L("pass.premium"),
+      reachLabel: L("pass.reach"),
+      daysLabel: L("time.days"),
+      hoursLabel: L("time.hours"),
+    });
+    for (const c0 of r.claimed) ps.claimed.add(`${c0.level}/${c0.premium ? "p" : "f"}`);
+    if (r.unlock) ps.premium = true;
+  }, [{ action: "confirm", hint: L("pass.claim") }, { action: "back", hint: L("hint.back") }], false);
 }

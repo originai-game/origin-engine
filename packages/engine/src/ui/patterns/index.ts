@@ -11,6 +11,8 @@ import { heroButton } from "./core.ts";
 import { sagaMap } from "./saga.ts";
 import { goalChips, starBar } from "./goals.ts";
 import { idleGenerator, prestigePanel } from "./idle.ts";
+import { storeFront } from "./store.ts";
+import { battlePass } from "./pass.ts";
 
 export const patterns = Object.freeze({
   cardHand,
@@ -25,4 +27,6 @@ export const patterns = Object.freeze({
   goalChips,
   idleGenerator,
   prestigePanel,
+  storeFront,
+  battlePass,
 });

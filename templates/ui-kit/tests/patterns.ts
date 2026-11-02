@@ -351,6 +351,45 @@ function progression(b: ReturnType<typeof builder>, phone: boolean, prefix = "")
   b.cmd("pat:reset");
 }
 
+/** The store and the battle pass in their states. */
+function commerce(b: ReturnType<typeof builder>, phone: boolean, prefix = ""): void {
+  b.cmd("show:store");
+  // The purse, the featured bundle (its saving and its timer), the owned crown, then the daily rotation.
+  b.shot(`${prefix}store-idle`, 1.0);
+  b.dump(`${prefix}store`);
+  if (!phone) {
+    b.cmd("touch_move_to:Offers/ashbringer", 0.05);
+    b.shot(`${prefix}store-hover`, 0.5);
+  }
+  // An offer the purse cannot pay shakes and says why; one it can opens the game's confirm, then is owned.
+  b.cmd("pat:gems:1000");
+  b.seq((at) => tap(at, "Offers/ashbringer"), 0.15);
+  b.shot(`${prefix}store-refused`, 0.05);
+  b.dump(`${prefix}store-refused`);
+  b.cmd("pat:gems:2400");
+  b.seq((at) => tap(at, "Offers/ashbringer"), 0.4);
+  b.shot(`${prefix}store-confirm`, 0.6);
+  b.seq((at) => key(at, "Enter"), 0.4);
+  b.shot(`${prefix}store-bought`, 0.8);
+  b.dump(`${prefix}store-bought`);
+  b.cmd("pat:reset");
+  b.cmd("show:pass");
+  // Opens on the player's tier (12): the free track claimed to 10 but 8, and 11 ready; premium locked.
+  b.shot(`${prefix}pass-idle`, 1.2);
+  b.dump(`${prefix}pass`);
+  b.seq((at) => tap(at, "Tiers/L11/Free"), 0.15);
+  b.shot(`${prefix}pass-claim`, 0.08);
+  b.seq((at) => tap(at, "Tiers/L13/Free"), 0.15);
+  b.shot(`${prefix}pass-refused`, 0.05);
+  // The premium track bought: its rewards up to the level ready, then all claimed at once.
+  b.cmd("pat:premium:on");
+  b.shot(`${prefix}pass-premium`, 0.8);
+  b.seq((at) => tap(at, "Actions/ClaimAll"), 0.4);
+  b.shot(`${prefix}pass-claimed`, 0.8);
+  b.dump(`${prefix}pass-claimed`);
+  b.cmd("pat:reset");
+}
+
 /** Every pattern screen in its states, then right to left and at 200 % text. */
 export function patternsScript(phone: boolean): Script {
   const b = builder(0.3);
@@ -360,6 +399,7 @@ export function patternsScript(phone: boolean): Script {
   rewards(b, phone);
   gacha(b, phone);
   progression(b, phone);
+  commerce(b, phone);
   b.cmd("locale:ar");
   b.cmd("show:gear");
   b.shot("rtl-gear", 0.8);
@@ -385,6 +425,10 @@ export function patternsScript(phone: boolean): Script {
   b.shot("rtl-saga", 1.0);
   b.cmd("show:generators");
   b.shot("rtl-generators", 0.8);
+  b.cmd("show:store");
+  b.shot("rtl-store", 1.0);
+  b.cmd("show:pass");
+  b.shot("rtl-pass", 1.2);
   b.cmd("pat:pull:10");
   b.seq((at) => key(at, "Escape"), 0.2);
   b.shot("rtl-gacha-summary", 1.2);
@@ -402,6 +446,10 @@ export function patternsScript(phone: boolean): Script {
     b.shot(`${loc}-rewards`, 1.0);
     b.cmd("show:gear");
     b.shot(`${loc}-gear`, 0.8);
+    b.cmd("show:store");
+    b.shot(`${loc}-store`, 1.0);
+    b.cmd("show:pass");
+    b.shot(`${loc}-pass`, 1.2);
   }
   // The pull's own words: the reveal's NEW badge and hint, then the summary's.
   b.cmd("locale:ja");
@@ -436,6 +484,10 @@ export function patternsScript(phone: boolean): Script {
   b.shot("text200-gacha-summary", 1.2);
   b.seq((at) => key(at, "Escape"), 0.4);
   b.cmd("pat:reset");
+  b.cmd("show:store");
+  b.shot("text200-store", 1.0);
+  b.cmd("show:pass");
+  b.shot("text200-pass", 1.2);
   b.cmd("demo:text:100");
   return b.end();
 }

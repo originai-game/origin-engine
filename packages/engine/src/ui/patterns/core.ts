@@ -528,11 +528,11 @@ export function priceTag(id: string, d: { amount: number; currency?: string; ori
     if (d.original && d.original > d.amount) {
       kit.open("Was", { direction: "row" });
       text("Value", grouped(d.original), { step: st(14), color: "inkMuted", nowrap: true, font: "mono" });
-      kit.close();
-      // The strike: a line across the old price, drawn (no font has a strikethrough mark everywhere).
+      // The strike: a line across the old price only, drawn (no font has a strikethrough mark everywhere).
       kit.open("Strike", { width: grow(), height: px(2), radius: 1, background: token("danger") });
       kit.close();
-      kit.props({ position: "absolute", insets: { start: 0, end: 0, centerY: true }, inert: true, overlaps: [kit.lastPath().replace(/\/Strike$/, "/Was")] });
+      over({ insets: { start: 0, end: 0, centerY: true }, inert: true });
+      kit.close();
     }
     // Inside a control it reads in the control's face (the thin mono face at 14 px read faint beside a display label).
     text("Amount", grouped(d.amount), { step, color: can ? d.ink ?? "ink" : "danger", nowrap: true, font: d.ink ? "display" : "mono" });

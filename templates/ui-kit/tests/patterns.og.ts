@@ -37,6 +37,10 @@ export default playtest({
     t.ok(ui(run, "gacha-summary.json").filter((e) => e.role === "listitem").length === 10, "Skip went to a summary of all ten");
     t.ok(ui(run, "cards-refused.json").some((e) => e.id === "Note" && e.text === "Behind a taunt"), "a card let go on the taunted foe is refused there and the foe says why");
     t.ok(ui(run, "cards-unaffordable.json").some((e) => e.role === "option" && e.name.startsWith("Bash") && e.states.includes("disabled")), "with one energy, Bash (2) is said disabled");
+    t.ok(ui(run, "store-refused.json").some((e) => e.role === "button" && e.name.startsWith("Ashbringer") && e.name.includes("not enough")), "with 1,000 gems the 1,800 sword is said not enough");
+    t.ok(ui(run, "store-bought.json").some((e) => e.role === "button" && e.name.startsWith("Ashbringer") && e.name.includes("Owned")), "confirmed, the sword is owned");
+    t.ok(ui(run, "pass.json").some((e) => e.id === "ClaimAll" && e.name === "Claim all (2)"), "tiers 8 and 11 are ready on the free track");
+    t.ok(ui(run, "pass-claimed.json").every((e) => e.id !== "ClaimAll"), "Claim all took every ready reward and went");
     t.frame(script.files, () => {
       for (const f of script.files) t.equal(run.png(f).width, 1280, `${f} is 1280 wide`);
     });

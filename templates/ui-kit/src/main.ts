@@ -18,7 +18,7 @@
 
 import { og, defineComponent, defineResource, defineSystem, bool, f32, f64, str, u32 } from "@origingame/engine";
 import type { Entity, GameSettings, Viewport, World } from "@origingame/engine";
-import { art, boardScreen, cardsScreen, gachaScreen, gearScreen, generatorsScreen, loadPatternArt, patternScene, patternsCommand, rewardsScreen, sagaScreen } from "./patterns.ts";
+import { art, boardScreen, cardsScreen, gachaScreen, gearScreen, generatorsScreen, loadPatternArt, passScreen, patternScene, patternsCommand, rewardsScreen, sagaScreen, storeScreen } from "./patterns.ts";
 import { chartsScreen, containersScreen, dataScreen, demoCommand, graphScreen, navigationScreen, overlaysScreen } from "./components.ts";
 import { bindingsScreen, controlsDemo, controlsScreen, fieldsScreen, foundationsScreen, rangesScreen } from "./controls.ts";
 
@@ -28,7 +28,7 @@ export const SCREENS = [
   "players", "text", "materials",
   "containers", "navigation", "overlays", "data", "charts", "chartsMore", "graph",
   "foundations", "controls", "ranges", "fields", "bindings",
-  "gear", "cards", "rewards", "gacha", "saga", "board", "generators",
+  "gear", "cards", "rewards", "gacha", "saga", "board", "generators", "store", "pass",
 ] as const;
 export type Screen = (typeof SCREENS)[number];
 
@@ -87,6 +87,8 @@ const BLURBS: Record<Screen, string> = {
   saga: "A saga map: levels on a painted path, stars, the avatar's pin, locked and boss levels",
   board: "A match-3 level: goal chips, the score toward three stars, moves left",
   generators: "An idle game: generators with their cycles and buy amount, and the prestige",
+  store: "A store: the purse, a featured bundle, a daily rotation, limits and sold out",
+  pass: "A battle pass: the season, its level and XP, free and premium tracks, claims",
 };
 
 /** The demo's state: one entity named "demo" (dump_entity:demo reads it). */
@@ -693,7 +695,7 @@ function materialsScreen(d: DemoState): void {
 }
 
 /** The genre patterns' preview screens (patterns.ts). */
-const PATTERN_SCREENS: ReadonlySet<string> = new Set(["gear", "cards", "rewards", "gacha", "saga", "board", "generators"]);
+const PATTERN_SCREENS: ReadonlySet<string> = new Set(["gear", "cards", "rewards", "gacha", "saga", "board", "generators", "store", "pass"]);
 
 /**
  * The title's event card (a live game's banner beside its menu): the event's
@@ -1330,6 +1332,15 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
     case "generators":
       // Back lets go of a held Ascend first (the hold takes it).
       generatorsScreen();
+      back = og.ui.back();
+      break;
+    case "store":
+      // Back closes the purchase's confirm first (the modal takes it).
+      storeScreen();
+      back = og.ui.back();
+      break;
+    case "pass":
+      passScreen();
       back = og.ui.back();
       break;
     case "gacha":

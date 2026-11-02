@@ -160,7 +160,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2072 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2084 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -246,6 +246,8 @@ Field units the docs and Tune use.
 | [`BannerDesc`](ui.md#type-BannerDesc) | desc struct | ui | — |
 | [`BannerKind`](ui.md#type-BannerKind) | enum | ui | — |
 | [`BannerResult`](ui.md#type-BannerResult) | struct | ui | — |
+| [`BattlePassDesc`](ui.md#type-BattlePassDesc) | desc struct | ui | — |
+| [`BattlePassResult`](ui.md#type-BattlePassResult) | struct | ui | — |
 | [`Behaviour`](ai.md#type-Behaviour) | handle | ai | — |
 | [`Behaviour()`](ai.md#column-Behaviour) | column kind | ai | — |
 | [`BehaviourInfo`](ai.md#type-BehaviourInfo) | struct | ai | — |
@@ -1252,6 +1254,7 @@ Field units the docs and Tune use.
 | [`og.ui.back`](ui.md#fn-back) | function | ui | `og_ui_back` |
 | [`og.ui.badge`](ui.md#fn-badge) | function | ui | `og_ui_badge` |
 | [`og.ui.banner`](ui.md#fn-banner) | function | ui | — |
+| [`og.ui.battlePass`](ui.md#fn-battlePass) | function | ui | — |
 | [`og.ui.bounds`](ui.md#fn-bounds) | function | ui | `og_ui_bounds` |
 | [`og.ui.breadcrumbs`](ui.md#fn-breadcrumbs) | function | ui | — |
 | [`og.ui.breakpoint`](ui.md#fn-breakpoint) | function | ui | `og_ui_breakpoint` |
@@ -1484,6 +1487,7 @@ Field units the docs and Tune use.
 | [`og.ui.statusGrid`](ui.md#fn-statusGrid) | function | ui | — |
 | [`og.ui.stepper`](ui.md#fn-stepper) | function | ui | `og_ui_stepper` |
 | [`og.ui.stop`](ui.md#fn-stop) | function | ui | `og_ui_stop` |
+| [`og.ui.storeFront`](ui.md#fn-storeFront) | function | ui | — |
 | [`og.ui.subtitles`](ui.md#fn-subtitles) | function | ui | — |
 | [`og.ui.tabBar`](ui.md#fn-tabBar) | function | ui | — |
 | [`og.ui.table`](ui.md#fn-table) | function | ui | — |
@@ -1547,7 +1551,10 @@ Field units the docs and Tune use.
 | [`ParticlesDesc`](ui.md#type-ParticlesDesc) | desc struct | ui | — |
 | [`ParticleShape`](ui.md#type-ParticleShape) | enum | ui | — |
 | [`PartyFramesDesc`](ui.md#type-PartyFramesDesc) | desc struct | ui | — |
+| [`PassClaim`](ui.md#type-PassClaim) | struct | ui | — |
+| [`PassReward`](ui.md#type-PassReward) | desc struct | ui | — |
 | [`PassSize`](probe.md#type-PassSize) | struct | probe | — |
+| [`PassTier`](ui.md#type-PassTier) | desc struct | ui | — |
 | [`Path`](path.md#type-Path) | handle | path | — |
 | [`Path()`](path.md#column-Path) | column kind | path | — |
 | [`Path2`](shapes.md#type-Path2) | interface | shapes | — |
@@ -1973,6 +1980,10 @@ Field units the docs and Tune use.
 | [`StatusGridResult`](ui.md#type-StatusGridResult) | struct | ui | — |
 | [`StepperDesc`](ui.md#type-StepperDesc) | desc struct | ui | — |
 | [`StepperResult`](ui.md#type-StepperResult) | struct | ui | — |
+| [`StoreFrontDesc`](ui.md#type-StoreFrontDesc) | desc struct | ui | — |
+| [`StoreFrontResult`](ui.md#type-StoreFrontResult) | struct | ui | — |
+| [`StoreOffer`](ui.md#type-StoreOffer) | desc struct | ui | — |
+| [`StoreSection`](ui.md#type-StoreSection) | desc struct | ui | — |
 | [`StoreSetDesc`](platform.md#type-StoreSetDesc) | desc struct | platform | — |
 | [`str()`](reflect.md#column-str) | column kind | reflect | — |
 | [`STREAM_FAILED`](stream.md#const-STREAM_FAILED) | constant | stream | — |
@@ -2189,6 +2200,7 @@ Field units the docs and Tune use.
 | [`Viewport`](ui.md#type-Viewport) | struct | ui | — |
 | [`VisualState`](ui.md#type-VisualState) | struct | ui | — |
 | [`VolumetricFog`](render.md#type-VolumetricFog) | enum | render | — |
+| [`WalletEntry`](ui.md#type-WalletEntry) | desc struct | ui | — |
 | [`WaypointDesc`](ui.md#type-WaypointDesc) | desc struct | ui | — |
 | [`WaypointKind`](ui.md#type-WaypointKind) | enum | ui | — |
 | [`WEATHER_DUST`](atmosphere.md#const-WEATHER_DUST) | constant | atmosphere | — |
