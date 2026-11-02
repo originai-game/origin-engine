@@ -14,7 +14,7 @@ import { formatNumber, ut, hudRoom, shrunk, artTile, socketRim, hueOf, BLACK, WH
 import { statBar } from "./meters.ts";
 import { statusGrid } from "./abilities.ts";
 
-const NO_RESPONSE: Api.Response = { hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0, adjust: 0 };
+const NO_RESPONSE: Api.Response = { hovered: false, pressed: false, clicked: false, changed: false, focused: false, submitted: false, dropped: null, pad: null, focusedBy: 0, adjust: 0, adjustY: 0, ring: false };
 
 /** A colour from a name, so a unit without a class colour keeps one across frames. */
 function nameHue(name: string): Rgba {
