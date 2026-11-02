@@ -352,7 +352,7 @@ export function abilityBar(id: string, desc: Api.AbilityBarDesc = {}): Api.Abili
   return { clicked, pressed };
 }
 
-export function statusGrid(id: string, desc: Api.StatusGridDesc = {}): Api.StatusGridResult {
+export function statusGrid(id: string, desc: Api.StatusGridDesc = {}, target = false): Api.StatusGridResult {
   const tk = frame().t;
   const size = u(desc.size || 32);
   const columns = Math.max(1, desc.columns || 8);
@@ -369,12 +369,12 @@ export function statusGrid(id: string, desc: Api.StatusGridDesc = {}): Api.Statu
     // Every column as wide as the row's widest timer needs (WoW's auras): the tiles stay evenly spaced, each duration
     // centred under its tile and overhanging it, never pushing its own column wider than its neighbours'.
     const timers = desc.timers !== false;
-    const col = Math.max(size, ...shown.map((fx) => timeOf(fx, size, timers).width));
+    const col = Math.max(size, ...shown.map((fx) => timeOf(fx, size, timers, target).width));
     // Anchored, a row never runs past the HUD band: wider columns (200 % text) wrap sooner.
     const fit = anchor ? Math.max(1, Math.min(columns, Math.floor((hudRoom() + u(4)) / (col + u(4))))) : columns;
     box(rowId, { direction: "row", wrap: true, gap: u(4), width: px(fit * (col + u(4))) }, undefined, () => {
       for (const fx of shown) {
-        const res = tile(keyId(fx.key ?? ""), fx, size, timers, col);
+        const res = tile(keyId(fx.key ?? ""), fx, size, timers, col, target);
         if (res.hovered || res.focused) hovered = fx.key ?? "";
         if (res.clicked) clicked = fx.key ?? "";
       }
@@ -405,8 +405,13 @@ export function statusGrid(id: string, desc: Api.StatusGridDesc = {}): Api.Statu
 }
 
 /** A tile's timer text and the width it takes with a gutter, so neighbouring timers read apart ("5m 6m", never "5m6m"). */
-function timeOf(fx: Api.StatusEffect, base: number, timers: boolean): { text: string; step: Api.TypeStepName; px: number; width: number } {
-  const size = fx.mine ? base : Math.round(base * 0.85);
+/** A tile's side: one size across a grid; in a target's frame the player's own effects larger than the rest. */
+function tileSide(fx: Api.StatusEffect, base: number, target: boolean): number {
+  return target && !fx.mine ? Math.round(base * 0.85) : base;
+}
+
+function timeOf(fx: Api.StatusEffect, base: number, timers: boolean, target = false): { text: string; step: Api.TypeStepName; px: number; width: number } {
+  const size = tileSide(fx, base, target);
   const remaining = fx.remaining ?? 0;
   const step = tsFit(11, size * 0.3);
   // About half the tile's height at most, whatever the text size: a secondary figure under the art, never its rival.
@@ -415,8 +420,8 @@ function timeOf(fx: Api.StatusEffect, base: number, timers: boolean): { text: st
   return { text, step, px: px0, width: text ? Math.ceil(text.length * px0 * 0.62) + frame().t.sm + 4 : 0 };
 }
 
-function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean, col = base): Api.Response {
-  const size = fx.mine ? base : Math.round(base * 0.85);
+function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean, col = base, target = false): Api.Response {
+  const size = tileSide(fx, base, target);
   const remaining = fx.remaining ?? 0;
   const lasting = remaining <= 0;
   const expiring = !lasting && remaining <= 5;
@@ -427,7 +432,7 @@ function tile(id: string, fx: Api.StatusEffect, base: number, timers: boolean, c
   const r = Math.min(shapeOf("slot").radius, size / 5);
   let res: Api.Response | null = null;
   // The column is the row's (as wide as its widest timer): every tile in it centred, its timer centred under it.
-  const { text: timeText, step: timeStep, px: timePx } = timeOf(fx, base, timers);
+  const { text: timeText, step: timeStep, px: timePx } = timeOf(fx, base, timers, target);
   const timeFit = shrunk(timeStep, timePx, stepSize(timeStep).line);
   const timeH = timeText ? Math.ceil(timePx * 1.25) : 0;
   kit.column(id, { gap: 0, cross: "center", width: px(Math.max(size, base, col)), height: px(size + timeH) }, () => {

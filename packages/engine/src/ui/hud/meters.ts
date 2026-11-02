@@ -162,6 +162,12 @@ function track(parent: string, desc: Api.StatBarDesc, frac: number, level: Level
   if (inside) {
     // The value over the fill at the track's end, in the HUD's outline and its soft halo, so it reads over any fill or
     // the empty track with no box behind it (a scrim there read as the fill darkening toward its end).
+    // A soft dark band under the figures alone, fading at both ends, so they hold over a pale absorb or ghost
+    // (a long scrim from the track's end read as the fill darkening).
+    const tw = inside.text.length * stepSize(inside.step).size * 0.6 + u(14);
+    leaf("Scrim", { width: px(Math.min(w, tw)), height: pct(1), part: sel("StatBar", "scrim") }, {
+      fills: [vgrad([[0, lit(BLACK, 0)], [0.18, lit(BLACK, 0.62)], [0.85, lit(BLACK, 0.62)], [1, lit(BLACK, 0.2)]], desc.reverse ? 270 : 90)],
+    }, absolute(desc.reverse ? { start: 0, top: 0 } : { end: 0, top: 0 }));
     box("Value", { width: pct(1), height: pct(1), direction: "row", align: desc.reverse ? "start" : "end", cross: "center", padding: { left: u(6), right: u(6), top: 0, bottom: 0 } }, undefined, () => {
       text("Text", inside.text, { step: inside.step, font: "mono", color: inside.critical ? lit(mix(role("danger"), WHITE, 0.35)) : token("ink"), nowrap: true, outline: 1 });
     }, absolute({ start: 0, top: 0 }));

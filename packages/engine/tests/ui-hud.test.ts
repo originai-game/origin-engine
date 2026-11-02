@@ -184,8 +184,7 @@ test("og.ui.unitFrame, raidFrames and castBar: health and states read, raids in 
   const value = at(els, "BossHud/Boss/Bars/Health/Main/Track/Value/Text");
   const track = at(els, "BossHud/Boss/Bars/Health/Main/Track")!;
   expect(value?.text).toBe("800K / 1.25M");
-  // (the bars' column less its scrim's 4 px padding at each side)
-  expect(track.width).toBeCloseTo(at(els, "BossHud/Boss/Bars")!.width - 8, 0);
+  expect(track.width).toBeCloseTo(at(els, "BossHud/Boss/Bars")!.width, 0);
   expect(value!.x + value!.width).toBeLessThanOrEqual(track.x + track.width + 0.5);
   // The absorb lies on the health bar, not on a row of its own.
   expect(at(els, "BossHud/Boss/Bars/Health/Main/Track/Absorb")).toBeDefined();
