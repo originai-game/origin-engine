@@ -1,7 +1,6 @@
 // describe's occlusion counts the UI (docs/design.md §3.4): templates/game's
-// tick-1 frame at 800×450, where the HUD panel (Menu, an opaque background
-// from x 24 to 252) covers all but a strip of the crate hanging at the top
-// left. The ways this could fail, each asserted below: the HUD is ignored
+// tick-1 frame at 880×495, where the HUD panel (Menu, an opaque background
+// from x 24 to 272) covers most of the crate hanging at the top left. The ways this could fail, each asserted below: the HUD is ignored
 // (the crate reads as unoccluded with its whole drawn box visible, as
 // before); the UI is counted where it draws nothing opaque (the entities
 // clear of the panel gain occlusion); the box or the point lies under the
