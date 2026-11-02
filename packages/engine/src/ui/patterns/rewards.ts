@@ -197,8 +197,6 @@ export function rewardChoice(id: string, desc: Api.RewardChoiceDesc): Api.Reward
     if (r.clicked) {
       if (o.locked) {
         out.refused = key;
-        kit.remember("~r.rt", tick);
-        kit.remember("~r.rk", keyHash(key));
         kit.feedback("error", -1);
       } else if (armed) {
         out.banished = key;
@@ -221,6 +219,12 @@ export function rewardChoice(id: string, desc: Api.RewardChoiceDesc): Api.Reward
   });
   kit.close();
   kit.semantics({ role: picks > 1 ? "group" : "radiogroup", name: desc.title ?? "" });
+  // A refusal's shake, kept where it is read (memory is keyed under the open element: written inside Options, it was
+  // never found and a locked reward did not shake).
+  if (out.refused) {
+    kit.remember("~r.rt", tick);
+    kit.remember("~r.rk", keyHash(out.refused));
+  }
 
   // The actions under the cards.
   const showReroll = (desc.rerolls ?? -1) >= 0;

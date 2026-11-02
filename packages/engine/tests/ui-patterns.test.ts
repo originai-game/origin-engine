@@ -521,7 +521,7 @@ const REWARDS: Api.RewardOption[] = [
 ];
 
 /** A reward choice the game answers as it should: it keeps the selection, rerolls and banishes. */
-function rewards(extra: Partial<Api.RewardChoiceDesc> = {}) {
+function rewards(extra: Partial<Api.RewardChoiceDesc> = {}, after?: () => void) {
   let options = REWARDS.map((o) => ({ ...o }));
   let selected: string[] = [];
   let rerolls = extra.rerolls ?? -1;
@@ -539,6 +539,7 @@ function rewards(extra: Partial<Api.RewardChoiceDesc> = {}) {
       banishes -= 1;
       options = options.filter((o) => o.key !== r.banished);
     }
+    after?.();
   });
   const press = (k: string) => {
     const e = byPath(engine, `Rew/Options/${k}`) ?? byPath(engine, `Rew/Actions/${k}`)!;
@@ -551,8 +552,17 @@ function rewards(extra: Partial<Api.RewardChoiceDesc> = {}) {
 
 test("rewardChoice: with one pick a press takes the reward at once; a locked one shakes and is refused", () => {
   // Wrong: a locked reward taken, or a single pick waiting for a confirm it never shows.
-  const r = rewards();
+  // Its place as the pointer finds it (og.ui.bounds: where it was drawn, its transform in), read in the system.
+  const xs: number[] = [];
+  const r = rewards({}, () => xs.push(og.ui.bounds("Rew/Options/crown")?.x ?? -1));
+  r.engine.advance(90);
+  const rest = xs.at(-1)!;
+  xs.length = 0;
   r.press("crown");
+  r.engine.advance(30);
+  // Pressed, it stood off its place for a few ticks (the shake), then came back to it.
+  expect(xs.some((x) => Math.abs(x - rest) >= 1)).toBe(true);
+  expect(Math.abs(xs.at(-1)! - rest)).toBeLessThan(0.5);
   expect(r.picked()).toEqual([]);
   expect(r.results.some((x) => x.refused === "crown")).toBe(true);
   expect(byPath(r.engine, "Rew/Options/crown")!.states).toContain("disabled");
