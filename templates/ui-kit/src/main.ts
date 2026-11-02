@@ -624,7 +624,8 @@ function widgetsScreen(world: World, d: DemoState): void {
     background: { token: "panel" },
     radius: t.radius.panel,
   }, () => {
-    og.ui.scroll("Body", { width: grow, height: { kind: "fixed", px: phone ? vp.height - 380 : vp.height - 120 }, gap: t.space.md, padding: { left: 0, top: 0, right: t.space.md, bottom: 0 } }, () => {
+    // A scroll area: the row cut at its bottom fades into the panel, so it reads as more below, not a clip.
+    og.ui.scrollArea("Body", { width: grow, height: { kind: "fixed", px: phone ? vp.height - 380 : vp.height - 120 }, gap: t.space.md, padding: { left: 0, top: 0, right: t.space.md, bottom: 0 }, fadeInto: "panel" }, () => {
       const tabs = og.ui.tabs("Tabs", ["Overview", "Stats", "Gear"], d.tab, { fill: true, width: grow });
       d.tab = tabs.selected;
       og.ui.row("Pickers", { width: grow, gap: t.space.md, cross: "center" }, () => {

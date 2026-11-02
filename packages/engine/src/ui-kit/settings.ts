@@ -147,6 +147,8 @@ export function settingsScreen(id: string, desc: Api.SettingsDesc = {}): Api.Set
         }
       }
     });
+    // Done stands in a footer under a rule: the body keeps its height between tabs, and the space above reads as the body's.
+    kit.divider("FooterRule", false);
     kit.row("Footer", { width: grow(), align: "end" }, () => {
       if ((kit.button("Done", desc.doneLabel ?? "Done", { variant: "primary" }) as Api.Response).clicked) closed = true;
     });
