@@ -599,7 +599,7 @@ function sportsScreen(world: World): void {
   if (!phone || vp.breakpoint === "phoneLandscape") {
     og.ui.minimapView("Radar", {
       // Held sideways, the start side's top holds the scorebug and possession: the radar takes the bottom end.
-      shape: "square", zoom: 1, centerX: 0.5, centerY: 0.5, zone: "", anchor: phone ? "bottomRight" : "bottomLeft", size: phone ? 110 : 170,
+      shape: "square", zoom: 1, centerX: 0.5, centerY: 0.5, zone: "", pitch: true, anchor: phone ? "bottomRight" : "bottomLeft", size: phone ? 110 : 170,
       markers: [
         { key: "me", kind: "player", x: 0.44, y: 0.58, heading: 0.4 },
         ...[[0.3, 0.3], [0.36, 0.7], [0.5, 0.45], [0.58, 0.62], [0.2, 0.5]].map(([x, y], i) => ({ key: `a${i}`, kind: "ally" as const, x: x!, y: y! })),
@@ -625,21 +625,32 @@ function fullTime(world: World, tr: (k: string, en: string) => string, art: (k: 
   const hud = vp.hud ?? { x: 0, y: 0, width: vp.width, height: vp.height };
   const w = Math.min(hud.width - 32, 1180);
   const crest = phone ? 56 : 96;
+  // A phone at a large text size has no room for the crests beside the names and the score on one line.
+  const crests = !(phone && state.textScale >= 1.5);
   // Taller than a phone held sideways, or than any band at a large text size: the board scrolls rather than squeezing its rows.
   const short = vp.height < 600 || state.textScale >= 1.5;
+  // A scrim over the whole surface under the board (the style's scrim, about 70 % dark), so the board reads as one
+  // surface and the scene stops showing between its panels.
+  og.ui.anchor("Scrim", { anchor: "topLeft", margin: 0, offsetX: -hud.x, offsetY: -hud.y, width: { kind: "fixed", px: vp.width }, height: { kind: "fixed", px: vp.height }, background: { token: "scrim", alpha: 0.7 } }, () => {});
   og.ui.anchor("Board", { anchor: "center", direction: "column", cross: "stretch", gap: phone ? 10 : 18, width: { kind: "fixed", px: w }, ...(short ? { height: { kind: "fixed", px: hud.height - 16 }, scroll: true } : {}) }, () => {
-    og.ui.label("Whistle", tr("fullTime", "Full time"), { step: "lg", font: "display", align: "center", width: { kind: "fixed", px: w }, color: { token: "inkMuted" } });
+    og.ui.label("Whistle", tr("fullTime", "Full time"), { step: "caption", font: "display", align: "center", width: { kind: "fixed", px: w }, color: { token: "ink" } });
     og.ui.row("Score", { gap: phone ? 10 : 28, cross: "center", align: "center", width: { kind: "fixed", px: w } }, () => {
       og.ui.column("Home", { cross: "end", gap: 4, width: { kind: "grow" } }, () => {
         og.ui.row("Side", { gap: 12, cross: "center" }, () => {
           og.ui.label("Name", phone ? tr("nor", "NOR") : home.name, { step: phone ? "lg" : "xl3", font: "display" });
-          og.ui.image("Crest", { texture: home.logo, width: { kind: "fixed", px: crest }, height: { kind: "fixed", px: crest }, label: home.name });
+          if (crests) og.ui.image("Crest", { texture: home.logo, width: { kind: "fixed", px: crest }, height: { kind: "fixed", px: crest }, label: home.name });
         });
       });
-      og.ui.label("Result", `${goals} - 1`, { step: phone ? "xl4" : "displayLg", font: "display" });
+      // The result over an FT chip where a live board shows its clock: no added time once the match is over.
+      og.ui.column("Middle", { gap: 6, cross: "center" }, () => {
+        og.ui.label("Result", `${goals} - 1`, { step: phone ? "xl4" : "displayLg", font: "display", nowrap: true });
+        og.ui.row("Final", { padding: { left: 8, right: 8, top: 2, bottom: 2 }, background: { token: "ink" }, radius: 3 }, () => {
+          og.ui.label("Text", tr("ft", "FT"), { step: "caption", font: "display", color: { token: "inkInverse" } });
+        });
+      });
       og.ui.column("Away", { cross: "start", gap: 4, width: { kind: "grow" } }, () => {
         og.ui.row("Side", { gap: 12, cross: "center" }, () => {
-          og.ui.image("Crest", { texture: away.logo, width: { kind: "fixed", px: crest }, height: { kind: "fixed", px: crest }, label: away.name });
+          if (crests) og.ui.image("Crest", { texture: away.logo, width: { kind: "fixed", px: crest }, height: { kind: "fixed", px: crest }, label: away.name });
           og.ui.label("Name", phone ? tr("val", "VAL") : away.name, { step: phone ? "lg" : "xl3", font: "display" });
         });
       });
