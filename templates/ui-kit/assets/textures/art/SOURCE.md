@@ -86,7 +86,7 @@ ui-art/11d3db9b1c45) were layout references only.
 
 ## The last genre previews (2026-11-02, the U6d stream, r41)
 
-Art for the garage, loadout and VN gallery previews, in the same direction as the set above:
+Art for the garage, ledger, loadout and VN gallery previews, in the same direction as the set above:
 
 | File | Kind | Origin |
 |---|---|---|
@@ -96,3 +96,5 @@ Art for the garage, loadout and VN gallery previews, in the same direction as th
 | `loadout/raven.png` | item, cut out (the loadout's weapon) | the same API (transparent), an invented rifle; trimmed, 1024 px wide |
 | `loadout/sidearm.jpg`, `frag.jpg`, `stim.jpg`, `knife.jpg`, `drone.jpg`, `shield.jpg`, `optic.jpg`, `suppressor.jpg`, `grip.jpg`, `magazine.jpg`, `stock.jpg`, `laser.jpg` | itemIcon (the loadout's slots and attachments) | the same API, two 3×2 sheets cut into cells, 256 px |
 | `cg/riverboat.jpg`, `storm-ferry.jpg`, `dawn-gate.jpg` | cg (the VN gallery's event pictures) | the same API, one prompt each, cut to 1280×720 |
+| `city/residential.jpg`, `commercial.jpg`, `industrial.jpg`, `tourism.jpg`, `police.jpg`, `fire.jpg`, `health.jpg`, `education.jpg`, `transit.jpg`, `parks.jpg`, `power.jpg`, `water.jpg` | itemIcon (the ledger's taxes and services, the overlay bar's lenses) | the same API, two 3×2 sheets cut into cells, 256 px |
+| `scenes/city.jpg` | menuBackground (the ledger's city at dusk) | the same API, cut to 1280×720 |
