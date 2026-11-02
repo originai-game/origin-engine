@@ -686,6 +686,8 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
     scene.beams.clear();
     scene.ribbons.clear();
     let texture = |v: &Value| handle_index(v).and_then(|i| textures.get(i).copied());
+    // Time groups (og.TimeGroups), once a game uses them.
+    let groups = world.time_groups();
     for (e, v) in rows(world, layouts.light_2d.as_ref()) {
         let (pos, _, _) = planar(h.world_of(e));
         scene.lights_2d.push(Light2d {
@@ -767,6 +769,10 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
             start_tick: u64::from(start),
             stop_tick: (stop > 0).then_some(u64::from(stop)),
             tick,
+            // Its time group's scale (og.TimeGroup): slowed sparks.
+            time_scale: groups
+                .as_ref()
+                .map_or(1.0, |g| world.group_scale(g, og_ecs::Entity::from_bits(e))),
         });
     }
     for (e, v) in rows(world, layouts.trail.as_ref()) {

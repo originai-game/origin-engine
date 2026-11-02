@@ -89,7 +89,7 @@ module render {
 | [`og.Occluder2D`](#record-Occluder2D) | component | A rectangle that blocks 2D light (walls, crates, characters), centred on the entity's position and turned with it about z. Pixels inside it are not shadowed by it. At most 128 are drawn. |
 | [`og.Decal`](#record-Decal) | component | A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one). At most 32 are drawn. |
 | [`PARTICLES_ARMED`](#const-PARTICLES_ARMED) | constant | ParticleSystem.startTick's default: never written. A looping emitter emits as if started at tick 0; a one-shot (`looping false`) emits nothing until its startTick is written, so a burst spawned in `start` waits for its first use. Write it back to re-arm a one-shot without firing it. |
-| [`og.ParticleSystem`](#record-ParticleSystem) | component | Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay, and never feed back into the simulation: in compute (sprite-mode emitters on the CPU), identical either way. |
+| [`og.ParticleSystem`](#record-ParticleSystem) | component | Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay; on an entity with og.TimeGroup they spawn, age and move at the group's scale (og.time.setGroupScale), read as the frame is drawn. They never feed back into the simulation. They simulate in compute (sprite-mode emitters on the CPU), identical either way. |
 | [`og.Trail`](#record-Trail) | component | A streak behind the entity: its world positions over the last `lifetime` seconds as a camera-facing strip, from widthStart and color at the head to widthEnd and colorEnd at the tail. |
 | [`og.Beam`](#record-Beam) | component | A strip from the entity's position to `end` whose texture scrolls with the tick: lasers, tethers, lightning (jitter). |
 | [`RibbonPoint`](#type-RibbonPoint) | desc struct | One point of a ribbon. |
@@ -3156,7 +3156,7 @@ component Decal {
 
 ### `og.ParticleSystem` (component)
 
-Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay, and never feed back into the simulation: in compute (sprite-mode emitters on the CPU), identical either way.
+Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay; on an entity with og.TimeGroup they spawn, age and move at the group's scale (og.time.setGroupScale), read as the frame is drawn. They never feed back into the simulation. They simulate in compute (sprite-mode emitters on the CPU), identical either way.
 
 Token `og.ParticleSystem`, registered under the schema name `og.ParticleSystem`; its value type is `ParticleSystem`.
 
@@ -3171,7 +3171,7 @@ Token `og.ParticleSystem`, registered under the schema name `og.ParticleSystem`;
 
 ```ogt
 component ParticleSystem {
-  doc "Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay, and never feed back into the simulation: in compute (sprite-mode emitters on the CPU), identical either way."
+  doc "Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay; on an entity with og.TimeGroup they spawn, age and move at the group's scale (og.time.setGroupScale), read as the frame is drawn. They never feed back into the simulation. They simulate in compute (sprite-mode emitters on the CPU), identical either way."
   field emitter ParticleEmitter "The emitter asset; 0 draws nothing."
   field seed u32 "The random seed: systems with different seeds differ."
   field startTick u32 "The tick emission started: write the tick (`time.tick`, `world.tick`) to fire a one-shot burst, or to restart one. Its default, PARTICLES_ARMED, is never written: a looping emitter emits as if started at tick 0, while a one-shot (`looping false`) stays armed and emits nothing until a tick is written, so effects spawned ahead of their first use wait." {

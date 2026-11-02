@@ -2205,7 +2205,7 @@ export interface MatrixWorld {
 
 // ── time ────────────────────────────────────────────────────────
 // Simulation time. Game code never reads the wall clock; it reads Time.
-// Time groups slow or freeze some entities and not others (a bullet-time enemy beside a player at full speed, a frozen boss, a paused UI diorama): put an entity in a group with og.TimeGroup and set the group's scale with og.time.setGroupScale. og.anim, flipbooks, 2D skeletons, the entity's scaled tweens and its og.nav agent then advance by scaledDt times its group's scale. Physics stays on the global scale (one solver steps every body together; slow a body's motion with its velocity, or move it kinematically), and particles, timelines and the UI keep their own pace. A world that never names og.TimeGroup or og.TimeGroups keeps its saves and hash.
+// Time groups slow or freeze some entities and not others (a bullet-time enemy beside a player at full speed, a frozen boss, a paused UI diorama): put an entity in a group with og.TimeGroup and set the group's scale with og.time.setGroupScale. og.anim, flipbooks, 2D skeletons, the entity's scaled tweens and its og.nav agent then advance by scaledDt times its group's scale, and its og.ParticleSystem's particles spawn, age and move at the group's scale (the renderer's particles do not follow the global scale or hit stop, so only the group's applies). Physics stays on the global scale (one solver steps every body together; slow a body's motion with its velocity, or move it kinematically), and timelines and the UI keep their own pace. A world that never names og.TimeGroup or og.TimeGroups keeps its saves and hash.
 
 /**
  * The fixed tick's clock. Every value is a function of the tick count, so a replay sees the same numbers. The world keeps the time scale in a second resource, og.TimeScale (`scale`, `hitStop`, and `elapsed`, which is scaledElapsed), set through og.time.setScale and og.time.hitStop; read og.Time, which carries all of it. The probe's `get:og.Time` answers every field here, as a system's `time` does; `set:og.TimeScale.scale=0.5` slows time from a script.
@@ -2273,7 +2273,7 @@ export interface Time {
 }
 
 /**
- * Which time group the entity is in (0 to 15): its animation (og.anim, flipbooks, 2D skeletons), its scaled tweens and its og.nav agent advance by scaledDt times og.time.setGroupScale's scale for the group. Physics stays on the global scale: a body in a slowed group falls at the world's pace. An entity without one is at the global pace.
+ * Which time group the entity is in (0 to 15): its animation (og.anim, flipbooks, 2D skeletons), its scaled tweens and its og.nav agent advance by scaledDt times og.time.setGroupScale's scale for the group, and its og.ParticleSystem's particles at the group's scale. Physics stays on the global scale: a body in a slowed group falls at the world's pace. An entity without one is at the global pace.
  *
  * The value of the `TimeGroup` component (token `og.TimeGroup`).
  */
@@ -7690,7 +7690,7 @@ export interface Decal {
 export declare const PARTICLES_ARMED: 4294967295;
 
 /**
- * Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay, and never feed back into the simulation: in compute (sprite-mode emitters on the CPU), identical either way.
+ * Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay; on an entity with og.TimeGroup they spawn, age and move at the group's scale (og.time.setGroupScale), read as the frame is drawn. They never feed back into the simulation. They simulate in compute (sprite-mode emitters on the CPU), identical either way.
  *
  * The value of the `ParticleSystem` component (token `og.ParticleSystem`).
  */
@@ -43595,7 +43595,7 @@ export declare namespace og {
    */
   const Time: ResourceType<{ readonly tick: FieldSpec<"u32">; readonly dt: FieldSpec<"f32">; readonly elapsed: FieldSpec<"f64">; readonly rate: FieldSpec<"u32">; readonly scale: FieldSpec<"f32">; readonly hitStop: FieldSpec<"u32">; readonly scaledDt: FieldSpec<"f32">; readonly scaledElapsed: FieldSpec<"f64"> }, Time>;
   /**
-   * Which time group the entity is in (0 to 15): its animation (og.anim, flipbooks, 2D skeletons), its scaled tweens and its og.nav agent advance by scaledDt times og.time.setGroupScale's scale for the group. Physics stays on the global scale: a body in a slowed group falls at the world's pace. An entity without one is at the global pace.
+   * Which time group the entity is in (0 to 15): its animation (og.anim, flipbooks, 2D skeletons), its scaled tweens and its og.nav agent advance by scaledDt times og.time.setGroupScale's scale for the group, and its og.ParticleSystem's particles at the group's scale. Physics stays on the global scale: a body in a slowed group falls at the world's pace. An entity without one is at the global pace.
    */
   const TimeGroup: ComponentType<{ readonly group: FieldSpec<"u32"> }, TimeGroup>;
   /**
@@ -43604,7 +43604,7 @@ export declare namespace og {
   const TimeGroups: ResourceType<{ readonly scales: ListSpec<"f32"> }, TimeGroups>;
   /**
    * Simulation time. Game code never reads the wall clock; it reads Time.
-   * Time groups slow or freeze some entities and not others (a bullet-time enemy beside a player at full speed, a frozen boss, a paused UI diorama): put an entity in a group with og.TimeGroup and set the group's scale with og.time.setGroupScale. og.anim, flipbooks, 2D skeletons, the entity's scaled tweens and its og.nav agent then advance by scaledDt times its group's scale. Physics stays on the global scale (one solver steps every body together; slow a body's motion with its velocity, or move it kinematically), and particles, timelines and the UI keep their own pace. A world that never names og.TimeGroup or og.TimeGroups keeps its saves and hash.
+   * Time groups slow or freeze some entities and not others (a bullet-time enemy beside a player at full speed, a frozen boss, a paused UI diorama): put an entity in a group with og.TimeGroup and set the group's scale with og.time.setGroupScale. og.anim, flipbooks, 2D skeletons, the entity's scaled tweens and its og.nav agent then advance by scaledDt times its group's scale, and its og.ParticleSystem's particles spawn, age and move at the group's scale (the renderer's particles do not follow the global scale or hit stop, so only the group's applies). Physics stays on the global scale (one solver steps every body together; slow a body's motion with its velocity, or move it kinematically), and timelines and the UI keep their own pace. A world that never names og.TimeGroup or og.TimeGroups keeps its saves and hash.
    */
   namespace time {
     /**
@@ -44090,7 +44090,7 @@ export declare namespace og {
    */
   const Decal: ComponentType<{ readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly uvMin: FieldSpec<"Vector2">; readonly uvMax: FieldSpec<"Vector2">; readonly emissive: FieldSpec<"Color">; readonly roughness: FieldSpec<"f32">; readonly angleFade: FieldSpec<"f32">; readonly visible: FieldSpec<"bool"> }, Decal>;
   /**
-   * Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay, and never feed back into the simulation: in compute (sprite-mode emitters on the CPU), identical either way.
+   * Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay; on an entity with og.TimeGroup they spawn, age and move at the group's scale (og.time.setGroupScale), read as the frame is drawn. They never feed back into the simulation. They simulate in compute (sprite-mode emitters on the CPU), identical either way.
    */
   const ParticleSystem: ComponentType<{ readonly emitter: FieldSpec<"ParticleEmitter">; readonly seed: FieldSpec<"u32">; readonly startTick: FieldSpec<"u32">; readonly stopTick: FieldSpec<"u32">; readonly visible: FieldSpec<"bool">; readonly layers: FieldSpec<"u32"> }, ParticleSystem>;
   /**

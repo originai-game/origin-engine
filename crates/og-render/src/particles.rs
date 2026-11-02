@@ -457,6 +457,10 @@ pub struct ParticleSystem {
     pub stop_tick: Option<u64>,
     /// The system's clock: the game's tick (hold it still for hit-stop).
     pub tick: u64,
+    /// How fast its particles' time runs against the tick: 1 normal, 0.25 a
+    /// quarter speed, 0 frozen (og.TimeGroup's group scale). Spawning,
+    /// ageing and motion all run on it; the tick still says how far to step.
+    pub time_scale: f32,
 }
 
 impl ParticleSystem {
@@ -469,7 +473,26 @@ impl ParticleSystem {
             start_tick: 0,
             stop_tick: None,
             tick,
+            time_scale: 1.0,
         }
+    }
+}
+
+/// A system's time against the tick, piecewise: from `tick` on, its time
+/// runs from `time` seconds at `scale` (re-anchored where the scale
+/// changes). At scale 1 from the start tick it is the tick's own time,
+/// computed as before, so an unscaled system steps bit for bit as it did.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct ParticleClock {
+    pub tick: u64,
+    pub time: f64,
+    pub scale: f32,
+}
+
+impl ParticleClock {
+    /// Seconds of the system's time at the start of `tick`.
+    fn at(&self, tick: u64, dt: f64) -> f64 {
+        self.time + tick.saturating_sub(self.tick) as f64 * (dt * f64::from(self.scale))
     }
 }
 
@@ -559,6 +582,9 @@ pub(crate) struct TickStep {
     pub bursts: u32,
     /// The emitter's transform during this tick.
     pub transform: Mat4,
+    /// The seconds of particle time this tick takes: the tick's length
+    /// times the system's time scale.
+    pub dt: f32,
 }
 
 /// How many bursts (summed counts) have fired strictly before `end` seconds
@@ -609,20 +635,21 @@ pub(crate) fn tick_step(
     tick: u64,
     tick_rate: f32,
     transform: Mat4,
+    clock: &ParticleClock,
 ) -> TickStep {
     let dt = 1.0 / tick_rate.max(1e-3) as f64;
-    let stop = sys.stop_tick.map_or(f64::INFINITY, |s| {
-        s.saturating_sub(sys.start_tick) as f64 * dt
-    });
+    let stop = sys
+        .stop_tick
+        .map_or(f64::INFINITY, |s| clock.at(s.max(sys.start_tick), dt));
     let (time, first, count, bursts) = if tick < sys.start_tick {
         (0.0, 0, 0, 0)
     } else {
-        let j = (tick - sys.start_tick) as f64;
-        let (c0, b0) = spawned_before(e, j * dt, stop);
-        let (c1, b1) = spawned_before(e, (j + 1.0) * dt, stop);
+        let (t0, t1) = (clock.at(tick, dt), clock.at(tick + 1, dt));
+        let (c0, b0) = spawned_before(e, t0, stop);
+        let (c1, b1) = spawned_before(e, t1, stop);
         let bursts = b1 - b0;
         (
-            ((j + 1.0) * dt) as f32,
+            t1 as f32,
             c0 + b0,
             (c1 - c0 + bursts).min(u32::MAX as u64) as u32,
             bursts.min(u32::MAX as u64) as u32,
@@ -635,19 +662,37 @@ pub(crate) fn tick_step(
         count,
         bursts,
         transform,
+        dt: (1.0 / tick_rate.max(1e-3)) * clock.scale,
     }
 }
 
 /// The ticks a system's state must step through to reach `sys.tick`, and
 /// whether it restarts from empty.
+/// Re-anchors `clock` at the system's time scale: from its start on a
+/// reset (as if the scale had always held), else from the first tick not
+/// yet stepped.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn plan_ticks(
     e: &ParticleEmitter,
     sys: &ParticleSystem,
     last_tick: Option<u64>,
     prev_transform: Option<Mat4>,
     tick_rate: f32,
+    clock: &mut ParticleClock,
 ) -> (bool, Vec<TickStep>) {
+    let scale = if sys.time_scale.is_finite() {
+        sys.time_scale.max(0.0)
+    } else {
+        1.0
+    };
+    // A lifetime in ticks at this scale (slowed particles live more ticks),
+    // replayed at most 16 normal lifetimes back.
     let window = (e.max_lifetime() as f64 * tick_rate as f64).ceil() as u64 + 1;
+    let window = if scale >= 1.0 {
+        window
+    } else {
+        (window as f64 / f64::from(scale.max(1.0 / 16.0))).ceil() as u64
+    };
     let (reset, from) = match last_tick {
         Some(last) if sys.tick >= last && sys.tick - last <= window => (false, last + 1),
         _ => (
@@ -655,6 +700,21 @@ pub(crate) fn plan_ticks(
             sys.tick.saturating_sub(window - 1).max(sys.start_tick),
         ),
     };
+    let dt = 1.0 / tick_rate.max(1e-3) as f64;
+    if reset {
+        *clock = ParticleClock {
+            tick: sys.start_tick,
+            time: 0.0,
+            scale,
+        };
+    } else if clock.scale != scale {
+        *clock = ParticleClock {
+            tick: from,
+            time: clock.at(from, dt),
+            scale,
+        };
+    }
+    let clock = *clock;
     let ticks: Vec<u64> = (from..=sys.tick).collect();
     let n = ticks.len();
     let steps = ticks
@@ -671,7 +731,7 @@ pub(crate) fn plan_ticks(
                 }
                 _ => sys.transform,
             };
-            tick_step(e, sys, t, tick_rate, transform)
+            tick_step(e, sys, t, tick_rate, transform, &clock)
         })
         .collect();
     (reset, steps)
@@ -1017,6 +1077,7 @@ pub struct CpuParticles {
     pub slots: Vec<ParticleState>,
     pub last_tick: Option<u64>,
     pub prev_transform: Option<Mat4>,
+    pub clock: ParticleClock,
 }
 
 impl CpuParticles {
@@ -1035,13 +1096,20 @@ impl CpuParticles {
             self.slots = vec![ParticleState::default(); max as usize];
             self.last_tick = None;
         }
-        let (reset, steps) = plan_ticks(e, sys, self.last_tick, self.prev_transform, tick_rate);
+        let (reset, steps) = plan_ticks(
+            e,
+            sys,
+            self.last_tick,
+            self.prev_transform,
+            tick_rate,
+            &mut self.clock,
+        );
         if reset {
             self.slots.fill(ParticleState::default());
         }
-        let dt = 1.0 / tick_rate.max(1e-3);
         let seed = hash_seed(sys.seed);
         for step in &steps {
+            let dt = step.dt;
             for (slot, p) in self.slots.iter_mut().enumerate() {
                 match slot_spawn(slot as u32, max, step.first, step.count) {
                     Some((n, k)) => *p = spawn(e, seed, n, k, step, dt, points),
@@ -1103,5 +1171,74 @@ pub(crate) fn sheet_frames(sheet: &SpriteSheet) -> u32 {
         all
     } else {
         sheet.frames.min(all)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A fountain: a burst, then 60 a second, each living a second.
+    fn fountain() -> ParticleEmitter {
+        ParticleEmitter {
+            max_particles: 256,
+            rate: 60.0,
+            bursts: vec![Burst::once(0.0, 20)],
+            lifetime: [1.0, 1.0],
+            speed: [2.0, 3.0],
+            ..Default::default()
+        }
+    }
+
+    fn run(sys: &mut ParticleSystem, cpu: &mut CpuParticles, ticks: std::ops::RangeInclusive<u64>) {
+        let e = fountain();
+        for t in ticks {
+            sys.tick = t;
+            cpu.advance(&e, sys, 60.0, &[], &[]);
+        }
+    }
+
+    fn alive(cpu: &CpuParticles) -> Vec<ParticleState> {
+        cpu.slots
+            .iter()
+            .copied()
+            .filter(ParticleState::alive)
+            .collect()
+    }
+
+    /// At a quarter of the pace a system takes four ticks for one: after
+    /// 80 ticks it holds what a normal one holds after 20 (the same spawns,
+    /// ages and positions to float error), and at 0 it holds still.
+    #[test]
+    fn a_time_scale_slows_spawning_ageing_and_motion() {
+        let mut normal = ParticleSystem::new(1, EmitterHandle(0), Mat4::IDENTITY, 7, 0);
+        let mut slow = normal;
+        slow.time_scale = 0.25;
+        let (mut a, mut b) = (CpuParticles::default(), CpuParticles::default());
+        run(&mut normal, &mut a, 0..=19);
+        run(&mut slow, &mut b, 0..=79);
+        let (a1, b1) = (alive(&a), alive(&b));
+        assert_eq!(a1.len(), 20 + 20, "the burst and a third of a second");
+        assert_eq!(b1.len(), a1.len());
+        // The same particles (by their random values), each spawned within
+        // a tick of its twin: a slow step spawns within its quarter tick.
+        for (p, q) in a1.iter().zip(&b1) {
+            assert_eq!(p.misc, q.misc);
+            assert!(
+                (p.pos_age[3] - q.pos_age[3]).abs() <= 1.0 / 60.0,
+                "{p:?} against {q:?}"
+            );
+            let d = Vec3::from_slice(&p.pos_age[..3]).distance(Vec3::from_slice(&q.pos_age[..3]));
+            assert!(d < 3.0 / 60.0, "{d}: {p:?} against {q:?}");
+        }
+        // Frozen: nothing spawns, ages or moves.
+        slow.time_scale = 0.0;
+        run(&mut slow, &mut b, 80..=139);
+        assert_eq!(alive(&b), b1);
+        // Back to normal: it goes on from where it stood.
+        slow.time_scale = 1.0;
+        run(&mut slow, &mut b, 140..=159);
+        run(&mut normal, &mut a, 20..=39);
+        assert_eq!(alive(&b).len(), alive(&a).len());
     }
 }

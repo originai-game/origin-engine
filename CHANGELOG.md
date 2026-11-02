@@ -30,9 +30,9 @@ is one line here, written at the merge that changes
   zh-Hant, 40 currencies, about 61 KB of data. Moments are seconds the
   game passes in, never a clock. `og.TimeGroup` and
   `og.time.setGroupScale` slow or freeze one group of entities (their
-  animation, flipbooks, 2D skeletons, tweens and nav agents) on top of
-  the global scale; physics stays global. Both types are lazy, so a world
-  without them hashes and saves as before.
+  animation, flipbooks, 2D skeletons, tweens, nav agents and particle
+  systems) on top of the global scale; physics stays global. Both types
+  are lazy, so a world without them hashes and saves as before.
 - **Tilemap orientations and run-time maps (G2-6, batch 2).** Maps are
   orthogonal, isometric, staggered or hex (pointy- or flat-top), from a
   `.ogt` `orientation` line or Tiled's isometric, staggered and hexagonal

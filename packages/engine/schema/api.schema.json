@@ -2983,7 +2983,7 @@
     },
     {
       "name": "time",
-      "doc": "Simulation time. Game code never reads the wall clock; it reads Time.\nTime groups slow or freeze some entities and not others (a bullet-time enemy beside a player at full speed, a frozen boss, a paused UI diorama): put an entity in a group with og.TimeGroup and set the group's scale with og.time.setGroupScale. og.anim, flipbooks, 2D skeletons, the entity's scaled tweens and its og.nav agent then advance by scaledDt times its group's scale. Physics stays on the global scale (one solver steps every body together; slow a body's motion with its velocity, or move it kinematically), and particles, timelines and the UI keep their own pace. A world that never names og.TimeGroup or og.TimeGroups keeps its saves and hash.",
+      "doc": "Simulation time. Game code never reads the wall clock; it reads Time.\nTime groups slow or freeze some entities and not others (a bullet-time enemy beside a player at full speed, a frozen boss, a paused UI diorama): put an entity in a group with og.TimeGroup and set the group's scale with og.time.setGroupScale. og.anim, flipbooks, 2D skeletons, the entity's scaled tweens and its og.nav agent then advance by scaledDt times its group's scale, and its og.ParticleSystem's particles spawn, age and move at the group's scale (the renderer's particles do not follow the global scale or hit stop, so only the group's applies). Physics stays on the global scale (one solver steps every body together; slow a body's motion with its velocity, or move it kinematically), and timelines and the UI keep their own pace. A world that never names og.TimeGroup or og.TimeGroups keeps its saves and hash.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -19121,7 +19121,7 @@
     "TimeGroup": {
       "x-og-kind": "component",
       "x-og-module": "time",
-      "description": "Which time group the entity is in (0 to 15): its animation (og.anim, flipbooks, 2D skeletons), its scaled tweens and its og.nav agent advance by scaledDt times og.time.setGroupScale's scale for the group. Physics stays on the global scale: a body in a slowed group falls at the world's pace. An entity without one is at the global pace.",
+      "description": "Which time group the entity is in (0 to 15): its animation (og.anim, flipbooks, 2D skeletons), its scaled tweens and its og.nav agent advance by scaledDt times og.time.setGroupScale's scale for the group, and its og.ParticleSystem's particles at the group's scale. Physics stays on the global scale: a body in a slowed group falls at the world's pace. An entity without one is at the global pace.",
       "type": "object",
       "properties": {
         "group": {
@@ -25789,7 +25789,7 @@
     "ParticleSystem": {
       "x-og-kind": "component",
       "x-og-module": "render",
-      "description": "Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay, and never feed back into the simulation: in compute (sprite-mode emitters on the CPU), identical either way.",
+      "description": "Emits particles from an og.load.emitter asset at the entity's MatrixWorld. Particles are simulated by the renderer from (seed, startTick, the tick), so they are deterministic and replay; on an entity with og.TimeGroup they spawn, age and move at the group's scale (og.time.setGroupScale), read as the frame is drawn. They never feed back into the simulation. They simulate in compute (sprite-mode emitters on the CPU), identical either way.",
       "type": "object",
       "properties": {
         "emitter": {

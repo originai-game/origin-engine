@@ -87,8 +87,10 @@ moving. It never shortens one already running.
   test.
 - Slow one group, not the world: `og.TimeGroup { group: 1 }` on the
   enemies and `og.time.setGroupScale(world, 1, 0.25)` (0 freezes them)
-  slows their og.anim, flipbooks, 2D skeletons, tweens and nav agents
-  while the player keeps full speed; it multiplies the global scale.
+  slows their og.anim, flipbooks, 2D skeletons, tweens, nav agents and
+  particle systems while the player keeps full speed. It multiplies the
+  global scale, except for particles, which never follow the global scale
+  and take the group's alone.
   Move their own gameplay by `og.time.groupDt(world, e)`. Physics stays
   on the global scale, so slow a grouped body through its velocity.
 - Where it lives: `world.resource(og.Time)` and a system's `time` carry

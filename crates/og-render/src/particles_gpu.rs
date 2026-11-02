@@ -191,6 +191,7 @@ struct GpuSystem {
     points: wgpu::Buffer,
     last_tick: Option<u64>,
     prev_transform: Option<Mat4>,
+    clock: crate::particles::ParticleClock,
 }
 
 struct SystemState {
@@ -540,8 +541,16 @@ impl ParticleRenderer {
                     ),
                     last_tick: None,
                     prev_transform: None,
+                    clock: Default::default(),
                 });
-                let (reset, steps) = plan_ticks(e, sys, g.last_tick, g.prev_transform, tick_rate);
+                let (reset, steps) = plan_ticks(
+                    e,
+                    sys,
+                    g.last_tick,
+                    g.prev_transform,
+                    tick_rate,
+                    &mut g.clock,
+                );
                 g.last_tick = Some(sys.tick);
                 g.prev_transform = Some(sys.transform);
                 let n_points = (points.len() / 2) as u32;
@@ -550,7 +559,7 @@ impl ParticleRenderer {
                         e,
                         s.transform,
                         Some(s),
-                        dt,
+                        s.dt,
                         seed,
                         n_points,
                         textured,
