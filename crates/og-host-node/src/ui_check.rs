@@ -45,10 +45,37 @@ fn frame(engine: u32) -> Value {
     let p = &theme.palette;
     let mut texts = Vec::new();
     let mut fills = Vec::new();
+    // What text can sit on: every filled rectangle, UI-pass shape and glass
+    // of at least 8×8 (a solid under half opacity is a tint, not a ground).
+    // Text over none of them is over the scene (§16.5).
+    let mut grounds = Vec::new();
     for item in &f.items {
         // A rotated or skewed command's rectangle is not where it shows.
         if !item.transform.is_identity() {
             continue;
+        }
+        let ground = match &item.cmd {
+            DrawCmd::Quad { rect: r, color, .. } | DrawCmd::Image { rect: r, color, .. }
+                if color[3] >= 0.5 =>
+            {
+                Some(*r)
+            }
+            DrawCmd::Glass { rect: r, .. } => Some(*r),
+            DrawCmd::Shape { shape, .. }
+                if shape.mode == og_render::UiMode::Fill
+                    && !matches!(shape.paint, og_render::UiPaint::Solid(c) if c[3] < 0.5) =>
+            {
+                Some(Rect::new(
+                    shape.center.x - shape.half.x,
+                    shape.center.y - shape.half.y,
+                    shape.half.x * 2.0,
+                    shape.half.y * 2.0,
+                ))
+            }
+            _ => None,
+        };
+        if let Some(r) = ground.filter(|r| r.width >= 8.0 && r.height >= 8.0) {
+            grounds.push(rect(&r));
         }
         match &item.cmd {
             DrawCmd::Text {
@@ -92,6 +119,8 @@ fn frame(engine: u32) -> Value {
         "contrast": if theme.contrast == og_ui::Contrast::High { "high" } else { "standard" },
         "sounds": sounds,
         "primary": [p.primary.linear(), p.primary_hover.linear(), p.primary_active.linear()],
+        // The dimmed inks: text drawn in one is dimmed on purpose (§16.5).
+        "dimInks": [p.ink_muted.linear(), p.ink_faint.linear()],
         "elements": elements,
         "overlaps": f.overlaps.iter().map(|o| json!({
             "path": o.path, "other": o.other, "rect": ur(&o.rect), "inFlow": o.in_flow,
@@ -104,6 +133,7 @@ fn frame(engine: u32) -> Value {
         "draws": f.items.len(),
         "texts": texts,
         "fills": fills,
+        "grounds": grounds,
         "a11y": {
             "focused": a11y.focused,
             "focusOrder": a11y.focus_order,

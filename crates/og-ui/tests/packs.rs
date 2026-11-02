@@ -1,6 +1,7 @@
 //! The engine's built-in UI styles (templates/styles/<name>/style.ogt
 //! and atlas.png) parse, and every pack keeps body text legible: each ink a
-//! template puts on a styled surface reaches WCAG's 4.5:1 against what is
+//! template puts on a styled surface holds 3:1 (under 4.5:1 a printed
+//! warning, docs/ui.md §16.5) against what is
 //! really drawn there (the frame's art multiplied by its tint, composited
 //! over the pack's `backdrop`, measured over the frame's middle).
 //!
@@ -183,9 +184,15 @@ fn every_style_pack_parses_and_keeps_body_text_at_4_5_to_1() {
             for (ink, c) in inks {
                 let r = ratio(over(linear(c), c.alpha, ground), ground);
                 report.push(format!("{name:8} {ink:9} on {what:16} {r:5.2}:1"));
-                if r < 4.5 {
+                // Live text: an error under 3:1; under 4.5:1 a warning
+                // the art director judges (docs/ui.md §15.4, §16.5).
+                if r < 3.0 {
                     failures.push(format!(
-                        "{name}: {ink} on the {what} is {r:.2}:1 (under 4.5:1)"
+                        "{name}: {ink} on the {what} is {r:.2}:1 (under 3:1)"
+                    ));
+                } else if r < 4.5 {
+                    report.push(format!(
+                        "  warning: {name}: {ink} on the {what} under 4.5:1"
                     ));
                 }
             }
@@ -195,9 +202,13 @@ fn every_style_pack_parses_and_keeps_body_text_at_4_5_to_1() {
         let tab = over(linear(p.knob), p.knob.alpha, dialog);
         let r = ratio(linear(p.ink), tab);
         report.push(format!("{name:8} fg        on selected tab     {r:5.2}:1"));
-        if r < 4.5 {
+        if r < 3.0 {
             failures.push(format!(
-                "{name}: fg on a selected tab (thumb) is {r:.2}:1 (under 4.5:1)"
+                "{name}: fg on a selected tab (thumb) is {r:.2}:1 (under 3:1)"
+            ));
+        } else if r < 4.5 {
+            report.push(format!(
+                "  warning: {name}: fg on a selected tab under 4.5:1"
             ));
         }
     }

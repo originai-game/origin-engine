@@ -181,7 +181,7 @@ const Screen = defineSystem("Screen", { writes: [Ask] }, (_q, _t, world) => {
   og.ui.anchor("Score", { anchor: "topLeft" }, () => og.ui.label("Points", "Score 120", { step: "body" }));
   og.ui.anchor("Thumbs", { anchor: "bottomLeft" }, () => og.ui.joystick("Stick", { size: 200 }));
   og.ui.anchor("Fire", { anchor: "bottomRight" }, () => og.ui.actionButton("Shoot", "Fire", { size: 160 }));
-  og.ui.anchor("Note", { anchor: "center" }, () => og.ui.label("Faint", "Paused", { step: "body", color: { color: { r: 0.42, g: 0.42, b: 0.45 } } }));
+  og.ui.anchor("Note", { anchor: "center" }, () => og.ui.label("Faint", "Paused", { step: "body", color: { color: { r: 0.24, g: 0.24, b: 0.26 } } }));
   if (ask.ok && ask.value.loading) og.ui.loadingScreen("Load", { title: "Loading" });
   og.ui.confirmDialog("Quit", { open, title: "Leave the run?", message: "Your score is kept.", confirmLabel: "Leave" });
 });
@@ -214,7 +214,7 @@ export default og.game({
   expect(play!.menu).toBeFalse();
   expect(play!.hud).toBeLessThan(3);
   // Asking: the dialog is a screen, and the caption under its scrim is not read
-  // (in play it is, and too faint).
+  // (in play it is, and too faint: under 3:1, the floor for live text).
   expect(asking!.menu).toBeTrue();
   expect(out.findings.some((f) => f.where.startsWith("screens play") && f.where.includes("Faint"))).toBeTrue();
   // The score, the caption and the action button's "Fire": a short word on a

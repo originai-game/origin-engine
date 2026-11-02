@@ -82,6 +82,10 @@ export interface UiFrameSnapshot {
   texts: Array<{ text: string; size: number; bounds: Rect4; clip: Rect4; color: number[] }>;
   /** Solid and image fills of at least 8×8 CSS px, linear RGBA. */
   fills: Array<{ rect: Rect4; color: number[] }>;
+  /** What text can sit on: filled rectangles, UI-pass shapes and glass of at least 8×8 CSS px; text over none is over the scene. */
+  grounds?: Rect4[];
+  /** The style's dimmed inks (inkMuted, inkFaint), linear RGBA: text in one is dimmed on purpose. */
+  dimInks?: number[][];
   a11y: { focused: string; focusOrder: string[]; nodes: Array<{ path: string; parent: string; role: string; name: string; states: string[]; rect: Rect4 }> };
   /** Elements that declare visual states, with each group's current state. */
   motion: Array<{ path: string; states: Array<[string, string]> }>;
@@ -143,7 +147,7 @@ export const RULES: readonly UiRule[] = [
   { id: "safe-area", title: "elements outside the safe area", status: "checked" },
   { id: "covered", title: "elements under the shell's covered region", status: "checked" },
   { id: "touch-target", title: "touch targets under 44 CSS px on a coarse pointer", status: "checked", note: "an element's hitSlop is not in the frame: a small control with slop enough is still reported; a link inside a rich text's sentence is exempt (WCAG 2.5.8)" },
-  { id: "contrast", title: "contrast under 4.5:1 (7:1 in high contrast), on pixels as og polish measures it", status: "checked" },
+  { id: "contrast", title: "contrast of live text: an error under 3:1 (7:1 in high contrast), a warning under 4.5:1, on pixels as og polish measures it; dimmed, disabled, decorative and over-the-scene text is judged by eye", status: "checked" },
   { id: "text-size", title: "text under the minimum size", status: "checked", note: "18 px at 1080p; a dense HUD's readouts (ElementProps.dense) 12 px at 1080p times the text scale" },
   { id: "focus-reach", title: "an interactive element unreachable by pad from the default focus", status: "checked" },
   { id: "focus-trap", title: "a focus trap: a control the pad cannot leave back to the default focus", status: "partial", note: "the pad graph is walked both ways, but og-ui's direction rule (nearest, wrapping) leaves no geometric trap (none in 600,000 random layouts); the real trap, a scope Back does not close, needs U3's layer stack" },
@@ -529,15 +533,23 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
   if (opts.image && !skip.has("contrast")) {
     const scale = opts.image.width / v.width;
     const scaled: UiDump = { tick: 0, elements: f.elements.map((e) => ({ ...e, x: e.x * scale, y: e.y * scale, width: e.width * scale, height: e.height * scale })) };
-    const bar = cell.highContrast || v.highContrast || f.contrast === "high" ? 7 : 4.5;
+    // The look comes first (§15.4, §16.5): live text under 3:1 is an error
+    // (7:1 in high contrast), under 4.5:1 a warning for the art director;
+    // dimmed, disabled, decorative and over-the-scene HUD text is judged by
+    // eye, not gated (disabled and decorative text textBoxes leaves out).
+    const high = cell.highContrast || v.highContrast || f.contrast === "high";
+    const bar = high ? 7 : 3;
     for (const b of textBoxes(opts.image, scaled)) {
-      if (b.contrast >= bar) continue;
+      if (b.contrast >= (high ? 7 : 4.5)) continue;
       const i = scaled.elements.findIndex((e) => e.id === b.id && e.text === b.text);
+      if (i >= 0 && !gated(f, f.elements[i]!)) continue;
       const path = i >= 0 ? paths[i]! : b.id;
+      const error = b.contrast < bar;
       add("contrast", {
+        ...(error ? {} : { severity: "warning" as const }),
         paths: [path],
         measured: `${b.contrast}:1 "${b.text.slice(0, 32)}"`,
-        limit: `${bar}:1${bar === 7 ? " (high contrast)" : ""}`,
+        limit: error ? `${bar}:1${high ? " (high contrast)" : " for live text"}` : "4.5:1 recommended (a warning: the art director judges it)",
         prop: "the style's ink and ground tokens (palette), never per call",
         fix: "og-taste §3 (value before hue): darken the ground or lighten the ink in the style's palette",
       });
@@ -817,6 +829,22 @@ export interface TextBox {
  * exempts inactive controls from contrast). The dump names each element's
  * `kind`, `clipped` and `disabled`.
  */
+/**
+ * Whether a text element's contrast is gated (§16.5): live text on a UI
+ * ground. Text drawn in a dimmed ink (inkMuted, inkFaint) is dimmed on
+ * purpose, and text whose centre lies on no UI ground (a fill, a shape,
+ * glass) is HUD over the scene: both are judged by eye.
+ */
+export function gated(f: Pick<UiFrameSnapshot, "texts" | "grounds" | "dimInks">, e: UiElementDump): boolean {
+  const inside = (r: Rect4, x: number, y: number) => x >= r[0] && x <= r[0] + r[2] && y >= r[1] && y <= r[1] + r[3];
+  const cx = e.x + e.width / 2, cy = e.y + e.height / 2;
+  const same = (a: number[], b: number[]) => a.length >= 3 && b.length >= 3 && [0, 1, 2].every((k) => Math.abs(a[k]! - b[k]!) < 0.004);
+  const drawn = f.texts.filter((t) => inside([e.x - 1, e.y - 1, e.width + 2, e.height + 2], t.bounds[0] + t.bounds[2] / 2, t.bounds[1] + t.bounds[3] / 2));
+  if (drawn.length > 0 && f.dimInks && drawn.every((t) => f.dimInks!.some((d) => same(t.color, d)))) return false;
+  if (f.grounds && !f.grounds.some((g) => inside(g, cx, cy))) return false;
+  return true;
+}
+
 function readsAsText(e: UiElementDump, byId: Map<string, UiElementDump>): boolean {
   if (PICTURES.has(e.kind ?? "") || e.clipped) return false;
   for (let at: UiElementDump | undefined = e, n = 0; at && n < 64; at = at.parent ? byId.get(at.parent) : undefined, n++) {

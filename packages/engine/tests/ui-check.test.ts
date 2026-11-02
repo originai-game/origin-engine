@@ -135,14 +135,28 @@ function textImage(bg: number, ink: number) {
   return { width, height, rgba };
 }
 
-test("contrast is measured on pixels: grey on grey fails 4.5:1, white on black passes; high contrast holds 7:1", () => {
+test("contrast is measured on pixels: live text is an error under 3:1 and a warning under 4.5:1; high contrast holds 7:1; dimmed and over-the-scene text is not gated", () => {
   const f = frame({ elements: [el("Hint", "", "label", "text", [0, 0, 120, 40], { text: "Hint text" })] }, { width: 120, height: 40, safeArea: [0, 0, 0, 0] });
-  expect(checkFrame(f, cell, { image: textImage(90, 150) }).map((x) => x.rule)).toContain("contrast");
-  expect(checkFrame(f, cell, { image: textImage(0, 255) }).map((x) => x.rule)).not.toContain("contrast");
+  const contrast = (fr: typeof f, img: ReturnType<typeof textImage>, c = cell) => checkFrame(fr, c, { image: img }).find((x) => x.rule === "contrast");
+  // About 2.3:1: an error.
+  expect(contrast(f, textImage(90, 150))?.severity).toBe("error");
+  expect(contrast(f, textImage(0, 255))).not.toBeDefined();
+  // About 3.5:1: under the 4.5 the art director judges, over the 3:1 floor: a warning, not an error.
+  expect(contrast(f, textImage(20, 108))?.severity).toBe("warning");
   // About 5.7:1: enough for 4.5, not for the high-contrast bar of 7.
   const mid = textImage(20, 150);
-  expect(checkFrame(f, cell, { image: mid }).map((x) => x.rule)).not.toContain("contrast");
-  expect(checkFrame(f, { ...cell, highContrast: true }, { image: mid }).find((x) => x.rule === "contrast")?.limit).toContain("7:1");
+  expect(contrast(f, mid)).not.toBeDefined();
+  expect(contrast(f, mid, { ...cell, highContrast: true })?.limit).toContain("7:1");
+  // Drawn in the style's dimmed ink, or over no UI ground (HUD over the scene): judged by eye.
+  const drawn = (color: number[]) => [{ text: "Hint text", size: 16, bounds: [10, 12, 100, 16] as [number, number, number, number], clip: [0, 0, 120, 40] as [number, number, number, number], color }];
+  const muted = [0.58, 0.58, 0.61, 1];
+  const vp = { width: 120, height: 40, safeArea: [0, 0, 0, 0] as [number, number, number, number] };
+  const dim = frame({ elements: f.elements, texts: drawn(muted), dimInks: [muted] }, vp);
+  expect(contrast(dim, textImage(90, 150))).not.toBeDefined();
+  const live = frame({ elements: f.elements, texts: drawn([1, 1, 1, 1]), dimInks: [muted], grounds: [[0, 0, 120, 40]] }, vp);
+  expect(contrast(live, textImage(90, 150))?.severity).toBe("error");
+  const overScene = frame({ elements: f.elements, texts: drawn([1, 1, 1, 1]), dimInks: [muted], grounds: [[200, 0, 50, 50]] }, vp);
+  expect(contrast(overScene, textImage(90, 150))).not.toBeDefined();
 });
 
 test("text under the minimum size: 10 px on a phone, 14 px at 1080p desktop", () => {

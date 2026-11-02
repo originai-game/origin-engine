@@ -27,8 +27,11 @@
 //! right while the strokes never take them (the pixel pack's primary
 //! labels, hollowbell FINDINGS #20, fixed).
 //!
-//! Two bars. A label on a surface (a screen, a panel, a dialog) reaches
-//! WCAG's 4.5:1 here, as og polish wants it in the frame. A button's label
+//! Two bars. A label on a surface (a screen, a panel, a dialog) fails
+//! under 3:1 and is printed as a warning under WCAG's 4.5:1, as og ui
+//! check and og polish read the frame since the owner relaxed contrast
+//! (docs/ui.md §15.4, 2026-11-02); text in a dim ink (a placeholder, a
+//! stack's count) is held to the 3:1 floor alone. A button's label
 //! reaches 7:1 (WCAG AAA) here: a 13 to 15 px label drawn by MSDF over a
 //! textured, shaded fill reads about a third lower in the frame, where og
 //! polish takes the ground's median and the ink's farthest percent. Ember
@@ -73,6 +76,22 @@ const ROLES: [(&str, ButtonVariant); 4] = [
 /// quiet and danger buttons, the label inks on a panel.
 const BUTTON_BAR: f32 = 7.0;
 const LABEL_BAR: f32 = 4.5;
+/// Under it a label fails; between it and [`LABEL_BAR`] it is printed as a
+/// warning (docs/ui.md §15.4, the owner, 2026-11-02: the look comes first,
+/// and contrast is an error only for live text under 3:1). Text in a dim
+/// ink (inkMuted, inkFaint: a placeholder, a stack's count) is held to
+/// this floor alone.
+const ERROR_BAR: f32 = 3.0;
+
+/// A label read at `r`:1: a failure under [`ERROR_BAR`], a warning under
+/// [`LABEL_BAR`].
+fn gate(r: f32, what: String, failing: &mut Vec<String>, warnings: &mut Vec<String>) {
+    if r < ERROR_BAR {
+        failing.push(format!("{what}: {r:.2}:1 (under {ERROR_BAR}:1)"));
+    } else if r < LABEL_BAR {
+        warnings.push(format!("{what}: {r:.2}:1 (under {LABEL_BAR}:1, a warning)"));
+    }
+}
 
 fn packs() -> Vec<(String, PathBuf)> {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../templates");
@@ -329,6 +348,7 @@ fn atlas_handle() -> TextureHandle {
 fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
     let mut rows = Vec::new();
     let mut failing = Vec::new();
+    let mut warnings: Vec<String> = Vec::new();
     for (name, text, atlas) in sources(styles().into_iter().chain(seeds()), true) {
         let file = parse_style(&text).unwrap_or_else(|e| panic!("{name}: {e}"));
         let tex = atlas_handle();
@@ -494,10 +514,13 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
                 // On the bare screen a pack's light ink is for a dark bg it
                 // never sits on in the kit; the screen's own text is fg.
                 let bar_applies = panel.is_some();
-                if bar_applies && r < LABEL_BAR {
-                    failing.push(format!(
-                        "{name}: {ink_name} on the {ground_name}: {r:.2}:1 (under {LABEL_BAR}:1)"
-                    ));
+                if bar_applies {
+                    gate(
+                        r,
+                        format!("{name}: {ink_name} on the {ground_name}"),
+                        &mut failing,
+                        &mut warnings,
+                    );
                 }
             }
         }
@@ -579,11 +602,12 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
                         hex(ink),
                         hex(fill)
                     ));
-                    if r < LABEL_BAR {
-                        failing.push(format!(
-                            "{name}: a field's {what}, {state}, on the {ground_name}: {r:.2}:1 (under {LABEL_BAR}:1)"
-                        ));
-                    }
+                    gate(
+                        r,
+                        format!("{name}: a field's {what}, {state}, on the {ground_name}"),
+                        &mut failing,
+                        &mut warnings,
+                    );
                 }
             }
         }
@@ -637,11 +661,12 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
                     hex(ink),
                     hex(ground)
                 ));
-                if r < LABEL_BAR {
-                    failing.push(format!(
-                        "{name}: a stack's count on a {state} slot: {r:.2}:1 (under {LABEL_BAR}:1)"
-                    ));
-                }
+                gate(
+                    r,
+                    format!("{name}: a stack's count on a {state} slot"),
+                    &mut failing,
+                    &mut warnings,
+                );
             }
         }
         // A meter's label (the HUD's "HP 80/100"), in a panel, over its
@@ -692,14 +717,18 @@ fn every_pack_keeps_button_labels_at_7_to_1_and_labels_at_4_5_to_1_as_drawn() {
                 hex(ink),
                 hex(fill)
             ));
-            if r < LABEL_BAR {
-                failing.push(format!(
-                    "{name}: a {kind_name} meter's label: {r:.2}:1 (under {LABEL_BAR}:1)"
-                ));
-            }
+            gate(
+                r,
+                format!("{name}: a {kind_name} meter's label"),
+                &mut failing,
+                &mut warnings,
+            );
         }
     }
     println!("{}", rows.join("\n"));
+    if !warnings.is_empty() {
+        println!("warnings:\n{}", warnings.join("\n"));
+    }
     assert!(failing.is_empty(), "{}", failing.join("\n"));
 }
 
@@ -734,6 +763,7 @@ fn a_games_primary_colour_keeps_its_button_label_readable_on_every_pack() {
         ("crimson", Srgba::rgb(190, 30, 50)),
     ];
     let mut failing = Vec::new();
+    let mut warnings: Vec<String> = Vec::new();
     for (name, text, atlas) in sources(packs().into_iter().chain(seeds()), false) {
         let file = parse_style(&text).expect("parses");
         let tex = atlas_handle();
@@ -776,10 +806,16 @@ fn a_games_primary_colour_keeps_its_button_label_readable_on_every_pack() {
             }
             let (ink, ground) = measured(&ui, "New best", rgb(theme.palette.backdrop), tex, &atlas);
             let r = ratio(ink, ground);
-            if r < 4.5 {
-                failing.push(format!("{name} with {cname}, its accent badge: {r:.2}:1"));
-            }
+            gate(
+                r,
+                format!("{name} with {cname}, its accent badge"),
+                &mut failing,
+                &mut warnings,
+            );
         }
+    }
+    if !warnings.is_empty() {
+        println!("warnings:\n{}", warnings.join("\n"));
     }
     assert!(
         failing.is_empty(),
@@ -791,6 +827,7 @@ fn a_games_primary_colour_keeps_its_button_label_readable_on_every_pack() {
 fn every_style_keeps_its_badges_at_4_5_to_1_on_the_screen_and_in_a_panel() {
     let mut rows = Vec::new();
     let mut failing = Vec::new();
+    let mut warnings: Vec<String> = Vec::new();
     for (name, text, atlas) in sources(styles().into_iter().chain(seeds()), true) {
         let file = parse_style(&text).unwrap_or_else(|e| panic!("{name}: {e}"));
         let tex = atlas_handle();
@@ -838,11 +875,12 @@ fn every_style_keeps_its_badges_at_4_5_to_1_on_the_screen_and_in_a_panel() {
                     hex(ink),
                     hex(ground)
                 ));
-                if r < LABEL_BAR {
-                    failing.push(format!(
-                        "{name}: a {tone_name} badge on the {ground_name}: {r:.2}:1 (under {LABEL_BAR}:1)"
-                    ));
-                }
+                gate(
+                    r,
+                    format!("{name}: a {tone_name} badge on the {ground_name}"),
+                    &mut failing,
+                    &mut warnings,
+                );
                 let own = match tone {
                     Tone::Success => Some(p.success),
                     Tone::Warn => Some(p.warn),
@@ -865,6 +903,9 @@ fn every_style_keeps_its_badges_at_4_5_to_1_on_the_screen_and_in_a_panel() {
         }
     }
     println!("{}", rows.join("\n"));
+    if !warnings.is_empty() {
+        println!("warnings:\n{}", warnings.join("\n"));
+    }
     assert!(failing.is_empty(), "{}", failing.join("\n"));
 }
 
@@ -1055,6 +1096,7 @@ fn every_pack_draws_its_primary_and_secondary_labels_at_4_5_to_1_in_the_frame() 
     let fonts = cooked_fonts();
     let mut rows = Vec::new();
     let mut failing = Vec::new();
+    let mut warnings: Vec<String> = Vec::new();
     for ((name, dir), (fname, [body, display])) in styles().into_iter().zip(&fonts) {
         assert_eq!(&name, fname);
         let file = parse_style(&std::fs::read_to_string(dir.join("style.ogt")).expect("style.ogt"))
@@ -1178,14 +1220,18 @@ fn every_pack_draws_its_primary_and_secondary_labels_at_4_5_to_1_in_the_frame() 
                 let r = frame_contrast(&image.pixels, image.width, &rect)
                     .unwrap_or_else(|| panic!("{name}: no ink in the {id} button, {state}"));
                 rows.push(format!("{name:10} {id:9} {state:7} in the frame {r:6.2}:1"));
-                if r < LABEL_BAR {
-                    failing.push(format!(
-                        "{name}: the {id} button's label, {state}, reads {r:.2}:1 in the frame (under {LABEL_BAR}:1)"
-                    ));
-                }
+                gate(
+                    r,
+                    format!("{name}: the {id} button's label, {state}, in the frame"),
+                    &mut failing,
+                    &mut warnings,
+                );
             }
         }
     }
     println!("{}", rows.join("\n"));
+    if !warnings.is_empty() {
+        println!("warnings:\n{}", warnings.join("\n"));
+    }
     assert!(failing.is_empty(), "{}", failing.join("\n"));
 }

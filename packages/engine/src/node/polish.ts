@@ -516,11 +516,13 @@ function measure(rec: RunRecord, frameDir: string, frames: number, relTo: string
       worstShare = Math.max(worstShare, occ.share);
       worstCentre = Math.max(worstCentre, occ.centre);
     }
-    shots.push({ name: shot.name, tick: shot.tick, frame, menu: occ.menu, hud: occ.share, centre: occ.centre, texts: boxes.length, lowContrast: boxes.filter((b) => b.contrast < 4.5).length, small: boxes.filter((b) => b.ink > 0 && b.ink < 9).length });
+    shots.push({ name: shot.name, tick: shot.tick, frame, menu: occ.menu, hud: occ.share, centre: occ.centre, texts: boxes.length, lowContrast: boxes.filter((b) => b.contrast < 3).length, small: boxes.filter((b) => b.ink > 0 && b.ink < 9).length });
   }
-  const contrastPass = allTexts.filter((b) => b.contrast >= 4.5);
+  // The look comes first (docs/ui.md §15.4, §16.5): live text holds 3:1;
+  // 4.5:1 is what an art director judges toward, not a gate.
+  const contrastPass = allTexts.filter((b) => b.contrast >= 3);
   const worstContrast = [...allTexts].sort((a, b) => a.contrast - b.contrast).slice(0, 3).map((b) => ({ shot: b.shot, id: b.id, text: b.text.slice(0, 40), ratio: b.contrast }));
-  for (const w of worstContrast.filter((w) => w.ratio < 4.5)) findings.push({ measure: "contrast", where: `${rec.playtest} ${w.shot}: \`${w.id}\` "${w.text}"`, detail: `${w.ratio}:1 between ink and ground (body text wants 4.5:1)`, fix: "og-taste §3 (value before hue): darken the ground or lighten the ink in the style's palette, never per call" });
+  for (const w of worstContrast.filter((w) => w.ratio < 3)) findings.push({ measure: "contrast", where: `${rec.playtest} ${w.shot}: \`${w.id}\` "${w.text}"`, detail: `${w.ratio}:1 between ink and ground (live text holds 3:1; 4.5:1 is recommended)`, fix: "og-taste §3 (value before hue): darken the ground or lighten the ink in the style's palette, never per call" });
   const sized = allTexts.filter((b) => b.ink > 0);
   // Ink lines of at least 9 px are a 13 px face (x-height and caps to descenders).
   const sizePass = sized.filter((b) => b.ink >= 9);
@@ -822,7 +824,7 @@ function markdown(project: string, ms: PlaytestMeasures[], sc: Scores, findings:
   L.push("## Scores", "");
   L.push("| | Score | Measure |", "|---|---|---|");
   L.push(`| **Taste** | **${show(sc.taste)}** | mean of the taste rows |`);
-  L.push(`| Contrast | ${show(sc.contrast)} | text boxes whose ink and ground reach 4.5:1 |`);
+  L.push(`| Contrast | ${show(sc.contrast)} | text boxes whose ink and ground reach 3:1 |`);
   L.push(`| Text size | ${show(sc.textSize)} | text boxes whose tallest ink line reaches 9 CSS px (a 13 px face's capitals) |`);
   L.push(`| HUD occupancy | ${show(sc.hud)} | gameplay frames: HUD at most 15 % of the surface and 5 % of the central third |`);
   L.push(`| Screen transitions | ${show(sc.transitions)} | screen changes with UI motion around them |`);
@@ -861,7 +863,7 @@ function markdown(project: string, ms: PlaytestMeasures[], sc: Scores, findings:
   for (const m of ms) {
     L.push(`### ${m.playtest}`, "", `${m.title} (${m.ticks} ticks)`, "");
     L.push("| Measure | Value |", "|---|---|");
-    L.push(`| Text boxes | ${m.contrast.texts}; ${m.contrast.passing} at 4.5:1; ${m.textSize.passing} of ${m.textSize.texts} at 9 px ink |`);
+    L.push(`| Text boxes | ${m.contrast.texts}; ${m.contrast.passing} at 3:1; ${m.textSize.passing} of ${m.textSize.texts} at 9 px ink |`);
     if (m.contrast.worst.length) L.push(`| Lowest contrast | ${m.contrast.worst.map((w) => `${w.ratio}:1 \`${w.id}\` (${w.shot})`).join("; ")} |`);
     if (m.textSize.smallest.length) L.push(`| Smallest ink | ${m.textSize.smallest.map((w) => `${w.ink} px \`${w.id}\` (${w.shot})`).join("; ")} |`);
     L.push(`| HUD | ${m.hud.gameplayShots} gameplay frame(s), up to ${m.hud.worstShare} % of the surface, ${m.hud.worstCentre} % of the centre |`);
@@ -876,7 +878,7 @@ function markdown(project: string, ms: PlaytestMeasures[], sc: Scores, findings:
     L.push(`| Audio | ${m.audio.seconds} s, peak ${m.audio.peak}, RMS ${m.audio.rms}, ${m.audio.clipped} clipped, ${m.audio.silentShare} % silent ticks |`, "");
     const framed = m.shots.filter((s) => s.frame);
     for (const s of framed) L.push(`![${m.playtest} ${s.name}](${s.frame}) `);
-    if (framed.length) L.push("", framed.map((s) => `${s.name} (tick ${s.tick}${s.menu ? ", menu" : ""}: HUD ${s.hud} %, ${s.texts} texts, ${s.lowContrast} under 4.5:1, ${s.small} small)`).join("; "), "");
+    if (framed.length) L.push("", framed.map((s) => `${s.name} (tick ${s.tick}${s.menu ? ", menu" : ""}: HUD ${s.hud} %, ${s.texts} texts, ${s.lowContrast} under 3:1, ${s.small} small)`).join("; "), "");
   }
   return L.join("\n") + "\n";
 }
