@@ -86,6 +86,9 @@ function start(world: World): void {
   settings.toneMapped = false;
   const physics = must(world.resource(og.Physics));
   physics.gravity = { x: 0, y: 0, z: 0 };
+  // A body that has rested for half a second sleeps until something touches
+  // it or the game moves it (og.Physics.sleepTicks, 0 to keep every body awake).
+  physics.sleepTicks = 30;
 
   const game = must(world.resource(Game));
   game.font = font as unknown as number;
