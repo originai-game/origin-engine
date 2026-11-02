@@ -165,6 +165,13 @@ pub const BALL_CARD_AT: Vec3 = Vec3::new(1.4, 1.2, 0.0);
 /// above, the ball drawn as its mesh (left) and as its impostor (right),
 /// each 2 m across and casting its shadow.
 pub fn impostors_scene() -> RenderScene {
+    impostors_scene_with(true)
+}
+
+/// `impostors` with the right ball its mesh too (`card` false): what the
+/// card must look like where it stands. The camera sees the two balls from
+/// opposite sides, so the card is compared with this, not with the left one.
+pub fn impostors_scene_with(card: bool) -> RenderScene {
     let mut scene = RenderScene::new();
     light(&mut scene);
     let floor = scene.add_mesh(shapes::cuboid(Vec3::new(14.0, 0.2, 10.0)));
@@ -186,12 +193,16 @@ pub fn impostors_scene() -> RenderScene {
     let at =
         |p: Vec3| Mat4::from_scale_rotation_translation(Vec3::splat(2.0), Default::default(), p);
     scene.add_instance(ball, white, at(BALL_MESH_AT));
-    let impostor = ball_impostor(&mut scene);
-    scene.impostors.push(ImpostorDraw {
-        impostor,
-        transform: at(BALL_CARD_AT),
-        cast_shadows: true,
-    });
+    if card {
+        let impostor = ball_impostor(&mut scene);
+        scene.impostors.push(ImpostorDraw {
+            impostor,
+            transform: at(BALL_CARD_AT),
+            cast_shadows: true,
+        });
+    } else {
+        scene.add_instance(ball, white, at(BALL_CARD_AT));
+    }
     scene.camera = Camera {
         position: Vec3::new(0.0, 2.4, 6.5),
         target: Vec3::new(0.0, 1.0, 0.0),

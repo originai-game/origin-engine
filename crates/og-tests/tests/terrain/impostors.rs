@@ -30,7 +30,6 @@ fn an_impostor_draws_as_the_mesh_it_stands_for() {
     let at = |p: Vec3| color_at(&img, project(&scene.camera, p));
     let sun = scene.light.direction_to_light.normalize();
     let open = at(Vec3::new(0.0, 0.0, 2.5));
-    let mut sides = Vec::new();
     let mut shadows = Vec::new();
     for (name, c) in [("mesh", is::BALL_MESH_AT), ("card", is::BALL_CARD_AT)] {
         let right = at(c + Vec3::new(0.6, 0.0, 0.0));
@@ -67,7 +66,6 @@ fn an_impostor_draws_as_the_mesh_it_stands_for() {
             "{name}: shadow {shadow:?} vs {open:?}"
         );
         shadows.push(luma(shadow));
-        sides.push((right, left, lit));
     }
     // The card's shadow as dark as the mesh's, and where it is.
     assert!(
@@ -76,17 +74,25 @@ fn an_impostor_draws_as_the_mesh_it_stands_for() {
         shadows[0],
         shadows[1]
     );
-    // The card reads as the mesh: the same colours within a fifth.
-    let (m, c) = (sides[0], sides[1]);
-    for (a, b, what) in [
-        (m.0, c.0, "red side"),
-        (m.1, c.1, "blue side"),
-        (m.2, c.2, "lit side"),
+    // The card reads as the mesh drawn where it stands (the camera sees the
+    // left ball from its other side, so that one's blue half faces the sun
+    // more): the same colours within a fifth, at points over both halves.
+    let (mesh, _) = render(&is::impostors_scene_with(false));
+    let c = is::BALL_CARD_AT;
+    for (dx, dy) in [
+        (0.6, 0.0),
+        (-0.6, 0.0),
+        (0.45, 0.6),
+        (-0.45, 0.4),
+        (-0.7, -0.3),
+        (-0.3, -0.6),
     ] {
+        let q = project(&scene.camera, c + Vec3::new(dx, dy, 0.3));
+        let (a, b) = (color_at(&mesh, q), color_at(&img, q));
         let (la, lb) = (luma(a), luma(b));
         assert!(
             (la - lb).abs() < 0.2 * la.max(lb),
-            "{what}: mesh {a:?} card {b:?}"
+            "at ({dx}, {dy}): mesh {a:?} card {b:?}"
         );
     }
 }
