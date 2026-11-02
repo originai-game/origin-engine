@@ -19,6 +19,7 @@ import { characterSelect, draft, lobby, versus } from "./roster.ts";
 import { worldMap } from "./maps.ts";
 import { songSelect } from "./songs.ts";
 import { garage } from "./garage.ts";
+import { ledger, overlayBar } from "./ledger.ts";
 
 export const patterns = Object.freeze({
   cardHand,
@@ -47,4 +48,6 @@ export const patterns = Object.freeze({
   worldMap,
   songSelect,
   garage,
+  ledger,
+  overlayBar,
 });

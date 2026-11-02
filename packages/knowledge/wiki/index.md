@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2363 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2375 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -724,6 +724,13 @@ Field units the docs and Tune use.
 | [`LeaderboardQueryDesc`](platform.md#type-LeaderboardQueryDesc) | desc struct | platform | — |
 | [`LeaderboardResult`](ui.md#type-LeaderboardResult) | struct | ui | — |
 | [`LeaderboardSubmitDesc`](platform.md#type-LeaderboardSubmitDesc) | desc struct | platform | — |
+| [`LedgerDesc`](ui.md#type-LedgerDesc) | desc struct | ui | — |
+| [`LedgerFigure`](ui.md#type-LedgerFigure) | desc struct | ui | — |
+| [`LedgerFunding`](ui.md#type-LedgerFunding) | struct | ui | — |
+| [`LedgerLine`](ui.md#type-LedgerLine) | desc struct | ui | — |
+| [`LedgerResult`](ui.md#type-LedgerResult) | struct | ui | — |
+| [`LedgerSection`](ui.md#type-LedgerSection) | desc struct | ui | — |
+| [`LedgerTab`](ui.md#type-LedgerTab) | desc struct | ui | — |
 | [`LevelGoal`](ui.md#type-LevelGoal) | desc struct | ui | — |
 | [`LevelInfo`](ui.md#type-LevelInfo) | desc struct | ui | — |
 | [`LevelSelectDesc`](ui.md#type-LevelSelectDesc) | desc struct | ui | — |
@@ -770,6 +777,7 @@ Field units the docs and Tune use.
 | [`MainMenuDesc`](ui.md#type-MainMenuDesc) | desc struct | ui | — |
 | [`MapMarker`](ui.md#type-MapMarker) | desc struct | ui | — |
 | [`MapMarkerItem`](ui.md#type-MapMarkerItem) | desc struct | ui | — |
+| [`MapOverlay`](ui.md#type-MapOverlay) | desc struct | ui | — |
 | [`MapShape`](ui.md#type-MapShape) | enum | ui | — |
 | [`MarkerDesc`](story.md#type-MarkerDesc) | desc struct | story | — |
 | [`MarkerKind`](ui.md#type-MarkerKind) | enum | ui | — |
@@ -1542,6 +1550,7 @@ Field units the docs and Tune use.
 | [`og.ui.layers`](ui.md#fn-layers) | function | ui | `og_ui_layers` |
 | [`og.ui.layoutStats`](ui.md#fn-layoutStats) | function | ui | `og_ui_layout_stats` |
 | [`og.ui.leaderboardScreen`](ui.md#fn-leaderboardScreen) | function | ui | — |
+| [`og.ui.ledger`](ui.md#fn-ledger) | function | ui | — |
 | [`og.ui.levelSelect`](ui.md#fn-levelSelect) | function | ui | — |
 | [`og.ui.list`](ui.md#fn-list) | function | ui | — |
 | [`og.ui.listItem`](ui.md#fn-listItem) | function | ui | `og_ui_list_item` |
@@ -1583,6 +1592,7 @@ Field units the docs and Tune use.
 | [`og.ui.orbMeter`](ui.md#fn-orbMeter) | function | ui | — |
 | [`og.ui.overheadBars`](ui.md#fn-overheadBars) | function | ui | — |
 | [`og.ui.overlaps`](ui.md#fn-overlaps) | function | ui | `og_ui_overlaps` |
+| [`og.ui.overlayBar`](ui.md#fn-overlayBar) | function | ui | — |
 | [`og.ui.pagination`](ui.md#fn-pagination) | function | ui | — |
 | [`og.ui.panel`](ui.md#fn-panel) | function | ui | — |
 | [`og.ui.paperdoll`](ui.md#fn-paperdoll) | function | ui | — |
@@ -1745,6 +1755,8 @@ Field units the docs and Tune use.
 | [`OverheadBar`](ui.md#type-OverheadBar) | desc struct | ui | — |
 | [`OverheadBarsDesc`](ui.md#type-OverheadBarsDesc) | desc struct | ui | — |
 | [`OverlapDesc`](physics.md#type-OverlapDesc) | desc struct | physics | — |
+| [`OverlayBarDesc`](ui.md#type-OverlayBarDesc) | desc struct | ui | — |
+| [`OverlayBarResult`](ui.md#type-OverlayBarResult) | struct | ui | — |
 | [`PageResult`](ui.md#type-PageResult) | struct | ui | — |
 | [`PaginationDesc`](ui.md#type-PaginationDesc) | desc struct | ui | — |
 | [`Paint`](ui.md#type-Paint) | desc struct | ui | — |

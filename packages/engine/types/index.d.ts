@@ -35052,6 +35052,438 @@ export interface GarageResult {
 
 
 /**
+ * One headline figure over the ledger (Balance, Income, Expenses, Population).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LedgerFigure {
+  /**
+   * Its key: its tile's element id.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its name, the tile's caption.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+  /**
+   * Its value this period.
+   *
+   * @default 0
+   */
+  readonly value?: number;
+  /**
+   * Its change since the last period, shown signed with an arrow; 0 shows none.
+   *
+   * @default 0
+   */
+  readonly delta?: number;
+  /**
+   * How the value and the change are written (grouped by default).
+   *
+   * @default "grouped"
+   */
+  readonly format?: NumberFormat;
+  /**
+   * A unit after the value (a currency's sign is the game's, in the label or the unit).
+   *
+   * @default ""
+   */
+  readonly unit?: string;
+  /**
+   * Its art (art kind itemIcon) on the tile; null shows none.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * A fall is good news (expenses, debt, crime): the change's colour turns over.
+   *
+   * @default false
+   */
+  readonly lowerIsBetter?: boolean;
+}
+
+/**
+ * A section of the ledger's lines (Income, Expenses; Revenue, Upkeep).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LedgerSection {
+  /**
+   * Its key: the lines' `section`.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its heading, with its total.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Its lines cost money: their total is taken from the net, and its change's colour turns over.
+   *
+   * @default false
+   */
+  readonly expense?: boolean;
+}
+
+/**
+ * One line of the ledger: a tax, a service, a department, a contract.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LedgerLine {
+  /**
+   * Its key: its row's element id, so its probe path is <id>/Body/Ledger/List/<key>.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * The section it stands in.
+   *
+   * @default ""
+   */
+  readonly section?: string;
+  /**
+   * Its name, the row's reading.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Its art (art kind itemIcon) at the row's start; null draws the style's placeholder mark.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * Its amount this period (positive; the section says which way it runs).
+   *
+   * @default 0
+   */
+  readonly amount?: number;
+  /**
+   * Its amount last period, for its change; a negative value shows none.
+   *
+   * @default -1
+   */
+  readonly previous?: number;
+  /**
+   * Its budget or tax rate as a slider in percent; a negative value shows no slider (a fixed line).
+   *
+   * @default -1
+   */
+  readonly funding?: number;
+  /**
+   * A problem with it (Underfunded: crime rising), shown with a warning mark; empty shows none.
+   *
+   * @default ""
+   */
+  readonly warning?: string;
+  /**
+   * Its slider cannot move yet (a policy not unlocked): shown inert with a lock.
+   *
+   * @default false
+   */
+  readonly locked?: boolean;
+}
+
+/**
+ * One of the ledger's periods or views (Month, Quarter, Year).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LedgerTab {
+  /**
+   * Its key.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its word.
+   *
+   * @default ""
+   */
+  readonly label?: string;
+}
+
+/** A line's slider was moved. */
+export interface LedgerFunding {
+  /** The line. */
+  readonly key: string;
+  /** Its new value, in percent. */
+  readonly value: number;
+}
+
+/**
+ * A management ledger: the headline figures, the lines by section with their budgets, and the history graph.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LedgerDesc {
+  /**
+   * The screen's title (Budget); empty shows none (the game titles it).
+   *
+   * @default ""
+   */
+  readonly title?: string;
+  /**
+   * The periods or views; empty shows no tabs.
+   *
+   * @default []
+   */
+  readonly tabs?: readonly LedgerTab[];
+  /**
+   * The selected tab's key.
+   *
+   * @default ""
+   */
+  readonly tab?: string;
+  /**
+   * The headline figures, start to end.
+   *
+   * @default []
+   */
+  readonly figures?: readonly LedgerFigure[];
+  /**
+   * The sections, top to bottom.
+   *
+   * @default []
+   */
+  readonly sections?: readonly LedgerSection[];
+  /**
+   * The lines, each in its section, in the game's order (the ledger sorts them by `sort`).
+   *
+   * @default []
+   */
+  readonly lines?: readonly LedgerLine[];
+  /**
+   * The column the lines are sorted by within each section: name, amount, change, or empty for the game's order.
+   *
+   * @default ""
+   */
+  readonly sort?: string;
+  /**
+   * The sort runs high to low.
+   *
+   * @default false
+   */
+  readonly descending?: boolean;
+  /**
+   * The sliders' low end, in percent.
+   *
+   * @default 50
+   */
+  readonly fundingMin?: number;
+  /**
+   * The sliders' high end, in percent.
+   *
+   * @default 150
+   */
+  readonly fundingMax?: number;
+  /**
+   * The sliders' step, in percent.
+   *
+   * @default 5
+   */
+  readonly fundingStep?: number;
+  /**
+   * The history's categories, oldest first (the months).
+   *
+   * @default []
+   */
+  readonly periods?: readonly string[];
+  /**
+   * The history's series over the periods (income, expenses, balance); empty shows no graph.
+   *
+   * @default []
+   */
+  readonly history?: readonly ChartSeries[];
+  /**
+   * How the history is drawn (a line by default).
+   *
+   * @default "line"
+   */
+  readonly graph?: ChartKind;
+  /**
+   * A section whose lines' shares are drawn as a donut beside the history; empty shows none.
+   *
+   * @default ""
+   */
+  readonly breakdown?: string;
+  /**
+   * The money's sign, written before amounts ($, ¥); empty writes bare numbers.
+   *
+   * @default ""
+   */
+  readonly currency?: string;
+  /**
+   * The name column's heading.
+   *
+   * @default "Name"
+   */
+  readonly nameLabel?: string;
+  /**
+   * The amount column's heading.
+   *
+   * @default "Amount"
+   */
+  readonly amountLabel?: string;
+  /**
+   * The change column's heading.
+   *
+   * @default "Change"
+   */
+  readonly changeLabel?: string;
+  /**
+   * The slider column's heading.
+   *
+   * @default "Budget"
+   */
+  readonly fundingLabel?: string;
+  /**
+   * Said before a section's total, and the net's caption.
+   *
+   * @default "Total"
+   */
+  readonly totalLabel?: string;
+  /**
+   * The net line's caption at the ledger's foot.
+   *
+   * @default "Net"
+   */
+  readonly netLabel?: string;
+  /**
+   * The graph's heading.
+   *
+   * @default "History"
+   */
+  readonly historyLabel?: string;
+  /**
+   * The donut's heading.
+   *
+   * @default "Breakdown"
+   */
+  readonly breakdownLabel?: string;
+  /**
+   * A locked slider, to a screen reader.
+   *
+   * @default "Locked"
+   */
+  readonly lockedLabel?: string;
+}
+
+/** What the player asked for this tick, for the game to apply. */
+export interface LedgerResult {
+  /** Another tab was pressed. */
+  readonly tab: string | null;
+  /**
+   * A column's heading was pressed: sort by it (the same column again turns the order over).
+   */
+  readonly sort: string | null;
+  /** The order asked for with `sort`. */
+  readonly descending: boolean;
+  /** A line's slider was moved. */
+  readonly funding: LedgerFunding | null;
+  /** A line was pressed (the game may open its detail or its overlay). */
+  readonly selected: string | null;
+}
+
+
+/**
+ * One of the map's data overlays (Traffic, Power, Land value), with its legend's ramp.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface MapOverlay {
+  /**
+   * Its key: its button's element id.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its name, under its art and to a screen reader.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Its art (art kind itemIcon) on the button; null draws the style's placeholder mark.
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * The legend's colours from low to high (`#rrggbb`), as the game draws the overlay on its map.
+   *
+   * @default []
+   */
+  readonly ramp?: readonly string[];
+  /**
+   * The legend's word at the low end (Free flowing).
+   *
+   * @default ""
+   */
+  readonly low?: string;
+  /**
+   * The legend's word at the high end (Gridlock).
+   *
+   * @default ""
+   */
+  readonly high?: string;
+}
+
+/**
+ * A city or strategy map's overlay picker: the overlays, the one shown and its legend.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface OverlayBarDesc {
+  /**
+   * The overlays, start to end.
+   *
+   * @default []
+   */
+  readonly overlays?: readonly MapOverlay[];
+  /**
+   * The overlay shown on the map; empty shows none.
+   *
+   * @default ""
+   */
+  readonly selected?: string;
+  /**
+   * The bar's name, to a screen reader.
+   *
+   * @default "Overlays"
+   */
+  readonly label?: string;
+  /**
+   * The button turning the overlay off, to a screen reader.
+   *
+   * @default "No overlay"
+   */
+  readonly offLabel?: string;
+}
+
+/** What the player asked for this tick. */
+export interface OverlayBarResult {
+  /**
+   * An overlay was pressed: show it (the empty string: the shown one was pressed again, turn it off).
+   */
+  readonly selected: string | null;
+}
+
+
+/**
  * A template's action, by its id (a menu item, `buy:<item>`, `share`).
  *
  * @param action The action's id.
@@ -55263,6 +55695,22 @@ export declare namespace og {
      * @param desc The categories, parts, figures and layers, and the words.
      */
     function garage(id: string, desc?: GarageDesc): GarageResult;
+    /**
+     * A management ledger (Cities: Skylines' budget, Crusader Kings' and Stellaris' ledgers, Football Manager's finances): the headline figures as tiles across the top, each its art, its caption, its value large in the numeric face and its change since the last period signed with an arrow, in success or danger by whether the change is good; under them the ledger, a column header whose name, amount and change headings sort the lines (the sorted one marked with its direction), then each section's heading with its total, then its lines, each a row of its art, its name (a warning mark and its words when it has a problem), its amount, its change in percent and, for a budgeted line, its funding slider with its percent; the net at the foot in success or danger. Beside the ledger the history graph (og.ui.chart over the periods) and, when `breakdown` names a section, a donut of its lines' shares. Tabs at the head switch the period. On a phone in portrait the figures are a two-column grid, the ledger follows them with each line's slider in its own row under its name, and the graphs close the page; the page scrolls and the net stays docked at the foot. A desktop short of room for its text (200 % on a laptop) stacks the same way with its sliders inline.
+     * Parts: Ledger.frame, Ledger.figure, Ledger.delta[up|down|good|bad], Ledger.header, Ledger.section, Ledger.line[selected|warning], Ledger.net[good|bad], Ledger.graph. Slots: each figure's and line's art (itemIcon). Sounds: select on a line or a heading, tab on a tab; the slider's own. Accessibility: each figure a status named with its value and change; the ledger a table, each heading a column header with its sort, each line a row named with its amount, change and budget; the slider a slider. Probe ids: <id>/Head/Tabs/<tab>, <id>/Figures/<key>, <id>/Body/Ledger/Header/<name|amount|change>, <id>/Body/Ledger/List/<section>, <id>/Body/Ledger/List/<key>, <id>/Body/Ledger/List/<key>/Main/Budget/Funding (<key>/Budget/Funding when stacked), <id>/Body/Ledger/Net (<id>/Net when stacked), <id>/Body/Side/Graphs/History (<id>/Body/Graphs/History when stacked).
+     *
+     * @param id Its id.
+     * @param desc The figures, sections, lines, history and words.
+     */
+    function ledger(id: string, desc?: LedgerDesc): LedgerResult;
+    /**
+     * A map's overlay picker (Cities: Skylines' info views, Civilization's lenses): a row of round buttons, each its overlay's art, the shown one lit with its name, and over the bar the shown overlay's legend, its name, its ramp of colours from low to high with the two words at its ends. A press shows an overlay, a second press on the shown one turns it off; a finger, keys and a pad reach each button. The game draws the overlay on its map; the bar draws the picker and the legend only. On a phone the bar scrolls sideways and keeps its buttons whole touch targets.
+     * Parts: Overlay.bar, Overlay.button[selected], Overlay.legend, Overlay.ramp. Slots: each overlay's art (itemIcon). Sounds: toggle on a press. Accessibility: the bar a toolbar, each button a toggle button with its pressed state; the legend a status named with the overlay and its ends. Probe ids: <id>/Bar/<key>, <id>/Legend.
+     *
+     * @param id Its id.
+     * @param desc The overlays and the shown one.
+     */
+    function overlayBar(id: string, desc?: OverlayBarDesc): OverlayBarResult;
     /**
      * The title screen template. Returns the item chosen this tick.
      *

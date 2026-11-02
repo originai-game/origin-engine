@@ -1625,3 +1625,104 @@ test("garage: the livery's layers answer their own eye and order; the first laye
   engine.advance(4);
   expect(results.filter((r) => r.layer).map((r) => r.layer)).toEqual(["stripe"]);
 });
+
+// ── ledger and overlay bar ──────────────────────────────────────────────
+
+const CITY: Api.LedgerLine[] = [
+  { key: "res", section: "in", name: "Residential", amount: 5200, previous: 4800, funding: 9 },
+  { key: "com", section: "in", name: "Commercial", amount: 3100, previous: 3400, funding: 12 },
+  { key: "tour", section: "in", name: "Tourism", amount: 900, previous: 600 },
+  { key: "police", section: "out", name: "Police", amount: 1800, previous: 1700, funding: 100 },
+  { key: "fire", section: "out", name: "Fire", amount: 1200, previous: 1250, funding: 90, locked: true },
+  { key: "parks", section: "out", name: "Parks", amount: 400, previous: 300, funding: 110 },
+];
+
+function cityLedger(st: { sort: string; descending: boolean }, results: Api.LedgerResult[]): Engine {
+  return run(() => {
+    og.ui.column("Box", { width: { kind: "fixed", px: 1232 }, height: { kind: "fixed", px: 672 } }, () => {
+      const r = og.ui.ledger("Budget", {
+        sections: [{ key: "in", name: "Income" }, { key: "out", name: "Expenses", expense: true }],
+        lines: CITY.map((l) => (l.section === "in" ? { ...l, funding: -1 } : l)),
+        sort: st.sort,
+        descending: st.descending,
+        fundingMin: 50,
+        fundingMax: 150,
+      });
+      results.push(r);
+      if (r.sort !== null) {
+        st.sort = r.sort;
+        st.descending = r.descending;
+      }
+    });
+  });
+}
+
+test("ledger: a heading sorts each section by it, amounts high to low first; the same heading again turns the order over; the net is income less expenses", () => {
+  // Wrong: lines sorted across sections, the order not turned over, or expenses added to the net.
+  const results: Api.LedgerResult[] = [];
+  const st = { sort: "", descending: false };
+  const engine = cityLedger(st, results);
+  engine.advance(10);
+  const order = (): string[] => elements(engine).filter((e) => /\/List\/[a-z]+$/.test(e.path) && CITY.some((l) => e.path.endsWith(`/${l.key}`))).sort((a, b) => a.y - b.y).map((e) => e.path.split("/").pop()!);
+  expect(order()).toEqual(["res", "com", "tour", "police", "fire", "parks"]);
+  tapOn(engine, byPath(engine, "Header/amount")!);
+  engine.advance(4);
+  expect([st.sort, st.descending]).toEqual(["amount", true]);
+  expect(order()).toEqual(["res", "com", "tour", "police", "fire", "parks"]);
+  tapOn(engine, byPath(engine, "Header/amount")!);
+  engine.advance(4);
+  expect([st.sort, st.descending]).toEqual(["amount", false]);
+  expect(order()).toEqual(["tour", "com", "res", "parks", "fire", "police"]);
+  tapOn(engine, byPath(engine, "Header/change")!);
+  engine.advance(4);
+  expect(order()).toEqual(["tour", "res", "com", "parks", "police", "fire"]);
+  expect(elements(engine).find((e) => e.path.endsWith("Net/Value"))?.text).toBe("+5,800");
+});
+
+test("ledger: a line's budget slider answers its key and value (not a press on the line); a locked one answers no budget; a press on a line selects it", () => {
+  // Wrong: the slider's move lost or answered under another line, a locked policy moved, a line's press not answered.
+  const results: Api.LedgerResult[] = [];
+  const engine = cityLedger({ sort: "", descending: false }, results);
+  engine.advance(10);
+  const end = (key: string): string => {
+    const el = elements(engine).find((e) => e.path.includes(`/List/${key}/`) && e.path.endsWith("/Funding"))!;
+    return `${Math.round(el.x + el.width - 2)},${Math.round(el.y + el.height / 2)}`;
+  };
+  for (const k of ["police", "fire"]) {
+    engine.probe.commands(`0:touch_move:${end(k)};0.05:touch_start;0.1:touch_end`);
+    engine.advance(10);
+  }
+  const moves = results.filter((r) => r.funding).map((r) => r.funding!);
+  expect(moves.length > 0 && moves.every((m) => m.key === "police")).toBeTrue();
+  expect(moves[moves.length - 1]!.value).toBe(150);
+  tapOn(engine, byPath(engine, "List/tour/Main/Name")!);
+  const picked = results.filter((r) => r.selected).map((r) => r.selected);
+  expect([picked.includes("police"), picked[picked.length - 1]]).toEqual([false, "tour"]);
+});
+
+test("overlayBar: a press shows an overlay and its legend; a press on the shown one turns it off", () => {
+  // Wrong: a second press on the shown overlay showing it again, or a legend with no overlay shown.
+  const results: Api.OverlayBarResult[] = [];
+  const st = { selected: "" };
+  const engine = run(() => {
+    const r = og.ui.overlayBar("Lenses", {
+      overlays: [
+        { key: "traffic", name: "Traffic", ramp: ["#2ecc71", "#f1c40f", "#e74c3c"], low: "Free", high: "Jammed" },
+        { key: "power", name: "Power", ramp: ["#222244", "#ffd23f"], low: "None", high: "Full" },
+      ],
+      selected: st.selected,
+    });
+    results.push(r);
+    if (r.selected !== null) st.selected = r.selected;
+  });
+  engine.advance(10);
+  expect(byPath(engine, "Lenses/Legend") === undefined).toBeTrue();
+  tapOn(engine, byPath(engine, "Row/power")!);
+  engine.advance(4);
+  expect(st.selected).toBe("power");
+  expect(elements(engine).find((e) => e.path.endsWith("Legend/Name"))?.text).toBe("POWER");
+  tapOn(engine, byPath(engine, "Row/power")!);
+  engine.advance(4);
+  expect(st.selected).toBe("");
+  expect(byPath(engine, "Lenses/Legend") === undefined).toBeTrue();
+});
