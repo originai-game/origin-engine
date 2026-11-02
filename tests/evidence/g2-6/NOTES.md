@@ -68,7 +68,10 @@ drew them, waiting for the showcase archive.
 eight flat diamonds (`iso.png`, 32 × 16) and eight pointy-top hexagons
 (`hex.png`, 32 × 32), drawn once with ImageMagick, and `ball.png`. Two
 logic runs in the orb (`OG_RENDERER=none`) ended on the same hash,
-`080f6d27304e1948` at tick 480.
+`88dd847a5c002a2a` at tick 480 (`080f6d27304e1948` with the per-cell
+colliders of 1e4dabf9; the hex map now collides as one outline per solid
+region, 36 entities instead of 102). At tick 601 the orb and the Mac agree
+on `d90d887dd2e5117d`.
 
 - 0 to 4 s, an isometric island, 20 × 20 diamonds of 2 × 1 world units,
   banded from FBM simplex noise falling off from the centre. At 2 s
@@ -78,8 +81,9 @@ logic runs in the orb (`OG_RENDERER=none`) ended on the same hash,
   with two small reefs. The cell under the centre and its four
   `og.tilemap.neighbours` are orange, the same cell before and after.
 - 4 s on, a hex map, 30 × 20 pointy-top hexagons: two rows of solid rock at
-  the bottom and noise-placed rock outcrops, each hexagon its own collider
-  (`SHAPE_HEXAGON`). A ball drops every 0.2 s (18 in all) at a column taken
+  the bottom and noise-placed rock outcrops. Each connected rock region is
+  one collider, its outline (a 2D `SHAPE_TRIMESH` polyline of a generated
+  mesh); before the merge each hexagon was its own (`SHAPE_HEXAGON`). A ball drops every 0.2 s (18 in all) at a column taken
   from a fork of og.Rng. The centre hex and its six neighbours are orange
   (not solid).
 
@@ -110,10 +114,34 @@ og render tests/evidence/g2-6/tilemaps --commands "0:get:show:Show:s" --fps 30 -
   (105.150, -7.434) with no velocity, 0.35 (its radius) from both the left
   side of hex (5, 9) and the upper-right edge of hex (4, 10): the colliders
   are the hexagons drawn. Two balls rolled off the floor's open left end
-  and fell out of the map.
+  and fell out of the map. With the merged outlines (the same run, redrawn
+  at the merge commit) ball-9 and ball-7 rest at the same points to the
+  millimetre, (105.150, -7.434) and (116.35, -11.18), with no velocity.
 
 ## Clips
 
 `iso-resize.mp4` (4 s) and `hex-colliders.mp4` (6 s), 30 fps, 1280 × 720,
-are kept in `.amp/in/artifacts/g2-6/tilemaps/` of the thread that drew
-them, waiting for the showcase archive.
+are in the showcase archive (feature G2-6); the merged-collider redraws of
+`hex-rest.png`, `hex-settled.png` and `hex-colliders.mp4` too.
+
+## The merged colliders' cost (256 × 256, half the cells solid at random)
+
+Measured on the Mac satellite with a scratch og-runtime test (a map made
+with og.tilemap.create, filled, then one tick timed for the build and 60
+for the steady tick; deleted after):
+
+| Build | Map | Colliders | Build tick | Steady tick |
+|---|---|---|---|---|
+| release | 2D hex, merged | 1,264 | 21.6 to 22.9 ms | 0.26 to 0.29 ms |
+| release | 2D orthogonal, merged rectangles | 15,074 | 23.0 to 23.8 ms | 1.73 to 1.77 ms |
+| release | 2D isometric, merged | 4,494 | 15.4 to 16.2 ms | 0.85 ms |
+| release | 2D hexFlat, merged | 1,374 | 21.1 ms | 0.28 to 0.30 ms |
+| release | 3D hex, merged prisms | 1,264 | 75 ms | 0.26 ms |
+| release | 3D orthogonal | 15,074 | 22.8 ms | 1.75 ms |
+| dev | 2D hex, merged | 1,264 | 67 ms | 0.76 ms |
+| dev | 2D orthogonal | 15,074 | 158 ms | 5.45 ms |
+| dev | 3D hex, merged prisms | 1,264 | 148 ms | 0.87 ms |
+
+Before the merge (per-cell hexagons, 32,631 colliders) the release steady
+tick was 3.9 ms, nearly all of it og-physics' gather and sync touching
+every static collider each tick (rapier's own step was 0.02 ms).
