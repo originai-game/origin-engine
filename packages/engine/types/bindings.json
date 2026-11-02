@@ -9562,6 +9562,91 @@
     },
     {
       "id": 20,
+      "name": "Clouds",
+      "schema": "og.Clouds",
+      "module": "atmosphere",
+      "fields": [
+        {
+          "name": "enabled",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "coverage",
+          "column": "f32",
+          "default": 0.45,
+          "tunable": true
+        },
+        {
+          "name": "density",
+          "column": "f32",
+          "default": 0.04,
+          "tunable": true
+        },
+        {
+          "name": "base",
+          "column": "f32",
+          "default": 1500,
+          "tunable": true
+        },
+        {
+          "name": "thickness",
+          "column": "f32",
+          "default": 1800,
+          "tunable": true
+        },
+        {
+          "name": "scale",
+          "column": "f32",
+          "default": 9000,
+          "tunable": true
+        },
+        {
+          "name": "wind",
+          "column": "Vector3",
+          "default": {
+            "x": 12,
+            "y": 0.4,
+            "z": 4
+          },
+          "tunable": true
+        },
+        {
+          "name": "color",
+          "column": "Color",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        {
+          "name": "detail",
+          "column": "f32",
+          "default": 0.35,
+          "tunable": true
+        },
+        {
+          "name": "layer",
+          "column": "f32",
+          "default": 0.3,
+          "tunable": true
+        },
+        {
+          "name": "layerAltitude",
+          "column": "f32",
+          "default": 8000,
+          "tunable": true
+        },
+        {
+          "name": "steps",
+          "column": "u32",
+          "default": 48
+        }
+      ]
+    },
+    {
+      "id": 21,
       "name": "Weather",
       "schema": "og.Weather",
       "module": "atmosphere",
@@ -9616,7 +9701,7 @@
       ]
     },
     {
-      "id": 21,
+      "id": 22,
       "name": "Wind",
       "schema": "og.Wind",
       "module": "atmosphere",
@@ -9652,7 +9737,7 @@
       ]
     },
     {
-      "id": 22,
+      "id": 23,
       "name": "Audio",
       "schema": "og.Audio",
       "module": "audio",
@@ -9730,7 +9815,7 @@
       ]
     },
     {
-      "id": 23,
+      "id": 24,
       "name": "Story",
       "schema": "og.Story",
       "module": "story",
@@ -9756,7 +9841,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 25,
       "name": "PlatformGrants",
       "schema": "og.PlatformGrants",
       "module": "platform",
@@ -9770,7 +9855,7 @@
       ]
     },
     {
-      "id": 25,
+      "id": 26,
       "name": "Lockstep",
       "schema": "og.Lockstep",
       "module": "net",
@@ -9830,7 +9915,7 @@
       ]
     },
     {
-      "id": 26,
+      "id": 27,
       "name": "ArtPalette",
       "schema": "og.ArtPalette",
       "module": "art",
@@ -9869,7 +9954,7 @@
       ]
     },
     {
-      "id": 27,
+      "id": 28,
       "name": "ArtPixels",
       "schema": "og.ArtPixels",
       "module": "art",
@@ -9908,7 +9993,7 @@
       ]
     },
     {
-      "id": 28,
+      "id": 29,
       "name": "ArtTexels",
       "schema": "og.ArtTexels",
       "module": "art",
@@ -9936,7 +10021,7 @@
       ]
     },
     {
-      "id": 29,
+      "id": 30,
       "name": "ArtShape",
       "schema": "og.ArtShape",
       "module": "art",
@@ -9979,7 +10064,7 @@
       ]
     },
     {
-      "id": 30,
+      "id": 31,
       "name": "ArtLine",
       "schema": "og.ArtLine",
       "module": "art",
@@ -10016,7 +10101,7 @@
       ]
     },
     {
-      "id": 31,
+      "id": 32,
       "name": "ArtMotion",
       "schema": "og.ArtMotion",
       "module": "art",
@@ -10039,7 +10124,7 @@
       ]
     },
     {
-      "id": 32,
+      "id": 33,
       "name": "ArtCamera",
       "schema": "og.ArtCamera",
       "module": "art",

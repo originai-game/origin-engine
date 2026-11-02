@@ -611,6 +611,12 @@ impl Renderer {
             },
             None => EnvironmentKey::Sky(*sky),
         };
+        // The first frame with clouds draws their noise and makes the sky
+        // group again with it.
+        if scene.clouds.is_some() && !self.cloud_noise.made {
+            self.cloud_noise.make(&self.device, &self.queue);
+            self.environment = None;
+        }
         if self.environment.as_ref().is_some_and(|(k, ..)| *k == key) {
             return;
         }
@@ -667,7 +673,11 @@ impl Renderer {
             &self.device,
             "sky",
             &self.sky_layout,
-            &[wgpu::BindingResource::TextureView(&ibl.sky)],
+            &[
+                wgpu::BindingResource::TextureView(&ibl.sky),
+                wgpu::BindingResource::TextureView(&self.cloud_noise.view),
+                wgpu::BindingResource::Sampler(&self.cloud_noise.sampler),
+            ],
         );
         self.environment = Some((key, group, sky_group, reflection_group));
     }

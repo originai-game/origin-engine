@@ -177,6 +177,9 @@ pub struct RenderScene {
     pub overlay: Option<Overlay>,
     /// Fog over the main pass (`None`: none).
     pub fog: Option<crate::Fog>,
+    /// Clouds in the procedural sky (`clouds.rs`; `None`: none). Drawn
+    /// only with [`crate::Background::Procedural`].
+    pub clouds: Option<crate::Clouds>,
     /// Fog lit as a participating medium (`volumetric.rs`; `None`: none).
     /// It replaces [`RenderScene::fog`] over the frame while it is set
     /// (and [`crate::RenderQuality::volumetric_fog`] lets it).

@@ -101,6 +101,7 @@ impl RenderScene {
             skinned_instances: Vec::new(),
             overlay: None,
             fog: None,
+            clouds: None,
             volumetric_fog: None,
             quality: crate::RenderQuality::default(),
             baked: crate::BakedLighting::default(),

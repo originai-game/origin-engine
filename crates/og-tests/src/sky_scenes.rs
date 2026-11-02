@@ -5,8 +5,8 @@
 use crate::atmo_scenes::{colonnade, colonnade_camera};
 use glam::Vec3;
 use og_render::{
-    Background, Bloom, DirectionalLight, Environment, Fog, PhysicalAtmosphere, ProceduralSky,
-    RenderScene, day_night,
+    Background, Bloom, Clouds, DirectionalLight, Environment, Fog, PhysicalAtmosphere,
+    ProceduralSky, RenderScene, day_night,
 };
 
 /// The scenes of this module, in `SCENES` order.
@@ -15,6 +15,10 @@ pub const SKY_SCENES: &[&str] = &[
     "sky-physical-sunset",
     "sky-physical-twilight",
     "sky-physical-hazy",
+    "clouds-fair",
+    "clouds-overcast",
+    "clouds-sunset",
+    "clouds-gradient",
 ];
 
 /// The colonnade at `hours` under the physical sky of `air`, lit by the
@@ -60,10 +64,51 @@ pub fn physical_sky_scene(hours: f32, air: PhysicalAtmosphere, into_sun: bool) -
     scene
 }
 
+/// `scene` under `clouds`, the light dimmed by their cover as the runtime
+/// does, the camera tilted up to the sky.
+fn clouded(mut scene: RenderScene, clouds: Clouds) -> RenderScene {
+    let (sun, sky) = clouds.light();
+    scene.light.intensity *= sun;
+    scene.environment.intensity *= sky;
+    scene.clouds = Some(clouds);
+    scene.camera.target += Vec3::Y * 14.0;
+    scene
+}
+
 /// The scene called `name` of [`SKY_SCENES`].
 pub fn sky_scene(name: &str) -> RenderScene {
     let earth = PhysicalAtmosphere::EARTH;
     match name {
+        "clouds-fair" => clouded(
+            physical_sky_scene(11.0, earth, false),
+            Clouds {
+                coverage: 0.4,
+                ..Clouds::default()
+            },
+        ),
+        "clouds-overcast" => clouded(
+            physical_sky_scene(13.0, earth, false),
+            Clouds {
+                coverage: 0.95,
+                density: 0.06,
+                color: Vec3::splat(0.8),
+                base: 900.0,
+                layer: 0.0,
+                ..Clouds::default()
+            },
+        ),
+        "clouds-sunset" => clouded(
+            physical_sky_scene(17.7, earth, true),
+            Clouds {
+                coverage: 0.5,
+                layer: 0.6,
+                ..Clouds::default()
+            },
+        ),
+        "clouds-gradient" => clouded(
+            crate::atmo_scenes::day_night_scene(10.5, false),
+            Clouds::default(),
+        ),
         "sky-physical-noon" => physical_sky_scene(12.5, earth, false),
         "sky-physical-sunset" => physical_sky_scene(17.85, earth, true),
         "sky-physical-twilight" => physical_sky_scene(18.45, earth, true),

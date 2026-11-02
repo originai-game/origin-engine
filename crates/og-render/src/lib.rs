@@ -67,6 +67,7 @@ mod atmosphere;
 mod auto_quality;
 mod blue_noise;
 mod capture;
+mod clouds;
 mod clusters;
 mod compact;
 mod cull_gpu;
@@ -168,6 +169,7 @@ pub use auto_quality::{AutoQuality, AutoQualityBounds, FrameSample};
 pub use capture::{
     BACKLOG_TIMEOUT, CAPTURE_TIMEOUT, CaptureRequest, capture_timeouts, png, png_best,
 };
+pub use clouds::Clouds;
 pub use clusters::{CLUSTER_GRID, MAX_CLUSTER_LIGHTS};
 pub use custom::{FULL_SHADER_ENTRIES, example as example_full_shader};
 pub use effects::*;
@@ -324,6 +326,8 @@ pub struct Renderer {
     trilinear_sampler: wgpu::Sampler,
     frame_layout: wgpu::BindGroupLayout,
     sky_layout: wgpu::BindGroupLayout,
+    /// The clouds' noise volume, bound in the sky group (`clouds.rs`).
+    cloud_noise: clouds::CloudNoise,
     material_layout: wgpu::BindGroupLayout,
     sprite_layout: wgpu::BindGroupLayout,
     frame_buffer: wgpu::Buffer,

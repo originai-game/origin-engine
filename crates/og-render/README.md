@@ -2235,6 +2235,21 @@ air and the fog's colour (the sky's cosine-weighted mean). The brightness
 is scaled so the sky's mean irradiance at noon matches the gradient
 sky's. Frames: `sky-physical-noon`, `-sunset`, `-twilight`, `-hazy`.
 
+**Clouds** (`clouds.rs`, `shaders/clouds_noise.wgsl`, `sky.wgsl`'s
+`clouds_over`): `RenderScene::clouds` draws, over the procedural sky, a
+volumetric cumulus layer raymarched between two shells around the planet
+(48 steps by default, jittered per pixel and tick; five light samples
+towards the frame's directional light with three octaves of Wrenninge's
+multiple scattering, a two-lobe Henyey–Greenstein phase, the irradiance
+cube as ambient) and a streaked cirrus layer above it, faded into the sky
+with distance. Their shapes come from a 64³ tiling noise volume
+(Perlin–Worley, Worley detail, coverage), made by one compute pass the
+first frame with clouds; until then the sky group binds a 1³ placeholder.
+The wind moves them by the tick's clock (the offset wraps at four tiles).
+They are not in the image-based light; `Clouds::light` is how much their
+cover dims the sun and the sky, which the runtime applies. Frames:
+`clouds-fair`, `-overcast`, `-sunset`, `-gradient`.
+
 ## Reflection probe faces
 
 A due capture draws six faces (`probes.rs`, `lib.rs`'s probe pass; the

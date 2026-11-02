@@ -15554,6 +15554,108 @@ export interface PhysicalSky {
 }
 
 /**
+ * Clouds in the procedural sky: a volumetric layer of cumulus raymarched through a curved shell over the planet, lit by the first DirectionalLight (shadowed within themselves, with multiple scattering: bright tops, dark bases, silver edges against the sun) and the sky's light, faded into the sky with distance; and a thin, streaked high layer (cirrus) above. The wind carries them with the tick's clock, so they look the same on every run and after a restore. They are drawn over the procedural sky (og.Sky, og.DayNight or og.PhysicalSky; alone they bring the built-in procedural sky with them) and dim the sun and the sky's light by their cover (an overcast sky lets a fifth of the sun through). Visual only: nothing in the simulation reads them.
+ *
+ * The `Clouds` resource (token `og.Clouds`).
+ */
+export interface Clouds {
+  /** Draw the clouds. */
+  enabled: boolean;
+  /**
+   * How much of the sky the cumulus covers: 0 none, 0.3 fair weather, 0.6 broken, 1 overcast.
+   *
+   * @default 0.45
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  coverage: number;
+  /**
+   * How thick they are per metre (0.04: cumulus; 0.01: thin and translucent; 0.08: dense storm cloud).
+   *
+   * @default 0.04
+   * @range 0..0.5
+   * @tunable
+   */
+  density: number;
+  /**
+   * The height of the cloud base above the world's y 0.
+   *
+   * @default 1500
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  base: number;
+  /**
+   * How tall the layer is (0: no cumulus, only the high layer).
+   *
+   * @default 1800
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  thickness: number;
+  /**
+   * The size of the largest cloud shapes.
+   *
+   * @default 9000
+   * @range 500..200000
+   * @unit m (metres)
+   * @tunable
+   */
+  scale: number;
+  /**
+   * How fast the wind carries them (x and z; y slowly turns their shapes over).
+   *
+   * @default { x: 12, y: 0.4, z: 4 }
+   * @unit mps (metres per second)
+   * @tunable
+   */
+  wind: Vector3;
+  /**
+   * Their albedo: white for fair-weather clouds, a grey for rain clouds.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  color: Color;
+  /**
+   * How much fine noise erodes their edges (0: smooth blobs, 1: wispy).
+   *
+   * @default 0.35
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  detail: number;
+  /**
+   * The high thin layer's cover (0: none).
+   *
+   * @default 0.3
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  layer: number;
+  /**
+   * The high layer's height (kept above the cumulus).
+   *
+   * @default 8000
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  layerAltitude: number;
+  /**
+   * Samples along each view ray through the cumulus: more is smoother and costs more.
+   *
+   * @default 48
+   * @range 8..256
+   */
+  steps: number;
+}
+
+/**
  * A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence) and dimmed sunlight. Particles are simulated by the renderer from the tick, so they look the same on every run; they never touch the simulation.
  *
  * The `Weather` resource (token `og.Weather`).
@@ -50316,6 +50418,10 @@ export declare namespace og {
    * A physical sky: sunlight scattered by the air (Rayleigh: the blue overhead, the red sunsets) and by haze (Mie: the white glow around the sun), with ozone keeping the twilight zenith blue, in a spherical atmosphere of Earth's proportions with multiple scattering (Hillaire 2020). It replaces the gradient of og.Sky and og.DayNight, and the image-based light follows it. With og.DayNight enabled the cycle also takes its light from it: the sun's colour is the light that crosses the air (white at noon, orange then red as it sets, gone below the horizon), the ambient light the scattered sky, and the fog's colour the sky's horizon; `get:og.DayNight` answers those. With og.Sky enabled, og.Sky's sun direction, disc, stars, moon and brightness are drawn through the air. Alone it draws the sky towards the first DirectionalLight. Visual only: drawn from the tick, never written to the world.
    */
   const PhysicalSky: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly haze: FieldSpec<"f32">; readonly airDensity: FieldSpec<"f32">; readonly ozone: FieldSpec<"f32">; readonly groundAlbedo: FieldSpec<"Color">; readonly altitude: FieldSpec<"f32">; readonly night: FieldSpec<"Color"> }, PhysicalSky>;
+  /**
+   * Clouds in the procedural sky: a volumetric layer of cumulus raymarched through a curved shell over the planet, lit by the first DirectionalLight (shadowed within themselves, with multiple scattering: bright tops, dark bases, silver edges against the sun) and the sky's light, faded into the sky with distance; and a thin, streaked high layer (cirrus) above. The wind carries them with the tick's clock, so they look the same on every run and after a restore. They are drawn over the procedural sky (og.Sky, og.DayNight or og.PhysicalSky; alone they bring the built-in procedural sky with them) and dim the sun and the sky's light by their cover (an overcast sky lets a fifth of the sun through). Visual only: nothing in the simulation reads them.
+   */
+  const Clouds: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly coverage: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly base: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly scale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly color: FieldSpec<"Color">; readonly detail: FieldSpec<"f32">; readonly layer: FieldSpec<"f32">; readonly layerAltitude: FieldSpec<"f32">; readonly steps: FieldSpec<"u32"> }, Clouds>;
   /**
    * A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence) and dimmed sunlight. Particles are simulated by the renderer from the tick, so they look the same on every run; they never touch the simulation.
    */

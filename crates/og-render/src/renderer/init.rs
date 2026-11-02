@@ -290,7 +290,12 @@ impl Renderer {
         // sixteen (the downlevel limits the device is asked for).
         let sky_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("sky"),
-            entries: &[texture_entry(0, true, wgpu::TextureViewDimension::Cube)],
+            entries: &[
+                texture_entry(0, true, wgpu::TextureViewDimension::Cube),
+                // The clouds' noise volume and its repeating sampler (clouds.rs).
+                texture_entry(1, true, wgpu::TextureViewDimension::D3),
+                sampler_entry(2, wgpu::SamplerBindingType::Filtering),
+            ],
         });
         let material_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("material"),
@@ -564,6 +569,7 @@ impl Renderer {
         let sky_pipeline = sky_state("fs_sky");
         let sky_look_pipeline = sky_state("fs_sky_look");
         let ibl = ibl::IblGenerator::new(&device);
+        let cloud_noise = clouds::CloudNoise::placeholder(&device, &queue);
         let water =
             water::WaterRenderer::new(&device, &frame_layout, FRAME_WGSL, LIGHTING_WGSL, samples);
         let metaballs =
@@ -862,6 +868,7 @@ impl Renderer {
             trilinear_sampler,
             frame_layout,
             sky_layout,
+            cloud_noise,
             material_layout,
             sprite_layout,
             frame_buffer,

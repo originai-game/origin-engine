@@ -32,6 +32,7 @@ pub(crate) struct AtmoLayouts {
     fog: Option<Layout>,
     sky: Option<Layout>,
     physical_sky: Option<Layout>,
+    clouds: Option<Layout>,
     day_night: Option<Layout>,
     weather: Option<Layout>,
     wind: Option<Layout>,
@@ -56,6 +57,7 @@ impl AtmoLayouts {
             fog: get("og.Fog"),
             sky: get("og.Sky"),
             physical_sky: get("og.PhysicalSky"),
+            clouds: get("og.Clouds"),
             day_night: get("og.DayNight"),
             weather: get("og.Weather"),
             wind: get("og.Wind"),
@@ -354,6 +356,36 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         if on(&d, "tintFog", true) {
             fog_tint = Some(look.fog_color);
         }
+    }
+
+    // Clouds over the procedural sky (they bring the built-in one when no
+    // sky resource drew it), dimming the light by their cover.
+    scene.clouds = resource(world, layouts.clouds.as_ref())
+        .filter(|c| on(c, "enabled", false))
+        .map(|c| og_render::Clouds {
+            coverage: f(&c, "coverage", 0.45),
+            density: f(&c, "density", 0.04),
+            base: f(&c, "base", 1500.0),
+            thickness: f(&c, "thickness", 1800.0),
+            scale: f(&c, "scale", 9000.0),
+            wind: super::fx::vec3(&c["wind"]),
+            color: color(&c["color"], Vec3::ONE),
+            detail: f(&c, "detail", 0.35),
+            layer: f(&c, "layer", 0.3),
+            layer_altitude: f(&c, "layerAltitude", 8000.0),
+            steps: u(&c, "steps", 48),
+        });
+    if let Some(c) = &scene.clouds {
+        if !matches!(scene.environment.background, Background::Procedural { .. }) {
+            let dir = scene.light.direction_to_light.normalize_or(Vec3::Y);
+            scene.environment.background = Background::Procedural {
+                sun_direction: dir,
+                sun_color: scene.environment.sky.sun_color,
+            };
+        }
+        let (sun, sky) = c.light();
+        scene.light.intensity *= sun;
+        scene.environment.intensity *= sky;
     }
 
     // Fog, declared or from the weather.

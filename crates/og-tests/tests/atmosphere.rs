@@ -562,7 +562,7 @@ fn a_replaced_mesh_draws_its_new_shape() {
 #[test]
 fn physical_sky_scenes_match_their_references_and_read_as_sky() {
     use og_tests::sky_scenes::{SKY_SCENES, sky_scene};
-    for scene in SKY_SCENES {
+    for scene in SKY_SCENES.iter().filter(|s| s.starts_with("sky-")) {
         check(scene);
     }
     let rgb = |img: &RgbaImage, x0: u32, y0: u32, x1: u32, y1: u32| {
@@ -600,4 +600,35 @@ fn physical_sky_scenes_match_their_references_and_read_as_sky() {
         blueness(h) < blueness(top),
         "haze pales the sky: {h:?} vs {top:?}"
     );
+}
+
+/// R4's clouds: each frame matches its reference; fair-weather cumulus
+/// break up the blue (much more variation across the upper sky than the
+/// clear noon sky has); an overcast sky is grey (little blue over red) and
+/// darker on the ground than the fair one; the clouds over the sunset are
+/// lit warm.
+#[test]
+fn cloud_scenes_match_their_references_and_read_as_clouds() {
+    use og_tests::sky_scenes::{SKY_SCENES, sky_scene};
+    for scene in SKY_SCENES.iter().filter(|s| s.starts_with("clouds-")) {
+        check(scene);
+    }
+    let clear = frame(&sky_scene("sky-physical-noon"));
+    let fair = frame(&sky_scene("clouds-fair"));
+    assert!(
+        contrast(&fair, 120, 0, 1160, 160) > 2.0 * contrast(&clear, 120, 0, 1160, 160),
+        "cumulus break up the sky: {} vs {}",
+        contrast(&fair, 120, 0, 1160, 160),
+        contrast(&clear, 120, 0, 1160, 160)
+    );
+    let overcast = frame(&sky_scene("clouds-overcast"));
+    let top = px(&overcast, 640, 30);
+    assert!(top[2] - top[0] < 25.0, "overcast is grey: {top:?}");
+    assert!(
+        mean(&overcast, 400, 560, 880, 700) < mean(&fair, 400, 560, 880, 700),
+        "and darker on the ground"
+    );
+    let sunset = frame(&sky_scene("clouds-sunset"));
+    let warm = px(&sunset, 640, 200);
+    assert!(warm[0] > warm[2], "the sunset clouds are warm: {warm:?}");
 }

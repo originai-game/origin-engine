@@ -177,6 +177,8 @@ pub(crate) struct AtmosphereGpu {
     /// The physical sky's block (`PhysicalAtmosphere::gpu`; zero: the
     /// gradient), read by `sky_scatter.wgsl` as `frame.sky_scatter`.
     pub scatter: [[f32; 4]; crate::sky_physical::SCATTER_VEC4S],
+    /// The clouds' block (`Clouds::gpu`; zero: none), `frame.clouds`.
+    pub clouds: [[f32; 4]; crate::clouds::CLOUD_VEC4S],
 }
 
 impl AtmosphereGpu {
@@ -184,6 +186,7 @@ impl AtmosphereGpu {
     pub(crate) fn new(
         fog: Option<&Fog>,
         sky: Option<(&SkyLook, Vec3, Vec3)>,
+        clouds: Option<&crate::Clouds>,
         tick: u64,
         rate: f32,
     ) -> AtmosphereGpu {
@@ -222,6 +225,13 @@ impl AtmosphereGpu {
             }
         }
         let rate = if rate > 0.0 { rate } else { 60.0 };
+        // Clouds belong to the procedural sky the sky pass draws per pixel.
+        if let (Some(c), Some((look, ..))) = (clouds, sky) {
+            let radius = look
+                .physical
+                .map_or(6_360_000.0, |p| p.planet_radius.clamp(10.0, 1.0e5) * 1000.0);
+            a.clouds = c.gpu(tick as f64 / f64::from(rate), radius);
+        }
         // Seconds wrap every 2^16 ticks so f32 keeps sub-tick precision.
         a.time = [(tick % 65536) as f32 / rate, tick as f32, rate, 0.0];
         a
