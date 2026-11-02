@@ -689,8 +689,10 @@ earlier build; a build that fails after replacing it removes what it wrote.
   has already visited also plays offline.
   The install hint appears only when the criteria hold: not framed, not
   installed, a manifest and a service worker, and either Chromium's
-  `beforeinstallprompt` (an Install button) or iOS Safari (Share, then Add to
-  Home Screen); "Not now" is remembered.
+  `beforeinstallprompt` (an Install button, which calls the event's
+  `prompt()`) or iOS Safari (Share, then Add to Home Screen); "Not now" is
+  remembered. Chromium fires the event once, often before the engine has
+  booted, so a script in `index.html`'s head keeps it for the shell.
 - **Language**: the shell's own words (loading, the gate, the error card,
   the install hint) are Chinese when `navigator.language` is `zh*`, else
   English.

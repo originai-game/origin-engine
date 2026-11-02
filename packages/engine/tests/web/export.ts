@@ -95,6 +95,12 @@ for (const game of ["runner", "match3"]) {
 // store for its best on its first tick, so a second tick applies the answer; match3 asks nothing.
 const BEHIND_GATE: Record<string, number> = { runner: 2, match3: 1 };
 
+// What the test sees of Chrome's install prompt, from the document's start: whether Chrome
+// fired beforeinstallprompt, and the prompt() calls the page made on it.
+const INSTALL_PROBE = "window.__ogTest = { prompted: false, prompts: 0 }; addEventListener('beforeinstallprompt', () => { __ogTest.prompted = true; }); if (window.BeforeInstallPromptEvent) { const p = BeforeInstallPromptEvent.prototype.prompt; BeforeInstallPromptEvent.prototype.prompt = function () { __ogTest.prompts++; const r = p.call(this); r.catch(() => {}); return r; }; }";
+const HINT = "({ ...__ogTest, hidden: document.getElementById('og-install').hidden, text: document.querySelector('#og-install span').textContent, button: document.querySelector('#og-install button').hidden ? null : document.querySelector('#og-install button').textContent })";
+type Hint = { prompted: boolean; prompts: number; hidden: boolean; text: string; button: string | null };
+
 const results: Record<string, unknown> = {};
 const browser = await Browser.launch({ chrome });
 
@@ -148,9 +154,11 @@ try {
     const dist = builds["runner"]!.dist;
     const server = serve({ dist, isolate: true, throttle: 1_200_000 });
     const log: string[] = [];
-    const page = await browser.open(`http://127.0.0.1:${server.port}/game/index.html`, log);
+    const page = await browser.open("about:blank", log);
     const boot: Record<string, unknown> = {};
     try {
+      await page.send("Page.addScriptToEvaluateOnNewDocument", { source: INSTALL_PROBE });
+      await page.send("Page.navigate", { url: `http://127.0.0.1:${server.port}/game/index.html` });
       await page.until("document.querySelector('.og-boot-mark')", 10_000);
       const motion0 = await page.eval<string>("document.querySelector('.og-boot-mark').dataset.motion");
       boot.splash = save("runner-boot-splash.png", await page.screenshot());
@@ -175,6 +183,18 @@ try {
       check(wm.display === "standalone" && wm.icons.some((i) => i.sizes === "512x512"), "the web manifest is standalone with a 512 px icon", wm);
       const icons = await page.eval<number[]>(`Promise.all(${JSON.stringify(wm.icons.map((i) => i.src))}.map((s) => fetch(s).then((r) => r.status)))`);
       check(icons.every((s) => s === 200), "the manifest's icons are served", icons);
+      // Desktop Chrome prompts (it did before the shell booted): the hint offers Install, and its
+      // button calls the prompt the page kept. Where Chrome makes no prompt, no hint.
+      const prompted = await page.eval<boolean>("__ogTest.prompted");
+      const hint = await page.until<Hint>(`(() => { const h = ${HINT}; return h.hidden !== h.prompted && h; })()`, 30_000).catch(() => page.eval<Hint>(HINT));
+      check(prompted ? !hint.hidden && hint.button === "Install" : hint.hidden, `desktop: ${prompted ? "Chrome prompted: the install hint offers Install" : "Chrome made no install prompt: no hint"}`, hint);
+      if (prompted && !hint.hidden) {
+        boot.installHint = save("runner-install-hint.png", await page.screenshot());
+        const at = await page.eval<{ x: number; y: number }>("(() => { const r = document.querySelector('#og-install button').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()");
+        await page.click(at.x, at.y);
+        const after = await page.until<Hint>(`(() => { const h = ${HINT}; return h.prompts > 0 && h; })()`, 30_000).catch(() => page.eval<Hint>(HINT));
+        check(after.prompts === 1 && after.hidden, "desktop: the hint's Install button shows Chrome's install prompt and hides the hint", after);
+      }
       const sw = await page.until<string>("navigator.serviceWorker.ready.then((r) => r.active && r.active.state)", 30_000);
       await page.until<boolean>("caches.keys().then((k) => k.some((n) => n.startsWith('og-')))", 30_000);
       const cached = await page.eval<number>("caches.keys().then((k) => caches.open(k.find((n) => n.startsWith('og-')))).then((c) => c.keys()).then((k) => k.length)");
@@ -225,8 +245,7 @@ try {
     try {
       await page.send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 3, mobile: true });
       await page.send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
-      // Whether Chrome made its install prompt, seen from the document's start (before the shell listens).
-      await page.send("Page.addScriptToEvaluateOnNewDocument", { source: "window.__ogInstallPrompt = false; addEventListener('beforeinstallprompt', () => { window.__ogInstallPrompt = true; });" });
+      await page.send("Page.addScriptToEvaluateOnNewDocument", { source: INSTALL_PROBE });
       await page.send("Page.navigate", { url: `http://127.0.0.1:${server.port}/game/index.html` });
       const phone = await load(page);
       check(!phone.lanes.on && /not cross-origin isolated/.test(phone.lanes.why), "phone: without isolation, the single-threaded engine says why", phone.lanes);
@@ -236,10 +255,10 @@ try {
       check(size.cssW === 390 && size.cssH === 844, "phone: the canvas fills 390×844", size);
       check(size.w === 780 && size.h === 1688, "phone: drawn at the DPR cap of 2 (780×1688), not 3", size);
       check(!size.iso && size.button === "Tap to play", "phone: without isolation, a touch gate", size);
-      // The shell listens for beforeinstallprompt once it has booted (installPwa); whether Chrome
-      // prompted, and when, is in the detail (headless Chrome prompts before the shell listens).
-      const install = await page.eval<{ hidden: boolean; prompted: boolean }>("({ hidden: document.getElementById('og-install').hidden, prompted: window.__ogInstallPrompt })");
-      check(install.hidden, "phone: no install hint behind the gate (not iOS Safari)", install);
+      // A phone is no different (docs/web-export.md §The shell): where Chrome prompts, the hint
+      // offers Install over the gate; where it does not, no hint (and this is not iOS Safari).
+      const install = await page.until<Hint>(`(() => { const h = ${HINT}; return h.hidden !== h.prompted && h; })()`, 30_000).catch(() => page.eval<Hint>(HINT));
+      check(install.prompted ? !install.hidden && install.button === "Install" : install.hidden, `phone: ${install.prompted ? "Chrome prompted: the install hint offers Install" : "Chrome made no install prompt: no hint"}`, install);
       const gate = save("match3-phone-gate.png", await page.screenshot());
       const before = await page.eval<number>("__runtime_probe__.tick()");
       await page.tap(195, 422);

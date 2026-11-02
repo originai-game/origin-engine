@@ -477,7 +477,11 @@ export function aspectRatio(aspect: string | null): number | null {
 
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
-/** index.html: the shell's markup with its CSS, marks and configuration inlined. */
+/**
+ * index.html: the shell's markup with its CSS, marks and configuration inlined. With a
+ * manifest, a script in the head keeps Chromium's beforeinstallprompt, which fires before
+ * the shell's module has booted (shell/page.ts installPwa offers it).
+ */
 export function pageHtml(o: { settings: ProjectSettings; publish: boolean; config: Record<string, unknown>; icon: string; pwa: boolean }): string {
   const css = [shellTokens(), motionSubset(SHELL_MOTIONS), readFileSync(join(SHELL_DIR, "shell.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\n\s*/g, "\n").trim()].join("\n");
   // `<` cannot appear in the JSON's strings unescaped, so the script element cannot be closed early.
@@ -501,7 +505,7 @@ export function pageHtml(o: { settings: ProjectSettings; publish: boolean; confi
 <title>${title}</title>
 <link rel="icon" href="./${o.icon}">
 <link rel="apple-touch-icon" href="./${o.icon}">
-${o.pwa ? '<link rel="manifest" href="./manifest.webmanifest">\n' : ""}<link rel="modulepreload" href="./play.js">
+${o.pwa ? '<link rel="manifest" href="./manifest.webmanifest">\n<script>addEventListener("beforeinstallprompt",function(e){e.preventDefault();window.__ogInstallPrompt=e})</script>\n' : ""}<link rel="modulepreload" href="./play.js">
 <style>
 ${css}
 </style>

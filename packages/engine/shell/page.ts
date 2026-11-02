@@ -853,10 +853,9 @@ async function installPwa(framed: boolean, log: LogTail, booted: readonly string
   };
   no?.addEventListener("click", dismiss);
   if (no) no.textContent = T.dismiss;
-  // Chromium: the browser decides the criteria hold and fires beforeinstallprompt.
-  addEventListener("beforeinstallprompt", (e) => {
-    e.preventDefault();
-    const prompt = e as Event & { prompt(): Promise<void> };
+  // Chromium: the browser decides the criteria hold and fires beforeinstallprompt, often
+  // before the engine has booted: index.html's head keeps that event in `__ogInstallPrompt`.
+  const offer = (prompt: Event & { prompt(): Promise<void> }) => {
     if (text) text.textContent = T.install;
     if (act) {
       act.hidden = false;
@@ -867,6 +866,12 @@ async function installPwa(framed: boolean, log: LogTail, booted: readonly string
       };
     }
     hint.hidden = false;
+  };
+  const early = (window as { __ogInstallPrompt?: Event & { prompt(): Promise<void> } }).__ogInstallPrompt;
+  if (early) offer(early);
+  addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    offer(e as Event & { prompt(): Promise<void> });
   });
   // iOS Safari has no prompt: the hint names the Share sheet.
   const ua = navigator.userAgent;
