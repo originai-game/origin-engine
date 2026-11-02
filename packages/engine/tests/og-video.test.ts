@@ -257,7 +257,7 @@ test.skipIf(!hasFfmpeg)("a streamed video's sound stays with its picture through
     const [p1, p2] = [dump("p1.json"), dump("p2.json")];
     expect(p2["og.VideoPlayer"]!.frame).toBe(p1["og.VideoPlayer"]!.frame);
     expect(p2["og.AudioSource"]!.playing).toBe(false);
-    expect(p2["og.AudioPlayback"]).toBeUndefined();
+    expect(p2["og.AudioPlayback"] === undefined).toBe(true);
 
     const resumed = dump("resumed.json");
     expect(resumed["og.AudioSource"]!.playing).toBe(true);
