@@ -2,11 +2,17 @@
 //! Escape), gamepad (d-pad, left stick with repeat, A, B) and queued
 //! intents move one focus between last frame's focusable controls.
 //!
+//! - An element's **explicit moves** ([`crate::NavLinks`]) come first.
 //! - **Next/Prev** walk the controls in reading (draw) order and wrap.
 //! - **Directions** pick the nearest control whose centre lies that way,
 //!   scoring the distance along the direction plus three times the gap
 //!   across it (so the control in the same row or column wins); with none,
 //!   focus wraps to the far end of the same row or column.
+//! - Inside a **focus group** ([`crate::FocusGroup`]) a direction picks
+//!   among the group's members first; at its edge a wrapping group goes
+//!   round inside itself, any other leaves it for the nearest control
+//!   outside that way (the group around it first) and stays put with none.
+//!   Focus coming into a group that remembers lands on its last member.
 //! - A dialog or open menu is a **scope**: while it is the topmost, focus
 //!   stays inside it, and it takes Back.
 //! - Navigation that lands on a control outside its scroll container's view
@@ -18,6 +24,12 @@ use crate::ui::{HIT_ADJUST, HIT_MULTILINE, HIT_NAV, HIT_TEXT, Hit, Ui};
 
 /// The control nearest `from` in direction `dir` among `cands`, wrapping.
 pub(crate) fn neighbour(from: &Rect, cands: &[(u64, Rect)], dir: Nav) -> Option<u64> {
+    neighbour_in(from, cands, dir, false).or_else(|| neighbour_in(from, cands, dir, true))
+}
+
+/// The nearest control that way (`wrap` false), or the farthest the other
+/// way, in the same row or column first (`wrap` true).
+fn neighbour_in(from: &Rect, cands: &[(u64, Rect)], dir: Nav, wrap: bool) -> Option<u64> {
     let (fx, fy) = from.center();
     // (along, across): along > 0 is in the direction.
     let axes = |r: &Rect| -> (f32, f32) {
@@ -33,20 +45,8 @@ pub(crate) fn neighbour(from: &Rect, cands: &[(u64, Rect)], dir: Nav) -> Option<
     let mut best: Option<(f32, u64)> = None;
     for (k, r) in cands {
         let (along, across) = axes(r);
-        if along > 0.5 {
-            let score = along + 3.0 * across;
-            if best.is_none_or(|(s, _)| score < s) {
-                best = Some((score, *k));
-            }
-        }
-    }
-    if best.is_some() {
-        return best.map(|b| b.1);
-    }
-    // Wrap: the farthest the other way, in the same row or column first.
-    for (k, r) in cands {
-        let (along, across) = axes(r);
-        if along < -0.5 {
+        let ok = if wrap { along < -0.5 } else { along > 0.5 };
+        if ok {
             let score = along + 3.0 * across;
             if best.is_none_or(|(s, _)| score < s) {
                 best = Some((score, *k));
@@ -56,7 +56,112 @@ pub(crate) fn neighbour(from: &Rect, cands: &[(u64, Rect)], dir: Nav) -> Option<
     best.map(|b| b.1)
 }
 
+/// A move's slot in [`crate::NavLinks`] and the UI state's links.
+fn link_slot(nav: Nav) -> Option<usize> {
+    match nav {
+        Nav::Up => Some(0),
+        Nav::Down => Some(1),
+        Nav::Left => Some(2),
+        Nav::Right => Some(3),
+        Nav::Next => Some(4),
+        Nav::Prev => Some(5),
+        _ => None,
+    }
+}
+
 impl Ui {
+    /// Where an explicit move to `target` (a control's or a group's key)
+    /// lands among `cands`: the control, or a group's remembered member
+    /// (with memory), else its first member on screen.
+    fn land(&self, target: u64, cands: &[Hit]) -> Option<u64> {
+        if cands.iter().any(|h| h.key == target) {
+            return Some(target);
+        }
+        let g = self.state.groups.get(&target)?;
+        if g.spec.memory && g.last != 0 && cands.iter().any(|h| h.key == g.last) {
+            return Some(g.last);
+        }
+        cands
+            .iter()
+            .find(|h| self.in_group(h.group, target))
+            .map(|h| h.key)
+    }
+
+    /// A spatial move's landing `k`, from `from`: focus coming into a
+    /// group that remembers (the outermost one entered) goes to its last
+    /// member instead.
+    fn enter_groups(&self, k: u64, from: &Hit, cands: &[Hit]) -> u64 {
+        let Some(to) = cands.iter().find(|h| h.key == k) else {
+            return k;
+        };
+        let mut g = to.group;
+        let mut pick = k;
+        while g != 0 {
+            let Some(gs) = self.state.groups.get(&g) else {
+                break;
+            };
+            if self.in_group(from.group, g) {
+                break;
+            }
+            if gs.spec.memory && gs.last != 0 && cands.iter().any(|h| h.key == gs.last) {
+                pick = gs.last;
+            }
+            g = gs.parent;
+        }
+        pick
+    }
+
+    /// The control a move `nav` from `cands[i]` lands on (`None`: it stays):
+    /// its explicit move, else within its focus groups, else spatially.
+    pub(crate) fn step_focus(&self, cands: &[Hit], i: usize, nav: Nav) -> Option<u64> {
+        let from = cands[i];
+        if let Some(slot) = link_slot(nav)
+            && let Some(links) = self.state.nav_links.get(&from.key)
+            && links[slot] != 0
+            && let Some(k) = self.land(links[slot], cands)
+        {
+            return Some(k);
+        }
+        if matches!(nav, Nav::Next | Nav::Prev) {
+            let n = cands.len();
+            return Some(if nav == Nav::Next {
+                cands[(i + 1) % n].key
+            } else {
+                cands[(i + n - 1) % n].key
+            });
+        }
+        let pick = |level: u64| -> Vec<(u64, Rect)> {
+            cands
+                .iter()
+                .filter(|h| h.key != from.key && self.in_group(h.group, level))
+                .map(|h| (h.key, h.full))
+                .collect()
+        };
+        if from.group == 0 {
+            return neighbour(&from.full, &pick(0), nav)
+                .map(|k| self.enter_groups(k, &from, cands));
+        }
+        // Inside groups: each level outwards, the root last; a wrapping
+        // group goes round inside itself, the root does not.
+        let mut level = from.group;
+        loop {
+            let set = pick(level);
+            if let Some(k) = neighbour_in(&from.full, &set, nav, false) {
+                return Some(self.enter_groups(k, &from, cands));
+            }
+            if level == 0 {
+                return None;
+            }
+            let g = self.state.groups.get(&level).copied().unwrap_or_default();
+            if g.spec.wrap
+                && let Some(k) = neighbour_in(&from.full, &set, nav, true)
+            {
+                return Some(self.enter_groups(k, &from, cands));
+            }
+            level = g.parent;
+        }
+    }
+
     /// This tick's intents: queued ones, then the keyboard, then the gamepad.
     pub(crate) fn intents(&mut self, input: &InputFrame) -> Vec<Nav> {
         // Moves queued while the focus was on nothing: the first puts it on
@@ -262,18 +367,8 @@ impl Ui {
                 }
                 (Nav::Next, None) => Some(cands[0].key),
                 (Nav::Prev, None) => Some(cands[cands.len() - 1].key),
-                (Nav::Next, Some(i)) => Some(cands[(i + 1) % cands.len()].key),
-                (Nav::Prev, Some(i)) => Some(cands[(i + cands.len() - 1) % cands.len()].key),
                 (_, None) => Some(cands[0].key),
-                (dir, Some(i)) => {
-                    let from = cands[i].full;
-                    let others: Vec<(u64, Rect)> = cands
-                        .iter()
-                        .filter(|h| h.key != cands[i].key)
-                        .map(|h| (h.key, h.full))
-                        .collect();
-                    neighbour(&from, &others, dir)
-                }
+                (dir, Some(i)) => self.step_focus(&cands, i, dir),
             };
             if let Some(k) = next {
                 self.state.focus = k;
@@ -374,16 +469,7 @@ impl Ui {
                             .min_by(|a, b| d(a).total_cmp(&d(b)))
                             .map(|h| h.key)
                     }
-                    (Nav::Next, Some(i)) => Some(cands[(i + 1) % cands.len()].key),
-                    (Nav::Prev, Some(i)) => Some(cands[(i + cands.len() - 1) % cands.len()].key),
-                    (dir, Some(i)) => {
-                        let others: Vec<(u64, Rect)> = cands
-                            .iter()
-                            .filter(|h| h.key != cands[i].key)
-                            .map(|h| (h.key, h.full))
-                            .collect();
-                        neighbour(&cands[i].full, &others, dir)
-                    }
+                    (dir, Some(i)) => self.step_focus(&cands, i, dir),
                 };
                 if let Some(next) = next.filter(|&n| n != focus) {
                     self.state.pad_focus[k - 1] = next;

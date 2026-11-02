@@ -532,6 +532,7 @@ impl Ui {
             }
             self.state.focus_visible = false;
         }
+        self.recognize(&input, hot, grabbed.is_some());
         let intents = self.intents(&input);
         self.apply_nav(&intents);
         self.apply_a11y(&input.a11y);

@@ -229,6 +229,28 @@ const STEPS: &[&str] = &[
     "displayXl",
     "displayXl2",
 ];
+const CURSORS: &[&str] = &[
+    "auto",
+    "default",
+    "pointer",
+    "text",
+    "grab",
+    "grabbing",
+    "move",
+    "notAllowed",
+    "crosshair",
+    "help",
+    "wait",
+    "progress",
+    "resizeEw",
+    "resizeNs",
+    "resizeNesw",
+    "resizeNwse",
+    "zoomIn",
+    "zoomOut",
+    "none",
+];
+
 const ANCHORS: &[&str] = &[
     "topLeft",
     "top",
@@ -393,6 +415,56 @@ pub const PROPS: &[PropSpec] = &[
     p!("enter", Ty::Presence, "How it arrives."),
     p!("exit", Ty::Presence, "How it leaves."),
     p!("inert", Ty::Bool, "It and its subtree take no input."),
+    p!(
+        "navUp",
+        Ty::Name,
+        "Where Up moves the focus from it (a path)."
+    ),
+    p!("navDown", Ty::Name, "Where Down moves the focus from it."),
+    p!("navLeft", Ty::Name, "Where Left moves the focus from it."),
+    p!("navRight", Ty::Name, "Where Right moves the focus from it."),
+    p!("navNext", Ty::Name, "Where Tab moves the focus from it."),
+    p!(
+        "navPrev",
+        Ty::Name,
+        "Where Shift+Tab moves the focus from it."
+    ),
+    p!(
+        "focusGroup",
+        Ty::Word(&["stop", "wrap"]),
+        "Its focusable controls are a focus group that stops (leaves) or wraps at its edge."
+    ),
+    p!(
+        "focusMemory",
+        Ty::Bool,
+        "With focusGroup: focus coming back lands on its last member."
+    ),
+    p!("tap", Ty::Bool, "It recognises a tap (`on tap`)."),
+    p!(
+        "doubleTap",
+        Ty::Bool,
+        "It recognises a double tap (`on doubleTap`); its tap waits for it."
+    ),
+    p!(
+        "longPress",
+        Ty::Bool,
+        "It recognises a long press (`on longPress`)."
+    ),
+    p!(
+        "longPressMs",
+        Ty::Num,
+        "How long its long press is held, ms (0: 500)."
+    ),
+    p!(
+        "gesturePriority",
+        Ty::Num,
+        "Among nested recognisers of one press: higher wins."
+    ),
+    p!(
+        "cursor",
+        Ty::Word(CURSORS),
+        "The pointer's shape over it and its subtree."
+    ),
     p!(
         "reduced",
         Ty::Word(&["fade", "none", "keep"]),

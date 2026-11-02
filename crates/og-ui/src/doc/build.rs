@@ -504,6 +504,31 @@ impl Ui {
             p.exit = Some(e.clone());
         }
         p.inert = r.flag("inert");
+        let link = |name: &str| r.str(name).unwrap_or_default().to_string();
+        p.nav = crate::element::NavLinks {
+            up: link("navUp"),
+            down: link("navDown"),
+            left: link("navLeft"),
+            right: link("navRight"),
+            next: link("navNext"),
+            prev: link("navPrev"),
+        };
+        p.focus_group = r.str("focusGroup").map(|w| crate::element::FocusGroup {
+            wrap: w == "wrap",
+            memory: r.flag("focusMemory"),
+        });
+        let g = crate::element::GestureSpec {
+            tap: r.flag("tap"),
+            double_tap: r.flag("doubleTap"),
+            long_press: r.flag("longPress"),
+            long_press_ms: r.num("longPressMs").unwrap_or(0.0).max(0.0),
+            priority: r.num("gesturePriority").unwrap_or(0.0) as i32,
+            ..crate::element::GestureSpec::default()
+        };
+        p.gestures = g.any().then_some(g);
+        if let Some(c) = r.str("cursor").and_then(crate::element::Cursor::from_name) {
+            p.cursor = c;
+        }
         p.reduced = match r.str("reduced") {
             Some("fade") => Some(crate::Reduced::Fade),
             Some("none") => Some(crate::Reduced::None),

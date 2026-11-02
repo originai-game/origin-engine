@@ -452,6 +452,20 @@ the kinds'. Kinds: `column`, `row`, `stack`, `grid`, `panel`, `scroll`,
 | `enter` | presence | all | How it arrives. |
 | `exit` | presence | all | How it leaves. |
 | `inert` | bool | all | It and its subtree take no input. |
+| `navUp` | name | all | Where Up moves the focus from it (a path). |
+| `navDown` | name | all | Where Down moves the focus from it. |
+| `navLeft` | name | all | Where Left moves the focus from it. |
+| `navRight` | name | all | Where Right moves the focus from it. |
+| `navNext` | name | all | Where Tab moves the focus from it. |
+| `navPrev` | name | all | Where Shift+Tab moves the focus from it. |
+| `focusGroup` | stop \| wrap | all | Its focusable controls are a focus group that stops (leaves) or wraps at its edge. |
+| `focusMemory` | bool | all | With focusGroup: focus coming back lands on its last member. |
+| `tap` | bool | all | It recognises a tap (`on tap`). |
+| `doubleTap` | bool | all | It recognises a double tap (`on doubleTap`); its tap waits for it. |
+| `longPress` | bool | all | It recognises a long press (`on longPress`). |
+| `longPressMs` | number | all | How long its long press is held, ms (0: 500). |
+| `gesturePriority` | number | all | Among nested recognisers of one press: higher wins. |
+| `cursor` | auto \| default \| pointer \| text \| grab \| grabbing \| move \| notAllowed \| crosshair \| help \| wait \| progress \| resizeEw \| resizeNs \| resizeNesw \| resizeNwse \| zoomIn \| zoomOut \| none | all | The pointer's shape over it and its subtree. |
 | `reduced` | fade \| none \| keep | all | Its reduced-motion fallback. |
 | `text` | text | label, button, badge, toggle | What it says. |
 | `key` | name | label, button, badge, toggle | A string table key (og.i18n) its text comes from; `text` is the fallback. |
@@ -603,6 +617,38 @@ past half-way once, then after `motion.duration.slow` every
   scrolls it in (rows just outside a virtualised list are reachable).
 - `set_navigation(false)` turns arrows and Tab off for a gameplay screen whose
   keys move the player (the HUD templates do); an open scope turns it on.
+- **Explicit moves** (`Props::nav`, `NavLinks`): up, down, left, right,
+  next and prev, each a path (full, or a sibling's id), win over the
+  spatial pick; a path to a focus group lands on its remembered member,
+  one to another container on its first focusable control.
+- **Focus groups** (`Props::focus_group`, `FocusGroup { wrap, memory }`):
+  arrows move among a group's members first. At its edge a wrapping group
+  goes round inside itself; one that does not leaves for the nearest
+  control outside that way (the group around it first) and stays put when
+  there is none. With `memory`, focus coming back in lands on the member it
+  last had. Tab ignores groups (reading order).
+
+## Gestures and the cursor (`src/recognize.rs`)
+
+`Props::gestures` (`GestureSpec { tap, double_tap, long_press,
+long_press_ms (500), double_tap_ms (300), slop (10), priority }`) makes any
+element recognise a tap, a double tap and a long press, answered by
+`Response::{tapped, double_tapped, long_pressed, long_press}` (the last the
+held press's progress, 0–1), `Ui::gesture` and frame events (`tap`,
+`doubleTap`, `longPress`). One press is an arena of the recognisers at and
+around the pressed element: each gesture goes to the highest priority, the
+innermost of equals. A tap waits for a double tap only where one is
+declared; a long press that fires takes the press (its release clicks and
+taps nothing); travel past the slop fails both. Keys and pads tap a
+focused recogniser by activating it. The press, the waiting tap and the
+recognisers are UI state (`save_state` version 14).
+
+`Props::cursor` (`Cursor`, CSS names) sets the pointer's shape over an
+element and its subtree; `Auto` takes the parent's, and with none set a
+text control's I-beam, a draggable element's open hand (closed while held)
+or a link's hand. `UiFrame::cursor` is the resolved shape of what the press
+holds or the pointer is over; the frame answer carries it (`cursor`) and
+the web shell sets the canvas's CSS cursor from it (`og.ui.frameCursor`).
 
 `InputFrame::from_world` reads og-input's `og.Gamepad` (pad 0:
 `GamepadFrame::from_gamepad`, the press edges of the standard buttons and

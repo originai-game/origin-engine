@@ -971,6 +971,8 @@ pub trait UiApi: Wire {
     fn og_ui_breakpoint(&self) -> String;
     /// `og.ui.framePointer`
     fn og_ui_frame_pointer(&self) -> String;
+    /// `og.ui.frameCursor`
+    fn og_ui_frame_cursor(&self) -> String;
     /// `og.ui.frameViewport`
     fn og_ui_frame_viewport(&self) -> String;
     /// `og.ui.hasIcon`
@@ -1802,6 +1804,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_tooltip",
     "og_ui_breakpoint",
     "og_ui_frame_pointer",
+    "og_ui_frame_cursor",
     "og_ui_frame_viewport",
     "og_ui_has_icon",
     "og_ui_seconds",

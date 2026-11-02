@@ -135,6 +135,18 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
         (st.accumulator_ms, st.step_ms, st.render_ms)
     };
     let (text, copy) = text_entry(&eng);
+    // `cursor`: the pointer's shape the UI resolved (og.ui.frameCursor, a
+    // CSS cursor name): the web shell sets the canvas's, a native host
+    // with a window its own.
+    let cursor =
+        eng.state
+            .borrow()
+            .ui
+            .clone()
+            .map_or("default", |ui| match ui.lock().frame().cursor {
+                og_ui::Cursor::Auto => "default",
+                c => c.css(),
+            });
     let a11y = a11y_changed(&eng);
     let pointer_lock = eng
         .world()
@@ -165,6 +177,7 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
         "pending": probe.steps_left(), "pointerLock": pointer_lock,
         "maxFps": max_fps, "fullscreen": page["fullscreen"],
         "lowPower": page["lowPower"], "rawMouse": page["rawMouse"],
+        "cursor": cursor,
     });
     if let Some(c) = copy {
         answer["copy"] = json!(c);

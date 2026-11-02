@@ -43,6 +43,8 @@ impl Ui {
             }
             rect(&mut b, &h.local);
             rect(&mut b, &h.clip);
+            u64_(&mut b, h.group);
+            u64_(&mut b, h.gesture);
         }
         u64_(&mut b, s.tick);
         b.push(
@@ -168,6 +170,46 @@ impl Ui {
         b.push(u8::from(s.caret_upstream) | u8::from(s.killing) << 1);
         text(&mut b, &s.kill);
         crate::motion::codec::W(&mut b).motion(&s.motion);
+        // Focus groups, explicit moves, recognisers and the press (version 14).
+        u32_(&mut b, s.groups.len() as u32);
+        for (k, g) in &s.groups {
+            u64_(&mut b, *k);
+            b.push(u8::from(g.spec.wrap) | u8::from(g.spec.memory) << 1);
+            for v in [g.parent, g.last, g.first] {
+                u64_(&mut b, v);
+            }
+        }
+        u32_(&mut b, s.nav_links.len() as u32);
+        for (k, l) in &s.nav_links {
+            u64_(&mut b, *k);
+            for v in l {
+                u64_(&mut b, *v);
+            }
+        }
+        u32_(&mut b, s.recognizers.len() as u32);
+        for (k, (g, up)) in &s.recognizers {
+            u64_(&mut b, *k);
+            b.push(u8::from(g.tap) | u8::from(g.double_tap) << 1 | u8::from(g.long_press) << 2);
+            for v in [g.long_press_ms, g.double_tap_ms, g.slop] {
+                f32_(&mut b, v);
+            }
+            u32_(&mut b, g.priority as u32);
+            u64_(&mut b, *up);
+        }
+        let t = &s.tap;
+        u32_(&mut b, t.chain.len() as u32);
+        for k in &t.chain {
+            u64_(&mut b, *k);
+        }
+        f32_(&mut b, t.start.x);
+        f32_(&mut b, t.start.y);
+        u64_(&mut b, t.since);
+        f32_(&mut b, t.travel);
+        b.push(u8::from(t.taken));
+        u64_(&mut b, t.waiting);
+        u64_(&mut b, t.waiting_tick);
+        f32_(&mut b, t.waiting_at.x);
+        f32_(&mut b, t.waiting_at.y);
         // The layer stack, its viewmodels and the documents' states.
         text(&mut b, &self.docs_state().to_string());
         b
@@ -218,8 +260,10 @@ impl Ui {
     /// transforms, the feedback stream unseeded, no motion channels, an
     /// empty layer stack) and its six sound voices moved to their events,
     /// the state of version 11 with its one focus return as the stack's
-    /// entry, and the state of version 12 with each hit's focusable owner
-    /// unset (the next frame's hit test fills it).
+    /// entry, the state of version 12 with each hit's focusable owner
+    /// unset (the next frame's hit test fills it), and the state of
+    /// version 13 with no focus groups, explicit moves or gesture
+    /// recognisers (the next frame collects them) and no press recognised.
     /// Refused for another version, or bytes that do not read as theirs.
     pub fn upgrade_state(bytes: &[u8]) -> og_core::Result<Vec<u8>> {
         let bad = |why: String| {
@@ -242,7 +286,7 @@ impl Ui {
                 };
                 Ok(ui.save_state())
             }
-            11 | 12 => {
+            11..=13 => {
                 let s = r.state(version).ok_or_else(|| {
                     bad(format!("truncated or malformed version {version} state"))
                 })?;
@@ -267,7 +311,7 @@ impl Ui {
                 Ok(ui.save_state())
             }
             v => Err(bad(format!(
-                "version {v}: this engine reads version {STATE_VERSION} and upgrades versions 9, 11 and 12"
+                "version {v}: this engine reads version {STATE_VERSION} and upgrades versions 9 and 11 to 13"
             ))),
         }
     }
@@ -316,7 +360,7 @@ impl Reader<'_> {
         ))
     }
 
-    /// The state as `version` (this one's, 12, 11 or 9) wrote it.
+    /// The state as `version` (this one's, 13, 12, 11 or 9) wrote it.
     fn state(&mut self, version: u32) -> Option<State> {
         let v9 = version == 9;
         let mut s = State {
@@ -359,6 +403,12 @@ impl Reader<'_> {
                     self.rect()?,
                 )
             };
+            // Each hit's focus group and recogniser came in at version 14.
+            let (group, gesture) = if version >= 14 {
+                (self.u64()?, self.u64()?)
+            } else {
+                (0, 0)
+            };
             s.hits.push(Hit {
                 key,
                 rect,
@@ -370,6 +420,8 @@ impl Reader<'_> {
                 inv,
                 local,
                 clip,
+                group,
+                gesture,
             });
         }
         s.tick = self.u64()?;
@@ -539,6 +591,56 @@ impl Reader<'_> {
         };
         s.motion = r.motion()?;
         self.at = r.at;
+        if version < 14 {
+            return Some(s);
+        }
+        for _ in 0..self.u32()? {
+            let k = self.u64()?;
+            let f = self.u8()?;
+            let g = crate::recognize::GroupState {
+                spec: crate::element::FocusGroup {
+                    wrap: f & 1 != 0,
+                    memory: f & 2 != 0,
+                },
+                parent: self.u64()?,
+                last: self.u64()?,
+                first: self.u64()?,
+            };
+            s.groups.insert(k, g);
+        }
+        for _ in 0..self.u32()? {
+            let k = self.u64()?;
+            let mut l = [0u64; 6];
+            for v in l.iter_mut() {
+                *v = self.u64()?;
+            }
+            s.nav_links.insert(k, l);
+        }
+        for _ in 0..self.u32()? {
+            let k = self.u64()?;
+            let f = self.u8()?;
+            let g = crate::element::GestureSpec {
+                tap: f & 1 != 0,
+                double_tap: f & 2 != 0,
+                long_press: f & 4 != 0,
+                long_press_ms: self.f32()?,
+                double_tap_ms: self.f32()?,
+                slop: self.f32()?,
+                priority: self.u32()? as i32,
+            };
+            s.recognizers.insert(k, (g, self.u64()?));
+        }
+        let t = &mut s.tap;
+        for _ in 0..self.u32()? {
+            t.chain.push(self.u64()?);
+        }
+        t.start = Vec2::new(self.f32()?, self.f32()?);
+        t.since = self.u64()?;
+        t.travel = self.f32()?;
+        t.taken = self.u8()? != 0;
+        t.waiting = self.u64()?;
+        t.waiting_tick = self.u64()?;
+        t.waiting_at = Vec2::new(self.f32()?, self.f32()?);
         Some(s)
     }
 }
@@ -546,6 +648,25 @@ impl Reader<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A save of a state with no focus groups, moves, recognisers or press
+    /// without the version 14 block they take before the layer stack.
+    fn without_v14_tail(b: &[u8]) -> Vec<u8> {
+        let n = b.len();
+        let mut k = n;
+        let docs = loop {
+            k -= 1;
+            let len = u32::from_le_bytes(b[k - 4..k].try_into().unwrap()) as usize;
+            if k + len == n && b[k] == b'{' {
+                break len + 4;
+            }
+        };
+        let tail = 3 * 4 + 4 + 8 + 8 + 4 + 1 + 8 + 8 + 8;
+        let cut = n - docs;
+        let mut out = b[..cut - tail].to_vec();
+        out.extend_from_slice(&b[cut..]);
+        out
+    }
 
     /// A version 11 state block (one focus return) restores once upgraded:
     /// the dialog it had open gives the focus back where it was.
@@ -555,7 +676,8 @@ mod tests {
         ui.state.scope = 7;
         ui.state.focus = 9;
         ui.state.focus_returns = vec![(0, 42)];
-        let v12 = ui.save_state();
+        let saved = ui.save_state();
+        let v12 = without_v14_tail(&saved);
         // Version 11 wrote the one return as a u64 where 12 writes a counted list.
         let mut now = 7u64.to_le_bytes().to_vec();
         now.extend_from_slice(&1u32.to_le_bytes());
@@ -577,11 +699,68 @@ mod tests {
             "11 is read only through the upgrade"
         );
         let up = Ui::upgrade_state(&v11).expect("version 11 upgrades");
-        assert_eq!(up, v12, "the upgrade writes what this version saves");
+        assert_eq!(up, saved, "the upgrade writes what this version saves");
         fresh
             .restore_state(&up)
             .expect("the upgraded block restores");
         assert_eq!((fresh.state.scope, fresh.state.focus), (7, 9));
         assert_eq!(fresh.state.focus_returns, vec![(0, 42)]);
+    }
+
+    /// A version 13 state (no focus groups, moves or recognisers; hits
+    /// without their group and recogniser) upgrades to what this version
+    /// saves with those empty, and restores; read directly it is refused.
+    #[test]
+    fn a_version_13_state_upgrades_and_restores() {
+        let mut ui = Ui::default();
+        ui.state.focus = 9;
+        ui.state.tick = 77;
+        ui.state.hits = vec![Hit {
+            key: 9,
+            rect: Rect::new(1.0, 2.0, 3.0, 4.0),
+            full: Rect::new(1.0, 2.0, 3.0, 4.0),
+            flags: HIT_NAV,
+            scope: 0,
+            scroller: 0,
+            owner: 0,
+            inv: Affine::IDENTITY,
+            local: Rect::new(1.0, 2.0, 3.0, 4.0),
+            clip: Rect::new(0.0, 0.0, 100.0, 100.0),
+            group: 0x1111_1111_1111_1111,
+            gesture: 0x2222_2222_2222_2222,
+        }];
+        let v14 = ui.save_state();
+        // Version 13 had no group and recogniser per hit…
+        let mut ids = 0x1111_1111_1111_1111u64.to_le_bytes().to_vec();
+        ids.extend_from_slice(&0x2222_2222_2222_2222u64.to_le_bytes());
+        let at = v14
+            .windows(ids.len())
+            .position(|w| w == ids.as_slice())
+            .expect("the hit's group and recogniser");
+        let mut v13 = v14[..at].to_vec();
+        v13.extend_from_slice(&v14[at + ids.len()..]);
+        // …and no groups, moves, recognisers or press before the layer stack.
+        let mut v13 = without_v14_tail(&v13);
+        v13[..4].copy_from_slice(&13u32.to_le_bytes());
+
+        let mut fresh = Ui::default();
+        assert!(
+            fresh.restore_state(&v13).is_err(),
+            "13 is read only through the upgrade"
+        );
+        let up = Ui::upgrade_state(&v13).expect("version 13 upgrades");
+        ui.state.hits[0].group = 0;
+        ui.state.hits[0].gesture = 0;
+        assert_eq!(
+            up,
+            ui.save_state(),
+            "the upgrade writes what this version saves"
+        );
+        fresh
+            .restore_state(&up)
+            .expect("the upgraded block restores");
+        assert_eq!((fresh.state.focus, fresh.state.tick), (9, 77));
+        assert_eq!(fresh.state.hits.len(), 1);
+        assert!(fresh.state.groups.is_empty() && fresh.state.recognizers.is_empty());
     }
 }

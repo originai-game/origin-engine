@@ -37,7 +37,7 @@ use og_render::{Overlay, TextureHandle};
 
 /// What happened to an element this tick. Edges (`clicked`, `changed`,
 /// `submitted`) are true for exactly one tick.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Response {
     /// The pointer is over it (and no other element holds the press).
     pub hovered: bool,
@@ -72,6 +72,17 @@ pub struct Response {
     /// put it there. With [`crate::Element::own_ring`] the component draws
     /// that ring (and what keys show, a cursor's card lifted) itself.
     pub ring: bool,
+    /// Its tap was recognised this tick ([`crate::GestureSpec`]): a press
+    /// and release within the slop, and where it declares a double tap,
+    /// after that double tap's window passed without a second one. Keys
+    /// and pads tap it by activating it.
+    pub tapped: bool,
+    /// The second tap of a double tap landed this tick.
+    pub double_tapped: bool,
+    /// Its long press fired this tick (the press it took clicks nothing).
+    pub long_pressed: bool,
+    /// How far into its long press the held press is, 0 to 1 (0: none).
+    pub long_press: f32,
 }
 
 /// [`crate::Element::arrows`]: Left is its own while it has the focus.
@@ -126,6 +137,10 @@ pub(crate) struct Hit {
     pub inv: Affine,
     pub local: Rect,
     pub clip: Rect,
+    /// The nearest focus group around it (0: none).
+    pub group: u64,
+    /// The nearest element at or around it that recognises gestures (0: none).
+    pub gesture: u64,
 }
 
 impl Hit {
@@ -270,6 +285,17 @@ pub(crate) struct State {
     pub pad_stick: [(u8, u64); 3],
     /// Motion in flight: channels, states, plays, ghosts, gestures.
     pub motion: crate::motion::state::MotionState,
+    /// Last frame's focus groups by key (docs/ui.md §8.3).
+    pub groups: IdMap<u64, crate::recognize::GroupState>,
+    /// Last frame's explicit focus moves by control key: the key each of
+    /// up, down, left, right, next and prev lands on (a control's or a
+    /// group's; 0: the layout's).
+    pub nav_links: IdMap<u64, [u64; 6]>,
+    /// Last frame's gesture recognisers by key: each one's spec and the
+    /// nearest recognising element around it (0: none).
+    pub recognizers: IdMap<u64, (crate::element::GestureSpec, u64)>,
+    /// The press being recognised and a tap waiting for its double.
+    pub tap: crate::recognize::TapState,
 }
 
 /// What navigation decided at the start of this frame.
@@ -290,6 +316,10 @@ pub(crate) struct NavFrame {
     /// A stepper a screen reader adjusted as a whole (its spinbutton's
     /// key) and by how many steps.
     pub spin: (u64, i32),
+    /// The elements tapped, double tapped and long pressed this tick.
+    pub tapped: u64,
+    pub double_tapped: u64,
+    pub long_pressed: u64,
 }
 
 /// The immediate-mode UI. Call [`Ui::begin`], build, [`Ui::end`] once per tick.
@@ -417,7 +447,7 @@ impl Default for Ui {
     }
 }
 
-const STATE_VERSION: u32 = 13;
+const STATE_VERSION: u32 = 14;
 
 /// `theme` with a viewport's preferences: the page's reduced motion turns
 /// its flag on, its contrast preference takes the high-contrast variant,

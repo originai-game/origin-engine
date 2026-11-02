@@ -77,6 +77,14 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         run: Some(ui_upgrade),
     },
     Migration {
+        target: Target::Block,
+        name: "og.ui",
+        from: 13,
+        to: 14,
+        note: "ui-gaps B1: focus groups, explicit focus moves, tap, double tap and long press recognisers",
+        run: Some(ui_upgrade),
+    },
+    Migration {
         target: Target::Record,
         name: "og.Gamepad",
         from: 1,

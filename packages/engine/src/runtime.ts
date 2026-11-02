@@ -1576,6 +1576,8 @@ export class Engine {
     a11y?: Api.A11yTree;
     /** og.PointerLock.wanted: the game asks for the pointer lock (the web shell requests it on the next press on the canvas, and exits it when false). */
     pointerLock?: boolean;
+    /** The pointer's shape the UI resolved over what it is on (a CSS cursor name: og.ui.frameCursor). */
+    cursor?: string;
     /** The frame cap og.render.setDisplay resolved to (0: the display's rate): the web Worker draws at most this many frames a second (web/pacing.ts). */
     maxFps?: number;
     /** The player's graphics settings ask the page to be fullscreen (og.render.setDisplay's `fullscreen`; the web shell enters or leaves it). */

@@ -168,11 +168,14 @@ impl Ctx {
 
     fn trigger(&mut self, e: &Entry) -> Option<Trigger> {
         let w = words(e);
-        const HOW: &str = "on <click|changed|appear|change <binding>|action <name>> <play <timeline> | state <group> <state> | emit <name> | push <screen> | pop | action <name> | set <path> <expr>>";
+        const HOW: &str = "on <click|changed|appear|tap|doubleTap|longPress|change <binding>|action <name>> <play <timeline> | state <group> <state> | emit <name> | push <screen> | pop | action <name> | set <path> <expr>>";
         let (when, rest) = match w.first().map(String::as_str) {
             Some("click") => (When::Click, &w[1..]),
             Some("changed") => (When::Changed, &w[1..]),
             Some("appear") => (When::Appear, &w[1..]),
+            Some("tap") => (When::Tap, &w[1..]),
+            Some("doubleTap") => (When::DoubleTap, &w[1..]),
+            Some("longPress") => (When::LongPress, &w[1..]),
             Some("action") if w.len() > 1 => (When::Action(w[1].clone()), &w[2..]),
             Some("change") if w.len() > 1 => match Expr::parse(&w[1]) {
                 Ok(x) => (When::Change(x), &w[2..]),

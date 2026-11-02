@@ -326,6 +326,34 @@ pub(crate) fn props(d: &Value) -> Props {
         drop: d["drop"].is_object().then(|| DropSpec {
             accept: strings(&d["drop"]["accept"]),
         }),
+        nav: og_ui::NavLinks {
+            up: string(&d["nav"]["up"]),
+            down: string(&d["nav"]["down"]),
+            left: string(&d["nav"]["left"]),
+            right: string(&d["nav"]["right"]),
+            next: string(&d["nav"]["next"]),
+            prev: string(&d["nav"]["prev"]),
+        },
+        focus_group: d["focusGroup"].is_object().then(|| og_ui::FocusGroup {
+            wrap: d["focusGroup"]["wrap"].as_bool().unwrap_or(false),
+            memory: d["focusGroup"]["memory"].as_bool().unwrap_or(false),
+        }),
+        gestures: d["gestures"].is_object().then(|| {
+            let g = &d["gestures"];
+            og_ui::GestureSpec {
+                tap: g["tap"].as_bool().unwrap_or(false),
+                double_tap: g["doubleTap"].as_bool().unwrap_or(false),
+                long_press: g["longPress"].as_bool().unwrap_or(false),
+                long_press_ms: f(g, "longPressMs", 0.0).max(0.0),
+                double_tap_ms: f(g, "doubleTapMs", 0.0).max(0.0),
+                slop: f(g, "slop", 0.0).max(0.0),
+                priority: g["priority"].as_i64().map_or(0, |n| n as i32),
+            }
+        }),
+        cursor: d["cursor"]
+            .as_str()
+            .and_then(og_ui::Cursor::from_name)
+            .unwrap_or_default(),
         motion: transition(&d["motion"]),
         layout_motion: transition(&d["layoutMotion"]),
         enter: presence(&d["enter"], false),
@@ -567,6 +595,8 @@ pub fn og_ui_gesture(path: String) -> String {
         "scale": g.scale, "rotation": g.rotation, "snapped": g.snapped,
         "dismissed": g.dismissed, "over": g.over, "droppedOn": g.dropped_on,
         "hovering": g.hovering, "received": g.received,
+        "tapped": g.tapped, "doubleTapped": g.double_tapped,
+        "longPressed": g.long_pressed, "longPress": g.long_press,
     })
     .to_string()
 }

@@ -415,6 +415,10 @@ pub struct UiFrame {
     /// a rectangle to the page (an input method's window, the accessibility
     /// mirror, the probe) multiplies by it.
     pub unit: f32,
+    /// The pointer's shape over what it is on (or holds), resolved
+    /// ([`crate::Cursor`]; never `Auto`): the web shell sets the canvas's
+    /// CSS cursor from it.
+    pub cursor: crate::Cursor,
 }
 
 /// What [`Ui::edit_marks`] draws one line's marks from.

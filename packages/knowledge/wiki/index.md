@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2208 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2213 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -396,6 +396,7 @@ Field units the docs and Tune use.
 | [`CsgGeometryDesc`](render.md#type-CsgGeometryDesc) | desc struct | render | — |
 | [`CsgOp`](render.md#type-CsgOp) | enum | render | — |
 | [`Currency`](ui.md#type-Currency) | desc struct | ui | — |
+| [`Cursor`](ui.md#type-Cursor) | enum | ui | — |
 | [`CurveDesc`](path.md#type-CurveDesc) | desc struct | path | — |
 | [`CutsceneDesc`](ui.md#type-CutsceneDesc) | desc struct | ui | — |
 | [`CutsceneResult`](ui.md#type-CutsceneResult) | struct | ui | — |
@@ -522,6 +523,7 @@ Field units the docs and Tune use.
 | [`FloatingTextDesc`](render.md#type-FloatingTextDesc) | desc struct | render | — |
 | [`FloatSide`](ui.md#type-FloatSide) | enum | ui | — |
 | [`FlowDesc`](nav.md#type-FlowDesc) | desc struct | nav | — |
+| [`FocusGroup`](ui.md#type-FocusGroup) | desc struct | ui | — |
 | [`Font`](load.md#type-Font) | handle | load | — |
 | [`Font()`](load.md#column-Font) | column kind | load | — |
 | [`FontInfo`](load.md#type-FontInfo) | struct | load | — |
@@ -561,6 +563,7 @@ Field units the docs and Tune use.
 | [`GeometryInfo`](render.md#type-GeometryInfo) | struct | render | — |
 | [`GeometryPart`](render.md#type-GeometryPart) | desc struct | render | — |
 | [`GestureInfo`](ui.md#type-GestureInfo) | struct | ui | — |
+| [`GestureSpec`](ui.md#type-GestureSpec) | desc struct | ui | — |
 | [`GlassWeight`](ui.md#type-GlassWeight) | enum | ui | — |
 | [`GlowEffect`](ui.md#type-GlowEffect) | desc struct | ui | — |
 | [`GltfDataDesc`](load.md#type-GltfDataDesc) | desc struct | load | — |
@@ -809,6 +812,7 @@ Field units the docs and Tune use.
 | [`NavIntent`](ui.md#type-NavIntent) | enum | ui | — |
 | [`NavLinkDesc`](nav.md#type-NavLinkDesc) | desc struct | nav | — |
 | [`NavLinkKind`](nav.md#type-NavLinkKind) | enum | nav | — |
+| [`NavLinks`](ui.md#type-NavLinks) | desc struct | ui | — |
 | [`NavMeshDesc`](nav.md#type-NavMeshDesc) | desc struct | nav | — |
 | [`NavMeshInfo`](nav.md#type-NavMeshInfo) | struct | nav | — |
 | [`NavPath`](nav.md#type-NavPath) | struct | nav | — |
@@ -1420,6 +1424,7 @@ Field units the docs and Tune use.
 | [`og.ui.focus`](ui.md#fn-focus) | function | ui | `og_ui_focus` |
 | [`og.ui.forceState`](ui.md#fn-forceState) | function | ui | `og_ui_force_state` |
 | [`og.ui.formatNumber`](ui.md#fn-formatNumber) | function | ui | — |
+| [`og.ui.frameCursor`](ui.md#fn-frameCursor) | function | ui | `og_ui_frame_cursor` |
 | [`og.ui.frameDirection`](ui.md#fn-frameDirection) | function | ui | `og_ui_frame_direction` |
 | [`og.ui.frameGlyph`](ui.md#fn-frameGlyph) | function | ui | `og_ui_frame_glyph` |
 | [`og.ui.framePointer`](ui.md#fn-framePointer) | function | ui | `og_ui_frame_pointer` |
