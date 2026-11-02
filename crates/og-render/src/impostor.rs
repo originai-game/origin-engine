@@ -3,9 +3,14 @@
 //!
 //! **The atlas.** The cook renders the model (`model { impostor true }`,
 //! og-cook's `impostor.rs`) orthographically from `grid × grid`
-//! directions spread over the whole sphere by an octahedral map with +y
-//! at the grid's centre and −y at its corners: frame `(i, j)` (column,
-//! row) looks along [`frame_direction`]. Each frame is a square of the
+//! directions spread over the upper hemisphere by a hemi-octahedral map
+//! with +y at the grid's centre and the horizon on its border (+x and −x
+//! at opposite corners): frame `(i, j)` (column, row) looks along
+//! [`frame_direction`]. A view from below the horizon draws as the view
+//! from the horizon above it. (A full octahedron put the horizon between
+//! rows, so a model seen level, as most standing models are, blended
+//! frames from below it: a palm's fronds showed their undersides, lit
+//! from beneath, and read dark beside the meshes.) Each frame is a square of the
 //! atlas, `1 / grid` of its side, covering the model's bounding sphere
 //! (`center`, `radius`) in the frame's [`frame_basis`]: its right `x`, its
 //! up `y`, `v` down the image. Two textures: the albedo with its coverage
@@ -67,35 +72,32 @@ pub struct ImpostorDraw {
     pub cast_shadows: bool,
 }
 
-/// The octahedral map of a unit direction to `[-1, 1]²`, +y at the centre
-/// and −y at the corners.
-pub fn oct_encode(d: Vec3) -> Vec2 {
-    let n = d / (d.x.abs() + d.y.abs() + d.z.abs()).max(1e-12);
-    if n.y >= 0.0 {
-        Vec2::new(n.x, n.z)
+/// The hemi-octahedral map of a unit direction to `[-1, 1]²`: +y at the
+/// centre, the horizon on the border (+x at `(1, 1)`, +z at `(1, -1)`).
+/// A direction below the horizon maps as the horizon above it (straight
+/// down as straight up).
+pub fn hemi_oct_encode(d: Vec3) -> Vec2 {
+    let d = Vec3::new(d.x, d.y.max(0.0), d.z);
+    let d = if d.length_squared() < 1e-12 {
+        Vec3::Y
     } else {
-        let s = |v: f32| if v >= 0.0 { 1.0 } else { -1.0 };
-        Vec2::new((1.0 - n.z.abs()) * s(n.x), (1.0 - n.x.abs()) * s(n.z))
-    }
+        d
+    };
+    let n = d / (d.x.abs() + d.y + d.z.abs());
+    Vec2::new(n.x + n.z, n.x - n.z)
 }
 
-/// The inverse of [`oct_encode`].
-pub fn oct_decode(p: Vec2) -> Vec3 {
-    let y = 1.0 - p.x.abs() - p.y.abs();
-    let (mut x, mut z) = (p.x, p.y);
-    if y < 0.0 {
-        let s = |v: f32| if v >= 0.0 { 1.0 } else { -1.0 };
-        x = (1.0 - p.y.abs()) * s(p.x);
-        z = (1.0 - p.x.abs()) * s(p.y);
-    }
-    Vec3::new(x, y, z).normalize()
+/// The inverse of [`hemi_oct_encode`] (a direction with y ≥ 0).
+pub fn hemi_oct_decode(p: Vec2) -> Vec3 {
+    let (x, z) = ((p.x + p.y) * 0.5, (p.x - p.y) * 0.5);
+    Vec3::new(x, (1.0 - x.abs() - z.abs()).max(0.0), z).normalize()
 }
 
 /// The direction frame `(i, j)` of a `grid`-sided atlas looks from (from
 /// the model's centre towards the viewer).
 pub fn frame_direction(i: u32, j: u32, grid: u32) -> Vec3 {
     let n = (grid.max(2) - 1) as f32;
-    oct_decode(Vec2::new(i as f32 / n, j as f32 / n) * 2.0 - 1.0)
+    hemi_oct_decode(Vec2::new(i as f32 / n, j as f32 / n) * 2.0 - 1.0)
 }
 
 /// A frame's right and up for a view from `d` (from the centre towards
@@ -111,7 +113,7 @@ pub fn frame_basis(d: Vec3) -> (Vec3, Vec3) {
 /// stage of `impostor.wgsl` finds them.
 pub fn blend_frames(d: Vec3, grid: u32) -> [((u32, u32), f32); 3] {
     let n = (grid.max(2) - 1) as f32;
-    let g = ((oct_encode(d) * 0.5 + 0.5) * n).clamp(Vec2::ZERO, Vec2::splat(n));
+    let g = ((hemi_oct_encode(d) * 0.5 + 0.5) * n).clamp(Vec2::ZERO, Vec2::splat(n));
     let cell = g.floor().min(Vec2::splat(n - 1.0));
     let f = g - cell;
     let (cx, cz) = (cell.x as u32, cell.y as u32);
@@ -135,30 +137,44 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_octahedral_map_round_trips() {
+    fn the_hemi_octahedral_map_round_trips_above_the_horizon() {
         for d in [
             Vec3::Y,
-            -Vec3::Y,
             Vec3::X,
-            Vec3::new(0.3, -0.8, -0.5).normalize(),
+            -Vec3::Z,
+            Vec3::new(0.3, 0.8, -0.5).normalize(),
             Vec3::new(-0.7, 0.1, 0.7).normalize(),
-            Vec3::new(0.2, -0.1, -0.97).normalize(),
+            Vec3::new(0.2, 0.01, -0.97).normalize(),
         ] {
-            let back = oct_decode(oct_encode(d));
+            let back = hemi_oct_decode(hemi_oct_encode(d));
             assert!((back - d).length() < 1e-5, "{d} came back {back}");
         }
-        // +y at the centre, −y at every corner.
-        assert_eq!(oct_encode(Vec3::Y), Vec2::ZERO);
-        assert!((oct_decode(Vec2::new(1.0, -1.0)) + Vec3::Y).length() < 1e-6);
+        // +y at the centre, the horizon on the border.
+        assert_eq!(hemi_oct_encode(Vec3::Y), Vec2::ZERO);
+        assert!((hemi_oct_encode(Vec3::X) - Vec2::ONE).length() < 1e-6);
+        assert!((hemi_oct_encode(Vec3::Z) - Vec2::new(1.0, -1.0)).length() < 1e-6);
+        // Below the horizon: the horizon above it; straight down, up.
+        let below = Vec3::new(0.6, -0.5, 0.2).normalize();
+        let level = Vec3::new(0.6, 0.0, 0.2).normalize();
+        assert!((hemi_oct_encode(below) - hemi_oct_encode(level)).length() < 1e-6);
+        assert_eq!(hemi_oct_encode(-Vec3::Y), Vec2::ZERO);
     }
 
     #[test]
-    fn frames_span_the_sphere_and_blend_to_the_direction() {
+    fn frames_span_the_hemisphere_and_blend_to_the_direction() {
         // An 8-sided grid: the centre four frames look down from above,
-        // the corners from straight below, the middle of an edge sideways.
+        // the border's from the horizon, a corner along ±x.
         assert!(frame_direction(3, 3, 8).y > 0.6);
-        assert!((frame_direction(0, 0, 8) + Vec3::Y).length() < 1e-6);
-        assert!(frame_direction(0, 4, 8).y.abs() < 0.3);
+        assert!((frame_direction(7, 7, 8) - Vec3::X).length() < 1e-6);
+        assert!((frame_direction(0, 0, 8) + Vec3::X).length() < 1e-6);
+        for k in 0..8 {
+            assert!(frame_direction(k, 0, 8).y.abs() < 1e-6);
+            assert!(frame_direction(0, k, 8).y.abs() < 1e-6);
+        }
+        // A level view blends frames on the horizon and above it only.
+        for &((i, j), w) in &blend_frames(Vec3::new(0.3, 0.02, 0.95).normalize(), 8) {
+            assert!(w < 1e-4 || frame_direction(i, j, 8).y >= -1e-6);
+        }
         // A direction on a frame weighs that frame alone.
         let d = frame_direction(5, 2, 8);
         let w = blend_frames(d, 8);

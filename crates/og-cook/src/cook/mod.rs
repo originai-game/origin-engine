@@ -882,10 +882,13 @@ pub fn cook_project_with_texture_cache(
                 if let Some(b) = mesh_for(s, options).ok().and_then(|m| m.impostor) {
                     let size = [b.grid.to_le_bytes(), b.frame.to_le_bytes()].concat();
                     for (normal, id) in model::impostor_ids(&s.rel).into_iter().enumerate() {
+                        // `2`: the atlas's layout version (2, the
+                        // hemi-octahedron), so an atlas baked by an older
+                        // layout is baked again.
                         let st = with(
                             &[
                                 b"impostor",
-                                &[normal as u8],
+                                &[2, normal as u8],
                                 &size,
                                 tex_desc.as_bytes(),
                                 &hash,

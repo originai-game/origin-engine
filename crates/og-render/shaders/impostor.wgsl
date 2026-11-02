@@ -138,7 +138,11 @@ fn fs_impostor(in: ImpostorOut) -> ImpostorLit {
   let l = normalize(frame.light_dir.xyz);
   let n_dot_l = max(dot(n, l), 0.0);
   var shadow = 1.0;
-  if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) { shadow = cascade_shadow(surface.world, n, n_dot_l); }
+  // Looked up a fifth of the model's radius towards the light: the lit
+  // surface and the shadow card's (impostor_shadow.wgsl) are each rebuilt
+  // from blended frames, and differ by about that in the frames' steps,
+  // which would otherwise shadow the card in blocks.
+  if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) { shadow = cascade_shadow(surface.world + l * (0.2 * in.extent), n, n_dot_l); }
   var color = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
   color += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(surface.world);
   color += surface_local_lights(in.clip.xy, s, surface.world, n, v);

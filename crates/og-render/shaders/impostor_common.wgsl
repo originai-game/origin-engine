@@ -3,24 +3,19 @@
 // scatter_common.wgsl (group 2: the impostor's sphere and grid) and
 // material.wgsl (group 1: the atlas as base_color_tex and normal_tex).
 
-fn imp_sign(v: f32) -> f32 { return select(-1.0, 1.0, v >= 0.0); }
-
-// impostor.rs `oct_encode`: +y at the centre, -y at the corners.
+// impostor.rs `hemi_oct_encode`: +y at the centre, the horizon on the
+// border; below the horizon, the horizon above it.
 fn imp_oct_encode(d: vec3<f32>) -> vec2<f32> {
-  let n = d / max(abs(d.x) + abs(d.y) + abs(d.z), 1e-12);
-  if (n.y >= 0.0) { return n.xz; }
-  return vec2<f32>((1.0 - abs(n.z)) * imp_sign(n.x), (1.0 - abs(n.x)) * imp_sign(n.z));
+  var h = vec3<f32>(d.x, max(d.y, 0.0), d.z);
+  if (dot(h, h) < 1e-12) { h = vec3<f32>(0.0, 1.0, 0.0); }
+  let n = h / (abs(h.x) + h.y + abs(h.z));
+  return vec2<f32>(n.x + n.z, n.x - n.z);
 }
 
 fn imp_oct_decode(p: vec2<f32>) -> vec3<f32> {
-  let y = 1.0 - abs(p.x) - abs(p.y);
-  var x = p.x;
-  var z = p.y;
-  if (y < 0.0) {
-    x = (1.0 - abs(p.y)) * imp_sign(p.x);
-    z = (1.0 - abs(p.x)) * imp_sign(p.y);
-  }
-  return normalize(vec3<f32>(x, y, z));
+  let x = (p.x + p.y) * 0.5;
+  let z = (p.x - p.y) * 0.5;
+  return normalize(vec3<f32>(x, max(1.0 - abs(x) - abs(z), 0.0), z));
 }
 
 fn imp_grid() -> u32 { return max(u32(scatter.impostor_grid.x), 2u); }

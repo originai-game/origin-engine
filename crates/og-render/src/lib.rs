@@ -215,7 +215,9 @@ pub use ribbons::{Beam, Ribbon, RibbonPoint, RibbonUv, Trail, TrailStyle, TrailS
 pub use scatter::{ScatterDraw, WIND_WAVELENGTH, Wind};
 /// The octahedral impostors' frame layout, shared with the cook's bake.
 pub mod impostors {
-    pub use crate::impostor::{blend_frames, frame_basis, frame_direction, oct_decode, oct_encode};
+    pub use crate::impostor::{
+        blend_frames, frame_basis, frame_direction, hemi_oct_decode, hemi_oct_encode,
+    };
 }
 pub use scene::*;
 pub use shadows::PointShadows;

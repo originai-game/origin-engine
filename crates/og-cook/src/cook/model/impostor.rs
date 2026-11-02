@@ -1,7 +1,7 @@
 //! Octahedral impostors (`model { impostor true }`, og-render's
 //! `impostor.rs`): the model's default scene rendered on the CPU from
-//! `grid × grid` directions over the whole sphere, each frame a square of
-//! two atlases: the albedo with its coverage in alpha (sRGB), and the
+//! `grid × grid` directions over the upper hemisphere (hemi-octahedral),
+//! each frame a square of two atlases: the albedo with its coverage in alpha (sRGB), and the
 //! normal in the frame's basis with the depth towards the viewer (linear,
 //! `n · 0.5 + 0.5`, `0.5 + 0.5 × depth / radius`).
 //!
@@ -508,17 +508,18 @@ pub(crate) mod tests {
         let red = |c: [u8; 4]| c[0] > 200 && c[1] < 40 && c[2] < 40 && c[3] == 255;
         let blue = |c: [u8; 4]| c[2] > 200 && c[0] < 40 && c[1] < 40 && c[3] == 255;
         let mid = (frame / 2, frame / 2);
-        // Frame (2, 1) looks from +x: the red box's face, facing the
-        // viewer, nearer than the centre (0.5 + 0.5 × 1.5 / r = 0.95).
-        assert!(red(texel(&b.albedo, grid, frame, (2, 1), mid)));
-        let n = texel(&b.normal, grid, frame, (2, 1), mid);
+        // Frame (2, 2), the hemi-octahedron's corner, looks from +x: the
+        // red box's face, facing the viewer, nearer than the centre
+        // (0.5 + 0.5 × 1.5 / r = 0.95).
+        assert!(red(texel(&b.albedo, grid, frame, (2, 2), mid)));
+        let n = texel(&b.normal, grid, frame, (2, 2), mid);
         assert!(
             n[2] > 245 && (n[0] as i32 - 128).abs() < 4 && (n[1] as i32 - 128).abs() < 4,
             "{n:?}"
         );
         assert!((n[3] as i32 - 242).abs() <= 2, "{n:?}");
-        // Frame (0, 1) from -x: the blue box in front.
-        assert!(blue(texel(&b.albedo, grid, frame, (0, 1), mid)));
+        // Frame (0, 0) from -x: the blue box in front.
+        assert!(blue(texel(&b.albedo, grid, frame, (0, 0), mid)));
         // Frame (1, 1) from +y: right is -x (og-render's frame basis), so
         // red on the left and blue on the right; facing up.
         let (right, _) = og_render::impostors::frame_basis(Vec3::Y);
