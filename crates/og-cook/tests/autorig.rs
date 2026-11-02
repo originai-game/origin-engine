@@ -508,3 +508,112 @@ fn the_clip_library_plants_its_feet_loops_cleanly_and_dies_on_the_ground() {
     );
     assert!(high < 0.4 * 182.0, "the body still reaches {high} up");
 }
+
+#[test]
+fn every_clip_keeps_rigid_parts_rigid_and_folds_no_mesh_and_parts_keep_apart_in_the_atlas() {
+    // The stick figure with a wide cape from its shoulders, behind it.
+    let root = project("rigid", &[("stick.ogt", &rig_text("stick/"))], |d| {
+        let mut img = image::RgbaImage::new(100, 200);
+        for y in 44..150u32 {
+            let half = 6 + (y - 44) / 5;
+            for x in 46u32.saturating_sub(half)..=46 {
+                img.put_pixel(x, y, image::Rgba([170, 30, 50, 255]));
+            }
+        }
+        img.save(d.join("00-cape.png")).unwrap();
+    });
+    let rig = cooked(&root).load_rig2d("chars/stick.ogt").unwrap();
+    assert!(rig.bone("cape-3").is_some());
+    let setup = rig.pose(None, 0.0, &[]);
+    let px = |v: &og_anim::RigVertex| [v.position[0] * rig.unit, v.position[1] * rig.unit];
+    let mut checked = 0;
+    for c in &rig.clips {
+        for i in 0..=24 {
+            let t = c.duration * i as f32 / 24.0;
+            let pose = rig.pose(Some(c), t, &[]);
+            let (before, after) = (rig.triangles(&setup).0, rig.triangles(&pose).0);
+            for (slot, s) in rig.slots.iter().enumerate() {
+                let Some(a) = s.attachment else { continue };
+                let (v0, v1) = (
+                    slot_vertices(&rig, &setup, &before, slot),
+                    slot_vertices(&rig, &pose, &after, slot),
+                );
+                match &rig.attachments[a].kind {
+                    // A region (a head, a hand, a sword) keeps its shape.
+                    AttachmentKind::Region { .. } => {
+                        for (j, k) in [(0, 1), (1, 2), (0, 2)] {
+                            let d = |v: &[og_anim::RigVertex]| {
+                                let (p, q) = (px(&v[j]), px(&v[k]));
+                                (p[0] - q[0]).hypot(p[1] - q[1])
+                            };
+                            assert!(
+                                (d(v0) - d(v1)).abs() < 0.05,
+                                "{} in {} at {t}: {} is not rigid",
+                                s.name,
+                                c.name,
+                                s.name
+                            );
+                        }
+                    }
+                    // A mesh bends but folds over itself nowhere: every
+                    // triangle keeps its winding (the inside of a bent
+                    // joint may squeeze one thin, never turn it over).
+                    AttachmentKind::Mesh { triangles, .. } => {
+                        let area = |v: &[og_anim::RigVertex], tri: &[u32]| {
+                            let [a, b, c] = [0, 1, 2].map(|i| px(&v[tri[i] as usize]));
+                            (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+                        };
+                        for tri in triangles.chunks(3) {
+                            let (s0, s1) = (area(v0, tri), area(v1, tri));
+                            assert!(
+                                s1 * s0.signum() > 0.0,
+                                "{} in {} at {t}: a triangle folds ({s0} to {s1})",
+                                s.name,
+                                c.name
+                            );
+                        }
+                    }
+                    _ => {}
+                }
+                checked += 1;
+            }
+        }
+    }
+    assert!(checked > 1000);
+    // Each part's texels lie apart from every other part's by the atlas's
+    // gap, so no mip level blends a speck of one part into another.
+    let size = [rig.size[0] as f32, rig.size[1] as f32];
+    let boxes: Vec<(String, [f32; 4])> = rig
+        .slots
+        .iter()
+        .enumerate()
+        .map(|(slot, s)| {
+            let v = slot_vertices(&rig, &setup, &rig.triangles(&setup).0, slot).to_vec();
+            let us = v.iter().map(|v| v.uv[0] * size[0]);
+            let vs = v.iter().map(|v| v.uv[1] * size[1]);
+            let b = [
+                us.clone().fold(f32::MAX, f32::min),
+                vs.clone().fold(f32::MAX, f32::min),
+                us.fold(f32::MIN, f32::max),
+                vs.fold(f32::MIN, f32::max),
+            ];
+            (s.name.clone(), b)
+        })
+        .collect();
+    for (i, (a, p)) in boxes.iter().enumerate() {
+        assert!(
+            p[0] >= 8.0 && p[1] >= 8.0 && p[2] <= size[0] - 8.0 && p[3] <= size[1] - 8.0,
+            "{a} at the atlas's edge"
+        );
+        for (b, q) in &boxes[i + 1..] {
+            let gap = (q[0] - p[2])
+                .max(p[0] - q[2])
+                .max(q[1] - p[3])
+                .max(p[1] - q[3]);
+            assert!(
+                gap >= 8.0,
+                "{a} and {b} are {gap} texels apart in the atlas"
+            );
+        }
+    }
+}

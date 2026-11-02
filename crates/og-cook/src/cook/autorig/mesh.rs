@@ -108,7 +108,11 @@ pub fn mesh(
         })
         .fold(0.0f32, f32::max);
     let total = bend.step * bend.bones.len() as f32;
-    let band = across.clamp(3.0, (0.45 * total).max(3.0));
+    // The joint zone reaches a band either side of the joint: one and a
+    // half times the part's half-thickness keeps the inside of a bend of
+    // up to about 170 degrees from turning over (an edge `r` from the axis
+    // folds once the angle per pixel times `r` passes one).
+    let band = (1.5 * across).clamp(3.0, (0.45 * total).max(3.0));
     let inverse: Vec<Affine2> = world.iter().map(Affine2::inverse).collect();
     let mut index = vec![u32::MAX; (nx + 1) * (ny + 1)];
     let mut vertices = Vec::new();

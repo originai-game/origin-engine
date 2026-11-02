@@ -351,16 +351,29 @@ pub fn rig(
             weight: 1.0,
         });
     }
-    // A joint bone where each bending part meets its parent: at the
-    // joint, turned half-way between the two by a transform constraint, so
-    // the joint's pixels (a knee cap, an elbow) turn rigidly at half the
-    // angle instead of being pinched between the two bones.
+    // A joint bone where a limb continues into its next part (an elbow, a
+    // knee, a wrist, the waist, the neck): at the joint, turned half-way
+    // between the two by a transform constraint, so the joint's pixels (a
+    // knee cap, an elbow) turn rigidly at half the angle instead of being
+    // pinched between the two bones. Where a part only hangs from the
+    // trunk (a shoulder, a hip, a cape, a tail) it turns on a hinge: those
+    // joints turn far (an arm raised overhead) and their round ends hide
+    // the hinge, where a blend would fold the part over itself.
     let mut transforms = Vec::new();
     let mut joint_bone: Vec<Option<usize>> = vec![None; nodes.len()];
     for (i, n) in nodes.iter().enumerate() {
         let Some(p) = n.parent else { continue };
         let bends = |s: Shape| matches!(s, Shape::Limb | Shape::Chain(_));
         if !bends(n.spec.shape) && !bends(nodes[p].spec.shape) {
+            continue;
+        }
+        let continues = nodes[p]
+            .spec
+            .tip
+            .iter()
+            .find(|t| nodes.iter().any(|m| m.spec.name == **t))
+            == Some(&n.spec.name);
+        if !continues {
             continue;
         }
         let (pb, cb) = (first_bone[p], first_bone[i]);

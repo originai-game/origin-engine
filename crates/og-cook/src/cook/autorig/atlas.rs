@@ -1,12 +1,15 @@
-//! The parts packed into one texture: rows of parts, tallest first, two
-//! pixels apart, each part's colour bled into the clear pixels around it
-//! so linear filtering at its edge draws no dark fringe.
+//! The parts packed into one texture: rows of parts, tallest first,
+//! [`PAD`] pixels apart, each part's colour bled into the clear pixels
+//! around it, so neither linear filtering at its edge nor the smaller
+//! mip levels (which average neighbouring texels) draw a fringe or a
+//! speck of another part.
 
 use super::super::texture::Image;
 use super::Part;
 
-/// The space between parts and around the atlas.
-const PAD: u32 = 2;
+/// The space between parts and around the atlas: three mip levels down a
+/// part's texels still average only its own and the clear gap.
+pub const PAD: u32 = 8;
 /// The largest atlas side.
 const MAX: u32 = 4096;
 

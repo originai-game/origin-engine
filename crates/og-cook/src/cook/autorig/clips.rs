@@ -186,23 +186,6 @@ impl<'a> Clip<'a> {
         }
     }
 
-    /// Scales `bone` by `f(fraction)`.
-    pub fn scale(&mut self, bone: &str, f: impl Fn(f32) -> [f32; 2]) {
-        let d = self.clip.duration;
-        let keys: Vec<Key<[f32; 2]>> = self
-            .times()
-            .into_iter()
-            .map(|t| Key {
-                time: t * d,
-                value: f(t),
-                ease: Ease::Linear,
-            })
-            .collect();
-        if let Some(track) = self.track(bone) {
-            track.scale = keys;
-        }
-    }
-
     /// Turns a chain (`base`, `base-2`, ...): bone `k` by `f(fraction, k)`.
     pub fn chain(&mut self, base: &str, f: impl Fn(f32, usize) -> f32) {
         for k in 0..8 {
@@ -237,6 +220,22 @@ impl<'a> Clip<'a> {
                 ..Default::default()
             });
         }
+    }
+
+    /// Draws the named slots in front of every other for the whole clip
+    /// (a far arm raised in front of the head), in their own order.
+    pub fn in_front(&mut self, names: &[String]) {
+        let moved: Vec<usize> = (0..self.rig.slots.len())
+            .filter(|&i| names.contains(&self.rig.slots[i].name))
+            .collect();
+        if moved.is_empty() {
+            return;
+        }
+        let mut order: Vec<usize> = (0..self.rig.slots.len())
+            .filter(|i| !moved.contains(i))
+            .collect();
+        order.extend(moved);
+        self.clip.order = vec![(0.0, order)];
     }
 
     pub fn event(&mut self, fraction: f32, name: &str) {

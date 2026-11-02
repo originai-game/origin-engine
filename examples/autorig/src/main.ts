@@ -37,6 +37,9 @@ function parade(world: World, rig: Rig2DInfo): void {
 export default og.game({
   tick: 60,
   seed: 1,
+  // A 2D scene: MSAA keeps fast thin parts (a blade's tip, a foot's
+  // outline) sharp, where TAA's history leaves ghosts of them behind.
+  render: { antialias: "msaa4" },
   systems: [],
   start(world) {
     const camera = must(world.resource(og.Camera));

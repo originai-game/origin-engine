@@ -76,10 +76,12 @@ fn idle(rig: &Rig2dAsset, m: &Measure) -> Clip2d {
             -0.012 * l * (1.0 - (std::f32::consts::TAU * t).cos()) / 2.0,
         ]
     });
-    c.scale("torso", |t| {
+    // The chest rises with the breath; never by scale, which the head and
+    // arms would inherit.
+    c.mov("torso", |t| {
         [
-            1.0 + 0.012 * (0.5 - 0.5 * (std::f32::consts::TAU * (t - 0.08)).cos()),
-            1.0,
+            0.0,
+            0.01 * l * (0.5 - 0.5 * (std::f32::consts::TAU * (t - 0.08)).cos()),
         ]
     });
     c.rot("torso", |t| swing(t, -0.8, 1.0, 0.1));
@@ -310,11 +312,13 @@ fn attack(rig: &Rig2dAsset, m: &Measure) -> Clip2d {
     let key = |v: [f32; 5]| Curve::once(&k.iter().copied().zip(v).collect::<Vec<_>>());
     // Raised forwards and up over the head, the blade hanging behind it,
     // then chopped down in front.
-    let arm = key([0.0, 168.0, 45.0, 18.0, 0.0]);
-    let fore = key([0.0, 85.0, 6.0, 0.0, 0.0]);
+    let arm = key([0.0, 172.0, 45.0, 18.0, 0.0]);
+    let fore = key([0.0, 18.0, 6.0, 0.0, 0.0]);
     let off = key([0.0, 32.0, -24.0, -30.0, 0.0]);
-    let torso = key([0.0, 10.0, -20.0, -24.0, 0.0]);
-    let head = key([0.0, 5.0, -7.0, -6.0, 0.0]);
+    // The body leans back under the raised arm so the arm rises behind
+    // the crown, clear of the visor.
+    let torso = key([0.0, 18.0, -20.0, -24.0, 0.0]);
+    let head = key([0.0, -8.0, -7.0, -6.0, 0.0]);
     let hips = key([0.0, -0.03, 0.08, 0.1, 0.0].map(|v| v * l));
     let drop = key([0.0, -0.03, -0.08, -0.09, 0.0].map(|v| v * l));
     let lunge = key([0.0, 0.0, 0.26, 0.26, 0.0].map(|v| v * l));
@@ -338,6 +342,20 @@ fn attack(rig: &Rig2dAsset, m: &Measure) -> Clip2d {
     chains(&mut c, |t, kk, sc| {
         sc * (1.0 + 0.5 * kk as f32) * trail.at(t - 0.05 * (kk + 1) as f32)
     });
+    // The striking arm and what it holds pass over the head: drawn in
+    // front of it, so the helmet never hides the blade.
+    let side = if holds(rig, "l") && !holds(rig, "r") {
+        "l"
+    } else {
+        "r"
+    };
+    c.in_front(&[
+        format!("arm-upper-{side}"),
+        format!("arm-lower-{side}"),
+        format!("hand-{side}"),
+        "weapon".into(),
+        "shield".into(),
+    ]);
     c.event(0.42, "hit");
     c.done()
 }
@@ -414,26 +432,45 @@ fn die(rig: &Rig2dAsset, m: &Measure) -> Clip2d {
     c.done()
 }
 
-fn wave(rig: &Rig2dAsset, _: &Measure) -> Clip2d {
+fn wave(rig: &Rig2dAsset, m: &Measure) -> Clip2d {
     let mut c = Clip::new(rig, "wave", 1.5, true);
-    // The free arm up, the forearm waving three times, the head tilted.
+    let l = m.leg;
+    // The free arm raised forwards and up, clear of the head and drawn in
+    // front of it, the forearm waving three times; the weight shifts from
+    // foot to foot under it and the cape and plume answer.
     let (free, other) = if free_side(rig) == "r" {
         ("r", "l")
     } else {
         ("l", "r")
     };
     c.rot(&format!("arm-upper-{free}"), |t| {
-        158.0 + swing(t, 4.0, 3.0, 0.05)
+        140.0 + swing(t, 5.0, 3.0, 0.05)
     });
     c.rot(&format!("arm-lower-{free}"), |t| {
-        18.0 + swing(t, 26.0, 3.0, 0.0)
+        22.0 + swing(t, 28.0, 3.0, 0.0)
     });
-    c.rot(&format!("hand-{free}"), |t| swing(t, 14.0, 3.0, 0.04));
-    c.rot("torso", |t| 2.0 + swing(t, 1.0, 3.0, 0.08));
-    c.rot("head", |t| 6.0 + swing(t, 2.5, 1.0, 0.1));
-    c.rot(&format!("arm-upper-{other}"), |t| swing(t, 2.0, 1.0, 0.2));
+    c.rot(&format!("hand-{free}"), |t| swing(t, 16.0, 3.0, 0.04));
+    if free == "l" {
+        c.in_front(&["arm-upper-l", "arm-lower-l", "hand-l"].map(String::from));
+    }
+    c.mov("pelvis", |t| {
+        [
+            swing(t, 0.035 * l, 1.0, 0.0),
+            -0.02 * l + swing(t, 0.012 * l, 2.0, 0.0),
+        ]
+    });
+    c.rot("pelvis", |t| swing(t, 2.0, 1.0, 0.04));
+    c.rot("torso", |t| {
+        3.0 + swing(t, -2.5, 1.0, 0.1) + swing(t, 1.0, 3.0, 0.08)
+    });
+    c.rot("head", |t| 6.0 + swing(t, 3.0, 1.0, 0.18));
+    c.rot(&format!("arm-upper-{other}"), |t| swing(t, 4.0, 1.0, 0.2));
+    c.rot(&format!("arm-lower-{other}"), |t| {
+        6.0 + swing(t, 4.0, 1.0, 0.28)
+    });
     chains(&mut c, |t, k, sc| {
-        sc * swing(t, 1.5 + k as f32, 3.0, 0.1 * (k + 1) as f32)
+        sc * (swing(t, 3.0 + 2.0 * k as f32, 1.0, 0.12 + 0.07 * k as f32)
+            + swing(t, 1.5 + k as f32, 3.0, 0.1 * (k + 1) as f32))
     });
     c.done()
 }
