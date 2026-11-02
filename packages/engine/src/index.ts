@@ -28,7 +28,7 @@ import {
 import { cameras } from "./systems/cameras.ts";
 import { ai, i18n, nav, net, platform, story } from "./e6.ts";
 import { input } from "./input.ts";
-import { motion, path, procgen, stream, terrain, timeline } from "./p2.ts";
+import { motion, path, procgen, stream, terrain, timeline, video } from "./p2.ts";
 import { debug, depthRender } from "./depth.ts";
 import { geomRender, Path2, Shape } from "./geom.ts";
 import { targetsLoad, targetsRender } from "./targets.ts";
@@ -112,6 +112,7 @@ export const Tween = ((value = 0 as Api.Tween, options) => spec("Tween", value, 
 export const Video = ((value = 0 as Api.Video, options) => spec("Video", value, options)) as typeof Api.Video;
 export const Path = ((value = 0 as Api.Path, options) => spec("Path", value, options)) as typeof Api.Path;
 export const PathKind = ((value = "catmullRom" as Api.PathKind, options) => spec("PathKind", value, options)) as typeof Api.PathKind;
+export const MotionGoalKind = ((value = "none" as Api.MotionGoalKind, options) => spec("MotionGoalKind", value, options)) as typeof Api.MotionGoalKind;
 export const TimelineAsset = ((value = 0 as Api.TimelineAsset, options) => spec("TimelineAsset", value, options)) as typeof Api.TimelineAsset;
 export const Rig2D = ((value = 0 as Api.Rig2D, options) => spec("Rig2D", value, options)) as typeof Api.Rig2D;
 export const RenderTargetFormat = ((value = "ldr" as Api.RenderTargetFormat, options) => spec("RenderTargetFormat", value, options)) as typeof Api.RenderTargetFormat;
@@ -266,6 +267,7 @@ export const og: typeof Api.og = Object.freeze({
   procgen,
   timeline,
   motion,
+  video,
   ui: Object.freeze({ ...ui, ...uiKit, ...components, ...feedback, ...hud, ...worldUi }),
   systems: Object.freeze({ cameras }),
 }) as unknown as typeof Api.og;

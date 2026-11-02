@@ -61,6 +61,11 @@ export const timeline = Object.freeze({
   stop: (world: W, entity: number) => parse(abi().og_timeline_stop(world.id, entity)),
 });
 
+/** og.video: how streams play on this host (the module's other calls are og.load.video and og.VideoPlayer). */
+export const video = Object.freeze({
+  capabilities: (world: W) => parse(abi().og_video_capabilities(world.id)),
+});
+
 // og.motion (IDL `motion`): goals for humanoids; the model draws them.
 export const motion = Object.freeze({
   pose: (world: W, entity: number, desc?: unknown) => parse(abi().og_motion_pose(world.id, entity, json(desc))),

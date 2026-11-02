@@ -467,7 +467,8 @@ test("og build --publish ships each group as its pack beside the first group, an
   const config = JSON.parse(/^const OG_SW=(.*);$/m.exec(sw)![1]!) as { files: string[]; lazy: string[] };
   const cooked = config.files.filter((f) => f.startsWith("cooked/")).sort();
   expect(cooked).toEqual(first.map((f) => `cooked/${f}`).sort());
-  expect(config.lazy).toEqual(packs);
+  // Beside the packs, a build lists the AV1 fallback decoder as lazy (fetched only where WebCodecs cannot decode AV1).
+  expect(config.lazy.filter((f) => !f.startsWith("av1/"))).toEqual(packs);
   // The shell's boot progress expects the first group's bytes only (the manifest is not counted).
   const html = readFileSync(join(dist, "index.html"), "utf8");
   expect(html).toContain(`"cooked":${firstBytes - statSync(join(dist, "cooked", ".cook.ogt")).size}`);
