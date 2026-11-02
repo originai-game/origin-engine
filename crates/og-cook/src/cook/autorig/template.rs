@@ -67,6 +67,10 @@ pub struct Template {
     /// view's thigh foreshortened as the knee lifts): the rigid parts
     /// below them keep their shape.
     pub scaled: &'static [&'static str],
+    /// Rigid parts kept at their drawn angle to the root whatever turns
+    /// the bones above them (a front view's feet stay flat on the ground
+    /// as the knees bend, instead of swinging their heels inwards).
+    pub level: &'static [&'static str],
 }
 
 impl Template {
@@ -342,6 +346,7 @@ pub const HUMANOID_SIDE: Template = Template {
     height: 2.0,
     sides: "`-l` is the far side (drawn behind the body), `-r` the near side; the character faces right",
     scaled: &[],
+    level: &[],
 };
 
 /// A humanoid seen from the front or three-quarters: `-l` is the part on
@@ -356,6 +361,7 @@ pub const HUMANOID_FRONT: Template = Template {
     height: 2.0,
     sides: "`-l` is the part on the image's left, `-r` on its right; the character faces the viewer",
     scaled: &["leg-upper-l", "leg-upper-r"],
+    level: &["foot-l", "foot-r"],
 };
 
 /// A four-legged animal seen from the side, facing right: `-l` is the
@@ -533,6 +539,7 @@ pub const QUADRUPED: Template = Template {
     height: 1.2,
     sides: "`-l` is the far side (drawn behind the body), `-r` the near side; the animal faces right",
     scaled: &[],
+    level: &[],
 };
 
 /// A simple creature: a body, perhaps a head, and up to eight limbs that
@@ -610,6 +617,7 @@ pub const CREATURE: Template = Template {
     height: 1.0,
     sides: "`-l` is the part on the image's left, `-r` on its right; limbs are numbered from the front (`limb-1`)",
     scaled: &["body"],
+    level: &[],
 };
 
 pub const ALL: [&Template; 4] = [&HUMANOID_SIDE, &HUMANOID_FRONT, &QUADRUPED, &CREATURE];

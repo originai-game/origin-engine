@@ -46,6 +46,44 @@ fn arm(
     });
 }
 
+/// Finishes a clip: each leg shortened, every sample, to just over its
+/// hip's reach to its foot's target, so its knee bends a few degrees
+/// instead of bowing out sideways. Seen from the front a knee that lifts
+/// or bends comes towards the viewer; bowed out, the shins swing their
+/// feet in under each other. The thigh is scaled uniformly (a scale along
+/// it alone would shear the turned shin, which the two-bone IK does not
+/// solve for); the feet keep their size and stay level (the template's
+/// `rigid-foot-*` constraints).
+fn done(mut c: Clip, rig: &Rig2dAsset) -> Clip2d {
+    let times = c.samples();
+    let setup = rig.pose(None, 0.0, &[]);
+    for side in ["l", "r"] {
+        let (Some(hip), Some(target)) = (
+            rig.bone(&format!("leg-upper-{side}")),
+            rig.bone(&format!("ik-foot-{side}")),
+        ) else {
+            continue;
+        };
+        let reach = |p: &og_anim::Pose2d| {
+            let (a, b) = (
+                p.world[hip].apply(0.0, 0.0),
+                p.world[target].apply(0.0, 0.0),
+            );
+            (a[0] - b[0]).hypot(a[1] - b[1])
+        };
+        let full = reach(&setup).max(1.0);
+        // Never shorter than 0.86 of the drawn leg: a knee lifted higher
+        // than that bends.
+        let keys: Vec<(f32, f32)> = times
+            .iter()
+            .map(|&t| (t, (reach(&c.pose(t)) / (0.995 * full)).clamp(0.86, 1.0)))
+            .collect();
+        let k = Curve::once(&keys);
+        c.scale(&format!("leg-upper-{side}"), |t| [k.at(t), k.at(t)]);
+    }
+    c.done()
+}
+
 /// The hips: `x` sways sideways and `y` bobs (rig pixels), `tilt` degrees.
 fn hips(c: &mut Clip, x: impl Fn(f32) -> f32, y: impl Fn(f32) -> f32, tilt: impl Fn(f32) -> f32) {
     c.mov("pelvis", |t| [x(t), y(t)]);
@@ -85,7 +123,7 @@ fn idle(rig: &Rig2dAsset, m: &Measure) -> Clip2d {
     chains(&mut c, |t, k, s| {
         s * swing(t, -2.0 - k as f32, 1.0, 0.16 + 0.08 * k as f32)
     });
-    c.done()
+    done(c, rig)
 }
 
 /// A step cycle seen from the front: the knee lifts `lift` leg lengths
@@ -127,25 +165,10 @@ fn gait(rig: &Rig2dAsset, m: &Measure, g: &Gait) -> Clip2d {
         (1.0, 0.0),
     ]);
     for (side, phase) in SIDES {
-        let (fy, fy2, fy3, tuck) = (fy.clone(), fy.clone(), fy.clone(), tuck.clone());
+        let (fy, tuck) = (fy.clone(), tuck.clone());
         let o = out(side);
-        let lift = (g.lift * l).max(1.0);
         c.mov(&format!("ik-foot-{side}"), move |t| {
             [o * tuck.at(t + phase), fy.at(t + phase)]
-        });
-        c.rot(&format!("foot-{side}"), move |t| {
-            o * 4.0 * fy2.at(t + phase) / lift
-        });
-        // Seen from the front a knee lifts towards the viewer: near the
-        // top of the lift the leg foreshortens, nearly straight, instead
-        // of bending sideways across the other leg (lower down, where the
-        // hips have swayed away from the foot, it needs its full length).
-        let reach = m.leg.max(1.0);
-        // Uniformly: a scale along the thigh alone would shear the turned
-        // shin, which the leg's two-bone IK does not solve for.
-        c.scale(&format!("leg-upper-{side}"), move |t| {
-            let k = 1.0 - 0.8 * (fy3.at(t + phase) - 0.4 * lift).max(0.0) / reach;
-            [k, k]
         });
     }
     // The hips over the planted foot: towards the right while the right
@@ -202,7 +225,7 @@ fn gait(rig: &Rig2dAsset, m: &Measure, g: &Gait) -> Clip2d {
     });
     c.event(0.0, "step");
     c.event(0.5, "step");
-    c.done()
+    done(c, rig)
 }
 
 fn walk(rig: &Rig2dAsset, m: &Measure) -> Clip2d {
@@ -256,13 +279,10 @@ fn jump(rig: &Rig2dAsset, m: &Measure) -> Clip2d {
     let head = key([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
     c.mov("pelvis", |t| [0.0, hips.at(t)]);
     for (side, lead) in [("r", 0.0), ("l", 0.02)] {
-        let (feet, feet2, spread) = (feet.clone(), feet.clone(), spread.clone());
+        let (feet, spread) = (feet.clone(), spread.clone());
         let o = out(side);
         c.mov(&format!("ik-foot-{side}"), move |t| {
             [o * spread.at(t - lead), feet.at(t - lead)]
-        });
-        c.rot(&format!("foot-{side}"), move |t| {
-            -o * 12.0 * feet2.at(t - lead) / (0.3 * l)
         });
         let (arm, fore) = (arm.clone(), fore.clone());
         let kk = if holds(rig, side) { 0.6 } else { 1.0 };
@@ -279,7 +299,7 @@ fn jump(rig: &Rig2dAsset, m: &Measure) -> Clip2d {
     });
     c.event(0.3, "takeoff");
     c.event(0.88, "land");
-    c.done()
+    done(c, rig)
 }
 
 fn attack(rig: &Rig2dAsset, m: &Measure) -> Clip2d {
@@ -340,7 +360,7 @@ fn attack(rig: &Rig2dAsset, m: &Measure) -> Clip2d {
         "shield".into(),
     ]);
     c.event(0.42, "hit");
-    c.done()
+    done(c, rig)
 }
 
 fn hit(rig: &Rig2dAsset, m: &Measure) -> Clip2d {
@@ -382,7 +402,7 @@ fn hit(rig: &Rig2dAsset, m: &Measure) -> Clip2d {
         let f = fade.at(t);
         [f, f * 0.25, f * 0.25, 0.0]
     });
-    c.done()
+    done(c, rig)
 }
 
 fn die(rig: &Rig2dAsset, m: &Measure) -> Clip2d {
@@ -429,7 +449,7 @@ fn die(rig: &Rig2dAsset, m: &Measure) -> Clip2d {
         sc * (1.0 + 0.5 * kk as f32) * flop.at(t - 0.04 * (kk + 1) as f32)
     });
     c.event(0.8, "fall");
-    c.done()
+    done(c, rig)
 }
 
 fn wave(rig: &Rig2dAsset, m: &Measure) -> Clip2d {
@@ -473,7 +493,7 @@ fn wave(rig: &Rig2dAsset, m: &Measure) -> Clip2d {
         format!("arm-lower-{free}"),
         format!("hand-{free}"),
     ]);
-    c.done()
+    done(c, rig)
 }
 
 fn cheer(rig: &Rig2dAsset, m: &Measure) -> Clip2d {
@@ -501,7 +521,7 @@ fn cheer(rig: &Rig2dAsset, m: &Measure) -> Clip2d {
     chains(&mut c, |t, k, sc| {
         sc * swing(t, 2.0 + 1.5 * k as f32, 2.0, 0.08 * (k + 1) as f32)
     });
-    c.done()
+    done(c, rig)
 }
 
 fn shrug(rig: &Rig2dAsset, m: &Measure) -> Clip2d {
@@ -531,7 +551,7 @@ fn shrug(rig: &Rig2dAsset, m: &Measure) -> Clip2d {
     chains(&mut c, |t, k, sc| {
         sc * -4.0 * (1.0 + k as f32) * up.at(t - 0.06 * (k + 1) as f32)
     });
-    c.done()
+    done(c, rig)
 }
 
 /// Every humanoid-front clip, in the library's order.

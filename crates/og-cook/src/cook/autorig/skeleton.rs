@@ -421,17 +421,19 @@ pub fn rig(
         }
         false
     };
+    // A level part also keeps its drawn angle to the root.
     for (i, n) in nodes.iter().enumerate() {
-        if n.spec.shape == Shape::Rigid && below(i) {
+        let level = template.level.contains(&n.spec.name);
+        if n.spec.shape == Shape::Rigid && (below(i) || level) {
             transforms.push(TransformConstraint2d {
                 name: format!("rigid-{}", n.spec.name),
                 bones: vec![first_bone[i]],
                 target: 0,
-                rotation: 0.0,
+                rotation: if level { world[first_bone[i]].1 } else { 0.0 },
                 at: [0.0, 0.0],
                 scale: [0.0, 0.0],
                 shear: 0.0,
-                mix: [0.0, 0.0, 1.0, 1.0],
+                mix: [if level { 1.0 } else { 0.0 }, 0.0, 1.0, 1.0],
             });
         }
     }
