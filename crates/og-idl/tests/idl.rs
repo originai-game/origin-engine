@@ -178,7 +178,7 @@ fn the_repository_idl_is_valid_and_covers_the_design() {
     );
     assert_eq!(
         fns("tilemap"),
-        ["setTile", "getTile", "cellAt", "cellCenter"]
+        ["setTile", "fill", "getTile", "cellAt", "cellCenter"]
     );
     assert!(fns("render").contains(&"floatingText".to_string()));
     for name in [
