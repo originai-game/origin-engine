@@ -90,6 +90,9 @@ pub enum TargetKind {
     Color(TargetFormat),
     /// The view's normalised linear depth (Rgba16Float).
     Depth,
+    /// A streamed video's frame (8-bit sRGB, [`RenderScene::add_stream_texture`]):
+    /// written by the host as frames are decoded, never drawn into by a view.
+    Stream,
 }
 
 impl TargetTexture {
@@ -97,6 +100,7 @@ impl TargetTexture {
         match self.kind {
             TargetKind::Color(f) => f.wgpu(),
             TargetKind::Depth => wgpu::TextureFormat::Rgba16Float,
+            TargetKind::Stream => wgpu::TextureFormat::Rgba8UnormSrgb,
         }
     }
 
@@ -105,6 +109,7 @@ impl TargetTexture {
         let texel = match self.kind {
             TargetKind::Color(f) => f.bytes(),
             TargetKind::Depth => 8,
+            TargetKind::Stream => 4,
         };
         self.width as u64 * self.height as u64 * texel
     }
@@ -159,6 +164,7 @@ pub(crate) fn create(device: &wgpu::Device, t: TargetTexture) -> wgpu::Texture {
         label: Some(match t.kind {
             TargetKind::Color(_) => "render target",
             TargetKind::Depth => "render target depth",
+            TargetKind::Stream => "video stream",
         }),
         size: wgpu::Extent3d {
             width: t.width,
@@ -169,9 +175,16 @@ pub(crate) fn create(device: &wgpu::Device, t: TargetTexture) -> wgpu::Texture {
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: t.format(),
+        // A stream's frames are copied in (queue writes natively, the
+        // browser's external image copies on the web).
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT
             | wgpu::TextureUsages::TEXTURE_BINDING
-            | wgpu::TextureUsages::COPY_SRC,
+            | wgpu::TextureUsages::COPY_SRC
+            | if t.kind == TargetKind::Stream {
+                wgpu::TextureUsages::COPY_DST
+            } else {
+                wgpu::TextureUsages::empty()
+            },
         view_formats: &[],
     })
 }

@@ -7,8 +7,59 @@
 //! whole clip's. Several players of one video each have a texture of their
 //! own ([`FrameTexture::view`]): the decoded frames are shared, each view
 //! uploads the frame its player shows.
+//!
+//! A streamed video (decoded as it plays, G3-2) draws into a stream
+//! texture instead ([`RenderScene::add_stream_texture`]): a GPU texture of
+//! the frame's size, allocated as a render target is (transparent black
+//! until its first frame) and written in place as frames are decoded, so a
+//! new frame rebinds no material. Natively the host hands each decoded
+//! frame's RGBA8 rows to [`RenderScene::write_stream_texture`], uploaded
+//! before the next frame draws.
 
 use crate::scene::{RenderScene, TextureFilter, TextureHandle, TextureSource};
+use crate::targets::{TargetKind, TargetTexture};
+use std::sync::Arc;
+
+impl RenderScene {
+    /// Adds a streamed video's texture, `width` x `height` 8-bit sRGB,
+    /// sampled as any texture; `nearest` samples it texel by texel.
+    pub fn add_stream_texture(&mut self, width: u32, height: u32, nearest: bool) -> TextureHandle {
+        let t = self.add_texture_source(TextureSource::Target(TargetTexture {
+            width: width.max(1),
+            height: height.max(1),
+            kind: TargetKind::Stream,
+        }));
+        if nearest {
+            self.set_texture_filter(t, TextureFilter::Nearest);
+        }
+        t
+    }
+
+    /// Shows `rgba` (the texture's width x height RGBA8 rows, sRGB) in a
+    /// stream texture from the next frame on. False for a handle that is
+    /// not a live stream texture or rows of another size.
+    pub fn write_stream_texture(&mut self, handle: TextureHandle, rgba: Arc<Vec<u8>>) -> bool {
+        let i = handle.index();
+        let Some(TextureSource::Target(t)) = self.textures().get(i) else {
+            return false;
+        };
+        if t.kind != TargetKind::Stream
+            || !self.texture_live(i)
+            || rgba.len() != t.width as usize * t.height as usize * 4
+        {
+            return false;
+        }
+        self.stream_serial += 1;
+        let serial = self.stream_serial;
+        self.stream_frames.insert(i, (serial, rgba));
+        true
+    }
+
+    /// Each stream texture's newest frame: its serial and its rows.
+    pub(crate) fn stream_frames(&self) -> &std::collections::BTreeMap<usize, (u64, Arc<Vec<u8>>)> {
+        &self.stream_frames
+    }
+}
 use crate::texture_array::{TextureArrayData, TextureArrayInfo};
 
 /// The frames and the texture that shows one of them.
@@ -134,5 +185,31 @@ mod tests {
         };
         assert_eq!(at(&scene, w.texture()), 100);
         assert_eq!(at(&scene, v.texture()), 200);
+    }
+
+    #[test]
+    fn a_stream_texture_takes_frames_of_its_size_without_a_new_revision() {
+        let mut scene = RenderScene::new();
+        let t = scene.add_stream_texture(4, 2, false);
+        let rev = scene.texture_revisions()[t.index()];
+        assert!(scene.write_stream_texture(t, Arc::new(vec![7; 32])));
+        assert!(scene.write_stream_texture(t, Arc::new(vec![9; 32])));
+        let (serial, rows) = &scene.stream_frames()[&t.index()];
+        assert_eq!((*serial, rows[0]), (2, 9), "the newest frame, a new serial");
+        // A frame write is not a texture replacement: nothing rebinds.
+        assert_eq!(scene.texture_revisions()[t.index()], rev);
+        // Rows of another size, or a texture that is not a stream: refused.
+        assert!(!scene.write_stream_texture(t, Arc::new(vec![0; 16])));
+        let other = scene.add_texture(TextureData {
+            width: 4,
+            height: 2,
+            rgba: vec![0; 32],
+            color_space: ColorSpace::Srgb,
+            mips: Mips::None,
+        });
+        assert!(!scene.write_stream_texture(other, Arc::new(vec![0; 32])));
+        // A removed stream texture forgets its frame.
+        assert!(scene.remove_texture(t));
+        assert!(!scene.stream_frames().contains_key(&t.index()));
     }
 }

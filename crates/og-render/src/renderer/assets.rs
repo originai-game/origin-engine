@@ -350,6 +350,42 @@ impl Renderer {
             self.fx_groups = None;
             self.terrain.forget_groups();
         }
+        // Stream textures' new frames, written in place (no rebinding). A
+        // texture uploaded again (its slot replaced) takes its frame again.
+        for &index in &replaced {
+            self.cache.stream_serials.remove(&index);
+        }
+        for (&index, (serial, rgba)) in scene.stream_frames() {
+            if self.cache.stream_serials.get(&index) == Some(serial) {
+                continue;
+            }
+            let Some(TextureSource::Target(t)) = scene.textures().get(index) else {
+                continue;
+            };
+            let Some(gpu) = self.cache.textures.get(index) else {
+                continue;
+            };
+            self.queue.write_texture(
+                wgpu::TexelCopyTextureInfo {
+                    texture: gpu.view.texture(),
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                },
+                rgba,
+                wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(t.width * 4),
+                    rows_per_image: Some(t.height),
+                },
+                wgpu::Extent3d {
+                    width: t.width,
+                    height: t.height,
+                    depth_or_array_layers: 1,
+                },
+            );
+            self.cache.stream_serials.insert(index, *serial);
+        }
         // A pack holding a replaced texture is made again with its materials.
         let replaced_slot = |slot: &u32| {
             TextureHandle::from_slot(*slot).is_some_and(|h| replaced.contains(&h.index()))

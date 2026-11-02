@@ -230,6 +230,9 @@ pub(crate) struct SceneCache {
     pub(crate) textures: Vec<GpuTexture>,
     /// The scene's revision of each texture when it was uploaded.
     pub(crate) texture_revisions: Vec<u64>,
+    /// Each stream texture's frame serial when it was last written
+    /// ([`RenderScene::write_stream_texture`]), by texture index.
+    pub(crate) stream_serials: std::collections::BTreeMap<usize, u64>,
     pub(crate) materials: Vec<GpuMaterial>,
     /// Sprite bind groups per texture, made on first use.
     pub(crate) sprite_groups: Vec<Option<wgpu::BindGroup>>,

@@ -113,6 +113,8 @@ impl RenderScene {
             paletted: std::collections::HashMap::new(),
             mesh_slots: Slots::default(),
             texture_slots: Slots::default(),
+            stream_frames: Default::default(),
+            stream_serial: 0,
             material_slots: Slots::default(),
             font_slots: Slots::default(),
             environment_map_slots: Slots::default(),
@@ -914,6 +916,7 @@ impl RenderScene {
         if !self.texture_slots.live(i, handle.generation()) {
             return false;
         }
+        self.stream_frames.remove(&i);
         self.textures[i] = TextureSource::Rgba(TextureData {
             width: 1,
             height: 1,
