@@ -575,6 +575,8 @@ pub trait PhysicsApi: Wire {
     fn og_physics_rope_points(&self, world: u32, entity: f64) -> String;
     /// `og.physics.clothPoints`
     fn og_physics_cloth_points(&self, world: u32, entity: f64) -> String;
+    /// `og.physics.softBodyPoints`
+    fn og_physics_soft_body_points(&self, world: u32, entity: f64) -> String;
     /// `og.physics.fluidParticles`
     fn og_physics_fluid_particles(&self, world: u32, entity: f64) -> String;
     /// `og.physics.fluid3dParticles`
@@ -1445,6 +1447,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_physics_set_mesh",
     "og_physics_rope_points",
     "og_physics_cloth_points",
+    "og_physics_soft_body_points",
     "og_physics_fluid_particles",
     "og_physics_fluid3d_particles",
     "og_physics_water_height",

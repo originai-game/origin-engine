@@ -72,6 +72,10 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: "og.VehicleWheel",
         enable: |w| og_physics::enable(w, "og.VehicleWheel"),
     },
+    Lazy {
+        name: "og.SoftBody",
+        enable: |w| og_physics::enable(w, "og.SoftBody"),
+    },
 ];
 
 /// Whether engine record `name` is registered lazily.

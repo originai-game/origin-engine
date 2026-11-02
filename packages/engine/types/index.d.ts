@@ -12662,6 +12662,160 @@ export interface Cloth {
   visible: boolean;
 }
 
+/** `SoftBody.shape`: a sphere of `radius` (an icosphere; 2D a ring). */
+export declare const SOFT_SPHERE: 0;
+
+/**
+ * `SoftBody.shape`: a box of `size` (each face a grid of `detail` + 1 cells; 2D a rectangle).
+ */
+export declare const SOFT_BOX: 1;
+
+/** `SoftBody.shape`: the closed surface of geometry `mesh` (3D only). */
+export declare const SOFT_MESH: 2;
+
+/**
+ * A PBD soft volume: a closed surface of points (2D: a ring in the xy plane) held by distance constraints along its edges and by one constraint on the volume it encloses (2D: its area), dropped under gravity and pushed out of every solid collider, so it lands, squashes and springs back: jelly, a water balloon, a slime. Built at the entity's world pose (its og.Transform after its parents') when it appears or its shape changes. It moves nothing (one-way like og.Cloth). Its points are world state (the og.physics state block); og.physics.softBodyPoints reads them and the renderer draws its surface with `material`.
+ *
+ * The value of the `SoftBody` component (token `og.SoftBody`).
+ */
+export interface SoftBody {
+  /**
+   * SOFT_SPHERE 0, SOFT_BOX 1 or SOFT_MESH 2.
+   *
+   * @range 0..2
+   */
+  shape: number;
+  /**
+   * A sphere's radius.
+   *
+   * @default 0.5
+   * @range 0.01..
+   * @unit m (metres)
+   * @tunable
+   */
+  radius: number;
+  /**
+   * A box's full extents.
+   *
+   * @default { x: 1, y: 1, z: 1 }
+   * @range 0..
+   * @unit m (metres)
+   */
+  size: Vector3;
+  /**
+   * How finely its surface is divided: a sphere 0 to 3 (12, 42, 162 or 642 points; 2D 12 to 96), a box 0 to 7 (cells along a face's edge, minus one). A finer surface needs more iterations to hold its shape: at 642 points and stiffness below 1 the default 8 lets it spread.
+   *
+   * @default 2
+   * @range 0..7
+   */
+  detail: number;
+  /**
+   * SOFT_MESH's geometry: a loaded glTF's (registered automatically) or one given to og.physics.setMesh; closed, its vertices welded where they meet.
+   */
+  mesh: Geometry;
+  /**
+   * How stiff its edges are, 0 to 1 a pass: 1 holds their length, lower lets the surface stretch and wobble.
+   *
+   * @default 1
+   * @range 0..1
+   * @tunable
+   */
+  stiffness: number;
+  /**
+   * The volume it keeps, as a share of its rest volume: 1 holds it, above inflates it, 0 holds none (it slumps like cloth).
+   *
+   * @default 1
+   * @range 0..4
+   * @tunable
+   */
+  pressure: number;
+  /**
+   * How much of its volume a pass restores, 0 to 1.
+   *
+   * @default 1
+   * @range 0..1
+   * @tunable
+   */
+  volumeStiffness: number;
+  /**
+   * Constraint passes per substep.
+   *
+   * @default 8
+   * @range 1..64
+   * @tunable
+   */
+  iterations: number;
+  /**
+   * Simulation steps per tick.
+   *
+   * @default 2
+   * @range 1..16
+   */
+  substeps: number;
+  /**
+   * How much of its velocity each point keeps per tick.
+   *
+   * @default 0.995
+   * @range 0..1
+   * @tunable
+   */
+  damping: number;
+  /**
+   * Multiplies og.Physics.gravity.
+   *
+   * @default 1
+   * @range -10..10
+   * @tunable
+   */
+  gravityScale: number;
+  /**
+   * The distance its points keep from solids (0: no collision).
+   *
+   * @default 0.03
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  thickness: number;
+  /**
+   * How much of its sliding a point touching a solid loses each step.
+   *
+   * @default 0.3
+   * @range 0..1
+   * @tunable
+   */
+  friction: number;
+  /**
+   * Points within this height of its top at rest are pinned to the entity and follow it (0: none): a water balloon on a string.
+   *
+   * @range 0..
+   * @unit m (metres)
+   */
+  pinTop: number;
+  /** The material it is drawn with (og.render.standardMaterial); 0 is a plain one. */
+  material: Material;
+  /**
+   * Whether the renderer draws it.
+   *
+   * @default true
+   */
+  visible: boolean;
+  /**
+   * Written: its volume (2D: area) now over its rest volume; below 1 squashed, above inflated.
+   *
+   * @default 1
+   * @readonly written by the engine
+   */
+  readonly volume: number;
+  /**
+   * Written: the mean of its points, in world space.
+   *
+   * @unit m (metres)
+   * @readonly written by the engine
+   */
+  readonly center: Vector3;
+}
+
 /**
  * A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`.
  *
@@ -13701,6 +13855,17 @@ export interface BonePose {
   readonly rotation: Quaternion;
 }
 
+
+
+/** An og.SoftBody's surface after the last step. */
+export interface SoftBodyPoints {
+  /** Its points, in world space. */
+  readonly points: readonly Vector3[];
+  /**
+   * Its triangles, three indices into `points` each, wound outwards (2D: a fan over the ring).
+   */
+  readonly indices: readonly number[];
+}
 
 
 
@@ -41703,6 +41868,10 @@ export declare namespace og {
    */
   const Cloth: ComponentType<{ readonly columns: FieldSpec<"u32">; readonly rows: FieldSpec<"u32">; readonly spacing: FieldSpec<"f32">; readonly pins: FieldSpec<"u32">; readonly iterations: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly gust: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly friction: FieldSpec<"f32">; readonly material: FieldSpec<"Material">; readonly visible: FieldSpec<"bool"> }, Cloth>;
   /**
+   * A PBD soft volume: a closed surface of points (2D: a ring in the xy plane) held by distance constraints along its edges and by one constraint on the volume it encloses (2D: its area), dropped under gravity and pushed out of every solid collider, so it lands, squashes and springs back: jelly, a water balloon, a slime. Built at the entity's world pose (its og.Transform after its parents') when it appears or its shape changes. It moves nothing (one-way like og.Cloth). Its points are world state (the og.physics state block); og.physics.softBodyPoints reads them and the renderer draws its surface with `material`.
+   */
+  const SoftBody: ComponentType<{ readonly shape: FieldSpec<"u32">; readonly radius: FieldSpec<"f32">; readonly size: FieldSpec<"Vector3">; readonly detail: FieldSpec<"u32">; readonly mesh: FieldSpec<"Geometry">; readonly stiffness: FieldSpec<"f32">; readonly pressure: FieldSpec<"f32">; readonly volumeStiffness: FieldSpec<"f32">; readonly iterations: FieldSpec<"u32">; readonly substeps: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly friction: FieldSpec<"f32">; readonly pinTop: FieldSpec<"f32">; readonly material: FieldSpec<"Material">; readonly visible: FieldSpec<"bool">; readonly volume: FieldSpec<"f32">; readonly center: FieldSpec<"Vector3"> }, SoftBody>;
+  /**
    * A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`.
    */
   const Fluid2D: ComponentType<{ readonly count: FieldSpec<"u32">; readonly size: FieldSpec<"Vector2">; readonly bounds: FieldSpec<"Vector2">; readonly radius: FieldSpec<"f32">; readonly restDensity: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly nearStiffness: FieldSpec<"f32">; readonly viscosity: FieldSpec<"f32">; readonly group: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly mixing: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly seed: FieldSpec<"u32">; readonly color: FieldSpec<"Vector3">; readonly opacity: FieldSpec<"f32">; readonly blobScale: FieldSpec<"f32">; readonly threshold: FieldSpec<"f32">; readonly layer: FieldSpec<"i32">; readonly visible: FieldSpec<"bool"> }, Fluid2D>;
@@ -41834,6 +42003,14 @@ export declare namespace og {
      * @returns Refused for an entity without an og.Cloth.
      */
     function clothPoints(world: World, entity: Entity): Result<readonly Vector3[]>;
+    /**
+     * An og.SoftBody's points and the triangles of its surface after the last step (none before its first step). The engine draws visible soft bodies itself; this is for game logic (where it touches, how squashed it is) and custom drawing.
+     *
+     * @param world The world.
+     * @param entity The soft body's entity.
+     * @returns Refused for an entity without an og.SoftBody.
+     */
+    function softBodyPoints(world: World, entity: Entity): Result<SoftBodyPoints>;
     /**
      * An og.Fluid2D's particle positions after the last step, in world space.
      *

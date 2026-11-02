@@ -41,6 +41,7 @@ pub(crate) struct AtmoLayouts {
     fluid3d: Option<Layout>,
     rope: Option<Layout>,
     cloth: Option<Layout>,
+    soft: Option<Layout>,
     pub ragdoll: Option<Layout>,
     pub physics: Option<og_physics::PhysicsSystem>,
 }
@@ -63,6 +64,7 @@ impl AtmoLayouts {
             fluid3d: get("og.Fluid3D"),
             rope: get("og.Rope"),
             cloth: get("og.Cloth"),
+            soft: get("og.SoftBody"),
             ragdoll: get("og.Ragdoll"),
             physics,
         }
@@ -76,6 +78,8 @@ pub(crate) struct AtmoState {
     weather: Option<(Vec<u32>, og_render::EmitterHandle)>,
     cloths: IdMap<u64, MeshHandle>,
     cloth_material: Option<MaterialHandle>,
+    softs: IdMap<u64, MeshHandle>,
+    soft_material: Option<MaterialHandle>,
     /// `og.load.shader` handles by load index, and loads by path.
     pub shaders: Vec<og_render::ShaderHandle>,
     pub shader_paths: BTreeMap<String, usize>,
@@ -652,7 +656,75 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         scene.add_instance(handle, material, Mat4::IDENTITY);
         keys.push((e, u32::MAX));
     }
+    // Soft volumes: their surface, smooth-shaded, replaced every frame.
+    for (e, v) in rows(world, layouts.soft.as_ref()) {
+        if !on(&v, "visible", true) {
+            continue;
+        }
+        let Some(s) = physics.soft_body_points(Entity::from_bits(e)) else {
+            continue;
+        };
+        let mesh = soft_mesh(&s.points, &s.indices);
+        let handle = match atmo.softs.get(&e) {
+            Some(&handle) => {
+                scene.set_mesh(handle, mesh);
+                handle
+            }
+            None => {
+                let handle = scene.add_mesh(mesh);
+                atmo.softs.insert(e, handle);
+                handle
+            }
+        };
+        let material = super::fx::handle_index(&v["material"])
+            .and_then(|i| materials.get(i).copied())
+            .unwrap_or_else(|| {
+                *atmo.soft_material.get_or_insert_with(|| {
+                    scene.add_standard_material(og_render::StandardMaterial {
+                        color: Vec3::new(0.25, 0.75, 0.35),
+                        roughness: 0.35,
+                        side: 2,
+                        ..Default::default()
+                    })
+                })
+            });
+        scene.add_instance(handle, material, Mat4::IDENTITY);
+        keys.push((e, u32::MAX));
+    }
     keys
+}
+
+/// The mesh of a soft volume's surface: its world points with normals
+/// averaged from the triangles around each (area-weighted).
+fn soft_mesh(points: &[Vec3], indices: &[u32]) -> MeshData {
+    let mut normals = vec![Vec3::ZERO; points.len()];
+    for t in indices.as_chunks::<3>().0 {
+        let [a, b, c] = t.map(|i| i as usize);
+        if a.max(b).max(c) >= points.len() {
+            return MeshData {
+                vertices: Vec::new(),
+                indices: Vec::new(),
+            };
+        }
+        let n = (points[b] - points[a]).cross(points[c] - points[a]);
+        for i in [a, b, c] {
+            normals[i] += n;
+        }
+    }
+    let vertices = points
+        .iter()
+        .zip(&normals)
+        .map(|(p, n)| Vertex {
+            tangent: [0.0; 4],
+            position: p.to_array(),
+            normal: n.normalize_or(Vec3::Z).to_array(),
+            ..Default::default()
+        })
+        .collect();
+    MeshData {
+        vertices,
+        indices: indices.to_vec(),
+    }
 }
 
 /// The mesh of a `columns` x `rows` grid of world points: smooth normals

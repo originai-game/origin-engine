@@ -10,7 +10,7 @@ use crate::StepOut;
 use crate::schema::{BODY_KINEMATIC, Collider, Parent, RigidBody, Transform, Velocity};
 use crate::schema_ext::{
     CharacterController, Cloth, ContactHook, Fluid2D, Fluid3D, Joint, PlatformerController,
-    Ragdoll, Rope, Vehicle, VehicleWheel, WaterLine, WaterSurface,
+    Ragdoll, Rope, SoftBody, Vehicle, VehicleWheel, WaterLine, WaterSurface,
 };
 use og_core::glam::{Quat, Vec3};
 use og_core::{Layout, Reflect, Result};
@@ -236,6 +236,8 @@ impl Rows {
 pub(crate) struct Ids {
     transform: SchemaId,
     transform_layout: Layout,
+    parent_id: SchemaId,
+    parent_layout: Layout,
     parent: FieldRef,
     t_position: FieldRef,
     t_quaternion: FieldRef,
@@ -259,6 +261,7 @@ pub(crate) struct Ids {
     fluid3: Rows,
     hook_layout: Layout,
     wheel_layout: Layout,
+    soft_layout: Layout,
 }
 
 fn fields_of<T: Reflect>(world: &World) -> Result<(Vec<FieldRef>, Layout)> {
@@ -297,12 +300,14 @@ impl Ids {
         world.register::<crate::CharacterEvent>()?;
         world.register::<crate::Splash>()?;
         world.register::<Fluid3D>()?;
-        world.register::<Parent>()?;
+        let parent_id = world.register::<Parent>()?;
         let (body_fields, body_layout) = fields_of::<RigidBody>(world)?;
         let (collider_fields, collider_layout) = fields_of::<Collider>(world)?;
         Ok(Ids {
             transform,
             transform_layout: Layout::of(&Transform::schema()),
+            parent_id,
+            parent_layout: Layout::of(&Parent::schema()),
             parent: world.field::<Parent>("entity")?,
             t_position: world.field_by_id(transform, "position")?,
             t_quaternion: world.field_by_id(transform, "quaternion")?,
@@ -326,6 +331,7 @@ impl Ids {
             fluid3: Rows::of::<Fluid3D>(world)?,
             hook_layout: Layout::of(&ContactHook::schema()),
             wheel_layout: Layout::of(&VehicleWheel::schema()),
+            soft_layout: Layout::of(&SoftBody::schema()),
         })
     }
 }
@@ -396,6 +402,8 @@ pub(crate) struct Scene {
     /// Each vehicle's og.VehicleWheel children, by vehicle entity, in
     /// entity order (at most [`MAX_WHEELS`]).
     pub wheels: og_core::IdMap<u64, Vec<WheelChild>>,
+    /// The soft volumes (lazy), at their world pose, by entity (ascending).
+    pub softs: Vec<(Entity, Vec3, Quat, SoftBody)>,
 }
 
 /// The most og.VehicleWheel children a vehicle takes.
@@ -417,6 +425,7 @@ pub(crate) struct WheelChild {
 pub(crate) struct LazyIds {
     pub hook: Option<SchemaId>,
     pub wheel: Option<SchemaId>,
+    pub soft: Option<SchemaId>,
 }
 
 impl LazyIds {
@@ -424,6 +433,7 @@ impl LazyIds {
         LazyIds {
             hook: id(ContactHook::NAME),
             wheel: id(VehicleWheel::NAME),
+            soft: id(SoftBody::NAME),
         }
     }
 }
@@ -845,6 +855,48 @@ pub(crate) fn gather<'w>(
         e, p, c
     ));
     Ok(scene)
+}
+
+/// The og.SoftBody entities (`soft`, lazily registered, so found by a
+/// query made while the step runs, `query`) at their world pose: their
+/// transform after their parents' down the og.Parent chain. In entity
+/// order.
+pub(crate) fn softs<'w>(
+    query: &dyn Fn(&QueryDesc) -> Result<QueryIter<'w>>,
+    get: GetBytes<'_>,
+    soft: SchemaId,
+    ids: &Ids,
+) -> Result<Vec<(Entity, Vec3, Quat, SoftBody)>> {
+    let desc = QueryDesc {
+        read: vec![TRANSFORM.to_string(), SoftBody::NAME.to_string()],
+        ..QueryDesc::default()
+    };
+    let parent_of = |c: Entity| {
+        let bytes = get(c, ids.parent_id).ok()?;
+        let p = ids.parent_layout.decode::<Parent>(&bytes).ok()?;
+        (p.entity != 0).then(|| Entity::from_bits(p.entity))
+    };
+    let transform_of = |p: Entity| {
+        let bytes = get(p, ids.transform).ok()?;
+        ids.transform_layout.decode::<Transform>(&bytes).ok()
+    };
+    let mut out = Vec::new();
+    for a in query(&desc)? {
+        let position = a.read::<Vec3>(ids.t_position)?;
+        let quaternion = a.read::<Quat>(ids.t_quaternion)?;
+        for (row, e) in a.entities().iter().enumerate() {
+            let body = ids.soft_layout.decode::<SoftBody>(&get(*e, soft)?)?;
+            let (p, q) = world_pose(
+                *e,
+                (position[row], quaternion[row]),
+                parent_of,
+                transform_of,
+            );
+            out.push((*e, p, q, body));
+        }
+    }
+    og_core::sort::sort_by_key(&mut out, |s| s.0.to_bits());
+    Ok(out)
 }
 
 /// Controllers by entity index, valid for one tick.

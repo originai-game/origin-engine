@@ -38,6 +38,7 @@ const ADDED_TYPES: &[&str] = &[
     "og.JointBroken",
     "og.ContactHook",
     "og.VehicleWheel",
+    "og.SoftBody",
 ];
 const ADDED_FIELDS: &[(&str, &str)] = &[
     ("og.Physics", "sleepTicks"),

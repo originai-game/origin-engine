@@ -159,7 +159,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1958 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1964 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -1011,6 +1011,7 @@ Field units the docs and Tune use.
 | [`og.physics.setMesh`](physics.md#fn-setMesh) | function | physics | `og_physics_set_mesh` |
 | [`og.physics.setRagdollRig`](physics.md#fn-setRagdollRig) | function | physics | `og_physics_set_ragdoll_rig` |
 | [`og.physics.shapeCast`](physics.md#fn-shapeCast) | function | physics | `og_physics_shape_cast` |
+| [`og.physics.softBodyPoints`](physics.md#fn-softBodyPoints) | function | physics | `og_physics_soft_body_points` |
 | [`og.physics.stats`](physics.md#fn-stats) | function | physics | `og_physics_stats` |
 | [`og.physics.vehicleWheels`](physics.md#fn-vehicleWheels) | function | physics | `og_physics_vehicle_wheels` |
 | [`og.physics.waterHeight`](physics.md#fn-waterHeight) | function | physics | `og_physics_water_height` |
@@ -1118,6 +1119,7 @@ Field units the docs and Tune use.
 | [`og.Skeleton2D`](anim.md#record-Skeleton2D) | component | anim | — |
 | [`og.Skeleton2DEvent`](anim.md#record-Skeleton2DEvent) | event | anim | — |
 | [`og.Sky`](atmosphere.md#record-Sky) | resource | atmosphere | — |
+| [`og.SoftBody`](physics.md#record-SoftBody) | component | physics | — |
 | [`og.SoundEnded`](audio.md#record-SoundEnded) | event | audio | — |
 | [`og.SoundStarted`](audio.md#record-SoundStarted) | event | audio | — |
 | [`og.Splash`](physics.md#record-Splash) | event | physics | — |
@@ -1798,6 +1800,10 @@ Field units the docs and Tune use.
 | [`SnapPoint`](ui.md#type-SnapPoint) | struct | ui | — |
 | [`SnapshotDesc`](world.md#type-SnapshotDesc) | desc struct | world | — |
 | [`SnapshotInfo`](probe.md#type-SnapshotInfo) | struct | probe | — |
+| [`SOFT_BOX`](physics.md#const-SOFT_BOX) | constant | physics | — |
+| [`SOFT_MESH`](physics.md#const-SOFT_MESH) | constant | physics | — |
+| [`SOFT_SPHERE`](physics.md#const-SOFT_SPHERE) | constant | physics | — |
+| [`SoftBodyPoints`](physics.md#type-SoftBodyPoints) | struct | physics | — |
 | [`SolidFill`](ui.md#type-SolidFill) | desc struct | ui | — |
 | [`SolidGeometryDesc`](render.md#type-SolidGeometryDesc) | desc struct | render | — |
 | [`Sound`](load.md#type-Sound) | handle | load | — |

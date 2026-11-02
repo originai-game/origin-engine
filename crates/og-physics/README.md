@@ -53,8 +53,8 @@ are `u32` constants in `src/schema.rs`.
 | `og.BodySlept`, `og.BodyWoke` | event | `entity`; in entity order (G2-3 sleep) |
 | `og.Contact` | event | `a`, `b`, `sensor` (bit 0: a is a sensor, bit 1: b); every touching pair, each tick |
 
-`og.ContactHook`, `og.BodySlept`, `og.BodyWoke`, `og.JointBroken` and
-`og.VehicleWheel` are lazy ([`LAZY`]): `install` does not register them, and [`enable`]
+`og.ContactHook`, `og.BodySlept`, `og.BodyWoke`, `og.JointBroken`,
+`og.VehicleWheel` and `og.SoftBody` are lazy ([`LAZY`]): `install` does not register them, and [`enable`]
 registers one and grants it to `og.physics` (and the query system), as a
 host does once a game names it (og-runtime's `lazy.rs`). Until then the
 events are not sent and no hooks are read, so a world that never uses
@@ -129,7 +129,7 @@ one that is not is refused, naming it.
 
 What G2-3 keeps beyond the first form of the simulation (compound
 children's built poses; sleep, joint breaking, the drivetrain and soft
-volumes to come) is not in `Sim`'s bincode but in a trailer after the
+volumes) is not in `Sim`'s bincode but in a trailer after the
 block, in og-ecs's shared state-block format (`og_ecs::trailer`, which
 `og.nav` and `og.ai` use too): `OGXT`, a format byte 1, then sections of
 a little-endian `u16` tag, `u32` length and bytes, tags ascending
@@ -137,7 +137,7 @@ a little-endian `u16` tag, `u32` length and bytes, tags ascending
 using none of it saves and hashes byte for byte as before
 (`tests/unchanged.rs` pins the beyond scenario's hashes from cb1d65bf), and
 a decoder skips a tag it does not know: a later extension adds a tag.
-Tags: 1 compounds, 2 sleep (the rest counters), 3 hooks (some collider has its contact hooks on, an empty section).
+Tags: 1 compounds, 2 sleep (the rest counters), 3 hooks (some collider has its contact hooks on, an empty section), 4 vehicles (a drivetrain's gearbox, wheel children), 5 soft volumes (each og.SoftBody's points and surface).
 
 ## The step on the lanes
 
@@ -290,6 +290,7 @@ reached from TypeScript through `crates/og-api/api/physics.ogt`'s physics module
 | `og.Vehicle` | 3D: rapier's raycast vehicle (carried in `raycast_vehicle.rs` with its roll influence and skid info public, one pass per wheel, the tyre impulses sized with each body's effective inverse mass so locked axes count, and the opposite of every wheel impulse applied to a dynamic ground body: a car on a raft weighs on it and drives it backwards, momentum conserved; fixed and kinematic ground take nothing) with a top-speed fade and reverse braking, its wheel rays filtered by the chassis collider's layers and mask, `roll_influence` (0: corners flat), brakes in newtons a wheel, defaults for a 1,000 kg car, `slip` written; 2D: wheel bodies on sprung, motorised wheel joints; `vehicle_wheels` for drawing, with each wheel's `slip` and `side_speed` |
 | `og.Vehicle` drivetrain (G2-3) | `model` VEHICLE_DRIVETRAIN: `drivetrain.rs`, rapier-free, turns throttle and forward speed into a torque at the driven wheels through the torque curve, a gear and the final drive, with an automatic or manual gearbox whose gear, rpm and clutch are the trailer's tag 4 (`SimExt::vehicles`); 3D splits it across the driven wheels as forces at their radius, 2D drives the wheel motors towards the gear's top speed with it. `handbrake` brakes and loosens the handbrake wheels (`handbrakeGrip` on their friction slip and side stiffness), `driftGrip` their side stiffness while they slide. `og.VehicleWheel` children (lazy, found among parented entities, up to 16 in entity order) replace the implicit wheels; what building bakes in of them is kept in the tag 4 entry so a changed child rebuilds the controller. An arcade car on its implicit wheels writes no entry, so its block does not move. |
 | `og.Rope`, `og.Cloth` | Verlet strands and grids with pins, wind and gusts, pushed out of every solid collider; cloth with `friction` against solids, `substeps`, and self-collision by `thickness` (below); `rope_points`, `cloth_points` |
+| `og.SoftBody` (G2-3) | PBD soft volumes (`softbody.rs`): an icosphere, a box's faces or a closed registered mesh (welded), 2D a ring; per substep, `iterations` passes of pins (`pinTop`), edge distances by `stiffness`, the volume constraint (Müller et al. 2007: every point along the volume's gradient, 2D the area's) towards `pressure` × the rest volume, and push-out of solids at `thickness`, then friction. One-way like cloth; lazy, so found by `SystemContext::query_with` over the granted type; its points and surface are the trailer's tag 5 (`SimExt::softs`), written only while one exists; `soft_body_points` |
 | `og.Fluid2D` | double density relaxation (Clavet et al.) on a grid in a fixed order, velocity capped at half the radius per substep; fluids of one `group` simulated together, layering by `density` and blending by `mixing` (below); `fluid_particles`, `fluid_mix` |
 | `og.Fluid3D` | 3D profile: the same model over a spatial hash, against 3D colliders and height fields, in optional `bounds`, with an emitter (`emitRate` up to `maxCount`) and a sink box; groups layer and mix as in 2D (below); `fluid3d_particles`, `fluid3d_mix` |
 | `og.WaterSurface`, `og.WaterLine` | a height field and a spring line splashed by crossing bodies (`og.Splash`), buoyancy and drag on dynamic bodies; `water_heights`, `water_line` |

@@ -158,6 +158,21 @@ pub fn og_physics_cloth_points(world: u32, e: f64) -> String {
     )
 }
 
+pub fn og_physics_soft_body_points(world: u32, e: f64) -> String {
+    readout(
+        world,
+        e,
+        "og.SoftBody",
+        |p, e| p.soft_body_points(e),
+        |s| {
+            json!({
+                "points": s.points.into_iter().map(v3).collect::<Vec<_>>(),
+                "indices": s.indices,
+            })
+        },
+    )
+}
+
 pub fn og_physics_fluid_particles(world: u32, e: f64) -> String {
     readout(
         world,

@@ -509,6 +509,8 @@ export interface HostAbi<A, V> {
   og_physics_rope_points(world: number, entity: number): string;
   /** `og.physics.clothPoints` */
   og_physics_cloth_points(world: number, entity: number): string;
+  /** `og.physics.softBodyPoints` */
+  og_physics_soft_body_points(world: number, entity: number): string;
   /** `og.physics.fluidParticles` */
   og_physics_fluid_particles(world: number, entity: number): string;
   /** `og.physics.fluid3dParticles` */
@@ -1302,6 +1304,7 @@ export const SYMBOLS: readonly string[] = [
   "og_physics_set_mesh",
   "og_physics_rope_points",
   "og_physics_cloth_points",
+  "og_physics_soft_body_points",
   "og_physics_fluid_particles",
   "og_physics_fluid3d_particles",
   "og_physics_water_height",
@@ -1685,6 +1688,10 @@ export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {
     og_physics_cloth_points(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("og.physics.clothPoints", "entity", entity);
       return abi.og_physics_cloth_points(world, entity);
+    },
+    og_physics_soft_body_points(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("og.physics.softBodyPoints", "entity", entity);
+      return abi.og_physics_soft_body_points(world, entity);
     },
     og_physics_fluid_particles(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("og.physics.fluidParticles", "entity", entity);

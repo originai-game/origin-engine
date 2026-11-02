@@ -5,7 +5,7 @@
 // controllers (og.systems.cameras), and the world calls that run inside
 // systems through the system context.
 import { beforeAll, expect, test } from "bun:test";
-import { og, defineComponent, defineResource, defineSystem, f32, u32, SHAPE_BOX, SHAPE_SPHERE, VEHICLE_DRIVETRAIN } from "@origingame/engine";
+import { og, defineComponent, defineResource, defineSystem, f32, u32, SHAPE_BOX, SHAPE_SPHERE, VEHICLE_DRIVETRAIN, SOFT_SPHERE } from "@origingame/engine";
 import type { World } from "@origingame/engine";
 import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
@@ -202,6 +202,31 @@ test("a drivetrain truck on six wheel children shifts up through its gears", () 
   const wheels = must(og.physics.vehicleWheels(w, truck));
   const ids = Array.from({ length: 6 }, (_, i) => w.find(`wheel-${i}`)!).sort((a, b) => Number(a) - Number(b));
   expect(wheels.map((x) => x.entity)).toEqual(ids);
+});
+
+test("a soft ball lands on the floor and keeps its volume", () => {
+  const engine = start(
+    og.game({
+      start: (world: World) => {
+        const floor = must(world.spawn({ name: "floor", position: { x: 0, y: -0.5, z: 0 } }));
+        world.insert(floor, og.Collider, { shape: SHAPE_BOX, size: { x: 40, y: 1, z: 40 } });
+        const ball = must(world.spawn({ name: "jelly", position: { x: 0, y: 3, z: 0 } }));
+        world.insert(ball, og.SoftBody, { shape: SOFT_SPHERE, radius: 0.5, stiffness: 0.3 });
+      },
+    }),
+  );
+  expect(engine.advance(240).ok).toBeTrue();
+  const w = engine.world;
+  const ball = w.find("jelly")!;
+  const s = must(w.get(ball, og.SoftBody));
+  expect(Math.abs(s.volume - 1)).toBeLessThan(0.05);
+  const surface = must(og.physics.softBodyPoints(w, ball));
+  expect(surface.points.length).toBe(162);
+  expect(surface.indices.length).toBe(960);
+  const low = Math.min(...surface.points.map((p) => p.y));
+  expect(low).toBeGreaterThan(-0.02);
+  expect(low).toBeLessThan(0.05);
+  expect(s.center.y).toBeGreaterThan(0.3);
 });
 
 test("a restored snapshot continues the simulation exactly", () => {

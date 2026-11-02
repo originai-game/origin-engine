@@ -1843,6 +1843,7 @@ export const physics = Object.freeze({
   waterHeight: (world: WorldImpl, entity: number, x: number, z: number) =>
     parse(abi().og_physics_water_height(world.id, entity, x, z)),
   vehicleWheels: (world: WorldImpl, entity: number) => parse(abi().og_physics_vehicle_wheels(world.id, entity)),
+  softBodyPoints: (world: WorldImpl, entity: number) => parse(abi().og_physics_soft_body_points(world.id, entity)),
   ragdollRigFromSkeleton: (world: WorldImpl, skeleton: number) =>
     parse(abi().og_physics_ragdoll_rig_from_skeleton(world.id, skeleton)),
   setRagdollRig: (world: WorldImpl, entity: number, desc?: unknown) =>

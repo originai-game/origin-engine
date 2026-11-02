@@ -781,6 +781,108 @@ impl Default for VehicleWheel {
     }
 }
 
+// ---- PBD soft volumes ------------------------------------------------------
+
+/// `SoftBody.shape`: a sphere of `radius` (an icosphere, `detail` 0 to 3).
+pub const SOFT_SPHERE: u32 = 0;
+/// `SoftBody.shape`: a box of `size` (each face a grid of `detail` + 1 cells).
+pub const SOFT_BOX: u32 = 1;
+/// `SoftBody.shape`: the closed mesh registered under `mesh` (og.physics.setMesh).
+pub const SOFT_MESH: u32 = 2;
+
+/// A PBD soft volume: a closed surface of points (2D: a ring) held by
+/// distance constraints along its edges and one constraint on the volume it
+/// encloses (2D: its area), dropped under gravity and pushed out of solid
+/// colliders. It moves nothing (one-way, as cloth). Built at the entity's
+/// world pose when it appears or its shape changes; its points are world
+/// state (the og.physics block's trailer), og.physics.softBodyPoints reads
+/// them and the renderer draws the surface.
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+#[reflect(name = "og.SoftBody")]
+pub struct SoftBody {
+    /// SOFT_SPHERE 0, SOFT_BOX 1, SOFT_MESH 2.
+    #[reflect(min = 0, max = 2)]
+    pub shape: u32,
+    /// A sphere's radius.
+    #[reflect(min = 0.01, unit = "m", default = 0.5, tunable)]
+    pub radius: f32,
+    /// A box's full extents.
+    #[reflect(min = 0, unit = "m", default = [1, 1, 1])]
+    pub size: Vec3,
+    /// How finely the sphere or box is divided (sphere 0 to 3: 12, 42, 162, 642 points; box 0 to 7 cells a face edge, plus one).
+    #[reflect(min = 0, max = 7, default = 2)]
+    pub detail: u32,
+    /// The registered mesh for SOFT_MESH (closed, its vertices shared by its triangles).
+    pub mesh: u64,
+    /// How stiff its edges are, 0 to 1 a pass: 1 holds their length, lower stretches.
+    #[reflect(min = 0, max = 1, default = 1, tunable)]
+    pub stiffness: f32,
+    /// The volume it keeps, as a share of its rest volume (the pressure inside): 1 holds it, above inflates, 0 none (it collapses like cloth).
+    #[reflect(min = 0, max = 4, default = 1, tunable)]
+    pub pressure: f32,
+    /// How firmly a pass restores the volume, 0 to 1.
+    #[reflect(name = "volumeStiffness", min = 0, max = 1, default = 1, tunable)]
+    pub volume_stiffness: f32,
+    /// Constraint passes per substep.
+    #[reflect(min = 1, max = 64, default = 8, tunable)]
+    pub iterations: u32,
+    /// Steps per tick.
+    #[reflect(min = 1, max = 16, default = 2)]
+    pub substeps: u32,
+    /// How much of its velocity each point keeps per tick.
+    #[reflect(min = 0, max = 1, default = 0.995, tunable)]
+    pub damping: f32,
+    /// Multiplies og.Physics.gravity.
+    #[reflect(name = "gravityScale", min = -10, max = 10, default = 1, tunable)]
+    pub gravity_scale: f32,
+    /// The thickness its points collide at (0: no collision).
+    #[reflect(min = 0, unit = "m", default = 0.03, tunable)]
+    pub thickness: f32,
+    /// How much of its sliding a point touching a solid loses each step.
+    #[reflect(min = 0, max = 1, default = 0.3, tunable)]
+    pub friction: f32,
+    /// Points within this height of its top at rest are pinned to the entity (0: none): a hanging water balloon.
+    #[reflect(name = "pinTop", min = 0, unit = "m")]
+    pub pin_top: f32,
+    /// The material it is drawn with; 0 is a plain one.
+    pub material: u64,
+    /// Whether the renderer draws it.
+    #[reflect(default = 1)]
+    pub visible: bool,
+    /// Written: its volume (2D: area) now over its rest volume: below 1 squashed.
+    #[reflect(default = 1)]
+    pub volume: f32,
+    /// Written: the mean of its points (world space).
+    #[reflect(unit = "m")]
+    pub center: Vec3,
+}
+
+impl Default for SoftBody {
+    fn default() -> Self {
+        SoftBody {
+            shape: SOFT_SPHERE,
+            radius: 0.5,
+            size: Vec3::ONE,
+            detail: 2,
+            mesh: 0,
+            stiffness: 1.0,
+            pressure: 1.0,
+            volume_stiffness: 1.0,
+            iterations: 8,
+            substeps: 2,
+            damping: 0.995,
+            gravity_scale: 1.0,
+            thickness: 0.03,
+            friction: 0.3,
+            pin_top: 0.0,
+            material: 0,
+            visible: true,
+            volume: 1.0,
+            center: Vec3::ZERO,
+        }
+    }
+}
+
 // ---- Verlet ropes and cloth -------------------------------------------------
 
 /// A Verlet rope: `segments` links from the entity's world position (its

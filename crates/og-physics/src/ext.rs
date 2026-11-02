@@ -718,11 +718,13 @@ fn final_position(scene: &Scene, out: &StepOut, entity: u64) -> Option<Vec3> {
 /// they step side by side on the lanes once their work gives two tasks of
 /// a grain (`crate::lanes`), each one exactly as it would alone; building
 /// and rebuilding them stays serial, in entity order.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn soft(
     scene: &Scene,
     settings: &Physics,
     dt: f32,
     tick: u64,
+    shared: &mut crate::Shared,
     sim: &mut Sim,
     out: &mut StepOut,
     laps: &mut crate::stats::Laps,
@@ -808,6 +810,67 @@ pub(crate) fn soft(
         let near = Near::around(colliders, min, max, cloth.radius * 2.0 + 0.1);
         state.step(cloth, dt, tick, gravity, position, rotation, flat2, &near);
     });
+    // Soft volumes (og.SoftBody), kept in the block's trailer.
+    let live: BTreeSet<u64> = og_core::sort::set(scene.softs.iter().map(|s| s.0.to_bits()));
+    sim.ext.softs.retain(|e, _| live.contains(e));
+    let mut softs: IdMap<u64, (&SoftBody, Vec3, Quat)> = IdMap::new();
+    for (e, position, rotation, body) in &scene.softs {
+        let key = e.to_bits();
+        let rebuild = sim
+            .ext
+            .softs
+            .get(&key)
+            .is_none_or(|s| s.key != crate::softbody::SoftKey::of(body));
+        if rebuild {
+            let mesh = (body.shape == SOFT_MESH)
+                .then(|| super::sim::mesh(shared, body.mesh))
+                .flatten();
+            let state =
+                crate::softbody::SoftState::new(body, *position, *rotation, flat2, mesh.as_deref())
+                    .map_err(|e| e.context(format!("og.SoftBody of entity {key}")))?;
+            sim.ext.softs.insert(key, state);
+        }
+        softs.insert(key, (body, *position, *rotation));
+    }
+    let colliders = &sim.world.colliders;
+    let mut jobs: Vec<_> = sim
+        .ext
+        .softs
+        .iter_mut()
+        .map(|(k, s)| (s, &softs[k]))
+        .collect();
+    let work = jobs
+        .iter()
+        .map(|(s, (body, ..))| {
+            s.points.len()
+                * body.iterations.clamp(1, 64) as usize
+                * body.substeps.clamp(1, 16) as usize
+        })
+        .sum();
+    soft_each(Soft::Cloths, &mut jobs, work, grains.cloth_work, |job| {
+        let (body, position, rotation) = *job.1;
+        let state = &mut *job.0;
+        let (min, max) = bounds(&state.points, 0.0);
+        let near = Near::around(colliders, min, max, body.thickness * 2.0 + 0.5);
+        state.step(body, dt, gravity, position, rotation, &near);
+    });
+    for (e, ..) in &scene.softs {
+        let s = &sim.ext.softs[&e.to_bits()];
+        let body = softs[&e.to_bits()].0;
+        let volume = if s.rest_volume > 0.0 {
+            s.volume() / s.rest_volume
+        } else {
+            1.0
+        };
+        out.softs.push((
+            *e,
+            SoftBody {
+                volume,
+                center: s.center(),
+                ..*body
+            },
+        ));
+    }
     laps.lap(Phase::Soft);
     // Fluids: each alone, or with the others of its group (the first four
     // in entity order); each set steps from its own particles.

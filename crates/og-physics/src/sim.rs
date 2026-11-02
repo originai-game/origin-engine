@@ -33,6 +33,17 @@ fn invalid(what: &str, value: f32) -> Error {
     )
 }
 
+/// Registered mesh `handle`, or the host's mesh source's (built on first
+/// use and kept like a registered one).
+pub(crate) fn mesh(shared: &mut Shared, handle: u64) -> Option<Arc<crate::MeshDesc>> {
+    if let Some(m) = shared.meshes.get(&handle) {
+        return Some(m.clone());
+    }
+    let m = Arc::new(shared.mesh_source.clone().and_then(|f| f(handle))?);
+    shared.meshes.insert(handle, m.clone());
+    Some(m)
+}
+
 /// The shape of a collider at a transform scale: primitives are built, mesh
 /// shapes come from the cache (or are built into it).
 fn shape(c: &Collider, scale: Vec3, shared: &mut Shared) -> Result<rp::SharedShape> {
@@ -92,27 +103,15 @@ fn shape(c: &Collider, scale: Vec3, shared: &mut Shared) -> Result<rp::SharedSha
     }
     // A mesh nobody registered is asked of the host's mesh source (its
     // geometry, built on first use and kept like a registered one).
-    let mesh = match shared.meshes.get(&c.mesh).cloned() {
-        Some(m) => m,
-        None => {
-            let found = shared
-                .mesh_source
-                .clone()
-                .and_then(|f| f(c.mesh))
-                .map(Arc::new);
-            let m = found.ok_or_else(|| {
-                Error::new(
-                    ErrorKind::NotFound,
-                    format!(
-                        "og.Collider.mesh {} was not registered with PhysicsSystem::set_mesh",
-                        c.mesh
-                    ),
-                )
-            })?;
-            shared.meshes.insert(c.mesh, m.clone());
-            m
-        }
-    };
+    let mesh = mesh(shared, c.mesh).ok_or_else(|| {
+        Error::new(
+            ErrorKind::NotFound,
+            format!(
+                "og.Collider.mesh {} was not registered with PhysicsSystem::set_mesh",
+                c.mesh
+            ),
+        )
+    })?;
     let built = from_mesh(c.shape, &mesh, s).map_err(|e| e.context(format!("mesh {}", c.mesh)))?;
     let cached = cache(shared);
     if cached.len() >= SHAPE_CACHE_LIMIT {
@@ -289,6 +288,8 @@ pub(crate) struct SimExt {
     /// gearbox (drivetrain model) and the og.VehicleWheel children it was
     /// built with; none for an arcade car on its four implicit wheels.
     pub(crate) vehicles: IdMap<u64, VehicleExt>,
+    /// The soft volumes' points and surfaces, by entity (og.SoftBody).
+    pub(crate) softs: IdMap<u64, crate::softbody::SoftState>,
 }
 
 /// A vehicle's state beyond its controller ([`SimExt::vehicles`]).
@@ -306,6 +307,7 @@ pub(crate) const EXT_COMPOUNDS: u16 = 1;
 pub(crate) const EXT_SLEEP: u16 = 2;
 pub(crate) const EXT_HOOKS: u16 = 3;
 pub(crate) const EXT_VEHICLES: u16 = 4;
+pub(crate) const EXT_SOFTS: u16 = 5;
 
 impl SimExt {
     /// Its sections, each `(tag, bytes)`; none for what is empty.
@@ -331,6 +333,12 @@ impl SimExt {
             let list: Vec<(&u64, &VehicleExt)> = self.vehicles.iter().collect();
             crate::encode(&mut bytes, &list).expect("vehicles serialize into memory");
             out.push((EXT_VEHICLES, bytes));
+        }
+        if !self.softs.is_empty() {
+            let mut bytes = Vec::new();
+            let list: Vec<(&u64, &crate::softbody::SoftState)> = self.softs.iter().collect();
+            crate::encode(&mut bytes, &list).expect("soft volumes serialize into memory");
+            out.push((EXT_SOFTS, bytes));
         }
         out
     }
@@ -360,6 +368,10 @@ impl SimExt {
                 let list: Vec<(u64, VehicleExt)> =
                     crate::codec().deserialize(bytes).map_err(parse)?;
                 ext.vehicles = list.into_iter().collect();
+            } else if tag == EXT_SOFTS {
+                let list: Vec<(u64, crate::softbody::SoftState)> =
+                    crate::codec().deserialize(bytes).map_err(parse)?;
+                ext.softs = list.into_iter().collect();
             }
         }
         Ok(ext)
@@ -763,7 +775,7 @@ fn step_here(
     ext::characters(scene, settings, dt, sim, &poses, &mut out)?;
     super::platformers(scene, settings, dt, sim, &poses, &mut out)?;
     laps.lap(Phase::Controllers);
-    ext::soft(scene, settings, dt, tick, sim, &mut out, &mut laps)?;
+    ext::soft(scene, settings, dt, tick, shared, sim, &mut out, &mut laps)?;
     ext::joint_values(sim, &mut out);
     for (e, j) in &out.joints {
         ext::joint_written(sim, *e, j);

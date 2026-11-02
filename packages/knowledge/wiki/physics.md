@@ -88,6 +88,10 @@ module physics {
 | [`PIN_LEFT`](#const-PIN_LEFT) | constant | `Cloth.pins` bit: the whole left column is pinned (a flag on a pole). |
 | [`PIN_TOP_RINGS`](#const-PIN_TOP_RINGS) | constant | `Cloth.pins` bit: every fourth point of the top row (curtain rings). |
 | [`og.Cloth`](#record-Cloth) | component | A Verlet cloth: a `columns` × `rows` grid of points, `spacing` apart, hanging from the entity's world position (its og.Transform after its parents': its top-left corner, the grid laid out along the entity's local x and down -y), pinned by `pins` (pinned points follow the entity), with stretch and shear constraints, gravity, wind, collision against every solid collider and, with `thickness`, against itself. One-way like og.Rope; its points are world state. Drawn as a double-sided mesh with `material` (og.render.standardMaterial; 0: a plain cloth colour). |
+| [`SOFT_SPHERE`](#const-SOFT_SPHERE) | constant | `SoftBody.shape`: a sphere of `radius` (an icosphere; 2D a ring). |
+| [`SOFT_BOX`](#const-SOFT_BOX) | constant | `SoftBody.shape`: a box of `size` (each face a grid of `detail` + 1 cells; 2D a rectangle). |
+| [`SOFT_MESH`](#const-SOFT_MESH) | constant | `SoftBody.shape`: the closed surface of geometry `mesh` (3D only). |
+| [`og.SoftBody`](#record-SoftBody) | component | A PBD soft volume: a closed surface of points (2D: a ring in the xy plane) held by distance constraints along its edges and by one constraint on the volume it encloses (2D: its area), dropped under gravity and pushed out of every solid collider, so it lands, squashes and springs back: jelly, a water balloon, a slime. Built at the entity's world pose (its og.Transform after its parents') when it appears or its shape changes. It moves nothing (one-way like og.Cloth). Its points are world state (the og.physics state block); og.physics.softBodyPoints reads them and the renderer draws its surface with `material`. |
 | [`og.Fluid2D`](#record-Fluid2D) | component | A 2D particle fluid (any profile, in the xy plane): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure, viscosity) on a fixed grid in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider (pushed out of bodies; they push nothing back) and stay inside `bounds` around the entity when it is set. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as metaballs: the particles blurred into a field the renderer thresholds into one surface of `color`, on sprite layer `layer`. |
 | [`og.Fluid3D`](#record-Fluid3D) | component | A 3D particle fluid (the 3D profile): `count` particles spawned in a `size` box centred on the entity, simulated with double density relaxation (Clavet et al. 2005: pressure, near pressure that gives surface tension, viscosity) over a spatial hash in a fixed order, so it is deterministic and part of the og.physics state block. Particles collide with every solid collider, the terrain's height field included (pushed out; they push nothing back), and stay inside `bounds` around the entity when it is set. An emitter adds particles at `emitRate` up to `maxCount`; a sink box removes those that enter it. Fluids of one `group` interact: by `density` they layer, by `mixing` they blend. Drawn as a screen-space surface: the particles' depth smoothed into one surface, refracting what is behind by its thickness and reflecting the sky, lit by the scene's lights. Cost: about 0.9 ms of CPU a tick for 2000 particles at 1 substep, 1.8 ms at 2 (native and wasm alike), growing with the particles; keep a scene's fluids to a few thousand particles. The surface costs about 1.1 ms of GPU (an Apple M4 Pro, the fluid covering a third of a 1280×720 frame) whatever the particle count, growing with the pixels it covers. |
 | [`og.WaterSurface`](#record-WaterSurface) | component | Height-field water (3D): a `resolution` × `resolution` grid of heights over a `size` square centred on the entity (its y is the rest level), waves travelling at `waveSpeed` and fading by `damping`. Dynamic bodies crossing it push waves (splashes; og.Splash events) and float by `buoyancy`. The heights are world state; an og.Water on the same entity draws them. |
@@ -121,6 +125,8 @@ module physics {
 | [`BonePose`](#type-BonePose) | struct | A ragdoll bone's pose as the last step left it (blended with the animation by og.Ragdoll.weight). |
 | [`og.physics.ropePoints`](#fn-ropePoints) | function | An og.Rope's points after the last step, from its entity to its end (empty before its first step). The engine draws visible ropes itself; this is for game logic and custom drawing. |
 | [`og.physics.clothPoints`](#fn-clothPoints) | function | An og.Cloth's points after the last step, row by row (`columns` per row, rows downwards from the top edge). |
+| [`SoftBodyPoints`](#type-SoftBodyPoints) | struct | An og.SoftBody's surface after the last step. |
+| [`og.physics.softBodyPoints`](#fn-softBodyPoints) | function | An og.SoftBody's points and the triangles of its surface after the last step (none before its first step). The engine draws visible soft bodies itself; this is for game logic (where it touches, how squashed it is) and custom drawing. |
 | [`og.physics.fluidParticles`](#fn-fluidParticles) | function | An og.Fluid2D's particle positions after the last step, in world space. |
 | [`og.physics.fluid3dParticles`](#fn-fluid3dParticles) | function | An og.Fluid3D's particle positions after the last step, in world space (emitted particles last, in the order they appeared). |
 | [`og.physics.waterHeight`](#fn-waterHeight) | function | The surface height of an og.WaterSurface (world y) or an og.WaterLine (world y at `x`; `z` ignored) at a point, as the last step left it: for boats that bob and spray that starts on the surface. |
@@ -162,7 +168,7 @@ fn raycast {
 }
 ```
 
-<sub>`api.ogt` line 8796</sub>
+<sub>`api.ogt` line 8894</sub>
 
 <a id="fn-raycastAll"></a>
 
@@ -192,7 +198,7 @@ fn raycastAll {
 }
 ```
 
-<sub>`api.ogt` line 8803</sub>
+<sub>`api.ogt` line 8901</sub>
 
 <a id="fn-projectPoint"></a>
 
@@ -222,7 +228,7 @@ fn projectPoint {
 }
 ```
 
-<sub>`api.ogt` line 8810</sub>
+<sub>`api.ogt` line 8908</sub>
 
 <a id="fn-shapeCast"></a>
 
@@ -252,7 +258,7 @@ fn shapeCast {
 }
 ```
 
-<sub>`api.ogt` line 8817</sub>
+<sub>`api.ogt` line 8915</sub>
 
 <a id="fn-overlap"></a>
 
@@ -282,7 +288,7 @@ fn overlap {
 }
 ```
 
-<sub>`api.ogt` line 8824</sub>
+<sub>`api.ogt` line 8922</sub>
 
 <a id="fn-applyForce"></a>
 
@@ -318,7 +324,7 @@ fn applyForce {
 }
 ```
 
-<sub>`api.ogt` line 8831</sub>
+<sub>`api.ogt` line 8929</sub>
 
 <a id="fn-applyImpulse"></a>
 
@@ -354,7 +360,7 @@ fn applyImpulse {
 }
 ```
 
-<sub>`api.ogt` line 8842</sub>
+<sub>`api.ogt` line 8940</sub>
 
 <a id="fn-applyTorque"></a>
 
@@ -386,7 +392,7 @@ fn applyTorque {
 }
 ```
 
-<sub>`api.ogt` line 8853</sub>
+<sub>`api.ogt` line 8951</sub>
 
 <a id="fn-applyTorqueImpulse"></a>
 
@@ -418,7 +424,7 @@ fn applyTorqueImpulse {
 }
 ```
 
-<sub>`api.ogt` line 8861</sub>
+<sub>`api.ogt` line 8959</sub>
 
 <a id="fn-setMesh"></a>
 
@@ -450,7 +456,7 @@ fn setMesh {
 }
 ```
 
-<sub>`api.ogt` line 8869</sub>
+<sub>`api.ogt` line 8967</sub>
 
 <a id="fn-ropePoints"></a>
 
@@ -480,7 +486,7 @@ fn ropePoints {
 }
 ```
 
-<sub>`api.ogt` line 8931</sub>
+<sub>`api.ogt` line 9029</sub>
 
 <a id="fn-clothPoints"></a>
 
@@ -510,7 +516,37 @@ fn clothPoints {
 }
 ```
 
-<sub>`api.ogt` line 8938</sub>
+<sub>`api.ogt` line 9036</sub>
+
+<a id="fn-softBodyPoints"></a>
+
+### `og.physics.softBodyPoints`
+
+An og.SoftBody's points and the triangles of its surface after the last step (none before its first step). The engine draws visible soft bodies itself; this is for game logic (where it touches, how squashed it is) and custom drawing.
+
+```ts
+og.physics.softBodyPoints(world: World, entity: Entity): Result<SoftBodyPoints>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `entity` | `Entity` | no | The soft body's entity. |
+
+**Returns** `Result<SoftBodyPoints>`: Refused for an entity without an og.SoftBody.
+
+Binding symbol `og_physics_soft_body_points` · publish builds: kept
+
+```ogt
+fn softBodyPoints {
+  doc "An og.SoftBody's points and the triangles of its surface after the last step (none before its first step). The engine draws visible soft bodies itself; this is for game logic (where it touches, how squashed it is) and custom drawing."
+  param world World "The world."
+  param entity Entity "The soft body's entity."
+  returns Result.SoftBodyPoints "Refused for an entity without an og.SoftBody."
+}
+```
+
+<sub>`api.ogt` line 9049</sub>
 
 <a id="fn-fluidParticles"></a>
 
@@ -540,7 +576,7 @@ fn fluidParticles {
 }
 ```
 
-<sub>`api.ogt` line 8945</sub>
+<sub>`api.ogt` line 9056</sub>
 
 <a id="fn-fluid3dParticles"></a>
 
@@ -570,7 +606,7 @@ fn fluid3dParticles {
 }
 ```
 
-<sub>`api.ogt` line 8952</sub>
+<sub>`api.ogt` line 9063</sub>
 
 <a id="fn-waterHeight"></a>
 
@@ -604,7 +640,7 @@ fn waterHeight {
 }
 ```
 
-<sub>`api.ogt` line 8959</sub>
+<sub>`api.ogt` line 9070</sub>
 
 <a id="fn-vehicleWheels"></a>
 
@@ -634,7 +670,7 @@ fn vehicleWheels {
 }
 ```
 
-<sub>`api.ogt` line 8968</sub>
+<sub>`api.ogt` line 9079</sub>
 
 <a id="fn-ragdollRigFromSkeleton"></a>
 
@@ -664,7 +700,7 @@ fn ragdollRigFromSkeleton {
 }
 ```
 
-<sub>`api.ogt` line 8975</sub>
+<sub>`api.ogt` line 9086</sub>
 
 <a id="fn-setRagdollRig"></a>
 
@@ -696,7 +732,7 @@ fn setRagdollRig {
 }
 ```
 
-<sub>`api.ogt` line 8982</sub>
+<sub>`api.ogt` line 9093</sub>
 
 <a id="fn-ragdollPose"></a>
 
@@ -726,7 +762,7 @@ fn ragdollPose {
 }
 ```
 
-<sub>`api.ogt` line 8990</sub>
+<sub>`api.ogt` line 9101</sub>
 
 <a id="fn-stats"></a>
 
@@ -754,7 +790,7 @@ fn stats {
 }
 ```
 
-<sub>`api.ogt` line 9018</sub>
+<sub>`api.ogt` line 9129</sub>
 
 ## Components, resources and events
 
@@ -2307,6 +2343,134 @@ component Cloth {
 
 <sub>`api.ogt` line 8199</sub>
 
+<a id="record-SoftBody"></a>
+
+### `og.SoftBody` (component)
+
+A PBD soft volume: a closed surface of points (2D: a ring in the xy plane) held by distance constraints along its edges and by one constraint on the volume it encloses (2D: its area), dropped under gravity and pushed out of every solid collider, so it lands, squashes and springs back: jelly, a water balloon, a slime. Built at the entity's world pose (its og.Transform after its parents') when it appears or its shape changes. It moves nothing (one-way like og.Cloth). Its points are world state (the og.physics state block); og.physics.softBodyPoints reads them and the renderer draws its surface with `material`.
+
+Token `og.SoftBody`, registered under the schema name `og.SoftBody`; its value type is `SoftBody`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `shape` | `number` | `0` | 0 … 2 | — | — | SOFT_SPHERE 0, SOFT_BOX 1 or SOFT_MESH 2. |
+| `radius` | `number` | `0.5` | ≥ 0.01 | `m` | tunable | A sphere's radius. |
+| `size` | `Vector3` | `{ x: 1, y: 1, z: 1 }` | ≥ 0 | `m` | — | A box's full extents. |
+| `detail` | `number` | `2` | 0 … 7 | — | — | How finely its surface is divided: a sphere 0 to 3 (12, 42, 162 or 642 points; 2D 12 to 96), a box 0 to 7 (cells along a face's edge, minus one). A finer surface needs more iterations to hold its shape: at 642 points and stiffness below 1 the default 8 lets it spread. |
+| `mesh` | `Geometry` | `0` | — | — | — | SOFT_MESH's geometry: a loaded glTF's (registered automatically) or one given to og.physics.setMesh; closed, its vertices welded where they meet. |
+| `stiffness` | `number` | `1` | 0 … 1 | — | tunable | How stiff its edges are, 0 to 1 a pass: 1 holds their length, lower lets the surface stretch and wobble. |
+| `pressure` | `number` | `1` | 0 … 4 | — | tunable | The volume it keeps, as a share of its rest volume: 1 holds it, above inflates it, 0 holds none (it slumps like cloth). |
+| `volumeStiffness` | `number` | `1` | 0 … 1 | — | tunable | How much of its volume a pass restores, 0 to 1. |
+| `iterations` | `number` | `8` | 1 … 64 | — | tunable | Constraint passes per substep. |
+| `substeps` | `number` | `2` | 1 … 16 | — | — | Simulation steps per tick. |
+| `damping` | `number` | `0.995` | 0 … 1 | — | tunable | How much of its velocity each point keeps per tick. |
+| `gravityScale` | `number` | `1` | -10 … 10 | — | tunable | Multiplies og.Physics.gravity. |
+| `thickness` | `number` | `0.03` | ≥ 0 | `m` | tunable | The distance its points keep from solids (0: no collision). |
+| `friction` | `number` | `0.3` | 0 … 1 | — | tunable | How much of its sliding a point touching a solid loses each step. |
+| `pinTop` | `number` | `0` | ≥ 0 | `m` | — | Points within this height of its top at rest are pinned to the entity and follow it (0: none): a water balloon on a string. |
+| `material` | `Material` | `0` | — | — | — | The material it is drawn with (og.render.standardMaterial); 0 is a plain one. |
+| `visible` | `boolean` | `true` | — | — | — | Whether the renderer draws it. |
+| `volume` | `number` | `1` | — | — | read only | Written: its volume (2D: area) now over its rest volume; below 1 squashed, above inflated. |
+| `center` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | read only | Written: the mean of its points, in world space. |
+
+```ogt
+component SoftBody {
+  doc "A PBD soft volume: a closed surface of points (2D: a ring in the xy plane) held by distance constraints along its edges and by one constraint on the volume it encloses (2D: its area), dropped under gravity and pushed out of every solid collider, so it lands, squashes and springs back: jelly, a water balloon, a slime. Built at the entity's world pose (its og.Transform after its parents') when it appears or its shape changes. It moves nothing (one-way like og.Cloth). Its points are world state (the og.physics state block); og.physics.softBodyPoints reads them and the renderer draws its surface with `material`."
+  field shape u32 "SOFT_SPHERE 0, SOFT_BOX 1 or SOFT_MESH 2." {
+    min 0
+    max 2
+  }
+  field radius f32 "A sphere's radius." {
+    default 0.5
+    min 0.01
+    unit m
+    tunable true
+  }
+  field size Vector3 "A box's full extents." {
+    default 1 1 1
+    min 0
+    unit m
+  }
+  field detail u32 "How finely its surface is divided: a sphere 0 to 3 (12, 42, 162 or 642 points; 2D 12 to 96), a box 0 to 7 (cells along a face's edge, minus one). A finer surface needs more iterations to hold its shape: at 642 points and stiffness below 1 the default 8 lets it spread." {
+    default 2
+    min 0
+    max 7
+  }
+  field mesh Geometry "SOFT_MESH's geometry: a loaded glTF's (registered automatically) or one given to og.physics.setMesh; closed, its vertices welded where they meet."
+  field stiffness f32 "How stiff its edges are, 0 to 1 a pass: 1 holds their length, lower lets the surface stretch and wobble." {
+    default 1
+    min 0
+    max 1
+    tunable true
+  }
+  field pressure f32 "The volume it keeps, as a share of its rest volume: 1 holds it, above inflates it, 0 holds none (it slumps like cloth)." {
+    default 1
+    min 0
+    max 4
+    tunable true
+  }
+  field volumeStiffness f32 "How much of its volume a pass restores, 0 to 1." {
+    default 1
+    min 0
+    max 1
+    tunable true
+  }
+  field iterations u32 "Constraint passes per substep." {
+    default 8
+    min 1
+    max 64
+    tunable true
+  }
+  field substeps u32 "Simulation steps per tick." {
+    default 2
+    min 1
+    max 16
+  }
+  field damping f32 "How much of its velocity each point keeps per tick." {
+    default 0.995
+    min 0
+    max 1
+    tunable true
+  }
+  field gravityScale f32 "Multiplies og.Physics.gravity." {
+    default 1
+    min -10
+    max 10
+    tunable true
+  }
+  field thickness f32 "The distance its points keep from solids (0: no collision)." {
+    default 0.03
+    min 0
+    unit m
+    tunable true
+  }
+  field friction f32 "How much of its sliding a point touching a solid loses each step." {
+    default 0.3
+    min 0
+    max 1
+    tunable true
+  }
+  field pinTop f32 "Points within this height of its top at rest are pinned to the entity and follow it (0: none): a water balloon on a string." {
+    min 0
+    unit m
+  }
+  field material Material "The material it is drawn with (og.render.standardMaterial); 0 is a plain one."
+  field visible bool "Whether the renderer draws it." {
+    default true
+  }
+  field volume f32 "Written: its volume (2D: area) now over its rest volume; below 1 squashed, above inflated." {
+    default 1
+    readonly true
+  }
+  field center Vector3 "Written: the mean of its points, in world space." {
+    unit m
+    readonly true
+  }
+}
+```
+
+<sub>`api.ogt` line 8279</sub>
+
 <a id="record-Fluid2D"></a>
 
 ### `og.Fluid2D` (component)
@@ -2429,7 +2593,7 @@ component Fluid2D {
 }
 ```
 
-<sub>`api.ogt` line 8275</sub>
+<sub>`api.ogt` line 8373</sub>
 
 <a id="record-Fluid3D"></a>
 
@@ -2598,7 +2762,7 @@ component Fluid3D {
 }
 ```
 
-<sub>`api.ogt` line 8364</sub>
+<sub>`api.ogt` line 8462</sub>
 
 <a id="record-WaterSurface"></a>
 
@@ -2663,7 +2827,7 @@ component WaterSurface {
 }
 ```
 
-<sub>`api.ogt` line 8490</sub>
+<sub>`api.ogt` line 8588</sub>
 
 <a id="record-WaterLine"></a>
 
@@ -2740,7 +2904,7 @@ component WaterLine {
 }
 ```
 
-<sub>`api.ogt` line 8533</sub>
+<sub>`api.ogt` line 8631</sub>
 
 <a id="record-Splash"></a>
 
@@ -2771,7 +2935,7 @@ event Splash {
 }
 ```
 
-<sub>`api.ogt` line 8586</sub>
+<sub>`api.ogt` line 8684</sub>
 
 <a id="record-Ragdoll"></a>
 
@@ -2839,7 +3003,7 @@ component Ragdoll {
 }
 ```
 
-<sub>`api.ogt` line 8598</sub>
+<sub>`api.ogt` line 8696</sub>
 
 ## Types
 
@@ -2867,7 +3031,7 @@ struct QueryFilter {
 }
 ```
 
-<sub>`api.ogt` line 8643</sub>
+<sub>`api.ogt` line 8741</sub>
 
 <a id="type-RaycastDesc"></a>
 
@@ -2902,7 +3066,7 @@ struct RaycastDesc {
 }
 ```
 
-<sub>`api.ogt` line 8651</sub>
+<sub>`api.ogt` line 8749</sub>
 
 <a id="type-RaycastHit"></a>
 
@@ -2931,7 +3095,7 @@ struct RaycastHit {
 }
 ```
 
-<sub>`api.ogt` line 8667</sub>
+<sub>`api.ogt` line 8765</sub>
 
 <a id="type-RaycastAllDesc"></a>
 
@@ -2971,7 +3135,7 @@ struct RaycastAllDesc {
 }
 ```
 
-<sub>`api.ogt` line 8678</sub>
+<sub>`api.ogt` line 8776</sub>
 
 <a id="type-ProjectPointDesc"></a>
 
@@ -3006,7 +3170,7 @@ struct ProjectPointDesc {
 }
 ```
 
-<sub>`api.ogt` line 8698</sub>
+<sub>`api.ogt` line 8796</sub>
 
 <a id="type-PointProjection"></a>
 
@@ -3039,7 +3203,7 @@ struct PointProjection {
 }
 ```
 
-<sub>`api.ogt` line 8714</sub>
+<sub>`api.ogt` line 8812</sub>
 
 <a id="type-ShapeDesc"></a>
 
@@ -3081,7 +3245,7 @@ struct ShapeDesc {
 }
 ```
 
-<sub>`api.ogt` line 8728</sub>
+<sub>`api.ogt` line 8826</sub>
 
 <a id="type-ShapeCastDesc"></a>
 
@@ -3120,7 +3284,7 @@ struct ShapeCastDesc {
 }
 ```
 
-<sub>`api.ogt` line 8750</sub>
+<sub>`api.ogt` line 8848</sub>
 
 <a id="type-ShapeCastHit"></a>
 
@@ -3147,7 +3311,7 @@ struct ShapeCastHit {
 }
 ```
 
-<sub>`api.ogt` line 8768</sub>
+<sub>`api.ogt` line 8866</sub>
 
 <a id="type-OverlapDesc"></a>
 
@@ -3177,7 +3341,7 @@ struct OverlapDesc {
 }
 ```
 
-<sub>`api.ogt` line 8778</sub>
+<sub>`api.ogt` line 8876</sub>
 
 <a id="type-MeshDesc"></a>
 
@@ -3201,7 +3365,7 @@ struct MeshDesc {
 }
 ```
 
-<sub>`api.ogt` line 8789</sub>
+<sub>`api.ogt` line 8887</sub>
 
 <a id="type-WheelPose"></a>
 
@@ -3237,7 +3401,7 @@ struct WheelPose {
 }
 ```
 
-<sub>`api.ogt` line 8877</sub>
+<sub>`api.ogt` line 8975</sub>
 
 <a id="type-RagdollBoneDesc"></a>
 
@@ -3280,7 +3444,7 @@ struct RagdollBoneDesc {
 }
 ```
 
-<sub>`api.ogt` line 8894</sub>
+<sub>`api.ogt` line 8992</sub>
 
 <a id="type-RagdollRigDesc"></a>
 
@@ -3304,7 +3468,7 @@ struct RagdollRigDesc {
 }
 ```
 
-<sub>`api.ogt` line 8916</sub>
+<sub>`api.ogt` line 9014</sub>
 
 <a id="type-BonePose"></a>
 
@@ -3327,7 +3491,28 @@ struct BonePose {
 }
 ```
 
-<sub>`api.ogt` line 8923</sub>
+<sub>`api.ogt` line 9021</sub>
+
+<a id="type-SoftBodyPoints"></a>
+
+### `SoftBodyPoints` (struct)
+
+An og.SoftBody's surface after the last step.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `points` | `readonly Vector3[]` | `[]` | — | — | — | Its points, in world space. |
+| `indices` | `readonly number[]` | `[]` | — | — | — | Its triangles, three indices into `points` each, wound outwards (2D: a fan over the ring). |
+
+```ogt
+struct SoftBodyPoints {
+  doc "An og.SoftBody's surface after the last step."
+  field points List.Vector3 "Its points, in world space."
+  field indices List.u32 "Its triangles, three indices into `points` each, wound outwards (2D: a fan over the ring)."
+}
+```
+
+<sub>`api.ogt` line 9043</sub>
 
 <a id="type-PhysicsPhase"></a>
 
@@ -3352,7 +3537,7 @@ struct PhysicsPhase {
 }
 ```
 
-<sub>`api.ogt` line 8997</sub>
+<sub>`api.ogt` line 9108</sub>
 
 <a id="type-PhysicsStats"></a>
 
@@ -3383,7 +3568,7 @@ struct PhysicsStats {
 }
 ```
 
-<sub>`api.ogt` line 9006</sub>
+<sub>`api.ogt` line 9117</sub>
 
 ## Constants
 
@@ -3432,6 +3617,9 @@ struct PhysicsStats {
 | <a id="const-PIN_TOP_CORNERS"></a>`PIN_TOP_CORNERS` | `number` | `2` | `Cloth.pins` bit: the top-left and top-right corners are pinned. |
 | <a id="const-PIN_LEFT"></a>`PIN_LEFT` | `number` | `4` | `Cloth.pins` bit: the whole left column is pinned (a flag on a pole). |
 | <a id="const-PIN_TOP_RINGS"></a>`PIN_TOP_RINGS` | `number` | `8` | `Cloth.pins` bit: every fourth point of the top row (curtain rings). |
+| <a id="const-SOFT_SPHERE"></a>`SOFT_SPHERE` | `number` | `0` | `SoftBody.shape`: a sphere of `radius` (an icosphere; 2D a ring). |
+| <a id="const-SOFT_BOX"></a>`SOFT_BOX` | `number` | `1` | `SoftBody.shape`: a box of `size` (each face a grid of `detail` + 1 cells; 2D a rectangle). |
+| <a id="const-SOFT_MESH"></a>`SOFT_MESH` | `number` | `2` | `SoftBody.shape`: the closed surface of geometry `mesh` (3D only). |
 
 ```ogt
 const MAX_RAYCAST_HITS u32 256 "The most hits og.physics.raycastAll returns."
@@ -3690,3 +3878,21 @@ const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (
 ```
 
 <sub>`api.ogt` line 8197</sub>
+
+```ogt
+const SOFT_SPHERE u32 0 "`SoftBody.shape`: a sphere of `radius` (an icosphere; 2D a ring)."
+```
+
+<sub>`api.ogt` line 8275</sub>
+
+```ogt
+const SOFT_BOX u32 1 "`SoftBody.shape`: a box of `size` (each face a grid of `detail` + 1 cells; 2D a rectangle)."
+```
+
+<sub>`api.ogt` line 8276</sub>
+
+```ogt
+const SOFT_MESH u32 2 "`SoftBody.shape`: the closed surface of geometry `mesh` (3D only)."
+```
+
+<sub>`api.ogt` line 8277</sub>

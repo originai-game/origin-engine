@@ -71,6 +71,14 @@ is one line here, written at the merge that changes
   to 16) and `WheelPose.entity`; the unit `rpm`. og.Vehicle is version 2:
   saves of 0.7.7 restore as the arcade car they were.
 
+- Added (physics, G2-3): PBD soft volumes. The component `og.SoftBody`
+  (`SOFT_SPHERE`, `SOFT_BOX`, `SOFT_MESH`; edge `stiffness`, `pressure`
+  and `volumeStiffness`, `pinTop`, written `volume` and `center`),
+  `og.physics.softBodyPoints` and `SoftBodyPoints`. Registered only once a
+  game names it. og-ecs gains `SystemContext::query_with`, a query a
+  system makes while it runs over types granted to it after it was
+  scheduled.
+
 - **A reactive ECS with spatial queries (G2-2).** Added to the IDL:
   `SystemDesc.changed`, `added`, `removed`, `state`, `value`, `when`
   (`StateWhen`) and `runIf` (`RunCondition`); `QueryDesc.changed`,

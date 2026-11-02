@@ -71,3 +71,32 @@ og run tests/evidence/g2-3/vehicle --headless --size 1280x720 --out <dir> --comm
 - `pulling-away.png` (tick 120): the orange truck from behind and to its right, driving away from the camera along the road, cab in front, six black tyres on the ground. The 10 m stripes cross the road ahead.
 - `handbrake-turn.png` (tick 258): the truck turned right across the stripes. Two dark streaks run from its rear tyres back and out to the side, off its heading: the tail stepping out under the handbrake.
 - `after-the-turn.png` (tick 360): the camera has swung round behind the truck, which now heads about 90° from where it started. The stripes run towards the horizon, and the marks are behind the camera.
+
+# The soft sample (batch 2: og.SoftBody)
+
+`soft/` drops PBD soft volumes into a fixed camera's view:
+
+- left: a green jelly ball (`radius` 0.5, `detail` 2, `stiffness` 0.4) dropped from 4 m onto the floor;
+- centre: a pink soft box (`SOFT_BOX`, 0.8 m, `detail` 4, `stiffness` 0.5, `friction` 0.1) dropped onto a ramp falling to the right;
+- right: a blue water balloon hung by its top (`pinTop` 0.06) beside a post, its entity moved 0.6 m right at 2 s; a yellow ball inflated to `pressure` 1.6 with soft edges (`stiffness` 0.05).
+
+The `Watch` system writes `Bench`: the jelly's least height, lowest point to highest (`squash`; 1 m at rest), its least and current volume over rest, and the yellow ball's volume.
+
+## Run on the Mac satellite (`metal`, macos-27, dev build)
+
+- At 3 s, `Bench` reads `squash 0.598` (the jelly flattened to 60% of its height on landing), `leastVolume 0.9946`, `volume 0.9997`, `inflated 1.599`.
+- The final hash at tick 181 is `7e443ce6eefa1871`, the same in a logic run in the orb (`OG_RENDERER=none`, Linux x64).
+
+## Commands
+
+```sh
+og run tests/evidence/g2-3/soft --headless --size 1280x720 --out <dir> --commands \
+  "0.95:screenshot:landing.png;1.6:screenshot:on-the-ramp.png;3:screenshot:settled.png;3:get:bench:Bench:bench"
+og render tests/evidence/g2-3/soft --fps 30 --from 0 --to 4 --size 1280x720 --out soft.mp4
+```
+
+## What each frame shows
+
+- `landing.png` (tick 57): the green jelly squashed into a low dome on the floor at left; the pink box on the upper ramp, rounded at its corners where it hit; the blue balloon hanging beside the post top; the yellow ball on the floor right of the ramp.
+- `on-the-ramp.png` (tick 96): the jelly round again; the pink box near the ramp's lower end, sliding, its leading face crumpled against the slope.
+- `settled.png` (tick 180): the jelly resting as a ball slightly flattened underneath; the pink box on the floor behind the yellow ball; the balloon hanging 0.6 m right of the post, where its entity moved.

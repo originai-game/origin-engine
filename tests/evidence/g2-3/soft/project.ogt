@@ -1,0 +1,13 @@
+type project
+version 1
+---
+# The G2-3 soft-volume sample: soft bodies dropped onto a floor and a
+# ramp, and one hanging from a post. tests/evidence/g2-3/NOTES.md has the
+# commands and what each frame shows.
+name "G2-3 soft sample"
+id "g2-3-soft"
+engine "0.7.7"
+entry "src/main.ts"
+profile "3d"
+tick 60
+seed 1

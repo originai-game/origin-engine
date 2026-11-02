@@ -13,6 +13,7 @@
 //! | [`CharacterController`], [`PlatformerController`], [`CharacterEvent`] | kinematic characters moved after the step: slopes, steps, snapping, platforms; the 2D platformer's coyote time, buffer, variable jump, wall jumps, one-way platforms, corner correction |
 //! | [`Vehicle`], [`WheelPose`] | the 3D raycast car and the 2D wheel-joint car; [`PhysicsSystem::vehicle_wheels`] |
 //! | [`Rope`], [`Cloth`] | Verlet ropes and cloth pinned to entities, colliding with solids; [`PhysicsSystem::rope_points`], [`PhysicsSystem::cloth_points`] |
+//! | [`SoftBody`] | PBD soft volumes (edges and a volume constraint), colliding with solids; [`PhysicsSystem::soft_body_points`] |
 //! | [`Fluid2D`] | a 2D particle fluid (double density relaxation); [`PhysicsSystem::fluid_particles`] |
 //! | [`Fluid3D`] | a 3D particle fluid (double density relaxation, spatial hash); [`PhysicsSystem::fluid3d_particles`] |
 //! | [`WaterSurface`], [`WaterLine`], [`Splash`] | height-field water (3D) and a 2D spring line, splashed by and floating bodies |
@@ -60,6 +61,7 @@ mod gather;
 mod lanes;
 mod schema;
 mod schema_ext;
+mod softbody;
 mod stats;
 mod verlet;
 mod water;
@@ -393,6 +395,13 @@ pub struct ClothPoints {
     pub points: Vec<Vec3>,
 }
 
+/// An og.SoftBody's points and its surface's triangles, three indices each.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SoftBodyPoints {
+    pub points: Vec<Vec3>,
+    pub indices: Vec<u32>,
+}
+
 /// A height field's heights (relative to its entity's y), row-major, rows along +z.
 #[derive(Clone, Debug, PartialEq)]
 pub struct WaterHeights {
@@ -598,12 +607,13 @@ pub const QUERY_SYSTEM_NAME: &str = "og.physics.queries";
 /// The physics types registered only once a game uses them, so a world
 /// that never does keeps the type table, saves and hash it had before
 /// G2-3 added them: [`install`] leaves them out and [`enable`] adds one.
-pub const LAZY: [&str; 5] = [
+pub const LAZY: [&str; 6] = [
     BodySlept::NAME,
     BodyWoke::NAME,
     JointBroken::NAME,
     ContactHook::NAME,
     VehicleWheel::NAME,
+    SoftBody::NAME,
 ];
 
 /// Registers lazy physics type `name` (one of [`LAZY`]) and grants it to
@@ -617,6 +627,7 @@ pub fn enable(world: &mut World, name: &str) -> Result<()> {
         JointBroken::NAME => world.register::<JointBroken>().map(drop)?,
         ContactHook::NAME => world.register::<ContactHook>().map(drop)?,
         VehicleWheel::NAME => world.register::<VehicleWheel>().map(drop)?,
+        SoftBody::NAME => world.register::<SoftBody>().map(drop)?,
         other => {
             return Err(Error::new(
                 ErrorKind::NotFound,
@@ -1030,6 +1041,19 @@ impl PhysicsSystem {
         }))
     }
 
+    /// The points of the og.SoftBody on `entity` and the triangles of its
+    /// surface (2D: a fan over its ring, for drawing).
+    pub fn soft_body_points(&self, entity: Entity) -> Option<SoftBodyPoints> {
+        with_sim!(self.shared, |s| s.ext.softs.get(&entity.to_bits()).map(
+            |b| {
+                SoftBodyPoints {
+                    points: b.points.clone(),
+                    indices: b.triangles.iter().flatten().copied().collect(),
+                }
+            }
+        ))
+    }
+
     /// The particle positions of the og.Fluid2D on `entity` (xy).
     pub fn fluid_particles(&self, entity: Entity) -> Option<Vec<Vec2>> {
         with_sim!(self.shared, |s| s
@@ -1364,6 +1388,8 @@ pub(crate) struct StepOut {
     pub ragdolls: Vec<(Entity, Ragdoll)>,
     pub events: Vec<CharacterEvent>,
     pub splashes: Vec<Splash>,
+    /// The soft volumes' written fields.
+    pub softs: Vec<(Entity, SoftBody)>,
     /// What sleep changed (og.Physics.sleepTicks).
     pub sleep: SleepOut,
     /// The step's phases, timed on the thread it ran on.
@@ -1389,7 +1415,16 @@ fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> Result
     let started = stats::now_ms();
     let mut laps = stats::Laps::start();
     let lazy = gather::LazyIds::of(|n| ctx.id_by_name(n).ok());
-    let scene: Scene = gather::gather(&|i| ctx.query(i), &|e, id| ctx.get_bytes(e, id), lazy, ids)?;
+    let mut scene: Scene =
+        gather::gather(&|i| ctx.query(i), &|e, id| ctx.get_bytes(e, id), lazy, ids)?;
+    if let Some(soft) = lazy.soft {
+        scene.softs = gather::softs(
+            &|d| ctx.query_with(d),
+            &|e, id| ctx.get_bytes(e, id),
+            soft,
+            ids,
+        )?;
+    }
     laps.lap(stats::Phase::Gather);
     let tick = ctx.time().tick;
     let threads = og_lanes::threads();
@@ -1445,6 +1480,9 @@ fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> Result
     }
     for s in &out.splashes {
         ctx.send(*s)?;
+    }
+    for (e, s) in &out.softs {
+        ctx.set(*e, *s)?;
     }
     for (e, b) in &out.sleep.writes {
         ctx.set(*e, *b)?;

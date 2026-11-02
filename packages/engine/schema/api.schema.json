@@ -6473,6 +6473,7 @@
         "VehicleWheel",
         "Rope",
         "Cloth",
+        "SoftBody",
         "Fluid2D",
         "Fluid3D",
         "WaterSurface",
@@ -6494,6 +6495,7 @@
         "RagdollBoneDesc",
         "RagdollRigDesc",
         "BonePose",
+        "SoftBodyPoints",
         "PhysicsPhase",
         "PhysicsStats"
       ],
@@ -6755,6 +6757,24 @@
           "type": "u32",
           "value": 8,
           "doc": "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
+        },
+        {
+          "name": "SOFT_SPHERE",
+          "type": "u32",
+          "value": 0,
+          "doc": "`SoftBody.shape`: a sphere of `radius` (an icosphere; 2D a ring)."
+        },
+        {
+          "name": "SOFT_BOX",
+          "type": "u32",
+          "value": 1,
+          "doc": "`SoftBody.shape`: a box of `size` (each face a grid of `detail` + 1 cells; 2D a rectangle)."
+        },
+        {
+          "name": "SOFT_MESH",
+          "type": "u32",
+          "value": 2,
+          "doc": "`SoftBody.shape`: the closed surface of geometry `mesh` (3D only)."
         }
       ],
       "functions": [
@@ -7049,6 +7069,27 @@
           ],
           "returns": "Result<List<Vector3>>",
           "returnsDoc": "Refused for an entity without an og.Cloth.",
+          "publish": true
+        },
+        {
+          "name": "softBodyPoints",
+          "doc": "An og.SoftBody's points and the triangles of its surface after the last step (none before its first step). The engine draws visible soft bodies itself; this is for game logic (where it touches, how squashed it is) and custom drawing.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The soft body's entity."
+            }
+          ],
+          "returns": "Result<SoftBodyPoints>",
+          "returnsDoc": "Refused for an entity without an og.SoftBody.",
           "publish": true
         },
         {
@@ -30481,6 +30522,166 @@
       },
       "additionalProperties": false
     },
+    "SoftBody": {
+      "x-og-kind": "component",
+      "x-og-module": "physics",
+      "description": "A PBD soft volume: a closed surface of points (2D: a ring in the xy plane) held by distance constraints along its edges and by one constraint on the volume it encloses (2D: its area), dropped under gravity and pushed out of every solid collider, so it lands, squashes and springs back: jelly, a water balloon, a slime. Built at the entity's world pose (its og.Transform after its parents') when it appears or its shape changes. It moves nothing (one-way like og.Cloth). Its points are world state (the og.physics state block); og.physics.softBodyPoints reads them and the renderer draws its surface with `material`.",
+      "type": "object",
+      "properties": {
+        "shape": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "SOFT_SPHERE 0, SOFT_BOX 1 or SOFT_MESH 2.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 2
+        },
+        "radius": {
+          "type": "number",
+          "description": "A sphere's radius.",
+          "default": 0.5,
+          "minimum": 0.01,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "size": {
+          "$ref": "#/$defs/Vector3",
+          "description": "A box's full extents.",
+          "default": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          },
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "detail": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How finely its surface is divided: a sphere 0 to 3 (12, 42, 162 or 642 points; 2D 12 to 96), a box 0 to 7 (cells along a face's edge, minus one). A finer surface needs more iterations to hold its shape: at 642 points and stiffness below 1 the default 8 lets it spread.",
+          "default": 2,
+          "minimum": 0,
+          "maximum": 7
+        },
+        "mesh": {
+          "$ref": "#/$defs/Geometry",
+          "description": "SOFT_MESH's geometry: a loaded glTF's (registered automatically) or one given to og.physics.setMesh; closed, its vertices welded where they meet.",
+          "default": 0
+        },
+        "stiffness": {
+          "type": "number",
+          "description": "How stiff its edges are, 0 to 1 a pass: 1 holds their length, lower lets the surface stretch and wobble.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "pressure": {
+          "type": "number",
+          "description": "The volume it keeps, as a share of its rest volume: 1 holds it, above inflates it, 0 holds none (it slumps like cloth).",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 4,
+          "x-og-tunable": true
+        },
+        "volumeStiffness": {
+          "type": "number",
+          "description": "How much of its volume a pass restores, 0 to 1.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "iterations": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Constraint passes per substep.",
+          "default": 8,
+          "minimum": 1,
+          "maximum": 64,
+          "x-og-tunable": true
+        },
+        "substeps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Simulation steps per tick.",
+          "default": 2,
+          "minimum": 1,
+          "maximum": 16
+        },
+        "damping": {
+          "type": "number",
+          "description": "How much of its velocity each point keeps per tick.",
+          "default": 0.995,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "gravityScale": {
+          "type": "number",
+          "description": "Multiplies og.Physics.gravity.",
+          "default": 1,
+          "minimum": -10,
+          "maximum": 10,
+          "x-og-tunable": true
+        },
+        "thickness": {
+          "type": "number",
+          "description": "The distance its points keep from solids (0: no collision).",
+          "default": 0.03,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "friction": {
+          "type": "number",
+          "description": "How much of its sliding a point touching a solid loses each step.",
+          "default": 0.3,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "pinTop": {
+          "type": "number",
+          "description": "Points within this height of its top at rest are pinned to the entity and follow it (0: none): a water balloon on a string.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m"
+        },
+        "material": {
+          "$ref": "#/$defs/Material",
+          "description": "The material it is drawn with (og.render.standardMaterial); 0 is a plain one.",
+          "default": 0
+        },
+        "visible": {
+          "type": "boolean",
+          "description": "Whether the renderer draws it.",
+          "default": true
+        },
+        "volume": {
+          "type": "number",
+          "description": "Written: its volume (2D: area) now over its rest volume; below 1 squashed, above inflated.",
+          "default": 1,
+          "readOnly": true
+        },
+        "center": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Written: the mean of its points, in world space.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m",
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
     "Fluid2D": {
       "x-og-kind": "component",
       "x-og-module": "physics",
@@ -31708,6 +31909,35 @@
       "required": [
         "position",
         "rotation"
+      ],
+      "additionalProperties": false
+    },
+    "SoftBodyPoints": {
+      "x-og-kind": "struct",
+      "x-og-module": "physics",
+      "description": "An og.SoftBody's surface after the last step.",
+      "type": "object",
+      "properties": {
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Vector3"
+          },
+          "description": "Its points, in world space."
+        },
+        "indices": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "description": "Its triangles, three indices into `points` each, wound outwards (2D: a fan over the ring)."
+        }
+      },
+      "required": [
+        "points",
+        "indices"
       ],
       "additionalProperties": false
     },
