@@ -1450,3 +1450,121 @@ fn a_game_crossing_waits_for_finish_a_teleport_is_instant_and_a_shut_door_rerout
     assert!(top > 7.9, "round by the corridor: {top}");
     assert_eq!(w.get::<NavAgent>(e).unwrap().status, STATUS_ARRIVED);
 }
+
+// ── G2-4: crowds (ORCA) ─────────────────────────────────────────────────────
+
+/// Eight agents on a circle of 4 m about (10, 5), each walking to the
+/// opposite point, with og.Crowd or without; the closest any two came
+/// (centre to centre) and the world.
+fn swap(crowd: bool, restore_at: Option<u32>) -> (f32, Option<u32>, World, Vec<og_ecs::Entity>) {
+    const TICKS: u32 = 1200;
+    let make = || {
+        let mut navs = Navs::default();
+        let h = navs.insert(Nav::Mesh(Box::new(NavMesh::build(floor()))));
+        let mut w = world_with(Arc::new(Mutex::new(navs)), Plane::Xz);
+        og_nav::enable_crowds(&mut w).unwrap();
+        let mut agents = Vec::new();
+        for k in 0..8 {
+            // Exact compass and diagonal points (no trigonometry in a test of determinism).
+            let r = std::f32::consts::FRAC_1_SQRT_2;
+            let d = [(1.0, 0.0), (r, r), (0.0, 1.0), (-r, r)];
+            let (x, z) = if k < 4 {
+                d[k]
+            } else {
+                (-d[k - 4].0, -d[k - 4].1)
+            };
+            let at = Vec3::new(10.0 + 4.0 * x, 0.0, 5.0 + 4.0 * z);
+            let to = Vec3::new(10.0 - 4.0 * x, 0.0, 5.0 - 4.0 * z);
+            let e = w
+                .spawn((
+                    og_nav::system::Transform {
+                        position: at,
+                        ..Default::default()
+                    },
+                    NavAgent {
+                        nav: h,
+                        target: to,
+                        seeking: true,
+                        speed: 2.0,
+                        radius: 0.4,
+                        ..Default::default()
+                    },
+                ))
+                .unwrap();
+            if crowd {
+                w.insert(e, og_nav::Crowd::default()).unwrap();
+            }
+            agents.push(e);
+        }
+        (w, agents)
+    };
+    let (mut w, agents) = make();
+    let pos = |w: &World, e| w.get::<og_nav::system::Transform>(e).unwrap().position;
+    let mut closest = f32::MAX;
+    let mut arrived = None;
+    let mut snap = None;
+    for t in 0..TICKS {
+        if Some(t) == restore_at {
+            snap = Some(w.snapshot());
+        }
+        w.step().unwrap();
+        for (i, &a) in agents.iter().enumerate() {
+            for &b in &agents[i + 1..] {
+                closest = closest.min(pos(&w, a).distance(pos(&w, b)));
+            }
+        }
+        if arrived.is_none()
+            && agents
+                .iter()
+                .all(|&e| pos(&w, e).distance(w.get::<NavAgent>(e).unwrap().target) < 0.5)
+        {
+            arrived = Some(t + 1);
+        }
+    }
+    if let Some(s) = snap {
+        let (mut fresh, _) = make();
+        fresh.restore(&s).unwrap();
+        for _ in restore_at.unwrap()..TICKS {
+            fresh.step().unwrap();
+        }
+        assert_eq!(
+            fresh.world_hash(),
+            w.world_hash(),
+            "a restored crowd diverged"
+        );
+    }
+    (closest, arrived, w, agents)
+}
+
+/// Fifteen seconds: the straight walk is four, the rest is the ring unwinding.
+const ARRIVE_BY: u32 = 900;
+
+#[test]
+fn crowd_agents_swap_places_without_touching_and_every_one_arrives() {
+    // The swap is symmetric: pure ORCA locks the eight into a still ring;
+    // each agent's hashed margin breaks it. Restored at tick 90 (mid-swap,
+    // the ring at its tightest) it goes on to the same world.
+    let (closest, arrived, w, agents) = swap(true, Some(90));
+    let arrived = arrived.expect("every agent reached its goal");
+    assert!(arrived <= ARRIVE_BY, "the swap took {arrived} ticks");
+    assert!(
+        closest > 0.8 * 0.95,
+        "two crowd agents overlapped: {closest} m apart"
+    );
+    for &e in &agents {
+        let a = w.get::<NavAgent>(e).unwrap();
+        let p = w.get::<og_nav::system::Transform>(e).unwrap().position;
+        assert!(
+            p.distance(a.target) < 0.5,
+            "an agent stuck at {p}, for {}",
+            a.target
+        );
+    }
+    // A second run is the same world tick for tick.
+    let (_, again, w2, _) = swap(true, None);
+    assert_eq!(again, Some(arrived));
+    assert_eq!(w2.world_hash(), w.world_hash());
+    // Without og.Crowd (and no separation) they walk through each other.
+    let (closest, ..) = swap(false, None);
+    assert!(closest < 0.4, "{closest}");
+}

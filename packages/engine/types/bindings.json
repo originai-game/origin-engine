@@ -5717,6 +5717,38 @@
     },
     {
       "id": 71,
+      "name": "Crowd",
+      "schema": "og.Crowd",
+      "module": "nav",
+      "fields": [
+        {
+          "name": "neighbours",
+          "column": "u32",
+          "default": 8,
+          "tunable": true
+        },
+        {
+          "name": "horizon",
+          "column": "f32",
+          "default": 2,
+          "tunable": true
+        },
+        {
+          "name": "obstacleHorizon",
+          "column": "f32",
+          "default": 0.5,
+          "tunable": true
+        },
+        {
+          "name": "weight",
+          "column": "f32",
+          "default": 0.5,
+          "tunable": true
+        }
+      ]
+    },
+    {
+      "id": 72,
       "name": "AiAgent",
       "schema": "og.AiAgent",
       "module": "ai",
@@ -5763,7 +5795,7 @@
       ]
     },
     {
-      "id": 72,
+      "id": 73,
       "name": "Perception",
       "schema": "og.Perception",
       "module": "ai",
@@ -5874,7 +5906,7 @@
       ]
     },
     {
-      "id": 73,
+      "id": 74,
       "name": "Perceivable",
       "schema": "og.Perceivable",
       "module": "ai",
@@ -5892,7 +5924,7 @@
       ]
     },
     {
-      "id": 74,
+      "id": 75,
       "name": "Terrain",
       "schema": "og.Terrain",
       "module": "terrain",
@@ -5926,7 +5958,7 @@
       ]
     },
     {
-      "id": 75,
+      "id": 76,
       "name": "TerrainScatter",
       "schema": "og.TerrainScatter",
       "module": "terrain",
@@ -6006,7 +6038,7 @@
       ]
     },
     {
-      "id": 76,
+      "id": 77,
       "name": "VideoPlayer",
       "schema": "og.VideoPlayer",
       "module": "video",
@@ -6058,7 +6090,7 @@
       ]
     },
     {
-      "id": 77,
+      "id": 78,
       "name": "PathFollower",
       "schema": "og.PathFollower",
       "module": "path",
@@ -6112,7 +6144,7 @@
       ]
     },
     {
-      "id": 78,
+      "id": 79,
       "name": "Timeline",
       "schema": "og.Timeline",
       "module": "timeline",
@@ -6146,7 +6178,7 @@
       ]
     },
     {
-      "id": 79,
+      "id": 80,
       "name": "PlayerInput",
       "schema": "og.PlayerInput",
       "module": "net",

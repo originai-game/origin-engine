@@ -31,6 +31,11 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: "og.NavFilter",
         enable: og_nav::enable_filters,
     },
+    // G2-4: og.nav reads it (crowd avoidance).
+    Lazy {
+        name: "og.Crowd",
+        enable: og_nav::enable_crowds,
+    },
     // G2-4: og.nav sends it once a navmesh has an off-mesh link.
     Lazy {
         name: "og.NavLinkReached",

@@ -199,6 +199,18 @@ world.insert(hero, og.Perceivable, { team: 1, eyeHeight: 1 });
   `repathTicks`, and when the agent is pushed more than 1.5 m (or four
   radii) off its path. `status` says `NAV_ARRIVED` or `NAV_UNREACHABLE`;
   read it rather than measuring distances.
+- Agents that crowd (a horde, shoppers, a squad in a corridor) take
+  `og.Crowd` beside the NavAgent: `world.insert(e, og.Crowd, {})`. Each
+  tick it picks the velocity nearest what the path wants that keeps the
+  agent clear of its 8 nearest agents for `horizon` (2 s) and of the
+  mesh's walls for `obstacleHorizon` (0.5 s), the two sharing each
+  avoidance by `weight`. Crowds are deterministic: they replay and restore
+  tick for tick on every host, and agents meeting symmetrically (a ring
+  swapping places) never lock, because each keeps a margin of up to 5% of
+  its radius picked from its entity. Add no random jitter of your own: it
+  is not needed, and anything outside the seeded engine breaks replays.
+  Without og.Crowd, `og.Steering`'s `separation` only pushes agents apart
+  after they meet.
 
 ## 3. Write the mind as data
 

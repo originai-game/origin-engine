@@ -1232,6 +1232,50 @@ impl NavMesh {
         best.1
     }
 
+    /// The boundary edges (a wall, a drop: an edge with no polygon across
+    /// it) within `range` of `p` on the plane, found walking out from
+    /// polygon `from` through polygons within `range` (at most 64), in that
+    /// walk's order: what crowd avoidance keeps clear of.
+    pub fn walls_near(&self, from: PolyRef, p: Vec3, range: f32) -> Vec<(Vec3, Vec3)> {
+        let mut out = Vec::new();
+        if self.poly(from).is_none() || range.is_nan() || range < 0.0 {
+            return out;
+        }
+        let q = Self::xz(p);
+        let r2 = range * range;
+        let mut seen = vec![from];
+        let mut next = 0;
+        while next < seen.len() && seen.len() <= 64 {
+            let r = seen[next];
+            next += 1;
+            let Some((tile, poly)) = self.poly(r) else {
+                continue;
+            };
+            let n = poly.verts.len();
+            for i in 0..n {
+                let a = tile.verts[poly.verts[i] as usize];
+                let b = tile.verts[poly.verts[(i + 1) % n] as usize];
+                let (a2, b2) = (Self::xz(a), Self::xz(b));
+                let ab = b2 - a2;
+                let len2 = ab.length_squared();
+                let t = if len2 > 0.0 {
+                    ((q - a2).dot(ab) / len2).clamp(0.0, 1.0)
+                } else {
+                    0.0
+                };
+                if (a2 + ab * t - q).length_squared() > r2 {
+                    continue;
+                }
+                match poly.links[i] {
+                    NONE => out.push((a, b)),
+                    other if !seen.contains(&other) => seen.push(other),
+                    _ => {}
+                }
+            }
+        }
+        out
+    }
+
     /// The polygon nearest `p` within `extent` (half sizes) and the nearest
     /// point on it: polygons under or over `p` first, by height difference.
     pub fn nearest(&self, p: Vec3, extent: Vec3) -> Option<(PolyRef, Vec3)> {

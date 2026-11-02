@@ -18,6 +18,7 @@ pub mod bake;
 pub mod flow;
 pub mod grid;
 pub mod mesh;
+pub mod orca;
 pub mod shape;
 pub mod steer;
 pub mod system;
@@ -29,8 +30,8 @@ pub use mesh::{
     PolyRef, Shape, Span, Tile,
 };
 pub use system::{
-    Nav, NavAgent, NavDesc, NavFilter, NavLinkReached, NavSystem, Navs, OFF_PATH, PLANS_PER_TICK,
-    Plan, Plane, Raycaster, STATUS_ARRIVED, STATUS_IDLE, STATUS_MOVING, STATUS_ON_LINK,
-    STATUS_PARTIAL, STATUS_UNREACHABLE, SYSTEM_NAME, SharedNavs, Steering, Traverse,
-    enable_filters, enable_links, install, plan,
+    Crowd, Nav, NavAgent, NavDesc, NavFilter, NavLinkReached, NavSystem, Navs, OFF_PATH,
+    PLANS_PER_TICK, Plan, Plane, Raycaster, STATUS_ARRIVED, STATUS_IDLE, STATUS_MOVING,
+    STATUS_ON_LINK, STATUS_PARTIAL, STATUS_UNREACHABLE, SYSTEM_NAME, SharedNavs, Steering,
+    Traverse, enable_crowds, enable_filters, enable_links, install, plan,
 };

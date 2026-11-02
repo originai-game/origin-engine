@@ -366,6 +366,53 @@ impl NavFilter {
     }
 }
 
+/// Reciprocal crowd avoidance for an agent (G2-4, ORCA): beside an
+/// og.NavAgent, its velocity each tick is the one nearest its path's (and
+/// steering's) that keeps it clear of its nearest agents for `horizon`
+/// seconds and of the navmesh's walls for `obstacle_horizon`. Registered
+/// with the world only once a game uses it ([`enable_crowds`]): an agent
+/// without it moves as before (separation only).
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+#[reflect(name = "og.Crowd")]
+pub struct Crowd {
+    /// How many nearest agents it avoids.
+    #[reflect(min = 0, max = 32, default = 8, tunable)]
+    pub neighbours: u32,
+    /// Seconds ahead it keeps clear of other agents.
+    #[reflect(min = 0, max = 10, default = 2, unit = "s", tunable)]
+    pub horizon: f32,
+    /// Seconds ahead it keeps clear of walls (a navmesh's edges).
+    #[reflect(
+        name = "obstacleHorizon",
+        min = 0,
+        max = 10,
+        default = 0.5,
+        unit = "s",
+        tunable
+    )]
+    pub obstacle_horizon: f32,
+    /// Its share of each avoidance with another crowd agent.
+    #[reflect(min = 0, max = 1, default = 0.5, tunable)]
+    pub weight: f32,
+}
+
+impl Default for Crowd {
+    fn default() -> Self {
+        Crowd {
+            neighbours: 8,
+            horizon: 2.0,
+            obstacle_horizon: 0.5,
+            weight: 0.5,
+        }
+    }
+}
+
+/// Registers `og.Crowd` and grants og.nav its reads.
+pub fn enable_crowds(world: &mut World) -> Result<()> {
+    world.register::<Crowd>()?;
+    world.grant(SYSTEM_NAME, &[Crowd::NAME])
+}
+
 /// Registers `og.NavFilter` and grants og.nav its reads: what a host calls
 /// the first time a game uses the component.
 pub fn enable_filters(world: &mut World) -> Result<()> {
@@ -764,6 +811,82 @@ struct Row {
     steer: Option<Steering>,
     vel: Option<Velocity>,
     filter: Option<NavFilter>,
+    crowd: Option<Crowd>,
+}
+
+/// The tick's start-of-tick state crowd agents solve from.
+struct CrowdView<'a> {
+    rows: &'a [Row],
+    positions: &'a [Vec2],
+    velocities: &'a [Vec2],
+    index: &'a og_ecs::SpatialHash,
+    at: &'a BTreeMap<u64, usize>,
+}
+
+/// Agent `i`'s ORCA velocity for `preferred`: its `c.neighbours` nearest
+/// agents within reach of its horizon, and on a navmesh the walls within
+/// reach of its obstacle horizon.
+#[allow(clippy::too_many_arguments)]
+fn crowd_velocity(
+    view: &CrowdView<'_>,
+    i: usize,
+    c: &Crowd,
+    preferred: Vec2,
+    speed: f32,
+    mesh: Option<(&NavMesh, u32)>,
+    plane: Plane,
+    dt: f32,
+) -> Vec2 {
+    let row = &view.rows[i];
+    let p = view.positions[i];
+    let radius = row.agent.radius.max(0.0);
+    let k = c.neighbours.min(32) as usize;
+    let mut neighbours = Vec::with_capacity(k);
+    if k > 0 {
+        for n in view.index.nearest([p.x, p.y, 0.0], k + 1) {
+            let Some(&j) = view.at.get(&n.entity.to_bits()) else {
+                continue;
+            };
+            if j == i {
+                continue;
+            }
+            let other = &view.rows[j];
+            let r = other.agent.radius.max(0.0);
+            let reach = radius + r + c.horizon * (speed + other.agent.speed.max(0.0));
+            if n.distance > f64::from(reach) || neighbours.len() == k {
+                continue;
+            }
+            neighbours.push(crate::orca::Neighbour {
+                position: view.positions[j],
+                velocity: view.velocities[j],
+                radius: r,
+                share: other.crowd.map_or(1.0, |_| c.weight.clamp(0.0, 1.0)),
+            });
+        }
+    }
+    let walls: Vec<(Vec2, Vec2)> = match mesh {
+        Some((m, poly)) if c.obstacle_horizon > 0.0 => m
+            .walls_near(poly, row.pos, radius + c.obstacle_horizon * speed)
+            .into_iter()
+            .map(|(a, b)| (plane.to_plane(a), plane.to_plane(b)))
+            .collect(),
+        _ => Vec::new(),
+    };
+    crate::orca::velocity(
+        &crate::orca::Agent {
+            position: p,
+            velocity: view.velocities[i],
+            radius,
+            preferred,
+            max_speed: speed,
+            horizon: c.horizon,
+            obstacle_horizon: c.obstacle_horizon,
+            seed: row.e.to_bits(),
+        },
+        &walls,
+        &neighbours,
+        dt,
+    )
 }
 
 fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<()> {
@@ -773,6 +896,8 @@ fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<(
     let mut rows: Vec<Row> = Vec::new();
     // og.NavFilter is read only once a game has registered it.
     let filters = ctx.id_by_name(NavFilter::NAME).is_ok();
+    // og.Crowd likewise.
+    let crowds = ctx.id_by_name(Crowd::NAME).is_ok();
     for a in ctx.query(0)? {
         for &e in a.entities() {
             let agent = ctx.get::<NavAgent>(e)?;
@@ -785,6 +910,11 @@ fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<(
                 vel: ctx.get::<Velocity>(e).ok(),
                 filter: if filters {
                     ctx.get::<NavFilter>(e).ok()
+                } else {
+                    None
+                },
+                crowd: if crowds {
+                    ctx.get::<Crowd>(e).ok()
                 } else {
                     None
                 },
@@ -812,6 +942,28 @@ fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<(
             .push(i);
     }
     let positions: Vec<Vec2> = rows.iter().map(|r| plane.to_plane(r.pos)).collect();
+    // For crowd agents: every agent's start-of-tick velocity and an index
+    // of their positions (G2-2's spatial hash: neighbours by distance, then
+    // entity). Every crowd agent solves from this same state.
+    let crowd = if rows.iter().any(|r| r.crowd.is_some()) {
+        let velocities: Vec<Vec2> = rows
+            .iter()
+            .map(|r| plane.to_plane(r.vel.map_or(r.agent.velocity, |v| v.linear)))
+            .collect();
+        let points = rows
+            .iter()
+            .zip(&positions)
+            .map(|(r, p)| (r.e, [p.x, p.y, 0.0]))
+            .collect();
+        let index: BTreeMap<u64, usize> = rows
+            .iter()
+            .enumerate()
+            .map(|(i, r)| (r.e.to_bits(), i))
+            .collect();
+        Some((velocities, og_ecs::SpatialHash::new(points, 0.0)?, index))
+    } else {
+        None
+    };
     let mut scratch = Scratch::default();
     let mut budget = if desc.plans_per_tick == 0 {
         u32::MAX
@@ -828,6 +980,7 @@ fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<(
             steer: steering,
             vel,
             filter,
+            crowd: crowding,
         } = *row;
         let filter = filter.map(|f| f.filter()).unwrap_or_default();
         let key = e.to_bits();
@@ -1192,6 +1345,27 @@ fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) -> Result<(
         }
         // Velocity and position.
         let speed_cap = agent.speed.max(0.0);
+        if let (Some(c), Some((velocities, index, at))) = (crowding, &crowd) {
+            desired = crowd_velocity(
+                &CrowdView {
+                    rows: &rows,
+                    positions: &positions,
+                    velocities,
+                    index,
+                    at,
+                },
+                i,
+                &c,
+                desired.clamp_length_max(speed_cap),
+                speed_cap,
+                match nav {
+                    Some(Nav::Mesh(m)) => Some((m.as_ref(), ps.poly)),
+                    _ => None,
+                },
+                plane,
+                dt,
+            );
+        }
         v2 = steer::accelerate(
             v2,
             desired.clamp_length_max(speed_cap),

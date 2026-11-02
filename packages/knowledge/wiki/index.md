@@ -157,7 +157,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1940 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1941 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -823,6 +823,7 @@ Field units the docs and Tune use.
 | [`og.commands.register`](commands.md#fn-register) | function | commands | `og_commands_register` |
 | [`og.commands.schedule`](commands.md#fn-schedule) | function | commands | `og_commands_schedule` |
 | [`og.Contact`](physics.md#record-Contact) | event | physics | — |
+| [`og.Crowd`](nav.md#record-Crowd) | component | nav | — |
 | [`og.DayNight`](atmosphere.md#record-DayNight) | resource | atmosphere | — |
 | [`og.debug.arrow`](debug.md#fn-arrow) | function | debug | `og_debug_arrow` |
 | [`og.debug.axes`](debug.md#fn-axes) | function | debug | `og_debug_axes` |

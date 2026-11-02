@@ -36,6 +36,7 @@ module nav {
 | [`og.NavAgent`](#record-NavAgent) | component | An entity that moves itself towards `target` while `seeking`, by a path over `nav` (a grid, navmesh or flow field; 0 goes straight). og.nav re-plans when the target moved more than repathDistance, every repathTicks, or when the grid or navmesh changed, at most 32 plans a tick across agents. |
 | [`og.Steering`](#record-Steering) | component | Steering behaviours an og.NavAgent adds to its path following, each by weight (0 is off): flee, wander, pursue, evade, separation from other agents and avoidance of colliders ahead (three physics rays). |
 | [`og.NavFilter`](#record-NavFilter) | component | Which navmesh areas an agent crosses and what a metre in each costs: beside an og.NavAgent, its plans weigh every polygon's length by its area's cost and never enter an excluded area. Areas are marked at cook time (`area` in a navmesh asset) or at run time (og.nav.setArea); 0 is ground. Without one every area costs 1. |
+| [`og.Crowd`](#record-Crowd) | component | Reciprocal crowd avoidance (ORCA) for an agent: beside an og.NavAgent, each tick its velocity is the one nearest what its path and steering want that keeps it clear of its nearest agents for `horizon` seconds and of the navmesh's walls for `obstacleHorizon`, each pair of crowd agents sharing the avoidance. Every agent solves from the same start-of-tick state in a fixed order, so crowds replay identically on every host; agents meeting perfectly symmetrically (a ring swapping places) are kept from locking by a margin of up to 5% of the radius picked from the entity, so a game adds no jitter of its own. Without one an agent moves as before (og.Steering's separation only). |
 | [`NavLinkKind`](#type-NavLinkKind) | enum | How an agent crosses an off-mesh link. |
 | [`NavLinkDesc`](#type-NavLinkDesc) | desc struct | An off-mesh link: a way between two points of a navmesh its surface does not join (a gap to jump, a ladder, a door, a teleporter). Each end snaps to the polygon under it within 1 m. |
 | [`og.NavLinkReached`](#record-NavLinkReached) | event | An agent reached an off-mesh link and started across it (systems read it the tick after): play the jump or the climb here. With `game`, move it and call og.nav.finishLink when it is over. |
@@ -101,7 +102,7 @@ fn grid {
 }
 ```
 
-<sub>`api.ogt` line 11582</sub>
+<sub>`api.ogt` line 11612</sub>
 
 <a id="fn-gridFromTilemap"></a>
 
@@ -131,7 +132,7 @@ fn gridFromTilemap {
 }
 ```
 
-<sub>`api.ogt` line 11589</sub>
+<sub>`api.ogt` line 11619</sub>
 
 <a id="fn-setCost"></a>
 
@@ -167,7 +168,7 @@ fn setCost {
 }
 ```
 
-<sub>`api.ogt` line 11596</sub>
+<sub>`api.ogt` line 11626</sub>
 
 <a id="fn-cellAt"></a>
 
@@ -199,7 +200,7 @@ fn cellAt {
 }
 ```
 
-<sub>`api.ogt` line 11606</sub>
+<sub>`api.ogt` line 11636</sub>
 
 <a id="fn-findPath"></a>
 
@@ -229,7 +230,7 @@ fn findPath {
 }
 ```
 
-<sub>`api.ogt` line 11614</sub>
+<sub>`api.ogt` line 11644</sub>
 
 <a id="fn-flowField"></a>
 
@@ -259,7 +260,7 @@ fn flowField {
 }
 ```
 
-<sub>`api.ogt` line 11621</sub>
+<sub>`api.ogt` line 11651</sub>
 
 <a id="fn-setFlowTargets"></a>
 
@@ -291,7 +292,7 @@ fn setFlowTargets {
 }
 ```
 
-<sub>`api.ogt` line 11628</sub>
+<sub>`api.ogt` line 11658</sub>
 
 <a id="fn-flowAt"></a>
 
@@ -323,7 +324,7 @@ fn flowAt {
 }
 ```
 
-<sub>`api.ogt` line 11636</sub>
+<sub>`api.ogt` line 11666</sub>
 
 <a id="fn-load"></a>
 
@@ -357,7 +358,7 @@ fn load {
 }
 ```
 
-<sub>`api.ogt` line 11644</sub>
+<sub>`api.ogt` line 11674</sub>
 
 <a id="fn-build"></a>
 
@@ -387,7 +388,7 @@ fn build {
 }
 ```
 
-<sub>`api.ogt` line 11654</sub>
+<sub>`api.ogt` line 11684</sub>
 
 <a id="fn-setObstacle"></a>
 
@@ -423,7 +424,7 @@ fn setObstacle {
 }
 ```
 
-<sub>`api.ogt` line 11661</sub>
+<sub>`api.ogt` line 11691</sub>
 
 <a id="fn-carve"></a>
 
@@ -459,7 +460,7 @@ fn carve {
 }
 ```
 
-<sub>`api.ogt` line 11672</sub>
+<sub>`api.ogt` line 11702</sub>
 
 <a id="fn-setArea"></a>
 
@@ -495,7 +496,7 @@ fn setArea {
 }
 ```
 
-<sub>`api.ogt` line 11683</sub>
+<sub>`api.ogt` line 11713</sub>
 
 <a id="fn-setLink"></a>
 
@@ -531,7 +532,7 @@ fn setLink {
 }
 ```
 
-<sub>`api.ogt` line 11694</sub>
+<sub>`api.ogt` line 11724</sub>
 
 <a id="fn-setLinkOpen"></a>
 
@@ -565,7 +566,7 @@ fn setLinkOpen {
 }
 ```
 
-<sub>`api.ogt` line 11705</sub>
+<sub>`api.ogt` line 11735</sub>
 
 <a id="fn-finishLink"></a>
 
@@ -595,7 +596,7 @@ fn finishLink {
 }
 ```
 
-<sub>`api.ogt` line 11714</sub>
+<sub>`api.ogt` line 11744</sub>
 
 <a id="fn-nearest"></a>
 
@@ -631,7 +632,7 @@ fn nearest {
 }
 ```
 
-<sub>`api.ogt` line 11721</sub>
+<sub>`api.ogt` line 11751</sub>
 
 <a id="fn-pathOf"></a>
 
@@ -661,7 +662,7 @@ fn pathOf {
 }
 ```
 
-<sub>`api.ogt` line 11732</sub>
+<sub>`api.ogt` line 11762</sub>
 
 ## Components, resources and events
 
@@ -934,6 +935,55 @@ component NavFilter {
 
 <sub>`api.ogt` line 11325</sub>
 
+<a id="record-Crowd"></a>
+
+### `og.Crowd` (component)
+
+Reciprocal crowd avoidance (ORCA) for an agent: beside an og.NavAgent, each tick its velocity is the one nearest what its path and steering want that keeps it clear of its nearest agents for `horizon` seconds and of the navmesh's walls for `obstacleHorizon`, each pair of crowd agents sharing the avoidance. Every agent solves from the same start-of-tick state in a fixed order, so crowds replay identically on every host; agents meeting perfectly symmetrically (a ring swapping places) are kept from locking by a margin of up to 5% of the radius picked from the entity, so a game adds no jitter of its own. Without one an agent moves as before (og.Steering's separation only).
+
+Token `og.Crowd`, registered under the schema name `og.Crowd`; its value type is `Crowd`.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `neighbours` | `number` | `8` | 0 … 32 | — | tunable | How many nearest agents it avoids (at most 32). |
+| `horizon` | `number` | `2` | 0 … 10 | `s` | tunable | Seconds ahead it keeps clear of other agents: longer turns aside earlier and more gently. |
+| `obstacleHorizon` | `number` | `0.5` | 0 … 10 | `s` | tunable | Seconds ahead it keeps clear of walls (a navmesh's edges). |
+| `weight` | `number` | `0.5` | 0 … 1 | — | tunable | Its share of each avoidance with another crowd agent (0.5: half each); an agent without og.Crowd is avoided wholly by it. |
+
+```ogt
+component Crowd {
+  doc "Reciprocal crowd avoidance (ORCA) for an agent: beside an og.NavAgent, each tick its velocity is the one nearest what its path and steering want that keeps it clear of its nearest agents for `horizon` seconds and of the navmesh's walls for `obstacleHorizon`, each pair of crowd agents sharing the avoidance. Every agent solves from the same start-of-tick state in a fixed order, so crowds replay identically on every host; agents meeting perfectly symmetrically (a ring swapping places) are kept from locking by a margin of up to 5% of the radius picked from the entity, so a game adds no jitter of its own. Without one an agent moves as before (og.Steering's separation only)."
+  field neighbours u32 "How many nearest agents it avoids (at most 32)." {
+    default 8
+    min 0
+    max 32
+    tunable true
+  }
+  field horizon f32 "Seconds ahead it keeps clear of other agents: longer turns aside earlier and more gently." {
+    default 2
+    min 0
+    max 10
+    unit s
+    tunable true
+  }
+  field obstacleHorizon f32 "Seconds ahead it keeps clear of walls (a navmesh's edges)." {
+    default 0.5
+    min 0
+    max 10
+    unit s
+    tunable true
+  }
+  field weight f32 "Its share of each avoidance with another crowd agent (0.5: half each); an agent without og.Crowd is avoided wholly by it." {
+    default 0.5
+    min 0
+    max 1
+    tunable true
+  }
+}
+```
+
+<sub>`api.ogt` line 11331</sub>
+
 <a id="record-NavLinkReached"></a>
 
 ### `og.NavLinkReached` (event)
@@ -969,7 +1019,7 @@ event NavLinkReached {
 }
 ```
 
-<sub>`api.ogt` line 11366</sub>
+<sub>`api.ogt` line 11396</sub>
 
 ## Types
 
@@ -1035,7 +1085,7 @@ enum NavLinkKind {
 }
 ```
 
-<sub>`api.ogt` line 11331</sub>
+<sub>`api.ogt` line 11361</sub>
 
 <a id="type-NavLinkDesc"></a>
 
@@ -1085,7 +1135,7 @@ struct NavLinkDesc {
 }
 ```
 
-<sub>`api.ogt` line 11339</sub>
+<sub>`api.ogt` line 11369</sub>
 
 <a id="type-NavShapeKind"></a>
 
@@ -1112,7 +1162,7 @@ enum NavShapeKind {
 }
 ```
 
-<sub>`api.ogt` line 11381</sub>
+<sub>`api.ogt` line 11411</sub>
 
 <a id="type-NavShape"></a>
 
@@ -1166,7 +1216,7 @@ struct NavShape {
 }
 ```
 
-<sub>`api.ogt` line 11389</sub>
+<sub>`api.ogt` line 11419</sub>
 
 <a id="type-NavAreaDesc"></a>
 
@@ -1192,7 +1242,7 @@ struct NavAreaDesc {
 }
 ```
 
-<sub>`api.ogt` line 11419</sub>
+<sub>`api.ogt` line 11449</sub>
 
 <a id="type-NavGridDesc"></a>
 
@@ -1237,7 +1287,7 @@ struct NavGridDesc {
 }
 ```
 
-<sub>`api.ogt` line 11428</sub>
+<sub>`api.ogt` line 11458</sub>
 
 <a id="type-TilemapGridDesc"></a>
 
@@ -1265,7 +1315,7 @@ struct TilemapGridDesc {
 }
 ```
 
-<sub>`api.ogt` line 11453</sub>
+<sub>`api.ogt` line 11483</sub>
 
 <a id="type-NavCell"></a>
 
@@ -1288,7 +1338,7 @@ struct NavCell {
 }
 ```
 
-<sub>`api.ogt` line 11463</sub>
+<sub>`api.ogt` line 11493</sub>
 
 <a id="type-PathDesc"></a>
 
@@ -1334,7 +1384,7 @@ struct PathDesc {
 }
 ```
 
-<sub>`api.ogt` line 11470</sub>
+<sub>`api.ogt` line 11500</sub>
 
 <a id="type-NavPath"></a>
 
@@ -1365,7 +1415,7 @@ struct NavPath {
 }
 ```
 
-<sub>`api.ogt` line 11493</sub>
+<sub>`api.ogt` line 11523</sub>
 
 <a id="type-FlowDesc"></a>
 
@@ -1389,7 +1439,7 @@ struct FlowDesc {
 }
 ```
 
-<sub>`api.ogt` line 11505</sub>
+<sub>`api.ogt` line 11535</sub>
 
 <a id="type-NavBox"></a>
 
@@ -1417,7 +1467,7 @@ struct NavBox {
 }
 ```
 
-<sub>`api.ogt` line 11512</sub>
+<sub>`api.ogt` line 11542</sub>
 
 <a id="type-NavMeshDesc"></a>
 
@@ -1475,7 +1525,7 @@ struct NavMeshDesc {
 }
 ```
 
-<sub>`api.ogt` line 11523</sub>
+<sub>`api.ogt` line 11553</sub>
 
 <a id="type-NavMeshInfo"></a>
 
@@ -1512,7 +1562,7 @@ struct NavMeshInfo {
 }
 ```
 
-<sub>`api.ogt` line 11559</sub>
+<sub>`api.ogt` line 11589</sub>
 
 <a id="type-NavRebuild"></a>
 
@@ -1533,7 +1583,7 @@ struct NavRebuild {
 }
 ```
 
-<sub>`api.ogt` line 11576</sub>
+<sub>`api.ogt` line 11606</sub>
 
 ## Column kinds
 

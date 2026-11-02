@@ -404,3 +404,49 @@ test("og.nav: paths and agents cross off-mesh links, a shut link is not planned,
   expect(fresh.hash()).toBe(after);
   expect(og.nav.finishLink(fresh.world, fh)).toBeFalse();
 });
+
+function ring(crowd: boolean) {
+  return (world: World) => {
+    const info = must(og.nav.build(world, { min: { x: 0, y: 0, z: 0 }, max: { x: 20, y: 0, z: 10 }, cellSize: 0.25, tileSize: 16 }));
+    must(world.resource(Swamp)).mesh = info.mesh as unknown as number;
+    const r = Math.SQRT1_2;
+    const d = [[1, 0], [r, r], [0, 1], [-r, r], [-1, 0], [-r, -r], [0, -1], [r, -r]] as const;
+    d.forEach(([x, z], k) => {
+      const e = must(world.spawn({ name: `walker${k}`, position: { x: 10 + 4 * x, y: 0, z: 5 + 4 * z } }));
+      world.insert(e, og.NavAgent, { nav: info.mesh, target: { x: 10 - 4 * x, y: 0, z: 5 - 4 * z }, seeking: true, speed: 2, radius: 0.4 });
+      if (crowd) world.insert(e, og.Crowd, {});
+    });
+  };
+}
+
+test("og.Crowd: eight agents swap places across a ring without touching, deterministically, and og.Crowd joins the type table only when used", () => {
+  expect(types(start(og.game({ resources: [Swamp], start: ring(false) })).world)).not.toContain("og.Crowd");
+  const run = () => {
+    const eng = start(og.game({ resources: [Swamp], start: ring(true) }));
+    const w = eng.world;
+    const walkers = Array.from({ length: 8 }, (_, k) => w.find(`walker${k}`)!);
+    let closest = Infinity;
+    let save = "";
+    for (let t = 0; t < 900; t++) {
+      if (t === 90) save = must(w.snapshot());
+      expect(eng.advance(1).ok).toBeTrue();
+      const ps = walkers.map((e) => must(w.get(e, og.Transform)).position);
+      for (let i = 0; i < 8; i++) for (let j = i + 1; j < 8; j++) closest = Math.min(closest, Math.hypot(ps[i]!.x - ps[j]!.x, ps[i]!.z - ps[j]!.z));
+    }
+    for (const e of walkers) {
+      const a = must(w.get(e, og.NavAgent));
+      const p = must(w.get(e, og.Transform)).position;
+      expect(Math.hypot(p.x - a.target.x, p.z - a.target.z)).toBeLessThan(0.5);
+    }
+    return { eng, closest, save, hash: eng.hash() };
+  };
+  const a = run();
+  expect(types(a.eng.world)).toContain("og.Crowd");
+  expect(a.closest).toBeGreaterThan(0.76);
+  expect(run().hash).toBe(a.hash);
+  // A save from mid-swap restores where og.Crowd was never used and ends in the same world.
+  const fresh = start(og.game({ resources: [Swamp], start: swampYard(false) }));
+  expect(fresh.world.restore(a.save).ok).toBeTrue();
+  expect(fresh.advance(810).ok).toBeTrue();
+  expect(fresh.hash()).toBe(a.hash);
+});

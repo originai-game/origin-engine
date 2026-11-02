@@ -17256,6 +17256,48 @@ export interface NavFilter {
 }
 
 /**
+ * Reciprocal crowd avoidance (ORCA) for an agent: beside an og.NavAgent, each tick its velocity is the one nearest what its path and steering want that keeps it clear of its nearest agents for `horizon` seconds and of the navmesh's walls for `obstacleHorizon`, each pair of crowd agents sharing the avoidance. Every agent solves from the same start-of-tick state in a fixed order, so crowds replay identically on every host; agents meeting perfectly symmetrically (a ring swapping places) are kept from locking by a margin of up to 5% of the radius picked from the entity, so a game adds no jitter of its own. Without one an agent moves as before (og.Steering's separation only).
+ *
+ * The value of the `Crowd` component (token `og.Crowd`).
+ */
+export interface Crowd {
+  /**
+   * How many nearest agents it avoids (at most 32).
+   *
+   * @default 8
+   * @range 0..32
+   * @tunable
+   */
+  neighbours: number;
+  /**
+   * Seconds ahead it keeps clear of other agents: longer turns aside earlier and more gently.
+   *
+   * @default 2
+   * @range 0..10
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  horizon: number;
+  /**
+   * Seconds ahead it keeps clear of walls (a navmesh's edges).
+   *
+   * @default 0.5
+   * @range 0..10
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  obstacleHorizon: number;
+  /**
+   * Its share of each avoidance with another crowd agent (0.5: half each); an agent without og.Crowd is avoided wholly by it.
+   *
+   * @default 0.5
+   * @range 0..1
+   * @tunable
+   */
+  weight: number;
+}
+
+/**
  * How an agent crosses an off-mesh link.
  * - `"jump"`: Through the air on an arc, in its length over the agent's speed (at least 0.3 s).
  * - `"ladder"`: Climbing, at half the agent's speed.
@@ -41715,6 +41757,10 @@ export declare namespace og {
    * Which navmesh areas an agent crosses and what a metre in each costs: beside an og.NavAgent, its plans weigh every polygon's length by its area's cost and never enter an excluded area. Areas are marked at cook time (`area` in a navmesh asset) or at run time (og.nav.setArea); 0 is ground. Without one every area costs 1.
    */
   const NavFilter: ComponentType<{ readonly areaCosts: ListSpec<"f32">; readonly excluded: ListSpec<"u32"> }, NavFilter>;
+  /**
+   * Reciprocal crowd avoidance (ORCA) for an agent: beside an og.NavAgent, each tick its velocity is the one nearest what its path and steering want that keeps it clear of its nearest agents for `horizon` seconds and of the navmesh's walls for `obstacleHorizon`, each pair of crowd agents sharing the avoidance. Every agent solves from the same start-of-tick state in a fixed order, so crowds replay identically on every host; agents meeting perfectly symmetrically (a ring swapping places) are kept from locking by a margin of up to 5% of the radius picked from the entity, so a game adds no jitter of its own. Without one an agent moves as before (og.Steering's separation only).
+   */
+  const Crowd: ComponentType<{ readonly neighbours: FieldSpec<"u32">; readonly horizon: FieldSpec<"f32">; readonly obstacleHorizon: FieldSpec<"f32">; readonly weight: FieldSpec<"f32"> }, Crowd>;
   /**
    * An agent reached an off-mesh link and started across it (systems read it the tick after): play the jump or the climb here. With `game`, move it and call og.nav.finishLink when it is over.
    */
