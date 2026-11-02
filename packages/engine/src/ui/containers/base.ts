@@ -432,7 +432,9 @@ export function glyphCap(id: string, glyph: { text: string; icon: string }, size
   const size = byText(size0);
   const pad = /^(xbox|ps|switch|pad)\./.test(glyph.icon);
   const shoulder = /bumper|trigger|\.(lb|rb|lt|rt|l1|r1|l2|r2|l|r|zl|zr)$/i.test(glyph.icon) || /^(LB|RB|LT|RT|L1|R1|L2|R2|ZL|ZR)$/.test(glyph.text);
-  const face = pad && !shoulder;
+  // A face button prints one letter or symbol in its disc; a longer name (L Stick, View, Options) is a pill that fits it.
+  const face = pad && !shoulder && (PS_FACE[glyph.icon] !== undefined || [...glyph.text].length <= 1);
+  const pill = pad && !face;
   const ink = role("ink");
   kit.open(id, {
     width: face ? px(size) : fit(size),
@@ -440,9 +442,9 @@ export function glyphCap(id: string, glyph: { text: string; icon: string }, size
     padding: xy(face ? 0 : Math.round(size * 0.28), 0),
     align: "center",
     cross: "center",
-    radius: face || shoulder ? size / 2 : Math.max(3, t.small * 2),
+    radius: face || pill ? size / 2 : Math.max(3, t.small * 2),
     background: paint(mix(role("panelRaised"), ink, 0.12)),
-    part: `ActionBar.glyph${flags(face ? "face" : shoulder ? "shoulder" : "key", (face || shoulder) && "round")}`,
+    part: `ActionBar.glyph${flags(face ? "face" : pill ? "shoulder" : "key", (face || pill) && "round")}`,
     partClass: "chip",
   });
   const symbol = PS_FACE[glyph.icon];
