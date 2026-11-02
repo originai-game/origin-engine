@@ -402,8 +402,10 @@ fn the_built_ins_are_the_template_assets() {
 fn every_built_in_style_file_is_compiled_in() {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates/styles");
     for slug in style_slugs() {
+        // Files only: a pack's `art/` sources are not built in.
         let mut on_disk: Vec<String> = std::fs::read_dir(dir.join(slug))
             .unwrap()
+            .filter(|e| e.as_ref().unwrap().file_type().unwrap().is_file())
             .map(|e| {
                 format!(
                     "@styles/{slug}/{}",
