@@ -72,6 +72,9 @@ pub struct CameraAt {
     pub target: Option<Vec3>,
     pub at: Option<f32>,
     pub fov: Option<f32>,
+    pub roll: Option<f32>,
+    pub focus: Option<f32>,
+    pub focus_range: Option<f32>,
 }
 
 pub fn camera_at(track: &CameraTrack, t: f32) -> CameraAt {
@@ -82,7 +85,149 @@ pub fn camera_at(track: &CameraTrack, t: f32) -> CameraAt {
         target: channel(k, t, time, ease, |k| k.target, lerp3),
         at: channel(k, t, time, ease, |k| k.at, lerp),
         fov: channel(k, t, time, ease, |k| k.fov, lerp),
+        roll: channel(k, t, time, ease, |k| k.roll, lerp),
+        focus: channel(k, t, time, ease, |k| k.focus, lerp),
+        focus_range: channel(k, t, time, ease, |k| k.focus_range, lerp),
     }
+}
+
+/// The entity a camera keeps in focus at `t`: the last key at or before it
+/// that names one, unless a later such key sets a `focus` distance instead.
+pub fn focus_on_at(track: &CameraTrack, t: f32) -> Option<&str> {
+    let mut on = None;
+    for k in track.keys.iter().take_while(|k| k.time <= t) {
+        if let Some(e) = &k.focus_on {
+            on = Some(e.as_str());
+        } else if k.focus.is_some() {
+            on = None;
+        }
+    }
+    on
+}
+
+/// How a field moves between two keys.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Mix {
+    /// Each number eased (scalars, vectors, colours).
+    Lerp,
+    /// A quaternion: spherical, on the shorter arc.
+    Slerp,
+    /// Held until the next key (bools, enums, integers, visibility).
+    Step,
+}
+
+/// A field track's value of `field` at `t`: eased between the keys that
+/// set it by the later one's ease (stepped for [`Mix::Step`]), held outside
+/// them. Numbers of different lengths, or a word against numbers, step.
+pub fn field_at(track: &FieldsTrack, field: &str, t: f32, mix: Mix) -> Option<FieldValue> {
+    let get = |k: &FieldKey| {
+        k.values
+            .iter()
+            .find(|(n, _)| n == field)
+            .map(|(_, v)| v.clone())
+    };
+    let mut before: Option<(f32, FieldValue)> = None;
+    for k in &track.keys {
+        let Some(v) = get(k) else { continue };
+        if k.time <= t {
+            before = Some((k.time, v));
+            continue;
+        }
+        let Some((at, a)) = before else {
+            return Some(v);
+        };
+        let span = k.time - at;
+        let u = if span > 0.0 { (t - at) / span } else { 1.0 };
+        let u = k.ease.apply(u);
+        return Some(match (&a, &v, mix) {
+            (FieldValue::Numbers(x), FieldValue::Numbers(y), Mix::Slerp)
+                if x.len() == 4 && y.len() == 4 =>
+            {
+                let q = slerp(
+                    Quat::from_xyzw(x[0], x[1], x[2], x[3]).normalize(),
+                    Quat::from_xyzw(y[0], y[1], y[2], y[3]).normalize(),
+                    u,
+                );
+                FieldValue::Numbers(vec![q.x, q.y, q.z, q.w])
+            }
+            (FieldValue::Numbers(x), FieldValue::Numbers(y), Mix::Lerp | Mix::Slerp)
+                if x.len() == y.len() =>
+            {
+                FieldValue::Numbers(x.iter().zip(y).map(|(a, b)| lerp(*a, *b, u)).collect())
+            }
+            _ => a,
+        });
+    }
+    before.map(|(_, v)| v)
+}
+
+/// The nested timeline playing at `t` of a `timeline` track: its key, when
+/// that key's span ends (the next key, else `end`), and the child's own
+/// time: `(t - key) * speed`, wrapped by `duration` when it loops, else
+/// held at it.
+pub fn nested_at(
+    keys: &[NestedKey],
+    t: f32,
+    end: f32,
+    duration: impl Fn(&NestedKey) -> f32,
+) -> Option<(usize, f32, f32)> {
+    let i = keys.iter().rposition(|k| k.time <= t)?;
+    let k = &keys[i];
+    let until = keys.get(i + 1).map_or(end, |n| n.time);
+    Some((i, until, child_time(k, t, duration(k))))
+}
+
+/// A nested timeline's own time at the parent's `t`.
+pub fn child_time(k: &NestedKey, t: f32, duration: f32) -> f32 {
+    let ct = ((t - k.time) * k.speed).max(0.0);
+    if k.looping && duration > 0.0 {
+        ct.rem_euclid(duration)
+    } else {
+        ct.min(duration)
+    }
+}
+
+/// The parent's playback span `(a, b]` as the child's spans: shifted to the
+/// key, scaled by its speed, cut to `[key, until)`, and split at each wrap
+/// of a looping child (each a span of its own, the next from just before
+/// 0 so a key at 0 fires again).
+pub fn child_spans(k: &NestedKey, until: f32, duration: f32, a: f64, b: f64) -> Vec<(f64, f64)> {
+    let (start, until) = (f64::from(k.time), f64::from(until));
+    let lo = a.max(start - 1e-9);
+    let hi = b.min(until);
+    if hi <= lo {
+        return Vec::new();
+    }
+    let speed = f64::from(k.speed);
+    let map = |x: f64| {
+        if x < start {
+            -1e-9
+        } else {
+            (x - start) * speed
+        }
+    };
+    let (ca, cb) = (map(lo), map(hi));
+    let d = f64::from(duration);
+    if !k.looping || d <= 0.0 {
+        let cb = cb.min(d);
+        return if cb > ca { vec![(ca, cb)] } else { Vec::new() };
+    }
+    let mut out = Vec::new();
+    let mut lap = (ca.max(0.0) / d).floor();
+    let mut span_from = ca - lap * d;
+    loop {
+        let off = lap * d;
+        let to = cb.min(off + d) - off;
+        if to > span_from {
+            out.push((span_from, to));
+        }
+        if cb <= off + d || out.len() > 64 {
+            break;
+        }
+        lap += 1.0;
+        span_from = -1e-9;
+    }
+    out
 }
 
 /// The parts of a transform a track sets at a time.
@@ -270,5 +415,119 @@ mod tests {
         assert_eq!(music_gain(&k, 5.5, 8.0), Some(0.25));
         assert_eq!(music_gain(&k, 6.0, 8.0), None);
         assert!(crossed(2.0, 1.9, 2.0) && !crossed(2.0, 2.0, 2.1));
+    }
+
+    /// A field eases by the later key's ease between the keys that set it
+    /// (another field's keys in between do not split it), steps when asked,
+    /// slerps a quaternion, and a word steps.
+    #[test]
+    fn fields_ease_between_their_own_keys_and_step_or_slerp_by_kind() {
+        let n = |v: &[f32]| FieldValue::Numbers(v.to_vec());
+        let key = |time: f32, ease: Ease, values: Vec<(&str, FieldValue)>| FieldKey {
+            time,
+            ease,
+            values: values
+                .into_iter()
+                .map(|(a, b)| (a.to_string(), b))
+                .collect(),
+        };
+        let t = FieldsTrack {
+            kind: FieldsKind::Light,
+            entity: "lamp".into(),
+            index: 0,
+            keys: vec![
+                key(
+                    0.0,
+                    Ease::Linear,
+                    vec![
+                        ("intensity", n(&[0.0])),
+                        ("castShadow", FieldValue::Word("false".into())),
+                    ],
+                ),
+                key(1.0, Ease::Linear, vec![("color", n(&[1.0, 0.0, 0.0]))]),
+                key(
+                    4.0,
+                    Ease::QuadIn,
+                    vec![
+                        ("intensity", n(&[8.0])),
+                        ("castShadow", FieldValue::Word("true".into())),
+                    ],
+                ),
+            ],
+        };
+        // Halfway from 0 to 4 s, quadIn: 8 × 0.25.
+        assert_eq!(field_at(&t, "intensity", 2.0, Mix::Lerp), Some(n(&[2.0])));
+        assert_eq!(field_at(&t, "intensity", 2.0, Mix::Step), Some(n(&[0.0])));
+        assert_eq!(field_at(&t, "intensity", 9.0, Mix::Lerp), Some(n(&[8.0])));
+        assert_eq!(
+            field_at(&t, "color", 0.0, Mix::Lerp),
+            Some(n(&[1.0, 0.0, 0.0])),
+            "held before its first key"
+        );
+        assert_eq!(
+            field_at(&t, "castShadow", 3.99, Mix::Lerp),
+            Some(FieldValue::Word("false".into()))
+        );
+        assert_eq!(
+            field_at(&t, "castShadow", 4.0, Mix::Lerp),
+            Some(FieldValue::Word("true".into()))
+        );
+        assert_eq!(field_at(&t, "range", 2.0, Mix::Lerp), None);
+        let q = FieldsTrack {
+            keys: vec![
+                key(0.0, Ease::Linear, vec![("q", n(&[0.0, 0.0, 0.0, 1.0]))]),
+                key(1.0, Ease::Linear, vec![("q", n(&[0.0, 1.0, 0.0, 0.0]))]),
+            ],
+            ..t
+        };
+        // Halfway through a 180° turn about y: 90°, unit length (a lerp is 0.707 long).
+        let Some(FieldValue::Numbers(h)) = field_at(&q, "q", 0.5, Mix::Slerp) else {
+            panic!()
+        };
+        assert!(
+            (h[1] - 0.70710677).abs() < 1e-5 && (h[3] - 0.70710677).abs() < 1e-5,
+            "{h:?}"
+        );
+    }
+
+    /// A nested timeline's time is the parent's shifted to its key and
+    /// scaled by its speed, held at its end or wrapped when it loops; the
+    /// parent's playback spans map to the child's, a key at the child's 0
+    /// firing on its first tick and again on each lap.
+    #[test]
+    fn nested_time_and_spans_follow_the_key() {
+        let k = NestedKey {
+            time: 2.0,
+            play: "c".into(),
+            speed: 2.0,
+            looping: false,
+        };
+        assert_eq!(child_time(&k, 1.0, 3.0), 0.0);
+        assert_eq!(child_time(&k, 2.5, 3.0), 1.0);
+        assert_eq!(child_time(&k, 9.0, 3.0), 3.0, "held at its end");
+        // (1.9, 2.1] crosses the key: the child's first span starts just before 0.
+        let s = child_spans(&k, 10.0, 3.0, 1.9, 2.1);
+        assert_eq!(s.len(), 1);
+        assert!(s[0].0 < 0.0 && (s[0].1 - 0.2).abs() < 1e-9, "{s:?}");
+        assert!(crossed(0.0, s[0].0, s[0].1));
+        assert!(
+            child_spans(&k, 10.0, 3.0, 1.0, 1.5).is_empty(),
+            "before its key"
+        );
+        assert!(
+            child_spans(&k, 3.0, 3.0, 3.0, 3.5).is_empty(),
+            "after the next key"
+        );
+        let l = NestedKey { looping: true, ..k };
+        assert_eq!(
+            child_time(&l, 4.0, 3.0),
+            1.0,
+            "4 s of child time wraps to 1"
+        );
+        // (3.4, 3.6]: child 2.8 to 3.2 wraps: (2.8, 3] then (-0, 0.2].
+        let s = child_spans(&l, 10.0, 3.0, 3.4, 3.6);
+        assert_eq!(s.len(), 2, "{s:?}");
+        assert!((s[0].0 - 2.8).abs() < 1e-9 && (s[0].1 - 3.0).abs() < 1e-9);
+        assert!(s[1].0 < 0.0 && (s[1].1 - 0.2).abs() < 1e-9 && crossed(0.0, s[1].0, s[1].1));
     }
 }

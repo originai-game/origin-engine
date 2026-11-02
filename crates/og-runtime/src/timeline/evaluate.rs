@@ -2,24 +2,14 @@
 
 use super::*;
 
-#[allow(clippy::too_many_arguments)]
-pub(super) fn evaluate(
+/// One-shot voices that ended go; while paused every voice goes (a
+/// resume starts the music again at its offset).
+pub(super) fn drop_ended_voices(
     ctx: &mut SystemContext<'_>,
-    engine_id: u32,
     r: &Rec,
-    ui: &og_ui::SharedUi,
-    lt: &mut Loaded,
     run: &mut Run,
-    t: f32,
     playing: bool,
-    spans: &[(f64, f64)],
-    retro: Option<(f64, f64)>,
-    dt: f32,
-    speed: f32,
 ) -> og_core::Result<()> {
-    let duration = lt.timeline.duration;
-    // One-shot voices that ended go; while paused every voice goes (a
-    // resume starts the music again at its offset).
     let mut keep = Vec::new();
     for (tr, k, v) in std::mem::take(&mut run.voices) {
         let e = Entity::from_bits(v);
@@ -34,11 +24,113 @@ pub(super) fn evaluate(
         }
     }
     run.voices = keep;
+    Ok(())
+}
+
+/// The track ids of a nested timeline's tracks: this tag, a hash of where
+/// it nests (its parent's track id and the key), then its own track index
+/// (below [`NESTED_TRACKS`]). A timeline's own tracks are their indices,
+/// as they always were, so the state block of one without nesting is
+/// unchanged.
+pub(super) const NESTED: u32 = 0x8000_0000;
+pub(super) const NESTED_TRACKS: u32 = 0x400;
+
+pub(super) fn nest_id(parent: u32, key: usize) -> u32 {
+    let mut h: u32 = 0x811c_9dc5;
+    for b in parent
+        .to_le_bytes()
+        .into_iter()
+        .chain((key as u32).to_le_bytes())
+    {
+        h = (h ^ u32::from(b)).wrapping_mul(0x0100_0193);
+    }
+    NESTED | (h & !(NESTED | (NESTED_TRACKS - 1)))
+}
+
+/// What a tick's evaluation of one timeline is given.
+pub(super) struct Step<'a> {
+    pub t: f32,
+    pub playing: bool,
+    pub spans: &'a [(f64, f64)],
+    pub retro: Option<(f64, f64)>,
+    pub dt: f32,
+    pub speed: f32,
+    /// Added to each track's index for its id (0 for the timeline itself).
+    pub base: u32,
+    pub depth: usize,
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(super) fn evaluate(
+    ctx: &mut SystemContext<'_>,
+    engine_id: u32,
+    r: &Rec,
+    ui: &og_ui::SharedUi,
+    lt: &mut Loaded,
+    run: &mut Run,
+    step: &Step<'_>,
+    touched: &mut Vec<u32>,
+) -> og_core::Result<()> {
+    let Step {
+        t,
+        playing,
+        spans,
+        retro,
+        dt,
+        speed,
+        base,
+        depth,
+    } = *step;
+    let duration = lt.timeline.duration;
     let tracks = lt.timeline.tracks.clone();
     for (ti, tr) in tracks.iter().enumerate() {
-        let ti32 = ti as u32;
+        let ti32 = base | ti as u32;
         match tr {
             Track::Camera(c) => camera(ctx, engine_id, r, lt, run, c, t)?,
+            Track::Fields(f) if f.kind != og_timeline::FieldsKind::Material => {
+                fields(ctx, engine_id, &lt.id, f, t)?;
+            }
+            Track::Timeline(keys) => {
+                let Some((ki, until, _)) = eval::nested_at(keys, t, duration, |_| 0.0) else {
+                    continue;
+                };
+                let k = &keys[ki];
+                let Some(child) = lt.nested.get(&k.play).cloned() else {
+                    continue;
+                };
+                if depth + 1 > og_timeline::NEST_DEPTH {
+                    continue;
+                }
+                let mut cl = lock(&child);
+                let d = cl.timeline.duration;
+                let cspans: Vec<(f64, f64)> = spans
+                    .iter()
+                    .flat_map(|(a, b)| eval::child_spans(k, until, d, *a, *b))
+                    .collect();
+                let cretro =
+                    retro.and_then(|(a, b)| eval::child_spans(k, until, d, a, b).first().copied());
+                let cbase = nest_id(ti32, ki);
+                touched.push(cbase);
+                evaluate(
+                    ctx,
+                    engine_id,
+                    r,
+                    ui,
+                    &mut cl,
+                    run,
+                    &Step {
+                        t: eval::child_time(k, t, d),
+                        playing,
+                        spans: &cspans,
+                        retro: cretro,
+                        dt,
+                        speed: speed * k.speed,
+                        base: cbase,
+                        depth: depth + 1,
+                    },
+                    touched,
+                )?;
+            }
             Track::Transform(tt) => {
                 let Some(e) = ctx.find(&tt.entity) else {
                     note(
@@ -224,7 +316,7 @@ pub(super) fn evaluate(
             }
             Track::Caption(c) => {
                 if let Some(k) = eval::caption_at(c, t) {
-                    caption(ui, ti, k, c);
+                    caption(ui, ti32, k, c);
                 }
             }
             Track::Event(ks) => {
@@ -368,9 +460,22 @@ fn camera(
     if let Some(p) = pos {
         cam["position"] = jv3(p);
     }
-    if let Some(target) = target {
-        let eye = pos.unwrap_or_else(|| v3(&cam["position"]));
-        cam["quaternion"] = jq(super::feel::look_rotation(eye, target));
+    let eye = pos.unwrap_or_else(|| v3(&cam["position"]));
+    let look = target.map(|target| super::feel::look_rotation(eye, target));
+    if let Some(q) = look {
+        cam["quaternion"] = jq(q);
+    }
+    if let Some(roll) = at.roll {
+        // About the view direction, from the look (or the camera it found):
+        // never accumulated over ticks.
+        let base = look.unwrap_or_else(|| {
+            let c = run
+                .camera
+                .unwrap_or([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 50.0]);
+            Quat::from_xyzw(c[3], c[4], c[5], c[6])
+        });
+        let (s, c) = og_core::math::sin_cos(roll * (std::f32::consts::PI / 360.0));
+        cam["quaternion"] = jq((base * Quat::from_xyzw(0.0, 0.0, s, c)).normalize());
     }
     if let Some(f) = at.fov {
         cam["fov"] = json!(f);
@@ -380,12 +485,301 @@ fn camera(
         .1
         .encode(Some(&bytes), Some(&cam))
         .map_err(invalid)?;
-    ctx.set_resource_bytes(r.camera.0, &out)
+    ctx.set_resource_bytes(r.camera.0, &out)?;
+    // Focus: og.PostEffects' depth of field while the track owns the camera.
+    let on = eval::focus_on_at(c, t);
+    let distance = match on {
+        Some(name) => match ctx.find(name) {
+            Some(e) => {
+                let b = ctx.get_bytes(e, r.transform.0)?;
+                Some((v3(&r.transform.1.decode(&b)["position"]) - eye).length())
+            }
+            None => {
+                note(
+                    engine_id,
+                    format!(
+                        "timeline {}: no entity '{name}' for the camera to focus on",
+                        lt.id
+                    ),
+                );
+                None
+            }
+        },
+        None => at.focus,
+    };
+    if distance.is_none() && at.focus_range.is_none() {
+        return Ok(());
+    }
+    let Some(post) = r
+        .post
+        .as_ref()
+        .filter(|_| super::granted(engine_id, "og.PostEffects"))
+    else {
+        return Ok(());
+    };
+    let (base, mut pv) = match ctx.resource_bytes(post.0) {
+        Ok(b) => {
+            let v = post.1.decode(&b);
+            (Some(b), v)
+        }
+        Err(_) => (
+            None,
+            post.1.decode(&post.1.encode(None, None).map_err(invalid)?),
+        ),
+    };
+    if run.focus.is_none() {
+        let n = |k: &str| pv[k].as_f64().unwrap_or(0.0) as f32;
+        run.focus = Some([
+            if pv["depthOfField"].as_bool().unwrap_or(false) {
+                1.0
+            } else {
+                0.0
+            },
+            n("dofFocusDistance"),
+            n("dofFocusRange"),
+        ]);
+    }
+    pv["depthOfField"] = json!(true);
+    if let Some(d) = distance {
+        pv["dofFocusDistance"] = json!(d.max(0.01));
+    }
+    if let Some(range) = at.focus_range {
+        pv["dofFocusRange"] = json!(range);
+    }
+    let out = post.1.encode(base.as_deref(), Some(&pv)).map_err(invalid)?;
+    ctx.set_resource_bytes(post.0, &out)
+}
+
+/// The layout of a world read's record (`og.PointLight.intensity`) and the
+/// field after it: the longest record name with a layout.
+pub(super) fn record_of<'a>(
+    layouts: &BTreeMap<String, Layout>,
+    path: &'a str,
+) -> Option<(&'a str, &'a str)> {
+    path.rmatch_indices('.')
+        .map(|(i, _)| (&path[..i], &path[i + 1..]))
+        .find(|(rec, _)| layouts.contains_key(*rec))
+}
+
+/// The engine records a light, visibility or blendshape track may write
+/// on its entity, in the order they are tried.
+pub(super) fn track_records(kind: og_timeline::FieldsKind) -> &'static [&'static str] {
+    use og_timeline::FieldsKind as K;
+    match kind {
+        K::Light => &[
+            "og.DirectionalLight",
+            "og.PointLight",
+            "og.SpotLight",
+            "og.RectLight",
+            "og.Light2D",
+        ],
+        K::Visibility => &[
+            "og.Mesh",
+            "og.Model",
+            "og.Sprite",
+            "og.ParticleSystem",
+            "og.Decal",
+            "og.Lines",
+            "og.Points",
+            "og.Tilemap",
+            "og.Rope",
+            "og.Cloth",
+            "og.SoftBody",
+            "og.Terrain",
+            "og.Fluid2D",
+            "og.Fluid3D",
+        ],
+        K::Blendshape => &["og.Blendshapes"],
+        K::Post => &["og.PostEffects"],
+        K::Property | K::Material => &[],
+    }
+}
+
+/// A value as the JSON its field's layout encodes: lanes for a vector,
+/// colour or quaternion, a bool, an enum's variant, a number.
+fn field_json(f: &super::super::codec::FieldLayout, v: &og_timeline::FieldValue) -> Option<Value> {
+    use super::super::codec::Kind;
+    use og_timeline::FieldValue as V;
+    let lanes = f.kind.keys();
+    Some(match (v, f.kind) {
+        (V::Word(w), Kind::Bool) => json!(w == "true"),
+        (V::Numbers(n), Kind::Bool) => json!(n.first().is_some_and(|x| *x != 0.0)),
+        (V::Word(w), Kind::Enum) => json!(w),
+        (V::Numbers(n), _) if !lanes.is_empty() => {
+            let mut m = serde_json::Map::new();
+            for (k, x) in lanes.iter().zip(n) {
+                m.insert((*k).to_string(), json!(x));
+            }
+            Value::Object(m)
+        }
+        (V::Numbers(n), Kind::U32 | Kind::I32) => json!(n.first()?.round()),
+        (V::Numbers(n), Kind::F32 | Kind::F64) => json!(n.first()?),
+        _ => return None,
+    })
+}
+
+/// How a field of `kind` moves between keys.
+fn mix_of(kind: super::super::codec::Kind) -> eval::Mix {
+    use super::super::codec::Kind;
+    match kind {
+        Kind::Quaternion => eval::Mix::Slerp,
+        Kind::F32 | Kind::F64 | Kind::Vector2 | Kind::Vector3 | Kind::Color => eval::Mix::Lerp,
+        _ => eval::Mix::Step,
+    }
+}
+
+/// A property, light, visibility, post or blendshape track at `t`: each
+/// field it sets, written into its record on its entity (or the resource).
+fn fields(
+    ctx: &mut SystemContext<'_>,
+    engine_id: u32,
+    id: &str,
+    f: &og_timeline::FieldsTrack,
+    t: f32,
+) -> og_core::Result<()> {
+    use og_timeline::FieldsKind as K;
+    let Ok(eng) = engine(engine_id) else {
+        return Ok(());
+    };
+    let layouts = eng.state.borrow().layouts.clone();
+    let entity = if f.entity.is_empty() {
+        None
+    } else {
+        match ctx.find(&f.entity) {
+            Some(e) => Some(e),
+            None => {
+                note(
+                    engine_id,
+                    format!(
+                        "timeline {id}: no entity '{}' for its {} track",
+                        f.entity,
+                        f.kind.name()
+                    ),
+                );
+                return Ok(());
+            }
+        }
+    };
+    // (record, field) for each field the keys set.
+    let mut targets: Vec<(String, String, String)> = Vec::new();
+    for name in f.fields() {
+        match f.kind {
+            K::Property => match record_of(&layouts, name) {
+                Some((rec, field)) => targets.push((rec.into(), field.into(), name.into())),
+                None => note(
+                    engine_id,
+                    format!("timeline {id}: '{name}' names no component or resource this game has"),
+                ),
+            },
+            K::Post => targets.push(("og.PostEffects".into(), name.into(), name.into())),
+            _ => {
+                let Some(e) = entity else { continue };
+                let mut any = false;
+                for rec in track_records(f.kind) {
+                    let Ok(sid) = ctx.id_by_name(rec) else {
+                        continue;
+                    };
+                    if ctx.get_bytes(e, sid).is_ok()
+                        && layouts.get(*rec).is_some_and(|l| l.field(name).is_some())
+                    {
+                        targets.push(((*rec).into(), name.into(), name.into()));
+                        any = true;
+                        if f.kind == K::Light {
+                            break;
+                        }
+                    }
+                }
+                if !any && f.kind == K::Blendshape {
+                    targets.push(("og.Blendshapes".into(), name.into(), name.into()));
+                } else if !any {
+                    note(
+                        engine_id,
+                        format!(
+                            "timeline {id}: '{}' has no {} with '{name}' for its {} track",
+                            f.entity,
+                            track_records(f.kind).join(" or "),
+                            f.kind.name()
+                        ),
+                    );
+                }
+            }
+        }
+    }
+    // One write per record.
+    let mut recs: Vec<&str> = targets.iter().map(|x| x.0.as_str()).collect();
+    recs.dedup();
+    for rec in recs {
+        if !super::granted(engine_id, rec) {
+            note(
+                engine_id,
+                format!(
+                    "timeline {id}: {rec} was not registered when the timeline loaded; its {} track writes nothing to it",
+                    f.kind.name()
+                ),
+            );
+            continue;
+        }
+        let Some(layout) = layouts.get(rec) else {
+            continue;
+        };
+        let Ok(sid) = ctx.id_by_name(rec) else {
+            continue;
+        };
+        let resource = layout.kind == super::super::codec::RecordKind::Resource;
+        let base = match (resource, entity) {
+            (true, _) => ctx.resource_bytes(sid).ok(),
+            (false, Some(e)) => ctx.get_bytes(e, sid).ok(),
+            (false, None) => {
+                note(
+                    engine_id,
+                    format!(
+                        "timeline {id}: {rec} is a component: name the entity, `track {} \"crate\" {{`",
+                        f.kind.name()
+                    ),
+                );
+                continue;
+            }
+        };
+        let mut v = match &base {
+            Some(b) => layout.decode(b),
+            None => json!({}),
+        };
+        if f.kind == K::Blendshape {
+            v["source"] = json!("component");
+        }
+        for (_, field, name) in targets.iter().filter(|x| x.0 == rec) {
+            let Some((_, fl)) = layout.field(field) else {
+                note(
+                    engine_id,
+                    format!("timeline {id}: {rec} has no field '{field}'"),
+                );
+                continue;
+            };
+            let Some(value) = eval::field_at(f, name, t, mix_of(fl.kind)) else {
+                continue;
+            };
+            match field_json(fl, &value) {
+                Some(j) => v[field.as_str()] = j,
+                None => note(
+                    engine_id,
+                    format!("timeline {id}: {rec}.{field} cannot take {value:?}"),
+                ),
+            }
+        }
+        let out = layout.encode(base.as_deref(), Some(&v)).map_err(invalid)?;
+        match (resource, entity, base.is_some()) {
+            (true, _, _) => ctx.set_resource_bytes(sid, &out)?,
+            (false, Some(e), true) => ctx.set_bytes(e, sid, &out)?,
+            (false, Some(e), false) => ctx.insert_bytes(e, sid, &out)?,
+            _ => {}
+        }
+    }
+    Ok(())
 }
 
 fn caption(
     ui: &og_ui::SharedUi,
-    ti: usize,
+    ti: u32,
     k: &og_timeline::CaptionKey,
     c: &og_timeline::CaptionTrack,
 ) {

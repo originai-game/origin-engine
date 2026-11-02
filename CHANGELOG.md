@@ -31,6 +31,22 @@ is one line here, written at the merge that changes
   fetched on first use, never at boot. The tarball grows from 1.8 MB to
   34.6 MB.
 
+- **Timeline tracks for cinematics (R10, batch 1).** A `type timeline`
+  now eases any reflected field (`track property "lamp" { field
+  "og.PointLight.distance" ... }`, a resource's without the entity), an
+  entity's light, its drawn visibility (stepped), `og.PostEffects`,
+  `og.Blendshapes` weights and a material's parameters, nests other
+  timelines (`track timeline { key 3 { play "timelines/door.ogt" speed 2
+  } }`, at most four deep, markers named `door/open`), and rolls and
+  focuses the camera (`roll`, `focus`, `focusOn`, `focusRange`). Values
+  are read from the time, so seeking equals playing. The cook checks the
+  fields against the engine's records and refuses nesting cycles; an
+  unknown track kind names itself and the engine version. A material
+  track is presentation: applied every frame from the time and put back
+  at the end, so a restored save draws the right material at once. The
+  og.Timeline blob is unchanged (text payload, same version and type
+  hash; older timelines cook to the same bytes). Load timelines in setup:
+  loading grants og.timeline the records its tracks write.
 - **Removed: six built-in styles, folded into the sixteen the owner settled**
   (2026-11-02): `bubbly` into `cartoon`, `arcade` into `pixel`, `paper`
   into `storybook`, `inkwash` into `jade` (a new pack, coming), `neon`

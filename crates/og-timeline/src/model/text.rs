@@ -58,17 +58,7 @@ impl Timeline {
         };
         // Keys past the end never play.
         for tr in &t.tracks {
-            let first_late = match tr {
-                Track::Camera(c) => c.keys.iter().map(|k| k.time).find(|&k| k > t.duration),
-                Track::Transform(c) => c.keys.iter().map(|k| k.time).find(|&k| k > t.duration),
-                Track::Animation(c) => c.keys.iter().map(|k| k.time).find(|&k| k > t.duration),
-                Track::Audio(c) => c.iter().map(|k| k.time).find(|&k| k > t.duration),
-                Track::Music(c) => c.iter().map(|k| k.time).find(|&k| k > t.duration),
-                Track::Caption(c) => c.keys.iter().map(|k| k.time).find(|&k| k > t.duration),
-                Track::Event(c) => c.iter().map(|k| k.time).find(|&k| k > t.duration),
-                Track::Transition(c) => c.iter().map(|k| k.time).find(|&k| k > t.duration),
-                Track::Marker(c) => c.iter().map(|k| k.time).find(|&k| k > t.duration),
-            };
+            let first_late = tr.times().into_iter().find(|&k| k > t.duration);
             if let Some(k) = first_late {
                 return Err(format!(
                     "the {} track has a key at {k} s, after the timeline's duration {} s",
@@ -191,6 +181,8 @@ fn track_end(t: &Track) -> f32 {
         Track::Event(c) => max(&mut c.iter().map(|k| k.time)),
         Track::Transition(c) => max(&mut c.iter().map(|k| k.time + k.duration)),
         Track::Marker(c) => max(&mut c.iter().map(|k| k.time)),
+        Track::Fields(f) => max(&mut f.keys.iter().map(|k| k.time)),
+        Track::Timeline(c) => max(&mut c.iter().map(|k| k.time)),
     }
 }
 
@@ -254,6 +246,18 @@ fn write_track(tr: &Track) -> Entry {
                 }
                 if let Some(f) = k.fov {
                     kb.push(Entry::new("fov").with(num(f)));
+                }
+                if let Some(r) = k.roll {
+                    kb.push(Entry::new("roll").with(num(r)));
+                }
+                if let Some(f) = k.focus {
+                    kb.push(Entry::new("focus").with(num(f)));
+                }
+                if let Some(e) = &k.focus_on {
+                    kb.push(Entry::new("focusOn").with(Value::String(e.clone())));
+                }
+                if let Some(r) = k.focus_range {
+                    kb.push(Entry::new("focusRange").with(num(r)));
                 }
                 ease_entry(&mut kb, k.ease);
                 b.push(key_entry(k.time, kb));
@@ -362,6 +366,44 @@ fn write_track(tr: &Track) -> Entry {
             for k in ks {
                 let mut kb = Block::new();
                 kb.push(Entry::new("name").with(Value::String(k.name.clone())));
+                b.push(key_entry(k.time, kb));
+            }
+        }
+        Track::Fields(f) => {
+            if !f.entity.is_empty() {
+                head = head.with(Value::String(f.entity.clone()));
+            }
+            let property = f.kind == FieldsKind::Property;
+            if property && let Some(field) = f.fields().first() {
+                b.push(Entry::new("field").with(Value::String((*field).to_string())));
+            }
+            if f.index != 0 {
+                b.push(Entry::new("index").with(num(f.index as f32)));
+            }
+            for k in &f.keys {
+                let mut kb = Block::new();
+                for (name, v) in &k.values {
+                    let mut e = Entry::new(if property { "value" } else { name.as_str() });
+                    match v {
+                        FieldValue::Numbers(ns) => {
+                            for n in ns {
+                                e = e.with(num(*n));
+                            }
+                        }
+                        FieldValue::Word(w) => e = e.with(Value::Word(w.clone())),
+                    }
+                    kb.push(e);
+                }
+                ease_entry(&mut kb, k.ease);
+                b.push(key_entry(k.time, kb));
+            }
+        }
+        Track::Timeline(ks) => {
+            for k in ks {
+                let mut kb = Block::new();
+                kb.push(Entry::new("play").with(Value::String(k.play.clone())));
+                kb.push(Entry::new("speed").with(num(k.speed)));
+                kb.push(Entry::new("loop").with(boolean(k.looping)));
                 b.push(key_entry(k.time, kb));
             }
         }
@@ -508,5 +550,117 @@ track marker {
             let e = Timeline::parse(&text, &mut |_| Err("none".into())).unwrap_err();
             assert!(e.contains(want), "{body}: {e}");
         }
+    }
+
+    /// Every R10 track and camera key reads, writes canonically and reads
+    /// back the same; an unknown kind is refused naming it and this engine.
+    #[test]
+    fn r10_tracks_round_trip_and_an_unknown_kind_names_the_engine() {
+        let text = r#"type timeline
+version 1
+---
+duration 4
+track camera {
+  key 0 {
+    position 0 2 6
+    target 0 1 0
+    roll -10
+    focusOn "hero"
+    focusRange 1.5
+  }
+  key 2 {
+    roll 15
+    focus 4
+    ease quadInOut
+  }
+}
+track property "lamp" {
+  field "og.PointLight.distance"
+  key 0 {
+    value 2
+  }
+  key 3 {
+    value 9
+    ease cubicOut
+  }
+}
+track light "lamp" {
+  key 1 {
+    color 1 0.5 0.2
+    intensity 3
+  }
+}
+track visibility "crate" {
+  key 2 {
+    visible false
+  }
+}
+track post {
+  key 0 {
+    bloomIntensity 0.4
+  }
+}
+track blendshape "face" {
+  key 0 {
+    w0 0
+  }
+  key 1 {
+    w0 1
+  }
+}
+track material "lamp" {
+  index 2
+  key 0 {
+    emissive 1 0.4 0
+    emissiveIntensity 0
+  }
+}
+track timeline {
+  key 1 {
+    play "timelines/door.ogt"
+    speed 2
+    loop true
+  }
+}
+"#;
+        let mut no = |_: &str| -> Result<String, String> { Err("none".into()) };
+        let t = Timeline::parse(text, &mut no).unwrap();
+        assert_eq!(
+            t.tracks.iter().map(Track::kind).collect::<Vec<_>>(),
+            [
+                "camera",
+                "property",
+                "light",
+                "visibility",
+                "post",
+                "blendshape",
+                "material",
+                "timeline"
+            ]
+        );
+        let again = Timeline::parse(&t.to_text(), &mut no).unwrap();
+        assert_eq!(again, t);
+        let Track::Camera(c) = &t.tracks[0] else {
+            panic!()
+        };
+        assert_eq!(
+            (
+                c.keys[0].roll,
+                c.keys[0].focus_on.as_deref(),
+                c.keys[1].focus
+            ),
+            (Some(-10.0), Some("hero"), Some(4.0))
+        );
+        let e = Timeline::parse(
+            "type timeline\nversion 1\n---\nduration 1\ntrack wobble {\n}\n",
+            &mut no,
+        )
+        .unwrap_err();
+        assert!(
+            e.contains("'wobble'") && e.contains(concat!("og ", env!("CARGO_PKG_VERSION"))),
+            "{e}"
+        );
+        let e = Timeline::parse("type timeline\nversion 1\n---\nduration 1\ntrack visibility \"a\" {\n  key 0 {\n    visible 2\n  }\n}\n", &mut no).unwrap_err();
+        assert!(e.contains("visible takes true or false"), "{e}");
     }
 }

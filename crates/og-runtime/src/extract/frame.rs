@@ -13,6 +13,8 @@ fn backend_size(rs: &RenderState) -> (u32, u32) {
 pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     let mut h = std::mem::take(&mut rs.hierarchy);
     h.refresh(world);
+    // Timelines' material tracks, at their time (presentation only).
+    crate::timeline::present(world, rs);
     // The art contract this frame (nothing without project.ogt's `look`).
     super::art::frame(world, rs);
     // A review camera frames what the last frame drew for its entity, so

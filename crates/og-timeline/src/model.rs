@@ -91,6 +91,17 @@ pub struct CameraKey {
     pub target: Option<Vec3>,
     pub at: Option<f32>,
     pub fov: Option<f32>,
+    /// Degrees about the view direction (a dutch angle), counter-clockwise.
+    pub roll: Option<f32>,
+    /// The distance from the camera that is sharp (og.PostEffects' depth of
+    /// field).
+    pub focus: Option<f32>,
+    /// Keep the entity of this name sharp: the focus is its distance from
+    /// the camera (held from this key to the next that names one or a
+    /// `focus`).
+    pub focus_on: Option<String>,
+    /// The half-width of the sharp band around the focus.
+    pub focus_range: Option<f32>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -290,6 +301,114 @@ pub struct MarkerKey {
     pub name: String,
 }
 
+/// What a key sets on a field: numbers (one for a scalar, two to four for
+/// a vector, a colour or a quaternion; 0 or 1 for a bool) or a word (an
+/// enum variant, `true` or `false`).
+#[derive(Clone, Debug, PartialEq)]
+pub enum FieldValue {
+    Numbers(Vec<f32>),
+    Word(String),
+}
+
+/// One key of a field track: the fields it sets at its time.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct FieldKey {
+    pub time: f32,
+    pub ease: Ease,
+    /// `(field, value)`, in file order. A property track's field is its
+    /// whole path (`og.PointLight.intensity`), the others' the field of the
+    /// record the track implies (`intensity`).
+    pub values: Vec<(String, FieldValue)>,
+}
+
+/// Which records a field track writes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FieldsKind {
+    /// Any reflected field: `og.PointLight.intensity` on the track's entity,
+    /// a resource's field without one, a game component's by its name.
+    Property,
+    /// The entity's light: og.DirectionalLight, og.PointLight,
+    /// og.SpotLight, og.RectLight or og.Light2D, whichever it has.
+    Light,
+    /// `visible` of whatever the entity draws (og.Mesh, og.Model,
+    /// og.Sprite, og.ParticleSystem, ...), stepped.
+    Visibility,
+    /// og.PostEffects (no entity).
+    Post,
+    /// The entity's og.Blendshapes weights (`source` set to component).
+    Blendshape,
+    /// Presentation: the material the entity draws (its og.Mesh's, or its
+    /// og.Model's material `index`), reapplied from the time every frame.
+    Material,
+}
+
+impl FieldsKind {
+    pub const ALL: [FieldsKind; 6] = [
+        FieldsKind::Property,
+        FieldsKind::Light,
+        FieldsKind::Visibility,
+        FieldsKind::Post,
+        FieldsKind::Blendshape,
+        FieldsKind::Material,
+    ];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            FieldsKind::Property => "property",
+            FieldsKind::Light => "light",
+            FieldsKind::Visibility => "visibility",
+            FieldsKind::Post => "post",
+            FieldsKind::Blendshape => "blendshape",
+            FieldsKind::Material => "material",
+        }
+    }
+
+    pub fn from_name(name: &str) -> Option<FieldsKind> {
+        Self::ALL.into_iter().find(|k| k.name() == name)
+    }
+}
+
+/// A track that eases the fields of records (or a material) between keys.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FieldsTrack {
+    pub kind: FieldsKind,
+    /// The entity it drives (empty: a resource, for `property` and `post`).
+    pub entity: String,
+    /// A model's material index (`material` on an og.Model).
+    pub index: u32,
+    pub keys: Vec<FieldKey>,
+}
+
+impl FieldsTrack {
+    /// The fields its keys set, in first-seen order.
+    pub fn fields(&self) -> Vec<&str> {
+        let mut out: Vec<&str> = Vec::new();
+        for k in &self.keys {
+            for (n, _) in &k.values {
+                if !out.contains(&n.as_str()) {
+                    out.push(n);
+                }
+            }
+        }
+        out
+    }
+}
+
+/// A key of a `timeline` track: from its time (until the next key), the
+/// track plays another timeline nested, at `speed`, looping or holding its
+/// last frame.
+#[derive(Clone, Debug, PartialEq)]
+pub struct NestedKey {
+    pub time: f32,
+    /// The timeline's asset id (`timelines/door.ogt`).
+    pub play: String,
+    pub speed: f32,
+    pub looping: bool,
+}
+
+/// How deep timelines nest (a timeline's own tracks are depth 0).
+pub const NEST_DEPTH: usize = 4;
+
 /// One track.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Track {
@@ -302,7 +421,14 @@ pub enum Track {
     Event(Vec<EventKey>),
     Transition(Vec<TransitionKey>),
     Marker(Vec<MarkerKey>),
+    /// property, light, visibility, post, blendshape and material.
+    Fields(FieldsTrack),
+    /// Nested timelines.
+    Timeline(Vec<NestedKey>),
 }
+
+/// Every track kind the file may name, for the refusal of another.
+pub const TRACK_KINDS: &str = "camera, transform, animation, audio, music, caption, event, transition, marker, property, light, visibility, post, blendshape, material or timeline";
 
 impl Track {
     /// The track's kind as the file names it.
@@ -317,6 +443,25 @@ impl Track {
             Track::Event(_) => "event",
             Track::Transition(_) => "transition",
             Track::Marker(_) => "marker",
+            Track::Fields(f) => f.kind.name(),
+            Track::Timeline(_) => "timeline",
+        }
+    }
+
+    /// Every key's time, in order.
+    pub fn times(&self) -> Vec<f32> {
+        match self {
+            Track::Camera(c) => c.keys.iter().map(|k| k.time).collect(),
+            Track::Transform(c) => c.keys.iter().map(|k| k.time).collect(),
+            Track::Animation(c) => c.keys.iter().map(|k| k.time).collect(),
+            Track::Audio(c) => c.iter().map(|k| k.time).collect(),
+            Track::Music(c) => c.iter().map(|k| k.time).collect(),
+            Track::Caption(c) => c.keys.iter().map(|k| k.time).collect(),
+            Track::Event(c) => c.iter().map(|k| k.time).collect(),
+            Track::Transition(c) => c.iter().map(|k| k.time).collect(),
+            Track::Marker(c) => c.iter().map(|k| k.time).collect(),
+            Track::Fields(f) => f.keys.iter().map(|k| k.time).collect(),
+            Track::Timeline(c) => c.iter().map(|k| k.time).collect(),
         }
     }
 
@@ -330,6 +475,7 @@ impl Track {
             },
             Track::Transform(t) => &t.entity,
             Track::Animation(a) => &a.entity,
+            Track::Fields(f) => &f.entity,
             _ => "",
         }
     }
@@ -345,6 +491,8 @@ impl Track {
             Track::Event(k) => k.len(),
             Track::Transition(k) => k.len(),
             Track::Marker(k) => k.len(),
+            Track::Fields(f) => f.keys.len(),
+            Track::Timeline(k) => k.len(),
         }
     }
 }

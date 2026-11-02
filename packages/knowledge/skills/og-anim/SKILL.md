@@ -601,7 +601,86 @@ track marker {
 }
 ```
 
-The cook checks
+Tracks that drive the scene's look and state, each key setting the fields
+it names (eased between keys that set the same field, bools, enums and
+integers stepped):
+
+```text
+track camera {
+  key 0 {
+    position 0 2 6
+    target 0 1 0
+    roll -8                  # degrees about the view direction (a dutch angle)
+    focusOn "hero"           # og.PostEffects' depth of field stays on the entity
+    focusRange 1             # (or `focus 4`: a distance in metres)
+  }
+}
+track property "lamp" {      # any reflected field; a resource's without the entity
+  field "og.PointLight.distance"
+  key 0 {
+    value 2
+  }
+  key 3 {
+    value 10
+    ease cubicOut
+  }
+}
+track light "lamp" {         # its og.PointLight, SpotLight, DirectionalLight, RectLight or Light2D
+  key 0 {
+    color 1 0.6 0.3
+    intensity 0
+  }
+  key 2 {
+    intensity 8
+  }
+}
+track visibility "crate" {   # `visible` of whatever it draws, stepped
+  key 4 {
+    visible false
+  }
+}
+track post {                 # og.PostEffects
+  key 0 {
+    vignetteIntensity 0
+  }
+  key 6 {
+    vignetteIntensity 0.6
+  }
+}
+track blendshape "face" {    # og.Blendshapes w0...w7 (its source becomes component)
+  key 1 {
+    w0 1
+  }
+}
+track material "lamp" {      # its og.Mesh's material, or its og.Model's material `index N`
+  key 0 {
+    emissive 1 0.5 0.1
+    emissiveIntensity 0
+  }
+  key 2 {
+    emissiveIntensity 4      # StandardMaterialDesc fields; other names are shader parameters
+  }
+}
+track timeline {             # nests another timeline from its key until the next
+  key 3 {
+    play "timelines/door.ogt"
+    speed 2
+    loop false               # false holds its last frame
+  }
+}
+```
+
+The cook checks every field against the engine's records (a field a
+record lacks, one a timeline cannot drive, a value of the wrong shape:
+refused, naming it; a game's own component is checked when it plays), the
+sounds, models and timelines it names, and refuses timelines that nest in
+a cycle or more than four deep. Load a timeline in setup, outside a
+system: loading grants og.timeline the records its tracks write. A
+material is presentation, not world state: its track is applied to the
+material (every mesh drawing it) each frame from the timeline's time,
+and put back as it was when the timeline stops, so a save restored
+mid-way draws the right material on its next frame. A nested timeline's
+markers arrive as `<file>/<marker>` (`door/open`). The cook checks
 the sounds and models it names and imports the captions, so an `.srt`
 edit recooks the timeline. Play it from code or from the command channel:
 
@@ -618,7 +697,8 @@ plays `timelines/intro.ogt` on an entity named `timeline-intro`;
 `timeline:seek:4`, `timeline:pause`, `timeline:resume`, `timeline:stop`
 take an optional `:<name>`. While a timeline with a camera track plays
 (or is paused) it owns `og.Camera`; it hands back the camera it found
-when it stops or ends. Event keys run their action at the start of the
+(and the depth of field its focus keys took) when it stops or ends.
+Property, light, visibility, post and blendshape values it wrote stay. Event keys run their action at the start of the
 next tick; a seek skips the events it passes unless they are
 `retroactive`, and markers are sent only by playing past them. A capture
 at `t:` shows the world after the ticks before t: the play's first tick

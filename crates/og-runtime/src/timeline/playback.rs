@@ -15,9 +15,9 @@ pub(super) enum Op {
 /// One og.Timeline's playback, kept by the og.timeline state block.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(super) struct Run {
-    asset: u64,
+    pub(super) asset: u64,
     /// The time in steps of 1 / (rate * STEPS) seconds.
-    num: i64,
+    pub(super) num: i64,
     /// The `time` field last written (another value is a seek).
     written: f32,
     /// `playing` as last written.
@@ -27,7 +27,7 @@ pub(super) struct Run {
     /// Paused (a play resumes, without og.TimelineStarted).
     paused: bool,
     /// Evaluated and holding what it owns (camera, voices, caption).
-    active: bool,
+    pub(super) active: bool,
     /// Ended last tick: hands back what it owns this tick.
     release: bool,
     /// The camera it found: position, quaternion, fov.
@@ -36,11 +36,14 @@ pub(super) struct Run {
     pub(super) anim: Vec<(u32, u32)>,
     /// Voices it started: (track, key, entity bits).
     pub(super) voices: Vec<(u32, u32, u64)>,
+    /// og.PostEffects' depth of field as a camera track's focus found it:
+    /// on (1 or 0), focus distance, focus range.
+    pub(super) focus: Option<[f32; 3]>,
 }
 
 #[derive(Default)]
 pub(super) struct Shared {
-    runs: IdMap<u64, Run>,
+    pub(super) runs: IdMap<u64, Run>,
     pub(super) ops: Vec<(u64, Op)>,
 }
 
@@ -162,9 +165,15 @@ fn save(sh: &Shared, out: &mut Vec<u8>) {
             | u32::from(r.paused) << 2
             | u32::from(r.active) << 3
             | u32::from(r.release) << 4
-            | u32::from(r.camera.is_some()) << 5;
+            | u32::from(r.camera.is_some()) << 5
+            | u32::from(r.focus.is_some()) << 6;
         u32_(out, flags);
         for v in r.camera.unwrap_or_default() {
+            out.extend_from_slice(&v.to_le_bytes());
+        }
+        // Only when a camera track focused: a run without has the bytes it
+        // always had.
+        for v in r.focus.iter().flatten() {
             out.extend_from_slice(&v.to_le_bytes());
         }
         u32_(out, r.anim.len() as u32);
@@ -218,6 +227,9 @@ fn load_state(bytes: &[u8]) -> og_core::Result<Shared> {
             *c = b.f32()?;
         }
         r.camera = (flags & 32 != 0).then_some(cam);
+        if flags & 64 != 0 {
+            r.focus = Some([b.f32()?, b.f32()?, b.f32()?]);
+        }
         for _ in 0..b.u32()? {
             r.anim.push((b.u32()?, b.u32()?));
         }
@@ -263,6 +275,8 @@ pub(super) struct Rec {
     pub(super) skeleton: (SchemaId, Layout),
     pub(super) player: (SchemaId, Layout),
     pub(super) source: (SchemaId, Layout),
+    /// og.PostEffects, for a camera track's focus.
+    pub(super) post: Option<(SchemaId, Layout)>,
 }
 
 /// Registers the timeline events (their layouts into `layouts`).
@@ -310,6 +324,7 @@ pub(crate) fn install(
         skeleton: get("og.Skeleton")?,
         player: get("og.AnimationPlayer")?,
         source: get("og.AudioSource")?,
+        post: get("og.PostEffects").ok(),
     };
     let names =
         |ids: &[&(SchemaId, Layout)]| ids.iter().map(|x| x.1.schema.clone()).collect::<Vec<_>>();
@@ -597,7 +612,9 @@ fn timeline_system(
         }
         // A forward seek runs the retroactive events it jumps over.
         let retro = (seeked && run.num > before).then(|| (secs(before), secs(run.num)));
+        drop_ended_voices(ctx, r, &mut run, playing)?;
         if run.active {
+            let mut touched = Vec::new();
             evaluate(
                 ctx,
                 engine_id,
@@ -605,27 +622,36 @@ fn timeline_system(
                 ui,
                 &mut lt,
                 &mut run,
-                t,
-                playing,
-                &spans,
-                retro,
-                time.dt,
-                comp["speed"].as_f64().unwrap_or(1.0) as f32,
+                &Step {
+                    t,
+                    playing,
+                    spans: &spans,
+                    retro,
+                    dt: time.dt,
+                    speed: comp["speed"].as_f64().unwrap_or(1.0) as f32,
+                    base: 0,
+                    depth: 0,
+                },
+                &mut touched,
             )?;
-        }
-        for (a, b) in &spans {
-            for tr in &lt.timeline.tracks {
-                if let Track::Marker(ks) = tr {
-                    for k in ks.iter().filter(|k| crossed(k.time, *a, *b)) {
-                        ctx.send(TimelineMarker {
-                            entity: key,
-                            asset,
-                            name: Str64::new(&k.name).unwrap_or_default(),
-                            time: k.time,
-                        })?;
-                    }
+            // Voices of a nested timeline whose key ended go with it.
+            let mut gone = Vec::new();
+            run.voices.retain(|v| {
+                let keep = v.0 & NESTED == 0 || touched.contains(&(v.0 & !(NESTED_TRACKS - 1)));
+                if !keep {
+                    gone.push(v.2);
+                }
+                keep
+            });
+            for v in gone {
+                let e = Entity::from_bits(v);
+                if ctx.is_alive(e) {
+                    ctx.despawn(e)?;
                 }
             }
+        }
+        for (a, b) in &spans {
+            markers(ctx, key, asset, &lt, *a, *b, "", 0)?;
         }
         if ended {
             ctx.send(TimelineEnded { entity: key, asset })?;
@@ -653,8 +679,64 @@ fn timeline_system(
     Ok(())
 }
 
+/// Sends og.TimelineMarker for each marker key in `(a, b]`, and those of the
+/// timelines it nests (named `<nested>/<marker>`) in the child's span.
+#[allow(clippy::too_many_arguments)]
+fn markers(
+    ctx: &mut SystemContext<'_>,
+    entity: u64,
+    asset: u64,
+    lt: &Loaded,
+    a: f64,
+    b: f64,
+    prefix: &str,
+    depth: usize,
+) -> og_core::Result<()> {
+    for tr in &lt.timeline.tracks {
+        match tr {
+            Track::Marker(ks) => {
+                for k in ks.iter().filter(|k| crossed(k.time, a, b)) {
+                    let name = format!("{prefix}{}", k.name);
+                    ctx.send(TimelineMarker {
+                        entity,
+                        asset,
+                        name: Str64::new(&name).unwrap_or_default(),
+                        time: k.time,
+                    })?;
+                }
+            }
+            Track::Timeline(keys) if depth < og_timeline::NEST_DEPTH => {
+                for (ki, k) in keys.iter().enumerate() {
+                    let until = keys.get(ki + 1).map_or(lt.timeline.duration, |n| n.time);
+                    let Some(child) = lt.nested.get(&k.play).cloned() else {
+                        continue;
+                    };
+                    let cl = lock(&child);
+                    let d = cl.timeline.duration;
+                    let p = format!("{prefix}{}/", short(&k.play));
+                    for (ca, cb) in og_timeline::eval::child_spans(k, until, d, a, b) {
+                        markers(ctx, entity, asset, &cl, ca, cb, &p, depth + 1)?;
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
 /// Lets go of what a run owns: the camera back, its voices stopped.
 fn release(ctx: &mut SystemContext<'_>, r: &Rec, run: &mut Run) -> og_core::Result<()> {
+    if let (Some(f), Some(post)) = (run.focus.take(), &r.post)
+        && let Ok(bytes) = ctx.resource_bytes(post.0)
+    {
+        let mut v = post.1.decode(&bytes);
+        v["depthOfField"] = json!(f[0] != 0.0);
+        v["dofFocusDistance"] = json!(f[1]);
+        v["dofFocusRange"] = json!(f[2]);
+        let out = post.1.encode(Some(&bytes), Some(&v)).map_err(invalid)?;
+        ctx.set_resource_bytes(post.0, &out)?;
+    }
     if let Some(c) = run.camera.take() {
         let bytes = ctx.resource_bytes(r.camera.0)?;
         let mut cam = r.camera.1.decode(&bytes);

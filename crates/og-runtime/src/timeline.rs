@@ -23,9 +23,11 @@
 
 mod evaluate;
 mod playback;
+mod present;
+pub(crate) use present::present;
 
 use super::{assets, feel, modules};
-use evaluate::evaluate;
+use evaluate::{NESTED, NESTED_TRACKS, Step, drop_ended_voices, evaluate};
 use playback::{Op, Rec, Run, shared};
 pub(crate) use playback::{install, register_records};
 pub use playback::{og_timeline_pause, og_timeline_play, og_timeline_seek, og_timeline_stop};
@@ -144,6 +146,8 @@ pub(crate) struct Loaded {
     pub sounds: BTreeMap<String, (u64, f32)>,
     /// Per animation track: (skeleton, clip handles by name).
     pub clips: IdMap<usize, (u64, BTreeMap<String, u64>)>,
+    /// The timelines its `timeline` tracks nest, by the id they name.
+    pub nested: BTreeMap<String, Arc<Mutex<Loaded>>>,
 }
 
 #[derive(Default)]
@@ -157,6 +161,19 @@ pub(crate) struct Registry {
     inbox: Option<og_probe::Inbox>,
     /// Warnings already logged (each once).
     warned: std::collections::BTreeSet<String>,
+    /// Records og.timeline was granted for the loaded timelines' tracks.
+    granted: std::collections::BTreeSet<String>,
+    /// Materials a material track drives, as they were before it: the
+    /// standard material and the shader parameters it set.
+    pub(crate) material_base: BTreeMap<u32, MaterialBase>,
+}
+
+/// A material as it was before a material track first drove it.
+#[derive(Clone)]
+pub(crate) struct MaterialBase {
+    pub handle: og_render::MaterialHandle,
+    pub standard: og_render::StandardMaterial,
+    pub params: Vec<(String, [f32; 4])>,
 }
 
 thread_local! {
@@ -324,12 +341,29 @@ fn facing(s: &og_timeline::PathSample) -> (Mat3, Quat) {
 // ── og.load.timeline and og.timeline.info ───────────────────────────────────
 
 fn load(eng: &Engine, path: &str) -> Result<u64, String> {
+    load_at(eng, path, &mut Vec::new())
+}
+
+/// [`load`] from inside the timelines `chain` nests it in (a cycle or a
+/// nesting past [`og_timeline::NEST_DEPTH`] is refused, naming the chain).
+fn load_at(eng: &Engine, path: &str, chain: &mut Vec<String>) -> Result<u64, String> {
     let id = og_bundle::runtime::asset_id(path).to_string();
     let reg = registry(eng.id);
     if let Some(&h) = lock(&reg).by_id.get(&id) {
         return Ok(h);
     }
-    let loaded = decode(eng, &id)?;
+    if chain.contains(&id) || chain.len() > og_timeline::NEST_DEPTH {
+        chain.push(id);
+        return Err(format!(
+            "the timelines nest in a cycle or deeper than {}: {}",
+            og_timeline::NEST_DEPTH,
+            chain.join(" → ")
+        ));
+    }
+    chain.push(id.clone());
+    let loaded = decode(eng, &id, chain);
+    chain.pop();
+    let loaded = loaded?;
     let mut r = lock(&reg);
     r.timelines.push(Arc::new(Mutex::new(loaded)));
     let h = TIMELINE_TAG | r.timelines.len() as u64;
@@ -347,7 +381,7 @@ fn output_hash(eng: &Engine, id: &str) -> u64 {
 }
 
 /// Timeline `id` read from its cooked blob, with its paths, sounds and clips.
-fn decode(eng: &Engine, id: &str) -> Result<Loaded, String> {
+fn decode(eng: &Engine, id: &str, chain: &mut Vec<String>) -> Result<Loaded, String> {
     let hash = output_hash(eng, id);
     let timeline = {
         let assets = eng.assets.borrow();
@@ -362,6 +396,21 @@ fn decode(eng: &Engine, id: &str) -> Result<Loaded, String> {
     }
     let mut sounds = BTreeMap::new();
     let mut clips = IdMap::new();
+    let mut nested = BTreeMap::new();
+    for tr in &timeline.tracks {
+        if let Track::Timeline(keys) = tr {
+            for k in keys {
+                if nested.contains_key(&k.play) {
+                    continue;
+                }
+                let h = load_at(eng, &k.play, chain).map_err(|e| format!("{id}: {e}"))?;
+                let child = lock(&registry(eng.id))
+                    .timeline(h)
+                    .ok_or_else(|| format!("{id}: {} did not load", k.play))?;
+                nested.insert(k.play.clone(), child);
+            }
+        }
+    }
     for (k, tr) in timeline.tracks.iter().enumerate() {
         let names: Vec<&str> = match tr {
             Track::Audio(ks) => ks.iter().map(|k| k.sound.as_str()).collect(),
@@ -391,7 +440,96 @@ fn decode(eng: &Engine, id: &str) -> Result<Loaded, String> {
         paths,
         sounds,
         clips,
+        nested,
     })
+}
+
+/// The records a loaded timeline (and those it nests) writes beyond
+/// og.timeline's own: a property track's record, the light, drawable and
+/// blendshape records its tracks name, og.PostEffects for post and focus.
+fn needs(eng: &Engine, lt: &Loaded, out: &mut std::collections::BTreeSet<String>, depth: usize) {
+    use og_timeline::FieldsKind as K;
+    let layouts = eng.state.borrow().layouts.clone();
+    for tr in &lt.timeline.tracks {
+        match tr {
+            Track::Fields(f) => match f.kind {
+                K::Property => {
+                    for name in f.fields() {
+                        if let Some((rec, _)) = evaluate::record_of(&layouts, name) {
+                            out.insert(rec.to_string());
+                        }
+                    }
+                }
+                K::Material => {}
+                k => out.extend(
+                    evaluate::track_records(k)
+                        .iter()
+                        .filter(|r| layouts.contains_key(**r))
+                        .map(|r| r.to_string()),
+                ),
+            },
+            Track::Camera(c)
+                if c.keys.iter().any(|k| {
+                    k.focus.is_some() || k.focus_on.is_some() || k.focus_range.is_some()
+                }) =>
+            {
+                out.insert("og.PostEffects".into());
+            }
+            _ => {}
+        }
+    }
+    if depth < og_timeline::NEST_DEPTH {
+        for child in lt.nested.values() {
+            needs(eng, &lock(child), out, depth + 1);
+        }
+    }
+}
+
+/// Whether og.timeline was granted `record` (a field track writes only those).
+pub(super) fn granted(engine: u32, record: &str) -> bool {
+    lock(&registry(engine)).granted.contains(record)
+}
+
+/// Grants og.timeline what timeline `h` writes; inside a system only what
+/// it already has, else refused naming the fix.
+fn grant(eng: &Engine, h: u64, world: Option<&mut World>) -> Result<(), String> {
+    let Some(t) = lock(&registry(eng.id)).timeline(h) else {
+        return Ok(());
+    };
+    let l = lock(&t);
+    grant_loaded(eng, &l, world)
+}
+
+fn grant_loaded(eng: &Engine, lt: &Loaded, world: Option<&mut World>) -> Result<(), String> {
+    let mut want = std::collections::BTreeSet::new();
+    needs(eng, lt, &mut want, 0);
+    // A lazy record no game has used yet is not registered: its tracks
+    // write nothing until it is and the timeline loads again.
+    if let Some(w) = world.as_deref() {
+        want.retain(|n| w.id_by_name(n).is_ok());
+    }
+    let missing: Vec<String> = {
+        let reg = registry(eng.id);
+        let r = lock(&reg);
+        want.into_iter()
+            .filter(|n| !r.granted.contains(n))
+            .collect()
+    };
+    if missing.is_empty() {
+        return Ok(());
+    }
+    let Some(world) = world else {
+        return Err(format!(
+            "this timeline writes {}, which og.timeline is not yet granted: load it in setup, outside a system",
+            missing.join(", ")
+        ));
+    };
+    let names: Vec<&str> = missing.iter().map(String::as_str).collect();
+    world
+        .grant(TIMELINE_SYSTEM, &names)
+        .map_err(|e| e.reason().to_string())?;
+    lock(&registry(eng.id)).granted.extend(missing);
+    Ok(())
 }
 
 /// After a hot reload (`og dev` cooks an edit before it reloads; the
@@ -411,8 +549,14 @@ pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
         if now == 0 || now == hash {
             continue;
         }
-        match decode(eng, &id) {
-            Ok(fresh) => *lock(&t) = fresh,
+        match decode(eng, &id, &mut vec![id.clone()]) {
+            Ok(fresh) => {
+                if let Err(e) = grant_loaded(eng, &fresh, eng.world().ok()) {
+                    failed.push(format!("timeline {id}: {e}"));
+                    continue;
+                }
+                *lock(&t) = fresh;
+            }
             Err(e) => failed.push(format!("timeline {id}: {e}")),
         }
     }
@@ -433,7 +577,11 @@ fn clip_set(eng: &Engine, model: &str) -> Result<(u64, BTreeMap<String, u64>), S
 }
 
 pub fn og_load_timeline(world: u32, path: String) -> String {
-    wire(engine(world).and_then(|eng| load(&eng, &path).map(|h| json!(h as f64))))
+    wire(engine(world).and_then(|eng| {
+        let h = load(&eng, &path)?;
+        grant(&eng, h, eng.world().ok())?;
+        Ok(json!(h as f64))
+    }))
 }
 
 pub fn og_timeline_info(world: u32, asset: f64) -> String {
@@ -539,6 +687,7 @@ fn command(engine_id: u32, world: &mut World, args: &[String]) -> Result<(), Str
         "play" => {
             let name = args.get(1).filter(|a| !a.is_empty()).ok_or(USAGE)?;
             let h = load(&eng, &asset_path(name))?;
+            grant(&eng, h, Some(&mut *world))?;
             let entity_name = format!("timeline-{}", short(name));
             let e = match world.find(&entity_name) {
                 Some(e) => e,

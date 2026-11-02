@@ -79,7 +79,7 @@ impl Kind {
     }
 
     /// The JSON keys of a struct-valued kind, in lane order.
-    fn keys(self) -> &'static [&'static str] {
+    pub(crate) fn keys(self) -> &'static [&'static str] {
         match self {
             Kind::Vector2 => &["x", "y"],
             Kind::Vector3 => &["x", "y", "z"],

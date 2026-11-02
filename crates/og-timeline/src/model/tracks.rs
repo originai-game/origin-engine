@@ -19,8 +19,13 @@ pub(super) fn track(e: &Entry, read: &mut Read<'_>) -> Result<Track, String> {
         Some(Value::String(s)) if e.values.len() == 2 => Some(s.clone()),
         _ => return Err(at(e, "a track is `track <kind> [\"entity\"] {`")),
     };
-    let needs_target = matches!(kind, "transform" | "animation");
+    let needs_target = matches!(
+        kind,
+        "transform" | "animation" | "light" | "visibility" | "blendshape" | "material"
+    );
+    let may_target = needs_target || kind == "property";
     match (&target, needs_target) {
+        _ if may_target && !needs_target => {}
         (None, true) => {
             return Err(at(
                 e,
@@ -45,14 +50,19 @@ pub(super) fn track(e: &Entry, read: &mut Read<'_>) -> Result<Track, String> {
         "event" => Track::Event(events(block)?),
         "transition" => Track::Transition(transitions(block)?),
         "marker" => Track::Marker(markers(block)?),
-        k => {
-            return Err(at(
-                e,
-                format!(
-                    "track kind '{k}' is not camera, transform, animation, audio, music, caption, event, transition or marker"
-                ),
-            ));
-        }
+        "timeline" => Track::Timeline(nested(block)?),
+        k => match FieldsKind::from_name(k) {
+            Some(kind) => Track::Fields(fields(block, kind, target)?),
+            None => {
+                return Err(at(
+                    e,
+                    format!(
+                        "track kind '{k}' is not one this engine (og {}) reads: {TRACK_KINDS}. A timeline written for a newer engine needs that engine",
+                        env!("CARGO_PKG_VERSION")
+                    ),
+                ));
+            }
+        },
     })
 }
 
@@ -100,12 +110,28 @@ fn camera(block: &Block) -> Result<CameraTrack, String> {
                             }
                             k.fov = Some(v);
                         }
+                        "roll" => k.roll = Some(one_number(f)?),
+                        "focus" => {
+                            let v = one_number(f)?;
+                            if v <= 0.0 {
+                                return Err(at(f, "focus is a distance in metres, more than 0"));
+                            }
+                            k.focus = Some(v);
+                        }
+                        "focusOn" => k.focus_on = Some(string(f)?),
+                        "focusRange" => {
+                            let v = one_number(f)?;
+                            if v < 0.0 {
+                                return Err(at(f, "focusRange is metres, 0 or more"));
+                            }
+                            k.focus_range = Some(v);
+                        }
                         "ease" => k.ease = ease(f)?,
                         _ => {
                             return Err(unknown(
                                 f,
                                 "camera key entry",
-                                "position, target, at, fov or ease",
+                                "position, target, at, fov, roll, focus, focusOn, focusRange or ease",
                             ));
                         }
                     }
@@ -556,4 +582,170 @@ fn markers(block: &Block) -> Result<Vec<MarkerKey>, String> {
         ks.push(k);
     }
     Ok(sorted(ks, |k| k.time))
+}
+
+/// A key's value: one to four numbers, or one word (true, false, an enum
+/// variant).
+fn field_value(f: &Entry) -> Result<FieldValue, String> {
+    if let [Value::Word(w)] = f.values.as_slice() {
+        return Ok(FieldValue::Word(w.clone()));
+    }
+    if f.values.is_empty() || f.values.len() > 4 {
+        return Err(at(
+            f,
+            format!(
+                "`{}` takes one to four numbers (a scalar, a vector, a colour, a quaternion) or one word (true, false, an enum variant)",
+                f.key
+            ),
+        ));
+    }
+    Ok(FieldValue::Numbers(
+        (0..f.values.len())
+            .map(|i| number(f, i))
+            .collect::<Result<_, _>>()?,
+    ))
+}
+
+fn fields(block: &Block, kind: FieldsKind, entity: String) -> Result<FieldsTrack, String> {
+    let mut t = FieldsTrack {
+        kind,
+        entity,
+        index: 0,
+        keys: Vec::new(),
+    };
+    let property = kind == FieldsKind::Property;
+    let mut field: Option<String> = None;
+    for e in &block.entries {
+        match e.key.as_str() {
+            "field" if property => {
+                no_block(e)?;
+                let f = string(e)?;
+                let ok = f
+                    .rsplit_once('.')
+                    .is_some_and(|(r, n)| !r.is_empty() && !n.is_empty());
+                if !ok {
+                    return Err(at(
+                        e,
+                        format!(
+                            "field '{f}' is a record and its field: \"og.PointLight.intensity\""
+                        ),
+                    ));
+                }
+                field = Some(f);
+            }
+            "index" if kind == FieldsKind::Material => {
+                no_block(e)?;
+                let v = one_number(e)?;
+                if v < 0.0 || v.fract() != 0.0 {
+                    return Err(at(e, "index is a whole number: the model's material"));
+                }
+                t.index = v as u32;
+            }
+            "key" => {
+                let mut k = FieldKey {
+                    time: key_time(e)?,
+                    ..FieldKey::default()
+                };
+                for f in key_block(e)? {
+                    no_block(f)?;
+                    match f.key.as_str() {
+                        "ease" => k.ease = ease(f)?,
+                        "value" if property => {
+                            let name = field.clone().ok_or_else(|| {
+                                at(f, "a property track names its field before its keys: `field \"og.PointLight.intensity\"`")
+                            })?;
+                            k.values.push((name, field_value(f)?));
+                        }
+                        _ if property => {
+                            return Err(unknown(f, "property key entry", "value or ease"));
+                        }
+                        name => {
+                            let v = field_value(f)?;
+                            match kind {
+                                FieldsKind::Visibility if name != "visible" => {
+                                    return Err(unknown(
+                                        f,
+                                        "visibility key entry",
+                                        "visible or ease",
+                                    ));
+                                }
+                                FieldsKind::Visibility if !matches!(&v, FieldValue::Word(w) if w == "true" || w == "false") =>
+                                {
+                                    return Err(at(f, "visible takes true or false"));
+                                }
+                                FieldsKind::Blendshape
+                                    if !(name.len() == 2
+                                        && name.starts_with('w')
+                                        && (b'0'..=b'7').contains(&name.as_bytes()[1])) =>
+                                {
+                                    return Err(unknown(
+                                        f,
+                                        "blendshape key entry",
+                                        "w0 to w7 or ease",
+                                    ));
+                                }
+                                _ => {}
+                            }
+                            if k.values.iter().any(|(n, _)| n == name) {
+                                return Err(at(f, format!("`{name}` is set twice in one key")));
+                            }
+                            k.values.push((name.to_string(), v));
+                        }
+                    }
+                }
+                if k.values.is_empty() {
+                    return Err(at(e, "a key sets at least one field"));
+                }
+                t.keys.push(k);
+            }
+            _ => {
+                let allowed = match kind {
+                    FieldsKind::Property => "field or key",
+                    FieldsKind::Material => "index or key",
+                    _ => "key",
+                };
+                return Err(unknown(e, &format!("{} track entry", kind.name()), allowed));
+            }
+        }
+    }
+    if property && field.is_none() {
+        return Err("a property track names its field: `field \"og.PointLight.intensity\"`".into());
+    }
+    t.keys = sorted(t.keys, |k| k.time);
+    Ok(t)
+}
+
+fn nested(block: &Block) -> Result<Vec<NestedKey>, String> {
+    let mut out = Vec::new();
+    for e in only_keys(block, "timeline")? {
+        let mut k = NestedKey {
+            time: key_time(e)?,
+            play: String::new(),
+            speed: 1.0,
+            looping: false,
+        };
+        for f in key_block(e)? {
+            no_block(f)?;
+            match f.key.as_str() {
+                "play" => k.play = string(f)?,
+                "speed" => {
+                    let v = one_number(f)?;
+                    if v <= 0.0 {
+                        return Err(at(f, "speed is more than 0"));
+                    }
+                    k.speed = v;
+                }
+                "loop" => k.looping = flag(f)?,
+                _ => return Err(unknown(f, "timeline key entry", "play, speed or loop")),
+            }
+        }
+        if k.play.is_empty() {
+            return Err(at(
+                e,
+                "a timeline key names what it plays: `play \"timelines/door.ogt\"`",
+            ));
+        }
+        out.push(k);
+    }
+    Ok(sorted(out, |k| k.time))
 }
