@@ -166,7 +166,11 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   and the art director are not counted). The rest wait, paused with their
   work pushed, and the next one starts only when a running stream has
   finished its whole scope (the owner, 2026-11-02 latest: thirteen at once
-  stalled threads and hit rate limits). Earlier instructions:
+  stalled threads and hit rate limits). Each wave starts fresh threads,
+  each owning several related items end to end, so efficiency comes from
+  fewer threads that talk less: an author sends finished heads to
+  macrunner itself and reports to the coordinator only when an item is
+  done or blocked, never per batch. Earlier instructions:
   2026-10-23, eight at once was too many while gates ran beside each
   other; 2026-11-01, five instead of three; 2026-11-02, eight, now that
   each thread draws on its own Mac satellite and only macrunner runs the
