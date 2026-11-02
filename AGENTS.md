@@ -4,8 +4,8 @@ Normative design: `docs/design.md`, and for the game UI `docs/ui.md`. Platform c
 `origingame/docs/game-workflow.md` (the production contract),
 `origin-agent/packages/contracts/src/probe.ts` (the probe, protocol 5),
 `origingame/docs/design-language.md` (tokens and components for the player
-shell, the marks, and og-ui's default style, which follows the same
-language; a game's own style still overrides it). The execution package during the build-out is
+shell and the marks only; the engine's and origin-agent's own design
+language is `packages/design` here). The execution package during the build-out is
 `origingame/goals/origin-engine/plan.md`; the release path and the plan of
 what remains to launch, `docs/release.md`.
 
@@ -95,18 +95,20 @@ what remains to launch, `docs/release.md`.
 - **Brand is one ink.** The boot splash, loading state and "made with" mark
   use `packages/brand` of the platform (`genesis`, `progress` motions) and the
   design tokens; the engine never introduces a second palette or mark.
-- **One design language, the game's own style on top.** og-ui's default
-  style (what a game draws in before it picks one) speaks the platform's
-  design language (`origingame/docs/design-language.md`: the neutral
-  ladder, flat glass on floating chrome only, borderless controls, the
-  token radii, type and motion), so the engine and origin-agent read alike
-  (the owner, 2026-11-02; it replaces the grey `prototype`). Its values come
-  from a pinned published version of `@origingame/tokens`' `tokens.json`
-  (data only; no engine code imports platform code), generated into
-  `crates/og-ui/src/theme.rs` and checked for drift. A role only games need
-  (health, mana, xp, gold, the HUD) is agreed with the platform and added to
-  `tokens.json` there, never invented in og-ui alone. A game's UI still
-  wears its own style (`type style`, a look's `ui` line) when it picks one.
+- **One design language for the engine and origin-agent, apart from the
+  platform.** The engine and origin-agent share their own design language,
+  decoupled from the platform's (`origingame/docs/design-language.md`
+  styles the portal, ops and mail; the owner, 2026-11-02). This repository
+  owns it: `packages/design` (published as `@origingame/design`) holds the
+  language document and its `tokens.json`, seeded from the platform's
+  language of 2026-11-02 (the neutral ladder, flat glass on floating chrome
+  only, borderless controls) and evolving here from then on. og-ui's
+  default style, which replaces the grey `prototype`, is generated from it
+  into `crates/og-ui/src/theme.rs` and checked for drift; origin-agent pins
+  the published package by version, as it pins the engine. Roles only
+  games need (health, mana, xp, gold, the HUD) live in the same tokens. A
+  game's UI still wears its own style (`type style`, a look's `ui` line)
+  when it picks one.
 
 ## Build and gate discipline
 
