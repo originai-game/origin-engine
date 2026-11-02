@@ -124,6 +124,14 @@ fn every_style_pack_parses_and_keeps_body_text_at_4_5_to_1() {
                     .filter(|_| part.class() == StylePart::Button))
                 .unwrap_or_else(|| panic!("{name} has no {} slice", part.name()))
         };
+        // A tooltip's label takes the one of fg and inkInverse that reads on
+        // its frame (og-ui's `Ui::tooltip`): a painted bubble may be dark.
+        let tip = under(&atlas, &slice(StylePart::Tooltip), p.panel_raised, bg);
+        let tip_ink = if ratio(linear(p.ink_inverse), tip) > ratio(linear(p.ink), tip) {
+            ("inkInverse", p.ink_inverse)
+        } else {
+            ("fg", p.ink)
+        };
         // (where, the fill a template gives it, the frame, the inks on it)
         let checks: Vec<Check> = vec![
             (
@@ -170,12 +178,7 @@ fn every_style_pack_parses_and_keeps_body_text_at_4_5_to_1() {
                 vec![("accentFg", p.on_primary)],
             ),
             ("HUD capsule", p.hud, StylePart::Hud, vec![("fg", p.ink)]),
-            (
-                "tooltip",
-                p.panel_raised,
-                StylePart::Tooltip,
-                vec![("fg", p.ink)],
-            ),
+            ("tooltip", p.panel_raised, StylePart::Tooltip, vec![tip_ink]),
             ("field", p.control, StylePart::Field, vec![("fg", p.ink)]),
             ("slot", p.control, StylePart::Slot, vec![("fg", p.ink)]),
         ];
@@ -197,18 +200,29 @@ fn every_style_pack_parses_and_keeps_body_text_at_4_5_to_1() {
                 }
             }
         }
-        // A selected tab: fg on thumb, over the dialog.
+        // A selected tab: its label on the thumb, over the dialog, in the
+        // first of fg, inkInverse and onPrimary that reads 4.5:1 there, as
+        // og-ui's tabs pick it.
         let dialog = under(&atlas, &slice(StylePart::Panel), p.panel_raised, bg);
         let tab = over(linear(p.knob), p.knob.alpha, dialog);
-        let r = ratio(linear(p.ink), tab);
-        report.push(format!("{name:8} fg        on selected tab     {r:5.2}:1"));
+        let inks = [
+            ("fg", p.ink),
+            ("inkInverse", p.ink_inverse),
+            ("onPrimary", p.on_primary),
+        ];
+        let (ink, r) = inks
+            .iter()
+            .map(|&(n, c)| (n, ratio(linear(c), tab)))
+            .find(|&(_, r)| r >= 4.5)
+            .unwrap_or(("fg", ratio(linear(p.ink), tab)));
+        report.push(format!("{name:8} {ink:9} on selected tab     {r:5.2}:1"));
         if r < 3.0 {
             failures.push(format!(
-                "{name}: fg on a selected tab (thumb) is {r:.2}:1 (under 3:1)"
+                "{name}: {ink} on a selected tab (thumb) is {r:.2}:1 (under 3:1)"
             ));
         } else if r < 4.5 {
             report.push(format!(
-                "  warning: {name}: fg on a selected tab under 4.5:1"
+                "  warning: {name}: {ink} on a selected tab under 4.5:1"
             ));
         }
     }
