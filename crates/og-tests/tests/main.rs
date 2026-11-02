@@ -24,6 +24,7 @@ mod physical;
 mod presentation;
 mod probes;
 mod removal;
+mod render_origin;
 mod shadows;
 mod sprites2d;
 mod stylise_space;

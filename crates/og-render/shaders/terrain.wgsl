@@ -24,6 +24,7 @@ struct TerrainLayerGpu {
   mapping: vec4<f32>,   // x: repeats per metre, y: 1 triplanar, z: normal strength, w: bits (1 albedo map, 2 normal map)
   slope: vec4<f32>,     // x: min (deg), y: max (deg), z: fade (deg), w: the albedo's layer (layer arrays)
   altitude: vec4<f32>,  // x: min (m), y: max (m), z: fade (m), w: the normal map's layer (layer arrays)
+  offset: vec4<f32>,    // xyz: the layer's uv at the frame's origin, whole repeats dropped (origin.rs)
 };
 
 struct TerrainUniform {

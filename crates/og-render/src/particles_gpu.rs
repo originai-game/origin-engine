@@ -52,6 +52,9 @@ struct EmitterGpu {
     counts: [f32; 4],
     spawn: [u32; 4],
     info: [u32; 4],
+    /// The turbulence's lattice at the render origin (`origin.rs`): xyz
+    /// its whole cells, then the rest.
+    noise_origin: [[f32; 4]; 2],
 }
 
 /// `struct ParticleView` in particle_common.wgsl.
@@ -183,6 +186,7 @@ fn emitter_gpu(
         ],
         spawn: [first as u32, count, (first % max as u64) as u32, bursts],
         info: [max, seed, 0, 0],
+        noise_origin: [[0.0; 4]; 2],
     }
 }
 
@@ -202,6 +206,9 @@ struct SystemState {
     /// The CPU path's vertex buffer.
     upload: Option<wgpu::Buffer>,
     seen: u64,
+    /// The render origin's moves since the system last simulated
+    /// ([`ParticleRenderer::shift`]): added to its world-space particles.
+    shift: Vec3,
 }
 
 /// One system's work this frame.
@@ -211,6 +218,8 @@ pub(crate) struct FrameSystem {
     first_entry: u32,
     ticks: u32,
     reset: bool,
+    /// The entry that moves its particles with the render origin first.
+    shift: Option<u32>,
     gpu: bool,
     pub blend: ParticleBlend,
     pub texture: Option<crate::TextureHandle>,
@@ -239,7 +248,12 @@ pub(crate) struct ParticleFrame {
 
 pub(crate) struct ParticleRenderer {
     sim_layout: wgpu::BindGroupLayout,
-    sim: (wgpu::ComputePipeline, wgpu::ComputePipeline),
+    /// simulate, clear, shift.
+    sim: (
+        wgpu::ComputePipeline,
+        wgpu::ComputePipeline,
+        wgpu::ComputePipeline,
+    ),
     pub draw_layout: wgpu::BindGroupLayout,
     draw: HashMap<(ParticleBlend, u32), wgpu::RenderPipeline>,
     draw_module: wgpu::ShaderModule,
@@ -297,6 +311,25 @@ fn storage_entry(binding: u32, read_only: bool) -> wgpu::BindGroupLayoutEntry {
 }
 
 impl ParticleRenderer {
+    /// Carries every system across a move of the render origin (`origin.rs`;
+    /// `d`, the old origin minus the new, is added to what is in world
+    /// space): their last emitter transforms now, their world-space
+    /// particles when they next simulate.
+    pub(crate) fn shift(&mut self, d: Vec3) {
+        let moved = |m: &mut Option<Mat4>| {
+            if let Some(m) = m {
+                m.w_axis += d.extend(0.0);
+            }
+        };
+        for s in self.systems.values_mut() {
+            s.shift += d;
+            moved(&mut s.cpu.prev_transform);
+            if let Some(g) = &mut s.gpu {
+                moved(&mut g.prev_transform);
+            }
+        }
+    }
+
     pub fn new(
         device: &wgpu::Device,
         frame_layout: &wgpu::BindGroupLayout,
@@ -334,7 +367,7 @@ impl ParticleRenderer {
                     cache: crate::pipeline_cache::of(device).as_ref(),
                 })
             };
-            (pipeline("simulate"), pipeline("clear"))
+            (pipeline("simulate"), pipeline("clear"), pipeline("shift"))
         };
         let draw_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("particle draw"),
@@ -453,6 +486,7 @@ impl ParticleRenderer {
                 cpu: CpuParticles::default(),
                 upload: None,
                 seen: 0,
+                shift: Vec3::ZERO,
             });
             if state.emitter != sys.emitter.index() || state.max != e.max_particles {
                 *state = SystemState {
@@ -462,10 +496,31 @@ impl ParticleRenderer {
                     cpu: CpuParticles::default(),
                     upload: None,
                     seen: 0,
+                    shift: Vec3::ZERO,
                 };
             }
             state.seen = self.frame;
             out.capacity += e.max_particles;
+            let pending = std::mem::take(&mut state.shift);
+            let (moved, origin) = match e.space {
+                SimulationSpace::World => (pending, scene.origin),
+                SimulationSpace::Local => (Vec3::ZERO, Vec3::ZERO),
+            };
+            state.cpu.origin = origin;
+            let noise_origin = {
+                let (whole, rest) = crate::particles::noise_origin(origin, e.noise.frequency);
+                [
+                    [whole[0] as f32, whole[1] as f32, whole[2] as f32, 0.0],
+                    rest.extend(0.0).to_array(),
+                ]
+            };
+            if moved != Vec3::ZERO {
+                for p in &mut state.cpu.slots {
+                    for (c, d) in p.pos_age.iter_mut().zip(moved.to_array()) {
+                        *c += d;
+                    }
+                }
+            }
             let seed = hash_seed(sys.seed);
             let sprite_mode = matches!(e.render, ParticleRender::Sprite { .. });
             // The CPU path bounces world-space billboards off the scene's
@@ -519,6 +574,15 @@ impl ParticleRenderer {
             };
             out.needs_depth |= soft > 0.0 || collide;
             out.soft |= soft > 0.0;
+            // The render origin moved: world-space particles on the GPU
+            // move with it before this frame's ticks (the CPU's moved above).
+            let shift = (gpu && moved != Vec3::ZERO && state.gpu.is_some()).then(|| {
+                let mut entry: EmitterGpu = bytemuck::Zeroable::zeroed();
+                entry.transform = Mat4::from_translation(moved).to_cols_array_2d();
+                entry.info = [e.max_particles, 0, 0, 0];
+                entries.push(entry);
+                entries.len() as u32 - 1
+            });
             let first_entry = entries.len() as u32;
             if gpu {
                 let g = state.gpu.get_or_insert_with(|| GpuSystem {
@@ -578,6 +642,9 @@ impl ParticleRenderer {
                     collide,
                     soft,
                 ));
+                for g in &mut entries[first_entry as usize..] {
+                    g.noise_origin = noise_origin;
+                }
                 out.ticks += steps.len() as u32;
                 out.any_gpu = true;
                 out.systems.push(FrameSystem {
@@ -585,6 +652,7 @@ impl ParticleRenderer {
                     first_entry,
                     ticks: steps.len() as u32,
                     reset,
+                    shift,
                     gpu: true,
                     blend: e.blend,
                     texture: e.texture,
@@ -620,6 +688,7 @@ impl ParticleRenderer {
                     first_entry,
                     ticks: 0,
                     reset: false,
+                    shift: None,
                     gpu: false,
                     blend: e.blend,
                     texture: e.texture,
@@ -664,7 +733,7 @@ impl ParticleRenderer {
         depth: &wgpu::TextureView,
         gbuffer: &wgpu::TextureView,
     ) {
-        let (simulate, clear) = &self.sim;
+        let (simulate, clear, shift) = &self.sim;
         let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: Some("particle sim"),
             timestamp_writes: None,
@@ -709,6 +778,11 @@ impl ParticleRenderer {
                 ],
             });
             let groups = max.div_ceil(64);
+            if let Some(k) = fs.shift {
+                pass.set_pipeline(shift);
+                pass.set_bind_group(0, &group, &[(k as u64 * EMITTER_STRIDE) as u32]);
+                pass.dispatch_workgroups(groups, 1, 1);
+            }
             if fs.reset {
                 pass.set_pipeline(clear);
                 pass.set_bind_group(

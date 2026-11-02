@@ -31,6 +31,7 @@ fn scatter_hook(in: ScatterOut, front: bool) -> Hook {
   h.uv = in.uv;
   h.color = in.color;
   h.time = frame.time.x;
+  h.origin = frame.origin.xyz;
   h.eye = frame.view_pos.xyz;
   h.front = select(-1.0, 1.0, front);
   hook_front = h.front;
@@ -53,6 +54,7 @@ fn vs(v: ScatterVertex, i: ScatterInstance) -> ScatterOut {
   h.uv = v.uv;
   h.color = v.color;
   h.time = frame.time.x;
+  h.origin = frame.origin.xyz;
   h.eye = frame.view_pos.xyz;
   h.front = 1.0;
   world = vec4<f32>(world.xyz + vertex_offset(h, shader_params()), world.w);

@@ -554,7 +554,7 @@ impl Probes {
                 u.view_forward = f.forward.extend(base.view_forward[3]).to_array();
                 (u.view_right, u.view_up) = f.axes();
                 u.cluster = [0.0; 4];
-                u.caustics = [[0.0; 4]; 2];
+                u.caustics = [[0.0; 4]; 4];
                 u.stylise = [0.0; 4];
                 u.probe = [[0.0; 4]; 3];
                 put(frame.active.len() + 6 * d + face, &u);

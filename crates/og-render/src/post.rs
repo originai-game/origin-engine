@@ -203,8 +203,8 @@ pub(crate) const SURFACE_GRID: f64 = 1024.0;
 
 /// The surface origin for a camera at `eye`: the [`SURFACE_GRID`] point at
 /// or below it on each axis.
-pub(crate) fn surface_origin(eye: glam::Vec3) -> glam::DVec3 {
-    (eye.as_dvec3() / SURFACE_GRID).floor() * SURFACE_GRID
+pub(crate) fn surface_origin(eye: glam::DVec3) -> glam::DVec3 {
+    (eye / SURFACE_GRID).floor() * SURFACE_GRID
 }
 
 #[repr(C)]

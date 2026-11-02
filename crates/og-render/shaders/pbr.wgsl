@@ -226,6 +226,7 @@ fn lit_place(model: mat4x4<f32>, position: vec3<f32>, normal: vec3<f32>, uv: vec
   h.uv = uv;
   h.color = color;
   h.time = frame.time.x;
+  h.origin = frame.origin.xyz;
   h.eye = frame.view_pos.xyz;
   h.front = 1.0;
   world = vec4<f32>(world.xyz + vertex_offset(h, shader_params()), world.w);

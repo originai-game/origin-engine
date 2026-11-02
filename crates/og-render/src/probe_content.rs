@@ -136,9 +136,22 @@ impl ProbeContent {
         h.finish()
     }
 
-    /// The room of `probe` in `scene`.
+    /// The room of `probe` in `scene`. Its hash is of the room in the
+    /// world (the scene's positions plus its origin, `origin.rs`), so a
+    /// bake is found wherever the frame is drawn from.
     pub fn room(&mut self, scene: &RenderScene, probe: &ReflectionProbe) -> ProbeRoom {
         let (lo, hi) = probe.bounds();
+        // (At the world's zero, the bits as they are: -0 stays -0.)
+        let at_zero = scene.origin == Vec3::ZERO;
+        let in_world = |m: &Mat4| {
+            if at_zero {
+                return *m;
+            }
+            Mat4 {
+                w_axis: m.w_axis + scene.origin.extend(0.0) * m.w_axis.w,
+                ..*m
+            }
+        };
         self.materials.clear();
         let mut room = ProbeRoom::default();
         // Per drawn thing, a hash; sorted, so submission order does not count.
@@ -173,7 +186,7 @@ impl ProbeContent {
             h.write_u32(kind);
             h.write_u64(mesh_hash);
             h.write_u64(this.material(scene, material));
-            matrix(&mut h, transform);
+            matrix(&mut h, &in_world(transform));
             if !room.meshes.contains(&mesh) {
                 room.meshes.push(mesh);
             }
@@ -214,7 +227,7 @@ impl ProbeContent {
             let mut h = StableHasher::new();
             h.write_u32(2);
             h.write_u64(scene.terrain_revision(t.terrain.index()));
-            matrix(&mut h, &t.transform);
+            matrix(&mut h, &in_world(&t.transform));
             h.write_str(&format!("{:?}", t.layers));
             for tex in t.layers.iter().flat_map(|l| [l.albedo, l.normal]) {
                 h.write_u64(tex.map_or(0, |tex| self.texture(scene, tex)));
@@ -245,6 +258,13 @@ impl ProbeContent {
             }
             let mut h = StableHasher::new();
             h.write_u32(4);
+            let l = match at_zero {
+                true => *l,
+                false => crate::Light {
+                    position: l.position + scene.origin,
+                    ..*l
+                },
+            };
             h.write_str(&format!("{l:?}"));
             items.push(h.finish());
         }

@@ -41,8 +41,9 @@ pub(crate) struct FrameUniform {
     /// Fog, the drawn sky's look and the clock (`atmosphere.rs`).
     pub atmosphere: crate::atmosphere::AtmosphereGpu,
     /// The water's caustics: (height, strength, scale, fade), then the
-    /// surface's xz rectangle (`water.rs`).
-    pub caustics: [[f32; 4]; 2],
+    /// surface's xz rectangle, then its two cell layers at the frame's
+    /// origin (`water.rs`).
+    pub caustics: [[f32; 4]; 4],
     /// x: the sun's shadow softness (0: hard PCF), y: 1 when point lights'
     /// shadows are paraboloid hemispheres, z, w: unused.
     pub shadow: [f32; 4],
@@ -75,6 +76,10 @@ pub(crate) struct FrameUniform {
     /// surface (0 none, 1 clay, 2 paper, 3 plastic), y its strength, z its
     /// scale in metres, w unused.
     pub material_surface: [f32; 4],
+    /// xyz: where the zero of the frame's coordinates is in the world
+    /// (`RenderScene::origin`): the shaders that read a world position for
+    /// its look (layer uvs, normal maps, caustics, wind) add it back.
+    pub origin: [f32; 4],
 }
 
 /// The camera's matrices for one frame.
@@ -280,6 +285,22 @@ fn slice_sphere(cam: &Camera, aspect: f32, forward: Vec3, n: f32, f: f32) -> (Ve
     }
 }
 
+/// Snaps a cascade's centre in light space to the texel grid through the
+/// world's zero: the scene's `origin` brought into light space (f64, whole
+/// texels dropped) is added before the snap and taken off after, so the
+/// texels lie where they would at origin zero (`origin.rs`).
+fn snap_texel(c_ls: &mut Vec3, texel: f32, rotation: Mat4, origin: Vec3) {
+    let (rx, ry) = if origin == Vec3::ZERO {
+        (0.0, 0.0)
+    } else {
+        let o = rotation.as_dmat4().transform_point3(origin.as_dvec3());
+        let t = f64::from(texel);
+        (o.x.rem_euclid(t) as f32, o.y.rem_euclid(t) as f32)
+    };
+    c_ls.x = ((c_ls.x + rx) / texel).floor() * texel - rx;
+    c_ls.y = ((c_ls.y + ry) / texel).floor() * texel - ry;
+}
+
 /// Fits `count` (1 to 3) cascades over the camera's view up to the far side of `bounds`
 /// (center, radius): stable splits (they depend only on the camera's
 /// intrinsics and `bounds`), each covered by a bounding sphere so its size
@@ -303,6 +324,7 @@ pub(crate) fn fit_box(
     map_size: u32,
     bias: f32,
     normal_bias: f32,
+    origin: Vec3,
 ) -> Vec<Cascade> {
     let up = if to_light.y.abs() > 0.99 {
         Vec3::Z
@@ -314,8 +336,7 @@ pub(crate) fn fit_box(
     let radius = half.max(0.5);
     let texel = 2.0 * radius / map_size as f32;
     let mut c_ls = rotation.transform_point3(focus);
-    c_ls.x = (c_ls.x / texel).floor() * texel;
-    c_ls.y = (c_ls.y / texel).floor() * texel;
+    snap_texel(&mut c_ls, texel, rotation, origin);
     let top = (bounds_ls.z + bounds.1).max(c_ls.z + radius) + texel;
     let bottom = (bounds_ls.z - bounds.1).min(c_ls.z - radius);
     let depth_range = top - bottom;
@@ -350,6 +371,7 @@ pub(crate) fn fit_cascades(
     map_size: u32,
     count: usize,
     blend: f32,
+    origin: Vec3,
 ) -> Vec<Cascade> {
     let count = count.clamp(1, CASCADES);
     let forward = frame.forward;
@@ -398,8 +420,7 @@ pub(crate) fn fit_cascades(
         let radius = (radius / step).ceil() * step;
         let texel = 2.0 * radius / map_size as f32;
         let mut c_ls = rotation.transform_point3(center);
-        c_ls.x = (c_ls.x / texel).floor() * texel;
-        c_ls.y = (c_ls.y / texel).floor() * texel;
+        snap_texel(&mut c_ls, texel, rotation, origin);
         let top = (bounds_ls.z + bounds.1).max(c_ls.z + radius) + texel;
         let bottom = c_ls.z - radius;
         let depth_range = top - bottom;

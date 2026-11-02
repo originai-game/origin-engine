@@ -29,6 +29,7 @@ fn prepass_targets(in: PrepassOut) -> PrepassTargets {
   hook.uv = in.uv;
   hook.color = in.color;
   hook.time = frame.time.x;
+  hook.origin = frame.origin.xyz;
   hook.eye = frame.view_pos.xyz;
   hook.front = hook_front;
   let base = surface_color(hook, shader_params(), material.base_color * base_sample * in.color);

@@ -212,6 +212,17 @@ struct Strip {
 }
 
 impl Trails {
+    /// Carries the histories across a move of the render origin
+    /// (`origin.rs`): `d`, the old origin minus the new, is added to every
+    /// point.
+    pub(crate) fn shift(&mut self, d: Vec3) {
+        for h in self.histories.values_mut() {
+            for (p, _) in &mut h.points {
+                *p += d;
+            }
+        }
+    }
+
     /// Updates the histories and builds every strip of the frame. `eye` and
     /// `forward` orient the strips (an orthographic camera faces along
     /// `forward` everywhere).

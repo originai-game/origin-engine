@@ -13,6 +13,7 @@ fn camera() -> Camera {
   c.position = frame.view_pos.xyz;
   c.forward = frame.view_forward.xyz;
   c.time = frame.time.x;
+  c.origin = frame.origin.xyz;
   return c;
 }
 

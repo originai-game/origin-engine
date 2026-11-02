@@ -5,7 +5,7 @@
 struct ShadowPass {
   view_proj: mat4x4<f32>,
   light: vec4<f32>,       // xyz: light position, w: range (0: directional, write depth)
-  time: vec4<f32>,        // x: the scene clock in seconds (the hooks' h.time)
+  time: vec4<f32>,        // x: the scene clock in seconds (the hooks' h.time), yzw: the scene's origin (h.origin)
   paraboloid: vec4<f32>,  // x: 1 for a paraboloid hemisphere, y: +1 the one below the light, -1 above, z: the map's side, w: the projection's scale
 };
 @group(0) @binding(0) var<uniform> shadow_pass: ShadowPass;

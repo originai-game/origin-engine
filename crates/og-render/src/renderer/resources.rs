@@ -7,7 +7,8 @@ use super::*;
 pub(crate) struct ShadowPassUniform {
     pub(crate) view_proj: [[f32; 4]; 4],
     pub(crate) light: [f32; 4],
-    /// x: the scene clock in seconds (a material shader's `h.time`).
+    /// x: the scene clock in seconds (a material shader's `h.time`), yzw:
+    /// the scene's origin (`h.origin`, `origin.rs`).
     pub(crate) time: [f32; 4],
     /// x: 1 for a paraboloid hemisphere, y: +1 the one below the light, -1
     /// above, z: the map's side, w: the projection's scale (shadow_pass.wgsl).

@@ -5,6 +5,18 @@ use super::*;
 impl Renderer {
     pub(super) fn prepare_frame_resources(&mut self, scene: &RenderScene) -> (u32, (u32, u32)) {
         self.apply_quality(&scene.quality);
+        // The render origin moved (`origin.rs`): what the renderer keeps
+        // from the frames before moves with it, so the move is invisible.
+        if scene.origin != self.drawn_origin {
+            let d = self.drawn_origin - scene.origin;
+            self.prev_view_proj = self
+                .prev_view_proj
+                .map(|m| crate::origin::shift_matrix(m, d));
+            self.taa_history = self.taa_history.map(|m| crate::origin::shift_matrix(m, d));
+            self.particles.shift(d);
+            self.trails.shift(d);
+            self.drawn_origin = scene.origin;
+        }
         // A look that switches the stylisation on or off (passes added or
         // removed, the pixel grid, the material style) is a cut: no ghost of
         // the old look in the first frame of the new one.

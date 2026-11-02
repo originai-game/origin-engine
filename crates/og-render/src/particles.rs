@@ -539,8 +539,19 @@ fn lattice3(x: i32, y: i32, z: i32, seed: u32) -> f32 {
 
 /// Trilinear value noise in [0, 1) with a smoothstep fade.
 pub(crate) fn value_noise3(p: Vec3, seed: u32) -> f32 {
+    value_noise3_at(p, [0; 3], seed)
+}
+
+/// [`value_noise3`] at `p` plus the whole lattice cells `whole`: the noise
+/// of a point far from the world's zero, taken from its place relative to
+/// the render origin and the origin's whole cells (`origin.rs`).
+pub(crate) fn value_noise3_at(p: Vec3, whole: [i32; 3], seed: u32) -> f32 {
     let fl = p.floor();
-    let (ix, iy, iz) = (fl.x as i32, fl.y as i32, fl.z as i32);
+    let (ix, iy, iz) = (
+        fl.x as i32 + whole[0],
+        fl.y as i32 + whole[1],
+        fl.z as i32 + whole[2],
+    );
     let f = p - fl;
     let u = f * f * (Vec3::splat(3.0) - 2.0 * f);
     let c = |dx, dy, dz| lattice3(ix + dx, iy + dy, iz + dz, seed);
@@ -1026,7 +1037,22 @@ fn collide(
     }
 }
 
-/// One fixed step of a live particle at `time` seconds.
+/// The turbulence's lattice at the render origin `origin` for noise of
+/// `frequency` (cells per metre): its whole cells and the rest, in f64, so
+/// a world-space system samples the field it would at the world's zero
+/// (`origin.rs`). Zero at a zero origin.
+pub(crate) fn noise_origin(origin: Vec3, frequency: f32) -> ([i32; 3], Vec3) {
+    let at = |o: f32| {
+        let x = f64::from(o) * f64::from(frequency);
+        let w = x.floor();
+        (w as i32, (x - w) as f32)
+    };
+    let (x, y, z) = (at(origin.x), at(origin.y), at(origin.z));
+    ([x.0, y.0, z.0], Vec3::new(x.1, y.1, z.1))
+}
+
+/// One fixed step of a live particle at `time` seconds; `origin`: the
+/// render origin a world-space system is simulated relative to.
 fn integrate(
     e: &ParticleEmitter,
     p: &mut ParticleState,
@@ -1034,16 +1060,18 @@ fn integrate(
     time: f32,
     seed: u32,
     colliders: &[ParticleCollider],
+    origin: Vec3,
 ) {
     let mut pos = Vec3::from_slice(&p.pos_age[..3]);
     let mut vel = Vec3::from_slice(&p.vel_life[..3]);
     vel += e.gravity * dt;
     if e.noise.strength != 0.0 {
-        let q = pos * e.noise.frequency + Vec3::splat(time * e.noise.scroll);
+        let (whole, rest) = noise_origin(origin, e.noise.frequency);
+        let q = pos * e.noise.frequency + rest + Vec3::splat(time * e.noise.scroll);
         let n = Vec3::new(
-            value_noise3(q, seed ^ 0x1111),
-            value_noise3(q, seed ^ 0x2222),
-            value_noise3(q, seed ^ 0x3333),
+            value_noise3_at(q, whole, seed ^ 0x1111),
+            value_noise3_at(q, whole, seed ^ 0x2222),
+            value_noise3_at(q, whole, seed ^ 0x3333),
         ) * 2.0
             - Vec3::ONE;
         vel += n * e.noise.strength * dt;
@@ -1078,6 +1106,9 @@ pub struct CpuParticles {
     pub last_tick: Option<u64>,
     pub prev_transform: Option<Mat4>,
     pub clock: ParticleClock,
+    /// The render origin a world-space system's slots are relative to
+    /// (`origin.rs`): its turbulence samples the field there.
+    pub origin: Vec3,
 }
 
 impl CpuParticles {
@@ -1113,7 +1144,9 @@ impl CpuParticles {
             for (slot, p) in self.slots.iter_mut().enumerate() {
                 match slot_spawn(slot as u32, max, step.first, step.count) {
                     Some((n, k)) => *p = spawn(e, seed, n, k, step, dt, points),
-                    None if p.alive() => integrate(e, p, dt, step.time, seed, colliders),
+                    None if p.alive() => {
+                        integrate(e, p, dt, step.time, seed, colliders, self.origin)
+                    }
                     None => {}
                 }
             }

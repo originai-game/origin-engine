@@ -37,9 +37,11 @@ impl Renderer {
             let ink = st.ink;
             // Surface space: positions from the surface origin (f64 on the
             // CPU, so a camera far from 0 keeps the patterns' precision),
-            // and the canvas uv there.
-            let origin = post::surface_origin(camera.position);
-            let surface_eye = (camera.position.as_dvec3() - origin).as_vec3();
+            // and the canvas uv there. The camera's place in the world is
+            // the scene's origin plus its own (`origin.rs`).
+            let eye = scene.origin.as_dvec3() + camera.position.as_dvec3();
+            let origin = post::surface_origin(eye);
+            let surface_eye = (eye - origin).as_vec3();
             let canvas_world_scale = pt.map_or(0.0, |p| {
                 if p.canvas_world_scale > 0.0 {
                     p.canvas_world_scale.min(4096.0)

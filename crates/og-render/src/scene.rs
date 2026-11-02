@@ -270,6 +270,11 @@ pub struct RenderScene {
     /// [`crate::MAX_CUSTOM_POSTS`]), after the built-in effects and before
     /// exposure, bloom and the tone curve (`PostEffects.custom` in the API).
     pub custom_post: Vec<crate::PostHandle>,
+    /// Where the zero of the scene's coordinates is in the caller's world
+    /// ([`RenderScene::rebase`], `origin.rs`): the frame is drawn relative
+    /// to it, and the shaders that read world position for its look add
+    /// it back. Zero by default.
+    pub origin: Vec3,
     /// How each texture is sampled by sprites, tiles and text (by texture index).
     texture_filters: Vec<TextureFilter>,
     /// The textures [`RenderScene::paletted_texture`] made, by (index

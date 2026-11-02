@@ -11,6 +11,7 @@ fn camera() -> Camera {
   c.position = shadow_pass.light.xyz;
   c.forward = vec3<f32>(0.0);
   c.time = shadow_pass.time.x;
+  c.origin = shadow_pass.time.yzw;
   return c;
 }
 

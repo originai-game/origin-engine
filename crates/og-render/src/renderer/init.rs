@@ -943,6 +943,7 @@ impl Renderer {
             gpu_cull: None,
             culling_counts: false,
             taa_history: None,
+            drawn_origin: Vec3::ZERO,
             stylise_chain: None,
             sprite_arrays: None,
             sprite_meshes: None,

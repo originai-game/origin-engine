@@ -216,6 +216,9 @@ struct WaterGpu {
     /// reflection and the body (0: not at all, as the opaque surfaces'
     /// direct light); yzw: unused.
     ao: [f32; 4],
+    /// The lake's four normal-map layers' uv at the scene's origin, whole
+    /// repeats dropped (`origin.rs`): their pattern stays put when it moves.
+    layers: [[f32; 4]; 2],
 }
 
 /// The most grid cells per side (256² cells, 131,072 triangles per
@@ -478,6 +481,7 @@ impl WaterRenderer {
         planar: &[(usize, &wgpu::TextureView)],
         ao: &wgpu::TextureView,
         ao_direct: f32,
+        origin: Vec3,
         fallback: &wgpu::TextureView,
         mesh_buffers: &dyn Fn(
             crate::scene::MeshHandle,
@@ -571,6 +575,7 @@ impl WaterRenderer {
                     f32::from(normal_view.is_some()),
                 ],
                 ao: [ao_direct.clamp(0.0, 1.0), 0.0, 0.0, 0.0],
+                layers: lake_layers(origin, water.normal_scale.max(0.0)),
             };
             queue.write_buffer(&slot.uniform, 0, bytemuck::bytes_of(&gpu));
             // A probe face has no planar reflection of its own (that would be
@@ -886,10 +891,12 @@ pub(crate) fn underwater_fog(w: &Water) -> crate::Fog {
 
 /// The frame's caustics: the first surface that has them, as
 /// `FrameUniform::caustics` (height, strength, scale, fade; then the xz
-/// rectangle). Zero without one.
-pub(crate) fn caustics(waters: &[Water]) -> [[f32; 4]; 2] {
+/// rectangle; then the two cell layers at the scene's `origin`, each its
+/// whole cells and the rest, so the pattern stays put when it moves:
+/// `origin.rs`). Zero without one.
+pub(crate) fn caustics(waters: &[Water], origin: Vec3) -> [[f32; 4]; 4] {
     let Some(w) = waters.iter().find(|w| w.caustics > 0.0) else {
-        return [[0.0; 4]; 2];
+        return [[0.0; 4]; 4];
     };
     let (_, at) = plane(w);
     let mut lo = Vec2::splat(f32::MAX);
@@ -901,9 +908,20 @@ pub(crate) fn caustics(waters: &[Water]) -> [[f32; 4]; 2] {
         lo = lo.min(Vec2::new(p.x, p.z));
         hi = hi.max(Vec2::new(p.x, p.z));
     }
+    let scale = w.caustics_scale.max(1e-3);
+    // lighting.wgsl `caustics`: the cells of `p.xz * scale`, and of 1.37
+    // times that.
+    let cells = |k: f64| {
+        let at = |o: f32| f64::from(o) * f64::from(scale) * k;
+        let (x, z) = (at(origin.x), at(origin.z));
+        let (wx, wz) = (x.floor(), z.floor());
+        [wx as f32, wz as f32, (x - wx) as f32, (z - wz) as f32]
+    };
     [
-        [at.y, w.caustics, w.caustics_scale.max(1e-3), 0.15],
+        [at.y, w.caustics, scale, 0.15],
         [lo.x, lo.y, hi.x, hi.y],
+        cells(1.0),
+        cells(f64::from(1.37f32)),
     ]
 }
 
@@ -1018,4 +1036,17 @@ pub(crate) fn water_2d_strips(waters: &[Water2d], frame: &mut crate::ribbons::Ri
 /// The water module after the frame group and the lighting.
 pub(crate) fn water_source(frame_wgsl: &str, lighting_wgsl: &str) -> String {
     format!("{frame_wgsl}{lighting_wgsl}{}", wgsl3d!("water.wgsl"))
+}
+
+/// The lake's four layers' uv at `origin` (water.wgsl `map_slope`: world
+/// xz times the repeats over each layer's period), in f64 and without the
+/// whole repeats: zero at the world's zero.
+fn lake_layers(origin: Vec3, repeats: f32) -> [[f32; 4]; 2] {
+    let k = f64::from(repeats);
+    let at = |o: f32, period: f64| (f64::from(o) * k / period).rem_euclid(1.0) as f32;
+    let (x, z) = (origin.x, origin.z);
+    [
+        [at(x, 103.0), at(z, 103.0), at(x, 107.0), at(z, 107.0)],
+        [at(x, 8907.0), at(z, 9803.0), at(x, 1091.0), at(z, 1027.0)],
+    ]
 }

@@ -20,8 +20,15 @@ fn lattice3(c: vec3<i32>, seed: u32) -> f32 {
 
 // Trilinear value noise with a smoothstep fade, in [0, 1).
 fn value_noise3(p: vec3<f32>, seed: u32) -> f32 {
+  return value_noise3_at(p, vec3<i32>(0), seed);
+}
+
+// value_noise3 at `p` plus the whole lattice cells `whole` (a point far
+// from the world's zero, from its place relative to the render origin:
+// origin.rs).
+fn value_noise3_at(p: vec3<f32>, whole: vec3<i32>, seed: u32) -> f32 {
   let fl = floor(p);
-  let i = vec3<i32>(fl);
+  let i = vec3<i32>(fl) + whole;
   let f = p - fl;
   let u = f * f * (3.0 - 2.0 * f);
   let c000 = lattice3(i, seed);

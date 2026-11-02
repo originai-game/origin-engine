@@ -410,6 +410,9 @@ struct LayerGpu {
     mapping: [f32; 4],
     slope: [f32; 4],
     altitude: [f32; 4],
+    /// xyz: the layer's uv at the scene's origin, whole repeats dropped
+    /// (`origin.rs`): the layers' patterns stay put when it moves.
+    offset: [f32; 4],
 }
 
 /// `TerrainUniform` in terrain.wgsl.

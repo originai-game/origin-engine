@@ -89,7 +89,8 @@ fn sample_layer(i: u32, p: vec3<f32>, n: vec3<f32>, dpx: vec3<f32>, dpy: vec3<f3
   s.albedo = vec4<f32>(1.0);
   s.normal = n;
   if (l.mapping.y < 0.5) {
-    let uv = p.xz * k;
+    // World xz from the frame's origin, plus the layer's uv there.
+    let uv = p.xz * k + l.offset.xz;
     if (has_albedo) { s.albedo = layer_albedo(i, uv, dpx.xz * k, dpy.xz * k); }
     if (has_normal) {
       let m = layer_normal_map(i, uv, dpx.xz * k, dpy.xz * k);
@@ -101,9 +102,9 @@ fn sample_layer(i: u32, p: vec3<f32>, n: vec3<f32>, dpx: vec3<f32>, dpy: vec3<f3
   } else {
     var w = pow(abs(n), vec3<f32>(4.0));
     w = w / max(w.x + w.y + w.z, 1e-5);
-    let ux = p.zy * k;
-    let uy = p.xz * k;
-    let uz = p.xy * k;
+    let ux = p.zy * k + l.offset.zy;
+    let uy = p.xz * k + l.offset.xz;
+    let uz = p.xy * k + l.offset.xy;
     if (has_albedo) {
       s.albedo = layer_albedo(i, ux, dpx.zy * k, dpy.zy * k) * w.x
         + layer_albedo(i, uy, dpx.xz * k, dpy.xz * k) * w.y

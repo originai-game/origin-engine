@@ -25,6 +25,7 @@ struct WaterUniform {
   under: vec4<f32>,       // rgb: the underwater colour, w: three.js Water's glint (0: the half-vector highlight)
   normals: vec4<f32>,     // x: the normal map's repeats, yz: its flow (0: the lake's layers), w: 1 with a normal map
   ao: vec4<f32>,          // x: PostEffects.aoDirect, how much the screen AO darkens the reflection and the body (0: not at all)
+  layers: array<vec4<f32>, 2>,  // the lake's four layers' uv at the frame's origin, whole repeats dropped (xy, zw; origin.rs)
 };
 
 @group(1) @binding(0) var<uniform> water: WaterUniform;
@@ -144,10 +145,12 @@ fn map_slope(world: vec2<f32>, uv: vec2<f32>, t: f32) -> vec2<f32> {
     let gx = dpdx(p);
     let gy = dpdy(p);
     let tt = t * water.waves.y;
-    let s = ripple_map(p / 103.0 + vec2<f32>(tt / 17.0, tt / 29.0), gx / 103.0, gy / 103.0)
-      + ripple_map(p / 107.0 - vec2<f32>(tt / -19.0, tt / 31.0), gx / 107.0, gy / 107.0)
-      + ripple_map(p / vec2<f32>(8907.0, 9803.0) + vec2<f32>(tt / 101.0, tt / 97.0), gx / vec2<f32>(8907.0, 9803.0), gy / vec2<f32>(8907.0, 9803.0))
-      + ripple_map(p / vec2<f32>(1091.0, 1027.0) - vec2<f32>(tt / 109.0, tt / -113.0), gx / vec2<f32>(1091.0, 1027.0), gy / vec2<f32>(1091.0, 1027.0));
+    // `world` is from the frame's origin: each layer adds its uv there.
+    let o = water.layers;
+    let s = ripple_map(p / 103.0 + o[0].xy + vec2<f32>(tt / 17.0, tt / 29.0), gx / 103.0, gy / 103.0)
+      + ripple_map(p / 107.0 + o[0].zw - vec2<f32>(tt / -19.0, tt / 31.0), gx / 107.0, gy / 107.0)
+      + ripple_map(p / vec2<f32>(8907.0, 9803.0) + o[1].xy + vec2<f32>(tt / 101.0, tt / 97.0), gx / vec2<f32>(8907.0, 9803.0), gy / vec2<f32>(8907.0, 9803.0))
+      + ripple_map(p / vec2<f32>(1091.0, 1027.0) + o[1].zw - vec2<f32>(tt / 109.0, tt / -113.0), gx / vec2<f32>(1091.0, 1027.0), gy / vec2<f32>(1091.0, 1027.0));
     let noise = s * 0.5 - 1.0;
     n = normalize(vec3<f32>(noise.x * 1.5, noise.z, noise.y * 1.5));
   } else {

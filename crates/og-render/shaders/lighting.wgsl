@@ -245,9 +245,12 @@ fn caustics(p: vec3<f32>) -> f32 {
   let depth = c.x - p.y;
   if (depth <= 0.0) { return 0.0; }
   let t = frame.time.x;
+  // `p` is from the frame's origin: each layer adds its cells there.
   let q = p.xz * c.z;
-  let a = caustic_cells(q + vec2<f32>(t * 0.21, t * 0.13));
-  let b = caustic_cells(q * 1.37 + vec2<f32>(-t * 0.17, t * 0.23) + 3.7);
+  let ca = frame.caustics_cells[0];
+  let cb = frame.caustics_cells[1];
+  let a = caustic_cells(q + ca.zw + vec2<f32>(t * 0.21, t * 0.13), ca.xy);
+  let b = caustic_cells(q * 1.37 + cb.zw + vec2<f32>(-t * 0.17, t * 0.23) + 3.7, cb.xy);
   let fade = smoothstep(0.0, 0.4, depth) * exp(-depth * c.w);
   return pow(min(a, b), 3.0) * 4.0 * c.y * fade;
 }
@@ -258,8 +261,8 @@ fn caustic_hash(p: vec2<f32>) -> vec2<f32> {
 }
 
 // 1 on the cell borders of a jittered grid, falling off towards the centres.
-fn caustic_cells(p: vec2<f32>) -> f32 {
-  let i = floor(p);
+fn caustic_cells(p: vec2<f32>, whole: vec2<f32>) -> f32 {
+  let i = floor(p) + whole;
   let f = fract(p);
   var d1 = 8.0;
   var d2 = 8.0;

@@ -108,6 +108,7 @@ fn shadow_hook(o: VsOut) -> Hook {
   h.uv = o.uv;
   h.color = o.color;
   h.time = shadow_pass.time.x;
+  h.origin = shadow_pass.time.yzw;
   h.eye = vec3<f32>(0.0);
   h.front = 1.0;
   return h;

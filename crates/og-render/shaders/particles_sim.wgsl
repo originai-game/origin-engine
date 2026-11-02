@@ -102,8 +102,10 @@ fn integrate(p: Particle) -> Particle {
   vel += emitter.forces.xyz * dt;
   if (emitter.noise.x != 0.0) {
     let seed = emitter.info.y;
-    let q = pos * emitter.noise.y + vec3<f32>(emitter.noise.w * emitter.noise.z);
-    let n = vec3<f32>(value_noise3(q, seed ^ 0x1111u), value_noise3(q, seed ^ 0x2222u), value_noise3(q, seed ^ 0x3333u)) * 2.0 - vec3<f32>(1.0);
+    // `pos` is from the render origin: the lattice's cells there are added.
+    let w = vec3<i32>(emitter.noise_origin[0].xyz);
+    let q = pos * emitter.noise.y + emitter.noise_origin[1].xyz + vec3<f32>(emitter.noise.w * emitter.noise.z);
+    let n = vec3<f32>(value_noise3_at(q, w, seed ^ 0x1111u), value_noise3_at(q, w, seed ^ 0x2222u), value_noise3_at(q, w, seed ^ 0x3333u)) * 2.0 - vec3<f32>(1.0);
     vel += n * emitter.noise.x * dt;
   }
   vel *= 1.0 / (1.0 + max(emitter.forces.w, 0.0) * dt);
@@ -170,5 +172,15 @@ fn clear(@builtin(global_invocation_id) id: vec3<u32>) {
   p.pos_age = vec4<f32>(0.0);
   p.vel_life = vec4<f32>(0.0);
   p.misc = vec4<f32>(0.0);
+  particles[id.x] = p;
+}
+
+// Moves every slot by the entry's translation (a move of the render
+// origin, origin.rs): world-space particles keep their place in the world.
+@compute @workgroup_size(64)
+fn shift(@builtin(global_invocation_id) id: vec3<u32>) {
+  if (id.x >= emitter.info.x) { return; }
+  var p = particles[id.x];
+  p.pos_age = vec4<f32>(p.pos_age.xyz + emitter.transform[3].xyz, p.pos_age.w);
   particles[id.x] = p;
 }
