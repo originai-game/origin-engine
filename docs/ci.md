@@ -1069,7 +1069,7 @@ is added. Git holds only
 | `feature` | the roadmap row (`U6c`, `G2-3`) or stream (`ui-art`, `gate`) it shows |
 | `title` | what the artifact shows, in a few words |
 | `kind` | `frame`, `film`, `before-after`, `benchmark` or `concept` |
-| `commit`, `date`, `thread` | the commit it shows, the day, the Amp thread that made it |
+| `commit`, `date`, `thread` | the commit it shows, the day, the Amp thread that made it; a `null` thread means unknown: a pre-trailer backfill entry whose commit no single stream branch alone reaches (`add` never writes one now) |
 | `key`, `sha256`, `bytes`, `type` | the object in the bucket, its hash, size and media type |
 | `width`, `height`, `duration` | an image's or film's pixels, a film's seconds |
 | `metrics`, `machine` | a benchmark's `{ name, value, unit }` list (a value may be a string, such as a hash) and where it ran |
@@ -1092,7 +1092,12 @@ bun scripts/showcase.ts serve                           # the index on localhost
 `add` defaults `--commit` to HEAD, `--date` to today (UTC) and `--thread` to
 `$AMP_THREAD_ID`, else `$AMP_CURRENT_THREAD_ID`; with neither set (a
 runner's shell sets no thread variable) it refuses the entry rather than
-record no thread, so pass `--thread T-…` (an ID or thread URL) there. It uploads only bytes the bucket does not hold and never
+record no thread, so pass `--thread T-…` (an ID or thread URL) there. The
+570 entries of the first backfill that hold `thread: null` stay unknown on
+purpose: their files' commits were made without an `Amp-Thread-ID` trailer
+and are reachable from several stream branches of `docs/roadmap.md` §4 (they
+were on main when those branches were cut), so no thread follows from the
+evidence, and a guess by author or date is worse than none. It uploads only bytes the bucket does not hold and never
 repeats an entry of the same file, feature and title. It reaches the bucket
 over S3 as the user `origin-engine-showcase-s3`, whose policy allows put,
 get and list in this bucket alone (no delete, no other bucket), with
