@@ -45,6 +45,48 @@
       "source": "templates/game/assets/textures/stone_n.png of origingame/origin-engine; shipped in @origingame/create-game's template/"
     },
     {
+      "path": "references/metal/inspector-edited.png",
+      "bytes": 127162,
+      "sha256": "c0c25b420cc3d907c3eea8ef480134c1eb9066da38225b04d17596c574d3a9d9",
+      "licence": "unrecorded: add it to the template's LICENSES.md",
+      "source": "templates/game/references/metal/inspector-edited.png of origingame/origin-engine; shipped in @origingame/create-game's template/"
+    },
+    {
+      "path": "references/metal/inspector-entity.png",
+      "bytes": 126241,
+      "sha256": "e00995a381d0ea546d6985b8804d136f41d80e0f5b3c3858d453c34bb28244ac",
+      "licence": "unrecorded: add it to the template's LICENSES.md",
+      "source": "templates/game/references/metal/inspector-entity.png of origingame/origin-engine; shipped in @origingame/create-game's template/"
+    },
+    {
+      "path": "references/metal/inspector-gizmo-rotate.png",
+      "bytes": 142530,
+      "sha256": "90a648d04390b61366f2a38bd8971340da675fc35e43723043c3a1ba808a404f",
+      "licence": "unrecorded: add it to the template's LICENSES.md",
+      "source": "templates/game/references/metal/inspector-gizmo-rotate.png of origingame/origin-engine; shipped in @origingame/create-game's template/"
+    },
+    {
+      "path": "references/metal/inspector-gizmo-scale.png",
+      "bytes": 124581,
+      "sha256": "d1d72be71a2b5529ec0b80b51cf8f94b92b5b207bcf48e8449ab5a9f1a13de36",
+      "licence": "unrecorded: add it to the template's LICENSES.md",
+      "source": "templates/game/references/metal/inspector-gizmo-scale.png of origingame/origin-engine; shipped in @origingame/create-game's template/"
+    },
+    {
+      "path": "references/metal/inspector-gizmo-translate.png",
+      "bytes": 126213,
+      "sha256": "e5ae9038ab1926b1d1c2208a7a77bf8ed914c02b891a78e82697e8069e98e804",
+      "licence": "unrecorded: add it to the template's LICENSES.md",
+      "source": "templates/game/references/metal/inspector-gizmo-translate.png of origingame/origin-engine; shipped in @origingame/create-game's template/"
+    },
+    {
+      "path": "references/metal/inspector-resources.png",
+      "bytes": 130849,
+      "sha256": "0c5415741f14f486e1786feefc30a14558510694595f378a8603099bc20595b3",
+      "licence": "unrecorded: add it to the template's LICENSES.md",
+      "source": "templates/game/references/metal/inspector-resources.png of origingame/origin-engine; shipped in @origingame/create-game's template/"
+    },
+    {
       "path": "references/metal/intro-4.png",
       "bytes": 117835,
       "sha256": "d04b144afb06d0419587177d1dd5ed85e31c5d519dd744b01ce27c61ddfebf89",
