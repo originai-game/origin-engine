@@ -19,7 +19,7 @@ const px = (n: number): Size => ({ kind: "fixed", px: n });
  * phone (the pattern then takes no title of its own), the pattern under it, and the action hints at the desktop's foot.
  * `bleed` takes the whole safe area with no header (a versus screen, a map).
  */
-function frame(id: string, title: string, build: () => void, hints: Array<{ action: string; hint: string }>, bleed = false): void {
+export function frame(id: string, title: string, build: () => void, hints: Array<{ action: string; hint: string }>, bleed = false): void {
   const t = og.ui.frameTheme();
   const vp = og.ui.frameViewport();
   const sa = vp.safeArea;

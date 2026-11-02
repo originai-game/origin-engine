@@ -712,3 +712,54 @@ export function genresScript(phone: boolean): Script {
   b.cmd("demo:text:100");
   return b.end();
 }
+
+/** The systems games' previews (src/genres2.ts) in their states. `phone` keeps to what a finger does. */
+function genres2(b: ReturnType<typeof builder>, phone: boolean): void {
+  // The garage: the engine's sport tier previewed, the race tier refused (short), the sport tier bought, then the
+  // livery's layers with the stripe moved up.
+  const list = phone ? "Body/Parts" : "List";
+  const act = phone ? "Body/Garage/Action" : "Side/Action";
+  b.cmd("show:garage");
+  b.cmd("pat:reset");
+  b.shot("garage-idle", 1.0);
+  b.dump("garage");
+  b.seq((at) => tap(at, `${list}/engine.race`), 0.3);
+  b.seq((at) => tap(at, act), 0.15);
+  b.shot("garage-short", 0.4);
+  b.seq((at) => tap(at, `${list}/engine.sport`), 0.3);
+  b.seq((at) => tap(at, act), 0.3);
+  b.shot("garage-bought", 0.6);
+  b.dump("garage-bought");
+  b.cmd("pat:garage:category:livery");
+  b.shot("garage-livery", 0.8);
+  b.seq((at) => tap(at, `${phone ? "Body" : "List"}/stripe/Up`), 0.3);
+  b.shot("garage-layer", 0.5);
+  b.dump("garage-layer");
+  b.cmd("pat:garage:reset");
+}
+
+const GENRE2_SCREENS = ["garage"] as const;
+
+/** The systems games' previews in their states, then each screen right to left, in Japanese, and at 200 % text. */
+export function genres2Script(phone: boolean): Script {
+  const b = builder(0.3);
+  if (phone) b.cmd("viewport:phone");
+  genres2(b, phone);
+  for (const loc of ["ar", "ja"]) {
+    b.cmd(`locale:${loc}`);
+    for (const s of GENRE2_SCREENS) {
+      b.cmd(`show:${s}`);
+      b.cmd("pat:reset");
+      b.shot(`${loc === "ar" ? "rtl" : loc}-${s}`, 1.0);
+    }
+  }
+  b.cmd("locale:en");
+  b.cmd("demo:text:200");
+  for (const s of GENRE2_SCREENS) {
+    b.cmd(`show:${s}`);
+    b.cmd("pat:reset");
+    b.shot(`text200-${s}`, 1.0);
+  }
+  b.cmd("demo:text:100");
+  return b.end();
+}

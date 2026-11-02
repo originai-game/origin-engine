@@ -11,6 +11,7 @@
 import { og } from "@origingame/engine";
 import { storyCommand } from "./story.ts";
 import { genreScene, genresCommand, resetGenres } from "./genres.ts";
+import { genres2Command, resetGenres2 } from "./genres2.ts";
 import type { CardTarget, GridItem, HandCard, InventoryCarry, InventoryMove, PaperdollSlot, PullItem, RewardOption, Size, StoreOffer, UiRect, World } from "@origingame/engine";
 
 /** A fixture the preview changes: its readonly fields writable. */
@@ -77,7 +78,13 @@ const ART_FILES = [
   "figures/mira", "figures/aria", "figures/kael",
   "portraits/wren", "portraits/vesper", "portraits/maren", "portraits/torvin", "portraits/brann", "scenes/gothic-halls", "maps/world",
   "songs/neon-moon", "songs/sakura-wind", "songs/stormbreak", "songs/desert-drum", "songs/crystal-echo", "songs/phoenix",
+  "garage/coupe", "garage/turbo", "garage/wheels", "garage/suspension", "garage/exhaust", "garage/brakes", "garage/wing", "scenes/garage",
+  "loadout/raven", "loadout/sidearm", "loadout/frag", "loadout/stim", "loadout/knife", "loadout/drone", "loadout/shield", "loadout/optic",
+  "loadout/suppressor", "loadout/grip", "loadout/magazine", "loadout/stock", "loadout/laser",
+  "cg/riverboat", "cg/storm-ferry", "cg/dawn-gate",
 ] as const;
+/** The cut-outs on transparent ground (PNG); the rest is painted edge to edge (JPEG). */
+const CUTOUTS: ReadonlySet<string> = new Set(["garage/coupe", "loadout/raven"]);
 export type ArtName = (typeof ART_FILES)[number];
 const ART: Partial<Record<ArtName, number>> = {};
 let artOn = true;
@@ -97,8 +104,8 @@ export function L(key: string, args?: Record<string, string | number>): string {
 export function loadPatternArt(world: World): void {
   words = world;
   for (const f of ART_FILES) {
-    // Figures are cut out on transparent ground (PNG); the rest is painted edge to edge (JPEG).
-    const r = og.load.texture(world, `textures/art/${f}.${f.startsWith("figures/") ? "png" : "jpg"}`);
+    // Figures and the other cut-outs are on transparent ground (PNG); the rest is painted edge to edge (JPEG).
+    const r = og.load.texture(world, `textures/art/${f}.${f.startsWith("figures/") || CUTOUTS.has(f) ? "png" : "jpg"}`);
     if (r.ok) ART[f] = r.value as unknown as number;
   }
 }
@@ -130,6 +137,7 @@ const SCENES: Record<string, [ArtName, { x: number; y: number }]> = {
   lobby: ["scenes/title", { x: 0.55, y: 0.45 }],
   select: ["scenes/gothic-halls", { x: 0.5, y: 0.4 }],
   draft: ["scenes/gothic-halls", { x: 0.5, y: 0.6 }],
+  garage: ["scenes/garage", { x: 0.5, y: 0.55 }],
 };
 
 /** The pattern screen's painted scene, built before anything over it (the kit's Gallery button among them). */
@@ -681,7 +689,7 @@ export function gachaScreen(backdrop = 0): void {
 export function patternsCommand(world: World, args: readonly string[]): void {
   const [key, value = ""] = args;
   if ((key === "dlg" || key === "quest") && storyCommand(world, key, value, args[2] ?? "")) return;
-  if (key && genresCommand(key, value, args[2] ?? "")) return;
+  if (key && (genresCommand(key, value, args[2] ?? "") || genres2Command(key, value, args[2] ?? ""))) return;
   if (key === "pick") p.pick = { key: value, count: 0 };
   else if (key === "highlight") p.highlight = value;
   else if (key === "select") p.selected = value;
@@ -749,6 +757,7 @@ export function patternsCommand(world: World, args: readonly string[]): void {
     sto = st0();
     ps = pass0();
     resetGenres();
+    resetGenres2();
   }
 }
 
