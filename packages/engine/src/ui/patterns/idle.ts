@@ -39,14 +39,14 @@ export function idleGenerator(id: string, desc: Api.IdleGeneratorDesc): Api.Idle
   } as Api.DrawDesc);
   kit.props({ transform: { scaleX: pop, scaleY: pop }, states: [{ name: "purse", states: [vstate("afford"), vstate("short")], transitions: [] }], state: [{ group: "purse", state: can ? "afford" : "short" }] });
   // The art, darkened and locked until it is unlocked.
-  kit.open("Art", { width: px(art), height: px(art), part: "Idle.art", partClass: "slot" });
+  kit.open("Art", { width: px(art), height: px(art), part: "Idle.art", partClass: "badge" });
   if (desc.image) artSlot("Pic", "Idle.pic", { texture: desc.image, kind: "item", width: px(art), height: px(art), radius: u(8) });
   else {
     kit.setDraw({ shape: { kind: "rect", radii: [u(8), u(8), u(8), u(8)] }, fills: [vgrad([[0, paint(mix(role("info"), role("panel"), 0.55))], [1, paint(mix(role("info"), role("shadow"), 0.7))]])] } as Api.DrawDesc);
     symbol("Pic", "bolt", Math.round(art * 0.55), mix(role("info"), hex("#ffffff"), 0.3), { icon: desc.icon || undefined });
   }
   if (locked) {
-    kit.open("Shade", { width: px(art), height: px(art), align: "center", cross: "center", radius: u(8), background: token("shadow", 0.62), part: "Idle.lock", partClass: "slot" });
+    kit.open("Shade", { width: px(art), height: px(art), align: "center", cross: "center", radius: u(8), background: token("shadow", 0.62), part: "Idle.lock", partClass: "badge" });
     symbol("Lock", "lock", Math.round(art * 0.36), mix(role("ink"), role("inkFaint"), 0.3), { icon: "lock" });
     kit.close();
     over({ insets: { start: 0, top: 0 }, inert: true, z: 2 });
@@ -153,7 +153,7 @@ export function prestigePanel(id: string, desc: Api.PrestigeDesc): Api.PrestigeR
   kit.row("Body", { width: grow(), gap: u(16), cross: "center" }, () => {
     // The emblem, glowing in gold while a reset gives something.
     const glowK = ready ? (moving ? 0.55 + 0.25 * Math.sin(tick * 0.06) : 0.65) : 0;
-    kit.open("Emblem", { width: px(em), height: px(em), align: "center", cross: "center", part: "Prestige.emblem", partClass: "slot" });
+    kit.open("Emblem", { width: px(em), height: px(em), align: "center", cross: "center", part: "Prestige.emblem", partClass: "badge" });
     // A soft gold halo behind it (a radial wash, not a glow on an empty disc, which paints the disc whole).
     if (glowK > 0) kit.setDraw({ shape: { kind: "ellipse" }, fills: [radial([[0, paint(STAR_GOLD, glowK * 0.55)], [0.6, paint(STAR_GOLD, glowK * 0.18)], [1, paint(STAR_GOLD, 0)]])] } as Api.DrawDesc);
     const inner = Math.round(em * 0.78);

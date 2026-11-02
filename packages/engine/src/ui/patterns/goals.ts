@@ -119,7 +119,7 @@ export function goalChips(id: string, desc: Api.GoalChipsDesc): void {
       strokes: [line(1, paint(done ? role("success") : mix(role("ink"), role("panel"), 0.65), done ? 0.9 : 0.5))],
       effects: [shadow(u(2), u(8), 0.5)],
     } as Api.DrawDesc);
-    kit.open("Art", { width: px(art), height: px(art), part: "Goals.art", partClass: "slot" });
+    kit.open("Art", { width: px(art), height: px(art), part: "Goals.art", partClass: "badge" });
     if (gl.image) artSlot("Pic", "Goals.pic", { texture: gl.image, kind: "item", width: px(art), height: px(art), radius: u(6) });
     else symbol("Pic", "gem", art, mix(role("info"), hex("#ffffff"), 0.15), { icon: gl.icon || undefined });
     if (done) {

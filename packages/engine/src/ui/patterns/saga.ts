@@ -33,7 +33,7 @@ function smooth(pts: Pt[]): Api.Vector2[] {
 /** A line of the path, an absolute layer over the whole content (inert): its points, width, ink and glow. */
 function pathLayer(id: string, pts: Pt[], width: number, ink: Api.Paint, effects: Api.Effect[] = []): void {
   if (pts.length < 2) return;
-  kit.open(id, { width: grow(), height: grow(), part: `Saga.path${id === "Lit" ? "[lit]" : ""}`, partClass: "slot" });
+  kit.open(id, { width: grow(), height: grow(), part: `Saga.path${id === "Lit" ? "[lit]" : ""}`, partClass: "badge" });
   kit.setDraw({ shape: { kind: "path", points: smooth(pts), curves: true, width, cap: "round", join: "round" }, fills: [{ kind: "solid", color: ink }], effects } as Api.DrawDesc);
   kit.close();
   over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true });
@@ -80,7 +80,7 @@ export function sagaMap(id: string, desc: Api.SagaMapDesc): Api.SagaMapResult {
   kit.open(id, { direction: "column", width: grow(), height: grow(), part: "Saga.map", partClass: "panel" });
   // The backdrop: the map's art behind the view, still while the path scrolls over it (a parallax sky), a shade over
   // it so the badges read; without art, a dusk gradient.
-  kit.open("Backdrop", { width: grow(), height: grow(), part: "Saga.backdrop", partClass: "slot" });
+  kit.open("Backdrop", { width: grow(), height: grow(), part: "Saga.backdrop", partClass: "badge" });
   kit.setDraw({
     shape: { kind: "rect", radii: [0, 0, 0, 0] },
     fills: [
@@ -92,7 +92,7 @@ export function sagaMap(id: string, desc: Api.SagaMapDesc): Api.SagaMapResult {
   over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true });
 
   kit.openScroll("View", { width: grow(), height: grow(), padding: { left: 0, top: 0, right: 0, bottom: 0 }, gap: 0, axes: vertical ? "vertical" : "horizontal" });
-  kit.open("Path", { width: px(W), height: px(H), part: "Saga.route", partClass: "slot" });
+  kit.open("Path", { width: px(W), height: px(H), part: "Saga.route", partClass: "badge" });
   // The path: a wide soft trail under every level, the way ahead a quiet line on it, and the way travelled lit in the
   // accent with a glow, from the first level to the one the player stands on.
   pathLayer("Trail", at, u(26), token("shadow", 0.42));
@@ -124,8 +124,9 @@ export function sagaMap(id: string, desc: Api.SagaMapDesc): Api.SagaMapResult {
     const p = at[i]!;
     const r = surface(key, {
       part: "Saga.node",
-      // Undressed: the badge draws its own face, so a style's button outline never boxes the badge and its stars.
-      cls: "slot",
+      // Class badge: og-ui strokes no outline round an undressed badge (a slot takes a hairline in the line ink), so
+      // neither a style's button outline nor a slot's box frames the badge and its stars.
+      cls: "badge",
       flags: [progress, nd.boss ? "boss" : ""],
       fill: null,
       direction: "column",
@@ -148,7 +149,7 @@ export function sagaMap(id: string, desc: Api.SagaMapDesc): Api.SagaMapResult {
       // The current level breathes: a soft ring of the accent behind its badge.
       if (cur) {
         const k = moving ? 1 + 0.07 * Math.sin(tick * 0.09) : 1.04;
-        kit.open("Ring", { width: px(b), height: px(b), part: "Saga.ring", partClass: "slot" });
+        kit.open("Ring", { width: px(b), height: px(b), part: "Saga.ring", partClass: "badge" });
         kit.setDraw({ shape: { kind: "ellipse" }, fills: [radial([[0, paint(hl, 0)], [0.62, paint(hl, 0.0)], [0.78, paint(hl, 0.5)], [1, paint(hl, 0)]])] } as Api.DrawDesc);
         kit.close();
         over({ insets: { start: 0, top: 0 }, transform: { scaleX: k * 1.32, scaleY: k * 1.32 }, inert: true });
@@ -165,7 +166,7 @@ export function sagaMap(id: string, desc: Api.SagaMapDesc): Api.SagaMapResult {
       } as Api.DrawDesc);
       if (nd.boss) {
         const inner = Math.round(b * 0.8);
-        kit.open("Portrait", { width: px(inner), height: px(inner), part: "Saga.portrait", partClass: "slot" });
+        kit.open("Portrait", { width: px(inner), height: px(inner), part: "Saga.portrait", partClass: "badge" });
         if (nd.image) kit.setDraw({ shape: hexShape, fills: [{ kind: "image", texture: nd.image, fit: "cover", focal: { x: 0.5, y: 0.35 } }], clip: "shape" } as Api.DrawDesc);
         else kit.setDraw({ shape: hexShape, fills: [radial([[0, paint(mix(ink, role("panel"), 0.4))], [1, paint(mix(ink, role("shadow"), 0.6))]])] } as Api.DrawDesc);
         if (!nd.image) symbol("Crown", "crown", Math.round(inner * 0.5), mix(ink, hex("#ffffff"), 0.4));
@@ -214,7 +215,7 @@ export function sagaMap(id: string, desc: Api.SagaMapDesc): Api.SagaMapResult {
     const s = u(58);
     const bob = moving ? Math.round(Math.sin(tick * 0.07) * u(4)) : 0;
     kit.open("Pin", { direction: "column", width: px(s), cross: "center", gap: 0, part: "Saga.pin", partClass: "badge" });
-    kit.open("Disc", { width: px(s), height: px(s), part: "Saga.avatar", partClass: "slot" });
+    kit.open("Disc", { width: px(s), height: px(s), part: "Saga.avatar", partClass: "badge" });
     kit.setDraw({ shape: { kind: "ellipse" }, fills: [solid(role("panel"))], strokes: [line(3, paint(mix(hl, hex("#ffffff"), 0.3)))], effects: [glow(u(10), paint(hl, 0.7), 0), shadow(u(4), u(10), 0.6)] } as Api.DrawDesc);
     artSlot("Art", "Saga.avatarArt", { texture: desc.avatar ?? null, kind: "avatar", width: px(s - 8), height: px(s - 8), radius: Math.round(s / 2), focal: { x: 0.5, y: 0.3 } });
     over({ insets: { start: 4, top: 4 }, inert: true });

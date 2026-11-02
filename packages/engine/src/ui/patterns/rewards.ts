@@ -141,7 +141,7 @@ export function rewardChoice(id: string, desc: Api.RewardChoiceDesc): Api.Reward
       artSlot("Art", "Reward.art", { texture: o.image ?? null, kind: "item", icon: o.icon, rarity: o.rarity, width: px(artW), height: px(compact ? artW : Math.round(artW * 0.62)), radius: Math.max(4, t.small) }, () => {
         // Locked: the art drained of its colour and down to about a third of its value; the lock line says why.
         if (!o.locked) return;
-        kit.open("Dim", { width: grow(), height: grow(), part: "Reward.artLocked", partClass: "slot" });
+        kit.open("Dim", { width: grow(), height: grow(), part: "Reward.artLocked", partClass: "badge" });
         kit.setDraw({ shape: { kind: "rect", radii: [Math.max(4, t.small), Math.max(4, t.small), Math.max(4, t.small), Math.max(4, t.small)] }, fills: [{ kind: "solid", color: paint(mix(role("well"), role("inkMuted"), 0.25), 0.62) }, { kind: "solid", color: token("shadow", 0.42) }] });
         kit.close();
       });
