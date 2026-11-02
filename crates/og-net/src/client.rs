@@ -236,6 +236,71 @@ mod tests {
     }
 
     #[test]
+    fn quick_play_matches_peers_of_one_mode_in_the_order_they_asked_and_times_out_alone() {
+        let relay = Relay::bind(SocketAddr::from((Ipv4Addr::LOCALHOST, 0))).unwrap();
+        let url = format!("ws://127.0.0.1:{}/", relay.port());
+        let peer = || RelayClient::connect(&url).unwrap();
+        let (a, b, c, d) = (peer(), peer(), peer(), peer());
+        // d waits for a duel and leaves the queue before anyone comes.
+        d.send(&protocol::quick("duel", 2, 0, "d"));
+        thread::sleep(Duration::from_millis(30));
+        d.send(&protocol::leave());
+        assert_eq!(
+            until(&d, 1)[0],
+            Event::Left {
+                reason: "left".into()
+            }
+        );
+        // a waits for a duel, b for a trio of the same mode: nobody is matched.
+        a.send(&protocol::quick("duel", 2, 0, "a"));
+        thread::sleep(Duration::from_millis(30));
+        b.send(&protocol::quick("duel", 3, 0, "b"));
+        thread::sleep(Duration::from_millis(30));
+        assert!(a.poll().is_empty() && b.poll().is_empty());
+        // c completes a's duel.
+        c.send(&protocol::quick("duel", 2, 0, "c"));
+        let peers = vec![(0, "a".to_string()), (1, "c".to_string())];
+        let Event::Joined {
+            room,
+            peer: 0,
+            peers: got,
+        } = until(&a, 1).remove(0)
+        else {
+            panic!("a was not matched first")
+        };
+        assert!(room.starts_with("quick-duel-"), "{room}");
+        assert_eq!(got, peers);
+        assert_eq!(
+            until(&c, 1)[0],
+            Event::Joined {
+                room: room.clone(),
+                peer: 1,
+                peers
+            }
+        );
+        // The matched room carries messages; nobody joins it by id.
+        a.send(&protocol::send(
+            None,
+            None,
+            &Payload::Json(serde_json::json!("gg")),
+        ));
+        assert!(matches!(&until(&c, 1)[0], Event::Message { from: 0, .. }));
+        d.send(&protocol::join(&room, "d"));
+        assert!(matches!(&until(&d, 1)[0], Event::Error { code, .. } if code == "full"));
+        // b's trio never fills; e's own wait ends in a timeout.
+        let e = peer();
+        e.send(&protocol::quick("solo-ish", 2, 50, "e"));
+        assert!(matches!(
+            &until(&e, 1)[0],
+            Event::Error { op, code, .. } if op == "quick" && code == "timeout"
+        ));
+        assert!(b.poll().is_empty());
+        // Out of the queue, e can wait again, and a mode is a room-id word.
+        e.send(&protocol::quick("bad mode", 2, 0, "e"));
+        assert!(matches!(&until(&e, 1)[0], Event::Error { code, .. } if code == "invalid"));
+    }
+
+    #[test]
     fn a_shaped_relay_holds_frames_drops_only_unreliable_ones_and_keeps_reliable_order() {
         use crate::relay::Shaping;
         let shaping = Shaping {

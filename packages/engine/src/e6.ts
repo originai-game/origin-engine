@@ -114,6 +114,7 @@ export const platform = Object.freeze({
   now: (world: W) => abi().og_platform_now(world.id),
   roomCreate: (world: W, desc?: unknown) => parse(abi().og_platform_room_create(world.id, json(desc))),
   roomJoin: (world: W, room: string) => parse(abi().og_platform_room_join(world.id, room)),
+  quickPlay: (world: W, desc?: unknown) => parse(abi().og_platform_quick_play(world.id, json(desc))),
   roomLeave: (world: W) => parse(abi().og_platform_room_leave(world.id)),
   // Bytes cross as { "$og.bytes": base64 } (og-runtime net.rs BYTES_KEY).
   roomSend: (world: W, data: unknown, to?: number) =>

@@ -23999,7 +23999,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 step: None,
                 unit: "",
                 label: "",
-                doc: doc!("Why it failed: `unavailable` (no rooms here), `not_found`, `full`, `invalid` or `offline`, then a colon and the host's words; empty when ok."),
+                doc: doc!("Why it failed: `unavailable` (no rooms here), `not_found`, `full`, `invalid`, `offline`, `timeout` (quick play matched nobody in time) or `cancelled` (roomLeave while joining), then a colon and the host's words; empty when ok."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

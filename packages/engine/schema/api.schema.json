@@ -9919,6 +9919,7 @@
         "InviteDesc",
         "ShareDesc",
         "RoomDesc",
+        "QuickPlayDesc",
         "RoomPeer",
         "RoomInfo",
         "RoomMessageData",
@@ -10641,8 +10642,29 @@
           "publish": true
         },
         {
+          "name": "quickPlay",
+          "doc": "Quick play: wait to be matched with other players asking for the same mode and number of players, then play in a room of their own. The answer is og.RoomJoined once the room has filled (every matched peer hears it at once, numbered in the order they asked), or ok false with `timeout` after timeoutMs. roomLeave stops waiting (og.RoomJoined with `cancelled`). Natively `og relay` matches the engines connected to it (`og run --room ws://127.0.0.1:<port>/`); on the web the platform's matchmaking does (platform ask 21: until then the Player answers `unavailable`).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "QuickPlayDesc",
+              "optional": true,
+              "doc": "The mode, the players, how long to wait and this player's name."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused with no room host, while in or joining a room, or for a malformed mode or name.",
+          "publish": true
+        },
+        {
           "name": "roomLeave",
-          "doc": "Leave the room: og.RoomPeerLeft with this engine's own peer number answers, and the other peers hear it leave after its last message.",
+          "doc": "Leave the room: og.RoomPeerLeft with this engine's own peer number answers, and the other peers hear it leave after its last message. While joining (quick play waiting for its match) it stops waiting: og.RoomJoined answers with ok false and `cancelled`.",
           "params": [
             {
               "name": "world",
@@ -10652,7 +10674,7 @@
             }
           ],
           "returns": "Result<Void>",
-          "returnsDoc": "Refused when in no room.",
+          "returnsDoc": "Refused when in no room and not joining one.",
           "publish": true
         },
         {
@@ -43396,6 +43418,44 @@
       },
       "additionalProperties": false
     },
+    "QuickPlayDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "platform",
+      "description": "Quick play: what this engine waits to be matched for (og.platform.quickPlay).",
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "description": "The mode to play (at most 32 of letters, digits, `.`, `_` and `-`): only engines asking for the same mode and players are matched. Empty is `default`.",
+          "default": ""
+        },
+        "players": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many play together: the room is made once this many wait (set og.Lockstep.players to the same).",
+          "default": 2,
+          "minimum": 1,
+          "maximum": 16
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How long to wait for the others, in milliseconds; then og.RoomJoined says `timeout`. 0 waits until roomLeave.",
+          "default": 30000,
+          "minimum": 0,
+          "maximum": 600000,
+          "x-og-unit": "ms"
+        },
+        "name": {
+          "type": "string",
+          "description": "This player's name, as the other peers see it (og.platform.roomPeers); empty for none.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
     "RoomPeer": {
       "x-og-kind": "struct",
       "x-og-module": "platform",
@@ -43432,7 +43492,7 @@
       "properties": {
         "state": {
           "type": "string",
-          "description": "`none` (in no room), `joining` (roomCreate or roomJoin asked, not answered yet) or `in`."
+          "description": "`none` (in no room), `joining` (roomCreate, roomJoin or quickPlay asked, not answered yet: quick play waiting for its match) or `in`."
         },
         "room": {
           "type": "string",
@@ -43522,7 +43582,7 @@
     "RoomJoined": {
       "x-og-kind": "event",
       "x-og-module": "platform",
-      "description": "roomCreate or roomJoin finished, or the host put this engine in a room (`og run --room`, a Play link to a room): sent at the start of the tick after the host answered. With ok false the engine is in no room and `reason` says why.",
+      "description": "roomCreate, roomJoin or quickPlay finished, or the host put this engine in a room (`og run --room`, a Play link to a room): sent at the start of the tick after the host answered. With ok false the engine is in no room and `reason` says why.",
       "type": "object",
       "properties": {
         "ok": {
@@ -43547,7 +43607,7 @@
         },
         "reason": {
           "type": "string",
-          "description": "Why it failed: `unavailable` (no rooms here), `not_found`, `full`, `invalid` or `offline`, then a colon and the host's words; empty when ok."
+          "description": "Why it failed: `unavailable` (no rooms here), `not_found`, `full`, `invalid`, `offline`, `timeout` (quick play matched nobody in time) or `cancelled` (roomLeave while joining), then a colon and the host's words; empty when ok."
         }
       },
       "required": [

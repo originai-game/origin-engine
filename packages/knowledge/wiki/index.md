@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2241 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2243 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -1161,6 +1161,7 @@ Field units the docs and Tune use.
 | [`og.platform.point`](platform.md#fn-point) | function | platform | `og_platform_point` |
 | [`og.platform.products`](platform.md#fn-products) | function | platform | `og_platform_products` |
 | [`og.platform.purchase`](platform.md#fn-purchase) | function | platform | `og_platform_purchase` |
+| [`og.platform.quickPlay`](platform.md#fn-quickPlay) | function | platform | `og_platform_quick_play` |
 | [`og.platform.result`](platform.md#fn-result) | function | platform | `og_platform_result` |
 | [`og.platform.roomCreate`](platform.md#fn-roomCreate) | function | platform | `og_platform_room_create` |
 | [`og.platform.roomInfo`](platform.md#fn-roomInfo) | function | platform | `og_platform_room_info` |
@@ -1837,6 +1838,7 @@ Field units the docs and Tune use.
 | [`QuestTab`](ui.md#type-QuestTab) | desc struct | ui | — |
 | [`QuestTrackerDesc`](ui.md#type-QuestTrackerDesc) | desc struct | ui | — |
 | [`QuestView`](story.md#type-QuestView) | struct | story | — |
+| [`QuickPlayDesc`](platform.md#type-QuickPlayDesc) | desc struct | platform | — |
 | [`RaceSplit`](ui.md#type-RaceSplit) | desc struct | ui | — |
 | [`RacingHudDesc`](ui.md#type-RacingHudDesc) | desc struct | ui | — |
 | [`RadialDesc`](ui.md#type-RadialDesc) | desc struct | ui | — |

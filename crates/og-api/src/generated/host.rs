@@ -893,6 +893,8 @@ pub trait PlatformApi: Wire {
     fn og_platform_room_create(&self, world: u32, desc: Option<String>) -> String;
     /// `og.platform.roomJoin`
     fn og_platform_room_join(&self, world: u32, room: String) -> String;
+    /// `og.platform.quickPlay`
+    fn og_platform_quick_play(&self, world: u32, desc: Option<String>) -> String;
     /// `og.platform.roomLeave`
     fn og_platform_room_leave(&self, world: u32) -> String;
     /// `og.platform.roomSend`
@@ -1777,6 +1779,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_platform_now",
     "og_platform_room_create",
     "og_platform_room_join",
+    "og_platform_quick_play",
     "og_platform_room_leave",
     "og_platform_room_send",
     "og_platform_room_peers",

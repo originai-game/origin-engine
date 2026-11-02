@@ -271,6 +271,19 @@ if (deferStart) {
 }
 drain();
 
+// Before --setup, so a setup step may ask the relay for a room itself (og.platform.quickPlay).
+if (room !== undefined) {
+  const linked = JSON.parse(extras.og_node_room_connect(engine.id, room)) as { ok: boolean; reason?: string };
+  if (!linked.ok) fail(`--room ${room}: ${linked.reason}`);
+  // The relay joins the room the URL names: wait for its answer before the first tick. A URL
+  // without a room (ws://127.0.0.1:P/) only connects: the game joins, creates or quick-plays.
+  const named = !/^ws:\/\/[^/]+\/?$/.test(room);
+  for (let i = 0; named && i < 2000 && (JSON.parse(abiRoomInfo()) as { state: string }).state !== "in"; i++) {
+    extras.og_node_room_pump(engine.id);
+    await new Promise((r) => setTimeout(r, 1));
+  }
+}
+
 for (const step of setup) {
   const [action, ...args] = step.split(":");
   const r = engine.command(action!, args);
@@ -299,16 +312,6 @@ if (port !== undefined) {
   if (!r.ok) fail(r.reason!);
   listening = r.value!;
   process.stdout.write(`probe: ws://127.0.0.1:${listening}/probe\n`);
-}
-
-if (room !== undefined) {
-  const linked = JSON.parse(extras.og_node_room_connect(engine.id, room)) as { ok: boolean; reason?: string };
-  if (!linked.ok) fail(`--room ${room}: ${linked.reason}`);
-  // The relay joins the room the URL names: wait for its answer before the first tick.
-  for (let i = 0; i < 2000 && (JSON.parse(abiRoomInfo()) as { state: string }).state !== "in"; i++) {
-    extras.og_node_room_pump(engine.id);
-    await new Promise((r) => setTimeout(r, 1));
-  }
 }
 
 function abiRoomInfo(): string {
@@ -519,7 +522,7 @@ const summary = {
   netHash: JSON.parse(boundHost()!.abi.og_net_hash(engine.id)) as string,
   // With --room: lockstep's state at the end (the tick it started, the waits, the first divergent tick),
   // and the shared hash of the final world at --ticks (in rollback the world may run past it).
-  ...(room !== undefined ? { lockstep: netStatus(), confirmedHash: finalHash(ticks ?? dump.tick) } : {}),
+  ...(room !== undefined ? { room: JSON.parse(abiRoomInfo()) as unknown, lockstep: netStatus(), confirmedHash: finalHash(ticks ?? dump.tick) } : {}),
   entities: dump.entities,
   // The game's facts (og.game's `facts`), as the probe prints them.
   facts: (engine.probe.state() as { facts?: unknown }).facts ?? null,

@@ -787,6 +787,8 @@ export interface HostAbi<A, V> {
   og_platform_room_create(world: number, desc: string | undefined): string;
   /** `og.platform.roomJoin` */
   og_platform_room_join(world: number, room: string): string;
+  /** `og.platform.quickPlay` */
+  og_platform_quick_play(world: number, desc: string | undefined): string;
   /** `og.platform.roomLeave` */
   og_platform_room_leave(world: number): string;
   /** `og.platform.roomSend` */
@@ -1618,6 +1620,7 @@ export const SYMBOLS: readonly string[] = [
   "og_platform_now",
   "og_platform_room_create",
   "og_platform_room_join",
+  "og_platform_quick_play",
   "og_platform_room_leave",
   "og_platform_room_send",
   "og_platform_room_peers",

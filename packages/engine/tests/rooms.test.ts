@@ -241,6 +241,31 @@ test("an RTS's orders cross the room as commands once each, in lockstep and in r
   expect(roll[0]!.lockstep.rollbacks + roll[1]!.lockstep.rollbacks).toBeGreaterThan(5);
 }, 300_000);
 
+// G2-7 batch 5: quick play through `og relay`'s queue. Three engines connect
+// to the relay without a room; two ask for a duel and are matched in a room
+// of their own, where lockstep runs and both end on one hash; the third asks
+// for another mode, matches nobody and hears `timeout`, in no room.
+test("quick play matches two engines of one mode in a room of their own; a third of another mode times out", async () => {
+  const runs = await pair("templates/archetypes/arena", "", [
+    ["--ticks", "600", "--setup", "bot:1:tick", "--setup", "quick:duel"],
+    ["--ticks", "600", "--setup", "bot:2:tick", "--setup", "quick:duel"],
+    ["--ticks", "600", "--setup", "quick:other:1"],
+  ]);
+  const [a, b, c] = runs as (Summary & { room: { state: string; room: string; peers: unknown[] } })[];
+  for (const r of [a!, b!]) {
+    expect(r.room.state).toBe("in");
+    expect(r.room.room).toMatch(/^quick-duel-\d+$/);
+    expect(r.room.peers.length).toBe(2);
+    expect(r.lockstep.running).toBe(true);
+    expect(r.lockstep.desync).toBeNull();
+  }
+  expect(b!.room.room).toBe(a!.room.room);
+  expect([a!.lockstep.peer, b!.lockstep.peer].sort()).toEqual([0, 1]);
+  expect(b!.netHash).toBe(a!.netHash);
+  expect(c!.room.state).toBe("none");
+  expect(c!.lockstep.running).toBe(false);
+}, 300_000);
+
 test("a peer frozen past stallTimeout is dropped at one tick, then takes its seat back from the room's world", async () => {
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
   // Paced at 60 Hz, whatever the machine's speed: the stall from 2 s to 4.5 s, the drop near

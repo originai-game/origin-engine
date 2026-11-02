@@ -9,6 +9,13 @@
 //! up to its capacity (16 for a room made by a join) and is gone with its
 //! last peer. Peer numbers count up from 0 per room and are never reused.
 //!
+//! Quick play (`quick`) is matchmaking: a peer waits in the queue of its
+//! mode and player count until that many wait, and then they are put
+//! together in a new room (`quick-<mode>-N`, its capacity the count,
+//! numbered in the order they asked) and each hears `joined` with all of
+//! them; nobody else can join it by id. A peer that waited `timeoutMs`
+//! hears an `error` with code `timeout`; a `leave` takes it out of the queue.
+//!
 //! Order is the contract lockstep rests on: one thread reads each peer's
 //! frames and hands each recipient its copy through that recipient's own
 //! queue, so a peer's messages reach every other peer in the order sent,
@@ -118,10 +125,30 @@ struct Room {
     peers: IdMap<u32, PeerConn>,
 }
 
+/// A room made by quick play: only its matched peers are in it.
+const QUICK_PREFIX: &str = "quick-";
+/// A quick play mode's longest name.
+const MAX_MODE: usize = 32;
+
+/// Where a matched peer was put: (room, peer number), taken up by its
+/// own connection.
+type Placed = Arc<Mutex<Option<(String, u32)>>>;
+
+/// A peer waiting for quick play.
+struct Waiting {
+    conn: u64,
+    name: String,
+    tx: Sender<Queued>,
+    placed: Placed,
+}
+
 #[derive(Default)]
 struct Rooms {
     rooms: BTreeMap<String, Room>,
     next_room: u64,
+    /// Quick play's queues, by (mode, players), oldest first.
+    queues: BTreeMap<(String, u32), Vec<Waiting>>,
+    next_conn: u64,
     shaping: Shaping,
     rng: u64,
     seq: u64,
@@ -217,6 +244,10 @@ struct Peer {
     at: Option<(String, u32)>,
     rooms: Shared,
     log: Sender<String>,
+    conn: u64,
+    /// Waiting for quick play: its queue and when it gives up.
+    queued: Option<((String, u32), Option<Instant>)>,
+    placed: Placed,
 }
 
 fn error(op: &str, code: &str, message: impl Into<String>) -> String {
@@ -254,6 +285,16 @@ impl Peer {
                 op,
                 "invalid",
                 format!("already in room '{r}': leave it first"),
+            ));
+        }
+        if self.queued.is_some() {
+            return self.reply(error(op, "invalid", "waiting for quick play: leave first"));
+        }
+        if make.is_none() && room.starts_with(QUICK_PREFIX) {
+            return self.reply(error(
+                op,
+                "full",
+                format!("room '{room}' is quick play's: only its matched peers are in it"),
             ));
         }
         let mut rooms = self.rooms.lock().unwrap_or_else(|p| p.into_inner());
@@ -314,7 +355,164 @@ impl Peer {
         ));
     }
 
+    /// Takes up the room quick play put this peer in, if it did.
+    fn sync(&mut self) {
+        if self.queued.is_some()
+            && let Some(at) = self.placed.lock().unwrap_or_else(|p| p.into_inner()).take()
+        {
+            self.queued = None;
+            self.at = Some(at);
+        }
+    }
+
+    /// Takes this peer out of quick play's queue; whether it was in it
+    /// (else it was matched meanwhile, and [`Peer::sync`] put it in its room).
+    fn unqueue(&mut self) -> bool {
+        let Some((key, _)) = self.queued.clone() else {
+            return false;
+        };
+        let mut rooms = self.rooms.lock().unwrap_or_else(|p| p.into_inner());
+        let queue = rooms.queues.get_mut(&key);
+        let found = queue.is_some_and(|q| {
+            let n = q.len();
+            q.retain(|w| w.conn != self.conn);
+            q.len() < n
+        });
+        if rooms.queues.get(&key).is_some_and(Vec::is_empty) {
+            rooms.queues.remove(&key);
+        }
+        drop(rooms);
+        if found {
+            self.queued = None;
+        } else {
+            self.sync();
+        }
+        found
+    }
+
+    /// Quick play: waits in the queue of `mode` for `players`, or makes
+    /// the room when this peer completes it.
+    fn quick(&mut self, v: &Value, name: &str) {
+        self.sync();
+        if self.at.is_some() || self.queued.is_some() {
+            let why = match &self.at {
+                Some((r, _)) => format!("already in room '{r}': leave it first"),
+                None => "already waiting for quick play".into(),
+            };
+            return self.reply(error("quick", "invalid", why));
+        }
+        let mode = match v["mode"].as_str().unwrap_or_default() {
+            "" => "default",
+            m => m,
+        };
+        if !protocol::valid_room(mode) || mode.len() > MAX_MODE {
+            return self.reply(error(
+                "quick",
+                "invalid",
+                format!(
+                    "'{mode}' is not a mode: 1 to {MAX_MODE} of letters, digits, '.', '_' and '-'"
+                ),
+            ));
+        }
+        let players = v["players"]
+            .as_u64()
+            .map_or(2, |p| p.clamp(1, u64::from(MAX_CAPACITY)) as u32);
+        let timeout = v["timeoutMs"]
+            .as_u64()
+            .map_or(u64::from(protocol::QUICK_TIMEOUT_MS), |t| {
+                t.min(u64::from(protocol::QUICK_TIMEOUT_MAX_MS))
+            });
+        let key = (mode.to_string(), players);
+        let deadline = (timeout > 0).then(|| Instant::now() + Duration::from_millis(timeout));
+        self.queued = Some((key.clone(), deadline));
+        let mut rooms = self.rooms.lock().unwrap_or_else(|p| p.into_inner());
+        let queue = rooms.queues.entry(key.clone()).or_default();
+        queue.push(Waiting {
+            conn: self.conn,
+            name: name.to_string(),
+            tx: self.tx.clone(),
+            placed: self.placed.clone(),
+        });
+        if queue.len() < players as usize {
+            let waiting = queue.len();
+            drop(rooms);
+            let _ = self
+                .log
+                .send(format!("quick {mode} for {players}: {waiting} waiting"));
+            return;
+        }
+        let group: Vec<Waiting> = queue.drain(..players as usize).collect();
+        if queue.is_empty() {
+            rooms.queues.remove(&key);
+        }
+        let id = loop {
+            rooms.next_room += 1;
+            let id = format!("{QUICK_PREFIX}{mode}-{}", rooms.next_room);
+            if !rooms.rooms.contains_key(&id) {
+                break id;
+            }
+        };
+        let now = Instant::now();
+        let peers: Vec<(u32, String)> = group
+            .iter()
+            .enumerate()
+            .map(|(i, w)| (i as u32, w.name.clone()))
+            .collect();
+        let mut room = Room {
+            capacity: players,
+            next_peer: players,
+            peers: IdMap::new(),
+        };
+        for (i, w) in group.into_iter().enumerate() {
+            let peer = i as u32;
+            *w.placed.lock().unwrap_or_else(|p| p.into_inner()) = Some((id.clone(), peer));
+            let joined = Event::Joined {
+                room: id.clone(),
+                peer,
+                peers: peers.clone(),
+            }
+            .to_json()
+            .to_string();
+            rooms.seq += 1;
+            let _ = w.tx.send((now, rooms.seq, joined));
+            room.peers.insert(
+                peer,
+                PeerConn {
+                    name: w.name,
+                    tx: w.tx,
+                    last_due: now,
+                },
+            );
+        }
+        rooms.rooms.insert(id.clone(), room);
+        drop(rooms);
+        self.sync();
+        let _ = self
+            .log
+            .send(format!("quick {mode} for {players}: matched in room {id}"));
+    }
+
+    /// A waiting peer past its deadline hears `timeout`.
+    fn expire(&mut self) {
+        self.sync();
+        let Some(((mode, players), Some(deadline))) = self.queued.clone() else {
+            return;
+        };
+        if Instant::now() < deadline || !self.unqueue() {
+            return;
+        }
+        self.reply(error(
+            "quick",
+            "timeout",
+            format!("no {players} players for quick play '{mode}' came in time"),
+        ));
+    }
+
     fn leave(&mut self, why: &str) {
+        self.sync();
+        if self.unqueue() {
+            return;
+        }
         let Some((room, peer)) = self.at.take() else {
             return;
         };
@@ -340,6 +538,7 @@ impl Peer {
     }
 
     fn op(&mut self, text: &str) {
+        self.sync();
         let v: Value = match serde_json::from_str(text) {
             Ok(v) => v,
             Err(e) => return self.reply(error("", "invalid", format!("not JSON: {e}"))),
@@ -390,11 +589,12 @@ impl Peer {
                     .to_string(),
                 );
             }
+            "quick" => self.quick(&v, &name),
             "send" => self.send(&v),
             other => self.reply(error(
                 other,
                 "invalid",
-                format!("'{other}' is not a room op: create, join, leave or send"),
+                format!("'{other}' is not a room op: create, join, quick, leave or send"),
             )),
         }
     }
@@ -476,11 +676,19 @@ fn connection(stream: TcpStream, rooms: Shared, stop: Arc<AtomicBool>, log: Send
     let (tx, rx) = mpsc::channel::<Queued>();
     // Frames held until due (a shaped relay's latency), by due time.
     let mut held: Vec<Queued> = Vec::new();
+    let conn = {
+        let mut r = rooms.lock().unwrap_or_else(|p| p.into_inner());
+        r.next_conn += 1;
+        r.next_conn
+    };
     let mut peer = Peer {
         tx,
         at: None,
         rooms,
         log,
+        conn,
+        queued: None,
+        placed: Placed::default(),
     };
     let room = path.trim_matches('/').to_string();
     if !room.is_empty() {
@@ -498,6 +706,7 @@ fn connection(stream: TcpStream, rooms: Shared, stop: Arc<AtomicBool>, log: Send
         if stop.load(Ordering::Relaxed) {
             break "the relay stopped";
         }
+        peer.expire();
         let mut wrote = false;
         held.extend(rx.try_iter());
         held.sort_by_key(|q| (q.0, q.1));

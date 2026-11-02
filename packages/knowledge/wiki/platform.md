@@ -89,16 +89,18 @@ module platform {
 | [`og.platform.info`](#fn-info) | function | What answers platform calls here, and what it answers. |
 | [`og.platform.now`](#fn-now) | function | The host's wall-clock time, UTC milliseconds since 1970, as of this tick: what the host last told the engine (when it attached, and with every answer, applied at a tick's start like the answers) moved on by the ticks since. The one wall-clock read game code may make: it is host input, so a replay with the same answers gives the same values. Use it to know how long the game was closed (a save's time against a launch's), never to time play (that is og.Time). |
 | [`RoomDesc`](#type-RoomDesc) | desc struct | A room to create. |
+| [`QuickPlayDesc`](#type-QuickPlayDesc) | desc struct | Quick play: what this engine waits to be matched for (og.platform.quickPlay). |
 | [`RoomPeer`](#type-RoomPeer) | struct | One peer in the room. |
 | [`RoomInfo`](#type-RoomInfo) | struct | The room this engine is in. |
 | [`RoomMessageData`](#type-RoomMessageData) | struct | A message another peer sent: what og.RoomMessage announced. |
-| [`og.RoomJoined`](#record-RoomJoined) | event | roomCreate or roomJoin finished, or the host put this engine in a room (`og run --room`, a Play link to a room): sent at the start of the tick after the host answered. With ok false the engine is in no room and `reason` says why. |
+| [`og.RoomJoined`](#record-RoomJoined) | event | roomCreate, roomJoin or quickPlay finished, or the host put this engine in a room (`og run --room`, a Play link to a room): sent at the start of the tick after the host answered. With ok false the engine is in no room and `reason` says why. |
 | [`og.RoomPeerJoined`](#record-RoomPeerJoined) | event | Another peer joined this engine's room. |
 | [`og.RoomPeerLeft`](#record-RoomPeerLeft) | event | A peer left this engine's room (it left, closed, or lost its connection), after every message it sent; or, with peer equal to this engine's own number, this engine is in no room any more (roomLeave, or the host lost the room). |
 | [`og.RoomMessage`](#record-RoomMessage) | event | Another peer's message arrived; read it with og.platform.roomMessage. Messages from one peer arrive in the order it sent them. While lockstep runs (og.Lockstep) a message is this peer's host input alone: a system that changes the world from one makes it differ from the other peers' (og.Desync); carry what all must see in og.PlayerInput. |
 | [`og.platform.roomCreate`](#fn-roomCreate) | function | Create a room and join it. The answer is og.RoomJoined, with the room's id to share (natively the relay names it `room-N`; on the web the platform does). |
 | [`og.platform.roomJoin`](#fn-roomJoin) | function | Join a room by its id. The answer is og.RoomJoined (with ok false and `not_found` or `full` when it cannot); then og.RoomPeerJoined and og.RoomPeerLeft as others come and go. |
-| [`og.platform.roomLeave`](#fn-roomLeave) | function | Leave the room: og.RoomPeerLeft with this engine's own peer number answers, and the other peers hear it leave after its last message. |
+| [`og.platform.quickPlay`](#fn-quickPlay) | function | Quick play: wait to be matched with other players asking for the same mode and number of players, then play in a room of their own. The answer is og.RoomJoined once the room has filled (every matched peer hears it at once, numbered in the order they asked), or ok false with `timeout` after timeoutMs. roomLeave stops waiting (og.RoomJoined with `cancelled`). Natively `og relay` matches the engines connected to it (`og run --room ws://127.0.0.1:<port>/`); on the web the platform's matchmaking does (platform ask 21: until then the Player answers `unavailable`). |
+| [`og.platform.roomLeave`](#fn-roomLeave) | function | Leave the room: og.RoomPeerLeft with this engine's own peer number answers, and the other peers hear it leave after its last message. While joining (quick play waiting for its match) it stops waiting: og.RoomJoined answers with ok false and `cancelled`. |
 | [`og.platform.roomSend`](#fn-roomSend) | function | Send a message to every other peer in the room, or to one: a JSON value, or bytes (a Uint8Array). It arrives as og.RoomMessage, after every earlier message of this peer. |
 | [`og.platform.roomPeers`](#fn-roomPeers) | function | The peers in this engine's room, this one included, by number; empty in none. |
 | [`og.platform.roomInfo`](#fn-roomInfo) | function | The room this engine is in, and what carries rooms here. |
@@ -1150,7 +1152,7 @@ fn roomCreate {
 }
 ```
 
-<sub>`api.ogt` line 14084</sub>
+<sub>`api.ogt` line 14102</sub>
 
 <a id="fn-roomJoin"></a>
 
@@ -1180,13 +1182,45 @@ fn roomJoin {
 }
 ```
 
-<sub>`api.ogt` line 14093</sub>
+<sub>`api.ogt` line 14111</sub>
+
+<a id="fn-quickPlay"></a>
+
+### `og.platform.quickPlay`
+
+Quick play: wait to be matched with other players asking for the same mode and number of players, then play in a room of their own. The answer is og.RoomJoined once the room has filled (every matched peer hears it at once, numbered in the order they asked), or ok false with `timeout` after timeoutMs. roomLeave stops waiting (og.RoomJoined with `cancelled`). Natively `og relay` matches the engines connected to it (`og run --room ws://127.0.0.1:<port>/`); on the web the platform's matchmaking does (platform ask 21: until then the Player answers `unavailable`).
+
+```ts
+og.platform.quickPlay(world: World, desc?: QuickPlayDesc): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `desc` | `QuickPlayDesc` | yes | The mode, the players, how long to wait and this player's name. |
+
+**Returns** `Result<void>`: Refused with no room host, while in or joining a room, or for a malformed mode or name.
+
+Binding symbol `og_platform_quick_play` · publish builds: kept
+
+```ogt
+fn quickPlay {
+  doc "Quick play: wait to be matched with other players asking for the same mode and number of players, then play in a room of their own. The answer is og.RoomJoined once the room has filled (every matched peer hears it at once, numbered in the order they asked), or ok false with `timeout` after timeoutMs. roomLeave stops waiting (og.RoomJoined with `cancelled`). Natively `og relay` matches the engines connected to it (`og run --room ws://127.0.0.1:<port>/`); on the web the platform's matchmaking does (platform ask 21: until then the Player answers `unavailable`)."
+  param world World "The world."
+  param desc QuickPlayDesc "The mode, the players, how long to wait and this player's name." {
+    optional true
+  }
+  returns Result.Void "Refused with no room host, while in or joining a room, or for a malformed mode or name."
+}
+```
+
+<sub>`api.ogt` line 14118</sub>
 
 <a id="fn-roomLeave"></a>
 
 ### `og.platform.roomLeave`
 
-Leave the room: og.RoomPeerLeft with this engine's own peer number answers, and the other peers hear it leave after its last message.
+Leave the room: og.RoomPeerLeft with this engine's own peer number answers, and the other peers hear it leave after its last message. While joining (quick play waiting for its match) it stops waiting: og.RoomJoined answers with ok false and `cancelled`.
 
 ```ts
 og.platform.roomLeave(world: World): Result<void>
@@ -1196,19 +1230,19 @@ og.platform.roomLeave(world: World): Result<void>
 |---|---|---|---|
 | `world` | `World` | no | The world. |
 
-**Returns** `Result<void>`: Refused when in no room.
+**Returns** `Result<void>`: Refused when in no room and not joining one.
 
 Binding symbol `og_platform_room_leave` · publish builds: kept
 
 ```ogt
 fn roomLeave {
-  doc "Leave the room: og.RoomPeerLeft with this engine's own peer number answers, and the other peers hear it leave after its last message."
+  doc "Leave the room: og.RoomPeerLeft with this engine's own peer number answers, and the other peers hear it leave after its last message. While joining (quick play waiting for its match) it stops waiting: og.RoomJoined answers with ok false and `cancelled`."
   param world World "The world."
-  returns Result.Void "Refused when in no room."
+  returns Result.Void "Refused when in no room and not joining one."
 }
 ```
 
-<sub>`api.ogt` line 14100</sub>
+<sub>`api.ogt` line 14127</sub>
 
 <a id="fn-roomSend"></a>
 
@@ -1242,7 +1276,7 @@ fn roomSend {
 }
 ```
 
-<sub>`api.ogt` line 14106</sub>
+<sub>`api.ogt` line 14133</sub>
 
 <a id="fn-roomPeers"></a>
 
@@ -1270,7 +1304,7 @@ fn roomPeers {
 }
 ```
 
-<sub>`api.ogt` line 14116</sub>
+<sub>`api.ogt` line 14143</sub>
 
 <a id="fn-roomInfo"></a>
 
@@ -1298,7 +1332,7 @@ fn roomInfo {
 }
 ```
 
-<sub>`api.ogt` line 14122</sub>
+<sub>`api.ogt` line 14149</sub>
 
 <a id="fn-roomMessage"></a>
 
@@ -1328,7 +1362,7 @@ fn roomMessage {
 }
 ```
 
-<sub>`api.ogt` line 14128</sub>
+<sub>`api.ogt` line 14155</sub>
 
 ## Components, resources and events
 
@@ -1403,7 +1437,7 @@ resource PlatformGrants {
 
 ### `og.RoomJoined` (event)
 
-roomCreate or roomJoin finished, or the host put this engine in a room (`og run --room`, a Play link to a room): sent at the start of the tick after the host answered. With ok false the engine is in no room and `reason` says why.
+roomCreate, roomJoin or quickPlay finished, or the host put this engine in a room (`og run --room`, a Play link to a room): sent at the start of the tick after the host answered. With ok false the engine is in no room and `reason` says why.
 
 Token `og.RoomJoined`, registered under the schema name `og.RoomJoined`; its value type is `RoomJoined`.
 
@@ -1413,20 +1447,20 @@ Token `og.RoomJoined`, registered under the schema name `og.RoomJoined`; its val
 | `room` | `string` | `""` | — | — | — | The room's id (at most 63 bytes); empty when not ok. |
 | `peer` | `number` | `0` | — | — | — | This engine's peer number. |
 | `peers` | `number` | `0` | — | — | — | How many peers are in the room, this one included. |
-| `reason` | `string` | `""` | — | — | — | Why it failed: `unavailable` (no rooms here), `not_found`, `full`, `invalid` or `offline`, then a colon and the host's words; empty when ok. |
+| `reason` | `string` | `""` | — | — | — | Why it failed: `unavailable` (no rooms here), `not_found`, `full`, `invalid`, `offline`, `timeout` (quick play matched nobody in time) or `cancelled` (roomLeave while joining), then a colon and the host's words; empty when ok. |
 
 ```ogt
 event RoomJoined {
-  doc "roomCreate or roomJoin finished, or the host put this engine in a room (`og run --room`, a Play link to a room): sent at the start of the tick after the host answered. With ok false the engine is in no room and `reason` says why."
+  doc "roomCreate, roomJoin or quickPlay finished, or the host put this engine in a room (`og run --room`, a Play link to a room): sent at the start of the tick after the host answered. With ok false the engine is in no room and `reason` says why."
   field ok bool "Whether this engine is in the room now."
   field room String "The room's id (at most 63 bytes); empty when not ok."
   field peer u32 "This engine's peer number."
   field peers u32 "How many peers are in the room, this one included."
-  field reason String "Why it failed: `unavailable` (no rooms here), `not_found`, `full`, `invalid` or `offline`, then a colon and the host's words; empty when ok."
+  field reason String "Why it failed: `unavailable` (no rooms here), `not_found`, `full`, `invalid`, `offline`, `timeout` (quick play matched nobody in time) or `cancelled` (roomLeave while joining), then a colon and the host's words; empty when ok."
 }
 ```
 
-<sub>`api.ogt` line 14056</sub>
+<sub>`api.ogt` line 14074</sub>
 
 <a id="record-RoomPeerJoined"></a>
 
@@ -1449,7 +1483,7 @@ event RoomPeerJoined {
 }
 ```
 
-<sub>`api.ogt` line 14065</sub>
+<sub>`api.ogt` line 14083</sub>
 
 <a id="record-RoomPeerLeft"></a>
 
@@ -1472,7 +1506,7 @@ event RoomPeerLeft {
 }
 ```
 
-<sub>`api.ogt` line 14071</sub>
+<sub>`api.ogt` line 14089</sub>
 
 <a id="record-RoomMessage"></a>
 
@@ -1497,7 +1531,7 @@ event RoomMessage {
 }
 ```
 
-<sub>`api.ogt` line 14077</sub>
+<sub>`api.ogt` line 14095</sub>
 
 ## Types
 
@@ -2087,6 +2121,43 @@ struct RoomDesc {
 
 <sub>`api.ogt` line 14019</sub>
 
+<a id="type-QuickPlayDesc"></a>
+
+### `QuickPlayDesc` (desc struct)
+
+Quick play: what this engine waits to be matched for (og.platform.quickPlay).
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `mode` | `string` | `""` | — | — | — | The mode to play (at most 32 of letters, digits, `.`, `_` and `-`): only engines asking for the same mode and players are matched. Empty is `default`. |
+| `players` | `number` | `2` | 1 … 16 | — | — | How many play together: the room is made once this many wait (set og.Lockstep.players to the same). |
+| `timeoutMs` | `number` | `30000` | 0 … 600000 | `ms` | — | How long to wait for the others, in milliseconds; then og.RoomJoined says `timeout`. 0 waits until roomLeave. |
+| `name` | `string` | `""` | — | — | — | This player's name, as the other peers see it (og.platform.roomPeers); empty for none. |
+
+```ogt
+struct QuickPlayDesc {
+  doc "Quick play: what this engine waits to be matched for (og.platform.quickPlay)."
+  desc true
+  field mode String "The mode to play (at most 32 of letters, digits, `.`, `_` and `-`): only engines asking for the same mode and players are matched. Empty is `default`."
+  field players u32 "How many play together: the room is made once this many wait (set og.Lockstep.players to the same)." {
+    default 2
+    min 1
+    max 16
+  }
+  field timeoutMs u32 "How long to wait for the others, in milliseconds; then og.RoomJoined says `timeout`. 0 waits until roomLeave." {
+    default 30000
+    min 0
+    max 600000
+    unit ms
+  }
+  field name String "This player's name, as the other peers see it (og.platform.roomPeers); empty for none."
+}
+```
+
+<sub>`api.ogt` line 14030</sub>
+
 <a id="type-RoomPeer"></a>
 
 ### `RoomPeer` (struct)
@@ -2108,7 +2179,7 @@ struct RoomPeer {
 }
 ```
 
-<sub>`api.ogt` line 14030</sub>
+<sub>`api.ogt` line 14048</sub>
 
 <a id="type-RoomInfo"></a>
 
@@ -2118,7 +2189,7 @@ The room this engine is in.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `state` | `string` | `""` | — | — | — | `none` (in no room), `joining` (roomCreate or roomJoin asked, not answered yet) or `in`. |
+| `state` | `string` | `""` | — | — | — | `none` (in no room), `joining` (roomCreate, roomJoin or quickPlay asked, not answered yet: quick play waiting for its match) or `in`. |
 | `room` | `string` | `""` | — | — | — | The room's id; empty in none. |
 | `host` | `string` | `""` | — | — | — | What carries rooms here: `relay` (natively, `og run --room` through `og relay`), `player` (the platform's rooms through the Player, on the web) or `none` (roomCreate and roomJoin are refused). |
 | `peer` | `number` | `0` | — | — | — | This engine's peer number; 0 in none. |
@@ -2128,7 +2199,7 @@ The room this engine is in.
 ```ogt
 struct RoomInfo {
   doc "The room this engine is in."
-  field state String "`none` (in no room), `joining` (roomCreate or roomJoin asked, not answered yet) or `in`."
+  field state String "`none` (in no room), `joining` (roomCreate, roomJoin or quickPlay asked, not answered yet: quick play waiting for its match) or `in`."
   field room String "The room's id; empty in none."
   field host String "What carries rooms here: `relay` (natively, `og run --room` through `og relay`), `player` (the platform's rooms through the Player, on the web) or `none` (roomCreate and roomJoin are refused)."
   field peer u32 "This engine's peer number; 0 in none."
@@ -2137,7 +2208,7 @@ struct RoomInfo {
 }
 ```
 
-<sub>`api.ogt` line 14037</sub>
+<sub>`api.ogt` line 14055</sub>
 
 <a id="type-RoomMessageData"></a>
 
@@ -2164,4 +2235,4 @@ struct RoomMessageData {
 }
 ```
 
-<sub>`api.ogt` line 14047</sub>
+<sub>`api.ogt` line 14065</sub>

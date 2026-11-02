@@ -1959,6 +1959,11 @@ pub fn og_platform_room_join(world: u32, room: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_platform_quick_play(world: u32, desc: Option<String>) -> String {
+    <Host as PlatformApi>::og_platform_quick_play(&Host, world, desc)
+}
+
+#[wasm_bindgen]
 pub fn og_platform_room_leave(world: u32) -> String {
     <Host as PlatformApi>::og_platform_room_leave(&Host, world)
 }

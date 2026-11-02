@@ -97,6 +97,12 @@ export default og.game({
       lock.mode = "rollback";
       lock.maxPrediction = n;
     },
+    /** `quick[:<mode>[:<timeoutMs>]]`: quick play, matched with another engine asking for the same mode. */
+    quick: (world, args) => {
+      const timeoutMs = Number(args[1] ?? 30000);
+      if (!Number.isInteger(timeoutMs) || timeoutMs < 0) throw new Error("write quick:<mode>:<timeoutMs>, 0 waiting until roomLeave");
+      must(og.platform.quickPlay(world, { mode: args[0] || "duel", players: 2, timeoutMs }));
+    },
     /** `warp:<player>:<x>:<y>`: put a fighter there. */
     warp: (world, args) => {
       const e = world.find(`fighter-${Number(args[0])}`);
@@ -110,6 +116,7 @@ export default og.game({
     bot: { usage: "<n>[:tick]", doc: "Drive this peer's player by scripted bot n (1, 2, ...); 0 gives it back to the keys. With :tick the bot plays its seat by the tick alone, not the world (still for the first 60 ticks), so every session gets the same inputs." },
     rollback: { usage: "<maxPrediction>", doc: "Run the room in rollback, predicting up to maxPrediction ticks (1 to 30), instead of lockstep." },
     stall: { usage: "<ms>", doc: "Drop a peer silent this long (og.Lockstep.stallTimeout; 0 never drops)." },
+    quick: { usage: "[<mode>[:<timeoutMs>]]", doc: "Quick play: wait to be matched with another engine asking for the same mode (duel by default; natively `og run . --room ws://127.0.0.1:47900/` beside `og relay`), 30 s unless timeoutMs says otherwise." },
     warp: { usage: "<player>:<x>:<y>", doc: "Put fighter 0 (Red) or 1 (Blue) at a point of the floor." },
   },
   facts,

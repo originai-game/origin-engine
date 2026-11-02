@@ -6,6 +6,9 @@
 //! ```text
 //! { op: "create", name?, capacity? }      a new room; joined (or error) answers
 //! { op: "join", room, name? }             an existing room (the relay makes it on first join)
+//! { op: "quick", mode?, players?, timeoutMs?, name? }   quick play: a new room of `players`
+//!                                         peers waiting for the same mode; joined once it
+//!                                         fills, error `timeout` after timeoutMs (0: never)
 //! { op: "leave" }                         left answers
 //! { op: "send", to?, channel?, data? | bytes?, unreliable? }   to one peer, or every other peer
 //! ```
@@ -19,7 +22,8 @@
 //! { type: "peer_left", peer }               after every message that peer sent
 //! { type: "message", from, channel?, data? | bytes? }
 //! { type: "left", reason? }                 roomLeave done, or the host lost the room
-//! { type: "error", op, code, message }      unavailable, not_found, full, invalid, offline
+//! { type: "error", op, code, message }      unavailable, not_found, full, invalid, offline,
+//!                                           timeout (quick play matched nobody in time)
 //! ```
 //!
 //! A peer is a number the room gives in join order and never reuses. Per
@@ -92,6 +96,14 @@ pub fn create(name: &str, capacity: u32) -> Value {
 
 pub fn join(room: &str, name: &str) -> Value {
     json!({ "op": "join", "room": room, "name": name })
+}
+
+/// Quick play's longest wait, and its default.
+pub const QUICK_TIMEOUT_MAX_MS: u32 = 600_000;
+pub const QUICK_TIMEOUT_MS: u32 = 30_000;
+
+pub fn quick(mode: &str, players: u32, timeout_ms: u32, name: &str) -> Value {
+    json!({ "op": "quick", "mode": mode, "players": players, "timeoutMs": timeout_ms, "name": name })
 }
 
 pub fn leave() -> Value {

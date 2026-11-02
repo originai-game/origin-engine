@@ -1198,9 +1198,17 @@ host carries them. Three host ABI functions do the carrying:
 `og_room_take` (the queued ops, JSON), `og_room_deliver` (one event in)
 and `og_room_set_host` (`relay`, `player` or `none`). The wire shapes are
 og-net's protocol (`crates/og-net/src/protocol.rs`). The ops are `create`,
-`join`, `leave` and `send`. The events are `joined`, `peer_joined`,
+`join`, `quick`, `leave` and `send`. The events are `joined`, `peer_joined`,
 `peer_left`, `message`, `left` and `error`.
 
+- **Quick play.** `og.platform.quickPlay { mode, players, timeoutMs }`
+  (op `quick`) is matchmaking: the host queues the engine with others of
+  the same game, mode and player count, and once `players` wait it puts
+  them in a room of their own (nobody joins it by id), each hearing
+  `joined`; a wait past `timeoutMs` ends in `error` `timeout`, a
+  `leave` takes the engine out of the queue (og.RoomJoined `cancelled`).
+  Natively `og relay` keeps the queue; on the web the platform's
+  matchmaking does (platform ask 21).
 - **Peers.** A room numbers its peers in join order from 0 and never
   reuses a number.
 - **Ordering.** Messages from one sender arrive in the order it sent them,

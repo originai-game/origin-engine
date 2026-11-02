@@ -2349,6 +2349,12 @@ pub fn og_platform_room_join(env: Env, world: u32, room: String) -> String {
     <Host as PlatformApi>::og_platform_room_join(&Host, world, room)
 }
 
+#[napi(js_name = "og_platform_quick_play")]
+pub fn og_platform_quick_play(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_quick_play(&Host, world, desc)
+}
+
 #[napi(js_name = "og_platform_room_leave")]
 pub fn og_platform_room_leave(env: Env, world: u32) -> String {
     let _env = crate::EnvScope::enter(&env);

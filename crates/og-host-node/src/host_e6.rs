@@ -208,6 +208,9 @@ impl PlatformApi for NodeHost {
     fn og_platform_room_create(&self, world: u32, desc: Option<String>) -> String {
         rt::og_platform_room_create(world, desc)
     }
+    fn og_platform_quick_play(&self, world: u32, desc: Option<String>) -> String {
+        rt::og_platform_quick_play(world, desc)
+    }
     fn og_platform_room_join(&self, world: u32, room: String) -> String {
         rt::og_platform_room_join(world, room)
     }

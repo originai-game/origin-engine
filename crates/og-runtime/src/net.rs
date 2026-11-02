@@ -299,6 +299,12 @@ pub fn og_room_deliver(engine: u32, event: String) -> bool {
                     .push((PEER_LEFT, json!({ "peer": peer, "peers": count })));
             }
             Event::Left { .. } => {
+                if n.stage == Stage::Joining {
+                    n.pending.push((
+                        JOINED,
+                        json!({ "ok": false, "room": "", "peer": 0, "peers": 0, "reason": "cancelled: roomLeave while joining" }),
+                    ));
+                }
                 let was = (n.stage == Stage::In).then_some(n.peer);
                 n.stage = Stage::None;
                 n.room.clear();
@@ -309,7 +315,7 @@ pub fn og_room_deliver(engine: u32, event: String) -> bool {
                 }
             }
             Event::Error { op, code, message } => {
-                if matches!(op.as_str(), "create" | "join") && n.stage != Stage::In {
+                if matches!(op.as_str(), "create" | "join" | "quick") && n.stage != Stage::In {
                     n.stage = Stage::None;
                     n.pending.push((
                         JOINED,
@@ -383,6 +389,42 @@ pub fn og_platform_room_create(world: u32, desc: Option<String>) -> String {
         Ok(()) => {
             n.stage = Stage::Joining;
             n.outbox.push(protocol::create(&name, capacity));
+            ok_void()
+        }
+        Err(e) => refuse(e),
+    })
+}
+
+pub fn og_platform_quick_play(world: u32, desc: Option<String>) -> String {
+    let d = match parse(desc.as_deref()) {
+        Ok(d) => d,
+        Err(e) => return refuse(e),
+    };
+    let text = |k: &str| d[k].as_str().unwrap_or("").to_string();
+    let (mode, name) = (text("mode"), text("name"));
+    if !mode.is_empty() && (!protocol::valid_room(&mode) || mode.len() > 32) {
+        return refuse(format!(
+            "'{mode}' is not a quick play mode: at most 32 of letters, digits, '.', '_' and '-'"
+        ));
+    }
+    if !name.is_empty() && !protocol::valid_room(&name) {
+        return refuse(format!(
+            "'{name}' is not a player name: at most 64 of letters, digits, '.', '_' and '-'"
+        ));
+    }
+    let players = d["players"]
+        .as_u64()
+        .unwrap_or(2)
+        .clamp(1, u64::from(protocol::MAX_CAPACITY)) as u32;
+    let timeout = d["timeoutMs"]
+        .as_u64()
+        .unwrap_or(u64::from(protocol::QUICK_TIMEOUT_MS))
+        .min(u64::from(protocol::QUICK_TIMEOUT_MAX_MS)) as u32;
+    with(world, |n| match can_join(n) {
+        Ok(()) => {
+            n.stage = Stage::Joining;
+            n.outbox
+                .push(protocol::quick(&mode, players, timeout, &name));
             ok_void()
         }
         Err(e) => refuse(e),

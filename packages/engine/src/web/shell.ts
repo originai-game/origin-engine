@@ -197,7 +197,7 @@ export const PAGE_PREFERENCES = [
 
 /**
  * What carries og.platform's rooms on the web (docs/design.md §2.8): the engine's room ops
- * (`{ op: "create" | "join" | "leave" | "send", ... }`, og-net's protocol) in, its room events
+ * (`{ op: "create" | "join" | "quick" | "leave" | "send", ... }`, og-net's protocol) in, its room events
  * (`joined`, `peer_joined`, `peer_left`, `message`, `left`, `error`) out, in order.
  */
 export interface RoomHost {
@@ -443,7 +443,7 @@ export class Shell {
         const deliver = (events: unknown[]) => worker.postMessage({ type: "room-events", events });
         if (this.#rooms) this.#rooms.handle(ops, deliver);
         // No room host: what asked for a room hears so (the engine refuses first while its host is none).
-        else deliver(ops.filter((o) => o["op"] === "create" || o["op"] === "join").map((o) => ({ type: "error", op: o["op"], code: "unavailable", message: "this page carries no rooms" })));
+        else deliver(ops.filter((o) => o["op"] === "create" || o["op"] === "join" || o["op"] === "quick").map((o) => ({ type: "error", op: o["op"], code: "unavailable", message: "this page carries no rooms" })));
         return;
       }
       if (m.type === "platform") {
