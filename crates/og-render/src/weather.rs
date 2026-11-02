@@ -357,14 +357,15 @@ pub fn lightning_bolt(at: Vec3, top: f32, strike: u32) -> Vec<(Vec3, f32)> {
     let n = pts.len() as f32;
     pts.into_iter()
         .enumerate()
-        .map(|(i, p)| (p, 1.6 + 1.2 * i as f32 / n))
+        .map(|(i, p)| (p, 0.6 + 0.5 * i as f32 / n))
         .collect()
 }
 
 /// A lightning strike `seconds` after it struck `at`, from a cloud base at
 /// height `top`, added to `scene` (nothing from 0.6 s): the double flash
-/// brightens the sky's light, a bright blue-white light hangs 40 m over the
-/// strike, and for 0.35 s the bolt of strike number `strike`
+/// brightens the sky's light and turns the scene's directional light to
+/// the lit cloud over the strike while it outshines it, a bright
+/// blue-white light hangs 40 m over the strike, and for 0.35 s the bolt of strike number `strike`
 /// ([`lightning_bolt`]) is drawn as an additive strip that blooms.
 pub fn add_lightning(
     scene: &mut crate::RenderScene,
@@ -378,6 +379,21 @@ pub fn add_lightning(
         return;
     }
     scene.environment.intensity *= 1.0 + 6.0 * flash;
+    // The lit cloud over the strike lights the land like a low sun for
+    // the flash's length, with sharp shadows away from the strike: the
+    // scene's directional light turns to it while the flash outshines it.
+    let sky_point = Vec3::new(at.x, top, at.z);
+    let toward = (sky_point - scene.camera.position).normalize_or(Vec3::Y);
+    let bolt_light = 1.6 * flash;
+    let own = scene.light.intensity * scene.light.color.max_element();
+    if bolt_light > own {
+        let k = own / bolt_light;
+        scene.light.direction_to_light = toward
+            .lerp(scene.light.direction_to_light, k)
+            .normalize_or(toward);
+        scene.light.color = Vec3::new(0.78, 0.85, 1.0).lerp(scene.light.color, k);
+        scene.light.intensity = bolt_light + own * k;
+    }
     scene.lights.push(crate::Light {
         kind: crate::LightKind::Point,
         position: at + Vec3::Y * 40.0,
@@ -387,12 +403,9 @@ pub fn add_lightning(
         cast_shadows: false,
     });
     if seconds < 0.35 {
-        let c = [
-            3.0 + 30.0 * flash,
-            3.5 + 32.0 * flash,
-            6.0 + 40.0 * flash,
-            1.0,
-        ];
+        // Bright enough to bloom, not so bright the bloom and its
+        // reflection burn a white column across the frame.
+        let c = [1.5 + 4.0 * flash, 1.7 + 4.5 * flash, 2.6 + 6.0 * flash, 1.0];
         scene.ribbons.push(crate::Ribbon {
             points: lightning_bolt(at, top, strike)
                 .into_iter()

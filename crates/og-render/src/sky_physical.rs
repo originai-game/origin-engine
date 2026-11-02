@@ -26,9 +26,14 @@ pub(crate) const MS_HEIGHTS: [f32; 2] = [0.0, 8.0];
 /// The vec4s the GPU block holds: six of parameters, then the table.
 pub(crate) const SCATTER_VEC4S: usize = 6 + 2 * MS_ENTRIES;
 /// Radiance per unit of the sun's illuminance times this is the engine's
-/// sky brightness: a clear noon zenith near the gradient sky's (luminance
-/// about 0.4 at brightness 1.1).
-const SKY_SCALE: f32 = 20.0;
+/// sky brightness: the sun's illuminance above the air in the day-night
+/// light's units (3 at noon through the air, about 3.5 above it), with a
+/// camera's allowance for a sky that reads blue (about twice that): a
+/// clear noon zenith about half as bright as sunlit grey ground and a
+/// horizon a few times the zenith, and the sky's light (the image-based
+/// ambient) under a third of the sun's, as outdoors. (20 drew the sky and
+/// its ambient two and a half times too bright: a washed-out noon.)
+const SKY_SCALE: f32 = 8.0;
 /// The ozone layer: a tent from 10 to 40 km peaking at 25 km (15 km of
 /// column at peak density).
 const OZONE_CENTER: f32 = 25.0;
@@ -492,7 +497,7 @@ mod tests {
     }
 
     /// The clear noon sky: blue overhead (b > g > r), paler towards the
-    /// horizon, its zenith about the gradient sky's brightness, brightest
+    /// horizon, its zenith below sunlit grey ground's brightness, brightest
     /// towards the sun (the aerosols' glow), the ground below darker.
     #[test]
     fn the_noon_sky_is_blue_and_brightens_towards_the_horizon_and_the_sun() {
@@ -501,8 +506,11 @@ mod tests {
         let sky = |d: Vec3| a.radiance(0.0, d.normalize(), sun, 64);
         let zenith = sky(Vec3::Y);
         assert!(zenith.z > zenith.y && zenith.y > zenith.x, "{zenith}");
+        // Sunlit grey ground (albedo 0.3) under this sun at the day-night
+        // noon's 3: 0.3 * 3 * cos 30° / π ≈ 0.25. The zenith is a third
+        // to two thirds of it.
         let l = luma(zenith) * 1.1;
-        assert!((0.2..0.7).contains(&l), "zenith luma {l}");
+        assert!((0.08..0.17).contains(&l), "zenith luma {l}");
         let horizon = sky(Vec3::new(-1.0, 0.05, 0.0));
         assert!(
             horizon.z / horizon.x < zenith.z / zenith.x,

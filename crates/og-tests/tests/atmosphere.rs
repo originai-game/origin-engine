@@ -557,7 +557,8 @@ fn a_replaced_mesh_draws_its_new_shape() {
 /// reference, and reads as the sky it is. At noon the band above the
 /// pillars is blue (blue over red); looking into the setting sun the
 /// horizon below it is warm (red over blue); in twilight the sky is far
-/// darker than at noon yet still blue overhead (ozone); a hazy afternoon
+/// darker than at noon (half as bright with the camera opened 3.5 stops)
+/// yet still blue overhead (ozone); a hazy afternoon
 /// is paler (less blue for its brightness) than a clear noon.
 #[test]
 fn physical_sky_scenes_match_their_references_and_read_as_sky() {
@@ -586,7 +587,7 @@ fn physical_sky_scenes_match_their_references_and_read_as_sky() {
     let twilight = frame(&sky_scene("sky-physical-twilight"));
     let dusk_top = rgb(&twilight, 560, 0, 720, 40);
     assert!(
-        luma(dusk_top) * 3.0 < luma(top),
+        luma(dusk_top) * 2.0 < luma(top),
         "twilight is darker: {dusk_top:?} vs {top:?}"
     );
     assert!(
@@ -636,7 +637,8 @@ fn cloud_scenes_match_their_references_and_read_as_clouds() {
 /// R4's weather on surfaces: each frame matches its reference. The wet
 /// ground is darker than the same ground dry; snow makes it much brighter
 /// and whiter; the lightning frame is brighter than the same night
-/// without the strike, with the bolt (a bright, blue-white column) in view.
+/// without the strike, the flash lighting the ground too, with the bolt
+/// (a bright, blue-white column) in view.
 #[test]
 fn weather_surface_scenes_match_their_references_and_read_as_weather() {
     use og_tests::sky_scenes::{SKY_SCENES, sky_scene};
@@ -648,12 +650,21 @@ fn weather_surface_scenes_match_their_references_and_read_as_weather() {
         s.surface_weather = None;
         frame(&s)
     };
-    let wet = frame(&sky_scene("weather-wet"));
+    // Wet ground darkens; the puddles are mirrors, so they are left out
+    // (they show the sky, which may be brighter than the ground).
+    let damp = {
+        let mut s = sky_scene("weather-wet");
+        if let Some(w) = s.surface_weather.as_mut() {
+            w.puddles = 0.0;
+            w.rain = 0.0;
+        }
+        frame(&s)
+    };
     let ground = |img: &RgbaImage| mean(img, 200, 560, 1080, 720);
     assert!(
-        ground(&wet) < 0.85 * ground(&dry),
+        ground(&damp) < 0.85 * ground(&dry),
         "wet ground is darker: {} vs {}",
-        ground(&wet),
+        ground(&damp),
         ground(&dry)
     );
     let snow = frame(&sky_scene("weather-snow-cover"));
@@ -661,14 +672,12 @@ fn weather_surface_scenes_match_their_references_and_read_as_weather() {
     let p = px(&snow, 640, 650);
     assert!((p[0] - p[2]).abs() < 30.0, "and white: {p:?}");
     let storm = frame(&sky_scene("weather-lightning"));
-    let calm = {
-        let mut s = sky_scene("weather-lightning");
-        s.lights.pop();
-        s.ribbons.clear();
-        s.environment.intensity /= 1.0 + 6.0 * og_render::lightning_flash(0.03);
-        frame(&s)
-    };
+    let calm = frame(&og_tests::sky_scenes::storm(false));
     assert!(mean(&storm, 0, 0, 1280, 720) > 1.3 * mean(&calm, 0, 0, 1280, 720));
+    assert!(
+        mean(&storm, 0, 560, 1280, 720) > 1.5 * mean(&calm, 0, 560, 1280, 720),
+        "the flash lights the ground"
+    );
 }
 
 /// R4's shelter: the ground under the canopy stays free of snow and dry.

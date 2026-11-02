@@ -18,7 +18,7 @@ module anim {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 10625</sub>
+<sub>`api.ogt` line 10632</sub>
 
 ## Contents
 
@@ -118,7 +118,7 @@ fn graph {
 }
 ```
 
-<sub>`api.ogt` line 11168</sub>
+<sub>`api.ogt` line 11175</sub>
 
 <a id="fn-humanoid"></a>
 
@@ -148,7 +148,7 @@ fn humanoid {
 }
 ```
 
-<sub>`api.ogt` line 11203</sub>
+<sub>`api.ogt` line 11210</sub>
 
 <a id="fn-retarget"></a>
 
@@ -178,7 +178,7 @@ fn retarget {
 }
 ```
 
-<sub>`api.ogt` line 11223</sub>
+<sub>`api.ogt` line 11230</sub>
 
 <a id="fn-mirror"></a>
 
@@ -208,7 +208,7 @@ fn mirror {
 }
 ```
 
-<sub>`api.ogt` line 11237</sub>
+<sub>`api.ogt` line 11244</sub>
 
 <a id="fn-clip"></a>
 
@@ -239,7 +239,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 11322</sub>
+<sub>`api.ogt` line 11329</sub>
 
 <a id="fn-clip-2"></a>
 
@@ -270,7 +270,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 11330</sub>
+<sub>`api.ogt` line 11337</sub>
 
 <a id="fn-clip-3"></a>
 
@@ -301,7 +301,7 @@ fn clip {
 }
 ```
 
-<sub>`api.ogt` line 11338</sub>
+<sub>`api.ogt` line 11345</sub>
 
 <a id="fn-rig2dInfo"></a>
 
@@ -331,7 +331,7 @@ fn rig2dInfo {
 }
 ```
 
-<sub>`api.ogt` line 11449</sub>
+<sub>`api.ogt` line 11456</sub>
 
 <a id="fn-skeleton2dBoxes"></a>
 
@@ -361,7 +361,7 @@ fn skeleton2dBoxes {
 }
 ```
 
-<sub>`api.ogt` line 11463</sub>
+<sub>`api.ogt` line 11470</sub>
 
 ## Components, resources and events
 
@@ -398,7 +398,7 @@ component Skeleton {
 }
 ```
 
-<sub>`api.ogt` line 10709</sub>
+<sub>`api.ogt` line 10716</sub>
 
 <a id="record-AnimationPlayer"></a>
 
@@ -460,7 +460,7 @@ component AnimationPlayer {
 }
 ```
 
-<sub>`api.ogt` line 10724</sub>
+<sub>`api.ogt` line 10731</sub>
 
 <a id="record-AnimationGraph"></a>
 
@@ -536,7 +536,7 @@ component AnimationGraph {
 }
 ```
 
-<sub>`api.ogt` line 10763</sub>
+<sub>`api.ogt` line 10770</sub>
 
 <a id="record-Blendshapes"></a>
 
@@ -611,7 +611,7 @@ component Blendshapes {
 }
 ```
 
-<sub>`api.ogt` line 10811</sub>
+<sub>`api.ogt` line 10818</sub>
 
 <a id="record-IkChain"></a>
 
@@ -684,7 +684,7 @@ component IkChain {
 }
 ```
 
-<sub>`api.ogt` line 10860</sub>
+<sub>`api.ogt` line 10867</sub>
 
 <a id="record-LookAt"></a>
 
@@ -761,7 +761,7 @@ component LookAt {
 }
 ```
 
-<sub>`api.ogt` line 10906</sub>
+<sub>`api.ogt` line 10913</sub>
 
 <a id="record-JointLimit"></a>
 
@@ -814,7 +814,7 @@ component JointLimit {
 }
 ```
 
-<sub>`api.ogt` line 10956</sub>
+<sub>`api.ogt` line 10963</sub>
 
 <a id="record-FootLock"></a>
 
@@ -869,7 +869,7 @@ component FootLock {
 }
 ```
 
-<sub>`api.ogt` line 10988</sub>
+<sub>`api.ogt` line 10995</sub>
 
 <a id="record-SpringBone"></a>
 
@@ -957,7 +957,7 @@ component SpringBone {
 }
 ```
 
-<sub>`api.ogt` line 11034</sub>
+<sub>`api.ogt` line 11041</sub>
 
 <a id="record-SpringCollider"></a>
 
@@ -1003,7 +1003,7 @@ component SpringCollider {
 }
 ```
 
-<sub>`api.ogt` line 11107</sub>
+<sub>`api.ogt` line 11114</sub>
 
 <a id="record-AnimationEvent"></a>
 
@@ -1034,7 +1034,7 @@ event AnimationEvent {
 }
 ```
 
-<sub>`api.ogt` line 11131</sub>
+<sub>`api.ogt` line 11138</sub>
 
 <a id="record-Flipbook"></a>
 
@@ -1090,7 +1090,7 @@ component Flipbook {
 }
 ```
 
-<sub>`api.ogt` line 11260</sub>
+<sub>`api.ogt` line 11267</sub>
 
 <a id="record-FlipbookEvent"></a>
 
@@ -1117,7 +1117,7 @@ event FlipbookEvent {
 }
 ```
 
-<sub>`api.ogt` line 11291</sub>
+<sub>`api.ogt` line 11298</sub>
 
 <a id="record-Skeleton2D"></a>
 
@@ -1173,7 +1173,7 @@ component Skeleton2D {
 }
 ```
 
-<sub>`api.ogt` line 11355</sub>
+<sub>`api.ogt` line 11362</sub>
 
 <a id="record-Skeleton2DEvent"></a>
 
@@ -1204,7 +1204,7 @@ event Skeleton2DEvent {
 }
 ```
 
-<sub>`api.ogt` line 11385</sub>
+<sub>`api.ogt` line 11392</sub>
 
 <a id="record-IkTarget2D"></a>
 
@@ -1256,7 +1256,7 @@ component IkTarget2D {
 }
 ```
 
-<sub>`api.ogt` line 11396</sub>
+<sub>`api.ogt` line 11403</sub>
 
 ## Types
 
@@ -1272,7 +1272,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle SkeletonAsset "A rig: a glTF's nodes in topological order with their rest transforms, and its skins (joints and inverse bind matrices)."
 ```
 
-<sub>`api.ogt` line 10631</sub>
+<sub>`api.ogt` line 10638</sub>
 
 <a id="type-ClipAsset"></a>
 
@@ -1286,7 +1286,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle ClipAsset "An animation clip, resampled at the cook's rate, with its markers."
 ```
 
-<sub>`api.ogt` line 10632</sub>
+<sub>`api.ogt` line 10639</sub>
 
 <a id="type-GraphAsset"></a>
 
@@ -1300,7 +1300,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle GraphAsset "A blend-tree graph (`type animgraph`) whose clip references were resolved to clip handles."
 ```
 
-<sub>`api.ogt` line 10633</sub>
+<sub>`api.ogt` line 10640</sub>
 
 <a id="type-RootMotion"></a>
 
@@ -1325,7 +1325,7 @@ enum RootMotion {
 }
 ```
 
-<sub>`api.ogt` line 10656</sub>
+<sub>`api.ogt` line 10663</sub>
 
 <a id="type-BlendshapeSource"></a>
 
@@ -1348,7 +1348,7 @@ enum BlendshapeSource {
 }
 ```
 
-<sub>`api.ogt` line 10670</sub>
+<sub>`api.ogt` line 10677</sub>
 
 <a id="type-IkSolver"></a>
 
@@ -1371,7 +1371,7 @@ enum IkSolver {
 }
 ```
 
-<sub>`api.ogt` line 10683</sub>
+<sub>`api.ogt` line 10690</sub>
 
 <a id="type-IkSpace"></a>
 
@@ -1394,7 +1394,7 @@ enum IkSpace {
 }
 ```
 
-<sub>`api.ogt` line 10696</sub>
+<sub>`api.ogt` line 10703</sub>
 
 <a id="type-SpringSpace"></a>
 
@@ -1417,7 +1417,7 @@ enum SpringSpace {
 }
 ```
 
-<sub>`api.ogt` line 11021</sub>
+<sub>`api.ogt` line 11028</sub>
 
 <a id="type-SpringColliderShape"></a>
 
@@ -1440,7 +1440,7 @@ enum SpringColliderShape {
 }
 ```
 
-<sub>`api.ogt` line 11094</sub>
+<sub>`api.ogt` line 11101</sub>
 
 <a id="type-ClipInfo"></a>
 
@@ -1467,7 +1467,7 @@ struct ClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 11142</sub>
+<sub>`api.ogt` line 11149</sub>
 
 <a id="type-Animation"></a>
 
@@ -1494,7 +1494,7 @@ struct Animation {
 }
 ```
 
-<sub>`api.ogt` line 11152</sub>
+<sub>`api.ogt` line 11159</sub>
 
 <a id="type-GraphDesc"></a>
 
@@ -1518,7 +1518,7 @@ struct GraphDesc {
 }
 ```
 
-<sub>`api.ogt` line 11161</sub>
+<sub>`api.ogt` line 11168</sub>
 
 <a id="type-Rig"></a>
 
@@ -1532,7 +1532,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Rig "A humanoid map from og.load.rig (a cooked `.ogt` of `type rig`): the naming scheme a skeleton's node names follow, the standard bones it names outright and, with `footHeight`, how high its ankles stand above the ground."
 ```
 
-<sub>`api.ogt` line 11175</sub>
+<sub>`api.ogt` line 11182</sub>
 
 <a id="type-HumanBone"></a>
 
@@ -1553,7 +1553,7 @@ struct HumanBone {
 }
 ```
 
-<sub>`api.ogt` line 11184</sub>
+<sub>`api.ogt` line 11191</sub>
 
 <a id="type-Humanoid"></a>
 
@@ -1574,7 +1574,7 @@ struct Humanoid {
 }
 ```
 
-<sub>`api.ogt` line 11190</sub>
+<sub>`api.ogt` line 11197</sub>
 
 <a id="type-HumanoidDesc"></a>
 
@@ -1598,7 +1598,7 @@ struct HumanoidDesc {
 }
 ```
 
-<sub>`api.ogt` line 11196</sub>
+<sub>`api.ogt` line 11203</sub>
 
 <a id="type-RetargetDesc"></a>
 
@@ -1632,7 +1632,7 @@ struct RetargetDesc {
 }
 ```
 
-<sub>`api.ogt` line 11210</sub>
+<sub>`api.ogt` line 11217</sub>
 
 <a id="type-MirrorDesc"></a>
 
@@ -1656,7 +1656,7 @@ struct MirrorDesc {
 }
 ```
 
-<sub>`api.ogt` line 11230</sub>
+<sub>`api.ogt` line 11237</sub>
 
 <a id="type-FlipbookSheet"></a>
 
@@ -1670,7 +1670,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle FlipbookSheet "A sprite sheet's frames and clips (a cooked `.ogt` of `type flipbook`), from og.load.flipbook."
 ```
 
-<sub>`api.ogt` line 11244</sub>
+<sub>`api.ogt` line 11251</sub>
 
 <a id="type-FlipMode"></a>
 
@@ -1695,7 +1695,7 @@ enum FlipMode {
 }
 ```
 
-<sub>`api.ogt` line 11253</sub>
+<sub>`api.ogt` line 11260</sub>
 
 <a id="type-FlipbookClipInfo"></a>
 
@@ -1726,7 +1726,7 @@ struct FlipbookClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 11299</sub>
+<sub>`api.ogt` line 11306</sub>
 
 <a id="type-FlipbookInfo"></a>
 
@@ -1757,7 +1757,7 @@ struct FlipbookInfo {
 }
 ```
 
-<sub>`api.ogt` line 11311</sub>
+<sub>`api.ogt` line 11318</sub>
 
 <a id="type-Rig2D"></a>
 
@@ -1771,7 +1771,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Rig2D "A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region, mesh, bounding-box and child-armature attachments, IK constraints, child armatures and clips, from og.load.rig2d."
 ```
 
-<sub>`api.ogt` line 11346</sub>
+<sub>`api.ogt` line 11353</sub>
 
 <a id="type-Rig2DClipInfo"></a>
 
@@ -1800,7 +1800,7 @@ struct Rig2DClipInfo {
 }
 ```
 
-<sub>`api.ogt` line 11426</sub>
+<sub>`api.ogt` line 11433</sub>
 
 <a id="type-Rig2DInfo"></a>
 
@@ -1833,7 +1833,7 @@ struct Rig2DInfo {
 }
 ```
 
-<sub>`api.ogt` line 11437</sub>
+<sub>`api.ogt` line 11444</sub>
 
 <a id="type-Skeleton2DBox"></a>
 
@@ -1856,7 +1856,7 @@ struct Skeleton2DBox {
 }
 ```
 
-<sub>`api.ogt` line 11456</sub>
+<sub>`api.ogt` line 11463</sub>
 
 ## Column kinds
 
@@ -1886,7 +1886,7 @@ column SkeletonAsset {
 }
 ```
 
-<sub>`api.ogt` line 10635</sub>
+<sub>`api.ogt` line 10642</sub>
 
 ```ogt
 column ClipAsset {
@@ -1897,7 +1897,7 @@ column ClipAsset {
 }
 ```
 
-<sub>`api.ogt` line 10642</sub>
+<sub>`api.ogt` line 10649</sub>
 
 ```ogt
 column GraphAsset {
@@ -1908,7 +1908,7 @@ column GraphAsset {
 }
 ```
 
-<sub>`api.ogt` line 10649</sub>
+<sub>`api.ogt` line 10656</sub>
 
 ```ogt
 column RootMotion {
@@ -1919,7 +1919,7 @@ column RootMotion {
 }
 ```
 
-<sub>`api.ogt` line 10663</sub>
+<sub>`api.ogt` line 10670</sub>
 
 ```ogt
 column BlendshapeSource {
@@ -1930,7 +1930,7 @@ column BlendshapeSource {
 }
 ```
 
-<sub>`api.ogt` line 10676</sub>
+<sub>`api.ogt` line 10683</sub>
 
 ```ogt
 column IkSolver {
@@ -1941,7 +1941,7 @@ column IkSolver {
 }
 ```
 
-<sub>`api.ogt` line 10689</sub>
+<sub>`api.ogt` line 10696</sub>
 
 ```ogt
 column IkSpace {
@@ -1952,7 +1952,7 @@ column IkSpace {
 }
 ```
 
-<sub>`api.ogt` line 10702</sub>
+<sub>`api.ogt` line 10709</sub>
 
 ```ogt
 column SpringSpace {
@@ -1963,7 +1963,7 @@ column SpringSpace {
 }
 ```
 
-<sub>`api.ogt` line 11027</sub>
+<sub>`api.ogt` line 11034</sub>
 
 ```ogt
 column SpringColliderShape {
@@ -1974,7 +1974,7 @@ column SpringColliderShape {
 }
 ```
 
-<sub>`api.ogt` line 11100</sub>
+<sub>`api.ogt` line 11107</sub>
 
 ```ogt
 column Rig {
@@ -1985,7 +1985,7 @@ column Rig {
 }
 ```
 
-<sub>`api.ogt` line 11177</sub>
+<sub>`api.ogt` line 11184</sub>
 
 ```ogt
 column FlipbookSheet {
@@ -1996,7 +1996,7 @@ column FlipbookSheet {
 }
 ```
 
-<sub>`api.ogt` line 11246</sub>
+<sub>`api.ogt` line 11253</sub>
 
 ```ogt
 column Rig2D {
@@ -2007,4 +2007,4 @@ column Rig2D {
 }
 ```
 
-<sub>`api.ogt` line 11348</sub>
+<sub>`api.ogt` line 11355</sub>

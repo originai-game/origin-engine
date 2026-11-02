@@ -223,6 +223,17 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: crate::feel::vcam::CUT,
         enable: |w, _| crate::feel::vcam::enable(w, crate::feel::vcam::CUT),
     },
+    // R4: the physical sky and the clouds, read by extraction alone (no
+    // system is granted them): a world without them keeps its type table
+    // and hash.
+    Lazy {
+        name: "og.PhysicalSky",
+        enable: |_, _| Ok(()),
+    },
+    Lazy {
+        name: "og.Clouds",
+        enable: |_, _| Ok(()),
+    },
     // R4: the weather's simulated state and its strikes; og.weather writes
     // and sends them. Naming either registers both.
     Lazy {

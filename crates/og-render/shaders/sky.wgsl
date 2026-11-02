@@ -60,8 +60,13 @@ fn sky_physical_look(d: vec3<f32>) -> vec3<f32> {
   let up = clamp(d.y, -1.0, 1.0);
   let light = frame.sky_glow.yzw;
   let sky = (physical_sky(d, sun, h0, 24u) * light + frame.sky_scatter[5].rgb) * frame.sky_horizon.w;
-  let disc = smoothstep(frame.sky_sun.x, frame.sky_sun.y, dot(d, sun)) * frame.sky_sun.z;
-  var color = sky + light * physical_sun(d, h0) * disc;
+  // The disc keeps the hue of the sunlight through the air (orange-red at
+  // sunset) at a brightness capped where the tone curve would bleach it
+  // white: the colour divided by its largest channel, times at most 3.
+  let through = physical_sun(d, h0);
+  let peak = max(max(through.r, through.g), max(through.b, 1e-6));
+  let strength = min(dot(through, vec3<f32>(0.2126, 0.7152, 0.0722)) * frame.sky_sun.z, 3.0);
+  var color = sky + light * (through / peak) * strength * smoothstep(frame.sky_sun.x, frame.sky_sun.y, dot(d, sun));
   let moon = moon_at(d, up);
   if (frame.sky_ground.w > 0.0 && up > 0.0) {
     let g = d * 220.0;
@@ -101,15 +106,23 @@ fn cloud_density(p: vec3<f32>, h: f32, cheap: bool) -> f32 {
   let c = frame.clouds;
   let hf = (h - c[0].z) / max(c[0].w, 1.0);
   if (hf <= 0.0 || hf >= 1.0) { return 0.0; }
-  // Cumulus: a flat base rounding into domed tops.
-  let gradient = smoothstep(0.0, 0.12, hf) * smoothstep(1.0, 0.45, hf);
   let at = vec3<f32>(p.x, h, p.z) + c[1].xyz;
   let uvw = at / c[1].w;
   let n = textureSampleLevel(cloud_noise, cloud_sampler, uvw.xzy, 0.0);
   let cover = textureSampleLevel(cloud_noise, cloud_sampler, uvw.xzy * 0.25, 0.0).a;
-  let local = clamp(c[0].x + (cover - 0.5) * 0.7, 0.0, 1.0);
-  var base = cloud_remap(n.r * gradient, 1.0 - local, 1.0);
-  if (base <= 0.0) { return 0.0; }
+  // The coverage varies across the sky most when it is broken, and not
+  // at all when clear or overcast (an overcast stays a ceiling).
+  // (The power: the cells at different heights overlap, so a column
+  // meets cloud more often than one level does; with it the sky over a
+  // viewer is about `coverage` covered, 0.3 a fair-weather sky.)
+  let c0 = c[0].x;
+  let local = clamp(pow(c0, 1.25) + (cover - 0.5) * 0.8 * min(1.0, 4.0 * c0 * (1.0 - c0)), 0.0, 1.0);
+  // The shape channel is uniform: a threshold of 1 - local leaves a
+  // fraction `local` in cloud near the base. Higher up the threshold
+  // rises, so only the strongest cells reach the top (domes), and a soft
+  // floor flattens the base.
+  let th = mix(1.0 - local, 1.0, smoothstep(0.3, 1.0, hf) * 0.85);
+  var base = cloud_remap(n.r, th, min(th + 0.35, 1.0)) * smoothstep(0.0, 0.08, hf);
   if (!cheap && c[2].w > 0.0) {
     let fine = textureSampleLevel(cloud_noise, cloud_sampler, uvw.xzy * 5.0, 0.0);
     let erode = mix(fine.g, fine.b, hf) * c[2].w;
@@ -149,10 +162,10 @@ fn clouds_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f3
       let p = o + d * t;
       let uv = (vec2<f32>(p.x, p.z) + c[1].xz * 2.0) / (c[1].w * 2.5);
       let n = textureSampleLevel(cloud_noise, cloud_sampler, vec3<f32>(uv.x * 0.35, uv.y, 0.37), 0.0);
-      let wisp = cloud_remap(n.r * 0.7 + n.g * 0.3, 1.0 - c[3].x * 0.8, 1.0) * (0.5 + 0.5 * n.b);
+      let wisp = cloud_remap(n.r * 0.7 + n.g * 0.3, 1.0 - c[3].x, 1.0 - c[3].x * 0.3) * (0.5 + 0.5 * n.b);
       let fade = exp(-t / 120000.0);
       let lit = light * (0.25 + phase * 1.5) * 0.35 + sky_top * 0.8;
-      color = mix(color, lit * c[2].rgb, clamp(wisp, 0.0, 1.0) * 0.7 * fade);
+      color = mix(color, lit * c[2].rgb, clamp(wisp, 0.0, 1.0) * 0.85 * fade);
     }
   }
 
@@ -205,7 +218,10 @@ fn clouds_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f3
         b *= 0.4;
       }
       let hf = clamp((h - c[0].z) / c[0].w, 0.0, 1.0);
-      let ambient = mix(sky_side * 0.6, sky_top, hf) * (0.35 + 0.65 * hf);
+      var ambient = mix(sky_side * 0.6, sky_top, hf) * (0.35 + 0.65 * hf);
+      // Under a cover of cloud the light between them is the clouds' own,
+      // grey, not the clear sky's blue.
+      ambient = mix(ambient, vec3<f32>(dot(ambient, vec3<f32>(0.2126, 0.7152, 0.0722))), c[0].x * 0.7);
       let s = (sun + ambient) * c[2].rgb * sigma;
       let seg = exp(-sigma * dt);
       scattered += transmittance * (s - s * seg) / sigma;

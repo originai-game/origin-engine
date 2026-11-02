@@ -68,7 +68,7 @@ fn timeOfDay {
 }
 ```
 
-<sub>`api.ogt` line 10616</sub>
+<sub>`api.ogt` line 10623</sub>
 
 ## Components, resources and events
 
@@ -548,6 +548,7 @@ Token `og.WeatherState`, registered under the schema name `og.WeatherState`; its
 | `lightning` | `number` | `0` | 0 … 600 | — | tunable | Lightning strikes per minute on average, at random ticks (0: none), whatever the kind of weather. |
 | `lightningCenter` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `world` | The centre of the area strikes land in (its y is the ground's height there). |
 | `lightningRadius` | `number` | `300` | ≥ 0 | `m` | tunable | The radius of that area: strikes land evenly over the disc. |
+| `shelterSize` | `number` | `64` | 0 … 1024 | `m` | tunable | The side of the square around the camera in which roofs, overhangs and canopies keep what is under them dry and free of snow, with a soft edge at the drip line (the renderer's weather occlusion map, looking along the rain or snow as og.Weather's wind slants it); past it every surface is open to the sky. 0: nothing shelters. Drawn only: the tick's wetness, puddles and snowDepth are the open ground's, so a game that needs to know whether a place is sheltered casts a ray up against the colliders (og.physics). |
 | `wetness` | `number` | `0` | — | `ratio` | read only | How wet the ground is, 0 dry to 1 soaked (written by og.weather). |
 | `puddles` | `number` | `0` | — | `ratio` | read only | How far standing water has spread, 0 none to 1 (written by og.weather). |
 | `snowDepth` | `number` | `0` | — | `m` | read only | The depth of lying snow (written by og.weather). |
@@ -616,6 +617,13 @@ resource WeatherState {
     unit m
     tunable true
   }
+  field shelterSize f32 "The side of the square around the camera in which roofs, overhangs and canopies keep what is under them dry and free of snow, with a soft edge at the drip line (the renderer's weather occlusion map, looking along the rain or snow as og.Weather's wind slants it); past it every surface is open to the sky. 0: nothing shelters. Drawn only: the tick's wetness, puddles and snowDepth are the open ground's, so a game that needs to know whether a place is sheltered casts a ray up against the colliders (og.physics)." {
+    default 64
+    min 0
+    max 1024
+    unit m
+    tunable true
+  }
   field wetness f32 "How wet the ground is, 0 dry to 1 soaked (written by og.weather)." {
     readonly true
     unit ratio
@@ -671,7 +679,7 @@ event LightningStrike {
 }
 ```
 
-<sub>`api.ogt` line 10380</sub>
+<sub>`api.ogt` line 10387</sub>
 
 <a id="record-Weather"></a>
 
@@ -733,7 +741,7 @@ resource Weather {
 }
 ```
 
-<sub>`api.ogt` line 10389</sub>
+<sub>`api.ogt` line 10396</sub>
 
 <a id="record-Wind"></a>
 
@@ -779,7 +787,7 @@ resource Wind {
 }
 ```
 
-<sub>`api.ogt` line 10429</sub>
+<sub>`api.ogt` line 10436</sub>
 
 <a id="record-Water"></a>
 
@@ -948,7 +956,7 @@ component Water {
 }
 ```
 
-<sub>`api.ogt` line 10456</sub>
+<sub>`api.ogt` line 10463</sub>
 
 <a id="record-Water2D"></a>
 
@@ -1002,7 +1010,7 @@ component Water2D {
 }
 ```
 
-<sub>`api.ogt` line 10584</sub>
+<sub>`api.ogt` line 10591</sub>
 
 ## Constants
 

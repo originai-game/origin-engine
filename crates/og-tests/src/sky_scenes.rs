@@ -7,8 +7,8 @@
 use crate::atmo_scenes::{colonnade, colonnade_camera};
 use glam::{Mat4, Vec3};
 use og_render::{
-    Background, Bloom, Clouds, DirectionalLight, Environment, Fog, Material, PhysicalAtmosphere,
-    ProceduralSky, RenderScene, SurfaceWeather, day_night, shapes,
+    Background, Bloom, Clouds, DirectionalLight, Environment, Exposure, Fog, Material,
+    PhysicalAtmosphere, ProceduralSky, RenderScene, SurfaceWeather, day_night, shapes,
 };
 
 /// The scenes of this module, in `SCENES` order.
@@ -56,7 +56,7 @@ pub fn physical_sky_scene(hours: f32, air: PhysicalAtmosphere, into_sun: bool) -
     };
     scene.fog = Some(Fog {
         color: look.fog_color,
-        density: 0.006,
+        density: 0.0015,
         start: 12.0,
         sky: 0.0,
         ..Default::default()
@@ -66,7 +66,10 @@ pub fn physical_sky_scene(hours: f32, air: PhysicalAtmosphere, into_sun: bool) -
     if into_sun {
         let s = look.sun_direction;
         let bearing = Vec3::new(s.x, 0.0, s.z).normalize_or(Vec3::NEG_Z);
-        scene.camera.target = scene.camera.position + bearing * 40.0 + Vec3::Y * 4.0;
+        // Tilted up with the sun (a 15° pitch at most), so a sun up to
+        // about 40° high stands in the frame with its glow.
+        let lift = (s.y.max(0.0).asin() - 0.05).clamp(0.07, 0.26).tan();
+        scene.camera.target = scene.camera.position + bearing * 40.0 + Vec3::Y * 40.0 * lift;
     }
     scene
 }
@@ -124,6 +127,34 @@ pub fn canopy(scene: &mut RenderScene) {
     }
 }
 
+/// `scene` with its camera's exposure opened by `ev` stops.
+fn exposed(mut scene: RenderScene, ev: f32) -> RenderScene {
+    if let Exposure::Manual { ev: e } = &mut scene.camera.exposure {
+        *e += ev;
+    }
+    scene
+}
+
+/// The wet colonnade on a stormy night, 0.03 s after a strike 160 m
+/// ahead (`strike`), or the same night without it.
+pub fn storm(strike: bool) -> RenderScene {
+    let mut scene = weathered(
+        22.5,
+        SurfaceWeather {
+            wetness: 1.0,
+            puddles: 0.5,
+            rain: 1.0,
+            ..SurfaceWeather::default()
+        },
+    );
+    scene.camera.target = Vec3::new(-1.0, 8.0, -30.0);
+    if strike {
+        let at = Vec3::new(-25.0, 0.0, -160.0);
+        og_render::add_lightning(&mut scene, at, 900.0, 3, 0.03);
+    }
+    scene
+}
+
 /// The scene called `name` of [`SKY_SCENES`].
 pub fn sky_scene(name: &str) -> RenderScene {
     let earth = PhysicalAtmosphere::EARTH;
@@ -144,21 +175,7 @@ pub fn sky_scene(name: &str) -> RenderScene {
                 ..SurfaceWeather::default()
             },
         ),
-        "weather-lightning" => {
-            let mut scene = weathered(
-                22.5,
-                SurfaceWeather {
-                    wetness: 1.0,
-                    puddles: 0.5,
-                    rain: 1.0,
-                    ..SurfaceWeather::default()
-                },
-            );
-            scene.camera.target = Vec3::new(-1.0, 8.0, -30.0);
-            let at = Vec3::new(-25.0, 0.0, -160.0);
-            og_render::add_lightning(&mut scene, at, 900.0, 3, 0.03);
-            scene
-        }
+        "weather-lightning" => storm(true),
         "weather-shelter-snow" => {
             let mut scene = weathered(
                 11.0,
@@ -217,8 +234,11 @@ pub fn sky_scene(name: &str) -> RenderScene {
             Clouds::default(),
         ),
         "sky-physical-noon" => physical_sky_scene(12.5, earth, false),
-        "sky-physical-sunset" => physical_sky_scene(17.85, earth, true),
-        "sky-physical-twilight" => physical_sky_scene(18.45, earth, true),
+        // A camera opens up for the low light as an eye adapts: 1.5 EV at
+        // sunset, 3.5 in twilight (the sky's light is ten stops below
+        // noon: opened less, it still reads as dusk).
+        "sky-physical-sunset" => exposed(physical_sky_scene(17.85, earth, true), 1.5),
+        "sky-physical-twilight" => exposed(physical_sky_scene(18.45, earth, true), 3.5),
         _ => physical_sky_scene(
             15.5,
             PhysicalAtmosphere {

@@ -87,14 +87,16 @@ fn weather_surface(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: vec3
   if (max(max(w.x, w.y), w.z) <= 0.0) { return o; }
   let p = p_frame + frame.origin.xyz;
   let up = clamp(geo.y, 0.0, 1.0);
-  let cover = weather_fbm(p.xz * 0.6);
+  // The cover's noise: broad drifts, a finer break-up for a ragged edge,
+  // and the height mixed in so a curved face's edge wanders too.
+  let cover = weather_fbm(p.xz * 0.6 + p.y * 0.7) * 0.7 + weather_noise(p.xz * 4.3 + p.y * 3.1 + 7.0) * 0.3;
 
   // Snow settles on what faces up, deeper cover reaching steeper faces;
   // the noise breaks its edge. Snow keeps the surface under it dry.
   var snow = 0.0;
   if (w.z > 0.0) {
     let reach = mix(1.05, 0.15, w.z);
-    snow = smoothstep(reach, reach + 0.12, up + (cover - 0.5) * 0.35 * (1.0 - w.z * 0.5));
+    snow = smoothstep(reach, reach + 0.05, up + (cover - 0.5) * 0.45 * (1.0 - w.z * 0.5));
     snow *= smoothstep(0.0, 0.08, w.z);
   }
 
