@@ -15,7 +15,10 @@
 //! one leans the torso forwards); moves are rig pixels added to a bone's
 //! setup position, given in leg lengths.
 
-use og_anim::{BoneTimeline, Clip2d, Ease, Key, Rig2dAsset, Rotation, SlotTimeline, Turn};
+use super::template::Leg;
+use og_anim::{
+    BoneTimeline, Clip2d, Ease, IkKey, IkTimeline, Key, Rig2dAsset, Rotation, SlotTimeline, Turn,
+};
 use std::f32::consts::TAU;
 
 /// Keys per second each track is sampled at.
@@ -82,6 +85,12 @@ impl Curve {
     /// A curve that holds its first and last keys beyond them.
     pub fn once(keys: &[(f32, f32)]) -> Curve {
         Curve::new(keys, false)
+    }
+
+    /// A one-shot curve through `values` at the fractions `times`.
+    pub fn keyed(times: &[f32], values: &[f32]) -> Curve {
+        let keys: Vec<(f32, f32)> = times.iter().copied().zip(values.iter().copied()).collect();
+        Curve::once(&keys)
     }
 
     pub fn at(&self, t: f32) -> f32 {
@@ -186,6 +195,38 @@ impl<'a> Clip<'a> {
         }
     }
 
+    /// Moves `bone` by `f(fraction)` pixels along the rig's axes (x right,
+    /// y up), whichever way its parent points.
+    pub fn shift(&mut self, bone: &str, f: impl Fn(f32) -> [f32; 2]) {
+        let Some(b) = self.rig.bone(bone) else { return };
+        let pose = self.rig.pose(None, 0.0, &[]);
+        let inverse = self.rig.bones[b]
+            .parent
+            .map_or(og_anim::Affine2::IDENTITY, |p| pose.world[p].inverse());
+        let zero = inverse.apply_to([0.0, 0.0]);
+        self.mov(bone, |t| {
+            let q = inverse.apply_to(f(t));
+            [q[0] - zero[0], q[1] - zero[1]]
+        });
+    }
+
+    /// Scales `bone` by `f(fraction)` (x along the bone, y across it).
+    pub fn scale(&mut self, bone: &str, f: impl Fn(f32) -> [f32; 2]) {
+        let d = self.clip.duration;
+        let keys: Vec<Key<[f32; 2]>> = self
+            .times()
+            .into_iter()
+            .map(|t| Key {
+                time: t * d,
+                value: f(t),
+                ease: Ease::Linear,
+            })
+            .collect();
+        if let Some(track) = self.track(bone) {
+            track.scale = keys;
+        }
+    }
+
     /// Turns a chain (`base`, `base-2`, ...): bone `k` by `f(fraction, k)`.
     pub fn chain(&mut self, base: &str, f: impl Fn(f32, usize) -> f32) {
         for k in 0..8 {
@@ -238,6 +279,25 @@ impl<'a> Clip<'a> {
         self.clip.order = vec![(0.0, order)];
     }
 
+    /// Bends the leg whose IK is named `ik` the other way for the whole
+    /// clip (`counterclockwise`), from a pose where it is straight so it
+    /// never snaps.
+    pub fn bend(&mut self, ik: &str, counterclockwise: bool) {
+        if let Some(i) = self.rig.iks.iter().position(|k| k.name == ik) {
+            self.clip.iks.push(IkTimeline {
+                ik: i,
+                keys: vec![Key {
+                    time: 0.0,
+                    value: IkKey {
+                        weight: 1.0,
+                        counterclockwise,
+                    },
+                    ease: Ease::Linear,
+                }],
+            });
+        }
+    }
+
     pub fn event(&mut self, fraction: f32, name: &str) {
         self.clip
             .events
@@ -258,21 +318,59 @@ pub fn swing(t: f32, amplitude: f32, cycles: f32, lag: f32) -> f32 {
 }
 
 /// The rig's measures the clips scale by, rig pixels: leg length (hip to
-/// ankle), how far its back reaches behind the root and how high its
-/// ankles are.
+/// ankle), how far its back reaches behind the root, how high its ankles
+/// are and how tall it is drawn.
 pub struct Measure {
     pub leg: f32,
     pub back: f32,
     pub ankle: f32,
+    pub height: f32,
 }
 
-pub fn measure(rig: &Rig2dAsset, legs: &[[&str; 3]], height: f32) -> Measure {
+/// Where a bone's origin is in the setup pose, rig pixels.
+pub fn origin(rig: &Rig2dAsset, bone: &str) -> Option<[f32; 2]> {
+    let pose = rig.pose(None, 0.0, &[]);
+    rig.bone(bone).map(|b| pose.world[b].apply(0.0, 0.0))
+}
+
+/// The box (left, bottom, right, top) of what a slot draws in the setup
+/// pose, rig pixels.
+pub fn slot_box(rig: &Rig2dAsset, slot: &str) -> Option<[f32; 4]> {
+    let pose = rig.pose(None, 0.0, &[]);
+    let (vertices, _) = rig.triangles(&pose);
+    let want = rig.slots.iter().position(|s| s.name == slot)?;
+    let mut at = 0;
+    for &s in &pose.order {
+        let n = match pose.slots[s].map(|a| &rig.attachments[a].kind) {
+            Some(og_anim::AttachmentKind::Region { .. }) => 4,
+            Some(og_anim::AttachmentKind::Mesh { vertices, .. }) => vertices.len(),
+            _ => 0,
+        };
+        if s == want {
+            let p = vertices[at..at + n]
+                .iter()
+                .map(|v| v.position.map(|c| c * rig.unit));
+            return Some(p.fold([f32::MAX, f32::MAX, f32::MIN, f32::MIN], |b, q| {
+                [
+                    b[0].min(q[0]),
+                    b[1].min(q[1]),
+                    b[2].max(q[0]),
+                    b[3].max(q[1]),
+                ]
+            }));
+        }
+        at += n;
+    }
+    None
+}
+
+pub fn measure(rig: &Rig2dAsset, legs: &[Leg], height: f32) -> Measure {
     let pose = rig.pose(None, 0.0, &[]);
     let at = |name: &str| rig.bone(name).map(|b| pose.world[b].apply(0.0, 0.0));
     let lengths: Vec<f32> = legs
         .iter()
         .filter_map(|l| {
-            let (h, a) = (at(l[0])?, at(l[2])?);
+            let (h, a) = (at(l.upper)?, at(l.end)?);
             Some((h[0] - a[0]).hypot(h[1] - a[1]))
         })
         .collect();
@@ -286,7 +384,12 @@ pub fn measure(rig: &Rig2dAsset, legs: &[[&str; 3]], height: f32) -> Measure {
         .iter()
         .map(|v| -v.position[0] * rig.unit)
         .fold(0.0f32, f32::max);
-    let ankles: Vec<f32> = legs.iter().filter_map(|l| Some(at(l[2])?[1])).collect();
+    let ankles: Vec<f32> = legs.iter().filter_map(|l| Some(at(l.end)?[1])).collect();
     let ankle = ankles.iter().sum::<f32>() / ankles.len().max(1) as f32;
-    Measure { leg, back, ankle }
+    Measure {
+        leg,
+        back,
+        ankle,
+        height,
+    }
 }

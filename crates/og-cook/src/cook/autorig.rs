@@ -9,7 +9,7 @@
 //! version 1
 //! ---
 //! parts "knight.psd"         # or "knight/", a folder of PNGs
-//! template humanoid-side
+//! template humanoid-side    # or humanoid-front, quadruped, creature
 //! pivot hand-r 212 340       # optional: a joint, canvas pixels
 //! unit 200                   # optional: pixels per world unit
 //! filter nearest             # optional: pixel art
@@ -33,8 +33,11 @@ use std::path::Path;
 
 mod atlas;
 mod clips;
+mod creature;
+mod front;
 mod mesh;
 mod parts;
+mod quadruped;
 mod side;
 mod skeleton;
 mod template;
@@ -172,8 +175,9 @@ pub(super) fn build(
             "line {}: unit <pixels per world unit>, above 0",
             e.line
         ))?,
-        // Two world units tall, whatever the art's resolution.
-        None => (art.drawn_height() / 2.0).max(1.0),
+        // The template's height in world units (a humanoid two, a fox
+        // 1.2), whatever the art's resolution.
+        None => (art.drawn_height() / template.height).max(1.0),
     };
     if doc.body.get("filter").and_then(|e| e.word(0).ok()) == Some("nearest") {
         rig.filter = SheetFilter::Nearest;
@@ -182,7 +186,9 @@ pub(super) fn build(
     let measure = clips::measure(&rig, template.legs, art.drawn_height());
     rig.clips = match template.name {
         "humanoid-side" => side::clips(&rig, &measure),
-        _ => Vec::new(),
+        "humanoid-front" => front::clips(&rig, &measure),
+        "quadruped" => quadruped::clips(&rig, &measure),
+        _ => creature::clips(&rig, &measure),
     };
     notes.push(format!(
         "auto-rigged {} as {}: {} parts, {} clips, a {}x{} atlas",

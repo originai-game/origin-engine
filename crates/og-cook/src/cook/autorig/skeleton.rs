@@ -226,7 +226,7 @@ pub fn rig(
     // the setup pose as drawn.
     for leg in template.legs {
         let idx = |name: &str| nodes.iter().position(|n| n.spec.name == name);
-        let (Some(u), Some(l), Some(f)) = (idx(leg[0]), idx(leg[1]), idx(leg[2])) else {
+        let (Some(u), Some(l), Some(f)) = (idx(leg.upper), idx(leg.lower), idx(leg.end)) else {
             continue;
         };
         let (h, k, a) = (nodes[u].joint, nodes[l].joint, nodes[f].joint);
@@ -248,13 +248,13 @@ pub fn rig(
             ));
         }
         for leg in template.legs {
-            if let Some(foot) = at(leg[2])
+            if let Some(foot) = at(leg.end)
                 && foot[1] <= hips[1]
             {
-                let p = art.part(leg[2]).expect("foot");
+                let p = art.part(leg.end).expect("foot");
                 return Err(format!(
                     "{}: `{}` is drawn above the hips; the {} template stands on its feet: check the layer's name",
-                    p.source, leg[2], template.name
+                    p.source, leg.end, template.name
                 ));
             }
         }
@@ -320,7 +320,7 @@ pub fn rig(
     let mut iks = Vec::new();
     for leg in template.legs {
         let idx = |name: &str| nodes.iter().position(|n| n.spec.name == name);
-        let (Some(u), Some(l), Some(f)) = (idx(leg[0]), idx(leg[1]), idx(leg[2])) else {
+        let (Some(u), Some(l), Some(f)) = (idx(leg.upper), idx(leg.lower), idx(leg.end)) else {
             continue;
         };
         let (h, k, a) = (
@@ -331,7 +331,7 @@ pub fn rig(
         let (t, s) = (sub(k, h), sub(a, k));
         let cross = t[0] * s[1] - t[1] * s[0];
         bones.push(Bone2d {
-            name: format!("ik-{}", leg[2]),
+            name: format!("ik-{}", leg.end),
             parent: Some(0),
             x: a[0],
             y: a[1],
@@ -342,12 +342,16 @@ pub fn rig(
         });
         world.push((a, 0.0));
         iks.push(Ik2d {
-            name: format!("ik-{}", leg[2]),
+            name: format!("ik-{}", leg.end),
             bones: vec![first_bone[u], first_bone[l]],
             target: bones.len() - 1,
-            // As the art bends it; a knee straight in the art bends
-            // forwards (facing right), which og-anim calls counterclockwise.
-            counterclockwise: straight(h, k, a) || cross < 0.0,
+            // As the art bends it; a knee straight in the art bends the
+            // way the template says.
+            counterclockwise: if straight(h, k, a) {
+                leg.counterclockwise
+            } else {
+                cross < 0.0
+            },
             weight: 1.0,
         });
     }
@@ -403,6 +407,33 @@ pub fn rig(
             shear: 0.0,
             mix: [0.5, 0.0, 0.0, 0.0],
         });
+    }
+    // A bone the clips scale (a creature's body squashing, a thigh
+    // foreshortened) would scale the rigid parts below it too: each keeps
+    // the root's axes (unit length, square), so an eye stays round and a
+    // foot keeps its shape.
+    let below = |mut n: usize| {
+        while let Some(p) = nodes[n].parent {
+            if template.scaled.contains(&nodes[p].spec.name) {
+                return true;
+            }
+            n = p;
+        }
+        false
+    };
+    for (i, n) in nodes.iter().enumerate() {
+        if n.spec.shape == Shape::Rigid && below(i) {
+            transforms.push(TransformConstraint2d {
+                name: format!("rigid-{}", n.spec.name),
+                bones: vec![first_bone[i]],
+                target: 0,
+                rotation: 0.0,
+                at: [0.0, 0.0],
+                scale: [0.0, 0.0],
+                shear: 0.0,
+                mix: [0.0, 0.0, 1.0, 1.0],
+            });
+        }
     }
     // The bones' world transforms in the setup pose, as og-anim poses them
     // (a joint bone half-way, as its constraint turns it).

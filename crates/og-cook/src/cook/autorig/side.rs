@@ -12,7 +12,7 @@ const SIDES: [(&str, f32); 2] = [("r", 0.0), ("l", 0.5)];
 
 /// Whether the hand on `side` holds the weapon or the shield: that arm
 /// swings less and its hand steadies what it holds.
-fn holds(rig: &Rig2dAsset, side: &str) -> bool {
+pub(super) fn holds(rig: &Rig2dAsset, side: &str) -> bool {
     let hand = rig.bone(&format!("hand-{side}"));
     ["weapon", "shield"]
         .iter()
@@ -21,7 +21,7 @@ fn holds(rig: &Rig2dAsset, side: &str) -> bool {
 }
 
 /// The free hand: the near one unless it holds something.
-fn free_side(rig: &Rig2dAsset) -> &'static str {
+pub(super) fn free_side(rig: &Rig2dAsset) -> &'static str {
     if holds(rig, "r") && !holds(rig, "l") {
         "l"
     } else {
@@ -52,7 +52,7 @@ fn arm(
     });
 }
 
-fn chains(c: &mut Clip, f: impl Fn(f32, usize, f32) -> f32) {
+pub(super) fn chains(c: &mut Clip, f: impl Fn(f32, usize, f32) -> f32) {
     // A cape and hair trail the body, a tail too; each bone later and
     // wider than the one before it.
     for (name, scale) in [
@@ -61,6 +61,7 @@ fn chains(c: &mut Clip, f: impl Fn(f32, usize, f32) -> f32) {
         ("tail", 1.4),
         ("wing-l", 0.5),
         ("wing-r", 0.5),
+        ("mane", 0.6),
     ] {
         c.chain(name, |t, k| f(t, k, scale));
     }
@@ -78,7 +79,7 @@ fn idle(rig: &Rig2dAsset, m: &Measure) -> Clip2d {
     });
     // The chest rises with the breath; never by scale, which the head and
     // arms would inherit.
-    c.mov("torso", |t| {
+    c.shift("torso", |t| {
         [
             0.0,
             0.01 * l * (0.5 - 0.5 * (std::f32::consts::TAU * (t - 0.08)).cos()),
