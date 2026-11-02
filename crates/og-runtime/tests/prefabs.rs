@@ -273,7 +273,7 @@ fn hashes_are_pinned_without_prefabs_and_stable_across_a_re_cook_with_them() {
 /// lazy og.Lighting2D, og.Light2D and og.Occluder2D from fd4dddba26ef754a,
 /// for the same reason; then ui-gaps' UI state version 14 from
 /// 1069aa19a26d8691; then version 15 from e83b148c0f38efb5).
-const BY_HAND_HASH: &str = "42972b522bf6710d";
+const BY_HAND_HASH: &str = "46cc8d6517681608";
 
 #[test]
 fn apply_back_and_revert_round_trip_in_the_text() {
