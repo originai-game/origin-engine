@@ -237,7 +237,7 @@ test("og.ui.subtitles: two speech lines at most, captions only when asked, the s
   expect(at(els, "Subs/s1/Text")!.text).toBe("[door creaks]");
 });
 
-test("og.ui.banner: an open tooltip card steps under it and dims while it shows, and comes back after", () => {
+test("og.ui.banner: an open tooltip card fades out while it shows, and comes back after", () => {
   let tick0 = -1;
   const e = engineFor("FbBannerTip", () => {
     if (tick0 < 0) tick0 = og.ui.tick();
@@ -249,7 +249,7 @@ test("og.ui.banner: an open tooltip card steps under it and dims while it shows,
   e.advance(50);
   expect(cover()).toBe("clear");
   e.advance(20);
-  expect(cover()).toBe("dimmed");
+  expect(cover()).toBe("hidden");
   e.advance(120);
   expect(cover()).toBe("clear");
 });

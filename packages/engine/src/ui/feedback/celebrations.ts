@@ -135,17 +135,19 @@ export function celebration(id: string, desc: Api.CelebrationDesc = {}): void {
         leaf("Glow", { width: px(260), height: px(160) }, { shape: { kind: "ellipse" }, fills: [radial([[0, lit(gold, 0.35)], [1, lit(gold, 0)]])] }, absolute({ centerX: true, centerY: true }, { opacity: 1 - leave }));
       }
       const s = still ? 1 : 0.4 + 0.6 * easeBack(enter, 2.4);
+      // The word and the level share one ink: the gold gradient under a heavy outline, which holds 4.5:1 on a light scene.
+      const goldInk: Api.Gradient = { type: "linear", from: { x: 0, y: 0 }, to: { x: 0, y: 1 }, stops: [{ offset: 0, color: lit({ r: 1, g: 0.97, b: 0.8, a: 1 }) }, { offset: 0.55, color: lit(gold) }, { offset: 1, color: lit({ r: gold.r * 0.8, g: gold.g * 0.7, b: gold.b * 0.5, a: 1 }) }] };
       text("Title", title, {
         step: titleStep,
         font: "display",
         nowrap: true,
         color: lit(gold),
         outline: 1.6,
-        gradient: { type: "linear", from: { x: 0, y: 0 }, to: { x: 0, y: 1 }, stops: [{ offset: 0, color: lit({ r: 1, g: 0.97, b: 0.8, a: 1 }) }, { offset: 0.55, color: lit(gold) }, { offset: 1, color: lit({ r: gold.r * 0.8, g: gold.g * 0.7, b: gold.b * 0.5, a: 1 }) }] },
+        gradient: goldInk,
       }, { transform: { scaleX: s, scaleY: s }, opacity: (still ? enter : 1) * (1 - leave), z: 2 });
       if (desc.value) {
-        const vx = clamp01((age - msToTicks(350)) / msToTicks(400));
-        text("Value", desc.value, { step: ts(48, true), font: "display", nowrap: true, color: token("ink"), outline: 1.6 }, { transform: { y: still ? 0 : 20 * (1 - easeOut(vx)) }, opacity: vx * (1 - leave), z: 2 });
+        const vx = clamp01((age - msToTicks(300)) / msToTicks(220));
+        text("Value", desc.value, { step: ts(48, true), font: "display", nowrap: true, color: lit(gold), outline: 1.8, gradient: goldInk }, { transform: { y: still ? 0 : 20 * (1 - easeOut(vx)) }, opacity: vx * (1 - leave), z: 2 });
       }
       leaf("Sparks", { width: px(300), height: px(4) }, undefined, absolute({ centerX: true, bottom: 40 }));
       kit.particles({ rate: age < msToTicks(1600) ? 40 : 0, burst: 30, fire: age === msToTicks(120), colors: [lit(gold), token("highlight")], direction: -Math.PI / 2, spread: 0.7, travelMin: 80, travelMax: 220, shape: "diamond", size: { x: 6, y: 6 }, lifetimeMs: 1200, from: "area", endScale: 0.3 });

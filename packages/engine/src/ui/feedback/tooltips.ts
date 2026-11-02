@@ -186,15 +186,18 @@ function card(id: string, desc: Api.TooltipCardDesc, target: string, open_: bool
       build?.();
     }, pinned) || overCard;
   });
-  // While a banner or a level-up announces, the card steps under it and dims: its text never reads through the band.
+  // While a banner or a level-up announces, the card fades fully out and takes no input, and comes
+  // back after: a transient announcement never carries other text under it.
   const covered = announcing();
   apply({
-    opacity: first ? 0 : covered ? 0.1 : 1,
-    motion: { kind: "token", token: "ui" },
+    opacity: first || covered ? 0 : 1,
+    inert: covered,
+    // Out at once (no frame of it under the band), back with the UI's motion.
+    motion: covered ? null : { kind: "token", token: "ui" },
     enter: { kind: "fade", transition: { kind: "token", token: "enter" } },
     exit: { kind: "fade", transition: { kind: "token", token: "exit" } },
     a11y: a11y("tooltip", desc.title ?? "", { description: (desc.body ?? "").replace(/\[[^\]]*\]/g, "") }),
-    ...groups({ pin: pinned ? "pinned" : pinProgress > 0 ? "pinning" : "resting", cover: covered ? "dimmed" : "clear" }, { pin: ["resting", "pinning", "pinned"], cover: ["clear", "dimmed"] }),
+    ...groups({ pin: pinned ? "pinned" : pinProgress > 0 ? "pinning" : "resting", cover: covered ? "hidden" : "clear" }, { pin: ["resting", "pinning", "pinned"], cover: ["clear", "hidden"] }),
   });
 
   // Nested cards: a hovered keyword opens its card beside this one.
