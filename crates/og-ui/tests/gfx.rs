@@ -373,12 +373,15 @@ fn rich_frame(markup: &str, step: StepOf) -> (Vec<u8>, usize, usize, [u8; 3]) {
 /// glyph quads filled. Small text from a narrow distance range (the test
 /// font's 4 px at 32 px: at `text-xs` the field is too thin to thicken)
 /// still turns bold: bold also draws a second copy a device pixel to the
-/// right.
+/// right. A bold glyph advances one weight further than its plain self (a
+/// bold face's added stem), so each glyph is compared with its plain
+/// glyph moved by the weights of the glyphs before it.
 ///
 /// Ways it could fail: the weight runs past the field's reach and fills
 /// each glyph's quad (a box behind the digit, as the first cut drew at
 /// the reading size), bold draws nothing heavier at small sizes (no
-/// second copy), or it moves the glyphs.
+/// second copy), or it moves the glyphs further than their tracked
+/// advance (a letter-spaced bold word).
 #[test]
 fn bold_rich_text_is_heavier_ink_never_a_box() {
     let steps: [(&str, StepOf); 3] = [
@@ -386,9 +389,28 @@ fn bold_rich_text_is_heavier_ink_never_a_box() {
         ("reading", |r| r.reading),
         ("display", |r| r.display_md),
     ];
+    const LINE: &str = "Slot 42 W";
+    let metrics = test_font_metrics().metrics;
+    let theme = *ui_with_font(test_font_metrics()).theme();
     for (name, step) in steps {
-        let (plain, w, h, bg) = rich_frame("Slot 42 W", step);
-        let (bold, ..) = rich_frame("[b]Slot 42 W[/b]", step);
+        let (plain, w, h, bg) = rich_frame(LINE, step);
+        let (bold, ..) = rich_frame(&format!("[b]{LINE}[/b]"), step);
+        // Each glyph's advance in the plain line (from the card's padding, at
+        // 1 device pixel a CSS px) and how far bold moves it: one weight
+        // (og-ui's 0.045 em, at least 0.4 px) for each glyph before it.
+        let s = step(&theme.type_ramp);
+        let weight = (s.size * 0.045).max(0.4);
+        let x0 = theme.space.md;
+        let glyphs: Vec<(f32, f32, f32)> = LINE
+            .char_indices()
+            .filter(|(_, c)| !c.is_whitespace())
+            .map(|(i, c)| {
+                let left = x0 + metrics.measure_tracked(&LINE[..i], s.size, s.tracking_em);
+                let end = i + c.len_utf8();
+                let right = x0 + metrics.measure_tracked(&LINE[..end], s.size, s.tracking_em);
+                (left, right, LINE[..i].chars().count() as f32 * weight)
+            })
+            .collect();
         let ink = |px: &[u8], x: usize, y: usize| {
             let i = (y * w + x) * 4;
             (0..3)
@@ -408,14 +430,24 @@ fn bold_rich_text_is_heavier_ink_never_a_box() {
             b as f64 >= 1.15 * p as f64,
             "bold is heavier at the {name} size: {b} against {p} px"
         );
-        // Every bold ink pixel lies within three pixels of the plain ink
-        // (the weight, at most 0.045 em, and the one-pixel second copy).
+        // Every bold ink pixel lies within three pixels of its glyph's plain
+        // ink, moved by its tracked advance (the weight, at most 0.045 em,
+        // and the one-pixel second copy).
+        let near_plain = |x: i64, y: usize| {
+            (y.saturating_sub(3)..=(y + 3).min(h - 1)).any(|yy| {
+                (x - 3..=x + 3)
+                    .any(|xx| xx >= 0 && (xx as usize) < w && ink(&plain, xx as usize, yy))
+            })
+        };
         let mut stray = 0;
         for y in 0..h {
             for x in 0..w {
                 if ink(&bold, x, y) {
-                    let near = (y.saturating_sub(3)..=(y + 3).min(h - 1)).any(|yy| {
-                        (x.saturating_sub(3)..=(x + 3).min(w - 1)).any(|xx| ink(&plain, xx, yy))
+                    let xf = x as f32;
+                    let near = glyphs.iter().any(|&(l, r, dx)| {
+                        xf >= l + dx - 4.0
+                            && xf <= r + dx + 4.0
+                            && near_plain((xf - dx).round() as i64, y)
                     });
                     if !near {
                         stray += 1;
