@@ -12,8 +12,8 @@
 use og_render::RenderScene;
 use og_runtime::{
     Dispatch, Fetch, Hooks, RenderBackend, og_engine_create, og_engine_frame, og_engine_take_log,
-    og_game_game, og_host_begin_bundle, og_load_font, og_render_text, og_world_get_tick, set_hooks,
-    set_render_backend,
+    og_game_game, og_host_begin_bundle, og_load_font, og_render_measure_text, og_render_text,
+    og_world_get_tick, set_hooks, set_render_backend,
 };
 use serde_json::{Value, json};
 use std::cell::Cell;
@@ -190,4 +190,41 @@ fn a_missing_glyph_is_named_once_on_the_tick_it_is_first_drawn() {
         "the arrow was named already: {}",
         w[0].1
     );
+}
+
+/// A font whose file lacks U+202F (ChakraPetch) still spaces CLDR's "3:05
+/// PM": the cook adds the Unicode spaces it lacks as empty glyphs with the
+/// width of the space they stand for, so no space vanishes and none is
+/// warned of as missing.
+#[test]
+fn unicode_spaces_a_font_lacks_still_take_space() {
+    set_hooks(Rc::new(Disk));
+    og_host_begin_bundle();
+    let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+    let options = json!({ "root": project().to_str().unwrap() }).to_string();
+    let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
+    set_render_backend(engine, Some(Box::new(Counter(Cell::new(0))))).unwrap();
+    let font = value(og_load_font(
+        engine,
+        "fonts/ChakraPetch-BoldItalic.ttf".into(),
+    ));
+    value(og_engine_frame(engine, 0.0));
+    let _ = warnings(engine);
+    let width = |text: &str| {
+        let desc = json!({ "font": font, "text": text, "size": 1 });
+        value(og_render_measure_text(engine, Some(desc.to_string())))["width"]
+            .as_f64()
+            .unwrap()
+    };
+    let (joined, narrow, space) = (width("3:05PM"), width("3:05\u{202f}PM"), width("3:05 PM"));
+    assert!(narrow > joined + 0.1, "{narrow} > {joined}");
+    assert!(
+        narrow <= space + 1e-6,
+        "never wider than a space: {narrow} {space}"
+    );
+    // An em space is a whole em; a no-break space is the space.
+    assert!((width("a\u{2003}b") - width("ab") - 1.0).abs() < 1e-4);
+    assert!((width("1\u{a0}234") - width("1 234")).abs() < 1e-6);
+    show(engine, &font, "3:05\u{202f}PM 1\u{202f}234");
+    assert_eq!(warnings(engine), vec![]);
 }

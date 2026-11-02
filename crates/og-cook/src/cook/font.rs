@@ -332,6 +332,58 @@ fn render(face: &ttf_parser::Face, cp: u32, s: &FontSettings) -> Option<Glyph> {
     })
 }
 
+/// The Unicode spaces a cooked font always carries.
+const SPACES: [u32; 14] = [
+    0x00a0, 0x2000, 0x2001, 0x2002, 0x2003, 0x2004, 0x2005, 0x2006, 0x2007, 0x2008, 0x2009, 0x200a,
+    0x202f, 0x205f,
+];
+
+/// An empty glyph for each of [`SPACES`] that `cooked` lacks: the font's own
+/// advance when its file has the character outside the charset, else the
+/// width Unicode gives it, from the font's space (U+00A0 as the space; the
+/// quads and en/em spaces in em; figure and punctuation spaces as `0` and
+/// `.`; thin spaces and U+202F about a third of an em, never wider than the
+/// space; the hair space a tenth). None without a space glyph to measure by.
+fn unicode_spaces(face: &ttf_parser::Face, cooked: &[Glyph]) -> Vec<Glyph> {
+    let upem = f32::from(face.units_per_em());
+    let advance_of = |c: char| {
+        face.glyph_index(c)
+            .and_then(|g| face.glyph_hor_advance(g))
+            .map(|a| f32::from(a) / upem)
+    };
+    let Some(space) = advance_of(' ') else {
+        return Vec::new();
+    };
+    SPACES
+        .iter()
+        .filter(|&&cp| !cooked.iter().any(|g| g.codepoint == cp))
+        .map(|&cp| {
+            let c = char::from_u32(cp).expect("a space code point");
+            let advance = advance_of(c).unwrap_or(match cp {
+                0x2000 | 0x2002 => 0.5,
+                0x2001 | 0x2003 => 1.0,
+                0x2004 => 1.0 / 3.0,
+                0x2005 => 0.25,
+                0x2006 => 1.0 / 6.0,
+                0x2007 => advance_of('0').unwrap_or(space),
+                0x2008 => advance_of('.').unwrap_or(space),
+                0x2009 | 0x202f => space.min(1.0 / 3.0),
+                0x200a => 0.1,
+                0x205f => 4.0 / 18.0,
+                _ => space,
+            });
+            Glyph {
+                codepoint: cp,
+                advance,
+                plane: None,
+                width: 0,
+                height: 0,
+                pixels: Vec::new(),
+            }
+        })
+        .collect()
+}
+
 /// What a font cook reports besides the blob.
 pub struct FontNotes {
     pub note: String,
@@ -370,7 +422,7 @@ pub fn cook(
     let missing: Vec<u32> = extra
         .iter()
         .copied()
-        .filter(|cp| in_font.binary_search(cp).is_err())
+        .filter(|cp| in_font.binary_search(cp).is_err() && !SPACES.contains(cp))
         .collect();
     wanted.extend(
         extra
@@ -466,10 +518,18 @@ pub fn cook(
             });
         }
     });
-    let glyphs: Vec<Glyph> = slots
+    let mut glyphs: Vec<Glyph> = slots
         .into_iter()
         .filter_map(|m| m.into_inner().expect("no poisoning"))
         .collect();
+    // Unicode spaces the cooked glyphs lack (CLDR writes en's "3:05 PM" and
+    // fr's "1 234" with U+202F, and fonts often leave it out): empty glyphs
+    // that advance as the space would, so no space vanishes from a text.
+    let spaces = unicode_spaces(&face, &glyphs);
+    if !spaces.is_empty() {
+        glyphs.extend(spaces);
+        glyphs.sort_by_key(|g| g.codepoint);
+    }
 
     // Shelf packing: tallest first, 1-pixel gutters, pages of page_size².
     let page = s.page_size.max(64);
@@ -565,10 +625,11 @@ pub fn cook(
         page_width: width,
         page_height: height,
         // Shaped forms are glyphs, not code points of the font's cmap.
-        uncooked_codepoints: in_font
-            .len()
-            .saturating_sub(rows.iter().filter(|r| r.codepoint < GLYPH_PUA).count())
-            as u32,
+        uncooked_codepoints: in_font.len().saturating_sub(
+            rows.iter()
+                .filter(|r| in_font.binary_search(&r.codepoint).is_ok())
+                .count(),
+        ) as u32,
     };
     let mut w = BlobWriter::new(
         format::Font::type_hash(),

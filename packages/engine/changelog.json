@@ -315,6 +315,10 @@
       {
         "member": "og-net relay client: a stopped and resumed process",
         "summary": "A signal interrupting the client's socket read or write (a process stopped and resumed, a laptop waking) no longer counts as a lost connection."
+      },
+      {
+        "member": "font cook: Unicode spaces",
+        "summary": "A cooked font now carries U+00A0, U+2000-U+200A, U+202F and U+205F even when its file lacks them (or its charset leaves them out): empty glyphs with the font's own advance, else the width Unicode gives the space (the space's for U+00A0; en and em quads and spaces in em; figure and punctuation spaces as `0` and `.`; thin spaces and U+202F about a third of an em, never wider than the space; the hair space a tenth). They used to take no width, so CLDR's \"3:05 PM\" (U+202F before PM) drew as \"3:05PM\" and fr's \"1 234\" as \"1234\". The font's cook stamp moves (\"font 2\"), so every font re-cooks once; the blob layout and type hash are unchanged, and a requested `chars` space the file lacks is no longer reported missing."
       }
     ]
   },

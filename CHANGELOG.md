@@ -32,7 +32,10 @@ is one line here, written at the merge that changes
   `og.time.setGroupScale` slow or freeze one group of entities (their
   animation, flipbooks, 2D skeletons, tweens, nav agents and particle
   systems) on top of the global scale; physics stays global. Both types
-  are lazy, so a world without them hashes and saves as before.
+  are lazy, so a world without them hashes and saves as before. Fonts
+  now cook the Unicode spaces their files lack (U+00A0, U+2000-U+200A,
+  U+202F, U+205F) with the right width, so "3:05 PM" keeps its space;
+  every font re-cooks once.
 - **Tilemap orientations and run-time maps (G2-6, batch 2).** Maps are
   orthogonal, isometric, staggered or hex (pointy- or flat-top), from a
   `.ogt` `orientation` line or Tiled's isometric, staggered and hexagonal
