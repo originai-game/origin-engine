@@ -110,6 +110,14 @@ pub(crate) fn generate(rs: &mut RenderState) -> usize {
                 y + img.height < PAGE && x + img.width < PAGE
             };
             if !rf.page.as_ref().is_some_and(fits) {
+                // The page this batch leaves keeps what it drew: uploaded
+                // now, or its glyphs sample the texture of its last upload
+                // (a page made in this batch, all zero) and draw blank.
+                if let Some(old) = rf.page.take()
+                    && touched.contains(&(old.font.index() as u32))
+                {
+                    upload(&mut rs.scene, &old);
+                }
                 let atlas = rs.scene.add_texture(TextureData {
                     width: PAGE,
                     height: PAGE,
@@ -185,16 +193,7 @@ pub(crate) fn generate(rs: &mut RenderState) -> usize {
         if let Some(p) = &rf.page
             && touched.contains(&(p.font.index() as u32))
         {
-            rs.scene.set_texture(
-                p.atlas,
-                TextureData {
-                    width: PAGE,
-                    height: PAGE,
-                    rgba: p.rgba.clone(),
-                    color_space: ColorSpace::Linear,
-                    mips: Mips::None,
-                },
-            );
+            upload(&mut rs.scene, p);
         }
         // Every page learns the new glyphs: bounds on the page that holds
         // each, the advance everywhere else.
@@ -237,6 +236,20 @@ pub(crate) fn generate(rs: &mut RenderState) -> usize {
         }
     }
     rendered
+}
+
+/// Uploads a run-time page's atlas as it now stands.
+fn upload(scene: &mut og_render::RenderScene, page: &Page) {
+    scene.set_texture(
+        page.atlas,
+        TextureData {
+            width: PAGE,
+            height: PAGE,
+            rgba: page.rgba.clone(),
+            color_space: ColorSpace::Linear,
+            mips: Mips::None,
+        },
+    );
 }
 
 /// The characters of `text` that font `render` (an index into
@@ -379,4 +392,85 @@ pub(crate) fn ui_lacking(rs: &mut RenderState, text: &str) -> Vec<(FontHandle, V
             .collect()
     };
     unjudged(rs, &found)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::extract::FontPages;
+
+    /// One batch that fills more than a page (the kit's ja ability cards:
+    /// the katakana of one frame on one page, its kanji on the next): every
+    /// glyph a page lists has ink in that page's uploaded atlas. Each page
+    /// but the last once kept the texture it was made with, all zero, so
+    /// its glyphs drew blank (ン, リ and ド of 偏向スクリーン and ターン終了).
+    #[test]
+    fn a_batch_over_several_pages_uploads_every_page() {
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../templates/styles/cjk/NotoSansSC-Regular.ttf"
+        );
+        let file = FontFile::new(Arc::new(std::fs::read(path).unwrap())).unwrap();
+        let mut rs = RenderState::new(serde_json::Value::Null);
+        let atlas = rs.scene.add_texture(TextureData {
+            width: 4,
+            height: 4,
+            rgba: vec![0; 64],
+            color_space: ColorSpace::Linear,
+            mips: Mips::None,
+        });
+        let first = rs.scene.add_font(og_render::MsdfFont {
+            atlas,
+            distance_range: 16.0,
+            line_height: 1.2,
+            glyphs: Vec::new(),
+            kerning: Vec::new(),
+        });
+        rs.fonts.push(FontPages { pages: vec![first] });
+        rs.runtime_fonts
+            .insert(0, RuntimeFont::new(file.clone(), 48.0, 16.0));
+        let wanted: Vec<char> = "偏向スクリーンターン終了修理ドローン"
+            .chars()
+            .chain((0x4e00..0x4e60).filter_map(char::from_u32))
+            .collect();
+        for &c in &wanted {
+            file.advance(c);
+        }
+        assert!(generate(&mut rs) > 0);
+        let pages = rs.fonts[0].pages.clone();
+        assert!(
+            pages.len() > 2,
+            "the batch fills more than one page: {}",
+            pages.len()
+        );
+        let mut checked = 0;
+        for &p in &pages[1..] {
+            let font = rs.scene.font(p).unwrap().clone();
+            let tex = rs.scene.texture(font.atlas).unwrap();
+            for g in font
+                .glyphs
+                .iter()
+                .filter(|g| g.atlas_bounds[2] > g.atlas_bounds[0])
+            {
+                let [x0, y0, x1, y1] = g.atlas_bounds.map(|v| v as usize);
+                let inked = (y0..y1).any(|y| {
+                    (x0..x1).any(|x| {
+                        let o = (y * tex.width as usize + x) * 4;
+                        let mut m = [tex.rgba[o], tex.rgba[o + 1], tex.rgba[o + 2]];
+                        m.sort_unstable();
+                        m[1] > 127
+                    })
+                });
+                assert!(
+                    inked,
+                    "{:?} U+{:04X} is blank on its page",
+                    g.codepoint, g.codepoint as u32
+                );
+                checked += 1;
+            }
+        }
+        let covered: BTreeSet<char> = wanted.iter().copied().filter(|&c| file.covers(c)).collect();
+        assert!("ンリド".chars().all(|c| covered.contains(&c)));
+        assert_eq!(checked, covered.len());
+    }
 }
