@@ -18390,6 +18390,17 @@
     {
       "id": 395,
       "kind": "fn",
+      "path": "og.ui.openPath",
+      "symbol": "og_ui_open_path",
+      "module": "ui",
+      "name": "openPath",
+      "params": [],
+      "returns": "String",
+      "publish": true
+    },
+    {
+      "id": 381,
+      "kind": "fn",
       "path": "og.ui.visualState",
       "symbol": "og_ui_visual_state",
       "module": "ui",
