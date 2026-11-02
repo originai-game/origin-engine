@@ -1309,3 +1309,47 @@ fn a_list_rows_hover_and_selection_move_through_state_groups() {
         "it moves, not jumps: {alphas:?}"
     );
 }
+
+#[test]
+fn a_part_inside_a_moved_container_keeps_inside_its_clip() {
+    // A sheet slides up by a transform; the checkbox inside it draws its
+    // box through the UI pass, whose clip is the screen's: a clip left in
+    // the layout box cut the box away while the check over it drew.
+    let mut ui = Ui::new(UiDesc::default());
+    let step = |ui: &mut Ui| {
+        ui.begin(InputFrame::default(), vp());
+        ui.open("Sheet", fixed(300.0, 200.0));
+        let mut on = true;
+        ui.checkbox("Weapons", &mut on, "Weapons");
+        ui.close();
+        ui.set_props(Props {
+            transform: Transform {
+                y: 350.0,
+                ..Transform::IDENTITY
+            },
+            ..Props::default()
+        });
+        ui.end();
+    };
+    step(&mut ui);
+    step(&mut ui);
+    let boxes: Vec<_> = ui
+        .frame()
+        .items
+        .iter()
+        .filter_map(|i| match &i.cmd {
+            DrawCmd::Shape { shape, clip } if shape.mode == og_render::UiMode::Fill => {
+                Some((i.transform.apply(shape.center.x, shape.center.y), *clip))
+            }
+            _ => None,
+        })
+        .collect();
+    assert!(!boxes.is_empty(), "the box is a part drawn as a shape");
+    for ((x, y), clip) in boxes {
+        assert!(y > 350.0, "drawn where the sheet moved it: {y}");
+        assert!(
+            x >= clip.x && x <= clip.x + clip.width && y >= clip.y && y <= clip.y + clip.height,
+            "its clip holds it: ({x}, {y}) in {clip:?}"
+        );
+    }
+}
