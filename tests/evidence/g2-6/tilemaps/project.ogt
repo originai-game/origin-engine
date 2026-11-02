@@ -1,0 +1,14 @@
+type project
+version 1
+---
+# The G2-6 run-time tilemaps sample: an isometric map and a hex map made
+# with og.tilemap.create, filled from noise, resized live, and a hex map's
+# per-cell colliders under falling balls. tests/evidence/g2-6/NOTES.md has
+# the commands and what each frame shows.
+name "G2-6 run-time tilemaps"
+id "g2-6-tilemaps"
+engine "0.7.7"
+entry "src/main.ts"
+profile "2d"
+tick 60
+seed 1

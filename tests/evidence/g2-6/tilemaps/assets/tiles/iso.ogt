@@ -1,0 +1,9 @@
+type tileset
+version 1
+---
+# Eight flat diamonds for the G2-6 run-time tilemap sample (drawn once with
+# ImageMagick, see tests/evidence/g2-6/NOTES.md): 0 deep water, 1 water,
+# 2 sand, 3 grass, 4 forest, 5 rock, 6 snow, 7 the highlight.
+texture "tiles/iso.png"
+grid 32 16 8 1
+filter nearest

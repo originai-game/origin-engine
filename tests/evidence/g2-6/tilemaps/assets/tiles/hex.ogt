@@ -1,0 +1,9 @@
+type tileset
+version 1
+---
+# Eight flat pointy-top hexagons, the same colours as iso.ogt. Rock and
+# snow are solid.
+texture "tiles/hex.png"
+grid 32 32 8 1
+filter nearest
+solid 5 6
