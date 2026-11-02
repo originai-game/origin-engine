@@ -154,6 +154,9 @@ export default og.game({
     camera.position = { x: 0.4, y: 1.8, z: 8 };
     camera.quaternion = { x: 0, y: 0, z: 0, w: 1 };
     must(world.resource(og.RenderSettings)).sky = true;
+    // A body that has rested for half a second sleeps until something touches
+    // it, and costs nothing meanwhile (og.Physics.sleepTicks, 0 to keep every body awake).
+    must(world.resource(og.Physics)).sleepTicks = 30;
 
     // The ground: a 30 m slab whose top is y = 0, drawn and collided with.
     const ground = world.find("ground");

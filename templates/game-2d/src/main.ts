@@ -483,6 +483,9 @@ export default og.game({
     camera.height = VIEW_H;
     camera.position = { x: 8, y: height / 2, z: 50 };
     camera.background = { r: 0.0042, g: 0.0048, b: 0.018 };
+    // A body that has rested for half a second sleeps until something touches
+    // it, and costs nothing meanwhile (og.Physics.sleepTicks, 0 to keep every body awake).
+    must(world.resource(og.Physics)).sleepTicks = 30;
 
     // The map draws from its top-left corner and gives its collision layers static colliders.
     const level = must(world.spawn({ name: "level", position: { x: 0, y: height, z: 0 } }));
