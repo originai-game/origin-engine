@@ -270,11 +270,34 @@ fn every_built_in_style_is_version_2_with_colour_tokens_that_read_on_its_panels(
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
+/// A style's text without what og style art packs into it: the atlas
+/// line, authored ornament lines and each dressing's slice and tone (a
+/// dressing left empty goes too).
+fn unpainted(text: &str) -> String {
+    use og_core::ogt::{Document, Value};
+    let mut doc = Document::parse(text).expect("a style parses");
+    let authored = |vs: &[Value]| vs.iter().any(|v| v.as_word() == Some("authored"));
+    doc.body.entries.retain(|e| e.key != "atlas");
+    doc.body
+        .entries
+        .retain(|e| e.key == "dress" || !authored(&e.values));
+    for e in doc.body.entries.iter_mut().filter(|e| e.key == "dress") {
+        if let Some(b) = e.block.as_mut() {
+            b.entries.retain(|c| c.key != "slice" && c.key != "tone");
+        }
+    }
+    doc.body
+        .entries
+        .retain(|e| e.key != "dress" || e.block.as_ref().is_some_and(|b| !b.entries.is_empty()));
+    doc.to_text().expect("a style writes back")
+}
+
 /// The seed styles of templates/styles (docs/ui.md §12.5) are what
 /// `og style new --seeds` writes from their recorded choices
 /// (`style_gen::seeds`): a seed changed by hand, or a generator change
 /// whose seeds were not rewritten, fails here. Each is a complete
-/// version 2 style with no atlas, every part dressed procedurally, a
+/// version 2 style with no atlas until its art is painted (then it is
+/// that style with og style art's packing), every part dressed procedurally, a
 /// sound for every event that names one, and its own shape language,
 /// motion personality and sounds: no two seeds share all three.
 #[test]
@@ -288,8 +311,20 @@ fn every_seed_style_is_what_og_style_new_writes_from_its_choices() {
         let g = og_ui::style_gen::generate(c).unwrap_or_else(|e| panic!("{}: {e}", c.name));
         let on_disk = std::fs::read_to_string(dir.join("style.ogt"))
             .unwrap_or_else(|e| panic!("{}: {e} (run og style new --seeds)", c.name));
+        // A painted seed is its generated style with its art packed in by
+        // og style art (docs/ui.md §12.6): the same without what it adds.
+        let painted = dir.join("art/report.json").is_file();
+        let ours = if painted {
+            unpainted(&on_disk)
+        } else {
+            on_disk.clone()
+        };
         assert!(
-            on_disk == g.text,
+            ours == if painted {
+                unpainted(&g.text)
+            } else {
+                g.text.clone()
+            },
             "{}: style.ogt is not what og style new --seeds writes",
             c.name
         );
@@ -304,8 +339,8 @@ fn every_seed_style_is_what_og_style_new_writes_from_its_choices() {
         let file = parse_style(&on_disk).unwrap_or_else(|e| panic!("{}: {e}", c.name));
         assert_eq!(file.version, 2, "{}", c.name);
         assert!(
-            file.atlas.is_none(),
-            "{}: a seed draws without an atlas",
+            file.atlas.is_none() || painted,
+            "{}: a seed draws without an atlas until its art is painted",
             c.name
         );
         for e in og_ui::tokens::SoundEvent::ALL {

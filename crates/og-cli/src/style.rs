@@ -245,7 +245,11 @@ fn write_generated(
     let mut files: Vec<(String, String)> = vec![("style.ogt".into(), g.text)];
     files.extend(g.sounds);
     files.push(("LICENSES.md".into(), generated_licences(c)));
-    files.push(("art-requests.json".into(), format!("{requests}\n")));
+    // A painted pack keeps its own requests: they carry its concepts and
+    // each slot's note, which the art was painted for.
+    if !painted(dir) {
+        files.push(("art-requests.json".into(), format!("{requests}\n")));
+    }
     let existing: Vec<&str> = files
         .iter()
         .filter(|(f, _)| dir.join(f).exists())
@@ -264,6 +268,11 @@ fn write_generated(
         std::fs::write(&path, text).map_err(|e| format!("{}: {e}", path.display()))?;
     }
     Ok(files.into_iter().map(|(f, _)| f).collect())
+}
+
+/// Whether `og style art` has packed art into the pack in `dir`.
+fn painted(dir: &Path) -> bool {
+    dir.join("art/report.json").is_file()
 }
 
 /// `og style new`.
@@ -302,6 +311,11 @@ fn new(args: &[&str]) -> Result<(), String> {
         for c in seeds() {
             let dir = root.join(&c.name);
             let files = write_generated(&dir, &c, true)?;
+            // A painted seed is its generated style with its art packed in.
+            if painted(&dir) {
+                let d = dir.to_string_lossy();
+                crate::style_art::run(&[d.as_ref()])?;
+            }
             println!(
                 "og style new: {} ({}) -> {}/ ({} files)",
                 c.name,
