@@ -9,19 +9,29 @@
 // Credentials: OG_SHOWCASE_S3_ACCESS_KEY and OG_SHOWCASE_S3_SECRET_KEY (the
 // showcase bucket's S3 user); OG_SHOWCASE_BUCKET, OG_SHOWCASE_S3_ENDPOINT and
 // OG_SHOWCASE_S3_REGION override the bucket, endpoint and region.
-import { S3Client } from "bun";
 import { createHash } from "node:crypto";
 import { readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const pin = JSON.parse(readFileSync(join(import.meta.dir, "..", "motion.json"), "utf8")) as { sha256: string; bytes: number; key: string };
+const pin = JSON.parse(readFileSync(join(fileURLToPath(new URL("..", import.meta.url)), "motion.json"), "utf8")) as { sha256: string; bytes: number; key: string };
 
 function fail(message: string): never {
   console.error(`motion-model: ${message}`);
   process.exit(1);
 }
 
-function client(): S3Client {
+/** The part of Bun's S3 client this script uses (src/env.d.ts declares the Bun global only as far as the runtime reads it). */
+interface S3 {
+  file(key: string): { arrayBuffer(): Promise<ArrayBuffer> };
+  exists(key: string): Promise<boolean>;
+  stat(key: string): Promise<{ size: number }>;
+  write(key: string, data: Uint8Array, options: { type: string }): Promise<number>;
+}
+type S3Options = { accessKeyId: string; secretAccessKey: string; endpoint: string; region: string; bucket: string };
+const { S3Client } = (globalThis as unknown as { Bun: { S3Client: new (options: S3Options) => S3 } }).Bun;
+
+function client(): S3 {
   const accessKeyId = process.env.OG_SHOWCASE_S3_ACCESS_KEY;
   const secretAccessKey = process.env.OG_SHOWCASE_S3_SECRET_KEY;
   if (!accessKeyId || !secretAccessKey) fail(`set OG_SHOWCASE_S3_ACCESS_KEY and OG_SHOWCASE_S3_SECRET_KEY to fetch ${pin.key} (docs/ci.md §Showcase), or point OG_MOTION_MODEL at the file`);
