@@ -511,8 +511,10 @@ pub fn retarget(
     };
 
     // The rest correction of each bone: the target's rest bone direction
-    // turned onto the source's; inherited by bones with no child, none for
-    // the hips.
+    // turned onto the source's; inherited by bones with no child but the
+    // head, none for the hips. The head looks where the source's looks
+    // (none either): inherited, a neck leaning at rest (SOMA's, 17°) would
+    // pitch it by the lean.
     let mut correction = [Quat::IDENTITY; HUMAN_BONE_COUNT];
     for b in 1..HUMAN_BONE_COUNT {
         if !both(b) {
@@ -527,6 +529,7 @@ pub fn retarget(
                     s_rest[sc].translation - s_rest[sb].translation,
                 )
             }
+            None if b == HEAD => Quat::IDENTITY,
             None => {
                 let mut p = parent_bone(b);
                 while p != usize::MAX && !both(p) {

@@ -1557,13 +1557,13 @@ Which node of a skeleton is each standard humanoid bone (what retargeting maps).
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `scheme` | `string` | `""` | — | — | — | The naming scheme the bones were read in: mixamo, vrm, unity, rigify, ue or blender; custom when a rig named them, none when nothing matched. |
+| `scheme` | `string` | `""` | — | — | — | The naming scheme the bones were read in: mixamo, vrm, unity, rigify, ue, blender or soma; custom when a rig named them, none when nothing matched. |
 | `bones` | `readonly HumanBone[]` | `[]` | — | — | — | The bones found, in the standard order (hips first). |
 
 ```ogt
 struct Humanoid {
   doc "Which node of a skeleton is each standard humanoid bone (what retargeting maps)."
-  field scheme String "The naming scheme the bones were read in: mixamo, vrm, unity, rigify, ue or blender; custom when a rig named them, none when nothing matched."
+  field scheme String "The naming scheme the bones were read in: mixamo, vrm, unity, rigify, ue, blender or soma; custom when a rig named them, none when nothing matched."
   field bones List.HumanBone "The bones found, in the standard order (hips first)."
 }
 ```
@@ -1581,14 +1581,14 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `skeleton` | `SkeletonAsset` | `0` | — | — | — | The skeleton (og.load.animation's `skeleton`). |
-| `rig` | `Rig` | `0` | — | — | — | A humanoid map from og.load.rig; 0 detects the bones from the node names (Mixamo, VRM, Unity, Rigify, Unreal or Blender names). |
+| `rig` | `Rig` | `0` | — | — | — | A humanoid map from og.load.rig; 0 detects the bones from the node names (Mixamo, VRM, Unity, Rigify, Unreal, Blender or SOMA names). |
 
 ```ogt
 struct HumanoidDesc {
   doc "A skeleton and, optionally, the rig that says how its bones are named."
   desc true
   field skeleton SkeletonAsset "The skeleton (og.load.animation's `skeleton`)."
-  field rig Rig "A humanoid map from og.load.rig; 0 detects the bones from the node names (Mixamo, VRM, Unity, Rigify, Unreal or Blender names)."
+  field rig Rig "A humanoid map from og.load.rig; 0 detects the bones from the node names (Mixamo, VRM, Unity, Rigify, Unreal, Blender or SOMA names)."
 }
 ```
 

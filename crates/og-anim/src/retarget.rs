@@ -4,7 +4,8 @@
 //! - [`HumanoidMap`]: which node of a skeleton is each of the 22 standard
 //!   humanoid bones ([`HUMAN_BONES`]), detected from the node names of the
 //!   common naming schemes ([`SCHEMES`]: Mixamo, VRM, Unity's humanoid,
-//!   Blender Rigify, Unreal's mannequin, plain Blender names) or written in
+//!   Blender Rigify, Unreal's mannequin, plain Blender names, NVIDIA's SOMA,
+//!   the skeleton og-motion generates) or written in
 //!   a `type rig` .ogt ([`RigAsset`]), which can also name the scheme and
 //!   override single bones.
 //! - [`retarget`]: a clip of the source rig rewritten for the target rig.
@@ -103,7 +104,7 @@ pub const HUMAN_BONES: [&str; HUMAN_BONE_COUNT] = [
 pub const HUMAN_BONE_COUNT: usize = 52;
 
 /// The naming schemes [`HumanoidMap::detect`] tries, in tie-break order.
-pub const SCHEMES: [&str; 6] = ["mixamo", "vrm", "unity", "rigify", "ue", "blender"];
+pub const SCHEMES: [&str; 7] = ["mixamo", "vrm", "unity", "rigify", "ue", "blender", "soma"];
 
 const HIPS: usize = 0;
 const SPINE: usize = 1;
@@ -480,6 +481,40 @@ fn classify(scheme: &str, name: &str) -> Option<usize> {
             };
             bone_of(side, part)
         }
+        "soma" => {
+            // NVIDIA's SOMA (MotionBricks, og-motion): Spine1, Spine2, Chest,
+            // Neck1, LeftLeg (the thigh), LeftShin, LeftToeBase; a finger's 1
+            // is its metacarpal (the thumb's is the standard one).
+            let (side, rest) = side_prefix(&lower);
+            let part = match rest {
+                "hips" => Part::Hips,
+                "spine1" => Part::Spine,
+                "spine2" => Part::Chest,
+                "chest" => Part::UpperChest,
+                "neck1" => Part::Neck,
+                "head" => Part::Head,
+                "shoulder" => Part::Shoulder,
+                "arm" => Part::UpperArm,
+                "forearm" => Part::LowerArm,
+                "hand" => Part::Hand,
+                "leg" => Part::UpperLeg,
+                "shin" => Part::LowerLeg,
+                "foot" => Part::Foot,
+                "toebase" => Part::Toes,
+                r => {
+                    let r = r.strip_prefix("hand")?;
+                    let digit = r.find(|c: char| c.is_ascii_digit())?;
+                    let (name, k) = (&r[..digit], r[digit..].parse::<usize>().ok()?);
+                    let k = if name == "thumb" {
+                        k
+                    } else {
+                        k.checked_sub(1)?
+                    };
+                    finger(&format!("{name}{k}"))?
+                }
+            };
+            bone_of(side, part)
+        }
         _ => None,
     }
 }
@@ -600,7 +635,7 @@ impl HumanoidMap {
 /// type rig
 /// version 1
 /// ---
-/// scheme auto                 # auto (default) | mixamo | vrm | unity | rigify | ue | blender
+/// scheme auto                 # auto (default) | mixamo | vrm | unity | rigify | ue | blender | soma
 /// hips "Root_Pelvis"          # a standard bone and the node it is (overrides the scheme)
 /// leftToes none               # this rig has no such bone
 /// footHeight 0.08             # the ankles above the ground standing (or `footHeight <left> <right>`)
