@@ -588,7 +588,7 @@ test("table: 10,000 rows build only a screenful; the score header sorts high to 
   expect([sortBy, descending]).toEqual([2, true]);
   const first = () => rows().sort((a, b) => a.y - b.y)[0]!;
   const top = Math.max(...ROWS.map((r) => r.score));
-  expect(elements(engine).some((e) => e.parent === "Cell#2" && e.text === formatNumber(top, "grouped") && e.path.startsWith(first().path))).toBeTrue();
+  expect(elements(engine).some((e) => e.path.endsWith("/Cell#2") && e.text === formatNumber(top, "grouped") && e.path.startsWith(first().path))).toBeTrue();
   tap(engine, "Header/Col#2");
   expect(descending).toBeFalse();
   expect(byPath(engine, "Header/Col#2")?.value).toBe("sorted ascending");

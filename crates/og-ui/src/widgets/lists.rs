@@ -3,15 +3,33 @@ use super::*;
 impl Ui {
     // ── lists and grids ────────────────────────────────────────────────────
 
-    /// The visible height of a scroll container last frame, or a guess.
+    /// The height of a scroll container last frame, or a guess.
     fn view_height(&self, key: u64, size: Option<Size>) -> f32 {
+        // Last frame's whole height: what is visible of it would build too
+        // few rows as it scrolls into view, and one that is out of view has
+        // no hit (a screenful of rows was built for it: a grid below a
+        // phone page's fold built ten rows).
         if let Some(h) = self.hit(key) {
-            return h.rect.height;
+            return h.full.height;
+        }
+        if let Some(r) = self.prev_rect(key)
+            && r.height > 0.0
+        {
+            return r.height;
         }
         match size {
             Some(Size::Fixed(v)) => v,
             _ => self.viewport.height,
         }
+    }
+
+    /// Where element `key` was laid out last frame, whether or not any of
+    /// it was on screen (one out of view has no hit).
+    fn prev_rect(&self, key: u64) -> Option<crate::Rect> {
+        if key == 0 {
+            return None;
+        }
+        self.kept.prev.iter().find(|n| n.key == key).map(|n| n.rect)
     }
 
     /// Opens a virtualised list (a scroll column) and answers which rows to
@@ -267,9 +285,14 @@ impl Ui {
         let gap = if desc.gap > 0.0 { desc.gap } else { t.space.sm };
         let key = self.key_for(id.as_str());
         // The width the cells had last frame (the grid's, inside its padding).
+        // Last frame's whole box, on screen or not: out of view a grid
+        // guessed the viewport's width, built a dozen columns of rows and
+        // laid them out four across, three times its height.
         let known_w = self
             .hit(key)
-            .map(|h| h.rect.width - desc.padding.horizontal());
+            .map(|h| h.full.width)
+            .or_else(|| self.prev_rect(key).map(|r| r.width))
+            .map(|w| w - desc.padding.horizontal());
         // `columns` across, exactly: a fit grid is that many cells of the
         // asked width; any other width is shared by them (wider cells, or
         // narrower down to the touch target), rounded down to 1/64 px so a

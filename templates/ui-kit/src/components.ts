@@ -283,7 +283,9 @@ export function dataScreen(): void {
       s.tree = r.expanded.slice();
       if (r.chosen) s.treeSel = r.chosen;
     });
-    panel("Grids", "Grid: an inventory", phone() ? grow : px(300), () => {
+    // The bag at its desktop width on a landscape phone: across the whole width it shows eleven columns,
+    // over §15.1's 300-element budget for the page.
+    panel("Grids", "Grid: an inventory", og.ui.frameViewport().breakpoint === "phonePortrait" ? grow : px(300), () => {
       og.ui.dataGrid("Bag", { count: s.data === "empty" ? 0 : 60, cellWidth: 56, selected: 2, height: px(190), label: "Bag", ...state }, (i) => og.ui.icon("Icon", ["sword", "shield", "potion", "gem", "key"][i % 5] ?? "gem", { size: 28 }));
     });
     panel("Stats", "Key-value rows and stat compare", phone() ? grow : px(340), () => {

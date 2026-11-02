@@ -467,3 +467,65 @@ fn a_press_dragged_from_one_cell_to_another_drops_there_once() {
     rig.click("Slots/Cell#3", b);
     assert_eq!(rig.state.drops.len(), 1);
 }
+
+/// A grid below a scroll view's fold builds the rows of its own box, not a
+/// screenful: out of view it has no hit, so it reads last frame's layout for
+/// its height and width (it guessed the viewport's: a dozen columns of rows,
+/// laid out four across, three times its height).
+#[test]
+fn a_grid_out_of_view_builds_only_its_own_rows() {
+    let mut rig = Rig::new(Vec::<(u32, u32)>::new());
+    let b = &mut |ui: &mut Ui, built: &mut Vec<(u32, u32)>| {
+        ui.scroll(
+            "Page",
+            ScrollDesc {
+                width: Size::Fixed(400.0),
+                height: Size::Fixed(300.0),
+                ..ScrollDesc::default()
+            },
+            |ui| {
+                ui.open(
+                    "Spacer",
+                    Element {
+                        height: Size::Fixed(900.0),
+                        ..Element::default()
+                    },
+                );
+                ui.close();
+                // As og.ui.dataGrid builds it: a frame of a fixed height, the
+                // grid growing to fill it.
+                ui.open(
+                    "Frame",
+                    Element {
+                        direction: Direction::Column,
+                        width: Size::Fixed(300.0),
+                        height: Size::Fixed(150.0),
+                        ..Element::default()
+                    },
+                );
+                let range = ui.open_grid(
+                    "Bag",
+                    GridDesc {
+                        count: 120,
+                        cell_width: 64.0,
+                        width: Size::grow(),
+                        height: Some(Size::grow()),
+                        ..GridDesc::default()
+                    },
+                );
+                for i in range.first..range.last {
+                    ui.grid_item(i, false);
+                    ui.close();
+                }
+                ui.close_list();
+                ui.close();
+                built.push((range.first, range.last));
+            },
+        );
+    };
+    rig.idle(3, b);
+    let (first, last) = *rig.state.last().expect("built");
+    // 300 px holds four 64 px cells across; 150 px shows two or three rows,
+    // plus one past each edge: at most five rows of four.
+    assert!(last - first <= 20, "built cells {first}..{last}");
+}

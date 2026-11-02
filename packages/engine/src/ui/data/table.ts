@@ -286,18 +286,19 @@ export function table(id: string, desc: Api.TableDesc): Api.TableResult {
           const sel = desc.selected === i;
           const resp = kit.listItem(v, sel) as Api.Response;
           try {
-            kit.row("Cells", { width: grow(), height: grow(), padding: xy(t.sm, 0), cross: "center", background: desc.striped !== false && v % 2 === 1 ? token("control", 0.5) : null, part: `Table.row${flags(sel && "selected", v % 2 === 1 && "odd")}`, partClass: "slot" }, () => {
+            // Each cell is its label alone (a box around each would double a row's elements: §15.1's
+            // budget counts them), spaced by the row's gap where each box's padding stood.
+            kit.row("Cells", { width: grow(), height: grow(), padding: xy(t.sm + t.xs, 0), gap: 2 * t.xs, cross: "center", background: desc.striped !== false && v % 2 === 1 ? token("control", 0.5) : null, part: `Table.row${flags(sel && "selected", v % 2 === 1 && "odd")}`, partClass: "slot" }, () => {
               cols.forEach((c) => {
                 const k = colIndex(c);
                 const end = c.numeric ?? false;
                 const tone = c.toneKey ? String((rows[i] as Record<string, unknown>)[c.toneKey] ?? "") : "";
                 const ink: Api.ThemeColor = tone === "up" || tone === "success" ? "success" : tone === "down" || tone === "danger" ? "danger" : k === 0 ? "ink" : "inkMuted";
-                kit.row(kit.idi("Cell", k), { width: colW.get(c) ? px(colW.get(c)!) : grow(), padding: xy(t.xs, 0), align: end ? "end" : "start" }, () => {
-                  // Data in a fixed column: an ellipsis, with the whole value in a tooltip when it cuts.
-                  const v = cellText(rows[i], c);
-                  text("Text", v, { step: "sm", nowrap: true, ellipsis: true, color: ink, font: end ? "mono" : "body" });
-                  if (v.length * charW > (colW.get(c) ?? room)) kit.tooltip(v);
-                });
+                // Data in a fixed column: an ellipsis, with the whole value in a tooltip when it cuts.
+                const v = cellText(rows[i], c);
+                const w = colW.get(c);
+                text(kit.idi("Cell", k), v, { step: "sm", nowrap: true, ellipsis: true, color: ink, font: end ? "mono" : "body", align: end ? "end" : "start", width: w ? px(Math.max(0, w - 2 * t.xs)) : grow() });
+                if (v.length * charW > (w ?? room)) kit.tooltip(v);
                 kit.semantics({ role: "cell" });
               });
             });
