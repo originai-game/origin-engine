@@ -21,32 +21,9 @@ export type Mut<T> = { -readonly [K in keyof T]: T[K] };
 
 // ── rarity ──────────────────────────────────────────────────────────────
 
-// rarityColor, rarityPips and teamColor are U6c's (feedback/core.ts), copied here
-// as they are until that stream lands; then these three go and are imported.
-const RARITY_FALLBACK: Record<string, string> = {
-  common: "#b8bec7", uncommon: "#4cc35a", rare: "#3d8bff", epic: "#a64dff", legendary: "#ff9a1f", mythic: "#ff3d6e",
-};
-
-/** A rarity tier's colour from the style's tokens. */
-export function rarityColor(r: Api.Rarity | undefined): Rgba | null {
-  if (!r || r === "none") return null;
-  const tokens = frame().theme.tokens as { rarity?: Record<string, string> } | null;
-  return hex(tokens?.rarity?.[r] ?? RARITY_FALLBACK[r]);
-}
-
-/** How many pips a rarity carries (so no tier is told by colour alone). */
-export function rarityPips(r: Api.Rarity | undefined): number {
-  return ["none", "common", "uncommon", "rare", "epic", "legendary", "mythic"].indexOf(r ?? "none");
-}
-
-/** The style's team colour k (its eight), else a spread of hues. */
-export function teamColor(k: number): Rgba {
-  const tokens = frame().theme.tokens as { team?: string[] } | null;
-  const list = tokens?.team ?? [];
-  if (list.length > 0) return hex(list[((k % list.length) + list.length) % list.length]);
-  const hues = ["#3d8bff", "#ff4d4d", "#3ccf6e", "#ffc23d", "#b45cff", "#2fd3d3", "#ff8a3d", "#e85cbc"];
-  return hex(hues[((k % 8) + 8) % 8]);
-}
+// The tiers' and teams' colours are U6c's (feedback/core.ts).
+export { rarityColor, rarityPips, teamColor } from "../feedback/core.ts";
+import { rarityColor, rarityPips } from "../feedback/core.ts";
 
 /** A row of `n` small diamonds in a tier's colour (its pips), each `size` square. */
 export function pips(id: string, r: Api.Rarity | undefined, size = 6, max = 0): void {
