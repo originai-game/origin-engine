@@ -30,7 +30,7 @@ import type { KillfeedEntry, World } from "@origingame/engine";
 import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 import { ogBin } from "./support/og-bin.ts";
-import { at, dump, engineFor, type El } from "./support/ui.ts";
+import { at, drawsDuring, dump, engineFor, type El } from "./support/ui.ts";
 
 declare const Bun: { spawnSync(cmd: string[]): { exitCode: number; stderr: Uint8Array } };
 
@@ -429,6 +429,64 @@ test("og.ui.comboCounter, judgement, turnOrder, scorebug, speedometer, flightHud
   // A broken combo shows for 600 ms: 36 ticks after it broke.
   e.advance(35);
   expect(states(at(dump(e), "ComboHud/Combo")).combo).toBe("idle");
+}, LOADED_MS);
+
+test("og.ui.turnOrder as a list: rows top to bottom, the acting one first and selected, an enemy's stripe on the start edge, allies lined up, mirrored right to left", () => {
+  // Wrong: the list drawn as the strip (no rows, no names), numbers on the rows, an ally's portrait set in where
+  // an enemy's stripe would be, the stripe left of the portrait right to left, or a screen reader told neither
+  // the side nor who acts.
+  const units = [
+    { key: "valiant", name: "Valiant", current: true },
+    { key: "raider", name: "Raider", team: 1 },
+    { key: "aegis", name: "Aegis" },
+    { key: "wasp", name: "Wasp", team: 2, dead: true },
+  ];
+  const build = () => og.ui.anchor("Side", { anchor: "topLeft", width: { kind: "fixed", px: 320 } } as never, () => og.ui.turnOrder("Turns", { style: "list", units, nowLabel: "Acting", anchor: null }));
+  const read = (rtl: boolean) => {
+    const sys = defineSystem(`HudTurnList${rtl ? "Rtl" : ""}`, {}, () => build());
+    const r = createEngine(og.game({ systems: [sys] }) as unknown as GameToken, rtl ? { root: kit } : {});
+    if (!r.ok) throw new Error(r.reason);
+    if (rtl) {
+      const loaded = og.i18n.load(r.value.world, "strings/ar.ogt");
+      if (!loaded.ok) throw new Error(loaded.reason);
+      og.i18n.setLocale(r.value.world, "ar-EG");
+    }
+    r.value.advance(3);
+    const draws = drawsDuring(() => r.value.advance(1));
+    return { els: dump(r.value) as Array<El & { states: string[] }>, draws };
+  };
+  const { els, draws } = read(false);
+  const rows = units.map((un) => at(els, `Side/Turns/${un.key}`)! as El & { states: string[] });
+  // Top to bottom in turn order, each a whole row of the list's width.
+  expect(rows.every((x) => x !== undefined)).toBe(true);
+  for (let i = 1; i < rows.length; i++) expect(rows[i]!.y).toBeGreaterThanOrEqual(rows[i - 1]!.y + rows[i - 1]!.height - 0.5);
+  expect(rows.map((x) => Math.round(x.width))).toEqual([320, 320, 320, 320]);
+  // A screen reader hears the side and who acts; only the acting one is selected.
+  expect(rows.map((x) => [x.role, x.name])).toEqual([["listitem", "Valiant, Acting"], ["listitem", "Raider, Hostile"], ["listitem", "Aegis"], ["listitem", "Wasp, Hostile"]]);
+  expect(rows.map((x) => x.states.includes("selected"))).toEqual([true, false, false, false]);
+  expect(at(els, "Side/Turns")?.role).toBe("list");
+  // Names, no numbers.
+  expect(at(els, "Side/Turns/raider/Text/Name")?.text).toBe("Raider");
+  expect(els.filter((x) => x.path.startsWith("Side/Turns/") && /^\d+$/.test(x.text))).toEqual([]);
+  // The stripe starts every row at its start edge; every portrait starts on one line, ally or enemy.
+  for (const un of units) expect(Math.round(at(els, `Side/Turns/${un.key}/Stripe`)!.x)).toBe(Math.round(at(els, `Side/Turns/${un.key}`)!.x));
+  const portraits = units.map((un) => Math.round(at(els, `Side/Turns/${un.key}/Portrait`)!.x));
+  expect(new Set(portraits).size).toBe(1);
+  // Drawn: the enemies' stripes in their side's ink (danger for team 1, another for team 2), the allies' none;
+  // the acting row on its selected ground, the others bare.
+  const fill = (p: string) => JSON.stringify(draws.get(p)?.[0]?.fills ?? null);
+  expect(fill("Side/Turns/valiant/Stripe")).toBe("null");
+  expect(fill("Side/Turns/aegis/Stripe")).toBe("null");
+  expect(fill("Side/Turns/raider/Stripe")).not.toBe("null");
+  expect(fill("Side/Turns/wasp/Stripe")).not.toBe(fill("Side/Turns/raider/Stripe"));
+  expect(fill("Side/Turns/valiant")).toContain("controlStrong");
+  expect(fill("Side/Turns/aegis")).toBe("null");
+  // Right to left the row mirrors: the stripe at the right edge, the portrait inside it.
+  const r = read(true).els;
+  const row = at(r, "Side/Turns/raider")!;
+  const stripe = at(r, "Side/Turns/raider/Stripe")!;
+  expect(Math.round(stripe.x + stripe.width)).toBe(Math.round(row.x + row.width));
+  expect(at(r, "Side/Turns/raider/Portrait")!.x).toBeLessThan(stripe.x);
 }, LOADED_MS);
 
 test("og.ui.standingsTower, lapTimer, rearView and a minimap's track: order, signed gaps, the cut field, the split", () => {

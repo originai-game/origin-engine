@@ -39700,6 +39700,13 @@ export interface TurnUnit {
 }
 
 /**
+ * How a turn order lays out its units.
+ * - `"strip"`: Portraits in a strip, the current one larger and ringed with its word (the default).
+ * - `"list"`: Rows of portrait and name read top to bottom (a tactics game's initiative list): the current one first in the selected row's rule, an enemy marked by a stripe in its side's ink on the start edge, no numbers.
+ */
+export type TurnOrderStyle = "strip" | "list";
+
+/**
  * A turn order.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -39712,13 +39719,19 @@ export interface TurnOrderDesc {
    */
   readonly units?: readonly TurnUnit[];
   /**
-   * Which way it runs.
+   * How it lays out: a strip of portraits, or a list of rows.
+   *
+   * @default "strip"
+   */
+  readonly style?: TurnOrderStyle;
+  /**
+   * Which way a strip runs (a list always runs down).
    *
    * @default "row"
    */
   readonly direction?: Direction;
   /**
-   * A portrait's side; 0 is 52 (the current one larger).
+   * A portrait's side; 0 is 52 (the current one larger). In a list, the portrait's height (its slot 3:2, the art fitted whole).
    *
    * @default 0
    * @range 0..
@@ -39732,11 +39745,17 @@ export interface TurnOrderDesc {
    */
   readonly max?: number;
   /**
-   * The current one's word.
+   * The current one's word: shown under it in a strip, said with its name in both.
    *
    * @default "Now"
    */
   readonly nowLabel?: string;
+  /**
+   * What a screen reader says after an enemy's name in a list.
+   *
+   * @default "Hostile"
+   */
+  readonly hostileLabel?: string;
   /**
    * Opens its own anchored group there; null builds it in place.
    *
@@ -52743,7 +52762,8 @@ export declare namespace og {
     function resourceBar(id: string, desc?: ResourceBarDesc): void;
     /**
      * A turn order to the bar of tactics and JRPGs (Final Fantasy X, Baldur's Gate 3, Darkest Dungeon): portraits in the order they act, the current one larger and ringed with its word, the player's side and enemies told by colour and by the frame's notch, active time gauges filling under each, a delayed mark, the dead greyed; the order slides on layout motion as it changes.
-     * Parts: TurnOrder.unit[current][team=<n>][dead], TurnOrder.portrait, TurnOrder.atb, TurnOrder.now, TurnOrder.delay. Accessibility: list named Turn order; each unit an image named by name and its place. Probe ids: <id>/<key>, its Atb.
+     * A list (style list) is rows of portrait and name read top to bottom with no numbers: the current unit first, on the selected row's rule (controlStrong lit by the highlight's rim and glow); each row starts with a stripe the width of a mark, in its side's ink for an enemy and empty for the player's side, so every portrait starts on one line, and the row mirrors right to left with it; the dead greyed and crossed, a delayed one marked, an active time gauge under the name.
+     * Parts: TurnOrder.unit[current][team=<n>][dead], TurnOrder.portrait, TurnOrder.atb, TurnOrder.now, TurnOrder.delay; in a list TurnOrder.frame[list], TurnOrder.row[current][team=<n>][dead], TurnOrder.stripe[team=<n>], TurnOrder.portrait, TurnOrder.atb, TurnOrder.delay. Accessibility: list named Turn order; in a strip each unit an image named by name and its place; in a list each row a listitem named by its name, then hostileLabel for an enemy and nowLabel for the current one (selected), its value its place. Probe ids: <id>/<key>, its Atb; in a list <id>/<key>/Stripe, <id>/<key>/Portrait, <id>/<key>/Text/Name, <id>/<key>/Text/Atb.
      *
      * @param id Its id.
      * @param desc The order.

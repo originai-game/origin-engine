@@ -1,8 +1,9 @@
 // The UI tests' shared harness: an engine whose one system builds the UI
 // every tick with the viewport pinned, and the UI's dump by path.
 import { og, defineSystem } from "@origingame/engine";
-import type { World } from "@origingame/engine";
+import type { DrawDesc, World } from "@origingame/engine";
 import { createEngine, type Engine, type GameToken } from "../../src/runtime.ts";
+import { kit } from "../../src/ui-kit/bind.ts";
 
 export type El = {
   id: string; parent: string; path: string; text: string; role: string; name: string; value: string;
@@ -22,3 +23,25 @@ export function engineFor(name: string, build: (world: World) => void, viewport:
 
 export const dump = (e: Engine): El[] => (e.probe.dump({ what: "ui" }) as unknown as { elements: El[] }).elements;
 export const at = (els: El[], path: string): El | undefined => els.find((x) => x.path === path);
+
+/**
+ * Every draw og.ui's components give while `run` runs (og.ui.setDraw), by the
+ * path of the element open at the time: what a part is drawn with (its shape,
+ * its fills), which the probe's dump does not carry.
+ */
+export function drawsDuring(run: () => void): Map<string, DrawDesc[]> {
+  const out = new Map<string, DrawDesc[]>();
+  const was = kit.setDraw;
+  const k = kit as { setDraw: (d?: DrawDesc) => void };
+  k.setDraw = (d?: DrawDesc) => {
+    const p = kit.openPath();
+    out.set(p, [...(out.get(p) ?? []), d ?? {}]);
+    was(d);
+  };
+  try {
+    run();
+  } finally {
+    k.setDraw = was;
+  }
+  return out;
+}

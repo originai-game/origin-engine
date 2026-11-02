@@ -422,6 +422,10 @@ export function turnOrder(id: string, desc: Api.TurnOrderDesc = {}): void {
   const tk = frame().t;
   const size = u(desc.size || 52);
   const units = (desc.units ?? []).slice(0, desc.max || 8);
+  if (desc.style === "list") {
+    turnList(id, desc, units);
+    return;
+  }
   const row = (desc.direction ?? "row") === "row";
   hudPlace(id, anchorOf(desc, "top"), () => {
     box(id, { direction: row ? "row" : "column", gap: tk.sm, cross: row ? "end" : "start", part: sel("TurnOrder", "frame") }, undefined, () => {
@@ -468,6 +472,78 @@ export function turnOrder(id: string, desc: Api.TurnOrderDesc = {}): void {
         }, {
           opacity: un.dead ? 0.45 : 1,
           a11y: a11y("image", un.name ?? "", { value: cur ? desc.nowLabel ?? "Now" : `${i + 1}` }),
+        });
+      });
+    }, { a11y: a11y("list", "Turn order") });
+  });
+}
+
+/**
+ * The turn order as a list (a tactics game's initiative): rows of portrait
+ * and name read top to bottom with no numbers. The current unit's row takes
+ * the selected row's rule (the list's controlStrong, lit by the highlight's
+ * rim and glow, as the strip rings its current one); a stripe on the start
+ * edge, a mark wide, carries an enemy's side and is empty for the player's,
+ * so every portrait starts on one line. The row is a flow row, so it
+ * mirrors right to left with the stripe.
+ */
+function turnList(id: string, desc: Api.TurnOrderDesc, units: readonly Api.TurnUnit[]): void {
+  const tk = frame().t;
+  const s = u(desc.size || 52);
+  const pw = Math.round(s * 1.5);
+  const stripe = u(4);
+  const pad = tk.xs;
+  const nameStep = ts(15);
+  const rowH = Math.max(s, stepSize(nameStep).line + (units.some((un) => un.atb !== null && un.atb !== undefined) ? u(8) : 0)) + pad * 2;
+  const r = Math.min(shapeOf("button").radius, rowH / 4);
+  const hi = role("highlight");
+  hudPlace(id, anchorOf(desc, "top"), () => {
+    box(id, { direction: "column", gap: u(2), width: { kind: "grow" }, cross: "stretch", part: sel("TurnOrder", "frame", "list") }, undefined, () => {
+      units.forEach((un, i) => {
+        const cur = !!un.current;
+        const team = un.team ?? 0;
+        const enemy = team !== 0;
+        const ink = enemy ? (team === 1 ? role("danger") : teamColor(team)) : role("primary");
+        const said = [un.name ?? "", enemy ? desc.hostileLabel ?? "Hostile" : "", cur ? desc.nowLabel ?? "Now" : ""].filter(Boolean).join(", ");
+        box(keyId(un.key ?? un.name ?? String(i)), {
+          direction: "row", gap: tk.sm, cross: "center", width: { kind: "grow" }, height: px(rowH),
+          padding: { left: 0, right: tk.sm, top: pad, bottom: pad },
+          part: sel("TurnOrder", "row", cur ? "current" : null, ["team", team], un.dead ? "dead" : null),
+        }, cur ? {
+          shape: { kind: "rect", radii: [r, r, r, r] },
+          fills: [solid(token("controlStrong"))],
+          strokes: [stroke(2, lit(hi))],
+          effects: [glow(8, lit(hi, 0.45))],
+        } : undefined, () => {
+          // The side's stripe: empty on the player's side, so the portraits line up.
+          leaf("Stripe", { width: px(stripe), height: { kind: "grow" }, part: sel("TurnOrder", "stripe", ["team", team]) },
+            enemy ? { shape: { kind: "rect", radii: [stripe / 2, stripe / 2, stripe / 2, stripe / 2] }, fills: [solid(lit(ink))] } : undefined);
+          box("Portrait", { width: px(pw), height: px(s), align: "center", cross: "center", part: sel("TurnOrder", "portrait") }, {
+            shape: { kind: "rect", radii: [4, 4, 4, 4] },
+            fills: [solid(token("well")), ...(un.portrait ? [{ kind: "image", texture: un.portrait, fit: "contain" } as Api.Fill] : [])],
+            strokes: [stroke(1, token("line"))],
+            clip: "shape",
+          }, () => {
+            if (!un.portrait) text("Initials", (un.name ?? "?").slice(0, 2).toUpperCase(), { step: tsFit(15, s * 0.42, true), font: "display", color: token("ink"), nowrap: true });
+            if (un.dead) {
+              leaf("Cross", { width: px(pw), height: px(s) }, {
+                shape: { kind: "path", points: [{ x: pw * 0.3, y: s * 0.2 }, { x: pw * 0.7, y: s * 0.8 }], width: 3, cap: "round" },
+                fills: [solid(lit(role("danger")))],
+              }, absolute({ start: 0, top: 0 }));
+            }
+          });
+          box("Text", { direction: "column", gap: u(3), width: { kind: "grow" } }, undefined, () => {
+            text("Name", un.name ?? "", { step: nameStep, font: "display", color: token("ink"), nowrap: true, ellipsis: true, width: { kind: "grow" } });
+            if (un.atb !== null && un.atb !== undefined) {
+              box("Atb", { width: { kind: "grow" }, height: px(u(4)), part: sel("TurnOrder", "atb") }, trackDraw(2), () => {
+                leaf("Fill", { width: pct(clamp01(un.atb ?? 0)), height: pct(1) }, fillDraw((un.atb ?? 0) >= 1 ? role("gold") : role("info"), 2));
+              });
+            }
+          });
+          if (un.delayed) box("Delay", { width: px(u(14)), height: px(u(14)), part: sel("TurnOrder", "delay") }, undefined, () => icon("Mark", "arrow-down", u(14), lit(role("warn")), "Delayed"));
+        }, {
+          opacity: un.dead ? 0.45 : 1,
+          a11y: a11y("listitem", said, { value: `${i + 1}`, selected: cur }),
         });
       });
     }, { a11y: a11y("list", "Turn order") });
