@@ -34,6 +34,8 @@ interface Slot {
   states: string[];
   hash: string;
   note?: string;
+  /** A ground colour (`#rrggbb`): everything inside the art's outline is made opaque on it. */
+  opaque?: string;
 }
 
 function usage(): never {
@@ -103,6 +105,24 @@ export function shrink(file: string, s: Slot): void {
   execFileSync("magick", [file, "-crop", box, "+repage", "-resize", `${side}x${side}^>`, "-define", "png:compression-level=9", file]);
 }
 
+/**
+ * A light frame made solid: an image model paints a near-white ground as part
+ * of the clear background, leaving a translucent hole. Everything inside the
+ * art's outline (its pixels above half alpha, the outside flood-filled from a
+ * corner) is laid over the slot's `opaque` colour; the outline keeps its edge.
+ */
+export function solidify(file: string, colour: string): void {
+  execFileSync("magick", [
+    file, "-bordercolor", "none", "-border", "2",
+    "(", "+clone", "-alpha", "extract", "-threshold", "50%",
+    "-fill", "gray50", "-draw", "color 0,0 floodfill",
+    "-fill", "white", "-opaque", "black", "-fill", "black", "-opaque", "gray50", ")",
+    "(", "-clone", "0", "-fill", colour, "-colorize", "100", "-alpha", "off", "-clone", "1", "-compose", "copy_opacity", "-composite", ")",
+    "-delete", "1", "+swap", "-compose", "over", "-composite",
+    "-shave", "2x2", "-define", "png:compression-level=9", file,
+  ]);
+}
+
 async function paint(s: Slot): Promise<void> {
   const text = prompt(s);
   if (dry) {
@@ -123,6 +143,7 @@ async function paint(s: Slot): Promise<void> {
   const file = join(artDir, `${part(s)}.png`);
   writeFileSync(file, Buffer.from(b64, "base64"));
   shrink(file, s);
+  if (s.opaque) solidify(file, s.opaque);
   provenance[s.name] = {
     model: MODEL,
     prompt: text,
