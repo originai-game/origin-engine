@@ -498,7 +498,7 @@ function turnList(id: string, desc: Api.TurnOrderDesc, units: readonly Api.TurnU
   const tk = frame().t;
   const s = u(desc.size || 52);
   const pw = Math.round(s * 1.5);
-  const stripe = u(4);
+  const stripe = u(3);
   const pad = tk.xs;
   const nameStep = ts(15);
   const rowH = Math.max(s, stepSize(nameStep).line + (units.some((un) => un.atb !== null && un.atb !== undefined) ? u(8) : 0)) + pad * 2;
