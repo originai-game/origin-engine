@@ -25492,6 +25492,24 @@ export interface RadialItem {
    * @default false
    */
   readonly disabled?: boolean;
+  /**
+   * A price under its label, a coin before it (a build wheel's 150); empty is none.
+   *
+   * @default ""
+   */
+  readonly cost?: string;
+  /**
+   * The cost's icon.
+   *
+   * @default "coin"
+   */
+  readonly costIcon?: string;
+  /**
+   * Its cost cannot be paid now: the cost in the danger hue. It stays choosable (the game refuses it and says why) unless disabled.
+   *
+   * @default false
+   */
+  readonly unaffordable?: boolean;
 }
 
 /**
@@ -40206,6 +40224,175 @@ export interface SubstitutionDesc {
 
 
 /**
+ * A wave on og.ui.wavePreview.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface WaveEntry {
+  /**
+   * Its key (its probe id).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its number.
+   *
+   * @default 0
+   */
+  readonly number?: number;
+  /**
+   * What comes (Crawlers), for a screen reader and the tooltip.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Its enemy's art (art kind unitPortrait, 1:1).
+   *
+   * @default null
+   */
+  readonly image?: Texture | null;
+  /**
+   * An icon where there is no art.
+   *
+   * @default ""
+   */
+  readonly icon?: string;
+  /**
+   * How many come; 0 prints none.
+   *
+   * @default 0
+   */
+  readonly count?: number;
+  /**
+   * A boss wave: its tile in the danger hue.
+   *
+   * @default false
+   */
+  readonly boss?: boolean;
+}
+
+/**
+ * The waves to come.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface WavePreviewDesc {
+  /**
+   * The waves, the next first.
+   *
+   * @default []
+   */
+  readonly waves?: readonly WaveEntry[];
+  /**
+   * Its caption.
+   *
+   * @default "Wave preview"
+   */
+  readonly title?: string;
+  /**
+   * The wave under way, lit by the selected-tile rule; 0 is none.
+   *
+   * @default 0
+   */
+  readonly current?: number;
+  /**
+   * The most rows shown; the rest fold into a last row of dots. 0 is 5.
+   *
+   * @default 0
+   */
+  readonly max?: number;
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default "right"
+   */
+  readonly anchor?: Anchor | null;
+}
+
+
+/**
+ * A lane's key on og.ui.laneKeys.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LaneKey {
+  /**
+   * Its key (its probe id).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * The key's letter (D, F, J, K); empty uses action's glyph.
+   *
+   * @default ""
+   */
+  readonly hotkey?: string;
+  /**
+   * An input action whose glyph on the device used last it shows when hotkey is empty.
+   *
+   * @default ""
+   */
+  readonly action?: string;
+  /**
+   * The lane's centre on the screen, in CSS px from the viewport's left.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly x?: number;
+  /**
+   * The lane's colour; null is the accent.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+}
+
+/**
+ * A rhythm game's lane keys.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LaneKeysDesc {
+  /**
+   * The lanes, left to right.
+   *
+   * @default []
+   */
+  readonly lanes?: readonly LaneKey[];
+  /**
+   * The hit line, in CSS px from the viewport's top: the caps hang under it.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly y?: number;
+  /**
+   * A cap's width; 0 is 56.
+   *
+   * @default 0
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly width?: number;
+  /**
+   * The lanes held now (their keys).
+   *
+   * @default []
+   */
+  readonly pressed?: readonly string[];
+  /**
+   * The lanes whose press hit a note this tick: a flash in the lane's colour.
+   *
+   * @default []
+   */
+  readonly hit?: readonly string[];
+}
+
+
+/**
  * A flight HUD.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -51601,7 +51788,7 @@ export declare namespace og {
      */
     function actionHints(id: string, desc?: ActionHintsDesc): ActionHintsResult;
     /**
-     * A radial wheel chosen by where the pointer or a stick points.
+     * A radial wheel chosen by where the pointer or a stick points. A slice's cost sits under its label, in the danger hue while it cannot be paid; with the labels hidden (a small wheel, a large text size), the centre shows the aimed slice's cost under its name.
      *
      * @param id Its id.
      * @param open Whether it is open.
@@ -52491,7 +52678,7 @@ export declare namespace og {
      */
     function minimapView(id: string, desc?: MinimapViewDesc): MinimapResult;
     /**
-     * A compass strip to the bar of Skyrim and Apex: degree ticks every 15° and the bearing under a centre notch, the cardinal and intercardinal letters, points of interest at their bearings with their distance under them, objectives and pings held at the strip's ends pointing round when behind; the ends fade.
+     * A compass strip to the bar of Skyrim and Apex: degree ticks every 15° and the bearing under a centre notch, the cardinal and intercardinal letters, points of interest at their bearings with their distance under them, objectives (a diamond, a waypoint's mark) and pings held at the strip's ends pointing round when behind; the ends fade.
      * Parts: Compass.strip, Compass.tick[major], Compass.point[cardinal], Compass.notch, Compass.bearing, Compass.poi[<kind>][clamped], Compass.distance. Accessibility: status named the heading in degrees and its point. Probe ids: <id>, <id>/Bearing, <id>/Strip/<key>.
      *
      * @param id Its id.
@@ -52610,6 +52797,22 @@ export declare namespace og {
      * @param desc Who goes off and who comes on.
      */
     function substitution(id: string, desc?: SubstitutionDesc): void;
+    /**
+     * A tower-defence wave preview to the bar of Kingdom Rush and Bloons TD: a column of the waves to come, each its number, its enemy's art and how many come, the one under way lit by the selected-tile rule, a boss wave's tile in the danger hue, the rest folding into a row of dots.
+     * Parts: WavePreview.frame, WavePreview.wave[current][boss], WavePreview.art, WavePreview.more. Accessibility: list named title; each wave text named its number and name with its count. Probe ids: <id>/<key>, its Number and Count; <id>/More.
+     *
+     * @param id Its id.
+     * @param desc The waves.
+     */
+    function wavePreview(id: string, desc?: WavePreviewDesc): void;
+    /**
+     * A rhythm game's lane keys under its hit line, to the bar of osu!mania and DJMAX: a keycap per lane at the lane's x with its letter or the action's glyph on the device used last, the lane's colour on its edge, pressed down and lit while held, flashing on a hit.
+     * Parts: LaneKeys.cap[pressed][hit], LaneKeys.glyph. Accessibility: group named Lanes; each cap text named its letter, pressed when held. Probe ids: <id>/<key>, its Glyph.
+     *
+     * @param id Its id.
+     * @param desc The lanes and what is held.
+     */
+    function laneKeys(id: string, desc?: LaneKeysDesc): void;
     /**
      * A flight HUD to the bar of Ace Combat and DCS: a pitch ladder of few rungs (every 10°, broken below the horizon, numbered in a face that reads at a glance) turning with roll about the boresight in a central window, the horizon line, the waterline and the flight path marker heaviest as the focal pair, a heading tape across the top (numbers every 30°, the cardinals by letter) fading at its ends, quiet speed and altitude tapes with large boxed readouts on either side and the climb rate, all in one ink from the style (its primary, lifted) with a dark outline. A narrow screen drops the ladder's left numbers.
      * Parts: FlightHud.ladder, FlightHud.rung[up|down|horizon], FlightHud.waterline, FlightHud.path, FlightHud.heading, FlightHud.speed, FlightHud.altitude, FlightHud.box. Accessibility: group named Flight, its value the pitch, heading, speed and altitude; the speed, altitude and heading boxes text. Probe ids: <id>, <id>/SpeedBox, <id>/AltitudeBox, <id>/HeadingBox (each a text whose value is the reading).

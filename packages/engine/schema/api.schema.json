@@ -11666,6 +11666,10 @@
         "PlayerPlateDesc",
         "SubPlayer",
         "SubstitutionDesc",
+        "WaveEntry",
+        "WavePreviewDesc",
+        "LaneKey",
+        "LaneKeysDesc",
         "FlightHudDesc",
         "StandingsEntry",
         "StandingsTowerDesc",
@@ -14010,7 +14014,7 @@
         },
         {
           "name": "radialMenu",
-          "doc": "A radial wheel chosen by where the pointer or a stick points.",
+          "doc": "A radial wheel chosen by where the pointer or a stick points. A slice's cost sits under its label, in the danger hue while it cannot be paid; with the labels hidden (a small wheel, a large text size), the centre shows the aimed slice's cost under its name.",
           "params": [
             {
               "name": "id",
@@ -16590,7 +16594,7 @@
         },
         {
           "name": "compass",
-          "doc": "A compass strip to the bar of Skyrim and Apex: degree ticks every 15° and the bearing under a centre notch, the cardinal and intercardinal letters, points of interest at their bearings with their distance under them, objectives and pings held at the strip's ends pointing round when behind; the ends fade.\nParts: Compass.strip, Compass.tick[major], Compass.point[cardinal], Compass.notch, Compass.bearing, Compass.poi[<kind>][clamped], Compass.distance. Accessibility: status named the heading in degrees and its point. Probe ids: <id>, <id>/Bearing, <id>/Strip/<key>.",
+          "doc": "A compass strip to the bar of Skyrim and Apex: degree ticks every 15° and the bearing under a centre notch, the cardinal and intercardinal letters, points of interest at their bearings with their distance under them, objectives (a diamond, a waypoint's mark) and pings held at the strip's ends pointing round when behind; the ends fade.\nParts: Compass.strip, Compass.tick[major], Compass.point[cardinal], Compass.notch, Compass.bearing, Compass.poi[<kind>][clamped], Compass.distance. Accessibility: status named the heading in degrees and its point. Probe ids: <id>, <id>/Bearing, <id>/Strip/<key>.",
           "params": [
             {
               "name": "id",
@@ -16897,6 +16901,48 @@
               "type": "SubstitutionDesc",
               "optional": true,
               "doc": "Who goes off and who comes on."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "wavePreview",
+          "doc": "A tower-defence wave preview to the bar of Kingdom Rush and Bloons TD: a column of the waves to come, each its number, its enemy's art and how many come, the one under way lit by the selected-tile rule, a boss wave's tile in the danger hue, the rest folding into a row of dots.\nParts: WavePreview.frame, WavePreview.wave[current][boss], WavePreview.art, WavePreview.more. Accessibility: list named title; each wave text named its number and name with its count. Probe ids: <id>/<key>, its Number and Count; <id>/More.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "WavePreviewDesc",
+              "optional": true,
+              "doc": "The waves."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "laneKeys",
+          "doc": "A rhythm game's lane keys under its hit line, to the bar of osu!mania and DJMAX: a keycap per lane at the lane's x with its letter or the action's glyph on the device used last, the lane's colour on its edge, pressed down and lit while held, flashing on a hit.\nParts: LaneKeys.cap[pressed][hit], LaneKeys.glyph. Accessibility: group named Lanes; each cap text named its letter, pressed when held. Probe ids: <id>/<key>, its Glyph.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "LaneKeysDesc",
+              "optional": true,
+              "doc": "The lanes and what is held."
             }
           ],
           "returns": "Void",
@@ -50038,6 +50084,21 @@
           "type": "boolean",
           "description": "Shown but not choosable.",
           "default": false
+        },
+        "cost": {
+          "type": "string",
+          "description": "A price under its label, a coin before it (a build wheel's 150); empty is none.",
+          "default": ""
+        },
+        "costIcon": {
+          "type": "string",
+          "description": "The cost's icon.",
+          "default": "coin"
+        },
+        "unaffordable": {
+          "type": "boolean",
+          "description": "Its cost cannot be paid now: the cost in the danger hue. It stays choosable (the game refuses it and says why) unless disabled.",
+          "default": false
         }
       },
       "additionalProperties": false
@@ -68687,6 +68748,196 @@
           ],
           "description": "Opens its own anchored group there; null builds it in place.",
           "default": "bottom"
+        }
+      },
+      "additionalProperties": false
+    },
+    "WaveEntry": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A wave on og.ui.wavePreview.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key (its probe id).",
+          "default": ""
+        },
+        "number": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its number.",
+          "default": 0
+        },
+        "name": {
+          "type": "string",
+          "description": "What comes (Crawlers), for a screen reader and the tooltip.",
+          "default": ""
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its enemy's art (art kind unitPortrait, 1:1).",
+          "default": null
+        },
+        "icon": {
+          "type": "string",
+          "description": "An icon where there is no art.",
+          "default": ""
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How many come; 0 prints none.",
+          "default": 0
+        },
+        "boss": {
+          "type": "boolean",
+          "description": "A boss wave: its tile in the danger hue.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "WavePreviewDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "The waves to come.",
+      "type": "object",
+      "properties": {
+        "waves": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WaveEntry"
+          },
+          "description": "The waves, the next first.",
+          "default": []
+        },
+        "title": {
+          "type": "string",
+          "description": "Its caption.",
+          "default": "Wave preview"
+        },
+        "current": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The wave under way, lit by the selected-tile rule; 0 is none.",
+          "default": 0
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most rows shown; the rest fold into a last row of dots. 0 is 5.",
+          "default": 0
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": "right"
+        }
+      },
+      "additionalProperties": false
+    },
+    "LaneKey": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A lane's key on og.ui.laneKeys.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key (its probe id).",
+          "default": ""
+        },
+        "hotkey": {
+          "type": "string",
+          "description": "The key's letter (D, F, J, K); empty uses action's glyph.",
+          "default": ""
+        },
+        "action": {
+          "type": "string",
+          "description": "An input action whose glyph on the device used last it shows when hotkey is empty.",
+          "default": ""
+        },
+        "x": {
+          "type": "number",
+          "description": "The lane's centre on the screen, in CSS px from the viewport's left.",
+          "default": 0,
+          "x-og-unit": "cssPx"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The lane's colour; null is the accent.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "LaneKeysDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A rhythm game's lane keys.",
+      "type": "object",
+      "properties": {
+        "lanes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LaneKey"
+          },
+          "description": "The lanes, left to right.",
+          "default": []
+        },
+        "y": {
+          "type": "number",
+          "description": "The hit line, in CSS px from the viewport's top: the caps hang under it.",
+          "default": 0,
+          "x-og-unit": "cssPx"
+        },
+        "width": {
+          "type": "number",
+          "description": "A cap's width; 0 is 56.",
+          "default": 0,
+          "x-og-unit": "cssPx"
+        },
+        "pressed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The lanes held now (their keys).",
+          "default": []
+        },
+        "hit": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The lanes whose press hit a note this tick: a flash in the lane's colour.",
+          "default": []
         }
       },
       "additionalProperties": false

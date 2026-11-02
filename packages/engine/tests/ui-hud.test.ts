@@ -621,6 +621,29 @@ test("og.ui.matchStats, goalTimeline, playerPlate, substitution and the scorebug
   expect(states(at(els, "MeHud/Me")).stamina).toBe("low");
 }, LOADED_MS);
 
+test("og.ui.wavePreview and laneKeys: the waves past max fold into dots, the current lit; caps under their lanes, a held one down", () => {
+  const e = engineFor("HudGenres", () => {
+    og.ui.wavePreview("Waves", { current: 8, max: 4, waves: Array.from({ length: 6 }, (_, i) => ({ key: `w${i + 7}`, number: i + 7, name: "Crawlers", count: (i + 1) * 3, boss: i === 4 })) });
+    og.ui.laneKeys("Lanes", { y: 600, lanes: [{ key: "a", hotkey: "D", x: 500 }, { key: "b", hotkey: "F", x: 640 }, { key: "c", hotkey: "J", x: 780 }], pressed: ["b"] });
+  });
+  e.advance(4);
+  const els = dump(e);
+  // Four rows at most: three waves and the dots for the other three.
+  const rows = below(els, "WavesHud/Waves").filter((x) => x.path.split("/").length === 3 && x.id.startsWith("w")).map((x) => x.id);
+  expect(rows).toEqual(["w7", "w8", "w9"]);
+  expect(at(els, "WavesHud/Waves/More")).toBeDefined();
+  expect(at(els, "WavesHud/Waves/w7/Count")?.text).toBe("×3");
+  expect(at(els, "WavesHud/Waves/w8")?.role).toBe("text");
+  // Each cap centred on its lane, under the hit line; the held one pressed lower than its neighbours.
+  for (const [k, x] of [["a", 500], ["b", 640], ["c", 780]] as const) {
+    const cap = at(els, `LanesHud/Lanes/${k}`)!;
+    expect(cap.x + cap.width / 2).toBeCloseTo(x, 0);
+    expect(cap.y).toBeGreaterThan(600);
+  }
+  expect(at(els, "LanesHud/Lanes/b")!.y).toBeGreaterThan(at(els, "LanesHud/Lanes/a")!.y);
+  expect(at(els, "LanesHud/Lanes/c/Glyph")?.text).toBe("J");
+}, LOADED_MS);
+
 test("components anchored at one point stack in the order built instead of drawing over each other", () => {
   const e = engineFor("HudStack", () => {
     og.ui.compass("Compass", { heading: 0 });

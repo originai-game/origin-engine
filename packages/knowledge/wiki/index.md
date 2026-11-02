@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2284 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2290 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -695,6 +695,8 @@ Field units the docs and Tune use.
 | [`KillfeedEntry`](ui.md#type-KillfeedEntry) | desc struct | ui | — |
 | [`LabelDesc`](ui.md#type-LabelDesc) | desc struct | ui | — |
 | [`LabelSide`](ui.md#type-LabelSide) | enum | ui | — |
+| [`LaneKey`](ui.md#type-LaneKey) | desc struct | ui | — |
+| [`LaneKeysDesc`](ui.md#type-LaneKeysDesc) | desc struct | ui | — |
 | [`LanguageOption`](ui.md#type-LanguageOption) | desc struct | ui | — |
 | [`LapTimerDesc`](ui.md#type-LapTimerDesc) | desc struct | ui | — |
 | [`LatheGeometryDesc`](render.md#type-LatheGeometryDesc) | desc struct | render | — |
@@ -1493,6 +1495,7 @@ Field units the docs and Tune use.
 | [`og.ui.keyValueRows`](ui.md#fn-keyValueRows) | function | ui | — |
 | [`og.ui.killfeed`](ui.md#fn-killfeed) | function | ui | — |
 | [`og.ui.label`](ui.md#fn-label) | function | ui | `og_ui_label` |
+| [`og.ui.laneKeys`](ui.md#fn-laneKeys) | function | ui | — |
 | [`og.ui.lapTimer`](ui.md#fn-lapTimer) | function | ui | — |
 | [`og.ui.lastPath`](ui.md#fn-lastPath) | function | ui | `og_ui_last_path` |
 | [`og.ui.layers`](ui.md#fn-layers) | function | ui | `og_ui_layers` |
@@ -1668,6 +1671,7 @@ Field units the docs and Tune use.
 | [`og.ui.viewFrame`](ui.md#fn-viewFrame) | function | ui | — |
 | [`og.ui.viewport`](ui.md#fn-viewport) | function | ui | `og_ui_viewport` |
 | [`og.ui.visualState`](ui.md#fn-visualState) | function | ui | `og_ui_visual_state` |
+| [`og.ui.wavePreview`](ui.md#fn-wavePreview) | function | ui | — |
 | [`og.ui.waypoint`](ui.md#fn-waypoint) | function | ui | — |
 | [`og.ui.zoomView`](ui.md#fn-zoomView) | function | ui | `og_ui_zoom_view` |
 | [`og.Vehicle`](physics.md#record-Vehicle) | component | physics | — |
@@ -2408,6 +2412,8 @@ Field units the docs and Tune use.
 | [`VolumetricFog`](render.md#type-VolumetricFog) | enum | render | — |
 | [`WalkGoalDesc`](motion.md#type-WalkGoalDesc) | desc struct | motion | — |
 | [`WalletEntry`](ui.md#type-WalletEntry) | desc struct | ui | — |
+| [`WaveEntry`](ui.md#type-WaveEntry) | desc struct | ui | — |
+| [`WavePreviewDesc`](ui.md#type-WavePreviewDesc) | desc struct | ui | — |
 | [`WaypointDesc`](ui.md#type-WaypointDesc) | desc struct | ui | — |
 | [`WaypointKind`](ui.md#type-WaypointKind) | enum | ui | — |
 | [`WEATHER_DUST`](atmosphere.md#const-WEATHER_DUST) | constant | atmosphere | — |

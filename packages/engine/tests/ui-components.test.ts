@@ -566,6 +566,19 @@ test("radialMenu: the pointer picks by angle anywhere on a slice; a release in t
   expect(picked).toBe(5);
 });
 
+test("radialMenu: a slice's cost shows under its label; an unaffordable slice stays choosable", () => {
+  // Wrong: the cost dropped, or an unaffordable slice made unchoosable (the game refuses it and says why).
+  let picked: number | null = null;
+  const engine = run(() => {
+    const r = og.ui.radialMenu("Wheel", true, { items: [{ label: "Laser", icon: "bolt", cost: "100" }, { label: "Cannon", icon: "bomb", cost: "150", unaffordable: true }, { label: "Frost", icon: "drop", cost: "120" }], aim: { x: 0.9, y: 0.4 }, release: true });
+    if (r.chosen !== null) picked = r.chosen;
+  });
+  engine.advance(20);
+  const cost = elements(engine).filter((e) => e.path.endsWith("/Label/Cost/Text"));
+  expect(cost.map((e) => e.text).sort()).toEqual(["100", "120", "150"]);
+  expect(picked).toBe(1);
+});
+
 // ── data ────────────────────────────────────────────────────────────────
 
 const ROWS = Array.from({ length: 10_000 }, (_, i) => ({ name: `Player ${String(i).padStart(5, "0")}`, score: (i * 7919) % 10_007, guild: ["Ash", "Brine", "Cinder"][i % 3] }));

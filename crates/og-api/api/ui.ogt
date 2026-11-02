@@ -2303,6 +2303,11 @@ module ui {
     field icon String "Its icon; empty is none."
     field detail String "A line the centre shows while it is chosen."
     field disabled bool "Shown but not choosable."
+    field cost String "A price under its label, a coin before it (a build wheel's 150); empty is none."
+    field costIcon String "The cost's icon." {
+      default "coin"
+    }
+    field unaffordable bool "Its cost cannot be paid now: the cost in the danger hue. It stays choosable (the game refuses it and says why) unless disabled."
   }
 
   struct RadialDesc {
@@ -2934,7 +2939,7 @@ module ui {
   }
 
   fn radialMenu {
-    doc "A radial wheel chosen by where the pointer or a stick points."
+    doc "A radial wheel chosen by where the pointer or a stick points. A slice's cost sits under its label, in the danger hue while it cannot be paid; with the labels hidden (a small wheel, a large text size), the centre shows the aimed slice's cost under its name."
     host false
     param id String "Its id."
     param open bool "Whether it is open."
@@ -8449,7 +8454,7 @@ module ui {
   }
 
   fn compass {
-    doc "A compass strip to the bar of Skyrim and Apex: degree ticks every 15° and the bearing under a centre notch, the cardinal and intercardinal letters, points of interest at their bearings with their distance under them, objectives and pings held at the strip's ends pointing round when behind; the ends fade."
+    doc "A compass strip to the bar of Skyrim and Apex: degree ticks every 15° and the bearing under a centre notch, the cardinal and intercardinal letters, points of interest at their bearings with their distance under them, objectives (a diamond, a waypoint's mark) and pings held at the strip's ends pointing round when behind; the ends fade."
     doc "Parts: Compass.strip, Compass.tick[major], Compass.point[cardinal], Compass.notch, Compass.bearing, Compass.poi[<kind>][clamped], Compass.distance. Accessibility: status named the heading in degrees and its point. Probe ids: <id>, <id>/Bearing, <id>/Strip/<key>."
     host false
     param id String "Its id."
@@ -9008,6 +9013,76 @@ module ui {
     host false
     param id String "Its id."
     param desc SubstitutionDesc "Who goes off and who comes on."
+    returns Void
+  }
+
+  struct WaveEntry {
+    doc "A wave on og.ui.wavePreview."
+    desc true
+    field key String "Its key (its probe id)."
+    field number u32 "Its number."
+    field name String "What comes (Crawlers), for a screen reader and the tooltip."
+    field image Option.Texture "Its enemy's art (art kind unitPortrait, 1:1)."
+    field icon String "An icon where there is no art."
+    field count u32 "How many come; 0 prints none."
+    field boss bool "A boss wave: its tile in the danger hue."
+  }
+
+  struct WavePreviewDesc {
+    doc "The waves to come."
+    desc true
+    field waves List.WaveEntry "The waves, the next first."
+    field title String "Its caption." {
+      default "Wave preview"
+    }
+    field current u32 "The wave under way, lit by the selected-tile rule; 0 is none."
+    field max u32 "The most rows shown; the rest fold into a last row of dots. 0 is 5."
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
+      default right
+    }
+  }
+
+  fn wavePreview {
+    doc "A tower-defence wave preview to the bar of Kingdom Rush and Bloons TD: a column of the waves to come, each its number, its enemy's art and how many come, the one under way lit by the selected-tile rule, a boss wave's tile in the danger hue, the rest folding into a row of dots."
+    doc "Parts: WavePreview.frame, WavePreview.wave[current][boss], WavePreview.art, WavePreview.more. Accessibility: list named title; each wave text named its number and name with its count. Probe ids: <id>/<key>, its Number and Count; <id>/More."
+    host false
+    param id String "Its id."
+    param desc WavePreviewDesc "The waves."
+    returns Void
+  }
+
+  struct LaneKey {
+    doc "A lane's key on og.ui.laneKeys."
+    desc true
+    field key String "Its key (its probe id)."
+    field hotkey String "The key's letter (D, F, J, K); empty uses action's glyph."
+    field action String "An input action whose glyph on the device used last it shows when hotkey is empty."
+    field x f32 "The lane's centre on the screen, in CSS px from the viewport's left." {
+      unit cssPx
+    }
+    field color Option.Paint "The lane's colour; null is the accent."
+  }
+
+  struct LaneKeysDesc {
+    doc "A rhythm game's lane keys."
+    desc true
+    field lanes List.LaneKey "The lanes, left to right."
+    field y f32 "The hit line, in CSS px from the viewport's top: the caps hang under it." {
+      unit cssPx
+    }
+    field width f32 "A cap's width; 0 is 56." {
+      unit cssPx
+    }
+    field pressed List.String "The lanes held now (their keys)."
+    field hit List.String "The lanes whose press hit a note this tick: a flash in the lane's colour."
+  }
+
+  fn laneKeys {
+    doc "A rhythm game's lane keys under its hit line, to the bar of osu!mania and DJMAX: a keycap per lane at the lane's x with its letter or the action's glyph on the device used last, the lane's colour on its edge, pressed down and lit while held, flashing on a hit."
+    doc "Parts: LaneKeys.cap[pressed][hit], LaneKeys.glyph. Accessibility: group named Lanes; each cap text named its letter, pressed when held. Probe ids: <id>/<key>, its Glyph."
+    host false
+    param id String "Its id."
+    param desc LaneKeysDesc "The lanes and what is held."
     returns Void
   }
 

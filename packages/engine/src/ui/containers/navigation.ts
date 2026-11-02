@@ -591,7 +591,9 @@ export function radialMenu(id: string, open: boolean, desc: Api.RadialDesc): Api
       return null;
     };
     const capH = iconPx + gap + capLine;
-    const plan = items.map((it, k) => (it.label && named ? place(k, Math.max(iconPx, widths[k]!), it.icon ? capH : capLine) : null));
+    // A cost takes a line of its own under the label.
+    const costH = (it: Api.RadialItem) => (it.cost ? gap + capLine : 0);
+    const plan = items.map((it, k) => (it.label && named ? place(k, Math.max(iconPx, widths[k]!), (it.icon ? capH : capLine) + costH(it)) : null));
     const captions = items.every((it, k) => !it.label || !named || plan[k] !== null);
     // The wheel takes the pointer, keys (Left and Right step round it, Enter chooses) and pads; its
     // focus ring follows its circle.
@@ -612,12 +614,20 @@ export function radialMenu(id: string, open: boolean, desc: Api.RadialDesc): Api
         const caption = captions && !!it.label && named;
         const rho = (caption ? plan[k] : null) ?? (radius + hole) / 2;
         const boxW = caption ? Math.max(iconPx, widths[k]!) : iconPx;
-        const boxH = caption ? (it.icon ? capH : capLine) : iconPx;
+        const boxH = caption ? (it.icon ? capH : capLine) + costH(it) : iconPx;
         const cx = radius + Math.cos(mid) * rho * (rtl() ? -1 : 1);
         const cy = radius + Math.sin(mid) * rho;
         kit.column("Label", { width: fit(), cross: "center", gap }, () => {
           if (it.icon) kit.icon("Icon", it.icon, { size: iconPx, tint: token(on ? "onPrimary" : "ink"), label: "" });
           if (caption) text("Text", it.label ?? "", { step: "caption", color: on ? "onPrimary" : "inkMuted", align: "center", nowrap: true });
+          if (caption && it.cost) {
+            // The price in the ink, or in the danger hue while it cannot be paid (a build wheel's tower the gold does not reach).
+            const ink = it.unaffordable ? "danger" : on ? "onPrimary" : "ink";
+            kit.row("Cost", { gap: 2, cross: "center", part: `Radial.cost${flags(it.unaffordable && "unaffordable")}` }, () => {
+              kit.icon("Icon", it.costIcon || "coin", { size: Math.round(capLine * 0.8), tint: token(it.unaffordable ? "danger" : "gold"), label: "" });
+              text("Text", it.cost ?? "", { step: "caption", color: ink, nowrap: true });
+            });
+          }
         });
         over({ insets: { start: (rtl() ? radius * 2 - cx : cx) - boxW / 2, top: cy - boxH / 2 }, inert: true });
         const tb = caption ? kit.bounds(`${kit.lastPath()}/Text`) : null;
@@ -642,6 +652,8 @@ export function radialMenu(id: string, open: boolean, desc: Api.RadialDesc): Api
       const detailH = it?.detail ? (ramp.caption?.lineHeight ?? 16) + 2 : 0;
       wholeWords("Name", it?.label ?? desc.title ?? "", { width: inner, height: inner - detailH, maxLines: 2, steps: ["base", "sm", "caption", "meta", "xs"], heading: true });
       if (it?.detail) wholeWords("Detail", it.detail, { width: inner, height: detailH, maxLines: 1, steps: ["caption", "meta", "xs"], color: "inkMuted" });
+      // Labels hidden on the ring: the aimed slice's cost shows here instead.
+      if (it?.cost && !captions) text("Cost", it.cost, { step: "caption", color: it.unaffordable ? "danger" : "ink", nowrap: true });
     }
     kit.close();
     over({ insets: { start: radius - hole + 4, top: radius - hole + 4 }, inert: true, z: 2 });

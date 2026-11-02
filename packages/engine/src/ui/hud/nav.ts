@@ -35,7 +35,7 @@ function markerInk(kind: Api.MarkerKind, color: Api.Paint | null | undefined, ra
 }
 
 /** A marker's mark, centred in a box of side `s`. */
-function mark(id: string, kind: Api.MarkerKind, ink: Rgba, s: number, heading: number, iconName: string, part: string, label: string, place: Props): void {
+function mark(id: string, kind: Api.MarkerKind, ink: Rgba, s: number, heading: number, iconName: string, part: string, label: string, place: Props, diamond = false): void {
   const outline = stroke(1.5, token("shadow", 0.9), "outside");
   if (kind === "player" || kind === "ally") {
     // An arrow by heading: a narrow triangle with a notch (a dart).
@@ -52,6 +52,14 @@ function mark(id: string, kind: Api.MarkerKind, ink: Rgba, s: number, heading: n
     }, { ...place, ...(label ? { a11y: a11y("image", label) } : {}) });
   } else if (kind === "poi" && iconName) {
     box(id, { width: px(s), height: px(s), align: "center", cross: "center", part }, undefined, () => icon("Icon", iconName, s, lit(ink)), { ...place, ...(label ? { a11y: a11y("image", label) } : {}) });
+  } else if (diamond && kind === "objective") {
+    // A compass's objective: a crisp diamond with a dark core (a waypoint's mark), apart from an enemy's rounded one.
+    box(id, { width: px(s), height: px(s), align: "center", cross: "center", part }, {
+      shape: { kind: "polygon", sides: 4 },
+      fills: [solid(lit(ink))],
+      strokes: [outline],
+      effects: [glow(4, lit(ink, 0.6))],
+    }, () => leaf("Core", { width: px(Math.round(s * 0.42)), height: px(Math.round(s * 0.42)) }, { shape: { kind: "polygon", sides: 4 }, fills: [solid(lit({ r: 0.05, g: 0.06, b: 0.08, a: 1 }, 0.85))] }), { ...place, ...(label ? { a11y: a11y("image", label) } : {}) });
   } else {
     const shape: Api.DrawShape = kind === "enemy" ? { kind: "polygon", sides: 4, rounding: 1 }
       : kind === "objective" ? { kind: "polygon", sides: 5, inner: 0.45, rounding: 0.5 }
@@ -293,7 +301,7 @@ export function compass(id: string, desc: Api.CompassDesc = {}): void {
           const ink = markerInk(kind, p.color);
           const bw = Math.max(u(48), Math.ceil(`${Math.round(p.distance ?? 0)}${desc.units ?? "m"}`.length * stepSize(ts(10)).size * 0.62) + u(4));
           box(keyId(p.key ?? ""), { direction: "column", cross: "center", gap: 0, width: px(bw), part: sel("Compass", "poi", kind, clamped ? "clamped" : null) }, undefined, () => {
-            mark("Mark", kind, ink, s, 0, p.icon ?? "", sel("Compass", "mark", kind), "", {});
+            mark("Mark", kind, ink, s, 0, p.icon ?? "", sel("Compass", "mark", kind), "", {}, true);
             if (p.distance !== null && p.distance !== undefined && labelled.has(p)) {
               text("Distance", `${Math.round(p.distance)}${desc.units ?? "m"}`, { step: ts(10), font: "mono", color: token("ink"), nowrap: true, outline: 1 });
             }
