@@ -19205,7 +19205,7 @@ export interface LocaleInfo {
 
 
 // ── ui ──────────────────────────────────────────────────────────
-// The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, styles it with the game's UI style (the placeholder prototype style until the game picks one), draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it.
+// The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, styles it with the game's UI style (the engine's default style, for prototypes only, until the game picks one), draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it.
 // The engine opens the frame before the game's systems (from og.Input and the play surface) and closes it after them, so calls belong inside systems; outside one they do nothing and log a warning. Interaction is decided against the previous tick's rectangles, which are also what the probe resolves, so a scripted touch_move_to and a click agree; response edges (clicked, changed, submitted) last one tick.
 // Lengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Ids: an element's id is unique among its siblings (`idi("Slot", 3)` is `Slot#3`); a path `Inventory/Slot#3` names it after its nearest ancestors. The UI state (hover, press, focus, caret, scroll) is world state: snapshots and the world hash carry it.
 
@@ -19287,7 +19287,7 @@ export type Scheme = "dark" | "light";
 export type DensityMode = "auto" | "mouse" | "pad" | "touch";
 
 /**
- * A colour role of the UI style in effect (the game's style, or the prototype style before it picks one).
+ * A colour role of the UI style in effect (the game's style, or the default style before it picks one).
  * - `"backdrop"`: The screen behind the UI where nothing else is.
  * - `"well"`: A recessed ground inside a panel: wells, map frames, empty slots.
  * - `"panel"`: Panels and cards.
@@ -20247,7 +20247,7 @@ export interface UiDesc {
    */
   readonly hudMaxAspect?: number;
   /**
-   * A UI style from og.load.style: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the prototype style (fonts, icons and a primary colour given here still win); null is the prototype style, the engine's placeholder.
+   * A UI style from og.load.style: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the default style (fonts, icons and a primary colour given here still win); null is the default style, the design language the engine shares with origin-agent, for prototypes only (og build --publish refuses a game in it).
    *
    * @default null
    */
@@ -20405,7 +20405,7 @@ export interface UiTheme {
    * The motion durations by name (instant, fast, base, slow, spring, bounce), in milliseconds.
    */
   readonly durationsMs: Readonly<Record<string, number>>;
-  /** The configured style's name; empty for the prototype style. */
+  /** The configured style's name; empty for the default style. */
   readonly style: string;
   /**
    * The variant in effect: high when the game asked for it or the page prefers more contrast.
@@ -37717,7 +37717,7 @@ export interface UiActionHint {
  * - `"frame_entity"`: `frame_entity:<entity>`: point the camera at an entity.
  * - `"dump_world"`: `dump_world[:path]`: tables, systems and their matched counts.
  * - `"dump_entity"`: `dump_entity:<name>[:path]`: one entity's components and transform.
- * - `"dump_ui"`: `dump_ui[:path]`: the UI tree with bounds, and `style`, the configured UI style's name (empty for the placeholder prototype).
+ * - `"dump_ui"`: `dump_ui[:path]`: the UI tree with bounds, and `style`, the configured UI style's name (empty for the engine's default style).
  * - `"set"`: `set:<entity>.<component>.<field>=<value>` or `set:<Resource>.<field>=<value>`: a Tune write through the schema: a number, `true` or `false` for a bool, `x,y,z` for a vector, an enum's variant name or its index; refused outside the field's FieldOptions min/max, never clamped.
  * - `"get"`: `get:<Resource>[.<field>]` or `get:<entity>[.<component>[.<field>]][:path]`: read through the schema as game code sees it (an enum as its variant's name, `"music"`; og.Time whole, with rate and the time scale; the DirectionalLight og.DayNight drives with the colour, intensity and direction it is drawn with), logged and written as JSON to `get-<tick>.json` (more unnamed ones on one tick: `get-<tick>-2.json`, ...).
  * - `"seed"`: `seed:<n>`: reseed the Rng resource.
@@ -42980,13 +42980,13 @@ export declare namespace og {
     function has(world: World, key: string): boolean;
   }
   /**
-   * The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, styles it with the game's UI style (the placeholder prototype style until the game picks one), draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it.
+   * The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, styles it with the game's UI style (the engine's default style, for prototypes only, until the game picks one), draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it.
    * The engine opens the frame before the game's systems (from og.Input and the play surface) and closes it after them, so calls belong inside systems; outside one they do nothing and log a warning. Interaction is decided against the previous tick's rectangles, which are also what the probe resolves, so a scripted touch_move_to and a click agree; response edges (clicked, changed, submitted) last one tick.
    * Lengths are CSS pixels of the play surface (origin top left, y down), the unit of og.Input and the probe. Ids: an element's id is unique among its siblings (`idi("Slot", 3)` is `Slot#3`); a path `Inventory/Slot#3` names it after its nearest ancestors. The UI state (hover, press, focus, caret, scroll) is world state: snapshots and the world hash carry it.
    */
   namespace ui {
     /**
-     * Set how the UI looks (the scheme, density, fonts, style, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's style (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the style and the fonts; null clears a field to its default (`style: null` goes back to the prototype style). A UI left with no font at all (no font, no style with fonts, no fallback or locale font) warns: it would draw no text.
+     * Set how the UI looks (the scheme, density, fonts, style, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's style (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the style and the fonts; null clears a field to its default (`style: null` goes back to the default style). A UI left with no font at all (no font, no style with fonts, no fallback or locale font) warns: it would draw no text.
      *
      * @param world The world whose UI is configured.
      * @param desc The fields to change; the others keep their values.

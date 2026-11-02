@@ -5,8 +5,8 @@ description: Game screens and HUDs on Origin Engine with og.ui — which screen 
 
 `og.ui` is the engine's immediate-mode UI: a system describes the tree every
 tick, the engine lays it out, draws it in the game's UI style (a look's
-`ui` line; the `prototype` placeholder without one, never the platform's
-tokens) and answers the probe (`dump_ui`, `touch_move_to`, `move_to_text`). The API
+`ui` line; the engine's default style without one, which is for
+prototypes only) and answers the probe (`dump_ui`, `touch_move_to`, `move_to_text`). The API
 reference is `og api show ui`; this skill is how to use it well.
 
 ## What works
@@ -398,10 +398,12 @@ fingers with `touch_start` for the first and `touch:1:down:<x,y>` /
 ## 6. Styles: the look of the game's UI, motion, transitions, sounds
 
 The game's UI follows the game's art, never the Origin platform's look:
-the engine has no house style to fall back on. Without a style a UI draws
-in **prototype**, the engine's placeholder: greys, near-square corners and
-a cyan focus ring, meant to be replaced. `og polish` warns when a game
-ships in it. A **style** (`og.load.style`, an `.ogt` of `type style`,
+the engine's own look is not for games. Without a style a UI draws in the
+**default style**, the design language the engine shares with
+origin-agent (`@origingame/design`: a neutral ladder, amber as the one
+primary, flat glass on menus and dialogs, borderless controls), which is
+for origin-agent and for prototyping only. `og polish` warns when a game
+is in it and `og build --publish` refuses it. A **style** (`og.load.style`, an `.ogt` of `type style`,
 `version 2`) is a whole design system: its tokens (palette roles, semantic
 colours, typography by role and breakpoint, space and size scales, radii,
 strokes, elevation, a shape language per element class, motion, sounds and
@@ -578,7 +580,7 @@ og.ui.configure(world, { primaryColor: "#e0553b" });   // re-colour the style's 
 `configure` takes a partial UiDesc: a field left out keeps the value the
 last call gave it (or the style a look applied, `GameDesc.look` and
 `og.render.applyLook`), and `null` clears one (`style: null` is the
-prototype style again). A UI left with no font at all warns that it draws
+default style again). A UI left with no font at all warns that it draws
 no text.
 
 A style's `slice` line says how a frame's edges and centre fill: `stretch`

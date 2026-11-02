@@ -262,8 +262,8 @@ reruns one screen while fixing it.
 
 The report also lists clipped samples in the mix (og-audio §4), and a UI
 style finding (no score) when a shot's `dump_ui` reports `style` empty: the
-UI draws in prototype, the engine's placeholder, not a style of the game's
-own (og-taste §1). Contrast and
+UI draws in the engine's default style (for prototypes only; `og build
+--publish` refuses it), not a style of the game's own (og-taste §1). Contrast and
 text size read text only: icons and images (their "text" is a picture's
 name), disabled controls and what they hold (WCAG exempts them), the
 slivers a scroll container cuts, what a dialog's or a tutorial's scrim

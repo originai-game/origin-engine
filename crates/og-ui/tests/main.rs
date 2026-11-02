@@ -24,5 +24,6 @@ mod slots;
 mod style;
 mod support;
 mod text;
+mod theme;
 mod widgets;
 mod world;

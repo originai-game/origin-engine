@@ -17,7 +17,7 @@
 //! Until its art lands a slot draws a placeholder from the style and the
 //! kind ([`SlotKind::placeholder`]): a gradient of two of the palette's
 //! roles, the kind's silhouette from the style's icon set, and the slot's
-//! name in the `prototype` style only; never an empty grey box
+//! name in the default style only; never an empty grey box
 //! ([`crate::Ui::art`]). [`document_slots`] reads every `art` element of a
 //! document with its spec, what `og ui slots` lists.
 

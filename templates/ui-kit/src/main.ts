@@ -10,7 +10,7 @@
 //
 // Commands: show:<screen>, viewport:<desktop|tablet|phone|landscape>,
 // pad:<up|down|left|right|next|prev|activate|back>, toast:<text>,
-// damage:<hp>, heal:<hp>, style:<a STYLES name: prototype, a pack (pixel, ...) or a seed (gilded, ...)>
+// damage:<hp>, heal:<hp>, style:<a STYLES name: default, a pack (pixel, ...) or a seed (gilded, ...)>
 // (a built-in style pack, @styles/<name>), transition:<none|fade|wipe|iris|dissolve|slide>
 // (screen changes go through og.ui.screenTransition), sounds:<on|off> (on by default),
 // mixed:<on|off> (a label of CJK, Latin and Arabic under the locale screens),
@@ -33,9 +33,9 @@ export type Screen = (typeof SCREENS)[number];
 /** The engine's built-in UI styles (templates/styles, in the bundle as
  * `@styles/<name>/` because assets/looks/kit-<name>.ogt names each): the
  * six atlas packs, then the seed styles og style new generated;
- * "prototype" is the engine's placeholder. */
+ * "default" is the engine's default style (the design language's, for prototypes). */
 export const STYLES = [
-  "prototype", "pixel", "cartoon", "fantasy", "scifi", "paper", "neon",
+  "default", "pixel", "cartoon", "fantasy", "scifi", "paper", "neon",
   "gilded", "storybook", "tactical", "holo", "cyber", "bubbly", "kawaii", "arcade", "craft", "minimal", "dread", "broadcast", "inkwash",
 ] as const;
 const WIPES = ["none", "fade", "wipe", "iris", "dissolve", "slide"] as const;
@@ -415,8 +415,8 @@ function followSettings(world: World, tick: number, d: DemoState): void {
 /** Applies the theme-affecting settings (contrast, motion, the style pack,
  * sounds) with the demo's font and icons, or the pack's. */
 function applyTheme(world: World, d: DemoState): void {
-  const name = STYLES[d.style] ?? "prototype";
-  const loaded = name === "prototype" ? null : og.load.style(world, `@styles/${name}/style.ogt`);
+  const name = STYLES[d.style] ?? "default";
+  const loaded = name === "default" ? null : og.load.style(world, `@styles/${name}/style.ogt`);
   if (loaded && !loaded.ok) throw new Error(loaded.reason);
   const style = loaded && loaded.ok ? loaded.value : null;
   const sounds: Record<string, unknown> = {};
@@ -1249,7 +1249,7 @@ export default og.game({
       update(world, { hp: d.hp });
     },
     style: (world, args) => {
-      update(world, { style: Math.max(0, STYLES.indexOf((args[0] ?? "prototype") as (typeof STYLES)[number])) });
+      update(world, { style: Math.max(0, STYLES.indexOf((args[0] ?? "default") as (typeof STYLES)[number])) });
       const d = current(world);
       if (d) applyTheme(world, d);
     },
@@ -1276,7 +1276,7 @@ export default og.game({
     toast: { usage: "<text>", doc: "Queue a toast." },
     damage: { usage: "<hp>", doc: "Take hit points off the HUDs' health." },
     heal: { usage: "<hp>", doc: "Give hit points back." },
-    style: { usage: "<prototype|pixel|cartoon|fantasy|scifi|paper|neon|gilded|storybook|tactical|holo|cyber|bubbly|kawaii|arcade|craft|minimal|dread|broadcast|inkwash>", doc: "Dress every screen in a built-in style." },
+    style: { usage: "<default|pixel|cartoon|fantasy|scifi|paper|neon|gilded|storybook|tactical|holo|cyber|bubbly|kawaii|arcade|craft|minimal|dread|broadcast|inkwash>", doc: "Dress every screen in a built-in style." },
     transition: { usage: "<none|fade|wipe|iris|dissolve|slide>", doc: "Send screen changes through og.ui.screenTransition." },
     sounds: { usage: "<on|off>", doc: "Hand the UI's event sounds their blips (on by default)." },
     mixed: { usage: "<on|off>", doc: "Show a label mixing CJK, Latin and Arabic (menu.mixed) under the menu, pause and confirm screens." },
@@ -1285,6 +1285,6 @@ export default og.game({
   },
   facts: (world) => {
     const d = current(world);
-    return d ? { screen: SCREENS[d.screen] ?? "gallery", style: STYLES[d.style] ?? "prototype", hp: d.hp, balance: d.balance, saves: d.saves, loads: d.loads, language: LANGUAGES[d.language]?.code ?? "en", picks: [d.pick0, d.pick1, d.pick2, d.pick3], focus: [d.focus0, d.focus1, d.focus2, d.focus3] } : {};
+    return d ? { screen: SCREENS[d.screen] ?? "gallery", style: STYLES[d.style] ?? "default", hp: d.hp, balance: d.balance, saves: d.saves, loads: d.loads, language: LANGUAGES[d.language]?.code ?? "en", picks: [d.pick0, d.pick1, d.pick2, d.pick3], focus: [d.focus0, d.focus1, d.focus2, d.focus3] } : {};
   },
 });

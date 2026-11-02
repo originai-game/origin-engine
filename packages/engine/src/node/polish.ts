@@ -484,7 +484,7 @@ function measure(rec: RunRecord, frameDir: string, frames: number, relTo: string
     .filter((shot) => shot.ui && existsSync(shot.ui))
     .map((shot) => JSON.parse(readFileSync(shot.ui!, "utf8")) as UiDump)
     .filter((ui) => ui.elements.length > 0 && typeof ui.style === "string");
-  if (dressed.some((ui) => ui.style === "")) findings.push({ measure: "UI style", where: rec.playtest, detail: "the UI draws in prototype, the engine's placeholder style (greys, square corners), not a style of the game's own", fix: "og-taste §1: name a style in the game's look (`ui \"<slug>\"` or `ui \"styles/<name>/style.ogt\"`), or extend a catalogue preset, which names one" });
+  if (dressed.some((ui) => ui.style === "")) findings.push({ measure: "UI style", where: rec.playtest, detail: "the UI draws in the engine's default style, which is for prototypes only (og build --publish refuses it), not a style of the game's own", fix: "og-taste §1: name a style in the game's look (`ui \"<slug>\"` or `ui \"styles/<name>/style.ogt\"`), or extend a catalogue preset, which names one" });
 
   // Frames: contrast, text size, HUD.
   const shots: PlaytestMeasures["shots"] = [];

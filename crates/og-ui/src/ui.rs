@@ -326,7 +326,7 @@ pub struct Ui {
     pub(crate) text_target: Option<TextTarget>,
     /// This frame's screen-transition cover.
     pub(crate) cover: Option<crate::juice::Cover>,
-    /// The configured style's name (empty: `prototype`).
+    /// The configured style's name (empty: the default style).
     pub(crate) style_name: String,
     /// Two touches move a scroller or zoom view this tick: the primary
     /// pointer presses nothing.

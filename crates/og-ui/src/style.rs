@@ -1,4 +1,4 @@
-//! The theme: the values a widget reads its look from (the prototype style's
+//! The theme: the values a widget reads its look from (the default style's
 //! in [`crate::theme`], a style file's over them) with the few conversions
 //! the renderer needs.
 
@@ -30,11 +30,11 @@ impl Srgba {
         [c(self.rgb[0]), c(self.rgb[1]), c(self.rgb[2]), self.alpha]
     }
 
-    /// The same colour with its alpha multiplied by `k`.
+    /// The same colour with its alpha multiplied by `k` (at most opaque).
     pub fn fade(self, k: f32) -> Srgba {
         Srgba {
             rgb: self.rgb,
-            alpha: self.alpha * k,
+            alpha: (self.alpha * k).min(1.0),
         }
     }
 
@@ -180,7 +180,7 @@ impl Srgba {
     };
 }
 
-/// Light or dark: which variant of the prototype style the theme starts
+/// Light or dark: which variant of the default style the theme starts
 /// from (a style file sets every colour itself).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Scheme {
@@ -331,7 +331,7 @@ pub struct Theme {
     /// sounds); the default dresses nothing.
     pub art: crate::style_file::Art,
     /// The style's version 2 tokens (`crate::tokens`): carried, not yet
-    /// drawn from. A version 1 style and the prototype style have the set
+    /// drawn from. A version 1 style and the default style have the set
     /// [`crate::tokens::StyleTokens::derive`] makes of their values.
     pub tokens: crate::tokens::StyleTokens,
     /// The style's motion personality (docs/ui.md §7.7): named springs,
@@ -347,12 +347,12 @@ impl Default for Theme {
 }
 
 impl Theme {
-    /// The prototype style, light.
+    /// The default style, light.
     pub fn light() -> Theme {
         Theme::new(Scheme::Light)
     }
 
-    /// The prototype style, dark (the default).
+    /// The default style, dark (the default).
     pub fn dark() -> Theme {
         Theme::new(Scheme::Dark)
     }

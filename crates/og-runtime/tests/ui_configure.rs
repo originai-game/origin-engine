@@ -51,7 +51,7 @@ fn project() -> &'static Path {
             "styles/mini/Body.ttf.ogt",
             b"type import\nversion 1\n---\nfont {\n  charset latin\n  em_px 32\n  px_range 4\n}\n",
         );
-        // A style sets every role and radius: the prototype's, written out.
+        // A style sets every role and radius: the default style's, written out.
         let values = |scheme: og_ui::Scheme| {
             let t = og_ui::Theme::new(scheme);
             let mut out = String::from("palette {\n");

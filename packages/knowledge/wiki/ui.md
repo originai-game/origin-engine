@@ -2,7 +2,7 @@
 
 # The `ui` module
 
-The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, styles it with the game's UI style (the placeholder prototype style until the game picks one), draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it.
+The engine's UI: an immediate-mode toolkit. Systems describe the tree every tick with these calls; the engine lays it out Clay-style, styles it with the game's UI style (the engine's default style, for prototypes only, until the game picks one), draws it over the frame and answers the probe (dump_ui, touch_move_to, move_to_text) from it.
 
 The engine opens the frame before the game's systems (from og.Input and the play surface) and closes it after them, so calls belong inside systems; outside one they do nothing and log a warning. Interaction is decided against the previous tick's rectangles, which are also what the probe resolves, so a scripted touch_move_to and a click agree; response edges (clicked, changed, submitted) last one tick.
 
@@ -33,7 +33,7 @@ module ui {
 | [`ControlSize`](#type-ControlSize) | enum | Control heights from the density (h-control-sm, -md, -lg). |
 | [`Scheme`](#type-Scheme) | enum | The palette: games run on a stage, so dark is the default. |
 | [`DensityMode`](#type-DensityMode) | enum | Control sizes by the input the player holds: auto picks touch sizes on a coarse pointer or a play surface under 768 px, mouse sizes otherwise. |
-| [`ThemeColor`](#type-ThemeColor) | enum | A colour role of the UI style in effect (the game's style, or the prototype style before it picks one). |
+| [`ThemeColor`](#type-ThemeColor) | enum | A colour role of the UI style in effect (the game's style, or the default style before it picks one). |
 | [`TypeStepName`](#type-TypeStepName) | enum | A step of the style's type ramp. |
 | [`SizeRange`](#type-SizeRange) | struct | The bounds of a fit or grow size. |
 | [`FixedSize`](#type-FixedSize) | struct | A fixed size. |
@@ -66,7 +66,7 @@ module ui {
 | [`ControlSizes`](#type-ControlSizes) | struct | The control, row and header heights and the gutter of the density in effect. |
 | [`UiTheme`](#type-UiTheme) | struct | The style values the UI draws with, read-only. |
 | [`UiBuild`](#type-UiBuild) | callback | Builds a container's children: ui calls made inside it nest under the container. |
-| [`og.ui.configure`](#fn-configure) | function | Set how the UI looks (the scheme, density, fonts, style, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's style (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the style and the fonts; null clears a field to its default (`style: null` goes back to the prototype style). A UI left with no font at all (no font, no style with fonts, no fallback or locale font) warns: it would draw no text. |
+| [`og.ui.configure`](#fn-configure) | function | Set how the UI looks (the scheme, density, fonts, style, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's style (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the style and the fonts; null clears a field to its default (`style: null` goes back to the default style). A UI left with no font at all (no font, no style with fonts, no fallback or locale font) warns: it would draw no text. |
 | [`og.ui.viewport`](#fn-viewport) | function | This tick's play surface: the render target's size in CSS pixels, its DPR and safe area, as the host reports them. |
 | [`og.ui.theme`](#fn-theme) | function | The style values the UI draws with. |
 | [`og.ui.open`](#fn-open) | function | Open a container; the calls until its close() build its children. |
@@ -805,7 +805,7 @@ module ui {
 
 ### `og.ui.configure`
 
-Set how the UI looks (the scheme, density, fonts, style, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's style (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the style and the fonts; null clears a field to its default (`style: null` goes back to the prototype style). A UI left with no font at all (no font, no style with fonts, no fallback or locale font) warns: it would draw no text.
+Set how the UI looks (the scheme, density, fonts, style, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's style (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the style and the fonts; null clears a field to its default (`style: null` goes back to the default style). A UI left with no font at all (no font, no style with fonts, no fallback or locale font) warns: it would draw no text.
 
 ```ts
 og.ui.configure(world: World, desc?: UiDesc): Result<void>
@@ -822,7 +822,7 @@ Binding symbol `og_ui_configure` · publish builds: kept
 
 ```ogt
 fn configure {
-  doc "Set how the UI looks (the scheme, density, fonts, style, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's style (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the style and the fonts; null clears a field to its default (`style: null` goes back to the prototype style). A UI left with no font at all (no font, no style with fonts, no fallback or locale font) warns: it would draw no text."
+  doc "Set how the UI looks (the scheme, density, fonts, style, sounds, motion…), typically in GameDesc.start; it takes effect from the next tick. The desc is a partial: a field left out keeps the last UiDesc's value, the one an earlier call or a look's style (og.render.applyLook) gave it, so a settings screen that configures sounds or reducedMotion keeps the style and the fonts; null clears a field to its default (`style: null` goes back to the default style). A UI left with no font at all (no font, no style with fonts, no fallback or locale font) warns: it would draw no text."
   param world World "The world whose UI is configured."
   param desc UiDesc "The fields to change; the others keep their values."
   returns Result.Void "Refused for a dead font or style, or a desc that is not an object."
@@ -9193,7 +9193,7 @@ enum DensityMode {
 
 ### `ThemeColor` (enum)
 
-A colour role of the UI style in effect (the game's style, or the prototype style before it picks one).
+A colour role of the UI style in effect (the game's style, or the default style before it picks one).
 
 A string: one of the variants below. The zero value is `"backdrop"`.
 
@@ -9235,7 +9235,7 @@ A string: one of the variants below. The zero value is `"backdrop"`.
 
 ```ogt
 enum ThemeColor {
-  doc "A colour role of the UI style in effect (the game's style, or the prototype style before it picks one)."
+  doc "A colour role of the UI style in effect (the game's style, or the default style before it picks one)."
   variant backdrop "The screen behind the UI where nothing else is."
   variant well "A recessed ground inside a panel: wells, map frames, empty slots."
   variant panel "Panels and cards."
@@ -10121,7 +10121,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `icons` | `IconAtlasDesc \| null` | `null` | — | — | — | The icon atlas og.ui.icon draws from; null takes the style's. |
 | `toastAnchor` | `Anchor \| null` | `null` | — | — | — | Where toasts stack; null is the bottom centre. |
 | `hudMaxAspect` | `number` | `2.3333` | ≥ 0 | — | — | The widest the HUD band is, over its height: on a wider surface (a 21:9 or 32:9 ultrawide monitor) the anchored groups (og.ui.anchor, the HUD corners) and the toasts lay out in a band this wide, centred in the safe area, so the player's eyes stay near the play; og.ui.viewport's hud is that band. 16/9 keeps a 16:9 game's HUD where it was designed; 0 is the whole safe area (a HUD at the screen's edges). Full-screen layers (dialogs, menus, scrims, world-space markers and their edge clamping) keep the whole surface. The UI itself never stretches: it lays out in CSS pixels at every aspect. |
-| `style` | `Style \| null` | `null` | — | — | — | A UI style from og.load.style: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the prototype style (fonts, icons and a primary colour given here still win); null is the prototype style, the engine's placeholder. |
+| `style` | `Style \| null` | `null` | — | — | — | A UI style from og.load.style: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the default style (fonts, icons and a primary colour given here still win); null is the default style, the design language the engine shares with origin-agent, for prototypes only (og build --publish refuses a game in it). |
 | `sounds` | `UiSounds \| null` | `null` | — | — | — | Sounds for UI events (they win over the style's). |
 
 ```ogt
@@ -10151,7 +10151,7 @@ struct UiDesc {
     default 2.3333
     min 0
   }
-  field style Option.Style "A UI style from og.load.style: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the prototype style (fonts, icons and a primary colour given here still win); null is the prototype style, the engine's placeholder."
+  field style Option.Style "A UI style from og.load.style: its palette, radii, type ramp, fonts, icons, frames, ornaments, motion and sounds replace the default style (fonts, icons and a primary colour given here still win); null is the default style, the design language the engine shares with origin-agent, for prototypes only (og build --publish refuses a game in it)."
   field sounds Option.UiSounds "Sounds for UI events (they win over the style's)."
 }
 ```
@@ -10316,7 +10316,7 @@ The style values the UI draws with, read-only.
 | `typeRamp` | `Readonly<Record<string, TypeStep>>` | `{}` | — | — | — | Each TypeStepName's step. |
 | `sizes` | `ControlSizes` | `{ controlSm: 0, controlMd: 0, controlLg: 0, gutter: 0, header: 0, row: 0, section: 0 }` | — | — | — | The control sizes of the density in effect. |
 | `durationsMs` | `Readonly<Record<string, number>>` | `{}` | — | — | — | The motion durations by name (instant, fast, base, slow, spring, bounce), in milliseconds. |
-| `style` | `string` | `""` | — | — | — | The configured style's name; empty for the prototype style. |
+| `style` | `string` | `""` | — | — | — | The configured style's name; empty for the default style. |
 | `contrast` | `Contrast` | `"standard"` | — | — | — | The variant in effect: high when the game asked for it or the page prefers more contrast. |
 | `reducedMotion` | `boolean` | `false` | — | — | — | Transitions only fade and sheens stop: the game asked for it or the page prefers reduced motion. A game's own animations read it to keep their state changes and drop their movement. |
 | `textScale` | `number` | `0` | — | — | — | The player's text scale in effect (UiDesc.textScale, 1 to 2): typeRamp and sizes already carry it; tokens' typography is the style's as authored, so a game's own text drawn from it multiplies by this. |
@@ -10333,7 +10333,7 @@ struct UiTheme {
   field typeRamp Map.TypeStep "Each TypeStepName's step."
   field sizes ControlSizes "The control sizes of the density in effect."
   field durationsMs Map.f32 "The motion durations by name (instant, fast, base, slow, spring, bounce), in milliseconds."
-  field style String "The configured style's name; empty for the prototype style."
+  field style String "The configured style's name; empty for the default style."
   field contrast Contrast "The variant in effect: high when the game asked for it or the page prefers more contrast."
   field reducedMotion bool "Transitions only fade and sheens stop: the game asked for it or the page prefers reduced motion. A game's own animations read it to keep their state changes and drop their movement."
   field textScale f32 "The player's text scale in effect (UiDesc.textScale, 1 to 2): typeRamp and sizes already carry it; tokens' typography is the style's as authored, so a game's own text drawn from it multiplies by this."

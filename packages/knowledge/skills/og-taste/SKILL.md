@@ -5,8 +5,9 @@ description: Art direction for a game on Origin Engine — choosing a style from
 
 A game is judged in its first second, before anyone reads a word. The
 engine's UI is correct by default and characterless by default: its
-placeholder style, `prototype`, is greys and square corners meant to be
-replaced, and the game's UI never borrows the Origin platform's look. This
+default style is the design language of the engine and origin-agent, for
+prototyping only (a publish build refuses it), and the game's UI never
+borrows the Origin platform's look. This
 skill is how to give a game a look of its own and keep it consistent. The
 mechanics are og-ui's (styles, motion and sounds are og-ui §6) and the amounts of game feel
 og-feel's; this is the taste.
@@ -64,8 +65,8 @@ The entry also names the palette rules, the asset specs and the UI style
 its preset carries (the look's `ui` line, §12), so a game that extends a
 preset is dressed by it from the first frame. The game's UI follows the
 game's art, never the Origin platform's: without a style it draws in the
-engine's placeholder `prototype` (greys, near-square corners, a cyan focus
-ring), and `og polish` warns when a game ships in it. The six built-in
+engine's default style (for prototypes only), `og polish` warns when a
+game is in it and `og build --publish` refuses it. The six built-in
 styles (`og style list`) are starting points, not the
 only looks:
 
@@ -316,7 +317,7 @@ Each of these is a defect, not a style choice:
 Run each item; each is checkable from a scripted run.
 
 1. **A style is configured**: `og.ui.theme(world).style` is not empty and
-   not `prototype` (log it from a command, or read it in a playtest through
+   not the default style (log it from a command, or read it in a playtest through
    a `facts` field).
 2. **Title, pause and results screens captured**: `og run --headless --commands
    "0.5:show:title;1.5:screenshot:title.png;…"` (with the game's own commands);

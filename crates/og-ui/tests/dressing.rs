@@ -133,6 +133,8 @@ fn a_games_attribute_dresses_only_the_cells_that_carry_it() {
 #[test]
 fn an_undressed_panel_draws_its_line_and_elevation_from_the_tokens() {
     let mut ui = ui_with_font(test_font_metrics());
+    // No dressings at all (the default style dresses cards flat).
+    ui.set_dressings(Vec::new());
     ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
     ui.panel("Card", PanelDesc::default(), |ui| {
         ui.label("T", "Title", LabelDesc::default());

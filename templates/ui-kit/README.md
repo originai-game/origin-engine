@@ -18,7 +18,7 @@ Commands: `show:<screen>`, `viewport:<desktop|tablet|phone|landscape>`
 (lays the UI out for that surface through `og.ui.previewViewport`; render at
 `--size 1170x2532` for the 390×844@3 phone), `pad:<up|down|left|right|next|prev|activate|back>`
 (a gamepad, through `og.ui.navigate`), `toast:<text>`, `damage:<hp>`, `heal:<hp>`.
-`style:<prototype|pixel|cartoon|fantasy|scifi|paper|neon>` dresses every screen
+`style:<default|pixel|cartoon|fantasy|scifi|paper|neon>` dresses every screen
 in the engine's placeholder or a built-in style (`assets/looks/kit-<style>.ogt`,
 whose `ui "<style>"` the cook resolves to `@styles/<style>/style.ogt`),
 `transition:<none|fade|wipe|iris|dissolve|slide>` sends screen changes through
@@ -97,7 +97,8 @@ palette role and radius), its atlas and icons (CC0, drawn by
 in its look (`ui "fantasy"`), or copies the directory into its own
 `assets/styles/<name>/` to change it and names that (`ui
 "styles/<name>/style.ogt"`); a game that shows CJK adds a `fallback` font.
-Without one, a game's UI draws in `prototype`, the engine's placeholder.
+Without one, a game's UI draws in the engine's default style, for
+prototypes only (`og build --publish` refuses it).
 
 | Style | Look |
 |---|---|

@@ -1,7 +1,7 @@
 //! Origin Engine UI (`docs/design.md` §2.7): an immediate-mode toolkit whose
 //! tree is declared every tick, laid out Clay-style in one pass, styled by
-//! the game's own UI style (the placeholder `prototype` until it picks
-//! one; never the platform's design language), drawn through og-render's UI pass
+//! the game's own UI style (the default style, the design language the
+//! engine shares with origin-agent, until it picks one), drawn through og-render's UI pass
 //! (analytic shapes and MSDF text over the finished frame, `paint`), and addressable by the probe through stable string ids.
 //!
 //! ```ignore
@@ -95,7 +95,8 @@ pub use style::{
     Space, Spring, Srgba, Theme, TypeRamp, TypeStep,
 };
 pub use style_file::{
-    Art, Slice, SliceFill, StyleFile, StylePart, UiSound, parse_style, upgrade_style,
+    Art, Slice, SliceFill, StyleFile, StylePart, UiSound, default_dressings, parse_style,
+    upgrade_style,
 };
 pub use text::{FontMetrics, Piece, UiFont, VisualGlyph, bidi_runs, needs_visual, pieces};
 pub use tokens::StyleTokens;

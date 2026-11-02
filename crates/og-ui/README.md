@@ -3,8 +3,8 @@
 The Origin Engine UI (`docs/design.md` §2.7, M6 in `docs/phase-1.md`): an
 immediate-mode toolkit whose tree is declared every tick, laid out
 Clay-style, dressed by the game's own UI style (`type style`; the
-engine's placeholder `prototype` until it picks one: never the platform's
-design language), drawn through og-render's sprite and
+engine's default style until it picks one: the design language the engine
+shares with origin-agent, `packages/design`, for prototypes only), drawn through og-render's sprite and
 MSDF text batches, and addressable by the probe through stable string ids
 (`touch_move_to`, `move_to_text`, `dump_ui`).
 
@@ -651,10 +651,14 @@ the probe agree), to opacity and to text size.
 
 A game's UI wears a **style**: one complete asset the theme carries by value
 (`Theme::art`, `Copy`, with the palette, radii, ramp and durations it set
-in the `Theme` itself). Before a game picks one it has `prototype`
-(`src/theme.rs`): greys, near-square corners (`radius` small 1, control 2,
-bar 1, panel 3), no glass and a cyan focus ring, a placeholder that looks
-unfinished on purpose; `og polish` flags a game left in it (`dump_ui`'s
+in the `Theme` itself). Before a game picks one it has the **default
+style** (`src/theme.rs`, generated from `packages/design/tokens.json` by
+`scripts/gen-theme.sh`, `tests/theme.rs` failing on drift): the design
+language's neutral ladder, amber primary and focus, radii 4/6/capsule/12,
+flat glass on floating chrome (`default_dressings`: dialogs, sheets,
+menus, popovers and tooltips thick, HUD capsules and action hints regular)
+and borderless controls. It is for origin-agent and prototypes; `og
+polish` flags a game left in it and `og build --publish` refuses one (`dump_ui`'s
 `style` is empty). Nothing of a style comes from the platform: the
 engine owns these values and the platform's design language styles only
 its own pages and the player shell (`docs/design.md` §9).
@@ -782,7 +786,7 @@ group left of it, a top or bottom centred group below or above it).
 
 ## Theme variants
 
-`Theme::dark()` (default) and `light()` are the prototype style's two
+`Theme::dark()` (default) and `light()` are the default style's two
 schemes; a style replaces the palette whole. `Theme::high_contrast(scheme)`
 (`to_high_contrast` over any style) remaps `inkMuted` → `ink`, `inkFaint` →
 `inkMuted`, `control` → `controlStrong`, `controlStrong` → `lineStrong`,
@@ -986,7 +990,7 @@ One layout per frame, in five walks over the tree (`src/layout.rs`):
    snapping of every rectangle (`Viewport::dpr`).
 
 Text is measured and drawn with its font's kerning (§Text) and its type
-step's tracking (`tracking_em`, og-render's `Text::tracking`: the prototype
+step's tracking (`tracking_em`, og-render's `Text::tracking`: the default
 ramp tightens `xl` and up by 0.01 to 0.035 em, and a style's ramp line may set its
 own); tracking is Latin tracking, so a text with CJK characters or a shaped
 script takes none.
@@ -1017,9 +1021,10 @@ path  := id ('/' id)*                "Inventory/Slot#3": the element, after its 
 
 ## Theme
 
-`src/theme.rs` owns the engine's UI values, by hand and by no one else:
+`src/theme.rs` holds the engine's UI values, generated from the design
+language's tokens (`packages/design`):
 the `Palette` (33 roles, `palette!`, `Palette::NAMES` in IDL order, which
-og-api's tests hold to the IDL's `ThemeColor`), the prototype style's
+og-api's tests hold to the IDL's `ThemeColor`), the default style's
 `LIGHT` and `DARK`, the spacing scale, the four radii, the type ramp (size,
 leading, tracking, CJK leading), the densities (`auto`, `mouse`, `pad`,
 `touch`), durations, springs, the cubic easings and `press-scale`. No
@@ -1219,7 +1224,7 @@ cargo check --target wasm32-unknown-unknown -p og-ui
 | `tests/support/scenes.rs` | not a test: builds the five reference scenes (`sample-screen`, `text-glow`, `glass`, `widget-set`, `text-fields-2`) for `gfx.rs`, `kit_gfx.rs` and, through `#[path]`, `crates/og-tests-web`, so the browser draws the same scenes; and the `text-mixed-runs` UI `text_gfx.rs` draws with cooked faces |
 | `tests/gfx.rs` | a glass panel blurs the frame under it and nothing else, and blurs the overlay layer below it (a bright bar spreads inside the panel) while what is above it stays sharp (`references/<tier>/glass.png`); the sample screen rendered headless matches `references/<tier>/sample-screen.png` (og-tests' tolerance: 32/255 per channel, ≤ 0.5 % outliers, RMSE ≤ 0.01) in at most 2 sprite draws per painter level, no missing glyph; `text-fields-2` (a double-clicked word, an undone field, an area a drag scrolled part way) matches its reference with no missing glyph; a scroll container cuts every sprite and text line it draws to its rectangle |
 | `tests/widgets.rs` | focus: arrows pick the aligned neighbour and wrap, Tab/Shift+Tab walk reading order and wrap, Enter and Space press, the gamepad d-pad and A, the stick at once then after 24 and every 11 ticks; a dialog takes focus, keeps Tab inside, blocks presses to what is under it, closes on the backdrop and Back (not when locked) and returns focus; a HUD asking `back()` before an open dialog is built leaves Back to the dialog (a locked one lets it through); an anchored group moves out of `Viewport::covered`; a select opens, chooses (mouse and keys) and closes on a press outside; a 1000-row list builds at most 13 rows, reaches its last row and scrolls a keyboard-focused row into view; toasts cap at three, leave after 3.2 s and come back with a restored state; a transition advances 1/15 per tick, is inert while moving, leaves; a meter's trail follows a drop and two runs draw identical frames; the dialogue types 15 characters in 30 ticks at 30/s, a press finishes, the next advances; anchors keep to the safe area and touch controls to 44 px; a joystick answers (1, 0) at its edge; a game's primary derives its hover, press and ink, high contrast takes `ink` for muted ink; a drag from cell 0 to cell 6 drops once and a click is no drop; two fingers lifting off a list fling it (none under reduced motion); a focused zoom view zooms with + and -, fits with 0 and pans with the arrows, keeping the focus |
-| `tests/style.rs` | a dressed card is nine atlas pieces that cover it with fixed corners, its shadow and corners reach past it; the prototype style emits no atlas piece; a style file names the wrong line (a missing palette role or radius, (a typo, a region outside the atlas, a glow without `soft`, a bad colour); every screen-transition kind keeps the old screen while covering, switches at full cover, ends, and is one fade per tick under reduced motion; a counter starts at `from`, never goes back, lands at 900 ms and replays after a restore; a refused press shakes and comes to rest, queues `Error` only, an enabled press queues `Press`; a glass part draws the blurred frame under its thinned frame, and under reduced transparency no glass and the frame whole |
+| `tests/style.rs` | a dressed card is nine atlas pieces that cover it with fixed corners, its shadow and corners reach past it; the default style emits no atlas piece; a style file names the wrong line (a missing palette role or radius, (a typo, a region outside the atlas, a glow without `soft`, a bad colour); every screen-transition kind keeps the old screen while covering, switches at full cover, ends, and is one fade per tick under reduced motion; a counter starts at `from`, never goes back, lands at 900 ms and replays after a restore; a refused press shakes and comes to rest, queues `Error` only, an enabled press queues `Press`; a glass part draws the blurred frame under its thinned frame, and under reduced transparency no glass and the frame whole |
 | `tests/packs.rs` | the six built-in styles parse, name only existing assets, and every ink a template draws on a dressed surface is at least 4.5:1 over the frame art under it (and `ink` on a selected tab) |
 | `tests/pack_contrast.rs` (crates/og-tests-cooked: it cooks) | every style (the six built-ins, Ember Vale's copy of fantasy, the archetypes' sparkorb, lampdive, lanebeat and pathguard, the examples' hollowbell, lantern and kestrel): each button role's label in each state, and `ink`, `inkMuted`, `inkFaint`, a field's placeholder and text at rest and focused, a stack's count on a bag slot at rest and selected, a meter's label over each kind's fill and its track, against the draw commands composited over the atlas texels: a label on a panel at 4.5:1, a primary or secondary label at rest or hovered at 7:1; the primary and secondary labels read from a rendered frame at 4.5:1; a badge in every tone at 4.5:1 on the screen and in a panel, the status tones and the primary with the palette's own ink in a panel; prints every row with its ink and ground |
 | `tests/a11y.rs` | roles, names, values and states of every widget; Tab walks `focus_order`; a screen reader's requests (focus, activate, increment, decrement) reach the control the path names and not one under a dialog, increment and decrement on a stepper's spinbutton step it within its range, and the tree's digest moves with what a mirror shows; a slider, a stepper (bounded or not), a progress and a meter carry their bounds and value as numbers; the page's reduced motion, contrast and transparency reach the theme and leave again, reduced transparency (the page's or the game's) flattening the scrim and the translucent fills |

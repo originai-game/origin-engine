@@ -40,7 +40,7 @@ impl Ui {
             haptics: 1.0,
             haptic_out: Vec::new(),
             dress: std::sync::Arc::new(crate::dress::DressSet::new(
-                crate::style_file::v1_dressings(&desc.theme.art),
+                crate::style_file::theme_dressings(&desc.theme.art),
             )),
             dress_set: false,
             part_draws: Default::default(),
@@ -301,7 +301,7 @@ impl Ui {
         self.theme = effective_theme(theme, &self.viewport);
         if !self.dress_set {
             self.dress = std::sync::Arc::new(crate::dress::DressSet::new(
-                crate::style_file::v1_dressings(&theme.art),
+                crate::style_file::theme_dressings(&theme.art),
             ));
         }
     }
@@ -309,7 +309,8 @@ impl Ui {
     /// The style's part dressings (its [`crate::StyleFile::dressings`],
     /// bound to its loaded assets): what every part of the UI is drawn
     /// with where a dressing's selector matches it (docs/ui.md §12.3).
-    /// Until a game sets them the theme's version 1 art makes them.
+    /// Until a game sets them the theme's version 1 art makes them, or for
+    /// a theme without art the default style's ([`crate::default_dressings`]).
     pub fn set_dressings(&mut self, dressings: Vec<crate::dress::Dressing>) {
         self.dress = std::sync::Arc::new(crate::dress::DressSet::new(dressings));
         self.dress_set = true;
@@ -358,7 +359,7 @@ impl Ui {
         self.haptics
     }
 
-    /// The configured style's name, for the theme the host reports (empty: `prototype`).
+    /// The configured style's name, for the theme the host reports (empty: the default style).
     pub fn style_name(&self) -> &str {
         &self.style_name
     }
