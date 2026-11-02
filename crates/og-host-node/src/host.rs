@@ -933,6 +933,16 @@ impl LoadApi for NodeHost {
         rt::og_load_image_data(world, name, bytes.0, desc)
     }
 
+    fn og_load_gltf_data(
+        &self,
+        world: u32,
+        name: String,
+        bytes: Self::Bytes,
+        desc: Option<String>,
+    ) -> String {
+        rt::og_load_gltf_data(world, name, bytes.0, desc)
+    }
+
     fn og_load_image_info(&self, world: u32, asset: f64) -> String {
         rt::og_load_image_info(world, asset)
     }

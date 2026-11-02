@@ -1762,6 +1762,7 @@ export const load = Object.freeze({
   defaultBundle: (world: WorldImpl) => parse(abi().og_load_default_bundle(world.id)),
   gltf: (world: WorldImpl, path: string, desc?: unknown) => parse(abi().og_load_gltf(world.id, path, json(desc))),
   imageData: (world: WorldImpl, name: string, bytes: Uint8Array, desc?: unknown) => parse(abi().og_load_image_data(world.id, name, bytes, json(desc))),
+  gltfData: (world: WorldImpl, name: string, bytes: Uint8Array, desc?: unknown) => parse(abi().og_load_gltf_data(world.id, name, bytes, json(desc))),
   imageInfo: (world: WorldImpl, asset: number) => parse(abi().og_load_image_info(world.id, asset)),
   completions: (world: WorldImpl) => parse(abi().og_load_completions(world.id)),
   replayCompletions: (world: WorldImpl, completions: unknown) => parse(abi().og_load_replay_completions(world.id, JSON.stringify(completions))),

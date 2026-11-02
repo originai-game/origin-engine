@@ -1,12 +1,17 @@
-//! Uncooked loads at run time (IDL `load`: `imageData`, `imageInfo`,
-//! `completions`, `replayCompletions`): content a player or a generator made,
-//! from bytes, without `og cook`.
+//! Uncooked loads at run time (IDL `load`: `imageData`, `gltfData`,
+//! `imageInfo`, `completions`, `replayCompletions`): content a player or a
+//! generator made, from bytes, without `og cook`.
 //!
 //! The source is untrusted, so the budget (`LoadBudget`) is checked from its
 //! headers before anything is decoded. Decoding never runs on the engine's
 //! thread on the web: the host decodes (the Worker's `createImageBitmap`,
 //! [`Hooks::image_decode_start`]); natively a worker thread does, with the
-//! `image` crate. No decoder is in the wasm.
+//! `image` crate. No decoder is in the wasm. A glTF is read at the call
+//! (og-bundle's [`og_bundle::runtime::UncookedGltf`]: its JSON, buffers,
+//! triangle count and image headers), then its images decode as above while
+//! its primitives are converted at the boundaries, one at a time within the
+//! frame budget on the web, and it joins the renderer through the path a
+//! cooked model takes.
 //!
 //! Completion is host input. A finished load is put in place at a tick
 //! boundary and its tick journaled ([`Uncooked::journal`]), as a replay
@@ -122,7 +127,7 @@ pub(crate) fn image_header(bytes: &[u8]) -> Result<ImageHeader, String> {
         }
         return Err("a JPEG without a frame header (the file is cut short)".into());
     }
-    Err("not a PNG or JPEG (og.load.imageData reads those two; convert other formats first)".into())
+    Err("not a PNG or JPEG (uncooked loads read those two; convert other formats first)".into())
 }
 
 /// An image's header checked against a budget: the reasons name the limit,
@@ -132,13 +137,7 @@ pub(crate) fn check_image(
     bytes: &[u8],
     budget: &Budget,
 ) -> Result<ImageHeader, String> {
-    if bytes.len() as f64 > budget.bytes {
-        return Err(format!(
-            "{name}: {} bytes is over LoadBudget.bytes ({}); make the file smaller or raise the budget",
-            bytes.len(),
-            budget.bytes
-        ));
-    }
+    check_size(name, bytes, budget)?;
     let h = image_header(bytes).map_err(|e| format!("{name}: {e}"))?;
     if h.width == 0 || h.height == 0 {
         return Err(format!(
@@ -162,7 +161,7 @@ pub struct Decoded {
     pub rgba: Vec<u8>,
 }
 
-/// Where a load's decode is.
+/// Where an image's decode is.
 enum Decode {
     /// On a worker thread of this process.
     #[cfg(not(target_arch = "wasm32"))]
@@ -172,16 +171,37 @@ enum Decode {
     Done(Result<Decoded, String>),
 }
 
+/// An image to decode: what its header said and how its texels are read.
+struct Image {
+    header: ImageHeader,
+    decode: Decode,
+}
+
+/// A glTF on its way: its images decoding, its primitives converted one
+/// at a time.
+struct Gltf {
+    file: og_bundle::runtime::UncookedGltf,
+    images: Vec<(String, Image)>,
+    prims: Vec<og_bundle::runtime::CookedPrimitive>,
+    error: Option<String>,
+}
+
+enum Work {
+    Image {
+        image: Image,
+        pixel: bool,
+        linear: bool,
+    },
+    Gltf(Box<Gltf>),
+}
+
 struct Job {
     request: u32,
     /// Its entry in the engine's assets.
     entry: usize,
     name: String,
-    header: ImageHeader,
-    pixel: bool,
-    linear: bool,
     frame_ms: f64,
-    decode: Decode,
+    work: Work,
 }
 
 /// One load put in place (`LoadCompletion`).
@@ -224,6 +244,46 @@ fn decode_native(bytes: &[u8], header: ImageHeader) -> Result<Decoded, String> {
     })
 }
 
+/// The source's size against `LoadBudget.bytes`.
+fn check_size(name: &str, bytes: &[u8], budget: &Budget) -> Result<(), String> {
+    if bytes.len() as f64 > budget.bytes {
+        return Err(format!(
+            "{name}: {} bytes is over LoadBudget.bytes ({}); make the file smaller or raise the budget",
+            bytes.len(),
+            budget.bytes
+        ));
+    }
+    Ok(())
+}
+
+/// A pending entry and its job, queued for the tick boundaries.
+fn queue(
+    eng: &Engine,
+    name: &str,
+    budget: &Budget,
+    work: impl FnOnce(&mut Uncooked) -> Work,
+) -> usize {
+    let mut assets = eng.assets.borrow_mut();
+    let entry = assets.entries.len();
+    assets.entries.push(Entry {
+        path: name.to_string(),
+        status: Status::Pending,
+        payload: Payload::Uncooked,
+    });
+    let u = &mut assets.uncooked;
+    let request = u.next;
+    u.next += 1;
+    let work = work(u);
+    u.jobs.push(Job {
+        request,
+        entry,
+        name: name.to_string(),
+        frame_ms: budget.frame_ms,
+        work,
+    });
+    entry
+}
+
 /// `og.load.imageData`: checks the image against its budget, starts its
 /// decode and answers its (pending) asset index.
 pub(crate) fn image_data(
@@ -245,61 +305,80 @@ pub(crate) fn image_data(
         }
     };
     let header = check_image(name, &bytes, &budget)?;
-    let mut assets = eng.assets.borrow_mut();
-    let entry = assets.entries.len();
-    assets.entries.push(Entry {
-        path: name.to_string(),
-        status: Status::Pending,
-        payload: Payload::Uncooked,
-    });
-    let u = &mut assets.uncooked;
-    let request = u.next;
-    u.next += 1;
-    let decode = start(u, bytes, header);
-    u.jobs.push(Job {
-        request,
-        entry,
-        name: name.to_string(),
-        header,
+    Ok(queue(eng, name, &budget, |u| Work::Image {
+        image: start(u, bytes, header),
         pixel,
         linear,
-        frame_ms: budget.frame_ms,
-        decode,
-    });
-    Ok(entry)
+    }))
 }
 
-fn start(u: &mut Uncooked, bytes: Vec<u8>, header: ImageHeader) -> Decode {
+/// `og.load.gltfData`: reads the glTF and checks it against its budget
+/// (its size, its triangles, each image's header), starts its images'
+/// decodes and answers its (pending) asset index.
+pub(crate) fn gltf_data(
+    eng: &Engine,
+    name: &str,
+    bytes: Vec<u8>,
+    desc: &Value,
+) -> Result<usize, String> {
+    let budget = Budget::from_desc(desc)?;
+    check_size(name, &bytes, &budget)?;
+    let mut file =
+        og_bundle::runtime::UncookedGltf::read(name, &bytes).map_err(|e| format!("{name}: {e}"))?;
+    drop(bytes);
+    if file.triangles > budget.triangles as u64 {
+        return Err(format!(
+            "{name}: {} triangles is over LoadBudget.triangles ({}); simplify the model (a decimate modifier, fewer subdivisions) or raise the budget",
+            file.triangles, budget.triangles
+        ));
+    }
+    let images = std::mem::take(&mut file.images);
+    let mut headers = Vec::with_capacity(images.len());
+    for (what, bytes) in &images {
+        headers.push(check_image(&format!("{name}: {what}"), bytes, &budget)?);
+    }
+    Ok(queue(eng, name, &budget, |u| {
+        let images = images
+            .into_iter()
+            .zip(headers)
+            .map(|((what, bytes), header)| (what, start(u, bytes, header)))
+            .collect();
+        Work::Gltf(Box::new(Gltf {
+            file,
+            images,
+            prims: Vec::new(),
+            error: None,
+        }))
+    }))
+}
+
+fn start(u: &mut Uncooked, bytes: Vec<u8>, header: ImageHeader) -> Image {
     let key = u.next_key;
     u.next_key += 1;
-    if let Some(h) = hooks()
-        && h.image_decode_start(key, &bytes)
-    {
-        return Decode::Host(key);
-    }
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let (send, recv) = std::sync::mpsc::channel();
-        std::thread::spawn(move || {
-            let _ = send.send(decode_native(&bytes, header));
-        });
-        Decode::Thread(recv)
-    }
-    #[cfg(target_arch = "wasm32")]
-    {
-        let _ = header;
-        Decode::Done(Err(
+    let decode = match hooks() {
+        Some(h) if h.image_decode_start(key, &bytes) => Decode::Host(key),
+        #[cfg(not(target_arch = "wasm32"))]
+        _ => {
+            let (send, recv) = std::sync::mpsc::channel();
+            std::thread::spawn(move || {
+                let _ = send.send(decode_native(&bytes, header));
+            });
+            Decode::Thread(recv)
+        }
+        #[cfg(target_arch = "wasm32")]
+        _ => Decode::Done(Err(
             "this host decodes no images (its Worker installed no image decoder)".into(),
-        ))
-    }
+        )),
+    };
+    Image { header, decode }
 }
 
-/// Whether a job's decode has finished; with `wait`, waits for it (a
+/// Whether an image's decode has finished; with `wait`, waits for it (a
 /// worker thread; a host decode cannot be waited for).
-fn finished(job: &mut Job, h: Option<&dyn Hooks>, wait: bool) -> bool {
+fn decoded(image: &mut Image, h: Option<&dyn Hooks>, wait: bool) -> bool {
     #[cfg(target_arch = "wasm32")]
     let _ = wait;
-    match &job.decode {
+    match &image.decode {
         Decode::Done(_) => true,
         #[cfg(not(target_arch = "wasm32"))]
         Decode::Thread(recv) => {
@@ -310,11 +389,11 @@ fn finished(job: &mut Job, h: Option<&dyn Hooks>, wait: bool) -> bool {
             };
             match got {
                 Ok(r) => {
-                    job.decode = Decode::Done(r);
+                    image.decode = Decode::Done(r);
                     true
                 }
                 Err(()) if wait => {
-                    job.decode = Decode::Done(Err("the decoding thread stopped".into()));
+                    image.decode = Decode::Done(Err("the decoding thread stopped".into()));
                     true
                 }
                 Err(()) => false,
@@ -322,35 +401,86 @@ fn finished(job: &mut Job, h: Option<&dyn Hooks>, wait: bool) -> bool {
         }
         Decode::Host(key) => match h.map(|h| h.image_decode_take(*key)) {
             Some(Fetch::Ready(d)) => {
-                job.decode = Decode::Done(Ok(d));
+                image.decode = Decode::Done(Ok(d));
                 true
             }
             Some(Fetch::Failed(e)) => {
-                job.decode = Decode::Done(Err(e));
+                image.decode = Decode::Done(Err(e));
                 true
             }
             Some(Fetch::Pending) => false,
             None => {
-                job.decode = Decode::Done(Err("no host is installed to decode images".into()));
+                image.decode = Decode::Done(Err("no host is installed to decode images".into()));
                 true
             }
         },
     }
 }
 
+/// The frame's time at a tick boundary: on the web, work stops once a
+/// load's `frameMs` is spent and something was done; natively (and for a
+/// replayed load at its tick) it never stops.
+struct Clock<'a> {
+    now: &'a dyn Fn() -> f64,
+    start: f64,
+    worked: bool,
+}
+
+impl Clock<'_> {
+    fn over(&self, frame_ms: f64) -> bool {
+        self.worked && (self.now)() - self.start > frame_ms
+    }
+}
+
+/// Advances a job; whether it is finished (ready to put in place, or
+/// failed). `wait` finishes it now.
+fn step(job: &mut Job, clock: &mut Clock, h: Option<&dyn Hooks>, wait: bool) -> bool {
+    match &mut job.work {
+        Work::Image { image, .. } => decoded(image, h, wait),
+        Work::Gltf(g) => {
+            if g.error.is_some() {
+                return true;
+            }
+            let mut images_done = true;
+            for (_, image) in &mut g.images {
+                images_done &= decoded(image, h, wait);
+            }
+            // Each primitive converted is a unit of the frame's work.
+            while g.prims.len() < g.file.primitive_count() {
+                if !wait && clock.over(job.frame_ms) {
+                    return false;
+                }
+                match g.file.primitive(g.prims.len()) {
+                    Ok(p) => g.prims.push(p),
+                    Err(e) => {
+                        g.error = Some(e);
+                        return true;
+                    }
+                }
+                clock.worked = true;
+            }
+            images_done
+        }
+    }
+}
+
 /// At a tick boundary: the finished loads put in place (natively every load
-/// called since the last boundary, waited for; on the web those decoded, at
-/// most a frame budget's worth after the first), or with a replayed journal
-/// each at its recorded tick. `tick` is the world's tick (the next tick is
-/// the first to see them).
+/// called since the last boundary, waited for; on the web those finished,
+/// at most a frame budget's worth after the first piece of work), or with a
+/// replayed journal each at its recorded tick. `tick` is the world's tick
+/// (the next tick is the first to see them).
 pub(crate) fn poll(eng: &Engine, tick: u64) {
     let h = hooks();
-    let start = h.as_ref().map_or(0.0, |h| h.now_ms());
+    let now = || h.as_ref().map_or(0.0, |h| h.now_ms());
+    let mut clock = Clock {
+        now: &now,
+        start: now(),
+        worked: false,
+    };
     let wait_all = cfg!(not(target_arch = "wasm32"));
     let mut jobs = std::mem::take(&mut eng.assets.borrow_mut().uncooked.jobs);
     let schedule = eng.assets.borrow().uncooked.schedule.clone();
     let mut kept = Vec::new();
-    let mut applied = 0;
     for mut job in jobs.drain(..) {
         let due = match &schedule {
             Some(s) => match s.get(&job.request) {
@@ -359,96 +489,142 @@ pub(crate) fn poll(eng: &Engine, tick: u64) {
             },
             None => Some(None),
         };
-        // The frame budget holds on the web; natively every load is put in place (determinism).
-        let over = !wait_all
-            && applied > 0
-            && h.as_ref()
-                .is_some_and(|h| h.now_ms() - start > job.frame_ms);
         let Some(recorded) = due else {
             kept.push(job);
             continue;
         };
-        // A replayed load is waited for at its tick; natively every load is.
+        // A replayed load is waited for at its tick; natively every load
+        // is (determinism). On the web the frame budget holds.
         let wait = wait_all || recorded.is_some();
-        if (over && recorded.is_none()) || !finished(&mut job, h.as_deref(), wait) {
+        if (!wait && clock.over(job.frame_ms)) || !step(&mut job, &mut clock, h.as_deref(), wait) {
             kept.push(job);
             continue;
         }
-        let Decode::Done(result) =
-            std::mem::replace(&mut job.decode, Decode::Done(Err(String::new())))
-        else {
-            unreachable!("finished");
-        };
-        let result = match recorded {
-            Some(false) => Err(format!("{}: failed in the recorded run", job.name)),
-            _ => result,
-        };
-        let ok = apply(eng, &job, result);
-        eng.assets.borrow_mut().uncooked.journal.push(Completion {
-            request: job.request,
-            tick,
-            ok,
-        });
-        applied += 1;
+        let request = job.request;
+        let ok = apply(eng, job, recorded == Some(false));
+        eng.assets
+            .borrow_mut()
+            .uncooked
+            .journal
+            .push(Completion { request, tick, ok });
+        clock.worked = true;
     }
     eng.assets.borrow_mut().uncooked.jobs.extend(kept);
 }
 
-/// Puts a decoded image in the renderer and its entry ready, or the entry
-/// failed; whether it is ready.
-fn apply(eng: &Engine, job: &Job, decoded: Result<Decoded, String>) -> bool {
-    let checked = decoded.and_then(|d| {
-        if (d.width, d.height) != (job.header.width, job.header.height)
-            || d.rgba.len() != (d.width * d.height * 4) as usize
-        {
-            return Err(format!(
-                "{}: decoded to {}x{}, but its header says {}x{}",
-                job.name, d.width, d.height, job.header.width, job.header.height
-            ));
-        }
-        Ok(d)
-    });
-    let status = match checked {
-        Ok(d) => {
-            let mut rs = eng.render.borrow_mut();
-            let handle = rs.scene.add_texture(og_render::TextureData {
-                width: d.width,
-                height: d.height,
-                rgba: d.rgba,
-                color_space: if job.linear {
-                    og_render::ColorSpace::Linear
-                } else {
-                    og_render::ColorSpace::Srgb
-                },
-                mips: og_render::Mips::Generate,
-            });
-            if job.pixel {
-                rs.scene
-                    .set_texture_filter(handle, og_render::TextureFilter::Nearest);
-            }
-            rs.textures.push(handle);
-            let texture = rs.textures.len() - 1;
-            drop(rs);
-            let mut a = eng.assets.borrow_mut();
-            a.entries[job.entry].payload = Payload::Image {
-                texture,
-                width: d.width,
-                height: d.height,
-            };
-            Status::Ready
-        }
-        Err(e) => {
-            let reason = if e.starts_with(&job.name) {
-                e
-            } else {
-                format!("{}: {e}", job.name)
-            };
-            Status::Failed(reason)
+/// A finished decode's image, checked against its header.
+fn take_image(image: Image, what: &str) -> Result<Decoded, String> {
+    let Decode::Done(result) = image.decode else {
+        unreachable!("only finished jobs are put in place");
+    };
+    let d = result.map_err(|e| format!("{what}: {e}"))?;
+    let h = image.header;
+    if (d.width, d.height) != (h.width, h.height)
+        || d.rgba.len() != (d.width * d.height * 4) as usize
+    {
+        return Err(format!(
+            "{what}: decoded to {}x{}, but its header says {}x{}",
+            d.width, d.height, h.width, h.height
+        ));
+    }
+    Ok(d)
+}
+
+/// Puts a finished job in place (its entry ready), or its entry failed
+/// (`recorded_failure`: it failed in the run a replay follows); whether it
+/// is ready.
+fn apply(eng: &Engine, job: Job, recorded_failure: bool) -> bool {
+    let name = job.name;
+    let result = if recorded_failure {
+        Err(format!("{name}: failed in the recorded run"))
+    } else {
+        match job.work {
+            Work::Image {
+                image,
+                pixel,
+                linear,
+            } => take_image(image, &name).map(|d| {
+                let mut rs = eng.render.borrow_mut();
+                let handle = rs.scene.add_texture(og_render::TextureData {
+                    width: d.width,
+                    height: d.height,
+                    rgba: d.rgba,
+                    color_space: if linear {
+                        og_render::ColorSpace::Linear
+                    } else {
+                        og_render::ColorSpace::Srgb
+                    },
+                    mips: og_render::Mips::Generate,
+                });
+                if pixel {
+                    rs.scene
+                        .set_texture_filter(handle, og_render::TextureFilter::Nearest);
+                }
+                rs.textures.push(handle);
+                let texture = rs.textures.len() - 1;
+                drop(rs);
+                eng.assets.borrow_mut().entries[job.entry].payload = Payload::Image {
+                    texture,
+                    width: d.width,
+                    height: d.height,
+                };
+            }),
+            Work::Gltf(g) => put_gltf(eng, &name, job.entry, *g),
         }
     };
-    let ok = status == Status::Ready;
-    eng.assets.borrow_mut().entries[job.entry].status = status;
-    ok
+    match result {
+        Ok(()) => {
+            eng.assets.borrow_mut().entries[job.entry].status = Status::Ready;
+            true
+        }
+        Err(e) => {
+            let reason = if e.starts_with(&name) {
+                e
+            } else {
+                format!("{name}: {e}")
+            };
+            eng.assets.borrow_mut().entries[job.entry].status = Status::Failed(reason);
+            false
+        }
+    }
+}
+
+/// A converted glTF and its decoded images into the renderer, through the
+/// path a cooked model takes ([`super::assets::insert_model`]).
+fn put_gltf(eng: &Engine, name: &str, entry: usize, g: Gltf) -> Result<(), String> {
+    if let Some(e) = g.error {
+        return Err(e);
+    }
+    let images = g
+        .images
+        .into_iter()
+        .map(|(what, image)| take_image(image, &what))
+        .collect::<Result<Vec<_>, _>>()?;
+    use og_bundle::format::kind;
+    let textures: Vec<og_render::TextureSource> = g
+        .file
+        .textures
+        .iter()
+        .map(|(t, i)| {
+            let d = &images[*i];
+            og_render::TextureSource::Rgba(og_render::TextureData {
+                width: d.width,
+                height: d.height,
+                rgba: d.rgba.clone(),
+                color_space: match t.kind {
+                    kind::COLOR | kind::PIXEL => og_render::ColorSpace::Srgb,
+                    _ => og_render::ColorSpace::Linear,
+                },
+                mips: match t.kind {
+                    kind::PIXEL => og_render::Mips::None,
+                    _ => og_render::Mips::Generate,
+                },
+            })
+        })
+        .collect();
+    let model = g.file.finish(g.prims);
+    super::assets::insert_model(eng, name, None, model, &textures, Some(entry), false)?;
+    Ok(())
 }
 
 /// `og.load.imageInfo`.
@@ -569,6 +745,62 @@ mod tests {
                 .texture_size,
             8192
         );
+    }
+
+    #[test]
+    fn a_gltfs_primitives_are_converted_a_frame_budget_at_a_time_at_least_one_a_frame() {
+        // Five one-triangle primitives; every reading of the clock is 1.5 ms later.
+        let prim = r#"{"attributes":{"POSITION":0}}"#;
+        let gltf = format!(
+            r#"{{"asset":{{"version":"2.0"}},"meshes":[{{"primitives":[{p},{p},{p},{p},{p}]}}],
+              "buffers":[{{"uri":"data:application/octet-stream;base64,AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAgD8AAAAA","byteLength":36}}],
+              "bufferViews":[{{"buffer":0,"byteLength":36}}],
+              "accessors":[{{"bufferView":0,"componentType":5126,"count":3,"type":"VEC3"}}]}}"#,
+            p = prim
+        );
+        let job = |frame_ms: f64| Job {
+            request: 0,
+            entry: 0,
+            name: "m".into(),
+            frame_ms,
+            work: Work::Gltf(Box::new(Gltf {
+                file: og_bundle::runtime::UncookedGltf::read("m", gltf.as_bytes()).unwrap(),
+                images: Vec::new(),
+                prims: Vec::new(),
+                error: None,
+            })),
+        };
+        let frames = |mut job: Job, wait: bool| {
+            let t = std::cell::Cell::new(0.0);
+            let now = || {
+                let v = t.get();
+                t.set(v + 1.5);
+                v
+            };
+            let mut converted = Vec::new();
+            for _ in 0..10 {
+                let mut clock = Clock {
+                    now: &now,
+                    start: now(),
+                    worked: false,
+                };
+                let done = step(&mut job, &mut clock, None, wait);
+                let Work::Gltf(g) = &job.work else {
+                    unreachable!()
+                };
+                converted.push(g.prims.len());
+                if done {
+                    break;
+                }
+            }
+            converted
+        };
+        // 2 ms a frame: the first primitive, then one more while under budget.
+        assert_eq!(frames(job(2.0), false), vec![2, 4, 5]);
+        // No budget left at all still makes progress: one a frame.
+        assert_eq!(frames(job(0.0), false), vec![1, 2, 3, 4, 5]);
+        // Waited for (natively, or a replayed load at its tick): all at once.
+        assert_eq!(frames(job(0.0), true), vec![5]);
     }
 
     #[test]

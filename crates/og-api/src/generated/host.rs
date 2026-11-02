@@ -577,6 +577,8 @@ pub trait LoadApi: Wire {
     fn og_load_rig2d(&self, world: u32, path: String) -> String;
     /// `og.load.imageData`
     fn og_load_image_data(&self, world: u32, name: String, bytes: Self::Bytes, desc: Option<String>) -> String;
+    /// `og.load.gltfData`
+    fn og_load_gltf_data(&self, world: u32, name: String, bytes: Self::Bytes, desc: Option<String>) -> String;
     /// `og.load.imageInfo`
     fn og_load_image_info(&self, world: u32, asset: f64) -> String;
     /// `og.load.completions`
@@ -1625,6 +1627,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_load_timeline",
     "og_load_rig2d",
     "og_load_image_data",
+    "og_load_gltf_data",
     "og_load_image_info",
     "og_load_completions",
     "og_load_replay_completions",

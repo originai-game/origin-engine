@@ -481,6 +481,28 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
         }
         (model, textures)
     };
+    insert_model(eng, &id, group, model, &textures, into, true)
+}
+
+/// Adds a decoded model and its textures (in [`CookedModel::textures`]
+/// order) to the renderer as asset `id`: a new asset, or `into` an existing
+/// index. A cooked model is `registered` under its path (og.load.gltf of it
+/// answers this asset, a hot reload refreshes it); an uncooked one
+/// (og.load.gltfData) is not. A streamed model (`group`) is its proxy.
+pub(crate) fn insert_model(
+    eng: &Engine,
+    id: &str,
+    group: Option<String>,
+    model: og_bundle::runtime::CookedModel,
+    textures: &[og_render::TextureSource],
+    into: Option<usize>,
+    registered: bool,
+) -> Result<usize, String> {
+    let id = id.to_string();
+    let source = match &group {
+        Some(_) => format!("{id}#proxy"),
+        None => id.clone(),
+    };
     let mut rs = eng.render.borrow_mut();
     // The model's primitives become consecutive scene meshes from here.
     let base = rs.scene.mesh_count();
@@ -493,7 +515,7 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
         }
     }
     let material_base = rs.scene.material_count();
-    let parts = model.add_to_with(&mut rs.scene, &textures);
+    let parts = model.add_to_with(&mut rs.scene, textures);
     for (h, t) in parts.textures.iter().zip(&model.textures) {
         rs.decoded.ids.insert(*h, t.id.clone());
     }
@@ -607,7 +629,9 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
             part_variants: parts.variants,
         },
     );
-    assets.by_path.insert(format!("gltf:{id}"), index);
+    if registered {
+        assets.by_path.insert(format!("gltf:{id}"), index);
+    }
     // Its geometries are physics meshes under their Geometry handles, for
     // convex and triangle-mesh colliders: built when a collider first names
     // one (modules::geometry_mesh, physics' mesh source), not copied for

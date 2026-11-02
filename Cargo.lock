@@ -1847,6 +1847,7 @@ dependencies = [
  "og-timeline",
  "opus-pure",
  "ruzstd",
+ "serde_json",
 ]
 
 [[package]]

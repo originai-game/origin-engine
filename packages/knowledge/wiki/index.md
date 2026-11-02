@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2205 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2207 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -563,6 +563,7 @@ Field units the docs and Tune use.
 | [`GestureInfo`](ui.md#type-GestureInfo) | struct | ui | — |
 | [`GlassWeight`](ui.md#type-GlassWeight) | enum | ui | — |
 | [`GlowEffect`](ui.md#type-GlowEffect) | desc struct | ui | — |
+| [`GltfDataDesc`](load.md#type-GltfDataDesc) | desc struct | load | — |
 | [`GltfDesc`](load.md#type-GltfDesc) | desc struct | load | — |
 | [`GltfInfo`](load.md#type-GltfInfo) | struct | load | — |
 | [`GoalChipsDesc`](ui.md#type-GoalChipsDesc) | desc struct | ui | — |
@@ -1007,6 +1008,7 @@ Field units the docs and Tune use.
 | [`og.load.font`](load.md#fn-font) | function | load | `og_load_font` |
 | [`og.load.fontInfo`](load.md#fn-fontInfo) | function | load | `og_load_font_info` |
 | [`og.load.gltf`](load.md#fn-gltf) | function | load | `og_load_gltf` |
+| [`og.load.gltfData`](load.md#fn-gltfData) | function | load | `og_load_gltf_data` |
 | [`og.load.gltfInfo`](load.md#fn-gltfInfo) | function | load | `og_load_gltf_info` |
 | [`og.load.imageData`](load.md#fn-imageData) | function | load | `og_load_image_data` |
 | [`og.load.imageInfo`](load.md#fn-imageInfo) | function | load | `og_load_image_info` |

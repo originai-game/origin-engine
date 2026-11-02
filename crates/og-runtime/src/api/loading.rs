@@ -252,6 +252,14 @@ pub fn og_load_gltf_info(world: u32, asset: f64) -> String {
                 "materials": materials.iter().map(|m| *m as f64).collect::<Vec<_>>(),
                 "animations": clip_names(&a, &e.path)?,
             })),
+            // An uncooked load (og.load.gltfData) on its way, or failed.
+            Payload::Uncooked => match &e.status {
+                assets::Status::Failed(r) => Err(r.clone()),
+                _ => Err(format!(
+                    "{} is still loading: og.load.status answers ready once it is in place",
+                    e.path
+                )),
+            },
             _ => Err(format!("{} is not a glTF", e.path)),
         }
     })())
@@ -268,6 +276,13 @@ pub fn og_load_image_data(
     result((|| {
         let eng = engine(world)?;
         crate::uncooked::image_data(&eng, &name, bytes, &parse(desc.as_deref())?).map(asset_value)
+    })())
+}
+
+pub fn og_load_gltf_data(world: u32, name: String, bytes: Vec<u8>, desc: Option<String>) -> String {
+    result((|| {
+        let eng = engine(world)?;
+        crate::uncooked::gltf_data(&eng, &name, bytes, &parse(desc.as_deref())?).map(asset_value)
     })())
 }
 

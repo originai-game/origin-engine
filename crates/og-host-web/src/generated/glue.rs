@@ -1269,6 +1269,11 @@ pub fn og_load_image_data(world: u32, name: String, bytes: Vec<u8>, desc: Option
 }
 
 #[wasm_bindgen]
+pub fn og_load_gltf_data(world: u32, name: String, bytes: Vec<u8>, desc: Option<String>) -> String {
+    <Host as LoadApi>::og_load_gltf_data(&Host, world, name, bytes, desc)
+}
+
+#[wasm_bindgen]
 pub fn og_load_image_info(world: u32, asset: f64) -> String {
     <Host as LoadApi>::og_load_image_info(&Host, world, asset)
 }

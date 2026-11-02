@@ -80,10 +80,12 @@ module load {
 | [`og.load.rig2d`](#fn-rig2d) | function | Load a cooked 2D rig (an `.ogt` of `type rig2d`, written by hand or imported by the cook from DragonBones JSON) and its texture, and register it with og.skeleton2d. Loading the same path again answers the same handles. |
 | [`LoadBudget`](#type-LoadBudget) | desc struct | The limits an uncooked load (og.load.imageData, og.load.gltfData) is held to: content a player or a generator made is untrusted, so each limit is checked from the file's headers before anything is decoded, and a load over one is refused naming the limit, the value and the fix. |
 | [`ImageKind`](#type-ImageKind) | enum | How an uncooked image's texels are read, as a cooked texture's `kind`. |
+| [`GltfDataDesc`](#type-GltfDataDesc) | desc struct | How og.load.gltfData reads a model. |
 | [`ImageDataDesc`](#type-ImageDataDesc) | desc struct | How og.load.imageData reads an image. |
 | [`ImageInfo`](#type-ImageInfo) | struct | What a ready uncooked image holds. |
 | [`LoadCompletion`](#type-LoadCompletion) | struct | When an uncooked load was put in place: the journal a replay applies again (og.load.completions). |
 | [`og.load.imageData`](#fn-imageData) | function | Load an image from bytes, uncooked, at run time: a PNG or JPEG a player drew, uploaded or a generator made. Its size, width and height are read from its header and checked against the budget before it is decoded. On the web the browser decodes it off the engine's thread (createImageBitmap in the engine's Worker), and no decoder is in the wasm; natively a worker thread decodes it. The handle is pending until the image is in place, then ready (og.load.imageInfo gives its texture) or failed (og.load.error says why). |
+| [`og.load.gltfData`](#fn-gltfData) | function | Load a glTF 2.0 model from bytes, uncooked, at run time: a .glb, or a .gltf whose buffers and images are data: URIs, that a player made or a generator wrote. At the call its JSON is read and its size, its triangles (every triangle primitive of every mesh) and each image's header are checked against the budget before anything is decoded. Then its images decode off the engine's thread, as og.load.imageData's do, while its primitives are converted at the tick boundaries, one at a time within LoadBudget.frameMs on the web. The handle is pending until the model is in place, then ready: world.instantiate spawns it (from a system, which cannot instantiate, insert og.Model { asset } on an entity it spawns) and og.load.gltfInfo describes it, as for a cooked glTF. Or it is failed, and og.load.error says why. |
 | [`og.load.imageInfo`](#fn-imageInfo) | function | A ready uncooked image's texture and size. |
 | [`og.load.completions`](#fn-completions) | function | The world's journal of uncooked loads put in place, oldest first: what a replay hands og.load.replayCompletions to put each in place at the same tick. og replay --record keeps it in the trace. |
 | [`og.load.replayCompletions`](#fn-replayCompletions) | function | Put this world's uncooked loads in place at the ticks a recorded run did (its og.load.completions), not when this host finishes them: a load is held back until its tick, and at its tick the engine waits for it. Call it before the first tick; og replay --compare does. A load the journal names as failed fails at its tick whatever this host made of it. |
@@ -1192,7 +1194,47 @@ fn imageData {
 }
 ```
 
-<sub>`api.ogt` line 7527</sub>
+<sub>`api.ogt` line 7533</sub>
+
+<a id="fn-gltfData"></a>
+
+### `og.load.gltfData`
+
+Load a glTF 2.0 model from bytes, uncooked, at run time: a .glb, or a .gltf whose buffers and images are data: URIs, that a player made or a generator wrote. At the call its JSON is read and its size, its triangles (every triangle primitive of every mesh) and each image's header are checked against the budget before anything is decoded. Then its images decode off the engine's thread, as og.load.imageData's do, while its primitives are converted at the tick boundaries, one at a time within LoadBudget.frameMs on the web. The handle is pending until the model is in place, then ready: world.instantiate spawns it (from a system, which cannot instantiate, insert og.Model { asset } on an entity it spawns) and og.load.gltfInfo describes it, as for a cooked glTF. Or it is failed, and og.load.error says why.
+
+Read as the cook would, without what only the cook makes: the metallic-roughness materials (base colour, metallic-roughness, normal, occlusion and emissive maps, alpha mask, double-sided, KHR_materials_unlit, KHR_materials_emissive_strength), the node tree and scenes, vertex colours and tangents. A colour texture magnified nearest is drawn as pixel art. Skins and animations are skipped and counted, points and lines skipped; no levels of detail or raycast BVH are cooked (a raycast builds one when first needed), and the other KHR_materials extensions, KHR_texture_transform and KHR_lights_punctual are not read. Refused by name: Draco and meshopt compression, Basis, WebP and AVIF textures, sparse accessors, a buffer or image in another file (pack the model as one .glb) and any other required extension.
+
+Completion is host input, applied at a tick boundary and journaled as og.load.imageData's is: natively the model is in place before the tick after the call; on the web the first boundary after its images are decoded and its primitives converted, recorded by og.load.completions, so a replay puts it in place at the same tick. In a lockstep or rollback room it is local to the session unless the game shares the content through og.net.command.
+
+```ts
+og.load.gltfData(world: World, name: string, bytes: Uint8Array, desc?: GltfDataDesc): Result<Asset>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world that owns the asset. |
+| `name` | `string` | no | A name for it in errors and dumps, such as `creations/kite.glb`; its textures are `<name>#tex<n>`. |
+| `bytes` | `Uint8Array` | no | The file's bytes. |
+| `desc` | `GltfDataDesc` | yes | Its budget. |
+
+**Returns** `Result<Asset>`: The handle (pending), or why it was refused now: over the budget's bytes, triangles or textureSize, not a glTF 2.0, an image that is not a PNG or JPEG, or something the reader refuses by name.
+
+Binding symbol `og_load_gltf_data` · publish builds: kept
+
+```ogt
+fn gltfData {
+  doc "Load a glTF 2.0 model from bytes, uncooked, at run time: a .glb, or a .gltf whose buffers and images are data: URIs, that a player made or a generator wrote. At the call its JSON is read and its size, its triangles (every triangle primitive of every mesh) and each image's header are checked against the budget before anything is decoded. Then its images decode off the engine's thread, as og.load.imageData's do, while its primitives are converted at the tick boundaries, one at a time within LoadBudget.frameMs on the web. The handle is pending until the model is in place, then ready: world.instantiate spawns it (from a system, which cannot instantiate, insert og.Model { asset } on an entity it spawns) and og.load.gltfInfo describes it, as for a cooked glTF. Or it is failed, and og.load.error says why."
+  doc "Read as the cook would, without what only the cook makes: the metallic-roughness materials (base colour, metallic-roughness, normal, occlusion and emissive maps, alpha mask, double-sided, KHR_materials_unlit, KHR_materials_emissive_strength), the node tree and scenes, vertex colours and tangents. A colour texture magnified nearest is drawn as pixel art. Skins and animations are skipped and counted, points and lines skipped; no levels of detail or raycast BVH are cooked (a raycast builds one when first needed), and the other KHR_materials extensions, KHR_texture_transform and KHR_lights_punctual are not read. Refused by name: Draco and meshopt compression, Basis, WebP and AVIF textures, sparse accessors, a buffer or image in another file (pack the model as one .glb) and any other required extension."
+  doc "Completion is host input, applied at a tick boundary and journaled as og.load.imageData's is: natively the model is in place before the tick after the call; on the web the first boundary after its images are decoded and its primitives converted, recorded by og.load.completions, so a replay puts it in place at the same tick. In a lockstep or rollback room it is local to the session unless the game shares the content through og.net.command."
+  param world World "The world that owns the asset."
+  param name String "A name for it in errors and dumps, such as `creations/kite.glb`; its textures are `<name>#tex<n>`."
+  param bytes Bytes "The file's bytes."
+  param desc GltfDataDesc "Its budget."
+  returns Result.Asset "The handle (pending), or why it was refused now: over the budget's bytes, triangles or textureSize, not a glTF 2.0, an image that is not a PNG or JPEG, or something the reader refuses by name."
+}
+```
+
+<sub>`api.ogt` line 7543</sub>
 
 <a id="fn-imageInfo"></a>
 
@@ -1222,7 +1264,7 @@ fn imageInfo {
 }
 ```
 
-<sub>`api.ogt` line 7537</sub>
+<sub>`api.ogt` line 7554</sub>
 
 <a id="fn-completions"></a>
 
@@ -1250,7 +1292,7 @@ fn completions {
 }
 ```
 
-<sub>`api.ogt` line 7544</sub>
+<sub>`api.ogt` line 7561</sub>
 
 <a id="fn-replayCompletions"></a>
 
@@ -1280,7 +1322,7 @@ fn replayCompletions {
 }
 ```
 
-<sub>`api.ogt` line 7550</sub>
+<sub>`api.ogt` line 7567</sub>
 
 ## Components, resources and events
 
@@ -1405,7 +1447,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 7557</sub>
+<sub>`api.ogt` line 7574</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -1430,7 +1472,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 7563</sub>
+<sub>`api.ogt` line 7580</sub>
 
 ## Types
 
@@ -1771,6 +1813,28 @@ enum ImageKind {
 
 <sub>`api.ogt` line 7497</sub>
 
+<a id="type-GltfDataDesc"></a>
+
+### `GltfDataDesc` (desc struct)
+
+How og.load.gltfData reads a model.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `budget` | `LoadBudget` | `{}` | — | — | — | The limits it is held to. |
+
+```ogt
+struct GltfDataDesc {
+  doc "How og.load.gltfData reads a model."
+  desc true
+  field budget LoadBudget "The limits it is held to."
+}
+```
+
+<sub>`api.ogt` line 7504</sub>
+
 <a id="type-ImageDataDesc"></a>
 
 ### `ImageDataDesc` (desc struct)
@@ -1793,7 +1857,7 @@ struct ImageDataDesc {
 }
 ```
 
-<sub>`api.ogt` line 7504</sub>
+<sub>`api.ogt` line 7510</sub>
 
 <a id="type-ImageInfo"></a>
 
@@ -1816,7 +1880,7 @@ struct ImageInfo {
 }
 ```
 
-<sub>`api.ogt` line 7511</sub>
+<sub>`api.ogt` line 7517</sub>
 
 <a id="type-LoadCompletion"></a>
 
@@ -1841,7 +1905,7 @@ struct LoadCompletion {
 }
 ```
 
-<sub>`api.ogt` line 7518</sub>
+<sub>`api.ogt` line 7524</sub>
 
 ## Column kinds
 

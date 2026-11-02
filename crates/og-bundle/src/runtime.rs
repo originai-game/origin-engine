@@ -28,12 +28,14 @@ mod media;
 mod model;
 mod scene;
 mod terrain;
+mod uncooked;
 
 pub use animation::*;
 pub use media::*;
 pub use model::*;
 pub use scene::*;
 pub use terrain::*;
+pub use uncooked::UncookedGltf;
 
 /// The manifest's file name inside `cooked/`.
 pub const MANIFEST: &str = ".cook.ogt";
