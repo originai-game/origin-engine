@@ -106,8 +106,14 @@ jobs:
       - uses: ./.github/actions/provision
         with:
           cache-key: functional-trixie
+      # A fresh runner has no web module, which bun-functional needs whole
+      # (it fails rather than test a subset), so the job builds it; and no
+      # GPU, so the kit's frames are unchecked on purpose (OG_RENDERER=none;
+      # otherwise ui-styles and ui-kit fail on an unchecked frame).
       - name: Functional lane
-        run: scripts/check.sh functional
+        env:
+          OG_RENDERER: none
+        run: scripts/check.sh functional wasm-build wasm-opt
       - name: Disk
         if: always()
         run: df -h "$GITHUB_WORKSPACE" | tail -1; du -sh target 2>/dev/null || true

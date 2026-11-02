@@ -359,6 +359,35 @@ outputs_exist() {
   while IFS= read -r f; do [ -f "$f" ] || return 1; done < "$1"
 }
 
+# wasm_missing: nothing when wasm-opt's outputs are complete (opt-all.txt
+# and opt.txt name at least one module and every module they name exists);
+# else what is missing, for a step that reads them to fail on. wasm-opt
+# writes the two lists last, so an interrupted build leaves them absent.
+wasm_missing() {
+  local f list
+  for list in "$OG_WASM_OUT/opt-all.txt" "$OG_WASM_OUT/opt.txt"; do
+    if [ ! -s "$list" ]; then
+      printf '%s\n' "$list ($([ -f "$list" ] && echo empty || echo absent))"
+      return 0
+    fi
+    while IFS= read -r f; do
+      [ -f "$f" ] || { printf '%s\n' "$f (named in $list)"; return 0; }
+    done < "$list"
+  done
+}
+
+# require_wasm STEP: fails STEP, naming the missing file, unless wasm-opt's
+# outputs are complete. Never a smaller run that passes: an interrupted wasm
+# build once left bun-functional testing only knowledge and create, and it
+# reported PASS (2026-11-02).
+require_wasm() {
+  local missing
+  missing="$(wasm_missing)"
+  [ -n "$missing" ] || return 0
+  og_err "$1: the web module is incomplete: no $missing; scripts/check.sh --only $1 builds the wasm first (wasm-build, wasm-opt)"
+  return 1
+}
+
 step_wasm_build() {
   if outputs_exist "$OG_WASM_OUT/built.txt" \
       && skip_unchanged wasm-build "wasm-build (reusing $OG_WASM_OUT/raw)" "$(rule_wasm)"; then
@@ -482,10 +511,13 @@ step_wasm_opt() {
       return $SKIP
     fi ;;
   esac
-  rm -f "$OG_WASM_OUT/stamp"
-  mkdir -p "$OG_WASM_OUT/opt"; : > "$OG_WASM_OUT/opt.txt"; : > "$OG_WASM_OUT/opt-all.txt"
+  # The lists are written last (from .part files), so a run interrupted
+  # anywhere leaves none: the steps that read them fail (require_wasm).
+  rm -f "$OG_WASM_OUT/stamp" "$OG_WASM_OUT/opt.txt" "$OG_WASM_OUT/opt-all.txt"
+  mkdir -p "$OG_WASM_OUT/opt"; : > "$OG_WASM_OUT/opt-all.txt.part"
   if [ ! -s "$built" ]; then
     og_say "no wasm artifact to optimize"
+    : > "$OG_WASM_OUT/opt.txt"; mv -f "$OG_WASM_OUT/opt-all.txt.part" "$OG_WASM_OUT/opt-all.txt"
     return 0
   fi
   og_need wasm-opt || return 1
@@ -494,19 +526,21 @@ step_wasm_opt() {
   local pids=() rc=0
   while IFS= read -r raw; do
     name="$(basename "$raw" .wasm)"
-    printf '%s\n' "$OG_WASM_OUT/opt/$name.wasm" >> "$OG_WASM_OUT/opt-all.txt"
+    printf '%s\n' "$OG_WASM_OUT/opt/$name.wasm" >> "$OG_WASM_OUT/opt-all.txt.part"
     wasm_opt_one "$raw" "$name" > "$OG_WASM_OUT/opt/$name.log" 2>&1 &
     pids+=($!)
   done < "$built"
   for pid in "${pids[@]}"; do wait "$pid" || rc=1; done
   cat "$OG_WASM_OUT"/opt/*.log
   [ "$rc" -eq 0 ] || return 1
-  if grep -q -- '-publish\.wasm$' "$OG_WASM_OUT/opt-all.txt"; then
-    grep -E -- '-(publish|lanes)[a-z0-9]*\.wasm$' "$OG_WASM_OUT/opt-all.txt" > "$OG_WASM_OUT/opt.txt"
-    og_say "size-gate measures the publish variant(s): $(og_words < "$OG_WASM_OUT/opt.txt")"
+  if grep -q -- '-publish\.wasm$' "$OG_WASM_OUT/opt-all.txt.part"; then
+    grep -E -- '-(publish|lanes)[a-z0-9]*\.wasm$' "$OG_WASM_OUT/opt-all.txt.part" > "$OG_WASM_OUT/opt.txt.part"
+    og_say "size-gate measures the publish variant(s): $(og_words < "$OG_WASM_OUT/opt.txt.part")"
   else
-    cp "$OG_WASM_OUT/opt-all.txt" "$OG_WASM_OUT/opt.txt"
+    cp "$OG_WASM_OUT/opt-all.txt.part" "$OG_WASM_OUT/opt.txt.part"
   fi
+  mv -f "$OG_WASM_OUT/opt.txt.part" "$OG_WASM_OUT/opt.txt"
+  mv -f "$OG_WASM_OUT/opt-all.txt.part" "$OG_WASM_OUT/opt-all.txt"
   wasm_stamp
 }
 
@@ -597,6 +631,7 @@ step_size_gate() {
       return $SKIP
     fi ;;
   esac
+  require_wasm size-gate || return 1
   "$OG_ROOT/scripts/size-gate.sh"
 }
 
@@ -678,30 +713,24 @@ bun_test_packages() {
 # else only the packages that need no native build. A merge's functional
 # signal; the web module's own tests are the full lane's.
 step_bun_functional() {
-  if [ -s "$OG_WASM_OUT/opt-all.txt" ]; then
-    # The web module is the last full lane's. When a crate changed since,
-    # it no longer matches the native addon, and the tests that compare the
-    # two hosts' hashes skip (OG_WASM_STALE; the full lane runs them).
-    # shellcheck disable=SC2046 # the rule is a word list
-    if og_unchanged wasm-build $(rule_wasm); then
-      og_say "bun-functional: the web module ($OG_WASM_OUT/opt-all.txt) is current"
-      OG_GATE=1 bun_test_packages packages/*/
-    else
-      og_say "bun-functional: the web module ($OG_WASM_OUT/opt-all.txt) predates a crate change; the cross-host tests skip (OG_WASM_STALE=1), the full lane runs them"
-      OG_GATE=1 OG_WASM_STALE=1 bun_test_packages packages/*/
-    fi
+  # Every package or none: without a complete web module this fails naming
+  # what is missing, never runs only the packages that need no wasm.
+  require_wasm bun-functional || return 1
+  # The web module is the last full lane's. When a crate changed since,
+  # it no longer matches the native addon, and the tests that compare the
+  # two hosts' hashes skip (OG_WASM_STALE; the full lane runs them).
+  # shellcheck disable=SC2046 # the rule is a word list
+  if og_unchanged wasm-build $(rule_wasm); then
+    og_say "bun-functional: the web module ($OG_WASM_OUT/opt-all.txt) is current"
+    OG_GATE=1 bun_test_packages packages/*/
   else
-    og_say "bun-functional: no wasm built here yet; the packages that need none"
-    # shellcheck disable=SC2086
-    bun_test_packages $BUN_QUICK_PACKAGES
+    og_say "bun-functional: the web module ($OG_WASM_OUT/opt-all.txt) predates a crate change; the cross-host tests skip (OG_WASM_STALE=1), the full lane runs them"
+    OG_GATE=1 OG_WASM_STALE=1 bun_test_packages packages/*/
   fi
 }
 
 step_bun_test() {
-  if [ ! -s "$OG_WASM_OUT/opt-all.txt" ]; then
-    og_err "no $OG_WASM_OUT/opt-all.txt: run wasm-build and wasm-opt before bun-test (or 'bun run test' in packages/engine standalone)"
-    return 1
-  fi
+  require_wasm bun-test || return 1
   OG_GATE=1 bun_test_packages packages/*/
 }
 
@@ -719,7 +748,24 @@ step_ui_styles() {
   OG_GATE=1 sh packages/engine/scripts/build.sh --native || return 1
   # The playtests run OG_UI_STYLES_JOBS at a time (og test --jobs; measured
   # in docs/ci.md §Two machines), each one's output printed whole, in order.
-  "$OG_TARGET_DIR/debug/og" test templates/ui-kit --filter tests/style- --jobs "${OG_UI_STYLES_JOBS:-3}"
+  kit_playtests ui-styles --filter tests/style- --jobs "${OG_UI_STYLES_JOBS:-3}"
+}
+
+# kit_playtests STEP ARGS...: og test templates/ui-kit ARGS, failing when
+# it left any frame unchecked: a gate machine without a usable renderer
+# would otherwise pass every frame check by skipping it. OG_RENDERER=none
+# (a machine with no GPU, on purpose) allows unchecked frames.
+kit_playtests() {
+  local step="$1" log rc
+  shift
+  log="$GATE_LOGS/$step-og-test.txt"
+  "$OG_TARGET_DIR/debug/og" test templates/ui-kit "$@" 2>&1 | tee "$log"
+  rc="${PIPESTATUS[0]}"
+  [ "$rc" -eq 0 ] || return "$rc"
+  if [ "${OG_RENDERER:-}" != none ] && grep -q 'frame(s) unchecked' "$log"; then
+    og_err "$step: $(grep -o '[0-9]* frame(s) unchecked' "$log" | tail -1) without a renderer, so nothing was compared; set OG_RENDERER=none to accept that on a machine with no GPU"
+    return 1
+  fi
 }
 
 # Every other kit playtest (templates/ui-kit/tests/*.og.ts but style-*):
@@ -731,7 +777,7 @@ step_ui_styles() {
 step_ui_kit() {
   if skip_unchanged ui-kit "ui-kit" "$(rule_ui_styles)"; then return $SKIP; fi
   OG_GATE=1 sh packages/engine/scripts/build.sh --native || return 1
-  "$OG_TARGET_DIR/debug/og" test templates/ui-kit --skip tests/style- --jobs "${OG_UI_KIT_JOBS:-4}"
+  kit_playtests ui-kit --skip tests/style- --jobs "${OG_UI_KIT_JOBS:-4}"
 }
 
 # The packages that need no native build.
@@ -896,6 +942,9 @@ step_needs() {
     wasm-opt) echo wasm-build ;;
     size-gate) echo wasm-opt ;;
     bun-test) echo wasm-opt ;;
+    # Only when wasm-opt is selected too (a machine with no wasm yet:
+    # `--only bun-functional`, CI's functional job); the lane reuses the last.
+    bun-functional) echo wasm-opt ;;
     ui-kit) echo ui-styles ;;
     wasm-export) echo wasm-opt ;;
     # The Windows lane's browser tiers take the Mac's wasm (build.sh, OG_GATE=1).
