@@ -1,0 +1,13 @@
+type project
+version 1
+---
+# The G2-3 physics sample: a compound tumbling, a pile going to sleep, a
+# bridge of breaking joints. tests/evidence/g2-3/NOTES.md has the commands
+# and what each frame shows.
+name "G2-3 physics sample"
+id "g2-3-sample"
+engine "0.7.7"
+entry "src/main.ts"
+profile "3d"
+tick 60
+seed 1
