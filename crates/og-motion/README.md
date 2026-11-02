@@ -77,6 +77,22 @@ any redistribution. No weights are in this repository.
   token counts as the teacher does; its weights in f16 change nothing
   measurable.
 
+## Licensing of the weights
+
+- The test fixtures (`tests/fixtures/`) hold no trained, captured or NVIDIA
+  number: og-motion-train's `scripts/make_fixture.py` writes them from a
+  fixed seed (random weights, codebook, statistics and offsets; synthetic
+  poses), and a rerun gives the same bytes.
+- The trained student and decoder are distilled from NVIDIA MotionBricks'
+  outputs, on target poses from og-motion-train's own motion library (no
+  Bones sample motion, whose licence is evaluation-only). The NVIDIA Open
+  Model Agreement has no clause on training with outputs ("NVIDIA does not
+  claim ownership to any outputs"), and the owner reports NVIDIA's
+  permission (2026-11-02). **Open for the owner:** keep that permission in
+  writing before a game ships the weights; the bundle carries the
+  attribution "Licensed by NVIDIA Corporation under the NVIDIA Open Model
+  Agreement." either way.
+
 ## State
 
 `examples/bench.rs` with the run2b bundle (2026-11-02, release, warm, quiet
