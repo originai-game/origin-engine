@@ -730,6 +730,13 @@ module ui {
 | [`og.ui.scorebug`](#fn-scorebug) | function | A broadcast scorebug to the bar of sports games (EA FC, NBA 2K, Rocket League): each side's colour block with its crest and short name, the scores in tabular digits that flip and flash when they change, possession and time-out pips, the clock and period, a shot clock, a situation line sliding out under it. |
 | [`FlightHudDesc`](#type-FlightHudDesc) | desc struct | A flight HUD. |
 | [`og.ui.flightHud`](#fn-flightHud) | function | A flight HUD to the bar of Ace Combat and DCS: a pitch ladder of few rungs (every 10°, broken below the horizon, numbered in a face that reads at a glance) turning with roll about the boresight in a central window, the horizon line, the waterline and the flight path marker heaviest as the focal pair, a heading tape across the top (numbers every 30°, the cardinals by letter) fading at its ends, quiet speed and altitude tapes with large boxed readouts on either side and the climb rate, all in one ink from the style (its primary, lifted) with a dark outline. A narrow screen drops the ladder's left numbers. |
+| [`StandingsEntry`](#type-StandingsEntry) | desc struct | A car in the standings, in race order. |
+| [`StandingsTowerDesc`](#type-StandingsTowerDesc) | desc struct | A racing standings tower. |
+| [`og.ui.standingsTower`](#fn-standingsTower) | function | A standings tower to the bar of F1, Gran Turismo and Forza: one row a car in race order, its position in a tabular cell, its team colour as a stripe, the driver's name and the gap to the leader (or, relative, a signed gap to the player) in tabular digits; the player's row lit; a car that changes place slides to its new row and a small arrow says how many places it gained or lost; a car in the pit lane says so, a retired one dims to the foot; more cars than rows keep the leaders and the cars around the player with a break between. |
+| [`LapTimerDesc`](#type-LapTimerDesc) | desc struct | A racing lap and split block. |
+| [`og.ui.lapTimer`](#fn-lapTimer) | function | A lap and split block to the bar of Forza, Gran Turismo and F1: the place and the lap as large tabular numerals over their totals (the lap's caption turns to the final lap's, in gold, on the last), then the current lap running in tabular digits, the best and last laps, and the split against the best lap signed and coloured (ahead in success, behind in danger) that pops when it changes; a last lap that sets the best shows in the personal-best colour. On a phone it keeps the place, the lap and the split. |
+| [`RearViewDesc`](#type-RearViewDesc) | desc struct | A rear-view mirror. |
+| [`og.ui.rearView`](#fn-rearView) | function | A rear-view mirror to the bar of Forza's and Need for Speed's cockpit HUDs: a render target shown in the UI, flipped as a mirror, in a wide frame whose sides slant in towards the foot, with a dark rim, a soft glass glare across its top and a drop so it sits over the road. |
 | [`DamageHit`](#type-DamageHit) | desc struct | A hit from a direction. |
 | [`DamageDirectionDesc`](#type-DamageDirectionDesc) | desc struct | Damage direction indicators. |
 | [`og.ui.damageDirection`](#fn-damageDirection) | function | Damage direction to the bar of Call of Duty and Apex: a curved wedge round the centre toward each hit's source, wider and brighter for a harder hit, flaring in and fading over its time; the newest hits over the older. |
@@ -7649,7 +7656,7 @@ fn ammoCounter {
 
 A minimap to the bar of MOBAs, shooters and open worlds: the map in a round or square frame, centred on the player and zoomed, fixed with north up and the player's arrow turning or turning with the player; markers for allies (their arrows), enemies, loot by rarity, points of interest, objectives and pings, which stay on the frame's edge pointing out when out of range; pings pulse; a north mark on the rim, the zone under it; a press answers clicked (click to move reads the press's position against the map's bounds).
 
-Parts: Minimap.frame[<shape>], Minimap.map, Minimap.marker[<kind>][clamped], Minimap.north, Minimap.zone, Minimap.ping. Slots: texture (art kind map). Accessibility: image named by the zone; markers images named by their labels. Probe ids: <id>, <id>/Map/<key>, <id>/Zone.
+Parts: Minimap.frame[<shape>], Minimap.map, Minimap.track, Minimap.start, Minimap.marker[<kind>][clamped], Minimap.north, Minimap.zone, Minimap.ping. Slots: texture (art kind map). Accessibility: image named by the zone; markers images named by their labels. Probe ids: <id>, <id>/Map/<key>, <id>/Zone.
 
 ```ts
 og.ui.minimapView(id: string, desc?: MinimapViewDesc): MinimapResult
@@ -7667,7 +7674,7 @@ Implemented by the TypeScript runtime over the members of this module: no bindin
 ```ogt
 fn minimapView {
   doc "A minimap to the bar of MOBAs, shooters and open worlds: the map in a round or square frame, centred on the player and zoomed, fixed with north up and the player's arrow turning or turning with the player; markers for allies (their arrows), enemies, loot by rarity, points of interest, objectives and pings, which stay on the frame's edge pointing out when out of range; pings pulse; a north mark on the rim, the zone under it; a press answers clicked (click to move reads the press's position against the map's bounds)."
-  doc "Parts: Minimap.frame[<shape>], Minimap.map, Minimap.marker[<kind>][clamped], Minimap.north, Minimap.zone, Minimap.ping. Slots: texture (art kind map). Accessibility: image named by the zone; markers images named by their labels. Probe ids: <id>, <id>/Map/<key>, <id>/Zone."
+  doc "Parts: Minimap.frame[<shape>], Minimap.map, Minimap.track, Minimap.start, Minimap.marker[<kind>][clamped], Minimap.north, Minimap.zone, Minimap.ping. Slots: texture (art kind map). Accessibility: image named by the zone; markers images named by their labels. Probe ids: <id>, <id>/Map/<key>, <id>/Zone."
   host false
   param id String "Its id."
   param desc MinimapViewDesc "The map and its markers."
@@ -7675,7 +7682,7 @@ fn minimapView {
 }
 ```
 
-<sub>`api.ogt` line 22007</sub>
+<sub>`api.ogt` line 22009</sub>
 
 <a id="fn-compass"></a>
 
@@ -7709,7 +7716,7 @@ fn compass {
 }
 ```
 
-<sub>`api.ogt` line 22056</sub>
+<sub>`api.ogt` line 22058</sub>
 
 <a id="fn-objectiveTracker"></a>
 
@@ -7743,7 +7750,7 @@ fn objectiveTracker {
 }
 ```
 
-<sub>`api.ogt` line 22118</sub>
+<sub>`api.ogt` line 22120</sub>
 
 <a id="fn-killfeed"></a>
 
@@ -7777,7 +7784,7 @@ fn killfeed {
 }
 ```
 
-<sub>`api.ogt` line 22157</sub>
+<sub>`api.ogt` line 22159</sub>
 
 <a id="fn-scoreboard"></a>
 
@@ -7811,7 +7818,7 @@ fn scoreboard {
 }
 ```
 
-<sub>`api.ogt` line 22216</sub>
+<sub>`api.ogt` line 22218</sub>
 
 <a id="fn-hudTimer"></a>
 
@@ -7845,7 +7852,7 @@ fn hudTimer {
 }
 ```
 
-<sub>`api.ogt` line 22256</sub>
+<sub>`api.ogt` line 22258</sub>
 
 <a id="fn-comboCounter"></a>
 
@@ -7879,7 +7886,7 @@ fn comboCounter {
 }
 ```
 
-<sub>`api.ogt` line 22283</sub>
+<sub>`api.ogt` line 22285</sub>
 
 <a id="fn-judgement"></a>
 
@@ -7913,7 +7920,7 @@ fn judgement {
 }
 ```
 
-<sub>`api.ogt` line 22321</sub>
+<sub>`api.ogt` line 22323</sub>
 
 <a id="fn-resourceBar"></a>
 
@@ -7947,7 +7954,7 @@ fn resourceBar {
 }
 ```
 
-<sub>`api.ogt` line 22357</sub>
+<sub>`api.ogt` line 22359</sub>
 
 <a id="fn-turnOrder"></a>
 
@@ -7981,7 +7988,7 @@ fn turnOrder {
 }
 ```
 
-<sub>`api.ogt` line 22401</sub>
+<sub>`api.ogt` line 22403</sub>
 
 <a id="fn-speedometer"></a>
 
@@ -8015,7 +8022,7 @@ fn speedometer {
 }
 ```
 
-<sub>`api.ogt` line 22447</sub>
+<sub>`api.ogt` line 22449</sub>
 
 <a id="fn-scorebug"></a>
 
@@ -8049,7 +8056,7 @@ fn scorebug {
 }
 ```
 
-<sub>`api.ogt` line 22482</sub>
+<sub>`api.ogt` line 22484</sub>
 
 <a id="fn-flightHud"></a>
 
@@ -8083,7 +8090,109 @@ fn flightHud {
 }
 ```
 
-<sub>`api.ogt` line 22528</sub>
+<sub>`api.ogt` line 22530</sub>
+
+<a id="fn-standingsTower"></a>
+
+### `og.ui.standingsTower`
+
+A standings tower to the bar of F1, Gran Turismo and Forza: one row a car in race order, its position in a tabular cell, its team colour as a stripe, the driver's name and the gap to the leader (or, relative, a signed gap to the player) in tabular digits; the player's row lit; a car that changes place slides to its new row and a small arrow says how many places it gained or lost; a car in the pit lane says so, a retired one dims to the foot; more cars than rows keep the leaders and the cars around the player with a break between.
+
+Parts: StandingsTower.frame, StandingsTower.row[player][pit][out], StandingsTower.position, StandingsTower.stripe, StandingsTower.name, StandingsTower.gap, StandingsTower.change[up|down], StandingsTower.fastest, StandingsTower.break. State groups: row (racing, player, pit, out) on each row. Sounds: success when the player gains a place. Accessibility: table named Standings, each row a row named by its driver with its position and gap. Probe ids: <id>, <id>/<key>, <id>/<key>/Position, <id>/<key>/Name, <id>/<key>/Gap.
+
+```ts
+og.ui.standingsTower(id: string, desc?: StandingsTowerDesc): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `StandingsTowerDesc` | yes | The cars in race order. |
+
+**Returns** `void`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn standingsTower {
+  doc "A standings tower to the bar of F1, Gran Turismo and Forza: one row a car in race order, its position in a tabular cell, its team colour as a stripe, the driver's name and the gap to the leader (or, relative, a signed gap to the player) in tabular digits; the player's row lit; a car that changes place slides to its new row and a small arrow says how many places it gained or lost; a car in the pit lane says so, a retired one dims to the foot; more cars than rows keep the leaders and the cars around the player with a break between."
+  doc "Parts: StandingsTower.frame, StandingsTower.row[player][pit][out], StandingsTower.position, StandingsTower.stripe, StandingsTower.name, StandingsTower.gap, StandingsTower.change[up|down], StandingsTower.fastest, StandingsTower.break. State groups: row (racing, player, pit, out) on each row. Sounds: success when the player gains a place. Accessibility: table named Standings, each row a row named by its driver with its position and gap. Probe ids: <id>, <id>/<key>, <id>/<key>/Position, <id>/<key>/Name, <id>/<key>/Gap."
+  host false
+  param id String "Its id."
+  param desc StandingsTowerDesc "The cars in race order."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 22576</sub>
+
+<a id="fn-lapTimer"></a>
+
+### `og.ui.lapTimer`
+
+A lap and split block to the bar of Forza, Gran Turismo and F1: the place and the lap as large tabular numerals over their totals (the lap's caption turns to the final lap's, in gold, on the last), then the current lap running in tabular digits, the best and last laps, and the split against the best lap signed and coloured (ahead in success, behind in danger) that pops when it changes; a last lap that sets the best shows in the personal-best colour. On a phone it keeps the place, the lap and the split.
+
+Parts: LapTimer.frame, LapTimer.position, LapTimer.lap[final], LapTimer.total, LapTimer.row[current|best|last], LapTimer.time, LapTimer.split[ahead|behind]. State groups: lap (racing, final), split (none, ahead, behind), best (none, new). Sounds: success when the split turns ahead or a new best is set. Accessibility: status named by the position and lap, its value the times. Probe ids: <id>, <id>/Head/Position/Num/Value, <id>/Head/Lap/Num/Value, <id>/Current/Time, <id>/Best/Time, <id>/Last/Time, <id>/Split/Time.
+
+```ts
+og.ui.lapTimer(id: string, desc?: LapTimerDesc): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `LapTimerDesc` | yes | The race state. |
+
+**Returns** `void`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn lapTimer {
+  doc "A lap and split block to the bar of Forza, Gran Turismo and F1: the place and the lap as large tabular numerals over their totals (the lap's caption turns to the final lap's, in gold, on the last), then the current lap running in tabular digits, the best and last laps, and the split against the best lap signed and coloured (ahead in success, behind in danger) that pops when it changes; a last lap that sets the best shows in the personal-best colour. On a phone it keeps the place, the lap and the split."
+  doc "Parts: LapTimer.frame, LapTimer.position, LapTimer.lap[final], LapTimer.total, LapTimer.row[current|best|last], LapTimer.time, LapTimer.split[ahead|behind]. State groups: lap (racing, final), split (none, ahead, behind), best (none, new). Sounds: success when the split turns ahead or a new best is set. Accessibility: status named by the position and lap, its value the times. Probe ids: <id>, <id>/Head/Position/Num/Value, <id>/Head/Lap/Num/Value, <id>/Current/Time, <id>/Best/Time, <id>/Last/Time, <id>/Split/Time."
+  host false
+  param id String "Its id."
+  param desc LapTimerDesc "The race state."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 22631</sub>
+
+<a id="fn-rearView"></a>
+
+### `og.ui.rearView`
+
+A rear-view mirror to the bar of Forza's and Need for Speed's cockpit HUDs: a render target shown in the UI, flipped as a mirror, in a wide frame whose sides slant in towards the foot, with a dark rim, a soft glass glare across its top and a drop so it sits over the road.
+
+Parts: RearView.frame, RearView.view, RearView.glare. Slots: texture (a render target's colour). Accessibility: image named by its label. Probe ids: <id>, <id>/View.
+
+```ts
+og.ui.rearView(id: string, desc?: RearViewDesc): void
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `RearViewDesc` | yes | What it shows and its size. |
+
+**Returns** `void`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn rearView {
+  doc "A rear-view mirror to the bar of Forza's and Need for Speed's cockpit HUDs: a render target shown in the UI, flipped as a mirror, in a wide frame whose sides slant in towards the foot, with a dark rim, a soft glass glare across its top and a drop so it sits over the road."
+  doc "Parts: RearView.frame, RearView.view, RearView.glare. Slots: texture (a render target's colour). Accessibility: image named by its label. Probe ids: <id>, <id>/View."
+  host false
+  param id String "Its id."
+  param desc RearViewDesc "What it shows and its size."
+  returns Void
+}
+```
+
+<sub>`api.ogt` line 22663</sub>
 
 <a id="fn-damageDirection"></a>
 
@@ -8117,7 +8226,7 @@ fn damageDirection {
 }
 ```
 
-<sub>`api.ogt` line 22565</sub>
+<sub>`api.ogt` line 22700</sub>
 
 <a id="fn-lowHealthVignette"></a>
 
@@ -8151,7 +8260,7 @@ fn lowHealthVignette {
 }
 ```
 
-<sub>`api.ogt` line 22588</sub>
+<sub>`api.ogt` line 22723</sub>
 
 <a id="fn-nameplate"></a>
 
@@ -8185,7 +8294,7 @@ fn nameplate {
 }
 ```
 
-<sub>`api.ogt` line 22650</sub>
+<sub>`api.ogt` line 22785</sub>
 
 <a id="fn-overheadBars"></a>
 
@@ -8219,7 +8328,7 @@ fn overheadBars {
 }
 ```
 
-<sub>`api.ogt` line 22691</sub>
+<sub>`api.ogt` line 22826</sub>
 
 <a id="fn-damageNumbers"></a>
 
@@ -8253,7 +8362,7 @@ fn damageNumbers {
 }
 ```
 
-<sub>`api.ogt` line 22740</sub>
+<sub>`api.ogt` line 22875</sub>
 
 <a id="fn-interactionPrompt"></a>
 
@@ -8289,7 +8398,7 @@ fn interactionPrompt {
 }
 ```
 
-<sub>`api.ogt` line 22771</sub>
+<sub>`api.ogt` line 22906</sub>
 
 <a id="fn-waypoint"></a>
 
@@ -8323,7 +8432,7 @@ fn waypoint {
 }
 ```
 
-<sub>`api.ogt` line 22819</sub>
+<sub>`api.ogt` line 22954</sub>
 
 <a id="fn-selectionRing"></a>
 
@@ -8359,7 +8468,7 @@ fn selectionRing {
 }
 ```
 
-<sub>`api.ogt` line 22873</sub>
+<sub>`api.ogt` line 23008</sub>
 
 <a id="fn-telegraph"></a>
 
@@ -8395,7 +8504,7 @@ fn telegraph {
 }
 ```
 
-<sub>`api.ogt` line 22927</sub>
+<sub>`api.ogt` line 23062</sub>
 
 <a id="fn-pathLine"></a>
 
@@ -8431,7 +8540,7 @@ fn pathLine {
 }
 ```
 
-<sub>`api.ogt` line 22958</sub>
+<sub>`api.ogt` line 23093</sub>
 
 <a id="fn-placementGhost"></a>
 
@@ -8467,7 +8576,7 @@ fn placementGhost {
 }
 ```
 
-<sub>`api.ogt` line 22999</sub>
+<sub>`api.ogt` line 23134</sub>
 
 <a id="fn-lootLabel"></a>
 
@@ -8501,7 +8610,7 @@ fn lootLabel {
 }
 ```
 
-<sub>`api.ogt` line 23037</sub>
+<sub>`api.ogt` line 23172</sub>
 
 <a id="fn-speechBubble"></a>
 
@@ -8535,7 +8644,7 @@ fn speechBubble {
 }
 ```
 
-<sub>`api.ogt` line 23074</sub>
+<sub>`api.ogt` line 23209</sub>
 
 <a id="fn-semantics"></a>
 
@@ -8563,7 +8672,7 @@ fn semantics {
 }
 ```
 
-<sub>`api.ogt` line 23550</sub>
+<sub>`api.ogt` line 23685</sub>
 
 <a id="fn-partAttr"></a>
 
@@ -8593,7 +8702,7 @@ fn partAttr {
 }
 ```
 
-<sub>`api.ogt` line 23556</sub>
+<sub>`api.ogt` line 23691</sub>
 
 <a id="fn-setDraw"></a>
 
@@ -8621,7 +8730,7 @@ fn setDraw {
 }
 ```
 
-<sub>`api.ogt` line 23563</sub>
+<sub>`api.ogt` line 23698</sub>
 
 <a id="fn-openWorldAnchor"></a>
 
@@ -8651,7 +8760,7 @@ fn openWorldAnchor {
 }
 ```
 
-<sub>`api.ogt` line 23694</sub>
+<sub>`api.ogt` line 23829</sub>
 
 <a id="fn-openWorldPanel"></a>
 
@@ -8681,7 +8790,7 @@ fn openWorldPanel {
 }
 ```
 
-<sub>`api.ogt` line 23749</sub>
+<sub>`api.ogt` line 23884</sub>
 
 <a id="fn-defineMass"></a>
 
@@ -8711,7 +8820,7 @@ fn defineMass {
 }
 ```
 
-<sub>`api.ogt` line 23894</sub>
+<sub>`api.ogt` line 24029</sub>
 
 <a id="fn-spawnMass"></a>
 
@@ -8741,7 +8850,7 @@ fn spawnMass {
 }
 ```
 
-<sub>`api.ogt` line 23901</sub>
+<sub>`api.ogt` line 24036</sub>
 
 <a id="fn-pushMass"></a>
 
@@ -8771,7 +8880,7 @@ fn pushMass {
 }
 ```
 
-<sub>`api.ogt` line 23908</sub>
+<sub>`api.ogt` line 24043</sub>
 
 <a id="fn-massCount"></a>
 
@@ -8799,7 +8908,7 @@ fn massCount {
 }
 ```
 
-<sub>`api.ogt` line 23915</sub>
+<sub>`api.ogt` line 24050</sub>
 
 <a id="fn-particles"></a>
 
@@ -8827,7 +8936,7 @@ fn particles {
 }
 ```
 
-<sub>`api.ogt` line 23988</sub>
+<sub>`api.ogt` line 24123</sub>
 
 <a id="fn-meta"></a>
 
@@ -8857,7 +8966,7 @@ fn meta {
 }
 ```
 
-<sub>`api.ogt` line 24038</sub>
+<sub>`api.ogt` line 24173</sub>
 
 <a id="fn-sceneViewport"></a>
 
@@ -8887,7 +8996,7 @@ fn sceneViewport {
 }
 ```
 
-<sub>`api.ogt` line 24089</sub>
+<sub>`api.ogt` line 24224</sub>
 
 <a id="fn-screen"></a>
 
@@ -8919,7 +9028,7 @@ fn screen {
 }
 ```
 
-<sub>`api.ogt` line 24179</sub>
+<sub>`api.ogt` line 24314</sub>
 
 <a id="fn-component"></a>
 
@@ -8953,7 +9062,7 @@ fn component {
 }
 ```
 
-<sub>`api.ogt` line 24188</sub>
+<sub>`api.ogt` line 24323</sub>
 
 <a id="fn-openSlot"></a>
 
@@ -8981,7 +9090,7 @@ fn openSlot {
 }
 ```
 
-<sub>`api.ogt` line 24198</sub>
+<sub>`api.ogt` line 24333</sub>
 
 <a id="fn-push"></a>
 
@@ -9015,7 +9124,7 @@ fn push {
 }
 ```
 
-<sub>`api.ogt` line 24204</sub>
+<sub>`api.ogt` line 24339</sub>
 
 <a id="fn-pop"></a>
 
@@ -9043,7 +9152,7 @@ fn pop {
 }
 ```
 
-<sub>`api.ogt` line 24214</sub>
+<sub>`api.ogt` line 24349</sub>
 
 <a id="fn-replace"></a>
 
@@ -9077,7 +9186,7 @@ fn replace {
 }
 ```
 
-<sub>`api.ogt` line 24220</sub>
+<sub>`api.ogt` line 24355</sub>
 
 <a id="fn-clear"></a>
 
@@ -9105,7 +9214,7 @@ fn clear {
 }
 ```
 
-<sub>`api.ogt` line 24230</sub>
+<sub>`api.ogt` line 24365</sub>
 
 <a id="fn-layers"></a>
 
@@ -9133,7 +9242,7 @@ fn layers {
 }
 ```
 
-<sub>`api.ogt` line 24236</sub>
+<sub>`api.ogt` line 24371</sub>
 
 <a id="fn-screenVm"></a>
 
@@ -9163,7 +9272,7 @@ fn screenVm {
 }
 ```
 
-<sub>`api.ogt` line 24242</sub>
+<sub>`api.ogt` line 24377</sub>
 
 <a id="fn-docEvents"></a>
 
@@ -9191,7 +9300,7 @@ fn docEvents {
 }
 ```
 
-<sub>`api.ogt` line 24249</sub>
+<sub>`api.ogt` line 24384</sub>
 
 <a id="fn-gameInput"></a>
 
@@ -9219,7 +9328,7 @@ fn gameInput {
 }
 ```
 
-<sub>`api.ogt` line 24255</sub>
+<sub>`api.ogt` line 24390</sub>
 
 <a id="fn-paused"></a>
 
@@ -9247,7 +9356,7 @@ fn paused {
 }
 ```
 
-<sub>`api.ogt` line 24261</sub>
+<sub>`api.ogt` line 24396</sub>
 
 <a id="fn-defineAction"></a>
 
@@ -9277,7 +9386,7 @@ fn defineAction {
 }
 ```
 
-<sub>`api.ogt` line 24267</sub>
+<sub>`api.ogt` line 24402</sub>
 
 <a id="fn-action"></a>
 
@@ -9305,7 +9414,7 @@ fn action {
 }
 ```
 
-<sub>`api.ogt` line 24274</sub>
+<sub>`api.ogt` line 24409</sub>
 
 <a id="fn-actionHeld"></a>
 
@@ -9333,7 +9442,7 @@ fn actionHeld {
 }
 ```
 
-<sub>`api.ogt` line 24280</sub>
+<sub>`api.ogt` line 24415</sub>
 
 <a id="fn-glyph"></a>
 
@@ -9363,7 +9472,7 @@ fn glyph {
 }
 ```
 
-<sub>`api.ogt` line 24286</sub>
+<sub>`api.ogt` line 24421</sub>
 
 <a id="fn-frameGlyph"></a>
 
@@ -9391,7 +9500,7 @@ fn frameGlyph {
 }
 ```
 
-<sub>`api.ogt` line 24293</sub>
+<sub>`api.ogt` line 24428</sub>
 
 <a id="fn-device"></a>
 
@@ -9419,7 +9528,7 @@ fn device {
 }
 ```
 
-<sub>`api.ogt` line 24299</sub>
+<sub>`api.ogt` line 24434</sub>
 
 <a id="fn-setDevice"></a>
 
@@ -9449,7 +9558,7 @@ fn setDevice {
 }
 ```
 
-<sub>`api.ogt` line 24305</sub>
+<sub>`api.ogt` line 24440</sub>
 
 <a id="fn-actionBar"></a>
 
@@ -9477,7 +9586,7 @@ fn actionBar {
 }
 ```
 
-<sub>`api.ogt` line 24312</sub>
+<sub>`api.ogt` line 24447</sub>
 
 <a id="fn-documentSchema"></a>
 
@@ -9500,7 +9609,7 @@ fn documentSchema {
 }
 ```
 
-<sub>`api.ogt` line 24318</sub>
+<sub>`api.ogt` line 24453</sub>
 
 <a id="fn-setProp"></a>
 
@@ -9534,7 +9643,7 @@ fn setProp {
 }
 ```
 
-<sub>`api.ogt` line 24323</sub>
+<sub>`api.ogt` line 24458</sub>
 
 <a id="fn-saveEdits"></a>
 
@@ -9562,7 +9671,7 @@ fn saveEdits {
 }
 ```
 
-<sub>`api.ogt` line 24332</sub>
+<sub>`api.ogt` line 24467</sub>
 
 ## Types
 
@@ -25114,6 +25223,8 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `size` | `number` | `0` | ≥ 0 | `cssPx` | — | Its side; 0 is 200 (144 on a phone). |
 | `markers` | `readonly MapMarkerItem[]` | `[]` | — | — | — | Its markers. |
 | `zone` | `string` | `""` | — | — | — | A label under it (the zone's name); empty is none. |
+| `track` | `readonly Vector2[]` | `[]` | — | — | — | A racing circuit: its centre line as points in map coordinates (0 to 1, as markers), drawn as a smooth line (through every point) over the style's well in place of the texture and the grid. Give zoom 1 and the centre 0.5, 0.5 to show the whole circuit; three points or more. |
+| `trackOpen` | `boolean` | `false` | — | — | — | The track does not close on itself (a point-to-point stage). |
 | `north` | `string` | `"N"` | — | — | — | The north letter. |
 | `anchor` | `Anchor \| null` | `"topRight"` | — | — | — | Opens its own anchored group there; null builds it in place. |
 
@@ -25145,6 +25256,8 @@ struct MinimapViewDesc {
   }
   field markers List.MapMarkerItem "Its markers."
   field zone String "A label under it (the zone's name); empty is none."
+  field track List.Vector2 "A racing circuit: its centre line as points in map coordinates (0 to 1, as markers), drawn as a smooth line (through every point) over the style's well in place of the texture and the grid. Give zoom 1 and the centre 0.5, 0.5 to show the whole circuit; three points or more."
+  field trackOpen bool "The track does not close on itself (a point-to-point stage)."
   field north String "The north letter." {
     default "N"
   }
@@ -25173,7 +25286,7 @@ struct MinimapResult {
 }
 ```
 
-<sub>`api.ogt` line 22002</sub>
+<sub>`api.ogt` line 22004</sub>
 
 <a id="type-CompassPoi"></a>
 
@@ -25211,7 +25324,7 @@ struct CompassPoi {
 }
 ```
 
-<sub>`api.ogt` line 22016</sub>
+<sub>`api.ogt` line 22018</sub>
 
 <a id="type-CompassDesc"></a>
 
@@ -25257,7 +25370,7 @@ struct CompassDesc {
 }
 ```
 
-<sub>`api.ogt` line 22032</sub>
+<sub>`api.ogt` line 22034</sub>
 
 <a id="type-ObjectiveStep"></a>
 
@@ -25295,7 +25408,7 @@ struct ObjectiveStep {
 }
 ```
 
-<sub>`api.ogt` line 22065</sub>
+<sub>`api.ogt` line 22067</sub>
 
 <a id="type-ObjectiveQuest"></a>
 
@@ -25339,7 +25452,7 @@ struct ObjectiveQuest {
 }
 ```
 
-<sub>`api.ogt` line 22080</sub>
+<sub>`api.ogt` line 22082</sub>
 
 <a id="type-ObjectiveTrackerDesc"></a>
 
@@ -25378,7 +25491,7 @@ struct ObjectiveTrackerDesc {
 }
 ```
 
-<sub>`api.ogt` line 22100</sub>
+<sub>`api.ogt` line 22102</sub>
 
 <a id="type-KillfeedEntry"></a>
 
@@ -25420,7 +25533,7 @@ struct KillfeedEntry {
 }
 ```
 
-<sub>`api.ogt` line 22127</sub>
+<sub>`api.ogt` line 22129</sub>
 
 <a id="type-KillfeedDesc"></a>
 
@@ -25453,7 +25566,7 @@ struct KillfeedDesc {
 }
 ```
 
-<sub>`api.ogt` line 22143</sub>
+<sub>`api.ogt` line 22145</sub>
 
 <a id="type-ScoreColumn"></a>
 
@@ -25482,7 +25595,7 @@ struct ScoreColumn {
 }
 ```
 
-<sub>`api.ogt` line 22166</sub>
+<sub>`api.ogt` line 22168</sub>
 
 <a id="type-ScoreRow"></a>
 
@@ -25520,7 +25633,7 @@ struct ScoreRow {
 }
 ```
 
-<sub>`api.ogt` line 22177</sub>
+<sub>`api.ogt` line 22179</sub>
 
 <a id="type-ScoreTeam"></a>
 
@@ -25548,7 +25661,7 @@ struct ScoreTeam {
 }
 ```
 
-<sub>`api.ogt` line 22191</sub>
+<sub>`api.ogt` line 22193</sub>
 
 <a id="type-ScoreboardDesc"></a>
 
@@ -25585,7 +25698,7 @@ struct ScoreboardDesc {
 }
 ```
 
-<sub>`api.ogt` line 22200</sub>
+<sub>`api.ogt` line 22202</sub>
 
 <a id="type-TimerMode"></a>
 
@@ -25608,7 +25721,7 @@ enum TimerMode {
 }
 ```
 
-<sub>`api.ogt` line 22225</sub>
+<sub>`api.ogt` line 22227</sub>
 
 <a id="type-HudTimerDesc"></a>
 
@@ -25656,7 +25769,7 @@ struct HudTimerDesc {
 }
 ```
 
-<sub>`api.ogt` line 22231</sub>
+<sub>`api.ogt` line 22233</sub>
 
 <a id="type-ComboDesc"></a>
 
@@ -25696,7 +25809,7 @@ struct ComboDesc {
 }
 ```
 
-<sub>`api.ogt` line 22265</sub>
+<sub>`api.ogt` line 22267</sub>
 
 <a id="type-JudgementEvent"></a>
 
@@ -25726,7 +25839,7 @@ struct JudgementEvent {
 }
 ```
 
-<sub>`api.ogt` line 22292</sub>
+<sub>`api.ogt` line 22294</sub>
 
 <a id="type-JudgementDesc"></a>
 
@@ -25764,7 +25877,7 @@ struct JudgementDesc {
 }
 ```
 
-<sub>`api.ogt` line 22303</sub>
+<sub>`api.ogt` line 22305</sub>
 
 <a id="type-ResourceItem"></a>
 
@@ -25802,7 +25915,7 @@ struct ResourceItem {
 }
 ```
 
-<sub>`api.ogt` line 22330</sub>
+<sub>`api.ogt` line 22332</sub>
 
 <a id="type-ResourceBarDesc"></a>
 
@@ -25832,7 +25945,7 @@ struct ResourceBarDesc {
 }
 ```
 
-<sub>`api.ogt` line 22345</sub>
+<sub>`api.ogt` line 22347</sub>
 
 <a id="type-TurnUnit"></a>
 
@@ -25870,7 +25983,7 @@ struct TurnUnit {
 }
 ```
 
-<sub>`api.ogt` line 22366</sub>
+<sub>`api.ogt` line 22368</sub>
 
 <a id="type-TurnOrderDesc"></a>
 
@@ -25911,7 +26024,7 @@ struct TurnOrderDesc {
 }
 ```
 
-<sub>`api.ogt` line 22381</sub>
+<sub>`api.ogt` line 22383</sub>
 
 <a id="type-SpeedoStyle"></a>
 
@@ -25934,7 +26047,7 @@ enum SpeedoStyle {
 }
 ```
 
-<sub>`api.ogt` line 22410</sub>
+<sub>`api.ogt` line 22412</sub>
 
 <a id="type-SpeedometerDesc"></a>
 
@@ -25990,7 +26103,7 @@ struct SpeedometerDesc {
 }
 ```
 
-<sub>`api.ogt` line 22416</sub>
+<sub>`api.ogt` line 22418</sub>
 
 <a id="type-ScorebugTeam"></a>
 
@@ -26024,7 +26137,7 @@ struct ScorebugTeam {
 }
 ```
 
-<sub>`api.ogt` line 22456</sub>
+<sub>`api.ogt` line 22458</sub>
 
 <a id="type-ScorebugDesc"></a>
 
@@ -26060,7 +26173,7 @@ struct ScorebugDesc {
 }
 ```
 
-<sub>`api.ogt` line 22468</sub>
+<sub>`api.ogt` line 22470</sub>
 
 <a id="type-FlightHudDesc"></a>
 
@@ -26125,7 +26238,212 @@ struct FlightHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 22491</sub>
+<sub>`api.ogt` line 22493</sub>
+
+<a id="type-StandingsEntry"></a>
+
+### `StandingsEntry` (desc struct)
+
+A car in the standings, in race order.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `key` | `string` | `""` | — | — | — | Its key (its probe id). |
+| `name` | `string` | `""` | — | — | — | The driver's name (K. Moreno). |
+| `color` | `Paint \| null` | `null` | — | — | — | Its team or car colour, a stripe by its position; null is the team colour of its index. |
+| `gap` | `number` | `0` | — | `s` | — | Seconds behind the leader, or with StandingsTowerDesc.relative behind the player (negative: ahead). |
+| `lapsDown` | `number` | `0` | — | — | — | Laps behind the leader; more than 0 shows +<n> L in place of the gap. |
+| `change` | `number` | `0` | — | — | — | Places gained since the start (positive) or lost (negative): a small arrow by its position; 0 is none. |
+| `player` | `boolean` | `false` | — | — | — | The player's car: its row lit. |
+| `pit` | `boolean` | `false` | — | — | — | In the pit lane. |
+| `out` | `boolean` | `false` | — | — | — | Retired: dimmed at the foot, its gap the out label. |
+| `fastest` | `boolean` | `false` | — | — | — | Holds the fastest lap: a small mark by its name. |
+
+```ogt
+struct StandingsEntry {
+  doc "A car in the standings, in race order."
+  desc true
+  field key String "Its key (its probe id)."
+  field name String "The driver's name (K. Moreno)."
+  field color Option.Paint "Its team or car colour, a stripe by its position; null is the team colour of its index."
+  field gap f32 "Seconds behind the leader, or with StandingsTowerDesc.relative behind the player (negative: ahead)." {
+    unit s
+  }
+  field lapsDown u32 "Laps behind the leader; more than 0 shows +<n> L in place of the gap."
+  field change i32 "Places gained since the start (positive) or lost (negative): a small arrow by its position; 0 is none."
+  field player bool "The player's car: its row lit."
+  field pit bool "In the pit lane."
+  field out bool "Retired: dimmed at the foot, its gap the out label."
+  field fastest bool "Holds the fastest lap: a small mark by its name."
+}
+```
+
+<sub>`api.ogt` line 22539</sub>
+
+<a id="type-StandingsTowerDesc"></a>
+
+### `StandingsTowerDesc` (desc struct)
+
+A racing standings tower.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `entries` | `readonly StandingsEntry[]` | `[]` | — | — | — | The cars in race order, the leader first. |
+| `relative` | `boolean` | `false` | — | — | — | Gaps are to the player (signed, ahead negative) rather than to the leader. |
+| `rows` | `number` | `0` | — | — | — | The most rows shown; 0 is 10 (5 on a phone). Past it the tower shows the leaders and the three cars around the player, a break between. |
+| `leaderLabel` | `string` | `"Leader"` | — | — | — | The leader's gap (with relative off). |
+| `pitLabel` | `string` | `"PIT"` | — | — | — | The gap of a car in the pit lane. |
+| `outLabel` | `string` | `"OUT"` | — | — | — | The gap of a retired car. |
+| `anchor` | `Anchor \| null` | `"left"` | — | — | — | Opens its own anchored group there; null builds it in place. |
+
+```ogt
+struct StandingsTowerDesc {
+  doc "A racing standings tower."
+  desc true
+  field entries List.StandingsEntry "The cars in race order, the leader first."
+  field relative bool "Gaps are to the player (signed, ahead negative) rather than to the leader."
+  field rows u32 "The most rows shown; 0 is 10 (5 on a phone). Past it the tower shows the leaders and the three cars around the player, a break between."
+  field leaderLabel String "The leader's gap (with relative off)." {
+    default "Leader"
+  }
+  field pitLabel String "The gap of a car in the pit lane." {
+    default "PIT"
+  }
+  field outLabel String "The gap of a retired car." {
+    default "OUT"
+  }
+  field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
+    default left
+  }
+}
+```
+
+<sub>`api.ogt` line 22556</sub>
+
+<a id="type-LapTimerDesc"></a>
+
+### `LapTimerDesc` (desc struct)
+
+A racing lap and split block.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `position` | `number` | `0` | — | — | — | The player's place, from 1; 0 hides the place. |
+| `positionTotal` | `number` | `0` | — | — | — | Cars in the race. |
+| `lap` | `number` | `0` | — | — | — | The lap the player is on, from 1; 0 hides the lap. |
+| `lapTotal` | `number` | `0` | — | — | — | Laps in the race; 0 is open-ended (no total, no final lap). |
+| `currentMs` | `number` | `0` | ≥ 0 | `ms` | — | The current lap's time so far. |
+| `bestMs` | `number \| null` | `null` | — | `ms` | — | The player's best lap; null is none yet. |
+| `lastMs` | `number \| null` | `null` | — | `ms` | — | The last lap's time; null is none yet. |
+| `deltaMs` | `number \| null` | `null` | — | `ms` | — | The split at the last sector against the best lap, signed (negative: ahead, in success; positive: behind, in danger); null hides the split. |
+| `positionLabel` | `string` | `"Position"` | — | — | — | The place's caption. |
+| `lapLabel` | `string` | `"Lap"` | — | — | — | The lap's caption. |
+| `finalLabel` | `string` | `"Final lap"` | — | — | — | The lap's caption on the final lap. |
+| `currentLabel` | `string` | `"Current lap"` | — | — | — | The current lap's caption. |
+| `bestLabel` | `string` | `"Best lap"` | — | — | — | The best lap's caption. |
+| `lastLabel` | `string` | `"Last lap"` | — | — | — | The last lap's caption. |
+| `splitLabel` | `string` | `"Split"` | — | — | — | The split's caption. |
+| `anchor` | `Anchor \| null` | `"topLeft"` | — | — | — | Opens its own anchored group there; null builds it in place. |
+
+```ogt
+struct LapTimerDesc {
+  doc "A racing lap and split block."
+  desc true
+  field position u32 "The player's place, from 1; 0 hides the place."
+  field positionTotal u32 "Cars in the race."
+  field lap u32 "The lap the player is on, from 1; 0 hides the lap."
+  field lapTotal u32 "Laps in the race; 0 is open-ended (no total, no final lap)."
+  field currentMs f32 "The current lap's time so far." {
+    min 0
+    unit ms
+  }
+  field bestMs Option.f32 "The player's best lap; null is none yet." {
+    unit ms
+  }
+  field lastMs Option.f32 "The last lap's time; null is none yet." {
+    unit ms
+  }
+  field deltaMs Option.f32 "The split at the last sector against the best lap, signed (negative: ahead, in success; positive: behind, in danger); null hides the split." {
+    unit ms
+  }
+  field positionLabel String "The place's caption." {
+    default "Position"
+  }
+  field lapLabel String "The lap's caption." {
+    default "Lap"
+  }
+  field finalLabel String "The lap's caption on the final lap." {
+    default "Final lap"
+  }
+  field currentLabel String "The current lap's caption." {
+    default "Current lap"
+  }
+  field bestLabel String "The best lap's caption." {
+    default "Best lap"
+  }
+  field lastLabel String "The last lap's caption." {
+    default "Last lap"
+  }
+  field splitLabel String "The split's caption." {
+    default "Split"
+  }
+  field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
+    default topLeft
+  }
+}
+```
+
+<sub>`api.ogt` line 22585</sub>
+
+<a id="type-RearViewDesc"></a>
+
+### `RearViewDesc` (desc struct)
+
+A rear-view mirror.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `texture` | `Texture \| null` | `null` | — | — | — | What the mirror shows: a render target's texture (og.render.renderTarget, RenderTargetInfo.texture) a CameraView looking back draws into, at about the mirror's aspect; null draws the style's dark glass. |
+| `mirror` | `boolean` | `true` | — | — | — | Flips it left to right, as a mirror shows the road behind. |
+| `width` | `number` | `0` | ≥ 0 | `cssPx` | — | Its width; 0 is a third of the HUD band's width (two fifths on a phone held sideways, two thirds upright), at most 560. |
+| `aspect` | `number` | `4.2` | ≥ 1.5 | — | — | Its width over its height. |
+| `label` | `string` | `"Rear view"` | — | — | — | What a screen reader calls it. |
+| `anchor` | `Anchor \| null` | `"top"` | — | — | — | Opens its own anchored group there; null builds it in place. |
+
+```ogt
+struct RearViewDesc {
+  doc "A rear-view mirror."
+  desc true
+  field texture Option.Texture "What the mirror shows: a render target's texture (og.render.renderTarget, RenderTargetInfo.texture) a CameraView looking back draws into, at about the mirror's aspect; null draws the style's dark glass."
+  field mirror bool "Flips it left to right, as a mirror shows the road behind." {
+    default true
+  }
+  field width f32 "Its width; 0 is a third of the HUD band's width (two fifths on a phone held sideways, two thirds upright), at most 560." {
+    min 0
+    unit cssPx
+  }
+  field aspect f32 "Its width over its height." {
+    default 4.2
+    min 1.5
+  }
+  field label String "What a screen reader calls it." {
+    default "Rear view"
+  }
+  field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
+    default top
+  }
+}
+```
+
+<sub>`api.ogt` line 22640</sub>
 
 <a id="type-DamageHit"></a>
 
@@ -26156,7 +26474,7 @@ struct DamageHit {
 }
 ```
 
-<sub>`api.ogt` line 22537</sub>
+<sub>`api.ogt` line 22672</sub>
 
 <a id="type-DamageDirectionDesc"></a>
 
@@ -26190,7 +26508,7 @@ struct DamageDirectionDesc {
 }
 ```
 
-<sub>`api.ogt` line 22550</sub>
+<sub>`api.ogt` line 22685</sub>
 
 <a id="type-LowHealthDesc"></a>
 
@@ -26223,7 +26541,7 @@ struct LowHealthDesc {
 }
 ```
 
-<sub>`api.ogt` line 22574</sub>
+<sub>`api.ogt` line 22709</sub>
 
 <a id="type-Reaction"></a>
 
@@ -26252,7 +26570,7 @@ enum Reaction {
 }
 ```
 
-<sub>`api.ogt` line 22607</sub>
+<sub>`api.ogt` line 22742</sub>
 
 <a id="type-NameplateDesc"></a>
 
@@ -26318,7 +26636,7 @@ struct NameplateDesc {
 }
 ```
 
-<sub>`api.ogt` line 22616</sub>
+<sub>`api.ogt` line 22751</sub>
 
 <a id="type-OverheadBar"></a>
 
@@ -26350,7 +26668,7 @@ struct OverheadBar {
 }
 ```
 
-<sub>`api.ogt` line 22659</sub>
+<sub>`api.ogt` line 22794</sub>
 
 <a id="type-OverheadBarsDesc"></a>
 
@@ -26390,7 +26708,7 @@ struct OverheadBarsDesc {
 }
 ```
 
-<sub>`api.ogt` line 22671</sub>
+<sub>`api.ogt` line 22806</sub>
 
 <a id="type-DamageKind"></a>
 
@@ -26423,7 +26741,7 @@ enum DamageKind {
 }
 ```
 
-<sub>`api.ogt` line 22700</sub>
+<sub>`api.ogt` line 22835</sub>
 
 <a id="type-DamageHitDesc"></a>
 
@@ -26455,7 +26773,7 @@ struct DamageHitDesc {
 }
 ```
 
-<sub>`api.ogt` line 22711</sub>
+<sub>`api.ogt` line 22846</sub>
 
 <a id="type-DamageNumbersDesc"></a>
 
@@ -26492,7 +26810,7 @@ struct DamageNumbersDesc {
 }
 ```
 
-<sub>`api.ogt` line 22722</sub>
+<sub>`api.ogt` line 22857</sub>
 
 <a id="type-InteractionPromptDesc"></a>
 
@@ -26538,7 +26856,7 @@ struct InteractionPromptDesc {
 }
 ```
 
-<sub>`api.ogt` line 22749</sub>
+<sub>`api.ogt` line 22884</sub>
 
 <a id="type-WaypointKind"></a>
 
@@ -26569,7 +26887,7 @@ enum WaypointKind {
 }
 ```
 
-<sub>`api.ogt` line 22781</sub>
+<sub>`api.ogt` line 22916</sub>
 
 <a id="type-WaypointDesc"></a>
 
@@ -26624,7 +26942,7 @@ struct WaypointDesc {
 }
 ```
 
-<sub>`api.ogt` line 22791</sub>
+<sub>`api.ogt` line 22926</sub>
 
 <a id="type-GroundDesc"></a>
 
@@ -26675,7 +26993,7 @@ struct GroundDesc {
 }
 ```
 
-<sub>`api.ogt` line 22828</sub>
+<sub>`api.ogt` line 22963</sub>
 
 <a id="type-SelectionRingDesc"></a>
 
@@ -26717,7 +27035,7 @@ struct SelectionRingDesc {
 }
 ```
 
-<sub>`api.ogt` line 22854</sub>
+<sub>`api.ogt` line 22989</sub>
 
 <a id="type-TelegraphShape"></a>
 
@@ -26744,7 +27062,7 @@ enum TelegraphShape {
 }
 ```
 
-<sub>`api.ogt` line 22883</sub>
+<sub>`api.ogt` line 23018</sub>
 
 <a id="type-TelegraphDesc"></a>
 
@@ -26806,7 +27124,7 @@ struct TelegraphDesc {
 }
 ```
 
-<sub>`api.ogt` line 22891</sub>
+<sub>`api.ogt` line 23026</sub>
 
 <a id="type-PathLineDesc"></a>
 
@@ -26850,7 +27168,7 @@ struct PathLineDesc {
 }
 ```
 
-<sub>`api.ogt` line 22937</sub>
+<sub>`api.ogt` line 23072</sub>
 
 <a id="type-PlacementGhostDesc"></a>
 
@@ -26905,7 +27223,7 @@ struct PlacementGhostDesc {
 }
 ```
 
-<sub>`api.ogt` line 22968</sub>
+<sub>`api.ogt` line 23103</sub>
 
 <a id="type-LootLabelDesc"></a>
 
@@ -26949,7 +27267,7 @@ struct LootLabelDesc {
 }
 ```
 
-<sub>`api.ogt` line 23009</sub>
+<sub>`api.ogt` line 23144</sub>
 
 <a id="type-LootLabelResult"></a>
 
@@ -26972,7 +27290,7 @@ struct LootLabelResult {
 }
 ```
 
-<sub>`api.ogt` line 23030</sub>
+<sub>`api.ogt` line 23165</sub>
 
 <a id="type-SpeechBubbleDesc"></a>
 
@@ -27026,7 +27344,7 @@ struct SpeechBubbleDesc {
 }
 ```
 
-<sub>`api.ogt` line 23046</sub>
+<sub>`api.ogt` line 23181</sub>
 
 <a id="type-VectorArt"></a>
 
@@ -27040,7 +27358,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle VectorArt "A cooked vector (an `.ogt` of `type vector`: an SVG subset) from og.load.vector, drawn by a VectorFill."
 ```
 
-<sub>`api.ogt` line 23085</sub>
+<sub>`api.ogt` line 23220</sub>
 
 <a id="type-UiMaterial"></a>
 
@@ -27054,7 +27372,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle UiMaterial "A custom UI material (an `.ogt` of `type ui-material`) from og.load.uiMaterial, which a LayerDesc composites through."
 ```
 
-<sub>`api.ogt` line 23086</sub>
+<sub>`api.ogt` line 23221</sub>
 
 <a id="type-ShapeType"></a>
 
@@ -27083,7 +27401,7 @@ enum ShapeType {
 }
 ```
 
-<sub>`api.ogt` line 23102</sub>
+<sub>`api.ogt` line 23237</sub>
 
 <a id="type-CornerShape"></a>
 
@@ -27110,7 +27428,7 @@ enum CornerShape {
 }
 ```
 
-<sub>`api.ogt` line 23111</sub>
+<sub>`api.ogt` line 23246</sub>
 
 <a id="type-LineCap"></a>
 
@@ -27135,7 +27453,7 @@ enum LineCap {
 }
 ```
 
-<sub>`api.ogt` line 23119</sub>
+<sub>`api.ogt` line 23254</sub>
 
 <a id="type-LineJoin"></a>
 
@@ -27160,7 +27478,7 @@ enum LineJoin {
 }
 ```
 
-<sub>`api.ogt` line 23126</sub>
+<sub>`api.ogt` line 23261</sub>
 
 <a id="type-DrawShape"></a>
 
@@ -27248,7 +27566,7 @@ struct DrawShape {
 }
 ```
 
-<sub>`api.ogt` line 23133</sub>
+<sub>`api.ogt` line 23268</sub>
 
 <a id="type-GradientType"></a>
 
@@ -27275,7 +27593,7 @@ enum GradientType {
 }
 ```
 
-<sub>`api.ogt` line 23188</sub>
+<sub>`api.ogt` line 23323</sub>
 
 <a id="type-GradientSpread"></a>
 
@@ -27300,7 +27618,7 @@ enum GradientSpread {
 }
 ```
 
-<sub>`api.ogt` line 23196</sub>
+<sub>`api.ogt` line 23331</sub>
 
 <a id="type-GradientStop"></a>
 
@@ -27328,7 +27646,7 @@ struct GradientStop {
 }
 ```
 
-<sub>`api.ogt` line 23203</sub>
+<sub>`api.ogt` line 23338</sub>
 
 <a id="type-Gradient"></a>
 
@@ -27365,7 +27683,7 @@ struct Gradient {
 }
 ```
 
-<sub>`api.ogt` line 23214</sub>
+<sub>`api.ogt` line 23349</sub>
 
 <a id="type-ImageFit"></a>
 
@@ -27396,7 +27714,7 @@ enum ImageFit {
 }
 ```
 
-<sub>`api.ogt` line 23230</sub>
+<sub>`api.ogt` line 23365</sub>
 
 <a id="type-SliceEdges"></a>
 
@@ -27421,7 +27739,7 @@ enum SliceEdges {
 }
 ```
 
-<sub>`api.ogt` line 23240</sub>
+<sub>`api.ogt` line 23375</sub>
 
 <a id="type-SolidFill"></a>
 
@@ -27443,7 +27761,7 @@ struct SolidFill {
 }
 ```
 
-<sub>`api.ogt` line 23247</sub>
+<sub>`api.ogt` line 23382</sub>
 
 <a id="type-ImageFill"></a>
 
@@ -27502,7 +27820,7 @@ struct ImageFill {
 }
 ```
 
-<sub>`api.ogt` line 23253</sub>
+<sub>`api.ogt` line 23388</sub>
 
 <a id="type-VectorFill"></a>
 
@@ -27526,7 +27844,7 @@ struct VectorFill {
 }
 ```
 
-<sub>`api.ogt` line 23283</sub>
+<sub>`api.ogt` line 23418</sub>
 
 <a id="type-Fill"></a>
 
@@ -27554,7 +27872,7 @@ union Fill {
 }
 ```
 
-<sub>`api.ogt` line 23290</sub>
+<sub>`api.ogt` line 23425</sub>
 
 <a id="type-StrokeAlign"></a>
 
@@ -27579,7 +27897,7 @@ enum StrokeAlign {
 }
 ```
 
-<sub>`api.ogt` line 23299</sub>
+<sub>`api.ogt` line 23434</sub>
 
 <a id="type-Stroke"></a>
 
@@ -27625,7 +27943,7 @@ struct Stroke {
 }
 ```
 
-<sub>`api.ogt` line 23306</sub>
+<sub>`api.ogt` line 23441</sub>
 
 <a id="type-ShadowEffect"></a>
 
@@ -27662,7 +27980,7 @@ struct ShadowEffect {
 }
 ```
 
-<sub>`api.ogt` line 23330</sub>
+<sub>`api.ogt` line 23465</sub>
 
 <a id="type-GlowEffect"></a>
 
@@ -27694,7 +28012,7 @@ struct GlowEffect {
 }
 ```
 
-<sub>`api.ogt` line 23348</sub>
+<sub>`api.ogt` line 23483</sub>
 
 <a id="type-BlurEffect"></a>
 
@@ -27720,7 +28038,7 @@ struct BlurEffect {
 }
 ```
 
-<sub>`api.ogt` line 23362</sub>
+<sub>`api.ogt` line 23497</sub>
 
 <a id="type-BackdropEffect"></a>
 
@@ -27775,7 +28093,7 @@ struct BackdropEffect {
 }
 ```
 
-<sub>`api.ogt` line 23372</sub>
+<sub>`api.ogt` line 23507</sub>
 
 <a id="type-GlassWeight"></a>
 
@@ -27802,7 +28120,7 @@ enum GlassWeight {
 }
 ```
 
-<sub>`api.ogt` line 23402</sub>
+<sub>`api.ogt` line 23537</sub>
 
 <a id="type-Elevation"></a>
 
@@ -27829,7 +28147,7 @@ enum Elevation {
 }
 ```
 
-<sub>`api.ogt` line 23410</sub>
+<sub>`api.ogt` line 23545</sub>
 
 <a id="type-Effect"></a>
 
@@ -27861,7 +28179,7 @@ union Effect {
 }
 ```
 
-<sub>`api.ogt` line 23418</sub>
+<sub>`api.ogt` line 23553</sub>
 
 <a id="type-ClipMode"></a>
 
@@ -27886,7 +28204,7 @@ enum ClipMode {
 }
 ```
 
-<sub>`api.ogt` line 23429</sub>
+<sub>`api.ogt` line 23564</sub>
 
 <a id="type-MaskDesc"></a>
 
@@ -27912,7 +28230,7 @@ struct MaskDesc {
 }
 ```
 
-<sub>`api.ogt` line 23436</sub>
+<sub>`api.ogt` line 23571</sub>
 
 <a id="type-MaterialName"></a>
 
@@ -27953,7 +28271,7 @@ enum MaterialName {
 }
 ```
 
-<sub>`api.ogt` line 23444</sub>
+<sub>`api.ogt` line 23579</sub>
 
 <a id="type-LayerDesc"></a>
 
@@ -27979,7 +28297,7 @@ struct LayerDesc {
 }
 ```
 
-<sub>`api.ogt` line 23459</sub>
+<sub>`api.ogt` line 23594</sub>
 
 <a id="type-TextShadowDesc"></a>
 
@@ -28012,7 +28330,7 @@ struct TextShadowDesc {
 }
 ```
 
-<sub>`api.ogt` line 23467</sub>
+<sub>`api.ogt` line 23602</sub>
 
 <a id="type-TextOutlineDesc"></a>
 
@@ -28042,7 +28360,7 @@ struct TextOutlineDesc {
 }
 ```
 
-<sub>`api.ogt` line 23482</sub>
+<sub>`api.ogt` line 23617</sub>
 
 <a id="type-TextEffectsDesc"></a>
 
@@ -28068,7 +28386,7 @@ struct TextEffectsDesc {
 }
 ```
 
-<sub>`api.ogt` line 23494</sub>
+<sub>`api.ogt` line 23629</sub>
 
 <a id="type-DrawDesc"></a>
 
@@ -28114,7 +28432,7 @@ struct DrawDesc {
 }
 ```
 
-<sub>`api.ogt` line 23502</sub>
+<sub>`api.ogt` line 23637</sub>
 
 <a id="type-BlendMode"></a>
 
@@ -28147,7 +28465,7 @@ enum BlendMode {
 }
 ```
 
-<sub>`api.ogt` line 23522</sub>
+<sub>`api.ogt` line 23657</sub>
 
 <a id="type-SemanticsDesc"></a>
 
@@ -28191,7 +28509,7 @@ struct SemanticsDesc {
 }
 ```
 
-<sub>`api.ogt` line 23533</sub>
+<sub>`api.ogt` line 23668</sub>
 
 <a id="type-WorldTarget"></a>
 
@@ -28215,7 +28533,7 @@ struct WorldTarget {
 }
 ```
 
-<sub>`api.ogt` line 23571</sub>
+<sub>`api.ogt` line 23706</sub>
 
 <a id="type-AnchorScaleMode"></a>
 
@@ -28238,7 +28556,7 @@ enum AnchorScaleMode {
 }
 ```
 
-<sub>`api.ogt` line 23578</sub>
+<sub>`api.ogt` line 23713</sub>
 
 <a id="type-WorldOcclusion"></a>
 
@@ -28263,7 +28581,7 @@ enum WorldOcclusion {
 }
 ```
 
-<sub>`api.ogt` line 23584</sub>
+<sub>`api.ogt` line 23719</sub>
 
 <a id="type-Declutter"></a>
 
@@ -28290,7 +28608,7 @@ enum Declutter {
 }
 ```
 
-<sub>`api.ogt` line 23591</sub>
+<sub>`api.ogt` line 23726</sub>
 
 <a id="type-EdgeClampDesc"></a>
 
@@ -28324,7 +28642,7 @@ struct EdgeClampDesc {
 }
 ```
 
-<sub>`api.ogt` line 23599</sub>
+<sub>`api.ogt` line 23734</sub>
 
 <a id="type-WorldAnchorDesc"></a>
 
@@ -28419,7 +28737,7 @@ struct WorldAnchorDesc {
 }
 ```
 
-<sub>`api.ogt` line 23615</sub>
+<sub>`api.ogt` line 23750</sub>
 
 <a id="type-AnchorInfo"></a>
 
@@ -28466,7 +28784,7 @@ struct AnchorInfo {
 }
 ```
 
-<sub>`api.ogt` line 23670</sub>
+<sub>`api.ogt` line 23805</sub>
 
 <a id="type-WorldPanelDesc"></a>
 
@@ -28526,7 +28844,7 @@ struct WorldPanelDesc {
 }
 ```
 
-<sub>`api.ogt` line 23701</sub>
+<sub>`api.ogt` line 23836</sub>
 
 <a id="type-PanelInfo"></a>
 
@@ -28557,7 +28875,7 @@ struct PanelInfo {
 }
 ```
 
-<sub>`api.ogt` line 23735</sub>
+<sub>`api.ogt` line 23870</sub>
 
 <a id="type-MassKind"></a>
 
@@ -28586,7 +28904,7 @@ enum MassKind {
 }
 ```
 
-<sub>`api.ogt` line 23756</sub>
+<sub>`api.ogt` line 23891</sub>
 
 <a id="type-MassEase"></a>
 
@@ -28615,7 +28933,7 @@ enum MassEase {
 }
 ```
 
-<sub>`api.ogt` line 23765</sub>
+<sub>`api.ogt` line 23900</sub>
 
 <a id="type-MassSpace"></a>
 
@@ -28638,7 +28956,7 @@ enum MassSpace {
 }
 ```
 
-<sub>`api.ogt` line 23774</sub>
+<sub>`api.ogt` line 23909</sub>
 
 <a id="type-ParticleShape"></a>
 
@@ -28663,7 +28981,7 @@ enum ParticleShape {
 }
 ```
 
-<sub>`api.ogt` line 23780</sub>
+<sub>`api.ogt` line 23915</sub>
 
 <a id="type-MassKey"></a>
 
@@ -28710,7 +29028,7 @@ struct MassKey {
 }
 ```
 
-<sub>`api.ogt` line 23787</sub>
+<sub>`api.ogt` line 23922</sub>
 
 <a id="type-MassTemplateDesc"></a>
 
@@ -28810,7 +29128,7 @@ struct MassTemplateDesc {
 }
 ```
 
-<sub>`api.ogt` line 23813</sub>
+<sub>`api.ogt` line 23948</sub>
 
 <a id="type-MassInstance"></a>
 
@@ -28857,7 +29175,7 @@ struct MassInstance {
 }
 ```
 
-<sub>`api.ogt` line 23871</sub>
+<sub>`api.ogt` line 24006</sub>
 
 <a id="type-EmitFrom"></a>
 
@@ -28882,7 +29200,7 @@ enum EmitFrom {
 }
 ```
 
-<sub>`api.ogt` line 23921</sub>
+<sub>`api.ogt` line 24056</sub>
 
 <a id="type-ParticlesDesc"></a>
 
@@ -28976,7 +29294,7 @@ struct ParticlesDesc {
 }
 ```
 
-<sub>`api.ogt` line 23928</sub>
+<sub>`api.ogt` line 24063</sub>
 
 <a id="type-MetaKind"></a>
 
@@ -29001,7 +29319,7 @@ enum MetaKind {
 }
 ```
 
-<sub>`api.ogt` line 23994</sub>
+<sub>`api.ogt` line 24129</sub>
 
 <a id="type-MetaDesc"></a>
 
@@ -29063,7 +29381,7 @@ struct MetaDesc {
 }
 ```
 
-<sub>`api.ogt` line 24001</sub>
+<sub>`api.ogt` line 24136</sub>
 
 <a id="type-SceneViewportDesc"></a>
 
@@ -29111,7 +29429,7 @@ struct SceneViewportDesc {
 }
 ```
 
-<sub>`api.ogt` line 24045</sub>
+<sub>`api.ogt` line 24180</sub>
 
 <a id="type-SceneViewportInfo"></a>
 
@@ -29156,7 +29474,7 @@ struct SceneViewportInfo {
 }
 ```
 
-<sub>`api.ogt` line 24068</sub>
+<sub>`api.ogt` line 24203</sub>
 
 <a id="type-UiDocEvent"></a>
 
@@ -29183,7 +29501,7 @@ struct UiDocEvent {
 }
 ```
 
-<sub>`api.ogt` line 24097</sub>
+<sub>`api.ogt` line 24232</sub>
 
 <a id="type-UiDocResponse"></a>
 
@@ -29206,7 +29524,7 @@ struct UiDocResponse {
 }
 ```
 
-<sub>`api.ogt` line 24106</sub>
+<sub>`api.ogt` line 24241</sub>
 
 <a id="type-UiLayer"></a>
 
@@ -29249,7 +29567,7 @@ struct UiLayer {
 }
 ```
 
-<sub>`api.ogt` line 24113</sub>
+<sub>`api.ogt` line 24248</sub>
 
 <a id="type-UiActionTrigger"></a>
 
@@ -29274,7 +29592,7 @@ enum UiActionTrigger {
 }
 ```
 
-<sub>`api.ogt` line 24130</sub>
+<sub>`api.ogt` line 24265</sub>
 
 <a id="type-UiActionDesc"></a>
 
@@ -29311,7 +29629,7 @@ struct UiActionDesc {
 }
 ```
 
-<sub>`api.ogt` line 24137</sub>
+<sub>`api.ogt` line 24272</sub>
 
 <a id="type-UiDevice"></a>
 
@@ -29342,7 +29660,7 @@ enum UiDevice {
 }
 ```
 
-<sub>`api.ogt` line 24153</sub>
+<sub>`api.ogt` line 24288</sub>
 
 <a id="type-UiGlyph"></a>
 
@@ -29365,7 +29683,7 @@ struct UiGlyph {
 }
 ```
 
-<sub>`api.ogt` line 24163</sub>
+<sub>`api.ogt` line 24298</sub>
 
 <a id="type-UiActionHint"></a>
 
@@ -29392,7 +29710,7 @@ struct UiActionHint {
 }
 ```
 
-<sub>`api.ogt` line 24170</sub>
+<sub>`api.ogt` line 24305</sub>
 
 ## Column kinds
 
@@ -29412,7 +29730,7 @@ column VectorArt {
 }
 ```
 
-<sub>`api.ogt` line 23088</sub>
+<sub>`api.ogt` line 23223</sub>
 
 ```ogt
 column UiMaterial {
@@ -29423,4 +29741,4 @@ column UiMaterial {
 }
 ```
 
-<sub>`api.ogt` line 23095</sub>
+<sub>`api.ogt` line 23230</sub>

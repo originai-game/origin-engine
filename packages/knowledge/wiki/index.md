@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2189 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2196 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -677,6 +677,7 @@ Field units the docs and Tune use.
 | [`LabelDesc`](ui.md#type-LabelDesc) | desc struct | ui | — |
 | [`LabelSide`](ui.md#type-LabelSide) | enum | ui | — |
 | [`LanguageOption`](ui.md#type-LanguageOption) | desc struct | ui | — |
+| [`LapTimerDesc`](ui.md#type-LapTimerDesc) | desc struct | ui | — |
 | [`LatheGeometryDesc`](render.md#type-LatheGeometryDesc) | desc struct | render | — |
 | [`LayerDesc`](ui.md#type-LayerDesc) | desc struct | ui | — |
 | [`LayoutMode`](ui.md#type-LayoutMode) | enum | ui | — |
@@ -1442,6 +1443,7 @@ Field units the docs and Tune use.
 | [`og.ui.keyValueRows`](ui.md#fn-keyValueRows) | function | ui | — |
 | [`og.ui.killfeed`](ui.md#fn-killfeed) | function | ui | — |
 | [`og.ui.label`](ui.md#fn-label) | function | ui | `og_ui_label` |
+| [`og.ui.lapTimer`](ui.md#fn-lapTimer) | function | ui | — |
 | [`og.ui.lastPath`](ui.md#fn-lastPath) | function | ui | `og_ui_last_path` |
 | [`og.ui.layers`](ui.md#fn-layers) | function | ui | `og_ui_layers` |
 | [`og.ui.layoutStats`](ui.md#fn-layoutStats) | function | ui | `og_ui_layout_stats` |
@@ -1521,6 +1523,7 @@ Field units the docs and Tune use.
 | [`og.ui.radioGroup`](ui.md#fn-radioGroup) | function | ui | — |
 | [`og.ui.raidFrames`](ui.md#fn-raidFrames) | function | ui | — |
 | [`og.ui.rangeSlider`](ui.md#fn-rangeSlider) | function | ui | — |
+| [`og.ui.rearView`](ui.md#fn-rearView) | function | ui | — |
 | [`og.ui.remember`](ui.md#fn-remember) | function | ui | `og_ui_remember` |
 | [`og.ui.replace`](ui.md#fn-replace) | function | ui | `og_ui_replace` |
 | [`og.ui.resourceBar`](ui.md#fn-resourceBar) | function | ui | — |
@@ -1574,6 +1577,7 @@ Field units the docs and Tune use.
 | [`og.ui.spinner`](ui.md#fn-spinner) | function | ui | `og_ui_spinner` |
 | [`og.ui.splitView`](ui.md#fn-splitView) | function | ui | — |
 | [`og.ui.spotlight`](ui.md#fn-spotlight) | function | ui | `og_ui_spotlight` |
+| [`og.ui.standingsTower`](ui.md#fn-standingsTower) | function | ui | — |
 | [`og.ui.starBar`](ui.md#fn-starBar) | function | ui | — |
 | [`og.ui.starRating`](ui.md#fn-starRating) | function | ui | — |
 | [`og.ui.statBar`](ui.md#fn-statBar) | function | ui | — |
@@ -1820,6 +1824,7 @@ Field units the docs and Tune use.
 | [`RayMath.intersectSphere`](math.md#member-RayMath-intersectSphere) | method | math | — |
 | [`RayMath.intersectTriangle`](math.md#member-RayMath-intersectTriangle) | method | math | — |
 | [`Reaction`](ui.md#type-Reaction) | enum | ui | — |
+| [`RearViewDesc`](ui.md#type-RearViewDesc) | desc struct | ui | — |
 | [`RebindAnswer`](input.md#type-RebindAnswer) | struct | input | — |
 | [`RebindDesc`](input.md#type-RebindDesc) | desc struct | input | — |
 | [`RecordFn`](world.md#type-RecordFn) | callback | world | — |
@@ -2066,6 +2071,8 @@ Field units the docs and Tune use.
 | [`SpriteFacing()`](render.md#column-SpriteFacing) | column kind | render | — |
 | [`SquashDesc`](tween.md#type-SquashDesc) | desc struct | tween | — |
 | [`StandardMaterialDesc`](render.md#type-StandardMaterialDesc) | desc struct | render | — |
+| [`StandingsEntry`](ui.md#type-StandingsEntry) | desc struct | ui | — |
+| [`StandingsTowerDesc`](ui.md#type-StandingsTowerDesc) | desc struct | ui | — |
 | [`StarBarDesc`](ui.md#type-StarBarDesc) | desc struct | ui | — |
 | [`StarBarResult`](ui.md#type-StarBarResult) | struct | ui | — |
 | [`StarRatingDesc`](ui.md#type-StarRatingDesc) | desc struct | ui | — |

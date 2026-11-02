@@ -108,11 +108,40 @@ export function minimapView(id: string, desc: Api.MinimapViewDesc = {}): Api.Min
           }
         }, fixed({ start: (size - cover) / 2 - step / 2, top: (size - cover) / 2 - step / 2 }, { transform: { rotate: turn } }));
       }
+      const cs = Math.cos(turn);
+      const sn = Math.sin(turn);
+      const track = desc.track ?? [];
+      if (track.length >= 3) {
+        // A circuit: its centre line through every point (Catmull-Rom as cubic Béziers), a dark bed under a light line,
+        // and the start line across it at the first point.
+        const closed = !desc.trackOpen;
+        const pts = track.map((p) => {
+          const dx = (((p.x ?? 0) - cx) / zoom) * size;
+          const dy = (((p.y ?? 0) - cy) / zoom) * size;
+          return { x: R + dx * cs - dy * sn, y: R + dx * sn + dy * cs };
+        });
+        const n = pts.length;
+        const at = (i: number) => (closed ? pts[((i % n) + n) % n]! : pts[Math.max(0, Math.min(n - 1, i))]!);
+        const curve: Api.Vector2[] = [pts[0]!];
+        for (let i = 0; i < (closed ? n : n - 1); i++) {
+          const p0 = at(i - 1), p1 = at(i), p2 = at(i + 1), p3 = at(i + 2);
+          curve.push({ x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 }, { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 }, { x: p2.x, y: p2.y });
+        }
+        const lw = Math.max(2.5, size / 60);
+        leaf("TrackBed", { width: px(size), height: px(size) }, { shape: { kind: "path", points: curve, curves: true, width: lw * 2.6, cap: "round", join: "round" }, fills: [solid(lit({ r: 0, g: 0, b: 0, a: 1 }, 0.55))] }, fixed({ start: 0, top: 0 }));
+        leaf("Track", { width: px(size), height: px(size), part: sel("Minimap", "track") }, { shape: { kind: "path", points: curve, curves: true, width: lw, cap: "round", join: "round" }, fills: [solid(lit(WHITE, 0.88))] }, fixed({ start: 0, top: 0 }));
+        const a = at(-1), b = at(1), p = pts[0]!;
+        const tl = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+        const nx = -(b.y - a.y) / tl, ny = (b.x - a.x) / tl;
+        const half = lw * 2.2;
+        leaf("Start", { width: px(size), height: px(size), part: sel("Minimap", "start") }, {
+          shape: { kind: "path", points: [{ x: p.x - nx * half, y: p.y - ny * half }, { x: p.x + nx * half, y: p.y + ny * half }], width: Math.max(2, lw * 0.9), cap: "butt" },
+          fills: [solid(lit(role("danger")))],
+        }, fixed({ start: 0, top: 0 }));
+      }
       // Markers: in range at their place; objectives and pings held on the rim.
       const ms = Math.max(10, Math.round(size / 16));
       const edgeR = R - rim - ms * 0.7;
-      const cs = Math.cos(turn);
-      const sn = Math.sin(turn);
       for (const m of desc.markers ?? []) {
         const kind: Api.MarkerKind = m.kind ?? "poi";
         let dx = (((m.x ?? 0) - cx) / zoom) * size;

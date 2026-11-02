@@ -9,6 +9,7 @@ import { orbMeter, radialMeter, statBar } from "./meters.ts";
 import { compass, minimapView, objectiveTracker } from "./nav.ts";
 import { comboCounter, hudTimer, judgement, resourceBar, scoreboard, scorebug, turnOrder } from "./scores.ts";
 import { flightHud, speedometer } from "./vehicles.ts";
+import { lapTimer, rearView, standingsTower } from "./racing.ts";
 
 export const hud = Object.freeze({
   statBar,
@@ -36,6 +37,9 @@ export const hud = Object.freeze({
   speedometer,
   scorebug,
   flightHud,
+  standingsTower,
+  lapTimer,
+  rearView,
   damageDirection,
   lowHealthVignette,
 });

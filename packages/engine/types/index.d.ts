@@ -37476,6 +37476,18 @@ export interface MinimapViewDesc {
    */
   readonly zone?: string;
   /**
+   * A racing circuit: its centre line as points in map coordinates (0 to 1, as markers), drawn as a smooth line (through every point) over the style's well in place of the texture and the grid. Give zoom 1 and the centre 0.5, 0.5 to show the whole circuit; three points or more.
+   *
+   * @default []
+   */
+  readonly track?: readonly Vector2[];
+  /**
+   * The track does not close on itself (a point-to-point stage).
+   *
+   * @default false
+   */
+  readonly trackOpen?: boolean;
+  /**
    * The north letter.
    *
    * @default "N"
@@ -38704,6 +38716,284 @@ export interface FlightHudDesc {
    * @default "center"
    */
   readonly anchor?: Anchor;
+}
+
+
+/**
+ * A car in the standings, in race order.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface StandingsEntry {
+  /**
+   * Its key (its probe id).
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * The driver's name (K. Moreno).
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * Its team or car colour, a stripe by its position; null is the team colour of its index.
+   *
+   * @default null
+   */
+  readonly color?: Paint | null;
+  /**
+   * Seconds behind the leader, or with StandingsTowerDesc.relative behind the player (negative: ahead).
+   *
+   * @default 0
+   * @unit s (seconds of simulation time)
+   */
+  readonly gap?: number;
+  /**
+   * Laps behind the leader; more than 0 shows +<n> L in place of the gap.
+   *
+   * @default 0
+   */
+  readonly lapsDown?: number;
+  /**
+   * Places gained since the start (positive) or lost (negative): a small arrow by its position; 0 is none.
+   *
+   * @default 0
+   */
+  readonly change?: number;
+  /**
+   * The player's car: its row lit.
+   *
+   * @default false
+   */
+  readonly player?: boolean;
+  /**
+   * In the pit lane.
+   *
+   * @default false
+   */
+  readonly pit?: boolean;
+  /**
+   * Retired: dimmed at the foot, its gap the out label.
+   *
+   * @default false
+   */
+  readonly out?: boolean;
+  /**
+   * Holds the fastest lap: a small mark by its name.
+   *
+   * @default false
+   */
+  readonly fastest?: boolean;
+}
+
+/**
+ * A racing standings tower.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface StandingsTowerDesc {
+  /**
+   * The cars in race order, the leader first.
+   *
+   * @default []
+   */
+  readonly entries?: readonly StandingsEntry[];
+  /**
+   * Gaps are to the player (signed, ahead negative) rather than to the leader.
+   *
+   * @default false
+   */
+  readonly relative?: boolean;
+  /**
+   * The most rows shown; 0 is 10 (5 on a phone). Past it the tower shows the leaders and the three cars around the player, a break between.
+   *
+   * @default 0
+   */
+  readonly rows?: number;
+  /**
+   * The leader's gap (with relative off).
+   *
+   * @default "Leader"
+   */
+  readonly leaderLabel?: string;
+  /**
+   * The gap of a car in the pit lane.
+   *
+   * @default "PIT"
+   */
+  readonly pitLabel?: string;
+  /**
+   * The gap of a retired car.
+   *
+   * @default "OUT"
+   */
+  readonly outLabel?: string;
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default "left"
+   */
+  readonly anchor?: Anchor | null;
+}
+
+
+/**
+ * A racing lap and split block.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LapTimerDesc {
+  /**
+   * The player's place, from 1; 0 hides the place.
+   *
+   * @default 0
+   */
+  readonly position?: number;
+  /**
+   * Cars in the race.
+   *
+   * @default 0
+   */
+  readonly positionTotal?: number;
+  /**
+   * The lap the player is on, from 1; 0 hides the lap.
+   *
+   * @default 0
+   */
+  readonly lap?: number;
+  /**
+   * Laps in the race; 0 is open-ended (no total, no final lap).
+   *
+   * @default 0
+   */
+  readonly lapTotal?: number;
+  /**
+   * The current lap's time so far.
+   *
+   * @default 0
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly currentMs?: number;
+  /**
+   * The player's best lap; null is none yet.
+   *
+   * @default null
+   * @unit ms (milliseconds)
+   */
+  readonly bestMs?: number | null;
+  /**
+   * The last lap's time; null is none yet.
+   *
+   * @default null
+   * @unit ms (milliseconds)
+   */
+  readonly lastMs?: number | null;
+  /**
+   * The split at the last sector against the best lap, signed (negative: ahead, in success; positive: behind, in danger); null hides the split.
+   *
+   * @default null
+   * @unit ms (milliseconds)
+   */
+  readonly deltaMs?: number | null;
+  /**
+   * The place's caption.
+   *
+   * @default "Position"
+   */
+  readonly positionLabel?: string;
+  /**
+   * The lap's caption.
+   *
+   * @default "Lap"
+   */
+  readonly lapLabel?: string;
+  /**
+   * The lap's caption on the final lap.
+   *
+   * @default "Final lap"
+   */
+  readonly finalLabel?: string;
+  /**
+   * The current lap's caption.
+   *
+   * @default "Current lap"
+   */
+  readonly currentLabel?: string;
+  /**
+   * The best lap's caption.
+   *
+   * @default "Best lap"
+   */
+  readonly bestLabel?: string;
+  /**
+   * The last lap's caption.
+   *
+   * @default "Last lap"
+   */
+  readonly lastLabel?: string;
+  /**
+   * The split's caption.
+   *
+   * @default "Split"
+   */
+  readonly splitLabel?: string;
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default "topLeft"
+   */
+  readonly anchor?: Anchor | null;
+}
+
+
+/**
+ * A rear-view mirror.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RearViewDesc {
+  /**
+   * What the mirror shows: a render target's texture (og.render.renderTarget, RenderTargetInfo.texture) a CameraView looking back draws into, at about the mirror's aspect; null draws the style's dark glass.
+   *
+   * @default null
+   */
+  readonly texture?: Texture | null;
+  /**
+   * Flips it left to right, as a mirror shows the road behind.
+   *
+   * @default true
+   */
+  readonly mirror?: boolean;
+  /**
+   * Its width; 0 is a third of the HUD band's width (two fifths on a phone held sideways, two thirds upright), at most 560.
+   *
+   * @default 0
+   * @range 0..
+   * @unit cssPx (CSS pixels of the play surface, origin at the top left)
+   */
+  readonly width?: number;
+  /**
+   * Its width over its height.
+   *
+   * @default 4.2
+   * @range 1.5..
+   */
+  readonly aspect?: number;
+  /**
+   * What a screen reader calls it.
+   *
+   * @default "Rear view"
+   */
+  readonly label?: string;
+  /**
+   * Opens its own anchored group there; null builds it in place.
+   *
+   * @default "top"
+   */
+  readonly anchor?: Anchor | null;
 }
 
 
@@ -49953,7 +50243,7 @@ export declare namespace og {
     function ammoCounter(id: string, desc?: AmmoDesc): void;
     /**
      * A minimap to the bar of MOBAs, shooters and open worlds: the map in a round or square frame, centred on the player and zoomed, fixed with north up and the player's arrow turning or turning with the player; markers for allies (their arrows), enemies, loot by rarity, points of interest, objectives and pings, which stay on the frame's edge pointing out when out of range; pings pulse; a north mark on the rim, the zone under it; a press answers clicked (click to move reads the press's position against the map's bounds).
-     * Parts: Minimap.frame[<shape>], Minimap.map, Minimap.marker[<kind>][clamped], Minimap.north, Minimap.zone, Minimap.ping. Slots: texture (art kind map). Accessibility: image named by the zone; markers images named by their labels. Probe ids: <id>, <id>/Map/<key>, <id>/Zone.
+     * Parts: Minimap.frame[<shape>], Minimap.map, Minimap.track, Minimap.start, Minimap.marker[<kind>][clamped], Minimap.north, Minimap.zone, Minimap.ping. Slots: texture (art kind map). Accessibility: image named by the zone; markers images named by their labels. Probe ids: <id>, <id>/Map/<key>, <id>/Zone.
      *
      * @param id Its id.
      * @param desc The map and its markers.
@@ -50055,6 +50345,30 @@ export declare namespace og {
      * @param desc The aircraft's state.
      */
     function flightHud(id: string, desc?: FlightHudDesc): void;
+    /**
+     * A standings tower to the bar of F1, Gran Turismo and Forza: one row a car in race order, its position in a tabular cell, its team colour as a stripe, the driver's name and the gap to the leader (or, relative, a signed gap to the player) in tabular digits; the player's row lit; a car that changes place slides to its new row and a small arrow says how many places it gained or lost; a car in the pit lane says so, a retired one dims to the foot; more cars than rows keep the leaders and the cars around the player with a break between.
+     * Parts: StandingsTower.frame, StandingsTower.row[player][pit][out], StandingsTower.position, StandingsTower.stripe, StandingsTower.name, StandingsTower.gap, StandingsTower.change[up|down], StandingsTower.fastest, StandingsTower.break. State groups: row (racing, player, pit, out) on each row. Sounds: success when the player gains a place. Accessibility: table named Standings, each row a row named by its driver with its position and gap. Probe ids: <id>, <id>/<key>, <id>/<key>/Position, <id>/<key>/Name, <id>/<key>/Gap.
+     *
+     * @param id Its id.
+     * @param desc The cars in race order.
+     */
+    function standingsTower(id: string, desc?: StandingsTowerDesc): void;
+    /**
+     * A lap and split block to the bar of Forza, Gran Turismo and F1: the place and the lap as large tabular numerals over their totals (the lap's caption turns to the final lap's, in gold, on the last), then the current lap running in tabular digits, the best and last laps, and the split against the best lap signed and coloured (ahead in success, behind in danger) that pops when it changes; a last lap that sets the best shows in the personal-best colour. On a phone it keeps the place, the lap and the split.
+     * Parts: LapTimer.frame, LapTimer.position, LapTimer.lap[final], LapTimer.total, LapTimer.row[current|best|last], LapTimer.time, LapTimer.split[ahead|behind]. State groups: lap (racing, final), split (none, ahead, behind), best (none, new). Sounds: success when the split turns ahead or a new best is set. Accessibility: status named by the position and lap, its value the times. Probe ids: <id>, <id>/Head/Position/Num/Value, <id>/Head/Lap/Num/Value, <id>/Current/Time, <id>/Best/Time, <id>/Last/Time, <id>/Split/Time.
+     *
+     * @param id Its id.
+     * @param desc The race state.
+     */
+    function lapTimer(id: string, desc?: LapTimerDesc): void;
+    /**
+     * A rear-view mirror to the bar of Forza's and Need for Speed's cockpit HUDs: a render target shown in the UI, flipped as a mirror, in a wide frame whose sides slant in towards the foot, with a dark rim, a soft glass glare across its top and a drop so it sits over the road.
+     * Parts: RearView.frame, RearView.view, RearView.glare. Slots: texture (a render target's colour). Accessibility: image named by its label. Probe ids: <id>, <id>/View.
+     *
+     * @param id Its id.
+     * @param desc What it shows and its size.
+     */
+    function rearView(id: string, desc?: RearViewDesc): void;
     /**
      * Damage direction to the bar of Call of Duty and Apex: a curved wedge round the centre toward each hit's source, wider and brighter for a harder hit, flaring in and fading over its time; the newest hits over the older.
      * Parts: DamageDirection.wedge. Accessibility: none (the game announces damage). Probe ids: <id>, <id>/Hit#i.

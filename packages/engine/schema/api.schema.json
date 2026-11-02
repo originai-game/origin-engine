@@ -11294,6 +11294,10 @@
         "ScorebugTeam",
         "ScorebugDesc",
         "FlightHudDesc",
+        "StandingsEntry",
+        "StandingsTowerDesc",
+        "LapTimerDesc",
+        "RearViewDesc",
         "DamageHit",
         "DamageDirectionDesc",
         "LowHealthDesc",
@@ -16067,7 +16071,7 @@
         },
         {
           "name": "minimapView",
-          "doc": "A minimap to the bar of MOBAs, shooters and open worlds: the map in a round or square frame, centred on the player and zoomed, fixed with north up and the player's arrow turning or turning with the player; markers for allies (their arrows), enemies, loot by rarity, points of interest, objectives and pings, which stay on the frame's edge pointing out when out of range; pings pulse; a north mark on the rim, the zone under it; a press answers clicked (click to move reads the press's position against the map's bounds).\nParts: Minimap.frame[<shape>], Minimap.map, Minimap.marker[<kind>][clamped], Minimap.north, Minimap.zone, Minimap.ping. Slots: texture (art kind map). Accessibility: image named by the zone; markers images named by their labels. Probe ids: <id>, <id>/Map/<key>, <id>/Zone.",
+          "doc": "A minimap to the bar of MOBAs, shooters and open worlds: the map in a round or square frame, centred on the player and zoomed, fixed with north up and the player's arrow turning or turning with the player; markers for allies (their arrows), enemies, loot by rarity, points of interest, objectives and pings, which stay on the frame's edge pointing out when out of range; pings pulse; a north mark on the rim, the zone under it; a press answers clicked (click to move reads the press's position against the map's bounds).\nParts: Minimap.frame[<shape>], Minimap.map, Minimap.track, Minimap.start, Minimap.marker[<kind>][clamped], Minimap.north, Minimap.zone, Minimap.ping. Slots: texture (art kind map). Accessibility: image named by the zone; markers images named by their labels. Probe ids: <id>, <id>/Map/<key>, <id>/Zone.",
           "params": [
             {
               "name": "id",
@@ -16332,6 +16336,69 @@
               "type": "FlightHudDesc",
               "optional": true,
               "doc": "The aircraft's state."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "standingsTower",
+          "doc": "A standings tower to the bar of F1, Gran Turismo and Forza: one row a car in race order, its position in a tabular cell, its team colour as a stripe, the driver's name and the gap to the leader (or, relative, a signed gap to the player) in tabular digits; the player's row lit; a car that changes place slides to its new row and a small arrow says how many places it gained or lost; a car in the pit lane says so, a retired one dims to the foot; more cars than rows keep the leaders and the cars around the player with a break between.\nParts: StandingsTower.frame, StandingsTower.row[player][pit][out], StandingsTower.position, StandingsTower.stripe, StandingsTower.name, StandingsTower.gap, StandingsTower.change[up|down], StandingsTower.fastest, StandingsTower.break. State groups: row (racing, player, pit, out) on each row. Sounds: success when the player gains a place. Accessibility: table named Standings, each row a row named by its driver with its position and gap. Probe ids: <id>, <id>/<key>, <id>/<key>/Position, <id>/<key>/Name, <id>/<key>/Gap.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "StandingsTowerDesc",
+              "optional": true,
+              "doc": "The cars in race order."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "lapTimer",
+          "doc": "A lap and split block to the bar of Forza, Gran Turismo and F1: the place and the lap as large tabular numerals over their totals (the lap's caption turns to the final lap's, in gold, on the last), then the current lap running in tabular digits, the best and last laps, and the split against the best lap signed and coloured (ahead in success, behind in danger) that pops when it changes; a last lap that sets the best shows in the personal-best colour. On a phone it keeps the place, the lap and the split.\nParts: LapTimer.frame, LapTimer.position, LapTimer.lap[final], LapTimer.total, LapTimer.row[current|best|last], LapTimer.time, LapTimer.split[ahead|behind]. State groups: lap (racing, final), split (none, ahead, behind), best (none, new). Sounds: success when the split turns ahead or a new best is set. Accessibility: status named by the position and lap, its value the times. Probe ids: <id>, <id>/Head/Position/Num/Value, <id>/Head/Lap/Num/Value, <id>/Current/Time, <id>/Best/Time, <id>/Last/Time, <id>/Split/Time.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "LapTimerDesc",
+              "optional": true,
+              "doc": "The race state."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "rearView",
+          "doc": "A rear-view mirror to the bar of Forza's and Need for Speed's cockpit HUDs: a render target shown in the UI, flipped as a mirror, in a wide frame whose sides slant in towards the foot, with a dark rim, a soft glass glare across its top and a drop so it sits over the road.\nParts: RearView.frame, RearView.view, RearView.glare. Slots: texture (a render target's colour). Accessibility: image named by its label. Probe ids: <id>, <id>/View.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "RearViewDesc",
+              "optional": true,
+              "doc": "What it shows and its size."
             }
           ],
           "returns": "Void",
@@ -64763,6 +64830,19 @@
           "description": "A label under it (the zone's name); empty is none.",
           "default": ""
         },
+        "track": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Vector2"
+          },
+          "description": "A racing circuit: its centre line as points in map coordinates (0 to 1, as markers), drawn as a smooth line (through every point) over the style's well in place of the texture and the grid. Give zoom 1 and the centre 0.5, 0.5 to show the whole circuit; three points or more.",
+          "default": []
+        },
+        "trackOpen": {
+          "type": "boolean",
+          "description": "The track does not close on itself (a point-to-point stage).",
+          "default": false
+        },
         "north": {
           "type": "string",
           "description": "The north letter.",
@@ -66134,6 +66214,319 @@
           "$ref": "#/$defs/Anchor",
           "description": "Where it sits; the default is the centre.",
           "default": "center"
+        }
+      },
+      "additionalProperties": false
+    },
+    "StandingsEntry": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A car in the standings, in race order.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key (its probe id).",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "The driver's name (K. Moreno).",
+          "default": ""
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its team or car colour, a stripe by its position; null is the team colour of its index.",
+          "default": null
+        },
+        "gap": {
+          "type": "number",
+          "description": "Seconds behind the leader, or with StandingsTowerDesc.relative behind the player (negative: ahead).",
+          "default": 0,
+          "x-og-unit": "s"
+        },
+        "lapsDown": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Laps behind the leader; more than 0 shows +<n> L in place of the gap.",
+          "default": 0
+        },
+        "change": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Places gained since the start (positive) or lost (negative): a small arrow by its position; 0 is none.",
+          "default": 0
+        },
+        "player": {
+          "type": "boolean",
+          "description": "The player's car: its row lit.",
+          "default": false
+        },
+        "pit": {
+          "type": "boolean",
+          "description": "In the pit lane.",
+          "default": false
+        },
+        "out": {
+          "type": "boolean",
+          "description": "Retired: dimmed at the foot, its gap the out label.",
+          "default": false
+        },
+        "fastest": {
+          "type": "boolean",
+          "description": "Holds the fastest lap: a small mark by its name.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "StandingsTowerDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A racing standings tower.",
+      "type": "object",
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StandingsEntry"
+          },
+          "description": "The cars in race order, the leader first.",
+          "default": []
+        },
+        "relative": {
+          "type": "boolean",
+          "description": "Gaps are to the player (signed, ahead negative) rather than to the leader.",
+          "default": false
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most rows shown; 0 is 10 (5 on a phone). Past it the tower shows the leaders and the three cars around the player, a break between.",
+          "default": 0
+        },
+        "leaderLabel": {
+          "type": "string",
+          "description": "The leader's gap (with relative off).",
+          "default": "Leader"
+        },
+        "pitLabel": {
+          "type": "string",
+          "description": "The gap of a car in the pit lane.",
+          "default": "PIT"
+        },
+        "outLabel": {
+          "type": "string",
+          "description": "The gap of a retired car.",
+          "default": "OUT"
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": "left"
+        }
+      },
+      "additionalProperties": false
+    },
+    "LapTimerDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A racing lap and split block.",
+      "type": "object",
+      "properties": {
+        "position": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The player's place, from 1; 0 hides the place.",
+          "default": 0
+        },
+        "positionTotal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Cars in the race.",
+          "default": 0
+        },
+        "lap": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The lap the player is on, from 1; 0 hides the lap.",
+          "default": 0
+        },
+        "lapTotal": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Laps in the race; 0 is open-ended (no total, no final lap).",
+          "default": 0
+        },
+        "currentMs": {
+          "type": "number",
+          "description": "The current lap's time so far.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "ms"
+        },
+        "bestMs": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The player's best lap; null is none yet.",
+          "default": null,
+          "x-og-unit": "ms"
+        },
+        "lastMs": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The last lap's time; null is none yet.",
+          "default": null,
+          "x-og-unit": "ms"
+        },
+        "deltaMs": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The split at the last sector against the best lap, signed (negative: ahead, in success; positive: behind, in danger); null hides the split.",
+          "default": null,
+          "x-og-unit": "ms"
+        },
+        "positionLabel": {
+          "type": "string",
+          "description": "The place's caption.",
+          "default": "Position"
+        },
+        "lapLabel": {
+          "type": "string",
+          "description": "The lap's caption.",
+          "default": "Lap"
+        },
+        "finalLabel": {
+          "type": "string",
+          "description": "The lap's caption on the final lap.",
+          "default": "Final lap"
+        },
+        "currentLabel": {
+          "type": "string",
+          "description": "The current lap's caption.",
+          "default": "Current lap"
+        },
+        "bestLabel": {
+          "type": "string",
+          "description": "The best lap's caption.",
+          "default": "Best lap"
+        },
+        "lastLabel": {
+          "type": "string",
+          "description": "The last lap's caption.",
+          "default": "Last lap"
+        },
+        "splitLabel": {
+          "type": "string",
+          "description": "The split's caption.",
+          "default": "Split"
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": "topLeft"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RearViewDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A rear-view mirror.",
+      "type": "object",
+      "properties": {
+        "texture": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What the mirror shows: a render target's texture (og.render.renderTarget, RenderTargetInfo.texture) a CameraView looking back draws into, at about the mirror's aspect; null draws the style's dark glass.",
+          "default": null
+        },
+        "mirror": {
+          "type": "boolean",
+          "description": "Flips it left to right, as a mirror shows the road behind.",
+          "default": true
+        },
+        "width": {
+          "type": "number",
+          "description": "Its width; 0 is a third of the HUD band's width (two fifths on a phone held sideways, two thirds upright), at most 560.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "cssPx"
+        },
+        "aspect": {
+          "type": "number",
+          "description": "Its width over its height.",
+          "default": 4.2,
+          "minimum": 1.5
+        },
+        "label": {
+          "type": "string",
+          "description": "What a screen reader calls it.",
+          "default": "Rear view"
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": "top"
         }
       },
       "additionalProperties": false

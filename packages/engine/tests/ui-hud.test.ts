@@ -426,6 +426,52 @@ test("og.ui.comboCounter, judgement, turnOrder, scorebug, speedometer, flightHud
   expect(states(at(dump(e), "ComboHud/Combo")).combo).toBe("idle");
 }, LOADED_MS);
 
+test("og.ui.standingsTower, lapTimer, rearView and a minimap's track: order, signed gaps, the cut field, the split", () => {
+  let player = 11;
+  let delta = 180;
+  const e = engineFor("HudRace", () => {
+    const entries = Array.from({ length: 14 }, (_, i) => ({ key: `c${i}`, name: `Car ${i}`, gap: i * 0.5, player: i === player, pit: i === 5, out: i === 12 }));
+    og.ui.standingsTower("Tower", { entries, rows: 8 });
+    og.ui.standingsTower("Rel", { entries: entries.slice(0, 4).map((x, i) => ({ ...x, player: i === 2, gap: (i - 2) * 0.4 })), relative: true, anchor: "right" });
+    og.ui.lapTimer("Lap", { position: 2, positionTotal: 8, lap: 3, lapTotal: 3, currentMs: 72384, bestMs: 101226, deltaMs: delta });
+    og.ui.rearView("Mirror", {});
+    og.ui.minimapView("Map", { track: [{ x: 0.2, y: 0.5 }, { x: 0.5, y: 0.2 }, { x: 0.8, y: 0.5 }, { x: 0.5, y: 0.8 }], zoom: 1, anchor: "bottomRight" });
+  });
+  e.advance(3);
+  let els = dump(e);
+  // Fourteen cars in eight rows with the player 12th: the four leaders, a break, then 11th to 13th.
+  const rows = below(els, "TowerHud/Tower").filter((x) => x.path.split("/").length === 3).map((x) => x.id);
+  expect(rows).toEqual(["c0", "c1", "c2", "c3", "Break", "c10", "c11", "c12"]);
+  expect(at(els, "TowerHud/Tower/c11/PositionBox/Position")?.text).toBe("12");
+  expect(at(els, "TowerHud/Tower/c0/Gap")?.text).toBe("Leader");
+  expect(at(els, "TowerHud/Tower/c10/Gap")?.text).toBe("+5.00");
+  expect(at(els, "TowerHud/Tower/c12/Gap")?.text).toBe("OUT");
+  expect(states(at(els, "TowerHud/Tower/c11")).row).toBe("player");
+  // Relative: ahead is negative, the player has no gap of its own.
+  expect(at(els, "RelHud/Rel/c0/Gap")?.text).toBe("−0.80");
+  expect(at(els, "RelHud/Rel/c2/Gap")?.text).toBe("—");
+  expect(at(els, "RelHud/Rel/c3/Gap")?.text).toBe("+0.40");
+  expect(at(els, "LapHud/Lap/Head/Lap/Caption")?.text).toBe("Final lap");
+  expect(at(els, "LapHud/Lap/Head/Position/Num/Value")?.text).toBe("2");
+  expect(at(els, "LapHud/Lap/Current/Time")?.text).toBe("1:12.384");
+  expect(at(els, "LapHud/Lap/Best/Time")?.text).toBe("1:41.226");
+  expect(at(els, "LapHud/Lap/Split/Time")?.text).toBe("+0.18");
+  expect(states(at(els, "LapHud/Lap")).split).toBe("behind");
+  expect(states(at(els, "LapHud/Lap")).lap).toBe("final");
+  expect(at(els, "MirrorHud/Mirror")?.role).toBe("image");
+  expect(at(els, "MapHud/Map/Map/Track")).toBeDefined();
+  // The player moves up into the leaders: the field is no longer cut; the split turns ahead.
+  player = 2;
+  delta = -420;
+  e.advance(2);
+  els = dump(e);
+  expect(below(els, "TowerHud/Tower").filter((x) => x.path.split("/").length === 3).map((x) => x.id)).toEqual(["c0", "c1", "c2", "c3", "c4", "c5", "c6", "c7"]);
+  expect(states(at(els, "TowerHud/Tower/c5")).row).toBe("pit");
+  expect(at(els, "TowerHud/Tower/c5/Gap")?.text).toBe("PIT");
+  expect(at(els, "LapHud/Lap/Split/Time")?.text).toBe("−0.42");
+  expect(states(at(els, "LapHud/Lap")).split).toBe("ahead");
+}, LOADED_MS);
+
 test("components anchored at one point stack in the order built instead of drawing over each other", () => {
   const e = engineFor("HudStack", () => {
     og.ui.compass("Compass", { heading: 0 });
