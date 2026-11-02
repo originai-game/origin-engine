@@ -775,8 +775,9 @@ function glassFace(_base: Rgba, radius: number, hot: boolean, down: boolean): vo
   kit.setDraw({
     shape: { kind: "rect", radii: [radius, radius, radius, radius] },
     fills: [vgrad([[0, paint(white, down ? 0.05 : hot ? 0.26 : 0.18)], [0.5, paint(white, hot && !down ? 0.09 : 0.05)], [1, paint(white, 0.03)]])],
-    // The rim: bright along the top where the light falls, dimmer down the sides.
-    strokes: [{ width: hot ? 1.5 : 1.25, align: "inside", paint: { kind: "gradient", type: "linear", from: { x: 0.5, y: 0 }, to: { x: 0.5, y: 1 }, stops: [{ offset: 0, color: paint(white, hot ? 0.85 : 0.65) }, { offset: 1, color: paint(white, hot ? 0.45 : 0.28) }] } }],
+    // A light along the top edge where it falls, gone before the sides: glass catches the light, it has no outline
+    // (a control has none in the default style's grammar; a full rim read as a grey box with a light border).
+    strokes: [{ width: hot ? 1.5 : 1.25, align: "inside", paint: { kind: "gradient", type: "linear", from: { x: 0.5, y: 0 }, to: { x: 0.5, y: 1 }, stops: [{ offset: 0, color: paint(white, hot ? 0.7 : 0.5) }, { offset: 0.3, color: paint(white, hot ? 0.14 : 0.08) }, { offset: 1, color: paint(white, 0) }] } }],
     effects: [
       { kind: "innerShadow", offset: { x: 0, y: down ? 0 : 1 }, blur: 0, spread: 0, color: paint(white, down ? 0 : 0.22) },
       { kind: "dropShadow", offset: { x: 0, y: down ? 2 : u(6) }, blur: u(down ? 6 : 14), spread: 0, color: token("shadow", 0.45) },

@@ -111,24 +111,26 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
         radius: t.control,
         semantics: { role: "tab", name: b.name ?? b.key ?? "", selected: on },
       }, () => {
-        // The current banner: an accent rim with a glow, lifted on its shadow (a white outline reads as a debug box).
-        // Every tab a chip of the same dark glass over the art, a light falling across it, no outline; the current
-        // one lit: the accent laid into its glass, its rim in the accent with a glow, lifted on its shadow.
+        // One selection grammar (docs/ui.md §12.1): every tab a chip of the same dark glass over the art, with no
+        // outline; the current one a raised neutral chip (the strong line's tone laid into the glass, a light along
+        // its top edge, a short shadow), its name in full ink where the others are muted. Told by tone, ink and lift,
+        // not by a rim or a hue (a white rim reads as the primary, or as a debug box).
         const white = hex("#ffffff");
         kit.setDraw({
           shape: { kind: "rect", radii: [t.control, t.control, t.control, t.control] },
           fills: [
-            { kind: "solid", color: paint(mix(role("panel"), role("shadow"), 0.3), 0.46) },
-            ...(on ? [{ kind: "solid", color: paint(accent(), 0.3) } as Api.Fill] : []),
-            vgrad([[0, paint(white, on ? 0.2 : 0.14)], [0.5, paint(white, 0.05)], [1, paint(white, 0.02)]]),
+            { kind: "solid", color: paint(mix(role("panel"), role("shadow"), 0.3), on ? 0.62 : 0.46) },
+            ...(on ? [{ kind: "solid", color: paint(role("lineStrong"), 0.55) } as Api.Fill] : []),
+            vgrad([[0, paint(white, on ? 0.24 : 0.12)], [0.12, paint(white, on ? 0.1 : 0.05)], [1, paint(white, 0.02)]]),
           ],
-          // Only the current tab has a rim: the others are glass with no outline.
-          strokes: on ? [line(1.5, paint(accent()))] : [],
-          effects: on ? [glow(u(12), paint(accent(), 0.5)), shadow(u(4), u(10), 0.5)] : [shadow(u(2), u(6), 0.3)],
-        });
+          strokes: [],
+          effects: on
+            ? [{ kind: "innerShadow", offset: { x: 0, y: 1 }, blur: 0, spread: 0, color: paint(white, 0.35) }, shadow(u(3), u(8), 0.55)]
+            : [shadow(u(2), u(6), 0.3)],
+        } as Api.DrawDesc);
         if (!phone && !short) artSlot("Thumb", "Gacha.thumb", { texture: b.image ?? null, kind: "banner", width: px(u(44)), height: px(u(44)), radius: t.small });
         kit.column("Text", { width: grow(), gap: 2, cross: portrait ? "center" : "start" }, () => {
-          text("Name", b.name ?? "", { step: st(14), font: "display", maxLines: 2, width: grow(), align: portrait ? "center" : "start" });
+          text("Name", b.name ?? "", { step: st(14), font: "display", maxLines: 2, width: grow(), align: portrait ? "center" : "start", color: on ? "ink" : "inkMuted" });
           if (b.endsIn !== undefined && b.endsIn !== null && !portrait && !short) text("Ends", countdownShort(b.endsIn, timeWords(desc)), { step: st(12), color: b.endsIn < 3600 ? "warn" : "inkMuted", nowrap: true, font: "mono" });
         });
         if (b.fresh) {
