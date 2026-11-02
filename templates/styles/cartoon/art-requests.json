@@ -1,0 +1,397 @@
+{
+  "concepts": [
+    "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-settings.jpg",
+    "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-menu.jpg",
+    "origin/ui-art:tests/evidence/ui-art/concepts/packs/bubbly-menu.jpg"
+  ],
+  "densities": [
+    1,
+    2,
+    3
+  ],
+  "look": "casual cartoon",
+  "lookPreset": "decorative-storybook",
+  "palette": {
+    "backdrop": "#2a1d5c",
+    "control": "#fff3cc",
+    "controlStrong": "#ffecb5",
+    "danger": "#6a0a16",
+    "focus": "#3fa7ff",
+    "gold": "#a24112",
+    "health": "#06681b",
+    "highlight": "#9b3a09",
+    "hud": "#fff4dcf5",
+    "info": "#2256af",
+    "ink": "#2b1a4a",
+    "inkFaint": "#61527c",
+    "inkInverse": "#fff4dc",
+    "inkMuted": "#5a4880",
+    "knob": "#ffffff",
+    "line": "#2b1a4a",
+    "lineStrong": "#2b1a4a",
+    "mana": "#007aff",
+    "onPrimary": "#fff4dc",
+    "panel": "#fff4dc",
+    "panelHover": "#ffe9bd",
+    "panelRaised": "#fff4dc",
+    "primary": "#8c360f",
+    "primaryActive": "#772d0b",
+    "primaryHover": "#933a10",
+    "primarySoft": "#8c360f40",
+    "scrim": "#1a0f3ccc",
+    "shadow": "#2b1a4a99",
+    "sheen": "#ffffff52",
+    "success": "#06681b",
+    "warn": "#7b5102",
+    "well": "#33246e",
+    "xp": "#af52de"
+  },
+  "premise": "a bright casual puzzle and party game of saga maps, bundles and round results",
+  "resample": "smooth",
+  "slots": [
+    {
+      "dress": [
+        "Panel.frame"
+      ],
+      "file": "art/panel.png",
+      "flat": 0.1,
+      "hash": "6daa43b4552d0e76",
+      "insets": [
+        0.25,
+        0.25,
+        0.25,
+        0.25
+      ],
+      "kind": "styleFrame",
+      "name": "cartoon/panel",
+      "note": "A cartoon panel: a fully opaque warm cream (#fff4dc) slab with softly rounded corners (about 18 px at this size), a thick 4 px dark chocolate-brown (#3a2210) cartoon outline all round, a lighter inner rim just inside the outline and a chunky darker shadow lip along its bottom edge, the centre flat cream so dark text reads on it; as the cream board of the concept's settings, without its title ribbon. Plain corners: no leaves, flowers, vines or corner ornaments anywhere; the thick outline and the rim are its only decoration. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any ornament sits in the four corners, none at the middle of an edge.",
+      "opaque": "#fff4dc",
+      "pixels": [
+        288,
+        288
+      ],
+      "size": [
+        96,
+        96
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "dress": [
+        "Card.frame"
+      ],
+      "file": "art/card.png",
+      "flat": 0.1,
+      "hash": "0a0838d207e2774b",
+      "insets": [
+        0.208,
+        0.208,
+        0.208,
+        0.208
+      ],
+      "kind": "styleFrame",
+      "name": "cartoon/card",
+      "note": "A shop or bundle card: a fully opaque light cream (#fffaf0) rounded rectangle (about 14 px corners), a thick 4 px dark chocolate-brown (#3a2210) cartoon outline, a soft darker band along its bottom edge. No ornament, star or sparkle anywhere: it is repeated many times; only its outline and shading. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any ornament sits in the four corners, none at the middle of an edge.",
+      "opaque": "#fffaf0",
+      "pixels": [
+        288,
+        288
+      ],
+      "size": [
+        96,
+        96
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "dress": [
+        "Field.frame"
+      ],
+      "file": "art/field.png",
+      "hash": "1395bcdc6f08db39",
+      "insets": [
+        0.125,
+        0.3,
+        0.125,
+        0.3
+      ],
+      "kind": "styleFrame",
+      "name": "cartoon/field",
+      "note": "A dropdown or text field: a fully opaque pale beige (#f6e6c4) rounded rectangle (about 10 px corners) with a 3 px warm brown outline and a soft inner shadow along its top; the centre plain, as the Speakers dropdown of the concept. No ornament, star or sparkle anywhere: it is repeated many times; only its outline and shading. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any ornament sits in the four corners, none at the middle of an edge.",
+      "opaque": "#f6e6c4",
+      "pixels": [
+        288,
+        120
+      ],
+      "size": [
+        96,
+        40
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "dress": [
+        "Slot.frame"
+      ],
+      "file": "art/slot.png",
+      "hash": "48d666bd75491af0",
+      "insets": [
+        0.25,
+        0.25,
+        0.25,
+        0.25
+      ],
+      "kind": "styleFrame",
+      "name": "cartoon/slot",
+      "note": "An inventory socket: a fully opaque recessed tan (#ecd6a8) rounded square (about 10 px corners) with a 3 px brown outline and a narrow inner shadow (a few px) just inside its top and left rim; the whole centre one even flat tan, with no blotch, gradient or vignette. No ornament, star or sparkle anywhere: it is repeated many times; only its outline and shading. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any ornament sits in the four corners, none at the middle of an edge.",
+      "opaque": "#ecd6a8",
+      "pixels": [
+        192,
+        192
+      ],
+      "size": [
+        64,
+        64
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "dress": [
+        "Tooltip.frame"
+      ],
+      "file": "art/tooltip.png",
+      "hash": "d63d4b4fe97e3157",
+      "insets": [
+        0.188,
+        0.25,
+        0.188,
+        0.25
+      ],
+      "kind": "styleFrame",
+      "name": "cartoon/tooltip",
+      "note": "A small tooltip: a fully opaque dark chocolate-brown (#3a2210) rounded rectangle (about 10 px corners) with a 2 px lighter brown rim; the centre plain so cream text reads on it. No ornament, star or sparkle anywhere: it is repeated many times; only its outline and shading. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any ornament sits in the four corners, none at the middle of an edge.",
+      "pixels": [
+        192,
+        144
+      ],
+      "size": [
+        64,
+        48
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "dress": [
+        "Hud.frame"
+      ],
+      "file": "art/hud.png",
+      "hash": "9751af144d13ede3",
+      "insets": [
+        0.219,
+        0.3,
+        0.219,
+        0.3
+      ],
+      "kind": "styleFrame",
+      "name": "cartoon/hud",
+      "note": "A glossy currency pill for a cartoon HUD: a fully rounded pill of cream with a thick 4 px dark chocolate-brown (#3a2210) cartoon outline, a white gloss highlight along its upper half and a darker band at its bottom, as the coin and gem counters of the concept's map screen; the centre plain. No ornament, star or sparkle anywhere: it is repeated many times; only its outline and shading. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any ornament sits in the four corners, none at the middle of an edge.",
+      "pixels": [
+        192,
+        120
+      ],
+      "size": [
+        64,
+        40
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "dress": [
+        "Button.base[secondary]",
+        "Button.base[secondary][hover]",
+        "Button.base[secondary][pressed]",
+        "Button.base[secondary][disabled]",
+        ""
+      ],
+      "file": "art/button.png",
+      "hash": "5bfccb63ee110905",
+      "insets": [
+        0.188,
+        0.318,
+        0.188,
+        0.318
+      ],
+      "kind": "styleButton",
+      "name": "cartoon/button",
+      "note": "A secondary cartoon button: a fully rounded-corner (about 12 px) chunky button of pale tan (#f3dfb4) with a thick 4 px dark chocolate-brown (#3a2210) cartoon outline, a white gloss highlight along its upper third and a thick darker 5 px lip along its bottom that makes it look pressable; the centre flat so dark brown text reads on it. No ornament, star or sparkle anywhere: it is repeated many times; only its outline and shading. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any ornament sits in the four corners, none at the middle of an edge.",
+      "pixels": [
+        1440,
+        132
+      ],
+      "size": [
+        96,
+        44
+      ],
+      "states": [
+        "normal",
+        "hover",
+        "pressed",
+        "disabled",
+        "focused"
+      ]
+    },
+    {
+      "dress": [
+        "Button.base[primary]",
+        "Button.base[primary][hover]",
+        "Button.base[primary][pressed]",
+        "Button.base[primary][disabled]",
+        ""
+      ],
+      "file": "art/button-primary.png",
+      "hash": "be9fc320dae5e28b",
+      "insets": [
+        0.188,
+        0.318,
+        0.188,
+        0.318
+      ],
+      "kind": "styleButton",
+      "name": "cartoon/button-primary",
+      "note": "The primary cartoon button: a chunky rounded (about 12 px corners) button of bright warm orange (#ffab5c at its top to #f2862f lower down) with a thick 4 px dark chocolate-brown (#3a2210) cartoon outline, a glossy white highlight streak along its upper third and a thick darker orange (#c8601c) 5 px lip along its bottom; the label area across the middle flat light orange (#f7983f) so a bold dark chocolate-brown label reads on it at 7:1; as the Done button of the concept, lighter. No ornament, star or sparkle anywhere. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any ornament sits in the four corners, none at the middle of an edge.",
+      "pixels": [
+        1440,
+        132
+      ],
+      "size": [
+        96,
+        44
+      ],
+      "states": [
+        "normal",
+        "hover",
+        "pressed",
+        "disabled",
+        "focused"
+      ]
+    },
+    {
+      "dress": [
+        "divider"
+      ],
+      "file": "art/divider.png",
+      "hash": "63809626c4418153",
+      "kind": "ornament",
+      "name": "cartoon/divider",
+      "note": "A cartoon divider: a short row of three chunky round dots in warm orange with dark brown outlines, the middle one larger, on a clear background.",
+      "pixels": [
+        384,
+        72
+      ],
+      "size": [
+        128,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "dress": [
+        "flourish"
+      ],
+      "file": "art/flourish.png",
+      "hash": "09757df91f67fb7b",
+      "kind": "ornament",
+      "name": "cartoon/flourish",
+      "note": "A small title flourish: one chunky four-point sparkle star in yellow (#ffcc33) with a dark brown outline, on a clear background.",
+      "pixels": [
+        192,
+        72
+      ],
+      "size": [
+        64,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "dress": [
+        "Slider.knob"
+      ],
+      "file": "art/thumb.png",
+      "hash": "2ca614f247a385bd",
+      "kind": "ornament",
+      "name": "cartoon/thumb",
+      "note": "A slider's thumb: one round chunky white knob, perfectly circular, with a thick 4 px dark chocolate-brown (#3a2210) cartoon outline, a small gloss highlight at its upper left and a soft grey band at its bottom; as the white knobs on the concept's volume sliders. Nothing else: no track.",
+      "pixels": [
+        72,
+        72
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "dress": [
+        "Toggle.knob[on]"
+      ],
+      "file": "art/knob.png",
+      "hash": "2fa2672e09ba49ae",
+      "kind": "ornament",
+      "name": "cartoon/knob",
+      "note": "A switch's knob when it is on: one round chunky white knob, perfectly circular, with a 3 px dark brown outline and a small gloss highlight; as the knob of the concept's Subtitles switch. Nothing else: no track.",
+      "pixels": [
+        72,
+        72
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "dress": [
+        "Toggle.knob[off]"
+      ],
+      "file": "art/knob-off.png",
+      "hash": "1dca49a5ce7c534b",
+      "kind": "ornament",
+      "name": "cartoon/knob-off",
+      "note": "A switch's knob when it is off: one round chunky light grey (#e6e2da) knob, perfectly circular, with a 3 px dark brown outline so it reads at 3:1 against a mid grey track, and a small gloss highlight; as the knob of the concept's Mute everything switch. Nothing else: no track.",
+      "pixels": [
+        72,
+        72
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
+    }
+  ],
+  "style": "cartoon"
+}

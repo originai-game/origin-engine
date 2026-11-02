@@ -1,0 +1,479 @@
+{
+  "atlas": [
+    512,
+    518
+  ],
+  "base": [
+    384,
+    256
+  ],
+  "densities": [
+    1,
+    2,
+    3
+  ],
+  "pending": [],
+  "resample": "smooth",
+  "slots": [
+    {
+      "derived": [],
+      "from": "art/panel.png",
+      "insets": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "provenance": {
+        "date": "2026-11-02",
+        "generation": 1793624873,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI frame of the panel of the cartoon UI style for a bright casual puzzle and party game of saga maps, bundles and round results: a panel's border and ground, its centre plain so text reads on it.\nStyle: Storybook ornament. Gentle contours, patterned plants and soft colour shapes make explorable picture-book worlds. Flat illustrated planes, ornamental plants and patterns, gentle coloured lines, overlapping layers for space.\nPalette: at most 32 distinct colours in this asset; 16 to 32 colours; soft saturated hues, coloured line work, patterns from the same palette.\nNine-slice: the corners (25% left, 25% top, 25% right, 25% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nConform: the cook then the look's 2-pixel outline drawn round the shape (docs/art.md §2.3): draw for that.\nBackground: fully transparent, nothing outside the subject.\nLine: a dark brown #2a1a10 line about 2 pixels wide at the size it is seen.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: black outlines; realistic lighting; empty unpatterned fills; a background or ground shadow; text, letters or watermarks.\nShape: one single panel only, centred, filling the image across its width, 1.00 times as wide as it is tall (96 x 96 proportions); nothing else in the image.\nArt direction: A cartoon panel: a fully opaque warm cream (#fff4dc) slab with softly rounded corners (about 18 px at this size), a thick 4 px dark chocolate-brown (#3a2210) cartoon outline all round, a lighter inner rim just inside the outline and a chunky darker shadow lip along its bottom edge, the centre flat cream so dark text reads on it; as the cream board of the concept's settings, without its title ribbon. Plain corners: no leaves, flowers, vines or corner ornaments anywhere; the thick outline and the rim are its only decoration. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any ornament sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-settings.jpg",
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-menu.jpg",
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/bubbly-menu.jpg"
+        ],
+        "request": "6daa43b4552d0e76"
+      },
+      "size": [
+        96,
+        96
+      ],
+      "slot": "cartoon/panel",
+      "source": [
+        396,
+        384
+      ],
+      "to": [
+        "Panel.frame"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/card.png",
+      "insets": [
+        20,
+        20,
+        20,
+        20
+      ],
+      "provenance": {
+        "date": "2026-11-02",
+        "generation": 1793624951,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI frame of the card of the cartoon UI style for a bright casual puzzle and party game of saga maps, bundles and round results: a panel's border and ground, its centre plain so text reads on it.\nStyle: Storybook ornament. Gentle contours, patterned plants and soft colour shapes make explorable picture-book worlds. Flat illustrated planes, ornamental plants and patterns, gentle coloured lines, overlapping layers for space.\nPalette: at most 32 distinct colours in this asset; 16 to 32 colours; soft saturated hues, coloured line work, patterns from the same palette.\nNine-slice: the corners (21% left, 21% top, 21% right, 21% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nConform: the cook then the look's 2-pixel outline drawn round the shape (docs/art.md §2.3): draw for that.\nBackground: fully transparent, nothing outside the subject.\nLine: a dark brown #2a1a10 line about 2 pixels wide at the size it is seen.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: black outlines; realistic lighting; empty unpatterned fills; a background or ground shadow; text, letters or watermarks.\nShape: one single card only, centred, filling the image across its width, 1.00 times as wide as it is tall (96 x 96 proportions); nothing else in the image.\nArt direction: A shop or bundle card: a fully opaque light cream (#fffaf0) rounded rectangle (about 14 px corners), a thick 4 px dark chocolate-brown (#3a2210) cartoon outline, a soft darker band along its bottom edge. No ornament, star or sparkle anywhere: it is repeated many times; only its outline and shading. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any ornament sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-settings.jpg",
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-menu.jpg",
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/bubbly-menu.jpg"
+        ],
+        "request": "0a0838d207e2774b"
+      },
+      "size": [
+        96,
+        96
+      ],
+      "slot": "cartoon/card",
+      "source": [
+        391,
+        384
+      ],
+      "to": [
+        "Card.frame"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/field.png",
+      "insets": [
+        12,
+        12,
+        12,
+        12
+      ],
+      "provenance": {
+        "date": "2026-11-02",
+        "generation": 1793624945,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI frame of the field of the cartoon UI style for a bright casual puzzle and party game of saga maps, bundles and round results: a panel's border and ground, its centre plain so text reads on it.\nStyle: Storybook ornament. Gentle contours, patterned plants and soft colour shapes make explorable picture-book worlds. Flat illustrated planes, ornamental plants and patterns, gentle coloured lines, overlapping layers for space.\nPalette: at most 32 distinct colours in this asset; 16 to 32 colours; soft saturated hues, coloured line work, patterns from the same palette.\nNine-slice: the corners (13% left, 30% top, 13% right, 30% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nConform: the cook then the look's 2-pixel outline drawn round the shape (docs/art.md §2.3): draw for that.\nBackground: fully transparent, nothing outside the subject.\nLine: a dark brown #2a1a10 line about 2 pixels wide at the size it is seen.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: black outlines; realistic lighting; empty unpatterned fills; a background or ground shadow; text, letters or watermarks.\nShape: one single field only, centred, filling the image across its width, 2.40 times as wide as it is tall (96 x 40 proportions); nothing else in the image.\nArt direction: A dropdown or text field: a fully opaque pale beige (#f6e6c4) rounded rectangle (about 10 px corners) with a 3 px warm brown outline and a soft inner shadow along its top; the centre plain, as the Speakers dropdown of the concept. No ornament, star or sparkle anywhere: it is repeated many times; only its outline and shading. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any ornament sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-settings.jpg",
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-menu.jpg",
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/bubbly-menu.jpg"
+        ],
+        "request": "1395bcdc6f08db39"
+      },
+      "size": [
+        171,
+        40
+      ],
+      "slot": "cartoon/field",
+      "source": [
+        683,
+        160
+      ],
+      "to": [
+        "Field.frame"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/slot.png",
+      "insets": [
+        16,
+        16,
+        16,
+        16
+      ],
+      "provenance": {
+        "date": "2026-11-02",
+        "generation": 1793625288,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI frame of the slot of the cartoon UI style for a bright casual puzzle and party game of saga maps, bundles and round results: a panel's border and ground, its centre plain so text reads on it.\nStyle: Storybook ornament. Gentle contours, patterned plants and soft colour shapes make explorable picture-book worlds. Flat illustrated planes, ornamental plants and patterns, gentle coloured lines, overlapping layers for space.\nPalette: at most 32 distinct colours in this asset; 16 to 32 colours; soft saturated hues, coloured line work, patterns from the same palette.\nNine-slice: the corners (25% left, 25% top, 25% right, 25% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nConform: the cook then the look's 2-pixel outline drawn round the shape (docs/art.md §2.3): draw for that.\nBackground: fully transparent, nothing outside the subject.\nLine: a dark brown #2a1a10 line about 2 pixels wide at the size it is seen.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: black outlines; realistic lighting; empty unpatterned fills; a background or ground shadow; text, letters or watermarks.\nShape: one single slot only, centred, filling the image across its width, 1.00 times as wide as it is tall (64 x 64 proportions); nothing else in the image.\nArt direction: An inventory socket: a fully opaque recessed tan (#ecd6a8) rounded square (about 10 px corners) with a 3 px brown outline and a narrow inner shadow (a few px) just inside its top and left rim; the whole centre one even flat tan, with no blotch, gradient or vignette. No ornament, star or sparkle anywhere: it is repeated many times; only its outline and shading. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any ornament sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-settings.jpg",
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-menu.jpg",
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/bubbly-menu.jpg"
+        ],
+        "request": "48d666bd75491af0"
+      },
+      "size": [
+        64,
+        64
+      ],
+      "slot": "cartoon/slot",
+      "source": [
+        264,
+        256
+      ],
+      "to": [
+        "Slot.frame"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/tooltip.png",
+      "insets": [
+        12,
+        12,
+        12,
+        12
+      ],
+      "provenance": {
+        "date": "2026-11-02",
+        "generation": 1793624692,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI frame of the tooltip of the cartoon UI style for a bright casual puzzle and party game of saga maps, bundles and round results: a panel's border and ground, its centre plain so text reads on it.\nStyle: Storybook ornament. Gentle contours, patterned plants and soft colour shapes make explorable picture-book worlds. Flat illustrated planes, ornamental plants and patterns, gentle coloured lines, overlapping layers for space.\nPalette: at most 32 distinct colours in this asset; 16 to 32 colours; soft saturated hues, coloured line work, patterns from the same palette.\nNine-slice: the corners (19% left, 25% top, 19% right, 25% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nConform: the cook then the look's 2-pixel outline drawn round the shape (docs/art.md §2.3): draw for that.\nBackground: fully transparent, nothing outside the subject.\nLine: a dark brown #2a1a10 line about 2 pixels wide at the size it is seen.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: black outlines; realistic lighting; empty unpatterned fills; a background or ground shadow; text, letters or watermarks.\nShape: one single tooltip only, centred, filling the image across its width, 1.33 times as wide as it is tall (64 x 48 proportions); nothing else in the image.\nArt direction: A small tooltip: a fully opaque dark chocolate-brown (#3a2210) rounded rectangle (about 10 px corners) with a 2 px lighter brown rim; the centre plain so cream text reads on it. No ornament, star or sparkle anywhere: it is repeated many times; only its outline and shading. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any ornament sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-settings.jpg",
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-menu.jpg",
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/bubbly-menu.jpg"
+        ],
+        "request": "d63d4b4fe97e3157"
+      },
+      "size": [
+        98,
+        48
+      ],
+      "slot": "cartoon/tooltip",
+      "source": [
+        393,
+        192
+      ],
+      "to": [
+        "Tooltip.frame"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/hud.png",
+      "insets": [
+        14,
+        12,
+        14,
+        12
+      ],
+      "provenance": {
+        "date": "2026-11-02",
+        "generation": 1793624692,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI frame of the hud of the cartoon UI style for a bright casual puzzle and party game of saga maps, bundles and round results: a panel's border and ground, its centre plain so text reads on it.\nStyle: Storybook ornament. Gentle contours, patterned plants and soft colour shapes make explorable picture-book worlds. Flat illustrated planes, ornamental plants and patterns, gentle coloured lines, overlapping layers for space.\nPalette: at most 32 distinct colours in this asset; 16 to 32 colours; soft saturated hues, coloured line work, patterns from the same palette.\nNine-slice: the corners (22% left, 30% top, 22% right, 30% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nConform: the cook then the look's 2-pixel outline drawn round the shape (docs/art.md §2.3): draw for that.\nBackground: fully transparent, nothing outside the subject.\nLine: a dark brown #2a1a10 line about 2 pixels wide at the size it is seen.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: black outlines; realistic lighting; empty unpatterned fills; a background or ground shadow; text, letters or watermarks.\nShape: one single hud only, centred, filling the image across its width, 1.60 times as wide as it is tall (64 x 40 proportions); nothing else in the image.\nArt direction: A glossy currency pill for a cartoon HUD: a fully rounded pill of cream with a thick 4 px dark chocolate-brown (#3a2210) cartoon outline, a white gloss highlight along its upper half and a darker band at its bottom, as the coin and gem counters of the concept's map screen; the centre plain. No ornament, star or sparkle anywhere: it is repeated many times; only its outline and shading. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any ornament sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-settings.jpg",
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-menu.jpg",
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/bubbly-menu.jpg"
+        ],
+        "request": "9751af144d13ede3"
+      },
+      "size": [
+        131,
+        40
+      ],
+      "slot": "cartoon/hud",
+      "source": [
+        525,
+        160
+      ],
+      "to": [
+        "Hud.frame"
+      ]
+    },
+    {
+      "derived": [
+        "hover",
+        "pressed",
+        "disabled",
+        "focused"
+      ],
+      "from": "art/button.png",
+      "insets": [
+        18,
+        14,
+        18,
+        14
+      ],
+      "provenance": {
+        "date": "2026-11-02",
+        "generation": 1793624686,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI button of the button of the cartoon UI style for a bright casual puzzle and party game of saga maps, bundles and round results: its border and face, its centre plain so a label reads on it.\nStyle: Storybook ornament. Gentle contours, patterned plants and soft colour shapes make explorable picture-book worlds. Flat illustrated planes, ornamental plants and patterns, gentle coloured lines, overlapping layers for space.\nPalette: at most 32 distinct colours in this asset; 16 to 32 colours; soft saturated hues, coloured line work, patterns from the same palette.\nNine-slice: the corners (19% left, 32% top, 19% right, 32% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nConform: the cook then the look's 2-pixel outline drawn round the shape (docs/art.md §2.3): draw for that.\nBackground: fully transparent, nothing outside the subject.\nLine: a dark brown #2a1a10 line about 2 pixels wide at the size it is seen.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: black outlines; realistic lighting; empty unpatterned fills; a background or ground shadow; text, letters or watermarks.\nShape: one single button only, centred, filling the image across its width, 2.18 times as wide as it is tall (96 x 44 proportions); nothing else in the image.\nArt direction: A secondary cartoon button: a fully rounded-corner (about 12 px) chunky button of pale tan (#f3dfb4) with a thick 4 px dark chocolate-brown (#3a2210) cartoon outline, a white gloss highlight along its upper third and a thick darker 5 px lip along its bottom that makes it look pressable; the centre flat so dark brown text reads on it. No ornament, star or sparkle anywhere: it is repeated many times; only its outline and shading. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any ornament sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-settings.jpg",
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-menu.jpg",
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/bubbly-menu.jpg"
+        ],
+        "request": "5bfccb63ee110905"
+      },
+      "size": [
+        140,
+        44
+      ],
+      "slot": "cartoon/button",
+      "source": [
+        560,
+        176
+      ],
+      "to": [
+        "Button.base[secondary]",
+        "Button.base[secondary][hover]",
+        "Button.base[secondary][pressed]",
+        "Button.base[secondary][disabled]"
+      ]
+    },
+    {
+      "derived": [
+        "hover",
+        "pressed",
+        "disabled",
+        "focused"
+      ],
+      "from": "art/button-primary.png",
+      "insets": [
+        18,
+        14,
+        18,
+        14
+      ],
+      "provenance": {
+        "date": "2026-11-02",
+        "generation": 1793626195,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI button of the button primary of the cartoon UI style for a bright casual puzzle and party game of saga maps, bundles and round results: its border and face, its centre plain so a label reads on it.\nStyle: Storybook ornament. Gentle contours, patterned plants and soft colour shapes make explorable picture-book worlds. Flat illustrated planes, ornamental plants and patterns, gentle coloured lines, overlapping layers for space.\nPalette: at most 32 distinct colours in this asset; 16 to 32 colours; soft saturated hues, coloured line work, patterns from the same palette.\nNine-slice: the corners (19% left, 32% top, 19% right, 32% bottom of each cell) keep their size, the edges between them stretch along one axis and the centre both ways: put every ornament in the corners, keep the edges even along their length and the centre plain.\nConform: the cook then the look's 2-pixel outline drawn round the shape (docs/art.md §2.3): draw for that.\nBackground: fully transparent, nothing outside the subject.\nLine: a dark brown #2a1a10 line about 2 pixels wide at the size it is seen.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: black outlines; realistic lighting; empty unpatterned fills; a background or ground shadow; text, letters or watermarks.\nShape: one single button-primary only, centred, filling the image across its width, 2.18 times as wide as it is tall (96 x 44 proportions); nothing else in the image.\nArt direction: The primary cartoon button: a chunky rounded (about 12 px corners) button of bright warm orange (#ffab5c at its top to #f2862f lower down) with a thick 4 px dark chocolate-brown (#3a2210) cartoon outline, a glossy white highlight streak along its upper third and a thick darker orange (#c8601c) 5 px lip along its bottom; the label area across the middle flat light orange (#f7983f) so a bold dark chocolate-brown label reads on it at 7:1; as the Done button of the concept, lighter. No ornament, star or sparkle anywhere. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): any ornament sits in the four corners, none at the middle of an edge.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-settings.jpg",
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-menu.jpg",
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/bubbly-menu.jpg"
+        ],
+        "request": "be9fc320dae5e28b"
+      },
+      "size": [
+        152,
+        44
+      ],
+      "slot": "cartoon/button-primary",
+      "source": [
+        608,
+        176
+      ],
+      "to": [
+        "Button.base[primary]",
+        "Button.base[primary][hover]",
+        "Button.base[primary][pressed]",
+        "Button.base[primary][disabled]"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/divider.png",
+      "insets": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "provenance": {
+        "date": "2026-11-02",
+        "generation": 1793624683,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI ornament of the divider of the cartoon UI style for a bright casual puzzle and party game of saga maps, bundles and round results: a corner, flourish or divider, on a clear background.\nStyle: Storybook ornament. Gentle contours, patterned plants and soft colour shapes make explorable picture-book worlds. Flat illustrated planes, ornamental plants and patterns, gentle coloured lines, overlapping layers for space.\nPalette: at most 32 distinct colours in this asset; 16 to 32 colours; soft saturated hues, coloured line work, patterns from the same palette.\nConform: the cook then the look's 2-pixel outline drawn round the shape (docs/art.md §2.3): draw for that.\nBackground: fully transparent, nothing outside the subject.\nLine: a dark brown #2a1a10 line about 2 pixels wide at the size it is seen.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: black outlines; realistic lighting; empty unpatterned fills; a background or ground shadow; text, letters or watermarks.\nShape: one single divider only, centred, filling the image across its width, 5.33 times as wide as it is tall (128 x 24 proportions); nothing else in the image.\nArt direction: A cartoon divider: a short row of three chunky round dots in warm orange with dark brown outlines, the middle one larger, on a clear background.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-settings.jpg",
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-menu.jpg",
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/bubbly-menu.jpg"
+        ],
+        "request": "63809626c4418153"
+      },
+      "size": [
+        61,
+        24
+      ],
+      "slot": "cartoon/divider",
+      "source": [
+        245,
+        96
+      ],
+      "to": [
+        "divider"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/flourish.png",
+      "insets": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "provenance": {
+        "date": "2026-11-02",
+        "generation": 1793624684,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI ornament of the flourish of the cartoon UI style for a bright casual puzzle and party game of saga maps, bundles and round results: a corner, flourish or divider, on a clear background.\nStyle: Storybook ornament. Gentle contours, patterned plants and soft colour shapes make explorable picture-book worlds. Flat illustrated planes, ornamental plants and patterns, gentle coloured lines, overlapping layers for space.\nPalette: at most 32 distinct colours in this asset; 16 to 32 colours; soft saturated hues, coloured line work, patterns from the same palette.\nConform: the cook then the look's 2-pixel outline drawn round the shape (docs/art.md §2.3): draw for that.\nBackground: fully transparent, nothing outside the subject.\nLine: a dark brown #2a1a10 line about 2 pixels wide at the size it is seen.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: black outlines; realistic lighting; empty unpatterned fills; a background or ground shadow; text, letters or watermarks.\nShape: one single flourish only, centred, filling the image across its width, 2.67 times as wide as it is tall (64 x 24 proportions); nothing else in the image.\nArt direction: A small title flourish: one chunky four-point sparkle star in yellow (#ffcc33) with a dark brown outline, on a clear background.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-settings.jpg",
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-menu.jpg",
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/bubbly-menu.jpg"
+        ],
+        "request": "09757df91f67fb7b"
+      },
+      "size": [
+        23,
+        24
+      ],
+      "slot": "cartoon/flourish",
+      "source": [
+        96,
+        99
+      ],
+      "to": [
+        "flourish"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/thumb.png",
+      "insets": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "provenance": {
+        "date": "2026-11-02",
+        "generation": 1793624686,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI ornament of the thumb of the cartoon UI style for a bright casual puzzle and party game of saga maps, bundles and round results: a corner, flourish or divider, on a clear background.\nStyle: Storybook ornament. Gentle contours, patterned plants and soft colour shapes make explorable picture-book worlds. Flat illustrated planes, ornamental plants and patterns, gentle coloured lines, overlapping layers for space.\nPalette: at most 32 distinct colours in this asset; 16 to 32 colours; soft saturated hues, coloured line work, patterns from the same palette.\nConform: the cook then the look's 2-pixel outline drawn round the shape (docs/art.md §2.3): draw for that.\nBackground: fully transparent, nothing outside the subject.\nLine: a dark brown #2a1a10 line about 2 pixels wide at the size it is seen.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: black outlines; realistic lighting; empty unpatterned fills; a background or ground shadow; text, letters or watermarks.\nShape: one single thumb only, centred, filling the image across its width, 1.00 times as wide as it is tall (24 x 24 proportions); nothing else in the image.\nArt direction: A slider's thumb: one round chunky white knob, perfectly circular, with a thick 4 px dark chocolate-brown (#3a2210) cartoon outline, a small gloss highlight at its upper left and a soft grey band at its bottom; as the white knobs on the concept's volume sliders. Nothing else: no track.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-settings.jpg",
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-menu.jpg",
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/bubbly-menu.jpg"
+        ],
+        "request": "2ca614f247a385bd"
+      },
+      "size": [
+        24,
+        24
+      ],
+      "slot": "cartoon/thumb",
+      "source": [
+        97,
+        96
+      ],
+      "to": [
+        "Slider.knob"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/knob.png",
+      "insets": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "provenance": {
+        "date": "2026-11-02",
+        "generation": 1793624689,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI ornament of the knob of the cartoon UI style for a bright casual puzzle and party game of saga maps, bundles and round results: a corner, flourish or divider, on a clear background.\nStyle: Storybook ornament. Gentle contours, patterned plants and soft colour shapes make explorable picture-book worlds. Flat illustrated planes, ornamental plants and patterns, gentle coloured lines, overlapping layers for space.\nPalette: at most 32 distinct colours in this asset; 16 to 32 colours; soft saturated hues, coloured line work, patterns from the same palette.\nConform: the cook then the look's 2-pixel outline drawn round the shape (docs/art.md §2.3): draw for that.\nBackground: fully transparent, nothing outside the subject.\nLine: a dark brown #2a1a10 line about 2 pixels wide at the size it is seen.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: black outlines; realistic lighting; empty unpatterned fills; a background or ground shadow; text, letters or watermarks.\nShape: one single knob only, centred, filling the image across its width, 1.00 times as wide as it is tall (24 x 24 proportions); nothing else in the image.\nArt direction: A switch's knob when it is on: one round chunky white knob, perfectly circular, with a 3 px dark brown outline and a small gloss highlight; as the knob of the concept's Subtitles switch. Nothing else: no track.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-settings.jpg",
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-menu.jpg",
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/bubbly-menu.jpg"
+        ],
+        "request": "2fa2672e09ba49ae"
+      },
+      "size": [
+        24,
+        24
+      ],
+      "slot": "cartoon/knob",
+      "source": [
+        96,
+        96
+      ],
+      "to": [
+        "Toggle.knob[on]"
+      ]
+    },
+    {
+      "derived": [],
+      "from": "art/knob-off.png",
+      "insets": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "provenance": {
+        "date": "2026-11-02",
+        "generation": 1793624685,
+        "model": "gpt-image-2.5-sunburst",
+        "prompt": "A UI ornament of the knob off of the cartoon UI style for a bright casual puzzle and party game of saga maps, bundles and round results: a corner, flourish or divider, on a clear background.\nStyle: Storybook ornament. Gentle contours, patterned plants and soft colour shapes make explorable picture-book worlds. Flat illustrated planes, ornamental plants and patterns, gentle coloured lines, overlapping layers for space.\nPalette: at most 32 distinct colours in this asset; 16 to 32 colours; soft saturated hues, coloured line work, patterns from the same palette.\nConform: the cook then the look's 2-pixel outline drawn round the shape (docs/art.md §2.3): draw for that.\nBackground: fully transparent, nothing outside the subject.\nLine: a dark brown #2a1a10 line about 2 pixels wide at the size it is seen.\nReference: the image shows the style; match its palette, line and rendering, not its content.\nAvoid: black outlines; realistic lighting; empty unpatterned fills; a background or ground shadow; text, letters or watermarks.\nShape: one single knob-off only, centred, filling the image across its width, 1.00 times as wide as it is tall (24 x 24 proportions); nothing else in the image.\nArt direction: A switch's knob when it is off: one round chunky light grey (#e6e2da) knob, perfectly circular, with a 3 px dark brown outline so it reads at 3:1 against a mid grey track, and a small gloss highlight; as the knob of the concept's Mute everything switch. Nothing else: no track.\nThe reference images are the approved concept of this style's screens: paint this piece as it appears there, in their exact material, colour, ornament and finish; do not copy their layout or text.",
+        "references": [
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-settings.jpg",
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/cartoon-menu.jpg",
+          "origin/ui-art:tests/evidence/ui-art/concepts/packs/bubbly-menu.jpg"
+        ],
+        "request": "1dca49a5ce7c534b"
+      },
+      "size": [
+        24,
+        24
+      ],
+      "slot": "cartoon/knob-off",
+      "source": [
+        97,
+        96
+      ],
+      "to": [
+        "Toggle.knob[off]"
+      ]
+    }
+  ],
+  "stale": [],
+  "style": "cartoon"
+}
