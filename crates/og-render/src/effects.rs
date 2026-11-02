@@ -1044,6 +1044,9 @@ pub struct Lighting2d {
     pub max_layer: i32,
     /// The light map's resolution as a fraction of the target (0.25..1).
     pub resolution: f32,
+    /// How many directions each shadow-casting light's polar shadow map
+    /// traces (64..4096).
+    pub shadow_angles: u32,
 }
 
 impl Default for Lighting2d {
@@ -1053,6 +1056,7 @@ impl Default for Lighting2d {
             min_layer: i32::MIN,
             max_layer: 99,
             resolution: 0.5,
+            shadow_angles: 1024,
         }
     }
 }
@@ -1127,9 +1131,12 @@ impl Default for Light2d {
     }
 }
 
-/// A rotated rectangle that blocks 2D light (walls, crates, characters):
-/// usually a sprite's footprint ([`Occluder2d::from_sprite`]). Pixels
-/// inside it are not shadowed by it.
+/// The most vertices an [`Occluder2d`]'s polygon has.
+pub const MAX_OCCLUDER_POINTS_2D: usize = 16;
+
+/// A shape that blocks 2D light (walls, crates, characters): a rotated
+/// rectangle, usually a sprite's footprint ([`Occluder2d::from_sprite`]),
+/// or a polygon. Pixels inside it are not shadowed by it.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Occluder2d {
     pub center: Vec2,
@@ -1138,6 +1145,12 @@ pub struct Occluder2d {
     pub rotation: f32,
     /// The light layers whose lights it blocks.
     pub layers: u32,
+    /// A polygon in place of the rectangle: the first `point_count`
+    /// vertices, in order around it (concave is fine), relative to
+    /// `center` before `rotation` (already scaled). Fewer than three keep
+    /// the rectangle.
+    pub points: [Vec2; MAX_OCCLUDER_POINTS_2D],
+    pub point_count: u8,
 }
 
 impl Default for Occluder2d {
@@ -1147,6 +1160,8 @@ impl Default for Occluder2d {
             half_size: Vec2::splat(0.5),
             rotation: 0.0,
             layers: u32::MAX,
+            points: [Vec2::ZERO; MAX_OCCLUDER_POINTS_2D],
+            point_count: 0,
         }
     }
 }
@@ -1163,7 +1178,45 @@ impl Occluder2d {
             center,
             half_size: (sprite.size * 0.5 - Vec2::splat(inset)).max(Vec2::ZERO),
             rotation: sprite.rotation,
-            layers: u32::MAX,
+            ..Default::default()
+        }
+    }
+
+    /// A polygon occluder: `points` (at most [`MAX_OCCLUDER_POINTS_2D`]
+    /// are kept) relative to `center`, turned by `rotation`.
+    pub fn polygon(center: Vec2, rotation: f32, points: &[Vec2]) -> Occluder2d {
+        let mut o = Occluder2d {
+            center,
+            rotation,
+            ..Default::default()
+        };
+        let n = points.len().min(MAX_OCCLUDER_POINTS_2D);
+        o.points[..n].copy_from_slice(&points[..n]);
+        o.point_count = n as u8;
+        o
+    }
+
+    /// Its outline in the plane, in order around it: the polygon, or the
+    /// rectangle's four corners.
+    pub fn outline(&self) -> Vec<Vec2> {
+        let (s, c) = self.rotation.sin_cos();
+        let turn = |p: Vec2| self.center + Vec2::new(p.x * c - p.y * s, p.x * s + p.y * c);
+        if self.point_count >= 3 {
+            self.points[..self.point_count as usize]
+                .iter()
+                .map(|&p| turn(p))
+                .collect()
+        } else {
+            let h = self.half_size;
+            [
+                Vec2::new(-h.x, -h.y),
+                Vec2::new(h.x, -h.y),
+                Vec2::new(h.x, h.y),
+                Vec2::new(-h.x, h.y),
+            ]
+            .into_iter()
+            .map(turn)
+            .collect()
         }
     }
 }

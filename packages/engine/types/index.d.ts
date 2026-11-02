@@ -11019,6 +11019,7 @@ export interface GeometryHit {
 }
 
 
+
 /**
  * How a render target's colour is stored.
  * - `"ldr"`: 8-bit sRGB: the view's finished image (exposed with its camera's exposure and tone mapped with RenderSettings' curve), as a loaded colour texture: a monitor, a minimap, a portrait (show it with an unlit material's map or a sprite).
@@ -49481,6 +49482,16 @@ export declare namespace og {
      * @returns Refused for a zero or non-finite direction.
      */
     function raycast(world: World, ray: Ray, desc?: RaycastGeometryDesc): Result<readonly GeometryHit[]>;
+    /**
+     * The 2D light reaching a point, for game rules (a stealth game's "is the player lit"): the sum of every og.Light2D whose layers share a bit with `layers`, each its color times intensity times its falloff (and a spot's cone), point and spot lights blocked when castShadows and an og.Occluder2D on their layers stands between them and the point (hard shadows through the same rectangles and polygons the light map draws; an occluder holding the point or the light blocks nothing). Ambient light is not included. Lights and occluders are read at their world transforms as of the call.
+     * The result is the same bits on every host (og-core's deterministic math, never the GPU), so a system may store it in the world. Inside a system, declare reads of og.Light2D, og.Occluder2D, og.Transform and og.Parent.
+     *
+     * @param world The world asked.
+     * @param point The point in the 2D plane, in world units.
+     * @param layers The light layers the point is on, a bit per layer as og.LightMask2D.layers. Default `1`.
+     * @returns Refused for a non-finite point, or inside a system that did not declare the reads.
+     */
+    function light2dAt(world: World, point: Vector2, layers?: number): Result<Color>;
     /**
      * Make a render target: a texture an og.CameraView or og.Mirror draws into, its colour (RenderTargetInfo.texture) usable by any map, sprite or UI image, as three.js WebGLRenderTarget and its texture. Targets are drawn before the frame, so a material shows this frame's image; one a camera draws while it sees itself (a monitor in the room it films) shows the frame before.
      *

@@ -153,6 +153,10 @@ pub fn shader_sources() -> Vec<ShaderSource> {
     add("mipmap", crate::mips::MIPMAP_WGSL.to_string());
     add("ibl", crate::ibl::IBL_WGSL.to_string());
     add("lights 2d", crate::light2d::LIGHT2D_WGSL.to_string());
+    add(
+        "lights 2d shadows",
+        crate::light2d::LIGHT2D_SHADOW_WGSL.to_string(),
+    );
     add("pack", crate::physical::PACK_WGSL.to_string());
     // Compute: GPU particles and GPU culling.
     add("particle sim", crate::particles_gpu::sim_source());

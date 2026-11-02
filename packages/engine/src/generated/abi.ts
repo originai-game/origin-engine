@@ -431,6 +431,8 @@ export interface HostAbi<A, V> {
   og_render_points(world: number, desc: string | undefined): string;
   /** `og.render.raycast` */
   og_render_raycast(world: number, ray: string, desc: string | undefined): string;
+  /** `og.render.light2dAt` */
+  og_render_light2d_at(world: number, point: string, layers: number | undefined): string;
   /** `og.render.renderTarget` */
   og_render_render_target(world: number, desc: string | undefined): string;
   /** `og.render.setPostParam` */
@@ -1464,6 +1466,7 @@ export const SYMBOLS: readonly string[] = [
   "og_render_lines",
   "og_render_points",
   "og_render_raycast",
+  "og_render_light2d_at",
   "og_render_render_target",
   "og_render_set_post_param",
   "og_render_post_errors",

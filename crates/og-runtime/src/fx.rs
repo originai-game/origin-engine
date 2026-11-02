@@ -477,6 +477,7 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
             min_layer: l["minLayer"].as_i64().unwrap_or(-1_000_000) as i32,
             max_layer: l["maxLayer"].as_i64().unwrap_or(99) as i32,
             resolution: f(&l, "resolution", 0.5),
+            shadow_angles: u(&l, "shadowAngles", 1024),
         });
     }
 }
@@ -736,11 +737,28 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
     }
     for (e, v) in rows(world, layouts.occluder_2d.as_ref()) {
         let (pos, rot, scale) = planar(h.world_of(e));
+        // The same outline light2dAt reads (`super::light2d_at`).
+        let points: Vec<f32> = v["points"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .filter_map(Value::as_f64)
+                    .map(|x| x as f32)
+                    .collect()
+            })
+            .unwrap_or_default();
+        let polygon: Vec<Vec2> = if points.len() >= 6 {
+            super::light2d_at::local_outline(&points, 0.0, 0.0)
+                .into_iter()
+                .map(|p| p * scale)
+                .collect()
+        } else {
+            Vec::new()
+        };
         scene.occluders_2d.push(Occluder2d {
-            center: pos,
             half_size: Vec2::new(f(&v, "width", 1.0), f(&v, "height", 1.0)) * scale * 0.5,
-            rotation: rot,
             layers: mask(&v, "layers", u32::MAX),
+            ..Occluder2d::polygon(pos, rot, &polygon)
         });
     }
     for (e, v) in rows(world, layouts.decal.as_ref()) {

@@ -193,3 +193,124 @@ fn decals_project_onto_surfaces_and_are_capped() {
     let (_, s) = frame(&small(), &many);
     assert_eq!((s.decals, s.decals_dropped), (MAX_DECALS as u32, 5));
 }
+
+/// R11 batch 2's far edge: a large light (radius 30) and three small
+/// occluders (0.3 wide) 24 units out, near its rim, where each angle of the
+/// polar shadow map covers the widest strip (0.15 per texel at the default
+/// 1024 angles). Each still casts a shadow behind it, and the frame at 4096
+/// angles shows what the default loses there (saved for review, both).
+#[test]
+fn small_occluders_at_the_far_edge_of_a_large_light_still_cast_shadows() {
+    let scene = |angles: u32| {
+        let mut scene = RenderScene::new();
+        scene.add_sprite(Sprite {
+            position: Vec3::new(25.0, 0.0, 0.0),
+            size: Vec2::new(20.0, 12.0),
+            color: [0.8, 0.8, 0.8, 1.0],
+            ..Default::default()
+        });
+        for y in [-2.0, 0.0, 2.0] {
+            scene.occluders_2d.push(Occluder2d {
+                center: Vec2::new(24.0, y),
+                half_size: Vec2::splat(0.15),
+                ..Default::default()
+            });
+        }
+        scene.lighting_2d = Some(Lighting2d {
+            ambient: Vec3::splat(0.02),
+            shadow_angles: angles,
+            ..Default::default()
+        });
+        scene.lights_2d.push(Light2d {
+            radius: 30.0,
+            falloff: 0.5,
+            source_radius: 0.25,
+            ..Default::default()
+        });
+        scene.camera = Camera::orthographic_2d(Vec2::new(25.0, 0.0), 8.0);
+        scene.environment.background = Background::Color(Vec3::ZERO);
+        scene.post.tonemap = Tonemap::None;
+        scene
+    };
+    let (img, stats) = frame(&small(), &scene(1024));
+    let (fine, _) = frame(&small(), &scene(4096));
+    save("light2d-far-edge", &img);
+    save("light2d-far-edge-4096", &fine);
+    assert_eq!((stats.lights_2d, stats.occluders_2d), (1, 3));
+    let cam = Camera::orthographic_2d(Vec2::new(25.0, 0.0), 8.0);
+    for (name, img) in [("1024", &img), ("4096", &fine)] {
+        for y in [-2.0f32, 0.0, 2.0] {
+            // Behind the box on its ray from the light, and half a unit aside.
+            let behind = project(&cam, 320, 180, Vec3::new(27.0, y * 27.0 / 24.0, 0.0));
+            let aside = project(&cam, 320, 180, Vec3::new(27.0, y * 27.0 / 24.0 + 0.5, 0.0));
+            let (b, a) = (
+                luma(px(img, behind.0, behind.1)),
+                luma(px(img, aside.0, aside.1)),
+            );
+            println!("{name} angles, box at y {y}: behind {b}, aside {a}");
+            assert!(b < 0.6 * a, "{name}: no shadow behind the box at y {y}");
+        }
+    }
+}
+
+/// A concave polygon occluder (a U open towards the light): the notch is
+/// lit, the floor behind the U's base is shadowed, and a pixel inside one
+/// of its arms is not shadowed by the U itself.
+#[test]
+fn a_concave_polygon_occluder_shadows_behind_its_body_only() {
+    let mut scene = RenderScene::new();
+    scene.add_sprite(Sprite {
+        size: Vec2::new(20.0, 12.0),
+        color: [0.8, 0.8, 0.8, 1.0],
+        ..Default::default()
+    });
+    let u = [
+        (-1.0, 0.0),
+        (1.0, 0.0),
+        (1.0, 2.0),
+        (0.5, 2.0),
+        (0.5, 0.5),
+        (-0.5, 0.5),
+        (-0.5, 2.0),
+        (-1.0, 2.0),
+    ]
+    .map(|(x, y)| Vec2::new(x, y));
+    scene
+        .occluders_2d
+        .push(Occluder2d::polygon(Vec2::ZERO, 0.0, &u));
+    scene.lighting_2d = Some(Lighting2d {
+        ambient: Vec3::splat(0.02),
+        ..Default::default()
+    });
+    scene.lights_2d.push(Light2d {
+        position: Vec2::new(0.0, 4.0),
+        radius: 9.0,
+        falloff: 1.0,
+        source_radius: 0.1,
+        ..Default::default()
+    });
+    scene.camera = Camera::orthographic_2d(Vec2::new(0.0, 1.0), 8.0);
+    scene.environment.background = Background::Color(Vec3::ZERO);
+    scene.post.tonemap = Tonemap::None;
+    let (img, _) = frame(&small(), &scene);
+    save("light2d-polygon", &img);
+    let cam = Camera::orthographic_2d(Vec2::new(0.0, 1.0), 8.0);
+    let at = |x: f32, y: f32| {
+        luma(px(
+            &img,
+            project(&cam, 320, 180, Vec3::new(x, y, 0.0)).0,
+            project(&cam, 320, 180, Vec3::new(x, y, 0.0)).1,
+        ))
+    };
+    let (notch, below, arm, open) = (at(0.0, 1.2), at(0.0, -1.5), at(-0.8, 1.0), at(-2.5, 1.0));
+    println!("notch {notch}, below the base {below}, inside an arm {arm}, open floor {open}");
+    assert!(
+        notch > 0.8 * open,
+        "the notch is shadowed: {notch} vs {open}"
+    );
+    assert!(
+        below < 0.3 * notch,
+        "nothing shadows the floor behind the base: {below}"
+    );
+    assert!(arm > 0.5 * open, "the U shadows its own arm: {arm}");
+}

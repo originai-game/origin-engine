@@ -750,6 +750,9 @@ impl RenderApi for NodeHost {
     fn og_render_raycast(&self, world: u32, ray: String, desc: Option<String>) -> String {
         rt::og_render_raycast(world, ray, desc)
     }
+    fn og_render_light2d_at(&self, world: u32, point: String, layers: Option<u32>) -> String {
+        rt::og_render_light2d_at(world, point, layers)
+    }
     fn og_render_baked_lighting(&self, world: u32) -> String {
         rt::og_render_baked_lighting(world)
     }

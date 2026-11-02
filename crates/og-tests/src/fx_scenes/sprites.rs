@@ -223,6 +223,7 @@ pub fn fx_2d_scene() -> Result<RenderScene, String> {
         min_layer: 0,
         max_layer: 50,
         resolution: 0.5,
+        shadow_angles: 1024,
     });
     scene.lights_2d = vec![
         Light2d {
@@ -416,6 +417,7 @@ pub fn tilemap_lit_scene() -> RenderScene {
         min_layer: -30,
         max_layer: 50,
         resolution: 0.5,
+        shadow_angles: 1024,
     });
     scene.lights_2d = vec![
         Light2d {

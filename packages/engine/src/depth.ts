@@ -44,6 +44,7 @@ export const depthRender = Object.freeze({
   lines: (world: W, desc?: unknown) => parse(abi().og_render_lines(world.id, json(desc))),
   points: (world: W, desc?: unknown) => parse(abi().og_render_points(world.id, json(desc))),
   raycast: (world: W, ray: unknown, desc?: unknown) => parse(abi().og_render_raycast(world.id, JSON.stringify(ray), json(desc))),
+  light2dAt: (world: W, point: unknown, layers?: number) => parse(abi().og_render_light2d_at(world.id, JSON.stringify(point), layers)),
 });
 
 export const debug = Object.freeze({

@@ -1281,6 +1281,12 @@ pub fn og_render_raycast(env: Env, world: u32, ray: String, desc: Option<String>
     <Host as RenderApi>::og_render_raycast(&Host, world, ray, desc)
 }
 
+#[napi(js_name = "og_render_light2d_at")]
+pub fn og_render_light2d_at(env: Env, world: u32, point: String, layers: Option<u32>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_light2d_at(&Host, world, point, layers)
+}
+
 #[napi(js_name = "og_render_render_target")]
 pub fn og_render_render_target(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);

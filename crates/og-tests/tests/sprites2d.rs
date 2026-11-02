@@ -248,6 +248,7 @@ fn tile_layers_in_the_lit_range_take_the_2d_light() {
             min_layer,
             max_layer: 10,
             resolution: 1.0,
+            shadow_angles: 1024,
         });
         scene.lights_2d.push(Light2d {
             position: Vec2::new(-4.0, 0.0),
@@ -776,6 +777,7 @@ fn spot_global_and_masked_2d_lights() {
             min_layer: -10,
             max_layer: 10,
             resolution: 1.0,
+            shadow_angles: 1024,
         });
     };
     // A spot at the origin pointing +x, 0.3..0.5 rad either side.

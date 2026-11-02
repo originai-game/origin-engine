@@ -51,6 +51,7 @@ mod inspector;
 mod interpolate;
 mod lanes;
 mod lazy;
+mod light2d_at;
 mod look;
 mod memory;
 mod probes;
@@ -141,6 +142,7 @@ pub use i18n::{
     og_i18n_format_compact, og_i18n_format_currency, og_i18n_format_date, og_i18n_format_duration,
     og_i18n_format_time, og_i18n_has, og_i18n_load, og_i18n_locale, og_i18n_set_locale, og_i18n_t,
 };
+pub use light2d_at::og_render_light2d_at;
 pub use memory::memory_report;
 pub use modules::ui_world::{
     og_ui_define_mass, og_ui_mass_count, og_ui_meta, og_ui_open_world_anchor,

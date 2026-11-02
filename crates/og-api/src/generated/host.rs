@@ -493,6 +493,8 @@ pub trait RenderApi: Wire {
     fn og_render_points(&self, world: u32, desc: Option<String>) -> String;
     /// `og.render.raycast`
     fn og_render_raycast(&self, world: u32, ray: String, desc: Option<String>) -> String;
+    /// `og.render.light2dAt`
+    fn og_render_light2d_at(&self, world: u32, point: String, layers: Option<u32>) -> String;
     /// `og.render.renderTarget`
     fn og_render_render_target(&self, world: u32, desc: Option<String>) -> String;
     /// `og.render.setPostParam`
@@ -1623,6 +1625,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_render_lines",
     "og_render_points",
     "og_render_raycast",
+    "og_render_light2d_at",
     "og_render_render_target",
     "og_render_set_post_param",
     "og_render_post_errors",

@@ -196,6 +196,7 @@ module render {
 | [`RaycastGeometryDesc`](#type-RaycastGeometryDesc) | desc struct | Which meshes og.render.raycast tests, as three.js Raycaster's near, far and layers. |
 | [`GeometryHit`](#type-GeometryHit) | struct | Where a ray meets a drawn triangle, as three.js Raycaster's intersection. |
 | [`og.render.raycast`](#fn-raycast) | function | Every drawn triangle a ray crosses, nearest first, as three.js Raycaster.intersectObjects: what is drawn, not the colliders (og.physics.raycast answers those). It tests og.Mesh and og.Model entities at their world transforms through a BVH per geometry (built when the geometry is made, loaded or updated), both faces of each triangle, skinned models in their bind pose. Read the world as of the call; inside a system, its transforms as earlier systems left them. |
+| [`og.render.light2dAt`](#fn-light2dAt) | function | The 2D light reaching a point, for game rules (a stealth game's "is the player lit"): the sum of every og.Light2D whose layers share a bit with `layers`, each its color times intensity times its falloff (and a spot's cone), point and spot lights blocked when castShadows and an og.Occluder2D on their layers stands between them and the point (hard shadows through the same rectangles and polygons the light map draws; an occluder holding the point or the light blocks nothing). Ambient light is not included. Lights and occluders are read at their world transforms as of the call. |
 | [`RenderTargetFormat`](#type-RenderTargetFormat) | enum | How a render target's colour is stored. |
 | [`RenderTargetFormat()`](#column-RenderTargetFormat) | column kind | A RenderTargetFormat field: the variant's index. |
 | [`RenderTarget`](#type-RenderTarget) | handle | A texture a camera draws into (og.render.renderTarget), as three.js WebGLRenderTarget. |
@@ -1632,6 +1633,43 @@ fn raycast {
 
 <sub>`api.ogt` line 6999</sub>
 
+<a id="fn-light2dAt"></a>
+
+### `og.render.light2dAt`
+
+The 2D light reaching a point, for game rules (a stealth game's "is the player lit"): the sum of every og.Light2D whose layers share a bit with `layers`, each its color times intensity times its falloff (and a spot's cone), point and spot lights blocked when castShadows and an og.Occluder2D on their layers stands between them and the point (hard shadows through the same rectangles and polygons the light map draws; an occluder holding the point or the light blocks nothing). Ambient light is not included. Lights and occluders are read at their world transforms as of the call.
+
+The result is the same bits on every host (og-core's deterministic math, never the GPU), so a system may store it in the world. Inside a system, declare reads of og.Light2D, og.Occluder2D, og.Transform and og.Parent.
+
+```ts
+og.render.light2dAt(world: World, point: Vector2, layers?: number): Result<Color>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world asked. |
+| `point` | `Vector2` | no | The point in the 2D plane, in world units. |
+| `layers` | `number` | yes | The light layers the point is on, a bit per layer as og.LightMask2D.layers. Default `1`. |
+
+**Returns** `Result<Color>`: Refused for a non-finite point, or inside a system that did not declare the reads.
+
+Binding symbol `og_render_light2d_at` · publish builds: kept
+
+```ogt
+fn light2dAt {
+  doc "The 2D light reaching a point, for game rules (a stealth game's \"is the player lit\"): the sum of every og.Light2D whose layers share a bit with `layers`, each its color times intensity times its falloff (and a spot's cone), point and spot lights blocked when castShadows and an og.Occluder2D on their layers stands between them and the point (hard shadows through the same rectangles and polygons the light map draws; an occluder holding the point or the light blocks nothing). Ambient light is not included. Lights and occluders are read at their world transforms as of the call."
+  doc "The result is the same bits on every host (og-core's deterministic math, never the GPU), so a system may store it in the world. Inside a system, declare reads of og.Light2D, og.Occluder2D, og.Transform and og.Parent."
+  param world World "The world asked."
+  param point Vector2 "The point in the 2D plane, in world units."
+  param layers u32 "The light layers the point is on, a bit per layer as og.LightMask2D.layers." {
+    default 1
+  }
+  returns Result.Color "Refused for a non-finite point, or inside a system that did not declare the reads."
+}
+```
+
+<sub>`api.ogt` line 7007</sub>
+
 <a id="fn-renderTarget"></a>
 
 ### `og.render.renderTarget`
@@ -1660,7 +1698,7 @@ fn renderTarget {
 }
 ```
 
-<sub>`api.ogt` line 7055</sub>
+<sub>`api.ogt` line 7066</sub>
 
 <a id="fn-setPostParam"></a>
 
@@ -1694,7 +1732,7 @@ fn setPostParam {
 }
 ```
 
-<sub>`api.ogt` line 7167</sub>
+<sub>`api.ogt` line 7178</sub>
 
 <a id="fn-postErrors"></a>
 
@@ -1722,7 +1760,7 @@ fn postErrors {
 }
 ```
 
-<sub>`api.ogt` line 7182</sub>
+<sub>`api.ogt` line 7193</sub>
 
 <a id="fn-bakedLighting"></a>
 
@@ -1750,7 +1788,7 @@ fn bakedLighting {
 }
 ```
 
-<sub>`api.ogt` line 7250</sub>
+<sub>`api.ogt` line 7261</sub>
 
 ## Components, resources and events
 
@@ -3876,7 +3914,7 @@ component CameraView {
 }
 ```
 
-<sub>`api.ogt` line 7062</sub>
+<sub>`api.ogt` line 7073</sub>
 
 <a id="record-Mirror"></a>
 
@@ -3921,7 +3959,7 @@ component Mirror {
 }
 ```
 
-<sub>`api.ogt` line 7134</sub>
+<sub>`api.ogt` line 7145</sub>
 
 <a id="record-RectLight"></a>
 
@@ -3971,7 +4009,7 @@ component RectLight {
 }
 ```
 
-<sub>`api.ogt` line 7196</sub>
+<sub>`api.ogt` line 7207</sub>
 
 <a id="record-LightVolume"></a>
 
@@ -4005,7 +4043,7 @@ component LightVolume {
 }
 ```
 
-<sub>`api.ogt` line 7223</sub>
+<sub>`api.ogt` line 7234</sub>
 
 ## Types
 
@@ -7005,7 +7043,7 @@ enum RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 7009</sub>
+<sub>`api.ogt` line 7020</sub>
 
 <a id="type-RenderTarget"></a>
 
@@ -7019,7 +7057,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle RenderTarget "A texture a camera draws into (og.render.renderTarget), as three.js WebGLRenderTarget."
 ```
 
-<sub>`api.ogt` line 7022</sub>
+<sub>`api.ogt` line 7033</sub>
 
 <a id="type-RenderTargetDesc"></a>
 
@@ -7053,7 +7091,7 @@ struct RenderTargetDesc {
 }
 ```
 
-<sub>`api.ogt` line 7031</sub>
+<sub>`api.ogt` line 7042</sub>
 
 <a id="type-RenderTargetInfo"></a>
 
@@ -7080,7 +7118,7 @@ struct RenderTargetInfo {
 }
 ```
 
-<sub>`api.ogt` line 7046</sub>
+<sub>`api.ogt` line 7057</sub>
 
 <a id="type-Post"></a>
 
@@ -7094,7 +7132,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Post "A custom post pass from og.load.post (an `.ogt` of `type post`): a WGSL `post` function over the lit image and the parameters it reads."
 ```
 
-<sub>`api.ogt` line 7158</sub>
+<sub>`api.ogt` line 7169</sub>
 
 <a id="type-PostError"></a>
 
@@ -7115,7 +7153,7 @@ struct PostError {
 }
 ```
 
-<sub>`api.ogt` line 7176</sub>
+<sub>`api.ogt` line 7187</sub>
 
 <a id="type-VolumetricFog"></a>
 
@@ -7138,7 +7176,7 @@ enum VolumetricFog {
 }
 ```
 
-<sub>`api.ogt` line 7190</sub>
+<sub>`api.ogt` line 7201</sub>
 
 <a id="type-BakedScene"></a>
 
@@ -7171,7 +7209,7 @@ struct BakedScene {
 }
 ```
 
-<sub>`api.ogt` line 7238</sub>
+<sub>`api.ogt` line 7249</sub>
 
 ## Column kinds
 
@@ -7492,7 +7530,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>`api.ogt` line 7015</sub>
+<sub>`api.ogt` line 7026</sub>
 
 ```ogt
 column RenderTarget {
@@ -7503,7 +7541,7 @@ column RenderTarget {
 }
 ```
 
-<sub>`api.ogt` line 7024</sub>
+<sub>`api.ogt` line 7035</sub>
 
 ```ogt
 column Post {
@@ -7514,7 +7552,7 @@ column Post {
 }
 ```
 
-<sub>`api.ogt` line 7160</sub>
+<sub>`api.ogt` line 7171</sub>
 
 ## Constants
 

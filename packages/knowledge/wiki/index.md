@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2313 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2314 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -1237,6 +1237,7 @@ Field units the docs and Tune use.
 | [`og.render.geometryInfo`](render.md#fn-geometryInfo) | function | render | `og_render_geometry_info` |
 | [`og.render.icosahedronGeometry`](render.md#fn-icosahedronGeometry) | function | render | `og_render_icosahedron_geometry` |
 | [`og.render.latheGeometry`](render.md#fn-latheGeometry) | function | render | `og_render_lathe_geometry` |
+| [`og.render.light2dAt`](render.md#fn-light2dAt) | function | render | `og_render_light2d_at` |
 | [`og.render.lines`](render.md#fn-lines) | function | render | `og_render_lines` |
 | [`og.render.look`](render.md#fn-look) | function | render | `og_render_look` |
 | [`og.render.measureText`](render.md#fn-measureText) | function | render | `og_render_measure_text` |

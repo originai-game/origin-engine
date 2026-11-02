@@ -1,24 +1,26 @@
 // 2D lighting: the light map the lit sprite layers multiply with. Cleared to
 // the ambient light; each light adds an instanced quad over its radius,
-// `(1 - d/r)^falloff`, times its visibility past the occluders: for each
-// rotated-rectangle occluder between the pixel and the light, the fraction
-// of the light's disc (radius `source`) the rectangle hides as seen from
-// the pixel, so penumbrae widen away from the occluder. A spot light
-// fades between the cosines of its outer and inner half-angles about its
-// axis; a global light covers the whole map at full colour, unshadowed.
+// `(1 - d/r)^falloff`, times its visibility from its row of the polar
+// shadow map (light2d_shadow.wgsl): the fraction of a few rays about the
+// pixel's angle that reach it, spread over the penumbra a light of radius
+// `source` gives at the blocker's distance (PCSS), so penumbrae widen away
+// from the occluder. A pixel inside the first occluder its ray meets is not
+// shadowed by it. A spot light fades between the cosines of its outer and
+// inner half-angles about its axis; a global light covers the whole map at
+// full colour, unshadowed.
 
 struct Lights2d {
   view_proj: mat4x4<f32>,
-  info: vec4<f32>,                 // x: occluders
-  occluders: array<vec4<f32>, 256>,  // per occluder: (center, half size), (cos, sin, 0, 0)
+  info: vec4<f32>,                 // x: the shadow map's angles
 };
 @group(0) @binding(0) var<uniform> lights2d: Lights2d;
+@group(0) @binding(1) var shadow_map: texture_2d<f32>;
 
 struct LightIn {
   @location(0) pos_radius: vec4<f32>,   // xy: position, z: radius, w: falloff
   @location(1) color_source: vec4<f32>, // rgb: colour x intensity, w: source radius
   @location(2) flags: vec4<f32>,        // x: casts shadows, y: kind (0 point, 1 spot, 2 global), z, w: cos outer, cos inner
-  @location(3) direction: vec4<f32>,    // xy: axis, z: height
+  @location(3) direction: vec4<f32>,    // xy: axis, z: height, w: shadow row (-1: none)
 };
 
 struct LightOut {
@@ -50,12 +52,56 @@ fn vs(@builtin(vertex_index) vi: u32, l: LightIn) -> LightOut {
   return o;
 }
 
-fn cross2(a: vec2<f32>, b: vec2<f32>) -> f32 {
-  return a.x * b.y - a.y * b.x;
+const TAU: f32 = 6.283185307179586;
+
+// Whether the ray at column `c` (wrapped) of `row` reaches distance `d`:
+// short of the first occluder, or inside it.
+fn reaches(row: i32, c: i32, d: f32) -> f32 {
+  let n = i32(lights2d.info.x);
+  let v = textureLoad(shadow_map, vec2<i32>(((c % n) + n) % n, row), 0).xy;
+  let bias = 0.002 * d;
+  return select(0.0, 1.0, d <= v.x + bias || d <= v.y);
 }
 
-fn angle_from(base: vec2<f32>, v: vec2<f32>) -> f32 {
-  return atan2(cross2(base, v), dot(base, v));
+// The same at a fractional column, between its two texels.
+fn reaches_at(row: i32, x: f32, d: f32) -> f32 {
+  let c = floor(x - 0.5);
+  let t = x - 0.5 - c;
+  return mix(reaches(row, i32(c), d), reaches(row, i32(c) + 1, d), t);
+}
+
+fn blocker(row: i32, c: i32) -> f32 {
+  let n = i32(lights2d.info.x);
+  return textureLoad(shadow_map, vec2<i32>(((c % n) + n) % n, row), 0).x;
+}
+
+// The fraction of the light of radius `source` at angle `theta` from the
+// pixel at distance `d` that reaches it.
+fn visibility(row: i32, theta: f32, d: f32, source: f32) -> f32 {
+  let n = lights2d.info.x;
+  let per_radian = n / TAU;
+  let x = fract(theta / TAU) * n;
+  // Blockers: the occluders nearer than the pixel within the light's
+  // angular size as seen from there.
+  let search = clamp(source / d * per_radian, 0.5, n / 8.0);
+  var sum = 0.0;
+  var found = 0.0;
+  for (var k = 0; k < 8; k++) {
+    let b = blocker(row, i32(floor(x + (f32(k) / 7.0 * 2.0 - 1.0) * search)));
+    if (b < d) {
+      sum += b;
+      found += 1.0;
+    }
+  }
+  if (found == 0.0) { return reaches_at(row, x, d); }
+  let db = max(sum / found, 1e-3);
+  // The penumbra's half-angle at the pixel (PCSS), at least half a texel.
+  let half = clamp(source * (d - db) / (db * d) * per_radian, 0.5, n / 8.0);
+  var lit = 0.0;
+  for (var k = 0; k < 9; k++) {
+    lit += reaches_at(row, x + (f32(k) / 8.0 * 2.0 - 1.0) * half, d);
+  }
+  return lit / 9.0;
 }
 
 @fragment
@@ -74,41 +120,9 @@ fn fs(in: LightOut) -> @location(0) vec4<f32> {
     atten *= smoothstep(in.flags.z, max(in.flags.w, in.flags.z + 1e-4), c);
     if (atten <= 0.0) { discard; }
   }
-  if (in.flags.x > 0.5 && dist > 1e-4) {
-    let alpha = atan(max(in.color_source.w, 1e-3) / dist);
-    let count = u32(lights2d.info.x);
-    for (var i = 0u; i < count; i++) {
-      let a = lights2d.occluders[i * 2u];
-      let b = lights2d.occluders[i * 2u + 1u];
-      let center = a.xy;
-      let half = a.zw;
-      let cs = b.x;
-      let sn = b.y;
-      // Into the occluder's frame.
-      let dp = in.world - center;
-      let q = vec2<f32>(dp.x * cs + dp.y * sn, -dp.x * sn + dp.y * cs);
-      if (all(abs(q) <= half)) { continue; }
-      let dl = in.light.xy - center;
-      let ql = vec2<f32>(dl.x * cs + dl.y * sn, -dl.x * sn + dl.y * cs);
-      if (all(abs(ql) <= half)) { continue; }
-      let nearest = length(max(abs(q) - half, vec2<f32>(0.0)));
-      if (nearest >= dist) { continue; }
-      // The rectangle's angular span from the pixel, around its centre's direction.
-      let base = normalize(center - in.world);
-      var lo = 1e9;
-      var hi = -1e9;
-      for (var k = 0u; k < 4u; k++) {
-        let s = vec2<f32>(select(-1.0, 1.0, (k & 1u) != 0u), select(-1.0, 1.0, (k & 2u) != 0u)) * half;
-        let corner = center + vec2<f32>(s.x * cs - s.y * sn, s.x * sn + s.y * cs);
-        let ang = angle_from(base, corner - in.world);
-        lo = min(lo, ang);
-        hi = max(hi, ang);
-      }
-      let al = angle_from(base, to_light);
-      let covered = clamp(min(hi, al + alpha) - max(lo, al - alpha), 0.0, 2.0 * alpha);
-      atten *= 1.0 - covered / (2.0 * alpha);
-      if (atten <= 0.0) { break; }
-    }
+  if (in.flags.x > 0.5 && in.direction.w >= 0.0 && dist > 1e-4) {
+    let theta = atan2(-to_light.y, -to_light.x);
+    atten *= visibility(i32(in.direction.w), theta, dist, max(in.color_source.w, 1e-3));
   }
   return vec4<f32>(in.color_source.rgb * atten, 0.0);
 }

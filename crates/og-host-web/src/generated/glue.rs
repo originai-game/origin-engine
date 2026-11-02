@@ -1069,6 +1069,11 @@ pub fn og_render_raycast(world: u32, ray: String, desc: Option<String>) -> Strin
 }
 
 #[wasm_bindgen]
+pub fn og_render_light2d_at(world: u32, point: String, layers: Option<u32>) -> String {
+    <Host as RenderApi>::og_render_light2d_at(&Host, world, point, layers)
+}
+
+#[wasm_bindgen]
 pub fn og_render_render_target(world: u32, desc: Option<String>) -> String {
     <Host as RenderApi>::og_render_render_target(&Host, world, desc)
 }

@@ -1258,12 +1258,14 @@ impl Renderer {
             bytemuck::bytes_of(&[light_slots.count() as f32, 0.0, 0.0, 0.0]),
         );
         let (lights_2d, occluders_2d) = match scene.lighting_2d {
-            Some(_) => self.lights_2d.write(
+            Some(l) => self.lights_2d.write(
+                &self.device,
                 &self.queue,
                 cam.view_proj,
                 &scene.lights_2d,
                 &scene.occluders_2d,
                 &light_slots,
+                l.shadow_angles,
             ),
             None => (0, 0),
         };

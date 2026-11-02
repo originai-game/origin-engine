@@ -116,6 +116,7 @@ pub fn skeleton_scene() -> Result<RenderScene, String> {
         min_layer: 0,
         max_layer: 10,
         resolution: 0.5,
+        shadow_angles: 1024,
     });
     scene.lights_2d = vec![Light2d {
         position: Vec2::new(0.6, 0.4),

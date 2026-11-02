@@ -423,6 +423,7 @@ pub fn billboard_scene() -> RenderScene {
         min_layer: 1,
         max_layer: 1,
         resolution: 1.0,
+        shadow_angles: 1024,
     });
     scene.lights_2d.push(Light2d {
         position: Vec2::new(-5.7, 0.1),
