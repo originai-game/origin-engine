@@ -12,7 +12,7 @@ import { join } from "node:path";
 import { deflateSync } from "node:zlib";
 import { playtest, type PlaytestDesc } from "@origingame/engine/playtest";
 import { decodePng, difference, outDir, referencesDir, type Image } from "./frames.ts";
-import { framesScript } from "./script.ts";
+import { framesScript, STYLE_SETTLE } from "./script.ts";
 
 /** How a surface's frames become a sheet: the frame size, the box filter, the columns. */
 interface Surface {
@@ -100,19 +100,48 @@ export function encodePng(img: Image): Uint8Array {
   return png;
 }
 
+/** A capture's UI dump (`<screen>.settle.json`): what is still moving. */
+interface Settle {
+  motion: { path: string; moving: string[]; leaving: boolean }[];
+}
+
+/**
+ * The script with a dump_ui just before each screenshot, at its tick: the
+ * playtest refuses a capture taken while an entrance (a layer's, a
+ * transition's, a stagger, the cyber pack's glitch) or an exit is still in
+ * flight, since a pack cannot be judged from a frame caught mid-presence.
+ */
+export function withSettleDumps(commands: string): string {
+  return commands
+    .split(";")
+    .flatMap((step) => {
+      const m = /^([\d.]+):screenshot:(.+)\.png$/.exec(step);
+      return m ? [`${m[1]}:dump_ui:${m[2]}.settle.json`, step] : [step];
+    })
+    .join(";");
+}
+
 /** The playtest of one style pack on a surface (desktop by default). */
 export function stylePlaytest(style: string, on: "desktop" | "phone" = "desktop"): PlaytestDesc {
   const surface = SURFACES[on];
-  const script = framesScript(0.5);
+  const script = framesScript(0.5, STYLE_SETTLE);
   const files = script.files.filter((f) => f !== "gallery.png");
   const name = `kit-style-${style}${surface.suffix}.png`;
   return playtest({
     name: `every screen in the ${style} style pack${on === "phone" ? " on a phone" : ""} matches its cell of ${name}`,
     size: surface.size,
-    commands: `${surface.viewport}0.2:style:${style};${script.commands}`,
+    commands: `${surface.viewport}0.2:style:${style};${withSettleDumps(script.commands)}`,
     check(run, t) {
       t.equal(run.warnings.join("; "), "", "the script ran without warnings");
       t.ok(run.quit, "the script reached quit");
+      for (const f of files) {
+        const screen = f.replace(/\.png$/, "");
+        const busy = run
+          .json<Settle>(`${screen}.settle.json`)
+          .motion.filter((m) => m.leaving || m.moving.includes("presence"))
+          .map((m) => `${m.path} (${m.leaving ? "leaving" : m.moving.join(", ")})`);
+        t.equal(busy.join("; "), "", `${style} ${screen} is captured with every entrance and exit settled`);
+      }
       // The sheet is built from frames: without a renderer each is reported unchecked.
       t.frame(files, () => {
         const cells = files.map((f) => shrink(decodePng(readFileSync(join(outDir(), f))), surface.factor));

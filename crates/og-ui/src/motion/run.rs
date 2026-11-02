@@ -30,7 +30,9 @@ pub struct MotionDump {
     pub path: String,
     /// Each state group and its current state.
     pub states: Vec<(String, String)>,
-    /// The props moving now (`x`, `opacity`, `layout`, `drag`…).
+    /// The props moving now (`x`, `opacity`, `layout`, `drag`…), and
+    /// `presence` while an entrance, a stagger or a transition is in flight
+    /// (with `glitch` while a glitch tears it).
     pub moving: Vec<String>,
     /// Plays on it (their ids).
     pub plays: Vec<u32>,
@@ -1179,7 +1181,13 @@ impl Ui {
         for &i in order {
             let n = &self.nodes[i];
             let p = &n.props;
-            if !p.animated() && p.layout_motion.is_none() && p.drag.is_none() {
+            // A presence in flight (a layer's or a transition's entrance,
+            // a stagger, a glitch): `presence`, and `glitch` while it tears.
+            let presence = n.fx.filter(|f| {
+                f.alpha < 1.0 || f.glitch > 0.0 || f.dx != 0.0 || f.dy != 0.0 || f.scale != 1.0
+            });
+            if !p.animated() && p.layout_motion.is_none() && p.drag.is_none() && presence.is_none()
+            {
                 continue;
             }
             let states: Vec<(String, String)> = p
@@ -1194,6 +1202,12 @@ impl Ui {
                 })
                 .collect();
             let mut moving: Vec<String> = Vec::new();
+            if let Some(f) = presence {
+                moving.push("presence".to_owned());
+                if f.glitch > 0.0 {
+                    moving.push("glitch".to_owned());
+                }
+            }
             for c in 0..CHANNELS + 6 {
                 if let Some(ch) = m.channels.get(&channel_key(n.key, c))
                     && !ch.done(now, tps)

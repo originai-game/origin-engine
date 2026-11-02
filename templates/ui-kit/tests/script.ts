@@ -11,8 +11,19 @@ export const FRAME_SCREENS = [
 
 const SETTLE: Record<string, number> = { results: 1.6, cutscene: 1.8 };
 
-/** The script and the files it writes, starting at `t0` seconds. */
-export function framesScript(t0: number): { commands: string; files: string[]; end: number } {
+/**
+ * The style playtests' wait after each `show:`: every entrance settled in
+ * every pack. A layer's entrance and the stagger of its controls together
+ * take at most two of the pack's base durations (the longest, 380 ms: 0.76
+ * s), the toasts start 0.1 s in. styles.ts checks each capture against it.
+ */
+export const STYLE_SETTLE: Record<string, number> = { default: 1.0, toasts: 1.2, results: 1.6, cutscene: 1.8 };
+
+/**
+ * The script and the files it writes, starting at `t0` seconds; `settle`
+ * the wait after each screen's `show:` (by screen, with a `default`).
+ */
+export function framesScript(t0: number, settle: Record<string, number> = SETTLE): { commands: string; files: string[]; end: number } {
   const steps: string[] = [];
   const files: string[] = [];
   let t = t0;
@@ -22,7 +33,7 @@ export function framesScript(t0: number): { commands: string; files: string[]; e
       steps.push(`${(t + 0.05).toFixed(2)}:toast:Checkpoint reached`);
       steps.push(`${(t + 0.1).toFixed(2)}:toast:Achievement unlocked`);
     }
-    const at = t + (SETTLE[s] ?? 0.6);
+    const at = t + (settle[s] ?? settle.default ?? 0.6);
     steps.push(`${at.toFixed(2)}:screenshot:${s}.png`);
     files.push(`${s}.png`);
     t = at + 0.1;

@@ -1391,3 +1391,42 @@ fn a_part_inside_a_moved_container_keeps_inside_its_clip() {
         );
     }
 }
+
+/// An entrance in flight is in the frame's motion (what dump_ui shows and
+/// the style playtests wait on before they capture): `presence` while it
+/// enters, `glitch` while a glitch tears it, and nothing once it settles.
+#[test]
+fn an_entrance_in_flight_is_reported_until_it_settles() {
+    let mut ui = Ui::new(UiDesc::default());
+    let entering = |ui: &Ui| -> Vec<String> {
+        ui.frame()
+            .motion
+            .iter()
+            .filter(|m| m.path == "Card")
+            .flat_map(|m| m.moving.clone())
+            .collect()
+    };
+    let mut seen = Vec::new();
+    for _ in 0..30 {
+        ui.begin(InputFrame::default(), vp());
+        ui.open_transition(
+            "Card",
+            true,
+            TransitionDesc {
+                kind: TransitionKind::Glitch,
+                ..TransitionDesc::default()
+            },
+        );
+        ui.label("Text", "Hello", LabelDesc::default());
+        ui.close();
+        ui.end();
+        seen.push(entering(&ui));
+    }
+    assert_eq!(seen[0], vec!["presence", "glitch"], "a glitch entering");
+    let settled = seen.iter().position(|m| m.is_empty()).expect("it settles");
+    assert!(
+        settled <= 12,
+        "a glitch keeps to 180 ms: settled at {settled}"
+    );
+    assert!(seen[settled..].iter().all(|m| m.is_empty()), "{seen:?}");
+}
