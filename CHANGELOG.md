@@ -15,6 +15,12 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **The inspector and gizmos (development builds).** F1 opens a panel over
+  the game: entities and resources, every reflected field edited through
+  the probe's `set` with undo, Save through `save_scene`; translate, rotate
+  and scale gizmos on the selected entity (W, E, R; world or local axes;
+  Ctrl snaps), each drag one undo step. The probe gains `inspect` and
+  `dump_inspector` (docs/design.md §3.6). A publish build has none of it.
 - **Breaking: a refused GPU adapter fails the run.** A native `og run`,
   `og test`, `og render`, `og polish` or `og ui check` whose adapter
   request fails exits 2 with "no GPU adapter: <wgpu's error>; set

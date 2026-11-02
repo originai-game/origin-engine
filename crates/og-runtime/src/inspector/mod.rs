@@ -17,10 +17,16 @@
 //!   checked against the schema, applied between ticks and remembered as
 //!   tuned, so Save is `save_scene` with no writer of its own. A value the
 //!   game writes back over an edit flashes "changed by the game".
+//! - **A transform gizmo.** On the selected entity (`gizmo`): translate,
+//!   rotate and scale handles (W, E, R; world or local axes), dragged in
+//!   the game's frame; each drag is one field's `set` a frame, folded into
+//!   one undo step, snapped while Ctrl is held. The selected meshes' box
+//!   draws with it.
 //! - **Not world state.** Nothing it holds is in a snapshot or the hash,
 //!   and a publish build has none of it (the module, its action and its
 //!   key are compiled out; `inspect` is then an unknown action).
 
+mod gizmo;
 mod model;
 mod panel;
 
@@ -29,8 +35,11 @@ pub(crate) use model::Edit;
 use crate::engine::Engine;
 use crate::extract::RenderState;
 use og_ecs::{Entity, World};
-use og_input::{InjectedInput, KeyAction, PointerAction};
+use og_input::{InjectedInput, KeyAction, PointerAction, PointerButton};
 use std::collections::{BTreeMap, BTreeSet};
+
+use gizmo::Pose;
+use glam::{Quat, Vec2, Vec3};
 
 /// The overlay layer the inspector draws from: above the game's UI and
 /// every screen layer lifted past it (og_render::screen_layer).
@@ -48,6 +57,81 @@ struct Watch {
     field: String,
     shown: Vec<String>,
     tick: u64,
+}
+
+/// The transform gizmo's state: its mode and space, and the selected
+/// entity's gizmo as the last frame placed it.
+#[derive(Default)]
+pub(crate) struct Tool {
+    pub mode: gizmo::Mode,
+    pub space: gizmo::Space,
+    /// og.Camera's view and the selected entity's gizmo, last frame.
+    view: Option<gizmo::View>,
+    on: Option<On>,
+    /// The handle under the pointer.
+    hover: Option<gizmo::Handle>,
+    drag: Option<Dragging>,
+    /// Ctrl is held: a drag snaps.
+    ctrl: bool,
+}
+
+/// The selected entity under the gizmo.
+#[derive(Clone, Copy)]
+struct On {
+    entity: Entity,
+    gizmo: gizmo::Gizmo,
+    /// Its pose in the world, og.Transform's own and its parent's world pose.
+    world: Pose,
+    local: Pose,
+    parent: Option<Pose>,
+}
+
+/// A drag in progress: written once a frame while the pointer moved.
+struct Dragging {
+    drag: gizmo::Drag,
+    /// The view it began in (a camera that follows the entity does not
+    /// feed back into it).
+    view: gizmo::View,
+    on: On,
+    at: Vec2,
+    written: Option<Vec2>,
+    steps: u32,
+    released: bool,
+}
+
+impl Tool {
+    /// The handle at a surface point, if the gizmo shows.
+    fn hit(&self, x: f32, y: f32) -> Option<gizmo::Handle> {
+        let view = self.view.as_ref()?;
+        self.on.as_ref()?.gizmo.hit(view, Vec2::new(x, y))
+    }
+
+    /// A press on a handle begins a drag.
+    fn begin(&mut self, x: f32, y: f32) -> bool {
+        let (Some(view), Some(on)) = (self.view, self.on) else {
+            return false;
+        };
+        let at = Vec2::new(x, y);
+        let Some(handle) = on.gizmo.hit(&view, at) else {
+            return false;
+        };
+        // Scale is og.Transform's own: the drag starts from it.
+        let start = (on.world.0, on.world.1, on.local.2);
+        let Some(drag) = gizmo::Drag::begin(&view, on.gizmo, handle, at, start) else {
+            return false;
+        };
+        self.drag = Some(Dragging {
+            drag,
+            view,
+            on,
+            at,
+            written: None,
+            steps: 0,
+            released: false,
+        });
+        self.hover = Some(handle);
+        true
+    }
 }
 
 /// What the panel asked for this frame, done after it is built.
@@ -108,6 +192,7 @@ pub(crate) struct Inspector {
     requests: Vec<Request>,
     /// The game binds the toggle key, so it needs Ctrl.
     needs_ctrl: bool,
+    pub(crate) tool: Tool,
 }
 
 impl Inspector {
@@ -147,6 +232,7 @@ impl Inspector {
             frames: 0,
             requests: Vec::new(),
             needs_ctrl: false,
+            tool: Tool::default(),
         }
     }
 
@@ -193,6 +279,17 @@ pub(crate) fn filter(engine_id: u32, world: &World, event: &InjectedInput) -> bo
     };
     let rate = tick_rate(world);
     let ins = of(&mut rs, rate);
+    if let InjectedInput::Key {
+        key,
+        action,
+        modifiers,
+    } = event
+    {
+        ins.tool.ctrl = match key.as_str() {
+            "ControlLeft" | "ControlRight" => *action == KeyAction::Down,
+            _ => modifiers.control,
+        };
+    }
     match event {
         InjectedInput::Key {
             key,
@@ -212,17 +309,43 @@ pub(crate) fn filter(engine_id: u32, world: &World, event: &InjectedInput) -> bo
         }
         _ if !ins.open => false,
         InjectedInput::Pointer {
-            action, x, y, id, ..
+            action,
+            x,
+            y,
+            id,
+            button,
+            ..
         } => {
             if *id != 0 {
                 return false;
             }
+            // A gizmo drag has the pointer until it ends.
+            if let Some(d) = ins.tool.drag.as_mut() {
+                d.at = Vec2::new(*x, *y);
+                if *action == PointerAction::Up {
+                    d.released = true;
+                }
+                // Its own UI saw the press: it sees the release too.
+                ins.input.apply(event);
+                return true;
+            }
             let over = ins.over_panel(*x, *y);
             let mut take = over || ins.captured;
+            if !over && !ins.captured {
+                ins.tool.hover = ins.tool.hit(*x, *y);
+            }
             match action {
                 PointerAction::Down => {
                     if over {
                         ins.captured = true;
+                    } else if !ins.picking
+                        && matches!(button, PointerButton::Left | PointerButton::None)
+                        && ins.tool.begin(*x, *y)
+                    {
+                        // A field being edited is left as a click
+                        // elsewhere leaves it.
+                        ins.input.apply(event);
+                        return true;
                     } else if ins.picking {
                         ins.pick_at = Some((*x, *y));
                         ins.picking = false;
@@ -250,7 +373,20 @@ pub(crate) fn filter(engine_id: u32, world: &World, event: &InjectedInput) -> bo
             // Keys are the panel's while a field of it is edited, or while
             // the pointer rests on it (Ctrl+Z, Escape).
             let pointer = ins.input.pointer;
-            let take = ins.editing || ins.over_panel(pointer.x, pointer.y);
+            let over = ins.over_panel(pointer.x, pointer.y);
+            // W, E and R pick the gizmo's mode: over the panel, or anywhere
+            // when the game binds none of them.
+            if let InjectedInput::Key { key, action, .. } = event
+                && !ins.editing
+                && let Some(mode) = gizmo::Mode::of_key(key)
+                && (over || !needs_ctrl(key))
+            {
+                if *action == KeyAction::Down {
+                    ins.tool.mode = mode;
+                }
+                return true;
+            }
+            let take = ins.editing || over;
             if take {
                 match event {
                     InjectedInput::Text { text, composing } => ins
@@ -286,6 +422,7 @@ pub(crate) fn frame(eng: &Engine) {
     let paused = eng.probe.borrow().paused();
     let layouts = eng.state.borrow().layouts.clone();
     let (sounds, assets) = handle_names(eng);
+    let camera = crate::api::resource_value(eng, "og.Camera").ok();
     let requests = {
         let Ok(mut rs) = eng.render.try_borrow_mut() else {
             return;
@@ -344,11 +481,141 @@ pub(crate) fn frame(eng: &Engine) {
             ins.selected = probe.names().resolve(world, &id).or(ins.selected);
             ins.tab = 0;
         }
+        ins.tool.view = camera.map(|c| gizmo::view_of(&c, viewport.width, viewport.height));
+        place(ins, world);
+        drag(ins, world, probe.names());
         std::mem::take(&mut ins.requests)
     };
     for r in requests {
         apply(eng, r);
     }
+}
+
+/// og.Transform's pose of an entity, if it has one.
+fn local_pose(world: &World, e: Entity) -> Option<Pose> {
+    let id = world.id_by_name("og.Transform").ok()?;
+    let schema = world.schema(id).ok()?;
+    let bytes = world.get_bytes(e, id).ok()?;
+    let layout = og_core::reflect::Layout::of(schema);
+    let lanes = |name: &str, n: usize| -> Option<Vec<f32>> {
+        let b = bytes.get(layout.range(schema.field_index(name)?))?;
+        (0..n)
+            .map(|k| {
+                Some(f32::from_le_bytes(
+                    b.get(k * 4..k * 4 + 4)?.try_into().ok()?,
+                ))
+            })
+            .collect()
+    };
+    let p = lanes("position", 3)?;
+    let q = lanes("quaternion", 4)?;
+    let s = lanes("scale", 3)?;
+    Some((
+        Vec3::new(p[0], p[1], p[2]),
+        Quat::from_xyzw(q[0], q[1], q[2], q[3]).normalize(),
+        Vec3::new(s[0], s[1], s[2]),
+    ))
+}
+
+/// The world pose of an entity's parent, as simulation composes it
+/// (og_core::math::world_pose); none for a root.
+fn parent_pose(world: &World, e: Entity) -> Option<Pose> {
+    let p = model::parent_of(world, e)?;
+    let local = local_pose(world, p)?;
+    Some(og_core::math::world_pose(
+        p,
+        local,
+        |k| model::parent_of(world, k),
+        |k| local_pose(world, k),
+    ))
+}
+
+/// The selected entity's gizmo this frame (none without og.Transform or a
+/// camera).
+fn place(ins: &mut Inspector, world: &World) {
+    let tool = &mut ins.tool;
+    tool.on = None;
+    let (Some(e), Some(view)) = (ins.selected, tool.view) else {
+        tool.hover = None;
+        return;
+    };
+    let Some(local) = local_pose(world, e) else {
+        tool.hover = None;
+        return;
+    };
+    let parent = parent_pose(world, e);
+    let world_pose = match parent {
+        Some((pp, pq, ps)) => (
+            pp + pq * (ps * local.0),
+            (pq * local.1).normalize(),
+            ps * local.2,
+        ),
+        None => local,
+    };
+    let g = gizmo::Gizmo::new(&view, tool.mode, tool.space, world_pose.0, world_pose.1);
+    // What the pointer rests on, as this frame's gizmo has it (the mode
+    // may have changed under a still pointer).
+    let at = ins.input.pointer;
+    let over = ins
+        .panel
+        .is_some_and(|[px, py, w, h]| at.x >= px && at.y >= py && at.x < px + w && at.y < py + h);
+    tool.hover = match &tool.drag {
+        Some(d) => Some(d.drag.handle),
+        None if !over => g.hit(&view, Vec2::new(at.x, at.y)),
+        None => None,
+    };
+    tool.on = Some(On {
+        entity: e,
+        gizmo: g,
+        world: world_pose,
+        local,
+        parent,
+    });
+}
+
+/// A drag's `set` for this frame, when the pointer moved since the last:
+/// the one og.Transform field its mode writes, folded into the drag's
+/// first step.
+fn drag(ins: &mut Inspector, world: &World, names: &og_probe::Names) {
+    let snap = ins.tool.ctrl;
+    let Some(d) = ins.tool.drag.as_mut() else {
+        return;
+    };
+    let released = d.released;
+    if world.is_alive(d.on.entity)
+        && (d.written != Some(d.at))
+        && (d.steps > 0 || d.at != d.drag.grab)
+    {
+        let w = d.drag.pose(&d.view, d.at, snap);
+        let local = gizmo::to_local(d.on.parent, w);
+        let mode = d.drag.gizmo.mode;
+        let text = |pose: Pose| match mode {
+            gizmo::Mode::Translate => lanes(&pose.0.to_array()),
+            gizmo::Mode::Rotate => lanes(&pose.1.to_array()),
+            gizmo::Mode::Scale => lanes(&pose.2.to_array()),
+        };
+        let id = names.id_of(world, d.on.entity);
+        let edit = Edit {
+            target: format!("{id}.og.Transform.{}", mode.field()),
+            before: text(d.on.local),
+            after: text(local),
+        };
+        let merge = d.steps > 0;
+        d.steps += 1;
+        d.written = Some(d.at);
+        ins.requests.push(Request::Tune { edit, merge });
+    }
+    if released {
+        ins.tool.drag = None;
+    }
+}
+
+/// Numbers as `set` takes a vector's text.
+fn lanes(v: &[f32]) -> String {
+    v.iter()
+        .map(|x| format!("{x}"))
+        .collect::<Vec<_>>()
+        .join(",")
 }
 
 /// The ids of the engine's loaded sounds and assets by handle, for the
@@ -500,6 +767,8 @@ fn apply(eng: &Engine, request: Request) {
                 ins.panel = None;
                 ins.editing = false;
                 ins.captured = false;
+                ins.tool.drag = None;
+                ins.tool.hover = None;
             }
         }
     }
@@ -573,8 +842,52 @@ fn split_target(
     (names.resolve(world, &entity), component, field.to_string())
 }
 
+/// Draws the gizmo and the selected meshes' box over the frame.
+fn emit_gizmo(rs: &mut RenderState) {
+    let Some(ins) = rs.inspector.as_ref().filter(|i| i.open) else {
+        return;
+    };
+    let tool = &ins.tool;
+    let (Some(view), Some(on)) = (tool.view, tool.on) else {
+        return;
+    };
+    let Some(p) = ins.ui.as_ref().map(|u| u.theme().palette) else {
+        return;
+    };
+    let colors = [p.danger, p.success, p.info, p.ink].map(|c| c.linear());
+    let lit = tool.drag.as_ref().map(|d| d.drag.handle).or(tool.hover);
+    let strokes = on.gizmo.strokes(&view, colors, lit, p.highlight.linear());
+    let bits = on.entity.to_bits();
+    let boxed = p.focus.linear();
+    let instances: Vec<(og_render::MeshHandle, glam::Mat4)> = rs
+        .ids
+        .instances
+        .iter()
+        .zip(&rs.scene.instances)
+        .filter(|(e, _)| **e == bits)
+        .map(|(_, i)| (i.mesh, i.transform))
+        .collect();
+    let mut bounds = Vec::new();
+    for (mesh, m) in instances {
+        if let Some((min, max)) = crate::geometry::mesh_bounds(rs, mesh) {
+            bounds.extend(gizmo::box_lines(m, min, max));
+        }
+    }
+    if !bounds.is_empty() {
+        rs.scene
+            .lines
+            .push(og_render::debug::segments(bounds, boxed, 1.0));
+    }
+    for (points, color, width) in strokes {
+        rs.scene
+            .lines
+            .push(og_render::debug::segments(points, color, width));
+    }
+}
+
 /// Draws the panel over the frame (the last UI frame it built).
 pub(crate) fn emit(rs: &mut RenderState) {
+    emit_gizmo(rs);
     let Some(ui) = rs
         .inspector
         .as_ref()
@@ -611,6 +924,33 @@ pub(crate) fn emit(rs: &mut RenderState) {
     overlay.texts.extend(more);
 }
 
+/// The gizmo as `dump_inspector` reports it: its mode and space, the
+/// handle under the pointer or dragged, and each handle's grab point on
+/// the surface (CSS px), what a script presses to drag it.
+fn gizmo_json(ins: &Inspector) -> serde_json::Value {
+    let t = &ins.tool;
+    let handles: Vec<serde_json::Value> = match (t.view, t.on) {
+        (Some(view), Some(on)) => on
+            .gizmo
+            .handles()
+            .into_iter()
+            .filter_map(|h| {
+                let p = view.project(on.gizmo.grab_point(&view, h))?;
+                Some(serde_json::json!({ "handle": h.name(), "x": p.x, "y": p.y }))
+            })
+            .collect(),
+        _ => Vec::new(),
+    };
+    serde_json::json!({
+        "mode": t.mode.name(),
+        "space": t.space.name(),
+        "shown": t.on.is_some(),
+        "hover": t.hover.map(|h| h.name()),
+        "dragging": t.drag.as_ref().map(|d| d.drag.handle.name()),
+        "handles": handles,
+    })
+}
+
 /// The command channel's `inspect` and `dump_inspector`.
 pub(crate) fn register(probe: &mut og_probe::Probe, engine_id: u32) {
     let _ = probe.register_dump(
@@ -645,6 +985,7 @@ pub(crate) fn register(probe: &mut og_probe::Probe, engine_id: u32) {
                 "dirty": ins.dirty.iter().collect::<Vec<_>>(),
                 "changedByGame": ins.flash.keys().collect::<Vec<_>>(),
                 "status": ins.status,
+                "gizmo": gizmo_json(ins),
                 "elements": elements,
             }))
         },
@@ -652,15 +993,15 @@ pub(crate) fn register(probe: &mut og_probe::Probe, engine_id: u32) {
     let _ = probe.register_command(
         "inspect",
         og_probe::CommandDesc {
-            usage: "inspect[:on|off|<entity>|key:<code>]".into(),
-            doc: "the inspector (development builds): open it (on, or no argument), close it (off), open it on an entity (its name or #<index>.<generation>), or set the key that toggles it (key:F2; F1 by default, with Ctrl when the game binds it)".into(),
+            usage: "inspect[:on|off|<entity>|key:<code>|mode:translate|rotate|scale|space:world|local]".into(),
+            doc: "the inspector (development builds): open it (on, or no argument), close it (off), open it on an entity (its name or #<index>.<generation>), set the key that toggles it (key:F2; F1 by default, with Ctrl when the game binds it), or the transform gizmo's mode (mode:rotate; W, E and R) and axes (space:local)".into(),
         },
         move |world, args| {
             let eng = crate::engine::engine(engine_id)?;
             let arg = args.first().map(String::as_str).unwrap_or("on");
             let selected = match arg {
                 "on" | "off" => None,
-                "key" => None,
+                "key" | "mode" | "space" => None,
                 id => Some(
                     og_probe::Names
                         .resolve(world, id)
@@ -681,6 +1022,23 @@ pub(crate) fn register(probe: &mut og_probe::Probe, engine_id: u32) {
                         ));
                     }
                     ins.key = code.to_string();
+                }
+                "mode" => {
+                    let m = args.get(1).map(String::as_str).unwrap_or("");
+                    ins.tool.mode = match m {
+                        "translate" => gizmo::Mode::Translate,
+                        "rotate" => gizmo::Mode::Rotate,
+                        "scale" => gizmo::Mode::Scale,
+                        _ => return Err(format!("inspect:mode:{m}: translate, rotate or scale")),
+                    };
+                }
+                "space" => {
+                    let m = args.get(1).map(String::as_str).unwrap_or("");
+                    ins.tool.space = match m {
+                        "world" => gizmo::Space::World,
+                        "local" => gizmo::Space::Local,
+                        _ => return Err(format!("inspect:space:{m}: world or local")),
+                    };
                 }
                 _ => {
                     ins.open = true;

@@ -352,6 +352,9 @@ fn toolbar(ui: &mut Ui, s: &mut State, cx: &Ctx) {
 fn footer(ui: &mut Ui, s: &mut State, cx: &Ctx) {
     let t = *ui.theme();
     let p = t.palette;
+    if s.ins.tab == 0 {
+        gizmo_bar(ui, s);
+    }
     ui.row(
         "Status",
         Element {
@@ -374,6 +377,56 @@ fn footer(ui: &mut Ui, s: &mut State, cx: &Ctx) {
                 s.ins.status.clone()
             };
             label(ui, "Note", &text, p.ink_muted, true, Size::grow());
+        },
+    );
+}
+
+/// The gizmo's mode (W, E, R) and space.
+fn gizmo_bar(ui: &mut Ui, s: &mut State) {
+    use super::gizmo::{Mode, Space};
+    let t = *ui.theme();
+    ui.row(
+        "Gizmo",
+        Element {
+            direction: Direction::Row,
+            width: Size::grow(),
+            cross: Cross::Center,
+            gap: t.space.xs,
+            ..Element::default()
+        },
+        |ui| {
+            for (id, text, mode, tip) in [
+                ("Move", "Move", Mode::Translate, "Move along an axis or a plane (W); Ctrl snaps to 0.5"),
+                ("Rotate", "Rotate", Mode::Rotate, "Turn about an axis or the view (E); Ctrl snaps to 15°"),
+                ("Scale", "Scale", Mode::Scale, "Scale along the entity's own axes, or all from the centre (R); Ctrl snaps to 0.1"),
+            ] {
+                let on = s.ins.tool.mode == mode;
+                let r = ui.button(
+                    id,
+                    text,
+                    small(if on {
+                        ButtonVariant::Primary
+                    } else {
+                        ButtonVariant::Secondary
+                    }),
+                );
+                if r.clicked {
+                    s.ins.tool.mode = mode;
+                }
+                ui.tooltip(tip);
+            }
+            ui.spacer("Gap", None);
+            let (text, next) = match s.ins.tool.space {
+                Space::World => ("World", Space::Local),
+                Space::Local => ("Local", Space::World),
+            };
+            if ui
+                .button("Space", text, small(ButtonVariant::Quiet))
+                .clicked
+            {
+                s.ins.tool.space = next;
+            }
+            ui.tooltip("Move and rotate along the world's axes or the entity's own");
         },
     );
 }

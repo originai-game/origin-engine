@@ -1761,6 +1761,38 @@ test, another crate) restarts nothing. Measured 2026-10-26 in an orb on
 tick, of which the build 6.5–6.7 s, the handoff 51–61 ms and the new
 process 254–322 ms.
 
+### 3.6 The inspector and gizmos
+
+A development build carries an inspector for humans (og-runtime's
+`inspector` module, compiled out of `publish`): F1 shows it (Ctrl+F1 when
+the game binds F1; `inspect:key:<code>` sets another), over every layer of
+the game's frame, in the engine's default style. It reads only the
+reflected schema and writes only through the probe:
+
+- **Panel.** Entities by og.Parent and the world's resources, filtered by
+  name; the selected one's fields, each with the editor its type and
+  column kind ask for. Every edit is the probe's `set` (`Probe::tune`):
+  checked against the schema, applied between ticks, kept for undo (a
+  drag folded into one step), marked unsaved, and flagged when the game
+  writes the value back. Save is `save_scene`, which writes each tuned
+  field into its line of the scene text.
+- **Gizmos.** On the selected entity's og.Transform: translate (an arrow per
+  axis, a square per plane, the centre in the view's plane), rotate (a
+  ring per axis and one facing the view) and scale (a bar per own axis,
+  the centre uniformly). W, E and R pick the mode (over the panel, or
+  anywhere the game binds none of them), translate and rotate follow the
+  world's or the entity's axes, and the handles keep one length on screen
+  (96 px). A drag casts the pointer's ray from og.Camera against the
+  handle's line or plane (a ring seen edge on turns by travel along its
+  tangent), converts the world pose to the parent's space, and writes one
+  field a frame through the same `set`, folded into one undo step; Ctrl
+  snaps a move to 0.5, a turn to 15° and a scale to 0.1 of its factor.
+  The selected meshes' bounds box draws with it.
+- **Observable.** `dump_inspector` answers the panel's elements with their
+  rectangles and the gizmo's mode, space, hovered and dragged handle and
+  each handle's grab point on the surface, so a script presses what a
+  person would; `inspect:mode:<m>` and `inspect:space:<s>` set the gizmo.
+
 ## 4. The play surface without iframes **(D)**
 
 The platform already serves a top-level Player on the play origin for phones
