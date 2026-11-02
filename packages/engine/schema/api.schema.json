@@ -11659,6 +11659,13 @@
         "SpeedometerDesc",
         "ScorebugTeam",
         "ScorebugDesc",
+        "MatchStat",
+        "MatchStatsDesc",
+        "MatchEvent",
+        "GoalTimelineDesc",
+        "PlayerPlateDesc",
+        "SubPlayer",
+        "SubstitutionDesc",
         "FlightHudDesc",
         "StandingsEntry",
         "StandingsTowerDesc",
@@ -16793,7 +16800,7 @@
         },
         {
           "name": "scorebug",
-          "doc": "A broadcast scorebug to the bar of sports games (EA FC, NBA 2K, Rocket League): each side's colour block with its crest and short name, the scores in tabular digits that flip and flash when they change, possession and time-out pips, the clock and period, a shot clock, a situation line sliding out under it.\nParts: Scorebug.frame, Scorebug.team[home|away], Scorebug.score, Scorebug.clock, Scorebug.period, Scorebug.shot, Scorebug.situation, Scorebug.timeout[used], Scorebug.possession. Sounds: success when a score changes. Accessibility: status named home score, away score, clock and period. Probe ids: <id>, <id>/Home/Score, <id>/Away/Score, <id>/Clock.",
+          "doc": "A broadcast scorebug to the bar of sports games (EA FC, NBA 2K, Rocket League): each side's colour block with its crest and short name, the scores in tabular digits that flip and flash when they change, possession and time-out pips, the clock and period, a shot clock, added time beside the clock, a situation line sliding out under it.\nParts: Scorebug.frame, Scorebug.team[home|away], Scorebug.score, Scorebug.clock, Scorebug.period, Scorebug.shot, Scorebug.added, Scorebug.situation, Scorebug.timeout[used], Scorebug.possession. Sounds: success when a score changes. Accessibility: status named home score, away score, clock and period. Probe ids: <id>, <id>/Home/Score, <id>/Away/Score, <id>/Clock.",
           "params": [
             {
               "name": "id",
@@ -16806,6 +16813,90 @@
               "type": "ScorebugDesc",
               "optional": true,
               "doc": "The score and the clock."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "matchStats",
+          "doc": "Two sides' stats face to face, to the bar of EA FC's and NBA 2K's match facts: each row's values at the two ends in tabular figures, its name centred over one bar split at the sides' shares from the centre out, the leading side's value and part in its colour and the other's muted (a stat where more is worse shows its larger side in the danger hue). Anchored, it is the HUD's possession plate: the crests at the ends of its one row on the HUD chip.\nParts: MatchStats.frame, MatchStats.header, MatchStats.row[worse], MatchStats.bar, MatchStats.fill[home|away]. Accessibility: table named title; each row text named its label with both values. Probe ids: <id>/<key>, its Home and Away; <id>/<key>/Mid/Label; <id>/<key>/Mid/Bar/Home and Mid/Bar/Away (their widths are the shares).",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "MatchStatsDesc",
+              "optional": true,
+              "doc": "The sides and the rows."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "goalTimeline",
+          "doc": "The scorers of a match by side, as a full-time board lists them: the home side's names, minutes and marks set against a centre rule, the away side's mirrored after it, each side in match order, the minutes in tabular figures beside their marks so the two columns meet at the rule.\nParts: GoalTimeline.frame, GoalTimeline.side[home|away], GoalTimeline.event, GoalTimeline.mark, GoalTimeline.rule. Accessibility: list named Scorers; each event text named its name, minute and side. Probe ids: <id>/Home/<key> and <id>/Away/<key>, their Name and Minute.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "GoalTimelineDesc",
+              "optional": true,
+              "doc": "The events."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "playerPlate",
+          "doc": "The controlled player's plate to the bar of EA FC: the side's crest, the shirt number in a box, the name, and a segmented stamina bar under it in the side's colour that turns to the warning hue when low.\nParts: PlayerPlate.frame, PlayerPlate.crest, PlayerPlate.number, PlayerPlate.stamina[low], PlayerPlate.segment[spent]. States: group stamina (fresh, low). Accessibility: status named the number and name with the stamina's percent. Probe ids: <id>, <id>/Body/Number/Text, <id>/Body/Info/Name, <id>/Body/Info/Stamina.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "PlayerPlateDesc",
+              "optional": true,
+              "doc": "The player."
+            }
+          ],
+          "returns": "Void",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "substitution",
+          "doc": "A substitution's lower third, as a broadcast shows it: a caption tab over one plate, the player going off at the start (portrait, a down mark in the danger hue, number and name, Out) and the one coming on at the end (an up mark in the success hue, In), a hairline between; it rises in when it appears.\nParts: Substitution.frame, Substitution.caption, Substitution.player[off|on], Substitution.portrait, Substitution.mark[off|on], Substitution.rule. Accessibility: status named the caption, off and on. Probe ids: <id>, <id>/Plate/Off/Who/Line/Name, <id>/Plate/On/Who/Line/Name.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "SubstitutionDesc",
+              "optional": true,
+              "doc": "Who goes off and who comes on."
             }
           ],
           "returns": "Void",
@@ -68227,6 +68318,11 @@
           "type": "boolean",
           "description": "It has the ball: a mark by its score.",
           "default": false
+        },
+        "name": {
+          "type": "string",
+          "description": "Its full name (Northgate) where there is room for it (og.ui.matchStats' header); empty is abbr.",
+          "default": ""
         }
       },
       "additionalProperties": false
@@ -68267,6 +68363,11 @@
           "description": "A line under it (2nd & 7, Power play); empty is none.",
           "default": ""
         },
+        "added": {
+          "type": "string",
+          "description": "Added or stoppage time beside the clock (+3), in the accent; empty is none.",
+          "default": ""
+        },
         "anchor": {
           "anyOf": [
             {
@@ -68278,6 +68379,314 @@
           ],
           "description": "Opens its own anchored group there; null builds it in place.",
           "default": "topLeft"
+        }
+      },
+      "additionalProperties": false
+    },
+    "MatchStat": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One row of og.ui.matchStats: a stat for both sides.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key (its probe id).",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "Its name, centred over the bar (Possession, Shots).",
+          "default": ""
+        },
+        "home": {
+          "type": "number",
+          "description": "The home side's value.",
+          "default": 0
+        },
+        "away": {
+          "type": "number",
+          "description": "The away side's value.",
+          "default": 0
+        },
+        "homeText": {
+          "type": "string",
+          "description": "The home value as shown (58%); empty prints the value.",
+          "default": ""
+        },
+        "awayText": {
+          "type": "string",
+          "description": "The away value as shown; empty prints the value.",
+          "default": ""
+        },
+        "worse": {
+          "type": "boolean",
+          "description": "More is worse (fouls, cards): the larger side in the danger hue instead of its own.",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "MatchStatsDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "Two sides' stats face to face.",
+      "type": "object",
+      "properties": {
+        "home": {
+          "$ref": "#/$defs/ScorebugTeam",
+          "description": "The home side (name or abbr, crest, colour).",
+          "default": {}
+        },
+        "away": {
+          "$ref": "#/$defs/ScorebugTeam",
+          "description": "The away side.",
+          "default": {}
+        },
+        "stats": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MatchStat"
+          },
+          "description": "The rows, in order.",
+          "default": []
+        },
+        "title": {
+          "type": "string",
+          "description": "A caption over the rows (Match stats, Possession); empty is none.",
+          "default": ""
+        },
+        "header": {
+          "type": "boolean",
+          "description": "The sides' names over their columns (a full-time board); a HUD plate leaves them out and shows the crests beside its one row.",
+          "default": false
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there on a HUD plate; null builds it in place (the default).",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "MatchEvent": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One event on og.ui.goalTimeline.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key (its probe id).",
+          "default": ""
+        },
+        "team": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "0 home, 1 away.",
+          "default": 0
+        },
+        "name": {
+          "type": "string",
+          "description": "Who (J. Anderson).",
+          "default": ""
+        },
+        "minute": {
+          "type": "string",
+          "description": "When, as shown (23', 90+2').",
+          "default": ""
+        },
+        "icon": {
+          "type": "string",
+          "description": "Its mark (an icon name: a ball for a goal, a card); empty is the ball.",
+          "default": ""
+        },
+        "note": {
+          "type": "string",
+          "description": "A note after the name (pen., o.g.); empty is none.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "GoalTimelineDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "The scorers by side.",
+      "type": "object",
+      "properties": {
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MatchEvent"
+          },
+          "description": "The events, in match order.",
+          "default": []
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place (the default).",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "PlayerPlateDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "The controlled player.",
+      "type": "object",
+      "properties": {
+        "number": {
+          "type": "string",
+          "description": "The shirt number.",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "The name (Martin).",
+          "default": ""
+        },
+        "logo": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The side's crest (art kind emblem, 1:1).",
+          "default": null
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Paint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The side's colour; null is the home team colour.",
+          "default": null
+        },
+        "stamina": {
+          "type": "number",
+          "description": "Stamina 0 to 1.",
+          "default": 1,
+          "x-og-unit": "ratio"
+        },
+        "segments": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The stamina bar's segments.",
+          "default": 6
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": "bottomLeft"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SubPlayer": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A player on og.ui.substitution.",
+      "type": "object",
+      "properties": {
+        "number": {
+          "type": "string",
+          "description": "The shirt number.",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "The name.",
+          "default": ""
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The portrait (art kind portrait, 1:1).",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "SubstitutionDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A substitution.",
+      "type": "object",
+      "properties": {
+        "off": {
+          "$ref": "#/$defs/SubPlayer",
+          "description": "The player going off.",
+          "default": {}
+        },
+        "on": {
+          "$ref": "#/$defs/SubPlayer",
+          "description": "The player coming on.",
+          "default": {}
+        },
+        "caption": {
+          "type": "string",
+          "description": "The tab over it.",
+          "default": "Substitution"
+        },
+        "offLabel": {
+          "type": "string",
+          "description": "The word under the player going off.",
+          "default": "Out"
+        },
+        "onLabel": {
+          "type": "string",
+          "description": "The word under the player coming on.",
+          "default": "In"
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Anchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Opens its own anchored group there; null builds it in place.",
+          "default": "bottom"
         }
       },
       "additionalProperties": false

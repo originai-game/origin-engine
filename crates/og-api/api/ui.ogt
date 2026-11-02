@@ -8861,6 +8861,7 @@ module ui {
     field timeouts u32 "Time-outs left (pips)."
     field timeoutsMax u32 "Time-outs it had; 0 draws no pips."
     field possession bool "It has the ball: a mark by its score."
+    field name String "Its full name (Northgate) where there is room for it (og.ui.matchStats' header); empty is abbr."
   }
 
   struct ScorebugDesc {
@@ -8872,17 +8873,141 @@ module ui {
     field period String "The period (Q2, 2nd, ET)."
     field shotClock String "A shot or play clock; empty is none."
     field situation String "A line under it (2nd & 7, Power play); empty is none."
+    field added String "Added or stoppage time beside the clock (+3), in the accent; empty is none."
     field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
       default topLeft
     }
   }
 
   fn scorebug {
-    doc "A broadcast scorebug to the bar of sports games (EA FC, NBA 2K, Rocket League): each side's colour block with its crest and short name, the scores in tabular digits that flip and flash when they change, possession and time-out pips, the clock and period, a shot clock, a situation line sliding out under it."
-    doc "Parts: Scorebug.frame, Scorebug.team[home|away], Scorebug.score, Scorebug.clock, Scorebug.period, Scorebug.shot, Scorebug.situation, Scorebug.timeout[used], Scorebug.possession. Sounds: success when a score changes. Accessibility: status named home score, away score, clock and period. Probe ids: <id>, <id>/Home/Score, <id>/Away/Score, <id>/Clock."
+    doc "A broadcast scorebug to the bar of sports games (EA FC, NBA 2K, Rocket League): each side's colour block with its crest and short name, the scores in tabular digits that flip and flash when they change, possession and time-out pips, the clock and period, a shot clock, added time beside the clock, a situation line sliding out under it."
+    doc "Parts: Scorebug.frame, Scorebug.team[home|away], Scorebug.score, Scorebug.clock, Scorebug.period, Scorebug.shot, Scorebug.added, Scorebug.situation, Scorebug.timeout[used], Scorebug.possession. Sounds: success when a score changes. Accessibility: status named home score, away score, clock and period. Probe ids: <id>, <id>/Home/Score, <id>/Away/Score, <id>/Clock."
     host false
     param id String "Its id."
     param desc ScorebugDesc "The score and the clock."
+    returns Void
+  }
+
+  struct MatchStat {
+    doc "One row of og.ui.matchStats: a stat for both sides."
+    desc true
+    field key String "Its key (its probe id)."
+    field label String "Its name, centred over the bar (Possession, Shots)."
+    field home f32 "The home side's value."
+    field away f32 "The away side's value."
+    field homeText String "The home value as shown (58%); empty prints the value."
+    field awayText String "The away value as shown; empty prints the value."
+    field worse bool "More is worse (fouls, cards): the larger side in the danger hue instead of its own."
+  }
+
+  struct MatchStatsDesc {
+    doc "Two sides' stats face to face."
+    desc true
+    field home ScorebugTeam "The home side (name or abbr, crest, colour)."
+    field away ScorebugTeam "The away side."
+    field stats List.MatchStat "The rows, in order."
+    field title String "A caption over the rows (Match stats, Possession); empty is none."
+    field header bool "The sides' names over their columns (a full-time board); a HUD plate leaves them out and shows the crests beside its one row."
+    field anchor Option.Anchor "Opens its own anchored group there on a HUD plate; null builds it in place (the default)."
+  }
+
+  fn matchStats {
+    doc "Two sides' stats face to face, to the bar of EA FC's and NBA 2K's match facts: each row's values at the two ends in tabular figures, its name centred over one bar split at the sides' shares from the centre out, the leading side's value and part in its colour and the other's muted (a stat where more is worse shows its larger side in the danger hue). Anchored, it is the HUD's possession plate: the crests at the ends of its one row on the HUD chip."
+    doc "Parts: MatchStats.frame, MatchStats.header, MatchStats.row[worse], MatchStats.bar, MatchStats.fill[home|away]. Accessibility: table named title; each row text named its label with both values. Probe ids: <id>/<key>, its Home and Away; <id>/<key>/Mid/Label; <id>/<key>/Mid/Bar/Home and Mid/Bar/Away (their widths are the shares)."
+    host false
+    param id String "Its id."
+    param desc MatchStatsDesc "The sides and the rows."
+    returns Void
+  }
+
+  struct MatchEvent {
+    doc "One event on og.ui.goalTimeline."
+    desc true
+    field key String "Its key (its probe id)."
+    field team u32 "0 home, 1 away."
+    field name String "Who (J. Anderson)."
+    field minute String "When, as shown (23', 90+2')."
+    field icon String "Its mark (an icon name: a ball for a goal, a card); empty is the ball."
+    field note String "A note after the name (pen., o.g.); empty is none."
+  }
+
+  struct GoalTimelineDesc {
+    doc "The scorers by side."
+    desc true
+    field events List.MatchEvent "The events, in match order."
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place (the default)."
+  }
+
+  fn goalTimeline {
+    doc "The scorers of a match by side, as a full-time board lists them: the home side's names, minutes and marks set against a centre rule, the away side's mirrored after it, each side in match order, the minutes in tabular figures beside their marks so the two columns meet at the rule."
+    doc "Parts: GoalTimeline.frame, GoalTimeline.side[home|away], GoalTimeline.event, GoalTimeline.mark, GoalTimeline.rule. Accessibility: list named Scorers; each event text named its name, minute and side. Probe ids: <id>/Home/<key> and <id>/Away/<key>, their Name and Minute."
+    host false
+    param id String "Its id."
+    param desc GoalTimelineDesc "The events."
+    returns Void
+  }
+
+  struct PlayerPlateDesc {
+    doc "The controlled player."
+    desc true
+    field number String "The shirt number."
+    field name String "The name (Martin)."
+    field logo Option.Texture "The side's crest (art kind emblem, 1:1)."
+    field color Option.Paint "The side's colour; null is the home team colour."
+    field stamina f32 "Stamina 0 to 1." {
+      unit ratio
+      default 1
+    }
+    field segments u32 "The stamina bar's segments." {
+      default 6
+    }
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
+      default bottomLeft
+    }
+  }
+
+  fn playerPlate {
+    doc "The controlled player's plate to the bar of EA FC: the side's crest, the shirt number in a box, the name, and a segmented stamina bar under it in the side's colour that turns to the warning hue when low."
+    doc "Parts: PlayerPlate.frame, PlayerPlate.crest, PlayerPlate.number, PlayerPlate.stamina[low], PlayerPlate.segment[spent]. States: group stamina (fresh, low). Accessibility: status named the number and name with the stamina's percent. Probe ids: <id>, <id>/Body/Number/Text, <id>/Body/Info/Name, <id>/Body/Info/Stamina."
+    host false
+    param id String "Its id."
+    param desc PlayerPlateDesc "The player."
+    returns Void
+  }
+
+  struct SubPlayer {
+    doc "A player on og.ui.substitution."
+    desc true
+    field number String "The shirt number."
+    field name String "The name."
+    field image Option.Texture "The portrait (art kind portrait, 1:1)."
+  }
+
+  struct SubstitutionDesc {
+    doc "A substitution."
+    desc true
+    field off SubPlayer "The player going off."
+    field on SubPlayer "The player coming on."
+    field caption String "The tab over it." {
+      default "Substitution"
+    }
+    field offLabel String "The word under the player going off." {
+      default "Out"
+    }
+    field onLabel String "The word under the player coming on." {
+      default "In"
+    }
+    field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
+      default bottom
+    }
+  }
+
+  fn substitution {
+    doc "A substitution's lower third, as a broadcast shows it: a caption tab over one plate, the player going off at the start (portrait, a down mark in the danger hue, number and name, Out) and the one coming on at the end (an up mark in the success hue, In), a hairline between; it rises in when it appears."
+    doc "Parts: Substitution.frame, Substitution.caption, Substitution.player[off|on], Substitution.portrait, Substitution.mark[off|on], Substitution.rule. Accessibility: status named the caption, off and on. Probe ids: <id>, <id>/Plate/Off/Who/Line/Name, <id>/Plate/On/Who/Line/Name."
+    host false
+    param id String "Its id."
+    param desc SubstitutionDesc "Who goes off and who comes on."
     returns Void
   }
 

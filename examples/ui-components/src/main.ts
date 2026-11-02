@@ -4,7 +4,7 @@
 // cooling down, stacked, empty, overflowing numbers and edge-clamped.
 //
 // Commands:
-//   show:<feedback|meters|abilities|frames|shooter|strategy|racing|flight|world>
+//   show:<feedback|meters|abilities|frames|shooter|strategy|racing|flight|world|rts|sports>
 //   viewport:<desktop|ultrawide|tablet|phone|landscape>  (og.ui.previewViewport; render at the matching --size)
 //   lang:<en|ar|pseudo>     ar lays out right to left; pseudo is 40 % longer, accented and bracketed
 //   style:<prototype|scifi|fantasy|pixel|tactical|broadcast|storybook>
@@ -24,7 +24,7 @@ import type { AbilitySlotDesc, DamageHitDesc, KillfeedEntry, Texture, UnitFrameD
 
 type UnitCommand = AbilitySlotDesc;
 
-const SCREENS = ["feedback", "meters", "abilities", "frames", "shooter", "strategy", "racing", "flight", "world", "rts"] as const;
+const SCREENS = ["feedback", "meters", "abilities", "frames", "shooter", "strategy", "racing", "flight", "world", "rts", "sports"] as const;
 type Screen = (typeof SCREENS)[number];
 const STYLES = ["prototype", "scifi", "fantasy", "pixel", "tactical", "broadcast", "storybook"] as const;
 
@@ -571,6 +571,126 @@ function rtsScreen(world: World): void {
   }
 }
 
+// ── sports ────────────────────────────────────────────────────────────
+
+/**
+ * B-sports-hud and B-sports-scoreboard: the scorebug with added time top-start, the possession plate top-end, the
+ * pitch radar and the controlled player's plate bottom-start. act:score puts Northgate a goal up; act:place brings
+ * the substitution's lower third up; act:complete blows the whistle for the full-time board (the score, the scorers
+ * by side, the match stats face to face and the player of the match).
+ */
+function sportsScreen(world: World): void {
+  const s = seconds();
+  const tr = (key: string, en: string) => (state.locale === "ar" ? og.i18n.t(world, `sports.${key}`) : L(en));
+  const art = (k: string): Texture | null => state.art[k] ?? null;
+  const home = { abbr: tr("nor", "NOR"), name: tr("northgate", "Northgate"), logo: art("crest-northgate"), color: { color: { r: 0.18, g: 0.42, b: 0.9 } } };
+  const away = { abbr: tr("val", "VAL"), name: tr("valence", "Valence"), logo: art("crest-valence"), color: { color: { r: 0.86, g: 0.16, b: 0.2 } } };
+  const goals = did("score") ? 3 : 2;
+  const vp = og.ui.frameViewport();
+  const phone = vp.breakpoint === "phonePortrait" || vp.breakpoint === "phoneLandscape";
+  if (did("complete")) {
+    fullTime(world, tr, art, home, away, goals, phone);
+    return;
+  }
+  const clock = 67 * 60 + 42 + Math.floor(s);
+  og.ui.scorebug("Bug", { home: { ...home, score: goals }, away: { ...away, score: 1 }, clock: `${Math.floor(clock / 60)}:${String(clock % 60).padStart(2, "0")}`, added: "+3" });
+  // A phone has no room for two plates side by side on the top edge: possession goes under the scorebug.
+  og.ui.matchStats("Poss", { title: tr("possession", "Possession"), anchor: phone ? "topLeft" : "topRight", home, away, stats: [{ key: "poss", home: 58, away: 42, homeText: "58%", awayText: "42%" }] });
+  if (!phone || vp.breakpoint === "phoneLandscape") {
+    og.ui.minimapView("Radar", {
+      // Held sideways, the start side's top holds the scorebug and possession: the radar takes the bottom end.
+      shape: "square", zoom: 1, centerX: 0.5, centerY: 0.5, zone: "", anchor: phone ? "bottomRight" : "bottomLeft", size: phone ? 110 : 170,
+      markers: [
+        { key: "me", kind: "player", x: 0.44, y: 0.58, heading: 0.4 },
+        ...[[0.3, 0.3], [0.36, 0.7], [0.5, 0.45], [0.58, 0.62], [0.2, 0.5]].map(([x, y], i) => ({ key: `a${i}`, kind: "ally" as const, x: x!, y: y! })),
+        ...[[0.62, 0.36], [0.7, 0.55], [0.66, 0.74], [0.8, 0.5], [0.52, 0.28]].map(([x, y], i) => ({ key: `e${i}`, kind: "enemy" as const, x: x!, y: y! })),
+        { key: "ball", kind: "objective", x: 0.46, y: 0.6 },
+      ],
+    });
+  }
+  // On a phone the substitution's lower third takes the bottom while play is stopped; the player's plate gives way.
+  if (!(phone && did("place"))) og.ui.playerPlate("Me", { number: "10", name: tr("martin", "Martin"), logo: home.logo, color: home.color, stamina: Math.max(0.2, 0.7 - s * 0.02) });
+  if (did("place")) {
+    og.ui.substitution("Sub", {
+      caption: tr("substitution", "Substitution"), offLabel: tr("out", "Out"), onLabel: tr("in", "In"),
+      off: { number: "7", name: tr("reyes", "Reyes"), image: art("player-reyes") },
+      on: { number: "19", name: tr("kova", "Kova"), image: art("player-kova") },
+    });
+  }
+}
+
+/** The full-time board: the sides and the score, the scorers, then the match stats beside the player of the match. */
+function fullTime(world: World, tr: (k: string, en: string) => string, art: (k: string) => Texture | null, home: { name: string; logo: Texture | null; color: { color: { r: number; g: number; b: number } } }, away: typeof home, goals: number, phone: boolean): void {
+  const vp = og.ui.frameViewport();
+  const hud = vp.hud ?? { x: 0, y: 0, width: vp.width, height: vp.height };
+  const w = Math.min(hud.width - 32, 1180);
+  const crest = phone ? 56 : 96;
+  // Taller than a phone held sideways, or than any band at a large text size: the board scrolls rather than squeezing its rows.
+  const short = vp.height < 600 || state.textScale >= 1.5;
+  og.ui.anchor("Board", { anchor: "center", direction: "column", cross: "stretch", gap: phone ? 10 : 18, width: { kind: "fixed", px: w }, ...(short ? { height: { kind: "fixed", px: hud.height - 16 }, scroll: true } : {}) }, () => {
+    og.ui.label("Whistle", tr("fullTime", "Full time"), { step: "lg", font: "display", align: "center", width: { kind: "fixed", px: w }, color: { token: "inkMuted" } });
+    og.ui.row("Score", { gap: phone ? 10 : 28, cross: "center", align: "center", width: { kind: "fixed", px: w } }, () => {
+      og.ui.column("Home", { cross: "end", gap: 4, width: { kind: "grow" } }, () => {
+        og.ui.row("Side", { gap: 12, cross: "center" }, () => {
+          og.ui.label("Name", phone ? tr("nor", "NOR") : home.name, { step: phone ? "lg" : "xl3", font: "display" });
+          og.ui.image("Crest", { texture: home.logo, width: { kind: "fixed", px: crest }, height: { kind: "fixed", px: crest }, label: home.name });
+        });
+      });
+      og.ui.label("Result", `${goals} - 1`, { step: phone ? "xl4" : "displayLg", font: "display" });
+      og.ui.column("Away", { cross: "start", gap: 4, width: { kind: "grow" } }, () => {
+        og.ui.row("Side", { gap: 12, cross: "center" }, () => {
+          og.ui.image("Crest", { texture: away.logo, width: { kind: "fixed", px: crest }, height: { kind: "fixed", px: crest }, label: away.name });
+          og.ui.label("Name", phone ? tr("val", "VAL") : away.name, { step: phone ? "lg" : "xl3", font: "display" });
+        });
+      });
+    });
+    og.ui.panel("Scorers", { width: { kind: "fixed", px: w }, padding: { left: 16, right: 16, top: 12, bottom: 12 } }, () => {
+      og.ui.goalTimeline("Goals", { events: [
+        { key: "g1", team: 0, name: tr("anderson", "J. Anderson"), minute: "23'" },
+        { key: "g2", team: 0, name: tr("tanaka", "M. Tanaka"), minute: "68'" },
+        { key: "g3", team: 1, name: tr("moreau", "L. Moreau"), minute: "57'" },
+        ...(goals > 2 ? [{ key: "g4", team: 0, name: tr("kova", "Kova"), minute: "84'" }] : []),
+      ] });
+    });
+    const stats = () => og.ui.matchStats("Stats", { title: tr("matchStats", "Match stats"), header: true, home, away, stats: [
+      { key: "poss", label: tr("possession", "Possession"), home: 58, away: 42, homeText: "58%", awayText: "42%" },
+      { key: "shots", label: tr("shots", "Shots"), home: 14, away: 9 },
+      { key: "target", label: tr("onTarget", "On target"), home: 6, away: 3 },
+      { key: "passes", label: tr("passes", "Passes"), home: 512, away: 388 },
+      { key: "fouls", label: tr("fouls", "Fouls"), home: 11, away: 14, worse: true },
+      { key: "corners", label: tr("corners", "Corners"), home: 7, away: 4 },
+    ] });
+    const potm = (cw: number) => og.ui.panel("Potm", { width: { kind: "fixed", px: cw }, gap: 10 }, () => {
+      og.ui.label("Title", tr("potm", "Player of the match"), { step: "base", font: "display", color: { token: "inkMuted" } });
+      og.ui.row("Hero", { gap: 12, cross: "center" }, () => {
+        og.ui.image("Portrait", { texture: art("player-anderson"), width: { kind: "fixed", px: 112 }, height: { kind: "fixed", px: 112 }, label: tr("anderson", "J. Anderson") });
+        og.ui.column("Who", { gap: 2 }, () => {
+          og.ui.label("Rating", "8.9", { step: "xl4", font: "display" });
+          og.ui.label("RatingLabel", tr("rating", "Rating"), { step: "caption", color: { token: "inkMuted" } });
+        });
+      });
+      og.ui.label("Name", tr("anderson", "J. Anderson"), { step: "lg", font: "display" });
+      og.ui.label("Role", `${home.name} · ${tr("forward", "Forward")} · #9`, { step: "caption", color: { token: "inkMuted" } });
+      og.ui.row("Numbers", { gap: 8, width: { kind: "fixed", px: cw - 48 } }, () => {
+        for (const [k, v, l] of [["goals", "1", tr("goals", "Goals")], ["shots", "2", tr("shotsOn", "Shots on target")], ["keyPasses", "4", tr("keyPasses", "Key passes")]] as const) {
+          og.ui.column(k, { gap: 0, cross: "center", width: { kind: "grow" } }, () => {
+            og.ui.label("Value", v, { step: "xl2", font: "display" });
+            og.ui.label("Label", l, { step: "caption", color: { token: "inkMuted" }, align: "center", width: { kind: "fixed", px: (cw - 64) / 3 } });
+          });
+        }
+      });
+    });
+    if (phone) {
+      og.ui.panel("StatsPanel", { width: { kind: "fixed", px: w } }, stats);
+    } else {
+      og.ui.row("Lower", { gap: 18, cross: "stretch", width: { kind: "fixed", px: w } }, () => {
+        og.ui.panel("StatsPanel", { width: { kind: "grow" } }, stats);
+        potm(Math.round(w * 0.32));
+      });
+    }
+  });
+}
+
 function flightScreen(): void {
   const s = seconds();
   og.ui.flightHud("Flight", { pitch: 0.12 + 0.06 * Math.sin(s), roll: 0.35 * Math.sin(s * 0.6), heading: 1.4 + s * 0.05, speed: 412, altitude: 12450 + s * 30, verticalSpeed: 1800, pathX: 0.02, pathY: -0.04 });
@@ -662,6 +782,7 @@ const Stage = defineSystem("Stage", { reads: [og.Camera] }, (_q, _t, world) => {
     case "flight": flightScreen(); break;
     case "world": worldScreen(world); break;
     case "rts": rtsScreen(world); break;
+    case "sports": sportsScreen(world); break;
   }
 });
 
@@ -743,6 +864,8 @@ export default og.game({
     for (const k of ["flame-blade", "poison", "curse", "frost", "rune-shield", "star", "broken-chain", "titan-heart", "thunder-strike"]) paths[k] = `kit-art/boons/${k}.jpg`;
     for (const k of ["aria", "kael", "mira", "aria-vell", "cultist"]) paths[k] = `kit-art/portraits/${k}.jpg`;
     paths.barracks = "kit-art/buildings/barracks.jpg";
+    for (const k of ["crest-northgate", "crest-valence"]) paths[k] = `kit-art/sports/${k}.png`;
+    for (const k of ["player-anderson", "player-reyes", "player-kova"]) paths[k] = `kit-art/sports/${k}.jpg`;
     for (const [k, path] of Object.entries(paths)) {
       const tex = og.load.texture(world, path);
       if (tex.ok) state.art[k] = tex.value;

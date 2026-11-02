@@ -165,6 +165,7 @@ export function hudTimer(id: string, desc: Api.HudTimerDesc = {}): void {
 export function scorebug(id: string, desc: Api.ScorebugDesc = {}): void {
   const tk = frame().t;
   const h = ut(36);
+  let fit = 0;
   const side = (sid: "Home" | "Away", team: Api.ScorebugTeam | undefined, k: number) => {
     const t = team ?? {};
     const c = t.color ? paintRgba(t.color, teamColor(k)) : teamColor(k);
@@ -175,7 +176,7 @@ export function scorebug(id: string, desc: Api.ScorebugDesc = {}): void {
       box("Block", { direction: "row", gap: u(6), cross: "center", padding: { left: u(8), right: u(8), top: 0, bottom: 0 }, height: pct(1) }, {
         fills: [vgrad([[0, lit(mix(c, WHITE, 0.15))], [1, lit(mix(c, { r: 0, g: 0, b: 0, a: 1 }, 0.2))]])],
       }, () => {
-        if (t.logo) kit.image("Logo", { texture: t.logo, width: px(h - u(10)), height: px(h - u(10)), label: "" });
+        if (t.logo && fit < 3) kit.image("Logo", { texture: t.logo, width: px(h - u(10)), height: px(h - u(10)), label: "" });
         text("Abbr", t.abbr ?? "", { step: ts(15), font: "display", color: lit(inkOn(c)), nowrap: true });
         const max = t.timeoutsMax ?? 0;
         if (max > 0) {
@@ -193,7 +194,10 @@ export function scorebug(id: string, desc: Api.ScorebugDesc = {}): void {
       });
     });
   };
-  hudPlace(id, anchorOf(desc, "topLeft"), () => {
+  hudPlace(id, anchorOf(desc, "topLeft"), (inAnchor) => {
+    // Too wide for the band (a phone at 200 %): the period goes first, then the added time joins the clock's text,
+    // then the crests (the short names stay).
+    fit = fitLevel(inAnchor ? `${id}Hud/${id}` : [kit.openPath(), id].filter(Boolean).join("/"), hudRoom(), 3);
     kit.column(id, { gap: 0, cross: "start" }, () => {
       box("Bar", { direction: "row", gap: 0, cross: "center", part: sel("Scorebug", "frame"), partClass: "hud" }, {
         shape: { kind: "rect", radii: [3, 3, 3, 3] },
@@ -204,8 +208,14 @@ export function scorebug(id: string, desc: Api.ScorebugDesc = {}): void {
         side("Home", desc.home, 0);
         side("Away", desc.away, 1);
         box("Clock", { direction: "row", gap: u(6), cross: "center", padding: { left: tk.sm, right: tk.sm, top: 0, bottom: 0 }, part: sel("Scorebug", "clock") }, undefined, () => {
-          text("Period", desc.period ?? "", { step: ts(12), font: "display", color: token("inkMuted"), nowrap: true });
-          text("Clock", desc.clock ?? "", { step: ts(17), font: "mono", color: token("ink"), nowrap: true });
+          if (fit < 1) text("Period", desc.period ?? "", { step: ts(12), font: "display", color: token("inkMuted"), nowrap: true });
+          text("Clock", fit >= 2 && desc.added ? `${desc.clock ?? ""} ${desc.added}` : desc.clock ?? "", { step: ts(17), font: "mono", color: token("ink"), nowrap: true });
+          // Added time: its own box in the accent at the clock's end (EA FC's +3), so it never reads as part of the clock.
+          if (desc.added && fit < 2) {
+            box("Added", { padding: { left: u(5), right: u(5), top: 0, bottom: 0 }, part: sel("Scorebug", "added") }, { shape: { kind: "rect", radii: [2, 2, 2, 2] }, fills: [solid(token("primary"))] }, () => {
+              text("Text", desc.added ?? "", { step: ts(14), font: "mono", color: token("onPrimary"), nowrap: true });
+            });
+          }
           if (desc.shotClock) {
             box("Shot", { padding: { left: u(4), right: u(4), top: 0, bottom: 0 }, part: sel("Scorebug", "shot") }, { shape: { kind: "rect", radii: [2, 2, 2, 2] }, fills: [solid(lit(role("warn")))] }, () => {
               text("Text", desc.shotClock ?? "", { step: ts(12), font: "mono", color: lit(inkOn(role("warn"))), nowrap: true });

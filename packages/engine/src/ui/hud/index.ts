@@ -11,6 +11,7 @@ import { comboCounter, hudTimer, judgement, resourceBar, scoreboard, scorebug, t
 import { flightHud, speedometer } from "./vehicles.ts";
 import { lapTimer, rearView, standingsTower } from "./racing.ts";
 import { commandCard, dragSelect, productionQueue, rtsConsole, selectionPanel } from "./rts.ts";
+import { goalTimeline, matchStats, playerPlate, substitution } from "./sports.ts";
 
 export const hud = Object.freeze({
   statBar,
@@ -44,6 +45,10 @@ export const hud = Object.freeze({
   productionQueue,
   rtsConsole,
   dragSelect,
+  matchStats,
+  goalTimeline,
+  playerPlate,
+  substitution,
   lapTimer,
   rearView,
   damageDirection,

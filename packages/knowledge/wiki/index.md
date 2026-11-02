@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2273 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2284 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -581,6 +581,7 @@ Field units the docs and Tune use.
 | [`GltfDesc`](load.md#type-GltfDesc) | desc struct | load | — |
 | [`GltfInfo`](load.md#type-GltfInfo) | struct | load | — |
 | [`GoalChipsDesc`](ui.md#type-GoalChipsDesc) | desc struct | ui | — |
+| [`GoalTimelineDesc`](ui.md#type-GoalTimelineDesc) | desc struct | ui | — |
 | [`GpuMemory`](render.md#type-GpuMemory) | struct | render | — |
 | [`Gradient`](ui.md#type-Gradient) | desc struct | ui | — |
 | [`GradientSpread`](ui.md#type-GradientSpread) | enum | ui | — |
@@ -757,6 +758,9 @@ Field units the docs and Tune use.
 | [`MassSpace`](ui.md#type-MassSpace) | enum | ui | — |
 | [`MassTemplateDesc`](ui.md#type-MassTemplateDesc) | desc struct | ui | — |
 | [`mat4`](math.md#value-mat4) | value | math | — |
+| [`MatchEvent`](ui.md#type-MatchEvent) | desc struct | ui | — |
+| [`MatchStat`](ui.md#type-MatchStat) | desc struct | ui | — |
+| [`MatchStatsDesc`](ui.md#type-MatchStatsDesc) | desc struct | ui | — |
 | [`Material`](render.md#type-Material) | handle | render | — |
 | [`Material()`](render.md#column-Material) | column kind | render | — |
 | [`MaterialName`](ui.md#type-MaterialName) | enum | ui | — |
@@ -1463,6 +1467,7 @@ Field units the docs and Tune use.
 | [`og.ui.gesture`](ui.md#fn-gesture) | function | ui | `og_ui_gesture` |
 | [`og.ui.glyph`](ui.md#fn-glyph) | function | ui | `og_ui_glyph` |
 | [`og.ui.goalChips`](ui.md#fn-goalChips) | function | ui | — |
+| [`og.ui.goalTimeline`](ui.md#fn-goalTimeline) | function | ui | — |
 | [`og.ui.grid`](ui.md#fn-grid) | function | ui | — |
 | [`og.ui.gridItem`](ui.md#fn-gridItem) | function | ui | `og_ui_grid_item` |
 | [`og.ui.hasIcon`](ui.md#fn-hasIcon) | function | ui | `og_ui_has_icon` |
@@ -1501,6 +1506,7 @@ Field units the docs and Tune use.
 | [`og.ui.lowHealthVignette`](ui.md#fn-lowHealthVignette) | function | ui | — |
 | [`og.ui.mainMenu`](ui.md#fn-mainMenu) | function | ui | — |
 | [`og.ui.massCount`](ui.md#fn-massCount) | function | ui | `og_ui_mass_count` |
+| [`og.ui.matchStats`](ui.md#fn-matchStats) | function | ui | — |
 | [`og.ui.memory`](ui.md#fn-memory) | function | ui | `og_ui_memory` |
 | [`og.ui.menu`](ui.md#fn-menu) | function | ui | — |
 | [`og.ui.meta`](ui.md#fn-meta) | function | ui | `og_ui_meta` |
@@ -1545,6 +1551,7 @@ Field units the docs and Tune use.
 | [`og.ui.placementGhost`](ui.md#fn-placementGhost) | function | ui | — |
 | [`og.ui.platformerHud`](ui.md#fn-platformerHud) | function | ui | — |
 | [`og.ui.play`](ui.md#fn-play) | function | ui | `og_ui_play` |
+| [`og.ui.playerPlate`](ui.md#fn-playerPlate) | function | ui | — |
 | [`og.ui.playInfo`](ui.md#fn-playInfo) | function | ui | `og_ui_play_info` |
 | [`og.ui.playTimeline`](ui.md#fn-playTimeline) | function | ui | `og_ui_play_timeline` |
 | [`og.ui.pop`](ui.md#fn-pop) | function | ui | `og_ui_pop` |
@@ -1636,6 +1643,7 @@ Field units the docs and Tune use.
 | [`og.ui.stepper`](ui.md#fn-stepper) | function | ui | `og_ui_stepper` |
 | [`og.ui.stop`](ui.md#fn-stop) | function | ui | `og_ui_stop` |
 | [`og.ui.storeFront`](ui.md#fn-storeFront) | function | ui | — |
+| [`og.ui.substitution`](ui.md#fn-substitution) | function | ui | — |
 | [`og.ui.subtitles`](ui.md#fn-subtitles) | function | ui | — |
 | [`og.ui.tabBar`](ui.md#fn-tabBar) | function | ui | — |
 | [`og.ui.table`](ui.md#fn-table) | function | ui | — |
@@ -1764,6 +1772,7 @@ Field units the docs and Tune use.
 | [`PlatformOrder`](platform.md#type-PlatformOrder) | enum | platform | — |
 | [`PlatformResult`](platform.md#type-PlatformResult) | struct | platform | — |
 | [`PlayDesc`](ui.md#type-PlayDesc) | desc struct | ui | — |
+| [`PlayerPlateDesc`](ui.md#type-PlayerPlateDesc) | desc struct | ui | — |
 | [`PlayInfo`](ui.md#type-PlayInfo) | struct | ui | — |
 | [`PLAYTEST_MAX_TICKS`](probe.md#const-PLAYTEST_MAX_TICKS) | constant | probe | — |
 | [`PointDesc`](platform.md#type-PointDesc) | desc struct | platform | — |
@@ -2195,6 +2204,8 @@ Field units the docs and Tune use.
 | [`StylePart`](ui.md#type-StylePart) | enum | ui | — |
 | [`StyliseSpace`](render.md#type-StyliseSpace) | enum | render | — |
 | [`StyliseSpace()`](render.md#column-StyliseSpace) | column kind | render | — |
+| [`SubPlayer`](ui.md#type-SubPlayer) | desc struct | ui | — |
+| [`SubstitutionDesc`](ui.md#type-SubstitutionDesc) | desc struct | ui | — |
 | [`SubtitleLine`](ui.md#type-SubtitleLine) | desc struct | ui | — |
 | [`SubtitlesDesc`](ui.md#type-SubtitlesDesc) | desc struct | ui | — |
 | [`SubtitleSettings`](ui.md#type-SubtitleSettings) | desc struct | ui | — |
