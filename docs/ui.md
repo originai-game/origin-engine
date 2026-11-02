@@ -806,6 +806,94 @@ coordinator reviews every UI merge from U6 on against it, frame by frame:
 - A merge with a defect seen in a frame is held and fixed, never recorded
   as a reference.
 
+### 15.5 The art bar (owner, 2026-11-02)
+
+§15.4 catches defects; a frame can pass it and still read as a
+prototype. Every UI frame is also read against this checklist by the art
+review (the UI art director, beside the coordinator), and a frame that
+fails any item is held like a defect. The target is the look of shipped
+commercial games (Diablo IV, League of Legends, Destiny 2, Genshin
+Impact, Honkai: Star Rail, Hades, Balatro), desktop browser first.
+
+**The approved concept.** Each main screen and HUD row has an approved
+concept image per style direction
+(`tests/evidence/ui-art/concepts/<direction>-<screen>.jpg`, chosen by the
+owner from the art review's options). A reference frame is read **side by
+side with its approved concept** before it is recorded, and the review
+names every place where the frame falls short of it. A frame with no
+approved concept is read against the nearest one. The concept sets the
+bar for hierarchy, material and art, not pixel positions: the layout may
+differ where the engine's components or the breakpoint require it.
+
+The checklist:
+
+1. **Hierarchy.** Each screen has one dominant element (the key art and
+   logo of a title, the splash of a banner, the paperdoll of a character
+   screen, the focused row of a settings page) with the most contrast,
+   size or saturation. Then at most two more levels: section titles and
+   body. Titles use the style's display face and step (30–60 px at
+   1080p), section labels its caps or small caps, body 18–22 px, values
+   tabular numerals. A frame whose title, labels and values share one
+   size and weight fails.
+2. **One dominant element per control.** A slot, card or tile shows one
+   primary reading (an ability's art, a card's art and name, an item's
+   art), and at most one centred numeral (a cooldown, a count-down, a
+   price). Secondary values (a cost, a charge count, a stack, a hotkey)
+   are small, in a fixed corner or a label outside the art, and never
+   two at the same size. A hotkey is a quiet label under or beside the
+   slot, never a boxed cap over the art. One primary action per layer,
+   in the style's accent and material, visibly larger or brighter than
+   its secondaries.
+3. **Real art over placeholder glyphs.** Every slot that shows a thing
+   (ability, item, buff, card, portrait, character, enemy, banner, level,
+   backdrop) shows painted or rendered art from the art pipeline
+   (§13), lit, saturated, filling its slot. Line icons are for system
+   chrome only (close, back, settings, search, sort, chevrons). A kit or
+   reference frame showing a placeholder silhouette, a letter in an empty
+   slot, a star glyph as card art or a flat-colour wash as key art fails;
+   an empty equipment slot shows its kind's faint silhouette, not a
+   letter.
+4. **Numerals.** Gameplay numerals (cooldowns, damage, health, prices,
+   counts) have a 1–2 px dark outline or shadow, or sit on a scrim, so
+   they read over any art at 4.5:1. Tabular figures in columns and
+   counters. Units and secondary parts (`/ 100`, `%`, `km/h`) are a step
+   smaller than the value. No numeral is coloured by state unless that
+   colour is the state (a red cost when unaffordable, a green delta for
+   a gain); a key label never carries state colour.
+5. **Selection and focus.** Selected, focused, hovered and pressed are
+   distinct and read on art: an accent glow (6–8 px at 1080p) or an
+   accent rim with a lift (shadow, scale 1.02–1.05), in the style's
+   accent. A pure white 1–2 px outline or a white fill as the selection
+   fails; flooding the selected item's art with a colour fails. Disabled
+   desaturates and darkens the art (about 35 % value) and shows why (a
+   lock, a slash, a reason line). Every state is captured (§15.4).
+6. **Depth and material.** At least three elevations are distinguishable
+   by value and light: the backdrop, the panel, the control (and a raised
+   or floating layer for menus and tooltips). Each surface has the
+   style's material: a lit edge (a hairline or a top-lit rim), an inner
+   shadow on wells and sockets, a drop shadow on raised parts, a
+   gradient or texture where the style has one. A flat grey rectangle
+   with no edge as a panel, button or socket fails. No translucent grey
+   box sits behind a HUD group: HUD pieces float on their own shadows.
+7. **Spacing rhythm.** All gaps and paddings come from the style's
+   space scale (a 4 or 8 px base), and a screen uses at most four steps
+   of it. Labels sit 4–6 px from what they label; groups are separated
+   by at least twice the gap inside them. A screen does not leave more
+   than a third of its area empty around a small centred card: either
+   the composition fills the frame (art, columns) or the card grows.
+8. **Motion stills.** The frames of a transition (§15.4's clips) are read
+   as stills: every mid-transition frame is a composed frame (no half
+   faded text over a hard edge, no element snapped while its neighbour
+   eases, no flash of an unstyled state). A key moment (a reveal, a
+   level up, a ready flash) has a frame that would work as a screenshot
+   of the game.
+
+Each item becomes an `og ui check` rule where it can be measured (the
+numeral outline, the white-outline selection, the placeholder slot, the
+spacing scale); the rest stays a reviewer's read. The review records its
+findings in the stream's thread and, for the kit, in
+`tests/evidence/ui-art/`.
+
 ## 16. Agent tooling: read, write, preview, check
 
 This is the base an agent stands on to adjust a UI.
