@@ -320,6 +320,9 @@ pub(crate) struct Node {
     pub flip: [f32; 4],
     /// A drag's offset and a pinch's scale and turn (x, y, scale, radians).
     pub gesture: [f32; 4],
+    /// The player's HUD placement (`crate::hud_layout`): offset, scale and
+    /// opacity (x, y, scale, opacity).
+    pub custom: [f32; 4],
     // Computed by the frame.
     pub alpha: f32,
     pub scale: f32,
@@ -387,6 +390,7 @@ impl Node {
             screen: Rect::default(),
             flip: [0.0, 0.0, 1.0, 1.0],
             gesture: [0.0, 0.0, 1.0, 0.0],
+            custom: [0.0, 0.0, 1.0, 1.0],
             alpha: 1.0,
             scale: 1.0,
             inert: false,

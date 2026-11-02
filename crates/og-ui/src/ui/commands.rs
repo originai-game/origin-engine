@@ -86,6 +86,13 @@ impl Ui {
             if fx != 0.0 || fy != 0.0 || fsx != 1.0 || fsy != 1.0 {
                 local = Affine::translate(fx, fy).mul(&Affine::scale(fsx, fsy).about(r.x, r.y));
             }
+            let [hx, hy, hs, ho] = n.custom;
+            n.alpha *= ho.clamp(0.0, 1.0);
+            if hx != 0.0 || hy != 0.0 || hs != 1.0 {
+                local = local
+                    .mul(&Affine::translate(hx, hy))
+                    .mul(&Affine::scale(hs, hs).about(cx, cy));
+            }
             let [gx, gy, gs, gr] = n.gesture;
             if gx != 0.0 || gy != 0.0 || gs != 1.0 || gr != 0.0 {
                 let turn = Affine::rotate(gr).mul(&Affine::scale(gs, gs)).about(cx, cy);

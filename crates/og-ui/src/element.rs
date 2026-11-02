@@ -631,6 +631,42 @@ impl Cursor {
     }
 }
 
+/// An element the player can move, scale and fade in a HUD layout editor
+/// (docs/ui.md §8.4): a HUD group, a touch stick or button. Its placement
+/// is kept per player under `key` ([`crate::Ui::hud_layout`]); the zero
+/// value allows all three, from half to twice its size and down to a fifth
+/// of its opacity.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Customize {
+    /// Its name in the saved layout (empty: its path).
+    pub key: String,
+    pub lock_move: bool,
+    pub lock_scale: bool,
+    pub lock_opacity: bool,
+    /// 0: 0.5.
+    pub min_scale: f32,
+    /// 0: 2.
+    pub max_scale: f32,
+    /// 0: 0.2.
+    pub min_opacity: f32,
+}
+
+impl Customize {
+    pub(crate) fn scale_range(&self) -> (f32, f32) {
+        let lo = if self.min_scale > 0.0 { self.min_scale } else { 0.5 };
+        let hi = if self.max_scale > 0.0 { self.max_scale } else { 2.0 };
+        (lo, hi.max(lo))
+    }
+
+    pub(crate) fn opacity_floor(&self) -> f32 {
+        if self.min_opacity > 0.0 {
+            self.min_opacity.min(1.0)
+        } else {
+            0.2
+        }
+    }
+}
+
 /// An animatable value of an element (docs/ui.md §7.1). Colours are sRGB
 /// components 0–1 and alpha; rotation and skew radians.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -850,6 +886,8 @@ pub struct Props {
     pub gestures: Option<GestureSpec>,
     /// The pointer's shape over it and its subtree.
     pub cursor: Cursor,
+    /// The player can move, scale and fade it (a customisable HUD).
+    pub customize: Option<Customize>,
     /// How its animatable values move when they change (`None`: at once).
     pub motion: Option<Transition>,
     /// Moves from its last laid-out rectangle to its new one (FLIP).
@@ -895,6 +933,7 @@ impl Default for Props {
             focus_group: None,
             gestures: None,
             cursor: Cursor::Auto,
+            customize: None,
             motion: None,
             layout_motion: None,
             enter: None,

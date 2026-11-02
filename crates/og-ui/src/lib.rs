@@ -31,6 +31,7 @@ pub mod dress;
 pub(crate) mod edit;
 pub mod element;
 pub mod glyphs;
+pub mod hud_layout;
 mod id;
 mod input;
 mod juice;
@@ -43,6 +44,7 @@ pub mod paint;
 pub mod paint_entry;
 mod probe;
 mod recognize;
+pub mod vcursor;
 mod rich;
 mod scroll;
 pub mod shape;
@@ -67,7 +69,7 @@ pub use doc::build::{DocEvent, DocResponse};
 pub use draw::{DrawCmd, DrawItem, EmitDesc, LAYER_BASE, LAYER_SPAN, MAX_LAYERS};
 pub use dress::{DressFrame, Dressing, Selector};
 pub use element::{
-    Affine, Cursor, Dismiss, DragAxis, DragSpec, DropSpec, Edges, FocusGroup, GestureSpec,
+    Affine, Cursor, Customize, Dismiss, DragAxis, DragSpec, DropSpec, Edges, FocusGroup, GestureSpec,
     GridFlow, GridPlace, GridSpec, LayoutMode, LayoutStats, NavLinks, Orientation, Overlap, Patch,
     PinchSpec, Position, Prop, Props, Query, Track, Transform, Values, Variant,
 };
@@ -109,6 +111,8 @@ pub use ui::{
     ProgressDesc, Response, ScrollAxes, ScrollDesc, SliderDesc, TextAreaDesc, TextTarget, Ui,
     UiDesc, UiFrame, Viewport,
 };
+pub use hud_layout::{HudEditInfo, HudPlacement};
+pub use vcursor::VirtualCursorDesc;
 pub use viewport::{ViewportDesc, ViewportResponse};
 pub use widgets::{
     ActionButtonDesc, AnchorDesc, ArtDesc, ChipDesc, CooldownDesc, DialogueDesc, DialogueResponse,
