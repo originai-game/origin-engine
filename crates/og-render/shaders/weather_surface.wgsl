@@ -63,7 +63,12 @@ fn weather_open(p: vec3<f32>) -> f32 {
   if (any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0)) || c.z < 0.0 || c.z > 1.0) { return 1.0; }
   let layer = i32(ws.x - 0.5);
   let side = i32(ws.z);
-  let at = uv * ws.z;
+  // The drip line wanders: the lookup is pushed about by noise of the
+  // world position, up to the soft edge's width, so the snow-free patch
+  // has a ragged rim rather than the roof's straight outline.
+  let pw = p + frame.origin.xyz;
+  let wander = vec2<f32>(weather_noise(pw.xz * 1.7 + 3.0), weather_noise(pw.xz * 1.7 + 29.0)) - 0.5;
+  let at = uv * ws.z + wander * ws.y * 1.6;
   let step = max(ws.y * 0.5, 1.0);
   var open = 0.0;
   for (var j = -2; j <= 2; j++) {
@@ -89,25 +94,29 @@ fn weather_surface(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: vec3
   let up = clamp(geo.y, 0.0, 1.0);
   // The cover's noise: broad drifts, a finer break-up for a ragged edge,
   // and the height mixed in so a curved face's edge wanders too.
-  let cover = weather_fbm(p.xz * 0.6 + p.y * 0.7) * 0.7 + weather_noise(p.xz * 4.3 + p.y * 3.1 + 7.0) * 0.3;
+  let cover = weather_fbm(p.xz * 0.6 + p.y * 0.7) * 0.6 + weather_noise(p.xz * 7.1 + p.y * 5.3 + 7.0) * 0.4;
 
   // Snow settles on what faces up, deeper cover reaching steeper faces;
   // the noise breaks its edge. Snow keeps the surface under it dry.
   var snow = 0.0;
   if (w.z > 0.0) {
     let reach = mix(1.05, 0.15, w.z);
-    snow = smoothstep(reach, reach + 0.05, up + (cover - 0.5) * 0.45 * (1.0 - w.z * 0.5));
+    snow = smoothstep(reach, reach + 0.04, up + (cover - 0.5) * 0.7 * (1.0 - w.z * 0.5));
     snow *= smoothstep(0.0, 0.08, w.z);
   }
 
   // (The surface's f0 is kept where the water and snow leave it: a
 // physical material's comes from its index of refraction.)
-// Wet: porous (rough, dielectric) surfaces darken and every surface
-  // gains a sheen (Lagarde 2013); faces turned away from the sky get less.
+// Wet: porous (rough, dielectric) surfaces darken as their pores fill and
+  // only then gain a sheen (Lagarde 2013: the film forms last); faces
+  // turned away from the sky get less. A soaked rough surface keeps a
+  // satin roughness: mirror-smooth water is the puddles' (a glossier film
+  // reflected the bright sky at grazing angles and read brighter than
+  // the dry ground).
   let wet = w.x * mix(0.55, 1.0, up) * (1.0 - snow);
   let porosity = (1.0 - o.s.metallic) * smoothstep(0.15, 0.85, o.s.roughness);
-  o.s.albedo *= mix(1.0, 0.45, wet * porosity);
-  o.s.roughness = mix(o.s.roughness, max(o.s.roughness * 0.35, 0.08), wet);
+  o.s.albedo *= mix(1.0, 0.4, wet * porosity);
+  o.s.roughness = mix(o.s.roughness, max(o.s.roughness * 0.6, 0.35), wet * wet);
 
   // Puddles: in the hollows of the noise on level ground, mirror-smooth
   // dark water over the surface, rippled by the rain.

@@ -62,10 +62,10 @@ fn sky_physical_look(d: vec3<f32>) -> vec3<f32> {
   let sky = (physical_sky(d, sun, h0, 24u) * light + frame.sky_scatter[5].rgb) * frame.sky_horizon.w;
   // The disc keeps the hue of the sunlight through the air (orange-red at
   // sunset) at a brightness capped where the tone curve would bleach it
-  // white: the colour divided by its largest channel, times at most 3.
+  // white: the colour divided by its largest channel, times at most 1.5.
   let through = physical_sun(d, h0);
   let peak = max(max(through.r, through.g), max(through.b, 1e-6));
-  let strength = min(dot(through, vec3<f32>(0.2126, 0.7152, 0.0722)) * frame.sky_sun.z, 3.0);
+  let strength = min(dot(through, vec3<f32>(0.2126, 0.7152, 0.0722)) * frame.sky_sun.z, 1.5);
   var color = sky + light * (through / peak) * strength * smoothstep(frame.sky_sun.x, frame.sky_sun.y, dot(d, sun));
   let moon = moon_at(d, up);
   if (frame.sky_ground.w > 0.0 && up > 0.0) {
@@ -83,7 +83,8 @@ fn sky_physical_look(d: vec3<f32>) -> vec3<f32> {
 // ── clouds (clouds.rs) ──────────────────────────────────────────────
 // frame.clouds: [0] coverage, density, base, thickness; [1] the wind's
 // offset (xyz), the tile's size; [2] albedo, detail; [3] the high
-// layer's cover and height, steps, on; [4] x the planet's radius.
+// layer's cover and height, steps, on; [4] x the planet's radius, y and z
+// the sun's and the sky's dimming by the cover (Clouds::light).
 
 fn cloud_remap(v: f32, lo: f32, hi: f32) -> f32 {
   return clamp((v - lo) / max(hi - lo, 1e-4), 0.0, 1.0);
@@ -116,7 +117,7 @@ fn cloud_density(p: vec3<f32>, h: f32, cheap: bool) -> f32 {
   // meets cloud more often than one level does; with it the sky over a
   // viewer is about `coverage` covered, 0.3 a fair-weather sky.)
   let c0 = c[0].x;
-  let local = clamp(pow(c0, 1.25) + (cover - 0.5) * 0.8 * min(1.0, 4.0 * c0 * (1.0 - c0)), 0.0, 1.0);
+  let local = clamp(pow(c0, 1.25) + (cover - 0.5) * 0.5 * min(1.0, 4.0 * c0 * (1.0 - c0)), 0.0, 1.0);
   // The shape channel is uniform: a threshold of 1 - local leaves a
   // fraction `local` in cloud near the base. Higher up the threshold
   // rises, so only the strongest cells reach the top (domes), and a soft
@@ -147,12 +148,20 @@ fn clouds_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f3
   let ground = cloud_sphere(o, d, radius);
   if (ground.x > 0.0) { return background; }
   let to_light = normalize(frame.light_dir.xyz);
-  let light = frame.light_color.rgb;
+  // The scene's sun and sky light come dimmed by the clouds' own cover
+  // (Clouds::light, [4].yz); the clouds themselves are lit by the sun
+  // and sky above them, so the dimming is undone here.
+  let light = frame.light_color.rgb / max(c[4].y, 0.05);
   let cos_t = dot(d, to_light);
   let phase = mix(cloud_hg(cos_t, 0.6), cloud_hg(cos_t, -0.25), 0.35);
   // The sky's light from above and from the horizon (the IBL's irradiance).
-  let sky_top = textureSampleLevel(irradiance_map, ibl_sampler, vec3<f32>(0.0, 1.0, 0.0), 0.0).rgb * frame.params.x;
-  let sky_side = textureSampleLevel(irradiance_map, ibl_sampler, normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(0.0, 1e-3, 0.0)), 0.0).rgb * frame.params.x;
+  let sky_scale = frame.params.x / max(c[4].z, 0.05);
+  let sky_top = textureSampleLevel(irradiance_map, ibl_sampler, vec3<f32>(0.0, 1.0, 0.0), 0.0).rgb * sky_scale;
+  // The bases see the sky's low light, half of it from the horizon under
+  // the sun (its glow: the orange of a sunset's cloud bases).
+  let sun_side = textureSampleLevel(irradiance_map, ibl_sampler, normalize(vec3<f32>(to_light.x, 0.0, to_light.z) + vec3<f32>(0.0, 1e-3, 0.0)), 0.0).rgb;
+  let view_side = textureSampleLevel(irradiance_map, ibl_sampler, normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(0.0, 1e-3, 0.0)), 0.0).rgb;
+  let sky_side = mix(view_side, sun_side, 0.5) * sky_scale;
   var color = background;
 
   // The high thin layer (cirrus), streaked along the wind.
@@ -190,10 +199,15 @@ fn clouds_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f3
   let far = 60000.0;
   if (start >= far) { return color; }
   end = min(end, start + far * 0.5);
-  let steps = u32(c[3].z);
+  // Up to twice the steps towards the horizon, where the path is longest.
+  let steps = u32(c[3].z * (2.0 - abs(d.y)));
   let dt = (end - start) / f32(steps);
-  // A different start per pixel turns banding into fine noise (TAA smooths it).
-  var t = start + dt * lattice_hash(vec3<i32>(vec2<i32>(pixel), i32(frame.time.y) & 15));
+  // A different start per pixel turns banding into fine noise: interleaved
+  // gradient noise (Jimenez 2014), whose neighbours differ evenly, so a
+  // single frame shows an even fine grain rather than speckle (TAA
+  // smooths it), offset each frame.
+  let ign = fract(52.9829189 * fract(dot(pixel + f32(i32(frame.time.y) & 15) * 5.588238, vec2<f32>(0.06711056, 0.00583715))));
+  var t = start + dt * ign;
   var transmittance = 1.0;
   var scattered = vec3<f32>(0.0);
   let light_step = c[0].w * 0.12;

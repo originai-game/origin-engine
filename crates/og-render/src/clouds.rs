@@ -72,8 +72,10 @@ impl Clouds {
     /// The frame uniform's block at `seconds` of the clock, the planet of
     /// `radius` metres: (coverage, density, base, thickness), (the wind's
     /// offset, scale), (colour, detail), (layer, layer altitude, steps, on),
-    /// (radius). The offset wraps every four tiles (the coverage channel's
-    /// period) so f32 keeps its precision however long the clock runs.
+    /// (radius, the sun's and the sky's dimming by [`Clouds::light`],
+    /// which the scene's light is assumed to carry). The offset wraps every
+    /// four tiles (the coverage channel's period) so f32 keeps its
+    /// precision however long the clock runs.
     pub(crate) fn gpu(&self, seconds: f64, radius: f32) -> [[f32; 4]; CLOUD_VEC4S] {
         let scale = self.scale.clamp(500.0, 200_000.0);
         let period = f64::from(scale) * 4.0;
@@ -101,7 +103,13 @@ impl Clouds {
                 self.steps.clamp(8, 256) as f32,
                 1.0,
             ],
-            [radius, 0.0, 0.0, 0.0],
+            {
+                // How much the scene's sun and sky light were dimmed by
+                // this cover (the runtime applies Clouds::light to them);
+                // the clouds' own lighting undoes it.
+                let (sun, sky) = self.light();
+                [radius, sun, sky, 0.0]
+            },
         ]
     }
 }

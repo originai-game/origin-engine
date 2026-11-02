@@ -357,14 +357,14 @@ pub fn lightning_bolt(at: Vec3, top: f32, strike: u32) -> Vec<(Vec3, f32)> {
     let n = pts.len() as f32;
     pts.into_iter()
         .enumerate()
-        .map(|(i, p)| (p, 0.6 + 0.5 * i as f32 / n))
+        .map(|(i, p)| (p, 0.35 + 0.3 * i as f32 / n))
         .collect()
 }
 
 /// A lightning strike `seconds` after it struck `at`, from a cloud base at
 /// height `top`, added to `scene` (nothing from 0.6 s): the double flash
 /// brightens the sky's light and turns the scene's directional light to
-/// the lit cloud over the strike while it outshines it, a bright
+/// the bolt's channel while it outshines it, a bright
 /// blue-white light hangs 40 m over the strike, and for 0.35 s the bolt of strike number `strike`
 /// ([`lightning_bolt`]) is drawn as an additive strip that blooms.
 pub fn add_lightning(
@@ -379,12 +379,12 @@ pub fn add_lightning(
         return;
     }
     scene.environment.intensity *= 1.0 + 6.0 * flash;
-    // The lit cloud over the strike lights the land like a low sun for
-    // the flash's length, with sharp shadows away from the strike: the
-    // scene's directional light turns to it while the flash outshines it.
-    let sky_point = Vec3::new(at.x, top, at.z);
-    let toward = (sky_point - scene.camera.position).normalize_or(Vec3::Y);
-    let bolt_light = 1.6 * flash;
+    // The bolt lights the land like a low sun for the flash's length, with
+    // hard shadows away from it: the scene's directional light turns to the
+    // channel's lower part (150 m up) while the flash outshines it.
+    let channel = at + Vec3::Y * 150.0;
+    let toward = (channel - scene.camera.position).normalize_or(Vec3::Y);
+    let bolt_light = 3.0 * flash;
     let own = scene.light.intensity * scene.light.color.max_element();
     if bolt_light > own {
         let k = own / bolt_light;
@@ -398,14 +398,14 @@ pub fn add_lightning(
         kind: crate::LightKind::Point,
         position: at + Vec3::Y * 40.0,
         color: Vec3::new(0.75, 0.82, 1.0),
-        intensity: 3.0e4 * flash,
+        intensity: 6.0e3 * flash,
         range: 600.0,
         cast_shadows: false,
     });
     if seconds < 0.35 {
         // Bright enough to bloom, not so bright the bloom and its
         // reflection burn a white column across the frame.
-        let c = [1.5 + 4.0 * flash, 1.7 + 4.5 * flash, 2.6 + 6.0 * flash, 1.0];
+        let c = [0.8 + 2.0 * flash, 0.9 + 2.3 * flash, 1.4 + 3.2 * flash, 1.0];
         scene.ribbons.push(crate::Ribbon {
             points: lightning_bolt(at, top, strike)
                 .into_iter()
@@ -429,7 +429,7 @@ pub(crate) const SHELTER_REACH: f32 = 400.0;
 /// cell redraws it.
 pub(crate) const SHELTER_CELLS: f32 = 8.0;
 /// How wide the drip line's soft edge is, in metres.
-pub(crate) const DRIP_EDGE: f32 = 0.25;
+pub(crate) const DRIP_EDGE: f32 = 0.6;
 
 /// The weather occlusion map's view (the R4 shelter): an orthographic
 /// projection looking along `w.fall` over the `w.shelter` square around

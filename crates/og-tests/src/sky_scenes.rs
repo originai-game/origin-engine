@@ -234,10 +234,11 @@ pub fn sky_scene(name: &str) -> RenderScene {
             Clouds::default(),
         ),
         "sky-physical-noon" => physical_sky_scene(12.5, earth, false),
-        // A camera opens up for the low light as an eye adapts: 1.5 EV at
-        // sunset, 3.5 in twilight (the sky's light is ten stops below
-        // noon: opened less, it still reads as dusk).
-        "sky-physical-sunset" => exposed(physical_sky_scene(17.85, earth, true), 1.5),
+        // A camera opens up for the low light as an eye adapts: half a stop
+        // into the setting sun (more bleaches its glow yellow-white), 3.5
+        // in twilight (the sky's light is ten stops below noon: opened
+        // less, it still reads as dusk).
+        "sky-physical-sunset" => exposed(physical_sky_scene(17.85, earth, true), 0.5),
         "sky-physical-twilight" => exposed(physical_sky_scene(18.45, earth, true), 3.5),
         _ => physical_sky_scene(
             15.5,
