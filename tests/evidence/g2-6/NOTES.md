@@ -145,3 +145,63 @@ for the steady tick; deleted after):
 Before the merge (per-cell hexagons, 32,631 colliders) the release steady
 tick was 3.9 ms, nearly all of it og-physics' gather and sync touching
 every static collider each tick (rapier's own step was 0.02 ms).
+
+# Batch 3: formatting and time groups
+
+## The time groups sample (`timegroups/`)
+
+Two columns of five squares bob and pulse on looping tweens; the right
+(orange) column has `og.TimeGroup { group: 1 }`. Group 1 runs at 1 for
+0-2 s, 0.25 for 2-4 s, frozen 4-5.5 s, 1 again, then the global scale is
+0.5 for 6-7.5 s (both columns slow: the group multiplies it). Under them
+one locale per second (en-US, de-DE, fr-FR, es-ES) formats a compact
+number, a euro price, a long date with a medium time, and a duration, from
+a fixed moment plus the tick.
+
+    og.darwin-arm64 run tests/evidence/g2-6/timegroups --headless --size 1280x720 --out /tmp/tgs \
+      --commands "1.6:screenshot:a-together.png;3.3:screenshot:b-quarter.png;5:screenshot:c-frozen.png;7:screenshot:d-global-half.png"
+    og.darwin-arm64 render tests/evidence/g2-6/timegroups --commands "0:get:show:Show:step" \
+      --fps 30 --from 0 --to 8 --size 1280x720 --out /tmp/tgs/timegroups.mp4
+
+Read on the Mac satellite (metal):
+
+- `a-together.png` (tick 96): both columns in the same wave.
+- `b-quarter.png` (tick 198): "group 1 x 0.25"; the orange wave lags the
+  blue one; the es-ES lines read `1,4 M`, `1234,50 €` (es groups only from
+  five digits), `2 de noviembre de 2026  15:08:09`.
+- `c-frozen.png` (tick 300): "group 1 frozen"; the orange column holds a
+  pose the blue one has left; en-US `1.5M`, `€1,234.50`.
+- `d-global-half.png` (tick 420): "global x 0.5"; both columns slower.
+- `timegroups.mp4` (8 s): the whole schedule.
+
+Known gap, not this sample's: CLDR writes en's time as `3:09:09 PM` with a
+narrow no-break space (U+202F), and fr groups with one. No font in the
+repository has U+202F, and og-ui and og-render give a missing glyph no
+width, so the frames read `3:09:09PM`. The fix belongs in the font cook
+(map a missing Unicode space to the font's space advance), which re-cooks
+every font, so it is left for a decision.
+
+Hashes (orb, `OG_RENDERER=none`, 480 ticks): d60046cefb17078a twice.
+
+## The CLDR subset's size
+
+`crates/og-i18n/src/cldr.rs` (CLDR 49.0.0, 46 locales, 40 currencies) is
+63,730 bytes of source. Its data in the wasm, estimated from the
+wasm32 layout (a 676-byte LocaleData of (ptr, len) strings, 16 bytes per
+symbol override, 20 per currency) plus every string's UTF-8 bytes, with no
+deduplication counted (an upper bound):
+
+| | bytes |
+|---|---|
+| per locale | 946 (en) to 1,660 (my); mean 1,308 |
+| 46 locales | 60,151 |
+| 40 currencies | 1,035 |
+| total data | 61,186 |
+
+Per locale: am 1297, ar 1554, be 1363, bg 1614, bn 1598, ca 1252, cs 1195,
+da 1170, de 1065, el 1354, en 946, es 1363, et 1081, eu 1127, fa 1503,
+fi 1371, fr 1324, gl 1098, gu 1617, he 1272, hi 1479, hu 1387, id 1108,
+it 1209, ja 1042, km 1587, kn 1505, ko 1080, lo 1545, mr 1587, ms 1059,
+my 1660, nb 1364, nl 1117, pl 1371, pt 1171, ru 1338, sk 1334, sv 1363,
+th 1518, tr 1059, uk 1636, vi 1154, zh 1148, zh-Hant 1116, zu 1050. The
+formatters' code adds a few KB; the wave's end measures the wasm itself.
