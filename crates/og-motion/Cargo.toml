@@ -22,5 +22,9 @@ serde_json = "1"
 wgpu = { workspace = true, features = ["metal", "vulkan", "dx12"] }
 pollster = { workspace = true }
 
+[target.'cfg(all(target_os = "windows", target_arch = "x86_64", target_env = "msvc"))'.dependencies]
+# The static DXC, as og-render: FXC compiles the kernels in about 30 s.
+wgpu = { workspace = true, features = ["static-dxc"] }
+
 [dev-dependencies]
 naga = { version = "30.0.1", features = ["wgsl-in", "msl-out", "spv-out", "hlsl-out"] }

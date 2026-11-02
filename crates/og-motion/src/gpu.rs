@@ -228,7 +228,7 @@ impl Recorder<'_> {
             Kernel::LayerNorm,
             [rows as u32, width as u32, 0, 0, 0, 0, 0, 0],
             &[x, w, b, y],
-            (rows.div_ceil(64) as u32, 1),
+            groups_for(rows, 1),
         );
     }
 
@@ -277,18 +277,33 @@ impl Recorder<'_> {
         );
     }
 
-    fn finish(self, encoder: &mut wgpu::CommandEncoder) {
-        let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-            label: Some("og-motion"),
-            timestamp_writes: None,
+    fn plan(self, inputs: Vec<wgpu::Buffer>, outputs: Vec<wgpu::Buffer>) -> Plan {
+        let staging = self.gpu.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("og-motion readback"),
+            size: outputs.iter().map(|b| b.size()).sum(),
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
         });
-        for op in &self.ops {
-            pass.set_pipeline(&self.gpu.pipelines[op.kernel as usize]);
-            pass.set_bind_group(0, &op.group, &[]);
-            pass.dispatch_workgroups(op.workgroups.0, op.workgroups.1, 1);
+        Plan {
+            inputs,
+            outputs,
+            ops: self.ops,
+            staging,
         }
     }
 }
+
+/// One network's dispatches for one batch size, with every buffer and bind
+/// group they use: made once, then each call only writes the inputs.
+struct Plan {
+    inputs: Vec<wgpu::Buffer>,
+    outputs: Vec<wgpu::Buffer>,
+    ops: Vec<Op>,
+    staging: wgpu::Buffer,
+}
+
+/// Batch sizes whose plans are kept; past it the cache starts over.
+const PLANS: usize = 8;
 
 #[derive(Default)]
 struct MapState {
@@ -326,12 +341,33 @@ pub struct Gpu {
     mask_count: wgpu::Buffer,
     mask_full: wgpu::Buffer,
     statics: Statics,
+    students: HashMap<usize, Plan>,
+    decoders: HashMap<usize, Plan>,
 }
 
 impl Gpu {
     /// A device of its own on the first high-performance adapter (tests and tools).
     pub async fn request(bundle: &Bundle) -> Result<Gpu, GpuError> {
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
+        Gpu::request_on(bundle, wgpu::Backends::PRIMARY).await
+    }
+
+    /// [`Gpu::request`] limited to `backends` (the bench's `--backend`).
+    ///
+    /// On Windows the DX12 shader compiler is the static DXC, as og-render's
+    /// instance: without it wgpu falls back to FXC, which took 26-30 s to
+    /// compile the kernels on an RTX 5060 against 0.4 s on Vulkan.
+    pub async fn request_on(bundle: &Bundle, backends: wgpu::Backends) -> Result<Gpu, GpuError> {
+        let descriptor = wgpu::InstanceDescriptor {
+            backends,
+            ..wgpu::InstanceDescriptor::new_without_display_handle()
+        };
+        #[cfg(all(target_os = "windows", target_arch = "x86_64", target_env = "msvc"))]
+        let descriptor = {
+            let mut descriptor = descriptor;
+            descriptor.backend_options.dx12.shader_compiler = wgpu::Dx12Compiler::StaticDxc;
+            descriptor
+        };
+        let instance = wgpu::Instance::new(descriptor);
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::HighPerformance,
@@ -360,10 +396,23 @@ impl Gpu {
         let pipelines = KERNELS
             .iter()
             .map(|(_, name, source)| {
-                let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some(name),
-                    source: wgpu::ShaderSource::Wgsl((*source).into()),
-                });
+                // SAFETY: every loop in these kernels runs to a count read from its
+                // uniform parameters, so each one ends; skipping wgpu's forced loop
+                // bounding is what that requires. Bounds checks stay on. On Metal the
+                // bounding counter in the inner loops cost 11× (2.5 TFLOP/s against
+                // 0.23 for the linear kernel on the Mac satellite).
+                let module = unsafe {
+                    device.create_shader_module_trusted(
+                        wgpu::ShaderModuleDescriptor {
+                            label: Some(name),
+                            source: wgpu::ShaderSource::Wgsl((*source).into()),
+                        },
+                        wgpu::ShaderRuntimeChecks {
+                            force_loop_bounding: false,
+                            ..wgpu::ShaderRuntimeChecks::checked()
+                        },
+                    )
+                };
                 device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
                     label: Some(name),
                     layout: None,
@@ -420,11 +469,13 @@ impl Gpu {
             mask_count,
             mask_full,
             statics: Statics::new(bundle)?,
+            students: HashMap::new(),
+            decoders: HashMap::new(),
         })
     }
 
     /// Generates motion for encoded inputs: [`crate::Model::generate`] on the GPU.
-    pub async fn generate(&self, inputs: &Inputs) -> Result<Generation, GpuError> {
+    pub async fn generate(&mut self, inputs: &Inputs) -> Result<Generation, GpuError> {
         let student = self.student(&student_inputs(&self.statics, inputs)).await?;
         let local = self
             .decoder(&decoder_inputs(&self.statics, inputs, &student))
@@ -437,13 +488,35 @@ impl Gpu {
         })
     }
 
-    fn upload<T: bytemuck::Pod>(&self, data: &[T], label: &str) -> wgpu::Buffer {
-        self.device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some(label),
-                contents: bytemuck::cast_slice(data),
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
-            })
+    fn input(&self, floats: usize, label: &str) -> wgpu::Buffer {
+        self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some(label),
+            size: (floats.max(1) * 4) as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        })
+    }
+
+    /// Runs `plan` with `inputs` written into its input buffers and returns
+    /// its outputs as 32-bit words.
+    async fn run(&self, plan: &Plan, inputs: &[&[u8]]) -> Result<Vec<Vec<u32>>, GpuError> {
+        for (buffer, data) in plan.inputs.iter().zip(inputs) {
+            self.queue.write_buffer(buffer, 0, data);
+        }
+        let mut encoder = self.encoder();
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("og-motion"),
+                timestamp_writes: None,
+            });
+            for op in &plan.ops {
+                pass.set_pipeline(&self.pipelines[op.kernel as usize]);
+                pass.set_bind_group(0, &op.group, &[]);
+                pass.dispatch_workgroups(op.workgroups.0, op.workgroups.1, 1);
+            }
+        }
+        let sources: Vec<&wgpu::Buffer> = plan.outputs.iter().collect();
+        self.read(encoder, &sources, &plan.staging).await
     }
 
     fn scratch(&self, floats: usize, label: &str) -> wgpu::Buffer {
@@ -461,17 +534,12 @@ impl Gpu {
         &self,
         mut encoder: wgpu::CommandEncoder,
         sources: &[&wgpu::Buffer],
+        staging: &wgpu::Buffer,
     ) -> Result<Vec<Vec<u32>>, GpuError> {
         let sizes: Vec<u64> = sources.iter().map(|b| b.size()).collect();
-        let staging = self.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("og-motion readback"),
-            size: sizes.iter().sum(),
-            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
         let mut offset = 0;
         for (b, size) in sources.iter().zip(&sizes) {
-            encoder.copy_buffer_to_buffer(b, 0, &staging, offset, *size);
+            encoder.copy_buffer_to_buffer(b, 0, staging, offset, *size);
             offset += size;
         }
         self.queue.submit(Some(encoder.finish()));
@@ -520,13 +588,54 @@ impl Gpu {
 
     /// The student: pass 1 picks the count on the GPU, pass 2 gives the root
     /// path and the token logits, whose argmax is taken on readback.
-    pub async fn student(&self, inputs: &StudentInputs) -> Result<StudentOutput, GpuError> {
+    pub async fn student(&mut self, inputs: &StudentInputs) -> Result<StudentOutput, GpuError> {
         let n = inputs.n;
+        let plan = match self.students.remove(&n) {
+            Some(plan) => plan,
+            None => self.student_plan(n),
+        };
+        let read = self
+            .run(
+                &plan,
+                &[
+                    bytemuck::cast_slice(&inputs.slots),
+                    bytemuck::cast_slice(&inputs.allowed),
+                ],
+            )
+            .await;
+        if self.students.len() >= PLANS {
+            self.students.clear();
+        }
+        self.students.insert(n, plan);
+        let read = read?;
+        let root_all: &[f32] = bytemuck::cast_slice(&read[1]);
+        let pose_all: &[f32] = bytemuck::cast_slice(&read[2]);
+        let mut out = StudentOutput {
+            counts: read[0].iter().map(|c| c + 6).collect(),
+            root: vec![0.0; n * FRAMES * 5],
+            tokens: vec![0; n * MAX_TOKENS * HEADS],
+        };
+        for i in 0..n {
+            for q in 0..MAX_TOKENS {
+                let row = i * SEQUENCE + 2 + SLOTS + q;
+                out.root[(i * FRAMES + q * 4) * 5..(i * FRAMES + q * 4 + 4) * 5]
+                    .copy_from_slice(&root_all[row * 20..row * 20 + 20]);
+                for head in 0..HEADS {
+                    let at = (row * HEADS + head) * CODES;
+                    out.tokens[(i * MAX_TOKENS + q) * HEADS + head] =
+                        argmax(pose_all[at..at + CODES].iter().copied()) as u32;
+                }
+            }
+        }
+        Ok(out)
+    }
+
+    fn student_plan(&self, n: usize) -> Plan {
         let s = &self.config.student;
-        let (width, rows) = (s.width, inputs.n * SEQUENCE);
-        let slots = self.upload(&inputs.slots, "slots");
-        let allowed = self.upload(&inputs.allowed, "allowed");
-        let count = self.upload(&vec![0u32; n], "count");
+        let (width, rows) = (s.width, n * SEQUENCE);
+        let slots = self.input(n * SLOTS * SLOT_FEATURES, "slots");
+        let allowed = self.input(n * COUNTS, "allowed");
+        let count = self.scratch(n, "count");
         let (slot_tokens, cls) = (
             self.scratch(n * SLOTS * width, "slot tokens"),
             self.scratch(n * width, "cls"),
@@ -617,7 +726,7 @@ impl Gpu {
                         0,
                     ],
                     &[&qkv, mask, &attended],
-                    ((n * s.heads * length).div_ceil(64) as u32, 1),
+                    groups_for(n * s.heads * length, 1),
                 );
                 r.linear(
                     &attended,
@@ -689,41 +798,43 @@ impl Gpu {
                 );
             }
         }
-        let mut encoder = self.encoder();
-        r.finish(&mut encoder);
-        let read = self.read(encoder, &[&count, &root, &pose]).await?;
-        let root_all: &[f32] = bytemuck::cast_slice(&read[1]);
-        let pose_all: &[f32] = bytemuck::cast_slice(&read[2]);
-        let mut out = StudentOutput {
-            counts: read[0].iter().map(|c| c + 6).collect(),
-            root: vec![0.0; n * FRAMES * 5],
-            tokens: vec![0; n * MAX_TOKENS * HEADS],
-        };
-        for i in 0..n {
-            for q in 0..MAX_TOKENS {
-                let row = i * SEQUENCE + 2 + SLOTS + q;
-                out.root[(i * FRAMES + q * 4) * 5..(i * FRAMES + q * 4 + 4) * 5]
-                    .copy_from_slice(&root_all[row * 20..row * 20 + 20]);
-                for head in 0..HEADS {
-                    let at = (row * HEADS + head) * CODES;
-                    out.tokens[(i * MAX_TOKENS + q) * HEADS + head] =
-                        argmax(pose_all[at..at + CODES].iter().copied()) as u32;
-                }
-            }
-        }
-        Ok(out)
+        r.plan(vec![slots, allowed], vec![count, root, pose])
     }
 
     /// The decoder: `[n,64,365]` normalised local motion features.
-    pub async fn decoder(&self, inputs: &DecoderInputs) -> Result<Vec<f32>, GpuError> {
+    pub async fn decoder(&mut self, inputs: &DecoderInputs) -> Result<Vec<f32>, GpuError> {
         let n = inputs.n;
+        let plan = match self.decoders.remove(&n) {
+            Some(plan) => plan,
+            None => self.decoder_plan(n),
+        };
+        let read = self
+            .run(
+                &plan,
+                &[
+                    bytemuck::cast_slice(&inputs.codes),
+                    bytemuck::cast_slice(&inputs.token_mask),
+                    bytemuck::cast_slice(&inputs.external),
+                    bytemuck::cast_slice(&inputs.target),
+                    bytemuck::cast_slice(&inputs.has_target),
+                ],
+            )
+            .await;
+        if self.decoders.len() >= PLANS {
+            self.decoders.clear();
+        }
+        self.decoders.insert(n, plan);
+        Ok(bytemuck::cast_slice(&read?[0]).to_vec())
+    }
+
+    fn decoder_plan(&self, n: usize) -> Plan {
         let d = &self.config.decoder;
         let (width, down) = (d.width, d.down_t);
-        let codes = self.upload(&inputs.codes, "codes");
-        let mask = self.upload(&inputs.token_mask, "token mask");
-        let external = self.upload(&inputs.external, "external");
-        let target = self.upload(&inputs.target, "target");
-        let has = self.upload(&inputs.has_target, "has target");
+        let codes = self.input(n * HEADS * 32 * MAX_TOKENS, "codes");
+        let mask = self.input(n * MAX_TOKENS, "token mask");
+        let external = self.input(n * FRAMES * 2, "external");
+        let target = self.input(n * FRAMES * TARGET_FEATURES, "target");
+        let has = self.input(n * FRAMES, "has target");
         let mut h = self.scratch(n * width * FRAMES, "h");
         let mut y = self.scratch(n * width * FRAMES, "y");
         let ht = self.scratch(n * FRAMES * width / 2, "ht");
@@ -841,9 +952,6 @@ impl Gpu {
             &local,
         );
         r.transpose(&local, n, LOCAL_FEATURES, FRAMES, &out);
-        let mut encoder = self.encoder();
-        r.finish(&mut encoder);
-        let read = self.read(encoder, &[&out]).await?;
-        Ok(bytemuck::cast_slice(&read[0]).to_vec())
+        r.plan(vec![codes, mask, external, target, has], vec![out])
     }
 }

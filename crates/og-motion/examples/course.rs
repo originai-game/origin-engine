@@ -37,7 +37,7 @@ fn main() {
     let bundle = Bundle::from_safetensors(&std::fs::read(&args[1]).unwrap()).unwrap();
     let (course, _) = read_safetensors(&std::fs::read(&args[2]).unwrap()).unwrap();
     let t = |name: &str| &course[name].data;
-    let gpu = pollster::block_on(Gpu::request(&bundle)).unwrap();
+    let mut gpu = pollster::block_on(Gpu::request(&bundle)).unwrap();
     let mut context: [Pose; 4] = poses(t("context_positions"), t("context_rotations"), 0, 4)
         .try_into()
         .unwrap();
