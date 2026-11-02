@@ -214,7 +214,14 @@ rules exist to keep it fast (`docs/ci.md` §Lanes has the numbers):
   macrunner, the functional lane (`scripts/check.sh functional`: fmt, clippy, every
   test with the GPU reference frames, drift, every style pack's reference
   sheets (`ui-styles`), the packages' tests on the
-  native host) and that is what a merge must pass. The wasm build and its
+  native host) and that is what a merge must pass. Landing is kept short
+  (the owner, 2026-11-02): a merge builds native only and never rebuilds
+  the wasm (with a stale web module the cross-host tests skip, and the
+  wave's end runs them); branches whose authors have drawn and read
+  their frames clean on a Mac satellite are landed in batches, rebased
+  one after another and passed through one functional run; and the
+  session that lands draws no review frames, reading only the frames
+  that fail tolerance before recording them. The wasm build and its
   size, determinism and the browser tiers are measurements of a wave's
   end: `scripts/wave-end.sh` (`scripts/check.sh --all`, then
   `scripts/check.sh web-reference`, serially, on the runners) once per wave, with its summary in the report, never per
