@@ -130,8 +130,8 @@ export function probeParams(member: string, args: unknown[]): Record<string, unk
 
 const zh = /^zh\b/i.test(globalThis.navigator?.language ?? "");
 const T = zh
-  ? { loading: "正在加载", play: "点击开始", tapToPlay: "点击开始", startFailed: "游戏无法启动", noWebGpu: "此浏览器不支持 WebGPU", noWebGpuDetail: "本游戏需要 WebGPU：请用最新版的 Chrome、Edge、Safari 或 Firefox 打开。", stopped: "游戏已停止", reload: "重新加载", copy: "复制报告", copied: "已复制", log: "日志", dump: "世界快照", install: "添加到主屏幕", installIos: "点按分享，再选“添加到主屏幕”", dismiss: "不用了", back: "返回", madeWith: "Made with Origin Engine" }
-  : { loading: "Loading", play: "Play", tapToPlay: "Tap to play", startFailed: "The game could not start", noWebGpu: "This browser does not support WebGPU", noWebGpuDetail: "This game runs on WebGPU: open it in a current Chrome, Edge, Safari or Firefox.", stopped: "The game stopped", reload: "Reload", copy: "Copy report", copied: "Copied", log: "Log", dump: "World", install: "Install", installIos: "Tap Share, then Add to Home Screen", dismiss: "Not now", back: "Back", madeWith: "Made with Origin Engine" };
+  ? { loading: "正在加载", play: "点击开始", tapToPlay: "点击开始", startFailed: "游戏无法启动", noWebGpu: "此浏览器不支持 WebGPU", noWebGpuDetail: "本游戏需要 WebGPU：请用最新版的 Chrome、Edge、Safari 或 Firefox 打开。", stopped: "游戏已停止", reload: "重新加载", copy: "复制报告", copied: "已复制", log: "日志", dump: "世界快照", install: "添加到主屏幕", installOffer: "安装{name}，离线也能玩", installIos: "点按分享，再选“添加到主屏幕”", dismiss: "不用了", back: "返回", madeWith: "Made with Origin Engine" }
+  : { loading: "Loading", play: "Play", tapToPlay: "Tap to play", startFailed: "The game could not start", noWebGpu: "This browser does not support WebGPU", noWebGpuDetail: "This game runs on WebGPU: open it in a current Chrome, Edge, Safari or Firefox.", stopped: "The game stopped", reload: "Reload", copy: "Copy report", copied: "Copied", log: "Log", dump: "World", install: "Install", installOffer: "Install {name} to play offline", installIos: "Tap Share, then Add to Home Screen", dismiss: "Not now", back: "Back", madeWith: "Made with Origin Engine" };
 
 export function readConfig(doc: Document = document): ShellConfig {
   const text = doc.getElementById("og-config")?.textContent ?? "{}";
@@ -855,8 +855,10 @@ async function installPwa(framed: boolean, log: LogTail, booted: readonly string
   if (no) no.textContent = T.dismiss;
   // Chromium: the browser decides the criteria hold and fires beforeinstallprompt, often
   // before the engine has booted: index.html's head keeps that event in `__ogInstallPrompt`.
+  // The label names the game as the manifest does (short_name, else name: the same as this meta).
+  const game = document.querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-title"]')?.content || document.title;
   const offer = (prompt: Event & { prompt(): Promise<void> }) => {
-    if (text) text.textContent = T.install;
+    if (text) text.textContent = T.installOffer.replace("{name}", game);
     if (act) {
       act.hidden = false;
       act.textContent = T.install;
