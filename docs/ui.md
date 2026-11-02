@@ -877,6 +877,12 @@ jade), which follow batch 3.
 | dread | `packs/dread-hud` | `packs/dread-menu` | `packs/dread-settings` |
 | craft | `packs/craft-hud` | `packs/craft-menu` | `packs/craft-settings` |
 | inkwash | `packs/inkwash-hud` | `packs/inkwash-menu` | `packs/inkwash-settings` |
+| holo | `packs/holo-hud` | `packs/holo-menu` | `packs/holo-settings` |
+| cyber | `packs/cyber-hud` | `packs/cyber-menu` | `packs/cyber-settings` |
+| arcade | `packs/arcade-hud` | `packs/arcade-menu` | `packs/arcade-settings` |
+| storybook | `packs/storybook-hud` | `packs/storybook-menu` | `packs/storybook-settings` |
+| paper | `packs/paper-hud` | `packs/paper-menu` | `packs/paper-settings` |
+| minimal | `packs/minimal-hud` | `packs/minimal-menu` | `packs/minimal-settings` |
 
 The checklist:
 

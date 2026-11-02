@@ -161,9 +161,15 @@ cartoon, tactical, pixel, broadcast, then the rest by genre reach.
 | 1 | tactical | `packs/tactical-hud` (shooter) | `packs/tactical-menu` (loadout) | `packs/tactical-settings` | sent for veto |
 | 1 | pixel | `packs/pixel-hud` (ability bar) | `packs/pixel-menu` (main menu) | `packs/pixel-settings` | sent for veto |
 | 1 | broadcast | `packs/broadcast-hud` (football) | `packs/broadcast-menu` (full time) | `packs/broadcast-settings` | sent for veto |
-| 2 | gilded | `packs/gilded-hud` (card combat) | `packs/gilded-menu` (collection and deck) | `packs/gilded-settings` | sent for veto |
-| 2 | neon | `packs/neon-hud` (racing) | `packs/neon-menu` (song select) | `packs/neon-settings` | sent for veto |
-| 2 | bubbly | `packs/bubbly-hud` (party) | `packs/bubbly-menu` (store) | `packs/bubbly-settings` | sent for veto |
-| 2 | dread | `packs/dread-hud` (survival horror) | `packs/dread-menu` (main menu) | `packs/dread-settings` | sent for veto |
-| 2 | craft | `packs/craft-hud` (farming) | `packs/craft-menu` (crafting) | `packs/craft-settings` | sent for veto |
-| 2 | inkwash | `packs/inkwash-hud` (wuxia) | `packs/inkwash-menu` (main menu) | `packs/inkwash-settings` | sent for veto |
+| 2 | gilded | `packs/gilded-hud` (card combat) | `packs/gilded-menu` (collection and deck) | `packs/gilded-settings` | approved (owner, no veto) |
+| 2 | neon | `packs/neon-hud` (racing) | `packs/neon-menu` (song select) | `packs/neon-settings` | approved (owner, no veto) |
+| 2 | bubbly | `packs/bubbly-hud` (party) | `packs/bubbly-menu` (store) | `packs/bubbly-settings` | approved (owner, no veto) |
+| 2 | dread | `packs/dread-hud` (survival horror) | `packs/dread-menu` (main menu) | `packs/dread-settings` | approved (owner, no veto) |
+| 2 | craft | `packs/craft-hud` (farming) | `packs/craft-menu` (crafting) | `packs/craft-settings` | approved (owner, no veto) |
+| 2 | inkwash | `packs/inkwash-hud` (wuxia) | `packs/inkwash-menu` (main menu) | `packs/inkwash-settings` | approved (owner, no veto) |
+| 3 | holo | `packs/holo-hud` (starship tactics) | `packs/holo-menu` (fleet hangar) | `packs/holo-settings` | sent for veto |
+| 3 | cyber | `packs/cyber-hud` (heist shooter) | `packs/cyber-menu` (cyberware market) | `packs/cyber-settings` | sent for veto |
+| 3 | arcade | `packs/arcade-hud` (platformer) | `packs/arcade-menu` (title and high scores) | `packs/arcade-settings` | sent for veto |
+| 3 | storybook | `packs/storybook-hud` (card adventure) | `packs/storybook-menu` (merchant shop) | `packs/storybook-settings` | sent for veto |
+| 3 | paper | `packs/paper-hud` (visual novel) | `packs/paper-menu` (main menu) | `packs/paper-settings` (text options) | sent for veto |
+| 3 | minimal | `packs/minimal-hud` (idle producers) | `packs/minimal-menu` (leaderboard and season) | `packs/minimal-settings` | sent for veto |
