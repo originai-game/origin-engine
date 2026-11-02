@@ -37,7 +37,7 @@ export function notifications(id: string, desc: Api.NotificationsDesc = {}): Api
   // A phone at a large text size has room for one card at a time; the rest wait their turn.
   const max = Math.min(desc.max || (b.phone ? 2 : 3), b.phone && textScale() >= 1.5 ? 1 : Infinity);
   const safe = f.viewport.safeArea;
-  const width = desc.width || (b.portrait ? Math.max(240, f.viewport.width - safe.left - safe.right - tk.gutter * 2) : Math.min(Math.max(380, u(254)), f.viewport.width * 0.42));
+  const width = desc.width || (b.portrait ? Math.max(240, f.viewport.width - safe.left - safe.right - tk.gutter * 2) : Math.min(Math.max(380, u(254)) * (1 + (Math.min(2, textScale()) - 1) * 0.5), f.viewport.width * 0.42));
   const slide = slideFor(anchor);
   const atBottom = anchor.startsWith("bottom");
   const t = now();
@@ -150,7 +150,9 @@ function card(
   kit.column("Text", { width: { kind: "grow" }, gap: 2 }, () => {
     if (it.eyebrow) text("Eyebrow", it.eyebrow.toUpperCase(), { step: ts(13), color: lit(variant === "achievement" ? role("gold") : accent), nowrap: true, ellipsis: true, width: { kind: "grow" } });
     kit.row("Head", { gap: tk.xs, cross: "center", width: { kind: "grow" } }, () => {
-      text("Title", it.title ?? "", { step: ts(16), font: "display", nowrap: true, ellipsis: true, width: { kind: "grow" } });
+      // At a large text size the title wraps to a second line and the body to a third, rather than stub (§15.4).
+      const big = textScale() >= 1.5;
+      text("Title", it.title ?? "", { step: ts(16), font: "display", nowrap: !big, maxLines: 2, ellipsis: true, width: { kind: "grow" } });
       if ((it.count ?? 0) > 1) {
         box("Count", { padding: xy(tk.xs + 2, 1), part: sel("Notification", "count"), partClass: "badge" }, {
           shape: { kind: "rect", radii: [99, 99, 99, 99] },
@@ -159,7 +161,7 @@ function card(
         }, () => text("N", `×${it.count}`, { step: ts(13), font: "mono", nowrap: true, color: lit(accent) }));
       }
     });
-    if (it.body) text("Body", it.body, { step: ts(14), color: token("inkMuted"), maxLines: 2, ellipsis: true, width: { kind: "grow" } });
+    if (it.body) text("Body", it.body, { step: ts(14), color: token("inkMuted"), maxLines: textScale() >= 1.5 && !b.phone ? 3 : 2, ellipsis: true, width: { kind: "grow" } });
     if (it.progress !== null && it.progress !== undefined) {
       kit.row("Progress", { gap: tk.sm, cross: "center", width: { kind: "grow" }, padding: { left: 0, top: 4, right: 0, bottom: 0 } }, () => {
         box("Track", { width: { kind: "grow" }, height: px(6), part: sel("Notification", "progress"), partClass: "bar" }, {

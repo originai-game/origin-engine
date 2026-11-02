@@ -9,7 +9,7 @@
 // clamped inside the safe area, mirrored right to left.
 
 import type * as Api from "@origingame/engine";
-import { a11y, arc, bp, box, clamp, clamp01, close, drop, frame, groups, icon, kit, leaf, lit, msToTicks, open, pct, px, rarityColor, rarityPips, role, sel, shapeOf, solid, sound, stroke, text, token, vgrad, xy, type Rgba, ts, apply, floatFloor, u } from "./core.ts";
+import { a11y, arc, bp, box, clamp, clamp01, close, drop, frame, groups, icon, kit, leaf, lit, msToTicks, open, pct, px, rarityColor, rarityPips, role, sel, shapeOf, solid, sound, stroke, text, token, vgrad, xy, type Rgba, ts, apply, floatFloor, u, textScale } from "./core.ts";
 
 interface Placed {
   x: number;
@@ -138,20 +138,34 @@ function card(id: string, desc: Api.TooltipCardDesc, target: string, open_: bool
   out.depth = Math.max(out.depth, depth);
 
   const rare = rarityColor(desc.rarity);
-  // Its text grows with the HUD's scale (a 1440 p ultrawide), so does the card: 340 at 1080 p.
-  const width = desc.width || (b.phone ? 300 : Math.max(340, u(227)));
   const compare = !!desc.compareTitle && (desc.compareStats?.length ?? 0) > 0;
-  const total = compare ? width * 2 + tk.sm : width;
   const trig = target ? kit.bounds(target) : null;
-  const own = kit.bounds(id);
-  // Before it was ever laid out its height is unknown: it hangs from the
-  // bottom of the screen for that one (invisible) tick rather than spill.
-  const h = own?.height ?? f.viewport.height;
   // The column the trigger sits in: its top-level group (for a keyword
   // link, the card that holds it), unless that is the trigger itself.
   const top = target.split("/")[0] ?? "";
   const column = top && top !== target ? kit.bounds(top) : null;
-  const at = trig ? place(trig, total, h, desc.placement ?? "right", tk.sm, column) : { x: f.viewport.width / 2 - total / 2, y: f.viewport.height / 3 };
+  // Its text grows with the HUD's scale (a 1440 p ultrawide), so does the card: 340 at 1080 p.
+  // At a large text size it widens by half the growth, so its words wrap
+  // rather than break or stub; but never past the room beside its column,
+  // so a wider card never falls back onto the column it explains.
+  let width = desc.width || (b.phone ? 300 : Math.round(Math.max(340, u(227)) * (1 + (Math.min(2, textScale()) - 1) * 0.5)));
+  if (!desc.width && !b.phone && column) {
+    const vp = f.viewport;
+    const beside = Math.max(vp.width - vp.safeArea.right - tk.sm - (column.x + column.width + tk.sm), column.x - tk.sm - (vp.safeArea.left + tk.sm));
+    const fit = Math.floor((beside - (compare ? tk.sm : 0)) / (compare ? 2 : 1));
+    width = Math.max(Math.min(width, fit), 260);
+  }
+  const total = compare ? width * 2 + tk.sm : width;
+  const own = kit.bounds(id);
+  // Before it was ever laid out its height is unknown: it hangs from the
+  // bottom of the screen for that one (invisible) tick rather than spill.
+  // So it is on the tick the player's text size changes: last tick's
+  // height is the old size's, and the card is about to grow.
+  const scaleKey = `${id}~scale`;
+  const sameScale = kit.memory(scaleKey, textScale()) === textScale();
+  kit.remember(scaleKey, textScale());
+  const h = sameScale ? own?.height ?? f.viewport.height : f.viewport.height;
+  const at = trig ? place(trig, total, h, desc.placement ?? "right", tk.sm, column) : { x: f.viewport.width / 2 - total / 2, y: f.viewport.safeArea.top + tk.sm };
   const first = shownFor === 0;
   const pinProgress = pinnable && !pinned ? clamp01((rest - delay) / pinTicks) : pinned ? 1 : 0;
 
@@ -221,7 +235,8 @@ function sheet(id: string, d: Api.TooltipCardDesc, equipped: boolean, width: num
   const path = open(id, {
     direction: "column",
     width: px(width),
-    ...(capped ? { height: px(room), scroll: true } : {}),
+    // Never taller than the room, from the first tick (before it was ever measured): it scrolls once it overflowed.
+    ...(capped ? { height: px(room), scroll: true } : { height: { kind: "fit", max: room } }),
     padding: xy(tk.md + 2, tk.md),
     gap: tk.sm,
     interactive: true,

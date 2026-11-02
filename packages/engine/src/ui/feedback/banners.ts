@@ -38,8 +38,8 @@ export function banner(id: string, desc: Api.BannerDesc = {}): Api.BannerResult 
   const gold = role("gold");
   const ink: Api.Paint = kind === "victory" ? lit(gold) : kind === "defeat" ? lit(danger) : kind === "warning" ? token("ink") : token("ink");
 
-  // Over the rest of the UI: an announcement is never covered by a card or a meter.
-  kit.anchor(id, { anchor: desc.anchor ?? "center", width: pct(1), direction: "column", cross: "center", over: true }, () => {
+  // Over the rest of the UI, a pinned tooltip included (the top layer, built after it): an announcement is never covered by a card or a meter.
+  kit.anchor(id, { anchor: desc.anchor ?? "center", width: pct(1), direction: "column", cross: "center", over: true, tooltip: true }, () => {
     const band = kind !== "title";
     const bandInk = kind === "victory" ? gold : kind === "defeat" || kind === "warning" ? danger : role("primary");
     open("Band", {

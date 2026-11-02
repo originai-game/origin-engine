@@ -114,7 +114,8 @@ export function celebration(id: string, desc: Api.CelebrationDesc = {}): void {
   const title = (desc.title ?? "Level up").toUpperCase();
   // The word fits the stage at its overshoot (1.1×): a long word or 200 % text steps down, never off the screen.
   const titleStep = fitWidth(ts(40, true), title.length * 0.6 * 1.1, stageW);
-  kit.anchor(id, { anchor: "center", direction: "column", cross: "center", over: true }, () => {
+  // The level-up announces like a banner: over a pinned tooltip too.
+  kit.anchor(id, { anchor: "center", direction: "column", cross: "center", over: true, tooltip: true }, () => {
     box("Stage", { width: px(stageW), height: px(300), align: "center", cross: "center", direction: "column" }, undefined, () => {
       if (!still) {
         // Rays turning behind the word, fading at their tips.
