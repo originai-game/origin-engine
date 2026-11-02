@@ -142,16 +142,18 @@ fn fs_impostor(in: ImpostorOut) -> ImpostorLit {
   let l = normalize(frame.light_dir.xyz);
   let n_dot_l = max(dot(n, l), 0.0);
   var shadow = 1.0;
-  // Looked up where the light's ray leaves the model's sphere: the card
-  // takes no shadow of its own. The lit surface and the shadow card's
-  // (impostor_shadow.wgsl) are each rebuilt from blended frames and differ
-  // by the frames' steps, most near the light's terminator, where any
-  // fixed bias left a stepped band; other casters still shadow it, and its
-  // own shadow on the rest of the scene is the surface's.
+  // Looked up half a radius past where the light's ray leaves the model's
+  // sphere: the card takes no shadow of its own. The lit surface and the
+  // shadow card's (impostor_shadow.wgsl) are each rebuilt from blended
+  // frames and differ by the frames' steps, most near the light's
+  // terminator, where any fixed bias left a stepped band; and a model
+  // that fills its sphere (a ball) casts from the sphere itself, so the
+  // exit point alone is its own lit surface. Other casters still shadow
+  // it, and its own shadow on the rest of the scene is the surface's.
   let rel = surface.world - in.centre;
   let b = dot(rel, l);
   let leave = -b + sqrt(max(b * b - dot(rel, rel) + in.extent * in.extent, 0.0));
-  if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) { shadow = cascade_shadow(surface.world + l * max(leave, 0.0), n, n_dot_l); }
+  if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) { shadow = cascade_shadow(surface.world + l * (max(leave, 0.0) + 0.5 * in.extent), n, n_dot_l); }
   var color = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
   color += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(surface.world);
   color += surface_local_lights(in.clip.xy, s, surface.world, n, v);
