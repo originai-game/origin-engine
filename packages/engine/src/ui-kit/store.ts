@@ -33,7 +33,8 @@ export function rarityGround(id: string, rarity: Api.Rarity | undefined, line = 
   kit.open(id, { width: grow(), height: grow() });
   kit.setDraw({
     shape: { kind: "rect", radii: [r, r, r, r] }, clip: "shape",
-    fills: [{ kind: "gradient", type: "radial", from: { x: 0.5, y: 1 }, to: { x: 0.5, y: 0.05 }, stops: [{ offset: 0, color: ink(glow) }, { offset: 0.6, color: ink(glow * 0.35) }, { offset: 1, color: ink(0) }] }],
+    // A radial's `to` is its radii: wide, and up to the top of the slot.
+    fills: [{ kind: "gradient", type: "radial", from: { x: 0.5, y: 1 }, to: { x: 0.8, y: 1 }, stops: [{ offset: 0, color: ink(glow) }, { offset: 0.6, color: ink(glow * 0.35) }, { offset: 1, color: ink(0) }] }],
     strokes: line && !dressed ? [{ width: dark ? 1 : 1.5, align: "inside", paint: { kind: "solid", color: ink(dark ? 0.6 : 1) } }] : [],
   } as Api.DrawDesc);
   kit.close();
@@ -41,25 +42,26 @@ export function rarityGround(id: string, rarity: Api.Rarity | undefined, line = 
 }
 
 /**
- * The selected tile (docs/ui.md §15.5): a soft light rim at 55 % white and an
- * 8 px glow round it, over the lift og-ui's grid already gives it, so the
- * selection reads in every style, even one whose selected frame is its plain one.
+ * The selected tile (docs/ui.md §15.5): a soft light rim at 55 % white 2 px
+ * outside the slot's edge and a glow round it to 8 px, over the lift og-ui's
+ * grid already gives it. Outside, so a pack's own frame (gilded's gold) stays
+ * whole and the selection adds to it, in every style.
  */
 function selectedRim(id: string): void {
-  const r = frame().t.small;
+  const r = frame().t.small + RIM;
   const white = (alpha: number): Api.Paint => ({ color: { r: 1, g: 1, b: 1 }, alpha });
   kit.open(id, { width: grow(), height: grow() });
   kit.setDraw({
     shape: { kind: "rect", radii: [r, r, r, r] },
-    // The glow as rings outside the edge, fading out to 8 px: an outerGlow is a
-    // blurred copy of the whole shape and would veil the art inside the tile.
+    // The glow as rings outside the rim, fading out to 8 px from the slot: an
+    // outerGlow is a blurred copy of the whole shape and would veil the art.
     strokes: [
-      ...[[8, 0.05], [5.5, 0.07], [3, 0.1]].map(([width, alpha]) => ({ width, align: "outside", paint: { kind: "solid", color: white(alpha) } })),
+      ...[[8 - RIM, 0.05], [5, 0.07], [2.5, 0.1]].map(([width, alpha]) => ({ width, align: "outside", paint: { kind: "solid", color: white(alpha) } })),
       { width: 1.5, align: "inside", paint: { kind: "solid", color: white(0.55) } },
     ],
   } as Api.DrawDesc);
   kit.close();
-  over({ insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, z: 3 });
+  over({ insets: { start: -RIM, top: -RIM, end: -RIM, bottom: -RIM }, inert: true, z: 3 });
 }
 
 /**
@@ -76,6 +78,11 @@ function rowsView(count: number, columns: number, cell: number, gap: number, lim
   const whole = Math.max(1, Math.floor((limit - cell / 3 + gap) / stride));
   return { height: whole * stride + cell / 3, more: true };
 }
+
+/** How far outside the slot the selected rim's outer edge sits (2 px clear of the frame, the rim 1.5 px). */
+const RIM = 3.5;
+/** A grid's padding, so the selected rim of an edge cell is not cut by the grid's clip. */
+const EDGE = 4;
 
 /** The scrollbar's gutter beside a grid with more rows than it shows: its bar's width and a margin either side, no more (a phone's bag keeps six touch-sized slots a row). */
 const gutterOf = (t: { xs: number; xxs: number }): number => t.xs + 2 * t.xxs;
@@ -228,10 +235,10 @@ export function shopScreen(id: string, desc: Api.ShopDesc = {}): Api.ShopResult 
       // Whole rows only: two rows of three show a category whole; more fade under a scrim, the scrollbar in its own gutter.
       const view = rowsView(items.length, 3, ch, t.sm, phone ? 330 : 352);
       const gutter = view.more ? gutterOf(t) : 0;
-      const gw = 3 * (cw + t.sm) + t.sm + gutter;
+      const gw = 3 * (cw + t.sm) - t.sm + 2 * EDGE + gutter;
       let g: Api.ListResult = {} as Api.ListResult;
       gridView("ItemsView", view.more, wide ? fit() : grow(), () => {
-      g = kit.grid("Items", { count: items.length, cellWidth: cw, cellHeight: ch, columns: 3, height: px(view.height), width: wide ? px(gw) : grow(), padding: { left: 0, top: 0, right: gutter, bottom: 0 }, selected: sel }, (i) => {
+      g = kit.grid("Items", { count: items.length, cellWidth: cw, cellHeight: ch, columns: 3, height: px(view.height + 2 * EDGE), width: wide ? px(gw) : grow(), padding: { left: EDGE, top: EDGE, right: EDGE + gutter, bottom: EDGE }, selected: sel }, (i) => {
         const it = items[i]!;
         rarityGround("Ground", it.rarity);
         if (i === sel) selectedRim("Selected");
@@ -326,11 +333,11 @@ export function inventoryScreen(id: string, desc: Api.InventoryDesc = {}): Api.I
       const limit = phone ? 300 : pane ? 420 : 340;
       const gutter = rowsView(slots, across, cell, t.sm, limit).more ? gutterOf(t) : 0;
       // On a phone the slots are at the touch target already: the gutter comes out of the gaps between them, not the slots.
-      const gap = phone && gutter ? Math.max(t.xxs, t.sm - gutter / Math.max(1, across - 1)) : t.sm;
+      const gap = phone ? Math.max(t.xxs, t.sm - (gutter + 2 * EDGE) / Math.max(1, across - 1)) : t.sm;
       const view = rowsView(slots, across, cell, gap, limit);
       let g: Api.ListResult = {} as Api.ListResult;
       gridView("SlotsView", view.more, grow(), () => {
-      g = kit.grid("Slots", { count: slots, cellWidth: cell, cellHeight: cell, columns, height: px(view.height), width: grow(), gap, padding: { left: 0, top: 0, right: gutter, bottom: 0 }, selected: sel >= 0 ? sel : null }, (i) => {
+      g = kit.grid("Slots", { count: slots, cellWidth: cell, cellHeight: cell, columns, height: px(view.height + 2 * EDGE), width: grow(), gap, padding: { left: EDGE, top: EDGE, right: EDGE + gutter, bottom: EDGE }, selected: sel >= 0 ? sel : null }, (i) => {
         const it = bySlot.get(i);
         if (i === sel) selectedRim("Selected");
         if (!it) return;
