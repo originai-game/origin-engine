@@ -179,3 +179,9 @@ cartoon, tactical, pixel, broadcast, then the rest by genre reach.
 | 3 | arcade | `arcade-hud` (`ui-art/324d90871abe`) (platformer) | `arcade-menu` (`ui-art/87bde4bbebde`) (title and high scores) | `arcade-settings` (`ui-art/1ea7aecafa41`) | approved (owner) |
 | 3 | storybook | `storybook-hud` (`ui-art/dcc5fae146a1`) (card adventure) | `storybook-menu` (`ui-art/e181cf7311d3`) (merchant shop) | `storybook-settings` (`ui-art/58673c78f815`) | approved (owner) |
 | 3 | paper | `paper-hud` (`ui-art/b05ba49c6229`) (visual novel) | `paper-menu` (`ui-art/b02bf53f590a`) (main menu) | `paper-settings` (`ui-art/4075524240e4`) (text options) | approved (owner) |
+| 4 | wasteland | `wasteland-hud` (`ui-art/13876c1858fa`) (survival HUD) | `wasteland-menu` (`ui-art/37b06d223094`) (stash and crafting) | `wasteland-settings` (`ui-art/860fbeffcbb7`) | sent for veto |
+| 4 | foundry | `foundry-build` (`ui-art/a19f7660818a`) (city build) | `foundry-menu` (`ui-art/2593651e20db`) (research tree) | `foundry-settings` (`ui-art/2b3bf48492bf`) | sent for veto |
+| 4 | midcore | `midcore-battle` (`ui-art/b88efa4bb6ac`) (battle) | `midcore-menu` (`ui-art/1aa6c4f07057`) (hero upgrade) | `midcore-settings` (`ui-art/442a633f59e7`) | sent for veto |
+| 4 | jade | `jade-cultivation` (`ui-art/dba0973d790c`) (cultivation) | `jade-menu` (`ui-art/98481c251aeb`) (treasure pavilion) | `jade-settings` (`ui-art/3f19757c41e2`) | sent for veto |
+
+holo and cyber redirections, one HUD each, for the owner to pick one per pack before the full sheets: holo 1 analogue console (`ui-art/62c2ccec6aac`), 2 lacquer and gold (`ui-art/fb5768cefa38`), 3 ceramic and woven textile (`ui-art/8cbc7a908c58`); cyber 1 sun-bleached daylight market (`ui-art/6d0a2a7f7fc2`), 2 beige corporate 1987 (`ui-art/297017ff0019`), 3 grown biotech (`ui-art/fab9821241f6`).

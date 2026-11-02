@@ -903,7 +903,7 @@ genre's HUD, a menu or shop, settings) in the showcase archive
 (`ui-art/<id>`, docs/ci.md §Showcase), read like the table above; the
 README's coverage matrix gives each genre a primary and secondary seed and
 names the four packs approved for the gaps (wasteland, foundry, midcore,
-jade), which follow batch 3.
+jade), whose sheets follow batch 3.
 
 | Pack | HUD | Menu or shop | Settings |
 | --- | --- | --- | --- |
@@ -925,6 +925,10 @@ jade), which follow batch 3.
 | arcade | `arcade-hud` (`ui-art/324d90871abe`) | `arcade-menu` (`ui-art/87bde4bbebde`) | `arcade-settings` (`ui-art/1ea7aecafa41`) |
 | storybook | `storybook-hud` (`ui-art/dcc5fae146a1`) | `storybook-menu` (`ui-art/e181cf7311d3`) | `storybook-settings` (`ui-art/58673c78f815`) |
 | paper | `paper-hud` (`ui-art/b05ba49c6229`) | `paper-menu` (`ui-art/b02bf53f590a`) | `paper-settings` (`ui-art/4075524240e4`) |
+| wasteland | `wasteland-hud` (`ui-art/13876c1858fa`) | `wasteland-menu` (`ui-art/37b06d223094`) | `wasteland-settings` (`ui-art/860fbeffcbb7`) |
+| foundry | `foundry-build` (`ui-art/a19f7660818a`) | `foundry-menu` (`ui-art/2593651e20db`) | `foundry-settings` (`ui-art/2b3bf48492bf`) |
+| midcore | `midcore-battle` (`ui-art/b88efa4bb6ac`) | `midcore-menu` (`ui-art/1aa6c4f07057`) | `midcore-settings` (`ui-art/442a633f59e7`) |
+| jade | `jade-cultivation` (`ui-art/dba0973d790c`) | `jade-menu` (`ui-art/98481c251aeb`) | `jade-settings` (`ui-art/3f19757c41e2`) |
 
 The checklist:
 
