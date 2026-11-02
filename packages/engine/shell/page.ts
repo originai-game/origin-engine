@@ -587,6 +587,7 @@ export async function play(): Promise<PlayHandle> {
       ...(config.expect.lanes > 0 ? { lanes: { glue: at("origin-engine-lanes.js"), wasm: at("origin-engine-lanes_bg.wasm"), bytes: config.expect.lanes } } : {}),
       root: new URL(".", location.href).href.replace(/\/$/, ""),
       basis: { js: at("basis/basis_transcoder.js"), wasm: at("basis/basis_transcoder.wasm") },
+      av1: at("av1/og-av1.wasm"),
       autoplay: false,
       // Behind the gate, the first screen: one tick builds the game's UI (a harness keeps tick 0).
       prime: !harness,

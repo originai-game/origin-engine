@@ -55,6 +55,38 @@ impl RenderScene {
         true
     }
 
+    /// On the web: shows a decoded VideoFrame (its display size the
+    /// texture's) in a stream texture from the next frame on; the renderer
+    /// copies it on the GPU and closes it, as it closes a frame this one
+    /// replaces before it was drawn. False (the frame closed) for a handle
+    /// that is not a live stream texture.
+    #[cfg(target_arch = "wasm32")]
+    pub fn write_stream_frame(
+        &mut self,
+        handle: TextureHandle,
+        frame: wgpu::web_sys::VideoFrame,
+    ) -> bool {
+        let i = handle.index();
+        let ok = matches!(self.textures().get(i), Some(TextureSource::Target(t)) if t.kind == TargetKind::Stream)
+            && self.texture_live(i);
+        if !ok {
+            frame.close();
+            return false;
+        }
+        if let Some(old) = self.stream_external.get_mut().insert(i, frame) {
+            old.close();
+        }
+        true
+    }
+
+    /// The web's VideoFrames waiting for their copy (the renderer takes them).
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn stream_external_cell(
+        &self,
+    ) -> &std::cell::RefCell<std::collections::BTreeMap<usize, wgpu::web_sys::VideoFrame>> {
+        &self.stream_external
+    }
+
     /// Each stream texture's newest frame: its serial and its rows.
     pub(crate) fn stream_frames(&self) -> &std::collections::BTreeMap<usize, (u64, Arc<Vec<u8>>)> {
         &self.stream_frames

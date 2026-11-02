@@ -304,16 +304,20 @@ test("og build prints what each page downloads, not the directory's total", () =
     row("origin-engine.js", 25), row("origin-engine_bg.wasm", 3000), row("origin-engine-lanes.js", 26), row("origin-engine-lanes_bg.wasm", 3100), row("snippets/x/workerHelpers.no-bundler.js", 1),
     row("basis/basis_transcoder.js", 17), row("basis/basis_transcoder.wasm", 200), row("basis/LICENSE", 4), row("og-build.json", 6), row("_headers", 1),
     row("cooked/.cook.ogt", 9), row("cooked/music/song.wav.ogb", 150), row("cooked/music/song.wav.chunk1.ogb", 140), row("cooked/music/song.wav.chunk2.ogb", 140), row("cooked/stream/vale.ogb", 700), row("cooked/models/hero.glb.ogb", 300),
+    // A streamed video: its meta and poster boot, its units and the AV1 fallback never do.
+    row("cooked/clips/intro.ogt.ogb", 2), row("cooked/clips/intro.ogt.poster.ogb", 40), row("cooked/clips/intro.ogt.stream.ogb", 9000), row("cooked/clips/intro.ogt.stream720.ogb", 4000), row("av1/og-av1.wasm", 311),
   ];
   const d = downloadsOf(files);
   // The lanes page: its own module and the rayon snippet, the shell, the transcoder and the first group (the song's first chunk only).
-  expect(d.boot.lanes!.compressed).toBe(26 + 3100 + 1 + 10 + 20 + 30 + 17 + 200 + 9 + 150 + 300);
-  expect(d.boot.single.compressed).toBe(25 + 3000 + 10 + 20 + 30 + 17 + 200 + 9 + 150 + 300);
+  expect(d.boot.lanes!.compressed).toBe(26 + 3100 + 1 + 10 + 20 + 30 + 17 + 200 + 9 + 150 + 300 + 2 + 40);
+  expect(d.boot.single.compressed).toBe(25 + 3000 + 10 + 20 + 30 + 17 + 200 + 9 + 150 + 300 + 2 + 40);
   expect(d.boot.single.engine.files).toBe(2);
   expect(d.later.packs).toEqual({ files: 1, bytes: 2100, compressed: 700 });
   expect(d.later.chunks.files).toBe(2);
   expect(d.later.worklet.compressed).toBe(1);
   expect(d.later.pwa.files).toBe(3);
+  expect(d.later.videos).toEqual({ files: 2, bytes: 39000, compressed: 13000 });
+  expect(d.later.av1.compressed).toBe(311);
   const text = downloadLines(d, "brotli-11");
   expect(text).toContain("boot, lanes page (isolated)");
   expect(text).toContain(`${d.boot.single.compressed} B`);

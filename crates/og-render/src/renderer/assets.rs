@@ -386,6 +386,8 @@ impl Renderer {
             );
             self.cache.stream_serials.insert(index, *serial);
         }
+        #[cfg(target_arch = "wasm32")]
+        self.copy_stream_frames(scene);
         // A pack holding a replaced texture is made again with its materials.
         let replaced_slot = |slot: &u32| {
             TextureHandle::from_slot(*slot).is_some_and(|h| replaced.contains(&h.index()))
@@ -551,5 +553,53 @@ impl Renderer {
             });
         }
         Ok(())
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+impl Renderer {
+    /// The web's decoded VideoFrames into their stream textures, on the GPU
+    /// (the browser converts YUV to sRGB RGBA as it copies), each closed
+    /// once its copy is issued.
+    fn copy_stream_frames(&mut self, scene: &RenderScene) {
+        let frames = std::mem::take(&mut *scene.stream_external_cell().borrow_mut());
+        for (index, frame) in frames {
+            let Some(TextureSource::Target(t)) = scene.textures().get(index) else {
+                frame.close();
+                continue;
+            };
+            let Some(gpu) = self.cache.textures.get(index) else {
+                frame.close();
+                continue;
+            };
+            let (w, h) = (
+                frame.display_width().min(t.width),
+                frame.display_height().min(t.height),
+            );
+            let source = wgpu::CopyExternalImageSourceInfo {
+                source: wgpu::ExternalImageSource::VideoFrame(frame),
+                origin: wgpu::Origin2d::ZERO,
+                flip_y: false,
+            };
+            self.queue.copy_external_image_to_texture(
+                &source,
+                wgpu::CopyExternalImageDestInfo {
+                    texture: gpu.view.texture(),
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                    aspect: wgpu::TextureAspect::All,
+                    color_space: wgpu::PredefinedColorSpace::Srgb,
+                    premultiplied_alpha: false,
+                },
+                wgpu::Extent3d {
+                    width: w,
+                    height: h,
+                    depth_or_array_layers: 1,
+                },
+            );
+            if let wgpu::ExternalImageSource::VideoFrame(f) = &source.source {
+                f.close();
+            }
+        }
     }
 }

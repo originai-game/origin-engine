@@ -109,6 +109,13 @@ pub(crate) struct StreamSource {
     height: u32,
     nearest: bool,
     units: Option<Arc<og_video::stream::Units>>,
+    /// Its Video handle: the host's key for it on the web.
+    #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+    key: u64,
+    /// On the web: whether the units went to the host's decoder (then they
+    /// are dropped here).
+    #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+    handed: bool,
     /// Why it cannot play (a failed read, a decoder error), once.
     pub error: Option<String>,
 }
@@ -133,6 +140,10 @@ impl StreamSource {
                 false
             }
             super::assets::Fetch::Ready(bytes) => {
+                // Read once: a host that kept the fetched file lets it go.
+                if let Some(h) = super::engine::hooks() {
+                    h.release_stream(&self.path, &[]);
+                }
                 match og_bundle::runtime::video_stream_of(&bytes, &self.path, self.stamp, &self.id)
                 {
                     Ok(c) => {
@@ -448,15 +459,48 @@ fn show_stream(
     }
 }
 
-/// On the web the host decodes (batch 2 of G3-2 wires WebCodecs here).
+/// On the web the host decodes (WebCodecs, or rav1d's own wasm module in
+/// a Worker of its own): the units are handed over once, then each frame
+/// asks for the player's frame, never waited on; a frame not decoded yet
+/// keeps the one shown.
 #[cfg(target_arch = "wasm32")]
 fn show_stream(
-    _scene: &mut og_render::RenderScene,
-    _source: &mut StreamSource,
-    _sv: &mut StreamView,
-    _frame: u32,
-    _looped: bool,
+    scene: &mut og_render::RenderScene,
+    source: &mut StreamSource,
+    sv: &mut StreamView,
+    frame: u32,
+    looped: bool,
 ) {
+    let Some(hooks) = super::engine::hooks() else {
+        return;
+    };
+    if !source.handed {
+        let Some(units) = source.units.take() else {
+            return;
+        };
+        let mut table = Vec::with_capacity(units.units.len() * 3);
+        let mut data = Vec::new();
+        for u in &units.units {
+            table.extend_from_slice(&[data.len() as u32, u.data.len() as u32, u32::from(u.key)]);
+            data.extend_from_slice(&u.data);
+        }
+        source.handed = true;
+        // The host keeps the units; this copy is dropped.
+        source.units = Some(Arc::new(og_video::stream::Units::new(Vec::new())));
+        if !hooks.video_stream(source.key, (source.width, source.height), &table, &data) {
+            return;
+        }
+    }
+    let player = scene_key(sv);
+    if let Some(f) = hooks.video_frame(source.key, player, frame, looped) {
+        scene.write_stream_frame(sv.texture, f);
+    }
+}
+
+/// A player's key for the host: its stream texture's slot.
+#[cfg(target_arch = "wasm32")]
+fn scene_key(sv: &StreamView) -> u64 {
+    u64::from(sv.texture.slot())
 }
 
 /// rav1d's threads per player natively: a 1080p stream decodes in real
@@ -485,7 +529,15 @@ fn load_video(eng: &Engine, path: &str) -> Result<Value, String> {
     let player = eng.state.borrow().layouts.get(PLAYER).cloned();
     let nearest = meta.kind == og_bundle::format::kind::PIXEL;
     let (view, stream, format, bytes, poster) = if meta.streamed == 1 {
-        let stream_id = format!("{id}#stream");
+        // The web's software fallback plays the 720p rendition the cook adds
+        // beside a larger stream (og_video::stream::fallback_size).
+        let software =
+            super::engine::hooks().is_some_and(|h| h.video_decoder().name == "rav1d-wasm");
+        let rendition = og_video::stream::fallback_size((meta.width, meta.height))
+            .filter(|_| software)
+            .map(|size| (format!("{id}#stream720"), size));
+        let (stream_id, (width, height)) =
+            rendition.unwrap_or_else(|| (format!("{id}#stream"), (meta.width, meta.height)));
         let (path, stamp) = {
             let a = eng.assets.borrow();
             let (bundle, dir) = a.bundle_for(&stream_id)?;
@@ -497,10 +549,12 @@ fn load_video(eng: &Engine, path: &str) -> Result<Value, String> {
             path,
             stamp,
             id: id.clone(),
-            width: meta.width,
-            height: meta.height,
+            width,
+            height,
             nearest,
             units: None,
+            key: assets::handle(eng.render.borrow().videos.len()),
+            handed: false,
             error: None,
         };
         // Natively the units are read now; on the web their fetch starts.
@@ -510,7 +564,7 @@ fn load_video(eng: &Engine, path: &str) -> Result<Value, String> {
         }
         let mut rs = eng.render.borrow_mut();
         let view = StreamView::new(&mut rs.scene, &source);
-        let bytes = f64::from(meta.width) * f64::from(meta.height) * 4.0;
+        let bytes = f64::from(width) * f64::from(height) * 4.0;
         (
             Frames::Stream(view),
             Some(source),

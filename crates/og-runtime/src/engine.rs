@@ -138,6 +138,28 @@ pub trait Hooks {
     fn video_decoder(&self) -> VideoDecoder {
         VideoDecoder::default()
     }
+    /// On the web: a stream's AV1 units handed to the host's decoder once
+    /// (`table`: offset, size and key per frame into `data`). False: this
+    /// host has no decoder.
+    #[cfg(target_arch = "wasm32")]
+    fn video_stream(&self, stream: u64, size: (u32, u32), table: &[u32], data: &[u8]) -> bool {
+        let _ = (stream, size, table, data);
+        false
+    }
+    /// On the web: the frame player `player` of `stream` should show now
+    /// (it is at `frame`), once newer than the one it shows; `None` keeps
+    /// the shown one. Never waited on.
+    #[cfg(target_arch = "wasm32")]
+    fn video_frame(
+        &self,
+        stream: u64,
+        player: u64,
+        frame: u32,
+        looped: bool,
+    ) -> Option<og_render::wgpu::web_sys::VideoFrame> {
+        let _ = (stream, player, frame, looped);
+        None
+    }
 }
 
 /// A host's AV1 decoder, as `og.video.capabilities` reports it.

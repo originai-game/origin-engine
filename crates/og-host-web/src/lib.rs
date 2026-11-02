@@ -84,6 +84,10 @@ thread_local! {
     /// it failed, with the reason.
     static TRANSCODING: RefCell<std::collections::BTreeSet<String>> = const { RefCell::new(std::collections::BTreeSet::new()) };
     static UNTRANSCODED: RefCell<BTreeMap<String, String>> = const { RefCell::new(BTreeMap::new()) };
+    /// The Worker's streamed-video decoders (`og_web_install_video`): its
+    /// `stream(key, width, height, table, data)` and `frame(stream, player,
+    /// frame, looped)`, and the decoder it chose.
+    static VIDEO: RefCell<Option<(js_sys::Function, js_sys::Function, og_runtime::VideoDecoder)>> = const { RefCell::new(None) };
     /// The Worker's `inflate(key, bytes)` (DecompressionStream), and what it answered by key.
     static INFLATER: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
     static INFLATED: RefCell<IdMap<u64, Result<Vec<u8>, String>>> = const { RefCell::new(IdMap::new()) };
@@ -232,6 +236,53 @@ impl Hooks for WebHooks {
 
     fn now_ms(&self) -> f64 {
         clock_ms()
+    }
+
+    fn video_decoder(&self) -> og_runtime::VideoDecoder {
+        VIDEO
+            .with(|v| v.borrow().as_ref().map(|(_, _, d)| d.clone()))
+            .unwrap_or_default()
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn video_stream(&self, stream: u64, size: (u32, u32), table: &[u32], data: &[u8]) -> bool {
+        VIDEO.with(|v| {
+            let Some((put, _, _)) = &*v.borrow() else {
+                return false;
+            };
+            let args = js_sys::Array::of5(
+                &JsValue::from_f64(stream as f64),
+                &JsValue::from(size.0),
+                &JsValue::from(size.1),
+                &js_sys::Uint32Array::from(table),
+                &js_sys::Uint8Array::from(data),
+            );
+            put.apply(&JsValue::NULL, &args)
+                .ok()
+                .and_then(|r| r.as_bool())
+                .unwrap_or(false)
+        })
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn video_frame(
+        &self,
+        stream: u64,
+        player: u64,
+        frame: u32,
+        looped: bool,
+    ) -> Option<og_render::wgpu::web_sys::VideoFrame> {
+        VIDEO.with(|v| {
+            let (_, get, _) = v.borrow().as_ref().cloned()?;
+            let args = js_sys::Array::of4(
+                &JsValue::from_f64(stream as f64),
+                &JsValue::from_f64(player as f64),
+                &JsValue::from(frame),
+                &JsValue::from_bool(looped),
+            );
+            let f = get.apply(&JsValue::NULL, &args).ok()?;
+            (!f.is_null() && !f.is_undefined()).then(|| f.unchecked_into())
+        })
     }
 }
 
@@ -486,6 +537,29 @@ pub fn og_web_put_inflated(key: f64, bytes: Vec<u8>) {
 #[wasm_bindgen]
 pub fn og_web_fail_inflated(key: f64, reason: String) {
     INFLATED.with(|m| m.borrow_mut().insert(key as u64, Err(reason)));
+}
+
+/// The Worker's streamed-video decoders (packages/engine/src/web/video.ts):
+/// `stream(key, width, height, table, data)` takes a stream's AV1 units
+/// once, `frame(stream, player, frame, looped)` answers the VideoFrame a
+/// player shows now or null; `decoder` is what og.video.capabilities
+/// reports (`webcodecs`, `rav1d-wasm` or `none`).
+#[wasm_bindgen]
+pub fn og_web_install_video(
+    stream: js_sys::Function,
+    frame: js_sys::Function,
+    decoder: String,
+    hardware: bool,
+    max_width: u32,
+    max_height: u32,
+) {
+    let d = og_runtime::VideoDecoder {
+        name: decoder,
+        hardware,
+        max_width,
+        max_height,
+    };
+    VIDEO.with(|v| *v.borrow_mut() = Some((stream, frame, d)));
 }
 
 /// The Worker's `fetch(path)`, called for a file nobody fetched yet; it

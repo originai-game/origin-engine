@@ -56,6 +56,7 @@ import { FramePacer } from "./pacing.ts";
 import { drainRing, stampAt, type InjectedInput } from "./input.ts";
 import { WorkerAudio, type AudioLatencyMessage, type AudioMessage, type WebAudioGlue } from "./audio.ts";
 import { readFrames, waitForFrames, writeFrame, type RpcRings } from "./rpc-ring.ts";
+import { chooseDecoder, FALLBACK_URL, VideoStreams } from "./video.ts";
 import { loadBasisTranscoder, transcodeKtx2, TEXTURE_FORMATS, type BasisTranscoder, type TextureFormat } from "./basis.ts";
 import type { HostError } from "./shell.ts";
 import { PlatformCounter, settle, SETTLE_FIRST_MS, SETTLE_MS } from "./settle.ts";
@@ -83,6 +84,8 @@ interface Start {
   root?: string;
   /** The Basis transcoder's script and module. */
   basis?: { js: string; wasm: string };
+  /** The rav1d fallback decoder's module URL (dist/av1/og-av1.wasm by default). */
+  av1?: string;
   /** The project's physics profile (project.ogt `profile`). */
   profile?: "2d" | "3d";
   /** project.ogt's text (CreateOptions.project). */
@@ -178,6 +181,15 @@ export interface WebExtras {
   og_web_put_texture_encoded(id: string, format: string, width: number, height: number, srgb: boolean, levels: Uint8Array): string;
   og_web_texture_target(engine: number, manifest: string, id: string, bytes: Uint8Array): string;
   og_web_set_fetcher(fetch: (path: string) => void): void;
+  /** Streamed video's decoders (video.ts); absent in an older engine module. */
+  og_web_install_video?(
+    stream: (key: number, width: number, height: number, table: Uint32Array, data: Uint8Array) => boolean,
+    frame: (stream: number, player: number, frame: number, looped: boolean) => VideoFrame | null,
+    decoder: string,
+    hardware: boolean,
+    maxWidth: number,
+    maxHeight: number,
+  ): void;
   og_web_set_transcoder?(transcode: (id: string, ktx2: Uint8Array, target: string) => void): void;
   og_web_fail_texture?(id: string, reason: string): void;
   og_web_set_inflater?(inflate: (key: number, bytes: Uint8Array) => void): void;
@@ -338,6 +350,28 @@ export interface Preloaded {
    * `etc2+eacrg11` elsewhere, `rgba8` without a renderer or compression).
    */
   readonly textureFormat: string;
+}
+
+/**
+ * Streamed video's decoders for this Worker (video.ts): the decoder this
+ * browser plays AV1 with, reported by og.video.capabilities; the rav1d
+ * fallback module (`av1`, dist/av1/og-av1.wasm by default) is fetched only
+ * when WebCodecs cannot decode AV1, by its own Worker, when a stream first
+ * plays.
+ */
+export async function installVideo(glue: WebExtras, av1: string | undefined): Promise<VideoStreams | null> {
+  if (!glue.og_web_install_video) return null;
+  const choice = await chooseDecoder();
+  const streams = new VideoStreams(choice, av1 ?? FALLBACK_URL);
+  glue.og_web_install_video(
+    (key, width, height, table, data) => streams.stream(key, width, height, 0, table, data),
+    (stream, player, frame, looped) => streams.want(player, stream, frame, looped),
+    choice.name,
+    choice.hardware,
+    choice.maxWidth,
+    choice.maxHeight,
+  );
+  return streams;
 }
 
 /** A fetched bundle whose Basis textures wait for the renderer's formats. */
@@ -1096,6 +1130,8 @@ export function startWorker(game: GameToken): void {
         phase("wasm");
         // Terrain tiles are inflated by the browser off the engine's thread where it can.
         installInflater(glue);
+        // Streamed video: WebCodecs where the browser decodes AV1, else rav1d's own wasm module (fetched only then).
+        await installVideo(glue, data.av1);
         progress(data.expect ? received.value : 0.1, "bundle");
         let fetched: Fetched | null = null;
         if (data.root !== undefined) {

@@ -1250,8 +1250,14 @@ video is a command script played headless and recorded (docs/depth.md §3).
   memory-safe Rust port of dav1d) that decodes ahead of the player and
   from the key frame at or before a seek; the web decodes with WebCodecs
   in the engine Worker, or rav1d built for wasm in a Worker of its own
-  where the browser has no AV1 decoder. `og.video.capabilities` reports
-  which. **Time:** `VideoPlayer.time` is world state advanced by the
+  where the browser has no AV1 decoder (`dist/av1/og-av1.wasm`, 1.18 MB,
+  311 KB brotli, fetched only then and never part of the engine's wasm or
+  a page's boot). On one thread it decodes, in Safari 27 on Apple silicon,
+  720p at 46 fps on worst-case noisy footage (221 on clean) and 1080p at
+  19 (94 clean), so a stream larger than 1280x720 also cooks a 720p
+  rendition (`<id>#stream720`, `og_video::stream::fallback_size`) which
+  the fallback plays instead. `og.video.capabilities` reports which
+  decoder runs (`rav1d-wasm`, hardware false, max 1280x720). **Time:** `VideoPlayer.time` is world state advanced by the
   tick (dt × speed), frame = floor(time × fps), exactly as for a clip;
   the sound is the AudioSource started at `startOffset` = time, so the
   tick is the one clock and picture and sound cannot drift. Decoding is

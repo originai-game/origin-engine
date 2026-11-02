@@ -115,6 +115,8 @@ impl RenderScene {
             texture_slots: Slots::default(),
             stream_frames: Default::default(),
             stream_serial: 0,
+            #[cfg(target_arch = "wasm32")]
+            stream_external: Default::default(),
             material_slots: Slots::default(),
             font_slots: Slots::default(),
             environment_map_slots: Slots::default(),
@@ -917,6 +919,10 @@ impl RenderScene {
             return false;
         }
         self.stream_frames.remove(&i);
+        #[cfg(target_arch = "wasm32")]
+        if let Some(f) = self.stream_external.get_mut().remove(&i) {
+            f.close();
+        }
         self.textures[i] = TextureSource::Rgba(TextureData {
             width: 1,
             height: 1,

@@ -284,6 +284,12 @@ pub struct RenderScene {
     /// (bumped by every write) and the RGBA8 rows ([`crate::video`]).
     pub(crate) stream_frames: std::collections::BTreeMap<usize, (u64, std::sync::Arc<Vec<u8>>)>,
     pub(crate) stream_serial: u64,
+    /// On the web: each stream texture's newest decoded VideoFrame, copied
+    /// on the GPU (copyExternalImageToTexture) and closed before the next
+    /// frame draws.
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) stream_external:
+        std::cell::RefCell<std::collections::BTreeMap<usize, wgpu::web_sys::VideoFrame>>,
     material_slots: Slots,
     font_slots: Slots,
     environment_map_slots: Slots,

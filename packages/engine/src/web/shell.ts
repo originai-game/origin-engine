@@ -94,6 +94,8 @@ export interface ShellOptions {
   readonly root?: string;
   /** The Basis transcoder's script and module URLs (as the Worker resolves them). */
   readonly basis?: { readonly js: string; readonly wasm: string };
+  /** The rav1d AV1 fallback's module URL (as the Worker resolves it), fetched only where WebCodecs cannot decode AV1. */
+  readonly av1?: string;
   /** The project's physics profile (project.ogt `profile`); omitted is 3d. */
   readonly profile?: "2d" | "3d";
   /** project.ogt's text: its tick, seed, scenes and scene fill what GameDesc leaves unset (CreateOptions.project). */
@@ -536,6 +538,7 @@ export class Shell {
         autoplay: options.autoplay ?? true,
         root: options.root,
         basis: options.basis,
+        ...(options.av1 ? { av1: options.av1 } : {}),
         profile: options.profile,
         ...(options.project === undefined ? {} : { project: options.project }),
         locale: options.locale ?? globalThis.navigator?.language,

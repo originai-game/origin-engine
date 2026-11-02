@@ -1165,6 +1165,8 @@ thumbnail, the picture while the stream loads on the web, where it is
 fetched by `og.load.video` and not with the startup bundle).
 `og.video.capabilities(world)` names the decoder (`rav1d` natively,
 `webcodecs` or `rav1d-wasm` in a browser) and the largest size it plays
-in real time. The player's time is the tick's, as for a clip; decoding
+in real time. `rav1d-wasm` (Safari without AV1 hardware, for one) holds
+720p, so the cook also makes a 720p rendition of a larger stream and that
+browser plays it instead: author footage at any size. The player's time is the tick's, as for a clip; decoding
 never changes the world, and `og run`, `og render` and `og test` wait for
 each frame, so captures are exact.

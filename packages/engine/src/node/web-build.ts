@@ -299,6 +299,10 @@ export interface Downloads {
     readonly chunks: DownloadSum;
     /** The AudioWorklet, fetched on the first gesture. */
     readonly worklet: DownloadSum;
+    /** Streamed videos' AV1 units (`<id>#stream`), fetched by og.load.video. */
+    readonly videos: DownloadSum;
+    /** The AV1 fallback decoder (av1/og-av1.wasm), fetched only where WebCodecs cannot decode AV1. */
+    readonly av1: DownloadSum;
     /** The service worker, the web manifest and the icons (a publish build's PWA, after the first frame). */
     readonly pwa: DownloadSum;
   };
@@ -325,7 +329,8 @@ export function downloadsOf(files: readonly SizeRow[]): Downloads {
     rows.filter((f) => test(f.path)).reduce((a, f) => ({ files: a.files + 1, bytes: a.bytes + f.bytes, compressed: a.compressed + f.compressed }), { files: 0, bytes: 0, compressed: 0 });
   const add = (...parts: DownloadSum[]): DownloadSum => parts.reduce((a, b) => ({ files: a.files + b.files, bytes: a.bytes + b.bytes, compressed: a.compressed + b.compressed }), { files: 0, bytes: 0, compressed: 0 });
   const isPack = (p: string) => /^cooked\/stream\/[^/]+\.ogb$/.test(p);
-  const cooked = sum((p) => p.startsWith("cooked/") && !isPack(p) && !SOUND_CHUNK.test(p));
+  const isVideo = (p: string) => p.startsWith("cooked/") && VIDEO_STREAM.test(p);
+  const cooked = sum((p) => p.startsWith("cooked/") && !isPack(p) && !SOUND_CHUNK.test(p) && !isVideo(p));
   const shell = sum((p) => /^(index\.html|play\.js|game\.js)$/.test(p));
   const basis = sum((p) => /^basis\/basis_transcoder\.(js|wasm)$/.test(p));
   const page = (engine: DownloadSum): DownloadBoot => ({ ...add(engine, cooked, shell, basis), engine, cooked, shell, basis });
@@ -336,6 +341,8 @@ export function downloadsOf(files: readonly SizeRow[]): Downloads {
       packs: sum(isPack),
       chunks: sum((p) => SOUND_CHUNK.test(p)),
       worklet: sum((p) => p === "audio-worklet.js"),
+      videos: sum(isVideo),
+      av1: sum((p) => p.startsWith("av1/")),
       pwa: sum((p) => p === "sw.js" || p === "manifest.webmanifest" || p.startsWith("icons/")),
     },
   };
@@ -605,6 +612,8 @@ const NOT_PRECACHED = /(^|\/)(LICENSE|NOTICE|README\.md|_headers|origingame\.run
 const LANES_FILES = ["origin-engine-lanes.js", "origin-engine-lanes_bg.wasm", "snippets"] as const;
 /** Each engine variant's own files: the service worker precaches the one its page boots. */
 const SINGLE_ENGINE = /^origin-engine(\.[0-9a-f]{12})?(\.js|_bg(\.[0-9a-f]{12})?\.wasm)$/;
+/** A streamed video's units (og-cook's output files of `<id>#stream` and its 720p rendition `<id>#stream720`). */
+const VIDEO_STREAM = /\.stream(720)?\.ogb$/;
 const LANES_ENGINE = /^(origin-engine-lanes(\.[0-9a-f]{12})?(\.js|_bg(\.[0-9a-f]{12})?\.wasm)|snippets\/.*)$/;
 
 /**
@@ -730,6 +739,9 @@ export async function webBuild(project: string, entry: string, out: string, publ
     for (const f of LANES_FILES) cpSync(join(engineDir, f), join(out, f), { recursive: true });
   }
   cpSync(vendor, join(out, "basis"), { recursive: true });
+  // The AV1 fallback decoder, fetched only by a browser without AV1 in WebCodecs (src/web/video.ts).
+  const av1 = join(ENGINE_ROOT, "dist", "av1", "og-av1.wasm");
+  if (existsSync(av1)) cpSync(av1, join(out, "av1", "og-av1.wasm"));
   cpSync(cooked, join(out, "cooked"), { recursive: true });
   // The cook's own timings and art-contract log (og cook --report) are not the game's.
   rmSync(join(out, "cooked", ".cook-times.ogt"), { force: true });
