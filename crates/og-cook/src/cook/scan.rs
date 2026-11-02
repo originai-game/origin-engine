@@ -241,6 +241,13 @@ pub(super) fn plan_groups(
 ) -> stream::Groups {
     let mut groups: BTreeMap<String, stream::GroupDecl> = BTreeMap::new();
     let mut group_of: BTreeMap<String, String> = BTreeMap::new();
+    // Every scene some scene or prefab places (`scene "<id>"`): only one
+    // of them may declare a cell group, since only a cell loads its blob.
+    let placed: BTreeSet<String> = sources
+        .iter()
+        .filter(|s| matches!(s.kind, Kind::Scene | Kind::Prefab))
+        .flat_map(|s| super::scene::subscenes(&String::from_utf8_lossy(&s.bytes), &|_| None))
+        .collect();
     for s in sources.iter().filter(|s| s.kind == Kind::Scene) {
         let text = String::from_utf8_lossy(&s.bytes);
         let decls = match stream::groups_of(&s.rel, &text, &|id| known.contains(id)) {
@@ -255,6 +262,24 @@ pub(super) fn plan_groups(
         let mut mine: BTreeMap<String, stream::GroupDecl> = BTreeMap::new();
         let mut mine_of: BTreeMap<String, String> = BTreeMap::new();
         'groups: for g in &decls {
+            if g.trigger == crate::runtime::StreamTrigger::Cell {
+                if !placed.contains(&s.rel) {
+                    refused = Some(format!(
+                        "stream \"{}\" is a cell group, but no scene places {} with a `scene` line; only a sub-scene's cells load one",
+                        g.name, s.rel
+                    ));
+                    break;
+                }
+                if let Some(other) = mine_of.get(&s.rel) {
+                    refused = Some(format!(
+                        "stream \"{}\": {} holds its cell group in stream \"{other}\" already; a scene has one",
+                        g.name, s.rel
+                    ));
+                    break;
+                }
+                // The scene's own blob is the group's first file.
+                mine_of.insert(s.rel.clone(), g.name.clone());
+            }
             if let Some(other) = groups.get(&g.name).or_else(|| mine.get(&g.name)) {
                 refused = Some(format!(
                     "stream \"{}\" is declared by {} too; a group's name is taken once",

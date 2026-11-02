@@ -45,6 +45,7 @@
 //! read completes at once, so nothing waits and only the order shows.
 //! `dump_stream`'s `fetch` lists what is in flight and what waits.
 
+pub(crate) mod cell_groups;
 pub(crate) mod cell_store;
 pub(crate) mod cells;
 mod kept;
@@ -52,6 +53,7 @@ mod loading;
 mod residency;
 
 use super::{assets, environment, extract, fx, geometry, look};
+pub(crate) use cell_groups::resolve_scenes;
 use loading::fetch_json;
 pub(crate) use loading::{fetch, refresh, update};
 pub(crate) use residency::{
@@ -249,6 +251,10 @@ pub(crate) struct Streams {
     /// The world cells' history by cell entity bits, for `dump_stream`
     /// (0: refusals of no one cell).
     pub(crate) cells: BTreeMap<u64, cells::CellLog>,
+    /// Per cell group, the load indexes of the sub-scenes its pack holds.
+    scenes: BTreeMap<String, Vec<usize>>,
+    /// The ticks held for a cell group's pack ([`cell_groups::gate`]).
+    holds: cell_groups::Holds,
 }
 
 /// An asset kept for the frame after its group unloaded.
@@ -446,6 +452,7 @@ fn trigger_json(t: &StreamTrigger) -> Value {
             unload,
         } => json!({ "kind": "distance", "anchor": anchor, "radius": radius, "unload": unload }),
         StreamTrigger::Volume(e) => json!({ "kind": "volume", "entity": e }),
+        StreamTrigger::Cell => json!({ "kind": "cell" }),
     }
 }
 
@@ -529,6 +536,9 @@ pub(crate) fn dump(engine_id: u32) -> Value {
     drop(a);
     v["terrain"] = super::terrain::stream_json(engine_id);
     v["cells"] = cells::dump(&eng);
+    let (hold, holds) = cell_groups::dump(&eng.assets.borrow().stream, super::probe::now_ms());
+    v["hold"] = hold;
+    v["holds"] = holds;
     v
 }
 

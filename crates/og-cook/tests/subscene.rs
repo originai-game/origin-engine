@@ -112,3 +112,73 @@ fn a_sub_scene_line_naming_no_scene_is_refused() {
         "{errors}"
     );
 }
+
+#[test]
+fn a_cell_group_packs_its_sub_scenes_blob_with_its_assets() {
+    let root = project("cell-group");
+    write(
+        &root,
+        "scenes/world.ogt",
+        &scene(
+            "entity \"village\" {\n  scene \"scenes/village.ogt\"\n  StreamCell {\n    size 20 10 20\n    load 10\n  }\n}\n",
+        ),
+    );
+    write(
+        &root,
+        "scenes/village.ogt",
+        &scene(
+            "stream \"village\" {\n  cell\n}\nentity \"well\" {\n  Transform {\n    position 1 0 2\n  }\n}\n",
+        ),
+    );
+    let report = cook(&root);
+    assert!(report.ok(), "{:?}", report.errors());
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let g = &bundle.streams()[0];
+    assert_eq!(
+        (g.name.as_str(), &g.trigger, g.scene.as_str()),
+        (
+            "village",
+            &og_cook::runtime::StreamTrigger::Cell,
+            "scenes/village.ogt"
+        )
+    );
+    // The blob leaves the boot bundle: its output names the group, and
+    // the pack holds it (and the placing scene stays at boot).
+    let out = bundle.output("scenes/village.ogt").unwrap();
+    assert_eq!(out.group.as_deref(), Some("village"));
+    assert_eq!(bundle.output("scenes/world.ogt").unwrap().group, None);
+    let pack = std::fs::read(root.join("cooked").join(&g.file)).unwrap();
+    let files = og_cook::runtime::unpack(&pack).unwrap();
+    let names: Vec<&str> = files.iter().map(|(n, _)| n.as_str()).collect();
+    assert_eq!(names, [out.file.as_str()]);
+    assert!(g.memory > 0, "the blob's bytes count once loaded");
+}
+
+#[test]
+fn a_cell_group_of_a_scene_nothing_places_or_with_a_trigger_is_refused() {
+    let root = project("cell-refused");
+    write(
+        &root,
+        "scenes/alone.ogt",
+        &scene("stream \"alone\" {\n  cell\n}\n"),
+    );
+    write(
+        &root,
+        "scenes/world.ogt",
+        &scene("entity \"x\" {\n  scene \"scenes/both.ogt\"\n}\n"),
+    );
+    write(
+        &root,
+        "scenes/both.ogt",
+        &scene("stream \"both\" {\n  cell\n  distance 0 0 0 10\n}\n"),
+    );
+    let errors = format!("{:?}", cook(&root).errors());
+    assert!(
+        errors.contains("no scene places scenes/alone.ogt"),
+        "{errors}"
+    );
+    assert!(
+        errors.contains("a cell group loads with its cells' anchors"),
+        "{errors}"
+    );
+}

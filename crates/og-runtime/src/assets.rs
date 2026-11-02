@@ -44,6 +44,12 @@ pub(crate) enum Payload {
         dir: String,
     },
     Scene(Box<SceneDesc>),
+    /// A sub-scene whose blob is in a cell group's pack (G3-3), not yet
+    /// landed: its handle exists (a cell names it), its scene once the
+    /// pack's bytes are in ([`super::stream::resolve_scenes`]).
+    SceneWaiting {
+        group: String,
+    },
     Gltf {
         scenes: u32,
         geometries: Vec<u64>,
@@ -738,17 +744,35 @@ pub(crate) fn load_scene(eng: &Engine, path: &str) -> Result<usize, String> {
     if let Some(&i) = eng.assets.borrow().by_path.get(&format!("scene:{id}")) {
         return Ok(i);
     }
-    let scene = {
-        let assets = eng.assets.borrow();
-        let (bytes, bundle) = assets.blob(&id)?;
-        bundle
-            .scene(&id, bytes.bytes())
-            .map_err(|e| e.to_string())?
-    };
+    let group = eng.assets.borrow().group_of(&id);
+    // A cell group's sub-scene: its handle now, its scene once its pack
+    // has landed (at once when it has).
+    if let Some(group) = group {
+        let mut assets = eng.assets.borrow_mut();
+        let index = assets.push(
+            &id,
+            Status::Pending,
+            Payload::SceneWaiting {
+                group: group.clone(),
+            },
+        );
+        assets.by_path.insert(format!("scene:{id}"), index);
+        assets.stream.add_scene(&group, index);
+        drop(assets);
+        super::stream::resolve_scenes(eng, Some(&group));
+        return Ok(index);
+    }
+    let scene = decode_scene(&eng.assets.borrow(), &id)?;
     let mut assets = eng.assets.borrow_mut();
     let index = assets.push(&id, Status::Ready, Payload::Scene(Box::new(scene)));
     assets.by_path.insert(format!("scene:{id}"), index);
     Ok(index)
+}
+
+/// A cooked scene's blob decoded (from its group's pack when it streams).
+pub(crate) fn decode_scene(assets: &Assets, id: &str) -> Result<SceneDesc, String> {
+    let (bytes, bundle) = assets.blob(id)?;
+    bundle.scene(id, bytes.bytes()).map_err(|e| e.to_string())
 }
 
 pub(crate) fn load_font(eng: &Engine, path: &str) -> Result<usize, String> {
@@ -1627,6 +1651,14 @@ pub(crate) fn spawn_part(
         if is_cell {
             super::stream::cells::set_scene(eng, entity, handle(index))?;
             continue;
+        }
+        // Whether its pack has landed or not: only a cell loads a cell
+        // group's sub-scene.
+        if let Some(group) = eng.assets.borrow().stream.group_of_scene(index) {
+            return Err(format!(
+                "{}: entity '{}': sub-scene {sub} is in cell group '{group}', which only a cell loads; give the entity an og.StreamCell",
+                scene.id, e.name
+            ));
         }
         let desc = match &eng.assets.borrow().entries[index].payload {
             Payload::Scene(s) => s.clone(),

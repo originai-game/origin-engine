@@ -19,7 +19,9 @@
 //! depth first), and an unload's despawns children first, by entity. The
 //! same world therefore spawns the same ids on both hosts, in a replay and
 //! after a restore. Nothing here reads I/O: the sub-scene is a decoded
-//! blob of the boot bundle (loaded with the scene that places the cell).
+//! blob of the boot bundle (loaded with the scene that places the cell),
+//! or of its cell group's pack, which the hold gate waits for before a
+//! tick that would load the cell ([`super::cell_groups`]).
 //!
 //! What the probe's `dump_stream` lists under `cells` (when each loaded and
 //! unloaded, how often) is kept beside the world, for the probe only.
@@ -149,8 +151,9 @@ fn write(eng: &Engine, world: &mut World, cell: Entity, fields: &Value) -> Resul
         .map_err(|e| e.reason().to_string())
 }
 
-/// One anchor: its world position and reach.
-type Anchor = (glam::Vec3, f32);
+/// One anchor: its world position, reach and declared top speed
+/// (`maxSpeed`, read only to fetch cell groups ahead).
+type Anchor = (glam::Vec3, f32, f32);
 
 /// Every anchor's world position and reach, by entity; without any, the
 /// og.Camera resource's position (refused in an og.net session: each
@@ -169,12 +172,13 @@ fn anchors(eng: &Engine, world: &World) -> Result<Vec<Anchor>, String> {
         }
         og_core::sort::sort_by_key(&mut list, |e| (e.index(), e.generation()));
         for e in list {
-            let reach = world
-                .get_bytes(e, id)
-                .ok()
-                .map(|b| al.decode(&b)["reach"].as_f64().unwrap_or(0.0) as f32)
-                .unwrap_or(0.0);
-            out.push((pose_of(world, &transform, e).0, reach.max(0.0)));
+            let v = world.get_bytes(e, id).ok().map(|b| al.decode(&b));
+            let f = |k: &str| {
+                v.as_ref()
+                    .and_then(|v| v[k].as_f64())
+                    .map_or(0.0, |x| (x as f32).max(0.0))
+            };
+            out.push((pose_of(world, &transform, e).0, f("reach"), f("maxSpeed")));
         }
     }
     if !out.is_empty() {
@@ -188,7 +192,7 @@ fn anchors(eng: &Engine, world: &World) -> Result<Vec<Anchor>, String> {
         Some(l.decode(&world.resource_bytes(id).ok()?))
     });
     Ok(camera
-        .map(|c| vec![(vec3(&c["position"]), 0.0)])
+        .map(|c| vec![(vec3(&c["position"]), 0.0, 0.0)])
         .unwrap_or_default())
 }
 
@@ -254,48 +258,163 @@ fn distance_sq(cell: Pose, size: glam::Vec3, p: glam::Vec3) -> f32 {
     out.length_squared()
 }
 
-/// The probe's start-of-tick hook: loads and unloads the world's cells.
-pub(crate) fn before_tick(eng: &Engine, world: &mut World) {
+/// One cell as the tick sees it: its entity, og.StreamCell value and
+/// world pose, whether a load of it is in progress, whether the anchors
+/// (or `pin`) want it, and whether they would were they `ahead` seconds
+/// further along at their `maxSpeed` (the fetch's question).
+struct Seen {
+    cell: Entity,
+    v: Value,
+    pose: Pose,
+    loading: bool,
+    want: bool,
+    ahead: bool,
+}
+
+impl Seen {
+    fn loaded(&self) -> bool {
+        self.v["loaded"] == json!(true)
+    }
+
+    fn scene(&self) -> u64 {
+        self.v["scene"].as_f64().unwrap_or(0.0) as u64
+    }
+}
+
+/// Every cell, by entity, with what the anchors want of it ([`Seen`]);
+/// `Err` when the anchors cannot decide (a session on the camera), `None`
+/// in a world without cells.
+fn seen(
+    eng: &Engine,
+    world: &World,
+    store: &cell_store::Shared,
+    ahead: f32,
+) -> Option<Result<Vec<Seen>, String>> {
     if world.id_by_name(CELL).is_err() {
-        return;
+        return None;
     }
     let list = cells(eng, world);
     if list.is_empty() {
-        return;
+        return None;
     }
-    let tick = world.time().tick;
     let anchors = match anchors(eng, world) {
         Ok(a) => a,
-        Err(e) => {
+        Err(e) => return Some(Err(e)),
+    };
+    let transform = layout(eng, "og.Transform")?;
+    let mut out = Vec::with_capacity(list.len());
+    for (cell, v) in list {
+        let loaded = v["loaded"] == json!(true);
+        let loading = lock(store).loading.contains_key(&cell.to_bits());
+        let scene = v["scene"].as_f64().unwrap_or(0.0) as u64;
+        let pose = pose_of(world, &transform, cell);
+        let reach = reach_of(&v, loaded || loading);
+        let size = vec3(&v["size"]);
+        let within = |lead: f32| {
+            anchors.iter().any(|&(p, extra, speed)| {
+                let r = reach + extra + speed * lead;
+                distance_sq(pose, size, p) <= r * r
+            })
+        };
+        let pin = v["pin"] == json!(true);
+        let want = scene != 0 && (pin || within(0.0));
+        let ahead = scene != 0 && (pin || within(ahead));
+        out.push(Seen {
+            cell,
+            v,
+            pose,
+            loading,
+            want,
+            ahead,
+        });
+    }
+    Some(Ok(out))
+}
+
+/// The probe's start-of-tick hook: loads and unloads the world's cells.
+pub(crate) fn before_tick(eng: &Engine, world: &mut World) {
+    let Some(store) = store(eng) else {
+        return;
+    };
+    let tick = world.time().tick;
+    let list = match seen(eng, world, &store, 0.0) {
+        None => return,
+        Some(Ok(l)) => l,
+        Some(Err(e)) => {
             warn_once(eng, None, tick, e);
             return;
         }
     };
-    let Some(transform) = layout(eng, "og.Transform") else {
-        return;
-    };
-    let Some(store) = store(eng) else {
-        return;
-    };
-    for (cell, v) in list {
-        let loaded = v["loaded"] == json!(true);
-        let loading = lock(&store).loading.contains_key(&cell.to_bits());
-        let scene = v["scene"].as_f64().unwrap_or(0.0) as u64;
-        let pose = pose_of(world, &transform, cell);
-        let reach = reach_of(&v, loaded || loading);
-        let near = anchors.iter().any(|&(p, extra)| {
-            let r = reach + extra;
-            distance_sq(pose, vec3(&v["size"]), p) <= r * r
-        });
-        let want = scene != 0 && (v["pin"] == json!(true) || near);
-        if want && !loaded {
-            step_load(eng, world, &store, cell, &v, pose, tick);
-        } else if !want && loading {
-            abandon(eng, world, &store, cell);
-        } else if !want && loaded {
-            unload_cell(eng, world, &store, cell, &v, tick);
+    for c in list {
+        let loaded = c.loaded();
+        if c.want && !loaded {
+            step_load(eng, world, &store, c.cell, &c.v, c.pose, tick);
+        } else if !c.want && c.loading {
+            abandon(eng, world, &store, c.cell);
+        } else if !c.want && loaded {
+            unload_cell(eng, world, &store, c.cell, &c.v, tick);
         }
     }
+}
+
+/// The first cell (by entity) this tick would load from its sub-scene
+/// while the blob is still on its way in its cell group's pack: the cell
+/// and the group (the hold gate's question, [`super::cell_groups::gate`]).
+pub(crate) fn waiting(eng: &Engine, world: &World) -> Option<(Entity, String)> {
+    let store = store(eng)?;
+    let list = seen(eng, world, &store, 0.0)?.ok()?;
+    let a = eng.assets.borrow();
+    for c in list {
+        if !c.want || c.loaded() {
+            continue;
+        }
+        // A load from kept rows needs no blob.
+        let bits = c.cell.to_bits();
+        let from_kept = {
+            let s = lock(&store);
+            match s.loading.get(&bits) {
+                Some(l) => l.source == Source::Kept,
+                None => c.v["persist"] == json!(true) && s.kept.contains_key(&bits),
+            }
+        };
+        if from_kept {
+            continue;
+        }
+        if let Some(Payload::SceneWaiting { group }) = assets::index_of(c.scene() as f64)
+            .and_then(|i| a.entries.get(i))
+            .map(|e| &e.payload)
+        {
+            return Some((c.cell, group.clone()));
+        }
+    }
+    None
+}
+
+/// The cell groups to fetch now: each one a cell whose sub-scene it holds
+/// is loaded or loading, pinned, or wanted by an anchor `ahead` seconds
+/// further along at its maxSpeed. Presentation only: what this answers
+/// decides when packs are read, never what a tick does.
+pub(crate) fn wanted_groups(eng: &Engine, ahead: f32) -> std::collections::BTreeSet<String> {
+    let mut out = std::collections::BTreeSet::new();
+    let (Some(store), Ok(world)) = (store(eng), eng.world()) else {
+        return out;
+    };
+    let Some(Ok(list)) = seen(eng, world, &store, ahead) else {
+        return out;
+    };
+    let a = eng.assets.borrow();
+    for c in list {
+        if !(c.ahead || c.loading || c.loaded()) {
+            continue;
+        }
+        let Some(i) = assets::index_of(c.scene() as f64) else {
+            continue;
+        };
+        if let Some(g) = a.stream.group_of_scene(i) {
+            out.insert(g);
+        }
+    }
+    out
 }
 
 /// How far from its box a cell is wanted: `load` while it is not loaded,
@@ -368,6 +487,14 @@ fn scene_of(eng: &Engine, scene: u64) -> Option<Box<og_bundle::runtime::SceneDes
         })
 }
 
+/// Whether a scene handle names a cell group's sub-scene not yet landed.
+fn waiting_scene(eng: &Engine, scene: u64) -> bool {
+    let a = eng.assets.borrow();
+    assets::index_of(scene as f64)
+        .and_then(|i| a.entries.get(i))
+        .is_some_and(|e| matches!(e.payload, Payload::SceneWaiting { .. }))
+}
+
 /// One tick of a cell's load: starts it (from its kept rows when it
 /// persists and has them, else its sub-scene) or goes on with it, spawning
 /// at most `budget` entities; the tick the last one spawns, the cell is
@@ -431,6 +558,12 @@ fn step_load(
         Source::Scene => {
             let scene = v["scene"].as_f64().unwrap_or(0.0) as u64;
             let Some(desc) = scene_of(eng, scene) else {
+                // Its cell group's pack has not landed: the hold gate
+                // holds such a tick, so only a tick run without the probe
+                // gets here, and the cell waits.
+                if waiting_scene(eng, scene) {
+                    return;
+                }
                 warn_once(
                     eng,
                     Some(cell),
@@ -698,6 +831,10 @@ pub(crate) fn dump(eng: &Engine) -> Value {
                 "loadedAt": log.loaded_at.map(|t| t as f64),
                 "unloadedAt": log.unloaded_at.map(|t| t as f64),
                 "refused": log.refused,
+                "group": assets::index_of(scene as f64).and_then(|i| a.stream.group_of_scene(i)),
+                "waiting": assets::index_of(scene as f64)
+                    .and_then(|i| a.entries.get(i))
+                    .is_some_and(|e| matches!(e.payload, Payload::SceneWaiting { .. })),
             })
         })
         .collect();

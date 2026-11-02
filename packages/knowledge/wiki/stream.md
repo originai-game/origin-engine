@@ -12,7 +12,7 @@ Every change of a group's state sends StreamEvent at the start of the next tick;
 
 What streams is read through one queue: first the chunks of the sounds cooked in chunks that a playhead needs soonest (the one it is playing, then by the seconds until it gets there at its pitch, a loop's start by the time to its wrap), then the loading groups' packs by priority (then name). At most four reads are in flight at once (on the web, fetches; natively a read completes at once, so only the order shows); the rest wait in that order. `dump_stream`'s `fetch` lists what is in flight and what waits, each with its path and what it is for (a sound's chunk and its seconds, a group's pack and its priority).
 
-World cells (G3-3) stream entities, not assets: an entity with an og.StreamCell and a sub-scene (a `scene "<id>"` line in its scene block, or StreamCell.scene from og.load.scene) is a cell. Its sub-scene's entities, and with them their colliders, bodies and everything else they carry, spawn when it loads, placed by the cell's transform (its top-level entities are roots, at the cell's transform after their own, so physics bodies among them are where they look) and each with an og.CellMember naming the cell; when it unloads, every member and its descendants are despawned. Whether a cell is loaded is decided as each tick starts, before any system runs, from world state alone: it loads while an og.StreamAnchor (a player, a vehicle) is within StreamCell.load of its box, unloads once every anchor is past StreamCell.unload, and stays loaded while StreamCell.pin is set. Without any anchor the og.Camera resource's position anchors, a convenience for a single-player game; a lockstep or rollback session (og.net) refuses that, since each peer's camera is its own. Cells load in entity id order and a sub-scene's entities spawn in its text order, so the same world spawns the same entity ids on both hosts, in a replay, a rollback and after a restore. Nothing about a cell waits on a download: the sub-scene's blob is in the boot bundle, and its models and textures draw their stand-ins until their streaming group is resident.
+World cells (G3-3) stream entities, not assets: an entity with an og.StreamCell and a sub-scene (a `scene "<id>"` line in its scene block, or StreamCell.scene from og.load.scene) is a cell. Its sub-scene's entities, and with them their colliders, bodies and everything else they carry, spawn when it loads, placed by the cell's transform (its top-level entities are roots, at the cell's transform after their own, so physics bodies among them are where they look) and each with an og.CellMember naming the cell; when it unloads, every member and its descendants are despawned. Whether a cell is loaded is decided as each tick starts, before any system runs, from world state alone: it loads while an og.StreamAnchor (a player, a vehicle) is within StreamCell.load of its box, unloads once every anchor is past StreamCell.unload, and stays loaded while StreamCell.pin is set. Without any anchor the og.Camera resource's position anchors, a convenience for a single-player game; a lockstep or rollback session (og.net) refuses that, since each peer's camera is its own. Cells load in entity id order and a sub-scene's entities spawn in its text order, so the same world spawns the same entity ids on both hosts, in a replay, a rollback and after a restore. A sub-scene's blob is in the boot bundle unless the sub-scene declares a cell group (`stream "<name>" { cell; asset ... }`): then the blob is in that group's pack with the assets it names, fetched ahead of the anchors (StreamAnchor.maxSpeed), and its models and textures draw their stand-ins until the group is resident. A tick that would load a cell whose blob has not landed is held, never skipped or reordered: frames go on drawing, the engine's log records each hold and how long it lasted, and `dump_stream`'s `hold` says what the tick waits for. Natively a read completes at once, so a native run or replay never holds.
 
 A cell's state is world state: StreamCell.loaded, and its sub-scene's entities, are in snapshots, saves and the world hash, so restoring a save restores which cells are loaded and what is in them; an unloaded cell's entities are not in the world and come back from its sub-scene, as authored, when it loads again. Each change sends CellEvent in the tick it happens, and add hooks and `added` filters on the sub-scene's components see its entities arrive. The probe's `dump_stream` lists every cell (`cells`): its entity, sub-scene, state, entities and the ticks it last loaded and unloaded.
 
@@ -26,7 +26,7 @@ module stream {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 27018</sub>
+<sub>`api.ogt` line 26833</sub>
 
 ## Contents
 
@@ -81,7 +81,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 27135</sub>
+<sub>`api.ogt` line 26954</sub>
 
 <a id="fn-request"></a>
 
@@ -111,7 +111,7 @@ fn request {
 }
 ```
 
-<sub>`api.ogt` line 27142</sub>
+<sub>`api.ogt` line 26961</sub>
 
 <a id="fn-release"></a>
 
@@ -141,7 +141,7 @@ fn release {
 }
 ```
 
-<sub>`api.ogt` line 27149</sub>
+<sub>`api.ogt` line 26968</sub>
 
 <a id="fn-budget"></a>
 
@@ -169,7 +169,7 @@ fn budget {
 }
 ```
 
-<sub>`api.ogt` line 27156</sub>
+<sub>`api.ogt` line 26975</sub>
 
 <a id="fn-setBudget"></a>
 
@@ -199,7 +199,7 @@ fn setBudget {
 }
 ```
 
-<sub>`api.ogt` line 27162</sub>
+<sub>`api.ogt` line 26981</sub>
 
 ## Components, resources and events
 
@@ -246,7 +246,7 @@ component StreamCell {
 }
 ```
 
-<sub>`api.ogt` line 27029</sub>
+<sub>`api.ogt` line 26844</sub>
 
 <a id="record-StreamAnchor"></a>
 
@@ -259,6 +259,7 @@ Token `og.StreamAnchor`, registered under the schema name `og.StreamAnchor`; its
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `reach` | `number` | `0` | ≥ 0 | `m` | — | Added to every cell's load and unload distances for this anchor: a fast vehicle reaches further than a walker. |
+| `maxSpeed` | `number` | `0` | ≥ 0 | `mps` | — | The fastest it moves, for reading ahead: a cell's asset group (`cell` in its sub-scene's stream block) is fetched once this anchor is within the cell's load distance plus reach plus 2 seconds at this speed, so it has landed when the cell loads and the tick never waits for it. Read only for fetching, never by a tick (0: fetched at the load distance). |
 
 ```ogt
 component StreamAnchor {
@@ -267,10 +268,14 @@ component StreamAnchor {
     unit m
     min 0
   }
+  field maxSpeed f32 "The fastest it moves, for reading ahead: a cell's asset group (`cell` in its sub-scene's stream block) is fetched once this anchor is within the cell's load distance plus reach plus 2 seconds at this speed, so it has landed when the cell loads and the tick never waits for it. Read only for fetching, never by a tick (0: fetched at the load distance)." {
+    unit mps
+    min 0
+  }
 }
 ```
 
-<sub>`api.ogt` line 27051</sub>
+<sub>`api.ogt` line 26866</sub>
 
 <a id="record-CellMember"></a>
 
@@ -293,7 +298,7 @@ component CellMember {
 }
 ```
 
-<sub>`api.ogt` line 27059</sub>
+<sub>`api.ogt` line 26878</sub>
 
 <a id="record-CellEvent"></a>
 
@@ -318,7 +323,7 @@ event CellEvent {
 }
 ```
 
-<sub>`api.ogt` line 27066</sub>
+<sub>`api.ogt` line 26885</sub>
 
 <a id="record-StreamEvent"></a>
 
@@ -341,7 +346,7 @@ event StreamEvent {
 }
 ```
 
-<sub>`api.ogt` line 27088</sub>
+<sub>`api.ogt` line 26907</sub>
 
 ## Types
 
@@ -372,7 +377,7 @@ enum StreamState {
 }
 ```
 
-<sub>`api.ogt` line 27073</sub>
+<sub>`api.ogt` line 26892</sub>
 
 <a id="type-StreamStatus"></a>
 
@@ -388,7 +393,7 @@ One streaming group.
 | `wanted` | `boolean` | `false` | — | — | — | Whether its trigger or a request wants it now. |
 | `requested` | `boolean` | `false` | — | — | — | Whether og.stream.request asked for it (until og.stream.release). |
 | `priority` | `number` | `0` | — | — | — | Higher loads first and is evicted last. |
-| `trigger` | `string` | `""` | — | — | — | manual, distance or volume. |
+| `trigger` | `string` | `""` | — | — | — | manual, distance, volume or cell. |
 | `memory` | `number` | `0` | — | `bytes` | — | What its assets take once loaded, in bytes. |
 | `bytes` | `number` | `0` | — | `bytes` | — | Its pack's size, in bytes. |
 | `assets` | `readonly string[]` | `[]` | — | — | — | Its asset ids. |
@@ -406,7 +411,7 @@ struct StreamStatus {
   field wanted bool "Whether its trigger or a request wants it now."
   field requested bool "Whether og.stream.request asked for it (until og.stream.release)."
   field priority i32 "Higher loads first and is evicted last."
-  field trigger String "manual, distance or volume."
+  field trigger String "manual, distance, volume or cell."
   field memory f64 "What its assets take once loaded, in bytes." {
     unit bytes
   }
@@ -423,7 +428,7 @@ struct StreamStatus {
 }
 ```
 
-<sub>`api.ogt` line 27094</sub>
+<sub>`api.ogt` line 26913</sub>
 
 <a id="type-StreamBudget"></a>
 
@@ -458,7 +463,7 @@ struct StreamBudget {
 }
 ```
 
-<sub>`api.ogt` line 27118</sub>
+<sub>`api.ogt` line 26937</sub>
 
 ## Constants
 
@@ -474,28 +479,28 @@ struct StreamBudget {
 const STREAM_UNLOADED u32 0 "`StreamEvent.state`: the group is unloaded (StreamState unloaded)."
 ```
 
-<sub>`api.ogt` line 27082</sub>
+<sub>`api.ogt` line 26901</sub>
 
 ```ogt
 const STREAM_QUEUED u32 1 "`StreamEvent.state`: the group waits for room in the budget (StreamState queued)."
 ```
 
-<sub>`api.ogt` line 27083</sub>
+<sub>`api.ogt` line 26902</sub>
 
 ```ogt
 const STREAM_LOADING u32 2 "`StreamEvent.state`: the group's pack is being read (StreamState loading)."
 ```
 
-<sub>`api.ogt` line 27084</sub>
+<sub>`api.ogt` line 26903</sub>
 
 ```ogt
 const STREAM_RESIDENT u32 3 "`StreamEvent.state`: the group's assets are in place (StreamState resident)."
 ```
 
-<sub>`api.ogt` line 27085</sub>
+<sub>`api.ogt` line 26904</sub>
 
 ```ogt
 const STREAM_FAILED u32 4 "`StreamEvent.state`: the group failed (StreamState failed; og.stream.status says why)."
 ```
 
-<sub>`api.ogt` line 27086</sub>
+<sub>`api.ogt` line 26905</sub>

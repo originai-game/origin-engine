@@ -6680,6 +6680,11 @@
           "name": "reach",
           "column": "f32",
           "default": 0
+        },
+        {
+          "name": "maxSpeed",
+          "column": "f32",
+          "default": 0
         }
       ]
     },

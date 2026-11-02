@@ -252,6 +252,7 @@ pub(super) fn release(eng: &Engine, group: &str) {
 pub(super) fn downgrade(eng: &Engine, group: &str) {
     put_stand_ins_back(eng, group);
     release_held(eng, group);
+    super::cell_groups::forget_scenes(eng, group);
 }
 
 fn put_stand_ins_back(eng: &Engine, group: &str) {

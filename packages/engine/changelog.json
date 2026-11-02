@@ -322,6 +322,10 @@
       {
         "member": "TransitionKind glitch; a style's motion `enter glitch <strength>` and `toast glitch <strength>`",
         "summary": "A glitch transition (the owner, for cyber): the content draws through the existing glitch layer material (slices pushed sideways, colours split) as it fades in or out, over 150 to 180 ms whatever the style's base duration, weakening as it settles. Any style or transition can name it. Its slices come from the element's id and the tick-counted UI clock, so a captured frame is the same every run; under reduced motion it is a plain fade."
+      },
+      {
+        "member": "og.StreamCell persist and budget, og.StreamAnchor maxSpeed, a scene's `stream \"<name>\" { cell }` group; dump_stream's hold and holds",
+        "summary": "World cells, G3-3 batch 2: a `persist` cell keeps its entities as they are through an unload, in the og.cells state block (snapshots, saves, the hash and rollbacks carry it), and `budget` spreads a large cell's spawn over ticks (a 5,000-entity cell's worst tick 41/28/19 ms at budgets 1000/500/250, its one-tick load 153 ms). A sub-scene can declare a cell group, `stream \"<name>\" { cell; asset ... }`: its blob leaves the boot bundle for the group's pack, fetched ahead of each anchor by 2 s at its StreamAnchor.maxSpeed. A tick that would load a cell whose blob has not landed is held, never skipped or reordered, with each hold and its length in the engine's log and dump_stream's hold and holds; natively a read completes at once, so a native run never holds. A room session over anchorless cells is refused at its start. The og.StreamCell and og.StreamAnchor layouts grew, so a world with cells hashes and saves differently; a world without them is unchanged."
       }
     ],
     "fixed": [

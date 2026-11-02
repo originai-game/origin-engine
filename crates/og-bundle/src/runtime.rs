@@ -122,6 +122,10 @@ pub enum StreamTrigger {
     },
     /// The camera inside the named entity's box (its position ± half its scale).
     Volume(String),
+    /// The world cells that place the declaring scene (G3-3): the group
+    /// holds that sub-scene's blob and the assets it names, and loads ahead
+    /// of the anchors nearing those cells (og-runtime's `stream::cells`).
+    Cell,
 }
 
 /// One streaming group as the manifest records it.
@@ -302,6 +306,7 @@ impl Manifest {
             };
             let trigger = match t.values.first().and_then(|v| v.as_word()) {
                 Some("manual") => StreamTrigger::Manual,
+                Some("cell") => StreamTrigger::Cell,
                 Some("volume") => StreamTrigger::Volume(
                     t.string(1)
                         .map_err(|_| bad(format!("line {}: volume without a name", t.line)))?
@@ -419,6 +424,7 @@ impl Manifest {
         for g in &self.streams {
             let trigger = match &g.trigger {
                 StreamTrigger::Manual => Entry::new("trigger").with(w("manual")),
+                StreamTrigger::Cell => Entry::new("trigger").with(w("cell")),
                 StreamTrigger::Volume(e) => Entry::new("trigger").with(w("volume")).with(s(e)),
                 StreamTrigger::Distance {
                     anchor,

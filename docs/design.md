@@ -450,15 +450,34 @@ a restore taken mid-load goes on from there. `loaded` turns true and
 `og.CellEvent` is sent the tick the last entity spawns; a cell no longer
 wanted before then despawns what it spawned and sends nothing.
 
-**A cell that is not ready.** Batch 1 keeps a sub-scene's blob in the
-boot bundle, so a cell's entities are always ready at the tick that
-wants them; its models, textures and sounds draw their stand-ins until
-their streaming group is resident, as any grouped asset does, and
-physics only ever reads colliders from components and proxies. Later
-batches (in order): the cell's own asset group prefetched from the
-anchors' declared speed, sub-scene blobs in packs with a tick gate that
-holds the simulation (never skips or reorders it) when one has not
-landed, colliders baked by the cook, and texture mip streaming.
+**A cell that is not ready.** A sub-scene's blob is in the boot bundle
+unless the sub-scene declares a cell group, `stream "<name>" { cell;
+asset ... }` (at most one, only in a scene some scene places, and with no
+distance or volume): then the cook packs the blob into that group with
+the assets it names, its output names the group, and the runtime's
+handle for it waits (`Payload::SceneWaiting`) until the pack has landed,
+and again after the group unloads. When the pack is read is presentation:
+at every tick boundary a cell group is wanted while one of its cells is
+loaded, loading or pinned, or an anchor 2 s further along at its
+`StreamAnchor.maxSpeed` would be within the cell's load distance (plus
+its reach), so at the declared speed it has landed before the cell
+loads. What a tick does is not: a tick that would load a cell (from its
+sub-scene, not from kept rows) whose blob has not landed is held by a
+gate chained before og.net's, never skipped or reordered. The gate first
+asks for the group, first in admission whatever its priority, and reads
+it there; natively a read completes at once, so a native run or replay
+never holds. A host that answers the read `Pending` (the web's fetch)
+holds the tick: frames go on drawing, `dump_stream`'s `hold` names the
+tick, the cell, the group and its state, and once the tick goes on the
+engine's log records the hold and how long it lasted (`holds`: their
+count, total and longest). After a rollback's rewind the gate asks again
+for the re-simulated tick. The world a held tick goes on with is the one
+a run that never waited has at that tick, apart from og.StreamEvent,
+which is world state: the ticks that deliver a group's events hash them,
+streamed or not. Its models, textures and sounds draw their stand-ins
+until the group is resident, as any grouped asset does, and physics only
+ever reads colliders from components and proxies. Later batches:
+colliders baked by the cook, and texture mip streaming.
 
 ### 2.6 Renderer **(D)**
 

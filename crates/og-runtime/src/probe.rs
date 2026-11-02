@@ -358,8 +358,20 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
         // The resources UI documents read, for the next tick's bindings.
         super::modules::docs::snapshot(id, world);
     }));
-    // og.net's lockstep holds a tick until every player's input for it is in.
-    probe.set_gate(Box::new(move |world| super::net::gate(id, world)));
+    // A tick that would load a cell whose sub-scene's pack has not landed
+    // is held (G3-3); then og.net's lockstep holds it until every player's
+    // input for it is in. A rollback's rewind moves the clock back, so the
+    // cells the re-simulated tick loads are asked after again.
+    probe.set_gate(Box::new(move |world| {
+        if !super::stream::cell_groups::gate(id, world) {
+            return false;
+        }
+        let tick = world.time().tick;
+        if !super::net::gate(id, world) {
+            return false;
+        }
+        world.time().tick == tick || super::stream::cell_groups::gate(id, world)
+    }));
     // og.WorldRestored, the tick after a restore.
     probe.set_before_tick(Box::new(move |world| {
         super::trace::before_tick(id);

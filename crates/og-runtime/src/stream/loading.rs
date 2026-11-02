@@ -12,6 +12,19 @@ pub(crate) fn update(eng: &Engine) {
     let tick = tick_of(eng);
     retry_retained(eng);
     let cam = camera(eng);
+    // Cell groups: wanted with their cells, read ahead of the anchors.
+    let cell_wants = if eng
+        .assets
+        .borrow()
+        .stream
+        .groups
+        .iter()
+        .any(|g| g.desc.trigger == StreamTrigger::Cell)
+    {
+        super::cells::wanted_groups(eng, super::cell_groups::PREFETCH_SECONDS)
+    } else {
+        Default::default()
+    };
     // Each volume group's box, in its entity's space (the camera inside it).
     let volumes: BTreeMap<String, bool> = {
         let a = eng.assets.borrow();
@@ -45,9 +58,13 @@ pub(crate) fn update(eng: &Engine) {
     {
         let mut a = eng.assets.borrow_mut();
         let s = &mut a.stream;
+        let held = s.held_group().map(str::to_string);
         for g in &mut s.groups {
             let trigger = match &g.desc.trigger {
                 StreamTrigger::Manual => false,
+                StreamTrigger::Cell => {
+                    cell_wants.contains(&g.desc.name) || held.as_ref() == Some(&g.desc.name)
+                }
                 StreamTrigger::Distance {
                     anchor,
                     radius,
@@ -88,11 +105,14 @@ pub(crate) fn update(eng: &Engine) {
         let mut order: Vec<usize> = (0..s.groups.len())
             .filter(|&i| s.groups[i].wanted)
             .collect();
+        // The group a held tick waits for comes first, whatever its priority.
+        let held = s.held_group().map(str::to_string);
+        let is_held = |s: &Streams, i: usize| held.as_ref() == Some(&s.groups[i].desc.name);
         og_core::sort::sort_by(&mut order, |&x, &y| {
             let (gx, gy) = (&s.groups[x], &s.groups[y]);
-            gy.desc
-                .priority
-                .cmp(&gx.desc.priority)
+            is_held(s, y)
+                .cmp(&is_held(s, x))
+                .then(gy.desc.priority.cmp(&gx.desc.priority))
                 .then(gx.desc.name.cmp(&gy.desc.name))
         });
         let admitted =
@@ -135,7 +155,9 @@ pub(crate) fn update(eng: &Engine) {
                 if free >= need {
                     break;
                 }
-                if admitted(s, j) && s.groups[j].desc.priority < s.groups[i].desc.priority {
+                let below = s.groups[j].desc.priority < s.groups[i].desc.priority
+                    || (is_held(s, i) && !is_held(s, j));
+                if admitted(s, j) && below {
                     free += s.groups[j].desc.memory;
                     evict.push(j);
                 }
@@ -199,6 +221,7 @@ pub(crate) fn update(eng: &Engine) {
         }
     }
     refresh(eng);
+    super::cell_groups::resolve_scenes(eng, None);
 }
 
 /// Upgrades the assets loaded after their group became resident.

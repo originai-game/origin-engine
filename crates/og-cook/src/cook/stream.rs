@@ -22,6 +22,14 @@
 //! }
 //! ```
 //!
+//! A sub-scene (a scene another scene places with `scene "<id>"`) can
+//! declare a cell group, `stream "<name>" { cell; asset ... }`: the group
+//! holds the sub-scene's own blob beside the assets it names, so the blob
+//! leaves the boot bundle, and the runtime loads the group ahead of the
+//! anchors nearing the cells that place the sub-scene (og-runtime's
+//! `stream::cells`). A scene declares at most one, and it has no other
+//! trigger.
+//!
 //! The cook reads every scene's groups before it cooks: an asset belongs to
 //! at most one group, and every asset a group names must be cooked. Each
 //! group's cooked files are packed into `cooked/stream/<group>.ogb` (one
@@ -53,7 +61,7 @@ pub(super) struct GroupDecl {
     pub priority: i32,
 }
 
-const KEYS: [&str; 5] = ["asset", "distance", "unload", "volume", "priority"];
+const KEYS: [&str; 6] = ["asset", "distance", "unload", "volume", "priority", "cell"];
 
 fn valid_name(n: &str) -> bool {
     !n.is_empty()
@@ -122,7 +130,17 @@ pub(super) fn groups_of(
                 assets.push(id);
             }
         }
-        if assets.is_empty() {
+        let cell = b.get("cell");
+        if let Some(c) = cell
+            && !c.values.is_empty()
+        {
+            return Err(format!(
+                "line {}: stream \"{name}\": 'cell' takes no value",
+                c.line
+            ));
+        }
+        // A cell group holds its scene's blob, so it may name no asset.
+        if assets.is_empty() && cell.is_none() {
             return Err(format!("line {}: stream \"{name}\" holds no asset", e.line));
         }
         let number = |key: &str| -> Result<Option<Vec<f32>>, String> {
@@ -142,6 +160,14 @@ pub(super) fn groups_of(
             }
         };
         let trigger = match (number("distance")?, b.get("volume")) {
+            (d, v)
+                if cell.is_some() && (d.is_some() || v.is_some() || b.get("unload").is_some()) =>
+            {
+                return Err(format!(
+                    "stream \"{name}\": a cell group loads with its cells' anchors; give it no distance or volume"
+                ));
+            }
+            _ if cell.is_some() => StreamTrigger::Cell,
             (Some(_), Some(v)) => {
                 return Err(format!(
                     "line {}: stream \"{name}\" has both distance and volume; give it one trigger",
