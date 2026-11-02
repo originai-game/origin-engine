@@ -139,8 +139,13 @@ impl Hooks for WebHooks {
         // model: the runtime decodes it once into the renderer's meshes
         // (assets::load_gltf keeps the asset by path) and a refresh fetches
         // it again; kept, a large scene's models would sit in the wasm heap
-        // twice, encoded beside decoded.
-        let known = if is_stream_pack(path) || is_sound_chunk(path) || is_model(path) {
+        // twice, encoded beside decoded. og.motion's model is read once,
+        // into the GPU's buffers.
+        let known = if is_stream_pack(path)
+            || is_sound_chunk(path)
+            || is_model(path)
+            || path.ends_with("/motion/model.ogb")
+        {
             FILES.with(|f| f.borrow_mut().remove(path))
         } else {
             FILES.with(|f| f.borrow().get(path).cloned())

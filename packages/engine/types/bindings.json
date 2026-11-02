@@ -481,6 +481,12 @@
       "array": "Uint32Array",
       "stride": 1,
       "value": "ArtProjection"
+    },
+    {
+      "name": "MotionGoalKind",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "MotionGoalKind"
     }
   ],
   "components": [
@@ -6658,6 +6664,36 @@
           "column": "u32",
           "default": 0,
           "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 88,
+      "name": "MotionAgent",
+      "schema": "og.MotionAgent",
+      "module": "motion",
+      "fields": [
+        {
+          "name": "rig",
+          "column": "Rig",
+          "default": 0
+        },
+        {
+          "name": "drive",
+          "column": "bool",
+          "default": false
+        },
+        {
+          "name": "turnSpeed",
+          "column": "f32",
+          "default": 6,
+          "tunable": true
+        },
+        {
+          "name": "lookahead",
+          "column": "f32",
+          "default": 0.6,
+          "tunable": true
         }
       ]
     }
@@ -23258,6 +23294,186 @@
         }
       ],
       "returns": "String",
+      "publish": true
+    },
+    {
+      "id": 578,
+      "kind": "fn",
+      "path": "og.motion.pose",
+      "symbol": "og_motion_pose",
+      "module": "motion",
+      "name": "pose",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "PoseGoalDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 579,
+      "kind": "fn",
+      "path": "og.motion.place",
+      "symbol": "og_motion_place",
+      "module": "motion",
+      "name": "place",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "PlaceGoalDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 580,
+      "kind": "fn",
+      "path": "og.motion.face",
+      "symbol": "og_motion_face",
+      "module": "motion",
+      "name": "face",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "FaceGoalDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 581,
+      "kind": "fn",
+      "path": "og.motion.walkTo",
+      "symbol": "og_motion_walk_to",
+      "module": "motion",
+      "name": "walkTo",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "WalkGoalDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 582,
+      "kind": "fn",
+      "path": "og.motion.clear",
+      "symbol": "og_motion_clear",
+      "module": "motion",
+      "name": "clear",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 583,
+      "kind": "fn",
+      "path": "og.motion.status",
+      "symbol": "og_motion_status",
+      "module": "motion",
+      "name": "status",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        }
+      ],
+      "returns": "Result<MotionStatus>",
+      "publish": true
+    },
+    {
+      "id": 584,
+      "kind": "fn",
+      "path": "og.motion.capabilities",
+      "symbol": "og_motion_capabilities",
+      "module": "motion",
+      "name": "capabilities",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        }
+      ],
+      "returns": "MotionCapabilities",
+      "publish": true
+    },
+    {
+      "id": 585,
+      "kind": "fn",
+      "path": "og.motion.poses",
+      "symbol": "og_motion_poses",
+      "module": "motion",
+      "name": "poses",
+      "params": [],
+      "returns": "List<String>",
       "publish": true
     }
   ],

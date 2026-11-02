@@ -1,11 +1,10 @@
-// og-motion's demo course on two game rigs. assets/anims/course.glb is the
-// course the model generated for SOMA's skeleton, its feet planted from the
-// model's contacts (crates/og-motion `examples/course.rs`); here og.anim.retarget
-// puts it on the strider (Mixamo names, long legs) and the stout (Unreal
-// names, short legs), each walking its own lane: the walk, turns, run, jump,
-// crouch and wave of the course, as generated.
+// og.motion on two game rigs: the engine's motion model animates the strider
+// (Mixamo names, long legs) and the stout (Unreal names, short legs) live, on
+// the GPU, from goals the game queues. og.motion drives their Transforms with
+// fixed math (drive: true); the generated pose is drawn on top, its feet
+// planted, and never fed back into the simulation.
 import { og } from "@origingame/engine";
-import type { Quaternion, World } from "@origingame/engine";
+import type { Entity, Quaternion, World } from "@origingame/engine";
 
 function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
   if (!r.ok) throw new Error(r.reason);
@@ -14,11 +13,25 @@ function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
 
 const floor = (): Quaternion => og.transform.fromAxisAngle({ x: 1, y: 0, z: 0 }, -Math.PI / 2);
 
-/** The characters: model, rig file (or detection), and where its lane starts. */
+/** The characters: model, rig file (or detection), and where its lane is (side by side). */
 const CHARACTERS = [
-  { name: "strider", model: "models/strider.glb", rig: "rigs/strider.ogt", z: 0 },
-  { name: "stout", model: "models/stout.glb", rig: null, z: -2.2 },
+  { name: "strider", model: "models/strider.glb", rig: "rigs/strider.ogt", x: 0, z: 0 },
+  { name: "stout", model: "models/stout.glb", rig: null, x: -1.6, z: 0 },
 ] as const;
+
+/** One lane's goals: walk out, turn, run, jump, crouch, walk back, wave, cheer. */
+function course(world: World, body: Entity, x0: number, z: number): void {
+  const at = (x: number, dz = 0) => ({ x: x0 + x, y: 0, z: z + dz });
+  must(og.motion.walkTo(world, body, { position: at(3), speed: 1.3 }));
+  must(og.motion.walkTo(world, body, { position: at(4.5, 1.5), speed: 1.3 }));
+  must(og.motion.walkTo(world, body, { position: at(8, 1.5), speed: 3.6 }));
+  must(og.motion.place(world, body, { pose: "jump", position: at(9, 1.5), heading: Math.PI / 2, duration: 0.8 }));
+  must(og.motion.pose(world, body, { pose: "crouch", duration: 1.2 }));
+  must(og.motion.walkTo(world, body, { position: at(5, 0), speed: 1.3 }));
+  must(og.motion.face(world, body, { heading: 0 }));
+  must(og.motion.pose(world, body, { pose: "wave", duration: 2 }));
+  must(og.motion.pose(world, body, { pose: "cheer", duration: 2 }));
+}
 
 function build(world: World): void {
   const plane = must(og.render.planeGeometry(world, { width: 40, height: 40 }));
@@ -37,27 +50,25 @@ function build(world: World): void {
     world.insert(z, og.Mesh, { geometry: box, material: line });
   }
 
-  const course = must(og.load.animation(world, "anims/course.glb"));
-  const clip = course.clips.find((c) => c.name === "course")!;
   for (const c of CHARACTERS) {
     const anim = must(og.load.animation(world, c.model));
     const rig = c.rig === null ? undefined : must(og.load.rig(world, c.rig));
-    const target = rig === undefined ? { skeleton: anim.skeleton } : { skeleton: anim.skeleton, rig };
-    must(og.anim.humanoid(world, target));
-    const retargeted = must(og.anim.retarget(world, { clip: clip.clip, source: course.skeleton, target: anim.skeleton, ...(rig === undefined ? {} : { targetRig: rig }) }));
-    const body = must(world.instantiate(must(og.load.gltf(world, c.model)), { name: c.name, position: { x: 0, y: 0, z: c.z } }));
+    const body = must(world.instantiate(must(og.load.gltf(world, c.model)), { name: c.name, position: { x: c.x, y: 0, z: c.z } }));
+    // og.anim poses the skeleton for the simulation and draws it until the
+    // model is resident (rest pose here: a game gives it an idle clip).
     world.insert(body, og.Skeleton, { asset: anim.skeleton, rootMotion: "off" });
-    world.insert(body, og.AnimationPlayer, { clip: retargeted.clip, speed: 1, loop: true, fade: 0 });
+    world.insert(body, og.MotionAgent, rig === undefined ? { drive: true } : { rig, drive: true });
+    course(world, body, c.x, c.z);
   }
 
   const sun = must(world.spawn({ name: "sun", quaternion: og.transform.lookAt({ x: 0, y: 0, z: 0 }, { x: 0.45, y: -0.7, z: -0.55 }) }));
   world.insert(sun, og.DirectionalLight, { intensity: 3, castShadow: true });
   const cam = must(world.resource(og.Camera));
-  // The whole course in view: x -0.5 to 9, z -3.2 (the stout's lane) to 4.5.
-  const eye = { x: 4.3, y: 10, z: 15 };
+  // The lanes from the front and above: x -1.6 to 9, z 0 to 1.5.
+  const eye = { x: 4.5, y: 3.4, z: 8.5 };
   cam.position = eye;
-  cam.quaternion = og.transform.lookAt(eye, { x: 4.3, y: 0.4, z: 0.8 });
-  cam.fov = 50;
+  cam.quaternion = og.transform.lookAt(eye, { x: 4.5, y: 0.7, z: -0.2 });
+  cam.fov = 55;
   const settings = must(world.resource(og.RenderSettings));
   settings.sky = true;
 }

@@ -1205,6 +1205,22 @@ export interface HostAbi<A, V> {
   og_net_final_hash(world: number, tick: number): string;
   /** `og.net.hash` */
   og_net_hash(world: number): string;
+  /** `og.motion.pose` */
+  og_motion_pose(world: number, entity: number, desc: string | undefined): string;
+  /** `og.motion.place` */
+  og_motion_place(world: number, entity: number, desc: string | undefined): string;
+  /** `og.motion.face` */
+  og_motion_face(world: number, entity: number, desc: string | undefined): string;
+  /** `og.motion.walkTo` */
+  og_motion_walk_to(world: number, entity: number, desc: string | undefined): string;
+  /** `og.motion.clear` */
+  og_motion_clear(world: number, entity: number): string;
+  /** `og.motion.status` */
+  og_motion_status(world: number, entity: number): string;
+  /** `og.motion.capabilities` */
+  og_motion_capabilities(world: number): string;
+  /** `og.motion.poses` */
+  og_motion_poses(): string;
 }
 
 /** Every binding symbol, in binding-table order, then the lifecycle members. */
@@ -1787,6 +1803,14 @@ export const SYMBOLS: readonly string[] = [
   "og_net_resimulating",
   "og_net_final_hash",
   "og_net_hash",
+  "og_motion_pose",
+  "og_motion_place",
+  "og_motion_face",
+  "og_motion_walk_to",
+  "og_motion_clear",
+  "og_motion_status",
+  "og_motion_capabilities",
+  "og_motion_poses",
   "og_host_set_dispatcher",
   "og_engine_create",
   "og_engine_destroy",
@@ -1988,6 +2012,30 @@ export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {
     og_timeline_stop(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("og.timeline.stop", "entity", entity);
       return abi.og_timeline_stop(world, entity);
+    },
+    og_motion_pose(world: number, entity: number, desc: string | undefined) {
+      if (typeof entity !== "number") notEntity("og.motion.pose", "entity", entity);
+      return abi.og_motion_pose(world, entity, desc);
+    },
+    og_motion_place(world: number, entity: number, desc: string | undefined) {
+      if (typeof entity !== "number") notEntity("og.motion.place", "entity", entity);
+      return abi.og_motion_place(world, entity, desc);
+    },
+    og_motion_face(world: number, entity: number, desc: string | undefined) {
+      if (typeof entity !== "number") notEntity("og.motion.face", "entity", entity);
+      return abi.og_motion_face(world, entity, desc);
+    },
+    og_motion_walk_to(world: number, entity: number, desc: string | undefined) {
+      if (typeof entity !== "number") notEntity("og.motion.walkTo", "entity", entity);
+      return abi.og_motion_walk_to(world, entity, desc);
+    },
+    og_motion_clear(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("og.motion.clear", "entity", entity);
+      return abi.og_motion_clear(world, entity);
+    },
+    og_motion_status(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("og.motion.status", "entity", entity);
+      return abi.og_motion_status(world, entity);
     },
   };
 }

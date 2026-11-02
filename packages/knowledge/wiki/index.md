@@ -2,7 +2,7 @@
 
 # The Origin Engine API
 
-`@origingame/engine`, API version 1: 37 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
+`@origingame/engine`, API version 1: 38 modules, generated from `crates/og-api/api.ogt`. Each module has one page; every signature on it is quoted from the IDL.
 
 The Origin Engine API. Game code declares components and systems, and reads the world through typed views over engine memory.
 
@@ -71,6 +71,7 @@ Grouped by the skill that teaches them: the skill says how much of each to use a
 | [`anim`](anim.md) | `og.anim.*` | kept | Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics. |
 | [`path`](path.md) | `og.path.*` | kept | Paths: a curve through or controlled by points, measured by arc length so a parameter t from 0 to 1 moves along it at an even speed however its points are spaced. catmullRom passes through every point (three.js CatmullRomCurve3, tension 0.5), bezier chains cubic segments `p0 c0 c1 p1 c2 c3 p2 ...` (three.js CubicBezierCurve3 in a CurvePath), linear joins the points with straight segments. A closed path joins its last point to its first and wraps t. |
 | [`timeline`](timeline.md) | `og.timeline.*` | kept | Timelines: cutscenes and sequences as data, Unity's Timeline and Godot's AnimationPlayer as an `.ogt` the agent reads and diffs. A `type timeline` file has a `duration` in seconds, `path "<name>" { ... }` blocks (as og.path's) and `track <kind> ["<entity>"] { key <seconds> { ... } }` blocks; `og cook` cooks it (importing caption files) and og.load.timeline loads it. Tracks: `camera` (position and target keys, or `rail "<path>"` with `at` 0..1 along it, or `follow "<entity>"` with offsets; fov; eased), `transform "<entity>"` (position, rotation in degrees or quaternion, scale; eased), `animation "<entity>"` (clip, speed, blendIn, loop; `model` names the glTF whose clips they are, else the entity's og.Model), `audio` (sound, volume, pitch, bus), `music` (sound, volume, fadeIn, fadeOut, end, loop, bus), `caption` (text from `key` to `end` with a UI type step `style` and an `anchor`; `captions "narration.srt" [offset]` imports a SubRip file or word timestamps `.json`), `event` (`do "<command-channel action>"`: teleport, set, a game's registered command; `retroactive true` runs it when a seek passes it), `transition` (kind cut, fade, wipe, dissolve, iris or slide; mode through, in or out; duration, color, from, over og.ui's screen cover) and `marker` (`name`, sending og.TimelineMarker when played past). |
+| [`motion`](motion.md) | `og.motion.*` | kept | Generated motion for humanoids: the engine's motion model (a 17.6M-parameter student distilled from NVIDIA MotionBricks, og-motion) moves a character between the goals the game gives it, on the GPU. Give an entity with an og.Skeleton (a humanoid rig og.anim.humanoid recognises, or one an og.MotionAgent.rig names) an og.MotionAgent, then queue goals: og.motion.pose (a pose of the model's library where the character stands), og.motion.place (a pose at a place, facing a heading), og.motion.face (turn to a heading) and og.motion.walkTo (walk or run to a point). og.motion.poses lists the library: idle, walk, run, jump, crouch, wave, cheer. |
 
 ### `og-2d`
 
@@ -166,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2170 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2188 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -501,6 +502,7 @@ Field units the docs and Tune use.
 | [`ExtrudeGeometryDesc`](render.md#type-ExtrudeGeometryDesc) | desc struct | render | — |
 | [`f32()`](reflect.md#column-f32) | column kind | reflect | — |
 | [`f64()`](reflect.md#column-f64) | column kind | reflect | — |
+| [`FaceGoalDesc`](motion.md#type-FaceGoalDesc) | desc struct | motion | — |
 | [`FactsFn`](game.md#type-FactsFn) | callback | game | — |
 | [`FbmDesc`](procgen.md#type-FbmDesc) | desc struct | procgen | — |
 | [`FieldDesc`](ui.md#type-FieldDesc) | desc struct | ui | — |
@@ -772,6 +774,11 @@ Field units the docs and Tune use.
 | [`ModalDesc`](ui.md#type-ModalDesc) | desc struct | ui | — |
 | [`ModalResult`](ui.md#type-ModalResult) | struct | ui | — |
 | [`Modifiers`](input.md#type-Modifiers) | struct | input | — |
+| [`MotionBackend`](motion.md#type-MotionBackend) | enum | motion | — |
+| [`MotionCapabilities`](motion.md#type-MotionCapabilities) | struct | motion | — |
+| [`MotionGoalKind`](motion.md#type-MotionGoalKind) | enum | motion | — |
+| [`MotionGoalKind()`](motion.md#column-MotionGoalKind) | column kind | motion | — |
+| [`MotionStatus`](motion.md#type-MotionStatus) | struct | motion | — |
 | [`MotionToken`](ui.md#type-MotionToken) | enum | ui | — |
 | [`MOTOR_NONE`](physics.md#const-MOTOR_NONE) | constant | physics | — |
 | [`MOTOR_POSITION`](physics.md#const-MOTOR_POSITION) | constant | physics | — |
@@ -1023,6 +1030,15 @@ Field units the docs and Tune use.
 | [`og.Mesh`](render.md#record-Mesh) | component | render | — |
 | [`og.Mirror`](render.md#record-Mirror) | component | render | — |
 | [`og.Model`](load.md#record-Model) | component | load | — |
+| [`og.motion.capabilities`](motion.md#fn-capabilities) | function | motion | `og_motion_capabilities` |
+| [`og.motion.clear`](motion.md#fn-clear) | function | motion | `og_motion_clear` |
+| [`og.motion.face`](motion.md#fn-face) | function | motion | `og_motion_face` |
+| [`og.motion.place`](motion.md#fn-place) | function | motion | `og_motion_place` |
+| [`og.motion.pose`](motion.md#fn-pose) | function | motion | `og_motion_pose` |
+| [`og.motion.poses`](motion.md#fn-poses) | function | motion | `og_motion_poses` |
+| [`og.motion.status`](motion.md#fn-status) | function | motion | `og_motion_status` |
+| [`og.motion.walkTo`](motion.md#fn-walkTo) | function | motion | `og_motion_walk_to` |
+| [`og.MotionAgent`](motion.md#record-MotionAgent) | component | motion | — |
 | [`og.Music`](audio.md#record-Music) | component | audio | — |
 | [`og.MusicBeat`](audio.md#record-MusicBeat) | event | audio | — |
 | [`og.nav.build`](nav.md#fn-build) | function | nav | `og_nav_build` |
@@ -1671,6 +1687,7 @@ Field units the docs and Tune use.
 | [`PIN_TOP_CORNERS`](physics.md#const-PIN_TOP_CORNERS) | constant | physics | — |
 | [`PIN_TOP_RINGS`](physics.md#const-PIN_TOP_RINGS) | constant | physics | — |
 | [`PinchSpec`](ui.md#type-PinchSpec) | desc struct | ui | — |
+| [`PlaceGoalDesc`](motion.md#type-PlaceGoalDesc) | desc struct | motion | — |
 | [`PlacementGhostDesc`](ui.md#type-PlacementGhostDesc) | desc struct | ui | — |
 | [`Plane`](math.md#type-Plane) | struct | math | — |
 | [`plane`](math.md#value-plane) | value | math | — |
@@ -1711,6 +1728,7 @@ Field units the docs and Tune use.
 | [`PolyhedronGeometryDesc`](render.md#type-PolyhedronGeometryDesc) | desc struct | render | — |
 | [`PopoverDesc`](ui.md#type-PopoverDesc) | desc struct | ui | — |
 | [`PopoverResult`](ui.md#type-PopoverResult) | struct | ui | — |
+| [`PoseGoalDesc`](motion.md#type-PoseGoalDesc) | desc struct | motion | — |
 | [`Position`](ui.md#type-Position) | enum | ui | — |
 | [`Post`](render.md#type-Post) | handle | render | — |
 | [`Post()`](render.md#column-Post) | column kind | render | — |
@@ -2292,6 +2310,7 @@ Field units the docs and Tune use.
 | [`Viewport`](ui.md#type-Viewport) | struct | ui | — |
 | [`VisualState`](ui.md#type-VisualState) | struct | ui | — |
 | [`VolumetricFog`](render.md#type-VolumetricFog) | enum | render | — |
+| [`WalkGoalDesc`](motion.md#type-WalkGoalDesc) | desc struct | motion | — |
 | [`WalletEntry`](ui.md#type-WalletEntry) | desc struct | ui | — |
 | [`WaypointDesc`](ui.md#type-WaypointDesc) | desc struct | ui | — |
 | [`WaypointKind`](ui.md#type-WaypointKind) | enum | ui | — |

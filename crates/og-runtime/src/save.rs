@@ -800,6 +800,7 @@ pub(crate) fn rewind(
     // The renderer snaps to the corrected world: nothing to blend from.
     if let Ok(mut rs) = eng.render.try_borrow_mut() {
         rs.interp.forget();
+        rs.motion.forget();
     }
     {
         let mut st = eng.state.borrow_mut();
@@ -891,6 +892,7 @@ fn apply_keeping(
     // Nothing for a frame to blend from until the next tick.
     if let Ok(mut rs) = eng.render.try_borrow_mut() {
         rs.interp.forget();
+        rs.motion.forget();
     }
     let kept: Vec<(og_ecs::SchemaId, Vec<u8>)> = SESSION
         .iter()

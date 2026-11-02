@@ -19,7 +19,8 @@
 # exists), then @origingame/engine itself (the TypeScript API, the runtime,
 # the web hosts in dist/web, dist/web-publish and dist/web-publish-2d (each
 # publish directory with its profile's lanes variant), the player shell, the Basis
-# transcoder, the knowledge in knowledge/, the built-in UI styles in styles/; no native code: npm installs the platform package through
+# transcoder, the knowledge in knowledge/, the built-in UI styles in styles/,
+# og.motion's weights in motion/ (35 MB, f16); no native code: npm installs the platform package through
 # optionalDependencies). Prints each tarball with its size and sha256.
 set -eu
 here="$(cd "$(dirname "$0")/.." && pwd)"
@@ -110,6 +111,17 @@ for pack in "$here"/../../templates/styles/*/; do
   find "$pack" -maxdepth 1 -type f ! -name '.*' -exec cp {} "$here/styles/$name/" \;
 done
 [ -f "$here/styles/fantasy/style.ogt" ] || { echo "pack: templates/styles was not copied into styles/" >&2; exit 1; }
+# og.motion's weights (docs/design.md §2.7) ship in motion/, read by og's
+# cook (og-cook's motion.rs) for a project that uses og.motion: the file
+# OG_MOTION_MODEL names (og-motion-train's weights/engine/model.safetensors),
+# else the copy already in motion/, checked against motion.json's pin; the
+# copy is ignored by Git.
+model="${OG_MOTION_MODEL:-$here/motion/model.safetensors}"
+want="$(bun -e 'console.log(require(process.argv[1]).sha256)' "$here/motion.json")"
+[ -f "$model" ] || { echo "pack: no og.motion model at $model; set OG_MOTION_MODEL to og-motion-train's weights/engine/model.safetensors" >&2; exit 1; }
+[ "$(sum "$model")" = "$want" ] || { echo "pack: $model is not the model motion.json pins (sha256 $want)" >&2; exit 1; }
+mkdir -p "$here/motion"
+[ "$model" -ef "$here/motion/model.safetensors" ] || cp "$model" "$here/motion/model.safetensors"
 # The main package: its files list leaves native/ and the test pages out.
 (cd "$here" && bun pm pack --destination "$out" --quiet --ignore-scripts >/dev/null)
 rm -rf "$out/stage"

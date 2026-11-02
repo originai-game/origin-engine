@@ -1,4 +1,4 @@
-// The phase 2 and depth modules' namespaces (IDL `terrain`, `stream`, `path`, `timeline`): thin calls into the host's binding symbols,
+// The phase 2 and depth modules' namespaces (IDL `terrain`, `stream`, `path`, `timeline`, `motion`): thin calls into the host's binding symbols,
 // typed by the generated declarations through index.ts.
 
 import type { HostAbi } from "./generated/abi.ts";
@@ -59,4 +59,16 @@ export const timeline = Object.freeze({
   pause: (world: W, entity: number) => parse(abi().og_timeline_pause(world.id, entity)),
   seek: (world: W, entity: number, time: number) => parse(abi().og_timeline_seek(world.id, entity, time)),
   stop: (world: W, entity: number) => parse(abi().og_timeline_stop(world.id, entity)),
+});
+
+// og.motion (IDL `motion`): goals for humanoids; the model draws them.
+export const motion = Object.freeze({
+  pose: (world: W, entity: number, desc?: unknown) => parse(abi().og_motion_pose(world.id, entity, json(desc))),
+  place: (world: W, entity: number, desc?: unknown) => parse(abi().og_motion_place(world.id, entity, json(desc))),
+  face: (world: W, entity: number, desc?: unknown) => parse(abi().og_motion_face(world.id, entity, json(desc))),
+  walkTo: (world: W, entity: number, desc?: unknown) => parse(abi().og_motion_walk_to(world.id, entity, json(desc))),
+  clear: (world: W, entity: number) => parse(abi().og_motion_clear(world.id, entity)),
+  status: (world: W, entity: number) => parse(abi().og_motion_status(world.id, entity)),
+  capabilities: (world: W) => parse(abi().og_motion_capabilities(world.id)),
+  poses: () => parse(abi().og_motion_poses()),
 });

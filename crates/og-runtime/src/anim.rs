@@ -264,7 +264,7 @@ fn handle(desc: &Value, key: &str) -> u64 {
 }
 
 /// The humanoid map of skeleton `h` by rig `rig` (0: detected).
-fn humanoid_of(
+pub(crate) fn humanoid_of(
     eng: &Engine,
     sys: &AnimationSystem,
     h: u64,

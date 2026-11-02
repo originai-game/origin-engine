@@ -24,7 +24,8 @@
 //   basis/                     Binomial's Basis transcoder and its licence
 //   cooked/                    the project's cooked bundle: the first group (everything no streaming
 //                              group holds, the proxies included) and each streaming group's pack,
-//                              cooked/stream/<name>.ogb; a grouped output's own file is left out
+//                              cooked/stream/<name>.ogb; a grouped output's own file is left out;
+//                              og.motion's model, cooked/motion/model.ogb, fetched on first use
 //   icons/                     the project's icon, or the brand tile at 192 and 512 px
 //   og-build.json              the build manifest (the Player's contract; shape in docs/web-export.md)
 //   _headers                   COOP/COEP/CORP and caching for static hosts (Netlify/Cloudflare Pages format)
@@ -328,7 +329,7 @@ export function downloadsOf(files: readonly SizeRow[]): Downloads {
   const sum = (test: (path: string) => boolean): DownloadSum =>
     rows.filter((f) => test(f.path)).reduce((a, f) => ({ files: a.files + 1, bytes: a.bytes + f.bytes, compressed: a.compressed + f.compressed }), { files: 0, bytes: 0, compressed: 0 });
   const add = (...parts: DownloadSum[]): DownloadSum => parts.reduce((a, b) => ({ files: a.files + b.files, bytes: a.bytes + b.bytes, compressed: a.compressed + b.compressed }), { files: 0, bytes: 0, compressed: 0 });
-  const isPack = (p: string) => /^cooked\/stream\/[^/]+\.ogb$/.test(p);
+  const isPack = (p: string) => /^cooked\/stream\/[^/]+\.ogb$/.test(p) || p === MOTION_MODEL;
   const isVideo = (p: string) => p.startsWith("cooked/") && VIDEO_STREAM.test(p);
   const cooked = sum((p) => p.startsWith("cooked/") && !isPack(p) && !SOUND_CHUNK.test(p) && !isVideo(p));
   const shell = sum((p) => /^(index\.html|play\.js|game\.js)$/.test(p));
@@ -678,6 +679,8 @@ export function aliasesOf(paths: readonly string[]): Set<string> {
   const plain = new Set(paths.filter((p) => plainOf(p) !== p).map(plainOf));
   return new Set(paths.filter((p) => plain.has(p)));
 }
+/** og.motion's model (og cook writes it for a project that uses og.motion): fetched the first time an agent is drawn, never at boot, cached then. */
+const MOTION_MODEL = "cooked/motion/model.ogb";
 /** A chunk of a sound cooked in chunks: fetched as its playhead nears it, cached then. */
 const SOUND_CHUNK = /^cooked\/.*\.chunk\d+\.ogb$/;
 
@@ -771,6 +774,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
   const split = streamGroupsOf(readFileSync(join(cooked, ".cook.ogt"), "utf8"));
   for (const f of split.grouped) rmSync(join(out, "cooked", f), { force: true });
   const packs = new Set(split.groups.map((g) => `cooked/${g.file}`));
+  if (existsSync(join(out, MOTION_MODEL))) packs.add(MOTION_MODEL);
 
   // Icons: the project's, or the brand tile (shell/brand, from the platform's packages/brand).
   mkdirSync(join(out, "icons"), { recursive: true });

@@ -1,0 +1,728 @@
+//! `og.motion` (docs/design.md §2.7, "Motion generation"): goals for
+//! humanoids, kept and finished by the simulation, and the engine's motion
+//! model drawing them ([`present`]).
+//!
+//! Two halves, one rule (§2.4): the simulation never reads the model.
+//!
+//! - **The goals** are world state: per og.MotionAgent entity its queue,
+//!   its current goal and how long it has been current, in the `og.motion`
+//!   state block (snapshots, restores and the world hash carry it). The
+//!   `og.motion` system finishes goals by fixed rules and, with
+//!   `MotionAgent.drive`, moves og.Transform to them with fixed math
+//!   (walkTo at its speed in a straight line, place over its duration,
+//!   turns at `turnSpeed`). og.motion.status answers from here alone.
+//! - **The pose** is presentation ([`present`]): before each frame is
+//!   drawn, the model (on the renderer's device) is asked for motion that
+//!   reaches where the goals will have the character, a batch for every
+//!   agent at once, and the frame's generated pose is re-rooted onto
+//!   og.Transform, retargeted to the agent's rig, its feet planted, and
+//!   drawn in place of og.anim's joint palette. Nothing writes the world.
+//!
+//! og.MotionAgent is registered lazily (`super::lazy`): a world that never
+//! names it has neither the system nor the state block, so its saves and
+//! hash are what they were before og.motion existed.
+
+pub(crate) mod present;
+
+use super::codec::{Layout, RecordKind};
+use super::engine::{Engine, engine};
+use super::{ok, ok_void, parse, refuse};
+use glam::{Quat, Vec3};
+use og_core::math::{atan2, sin_cos};
+use og_core::{Error, ErrorKind};
+use og_ecs::{Entity, QueryDesc, SchemaId, StateBlock, SystemContext, SystemDesc, World};
+use og_motion::library::{POSES, index as pose_index};
+use serde_json::{Value, json};
+use std::any::Any;
+use std::cell::RefCell;
+use std::collections::{BTreeMap, VecDeque};
+use std::sync::{Arc, Mutex, MutexGuard};
+
+pub(crate) const SYSTEM: &str = "og.motion";
+pub(crate) const AGENT: &str = "og.MotionAgent";
+/// Below this speed a walkTo walks, above it runs (WalkGoalDesc.speed).
+pub(crate) const RUN_SPEED: f32 = 2.5;
+/// A walkTo ends within this distance of its target.
+const ARRIVED: f32 = 1e-3;
+
+/// MotionGoalKind's variants, in the IDL's order.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Kind {
+    Pose = 1,
+    Place = 2,
+    Face = 3,
+    WalkTo = 4,
+}
+
+const KIND_NAMES: [&str; 5] = ["none", "pose", "place", "face", "walkTo"];
+
+impl Kind {
+    fn from_u32(v: u32) -> Option<Kind> {
+        Some(match v {
+            1 => Kind::Pose,
+            2 => Kind::Place,
+            3 => Kind::Face,
+            4 => Kind::WalkTo,
+            _ => return None,
+        })
+    }
+}
+
+/// A goal as the game queued it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Goal {
+    pub kind: Kind,
+    /// Index into [`POSES`].
+    pub pose: u32,
+    pub target: Vec3,
+    pub heading: f32,
+    pub duration: f32,
+    pub speed: f32,
+}
+
+/// The goal being carried out.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Current {
+    pub goal: Goal,
+    pub elapsed: f32,
+    /// Where the Transform was, and its heading, when the goal started.
+    pub start: Vec3,
+    pub start_heading: f32,
+}
+
+/// One agent's goals.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub(crate) struct Agent {
+    pub queue: VecDeque<Goal>,
+    pub current: Option<Current>,
+    pub completed: u32,
+    /// The pose the character holds with no goal: the last finished goal's.
+    pub hold: u32,
+    /// Bumped whenever the current goal changes (a start, a finish, a clear):
+    /// what the presenter watches to follow a new goal.
+    pub serial: u32,
+}
+
+/// The `og.motion` state: agents by entity bits (ordered, so saves are).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub(crate) struct Goals {
+    pub agents: BTreeMap<u64, Agent>,
+}
+
+thread_local! {
+    static SHARED: RefCell<og_core::IdMap<u32, Arc<Mutex<Goals>>>> = const { RefCell::new(og_core::IdMap::new()) };
+}
+
+pub(crate) fn shared(engine: u32) -> Arc<Mutex<Goals>> {
+    SHARED.with(|s| s.borrow_mut().entry(engine).or_default().clone())
+}
+
+pub(crate) fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
+    m.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+fn invalid(m: impl Into<String>) -> Error {
+    Error::new(ErrorKind::Invalid, m.into())
+}
+
+// ── headings and the mover ────────────────────────────────────────────────────
+
+/// A rotation's heading about +Y: 0 looks down +Z, π/2 down +X.
+pub(crate) fn heading_of(q: Quat) -> f32 {
+    let f = q * Vec3::Z;
+    atan2(f.x, f.z)
+}
+
+/// The rotation of heading `h`.
+pub(crate) fn rotation_of(h: f32) -> Quat {
+    let (s, c) = sin_cos(h * 0.5);
+    Quat::from_xyzw(0.0, s, 0.0, c)
+}
+
+/// The signed angle from `a` to `b`, in -π..π.
+fn wrap(d: f32) -> f32 {
+    let (s, c) = sin_cos(d);
+    atan2(s, c)
+}
+
+/// `from` turned towards `to` by at most `step`.
+fn turn(from: f32, to: f32, step: f32) -> f32 {
+    let d = wrap(to - from);
+    if d.abs() <= step {
+        to
+    } else {
+        from + step * d.signum()
+    }
+}
+
+/// What the mover reads of an agent's og.MotionAgent.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Settings {
+    pub drive: bool,
+    pub turn_speed: f32,
+    pub lookahead: f32,
+    pub rig: u64,
+}
+
+impl Settings {
+    pub(crate) fn of(v: &Value) -> Settings {
+        Settings {
+            drive: v["drive"].as_bool().unwrap_or(false),
+            turn_speed: v["turnSpeed"].as_f64().unwrap_or(6.0) as f32,
+            lookahead: v["lookahead"].as_f64().unwrap_or(0.6) as f32,
+            rig: v["rig"].as_f64().map_or(0, |x| x as u64),
+        }
+    }
+}
+
+/// Advances `agent` by `dt` seconds: starts the next goal when there is
+/// none, carries the current one out (moving `position` and `heading` when
+/// `drive`), and finishes it by its rule. Fixed math only: the simulation's
+/// mover, which the presenter also runs ahead of time to place the model's
+/// goals.
+pub(crate) fn advance(
+    agent: &mut Agent,
+    s: &Settings,
+    position: &mut Vec3,
+    heading: &mut f32,
+    dt: f32,
+) {
+    if agent.current.is_none() {
+        let Some(goal) = agent.queue.pop_front() else {
+            return;
+        };
+        agent.current = Some(Current {
+            goal,
+            elapsed: 0.0,
+            start: *position,
+            start_heading: *heading,
+        });
+        agent.serial = agent.serial.wrapping_add(1);
+    }
+    let Some(cur) = agent.current.as_mut() else {
+        return;
+    };
+    cur.elapsed += dt;
+    let g = cur.goal;
+    let step = s.turn_speed * dt;
+    let done = match g.kind {
+        Kind::Pose => cur.elapsed >= g.duration,
+        Kind::Face => {
+            if s.drive {
+                *heading = turn(*heading, g.heading, step);
+            }
+            cur.elapsed >= g.duration && (!s.drive || *heading == g.heading)
+        }
+        Kind::Place => {
+            if s.drive {
+                let k = if g.duration > 0.0 {
+                    (cur.elapsed / g.duration).min(1.0)
+                } else {
+                    1.0
+                };
+                let to = Vec3::new(g.target.x, position.y, g.target.z);
+                let from = Vec3::new(cur.start.x, position.y, cur.start.z);
+                *position = from + (to - from) * k;
+                *heading = turn(*heading, g.heading, step);
+            }
+            cur.elapsed >= g.duration && (!s.drive || *heading == g.heading)
+        }
+        Kind::WalkTo => {
+            let to = Vec3::new(g.target.x - position.x, 0.0, g.target.z - position.z);
+            let left = to.length();
+            if left > ARRIVED {
+                *heading = turn(*heading, atan2(to.x, to.z), step);
+                let d = (g.speed * dt).min(left);
+                *position += to * (d / left);
+            }
+            let to = Vec3::new(g.target.x - position.x, 0.0, g.target.z - position.z);
+            to.length() <= ARRIVED
+        }
+    };
+    if done {
+        if g.kind == Kind::WalkTo {
+            position.x = g.target.x;
+            position.z = g.target.z;
+        }
+        if g.kind != Kind::Face {
+            agent.hold = g.pose;
+        }
+        agent.current = None;
+        agent.completed = agent.completed.wrapping_add(1);
+        agent.serial = agent.serial.wrapping_add(1);
+    }
+}
+
+// ── the system ───────────────────────────────────────────────────────────────
+
+/// Registers og.MotionAgent's module on a world that names it (`super::lazy`):
+/// the `og.motion` system, after every system scheduled so far, and its
+/// state block.
+pub(crate) fn enable(world: &mut World, engine_id: u32) -> og_core::Result<()> {
+    if world.systems().contains(&SYSTEM) {
+        return Ok(());
+    }
+    let layout = |world: &World, n: &str| -> og_core::Result<(SchemaId, Layout)> {
+        let id = world.id_by_name(n)?;
+        Ok((
+            id,
+            Layout::from_schema(world.schema(id)?, RecordKind::Component),
+        ))
+    };
+    let agent = layout(world, AGENT)?;
+    let transform = layout(world, "og.Transform")?;
+    let sh = shared(engine_id);
+    *lock(&sh) = Goals::default();
+    let state = sh.clone();
+    world.add_system(
+        SystemDesc {
+            name: SYSTEM.into(),
+            reads: vec![AGENT.to_string()],
+            writes: vec!["og.Transform".to_string()],
+            queries: vec![QueryDesc {
+                read: vec![AGENT.to_string()],
+                write: vec!["og.Transform".to_string()],
+                ..QueryDesc::default()
+            }],
+            ..Default::default()
+        },
+        move |ctx| system(ctx, &state, &agent, &transform),
+    )?;
+    world.add_state_block(SYSTEM, Box::new(Block(sh)))
+}
+
+fn system(
+    ctx: &mut SystemContext<'_>,
+    state: &Mutex<Goals>,
+    agent: &(SchemaId, Layout),
+    transform: &(SchemaId, Layout),
+) -> og_core::Result<()> {
+    let dt = ctx.scaled_dt();
+    let mut rows = Vec::new();
+    for a in ctx.query(0)? {
+        rows.extend_from_slice(a.entities());
+    }
+    let mut goals = lock(state);
+    // Agents whose entity lost og.MotionAgent (or died): forgotten.
+    goals
+        .agents
+        .retain(|k, _| rows.iter().any(|e| e.to_bits() == *k));
+    for e in rows {
+        let Some(a) = goals.agents.get_mut(&e.to_bits()) else {
+            continue;
+        };
+        let s = Settings::of(&agent.1.decode(&ctx.get_bytes(e, agent.0)?));
+        let tb = ctx.get_bytes(e, transform.0)?;
+        let mut t = transform.1.decode(&tb);
+        let (mut position, q) = transform_of(&t);
+        let mut heading = heading_of(q);
+        let (p0, h0) = (position, heading);
+        advance(a, &s, &mut position, &mut heading, dt);
+        if s.drive && (position != p0 || heading != h0) {
+            t["position"] = json!({ "x": position.x, "y": position.y, "z": position.z });
+            let r = rotation_of(heading);
+            t["quaternion"] = json!({ "x": r.x, "y": r.y, "z": r.z, "w": r.w });
+            let tb = transform.1.encode(Some(&tb), Some(&t)).map_err(invalid)?;
+            ctx.set_bytes(e, transform.0, &tb)?;
+        }
+    }
+    Ok(())
+}
+
+/// og.Transform's position and rotation.
+pub(crate) fn transform_of(t: &Value) -> (Vec3, Quat) {
+    let n = |v: &Value, k: &str, d: f64| v[k].as_f64().unwrap_or(d) as f32;
+    let p = &t["position"];
+    let q = &t["quaternion"];
+    (
+        Vec3::new(n(p, "x", 0.0), n(p, "y", 0.0), n(p, "z", 0.0)),
+        Quat::from_xyzw(
+            n(q, "x", 0.0),
+            n(q, "y", 0.0),
+            n(q, "z", 0.0),
+            n(q, "w", 1.0),
+        )
+        .normalize(),
+    )
+}
+
+// ── the state block ──────────────────────────────────────────────────────────
+
+struct Block(Arc<Mutex<Goals>>);
+
+fn save(g: &Goals, out: &mut Vec<u8>) {
+    let u32_ = |out: &mut Vec<u8>, v: u32| out.extend_from_slice(&v.to_le_bytes());
+    let f32_ = |out: &mut Vec<u8>, v: f32| out.extend_from_slice(&v.to_le_bytes());
+    let goal = |out: &mut Vec<u8>, g: &Goal| {
+        u32_(out, g.kind as u32);
+        u32_(out, g.pose);
+        for v in [
+            g.target.x, g.target.y, g.target.z, g.heading, g.duration, g.speed,
+        ] {
+            f32_(out, v);
+        }
+    };
+    u32_(out, g.agents.len() as u32);
+    for (e, a) in &g.agents {
+        out.extend_from_slice(&e.to_le_bytes());
+        for v in [a.completed, a.hold, a.serial, a.queue.len() as u32] {
+            u32_(out, v);
+        }
+        for q in &a.queue {
+            goal(out, q);
+        }
+        u32_(out, a.current.is_some() as u32);
+        if let Some(c) = &a.current {
+            goal(out, &c.goal);
+            for v in [c.elapsed, c.start.x, c.start.y, c.start.z, c.start_heading] {
+                f32_(out, v);
+            }
+        }
+    }
+}
+
+fn load(bytes: &[u8]) -> og_core::Result<Goals> {
+    let mut r = Reader(bytes);
+    let mut g = Goals::default();
+    for _ in 0..r.u32()? {
+        let e = r.u64()?;
+        let mut a = Agent {
+            completed: r.u32()?,
+            hold: r.u32()?,
+            serial: r.u32()?,
+            ..Agent::default()
+        };
+        for _ in 0..r.u32()? {
+            a.queue.push_back(r.goal()?);
+        }
+        if r.u32()? != 0 {
+            let goal = r.goal()?;
+            a.current = Some(Current {
+                goal,
+                elapsed: r.f32()?,
+                start: Vec3::new(r.f32()?, r.f32()?, r.f32()?),
+                start_heading: r.f32()?,
+            });
+        }
+        g.agents.insert(e, a);
+    }
+    if !r.0.is_empty() {
+        return Err(invalid("the og.motion state has bytes left over"));
+    }
+    Ok(g)
+}
+
+struct Reader<'a>(&'a [u8]);
+
+impl Reader<'_> {
+    fn take<const N: usize>(&mut self) -> og_core::Result<[u8; N]> {
+        let (a, b) = self
+            .0
+            .split_first_chunk::<N>()
+            .ok_or_else(|| invalid("the og.motion state is cut short"))?;
+        self.0 = b;
+        Ok(*a)
+    }
+    fn u32(&mut self) -> og_core::Result<u32> {
+        self.take::<4>().map(u32::from_le_bytes)
+    }
+    fn u64(&mut self) -> og_core::Result<u64> {
+        self.take::<8>().map(u64::from_le_bytes)
+    }
+    fn f32(&mut self) -> og_core::Result<f32> {
+        self.take::<4>().map(f32::from_le_bytes)
+    }
+    fn goal(&mut self) -> og_core::Result<Goal> {
+        let kind =
+            Kind::from_u32(self.u32()?).ok_or_else(|| invalid("an unknown og.motion goal"))?;
+        let pose = self.u32()?;
+        if pose as usize >= POSES.len() {
+            return Err(invalid("an og.motion goal's pose is past the library"));
+        }
+        Ok(Goal {
+            kind,
+            pose,
+            target: Vec3::new(self.f32()?, self.f32()?, self.f32()?),
+            heading: self.f32()?,
+            duration: self.f32()?,
+            speed: self.f32()?,
+        })
+    }
+}
+
+impl StateBlock for Block {
+    fn save(&self, out: &mut Vec<u8>) {
+        save(&lock(&self.0), out);
+    }
+    fn decode(&self, bytes: &[u8]) -> og_core::Result<Box<dyn Any + Send>> {
+        Ok(Box::new(load(bytes)?))
+    }
+    fn apply(&mut self, decoded: Option<Box<dyn Any + Send>>) {
+        *lock(&self.0) = decoded
+            .and_then(|d| d.downcast::<Goals>().ok())
+            .map(|b| *b)
+            .unwrap_or_default();
+    }
+}
+
+// ── the API ──────────────────────────────────────────────────────────────────
+
+fn wire_void(r: Result<(), String>) -> String {
+    match r {
+        Ok(()) => ok_void(),
+        Err(e) => refuse(e),
+    }
+}
+
+/// The entity's og.MotionAgent settings, refused for an entity without one.
+fn agent_of(eng: &Engine, e: Entity) -> Result<Settings, String> {
+    let w = eng.world()?;
+    if !w.is_alive(e) {
+        return Err(format!("entity {} is not alive", e.to_bits()));
+    }
+    let no = || format!("entity {} has no og.MotionAgent", e.to_bits());
+    let id = w.id_by_name(AGENT).map_err(|_| no())?;
+    let bytes = w.get_bytes(e, id).map_err(|_| no())?;
+    let layout = eng
+        .state
+        .borrow()
+        .layouts
+        .get(AGENT)
+        .cloned()
+        .ok_or("og.MotionAgent has no layout")?;
+    Ok(Settings::of(&layout.decode(&bytes)))
+}
+
+fn pose_named(desc: &Value) -> Result<u32, String> {
+    let name = desc["pose"]
+        .as_str()
+        .filter(|s| !s.is_empty())
+        .unwrap_or("idle");
+    pose_index(name).map(|i| i as u32).ok_or_else(|| {
+        format!(
+            "'{name}' is not a pose of the motion library: {}",
+            POSES.join(", ")
+        )
+    })
+}
+
+fn finite(v: &Value, what: &str) -> Result<Vec3, String> {
+    let n = |k: &str| v[k].as_f64().unwrap_or(0.0) as f32;
+    let p = Vec3::new(n("x"), n("y"), n("z"));
+    if p.is_finite() {
+        Ok(p)
+    } else {
+        Err(format!("{what} is not finite"))
+    }
+}
+
+fn number(desc: &Value, key: &str, default: f32) -> f32 {
+    desc[key].as_f64().map_or(default, |v| v as f32)
+}
+
+/// Queues a goal made from the parsed desc (and the agent's settings).
+fn queue(
+    world: u32,
+    entity: f64,
+    desc: Option<String>,
+    make: impl FnOnce(&Value, &Settings) -> Result<Goal, String>,
+) -> String {
+    wire_void((|| {
+        let eng = engine(world)?;
+        let e = Entity::from_bits(entity as u64);
+        let s = agent_of(&eng, e)?;
+        let desc = parse(desc.as_deref())?;
+        let goal = make(&desc, &s)?;
+        if !goal.heading.is_finite() || !goal.duration.is_finite() || goal.duration < 0.0 {
+            return Err(
+                "the goal's heading or duration is not a finite, non-negative number".into(),
+            );
+        }
+        lock(&shared(world))
+            .agents
+            .entry(e.to_bits())
+            .or_default()
+            .queue
+            .push_back(goal);
+        Ok(())
+    })())
+}
+
+fn need_drive(s: &Settings, what: &str) -> Result<(), String> {
+    if s.drive {
+        Ok(())
+    } else {
+        Err(format!(
+            "og.motion.{what} moves the character, and its og.MotionAgent.drive is off: turn drive on, or move og.Transform yourself and queue og.motion.pose"
+        ))
+    }
+}
+
+pub fn og_motion_pose(world: u32, entity: f64, desc: Option<String>) -> String {
+    queue(world, entity, desc, |d, _| {
+        Ok(Goal {
+            kind: Kind::Pose,
+            pose: pose_named(d)?,
+            target: Vec3::ZERO,
+            heading: 0.0,
+            duration: number(d, "duration", 1.5),
+            speed: 0.0,
+        })
+    })
+}
+
+pub fn og_motion_place(world: u32, entity: f64, desc: Option<String>) -> String {
+    queue(world, entity, desc, |d, s| {
+        need_drive(s, "place")?;
+        Ok(Goal {
+            kind: Kind::Place,
+            pose: pose_named(d)?,
+            target: finite(&d["position"], "desc.position")?,
+            heading: number(d, "heading", 0.0),
+            duration: number(d, "duration", 1.5),
+            speed: 0.0,
+        })
+    })
+}
+
+pub fn og_motion_face(world: u32, entity: f64, desc: Option<String>) -> String {
+    queue(world, entity, desc, |d, s| {
+        need_drive(s, "face")?;
+        Ok(Goal {
+            kind: Kind::Face,
+            pose: 0,
+            target: Vec3::ZERO,
+            heading: number(d, "heading", 0.0),
+            duration: number(d, "duration", 0.8),
+            speed: 0.0,
+        })
+    })
+}
+
+pub fn og_motion_walk_to(world: u32, entity: f64, desc: Option<String>) -> String {
+    queue(world, entity, desc, |d, s| {
+        need_drive(s, "walkTo")?;
+        let speed = number(d, "speed", 1.4);
+        if !(speed.is_finite() && speed > 0.0) {
+            return Err(format!("desc.speed {speed} is not a positive speed"));
+        }
+        Ok(Goal {
+            kind: Kind::WalkTo,
+            pose: pose_named(d)?,
+            target: finite(&d["position"], "desc.position")?,
+            heading: 0.0,
+            duration: 0.0,
+            speed: speed.min(10.0),
+        })
+    })
+}
+
+pub fn og_motion_clear(world: u32, entity: f64) -> String {
+    wire_void((|| {
+        let eng = engine(world)?;
+        let e = Entity::from_bits(entity as u64);
+        agent_of(&eng, e)?;
+        if let Some(a) = lock(&shared(world)).agents.get_mut(&e.to_bits()) {
+            a.queue.clear();
+            if let Some(c) = a.current.take() {
+                if c.goal.kind != Kind::Face {
+                    a.hold = c.goal.pose;
+                }
+                a.serial = a.serial.wrapping_add(1);
+            }
+        }
+        Ok(())
+    })())
+}
+
+pub fn og_motion_status(world: u32, entity: f64) -> String {
+    let r = (|| {
+        let eng = engine(world)?;
+        let e = Entity::from_bits(entity as u64);
+        agent_of(&eng, e)?;
+        let goals = shared(world);
+        let goals = lock(&goals);
+        let a = goals.agents.get(&e.to_bits()).cloned().unwrap_or_default();
+        let v3 = |p: Vec3| json!({ "x": p.x, "y": p.y, "z": p.z });
+        Ok::<_, String>(match a.current {
+            None => json!({
+                "goal": "none", "pose": "", "target": v3(Vec3::ZERO), "heading": 0.0,
+                "elapsed": 0.0, "queued": a.queue.len(), "completed": a.completed,
+            }),
+            Some(c) => {
+                let g = c.goal;
+                let (target, heading) = match g.kind {
+                    Kind::Pose => (c.start, c.start_heading),
+                    Kind::Face => (c.start, g.heading),
+                    Kind::Place => (g.target, g.heading),
+                    Kind::WalkTo => {
+                        let d = g.target - c.start;
+                        (g.target, atan2(d.x, d.z))
+                    }
+                };
+                json!({
+                    "goal": KIND_NAMES[g.kind as usize],
+                    "pose": if g.kind == Kind::Face { "" } else { POSES[g.pose as usize] },
+                    "target": v3(target),
+                    "heading": heading,
+                    "elapsed": c.elapsed,
+                    "queued": a.queue.len(),
+                    "completed": a.completed,
+                })
+            }
+        })
+    })();
+    match r {
+        Ok(v) => ok(v),
+        Err(e) => refuse(e),
+    }
+}
+
+pub fn og_motion_capabilities(world: u32) -> String {
+    match engine(world) {
+        Ok(eng) => present::capabilities(&eng).to_string(),
+        Err(e) => json!({ "backend": "none", "reason": e, "modelBytes": 0 }).to_string(),
+    }
+}
+
+pub fn og_motion_poses() -> String {
+    json!(POSES).to_string()
+}
+
+/// The probe's `dump_motion`: every agent's goals (the simulation's) and
+/// what the model is doing for it (the presenter's: frames generated
+/// ahead, the batches, their timings).
+pub(crate) fn dump(engine_id: u32) -> Value {
+    let goals = lock(&shared(engine_id)).clone();
+    let agents: Vec<Value> = goals
+        .agents
+        .iter()
+        .map(|(e, a)| {
+            json!({
+                "entity": *e as f64,
+                "goal": a.current.map_or("none", |c| KIND_NAMES[c.goal.kind as usize]),
+                "elapsed": a.current.map_or(0.0, |c| c.elapsed),
+                "queued": a.queue.len(),
+                "completed": a.completed,
+                "hold": POSES[a.hold as usize],
+            })
+        })
+        .collect();
+    let model = match engine(engine_id) {
+        Ok(eng) => present::dump(&eng),
+        Err(e) => json!({ "error": e }),
+    };
+    json!({ "agents": agents, "model": model })
+}
+
+pub(crate) fn register_commands(probe: &mut og_probe::Probe, engine: u32) {
+    let _ = probe.register_dump(
+        "dump_motion",
+        og_probe::CommandDesc {
+            usage: "dump_motion[:path]".into(),
+            doc: "og.motion: every agent's goals as the simulation keeps them, and the motion model's side (presentation only): whether its weights are resident and on which backend, each agent's frames generated ahead and shown, the batches run and their GPU times".into(),
+        },
+        0,
+        move |_world, _args| Ok(dump(engine)),
+    );
+}

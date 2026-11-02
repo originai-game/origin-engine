@@ -1,4 +1,4 @@
-//! Phase 2's modules' trait implementations (TerrainApi, VideoApi, StreamApi, AudioApi, PathApi, TimelineApi): every member is
+//! Phase 2's modules' trait implementations (TerrainApi, VideoApi, StreamApi, AudioApi, PathApi, TimelineApi, MotionApi): every member is
 //! the host-neutral runtime's.
 
 use crate::NodeHost;
@@ -105,5 +105,32 @@ impl TimelineApi for NodeHost {
     }
     fn og_timeline_stop(&self, world: u32, entity: f64) -> String {
         rt::og_timeline_stop(world, entity)
+    }
+}
+
+impl MotionApi for NodeHost {
+    fn og_motion_pose(&self, world: u32, entity: f64, desc: Option<String>) -> String {
+        rt::og_motion_pose(world, entity, desc)
+    }
+    fn og_motion_place(&self, world: u32, entity: f64, desc: Option<String>) -> String {
+        rt::og_motion_place(world, entity, desc)
+    }
+    fn og_motion_face(&self, world: u32, entity: f64, desc: Option<String>) -> String {
+        rt::og_motion_face(world, entity, desc)
+    }
+    fn og_motion_walk_to(&self, world: u32, entity: f64, desc: Option<String>) -> String {
+        rt::og_motion_walk_to(world, entity, desc)
+    }
+    fn og_motion_clear(&self, world: u32, entity: f64) -> String {
+        rt::og_motion_clear(world, entity)
+    }
+    fn og_motion_status(&self, world: u32, entity: f64) -> String {
+        rt::og_motion_status(world, entity)
+    }
+    fn og_motion_capabilities(&self, world: u32) -> String {
+        rt::og_motion_capabilities(world)
+    }
+    fn og_motion_poses(&self) -> String {
+        rt::og_motion_poses()
     }
 }

@@ -49,6 +49,8 @@
     "vendor",
     "knowledge",
     "styles",
+    "motion",
+    "motion.json",
     "changelog.json"
   ],
   "engines": {

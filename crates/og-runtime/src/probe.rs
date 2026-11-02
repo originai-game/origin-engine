@@ -65,6 +65,7 @@ impl Capture for RuntimeCapture {
         if let Ok(mut rs) = self.render.try_borrow_mut() {
             // Nothing for a frame to blend from until the next tick.
             rs.interp.forget();
+            rs.motion.forget();
             if let Some(b) = rs.backend.as_mut() {
                 b.restore_state(state);
             }
@@ -263,6 +264,7 @@ pub(crate) const MODULE_ACTIONS: &[&str] = &[
     "dump_ai",
     "dump_desync",
     "dump_lanes",
+    "dump_motion",
     "dump_nav",
     "dump_platform",
     "dump_pulse",
@@ -499,6 +501,7 @@ pub(crate) fn after_reload(eng: &Engine, swapped: bool) {
     super::e6::after_reload(eng.id, swapped);
     if swapped && let Ok(mut rs) = eng.render.try_borrow_mut() {
         rs.interp.forget();
+        rs.motion.forget();
     }
     let Some(a) = eng.state.borrow_mut().reloaded.take() else {
         return;

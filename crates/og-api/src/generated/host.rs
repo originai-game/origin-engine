@@ -1357,10 +1357,30 @@ pub trait NetApi: Wire {
     fn og_net_hash(&self, world: u32) -> String;
 }
 
-/// Every trait: a host is a type that implements all of them.
-pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + PathApi + TimelineApi + NetApi {}
+/// `motion`: packages/knowledge/wiki/motion.md.
+pub trait MotionApi: Wire {
+    /// `og.motion.pose`
+    fn og_motion_pose(&self, world: u32, entity: f64, desc: Option<String>) -> String;
+    /// `og.motion.place`
+    fn og_motion_place(&self, world: u32, entity: f64, desc: Option<String>) -> String;
+    /// `og.motion.face`
+    fn og_motion_face(&self, world: u32, entity: f64, desc: Option<String>) -> String;
+    /// `og.motion.walkTo`
+    fn og_motion_walk_to(&self, world: u32, entity: f64, desc: Option<String>) -> String;
+    /// `og.motion.clear`
+    fn og_motion_clear(&self, world: u32, entity: f64) -> String;
+    /// `og.motion.status`
+    fn og_motion_status(&self, world: u32, entity: f64) -> String;
+    /// `og.motion.capabilities`
+    fn og_motion_capabilities(&self, world: u32) -> String;
+    /// `og.motion.poses`
+    fn og_motion_poses(&self) -> String;
+}
 
-impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + PathApi + TimelineApi + NetApi> Host for T {}
+/// Every trait: a host is a type that implements all of them.
+pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + PathApi + TimelineApi + NetApi + MotionApi {}
+
+impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + PathApi + TimelineApi + NetApi + MotionApi> Host for T {}
 
 /// Every binding symbol, in binding-table order (`bindings.json` ids).
 pub const SYMBOLS: &[&str] = &[
@@ -1942,6 +1962,14 @@ pub const SYMBOLS: &[&str] = &[
     "og_net_resimulating",
     "og_net_final_hash",
     "og_net_hash",
+    "og_motion_pose",
+    "og_motion_place",
+    "og_motion_face",
+    "og_motion_walk_to",
+    "og_motion_clear",
+    "og_motion_status",
+    "og_motion_capabilities",
+    "og_motion_poses",
 ];
 
 pub use og_records::{COLUMNS, ColumnDecl, FieldDecl, RECORDS, RecordDecl};

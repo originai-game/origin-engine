@@ -277,6 +277,8 @@ export interface ColumnKinds {
   ArtBrush: { readonly array: Uint32Array; readonly stride: 1; readonly value: ArtBrush };
   /** An ArtProjection field: the variant's index. */
   ArtProjection: { readonly array: Uint32Array; readonly stride: 1; readonly value: ArtProjection };
+  /** A MotionGoalKind field: the variant's index. */
+  MotionGoalKind: { readonly array: Uint32Array; readonly stride: 1; readonly value: MotionGoalKind };
 }
 
 // ── math ────────────────────────────────────────────────────────
@@ -45160,6 +45162,240 @@ export interface ArtCamera {
   pixelPerfect: boolean;
 }
 
+// ── motion ──────────────────────────────────────────────────────
+// Generated motion for humanoids: the engine's motion model (a 17.6M-parameter student distilled from NVIDIA MotionBricks, og-motion) moves a character between the goals the game gives it, on the GPU. Give an entity with an og.Skeleton (a humanoid rig og.anim.humanoid recognises, or one an og.MotionAgent.rig names) an og.MotionAgent, then queue goals: og.motion.pose (a pose of the model's library where the character stands), og.motion.place (a pose at a place, facing a heading), og.motion.face (turn to a heading) and og.motion.walkTo (walk or run to a point). og.motion.poses lists the library: idle, walk, run, jump, crouch, wave, cheer.
+// **Presentation only.** The generated pose is drawn, never simulated (docs/design.md §2.4): it replaces og.anim's joint palette when the frame is drawn, and nothing a tick reads (og.anim's pose, its joint queries, root motion, physics, the world hash) depends on it, so a run is deterministic on every GPU. The model never moves the character: og.Transform is its root, always. With og.MotionAgent.drive the og.motion system moves the Transform to the goals itself with fixed math inside the tick (walkTo at its speed along a straight line, place over its duration, face at turnSpeed), and the generated pose is re-rooted onto the Transform, its planted feet absorbing the difference; without drive the game moves the Transform (its own physics, path or controller) and the character's motion follows it (walking, running or standing by how fast it moves). No model root motion ever reaches the simulation.
+// **Goals are the game's.** A goal is current from the tick it starts until it ends by fixed rules (walkTo when the mover arrives, pose, place and face after their duration), then the next queued one starts; og.motion.status answers the queue and the current goal, never the model's progress, so game code may branch on it. What the model is doing (the frames it generated ahead, its batches, its timings) is the probe's `dump_motion` only.
+// **The model.** Its weights (35 MB in f16) ship inside @origingame/engine; `og cook` writes them as an optional file, cooked/motion/model.ogb, only for a project that uses og.motion, and the engine reads it the first time an agent is drawn (on the web, a fetch after the boot bundle, never in it). The model runs on the GPU beside the renderer (in the engine Worker on the web): one batch for every agent at once. Until the weights are resident, or when they fail to load, og.motion.capabilities answers backend none and each agent is drawn as og.anim poses it: its og.AnimationPlayer or og.AnimationGraph is the fallback, so give it an idle or walk clip.
+
+/**
+ * What a goal asks for.
+ * - `"none"`: No goal: the character holds where its last goal left it.
+ * - `"pose"`: A library pose where the character stands, keeping its facing.
+ * - `"place"`: A library pose at a place, facing a heading.
+ * - `"face"`: Turn to a heading where the character stands.
+ * - `"walkTo"`: Walk or run to a point, then take a pose.
+ */
+export type MotionGoalKind = "none" | "pose" | "place" | "face" | "walkTo";
+
+/**
+ * A MotionGoalKind field: the variant's index.
+ *
+ * A `MotionGoalKind` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function MotionGoalKind(value?: MotionGoalKind, options?: FieldOptions): FieldSpec<"MotionGoalKind">;
+
+/**
+ * Where the motion model runs.
+ * - `"none"`: Nowhere yet: the weights are not resident (still loading, or failed: MotionCapabilities.reason says why); agents draw og.anim's pose.
+ * - `"gpu"`: On the GPU beside the renderer.
+ */
+export type MotionBackend = "none" | "gpu";
+
+/**
+ * A humanoid the motion model animates: the entity needs an og.Skeleton whose asset is a humanoid rig (og.anim.humanoid recognises its bone names, or `rig` names them). Goals queue with og.motion.pose, place, face and walkTo. The generated pose is drawn in place of og.anim's (presentation only); og.anim still poses the skeleton every tick for everything the simulation reads, and is what is drawn until the model is resident.
+ *
+ * The value of the `MotionAgent` component (token `og.MotionAgent`).
+ */
+export interface MotionAgent {
+  /**
+   * The humanoid map of the skeleton (og.load.rig); 0 detects the bones from their names, as og.anim.humanoid does.
+   */
+  rig: Rig;
+  /**
+   * og.motion moves og.Transform to the goals in the tick (walkTo, place, face) with fixed math, and the pose is re-rooted onto it; off, the game moves the Transform and the motion follows it, and only pose goals are taken.
+   */
+  drive: boolean;
+  /**
+   * How fast a driven character turns to its heading.
+   *
+   * @default 6
+   * @range 0.1..50
+   * @unit radps (radians per second)
+   * @tunable
+   */
+  turnSpeed: number;
+  /**
+   * How much motion the model keeps generated ahead of what is drawn: more absorbs a slow GPU, less follows a changed goal sooner. Presentation only.
+   *
+   * @default 0.6
+   * @range 0.1..4
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  lookahead: number;
+}
+
+/**
+ * A pose of the model's library where the character stands (og.motion.pose).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PoseGoalDesc {
+  /**
+   * The library pose (og.motion.poses); empty is `idle`.
+   *
+   * @default ""
+   */
+  readonly pose?: string;
+  /**
+   * How long the goal is current.
+   *
+   * @default 1.5
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly duration?: number;
+}
+
+/**
+ * A pose of the library at a place (og.motion.place): the character's hips over `position`, facing `heading`.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface PlaceGoalDesc {
+  /**
+   * The library pose; empty is `idle`.
+   *
+   * @default ""
+   */
+  readonly pose?: string;
+  /**
+   * Where the character stands (y is ignored: the ground is the Transform's).
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly position?: Vector3;
+  /**
+   * Its facing: 0 looks down +Z, π/2 down +X.
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly heading?: number;
+  /**
+   * How long the goal is current; a driven character moves there in a straight line over it.
+   *
+   * @default 1.5
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly duration?: number;
+}
+
+/**
+ * Turn to a heading where the character stands (og.motion.face).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface FaceGoalDesc {
+  /**
+   * The facing: 0 looks down +Z, π/2 down +X.
+   *
+   * @default 0
+   * @unit rad (radians)
+   */
+  readonly heading?: number;
+  /**
+   * How long the goal is current at least; a driven character's turn at turnSpeed may take longer.
+   *
+   * @default 0.8
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   */
+  readonly duration?: number;
+}
+
+/**
+ * Walk or run to a point (og.motion.walkTo); needs og.MotionAgent.drive.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface WalkGoalDesc {
+  /**
+   * Where to go (y is ignored).
+   *
+   * @default { x: 0, y: 0, z: 0 }
+   * @unit m (metres)
+   */
+  readonly position?: Vector3;
+  /**
+   * How fast: the motion walks below 2.5 m/s and runs above.
+   *
+   * @default 1.4
+   * @range 0.1..10
+   * @unit mps (metres per second)
+   */
+  readonly speed?: number;
+  /**
+   * The pose taken on arrival; empty is `idle`.
+   *
+   * @default ""
+   */
+  readonly pose?: string;
+}
+
+/**
+ * An agent's goals, as the game set them: the current goal and how many wait. Deterministic: the same on every GPU, the model's progress never shows here.
+ */
+export interface MotionStatus {
+  /** The current goal (none: the queue is empty and the character holds). */
+  readonly goal: MotionGoalKind;
+  /** The current goal's pose (walkTo's arrival pose), empty for none and face. */
+  readonly pose: string;
+  /**
+   * Where the current goal goes (pose and face: where the goal started).
+   *
+   * @unit m (metres)
+   */
+  readonly target: Vector3;
+  /**
+   * The heading the current goal faces (walkTo: towards its target).
+   *
+   * @unit rad (radians)
+   */
+  readonly heading: number;
+  /**
+   * How long the current goal has been current.
+   *
+   * @unit s (seconds of simulation time)
+   */
+  readonly elapsed: number;
+  /** Goals waiting after the current one. */
+  readonly queued: number;
+  /** Goals finished since the agent's first. */
+  readonly completed: number;
+}
+
+/**
+ * Where the motion model runs and what it knows. Presentation: a frame's answer, not the tick's; never branch the simulation on it.
+ */
+export interface MotionCapabilities {
+  /** gpu once the weights are resident; none before, or when they failed. */
+  readonly backend: MotionBackend;
+  /**
+   * Why the backend is none: loading, the reason a load failed, or no GPU adapter (empty for gpu).
+   */
+  readonly reason: string;
+  /**
+   * The size of cooked/motion/model.ogb, once read (0 before).
+   *
+   * @unit bytes (bytes)
+   */
+  readonly modelBytes: number;
+}
+
+
+
+
+
+
+
+
+
 // ── og ──────────────────────────────────────────────────────────
 
 /**
@@ -50653,4 +50889,81 @@ export declare namespace og {
    * The style's camera: its projection, a fixed angle (side-on, top-down, the isometric presets), the range of its field of view and whether a 2D camera moves by whole pixels. Every field is no constraint at its zero value (pitch and yaw matter only with fixedAngle).
    */
   const ArtCamera: ResourceType<{ readonly projection: FieldSpec<"ArtProjection">; readonly fixedAngle: FieldSpec<"bool">; readonly pitch: FieldSpec<"f32">; readonly yaw: FieldSpec<"f32">; readonly fovMin: FieldSpec<"f32">; readonly fovMax: FieldSpec<"f32">; readonly pixelPerfect: FieldSpec<"bool"> }, ArtCamera>;
+  /**
+   * A humanoid the motion model animates: the entity needs an og.Skeleton whose asset is a humanoid rig (og.anim.humanoid recognises its bone names, or `rig` names them). Goals queue with og.motion.pose, place, face and walkTo. The generated pose is drawn in place of og.anim's (presentation only); og.anim still poses the skeleton every tick for everything the simulation reads, and is what is drawn until the model is resident.
+   */
+  const MotionAgent: ComponentType<{ readonly rig: FieldSpec<"Rig">; readonly drive: FieldSpec<"bool">; readonly turnSpeed: FieldSpec<"f32">; readonly lookahead: FieldSpec<"f32"> }, MotionAgent>;
+  /**
+   * Generated motion for humanoids: the engine's motion model (a 17.6M-parameter student distilled from NVIDIA MotionBricks, og-motion) moves a character between the goals the game gives it, on the GPU. Give an entity with an og.Skeleton (a humanoid rig og.anim.humanoid recognises, or one an og.MotionAgent.rig names) an og.MotionAgent, then queue goals: og.motion.pose (a pose of the model's library where the character stands), og.motion.place (a pose at a place, facing a heading), og.motion.face (turn to a heading) and og.motion.walkTo (walk or run to a point). og.motion.poses lists the library: idle, walk, run, jump, crouch, wave, cheer.
+   * **Presentation only.** The generated pose is drawn, never simulated (docs/design.md §2.4): it replaces og.anim's joint palette when the frame is drawn, and nothing a tick reads (og.anim's pose, its joint queries, root motion, physics, the world hash) depends on it, so a run is deterministic on every GPU. The model never moves the character: og.Transform is its root, always. With og.MotionAgent.drive the og.motion system moves the Transform to the goals itself with fixed math inside the tick (walkTo at its speed along a straight line, place over its duration, face at turnSpeed), and the generated pose is re-rooted onto the Transform, its planted feet absorbing the difference; without drive the game moves the Transform (its own physics, path or controller) and the character's motion follows it (walking, running or standing by how fast it moves). No model root motion ever reaches the simulation.
+   * **Goals are the game's.** A goal is current from the tick it starts until it ends by fixed rules (walkTo when the mover arrives, pose, place and face after their duration), then the next queued one starts; og.motion.status answers the queue and the current goal, never the model's progress, so game code may branch on it. What the model is doing (the frames it generated ahead, its batches, its timings) is the probe's `dump_motion` only.
+   * **The model.** Its weights (35 MB in f16) ship inside @origingame/engine; `og cook` writes them as an optional file, cooked/motion/model.ogb, only for a project that uses og.motion, and the engine reads it the first time an agent is drawn (on the web, a fetch after the boot bundle, never in it). The model runs on the GPU beside the renderer (in the engine Worker on the web): one batch for every agent at once. Until the weights are resident, or when they fail to load, og.motion.capabilities answers backend none and each agent is drawn as og.anim poses it: its og.AnimationPlayer or og.AnimationGraph is the fallback, so give it an idle or walk clip.
+   */
+  namespace motion {
+    /**
+     * Queue a library pose where the character stands, after its other goals.
+     *
+     * @param world The world.
+     * @param entity An entity with an og.MotionAgent.
+     * @param desc The pose and how long it is current.
+     * @returns Refused for an entity without og.MotionAgent or a pose the library lacks (og.motion.poses).
+     */
+    function pose(world: World, entity: Entity, desc?: PoseGoalDesc): Result<void>;
+    /**
+     * Queue a library pose at a place and heading; needs og.MotionAgent.drive (the mover takes the Transform there).
+     *
+     * @param world The world.
+     * @param entity An entity with an og.MotionAgent.
+     * @param desc The pose, place, heading and duration.
+     * @returns Refused for an entity without og.MotionAgent or without drive, a pose the library lacks, or a position that is not finite.
+     */
+    function place(world: World, entity: Entity, desc?: PlaceGoalDesc): Result<void>;
+    /**
+     * Queue a turn to a heading where the character stands; needs og.MotionAgent.drive.
+     *
+     * @param world The world.
+     * @param entity An entity with an og.MotionAgent.
+     * @param desc The heading and the least time the goal is current.
+     * @returns Refused for an entity without og.MotionAgent or without drive.
+     */
+    function face(world: World, entity: Entity, desc?: FaceGoalDesc): Result<void>;
+    /**
+     * Queue a walk (or a run, above 2.5 m/s) to a point; needs og.MotionAgent.drive: the mover takes the Transform there at `speed` in a straight line, turning at turnSpeed, and the goal ends when it arrives.
+     *
+     * @param world The world.
+     * @param entity An entity with an og.MotionAgent.
+     * @param desc Where, how fast, and the pose on arrival.
+     * @returns Refused for an entity without og.MotionAgent or without drive, or a position that is not finite.
+     */
+    function walkTo(world: World, entity: Entity, desc?: WalkGoalDesc): Result<void>;
+    /**
+     * Drop the agent's goals, the current one included: the character holds where it is.
+     *
+     * @param world The world.
+     * @param entity An entity with an og.MotionAgent.
+     * @returns Refused for an entity without og.MotionAgent.
+     */
+    function clear(world: World, entity: Entity): Result<void>;
+    /**
+     * The agent's current goal and queue.
+     *
+     * @param world The world.
+     * @param entity An entity with an og.MotionAgent.
+     * @returns Refused for an entity without og.MotionAgent.
+     */
+    function status(world: World, entity: Entity): Result<MotionStatus>;
+    /**
+     * Where the model runs: gpu once its weights are resident, none before (loading) or when they failed to load. Asking starts the load when no agent has yet.
+     *
+     * @param world The world.
+     * @returns Never refused.
+     */
+    function capabilities(world: World): MotionCapabilities;
+    /**
+     * The model's pose library, by name: idle, walk, run, jump, crouch, wave, cheer. Fixed by the engine's version, known before the weights are resident, so a goal's pose is checked the same everywhere.
+     *
+     * @returns The names.
+     */
+    function poses(): readonly string[];
+  }
 }

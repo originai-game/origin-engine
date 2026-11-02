@@ -5,3 +5,5 @@ node_modules/
 knowledge/
 # Copied from templates/styles at pack (scripts/pack.sh).
 styles/
+# og.motion's weights (motion.json pins them), copied in at pack (scripts/pack.sh).
+motion/

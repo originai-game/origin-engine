@@ -3636,3 +3636,51 @@ pub fn og_net_hash(env: Env, world: u32) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as NetApi>::og_net_hash(&Host, world)
 }
+
+#[napi(js_name = "og_motion_pose")]
+pub fn og_motion_pose(env: Env, world: u32, entity: f64, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as MotionApi>::og_motion_pose(&Host, world, entity, desc)
+}
+
+#[napi(js_name = "og_motion_place")]
+pub fn og_motion_place(env: Env, world: u32, entity: f64, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as MotionApi>::og_motion_place(&Host, world, entity, desc)
+}
+
+#[napi(js_name = "og_motion_face")]
+pub fn og_motion_face(env: Env, world: u32, entity: f64, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as MotionApi>::og_motion_face(&Host, world, entity, desc)
+}
+
+#[napi(js_name = "og_motion_walk_to")]
+pub fn og_motion_walk_to(env: Env, world: u32, entity: f64, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as MotionApi>::og_motion_walk_to(&Host, world, entity, desc)
+}
+
+#[napi(js_name = "og_motion_clear")]
+pub fn og_motion_clear(env: Env, world: u32, entity: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as MotionApi>::og_motion_clear(&Host, world, entity)
+}
+
+#[napi(js_name = "og_motion_status")]
+pub fn og_motion_status(env: Env, world: u32, entity: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as MotionApi>::og_motion_status(&Host, world, entity)
+}
+
+#[napi(js_name = "og_motion_capabilities")]
+pub fn og_motion_capabilities(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as MotionApi>::og_motion_capabilities(&Host, world)
+}
+
+#[napi(js_name = "og_motion_poses")]
+pub fn og_motion_poses(env: Env) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as MotionApi>::og_motion_poses(&Host)
+}

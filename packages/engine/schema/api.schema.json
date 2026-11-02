@@ -18957,6 +18957,202 @@
       "functions": [],
       "interfaces": [],
       "callbacks": []
+    },
+    {
+      "name": "motion",
+      "doc": "Generated motion for humanoids: the engine's motion model (a 17.6M-parameter student distilled from NVIDIA MotionBricks, og-motion) moves a character between the goals the game gives it, on the GPU. Give an entity with an og.Skeleton (a humanoid rig og.anim.humanoid recognises, or one an og.MotionAgent.rig names) an og.MotionAgent, then queue goals: og.motion.pose (a pose of the model's library where the character stands), og.motion.place (a pose at a place, facing a heading), og.motion.face (turn to a heading) and og.motion.walkTo (walk or run to a point). og.motion.poses lists the library: idle, walk, run, jump, crouch, wave, cheer.\n**Presentation only.** The generated pose is drawn, never simulated (docs/design.md §2.4): it replaces og.anim's joint palette when the frame is drawn, and nothing a tick reads (og.anim's pose, its joint queries, root motion, physics, the world hash) depends on it, so a run is deterministic on every GPU. The model never moves the character: og.Transform is its root, always. With og.MotionAgent.drive the og.motion system moves the Transform to the goals itself with fixed math inside the tick (walkTo at its speed along a straight line, place over its duration, face at turnSpeed), and the generated pose is re-rooted onto the Transform, its planted feet absorbing the difference; without drive the game moves the Transform (its own physics, path or controller) and the character's motion follows it (walking, running or standing by how fast it moves). No model root motion ever reaches the simulation.\n**Goals are the game's.** A goal is current from the tick it starts until it ends by fixed rules (walkTo when the mover arrives, pose, place and face after their duration), then the next queued one starts; og.motion.status answers the queue and the current goal, never the model's progress, so game code may branch on it. What the model is doing (the frames it generated ahead, its batches, its timings) is the probe's `dump_motion` only.\n**The model.** Its weights (35 MB in f16) ship inside @origingame/engine; `og cook` writes them as an optional file, cooked/motion/model.ogb, only for a project that uses og.motion, and the engine reads it the first time an agent is drawn (on the web, a fetch after the boot bundle, never in it). The model runs on the GPU beside the renderer (in the engine Worker on the web): one batch for every agent at once. Until the weights are resident, or when they fail to load, og.motion.capabilities answers backend none and each agent is drawn as og.anim poses it: its og.AnimationPlayer or og.AnimationGraph is the fallback, so give it an idle or walk clip.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "MotionGoalKind",
+        "MotionGoalKind",
+        "MotionBackend",
+        "MotionAgent",
+        "PoseGoalDesc",
+        "PlaceGoalDesc",
+        "FaceGoalDesc",
+        "WalkGoalDesc",
+        "MotionStatus",
+        "MotionCapabilities"
+      ],
+      "consts": [],
+      "functions": [
+        {
+          "name": "pose",
+          "doc": "Queue a library pose where the character stands, after its other goals.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "An entity with an og.MotionAgent."
+            },
+            {
+              "name": "desc",
+              "type": "PoseGoalDesc",
+              "optional": true,
+              "doc": "The pose and how long it is current."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an entity without og.MotionAgent or a pose the library lacks (og.motion.poses).",
+          "publish": true
+        },
+        {
+          "name": "place",
+          "doc": "Queue a library pose at a place and heading; needs og.MotionAgent.drive (the mover takes the Transform there).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "An entity with an og.MotionAgent."
+            },
+            {
+              "name": "desc",
+              "type": "PlaceGoalDesc",
+              "optional": true,
+              "doc": "The pose, place, heading and duration."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an entity without og.MotionAgent or without drive, a pose the library lacks, or a position that is not finite.",
+          "publish": true
+        },
+        {
+          "name": "face",
+          "doc": "Queue a turn to a heading where the character stands; needs og.MotionAgent.drive.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "An entity with an og.MotionAgent."
+            },
+            {
+              "name": "desc",
+              "type": "FaceGoalDesc",
+              "optional": true,
+              "doc": "The heading and the least time the goal is current."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an entity without og.MotionAgent or without drive.",
+          "publish": true
+        },
+        {
+          "name": "walkTo",
+          "doc": "Queue a walk (or a run, above 2.5 m/s) to a point; needs og.MotionAgent.drive: the mover takes the Transform there at `speed` in a straight line, turning at turnSpeed, and the goal ends when it arrives.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "An entity with an og.MotionAgent."
+            },
+            {
+              "name": "desc",
+              "type": "WalkGoalDesc",
+              "optional": true,
+              "doc": "Where, how fast, and the pose on arrival."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an entity without og.MotionAgent or without drive, or a position that is not finite.",
+          "publish": true
+        },
+        {
+          "name": "clear",
+          "doc": "Drop the agent's goals, the current one included: the character holds where it is.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "An entity with an og.MotionAgent."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for an entity without og.MotionAgent.",
+          "publish": true
+        },
+        {
+          "name": "status",
+          "doc": "The agent's current goal and queue.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "An entity with an og.MotionAgent."
+            }
+          ],
+          "returns": "Result<MotionStatus>",
+          "returnsDoc": "Refused for an entity without og.MotionAgent.",
+          "publish": true
+        },
+        {
+          "name": "capabilities",
+          "doc": "Where the model runs: gpu once its weights are resident, none before (loading) or when they failed to load. Asking starts the load when no agent has yet.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "MotionCapabilities",
+          "returnsDoc": "Never refused.",
+          "publish": true
+        },
+        {
+          "name": "poses",
+          "doc": "The model's pose library, by name: idle, walk, run, jump, crouch, wave, cheer. Fixed by the engine's version, known before the weights are resident, so a goal's pose is checked the same everywhere.",
+          "params": [],
+          "returns": "List<String>",
+          "returnsDoc": "The names.",
+          "publish": true
+        }
+      ],
+      "interfaces": [],
+      "callbacks": []
     }
   ],
   "$defs": {
@@ -75673,6 +75869,269 @@
           "default": false
         }
       },
+      "additionalProperties": false
+    },
+    "MotionGoalKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "motion",
+      "description": "What a goal asks for.",
+      "type": "string",
+      "enum": [
+        "none",
+        "pose",
+        "place",
+        "face",
+        "walkTo"
+      ],
+      "x-og-variants": {
+        "none": "No goal: the character holds where its last goal left it.",
+        "pose": "A library pose where the character stands, keeping its facing.",
+        "place": "A library pose at a place, facing a heading.",
+        "face": "Turn to a heading where the character stands.",
+        "walkTo": "Walk or run to a point, then take a pose."
+      }
+    },
+    "MotionBackend": {
+      "x-og-kind": "enum",
+      "x-og-module": "motion",
+      "description": "Where the motion model runs.",
+      "type": "string",
+      "enum": [
+        "none",
+        "gpu"
+      ],
+      "x-og-variants": {
+        "none": "Nowhere yet: the weights are not resident (still loading, or failed: MotionCapabilities.reason says why); agents draw og.anim's pose.",
+        "gpu": "On the GPU beside the renderer."
+      }
+    },
+    "MotionAgent": {
+      "x-og-kind": "component",
+      "x-og-module": "motion",
+      "description": "A humanoid the motion model animates: the entity needs an og.Skeleton whose asset is a humanoid rig (og.anim.humanoid recognises its bone names, or `rig` names them). Goals queue with og.motion.pose, place, face and walkTo. The generated pose is drawn in place of og.anim's (presentation only); og.anim still poses the skeleton every tick for everything the simulation reads, and is what is drawn until the model is resident.",
+      "type": "object",
+      "properties": {
+        "rig": {
+          "$ref": "#/$defs/Rig",
+          "description": "The humanoid map of the skeleton (og.load.rig); 0 detects the bones from their names, as og.anim.humanoid does.",
+          "default": 0
+        },
+        "drive": {
+          "type": "boolean",
+          "description": "og.motion moves og.Transform to the goals in the tick (walkTo, place, face) with fixed math, and the pose is re-rooted onto it; off, the game moves the Transform and the motion follows it, and only pose goals are taken.",
+          "default": false
+        },
+        "turnSpeed": {
+          "type": "number",
+          "description": "How fast a driven character turns to its heading.",
+          "default": 6,
+          "minimum": 0.1,
+          "maximum": 50,
+          "x-og-unit": "radps",
+          "x-og-tunable": true
+        },
+        "lookahead": {
+          "type": "number",
+          "description": "How much motion the model keeps generated ahead of what is drawn: more absorbs a slow GPU, less follows a changed goal sooner. Presentation only.",
+          "default": 0.6,
+          "minimum": 0.1,
+          "maximum": 4,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "PoseGoalDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "motion",
+      "description": "A pose of the model's library where the character stands (og.motion.pose).",
+      "type": "object",
+      "properties": {
+        "pose": {
+          "type": "string",
+          "description": "The library pose (og.motion.poses); empty is `idle`.",
+          "default": ""
+        },
+        "duration": {
+          "type": "number",
+          "description": "How long the goal is current.",
+          "default": 1.5,
+          "minimum": 0,
+          "x-og-unit": "s"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PlaceGoalDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "motion",
+      "description": "A pose of the library at a place (og.motion.place): the character's hips over `position`, facing `heading`.",
+      "type": "object",
+      "properties": {
+        "pose": {
+          "type": "string",
+          "description": "The library pose; empty is `idle`.",
+          "default": ""
+        },
+        "position": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where the character stands (y is ignored: the ground is the Transform's).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "heading": {
+          "type": "number",
+          "description": "Its facing: 0 looks down +Z, π/2 down +X.",
+          "default": 0,
+          "x-og-unit": "rad"
+        },
+        "duration": {
+          "type": "number",
+          "description": "How long the goal is current; a driven character moves there in a straight line over it.",
+          "default": 1.5,
+          "minimum": 0,
+          "x-og-unit": "s"
+        }
+      },
+      "additionalProperties": false
+    },
+    "FaceGoalDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "motion",
+      "description": "Turn to a heading where the character stands (og.motion.face).",
+      "type": "object",
+      "properties": {
+        "heading": {
+          "type": "number",
+          "description": "The facing: 0 looks down +Z, π/2 down +X.",
+          "default": 0,
+          "x-og-unit": "rad"
+        },
+        "duration": {
+          "type": "number",
+          "description": "How long the goal is current at least; a driven character's turn at turnSpeed may take longer.",
+          "default": 0.8,
+          "minimum": 0,
+          "x-og-unit": "s"
+        }
+      },
+      "additionalProperties": false
+    },
+    "WalkGoalDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "motion",
+      "description": "Walk or run to a point (og.motion.walkTo); needs og.MotionAgent.drive.",
+      "type": "object",
+      "properties": {
+        "position": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where to go (y is ignored).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "m"
+        },
+        "speed": {
+          "type": "number",
+          "description": "How fast: the motion walks below 2.5 m/s and runs above.",
+          "default": 1.4,
+          "minimum": 0.1,
+          "maximum": 10,
+          "x-og-unit": "mps"
+        },
+        "pose": {
+          "type": "string",
+          "description": "The pose taken on arrival; empty is `idle`.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "MotionStatus": {
+      "x-og-kind": "struct",
+      "x-og-module": "motion",
+      "description": "An agent's goals, as the game set them: the current goal and how many wait. Deterministic: the same on every GPU, the model's progress never shows here.",
+      "type": "object",
+      "properties": {
+        "goal": {
+          "$ref": "#/$defs/MotionGoalKind",
+          "description": "The current goal (none: the queue is empty and the character holds)."
+        },
+        "pose": {
+          "type": "string",
+          "description": "The current goal's pose (walkTo's arrival pose), empty for none and face."
+        },
+        "target": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where the current goal goes (pose and face: where the goal started).",
+          "x-og-unit": "m"
+        },
+        "heading": {
+          "type": "number",
+          "description": "The heading the current goal faces (walkTo: towards its target).",
+          "x-og-unit": "rad"
+        },
+        "elapsed": {
+          "type": "number",
+          "description": "How long the current goal has been current.",
+          "x-og-unit": "s"
+        },
+        "queued": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Goals waiting after the current one."
+        },
+        "completed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Goals finished since the agent's first."
+        }
+      },
+      "required": [
+        "goal",
+        "pose",
+        "target",
+        "heading",
+        "elapsed",
+        "queued",
+        "completed"
+      ],
+      "additionalProperties": false
+    },
+    "MotionCapabilities": {
+      "x-og-kind": "struct",
+      "x-og-module": "motion",
+      "description": "Where the motion model runs and what it knows. Presentation: a frame's answer, not the tick's; never branch the simulation on it.",
+      "type": "object",
+      "properties": {
+        "backend": {
+          "$ref": "#/$defs/MotionBackend",
+          "description": "gpu once the weights are resident; none before, or when they failed."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why the backend is none: loading, the reason a load failed, or no GPU adapter (empty for gpu)."
+        },
+        "modelBytes": {
+          "type": "number",
+          "description": "The size of cooked/motion/model.ogb, once read (0 before).",
+          "x-og-unit": "bytes"
+        }
+      },
+      "required": [
+        "backend",
+        "reason",
+        "modelBytes"
+      ],
       "additionalProperties": false
     }
   }

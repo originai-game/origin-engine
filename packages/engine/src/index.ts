@@ -28,7 +28,7 @@ import {
 import { cameras } from "./systems/cameras.ts";
 import { ai, i18n, nav, net, platform, story } from "./e6.ts";
 import { input } from "./input.ts";
-import { path, procgen, stream, terrain, timeline } from "./p2.ts";
+import { motion, path, procgen, stream, terrain, timeline } from "./p2.ts";
 import { debug, depthRender } from "./depth.ts";
 import { geomRender, Path2, Shape } from "./geom.ts";
 import { targetsLoad, targetsRender } from "./targets.ts";
@@ -265,6 +265,7 @@ export const og: typeof Api.og = Object.freeze({
   path,
   procgen,
   timeline,
+  motion,
   ui: Object.freeze({ ...ui, ...uiKit, ...components, ...feedback, ...hud, ...worldUi }),
   systems: Object.freeze({ cameras }),
 }) as unknown as typeof Api.og;

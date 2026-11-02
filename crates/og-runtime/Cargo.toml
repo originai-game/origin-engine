@@ -36,6 +36,8 @@ og-i18n = { path = "../og-i18n" }
 og-net = { path = "../og-net" }
 # Streamed video's decode plan; natively its rav1d decoder too (below).
 og-video = { path = "../og-video", default-features = false }
+# og.motion: the motion model on the renderer's device (GPU only, no `reference`).
+og-motion = { path = "../og-motion" }
 
 [features]
 default = ["shaping", "physics2d", "physics3d"]

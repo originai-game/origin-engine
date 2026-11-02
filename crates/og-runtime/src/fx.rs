@@ -1037,15 +1037,21 @@ pub(crate) fn posed_model(
         fx,
         atmo,
         interp,
+        motion,
         ..
     } = rs;
+    let rs_motion = &motion.palettes;
     let Some(anim) = fx.anim.as_ref() else {
         return false;
     };
     let Some(mut out) = anim.output(Entity::from_bits(entity)) else {
         return false;
     };
-    let matrices = super::interpolate::pose(interp, entity, alpha, &out.palette, &mut out.weights);
+    // og.motion's generated pose, made for this frame, when it has one.
+    let matrices = match rs_motion.get(&entity) {
+        Some(m) if m.len() == out.palette.len() => m.clone(),
+        _ => super::interpolate::pose(interp, entity, alpha, &out.palette, &mut out.weights),
+    };
     let Some(info) = fx.models.get(&asset).cloned() else {
         return false;
     };

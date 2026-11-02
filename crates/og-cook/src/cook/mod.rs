@@ -30,6 +30,7 @@ mod look_assets;
 mod look_styles;
 mod model;
 pub mod model_text;
+mod motion;
 pub mod prefab;
 pub mod probes;
 mod psd;
@@ -1560,6 +1561,9 @@ pub fn cook_project_with_texture_cache(
         }
         manifest.streams.push(entry);
     }
+    // og.motion's model, for a project whose code uses it (not in the manifest).
+    let mut motion_warnings = Vec::new();
+    motion::cook(root, &cooked_dir, &mut keep, &mut motion_warnings)?;
     let mut removed = Vec::new();
     let old_files = old
         .outputs()
@@ -1624,7 +1628,7 @@ pub fn cook_project_with_texture_cache(
         .filter(|s| s.kind == Kind::Strings)
         .map(|s| (s.rel.as_str(), s.bytes.as_slice()))
         .collect();
-    let mut warnings = Vec::new();
+    let mut warnings = motion_warnings;
     for (rel, what) in e6::check_strings(&tables) {
         warnings.push(format!("assets/{rel}: {what}"));
         if let Some(r) = reports.iter_mut().find(|r| r.source == rel) {

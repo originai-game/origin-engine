@@ -674,6 +674,7 @@ pub(crate) fn declare_game(desc: &Value) -> u32 {
 pub(crate) fn register_module_actions(probe: &mut og_probe::Probe, engine_id: u32) {
     super::e6::register_commands(probe, engine_id);
     super::timeline::register_commands(probe, engine_id);
+    super::motion::register_commands(probe, engine_id);
     super::modules::docs::register_commands(probe, engine_id);
     super::probe::register_render_dump(probe, engine_id);
     super::probes::register_bake_dump(probe, engine_id);

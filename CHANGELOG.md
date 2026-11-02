@@ -15,6 +15,22 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Added: `og.motion`, generated motion for humanoids** (docs/design.md
+  §2.7): the engine's motion model (a student distilled from NVIDIA
+  MotionBricks, og-motion) animates an entity with an og.Skeleton and the
+  new component `og.MotionAgent` (`rig`, `drive`, `turnSpeed`, `lookahead`)
+  from goals the game queues: `og.motion.pose`, `place`, `face`, `walkTo`,
+  `clear`, `status`, `capabilities`, `poses`, with the types
+  `MotionGoalKind`, `MotionBackend`, `PoseGoalDesc`, `PlaceGoalDesc`,
+  `FaceGoalDesc`, `WalkGoalDesc`, `MotionStatus`, `MotionCapabilities`, and
+  the probe's `dump_motion`. The pose is presentation only; goals and the
+  `drive` mover are world state (the `og.motion` state block), registered
+  only once a game names og.MotionAgent, so other games hash as before.
+  The weights (35.4 MB, f16) ship in the package's `motion/`; `og cook`
+  writes `cooked/motion/model.ogb` for a project whose code uses og.motion,
+  fetched on first use, never at boot. The tarball grows from 1.8 MB to
+  34.6 MB.
+
 - **Removed: six built-in styles, folded into the sixteen the owner settled**
   (2026-11-02): `bubbly` into `cartoon`, `arcade` into `pixel`, `paper`
   into `storybook`, `inkwash` into `jade` (a new pack, coming), `neon`

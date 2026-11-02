@@ -3036,3 +3036,43 @@ pub fn og_net_final_hash(world: u32, tick: f64) -> String {
 pub fn og_net_hash(world: u32) -> String {
     <Host as NetApi>::og_net_hash(&Host, world)
 }
+
+#[wasm_bindgen]
+pub fn og_motion_pose(world: u32, entity: f64, desc: Option<String>) -> String {
+    <Host as MotionApi>::og_motion_pose(&Host, world, entity, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_motion_place(world: u32, entity: f64, desc: Option<String>) -> String {
+    <Host as MotionApi>::og_motion_place(&Host, world, entity, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_motion_face(world: u32, entity: f64, desc: Option<String>) -> String {
+    <Host as MotionApi>::og_motion_face(&Host, world, entity, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_motion_walk_to(world: u32, entity: f64, desc: Option<String>) -> String {
+    <Host as MotionApi>::og_motion_walk_to(&Host, world, entity, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_motion_clear(world: u32, entity: f64) -> String {
+    <Host as MotionApi>::og_motion_clear(&Host, world, entity)
+}
+
+#[wasm_bindgen]
+pub fn og_motion_status(world: u32, entity: f64) -> String {
+    <Host as MotionApi>::og_motion_status(&Host, world, entity)
+}
+
+#[wasm_bindgen]
+pub fn og_motion_capabilities(world: u32) -> String {
+    <Host as MotionApi>::og_motion_capabilities(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_motion_poses() -> String {
+    <Host as MotionApi>::og_motion_poses(&Host)
+}

@@ -17,7 +17,10 @@ use og_ecs::World;
 /// One lazily registered record and what its module does when it is.
 pub(crate) struct Lazy {
     pub name: &'static str,
-    pub enable: fn(&mut World) -> og_core::Result<()>,
+    /// Grants the record to its module on `world` of the engine whose id
+    /// it is given (a module with per-engine state, og.motion, adds its
+    /// state block here).
+    pub enable: fn(&mut World, u32) -> og_core::Result<()>,
 }
 
 /// Every lazily registered engine record.
@@ -25,146 +28,151 @@ pub(crate) const LAZY: &[Lazy] = &[
     // G2-1: the runtime itself writes and reads it; no module to grant.
     Lazy {
         name: crate::prefab::LINK,
-        enable: |_| Ok(()),
+        enable: |_, _| Ok(()),
     },
     // G2-4: og.nav reads it.
     Lazy {
         name: "og.NavFilter",
-        enable: og_nav::enable_filters,
+        enable: |w, _| og_nav::enable_filters(w),
     },
     // G2-4: og.nav reads it (crowd avoidance).
     Lazy {
         name: "og.Crowd",
-        enable: og_nav::enable_crowds,
+        enable: |w, _| og_nav::enable_crowds(w),
     },
     // G2-4: og.ai sends them once a behaviour with a game action is loaded.
     Lazy {
         name: "og.AiActionStarted",
-        enable: og_ai::enable_action_started,
+        enable: |w, _| og_ai::enable_action_started(w),
     },
     Lazy {
         name: "og.AiActionStopped",
-        enable: og_ai::enable_action_stopped,
+        enable: |w, _| og_ai::enable_action_stopped(w),
     },
     // G2-4: og.nav sends it once a navmesh has an off-mesh link.
     Lazy {
         name: "og.NavLinkReached",
-        enable: og_nav::enable_links,
+        enable: |w, _| og_nav::enable_links(w),
     },
     // G2-3: og.physics sends them and reads the hooks once a game names
     // them; a world that never does keeps its type table and hash.
     Lazy {
         name: "og.BodySlept",
-        enable: |w| og_physics::enable(w, "og.BodySlept"),
+        enable: |w, _| og_physics::enable(w, "og.BodySlept"),
     },
     Lazy {
         name: "og.BodyWoke",
-        enable: |w| og_physics::enable(w, "og.BodyWoke"),
+        enable: |w, _| og_physics::enable(w, "og.BodyWoke"),
     },
     Lazy {
         name: "og.JointBroken",
-        enable: |w| og_physics::enable(w, "og.JointBroken"),
+        enable: |w, _| og_physics::enable(w, "og.JointBroken"),
     },
     Lazy {
         name: "og.ContactHook",
-        enable: |w| og_physics::enable(w, "og.ContactHook"),
+        enable: |w, _| og_physics::enable(w, "og.ContactHook"),
     },
     Lazy {
         name: "og.VehicleWheel",
-        enable: |w| og_physics::enable(w, "og.VehicleWheel"),
+        enable: |w, _| og_physics::enable(w, "og.VehicleWheel"),
     },
     // G2-7: og.net sends them once a world runs lockstep in a room.
     Lazy {
         name: "og.SeatDropped",
-        enable: |w| w.grant(crate::net::NET_SYSTEM, &["og.SeatDropped"]),
+        enable: |w, _| w.grant(crate::net::NET_SYSTEM, &["og.SeatDropped"]),
     },
     Lazy {
         name: "og.SeatRejoined",
-        enable: |w| w.grant(crate::net::NET_SYSTEM, &["og.SeatRejoined"]),
+        enable: |w, _| w.grant(crate::net::NET_SYSTEM, &["og.SeatRejoined"]),
     },
     Lazy {
         name: "og.PeerStalled",
-        enable: |w| w.grant(crate::net::NET_SYSTEM, &["og.PeerStalled"]),
+        enable: |w, _| w.grant(crate::net::NET_SYSTEM, &["og.PeerStalled"]),
     },
     // G3-6: og.platform sends it once a game names it; the grants are the
     // runtime's own (og.platform.grant writes them).
     Lazy {
         name: crate::platform::NOTICE,
-        enable: |w| w.grant(crate::platform::PLATFORM_SYSTEM, &[crate::platform::NOTICE]),
+        enable: |w, _| w.grant(crate::platform::PLATFORM_SYSTEM, &[crate::platform::NOTICE]),
     },
     Lazy {
         name: crate::platform::GRANTS,
-        enable: crate::platform::enable_grants,
+        enable: |w, _| crate::platform::enable_grants(w),
     },
     Lazy {
         name: "og.SoftBody",
-        enable: |w| og_physics::enable(w, "og.SoftBody"),
+        enable: |w, _| og_physics::enable(w, "og.SoftBody"),
+    },
+    // og.motion: its system and state block (goals) once a game names it.
+    Lazy {
+        name: crate::motion::AGENT,
+        enable: crate::motion::enable,
     },
     // G2-6: time groups, read by the modules that scale an entity's dt.
     // Naming either registers both (TOGETHER).
     Lazy {
         name: "og.TimeGroup",
-        enable: |w| enable_time_groups(w, og_core::TimeGroup::NAME),
+        enable: |w, _| enable_time_groups(w, og_core::TimeGroup::NAME),
     },
     Lazy {
         name: "og.TimeGroups",
-        enable: |w| enable_time_groups(w, og_core::TimeGroups::NAME),
+        enable: |w, _| enable_time_groups(w, og_core::TimeGroups::NAME),
     },
     // G2-8: og.story's resource and events, registered at the first
     // og.story.load (together, TOGETHER); og.story sends the events and
     // writes the resource.
     Lazy {
         name: crate::story::STORY,
-        enable: |w| w.grant(crate::story::SYSTEM, &[crate::story::STORY]),
+        enable: |w, _| w.grant(crate::story::SYSTEM, &[crate::story::STORY]),
     },
     Lazy {
         name: crate::story::SHOWN,
-        enable: |w| w.grant(crate::story::SYSTEM, &[crate::story::SHOWN]),
+        enable: |w, _| w.grant(crate::story::SYSTEM, &[crate::story::SHOWN]),
     },
     Lazy {
         name: crate::story::ENDED,
-        enable: |w| w.grant(crate::story::SYSTEM, &[crate::story::ENDED]),
+        enable: |w, _| w.grant(crate::story::SYSTEM, &[crate::story::ENDED]),
     },
     Lazy {
         name: crate::story::CHECK,
-        enable: |w| w.grant(crate::story::SYSTEM, &[crate::story::CHECK]),
+        enable: |w, _| w.grant(crate::story::SYSTEM, &[crate::story::CHECK]),
     },
     Lazy {
         name: crate::story::QUEST_UPDATED,
-        enable: |w| w.grant(crate::story::SYSTEM, &[crate::story::QUEST_UPDATED]),
+        enable: |w, _| w.grant(crate::story::SYSTEM, &[crate::story::QUEST_UPDATED]),
     },
     Lazy {
         name: crate::story::STORY_EVENT,
-        enable: |w| w.grant(crate::story::SYSTEM, &[crate::story::STORY_EVENT]),
+        enable: |w, _| w.grant(crate::story::SYSTEM, &[crate::story::STORY_EVENT]),
     },
     Lazy {
         name: crate::story::BARK_SAID,
-        enable: |w| w.grant(crate::story::SYSTEM, &[crate::story::BARK_SAID]),
+        enable: |w, _| w.grant(crate::story::SYSTEM, &[crate::story::BARK_SAID]),
     },
     // G3-3: world cells, read and written by the runtime's before-tick
     // hook (stream::cells); no module to grant. Naming any of the cell's
     // records registers them together; an anchor alone is its own.
     Lazy {
         name: crate::stream::cells::CELL,
-        enable: |_| Ok(()),
+        enable: |_, _| Ok(()),
     },
     Lazy {
         name: crate::stream::cells::MEMBER,
-        enable: |_| Ok(()),
+        enable: |_, _| Ok(()),
     },
     Lazy {
         name: crate::stream::cells::EVENT,
-        enable: |_| Ok(()),
+        enable: |_, _| Ok(()),
     },
     Lazy {
         name: crate::stream::cells::ANCHOR,
-        enable: |_| Ok(()),
+        enable: |_, _| Ok(()),
     },
     // G3-2: og.video plays it; a world without footage keeps its hash
     // whatever the player's layout becomes.
     Lazy {
         name: crate::video::PLAYER,
-        enable: |w| w.grant(crate::video::VIDEO_SYSTEM, &[crate::video::PLAYER]),
+        enable: |w, _| w.grant(crate::video::VIDEO_SYSTEM, &[crate::video::PLAYER]),
     },
 ];
 
@@ -234,7 +242,7 @@ pub(crate) fn ensure(eng: &Engine, world: &mut World, name: &str) -> Result<(), 
             st.names_by_id.push(name.to_string());
         }
     }
-    (lazy.enable)(world).map_err(|e| format!("{name}: {}", e.reason()))?;
+    (lazy.enable)(world, eng.id).map_err(|e| format!("{name}: {}", e.reason()))?;
     if name == crate::story::STORY {
         crate::story::attach(eng.id, world)?;
     }
@@ -251,7 +259,7 @@ pub(crate) fn ensure(eng: &Engine, world: &mut World, name: &str) -> Result<(), 
 pub(crate) fn enable(world: &mut World, engine: u32, name: &str) -> Result<(), String> {
     match LAZY.iter().find(|l| l.name == name) {
         Some(l) => {
-            (l.enable)(world).map_err(|e| format!("{name}: {}", e.reason()))?;
+            (l.enable)(world, engine).map_err(|e| format!("{name}: {}", e.reason()))?;
             if name == crate::story::STORY {
                 crate::story::attach(engine, world)?;
             }

@@ -55,6 +55,7 @@ mod probes;
 mod skeleton2d;
 pub use lanes::{panic_report, record_panic, report as lanes_report};
 mod modules;
+mod motion;
 mod nav;
 mod net;
 mod physics_ext;
@@ -168,6 +169,10 @@ pub use modules::{
     og_ui_slider, og_ui_spacer, og_ui_spinner, og_ui_spotlight, og_ui_stepper, og_ui_stop,
     og_ui_tabs, og_ui_text_area, og_ui_text_field, og_ui_theme, og_ui_tick, og_ui_toast,
     og_ui_toggle, og_ui_tooltip, og_ui_viewport, og_ui_visual_state, og_ui_zoom_view, set_viewport,
+};
+pub use motion::{
+    og_motion_capabilities, og_motion_clear, og_motion_face, og_motion_place, og_motion_pose,
+    og_motion_poses, og_motion_status, og_motion_walk_to,
 };
 pub use nav::{
     og_nav_build, og_nav_carve, og_nav_cell_at, og_nav_find_path, og_nav_finish_link,

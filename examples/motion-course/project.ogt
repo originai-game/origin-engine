@@ -1,8 +1,7 @@
 type project
 version 1
 ---
-# og-motion's demo course on two game rigs (crates/og-motion/README.md):
-# assets/anims/course.glb is generated, not committed (README.md says how).
+# og.motion on two game rigs: the engine's motion model, live (README.md).
 name "Motion course"
 id "motion-course"
 engine "0.7.7"
