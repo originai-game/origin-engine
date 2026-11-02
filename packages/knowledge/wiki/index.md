@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2196 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2205 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -618,9 +618,12 @@ Field units the docs and Tune use.
 | [`IkSolver()`](anim.md#column-IkSolver) | column kind | anim | — |
 | [`IkSpace`](anim.md#type-IkSpace) | enum | anim | — |
 | [`IkSpace()`](anim.md#column-IkSpace) | column kind | anim | — |
+| [`ImageDataDesc`](load.md#type-ImageDataDesc) | desc struct | load | — |
 | [`ImageDesc`](ui.md#type-ImageDesc) | desc struct | ui | — |
 | [`ImageFill`](ui.md#type-ImageFill) | desc struct | ui | — |
 | [`ImageFit`](ui.md#type-ImageFit) | enum | ui | — |
+| [`ImageInfo`](load.md#type-ImageInfo) | struct | load | — |
+| [`ImageKind`](load.md#type-ImageKind) | enum | load | — |
 | [`InjectedInput`](input.md#type-InjectedInput) | union | input | — |
 | [`Input.axis`](input.md#member-Input-axis) | method | input | `og_input_axis` |
 | [`Input.axis2`](input.md#member-Input-axis2) | method | input | `og_input_axis2` |
@@ -700,6 +703,8 @@ Field units the docs and Tune use.
 | [`ListDesc`](ui.md#type-ListDesc) | desc struct | ui | — |
 | [`ListRange`](ui.md#type-ListRange) | struct | ui | — |
 | [`ListResult`](ui.md#type-ListResult) | struct | ui | — |
+| [`LoadBudget`](load.md#type-LoadBudget) | desc struct | load | — |
+| [`LoadCompletion`](load.md#type-LoadCompletion) | struct | load | — |
 | [`LoadingDesc`](ui.md#type-LoadingDesc) | desc struct | ui | — |
 | [`LoadSlotDesc`](platform.md#type-LoadSlotDesc) | desc struct | platform | — |
 | [`LoadStatus`](load.md#type-LoadStatus) | enum | load | — |
@@ -992,6 +997,7 @@ Field units the docs and Tune use.
 | [`og.load.animation`](load.md#fn-animation) | function | load | `og_load_animation` |
 | [`og.load.bundle`](load.md#fn-bundle) | function | load | `og_load_bundle` |
 | [`og.load.bundleInfo`](load.md#fn-bundleInfo) | function | load | `og_load_bundle_info` |
+| [`og.load.completions`](load.md#fn-completions) | function | load | `og_load_completions` |
 | [`og.load.defaultBundle`](load.md#fn-defaultBundle) | function | load | `og_load_default_bundle` |
 | [`og.load.document`](load.md#fn-document) | function | load | `og_load_document` |
 | [`og.load.emitter`](load.md#fn-emitter) | function | load | `og_load_emitter` |
@@ -1002,12 +1008,15 @@ Field units the docs and Tune use.
 | [`og.load.fontInfo`](load.md#fn-fontInfo) | function | load | `og_load_font_info` |
 | [`og.load.gltf`](load.md#fn-gltf) | function | load | `og_load_gltf` |
 | [`og.load.gltfInfo`](load.md#fn-gltfInfo) | function | load | `og_load_gltf_info` |
+| [`og.load.imageData`](load.md#fn-imageData) | function | load | `og_load_image_data` |
+| [`og.load.imageInfo`](load.md#fn-imageInfo) | function | load | `og_load_image_info` |
 | [`og.load.look`](load.md#fn-look) | function | load | `og_load_look` |
 | [`og.load.lookInfo`](load.md#fn-lookInfo) | function | load | `og_load_look_info` |
 | [`og.load.lut`](load.md#fn-lut) | function | load | `og_load_lut` |
 | [`og.load.palette`](load.md#fn-palette) | function | load | `og_load_palette` |
 | [`og.load.post`](load.md#fn-post) | function | load | `og_load_post` |
 | [`og.load.prefab`](load.md#fn-prefab) | function | load | `og_load_prefab` |
+| [`og.load.replayCompletions`](load.md#fn-replayCompletions) | function | load | `og_load_replay_completions` |
 | [`og.load.rig`](load.md#fn-rig) | function | load | `og_load_rig` |
 | [`og.load.rig2d`](load.md#fn-rig2d) | function | load | `og_load_rig2d` |
 | [`og.load.scene`](load.md#fn-scene) | function | load | `og_load_scene` |

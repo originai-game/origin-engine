@@ -53,6 +53,14 @@ pub(crate) enum Payload {
         /// `KHR_lights_punctual`: what each instance spawns ([`spawn_lights`]).
         lights: Vec<ModelLight>,
     },
+    /// An uncooked load not yet in place (super::uncooked).
+    Uncooked,
+    /// An uncooked image in place: its index in the render state's textures.
+    Image {
+        texture: usize,
+        width: u32,
+        height: u32,
+    },
     None,
 }
 
@@ -99,6 +107,8 @@ pub(crate) struct Assets {
     /// Per glTF asset index, the GltfDesc shadow flags of its last
     /// og.load.gltf ([`Assets::model_shadows`]).
     pub model_shadows: IdMap<usize, ModelShadows>,
+    /// Uncooked loads (og.load.imageData) and their journal.
+    pub uncooked: super::uncooked::Uncooked,
 }
 
 /// GltfDesc's `castShadow` and `receiveShadow`: what world.instantiate of

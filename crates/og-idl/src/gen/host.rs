@@ -41,6 +41,9 @@ pub enum Wire {
     Array,
     /// A component's column views (`Self::Views`).
     Views,
+    /// Bytes handed to the engine (`Bytes`, a `Uint8Array`): copied across
+    /// as the host's `Self::Bytes`.
+    Bytes,
 }
 
 impl Wire {
@@ -54,6 +57,7 @@ impl Wire {
             Wire::Text | Wire::Json | Wire::Token => "String",
             Wire::Array => "Self::Array",
             Wire::Views => "Self::Views",
+            Wire::Bytes => "Self::Bytes",
         }
     }
 
@@ -65,6 +69,7 @@ impl Wire {
             Wire::Text | Wire::Json | Wire::Token => "string",
             Wire::Array => "A",
             Wire::Views => "V",
+            Wire::Bytes => "Uint8Array",
         }
     }
 }
@@ -86,6 +91,7 @@ pub fn wire(ix: &Index<'_>, f: Option<&Function>, ty: &TypeRef) -> Wire {
         "u32" => Wire::U32,
         "f32" | "f64" => Wire::F64,
         "String" => Wire::Text,
+        "Bytes" => Wire::Bytes,
         "Uint32Array" | "Float32Array" | "Float64Array" | "Int32Array" | "Uint8Array" => {
             Wire::Array
         }

@@ -575,6 +575,14 @@ pub trait LoadApi: Wire {
     fn og_load_timeline(&self, world: u32, path: String) -> String;
     /// `og.load.rig2d`
     fn og_load_rig2d(&self, world: u32, path: String) -> String;
+    /// `og.load.imageData`
+    fn og_load_image_data(&self, world: u32, name: String, bytes: Self::Bytes, desc: Option<String>) -> String;
+    /// `og.load.imageInfo`
+    fn og_load_image_info(&self, world: u32, asset: f64) -> String;
+    /// `og.load.completions`
+    fn og_load_completions(&self, world: u32) -> String;
+    /// `og.load.replayCompletions`
+    fn og_load_replay_completions(&self, world: u32, completions: String) -> String;
 }
 
 /// `physics`: packages/knowledge/wiki/physics.md.
@@ -1616,6 +1624,10 @@ pub const SYMBOLS: &[&str] = &[
     "og_load_video_info",
     "og_load_timeline",
     "og_load_rig2d",
+    "og_load_image_data",
+    "og_load_image_info",
+    "og_load_completions",
+    "og_load_replay_completions",
     "og_physics_raycast",
     "og_physics_raycast_all",
     "og_physics_project_point",

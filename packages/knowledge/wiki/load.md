@@ -78,6 +78,15 @@ module load {
 | [`og.load.videoInfo`](#fn-videoInfo) | function | A loaded video's size, frames, rate, length, texture and sound. |
 | [`og.load.timeline`](#fn-timeline) | function | Load a timeline: an `.ogt` of `type timeline` (the og.timeline module's file: duration, paths and tracks of keys), cooked with its caption files imported. Loaded once per path; play it with an og.Timeline whose asset is the handle, or `timeline:play:<name>` on the command channel. |
 | [`og.load.rig2d`](#fn-rig2d) | function | Load a cooked 2D rig (an `.ogt` of `type rig2d`, written by hand or imported by the cook from DragonBones JSON) and its texture, and register it with og.skeleton2d. Loading the same path again answers the same handles. |
+| [`LoadBudget`](#type-LoadBudget) | desc struct | The limits an uncooked load (og.load.imageData, og.load.gltfData) is held to: content a player or a generator made is untrusted, so each limit is checked from the file's headers before anything is decoded, and a load over one is refused naming the limit, the value and the fix. |
+| [`ImageKind`](#type-ImageKind) | enum | How an uncooked image's texels are read, as a cooked texture's `kind`. |
+| [`ImageDataDesc`](#type-ImageDataDesc) | desc struct | How og.load.imageData reads an image. |
+| [`ImageInfo`](#type-ImageInfo) | struct | What a ready uncooked image holds. |
+| [`LoadCompletion`](#type-LoadCompletion) | struct | When an uncooked load was put in place: the journal a replay applies again (og.load.completions). |
+| [`og.load.imageData`](#fn-imageData) | function | Load an image from bytes, uncooked, at run time: a PNG or JPEG a player drew, uploaded or a generator made. Its size, width and height are read from its header and checked against the budget before it is decoded. On the web the browser decodes it off the engine's thread (createImageBitmap in the engine's Worker), and no decoder is in the wasm; natively a worker thread decodes it. The handle is pending until the image is in place, then ready (og.load.imageInfo gives its texture) or failed (og.load.error says why). |
+| [`og.load.imageInfo`](#fn-imageInfo) | function | A ready uncooked image's texture and size. |
+| [`og.load.completions`](#fn-completions) | function | The world's journal of uncooked loads put in place, oldest first: what a replay hands og.load.replayCompletions to put each in place at the same tick. og replay --record keeps it in the trace. |
+| [`og.load.replayCompletions`](#fn-replayCompletions) | function | Put this world's uncooked loads in place at the ticks a recorded run did (its og.load.completions), not when this host finishes them: a load is held back until its tick, and at its tick the engine waits for it. Call it before the first tick; og replay --compare does. A load the journal names as failed fails at its tick whatever this host made of it. |
 | [`og.AssetReady`](#record-AssetReady) | event | A load completed. |
 | [`og.AssetFailed`](#record-AssetFailed) | event | A load failed. |
 
@@ -1148,6 +1157,131 @@ fn rig2d {
 
 <sub>`api.ogt` line 7469</sub>
 
+<a id="fn-imageData"></a>
+
+### `og.load.imageData`
+
+Load an image from bytes, uncooked, at run time: a PNG or JPEG a player drew, uploaded or a generator made. Its size, width and height are read from its header and checked against the budget before it is decoded. On the web the browser decodes it off the engine's thread (createImageBitmap in the engine's Worker), and no decoder is in the wasm; natively a worker thread decodes it. The handle is pending until the image is in place, then ready (og.load.imageInfo gives its texture) or failed (og.load.error says why).
+
+Completion is host input, applied at a tick boundary and journaled like a key press: natively a load is in place before the tick after the call; on the web it lands at the first boundary after the browser has decoded it, and og.load.completions records that tick, so a replay (og replay --compare, og.load.replayCompletions) puts it in place at the same tick. In a lockstep or rollback room content made by one player is not on the others' machines: the completion is local to the session (an asset's status is not world state and is in no snapshot or hash), so a game that plays it in the shared simulation sends it through og.net.command first.
+
+```ts
+og.load.imageData(world: World, name: string, bytes: Uint8Array, desc?: ImageDataDesc): Result<Asset>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world that owns the asset. |
+| `name` | `string` | no | A name for it in errors and dumps, such as `drawings/cat.png`. |
+| `bytes` | `Uint8Array` | no | The file's bytes. |
+| `desc` | `ImageDataDesc` | yes | How to read it and its budget. |
+
+**Returns** `Result<Asset>`: The handle (pending), or why it was refused now: over the budget's bytes or textureSize, or not a PNG or JPEG.
+
+Binding symbol `og_load_image_data` · publish builds: kept
+
+```ogt
+fn imageData {
+  doc "Load an image from bytes, uncooked, at run time: a PNG or JPEG a player drew, uploaded or a generator made. Its size, width and height are read from its header and checked against the budget before it is decoded. On the web the browser decodes it off the engine's thread (createImageBitmap in the engine's Worker), and no decoder is in the wasm; natively a worker thread decodes it. The handle is pending until the image is in place, then ready (og.load.imageInfo gives its texture) or failed (og.load.error says why)."
+  doc "Completion is host input, applied at a tick boundary and journaled like a key press: natively a load is in place before the tick after the call; on the web it lands at the first boundary after the browser has decoded it, and og.load.completions records that tick, so a replay (og replay --compare, og.load.replayCompletions) puts it in place at the same tick. In a lockstep or rollback room content made by one player is not on the others' machines: the completion is local to the session (an asset's status is not world state and is in no snapshot or hash), so a game that plays it in the shared simulation sends it through og.net.command first."
+  param world World "The world that owns the asset."
+  param name String "A name for it in errors and dumps, such as `drawings/cat.png`."
+  param bytes Bytes "The file's bytes."
+  param desc ImageDataDesc "How to read it and its budget."
+  returns Result.Asset "The handle (pending), or why it was refused now: over the budget's bytes or textureSize, or not a PNG or JPEG."
+}
+```
+
+<sub>`api.ogt` line 7527</sub>
+
+<a id="fn-imageInfo"></a>
+
+### `og.load.imageInfo`
+
+A ready uncooked image's texture and size.
+
+```ts
+og.load.imageInfo(world: World, asset: Asset): Result<ImageInfo>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world that owns the asset. |
+| `asset` | `Asset` | no | A handle og.load.imageData answered. |
+
+**Returns** `Result<ImageInfo>`: Refused while it is pending (say so), when it failed (with its reason) or for another kind of asset.
+
+Binding symbol `og_load_image_info` · publish builds: kept
+
+```ogt
+fn imageInfo {
+  doc "A ready uncooked image's texture and size."
+  param world World "The world that owns the asset."
+  param asset Asset "A handle og.load.imageData answered."
+  returns Result.ImageInfo "Refused while it is pending (say so), when it failed (with its reason) or for another kind of asset."
+}
+```
+
+<sub>`api.ogt` line 7537</sub>
+
+<a id="fn-completions"></a>
+
+### `og.load.completions`
+
+The world's journal of uncooked loads put in place, oldest first: what a replay hands og.load.replayCompletions to put each in place at the same tick. og replay --record keeps it in the trace.
+
+```ts
+og.load.completions(world: World): readonly LoadCompletion[]
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+
+**Returns** `readonly LoadCompletion[]`.
+
+Binding symbol `og_load_completions` · publish builds: kept
+
+```ogt
+fn completions {
+  doc "The world's journal of uncooked loads put in place, oldest first: what a replay hands og.load.replayCompletions to put each in place at the same tick. og replay --record keeps it in the trace."
+  param world World "The world."
+  returns List.LoadCompletion
+}
+```
+
+<sub>`api.ogt` line 7544</sub>
+
+<a id="fn-replayCompletions"></a>
+
+### `og.load.replayCompletions`
+
+Put this world's uncooked loads in place at the ticks a recorded run did (its og.load.completions), not when this host finishes them: a load is held back until its tick, and at its tick the engine waits for it. Call it before the first tick; og replay --compare does. A load the journal names as failed fails at its tick whatever this host made of it.
+
+```ts
+og.load.replayCompletions(world: World, completions: readonly LoadCompletion[]): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world. |
+| `completions` | `readonly LoadCompletion[]` | no | A recorded journal. |
+
+**Returns** `Result<void>`: Refused once a tick has run.
+
+Binding symbol `og_load_replay_completions` · publish builds: kept
+
+```ogt
+fn replayCompletions {
+  doc "Put this world's uncooked loads in place at the ticks a recorded run did (its og.load.completions), not when this host finishes them: a load is held back until its tick, and at its tick the engine waits for it. Call it before the first tick; og replay --compare does. A load the journal names as failed fails at its tick whatever this host made of it."
+  param world World "The world."
+  param completions List.LoadCompletion "A recorded journal."
+  returns Result.Void "Refused once a tick has run."
+}
+```
+
+<sub>`api.ogt` line 7550</sub>
+
 ## Components, resources and events
 
 <a id="record-Model"></a>
@@ -1271,7 +1405,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 7476</sub>
+<sub>`api.ogt` line 7557</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -1296,7 +1430,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 7482</sub>
+<sub>`api.ogt` line 7563</sub>
 
 ## Types
 
@@ -1571,6 +1705,143 @@ struct TextureArrayInfo {
 ```
 
 <sub>`api.ogt` line 7161</sub>
+
+<a id="type-LoadBudget"></a>
+
+### `LoadBudget` (desc struct)
+
+The limits an uncooked load (og.load.imageData, og.load.gltfData) is held to: content a player or a generator made is untrusted, so each limit is checked from the file's headers before anything is decoded, and a load over one is refused naming the limit, the value and the fix.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `bytes` | `number` | `33554432` | ≥ 0 | `bytes` | — | The most bytes the source may have. |
+| `triangles` | `number` | `500000` | — | — | — | The most triangles a glTF's meshes may have, every primitive of every mesh. |
+| `textureSize` | `number` | `4096` | — | — | — | The widest or tallest an image may be, in texels (the device's own limit lowers it further). |
+| `frameMs` | `number` | `2` | ≥ 0 | `ms` | — | How long a frame may spend on the engine's thread putting finished loads in place, in milliseconds; at least one load is put in place a frame, and decoding never runs on the engine's thread on the web. |
+
+```ogt
+struct LoadBudget {
+  doc "The limits an uncooked load (og.load.imageData, og.load.gltfData) is held to: content a player or a generator made is untrusted, so each limit is checked from the file's headers before anything is decoded, and a load over one is refused naming the limit, the value and the fix."
+  desc true
+  field bytes f64 "The most bytes the source may have." {
+    default 33554432
+    min 0
+    unit bytes
+  }
+  field triangles u32 "The most triangles a glTF's meshes may have, every primitive of every mesh." {
+    default 500000
+  }
+  field textureSize u32 "The widest or tallest an image may be, in texels (the device's own limit lowers it further)." {
+    default 4096
+  }
+  field frameMs f32 "How long a frame may spend on the engine's thread putting finished loads in place, in milliseconds; at least one load is put in place a frame, and decoding never runs on the engine's thread on the web." {
+    default 2
+    min 0
+    unit ms
+  }
+}
+```
+
+<sub>`api.ogt` line 7476</sub>
+
+<a id="type-ImageKind"></a>
+
+### `ImageKind` (enum)
+
+How an uncooked image's texels are read, as a cooked texture's `kind`.
+
+A string: one of the variants below. The zero value is `"color"`.
+
+| Variant | Doc |
+|---|---|
+| `"color"` | sRGB colour (albedo, UI art), sampled linear. |
+| `"linear"` | Data stored linearly (masks, roughness). |
+| `"pixel"` | sRGB colour sampled nearest (pixel art). |
+
+```ogt
+enum ImageKind {
+  doc "How an uncooked image's texels are read, as a cooked texture's `kind`."
+  variant color "sRGB colour (albedo, UI art), sampled linear."
+  variant linear "Data stored linearly (masks, roughness)."
+  variant pixel "sRGB colour sampled nearest (pixel art)."
+}
+```
+
+<sub>`api.ogt` line 7497</sub>
+
+<a id="type-ImageDataDesc"></a>
+
+### `ImageDataDesc` (desc struct)
+
+How og.load.imageData reads an image.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `kind` | `ImageKind` | `"color"` | — | — | — | How its texels are read. |
+| `budget` | `LoadBudget` | `{}` | — | — | — | The limits it is held to. |
+
+```ogt
+struct ImageDataDesc {
+  doc "How og.load.imageData reads an image."
+  desc true
+  field kind ImageKind "How its texels are read."
+  field budget LoadBudget "The limits it is held to."
+}
+```
+
+<sub>`api.ogt` line 7504</sub>
+
+<a id="type-ImageInfo"></a>
+
+### `ImageInfo` (struct)
+
+What a ready uncooked image holds.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `texture` | `Texture` | `0` | — | — | — | The texture: og.render.sprite, og.ui.image and material maps draw it like a cooked one. |
+| `width` | `number` | `0` | — | — | — | Its width in texels. |
+| `height` | `number` | `0` | — | — | — | Its height in texels. |
+
+```ogt
+struct ImageInfo {
+  doc "What a ready uncooked image holds."
+  field texture Texture "The texture: og.render.sprite, og.ui.image and material maps draw it like a cooked one."
+  field width u32 "Its width in texels."
+  field height u32 "Its height in texels."
+}
+```
+
+<sub>`api.ogt` line 7511</sub>
+
+<a id="type-LoadCompletion"></a>
+
+### `LoadCompletion` (struct)
+
+When an uncooked load was put in place: the journal a replay applies again (og.load.completions).
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `request` | `number` | `0` | — | — | — | The load's number: 0 for the world's first uncooked load, then one more for each. |
+| `tick` | `number` | `0` | — | `ticks` | — | The world's tick (world.tick) at the boundary it was put in place: the systems of that tick and every later one see og.load.status ready or failed. |
+| `ok` | `boolean` | `false` | — | — | — | Whether it was ready (else failed). |
+
+```ogt
+struct LoadCompletion {
+  doc "When an uncooked load was put in place: the journal a replay applies again (og.load.completions)."
+  field request u32 "The load's number: 0 for the world's first uncooked load, then one more for each."
+  field tick f64 "The world's tick (world.tick) at the boundary it was put in place: the systems of that tick and every later one see og.load.status ready or failed." {
+    unit ticks
+  }
+  field ok bool "Whether it was ready (else failed)."
+}
+```
+
+<sub>`api.ogt` line 7518</sub>
 
 ## Column kinds
 

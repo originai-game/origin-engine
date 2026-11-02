@@ -245,7 +245,7 @@ Every binding crosses in one wire form, identical on both hosts:
 | `Fields` | JSON list of `{ name, kind, default, options }`, in declaration order |
 | everything else (structs, lists, maps, options, results, unions, `Value`) | JSON text |
 | `Uint32Array` (`ArchetypeView.entities`) | `Wire::Array`: a copied `Uint32Array` |
-| `Self::Bytes` (the lifecycle's resource bytes, `og_engine_read_resource` and `og_engine_write_resource_bytes`) | a `Uint8Array`: web, wasm-bindgen's `Vec<u8>`; node, a copying `NodeBytes` |
+| `Bytes` (`og.load.imageData`'s file), and `Self::Bytes` (the lifecycle's resource bytes, `og_engine_read_resource` and `og_engine_write_resource_bytes`) | a `Uint8Array`, copied: web, wasm-bindgen's `Vec<u8>`; node, a copying `NodeBytes` |
 | `View<C>` (`ArchetypeView.column`) | `Wire::Views`: web, byte offsets into `memory.buffer`; node, one ArrayBuffer per field over the column |
 
 Optional parameters are `Option<..>` / `| undefined`. Exports outside

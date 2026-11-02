@@ -7,6 +7,8 @@ use super::*;
 /// or an earlier one: no tick runs on the half-built world.
 fn tick_boundary(eng: &Engine) -> Result<(), String> {
     eng.assets.borrow_mut().poll();
+    let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
+    crate::uncooked::poll(eng, tick);
     super::stream::update(eng);
     super::stream::sound_chunks(eng);
     super::stream::resolve(eng);

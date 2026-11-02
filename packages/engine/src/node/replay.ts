@@ -4,7 +4,7 @@
 //
 //   bun src/node/replay.ts --entry <game.native.js> [--root <project>] [--project-entry <rel>]
 //       --record <trace.json> --commands "t:action[:args];..." [--ticks N] [--seed S]
-//       [--clock <UTC ms>] [--locale <tag>] [--platform-fake <file.json>] [--keyframe-every K] [--json]
+//       [--clock <UTC ms>] [--locale <tag>] [--platform-fake <file.json>] [--keyframe-every K] [--loads <journal.json>] [--json]
 //   bun src/node/replay.ts --entry <game.native.js> [--root <project>] --compare <trace.json> [--json]
 //
 // Both run the game as `og run --no-render --commands` does (headless, no
@@ -16,7 +16,7 @@
 //
 // - --record writes the trace: { schema: 1, kind: "og-replay", engine,
 //   project: { id, entry, bundleSha256 }, seed, clock, locale, commands,
-//   ticks, startTick, table, hashes, keyframes: [{ tick, save }], platform }. `table`
+//   ticks, startTick, table, hashes, keyframes: [{ tick, save }], platform, loads }. `table`
 //   is every type with its fields the run registered: the hash's domain.
 //   `bundleSha256` is the bundle's with the machine left out
 //   (bundle-hash.ts): a change of it is a change of the game, not the engine.
@@ -27,7 +27,11 @@
 //   of asking a live host, so a purchase recorded `cancelled` replays
 //   `cancelled`. A trace without one (older) replays against the local
 //   platform. --platform-fake scripts the recording's services (og run's).
-// - --compare replays the trace's script, seed, clock and locale and hashes
+//   `loads` is the run's journal of uncooked loads (og.load.completions: the
+//   tick each og.load.imageData was put in place); `--loads` records a run
+//   with a given journal (one a web session reported, where the browser's
+//   decode time chose the ticks) put in place at its ticks.
+// - --compare replays the trace's script, seed, clock, locale and loads and hashes
 //   each tick within the trace's table, so what a newer engine added is left
 //   out and what it removed differs. At the first keyframe at or after the
 //   first divergent tick the recorded save is diffed against the replayed
@@ -48,6 +52,8 @@ import { bundleHash } from "./bundle-hash.ts";
 import { nativePlatform, readFake } from "./platform.ts";
 import type { PlatformAnswer, PlatformHost, PlatformLink, PlatformNotice } from "../platform-local.ts";
 import { createEngine, fixedClock, type Engine, type GameToken } from "../runtime.ts";
+import { og } from "../index.ts";
+import type { World } from "../../types/index.d.ts";
 
 /** Fields of a type the hash reads, by type name. */
 type Table = Record<string, string[]>;
@@ -66,6 +72,8 @@ export interface ReplayTrace {
   table: Table;
   hashes: string[];
   keyframes: { tick: number; save: string }[];
+  /** The journal of uncooked loads (og.load.completions); absent in traces before G3-4. */
+  loads?: { request: number; tick: number; ok: boolean }[];
   /** The platform's journal; absent in traces from before it. */
   platform?: PlatformJournal;
 }
@@ -87,6 +95,7 @@ let commands: string | undefined;
 let ticks: number | undefined;
 let seed: number | undefined;
 let clock: number | undefined;
+let loadsPath: string | undefined;
 let locale: string | undefined;
 let platformFake: string | undefined;
 let keyframeEvery = 30;
@@ -107,6 +116,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--ticks") ticks = Number(next());
   else if (a === "--seed") seed = Number(next());
   else if (a === "--clock") clock = Number(next());
+  else if (a === "--loads") loadsPath = next();
   else if (a === "--locale") locale = next();
   else if (a === "--keyframe-every") keyframeEvery = Number(next());
   else if (a === "--platform-fake") platformFake = resolve(next());
@@ -246,6 +256,12 @@ function journalHost(j: PlatformJournal): PlatformHost {
   };
 }
 
+// Uncooked loads put in place at the ticks the recorded run did (og.load.replayCompletions).
+const loadsJournal = trace?.loads ?? (loadsPath ? (JSON.parse(readFileSync(loadsPath, "utf8")) as ReplayTrace["loads"]) : undefined);
+if (loadsJournal) {
+  const r = og.load.replayCompletions(engine.world as unknown as World, loadsJournal);
+  if (!r.ok) fail(`the loads journal: ${r.reason}`);
+}
 engine.attachPlatform(trace?.platform ? journalHost(trace.platform) : recording(nativePlatform(undefined, fakeOf())));
 const opened = openAudio(engine.id, "null");
 if (!opened.ok) fail(`audio: ${opened.reason}`);
@@ -350,6 +366,7 @@ if (!trace) {
     hashes,
     keyframes,
     platform: journal,
+    loads: [...og.load.completions(engine.world as unknown as World)],
   };
   mkdirSync(dirname(recordPath!), { recursive: true });
   writeFileSync(recordPath!, JSON.stringify(out) + "\n");

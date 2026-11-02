@@ -142,7 +142,11 @@ fn the_repository_idl_is_valid_and_covers_the_design() {
             "video",
             "videoInfo",
             "timeline",
-            "rig2d"
+            "rig2d",
+            "imageData",
+            "imageInfo",
+            "completions",
+            "replayCompletions"
         ]
     );
     // og.anim.clip three times: a flipbook's clip, a model's and a 2D rig's (TypeScript overloads).

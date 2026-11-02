@@ -11269,6 +11269,100 @@ export interface PrefabLink {
 
 
 /**
+ * The limits an uncooked load (og.load.imageData, og.load.gltfData) is held to: content a player or a generator made is untrusted, so each limit is checked from the file's headers before anything is decoded, and a load over one is refused naming the limit, the value and the fix.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface LoadBudget {
+  /**
+   * The most bytes the source may have.
+   *
+   * @default 33554432
+   * @range 0..
+   * @unit bytes (bytes)
+   */
+  readonly bytes?: number;
+  /**
+   * The most triangles a glTF's meshes may have, every primitive of every mesh.
+   *
+   * @default 500000
+   */
+  readonly triangles?: number;
+  /**
+   * The widest or tallest an image may be, in texels (the device's own limit lowers it further).
+   *
+   * @default 4096
+   */
+  readonly textureSize?: number;
+  /**
+   * How long a frame may spend on the engine's thread putting finished loads in place, in milliseconds; at least one load is put in place a frame, and decoding never runs on the engine's thread on the web.
+   *
+   * @default 2
+   * @range 0..
+   * @unit ms (milliseconds)
+   */
+  readonly frameMs?: number;
+}
+
+/**
+ * How an uncooked image's texels are read, as a cooked texture's `kind`.
+ * - `"color"`: sRGB colour (albedo, UI art), sampled linear.
+ * - `"linear"`: Data stored linearly (masks, roughness).
+ * - `"pixel"`: sRGB colour sampled nearest (pixel art).
+ */
+export type ImageKind = "color" | "linear" | "pixel";
+
+/**
+ * How og.load.imageData reads an image.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface ImageDataDesc {
+  /**
+   * How its texels are read.
+   *
+   * @default "color"
+   */
+  readonly kind?: ImageKind;
+  /**
+   * The limits it is held to.
+   *
+   * @default {}
+   */
+  readonly budget?: LoadBudget;
+}
+
+/** What a ready uncooked image holds. */
+export interface ImageInfo {
+  /** The texture: og.render.sprite, og.ui.image and material maps draw it like a cooked one. */
+  readonly texture: Texture;
+  /** Its width in texels. */
+  readonly width: number;
+  /** Its height in texels. */
+  readonly height: number;
+}
+
+/**
+ * When an uncooked load was put in place: the journal a replay applies again (og.load.completions).
+ */
+export interface LoadCompletion {
+  /** The load's number: 0 for the world's first uncooked load, then one more for each. */
+  readonly request: number;
+  /**
+   * The world's tick (world.tick) at the boundary it was put in place: the systems of that tick and every later one see og.load.status ready or failed.
+   *
+   * @unit ticks (fixed simulation steps)
+   */
+  readonly tick: number;
+  /** Whether it was ready (else failed). */
+  readonly ok: boolean;
+}
+
+
+
+
+
+/**
  * A load completed.
  *
  * The payload of the `AssetReady` event (token `og.AssetReady`).
@@ -47012,6 +47106,39 @@ export declare namespace og {
      * @returns Refused for a path not in the bundle (run og cook) or a texture it cannot load.
      */
     function rig2d(world: World, path: string): Result<Rig2DInfo>;
+    /**
+     * Load an image from bytes, uncooked, at run time: a PNG or JPEG a player drew, uploaded or a generator made. Its size, width and height are read from its header and checked against the budget before it is decoded. On the web the browser decodes it off the engine's thread (createImageBitmap in the engine's Worker), and no decoder is in the wasm; natively a worker thread decodes it. The handle is pending until the image is in place, then ready (og.load.imageInfo gives its texture) or failed (og.load.error says why).
+     * Completion is host input, applied at a tick boundary and journaled like a key press: natively a load is in place before the tick after the call; on the web it lands at the first boundary after the browser has decoded it, and og.load.completions records that tick, so a replay (og replay --compare, og.load.replayCompletions) puts it in place at the same tick. In a lockstep or rollback room content made by one player is not on the others' machines: the completion is local to the session (an asset's status is not world state and is in no snapshot or hash), so a game that plays it in the shared simulation sends it through og.net.command first.
+     *
+     * @param world The world that owns the asset.
+     * @param name A name for it in errors and dumps, such as `drawings/cat.png`.
+     * @param bytes The file's bytes.
+     * @param desc How to read it and its budget.
+     * @returns The handle (pending), or why it was refused now: over the budget's bytes or textureSize, or not a PNG or JPEG.
+     */
+    function imageData(world: World, name: string, bytes: Uint8Array, desc?: ImageDataDesc): Result<Asset>;
+    /**
+     * A ready uncooked image's texture and size.
+     *
+     * @param world The world that owns the asset.
+     * @param asset A handle og.load.imageData answered.
+     * @returns Refused while it is pending (say so), when it failed (with its reason) or for another kind of asset.
+     */
+    function imageInfo(world: World, asset: Asset): Result<ImageInfo>;
+    /**
+     * The world's journal of uncooked loads put in place, oldest first: what a replay hands og.load.replayCompletions to put each in place at the same tick. og replay --record keeps it in the trace.
+     *
+     * @param world The world.
+     */
+    function completions(world: World): readonly LoadCompletion[];
+    /**
+     * Put this world's uncooked loads in place at the ticks a recorded run did (its og.load.completions), not when this host finishes them: a load is held back until its tick, and at its tick the engine waits for it. Call it before the first tick; og replay --compare does. A load the journal names as failed fails at its tick whatever this host made of it.
+     *
+     * @param world The world.
+     * @param completions A recorded journal.
+     * @returns Refused once a tick has run.
+     */
+    function replayCompletions(world: World, completions: readonly LoadCompletion[]): Result<void>;
   }
   /**
    * A body the physics step simulates. It needs an og.Transform and usually has an og.Collider; a dynamic body without an og.Velocity gets one.

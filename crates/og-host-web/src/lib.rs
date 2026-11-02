@@ -91,6 +91,9 @@ thread_local! {
     /// The Worker's `inflate(key, bytes)` (DecompressionStream), and what it answered by key.
     static INFLATER: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
     static INFLATED: RefCell<IdMap<u64, Result<Vec<u8>, String>>> = const { RefCell::new(IdMap::new()) };
+    /// The Worker's `decodeImage(key, bytes)` (createImageBitmap), and what it answered by key.
+    static IMAGE_DECODER: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
+    static DECODED_IMAGES: RefCell<IdMap<u64, Result<og_runtime::Decoded, String>>> = const { RefCell::new(IdMap::new()) };
     /// `performance` and its `now`, where the global has them (Workers do).
     static PERFORMANCE: Option<(JsValue, js_sys::Function)> = {
         let performance = js_sys::Reflect::get(&js_sys::global(), &JsValue::from_str("performance")).ok();
@@ -234,6 +237,27 @@ impl Hooks for WebHooks {
     fn inflate_take(&self, key: u64) -> Fetch<Vec<u8>> {
         match INFLATED.with(|m| m.borrow_mut().remove(&key)) {
             Some(Ok(bytes)) => Fetch::Ready(bytes),
+            Some(Err(e)) => Fetch::Failed(e),
+            None => Fetch::Pending,
+        }
+    }
+
+    fn image_decode_start(&self, key: u64, bytes: &[u8]) -> bool {
+        IMAGE_DECODER.with(|f| match &*f.borrow() {
+            Some(decode) => decode
+                .call2(
+                    &JsValue::NULL,
+                    &JsValue::from_f64(key as f64),
+                    &js_sys::Uint8Array::from(bytes),
+                )
+                .is_ok(),
+            None => false,
+        })
+    }
+
+    fn image_decode_take(&self, key: u64) -> Fetch<og_runtime::Decoded> {
+        match DECODED_IMAGES.with(|m| m.borrow_mut().remove(&key)) {
+            Some(Ok(d)) => Fetch::Ready(d),
             Some(Err(e)) => Fetch::Failed(e),
             None => Fetch::Pending,
         }
@@ -565,6 +589,35 @@ pub fn og_web_install_video(
         max_height,
     };
     VIDEO.with(|v| *v.borrow_mut() = Some((stream, frame, d)));
+}
+
+/// The Worker's `decodeImage(key, bytes)`, called to decode an uncooked
+/// image (og.load.imageData) away from the engine with the browser's own
+/// decoders; it answers later with `og_web_put_image` or `og_web_fail_image`.
+#[wasm_bindgen]
+pub fn og_web_set_image_decoder(decode: js_sys::Function) {
+    IMAGE_DECODER.with(|f| *f.borrow_mut() = Some(decode));
+}
+
+/// What an image decode answered: RGBA8 rows top to bottom.
+#[wasm_bindgen]
+pub fn og_web_put_image(key: f64, width: u32, height: u32, rgba: Vec<u8>) {
+    DECODED_IMAGES.with(|m| {
+        m.borrow_mut().insert(
+            key as u64,
+            Ok(og_runtime::Decoded {
+                width,
+                height,
+                rgba,
+            }),
+        )
+    });
+}
+
+/// An image the browser could not decode, and why.
+#[wasm_bindgen]
+pub fn og_web_fail_image(key: f64, reason: String) {
+    DECODED_IMAGES.with(|m| m.borrow_mut().insert(key as u64, Err(reason)));
 }
 
 /// The Worker's `fetch(path)`, called for a file nobody fetched yet; it

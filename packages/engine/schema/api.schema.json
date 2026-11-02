@@ -5900,6 +5900,11 @@
         "TextureArrayInfo",
         "Model",
         "PrefabLink",
+        "LoadBudget",
+        "ImageKind",
+        "ImageDataDesc",
+        "ImageInfo",
+        "LoadCompletion",
         "AssetReady",
         "AssetFailed"
       ],
@@ -6633,6 +6638,95 @@
           ],
           "returns": "Result<Rig2DInfo>",
           "returnsDoc": "Refused for a path not in the bundle (run og cook) or a texture it cannot load.",
+          "publish": true
+        },
+        {
+          "name": "imageData",
+          "doc": "Load an image from bytes, uncooked, at run time: a PNG or JPEG a player drew, uploaded or a generator made. Its size, width and height are read from its header and checked against the budget before it is decoded. On the web the browser decodes it off the engine's thread (createImageBitmap in the engine's Worker), and no decoder is in the wasm; natively a worker thread decodes it. The handle is pending until the image is in place, then ready (og.load.imageInfo gives its texture) or failed (og.load.error says why).\nCompletion is host input, applied at a tick boundary and journaled like a key press: natively a load is in place before the tick after the call; on the web it lands at the first boundary after the browser has decoded it, and og.load.completions records that tick, so a replay (og replay --compare, og.load.replayCompletions) puts it in place at the same tick. In a lockstep or rollback room content made by one player is not on the others' machines: the completion is local to the session (an asset's status is not world state and is in no snapshot or hash), so a game that plays it in the shared simulation sends it through og.net.command first.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world that owns the asset."
+            },
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "A name for it in errors and dumps, such as `drawings/cat.png`."
+            },
+            {
+              "name": "bytes",
+              "type": "Bytes",
+              "optional": false,
+              "doc": "The file's bytes."
+            },
+            {
+              "name": "desc",
+              "type": "ImageDataDesc",
+              "optional": true,
+              "doc": "How to read it and its budget."
+            }
+          ],
+          "returns": "Result<Asset>",
+          "returnsDoc": "The handle (pending), or why it was refused now: over the budget's bytes or textureSize, or not a PNG or JPEG.",
+          "publish": true
+        },
+        {
+          "name": "imageInfo",
+          "doc": "A ready uncooked image's texture and size.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world that owns the asset."
+            },
+            {
+              "name": "asset",
+              "type": "Asset",
+              "optional": false,
+              "doc": "A handle og.load.imageData answered."
+            }
+          ],
+          "returns": "Result<ImageInfo>",
+          "returnsDoc": "Refused while it is pending (say so), when it failed (with its reason) or for another kind of asset.",
+          "publish": true
+        },
+        {
+          "name": "completions",
+          "doc": "The world's journal of uncooked loads put in place, oldest first: what a replay hands og.load.replayCompletions to put each in place at the same tick. og replay --record keeps it in the trace.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "List<LoadCompletion>",
+          "publish": true
+        },
+        {
+          "name": "replayCompletions",
+          "doc": "Put this world's uncooked loads in place at the ticks a recorded run did (its og.load.completions), not when this host finishes them: a load is held back until its tick, and at its tick the engine waits for it. Call it before the first tick; og replay --compare does. A load the journal names as failed fails at its tick whatever this host made of it.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "completions",
+              "type": "List<LoadCompletion>",
+              "optional": false,
+              "doc": "A recorded journal."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused once a tick has run.",
           "publish": true
         }
       ],
@@ -31238,6 +31332,137 @@
           "readOnly": true
         }
       },
+      "additionalProperties": false
+    },
+    "LoadBudget": {
+      "x-og-kind": "desc",
+      "x-og-module": "load",
+      "description": "The limits an uncooked load (og.load.imageData, og.load.gltfData) is held to: content a player or a generator made is untrusted, so each limit is checked from the file's headers before anything is decoded, and a load over one is refused naming the limit, the value and the fix.",
+      "type": "object",
+      "properties": {
+        "bytes": {
+          "type": "number",
+          "description": "The most bytes the source may have.",
+          "default": 33554432,
+          "minimum": 0,
+          "x-og-unit": "bytes"
+        },
+        "triangles": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The most triangles a glTF's meshes may have, every primitive of every mesh.",
+          "default": 500000
+        },
+        "textureSize": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The widest or tallest an image may be, in texels (the device's own limit lowers it further).",
+          "default": 4096
+        },
+        "frameMs": {
+          "type": "number",
+          "description": "How long a frame may spend on the engine's thread putting finished loads in place, in milliseconds; at least one load is put in place a frame, and decoding never runs on the engine's thread on the web.",
+          "default": 2,
+          "minimum": 0,
+          "x-og-unit": "ms"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ImageKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "load",
+      "description": "How an uncooked image's texels are read, as a cooked texture's `kind`.",
+      "type": "string",
+      "enum": [
+        "color",
+        "linear",
+        "pixel"
+      ],
+      "x-og-variants": {
+        "color": "sRGB colour (albedo, UI art), sampled linear.",
+        "linear": "Data stored linearly (masks, roughness).",
+        "pixel": "sRGB colour sampled nearest (pixel art)."
+      }
+    },
+    "ImageDataDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "load",
+      "description": "How og.load.imageData reads an image.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/ImageKind",
+          "description": "How its texels are read.",
+          "default": "color"
+        },
+        "budget": {
+          "$ref": "#/$defs/LoadBudget",
+          "description": "The limits it is held to.",
+          "default": {}
+        }
+      },
+      "additionalProperties": false
+    },
+    "ImageInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "load",
+      "description": "What a ready uncooked image holds.",
+      "type": "object",
+      "properties": {
+        "texture": {
+          "$ref": "#/$defs/Texture",
+          "description": "The texture: og.render.sprite, og.ui.image and material maps draw it like a cooked one."
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its width in texels."
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its height in texels."
+        }
+      },
+      "required": [
+        "texture",
+        "width",
+        "height"
+      ],
+      "additionalProperties": false
+    },
+    "LoadCompletion": {
+      "x-og-kind": "struct",
+      "x-og-module": "load",
+      "description": "When an uncooked load was put in place: the journal a replay applies again (og.load.completions).",
+      "type": "object",
+      "properties": {
+        "request": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The load's number: 0 for the world's first uncooked load, then one more for each."
+        },
+        "tick": {
+          "type": "number",
+          "description": "The world's tick (world.tick) at the boundary it was put in place: the systems of that tick and every later one see og.load.status ready or failed.",
+          "x-og-unit": "ticks"
+        },
+        "ok": {
+          "type": "boolean",
+          "description": "Whether it was ready (else failed)."
+        }
+      },
+      "required": [
+        "request",
+        "tick",
+        "ok"
+      ],
       "additionalProperties": false
     },
     "AssetReady": {

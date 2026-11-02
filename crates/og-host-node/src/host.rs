@@ -923,6 +923,28 @@ impl LoadApi for NodeHost {
         rt::og_load_rig2d(world, path)
     }
 
+    fn og_load_image_data(
+        &self,
+        world: u32,
+        name: String,
+        bytes: Self::Bytes,
+        desc: Option<String>,
+    ) -> String {
+        rt::og_load_image_data(world, name, bytes.0, desc)
+    }
+
+    fn og_load_image_info(&self, world: u32, asset: f64) -> String {
+        rt::og_load_image_info(world, asset)
+    }
+
+    fn og_load_completions(&self, world: u32) -> String {
+        rt::og_load_completions(world)
+    }
+
+    fn og_load_replay_completions(&self, world: u32, completions: String) -> String {
+        rt::og_load_replay_completions(world, completions)
+    }
+
     fn og_load_rig(&self, world: u32, path: String) -> String {
         rt::og_load_rig(world, path)
     }

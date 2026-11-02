@@ -256,3 +256,38 @@ pub fn og_load_gltf_info(world: u32, asset: f64) -> String {
         }
     })())
 }
+
+// ── uncooked loads ─────────────────────────────────────────────────────────
+
+pub fn og_load_image_data(
+    world: u32,
+    name: String,
+    bytes: Vec<u8>,
+    desc: Option<String>,
+) -> String {
+    result((|| {
+        let eng = engine(world)?;
+        crate::uncooked::image_data(&eng, &name, bytes, &parse(desc.as_deref())?).map(asset_value)
+    })())
+}
+
+pub fn og_load_image_info(world: u32, asset: f64) -> String {
+    result(engine(world).and_then(|eng| crate::uncooked::image_info(&eng, index_of(asset))))
+}
+
+pub fn og_load_completions(world: u32) -> String {
+    match engine(world) {
+        Ok(eng) => crate::uncooked::completions(&eng).to_string(),
+        Err(_) => "[]".into(),
+    }
+}
+
+pub fn og_load_replay_completions(world: u32, completions: String) -> String {
+    result_void((|| {
+        let eng = engine(world)?;
+        let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
+        let list: Value =
+            serde_json::from_str(&completions).map_err(|e| format!("completions: {e}"))?;
+        crate::uncooked::replay(&eng, tick, &list)
+    })())
+}

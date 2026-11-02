@@ -1264,6 +1264,26 @@ pub fn og_load_rig2d(world: u32, path: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_load_image_data(world: u32, name: String, bytes: Vec<u8>, desc: Option<String>) -> String {
+    <Host as LoadApi>::og_load_image_data(&Host, world, name, bytes, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_load_image_info(world: u32, asset: f64) -> String {
+    <Host as LoadApi>::og_load_image_info(&Host, world, asset)
+}
+
+#[wasm_bindgen]
+pub fn og_load_completions(world: u32) -> String {
+    <Host as LoadApi>::og_load_completions(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_load_replay_completions(world: u32, completions: String) -> String {
+    <Host as LoadApi>::og_load_replay_completions(&Host, world, completions)
+}
+
+#[wasm_bindgen]
 pub fn og_physics_raycast(world: u32, desc: Option<String>) -> String {
     <Host as PhysicsApi>::og_physics_raycast(&Host, world, desc)
 }

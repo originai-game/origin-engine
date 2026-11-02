@@ -2132,6 +2132,7 @@ name = "og-runtime"
 version = "0.7.7"
 dependencies = [
  "glam 0.34.1",
+ "image",
  "miniz_oxide 0.8.9",
  "og-ai",
  "og-anim",

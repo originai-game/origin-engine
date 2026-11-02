@@ -195,6 +195,9 @@ export interface WebExtras {
   og_web_set_inflater?(inflate: (key: number, bytes: Uint8Array) => void): void;
   og_web_put_inflated?(key: number, bytes: Uint8Array): void;
   og_web_fail_inflated?(key: number, reason: string): void;
+  og_web_set_image_decoder?(decode: (key: number, bytes: Uint8Array) => void): void;
+  og_web_put_image?(key: number, width: number, height: number, rgba: Uint8Array): void;
+  og_web_fail_image?(key: number, reason: string): void;
   og_web_bundle_files(manifest: string): string;
   og_web_texture_ktx2(manifest: string, id: string, bytes: Uint8Array): Uint8Array;
   og_web_pack_ktx2?(engine: number | undefined, manifest: string, pack: Uint8Array): Array<string | Uint8Array>;
@@ -571,6 +574,34 @@ export function installInflater(glue: Pick<WebExtras, "og_web_set_inflater" | "o
         (b) => put(key, new Uint8Array(b)),
         (e: unknown) => fail(key, e instanceof Error ? e.message : String(e)),
       );
+  });
+  return true;
+}
+
+/**
+ * Gives the engine the browser's image decoders for og.load.imageData: a
+ * PNG or JPEG becomes an ImageBitmap off the engine's work
+ * (`createImageBitmap`, no colour conversion, alpha not premultiplied) and
+ * its RGBA8 texels are read back through an OffscreenCanvas, answered by
+ * key. Without it the engine has no decoder and such a load fails.
+ */
+export function installImageDecoder(glue: Pick<WebExtras, "og_web_set_image_decoder" | "og_web_put_image" | "og_web_fail_image">): boolean {
+  const g = globalThis as { createImageBitmap?: (b: Blob, o?: Record<string, string>) => Promise<ImageBitmap>; OffscreenCanvas?: new (w: number, h: number) => OffscreenCanvas };
+  const { og_web_set_image_decoder: set, og_web_put_image: put, og_web_fail_image: fail } = glue;
+  if (!g.createImageBitmap || !g.OffscreenCanvas || !set || !put || !fail) return false;
+  const decode = g.createImageBitmap;
+  const Canvas = g.OffscreenCanvas;
+  set((key: number, bytes: Uint8Array) => {
+    decode(new Blob([new Uint8Array(bytes)]), { premultiplyAlpha: "none", colorSpaceConversion: "none" })
+      .then((bitmap) => {
+        const { width, height } = bitmap;
+        const ctx = new Canvas(width, height).getContext("2d", { willReadFrequently: true }) as OffscreenCanvasRenderingContext2D | null;
+        if (!ctx) throw new Error("no 2D context to read the image's texels");
+        ctx.drawImage(bitmap, 0, 0);
+        bitmap.close();
+        put(key, width, height, new Uint8Array(ctx.getImageData(0, 0, width, height).data.buffer));
+      })
+      .catch((e: unknown) => fail(key, `the browser could not decode it (${e instanceof Error ? e.message : String(e)})`));
   });
   return true;
 }
@@ -1132,6 +1163,8 @@ export function startWorker(game: GameToken): void {
         installInflater(glue);
         // Streamed video: WebCodecs where the browser decodes AV1, else rav1d's own wasm module (fetched only then).
         await installVideo(glue, data.av1);
+        // Uncooked images (og.load.imageData) are decoded by the browser, never in the wasm.
+        installImageDecoder(glue);
         progress(data.expect ? received.value : 0.1, "bundle");
         let fetched: Fetched | null = null;
         if (data.root !== undefined) {

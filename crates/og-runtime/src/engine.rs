@@ -133,6 +133,18 @@ pub trait Hooks {
     fn inflate_take(&self, key: u64) -> Fetch<Vec<u8>> {
         Fetch::Failed(format!("inflate {key} was never started"))
     }
+    /// Starts decoding a PNG or JPEG away from the engine's thread (the web
+    /// host's `createImageBitmap` in its Worker), answered later by
+    /// [`Hooks::image_decode_take`] under `key`. `false`: this host cannot,
+    /// and the runtime decodes on a worker thread natively (og.load.imageData).
+    fn image_decode_start(&self, key: u64, bytes: &[u8]) -> bool {
+        let _ = (key, bytes);
+        false
+    }
+    /// The RGBA8 image a started decode answered, once (`Pending` until then).
+    fn image_decode_take(&self, key: u64) -> Fetch<super::uncooked::Decoded> {
+        Fetch::Failed(format!("image decode {key} was never started"))
+    }
     /// The AV1 decoder streamed videos play with here (`og.video.capabilities`):
     /// natively rav1d by default; the web host answers what its Worker found.
     fn video_decoder(&self) -> VideoDecoder {

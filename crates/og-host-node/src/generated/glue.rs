@@ -1515,6 +1515,30 @@ pub fn og_load_rig2d(env: Env, world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_rig2d(&Host, world, path)
 }
 
+#[napi(js_name = "og_load_image_data")]
+pub fn og_load_image_data(env: Env, world: u32, name: String, bytes: crate::NodeBytes, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_image_data(&Host, world, name, bytes, desc)
+}
+
+#[napi(js_name = "og_load_image_info")]
+pub fn og_load_image_info(env: Env, world: u32, asset: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_image_info(&Host, world, asset)
+}
+
+#[napi(js_name = "og_load_completions")]
+pub fn og_load_completions(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_completions(&Host, world)
+}
+
+#[napi(js_name = "og_load_replay_completions")]
+pub fn og_load_replay_completions(env: Env, world: u32, completions: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_replay_completions(&Host, world, completions)
+}
+
 #[napi(js_name = "og_physics_raycast")]
 pub fn og_physics_raycast(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
