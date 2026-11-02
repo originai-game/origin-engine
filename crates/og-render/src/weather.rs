@@ -331,7 +331,10 @@ pub fn lightning_flash(t: f32) -> f32 {
 
 /// The bolt of strike number `strike`: a jagged line from (at.x, top, at.z)
 /// down to `at` by midpoint displacement from a generator seeded by the
-/// strike, so the same strike draws the same bolt. (point, width) pairs.
+/// strike, so the same strike draws the same bolt. (point, width) pairs:
+/// the channel's glow, not its centimetres of plasma, so a few thousandths
+/// of the bolt's height (3.6 to 6 m for a 900 m bolt, a couple of pixels
+/// at 1.5 km), widening towards the ground.
 pub fn lightning_bolt(at: Vec3, top: f32, strike: u32) -> Vec<(Vec3, f32)> {
     // A xorshift stream seeded by the strike.
     let mut state = strike.wrapping_mul(0x9e37_79b9) ^ 0x4c49_4748 | 1;
@@ -357,7 +360,7 @@ pub fn lightning_bolt(at: Vec3, top: f32, strike: u32) -> Vec<(Vec3, f32)> {
     let n = pts.len() as f32;
     pts.into_iter()
         .enumerate()
-        .map(|(i, p)| (p, 0.35 + 0.3 * i as f32 / n))
+        .map(|(i, p)| (p, (top - at.y) * (0.004 + 0.0028 * i as f32 / n)))
         .collect()
 }
 
@@ -391,7 +394,7 @@ pub fn add_lightning(
     let bolt_light = 2.0 * flash;
     // The cloud over the root glows from inside (the clouds' own flash).
     if let Some(c) = scene.clouds.as_mut() {
-        c.flash = Vec3::new(at.x, top + 150.0, at.z).extend(60.0 * flash);
+        c.flash = Vec3::new(at.x, top + 150.0, at.z).extend(12.0 * flash);
     }
     let own = scene.light.intensity * scene.light.color.max_element();
     if bolt_light > own {

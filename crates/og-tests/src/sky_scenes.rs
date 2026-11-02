@@ -207,6 +207,9 @@ pub fn storm(strike: bool) -> RenderScene {
         // 1.5 km out, so the bolt's root in the deck (35° up) is in frame
         // and the glow about it reads.
         let at = Vec3::new(-150.0, 0.0, -1500.0);
+        // The bolt is a ribbon in the scene: past the default 1 km far
+        // plane it would be clipped.
+        scene.camera.far = 4000.0;
         og_render::add_lightning(&mut scene, at, 900.0, 3, 0.03);
     }
     scene

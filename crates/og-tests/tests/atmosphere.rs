@@ -623,13 +623,28 @@ fn cloud_scenes_match_their_references_and_read_as_clouds() {
     }
     let clear = frame(&sky_scene("clouds-fair-clear"));
     let fair = frame(&sky_scene("clouds-fair"));
-    // The upper sky (y 0–320) against the same frame without clouds:
-    // flat-based cumulus sit in its lower part, at 15–35° up.
+    // The upper sky (y 0–320) against the same frame without clouds,
+    // over the pixels that are blue sky there (the pillars left out, their
+    // edges would outweigh any cloud): flat-based cumulus sit in its lower
+    // part, at 15–35° up.
+    let sky: Vec<(u32, u32)> = (0..320)
+        .flat_map(|y| (0..1280).map(move |x| (x, y)))
+        .filter(|&(x, y)| {
+            let p = px(&clear, x, y);
+            p[2] > p[0] + 30.0
+        })
+        .collect();
+    assert!(sky.len() > 100_000, "the band is mostly sky: {}", sky.len());
+    let spread = |img: &RgbaImage| {
+        let l: Vec<f32> = sky.iter().map(|&(x, y)| luma(px(img, x, y))).collect();
+        let m = l.iter().sum::<f32>() / l.len() as f32;
+        (l.iter().map(|v| (v - m).powi(2)).sum::<f32>() / l.len() as f32).sqrt()
+    };
     assert!(
-        contrast(&fair, 120, 0, 1160, 320) > 2.0 * contrast(&clear, 120, 0, 1160, 320),
+        spread(&fair) > 2.0 * spread(&clear),
         "cumulus break up the sky: {} vs {}",
-        contrast(&fair, 120, 0, 1160, 320),
-        contrast(&clear, 120, 0, 1160, 320)
+        spread(&fair),
+        spread(&clear)
     );
     let overcast = frame(&sky_scene("clouds-overcast"));
     let top = px(&overcast, 640, 30);
