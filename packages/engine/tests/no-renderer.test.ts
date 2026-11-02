@@ -198,15 +198,13 @@ test("og test without a renderer passes, counts its unchecked frames and runs th
 // OG_RENDERER=none runs without one. The refusal is the addon's answer when
 // wgpu finds no adapter, given here so any machine takes the path.
 test("a refused adapter fails the run that asked for a renderer; only OG_RENDERER=none runs without one", () => {
-  const refused = () => JSON.stringify({ ok: false, reason: "no GPU adapter: Auto: no suitable adapter found" });
+  const refused = () => JSON.stringify({ ok: false, reason: "no GPU adapter: Auto: no suitable adapter found; set OG_RENDERER=none to run without a renderer" });
   const granted = () => JSON.stringify({ ok: true, value: "metal" });
   const saved = process.env.OG_RENDERER;
   try {
     delete process.env.OG_RENDERER;
     const failed = attachRenderer(1, 64, 64, refused);
-    expect(failed.ok).toBeFalse();
-    expect(failed.ok ? "" : failed.reason).toContain("no GPU adapter: Auto: no suitable adapter found");
-    expect(failed.ok ? "" : failed.reason).toContain("OG_RENDERER=none");
+    expect(failed).toEqual({ ok: false, reason: "no GPU adapter: Auto: no suitable adapter found; set OG_RENDERER=none to run without a renderer" });
     process.env.OG_RENDERER = "vulkan";
     expect(attachRenderer(1, 64, 64, refused).ok).toBeFalse();
     process.env.OG_RENDERER = "none";

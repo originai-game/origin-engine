@@ -130,10 +130,9 @@ export function attachRenderer(
   const attached = JSON.parse(attach(engine, width, height)) as { ok: boolean; value?: string; reason?: string };
   if (attached.ok) return { ok: true, value: attached.value! };
   if (process.env.OG_RENDERER?.trim().toLowerCase() === "none") return { ok: true, value: "none" };
-  return {
-    ok: false,
-    reason: `no renderer: ${attached.reason}. The engine draws on a GPU only (docs/design.md §2.6); set OG_RENDERER=none to run without one on purpose`,
-  };
+  // The addon's refusal names the adapter's error and the fix ("no GPU
+  // adapter: <wgpu's error>; set OG_RENDERER=none to run without a renderer").
+  return { ok: false, reason: attached.reason ?? "no renderer" };
 }
 
 /** Import a game bundle (its default export is `og.game(...)`) and assemble its engine (`options.root`: the project whose cooked/ it opens). */

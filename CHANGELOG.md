@@ -15,6 +15,19 @@ is one line here, written at the merge that changes
 
 ## Unreleased
 
+- **Breaking: a refused GPU adapter fails the run.** A native `og run`,
+  `og test`, `og render`, `og polish` or `og ui check` whose adapter
+  request fails exits 2 with "no GPU adapter: <wgpu's error>; set
+  OG_RENDERER=none to run without a renderer", instead of going on as tier
+  `none`. The engine draws on a GPU only (docs/design.md §2.6);
+  `OG_RENDERER=none` is the only way to run without a renderer, and with it
+  a run is what it was. Sandboxes without a GPU set it
+  (`docs/platform-asks.md` ask 20).
+- **Fixed: the missing-glyph warning without a renderer.** og-ui reads
+  each frame's texts against each face's metrics, and `og.render.text` and
+  `og.render.floatingText` are read when queued, so the warning is the same
+  with or without a renderer, once per face and character, on the tick
+  that drew it.
 - **Added: `og.motion`, generated motion for humanoids** (docs/design.md
   §2.7): the engine's motion model (a student distilled from NVIDIA
   MotionBricks, og-motion) animates an entity with an og.Skeleton and the
