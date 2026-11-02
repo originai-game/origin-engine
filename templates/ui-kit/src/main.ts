@@ -598,7 +598,12 @@ function galleryButton(world: World, d: DemoState): void {
   // shooter's to its vitals (the button sat between Health and Armor: a
   // stray label in the HUD at every desktop aspect); its top middle is free.
   const top = bp === "phonePortrait" || bp === "phoneLandscape" || SCREENS[d.screen] === "shooter";
-  og.ui.anchor("Back", { anchor: top ? "top" : "bottomLeft", offsetY: bp === "phonePortrait" ? 52 : 0 }, () => {
+  // Elsewhere it sits above a docked action bar (under a finger the bar spans the bottom edge):
+  // last tick's place of the bar, when the screen has one.
+  const vp = og.ui.frameViewport();
+  const bar = og.ui.bounds("Hints");
+  const lift = !top && bar && bar.y + bar.height >= vp.height - 1 && bar.width >= vp.width - 1 ? vp.height - bar.y : 0;
+  og.ui.anchor("Back", { anchor: top ? "top" : "bottomLeft", offsetY: bp === "phonePortrait" ? 52 : -lift }, () => {
     // The medium size: its label at the body's 16 px at 1080p, never under it.
     if (og.ui.button("Gallery", tr(world, "gallery.button"), { variant: "secondary" }).clicked) d.screen = 0;
   });
