@@ -219,7 +219,11 @@ function questDetail(q: Api.QuestView, desc: Api.QuestLogDesc, out: Mut<Api.Ques
       const rarity = (rw.rarity || "none") as Api.Rarity;
       const tier = rarityColor(rarity);
       const tw = u(phone ? 76 : 88);
-      kit.open(kit.idi("R", i), { direction: "column", width: px(tw), gap: u(6), cross: "center", part: `QuestLog.reward${flags(`rarity=${rarity}`)}`, partClass: "card" });
+      // The tile is the card a style dresses; its caption stands in its own row under it, outside the card's frame
+      // (inside it, a style's frame and notches cut the name).
+      // The caption's row is wider than the tile, so a name of two words keeps them whole at 200 % text.
+      kit.open(kit.idi("R", i), { direction: "column", width: px(Math.round(tw * 1.3)), gap: u(6), cross: "center" });
+      kit.open("Tile", { width: px(tw), height: px(tw), part: `QuestLog.reward${flags(`rarity=${rarity}`)}`, partClass: "card" });
       artSlot("Art", "QuestLog.rewardArt", { texture: art.get(rw.image) ?? null, kind: "item", rarity, width: px(tw), height: px(tw), radius: u(10) }, () => {
         // The tier as light rising from the foot (undressed, so a style's dress keeps its gradient), no outline.
         if (tier) {
@@ -236,8 +240,11 @@ function questDetail(q: Api.QuestView, desc: Api.QuestLogDesc, out: Mut<Api.Ques
           over({ insets: { end: u(4), bottom: u(4) }, inert: true });
         }
       });
-      text("Name", rw.name, { step: st(13), color: "inkMuted", align: "center", width: grow(), maxLines: 2 });
-      pips("Pips", rarity, u(5));
+      kit.close();
+      kit.column("Caption", { width: grow(), gap: u(4), cross: "center", part: "QuestLog.caption", partClass: "badge" }, () => {
+        text("Name", rw.name, { step: st(13), color: "inkMuted", align: "center", width: grow(), maxLines: 3 });
+        pips("Pips", rarity, u(5));
+      });
       kit.close();
       kit.semantics({ role: "listitem", name: [rw.name, rw.amount > 1 ? `×${rw.amount}` : "", rarity !== "none" ? rarity : ""].filter(Boolean).join(", ") });
     });
@@ -312,7 +319,8 @@ export function questLog(id: string, desc: Api.QuestLogDesc): Api.QuestLogResult
     kit.open("Detail", { direction: "column", width: grow(), height: grow(), gap: u(14), padding: phone ? xy(u(16), u(14)) : { left: u(32), right: u(28), top: u(28), bottom: u(24) }, part: "QuestLog.detail", partClass: "panel" });
     kit.setDraw({ shape: { kind: "rect", radii: [u(16), u(16), u(16), u(16)] }, fills: [{ kind: "solid", color: token("panel", 0.88) }, vgrad([[0, token("sheen", 0.05)], [1, token("sheen", 0)]])], effects: [shadow(u(10), u(30), 0.45)] });
     if (portrait) {
-      if (btn("Back", desc.backLabel ?? "Back", { variant: "glass", size: "sm", part: "QuestLog.back" }).clicked) {
+      // The style's secondary button with a chevron to the start edge (a glass pane read as a flat grey box).
+      if (btn("Back", desc.backLabel ?? "Back", { variant: "secondary", sym: "chevronBack", size: "sm", part: "QuestLog.back" }).clicked) {
         openNext = false;
         kit.feedback("back", -1);
       }
