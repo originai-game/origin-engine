@@ -46,15 +46,15 @@
     },
     {
       "path": "references/metal/intro-4.png",
-      "bytes": 139607,
-      "sha256": "8f137e6a6120c920d10748e3e6374a5f87698a8f5aa45875c82fab152d91a33b",
+      "bytes": 117835,
+      "sha256": "d04b144afb06d0419587177d1dd5ed85e31c5d519dd744b01ce27c61ddfebf89",
       "licence": "unrecorded: add it to the template's LICENSES.md",
       "source": "templates/game/references/metal/intro-4.png of origingame/origin-engine; shipped in @origingame/create-game's template/"
     },
     {
       "path": "references/metal/intro-8.png",
-      "bytes": 151424,
-      "sha256": "3118064f3e964c59ed0a674c01e11ce1f7cf9c81ef8919453935027c3c89a400",
+      "bytes": 131093,
+      "sha256": "bb27eeafe8f72b29b1ec314d9a21292637149c96bd06950cb5c62b65a564f864",
       "licence": "unrecorded: add it to the template's LICENSES.md",
       "source": "templates/game/references/metal/intro-8.png of origingame/origin-engine; shipped in @origingame/create-game's template/"
     }
