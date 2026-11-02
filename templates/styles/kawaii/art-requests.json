@@ -4,140 +4,406 @@
     "motion": "bouncy",
     "ornament": "light",
     "scheme": "light",
-    "seed": "#ff4f9a",
+    "seed": "#d6a443",
     "shape": "pill"
   },
+  "concepts": [
+    "tests/evidence/ui-art/concepts/C-settings.jpg",
+    "tests/evidence/ui-art/concepts/C-shop.jpg",
+    "tests/evidence/ui-art/concepts/C-hud.jpg"
+  ],
+  "densities": [
+    1,
+    2,
+    3
+  ],
   "look": "kawaii anime gacha",
+  "lookPreset": "anime-cel-3d",
   "palette": {
-    "backdrop": "#fff0f6",
-    "highlight": "#694cc5",
-    "ink": "#2e0e1c",
-    "line": "#d9ced3",
-    "panel": "#fff8fb",
-    "primary": "#ff87ba"
+    "backdrop": "#f7f0e3",
+    "highlight": "#283a6e",
+    "ink": "#1d2a4e",
+    "line": "#d4d4d6",
+    "panel": "#fcf9f4",
+    "primary": "#dbaf5a"
   },
-  "premise": "an idol-collecting gacha game of pastel banners and star pulls",
+  "premise": "an anime adventure gacha of bright skies, ivory halls and star pulls",
+  "resample": "smooth",
   "slots": [
     {
       "aspect": "free",
+      "dress": [
+        "Panel.frame"
+      ],
+      "file": "art/panel.png",
       "fit": "nineSlice",
+      "flat": 0.07,
       "focal": [
         0.5,
         0.5
+      ],
+      "hash": "1685b2f371dc2301",
+      "insets": [
+        0.25,
+        0.25,
+        0.25,
+        0.25
       ],
       "kind": "styleFrame",
       "name": "kawaii/panel",
-      "safe": null
+      "note": "A warm ivory panel, completely opaque and solid everywhere including its centre (no hole, no transparency, no vignette): a flat ivory #fcf9f4 ground, very softly rounded corners (about 16 px at this size), a fine 1.5 px pale-gold hairline just inside its edge, a tiny four-point gold sparkle in the top-left and bottom-right corners only. As the cream panels of the concept's settings and shop. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.",
+      "opaque": "#fcf9f4",
+      "pixels": [
+        288,
+        288
+      ],
+      "safe": null,
+      "size": [
+        96,
+        96
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "Card.frame"
+      ],
+      "file": "art/card.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
+      ],
+      "hash": "6ee6573e6cce8fa4",
+      "insets": [
+        0.208,
+        0.208,
+        0.208,
+        0.208
       ],
       "kind": "styleFrame",
       "name": "kawaii/card",
-      "safe": null
+      "note": "An ivory item card for a shop grid, one of many repeated side by side: a rounded rectangle (about 14 px corners) of flat ivory #fdfaf3, a thin 1 px pale-gold hairline at its edge and a soft warm shadow under its bottom edge. Completely plain: no sparkles, stars, flourishes or corner ornaments anywhere, only the hairline and the shading. Everything outside its rounded corners is fully transparent. Its top, bottom, left and right edges are plain and even along their whole length (they stretch).",
+      "opaque": "#fdfaf3",
+      "pixels": [
+        288,
+        288
+      ],
+      "safe": null,
+      "size": [
+        96,
+        96
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "Field.frame"
+      ],
+      "file": "art/field.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
+      ],
+      "hash": "02c654353fae5b07",
+      "insets": [
+        0.208,
+        0.3,
+        0.208,
+        0.3
       ],
       "kind": "styleFrame",
       "name": "kawaii/field",
-      "safe": null
+      "note": "A text field: a fully opaque white rounded rectangle (about 10 px corners), a 1 px soft grey hairline and a faint inner shadow along its top; the centre plain white, as the Speakers dropdown of the concept. No sparkles, stars or ornaments anywhere: it is a repeated cell; only its hairline and shading. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.",
+      "pixels": [
+        288,
+        120
+      ],
+      "safe": null,
+      "size": [
+        96,
+        40
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "Slot.frame"
+      ],
+      "file": "art/slot.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
+      ],
+      "hash": "4258bd15e067cdc5",
+      "insets": [
+        0.25,
+        0.25,
+        0.25,
+        0.25
       ],
       "kind": "styleFrame",
       "name": "kawaii/slot",
-      "safe": null
+      "note": "An inventory socket: a fully opaque, slightly darker cream (#efe8da) rounded square (about 12 px corners), recessed with a soft inner shadow along its top and left, a 1 px pale-gold hairline. No sparkles, stars or ornaments anywhere: it is a repeated cell; only its hairline and shading. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.",
+      "pixels": [
+        192,
+        192
+      ],
+      "safe": null,
+      "size": [
+        64,
+        64
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "Tooltip.frame"
+      ],
+      "file": "art/tooltip.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
+      ],
+      "hash": "b1d40135da1c1191",
+      "insets": [
+        0.188,
+        0.25,
+        0.188,
+        0.25
       ],
       "kind": "styleFrame",
       "name": "kawaii/tooltip",
-      "safe": null
+      "note": "A small tooltip: a deep navy (#1d2a4e) rounded rectangle (about 10 px corners) with a fine pale-gold hairline; the centre plain navy so light text reads on it. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.",
+      "pixels": [
+        192,
+        144
+      ],
+      "safe": null,
+      "size": [
+        64,
+        48
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "Hud.frame"
+      ],
+      "file": "art/hud.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
+      ],
+      "hash": "c62c81e313fb44b8",
+      "insets": [
+        0.219,
+        0.3,
+        0.219,
+        0.3
       ],
       "kind": "styleFrame",
       "name": "kawaii/hud",
-      "safe": null
+      "note": "A HUD capsule: a fully rounded pill of warm ivory at 94 % opacity with a fine pale-gold rim and a soft shadow, as the currency pill (1,250) of the concept's shop; the centre plain. Its top, bottom, left and right edges are plain and even along their whole length (they stretch): every ornament sits in the four corners, none at the middle of an edge.",
+      "pixels": [
+        192,
+        120
+      ],
+      "safe": null,
+      "size": [
+        64,
+        40
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "Button.base[secondary]",
+        "Button.base[secondary][hover]",
+        "Button.base[secondary][pressed]",
+        "Button.base[secondary][disabled]",
+        ""
+      ],
+      "file": "art/button.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
+      ],
+      "hash": "51acaf324ffab66c",
+      "insets": [
+        0.229,
+        0.318,
+        0.229,
+        0.318
       ],
       "kind": "styleButton",
       "name": "kawaii/button",
-      "safe": null
+      "note": "A secondary button: a fully rounded ivory pill with a 1.5 px gold rim, a faint top highlight and a soft shadow; the centre plain ivory so navy text reads on it. Its top, bottom, left and right edges are plain and even along their whole length (they stretch), and its rounded ends are plain too: no sparkle, star or ornament anywhere, so it reads as a clean pill even when it is short.",
+      "pixels": [
+        1440,
+        132
+      ],
+      "safe": null,
+      "size": [
+        96,
+        44
+      ],
+      "states": [
+        "normal",
+        "hover",
+        "pressed",
+        "disabled",
+        "focused"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "Button.base[primary]",
+        "Button.base[primary][hover]",
+        "Button.base[primary][pressed]",
+        "Button.base[primary][disabled]",
+        ""
+      ],
+      "file": "art/button-primary.png",
       "fit": "nineSlice",
       "focal": [
         0.5,
         0.5
       ],
+      "hash": "c7a09e6d218be24b",
+      "insets": [
+        0.229,
+        0.318,
+        0.229,
+        0.318
+      ],
       "kind": "styleButton",
       "name": "kawaii/button-primary",
-      "safe": null
+      "note": "The primary button: a fully rounded pill of polished warm gold (#e2b65c, lighter at its top, a little deeper at its bottom), a thin brighter gold rim, a soft glossy sheen along its top and a soft warm shadow; the label area flat light gold so dark navy text reads on it. As the Done and Buy buttons of the concept, without their sparkles. Its top, bottom, left and right edges are plain and even along their whole length (they stretch), and its rounded ends are plain too: no sparkle, star or ornament anywhere, so it reads as a clean pill even when it is short.",
+      "pixels": [
+        1440,
+        132
+      ],
+      "safe": null,
+      "size": [
+        96,
+        44
+      ],
+      "states": [
+        "normal",
+        "hover",
+        "pressed",
+        "disabled",
+        "focused"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "corner"
+      ],
+      "file": "art/corner.png",
       "fit": "contain",
       "focal": [
         0.5,
         0.5
       ],
+      "hash": "67f0a0c299619eca",
       "kind": "ornament",
       "name": "kawaii/corner",
-      "safe": null
+      "note": "A delicate corner ornament: a thin pale-gold curved filigree line with one small four-point sparkle, for the corner of an ivory panel, on a clear background.",
+      "pixels": [
+        96,
+        96
+      ],
+      "safe": null,
+      "size": [
+        32,
+        32
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "divider"
+      ],
+      "file": "art/divider.png",
       "fit": "contain",
       "focal": [
         0.5,
         0.5
       ],
+      "hash": "8c29d266b333adaa",
       "kind": "ornament",
       "name": "kawaii/divider",
-      "safe": null
+      "note": "A horizontal divider: a 1 px pale-gold line that fades out at both ends, with one tiny four-point gold sparkle at its centre, on a clear background. As the line under the concept's Settings title.",
+      "pixels": [
+        576,
+        48
+      ],
+      "safe": null,
+      "size": [
+        192,
+        16
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": "free",
+      "dress": [
+        "flourish"
+      ],
+      "file": "art/flourish.png",
       "fit": "contain",
       "focal": [
         0.5,
         0.5
       ],
+      "hash": "e54eb7b8311688de",
       "kind": "ornament",
       "name": "kawaii/flourish",
-      "safe": null
+      "note": "A small title flourish: a short pale-gold line ending in a four-point gold sparkle, on a clear background.",
+      "pixels": [
+        192,
+        72
+      ],
+      "safe": null,
+      "size": [
+        64,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
     },
     {
       "aspect": [
@@ -152,6 +418,69 @@
       "kind": "iconSet",
       "name": "kawaii/icons",
       "safe": null
+    },
+    {
+      "dress": [
+        "Slider.knob"
+      ],
+      "file": "art/thumb.png",
+      "hash": "4052c83b7d22a282",
+      "kind": "ornament",
+      "name": "kawaii/thumb",
+      "note": "A slider's thumb: one round white pearl knob, perfectly circular, a soft grey-blue shadow under it and a faint pale-gold rim; as the white knobs on the concept's volume sliders. Nothing else: no track.",
+      "pixels": [
+        72,
+        72
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "dress": [
+        "Toggle.knob[on]"
+      ],
+      "file": "art/knob.png",
+      "hash": "f5cbd34617452072",
+      "kind": "ornament",
+      "name": "kawaii/knob",
+      "note": "A switch's knob when it is on: one round white pearl knob, perfectly circular, a soft shadow and a faint gold rim; as the knob of the concept's Subtitles switch. Nothing else: no track.",
+      "pixels": [
+        72,
+        72
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
+    },
+    {
+      "dress": [
+        "Toggle.knob[off]"
+      ],
+      "file": "art/knob-off.png",
+      "hash": "78e7d9a7cee5b6aa",
+      "kind": "ornament",
+      "name": "kawaii/knob-off",
+      "note": "A switch's knob when it is off: one round white knob, perfectly circular, ringed by a clear 2 px dark slate-grey (#5c6273) rim and a soft shadow, so it stands out at 3:1 against a pale grey track; as the knob of the concept's Mute everything switch. Nothing else: no track.",
+      "pixels": [
+        72,
+        72
+      ],
+      "size": [
+        24,
+        24
+      ],
+      "states": [
+        "normal"
+      ]
     }
   ],
   "style": "kawaii"
