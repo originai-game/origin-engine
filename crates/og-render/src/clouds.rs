@@ -1,8 +1,11 @@
 //! Clouds (the R4 round): a volumetric layer raymarched in the sky pass
-//! over a curved shell around the planet, lit by the frame's directional
-//! light (Beer's law towards it, with three octaves of the multiple
-//! scattering approximation of Wrenninge et al.) and the environment's
-//! irradiance, faded into the sky with distance; and a thin high layer
+//! over a curved shell around the planet, lit by the sun (under the
+//! physical sky, the sunlight through the air down to each sample's own
+//! height, so a sunset lights low clouds orange from below; else the
+//! frame's directional light: Beer's law towards it, with three octaves
+//! of the multiple scattering approximation of Wrenninge et al.), the
+//! environment's irradiance and a lightning strike's flash inside them
+//! ([`Clouds::flash`]), faded into the sky with distance; and a thin high layer
 //! (cirrus) over it. Their shapes come from a tiling 64³ noise volume
 //! (Perlin–Worley base, two Worley detail octaves, a coverage channel),
 //! made once on the GPU by a compute pass the first frame that has clouds.
@@ -20,7 +23,7 @@ use glam::Vec3;
 /// The noise volume's size per side.
 pub(crate) const NOISE_SIZE: u32 = 64;
 /// The vec4s of the frame uniform's cloud block (`frame.clouds`).
-pub(crate) const CLOUD_VEC4S: usize = 5;
+pub(crate) const CLOUD_VEC4S: usize = 6;
 
 /// Clouds over the scene. See the module documentation.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -48,6 +51,10 @@ pub struct Clouds {
     pub layer_altitude: f32,
     /// Samples along a view ray through the layer (16 to 128).
     pub steps: u32,
+    /// A lightning flash lighting the cloud from inside: where (frame
+    /// coordinates, xyz) and how bright (w; 0: none). Set by
+    /// [`crate::add_lightning`].
+    pub flash: glam::Vec4,
 }
 
 impl Default for Clouds {
@@ -64,6 +71,7 @@ impl Default for Clouds {
             layer: 0.3,
             layer_altitude: 8000.0,
             steps: 48,
+            flash: glam::Vec4::ZERO,
         }
     }
 }
@@ -110,6 +118,7 @@ impl Clouds {
                 let (sun, sky) = self.light();
                 [radius, sun, sky, 0.0]
             },
+            self.flash.to_array(),
         ]
     }
 }

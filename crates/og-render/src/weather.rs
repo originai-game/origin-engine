@@ -364,9 +364,12 @@ pub fn lightning_bolt(at: Vec3, top: f32, strike: u32) -> Vec<(Vec3, f32)> {
 /// A lightning strike `seconds` after it struck `at`, from a cloud base at
 /// height `top`, added to `scene` (nothing from 0.6 s): the double flash
 /// brightens the sky's light and turns the scene's directional light to
-/// the bolt's channel while it outshines it, a bright
-/// blue-white light hangs 40 m over the strike, and for 0.35 s the bolt of strike number `strike`
-/// ([`lightning_bolt`]) is drawn as an additive strip that blooms.
+/// the bolt's channel while it outshines it, the clouds (when the scene
+/// has them) glow from inside 150 m over the cloud base above the strike
+/// ([`crate::Clouds::flash`]), a bright blue-white light hangs 100 m over
+/// the strike, lighting the ground with a falloff from it, and for 0.35 s
+/// the bolt of strike number `strike` ([`lightning_bolt`]) is drawn as an
+/// additive strip that blooms.
 pub fn add_lightning(
     scene: &mut crate::RenderScene,
     at: Vec3,
@@ -384,7 +387,11 @@ pub fn add_lightning(
     // channel's lower part (150 m up) while the flash outshines it.
     let channel = at + Vec3::Y * 150.0;
     let toward = (channel - scene.camera.position).normalize_or(Vec3::Y);
-    let bolt_light = 3.0 * flash;
+    let bolt_light = 2.0 * flash;
+    // The cloud over the root glows from inside (the clouds' own flash).
+    if let Some(c) = scene.clouds.as_mut() {
+        c.flash = Vec3::new(at.x, top + 150.0, at.z).extend(40.0 * flash);
+    }
     let own = scene.light.intensity * scene.light.color.max_element();
     if bolt_light > own {
         let k = own / bolt_light;
@@ -396,9 +403,9 @@ pub fn add_lightning(
     }
     scene.lights.push(crate::Light {
         kind: crate::LightKind::Point,
-        position: at + Vec3::Y * 40.0,
+        position: at + Vec3::Y * 100.0,
         color: Vec3::new(0.75, 0.82, 1.0),
-        intensity: 6.0e3 * flash,
+        intensity: 2.0e4 * flash,
         range: 600.0,
         cast_shadows: false,
     });

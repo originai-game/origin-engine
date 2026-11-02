@@ -15662,9 +15662,9 @@ export interface PhysicalSky {
    */
   altitude: number;
   /**
-   * The sky's light with the sun far below the horizon (airglow and starlight), so a night is dark blue rather than black.
+   * The sky's light with the sun far below the horizon (airglow and starlight), so a night is dark blue rather than black and the land under it keeps a deep blue-grey ambient.
    *
-   * @default { r: 0.0006, g: 0.0009, b: 0.0024 }
+   * @default { r: 0.0022, g: 0.0032, b: 0.0075 }
    */
   night: Color;
 }

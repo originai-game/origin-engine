@@ -94,7 +94,11 @@ impl PhysicalAtmosphere {
         planet_radius: 6360.0,
         thickness: 100.0,
         altitude: 0.0,
-        night: Vec3::new(0.0006, 0.0009, 0.0024),
+        // Above airglow and starlight's radiance (a few times it): the
+        // eye's night vision, so the land under a twilight or night sky
+        // keeps a deep blue-grey ambient, a few percent of noon's after
+        // the eye opens up, rather than clipping to black.
+        night: Vec3::new(0.0022, 0.0032, 0.0075),
     };
 
     /// The model in km units, with every input made safe.

@@ -390,7 +390,7 @@ Token `og.PhysicalSky`, registered under the schema name `og.PhysicalSky`; its v
 | `ozone` | `number` | `1` | 0 … 10 | — | tunable | A multiplier on ozone's absorption, which keeps the sky blue overhead at twilight (0: none, the twilight sky turns grey and yellow). |
 | `groundAlbedo` | `Color` | `{ r: 0.3, g: 0.3, b: 0.3 }` | — | — | — | The ground's colour as the air sees it from below: it lights the haze and the sky below the horizon. |
 | `altitude` | `number` | `0` | 0 … 100000 | `m` | tunable | The height above sea level of the world's y 0 (the camera's height is added): from high up the sky darkens overhead and the sun stays up longer. |
-| `night` | `Color` | `{ r: 0.0006, g: 0.0009, b: 0.0024 }` | — | — | — | The sky's light with the sun far below the horizon (airglow and starlight), so a night is dark blue rather than black. |
+| `night` | `Color` | `{ r: 0.0022, g: 0.0032, b: 0.0075 }` | — | — | — | The sky's light with the sun far below the horizon (airglow and starlight), so a night is dark blue rather than black and the land under it keeps a deep blue-grey ambient. |
 
 ```ogt
 resource PhysicalSky {
@@ -423,8 +423,8 @@ resource PhysicalSky {
     unit m
     tunable true
   }
-  field night Color "The sky's light with the sun far below the horizon (airglow and starlight), so a night is dark blue rather than black." {
-    default 0.0006 0.0009 0.0024
+  field night Color "The sky's light with the sun far below the horizon (airglow and starlight), so a night is dark blue rather than black and the land under it keeps a deep blue-grey ambient." {
+    default 0.0022 0.0032 0.0075
   }
 }
 ```

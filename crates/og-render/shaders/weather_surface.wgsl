@@ -54,8 +54,13 @@ fn weather_ripples(p: vec2<f32>, t: f32) -> vec2<f32> {
 // to 1 under the sky: the weather occlusion map, the last layer of the
 // cascade array (its index from frame.weather_shelter, never a constant),
 // holds the depth along the fall of what is nearest the sky; a 5x5 filter
-// softens the drip line. Outside the map, or without one, all is open.
-fn weather_open(p: vec3<f32>) -> f32 {
+// softens the drip line. Each tap is compared at the depth the receiver's
+// own plane (its geometric normal `geo`) has there, so a slope or a
+// dome's curve never shelters itself (compared at its centre's depth, the
+// uphill taps of a surface steeper than a few degrees read as a roof and
+// kept the snow off rounded tops). Outside the map, or without one, all
+// is open.
+fn weather_open(p: vec3<f32>, geo: vec3<f32>) -> f32 {
   let ws = frame.weather_shelter;
   if (ws.x < 0.5) { return 1.0; }
   let c = frame.weather_view_proj * vec4<f32>(p, 1.0);
@@ -70,12 +75,27 @@ fn weather_open(p: vec3<f32>) -> f32 {
   let wander = vec2<f32>(weather_noise(pw.xz * 1.7 + 3.0), weather_noise(pw.xz * 1.7 + 29.0)) - 0.5;
   let at = uv * ws.z + wander * ws.y * 1.6;
   let step = max(ws.y * 0.5, 1.0);
+  // The receiver's plane in the map's clip space: two tangents through the
+  // view's linear part span it; its depth per texel follows from their
+  // normal (uv runs x with clip x, y against clip y, 2 / side per texel).
+  let helper = select(vec3<f32>(0.0, 1.0, 0.0), vec3<f32>(1.0, 0.0, 0.0), abs(geo.y) > 0.9);
+  let t1 = normalize(cross(geo, helper));
+  let t2 = cross(geo, t1);
+  let nc = cross((frame.weather_view_proj * vec4<f32>(t1, 0.0)).xyz, (frame.weather_view_proj * vec4<f32>(t2, 0.0)).xyz);
+  let per_texel = 2.0 / ws.z;
+  var gradient = vec2<f32>(0.0);
+  if (abs(nc.z) > 1e-8) {
+    gradient = vec2<f32>(-nc.x, nc.y) / nc.z * per_texel;
+  }
   var open = 0.0;
   for (var j = -2; j <= 2; j++) {
     for (var i = -2; i <= 2; i++) {
-      let t = clamp(vec2<i32>(at + vec2<f32>(f32(i), f32(j)) * step), vec2<i32>(0), vec2<i32>(side - 1));
+      let tap = at + vec2<f32>(f32(i), f32(j)) * step;
+      let t = clamp(vec2<i32>(tap), vec2<i32>(0), vec2<i32>(side - 1));
       let nearest = textureLoad(cascade_map, t, layer, 0).r;
-      open += select(0.0, 1.0, c.z - ws.w <= nearest);
+      // (At most 8 m along the fall either way: a wall's plane is no guide.)
+      let plane = c.z + clamp(dot(gradient, tap - uv * ws.z), -0.01, 0.01);
+      open += select(0.0, 1.0, plane - ws.w <= nearest);
     }
   }
   return smoothstep(0.1, 0.9, open / 25.0);
@@ -88,7 +108,7 @@ fn weather_surface(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: vec3
   var w = frame.weather;
   if (max(max(w.x, w.y), w.z) <= 0.0) { return o; }
   // Under a roof: dry, no puddles, no snow (the drip line softened).
-  w *= weather_open(p_frame);
+  w *= weather_open(p_frame, geo);
   if (max(max(w.x, w.y), w.z) <= 0.0) { return o; }
   let p = p_frame + frame.origin.xyz;
   let up = clamp(geo.y, 0.0, 1.0);

@@ -51,6 +51,20 @@ fn sky_viewer_km() -> f32 {
   return max(frame.sky_scatter[3].z + (frame.view_pos.y + frame.origin.y) * 0.001, 0.001);
 }
 
+// A strongly coloured highlight rolled off keeping its hue: past `knee`
+// its largest channel approaches twice the knee, every channel scaled
+// alike, and only as far as the colour is saturated (a pale sky is left as
+// it is). The tone curve maps each channel alone, so an orange sunset glow
+// bright enough to push its green up the shoulder read yellow-white; held
+// below it, it stays orange.
+fn sky_rolloff(c: vec3<f32>, knee: f32) -> vec3<f32> {
+  let m = max(max(c.r, c.g), c.b);
+  if (m <= knee) { return c; }
+  let saturation = 1.0 - min(min(c.r, c.g), c.b) / m;
+  let rolled = knee + (m - knee) / (1.0 + (m - knee) / knee);
+  return c * mix(1.0, rolled / m, smoothstep(0.5, 0.9, saturation));
+}
+
 // The look drawn by the physical sky (sky_scatter.wgsl): the scattered
 // sunlight, the disc reddened by the air it crosses, the night's floor,
 // then the stars and the moon as sky_look draws them.
@@ -59,19 +73,24 @@ fn sky_physical_look(d: vec3<f32>) -> vec3<f32> {
   let h0 = sky_viewer_km();
   let up = clamp(d.y, -1.0, 1.0);
   let light = frame.sky_glow.yzw;
-  let sky = (physical_sky(d, sun, h0, 24u) * light + frame.sky_scatter[5].rgb) * frame.sky_horizon.w;
-  // The disc keeps the hue of the sunlight through the air (orange-red at
-  // sunset): it replaces the glow under it, at least as bright as that
-  // glow, its hue the colour over its largest channel, saturated (pow 1.6)
-  // because the tone curve compresses a bright red channel and would
-  // leave a physically hued disc yellow-white. Gone once the sun has set.
+  let sky = sky_rolloff((physical_sky(d, sun, h0, 24u) * light + frame.sky_scatter[5].rgb) * frame.sky_horizon.w, 0.6);
+  // The disc is the sunlight through the air, the same transmittance as
+  // the sky's (deep orange at sunset), replacing the glow under it a little
+  // brighter than that glow, rolled off as the glow is (at a higher knee:
+  // the brightest thing in the sky), and darkened
+  // towards its limb (a sun's centre is brighter than its edge). Gone once
+  // the sun has set.
   let through = physical_sun(d, h0);
   let peak = max(max(through.r, through.g), through.b);
-  let hue = pow(through / max(peak, 1e-6), vec3<f32>(1.6));
+  let hue = through / max(peak, 1e-6);
   let strength = min(dot(through, vec3<f32>(0.2126, 0.7152, 0.0722)) * frame.sky_sun.z, 1.5);
-  let glow = max(max(sky.r, sky.g), sky.b) * 1.1;
-  let disc = smoothstep(frame.sky_sun.x, frame.sky_sun.y, dot(d, sun)) * smoothstep(0.0, 1e-3, peak) * min(frame.sky_sun.z, 1.0);
-  var color = mix(sky, light * hue * max(strength, glow), disc);
+  let glow = max(max(sky.r, sky.g), sky.b) * 1.15;
+  let cos_d = dot(d, sun);
+  let disc = smoothstep(frame.sky_sun.x, frame.sky_sun.y, cos_d) * smoothstep(0.0, 1e-3, peak) * min(frame.sky_sun.z, 1.0);
+  // How far from the centre to the limb, 0 to 1 (by the disc's outer cosine).
+  let edge = clamp(sqrt(max(1.0 - cos_d, 0.0) / max(1.0 - frame.sky_sun.x, 1e-7)), 0.0, 1.0);
+  let limb = 0.75 + 0.25 * sqrt(max(1.0 - edge * edge, 0.0));
+  var color = mix(sky, sky_rolloff(light * hue * max(strength, glow), 0.9) * limb, disc);
   let moon = moon_at(d, up);
   if (frame.sky_ground.w > 0.0 && up > 0.0) {
     let g = d * 220.0;
@@ -89,7 +108,8 @@ fn sky_physical_look(d: vec3<f32>) -> vec3<f32> {
 // frame.clouds: [0] coverage, density, base, thickness; [1] the wind's
 // offset (xyz), the tile's size; [2] albedo, detail; [3] the high
 // layer's cover and height, steps, on; [4] x the planet's radius, y and z
-// the sun's and the sky's dimming by the cover (Clouds::light).
+// the sun's and the sky's dimming by the cover (Clouds::light); [5] a
+// lightning flash in the cloud: where (frame coordinates), how bright.
 
 fn cloud_remap(v: f32, lo: f32, hi: f32) -> f32 {
   return clamp((v - lo) / max(hi - lo, 1e-4), 0.0, 1.0);
@@ -114,8 +134,13 @@ fn cloud_density(p: vec3<f32>, h: f32, cheap: bool) -> f32 {
   if (hf <= 0.0 || hf >= 1.0) { return 0.0; }
   let at = vec3<f32>(p.x, h, p.z) + c[1].xyz;
   let uvw = at / c[1].w;
-  let n = textureSampleLevel(cloud_noise, cloud_sampler, uvw.xzy, 0.0);
-  let cover = textureSampleLevel(cloud_noise, cloud_sampler, uvw.xzy * 0.25, 0.0).a;
+  // The lobes vary in size: the shape is read at two scales, blended by a
+  // slow noise across the sky (small popcorn here, broad towers there).
+  let small = textureSampleLevel(cloud_noise, cloud_sampler, uvw.xzy, 0.0).r;
+  let broad = textureSampleLevel(cloud_noise, cloud_sampler, uvw.xzy * 0.45 + vec3<f32>(0.31, 0.17, 0.53), 0.0).r;
+  let cover_px = textureSampleLevel(cloud_noise, cloud_sampler, uvw.xzy * 0.25, 0.0);
+  let cover = cover_px.a;
+  let shape = mix(small, broad, smoothstep(0.3, 0.7, textureSampleLevel(cloud_noise, cloud_sampler, uvw.xzy * 0.21 + vec3<f32>(0.6, 0.0, 0.2), 0.0).a));
   // The coverage varies across the sky most when it is broken, and not
   // at all when clear or overcast (an overcast stays a ceiling).
   // (The power: the cells at different heights overlap, so a column
@@ -125,16 +150,27 @@ fn cloud_density(p: vec3<f32>, h: f32, cheap: bool) -> f32 {
   let local = clamp(pow(c0, 1.25) + (cover - 0.5) * 0.5 * min(1.0, 4.0 * c0 * (1.0 - c0)), 0.0, 1.0);
   // The shape channel is uniform: a threshold of 1 - local leaves a
   // fraction `local` in cloud near the base. Higher up the threshold
-  // rises, so only the strongest cells reach the top (domes), and a soft
-  // floor flattens the base.
+  // rises, so only the strongest cells reach the top (domes); the base is
+  // cut flat at the condensation level, the cloud densest just above it.
   let th = mix(1.0 - local, 1.0, smoothstep(0.3, 1.0, hf) * 0.85);
-  var base = cloud_remap(n.r, th, min(th + 0.35, 1.0)) * smoothstep(0.0, 0.08, hf);
+  var base = cloud_remap(shape, th, min(th + 0.35, 1.0)) * smoothstep(0.0, 0.025, hf) * (1.0 + 0.5 * (1.0 - smoothstep(0.02, 0.2, hf)));
   if (!cheap && c[2].w > 0.0) {
+    // The fine noise eats the tops into cauliflower and leaves the flat
+    // bases whole.
     let fine = textureSampleLevel(cloud_noise, cloud_sampler, uvw.xzy * 5.0, 0.0);
-    let erode = mix(fine.g, fine.b, hf) * c[2].w;
+    let erode = mix(fine.g, fine.b, hf) * c[2].w * (0.25 + 1.1 * hf);
     base = cloud_remap(base, erode * 0.6, 1.0);
   }
   return base * c[0].y;
+}
+
+// The sunlight reaching `p` (planet-centred metres, the planet of
+// `radius`): under the physical sky the sun above the air through its
+// transmittance at that height, else the scene's `light`.
+fn cloud_sun(p: vec3<f32>, radius: f32, to_light: vec3<f32>, light: vec3<f32>, physical: bool) -> vec3<f32> {
+  if (!physical) { return light; }
+  let r_km = frame.sky_scatter[3].x + (length(p) - radius) * 0.001;
+  return 3.0 * frame.sky_glow.yzw * scatter_sun_transmittance(r_km, dot(normalize(p), to_light));
 }
 
 fn cloud_hg(cos_t: f32, g: f32) -> f32 {
@@ -152,10 +188,17 @@ fn clouds_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f3
   let o = vec3<f32>(0.0, radius + viewer, 0.0);
   let ground = cloud_sphere(o, d, radius);
   if (ground.x > 0.0) { return background; }
-  let to_light = normalize(frame.light_dir.xyz);
-  // The scene's sun and sky light come dimmed by the clouds' own cover
-  // (Clouds::light, [4].yz); the clouds themselves are lit by the sun
-  // and sky above them, so the dimming is undone here.
+  // Under the physical sky the clouds are lit by the sun at their own
+  // height: the sun above the air (3 times the look's sunlight colour,
+  // the day-night noon) through the sky's own transmittance down to the
+  // sample, so a sunset's low clouds glow orange to pink from below and
+  // they stay lit a while after the ground's sunset; never the scene's
+  // directional light, which a lightning flash turns towards the bolt.
+  // Otherwise the scene's sun, whose dimming by the clouds' own cover
+  // (Clouds::light, [4].yz) is undone: they are lit from above it.
+  let physical = scatter_on();
+  var to_light = normalize(frame.light_dir.xyz);
+  if (physical) { to_light = normalize(frame.sky_sun_dir.xyz); }
   let light = frame.light_color.rgb / max(c[4].y, 0.05);
   let cos_t = dot(d, to_light);
   let phase = mix(cloud_hg(cos_t, 0.6), cloud_hg(cos_t, -0.25), 0.35);
@@ -178,7 +221,7 @@ fn clouds_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f3
       let n = textureSampleLevel(cloud_noise, cloud_sampler, vec3<f32>(uv.x * 0.35, uv.y, 0.37), 0.0);
       let wisp = cloud_remap(n.r * 0.7 + n.g * 0.3, 1.0 - c[3].x, 1.0 - c[3].x * 0.3) * (0.5 + 0.5 * n.b);
       let fade = exp(-t / 120000.0);
-      let lit = light * (0.25 + phase * 1.5) * 0.35 + sky_top * 0.8;
+      let lit = cloud_sun(p, radius, to_light, light, physical) * (0.25 + phase * 1.5) * 0.35 + sky_top * 0.8;
       color = mix(color, lit * c[2].rgb, clamp(wisp, 0.0, 1.0) * 0.85 * fade);
     }
   }
@@ -216,25 +259,40 @@ fn clouds_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f3
   var transmittance = 1.0;
   var scattered = vec3<f32>(0.0);
   let light_step = c[0].w * 0.12;
+  // A lightning strike's flash, a point in the cloud over the bolt's root
+  // (frame coordinates in [5].xyz, made planet-centred about the viewer).
+  let flash = c[5];
+  let flash_at = vec3<f32>(flash.x - frame.view_pos.x, radius + flash.y + frame.origin.y, flash.z - frame.view_pos.z);
   for (var i = 0u; i < steps; i++) {
     let p = o + d * t;
     let h = length(p) - radius;
     let sigma = cloud_density(p, h, false);
     if (sigma > 0.0) {
+      let sun_here = cloud_sun(p, radius, to_light, light, physical);
       // The column towards the light, in five widening steps.
       var od = 0.0;
       for (var k = 1u; k <= 5u; k++) {
         let q = p + to_light * light_step * f32(k * k) * 0.4;
         od += cloud_density(q, length(q) - radius, true) * light_step * f32(2u * k - 1u) * 0.4;
       }
-      // Three octaves of multiple scattering (Wrenninge 2013).
+      // Three octaves of multiple scattering (Wrenninge 2013), the later
+      // ones reaching deep into the shadowed side, so it is lifted above
+      // near-black.
       var sun = vec3<f32>(0.0);
       var a = 1.0;
       var b = 1.0;
       for (var m = 0u; m < 3u; m++) {
-        sun += light * a * exp(-od * b) * mix(phase, 0.0795775, 1.0 - a);
-        a *= 0.5;
-        b *= 0.4;
+        sun += sun_here * a * exp(-od * b) * mix(phase, 0.0795775, 1.0 - a);
+        a *= 0.6;
+        b *= 0.3;
+      }
+      if (flash.w > 0.0) {
+        // The flash lights the cloud from inside about the root: falling
+        // off over half a kilometre and dimmed by the cloud between,
+        // scattered evenly (it has bounced many times), no streaks.
+        let to = flash_at - p;
+        let dist2 = dot(to, to);
+        sun += vec3<f32>(0.75, 0.82, 1.0) * flash.w * 0.0795775 * exp(-sqrt(dist2) * c[0].y * 0.05) / (1.0 + dist2 / 250000.0);
       }
       let hf = clamp((h - c[0].z) / c[0].w, 0.0, 1.0);
       var ambient = mix(sky_side * 0.6, sky_top, hf) * (0.35 + 0.65 * hf);

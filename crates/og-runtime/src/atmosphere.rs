@@ -376,6 +376,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             layer: f(&c, "layer", 0.3),
             layer_altitude: f(&c, "layerAltitude", 8000.0),
             steps: u(&c, "steps", 48),
+            // A strike's flash, set by lightning_and_surfaces.
+            flash: glam::Vec4::ZERO,
         });
     if let Some(c) = &scene.clouds {
         if !matches!(scene.environment.background, Background::Procedural { .. }) {

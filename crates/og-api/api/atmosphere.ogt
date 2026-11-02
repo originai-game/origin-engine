@@ -253,8 +253,8 @@ module atmosphere {
       unit m
       tunable true
     }
-    field night Color "The sky's light with the sun far below the horizon (airglow and starlight), so a night is dark blue rather than black." {
-      default 0.0006 0.0009 0.0024
+    field night Color "The sky's light with the sun far below the horizon (airglow and starlight), so a night is dark blue rather than black and the land under it keeps a deep blue-grey ambient." {
+      default 0.0022 0.0032 0.0075
     }
   }
 

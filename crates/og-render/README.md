@@ -2231,20 +2231,35 @@ formulas run on the CPU (`PhysicalAtmosphere::radiance`,
 brighter horizon and sun glow, red sun at 2°, a twilight zenith kept
 blue by ozone, darkening through twilight) and which
 `DayNightLook::with_atmosphere` uses for the sun's colour through the
-air and the fog's colour (the sky's cosine-weighted mean). The brightness
+air and the fog's colour (the sky's cosine-weighted mean; looking into
+the sun, the horizon's glow under it). Saturated highlights of the drawn
+sky and the sun's disc are rolled off keeping their hue (`sky_rolloff`),
+so a sunset's glow and disc stay orange under the tone curve; the disc
+darkens towards its limb. The night floor (`PhysicalAtmosphere::night`)
+is set above airglow, so land under a twilight or night sky keeps a deep
+blue-grey ambient. The brightness
 is scaled so the sky's mean irradiance at noon matches the gradient
 sky's. Frames: `sky-physical-noon`, `-sunset`, `-twilight`, `-hazy`.
 
 **Clouds** (`clouds.rs`, `shaders/clouds_noise.wgsl`, `sky.wgsl`'s
 `clouds_over`): `RenderScene::clouds` draws, over the procedural sky, a
 volumetric cumulus layer raymarched between two shells around the planet
-(48 steps by default, jittered per pixel and tick; five light samples
-towards the frame's directional light with three octaves of Wrenninge's
-multiple scattering, a two-lobe Henyey–Greenstein phase, the irradiance
-cube as ambient) and a streaked cirrus layer above it, faded into the sky
-with distance. Their shapes come from a 64³ tiling noise volume
-(Perlin–Worley, Worley detail, coverage), made by one compute pass the
-first frame with clouds; until then the sky group binds a 1³ placeholder.
+(48 steps by default, up to twice that towards the horizon, jittered per
+pixel and tick by interleaved gradient noise; five light samples towards
+the sun with three octaves of Wrenninge's multiple scattering, a two-lobe
+Henyey–Greenstein phase, the irradiance cube as ambient) and a streaked
+cirrus layer above it, faded into the sky with distance. Under the
+physical sky the sun on a sample is the sunlight above the air through
+the sky's own transmittance down to that height, so a sunset lights low
+clouds orange from below and they keep it after the ground's sunset;
+otherwise it is the frame's directional light. A lightning strike lights
+them from inside about the bolt's root (`Clouds::flash`, set by
+`add_lightning`), scattered evenly. Their shapes come from a 64³ tiling
+noise volume (Perlin–Worley and value noise equalised to uniform, Worley
+detail, coverage), made by one compute pass the first frame with clouds
+(until then the sky group binds a 1³ placeholder), read at two scales
+blended across the sky so the lobes vary in size, cut flat at the base
+and eroded most at the tops.
 The wind moves them by the tick's clock (the offset wraps at four tiles).
 They are not in the image-based light; `Clouds::light` is how much their
 cover dims the sun and the sky, which the runtime applies. Frames:
