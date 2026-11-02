@@ -236,7 +236,8 @@ export function gachaBanner(id: string, desc: Api.GachaBannerDesc, art: () => vo
             before: () => {
               // In the button's ink and face (dark on the premium gold), its gem too.
               priceTag("Price", { amount: cost, currency, affordable: can, size: "sm", shortLabel: desc.shortLabel ?? "not enough", ink: n > 1 ? hex("#1d1406") : role("ink"), image: desc.currencyIcon ?? null });
-              kit.open("Sep", { width: px(1), height: px(u(18)), background: token("line") });
+              // The rule between price and label in the label's own ink (a light line on the gold reads as a grey smear).
+              kit.open("Sep", { width: px(1), height: px(u(18)), background: n > 1 ? paint(hex("#1d1406"), 0.45) : token("line") });
               kit.close();
             },
           });
