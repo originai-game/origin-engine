@@ -2,8 +2,8 @@
 //! binaries): og-tests' tests of the scenes that cook (`gfx`, `render`,
 //! `terrain`, `ui`, named as they were there) and og-ui's tests that draw
 //! with cooked fonts and icons (`materials_gfx`, `pack_contrast`,
-//! `text_gfx`) over og-ui's own test support. A new test file is a `mod`
-//! line here.
+//! `text_gfx`, `text_outline`) over og-ui's own test support. A new test
+//! file is a `mod` line here.
 
 mod device_formats;
 mod gfx;
@@ -13,4 +13,5 @@ mod render;
 mod support;
 mod terrain;
 mod text_gfx;
+mod text_outline;
 mod ui;

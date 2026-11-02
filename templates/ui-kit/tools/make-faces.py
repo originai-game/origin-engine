@@ -74,7 +74,7 @@ def settings(out: Path, charset: str, chars: str, em_px: int, features: str = ""
         f"  charset {charset}\n"
         f'  chars "{chars}"\n'
         f"  em_px {em_px}\n"
-        "  px_range 4\n"
+        f"  px_range {-(-em_px // 3)}\n"  # a third of the em: a 2 px outline at 16 px
         + (f"  features {features}\n" if features else "")
         + "}\n",
         encoding="utf-8",

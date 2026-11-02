@@ -104,7 +104,7 @@ def main():
     with open(a.out + ".ogt", "w", encoding="utf-8") as f:
         f.write("type import\nversion 1\n---\n")
         f.write(f"# Every character of the string tables (tools/subset-font.py {os.path.basename(a.source)}).\n")
-        f.write(f'font {{\n  charset {charset}\n  chars "{listed}"\n  em_px 32\n  px_range 4\n}}\n')
+        f.write(f'font {{\n  charset {charset}\n  chars "{listed}"\n  em_px 32\n  px_range 11\n}}\n')
     print(f"{a.out}: {len(keep)} characters, {os.path.getsize(a.out)} bytes; {a.out}.ogt")
     if missing:
         print(f"the source font lacks {len(missing)}: {''.join(missing)}", file=sys.stderr)

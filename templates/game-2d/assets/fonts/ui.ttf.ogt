@@ -8,5 +8,5 @@ font {
   charset latin
   chars "−…←→"
   em_px 48
-  px_range 6
+  px_range 16
 }

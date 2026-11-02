@@ -269,8 +269,8 @@ font {
   charset latin cjk-punct   # ascii | latin | punct | cjk-punct | kana | hangul | arabic | all
   chars "开始游戏"           # extra characters (UI strings)
   em_px 32
-  px_range 4
-  page_size 1024
+  px_range 11               # the field's reach in atlas px; it bounds outlines, glows and weight at 0.5 * px_range * size / em_px - 0.5 CSS px (a third of em_px: a 2 px outline at 16 px; default 4)
+  page_size 1024            # the last page is cut to the rows it uses
   runtime true              # ship the font file: characters outside the charset render at run time (default false)
 }
 sound {                     # a .wav, .mp3, .ogg or .flac

@@ -572,6 +572,7 @@ pub fn cook(
             x = 1;
             y = 1;
             shelf = 0;
+            used_height = 0;
         }
         place[i] = (pg, x, y);
         x += g.width + 1;
@@ -579,12 +580,16 @@ pub fn cook(
         used_height = used_height.max(y + g.height + 1);
     }
     let page_count = pg + 1;
-    let height = if page_count == 1 {
-        used_height.div_ceil(4) * 4
-    } else {
-        page
-    };
-    let mut pages = vec![vec![0u8; (width * height * 4) as usize]; page_count as usize];
+    // Every page but the last is full; the last (the only one, often) is
+    // cut to the rows it uses.
+    let last_height = used_height.div_ceil(4) * 4;
+    let height = if page_count == 1 { last_height } else { page };
+    let mut pages: Vec<Vec<u8>> = (0..page_count)
+        .map(|p| {
+            let h = if p == pg { last_height } else { page };
+            vec![0u8; (width * h * 4) as usize]
+        })
+        .collect();
     let mut rows = Vec::with_capacity(glyphs.len());
     for (i, g) in glyphs.iter().enumerate() {
         let (p, gx, gy) = place[i];
@@ -640,14 +645,20 @@ pub fn cook(
         .table("glyphs", &rows, row_hash::<GlyphRow>())
         .table("kerning", &kern_rows, row_hash::<KernRow>());
     for (i, px) in pages.iter().enumerate() {
-        let ktx = ktx2::write_rgba8_zlib(width, height, px, false, false, format::COOKER_VERSION);
+        let h = (px.len() / (width as usize * 4)) as u32;
+        let ktx = ktx2::write_rgba8_zlib(width, h, px, false, false, format::COOKER_VERSION);
         w.raw(&format!("atlas.{i}"), ktx, 16);
     }
     if ship_ttf {
         w.raw("ttf", bytes.to_vec(), 16);
     }
+    let pages_note = if page_count == 1 {
+        format!("1 page of {width}x{height}")
+    } else {
+        format!("{page_count} pages of {width}x{height}, the last {width}x{last_height}")
+    };
     let mut note = format!(
-        "{} glyphs of {} in the font, {page_count} page(s) of {width}x{height}, {} px/em, range {} px",
+        "{} glyphs of {} in the font, {pages_note}, {} px/em, range {} px",
         rows.len(),
         in_font.len(),
         s.em_px,

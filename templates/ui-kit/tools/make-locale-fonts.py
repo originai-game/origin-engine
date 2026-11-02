@@ -85,7 +85,7 @@ def settings(name: str, charset: str, chars: str, runtime: bool = False) -> None
     (FONTS / f"{name}.ogt").write_text(
         "type import\nversion 1\n---\n"
         "# The characters the UI kit's string tables use (tools/make-locale-fonts.py).\n"
-        f"font {{\n  charset {charset}\n  chars \"{body}\"\n  em_px 32\n  px_range 4\n{extra}}}\n",
+        f"font {{\n  charset {charset}\n  chars \"{body}\"\n  em_px 32\n  px_range 11\n{extra}}}\n",
         encoding="utf-8",
     )
 

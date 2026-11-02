@@ -6,6 +6,6 @@ font {
   charset latin
   chars "–—‘’‚“”„•…′″‹›€™−×"
   em_px 48
-  px_range 4
+  px_range 16
   features smcp c2sc
 }

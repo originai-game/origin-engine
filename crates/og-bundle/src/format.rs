@@ -755,6 +755,8 @@ row!(
         glyph_count: u32,
         page_count: u32,
         page_width: u32,
+        /// Every page's height but the last's, which is cut to the rows it
+        /// uses (its KTX2 holds its own size).
         page_height: u32,
         /// Code points of the source font that were not cooked (outside the charset).
         uncooked_codepoints: u32,

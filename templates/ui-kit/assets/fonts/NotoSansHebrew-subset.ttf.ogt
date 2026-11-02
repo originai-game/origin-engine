@@ -6,5 +6,5 @@ font {
   charset ascii
   chars "שלוםעולםגרסהחדשהשלבמתוךבדיקהממשק"
   em_px 32
-  px_range 4
+  px_range 11
 }

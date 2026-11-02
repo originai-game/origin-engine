@@ -1078,19 +1078,19 @@ def style_text(s, d, parts=None):
     return "\n".join(L) + "\n"
 
 
-def font_import(path, display, glows=False, weighted=False):
+def font_import(path, display):
     em = 48 if display else 32
     # The marks the kit draws beyond Latin-1 and punct (minus, arrows), as
     # far as the font maps them (fontTools reads its cmap).
     from fontTools.ttLib import TTFont
     cmap = TTFont(path).getBestCmap()
     marks = "".join(c for c in "\u2212\u2190\u2192" if ord(c) in cmap)
-    # A role with a textGlow reads its glow from the distance field, which
-    # reaches half px_range atlas pixels: 12 lets it spread 6 (4 lets 2). A
-    # textWeight thickens inside that reach less 0.75 px (og-render's
-    # overlay.wgsl): at 16 px from a 48 px em, 8 allows 0.58 px, 4 none.
-    rng = 12 if glows else 8 if weighted else 4
-    why = "; px_range 12 for its text glow" if glows else "; px_range 8 for its textWeight" if weighted else ""
+    # The distance field reaches half px_range atlas pixels; at a text size
+    # it is 0.5 * px_range * size / em - 0.5 CSS px (og-render's
+    # overlay.wgsl), which bounds an outline, a textGlow's spread and a
+    # textWeight. A third of the em reaches a 2 px outline on 16 px text.
+    rng = -(-em // 3)
+    why = f"; px_range {rng}, a third of the em, for a 2 px outline at 16 px"
     return (
         "type import\nversion 1\n---\n"
         f"# Latin-1 and the typographic punctuation the kit shows; {em} px per em in the atlas{why}.\n"
@@ -1164,11 +1164,9 @@ def main():
         imports = {}
         for role in ("body", "display", "numeric"):
             imports[roles[role]] = imports.get(roles[role], False) or role != "body"
-        glowing = {roles[role] for role, *_ in s["text"].get("textGlow", [])}
-        weighted = {roles[role] for role, _ in s["text"].get("textWeight", [])}
         for name, display in imports.items():
             with open(os.path.join(d, name + ".ogt"), "w") as f:
-                f.write(font_import(os.path.join(d, name), display, name in glowing, name in weighted))
+                f.write(font_import(os.path.join(d, name), display))
         print("wrote", d)
     # The icon sheets the seed styles share (templates/styles/shared), from
     # the paper and neon packs folded into storybook and cyber (2026-11-02).
