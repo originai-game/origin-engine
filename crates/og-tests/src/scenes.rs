@@ -1114,8 +1114,8 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = crate::terrain_scenes::holes_scene();
             Ok(())
         },
-        // R6: the island's near view with eight layers (texture arrays):
-        // four discs on the meadow ahead painted with layers 4 to 7 on the
+        // R6: the island's meadow from 70 m above with eight layers
+        // (texture arrays): four discs on it painted with layers 4 to 7 on the
         // control map's second page (clay, heather, mud, gold), each
         // blended with the rock and sand as the first four are.
         "terrain-layers" => |g, _| {

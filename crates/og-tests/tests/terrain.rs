@@ -76,6 +76,10 @@ fn mean(img: &RgbaImage, x0: u32, y0: u32, x1: u32, y1: u32) -> f32 {
 
 /// The mean colour over a small square around a pixel.
 fn color_at(img: &RgbaImage, (x, y): (u32, u32)) -> [f32; 3] {
+    assert!(
+        (2..img.width - 2).contains(&x) && (2..img.height - 2).contains(&y),
+        "({x}, {y}) is not in the frame"
+    );
     let mut c = [0.0; 3];
     for yy in y - 2..=y + 2 {
         for xx in x - 2..=x + 2 {
@@ -111,7 +115,13 @@ fn project(camera: &Camera, p: Vec3) -> (u32, u32) {
 
 #[test]
 fn terrain_scenes_match_their_references() {
-    for scene in ["terrain-near", "terrain-mid", "terrain-far"] {
+    for scene in [
+        "terrain-near",
+        "terrain-mid",
+        "terrain-far",
+        "terrain-holes",
+        "terrain-layers",
+    ] {
         let r = check(scene);
         assert!(r.stats.terrain_draws >= 3, "{scene}: {:?}", r.stats);
         assert!(
@@ -443,9 +453,9 @@ fn holes_cut_the_drawn_surface_and_its_shadow() {
     );
 }
 
-/// R6's layers past four: each of the four discs painted with layers 4
-/// to 7 shows its tint (clay and gold redder than the meadow, heather
-/// bluer, mud darker), and with the second page left 0 the eight-layer
+/// R6's layers past four: seen from above the meadow, each of the four
+/// discs painted with layers 4 to 7 shows its colour (clay and gold redder
+/// than the meadow, heather bluer, mud darker), and with the second page left 0 the eight-layer
 /// terrain draws as the four-layer one (the four strongest picked per
 /// pixel are the same four, in the same order).
 #[test]
@@ -461,7 +471,7 @@ fn layers_past_four_come_from_the_second_control_page() {
         )
     };
     let meadow = {
-        let (x, z) = (-100.0, 115.0);
+        let (x, z) = ts::LAYER_MEADOW;
         color_at(
             &img,
             project(&painted.camera, Vec3::new(x, ts::island_height(x, z), z)),

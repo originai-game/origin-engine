@@ -662,30 +662,35 @@ pub fn holes_scene() -> RenderScene {
 }
 
 /// Where `terrain-layers` paints its four extra layers (world x, z), each
-/// a disc of [`LAYER_DISC`] metres, and their tints: clay, heather, mud
-/// and gold flowers.
+/// a disc of [`LAYER_DISC`] metres clear of the boulders and their
+/// shadows, and their colours: clay, heather, mud and gold flowers.
 pub const LAYER_SPOTS: [(f32, f32); 4] = [
-    (-92.0, 122.0),
-    (-112.0, 104.0),
-    (-82.0, 96.0),
-    (-122.0, 132.0),
+    (-122.0, 96.0),
+    (-84.0, 104.0),
+    (-124.0, 136.0),
+    (-72.0, 120.0),
 ];
 pub const LAYER_DISC: f32 = 9.0;
 pub const LAYER_TINTS: [[f32; 3]; 4] = [
-    [1.6, 0.55, 0.3],
-    [1.0, 0.45, 1.3],
-    [0.45, 0.32, 0.22],
-    [1.8, 1.5, 0.25],
+    [0.62, 0.2, 0.08],
+    [0.4, 0.14, 0.5],
+    [0.06, 0.045, 0.03],
+    [0.75, 0.58, 0.06],
 ];
+/// A meadow point of `terrain-layers` clear of the discs and the boulders.
+pub const LAYER_MEADOW: (f32, f32) = (-100.0, 100.0);
 
-/// The island's near view with eight layers: its four with their maps in
-/// texture arrays, and four more (layers 4 to 7, the grass texture tinted
-/// clay, heather, mud and gold) on the control map's second page, each
-/// painted in a disc on the meadow ([`LAYER_SPOTS`]) where the first page
-/// gives the grass nothing. `painted` false leaves the second page 0: the
-/// extra layers show nowhere.
+/// The island's meadow from 70 m above with eight layers: its four with
+/// their maps in texture arrays, and four more (layers 4 to 7, plain clay,
+/// heather, mud and gold) on the control map's second page, each painted
+/// in a disc on the meadow ([`LAYER_SPOTS`]) where the first page gives
+/// the grass nothing. `painted` false leaves the second page 0: the extra
+/// layers show nowhere.
 pub fn layers_scene(painted: bool) -> RenderScene {
     let mut scene = with_layer_arrays(island_view("near"));
+    let (x, z) = (-98.0, 114.0);
+    let below = Vec3::new(x, island_height(x, z), z);
+    scene.camera = camera_at(below + Vec3::new(0.0, 70.0, 26.0), below);
     let handle = scene.terrains[0].terrain;
     let mut data = scene.terrain(handle).expect("the island").clone();
     // Both pages at 512 texels (4 m): the first resampled from the island's.
@@ -723,6 +728,8 @@ pub fn layers_scene(painted: bool) -> RenderScene {
         t.layers.push(TerrainLayer {
             color: Vec3::from(tint),
             roughness: 0.9,
+            albedo_layer: None,
+            normal_layer: None,
             ..grass
         });
     }
