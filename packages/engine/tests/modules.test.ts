@@ -133,6 +133,42 @@ test("with sleepTicks a resting box sleeps, says so, and wakes when pushed", () 
   expect(must(w.get(box, og.Transform)).position.x).toBeGreaterThan(0.01);
 });
 
+const Broke = defineResource("MdBroke", { count: u32(), joint: u32() });
+const WatchBreak = defineSystem("MdWatchBreak", { reads: [og.JointBroken], writes: [Broke] }, (_q, _t, world) => {
+  const seen = must(world.resource(Broke));
+  for (const e of world.events(og.JointBroken)) {
+    seen.count += 1;
+    seen.joint = e.joint === world.find("heavy") ? 1 : 2;
+  }
+});
+
+test("a conveyor hook carries a box, and a joint past its breakForce breaks once", () => {
+  const engine = start(
+    og.game({
+      resources: [Broke],
+      systems: [WatchBreak],
+      start: (world: World) => {
+        const floor = must(world.spawn({ name: "floor", position: { x: 0, y: -0.5, z: 0 } }));
+        world.insert(floor, og.Collider, { shape: SHAPE_BOX, size: { x: 40, y: 1, z: 40 } });
+        world.insert(floor, og.ContactHook, { surfaceVelocity: { x: 1, y: 0, z: 0 } });
+        const box = must(world.spawn({ name: "box", position: { x: 0, y: 0.25, z: 0 } }));
+        world.insert(box, og.RigidBody);
+        world.insert(box, og.Collider, { shape: SHAPE_BOX, size: { x: 0.5, y: 0.5, z: 0.5 } });
+        // 30 kg on a 200 N ball joint 1 m under a world point: about 294 N.
+        const heavy = must(world.spawn({ name: "heavy", position: { x: 10, y: 4, z: 0 } }));
+        world.insert(heavy, og.RigidBody, { mass: 30 });
+        world.insert(heavy, og.Collider, { shape: SHAPE_SPHERE, radius: 0.2 });
+        world.insert(heavy, og.Joint, { kind: 5, anchor: { x: 0, y: 1, z: 0 }, otherAnchor: { x: 10, y: 5, z: 0 }, breakForce: 200 });
+      },
+    }),
+  );
+  expect(engine.advance(120).ok).toBeTrue();
+  const w = engine.world;
+  expect(must(w.get(w.find("box")!, og.Velocity)).linear.x).toBeCloseTo(1, 1);
+  expect(must(w.resource(Broke))).toMatchObject({ count: 1, joint: 1 });
+  expect(must(w.get(w.find("heavy")!, og.Joint)).broken).toBeTrue();
+});
+
 test("a restored snapshot continues the simulation exactly", () => {
   const engine = start(og.game({ resources: [Seen], systems: [Watch], start: floorAndBox }));
   engine.advance(20);

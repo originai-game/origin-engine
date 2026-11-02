@@ -257,8 +257,10 @@ fn hashes_are_pinned_without_prefabs_and_stable_across_a_re_cook_with_them() {
 /// (G2-5's og.AudioMix resource and audio records moved it from
 /// 0ccd86471f57151d; G2-3's sleep from e5f1f831d77c7bc0: og.RigidBody and
 /// og.Physics at version 2 with their new fields, og.BodySlept and
-/// og.BodyWoke registered, all in the type table every world hashes).
-const BY_HAND_HASH: &str = "88fa067dd437beb0";
+/// og.BodyWoke registered, all in the type table every world hashes; then
+/// G2-3's breaking joints and contact hooks from 88fa067dd437beb0: og.Joint
+/// at version 2, og.JointBroken and og.ContactHook registered).
+const BY_HAND_HASH: &str = "8321f6acb96a66be";
 
 #[test]
 fn apply_back_and_revert_round_trip_in_the_text() {

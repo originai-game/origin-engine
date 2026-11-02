@@ -11277,6 +11277,73 @@ export interface SensorExited {
 }
 
 /**
+ * A joint broke during the tick: the solver's force or torque on it passed its breakForce or breakTorque. Sent in joint entity order; the joint's `broken` is set, and its bodies part.
+ *
+ * The payload of the `JointBroken` event (token `og.JointBroken`).
+ */
+export interface JointBroken {
+  /** The og.Joint's entity. */
+  readonly joint: Entity;
+  /** Its first body. */
+  readonly body: Entity;
+  /** Its second body; 0 for the world. */
+  readonly other: Entity;
+  /**
+   * The force it carried when it broke.
+   *
+   * @unit newton (newtons: the force that gives a kilogram one metre per second squared)
+   */
+  readonly force: number;
+  /**
+   * The torque about its anchor it carried when it broke.
+   *
+   * @unit newtonMetre (newton-metres: a torque, a newton pushing one metre from the axis it turns about)
+   */
+  readonly torque: number;
+}
+
+/**
+ * What a collider's contacts do beyond its og.Collider: a one-way platform, a conveyor belt, friction and restitution of its own, entities it passes through. Put it on the collider's entity (a static collider, a body, or a compound child). The solver reads a table of the hooks frozen at the start of the step, on its worker threads: hooks are data, not game callbacks, and run the same on both hosts and in every replay.
+ *
+ * The value of the `ContactHook` component (token `og.ContactHook`).
+ */
+export interface ContactHook {
+  /**
+   * A one-way surface: solid only to what is on this side of it, within 45° (world space; up for a platform jumped through from below). What came in from elsewhere passes until it is clear of it. Zero is off.
+   */
+  oneWay: Vector3;
+  /**
+   * The surface's own velocity along its contacts (world space): what lies on it is carried, as on a conveyor belt, a treadmill or a moving walkway. Zero is off.
+   *
+   * @unit mps (metres per second)
+   * @tunable
+   */
+  surfaceVelocity: Vector3;
+  /**
+   * Its contacts' friction, in place of the pair's mean; negative keeps the colliders' own.
+   *
+   * @default -1
+   * @range -1..2
+   * @tunable
+   */
+  friction: number;
+  /**
+   * Its contacts' restitution, in place of the pair's mean; negative keeps the colliders' own.
+   *
+   * @default -1
+   * @range -1..1
+   * @tunable
+   */
+  restitution: number;
+  /**
+   * Entities it never collides with: colliders or their bodies (a projectile and its shooter, a ghost and a door); 0s are skipped.
+   *
+   * @capacity 8 elements (List.Entity.8): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  ignore: readonly Entity[];
+}
+
+/**
  * A body fell asleep during the tick (Physics.sleepTicks), with every dynamic body it touches; sent in entity order. Stop a rolling sound, settle a pile's debris.
  *
  * The payload of the `BodySlept` event (token `og.BodySlept`).
@@ -11457,6 +11524,26 @@ export interface Joint {
    * @readonly written by the engine
    */
   readonly value: number;
+  /**
+   * The force the joint holds before it breaks (JointBroken, `broken`): the solver's load on it through the step, its weight, gravity and what rests or presses on it; a lone impulse (applyImpulse, applyForce) is absorbed before it counts. 0 never breaks.
+   *
+   * @range 0..
+   * @unit newton (newtons: the force that gives a kilogram one metre per second squared)
+   * @tunable
+   */
+  breakForce: number;
+  /**
+   * The torque about its anchor it holds before it breaks, as breakForce (a shelf bracket, a cantilevered beam); 0 never breaks.
+   *
+   * @range 0..
+   * @unit newtonMetre (newton-metres: a torque, a newton pushing one metre from the axis it turns about)
+   * @tunable
+   */
+  breakTorque: number;
+  /**
+   * Written: true once the joint broke; a broken joint holds nothing. Write false to mend it, rebuilt where its bodies are now.
+   */
+  broken: boolean;
 }
 
 /**
@@ -41316,6 +41403,14 @@ export declare namespace og {
   /** A collider stopped overlapping a sensor, or one of them went away. */
   const SensorExited: EventType<SensorExited>;
   /**
+   * A joint broke during the tick: the solver's force or torque on it passed its breakForce or breakTorque. Sent in joint entity order; the joint's `broken` is set, and its bodies part.
+   */
+  const JointBroken: EventType<JointBroken>;
+  /**
+   * What a collider's contacts do beyond its og.Collider: a one-way platform, a conveyor belt, friction and restitution of its own, entities it passes through. Put it on the collider's entity (a static collider, a body, or a compound child). The solver reads a table of the hooks frozen at the start of the step, on its worker threads: hooks are data, not game callbacks, and run the same on both hosts and in every replay.
+   */
+  const ContactHook: ComponentType<{ readonly oneWay: FieldSpec<"Vector3">; readonly surfaceVelocity: FieldSpec<"Vector3">; readonly friction: FieldSpec<"f32">; readonly restitution: FieldSpec<"f32">; readonly ignore: ListSpec<"Entity"> }, ContactHook>;
+  /**
    * A body fell asleep during the tick (Physics.sleepTicks), with every dynamic body it touches; sent in entity order. Stop a rolling sound, settle a pile's debris.
    */
   const BodySlept: EventType<BodySlept>;
@@ -41330,7 +41425,7 @@ export declare namespace og {
   /**
    * A joint between two bodies (or a body and a point of the world). The component may sit on one of the bodies (`body` 0) or on an entity of its own, so one body can have several joints. Anchors are in each body's frame (rotated and moved with it, not scaled); without `other` the second anchor is a world point. A joint whose bodies are not both `og.RigidBody` entities does nothing until they are.
    */
-  const Joint: ComponentType<{ readonly kind: FieldSpec<"u32">; readonly body: FieldSpec<"Entity">; readonly other: FieldSpec<"Entity">; readonly anchor: FieldSpec<"Vector3">; readonly otherAnchor: FieldSpec<"Vector3">; readonly axis: FieldSpec<"Vector3">; readonly limits: FieldSpec<"bool">; readonly min: FieldSpec<"f32">; readonly max: FieldSpec<"f32">; readonly motor: FieldSpec<"u32">; readonly motorTarget: FieldSpec<"f32">; readonly motorStiffness: FieldSpec<"f32">; readonly motorDamping: FieldSpec<"f32">; readonly motorMaxForce: FieldSpec<"f32">; readonly restLength: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly length: FieldSpec<"f32">; readonly collide: FieldSpec<"bool">; readonly value: FieldSpec<"f32"> }, Joint>;
+  const Joint: ComponentType<{ readonly kind: FieldSpec<"u32">; readonly body: FieldSpec<"Entity">; readonly other: FieldSpec<"Entity">; readonly anchor: FieldSpec<"Vector3">; readonly otherAnchor: FieldSpec<"Vector3">; readonly axis: FieldSpec<"Vector3">; readonly limits: FieldSpec<"bool">; readonly min: FieldSpec<"f32">; readonly max: FieldSpec<"f32">; readonly motor: FieldSpec<"u32">; readonly motorTarget: FieldSpec<"f32">; readonly motorStiffness: FieldSpec<"f32">; readonly motorDamping: FieldSpec<"f32">; readonly motorMaxForce: FieldSpec<"f32">; readonly restLength: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly length: FieldSpec<"f32">; readonly collide: FieldSpec<"bool">; readonly value: FieldSpec<"f32">; readonly breakForce: FieldSpec<"f32">; readonly breakTorque: FieldSpec<"f32">; readonly broken: FieldSpec<"bool"> }, Joint>;
   /**
    * A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface, standing that far over the ground; a step is climbed when the ground beyond it is at most `stepHeight` over the ground it stands on. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with (each one's layers meeting the other's mask), as for bodies. The entity needs an og.Transform and an og.Collider; the step makes it a kinematic body and pushes the dynamic bodies it walks into (`pushBodies`) with at most `pushStrength`, so a light one is shoved and a heavy one holds.
    */

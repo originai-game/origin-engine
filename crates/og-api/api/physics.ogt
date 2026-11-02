@@ -226,6 +226,41 @@ module physics {
     field other Entity "The entity that left it."
   }
 
+  event JointBroken {
+    doc "A joint broke during the tick: the solver's force or torque on it passed its breakForce or breakTorque. Sent in joint entity order; the joint's `broken` is set, and its bodies part."
+    field joint Entity "The og.Joint's entity."
+    field body Entity "Its first body."
+    field other Entity "Its second body; 0 for the world."
+    field force f32 "The force it carried when it broke." {
+      unit newton
+    }
+    field torque f32 "The torque about its anchor it carried when it broke." {
+      unit newtonMetre
+    }
+  }
+
+  component ContactHook {
+    doc "What a collider's contacts do beyond its og.Collider: a one-way platform, a conveyor belt, friction and restitution of its own, entities it passes through. Put it on the collider's entity (a static collider, a body, or a compound child). The solver reads a table of the hooks frozen at the start of the step, on its worker threads: hooks are data, not game callbacks, and run the same on both hosts and in every replay."
+    field oneWay Vector3 "A one-way surface: solid only to what is on this side of it, within 45° (world space; up for a platform jumped through from below). What came in from elsewhere passes until it is clear of it. Zero is off."
+    field surfaceVelocity Vector3 "The surface's own velocity along its contacts (world space): what lies on it is carried, as on a conveyor belt, a treadmill or a moving walkway. Zero is off." {
+      unit mps
+      tunable true
+    }
+    field friction f32 "Its contacts' friction, in place of the pair's mean; negative keeps the colliders' own." {
+      default -1
+      min -1
+      max 2
+      tunable true
+    }
+    field restitution f32 "Its contacts' restitution, in place of the pair's mean; negative keeps the colliders' own." {
+      default -1
+      min -1
+      max 1
+      tunable true
+    }
+    field ignore List.Entity.8 "Entities it never collides with: colliders or their bodies (a projectile and its shooter, a ghost and a door); 0s are skipped."
+  }
+
   event BodySlept {
     doc "A body fell asleep during the tick (Physics.sleepTicks), with every dynamic body it touches; sent in entity order. Stop a rolling sound, settle a pile's debris."
     field entity Entity "The body's entity."
@@ -321,6 +356,17 @@ module physics {
     field value f32 "Written: the hinge angle (rad) or the slide (m) after the step; the anchors' distance for springs and ropes." {
       readonly true
     }
+    field breakForce f32 "The force the joint holds before it breaks (JointBroken, `broken`): the solver's load on it through the step, its weight, gravity and what rests or presses on it; a lone impulse (applyImpulse, applyForce) is absorbed before it counts. 0 never breaks." {
+      min 0
+      unit newton
+      tunable true
+    }
+    field breakTorque f32 "The torque about its anchor it holds before it breaks, as breakForce (a shelf bracket, a cantilevered beam); 0 never breaks." {
+      min 0
+      unit newtonMetre
+      tunable true
+    }
+    field broken bool "Written: true once the joint broke; a broken joint holds nothing. Write false to mend it, rebuilt where its bodies are now."
   }
 
   component CharacterController {

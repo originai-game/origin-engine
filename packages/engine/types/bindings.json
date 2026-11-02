@@ -2392,6 +2392,51 @@
     },
     {
       "id": 33,
+      "name": "ContactHook",
+      "schema": "og.ContactHook",
+      "module": "physics",
+      "fields": [
+        {
+          "name": "oneWay",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "surfaceVelocity",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "tunable": true
+        },
+        {
+          "name": "friction",
+          "column": "f32",
+          "default": -1,
+          "tunable": true
+        },
+        {
+          "name": "restitution",
+          "column": "f32",
+          "default": -1,
+          "tunable": true
+        },
+        {
+          "name": "ignore",
+          "column": "Entity",
+          "list": 8,
+          "default": []
+        }
+      ]
+    },
+    {
+      "id": 34,
       "name": "Joint",
       "schema": "og.Joint",
       "module": "physics",
@@ -2516,11 +2561,28 @@
           "column": "f32",
           "default": 0,
           "readonly": true
+        },
+        {
+          "name": "breakForce",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "breakTorque",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "broken",
+          "column": "bool",
+          "default": false
         }
       ]
     },
     {
-      "id": 34,
+      "id": 35,
       "name": "CharacterController",
       "schema": "og.CharacterController",
       "module": "physics",
@@ -2650,7 +2712,7 @@
       ]
     },
     {
-      "id": 35,
+      "id": 36,
       "name": "PlatformerController",
       "schema": "og.PlatformerController",
       "module": "physics",
@@ -2911,7 +2973,7 @@
       ]
     },
     {
-      "id": 36,
+      "id": 37,
       "name": "Vehicle",
       "schema": "og.Vehicle",
       "module": "physics",
@@ -3047,7 +3109,7 @@
       ]
     },
     {
-      "id": 37,
+      "id": 38,
       "name": "Rope",
       "schema": "og.Rope",
       "module": "physics",
@@ -3142,7 +3204,7 @@
       ]
     },
     {
-      "id": 38,
+      "id": 39,
       "name": "Cloth",
       "schema": "og.Cloth",
       "module": "physics",
@@ -3238,7 +3300,7 @@
       ]
     },
     {
-      "id": 39,
+      "id": 40,
       "name": "Fluid2D",
       "schema": "og.Fluid2D",
       "module": "physics",
@@ -3364,7 +3426,7 @@
       ]
     },
     {
-      "id": 40,
+      "id": 41,
       "name": "Fluid3D",
       "schema": "og.Fluid3D",
       "module": "physics",
@@ -3551,7 +3613,7 @@
       ]
     },
     {
-      "id": 41,
+      "id": 42,
       "name": "WaterSurface",
       "schema": "og.WaterSurface",
       "module": "physics",
@@ -3600,7 +3662,7 @@
       ]
     },
     {
-      "id": 42,
+      "id": 43,
       "name": "WaterLine",
       "schema": "og.WaterLine",
       "module": "physics",
@@ -3661,7 +3723,7 @@
       ]
     },
     {
-      "id": 43,
+      "id": 44,
       "name": "Ragdoll",
       "schema": "og.Ragdoll",
       "module": "physics",
@@ -3720,7 +3782,7 @@
       ]
     },
     {
-      "id": 44,
+      "id": 45,
       "name": "Water",
       "schema": "og.Water",
       "module": "atmosphere",
@@ -3899,7 +3961,7 @@
       ]
     },
     {
-      "id": 45,
+      "id": 46,
       "name": "Water2D",
       "schema": "og.Water2D",
       "module": "atmosphere",
@@ -3955,7 +4017,7 @@
       ]
     },
     {
-      "id": 46,
+      "id": 47,
       "name": "Skeleton",
       "schema": "og.Skeleton",
       "module": "anim",
@@ -3989,7 +4051,7 @@
       ]
     },
     {
-      "id": 47,
+      "id": 48,
       "name": "AnimationPlayer",
       "schema": "og.AnimationPlayer",
       "module": "anim",
@@ -4042,7 +4104,7 @@
       ]
     },
     {
-      "id": 48,
+      "id": 49,
       "name": "AnimationGraph",
       "schema": "og.AnimationGraph",
       "module": "anim",
@@ -4127,7 +4189,7 @@
       ]
     },
     {
-      "id": 49,
+      "id": 50,
       "name": "Blendshapes",
       "schema": "og.Blendshapes",
       "module": "anim",
@@ -4193,7 +4255,7 @@
       ]
     },
     {
-      "id": 50,
+      "id": 51,
       "name": "IkChain",
       "schema": "og.IkChain",
       "module": "anim",
@@ -4272,7 +4334,7 @@
       ]
     },
     {
-      "id": 51,
+      "id": 52,
       "name": "LookAt",
       "schema": "og.LookAt",
       "module": "anim",
@@ -4360,7 +4422,7 @@
       ]
     },
     {
-      "id": 52,
+      "id": 53,
       "name": "JointLimit",
       "schema": "og.JointLimit",
       "module": "anim",
@@ -4405,7 +4467,7 @@
       ]
     },
     {
-      "id": 53,
+      "id": 54,
       "name": "FootLock",
       "schema": "og.FootLock",
       "module": "anim",
@@ -4453,7 +4515,7 @@
       ]
     },
     {
-      "id": 54,
+      "id": 55,
       "name": "SpringBone",
       "schema": "og.SpringBone",
       "module": "anim",
@@ -4537,7 +4599,7 @@
       ]
     },
     {
-      "id": 55,
+      "id": 56,
       "name": "SpringCollider",
       "schema": "og.SpringCollider",
       "module": "anim",
@@ -4589,7 +4651,7 @@
       ]
     },
     {
-      "id": 56,
+      "id": 57,
       "name": "Flipbook",
       "schema": "og.Flipbook",
       "module": "anim",
@@ -4641,7 +4703,7 @@
       ]
     },
     {
-      "id": 57,
+      "id": 58,
       "name": "Skeleton2D",
       "schema": "og.Skeleton2D",
       "module": "anim",
@@ -4696,7 +4758,7 @@
       ]
     },
     {
-      "id": 58,
+      "id": 59,
       "name": "IkTarget2D",
       "schema": "og.IkTarget2D",
       "module": "anim",
@@ -4745,7 +4807,7 @@
       ]
     },
     {
-      "id": 59,
+      "id": 60,
       "name": "Tilemap",
       "schema": "og.Tilemap",
       "module": "tilemap",
@@ -4807,7 +4869,7 @@
       ]
     },
     {
-      "id": 60,
+      "id": 61,
       "name": "AudioSource",
       "schema": "og.AudioSource",
       "module": "audio",
@@ -4963,7 +5025,7 @@
       ]
     },
     {
-      "id": 61,
+      "id": 62,
       "name": "AudioListener",
       "schema": "og.AudioListener",
       "module": "audio",
@@ -4988,7 +5050,7 @@
       ]
     },
     {
-      "id": 62,
+      "id": 63,
       "name": "AudioBusFx",
       "schema": "og.AudioBusFx",
       "module": "audio",
@@ -5160,7 +5222,7 @@
       ]
     },
     {
-      "id": 63,
+      "id": 64,
       "name": "AudioBusNode",
       "schema": "og.AudioBusNode",
       "module": "audio",
@@ -5184,7 +5246,7 @@
       ]
     },
     {
-      "id": 64,
+      "id": 65,
       "name": "AudioSnapshot",
       "schema": "og.AudioSnapshot",
       "module": "audio",
@@ -5227,7 +5289,7 @@
       ]
     },
     {
-      "id": 65,
+      "id": 66,
       "name": "AudioEvent",
       "schema": "og.AudioEvent",
       "module": "audio",
@@ -5359,7 +5421,7 @@
       ]
     },
     {
-      "id": 66,
+      "id": 67,
       "name": "ReverbZone",
       "schema": "og.ReverbZone",
       "module": "audio",
@@ -5417,7 +5479,7 @@
       ]
     },
     {
-      "id": 67,
+      "id": 68,
       "name": "Music",
       "schema": "og.Music",
       "module": "audio",
@@ -5465,7 +5527,7 @@
       ]
     },
     {
-      "id": 68,
+      "id": 69,
       "name": "NavAgent",
       "schema": "og.NavAgent",
       "module": "nav",
@@ -5590,7 +5652,7 @@
       ]
     },
     {
-      "id": 69,
+      "id": 70,
       "name": "Steering",
       "schema": "og.Steering",
       "module": "nav",
@@ -5706,7 +5768,7 @@
       ]
     },
     {
-      "id": 70,
+      "id": 71,
       "name": "NavFilter",
       "schema": "og.NavFilter",
       "module": "nav",
@@ -5726,7 +5788,7 @@
       ]
     },
     {
-      "id": 71,
+      "id": 72,
       "name": "Crowd",
       "schema": "og.Crowd",
       "module": "nav",
@@ -5758,7 +5820,7 @@
       ]
     },
     {
-      "id": 72,
+      "id": 73,
       "name": "AiAgent",
       "schema": "og.AiAgent",
       "module": "ai",
@@ -5805,7 +5867,7 @@
       ]
     },
     {
-      "id": 73,
+      "id": 74,
       "name": "Perception",
       "schema": "og.Perception",
       "module": "ai",
@@ -5916,7 +5978,7 @@
       ]
     },
     {
-      "id": 74,
+      "id": 75,
       "name": "Perceivable",
       "schema": "og.Perceivable",
       "module": "ai",
@@ -5934,7 +5996,7 @@
       ]
     },
     {
-      "id": 75,
+      "id": 76,
       "name": "Terrain",
       "schema": "og.Terrain",
       "module": "terrain",
@@ -5968,7 +6030,7 @@
       ]
     },
     {
-      "id": 76,
+      "id": 77,
       "name": "TerrainScatter",
       "schema": "og.TerrainScatter",
       "module": "terrain",
@@ -6048,7 +6110,7 @@
       ]
     },
     {
-      "id": 77,
+      "id": 78,
       "name": "VideoPlayer",
       "schema": "og.VideoPlayer",
       "module": "video",
@@ -6100,7 +6162,7 @@
       ]
     },
     {
-      "id": 78,
+      "id": 79,
       "name": "PathFollower",
       "schema": "og.PathFollower",
       "module": "path",
@@ -6154,7 +6216,7 @@
       ]
     },
     {
-      "id": 79,
+      "id": 80,
       "name": "Timeline",
       "schema": "og.Timeline",
       "module": "timeline",
@@ -6188,7 +6250,7 @@
       ]
     },
     {
-      "id": 80,
+      "id": 81,
       "name": "PlayerInput",
       "schema": "og.PlayerInput",
       "module": "net",
@@ -9459,6 +9521,39 @@
     },
     {
       "id": 15,
+      "name": "JointBroken",
+      "schema": "og.JointBroken",
+      "module": "physics",
+      "fields": [
+        {
+          "name": "joint",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "body",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "other",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "force",
+          "type": "f32",
+          "default": 0
+        },
+        {
+          "name": "torque",
+          "type": "f32",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 16,
       "name": "BodySlept",
       "schema": "og.BodySlept",
       "module": "physics",
@@ -9471,7 +9566,7 @@
       ]
     },
     {
-      "id": 16,
+      "id": 17,
       "name": "BodyWoke",
       "schema": "og.BodyWoke",
       "module": "physics",
@@ -9484,7 +9579,7 @@
       ]
     },
     {
-      "id": 17,
+      "id": 18,
       "name": "Contact",
       "schema": "og.Contact",
       "module": "physics",
@@ -9507,7 +9602,7 @@
       ]
     },
     {
-      "id": 18,
+      "id": 19,
       "name": "CharacterEvent",
       "schema": "og.CharacterEvent",
       "module": "physics",
@@ -9530,7 +9625,7 @@
       ]
     },
     {
-      "id": 19,
+      "id": 20,
       "name": "Splash",
       "schema": "og.Splash",
       "module": "physics",
@@ -9562,7 +9657,7 @@
       ]
     },
     {
-      "id": 20,
+      "id": 21,
       "name": "AnimationEvent",
       "schema": "og.AnimationEvent",
       "module": "anim",
@@ -9595,7 +9690,7 @@
       ]
     },
     {
-      "id": 21,
+      "id": 22,
       "name": "FlipbookEvent",
       "schema": "og.FlipbookEvent",
       "module": "anim",
@@ -9623,7 +9718,7 @@
       ]
     },
     {
-      "id": 22,
+      "id": 23,
       "name": "Skeleton2DEvent",
       "schema": "og.Skeleton2DEvent",
       "module": "anim",
@@ -9656,7 +9751,7 @@
       ]
     },
     {
-      "id": 23,
+      "id": 24,
       "name": "TweenCompleted",
       "schema": "og.TweenCompleted",
       "module": "tween",
@@ -9679,7 +9774,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 25,
       "name": "MusicBeat",
       "schema": "og.MusicBeat",
       "module": "audio",
@@ -9707,7 +9802,7 @@
       ]
     },
     {
-      "id": 25,
+      "id": 26,
       "name": "SoundStarted",
       "schema": "og.SoundStarted",
       "module": "audio",
@@ -9730,7 +9825,7 @@
       ]
     },
     {
-      "id": 26,
+      "id": 27,
       "name": "SoundEnded",
       "schema": "og.SoundEnded",
       "module": "audio",
@@ -9758,7 +9853,7 @@
       ]
     },
     {
-      "id": 27,
+      "id": 28,
       "name": "NavLinkReached",
       "schema": "og.NavLinkReached",
       "module": "nav",
@@ -9809,7 +9904,7 @@
       ]
     },
     {
-      "id": 28,
+      "id": 29,
       "name": "AiChanged",
       "schema": "og.AiChanged",
       "module": "ai",
@@ -9837,7 +9932,7 @@
       ]
     },
     {
-      "id": 29,
+      "id": 30,
       "name": "PlatformAnswered",
       "schema": "og.PlatformAnswered",
       "module": "platform",
@@ -9855,7 +9950,7 @@
       ]
     },
     {
-      "id": 30,
+      "id": 31,
       "name": "RoomJoined",
       "schema": "og.RoomJoined",
       "module": "platform",
@@ -9888,7 +9983,7 @@
       ]
     },
     {
-      "id": 31,
+      "id": 32,
       "name": "RoomPeerJoined",
       "schema": "og.RoomPeerJoined",
       "module": "platform",
@@ -9906,7 +10001,7 @@
       ]
     },
     {
-      "id": 32,
+      "id": 33,
       "name": "RoomPeerLeft",
       "schema": "og.RoomPeerLeft",
       "module": "platform",
@@ -9924,7 +10019,7 @@
       ]
     },
     {
-      "id": 33,
+      "id": 34,
       "name": "RoomMessage",
       "schema": "og.RoomMessage",
       "module": "platform",
@@ -9947,7 +10042,7 @@
       ]
     },
     {
-      "id": 34,
+      "id": 35,
       "name": "StreamEvent",
       "schema": "og.StreamEvent",
       "module": "stream",
@@ -9965,7 +10060,7 @@
       ]
     },
     {
-      "id": 35,
+      "id": 36,
       "name": "TimelineStarted",
       "schema": "og.TimelineStarted",
       "module": "timeline",
@@ -9983,7 +10078,7 @@
       ]
     },
     {
-      "id": 36,
+      "id": 37,
       "name": "TimelineMarker",
       "schema": "og.TimelineMarker",
       "module": "timeline",
@@ -10011,7 +10106,7 @@
       ]
     },
     {
-      "id": 37,
+      "id": 38,
       "name": "TimelineEnded",
       "schema": "og.TimelineEnded",
       "module": "timeline",
@@ -10029,7 +10124,7 @@
       ]
     },
     {
-      "id": 38,
+      "id": 39,
       "name": "Desync",
       "schema": "og.Desync",
       "module": "net",

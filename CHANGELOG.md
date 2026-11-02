@@ -52,6 +52,14 @@ is one line here, written at the merge that changes
   world hash moves once for every engine world (the new layouts are in
   its type table); the portable hash and the golden replays do not.
 
+- Added (physics, G2-3): breaking joints and contact hooks.
+  `Joint.breakForce`, `Joint.breakTorque` (0, never, by default) and
+  `Joint.broken` (written; write false to mend), with the event
+  `og.JointBroken`; the component `og.ContactHook` (`oneWay`,
+  `surfaceVelocity`, `friction`, `restitution`, `ignore`), data the solver
+  reads, never a callback. og.Joint is version 2: saves of 0.7.7 restore
+  with joints that never break. The unit `newtonMetre`.
+
 - **A reactive ECS with spatial queries (G2-2).** Added to the IDL:
   `SystemDesc.changed`, `added`, `removed`, `state`, `value`, `when`
   (`StateWhen`) and `runIf` (`RunCondition`); `QueryDesc.changed`,

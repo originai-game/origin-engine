@@ -146,6 +146,7 @@ Field units the docs and Tune use.
 | `kg` | kilograms |
 | `newton` | newtons: the force that gives a kilogram one metre per second squared |
 | `newtonSecond` | newton-seconds: an impulse, the momentum that changes a kilogram's velocity by one metre per second |
+| `newtonMetre` | newton-metres: a torque, a newton pushing one metre from the axis it turns about |
 | `mps` | metres per second |
 | `mps2` | metres per second squared |
 | `radps` | radians per second |
@@ -157,7 +158,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-1949 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+1951 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -826,6 +827,7 @@ Field units the docs and Tune use.
 | [`og.commands.register`](commands.md#fn-register) | function | commands | `og_commands_register` |
 | [`og.commands.schedule`](commands.md#fn-schedule) | function | commands | `og_commands_schedule` |
 | [`og.Contact`](physics.md#record-Contact) | event | physics | — |
+| [`og.ContactHook`](physics.md#record-ContactHook) | component | physics | — |
 | [`og.Crowd`](nav.md#record-Crowd) | component | nav | — |
 | [`og.DayNight`](atmosphere.md#record-DayNight) | resource | atmosphere | — |
 | [`og.debug.arrow`](debug.md#fn-arrow) | function | debug | `og_debug_arrow` |
@@ -897,6 +899,7 @@ Field units the docs and Tune use.
 | [`og.input.startCapture`](input.md#fn-startCapture) | function | input | `og_input_start_capture` |
 | [`og.Interpolation`](render.md#record-Interpolation) | component | render | — |
 | [`og.Joint`](physics.md#record-Joint) | component | physics | — |
+| [`og.JointBroken`](physics.md#record-JointBroken) | event | physics | — |
 | [`og.JointLimit`](anim.md#record-JointLimit) | component | anim | — |
 | [`og.KeyDown`](input.md#record-KeyDown) | event | input | — |
 | [`og.KeyUp`](input.md#record-KeyUp) | event | input | — |

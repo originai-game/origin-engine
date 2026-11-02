@@ -32,12 +32,20 @@ const PINNED: [(u32, u64); 2] = [(3, 0xaae516abb826b9be), (2, 0xd2b61993ef980a1c
 
 /// What G2-3 added to the types the world registers: left out of the
 /// table, as an older engine's trace leaves them.
-const ADDED_TYPES: &[&str] = &["og.BodySlept", "og.BodyWoke"];
+const ADDED_TYPES: &[&str] = &[
+    "og.BodySlept",
+    "og.BodyWoke",
+    "og.JointBroken",
+    "og.ContactHook",
+];
 const ADDED_FIELDS: &[(&str, &str)] = &[
     ("og.Physics", "sleepTicks"),
     ("og.Physics", "sleepSpeed"),
     ("og.RigidBody", "canSleep"),
     ("og.RigidBody", "sleeping"),
+    ("og.Joint", "breakForce"),
+    ("og.Joint", "breakTorque"),
+    ("og.Joint", "broken"),
 ];
 
 fn table(snapshot: &og_net::Snapshot) -> BTreeMap<String, Vec<String>> {

@@ -160,6 +160,14 @@
       {
         "member": "Physics.sleepTicks, Physics.sleepSpeed, RigidBody.canSleep, RigidBody.sleeping, BodySlept, BodyWoke",
         "summary": "Sleep (G2-3): a dynamic body slower than sleepSpeed for sleepTicks ticks in a row sleeps, together with every dynamic body it touches (contacts and joints, transitively), and costs nothing until something wakes it: a body landing on it, a push, a joint, a moving kinematic body, a write to its components, its support going away, or sleepTicks set to 0. RigidBody.sleeping is written (write false to wake); BodySlept and BodyWoke are sent in entity order. Counted in ticks and saved with the world, never a clock. sleepTicks 0, the default, keeps every existing world stepping as before; og.RigidBody and og.Physics are version 2, and saves of 0.7.7 restore with the new fields at their defaults. Simulation: a world without sleep steps as before and its portable hash (og replay's, the golden replays') is unchanged; the raw world hash moves once for every engine world, because og.RigidBody's and og.Physics's new layouts are in the type table it covers."
+      },
+      {
+        "member": "Joint.breakForce, Joint.breakTorque, Joint.broken, JointBroken",
+        "summary": "Breaking joints (G2-3): a joint whose solver load through a step passes breakForce, or whose torque about its anchor passes breakTorque, breaks: it is removed in joint entity order, its `broken` is written and og.JointBroken { joint, body, other, force, torque } is sent; writing broken false mends it where its bodies are. The load is what the solver holds through the step (a weight, gravity, what rests or presses on it); a lone impulse, applyImpulse or applyForce, is absorbed before it counts. 0, the default, never breaks; og.Joint is version 2 and saves of 0.7.7 restore with the new fields at their defaults."
+      },
+      {
+        "member": "ContactHook",
+        "summary": "Contact hooks (G2-3) on a collider's entity: oneWay (solid only from one side, within 45°, what came in from elsewhere passing until clear: a platform jumped through from below), surfaceVelocity (a conveyor), friction and restitution in place of the pair's mean (negative keeps them), and ignore (up to eight entities, colliders or their bodies, it never collides with). The solver reads them from a table frozen at the start of the step, on its worker threads, so they are data rather than game callbacks, the same on both hosts and in replays. A world without hooks steps as before."
       }
     ],
     "fixed": [

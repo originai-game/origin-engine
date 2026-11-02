@@ -108,6 +108,14 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         note: "0.7.7 and earlier: gained sleepTicks and sleepSpeed (G2-3, sleep); the restore takes them at 0 and 0.1, sleep off as before",
         run: None,
     },
+    Migration {
+        target: Target::Record,
+        name: "og.Joint",
+        from: 1,
+        to: 2,
+        note: "0.7.7 and earlier: gained breakForce, breakTorque and broken (G2-3, breaking joints); the restore takes them at 0, 0 and false, a joint that never breaks",
+        run: None,
+    },
 ];
 
 fn ui_9_to_11(edit: &mut SnapshotEdit) -> Result<(), String> {

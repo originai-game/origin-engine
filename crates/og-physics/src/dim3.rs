@@ -200,6 +200,22 @@ pub(crate) fn ragdoll_joint(frame1: rp::Pose, limit: f32) -> rp::GenericJoint {
 }
 
 /// The axes a ball joint locks.
+/// The impulse a joint's solver put on its body (rapier's body 2) in its
+/// last solver substep, as a force-like and a torque-like size: its locked
+/// axes, limits and motors summed per axis, turned to world space, the
+/// torque about the joint's anchor (rapier applies the linear part at the
+/// body's centre of mass, so its lever to the anchor is added).
+pub(crate) fn joint_load(j: &rp::ImpulseJoint, bodies: &rp::RigidBodySet) -> (f32, f32) {
+    let axis = |i: usize| j.impulses[i] + j.data.limits[i].impulse + j.data.motors[i].impulse;
+    let f1 = *bodies[j.body1()].position() * j.data.local_frame1;
+    let rb2 = &bodies[j.body2()];
+    let anchor = unv((*rb2.position() * j.data.local_frame2).translation);
+    let linear = unv(f1.rotation * rp::Vector::new(axis(0), axis(1), axis(2)));
+    let angular = unv(f1.rotation * rp::Vector::new(axis(3), axis(4), axis(5)));
+    let lever = unv(rb2.center_of_mass()) - anchor;
+    (linear.length(), (angular + lever.cross(linear)).length())
+}
+
 pub(crate) fn ball_axes() -> rp::JointAxesMask {
     rp::JointAxesMask::LOCKED_SPHERICAL_AXES
 }

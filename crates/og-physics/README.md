@@ -48,6 +48,8 @@ are `u32` constants in `src/schema.rs`.
 | `og.CollisionStarted` | event | `a`, `b` (entity ids, a < b), `point`, `normal` (from a to b) |
 | `og.CollisionEnded` | event | `a`, `b` |
 | `og.SensorEntered`, `og.SensorExited` | event | `sensor`, `other` |
+| `og.JointBroken` | event | `joint`, `body`, `other`, `force`, `torque`; in joint entity order |
+| `og.ContactHook` | component | `one_way`, `surface_velocity`, `friction`, `restitution`, `ignore` (G2-3 hooks) |
 | `og.BodySlept`, `og.BodyWoke` | event | `entity`; in entity order (G2-3 sleep) |
 | `og.Contact` | event | `a`, `b`, `sensor` (bit 0: a is a sensor, bit 1: b); every touching pair, each tick |
 
@@ -128,7 +130,7 @@ a little-endian `u16` tag, `u32` length and bytes, tags ascending
 using none of it saves and hashes byte for byte as before
 (`tests/unchanged.rs` pins the beyond scenario's hashes from cb1d65bf), and
 a decoder skips a tag it does not know: a later extension adds a tag.
-Tags: 1 compounds, 2 sleep (the rest counters).
+Tags: 1 compounds, 2 sleep (the rest counters), 3 hooks (some collider has its contact hooks on, an empty section).
 
 ## The step on the lanes
 
@@ -488,3 +490,28 @@ woken, to a fixpoint. The counters are by entity in trailer tag 2; the
 sleep flag is rapier's, in its saved world. `og.RigidBody.sleeping` is
 written back, and `og.BodySlept` / `og.BodyWoke` are sent in entity
 order. `same_body` keeps the two sleep fields out of the rebuild test.
+
+### Breaking joints and contact hooks (G2-3)
+
+`ext::break_joints` runs after each substep: a joint whose load passes
+`break_force` or `break_torque` is removed, in entity order, with its
+component written `broken` and an `og.JointBroken`. The load is
+`joint_load` (dim3.rs, dim2.rs): rapier writes back the impulse of its
+last solver substep on the joint's locked axes, limits and motors (step
+dt over `num_solver_iterations`), turned to world space, with the lever
+from the anchor to the body's centre of mass, where rapier applies the
+linear part, added to the torque. A shock absorbed in the first solver
+substep (an impulse, `apply_force`, which `apply_pushes` applies as one)
+does not count; a load held through the step does. A broken joint is
+skipped by `sync_joints` until its component says otherwise. The new
+fields are `#[serde(skip)]` in `TrackedJoint`, so the block's bytes do
+not move.
+
+`og.ContactHook` is read into `Scene::hooks`; `sim::sync_hooks` turns
+rapier's active hooks on for the colliders of hooked entities (and off
+again, `SimExt::hooked`), and the step runs `step_with_events` with
+`sim::Hooks`, a read-only table: `filter_contact_pair` and
+`filter_intersection_pair` for `ignore`, `modify_solver_contacts` for the
+one-way surface (rapier's `update_as_oneway_platform`, its state in the
+manifold's saved user data), friction, restitution and the surface
+velocity (each sign by which collider the hook is on).

@@ -18,6 +18,7 @@
     "kg": "kilograms",
     "newton": "newtons: the force that gives a kilogram one metre per second squared",
     "newtonSecond": "newton-seconds: an impulse, the momentum that changes a kilogram's velocity by one metre per second",
+    "newtonMetre": "newton-metres: a torque, a newton pushing one metre from the axis it turns about",
     "mps": "metres per second",
     "mps2": "metres per second squared",
     "radps": "radians per second",
@@ -6458,6 +6459,8 @@
         "CollisionEnded",
         "SensorEntered",
         "SensorExited",
+        "JointBroken",
+        "ContactHook",
         "BodySlept",
         "BodyWoke",
         "Contact",
@@ -28967,6 +28970,98 @@
       ],
       "additionalProperties": false
     },
+    "JointBroken": {
+      "x-og-kind": "event",
+      "x-og-module": "physics",
+      "description": "A joint broke during the tick: the solver's force or torque on it passed its breakForce or breakTorque. Sent in joint entity order; the joint's `broken` is set, and its bodies part.",
+      "type": "object",
+      "properties": {
+        "joint": {
+          "$ref": "#/$defs/Entity",
+          "description": "The og.Joint's entity."
+        },
+        "body": {
+          "$ref": "#/$defs/Entity",
+          "description": "Its first body."
+        },
+        "other": {
+          "$ref": "#/$defs/Entity",
+          "description": "Its second body; 0 for the world."
+        },
+        "force": {
+          "type": "number",
+          "description": "The force it carried when it broke.",
+          "x-og-unit": "newton"
+        },
+        "torque": {
+          "type": "number",
+          "description": "The torque about its anchor it carried when it broke.",
+          "x-og-unit": "newtonMetre"
+        }
+      },
+      "required": [
+        "joint",
+        "body",
+        "other",
+        "force",
+        "torque"
+      ],
+      "additionalProperties": false
+    },
+    "ContactHook": {
+      "x-og-kind": "component",
+      "x-og-module": "physics",
+      "description": "What a collider's contacts do beyond its og.Collider: a one-way platform, a conveyor belt, friction and restitution of its own, entities it passes through. Put it on the collider's entity (a static collider, a body, or a compound child). The solver reads a table of the hooks frozen at the start of the step, on its worker threads: hooks are data, not game callbacks, and run the same on both hosts and in every replay.",
+      "type": "object",
+      "properties": {
+        "oneWay": {
+          "$ref": "#/$defs/Vector3",
+          "description": "A one-way surface: solid only to what is on this side of it, within 45° (world space; up for a platform jumped through from below). What came in from elsewhere passes until it is clear of it. Zero is off.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "surfaceVelocity": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The surface's own velocity along its contacts (world space): what lies on it is carried, as on a conveyor belt, a treadmill or a moving walkway. Zero is off.",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "x-og-unit": "mps",
+          "x-og-tunable": true
+        },
+        "friction": {
+          "type": "number",
+          "description": "Its contacts' friction, in place of the pair's mean; negative keeps the colliders' own.",
+          "default": -1,
+          "minimum": -1,
+          "maximum": 2,
+          "x-og-tunable": true
+        },
+        "restitution": {
+          "type": "number",
+          "description": "Its contacts' restitution, in place of the pair's mean; negative keeps the colliders' own.",
+          "default": -1,
+          "minimum": -1,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "ignore": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Entity"
+          },
+          "maxItems": 8,
+          "description": "Entities it never collides with: colliders or their bodies (a projectile and its shooter, a ghost and a door); 0s are skipped.",
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
     "BodySlept": {
       "x-og-kind": "event",
       "x-og-module": "physics",
@@ -29173,6 +29268,27 @@
           "description": "Written: the hinge angle (rad) or the slide (m) after the step; the anchors' distance for springs and ropes.",
           "default": 0,
           "readOnly": true
+        },
+        "breakForce": {
+          "type": "number",
+          "description": "The force the joint holds before it breaks (JointBroken, `broken`): the solver's load on it through the step, its weight, gravity and what rests or presses on it; a lone impulse (applyImpulse, applyForce) is absorbed before it counts. 0 never breaks.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "newton",
+          "x-og-tunable": true
+        },
+        "breakTorque": {
+          "type": "number",
+          "description": "The torque about its anchor it holds before it breaks, as breakForce (a shelf bracket, a cantilevered beam); 0 never breaks.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "newtonMetre",
+          "x-og-tunable": true
+        },
+        "broken": {
+          "type": "boolean",
+          "description": "Written: true once the joint broke; a broken joint holds nothing. Write false to mend it, rebuilt where its bodies are now.",
+          "default": false
         }
       },
       "additionalProperties": false

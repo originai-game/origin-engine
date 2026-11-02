@@ -11,11 +11,11 @@ use super::{VehicleState, ext};
 use crate::gather::{Body, Scene};
 use crate::schema::*;
 use crate::stats::{Laps, Phase};
+use crate::{ContactHook, OverlapDesc, ShapeDesc};
 use crate::{
     Hole, QueryFilter, RaycastHit, SHAPE_CACHE_LIMIT, ShapeCastDesc, ShapeCastHit, ShapeKey,
     Shared, StepOut,
 };
-use crate::{OverlapDesc, ShapeDesc};
 use og_core::glam::{Quat, Vec3};
 use og_core::{Error, ErrorKind, IdMap, Result};
 use og_ecs::Entity;
@@ -283,11 +283,14 @@ pub(crate) struct SimExt {
     /// The ticks each awake dynamic body has rested in a row, by entity,
     /// while sleep is on ([`sleep`]); none at 0.
     pub(crate) still: IdMap<u64, u32>,
+    /// Whether some collider has its contact hooks on ([`sync_hooks`]).
+    pub(crate) hooked: bool,
 }
 
 /// Extension section tags of the og.physics block.
 pub(crate) const EXT_COMPOUNDS: u16 = 1;
 pub(crate) const EXT_SLEEP: u16 = 2;
+pub(crate) const EXT_HOOKS: u16 = 3;
 
 impl SimExt {
     /// Its sections, each `(tag, bytes)`; none for what is empty.
@@ -304,6 +307,9 @@ impl SimExt {
             let list: Vec<(&u64, &u32)> = self.still.iter().collect();
             crate::encode(&mut bytes, &list).expect("rest counts serialize into memory");
             out.push((EXT_SLEEP, bytes));
+        }
+        if self.hooked {
+            out.push((EXT_HOOKS, Vec::new()));
         }
         out
     }
@@ -324,6 +330,8 @@ impl SimExt {
                 let list: Vec<(u64, Vec<TrackedChild>)> =
                     crate::codec().deserialize(bytes).map_err(parse)?;
                 ext.compounds = list.into_iter().collect();
+            } else if tag == EXT_HOOKS {
+                ext.hooked = true;
             } else if tag == EXT_SLEEP {
                 let list: Vec<(u64, u32)> = crate::codec().deserialize(bytes).map_err(parse)?;
                 ext.still = list.into_iter().collect();
@@ -695,9 +703,19 @@ fn step_here(
     // but the last carry their impulse and first relative velocity on.
     let mut carried = BTreeMap::new();
     let mut motions = Vec::new();
+    sync_hooks(scene, sim);
+    let solver_dt = {
+        let p = &sim.world.integration_parameters;
+        p.dt / p.num_solver_iterations.max(1) as f32
+    };
     for k in 0..substeps {
         motions = motions_now(&sim.world);
-        sim.world.step();
+        if scene.hooks.is_empty() {
+            sim.world.step();
+        } else {
+            sim.world.step_with_events(&Hooks(&scene.hooks), &());
+        }
+        ext::break_joints(sim, solver_dt, &mut out);
         if k + 1 < substeps {
             carry(&sim.world, &motions, &mut carried);
         }
@@ -728,6 +746,109 @@ fn step_here(
     laps.lap(Phase::Joints);
     out.laps = Some(laps);
     Ok(out)
+}
+
+/// The hooks every collider of a hooked entity runs (og.ContactHook).
+fn all_hooks() -> rp::ActiveHooks {
+    rp::ActiveHooks::FILTER_CONTACT_PAIRS
+        | rp::ActiveHooks::FILTER_INTERSECTION_PAIR
+        | rp::ActiveHooks::MODIFY_SOLVER_CONTACTS
+}
+
+/// Turns the contact hooks on for the colliders of the entities that have
+/// an og.ContactHook and off for the others, touching only those that
+/// change; nothing while no collider has them.
+fn sync_hooks(scene: &Scene, sim: &mut Sim) {
+    if scene.hooks.is_empty() && !sim.ext.hooked {
+        return;
+    }
+    let mut change = Vec::new();
+    for (h, c) in sim.world.colliders.iter() {
+        let want = if scene.hooks.get(&entity_of(c).to_bits()).is_some() {
+            all_hooks()
+        } else {
+            rp::ActiveHooks::empty()
+        };
+        if c.active_hooks() != want {
+            change.push((h, want));
+        }
+    }
+    for (h, want) in change {
+        if let Some(c) = sim.world.colliders.get_mut(h) {
+            c.set_active_hooks(want);
+        }
+    }
+    sim.ext.hooked = !scene.hooks.is_empty();
+}
+
+/// The contact hooks the solver reads, frozen for the step: read only, so
+/// the same on any number of threads.
+struct Hooks<'a>(&'a IdMap<u64, ContactHook>);
+
+/// How far from its direction a one-way surface still holds (45°).
+const ONE_WAY_ANGLE: f32 = std::f32::consts::FRAC_PI_4;
+
+impl Hooks<'_> {
+    fn of(&self, c: &rp::Collider) -> Option<&ContactHook> {
+        self.0.get(&entity_of(c).to_bits())
+    }
+
+    /// Whether either collider's hook ignores the other (its entity or its body).
+    fn ignored(&self, c1: &rp::Collider, c2: &rp::Collider) -> bool {
+        let ignores = |h: &ContactHook, other: &rp::Collider| {
+            let (e, b) = (entity_of(other).to_bits(), body_of(other).to_bits());
+            h.ignore
+                .as_slice()
+                .iter()
+                .any(|&x| x != 0 && (x == e || x == b))
+        };
+        self.of(c1).is_some_and(|h| ignores(h, c2)) || self.of(c2).is_some_and(|h| ignores(h, c1))
+    }
+}
+
+impl rp::PhysicsHooks for Hooks<'_> {
+    fn filter_contact_pair(&self, ctx: &rp::PairFilterContext) -> Option<rp::SolverFlags> {
+        let (c1, c2) = (&ctx.colliders[ctx.collider1], &ctx.colliders[ctx.collider2]);
+        (!self.ignored(c1, c2)).then_some(rp::SolverFlags::COMPUTE_RIGID_IMPULSES)
+    }
+
+    fn filter_intersection_pair(&self, ctx: &rp::PairFilterContext) -> bool {
+        let (c1, c2) = (&ctx.colliders[ctx.collider1], &ctx.colliders[ctx.collider2]);
+        !self.ignored(c1, c2)
+    }
+
+    fn modify_solver_contacts(&self, ctx: &mut rp::ContactModificationContext) {
+        let (c1, c2) = (&ctx.colliders[ctx.collider1], &ctx.colliders[ctx.collider2]);
+        let (h1, h2) = (self.of(c1).copied(), self.of(c2).copied());
+        let to_local1 = c1.position().rotation.inverse();
+        // The normal runs from collider 1 to collider 2: a hook on collider
+        // 2 sees its surface from the other side.
+        for (h, side) in [(h1, 1.0), (h2, -1.0)] {
+            let Some(h) = h else {
+                continue;
+            };
+            let one_way = flat(h.one_way);
+            if one_way != Vec3::ZERO {
+                let allowed = to_local1 * v(one_way.normalize() * side);
+                ctx.update_as_oneway_platform(allowed, ONE_WAY_ANGLE);
+            }
+            let Some(m) = ctx.rigid_mut() else {
+                continue;
+            };
+            if h.friction >= 0.0 {
+                *m.friction = h.friction;
+            }
+            if h.restitution >= 0.0 {
+                *m.restitution = h.restitution;
+            }
+            let surface = flat(h.surface_velocity);
+            if surface != Vec3::ZERO {
+                for c in m.solver_contacts.iter_mut() {
+                    c.tangent_velocity = v(surface * side);
+                }
+            }
+        }
+    }
 }
 
 /// Each body's rapier handle, in scene order, and by entity for the

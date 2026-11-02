@@ -698,7 +698,8 @@ fn schedule(world: &mut World, shared: &Arc<Mutex<Shared>>, ids: &Arc<Ids>) -> R
         .write::<CharacterEvent>()
         .write::<Splash>()
         .write::<BodySlept>()
-        .write::<BodyWoke>();
+        .write::<BodyWoke>()
+        .write::<JointBroken>();
     desc.writes.push(gather::TRANSFORM.to_string());
     for name in gather::WRITTEN {
         desc.writes.push(name.to_string());
@@ -1314,6 +1315,8 @@ pub(crate) struct StepOut {
     /// The components a step writes back.
     pub controls: Vec<(Entity, ControlOut)>,
     pub joints: Vec<(Entity, Joint)>,
+    /// The joints that broke, in the order they did.
+    pub broken: Vec<JointBroken>,
     pub vehicles: Vec<(Entity, Vehicle)>,
     pub ragdolls: Vec<(Entity, Ragdoll)>,
     pub events: Vec<CharacterEvent>,
@@ -1401,6 +1404,9 @@ fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>) -> Result
     }
     for (e, b) in &out.sleep.writes {
         ctx.set(*e, *b)?;
+    }
+    for b in &out.broken {
+        ctx.send(*b)?;
     }
     for &entity in &out.sleep.slept {
         ctx.send(BodySlept { entity })?;

@@ -6,8 +6,8 @@
 //! and the doc comments are the user-facing documentation. Fields a step
 //! writes are marked "written".
 
-use og_core::Reflect;
 use og_core::glam::{Vec2, Vec3};
+use og_core::{List, Reflect};
 use serde::{Deserialize, Serialize};
 
 // ---- joints ---------------------------------------------------------------
@@ -39,7 +39,7 @@ pub const MOTOR_POSITION: u32 = 2;
 /// second anchor is a world point. A joint whose bodies are not both
 /// `og.RigidBody` entities does nothing until they are.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
-#[reflect(name = "og.Joint")]
+#[reflect(name = "og.Joint", version = 2)]
 pub struct Joint {
     /// JOINT_FIXED 0, JOINT_REVOLUTE 1 (hinge), JOINT_PRISMATIC 2 (slider), JOINT_SPRING 3, JOINT_ROPE 4, JOINT_BALL 5.
     #[reflect(min = 0, max = 5, label = "Kind")]
@@ -94,6 +94,19 @@ pub struct Joint {
     pub collide: bool,
     /// Written: the hinge angle (rad) or the slide (m) after the step; the anchors' distance for springs and ropes.
     pub value: f32,
+    /// The force (N) the joint holds before it breaks, from the solver's
+    /// impulse over a step; 0 never breaks.
+    #[reflect(name = "breakForce", min = 0, unit = "N", tunable)]
+    #[serde(skip)]
+    pub break_force: f32,
+    /// The torque (N·m) it holds before it breaks; 0 never breaks.
+    #[reflect(name = "breakTorque", min = 0, unit = "N*m", tunable)]
+    #[serde(skip)]
+    pub break_torque: f32,
+    /// Written: true once the joint broke (og.JointBroken); a broken joint
+    /// holds nothing. Write false to mend it, rebuilt where its bodies are.
+    #[serde(skip)]
+    pub broken: bool,
 }
 
 impl Default for Joint {
@@ -119,6 +132,9 @@ impl Default for Joint {
             length: 2.0,
             collide: false,
             value: 0.0,
+            break_force: 0.0,
+            break_torque: 0.0,
+            broken: false,
         }
     }
 }
@@ -1137,6 +1153,65 @@ impl Default for WaterLine {
             splash: 0.04,
             buoyancy: 12.0,
             drag: 2.0,
+        }
+    }
+}
+
+/// A joint broke during the tick: the solver's force or torque on it passed
+/// its breakForce or breakTorque. Sent in joint entity order; the joint's
+/// `broken` is set.
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+#[reflect(name = "og.JointBroken")]
+pub struct JointBroken {
+    /// The og.Joint's entity.
+    pub joint: u64,
+    /// Its first body.
+    pub body: u64,
+    /// Its second body (0: the world).
+    pub other: u64,
+    /// The force it carried when it broke.
+    #[reflect(unit = "N")]
+    pub force: f32,
+    /// The torque it carried when it broke.
+    #[reflect(unit = "N*m")]
+    pub torque: f32,
+}
+
+/// What a collider's contacts do, beside its og.Collider: a one-way
+/// platform, a conveyor, friction and restitution of its own, entities it
+/// passes through. Read by the solver from a table frozen at the start of
+/// the step (data, not game callbacks: the step runs on worker threads).
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+#[reflect(name = "og.ContactHook")]
+pub struct ContactHook {
+    /// A one-way surface: solid only to what is on this side of it (world
+    /// space, within 45°; up for a platform jumped through from below);
+    /// what came in from elsewhere passes until it is clear. Zero is off.
+    #[reflect(name = "oneWay")]
+    pub one_way: Vec3,
+    /// The surface's own velocity along its contacts (world space, m/s): a
+    /// conveyor belt, a treadmill, a moving walkway. Zero is off.
+    #[reflect(name = "surfaceVelocity", unit = "m/s", tunable)]
+    pub surface_velocity: Vec3,
+    /// Its contacts' friction, replacing the pair's mean; negative keeps it.
+    #[reflect(min = -1, max = 2, default = -1, tunable)]
+    pub friction: f32,
+    /// Its contacts' restitution, replacing the pair's mean; negative keeps it.
+    #[reflect(min = -1, max = 1, default = -1, tunable)]
+    pub restitution: f32,
+    /// Entities (colliders or their bodies) it never collides with; 0s
+    /// are skipped.
+    pub ignore: List<u64, 8>,
+}
+
+impl Default for ContactHook {
+    fn default() -> Self {
+        ContactHook {
+            one_way: Vec3::ZERO,
+            surface_velocity: Vec3::ZERO,
+            friction: -1.0,
+            restitution: -1.0,
+            ignore: List::new(),
         }
     }
 }

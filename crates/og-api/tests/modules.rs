@@ -81,6 +81,7 @@ const VERSIONS: &[(&str, u32, u64)] = &[
     ("og.CollisionEnded", 1, 0x4e62d2a73639aeb5),
     ("og.CollisionStarted", 1, 0x6c9e735a7abf1f6a),
     ("og.Contact", 1, 0xe9a7082085c77412),
+    ("og.ContactHook", 1, 0x5f7ff8a7ff78c1bb),
     ("og.Flipbook", 1, 0xbbede7fc327207f1),
     ("og.FlipbookEvent", 1, 0x7d1245df738a14b1),
     ("og.Fluid3D", 1, 0xf7ae93e48ea458df),
@@ -88,6 +89,8 @@ const VERSIONS: &[(&str, u32, u64)] = &[
     ("og.Gamepad", 2, 0xc97a34bf75360270),
     ("og.IkChain", 1, 0xbbe02154306d4e60),
     ("og.IkTarget2D", 1, 0x4e454eb44cd38470),
+    ("og.Joint", 2, 0x263a678c33ed5248),
+    ("og.JointBroken", 1, 0xb0cc4d0a3a3cb8c3),
     ("og.JointLimit", 1, 0x4b0c9cec8d17a70f),
     ("og.LookAt", 1, 0x219ef1857429f798),
     ("og.Physics", 2, 0xc6d013db66fc764a),
@@ -167,6 +170,9 @@ fn physics_audio_animation_and_input_records_have_the_idl_layouts() {
     check::<og_physics::Contact>(&mut failures);
     check::<og_physics::BodySlept>(&mut failures);
     check::<og_physics::BodyWoke>(&mut failures);
+    check::<og_physics::Joint>(&mut failures);
+    check::<og_physics::JointBroken>(&mut failures);
+    check::<og_physics::ContactHook>(&mut failures);
     check::<og_physics::Fluid3D>(&mut failures);
     check::<og_audio::AudioSource>(&mut failures);
     check::<og_audio::AudioListener>(&mut failures);

@@ -146,6 +146,8 @@ fn structure(j: &Joint) -> Joint {
         stiffness: 0.0,
         damping: 0.0,
         value: 0.0,
+        break_force: 0.0,
+        break_torque: 0.0,
         ..*j
     }
 }
@@ -297,6 +299,13 @@ pub(crate) fn sync_joints(
     }
     for (e, j) in &scene.joints {
         let key = e.to_bits();
+        if j.broken {
+            // Broken: it holds nothing until game code mends it.
+            if let Some(t) = sim.joints.remove(&key) {
+                sim.world.impulse_joints.remove(t.handle, true);
+            }
+            continue;
+        }
         let first_entity = if j.body == 0 { key } else { j.body };
         let first = handles.get(&first_entity).copied();
         let second = if j.other == 0 {
@@ -357,6 +366,56 @@ pub(crate) fn sync_joints(
         }
     }
     Ok(())
+}
+
+/// After a step: removes, in entity order, the joints whose solver load
+/// passed their breakForce or breakTorque, each with its event and its
+/// component as it is now, broken. `dt` is the solver's own substep (the
+/// step's dt over its solver iterations, rapier's internal substeps): the
+/// impulse rapier writes back on the joint's locked axes, limits and
+/// motors is the last one's, so a load held through the step counts (a
+/// weight, gravity, a body resting or pressing on it, a pull along other
+/// joints) and a shock the step's first solver substep absorbs does not
+/// (an impulse, and applyForce, which reaches the body as one).
+pub(crate) fn break_joints(sim: &mut Sim, dt: f32, out: &mut StepOut) {
+    if dt <= 0.0 {
+        return;
+    }
+    let mut gone = Vec::new();
+    for (&e, t) in &sim.joints {
+        let j = &t.joint;
+        if j.break_force <= 0.0 && j.break_torque <= 0.0 {
+            continue;
+        }
+        let Some(joint) = sim.world.impulse_joints.get(t.handle) else {
+            continue;
+        };
+        let (linear, angular) = super::joint_load(joint, &sim.world.bodies);
+        let (force, torque) = (linear / dt, angular / dt);
+        if (j.break_force > 0.0 && force > j.break_force)
+            || (j.break_torque > 0.0 && torque > j.break_torque)
+        {
+            gone.push((e, force, torque));
+        }
+    }
+    for (e, force, torque) in gone {
+        let Some(t) = sim.joints.remove(&e) else {
+            continue;
+        };
+        sim.world.impulse_joints.remove(t.handle, true);
+        let j = Joint {
+            broken: true,
+            ..t.joint
+        };
+        out.broken.push(crate::JointBroken {
+            joint: e,
+            body: if j.body == 0 { e } else { j.body },
+            other: j.other,
+            force,
+            torque,
+        });
+        out.joints.push((Entity::from_bits(e), j));
+    }
 }
 
 /// Each joint's value after the step: the hinge angle, the slide, or the

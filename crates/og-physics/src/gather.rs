@@ -9,8 +9,8 @@
 use crate::StepOut;
 use crate::schema::{BODY_KINEMATIC, Collider, Parent, RigidBody, Transform, Velocity};
 use crate::schema_ext::{
-    CharacterController, Cloth, Fluid2D, Fluid3D, Joint, PlatformerController, Ragdoll, Rope,
-    Vehicle, WaterLine, WaterSurface,
+    CharacterController, Cloth, ContactHook, Fluid2D, Fluid3D, Joint, PlatformerController,
+    Ragdoll, Rope, Vehicle, WaterLine, WaterSurface,
 };
 use og_core::glam::{Quat, Vec3};
 use og_core::{Layout, Reflect, Result};
@@ -72,12 +72,13 @@ const Q_LINES: usize = 14;
 const Q_RAGDOLLS: usize = 15;
 const Q_FLUIDS3: usize = 16;
 const Q_PARENTS: usize = 17;
+const Q_HOOKS: usize = 18;
 
 const CHARACTER: &str = CharacterController::NAME;
 const PLATFORMER: &str = PlatformerController::NAME;
 
 /// The system's queries, by index.
-pub(crate) const QUERIES: [QuerySpec; 18] = [
+pub(crate) const QUERIES: [QuerySpec; 19] = [
     // Q_BODIES: every body, its transform written back.
     QuerySpec {
         read: &[RigidBody::NAME],
@@ -187,6 +188,12 @@ pub(crate) const QUERIES: [QuerySpec; 18] = [
         write: &[],
         without: &[],
     },
+    // Q_HOOKS: the colliders' contact hooks (G2-3).
+    QuerySpec {
+        read: &[ContactHook::NAME],
+        write: &[],
+        without: &[],
+    },
 ];
 
 /// The components a step writes back besides transforms and velocities
@@ -201,7 +208,7 @@ pub(crate) const WRITTEN: [&str; 5] = [
 ];
 
 /// Every component of physics beyond rigid bodies, which its systems read.
-pub(crate) const READ: [&str; 12] = [
+pub(crate) const READ: [&str; 13] = [
     CHARACTER,
     PLATFORMER,
     Joint::NAME,
@@ -214,6 +221,7 @@ pub(crate) const READ: [&str; 12] = [
     Ragdoll::NAME,
     Fluid3D::NAME,
     Parent::NAME,
+    ContactHook::NAME,
 ];
 
 /// The fields and layout of one reflected component, for decoding rows.
@@ -257,6 +265,7 @@ pub(crate) struct Ids {
     line: Rows,
     ragdoll: Rows,
     fluid3: Rows,
+    hook: Rows,
 }
 
 fn fields_of<T: Reflect>(world: &World) -> Result<(Vec<FieldRef>, Layout)> {
@@ -298,6 +307,8 @@ impl Ids {
         world.register::<Parent>()?;
         world.register::<crate::BodySlept>()?;
         world.register::<crate::BodyWoke>()?;
+        world.register::<crate::JointBroken>()?;
+        world.register::<ContactHook>()?;
         let (body_fields, body_layout) = fields_of::<RigidBody>(world)?;
         let (collider_fields, collider_layout) = fields_of::<Collider>(world)?;
         Ok(Ids {
@@ -324,6 +335,7 @@ impl Ids {
             line: Rows::of::<WaterLine>(world)?,
             ragdoll: Rows::of::<Ragdoll>(world)?,
             fluid3: Rows::of::<Fluid3D>(world)?,
+            hook: Rows::of::<ContactHook>(world)?,
         })
     }
 }
@@ -389,6 +401,8 @@ pub(crate) struct Scene {
     pub lines: Vec<(Entity, Vec3, WaterLine)>,
     pub ragdolls: Vec<(Entity, Vec3, Quat, Ragdoll)>,
     pub fluids3: Vec<(Entity, Vec3, Fluid3D)>,
+    /// The contact hooks, by entity (ascending).
+    pub hooks: og_core::IdMap<u64, ContactHook>,
 }
 
 /// Every row of component `T` in `a`, decoded from its columns, by ranges
@@ -698,6 +712,12 @@ pub(crate) fn gather<'w>(
             if b.children.len() > 1 {
                 b.children.sort_unstable_by_key(|c| c.entity.to_bits());
             }
+        }
+    }
+    for a in q(Q_HOOKS)? {
+        let rows: Vec<ContactHook> = ids.hook.read(&a)?;
+        for (e, h) in a.entities().iter().zip(rows) {
+            scene.hooks.insert(e.to_bits(), h);
         }
     }
     for a in q(Q_JOINTS)? {
