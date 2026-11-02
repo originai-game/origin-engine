@@ -119,12 +119,10 @@ fn custom_skin(joints: vec4<u32>, weights: vec4<f32>, palette: vec4<f32>) -> mat
     return mat4x4<f32>(vec4<f32>(1.0, 0.0, 0.0, 0.0), vec4<f32>(0.0, 1.0, 0.0, 0.0), vec4<f32>(0.0, 0.0, 1.0, 0.0), vec4<f32>(0.0, 0.0, 0.0, 1.0));
   }
   let w = weights / total;
-  let base = u32(palette.x);
-  let last = u32(max(palette.y, 1.0)) - 1u;
-  return joint_matrix(base + min(joints.x, last)) * w.x
-    + joint_matrix(base + min(joints.y, last)) * w.y
-    + joint_matrix(base + min(joints.z, last)) * w.z
-    + joint_matrix(base + min(joints.w, last)) * w.w;
+  return palette_joint(palette, joints.x) * w.x
+    + palette_joint(palette, joints.y) * w.y
+    + palette_joint(palette, joints.z) * w.z
+    + palette_joint(palette, joints.w) * w.w;
 }
 
 // A skinned vertex's morph targets (skin_storage.wgsl's `morphed`).
@@ -158,7 +156,7 @@ struct CustomSkinnedIn {
   @location(7) m3: vec3<f32>,
   @location(8) palette: vec4<f32>,
   @location(11) morph0: vec4<f32>,  // x: first weight slot + 1, y: first deformed slot + 1 (skin.rs)
-  @location(12) morph1: vec4<f32>,  // unused
+  @location(12) morph1: vec4<f32>,  // a baked clip's previous frame (skin.rs)
 };
 struct CustomSkinIn {
   @location(9) joints: vec4<u32>,

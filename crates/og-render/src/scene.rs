@@ -166,6 +166,11 @@ pub struct RenderScene {
     /// Ignored unless its length equals `skinned_instances`'; then the
     /// morph moves with the camera only.
     pub previous_morph_weights: Vec<[f32; crate::MAX_MORPH_TARGETS]>,
+    /// Animation clips baked into joint palettes, played on the GPU by
+    /// skinned instances with [`crate::SkinnedInstance::baked`] (crowds):
+    /// kept from frame to frame; a frame uploads only the clips its
+    /// instances use (`skin.rs`, the palette buffer's layout).
+    pub baked_clips: Vec<crate::BakedClip>,
     /// The vertices of skinned instances that bring their own
     /// ([`crate::SkinnedInstance::deformed`] indexes it): a simulated
     /// garment's points, in each instance's space.

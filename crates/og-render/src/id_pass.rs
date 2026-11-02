@@ -257,7 +257,15 @@ pub fn render_ids_from(
         let Some(data) = (id != 0 && shown).then(|| scene.mesh(inst.mesh)).flatten() else {
             continue;
         };
-        let palette = scene.joint_palettes.get(inst.palette as usize);
+        // A baked clip's pose at its frame, else its palette's.
+        let baked = inst
+            .baked
+            .and_then(|b| Some(scene.baked_clips.get(b.clip as usize)?.palette(b.frame)))
+            .map(crate::JointPalette::from);
+        let palette = match inst.baked {
+            Some(_) => baked.as_ref(),
+            None => scene.joint_palettes.get(inst.palette as usize),
+        };
         let skin = scene.skin(inst.mesh);
         let positions = data
             .vertices

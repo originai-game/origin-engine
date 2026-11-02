@@ -30,7 +30,7 @@ struct SkinnedInstanceIn {
   @location(7) m3: vec3<f32>,
   @location(8) palette: vec4<f32>,
   @location(11) morph0: vec4<f32>,  // x: first weight slot + 1, y: first deformed slot + 1 (skin.rs)
-  @location(12) morph1: vec4<f32>,  // unused
+  @location(12) morph1: vec4<f32>,  // a baked clip's previous frame (skin.rs)
 };
 struct SkinIn {
   @location(9) joints: vec4<u32>,
@@ -134,12 +134,10 @@ fn skin_matrix(s: SkinIn, palette: vec4<f32>) -> mat4x4<f32> {
     return mat4x4<f32>(vec4<f32>(1.0, 0.0, 0.0, 0.0), vec4<f32>(0.0, 1.0, 0.0, 0.0), vec4<f32>(0.0, 0.0, 1.0, 0.0), vec4<f32>(0.0, 0.0, 0.0, 1.0));
   }
   let w = s.weights / total;
-  let base = u32(palette.x);
-  let last = u32(max(palette.y, 1.0)) - 1u;
-  return joint_matrix(base + min(s.joints.x, last)) * w.x
-    + joint_matrix(base + min(s.joints.y, last)) * w.y
-    + joint_matrix(base + min(s.joints.z, last)) * w.z
-    + joint_matrix(base + min(s.joints.w, last)) * w.w;
+  return palette_joint(palette, s.joints.x) * w.x
+    + palette_joint(palette, s.joints.y) * w.y
+    + palette_joint(palette, s.joints.z) * w.z
+    + palette_joint(palette, s.joints.w) * w.w;
 }
 
 

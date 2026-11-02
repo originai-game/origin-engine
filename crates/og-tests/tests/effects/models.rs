@@ -256,6 +256,112 @@ fn skinned_cylinder_bends_with_its_palette() {
     assert_eq!(s.culled, 1);
 }
 
+/// Baked clips (GPU crowds): an instance posed by a baked clip at a whole
+/// frame draws as the same pose through a palette, and between frames as
+/// the palette the clip blends on the CPU (`BakedClip::palette`), so the
+/// shader's blend is the CPU's. Then a crowd of 35 cylinders playing one
+/// shared clip at their own frames.
+#[test]
+fn baked_clips_pose_a_crowd_like_their_palettes() {
+    let desc = small();
+    let (mesh, skin) = fx::skinned_cylinder(0.3, 24, 24);
+    let clip = og_render::BakedClip {
+        joints: fx::CYLINDER_BONES as u32,
+        frames: [0.0, 0.25, 0.5]
+            .iter()
+            .flat_map(|&b| fx::bend_palette(b, 0.0).matrices)
+            .collect(),
+    };
+    let pink = Material {
+        base_color: [0.8, 0.3, 0.5, 1.0],
+        ..Default::default()
+    };
+    let camera = Camera {
+        position: Vec3::new(0.0, 1.4, 5.0),
+        target: Vec3::new(0.0, 1.2, 0.0),
+        ..Default::default()
+    };
+    // One cylinder, by a palette or at `frame` of the clip.
+    let one = |pose: Result<JointPalette, f32>| {
+        let mut scene = RenderScene::new();
+        let ground = scene.add_mesh(shapes::plane(10.0, 1.0));
+        let white = scene.add_material(Material::default());
+        scene.add_instance(ground, white, Mat4::IDENTITY);
+        let m = scene.add_material(pink.clone());
+        let h = scene.add_skinned_mesh(mesh.clone(), skin.clone());
+        let mut inst = SkinnedInstance::new(h, m, Mat4::IDENTITY, 0);
+        match pose {
+            Ok(p) => scene.joint_palettes.push(p),
+            Err(frame) => {
+                scene.baked_clips.push(clip.clone());
+                inst.baked = Some(og_render::BakedPose {
+                    clip: 0,
+                    frame,
+                    previous_clip: 0,
+                    previous_frame: frame,
+                    previous_transform: Mat4::IDENTITY,
+                });
+            }
+        }
+        scene.skinned_instances.push(inst);
+        scene.camera = camera;
+        scene
+    };
+    for (at, palette) in [
+        (1.0, fx::bend_palette(0.25, 0.0)),
+        (1.5, JointPalette::from(clip.palette(1.5))),
+        (2.0, fx::bend_palette(0.5, 0.0)),
+    ] {
+        let (baked, stats) = frame(&desc, &one(Err(at)));
+        let (posed, _) = frame(&desc, &one(Ok(palette)));
+        assert_eq!(stats.skinned_instances, 1);
+        let d = differing(&baked, &posed, 4.0);
+        println!("baked at frame {at} vs its palette: {d} pixels differ");
+        assert!(d < 40, "frame {at}: {d} pixels differ");
+    }
+    // The frames differ from each other (the clip plays).
+    let (a, _) = frame(&desc, &one(Err(0.0)));
+    let (b, _) = frame(&desc, &one(Err(2.0)));
+    assert!(differing(&a, &b, 8.0) > 1_500);
+    // A clip that is not in the scene is refused.
+    let mut bad = one(Err(1.0));
+    bad.baked_clips.clear();
+    let mut r = Renderer::new_blocking(&desc).expect("renderer");
+    assert!(r.render(&bad, &RenderTarget::Offscreen).is_err());
+    // The crowd: 7 x 5 on a ground, one clip, each at its own frame.
+    let mut scene = RenderScene::new();
+    let ground = scene.add_mesh(shapes::plane(20.0, 1.0));
+    let white = scene.add_material(Material::default());
+    scene.add_instance(ground, white, Mat4::IDENTITY);
+    let m = scene.add_material(pink);
+    let h = scene.add_skinned_mesh(mesh.clone(), skin.clone());
+    scene.baked_clips.push(clip.clone());
+    for z in 0..5 {
+        for x in 0..7 {
+            let k = z * 7 + x;
+            let f = (k as f32 * 0.37) % 2.0;
+            let at = Mat4::from_translation(Vec3::new(x as f32 - 3.0, 0.0, -(z as f32) * 1.2));
+            let mut inst = SkinnedInstance::new(h, m, at, 0);
+            inst.baked = Some(og_render::BakedPose {
+                clip: 0,
+                frame: f,
+                previous_clip: 0,
+                previous_frame: f,
+                previous_transform: at,
+            });
+            scene.skinned_instances.push(inst);
+        }
+    }
+    scene.camera = Camera {
+        position: Vec3::new(0.0, 3.0, 6.0),
+        target: Vec3::new(0.0, 1.0, -2.0),
+        ..Default::default()
+    };
+    let (crowd, stats) = frame(&desc, &scene);
+    save("crowd-baked", &crowd);
+    assert_eq!(stats.skinned_instances, 35);
+}
+
 /// Deformed vertices (a simulated garment's): a skinned instance with its
 /// own positions draws them instead of its mesh's. The bind positions draw
 /// the plain mesh; the positions of the blendshape test's taller cylinder

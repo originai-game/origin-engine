@@ -7,6 +7,21 @@ fn joint_matrix(i: u32) -> mat4x4<f32> {
   return joint_palette[i];
 }
 
+// Joint `j` of a skinned instance's palette (skin.rs, the palette
+// buffer's layout): palette.x its first slot, palette.y its joints. A
+// baked clip (palette.w below -0.5) blends that frame's joint with the
+// next frame's, palette.y slots on, at -palette.w - 1.
+fn palette_joint(palette: vec4<f32>, j: u32) -> mat4x4<f32> {
+  let base = u32(palette.x);
+  let count = u32(max(palette.y, 1.0));
+  let k = min(j, count - 1u);
+  if (palette.w < -0.5) {
+    let t = -palette.w - 1.0;
+    return joint_palette[base + k] * (1.0 - t) + joint_palette[base + count + k] * t;
+  }
+  return joint_palette[base + k];
+}
+
 fn morph_delta(i: u32) -> vec4<f32> {
   return morph_deltas[i];
 }

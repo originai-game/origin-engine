@@ -40,6 +40,20 @@
 //!    `morph0.y - 1 + section`, so a morphing face and a swinging garment
 //!    have motion vectors under TAA.
 //!
+//! **Baked clips (crowds, [`SkinnedInstance::baked`]).** Each
+//! [`crate::RenderScene::baked_clips`] entry a frame's instances use (now
+//! or the frame before) is appended to the current section once, with the
+//! other per-instance slots in draw order: its frames one after another,
+//! `joints` slots each, shared by every instance that plays it. A baked
+//! instance's `palette.x` is the first slot of the frame before its time,
+//! `palette.y` the clip's joints, and `palette.w` is `-1 - t` (below
+//! -0.5 marks it baked; no blendshapes then): the shader blends joint `j`
+//! of that frame with joint `j` of the next, `joints` slots on, at `t`.
+//! Under TAA it also has one slot of its own, its previous transform; `morph1` is (that slot plus one, the first slot of its previous frame,
+//! that frame's `t`, 0), read in the current section, so its motion
+//! vectors need no previous palette. The previous section, when there is
+//! one, copies these slots unchanged, keeping the two sections aligned.
+//!
 //! Both sections together hold at most [`MAX_JOINTS`] slots.
 //!
 //! The morph deltas (binding 1, `array<vec4<f32>>`) are static per mesh:
@@ -122,6 +136,9 @@ pub struct SkinnedInstance {
     /// replace the mesh's positions, normals and morphs (`None`: the mesh's).
     /// Give the mesh zero skin weights, so the palette leaves them in place.
     pub deformed: Option<u32>,
+    /// Posed by a baked clip on the GPU instead of `palette` (a crowd):
+    /// see [`BakedPose`]. No blendshapes or deformed vertices with it.
+    pub baked: Option<BakedPose>,
     /// Drawn into the shadow maps, as [`crate::Instance::cast_shadows`]:
     /// a skinned (mesh, material)'s non-casters are a batch of their own.
     pub cast_shadows: bool,
@@ -142,6 +159,7 @@ impl SkinnedInstance {
             bounds_scale: 2.0,
             fx: crate::InstanceFx::NONE,
             deformed: None,
+            baked: None,
             cast_shadows: true,
             receive_shadows: true,
         }
@@ -214,6 +232,75 @@ pub(crate) fn weight_slots(weights: &[f32], targets: usize) -> Vec<[[f32; 4]; 4]
     slots
 }
 
+/// An animation clip baked into joint palettes for crowds
+/// ([`crate::RenderScene::baked_clips`]): `frames` holds its frames one
+/// after another, `joints` matrices each (model space, as a
+/// [`JointPalette`]), evenly spaced in time; at least two. A clip that
+/// loops ends on a copy of its first frame. Kept by the scene and shared
+/// by every instance that plays it; each frame it is drawn costs
+/// `frames.len()` × 64 bytes of the palette buffer, once (twice under TAA,
+/// which also takes 64 bytes an instance for its previous transform).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct BakedClip {
+    pub joints: u32,
+    pub frames: Vec<Mat4>,
+}
+
+impl BakedClip {
+    /// How many frames it holds.
+    pub fn frame_count(&self) -> usize {
+        if self.joints == 0 {
+            0
+        } else {
+            self.frames.len() / self.joints as usize
+        }
+    }
+
+    /// The frame before `frame` (a fractional frame index, clamped to the
+    /// clip) and how far towards the next one it is, 0 to 1.
+    pub fn at(&self, frame: f32) -> (usize, f32) {
+        let last = self.frame_count().saturating_sub(2);
+        let f = if frame.is_finite() {
+            frame.max(0.0)
+        } else {
+            0.0
+        };
+        let k = (f as usize).min(last);
+        (k, (f - k as f32).clamp(0.0, 1.0))
+    }
+
+    /// Its palette at `frame`, blended as the shader blends it.
+    pub fn palette(&self, frame: f32) -> Vec<Mat4> {
+        let (k, t) = self.at(frame);
+        let j = self.joints as usize;
+        (0..j)
+            .map(|i| {
+                let a = self
+                    .frames
+                    .get(k * j + i)
+                    .copied()
+                    .unwrap_or(Mat4::IDENTITY);
+                let b = self.frames.get((k + 1) * j + i).copied().unwrap_or(a);
+                a * (1.0 - t) + b * t
+            })
+            .collect()
+    }
+}
+
+/// Where a baked clip poses a [`SkinnedInstance`] ([`SkinnedInstance::baked`]):
+/// `clip` indexes [`crate::RenderScene::baked_clips`] and `frame` is a
+/// fractional frame of it (frame 1.5: halfway between its second and third
+/// frames). The previous frame's clip, frame and transform give its TAA
+/// motion vectors (the same as now: it stood still).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct BakedPose {
+    pub clip: u32,
+    pub frame: f32,
+    pub previous_clip: u32,
+    pub previous_frame: f32,
+    pub previous_transform: Mat4,
+}
+
 /// A skinned instance's own vertices ([`SkinnedInstance::deformed`]): one
 /// position and normal per vertex of its mesh, in the instance's space
 /// (before its transform), in the mesh's vertex order.
@@ -254,7 +341,8 @@ pub(crate) const SKIN_VERTEX_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::V
 /// [`crate::instances::GpuTransform::columns`]), (first joint, joint count,
 /// the mesh's first morph header, its morph targets), `morph0.x` its first
 /// weight slot plus one (0: no weights; the module's layout), `morph0.y`
-/// its first deformed vertex slot plus one (0: none), `morph1` unused, and the instance's look ([`crate::instances::layer_bits`] of no layer, then
+/// its first deformed vertex slot plus one (0: none), `morph1` a baked
+/// clip's previous frame (the module's layout; 0 otherwise), and the instance's look ([`crate::instances::layer_bits`] of no layer, then
 /// [`crate::instances::fx_bits`]).
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -534,6 +622,36 @@ mod motion_tests {
     /// Two vertices a slot, the shader's reading (`morphed`'s `deformed`):
     /// vertex `v` at slot `v / 2`, its position in column `(v % 2) * 2` and
     /// its normal in the next; an odd count leaves the last slot half empty.
+    #[test]
+    fn a_baked_clip_blends_its_frames_as_the_shader_does() {
+        // Two joints, three frames: joint 0 moves up 1 a frame, joint 1
+        // stays.
+        let up = |y: f32| Mat4::from_translation(Vec3::new(0.0, y, 0.0));
+        let clip = BakedClip {
+            joints: 2,
+            frames: vec![
+                up(0.0),
+                Mat4::IDENTITY,
+                up(1.0),
+                Mat4::IDENTITY,
+                up(2.0),
+                Mat4::IDENTITY,
+            ],
+        };
+        assert_eq!(clip.frame_count(), 3);
+        // The frame before and how far on: the last frame is reached
+        // from the one before it, never past it.
+        assert_eq!(clip.at(0.25), (0, 0.25));
+        assert_eq!(clip.at(1.5), (1, 0.5));
+        assert_eq!(clip.at(2.0), (1, 1.0));
+        assert_eq!(clip.at(7.0), (1, 1.0));
+        assert_eq!(clip.at(-1.0), (0, 0.0));
+        assert_eq!(clip.at(f32::NAN), (0, 0.0));
+        let p = clip.palette(1.25);
+        assert!(p[0].abs_diff_eq(up(1.25), 1e-6), "{:?}", p[0]);
+        assert_eq!(p[1], Mat4::IDENTITY);
+    }
+
     #[test]
     fn deformed_vertices_pack_two_a_slot() {
         let d = DeformedVertices {

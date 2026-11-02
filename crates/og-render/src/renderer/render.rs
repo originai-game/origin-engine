@@ -196,6 +196,7 @@ impl Renderer {
             // draws them without their previous transforms.)
             || (taa_on
                 && (skinned_motion == Some(true)
+                    || skinned.baked_moved
                     || (!self.gpu_culls(transforms.len() as u32) && objects_moved(scene))));
         let (face_fluid, face_depth, object_space) =
             self.prepare_frame_pipelines(PrepareFramePipelinesInputs {

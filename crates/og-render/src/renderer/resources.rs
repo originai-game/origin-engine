@@ -363,6 +363,9 @@ pub(crate) struct SkinnedFrame {
     /// The previous frame's weight and deformed vertex slots, in the
     /// current section's order.
     pub(crate) previous_slots: Vec<[[f32; 4]; 4]>,
+    /// Whether a baked instance moved or played on since the frame before
+    /// (TAA's motion vectors then need the prepass).
+    pub(crate) baked_moved: bool,
 }
 
 /// The lit pipelines: (side, blended, skinned, effects). Without effects the

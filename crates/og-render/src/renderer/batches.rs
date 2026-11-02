@@ -641,12 +641,35 @@ impl Renderer {
                     s.material.index()
                 )));
             }
-            if s.palette as usize >= offsets.len() {
-                return Err(RenderError::InvalidHandle(format!(
-                    "skinned instance {i}: palette {} of {}",
-                    s.palette,
-                    offsets.len()
-                )));
+            match &s.baked {
+                Some(b) => {
+                    for c in [b.clip, b.previous_clip] {
+                        let ok = scene.baked_clips.get(c as usize).is_some_and(|c| {
+                            c.joints > 0
+                                && c.frames.len() % c.joints as usize == 0
+                                && c.frame_count() >= 2
+                        });
+                        if !ok {
+                            return Err(RenderError::InvalidData(format!(
+                                "skinned instance {i}: baked clip {c} of {} (a clip holds whole frames, at least two)",
+                                scene.baked_clips.len()
+                            )));
+                        }
+                    }
+                    if s.deformed.is_some() {
+                        return Err(RenderError::InvalidData(format!(
+                            "skinned instance {i}: a baked clip and deformed vertices"
+                        )));
+                    }
+                }
+                None if s.palette as usize >= offsets.len() => {
+                    return Err(RenderError::InvalidHandle(format!(
+                        "skinned instance {i}: palette {} of {}",
+                        s.palette,
+                        offsets.len()
+                    )));
+                }
+                None => {}
             }
         }
         let mut order: Vec<usize> = (0..scene.skinned_instances.len()).collect();
@@ -660,12 +683,14 @@ impl Renderer {
             .iter()
             .map(|s| {
                 let mesh = s.mesh.index();
-                let palette = &scene.joint_palettes[s.palette as usize].matrices;
-                let posed = self
-                    .cache
-                    .joint_boxes
-                    .get(mesh)
-                    .and_then(|b| skin::posed_centre(b, palette, &s.transform));
+                // A baked instance: its bind pose's centre.
+                let posed = match s.baked {
+                    Some(_) => None,
+                    None => self.cache.joint_boxes.get(mesh).and_then(|b| {
+                        let palette = &scene.joint_palettes[s.palette as usize].matrices;
+                        skin::posed_centre(b, palette, &s.transform)
+                    }),
+                };
                 let centre = posed.unwrap_or_else(|| {
                     self.cache
                         .meshes
@@ -694,6 +719,10 @@ impl Renderer {
         let mut data = Vec::with_capacity(order.len());
         let mut spheres = Vec::with_capacity(order.len());
         let mut previous_slots = Vec::new();
+        // Each baked clip's first slot, once it is in the section.
+        let mut clips: std::collections::BTreeMap<u32, usize> = Default::default();
+        let mut baked_moved = false;
+        let taa = self.info.antialias == Antialias::Taa;
         for &i in &order {
             let s = &scene.skinned_instances[i];
             let (mesh, material, cast) = (s.mesh.index(), s.material.index(), s.cast_shadows);
@@ -751,8 +780,56 @@ impl Renderer {
                 ),
                 None => (m.w_axis.truncate(), 0.0),
             });
-            let (first, count) = offsets[s.palette as usize];
             let (morph_first, targets) = self.cache.morph_ranges[mesh];
+            if let Some(b) = s.baked {
+                // Its clips' frames, once a frame (shared), then under TAA
+                // its previous transform (`skin.rs`, the layout).
+                let mut first_of = |c: u32| {
+                    *clips.entry(c).or_insert_with(|| {
+                        let at = matrices.len();
+                        let frames = scene.baked_clips[c as usize]
+                            .frames
+                            .iter()
+                            .map(Mat4::to_cols_array_2d);
+                        matrices.extend(frames.clone());
+                        previous_slots.extend(frames);
+                        at
+                    })
+                };
+                let clip = &scene.baked_clips[b.clip as usize];
+                let (k, t) = clip.at(b.frame);
+                let now = first_of(b.clip) + k * clip.joints as usize;
+                let before = &scene.baked_clips[b.previous_clip as usize];
+                let (pk, pt) = before.at(b.previous_frame);
+                let then = first_of(b.previous_clip) + pk * before.joints as usize;
+                // Only TAA reads it: without, a crowd costs its clips alone.
+                let mut transform_at = 0;
+                if taa {
+                    transform_at = matrices.len() + 1;
+                    matrices.push(b.previous_transform.to_cols_array_2d());
+                    previous_slots.push(b.previous_transform.to_cols_array_2d());
+                }
+                baked_moved |= b.clip != b.previous_clip
+                    || b.frame != b.previous_frame
+                    || b.previous_transform != s.transform;
+                data.push(skin::SkinnedInstanceGpu {
+                    transform: instances::gpu_columns(&s.transform),
+                    palette: [now as f32, clip.joints as f32, morph_first as f32, -1.0 - t],
+                    morph0: [0.0; 4],
+                    morph1: [transform_at as f32, then as f32, pt, 0.0],
+                    look: {
+                        let [flash, color, tint] = instances::fx_bits(&s.fx);
+                        [
+                            instances::layer_bits(0.0, s.receive_shadows),
+                            flash,
+                            color,
+                            tint,
+                        ]
+                    },
+                });
+                continue;
+            }
+            let (first, count) = offsets[s.palette as usize];
             // Its weights' slots after the joints (`skin.rs`, the layout);
             // none while every weight is zero.
             let targets_n = targets as usize;
@@ -830,6 +907,7 @@ impl Renderer {
             spheres,
             matrices,
             previous_slots,
+            baked_moved,
         })
     }
 
