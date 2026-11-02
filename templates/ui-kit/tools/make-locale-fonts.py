@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """The UI kit's locale fonts: Noto subsets holding exactly the characters
-its string tables (assets/strings/*.ogt) use, plus printable ASCII.
+its string tables (assets/strings/*.ogt) use, plus printable ASCII, plus
+every character of the settings screen's language list (LANGUAGES in
+src/main.ts, read from the source: each language is named in its own
+script, 한국어 and العربية whatever the locale, so every subset whose face
+has a name's characters carries them, and a name draws in every locale).
 
     python3 tools/make-locale-fonts.py <NotoSansCJK-Regular.ttc> <NotoSansArabic.ttf>
 
@@ -25,6 +29,7 @@ from fontTools.ttLib import TTCollection, TTFont
 
 KIT = Path(__file__).resolve().parent.parent
 STRINGS = KIT / "assets" / "strings"
+MAIN = KIT / "src" / "main.ts"
 FONTS = KIT / "assets" / "fonts"
 ASCII = "".join(chr(c) for c in range(0x20, 0x7F))
 # Strings drawn with run-time glyphs in zh-CN and ja (not cooked).
@@ -41,6 +46,20 @@ def chars_of(locale: str) -> str:
         m.group(2) for m in re.finditer(r'^string "([^"]*)" "(.*)"$', text, re.M) if m.group(1) not in skip
     )
     return "".join(sorted(set(used + ASCII)))
+
+
+def endonyms() -> str:
+    """The characters of the language list's labels (`const LANGUAGES = [...]` in src/main.ts)."""
+    block = re.search(r"^const LANGUAGES = \[(.*?)^\];", MAIN.read_text(encoding="utf-8"), re.M | re.S)
+    if not block:
+        sys.exit(f"{MAIN}: no `const LANGUAGES = [...]` (the settings screen's language list)")
+    return "".join(re.findall(r'label: "([^"]*)"', block.group(1)))
+
+
+def covered(font: TTFont, text: str) -> str:
+    """The characters of `text` the font has."""
+    cmap = font.getBestCmap()
+    return "".join(c for c in text if ord(c) in cmap)
 
 
 def write_subset(font: TTFont, text: str, out: Path) -> None:
@@ -70,14 +89,17 @@ def main() -> None:
     if len(sys.argv) != 3:
         sys.exit(__doc__)
     cjk = TTCollection(sys.argv[1])
+    names = endonyms()
     for face, locale, name in [(0, "ja", "NotoSansJP-subset.otf"), (1, "ko", "NotoSansKR-subset.otf")]:
-        text = chars_of(locale)
+        text = "".join(sorted(set(chars_of(locale) + covered(cjk.fonts[face], names))))
         write_subset(cjk.fonts[face], text, FONTS / name)
         settings(name, "ascii cjk-punct", text)
-    text = chars_of("ar") + "ـ‌‍"
-    write_subset(TTFont(sys.argv[2]), text, FONTS / "NotoSansArabic-subset.ttf")
+    arabic = TTFont(sys.argv[2])
+    text = chars_of("ar") + covered(arabic, names) + "ـ‌‍"
+    write_subset(arabic, text, FONTS / "NotoSansArabic-subset.ttf")
     settings("NotoSansArabic-subset.ttf", "ascii arabic", "")
-    sc = chars_of("zh-CN")
+    # The SC subset is not re-made here: its import takes the names its file has.
+    sc = "".join(sorted(set(chars_of("zh-CN") + covered(TTFont(FONTS / "NotoSansSC-Regular-subset.ttf"), names))))
     settings("NotoSansSC-Regular-subset.ttf", "latin cjk-punct", "简体中文原点引擎设置" + sc, runtime=True)
     for p in sorted(FONTS.glob("Noto*-subset.*")):
         if p.suffix in (".otf", ".ttf"):
