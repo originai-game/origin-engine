@@ -13,6 +13,7 @@ description = "Origin Engine motion generation: a pose-conditioned humanoid moti
 # wasm32-unknown-unknown.
 [dependencies]
 og-core = { path = "../og-core" }
+og-anim = { path = "../og-anim" }
 wgpu = { workspace = true }
 bytemuck = { workspace = true }
 serde = { version = "1", features = ["derive"] }

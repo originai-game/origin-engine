@@ -15,6 +15,20 @@ let pose = og_motion::decode_frame(generation.frame(0, 10), &alignments[0]);
 
 let gpu = og_motion::gpu::Gpu::new(device, queue, &bundle)?; // wgpu compute
 let student = gpu.student(&og_motion::glue::student_inputs(&statics, &inputs)).await?;
+
+// The intent API: goals per character, generated in batches, chained.
+let mut motion = og_motion::intent::Motion::default();
+let hero = motion.add(recent_four_frames);
+motion.push(hero, Goal::placed(&library_pose, [x, z], heading));
+motion.generate_gpu(&mut gpu, 30).await?;                    // characters with < 30 frames queued
+let frame = motion.pop(hero);                                // a world pose and its foot contacts
+
+// On a game's rig: SOMA as og-anim's skeleton, feet planted, retargeted.
+let skeleton = og_motion::soma::Skeleton::from_bundle(&bundle)?;
+let mut local: Vec<_> = frames.iter().map(|p| skeleton.local(p)).collect();
+og_motion::soma::plant_feet(&skeleton.asset(), &mut local, &contacts);
+let clip = og_motion::soma::clip("walk", &skeleton.asset(), &local);
+let on_rig = og_anim::retarget(&skeleton.asset(), &HumanoidMap::detect(&skeleton.asset()), &rig, &rig_map, &clip, &Default::default())?;
 ```
 
 ## API map
@@ -25,7 +39,9 @@ let student = gpu.student(&og_motion::glue::student_inputs(&statics, &inputs)).a
 | `contract` | `Pose`, `Request`, `encode` (world poses → the seven inputs and an `Alignment`), `decode_frame`, `valid_frames`, the joint names and feature ranges |
 | `glue` | `Statics`, `student_inputs`, `decoder_inputs`, `finish`: everything around the two networks, shared by both paths |
 | `cpu` | `Cpu`: the student and the decoder in f32 loops, the reference path |
-| `gpu` | `Gpu` (`request`, `new`, async `student`, `decoder`), `shader_sources` |
+| `gpu` | `Gpu` (`request`, `request_on`, `new`, async `student`, `decoder`, `generate`), `shader_sources` |
+| `intent` | `Goal` (`placed`), `Motion` (`add`, `push`, `batch`, `accept`, `generate`, `generate_gpu`, `pop`), `Frame` |
+| `soma` | `Skeleton` (`from_bundle`, `asset`, `local`), `plant_feet`, `clip` |
 | (root) | `Model` (CPU end to end), `Generation` |
 
 ## The bundle
@@ -48,37 +64,45 @@ any redistribution. No weights are in this repository.
   number in it). Tokens and counts equal, motion within 1e-3.
 - `tests/shaders.rs`: every kernel through naga to MSL, SPIR-V and HLSL (any
   machine).
+- `tests/intent.rs`: goals chained through generations from each
+  character's last four frames, goals placed in the world, and a heel kept
+  where it touched down and let go over `RELEASE_FRAMES`.
 - `tests/gpu.rs`: the GPU path against the CPU path (needs a GPU adapter).
 - `examples/bench.rs`: times a trained bundle and checks it against a case
   file. On the trained run2b bundle, the CPU and GPU paths agree with
-  `ogm/reference.py` exactly in tokens and counts and within 7e-5 in motion.
+  `ogm/reference.py` exactly in tokens and counts and within 9e-5 in motion.
 
 ## State
 
-`examples/bench.rs` with the run2b bundle (2026-11-02, release, warm; the
-student is about 1.5 GFLOP a character). Before the kernel work below, on
-the runners:
+`examples/bench.rs` with the run2b bundle (2026-11-02, release, warm, quiet
+machines; the student is about 1.5 GFLOP a character), every token equal
+to the reference on every backend:
 
 | GPU | 1 character | 8 | 32 | 256 (per character) |
 |---|---|---|---|---|
-| RTX 5060, Vulkan (studio-win) | 15.7 ms | 30.6 ms | 48.1 ms | 226 ms (0.88) |
-| RTX 5060, DX12 | 17.5 ms | 25.6 ms | 41.3 ms | 209 ms (0.82) |
-| M4 Pro 16-core, Metal (macrunner, quiet) | 29.6 ms | 63.8 ms | 233 ms | 1867 ms (7.3) |
+| RTX 5060, Vulkan (studio-win) | 9.5 ms | 35.4 ms | 49.6 ms | 151 ms (0.59) |
+| RTX 5060, DX12 | 6.0 ms | 17.4 ms | 29.6 ms | 133 ms (0.52) |
+| M4 Pro 16-core, Metal (macrunner) | 17.1 ms | 45.1 ms | 63.0 ms | 218 ms (0.85) |
 
-Metal ran at about 205 GFLOP/s, an M4 Pro's or a paravirtual GPU's alike:
-wgpu's forced loop bounding (on by default for every shader module) cost
-the linear kernel ten times its speed on Metal. The modules are now made
-with `create_shader_module_trusted` without it, keeping bounds checks (the
-kernels' loops are bounded by uniforms they check); with that, a `Plan`
-per batch size (buffers, staging and bind groups made once, a call only
-writes its inputs), and per-row layer norm and per-query attention
-kernels, the Mac satellite's paravirtual GPU does one character in 17 ms,
-32 in 1.6 ms a character and 256 in 0.67 ms a character (was 36 ms and 6
-ms), and the demo course in 238 ms. One character is latency bound: each
-of the student's dependent dispatches costs about 0.1 ms there whatever
+The nine-step demo course (445 frames) takes 194 ms on the RTX 5060 and
+175 ms on the M4 Pro. Before this round the M4 Pro took 7.3 ms a character
+at 256 and the RTX 5060 0.88: wgpu's forced loop bounding (on by default
+for every shader module) cost the linear kernel ten times its speed on
+Metal. The modules are now made with `create_shader_module_trusted`
+without it, keeping bounds checks (every kernel's loops are bounded by the
+uniforms it checks); a `Plan` per batch size holds the buffers, staging and
+bind groups, so a call only writes its inputs; layer norm runs a workgroup
+per row and attention one per query. One character is latency bound: each
+of the student's dependent dispatches costs about 0.1 ms on Metal whatever
 its size (measured by truncating the pass), so fewer, fused kernels are
 what would cut it. `Gpu::request` on DX12 took 26–30 s with wgpu's FXC
-fallback; it now uses static DXC on Windows MSVC, as og-render. The
-runners' numbers after this work are owed. Open: kernel fusion for one
-character, a CPU path fast enough to stand in where there is no adapter,
-f16 storage, and the intent API, retargeting and foot planting in og-anim.
+fallback; with static DXC, as og-render's, 1.4 s (Vulkan 0.23 s).
+
+The model's joint positions and its rotations on the rest bone lengths
+disagree, by 5 cm on average over joints and frames and up to 0.2–0.3 m at
+the hands and feet, the teacher's as much as the student's (og-motion-train's
+closed loop, `fk_gap_cm`): `soma` shows the rotations, as MotionBricks' own
+runtime does, and plants the feet. Open: kernel fusion for one character,
+a CPU path fast enough to stand in where there is no adapter, f16 storage,
+and the runtime's API (weights as a cooked asset, `og.motion` goals,
+generation beside og-render's device).
