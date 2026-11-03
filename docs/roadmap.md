@@ -142,7 +142,7 @@ After R, as the plan's final stage:
 | [T-01a19d59-9d85](https://ampcode.com/threads/T-01a19d59-9d85-7604-ba45-b447cc453814) | render: R4 sky and weather, R5 water: both landed 2026-11-03 (R4 4076017e8 and its shelter and art rounds; R5 main 748fab859); the game-3d replay golden needs `--update` at release |
 | [T-c113ecea](https://ampcode.com/threads/T-c113ecea-ad88-4d45-83d2-97ed7f2b6561) | render: R7 decals and particles, R9 characters (blendshapes, cloth, VAT crowds): all landed 2026-11-02 (VAT crowds last, main 6c90534f0); crowds are CPU-culled, not yet GPU-culled or on the meshlet path |
 | [T-e522b299](https://ampcode.com/threads/T-e522b299-b8c9-44cb-8bf4-ff01169395c1) | render: R6 terrain holes, layers, impostors, wind: all landed 2026-11-02 (main 09c1b035c); limits: impostors take no shadow of their own, a view from below draws the horizon frame, cards don't sway |
-| [T-aa5a5083](https://ampcode.com/threads/T-aa5a5083-c49e-4586-9621-ca6f7e8dec57) | render: R3 dynamic GI (screen-space GI, run-time probes) |
+| [T-aa5a5083](https://ampcode.com/threads/T-aa5a5083-c49e-4586-9621-ca6f7e8dec57) | render: R3 dynamic GI (screen-space GI, run-time probes): complete 2026-11-03 (batch 1 SSGI 4dd044b5f; batches 2–3 og.RealtimeLightVolume and probe specular, main 6c0bd7490); functional milestone pending |
 | [T-d800cb02](https://ampcode.com/threads/T-d800cb02-5ecd-48bb-ba24-b72b7f152853) | UI: U8, the kit's genre showcases, every seed style on them, examples migrated, fixed templates removed (the owner, 2026-11-02) |
 
 Deferred: the overlay's GPU cost (perf phase), accessibility, the genre archetypes, the platform asks' joint review, compatibility (DX12, browsers, phones).
