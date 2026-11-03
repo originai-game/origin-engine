@@ -9,10 +9,10 @@ import type { Entity, Material, World } from "@origingame/engine";
 import { MeshBuilder, must, v3 } from "./mesh.ts";
 import type { Rgb, V3 } from "./mesh.ts";
 
-/** Where the headland lies: 30° left of the view, 1.8 km out. */
-export const HEADLAND = v3(-900, 0, -1560);
-const HALF_X = 600;
-const HALF_Z = 210;
+/** Where the headland lies: 27° left of the view, 2.4 km out, at the frame's left edge. */
+export const HEADLAND = v3(-1100, 0, -2150);
+const HALF_X = 280;
+const HALF_Z = 110;
 
 function hash(i: number, j: number): number {
   let h = (i * 374761393 + j * 668265263) | 0;
@@ -52,13 +52,13 @@ const smooth = (a: number, b: number, x: number) => {
 
 /** The headland's height at a point in its own frame (x along the shore, z across). */
 export function headlandHeight(lx: number, lz: number): number {
-  const n = fbm(lx / 160 + 11.3, lz / 160 - 4.1);
+  const n = fbm(lx / 80 + 11.3, lz / 80 - 4.1);
   // An elongated island, its outline worn by the noise.
   const e = Math.pow(lx / HALF_X, 2) + Math.pow(lz / (HALF_Z * (0.75 + 0.5 * (lx < 0 ? 1 : 0.6))), 2) + (n - 0.5) * 0.6;
   // High to the west, falling to a low knoll at the seaward (east) tip.
-  const ridge = 40 + 120 * smooth(520, -350, lx) + 28 * Math.exp(-Math.pow((lx - 430) / 70, 2));
+  const ridge = 22 + 62 * smooth(240, -170, lx) + 16 * Math.exp(-Math.pow((lx - 200) / 35, 2));
   const land = Math.pow(smooth(1.0, 0.72, e), 0.45);
-  const rough = 0.82 + 0.36 * fbm(lx / 45, lz / 45, 4);
+  const rough = 0.82 + 0.36 * fbm(lx / 25, lz / 25, 4);
   return land > 0 ? -12 + (ridge * rough + 12) * land : -12;
 }
 
@@ -68,8 +68,8 @@ const SAND: Rgb = [0.22, 0.2, 0.16];
 
 /** The lighthouse's place in the world: on the knoll of the seaward tip. */
 export function lighthouseAt(): V3 {
-  const lx = 430;
-  const lz = -20;
+  const lx = 200;
+  const lz = -10;
   return v3(HEADLAND.x + lx, headlandHeight(lx, lz), HEADLAND.z + lz);
 }
 
@@ -82,8 +82,8 @@ export interface Land {
 
 export function buildLand(world: World): Land {
   const m = new MeshBuilder();
-  const nx = 140;
-  const nz = 52;
+  const nx = 120;
+  const nz = 48;
   const h = (i: number, j: number) => headlandHeight(-HALF_X * 1.15 + (i / (nx - 1)) * HALF_X * 2.3, -HALF_Z * 1.3 + (j / (nz - 1)) * HALF_Z * 2.6);
   const dx = (HALF_X * 2.3) / (nx - 1);
   const dz = (HALF_Z * 2.6) / (nz - 1);

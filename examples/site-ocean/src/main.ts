@@ -1,6 +1,6 @@
 // The introduction site's live hero: an open sea under og.PhysicalSky and
 // og.Clouds, a wind-driven Gerstner sea (og.Water with a wind), a schooner
-// floating on it by buoyancy (src/ship.ts), a headland and its lighthouse
+// floating on it by og.Buoyancy (src/ship.ts), a headland and its lighthouse
 // on the far-left horizon (src/land.ts), playing itself through a 90 s loop
 // (src/loop.ts): golden hour, a storm with lightning (og.Weather,
 // og.WeatherState), a moonlit night, dawn, noon, and golden hour again.
@@ -18,7 +18,7 @@ import type { Entity, Material, StandardMaterialDesc, World } from "@origingame/
 import { buildLand, HEADLAND, lighthouseAt } from "./land.ts";
 import { hourAt, LOOP, shipXAt, SHIP_SPEED, SHIP_Z, shotAt, stormAt } from "./loop.ts";
 import { must } from "./mesh.ts";
-import { buildShip, floatShip, Ship } from "./ship.ts";
+import { buildShip, Ship, steerShip } from "./ship.ts";
 
 /** The loop's clock, on the entity `site`. */
 export const SiteControl = defineComponent("SiteControl", {
@@ -35,10 +35,11 @@ export const Rider = defineResource("Rider", {
   jumps: u32(0, { doc: "Loop jumps (the loop command), so the smoothing restarts." }),
 });
 
-// The sea: a breeze of 10 m/s blowing towards the camera (from -z), waves
-// some 80 m long; its speed never changes (that would move every wave), the
-// storm raises their height and leans their crests.
-const WIND = { x: 2.6, y: 9.65 };
+// The sea: a 15 m/s wind's sea blowing towards the camera (from -z): a slow
+// swell of some 11 s under its chop, kept low in fair weather (swell 0.35, a
+// significant height of 1.7 m). Its speed never changes (that would move
+// every wave); the storm raises the swell and leans the crests.
+const WIND = { x: 3.9, y: 14.5 };
 const SEA = 6000;
 
 const scene = {
@@ -58,11 +59,12 @@ function start(world: World): void {
   must(world.insert(sun, og.DirectionalLight, { intensity: 3, castShadow: true, shadowDistance: 260, shadowSoftness: 0.01 }));
   scene.sun = sun;
 
-  Object.assign(must(world.resource(og.DayNight)), { enabled: true, start: 17.62, speed: 0, tilt: 25, azimuth: -90, lightIntensity: 1.1, tintFog: true, step: 2, moonSize: 1.5, moonPhase: 0.42 });
-  Object.assign(must(world.resource(og.PhysicalSky)), { enabled: true, haze: 1.6, groundAlbedo: { r: 0.05, g: 0.08, b: 0.1 } });
+  Object.assign(must(world.resource(og.DayNight)), { enabled: true, start: 17.62, speed: 0, tilt: 25, azimuth: -90, lightIntensity: 1.1, tintFog: true, step: 6, moonSize: 1.5, moonPhase: 0.42 });
+  Object.assign(must(world.resource(og.PhysicalSky)), { enabled: true, haze: 0.9, groundAlbedo: { r: 0.05, g: 0.08, b: 0.1 } });
   Object.assign(must(world.resource(og.Clouds)), { enabled: true, steps: 64, scale: 11000, layerAltitude: 8500 });
   Object.assign(must(world.resource(og.Fog)), { enabled: true, start: 30, heightDensity: 0, maxOpacity: 1 });
-  Object.assign(must(world.resource(og.WeatherState)), { lightningCenter: { x: 60, y: 0, z: -750 }, lightningRadius: 420, shelterSize: 0 });
+  // Puddles never fill: the sea is the only level ground in view.
+  Object.assign(must(world.resource(og.WeatherState)), { puddleTime: 1e7, lightningCenter: { x: 60, y: 0, z: -750 }, lightningRadius: 420, shelterSize: 0 });
 
   const sea = must(world.spawn({ name: "sea", position: { x: 0, y: 0, z: 0 } }));
   must(
@@ -70,8 +72,8 @@ function start(world: World): void {
       size: { x: SEA, y: SEA },
       segments: 256,
       wind: WIND,
-      swell: 0.6,
-      choppiness: 0.35,
+      swell: 0.35,
+      choppiness: 0.3,
       deep: { r: 0.008, g: 0.045, b: 0.06 },
       shallow: { r: 0.1, g: 0.3, b: 0.3 },
       depthFade: 30,
@@ -144,7 +146,7 @@ function sunHeight(hour: number): number {
 const Loop = defineSystem(
   "Loop",
   {
-    reads: [og.Velocity],
+    reads: [og.Velocity, og.Buoyancy],
     writes: [SiteControl, Rider, Ship, og.Camera, og.Transform, og.Water, og.DayNight, og.Clouds, og.PhysicalSky, og.Fog, og.Weather, og.WeatherState, og.PointLight, og.DirectionalLight, og.RenderSettings],
   },
   (_q, time, world) => {
@@ -162,7 +164,7 @@ const Loop = defineSystem(
       const p = must(world.get(scene.ship, og.Transform)).position;
       must(world.set(scene.ship, og.Transform, { position: { x: p.x + (x - shipXAt(before)), y: p.y, z: p.z } }));
     }
-    floatShip(world, scene.ship, scene.sea, x, SHIP_SPEED * c.rate, SHIP_Z);
+    steerShip(world, scene.ship, x, SHIP_SPEED * c.rate, SHIP_Z);
 
     // The camera rides the swell: the sea's height under it, smoothed over a
     // second, and a little of the sea's slope across it as roll.
@@ -181,9 +183,11 @@ const Loop = defineSystem(
     must(world.set(scene.sea, og.Transform, { position: { x: cam.position.x, y: 0, z: cam.position.z } }));
     must(
       world.set(scene.sea, og.Water, {
-        swell: mix(0.6, 1.6, storm),
-        choppiness: mix(0.35, 0.85, storm),
-        foam: { r: mix(0.6, 0.9, storm), g: mix(0.66, 0.92, storm), b: mix(0.68, 0.93, storm) },
+        swell: mix(0.35, 1, storm),
+        choppiness: mix(0.3, 0.85, storm),
+        // Fair weather's whitecaps stay a faint lace a shade over the sea; the
+        // storm whitens them.
+        foam: { r: mix(0.07, 0.8, storm), g: mix(0.12, 0.83, storm), b: mix(0.14, 0.84, storm) },
         deep: { r: mix(0.008, 0.012, storm), g: mix(0.045, 0.035, storm), b: mix(0.06, 0.035, storm) },
       }),
     );
@@ -193,7 +197,7 @@ const Loop = defineSystem(
     day.start = hour;
     day.lightIntensity = mix(1.1, 0.7, storm);
     const sky = must(world.resource(og.PhysicalSky));
-    sky.haze = mix(1.6, 7, storm);
+    sky.haze = mix(0.9, 6, storm);
     const clouds = must(world.resource(og.Clouds));
     Object.assign(clouds, {
       coverage: mix(0.36, 0.97, storm),
@@ -206,17 +210,24 @@ const Loop = defineSystem(
       wind: { x: 3, y: 0.3, z: 9 },
     });
     const fog = must(world.resource(og.Fog));
-    fog.density = mix(3.5 / SEA, 0.0045, storm);
-    fog.sky = mix(0.25, 0.8, storm);
+    // Haze that leaves the far headland dark at golden hour and swallows it in the storm;
+    // at night it never veils the stars and the moon.
+    const night = 1 - smoothstep(-0.03, 0.05, sunHeight(hour));
+    fog.density = mix(0.00022, 0.0035, storm);
+    fog.sky = mix(0.12, 0.7, storm) * (1 - 0.9 * night);
     const weather = must(world.resource(og.Weather));
     weather.kind = storm > 0.04 ? WEATHER_RAIN : WEATHER_NONE;
     weather.intensity = smoothstep(0.04, 0.8, storm) * 1.5;
     weather.wind = { x: 1.2, y: 0, z: 5 };
     weather.radius = 22;
+    weather.tint = { r: 0.55, g: 0.57, b: 0.6 };
     must(world.resource(og.WeatherState)).lightning = storm > 0.7 ? 22 * smoothstep(0.7, 1, storm) : 0;
 
+    // The eye: auto exposure meters each frame to middle grey; the
+    // compensation keeps the night a night and the storm dark.
+    cam.exposure = Math.pow(2, -0.35 - 2.6 * night - 0.9 * storm * (1 - night));
+
     // After sunset the lamps light: the ship's lanterns, the lighthouse and its turning beam.
-    const night = 1 - smoothstep(-0.03, 0.05, sunHeight(hour));
     for (const e of scene.lamps) must(world.set(e, og.PointLight, { intensity: 6 * night }));
     must(world.set(scene.lighthouseLight, og.PointLight, { intensity: 400 * night }));
     const turn = (time.elapsed * 0.6) % (Math.PI * 2);

@@ -70,17 +70,17 @@ interface Shot {
 }
 
 const SHOTS: Shot[] = [
-  { t: 0, eye: [0, 2.2, 0], yaw: -3, pitch: 2.5, fov: 40 },
-  { t: 10, eye: [2, 2.3, -3], yaw: 3, pitch: 2.8, fov: 40 },
+  { t: 0, eye: [0, 2.6, 0], yaw: -6, pitch: 2.5, fov: 40 },
+  { t: 10, eye: [2, 2.7, -3], yaw: -2, pitch: 2.8, fov: 40 },
   { t: 20, eye: [6, 3.4, -2], yaw: 10, pitch: 3.4, fov: 42 },
-  { t: 30, eye: [9, 5.5, 2], yaw: 16, pitch: 4, fov: 44 },
-  { t: 40, eye: [8, 4.5, 4], yaw: 12, pitch: 4.5, fov: 44 },
+  { t: 30, eye: [9, 7, 2], yaw: 16, pitch: 4, fov: 44 },
+  { t: 40, eye: [8, 6, 4], yaw: 12, pitch: 4.5, fov: 44 },
   { t: 48, eye: [5, 3, 3], yaw: 13, pitch: 12, fov: 44 },
   { t: 54, eye: [4, 2.6, 2], yaw: 18, pitch: 26, fov: 46 },
-  { t: 60, eye: [2, 2.4, 1], yaw: 4, pitch: 7, fov: 42 },
-  { t: 68, eye: [-2, 2.3, 0], yaw: -14, pitch: 3, fov: 40 },
-  { t: 76, eye: [-3, 2.2, -1], yaw: -16, pitch: 2.6, fov: 40 },
-  { t: 82, eye: [-2, 2.2, 0], yaw: -9, pitch: 2.5, fov: 40 },
+  { t: 60, eye: [2, 2.7, 1], yaw: 4, pitch: 7, fov: 42 },
+  { t: 68, eye: [-2, 2.6, 0], yaw: -14, pitch: 3, fov: 40 },
+  { t: 76, eye: [-3, 2.6, -1], yaw: -16, pitch: 2.6, fov: 40 },
+  { t: 82, eye: [-2, 2.6, 0], yaw: -8, pitch: 2.5, fov: 40 },
 ];
 
 /** Catmull-Rom through the shots, closed over the loop. */
@@ -113,5 +113,5 @@ export const SHIP_Z = -170;
 export const SHIP_SPEED = 3.6;
 const WRAP = 54;
 export function shipXAt(t: number): number {
-  return -12 + SHIP_SPEED * (t < WRAP ? t : t - LOOP);
+  return -55 + SHIP_SPEED * (t < WRAP ? t : t - LOOP);
 }

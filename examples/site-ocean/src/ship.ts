@@ -1,10 +1,9 @@
 // The schooner: a two-masted gaff schooner (24 m on deck) built from code
 // as four meshes (hull, spars and rigging, sails, lamps) and floated on the
-// sea by buoyancy: a dynamic og.RigidBody whose hull is sampled at ten
-// points against og.physics.waterHeight every tick (the same Gerstner sea
-// the renderer draws), each point pushed up by how deep it lies and damped
-// by how fast it moves, so it heaves, pitches and rolls on the swell. Its
-// course is held by a steering force towards where the loop wants it.
+// sea by og.Buoyancy: a dynamic og.RigidBody whose hull box is cut into
+// cells the engine floats on the same Gerstner sea the renderer draws, so
+// it heaves, pitches and rolls on the swell. Its course is held by a
+// steering force towards where the loop wants it.
 //
 // Ship space: +x the bow, +y up, +z the side the camera sees (leeward: the
 // wind blows from -z, so the sails belly and the booms swing towards +z).
@@ -16,12 +15,16 @@ import type { Rgb, V3 } from "./mesh.ts";
 
 const L = 24; // hull length, stern to stem
 const BEAM = 2.9; // half beam
-const MASS = 48000; // kg
+// The hull's box (the collider): its density floats it 1.1 m deep on
+// og.Buoyancy's default water (2), and the mass follows from it.
+const HULL = { x: L * 0.9, y: 3.4, z: BEAM * 2 };
+const HULL_DENSITY = 1.1;
+const HULL_MASS = HULL.x * HULL.y * HULL.z * HULL_DENSITY;
 
 /** The ship's steering and buoyancy state: what the probe and the playtest read. */
 export const Ship = defineComponent("Ship", {
   targetX: f32(0, { unit: "m", doc: "Where the loop wants the ship along x this tick." }),
-  submerged: f32(0, { doc: "How many of the ten hull points are under the sea." }),
+  submerged: f32(0, { doc: "The fraction of the hull under the sea (og.Buoyancy.submerged)." }),
   heave: f32(0, { unit: "m", doc: "The hull's height above the sea's rest level." }),
   roll: f32(0, { unit: "deg", doc: "Its heel, leeward positive." }),
   pitch: f32(0, { unit: "deg", doc: "Its pitch, bow up positive." }),
@@ -237,10 +240,6 @@ function sails(spars: MeshBuilder, cloth: MeshBuilder, r: Rig): void {
 
 // ── the ship ──────────────────────────────────────────────────────────────
 
-/** The hull points the sea is sampled at, in ship space (a metre under the waterline). */
-const FLOATS: V3[] = [];
-for (const x of [-9, -4.5, 0, 4.5, 9]) for (const z of [-2, 2]) FLOATS.push(v3(x, -1, z));
-
 export interface ShipParts {
   ship: Entity;
   lamps: Material;
@@ -262,8 +261,9 @@ export function buildShip(world: World, at: V3): ShipParts {
   spars.indices.push(...lines.indices.map((i) => i + base));
 
   const ship = must(world.spawn({ name: "ship", position: at }));
-  must(world.insert(ship, og.RigidBody, { mass: MASS, linearDamping: 0.05, angularDamping: 0.3, lock: 16, centerOfMass: { x: 0, y: -1.1, z: 0 }, canSleep: false }));
-  must(world.insert(ship, og.Collider, { shape: SHAPE_BOX, size: { x: L * 0.9, y: 3.4, z: BEAM * 2 }, offset: { x: 0, y: -0.2, z: 0 } }));
+  must(world.insert(ship, og.RigidBody, { linearDamping: 0.05, angularDamping: 0.3, lock: 16, centerOfMass: { x: 0, y: -1.1, z: 0 }, canSleep: false }));
+  must(world.insert(ship, og.Collider, { shape: SHAPE_BOX, size: HULL, offset: { x: 0, y: -0.2, z: 0 }, density: HULL_DENSITY }));
+  must(world.insert(ship, og.Buoyancy, { samples: 8, drag: 0.4, angularDrag: 0.8 }));
   must(world.insert(ship, og.Velocity, { linear: { x: 3.6, y: 0, z: 0 } }));
   must(world.insert(ship, Ship, { targetX: at.x }));
 
@@ -292,7 +292,7 @@ export function buildShip(world: World, at: V3): ShipParts {
   return { ship, lamps, lights };
 }
 
-// ── buoyancy and steering ─────────────────────────────────────────────────
+// ── steering ──────────────────────────────────────────────────────────────
 
 type Q = { x: number; y: number; z: number; w: number };
 function rotate(q: Q, p: V3): V3 {
@@ -303,52 +303,32 @@ function rotate(q: Q, p: V3): V3 {
   return v3(p.x + q.w * tx + (q.y * tz - q.z * ty), p.y + q.w * ty + (q.z * tx - q.x * tz), p.z + q.w * tz + (q.x * ty - q.y * tx));
 }
 
-const G = 9.81;
-const K = (MASS * G) / FLOATS.length; // N per metre of depth: afloat with the points a metre under
-const C = (MASS * Math.sqrt(G)) / FLOATS.length; // half of critical damping in heave
-const HEEL = 0.07 * K * FLOATS.reduce((s, p) => s + p.z * p.z, 0); // the wind's steady heel, about 4°
-
 /**
- * One tick of the ship: buoyancy at each hull point, the wind's heel, and
- * a steering force that holds it on its course at `targetX` (moving at
- * `speed`), the sea's resistance across it.
+ * One tick of the ship. og.Buoyancy floats it (the engine's R5 hull cells
+ * on the sea as drawn); here only the wind's heel and a steering force
+ * that holds it on its course at `targetX` (moving at `speed`), the keel's
+ * grip across it.
  */
-export function floatShip(world: World, ship: Entity, sea: Entity, targetX: number, speed: number, targetZ: number): void {
+export function steerShip(world: World, ship: Entity, targetX: number, speed: number, targetZ: number): void {
   const t = must(world.get(ship, og.Transform));
-  const vel = must(world.get(ship, og.Velocity));
+  const v = must(world.get(ship, og.Velocity)).linear;
+  const b = must(world.get(ship, og.Buoyancy));
   const p = t.position;
   const q = t.quaternion;
-  const v = vel.linear;
-  const w = vel.angular;
-  let under = 0;
-  for (const local of FLOATS) {
-    const r = rotate(q, local);
-    const at = add(p, r);
-    const h = must(og.physics.waterHeight(world, sea, at.x, at.z));
-    const depth = Math.min(2.5, h - at.y);
-    if (depth <= 0) continue;
-    under++;
-    // The point's vertical speed: v + ω × r.
-    const vy = v.y + (w.z * r.x - w.x * r.z);
-    must(og.physics.applyForce(world, ship, { x: 0, y: K * depth - C * vy, z: 0 }, at));
-  }
-  // The wind heels it to leeward (+z): a torque about +x.
-  must(og.physics.applyTorque(world, ship, { x: HEEL * Math.min(1, under / 6), y: 0, z: 0 }));
-  // Course: a spring towards the loop's place along x, the keel's grip across.
+  // The wind heels it to leeward (+z): a torque about +x, about 4° against the hull's righting.
+  must(og.physics.applyTorque(world, ship, { x: HULL_MASS * 9.81 * 0.09 * Math.min(1, b.submerged * 2.5), y: 0, z: 0 }));
   const ax = 0.25 * (targetX - p.x) + 1.1 * (speed - v.x);
   const az = 0.15 * (targetZ - p.z) - 1.5 * v.z;
-  must(og.physics.applyForce(world, ship, { x: MASS * ax, y: 0, z: MASS * az }));
-  const s = must(world.get(ship, Ship));
+  must(og.physics.applyForce(world, ship, { x: HULL_MASS * ax, y: 0, z: HULL_MASS * az }));
   const up = rotate(q, v3(0, 1, 0));
   const fwd = rotate(q, v3(1, 0, 0));
   must(
     world.set(ship, Ship, {
       targetX,
-      submerged: under,
+      submerged: b.submerged,
       heave: p.y,
       roll: (Math.asin(Math.max(-1, Math.min(1, up.z))) * 180) / Math.PI,
       pitch: (Math.asin(Math.max(-1, Math.min(1, fwd.y))) * 180) / Math.PI,
     }),
   );
-  void s;
 }
