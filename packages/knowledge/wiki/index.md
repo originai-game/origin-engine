@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2361 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2362 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -2402,6 +2402,7 @@ Field units the docs and Tune use.
 | [`UiDump`](probe.md#type-UiDump) | struct | probe | — |
 | [`UiElement`](probe.md#type-UiElement) | struct | probe | — |
 | [`UiGlyph`](ui.md#type-UiGlyph) | struct | ui | — |
+| [`UiInlineImage`](ui.md#type-UiInlineImage) | desc struct | ui | — |
 | [`UiItemBuild`](ui.md#type-UiItemBuild) | callback | ui | — |
 | [`UiLayer`](ui.md#type-UiLayer) | struct | ui | — |
 | [`UiLayoutStats`](ui.md#type-UiLayoutStats) | struct | ui | — |

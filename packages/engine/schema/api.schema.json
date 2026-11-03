@@ -11289,6 +11289,7 @@
         "NavIntent",
         "UiRect",
         "IconAtlasDesc",
+        "UiInlineImage",
         "AnchorDesc",
         "TransitionDesc",
         "Presence",
@@ -46262,6 +46263,18 @@
           "maximum": 4294967295,
           "description": "The most lines a wrapping label shows; 0 is no limit. With ellipsis the last ends in an ellipsis when text is left out.",
           "default": 0
+        },
+        "fitMin": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TypeStepName"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Auto-fit: where the text does not fit its width (one line with nowrap, else its words and maxLines), it takes the ramp's smaller sizes, largest first, down to this step, keeping its own step's tracking and features; at the smallest, ellipsis cuts what still does not fit. Null keeps its step. A translation longer than the source (German on a button) shrinks instead of wrapping or overflowing.",
+          "default": null
         }
       },
       "additionalProperties": false
@@ -47194,6 +47207,14 @@
           "description": "The icon atlas og.ui.icon draws from; null takes the style's.",
           "default": null
         },
+        "images": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/UiInlineImage"
+          },
+          "description": "Pictures rich text draws inline by name ([img=<name>]): a portrait in a line of dialogue, an item's art in a tooltip. Any texture, not only the icon atlas's cells; each one em tall at its aspect, in its own colours.",
+          "default": []
+        },
         "toastAnchor": {
           "anyOf": [
             {
@@ -47885,6 +47906,55 @@
           },
           "description": "Each cell's name, in reading order: og.ui.icon draws a cell by its name.",
           "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "UiInlineImage": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A picture rich text draws inline by name ([img=<name>]).",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name markup gives it.",
+          "default": ""
+        },
+        "texture": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The texture, from og.load.texture; null leaves the name unregistered.",
+          "default": null
+        },
+        "uv": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 4,
+              "maxItems": 4
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The region drawn, [u0, v0, u1, v1] with v down; null is the whole texture.",
+          "default": null
+        },
+        "aspect": {
+          "type": "number",
+          "description": "Width over height of the region as drawn; 0 is square.",
+          "default": 0,
+          "minimum": 0
         }
       },
       "additionalProperties": false

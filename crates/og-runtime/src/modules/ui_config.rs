@@ -25,6 +25,9 @@ pub(crate) fn new_ui(tick: u32, previous: Option<&SharedUi>) -> SharedUi {
         fonts,
     });
     ui.set_icons(icons);
+    if let Some(p) = previous {
+        ui.set_images(p.lock().images().clone());
+    }
     ui.set_style_name(&style_name);
     // A hot reload keeps the documents loaded (and the timelines they define).
     if let Some(p) = previous {
@@ -238,6 +241,40 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
         } else {
             IconAtlas::default()
         };
+        // Pictures rich text draws inline by name ([img=…]).
+        let mut images = std::collections::BTreeMap::new();
+        for im in d["images"].as_array().into_iter().flatten() {
+            let name = im["name"].as_str().unwrap_or_default();
+            let Some(t) = im["texture"].as_f64() else {
+                continue;
+            };
+            if name.is_empty() {
+                return Err("images: an image without a name".into());
+            }
+            let rs = eng.render.borrow();
+            let i = super::assets::index_of(t)
+                .ok_or_else(|| format!("images.{name}.texture: {t} is not a texture"))?;
+            let texture = *rs
+                .textures
+                .get(i)
+                .ok_or_else(|| format!("images.{name}.texture: texture {t} is not alive"))?;
+            let uv = match im["uv"].as_array() {
+                Some(a) if a.len() == 4 => {
+                    let v = |k: usize| a[k].as_f64().unwrap_or(0.0) as f32;
+                    [v(0), v(1), v(2), v(3)]
+                }
+                _ => [0.0, 0.0, 1.0, 1.0],
+            };
+            let aspect = im["aspect"].as_f64().map_or(1.0, |a| a as f32);
+            images.insert(
+                name.to_string(),
+                og_ui::InlineImage {
+                    texture,
+                    uv,
+                    aspect: if aspect > 0.0 { aspect } else { 1.0 },
+                },
+            );
+        }
         let mut ui = ui.lock();
         ui.set_theme(theme);
         // The style's dressings, its vector fills bound when it loaded
@@ -258,6 +295,7 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
             && fonts.chain.is_empty();
         ui.set_fonts(fonts);
         ui.set_icons(atlas);
+        ui.set_images(images);
         ui.set_style_name(style.as_ref().map_or("", |s| s.0.name.as_str()));
         ui.set_toast_anchor(anchor_of(&d["toastAnchor"]).unwrap_or(Anchor::Bottom));
         ui.set_hud_max_aspect(

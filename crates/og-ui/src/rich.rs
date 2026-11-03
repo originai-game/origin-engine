@@ -1,5 +1,6 @@
-//! Rich text: one paragraph of inline spans (colour, weight, size, font,
-//! inline icons, links and per-glyph motion) from markup ([`crate::markup`]),
+//! Rich text: one paragraph of inline spans (colour, weight, slant, lines
+//! under and through, outline, size, font, inline icons, pictures and action
+//! glyphs, links and per-glyph motion) from markup ([`crate::markup`]),
 //! laid out as one text: the lines break between the spans' words (a word
 //! split across two spans stays whole), each line as tall as its tallest
 //! span, every span on one shared baseline.
@@ -13,11 +14,23 @@
 use crate::id::child_key;
 
 use crate::layout::{Content, Element, FontRole, Metrics, Rect, Size, TextAlign};
-use crate::markup::{SpanFx, parse_markup, plain_text};
+use crate::markup::{SpanFx, parse_markup};
 use crate::style::{Srgba, TypeStep};
 use crate::ui::{Response, Ui};
 
-/// One resolved span: its text (or icon) in its own style.
+/// An inline thing a span is instead of text, laid out as one unbreakable
+/// unit on the baseline.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum Atom {
+    /// A cell of the icon atlas, one em square, in the span's ink.
+    Icon(u32),
+    /// A registered picture, one em tall at its aspect, in its own colours.
+    Image(crate::ui::InlineImage),
+    /// A key's name on a cap (an action's glyph with no icon).
+    Cap(String),
+}
+
+/// One resolved span: its text (or atom) in its own style.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct RichSpan {
     pub text: String,
@@ -25,11 +38,23 @@ pub(crate) struct RichSpan {
     pub color: Srgba,
     pub font: FontRole,
     pub bold: bool,
-    /// An inline icon: its cell in the icon atlas.
-    pub icon: Option<u32>,
+    pub italic: bool,
+    pub underline: bool,
+    pub strike: bool,
+    /// An outline's width (CSS px) and colour.
+    pub outline: Option<(f32, Srgba)>,
+    pub atom: Option<Atom>,
     pub link: Option<String>,
     pub fx: SpanFx,
 }
+
+/// An italic's slant: x moves by this much of the height above the baseline.
+const SLANT: f32 = 0.2;
+
+/// A cap's text size, margin and padding, of the span's size.
+const CAP_TEXT: f32 = 0.78;
+const CAP_MARGIN: f32 = 0.08;
+const CAP_PAD: f32 = 0.24;
 
 /// A paragraph of spans.
 #[derive(Clone, Debug, PartialEq)]
@@ -93,8 +118,16 @@ struct Unit {
 }
 
 pub(crate) fn span_width(s: &RichSpan, text: &str, fonts: &dyn Metrics) -> f32 {
-    if s.icon.is_some() {
-        return s.step.size * 1.1;
+    let size = s.step.size;
+    match &s.atom {
+        Some(Atom::Icon(_)) => return size * 1.1,
+        Some(Atom::Image(im)) => return size * (im.aspect.max(0.05) + 0.1),
+        Some(Atom::Cap(t)) => {
+            let m = fonts.metrics_for(s.font, t);
+            return m.measure_tracked(t, size * CAP_TEXT, 0.0)
+                + 2.0 * (CAP_MARGIN + CAP_PAD) * size;
+        }
+        None => {}
     }
     let m = fonts.metrics_for(s.font, text);
     m.measure_tracked(text, s.step.size, span_tracking(s, text)) + bold_overhang(s, text)
@@ -133,7 +166,7 @@ fn bold_weight(size: f32) -> f32 {
 
 fn span_metrics(s: &RichSpan, fonts: &dyn Metrics) -> (f32, f32, f32) {
     // (line height, ascent, descent) in CSS px.
-    if s.icon.is_some() {
+    if s.atom.is_some() {
         return (s.step.line_height, s.step.size * 0.85, -s.step.size * 0.25);
     }
     let m = fonts.metrics_for(s.font, &s.text);
@@ -151,7 +184,7 @@ fn span_metrics(s: &RichSpan, fonts: &dyn Metrics) -> (f32, f32, f32) {
 fn paragraphs(rc: &RichContent, fonts: &dyn Metrics) -> Vec<Vec<Unit>> {
     let mut out: Vec<Vec<Unit>> = vec![Vec::new()];
     for (k, s) in rc.spans.iter().enumerate() {
-        if s.icon.is_some() {
+        if s.atom.is_some() {
             let glued = out.last().and_then(|p| p.last()).is_some_and(|u| !u.space);
             out.last_mut().expect("a paragraph").push(Unit {
                 span: k,
@@ -260,7 +293,7 @@ fn build_line(rc: &RichContent, fonts: &dyn Metrics, units: Vec<&Unit>) -> RichL
     let mut x = 0.0;
     for u in units {
         match pieces.last_mut() {
-            Some(p) if p.span == u.span && rc.spans[u.span].icon.is_none() => {
+            Some(p) if p.span == u.span && rc.spans[u.span].atom.is_none() => {
                 p.text.push_str(&u.text);
                 p.width += u.width;
             }
@@ -316,7 +349,7 @@ struct Segment {
 
 /// A rich line's segments in visual order. A line of left-to-right text in
 /// a left-to-right UI is its pieces as laid out; any other line runs the
-/// bidi algorithm over its whole text (icons as U+FFFC) at the UI's
+/// bidi algorithm over its whole text (atoms as U+FFFC) at the UI's
 /// direction and cuts the runs at the pieces' edges.
 fn visual_segments(
     rc: &RichContent,
@@ -326,7 +359,7 @@ fn visual_segments(
 ) -> Vec<Segment> {
     let mixed = |p: &Piece| {
         let s = &rc.spans[p.span];
-        s.icon.is_none() && fonts.metrics_for(s.font, &p.text).is_mixed()
+        s.atom.is_none() && fonts.metrics_for(s.font, &p.text).is_mixed()
     };
     // The line's paragraph direction is its first strong character's (the
     // UI's with none, and skipping isolates), as a plain text's is: an
@@ -335,7 +368,7 @@ fn visual_segments(
         &line
             .pieces
             .iter()
-            .filter(|p| rc.spans[p.span].icon.is_none())
+            .filter(|p| rc.spans[p.span].atom.is_none())
             .map(|p| p.text.as_str())
             .collect::<String>(),
         direction,
@@ -362,7 +395,7 @@ fn visual_segments(
     let mut ranges = Vec::with_capacity(line.pieces.len());
     for p in &line.pieces {
         let start = text.len();
-        if rc.spans[p.span].icon.is_some() {
+        if rc.spans[p.span].atom.is_some() {
             text.push('\u{fffc}');
         } else {
             text.push_str(&p.text);
@@ -387,7 +420,7 @@ fn visual_segments(
         for (k, r) in parts {
             let p = &line.pieces[k];
             let s = &rc.spans[p.span];
-            if s.icon.is_some() {
+            if s.atom.is_some() {
                 out.push(Segment {
                     span: p.span,
                     text: String::new(),
@@ -454,6 +487,8 @@ impl Ui {
         let base_step = desc.step.unwrap_or(t.type_ramp.body);
         let base_color = desc.color.unwrap_or(t.palette.ink);
         let mut spans = Vec::with_capacity(parsed.len());
+        // What the probe and a screen reader read: an action's glyph by name.
+        let mut probe = String::new();
         for s in &parsed {
             let mut step = base_step;
             if let Some(name) = &s.size {
@@ -485,27 +520,78 @@ impl Ui {
                 Some("body") => FontRole::Body,
                 _ => desc.font,
             };
-            let icon = match &s.icon {
-                Some(name) => match self.icons.index_of(name).filter(|_| self.icons.is_drawn()) {
-                    Some(k) => Some(k),
+            let outline = s.outline.as_deref().and_then(|v| {
+                let (w, c) = v.split_once(',').unwrap_or((v, "shadow"));
+                let w = w.trim().parse::<f32>().ok().filter(|w| *w > 0.0 && w.is_finite());
+                let c = crate::style_file::parse_color(c.trim()).or_else(|| t.color(c.trim()));
+                match (w, c) {
+                    (Some(w), Some(c)) => Some((w, c)),
+                    _ => {
+                        self.warnings.push(format!(
+                            "rich text: [outline={v}] is not a width above 0 and a colour role or #rrggbb"
+                        ));
+                        None
+                    }
+                }
+            });
+            let mut text = s.text.clone();
+            let atom = if let Some(name) = &s.icon {
+                match self.icons.index_of(name).filter(|_| self.icons.is_drawn()) {
+                    Some(k) => Some(Atom::Icon(k)),
                     None => {
                         self.warnings
                             .push(format!("rich text: [icon={name}] is not in the icon atlas"));
-                        None
+                        continue;
                     }
-                },
-                None => None,
+                }
+            } else if let Some(name) = &s.image {
+                match self.images.get(name) {
+                    Some(im) => Some(Atom::Image(*im)),
+                    None => {
+                        self.warnings.push(format!(
+                            "rich text: [img={name}] is no picture the game registered (UiDesc.images)"
+                        ));
+                        continue;
+                    }
+                }
+            } else if let Some(name) = &s.action {
+                // The glyph on the device used last, this frame: its icon
+                // where the atlas has one, else its name on a cap.
+                match self.glyph(name) {
+                    Some(g) => {
+                        text = g.text.clone();
+                        match self
+                            .icons
+                            .index_of(&g.icon)
+                            .filter(|_| self.icons.is_drawn())
+                        {
+                            Some(k) => Some(Atom::Icon(k)),
+                            None if !g.text.is_empty() => Some(Atom::Cap(g.text)),
+                            None => continue,
+                        }
+                    }
+                    None => {
+                        self.warnings.push(format!(
+                            "rich text: [action={name}] is no action with a binding on this device"
+                        ));
+                        continue;
+                    }
+                }
+            } else {
+                None
             };
-            if s.icon.is_some() && icon.is_none() {
-                continue;
-            }
+            probe.push_str(&text);
             spans.push(RichSpan {
-                text: s.text.clone(),
+                text: if atom.is_some() { String::new() } else { text },
                 step,
                 color,
                 font,
                 bold: s.bold,
-                icon,
+                italic: s.italic,
+                underline: s.underline,
+                strike: s.strike,
+                outline,
+                atom,
                 link: s.link.clone(),
                 fx: s.fx,
             });
@@ -542,7 +628,7 @@ impl Ui {
             out.response.focused |= r.focused;
         }
         let n = &mut self.nodes[i];
-        n.probe_text = plain_text(&parsed);
+        n.probe_text = probe;
         n.content = Content::Rich(RichContent {
             spans,
             align: desc.align,
@@ -675,7 +761,62 @@ impl Ui {
             let link_key = s.link.as_deref().map(|l| child_key(n.key, l));
             let hot = link_key.is_some_and(|lk| self.state.hot == lk);
             let color = if hot { p.primary_hover } else { s.color };
-            if let Some(cell) = s.icon {
+            if let Some(Atom::Image(im)) = &s.atom {
+                // A picture in its own colours, one em tall on the baseline.
+                let h = s.step.size * n.scale;
+                cmds.push(DrawCmd::Image {
+                    rect: Rect::new(
+                        r.x + h * 0.05,
+                        baseline - h * 0.85,
+                        h * im.aspect.max(0.05),
+                        h,
+                    )
+                    .snapped(dpr),
+                    texture: Some(im.texture),
+                    uv: im.uv,
+                    color: Srgba::WHITE.fade(alpha).linear(),
+                    clip,
+                });
+                continue;
+            }
+            if let Some(Atom::Cap(label)) = &s.atom {
+                // A key cap: a soft rounded plate in the ink, its name on it.
+                let em = s.step.size * n.scale;
+                let (m, pad) = (CAP_MARGIN * em, CAP_PAD * em);
+                let plate = Rect::new(
+                    r.x + m,
+                    baseline - em * 0.82,
+                    (r.width - 2.0 * m).max(0.0),
+                    em * 1.06,
+                );
+                cmds.push(DrawCmd::Quad {
+                    rect: plate.snapped(dpr),
+                    radius: em * 0.22,
+                    color: color.fade(alpha * 0.16).linear(),
+                    clip,
+                });
+                let font = self.fonts.for_text(s.font, label);
+                if let Some(handle) = font.handle {
+                    let size = em * CAP_TEXT;
+                    let w = font.metrics.measure_tracked(label, size, 0.0);
+                    cmds.push(DrawCmd::Text {
+                        x: snap(r.x + m + pad),
+                        baseline: snap(baseline - em * 0.02),
+                        size,
+                        text: label.clone(),
+                        color: color.fade(alpha).linear(),
+                        font: handle,
+                        bounds: Rect::new(r.x + m + pad, plate.y, w, plate.height),
+                        clip,
+                        tracking: 0.0,
+                        weight: 0.0,
+                        glow: None,
+                        placements: Vec::new(),
+                    });
+                }
+                continue;
+            }
+            if let Some(Atom::Icon(cell)) = s.atom {
                 let side = s.step.size * n.scale;
                 if let Some((font, ch)) = self.icons.glyph(cell) {
                     // An icon set's glyph: its em square where a cell would be.
@@ -708,6 +849,7 @@ impl Ui {
             }
             let font = self.fonts.for_text(s.font, &text);
             let Some(handle) = font.handle else { continue };
+            let first = cmds.len();
             let mixed = font.metrics.is_mixed();
             let m = &font.metrics;
             let tracking = span_tracking(s, &text);
@@ -864,15 +1006,50 @@ impl Ui {
                     x += w;
                 }
             }
-            if link_key.is_some() {
-                // The underline: a hairline under the piece, in its ink.
-                let th = (size * 0.07).max(1.0 / dpr);
+            // Italic and outline: the piece's glyphs slanted about their
+            // baseline and outlined from the distance field.
+            if s.italic || s.outline.is_some() {
+                for c in &mut cmds[first..] {
+                    let DrawCmd::Text { bounds, .. } = c else {
+                        continue;
+                    };
+                    let fx = og_render::UiTextEffects {
+                        outline: s.outline.map(|(w, oc)| og_render::UiTextOutline {
+                            width: w * n.scale,
+                            color: oc.fade(alpha).linear(),
+                            align: og_render::UiAlign::Outside,
+                        }),
+                        fill_box: [bounds.x, bounds.y, bounds.width, bounds.height],
+                        transform: if s.italic {
+                            [1.0, 0.0, -SLANT, 1.0]
+                        } else {
+                            [1.0, 0.0, 0.0, 1.0]
+                        },
+                        ..Default::default()
+                    };
+                    let text = std::mem::replace(c, DrawCmd::PopClip);
+                    *c = DrawCmd::StyledText {
+                        text: Box::new(text),
+                        effects: Box::new(fx),
+                    };
+                }
+            }
+            // A link's or [u]'s underline and [s]'s strike: hairlines across
+            // the piece, in its ink.
+            let th = (size * 0.07).max(1.0 / dpr);
+            let mut rule = |y: f32| {
                 cmds.push(DrawCmd::Quad {
-                    rect: Rect::new(r.x, baseline + size * 0.12, r.width, th).snapped(dpr),
+                    rect: Rect::new(r.x, y, r.width, th).snapped(dpr),
                     radius: 0.0,
                     color: color.fade(alpha).linear(),
                     clip,
                 });
+            };
+            if link_key.is_some() || s.underline {
+                rule(baseline + size * 0.12);
+            }
+            if s.strike {
+                rule(baseline - size * 0.3);
             }
         }
     }

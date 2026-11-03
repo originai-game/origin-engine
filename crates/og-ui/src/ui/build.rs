@@ -371,6 +371,7 @@ impl Ui {
             ellipsis: false,
             max_lines: 0,
             emphasis: 0.0,
+            fit: Vec::new(),
         }
     }
 }

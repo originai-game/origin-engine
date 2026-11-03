@@ -251,6 +251,7 @@ module ui {
     field heading bool "A heading: a style with a flourish frames it."
     field ellipsis bool "Cut with an ellipsis where the text does not fit its width: on its one line (with nowrap; the label can then shrink in a row) or on its last line (maxLines). The probe still reads the whole text."
     field maxLines u32 "The most lines a wrapping label shows; 0 is no limit. With ellipsis the last ends in an ellipsis when text is left out."
+    field fitMin Option.TypeStepName "Auto-fit: where the text does not fit its width (one line with nowrap, else its words and maxLines), it takes the ramp's smaller sizes, largest first, down to this step, keeping its own step's tracking and features; at the smallest, ellipsis cuts what still does not fit. Null keeps its step. A translation longer than the source (German on a button) shrinks instead of wrapping or overflowing."
   }
 
   struct ButtonDesc {
@@ -475,6 +476,7 @@ module ui {
     }
     field reducedTransparency bool "Nothing is see-through: glass parts (a style's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over backdrop and the translucent fills (control, controlStrong, primarySoft, hud) the opaque colours they make over panel. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on."
     field icons Option.IconAtlasDesc "The icon atlas og.ui.icon draws from; null takes the style's."
+    field images List.UiInlineImage "Pictures rich text draws inline by name ([img=<name>]): a portrait in a line of dialogue, an item's art in a tooltip. Any texture, not only the icon atlas's cells; each one em tall at its aspect, in its own colours."
     field toastAnchor Option.Anchor "Where toasts stack; null is the bottom centre."
     field hudMaxAspect f32 "The widest the HUD band is, over its height: on a wider surface (a 21:9 or 32:9 ultrawide monitor) the anchored groups (og.ui.anchor, the HUD corners) and the toasts lay out in a band this wide, centred in the safe area, so the player's eyes stay near the play; og.ui.viewport's hud is that band. 16/9 keeps a 16:9 game's HUD where it was designed; 0 is the whole safe area (a HUD at the screen's edges). Full-screen layers (dialogs, menus, scrims, world-space markers and their edge clamping) keep the whole surface. The UI itself never stretches: it lays out in CSS pixels at every aspect." {
       default 2.3333
@@ -863,6 +865,17 @@ module ui {
       min 1
     }
     field names List.String "Each cell's name, in reading order: og.ui.icon draws a cell by its name."
+  }
+
+  struct UiInlineImage {
+    doc "A picture rich text draws inline by name ([img=<name>])."
+    desc true
+    field name String "The name markup gives it."
+    field texture Option.Texture "The texture, from og.load.texture; null leaves the name unregistered."
+    field uv Option.Array.f32.4 "The region drawn, [u0, v0, u1, v1] with v down; null is the whole texture."
+    field aspect f32 "Width over height of the region as drawn; 0 is square." {
+      min 0
+    }
   }
 
   struct AnchorDesc {

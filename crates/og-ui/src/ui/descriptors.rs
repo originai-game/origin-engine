@@ -369,6 +369,16 @@ pub struct IconAtlas {
     pub font: Option<crate::text::UiFont>,
 }
 
+/// A picture rich text draws inline by name (`[img=<name>]`): a texture
+/// region, one em tall at `aspect` (width over height).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct InlineImage {
+    pub texture: TextureHandle,
+    /// `[u0, v0, u1, v1]`, v down.
+    pub uv: [f32; 4],
+    pub aspect: f32,
+}
+
 /// The code point of an icon set's first icon (og-cook's `ICON_PUA`).
 pub const ICON_PUA: u32 = 0xE000;
 
@@ -586,6 +596,10 @@ pub struct LabelDesc {
     /// The most lines a wrapping label shows (0: no limit); with `ellipsis`
     /// the last one ends in "…" when text is left out.
     pub max_lines: u32,
+    /// Auto-fit: where the text does not fit its width at `step`, it takes
+    /// the ramp's smaller steps down to this one (then its ellipsis, with
+    /// `ellipsis`); `None` keeps its step.
+    pub fit_min: Option<TypeStep>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]

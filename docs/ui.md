@@ -289,8 +289,14 @@ On top of the existing text stack: outline (outside, inside, centred, by
 the distance field, up to the font's reach), gradient fill, several
 shadows, per-glyph transforms (text on a path or arc, per-glyph timelines
 for typewriter, wave, bounce, shake and reveal), auto-fit (shrink to fit
-down to a minimum type step, then ellipsis), and inline images and icons in
-rich text with links that open pinnable nested tooltips (§11).
+down to a minimum type step, then ellipsis: `LabelDesc.fitMin`), and inline
+images and icons in rich text with links that open pinnable nested tooltips
+(§11). Rich text's tags: `[b]`, `[i]` (a slant of the face), `[u]`, `[s]`,
+`[outline=w,colour]`, `[color=]`, `[size=]`, `[font=]`, `[icon=]` (an icon
+atlas cell), `[img=]` (any texture the game registers by name,
+`UiDesc.images`), `[action=]` (the action's device glyph, resolved every
+frame, so a prompt follows the pad the player picks up), `[link=]` and the
+per-glyph `[wave]`, `[shake]`, `[pulse]`.
 
 ### 5.7 Batching
 

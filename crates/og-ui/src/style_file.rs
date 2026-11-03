@@ -239,6 +239,53 @@ pub fn palette_color<'a>(p: &'a mut Palette, name: &str) -> Option<&'a mut Srgba
 }
 
 /// A type step by its TypeStepName (`body`, `xl2`, `displayLg`).
+/// Every TypeStepName, smallest steps first in the ramp's own order.
+pub const STEP_NAMES: [&str; 21] = [
+    "body",
+    "xs",
+    "meta",
+    "caption",
+    "sm",
+    "reading",
+    "base",
+    "lg",
+    "xl",
+    "xl2",
+    "xl3",
+    "xl4",
+    "xl5",
+    "xl6",
+    "xl7",
+    "xl8",
+    "displaySm",
+    "displayMd",
+    "displayLg",
+    "displayXl",
+    "displayXl2",
+];
+
+/// The steps an auto-fit text at `from` takes down to `min`: `from`, then
+/// each smaller size of the ramp, largest first, with `from`'s tracking and
+/// features (a display heading stays one as it shrinks).
+pub(crate) fn fit_steps(ramp: &TypeRamp, from: TypeStep, min: TypeStep) -> Vec<TypeStep> {
+    let mut r = *ramp;
+    let mut out: Vec<TypeStep> = STEP_NAMES
+        .iter()
+        .filter_map(|n| ramp_step(&mut r, n).copied())
+        .filter(|s| s.size < from.size && s.size >= min.size.min(from.size))
+        .map(|s| TypeStep {
+            size: s.size,
+            line_height: s.line_height,
+            cjk_line_height: s.cjk_line_height,
+            ..from
+        })
+        .collect();
+    out.sort_by(|a, b| b.size.total_cmp(&a.size));
+    out.dedup_by(|a, b| a.size == b.size);
+    out.insert(0, from);
+    out
+}
+
 pub fn ramp_step<'a>(r: &'a mut TypeRamp, name: &str) -> Option<&'a mut TypeStep> {
     Some(match name {
         "body" => &mut r.body,

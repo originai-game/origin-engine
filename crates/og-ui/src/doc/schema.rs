@@ -206,29 +206,7 @@ pub const KINDS: &[KindSpec] = &[
     },
 ];
 
-const STEPS: &[&str] = &[
-    "body",
-    "xs",
-    "meta",
-    "caption",
-    "sm",
-    "reading",
-    "base",
-    "lg",
-    "xl",
-    "xl2",
-    "xl3",
-    "xl4",
-    "xl5",
-    "xl6",
-    "xl7",
-    "xl8",
-    "displaySm",
-    "displayMd",
-    "displayLg",
-    "displayXl",
-    "displayXl2",
-];
+const STEPS: &[&str] = &crate::style_file::STEP_NAMES;
 const CURSORS: &[&str] = &[
     "auto",
     "default",
@@ -503,6 +481,12 @@ pub const PROPS: &[PropSpec] = &[
     ),
     p!("nowrap", Ty::Bool, ["label"], "One line."),
     p!("maxLines", Ty::Num, ["label"], "The most lines it shows."),
+    p!(
+        "fitMin",
+        Ty::Word(STEPS),
+        ["label"],
+        "Shrinks by type steps to fit its width, down to this step."
+    ),
     p!(
         "ellipsis",
         Ty::Bool,

@@ -239,6 +239,9 @@ impl Ui {
                     heading: r.flag("heading"),
                     ellipsis: r.flag("ellipsis"),
                     max_lines: r.num("maxLines").unwrap_or(0.0) as u32,
+                    fit_min: r.str("fitMin").and_then(|s| {
+                        crate::style_file::ramp_step(&mut t.type_ramp.clone(), s).copied()
+                    }),
                 };
                 self.label(id.as_str(), &text, desc);
             }

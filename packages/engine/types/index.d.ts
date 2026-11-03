@@ -22684,6 +22684,12 @@ export interface LabelDesc {
    * @default 0
    */
   readonly maxLines?: number;
+  /**
+   * Auto-fit: where the text does not fit its width (one line with nowrap, else its words and maxLines), it takes the ramp's smaller sizes, largest first, down to this step, keeping its own step's tracking and features; at the smallest, ellipsis cuts what still does not fit. Null keeps its step. A translation longer than the source (German on a button) shrinks instead of wrapping or overflowing.
+   *
+   * @default null
+   */
+  readonly fitMin?: TypeStepName | null;
 }
 
 /**
@@ -23315,6 +23321,12 @@ export interface UiDesc {
    */
   readonly icons?: IconAtlasDesc | null;
   /**
+   * Pictures rich text draws inline by name ([img=<name>]): a portrait in a line of dialogue, an item's art in a tooltip. Any texture, not only the icon atlas's cells; each one em tall at its aspect, in its own colours.
+   *
+   * @default []
+   */
+  readonly images?: readonly UiInlineImage[];
+  /**
    * Where toasts stack; null is the bottom centre.
    *
    * @default null
@@ -23747,6 +23759,39 @@ export interface IconAtlasDesc {
    * @default []
    */
   readonly names?: readonly string[];
+}
+
+/**
+ * A picture rich text draws inline by name ([img=<name>]).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface UiInlineImage {
+  /**
+   * The name markup gives it.
+   *
+   * @default ""
+   */
+  readonly name?: string;
+  /**
+   * The texture, from og.load.texture; null leaves the name unregistered.
+   *
+   * @default null
+   */
+  readonly texture?: Texture | null;
+  /**
+   * The region drawn, [u0, v0, u1, v1] with v down; null is the whole texture.
+   *
+   * @default null
+   */
+  readonly uv?: [number, number, number, number] | null;
+  /**
+   * Width over height of the region as drawn; 0 is square.
+   *
+   * @default 0
+   * @range 0..
+   */
+  readonly aspect?: number;
 }
 
 /**

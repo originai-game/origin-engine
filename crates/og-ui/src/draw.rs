@@ -1353,7 +1353,13 @@ pub(crate) fn emit(
                     let mut fx = (**effects).clone();
                     fx.text = at;
                     if !m.is_identity() {
-                        fx.transform = linear(m);
+                        // The map over the text's own (an italic's slant).
+                        let own = if fx.transform == [0.0; 4] {
+                            [1.0, 0.0, 0.0, 1.0]
+                        } else {
+                            fx.transform
+                        };
+                        fx.transform = mul2(linear(m), own);
                         let b = Rect::new(
                             fx.fill_box[0],
                             fx.fill_box[1],

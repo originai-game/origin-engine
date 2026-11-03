@@ -274,11 +274,13 @@ pub(crate) fn content_layout_eq(a: &Content, b: &Content) -> bool {
     match (a, b) {
         (Content::Text(x), Content::Text(y)) => {
             x.text == y.text
-                && x.step == y.step
+                // An auto-fit text's step is layout's: its steps are its input.
+                && (x.step == y.step || (!x.fit.is_empty() && x.fit == y.fit))
                 && x.font == y.font
                 && x.wrap == y.wrap
                 && x.ellipsis == y.ellipsis
                 && x.max_lines == y.max_lines
+                && x.fit == y.fit
         }
         (Content::Image { .. }, Content::Image { .. }) => true,
         _ => a == b,
@@ -347,6 +349,12 @@ pub(crate) fn layout(
             let p = &kept.prev[t];
             nodes[i].lines = p.lines.clone();
             nodes[i].rich_lines = p.rich_lines.clone();
+            // An auto-fit text keeps the step its lines were broken at.
+            if let (Content::Text(a), Content::Text(b)) = (&mut nodes[i].content, &p.content)
+                && !a.fit.is_empty()
+            {
+                a.step = b.step;
+            }
             nodes[i].rows = p.rows.clone();
             nodes[i].grid = p.grid.clone();
             for c in kids_of(&nodes[i]) {

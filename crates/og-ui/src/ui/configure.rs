@@ -38,6 +38,7 @@ impl Ui {
             request_focus: 0,
             scopes: Vec::new(),
             icons: IconAtlas::default(),
+            images: Default::default(),
             toast_anchor: Anchor::Bottom,
             hud_max_aspect: HUD_MAX_ASPECT,
             feedback: Vec::new(),
@@ -79,6 +80,15 @@ impl Ui {
 
     pub fn icons(&self) -> &IconAtlas {
         &self.icons
+    }
+
+    /// The pictures rich text draws inline by name (`[img=<name>]`).
+    pub fn set_images(&mut self, images: std::collections::BTreeMap<String, InlineImage>) {
+        self.images = images;
+    }
+
+    pub fn images(&self) -> &std::collections::BTreeMap<String, InlineImage> {
+        &self.images
     }
 
     /// Where toasts stack (default: bottom centre of the safe area).

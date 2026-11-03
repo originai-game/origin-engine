@@ -357,6 +357,94 @@ fn a_typed_text_stream_takes_over_from_the_keys() {
 }
 
 #[test]
+fn an_auto_fit_label_shrinks_by_type_steps_then_cuts() {
+    // A title at xl in a 160 px column: a short one keeps xl, a longer one
+    // takes the largest smaller step it fits at (never one it would also
+    // fit at a step up), and one too long even at meta is meta and cut.
+    let mut scene = og_render::RenderScene::new();
+    let mut ui = ui_with_font(add_test_font(&mut scene));
+    let ramp = ui.theme().type_ramp;
+    let (xl, meta) = (ramp.xl, ramp.meta);
+    let texts = [
+        "Gold",
+        "Hidden treasures here",
+        "The hidden treasures of the drowned bell tower",
+    ];
+    let draw = |ui: &mut Ui| {
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.column(
+            "Col",
+            Element {
+                width: Size::Fixed(160.0),
+                ..Element::column()
+            },
+            |ui| {
+                for (k, t) in texts.iter().enumerate() {
+                    ui.label(
+                        ui_idi("T", k as u32),
+                        t,
+                        LabelDesc {
+                            step: Some(xl),
+                            nowrap: true,
+                            ellipsis: true,
+                            fit_min: Some(meta),
+                            width: Size::grow(),
+                            ..LabelDesc::default()
+                        },
+                    );
+                }
+            },
+        );
+        ui.end();
+        ui.frame()
+            .items
+            .iter()
+            .filter_map(|i| match &i.cmd {
+                DrawCmd::Text {
+                    text, size, bounds, ..
+                } => Some((text.clone(), *size, bounds.width)),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+    };
+    // Twice: the second frame lays out from the first's cache.
+    for _ in 0..2 {
+        let drawn = draw(&mut ui);
+        let at = |k: usize| {
+            drawn
+                .iter()
+                .find(|d| d.0.starts_with(&texts[k][..4]))
+                .unwrap_or_else(|| panic!("{k}: {drawn:?}"))
+                .clone()
+        };
+        assert_eq!(at(0).1, xl.size, "a short title keeps its step");
+        let mid = at(1);
+        assert_eq!(mid.0, texts[1], "it fits whole: {mid:?}");
+        assert!(
+            mid.1 < xl.size && mid.1 > meta.size,
+            "{mid:?} between meta {} and xl {}",
+            meta.size,
+            xl.size
+        );
+        assert!(mid.2 <= 160.5, "{mid:?}");
+        // Not one step smaller than it needs: at the next ramp size up it overflows.
+        let m = ui.fonts().body.metrics.clone();
+        let up = [ramp.lg, ramp.xl, ramp.base, ramp.reading]
+            .iter()
+            .map(|s| s.size)
+            .filter(|&s| s > mid.1)
+            .fold(f32::MAX, f32::min);
+        assert!(
+            m.measure_tracked(texts[1], up, 0.0) > 160.0,
+            "{up} fits too"
+        );
+        let cut = at(2);
+        assert_eq!(cut.1, meta.size, "{cut:?}");
+        assert!(cut.0.ends_with('…') || cut.0.ends_with("..."), "{cut:?}");
+    }
+}
+
+#[test]
 fn labels_cut_with_an_ellipsis_where_they_do_not_fit() {
     let mut scene = og_render::RenderScene::new();
     let mut ui = ui_with_font(add_test_font(&mut scene));

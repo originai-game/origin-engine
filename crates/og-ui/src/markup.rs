@@ -5,11 +5,18 @@
 //! Press [b]Jump[/b] to clear the [color=danger]gap[/color], then
 //! [size=lg]run[/size]! Costs [icon=coin] [font=mono]250[/font].
 //! [link=shop]Open the shop[/link] · [wave]wavy[/wave] [shake]angry[/shake] [pulse]alive[/pulse]
+//! [i]whispered[/i], [u]marked[/u], [s]struck[/s], [outline=2,shadow]loud[/outline],
+//! [img=portrait] and Press [action=jump] to jump.
 //! ```
 //!
 //! | Tag | Does |
 //! |---|---|
 //! | `[b]…[/b]` | bold: the glyphs thickened in the MSDF shader (weight) |
+//! | `[i]…[/i]` | italic: the glyphs slanted (an oblique of the face) |
+//! | `[u]…[/u]`, `[s]…[/s]` | underlined, struck through: a hairline in the span's ink |
+//! | `[outline=<w>[,<colour>]]` | an outline `w` CSS px wide from the font's distance field, in a colour role or `#rrggbb[aa]` (`shadow` by default) |
+//! | `[img=<name>]` | a picture the game registered by name (`UiDesc.images`), one em tall at its aspect, inline (self-closing) |
+//! | `[action=<name>]` | the action's glyph on the device used last (its icon, else its key's name on a cap), resolved every frame, inline (self-closing) |
 //! | `[color=<ThemeColor>]` / `[color=#rrggbb[aa]]` | the ink: a token (follows the style) or a colour |
 //! | `[size=<TypeStepName>]` | the type step (`lg`, `xl`, `meta`, `displaySm`…) |
 //! | `[font=body\|display\|mono]` | the font role |
@@ -36,6 +43,11 @@ pub enum SpanFx {
 pub struct MarkupSpan {
     pub text: String,
     pub bold: bool,
+    pub italic: bool,
+    pub underline: bool,
+    pub strike: bool,
+    /// `[outline=…]`'s value: a width, then optionally `,` and a colour.
+    pub outline: Option<String>,
     /// A ThemeColor name or `#rrggbb[aa]`; `None`: the paragraph's ink.
     pub color: Option<String>,
     /// A TypeStepName; `None`: the paragraph's step.
@@ -44,6 +56,10 @@ pub struct MarkupSpan {
     pub font: Option<String>,
     /// An inline icon (the span's text is empty).
     pub icon: Option<String>,
+    /// An inline picture registered by name (the span's text is empty).
+    pub image: Option<String>,
+    /// An action's glyph (the span's text is empty).
+    pub action: Option<String>,
     pub link: Option<String>,
     pub fx: SpanFx,
 }
@@ -51,6 +67,10 @@ pub struct MarkupSpan {
 #[derive(Clone, Debug, PartialEq)]
 enum Tag {
     B,
+    I,
+    U,
+    S,
+    Outline(String),
     Color(String),
     Size(String),
     Font(String),
@@ -62,6 +82,10 @@ impl Tag {
     fn name(&self) -> &'static str {
         match self {
             Tag::B => "b",
+            Tag::I => "i",
+            Tag::U => "u",
+            Tag::S => "s",
+            Tag::Outline(_) => "outline",
             Tag::Color(_) => "color",
             Tag::Size(_) => "size",
             Tag::Font(_) => "font",
@@ -84,6 +108,10 @@ pub fn parse_markup(markup: &str) -> (Vec<MarkupSpan>, Vec<String>) {
         for t in stack {
             match t {
                 Tag::B => s.bold = true,
+                Tag::I => s.italic = true,
+                Tag::U => s.underline = true,
+                Tag::S => s.strike = true,
+                Tag::Outline(o) => s.outline = Some(o.clone()),
                 Tag::Color(c) => s.color = Some(c.clone()),
                 Tag::Size(z) => s.size = Some(z.clone()),
                 Tag::Font(f) => s.font = Some(f.clone()),
@@ -140,6 +168,10 @@ pub fn parse_markup(markup: &str) -> (Vec<MarkupSpan>, Vec<String>) {
         }
         let tag = match (name, value) {
             ("b", None) => Some(Tag::B),
+            ("i", None) => Some(Tag::I),
+            ("u", None) => Some(Tag::U),
+            ("s", None) => Some(Tag::S),
+            ("outline", Some(v)) if !v.is_empty() => Some(Tag::Outline(v.to_owned())),
             ("color", Some(v)) if !v.is_empty() => Some(Tag::Color(v.to_owned())),
             ("size", Some(v)) if !v.is_empty() => Some(Tag::Size(v.to_owned())),
             ("font", Some(v @ ("body" | "display" | "mono"))) => Some(Tag::Font(v.to_owned())),
@@ -147,10 +179,15 @@ pub fn parse_markup(markup: &str) -> (Vec<MarkupSpan>, Vec<String>) {
             ("wave", None) => Some(Tag::Fx(SpanFx::Wave)),
             ("shake", None) => Some(Tag::Fx(SpanFx::Shake)),
             ("pulse", None) => Some(Tag::Fx(SpanFx::Pulse)),
-            ("icon", Some(v)) if !v.is_empty() => {
+            (kind @ ("icon" | "img" | "action"), Some(v)) if !v.is_empty() => {
                 flush(&mut spans, &mut text, &stack);
                 let mut s = style(&stack);
-                s.icon = Some(v.to_owned());
+                let v = Some(v.to_owned());
+                match kind {
+                    "icon" => s.icon = v,
+                    "img" => s.image = v,
+                    _ => s.action = v,
+                }
                 spans.push(s);
                 continue;
             }
@@ -163,7 +200,7 @@ pub fn parse_markup(markup: &str) -> (Vec<MarkupSpan>, Vec<String>) {
             }
             None => {
                 warnings.push(format!(
-                    "rich text: [{raw}] is not a tag (b, color=, size=, font=, icon=, link=, wave, shake, pulse) in \"{markup}\""
+                    "rich text: [{raw}] is not a tag (b, i, u, s, outline=, color=, size=, font=, icon=, img=, action=, link=, wave, shake, pulse) in \"{markup}\""
                 ));
                 text.push_str(&format!("[{raw}]"));
             }

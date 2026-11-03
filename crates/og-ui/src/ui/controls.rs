@@ -24,10 +24,14 @@ impl Ui {
                 ..Element::default()
             },
         );
+        let step = desc.step.unwrap_or(t.type_ramp.body);
+        let fit = desc.fit_min.map_or_else(Vec::new, |min| {
+            crate::style_file::fit_steps(&t.type_ramp, step, min)
+        });
         let n = &mut self.nodes[i];
         n.content = Content::Text(TextContent {
             text: text.to_owned(),
-            step: desc.step.unwrap_or(t.type_ramp.body),
+            step,
             color: desc.color.unwrap_or(t.palette.ink),
             align: desc.align,
             wrap: !desc.nowrap,
@@ -35,6 +39,7 @@ impl Ui {
             ellipsis: desc.ellipsis,
             max_lines: desc.max_lines,
             emphasis: 0.0,
+            fit,
         });
         // The probe and screen readers read the whole text, cut or not.
         n.probe_text = text.to_owned();

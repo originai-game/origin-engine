@@ -414,6 +414,8 @@ pub struct Ui {
     /// Open focus scopes this frame, in build order.
     pub(crate) scopes: Vec<usize>,
     pub(crate) icons: IconAtlas,
+    /// Pictures rich text draws by name (`[img=…]`).
+    pub(crate) images: std::collections::BTreeMap<String, InlineImage>,
     pub(crate) toast_anchor: Anchor,
     /// The widest the HUD band is, over its height ([`Ui::hud_area`]).
     pub(crate) hud_max_aspect: f32,

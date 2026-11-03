@@ -108,6 +108,36 @@ fn gaps(gap: f32, n: usize) -> f32 {
     gap * n.saturating_sub(1) as f32
 }
 
+/// A text's preferred width (its widest line) and the least it can take:
+/// its ellipsis, its longest word when it wraps, else all of it.
+fn text_widths(t: &TextContent, fonts: &dyn Metrics) -> (f32, f32) {
+    let m = fonts.metrics_for(t.font, &t.text);
+    let pref = widest_line(&t.text, m, t.step.size, t.tracking(), t.step.features);
+    let min = if t.ellipsis {
+        // It can shrink to its ellipsis.
+        m.measure_with(ellipsis_of(m), t.step.size, t.tracking(), t.step.features)
+            .min(pref)
+    } else if t.wrap {
+        longest_word(&t.text, m, t.step.size, t.tracking(), t.step.features)
+    } else {
+        pref
+    };
+    (pref, min)
+}
+
+/// A text shows whole at `width` at its step: one line no wider, or (wrapping)
+/// no word wider and no more lines than its limit.
+fn fits(t: &TextContent, fonts: &dyn Metrics, width: f32) -> bool {
+    let m = fonts.metrics_for(t.font, &t.text);
+    let (size, tr, ft) = (t.step.size, t.tracking(), t.step.features);
+    if !t.wrap {
+        return widest_line(&t.text, m, size, tr, ft) <= width;
+    }
+    longest_word(&t.text, m, size, tr, ft) <= width
+        && (t.max_lines == 0
+            || break_lines(&t.text, m, size, tr, ft, Some(width)).len() <= t.max_lines as usize)
+}
+
 pub(super) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
     if nodes[i].props.layout == LayoutMode::Grid && matches!(nodes[i].content, Content::None) {
         place_grid(nodes, i);
@@ -115,20 +145,21 @@ pub(super) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
     let n = &nodes[i];
     let fonts = measure.fonts;
     let (pref, min) = match &n.content {
-        Content::Text(t) => measure.texts.widths(t, || {
-            let m = fonts.metrics_for(t.font, &t.text);
-            let pref = widest_line(&t.text, m, t.step.size, t.tracking(), t.step.features);
-            let min = if t.ellipsis {
-                // It can shrink to its ellipsis.
-                m.measure_with(ellipsis_of(m), t.step.size, t.tracking(), t.step.features)
-                    .min(pref)
-            } else if t.wrap {
-                longest_word(&t.text, m, t.step.size, t.tracking(), t.step.features)
-            } else {
-                pref
-            };
-            (pref, min)
-        }),
+        Content::Text(t) => {
+            let (pref, min) = measure.texts.widths(t, || text_widths(t, fonts));
+            match t.fit.last() {
+                // An auto-fit label can shrink to what its smallest step needs.
+                Some(&small) => {
+                    let s = TextContent {
+                        step: small,
+                        ..t.clone()
+                    };
+                    let (_, m) = measure.texts.widths(&s, || text_widths(&s, fonts));
+                    (pref, min.min(m))
+                }
+                None => (pref, min),
+            }
+        }
         Content::Rich(rc) => crate::rich::rich_widths(rc, fonts),
         Content::Image { .. } => (0.0, 0.0),
         Content::None if n.props.layout == LayoutMode::Stack => {
@@ -255,6 +286,21 @@ pub(super) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'
         nodes[c].w = w;
     }
     let fonts = measure.fonts;
+    // An auto-fit label: the largest of its steps its text fits at this width.
+    if let Content::Text(t) = &nodes[i].content
+        && !t.fit.is_empty()
+    {
+        let width = inner + 0.5;
+        let step = t
+            .fit
+            .iter()
+            .copied()
+            .find(|&step| fits(&TextContent { step, ..t.clone() }, fonts, width))
+            .unwrap_or(t.fit[t.fit.len() - 1]);
+        if let Content::Text(t) = &mut nodes[i].content {
+            t.step = step;
+        }
+    }
     if let Content::Text(t) = &nodes[i].content {
         // A fit width snapped to the device pixel may land up to half a
         // pixel under the text it was measured from: that is no reason to wrap.

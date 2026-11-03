@@ -111,6 +111,10 @@ pub(crate) struct TextContent {
     /// Extra faux-bold weight, em, over the style's own (a selected tab's
     /// label reads semibold); 0 for most text.
     pub emphasis: f32,
+    /// Auto-fit: its own step, then the smaller steps it takes where its
+    /// text does not fit its width, largest first (layout sets `step` to the
+    /// first that fits, else the last); empty: it keeps its step.
+    pub fit: Vec<TypeStep>,
 }
 
 impl TextContent {

@@ -73,6 +73,7 @@ pub fn og_ui_label(id: String, text: String, desc: Option<String>) {
             heading: d["heading"].as_bool().unwrap_or(false),
             ellipsis: d["ellipsis"].as_bool().unwrap_or(false),
             max_lines: d["maxLines"].as_u64().unwrap_or(0) as u32,
+            fit_min: d["fitMin"].as_str().and_then(|s| step(&t, s)),
         };
         ui.label(id.as_str(), &text, l)
     });
