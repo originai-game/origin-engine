@@ -802,7 +802,21 @@ impl Resolved {
         self.frame.shape.unwrap_or_else(|| {
             // A part round by what it is (a radio's mark, a knob, a switch's
             // track) stays round in every shape language unless dressed.
-            if part.has("round") {
+            if part.has("round")
+                && theme.art.legacy
+                && matches!(part.component, "Slider" | "Toggle")
+            {
+                // A version 1 style's knobs and switches: the control radius.
+                let inset = if (part.component, part.part) == ("Toggle", "knob") {
+                    theme.space.xxs
+                } else {
+                    0.0
+                };
+                ShapeToken {
+                    corner: crate::tokens::CornerShape::Round,
+                    radius: (theme.radius.control - inset).max(0.0),
+                }
+            } else if part.has("round") {
                 ShapeToken {
                     corner: crate::tokens::CornerShape::Round,
                     radius: 9999.0,

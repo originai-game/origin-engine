@@ -240,6 +240,13 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
         match key {
             "scheme" | "atlas" | "scale" | "icons" | "roles" => {}
             "name" => file.name = p.string(0)?.to_string(),
+            // The templates' screens the style was made for: 1 keeps a
+            // shipped game's (a version 1 style is 1 whatever it says).
+            "screens" => match p.num(0)? {
+                1.0 => theme.art.legacy = true,
+                2.0 => {}
+                _ => return Err(p.err("is 1 (the screens a version 1 style drew) or 2")),
+            },
             "palette" => {
                 let block = p.block()?;
                 for c in &block.entries {
@@ -763,6 +770,7 @@ pub fn parse_style(text: &str) -> Result<StyleFile, String> {
         file.dressings = dressings;
     } else {
         theme.tokens = StyleTokens::derive(&theme, &icon_names);
+        theme.art.legacy = true;
         // A version 1 style's sounds are the one-sound sets of its events.
         for u in UiSound::ALL {
             if file.sounds[u as usize].is_some() {

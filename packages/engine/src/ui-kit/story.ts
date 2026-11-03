@@ -3,10 +3,10 @@
 
 import type * as Api from "@origingame/engine";
 import { kit } from "./bind.ts";
-import { all, frame, grow, px, token } from "./util.ts";
+import { all, frame, grow, pct, px, token } from "./util.ts";
 
 export function cutscene(id: string, desc: Api.CutsceneDesc = {}): Api.CutsceneResult {
-  const { t, phone } = frame();
+  const { t, phone, v1 } = frame();
   const lines = desc.lines ?? [];
   let index = Math.min(desc.index ?? 0, Math.max(0, lines.length - 1));
   const out = { index, finished: false, skipped: false };
@@ -19,7 +19,13 @@ export function cutscene(id: string, desc: Api.CutsceneDesc = {}): Api.CutsceneR
   // Each bar a tenth of the picture, run out to the screen's edge (under a notch and the home indicator, as a film's
   // bars are), and the box a step above the bottom one, never over it.
   const barH = letterbox ? Math.round((vp.height - sa.top - sa.bottom) * 0.1) : 0;
-  if (letterbox) {
+  if (letterbox && v1) {
+    // A version-1 style's bars: the anchors in black over the style's own
+    // frame (its panel's edge), a tenth of the screen inside the safe area.
+    for (const [name, anchor] of [["Top", "top"], ["Bottom", "bottom"]] as const) {
+      kit.anchor(`${id}.${name}`, { anchor, margin: 0, width: grow(), height: pct(0.1), background: { color: { r: 0, g: 0, b: 0 } } }, () => {});
+    }
+  } else if (letterbox) {
     // Cinematic bars are black in every style: not a token, which a light
     // style (kestrel's paper) would turn into cream panels, and not the
     // anchor's style frame (glass in the default style): the anchor draws
@@ -35,7 +41,8 @@ export function cutscene(id: string, desc: Api.CutsceneDesc = {}): Api.CutsceneR
   const line = lines[index]!;
   // The box's bottom a step above the bottom bar's top (the anchor stands a gutter above the safe area): straddling
   // the bar's edge read as a box slipping off the screen.
-  const lift = letterbox ? Math.max(0, barH + t.md - t.gutter) : 0;
+  // A version-1 style's box straddles the bar, 4 % of the screen up.
+  const lift = !letterbox ? 0 : v1 ? vp.height * 0.04 : Math.max(0, barH + t.md - t.gutter);
   kit.anchor(`${id}.box`, { anchor: "bottom", width: phone ? grow() : px(Math.min(760, vp.width - 64)), offsetY: -lift }, () => {
     const r = kit.dialogue("Dialogue", { speaker: line.speaker ?? "", text: line.text ?? "", portrait: line.image ?? null, portraitIcon: line.portrait ?? "" });
     if (r.advanced) {
@@ -44,7 +51,7 @@ export function cutscene(id: string, desc: Api.CutsceneDesc = {}): Api.CutsceneR
     }
   });
   if (desc.skippable ?? true) {
-    kit.anchor(`${id}.skip`, { anchor: "topRight", offsetY: letterbox ? barH + t.sm : 0 }, () => {
+    kit.anchor(`${id}.skip`, { anchor: "topRight", offsetY: !letterbox ? 0 : v1 ? vp.height * 0.1 : barH + t.sm }, () => {
       if ((kit.button("Skip", desc.skipLabel ?? "Skip", { variant: "quiet", size: "small" }) as Api.Response).clicked) out.skipped = true;
     });
     if (kit.back()) out.skipped = true;

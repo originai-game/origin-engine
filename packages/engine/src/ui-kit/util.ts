@@ -19,14 +19,22 @@ export const token = (name: Api.ThemeColor, alpha?: number): Api.Paint => (alpha
  * engines at the same tick never share a stale surface; what is derived
  * from them is kept while they are the same objects.
  */
-type Frame = { theme: Api.UiTheme; viewport: Api.Viewport; t: Tokens; phone: boolean; touch: boolean };
+type Frame = {
+  theme: Api.UiTheme; viewport: Api.Viewport; t: Tokens; phone: boolean; touch: boolean;
+  /**
+   * A version-1 style (UiTheme.styleVersion): a game shipped with it keeps
+   * the screens it shipped with, so a template lays its screen out as it
+   * did then and adds no rows, rules or marks since (docs/ui.md §12.1).
+   */
+  v1: boolean;
+};
 let cached: Frame | null = null;
 export function frame(): Frame {
   const theme = kit.frameTheme();
   const viewport = kit.frameViewport();
   if (cached && cached.theme === theme && cached.viewport === viewport) return cached;
   const phone = viewport.breakpoint === "phonePortrait" || viewport.breakpoint === "phoneLandscape";
-  cached = { theme, viewport, t: tokens(theme), phone, touch: viewport.coarsePointer || phone || viewport.breakpoint === "tablet" };
+  cached = { theme, viewport, t: tokens(theme), phone, touch: viewport.coarsePointer || phone || viewport.breakpoint === "tablet", v1: theme.styleVersion === 1 };
   return cached;
 }
 

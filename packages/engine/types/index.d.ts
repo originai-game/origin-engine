@@ -23446,6 +23446,10 @@ export interface UiTheme {
   /** The configured style's name; empty for the default style. */
   readonly style: string;
   /**
+   * The configured style file's version: 1 for a version-1 style, whose game keeps the screens it shipped with (the templates lay theirs out as they did for it, docs/ui.md §12.1); 2 for a version-2 style and the default style.
+   */
+  readonly styleVersion: number;
+  /**
    * The variant in effect: high when the game asked for it or the page prefers more contrast.
    */
   readonly contrast: Contrast;

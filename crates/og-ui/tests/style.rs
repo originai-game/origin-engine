@@ -1950,3 +1950,96 @@ fn a_style_with_denser_atlases_draws_from_the_one_at_or_above_the_surface_densit
         "styles/a.b/atlas@2x.png"
     );
 }
+
+/// The largest corner radius drawn inside `area` (a quad's or a rect shape's).
+fn largest_radius_in(ui: &Ui, area: Rect) -> f32 {
+    let inside = |r: Rect| r.x >= area.x - 0.5 && r.right() <= area.right() + 0.5;
+    ui.frame()
+        .items
+        .iter()
+        .filter_map(|i| match &i.cmd {
+            DrawCmd::Quad { rect, radius, .. } if inside(*rect) => Some(*radius),
+            DrawCmd::Shape { shape, .. } => match shape.geometry {
+                og_render::UiGeometry::Rect { radii, .. }
+                    if inside(Rect::new(
+                        shape.center.x - shape.half.x,
+                        shape.center.y - shape.half.y,
+                        2.0 * shape.half.x,
+                        2.0 * shape.half.y,
+                    )) =>
+                {
+                    Some(radii[0])
+                }
+                _ => None,
+            },
+            _ => None,
+        })
+        .fold(0.0, f32::max)
+}
+
+/// A game shipped with a version 1 style keeps the screens it drew: its
+/// switch takes the control radius (not round ends) and its dialog's title
+/// the ramp's xl, and `og style upgrade` keeps both with `screens 1`, where
+/// a version 2 style without it draws today's (round, the heading role).
+#[test]
+fn a_version_1_style_keeps_its_switches_and_dialog_titles_through_an_upgrade() {
+    let upgraded = upgrade_style(STYLE).expect("the test style upgrades");
+    assert!(upgraded.contains("\nscreens 1\n"), "{upgraded}");
+    let today = upgraded.replace("\nscreens 1\n", "\n");
+    let draw = |text: &str| {
+        let file = parse_style(text).expect("the style parses");
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.set_theme(file.theme(Some(atlas()), [0; 6]));
+        let mut on = true;
+        for _ in 0..3 {
+            ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+            ui.modal(
+                "Settings",
+                true,
+                &ModalDesc {
+                    title: "设置".into(),
+                    ..ModalDesc::default()
+                },
+                |ui| {
+                    ui.toggle("Motion", &mut on, "Reduce motion");
+                    // The ramp's xl in the body face, as version 1 drew the title.
+                    let xl = ui.theme().type_ramp.xl;
+                    ui.label(
+                        "Xl",
+                        "设置",
+                        LabelDesc {
+                            step: Some(xl),
+                            heading: true,
+                            ..LabelDesc::default()
+                        },
+                    );
+                },
+            );
+            ui.end();
+        }
+        let f = ui.frame();
+        let e = f.element("Panel/Motion").expect("the switch is laid out");
+        let toggle = Rect::new(e.x, e.y, e.width, e.height);
+        let title = f.element("Panel/Title").expect("the title is laid out");
+        let xl = f.element("Panel/Xl").expect("the xl label");
+        let same = (title.width, title.height) == (xl.width, xl.height);
+        (
+            file.theme(None, [0; 6]),
+            largest_radius_in(&ui, toggle),
+            same,
+        )
+    };
+    for text in [STYLE, upgraded.as_str()] {
+        let (theme, radius, title) = draw(text);
+        assert!(theme.art.legacy);
+        assert_eq!(radius, theme.radius.control, "a version 1 game's switch");
+        assert!(title, "a version 1 game's dialog title is the ramp's xl");
+    }
+    let (theme, radius, title) = draw(&today);
+    assert!(!title, "today's dialog title is the heading role");
+    assert!(!theme.art.legacy);
+    assert!(
+        radius > theme.radius.control,
+        "today's switch has round ends ({radius})"
+    );
+}

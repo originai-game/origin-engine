@@ -69,7 +69,7 @@ function sliderRow(id: string, label: string, value: number, desc: Api.SliderDes
 }
 
 export function settingsScreen(id: string, desc: Api.SettingsDesc = {}): Api.SettingsResult {
-  const { t, phone } = frame();
+  const { t, phone, v1 } = frame();
   const before = settingsWithDefaults(desc.settings);
   const s = settingsWithDefaults(desc.settings);
   const languages = desc.languages ?? [];
@@ -105,11 +105,14 @@ export function settingsScreen(id: string, desc: Api.SettingsDesc = {}): Api.Set
     // keeps the rows' values clear of the scroll bar (xs wide, xxs in).
     const floor = frame().viewport.height >= 600 ? (phone ? 300 : 260) : 0;
     const bar = t.xs + 2 * t.xxs;
-    const body = (): unknown => kit.scroll("Body", { width: grow(), height: fit(floor), gap: t.sm, padding: { left: 0, top: 0, bottom: 0, right: bar } }, () => {
+    // A version-1 style's screen keeps its fixed body and the rows it had: no
+    // heading, interface volume, subtitles, raw mouse or text size, no rules.
+    const rows1 = (build: () => void): unknown => (v1 ? kit.column("Body", { width: grow(), gap: t.sm, height: px(phone ? 300 : 260) }, build) : kit.scroll("Body", { width: grow(), height: fit(floor), gap: t.sm, padding: { left: 0, top: 0, bottom: 0, right: bar } }, build));
+    const body = (): unknown => rows1(() => {
       const pct = (v: number): string => `${Math.round(v * 100)}%`;
       switch (tabs[tab]?.[0]) {
         case "audio": {
-          kit.label("VolumeLabel", desc.volumeLabel ?? "Volume", { step: "meta", color: token("inkMuted") });
+          if (!v1) kit.label("VolumeLabel", desc.volumeLabel ?? "Volume", { step: "meta", color: token("inkMuted") });
           const volume = (rid: string, label: string, value: number): number => {
             note(rid, label);
             return sliderRow(rid, label, value, { step: 0.05 }, pct(value));
@@ -117,12 +120,16 @@ export function settingsScreen(id: string, desc: Api.SettingsDesc = {}): Api.Set
           s.masterVolume = volume("Master", desc.masterLabel ?? "Master", s.masterVolume);
           s.musicVolume = volume("Music", desc.musicLabel ?? "Music", s.musicVolume);
           s.sfxVolume = volume("Effects", desc.effectsLabel ?? "Effects", s.sfxVolume);
-          s.uiVolume = volume("Interface", desc.uiLabel ?? "Interface", s.uiVolume);
-          kit.divider("AudioRule", false);
+          if (!v1) {
+            s.uiVolume = volume("Interface", desc.uiLabel ?? "Interface", s.uiVolume);
+            kit.divider("AudioRule", false);
+          }
           note("Mute", desc.muteLabel ?? "Mute everything");
           s.muted = (kit.toggle("Mute", s.muted, desc.muteLabel ?? "Mute everything") as Api.ToggleResult).on;
-          note("Subtitles", desc.subtitlesLabel ?? "Subtitles");
-          s.subtitles = (kit.toggle("Subtitles", s.subtitles, desc.subtitlesLabel ?? "Subtitles") as Api.ToggleResult).on;
+          if (!v1) {
+            note("Subtitles", desc.subtitlesLabel ?? "Subtitles");
+            s.subtitles = (kit.toggle("Subtitles", s.subtitles, desc.subtitlesLabel ?? "Subtitles") as Api.ToggleResult).on;
+          }
           break;
         }
         case "graphics": {
@@ -143,7 +150,7 @@ export function settingsScreen(id: string, desc: Api.SettingsDesc = {}): Api.Set
           s.showFps = (kit.toggle("Fps", s.showFps, desc.fpsLabel ?? "Show frame rate") as Api.ToggleResult).on;
           s.reducedMotion = (kit.toggle("Motion", s.reducedMotion, desc.motionLabel ?? "Reduce motion") as Api.ToggleResult).on;
           s.highContrast = (kit.toggle("Contrast", s.highContrast, desc.contrastLabel ?? "High contrast") as Api.ToggleResult).on;
-          s.textScale = sliderRow("TextSize", desc.textSizeLabel ?? "Text size", s.textScale, { min: 1, max: 2, step: 0.25 }, pct(s.textScale));
+          if (!v1) s.textScale = sliderRow("TextSize", desc.textSizeLabel ?? "Text size", s.textScale, { min: 1, max: 2, step: 0.25 }, pct(s.textScale));
           break;
         }
         case "controls": {
@@ -153,15 +160,15 @@ export function settingsScreen(id: string, desc: Api.SettingsDesc = {}): Api.Set
           note("Vibration", desc.vibrationLabel ?? "Vibration");
           s.sensitivity = sliderRow("Sensitivity", desc.sensitivityLabel ?? "Sensitivity", s.sensitivity, { min: 0.1, max: 3, step: 0.1 }, s.sensitivity.toFixed(1));
           s.invertY = kit.checkbox("Invert", s.invertY, desc.invertLabel ?? "Invert vertical look").on;
-          s.rawMouse = (kit.toggle("Raw", s.rawMouse, desc.rawMouseLabel ?? "Raw mouse input") as Api.ToggleResult).on;
-          const mouse = desc.world ? (input.mouse(desc.world as unknown as World) as Api.MouseInfo) : null;
+          if (!v1) s.rawMouse = (kit.toggle("Raw", s.rawMouse, desc.rawMouseLabel ?? "Raw mouse input") as Api.ToggleResult).on;
+          const mouse = desc.world && !v1 ? (input.mouse(desc.world as unknown as World) as Api.MouseInfo) : null;
           if (mouse?.rawUnsupported) kit.label("RawNote", desc.rawUnavailableLabel ?? "Not available in this browser", { step: "meta", color: token("inkMuted") });
           s.vibration = kit.checkbox("Vibration", s.vibration, desc.vibrationLabel ?? "Vibration").on;
           if (s.bindings.length > 0) {
             kit.divider("Rule", false);
-            kit.column("Bindings", { width: grow() }, () => {
-              s.bindings.forEach((b, i) => kit.keyValue(kit.idi("Binding", i), b.label ?? b.action ?? "", b.key ?? "", true));
-            });
+            const bindings = (): void => s.bindings.forEach((b, i) => kit.keyValue(kit.idi("Binding", i), b.label ?? b.action ?? "", b.key ?? "", true));
+            if (v1) kit.scroll("Bindings", { width: grow(), height: grow() }, bindings);
+            else kit.column("Bindings", { width: grow() }, bindings);
           }
           break;
         }
@@ -191,7 +198,7 @@ export function settingsScreen(id: string, desc: Api.SettingsDesc = {}): Api.Set
       body();
     }
     // Done stands in a footer under a rule: the body keeps its height between tabs, and the space above reads as the body's.
-    kit.divider("FooterRule", false);
+    if (!v1) kit.divider("FooterRule", false);
     kit.row("Footer", { width: grow(), align: "end" }, () => {
       if ((kit.button("Done", desc.doneLabel ?? "Done", { variant: "primary" }) as Api.Response).clicked) closed = true;
     });

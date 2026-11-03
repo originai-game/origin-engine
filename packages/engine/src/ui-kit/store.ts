@@ -207,7 +207,7 @@ function figure(id: string, art: Api.Texture, aspect: number, width: number, nam
 }
 
 export function shopScreen(id: string, desc: Api.ShopDesc = {}): Api.ShopResult {
-  const { t, phone } = frame();
+  const { t, phone, v1 } = frame();
   const out: { bought: string | null; refused: string | null; closed: boolean } = { bought: null, refused: null, closed: false };
   const cats = desc.categories ?? [];
   let cat = Math.min(kit.memory(`${id}.cat`, 0), Math.max(0, cats.length - 1));
@@ -303,9 +303,41 @@ export function shopScreen(id: string, desc: Api.ShopDesc = {}): Api.ShopResult 
         if (r.clicked && !it.owned && !short) out.bought = it.id ?? null;
       });
     };
+    // A version-1 style's shop as it shipped: plain cells, the price a numeral, focus the style's own.
+    const body1 = (): void => {
+      const g = kit.grid("Items", { count: items.length, cellWidth: phone ? 96 : 112, cellHeight: phone ? 112 : 124, height: fit(0, phone ? 260 : 320), width: grow(), selected: sel }, (i) => {
+        const it = items[i]!;
+        artOr("Picture", it.image, it.icon, it.name ?? "", 36, 36);
+        kit.label("Name", it.name ?? "", { step: "base", nowrap: true });
+        if (it.owned) kit.badge("Owned", desc.ownedLabel ?? "Owned", "success");
+        else kit.label("Price", fmt(it.price ?? 0), { step: "meta", font: "mono", color: token(balance >= (it.price ?? 0) ? "highlight" : "inkFaint"), nowrap: true });
+      });
+      if (g.clicked !== null && g.clicked !== undefined) sel = g.clicked;
+      const it = items[sel];
+      kit.column("Detail", { width: phone ? grow() : px(220), gap: t.sm }, () => {
+        if (!it) {
+          kit.label("Empty", desc.emptyLabel ?? "Nothing for sale here", { color: token("inkMuted") });
+          return;
+        }
+        kit.label("Name", it.name ?? "", { step: "lg", width: grow() });
+        if (it.description) kit.label("Description", it.description, { step: "meta", color: token("inkMuted"), width: grow() });
+        kit.keyValue("Price", desc.priceLabel ?? "Price", `${fmt(it.price ?? 0)} ${desc.currency ?? "coins"}`, true);
+        const short = balance < (it.price ?? 0);
+        const r = kit.button("Buy", it.owned ? (desc.ownedLabel ?? "Owned") : short ? (desc.shortLabel ?? "Not enough") : (desc.buyLabel ?? "Buy"), { variant: short ? "secondary" : "primary", width: grow(), disabled: it.owned }) as Api.Response;
+        if (r.clicked && !it.owned && short) {
+          kit.shake({ sound: true });
+          out.refused = it.id ?? null;
+        }
+        if (r.clicked && !it.owned && !short) out.bought = it.id ?? null;
+      });
+    };
     const name = desc.merchantName ?? "";
     const line = desc.merchantLine ?? "";
-    if (side) {
+    if (v1) {
+      bar();
+      if (phone) kit.column("Body", { width: grow(), gap: t.md }, body1);
+      else kit.row("Body", { width: grow(), gap: t.lg }, body1);
+    } else if (side) {
       kit.row("Stage", { width: grow(), gap: t.lg }, () => {
         figure("Merchant", merchant!, 0.8, side, name, line);
         kit.column("Main", { width: grow(), gap: t.md }, () => {

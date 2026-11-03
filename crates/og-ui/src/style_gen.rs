@@ -1621,9 +1621,12 @@ pub fn generate(c: &StyleChoices) -> Result<Generated, String> {
     let mut text = crate::style_file::upgrade_style(&v1)?;
     {
         // The upgrade's dressings (the press and hover) are rewritten
-        // with the procedural ones.
+        // with the procedural ones; a new style draws today's screens,
+        // not a shipped version 1 game's (`screens 1`).
         let mut doc = og_core::ogt::Document::parse(&text).map_err(|e| e.to_string())?;
-        doc.body.entries.retain(|e| e.key != "dress");
+        doc.body
+            .entries
+            .retain(|e| e.key != "dress" && e.key != "screens");
         text = doc.to_text().map_err(|e| e.to_string())?;
     }
     text = replace_block(&text, "typography", &typography(c))?;

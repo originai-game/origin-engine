@@ -637,7 +637,12 @@ pub fn upgrade_style(text: &str) -> Result<String, String> {
             out.push(e.clone());
         }
     };
-    for k in ["name", "scheme", "atlas", "scale", "palette"] {
+    for k in ["name", "scheme"] {
+        copy(&mut out, k);
+    }
+    // A version 1 style's screens stay as they shipped (`Art::legacy`).
+    out.push(Entry::new("screens").with(Value::Number(1u32.into())));
+    for k in ["atlas", "scale", "palette"] {
         copy(&mut out, k);
     }
     out.entries.extend(token_blocks);

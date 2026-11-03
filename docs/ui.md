@@ -724,6 +724,15 @@ new component looks right in every style without new art. The twelve
 `StylePart` classes of version 1 become dressings of the matching parts;
 `og style upgrade` converts a version 1 style.
 
+A game shipped with a version 1 style keeps the screens it shipped with:
+an engine update may draw them better (antialiasing, contrast, a cleaner
+fill) but never changes what is on them or where. Its sliders' knobs and
+switches take the control radius, its dialogs' titles the ramp's xl in the
+body face, and the templates lay their screens out as they did for it
+(`UiTheme.styleVersion` 1): no rows, rules, headings, coins or selection
+glows added since. `og style upgrade` writes `screens 1` so the upgraded
+style keeps them; a new style (`og style new`, the packs) draws today's.
+
 ### 12.4 Sound and haptic sets
 
 The events of §7.8, each with one sound or a set chosen at random without

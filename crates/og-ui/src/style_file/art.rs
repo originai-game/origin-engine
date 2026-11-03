@@ -455,6 +455,13 @@ pub struct Art {
     pub motion: StyleMotion,
     /// Sound handles by [`UiSound`] (0: silent).
     pub sounds: [u64; 6],
+    /// A version 1 style: a game shipped with it keeps the screens it
+    /// drew (docs/ui.md §12.1): its sliders' knobs and switches take the
+    /// control radius, not round ends, its dialogs' titles the ramp's xl
+    /// in the body face, and the templates (`UiTheme.styleVersion`) their
+    /// version 1 layouts. A version 2 style says so with `screens 1` (what
+    /// og style upgrade writes).
+    pub legacy: bool,
 }
 
 impl Art {
