@@ -182,10 +182,14 @@ export function raceHud(world: World): void {
     map(Math.round((small ? 132 : 196) * k), "topRight", "square", pos);
   }
   if (look === "arcade") {
-    og.ui.anchor("Map", arcadeMapPlace(small, portrait, touch, k, m), () => map(Math.round((small ? 120 : 176) * k), null, "circle", pos));
+    og.ui.anchor("ArcadeMap", arcadeMapPlace(small, portrait, touch, k, m), () => map(Math.round((small ? 120 : 176) * k), null, "circle", pos));
   } else {
-    // Bottom end; on a phone centred over the thumbs (in portrait over the pads, in landscape between them).
-    const instrument = portrait ? { anchor: "bottom" as const, margin: m, offsetY: -Math.round(124 * k) } : small && touch ? { anchor: "bottom" as const, margin: m } : { anchor: "bottomRight" as const, margin: m };
+    // Bottom end; on a phone in portrait centred over the pads (the camera raises the car clear of it), on a phone on
+    // its side beside the pedals (the bottom centre is the car's), from the pedals as laid last tick.
+    const pedals = small && touch && !portrait ? og.ui.bounds("Pedals") : null;
+    const instrument = portrait ? { anchor: "bottom" as const, margin: m, offsetY: -Math.round(124 * k) }
+      : small && touch ? { anchor: "bottomRight" as const, margin: m, offsetX: -Math.round((pedals?.width ?? 188) + og.ui.frameTheme().space.md) }
+      : { anchor: "bottomRight" as const, margin: m };
     og.ui.anchor("Instrument", instrument, () => og.ui.speedometer("Speed", {
       style: look === "pixel" ? "digital" : "tach",
       speed: car.speed, maxSpeed: 340, unit: L("sc.race.kmh"), rpm: car.rpm, maxRpm: MAX_RPM, rpmStep: 1000, redline: 0.85, shiftAt: SHIFT_RPM / MAX_RPM,
@@ -311,7 +315,11 @@ function arcade(small: boolean, portrait: boolean, touch: boolean, k: number, m:
   og.ui.anchor("ItemHud", { anchor: "topRight", margin: m, offsetY: chromeDrop(m) }, () => og.ui.itemSlot("Item", { item: bolt, label: L("sc.race.boost"), size: Math.round((small ? 64 : 84) * k), anchor: null }));
   // A drift chain over the car (the screen's centre, a little right and up); left out on a phone at a large text size.
   const vp = og.ui.frameViewport();
-  if (!(small && t.textScale >= 1.5)) og.ui.driftScore("Drift", { score: 2450, multiplier: 3, total: 18_200, label: L("sc.race.drift"), at: { x: Math.round(vp.width * (portrait ? 0.7 : 0.66)), y: Math.round(vp.height * (portrait ? 0.37 : 0.46)) } });
+  // By the car; in portrait under the round map (as laid last tick), whose column it would otherwise cross.
+  const mapB = portrait ? og.ui.bounds("ArcadeMap") : null;
+  const driftH = og.ui.bounds("DriftHud")?.height ?? 60;
+  const driftY = Math.round(Math.max(vp.height * (portrait ? 0.37 : 0.46), mapB ? mapB.y + mapB.height + t.space.sm + driftH : 0));
+  if (!(small && t.textScale >= 1.5)) og.ui.driftScore("Drift", { score: 2450, multiplier: 3, total: 18_200, label: L("sc.race.drift"), at: { x: Math.round(vp.width * (portrait ? 0.7 : 0.66)), y: driftY } });
   og.ui.anchor("Instrument", { anchor: "bottomRight", margin: m, offsetY: touch ? -Math.round(112 * k) : 0 }, () => og.ui.speedometer("Speed", {
     style: "arcade", speed: speed * 0.62, maxSpeed: 200, unit: L("sc.race.kmh"), boost: 0.7, boostSegments: 4, size: Math.round((small ? 150 : 200) * k), anchor: null,
   }));
