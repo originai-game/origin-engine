@@ -332,11 +332,10 @@ fn every_level_is_cut_into_clusters_that_bound_and_face_their_triangles() {
         // rotate a triangle's corners but must not reverse its winding.
         let triangles = |indices: &[u32]| {
             let mut tris: Vec<_> = indices
-                .chunks_exact(3)
-                .map(|t| {
-                    let [a, b, c] = [t[0], t[1], t[2]];
-                    [a, b, c].min([b, c, a]).min([c, a, b])
-                })
+                .as_chunks::<3>()
+                .0
+                .iter()
+                .map(|&[a, b, c]| [a, b, c].min([b, c, a]).min([c, a, b]))
                 .collect();
             tris.sort_unstable();
             tris
