@@ -135,6 +135,7 @@ impl Renderer {
         ]
         .into_iter()
         .chain(&self.ribbon_pipelines)
+        .chain(self.gpu_trails.iter().flat_map(|g| &g.pipelines))
         {
             p.set_samples(samples);
         }

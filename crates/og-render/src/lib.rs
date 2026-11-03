@@ -137,6 +137,7 @@ mod points;
 mod post;
 mod post_custom;
 mod ribbons;
+mod ribbons_gpu;
 mod scatter;
 mod scene;
 mod shaders;
@@ -462,6 +463,10 @@ pub struct Renderer {
     particles: particles_gpu::ParticleRenderer,
     lights_2d: light2d::Light2dRenderer,
     trails: ribbons::Trails,
+    /// Trails, ribbons and beams expanded on the GPU, with the trails'
+    /// histories stepped in compute (`None`: the device lacks compute or
+    /// storage in the vertex stage, and `trails` builds them on the CPU).
+    gpu_trails: Option<ribbons_gpu::GpuTrails>,
     /// The previous frame's unjittered view-projection (motion vectors).
     prev_view_proj: Option<Mat4>,
     /// A second water surface asked for a planar reflection the renderer

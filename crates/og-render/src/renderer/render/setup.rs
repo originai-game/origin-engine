@@ -15,6 +15,9 @@ impl Renderer {
             self.taa_history = self.taa_history.map(|m| crate::origin::shift_matrix(m, d));
             self.particles.shift(d);
             self.trails.shift(d);
+            if let Some(g) = &mut self.gpu_trails {
+                g.shift(d);
+            }
             self.drawn_origin = scene.origin;
         }
         // A look that switches the stylisation on or off (passes added or

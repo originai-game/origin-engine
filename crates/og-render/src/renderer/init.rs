@@ -746,6 +746,42 @@ impl Renderer {
             ribbon_state(additive),
             ribbon_state(wgpu::BlendState::ALPHA_BLENDING),
         ];
+        // The strips expanded from their points (ribbons_gpu.rs), where
+        // the device can: `vs_strip` reads them from group 2.
+        let gpu_trails = ribbons_gpu::GpuTrails::supported(
+            adapter.get_downlevel_capabilities().flags,
+        )
+        .then(|| {
+            let points = ribbons_gpu::GpuTrails::draw_layout(&device);
+            let strip_pl = pipeline_layout("strip", &[&frame_layout, &sprite_layout, &points]);
+            let strip_state = |blend| {
+                deferred_hdr(
+                    &device,
+                    &strip_pl,
+                    ribbon_shader.clone(),
+                    samples,
+                    move |layout, module| HdrPipeline {
+                        alpha_to_coverage: false,
+                        label: "strip",
+                        layout,
+                        module,
+                        vs: "vs_strip",
+                        fs: "fs",
+                        buffers: &[],
+                        cull: None,
+                        depth_write: false,
+                        depth_compare: wgpu::CompareFunction::LessEqual,
+                        blend: Some(blend),
+                        samples,
+                    },
+                )
+            };
+            let pipelines = [
+                strip_state(additive),
+                strip_state(wgpu::BlendState::ALPHA_BLENDING),
+            ];
+            ribbons_gpu::GpuTrails::new(&device, points, pipelines)
+        });
         let particles = particles_gpu::ParticleRenderer::new(
             &device,
             &frame_layout,
@@ -979,6 +1015,7 @@ impl Renderer {
             particles,
             lights_2d,
             trails: ribbons::Trails::default(),
+            gpu_trails,
             prev_view_proj: None,
             warned_planar: false,
             fx_groups: None,

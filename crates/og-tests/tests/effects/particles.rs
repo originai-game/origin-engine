@@ -344,6 +344,7 @@ fn trails_remember_the_path_for_their_lifetime() {
     let mut scene = RenderScene::new();
     let style = scene.add_trail_style(TrailStyle {
         lifetime: 0.25,
+        width: Curve::linear(0.4, 0.1),
         ..Default::default()
     });
     scene.trails.push(Trail {
@@ -353,29 +354,44 @@ fn trails_remember_the_path_for_their_lifetime() {
         tick: 0,
     });
     scene.camera = Camera::orthographic_2d(Vec2::ZERO, 6.0);
+    scene.environment.background = Background::Color(Vec3::ZERO);
+    scene.post.tonemap = Tonemap::None;
     let mut r = Renderer::new_blocking(&small()).expect("renderer");
-    let mut render =
-        |scene: &RenderScene| r.render(scene, &RenderTarget::Offscreen).expect("render");
-    let mut last = FrameStats::default();
+    // The trail's lit pixels: how many, and the columns they span. The
+    // history lives on the GPU, so what it draws is the evidence.
+    let mut drawn = |scene: &RenderScene| {
+        r.render(scene, &RenderTarget::Offscreen).expect("render");
+        let img = r.read_offscreen().expect("capture");
+        let lit: Vec<u32> = (0..img.width * img.height)
+            .filter(|&i| luma(px(&img, i % img.width, i / img.width)) > 30.0)
+            .map(|i| i % img.width)
+            .collect();
+        let span = lit
+            .iter()
+            .max()
+            .zip(lit.iter().min())
+            .map_or(0, |(a, b)| a - b);
+        (lit.len(), span)
+    };
+    let mut moving = (0, 0);
     for t in 0..10u64 {
         scene.trails[0].tick = t;
         scene.trails[0].position = Vec3::new(t as f32 * 0.2 - 1.0, 0.0, 0.0);
-        last = render(&scene);
+        moving = drawn(&scene);
     }
-    assert_eq!(last.strips, 1);
+    // Moving 0.2 a tick for nine ticks: 1.8 units of path behind the head,
+    // 54 pixels at 30 a unit (inside the 15-tick lifetime).
     assert!(
-        last.strip_segments >= 8,
-        "{} segments while moving",
-        last.strip_segments
+        moving.0 > 150 && moving.1 >= 45,
+        "{moving:?} lit pixels and span while moving"
     );
     // Standing still for longer than the lifetime: the trail collapses.
     scene.trails[0].tick = 40;
-    let still = render(&scene);
-    assert_eq!(still.strips, 0, "a resting trail draws nothing");
+    assert_eq!(drawn(&scene).0, 0, "a resting trail draws nothing");
     // Backwards in time: restarts with a single point.
     scene.trails[0].tick = 5;
     scene.trails[0].position = Vec3::new(2.0, 0.0, 0.0);
-    assert_eq!(render(&scene).strips, 0);
+    assert_eq!(drawn(&scene).0, 0, "a trail sent back in time starts again");
 }
 
 /// A textured beam scrolls with the scene's tick: only its pixels change.

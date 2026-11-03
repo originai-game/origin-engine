@@ -1,5 +1,9 @@
-//! Trails, ribbons and beams: camera-facing strips built on the CPU each
-//! frame and drawn blended in the 3D pass (one draw per texture and blend).
+//! Trails, ribbons and beams: camera-facing strips drawn blended in the 3D
+//! pass (one draw per texture and blend), or in the sprite order at a 2D
+//! trail's layer. Where the device has compute, the trails' histories and
+//! every strip's expansion run on the GPU (`ribbons_gpu.rs`); this module's
+//! [`Trails`] is the path for devices without it, and the description the
+//! GPU path follows.
 //!
 //! - A [`Trail`] is a per-entity history: the renderer remembers the
 //!   positions it was given tick by tick (by `id`) for its style's
@@ -166,14 +170,90 @@ pub(crate) const RIBBON_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::Vertex
     attributes: &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x4],
 };
 
-/// A run of strip vertices drawn with one texture and blend.
+/// A run of strips drawn with one texture and blend.
+#[derive(Clone, Copy)]
 pub(crate) struct RibbonRun {
     pub texture: Option<TextureHandle>,
     pub blend: ParticleBlend,
     /// Drawn in the sprite order at this layer (a 2D trail), not with the 3D scene.
     pub layer: Option<i32>,
+    /// `first`/`count` are [`StripPoint`]s of the strip point buffer, each
+    /// joined to the next in the vertex shader (`vs_strip`), not vertices
+    /// of the strip vertex buffer.
+    pub points: bool,
     pub first: u32,
     pub count: u32,
+}
+
+/// The points a trail remembers at most: a lifetime past this many ticks
+/// drops its oldest points early.
+pub(crate) const MAX_TRAIL_POINTS: u32 = 1024;
+
+/// How many ticks a point of `style` lasts at `tick_rate`.
+pub(crate) fn life_ticks(style: &TrailStyle, tick_rate: f32) -> u64 {
+    (style.lifetime.max(0.0) * tick_rate).ceil() as u64
+}
+
+/// The layer a 2D trail draws at in the sprite order (`None`: with the 3D scene).
+pub(crate) fn trail_layer(trail_layers: &[(u64, i32)], id: u64) -> Option<i32> {
+    trail_layers.iter().find(|(t, _)| *t == id).map(|(_, l)| *l)
+}
+
+/// [`StripPoint::flags`]: the point before is of the same strip.
+pub(crate) const POINT_PREV: u32 = 1;
+/// [`StripPoint::flags`]: the point after is of the same strip (a segment
+/// joins them).
+pub(crate) const POINT_NEXT: u32 = 2;
+/// [`StripPoint::flags`]: the strip is textured.
+pub(crate) const POINT_TEXTURED: u32 = 4;
+
+/// `struct StripPoint` in ribbon.wgsl and trails.wgsl: one point of a
+/// strip, which the vertex shader turns into its edge across the view.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+pub(crate) struct StripPoint {
+    pub position: [f32; 3],
+    pub width: f32,
+    pub color: [f32; 4],
+    /// The texture coordinate along the strip.
+    pub u: f32,
+    /// [`POINT_PREV`], [`POINT_NEXT`], [`POINT_TEXTURED`]; 0: no segment.
+    pub flags: u32,
+    pub pad: [u32; 2],
+}
+
+/// `s` as strip points: u along its length (or its tiles) from the first
+/// point, as [`Trails::emit`] lays it.
+pub(crate) fn strip_points(s: &Strip, out: &mut Vec<StripPoint>) {
+    let n = s.points.len();
+    let lengths = cumulative(&s.points.iter().map(|p| p.position).collect::<Vec<_>>());
+    let total = lengths.last().copied().unwrap_or(0.0).max(1e-6);
+    let textured = if s.texture.is_some() {
+        POINT_TEXTURED
+    } else {
+        0
+    };
+    for (i, (p, &l)) in s.points.iter().zip(&lengths).enumerate() {
+        let u = match s.uv {
+            RibbonUv::Stretch => l / total,
+            RibbonUv::Tile { length } => l / length.max(1e-6),
+        } + s.u_offset;
+        let mut flags = textured;
+        if i > 0 {
+            flags |= POINT_PREV;
+        }
+        if i + 1 < n {
+            flags |= POINT_NEXT;
+        }
+        out.push(StripPoint {
+            position: p.position.to_array(),
+            width: p.width,
+            color: p.color,
+            u,
+            flags,
+            pad: [0; 2],
+        });
+    }
 }
 
 #[derive(Default)]
@@ -201,14 +281,15 @@ pub(crate) struct Trails {
     strips: Vec<Strip>,
 }
 
-struct Strip {
-    layer: Option<i32>,
-    texture: Option<TextureHandle>,
-    blend: ParticleBlend,
-    uv: RibbonUv,
-    points: Vec<RibbonPoint>,
+/// A strip of the frame: a trail's path (the CPU path), a ribbon or a beam.
+pub(crate) struct Strip {
+    pub layer: Option<i32>,
+    pub texture: Option<TextureHandle>,
+    pub blend: ParticleBlend,
+    pub uv: RibbonUv,
+    pub points: Vec<RibbonPoint>,
     /// Added to u (beam scroll).
-    u_offset: f32,
+    pub u_offset: f32,
 }
 
 impl Trails {
@@ -252,7 +333,7 @@ impl Trails {
             let style = styles
                 .get(t.style.index())
                 .ok_or_else(|| format!("trail {}: style {}", t.id, t.style.index()))?;
-            let life_ticks = (style.lifetime.max(0.0) * tick_rate).ceil() as u64;
+            let life_ticks = life_ticks(style, tick_rate);
             let h = self.histories.entry(t.id).or_insert_with(|| TrailHistory {
                 style: t.style.index(),
                 points: VecDeque::new(),
@@ -285,6 +366,7 @@ impl Trails {
                 .points
                 .front()
                 .is_some_and(|&(_, at)| t.tick.saturating_sub(at) > life_ticks)
+                || h.points.len() > MAX_TRAIL_POINTS as usize
             {
                 h.points.pop_front();
             }
@@ -313,10 +395,7 @@ impl Trails {
                 })
                 .collect();
             strips.push(Strip {
-                layer: trail_layers
-                    .iter()
-                    .find(|(id, _)| *id == t.id)
-                    .map(|(_, l)| *l),
+                layer: trail_layer(trail_layers, t.id),
                 texture: style.texture,
                 blend: style.blend,
                 uv: style.uv,
@@ -326,54 +405,7 @@ impl Trails {
         }
         let frame = self.frame;
         self.histories.retain(|_, h| h.seen == frame);
-        for r in ribbons.iter().filter(|r| r.points.len() >= 2) {
-            strips.push(Strip {
-                layer: None,
-                texture: r.texture,
-                blend: r.blend,
-                uv: r.uv,
-                points: r.points.clone(),
-                u_offset: 0.0,
-            });
-        }
-        let time = tick as f32 / tick_rate;
-        for b in beams {
-            let segments = b.segments.clamp(1, 256);
-            let axis = b.end - b.start;
-            let dir = axis.normalize_or(Vec3::Y);
-            let helper = if dir.y.abs() < 0.99 { Vec3::Y } else { Vec3::X };
-            let side = dir.cross(helper).normalize();
-            let up = dir.cross(side);
-            let seed = hash_seed(b.seed) ^ (tick as u32).wrapping_mul(0x85eb_ca6b);
-            let points = (0..=segments)
-                .map(|i| {
-                    let f = i as f32 / segments as f32;
-                    let mut p = b.start + axis * f;
-                    if b.jitter > 0.0 && i > 0 && i < segments {
-                        // Zero at the ends, a sine envelope between.
-                        let env = (f * std::f32::consts::PI).sin();
-                        p += (side * noise1(f * 5.0, seed) + up * noise1(f * 5.0 + 17.0, seed))
-                            * b.jitter
-                            * env;
-                    }
-                    RibbonPoint {
-                        position: p,
-                        width: b.width,
-                        color: b.color,
-                    }
-                })
-                .collect();
-            strips.push(Strip {
-                layer: None,
-                texture: b.texture,
-                blend: b.blend,
-                uv: RibbonUv::Tile {
-                    length: 1.0 / b.tile.max(1e-6),
-                },
-                points,
-                u_offset: -time * b.scroll,
-            });
-        }
+        strips.extend(fixed_strips(ribbons, beams, tick, tick_rate));
         // Group by (texture, blend) for one draw each.
         // (Layered strips after the 3D ones, by layer: each is its own run.)
         og_core::sort::sort_by_key(&mut strips, |s| (s.layer, s.texture, s.blend as u8));
@@ -403,6 +435,7 @@ impl Trails {
                     texture: s.texture,
                     blend: s.blend,
                     layer: s.layer,
+                    points: false,
                     first,
                     count,
                 }),
@@ -410,6 +443,66 @@ impl Trails {
         }
         out
     }
+}
+
+/// The ribbons' and beams' strips of a frame at `tick` (a beam's jitter
+/// changes every tick, its texture scrolls with the tick's time).
+pub(crate) fn fixed_strips(
+    ribbons: &[Ribbon],
+    beams: &[Beam],
+    tick: u64,
+    tick_rate: f32,
+) -> Vec<Strip> {
+    let mut strips = Vec::new();
+    for r in ribbons.iter().filter(|r| r.points.len() >= 2) {
+        strips.push(Strip {
+            layer: None,
+            texture: r.texture,
+            blend: r.blend,
+            uv: r.uv,
+            points: r.points.clone(),
+            u_offset: 0.0,
+        });
+    }
+    let time = tick as f32 / tick_rate;
+    for b in beams {
+        let segments = b.segments.clamp(1, 256);
+        let axis = b.end - b.start;
+        let dir = axis.normalize_or(Vec3::Y);
+        let helper = if dir.y.abs() < 0.99 { Vec3::Y } else { Vec3::X };
+        let side = dir.cross(helper).normalize();
+        let up = dir.cross(side);
+        let seed = hash_seed(b.seed) ^ (tick as u32).wrapping_mul(0x85eb_ca6b);
+        let points = (0..=segments)
+            .map(|i| {
+                let f = i as f32 / segments as f32;
+                let mut p = b.start + axis * f;
+                if b.jitter > 0.0 && i > 0 && i < segments {
+                    // Zero at the ends, a sine envelope between.
+                    let env = (f * std::f32::consts::PI).sin();
+                    p += (side * noise1(f * 5.0, seed) + up * noise1(f * 5.0 + 17.0, seed))
+                        * b.jitter
+                        * env;
+                }
+                RibbonPoint {
+                    position: p,
+                    width: b.width,
+                    color: b.color,
+                }
+            })
+            .collect();
+        strips.push(Strip {
+            layer: None,
+            texture: b.texture,
+            blend: b.blend,
+            uv: RibbonUv::Tile {
+                length: 1.0 / b.tile.max(1e-6),
+            },
+            points,
+            u_offset: -time * b.scroll,
+        });
+    }
+    strips
 }
 
 fn cumulative(points: &[Vec3]) -> Vec<f32> {

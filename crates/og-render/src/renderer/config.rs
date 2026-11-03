@@ -493,7 +493,10 @@ pub struct FrameStats {
     pub particles_cpu: u32,
     pub particle_ticks: u32,
     pub particle_collision_skipped: u32,
-    /// Trail, ribbon and beam strips drawn, and their segments.
+    /// Trail, ribbon and beam strips submitted, and their segments. With
+    /// compute, a trail's history is on the GPU: it counts as a strip from
+    /// its first frame, and its segments are its ring's (the points its
+    /// lifetime can hold), drawn or not.
     pub strips: u32,
     pub strip_segments: u32,
     /// Line segments and points drawn (`lines.rs`; wireframe edges included).

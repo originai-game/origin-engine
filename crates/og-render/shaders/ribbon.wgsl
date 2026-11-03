@@ -1,7 +1,13 @@
-// Trails, ribbons and beams: camera-facing strips built on the CPU,
-// blended into the HDR target after the opaque scene (depth tested, no
-// depth write). u runs along the strip, v across it. Untextured strips get a
-// soft edge across v. Prepended by frame.wgsl.
+// Trails, ribbons and beams: camera-facing strips blended into the HDR
+// target after the opaque scene (depth tested, no depth write). u runs
+// along the strip, v across it. Untextured strips get a soft edge across v.
+// Prepended by frame.wgsl.
+//
+// `vs_strip` turns the strip points (ribbons_gpu.rs; a trail's written by
+// trails.wgsl) into two triangles a segment facing the bound camera, so a
+// view's camera draws the same points facing its own eye. `vs` draws
+// vertices built on the CPU: the 2D water's columns, and every strip where
+// the device has no compute (ribbons.rs `Trails::emit`).
 
 @group(1) @binding(0) var ribbon_tex: texture_2d<f32>;
 @group(1) @binding(1) var ribbon_sampler: sampler;
@@ -28,6 +34,64 @@ fn vs(r: RibbonIn) -> RibbonOut {
   o.color = r.color;
   o.textured = r.extra.y;
   o.world = r.position_v.xyz;
+  return o;
+}
+
+struct StripPoint {
+  position: vec3<f32>,
+  width: f32,
+  color: vec4<f32>,
+  u: f32,
+  flags: u32,          // 1: has a point before, 2: after, 4: textured
+  pad0: u32,
+  pad1: u32,
+};
+
+@group(2) @binding(0) var<storage, read> strip_points: array<StripPoint>;
+
+fn strip_dir(v: vec3<f32>, fallback: vec3<f32>) -> vec3<f32> {
+  let l = length(v);
+  if (l > 0.0) {
+    return v / l;
+  }
+  return fallback;
+}
+
+// Vertex 6 i + k: corner k of segment i (point i to point i + 1), in the
+// order `Trails::emit` lays them: edges a (v 0) and b (v 1) of the points,
+// a0 b0 b1, a0 b1 a1. A point without a next draws nothing.
+@vertex
+fn vs_strip(@builtin(vertex_index) vi: u32) -> RibbonOut {
+  var o: RibbonOut;
+  let seg = vi / 6u;
+  let k = vi % 6u;
+  if ((strip_points[seg].flags & 2u) == 0u) {
+    o.clip = vec4<f32>(0.0, 0.0, 0.0, 1.0);
+    o.uv = vec2<f32>(0.0);
+    o.color = vec4<f32>(0.0);
+    o.textured = 0.0;
+    o.world = vec3<f32>(0.0);
+    return o;
+  }
+  let far = k == 2u || k == 4u || k == 5u;
+  let plus = k == 1u || k == 2u || k == 4u;
+  let i = select(seg, seg + 1u, far);
+  let p = strip_points[i];
+  let prev = strip_points[select(i, i - 1u, (p.flags & 1u) != 0u)].position;
+  let next = strip_points[select(i, i + 1u, (p.flags & 2u) != 0u)].position;
+  let tangent = strip_dir(next - prev, vec3<f32>(1.0, 0.0, 0.0));
+  let forward = frame.view_forward.xyz;
+  var to_eye = -forward;
+  if (frame.view_pos.w < 0.5) {
+    to_eye = strip_dir(frame.view_pos.xyz - p.position, -forward);
+  }
+  let side = strip_dir(cross(tangent, to_eye), vec3<f32>(0.0, 1.0, 0.0)) * (p.width * 0.5);
+  let world = p.position + select(-side, side, plus);
+  o.clip = frame.view_proj * vec4<f32>(world, 1.0);
+  o.uv = vec2<f32>(p.u, select(0.0, 1.0, plus));
+  o.color = p.color;
+  o.textured = select(0.0, 1.0, (p.flags & 4u) != 0u);
+  o.world = world;
   return o;
 }
 

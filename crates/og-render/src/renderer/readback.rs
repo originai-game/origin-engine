@@ -39,6 +39,10 @@ impl Renderer {
                 &self.ribbon_pipelines[0],
                 &self.ribbon_pipelines[1],
             ])
+            || self
+                .gpu_trails
+                .as_ref()
+                .is_some_and(|g| deferred::warm_one(&[&g.pipelines[0], &g.pipelines[1]]))
             || self.lights_2d.warm()
             || self.glass.warm()
             || (WORLD_3D && self.water.warm())

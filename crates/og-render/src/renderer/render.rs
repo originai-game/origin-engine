@@ -268,9 +268,20 @@ impl Renderer {
         };
         let glass_on = self.prepare_frame_overlay(scene, &overlay_frame);
         let line_frame = self.prepare_frame_lines(scene, &cam);
-        let mut ribbon_frame = self
-            .trails
-            .build(
+        let mut ribbon_frame = match &mut self.gpu_trails {
+            Some(g) => g.build(
+                &self.device,
+                &self.queue,
+                scene.id(),
+                scene.trail_styles(),
+                &scene.trails,
+                &scene.trail_layers,
+                &scene.ribbons,
+                &scene.beams,
+                scene.tick,
+                scene.tick_rate,
+            ),
+            None => self.trails.build(
                 scene.id(),
                 scene.trail_styles(),
                 &scene.trails,
@@ -282,8 +293,9 @@ impl Renderer {
                 camera.position,
                 cam.forward,
                 cam.orthographic,
-            )
-            .map_err(RenderError::InvalidHandle)?;
+            ),
+        }
+        .map_err(RenderError::InvalidHandle)?;
         for run in &ribbon_frame.runs {
             if let Some(t) = run.texture
                 && t.index() >= self.cache.textures.len()
@@ -311,11 +323,17 @@ impl Renderer {
             Projection::Perspective { .. } => None,
         };
         water::water_2d_strips(&scene.water_2d, &mut ribbon_frame);
-        // Each view's strips facing its own eye (views.rs), after the main
-        // camera's in the strip buffer.
+        // Each view's strips facing its own eye (views.rs): the same strip
+        // points and 2D water (the vertex shader faces the view's camera),
+        // or, built on the CPU, its own after the main camera's in the
+        // strip buffer.
+        let gpu_strips = self.gpu_trails.is_some();
         let view_ribbons: Vec<Vec<ribbons::RibbonRun>> = view_plans
             .iter()
             .map(|p| {
+                if gpu_strips {
+                    return ribbon_frame.runs.clone();
+                }
                 let mut f = self
                     .trails
                     .emit(p.position, p.frame.forward, p.frame.orthographic);
@@ -337,7 +355,7 @@ impl Renderer {
             .filter_map(|r| {
                 Some(sprites::LayeredStrip {
                     layer: r.layer?,
-                    source: RunSource::Strip(r.blend as u8, r.texture),
+                    source: RunSource::Strip(r.blend as u8, r.texture, r.points),
                     first: r.first,
                     count: r.count,
                 })
@@ -405,7 +423,7 @@ impl Renderer {
                 .filter_map(|r| {
                     Some(sprites::LayeredStrip {
                         layer: r.layer?,
-                        source: RunSource::Strip(r.blend as u8, r.texture),
+                        source: RunSource::Strip(r.blend as u8, r.texture, r.points),
                         first: r.first,
                         count: r.count,
                     })

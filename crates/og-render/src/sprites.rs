@@ -165,8 +165,10 @@ pub(crate) enum RunSource {
     Particles(u32),
     Font(FontHandle),
     /// A 2D trail's strip: `first`/`count` are vertices of the ribbon
-    /// buffer; the blend is `ParticleBlend as u8`.
-    Strip(u8, Option<TextureHandle>),
+    /// buffer, or strip points when the last field is true
+    /// ([`crate::ribbons::RibbonRun::points`]); the blend is
+    /// `ParticleBlend as u8`.
+    Strip(u8, Option<TextureHandle>, bool),
     /// A 2D fluid's metaball composite (the fluid's index this frame).
     Metaballs(u8),
     /// Sprites drawn from layers of a texture array, and their blend.

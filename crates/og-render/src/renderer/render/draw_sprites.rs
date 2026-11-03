@@ -45,28 +45,8 @@ impl Renderer {
                 current = None;
                 continue;
             }
-            if let RunSource::Strip(blend, texture) = source {
-                pass.set_pipeline(
-                    &self.ribbon_pipelines[usize::from(blend != ParticleBlend::Additive as u8)],
-                );
-                pass.set_bind_group(
-                    1,
-                    match texture {
-                        None => &self.white_sprite_group,
-                        Some(t) => self.cache.ribbon_groups[t.index()]
-                            .as_ref()
-                            .expect("made before the pass"),
-                    },
-                    &[],
-                );
-                let stride = std::mem::size_of::<ribbons::RibbonVertex>() as u64;
-                let start = run.first as u64 * stride;
-                pass.set_vertex_buffer(
-                    0,
-                    self.ribbon_buffer
-                        .slice(start..start + run.count as u64 * stride),
-                );
-                pass.draw(0..run.count, 0..1);
+            if let RunSource::Strip(blend, texture, points) = source {
+                self.draw_strip_run(pass, blend, texture, points, run.first, run.count);
                 draws += 1;
                 // The sprite pipeline and its groups again.
                 pass.set_bind_group(2, fx, &[]);
