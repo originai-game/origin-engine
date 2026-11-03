@@ -11,7 +11,9 @@ use crate::{WIND_WAVELENGTH, Wind};
 use glam::Vec3;
 
 /// Binding-free deformation include for meshlet and conventional vertex paths.
+/// Prepend [`WIND_WGSL`] once: the gust sampler is shared with grass.
 pub const WGSL: &str = wgsl!("meshlet_foliage.wgsl");
+pub const WIND_WGSL: &str = wgsl!("grass_common.wgsl");
 
 /// `_OG_PIVOT` and `_OG_ANCHOR`, in mesh-local space. The eight floats travel
 /// together through cooking and vertex remapping, separately from the ordinary
@@ -35,7 +37,7 @@ impl Default for FoliageVertex {
 }
 
 /// `meshlet_foliage.wgsl`'s explicit input; no bindings in that include.
-/// Build the previous value from the last *drawn* wind and phases, with the
+/// Build the previous value from the last *drawn* wind, tick and rate, with the
 /// current render origin (previous transforms have already been rebased).
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
@@ -45,10 +47,13 @@ pub struct FoliageWind {
     pub gust_top: [f32; 4],
     /// xyz: render origin; w: travelling-wave wavenumber.
     pub origin: [f32; 4],
+    /// Its own drawn state's gust scroll, not the current wind at an old tick.
+    field: crate::grass::GrassWindGpu,
 }
 
 impl FoliageWind {
-    pub fn new(wind: Wind, phase: [f32; 2], top: f32, origin: Vec3) -> Self {
+    pub fn new(wind: Wind, tick: u64, tick_rate: f32, top: f32, origin: Vec3) -> Self {
+        let phase = crate::wind_phases(&wind, tick, tick_rate);
         let direction = Vec3::new(wind.direction.x, 0.0, wind.direction.z).normalize_or(Vec3::X);
         Self {
             dir_strength: direction.extend(wind.strength.max(0.0)).to_array(),
@@ -56,6 +61,7 @@ impl FoliageWind {
             origin: origin
                 .extend(std::f32::consts::TAU / WIND_WAVELENGTH)
                 .to_array(),
+            field: crate::grass::wind_gpu(Some(wind), tick, tick, tick_rate, origin),
         }
     }
 }

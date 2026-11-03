@@ -9,6 +9,7 @@ struct FoliageWind {
   dir_strength: vec4f, // xyz world wind direction, w lean
   gust_top: vec4f,     // gust, model height, two reduced wind_phases
   origin: vec4f,       // xyz current render origin, w wavenumber
+  field: GrassWind,   // this drawn state's shared grass gust field
 };
 
 // SeedThree's canopy dome, blended before the inverse-transpose and normal
@@ -30,11 +31,14 @@ fn foliage_rotate(p: vec3f, axis: vec3f, angle: f32) -> vec3f {
   return p * c + cross(axis, p) * sin(angle) + axis * dot(axis, p) * (1.0 - c);
 }
 
-// Identical travelling wave to scatter_sway; the grass shared-wind include
-// replaces this sampler when R6's gust field lands. Detail phases stay here.
+// The same travelling-wave/gust-patch mix as grass_bend. This field is
+// built independently for each drawn state, so sample its current half.
 fn foliage_wave(at: vec3f, wind: FoliageWind) -> f32 {
-  let x = wind.origin.w * dot(at + wind.origin.xyz, wind.dir_strength.xyz);
-  return (sin(x - wind.gust_top.z) + 0.5 * sin(2.3 * x + 1.7 - wind.gust_top.w)) / 1.5;
+  let world = at + wind.origin.xyz;
+  let x = wind.origin.w * dot(world, wind.dir_strength.xyz);
+  let wave = (sin(x - wind.gust_top.z) + 0.5 * sin(2.3 * x + 1.7 - wind.gust_top.w)) / 1.5;
+  let gust = grass_gust(wind.field, world.xz, false);
+  return clamp(0.5 * wave + 1.4 * (gust - 0.5), -1.0, 1.0);
 }
 
 // World-space offset, added to model * p (not transformed a second time).

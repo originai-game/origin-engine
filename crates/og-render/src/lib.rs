@@ -473,8 +473,8 @@ pub struct Renderer {
     prev_view_proj: Option<Mat4>,
     /// The last drawn clock, including frames with no simulation tick.
     previous_time: Option<f32>,
-    /// The last drawn wind, including its strength/direction and reduced phases.
-    previous_wind: Option<(Wind, [f32; 2])>,
+    /// The last drawn wind, tick and tick rate, including paused frames.
+    previous_wind: Option<(Wind, u64, f32)>,
     /// A second water surface asked for a planar reflection the renderer
     /// does not draw ([`RenderDesc::planar_reflections`] 1), and the log
     /// said so once.

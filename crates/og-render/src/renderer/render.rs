@@ -3925,7 +3925,7 @@ impl Renderer {
             strength: 0.0,
             ..Wind::default()
         });
-        self.previous_wind = Some((wind, wind_phases(&wind, scene.tick, scene.tick_rate)));
+        self.previous_wind = Some((wind, scene.tick, scene.tick_rate));
         self.frame_index += 1;
         // The first frame made the scene's pipelines: keep them now, not
         // only when the renderer is dropped (a killed process never is).
