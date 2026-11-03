@@ -6468,6 +6468,107 @@ module ui {
     param desc RtsCommandsDesc "The console, the pages, the groups' keys and the targeting command."
     returns RtsCommandsResult
   }
+  struct PhotoTab {
+    doc "One tab of photo mode's controls (Camera, Lens, Filters, Frames)."
+    desc true
+    field key String "Its key: its tab's element id; the controls' `tab`. The keys `filters` and `frames` show the filter and frame tiles."
+    field label String "Its word."
+  }
+  struct PhotoControl {
+    doc "One slider of photo mode (field of view, roll, focus distance, aperture, exposure, vignette)."
+    desc true
+    field key String "Its key: its row's element id."
+    field tab String "The tab it stands under."
+    field label String "Its name."
+    field value f32 "Its value, from game state."
+    field min f32 "Its low end."
+    field max f32 "Its high end." {
+      default 1
+    }
+    field step f32 "Its step; 0 is continuous."
+    field unit String "A unit after its value (°, m, EV; a word's unit stands after a space); `%` writes a 0-to-1 value as a percent."
+    field digits u32 "Decimals in its value."
+    field origin Option.f32 "A centre the fill grows from (roll 0, exposure 0); null fills from the low end."
+  }
+  struct PhotoLook {
+    doc "A filter or a frame: its tile shows the picture as it would come out."
+    desc true
+    field key String "Its key: its tile's element id."
+    field name String "Its name under the tile."
+    field image Option.Texture "Its thumbnail (the game's own render of the shot through it); null draws the style's placeholder."
+    field tint String "A wash over the thumbnail (`#rrggbbaa`) where the game has no render of its own; empty is none."
+  }
+  struct PhotoSet {
+    doc "A slider moved."
+    field key String "The control."
+    field value f32 "Its new value."
+  }
+  struct PhotoModeDesc {
+    doc "Photo mode's controls over the game's paused, free camera: the tabs, the sliders, the filters and frames, the grid and the shutter."
+    desc true
+    field tabs List.PhotoTab "The tabs, start to end."
+    field tab String "The tab shown."
+    field controls List.PhotoControl "Every slider, each under its tab."
+    field filters List.PhotoLook "The filters, for the tab `filters`; the first is usually None."
+    field filter String "The filter applied (the game draws it)."
+    field strength Option.f32 "The filter's strength, 0 to 1, a slider under the tiles; null shows none." {
+      unit ratio
+    }
+    field frames List.PhotoLook "The frames, for the tab `frames`."
+    field frame String "The frame chosen."
+    field frameImage Option.Texture "The chosen frame's art drawn over the whole picture (transparent where the picture shows); null draws none."
+    field grid bool "The rule of thirds over the picture."
+    field hidden bool "The controls are hidden for a clean shot: only a quiet hint stays, and any press, Back or the hide action brings them back."
+    field flashMs f32 "How long the shutter's flash lasts after Capture." {
+      default 260
+      unit ms
+    }
+    field title String "The panel's title." {
+      default "Photo mode"
+    }
+    field captureLabel String "The shutter's name." {
+      default "Capture"
+    }
+    field hideLabel String "Hide UI." {
+      default "Hide UI"
+    }
+    field gridLabel String "The grid's toggle." {
+      default "Grid"
+    }
+    field resetLabel String "Reset the sliders." {
+      default "Reset"
+    }
+    field exitLabel String "Leave photo mode." {
+      default "Exit"
+    }
+    field strengthLabel String "The filter strength's name." {
+      default "Strength"
+    }
+    field hiddenHint String "The hint while hidden." {
+      default "Press any key to show the controls"
+    }
+  }
+  struct PhotoModeResult {
+    doc "What the player asked for this tick, for the game to apply."
+    field tab Option.String "Another tab was pressed (or the tab actions stepped)."
+    field set Option.PhotoSet "A slider moved."
+    field filter Option.String "A filter's tile was pressed."
+    field strength Option.f32 "The filter strength moved."
+    field frame Option.String "A frame's tile was pressed."
+    field grid bool "The grid's toggle was pressed: flip it."
+    field hide bool "Hide UI was pressed (or the details action), or the hidden controls were asked back: flip `hidden`."
+    field capture bool "The shutter was pressed, or confirm while hidden: the game takes the shot (the flash plays here)."
+    field reset bool "Reset was pressed: the sliders to their defaults."
+    field exit bool "Exit or Back was pressed (Back while hidden only brings the controls back)."
+  }
+  fn photoMode {
+    doc "Photo mode's controls (Horizon Forbidden West, Ghost of Tsushima, Forza Horizon) over the game's own paused view, which this never draws: on a desktop a glass panel at the end side with the title, the tabs (a lit underline on the one shown; the tab actions step them), the tab's sliders (og.ui.valueSlider), each its name, its reading and a track filling from its origin, or for `filters` and `frames` a grid of tiles showing the shot through each, the chosen one rimmed and ticked, with the filter's strength under them; at the foot the shutter, a large round button, between Grid, Hide UI, Reset and Exit as round icon buttons with their names. The rule of thirds and the chosen frame's art lie over the whole picture. Hidden, only a quiet hint stays at the foot; any press, Back, or the hide action brings the controls back, and confirm takes the shot. The shutter's flash (a white wash fading over flashMs, still under reduced motion) follows a capture. On a phone in portrait the panel is a sheet at the foot over the lower third, its tabs a row of chips, and the shutter row under it."
+    doc "Parts: Photo.panel, Photo.tab[selected], Photo.tile[selected], Photo.shutter, Photo.tool[on], Photo.grid, Photo.frame, Photo.flash, Photo.hint. Slots: each look's thumbnail (thumbnail), the frame (overlay). Sounds: tab on a tab, select on a tile, confirm on the shutter, toggle on Grid and Hide. Accessibility: the panel a region named by its title, the tabs a tablist, each slider a slider, each tile a radio, the shutter a button. Probe ids: <id>/Panel/Tabs/<tab>, <id>/Panel/Rows/<control>, <id>/Panel/Rows/Line#<row>/<look>, <id>/Panel/Rows/Strength, <id>/Bar/Shutter, <id>/Bar/Grid, <id>/Bar/Hide, <id>/Bar/Reset, <id>/Bar/Exit, <id>/Hint."
+    host false
+    param id String "Its id."
+    param desc PhotoModeDesc "The tabs, sliders, looks and the state."
+    returns PhotoModeResult
+  }
   # ── end of the genre patterns ────────────────────────────────────────
 
   # ── the UI kit: screen templates (TypeScript over the calls above) ──────

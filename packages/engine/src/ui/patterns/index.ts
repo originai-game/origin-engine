@@ -22,6 +22,7 @@ import { garage } from "./garage.ts";
 import { ledger, overlayBar } from "./ledger.ts";
 import { chat } from "./chat.ts";
 import { rtsCommands } from "./commands.ts";
+import { photoMode } from "./photo.ts";
 
 export const patterns = Object.freeze({
   cardHand,
@@ -54,4 +55,5 @@ export const patterns = Object.freeze({
   overlayBar,
   chat,
   rtsCommands,
+  photoMode,
 });

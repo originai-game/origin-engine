@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2387 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2394 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -1612,6 +1612,7 @@ Field units the docs and Tune use.
 | [`og.ui.pause`](ui.md#fn-pause) | function | ui | `og_ui_pause` |
 | [`og.ui.paused`](ui.md#fn-paused) | function | ui | `og_ui_paused` |
 | [`og.ui.pauseMenu`](ui.md#fn-pauseMenu) | function | ui | — |
+| [`og.ui.photoMode`](ui.md#fn-photoMode) | function | ui | — |
 | [`og.ui.placementGhost`](ui.md#fn-placementGhost) | function | ui | — |
 | [`og.ui.platformerHud`](ui.md#fn-platformerHud) | function | ui | — |
 | [`og.ui.play`](ui.md#fn-play) | function | ui | `og_ui_play` |
@@ -1820,6 +1821,12 @@ Field units the docs and Tune use.
 | [`PathSample`](path.md#type-PathSample) | struct | path | — |
 | [`PauseMenuDesc`](ui.md#type-PauseMenuDesc) | desc struct | ui | — |
 | [`PercentSize`](ui.md#type-PercentSize) | struct | ui | — |
+| [`PhotoControl`](ui.md#type-PhotoControl) | desc struct | ui | — |
+| [`PhotoLook`](ui.md#type-PhotoLook) | desc struct | ui | — |
+| [`PhotoModeDesc`](ui.md#type-PhotoModeDesc) | desc struct | ui | — |
+| [`PhotoModeResult`](ui.md#type-PhotoModeResult) | struct | ui | — |
+| [`PhotoSet`](ui.md#type-PhotoSet) | struct | ui | — |
+| [`PhotoTab`](ui.md#type-PhotoTab) | desc struct | ui | — |
 | [`PhysicsPhase`](physics.md#type-PhysicsPhase) | struct | physics | — |
 | [`PhysicsStats`](physics.md#type-PhysicsStats) | struct | physics | — |
 | [`PickedColor`](ui.md#type-PickedColor) | desc struct | ui | — |

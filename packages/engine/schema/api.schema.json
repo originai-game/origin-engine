@@ -11579,6 +11579,12 @@
         "CommandPage",
         "RtsCommandsDesc",
         "RtsCommandsResult",
+        "PhotoTab",
+        "PhotoControl",
+        "PhotoLook",
+        "PhotoSet",
+        "PhotoModeDesc",
+        "PhotoModeResult",
         "MenuItem",
         "MenuResult",
         "MainMenuDesc",
@@ -15879,6 +15885,27 @@
             }
           ],
           "returns": "RtsCommandsResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "photoMode",
+          "doc": "Photo mode's controls (Horizon Forbidden West, Ghost of Tsushima, Forza Horizon) over the game's own paused view, which this never draws: on a desktop a glass panel at the end side with the title, the tabs (a lit underline on the one shown; the tab actions step them), the tab's sliders (og.ui.valueSlider), each its name, its reading and a track filling from its origin, or for `filters` and `frames` a grid of tiles showing the shot through each, the chosen one rimmed and ticked, with the filter's strength under them; at the foot the shutter, a large round button, between Grid, Hide UI, Reset and Exit as round icon buttons with their names. The rule of thirds and the chosen frame's art lie over the whole picture. Hidden, only a quiet hint stays at the foot; any press, Back, or the hide action brings the controls back, and confirm takes the shot. The shutter's flash (a white wash fading over flashMs, still under reduced motion) follows a capture. On a phone in portrait the panel is a sheet at the foot over the lower third, its tabs a row of chips, and the shutter row under it.\nParts: Photo.panel, Photo.tab[selected], Photo.tile[selected], Photo.shutter, Photo.tool[on], Photo.grid, Photo.frame, Photo.flash, Photo.hint. Slots: each look's thumbnail (thumbnail), the frame (overlay). Sounds: tab on a tab, select on a tile, confirm on the shutter, toggle on Grid and Hide. Accessibility: the panel a region named by its title, the tabs a tablist, each slider a slider, each tile a radio, the shutter a button. Probe ids: <id>/Panel/Tabs/<tab>, <id>/Panel/Rows/<control>, <id>/Panel/Rows/Line#<row>/<look>, <id>/Panel/Rows/Strength, <id>/Bar/Shutter, <id>/Bar/Grid, <id>/Bar/Hide, <id>/Bar/Reset, <id>/Bar/Exit, <id>/Hint.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "PhotoModeDesc",
+              "optional": true,
+              "doc": "The tabs, sliders, looks and the state."
+            }
+          ],
+          "returns": "PhotoModeResult",
           "publish": true,
           "host": false
         },
@@ -63506,6 +63533,383 @@
         "deselect",
         "mapClicked",
         "cancelled"
+      ],
+      "additionalProperties": false
+    },
+    "PhotoTab": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One tab of photo mode's controls (Camera, Lens, Filters, Frames).",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key: its tab's element id; the controls' `tab`. The keys `filters` and `frames` show the filter and frame tiles.",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "Its word.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "PhotoControl": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One slider of photo mode (field of view, roll, focus distance, aperture, exposure, vignette).",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key: its row's element id.",
+          "default": ""
+        },
+        "tab": {
+          "type": "string",
+          "description": "The tab it stands under.",
+          "default": ""
+        },
+        "label": {
+          "type": "string",
+          "description": "Its name.",
+          "default": ""
+        },
+        "value": {
+          "type": "number",
+          "description": "Its value, from game state.",
+          "default": 0
+        },
+        "min": {
+          "type": "number",
+          "description": "Its low end.",
+          "default": 0
+        },
+        "max": {
+          "type": "number",
+          "description": "Its high end.",
+          "default": 1
+        },
+        "step": {
+          "type": "number",
+          "description": "Its step; 0 is continuous.",
+          "default": 0
+        },
+        "unit": {
+          "type": "string",
+          "description": "A unit after its value (°, m, EV; a word's unit stands after a space); `%` writes a 0-to-1 value as a percent.",
+          "default": ""
+        },
+        "digits": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Decimals in its value.",
+          "default": 0
+        },
+        "origin": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A centre the fill grows from (roll 0, exposure 0); null fills from the low end.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "PhotoLook": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A filter or a frame: its tile shows the picture as it would come out.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key: its tile's element id.",
+          "default": ""
+        },
+        "name": {
+          "type": "string",
+          "description": "Its name under the tile.",
+          "default": ""
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its thumbnail (the game's own render of the shot through it); null draws the style's placeholder.",
+          "default": null
+        },
+        "tint": {
+          "type": "string",
+          "description": "A wash over the thumbnail (`#rrggbbaa`) where the game has no render of its own; empty is none.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "PhotoSet": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A slider moved.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "The control."
+        },
+        "value": {
+          "type": "number",
+          "description": "Its new value."
+        }
+      },
+      "required": [
+        "key",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "PhotoModeDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "Photo mode's controls over the game's paused, free camera: the tabs, the sliders, the filters and frames, the grid and the shutter.",
+      "type": "object",
+      "properties": {
+        "tabs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PhotoTab"
+          },
+          "description": "The tabs, start to end.",
+          "default": []
+        },
+        "tab": {
+          "type": "string",
+          "description": "The tab shown.",
+          "default": ""
+        },
+        "controls": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PhotoControl"
+          },
+          "description": "Every slider, each under its tab.",
+          "default": []
+        },
+        "filters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PhotoLook"
+          },
+          "description": "The filters, for the tab `filters`; the first is usually None.",
+          "default": []
+        },
+        "filter": {
+          "type": "string",
+          "description": "The filter applied (the game draws it).",
+          "default": ""
+        },
+        "strength": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The filter's strength, 0 to 1, a slider under the tiles; null shows none.",
+          "default": null,
+          "x-og-unit": "ratio"
+        },
+        "frames": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PhotoLook"
+          },
+          "description": "The frames, for the tab `frames`.",
+          "default": []
+        },
+        "frame": {
+          "type": "string",
+          "description": "The frame chosen.",
+          "default": ""
+        },
+        "frameImage": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Texture"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The chosen frame's art drawn over the whole picture (transparent where the picture shows); null draws none.",
+          "default": null
+        },
+        "grid": {
+          "type": "boolean",
+          "description": "The rule of thirds over the picture.",
+          "default": false
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "The controls are hidden for a clean shot: only a quiet hint stays, and any press, Back or the hide action brings them back.",
+          "default": false
+        },
+        "flashMs": {
+          "type": "number",
+          "description": "How long the shutter's flash lasts after Capture.",
+          "default": 260,
+          "x-og-unit": "ms"
+        },
+        "title": {
+          "type": "string",
+          "description": "The panel's title.",
+          "default": "Photo mode"
+        },
+        "captureLabel": {
+          "type": "string",
+          "description": "The shutter's name.",
+          "default": "Capture"
+        },
+        "hideLabel": {
+          "type": "string",
+          "description": "Hide UI.",
+          "default": "Hide UI"
+        },
+        "gridLabel": {
+          "type": "string",
+          "description": "The grid's toggle.",
+          "default": "Grid"
+        },
+        "resetLabel": {
+          "type": "string",
+          "description": "Reset the sliders.",
+          "default": "Reset"
+        },
+        "exitLabel": {
+          "type": "string",
+          "description": "Leave photo mode.",
+          "default": "Exit"
+        },
+        "strengthLabel": {
+          "type": "string",
+          "description": "The filter strength's name.",
+          "default": "Strength"
+        },
+        "hiddenHint": {
+          "type": "string",
+          "description": "The hint while hidden.",
+          "default": "Press any key to show the controls"
+        }
+      },
+      "additionalProperties": false
+    },
+    "PhotoModeResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What the player asked for this tick, for the game to apply.",
+      "type": "object",
+      "properties": {
+        "tab": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Another tab was pressed (or the tab actions stepped)."
+        },
+        "set": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PhotoSet"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A slider moved."
+        },
+        "filter": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A filter's tile was pressed."
+        },
+        "strength": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The filter strength moved."
+        },
+        "frame": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A frame's tile was pressed."
+        },
+        "grid": {
+          "type": "boolean",
+          "description": "The grid's toggle was pressed: flip it."
+        },
+        "hide": {
+          "type": "boolean",
+          "description": "Hide UI was pressed (or the details action), or the hidden controls were asked back: flip `hidden`."
+        },
+        "capture": {
+          "type": "boolean",
+          "description": "The shutter was pressed, or confirm while hidden: the game takes the shot (the flash plays here)."
+        },
+        "reset": {
+          "type": "boolean",
+          "description": "Reset was pressed: the sliders to their defaults."
+        },
+        "exit": {
+          "type": "boolean",
+          "description": "Exit or Back was pressed (Back while hidden only brings the controls back)."
+        }
+      },
+      "required": [
+        "tab",
+        "set",
+        "filter",
+        "strength",
+        "frame",
+        "grid",
+        "hide",
+        "capture",
+        "reset",
+        "exit"
       ],
       "additionalProperties": false
     },
