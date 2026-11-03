@@ -88,6 +88,7 @@ struct Character {
     context: [Pose; 4],
     goals: VecDeque<Goal>,
     frames: VecDeque<Frame>,
+    revision: u64,
 }
 
 /// The characters a model animates, their goals and their generated frames.
@@ -102,6 +103,7 @@ pub struct Batch {
     pub characters: Vec<usize>,
     pub inputs: Inputs,
     pub alignments: Vec<Alignment>,
+    revisions: Vec<u64>,
 }
 
 impl Motion {
@@ -112,6 +114,7 @@ impl Motion {
             context: recent,
             goals: VecDeque::new(),
             frames: VecDeque::new(),
+            revision: 0,
         });
         self.characters.len() - 1
     }
@@ -122,9 +125,12 @@ impl Motion {
         self.characters[character].goals.push_back(goal);
     }
 
-    /// Drops the character's queued goals (its generated frames stay).
+    /// Drops queued goals and cancels their in-flight generation. Frames
+    /// already accepted stay; a stale completion cannot consume a new goal.
     pub fn clear_goals(&mut self, character: usize) {
-        self.characters[character].goals.clear();
+        let ch = &mut self.characters[character];
+        ch.goals.clear();
+        ch.revision = ch.revision.wrapping_add(1);
     }
 
     /// Goals the character has not started.
@@ -168,6 +174,10 @@ impl Motion {
             .collect();
         let (inputs, alignments) = encode(&requests);
         Some(Batch {
+            revisions: characters
+                .iter()
+                .map(|&c| self.characters[c].revision)
+                .collect(),
             characters,
             inputs,
             alignments,
@@ -189,6 +199,9 @@ impl Motion {
     /// count and its `[64,366]` motion (`glue::finish_character`).
     pub fn accept_character(&mut self, batch: &Batch, i: usize, count: u32, motion: &[f32]) {
         let ch = &mut self.characters[batch.characters[i]];
+        if ch.revision != batch.revisions[i] {
+            return;
+        }
         let tag = ch.goals.pop_front().map_or(0, |g| g.tag);
         let valid = valid_frames(count as usize);
         // The first valid frame is the context's last, already shown.

@@ -68,8 +68,6 @@ pub(crate) const MODEL_FILE: &str = "motion/model.ogb";
 pub(crate) const MODEL_ENTRY: &str = "motion/model.safetensors";
 /// How far ahead of the simulation the model's next goal is placed.
 const HORIZON: f32 = 1.2;
-/// The shortest model goal a change of pose ends ([`predict`]), s.
-const SEGMENT: f32 = 0.3;
 /// The GPU time a batch may add to one frame, ms: a batch runs in slices of
 /// about this much, one a frame (`Gpu::set_frame_budget`), so a frame of
 /// 16.7 ms keeps room for the scene.
@@ -478,8 +476,8 @@ fn pose_of(agent: &super::Agent, speed: f32) -> usize {
 /// seconds past now: where and facing which way the simulation will have
 /// it, the library pose it will be in, and how many seconds after those
 /// frames that is. A driven agent's mover is run past the queued frames,
-/// then on to where its pose first changes at least [`SEGMENT`] seconds
-/// later, at most [`HORIZON`]: the model reaches each pose of the course in
+/// then on to where its pose first changes, at most [`HORIZON`]:
+/// the model reaches each pose of the course in
 /// turn (a run, then the jump at its landing) when the simulation does,
 /// instead of skipping a short goal for the one after it.
 fn predict(goals: &Goals, a: &Seen, shown: &Shown, queued: f32) -> (Vec3, f32, usize, f32) {
@@ -499,7 +497,6 @@ fn predict(goals: &Goals, a: &Seen, shown: &Shown, queued: f32) -> (Vec3, f32, u
                 let pose = pose_of(&agent, (p - p0).length() / step);
                 if let Some(prev) = last
                     && pose != prev
-                    && k as f32 * step >= SEGMENT
                 {
                     return (p0, h0, prev, k as f32 * step);
                 }
@@ -1146,6 +1143,39 @@ mod tests {
             drawn_lean: None,
             issued: VecDeque::new(),
             next_id: 0,
+        }
+    }
+
+    #[test]
+    fn prediction_keeps_a_short_remaining_pose_before_the_next_goal() {
+        let goal = |pose, duration| super::super::Goal {
+            kind: Kind::Pose,
+            pose,
+            duration,
+            target: Vec3::ZERO,
+            heading: 0.0,
+            speed: 0.0,
+            arrival_heading: None,
+            deceleration: 0.0,
+        };
+        let a = Seen {
+            entity: 1,
+            settings: Settings::of(&json!({"drive":true})),
+            position: Vec3::ZERO,
+            rotation: glam::Quat::IDENTITY,
+            scale: 1.0,
+            skeleton: 1,
+            skin: 0,
+        };
+        for pose in [JUMP, 5] {
+            let mut goals = Goals::default();
+            let mut agent = super::super::Agent::default();
+            agent.queue.push_back(goal(pose as u32, 0.2));
+            agent.queue.push_back(goal(CROUCH as u32, 1.2));
+            goals.agents.insert(1, agent);
+            let (_, _, predicted, seconds) = predict(&goals, &a, &shown(), 0.0);
+            assert_eq!(predicted, pose, "the imminent pose was skipped");
+            assert!(seconds <= 0.3);
         }
     }
 

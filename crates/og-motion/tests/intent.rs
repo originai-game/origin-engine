@@ -71,6 +71,24 @@ fn goals_chain_through_generations_from_the_last_four_frames() {
         .collect();
     let (inputs, alignments) = encode(&requests);
     let expected = model.generate(&inputs);
+    // A landed batch may be spread across frames, in any character order.
+    // Accepting one character must not consume or expose another's frames.
+    let mut spread = Motion::default();
+    for (context, goal) in contexts.iter().zip(&goals) {
+        let c = spread.add(*context);
+        spread.push(c, goal.clone());
+    }
+    let batch = spread.batch(usize::MAX).unwrap();
+    let per = FRAMES * MOTION_FEATURES;
+    for i in [2, 0, 1] {
+        spread.accept_character(
+            &batch,
+            i,
+            expected.counts[i],
+            &expected.motion[i * per..(i + 1) * per],
+        );
+        assert_eq!(spread.goals(i), 0);
+    }
     let mut shown: Vec<Vec<Pose>> = Vec::new();
     for (i, &count) in [8usize, 11, 16].iter().enumerate() {
         let valid = valid_frames(count);
@@ -78,6 +96,11 @@ fn goals_chain_through_generations_from_the_last_four_frames() {
         let mut frames = Vec::new();
         for f in valid.start + 1..valid.end {
             let frame = motion.pop(i).unwrap();
+            assert_eq!(
+                spread.pop(i),
+                Some(frame),
+                "spread decoding changed character {i}"
+            );
             assert_eq!(frame.tag, i as u32, "a frame carries its goal's tag");
             let at = (i * FRAMES + f) * MOTION_FEATURES;
             let want = decode_frame(&expected.motion[at..at + MOTION_FEATURES], &alignments[i]);
@@ -130,6 +153,33 @@ fn a_placed_goal_stands_where_and_faces_how_it_was_told() {
         let (d1, y1) = step(&goal.targets, k);
         assert!((d0 - d1).abs() < 1e-5 && (y0 - y1).abs() < 1e-6);
     }
+}
+
+#[test]
+fn replacing_a_goal_during_inference_does_not_consume_its_replacement() {
+    let case = fixture("case.safetensors");
+    let model = Model::new(&fixture("tiny.safetensors")).unwrap();
+    let mut motion = Motion::default();
+    let c = motion.add(poses(&case, "context", 0, 4).try_into().unwrap());
+    let goal = |tag| Goal {
+        targets: poses(&case, "target", 0, 1),
+        token_counts: vec![8],
+        tag,
+    };
+    motion.push(c, goal(7));
+    let old = motion.batch(30).unwrap();
+    let output = model.generate(&old.inputs);
+    motion.clear_goals(c);
+    motion.push(c, goal(9));
+    motion.accept(&old, &output);
+    assert_eq!(motion.goals(c), 1, "stale completion consumed the new goal");
+    assert_eq!(
+        motion.queued(c),
+        0,
+        "cancelled poses were relabelled as the new goal"
+    );
+    assert_eq!(motion.generate(&model, 30), 1);
+    assert_eq!(motion.pop(c).unwrap().tag, 9);
 }
 
 /// SOMA's joint tree with plain proportions: legs of 0.45 + 0.45 m.
