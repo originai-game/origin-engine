@@ -115,3 +115,26 @@ Art for the photo mode, deck builder and VN gallery previews, in the same direct
 | `cards/ice.jpg`, `horn.jpg`, `golem.jpg`, `owl.jpg`, `scroll.jpg`, `egg.jpg` | card art (second sheet: an ice crystal, a war horn, a stone golem, an owl, a burning scroll, an egg in embers) | the same API, a second 3×2 sheet cut into tiles of 512×512 |
 | `cg/lantern.jpg`, `library.jpg`, `duel.jpg` | event CG (the VN gallery's pictures: two companions at a lantern festival, a reader asleep in a library, a duel at dusk) | the platform's image API, the same model and key, cut to 1280×720 |
 | `cg/riverboat-night.jpg`, `duel-dusk.jpg` | event CG variant (the gallery's second takes of `riverboat.jpg` and `duel.jpg`) | made from those with ImageMagick (a night and a dusk recolour) |
+
+## Genre showcase scenes (2026-11-03, U8)
+
+Gameplay scenes the kit's genre showcases draw their HUD pages over, in the same direction as the set above: an in-game camera view per genre family, the corners and the top and bottom bands calm for the HUD, the subject in the centre; no text, UI, logos or characters of any existing game. Original work for the project, CC0 1.0 like the rest.
+
+| File | Kind | Origin |
+|---|---|---|
+| `scenes/genre-action.jpg` | gameplay (a side-view platformer: stone ledges over a sunset valley, floating platforms, coins) | the platform's image API (`https://api.origingame.ai/v1/images/generations`, gpt-image-2.5-sunburst, 1536×1024) with the development key, one prompt each; centre cut to 16:9 (1536×864), resized to 1280×720, JPEG q85 |
+| `scenes/genre-shooter.jpg` | gameplay (first person down a ruined desert-town street, crates, sandbags, a wrecked truck) | the same API and cut |
+| `scenes/genre-moba.jpg` | gameplay (a three-quarter top-down jungle lane between a blue and a red tower, a river ford) | the same API; cut 30 px below the top so the far tower stays in frame |
+| `scenes/genre-rpg.jpg` | gameplay (an isometric torchlit dungeon hall, a rune circle, skeletons at the far end) | the same API; cut 30 px below the top so the skeletons stay in frame |
+| `scenes/genre-mmo.jpg` | gameplay (over the shoulder onto a fantasy market square, small generic figures, abstract banners) | the same API and cut |
+| `scenes/genre-roguelike.jpg` | gameplay (a side-view card-battle crypt, a ghoul and a wraith on the right, the left floor open) | the same API and cut |
+| `scenes/genre-strategy.jpg` | gameplay (a top-down tower-defence road through grassland, empty stone tower plots, a gate) | the same API and cut |
+| `scenes/genre-management.jpg` | gameplay (a cozy top-down farm village: fields, a windmill, a pond, a barn) | the same API and cut |
+| `scenes/genre-puzzle.jpg` | menuBackground (a candy-coloured garden at day behind a match-3 board, the centre an open meadow) | the same API and cut |
+| `scenes/genre-rhythm.jpg` | gameplay (a night concert stage from the crowd, neon beams, a five-lane note highway from the bottom centre) | the same API and cut |
+| `scenes/genre-racing.jpg` | gameplay (chase camera behind an invented unbadged sports car on a coastal circuit at golden hour) | the same API and cut; regenerated once (the first car carried a small badge) |
+| `scenes/genre-sports.jpg` | gameplay (a broadcast view of a football pitch in a full stadium at night, plain red and white kits) | the same API and cut; regenerated once (the first pitch's markings were inconsistent) |
+| `scenes/genre-fighting.jpg` | gameplay (a side-on temple courtyard stage at dusk, lanterns, the floor a flat band across the lower third) | the same API and cut; regenerated once (the first hangings carried a crest like a real family mon), plain red hangings now |
+| `scenes/genre-survival.jpg` | gameplay (first person in a pine clearing at dusk: a campfire, a lean-to shelter, mist) | the same API and cut |
+| `scenes/genre-horror.jpg` | gameplay (first person down a dark abandoned hospital corridor, a flashlight pool, a door ajar at the end) | the same API and cut; regenerated once (the first had a malformed wheelchair) |
+| `scenes/genre-openworld.jpg` | gameplay (a third-person hilltop vista: a river valley, a distant castle, a ruined tower, a small cloaked adventurer from behind) | the same API and cut |
