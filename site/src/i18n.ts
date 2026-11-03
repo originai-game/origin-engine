@@ -69,8 +69,8 @@ export const copy = {
     eyebrow: t("Rendering", "渲染"),
     title: t("Real light, in a browser tab.", "浏览器标签页里的真实光照。"),
     body: t(
-      "WebGPU in the browser; Metal, Vulkan and DX12 natively: a physical sky with volumetric clouds, an open ocean, weather that wets and snows the world, baked global illumination, reflection probes, meshlets with LOD and impostors, TAA upscaling. Drag across a frame to see what the engine sees.",
-      "浏览器里用 WebGPU，原生用 Metal、Vulkan、DX12：物理天空与体积云、开阔海洋、会让世界变湿和积雪的天气、烘焙全局光照、反射探针、带 LOD 和 impostor 的 meshlet、TAA 超分。在画面上拖动，看看引擎眼中的世界。",
+      "WebGPU in the browser and Metal natively: a physical sky with volumetric clouds, an open ocean, weather that wets and snows the world, baked global illumination, reflection probes, meshlets with LOD and impostors, TAA upscaling. Drag across a frame to see what the engine sees.",
+      "浏览器里用 WebGPU，原生用 Metal：物理天空与体积云、开阔海洋、会让世界变湿和积雪的天气、烘焙全局光照、反射探针、带 LOD 和 impostor 的 meshlet、TAA 超分。在画面上拖动，看看引擎眼中的世界。",
     ),
     final: t("Final", "成片"),
     engineView: t("Engine view", "引擎视图"),
@@ -79,10 +79,9 @@ export const copy = {
     before: t("Before", "之前"),
     after: t("After", "之后"),
     wipes: {
-      lod: t("Level of detail", "细节层次 LOD"),
-      gi: t("Baked global illumination", "烘焙全局光照"),
-      refl: t("Reflection probes", "反射探针"),
       fog: t("Volumetric light", "体积光"),
+      refl: t("Reflection probes", "反射探针"),
+      ssr: t("Screen-space reflections", "屏幕空间反射"),
     },
     weatherTitle: t("One avenue, one camera, seven skies.", "同一条大道，同一机位，七种天气。"),
     weather: {
@@ -135,7 +134,6 @@ export const copy = {
     pending: t("The genre × style × language grid arrives with the seventeen genre showcases.", "品类 × 风格 × 语言的交互网格，将随十七个品类展示一起上线。"),
   },
   determinism: {
-    eyebrow: t("Determinism", "确定性"),
     title: t("Same inputs. Same world. Bit for bit.", "同样的输入，同样的世界，一位不差。"),
     body: t(
       "A fixed tick, randomness owned by the engine, whole-world snapshots. That is what makes replays, saves that load on any host, and rollback multiplayer hold.",

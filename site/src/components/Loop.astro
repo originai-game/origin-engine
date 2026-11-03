@@ -52,7 +52,6 @@ const lines: Line[] = [
       <div class="layer" data-shot="broken"><Media slot="loop-broken" lang={lang} bare /></div>
       <div class="layer" data-shot="fixed"><Media slot="loop-fixed" lang={lang} bare /></div>
       <span class="status tag" data-shot-label data-first={l.frameFirst[lang]} data-broken={l.frameBroken[lang]} data-fixed={l.frameFixed[lang]}>{l.frameFirst[lang]}</span>
-      <span class="status" data-kind="interim" title={copy.placeholder.interimNote[lang]}>{copy.placeholder.interim[lang]}</span>
     </div>
     <div class="frame r16x9 reveal" style="--delay:200ms">
       <Media slot="loop-film" lang={lang} />
@@ -60,7 +59,7 @@ const lines: Line[] = [
   </div>
 </div>
 <p class="meta" style="margin-top:14px">{l.provenance[lang]}</p>
-<Prov slots={["loop-first", "loop-broken", "loop-fixed"]} lang={lang} />
+<Prov slots={["loop-first", "loop-broken", "loop-fixed", "loop-film"]} lang={lang} />
 <p class="lede" style="margin-top:var(--space-xl);max-width:760px">{l.tools[lang]}</p>
 
 <script>

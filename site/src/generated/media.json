@@ -5,30 +5,30 @@
   "height": 720,
   "avif": [
    [
-    "hero-poster-a7f9e6862f-960.avif",
+    "hero-poster-3eeafd58ef-960.avif",
     960
    ],
    [
-    "hero-poster-a7f9e6862f-1280.avif",
+    "hero-poster-3eeafd58ef-1280.avif",
     1280
    ]
   ],
   "webp": [
    [
-    "hero-poster-a7f9e6862f-960.webp",
+    "hero-poster-3eeafd58ef-960.webp",
     960
    ],
    [
-    "hero-poster-a7f9e6862f-1280.webp",
+    "hero-poster-3eeafd58ef-1280.webp",
     1280
    ]
   ],
-  "jpg": "hero-poster-a7f9e6862f.jpg",
+  "jpg": "hero-poster-3eeafd58ef.jpg",
   "status": "interim",
   "from": {
-   "id": "art-cinematic-3d/d1645c2aa859",
-   "commit": "737a70331",
-   "date": "2026-11-01"
+   "path": "crates/og-tests/references/metal/water-ocean-sunset.png",
+   "commit": "18af53633",
+   "date": "2026-11-03"
   }
  },
  "hero-film": {
@@ -40,29 +40,29 @@
  },
  "loop-first": {
   "kind": "image",
-  "width": 1280,
-  "height": 720,
+  "width": 1024,
+  "height": 576,
   "avif": [
    [
-    "loop-first-888d88af75-960.avif",
+    "loop-first-d7f1a5d8c4-960.avif",
     960
    ],
    [
-    "loop-first-888d88af75-1280.avif",
-    1280
+    "loop-first-d7f1a5d8c4-1024.avif",
+    1024
    ]
   ],
   "webp": [
    [
-    "loop-first-888d88af75-960.webp",
+    "loop-first-d7f1a5d8c4-960.webp",
     960
    ],
    [
-    "loop-first-888d88af75-1280.webp",
-    1280
+    "loop-first-d7f1a5d8c4-1024.webp",
+    1024
    ]
   ],
-  "jpg": "loop-first-888d88af75.jpg",
+  "jpg": "loop-first-d7f1a5d8c4.jpg",
   "status": "interim",
   "from": {
    "path": "tests/evidence/depth/probe-depth/first-frame.png",
@@ -72,29 +72,29 @@
  },
  "loop-broken": {
   "kind": "image",
-  "width": 1280,
-  "height": 720,
+  "width": 1024,
+  "height": 576,
   "avif": [
    [
-    "loop-broken-96f7b30148-960.avif",
+    "loop-broken-777d881cbd-960.avif",
     960
    ],
    [
-    "loop-broken-96f7b30148-1280.avif",
-    1280
+    "loop-broken-777d881cbd-1024.avif",
+    1024
    ]
   ],
   "webp": [
    [
-    "loop-broken-96f7b30148-960.webp",
+    "loop-broken-777d881cbd-960.webp",
     960
    ],
    [
-    "loop-broken-96f7b30148-1280.webp",
-    1280
+    "loop-broken-777d881cbd-1024.webp",
+    1024
    ]
   ],
-  "jpg": "loop-broken-96f7b30148.jpg",
+  "jpg": "loop-broken-777d881cbd.jpg",
   "status": "interim",
   "from": {
    "path": "tests/evidence/depth/probe-depth/broken-tick120.png",
@@ -104,29 +104,29 @@
  },
  "loop-fixed": {
   "kind": "image",
-  "width": 1280,
-  "height": 720,
+  "width": 1024,
+  "height": 576,
   "avif": [
    [
-    "loop-fixed-b1696e83cd-960.avif",
+    "loop-fixed-53a2bab59b-960.avif",
     960
    ],
    [
-    "loop-fixed-b1696e83cd-1280.avif",
-    1280
+    "loop-fixed-53a2bab59b-1024.avif",
+    1024
    ]
   ],
   "webp": [
    [
-    "loop-fixed-b1696e83cd-960.webp",
+    "loop-fixed-53a2bab59b-960.webp",
     960
    ],
    [
-    "loop-fixed-b1696e83cd-1280.webp",
-    1280
+    "loop-fixed-53a2bab59b-1024.webp",
+    1024
    ]
   ],
-  "jpg": "loop-fixed-b1696e83cd.jpg",
+  "jpg": "loop-fixed-53a2bab59b.jpg",
   "status": "interim",
   "from": {
    "path": "tests/evidence/depth/probe-depth/smoke-tick120.png",
@@ -141,143 +141,31 @@
    "pending": "studio-win: an agent building a game, split-screen timelapse"
   }
  },
- "render-lod-final": {
-  "kind": "image",
-  "width": 1280,
-  "height": 720,
-  "avif": [
-   [
-    "render-lod-final-c17bc4bb23-960.avif",
-    960
-   ],
-   [
-    "render-lod-final-c17bc4bb23-1280.avif",
-    1280
-   ]
-  ],
-  "webp": [
-   [
-    "render-lod-final-c17bc4bb23-960.webp",
-    960
-   ],
-   [
-    "render-lod-final-c17bc4bb23-1280.webp",
-    1280
-   ]
-  ],
-  "jpg": "render-lod-final-c17bc4bb23.jpg",
-  "status": "interim",
-  "from": {
-   "id": "depth/04f643c3de8e",
-   "commit": "97be2f1c4",
-   "date": "2026-10-23"
-  }
- },
- "render-lod-debug": {
-  "kind": "image",
-  "width": 1280,
-  "height": 720,
-  "avif": [
-   [
-    "render-lod-debug-7b918bbdc8-960.avif",
-    960
-   ],
-   [
-    "render-lod-debug-7b918bbdc8-1280.avif",
-    1280
-   ]
-  ],
-  "webp": [
-   [
-    "render-lod-debug-7b918bbdc8-960.webp",
-    960
-   ],
-   [
-    "render-lod-debug-7b918bbdc8-1280.webp",
-    1280
-   ]
-  ],
-  "jpg": "render-lod-debug-7b918bbdc8.jpg",
-  "status": "interim",
-  "from": {
-   "id": "depth/1c64d8666d6c",
-   "commit": "97be2f1c4",
-   "date": "2026-10-23"
-  }
- },
- "render-gi-off": {
-  "kind": "image",
-  "width": 640,
-  "height": 360,
-  "avif": [
-   [
-    "render-gi-off-675f678320-640.avif",
-    640
-   ]
-  ],
-  "webp": [
-   [
-    "render-gi-off-675f678320-640.webp",
-    640
-   ]
-  ],
-  "jpg": "render-gi-off-675f678320.jpg",
-  "status": "interim",
-  "from": {
-   "id": "depth/108e243d0200",
-   "commit": "769986c9c",
-   "date": "2026-10-23"
-  }
- },
- "render-gi-on": {
-  "kind": "image",
-  "width": 640,
-  "height": 360,
-  "avif": [
-   [
-    "render-gi-on-39aee1c725-640.avif",
-    640
-   ]
-  ],
-  "webp": [
-   [
-    "render-gi-on-39aee1c725-640.webp",
-    640
-   ]
-  ],
-  "jpg": "render-gi-on-39aee1c725.jpg",
-  "status": "interim",
-  "from": {
-   "id": "depth/5fca67b5a249",
-   "commit": "769986c9c",
-   "date": "2026-10-23"
-  }
- },
  "render-refl-off": {
   "kind": "image",
-  "width": 1280,
-  "height": 720,
+  "width": 1024,
+  "height": 576,
   "avif": [
    [
-    "render-refl-off-fb00d415a2-960.avif",
+    "render-refl-off-0ef9db55d0-960.avif",
     960
    ],
    [
-    "render-refl-off-fb00d415a2-1280.avif",
-    1280
+    "render-refl-off-0ef9db55d0-1024.avif",
+    1024
    ]
   ],
   "webp": [
    [
-    "render-refl-off-fb00d415a2-960.webp",
+    "render-refl-off-0ef9db55d0-960.webp",
     960
    ],
    [
-    "render-refl-off-fb00d415a2-1280.webp",
-    1280
+    "render-refl-off-0ef9db55d0-1024.webp",
+    1024
    ]
   ],
-  "jpg": "render-refl-off-fb00d415a2.jpg",
+  "jpg": "render-refl-off-0ef9db55d0.jpg",
   "status": "interim",
   "from": {
    "id": "depth/417337a4426c",
@@ -287,33 +175,97 @@
  },
  "render-refl-on": {
   "kind": "image",
-  "width": 1280,
-  "height": 720,
+  "width": 1024,
+  "height": 576,
   "avif": [
    [
-    "render-refl-on-763fd222a5-960.avif",
+    "render-refl-on-62498ef45b-960.avif",
     960
    ],
    [
-    "render-refl-on-763fd222a5-1280.avif",
-    1280
+    "render-refl-on-62498ef45b-1024.avif",
+    1024
    ]
   ],
   "webp": [
    [
-    "render-refl-on-763fd222a5-960.webp",
+    "render-refl-on-62498ef45b-960.webp",
     960
    ],
    [
-    "render-refl-on-763fd222a5-1280.webp",
-    1280
+    "render-refl-on-62498ef45b-1024.webp",
+    1024
    ]
   ],
-  "jpg": "render-refl-on-763fd222a5.jpg",
+  "jpg": "render-refl-on-62498ef45b.jpg",
   "status": "interim",
   "from": {
    "id": "depth/58cda7fcfcf5",
    "commit": "05a4c71ad",
+   "date": "2026-10-23"
+  }
+ },
+ "render-ssr-off": {
+  "kind": "image",
+  "width": 1024,
+  "height": 576,
+  "avif": [
+   [
+    "render-ssr-off-92c236f523-960.avif",
+    960
+   ],
+   [
+    "render-ssr-off-92c236f523-1024.avif",
+    1024
+   ]
+  ],
+  "webp": [
+   [
+    "render-ssr-off-92c236f523-960.webp",
+    960
+   ],
+   [
+    "render-ssr-off-92c236f523-1024.webp",
+    1024
+   ]
+  ],
+  "jpg": "render-ssr-off-92c236f523.jpg",
+  "status": "interim",
+  "from": {
+   "id": "depth/d53d72bb373f",
+   "commit": "2e8dec47b",
+   "date": "2026-10-23"
+  }
+ },
+ "render-ssr-on": {
+  "kind": "image",
+  "width": 1024,
+  "height": 576,
+  "avif": [
+   [
+    "render-ssr-on-96ab204226-960.avif",
+    960
+   ],
+   [
+    "render-ssr-on-96ab204226-1024.avif",
+    1024
+   ]
+  ],
+  "webp": [
+   [
+    "render-ssr-on-96ab204226-960.webp",
+    960
+   ],
+   [
+    "render-ssr-on-96ab204226-1024.webp",
+    1024
+   ]
+  ],
+  "jpg": "render-ssr-on-96ab204226.jpg",
+  "status": "interim",
+  "from": {
+   "id": "depth/034f077b7e97",
+   "commit": "2e8dec47b",
    "date": "2026-10-23"
   }
  },

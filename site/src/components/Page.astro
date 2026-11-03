@@ -20,10 +20,9 @@ const site = "https://engine.origingame.ai";
 const head = numbers.find((n) => n.key === "days")!;
 const commit = (await import("node:child_process")).execFileSync("git", ["rev-parse", "--short=9", "HEAD"], { encoding: "utf8" }).trim();
 const wipes = [
-  { key: "lod", left: "render-lod-final", right: "render-lod-debug", l: r.final, rr: r.engineView },
-  { key: "gi", left: "render-gi-off", right: "render-gi-on", l: r.off, rr: r.on },
-  { key: "refl", left: "render-refl-off", right: "render-refl-on", l: r.off, rr: r.on },
   { key: "fog", left: "render-fog-before", right: "render-fog-after", l: r.before, rr: r.after },
+  { key: "refl", left: "render-refl-off", right: "render-refl-on", l: r.off, rr: r.on },
+  { key: "ssr", left: "render-ssr-off", right: "render-ssr-on", l: r.off, rr: r.on },
 ] as const;
 const hashes = [
   { t: c.determinism.rollback, b: c.determinism.rollbackBody, h: "04fdc5c4b5e353f4" },
@@ -81,6 +80,20 @@ const games = [
           <p class="lede">{c.loop.body[lang]}</p>
         </header>
         <Loop lang={lang} />
+        <div class="subhead reveal">
+          <h3 class="display d-md">{c.determinism.title[lang]}</h3>
+          <p class="lede">{c.determinism.body[lang]}</p>
+        </div>
+        <div class="hashes">
+          {hashes.map((x, i) => (
+            <div class="hash reveal" style={`--delay:${i * 100}ms`}>
+              <h3>{x.t[lang]}</h3>
+              <p>{x.b[lang]}</p>
+              <code>{x.h}</code>
+            </div>
+          ))}
+        </div>
+        <p class="match reveal"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m3 7.5 2.5 2.5L11 4.5" /></svg>{c.determinism.match[lang]} · G2-7 rollback · G1-5 cross-host save</p>
       </div>
     </section>
 
@@ -113,6 +126,7 @@ const games = [
         </div>
         <Prov slots={["water-sunset", "water-storm"]} lang={lang} />
         <div class="frame r16x9 reveal" style="margin-top:clamp(64px,9vw,120px)"><Media slot="render-reel" lang={lang} /></div>
+        <Prov slots={["render-reel"]} lang={lang} />
       </div>
     </section>
 
@@ -166,26 +180,6 @@ const games = [
       </div>
     </section>
 
-    <section class="section" id="determinism">
-      <div class="wrap">
-        <header class="section-head reveal">
-          <p class="eyebrow">{c.determinism.eyebrow[lang]}</p>
-          <h2 class="display d-2xl">{c.determinism.title[lang]}</h2>
-          <p class="lede">{c.determinism.body[lang]}</p>
-        </header>
-        <div class="hashes">
-          {hashes.map((x, i) => (
-            <div class="hash reveal" style={`--delay:${i * 100}ms`}>
-              <h3>{x.t[lang]}</h3>
-              <p>{x.b[lang]}</p>
-              <code data-hash={x.h}>{x.h}</code>
-            </div>
-          ))}
-        </div>
-        <p class="match reveal"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m3 7.5 2.5 2.5L11 4.5" /></svg>{c.determinism.match[lang]} · G2-7 rollback · G1-5 cross-host save</p>
-      </div>
-    </section>
-
     <section class="section" id="play">
       <div class="wrap">
         <header class="section-head reveal">
@@ -196,7 +190,7 @@ const games = [
         <div class="tiles">
           {games.map(([slot, name, key], i) => (
             <figure class="tile reveal" style={`--delay:${(i % 3) * 100}ms;margin:0`}>
-              <div class="frame"><Media slot={slot} lang={lang} sizes="(max-width: 599px) 100vw, (max-width: 899px) 50vw, 420px" label={i === 0} /></div>
+              <div class="frame"><Media slot={slot} lang={lang} sizes="(max-width: 599px) 100vw, (max-width: 899px) 50vw, 420px" /></div>
               <figcaption><h3>{name}</h3><p>{c.play.games[key][lang]}</p><p class="meta">{c.play.soon[lang]}</p></figcaption>
             </figure>
           ))}

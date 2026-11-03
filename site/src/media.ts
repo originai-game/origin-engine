@@ -19,6 +19,8 @@ export interface Slot {
   status: "final" | "interim" | "pending";
   /** What the frame shows, for alt text and the provenance line. */
   alt: { en: string; zh: string };
+  /** A still's crop in source pixels (ImageMagick geometry `WxH+X+Y`): drops overlays the capture burned in, such as a station title. */
+  crop?: string;
   /** A film's poster comes from this second of the film. */
   posterAt?: number;
 }
@@ -27,13 +29,17 @@ const s = (id: string): Source => ({ showcase: id });
 const r = (path: string): Source => ({ repo: path });
 const p = (what: string): Source => ({ pending: what });
 const ref = (name: string): Source => r(`crates/og-tests/references/metal/${name}.png`);
+// The probe-depth frames without the template's menu panel (top left).
+const LOOP_CROP = "1024x576+256+30";
+// fx-showcase station frames without the station title (top left) and the og.ui badge (bottom right).
+const STATION_CROP = "1024x576+128+72";
 
 export const media = {
   // ── Hero ──────────────────────────────────────────────────────────────
   "hero-poster": {
-    source: s("art-cinematic-3d/d1645c2aa859"),
+    source: ref("water-ocean-sunset"),
     status: "interim",
-    alt: { en: "A traveller with a lantern among snowy pines at dusk", zh: "黄昏的雪松林中，提灯的旅人" },
+    alt: { en: "The open ocean at sunset", zh: "日落时的开阔海面" },
   },
   "hero-film": {
     source: p("site-hero: ocean, dawn → noon → dusk → night loop, 4K and 1080p"),
@@ -45,16 +51,19 @@ export const media = {
   "loop-first": {
     source: r("tests/evidence/depth/probe-depth/first-frame.png"),
     status: "interim",
+    crop: LOOP_CROP,
     alt: { en: "The template game at tick 1, as the probe captured it", zh: "模板游戏第 1 帧，probe 截取" },
   },
   "loop-broken": {
     source: r("tests/evidence/depth/probe-depth/broken-tick120.png"),
     status: "interim",
+    crop: LOOP_CROP,
     alt: { en: "The broken copy at tick 120: the crate still hangs in the air", zh: "出错的副本第 120 帧：箱子仍悬在空中" },
   },
   "loop-fixed": {
     source: r("tests/evidence/depth/probe-depth/smoke-tick120.png"),
     status: "interim",
+    crop: LOOP_CROP,
     alt: { en: "The fixed game at tick 120: the crate has landed", zh: "修好后第 120 帧：箱子已落地" },
   },
   "loop-film": {
@@ -64,35 +73,29 @@ export const media = {
   },
 
   // ── Rendering ─────────────────────────────────────────────────────────
-  "render-lod-final": {
-    source: s("depth/04f643c3de8e"),
-    status: "interim",
-    alt: { en: "A forest of instanced trees with level of detail on", zh: "开启 LOD 的实例化树林" },
-  },
-  "render-lod-debug": {
-    source: s("depth/1c64d8666d6c"),
-    status: "interim",
-    alt: { en: "The same forest in the LOD debug view", zh: "同一片树林的 LOD 调试视图" },
-  },
-  "render-gi-off": {
-    source: s("depth/108e243d0200"),
-    status: "interim",
-    alt: { en: "A Cornell box with baked lighting off", zh: "关闭烘焙光照的康奈尔盒" },
-  },
-  "render-gi-on": {
-    source: s("depth/5fca67b5a249"),
-    status: "interim",
-    alt: { en: "The same box with baked global illumination", zh: "开启烘焙全局光照的同一场景" },
-  },
   "render-refl-off": {
     source: s("depth/417337a4426c"),
     status: "interim",
-    alt: { en: "Spheres with the reflection probe off", zh: "关闭反射探针的球体" },
+    crop: STATION_CROP,
+    alt: { en: "A chrome and a gold sphere with the reflection probe off", zh: "关闭反射探针的镜面球与金球" },
   },
   "render-refl-on": {
     source: s("depth/58cda7fcfcf5"),
     status: "interim",
-    alt: { en: "Spheres with the reflection probe on", zh: "开启反射探针的球体" },
+    crop: STATION_CROP,
+    alt: { en: "The same spheres reflecting the room through the probe", zh: "通过反射探针映出房间的同一组球" },
+  },
+  "render-ssr-off": {
+    source: s("depth/d53d72bb373f"),
+    status: "interim",
+    crop: STATION_CROP,
+    alt: { en: "The spheres with screen-space reflections off", zh: "关闭屏幕空间反射的球体" },
+  },
+  "render-ssr-on": {
+    source: s("depth/034f077b7e97"),
+    status: "interim",
+    crop: STATION_CROP,
+    alt: { en: "The spheres with screen-space reflections on", zh: "开启屏幕空间反射的球体" },
   },
   "render-fog-before": {
     source: s("debt/b42ff3bd7446"),
@@ -141,6 +144,7 @@ export const media = {
   "char-cloth": {
     source: s("fx-showcase/282040ae7015"),
     status: "interim",
+    crop: STATION_CROP,
     alt: { en: "A cloth banner draped over a pole", zh: "搭在杆上的布料" },
   },
   "char-motion": {

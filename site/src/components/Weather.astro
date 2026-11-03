@@ -22,7 +22,6 @@ const states = [
 <div class="reveal" data-xfade>
   <div class="frame r16x9 xfade">
     {states.map(([k, slot], i) => <div class="layer" data-key={k} data-on={i === 0 ? "" : undefined}><Media slot={slot} lang={lang} bare /></div>)}
-    <span class="status" data-kind="interim" title={copy.placeholder.interimNote[lang]}>{copy.placeholder.interim[lang]}</span>
   </div>
   <div class="xfade-bar">
     <h3 class="display d-sm" style="font-weight:600">{copy.rendering.weatherTitle[lang]}</h3>

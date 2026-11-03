@@ -48,6 +48,7 @@ const head = git("rev-parse", "--short=9", "HEAD");
 const headDate = git("log", "-1", "--format=%cs");
 const first = git("log", "--reverse", "--format=%cs", "--max-parents=0").split("\n")[0];
 const commits = Number(git("rev-list", "--count", "HEAD"));
+const agentCommits = Number(git("rev-list", "--count", "--grep=^Amp-Thread-ID", "HEAD"));
 const days = Math.round((Date.parse(headDate) - Date.parse(first)) / 86_400_000);
 const crates = readdirSync(join(root, "crates"), { withFileTypes: true }).filter((d) => d.isDirectory()).length;
 const apiFns = readdirSync(join(root, "crates/og-api/api"))
@@ -87,7 +88,7 @@ export const numbers: Num[] = [
     key: "days",
     value: fmt(days),
     unit: { en: "days", zh: "天" },
-    label: { en: `from the first commit to this build, ${fmt(commits)} commits, written by AI agents`, zh: `从第一次提交到本页构建，共 ${fmt(commits)} 次提交，由 AI agent 编写` },
+    label: { en: `from the first commit to this build: ${fmt(commits)} commits, built with AI agents (${fmt(agentCommits)} carry an Amp thread)`, zh: `从第一次提交到本页构建：共 ${fmt(commits)} 次提交，与 AI agent 一起构建（其中 ${fmt(agentCommits)} 次带 Amp 线程记录）` },
     source: { en: `git log: ${first} → ${headDate}`, zh: `git log：${first} → ${headDate}` },
   },
   { key: "tests", value: fmt(tests.value), label: { en: "tests in the gate", zh: "门禁中的测试" }, source: from(tests.entry) },

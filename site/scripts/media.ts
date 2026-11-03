@@ -69,7 +69,12 @@ async function dims(file: string): Promise<[number, number]> {
   return [w, h];
 }
 
-async function still(name: string, file: string, hash: string): Promise<Partial<Resolved>> {
+async function still(name: string, src: string, hash: string, crop?: string): Promise<Partial<Resolved>> {
+  let file = src;
+  if (crop) {
+    file = join(cache, `${hash}-crop.png`);
+    if (!existsSync(file)) await $`magick ${src}[0] -crop ${crop} +repage ${file}`.quiet();
+  }
   const [w, h] = await dims(file);
   const widths = [...WIDTHS.filter((x) => x < w), Math.min(w, 3840)].filter((x, i, a) => a.indexOf(x) === i);
   const avif: [string, number][] = [];
@@ -109,8 +114,8 @@ for (const [name, slot] of Object.entries(media) as [string, Slot][]) {
     index[name] = { kind: "pending", status: "pending", from: { pending: (slot.source as { pending: string }).pending } };
     continue;
   }
-  const hash = createHash("sha256").update(readFileSync(got.file)).digest("hex").slice(0, 10);
-  const enc = /^(mp4|webm|mov)$/.test(got.ext) ? await film(name, got.file, hash, slot.posterAt ?? 1) : await still(name, got.file, hash);
+  const hash = createHash("sha256").update(readFileSync(got.file)).update(slot.crop ?? "").digest("hex").slice(0, 10);
+  const enc = /^(mp4|webm|mov)$/.test(got.ext) ? await film(name, got.file, hash, slot.posterAt ?? 1) : await still(name, got.file, hash, slot.crop);
   index[name] = { ...(enc as Resolved), status: slot.status, from: got.from };
   process.stdout.write(`${name}: ${enc.kind} ${enc.width}×${enc.height}${slot.status === "final" ? "" : ` (${slot.status})`}\n`);
 }

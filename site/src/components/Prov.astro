@@ -6,10 +6,13 @@ import type { SlotName } from "../media";
 
 interface Props { slots: SlotName[]; lang: Lang }
 const { slots, lang } = Astro.props;
-const lines = [...new Set(slots.map((s) => get(s)).filter((r) => r.kind !== "pending").map(provenance))];
+const rs = slots.map((s) => get(s));
+const lines = [...new Set(rs.filter((r) => r.kind !== "pending").map(provenance))];
+const status = rs.some((r) => r.status === "pending") ? "pending" : rs.some((r) => r.status === "interim") ? "interim" : null;
 ---
-{lines.length > 0 && (
+{(lines.length > 0 || status) && (
   <div class="prov">
+    {status && <span class="chip" data-kind={status} title={status === "interim" ? copy.placeholder.interimNote[lang] : undefined}>{status === "interim" ? copy.placeholder.interim[lang] : copy.placeholder.pending[lang]}</span>}
     <span>{copy.media.source[lang]}</span>
     {lines.map((l) => <span class="mono">{l}</span>)}
   </div>

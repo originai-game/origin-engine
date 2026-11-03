@@ -17,7 +17,7 @@ interface Props {
   /** Draw the bare media only (inside a wipe or a crossfade layer). */
   bare?: boolean;
 }
-const { slot, lang, sizes = "(max-width: 899px) 100vw, 1280px", eager = false, label = true, bare = false } = Astro.props;
+const { slot, lang, sizes = "(max-width: 899px) 100vw, 1280px", eager = false, label = false, bare = false } = Astro.props;
 const r = get(slot);
 const a = alt(slot, lang);
 ---
