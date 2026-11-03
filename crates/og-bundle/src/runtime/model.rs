@@ -936,11 +936,7 @@ impl CookedModel {
                 else {
                     return scene.add_mesh(mesh);
                 };
-                use std::hash::{Hash, Hasher};
-                let mut hasher = std::collections::hash_map::DefaultHasher::new();
-                bytemuck::cast_slice::<_, u8>(&mesh.vertices).hash(&mut hasher);
-                mesh.indices.hash(&mut hasher);
-                let key = hasher.finish();
+                let key = shared_mesh_key(&mesh);
                 let same = s.meshes.get(&key).and_then(|hs| {
                     hs.iter()
                         .copied()
@@ -995,6 +991,30 @@ impl CookedModel {
             meshes,
         )
     }
+}
+
+/// Fork s72: a shared mesh's key, a word-at-a-time multiplicative hash of its
+/// vertices and indices (FxHash's mix). It only picks the meshes compared in
+/// full ([`CookedModel::add_to_shared`]), so it need not resist collisions;
+/// SipHash (`DefaultHasher`) over the same bytes was 1.5 s of a web boot that
+/// loads 1072 models.
+fn shared_mesh_key(mesh: &MeshData) -> u64 {
+    const K: u64 = 0x517c_c1b7_2722_0a95;
+    let mix = |h: u64, w: u64| (h.rotate_left(5) ^ w).wrapping_mul(K);
+    let mut h = mix(mesh.vertices.len() as u64, mesh.indices.len() as u64);
+    for bytes in [
+        bytemuck::cast_slice::<_, u8>(&mesh.vertices),
+        bytemuck::cast_slice::<_, u8>(&mesh.indices),
+    ] {
+        let (words, rest) = bytes.as_chunks::<8>();
+        for w in words {
+            h = mix(h, u64::from_le_bytes(*w));
+        }
+        let mut tail = [0u8; 8];
+        tail[..rest.len()].copy_from_slice(rest);
+        h = mix(h, u64::from_le_bytes(tail));
+    }
+    h
 }
 
 /// Meshes bigger than this are not compared ([`SharedParts`]): one of a kind.
