@@ -242,7 +242,7 @@ function phoneTop(m: number, lap: Lap, big: boolean, pos: ReturnType<typeof mark
   const k = frame().k;
   og.ui.anchor("Race", { anchor: "top", margin: m, offsetY: chromeDrop(m), direction: "column", gap: t.space.sm, width: { kind: "grow" } }, () => {
     og.ui.row("Bar", { width: { kind: "grow" }, align: "spaceBetween", cross: "center", padding: { left: t.space.md, top: t.space.xs, right: t.space.md, bottom: t.space.xs }, wrap: true }, () => {
-      og.ui.setDraw({ shape: { kind: "rect", radii: Array(4).fill(t.radius["panel"] ?? 10) }, fills: [{ kind: "solid", color: { token: "hud", alpha: 0.82 } }] } as never);
+      og.ui.setDraw({ shape: { kind: "rect", radii: Array(4).fill(t.radius["panel"] ?? 10) }, fills: [{ kind: "solid", color: { token: "hud", alpha: 0.95 } }] } as never);
       og.ui.lapTimer("Head", timer(lap, "head", true));
       og.ui.lapTimer("Times", timer(lap, "times", true));
     });
