@@ -35791,6 +35791,132 @@ export interface ChatResult {
 
 
 /**
+ * One page of an RTS command card: the unit's own commands, or a sub-card (Build, Advanced build) a command opens.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface CommandPage {
+  /**
+   * Its key: a command whose key is a page's key opens that page.
+   *
+   * @default ""
+   */
+  readonly key?: string;
+  /**
+   * Its commands in reading order (empty keys leave cells empty). A command's `action` names the UI action (og.ui.defineAction, on physical key codes) whose press fires it, and its glyph is the hotkey the card prints.
+   *
+   * @default []
+   */
+  readonly commands?: readonly AbilitySlotDesc[];
+}
+
+/**
+ * The RTS command layer: the console to draw, the command pages, the control groups' keys and a command awaiting its target.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface RtsCommandsDesc {
+  /**
+   * The console (og.ui.rtsConsole): its map, its selection with the control groups' tabs, and its command card (whose commands the current page replaces).
+   *
+   * @default {}
+   */
+  readonly console?: RtsConsoleDesc;
+  /**
+   * The command pages; the first is the root.
+   *
+   * @default []
+   */
+  readonly pages?: readonly CommandPage[];
+  /**
+   * The page shown; empty is the root.
+   *
+   * @default ""
+   */
+  readonly page?: string;
+  /**
+   * The UI actions recalling control groups, in the order of the selection's groups (Digit1 … Digit0 bound by the game): with Ctrl held one sets the group to the selection, with Shift held adds the selection to it, and tapped twice quickly focuses it.
+   *
+   * @default []
+   */
+  readonly groupActions?: readonly string[];
+  /**
+   * A command waiting for its target (its key): its slot is lit, a prompt says so, and Back cancels it.
+   *
+   * @default ""
+   */
+  readonly targeting?: string;
+  /**
+   * Two taps of a group's key within this long focus it.
+   *
+   * @default 350
+   * @unit ms (milliseconds)
+   */
+  readonly doubleTapMs?: number;
+  /**
+   * The targeting prompt ({command} is its name).
+   *
+   * @default "{command}: choose a target"
+   */
+  readonly targetLabel?: string;
+  /**
+   * The prompt's cancel word, after the back glyph.
+   *
+   * @default "Cancel"
+   */
+  readonly cancelLabel?: string;
+  /**
+   * The prompt's hint for queueing, after the Shift glyph.
+   *
+   * @default "Queue"
+   */
+  readonly queueLabel?: string;
+  /**
+   * The Back command a sub-page ends with.
+   *
+   * @default "Back"
+   */
+  readonly backLabel?: string;
+}
+
+/** What the player asked for this tick, for the game to carry out. */
+export interface RtsCommandsResult {
+  /**
+   * A command fired (pressed, or its action): its key. A command naming a page opens the page instead.
+   */
+  readonly command: string | null;
+  /** Shift was held as it fired (the order goes to the end of the units' queues). */
+  readonly queued: boolean;
+  /**
+   * A command that cannot fire now (locked, disabled, unaffordable or cooling down) was asked for: its key (the game says why: not enough gold).
+   */
+  readonly refused: string | null;
+  /** A page was opened, or Back (the cell or the action) went to the root: its key. */
+  readonly page: string | null;
+  /** Back with a command waiting for its target: cancel it. */
+  readonly cancelTarget: boolean;
+  /** A control group's key or tab: select it. */
+  readonly recall: string | null;
+  /** A control group recalled twice quickly: centre the camera on it. */
+  readonly focus: string | null;
+  /** Ctrl and a group's key: the group becomes the selection. */
+  readonly assign: string | null;
+  /** Shift and a group's key: the selection joins the group. */
+  readonly add: string | null;
+  /** A unit's tile pressed: focus it (or select only it). */
+  readonly clicked: string | null;
+  /** Ctrl and a unit's tile: select every unit of its type in the selection. */
+  readonly selectType: string | null;
+  /** Shift and a unit's tile: take it out of the selection. */
+  readonly deselect: string | null;
+  /** The minimap was pressed. */
+  readonly mapClicked: boolean;
+  /** A production queue item pressed: cancel it. */
+  readonly cancelled: string | null;
+}
+
+
+/**
  * A template's action, by its id (a menu item, `buy:<item>`, `share`).
  *
  * @param action The action's id.
@@ -56026,6 +56152,14 @@ export declare namespace og {
      * @param desc The channels, messages, draft and words.
      */
     function chat(id: string, desc?: ChatDesc): ChatResult;
+    /**
+     * The RTS command layer (StarCraft II, Age of Empires IV, Warcraft III): og.ui.rtsConsole drawn with the current command page in its card, and the grammar the genre's players know on top of it. A command whose key is a page's opens that page (Build), whose last cell is then Back; Back (the cell or the action) returns to the root. A command fires by a press or by its own UI action, so a grid of physical keys (Q W E R T, A S D F G, Z X C V B by `code`) works on any keyboard layout and the card prints each key as that layout labels it; Shift held queues the order; a locked, disabled, unaffordable or cooling command is refused, not fired. While a command waits for its target its slot is lit and a prompt over the console names it with Back to cancel and Shift to queue. The control groups' keys recall a group, Ctrl with one sets it to the selection, Shift adds to it, and two taps within doubleTapMs focus it; the group tabs answer the same. A unit's tile answers a press, Ctrl for its type, Shift to take it out. The selection, the groups' contents, the camera and the orders are the game's.
+     * Parts: those of rtsConsole, RtsCommands.prompt. Sounds: select on a page, confirm on a command, error on a refusal, tab on a recall. Accessibility: the console's; the prompt a status. Probe ids: rtsConsole's under <id> (<id>/Commands/<key>, the Back cell <id>/Commands/PageBack), and <id>Prompt.
+     *
+     * @param id Its id.
+     * @param desc The console, the pages, the groups' keys and the targeting command.
+     */
+    function rtsCommands(id: string, desc?: RtsCommandsDesc): RtsCommandsResult;
     /**
      * The title screen template. Returns the item chosen this tick.
      *

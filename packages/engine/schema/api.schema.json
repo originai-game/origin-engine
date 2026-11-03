@@ -11576,6 +11576,9 @@
         "ChatSend",
         "ChatDesc",
         "ChatResult",
+        "CommandPage",
+        "RtsCommandsDesc",
+        "RtsCommandsResult",
         "MenuItem",
         "MenuResult",
         "MainMenuDesc",
@@ -15855,6 +15858,27 @@
             }
           ],
           "returns": "ChatResult",
+          "publish": true,
+          "host": false
+        },
+        {
+          "name": "rtsCommands",
+          "doc": "The RTS command layer (StarCraft II, Age of Empires IV, Warcraft III): og.ui.rtsConsole drawn with the current command page in its card, and the grammar the genre's players know on top of it. A command whose key is a page's opens that page (Build), whose last cell is then Back; Back (the cell or the action) returns to the root. A command fires by a press or by its own UI action, so a grid of physical keys (Q W E R T, A S D F G, Z X C V B by `code`) works on any keyboard layout and the card prints each key as that layout labels it; Shift held queues the order; a locked, disabled, unaffordable or cooling command is refused, not fired. While a command waits for its target its slot is lit and a prompt over the console names it with Back to cancel and Shift to queue. The control groups' keys recall a group, Ctrl with one sets it to the selection, Shift adds to it, and two taps within doubleTapMs focus it; the group tabs answer the same. A unit's tile answers a press, Ctrl for its type, Shift to take it out. The selection, the groups' contents, the camera and the orders are the game's.\nParts: those of rtsConsole, RtsCommands.prompt. Sounds: select on a page, confirm on a command, error on a refusal, tab on a recall. Accessibility: the console's; the prompt a status. Probe ids: rtsConsole's under <id> (<id>/Commands/<key>, the Back cell <id>/Commands/PageBack), and <id>Prompt.",
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "optional": false,
+              "doc": "Its id."
+            },
+            {
+              "name": "desc",
+              "type": "RtsCommandsDesc",
+              "optional": true,
+              "doc": "The console, the pages, the groups' keys and the targeting command."
+            }
+          ],
+          "returns": "RtsCommandsResult",
           "publish": true,
           "host": false
         },
@@ -63236,6 +63260,252 @@
         "link",
         "author",
         "closed"
+      ],
+      "additionalProperties": false
+    },
+    "CommandPage": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "One page of an RTS command card: the unit's own commands, or a sub-card (Build, Advanced build) a command opens.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Its key: a command whose key is a page's key opens that page.",
+          "default": ""
+        },
+        "commands": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AbilitySlotDesc"
+          },
+          "description": "Its commands in reading order (empty keys leave cells empty). A command's `action` names the UI action (og.ui.defineAction, on physical key codes) whose press fires it, and its glyph is the hotkey the card prints.",
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "RtsCommandsDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "The RTS command layer: the console to draw, the command pages, the control groups' keys and a command awaiting its target.",
+      "type": "object",
+      "properties": {
+        "console": {
+          "$ref": "#/$defs/RtsConsoleDesc",
+          "description": "The console (og.ui.rtsConsole): its map, its selection with the control groups' tabs, and its command card (whose commands the current page replaces).",
+          "default": {}
+        },
+        "pages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CommandPage"
+          },
+          "description": "The command pages; the first is the root.",
+          "default": []
+        },
+        "page": {
+          "type": "string",
+          "description": "The page shown; empty is the root.",
+          "default": ""
+        },
+        "groupActions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The UI actions recalling control groups, in the order of the selection's groups (Digit1 … Digit0 bound by the game): with Ctrl held one sets the group to the selection, with Shift held adds the selection to it, and tapped twice quickly focuses it.",
+          "default": []
+        },
+        "targeting": {
+          "type": "string",
+          "description": "A command waiting for its target (its key): its slot is lit, a prompt says so, and Back cancels it.",
+          "default": ""
+        },
+        "doubleTapMs": {
+          "type": "number",
+          "description": "Two taps of a group's key within this long focus it.",
+          "default": 350,
+          "x-og-unit": "ms"
+        },
+        "targetLabel": {
+          "type": "string",
+          "description": "The targeting prompt ({command} is its name).",
+          "default": "{command}: choose a target"
+        },
+        "cancelLabel": {
+          "type": "string",
+          "description": "The prompt's cancel word, after the back glyph.",
+          "default": "Cancel"
+        },
+        "queueLabel": {
+          "type": "string",
+          "description": "The prompt's hint for queueing, after the Shift glyph.",
+          "default": "Queue"
+        },
+        "backLabel": {
+          "type": "string",
+          "description": "The Back command a sub-page ends with.",
+          "default": "Back"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RtsCommandsResult": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "What the player asked for this tick, for the game to carry out.",
+      "type": "object",
+      "properties": {
+        "command": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A command fired (pressed, or its action): its key. A command naming a page opens the page instead."
+        },
+        "queued": {
+          "type": "boolean",
+          "description": "Shift was held as it fired (the order goes to the end of the units' queues)."
+        },
+        "refused": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A command that cannot fire now (locked, disabled, unaffordable or cooling down) was asked for: its key (the game says why: not enough gold)."
+        },
+        "page": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A page was opened, or Back (the cell or the action) went to the root: its key."
+        },
+        "cancelTarget": {
+          "type": "boolean",
+          "description": "Back with a command waiting for its target: cancel it."
+        },
+        "recall": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A control group's key or tab: select it."
+        },
+        "focus": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A control group recalled twice quickly: centre the camera on it."
+        },
+        "assign": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Ctrl and a group's key: the group becomes the selection."
+        },
+        "add": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Shift and a group's key: the selection joins the group."
+        },
+        "clicked": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A unit's tile pressed: focus it (or select only it)."
+        },
+        "selectType": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Ctrl and a unit's tile: select every unit of its type in the selection."
+        },
+        "deselect": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Shift and a unit's tile: take it out of the selection."
+        },
+        "mapClicked": {
+          "type": "boolean",
+          "description": "The minimap was pressed."
+        },
+        "cancelled": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A production queue item pressed: cancel it."
+        }
+      },
+      "required": [
+        "command",
+        "queued",
+        "refused",
+        "page",
+        "cancelTarget",
+        "recall",
+        "focus",
+        "assign",
+        "add",
+        "clicked",
+        "selectType",
+        "deselect",
+        "mapClicked",
+        "cancelled"
       ],
       "additionalProperties": false
     },

@@ -1821,3 +1821,74 @@ test("chat: at its foot the log follows a new message; scrolled up, new ones gat
   expect(shows("m32")).toBeTrue();
   expect(byPath(engine, "Chat/New") === undefined).toBeTrue();
 });
+
+// ── RTS command layer ───────────────────────────────────────────────────
+
+const ACT = (name: string, keys: string[]): Api.UiActionDesc => ({ name, keys, buttons: [], trigger: "press", holdMs: 0, toggle: false, label: name });
+
+function rtsRun(st: { page: string; targeting: string }, results: Api.RtsCommandsResult[]): Engine {
+  const sys = defineSystem(`RtsCmd${systems++}`, {}, (_q: unknown, _t: unknown, world: Api.World) => {
+    for (const a of [ACT("cmdAttack", ["KeyA"]), ACT("cmdStorm", ["KeyS"]), ACT("group1", ["Digit1"]), ACT("group2", ["Digit2"])]) og.ui.defineAction(world, a);
+    og.ui.anchor("Root", { anchor: "topLeft", direction: "column" } as never, () => {
+      const r = og.ui.rtsCommands("Rts", {
+        console: {
+          selection: { units: [{ key: "u1", name: "Marine", health: 40, healthMax: 45 }, { key: "u2", name: "Marine", health: 45, healthMax: 45 }], groups: [{ key: "g1", label: "1", count: 2 }, { key: "g2", label: "2", count: 0 }], group: "g1" },
+          commands: { columns: 5 },
+          anchor: "bottom",
+        },
+        pages: [
+          { key: "root", commands: [{ key: "attack", name: "Attack", action: "cmdAttack" }, { key: "build", name: "Build" }, { key: "storm", name: "Storm", action: "cmdStorm", locked: true }] },
+          { key: "build", commands: [{ key: "barracks", name: "Barracks" }] },
+        ],
+        page: st.page,
+        groupActions: ["group1", "group2"],
+        targeting: st.targeting,
+      });
+      results.push(r);
+      if (r.page !== null) st.page = r.page;
+    });
+  });
+  const r = createEngine(og.game({ systems: [sys] }) as unknown as GameToken);
+  if (!r.ok) throw new Error(r.reason);
+  r.value.advance(10);
+  return r.value;
+}
+
+test("rtsCommands: a command naming a page opens it, whose Back returns; a locked command is refused by press or key; Shift queues", () => {
+  // Wrong: Build answered as an order, a sub-page with no way back, a locked command fired by its hotkey, or Shift ignored.
+  const results: Api.RtsCommandsResult[] = [];
+  const st = { page: "", targeting: "" };
+  const engine = rtsRun(st, results);
+  tapOn(engine, byPath(engine, "Commands/Grid/Row#0/build")!);
+  expect(st.page).toBe("build");
+  expect(results.some((r) => r.command === "build")).toBeFalse();
+  tapOn(engine, byPath(engine, "PageBack")!);
+  expect(st.page).toBe("root");
+  key(engine, "KeyS");
+  expect(results.filter((r) => r.refused).map((r) => r.refused)).toEqual(["storm"]);
+  engine.probe.commands("0:key_down:ShiftLeft;0.05:key_down:KeyA;0.1:key_up:KeyA;0.15:key_up:ShiftLeft");
+  engine.advance(12);
+  expect(results.filter((r) => r.command).map((r) => [r.command, r.queued])).toEqual([["attack", true]]);
+});
+
+test("rtsCommands: a group's key recalls it and twice quickly focuses it; Ctrl sets and Shift adds; Back cancels a targeting command", () => {
+  // Wrong: Ctrl+1 recalling instead of setting, a slow second tap focusing, or Back leaving the targeting order in place.
+  const results: Api.RtsCommandsResult[] = [];
+  const st = { page: "", targeting: "" };
+  const engine = rtsRun(st, results);
+  key(engine, "Digit1");
+  engine.advance(60);
+  key(engine, "Digit1");
+  key(engine, "Digit1");
+  engine.probe.commands("0:key_down:ControlLeft;0.05:key_down:Digit1;0.1:key_up:Digit1;0.15:key_up:ControlLeft");
+  engine.advance(12);
+  engine.probe.commands("0:key_down:ShiftLeft;0.05:key_down:Digit2;0.1:key_up:Digit2;0.15:key_up:ShiftLeft");
+  engine.advance(12);
+  const got = (k: keyof Api.RtsCommandsResult) => results.filter((r) => r[k]).map((r) => r[k]);
+  expect([got("recall"), got("focus"), got("assign"), got("add")]).toEqual([["g1", "g1"], ["g1"], ["g1"], ["g2"]]);
+  st.targeting = "attack";
+  engine.advance(4);
+  expect(byPath(engine, "RtsPrompt") !== undefined).toBeTrue();
+  key(engine, "Escape");
+  expect(results.some((r) => r.cancelTarget)).toBeTrue();
+});

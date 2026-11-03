@@ -6412,6 +6412,62 @@ module ui {
     param desc ChatDesc "The channels, messages, draft and words."
     returns ChatResult
   }
+  struct CommandPage {
+    doc "One page of an RTS command card: the unit's own commands, or a sub-card (Build, Advanced build) a command opens."
+    desc true
+    field key String "Its key: a command whose key is a page's key opens that page."
+    field commands List.AbilitySlotDesc "Its commands in reading order (empty keys leave cells empty). A command's `action` names the UI action (og.ui.defineAction, on physical key codes) whose press fires it, and its glyph is the hotkey the card prints."
+  }
+  struct RtsCommandsDesc {
+    doc "The RTS command layer: the console to draw, the command pages, the control groups' keys and a command awaiting its target."
+    desc true
+    field console RtsConsoleDesc "The console (og.ui.rtsConsole): its map, its selection with the control groups' tabs, and its command card (whose commands the current page replaces)."
+    field pages List.CommandPage "The command pages; the first is the root."
+    field page String "The page shown; empty is the root."
+    field groupActions List.String "The UI actions recalling control groups, in the order of the selection's groups (Digit1 … Digit0 bound by the game): with Ctrl held one sets the group to the selection, with Shift held adds the selection to it, and tapped twice quickly focuses it."
+    field targeting String "A command waiting for its target (its key): its slot is lit, a prompt says so, and Back cancels it."
+    field doubleTapMs f32 "Two taps of a group's key within this long focus it." {
+      default 350
+      unit ms
+    }
+    field targetLabel String "The targeting prompt ({command} is its name)." {
+      default "{command}: choose a target"
+    }
+    field cancelLabel String "The prompt's cancel word, after the back glyph." {
+      default "Cancel"
+    }
+    field queueLabel String "The prompt's hint for queueing, after the Shift glyph." {
+      default "Queue"
+    }
+    field backLabel String "The Back command a sub-page ends with." {
+      default "Back"
+    }
+  }
+  struct RtsCommandsResult {
+    doc "What the player asked for this tick, for the game to carry out."
+    field command Option.String "A command fired (pressed, or its action): its key. A command naming a page opens the page instead."
+    field queued bool "Shift was held as it fired (the order goes to the end of the units' queues)."
+    field refused Option.String "A command that cannot fire now (locked, disabled, unaffordable or cooling down) was asked for: its key (the game says why: not enough gold)."
+    field page Option.String "A page was opened, or Back (the cell or the action) went to the root: its key."
+    field cancelTarget bool "Back with a command waiting for its target: cancel it."
+    field recall Option.String "A control group's key or tab: select it."
+    field focus Option.String "A control group recalled twice quickly: centre the camera on it."
+    field assign Option.String "Ctrl and a group's key: the group becomes the selection."
+    field add Option.String "Shift and a group's key: the selection joins the group."
+    field clicked Option.String "A unit's tile pressed: focus it (or select only it)."
+    field selectType Option.String "Ctrl and a unit's tile: select every unit of its type in the selection."
+    field deselect Option.String "Shift and a unit's tile: take it out of the selection."
+    field mapClicked bool "The minimap was pressed."
+    field cancelled Option.String "A production queue item pressed: cancel it."
+  }
+  fn rtsCommands {
+    doc "The RTS command layer (StarCraft II, Age of Empires IV, Warcraft III): og.ui.rtsConsole drawn with the current command page in its card, and the grammar the genre's players know on top of it. A command whose key is a page's opens that page (Build), whose last cell is then Back; Back (the cell or the action) returns to the root. A command fires by a press or by its own UI action, so a grid of physical keys (Q W E R T, A S D F G, Z X C V B by `code`) works on any keyboard layout and the card prints each key as that layout labels it; Shift held queues the order; a locked, disabled, unaffordable or cooling command is refused, not fired. While a command waits for its target its slot is lit and a prompt over the console names it with Back to cancel and Shift to queue. The control groups' keys recall a group, Ctrl with one sets it to the selection, Shift adds to it, and two taps within doubleTapMs focus it; the group tabs answer the same. A unit's tile answers a press, Ctrl for its type, Shift to take it out. The selection, the groups' contents, the camera and the orders are the game's."
+    doc "Parts: those of rtsConsole, RtsCommands.prompt. Sounds: select on a page, confirm on a command, error on a refusal, tab on a recall. Accessibility: the console's; the prompt a status. Probe ids: rtsConsole's under <id> (<id>/Commands/<key>, the Back cell <id>/Commands/PageBack), and <id>Prompt."
+    host false
+    param id String "Its id."
+    param desc RtsCommandsDesc "The console, the pages, the groups' keys and the targeting command."
+    returns RtsCommandsResult
+  }
   # ── end of the genre patterns ────────────────────────────────────────
 
   # ── the UI kit: screen templates (TypeScript over the calls above) ──────

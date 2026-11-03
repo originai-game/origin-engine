@@ -550,6 +550,10 @@ module ui {
 | [`ChatDesc`](#type-ChatDesc) | desc struct | A chat window: the channels, the messages, the player's draft and the channel it goes to. |
 | [`ChatResult`](#type-ChatResult) | struct | What the player asked for this tick, for the game to apply. |
 | [`og.ui.chat`](#fn-chat) | function | A chat window (World of Warcraft, Final Fantasy XIV, Discord in a game): the channel tabs, each its name and its unread count (in the highlight when a message there names the player); the log, each message one wrapping line of its time, its channel's tag in the channel's ink where the tab shows every channel, the author's name in that ink (a press answers them), and the words as typed, with each link a bracketed press in its tier's ink and each @mention in the highlight; a message naming the player is lit along its edge, a system line is muted. The log stays on the newest message while the player is at its foot; scrolled up, new messages gather in a pill (3 new) that brings the view down. Under it the input: the channel chip in its ink (a press steps to the next channel that can be sent to), the field and Send (a round button with its arrow where the window is narrow for its text, the chip's name then cut short); Enter sends, and while an @word is typed the matching members are offered over the input, a press writing the name. The HUD form draws no panel, only the newest lines over the game, which fade once idle, and shows the tabs and the input while the player types. On a phone the window takes its room and Send is a whole touch target. |
+| [`CommandPage`](#type-CommandPage) | desc struct | One page of an RTS command card: the unit's own commands, or a sub-card (Build, Advanced build) a command opens. |
+| [`RtsCommandsDesc`](#type-RtsCommandsDesc) | desc struct | The RTS command layer: the console to draw, the command pages, the control groups' keys and a command awaiting its target. |
+| [`RtsCommandsResult`](#type-RtsCommandsResult) | struct | What the player asked for this tick, for the game to carry out. |
+| [`og.ui.rtsCommands`](#fn-rtsCommands) | function | The RTS command layer (StarCraft II, Age of Empires IV, Warcraft III): og.ui.rtsConsole drawn with the current command page in its card, and the grammar the genre's players know on top of it. A command whose key is a page's opens that page (Build), whose last cell is then Back; Back (the cell or the action) returns to the root. A command fires by a press or by its own UI action, so a grid of physical keys (Q W E R T, A S D F G, Z X C V B by `code`) works on any keyboard layout and the card prints each key as that layout labels it; Shift held queues the order; a locked, disabled, unaffordable or cooling command is refused, not fired. While a command waits for its target its slot is lit and a prompt over the console names it with Back to cancel and Shift to queue. The control groups' keys recall a group, Ctrl with one sets it to the selection, Shift adds to it, and two taps within doubleTapMs focus it; the group tabs answer the same. A unit's tile answers a press, Ctrl for its type, Shift to take it out. The selection, the groups' contents, the camera and the orders are the game's. |
 | [`UiAction`](#type-UiAction) | callback | A template's action, by its id (a menu item, `buy:<item>`, `share`). |
 | [`SettingsChanged`](#type-SettingsChanged) | callback | The settings after a change: persist them (cloud save, local storage through the shell) and apply them. |
 | [`MenuItem`](#type-MenuItem) | desc struct | An item of a menu: an id the game acts on and the label a player reads. |
@@ -6717,6 +6721,40 @@ fn chat {
 
 <sub>`api.ogt` line 21306</sub>
 
+<a id="fn-rtsCommands"></a>
+
+### `og.ui.rtsCommands`
+
+The RTS command layer (StarCraft II, Age of Empires IV, Warcraft III): og.ui.rtsConsole drawn with the current command page in its card, and the grammar the genre's players know on top of it. A command whose key is a page's opens that page (Build), whose last cell is then Back; Back (the cell or the action) returns to the root. A command fires by a press or by its own UI action, so a grid of physical keys (Q W E R T, A S D F G, Z X C V B by `code`) works on any keyboard layout and the card prints each key as that layout labels it; Shift held queues the order; a locked, disabled, unaffordable or cooling command is refused, not fired. While a command waits for its target its slot is lit and a prompt over the console names it with Back to cancel and Shift to queue. The control groups' keys recall a group, Ctrl with one sets it to the selection, Shift adds to it, and two taps within doubleTapMs focus it; the group tabs answer the same. A unit's tile answers a press, Ctrl for its type, Shift to take it out. The selection, the groups' contents, the camera and the orders are the game's.
+
+Parts: those of rtsConsole, RtsCommands.prompt. Sounds: select on a page, confirm on a command, error on a refusal, tab on a recall. Accessibility: the console's; the prompt a status. Probe ids: rtsConsole's under <id> (<id>/Commands/<key>, the Back cell <id>/Commands/PageBack), and <id>Prompt.
+
+```ts
+og.ui.rtsCommands(id: string, desc?: RtsCommandsDesc): RtsCommandsResult
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | Its id. |
+| `desc` | `RtsCommandsDesc` | yes | The console, the pages, the groups' keys and the targeting command. |
+
+**Returns** `RtsCommandsResult`.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn rtsCommands {
+  doc "The RTS command layer (StarCraft II, Age of Empires IV, Warcraft III): og.ui.rtsConsole drawn with the current command page in its card, and the grammar the genre's players know on top of it. A command whose key is a page's opens that page (Build), whose last cell is then Back; Back (the cell or the action) returns to the root. A command fires by a press or by its own UI action, so a grid of physical keys (Q W E R T, A S D F G, Z X C V B by `code`) works on any keyboard layout and the card prints each key as that layout labels it; Shift held queues the order; a locked, disabled, unaffordable or cooling command is refused, not fired. While a command waits for its target its slot is lit and a prompt over the console names it with Back to cancel and Shift to queue. The control groups' keys recall a group, Ctrl with one sets it to the selection, Shift adds to it, and two taps within doubleTapMs focus it; the group tabs answer the same. A unit's tile answers a press, Ctrl for its type, Shift to take it out. The selection, the groups' contents, the camera and the orders are the game's."
+  doc "Parts: those of rtsConsole, RtsCommands.prompt. Sounds: select on a page, confirm on a command, error on a refusal, tab on a recall. Accessibility: the console's; the prompt a status. Probe ids: rtsConsole's under <id> (<id>/Commands/<key>, the Back cell <id>/Commands/PageBack), and <id>Prompt."
+  host false
+  param id String "Its id."
+  param desc RtsCommandsDesc "The console, the pages, the groups' keys and the targeting command."
+  returns RtsCommandsResult
+}
+```
+
+<sub>`api.ogt` line 21362</sub>
+
 <a id="fn-mainMenu"></a>
 
 ### `og.ui.mainMenu`
@@ -6746,7 +6784,7 @@ fn mainMenu {
 }
 ```
 
-<sub>`api.ogt` line 22137</sub>
+<sub>`api.ogt` line 22193</sub>
 
 <a id="fn-pauseMenu"></a>
 
@@ -6777,7 +6815,7 @@ fn pauseMenu {
 }
 ```
 
-<sub>`api.ogt` line 22145</sub>
+<sub>`api.ogt` line 22201</sub>
 
 <a id="fn-settingsScreen"></a>
 
@@ -6808,7 +6846,7 @@ fn settingsScreen {
 }
 ```
 
-<sub>`api.ogt` line 22153</sub>
+<sub>`api.ogt` line 22209</sub>
 
 <a id="fn-platformerHud"></a>
 
@@ -6839,7 +6877,7 @@ fn platformerHud {
 }
 ```
 
-<sub>`api.ogt` line 22161</sub>
+<sub>`api.ogt` line 22217</sub>
 
 <a id="fn-shooterHud"></a>
 
@@ -6870,7 +6908,7 @@ fn shooterHud {
 }
 ```
 
-<sub>`api.ogt` line 22169</sub>
+<sub>`api.ogt` line 22225</sub>
 
 <a id="fn-puzzleHud"></a>
 
@@ -6901,7 +6939,7 @@ fn puzzleHud {
 }
 ```
 
-<sub>`api.ogt` line 22177</sub>
+<sub>`api.ogt` line 22233</sub>
 
 <a id="fn-idleHud"></a>
 
@@ -6932,7 +6970,7 @@ fn idleHud {
 }
 ```
 
-<sub>`api.ogt` line 22185</sub>
+<sub>`api.ogt` line 22241</sub>
 
 <a id="fn-racingHud"></a>
 
@@ -6963,7 +7001,7 @@ fn racingHud {
 }
 ```
 
-<sub>`api.ogt` line 22193</sub>
+<sub>`api.ogt` line 22249</sub>
 
 <a id="fn-cutscene"></a>
 
@@ -6994,7 +7032,7 @@ fn cutscene {
 }
 ```
 
-<sub>`api.ogt` line 22201</sub>
+<sub>`api.ogt` line 22257</sub>
 
 <a id="fn-shopScreen"></a>
 
@@ -7025,7 +7063,7 @@ fn shopScreen {
 }
 ```
 
-<sub>`api.ogt` line 22209</sub>
+<sub>`api.ogt` line 22265</sub>
 
 <a id="fn-inventoryScreen"></a>
 
@@ -7056,7 +7094,7 @@ fn inventoryScreen {
 }
 ```
 
-<sub>`api.ogt` line 22217</sub>
+<sub>`api.ogt` line 22273</sub>
 
 <a id="fn-levelSelect"></a>
 
@@ -7087,7 +7125,7 @@ fn levelSelect {
 }
 ```
 
-<sub>`api.ogt` line 22225</sub>
+<sub>`api.ogt` line 22281</sub>
 
 <a id="fn-resultsScreen"></a>
 
@@ -7118,7 +7156,7 @@ fn resultsScreen {
 }
 ```
 
-<sub>`api.ogt` line 22233</sub>
+<sub>`api.ogt` line 22289</sub>
 
 <a id="fn-leaderboardScreen"></a>
 
@@ -7149,7 +7187,7 @@ fn leaderboardScreen {
 }
 ```
 
-<sub>`api.ogt` line 22241</sub>
+<sub>`api.ogt` line 22297</sub>
 
 <a id="fn-tutorialOverlay"></a>
 
@@ -7180,7 +7218,7 @@ fn tutorialOverlay {
 }
 ```
 
-<sub>`api.ogt` line 22249</sub>
+<sub>`api.ogt` line 22305</sub>
 
 <a id="fn-loadingScreen"></a>
 
@@ -7211,7 +7249,7 @@ fn loadingScreen {
 }
 ```
 
-<sub>`api.ogt` line 22257</sub>
+<sub>`api.ogt` line 22313</sub>
 
 <a id="fn-confirmDialog"></a>
 
@@ -7242,7 +7280,7 @@ fn confirmDialog {
 }
 ```
 
-<sub>`api.ogt` line 22265</sub>
+<sub>`api.ogt` line 22321</sub>
 
 <a id="fn-alertDialog"></a>
 
@@ -7273,7 +7311,7 @@ fn alertDialog {
 }
 ```
 
-<sub>`api.ogt` line 22273</sub>
+<sub>`api.ogt` line 22329</sub>
 
 <a id="fn-props"></a>
 
@@ -7301,7 +7339,7 @@ fn props {
 }
 ```
 
-<sub>`api.ogt` line 23038</sub>
+<sub>`api.ogt` line 23094</sub>
 
 <a id="fn-defineTimeline"></a>
 
@@ -7331,7 +7369,7 @@ fn defineTimeline {
 }
 ```
 
-<sub>`api.ogt` line 23044</sub>
+<sub>`api.ogt` line 23100</sub>
 
 <a id="fn-play"></a>
 
@@ -7363,7 +7401,7 @@ fn play {
 }
 ```
 
-<sub>`api.ogt` line 23051</sub>
+<sub>`api.ogt` line 23107</sub>
 
 <a id="fn-playTimeline"></a>
 
@@ -7395,7 +7433,7 @@ fn playTimeline {
 }
 ```
 
-<sub>`api.ogt` line 23059</sub>
+<sub>`api.ogt` line 23115</sub>
 
 <a id="fn-seek"></a>
 
@@ -7425,7 +7463,7 @@ fn seek {
 }
 ```
 
-<sub>`api.ogt` line 23067</sub>
+<sub>`api.ogt` line 23123</sub>
 
 <a id="fn-pause"></a>
 
@@ -7453,7 +7491,7 @@ fn pause {
 }
 ```
 
-<sub>`api.ogt` line 23074</sub>
+<sub>`api.ogt` line 23130</sub>
 
 <a id="fn-resume"></a>
 
@@ -7481,7 +7519,7 @@ fn resume {
 }
 ```
 
-<sub>`api.ogt` line 23080</sub>
+<sub>`api.ogt` line 23136</sub>
 
 <a id="fn-reverse"></a>
 
@@ -7509,7 +7547,7 @@ fn reverse {
 }
 ```
 
-<sub>`api.ogt` line 23086</sub>
+<sub>`api.ogt` line 23142</sub>
 
 <a id="fn-stop"></a>
 
@@ -7537,7 +7575,7 @@ fn stop {
 }
 ```
 
-<sub>`api.ogt` line 23092</sub>
+<sub>`api.ogt` line 23148</sub>
 
 <a id="fn-playInfo"></a>
 
@@ -7565,7 +7603,7 @@ fn playInfo {
 }
 ```
 
-<sub>`api.ogt` line 23098</sub>
+<sub>`api.ogt` line 23154</sub>
 
 <a id="fn-forceState"></a>
 
@@ -7597,7 +7635,7 @@ fn forceState {
 }
 ```
 
-<sub>`api.ogt` line 23104</sub>
+<sub>`api.ogt` line 23160</sub>
 
 <a id="fn-openPath"></a>
 
@@ -7620,7 +7658,7 @@ fn openPath {
 }
 ```
 
-<sub>`api.ogt` line 23112</sub>
+<sub>`api.ogt` line 23168</sub>
 
 <a id="fn-visualState"></a>
 
@@ -7650,7 +7688,7 @@ fn visualState {
 }
 ```
 
-<sub>`api.ogt` line 23117</sub>
+<sub>`api.ogt` line 23173</sub>
 
 <a id="fn-animate"></a>
 
@@ -7682,7 +7720,7 @@ fn animate {
 }
 ```
 
-<sub>`api.ogt` line 23124</sub>
+<sub>`api.ogt` line 23180</sub>
 
 <a id="fn-gesture"></a>
 
@@ -7710,7 +7748,7 @@ fn gesture {
 }
 ```
 
-<sub>`api.ogt` line 23132</sub>
+<sub>`api.ogt` line 23188</sub>
 
 <a id="fn-motionEvents"></a>
 
@@ -7733,7 +7771,7 @@ fn motionEvents {
 }
 ```
 
-<sub>`api.ogt` line 23138</sub>
+<sub>`api.ogt` line 23194</sub>
 
 <a id="fn-overlaps"></a>
 
@@ -7756,7 +7794,7 @@ fn overlaps {
 }
 ```
 
-<sub>`api.ogt` line 23143</sub>
+<sub>`api.ogt` line 23199</sub>
 
 <a id="fn-layoutStats"></a>
 
@@ -7779,7 +7817,7 @@ fn layoutStats {
 }
 ```
 
-<sub>`api.ogt` line 23148</sub>
+<sub>`api.ogt` line 23204</sub>
 
 <a id="fn-notifications"></a>
 
@@ -7816,7 +7854,7 @@ fn notifications {
 }
 ```
 
-<sub>`api.ogt` line 23233</sub>
+<sub>`api.ogt` line 23289</sub>
 
 <a id="fn-countBadge"></a>
 
@@ -7850,7 +7888,7 @@ fn countBadge {
 }
 ```
 
-<sub>`api.ogt` line 23269</sub>
+<sub>`api.ogt` line 23325</sub>
 
 <a id="fn-tooltipCard"></a>
 
@@ -7884,7 +7922,7 @@ fn tooltipCard {
 }
 ```
 
-<sub>`api.ogt` line 23344</sub>
+<sub>`api.ogt` line 23400</sub>
 
 <a id="fn-progressBar"></a>
 
@@ -7918,7 +7956,7 @@ fn progressBar {
 }
 ```
 
-<sub>`api.ogt` line 23389</sub>
+<sub>`api.ogt` line 23445</sub>
 
 <a id="fn-progressRing"></a>
 
@@ -7952,7 +7990,7 @@ fn progressRing {
 }
 ```
 
-<sub>`api.ogt` line 23417</sub>
+<sub>`api.ogt` line 23473</sub>
 
 <a id="fn-skeletonGroup"></a>
 
@@ -7986,7 +8024,7 @@ fn skeletonGroup {
 }
 ```
 
-<sub>`api.ogt` line 23451</sub>
+<sub>`api.ogt` line 23507</sub>
 
 <a id="fn-formatNumber"></a>
 
@@ -8017,7 +8055,7 @@ fn formatNumber {
 }
 ```
 
-<sub>`api.ogt` line 23486</sub>
+<sub>`api.ogt` line 23542</sub>
 
 <a id="fn-numberCounter"></a>
 
@@ -8053,7 +8091,7 @@ fn numberCounter {
 }
 ```
 
-<sub>`api.ogt` line 23520</sub>
+<sub>`api.ogt` line 23576</sub>
 
 <a id="fn-banner"></a>
 
@@ -8087,7 +8125,7 @@ fn banner {
 }
 ```
 
-<sub>`api.ogt` line 23566</sub>
+<sub>`api.ogt` line 23622</sub>
 
 <a id="fn-ribbon"></a>
 
@@ -8121,7 +8159,7 @@ fn ribbon {
 }
 ```
 
-<sub>`api.ogt` line 23589</sub>
+<sub>`api.ogt` line 23645</sub>
 
 <a id="fn-celebration"></a>
 
@@ -8155,7 +8193,7 @@ fn celebration {
 }
 ```
 
-<sub>`api.ogt` line 23627</sub>
+<sub>`api.ogt` line 23683</sub>
 
 <a id="fn-starRating"></a>
 
@@ -8189,7 +8227,7 @@ fn starRating {
 }
 ```
 
-<sub>`api.ogt` line 23655</sub>
+<sub>`api.ogt` line 23711</sub>
 
 <a id="fn-subtitles"></a>
 
@@ -8223,7 +8261,7 @@ fn subtitles {
 }
 ```
 
-<sub>`api.ogt` line 23723</sub>
+<sub>`api.ogt` line 23779</sub>
 
 <a id="fn-statBar"></a>
 
@@ -8257,7 +8295,7 @@ fn statBar {
 }
 ```
 
-<sub>`api.ogt` line 23810</sub>
+<sub>`api.ogt` line 23866</sub>
 
 <a id="fn-orbMeter"></a>
 
@@ -8291,7 +8329,7 @@ fn orbMeter {
 }
 ```
 
-<sub>`api.ogt` line 23842</sub>
+<sub>`api.ogt` line 23898</sub>
 
 <a id="fn-radialMeter"></a>
 
@@ -8325,7 +8363,7 @@ fn radialMeter {
 }
 ```
 
-<sub>`api.ogt` line 23871</sub>
+<sub>`api.ogt` line 23927</sub>
 
 <a id="fn-abilitySlot"></a>
 
@@ -8359,7 +8397,7 @@ fn abilitySlot {
 }
 ```
 
-<sub>`api.ogt` line 23919</sub>
+<sub>`api.ogt` line 23975</sub>
 
 <a id="fn-abilityBar"></a>
 
@@ -8393,7 +8431,7 @@ fn abilityBar {
 }
 ```
 
-<sub>`api.ogt` line 23952</sub>
+<sub>`api.ogt` line 24008</sub>
 
 <a id="fn-statusGrid"></a>
 
@@ -8427,7 +8465,7 @@ fn statusGrid {
 }
 ```
 
-<sub>`api.ogt` line 24007</sub>
+<sub>`api.ogt` line 24063</sub>
 
 <a id="fn-unitFrame"></a>
 
@@ -8461,7 +8499,7 @@ fn unitFrame {
 }
 ```
 
-<sub>`api.ogt` line 24072</sub>
+<sub>`api.ogt` line 24128</sub>
 
 <a id="fn-partyFrames"></a>
 
@@ -8495,7 +8533,7 @@ fn partyFrames {
 }
 ```
 
-<sub>`api.ogt` line 24099</sub>
+<sub>`api.ogt` line 24155</sub>
 
 <a id="fn-raidFrames"></a>
 
@@ -8529,7 +8567,7 @@ fn raidFrames {
 }
 ```
 
-<sub>`api.ogt` line 24159</sub>
+<sub>`api.ogt` line 24215</sub>
 
 <a id="fn-castBar"></a>
 
@@ -8563,7 +8601,7 @@ fn castBar {
 }
 ```
 
-<sub>`api.ogt` line 24206</sub>
+<sub>`api.ogt` line 24262</sub>
 
 <a id="fn-crosshair"></a>
 
@@ -8597,7 +8635,7 @@ fn crosshair {
 }
 ```
 
-<sub>`api.ogt` line 24264</sub>
+<sub>`api.ogt` line 24320</sub>
 
 <a id="fn-ammoCounter"></a>
 
@@ -8631,7 +8669,7 @@ fn ammoCounter {
 }
 ```
 
-<sub>`api.ogt` line 24301</sub>
+<sub>`api.ogt` line 24357</sub>
 
 <a id="fn-minimapView"></a>
 
@@ -8665,7 +8703,7 @@ fn minimapView {
 }
 ```
 
-<sub>`api.ogt` line 24390</sub>
+<sub>`api.ogt` line 24446</sub>
 
 <a id="fn-compass"></a>
 
@@ -8699,7 +8737,7 @@ fn compass {
 }
 ```
 
-<sub>`api.ogt` line 24439</sub>
+<sub>`api.ogt` line 24495</sub>
 
 <a id="fn-objectiveTracker"></a>
 
@@ -8733,7 +8771,7 @@ fn objectiveTracker {
 }
 ```
 
-<sub>`api.ogt` line 24501</sub>
+<sub>`api.ogt` line 24557</sub>
 
 <a id="fn-killfeed"></a>
 
@@ -8767,7 +8805,7 @@ fn killfeed {
 }
 ```
 
-<sub>`api.ogt` line 24540</sub>
+<sub>`api.ogt` line 24596</sub>
 
 <a id="fn-scoreboard"></a>
 
@@ -8801,7 +8839,7 @@ fn scoreboard {
 }
 ```
 
-<sub>`api.ogt` line 24599</sub>
+<sub>`api.ogt` line 24655</sub>
 
 <a id="fn-hudTimer"></a>
 
@@ -8835,7 +8873,7 @@ fn hudTimer {
 }
 ```
 
-<sub>`api.ogt` line 24639</sub>
+<sub>`api.ogt` line 24695</sub>
 
 <a id="fn-comboCounter"></a>
 
@@ -8869,7 +8907,7 @@ fn comboCounter {
 }
 ```
 
-<sub>`api.ogt` line 24666</sub>
+<sub>`api.ogt` line 24722</sub>
 
 <a id="fn-judgement"></a>
 
@@ -8903,7 +8941,7 @@ fn judgement {
 }
 ```
 
-<sub>`api.ogt` line 24704</sub>
+<sub>`api.ogt` line 24760</sub>
 
 <a id="fn-resourceBar"></a>
 
@@ -8937,7 +8975,7 @@ fn resourceBar {
 }
 ```
 
-<sub>`api.ogt` line 24743</sub>
+<sub>`api.ogt` line 24799</sub>
 
 <a id="fn-turnOrder"></a>
 
@@ -8974,7 +9012,7 @@ fn turnOrder {
 }
 ```
 
-<sub>`api.ogt` line 24797</sub>
+<sub>`api.ogt` line 24853</sub>
 
 <a id="fn-speedometer"></a>
 
@@ -9008,7 +9046,7 @@ fn speedometer {
 }
 ```
 
-<sub>`api.ogt` line 24844</sub>
+<sub>`api.ogt` line 24900</sub>
 
 <a id="fn-scorebug"></a>
 
@@ -9042,7 +9080,7 @@ fn scorebug {
 }
 ```
 
-<sub>`api.ogt` line 24882</sub>
+<sub>`api.ogt` line 24938</sub>
 
 <a id="fn-matchStats"></a>
 
@@ -9076,7 +9114,7 @@ fn matchStats {
 }
 ```
 
-<sub>`api.ogt` line 24914</sub>
+<sub>`api.ogt` line 24970</sub>
 
 <a id="fn-goalTimeline"></a>
 
@@ -9110,7 +9148,7 @@ fn goalTimeline {
 }
 ```
 
-<sub>`api.ogt` line 24941</sub>
+<sub>`api.ogt` line 24997</sub>
 
 <a id="fn-playerPlate"></a>
 
@@ -9144,7 +9182,7 @@ fn playerPlate {
 }
 ```
 
-<sub>`api.ogt` line 24969</sub>
+<sub>`api.ogt` line 25025</sub>
 
 <a id="fn-substitution"></a>
 
@@ -9178,7 +9216,7 @@ fn substitution {
 }
 ```
 
-<sub>`api.ogt` line 25005</sub>
+<sub>`api.ogt` line 25061</sub>
 
 <a id="fn-wavePreview"></a>
 
@@ -9212,7 +9250,7 @@ fn wavePreview {
 }
 ```
 
-<sub>`api.ogt` line 25040</sub>
+<sub>`api.ogt` line 25096</sub>
 
 <a id="fn-laneKeys"></a>
 
@@ -9246,7 +9284,7 @@ fn laneKeys {
 }
 ```
 
-<sub>`api.ogt` line 25075</sub>
+<sub>`api.ogt` line 25131</sub>
 
 <a id="fn-flightHud"></a>
 
@@ -9280,7 +9318,7 @@ fn flightHud {
 }
 ```
 
-<sub>`api.ogt` line 25121</sub>
+<sub>`api.ogt` line 25177</sub>
 
 <a id="fn-standingsTower"></a>
 
@@ -9314,7 +9352,7 @@ fn standingsTower {
 }
 ```
 
-<sub>`api.ogt` line 25170</sub>
+<sub>`api.ogt` line 25226</sub>
 
 <a id="fn-lapTimer"></a>
 
@@ -9348,7 +9386,7 @@ fn lapTimer {
 }
 ```
 
-<sub>`api.ogt` line 25225</sub>
+<sub>`api.ogt` line 25281</sub>
 
 <a id="fn-rearView"></a>
 
@@ -9382,7 +9420,7 @@ fn rearView {
 }
 ```
 
-<sub>`api.ogt` line 25257</sub>
+<sub>`api.ogt` line 25313</sub>
 
 <a id="fn-productionQueue"></a>
 
@@ -9416,7 +9454,7 @@ fn productionQueue {
 }
 ```
 
-<sub>`api.ogt` line 25353</sub>
+<sub>`api.ogt` line 25409</sub>
 
 <a id="fn-selectionPanel"></a>
 
@@ -9450,7 +9488,7 @@ fn selectionPanel {
 }
 ```
 
-<sub>`api.ogt` line 25387</sub>
+<sub>`api.ogt` line 25443</sub>
 
 <a id="fn-commandCard"></a>
 
@@ -9484,7 +9522,7 @@ fn commandCard {
 }
 ```
 
-<sub>`api.ogt` line 25410</sub>
+<sub>`api.ogt` line 25466</sub>
 
 <a id="fn-rtsConsole"></a>
 
@@ -9518,7 +9556,7 @@ fn rtsConsole {
 }
 ```
 
-<sub>`api.ogt` line 25440</sub>
+<sub>`api.ogt` line 25496</sub>
 
 <a id="fn-dragSelect"></a>
 
@@ -9552,7 +9590,7 @@ fn dragSelect {
 }
 ```
 
-<sub>`api.ogt` line 25484</sub>
+<sub>`api.ogt` line 25540</sub>
 
 <a id="fn-damageDirection"></a>
 
@@ -9586,7 +9624,7 @@ fn damageDirection {
 }
 ```
 
-<sub>`api.ogt` line 25521</sub>
+<sub>`api.ogt` line 25577</sub>
 
 <a id="fn-lowHealthVignette"></a>
 
@@ -9620,7 +9658,7 @@ fn lowHealthVignette {
 }
 ```
 
-<sub>`api.ogt` line 25544</sub>
+<sub>`api.ogt` line 25600</sub>
 
 <a id="fn-nameplate"></a>
 
@@ -9654,7 +9692,7 @@ fn nameplate {
 }
 ```
 
-<sub>`api.ogt` line 25606</sub>
+<sub>`api.ogt` line 25662</sub>
 
 <a id="fn-overheadBars"></a>
 
@@ -9688,7 +9726,7 @@ fn overheadBars {
 }
 ```
 
-<sub>`api.ogt` line 25647</sub>
+<sub>`api.ogt` line 25703</sub>
 
 <a id="fn-damageNumbers"></a>
 
@@ -9722,7 +9760,7 @@ fn damageNumbers {
 }
 ```
 
-<sub>`api.ogt` line 25696</sub>
+<sub>`api.ogt` line 25752</sub>
 
 <a id="fn-interactionPrompt"></a>
 
@@ -9758,7 +9796,7 @@ fn interactionPrompt {
 }
 ```
 
-<sub>`api.ogt` line 25727</sub>
+<sub>`api.ogt` line 25783</sub>
 
 <a id="fn-waypoint"></a>
 
@@ -9792,7 +9830,7 @@ fn waypoint {
 }
 ```
 
-<sub>`api.ogt` line 25775</sub>
+<sub>`api.ogt` line 25831</sub>
 
 <a id="fn-selectionRing"></a>
 
@@ -9828,7 +9866,7 @@ fn selectionRing {
 }
 ```
 
-<sub>`api.ogt` line 25829</sub>
+<sub>`api.ogt` line 25885</sub>
 
 <a id="fn-telegraph"></a>
 
@@ -9864,7 +9902,7 @@ fn telegraph {
 }
 ```
 
-<sub>`api.ogt` line 25883</sub>
+<sub>`api.ogt` line 25939</sub>
 
 <a id="fn-pathLine"></a>
 
@@ -9900,7 +9938,7 @@ fn pathLine {
 }
 ```
 
-<sub>`api.ogt` line 25914</sub>
+<sub>`api.ogt` line 25970</sub>
 
 <a id="fn-placementGhost"></a>
 
@@ -9936,7 +9974,7 @@ fn placementGhost {
 }
 ```
 
-<sub>`api.ogt` line 25955</sub>
+<sub>`api.ogt` line 26011</sub>
 
 <a id="fn-lootLabel"></a>
 
@@ -9970,7 +10008,7 @@ fn lootLabel {
 }
 ```
 
-<sub>`api.ogt` line 25993</sub>
+<sub>`api.ogt` line 26049</sub>
 
 <a id="fn-speechBubble"></a>
 
@@ -10004,7 +10042,7 @@ fn speechBubble {
 }
 ```
 
-<sub>`api.ogt` line 26030</sub>
+<sub>`api.ogt` line 26086</sub>
 
 <a id="fn-semantics"></a>
 
@@ -10032,7 +10070,7 @@ fn semantics {
 }
 ```
 
-<sub>`api.ogt` line 26506</sub>
+<sub>`api.ogt` line 26562</sub>
 
 <a id="fn-partAttr"></a>
 
@@ -10062,7 +10100,7 @@ fn partAttr {
 }
 ```
 
-<sub>`api.ogt` line 26512</sub>
+<sub>`api.ogt` line 26568</sub>
 
 <a id="fn-setDraw"></a>
 
@@ -10090,7 +10128,7 @@ fn setDraw {
 }
 ```
 
-<sub>`api.ogt` line 26519</sub>
+<sub>`api.ogt` line 26575</sub>
 
 <a id="fn-openWorldAnchor"></a>
 
@@ -10120,7 +10158,7 @@ fn openWorldAnchor {
 }
 ```
 
-<sub>`api.ogt` line 26650</sub>
+<sub>`api.ogt` line 26706</sub>
 
 <a id="fn-openWorldPanel"></a>
 
@@ -10150,7 +10188,7 @@ fn openWorldPanel {
 }
 ```
 
-<sub>`api.ogt` line 26705</sub>
+<sub>`api.ogt` line 26761</sub>
 
 <a id="fn-defineMass"></a>
 
@@ -10180,7 +10218,7 @@ fn defineMass {
 }
 ```
 
-<sub>`api.ogt` line 26850</sub>
+<sub>`api.ogt` line 26906</sub>
 
 <a id="fn-spawnMass"></a>
 
@@ -10210,7 +10248,7 @@ fn spawnMass {
 }
 ```
 
-<sub>`api.ogt` line 26857</sub>
+<sub>`api.ogt` line 26913</sub>
 
 <a id="fn-pushMass"></a>
 
@@ -10240,7 +10278,7 @@ fn pushMass {
 }
 ```
 
-<sub>`api.ogt` line 26864</sub>
+<sub>`api.ogt` line 26920</sub>
 
 <a id="fn-massCount"></a>
 
@@ -10268,7 +10306,7 @@ fn massCount {
 }
 ```
 
-<sub>`api.ogt` line 26871</sub>
+<sub>`api.ogt` line 26927</sub>
 
 <a id="fn-particles"></a>
 
@@ -10296,7 +10334,7 @@ fn particles {
 }
 ```
 
-<sub>`api.ogt` line 26944</sub>
+<sub>`api.ogt` line 27000</sub>
 
 <a id="fn-meta"></a>
 
@@ -10326,7 +10364,7 @@ fn meta {
 }
 ```
 
-<sub>`api.ogt` line 26994</sub>
+<sub>`api.ogt` line 27050</sub>
 
 <a id="fn-sceneViewport"></a>
 
@@ -10356,7 +10394,7 @@ fn sceneViewport {
 }
 ```
 
-<sub>`api.ogt` line 27045</sub>
+<sub>`api.ogt` line 27101</sub>
 
 <a id="fn-screen"></a>
 
@@ -10388,7 +10426,7 @@ fn screen {
 }
 ```
 
-<sub>`api.ogt` line 27135</sub>
+<sub>`api.ogt` line 27191</sub>
 
 <a id="fn-component"></a>
 
@@ -10422,7 +10460,7 @@ fn component {
 }
 ```
 
-<sub>`api.ogt` line 27144</sub>
+<sub>`api.ogt` line 27200</sub>
 
 <a id="fn-openSlot"></a>
 
@@ -10450,7 +10488,7 @@ fn openSlot {
 }
 ```
 
-<sub>`api.ogt` line 27154</sub>
+<sub>`api.ogt` line 27210</sub>
 
 <a id="fn-push"></a>
 
@@ -10484,7 +10522,7 @@ fn push {
 }
 ```
 
-<sub>`api.ogt` line 27160</sub>
+<sub>`api.ogt` line 27216</sub>
 
 <a id="fn-pop"></a>
 
@@ -10512,7 +10550,7 @@ fn pop {
 }
 ```
 
-<sub>`api.ogt` line 27170</sub>
+<sub>`api.ogt` line 27226</sub>
 
 <a id="fn-replace"></a>
 
@@ -10546,7 +10584,7 @@ fn replace {
 }
 ```
 
-<sub>`api.ogt` line 27176</sub>
+<sub>`api.ogt` line 27232</sub>
 
 <a id="fn-clear"></a>
 
@@ -10574,7 +10612,7 @@ fn clear {
 }
 ```
 
-<sub>`api.ogt` line 27186</sub>
+<sub>`api.ogt` line 27242</sub>
 
 <a id="fn-layers"></a>
 
@@ -10602,7 +10640,7 @@ fn layers {
 }
 ```
 
-<sub>`api.ogt` line 27192</sub>
+<sub>`api.ogt` line 27248</sub>
 
 <a id="fn-screenVm"></a>
 
@@ -10632,7 +10670,7 @@ fn screenVm {
 }
 ```
 
-<sub>`api.ogt` line 27198</sub>
+<sub>`api.ogt` line 27254</sub>
 
 <a id="fn-docEvents"></a>
 
@@ -10660,7 +10698,7 @@ fn docEvents {
 }
 ```
 
-<sub>`api.ogt` line 27205</sub>
+<sub>`api.ogt` line 27261</sub>
 
 <a id="fn-gameInput"></a>
 
@@ -10688,7 +10726,7 @@ fn gameInput {
 }
 ```
 
-<sub>`api.ogt` line 27211</sub>
+<sub>`api.ogt` line 27267</sub>
 
 <a id="fn-paused"></a>
 
@@ -10716,7 +10754,7 @@ fn paused {
 }
 ```
 
-<sub>`api.ogt` line 27217</sub>
+<sub>`api.ogt` line 27273</sub>
 
 <a id="fn-defineAction"></a>
 
@@ -10746,7 +10784,7 @@ fn defineAction {
 }
 ```
 
-<sub>`api.ogt` line 27223</sub>
+<sub>`api.ogt` line 27279</sub>
 
 <a id="fn-action"></a>
 
@@ -10774,7 +10812,7 @@ fn action {
 }
 ```
 
-<sub>`api.ogt` line 27230</sub>
+<sub>`api.ogt` line 27286</sub>
 
 <a id="fn-actionHeld"></a>
 
@@ -10802,7 +10840,7 @@ fn actionHeld {
 }
 ```
 
-<sub>`api.ogt` line 27236</sub>
+<sub>`api.ogt` line 27292</sub>
 
 <a id="fn-glyph"></a>
 
@@ -10832,7 +10870,7 @@ fn glyph {
 }
 ```
 
-<sub>`api.ogt` line 27242</sub>
+<sub>`api.ogt` line 27298</sub>
 
 <a id="fn-frameGlyph"></a>
 
@@ -10860,7 +10898,7 @@ fn frameGlyph {
 }
 ```
 
-<sub>`api.ogt` line 27249</sub>
+<sub>`api.ogt` line 27305</sub>
 
 <a id="fn-device"></a>
 
@@ -10888,7 +10926,7 @@ fn device {
 }
 ```
 
-<sub>`api.ogt` line 27255</sub>
+<sub>`api.ogt` line 27311</sub>
 
 <a id="fn-setDevice"></a>
 
@@ -10918,7 +10956,7 @@ fn setDevice {
 }
 ```
 
-<sub>`api.ogt` line 27261</sub>
+<sub>`api.ogt` line 27317</sub>
 
 <a id="fn-actionBar"></a>
 
@@ -10946,7 +10984,7 @@ fn actionBar {
 }
 ```
 
-<sub>`api.ogt` line 27268</sub>
+<sub>`api.ogt` line 27324</sub>
 
 <a id="fn-documentSchema"></a>
 
@@ -10969,7 +11007,7 @@ fn documentSchema {
 }
 ```
 
-<sub>`api.ogt` line 27274</sub>
+<sub>`api.ogt` line 27330</sub>
 
 <a id="fn-setProp"></a>
 
@@ -11003,7 +11041,7 @@ fn setProp {
 }
 ```
 
-<sub>`api.ogt` line 27279</sub>
+<sub>`api.ogt` line 27335</sub>
 
 <a id="fn-saveEdits"></a>
 
@@ -11031,7 +11069,7 @@ fn saveEdits {
 }
 ```
 
-<sub>`api.ogt` line 27288</sub>
+<sub>`api.ogt` line 27344</sub>
 
 ## Types
 
@@ -23211,6 +23249,126 @@ struct ChatResult {
 
 <sub>`api.ogt` line 21296</sub>
 
+<a id="type-CommandPage"></a>
+
+### `CommandPage` (desc struct)
+
+One page of an RTS command card: the unit's own commands, or a sub-card (Build, Advanced build) a command opens.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `key` | `string` | `""` | — | — | — | Its key: a command whose key is a page's key opens that page. |
+| `commands` | `readonly AbilitySlotDesc[]` | `[]` | — | — | — | Its commands in reading order (empty keys leave cells empty). A command's `action` names the UI action (og.ui.defineAction, on physical key codes) whose press fires it, and its glyph is the hotkey the card prints. |
+
+```ogt
+struct CommandPage {
+  doc "One page of an RTS command card: the unit's own commands, or a sub-card (Build, Advanced build) a command opens."
+  desc true
+  field key String "Its key: a command whose key is a page's key opens that page."
+  field commands List.AbilitySlotDesc "Its commands in reading order (empty keys leave cells empty). A command's `action` names the UI action (og.ui.defineAction, on physical key codes) whose press fires it, and its glyph is the hotkey the card prints."
+}
+```
+
+<sub>`api.ogt` line 21314</sub>
+
+<a id="type-RtsCommandsDesc"></a>
+
+### `RtsCommandsDesc` (desc struct)
+
+The RTS command layer: the console to draw, the command pages, the control groups' keys and a command awaiting its target.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `console` | `RtsConsoleDesc` | `{}` | — | — | — | The console (og.ui.rtsConsole): its map, its selection with the control groups' tabs, and its command card (whose commands the current page replaces). |
+| `pages` | `readonly CommandPage[]` | `[]` | — | — | — | The command pages; the first is the root. |
+| `page` | `string` | `""` | — | — | — | The page shown; empty is the root. |
+| `groupActions` | `readonly string[]` | `[]` | — | — | — | The UI actions recalling control groups, in the order of the selection's groups (Digit1 … Digit0 bound by the game): with Ctrl held one sets the group to the selection, with Shift held adds the selection to it, and tapped twice quickly focuses it. |
+| `targeting` | `string` | `""` | — | — | — | A command waiting for its target (its key): its slot is lit, a prompt says so, and Back cancels it. |
+| `doubleTapMs` | `number` | `350` | — | `ms` | — | Two taps of a group's key within this long focus it. |
+| `targetLabel` | `string` | `"{command}: choose a target"` | — | — | — | The targeting prompt ({command} is its name). |
+| `cancelLabel` | `string` | `"Cancel"` | — | — | — | The prompt's cancel word, after the back glyph. |
+| `queueLabel` | `string` | `"Queue"` | — | — | — | The prompt's hint for queueing, after the Shift glyph. |
+| `backLabel` | `string` | `"Back"` | — | — | — | The Back command a sub-page ends with. |
+
+```ogt
+struct RtsCommandsDesc {
+  doc "The RTS command layer: the console to draw, the command pages, the control groups' keys and a command awaiting its target."
+  desc true
+  field console RtsConsoleDesc "The console (og.ui.rtsConsole): its map, its selection with the control groups' tabs, and its command card (whose commands the current page replaces)."
+  field pages List.CommandPage "The command pages; the first is the root."
+  field page String "The page shown; empty is the root."
+  field groupActions List.String "The UI actions recalling control groups, in the order of the selection's groups (Digit1 … Digit0 bound by the game): with Ctrl held one sets the group to the selection, with Shift held adds the selection to it, and tapped twice quickly focuses it."
+  field targeting String "A command waiting for its target (its key): its slot is lit, a prompt says so, and Back cancels it."
+  field doubleTapMs f32 "Two taps of a group's key within this long focus it." {
+    default 350
+    unit ms
+  }
+  field targetLabel String "The targeting prompt ({command} is its name)." {
+    default "{command}: choose a target"
+  }
+  field cancelLabel String "The prompt's cancel word, after the back glyph." {
+    default "Cancel"
+  }
+  field queueLabel String "The prompt's hint for queueing, after the Shift glyph." {
+    default "Queue"
+  }
+  field backLabel String "The Back command a sub-page ends with." {
+    default "Back"
+  }
+}
+```
+
+<sub>`api.ogt` line 21320</sub>
+
+<a id="type-RtsCommandsResult"></a>
+
+### `RtsCommandsResult` (struct)
+
+What the player asked for this tick, for the game to carry out.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `command` | `string \| null` | `null` | — | — | — | A command fired (pressed, or its action): its key. A command naming a page opens the page instead. |
+| `queued` | `boolean` | `false` | — | — | — | Shift was held as it fired (the order goes to the end of the units' queues). |
+| `refused` | `string \| null` | `null` | — | — | — | A command that cannot fire now (locked, disabled, unaffordable or cooling down) was asked for: its key (the game says why: not enough gold). |
+| `page` | `string \| null` | `null` | — | — | — | A page was opened, or Back (the cell or the action) went to the root: its key. |
+| `cancelTarget` | `boolean` | `false` | — | — | — | Back with a command waiting for its target: cancel it. |
+| `recall` | `string \| null` | `null` | — | — | — | A control group's key or tab: select it. |
+| `focus` | `string \| null` | `null` | — | — | — | A control group recalled twice quickly: centre the camera on it. |
+| `assign` | `string \| null` | `null` | — | — | — | Ctrl and a group's key: the group becomes the selection. |
+| `add` | `string \| null` | `null` | — | — | — | Shift and a group's key: the selection joins the group. |
+| `clicked` | `string \| null` | `null` | — | — | — | A unit's tile pressed: focus it (or select only it). |
+| `selectType` | `string \| null` | `null` | — | — | — | Ctrl and a unit's tile: select every unit of its type in the selection. |
+| `deselect` | `string \| null` | `null` | — | — | — | Shift and a unit's tile: take it out of the selection. |
+| `mapClicked` | `boolean` | `false` | — | — | — | The minimap was pressed. |
+| `cancelled` | `string \| null` | `null` | — | — | — | A production queue item pressed: cancel it. |
+
+```ogt
+struct RtsCommandsResult {
+  doc "What the player asked for this tick, for the game to carry out."
+  field command Option.String "A command fired (pressed, or its action): its key. A command naming a page opens the page instead."
+  field queued bool "Shift was held as it fired (the order goes to the end of the units' queues)."
+  field refused Option.String "A command that cannot fire now (locked, disabled, unaffordable or cooling down) was asked for: its key (the game says why: not enough gold)."
+  field page Option.String "A page was opened, or Back (the cell or the action) went to the root: its key."
+  field cancelTarget bool "Back with a command waiting for its target: cancel it."
+  field recall Option.String "A control group's key or tab: select it."
+  field focus Option.String "A control group recalled twice quickly: centre the camera on it."
+  field assign Option.String "Ctrl and a group's key: the group becomes the selection."
+  field add Option.String "Shift and a group's key: the selection joins the group."
+  field clicked Option.String "A unit's tile pressed: focus it (or select only it)."
+  field selectType Option.String "Ctrl and a unit's tile: select every unit of its type in the selection."
+  field deselect Option.String "Shift and a unit's tile: take it out of the selection."
+  field mapClicked bool "The minimap was pressed."
+  field cancelled Option.String "A production queue item pressed: cancel it."
+}
+```
+
+<sub>`api.ogt` line 21345</sub>
+
 <a id="type-UiAction"></a>
 
 ### `UiAction` (callback)
@@ -23234,7 +23392,7 @@ callback UiAction {
 }
 ```
 
-<sub>`api.ogt` line 21318</sub>
+<sub>`api.ogt` line 21374</sub>
 
 <a id="type-SettingsChanged"></a>
 
@@ -23259,7 +23417,7 @@ callback SettingsChanged {
 }
 ```
 
-<sub>`api.ogt` line 21323</sub>
+<sub>`api.ogt` line 21379</sub>
 
 <a id="type-MenuItem"></a>
 
@@ -23287,7 +23445,7 @@ struct MenuItem {
 }
 ```
 
-<sub>`api.ogt` line 21328</sub>
+<sub>`api.ogt` line 21384</sub>
 
 <a id="type-MenuResult"></a>
 
@@ -23306,7 +23464,7 @@ struct MenuResult {
 }
 ```
 
-<sub>`api.ogt` line 21337</sub>
+<sub>`api.ogt` line 21393</sub>
 
 <a id="type-MainMenuDesc"></a>
 
@@ -23342,7 +23500,7 @@ struct MainMenuDesc {
 }
 ```
 
-<sub>`api.ogt` line 21342</sub>
+<sub>`api.ogt` line 21398</sub>
 
 <a id="type-PauseMenuDesc"></a>
 
@@ -23372,7 +23530,7 @@ struct PauseMenuDesc {
 }
 ```
 
-<sub>`api.ogt` line 21356</sub>
+<sub>`api.ogt` line 21412</sub>
 
 <a id="type-KeyBinding"></a>
 
@@ -23398,7 +23556,7 @@ struct KeyBinding {
 }
 ```
 
-<sub>`api.ogt` line 21367</sub>
+<sub>`api.ogt` line 21423</sub>
 
 <a id="type-LanguageOption"></a>
 
@@ -23422,7 +23580,7 @@ struct LanguageOption {
 }
 ```
 
-<sub>`api.ogt` line 21375</sub>
+<sub>`api.ogt` line 21431</sub>
 
 <a id="type-GameSettings"></a>
 
@@ -23515,7 +23673,7 @@ struct GameSettings {
 }
 ```
 
-<sub>`api.ogt` line 21382</sub>
+<sub>`api.ogt` line 21438</sub>
 
 <a id="type-SettingsDesc"></a>
 
@@ -23715,7 +23873,7 @@ struct SettingsDesc {
 }
 ```
 
-<sub>`api.ogt` line 21442</sub>
+<sub>`api.ogt` line 21498</sub>
 
 <a id="type-SettingsResult"></a>
 
@@ -23738,7 +23896,7 @@ struct SettingsResult {
 }
 ```
 
-<sub>`api.ogt` line 21578</sub>
+<sub>`api.ogt` line 21634</sub>
 
 <a id="type-Ability"></a>
 
@@ -23768,7 +23926,7 @@ struct Ability {
 }
 ```
 
-<sub>`api.ogt` line 21585</sub>
+<sub>`api.ogt` line 21641</sub>
 
 <a id="type-PlatformerHudDesc"></a>
 
@@ -23814,7 +23972,7 @@ struct PlatformerHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 21596</sub>
+<sub>`api.ogt` line 21652</sub>
 
 <a id="type-HudResult"></a>
 
@@ -23841,7 +23999,7 @@ struct HudResult {
 }
 ```
 
-<sub>`api.ogt` line 21617</sub>
+<sub>`api.ogt` line 21673</sub>
 
 <a id="type-ShooterHudDesc"></a>
 
@@ -23903,7 +24061,7 @@ struct ShooterHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 21626</sub>
+<sub>`api.ogt` line 21682</sub>
 
 <a id="type-PuzzleHudDesc"></a>
 
@@ -23949,7 +24107,7 @@ struct PuzzleHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 21657</sub>
+<sub>`api.ogt` line 21713</sub>
 
 <a id="type-Currency"></a>
 
@@ -23979,7 +24137,7 @@ struct Currency {
 }
 ```
 
-<sub>`api.ogt` line 21679</sub>
+<sub>`api.ogt` line 21735</sub>
 
 <a id="type-Generator"></a>
 
@@ -24015,7 +24173,7 @@ struct Generator {
 }
 ```
 
-<sub>`api.ogt` line 21689</sub>
+<sub>`api.ogt` line 21745</sub>
 
 <a id="type-IdleHudDesc"></a>
 
@@ -24055,7 +24213,7 @@ struct IdleHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 21703</sub>
+<sub>`api.ogt` line 21759</sub>
 
 <a id="type-RaceSplit"></a>
 
@@ -24081,7 +24239,7 @@ struct RaceSplit {
 }
 ```
 
-<sub>`api.ogt` line 21722</sub>
+<sub>`api.ogt` line 21778</sub>
 
 <a id="type-RacingHudDesc"></a>
 
@@ -24177,7 +24335,7 @@ struct RacingHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 21730</sub>
+<sub>`api.ogt` line 21786</sub>
 
 <a id="type-DialogueLine"></a>
 
@@ -24205,7 +24363,7 @@ struct DialogueLine {
 }
 ```
 
-<sub>`api.ogt` line 21788</sub>
+<sub>`api.ogt` line 21844</sub>
 
 <a id="type-CutsceneDesc"></a>
 
@@ -24243,7 +24401,7 @@ struct CutsceneDesc {
 }
 ```
 
-<sub>`api.ogt` line 21797</sub>
+<sub>`api.ogt` line 21853</sub>
 
 <a id="type-CutsceneResult"></a>
 
@@ -24266,7 +24424,7 @@ struct CutsceneResult {
 }
 ```
 
-<sub>`api.ogt` line 21814</sub>
+<sub>`api.ogt` line 21870</sub>
 
 <a id="type-ShopItem"></a>
 
@@ -24304,7 +24462,7 @@ struct ShopItem {
 }
 ```
 
-<sub>`api.ogt` line 21821</sub>
+<sub>`api.ogt` line 21877</sub>
 
 <a id="type-ShopDesc"></a>
 
@@ -24368,7 +24526,7 @@ struct ShopDesc {
 }
 ```
 
-<sub>`api.ogt` line 21835</sub>
+<sub>`api.ogt` line 21891</sub>
 
 <a id="type-ShopResult"></a>
 
@@ -24391,7 +24549,7 @@ struct ShopResult {
 }
 ```
 
-<sub>`api.ogt` line 21869</sub>
+<sub>`api.ogt` line 21925</sub>
 
 <a id="type-InventoryItem"></a>
 
@@ -24427,7 +24585,7 @@ struct InventoryItem {
 }
 ```
 
-<sub>`api.ogt` line 21876</sub>
+<sub>`api.ogt` line 21932</sub>
 
 <a id="type-InventoryDesc"></a>
 
@@ -24481,7 +24639,7 @@ struct InventoryDesc {
 }
 ```
 
-<sub>`api.ogt` line 21889</sub>
+<sub>`api.ogt` line 21945</sub>
 
 <a id="type-SlotMove"></a>
 
@@ -24502,7 +24660,7 @@ struct SlotMove {
 }
 ```
 
-<sub>`api.ogt` line 21916</sub>
+<sub>`api.ogt` line 21972</sub>
 
 <a id="type-InventoryResult"></a>
 
@@ -24527,7 +24685,7 @@ struct InventoryResult {
 }
 ```
 
-<sub>`api.ogt` line 21922</sub>
+<sub>`api.ogt` line 21978</sub>
 
 <a id="type-LevelInfo"></a>
 
@@ -24555,7 +24713,7 @@ struct LevelInfo {
 }
 ```
 
-<sub>`api.ogt` line 21930</sub>
+<sub>`api.ogt` line 21986</sub>
 
 <a id="type-LevelSelectDesc"></a>
 
@@ -24595,7 +24753,7 @@ struct LevelSelectDesc {
 }
 ```
 
-<sub>`api.ogt` line 21939</sub>
+<sub>`api.ogt` line 21995</sub>
 
 <a id="type-LevelSelectResult"></a>
 
@@ -24616,7 +24774,7 @@ struct LevelSelectResult {
 }
 ```
 
-<sub>`api.ogt` line 21958</sub>
+<sub>`api.ogt` line 22014</sub>
 
 <a id="type-StatRow"></a>
 
@@ -24640,7 +24798,7 @@ struct StatRow {
 }
 ```
 
-<sub>`api.ogt` line 21964</sub>
+<sub>`api.ogt` line 22020</sub>
 
 <a id="type-ScoreFormat"></a>
 
@@ -24663,7 +24821,7 @@ enum ScoreFormat {
 }
 ```
 
-<sub>`api.ogt` line 21971</sub>
+<sub>`api.ogt` line 22027</sub>
 
 <a id="type-ResultsDesc"></a>
 
@@ -24731,7 +24889,7 @@ struct ResultsDesc {
 }
 ```
 
-<sub>`api.ogt` line 21977</sub>
+<sub>`api.ogt` line 22033</sub>
 
 <a id="type-Reward"></a>
 
@@ -24759,7 +24917,7 @@ struct Reward {
 }
 ```
 
-<sub>`api.ogt` line 22012</sub>
+<sub>`api.ogt` line 22068</sub>
 
 <a id="type-LeaderboardEntry"></a>
 
@@ -24787,7 +24945,7 @@ struct LeaderboardEntry {
 }
 ```
 
-<sub>`api.ogt` line 22021</sub>
+<sub>`api.ogt` line 22077</sub>
 
 <a id="type-LeaderboardDesc"></a>
 
@@ -24827,7 +24985,7 @@ struct LeaderboardDesc {
 }
 ```
 
-<sub>`api.ogt` line 22030</sub>
+<sub>`api.ogt` line 22086</sub>
 
 <a id="type-LeaderboardResult"></a>
 
@@ -24852,7 +25010,7 @@ struct LeaderboardResult {
 }
 ```
 
-<sub>`api.ogt` line 22048</sub>
+<sub>`api.ogt` line 22104</sub>
 
 <a id="type-TutorialStep"></a>
 
@@ -24878,7 +25036,7 @@ struct TutorialStep {
 }
 ```
 
-<sub>`api.ogt` line 22056</sub>
+<sub>`api.ogt` line 22112</sub>
 
 <a id="type-TutorialDesc"></a>
 
@@ -24920,7 +25078,7 @@ struct TutorialDesc {
 }
 ```
 
-<sub>`api.ogt` line 22064</sub>
+<sub>`api.ogt` line 22120</sub>
 
 <a id="type-TutorialResult"></a>
 
@@ -24943,7 +25101,7 @@ struct TutorialResult {
 }
 ```
 
-<sub>`api.ogt` line 22084</sub>
+<sub>`api.ogt` line 22140</sub>
 
 <a id="type-LoadingDesc"></a>
 
@@ -24976,7 +25134,7 @@ struct LoadingDesc {
 }
 ```
 
-<sub>`api.ogt` line 22091</sub>
+<sub>`api.ogt` line 22147</sub>
 
 <a id="type-ConfirmDesc"></a>
 
@@ -25012,7 +25170,7 @@ struct ConfirmDesc {
 }
 ```
 
-<sub>`api.ogt` line 22105</sub>
+<sub>`api.ogt` line 22161</sub>
 
 <a id="type-ConfirmResult"></a>
 
@@ -25033,7 +25191,7 @@ struct ConfirmResult {
 }
 ```
 
-<sub>`api.ogt` line 22120</sub>
+<sub>`api.ogt` line 22176</sub>
 
 <a id="type-AlertDesc"></a>
 
@@ -25063,7 +25221,7 @@ struct AlertDesc {
 }
 ```
 
-<sub>`api.ogt` line 22126</sub>
+<sub>`api.ogt` line 22182</sub>
 
 <a id="type-UiProp"></a>
 
@@ -25122,7 +25280,7 @@ enum UiProp {
 }
 ```
 
-<sub>`api.ogt` line 22281</sub>
+<sub>`api.ogt` line 22337</sub>
 
 <a id="type-LayoutMode"></a>
 
@@ -25147,7 +25305,7 @@ enum LayoutMode {
 }
 ```
 
-<sub>`api.ogt` line 22305</sub>
+<sub>`api.ogt` line 22361</sub>
 
 <a id="type-Position"></a>
 
@@ -25172,7 +25330,7 @@ enum Position {
 }
 ```
 
-<sub>`api.ogt` line 22312</sub>
+<sub>`api.ogt` line 22368</sub>
 
 <a id="type-GridFlow"></a>
 
@@ -25195,7 +25353,7 @@ enum GridFlow {
 }
 ```
 
-<sub>`api.ogt` line 22319</sub>
+<sub>`api.ogt` line 22375</sub>
 
 <a id="type-DragAxis"></a>
 
@@ -25222,7 +25380,7 @@ enum DragAxis {
 }
 ```
 
-<sub>`api.ogt` line 22325</sub>
+<sub>`api.ogt` line 22381</sub>
 
 <a id="type-EaseName"></a>
 
@@ -25249,7 +25407,7 @@ enum EaseName {
 }
 ```
 
-<sub>`api.ogt` line 22333</sub>
+<sub>`api.ogt` line 22389</sub>
 
 <a id="type-MotionToken"></a>
 
@@ -25280,7 +25438,7 @@ enum MotionToken {
 }
 ```
 
-<sub>`api.ogt` line 22341</sub>
+<sub>`api.ogt` line 22397</sub>
 
 <a id="type-ReducedMotion"></a>
 
@@ -25305,7 +25463,7 @@ enum ReducedMotion {
 }
 ```
 
-<sub>`api.ogt` line 22351</sub>
+<sub>`api.ogt` line 22407</sub>
 
 <a id="type-Orientation"></a>
 
@@ -25328,7 +25486,7 @@ enum Orientation {
 }
 ```
 
-<sub>`api.ogt` line 22358</sub>
+<sub>`api.ogt` line 22414</sub>
 
 <a id="type-Repeat"></a>
 
@@ -25353,7 +25511,7 @@ enum Repeat {
 }
 ```
 
-<sub>`api.ogt` line 22364</sub>
+<sub>`api.ogt` line 22420</sub>
 
 <a id="type-UiTransform"></a>
 
@@ -25405,7 +25563,7 @@ struct UiTransform {
 }
 ```
 
-<sub>`api.ogt` line 22371</sub>
+<sub>`api.ogt` line 22427</sub>
 
 <a id="type-Edges"></a>
 
@@ -25445,7 +25603,7 @@ struct Edges {
 }
 ```
 
-<sub>`api.ogt` line 22399</sub>
+<sub>`api.ogt` line 22455</sub>
 
 <a id="type-TrackPx"></a>
 
@@ -25466,7 +25624,7 @@ struct TrackPx {
 }
 ```
 
-<sub>`api.ogt` line 22418</sub>
+<sub>`api.ogt` line 22474</sub>
 
 <a id="type-TrackFr"></a>
 
@@ -25487,7 +25645,7 @@ struct TrackFr {
 }
 ```
 
-<sub>`api.ogt` line 22425</sub>
+<sub>`api.ogt` line 22481</sub>
 
 <a id="type-TrackRange"></a>
 
@@ -25512,7 +25670,7 @@ struct TrackRange {
 }
 ```
 
-<sub>`api.ogt` line 22432</sub>
+<sub>`api.ogt` line 22488</sub>
 
 <a id="type-TrackPercent"></a>
 
@@ -25533,7 +25691,7 @@ struct TrackPercent {
 }
 ```
 
-<sub>`api.ogt` line 22442</sub>
+<sub>`api.ogt` line 22498</sub>
 
 <a id="type-TrackAuto"></a>
 
@@ -25547,7 +25705,7 @@ struct TrackAuto {
 }
 ```
 
-<sub>`api.ogt` line 22449</sub>
+<sub>`api.ogt` line 22505</sub>
 
 <a id="type-Track"></a>
 
@@ -25577,7 +25735,7 @@ union Track {
 }
 ```
 
-<sub>`api.ogt` line 22453</sub>
+<sub>`api.ogt` line 22509</sub>
 
 <a id="type-GridSpec"></a>
 
@@ -25617,7 +25775,7 @@ struct GridSpec {
 }
 ```
 
-<sub>`api.ogt` line 22463</sub>
+<sub>`api.ogt` line 22519</sub>
 
 <a id="type-GridPlace"></a>
 
@@ -25647,7 +25805,7 @@ struct GridPlace {
 }
 ```
 
-<sub>`api.ogt` line 22480</sub>
+<sub>`api.ogt` line 22536</sub>
 
 <a id="type-PropValue"></a>
 
@@ -25668,7 +25826,7 @@ struct PropValue {
 }
 ```
 
-<sub>`api.ogt` line 22490</sub>
+<sub>`api.ogt` line 22546</sub>
 
 <a id="type-UiQuery"></a>
 
@@ -25702,7 +25860,7 @@ struct UiQuery {
 }
 ```
 
-<sub>`api.ogt` line 22496</sub>
+<sub>`api.ogt` line 22552</sub>
 
 <a id="type-UiPatch"></a>
 
@@ -25748,7 +25906,7 @@ struct UiPatch {
 }
 ```
 
-<sub>`api.ogt` line 22510</sub>
+<sub>`api.ogt` line 22566</sub>
 
 <a id="type-UiVariant"></a>
 
@@ -25769,7 +25927,7 @@ struct UiVariant {
 }
 ```
 
-<sub>`api.ogt` line 22529</sub>
+<sub>`api.ogt` line 22585</sub>
 
 <a id="type-SpringSpec"></a>
 
@@ -25799,7 +25957,7 @@ struct SpringSpec {
 }
 ```
 
-<sub>`api.ogt` line 22535</sub>
+<sub>`api.ogt` line 22591</sub>
 
 <a id="type-TweenSpec"></a>
 
@@ -25828,7 +25986,7 @@ struct TweenSpec {
 }
 ```
 
-<sub>`api.ogt` line 22548</sub>
+<sub>`api.ogt` line 22604</sub>
 
 <a id="type-TokenRef"></a>
 
@@ -25847,7 +26005,7 @@ struct TokenRef {
 }
 ```
 
-<sub>`api.ogt` line 22559</sub>
+<sub>`api.ogt` line 22615</sub>
 
 <a id="type-InstantSpec"></a>
 
@@ -25861,7 +26019,7 @@ struct InstantSpec {
 }
 ```
 
-<sub>`api.ogt` line 22564</sub>
+<sub>`api.ogt` line 22620</sub>
 
 <a id="type-Transition"></a>
 
@@ -25889,7 +26047,7 @@ union Transition {
 }
 ```
 
-<sub>`api.ogt` line 22568</sub>
+<sub>`api.ogt` line 22624</sub>
 
 <a id="type-DismissSpec"></a>
 
@@ -25915,7 +26073,7 @@ struct DismissSpec {
 }
 ```
 
-<sub>`api.ogt` line 22577</sub>
+<sub>`api.ogt` line 22633</sub>
 
 <a id="type-SnapPoint"></a>
 
@@ -25940,7 +26098,7 @@ struct SnapPoint {
 }
 ```
 
-<sub>`api.ogt` line 22586</sub>
+<sub>`api.ogt` line 22642</sub>
 
 <a id="type-DragSpec"></a>
 
@@ -25982,7 +26140,7 @@ struct DragSpec {
 }
 ```
 
-<sub>`api.ogt` line 22596</sub>
+<sub>`api.ogt` line 22652</sub>
 
 <a id="type-PinchSpec"></a>
 
@@ -26008,7 +26166,7 @@ struct PinchSpec {
 }
 ```
 
-<sub>`api.ogt` line 22613</sub>
+<sub>`api.ogt` line 22669</sub>
 
 <a id="type-DropSpec"></a>
 
@@ -26030,7 +26188,7 @@ struct DropSpec {
 }
 ```
 
-<sub>`api.ogt` line 22621</sub>
+<sub>`api.ogt` line 22677</sub>
 
 <a id="type-PresenceSpec"></a>
 
@@ -26064,7 +26222,7 @@ struct PresenceSpec {
 }
 ```
 
-<sub>`api.ogt` line 22627</sub>
+<sub>`api.ogt` line 22683</sub>
 
 <a id="type-VisualState"></a>
 
@@ -26089,7 +26247,7 @@ struct VisualState {
 }
 ```
 
-<sub>`api.ogt` line 22641</sub>
+<sub>`api.ogt` line 22697</sub>
 
 <a id="type-StateTransition"></a>
 
@@ -26112,7 +26270,7 @@ struct StateTransition {
 }
 ```
 
-<sub>`api.ogt` line 22649</sub>
+<sub>`api.ogt` line 22705</sub>
 
 <a id="type-StateGroup"></a>
 
@@ -26135,7 +26293,7 @@ struct StateGroup {
 }
 ```
 
-<sub>`api.ogt` line 22656</sub>
+<sub>`api.ogt` line 22712</sub>
 
 <a id="type-StateValue"></a>
 
@@ -26156,7 +26314,7 @@ struct StateValue {
 }
 ```
 
-<sub>`api.ogt` line 22663</sub>
+<sub>`api.ogt` line 22719</sub>
 
 <a id="type-NavLinks"></a>
 
@@ -26188,7 +26346,7 @@ struct NavLinks {
 }
 ```
 
-<sub>`api.ogt` line 22669</sub>
+<sub>`api.ogt` line 22725</sub>
 
 <a id="type-FocusGroup"></a>
 
@@ -26212,7 +26370,7 @@ struct FocusGroup {
 }
 ```
 
-<sub>`api.ogt` line 22680</sub>
+<sub>`api.ogt` line 22736</sub>
 
 <a id="type-GestureSpec"></a>
 
@@ -26255,7 +26413,7 @@ struct GestureSpec {
 }
 ```
 
-<sub>`api.ogt` line 22687</sub>
+<sub>`api.ogt` line 22743</sub>
 
 <a id="type-Customize"></a>
 
@@ -26299,7 +26457,7 @@ struct Customize {
 }
 ```
 
-<sub>`api.ogt` line 22708</sub>
+<sub>`api.ogt` line 22764</sub>
 
 <a id="type-Cursor"></a>
 
@@ -26356,7 +26514,7 @@ enum Cursor {
 }
 ```
 
-<sub>`api.ogt` line 22730</sub>
+<sub>`api.ogt` line 22786</sub>
 
 <a id="type-ElementProps"></a>
 
@@ -26448,7 +26606,7 @@ struct ElementProps {
 }
 ```
 
-<sub>`api.ogt` line 22753</sub>
+<sub>`api.ogt` line 22809</sub>
 
 <a id="type-EaseKey"></a>
 
@@ -26467,7 +26625,7 @@ struct EaseKey {
 }
 ```
 
-<sub>`api.ogt` line 22797</sub>
+<sub>`api.ogt` line 22853</sub>
 
 <a id="type-HoldKey"></a>
 
@@ -26481,7 +26639,7 @@ struct HoldKey {
 }
 ```
 
-<sub>`api.ogt` line 22802</sub>
+<sub>`api.ogt` line 22858</sub>
 
 <a id="type-LinearKey"></a>
 
@@ -26495,7 +26653,7 @@ struct LinearKey {
 }
 ```
 
-<sub>`api.ogt` line 22806</sub>
+<sub>`api.ogt` line 22862</sub>
 
 <a id="type-BezierKey"></a>
 
@@ -26514,7 +26672,7 @@ struct BezierKey {
 }
 ```
 
-<sub>`api.ogt` line 22810</sub>
+<sub>`api.ogt` line 22866</sub>
 
 <a id="type-KeyEase"></a>
 
@@ -26544,7 +26702,7 @@ union KeyEase {
 }
 ```
 
-<sub>`api.ogt` line 22815</sub>
+<sub>`api.ogt` line 22871</sub>
 
 <a id="type-TimelineKey"></a>
 
@@ -26569,7 +26727,7 @@ struct TimelineKey {
 }
 ```
 
-<sub>`api.ogt` line 22825</sub>
+<sub>`api.ogt` line 22881</sub>
 
 <a id="type-TimelineTrack"></a>
 
@@ -26592,7 +26750,7 @@ struct TimelineTrack {
 }
 ```
 
-<sub>`api.ogt` line 22834</sub>
+<sub>`api.ogt` line 22890</sub>
 
 <a id="type-SoundEvent"></a>
 
@@ -26615,7 +26773,7 @@ struct SoundEvent {
 }
 ```
 
-<sub>`api.ogt` line 22841</sub>
+<sub>`api.ogt` line 22897</sub>
 
 <a id="type-HapticEvent"></a>
 
@@ -26634,7 +26792,7 @@ struct HapticEvent {
 }
 ```
 
-<sub>`api.ogt` line 22849</sub>
+<sub>`api.ogt` line 22905</sub>
 
 <a id="type-BurstEvent"></a>
 
@@ -26659,7 +26817,7 @@ struct BurstEvent {
 }
 ```
 
-<sub>`api.ogt` line 22854</sub>
+<sub>`api.ogt` line 22910</sub>
 
 <a id="type-StateEvent"></a>
 
@@ -26680,7 +26838,7 @@ struct StateEvent {
 }
 ```
 
-<sub>`api.ogt` line 22863</sub>
+<sub>`api.ogt` line 22919</sub>
 
 <a id="type-CallbackEvent"></a>
 
@@ -26699,7 +26857,7 @@ struct CallbackEvent {
 }
 ```
 
-<sub>`api.ogt` line 22869</sub>
+<sub>`api.ogt` line 22925</sub>
 
 <a id="type-TimelineAction"></a>
 
@@ -26729,7 +26887,7 @@ union TimelineAction {
 }
 ```
 
-<sub>`api.ogt` line 22874</sub>
+<sub>`api.ogt` line 22930</sub>
 
 <a id="type-TimelineEvent"></a>
 
@@ -26754,7 +26912,7 @@ struct TimelineEvent {
 }
 ```
 
-<sub>`api.ogt` line 22884</sub>
+<sub>`api.ogt` line 22940</sub>
 
 <a id="type-TimelineLabel"></a>
 
@@ -26777,7 +26935,7 @@ struct TimelineLabel {
 }
 ```
 
-<sub>`api.ogt` line 22893</sub>
+<sub>`api.ogt` line 22949</sub>
 
 <a id="type-UiTimeline"></a>
 
@@ -26807,7 +26965,7 @@ struct UiTimeline {
 }
 ```
 
-<sub>`api.ogt` line 22901</sub>
+<sub>`api.ogt` line 22957</sub>
 
 <a id="type-ChoreoPlay"></a>
 
@@ -26832,7 +26990,7 @@ struct ChoreoPlay {
 }
 ```
 
-<sub>`api.ogt` line 22912</sub>
+<sub>`api.ogt` line 22968</sub>
 
 <a id="type-ChoreoSteps"></a>
 
@@ -26851,7 +27009,7 @@ struct ChoreoSteps {
 }
 ```
 
-<sub>`api.ogt` line 22921</sub>
+<sub>`api.ogt` line 22977</sub>
 
 <a id="type-ChoreoStagger"></a>
 
@@ -26884,7 +27042,7 @@ struct ChoreoStagger {
 }
 ```
 
-<sub>`api.ogt` line 22926</sub>
+<sub>`api.ogt` line 22982</sub>
 
 <a id="type-ChoreoCascade"></a>
 
@@ -26905,7 +27063,7 @@ struct ChoreoCascade {
 }
 ```
 
-<sub>`api.ogt` line 22941</sub>
+<sub>`api.ogt` line 22997</sub>
 
 <a id="type-Choreo"></a>
 
@@ -26935,7 +27093,7 @@ union Choreo {
 }
 ```
 
-<sub>`api.ogt` line 22947</sub>
+<sub>`api.ogt` line 23003</sub>
 
 <a id="type-PlayDesc"></a>
 
@@ -26971,7 +27129,7 @@ struct PlayDesc {
 }
 ```
 
-<sub>`api.ogt` line 22957</sub>
+<sub>`api.ogt` line 23013</sub>
 
 <a id="type-PlayInfo"></a>
 
@@ -27002,7 +27160,7 @@ struct PlayInfo {
 }
 ```
 
-<sub>`api.ogt` line 22971</sub>
+<sub>`api.ogt` line 23027</sub>
 
 <a id="type-GestureInfo"></a>
 
@@ -27061,7 +27219,7 @@ struct GestureInfo {
 }
 ```
 
-<sub>`api.ogt` line 22984</sub>
+<sub>`api.ogt` line 23040</sub>
 
 <a id="type-UiMotionEvent"></a>
 
@@ -27090,7 +27248,7 @@ struct UiMotionEvent {
 }
 ```
 
-<sub>`api.ogt` line 23012</sub>
+<sub>`api.ogt` line 23068</sub>
 
 <a id="type-UiOverlap"></a>
 
@@ -27115,7 +27273,7 @@ struct UiOverlap {
 }
 ```
 
-<sub>`api.ogt` line 23022</sub>
+<sub>`api.ogt` line 23078</sub>
 
 <a id="type-UiLayoutStats"></a>
 
@@ -27140,7 +27298,7 @@ struct UiLayoutStats {
 }
 ```
 
-<sub>`api.ogt` line 23030</sub>
+<sub>`api.ogt` line 23086</sub>
 
 <a id="type-NotificationVariant"></a>
 
@@ -27169,7 +27327,7 @@ enum NotificationVariant {
 }
 ```
 
-<sub>`api.ogt` line 23161</sub>
+<sub>`api.ogt` line 23217</sub>
 
 <a id="type-Rarity"></a>
 
@@ -27202,7 +27360,7 @@ enum Rarity {
 }
 ```
 
-<sub>`api.ogt` line 23170</sub>
+<sub>`api.ogt` line 23226</sub>
 
 <a id="type-NotificationItem"></a>
 
@@ -27261,7 +27419,7 @@ struct NotificationItem {
 }
 ```
 
-<sub>`api.ogt` line 23181</sub>
+<sub>`api.ogt` line 23237</sub>
 
 <a id="type-NotificationsDesc"></a>
 
@@ -27298,7 +27456,7 @@ struct NotificationsDesc {
 }
 ```
 
-<sub>`api.ogt` line 23208</sub>
+<sub>`api.ogt` line 23264</sub>
 
 <a id="type-NotificationsResult"></a>
 
@@ -27323,7 +27481,7 @@ struct NotificationsResult {
 }
 ```
 
-<sub>`api.ogt` line 23225</sub>
+<sub>`api.ogt` line 23281</sub>
 
 <a id="type-BadgeKind"></a>
 
@@ -27348,7 +27506,7 @@ enum BadgeKind {
 }
 ```
 
-<sub>`api.ogt` line 23243</sub>
+<sub>`api.ogt` line 23299</sub>
 
 <a id="type-CountBadgeDesc"></a>
 
@@ -27390,7 +27548,7 @@ struct CountBadgeDesc {
 }
 ```
 
-<sub>`api.ogt` line 23250</sub>
+<sub>`api.ogt` line 23306</sub>
 
 <a id="type-TooltipStat"></a>
 
@@ -27420,7 +27578,7 @@ struct TooltipStat {
 }
 ```
 
-<sub>`api.ogt` line 23278</sub>
+<sub>`api.ogt` line 23334</sub>
 
 <a id="type-TooltipLink"></a>
 
@@ -27446,7 +27604,7 @@ struct TooltipLink {
 }
 ```
 
-<sub>`api.ogt` line 23288</sub>
+<sub>`api.ogt` line 23344</sub>
 
 <a id="type-TooltipCardDesc"></a>
 
@@ -27521,7 +27679,7 @@ struct TooltipCardDesc {
 }
 ```
 
-<sub>`api.ogt` line 23296</sub>
+<sub>`api.ogt` line 23352</sub>
 
 <a id="type-TooltipCardResult"></a>
 
@@ -27546,7 +27704,7 @@ struct TooltipCardResult {
 }
 ```
 
-<sub>`api.ogt` line 23336</sub>
+<sub>`api.ogt` line 23392</sub>
 
 <a id="type-ProgressStyle"></a>
 
@@ -27571,7 +27729,7 @@ enum ProgressStyle {
 }
 ```
 
-<sub>`api.ogt` line 23353</sub>
+<sub>`api.ogt` line 23409</sub>
 
 <a id="type-ProgressBarDesc"></a>
 
@@ -27626,7 +27784,7 @@ struct ProgressBarDesc {
 }
 ```
 
-<sub>`api.ogt` line 23360</sub>
+<sub>`api.ogt` line 23416</sub>
 
 <a id="type-ProgressRingDesc"></a>
 
@@ -27666,7 +27824,7 @@ struct ProgressRingDesc {
 }
 ```
 
-<sub>`api.ogt` line 23398</sub>
+<sub>`api.ogt` line 23454</sub>
 
 <a id="type-SkeletonShape"></a>
 
@@ -27695,7 +27853,7 @@ enum SkeletonShape {
 }
 ```
 
-<sub>`api.ogt` line 23426</sub>
+<sub>`api.ogt` line 23482</sub>
 
 <a id="type-SkeletonGroupDesc"></a>
 
@@ -27732,7 +27890,7 @@ struct SkeletonGroupDesc {
 }
 ```
 
-<sub>`api.ogt` line 23435</sub>
+<sub>`api.ogt` line 23491</sub>
 
 <a id="type-Notation"></a>
 
@@ -27761,7 +27919,7 @@ enum Notation {
 }
 ```
 
-<sub>`api.ogt` line 23460</sub>
+<sub>`api.ogt` line 23516</sub>
 
 <a id="type-NumberFormatDesc"></a>
 
@@ -27801,7 +27959,7 @@ struct NumberFormatDesc {
 }
 ```
 
-<sub>`api.ogt` line 23469</sub>
+<sub>`api.ogt` line 23525</sub>
 
 <a id="type-NumberCounterDesc"></a>
 
@@ -27854,7 +28012,7 @@ struct NumberCounterDesc {
 }
 ```
 
-<sub>`api.ogt` line 23494</sub>
+<sub>`api.ogt` line 23550</sub>
 
 <a id="type-BannerKind"></a>
 
@@ -27883,7 +28041,7 @@ enum BannerKind {
 }
 ```
 
-<sub>`api.ogt` line 23530</sub>
+<sub>`api.ogt` line 23586</sub>
 
 <a id="type-BannerDesc"></a>
 
@@ -27924,7 +28082,7 @@ struct BannerDesc {
 }
 ```
 
-<sub>`api.ogt` line 23539</sub>
+<sub>`api.ogt` line 23595</sub>
 
 <a id="type-BannerResult"></a>
 
@@ -27949,7 +28107,7 @@ struct BannerResult {
 }
 ```
 
-<sub>`api.ogt` line 23557</sub>
+<sub>`api.ogt` line 23613</sub>
 
 <a id="type-UiRibbonDesc"></a>
 
@@ -27983,7 +28141,7 @@ struct UiRibbonDesc {
 }
 ```
 
-<sub>`api.ogt` line 23575</sub>
+<sub>`api.ogt` line 23631</sub>
 
 <a id="type-CelebrationKind"></a>
 
@@ -28010,7 +28168,7 @@ enum CelebrationKind {
 }
 ```
 
-<sub>`api.ogt` line 23598</sub>
+<sub>`api.ogt` line 23654</sub>
 
 <a id="type-CelebrationDesc"></a>
 
@@ -28053,7 +28211,7 @@ struct CelebrationDesc {
 }
 ```
 
-<sub>`api.ogt` line 23606</sub>
+<sub>`api.ogt` line 23662</sub>
 
 <a id="type-StarRatingDesc"></a>
 
@@ -28093,7 +28251,7 @@ struct StarRatingDesc {
 }
 ```
 
-<sub>`api.ogt` line 23636</sub>
+<sub>`api.ogt` line 23692</sub>
 
 <a id="type-SubtitleSize"></a>
 
@@ -28120,7 +28278,7 @@ enum SubtitleSize {
 }
 ```
 
-<sub>`api.ogt` line 23664</sub>
+<sub>`api.ogt` line 23720</sub>
 
 <a id="type-SubtitleSettings"></a>
 
@@ -28169,7 +28327,7 @@ struct SubtitleSettings {
 }
 ```
 
-<sub>`api.ogt` line 23672</sub>
+<sub>`api.ogt` line 23728</sub>
 
 <a id="type-SubtitleLine"></a>
 
@@ -28203,7 +28361,7 @@ struct SubtitleLine {
 }
 ```
 
-<sub>`api.ogt` line 23699</sub>
+<sub>`api.ogt` line 23755</sub>
 
 <a id="type-SubtitlesDesc"></a>
 
@@ -28232,7 +28390,7 @@ struct SubtitlesDesc {
 }
 ```
 
-<sub>`api.ogt` line 23712</sub>
+<sub>`api.ogt` line 23768</sub>
 
 <a id="type-StatBarStyle"></a>
 
@@ -28259,7 +28417,7 @@ enum StatBarStyle {
 }
 ```
 
-<sub>`api.ogt` line 23743</sub>
+<sub>`api.ogt` line 23799</sub>
 
 <a id="type-StatBarDesc"></a>
 
@@ -28360,7 +28518,7 @@ struct StatBarDesc {
 }
 ```
 
-<sub>`api.ogt` line 23751</sub>
+<sub>`api.ogt` line 23807</sub>
 
 <a id="type-OrbMeterDesc"></a>
 
@@ -28407,7 +28565,7 @@ struct OrbMeterDesc {
 }
 ```
 
-<sub>`api.ogt` line 23819</sub>
+<sub>`api.ogt` line 23875</sub>
 
 <a id="type-RadialMeterDesc"></a>
 
@@ -28450,7 +28608,7 @@ struct RadialMeterDesc {
 }
 ```
 
-<sub>`api.ogt` line 23851</sub>
+<sub>`api.ogt` line 23907</sub>
 
 <a id="type-AbilitySlotDesc"></a>
 
@@ -28525,7 +28683,7 @@ struct AbilitySlotDesc {
 }
 ```
 
-<sub>`api.ogt` line 23880</sub>
+<sub>`api.ogt` line 23936</sub>
 
 <a id="type-AbilityBarDesc"></a>
 
@@ -28563,7 +28721,7 @@ struct AbilityBarDesc {
 }
 ```
 
-<sub>`api.ogt` line 23928</sub>
+<sub>`api.ogt` line 23984</sub>
 
 <a id="type-AbilityBarResult"></a>
 
@@ -28584,7 +28742,7 @@ struct AbilityBarResult {
 }
 ```
 
-<sub>`api.ogt` line 23946</sub>
+<sub>`api.ogt` line 24002</sub>
 
 <a id="type-StatusEffect"></a>
 
@@ -28630,7 +28788,7 @@ struct StatusEffect {
 }
 ```
 
-<sub>`api.ogt` line 23961</sub>
+<sub>`api.ogt` line 24017</sub>
 
 <a id="type-StatusGridDesc"></a>
 
@@ -28671,7 +28829,7 @@ struct StatusGridDesc {
 }
 ```
 
-<sub>`api.ogt` line 23982</sub>
+<sub>`api.ogt` line 24038</sub>
 
 <a id="type-StatusGridResult"></a>
 
@@ -28692,7 +28850,7 @@ struct StatusGridResult {
 }
 ```
 
-<sub>`api.ogt` line 24001</sub>
+<sub>`api.ogt` line 24057</sub>
 
 <a id="type-UnitClass"></a>
 
@@ -28719,7 +28877,7 @@ enum UnitClass {
 }
 ```
 
-<sub>`api.ogt` line 24016</sub>
+<sub>`api.ogt` line 24072</sub>
 
 <a id="type-UnitFrameSize"></a>
 
@@ -28744,7 +28902,7 @@ enum UnitFrameSize {
 }
 ```
 
-<sub>`api.ogt` line 24024</sub>
+<sub>`api.ogt` line 24080</sub>
 
 <a id="type-UnitFrameDesc"></a>
 
@@ -28826,7 +28984,7 @@ struct UnitFrameDesc {
 }
 ```
 
-<sub>`api.ogt` line 24031</sub>
+<sub>`api.ogt` line 24087</sub>
 
 <a id="type-PartyFramesDesc"></a>
 
@@ -28857,7 +29015,7 @@ struct PartyFramesDesc {
 }
 ```
 
-<sub>`api.ogt` line 24081</sub>
+<sub>`api.ogt` line 24137</sub>
 
 <a id="type-FramesResult"></a>
 
@@ -28876,7 +29034,7 @@ struct FramesResult {
 }
 ```
 
-<sub>`api.ogt` line 24094</sub>
+<sub>`api.ogt` line 24150</sub>
 
 <a id="type-RaidRole"></a>
 
@@ -28903,7 +29061,7 @@ enum RaidRole {
 }
 ```
 
-<sub>`api.ogt` line 24108</sub>
+<sub>`api.ogt` line 24164</sub>
 
 <a id="type-RaidMember"></a>
 
@@ -28957,7 +29115,7 @@ struct RaidMember {
 }
 ```
 
-<sub>`api.ogt` line 24116</sub>
+<sub>`api.ogt` line 24172</sub>
 
 <a id="type-RaidFramesDesc"></a>
 
@@ -28995,7 +29153,7 @@ struct RaidFramesDesc {
 }
 ```
 
-<sub>`api.ogt` line 24141</sub>
+<sub>`api.ogt` line 24197</sub>
 
 <a id="type-CastState"></a>
 
@@ -29022,7 +29180,7 @@ enum CastState {
 }
 ```
 
-<sub>`api.ogt` line 24168</sub>
+<sub>`api.ogt` line 24224</sub>
 
 <a id="type-CastBarDesc"></a>
 
@@ -29082,7 +29240,7 @@ struct CastBarDesc {
 }
 ```
 
-<sub>`api.ogt` line 24176</sub>
+<sub>`api.ogt` line 24232</sub>
 
 <a id="type-CrosshairStyle"></a>
 
@@ -29111,7 +29269,7 @@ enum CrosshairStyle {
 }
 ```
 
-<sub>`api.ogt` line 24215</sub>
+<sub>`api.ogt` line 24271</sub>
 
 <a id="type-HitKind"></a>
 
@@ -29136,7 +29294,7 @@ enum HitKind {
 }
 ```
 
-<sub>`api.ogt` line 24224</sub>
+<sub>`api.ogt` line 24280</sub>
 
 <a id="type-CrosshairDesc"></a>
 
@@ -29196,7 +29354,7 @@ struct CrosshairDesc {
 }
 ```
 
-<sub>`api.ogt` line 24231</sub>
+<sub>`api.ogt` line 24287</sub>
 
 <a id="type-AmmoDesc"></a>
 
@@ -29251,7 +29409,7 @@ struct AmmoDesc {
 }
 ```
 
-<sub>`api.ogt` line 24273</sub>
+<sub>`api.ogt` line 24329</sub>
 
 <a id="type-MarkerKind"></a>
 
@@ -29284,7 +29442,7 @@ enum MarkerKind {
 }
 ```
 
-<sub>`api.ogt` line 24310</sub>
+<sub>`api.ogt` line 24366</sub>
 
 <a id="type-MapMarkerItem"></a>
 
@@ -29328,7 +29486,7 @@ struct MapMarkerItem {
 }
 ```
 
-<sub>`api.ogt` line 24321</sub>
+<sub>`api.ogt` line 24377</sub>
 
 <a id="type-MapShape"></a>
 
@@ -29351,7 +29509,7 @@ enum MapShape {
 }
 ```
 
-<sub>`api.ogt` line 24341</sub>
+<sub>`api.ogt` line 24397</sub>
 
 <a id="type-MinimapViewDesc"></a>
 
@@ -29419,7 +29577,7 @@ struct MinimapViewDesc {
 }
 ```
 
-<sub>`api.ogt` line 24347</sub>
+<sub>`api.ogt` line 24403</sub>
 
 <a id="type-MinimapResult"></a>
 
@@ -29438,7 +29596,7 @@ struct MinimapResult {
 }
 ```
 
-<sub>`api.ogt` line 24385</sub>
+<sub>`api.ogt` line 24441</sub>
 
 <a id="type-CompassPoi"></a>
 
@@ -29476,7 +29634,7 @@ struct CompassPoi {
 }
 ```
 
-<sub>`api.ogt` line 24399</sub>
+<sub>`api.ogt` line 24455</sub>
 
 <a id="type-CompassDesc"></a>
 
@@ -29522,7 +29680,7 @@ struct CompassDesc {
 }
 ```
 
-<sub>`api.ogt` line 24415</sub>
+<sub>`api.ogt` line 24471</sub>
 
 <a id="type-ObjectiveStep"></a>
 
@@ -29560,7 +29718,7 @@ struct ObjectiveStep {
 }
 ```
 
-<sub>`api.ogt` line 24448</sub>
+<sub>`api.ogt` line 24504</sub>
 
 <a id="type-ObjectiveQuest"></a>
 
@@ -29604,7 +29762,7 @@ struct ObjectiveQuest {
 }
 ```
 
-<sub>`api.ogt` line 24463</sub>
+<sub>`api.ogt` line 24519</sub>
 
 <a id="type-ObjectiveTrackerDesc"></a>
 
@@ -29643,7 +29801,7 @@ struct ObjectiveTrackerDesc {
 }
 ```
 
-<sub>`api.ogt` line 24483</sub>
+<sub>`api.ogt` line 24539</sub>
 
 <a id="type-KillfeedEntry"></a>
 
@@ -29685,7 +29843,7 @@ struct KillfeedEntry {
 }
 ```
 
-<sub>`api.ogt` line 24510</sub>
+<sub>`api.ogt` line 24566</sub>
 
 <a id="type-KillfeedDesc"></a>
 
@@ -29718,7 +29876,7 @@ struct KillfeedDesc {
 }
 ```
 
-<sub>`api.ogt` line 24526</sub>
+<sub>`api.ogt` line 24582</sub>
 
 <a id="type-ScoreColumn"></a>
 
@@ -29747,7 +29905,7 @@ struct ScoreColumn {
 }
 ```
 
-<sub>`api.ogt` line 24549</sub>
+<sub>`api.ogt` line 24605</sub>
 
 <a id="type-ScoreRow"></a>
 
@@ -29785,7 +29943,7 @@ struct ScoreRow {
 }
 ```
 
-<sub>`api.ogt` line 24560</sub>
+<sub>`api.ogt` line 24616</sub>
 
 <a id="type-ScoreTeam"></a>
 
@@ -29813,7 +29971,7 @@ struct ScoreTeam {
 }
 ```
 
-<sub>`api.ogt` line 24574</sub>
+<sub>`api.ogt` line 24630</sub>
 
 <a id="type-ScoreboardDesc"></a>
 
@@ -29850,7 +30008,7 @@ struct ScoreboardDesc {
 }
 ```
 
-<sub>`api.ogt` line 24583</sub>
+<sub>`api.ogt` line 24639</sub>
 
 <a id="type-TimerMode"></a>
 
@@ -29873,7 +30031,7 @@ enum TimerMode {
 }
 ```
 
-<sub>`api.ogt` line 24608</sub>
+<sub>`api.ogt` line 24664</sub>
 
 <a id="type-HudTimerDesc"></a>
 
@@ -29921,7 +30079,7 @@ struct HudTimerDesc {
 }
 ```
 
-<sub>`api.ogt` line 24614</sub>
+<sub>`api.ogt` line 24670</sub>
 
 <a id="type-ComboDesc"></a>
 
@@ -29961,7 +30119,7 @@ struct ComboDesc {
 }
 ```
 
-<sub>`api.ogt` line 24648</sub>
+<sub>`api.ogt` line 24704</sub>
 
 <a id="type-JudgementEvent"></a>
 
@@ -29991,7 +30149,7 @@ struct JudgementEvent {
 }
 ```
 
-<sub>`api.ogt` line 24675</sub>
+<sub>`api.ogt` line 24731</sub>
 
 <a id="type-JudgementDesc"></a>
 
@@ -30029,7 +30187,7 @@ struct JudgementDesc {
 }
 ```
 
-<sub>`api.ogt` line 24686</sub>
+<sub>`api.ogt` line 24742</sub>
 
 <a id="type-ResourceItem"></a>
 
@@ -30067,7 +30225,7 @@ struct ResourceItem {
 }
 ```
 
-<sub>`api.ogt` line 24713</sub>
+<sub>`api.ogt` line 24769</sub>
 
 <a id="type-ResourceBarDesc"></a>
 
@@ -30101,7 +30259,7 @@ struct ResourceBarDesc {
 }
 ```
 
-<sub>`api.ogt` line 24728</sub>
+<sub>`api.ogt` line 24784</sub>
 
 <a id="type-TurnUnit"></a>
 
@@ -30139,7 +30297,7 @@ struct TurnUnit {
 }
 ```
 
-<sub>`api.ogt` line 24752</sub>
+<sub>`api.ogt` line 24808</sub>
 
 <a id="type-TurnOrderStyle"></a>
 
@@ -30162,7 +30320,7 @@ enum TurnOrderStyle {
 }
 ```
 
-<sub>`api.ogt` line 24767</sub>
+<sub>`api.ogt` line 24823</sub>
 
 <a id="type-TurnOrderDesc"></a>
 
@@ -30209,7 +30367,7 @@ struct TurnOrderDesc {
 }
 ```
 
-<sub>`api.ogt` line 24773</sub>
+<sub>`api.ogt` line 24829</sub>
 
 <a id="type-SpeedoStyle"></a>
 
@@ -30232,7 +30390,7 @@ enum SpeedoStyle {
 }
 ```
 
-<sub>`api.ogt` line 24807</sub>
+<sub>`api.ogt` line 24863</sub>
 
 <a id="type-SpeedometerDesc"></a>
 
@@ -30288,7 +30446,7 @@ struct SpeedometerDesc {
 }
 ```
 
-<sub>`api.ogt` line 24813</sub>
+<sub>`api.ogt` line 24869</sub>
 
 <a id="type-ScorebugTeam"></a>
 
@@ -30324,7 +30482,7 @@ struct ScorebugTeam {
 }
 ```
 
-<sub>`api.ogt` line 24853</sub>
+<sub>`api.ogt` line 24909</sub>
 
 <a id="type-ScorebugDesc"></a>
 
@@ -30364,7 +30522,7 @@ struct ScorebugDesc {
 }
 ```
 
-<sub>`api.ogt` line 24866</sub>
+<sub>`api.ogt` line 24922</sub>
 
 <a id="type-MatchStat"></a>
 
@@ -30398,7 +30556,7 @@ struct MatchStat {
 }
 ```
 
-<sub>`api.ogt` line 24891</sub>
+<sub>`api.ogt` line 24947</sub>
 
 <a id="type-MatchStatsDesc"></a>
 
@@ -30430,7 +30588,7 @@ struct MatchStatsDesc {
 }
 ```
 
-<sub>`api.ogt` line 24903</sub>
+<sub>`api.ogt` line 24959</sub>
 
 <a id="type-MatchEvent"></a>
 
@@ -30462,7 +30620,7 @@ struct MatchEvent {
 }
 ```
 
-<sub>`api.ogt` line 24923</sub>
+<sub>`api.ogt` line 24979</sub>
 
 <a id="type-GoalTimelineDesc"></a>
 
@@ -30486,7 +30644,7 @@ struct GoalTimelineDesc {
 }
 ```
 
-<sub>`api.ogt` line 24934</sub>
+<sub>`api.ogt` line 24990</sub>
 
 <a id="type-PlayerPlateDesc"></a>
 
@@ -30527,7 +30685,7 @@ struct PlayerPlateDesc {
 }
 ```
 
-<sub>`api.ogt` line 24950</sub>
+<sub>`api.ogt` line 25006</sub>
 
 <a id="type-SubPlayer"></a>
 
@@ -30553,7 +30711,7 @@ struct SubPlayer {
 }
 ```
 
-<sub>`api.ogt` line 24978</sub>
+<sub>`api.ogt` line 25034</sub>
 
 <a id="type-SubstitutionDesc"></a>
 
@@ -30593,7 +30751,7 @@ struct SubstitutionDesc {
 }
 ```
 
-<sub>`api.ogt` line 24986</sub>
+<sub>`api.ogt` line 25042</sub>
 
 <a id="type-WaveEntry"></a>
 
@@ -30627,7 +30785,7 @@ struct WaveEntry {
 }
 ```
 
-<sub>`api.ogt` line 25014</sub>
+<sub>`api.ogt` line 25070</sub>
 
 <a id="type-WavePreviewDesc"></a>
 
@@ -30661,7 +30819,7 @@ struct WavePreviewDesc {
 }
 ```
 
-<sub>`api.ogt` line 25026</sub>
+<sub>`api.ogt` line 25082</sub>
 
 <a id="type-LaneKey"></a>
 
@@ -30693,7 +30851,7 @@ struct LaneKey {
 }
 ```
 
-<sub>`api.ogt` line 25049</sub>
+<sub>`api.ogt` line 25105</sub>
 
 <a id="type-LaneKeysDesc"></a>
 
@@ -30727,7 +30885,7 @@ struct LaneKeysDesc {
 }
 ```
 
-<sub>`api.ogt` line 25061</sub>
+<sub>`api.ogt` line 25117</sub>
 
 <a id="type-FlightHudDesc"></a>
 
@@ -30792,7 +30950,7 @@ struct FlightHudDesc {
 }
 ```
 
-<sub>`api.ogt` line 25084</sub>
+<sub>`api.ogt` line 25140</sub>
 
 <a id="type-StandingsEntry"></a>
 
@@ -30834,7 +30992,7 @@ struct StandingsEntry {
 }
 ```
 
-<sub>`api.ogt` line 25130</sub>
+<sub>`api.ogt` line 25186</sub>
 
 <a id="type-StandingsTowerDesc"></a>
 
@@ -30880,7 +31038,7 @@ struct StandingsTowerDesc {
 }
 ```
 
-<sub>`api.ogt` line 25147</sub>
+<sub>`api.ogt` line 25203</sub>
 
 <a id="type-LapTimerDesc"></a>
 
@@ -30957,7 +31115,7 @@ struct LapTimerDesc {
 }
 ```
 
-<sub>`api.ogt` line 25179</sub>
+<sub>`api.ogt` line 25235</sub>
 
 <a id="type-RearViewDesc"></a>
 
@@ -31001,7 +31159,7 @@ struct RearViewDesc {
 }
 ```
 
-<sub>`api.ogt` line 25234</sub>
+<sub>`api.ogt` line 25290</sub>
 
 <a id="type-SelectedUnit"></a>
 
@@ -31059,7 +31217,7 @@ struct SelectedUnit {
 }
 ```
 
-<sub>`api.ogt` line 25266</sub>
+<sub>`api.ogt` line 25322</sub>
 
 <a id="type-UnitStat"></a>
 
@@ -31087,7 +31245,7 @@ struct UnitStat {
 }
 ```
 
-<sub>`api.ogt` line 25297</sub>
+<sub>`api.ogt` line 25353</sub>
 
 <a id="type-ControlGroup"></a>
 
@@ -31113,7 +31271,7 @@ struct ControlGroup {
 }
 ```
 
-<sub>`api.ogt` line 25306</sub>
+<sub>`api.ogt` line 25362</sub>
 
 <a id="type-QueueItem"></a>
 
@@ -31153,7 +31311,7 @@ struct QueueItem {
 }
 ```
 
-<sub>`api.ogt` line 25314</sub>
+<sub>`api.ogt` line 25370</sub>
 
 <a id="type-ProductionQueueDesc"></a>
 
@@ -31190,7 +31348,7 @@ struct ProductionQueueDesc {
 }
 ```
 
-<sub>`api.ogt` line 25332</sub>
+<sub>`api.ogt` line 25388</sub>
 
 <a id="type-ProductionQueueResult"></a>
 
@@ -31209,7 +31367,7 @@ struct ProductionQueueResult {
 }
 ```
 
-<sub>`api.ogt` line 25348</sub>
+<sub>`api.ogt` line 25404</sub>
 
 <a id="type-SelectionPanelDesc"></a>
 
@@ -31253,7 +31411,7 @@ struct SelectionPanelDesc {
 }
 ```
 
-<sub>`api.ogt` line 25362</sub>
+<sub>`api.ogt` line 25418</sub>
 
 <a id="type-SelectionPanelResult"></a>
 
@@ -31276,7 +31434,7 @@ struct SelectionPanelResult {
 }
 ```
 
-<sub>`api.ogt` line 25380</sub>
+<sub>`api.ogt` line 25436</sub>
 
 <a id="type-CommandCardDesc"></a>
 
@@ -31309,7 +31467,7 @@ struct CommandCardDesc {
 }
 ```
 
-<sub>`api.ogt` line 25396</sub>
+<sub>`api.ogt` line 25452</sub>
 
 <a id="type-RtsConsoleDesc"></a>
 
@@ -31339,7 +31497,7 @@ struct RtsConsoleDesc {
 }
 ```
 
-<sub>`api.ogt` line 25419</sub>
+<sub>`api.ogt` line 25475</sub>
 
 <a id="type-RtsConsoleResult"></a>
 
@@ -31368,7 +31526,7 @@ struct RtsConsoleResult {
 }
 ```
 
-<sub>`api.ogt` line 25430</sub>
+<sub>`api.ogt` line 25486</sub>
 
 <a id="type-DragSelectDesc"></a>
 
@@ -31406,7 +31564,7 @@ struct DragSelectDesc {
 }
 ```
 
-<sub>`api.ogt` line 25449</sub>
+<sub>`api.ogt` line 25505</sub>
 
 <a id="type-DragSelectResult"></a>
 
@@ -31443,7 +31601,7 @@ struct DragSelectResult {
 }
 ```
 
-<sub>`api.ogt` line 25466</sub>
+<sub>`api.ogt` line 25522</sub>
 
 <a id="type-DamageHit"></a>
 
@@ -31474,7 +31632,7 @@ struct DamageHit {
 }
 ```
 
-<sub>`api.ogt` line 25493</sub>
+<sub>`api.ogt` line 25549</sub>
 
 <a id="type-DamageDirectionDesc"></a>
 
@@ -31508,7 +31666,7 @@ struct DamageDirectionDesc {
 }
 ```
 
-<sub>`api.ogt` line 25506</sub>
+<sub>`api.ogt` line 25562</sub>
 
 <a id="type-LowHealthDesc"></a>
 
@@ -31541,7 +31699,7 @@ struct LowHealthDesc {
 }
 ```
 
-<sub>`api.ogt` line 25530</sub>
+<sub>`api.ogt` line 25586</sub>
 
 <a id="type-Reaction"></a>
 
@@ -31570,7 +31728,7 @@ enum Reaction {
 }
 ```
 
-<sub>`api.ogt` line 25563</sub>
+<sub>`api.ogt` line 25619</sub>
 
 <a id="type-NameplateDesc"></a>
 
@@ -31636,7 +31794,7 @@ struct NameplateDesc {
 }
 ```
 
-<sub>`api.ogt` line 25572</sub>
+<sub>`api.ogt` line 25628</sub>
 
 <a id="type-OverheadBar"></a>
 
@@ -31668,7 +31826,7 @@ struct OverheadBar {
 }
 ```
 
-<sub>`api.ogt` line 25615</sub>
+<sub>`api.ogt` line 25671</sub>
 
 <a id="type-OverheadBarsDesc"></a>
 
@@ -31708,7 +31866,7 @@ struct OverheadBarsDesc {
 }
 ```
 
-<sub>`api.ogt` line 25627</sub>
+<sub>`api.ogt` line 25683</sub>
 
 <a id="type-DamageKind"></a>
 
@@ -31741,7 +31899,7 @@ enum DamageKind {
 }
 ```
 
-<sub>`api.ogt` line 25656</sub>
+<sub>`api.ogt` line 25712</sub>
 
 <a id="type-DamageHitDesc"></a>
 
@@ -31773,7 +31931,7 @@ struct DamageHitDesc {
 }
 ```
 
-<sub>`api.ogt` line 25667</sub>
+<sub>`api.ogt` line 25723</sub>
 
 <a id="type-DamageNumbersDesc"></a>
 
@@ -31810,7 +31968,7 @@ struct DamageNumbersDesc {
 }
 ```
 
-<sub>`api.ogt` line 25678</sub>
+<sub>`api.ogt` line 25734</sub>
 
 <a id="type-InteractionPromptDesc"></a>
 
@@ -31856,7 +32014,7 @@ struct InteractionPromptDesc {
 }
 ```
 
-<sub>`api.ogt` line 25705</sub>
+<sub>`api.ogt` line 25761</sub>
 
 <a id="type-WaypointKind"></a>
 
@@ -31887,7 +32045,7 @@ enum WaypointKind {
 }
 ```
 
-<sub>`api.ogt` line 25737</sub>
+<sub>`api.ogt` line 25793</sub>
 
 <a id="type-WaypointDesc"></a>
 
@@ -31942,7 +32100,7 @@ struct WaypointDesc {
 }
 ```
 
-<sub>`api.ogt` line 25747</sub>
+<sub>`api.ogt` line 25803</sub>
 
 <a id="type-GroundDesc"></a>
 
@@ -31993,7 +32151,7 @@ struct GroundDesc {
 }
 ```
 
-<sub>`api.ogt` line 25784</sub>
+<sub>`api.ogt` line 25840</sub>
 
 <a id="type-SelectionRingDesc"></a>
 
@@ -32035,7 +32193,7 @@ struct SelectionRingDesc {
 }
 ```
 
-<sub>`api.ogt` line 25810</sub>
+<sub>`api.ogt` line 25866</sub>
 
 <a id="type-TelegraphShape"></a>
 
@@ -32062,7 +32220,7 @@ enum TelegraphShape {
 }
 ```
 
-<sub>`api.ogt` line 25839</sub>
+<sub>`api.ogt` line 25895</sub>
 
 <a id="type-TelegraphDesc"></a>
 
@@ -32124,7 +32282,7 @@ struct TelegraphDesc {
 }
 ```
 
-<sub>`api.ogt` line 25847</sub>
+<sub>`api.ogt` line 25903</sub>
 
 <a id="type-PathLineDesc"></a>
 
@@ -32168,7 +32326,7 @@ struct PathLineDesc {
 }
 ```
 
-<sub>`api.ogt` line 25893</sub>
+<sub>`api.ogt` line 25949</sub>
 
 <a id="type-PlacementGhostDesc"></a>
 
@@ -32223,7 +32381,7 @@ struct PlacementGhostDesc {
 }
 ```
 
-<sub>`api.ogt` line 25924</sub>
+<sub>`api.ogt` line 25980</sub>
 
 <a id="type-LootLabelDesc"></a>
 
@@ -32267,7 +32425,7 @@ struct LootLabelDesc {
 }
 ```
 
-<sub>`api.ogt` line 25965</sub>
+<sub>`api.ogt` line 26021</sub>
 
 <a id="type-LootLabelResult"></a>
 
@@ -32290,7 +32448,7 @@ struct LootLabelResult {
 }
 ```
 
-<sub>`api.ogt` line 25986</sub>
+<sub>`api.ogt` line 26042</sub>
 
 <a id="type-SpeechBubbleDesc"></a>
 
@@ -32344,7 +32502,7 @@ struct SpeechBubbleDesc {
 }
 ```
 
-<sub>`api.ogt` line 26002</sub>
+<sub>`api.ogt` line 26058</sub>
 
 <a id="type-VectorArt"></a>
 
@@ -32358,7 +32516,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle VectorArt "A cooked vector (an `.ogt` of `type vector`: an SVG subset) from og.load.vector, drawn by a VectorFill."
 ```
 
-<sub>`api.ogt` line 26041</sub>
+<sub>`api.ogt` line 26097</sub>
 
 <a id="type-UiMaterial"></a>
 
@@ -32372,7 +32530,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle UiMaterial "A custom UI material (an `.ogt` of `type ui-material`) from og.load.uiMaterial, which a LayerDesc composites through."
 ```
 
-<sub>`api.ogt` line 26042</sub>
+<sub>`api.ogt` line 26098</sub>
 
 <a id="type-ShapeType"></a>
 
@@ -32401,7 +32559,7 @@ enum ShapeType {
 }
 ```
 
-<sub>`api.ogt` line 26058</sub>
+<sub>`api.ogt` line 26114</sub>
 
 <a id="type-CornerShape"></a>
 
@@ -32428,7 +32586,7 @@ enum CornerShape {
 }
 ```
 
-<sub>`api.ogt` line 26067</sub>
+<sub>`api.ogt` line 26123</sub>
 
 <a id="type-LineCap"></a>
 
@@ -32453,7 +32611,7 @@ enum LineCap {
 }
 ```
 
-<sub>`api.ogt` line 26075</sub>
+<sub>`api.ogt` line 26131</sub>
 
 <a id="type-LineJoin"></a>
 
@@ -32478,7 +32636,7 @@ enum LineJoin {
 }
 ```
 
-<sub>`api.ogt` line 26082</sub>
+<sub>`api.ogt` line 26138</sub>
 
 <a id="type-DrawShape"></a>
 
@@ -32566,7 +32724,7 @@ struct DrawShape {
 }
 ```
 
-<sub>`api.ogt` line 26089</sub>
+<sub>`api.ogt` line 26145</sub>
 
 <a id="type-GradientType"></a>
 
@@ -32593,7 +32751,7 @@ enum GradientType {
 }
 ```
 
-<sub>`api.ogt` line 26144</sub>
+<sub>`api.ogt` line 26200</sub>
 
 <a id="type-GradientSpread"></a>
 
@@ -32618,7 +32776,7 @@ enum GradientSpread {
 }
 ```
 
-<sub>`api.ogt` line 26152</sub>
+<sub>`api.ogt` line 26208</sub>
 
 <a id="type-GradientStop"></a>
 
@@ -32646,7 +32804,7 @@ struct GradientStop {
 }
 ```
 
-<sub>`api.ogt` line 26159</sub>
+<sub>`api.ogt` line 26215</sub>
 
 <a id="type-Gradient"></a>
 
@@ -32683,7 +32841,7 @@ struct Gradient {
 }
 ```
 
-<sub>`api.ogt` line 26170</sub>
+<sub>`api.ogt` line 26226</sub>
 
 <a id="type-ImageFit"></a>
 
@@ -32714,7 +32872,7 @@ enum ImageFit {
 }
 ```
 
-<sub>`api.ogt` line 26186</sub>
+<sub>`api.ogt` line 26242</sub>
 
 <a id="type-SliceEdges"></a>
 
@@ -32739,7 +32897,7 @@ enum SliceEdges {
 }
 ```
 
-<sub>`api.ogt` line 26196</sub>
+<sub>`api.ogt` line 26252</sub>
 
 <a id="type-SolidFill"></a>
 
@@ -32761,7 +32919,7 @@ struct SolidFill {
 }
 ```
 
-<sub>`api.ogt` line 26203</sub>
+<sub>`api.ogt` line 26259</sub>
 
 <a id="type-ImageFill"></a>
 
@@ -32820,7 +32978,7 @@ struct ImageFill {
 }
 ```
 
-<sub>`api.ogt` line 26209</sub>
+<sub>`api.ogt` line 26265</sub>
 
 <a id="type-VectorFill"></a>
 
@@ -32844,7 +33002,7 @@ struct VectorFill {
 }
 ```
 
-<sub>`api.ogt` line 26239</sub>
+<sub>`api.ogt` line 26295</sub>
 
 <a id="type-Fill"></a>
 
@@ -32872,7 +33030,7 @@ union Fill {
 }
 ```
 
-<sub>`api.ogt` line 26246</sub>
+<sub>`api.ogt` line 26302</sub>
 
 <a id="type-StrokeAlign"></a>
 
@@ -32897,7 +33055,7 @@ enum StrokeAlign {
 }
 ```
 
-<sub>`api.ogt` line 26255</sub>
+<sub>`api.ogt` line 26311</sub>
 
 <a id="type-Stroke"></a>
 
@@ -32943,7 +33101,7 @@ struct Stroke {
 }
 ```
 
-<sub>`api.ogt` line 26262</sub>
+<sub>`api.ogt` line 26318</sub>
 
 <a id="type-ShadowEffect"></a>
 
@@ -32980,7 +33138,7 @@ struct ShadowEffect {
 }
 ```
 
-<sub>`api.ogt` line 26286</sub>
+<sub>`api.ogt` line 26342</sub>
 
 <a id="type-GlowEffect"></a>
 
@@ -33012,7 +33170,7 @@ struct GlowEffect {
 }
 ```
 
-<sub>`api.ogt` line 26304</sub>
+<sub>`api.ogt` line 26360</sub>
 
 <a id="type-BlurEffect"></a>
 
@@ -33038,7 +33196,7 @@ struct BlurEffect {
 }
 ```
 
-<sub>`api.ogt` line 26318</sub>
+<sub>`api.ogt` line 26374</sub>
 
 <a id="type-BackdropEffect"></a>
 
@@ -33093,7 +33251,7 @@ struct BackdropEffect {
 }
 ```
 
-<sub>`api.ogt` line 26328</sub>
+<sub>`api.ogt` line 26384</sub>
 
 <a id="type-GlassWeight"></a>
 
@@ -33120,7 +33278,7 @@ enum GlassWeight {
 }
 ```
 
-<sub>`api.ogt` line 26358</sub>
+<sub>`api.ogt` line 26414</sub>
 
 <a id="type-Elevation"></a>
 
@@ -33147,7 +33305,7 @@ enum Elevation {
 }
 ```
 
-<sub>`api.ogt` line 26366</sub>
+<sub>`api.ogt` line 26422</sub>
 
 <a id="type-Effect"></a>
 
@@ -33179,7 +33337,7 @@ union Effect {
 }
 ```
 
-<sub>`api.ogt` line 26374</sub>
+<sub>`api.ogt` line 26430</sub>
 
 <a id="type-ClipMode"></a>
 
@@ -33204,7 +33362,7 @@ enum ClipMode {
 }
 ```
 
-<sub>`api.ogt` line 26385</sub>
+<sub>`api.ogt` line 26441</sub>
 
 <a id="type-MaskDesc"></a>
 
@@ -33230,7 +33388,7 @@ struct MaskDesc {
 }
 ```
 
-<sub>`api.ogt` line 26392</sub>
+<sub>`api.ogt` line 26448</sub>
 
 <a id="type-MaterialName"></a>
 
@@ -33271,7 +33429,7 @@ enum MaterialName {
 }
 ```
 
-<sub>`api.ogt` line 26400</sub>
+<sub>`api.ogt` line 26456</sub>
 
 <a id="type-LayerDesc"></a>
 
@@ -33297,7 +33455,7 @@ struct LayerDesc {
 }
 ```
 
-<sub>`api.ogt` line 26415</sub>
+<sub>`api.ogt` line 26471</sub>
 
 <a id="type-TextShadowDesc"></a>
 
@@ -33330,7 +33488,7 @@ struct TextShadowDesc {
 }
 ```
 
-<sub>`api.ogt` line 26423</sub>
+<sub>`api.ogt` line 26479</sub>
 
 <a id="type-TextOutlineDesc"></a>
 
@@ -33360,7 +33518,7 @@ struct TextOutlineDesc {
 }
 ```
 
-<sub>`api.ogt` line 26438</sub>
+<sub>`api.ogt` line 26494</sub>
 
 <a id="type-TextEffectsDesc"></a>
 
@@ -33386,7 +33544,7 @@ struct TextEffectsDesc {
 }
 ```
 
-<sub>`api.ogt` line 26450</sub>
+<sub>`api.ogt` line 26506</sub>
 
 <a id="type-DrawDesc"></a>
 
@@ -33432,7 +33590,7 @@ struct DrawDesc {
 }
 ```
 
-<sub>`api.ogt` line 26458</sub>
+<sub>`api.ogt` line 26514</sub>
 
 <a id="type-BlendMode"></a>
 
@@ -33465,7 +33623,7 @@ enum BlendMode {
 }
 ```
 
-<sub>`api.ogt` line 26478</sub>
+<sub>`api.ogt` line 26534</sub>
 
 <a id="type-SemanticsDesc"></a>
 
@@ -33509,7 +33667,7 @@ struct SemanticsDesc {
 }
 ```
 
-<sub>`api.ogt` line 26489</sub>
+<sub>`api.ogt` line 26545</sub>
 
 <a id="type-WorldTarget"></a>
 
@@ -33533,7 +33691,7 @@ struct WorldTarget {
 }
 ```
 
-<sub>`api.ogt` line 26527</sub>
+<sub>`api.ogt` line 26583</sub>
 
 <a id="type-AnchorScaleMode"></a>
 
@@ -33556,7 +33714,7 @@ enum AnchorScaleMode {
 }
 ```
 
-<sub>`api.ogt` line 26534</sub>
+<sub>`api.ogt` line 26590</sub>
 
 <a id="type-WorldOcclusion"></a>
 
@@ -33581,7 +33739,7 @@ enum WorldOcclusion {
 }
 ```
 
-<sub>`api.ogt` line 26540</sub>
+<sub>`api.ogt` line 26596</sub>
 
 <a id="type-Declutter"></a>
 
@@ -33608,7 +33766,7 @@ enum Declutter {
 }
 ```
 
-<sub>`api.ogt` line 26547</sub>
+<sub>`api.ogt` line 26603</sub>
 
 <a id="type-EdgeClampDesc"></a>
 
@@ -33642,7 +33800,7 @@ struct EdgeClampDesc {
 }
 ```
 
-<sub>`api.ogt` line 26555</sub>
+<sub>`api.ogt` line 26611</sub>
 
 <a id="type-WorldAnchorDesc"></a>
 
@@ -33737,7 +33895,7 @@ struct WorldAnchorDesc {
 }
 ```
 
-<sub>`api.ogt` line 26571</sub>
+<sub>`api.ogt` line 26627</sub>
 
 <a id="type-AnchorInfo"></a>
 
@@ -33784,7 +33942,7 @@ struct AnchorInfo {
 }
 ```
 
-<sub>`api.ogt` line 26626</sub>
+<sub>`api.ogt` line 26682</sub>
 
 <a id="type-WorldPanelDesc"></a>
 
@@ -33844,7 +34002,7 @@ struct WorldPanelDesc {
 }
 ```
 
-<sub>`api.ogt` line 26657</sub>
+<sub>`api.ogt` line 26713</sub>
 
 <a id="type-PanelInfo"></a>
 
@@ -33875,7 +34033,7 @@ struct PanelInfo {
 }
 ```
 
-<sub>`api.ogt` line 26691</sub>
+<sub>`api.ogt` line 26747</sub>
 
 <a id="type-MassKind"></a>
 
@@ -33904,7 +34062,7 @@ enum MassKind {
 }
 ```
 
-<sub>`api.ogt` line 26712</sub>
+<sub>`api.ogt` line 26768</sub>
 
 <a id="type-MassEase"></a>
 
@@ -33933,7 +34091,7 @@ enum MassEase {
 }
 ```
 
-<sub>`api.ogt` line 26721</sub>
+<sub>`api.ogt` line 26777</sub>
 
 <a id="type-MassSpace"></a>
 
@@ -33956,7 +34114,7 @@ enum MassSpace {
 }
 ```
 
-<sub>`api.ogt` line 26730</sub>
+<sub>`api.ogt` line 26786</sub>
 
 <a id="type-ParticleShape"></a>
 
@@ -33981,7 +34139,7 @@ enum ParticleShape {
 }
 ```
 
-<sub>`api.ogt` line 26736</sub>
+<sub>`api.ogt` line 26792</sub>
 
 <a id="type-MassKey"></a>
 
@@ -34028,7 +34186,7 @@ struct MassKey {
 }
 ```
 
-<sub>`api.ogt` line 26743</sub>
+<sub>`api.ogt` line 26799</sub>
 
 <a id="type-MassTemplateDesc"></a>
 
@@ -34128,7 +34286,7 @@ struct MassTemplateDesc {
 }
 ```
 
-<sub>`api.ogt` line 26769</sub>
+<sub>`api.ogt` line 26825</sub>
 
 <a id="type-MassInstance"></a>
 
@@ -34175,7 +34333,7 @@ struct MassInstance {
 }
 ```
 
-<sub>`api.ogt` line 26827</sub>
+<sub>`api.ogt` line 26883</sub>
 
 <a id="type-EmitFrom"></a>
 
@@ -34200,7 +34358,7 @@ enum EmitFrom {
 }
 ```
 
-<sub>`api.ogt` line 26877</sub>
+<sub>`api.ogt` line 26933</sub>
 
 <a id="type-ParticlesDesc"></a>
 
@@ -34294,7 +34452,7 @@ struct ParticlesDesc {
 }
 ```
 
-<sub>`api.ogt` line 26884</sub>
+<sub>`api.ogt` line 26940</sub>
 
 <a id="type-MetaKind"></a>
 
@@ -34319,7 +34477,7 @@ enum MetaKind {
 }
 ```
 
-<sub>`api.ogt` line 26950</sub>
+<sub>`api.ogt` line 27006</sub>
 
 <a id="type-MetaDesc"></a>
 
@@ -34381,7 +34539,7 @@ struct MetaDesc {
 }
 ```
 
-<sub>`api.ogt` line 26957</sub>
+<sub>`api.ogt` line 27013</sub>
 
 <a id="type-SceneViewportDesc"></a>
 
@@ -34429,7 +34587,7 @@ struct SceneViewportDesc {
 }
 ```
 
-<sub>`api.ogt` line 27001</sub>
+<sub>`api.ogt` line 27057</sub>
 
 <a id="type-SceneViewportInfo"></a>
 
@@ -34474,7 +34632,7 @@ struct SceneViewportInfo {
 }
 ```
 
-<sub>`api.ogt` line 27024</sub>
+<sub>`api.ogt` line 27080</sub>
 
 <a id="type-UiDocEvent"></a>
 
@@ -34501,7 +34659,7 @@ struct UiDocEvent {
 }
 ```
 
-<sub>`api.ogt` line 27053</sub>
+<sub>`api.ogt` line 27109</sub>
 
 <a id="type-UiDocResponse"></a>
 
@@ -34524,7 +34682,7 @@ struct UiDocResponse {
 }
 ```
 
-<sub>`api.ogt` line 27062</sub>
+<sub>`api.ogt` line 27118</sub>
 
 <a id="type-UiLayer"></a>
 
@@ -34567,7 +34725,7 @@ struct UiLayer {
 }
 ```
 
-<sub>`api.ogt` line 27069</sub>
+<sub>`api.ogt` line 27125</sub>
 
 <a id="type-UiActionTrigger"></a>
 
@@ -34592,7 +34750,7 @@ enum UiActionTrigger {
 }
 ```
 
-<sub>`api.ogt` line 27086</sub>
+<sub>`api.ogt` line 27142</sub>
 
 <a id="type-UiActionDesc"></a>
 
@@ -34629,7 +34787,7 @@ struct UiActionDesc {
 }
 ```
 
-<sub>`api.ogt` line 27093</sub>
+<sub>`api.ogt` line 27149</sub>
 
 <a id="type-UiDevice"></a>
 
@@ -34660,7 +34818,7 @@ enum UiDevice {
 }
 ```
 
-<sub>`api.ogt` line 27109</sub>
+<sub>`api.ogt` line 27165</sub>
 
 <a id="type-UiGlyph"></a>
 
@@ -34683,7 +34841,7 @@ struct UiGlyph {
 }
 ```
 
-<sub>`api.ogt` line 27119</sub>
+<sub>`api.ogt` line 27175</sub>
 
 <a id="type-UiActionHint"></a>
 
@@ -34710,7 +34868,7 @@ struct UiActionHint {
 }
 ```
 
-<sub>`api.ogt` line 27126</sub>
+<sub>`api.ogt` line 27182</sub>
 
 ## Column kinds
 
@@ -34730,7 +34888,7 @@ column VectorArt {
 }
 ```
 
-<sub>`api.ogt` line 26044</sub>
+<sub>`api.ogt` line 26100</sub>
 
 ```ogt
 column UiMaterial {
@@ -34741,4 +34899,4 @@ column UiMaterial {
 }
 ```
 
-<sub>`api.ogt` line 26051</sub>
+<sub>`api.ogt` line 26107</sub>

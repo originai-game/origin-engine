@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2383 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2387 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -385,6 +385,7 @@ Field units the docs and Tune use.
 | [`CommandDesc`](commands.md#type-CommandDesc) | desc struct | commands | — |
 | [`CommandHandler`](commands.md#type-CommandHandler) | callback | commands | — |
 | [`CommandInfo`](commands.md#type-CommandInfo) | struct | commands | — |
+| [`CommandPage`](ui.md#type-CommandPage) | desc struct | ui | — |
 | [`CommandsReport`](commands.md#type-CommandsReport) | struct | commands | — |
 | [`CommandStep`](commands.md#type-CommandStep) | struct | commands | — |
 | [`CompassDesc`](ui.md#type-CompassDesc) | desc struct | ui | — |
@@ -1652,6 +1653,7 @@ Field units the docs and Tune use.
 | [`og.ui.ribbon`](ui.md#fn-ribbon) | function | ui | — |
 | [`og.ui.richText`](ui.md#fn-richText) | function | ui | `og_ui_rich_text` |
 | [`og.ui.row`](ui.md#fn-row) | function | ui | — |
+| [`og.ui.rtsCommands`](ui.md#fn-rtsCommands) | function | ui | — |
 | [`og.ui.rtsConsole`](ui.md#fn-rtsConsole) | function | ui | — |
 | [`og.ui.sagaMap`](ui.md#fn-sagaMap) | function | ui | — |
 | [`og.ui.saveEdits`](ui.md#fn-saveEdits) | function | ui | `og_ui_save_edits` |
@@ -2038,6 +2040,8 @@ Field units the docs and Tune use.
 | [`RootMotion`](anim.md#type-RootMotion) | enum | anim | — |
 | [`RootMotion()`](anim.md#column-RootMotion) | column kind | anim | — |
 | [`RosterEntry`](ui.md#type-RosterEntry) | desc struct | ui | — |
+| [`RtsCommandsDesc`](ui.md#type-RtsCommandsDesc) | desc struct | ui | — |
+| [`RtsCommandsResult`](ui.md#type-RtsCommandsResult) | struct | ui | — |
 | [`RtsConsoleDesc`](ui.md#type-RtsConsoleDesc) | desc struct | ui | — |
 | [`RtsConsoleResult`](ui.md#type-RtsConsoleResult) | struct | ui | — |
 | [`RumbleDesc`](input.md#type-RumbleDesc) | desc struct | input | — |
