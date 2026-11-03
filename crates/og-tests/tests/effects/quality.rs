@@ -59,7 +59,8 @@ fn moved(a: &RgbaImage, b: &RgbaImage, by: u8) -> Option<([u32; 4], usize, f32, 
 /// occlusion at full resolution where the scene asked half, twice the
 /// screen-space reflection steps and twice the froxel grid's slices; each
 /// equal, byte for byte, to the frame the scene draws when it asks for
-/// that itself (with the shadow maps at high's twice their side). The
+/// that itself (with high's shadows: maps at twice their side, four
+/// cascades, sixteen shadowed lights). The
 /// medium preset is the default frame byte for byte. Before the debt
 /// round high was medium with doubled shadow maps and nothing else: the
 /// three high frames below equalled the `shadows only` ones.
@@ -69,8 +70,12 @@ fn the_high_preset_refines_ao_reflections_and_fog_and_medium_moves_nothing() {
     let default = RenderQuality::default();
     let medium = RenderQuality::preset(QualityPreset::Medium);
     let high = RenderQuality::preset(QualityPreset::High);
+    // Every shadow field high changes (its maps' side, its cascades and its
+    // shadowed lights), so the frames below differ by the refinement alone.
     let shadows_only = RenderQuality {
         shadow_map_scale: high.shadow_map_scale,
+        shadow_cascades: high.shadow_cascades,
+        shadowed_lights: high.shadowed_lights,
         ..default
     };
     // What moved between `a` and `b`: everywhere, and in `rect` (x0, y0,
