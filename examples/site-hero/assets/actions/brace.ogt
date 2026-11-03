@@ -1,0 +1,14 @@
+type motion-action
+version 1
+---
+# The traveller braces against a gust: the right hand holds the hood beside
+# the head (anims/SOURCE.md). Entry 0–1.4 s, a held loop 1.4–3.6 s, release
+# and recovery after it. handTarget: the right wrist at hood contact, metres
+# along the head bone's axes, the mean over the hold.
+source "anims/brace.glb"
+clip "brace"
+rig "rigs/meshy.ogt"
+holdStart 1.4
+holdEnd 3.6
+hand right
+handTarget -0.085 0.057 -0.023
