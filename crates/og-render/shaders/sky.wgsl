@@ -282,13 +282,14 @@ fn clouds_march(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f
   let light = frame.light_color.rgb / max(c[4].y, 9.1e-4);
   let cos_t = dot(d, to_light);
   let phase = mix(cloud_hg(cos_t, 0.6), cloud_hg(cos_t, -0.25), 0.35);
-  // The sky's light from above and from the horizon (the IBL's irradiance).
+  // The clear sky's light from above and from the horizon (frame.wgsl clear_sky_light: never the image-based light,
+  // which the live sky fills with these clouds).
   let sky_scale = frame.params.x / max(c[4].z, 0.05);
-  let sky_top = textureSampleLevel(irradiance_map, ibl_sampler, vec3<f32>(0.0, 1.0, 0.0), 0.0).rgb * sky_scale;
+  let sky_top = clear_sky_light(vec3<f32>(0.0, 1.0, 0.0)) * sky_scale;
   // The bases see the sky's low light, half of it from the horizon under
   // the sun (its glow: the orange of a sunset's cloud bases).
-  let sun_side = textureSampleLevel(irradiance_map, ibl_sampler, normalize(vec3<f32>(to_light.x, 0.0, to_light.z) + vec3<f32>(0.0, 1e-3, 0.0)), 0.0).rgb;
-  let view_side = textureSampleLevel(irradiance_map, ibl_sampler, normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(0.0, 1e-3, 0.0)), 0.0).rgb;
+  let sun_side = clear_sky_light(normalize(vec3<f32>(to_light.x, 0.0, to_light.z) + vec3<f32>(0.0, 1e-3, 0.0)));
+  let view_side = clear_sky_light(normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(0.0, 1e-3, 0.0)));
   let sky_side = mix(view_side, sun_side, 0.5) * sky_scale;
   var color = background;
   // Under an overcast the distance fades the deck into more deck, not into the clear sky behind it: a bright clear

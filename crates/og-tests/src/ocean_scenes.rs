@@ -114,9 +114,7 @@ pub fn ocean_scene(name: &str) -> RenderScene {
                 layer: 0.0,
                 ..Clouds::default()
             };
-            let (sun, sky) = clouds.light();
-            scene.light.intensity *= sun;
-            scene.environment.intensity *= sky;
+            clouds.light_scene(&mut scene);
             if let Some(f) = scene.fog.as_mut() {
                 (f.color, f.sun_color) = clouds.fog_under(f.color, f.sun_color);
             }
@@ -167,9 +165,7 @@ pub fn ocean_scene(name: &str) -> RenderScene {
                 layer: 0.0,
                 ..Clouds::default()
             };
-            let (sun, sky) = clouds.light();
-            scene.light.intensity *= sun;
-            scene.environment.intensity *= sky;
+            clouds.light_scene(&mut scene);
             if let Some(f) = scene.fog.as_mut() {
                 (f.color, f.sun_color) = clouds.fog_under(f.color, f.sun_color);
             }

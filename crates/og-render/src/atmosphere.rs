@@ -194,11 +194,12 @@ pub(crate) struct AtmosphereGpu {
 }
 
 impl AtmosphereGpu {
-    /// `sky`: the drawn sky's look, sun direction and sun colour.
+    /// `sky`: the drawn sky's look, sun direction and sun colour. `clouds`:
+    /// with whether the live sky captures them (RenderScene::sky_captured).
     pub(crate) fn new(
         fog: Option<&Fog>,
         sky: Option<(&SkyLook, Vec3, Vec3)>,
-        clouds: Option<&crate::Clouds>,
+        clouds: Option<(&crate::Clouds, bool)>,
         aurora: Option<&crate::Aurora>,
         weather: Option<&crate::SurfaceWeather>,
         tick: u64,
@@ -248,8 +249,23 @@ impl AtmosphereGpu {
             let radius = look
                 .physical
                 .map_or(6_360_000.0, |p| p.planet_radius.clamp(10.0, 1.0e5) * 1000.0);
-            if let Some(c) = clouds {
+            if let Some((c, live)) = clouds {
                 a.clouds = c.gpu(tick as f64 / f64::from(rate), radius);
+                // The clouds' ambient is the clear sky's, never the image-based
+                // light's: the live sky captures the clouds into it, and lit by
+                // their own capture they converged several times too dark (an
+                // overcast noon drawn as night).
+                let (look, sun, color) = sky.expect("clouds only with the sky");
+                let row = crate::clouds::CLEAR_SKY_ROW;
+                for (i, e) in clear_sky_light(look, sun, color).iter().enumerate() {
+                    a.clouds[row + i] = e.extend(0.0).to_array();
+                }
+                // A live sky holds the deck in the image-based light, which the
+                // scene then leaves undimmed (RenderScene::sky_captured): none
+                // of the sky light's dimming for the clouds to undo.
+                if live {
+                    a.clouds[4][2] = 1.0;
+                }
             }
             if let Some(au) = aurora {
                 a.aurora = au.gpu(radius * 0.001);
@@ -352,6 +368,52 @@ impl DayNightLook {
     }
 }
 
+/// The clear sky's radiance along unit `d` as the sky pass draws it under
+/// `look` (frame.wgsl `sky_look`, sky.wgsl `sky_physical_look`) without the
+/// sun's disc, the stars or the moon: the gradient or the scattered air,
+/// times the look's brightness.
+fn clear_sky(look: &SkyLook, sun: Vec3, color: Vec3, d: Vec3) -> Vec3 {
+    if let Some(p) = &look.physical {
+        return (p.radiance(p.altitude, d, sun, 8) * color + p.night.max(Vec3::ZERO))
+            * look.brightness;
+    }
+    let up = d.y.clamp(-1.0, 1.0);
+    let sky = mix3(look.horizon, look.zenith, up.max(0.0).powf(0.55));
+    let sky = mix3(look.ground, sky, ramp(-0.08, 0.02, up));
+    let glow = d.dot(sun).max(0.0).powf(look.glow_power.max(1.0)) * look.glow;
+    sky * look.brightness + color * glow
+}
+
+/// The clear sky's light on surfaces facing overhead, then horizontally
+/// towards the sun's bearing, away from it and across it: the cosine
+/// weighted mean of [`clear_sky`] over each hemisphere (the irradiance over
+/// π, as the image-based light holds it), by a fixed quadrature of three
+/// rings of eight. What the clouds are lit by besides the sun (frame.wgsl
+/// `clear_sky_light`): the sky above and around them, which holds no
+/// clouds.
+pub(crate) fn clear_sky_light(look: &SkyLook, sun: Vec3, color: Vec3) -> [Vec3; 4] {
+    let s = sun.normalize_or(Vec3::Y);
+    let toward = Vec3::new(s.x, 0.0, s.z).normalize_or(Vec3::Z);
+    let across = Vec3::new(-toward.z, 0.0, toward.x);
+    [Vec3::Y, toward, -toward, across].map(|n| {
+        let t = if n.y.abs() > 0.5 { Vec3::X } else { Vec3::Y };
+        let b = n.cross(t).normalize();
+        let t = b.cross(n);
+        let (mut sum, mut weight) = (Vec3::ZERO, 0.0);
+        for theta in [15.0f32, 45.0, 75.0] {
+            let (st, ct) = theta.to_radians().sin_cos();
+            for k in 0..8 {
+                let (sp, cp) = (k as f32 * std::f32::consts::FRAC_PI_4).sin_cos();
+                let d = (n * ct + (t * cp + b * sp) * st).normalize();
+                let w = ct * st;
+                sum += clear_sky(look, s, color, d) * w;
+                weight += w;
+            }
+        }
+        sum / weight
+    })
+}
+
 fn mix3(a: Vec3, b: Vec3, t: f32) -> Vec3 {
     a + (b - a) * t.clamp(0.0, 1.0)
 }
@@ -447,6 +509,37 @@ pub fn day_night(hours: f32, tilt: f32, azimuth: f32) -> DayNightLook {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The clouds' clear-sky light is the sky's cosine-weighted mean: a
+    /// uniform sky's own radiance on every face, and at a physical sunset
+    /// brighter facing the sun's bearing than away from it (the glow the
+    /// cloud bases take), overhead brighter than a noon's horizon is dark.
+    #[test]
+    fn the_clear_sky_light_is_the_skys_mean() {
+        let flat = SkyLook {
+            zenith: Vec3::splat(0.4),
+            horizon: Vec3::splat(0.4),
+            ground: Vec3::splat(0.4),
+            glow: 0.0,
+            ..SkyLook::DEFAULT
+        };
+        for e in clear_sky_light(&flat, Vec3::new(0.3, 0.5, -0.8), Vec3::ONE) {
+            assert!(
+                (e - Vec3::splat(0.4 * 1.1)).abs().max_element() < 1e-5,
+                "{e}"
+            );
+        }
+        let air = crate::PhysicalAtmosphere::EARTH;
+        let dusk = day_night(17.7, 25.0, -20.0).with_atmosphere(&air);
+        let [_, toward, away, _] = clear_sky_light(&dusk.sky, dusk.sun_direction, dusk.sun_color);
+        let luma = |v: Vec3| v.dot(Vec3::new(0.2126, 0.7152, 0.0722));
+        println!("dusk: toward {toward}, away {away}");
+        assert!(luma(toward) > 1.2 * luma(away), "{toward} vs {away}");
+        let noon = day_night(12.5, 25.0, -20.0).with_atmosphere(&air);
+        let [up, ..] = clear_sky_light(&noon.sky, noon.sun_direction, noon.sun_color);
+        println!("noon overhead {up}");
+        assert!(luma(up) > 0.05, "{up}");
+    }
 
     /// The sun's direct light on level ground against the sky's, the
     /// contrast its shadows have there.

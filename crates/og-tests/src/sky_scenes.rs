@@ -139,9 +139,7 @@ pub fn live_sky_scene(clouds: bool) -> RenderScene {
 /// `scene` under `clouds`, the light dimmed by their cover as the runtime
 /// does, the camera tilted up to the sky.
 fn clouded(mut scene: RenderScene, clouds: Clouds) -> RenderScene {
-    let (sun, sky) = clouds.light();
-    scene.light.intensity *= sun;
-    scene.environment.intensity *= sky;
+    clouds.light_scene(&mut scene);
     scene.clouds = Some(clouds);
     scene.camera.target += Vec3::Y * 14.0;
     scene

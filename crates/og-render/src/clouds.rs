@@ -23,7 +23,11 @@ use glam::Vec3;
 /// The noise volume's size per side.
 pub(crate) const NOISE_SIZE: u32 = 64;
 /// The vec4s of the frame uniform's cloud block (`frame.clouds`).
-pub(crate) const CLOUD_VEC4S: usize = 6;
+pub(crate) const CLOUD_VEC4S: usize = 10;
+/// The first of the clouds' block's rows that hold the clear sky's light
+/// ([`crate::atmosphere::AtmosphereGpu::new`]): overhead, then horizontal
+/// towards the sun, away from it and across.
+pub(crate) const CLEAR_SKY_ROW: usize = 6;
 
 /// Clouds over the scene. See the module documentation.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -119,6 +123,11 @@ impl Clouds {
                 [radius, sun, sky, 0.0]
             },
             self.flash.to_array(),
+            // The clear sky's light, filled by AtmosphereGpu::new.
+            [0.0; 4],
+            [0.0; 4],
+            [0.0; 4],
+            [0.0; 4],
         ]
     }
 }
@@ -148,6 +157,19 @@ impl Clouds {
         let closed = t * t * (3.0 - 2.0 * t) * thick.min(1.0);
         let hidden = (0.8 * k).max(closed).min(1.0 - DECK_BEAM);
         (1.0 - hidden, 1.0 - 0.45 * k)
+    }
+
+    /// Dims `scene`'s light under this cover, as every scene with clouds
+    /// is lit: the sun by [`Clouds::light`]'s first value; the image-based
+    /// light by its second only where that light is not the live sky's
+    /// capture ([`RenderScene::sky_captured`]), which holds the clouds
+    /// already (dimmed twice, an overcast noon drew as night).
+    pub fn light_scene(&self, scene: &mut crate::RenderScene) {
+        let (sun, sky) = self.light();
+        scene.light.intensity *= sun;
+        if !scene.sky_captured() {
+            scene.environment.intensity *= sky;
+        }
     }
 
     /// A fog's colour and its colour looking into the sun under this cover:

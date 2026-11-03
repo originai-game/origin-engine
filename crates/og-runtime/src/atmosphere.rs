@@ -411,7 +411,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             sun_color: scene.environment.sky.sun_color,
         };
     }
-    if let Some(c) = &scene.clouds {
+    if let Some(c) = scene.clouds {
         if !matches!(scene.environment.background, Background::Procedural { .. }) {
             let dir = scene.light.direction_to_light.normalize_or(Vec3::Y);
             scene.environment.background = Background::Procedural {
@@ -419,9 +419,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 sun_color: scene.environment.sky.sun_color,
             };
         }
-        let (sun, sky) = c.light();
-        scene.light.intensity *= sun;
-        scene.environment.intensity *= sky;
+        c.light_scene(scene);
     }
 
     // Fog, declared or from the weather.

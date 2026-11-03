@@ -42,7 +42,7 @@ struct Frame {
   sky_moon_look: vec4<f32>,   // rgb: the lit moon's colour, w: phase (0 new, 0.5 full)
   time: vec4<f32>,            // x: seconds, y: tick, z: ticks per second, w: previous drawn seconds
   sky_scatter: array<vec4<f32>, 38>,  // the physical sky (sky_scatter.wgsl; [0].w 0: the gradient)
-  clouds: array<vec4<f32>, 6>,  // the clouds (clouds.rs Clouds::gpu; [3].w 0: none)
+  clouds: array<vec4<f32>, 10>,  // the clouds (clouds.rs Clouds::gpu; [3].w 0: none; [6..10] the clear sky's light)
   aurora: array<vec4<f32>, 5>,  // the aurora (aurora.rs Aurora::gpu; [0].y 0: none)
   weather: vec4<f32>,         // weather_surface.wgsl: x wetness, y puddles, z snow cover, w rain ripples
   weather_look: vec4<f32>,    // rgb: snow colour, w: puddle size (m)
@@ -271,18 +271,32 @@ fn lattice_hash(c: vec3<i32>) -> f32 {
   return f32(h >> 8u) / 16777216.0;
 }
 
+// The clear sky's light on a surface facing unit `n` (its irradiance over pi, the image-based light's units, at the
+// sky's own strength): what clouds are lit by besides the sun, the cloud-free sky above and around them
+// (atmosphere.rs clear_sky_light, made each frame on the CPU), never the image-based light, which the live sky fills
+// with the clouds themselves (lit by their own capture they converged several times too dark). Overhead, or blended
+// from the horizontal ones towards the sun's bearing, away from it and across it.
+fn clear_sky_light(n: vec3<f32>) -> vec3<f32> {
+  let c = frame.clouds;
+  let s = normalize(vec3<f32>(frame.sky_sun_dir.x, 0.0, frame.sky_sun_dir.z) + vec3<f32>(0.0, 0.0, 1e-5));
+  let h = normalize(vec3<f32>(n.x, 0.0, n.z) + vec3<f32>(1e-5, 0.0, 0.0));
+  let w = dot(h, s);
+  let side = mix(c[9].rgb, select(c[8].rgb, c[7].rgb, w > 0.0), abs(w));
+  return mix(side, c[6].rgb, clamp(n.y, 0.0, 1.0));
+}
+
 // An overcast deck's base seen far off along `d`, as the sky's march lights a base (sky.wgsl clouds_over): its grey
-// ambient from the sky's low light and a little of the sun through it. a: how much of the sky the deck closes
-// (none under a broken sky), the weight the distant sky, what lies under the horizon and a mirror of the sky take it
-// by (none of them can see the clear sky behind an overcast: the irradiance and the reflection maps hold no clouds).
+// ambient from the clear sky's low light (clear_sky_light) and a little of the sun through it. a: how much of the sky
+// the deck closes (none under a broken sky), the weight the distant sky, what lies under the horizon and a mirror of
+// the sky take it by.
 fn cloud_deck(d: vec3<f32>) -> vec4<f32> {
   let c = frame.clouds;
   if (c[3].w < 0.5 || c[0].w <= 0.0 || c[0].y <= 0.0) { return vec4<f32>(0.0); }
   let luma = vec3<f32>(0.2126, 0.7152, 0.0722);
   let sky_scale = frame.params.x / max(c[4].z, 0.05);
   let to_light = normalize(frame.light_dir.xyz);
-  let sun_side = textureSampleLevel(irradiance_map, ibl_sampler, normalize(vec3<f32>(to_light.x, 0.0, to_light.z) + vec3<f32>(0.0, 1e-3, 0.0)), 0.0).rgb;
-  let view_side = textureSampleLevel(irradiance_map, ibl_sampler, normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(0.0, 1e-3, 0.0)), 0.0).rgb;
+  let sun_side = clear_sky_light(normalize(vec3<f32>(to_light.x, 0.0, to_light.z) + vec3<f32>(0.0, 1e-3, 0.0)));
+  let view_side = clear_sky_light(normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(0.0, 1e-3, 0.0)));
   let side = dot(mix(view_side, sun_side, 0.5), luma) * sky_scale;
   let light = dot(frame.light_color.rgb, luma) / max(c[4].y, 9.1e-4);
   return vec4<f32>(vec3<f32>(side * 0.21 + light * 0.02) * c[2].rgb * 2.0, smoothstep(0.6, 0.95, c[0].x));

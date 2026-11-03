@@ -1761,7 +1761,7 @@ impl Renderer {
                     )),
                     _ => None,
                 },
-                scene.clouds.as_ref(),
+                scene.clouds.as_ref().map(|c| (c, scene.sky_captured())),
                 scene.aurora.as_ref(),
                 scene.surface_weather.as_ref(),
                 scene.tick,

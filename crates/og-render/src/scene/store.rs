@@ -9,6 +9,15 @@ impl Default for RenderScene {
 }
 
 impl RenderScene {
+    /// Whether the renderer captures the sky as it draws it into the
+    /// image-based light (the live sky, `sky_capture.rs`): the per-pixel
+    /// procedural sky with no environment map lighting the scene. Its
+    /// clouds are then in that light already ([`crate::Clouds::light_scene`]).
+    pub fn sky_captured(&self) -> bool {
+        self.environment_map.is_none()
+            && matches!(self.environment.background, Background::Procedural { .. })
+    }
+
     pub fn new() -> Self {
         RenderScene {
             id: NEXT_SCENE_ID.fetch_add(1, Ordering::Relaxed),
