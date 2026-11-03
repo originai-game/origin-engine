@@ -182,9 +182,28 @@ fn cloud_hg(cos_t: f32, g: f32) -> f32 {
   return (1.0 - g2) / (12.566371 * pow(max(1.0 + g2 - 2.0 * g * cos_t, 1e-4), 1.5));
 }
 
-// The clouds over `background` along unit `d` (before the fog): the high
-// layer, then the volumetric layer, faded into the sky with distance.
+// The clouds over `background` along unit `d` (before the fog). Under an overcast, a ray under the lowest elevation
+// whose march reaches the deck within the march's reach (the base some 24 km off) shows the deck as it is marched
+// there, not an estimate of it: the strip from there down past the horizon to the sea's or the land's far edge had
+// drawn a flat grey twice the deck's (cloud_deck alone, too bright).
 fn clouds_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f32> {
+  let c = frame.clouds;
+  if (c[3].w < 0.5) { return background; }
+  let viewer = max(frame.view_pos.y + frame.origin.y, 0.0);
+  let cover = cloud_deck(d).a;
+  let lowest = clamp((c[0].z - viewer) / 24000.0, 0.002, 0.2);
+  if (cover > 0.0 && viewer <= c[0].z && d.y < lowest) {
+    let flat_d = normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(1e-6, 0.0, 0.0));
+    let up = flat_d * sqrt(1.0 - lowest * lowest) + vec3<f32>(0.0, lowest, 0.0);
+    let deck = clouds_march(background, up, pixel);
+    if (cover >= 0.999) { return deck; }
+    return mix(clouds_march(background, d, pixel), deck, cover);
+  }
+  return clouds_march(background, d, pixel);
+}
+
+// The high layer, then the volumetric layer, faded into the sky with distance.
+fn clouds_march(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f32> {
   let c = frame.clouds;
   if (c[3].w < 0.5) { return background; }
   let radius = c[4].x;
@@ -194,11 +213,7 @@ fn clouds_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f3
   // cloud base: then it looks down onto the layer (a sea of cloud from a
   // mountain), and the march below stops at the base, before the ground.
   let ground = cloud_sphere(o, d, radius);
-  if (ground.x > 0.0 && viewer <= c[0].z) {
-    // Under the horizon (past the sea's or the land's edge) an overcast's dim, flat light, not a clear day's ground.
-    let dk = cloud_deck(d);
-    return mix(background, dk.rgb * 0.8, dk.a);
-  }
+  if (ground.x > 0.0 && viewer <= c[0].z) { return background; }
   // Under the physical sky the clouds are lit by the sun at their own
   // height: the sun above the air (3 times the look's sunlight colour,
   // the day-night noon) through the sky's own transmittance down to the
