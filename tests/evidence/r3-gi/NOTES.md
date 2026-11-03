@@ -61,7 +61,7 @@ switched off by the quality setting:
 
 ```sh
 og run templates/fx-showcase --headless --size 1280x720 --out /tmp/r3-gi \
-  --commands "3:screenshot:off;3.1:set:GlobalIllumination.enabled=true;4:screenshot:gi;4.1:set:GlobalIllumination.intensity=2;5:screenshot:gi-x2;5.1:set:GlobalIllumination.allowed=false;6:screenshot:quality-off;7:quit"
+  --commands "3:screenshot:off;3.1:set:og.GlobalIllumination.enabled=true;4:screenshot:gi;4.1:set:og.GlobalIllumination.intensity=2;5:screenshot:gi-x2;5.1:set:og.GlobalIllumination.allowed=false;6:screenshot:quality-off;7:quit"
 ```
 
 `off` and `quality-off` should match. `gi` should show warm and coloured

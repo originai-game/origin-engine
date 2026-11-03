@@ -275,3 +275,56 @@ fn the_capabilities_say_what_msaa_the_device_gives() {
         );
     }
 }
+
+/// A renderer that keeps whether the last frame it was handed drew
+/// screen-space GI.
+struct GiRecorder(Rc<Cell<Option<bool>>>);
+
+impl RenderBackend for GiRecorder {
+    fn tier(&self) -> String {
+        "test".into()
+    }
+    fn size(&self) -> (u32, u32) {
+        (64, 64)
+    }
+    fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
+        self.0.set(Some(scene.post.gi.is_some()));
+        Ok(())
+    }
+    fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<RgbaImage> {
+        None
+    }
+}
+
+/// Screen-space GI's lazy og.GlobalIllumination is registered by the command
+/// channel's `set` (the R3 notes' `og run` script), and its `allowed` switch
+/// is the quality's: the low preset turns the GI off, medium on again, with
+/// `enabled` kept.
+#[test]
+fn set_reaches_lazy_global_illumination_and_low_quality_turns_it_off() {
+    set_hooks(Rc::new(NoAssets));
+    og_host_begin_bundle();
+    let game = og_game_game(Some("{}".into()));
+    let engine = answer(og_engine_create(game, "{}".into()))["value"]
+        .as_u64()
+        .unwrap() as u32;
+    let gi = Rc::new(Cell::new(None));
+    set_render_backend(engine, Some(Box::new(GiRecorder(gi.clone())))).unwrap();
+    let frame = || {
+        let a = answer(og_engine_frame(engine, 1000.0 / 60.0));
+        assert_eq!(a["ok"], json!(true), "{a}");
+        gi.get().expect("the renderer was handed a frame")
+    };
+    assert!(!frame(), "off before the game names it");
+    let report = answer(og_engine_probe_commands(
+        engine,
+        "0:set:og.GlobalIllumination.enabled=true".into(),
+    ));
+    assert_eq!(report["scheduled"], json!(1), "{report}");
+    frame();
+    assert!(frame(), "on once set");
+    answer(og_render_apply_quality(engine, "low".into()));
+    assert!(!frame(), "the low preset turns it off");
+    answer(og_render_apply_quality(engine, "medium".into()));
+    assert!(frame(), "medium turns it on again, enabled kept");
+}
