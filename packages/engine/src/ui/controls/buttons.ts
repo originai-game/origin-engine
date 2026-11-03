@@ -76,10 +76,12 @@ function buttonBase(
   const disabled = d.disabled ?? false;
   const col = variantColors(d.variant, disabled);
   const selected = d.selected ?? false;
-  // At least the control's height; taller only as far as what it holds needs at a large text size (the label's
-  // line, or a square's icon, with room round it), so a 200 % button grows with its text rather than doubling.
-  const content = d.square ? byText(m.icon + 2) + 2 * t.md : (frame().theme.typeRamp[m.step]?.lineHeight ?? 22) + 2 * t.sm;
-  const h = Math.max(m.h, Math.ceil(content));
+  // The control's height at 100 %; at a larger text size it grows by what its content grew (the label's line, or a
+  // square's icon), so a 200 % button follows its text rather than doubling, and a 100 % one is exactly m.h.
+  const k = Math.max(1, frame().theme.textScale ?? 1);
+  const line = frame().theme.typeRamp[m.step]?.lineHeight ?? 22;
+  const grew = d.square ? byText(m.icon + 2) - (m.icon + 2) : line - line / k;
+  const h = Math.round(m.h + Math.max(0, grew));
   const fills: [Rgba, Rgba, Rgba] = selected ? [col.fills[2], col.fills[2], col.fills[2]] : col.fills;
   return control(id, {
     part: d.part ?? "Button.base",
