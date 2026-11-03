@@ -287,6 +287,13 @@ pub struct Lockstep {
     run: Option<Run>,
     /// A start handed to this peer, applied at the next boundary.
     handover: Option<(Run, u64, Vec<u8>)>,
+    /// Lockstep's messages that arrived after `handover` and before it was
+    /// applied (a drop, an admit, inputs): they are about the run it
+    /// begins, so they act once it began, in the order they came.
+    deferred: Vec<(u32, Value)>,
+    /// When this peer, not the authority, first saw its room full without
+    /// a run (it holds its lobby for the start from then, for a while).
+    full_since: Option<u64>,
     /// Real inputs by tick, then seat. Empty bytes are an empty input.
     inputs: IdMap<u64, IdMap<u32, Vec<u8>>>,
     /// The inputs each tick not yet final ran with, by seat (predicted
@@ -383,6 +390,9 @@ struct Proposal {
 
 /// A peer silent this long is reported (og.PeerStalled, status `stalled`).
 const STALL_NOTICE_MS: u64 = 1000;
+/// How long a peer of a full room holds its lobby for the authority's start
+/// when og.Lockstep.stallTimeout is 0 (else it holds that long).
+const START_HOLD_MS: u64 = 5000;
 
 fn hex(h: u64) -> String {
     format!("{h:016x}")
@@ -609,6 +619,7 @@ impl Lockstep {
 
     /// The state of a run starting (or joined) with the world at `tick`.
     fn begin(&mut self, run: Run, tick: u64, snapshot: Vec<u8>) {
+        self.full_since = None;
         self.inputs.retain(|t, _| *t >= tick);
         self.used.clear();
         self.ring.clear();
@@ -991,6 +1002,10 @@ impl Lockstep {
     }
 
     fn message(&mut self, from: u32, d: &Value) {
+        if self.handover.is_some() && d["k"] != "start" {
+            self.deferred.push((from, d.clone()));
+            return;
+        }
         match d["k"].as_str().unwrap_or_default() {
             "start" => {
                 if self.run.is_some() {
@@ -1271,6 +1286,7 @@ impl Lockstep {
         self.state_bytes = cfg.state_bytes as usize;
         if let Some((run, at, bytes)) = self.handover.take() {
             if run.shape != cfg.shape {
+                self.deferred.clear();
                 self.notes.push(format!(
                     "lockstep: the start of tick {at} was refused: its input shape (og.net.shape) differs from this peer's; every peer sets the same one before the room starts"
                 ));
@@ -1287,6 +1303,9 @@ impl Lockstep {
                 mode_text(&run),
             ));
             self.begin(run, at, bytes.clone());
+            for (from, d) in std::mem::take(&mut self.deferred) {
+                self.message(from, &d);
+            }
             return Gate::Restore {
                 snapshot: bytes,
                 tick: at,
@@ -1313,7 +1332,25 @@ impl Lockstep {
                 self.rejoining = false;
             }
             let players = cfg.players.max(1);
-            if self.authority() != Some(me) || (self.peers.len() as u32) < players {
+            if (self.peers.len() as u32) < players {
+                self.full_since = None;
+                return Gate::Go;
+            }
+            if self.authority() != Some(me) {
+                // The room is full and the authority's start is on its way:
+                // this lobby's ticks would be replaced by its snapshot, so
+                // they wait for it (a slow authority must not leave a
+                // scripted run's steps spent in a lobby), but only so long
+                // (an authority that never starts leaves a free lobby).
+                let since = *self.full_since.get_or_insert(self.now);
+                let bound = match cfg.stall_timeout {
+                    0 => START_HOLD_MS,
+                    t => u64::from(t),
+                };
+                if self.now.saturating_sub(since) < bound {
+                    self.waits += 1;
+                    return Gate::Wait;
+                }
                 return Gate::Go;
             }
             self.start(cfg, tick, snapshot());
@@ -2424,6 +2461,97 @@ mod tests {
             state = fold(state, t, &inputs);
         }
         state
+    }
+
+    #[test]
+    fn a_full_rooms_lobby_waits_for_a_slow_authoritys_start_but_not_forever() {
+        // The authority is slow to take its first boundary (a loaded
+        // machine): the other peer, its room full, runs no lobby tick
+        // until the start arrives, so a script it runs is not spent in a
+        // world the start replaces.
+        let mut room = Room::new(None);
+        room.join(0, cfg(2, 2, 1));
+        room.join(1, cfg(2, 2, 1));
+        room.peers[0].paused = true;
+        for _ in 0..60 {
+            room.frame(1, 2);
+            room.now += 1;
+            room.route();
+        }
+        assert_eq!(room.peers[1].world.tick, 0, "the full room's lobby held");
+        room.resume(0);
+        room.run_to(100);
+        assert_eq!(room.hashes(100)[0], room.hashes(100)[1]);
+        // An authority that never starts (lockstep off on it): the hold
+        // ends after stallTimeout and the lobby runs freely.
+        let mut room = Room::new(None);
+        room.join(
+            0,
+            Config {
+                enabled: false,
+                ..cfg(2, 2, 1)
+            },
+        );
+        room.join(
+            1,
+            Config {
+                stall_timeout: 400,
+                ..cfg(2, 2, 1)
+            },
+        );
+        for _ in 0..60 {
+            room.frame(0, 2);
+            room.frame(1, 2);
+            room.now += 1;
+            room.route();
+        }
+        let t = room.peers[1].world.tick;
+        assert!(
+            t > 40 && t < 120,
+            "held about 400 ms (25 frames), then free: tick {t}"
+        );
+    }
+
+    #[test]
+    fn a_drop_that_arrives_with_the_start_is_applied_to_the_started_run() {
+        // Peer 1 stalls as the room fills: the authority starts, waits out
+        // the stall timeout and drops seat 1 before its first input. When
+        // peer 1 runs again its start and the drop arrive together, before
+        // its next boundary: the drop must apply to the run the start
+        // begins, so peer 1 rejoins from the authority's world instead of
+        // playing on a seat the authority emptied.
+        for mode in [
+            Config {
+                stall_timeout: 400,
+                ..cfg(2, 2, 1)
+            },
+            Config {
+                rollback: true,
+                max_prediction: 6,
+                stall_timeout: 400,
+                ..cfg(2, 2, 1)
+            },
+        ] {
+            let mut room = Room::new(None);
+            room.join(0, mode);
+            room.join(1, mode);
+            room.peers[1].paused = true;
+            for _ in 0..100 {
+                room.frame(0, 2);
+                room.now += 1;
+                room.route();
+            }
+            assert!(room.peers[0].ls.running(), "{mode:?}");
+            assert_eq!(room.peers[0].ls.drops, 1, "{mode:?}: seat 1 dropped");
+            room.resume(1);
+            let t = room.peers[0].world.tick + 200;
+            room.run_to(t);
+            let h = room.hashes(t);
+            assert!(h[0].is_some() && h[0] == h[1], "{mode:?}: {h:?}");
+            let p1 = &room.peers[1];
+            assert_eq!(p1.ls.seat(p1.world.tick + 5), Some(1), "{mode:?}");
+            assert_eq!(p1.ls.dump()["desync"], json!(false), "{mode:?}");
+        }
     }
 
     #[test]

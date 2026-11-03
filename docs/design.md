@@ -1818,7 +1818,13 @@ cross the room. Lockstep rests on §1's determinism and snapshot.
   (the lobby). Then the authority starts lockstep: the authority is the
   lowest peer number, and its settings become the room's. Every other
   peer restores the authority's snapshot, and the seats go to the peers
-  in number order.
+  in number order. Once the room is full, every other peer holds its
+  world until that snapshot arrives (for at most `stallTimeout`, 5 s when
+  it is 0): its lobby ticks would be replaced anyway, and a slow
+  authority must not find a scripted peer's steps, its `quit` among them,
+  spent in a lobby. Lockstep messages that arrive after a `start` and
+  before it is applied (a `drop`, an `admit`, inputs) act once its run
+  began, in order.
 - **The tick gate.** Tick t runs only when every seated player's input for
   t is in. The gate is og-probe's (`set_gate`, consulted by step, frame
   and advance), so the tick itself is unchanged and a frame that cannot
