@@ -276,6 +276,7 @@ const STANDARD_FIELDS: &[&str] = &[
     "flash",
     "flashColor",
     "flatShading",
+    "foliage",
     "gradientMap",
     "ior",
     "iridescence",
