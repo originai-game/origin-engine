@@ -1,5 +1,6 @@
 // Command-script helpers and readers for the kit's playtests.
 import type { PlaytestRun } from "@origingame/engine/playtest";
+import { SCREENS, type Screen } from "../src/main.ts";
 
 /** Touch an element by id or path: move there, press, release. */
 export const tap = (t: number, target: string): string =>
@@ -57,7 +58,10 @@ export const demo = (run: PlaytestRun, file: string): DemoState =>
 
 export interface UiElement {
   id: string;
+  /** The parent's id (not its path). */
   parent: string;
+  /** The element's path from its root, ids joined by `/`. */
+  path: string;
   kind: string;
   text: string;
   role: string;
@@ -74,9 +78,5 @@ export interface UiElement {
 
 export const ui = (run: PlaytestRun, file: string): UiElement[] => run.json<{ elements: UiElement[] }>(file).elements;
 
-/** The screens' indices in the demo (src/main.ts SCREENS). */
-export const SCREEN = {
-  gallery: 0, widgets: 1, mainMenu: 2, pause: 3, settings: 4, platformer: 5, shooter: 6, puzzle: 7, idle: 8, racing: 9,
-  cutscene: 10, shop: 11, inventory: 12, levels: 13, results: 14, leaderboard: 15, tutorial: 16, loading: 17, confirm: 18, alert: 19, toasts: 20, players: 21,
-  text: 22,
-} as const;
+/** The screens' indices in the demo (src/main.ts SCREENS), by name: `demo(...).screen` is one of these. */
+export const SCREEN: Readonly<Record<Screen, number>> = Object.fromEntries(SCREENS.map((s, i) => [s, i])) as Record<Screen, number>;

@@ -1,0 +1,210 @@
+type screen
+version 1
+---
+# Main menu (docs/ui.md Appendix B: boot, splash, title, main menu, mode
+# select). The game's key art behind, its logo, and the menu: Continue
+# while there is a save, New game, the modes, Settings, Credits and Quit.
+#
+# The kit's copy (og ui eject): a Kit slot in the top end corner takes
+# the kit's own chrome (the Gallery and the showcase's next page).
+#
+# Viewmodel: canContinue, saveLine, version, news (see props). Events to
+# code: continue, newGame, modes, settings, credits, quit, news (the news
+# card pressed). Slots: Background takes the game's own scene or art
+# (og.ui.viewport, a sceneViewport) when the key art is not enough;
+# Extra takes anything the game adds under the menu (og.ui.card, a
+# season banner). Push it as the first menu: og.ui.push(world,
+# "main-menu", vm).
+name "main-menu"
+layer menu
+under none
+back none
+focus "Menu/Continue"
+props {
+  keyArt number "The key art's texture (og.load.texture; 0: the style's placeholder)."
+  canContinue bool "A save exists: Continue shows and takes the focus."
+  saveLine string "Under Continue: where the last save stands (chapter, time played)."
+  version string "The build's version, shown small in the corner."
+  news string "A line for the news card (empty: no card)."
+}
+actions {
+  confirm "Select"
+}
+fixture default "{\"canContinue\": true, \"saveLine\": \"Chapter 3 · 4h 12m\", \"version\": \"1.0.0\", \"news\": \"Season 2 is live\"}"
+stack Menu {
+  width grow
+  height grow
+  art Art {
+    kind keyArt
+    texture bind keyArt
+    fit cover
+    width grow
+    height grow
+    position absolute
+    start 0
+    top 0
+    end 0
+    bottom 0
+  }
+  slot Background {
+    width grow
+    height grow
+    position absolute
+    start 0
+    top 0
+    end 0
+    bottom 0
+  }
+  column Menu {
+    width grow 0 420
+    height grow
+    padding 48
+    gap 12
+    align center
+    at phone {
+      padding 24
+      width grow
+    }
+    at phoneLandscape {
+      padding 12
+      gap 4
+    }
+    art Logo {
+      kind logo
+      width 320
+      height 120
+      at phone {
+        width 240
+        height 90
+      }
+      at phoneLandscape {
+        visible false
+      }
+    }
+    spacer
+    button Continue {
+      at phoneLandscape {
+        size medium
+      }
+      key "screen.main-menu.continue"
+      text "Continue"
+      variant primary
+      size large
+      width grow
+      visible bind canContinue
+      on click emit continue
+    }
+    label SaveLine {
+      text bind saveLine
+      step caption
+      color token inkMuted
+      visible bind canContinue
+    }
+    button NewGame {
+      at phoneLandscape {
+        size medium
+      }
+      key "screen.main-menu.newGame"
+      text "New game"
+      size large
+      width grow
+      on click emit newGame
+    }
+    button Modes {
+      at phoneLandscape {
+        size medium
+      }
+      key "screen.main-menu.modes"
+      text "Modes"
+      size large
+      width grow
+      on click emit modes
+    }
+    button Settings {
+      at phoneLandscape {
+        size medium
+      }
+      key "screen.main-menu.settings"
+      text "Settings"
+      size large
+      width grow
+      on click emit settings
+    }
+    button Credits {
+      key "screen.main-menu.credits"
+      text "Credits"
+      variant quiet
+      width grow
+      on click emit credits
+    }
+    button Quit {
+      key "screen.main-menu.quit"
+      text "Quit"
+      variant quiet
+      width grow
+      on click emit quit
+    }
+    slot Extra {
+      width grow
+    }
+    spacer
+  }
+  panel News {
+    position absolute
+    end 32
+    bottom 32
+    padding 16
+    gap 4
+    frame card
+    interactive true
+    focusable true
+    visible bind "news != \"\""
+    on click emit news
+    at phone {
+      visible false
+    }
+    label Eyebrow {
+      key "screen.main-menu.newsEyebrow"
+      text "News"
+      step caption
+      color token primary
+    }
+    label Line {
+      text bind news
+      step lg
+      maxLines 2
+    }
+    state interaction {
+      normal {
+        y 0
+      }
+      hover {
+        y -2
+      }
+      pressed {
+        y 0
+      }
+      focused {
+        y -2
+      }
+      transition any any token ui
+    }
+  }
+  label Version {
+    text bind version
+    step caption
+    color token inkMuted
+    position absolute
+    start 16
+    bottom 12
+  }
+  slot Kit {
+    position absolute
+    end 16
+    top 16
+    at phone {
+      end 8
+      top 8
+    }
+  }
+}

@@ -33,15 +33,18 @@ export function frame(id: string, title: string, build: () => void, hints: Array
   const top = bleed ? 0 : small ? t.space.sm : t.space.lg;
   const height = vp.height - sa.top - sa.bottom;
   // The pattern's room is exact (the header's last height taken off): a screen-filling pattern sizes its parts from it.
-  const headH = bleed ? 0 : (og.ui.bounds(`${id}/Header`)?.height ?? (small ? 44 : 54)) + t.space.md;
+  // On a phone the header is at least the Gallery button's height (it stands beside it), which this tick already knows.
+  const laidHead = og.ui.bounds(`${id}/Header`);
+  const galleryH = small ? og.ui.bounds("Back")?.height ?? 0 : 0;
+  const headH = bleed ? 0 : Math.max(laidHead?.height ?? 0, galleryH) + t.space.md;
   og.ui.anchor(id, { anchor: "topLeft", margin: 0, width: px(vp.width - sa.left - sa.right), height: px(height), direction: "column", gap: t.space.md, padding: { left: pad, top, right: pad, bottom } }, () => {
     if (!bleed) {
-      const galleryH = small ? og.ui.bounds("Back")?.height ?? 0 : 0;
       og.ui.column("Header", { width: grow, height: { kind: "fit", min: galleryH }, align: "center", padding: { left: 0, top: 0, right: small ? (og.ui.bounds("Back")?.width ?? 100) + t.space.sm : 0, bottom: 0 } }, () => {
         og.ui.label("Title", title, { step: small ? "xl2" : big ? "xl6" : "xl4", heading: true, font: "display", nowrap: true, ellipsis: true, width: grow });
       });
     }
-    og.ui.column("Body", { width: grow, height: px(Math.max(1, height - top - bottom - headH)) }, build);
+    // Before the header has been laid out once (its height grows with the text size), the body takes what is left.
+    og.ui.column("Body", { width: grow, height: bleed || laidHead ? px(Math.max(1, height - top - bottom - headH)) : grow }, build);
     if (hints.length > 0 && !small && !bleed) og.ui.actionHints("Hints", { hints });
   });
 }
@@ -59,6 +62,7 @@ const PARTY = [
 
 /** A party lobby (Valorant, Fortnite): the lineup, the mode, Ready up, then Find match, the queue and the ready check. */
 export function lobbyScreen(): void {
+  if (lob.since < 0) lob.since = og.ui.tick();
   const secs = lob.searching ? (og.ui.tick() - lob.since) / 60 + 47 : 0;
   frame("Lobby", L("lobby.title"), () => {
     const members: LobbyMember[] = PARTY.map((m) => ({
@@ -400,7 +404,8 @@ export function genresCommand(area: string, key: string, value: string): boolean
     else if (key === "search") {
       lob.ready = true;
       lob.searching = value !== "off";
-      lob.since = og.ui.tick();
+      // A command runs outside the systems: the lobby takes the tick on its next build.
+      lob.since = -1;
     } else if (key === "found") {
       lob.ready = true;
       lob.searching = true;
@@ -430,7 +435,7 @@ export function genresCommand(area: string, key: string, value: string): boolean
   } else if (area === "song") {
     if (key === "select") {
       sg.selected = value;
-      sg.since = og.ui.tick();
+      sg.since = 0;
     } else if (key === "chart") sg.chart = value;
     else if (key === "playing") sg.playing = value !== "off";
     else if (key === "reset") sg = sg0();

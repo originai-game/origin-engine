@@ -3,7 +3,8 @@
 // answers the same tree to game code), every control keys and pads reach is
 // named, every element showing text has a role, and keyboard Tab walks the
 // focusable elements in the tree's order. The demo reads og.ui.a11y each
-// tick; on the main menu its focus order is the probe's focusable elements.
+// tick; on the action showcase's title (the ejected main-menu document) its
+// focus order is the probe's focusable elements.
 // Ways it could fail: a widget without a role or a control without a name
 // (an icon button, a card), Tab taking another order than the tree's, or
 // og.ui.a11y answering a different tree than the probe's.
@@ -23,7 +24,7 @@ for (const s of SCREENS) {
   steps.push(`${(t + 0.6).toFixed(2)}:dump_ui:${s}.json`);
   t += 0.7;
 }
-steps.push(`${t.toFixed(2)}:show:mainMenu`);
+steps.push(`${t.toFixed(2)}:show:actionTitle`);
 t += 0.6;
 steps.push(`${t.toFixed(2)}:dump_ui:menu-0.json`);
 steps.push(`${(t + 0.05).toFixed(2)}:dump_entity:demo:menu.json`);
@@ -34,15 +35,6 @@ for (let k = 1; k <= TABS; k++) {
 }
 steps.push(`${(t + 0.2).toFixed(2)}:quit`);
 
-const path = (els: UiElement[], e: UiElement): string => {
-  const parts = [e.id];
-  let p = e.parent;
-  while (p) {
-    parts.unshift(p);
-    p = els.find((x) => x.id === p)?.parent ?? "";
-  }
-  return parts.join("/");
-};
 const has = (e: UiElement, s: string) => e.states.includes(s);
 
 export default playtest({
@@ -53,25 +45,25 @@ export default playtest({
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
     for (const s of SCREENS) {
       const els = ui(run, `${s}.json`);
-      const unnamed = els.filter((e) => (has(e, "focusable") || CONTROLS.has(e.role)) && (e.role === "" || e.name === "")).map((e) => `${path(els, e)} (${e.kind}, role "${e.role}")`);
+      const unnamed = els.filter((e) => (has(e, "focusable") || CONTROLS.has(e.role)) && (e.role === "" || e.name === "")).map((e) => `${e.path} (${e.kind}, role "${e.role}")`);
       t.equal(unnamed, [], `${s}: every control has a role and a name`);
-      const silent = els.filter((e) => e.text !== "" && e.role === "").map((e) => `${path(els, e)} (${e.kind})`);
+      const silent = els.filter((e) => e.text !== "" && e.role === "").map((e) => `${e.path} (${e.kind})`);
       t.equal(silent, [], `${s}: every element showing text has a role`);
       t.ok(els.some((e) => e.role === "heading" || e.role === "dialog" || CONTROLS.has(e.role)), `${s}: the tree has controls or a heading (${els.filter((e) => e.role).length} nodes)`);
     }
     const menu = ui(run, "menu-0.json");
-    const order = menu.filter((e) => has(e, "focusable")).map((e) => path(menu, e));
-    t.ok(order.length >= 4, `the main menu has a focus order (${order.join(", ")})`);
+    const order = menu.filter((e) => has(e, "focusable")).map((e) => e.path);
+    t.ok(order.length >= 4, `the title menu has a focus order (${order.join(", ")})`);
     const walked: string[] = [];
     for (let k = 1; k <= TABS; k++) {
       const els = ui(run, `menu-${k}.json`);
       const focused = els.filter((e) => has(e, "focused"));
       t.equal(focused.length, 1, `Tab ${k}: one element is focused`);
-      if (focused[0]) walked.push(path(els, focused[0]));
+      if (focused[0]) walked.push(focused[0].path);
     }
     // The menu's first item takes the focus as it opens (og-ui §4: what opens takes the focus), so Tab walks on from it.
-    const start = order.indexOf(menu.filter((e) => has(e, "focused")).map((e) => path(menu, e))[0] ?? "");
-    t.equal(order[start], "Menu/Items/play", "the main menu's first item has the focus as it opens");
+    const start = order.indexOf(menu.filter((e) => has(e, "focused")).map((e) => e.path)[0] ?? "");
+    t.equal(order[start], "main-menu/Menu/Menu/Continue", "the title menu's first item (Continue) has the focus as it opens");
     const expected = Array.from({ length: TABS }, (_, k) => order[(start + 1 + k) % order.length]!);
     t.equal(walked, expected, "Tab walks the focusable elements in the tree's order from there, then wraps");
     const d = demo(run, "menu.json");

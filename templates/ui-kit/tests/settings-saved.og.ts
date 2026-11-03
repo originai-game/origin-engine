@@ -1,51 +1,48 @@
 // The settings across a relaunch (store: "keep", og-platform-sdk §2 and §4):
-// the first process mutes everything, picks 简体中文 on the Language tab and
-// closes with Done, which writes og.settings; the second reads og.settings
-// on its first tick and comes back muted and in Chinese, the main menu's
-// words from the zh-CN table (examples/WEB-FINDINGS.md #10: the kit saved
-// its settings and never read them, so a reload came back in English).
-// On the way it turns on Battery saver on the Graphics tab, which is the
-// PC graphics page (the kit passes og.render.display's settings and its
-// world: G1-7 had left the template on the quality-only page), and the
-// saved og.settings carry it.
+// the first process, on the settings tree, sets the master volume to 0 and
+// the render scale to 75 %, picks 简体中文 on the Language page and
+// presses Apply, which writes og.settings; the second reads og.settings on
+// its first tick and comes back muted and in Chinese, the title's words
+// from the zh-CN table and the tree's values where Apply left them
+// (examples/WEB-FINDINGS.md #10: the kit saved its settings and never read
+// them, so a reload came back in English).
 import { playtest } from "@origingame/engine/playtest";
-import { SCREEN, demo, tap, ui } from "./lib.ts";
+import { demo, tap, ui } from "./lib.ts";
 
 type Call = { method: string; args: Record<string, unknown>; tick: number };
 
 export default playtest({
-  name: "the settings saved on Done come back on a relaunch: muted, in Chinese",
+  name: "the settings saved on Apply come back on a relaunch: muted, in Chinese",
   store: "keep",
   commands: [
-    "0.3:show:settings",
-    tap(0.7, "Mute"),
-    tap(1.0, "Section/Tab#1"),
-    tap(1.3, "Battery"),
-    "1.6:dump_ui:graphics.json",
-    tap(1.8, "Section/Tab#3"),
-    tap(2.2, "Languages/Option#1"),
-    tap(2.6, "Done"),
-    "3.2:dump_entity:demo:saved.json",
-    "3.2:dump_platform:platform.json",
-    "3.3:quit",
+    "0.3:show:settingsTree",
+    "0.6:pat:set:pending:master=0",
+    "0.6:pat:set:pending:scale=0.75",
+    "1.0:dump_ui:graphics.json",
+    tap(1.2, "Tabs/Row/language"),
+    tap(1.6, "Choice-language"),
+    tap(2.0, "Choice-language.list/Panel/Content/List/Option#3"),
+    tap(2.4, "Foot/Apply"),
+    "2.8:dump_entity:demo:saved.json",
+    "2.8:dump_platform:platform.json",
+    "2.9:quit",
   ].join(";"),
   then: [
     {
-      commands: ["0.5:dump_entity:demo:loaded.json", "0.6:show:mainMenu", "1.3:dump_ui:menu.json", "1.3:dump_platform:platform.json", "1.4:quit"].join(";"),
+      commands: ["0.5:dump_entity:demo:loaded.json", "0.6:show:actionTitle", "1.3:dump_ui:menu.json", "1.3:dump_platform:platform.json", "1.4:show:settingsTree", "2.0:dump_ui:tree.json", "2.1:quit"].join(";"),
     },
   ],
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the first process ran without warnings");
     const saved = demo(run, "saved.json");
-    t.equal(saved.screen, SCREEN.gallery, "Done closed the settings");
-    t.equal(saved.saves, 1, "and ran the save hook once");
+    t.equal(saved.saves, 1, "Apply ran the save once");
     t.ok(saved.muted && saved.language === 1, "muted, in 简体中文");
     const stored = run.json<{ calls: Call[] }>("platform.json").calls.filter((c) => c.method === "store.set" && c.args["key"] === "og.settings");
-    const value = stored[0]?.args["value"] as { language?: string; muted?: boolean; display?: { batterySaver?: boolean } } | undefined;
+    const value = stored[0]?.args["value"] as { language?: string; muted?: boolean; display?: { renderScale?: number } } | undefined;
     t.ok(stored.length === 1 && value?.language === "zh-CN" && value.muted === true, "og.settings written once, with the language and the mute");
     const page = new Set(ui(run, "graphics.json").map((e) => e.text));
-    t.ok(["Render scale", "Frame rate limit", "V-Sync", "Fullscreen", "Graphics processor"].every((w) => page.has(w)), "the Graphics tab is the PC graphics page");
-    t.equal(value?.display?.batterySaver, true, "and its battery saver is saved with the rest");
+    t.ok(["QUALITY PRESET", "RENDER SCALE", "FRAME CAP", "VERTICAL SYNC", "FULLSCREEN"].every((w) => page.has(w)), "the Graphics page holds the display's entries");
+    t.equal(value?.display?.renderScale, 0.75, "and the render scale is saved in the display's settings");
 
     const next = run.then[0]!;
     t.equal(next.warnings.join("; "), "", "the relaunch ran without warnings");
@@ -56,7 +53,8 @@ export default playtest({
     t.equal(loaded.language, 1, "the language came back: 简体中文");
     t.equal(loaded.muted, true, "the mute came back");
     const words = new Set(ui(next, "menu.json").map((e) => e.text));
-    t.ok(words.has("开始") && words.has("设置"), "the main menu reads from the zh-CN table");
-    t.ok(!words.has("Play") && !words.has("Settings"), "with none of the English left");
+    t.ok(words.has("新游戏") && words.has("设置"), "the title reads from the zh-CN table");
+    t.ok(!words.has("New game") && !words.has("Settings"), "with none of the English left");
+    t.ok(ui(next, "tree.json").some((e) => e.text === "75%"), "the tree shows the render scale Apply left");
   },
 });

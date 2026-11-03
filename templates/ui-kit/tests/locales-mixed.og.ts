@@ -1,6 +1,7 @@
 // One label in three scripts on the localized screens: `mixed:on` shows
-// menu.mixed (assets/strings/*.ogt) under the main menu, the pause menu and
-// the confirm dialog, CJK, Latin and Arabic in one label, in each of the
+// menu.mixed (assets/strings/*.ogt) under the action showcase's title and
+// its pause menu (src/main.ts shows it on those two screens), CJK, Latin and
+// Arabic in one label, in each of the
 // kit's five locales. og-ui lays such a label out a run per face (the
 // role's Latin, the locale fonts' CJK, the Arabic file shaped), each
 // grapheme cluster in the face that has it whole, so no character is
@@ -15,7 +16,7 @@ import { playtest } from "@origingame/engine/playtest";
 import { type UiElement, ui } from "./lib.ts";
 
 const LOCALES = ["en", "zh-CN", "ja", "ko", "ar"] as const;
-const SCREENS = ["mainMenu", "pause", "confirm"] as const;
+const SCREENS = ["actionTitle", "actionPause"] as const;
 
 const steps: string[] = ["0.20:mixed:on"];
 const dumps: Array<{ file: string; locale: string; screen: string }> = [];
@@ -37,7 +38,7 @@ const ARABIC = /[؀-ۿ]/;
 const LATIN = /[A-Za-z]/;
 
 export default playtest({
-  name: "a label mixing CJK, Latin and Arabic on the menu, pause and confirm screens draws no missing glyph in any locale",
+  name: "a label mixing CJK, Latin and Arabic on the title and pause screens draws no missing glyph in any locale",
   size: "1280x720",
   commands: steps.join(";"),
   check(run, t) {

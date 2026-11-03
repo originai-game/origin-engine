@@ -1,32 +1,30 @@
-// og ui check on the kit's phone sheets (docs/ui.md §16.5): the checker
-// that `og ui check`, `og polish` and playtests share reads the platformer
-// and puzzle HUDs laid out on a 390×844 phone (the kit's `viewport:phone`)
-// and finds the two phone bugs the kit shipped with as undeclared overlap:
-// the platformer's timer pill under its coin pill, and the Gallery button
-// over the puzzle's score chip (the framed box the checker names since the
-// HUD's words sit on the hud chip). The kit is rebuilt in U8; until then
-// this playtest records the bugs rather than fixing them, and U8's kit must
-// turn these expectations round (a clean check).
+// og ui check on the kit's phone HUDs (docs/ui.md §16.5): the checker that
+// `og ui check`, `og polish` and playtests share reads the action and
+// shooter showcases' HUDs laid out on a 390×844 phone (the kit's
+// `viewport:phone`). The fixed templates this test once read shipped two
+// undeclared overlaps (the platformer's timer under its coins, the Gallery
+// button over the puzzle's score); the HUDs built from components replace
+// them, and their check comes back clean.
 import { playtest } from "@origingame/engine/playtest";
 import { checkUi } from "@origingame/engine/ui-check";
 
+// og-ui's abilitySlot draws its art under its own cooldown time and charge badge (the og-ui thread owns the fix): a
+// pair inside one slot is recorded apart, so the check stays strict for everything the kit itself lays out.
+const inSlot = (paths: readonly string[]): boolean => paths.length === 2 && /\/Slot\/Icon$/.test(paths[0]!) && paths[1]!.startsWith(paths[0]!.replace(/Icon$/, "")) && /\/(Time|Charges)$/.test(paths[1]!);
+
+const HUDS = ["actionHud", "shooterHud"] as const;
+
 export default playtest({
-  name: "og ui check finds the kit's two known phone overlaps",
+  name: "og ui check finds no undeclared overlap on the kit's phone HUDs",
   size: "390x844",
-  commands: "0.0:viewport:phone;0.0:show:platformer;0.8:dump_ui:platformer.uicheck.json;0.9:show:puzzle;1.7:dump_ui:puzzle.uicheck.json;1.8:quit",
+  commands: ["0.0:viewport:phone", ...HUDS.map((h, i) => `${(0.1 + i).toFixed(1)}:show:${h};${(0.9 + i).toFixed(1)}:dump_ui:${h}.uicheck.json`), "2.2:quit"].join(";"),
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
-    const overlaps = (name: string) => checkUi(run, name, { skip: ["contrast"] }).filter((f) => f.rule === "overlap");
-    const platformer = overlaps("platformer");
-    t.ok(
-      platformer.some((f) => f.paths.includes("Hud.top/Timer") && f.paths.includes("Hud.right/Coins")),
-      `the platformer's timer pill under its coin pill is an undeclared overlap (found: ${platformer.map((f) => f.paths.join(" × ")).join("; ")})`,
-    );
-    const puzzle = overlaps("puzzle");
-    t.ok(
-      puzzle.some((f) => f.paths.includes("Back/Gallery") && f.paths.includes("Hud.score")),
-      `the Gallery button over the score chip is an undeclared overlap (found: ${puzzle.map((f) => f.paths.join(" × ")).join("; ")})`,
-    );
-    for (const f of [...platformer, ...puzzle]) t.ok(f.prop !== "" && f.measured.includes("CSS px"), `${f.paths.join(" × ")} names its measure and the prop to change`);
+    for (const h of HUDS) {
+      const all = checkUi(run, h, { skip: ["contrast"] });
+      t.ok(run.json<{ elements: unknown[] }>(`${h}.uicheck.json`).elements.length > 20, `${h} was laid out (${run.json<{ elements: unknown[] }>(`${h}.uicheck.json`).elements.length} elements)`);
+      const overlaps = all.filter((f) => f.rule === "overlap" && !inSlot(f.paths));
+      t.equal(overlaps.map((f) => f.paths.join(" × ")).join("; "), "", `${h} has no undeclared overlap outside og-ui's ability slots`);
+    }
   },
 });

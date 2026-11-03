@@ -891,9 +891,12 @@ function genres3(b: ReturnType<typeof builder>, phone: boolean): void {
   // a search for Strike, at its limit, refused; a Defend taken out of the deck (on a phone from the deck's tab).
   b.cmd("show:deck");
   b.cmd("pat:reset");
+  // The pointer left where the loadout's last tap was rests over the grid: moved onto the title, the idle frame shows
+  // no hover preview.
+  b.cmd("touch_move_to:Deck/Header", 0.05);
   b.shot("deck-idle", 1.0);
   b.dump("deck");
-  b.seq((at) => tap(at, "Filters/Costs/0"), 0.4);
+  b.seq((at) => tap(at, "Costs/0"), 0.4);
   b.seq((at) => tap(at, "Line#0/anger"), 0.4);
   b.seq((at) => tap(at, "Line#0/wound"), 0.3);
   b.shot("deck-unowned", 0.3);

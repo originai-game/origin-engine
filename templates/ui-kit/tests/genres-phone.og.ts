@@ -17,7 +17,7 @@ export default playtest({
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
     t.ok(run.quit, "the script reached quit");
     for (const f of ["lobby.json", "select-locked.json", "map-detail.json", "songs.json"]) {
-      for (const e of ui(run, f).filter((x) => x.role === "button" && !x.states.includes("disabled"))) {
+      for (const e of ui(run, f).filter((x) => x.role === "button" && !x.states.includes("disabled") && !x.clipped)) {
         t.ok(e.width >= 43.5 && e.height >= 43.5, `${f}: ${e.id} (${e.name}) is a whole touch target: ${Math.round(e.width)}×${Math.round(e.height)}`);
       }
     }

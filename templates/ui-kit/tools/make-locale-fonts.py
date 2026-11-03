@@ -24,9 +24,10 @@ subsetter, keeping the layout features (the Arabic joining forms and
 ligatures og-ui shapes with), and each font's import settings (.ogt) with
 the same characters. zh-CN uses the kit's existing NotoSansSC subset; its
 import settings gain the table's characters and `runtime true`: the strings
-in RUNTIME_KEYS (the main menu's greeting) are left out of zh-CN's and ja's
+in RUNTIME_KEYS (the main menu's greeting) are left out of zh-CN's
 characters, so the Chinese font renders them from its outlines at run time
-(og-ui's CJK strategy, crates/og-ui/README.md §Text).
+(og-ui's CJK strategy, crates/og-ui/README.md §Text); ja's subset carries
+them (its 旅 is not in the Chinese subset's cooked cells).
 """
 import re
 import sys
@@ -41,7 +42,7 @@ STRINGS = KIT / "assets" / "strings"
 LISTS = [(KIT / "src" / "main.ts", r'label: "([^"]*)"'), (KIT / "src" / "controls.ts", r'"([^"]*)"')]
 FONTS = KIT / "assets" / "fonts"
 ASCII = "".join(chr(c) for c in range(0x20, 0x7F))
-# Strings drawn with run-time glyphs in zh-CN and ja (not cooked).
+# Strings drawn with run-time glyphs in zh-CN (not cooked).
 RUNTIME_KEYS = {"menu.greeting"}
 # Strings mixing scripts, drawn a run per face from the other locales' fonts
 # (og-ui's font per run): no locale's subset takes their characters.
@@ -50,7 +51,7 @@ MIXED_KEYS = {"menu.mixed"}
 
 def chars_of(locale: str) -> str:
     text = (STRINGS / f"{locale}.ogt").read_text(encoding="utf-8")
-    skip = (RUNTIME_KEYS if locale in ("zh-CN", "ja") else set()) | MIXED_KEYS
+    skip = (RUNTIME_KEYS if locale == "zh-CN" else set()) | MIXED_KEYS
     used = "".join(
         m.group(2) for m in re.finditer(r'^string "([^"]*)" "(.*)"$', text, re.M) if m.group(1) not in skip
     )

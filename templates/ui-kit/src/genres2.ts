@@ -232,6 +232,7 @@ export function ledgerScreen(): void {
       netLabel: L("ledger.net"),
       historyLabel: L("ledger.history"),
       breakdownLabel: L("ledger.breakdown"),
+      otherLabel: L("ledger.other"),
       lockedLabel: L("ledger.locked"),
     });
     if (r.tab !== null) ld.tab = r.tab;
@@ -253,6 +254,10 @@ const OVERLAYS = [
   { key: "landValue", art: "city/residential", ramp: ["#6b5a3a", "#d6b24a", "#fff3a8"] },
   { key: "crime", art: "city/police", ramp: ["#2d6cdf", "#9b59b6", "#e74c3c"] },
 ] as const;
+/** The districts an overlay keys its data to, as fractions of the map (centre x, centre y, width): where the city is. */
+const DISTRICTS: Array<[number, number, number]> = [
+  [0.3, 0.42, 0.16], [0.48, 0.36, 0.14], [0.64, 0.44, 0.18], [0.4, 0.6, 0.15], [0.56, 0.62, 0.17], [0.74, 0.6, 0.12], [0.22, 0.62, 0.11],
+];
 const OVERLAY_OF: Record<string, string> = { transit: "traffic", power: "power", water: "water", police: "crime", industrial: "pollution", residential: "landValue" };
 
 /** The city's map with its overlays (Cities: Skylines' info views): the picture, the shown overlay's wash, the bar and legend. */
@@ -262,14 +267,29 @@ export function cityMapScreen(): void {
     og.ui.column("Map", { width: grow, height: grow, align: "end", cross: "center", padding: { left: 12, top: 12, right: 12, bottom: 16 } }, () => {
       const tex = art("scenes/city");
       og.ui.setDraw({ shape: { kind: "rect" }, fills: tex ? [{ kind: "image", texture: tex, fit: "cover", focal: { x: 0.5, y: 0.6 } }] : [{ kind: "solid", color: { token: "backdrop" } }] } as never);
-      // The game's overlay over its map: here a wash of the ramp's colours, high in the middle and low at the edges.
+      // The game's overlay over its map, keyed only where its data is: a soft spot per district at 35–45 %, coloured by
+      // its value on the ramp, clear between them so the city still reads under it.
       if (shown) {
-        og.ui.column("Wash", { width: grow, height: grow }, () => {});
-        og.ui.setDraw({
-          shape: { kind: "rect" },
-          fills: [{ kind: "gradient", type: "radial", from: { x: 0.55, y: 0.55 }, to: { x: 0.7, y: 0.7 }, stops: shown.ramp.slice().reverse().map((c, i, a) => ({ offset: i / (a.length - 1), color: { color: hexRgb(c), alpha: 0.42 } })) }],
-        } as never);
-        og.ui.props({ position: "absolute", insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true } as never);
+        // The map's box from the last frame (the viewport's until it has one).
+        const vp = og.ui.frameViewport();
+        const mb = og.ui.bounds("CityMap/Body/Map") ?? { width: vp.width, height: vp.height };
+        const seed = [...shown.key].reduce((n, c) => (n * 31 + c.charCodeAt(0)) >>> 0, 7);
+        const rnd = (i: number): number => (((seed ^ (i * 2654435761)) >>> 0) % 1000) / 1000;
+        DISTRICTS.forEach(([x, y, size], i) => {
+          const v = rnd(i);
+          const at = Math.min(shown.ramp.length - 1, Math.floor(v * shown.ramp.length));
+          const w = mb.width * size;
+          og.ui.column(`Spot${i}`, { width: px(w), height: px(w * 0.62) }, () => {});
+          og.ui.setDraw({
+            shape: { kind: "ellipse" },
+            fills: [{ kind: "gradient", type: "radial", from: { x: 0.5, y: 0.5 }, to: { x: 1, y: 0.5 }, stops: [
+              { offset: 0, color: { color: hexRgb(shown.ramp[at]!), alpha: 0.35 + 0.1 * v } },
+              { offset: 0.6, color: { color: hexRgb(shown.ramp[at]!), alpha: 0.25 } },
+              { offset: 1, color: { color: hexRgb(shown.ramp[at]!), alpha: 0 } },
+            ] }],
+          } as never);
+          og.ui.props({ position: "absolute", insets: { start: mb.width * x - w / 2, top: mb.height * y - w * 0.31 }, inert: true } as never);
+        });
       }
       const overlays: MapOverlay[] = OVERLAYS.map((o) => ({ key: o.key, name: L(`ledger.overlay.${o.key}`), image: art(o.art as ArtName), ramp: [...o.ramp], low: L(`ledger.overlay.${o.key}.low`), high: L(`ledger.overlay.${o.key}.high`) }));
       const r = og.ui.overlayBar("Lenses", { overlays, selected: ld.overlay, label: L("ledger.overlays"), offLabel: L("ledger.overlay.off") });
@@ -430,8 +450,8 @@ export function rtsScreen(): void {
     if (r.command !== null) {
       if (["patrol", "gather", "repair", "rally"].includes(r.command) || BUILDS.some(([k]) => k === r.command)) rt.targeting = r.command;
       else rt.targeting = "";
-      if (BUILDS.some(([k]) => k === r.command)) rt.page = "root";
     }
+    // A building awaiting its ground keeps the Build page (StarCraft's), so Back cancels the placement and stays there.
     if (r.cancelTarget) rt.targeting = "";
     const gi = (k: string | null): number => (k ? Number(k.slice(1)) - 1 : -1);
     if (r.recall !== null || r.focus !== null) {

@@ -1,0 +1,146 @@
+type screen
+version 1
+---
+# Pause and system menu (docs/ui.md Appendix B). Over the dimmed game,
+# which pauses while it is up: Resume, Settings, Controls, Save, Load,
+# Quit to the menu and Quit the game, with the run's objective and time.
+#
+# The kit's copy (og ui eject): a Kit slot in the top end corner takes
+# the kit's own chrome (the Gallery and the showcase's next page).
+#
+# Viewmodel: objective, played (seconds), canSave. Events to code: resume
+# (also Back), settings, controls, save, load, quitToMenu, quit (code asks
+# with og.ui.confirm before quitting). Slots: Side takes the game's own
+# panel beside the menu (a map, a party sheet: og.ui.card).
+name "pause"
+layer menu
+pause true
+under blur
+back emit resume
+focus "Panel/Menu/Resume"
+props {
+  objective string "The current objective (empty: none)."
+  played number "Seconds played this run."
+  canSave bool "Saving is allowed here."
+}
+actions {
+  confirm "Select"
+  back "Resume"
+}
+fixture default "{\"objective\": \"Reach the lighthouse\", \"played\": 4520, \"canSave\": true}"
+row Pause {
+  width grow
+  height grow
+  padding 32
+  gap 24
+  align center
+  cross center
+  at phone {
+    padding 16
+  }
+  column Panel {
+    width grow 0 400
+    padding 24
+    gap 16
+    frame panel
+    at phoneLandscape {
+      width grow 0 640
+      padding 12
+      gap 8
+    }
+    enter slideUp 24 token enter
+    label Title {
+      key "screen.pause.title"
+      text "Paused"
+      step xl2
+      heading true
+    }
+    column Status {
+      width grow
+      gap 4
+      at phoneLandscape {
+        visible false
+      }
+      label Objective {
+        text bind objective
+        color token inkMuted
+        maxLines 2
+        visible bind "objective != \"\""
+      }
+      label Played {
+        text "{played, duration}"
+        step caption
+        color token inkMuted
+      }
+    }
+    grid Menu {
+      width grow
+      gap 8
+      columns "1fr"
+      focusGroup wrap
+      at phoneLandscape {
+        columns "1fr" "1fr"
+      }
+      button Resume {
+        key "screen.pause.resume"
+        text "Resume"
+        variant primary
+        width grow
+        on click emit resume
+      }
+      button Settings {
+        key "screen.pause.settings"
+        text "Settings"
+        width grow
+        on click emit settings
+      }
+      button Controls {
+        key "screen.pause.controls"
+        text "Controls"
+        width grow
+        on click emit controls
+      }
+      button Save {
+        key "screen.pause.save"
+        text "Save"
+        width grow
+        disabled bind "!canSave"
+        on click emit save
+      }
+      button Load {
+        key "screen.pause.load"
+        text "Load"
+        width grow
+        on click emit load
+      }
+      button QuitToMenu {
+        key "screen.pause.quitToMenu"
+        text "Quit to menu"
+        variant quiet
+        width grow
+        on click emit quitToMenu
+      }
+      button Quit {
+        key "screen.pause.quit"
+        text "Quit game"
+        variant danger
+        width grow
+        on click emit quit
+      }
+    }
+  }
+  slot Side {
+    at phone {
+      visible false
+    }
+  }
+  slot Kit {
+    position absolute
+    end 16
+    top 16
+    at phone {
+      end 8
+      top 8
+    }
+  }
+}

@@ -17,19 +17,20 @@
 // offline:<on|off> (the leaderboard's rows fail to load: its error and Retry).
 
 import { og, defineComponent, defineResource, defineSystem, bool, f32, f64, str, u32 } from "@origingame/engine";
-import type { Entity, GameSettings, Viewport, World } from "@origingame/engine";
+import type { Entity, Viewport, World } from "@origingame/engine";
 import { dialogueScreen, loadStory, questsScreen, vnScreen } from "./story.ts";
 import { charactersScreen, draftScreen, lobbyScreen, mapScreen, songsScreen, versusScreen } from "./genres.ts";
 import { chatScreen, cityMapScreen, defineGenres2Actions, garageScreen, ledgerScreen, rtsScreen } from "./genres2.ts";
-import { cgGalleryScreen, cgViewing, deckScreen, defineGenres3Actions, loadoutScreen, photoHidden, photoScreen, routeChartScreen, settingsTreeScreen } from "./genres3.ts";
-import { art, boardScreen, cardsScreen, gachaScreen, gearScreen, generatorsScreen, loadPatternArt, passScreen, patternScene, patternsCommand, rewardsScreen, sagaScreen, storeScreen } from "./patterns.ts";
+import { cgGalleryScreen, cgViewing, deckScreen, defineGenres3Actions, loadoutScreen, photoHidden, photoScreen, restoreSettingsTree, routeChartScreen, settingsTreeScreen } from "./genres3.ts";
+import { art, boardScreen, L, cardsScreen, gachaScreen, gearScreen, generatorsScreen, loadPatternArt, passScreen, patternScene, patternsCommand, rewardsScreen, sagaScreen, storeScreen } from "./patterns.ts";
 import { chartsScreen, containersScreen, dataScreen, demoCommand, graphScreen, navigationScreen, overlaysScreen } from "./components.ts";
 import { bindingsScreen, controlsDemo, controlsScreen, fieldsScreen, foundationsScreen, rangesScreen } from "./controls.ts";
 import { abilityCardsScreen, hangarScreen, loadStarshipArt, sectorMapScreen, shipStatusScreen, starshipCommand, turnOrderScreen } from "./starship.ts";
+import { chromeAnchor, chromeInDocument, loadShowcases, showcaseCommand, showcaseNext, showcaseOf, showcaseRow, showcaseScreen, SHOWCASES, SHOWCASE_SCREENS, syncDocs } from "./showcases.ts";
+import { defineHudActions } from "./huds.ts";
 
 export const SCREENS = [
-  "gallery", "widgets", "mainMenu", "pause", "settings", "platformer", "shooter", "puzzle", "idle", "racing",
-  "cutscene", "shop", "inventory", "levels", "results", "leaderboard", "tutorial", "loading", "confirm", "alert", "toasts",
+  "gallery", "widgets", "toasts",
   "players", "text", "materials",
   "containers", "navigation", "overlays", "data", "charts", "chartsMore", "graph",
   "foundations", "controls", "ranges", "fields", "bindings",
@@ -39,6 +40,7 @@ export const SCREENS = [
   "lobby", "select", "versus", "draft", "worldMap", "songs",
   "garage", "ledger", "cityMap", "chat", "rts",
   "photo", "loadout", "deck", "cgGallery", "routes", "settingsTree",
+  ...SHOWCASE_SCREENS,
 ] as const;
 export type Screen = (typeof SCREENS)[number];
 
@@ -56,24 +58,6 @@ const UI_SOUNDS = ["hover", "press", "open", "close", "success", "error"] as con
 const BLURBS: Record<Screen, string> = {
   gallery: "",
   widgets: "Every widget: tabs, select, stepper, radio, meters, rings, touch controls",
-  mainMenu: "Title screen",
-  pause: "Pause over a HUD",
-  settings: "Audio, graphics, controls, language",
-  platformer: "Lives, coins, score, timer, d-pad and Jump",
-  shooter: "Health, armor, ammo, abilities, crosshair",
-  puzzle: "Score toward a target, stars, moves",
-  idle: "Currencies, tap target, generators",
-  racing: "Place, laps, times, speed, boost",
-  cutscene: "Letterbox and typed dialogue",
-  shop: "Balance, categories, items, Buy",
-  inventory: "Slots with drag and drop",
-  levels: "Level cards with stars and locks",
-  results: "Stars, score count-up, share",
-  leaderboard: "Scopes, ranks, loading and empty states",
-  tutorial: "Spotlight and callout steps",
-  loading: "Real progress and tips",
-  confirm: "A destructive confirm",
-  alert: "One-button alert",
   toasts: "The toast queue in every tone",
   players: "Local multiplayer: four pads, four rings",
   text: "Kerning, ellipses, scripts, fields and text areas",
@@ -124,6 +108,20 @@ const BLURBS: Record<Screen, string> = {
   deck: "A deck builder: the collection's filters and grid with the copies owned, the deck's list, its curve and counts, Done",
   loadout: "A loadout: the loadouts' tabs, the slots, the weapon with its attachments called out, its figures, Remove",
   photo: "Photo mode: the camera's and lens's sliders, filters and frames over the paused shot, the grid, Hide UI and the shutter",
+
+  actionTitle: "An action game's title: Continue, New game, the news, over its key art (the main-menu document)",
+  actionHud: "A platformer's HUD: health in segments, coins, the stage timer, the combo, a door's prompt, hits' numbers, touch controls",
+  actionPause: "The pause menu over the HUD (the pause document): the objective, time played, Resume, Settings, Quit",
+  actionTutorial: "A tutorial step's callout over the HUD (the tutorial document)",
+  actionLoading: "Loading into a stage: its key art, a tip, real progress, Continue (the loading document)",
+  actionResults: "A stage cleared: the grade, stats, XP and rewards (the results document)",
+  shooterHud: "A shooter's HUD: compass, minimap, ring timer, killfeed, crosshair, health and shields, abilities, ammo, a ping",
+  shooterScore: "The scoreboard held over the match (the scoreboard document)",
+  manageHud: "A management HUD: resources and rates, the date and speed, goals, the build palette, a plot's card",
+  raceHud: "A racing HUD: place and lap with splits, the standings tower, the track map, the speedometer",
+  raceBoard: "Time-trial leaderboards: global and friends, a league (the leaderboard document)",
+  sportsHud: "A football broadcast HUD: the scorebug, the player's plate, the radar, a substitution",
+  matchFacts: "Full time: the scorers by side and the match stats face to face",
 };
 
 /** The demo's state: one entity named "demo" (dump_entity:demo reads it). */
@@ -303,127 +301,6 @@ const STYLE_BACKDROPS: Record<string, string> = {
   scifi: "scifi", cyber: "cyber", foundry: "foundry", broadcast: "broadcast",
 };
 
-/**
- * Each style's event beside its backdrop: a featured character in the
- * style's own look for the title's limited-banner card, and the banner's
- * name in the style's voice (a string key). A style without one shows no
- * card rather than another style's art.
- */
-const STYLE_EVENTS: Record<string, { art: string; name: string }> = {
-  fantasy: { art: "gacha-moonlit-tide", name: "menu.event" },
-  kawaii: { art: "event-kawaii", name: "menu.event.kawaii" },
-  cartoon: { art: "event-cartoon", name: "menu.event.cartoon" },
-  storybook: { art: "event-storybook", name: "menu.event.storybook" },
-};
-
-const SHOP = [
-  { rarity: "common" as const, id: "sword", name: "Iron sword", price: 300, icon: "sword", art: "iron-sword", category: "Gear", description: "A dependable blade. +4 attack." },
-  { rarity: "common" as const, id: "shield", name: "Oak shield", price: 220, icon: "shield", art: "oak-shield", category: "Gear", description: "Blocks the first hit of every fight." },
-  { rarity: "epic" as const, id: "crown", name: "Crown", price: 2400, icon: "crown", art: "crown", category: "Gear", description: "Pure vanity, sold once." },
-  { rarity: "uncommon" as const, id: "bow", name: "Hunter's bow", price: 450, icon: "bolt", art: "hunters-bow", category: "Gear", description: "Strikes from range. +3 attack." },
-  { rarity: "rare" as const, id: "ring", name: "Ember ring", price: 900, icon: "fire", art: "ember-ring", category: "Gear", description: "Your hits burn for 2 seconds." },
-  { rarity: "uncommon" as const, id: "helm", name: "Knight's helm", price: 640, icon: "shield", art: "knight-helm", category: "Gear", description: "+6 armour. Hard to see out of." },
-  { rarity: "common" as const, id: "potion", name: "Healing draught", price: 60, icon: "potion", art: "healing-draught", category: "Items", description: "Restores 50 health." },
-  { rarity: "common" as const, id: "mana", name: "Mana vial", price: 80, icon: "drop", art: "mana-vial", category: "Items", description: "Restores 40 mana." },
-  { rarity: "common" as const, id: "bomb", name: "Bomb", price: 90, icon: "bomb", art: "bomb", category: "Items", description: "Clears a cracked wall." },
-  { rarity: "uncommon" as const, id: "key", name: "Iron key", price: 500, icon: "key", art: "iron-key", category: "Items", description: "Opens one locked chest." },
-  { rarity: "common" as const, id: "apple", name: "Apple", price: 15, icon: "apple", art: "apple", category: "Items", description: "A snack. Restores 5 health." },
-  { rarity: "rare" as const, id: "gem", name: "Crystal pack", price: 1000, icon: "gem", art: "crystal", category: "Bundles", description: "Twenty crystals for the wheel." },
-  { rarity: "epic" as const, id: "robe", name: "Mage's set", price: 1800, icon: "star", art: "mage-robe", category: "Bundles", description: "Robe, staff and a mana vial." },
-  { rarity: "rare" as const, id: "amulet", name: "Sapphire amulet", price: 1500, icon: "gem", art: "sapphire-amulet", category: "Bundles", description: "+10% mana, and it suits you." },
-  { rarity: "legendary" as const, id: "ashbringer", name: "Ashbringer", price: 9000, icon: "sword", art: "ashbringer", category: "Bundles", description: "Legendary. Burns the undead." },
-];
-
-/** The inventory's items, by Demo slot field (inv0 … inv19): a bag two thirds full, stacks and a few rare finds. */
-const ITEMS = [
-  { id: "potion", name: "Healing draught", icon: "potion", art: "healing-draught", rarity: "common", count: 3, description: "Restores 50 health." },
-  { id: "sword", name: "Iron sword", icon: "sword", art: "iron-sword", rarity: "common", count: 1, description: "A dependable blade." },
-  { id: "key", name: "Iron key", icon: "key", art: "iron-key", rarity: "uncommon", count: 2, description: "Opens one locked chest." },
-  { id: "apple", name: "Apple", icon: "apple", art: "apple", rarity: "common", count: 12, description: "A snack. Restores 5 health." },
-  { id: "bomb", name: "Bomb", icon: "bomb", art: "bomb", rarity: "common", count: 4, description: "Clears a cracked wall." },
-  { id: "gem", name: "Crystal", icon: "gem", art: "crystal", rarity: "rare", count: 20, description: "Spent at the wheel." },
-  { id: "shield", name: "Oak shield", icon: "shield", art: "oak-shield", rarity: "common", count: 1, description: "Blocks the first hit of every fight." },
-  { id: "mana", name: "Mana vial", icon: "drop", art: "mana-vial", rarity: "common", count: 5, description: "Restores 40 mana." },
-  { id: "ring", name: "Ember ring", icon: "fire", art: "ember-ring", rarity: "rare", count: 1, description: "Your hits burn for 2 seconds." },
-  { id: "boots", name: "Leather boots", icon: "person", art: "boots", rarity: "common", count: 1, description: "+5% move speed." },
-  { id: "ashbringer", name: "Ashbringer", icon: "sword", art: "ashbringer", rarity: "legendary", count: 1, description: "Legendary. Burns the undead." },
-  { id: "staff", name: "Arcane staff", icon: "star", art: "arcane-staff", rarity: "epic", count: 1, description: "+18% spell power." },
-  { id: "gold", name: "Gold", icon: "coin", art: "gold", rarity: "none", count: 340, description: "Spent at every merchant." },
-  { id: "helm", name: "Knight's helm", icon: "shield", art: "knight-helm", rarity: "uncommon", count: 1, description: "+6 armour." },
-  { id: "gauntlets", name: "Steel gauntlets", icon: "shield", art: "gauntlets", rarity: "uncommon", count: 1, description: "+4 armour, +2 strength." },
-  { id: "amulet", name: "Sapphire amulet", icon: "gem", art: "sapphire-amulet", rarity: "rare", count: 1, description: "+10% mana." },
-  { id: "bow", name: "Elven bow", icon: "bolt", art: "elven-bow", rarity: "epic", count: 1, description: "Strikes from range. +9 attack." },
-  { id: "robe", name: "Mage's robe", icon: "star", art: "mage-robe", rarity: "rare", count: 1, description: "+12% mana regeneration." },
-  { id: "potion2", name: "Healing draught", icon: "potion", art: "healing-draught", rarity: "common", count: 2, description: "Restores 50 health." },
-  { id: "crown", name: "Crown", icon: "crown", art: "crown", rarity: "epic", count: 1, description: "Pure vanity." },
-] as const;
-
-/** The inventory's character: the paperdoll's hero and her attributes. */
-const CHARACTER = {
-  name: "Aria Vell",
-  title: "Level 42 Paladin",
-  stats: [{ label: "Armor", value: "1,240" }, { label: "Strength", value: "312" }, { label: "Fire resistance", value: "28%" }, { label: "Item power", value: "812" }],
-};
-
-/** What a settings row does (SettingsDesc.help): the pane beside the rows names the focused one. */
-const SETTINGS_HELP: Record<string, string> = {
-  Master: "Every sound in the game, music and effects alike.",
-  Music: "The score and the ambient tracks. Does not affect voices.",
-  Effects: "Combat, footsteps and the world around you.",
-  Interface: "Clicks, opens and confirms in the menus.",
-  Mute: "Silence everything at once, without losing the levels above.",
-  Subtitles: "Show every spoken line at the bottom of the screen.",
-  Quality: "Higher presets draw more shadows and effects; lower ones keep the frame rate up.",
-  Scale: "Draws the frame at a fraction of the screen's resolution, then scales it up.",
-  Cap: "Holds the frame rate under a limit, to save power or keep it even.",
-  Auto: "Lowers the render scale on its own when frames run long.",
-  Battery: "Caps the frame rate and quality while on battery.",
-  Fullscreen: "Fill the whole screen.",
-  Power: "Which graphics processor draws the game. Applies after a restart.",
-  Fps: "A frame-rate counter in the corner.",
-  Motion: "Screens fade instead of sliding, and the camera stops shaking.",
-  Contrast: "Stronger outlines and plain backgrounds behind text.",
-  TextSize: "Makes every label larger, up to twice the size.",
-  Sensitivity: "How far the view turns for a move of the mouse or stick.",
-  Invert: "Push up to look down, as a flight stick does.",
-  Raw: "Reads the mouse without the system's acceleration.",
-  Vibration: "Rumble on hits, on pads and phones that can.",
-  Languages: "The language of every menu and line of dialogue.",
-};
-
-/** The rewards a finished level shows. */
-const REWARDS = [
-  { name: "Gold", count: 86, art: "gold", icon: "coin" },
-  { name: "Healing draught", count: 2, art: "healing-draught", icon: "potion" },
-  { name: "Crystal", count: 5, art: "crystal", icon: "gem" },
-  { name: "Ember ring", count: 1, art: "ember-ring", icon: "fire" },
-];
-
-// Their names are the tables' `hud.<id>`.
-const GENERATORS = [
-  { id: "farm", icon: "leaf", base: 15, rate: 1 },
-  { id: "mill", icon: "gear", base: 120, rate: 8 },
-  { id: "forge", icon: "fire", base: 900, rate: 47 },
-];
-
-const CUTSCENE = [
-  { speaker: "Mira", text: "The gate opens at dawn. Are you ready to cross?", portrait: "person" },
-  { speaker: "You", text: "Ready as I will ever be.", portrait: "" },
-  { speaker: "Mira", text: "Then take this key. It opens the old vault under the mill.", portrait: "person" },
-  { speaker: "Mira", text: "And whatever you hear down there, do not answer it.", portrait: "skull" },
-];
-
-const TUTORIAL = [
-  { target: "Items/play", title: "Start here", text: "Play starts the first level." },
-  { target: "Items/settings", title: "Make it yours", text: "Sound, graphics and controls live in Settings." },
-  { target: "Gallery", title: "Back to the gallery", text: "This button, Escape or gamepad B returns." },
-];
-
-/** Level cards: 12 levels, stars from a fixed pattern, the last three locked. */
-/** Named levels: a name takes a wider card in smaller type, wrapped to two lines (the first is long enough to wrap). */
-const LEVEL_NAMES = ["The Lower Court of the Abbey", "Mossy Well", "Old Mill", "Fog Marsh", "Crow Tower", "Salt Caves", "Ember Ridge", "Frost Gate", "Sky Bridge", "Star Vault", "Bell Loft", "The Summit"];
-const LEVELS = LEVEL_NAMES.map((name, i) => ({ name, stars: i < 9 ? [3, 2, 3, 1, 3, 2, 0, 1, 2][i]! : 0, locked: i >= 9 }));
-
 /** The lobby's heroes, and each player's colour (the pad's focus ring). */
 const HEROES = ["Knight", "Ranger", "Mage", "Rogue", "Bard", "Monk", "Smith", "Thief"];
 const PLAYER_INKS = ["focus", "info", "success", "warn"] as const;
@@ -470,17 +347,6 @@ function playersScreen(d: DemoState): void {
   [d.focus0, d.focus1, d.focus2, d.focus3] = [focused(0), focused(1), focused(2), focused(3)];
 }
 
-/** 64 leaderboard rows from a fixed formula; the player is rank 17. */
-const NAMES = ["Ash", "Bea", "Cyd", "Dov", "Eli", "Fen", "Gus", "Hal", "Ivy", "Jun", "Kit", "Lux", "Moe", "Nia", "Oz", "Pip"];
-function leaderboard(scope: number) {
-  return Array.from({ length: 64 }, (_, i) => ({
-    rank: i + 1,
-    name: i === 16 ? "You" : `${NAMES[(i * 7 + scope * 3) % 16]}${(i * 13 + scope) % 90 + 10}`,
-    score: (98_000 - i * 1310 - scope * 4000).toLocaleString("en-US"),
-    player: i === 16,
-  }));
-}
-
 function demoEntity(world: World): Entity | null {
   return world.find("demo");
 }
@@ -489,35 +355,12 @@ function screenIndex(name: string): number {
   return Math.max(0, SCREENS.indexOf(name as Screen));
 }
 
-function settingsOf(world: World, d: DemoState): GameSettings {
-  return {
-    // The PC graphics page and the raw mouse switch read the engine, which
-    // holds them (presentation and host state, never the world): the screen
-    // applies a change itself, and they are saved with the rest.
-    display: og.render.display(world).settings,
-    rawMouse: og.input.mouse(world).raw,
-    masterVolume: d.masterVolume,
-    musicVolume: d.musicVolume,
-    sfxVolume: d.sfxVolume,
-    uiVolume: d.uiVolume,
-    muted: d.muted,
-    subtitles: d.subtitles,
-    quality: QUALITIES[d.quality] ?? "medium",
-    showFps: d.showFps,
-    reducedMotion: d.reducedMotion,
-    highContrast: d.highContrast,
-    vibration: d.vibration,
-    invertY: d.invertY,
-    sensitivity: d.sensitivity,
-    language: LANGUAGES[d.language]?.code ?? "en",
-    bindings: [
-      { action: "move", label: "Move", key: "A D / ← →" },
-      { action: "jump", label: "Jump", key: "Space" },
-      { action: "pause", label: "Pause", key: "Escape" },
-      { action: "interact", label: "Interact", key: "E" },
-    ],
-  };
-}
+/** The settings the kit keeps in og.settings (the settings tree saves them, genres3.ts): every field optional. */
+type KitSettings = {
+  masterVolume: number; musicVolume: number; sfxVolume: number; uiVolume: number; muted: boolean; subtitles: boolean;
+  quality: string; showFps: boolean; reducedMotion: boolean; highContrast: boolean; vibration: boolean; invertY: boolean;
+  sensitivity: number; language: string; display: unknown; rawMouse: boolean;
+};
 
 /**
  * Takes settings into the demo's state: the settings screen's each frame,
@@ -526,7 +369,7 @@ function settingsOf(world: World, d: DemoState): GameSettings {
  * matches (the host's locale may be another). The language goes to
  * og.i18n, contrast and motion to the theme.
  */
-function takeSettings(world: World, d: DemoState, s: Partial<GameSettings>, loaded: boolean): void {
+function takeSettings(world: World, d: DemoState, s: Partial<KitSettings>, loaded: boolean): void {
   const num = (v: unknown, now: number) => (typeof v === "number" && Number.isFinite(v) ? v : now);
   const flag = (v: unknown, now: boolean) => (typeof v === "boolean" ? v : now);
   d.masterVolume = num(s.masterVolume, d.masterVolume);
@@ -543,7 +386,7 @@ function takeSettings(world: World, d: DemoState, s: Partial<GameSettings>, load
   d.sensitivity = num(s.sensitivity, d.sensitivity);
   // The screen applied its own changes; a load puts the saved ones back.
   if (loaded && s.display && typeof s.display === "object") {
-    const r = og.render.setDisplay(world, s.display);
+    const r = og.render.setDisplay(world, s.display as never);
     if (!r.ok) throw new Error(r.reason);
   }
   if (loaded && typeof s.rawMouse === "boolean") {
@@ -580,7 +423,8 @@ function followSettings(world: World, tick: number, d: DemoState): void {
   d.settingsRequest = 0;
   const saved = answer.ok ? (answer.data as { value?: unknown } | null)?.value : null;
   if (!saved || typeof saved !== "object") return;
-  takeSettings(world, d, saved as Partial<GameSettings>, true);
+  takeSettings(world, d, saved as Partial<KitSettings>, true);
+  restoreSettingsTree((saved as { tree?: unknown }).tree);
   d.loads += 1;
 }
 
@@ -642,14 +486,16 @@ function gallery(d: DemoState): void {
     const list = og.ui.bounds("Gallery/Screens");
     const above = g && list ? list.y - g.y : 200 * ts;
     const height = Math.max(rowHeight * 2, Math.min(phone ? Infinity : 460 * ts, vp.height - vp.safeArea.top - vp.safeArea.bottom - above - t.space.lg - 2 * t.space.md));
-    const r = og.ui.list("Screens", { count: SCREENS.length - 1, rowHeight, height: { kind: "fixed", px: height }, width: { kind: "grow" } }, (i) => {
-      const s = SCREENS[i + 1]!;
+    // The genre showcases first (each opens on its first page), then every screen of the kit.
+    const n = SHOWCASES.length;
+    const r = og.ui.list("Screens", { count: n + SCREENS.length - 1, rowHeight, height: { kind: "fixed", px: height }, width: { kind: "grow" } }, (i) => {
+      const row = i < n ? showcaseRow(SHOWCASES[i]!) : { name: SCREENS[i - n + 1]!, blurb: BLURBS[SCREENS[i - n + 1]!] };
       og.ui.column("Text", { width: { kind: "grow" }, gap: 0, padding: { left: 0, top: 4, right: 0, bottom: 4 } }, () => {
-        og.ui.label("Name", s, { step: "base", nowrap: true });
-        og.ui.label("Blurb", BLURBS[s], { step: "base", color: { token: "inkMuted" }, width: { kind: "grow" }, maxLines: 2 } as never);
+        og.ui.label("Name", row.name, { step: "base", nowrap: true, font: i < n ? "display" : "body" } as never);
+        og.ui.label("Blurb", row.blurb, { step: "base", color: { token: "inkMuted" }, width: { kind: "grow" }, maxLines: 2 } as never);
       });
     });
-    if (r.clicked !== null) d.screen = r.clicked + 1;
+    if (r.clicked !== null) d.screen = r.clicked < n ? screenIndex(SHOWCASES[r.clicked]!.pages[0]!.screen) : r.clicked - n + 1;
   });
 }
 
@@ -768,34 +614,13 @@ const PATTERN_SCREENS: ReadonlySet<string> = new Set(["gear", "cards", "rewards"
 /** The starship screens (starship.ts): over the style's backdrop, the Gallery button in a pattern screen's corner on a phone. */
 const STARSHIP_SCREENS: ReadonlySet<string> = new Set(["shipStatus", "turnOrder", "abilityCards", "sectorMap", "hangar"]);
 
-/**
- * The title's event card (a live game's banner beside its menu): the event's
- * art (STYLE_EVENTS), its name and how long it runs, at the bottom end corner over the
- * version line. Not on a phone, where the menu takes the bottom.
- */
-function eventCard(world: World, event: { art: string; name: string } | undefined): void {
-  const vp = og.ui.frameViewport();
-  if (!event) return;
-  const image = kitArt(event.art);
-  if (!image || vp.breakpoint === "phonePortrait" || vp.breakpoint === "phoneLandscape") return;
-  const t = og.ui.frameTheme();
-  const grow = { kind: "grow" } as const;
-  og.ui.anchor("Event", { anchor: "bottomRight", offsetY: -40, direction: "column", width: { kind: "fixed", px: 280 }, gap: t.space.xs, padding: { left: t.space.sm, top: t.space.sm, right: t.space.sm, bottom: t.space.sm }, background: { token: "hud" }, radius: t.radius.panel, frame: "hud" }, () => {
-    og.ui.artSlot("Art", { texture: image, kind: "banner", aspect: 16 / 9, focal: { x: 0.65, y: 0.35 }, width: grow, label: "" });
-    og.ui.label("Name", tr(world, event.name), { step: "lg", font: "display", nowrap: true });
-    og.ui.label("When", tr(world, "menu.eventWhen"), { step: "meta", color: { token: "inkMuted" }, nowrap: true });
-  });
-}
-
 /** The Gallery button over every screen. */
 function galleryButton(world: World, d: DemoState): void {
   const bp = og.ui.breakpoint();
   const vp = og.ui.frameViewport();
-  // On a phone the bottom corners belong to the touch controls, and on the
-  // shooter's to its vitals (the button sat between Health and Armor: a
-  // stray label in the HUD at every desktop aspect); its top middle is free.
+  // On a phone the bottom corners belong to the touch controls; its top middle is free.
   const phone = bp === "phonePortrait" || bp === "phoneLandscape";
-  const top = phone || SCREENS[d.screen] === "shooter" || SCREENS[d.screen] === "rts" || (SCREENS[d.screen] === "cgGallery" && cgViewing());
+  const top = phone || SCREENS[d.screen] === "rts" || (SCREENS[d.screen] === "cgGallery" && cgViewing());
   // On the RTS console the bottom is the console's and a phone's top end corner its minimap: on a desktop the button
   // stands at the top middle (as on the shooter), on a phone at the start edge above its middle, clear of the map, the
   // targeting prompt and the console.
@@ -803,28 +628,32 @@ function galleryButton(world: World, d: DemoState): void {
   // The genre patterns' screens lay their header round it: on a phone it takes the top end corner, as a shipped game's
   // menu button does (the start corner is the web shell's Back).
   const corner = phone && !rts && (PATTERN_SCREENS.has(SCREENS[d.screen]!) || STARSHIP_SCREENS.has(SCREENS[d.screen]!));
-  // In a cutscene it is film chrome: in the top bar's end corner, centred in the bar, at every size (built after the
-  // bars, over them; the picture and its Skip below stay clear).
-  const film = SCREENS[d.screen] === "cutscene";
   // On a versus screen the corners carry the fighters' names and the Skip: the button stands at the top middle over the
   // seam on a desktop, and at the start edge's middle beside the mark on a phone.
   const versus = SCREENS[d.screen] === "versus";
-  const barH = Math.round((vp.height - vp.safeArea.top - vp.safeArea.bottom) * 0.1);
-  const inBar = Math.max(0, Math.round((barH - (og.ui.bounds("Back")?.height ?? 40)) / 2));
   // A tablet's or a desktop's top edge is the HUD's (timers, wallets, scores), so where touch controls took the
   // bottom-left corner last tick, the button stands mid-way down the left edge.
-  const taken = !top && !film && ["TouchMove", "Steer", "Story.Bottom"].some((p) => og.ui.bounds(p) !== null);
+  const taken = !top && ["TouchMove", "Steer", "Story.Bottom"].some((p) => og.ui.bounds(p) !== null);
   // Elsewhere it sits above a docked action bar (under a finger the bar spans the bottom edge):
   // last tick's place of the bar, when the screen has one.
   const bar = og.ui.bounds("Hints");
   const lift = !top && bar && bar.y + bar.height >= vp.height - 1 && bar.width >= vp.width - 1 ? vp.height - bar.y : 0;
-  og.ui.anchor("Back", {
-    anchor: versus || (rts && phone) ? (phone ? "left" : "top") : film || corner ? "topRight" : top ? "top" : taken ? "left" : "bottomLeft",
-    offsetY: versus ? 0 : rts && phone ? -Math.round(vp.height * 0.12) : film ? inBar : corner ? 0 : bp === "phonePortrait" ? 52 : taken ? 0 : -lift,
-  }, () => {
-    // The medium size: its label at the body's 16 px at 1080p, never under it.
-    if (og.ui.button("Gallery", tr(world, "gallery.button"), { variant: "secondary" }).clicked) d.screen = 0;
-  });
+  // A showcase's document page takes the chrome in its Kit slot (showcases.ts); a HUD page names its free spot.
+  if (chromeInDocument(SCREENS[d.screen]!)) return;
+  const own = chromeAnchor(SCREENS[d.screen]!);
+  og.ui.anchor("Back", own ? { anchor: own, gap: 8, cross: "center" } : {
+    anchor: versus || (rts && phone) ? (phone ? "left" : "top") : corner ? "topRight" : top ? "top" : taken ? "left" : "bottomLeft",
+    offsetY: versus ? 0 : rts && phone ? -Math.round(vp.height * 0.12) : corner ? 0 : bp === "phonePortrait" ? 52 : taken ? 0 : -lift,
+    gap: 8,
+    cross: "center",
+  }, () => chromeButtons(world, d));
+}
+
+/** The Gallery button and, on a showcase's page, its next page beside it. */
+function chromeButtons(world: World, d: DemoState): void {
+  // The medium size: its label at the body's 16 px at 1080p, never under it.
+  if (og.ui.button("Gallery", tr(world, "gallery.button"), { variant: "secondary" }).clicked) d.screen = 0;
+  showcaseNext((next) => (d.screen = screenIndex(next)), SCREENS[d.screen]!);
 }
 
 /** The raw widget set on one scrolling panel. */
@@ -976,8 +805,10 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
 
   // The gacha banner runs its art full-bleed on a phone: the Gallery button floats on it, so it is built after it.
   // So does a conversation's: its caption shade and its press layer span the screen, and the button stands over them.
-  const floats = screen === "gacha" || screen === "cutscene" || screen === "saga" || screen === "dialogue" || screen === "vn";
-  if (screen !== "gallery" && screen !== "loading" && !floats && !(screen === "photo" && photoHidden())) galleryButton(world, d);
+  const floats = screen === "gacha" || screen === "saga" || screen === "dialogue" || screen === "vn";
+  // The showcases' documents this screen does not mount leave the layer stack first.
+  syncDocs(world, screen);
+  if (screen !== "gallery" && !floats && !(screen === "photo" && photoHidden())) galleryButton(world, d);
   let back = false;
   switch (screen) {
     case "gallery":
@@ -987,351 +818,6 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       widgetsScreen(world, d);
       back = og.ui.back();
       break;
-    case "mainMenu":
-    case "tutorial": {
-      const r = og.ui.mainMenu("Menu", {
-        title: tr(world, "menu.title"),
-        subtitle: tr(world, "menu.subtitle"),
-        items: [
-          { id: "play", label: tr(world, "menu.play") },
-          { id: "continue", label: tr(world, "menu.continue"), disabled: true },
-          { id: "settings", label: tr(world, "menu.settings") },
-          { id: "quit", label: tr(world, "menu.quit") },
-        ],
-        version: tr(world, "menu.footer", { version: "0.1.0" }),
-        // At the start edge: the key art behind keeps the rest of the screen.
-        align: "start",
-      });
-      if (screen === "mainMenu") eventCard(world, STYLE_EVENTS[STYLES[d.style] ?? "default"]);
-      // A greeting with characters no locale font cooked (zh-CN and ja): the
-      // Chinese font draws them from its outlines at run time (runtime true).
-      if (screen === "mainMenu") {
-        // On the style's HUD plate: the scene behind it is any colour (a dark sky under a
-        // parchment style's dark ink), the plate's ink reads on the plate in every style.
-        og.ui.anchor("Greeting", { anchor: "top", direction: "column", margin: 24, padding: { left: 16, top: 6, right: 16, bottom: 6 }, background: { token: "hud" }, radius: 8, frame: "hud" }, () => {
-          og.ui.label("Text", tr(world, "menu.greeting"), { step: "lg", nowrap: true });
-        });
-      }
-      if (r.selected === "play") d.screen = screenIndex("platformer");
-      if (r.selected === "settings") d.screen = screenIndex("settings");
-      if (r.selected === "quit") d.screen = 0;
-      if (screen === "tutorial") {
-        const tut = og.ui.tutorialOverlay("Tutorial", {
-          open: true,
-          steps: TUTORIAL,
-          index: d.step,
-          // The overlay's own words, from the active table (og-i18n §2).
-          skipLabel: tr(world, "tutorial.skip"),
-          nextLabel: tr(world, "tutorial.next"),
-          doneLabel: tr(world, "tutorial.done"),
-          stepLabel: tr(world, "tutorial.step"),
-        });
-        d.step = tut.index;
-        if (tut.finished || tut.skipped) {
-          d.step = 0;
-          d.screen = 0;
-        }
-      } else {
-        back = og.ui.back();
-      }
-      break;
-    }
-    case "pause":
-    case "platformer": {
-      if (screen === "platformer" && !d.paused) d.time = Math.max(0, d.time - dt);
-      // Every word of a HUD from the active table: its own (pauseLabel, jumpLabel; og-i18n §2) and the game's.
-      const h = og.ui.platformerHud("Hud", {
-        lives: d.lives, maxLives: 3, coins: d.coins, score: d.score, level: tr(world, "hud.level"), timeLeft: d.time, touch: true,
-        pauseLabel: tr(world, "hud.pause"),
-        jumpLabel: tr(world, "hud.jump"),
-      });
-      if (h.paused) d.paused = true;
-      if (h.action === "jump") d.coins += 1;
-      const p = og.ui.pauseMenu("Pause", {
-        open: screen === "pause" || d.paused,
-        title: tr(world, "pause.title"),
-        items: [
-          { id: "resume", label: tr(world, "pause.resume") },
-          { id: "settings", label: tr(world, "pause.settings") },
-          { id: "quit", label: tr(world, "pause.quit") },
-        ],
-      });
-      if (p.selected === "resume") {
-        d.paused = false;
-        if (screen === "pause") d.screen = screenIndex("platformer");
-      }
-      if (p.selected === "settings") d.screen = screenIndex("settings");
-      if (p.selected === "quit") {
-        d.paused = false;
-        d.screen = 0;
-      }
-      break;
-    }
-    case "settings": {
-      const r = og.ui.settingsScreen("Settings", {
-        open: true,
-        settings: settingsOf(world, d),
-        // The world the screen applies the graphics page and the mouse to.
-        world,
-        languages: LANGUAGES,
-        // The screen's own words, from the active table (og-i18n §2).
-        title: tr(world, "settings.title"),
-        audioLabel: tr(world, "settings.audio"),
-        graphicsLabel: tr(world, "settings.graphics"),
-        controlsLabel: tr(world, "settings.controls"),
-        languageLabel: tr(world, "settings.language"),
-        masterLabel: tr(world, "settings.master"),
-        musicLabel: tr(world, "settings.music"),
-        effectsLabel: tr(world, "settings.effects"),
-        muteLabel: tr(world, "settings.mute"),
-        qualityLabel: tr(world, "settings.quality"),
-        lowLabel: tr(world, "settings.low"),
-        mediumLabel: tr(world, "settings.medium"),
-        highLabel: tr(world, "settings.high"),
-        fpsLabel: tr(world, "settings.fps"),
-        motionLabel: tr(world, "settings.motion"),
-        contrastLabel: tr(world, "settings.contrast"),
-        sensitivityLabel: tr(world, "settings.sensitivity"),
-        invertLabel: tr(world, "settings.invert"),
-        vibrationLabel: tr(world, "settings.vibration"),
-        doneLabel: tr(world, "settings.done"),
-        help: SETTINGS_HELP,
-        onSave: (saved) => {
-          const req = og.platform.saveSettings(world, saved);
-          if (!req.ok) throw new Error(req.reason);
-          d.saves += 1;
-          og.ui.toast(world, "Settings saved", { tone: "success" });
-        },
-      });
-      takeSettings(world, d, r.settings, false);
-      if (r.closed) d.screen = 0;
-      break;
-    }
-    case "shooter": {
-      const tick = og.ui.tick();
-      const h = og.ui.shooterHud("Hud", {
-        health: d.hp, maxHealth: 100, armor: 35, maxArmor: 50, ammo: 18, magazine: 30, reserve: 120, weapon: tr(world, "hud.weapon"), kills: 7,
-        abilities: [
-          { id: "dash", key: "Q", remaining: (tick % 300) / 300 },
-          { id: "heal", icon: "potion", remaining: 0 },
-          { id: "blast", icon: "bolt", remaining: 0.6 },
-        ],
-        map: { markers: [{ x: 0.5, y: 0.5, player: true }, { x: 0.3, y: 0.25, tone: "danger" }, { x: 0.72, y: 0.4, tone: "danger" }], label: tr(world, "hud.sector") },
-        touch: true,
-        killsLabel: tr(world, "hud.kills"),
-        fireLabel: tr(world, "hud.fire"),
-        pauseLabel: tr(world, "hud.pause"),
-      });
-      if (h.paused) d.screen = 0;
-      if (h.action === "fire") hurt(world, d, 5);
-      break;
-    }
-    case "puzzle": {
-      const h = og.ui.puzzleHud("Hud", {
-        level: tr(world, "hud.stage"), score: 680, target: 1000, moves: 12, timeLeft: 48,
-        movesLabel: tr(world, "hud.moves"),
-        targetLabel: tr(world, "hud.target"),
-        pauseLabel: tr(world, "hud.pause"),
-      });
-      if (h.paused) d.screen = 0;
-      break;
-    }
-    case "idle": {
-      const gens = [d.gen0, d.gen1, d.gen2];
-      const rate = GENERATORS.reduce((n, g, i) => n + g.rate * gens[i]!, 0);
-      d.gold += rate * dt;
-      const cost = (i: number) => Math.round(GENERATORS[i]!.base * Math.pow(1.15, gens[i]!));
-      const tick = og.ui.tick();
-      const h = og.ui.idleHud("Hud", {
-        currencies: [{ id: "gold", name: tr(world, "hud.gold"), amount: d.gold, perSecond: rate, icon: "coin" }, { id: "gems", name: tr(world, "hud.gems"), amount: 12, icon: "gem" }],
-        generators: GENERATORS.map((g, i) => ({ id: g.id, name: tr(world, `hud.${g.id}`), icon: g.icon, level: gens[i]!, cost: cost(i), affordable: d.gold >= cost(i), progress: gens[i]! > 0 ? ((tick * (i + 1)) % 120) / 120 : 0 })),
-        tapLabel: tr(world, "hud.tap"),
-        levelLabel: tr(world, "hud.generatorLevel"),
-        rateLabel: tr(world, "hud.rate"),
-        pauseLabel: tr(world, "hud.pause"),
-      });
-      if (h.action === "tap") {
-        d.gold += 1;
-        d.taps += 1;
-      }
-      if (h.action?.startsWith("buy:")) {
-        const i = GENERATORS.findIndex((g) => `buy:${g.id}` === h.action);
-        if (i >= 0 && d.gold >= cost(i)) {
-          d.gold -= cost(i);
-          if (i === 0) d.gen0 += 1;
-          if (i === 1) d.gen1 += 1;
-          if (i === 2) d.gen2 += 1;
-        }
-      }
-      if (h.paused) d.screen = 0;
-      break;
-    }
-    case "racing": {
-      const s = og.ui.seconds();
-      const h = og.ui.racingHud("Hud", {
-        speed: 180 + 60 * Math.sin(s), gear: "4", lap: 2, laps: 3, position: 3, racers: 8, time: 83.417 + s, best: 41.2, boost: 0.62,
-        map: { size: 128, markers: [{ x: 0.62, y: 0.3, player: true }, { x: 0.55, y: 0.24 }, { x: 0.7, y: 0.42 }], label: "" },
-        touch: true,
-        unit: tr(world, "hud.unit"),
-        lapLabel: tr(world, "hud.lap"),
-        bestLabel: tr(world, "hud.best"),
-        pauseLabel: tr(world, "hud.pause"),
-        boostLabel: tr(world, "hud.boost"),
-        brakeLabel: tr(world, "hud.brake"),
-        leftLabel: tr(world, "hud.left"),
-        rightLabel: tr(world, "hud.right"),
-      });
-      if (h.paused) d.screen = 0;
-      break;
-    }
-    case "cutscene": {
-      // The speakers' painted portraits from the kit's art set (Mira, and Aria Vell as the player).
-      const lines = CUTSCENE.map((l) => ({ ...l, image: art(l.speaker === "Mira" ? "portraits/mira" : "portraits/aria-vell") }));
-      const r = og.ui.cutscene("Story", { open: true, lines, index: d.line, skipLabel: tr(world, "cutscene.skip") });
-      d.line = r.index;
-      if (r.finished || r.skipped) {
-        d.line = 0;
-        d.screen = 0;
-      }
-      break;
-    }
-    case "shop": {
-      const r = og.ui.shopScreen("Shop", {
-        title: tr(world, "shop.title"),
-        priceLabel: tr(world, "shop.price"),
-        buyLabel: tr(world, "shop.buy"),
-        shortLabel: tr(world, "shop.short"),
-        ownedLabel: tr(world, "shop.owned"),
-        emptyLabel: tr(world, "shop.empty"),
-        balance: d.balance,
-        currency: "coins",
-        currencyIcon: "coin",
-        categories: ["Gear", "Items", "Bundles"],
-        items: SHOP.map(({ art: key, ...s }, i) => ({ ...s, image: kitArt(key), owned: (d.owned & (1 << i)) !== 0 && s.category === "Gear" })),
-        merchant: kitArt("brann"),
-        merchantName: "Brann, Smith",
-        merchantLine: "Good gear keeps good folk alive. What can I forge for you today?",
-      });
-      if (r.bought !== null) {
-        const i = SHOP.findIndex((s) => s.id === r.bought);
-        const item = SHOP[i]!;
-        d.balance -= item.price;
-        d.owned |= 1 << i;
-        d.bought += 1;
-        og.ui.toast(world, `Bought ${item.name}`, { tone: "success" });
-      }
-      // Short of the price: the shop's Buy shook with the error sound (og.ui.shake).
-      if (r.refused !== null) d.refused += 1;
-      if (r.closed) d.screen = 0;
-      break;
-    }
-    case "inventory": {
-      const row = d as unknown as Record<string, number>;
-      const slots = ITEMS.map((_, i) => row[`inv${i}`]!);
-      const r = og.ui.inventoryScreen("Inventory", {
-        slots: 30,
-        columns: 6,
-        items: ITEMS.map(({ art: key, ...it }, i) => ({ ...it, image: kitArt(key), slot: slots[i]! })),
-        // The first slot open in the detail: the screen shows an item, not the hint.
-        selected: 0,
-        character: kitArt("paperdoll-aria-vell"),
-        characterName: CHARACTER.name,
-        characterTitle: CHARACTER.title,
-        stats: CHARACTER.stats,
-        hintLabel: tr(world, "inventory.hint"),
-        countLabel: tr(world, "inventory.count"),
-      });
-      if (r.moved) {
-        const from = slots.indexOf(r.moved.from);
-        const to = slots.indexOf(r.moved.to);
-        if (from >= 0) slots[from] = r.moved.to;
-        if (to >= 0) slots[to] = r.moved.from;
-        slots.forEach((v, i) => (row[`inv${i}`] = v));
-        d.moves += 1;
-      }
-      if (r.used !== null) {
-        d.used += 1;
-        og.ui.toast(world, `Used ${ITEMS.find((it) => it.id === r.used)?.name ?? r.used}`, {});
-      }
-      if (r.closed) d.screen = 0;
-      break;
-    }
-    case "levels": {
-      const r = og.ui.levelSelect("Levels", { levels: LEVELS, columns: 4 });
-      if (r.chosen !== null) {
-        d.level = r.chosen + 1;
-        d.screen = screenIndex("results");
-      }
-      if (r.closed) d.screen = 0;
-      break;
-    }
-    case "results": {
-      const r = og.ui.resultsScreen("Results", {
-        open: true, score: 12840, best: 11200, newBest: true, stars: 2,
-        stats: [{ label: "Time", value: "1:42" }, { label: "Coins", value: "86 / 100" }, { label: "Enemies", value: "14" }],
-        rewards: REWARDS.map(({ art: key, ...r }) => ({ ...r, image: kitArt(key) })),
-        shareText: "I scored 12,840 in Origin Quest",
-        onShare: (text) => og.ui.toast(world, `Shared: ${text}`, { tone: "info" }),
-      });
-      if (r.selected === "retry") d.screen = screenIndex("platformer");
-      if (r.selected === "next") d.screen = screenIndex("levels");
-      if (r.selected === "menu") d.screen = 0;
-      break;
-    }
-    case "leaderboard": {
-      const tick = og.ui.tick();
-      const loading = tick - d.scopeTick < 45;
-      const r = og.ui.leaderboardScreen("Board", {
-        scopes: ["Today", "This week", "All time"],
-        entries: d.scope === 2 ? [] : leaderboard(d.scope),
-        loading,
-        error: !loading && d.offline ? tr(world, "leaderboard.error") : "",
-        empty: "No scores for all time yet",
-        retryLabel: tr(world, "leaderboard.retry"),
-      });
-      if (r.changed) {
-        d.scope = r.scope;
-        d.scopeTick = tick;
-      }
-      if (r.retry) {
-        d.offline = false;
-        d.scopeTick = tick;
-      }
-      if (r.closed) d.screen = 0;
-      break;
-    }
-    case "loading": {
-      const s = og.ui.seconds();
-      og.ui.loadingScreen("Loading", {
-        title: "Loading the old mill",
-        progress: Math.min(1, (s % 8) / 6),
-        tips: ["Hold Jump to jump higher.", "Coins add up to extra lives.", "Press Escape to pause at any time."],
-        tipSeconds: 3,
-      });
-      if (og.ui.back()) d.screen = 0;
-      break;
-    }
-    case "confirm": {
-      const r = og.ui.confirmDialog("Delete", {
-        open: true,
-        title: tr(world, "confirm.title"),
-        message: tr(world, "confirm.message", { slot: 2 }),
-        confirmLabel: tr(world, "confirm.delete"),
-        cancelLabel: tr(world, "confirm.cancel"),
-        danger: true,
-      });
-      if (r.confirmed) {
-        d.confirmed += 1;
-        og.ui.toast(world, "Save deleted", { tone: "danger" });
-        d.screen = 0;
-      }
-      if (r.cancelled) d.screen = 0;
-      break;
-    }
-    case "alert": {
-      if (og.ui.alertDialog("Notice", { open: true, title: "Connection lost", message: "Your progress is saved on this device and will sync when you are back online." })) d.screen = 0;
-      break;
-    }
     case "players":
       playersScreen(d);
       back = og.ui.back();
@@ -1485,7 +971,24 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       break;
     case "settingsTree":
       // Back reverts a display change first (the countdown takes it).
-      settingsTreeScreen(world);
+      {
+        // Apply is the save: the tree's values go to og.settings with the fields a relaunch reads (followSettings).
+        const t = settingsTreeScreen(world);
+        if (t) {
+          const v = t.values;
+          const saved: Partial<KitSettings> & { tree: Record<string, number> } = {
+            masterVolume: v.master ?? 1, musicVolume: v.music ?? 0.8, sfxVolume: v.effects ?? 1, muted: (v.master ?? 1) <= 0,
+            subtitles: (v.subtitles ?? 1) > 0, highContrast: (v.contrast ?? 0) > 0, reducedMotion: (v.reduceMotion ?? 0) > 0,
+            invertY: (v.invert ?? 0) > 0, sensitivity: v.sensitivity ?? 0.5, rawMouse: (v.raw ?? 1) > 0, language: t.language,
+            quality: t.display.quality ?? "medium", display: t.display, tree: v,
+          };
+          takeSettings(world, d, saved, false);
+          const req = og.platform.saveSettings(world, saved);
+          if (!req.ok) throw new Error(req.reason);
+          d.saves += 1;
+          og.ui.toast(world, L("set.saved"), { tone: "success" });
+        }
+      }
       back = og.ui.back();
       break;
     case "cgGallery":
@@ -1539,6 +1042,9 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
       hangarScreen(world);
       back = og.ui.back();
       break;
+    default:
+      showcaseScreen(world, screen, (next) => (d.screen = screenIndex(next)), () => chromeButtons(world, d));
+      break;
     case "toasts": {
       const t = og.ui.frameTheme();
       og.ui.anchor("ToastDemo", { anchor: "center", direction: "column", gap: t.space.sm, width: { kind: "fixed", px: 300 }, padding: { left: t.space.lg, top: t.space.lg, right: t.space.lg, bottom: t.space.lg }, background: { token: "panel" }, radius: t.radius.panel }, () => {
@@ -1553,7 +1059,7 @@ function kitFrame(world: World, dt: number, d: DemoState): void {
   }
   // A label of three scripts at once (`mixed:on`): each run in its own face
   // (the role's Latin, a locale's CJK, the Arabic shaped), nothing missing.
-  if (d.mixed && (screen === "mainMenu" || screen === "pause" || screen === "confirm")) {
+  if (d.mixed && (screen === "actionTitle" || screen === "actionPause")) {
     og.ui.anchor("Mixed", { anchor: "bottom", direction: "column", padding: { left: 0, top: 0, right: 0, bottom: 24 } }, () => {
       og.ui.label("Text", tr(world, "menu.mixed"), { step: "lg", nowrap: true });
     });
@@ -1623,6 +1129,8 @@ export default og.game({
     loadStory(world);
     defineGenres2Actions(world);
     defineGenres3Actions(world);
+    defineHudActions(world);
+    loadShowcases(world);
     for (const [key, path] of Object.entries(ART_PATHS)) {
       const tex = og.load.texture(world, path);
       KIT_ART[key] = tex.ok ? (tex.value as unknown as number) : 0;
@@ -1675,6 +1183,9 @@ export default og.game({
     demo: (world, args) => {
       if (!controlsDemo(world, args)) demoCommand(world, args);
     },
+    sc: (_world, args) => {
+      showcaseCommand(args);
+    },
     pat: (world, args) => {
       if (args[0] !== "ship" || !starshipCommand(args[1] ?? "", args[2] ?? "")) patternsCommand(world, args);
     },
@@ -1692,6 +1203,7 @@ export default og.game({
     mixed: { usage: "<on|off>", doc: "Show a label mixing CJK, Latin and Arabic (menu.mixed) under the menu, pause and confirm screens." },
     demo: { usage: "<overlay|data|aim|text|device|reset|keyboard|controls>:<value>", doc: "A component preview's state: demo:overlay:menu (menu, submenu, context, popover, dialog, confirm, sheet, sideSheet, radial, none), demo:data:loading (rows, loading, empty, error), demo:aim:0.7,-0.7 (the radial wheel's stick), demo:text:200 (the player's text size, 100 to 200 %), demo:device:playstation (the device prompts are drawn for, and the key-binding rows': keyboardMouse, xbox, playstation, switch), demo:keyboard:kana (letters, symbols, numeric, kana, none: the on-screen keyboard on the bindings screen), demo:controls:reset (the controls previews' state)." },
     pat: { usage: "<pick|highlight|select|inspect|turn|energy|draw|picks|rselect|balance|banner|pull|ship|reset>:<value>", doc: "A genre pattern preview's state: pat:pick:helm (an item in the hand), pat:highlight:potion (a tag lit), pat:select:<item>, pat:inspect:bash (a card shown large), pat:turn:off (not the player's turn), pat:energy:1 (energy left), pat:draw:strike (a card drawn), pat:picks:2 (a two-pick reward), pat:rselect:thunder,vigor (rewards selected), pat:balance:100 (the gacha purse), pat:banner:weapon, pat:pull:10 (a pull resolved, its reveal started), pat:lobby:found (the lobby's ready check; ready, search, reset), pat:chars:hover:kael (the select's cursor; lock), pat:vs:progress:0.9, pat:draft:phase:ban (hover, lock), pat:map:select:sela (a place's detail; hide:shop,poi), pat:song:select:phoenix (chart:master, playing:off), pat:garage:category:livery (select:engine.race, layer:base, balance:90000), pat:ledger:tab:year (sort:amount, fund:fire=60, overlay:power), pat:chat:channel:party (draft:hi_@Ri, hud:on, typing:on), pat:rts:page:build (target:patrol, gold:100), pat:photo:tab:filters (set:fov=35, filter:noir, frame:cinema, grid:on, hidden:on), pat:loadout:slot:secondary (tab:2, attachment:optic, remove:muzzle), pat:deck:cost:3 (rarity:rare, kind:unit, search:fire, view:deck, full), pat:vn:view:riverboat (chapter:two, variant:1, route:tower), pat:set:page:controls (pending:scale=0.75, confirm:9), pat:reset; the starship screens' pat:ship:card:<n> (the card selected, -1 none), pat:ship:class:<n> (the hangar's class), pat:ship:reset." },
+    sc: { usage: "<reset|tutorial|hud>:<key>:<value>", doc: "A genre showcase's preview state: sc:tutorial:3 (the tutorial's step), sc:hud:hp:20 (hp, coins, combo, ammo, reload:on, hit:crit, speed:2), sc:reset." },
     offline: { usage: "<on|off>", doc: "The leaderboard's rows fail to load: its error message and Retry (which loads again)." },
   },
   facts: (world) => {

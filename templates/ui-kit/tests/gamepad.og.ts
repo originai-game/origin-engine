@@ -1,6 +1,7 @@
 // A real gamepad (og.Gamepad through the `gamepad` core action, as the web
 // shell delivers a pad's state): the d-pad pressed four times focuses the
-// fourth row, A opens it, B closes it (the focus back on that row), and the left stick past half-way
+// gallery's fourth row (the management showcase), A opens it on its HUD, B
+// closes it, and the left stick past half-way
 // steps focus as the d-pad does (once per push, one intent per edge). No `pad:` game command and no mapped keys.
 import { playtest } from "@origingame/engine/playtest";
 import { SCREEN, demo, ui } from "./lib.ts";
@@ -19,9 +20,10 @@ export default playtest({
     press(1.4, "b"),
     "1.9:dump_entity:demo:closed.json",
     "1.95:dump_ui:closed-ui.json",
-    // Back in the gallery the focus is on the row that opened settings (the
-    // fourth): the stick down past half-way twice, released between, steps
-    // once per push, to the fifth row, then the sixth (shooter).
+    // Back in the gallery nothing has the focus (the HUD took the gallery's
+    // place, no layer over it kept the row): the stick down past half-way
+    // twice, released between, steps once per push, onto the first row, then
+    // the second (the shooter showcase).
     "2.0:gamepad:-:0,0.9",
     "2.05:gamepad:-:0,0",
     "2.1:gamepad:-:0,0.9",
@@ -33,9 +35,9 @@ export default playtest({
   ].join(";"),
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
-    t.equal(demo(run, "opened.json").screen, SCREEN.settings, "four d-pad downs and A opened the fourth row (settings)");
+    t.equal(demo(run, "opened.json").screen, SCREEN.manageHud, "four d-pad downs and A opened the fourth row (the management showcase's HUD)");
     t.equal(demo(run, "closed.json").screen, SCREEN.gallery, "B closed it");
-    t.ok(ui(run, "closed-ui.json").some((e) => e.states.includes("focused") && e.name.startsWith("settings")), "B gave the focus back to the settings row");
-    t.equal(demo(run, "stick.json").screen, SCREEN.shooter, "two stick pushes stepped two rows on and A opened it (shooter)");
+    t.equal(ui(run, "closed-ui.json").filter((e) => e.states.includes("focused")).map((e) => e.path), [], "back in the gallery, no row has the focus yet");
+    t.equal(demo(run, "stick.json").screen, SCREEN.shooterHud, "two stick pushes stepped onto the first row, then the second, and A opened it (the shooter showcase's HUD)");
   },
 });

@@ -1,5 +1,6 @@
 // A gamepad (queued intents, as the shell maps a pad's d-pad, A and B): down
-// four times focuses the fourth row, A opens it, B closes it again; in the
+// four times focuses the gallery's fourth row (the management showcase), A
+// opens it on its HUD, B closes it again; in the
 // widget screen the d-pad reaches the select and A opens its menu.
 import { playtest } from "@origingame/engine/playtest";
 import { SCREEN, demo, ui } from "./lib.ts";
@@ -30,7 +31,7 @@ export default playtest({
   ].join(";"),
   check(run, t) {
     t.equal(run.warnings.join("; "), "", "the script ran without warnings");
-    t.equal(demo(run, "opened.json").screen, SCREEN.settings, "four downs and A opened the fourth row (settings)");
+    t.equal(demo(run, "opened.json").screen, SCREEN.manageHud, "four downs and A opened the fourth row (the management showcase's HUD)");
     t.equal(demo(run, "closed.json").screen, SCREEN.gallery, "B closed it");
     t.ok(ui(run, "menu-ui.json").some((e) => e.parent === "Difficulty.menu" && e.text === "Hard"), "Tab order reached the select and A opened its menu");
     t.equal(demo(run, "picked.json").difficulty, 2, "down and A chose Hard");

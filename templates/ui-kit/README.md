@@ -1,7 +1,11 @@
 # UI kit demo
 
-Every `og.ui` screen template and the game widget set on one gallery
-(`crates/og-ui`, `packages/engine/src/ui-kit`, the IDL module `ui`). Pick a
+The `og.ui` components, the genre patterns and the genre showcases on one
+gallery (`crates/og-ui`, `packages/engine/src/ui`, the IDL module `ui`). A
+showcase is a genre's screens as a game builds them: ejected screen
+documents (`assets/ui/*.ogt`, from `og ui eject`) with the kit's chrome in
+their `Kit` slot, and HUDs built from components over the genre scenes
+(`src/showcases.ts`, `src/huds.ts`). Pick a
 screen from the list, or `show:<screen>` on the command channel; Back
 (Escape, gamepad B, the Gallery button) returns.
 
@@ -27,12 +31,15 @@ keeping the neutral dusk), and the shop, inventory and results show the kit's
 painted art (`assets/textures/art`): items, the merchant Brann, the paperdoll's
 Aria Vell with her attributes. `transition:<none|fade|wipe|iris|dissolve|slide>` sends screen changes through
 `og.ui.screenTransition`, `sounds:<on|off>` (on by default) hands `assets/audio/ui-*.wav` to
-the UI's event sounds, `offline:<on|off>` makes the leaderboard's rows fail
-to load (its error message and Retry, which loads again). `dump_entity:demo` reads the demo's state (the `Demo` component).
+the UI's event sounds, `sc:<reset|tutorial:<n>|hud:<key>:<value>>` sets a
+showcase's state, `pat:<area>:<key>:<value>` a pattern preview's. `dump_entity:demo` reads the demo's state (the `Demo` component).
 
-Screens: gallery, widgets, mainMenu, pause, settings, platformer, shooter,
-puzzle, idle, racing, cutscene, shop, inventory, levels, results,
-leaderboard, tutorial, loading, confirm, alert, toasts, players (a
+Screens: the showcases first (actionTitle, actionHud, actionPause,
+actionTutorial, actionLoading, actionResults, shooterHud, shooterScore,
+manageHud, raceHud, raceBoard, sportsHud, matchFacts), then gallery,
+widgets, the component sheets, the genre patterns (store, gear, saga,
+dialogue, vn, lobby, select, garage, ledger, rts, deck, settingsTree and
+the rest; `SCREENS` in `src/main.ts`), toasts, players (a
 local-multiplayer lobby: `og.ui.setPlayers(4)`), text (type and scripts:
 the display face kerned, the rounded face for a score, labels cut with an
 ellipsis, Arabic in a Latin line and inside a rich-text span, Hebrew,
@@ -47,8 +54,8 @@ and Devanagari subsets are `fallbackFonts`.
 
 ## What it demonstrates, and the skills it exercises
 
-The engine's UI as a catalogue rather than a game: every screen template and
-widget (og-ui §2, §3), focus by keyboard, gamepad and several fingers at once
+The engine's UI as a catalogue rather than a game: the screen documents,
+components and patterns (og-ui §2, §3), focus by keyboard, gamepad and several fingers at once
 (og-ui §4), phones, tablets and the safe area with every screen captured on a
 390×844@3 phone (og-ui §5), the six style packs with their tiled nine-slices,
 count-ups, bursts, screen transitions and UI sounds (og-ui §6; og-taste
@@ -77,9 +84,9 @@ playtests through `packages/engine/tests/web/reference-ui.ts` (`docs/ci.md`
 | Playtest | Proves |
 |---|---|
 | `frames-desktop`, `frames-phone` | every screen matches its reference frame at 1280×720 and at 390×844@3 with a notch and a home indicator |
-| `touch` | `move_to_text:=shop` opens the shop from the scrolled gallery, `Detail/Buy` spends the price and toasts, Escape closes; Share calls the share hook; Tap counts; a generator buys; the dialogue box finishes, then advances a line |
-| `keys` | Tab, Tab, Enter opens the second row; in Settings, Down reaches the Master slider, Left twice steps it to 0.9, Escape closes and the save hook writes `og.settings` once through og.platform |
-| `settings-saved` | across a relaunch (`store: "keep"`): Mute and 简体中文 on the settings screen, Done writes `og.settings`; the relaunch asks for `og.settings` on its first tick and comes back muted, with the main menu in Chinese (`src/main.ts` `followSettings`) |
+| `touch` | the store opens by its row's text from the scrolled gallery, Buy spends the price and marks the offer owned, Escape closes; the action results' Play again leads into the HUD; a generator buys; the visual novel's box finishes, then advances a line |
+| `keys` | keyboard focus opens a screen, steps a slider on the settings tree to a pending change and closes it |
+| `settings-saved` | across a relaunch (`store: "keep"`): master 0, render scale 75 % and 简体中文 on the settings tree, Apply writes `og.settings`; the relaunch asks for it on its first tick and comes back muted, the title in Chinese and the tree's values where Apply left them (`src/main.ts` `followSettings`) |
 | `pad` | gamepad intents: down ×4 and A open Settings, B closes; Tab order reaches the select, A opens its menu, down and A choose Hard |
 | `a11y` | every screen's accessibility tree (`dump_ui`'s role, name, value and states; `og.ui.a11y()`): every control keys and pads reach has a role and a name, every element showing text has a role, Tab walks the focusable elements in the tree's order and wraps, and `og.ui.a11y()` counts the same nodes and focus order as the probe |
 | `hit` | the touch HUD's Hit is felt on its tick: a 3-tick hit stop, camera trauma, the number floating up from the health bar and a thud on the sfx bus (`assets/audio/hit.ogt`, og sfx's hit preset; og-feel §3, §4, §7) |
@@ -87,10 +94,11 @@ playtests through `packages/engine/tests/web/reference-ui.ts` (`docs/ci.md`
 | `refuse` | the Crown (2,400) with 1,250 coins: Buy reads "Not enough", a press shakes it three times back to rest with the error sound on the ui bus (`og.ui.shake`), spends nothing and reports `refused` |
 | `drag` | a press on slot 0 dragged to slot 7 moves the potion; Use runs for it |
 | `phone` | on a phone the HUD corners sit in the safe area, every touch control is at least 44 CSS px, a tap on Jump answers once |
-| `tutorial` | the spotlight's hole contains each step's target, a press on the dimmed part changes nothing, Next walks to Done |
+| `tutorial` | the action tutorial's card sits under each step's target and Next walks to the end |
+| `ui-check` | `og ui check` finds no undeclared overlap on the action and shooter HUDs on a phone |
 | `style-<pack>` (six) | every screen but the gallery, in that style pack at 1280×720, matches its 640×360 cell of `crates/og-ui/references/<tier>/kit-style-<pack>.png` (7 × 3 cells in `FRAME_SCREENS` order) |
 | `style-<pack>-phone` (six) | the same on a phone in portrait (390×844@3 with the notch and home indicator), each screen box-filtered to its 390×844 CSS pixels against its cell of `kit-style-<pack>-phone.png` (10 × 2 cells) |
-| `juice` | an iris transition keeps the old screen until it has closed and builds the new one as it opens; the results score counts and lands on 12,840; a dialog's open, a hover and a press start voices on the ui bus |
+| `juice` | an iris transition switches screens at full cover; UI events start voices on the ui bus |
 | `text` | the text screen draws every script without a missing glyph (no warning), matching `kit-desktop-text.png`; a tap on the name field and `type:Ada Lovelace` fill it once, Shift+← ×4 selects "lace" (`kit-desktop-text-select.png`); in the notes area Enter breaks the line, `compose:にほん` shows underlined at the caret (`kit-desktop-text-compose.png`) and `commit:日本` lands in the value |
 
 ## Built-in styles
@@ -119,14 +127,9 @@ storybook, cyber, cartoon, pixel, jade and scifi (the owner, 2026-11-02).
 
 ## Locales
 
-The main menu, pause and confirm screens, the settings screen, the shop,
-the inventory, the leaderboard, the tutorial, the cutscene and the five
-HUDs (the templates' own words through their descs' label fields:
-`settings.*`, `shop.*`, `inventory.*`, `leaderboard.*`, `tutorial.*`,
-`cutscene.*`, `hud.*`; the tutorial's `"{step} of {count}"` and the HUDs'
-`"Target {target}"`, `"Lv {level}"`, `"+{rate}/s"` and `"Best {best}"`
-filled by the template; the HUDs' level, weapon, sector and generator
-names are the tables' `hud.*` too) and the
+The showcases' documents and HUDs, the patterns and the settings tree (the
+`screen.*`, `sc.*`, `set.*` and the patterns' keys; the documents' words
+are string keys, the components' through their descs' label fields) and the
 settings' language list read their text
 from `og.i18n` (`assets/strings/{en,zh-CN,ja,ko,ar}.ogt`,
 `type strings`): `og.i18n.t(world, "menu.play")`, with plurals and

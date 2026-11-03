@@ -1,29 +1,30 @@
 // The kit's localized screens (og.i18n, assets/strings/*.ogt) in five
 // locales, each compared with crates/og-ui/references/<tier>/kit-locale-*:
-// the main menu, the pause menu over the platformer HUD and the confirm
-// dialog in English, simplified Chinese, Japanese, Korean and Arabic. Arabic
-// is shaped (joined forms from the font's own tables, through rustybuzz) and
-// right to left: the layout mirrors (the Gallery button moves to the bottom
-// right) and text aligns to the right. The probe's `locale:<tag>` asks for
-// each locale; `og.i18n.locale` (the facts) says which table is active.
-// Then the settings screen, the shop, the inventory, the leaderboard's error,
-// the tutorial and the cutscene in zh-CN: every word the templates draw
-// themselves (their descs' label fields, og-i18n §2) comes from the Chinese
-// table, with none of the English defaults left. Last the five HUDs in every
-// locale, on a desktop and on a tablet (their touch controls shown): in
-// zh-CN, ja, ko and ar no element shows or is named by a Latin word (the
-// HUDs' own words through their descs, the game's names through the
-// tables' `hud.*`), and nothing draws a character its fonts lack; in en the
-// fields' defaults are the words the HUDs always drew. Not read: an icon's
-// text and a widget's name derived from its id (`heart`, `Rev`), which are
-// identifiers, and og-ui's own d-pad, which draws chevrons and names its
-// arms Up, Left, Right and Down (an og-ui widget, not a HUD word).
+// the action showcase's title and its pause menu over the HUD (the ejected
+// main-menu and pause documents) in English, simplified Chinese, Japanese,
+// Korean and Arabic. Arabic is shaped (joined forms from the font's own
+// tables, through rustybuzz) and right to left: the layout mirrors and text
+// aligns to the right. The probe's `locale:<tag>` asks for each locale;
+// `og.i18n.locale` (the facts) says which table is active.
+// Then the settings tree, the store, the gear screen, the leaderboard, the
+// tutorial and the dialogue in zh-CN: every word they draw (the documents'
+// keyed words, the patterns' descs' label fields, og-i18n §2) comes from the
+// Chinese table, with none of the English left. Last the showcases' five
+// HUDs in every locale, on a desktop and on a tablet (their touch controls
+// shown): in zh-CN, ja, ko and ar no element shows a Latin word but the
+// game's proper names (racers, players, teams, the weapon), key glyphs,
+// compass points and units, and the touch controls are named in the
+// locale's words; in en the words are the table's English. Not read: an
+// icon's text (an identifier), og-ui's own d-pad (chevrons, arms named Up,
+// Left, Right and Down), and the HUD components' own accessible names of
+// their regions (Ammunition, Standings, Minimap…), which the engine's
+// components name in English (reported, not this kit's words).
 import { playtest } from "@origingame/engine/playtest";
 import { checkFrames } from "./frames.ts";
-import { tap, ui } from "./lib.ts";
+import { ui } from "./lib.ts";
 
 const LOCALES = ["en", "zh-CN", "ja", "ko", "ar"] as const;
-const SCREENS = ["mainMenu", "pause", "confirm"] as const;
+const SCREENS = ["actionTitle", "actionPause"] as const;
 
 const steps: string[] = [];
 export const referenceFiles: string[] = [];
@@ -39,40 +40,22 @@ for (const l of LOCALES) {
   steps.push(`${t.toFixed(2)}:dump_world:world-${l}.json`);
   t += 0.1;
 }
-// The settings (its Audio tab) and the shop (its first ware selected: Buy).
+// The pattern and showcase screens in zh-CN, then the settings tree and the tutorial in en.
+const ZH = ["settingsTree", "store", "gear", "raceBoard", "actionTutorial", "dialogue"] as const;
 steps.push(`${t.toFixed(2)}:locale:zh-CN`);
-steps.push(`${(t + 0.05).toFixed(2)}:show:settings`);
-steps.push(`${(t + 0.7).toFixed(2)}:dump_ui:settings-zh-CN.json`);
-steps.push(`${(t + 0.75).toFixed(2)}:show:shop`);
-steps.push(`${(t + 1.4).toFixed(2)}:dump_ui:shop-zh-CN.json`);
-t += 1.45;
-// The inventory opens on its first slot (a stack of three: Count), then an empty slot (its hint).
-steps.push(`${t.toFixed(2)}:show:inventory`);
-steps.push(`${(t + 0.65).toFixed(2)}:dump_ui:inventory-zh-CN.json`);
-steps.push(tap(t + 0.7, "Slots/Cell#29"));
-steps.push(`${(t + 1.1).toFixed(2)}:dump_ui:inventory-hint-zh-CN.json`);
-t += 1.15;
-// The leaderboard whose rows failed to load (Retry), the tutorial's first and last steps, the cutscene.
-steps.push(`${t.toFixed(2)}:offline:on`);
-steps.push(`${(t + 0.05).toFixed(2)}:show:leaderboard`);
-steps.push(`${(t + 0.65).toFixed(2)}:dump_ui:leaderboard-zh-CN.json`);
-steps.push(`${(t + 0.7).toFixed(2)}:offline:off`);
-steps.push(`${(t + 0.75).toFixed(2)}:show:tutorial`);
-steps.push(`${(t + 1.35).toFixed(2)}:dump_ui:tutorial-zh-CN.json`);
-steps.push(tap(t + 1.4, "Tutorial.callout/Actions/Next"));
-steps.push(tap(t + 1.7, "Tutorial.callout/Actions/Next"));
-steps.push(`${(t + 2.1).toFixed(2)}:dump_ui:tutorial-done-zh-CN.json`);
-steps.push(`${(t + 2.15).toFixed(2)}:show:cutscene`);
-steps.push(`${(t + 2.8).toFixed(2)}:dump_ui:cutscene-zh-CN.json`);
-t += 2.85;
+for (const s of ZH) {
+  steps.push(`${(t + 0.05).toFixed(2)}:show:${s}`);
+  steps.push(`${(t + 0.7).toFixed(2)}:dump_ui:${s}-zh-CN.json`);
+  t += 0.75;
+}
 steps.push(`${t.toFixed(2)}:locale:en`);
-steps.push(`${(t + 0.05).toFixed(2)}:show:settings`);
-steps.push(`${(t + 0.65).toFixed(2)}:dump_ui:settings-en.json`);
-steps.push(`${(t + 0.7).toFixed(2)}:show:tutorial`);
-steps.push(`${(t + 1.3).toFixed(2)}:dump_ui:tutorial-en.json`);
-t += 1.4;
+for (const s of ["settingsTree", "actionTutorial"] as const) {
+  steps.push(`${(t + 0.05).toFixed(2)}:show:${s}`);
+  steps.push(`${(t + 0.7).toFixed(2)}:dump_ui:${s}-en.json`);
+  t += 0.75;
+}
 // The HUDs: each locale, each surface, each HUD (a frame on the tablet, not a reference).
-const HUDS = ["platformer", "shooter", "puzzle", "idle", "racing"] as const;
+const HUDS = ["actionHud", "shooterHud", "manageHud", "raceHud", "sportsHud"] as const;
 const SURFACES = ["desktop", "tablet"] as const;
 const hudFiles: Array<{ locale: string; surface: string; hud: string; file: string }> = [];
 for (const l of LOCALES) {
@@ -94,13 +77,17 @@ steps.push(`${t.toFixed(2)}:viewport:desktop`);
 t += 0.05;
 steps.push(`${t.toFixed(2)}:quit`);
 
-/** The controls a HUD names with its desc's words: the pause button, the touch buttons. */
-const NAMED = new Set(["Pause", "jump", "fire", "Tap", "left", "right", "brake", "boost"]);
-/** Symbols, not words: the shooter's ability key and the speed unit ja and ko keep. */
-const SYMBOLS = new Set(["Q", "km/h"]);
+/** The touch controls a HUD names with the game's words (src/huds.ts): their names are read too. */
+const NAMED = new Set(["Pause", "Jump", "Attack", "Fire", "Left", "Right", "Brake", "Boost"]);
+/** The game's proper names (src/huds.ts): racers, players, teams, the weapons; they stay as they are in every locale. */
+const PROPER = new Set(["Vex", "Juno", "Orrin", "Sable", "Brask", "Raven", "Frag", "Nyx", "Ferro", "Lumen", "Quill", "Arlo", "Moreau", "Ilves", "RVR", "HLD"]);
+/** Symbols, not words: compass points and units (m, km/h, per second, thousands). */
+const SYMBOLS = new Set(["N", "NE", "E", "SE", "S", "SW", "W", "NW", "m", "km", "h", "s", "K", "M", "B"]);
+/** A Latin token that is no word of a locale's: a proper name, a symbol, or one capital (a key's glyph). */
+const allowed = (w: string) => PROPER.has(w) || SYMBOLS.has(w) || /^[A-Z]$/.test(w);
 
 export default playtest({
-  name: "the menu, pause and confirm screens in en, zh-CN, ja, ko and ar match their reference frames; the settings, shop, inventory, leaderboard, tutorial and cutscene templates' own words are Chinese in zh-CN; the five HUDs have no English left in zh-CN, ja, ko and ar",
+  name: "the title and pause screens in en, zh-CN, ja, ko and ar match their reference frames; the settings tree, store, gear, leaderboard, tutorial and dialogue are Chinese in zh-CN; the five showcase HUDs have no English left in zh-CN, ja, ko and ar",
   size: "1280x720",
   commands: steps.join(";"),
   check(run, t) {
@@ -111,73 +98,54 @@ export default playtest({
     });
     checkFrames(run, t, referenceFiles, "kit-locale-");
 
-    const texts = (file: string) => new Set(ui(run, file).map((e) => e.text).filter((x) => x !== ""));
-    const settings = texts("settings-zh-CN.json");
-    for (const word of ["设置", "音频", "画面", "操作", "语言", "主音量", "音乐", "音效", "全部静音", "完成"]) {
-      t.ok(settings.has(word), `the settings screen shows ${word} in zh-CN`);
-    }
-    for (const word of ["Settings", "Audio", "Graphics", "Controls", "Language", "Master", "Music", "Effects", "Mute everything", "Done"]) {
-      t.ok(!settings.has(word), `and not the English ${word}`);
-    }
-    const shop = texts("shop-zh-CN.json");
-    for (const word of ["商店", "价格"]) t.ok(shop.has(word), `the shop shows ${word} in zh-CN`);
-    t.ok(shop.has("购买") || shop.has("余额不足"), "its Buy button reads 购买 or 余额不足");
-    for (const word of ["Shop", "Price", "Buy", "Not enough", "Owned"]) t.ok(!shop.has(word), `and not the English ${word}`);
-    const hint = texts("inventory-hint-zh-CN.json");
-    t.ok(hint.has("选择一件物品。把它拖到另一个格子即可移动。"), "the inventory's hint is Chinese in zh-CN");
-    t.ok(![...hint].some((x) => x.startsWith("Select an item")), "and not the English hint");
-    const inventory = texts("inventory-zh-CN.json");
-    t.ok(inventory.has("数量") && !inventory.has("Count"), "the stack it opens on has a count line reading 数量, not Count");
-    const board = texts("leaderboard-zh-CN.json");
-    t.ok(board.has("无法加载分数。") && board.has("重试") && !board.has("Retry"), "the leaderboard's error has 重试, not Retry");
-    const tutorial = texts("tutorial-zh-CN.json");
-    for (const word of ["第 1 步，共 3 步", "跳过", "下一步"]) t.ok(tutorial.has(word), `the tutorial shows ${word} in zh-CN`);
-    for (const word of ["1 of 3", "Skip", "Next"]) t.ok(!tutorial.has(word), `and not the English ${word}`);
-    const done = texts("tutorial-done-zh-CN.json");
-    t.ok(done.has("第 3 步，共 3 步") && done.has("完成") && !done.has("Done"), "its last step counts 第 3 步，共 3 步 and finishes with 完成");
-    const story = texts("cutscene-zh-CN.json");
-    t.ok(story.has("跳过") && !story.has("Skip"), "the cutscene's Skip reads 跳过");
-    // In English the fields' defaults are the words the template always drew.
-    const en = texts("settings-en.json");
-    for (const word of ["Settings", "Audio", "Master", "Mute everything", "Done"]) t.ok(en.has(word), `in en the settings screen shows ${word}`);
-    const tutorialEn = texts("tutorial-en.json");
-    for (const word of ["1 of 3", "Skip", "Next"]) t.ok(tutorialEn.has(word), `in en the tutorial shows ${word}`);
+    /** What a screen shows and names (a tab's label is drawn in capitals; its name is the word). */
+    const words = (file: string) => new Set(ui(run, file).flatMap((e) => [e.text, e.name]).filter((x) => x !== ""));
+    const zh = (screen: string, chinese: string[], english: string[]) => {
+      const w = words(`${screen}-zh-CN.json`);
+      for (const word of chinese) t.ok(w.has(word), `the ${screen} screen shows ${word} in zh-CN`);
+      for (const word of english) t.ok(!w.has(word), `and not the English ${word}`);
+    };
+    zh("settingsTree", ["设置", "图形", "音频", "操作", "语言", "画质预设", "应用", "还原", "默认"], ["Settings", "Graphics", "Audio", "Controls", "Language", "Quality preset", "Apply", "Revert", "Defaults"]);
+    zh("store", ["商店", "精选", "每日特惠", "已拥有", "购买"], ["Store", "Featured", "Owned", "Buy"]);
+    zh("gear", ["背包", "仓库", "属性", "护甲"], ["Backpack", "Stash", "Attributes", "Armor"]);
+    zh("raceBoard", ["排行榜", "全球", "好友", "联赛"], ["Leaderboard", "Global", "Friends", "League"]);
+    zh("actionTutorial", ["跳过", "下一步", "你的生命"], ["Skip", "Next", "Your health"]);
+    zh("dialogue", ["跳过", "自动", "记录"], ["Skip", "Auto", "Log"]);
+    // In English the table's English words.
+    const en = (screen: string, list: string[]) => {
+      const w = words(`${screen}-en.json`);
+      for (const word of list) t.ok(w.has(word), `in en the ${screen} screen shows ${word}`);
+    };
+    en("settingsTree", ["Settings", "Graphics", "Audio", "Apply", "Revert", "Defaults"]);
+    en("actionTutorial", ["Skip", "Next", "Your health"]);
 
-    // The HUDs: no Latin word in another locale, shown or named.
+    // The HUDs: no Latin word in another locale, shown (or naming a touch control).
     for (const { locale, surface, hud, file } of hudFiles) {
-      const els = ui(run, file);
       if (locale === "en") continue;
-      const words = els.filter((e) => e.kind !== "icon" && e.parent !== "Dpad").flatMap((e) => (NAMED.has(e.id) ? [e.text, e.name] : [e.text]));
-      const latin = [...new Set(words.filter((x) => /[A-Za-z]/.test(x) && !SYMBOLS.has(x)))];
+      const els = ui(run, file).filter((e) => e.kind !== "icon" && e.parent !== "Dpad");
+      const shown = els.flatMap((e) => (NAMED.has(e.id) ? [e.text, e.name] : [e.text]));
+      const latin = [...new Set(shown.flatMap((x) => x.match(/[A-Za-z]+/g) ?? []).filter((w) => !allowed(w)))];
       t.equal(latin.join(", "), "", `the ${hud} HUD on a ${surface} in ${locale} has no English left`);
     }
-    const hudEn = (hud: string, surface: string) => {
-      const els = ui(run, `hud-${hud}-${surface}-en.json`);
-      return new Set(els.flatMap((e) => [e.text, e.name]).filter((x) => x !== ""));
-    };
-    const zh = (hud: string, surface: string) => {
-      const els = ui(run, `hud-${hud}-${surface}-zh-CN.json`);
-      return new Set(els.flatMap((e) => [e.text, e.name]).filter((x) => x !== ""));
-    };
-    // In en the defaults, in zh-CN the table's: one word of each HUD's own on each side.
+    const hudWords = (hud: string, surface: string, locale: string) => new Set(ui(run, `hud-${hud}-${surface}-${locale}.json`).flatMap((e) => [e.text, e.name]).filter((x) => x !== ""));
+    // In en the table's English, in zh-CN its Chinese: one word of each HUD's on each side.
     const pairs: Array<[hud: string, surface: string, en: string, zh: string]> = [
-      ["platformer", "desktop", "Pause", "暂停"],
-      ["platformer", "tablet", "Jump", "跳跃"],
-      ["shooter", "desktop", "kills", "击杀"],
-      ["shooter", "tablet", "Fire", "开火"],
-      ["puzzle", "desktop", "moves left", "剩余步数"],
-      ["puzzle", "desktop", "Target 1,000", "目标 1,000"],
-      ["idle", "desktop", "Tap", "点击"],
-      ["idle", "desktop", "Lv 0", "0 级"],
-      ["racing", "desktop", "lap", "圈"],
-      ["racing", "desktop", "Best 0:41.200", "最佳 0:41.200"],
-      ["racing", "desktop", "Boost", "加速"],
-      ["racing", "tablet", "Brake", "刹车"],
-      ["racing", "tablet", "Left", "左"],
+      ["actionHud", "desktop", "Combo", "连击"],
+      ["actionHud", "desktop", "Time", "时间"],
+      ["actionHud", "tablet", "Jump", "跳跃"],
+      ["actionHud", "tablet", "Attack", "攻击"],
+      ["shooterHud", "desktop", "Ring closes", "毒圈收缩"],
+      ["shooterHud", "tablet", "Fire", "开火"],
+      ["manageHud", "desktop", "Spring, day 12", "春季第12天"],
+      ["raceHud", "desktop", "Best", "最佳"],
+      ["raceHud", "desktop", "Lap", "圈"],
+      ["raceHud", "tablet", "Brake", "刹车"],
+      ["raceHud", "tablet", "Left", "左"],
+      ["sportsHud", "desktop", "2nd half", "下半场"],
     ];
-    for (const [hud, surface, en, cn] of pairs) {
-      t.ok(hudEn(hud, surface).has(en), `in en the ${hud} HUD on a ${surface} shows ${en}`);
-      t.ok(zh(hud, surface).has(cn), `in zh-CN it shows ${cn}`);
+    for (const [hud, surface, word, cn] of pairs) {
+      t.ok(hudWords(hud, surface, "en").has(word), `in en the ${hud} on a ${surface} shows ${word}`);
+      t.ok(hudWords(hud, surface, "zh-CN").has(cn), `in zh-CN it shows ${cn}`);
     }
   },
 });

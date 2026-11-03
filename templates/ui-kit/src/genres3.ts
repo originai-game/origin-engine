@@ -63,8 +63,9 @@ export function photoScreen(): boolean {
   og.ui.anchor("Shot", { anchor: "topLeft", margin: 0, offsetX: -sa.left, offsetY: -sa.top, width: px(vp.width), height: px(vp.height) }, () => {
     const layer = (id: string, tex: unknown, alpha: number): void => {
       og.ui.column(id, { width: grow, height: grow }, () => {});
-      og.ui.setDraw({ shape: { kind: "rect" }, fills: tex ? [{ kind: "image", texture: tex, fit: "cover", focal: { x: 0.5, y: 0.5 } }] : [{ kind: "solid", color: { token: "backdrop" } }], opacity: alpha } as never);
-      og.ui.props({ position: "absolute", insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, transform: { scaleX: k, scaleY: k, rotate: ((v.roll ?? 0) * Math.PI) / 180, y: (v.height ?? 0) * vp.height * 0.06 } } as never);
+      og.ui.setDraw({ shape: { kind: "rect" }, fills: tex ? [{ kind: "image", texture: tex, fit: "cover", focal: { x: 0.5, y: 0.5 } }] : [{ kind: "solid", color: { token: "backdrop" } }] } as never);
+      // The blend is the element's opacity, not the draw's: a draw's opacity below 1 composites through a layer.
+      og.ui.props({ position: "absolute", insets: { start: 0, top: 0, end: 0, bottom: 0 }, inert: true, opacity: alpha, transform: { scaleX: k, scaleY: k, rotate: ((v.roll ?? 0) * Math.PI) / 180, y: (v.height ?? 0) * vp.height * 0.06 } } as never);
     };
     layer("Picture", ph.filter === "none" ? plain : filtered, 1);
     if (ph.filter !== "none") layer("Plain", plain, 1 - ph.strength);
@@ -73,7 +74,7 @@ export function photoScreen(): boolean {
     og.ui.setDraw({
       shape: { kind: "rect" },
       fills: [
-        { kind: "solid", color: ev >= 0 ? { r: 1, g: 1, b: 1, a: ev * 0.18 } : { r: 0, g: 0, b: 0, a: -ev * 0.3 } },
+        ...(ev === 0 ? [] : [{ kind: "solid", color: ev > 0 ? { r: 1, g: 1, b: 1, a: ev * 0.18 } : { r: 0, g: 0, b: 0, a: -ev * 0.3 } }]),
         { kind: "gradient", type: "radial", from: { x: 0.5, y: 0.5 }, to: { x: 1, y: 1 }, stops: [{ offset: 0.35, color: { r: 0, g: 0, b: 0, a: 0 } }, { offset: 1, color: { r: 0, g: 0, b: 0, a: 0.9 * (v.vignette ?? 0) } }] },
       ],
     } as never);
@@ -404,8 +405,21 @@ const DEFAULTS: Values = {
 const se0 = () => ({ page: "graphics", applied: { ...DEFAULTS } as Values, pending: {} as Values, confirm: 0, before: null as Values | null });
 let se = se0();
 
-/** The settings tree (B-settings, roadmap G1-7): every page's entries as data; display changes confirmed or reverted. */
-export function settingsTreeScreen(world: World): void {
+/** What Apply keeps (og.settings, by src/main.ts): the tree's values, the display they make and the language's code. */
+export type TreeSettings = { values: Values; display: DisplaySettings; language: string };
+
+/** Puts the tree's values back from og.settings (a relaunch): every key the tree knows, the rest left at their defaults. */
+export function restoreSettingsTree(values: unknown): void {
+  if (!values || typeof values !== "object") return;
+  for (const [k, n] of Object.entries(values as Record<string, unknown>)) if (k in DEFAULTS && typeof n === "number" && Number.isFinite(n)) se.applied[k] = n;
+}
+
+/**
+ * The settings tree (B-settings, roadmap G1-7): every page's entries as data; display changes confirmed or reverted.
+ * Returns the settings Apply made (for the game to save), else null.
+ */
+export function settingsTreeScreen(world: World): TreeSettings | null {
+  let applied: TreeSettings | null = null;
   const v = (k: string): number => se.pending[k] ?? se.applied[k] ?? 0;
   const dirty = (k: string): boolean => k in se.pending && se.pending[k] !== se.applied[k];
   const E = (key: string, kind: SettingKind, more: Partial<SettingEntry> = {}): SettingEntry => ({
@@ -418,12 +432,12 @@ export function settingsTreeScreen(world: World): void {
   if (se.confirm > 0) se.confirm = Math.max(0, se.confirm - 1 / 60);
   const pages = [
     { key: "graphics", label: L("set.page.graphics"), entries: [
-      E("quality", "choice", { options: words("set.quality", QUALITY), section: sec("display"), display: true }),
-      E("scale", "slider", { min: 0.5, max: 1, step: 0.05, unit: "%", display: true }),
+      E("quality", "choice", { options: words("set.quality", QUALITY), section: sec("display"), display: true, preview: art("photo/vivid") }),
+      E("scale", "slider", { min: 0.5, max: 1, step: 0.05, unit: "%", display: true, preview: art("photo/shot") }),
       E("cap", "choice", { options: words("set.cap", CAPS), display: true }),
       E("vsync", "toggle", { display: true }),
       E("fullscreen", "toggle", { display: true }),
-      E("aspect", "choice", { options: [...ASPECTS], section: sec("screen") }),
+      E("aspect", "choice", { options: [...ASPECTS], section: sec("screen"), preview: art("scenes/jade") }),
       E("safe", "slider", { min: 0.8, max: 1, step: 0.01, unit: "%" }),
     ] },
     { key: "audio", label: L("set.page.audio"), entries: [
@@ -477,6 +491,7 @@ export function settingsTreeScreen(world: World): void {
       se.pending = {};
       og.render.setDisplay(world, display(se.applied));
       og.input.setKeyboardLayout((LAYOUTS[["qwerty", "azerty", "qwertz"][se.applied.layout ?? 0]!] ?? []).map(([code, label]) => ({ code, label })));
+      applied = { values: { ...se.applied }, display: display(se.applied), language: LANGS[se.applied.language ?? 0] ?? "en" };
       if (displayKeys.some((k) => before[k] !== se.applied[k])) {
         se.before = before;
         se.confirm = 15;
@@ -495,6 +510,7 @@ export function settingsTreeScreen(world: World): void {
       og.render.setDisplay(world, display(se.applied));
     }
   }, [{ action: "tabNext", hint: L("set.nextPage") }, { action: "back", hint: L("hint.back") }]);
+  return applied;
 }
 
 /** The settings preview's input actions, defined in setup: the controls page rebinds them. */

@@ -1,15 +1,16 @@
 // The screens the frames playtests show, and the command script that shows
 // each and takes its frame: `show:<screen>`, then a screenshot once its
-// entrance has settled (longer for the results' stars and count-up and the
-// cutscene's typing).
+// entrance has settled. Beside the gallery, the widget sheet, the toasts and
+// the materials, the genre showcases' pages (src/showcases.ts
+// SHOWCASE_SCREENS): the ejected screen documents (title, pause, tutorial,
+// loading, results, scoreboard, leaderboard) and the HUDs built from the
+// HUD components. The pattern screens have their own playtests (patterns.ts).
 
-export const FRAME_SCREENS = [
-  "gallery", "widgets", "mainMenu", "pause", "settings", "platformer", "shooter", "puzzle", "idle", "racing",
-  "cutscene", "shop", "inventory", "levels", "results", "leaderboard", "tutorial", "loading", "confirm", "alert", "toasts",
-  "materials",
-] as const;
+import { SHOWCASE_SCREENS } from "../src/showcases.ts";
 
-const SETTLE: Record<string, number> = { results: 1.6, cutscene: 1.8 };
+export const FRAME_SCREENS = ["gallery", "widgets", ...SHOWCASE_SCREENS, "toasts", "materials"] as const;
+
+const SETTLE: Record<string, number> = {};
 
 /**
  * The style playtests' wait after each `show:`: every entrance settled in
@@ -17,7 +18,7 @@ const SETTLE: Record<string, number> = { results: 1.6, cutscene: 1.8 };
  * take at most two of the pack's base durations (the longest, 380 ms: 0.76
  * s), the toasts start 0.1 s in. styles.ts checks each capture against it.
  */
-export const STYLE_SETTLE: Record<string, number> = { default: 1.0, toasts: 1.2, results: 1.6, cutscene: 1.8 };
+export const STYLE_SETTLE: Record<string, number> = { default: 1.0, toasts: 1.2 };
 
 /**
  * The script and the files it writes, starting at `t0` seconds; `settle`
