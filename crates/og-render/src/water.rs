@@ -309,14 +309,14 @@ struct WaterGpu {
     /// The surface's frame from the world: a bounded sea is clamped to its
     /// rectangle in it.
     inverse: [[f32; 4]; 4],
-    /// The FFT sea ([`crate::ocean_fft`]): x its cascades, y how many of
-    /// the swell's waves (the first, longest) the vertices draw as
-    /// Gerstner waves (the tick's long band), z the slope variance finer
-    /// than the finest cascade, w unused.
+    /// The FFT sea ([`crate::ocean_fft`]): x its cascades, y unused, z the
+    /// slope variance finer than the finest cascade, w unused.
     fft: [f32; 4],
     /// Per cascade: one over its tile (1/m), its uv at the frame's origin
     /// (whole tiles dropped), its tile (m).
     cascades: [[f32; 4]; 3],
+    /// Each cascade's band's middle wavenumber (xyz; [`cascade_weight`]).
+    bands: [f32; 4],
     swell: [[f32; 4]; 2 * og_core::ocean::OCEAN_WAVES],
 }
 
@@ -340,19 +340,21 @@ pub(crate) fn ocean(water: &Water) -> Option<og_core::ocean::Ocean> {
 }
 
 /// The sea's block of [`WaterGpu`] at `seconds` and the scene's `origin`:
-/// the header and the waves, their phases at the origin in f64 so the
-/// pattern stays put in the world as the origin moves; and how many of
-/// them (the longest) are the tick's long band, which the vertices draw as
-/// Gerstner waves under the FFT's cascades (the rest of og_core's waves
-/// float things in the tick but are not drawn: the cascades draw that band).
+/// the header and og_core's waves, their phases at the origin in f64 so the
+/// pattern stays put in the world as the origin moves. The vertices draw
+/// every one of them as the tick floats bodies on them (og-physics'
+/// `WaterBody::surface`): each faded by [`og_core::ocean::grid_keep`] at the
+/// tick's grid cell there ([`tick_cell`]), so a floater rides the drawn
+/// surface; the FFT's cascades fill in only the waves the tick leaves out.
+/// The header's y is that grid's even cell.
 fn ocean_gpu(
     water: &Water,
     seconds: f64,
     origin: Vec3,
-) -> ([f32; 4], [[f32; 4]; 2 * og_core::ocean::OCEAN_WAVES], u32) {
+) -> ([f32; 4], [[f32; 4]; 2 * og_core::ocean::OCEAN_WAVES]) {
     let mut swell = [[0.0; 4]; 2 * og_core::ocean::OCEAN_WAVES];
     let Some(sea) = ocean(water) else {
-        return ([0.0; 4], swell, 0);
+        return ([0.0; 4], swell);
     };
     let phases = sea.phases(
         seconds,
@@ -364,19 +366,40 @@ fn ocean_gpu(
         swell[2 * i] = [k.x, k.y, w.amplitude, phase];
         swell[2 * i + 1] = [lean.x, lean.y, w.k * w.lean, 0.0];
     }
-    let params = crate::ocean_fft::spectrum::SeaParameters::from_ocean(
-        water.wind,
-        water.swell,
-        water.choppiness,
-        Some(&sea),
-    );
-    let long = sea
-        .waves
-        .iter()
-        .take_while(|w| f64::from(w.k) < params.long_cut)
-        .count() as u32;
     // Whitecaps where the surface's Jacobian falls under WHITECAP_J.
-    ([1.0, 0.0, 1.0 - WHITECAP_J, WHITECAP_J], swell, long)
+    (
+        [1.0, tick_even_cell(water), 1.0 - WHITECAP_J, WHITECAP_J],
+        swell,
+    )
+}
+
+/// The even cell (m) of the grid the tick floats bodies on for `water`
+/// (og-physics' `WaterBody::surface`: its size's longer side over its
+/// segments, as og_core::ocean::grid_segments splits them).
+fn tick_even_cell(water: &Water) -> f32 {
+    let extent = water.size.max_element();
+    extent / og_core::ocean::grid_segments(water.segments.max(1), extent) as f32
+}
+
+/// The tick's grid cell (m) at world point `at` (xz) of `water`: what
+/// water.wgsl `tick_cell` computes.
+#[cfg(test)]
+fn tick_cell(water: &Water, at: Vec2) -> f32 {
+    let centre = water.transform.w_axis;
+    og_core::ocean::grid_cell(
+        at - Vec2::new(centre.x, centre.z),
+        water.size * 0.5,
+        tick_even_cell(water),
+    )
+}
+
+/// How much of FFT cascade c's height the surface draws where the tick's
+/// cell is `tick_cell`: none where the tick's own waves cover its band (its
+/// band's middle wavenumber `k_mid` within them), all where the tick fades
+/// them (water.wgsl `cascade_weight`).
+#[cfg(test)]
+fn cascade_weight(k_mid: f32, tick_cell: f32) -> f32 {
+    1.0 - og_core::ocean::grid_keep(k_mid, tick_cell)
 }
 
 /// The Jacobian of the sea's horizontal displacement under which its
@@ -416,13 +439,16 @@ fn clipmap(eye: Vec3, origin: Vec3, segments: u32) -> [[f32; 4]; CLIP_LEVELS] {
 }
 
 /// A sea's clipmap cells along a level's edge and its FFT cascades, by the
-/// frame's quality: desktop presets 64 and three, the low preset (phones)
-/// 32 and two.
+/// frame's quality: desktop presets 128 and three, the low preset (phones)
+/// 64 and two. A vertex d metres from the camera lies at most d / (s / 4)
+/// from the next (s the cells along an edge, with the edge's geomorph): on
+/// desktop no coarser than the tick's 3.5 m centre cell (a 6 km sea of 256)
+/// within 110 m, so every wave a floater rides there is drawn whole.
 fn sea_tier(quality: &crate::RenderQuality) -> (u32, u32) {
     if quality.volumetric_step_scale < 1.0 {
-        (32, 2)
+        (64, 2)
     } else {
-        (64, 3)
+        (128, 3)
     }
 }
 
@@ -533,6 +559,8 @@ struct FftSea {
     tiles: [f64; 3],
     /// The slope variance finer than the finest cascade.
     tail: f32,
+    /// Each cascade's band's middle wavenumber (rad/m).
+    bands: [f32; 4],
 }
 
 /// One surface ready to draw.
@@ -847,7 +875,7 @@ impl WaterRenderer {
             } else {
                 water.flow
             };
-            let (ocean, swell, long) = ocean_gpu(water, seconds, origin);
+            let (ocean, swell) = ocean_gpu(water, seconds, origin);
             let drawn_sea = sea.filter(|_| ocean[0] > 0.0);
             let gpu = WaterGpu {
                 model: water.transform.to_cols_array_2d(),
@@ -921,12 +949,13 @@ impl WaterRenderer {
                 fft: match drawn_sea {
                     Some(f) => [
                         f.tiles.iter().filter(|t| **t > 0.0).count() as f32,
-                        long as f32,
+                        0.0,
                         f.tail,
                         0.0,
                     ],
                     None => [0.0; 4],
                 },
+                bands: drawn_sea.map_or([0.0; 4], |f| f.bands),
                 cascades: cascade_uv(drawn_sea, origin),
                 swell,
             };
@@ -1128,8 +1157,13 @@ impl WaterRenderer {
             for (t, c) in tiles.iter_mut().zip(&built.cascades) {
                 *t = c.size;
             }
+            let mut bands = [0.0; 4];
+            for (b, c) in bands.iter_mut().zip(&built.cascades) {
+                *b = (c.band.lo.max(1e-6) * c.band.hi).sqrt() as f32;
+            }
             let info = FftSea {
                 key,
+                bands,
                 tiles,
                 tail: built.tail_slope_variance as f32,
             };
@@ -1496,6 +1530,105 @@ mod tests {
         d
     }
 
+    /// The boats sample's floaters (tests/evidence/r5-water/boats) ride the
+    /// drawn sea: at each, at several times, the height water.wgsl's
+    /// vertices draw (`ocean_displace`: og_core's waves faded at the larger
+    /// of the clipmap's vertex spacing there and the tick's cell, the rest
+    /// point found as the tick finds it) is the height og.Buoyancy floats it
+    /// on (og-physics' `WaterBody::surface`: `height_on_grid` at the tick's
+    /// cell) to 2 cm, and the FFT cascades' height drawn on top there (each
+    /// weighted by `cascade_weight`) has an RMS under 0.3 m of the gale's
+    /// 9.7 m sea. Drawing only the tick's longest waves under the cascades
+    /// (r5-fft ea2b5ca42) left the floaters metres off the drawn crests.
+    #[test]
+    fn the_boats_float_on_the_drawn_sea() {
+        let water = Water {
+            size: Vec2::splat(6000.0),
+            segments: 256,
+            wind: Vec2::new(7.0, -18.7),
+            choppiness: 1.0,
+            ..Default::default()
+        };
+        let sea = ocean(&water).expect("a sea");
+        let eye = Vec3::new(0.0, 10.0, 0.0);
+        let (segments, cascades) = sea_tier(&crate::RenderQuality::default());
+        let levels = clipmap(eye, Vec3::ZERO, segments);
+        // water.wgsl sea_vertex's spacing d metres from the clipmap's centre: the first level that holds it, its cell
+        // growing to twice at its edge (the geomorph).
+        let spacing = |d: f32| {
+            let (cell, half) = levels
+                .iter()
+                .map(|l| (l[2], l[2] * segments as f32 * 0.5))
+                .find(|(_, half)| *half >= d)
+                .expect("inside the clipmap");
+            let m = ((d / half - 0.7) / 0.25).clamp(0.0, 1.0);
+            cell * (1.0 + m * m * (3.0 - 2.0 * m))
+        };
+        let params = crate::ocean_fft::spectrum::SeaParameters::from_ocean(
+            water.wind,
+            water.swell,
+            water.choppiness,
+            Some(&sea),
+        );
+        let built = crate::ocean_fft::spectrum::build(
+            &crate::ocean_fft::spectrum::cascades(cascades as usize, &params),
+            &params,
+        );
+        let floaters = [
+            (-12.0, -30.0),
+            (6.0, -45.0),
+            (-2.0, -70.0),
+            (10.0, -20.0),
+            (-6.0, -38.0),
+            (18.0, -55.0),
+            (-20.0, -52.0),
+        ];
+        for seconds in [3.0, 4.5, 5.0, 6.0, 6.5] {
+            let (_, swell) = ocean_gpu(&water, seconds, Vec3::ZERO);
+            for (x, z) in floaters {
+                let at = Vec2::new(x, z);
+                let tc = tick_cell(&water, at);
+                let keep = tc.max(spacing(at.distance(Vec2::new(eye.x, eye.z))));
+                let drawn = |p: Vec2| {
+                    let mut d = Vec3::ZERO;
+                    for w in swell.chunks(2) {
+                        let (a, b) = (w[0], w[1]);
+                        let k = Vec2::new(a[0], a[1]);
+                        let th = k.dot(p) + a[3];
+                        let f = og_core::ocean::grid_keep(k.length(), keep);
+                        d += Vec3::new(b[0] * th.cos(), a[2] * th.sin(), b[1] * th.cos()) * f;
+                    }
+                    d
+                };
+                let mut rest = at;
+                for _ in 0..8 {
+                    let d = drawn(rest);
+                    rest = at - Vec2::new(d.x, d.z);
+                }
+                let got = drawn(rest).y;
+                let tick =
+                    sea.height_on_grid(glam::DVec2::new(f64::from(x), f64::from(z)), seconds, tc);
+                assert!(
+                    (got - tick).abs() < 0.02,
+                    "{seconds} s at ({x}, {z}): drawn {got} m, the tick's {tick} m"
+                );
+                let fft: f64 = built
+                    .cascades
+                    .iter()
+                    .map(|c| {
+                        let k = (c.band.lo.max(1e-6) * c.band.hi).sqrt() as f32;
+                        f64::from(cascade_weight(k, tc)).powi(2) * c.variance
+                    })
+                    .sum();
+                assert!(
+                    fft.sqrt() < 0.3,
+                    "({x}, {z}): the cascades draw {} m RMS over the tick's sea",
+                    fft.sqrt()
+                );
+            }
+        }
+    }
+
     /// The sea the shader draws at a frame point is og_core's at the same
     /// place in the absolute world (frame + the scene's origin) and the
     /// same tick, wherever the origin has moved to: what the simulation's
@@ -1511,9 +1644,8 @@ mod tests {
         let sea = ocean(&water).expect("a sea");
         let seconds = 4321.25;
         for origin in [Vec3::ZERO, Vec3::new(51_200.0, 0.0, -25_600.0)] {
-            let (head, swell, long) = ocean_gpu(&water, seconds, origin);
+            let (head, swell) = ocean_gpu(&water, seconds, origin);
             assert_eq!(head[0], 1.0);
-            assert!(long > 0 && (long as usize) < og_core::ocean::OCEAN_WAVES);
             for p in [
                 Vec2::new(0.0, 0.0),
                 Vec2::new(37.5, -120.0),

@@ -34,15 +34,16 @@ struct WaterUniform {
   normals: vec4<f32>,     // x: the normal map's repeats, yz: its flow (0: the lake's layers), w: 1 with a normal map
   ao: vec4<f32>,          // x: PostEffects.aoDirect, how much the screen AO darkens the reflection and the body (0: not at all), y: 1 with a flow map, z: 1 over a mesh
   layers: array<vec4<f32>, 2>,  // the lake's four layers' uv at the frame's origin, whole repeats dropped (xy, zw; origin.rs)
-  ocean: vec4<f32>,       // x: 1 with a sea, y: the grid's centre cell (m), z: the crests' bunching where whitecaps start, w: over which they grow
+  ocean: vec4<f32>,       // x: 1 with a sea, y: the tick's grid's even cell (m), z: the crests' bunching where whitecaps start, w: over which they grow
   sea_wind: vec4<f32>,    // xy: the wind's direction in the frame's xz, z: its speed (m/s; 0 without a sea)
   clip: vec4<f32>,        // the sea's clipmap: x levels, y cells along a level's edge, z the horizon ring's radius, w 1 endless
   levels: array<vec4<f32>, 10>,  // per level: its centre (frame xz), its cell (m)
   inverse: mat4x4<f32>,   // the surface's frame from the world
-  fft: vec4<f32>,         // x cascades, y the swell's waves drawn (the longest), z the slope variance under the finest cascade
+  fft: vec4<f32>,         // x cascades, z the slope variance under the finest cascade
   cascades: array<vec4<f32>, 3>,  // per cascade: 1 / tile (1/m), its uv at the frame's origin, the tile (m)
-  // Per wave: (k d.x, k d.z, amplitude, phase at the frame's origin), (lean d.x, lean d.z, k lean, 0)
-  // (water.rs ocean_gpu); the first fft.y of them drawn.
+  bands: vec4<f32>,       // each cascade's band's middle wavenumber (xyz; cascade_weight)
+  // Per wave of og_core::ocean: (k d.x, k d.z, amplitude, phase at the frame's origin), (lean d.x, lean d.z, k lean, 0)
+  // (water.rs ocean_gpu).
   swell: array<vec4<f32>, 64>,
 };
 
@@ -89,21 +90,45 @@ fn cascade_uv(c: u32, p: vec2<f32>) -> vec2<f32> {
   return p * t.x + t.yz;
 }
 
-// The sea's displacement (x, height, z) at rest point p (frame xz) as vertices `cell` metres apart draw it: the tick's
-// long waves, then each cascade read at the mip whose texels are the cells, faded once its longest waves are under
-// four cells.
+// The tick's grid cell (m) at rest point p (frame xz): og_core::ocean::grid_cell over the surface's size about the
+// entity (og-physics' WaterBody::surface), the cell a floating body's waves are faded by. g w(g) = u solved by
+// Newton's method for each axis, as there.
+fn tick_cell(p: vec2<f32>) -> f32 {
+  let half = max(water.size.xy * 0.5, vec2<f32>(1e-3));
+  let u = clamp((p - water.model[3].xz) / half, vec2<f32>(-1.0), vec2<f32>(1.0));
+  var g = u;
+  for (var i = 0; i < 8; i++) {
+    let w = g * (0.15 + 0.85 * g * g);
+    g -= (w - u) / (0.15 + 2.55 * g * g);
+  }
+  let slope = 0.15 + 2.55 * g * g;
+  return water.ocean.y * max(slope.x, slope.y);
+}
+
+// How much of cascade c's height is drawn where the tick's cell is `tc`: none where the tick's waves cover its band,
+// all where the tick fades them (water.rs cascade_weight).
+fn cascade_weight(c: u32, tc: f32) -> f32 {
+  return 1.0 - sea_keep(water.bands[c], tc);
+}
+
+// The sea's displacement (x, height, z) at rest point p (frame xz) as vertices `cell` metres apart draw it: every wave
+// of og_core::ocean as the tick floats bodies on it (faded at the tick's cell here, or the vertices' where those are
+// coarser), then each cascade where the tick leaves its band out, read at the mip whose texels are the cells and faded
+// once its longest waves are under four cells.
 fn ocean_displace(p: vec2<f32>, cell: f32) -> vec3<f32> {
   var d = vec3<f32>(0.0);
-  for (var i = 0u; i < u32(water.fft.y); i++) {
+  let tc = tick_cell(p);
+  let spacing = max(cell, tc);
+  for (var i = 0u; i < 32u; i++) {
     let a = water.swell[2u * i];
     let b = water.swell[2u * i + 1u];
-    let keep = sea_keep(length(a.xy), cell);
+    let keep = sea_keep(length(a.xy), spacing);
     let th = dot(a.xy, p) + a.w;
     d += vec3<f32>(b.x * cos(th), a.z * sin(th), b.y * cos(th)) * keep;
   }
   for (var c = 0u; c < u32(water.fft.x); c++) {
     let lod = log2(max(cell * 256.0 / water.cascades[c].w, 1.0));
-    let fade = 1.0 - smoothstep(4.0, 6.0, lod);
+    let fade = (1.0 - smoothstep(4.0, 6.0, lod)) * cascade_weight(c, tc);
     if (fade <= 0.0) { continue; }
     d += textureSampleLevel(heights, ripple_sampler, cascade_uv(c, p), 3u * c, min(lod, 4.0)).xyz * fade;
   }
@@ -126,23 +151,29 @@ struct SeaNormal {
 fn ocean_normal(p: vec2<f32>, footprint: f32, gx: vec2<f32>, gy: vec2<f32>) -> SeaNormal {
   var slope = vec2<f32>(0.0);
   var mss = water.fft.z;
-  for (var i = 0u; i < u32(water.fft.y); i++) {
+  // og_core's waves as the surface carries them (faded at the tick's cell), those the pixel cannot hold left to the
+  // facets' roughness.
+  let tc = tick_cell(p);
+  for (var i = 0u; i < 32u; i++) {
     let a = water.swell[2u * i];
-    let keep = sea_keep(length(a.xy), footprint);
+    let k = length(a.xy);
+    let carried = sea_keep(k, tc);
+    let keep = sea_keep(k, max(footprint, tc));
     let th = dot(a.xy, p) + a.w;
     slope += a.xy * (a.z * cos(th) * keep);
-    let ka = length(a.xy) * a.z;
-    mss += ka * ka * 0.5 * (1.0 - keep * keep);
+    let ka = k * a.z;
+    mss += ka * ka * 0.5 * max(carried * carried - keep * keep, 0.0);
   }
   var j = vec3<f32>(0.0);
   for (var c = 0u; c < u32(water.fft.x); c++) {
     let uv = cascade_uv(c, p);
     let k = water.cascades[c].x;
+    let w = cascade_weight(c, tc);
     let first = textureSampleGrad(heights, ripple_sampler, uv, 3u * c + 1u, gx * k, gy * k);
     let second = textureSampleGrad(heights, ripple_sampler, uv, 3u * c + 2u, gx * k, gy * k);
-    slope += first.xy;
-    mss += max(second.x - first.x * first.x, 0.0) + max(second.y - first.y * first.y, 0.0);
-    j += vec3<f32>(first.zw, textureSampleGrad(heights, ripple_sampler, uv, 3u * c, gx * k, gy * k).w);
+    slope += first.xy * w;
+    mss += (max(second.x - first.x * first.x, 0.0) + max(second.y - first.y * first.y, 0.0)) * w * w;
+    j += vec3<f32>(first.zw, textureSampleGrad(heights, ripple_sampler, uv, 3u * c, gx * k, gy * k).w) * w;
   }
   var o: SeaNormal;
   o.n = normalize(vec3<f32>(-slope.x, 1.0, -slope.y));
