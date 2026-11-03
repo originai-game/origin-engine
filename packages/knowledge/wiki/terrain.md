@@ -407,8 +407,8 @@ Token `og.Grass`, registered under the schema name `og.Grass`; its value type is
 | `clumpSize` | `number` | `1.2` | 0.05 … 20 | `m` | tunable | The size of the clumps blades grow in, sharing their tint and height. |
 | `clumpLean` | `number` | `0.4` | 0 … 1 | `ratio` | tunable | How far blades lean out from their clump's centre, as a share of their height. |
 | `tufts` | `number` | `0` | 0 … 1 | `ratio` | tunable | How far blades are pulled in towards their clump's centre: 0 an even lawn, 1 tight tufts. |
-| `baseColor` | `Color` | `{ r: 0.035, g: 0.09, b: 0.015 }` | — | — | — | The roots' colour (linear). |
-| `tipColor` | `Color` | `{ r: 0.22, g: 0.4, b: 0.07 }` | — | — | — | The tips' colour (linear). |
+| `baseColor` | `Color` | `{ r: 0.04, g: 0.085, b: 0.024 }` | — | — | — | The roots' colour (linear). |
+| `tipColor` | `Color` | `{ r: 0.235, g: 0.39, b: 0.11 }` | — | — | — | The tips' colour (linear). |
 | `dryColor` | `Color` | `{ r: 0.45, g: 0.38, b: 0.17 }` | — | — | — | Dry grass's colour (linear): dry clumps and drying tips. |
 | `colorVariation` | `number` | `0.3` | 0 … 1 | `ratio` | tunable | How much blades vary in brightness by clump, blade and patch. |
 | `dryness` | `number` | `0.15` | 0 … 1 | `ratio` | tunable | The share of clumps that are dry, and how far tips dry. |
@@ -500,10 +500,10 @@ component Grass {
     tunable true
   }
   field baseColor Color "The roots' colour (linear)." {
-    default 0.035 0.09 0.015
+    default 0.04 0.085 0.024
   }
   field tipColor Color "The tips' colour (linear)." {
-    default 0.22 0.4 0.07
+    default 0.235 0.39 0.11
   }
   field dryColor Color "Dry grass's colour (linear): dry clumps and drying tips." {
     default 0.45 0.38 0.17

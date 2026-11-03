@@ -49847,13 +49847,13 @@ export interface Grass {
   /**
    * The roots' colour (linear).
    *
-   * @default { r: 0.035, g: 0.09, b: 0.015 }
+   * @default { r: 0.04, g: 0.085, b: 0.024 }
    */
   baseColor: Color;
   /**
    * The tips' colour (linear).
    *
-   * @default { r: 0.22, g: 0.4, b: 0.07 }
+   * @default { r: 0.235, g: 0.39, b: 0.11 }
    */
   tipColor: Color;
   /**

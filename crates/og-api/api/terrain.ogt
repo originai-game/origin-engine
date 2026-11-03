@@ -188,10 +188,10 @@ module terrain {
       tunable true
     }
     field baseColor Color "The roots' colour (linear)." {
-      default 0.035 0.09 0.015
+      default 0.04 0.085 0.024
     }
     field tipColor Color "The tips' colour (linear)." {
-      default 0.22 0.4 0.07
+      default 0.235 0.39 0.11
     }
     field dryColor Color "Dry grass's colour (linear): dry clumps and drying tips." {
       default 0.45 0.38 0.17

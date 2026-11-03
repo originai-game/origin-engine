@@ -28152,7 +28152,7 @@ pub const RECORDS: &[RecordDecl] = &[
             FieldDecl {
                 name: "baseColor",
                 column: "Color",
-                default: "{\"r\":0.035,\"g\":0.09,\"b\":0.015}",
+                default: "{\"r\":0.04,\"g\":0.085,\"b\":0.024}",
                 readonly: false,
                 tunable: false,
                 min: None,
@@ -28169,7 +28169,7 @@ pub const RECORDS: &[RecordDecl] = &[
             FieldDecl {
                 name: "tipColor",
                 column: "Color",
-                default: "{\"r\":0.22,\"g\":0.4,\"b\":0.07}",
+                default: "{\"r\":0.235,\"g\":0.39,\"b\":0.11}",
                 readonly: false,
                 tunable: false,
                 min: None,

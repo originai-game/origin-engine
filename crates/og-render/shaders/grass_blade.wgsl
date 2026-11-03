@@ -27,7 +27,7 @@ struct GrassUniform {
   base_color: vec4<f32>,  // rgb: the roots' colour (linear), w: translucency
   tip_color: vec4<f32>,   // rgb: the tips', w: sheen
   dry_color: vec4<f32>,   // rgb: dry grass, w: roughness
-  variation: vec4<f32>,   // x: colour variation, y: dryness, z: patch size (m)
+  variation: vec4<f32>,   // x: colour variation, y: dryness, z: patch size (m), w: the field's distance (m)
   rows: vec4<u32>,      // rows of each level of detail
   wind: GrassWind,
 };

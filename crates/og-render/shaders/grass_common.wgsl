@@ -34,7 +34,7 @@ const GRASS_WAVELENGTH: f32 = 10.0;
 // Steps of last frame's bend per unit of bend.
 const GRASS_BEND_STEPS: f32 = 128.0;
 // How much a gust brightens the blades it presses down (grass.rs GUST_SHEEN).
-const GRASS_GUST_SHEEN: f32 = 1.0;
+const GRASS_GUST_SHEEN: f32 = 1.5;
 
 // One frame of og.Wind for the grass (grass.rs GrassWindGpu).
 struct GrassWind {
@@ -159,19 +159,30 @@ fn grass_clump(p: vec2<f32>, size: f32, seed: u32) -> vec4<f32> {
 // gust band rolls across both.
 fn grass_gust_sheen(w: GrassWind, at: vec2<f32>, amount: f32) -> f32 {
   let g = grass_gust(w, at, false);
-  return 1.0 + amount * w.dir.z * (1.4 * g * g - 0.35);
+  return 1.0 + amount * w.dir.z * (smoothstep(0.4, 0.75, g) - 0.2);
 }
 
-// Whether a clump of tint `clump` at world point `at` is dry, a share
-// `dryness` of clumps overall: gathered into drifts tens of metres across
-// (two octaves of the noise, turned off the world's axes), with stretches
-// of green between, not spread evenly as dots.
-fn grass_dry(clump: f32, at: vec2<f32>, dryness: f32) -> f32 {
+// The share of clumps that are dry at world point `at`, `dryness` of them
+// overall: a few scattered everywhere, most gathered into drifts tens of
+// metres across (two octaves of the noise, turned off the world's axes)
+// with stretches of green between, their edges soft over metres.
+fn grass_dry_share(at: vec2<f32>, dryness: f32) -> f32 {
   let q = at / 26.0;
   let r = vec2<f32>(q.x * 0.8 - q.y * 0.6, q.x * 0.6 + q.y * 0.8);
   let drift = 0.7 * grass_noise(r + vec2<f32>(13.0, 71.0)) + 0.3 * grass_noise(r * 2.7 + vec2<f32>(5.0, 29.0));
-  let share = min(dryness * 3.0 * smoothstep(0.42, 0.72, drift), 1.0);
-  return step(fract(clump * 7.31 + 0.17), share);
+  return min(dryness * (0.35 + 2.6 * smoothstep(0.36, 0.66, drift)), 1.0);
+}
+
+// Whether a clump of tint `clump` at world point `at` is dry: a blade's
+// clump is, or is not (grass_dry_share).
+fn grass_dry(clump: f32, at: vec2<f32>, dryness: f32) -> f32 {
+  return step(fract(clump * 7.31 + 0.17), grass_dry_share(at, dryness));
+}
+
+// The field's average colour from its root and tip colours (grass.rs
+// far_color).
+fn grass_far_color(base: vec3<f32>, tip: vec3<f32>) -> vec3<f32> {
+  return mix(base, tip, 0.55) * 0.7;
 }
 
 // The colour of dried grass as bright as `c`.

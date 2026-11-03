@@ -27,6 +27,9 @@ struct GrassOut {
   @location(3) shading: vec3<f32>,
   @location(4) cur_clip: vec4<f32>,
   @location(5) prev_clip: vec4<f32>,
+  // How far into the field's distance the blade stands (0 near, 1 where
+  // it lights as the ground under it does).
+  @location(6) far: f32,
 };
 
 fn grass_eye(previous: bool) -> GrassEye {
@@ -48,7 +51,13 @@ fn vs(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> Grass
   o.clip = frame.view_proj * vec4<f32>(v.world, 1.0);
   o.world = v.world;
   o.normal = v.normal;
-  o.color = grass_color(r.blade, v.t) * grass_gust_sheen(grass.wind, r.blade.root.xz + grass.wind.time.zw, GRASS_GUST_SHEEN);
+  // Far off, a blade takes the field's average colour and lights as the
+  // ground under it (in `fs`), so the thinning survivors match the ground
+  // they stand on rather than dot it (Ghost of Tsushima's far blades
+  // take the terrain's normal).
+  o.far = smoothstep(0.2, 0.8, distance(r.blade.root, grass.eye.xyz) / max(grass.variation.w, 1e-3));
+  let average = grass_far_color(grass.base_color.rgb, grass.tip_color.rgb);
+  o.color = mix(grass_color(r.blade, v.t), average, 0.6 * o.far) * grass_gust_sheen(grass.wind, r.blade.root.xz + grass.wind.time.zw, GRASS_GUST_SHEEN);
   o.shading = vec3<f32>(grass_occlusion(v.t), grass.tip_color.w * smoothstep(0.4, 0.8, v.t), v.t);
   o.cur_clip = grass.view_proj * vec4<f32>(v.world, 1.0);
   // Where the blade stood last frame: its last bend and flutter.
@@ -103,7 +112,7 @@ fn grass_band(t: f32) -> f32 {
 fn fs(in: GrassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
   let p = in.world;
   // Two-sided: the back face is lit with the flipped normal.
-  let n0 = normalize(in.normal) * select(-1.0, 1.0, front);
+  let n0 = normalize(mix(normalize(in.normal) * select(-1.0, 1.0, front), vec3<f32>(0.0, 1.0, 0.0), 0.85 * in.far));
   let v = select(normalize(frame.view_pos.xyz - p), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
   let l = normalize(frame.light_dir.xyz);
   let backlit = dot(n0, l) < 0.0;

@@ -123,8 +123,8 @@ impl Default for Grass {
             clump_size: 1.2,
             clump_lean: 0.4,
             tufts: 0.0,
-            base_color: Vec3::new(0.035, 0.09, 0.015),
-            tip_color: Vec3::new(0.22, 0.4, 0.07),
+            base_color: Vec3::new(0.04, 0.085, 0.024),
+            tip_color: Vec3::new(0.235, 0.39, 0.11),
             dry_color: Vec3::new(0.45, 0.38, 0.17),
             color_variation: 0.3,
             dryness: 0.15,
@@ -183,7 +183,7 @@ const GUST_CELL: f64 = 14.0;
 const GUST_PERIOD: f64 = 256.0;
 /// How much a gust brightens the blades it presses down (and the ground
 /// past them): grass_common.wgsl `grass_gust_sheen`.
-const GUST_SHEEN: f32 = 1.0;
+const GUST_SHEEN: f32 = 1.5;
 /// The narrowest a blade draws (px).
 const MIN_WIDTH_PX: f32 = 1.0;
 /// How far a blade seen edge-on turns towards the eye.
@@ -488,6 +488,13 @@ pub(crate) struct FarGpu {
     wind: GrassWindGpu,
 }
 
+/// A field's average colour (grass.wgsl `grass_far_color`): its blades'
+/// colour a little over halfway up, darkened by their occlusion towards
+/// the roots and the shade between them.
+fn far_color(g: &Grass) -> Vec3 {
+    g.base_color.lerp(g.tip_color, 0.55) * 0.7
+}
+
 /// The seed as the shaders read it: 24 bits, exact in an f32.
 fn seed_bits(seed: u32) -> f32 {
     (hash(seed ^ 0x9e37_79b9) >> 8) as f32
@@ -519,7 +526,7 @@ pub(crate) fn far_gpu(scene: &crate::RenderScene, terrain: usize) -> FarGpu {
     // (grass_blade.wgsl grass_color), darkened by their occlusion towards
     // the roots and the shade between them, so the ground under and past
     // the blades reads as the same field.
-    let c = g.base_color.lerp(g.tip_color, 0.55) * 0.75;
+    let c = far_color(g);
     gpu.color = c.extend(g.layer as f32).to_array();
     // Under every blade (gaps show the field's colour, not the layer's),
     // whole by the start of LOD 1; gusts brighten it as they do the blades.
@@ -581,6 +588,24 @@ struct DrawGpu {
     variation: [f32; 4],
     rows: [u32; 4],
     wind: GrassWindGpu,
+}
+
+/// A field's look as `GrassUniform` holds it: `base_color`, `tip_color`,
+/// `dry_color` and `variation`.
+fn look_gpu(g: &Grass) -> [[f32; 4]; 4] {
+    [
+        g.base_color
+            .extend(g.translucency.clamp(0.0, 1.0))
+            .to_array(),
+        g.tip_color.extend(g.sheen.clamp(0.0, 1.0)).to_array(),
+        g.dry_color.extend(g.roughness.clamp(0.04, 1.0)).to_array(),
+        [
+            g.color_variation.clamp(0.0, 1.0),
+            g.dryness.clamp(0.0, 1.0),
+            g.clump_size.max(0.05) * 6.0,
+            g.distance,
+        ],
+    ]
 }
 
 /// The height range blade roots are stored over, either side of the camera (m).
@@ -1137,6 +1162,7 @@ impl GrassRenderer {
             };
             let proj = view.frame.proj;
             let per_pixel = 2.0 / (proj.y_axis.y.abs().max(1e-6) * view.height.max(1) as f32);
+            let [base_color, tip_color, dry_color, variation] = look_gpu(&g);
             let draw = DrawGpu {
                 view_proj: view.frame.view_proj.to_cols_array_2d(),
                 prev_view_proj: view.prev_view_proj.to_cols_array_2d(),
@@ -1151,18 +1177,10 @@ impl GrassRenderer {
                     g.curve.clamp(0.0, 1.0),
                     g.flutter.max(0.0),
                 ],
-                base_color: g
-                    .base_color
-                    .extend(g.translucency.clamp(0.0, 1.0))
-                    .to_array(),
-                tip_color: g.tip_color.extend(g.sheen.clamp(0.0, 1.0)).to_array(),
-                dry_color: g.dry_color.extend(g.roughness.clamp(0.04, 1.0)).to_array(),
-                variation: [
-                    g.color_variation.clamp(0.0, 1.0),
-                    g.dryness.clamp(0.0, 1.0),
-                    g.clump_size.max(0.05) * 6.0,
-                    0.0,
-                ],
+                base_color,
+                tip_color,
+                dry_color,
+                variation,
                 rows: [lod_rows[0], lod_rows[1], lod_rows[2], 0],
                 wind,
             };
@@ -1412,6 +1430,92 @@ mod tests {
             farthest > g.distance - CHUNK * 1.5,
             "the field ends at {farthest} m"
         );
+    }
+
+    /// Each uniform the grass writes has the layout its shader reads
+    /// (naga's offsets of the WGSL struct against the Rust one's), and
+    /// the look's values land where the shader reads them: translucency
+    /// in `base_color.w`, which grass.wgsl's backlit term multiplies.
+    #[test]
+    fn the_uniforms_reach_the_shaders() {
+        use std::mem::{offset_of, size_of};
+        fn members(src: &str, name: &str) -> (Vec<(String, u32)>, u32) {
+            let module = naga::front::wgsl::parse_str(src).expect("parses");
+            let mut layouter = naga::proc::Layouter::default();
+            layouter.update(module.to_ctx()).expect("lays out");
+            let (handle, ty) = module
+                .types
+                .iter()
+                .find(|(_, t)| t.name.as_deref() == Some(name))
+                .unwrap_or_else(|| panic!("{name} in the shader"));
+            let naga::TypeInner::Struct { members, span } = &ty.inner else {
+                panic!("{name} is a struct");
+            };
+            assert_eq!(*span, layouter[handle].size);
+            let list = members
+                .iter()
+                .map(|m| (m.name.clone().unwrap_or_default(), m.offset))
+                .collect();
+            (list, *span)
+        }
+        let check = |src: &str, name: &str, rust: &[(&str, usize)], size: usize| {
+            let (wgsl, span) = members(src, name);
+            let names: Vec<&str> = wgsl.iter().map(|(n, _)| n.as_str()).collect();
+            let expected: Vec<&str> = rust.iter().map(|(n, _)| *n).collect();
+            assert_eq!(names, expected, "{name}'s members");
+            for ((n, at), (_, want)) in wgsl.iter().zip(rust) {
+                assert_eq!(*at as usize, *want, "{name}.{n}");
+            }
+            assert_eq!(span as usize, size, "{name}'s size");
+        };
+        macro_rules! fields {
+            ($t:ty: $($f:ident),*) => { &[$((stringify!($f), offset_of!($t, $f))),*] };
+        }
+        check(
+            &lit_source(),
+            "GrassUniform",
+            fields!(DrawGpu: view_proj, prev_view_proj, eye, forward, origin, limits, sun, shape,
+                base_color, tip_color, dry_color, variation, rows, wind),
+            size_of::<DrawGpu>(),
+        );
+        check(
+            &generate_source(false),
+            "GrassGen",
+            fields!(GenGpu: planes, eye, origin, lod, lod_density, field, chunk, shape, clump,
+                shadow, motion, counts, wind),
+            size_of::<GenGpu>(),
+        );
+        check(
+            &lit_source(),
+            "GrassWind",
+            fields!(GrassWindGpu: dir, phase, offset, time),
+            size_of::<GrassWindGpu>(),
+        );
+        check(
+            &generate_source(false),
+            "TerrainGrass",
+            fields!(FarGpu: color, fade, clump, dry, wind),
+            size_of::<FarGpu>(),
+        );
+        // Translucency, sheen, roughness and the look's numbers land in the
+        // members the shaders read them from.
+        let g = Grass {
+            translucency: 0.6,
+            sheen: 0.3,
+            roughness: 0.7,
+            dryness: 0.2,
+            ..Default::default()
+        };
+        let [base, tip, dry, variation] = look_gpu(&g);
+        assert_eq!(base, g.base_color.extend(0.6).to_array());
+        assert_eq!(tip[3], 0.3);
+        assert_eq!(dry[3], 0.7);
+        assert_eq!(variation[1], 0.2);
+        let opaque = look_gpu(&Grass {
+            translucency: 0.0,
+            ..g
+        });
+        assert_eq!(opaque[0][3], 0.0);
     }
 
     /// The wind's clock and gusts are reduced in f64: a tick a day into a

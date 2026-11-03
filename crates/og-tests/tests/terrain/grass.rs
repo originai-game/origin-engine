@@ -90,6 +90,18 @@ fn the_far_field_reads_as_grass() {
 fn blades_lit_from_behind_let_the_sun_through() {
     check("grass-backlit");
     let lit = gs::grass_scene("backlit");
+    // The premise: the sun reaches the meadow ahead (a ridge in its way
+    // leaves no direct light for translucency to pass).
+    let eye = lit.camera.position;
+    let ahead = (lit.camera.target - eye).with_y(0.0).normalize();
+    for d in [3.0, 8.0, 15.0, 25.0] {
+        let at = eye + ahead * d;
+        let ground = og_tests::terrain_scenes::island_height(at.x, at.z);
+        assert!(
+            gs::sun_reaches(at.with_y(ground + 0.3), lit.light.direction_to_light),
+            "terrain hides the sun {d} m ahead"
+        );
+    }
     let mut opaque = gs::grass_scene("backlit");
     opaque.grass[0].grass.translucency = 0.0;
     let (a, _) = render(&lit);

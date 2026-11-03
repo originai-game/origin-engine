@@ -282,7 +282,11 @@ fn grass_far(albedo: vec3<f32>, p: vec3<f32>, local: vec3<f32>, n: vec3<f32>, c:
   let clump = grass_clump(local.xz - terrain_min(), g.clump.x, u32(g.clump.w));
   let v = g.clump.y;
   var col = g.color.rgb * mix(1.0 - 0.35 * v, 1.0 + 0.25 * v, clump.x);
-  col = mix(col, g.dry.rgb * 0.8, grass_dry(clump.x, at, g.clump.z) * 0.75);
+  // The dry drifts as the ground's share of dry clumps, blended (a blade
+  // is dry or not; the ground under many shows their mix), a little
+  // more or less per clump.
+  let dry = clamp(grass_dry_share(at, g.clump.z) * mix(0.7, 1.3, clump.y), 0.0, 1.0);
+  col = mix(col, g.dry.rgb * 0.8, dry * 0.75);
   return mix(albedo, col * sheen, amount);
 }
 

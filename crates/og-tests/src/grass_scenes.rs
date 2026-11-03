@@ -6,6 +6,19 @@ use crate::terrain_scenes::{camera_at, island_height, island_view};
 use glam::Vec3;
 use og_render::{Background, DirectionalLight, Grass, GrassDraw, RenderScene, Wind};
 
+/// Towards the sun of `grass-backlit`: west, 12 degrees up.
+pub const BACKLIT_SUN: Vec3 = Vec3::new(-0.978, 0.208, 0.0);
+
+/// Whether the sun towards `sun` reaches island point `p` (no terrain on
+/// the way, marched 2 m at a time out to 3 km).
+pub fn sun_reaches(p: Vec3, sun: Vec3) -> bool {
+    let sun = sun.normalize();
+    (0..1500).all(|i| {
+        let q = p + sun * (0.5 + 2.0 * i as f32);
+        q.y >= island_height(q.x, q.z)
+    })
+}
+
 /// The wind of `grass-wind`: along +x and a little +z, gusting.
 pub fn wind() -> Wind {
     Wind {
@@ -40,24 +53,27 @@ pub fn grass_scene(view: &str) -> RenderScene {
             );
         }
         "backlit" => {
-            // A low sun ahead of the camera: the blades are lit from behind.
-            let sun = Vec3::new(-0.35, 0.22, -0.9).normalize();
+            // A low sun ahead of the camera, west over the meadow where no
+            // ridge stands in its way (`sun_reaches`): the blades are lit
+            // from behind.
+            let sun = BACKLIT_SUN.normalize();
+            // Late afternoon: a warm sun, its disc and glow drawn per pixel.
+            let warm = Vec3::new(1.0, 0.82, 0.58);
             scene.light = DirectionalLight {
                 direction_to_light: sun,
+                color: warm,
                 ..scene.light
             };
             scene.environment.sky.sun_direction = sun;
-            // Late afternoon: a warm sun, its disc and glow drawn per pixel.
-            let warm = Vec3::new(1.0, 0.82, 0.58);
-            scene.light.color = warm;
             scene.environment.sky.sun_color = warm;
             scene.environment.background = Background::Procedural {
                 sun_direction: sun,
                 sun_color: warm,
             };
+            // Towards the sun, a little to its right so its disc is in frame.
             scene.camera = camera_at(
                 Vec3::new(x, ground(x, z) + 1.2, z),
-                Vec3::new(x - 12.0, ground(x - 12.0, z - 30.0) + 0.6, z - 30.0),
+                Vec3::new(x - 30.0, ground(x - 30.0, z - 5.0) + 0.6, z - 5.0),
             );
         }
         _ => {}
