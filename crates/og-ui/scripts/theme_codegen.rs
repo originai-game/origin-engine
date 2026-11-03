@@ -686,7 +686,8 @@ const DRESS_HEAD: &str = r#"/// The default style's part dressings (docs/ui.md Â
 /// lit top edge and a short shadow, its label semibold), a selected tile a
 /// light rim with a glow and a lift, a checked control the primary's fill,
 /// a chosen radio card the raised chip's fill with no ring; a switch,
-/// checkbox or radio row draws no outline (art r4, note 4);
+/// checkbox or radio row draws no outline and no lit top edge, a radio
+/// card no hairline (art r4, note 4);
 /// a slider's remainder holds 3:1 on the panel. `crate::theme_dressings`
 /// parses them.
 "#;
@@ -792,11 +793,17 @@ dress "Toggle.track" {
 }
 dress "Toggle.row" {
   stroke none
+  effect none
 }
 dress "Checkbox.row" {
   stroke none
+  effect none
 }
 dress "Radio.option" {
+  stroke none
+  effect none
+}
+dress "Radio.card" {
   stroke none
 }
 dress "Radio.card[selected]" {

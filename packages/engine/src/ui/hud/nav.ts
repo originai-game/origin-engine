@@ -294,8 +294,10 @@ export function minimapView(id: string, desc: Api.MinimapViewDesc = {}, bare = f
       if (desc.zone && !plate) {
         box("ZonePlate", { padding: { left: u(10), right: u(10), top: u(3), bottom: u(3) }, align: "center", cross: "center", part: sel("Minimap", "plate") }, {
           shape: { kind: "rect", radii: [999, 999, 999, 999] },
-          fills: [solid(lit({ r: 0.043, g: 0.05, b: 0.063, a: 1 }, 0.92))],
-          strokes: [stroke(1, lit(WHITE, 0.08))],
+          // The style's HUD ground, which its ink is made to read on: a fixed dark plate took a light style's dark ink
+          // to 1.3:1 (cartoon's caption).
+          fills: [solid(token("hud", 0.94))],
+          strokes: [stroke(1, token("lineStrong", 0.5))],
           effects: [drop(u(2), u(8), token("shadow", 0.45))],
         }, () => text("Zone", desc.zone ?? "", { step: capStep, font: "display", color: token("ink", 0.92), nowrap: true }));
       }

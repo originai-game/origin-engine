@@ -120,7 +120,16 @@ fn the_default_dressings_put_glass_on_floating_chrome_only() {
     for s in ["Card.frame", "Button.base", "Field.frame", "Slot.frame"] {
         assert_eq!(glass(s), None, "{s}");
     }
-    for s in ["Button.base", "Field.frame", "Chip.base", "Slot.frame"] {
+    for s in [
+        "Button.base",
+        "Field.frame",
+        "Chip.base",
+        "Slot.frame",
+        "Toggle.row",
+        "Checkbox.row",
+        "Radio.option",
+        "Radio.card",
+    ] {
         let x = d
             .iter()
             .find(|x| x.selector == Selector::parse(s).expect("a selector"))
@@ -128,6 +137,17 @@ fn the_default_dressings_put_glass_on_floating_chrome_only() {
         assert!(
             x.draw.strokes.is_empty() && x.draw.cleared & og_ui::dress::CLEAR_STROKES != 0,
             "{s} is borderless"
+        );
+    }
+    // A row's lit top edge (the tokens' sheen on a button) read as an outline.
+    for s in ["Toggle.row", "Checkbox.row", "Radio.option"] {
+        let x = d
+            .iter()
+            .find(|x| x.selector == Selector::parse(s).expect("a selector"))
+            .expect(s);
+        assert!(
+            x.draw.effects.is_empty() && x.draw.cleared & og_ui::dress::CLEAR_EFFECTS != 0,
+            "{s} has no lit edge"
         );
     }
 }

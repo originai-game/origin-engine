@@ -50,7 +50,10 @@ function raceWidth(): number {
 /** The racing panels' ground: the HUD chip denser, over a blurred scene, so rows sit on an even ground. */
 function racePanel(): Api.DrawDesc {
   const c = chip();
-  return { ...c, fills: [solid(token("hud", 0.9)), ...(c.fills ?? []).slice(1)], effects: [{ kind: "backdrop", blur: u(12) }, ...(c.effects ?? [])] };
+  // Near opaque, so the tower and the times panel are one grey whatever lies behind each (the style's hud token is
+  // itself translucent: at 0.9 of it a quarter of the scene showed through, two panels two greys).
+  const ground = role("hud");
+  return { ...c, fills: [solid(lit({ ...ground, a: 1 }, 0.96)), ...(c.fills ?? []).slice(1)], effects: [{ kind: "backdrop", blur: u(12) }, ...(c.effects ?? [])] };
 }
 
 /** A small filled triangle pointing up or down. */

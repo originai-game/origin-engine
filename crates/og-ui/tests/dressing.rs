@@ -778,3 +778,66 @@ fn a_set_draw_that_replaces_a_draw_set_this_tick_is_named() {
         "{w:?}"
     );
 }
+
+/// A style's display drop is one hard shadow a few pixels off at most, and
+/// none under an element that draws its own text effects (a HUD outline
+/// and halo), which wrap every text command: there a style copy printed a
+/// second outlined, haloed glyph (cartoon's 3rd, 2,450 and the ×3 badge).
+#[test]
+fn a_style_drop_never_prints_a_second_glyph() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates/styles");
+    let text = std::fs::read_to_string(dir.join("cartoon").join("style.ogt")).unwrap();
+    let file = parse_style(&text).unwrap();
+    let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
+    ui.set_theme(file.theme(None, [0; 6]));
+    ui.set_dressings(file.dressings.clone());
+    let step = TypeStep {
+        size: 18.0,
+        line_height: 22.0,
+        ..ui.theme().type_ramp.body
+    };
+    let run = |ui: &mut Ui, own: bool| {
+        ui.begin(InputFrame::default(), Viewport::new(400.0, 200.0));
+        ui.label(
+            "Value",
+            "x3",
+            LabelDesc {
+                step: Some(step),
+                font: FontRole::Display,
+                ..LabelDesc::default()
+            },
+        );
+        if own {
+            ui.set_draw(og_ui::paint::ElementDraw {
+                text: Some(og_ui::paint::TextEffects {
+                    shadows: Vec::new(),
+                    outline: None,
+                    fill: None,
+                }),
+                ..Default::default()
+            });
+        }
+        ui.end();
+        ui.frame()
+            .items
+            .iter()
+            .filter_map(|it| match &it.cmd {
+                DrawCmd::Text { x, baseline, .. } => Some((*x, *baseline)),
+                DrawCmd::StyledText { text, .. } => match &**text {
+                    DrawCmd::Text { x, baseline, .. } => Some((*x, *baseline)),
+                    _ => None,
+                },
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+    };
+    let plain = run(&mut ui, false);
+    assert_eq!(plain.len(), 2, "the drop and the glyph: {plain:?}");
+    let (dx, dy) = (plain[0].0 - plain[1].0, plain[0].1 - plain[1].1);
+    assert!(
+        dx.hypot(dy) <= 18.0 * 0.06 + 0.51,
+        "a tight drop at 18 px: {dx}, {dy}"
+    );
+    let own = run(&mut ui, true);
+    assert_eq!(own.len(), 1, "its own effects, one glyph: {own:?}");
+}

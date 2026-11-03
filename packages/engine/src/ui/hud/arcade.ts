@@ -41,13 +41,14 @@ export function arcadeSpeedo(id: string, speed: number, unit: string, desc: Api.
         const filled = boost * n >= i + 1 - 1e-6;
         const charging = !filled && boost * n > i;
         leaf(kit.idi("Tube", i), { width: px(size), height: px(size), part: sel("Speedometer", "boost", "track") }, {
-          shape: { kind: "arc", start, sweep: seg, thickness: thick, cap: "round" },
+          // Butt ends: round caps on each segment bulged out of the tube's top (art r5).
+          shape: { kind: "arc", start, sweep: seg, thickness: thick, cap: "butt" },
           fills: [solid(token("shadow", 0.7))],
           strokes: [stroke(2, token("lineStrong", 0.7), "outside")],
         }, fixed({ start: 0, top: thick / 2 }));
         if (filled || charging) {
           leaf(kit.idi("Nitro", i), { width: px(size - 4), height: px(size - 4), part: sel("Speedometer", "boost", filled ? "full" : null) }, {
-            shape: { kind: "arc", start, sweep: filled ? seg : seg * (boost * n - i), thickness: thick - 4, cap: "round" },
+            shape: { kind: "arc", start, sweep: filled ? seg : seg * (boost * n - i), thickness: thick - 4, cap: "butt" },
             fills: [solid(filled ? lit(role("info"), flare) : lit(role("info"), 0.4))],
             effects: filled && full ? [glow(thick, lit(role("info"), 0.7 * flare))] : [],
           }, fixed({ start: 2, top: thick / 2 + 2 }));

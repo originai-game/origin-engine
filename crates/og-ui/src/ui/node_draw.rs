@@ -332,18 +332,23 @@ impl Ui {
                                     });
                                 }
                             };
-                        if let Some(sh) = t.art.text_shadows[role] {
+                        // The style's drop for the role, unless the element
+                        // draws its own text effects (a HUD outline and halo):
+                        // those wrap every text command, so a style copy under
+                        // them printed a second outlined, haloed glyph (art r4,
+                        // note 3; r5 on cartoon's numerals). One hard drop, no
+                        // more than 6 % of the size off (at least a pixel), so
+                        // a badge's x3 keeps a tight shadow, not a second print.
+                        let own = self
+                            .draws
+                            .get(&i)
+                            .or_else(|| self.part_draws.get(&i))
+                            .is_some_and(|d| d.text.is_some());
+                        if let Some(sh) = t.art.text_shadows[role].filter(|_| !own) {
                             let c = sh.color.fade(tc.color.alpha);
-                            // A style's shadow is drawn for its big steps: on
-                            // small text it reaches at most a tenth of the size,
-                            // so a badge's "x3" keeps a tight drop instead of
-                            // a second print beside it (art r4, note 3).
                             let reach = sh.dx.hypot(sh.dy);
-                            let k = if reach > size * 0.1 {
-                                size * 0.1 / reach
-                            } else {
-                                1.0
-                            };
+                            let most = (size * 0.06).max(1.0 / dpr);
+                            let k = if reach > most { most / reach } else { 1.0 };
                             let (dx, dy, blur) = (sh.dx * k, sh.dy * k, sh.blur * k);
                             text(dx, dy, c, None, cmds);
                             if blur > 0.0 {
