@@ -861,7 +861,13 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   // The sky's light on the sea from above and along its normal (web-ocean's skyUp and skyN).
   let amb_up = ambient_light_level(in.normal, in.world) * frame.params.x;
   let amb_n = ambient_light_level(n, in.world) * frame.params.x;
-  let sun_e = frame.light_color.rgb * sun;
+  // Under a closed cloud deck (cloud_deck's a) the sun is hidden: the light the deck lets through reaches the sea as
+  // the deck's own radiance, from the whole sky above, not along the sun. The sun's glitter, a crest's light carried
+  // from the sun and the foam's sunlit share go with it, and the foam takes the deck's light instead (a matte foam
+  // under a uniform deck is as bright as the deck times its albedo, never brighter than the sky). Taking the scene's
+  // dimmed directional light as the sun drew the storm's crests' foam cream-white, 1.7 times the brightest sky.
+  let deck_up = cloud_deck(vec3<f32>(0.0, 1.0, 0.0));
+  let sun_e = frame.light_color.rgb * sun * (1.0 - deck_up.a);
   if (sea) {
     // web-ocean's body (`ocean.js` fs; the Sea of Thieves talk's subsurface term): light carried through the thin
     // upper part of a backlit crest, strongest looking towards the sun; and under foam the bubbles brighten and tint
@@ -1016,7 +1022,10 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
     let alb = water.foam.rgb * (0.78 + 0.3 * sea_f.bubbles);
     let amb = amb_up + amb_n * 0.3;
     let amb_grey = mix(amb, vec3<f32>(dot(amb, vec3<f32>(0.2126, 0.7152, 0.0722))), 0.85);
-    let foam_lit = alb * (sun_e * max(dot(n, l), 0.0) * 0.5 + amb_grey * 1.55);
+    // The deck's irradiance over its radiance: its cosine-weighted mean, brighter overhead (overcast()'s 1 + 0.6 r.y)
+    // as 1 + 0.6 * 2/3.
+    let sky_light = mix(amb_grey * 1.55, deck_up.rgb * 1.4, deck_up.a);
+    let foam_lit = alb * (sun_e * max(dot(n, l), 0.0) * 0.5 + sky_light);
     color = mix(color, foam_lit, sea_f.mask * 0.95);
   }
   return vec4<f32>(apply_fog(color, in.world), 1.0);

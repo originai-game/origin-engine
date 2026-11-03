@@ -166,7 +166,8 @@ fn ocean_scenes_match_their_references_and_read_as_a_sea() {
 /// sky at a grazing angle dimmed (Bruneton et al. 2010's mean Fresnel), and
 /// a ray it reflects downwards meets the next wave, never the sky. The
 /// whole sea's mean let r5-fft d0a5187fd's far sea through at 0.47 under a
-/// sky of 0.27.
+/// sky of 0.27, and the band's mean let cca1cb296's hot foam through, so
+/// no more than 1 % of the band may outshine the sky's brightest pixel.
 #[test]
 fn the_sea_darkens_with_the_sky() {
     for name in ["water-ocean-dusk-storm", "water-ocean-night"] {
@@ -190,6 +191,24 @@ fn the_sea_darkens_with_the_sky() {
         assert!(
             sea < sky,
             "{name}: the sea just under the horizon ({sea}) outshines the sky just over it ({sky})"
+        );
+        // Nor does any patch of it: at most 1 % of the sea's first 60 rows
+        // is brighter than the brightest of the sky band (the mean let
+        // cca1cb296's storm through, its foam lit by the hidden sun 1.7
+        // times the brightest sky on 10.6 % of those rows' pixels).
+        let sky_max = lumas(&img, 0, h - 24, 1280, h - 4)
+            .into_iter()
+            .fold(0.0, f32::max);
+        let near = lumas(&img, 0, h + 3, 1280, h + 63);
+        let hot = near.iter().filter(|&&l| l > sky_max).count() as f32 / near.len() as f32;
+        println!(
+            "{name}: {:.2} % of the sea's band over the sky's brightest {sky_max}",
+            hot * 100.0
+        );
+        assert!(
+            hot <= 0.01,
+            "{name}: {:.2} % of the sea under the horizon outshines the brightest sky over it ({sky_max})",
+            hot * 100.0
         );
     }
 }
