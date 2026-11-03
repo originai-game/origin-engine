@@ -109,13 +109,13 @@ export function shipStatusScreen(): void {
     };
     // Every row's mark as tall as its name's line (the names are labels of the screen's, at base, outside the bars).
     og.ui.column("Systems", { width: grow, gap: t.space.sm }, () => {
-      row("Hull", L("ship.hull"), () => og.ui.statBar("Bar", { value: 78, max: 100, kind: "health", icon: "heart", iconStep: "base", ghost: false, width: grow, thickness: Math.round(12 * k), name: L("ship.hull") }), () => {
+      row("Hull", L("ship.hull"), () => og.ui.statBar("Bar", { bare: true, value: 78, max: 100, kind: "health", icon: "heart", iconStep: "base", ghost: false, width: grow, thickness: Math.round(12 * k), name: L("ship.hull") }), () => {
         og.ui.label("N", "78", { step: "lg", font: "mono", nowrap: true });
         og.ui.label("Unit", "%", { step: "sm", color: { token: "inkMuted" }, nowrap: true });
       });
       // Shields as discrete pips, three of four; the reactor's mark before its slimmer bar.
-      row("Shields", L("ship.shields"), () => og.ui.statBar("Bar", { value: 3, max: 4, style: "pips", color: { token: "info" }, icon: "shield", iconStep: "base", width: grow, thickness: Math.round(12 * k), valueText: "3 / 4", name: L("ship.shields") }), () => {});
-      row("Reactor", L("ship.reactor"), () => og.ui.statBar("Bar", { value: 64, max: 100, kind: "mana", icon: "bolt", iconStep: "base", ghost: false, width: grow, thickness: Math.round(8 * k), name: L("ship.reactor") }), () => {});
+      row("Shields", L("ship.shields"), () => og.ui.statBar("Bar", { bare: true, value: 3, max: 4, style: "pips", color: { token: "info" }, icon: "shield", iconStep: "base", width: grow, thickness: Math.round(12 * k), valueText: "3 / 4", name: L("ship.shields") }), () => {});
+      row("Reactor", L("ship.reactor"), () => og.ui.statBar("Bar", { bare: true, value: 64, max: 100, kind: "mana", icon: "bolt", iconStep: "base", ghost: false, width: grow, thickness: Math.round(8 * k), name: L("ship.reactor") }), () => {});
     });
   });
 }
@@ -331,7 +331,7 @@ function heroStats(cls: (typeof CLASSES)[number]): void {
     og.ui.column("Upgrade", { width: grow, gap: t.space.xs }, () => {
       eyebrow("Label", L("hangar.upgrade"));
       og.ui.row("Pips", { width: grow, gap: t.space.sm, cross: "center" }, () => {
-        og.ui.statBar("Bar", { value: cls.upgrade, max: 6, style: "pips", kind: "primary", width: grow, thickness: Math.round(10 * k), valueText: `${cls.upgrade} / 6`, name: L("hangar.upgrade") });
+        og.ui.statBar("Bar", { bare: true, value: cls.upgrade, max: 6, style: "pips", kind: "primary", width: grow, thickness: Math.round(10 * k), valueText: `${cls.upgrade} / 6`, name: L("hangar.upgrade") });
         og.ui.label("Value", `${cls.upgrade} / 6`, { step: "lg", font: "mono", nowrap: true });
       });
     });
