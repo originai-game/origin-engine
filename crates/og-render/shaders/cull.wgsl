@@ -14,7 +14,6 @@
 
 const WG: u32 = 256u;
 const MAX_PLANES: u32 = 12u;
-const MAX_PASSES: u32 = 18u;
 
 // Pass kinds.
 const FRUSTUM_ALL: u32 = 0u;     // every batch (shadow passes)
@@ -42,9 +41,9 @@ struct Params {
   sizes: vec4<u32>,
   // x: 1 when `previous` holds the sorted instances' previous transforms
   // (TAA's object motion): the camera pass copies them beside its own.
+  // y: this stage's first pass in `passes`.
   motion: vec4<u32>,
   view_proj: mat4x4<f32>,
-  passes: array<PassGpu, 18>,
 };
 
 struct BatchGpu {
@@ -77,6 +76,11 @@ struct BatchGpu {
 // Laid out as `instances`: region 0 the sorted instances' previous
 // transforms, region g + 1 those of the camera pass's visible ones.
 @group(0) @binding(6) var<storage, read_write> previous: array<f32>;
+// Every pass of the frame (cull_gpu.rs), the other passes' stage first and
+// the camera's after; the stage's row wid.y is passes[pass_at(wid.y)].
+@group(0) @binding(7) var<storage, read> passes: array<PassGpu>;
+
+fn pass_at(row: u32) -> u32 { return params.motion.y + row; }
 
 var<workgroup> shared_sum: array<u32, 256>;
 var<workgroup> shared_inside: atomic<u32>;
@@ -194,7 +198,7 @@ fn occluded(m: mat4x4<f32>, center: vec3<f32>, extent: vec3<f32>) -> bool {
 fn visibility(@builtin(global_invocation_id) gid: vec3<u32>,
               @builtin(local_invocation_index) li: u32,
               @builtin(workgroup_id) wid: vec3<u32>) {
-  let pass_info = params.passes[wid.y].info;
+  let pass_info = passes[pass_at(wid.y)].info;
   let kind = pass_info.x;
   let g = pass_info.z;
   let k = gid.x;
@@ -217,7 +221,7 @@ fn visibility(@builtin(global_invocation_id) gid: vec3<u32>,
     var inside = (kind == FRUSTUM_ALL || (b.flags & TRANSPARENT) == 0u)
       && (b.layers & pass_info.w) != 0u;
     for (var p = 0u; p < pass_info.y && inside; p++) {
-      let plane = params.passes[wid.y].planes[p];
+      let plane = passes[pass_at(wid.y)].planes[p];
       inside = dot(plane.xyz, center) + plane.w >= -radius;
     }
     if (inside) { atomicAdd(&shared_inside, 1u); }
@@ -281,7 +285,7 @@ fn scan_shared(li: u32) {
 @compute @workgroup_size(256)
 fn scan_blocks(@builtin(local_invocation_index) li: u32,
                @builtin(workgroup_id) wid: vec3<u32>) {
-  let g = params.passes[wid.y].info.z;
+  let g = passes[pass_at(wid.y)].info.z;
   let at = blocks_at(g);
   var carry = 0u;
   for (var base = 0u; base < params.sizes.x; base += WG) {
@@ -301,7 +305,7 @@ fn scan_blocks(@builtin(local_invocation_index) li: u32,
 fn prefix(@builtin(global_invocation_id) gid: vec3<u32>,
           @builtin(local_invocation_index) li: u32,
           @builtin(workgroup_id) wid: vec3<u32>) {
-  let g = params.passes[wid.y].info.z;
+  let g = passes[pass_at(wid.y)].info.z;
   let n = n_instances();
   let k = gid.x;
   var v = 0u;
@@ -319,7 +323,7 @@ fn prefix(@builtin(global_invocation_id) gid: vec3<u32>,
 @compute @workgroup_size(256)
 fn scatter(@builtin(global_invocation_id) gid: vec3<u32>,
            @builtin(workgroup_id) wid: vec3<u32>) {
-  let g = params.passes[wid.y].info.z;
+  let g = passes[pass_at(wid.y)].info.z;
   let n = n_instances();
   let k = gid.x;
   if (k >= n) { return; }
@@ -330,7 +334,7 @@ fn scatter(@builtin(global_invocation_id) gid: vec3<u32>,
   if (scan[at + k + 1u] != scan[at + k]) {
     let to = ((g + 1u) * n + b.first + scan[at + k] - start) * 16u;
     for (var j = 0u; j < 16u; j++) { instances[to + j] = instances[k * 16u + j]; }
-    if (params.motion.x != 0u && params.passes[wid.y].info.x == MAIN) {
+    if (params.motion.x != 0u && passes[pass_at(wid.y)].info.x == MAIN) {
       for (var j = 0u; j < 16u; j++) { previous[to + j] = previous[k * 16u + j]; }
     }
   }

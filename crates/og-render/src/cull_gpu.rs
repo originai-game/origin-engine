@@ -43,10 +43,6 @@ pub(crate) const CULL_WGSL: &str = concat!(wgsl!("instance.wgsl"), wgsl!("cull.w
 const HIZ_WGSL: &str = wgsl!("hiz.wgsl");
 pub(crate) const DEPTH_WGSL: &str = concat!(wgsl!("instance.wgsl"), wgsl!("cull_depth.wgsl"));
 
-/// Passes one frame may cull: three cascades, twelve local light faces,
-/// the planar reflection, the occluders and the camera (the size of
-/// `Params`; the buffers are sized for the frame's own passes).
-const MAX_PASSES: usize = 18;
 /// Planes per pass (a cascade's box and the slice planes facing the light).
 const MAX_PLANES: usize = 12;
 const WORKGROUP: u32 = 256;
@@ -105,7 +101,6 @@ struct Params {
     sizes: [u32; 4],
     motion: [u32; 4],
     view_proj: [[f32; 4]; 4],
-    passes: [PassGpu; MAX_PASSES],
 }
 
 /// `struct BatchGpu` in cull.wgsl.
@@ -230,6 +225,11 @@ pub(crate) struct GpuCulling {
     view: wgpu::Buffer,
     view_group: wgpu::BindGroup,
     params: [wgpu::Buffer; 2],
+    /// Every pass's planes and kind (`PassGpu`), the stage of the other
+    /// passes first and the camera's after: sized for the frame's passes,
+    /// so a frame culls as many as it has (every cascade and shadowed
+    /// light face) on any device.
+    passes: wgpu::Buffer,
     pub instances: wgpu::Buffer,
     /// What the input region of `instances` holds, written by changes only.
     upload: crate::upload::DirtyUpload,
@@ -363,6 +363,7 @@ impl GpuCulling {
                     false,
                 ),
                 storage(6, false),
+                storage(7, true),
             ],
         });
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -471,6 +472,7 @@ impl GpuCulling {
             view,
             view_group,
             params,
+            passes: buffer(device, "cull passes", 0, Self::storage_usage()),
             instances: buffer(device, "culled instances", 0, Self::instance_usage()),
             upload: Default::default(),
             previous: buffer(
@@ -926,7 +928,6 @@ impl GpuCulling {
         let n = transforms.len() as u32;
         let b = batches.len() as u32;
         let p = passes.len();
-        debug_assert!(p <= MAX_PASSES);
         self.n = n;
         self.b = b;
         let occlusion = passes.iter().any(|x| x.kind == PassKind::Occluders);
@@ -1085,38 +1086,51 @@ impl GpuCulling {
         let pyramid = self.pyramid.as_ref().filter(|_| occlusion);
         // Pyramid levels 0: the camera pass tests no occlusion.
         let levels = pyramid.map_or(0, |x| x.levels);
-        let stage = |which: &[usize]| {
-            let mut params = Params {
-                counts: [n, b, which.len() as u32, p as u32],
-                sizes: [blocks, levels, width, height],
-                motion: [previous.is_some() as u32, 0, 0, 0],
-                view_proj: view_proj.to_cols_array_2d(),
-                passes: [bytemuck::Zeroable::zeroed(); MAX_PASSES],
-            };
-            for (slot, &g) in which.iter().enumerate() {
-                let pass = &passes[g];
-                let planes = &pass.planes[..pass.planes.len().min(MAX_PLANES)];
-                for (i, plane) in planes.iter().enumerate() {
-                    params.passes[slot].planes[i] = plane.to_array();
-                }
-                params.passes[slot].info =
-                    [pass.kind.code(), planes.len() as u32, g as u32, pass.layers];
-            }
-            params
-        };
         let main: Vec<usize> = (0..p)
             .filter(|&g| passes[g].kind == PassKind::Main)
             .collect();
         let others: Vec<usize> = (0..p)
             .filter(|&g| passes[g].kind != PassKind::Main)
             .collect();
-        // Only the stage's passes are uploaded (the shader reads no others).
-        let used = |which: &[usize]| {
-            std::mem::offset_of!(Params, passes) + which.len() * std::mem::size_of::<PassGpu>()
-        };
-        for (buffer, which) in self.params.iter().zip([&others, &main]) {
+        // The pass table: the other passes' stage first, the camera's
+        // after; each stage reads its own from `motion.y`.
+        let table: Vec<PassGpu> = others
+            .iter()
+            .chain(&main)
+            .map(|&g| {
+                let pass = &passes[g];
+                let planes = &pass.planes[..pass.planes.len().min(MAX_PLANES)];
+                let mut gpu: PassGpu = bytemuck::Zeroable::zeroed();
+                for (i, plane) in planes.iter().enumerate() {
+                    gpu.planes[i] = plane.to_array();
+                }
+                gpu.info = [pass.kind.code(), planes.len() as u32, g as u32, pass.layers];
+                gpu
+            })
+            .collect();
+        Self::grow(
+            device,
+            &mut self.passes,
+            &mut self.groups,
+            "cull passes",
+            std::mem::size_of_val(table.as_slice()) as u64,
+            self.max_binding,
+            Self::storage_usage(),
+        );
+        queue.write_buffer(&self.passes, 0, bytemuck::cast_slice(&table));
+        for (buffer, (which, base)) in self
+            .params
+            .iter()
+            .zip([(&others, 0), (&main, others.len())])
+        {
             if !which.is_empty() {
-                queue.write_buffer(buffer, 0, &bytemuck::bytes_of(&stage(which))[..used(which)]);
+                let params = Params {
+                    counts: [n, b, which.len() as u32, p as u32],
+                    sizes: [blocks, levels, width, height],
+                    motion: [previous.is_some() as u32, base as u32, 0, 0],
+                    view_proj: view_proj.to_cols_array_2d(),
+                };
+                queue.write_buffer(buffer, 0, bytemuck::bytes_of(&params));
             }
         }
         if self.groups.is_none() {
@@ -1154,6 +1168,10 @@ impl GpuCulling {
                         wgpu::BindGroupEntry {
                             binding: 6,
                             resource: self.previous.as_entire_binding(),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 7,
+                            resource: self.passes.as_entire_binding(),
                         },
                     ],
                 })
