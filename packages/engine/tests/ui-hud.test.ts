@@ -1137,3 +1137,46 @@ test("og.ui.standingsTower relative window: only the cars around the player, kep
   p.advance(3);
   expect(ids(p)).toEqual(["c5", "c6", "c7"]);
 });
+
+test("og.ui.lapTimer: sector pips in their timing colours, gold on the final lap, a purple best split, boxless text on the scene, the head and the times apart", () => {
+  // Wrong: pips missing or all one colour, the final lap's undriven pips not gold, a best split in success, a plate
+  // drawn under boxless text (or its text not outlined), or show building the whole block.
+  let desc: Record<string, unknown> = {};
+  const e = engineFor("HudLapParts", () => {
+    og.ui.lapTimer("Lap", { position: 3, positionTotal: 8, lap: 2, lapTotal: 3, currentMs: 61000, deltaMs: -250, ...desc } as never);
+  });
+  const draws = () => drawsDuring(() => e.advance(1));
+  const pip = (d: Map<string, DrawDesc[]>, k: number) => d.get(`LapHud/Lap/Head/Lap/Sectors/Sector#${k}`)?.at(-1)?.fills?.[0];
+  const colour = (fill: unknown) => JSON.stringify((fill as { paint?: { color?: unknown } })?.paint?.color ?? fill);
+  desc = { sectors: ["best", "personal", "slower", "none"] };
+  e.advance(2);
+  let d = draws();
+  const four = [0, 1, 2, 3].map((k) => colour(pip(d, k)));
+  expect(new Set(four).size).toBe(4);
+  // The final lap: the undriven pip turns gold; the split a new best in purple.
+  desc = { lap: 3, sectors: ["personal", "none"], splitBest: true };
+  e.advance(1);
+  d = draws();
+  const gold = colour(pip(d, 1));
+  desc = { lap: 2, sectors: ["personal", "none"], splitBest: true };
+  e.advance(1);
+  d = draws();
+  expect(colour(pip(d, 1))).not.toBe(gold);
+  expect(states(at(dump(e), "LapHud/Lap")).split).toBe("best");
+  // Boxless: no plate under it, its text outlined.
+  desc = { boxless: true };
+  e.advance(1);
+  d = draws();
+  expect(d.get("LapHud/Lap")?.at(-1)?.fills ?? []).toEqual([]);
+  // An outlined text sets its draw while its row is open (og.ui.setDraw on the label built last).
+  expect((d.get("LapHud/Lap/Head/Position/Num") ?? []).some((x) => x.text?.outline)).toBe(true);
+  // show: the head alone, then the times alone.
+  desc = { show: "head" };
+  e.advance(2);
+  let els = dump(e);
+  expect([at(els, "LapHud/Lap/Head/Lap/Num/Value")?.text, at(els, "LapHud/Lap/Current/Time"), at(els, "LapHud/Lap/Split/Time")]).toEqual(["2", undefined, undefined]);
+  desc = { show: "times" };
+  e.advance(2);
+  els = dump(e);
+  expect([at(els, "LapHud/Lap/Head"), at(els, "LapHud/Lap/Current/Time")?.text, at(els, "LapHud/Lap/Split/Time")?.text]).toEqual([undefined, "1:01.000", "−0.25"]);
+});

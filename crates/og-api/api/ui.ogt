@@ -9955,6 +9955,21 @@ module ui {
     returns Void
   }
 
+  enum SectorState {
+    doc "A lap's sector as timing screens colour it."
+    variant none "Not driven yet this lap."
+    variant slower "Slower than the player's best (yellow, the warn role)."
+    variant personal "The player's best sector (green, the success role)."
+    variant best "The best sector of anyone (purple)."
+  }
+
+  enum LapTimerShow {
+    doc "Which part of the lap block a call builds, so the place and lap and the times can be anchored apart."
+    variant all "The whole block."
+    variant head "The place, the lap and its sector pips."
+    variant times "The current, best and last laps and the split."
+  }
+
   struct LapTimerDesc {
     doc "A racing lap and split block."
     desc true
@@ -9996,14 +10011,19 @@ module ui {
     field splitLabel String "The split's caption." {
       default "Split"
     }
+    field sectors List.SectorState "This lap's sectors, as pips under the lap counter; empty shows none."
+    field splitBest bool "The split is a new best: purple instead of success."
+    field boxless bool "No plate: its text sits on the scene with an outline and a shadow (the Need for Speed rule)."
+    field show LapTimerShow "Which part it builds: two calls (head at the top left, times at the top centre) anchor them apart."
+
     field anchor Option.Anchor "Opens its own anchored group there; null builds it in place." {
       default topLeft
     }
   }
 
   fn lapTimer {
-    doc "A lap and split block to the bar of Forza, Gran Turismo and F1: the place and the lap as large tabular numerals over their totals (the lap's caption turns to the final lap's, in gold, on the last), then the current lap running in tabular digits, the best and last laps, and the split against the best lap signed and coloured (ahead in success, behind in danger) that pops when it changes; a last lap that sets the best shows in the personal-best colour. On a phone it keeps the place, the lap and the split."
-    doc "Parts: LapTimer.frame, LapTimer.position, LapTimer.lap[final], LapTimer.total, LapTimer.row[current|best|last], LapTimer.time, LapTimer.split[ahead|behind]. State groups: lap (racing, final), split (none, ahead, behind), best (none, new). Sounds: success when the split turns ahead or a new best is set. Accessibility: status named by the position and lap, its value the times. Probe ids: <id>, <id>/Head/Position/Num/Value, <id>/Head/Lap/Num/Value, <id>/Current/Time, <id>/Best/Time, <id>/Last/Time, <id>/Split/Time."
+    doc "A lap and split block to the bar of Forza, Gran Turismo and F1: the place and the lap as large tabular numerals over their totals (the lap's caption turns to the final lap's, in gold, on the last), then the current lap running in tabular digits, the best and last laps, and the split against the best lap signed and coloured (ahead in success, behind in danger) that pops when it changes; a last lap that sets the best shows in the personal-best colour. On a phone it keeps the place, the lap and the split. The sectors show as pips under the lap; on the final lap the counter and the pips not yet driven turn gold. boxless drops the plate for outlined text on the scene; show builds the head or the times alone."
+    doc "Parts: LapTimer.frame, LapTimer.position, LapTimer.lap[final], LapTimer.total, LapTimer.row[current|best|last], LapTimer.time, LapTimer.split[ahead|behind|best], LapTimer.sector[slower|personal|best][final]. State groups: lap (racing, final), split (none, ahead, behind), best (none, new). Sounds: success when the split turns ahead or a new best is set. Accessibility: status named by the position and lap, its value the times. Probe ids: <id>, <id>/Head/Position/Num/Value, <id>/Head/Lap/Num/Value, <id>/Current/Time, <id>/Best/Time, <id>/Last/Time, <id>/Split/Time."
     host false
     param id String "Its id."
     param desc LapTimerDesc "The race state."

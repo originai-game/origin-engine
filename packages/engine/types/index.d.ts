@@ -43855,6 +43855,23 @@ export interface StandingsTowerDesc {
 
 
 /**
+ * A lap's sector as timing screens colour it.
+ * - `"none"`: Not driven yet this lap.
+ * - `"slower"`: Slower than the player's best (yellow, the warn role).
+ * - `"personal"`: The player's best sector (green, the success role).
+ * - `"best"`: The best sector of anyone (purple).
+ */
+export type SectorState = "none" | "slower" | "personal" | "best";
+
+/**
+ * Which part of the lap block a call builds, so the place and lap and the times can be anchored apart.
+ * - `"all"`: The whole block.
+ * - `"head"`: The place, the lap and its sector pips.
+ * - `"times"`: The current, best and last laps and the split.
+ */
+export type LapTimerShow = "all" | "head" | "times";
+
+/**
  * A racing lap and split block.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -43955,6 +43972,30 @@ export interface LapTimerDesc {
    * @default "Split"
    */
   readonly splitLabel?: string;
+  /**
+   * This lap's sectors, as pips under the lap counter; empty shows none.
+   *
+   * @default []
+   */
+  readonly sectors?: readonly SectorState[];
+  /**
+   * The split is a new best: purple instead of success.
+   *
+   * @default false
+   */
+  readonly splitBest?: boolean;
+  /**
+   * No plate: its text sits on the scene with an outline and a shadow (the Need for Speed rule).
+   *
+   * @default false
+   */
+  readonly boxless?: boolean;
+  /**
+   * Which part it builds: two calls (head at the top left, times at the top centre) anchor them apart.
+   *
+   * @default "all"
+   */
+  readonly show?: LapTimerShow;
   /**
    * Opens its own anchored group there; null builds it in place.
    *
@@ -56366,8 +56407,8 @@ export declare namespace og {
      */
     function standingsTower(id: string, desc?: StandingsTowerDesc): void;
     /**
-     * A lap and split block to the bar of Forza, Gran Turismo and F1: the place and the lap as large tabular numerals over their totals (the lap's caption turns to the final lap's, in gold, on the last), then the current lap running in tabular digits, the best and last laps, and the split against the best lap signed and coloured (ahead in success, behind in danger) that pops when it changes; a last lap that sets the best shows in the personal-best colour. On a phone it keeps the place, the lap and the split.
-     * Parts: LapTimer.frame, LapTimer.position, LapTimer.lap[final], LapTimer.total, LapTimer.row[current|best|last], LapTimer.time, LapTimer.split[ahead|behind]. State groups: lap (racing, final), split (none, ahead, behind), best (none, new). Sounds: success when the split turns ahead or a new best is set. Accessibility: status named by the position and lap, its value the times. Probe ids: <id>, <id>/Head/Position/Num/Value, <id>/Head/Lap/Num/Value, <id>/Current/Time, <id>/Best/Time, <id>/Last/Time, <id>/Split/Time.
+     * A lap and split block to the bar of Forza, Gran Turismo and F1: the place and the lap as large tabular numerals over their totals (the lap's caption turns to the final lap's, in gold, on the last), then the current lap running in tabular digits, the best and last laps, and the split against the best lap signed and coloured (ahead in success, behind in danger) that pops when it changes; a last lap that sets the best shows in the personal-best colour. On a phone it keeps the place, the lap and the split. The sectors show as pips under the lap; on the final lap the counter and the pips not yet driven turn gold. boxless drops the plate for outlined text on the scene; show builds the head or the times alone.
+     * Parts: LapTimer.frame, LapTimer.position, LapTimer.lap[final], LapTimer.total, LapTimer.row[current|best|last], LapTimer.time, LapTimer.split[ahead|behind|best], LapTimer.sector[slower|personal|best][final]. State groups: lap (racing, final), split (none, ahead, behind), best (none, new). Sounds: success when the split turns ahead or a new best is set. Accessibility: status named by the position and lap, its value the times. Probe ids: <id>, <id>/Head/Position/Num/Value, <id>/Head/Lap/Num/Value, <id>/Current/Time, <id>/Best/Time, <id>/Last/Time, <id>/Split/Time.
      *
      * @param id Its id.
      * @param desc The race state.

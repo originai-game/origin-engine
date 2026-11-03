@@ -174,7 +174,12 @@ export function lapTimer(id: string, desc: Api.LapTimerDesc = {}): void {
   const total = desc.lapTotal ?? 0;
   const final = total > 0 && lap >= total;
   const delta = desc.deltaMs ?? null;
-  const split = delta === null ? "none" : delta < 0 ? "ahead" : "behind";
+  const split = delta === null ? "none" : desc.splitBest ? "best" : delta < 0 ? "ahead" : "behind";
+  const show: Api.LapTimerShow = desc.show ?? "all";
+  // No plate: every text outlined on the scene.
+  const boxless = !!desc.boxless;
+  const ol = boxless ? 1.2 : 0;
+  const sectors = desc.sectors ?? [];
   const best = desc.bestMs ?? null;
   const last = desc.lastMs ?? null;
   const newBest = best !== null && last !== null && Math.abs(last - best) < 0.5;
@@ -183,21 +188,36 @@ export function lapTimer(id: string, desc: Api.LapTimerDesc = {}): void {
   sound("success", (es.changed && delta !== null && delta < 0 && es.prev >= 0) || (eb.changed && newBest && eb.prev >= 0));
   const big = (bid: string, caption: string, value: number, of: number, gold: boolean) => {
     box(bid, { direction: "column", gap: 0, part: sel("LapTimer", bid === "Lap" ? "lap" : "position", gold ? "final" : null) }, undefined, () => {
-      text("Caption", caption, { step: ts(10), font: "display", color: gold ? lit(role("gold")) : token("inkMuted"), nowrap: true });
+      text("Caption", caption, { step: ts(10), font: "display", color: gold ? lit(role("gold")) : token("inkMuted"), nowrap: true, outline: ol });
       // A number reads left to right in every locale: under a right-to-left layout, which mirrors the row, the total is
       // built first so it still lands after the value.
       kit.row("Num", { gap: u(2), cross: "end" }, () => {
-        const total = () => { if (of > 0) text("Total", `/${of}`, { step: ts(f.phone ? 15 : 18), font: "display", color: token("inkMuted"), nowrap: true }); };
+        const total = () => { if (of > 0) text("Total", `/${of}`, { step: ts(f.phone ? 15 : 18), font: "display", color: token("inkMuted"), nowrap: true, outline: ol }); };
         if (rtl()) total();
-        text("Value", String(value), { step: ts(f.phone ? 28 : 34, true), font: "display", color: gold ? lit(role("gold")) : token("ink"), nowrap: true });
+        text("Value", String(value), { step: ts(f.phone ? 28 : 34, true), font: "display", color: gold ? lit(role("gold")) : token("ink"), nowrap: true, outline: ol });
         if (!rtl()) total();
       });
+      // The lap's sectors as pips under it: driven ones in their timing colours, the rest gold on the final lap.
+      if (bid === "Lap" && sectors.length > 0) {
+        const pw = Math.max(u(8), Math.round(stepSize(ts(10)).size * 0.9));
+        const ph = Math.max(3, u(4));
+        kit.row("Sectors", { gap: Math.max(2, u(3)), part: sel("LapTimer", "sectors") }, () => {
+          sectors.forEach((sct, k) => {
+            const ink = sct === "best" ? lit(PURPLE) : sct === "personal" ? lit(role("success")) : sct === "slower" ? lit(role("warn")) : gold ? lit(role("gold"), 0.45) : token("inkFaint", 0.6);
+            leaf(kit.idi("Sector", k), { width: px(pw), height: px(ph), part: sel("LapTimer", "sector", sct === "none" ? null : sct, gold ? "final" : null) }, {
+              shape: { kind: "rect", radii: [1, 1, 1, 1] },
+              fills: [solid(ink)],
+              strokes: boxless ? [stroke(1, token("shadow", 0.8), "outside")] : [],
+            });
+          });
+        });
+      }
     });
   };
   const row = (rid: string, label: string, ms: number, ink: Api.Paint, scale = 1) => {
     box(rid, { direction: "row", gap: tk.sm, cross: "center", width: pct(1), part: sel("LapTimer", "row", rid.toLowerCase()) }, undefined, () => {
-      text("Label", label, { step: ts(11), font: "display", color: token("inkMuted"), nowrap: true, ellipsis: true, width: { kind: "grow" } });
-      text("Time", lapText(ms), { step: ts(14), font: "mono", color: ink, nowrap: true }, scale !== 1 ? { transform: { scaleX: scale, scaleY: scale, pivotX: 1 } } : undefined);
+      text("Label", label, { step: ts(11), font: "display", color: token("inkMuted"), nowrap: true, ellipsis: true, width: { kind: "grow" }, outline: ol });
+      text("Time", lapText(ms), { step: ts(14), font: "mono", color: ink, nowrap: true, outline: ol }, scale !== 1 ? { transform: { scaleX: scale, scaleY: scale, pivotX: 1 } } : undefined);
     });
   };
   // The split: a captioned row under the times, or a column in the head on a phone.
@@ -206,38 +226,39 @@ export function lapTimer(id: string, desc: Api.LapTimerDesc = {}): void {
     const s = pop(es.since, 0.16, 320);
     const col = dir === "column";
     box("Split", { direction: dir, gap: col ? 0 : tk.sm, cross: col ? "end" : "center", width: col ? { kind: "grow" } : pct(1), part: sel("LapTimer", "split", split) }, undefined, () => {
-      text("Label", desc.splitLabel ?? "Split", { step: ts(col ? 10 : 11), font: "display", color: token("inkMuted"), nowrap: true, ellipsis: col, ...(col ? {} : { width: { kind: "grow" as const } }) });
-      text("Time", signedSeconds(delta / 1000), { step: ts(col ? 20 : 18), font: "mono", color: lit(delta < 0 ? role("success") : role("danger")), nowrap: true }, s !== 1 ? { transform: { scaleX: s, scaleY: s, pivotX: 1 } } : undefined);
+      text("Label", desc.splitLabel ?? "Split", { step: ts(col ? 10 : 11), font: "display", color: token("inkMuted"), nowrap: true, ellipsis: col, outline: ol, ...(col ? {} : { width: { kind: "grow" as const } }) });
+      text("Time", signedSeconds(delta / 1000), { step: ts(col ? 20 : 18), font: "mono", color: lit(desc.splitBest ? PURPLE : delta < 0 ? role("success") : role("danger")), nowrap: true, outline: ol }, s !== 1 ? { transform: { scaleX: s, scaleY: s, pivotX: 1 } } : undefined);
     });
   };
-  const headed = (desc.position ?? 0) > 0 || lap > 0;
+  const headed = show !== "times" && ((desc.position ?? 0) > 0 || lap > 0);
+  const timed = show !== "head";
   hudPlace(id, anchorOf(desc, "topLeft"), () => {
     box(id, {
       direction: "column", gap: u(4), width: px(w), padding: { left: tk.md, right: tk.md, top: tk.sm, bottom: tk.sm },
       part: sel("LapTimer", "frame"), partClass: "hud",
-    }, racePanel(), () => {
+    }, boxless ? undefined : racePanel(), () => {
       if (headed) {
         kit.row("Head", { gap: tk.md, cross: "end", width: pct(1) }, () => {
           if ((desc.position ?? 0) > 0) big("Position", desc.positionLabel ?? "Position", desc.position ?? 0, desc.positionTotal ?? 0, false);
-          if ((desc.position ?? 0) > 0 && lap > 0) leaf("Divider", { width: px(1), height: px(ut(38)) }, { fills: [solid(token("line", 0.9))] });
+          if ((desc.position ?? 0) > 0 && lap > 0 && !boxless) leaf("Divider", { width: px(1), height: px(ut(38)) }, { fills: [solid(token("line", 0.9))] });
           if (lap > 0) big("Lap", final ? (desc.finalLabel ?? "Final lap") : (desc.lapLabel ?? "Lap"), lap, total, final);
           // A phone has no height for a second line: the split joins the head as a third column.
-          if (f.phone && delta !== null) {
-            leaf("Divider2", { width: px(1), height: px(ut(38)) }, { fills: [solid(token("line", 0.9))] });
+          if (f.phone && delta !== null && show === "all") {
+            if (!boxless) leaf("Divider2", { width: px(1), height: px(ut(38)) }, { fills: [solid(token("line", 0.9))] });
             splitBox("column");
           }
         });
-        if (!f.phone || delta === null) leaf("Rule", { width: pct(1), height: px(1) }, { fills: [solid(token("line", 0.7))] });
+        if ((!f.phone || delta === null) && timed && !boxless) leaf("Rule", { width: pct(1), height: px(1) }, { fills: [solid(token("line", 0.7))] });
       }
-      if (!f.phone) {
+      if (!f.phone && timed) {
         row("Current", desc.currentLabel ?? "Current lap", desc.currentMs ?? 0, token("ink"));
         if (best !== null) row("Best", desc.bestLabel ?? "Best lap", best, newBest && eb.since < 240 ? lit(PURPLE) : token("ink"));
         if (last !== null) row("Last", desc.lastLabel ?? "Last lap", last, newBest ? lit(PURPLE) : token("inkMuted"));
       }
-      if (delta !== null && !(f.phone && headed)) splitBox("row");
+      if (delta !== null && timed && !(f.phone && headed && show === "all")) splitBox("row");
     }, {
       a11y: a11y("status", `Position ${desc.position ?? 0} of ${desc.positionTotal ?? 0}, lap ${lap}${total ? ` of ${total}` : ""}`, { value: [lapText(desc.currentMs ?? 0), best !== null ? `best ${lapText(best)}` : "", delta !== null ? `split ${signedSeconds(delta / 1000)}` : ""].filter(Boolean).join(", ") }),
-      ...groups({ lap: final ? "final" : "racing", split, best: newBest ? "new" : "none" }, { lap: ["racing", "final"], split: ["none", "ahead", "behind"], best: ["none", "new"] }),
+      ...groups({ lap: final ? "final" : "racing", split, best: newBest ? "new" : "none" }, { lap: ["racing", "final"], split: ["none", "ahead", "behind", "best"], best: ["none", "new"] }),
     });
   });
 }

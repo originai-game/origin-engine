@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2365 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2367 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -717,6 +717,7 @@ Field units the docs and Tune use.
 | [`LaneKey`](ui.md#type-LaneKey) | desc struct | ui | — |
 | [`LaneKeysDesc`](ui.md#type-LaneKeysDesc) | desc struct | ui | — |
 | [`LapTimerDesc`](ui.md#type-LapTimerDesc) | desc struct | ui | — |
+| [`LapTimerShow`](ui.md#type-LapTimerShow) | enum | ui | — |
 | [`LatheGeometryDesc`](render.md#type-LatheGeometryDesc) | desc struct | render | — |
 | [`LayerDesc`](ui.md#type-LayerDesc) | desc struct | ui | — |
 | [`LayerMove`](ui.md#type-LayerMove) | struct | ui | — |
@@ -2100,6 +2101,7 @@ Field units the docs and Tune use.
 | [`ScrollDesc`](ui.md#type-ScrollDesc) | desc struct | ui | — |
 | [`SearchBoxDesc`](ui.md#type-SearchBoxDesc) | desc struct | ui | — |
 | [`SearchResult`](ui.md#type-SearchResult) | struct | ui | — |
+| [`SectorState`](ui.md#type-SectorState) | enum | ui | — |
 | [`SegmentedDesc`](ui.md#type-SegmentedDesc) | desc struct | ui | — |
 | [`SegmentItem`](ui.md#type-SegmentItem) | desc struct | ui | — |
 | [`SelectCursor`](ui.md#type-SelectCursor) | desc struct | ui | — |
