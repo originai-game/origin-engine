@@ -163,7 +163,10 @@ export function photoMode(id: string, desc: Api.PhotoModeDesc = {}): Api.PhotoMo
       washBy: 0.12,
       direction: "column",
       gap: u(4),
+      align: "center",
       cross: "center",
+      // A chip is a whole touch target, 44 tall at least.
+      ...(portrait ? { height: { kind: "fit", min: 44 } as Api.Size } : {}),
       padding: xy(u(portrait ? 12 : 10), u(portrait ? 8 : 6)),
       radius: portrait ? 999 : Math.max(4, t.small),
       semantics: { role: "tab", name: x.label ?? k, selected: on },
