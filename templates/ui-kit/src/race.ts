@@ -195,7 +195,10 @@ export function raceHud(world: World): void {
   }
   if (touch) pads(k, m, small, look === "arcade");
 
+  // The checkpoint and the final lap sit under the times plate, wherever this layout put it.
+  const below = look === "arcade" ? "" : portrait ? "Race/Bar/Times" : small || (big && og.ui.frameViewport().width < 1100) ? "Race/Times" : "TimesHud/Times";
   og.ui.raceBanner("Banner", {
+    below,
     event: moment === "wrongWay" ? "none" : moment, at: since, wrongWay: moment === "wrongWay",
     count: 3, deltaMs: -420, index: 2, best: false,
     place: PLACE, placeText: L("sc.race.ord3"), timeMs: 3 * 60_000 + 41_287,
@@ -206,7 +209,7 @@ export function raceHud(world: World): void {
 /** The lap timer's part: the head (the place, the lap, its pips) on the scene, or the times on their plate. */
 function timer(l: Lap, show: "head" | "times", boxless: boolean): LapTimerDesc {
   return {
-    show, boxless, position: PLACE, positionTotal: FIELD.length, lap: l.lap, lapTotal: 3,
+    show, boxless, compact: show === "times", position: PLACE, positionTotal: FIELD.length, lap: l.lap, lapTotal: 3,
     currentMs: l.lapMs, bestMs: 72_904, lastMs: 73_377, deltaMs: l.delta, sectors: l.sectors,
     positionLabel: L("sc.race.pos"), lapLabel: L("sc.race.lap"), finalLabel: L("sc.race.final"), currentLabel: L("sc.race.current"),
     bestLabel: L("sc.race.best"), lastLabel: L("sc.race.last"), splitLabel: L("sc.race.split"),
@@ -222,12 +225,11 @@ function tower(): void {
 }
 
 /**
- * The circuit, player-up round the player (the map's centre follows the car: the loop runs round the edge of its
- * square, so a window on the square's middle would show only the infield), its start line checkered and its sectors
+ * The circuit, player-up round the player (og-ui centres a track's map on the player marker), its start line checkered and its sectors
  * ticked, its name under it.
  */
 function map(size: number, anchor: "topRight" | "bottomLeft" | null, shape: "square" | "circle", pos: ReturnType<typeof markers>, caption = true): void {
-  og.ui.minimapView("Track", { size, shape, heading: pos.me.heading, centerX: pos.me.x, centerY: pos.me.y, zoom: 0.62, track: TRACK, sectors: [0.36, 0.64], markers: pos.list, zone: caption ? L("sc.race.circuit") : "", north: "N", anchor });
+  og.ui.minimapView("Track", { size, shape, heading: pos.me.heading, zoom: 0.62, track: TRACK, sectors: [0.36, 0.64], markers: pos.list, zone: caption ? L("sc.race.circuit") : "", north: "N", anchor });
 }
 
 /** On a phone in portrait: one bar across the top (the place and lap, the times), the tower and the map under it. */
