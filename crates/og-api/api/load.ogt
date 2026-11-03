@@ -427,7 +427,7 @@ module load {
   }
 
   struct LoadBudget {
-    doc "The limits an uncooked load (og.load.imageData, og.load.gltfData) is held to: content a player or a generator made is untrusted, so each limit is checked from the file's headers before anything is decoded, and a load over one is refused naming the limit, the value and the fix."
+    doc "The limits an uncooked load (og.load.imageData, og.load.gltfData, og.load.environmentData) is held to: content a player or a generator made is untrusted, so each limit is checked from the file's headers before anything is decoded, and a load over one is refused naming the limit, the value and the fix."
     desc true
     field bytes f64 "The most bytes the source may have." {
       default 33554432
@@ -467,6 +467,27 @@ module load {
     field budget LoadBudget "The limits it is held to."
   }
 
+  struct EnvironmentDataDesc {
+    doc "How og.load.environmentData reads an HDR environment."
+    desc true
+    field size u32 "The prefiltered cube's face size at its sharpest level: a power of two from 16 to 2048 (and at most LoadBudget.textureSize), as a cooked environment's `size`." {
+      default 128
+    }
+    field intensity f32 "Multiplies the image, as a cooked environment's `intensity`." {
+      default 1
+      min 0
+    }
+    field budget LoadBudget "The limits it is held to: bytes, and textureSize for the image's width and height."
+  }
+
+  struct EnvironmentInfo {
+    doc "What a ready uncooked environment holds."
+    field map EnvironmentMap "The map, for Environment.map or Environment.blendTo, lit and drawn like a cooked one."
+    field width u32 "The image's width in pixels."
+    field height u32 "The image's height in pixels."
+    field size u32 "The prefiltered cube's face size."
+  }
+
   struct ImageInfo {
     doc "What a ready uncooked image holds."
     field texture Texture "The texture: og.render.sprite, og.ui.image and material maps draw it like a cooked one."
@@ -504,10 +525,27 @@ module load {
     returns Result.Asset "The handle (pending), or why it was refused now: over the budget's bytes, triangles or textureSize, not a glTF 2.0, an image that is not a PNG or JPEG, or something the reader refuses by name."
   }
 
-  fn release {
-    doc "Free an uncooked asset (og.load.imageData, og.load.gltfData): a load still pending is dropped (it never completes, so it is never journaled), and a ready one's textures and meshes are emptied under their handles, so what still names them draws nothing and nothing breaks, while their memory on the GPU and their copies on the CPU go (the probe's memory report and `dump_memory` show both). An og.Model of a released model draws nothing; a sprite or material of a released texture draws one clear texel. The handle then answers failed, naming the release. Physics shapes built from its geometries are world state and stay. Releasing again does nothing."
+  fn environmentData {
+    doc "Load an HDR environment from bytes, uncooked, at run time: an equirectangular Radiance .hdr (or OpenEXR .exr where RenderCapabilities.exrDecode is true) that a player uploaded or a generator wrote, for Environment.map as og.load.environment's cooked maps are. The game fetches the file itself (from a URL, an upload or a generator) and passes its bytes. Its size, width and height are read from its header and checked against the budget before it is decoded; the image is twice as wide as it is tall (the centre column faces +X, as three.js maps it). Natively a worker thread decodes it; on the web the .hdr decodes in rows at the tick boundaries, within LoadBudget.frameMs, never in one long stall. The diffuse irradiance (nine harmonics) is gathered as it decodes, and when the renderer first draws with it the image is resampled into a cube and GGX-prefiltered into the five levels a cooked map has (roughness 0 to 1), on the GPU by the passes the sky's own light runs (the cook's `bake` does the same on the CPU for cooked maps and for tools without a GPU). The handle is pending until the map is in place, then ready (og.load.environmentInfo gives the map) or failed (og.load.error says why); until then Environment lights the scene by the sky."
+    doc "Completion is host input, applied at a tick boundary and journaled as og.load.imageData's is, so a replay puts it in place at the same tick; in a lockstep or rollback room it is local to each session (share the bytes with og.platform.roomSend)."
     param world World "The world that owns the asset."
-    param asset Asset "A handle og.load.imageData or og.load.gltfData answered."
+    param name String "A name for it in errors and dumps, such as `uploads/sunset.hdr`."
+    param bytes Bytes "The file's bytes."
+    param desc EnvironmentDataDesc "Its face size, intensity and budget."
+    returns Result.Asset "The handle (pending), or why it was refused now: over the budget's bytes or textureSize, not twice as wide as tall, a size that is not a power of two from 16 to 2048, not a Radiance .hdr or OpenEXR file, or an .exr where RenderCapabilities.exrDecode is false (the reason names it: convert the image to .hdr, or cook it)."
+  }
+
+  fn environmentInfo {
+    doc "A ready uncooked environment's map and sizes."
+    param world World "The world that owns the asset."
+    param asset Asset "A handle og.load.environmentData answered."
+    returns Result.EnvironmentInfo "Refused while it is pending (say so), when it failed (with its reason) or for another kind of asset."
+  }
+
+  fn release {
+    doc "Free an uncooked asset (og.load.imageData, og.load.gltfData, og.load.environmentData): a load still pending is dropped (it never completes, so it is never journaled), and a ready one's textures and meshes are emptied under their handles, so what still names them draws nothing and nothing breaks, while their memory on the GPU and their copies on the CPU go (the probe's memory report and `dump_memory` show both). An og.Model of a released model draws nothing; a sprite or material of a released texture draws one clear texel; an Environment that names a released map is lit by the sky. The handle then answers failed, naming the release. Physics shapes built from its geometries are world state and stay. Releasing again does nothing."
+    param world World "The world that owns the asset."
+    param asset Asset "A handle og.load.imageData, og.load.gltfData or og.load.environmentData answered."
     returns Result.Void "Refused for a cooked asset, which stays with its bundle (a streamed one with its group)."
   }
 

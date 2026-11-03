@@ -271,6 +271,107 @@ pub(crate) fn upload(
     (texture, view)
 }
 
+/// An equirectangular HDR image the renderer prefilters itself, on the GPU
+/// when the map is uploaded ([`crate::RenderScene::add_environment_equirect`]:
+/// uncooked environments loaded at run time). The same levels as a cooked
+/// map's (level `m` GGX-prefiltered at roughness `m / 4`, by the passes the
+/// procedural sky's own prefilter runs), in RGBA16F instead of RGB9E5.
+#[derive(Clone, Debug, PartialEq)]
+pub struct EnvironmentEquirect {
+    pub width: u32,
+    pub height: u32,
+    /// RGB9E5 texels ([`rgb9e5`]), rows from the top (+y): column `u`
+    /// looks towards longitude `(u - 0.5) * 2 pi` from +x towards +z, as
+    /// three.js maps an equirectangular texture (the cook's `Equirect`).
+    pub texels: Vec<u32>,
+    /// Level 0's face size: a power of two from
+    /// [`ENVIRONMENT_MAP_MIN_SIZE`] to [`ENVIRONMENT_MAP_MAX_SIZE`].
+    pub size: u32,
+}
+
+impl EnvironmentEquirect {
+    /// Checks the sizes and the texel count.
+    pub fn validate(&self) -> Result<(), String> {
+        if !self.size.is_power_of_two()
+            || !(ENVIRONMENT_MAP_MIN_SIZE..=ENVIRONMENT_MAP_MAX_SIZE).contains(&self.size)
+        {
+            return Err(format!(
+                "an environment map's size is a power of two from {ENVIRONMENT_MAP_MIN_SIZE} to {ENVIRONMENT_MAP_MAX_SIZE}, not {}",
+                self.size
+            ));
+        }
+        if self.width < 2 || self.height < 1 {
+            return Err(format!(
+                "a {}x{} image is too small",
+                self.width, self.height
+            ));
+        }
+        if self.texels.len() != (self.width as usize) * (self.height as usize) {
+            return Err("the image's texels do not match its size".into());
+        }
+        Ok(())
+    }
+}
+
+/// The diffuse irradiance of an equirectangular image as
+/// [`EnvironmentMapData::irradiance`] holds it, gathered a row at a time
+/// (so a loader can spread it over frames): each pixel's radiance
+/// projected onto the nine harmonics with its solid angle, then the cosine
+/// lobe's band factors, as the cook's bake projects its radiance cube.
+#[derive(Clone, Debug)]
+pub struct EquirectIrradiance {
+    width: u32,
+    height: u32,
+    sum: [[f64; 3]; 9],
+}
+
+impl EquirectIrradiance {
+    pub fn new(width: u32, height: u32) -> EquirectIrradiance {
+        EquirectIrradiance {
+            width,
+            height,
+            sum: [[0.0; 3]; 9],
+        }
+    }
+
+    /// Row `y` (from the top), `width * 3` linear RGB floats.
+    pub fn add_row(&mut self, y: u32, rgb: &[f32]) {
+        use std::f64::consts::PI;
+        let (w, h) = (self.width as f64, self.height as f64);
+        let lat = (0.5 - (y as f64 + 0.5) / h) * PI;
+        let solid = (2.0 * PI / w) * (PI / h) * lat.cos();
+        for (x, c) in rgb.as_chunks::<3>().0.iter().enumerate() {
+            let lon = ((x as f64 + 0.5) / w - 0.5) * 2.0 * PI;
+            let d = glam::Vec3::new(
+                (lat.cos() * lon.cos()) as f32,
+                lat.sin() as f32,
+                (lat.cos() * lon.sin()) as f32,
+            );
+            for (sum, y) in self.sum.iter_mut().zip(sh9(d)) {
+                for (s, v) in sum.iter_mut().zip(c) {
+                    *s += *v as f64 * y as f64 * solid;
+                }
+            }
+        }
+    }
+
+    /// The harmonics once every row is in.
+    pub fn finish(&self) -> [[f32; 3]; 9] {
+        const BAND: [f64; 9] = [
+            1.0,
+            2.0 / 3.0,
+            2.0 / 3.0,
+            2.0 / 3.0,
+            0.25,
+            0.25,
+            0.25,
+            0.25,
+            0.25,
+        ];
+        std::array::from_fn(|k| std::array::from_fn(|c| (self.sum[k][c] * BAND[k]) as f32))
+    }
+}
+
 /// Prefiltering an equirectangular HDR image into an [`EnvironmentMapData`]
 /// on the CPU: what og-cook's `type environment` runs at cook time (feature
 /// `bake`; never in the runtime wasm). It lives here because it must match
@@ -815,6 +916,59 @@ mod tests {
         );
         // Exactly representable values survive.
         assert_eq!(rgb9e5_decode(rgb9e5([1.0, 0.5, 2.0])), [1.0, 0.5, 2.0]);
+    }
+
+    /// The equirect's own irradiance agrees with the cook's bake, which
+    /// projects the cube it resampled the image into (a sky with a sun, a
+    /// ground and a lit wall: every band carries something).
+    #[cfg(feature = "bake")]
+    #[test]
+    fn equirect_irradiance_matches_the_bake() {
+        let (w, h) = (128u32, 64u32);
+        let mut rgb = Vec::new();
+        for y in 0..h {
+            for x in 0..w {
+                let c = if y < h / 2 {
+                    if x > w / 2 && x < w / 2 + 12 && y > 8 && y < 18 {
+                        [30.0, 25.0, 20.0]
+                    } else {
+                        [0.3, 0.5, 1.0]
+                    }
+                } else if x < w / 4 {
+                    [2.0, 0.4, 0.1]
+                } else {
+                    [0.2, 0.2, 0.15]
+                };
+                rgb.extend_from_slice(&c);
+            }
+        }
+        let baked = bake::bake(
+            &bake::Equirect {
+                width: w,
+                height: h,
+                rgb: &rgb,
+            },
+            &bake::BakeDesc {
+                size: 64,
+                samples: 16,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let mut acc = EquirectIrradiance::new(w, h);
+        for y in 0..h {
+            acc.add_row(y, &rgb[(y * w * 3) as usize..((y + 1) * w * 3) as usize]);
+        }
+        let ours = acc.finish();
+        let scale = baked.irradiance[0].iter().cloned().fold(0.0f32, f32::max);
+        for (k, (o, b)) in ours.iter().zip(&baked.irradiance).enumerate() {
+            for (c, (&a, &b)) in o.iter().zip(b).enumerate() {
+                assert!(
+                    (a - b).abs() < 0.03 * scale,
+                    "coefficient {k} channel {c}: {a} against the bake's {b}"
+                );
+            }
+        }
     }
 
     /// A blend's weight is clamped and drawn in 128 steps, so a weight

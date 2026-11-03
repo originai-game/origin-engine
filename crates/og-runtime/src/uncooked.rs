@@ -1,5 +1,6 @@
 //! Uncooked loads at run time (IDL `load`: `imageData`, `gltfData`,
-//! `imageInfo`, `completions`, `replayCompletions`): content a player or a
+//! `environmentData`, `imageInfo`, `environmentInfo`, `completions`,
+//! `replayCompletions`): content a player or a
 //! generator made, from bytes, without `og cook`.
 //!
 //! The source is untrusted, so the budget (`LoadBudget`) is checked from its
@@ -11,7 +12,11 @@
 //! triangle count and image headers), then its images decode as above while
 //! its primitives are converted at the boundaries, one at a time within the
 //! frame budget on the web, and it joins the renderer through the path a
-//! cooked model takes.
+//! cooked model takes. An HDR environment (a Radiance `.hdr`, natively an
+//! OpenEXR `.exr` too) decodes on a worker thread natively and in rows at
+//! the boundaries on the web (og-bundle's [`og_bundle::runtime::HdrRows`]),
+//! its texels packed RGB9E5 and its irradiance gathered as it goes; the
+//! renderer prefilters it on the GPU when it first draws with it.
 //!
 //! Completion is host input. A finished load is put in place at a tick
 //! boundary and its tick journaled ([`Uncooked::journal`]), as a replay
@@ -35,6 +40,15 @@ const FRAME_MS: f64 = 2.0;
 /// The largest texture every WebGPU device takes (`maxTextureDimension2D`'s
 /// guaranteed minimum): `textureSize` is capped here.
 const DEVICE_TEXTURE_SIZE: u32 = 8192;
+
+/// Whether og.load.environmentData reads OpenEXR here
+/// (RenderCapabilities.exrDecode): natively, through the `image` crate; the
+/// web module carries no EXR decoder.
+pub(crate) const EXR_DECODE: bool = cfg!(not(target_arch = "wasm32"));
+
+/// The face sizes an uncooked environment's cube may have.
+const ENV_SIZES: std::ops::RangeInclusive<u32> =
+    og_render::ENVIRONMENT_MAP_MIN_SIZE..=og_render::ENVIRONMENT_MAP_MAX_SIZE;
 
 /// A `LoadBudget` as a load holds to it.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -186,6 +200,86 @@ struct Gltf {
     error: Option<String>,
 }
 
+/// An environment's image decoded: RGB9E5 texels, rows from the top, and
+/// its irradiance.
+struct Prepared {
+    width: u32,
+    height: u32,
+    texels: Vec<u32>,
+    irradiance: [[f32; 3]; 9],
+}
+
+/// Rows of an environment's image packed as they come, its irradiance
+/// gathered beside them; a non-finite pixel refuses the image.
+struct Packer {
+    width: u32,
+    height: u32,
+    intensity: f32,
+    texels: Vec<u32>,
+    irradiance: og_render::EquirectIrradiance,
+}
+
+impl Packer {
+    fn new(width: u32, height: u32, intensity: f32) -> Packer {
+        Packer {
+            width,
+            height,
+            intensity,
+            texels: Vec::with_capacity(width as usize * height as usize),
+            irradiance: og_render::EquirectIrradiance::new(width, height),
+        }
+    }
+
+    fn row(&mut self, y: u32, rgb: &mut [f32]) -> Result<(), String> {
+        if rgb.len() != self.width as usize * 3 {
+            return Err(format!("row {y} does not hold {} pixels", self.width));
+        }
+        if let Some(i) = rgb.iter().position(|v| !v.is_finite()) {
+            return Err(format!(
+                "pixel {} of row {y} holds a value that is not a finite number",
+                i / 3
+            ));
+        }
+        for v in rgb.iter_mut() {
+            *v = v.max(0.0) * self.intensity;
+        }
+        self.irradiance.add_row(y, rgb);
+        self.texels
+            .extend(rgb.as_chunks::<3>().0.iter().map(|c| og_render::rgb9e5(*c)));
+        Ok(())
+    }
+
+    fn finish(self) -> Prepared {
+        Prepared {
+            width: self.width,
+            height: self.height,
+            irradiance: self.irradiance.finish(),
+            texels: self.texels,
+        }
+    }
+}
+
+/// Where an environment's decode is (inside the job's box: one a load).
+#[allow(clippy::large_enum_variant)]
+enum EnvDecode {
+    /// A `.hdr` read in rows at the boundaries (the web).
+    #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+    Rows {
+        rows: og_bundle::runtime::HdrRows,
+        packer: Packer,
+        row: Vec<f32>,
+    },
+    /// On a worker thread of this process.
+    #[cfg(not(target_arch = "wasm32"))]
+    Thread(std::sync::mpsc::Receiver<Result<Prepared, String>>),
+    Done(Result<Prepared, String>),
+}
+
+struct Env {
+    size: u32,
+    decode: EnvDecode,
+}
+
 enum Work {
     Image {
         image: Image,
@@ -193,6 +287,7 @@ enum Work {
         linear: bool,
     },
     Gltf(Box<Gltf>),
+    Environment(Box<Env>),
 }
 
 struct Job {
@@ -358,6 +453,245 @@ pub(crate) fn gltf_data(
     }))
 }
 
+/// An environment's whole image decoded and packed (a worker thread's
+/// work natively).
+#[cfg(not(target_arch = "wasm32"))]
+fn prepare_native(bytes: Vec<u8>, exr: bool, intensity: f32) -> Result<Prepared, String> {
+    if exr {
+        let (w, h) = og_bundle::runtime::exr_size(&bytes)?;
+        let mut reader = image::ImageReader::new(std::io::Cursor::new(bytes));
+        reader.set_format(image::ImageFormat::OpenExr);
+        let mut limits = image::Limits::default();
+        limits.max_image_width = Some(w);
+        limits.max_image_height = Some(h);
+        reader.limits(limits);
+        let mut img = reader.decode().map_err(|e| e.to_string())?.into_rgb32f();
+        if (img.width(), img.height()) != (w, h) {
+            return Err(format!(
+                "decoded to {}x{}, but its header says {w}x{h}",
+                img.width(),
+                img.height()
+            ));
+        }
+        let mut packer = Packer::new(w, h, intensity);
+        for (y, row) in img.chunks_mut(w as usize * 3).enumerate() {
+            packer.row(y as u32, row)?;
+        }
+        return Ok(packer.finish());
+    }
+    let mut rows = og_bundle::runtime::HdrRows::new(bytes)?;
+    let mut packer = Packer::new(rows.width(), rows.height(), intensity);
+    let mut row = Vec::new();
+    while rows.next_row(&mut row)? {
+        packer.row(rows.row() - 1, &mut row)?;
+    }
+    Ok(packer.finish())
+}
+
+/// `og.load.environmentData`: checks the image against its budget and
+/// the desc, starts its decode and answers its (pending) asset index.
+pub(crate) fn environment_data(
+    eng: &Engine,
+    name: &str,
+    bytes: Vec<u8>,
+    desc: &Value,
+) -> Result<usize, String> {
+    let budget = Budget::from_desc(desc)?;
+    let size = match &desc["size"] {
+        Value::Null => 128,
+        v => v
+            .as_u64()
+            .ok_or_else(|| format!("EnvironmentDataDesc.size is a whole number, got {v}"))?
+            as u32,
+    };
+    if !size.is_power_of_two() || !ENV_SIZES.contains(&size) {
+        return Err(format!(
+            "{name}: EnvironmentDataDesc.size is a power of two from {} to {}, not {size}",
+            ENV_SIZES.start(),
+            ENV_SIZES.end()
+        ));
+    }
+    if size > budget.texture_size {
+        return Err(format!(
+            "{name}: EnvironmentDataDesc.size {size} is over LoadBudget.textureSize ({}); ask for a smaller cube or raise the budget",
+            budget.texture_size
+        ));
+    }
+    let intensity = match &desc["intensity"] {
+        Value::Null => 1.0,
+        v => v
+            .as_f64()
+            .filter(|x| x.is_finite() && *x >= 0.0)
+            .ok_or_else(|| {
+                format!("EnvironmentDataDesc.intensity is a number of at least 0, got {v}")
+            })? as f32,
+    };
+    check_size(name, &bytes, &budget)?;
+    let exr = og_bundle::runtime::is_exr(&bytes);
+    let (width, height) = if exr {
+        if !EXR_DECODE {
+            return Err(format!(
+                "{name}: an OpenEXR image, which this host does not decode (RenderCapabilities.exrDecode is false on the web): convert it to a Radiance .hdr, or cook it as an environment"
+            ));
+        }
+        og_bundle::runtime::exr_size(&bytes).map_err(|e| format!("{name}: {e}"))?
+    } else if og_bundle::runtime::is_hdr(&bytes) {
+        og_bundle::runtime::hdr_size(&bytes).map_err(|e| format!("{name}: {e}"))?
+    } else {
+        return Err(format!(
+            "{name}: not a Radiance .hdr or OpenEXR .exr (an environment is an equirectangular HDR image)"
+        ));
+    };
+    if width.max(height) > budget.texture_size {
+        return Err(format!(
+            "{name}: {width}x{height} is over LoadBudget.textureSize ({}); scale the image down or raise the budget (at most {DEVICE_TEXTURE_SIZE}, the largest every device takes)",
+            budget.texture_size
+        ));
+    }
+    if width < 2 * height.saturating_sub(1) || width > 2 * height + 1 {
+        return Err(format!(
+            "{name} is {width} × {height}: an equirectangular image is twice as wide as it is tall"
+        ));
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    let decode = {
+        let (send, recv) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let _ = send.send(prepare_native(bytes, exr, intensity));
+        });
+        EnvDecode::Thread(recv)
+    };
+    #[cfg(target_arch = "wasm32")]
+    let decode = {
+        let rows = og_bundle::runtime::HdrRows::new(bytes).map_err(|e| format!("{name}: {e}"))?;
+        EnvDecode::Rows {
+            packer: Packer::new(rows.width(), rows.height(), intensity),
+            rows,
+            row: Vec::new(),
+        }
+    };
+    Ok(queue(eng, name, &budget, |_| {
+        Work::Environment(Box::new(Env { size, decode }))
+    }))
+}
+
+/// Advances an environment's decode; whether it is finished. Each row is
+/// a unit of the frame's work.
+fn env_step(env: &mut Env, clock: &mut Clock, frame_ms: f64, wait: bool) -> bool {
+    #[cfg(not(target_arch = "wasm32"))]
+    if let EnvDecode::Thread(recv) = &env.decode {
+        let got = if wait {
+            recv.recv().map_err(|_| ())
+        } else {
+            recv.try_recv().map_err(|_| ())
+        };
+        match got {
+            Ok(r) => env.decode = EnvDecode::Done(r),
+            Err(()) if wait => {
+                env.decode = EnvDecode::Done(Err("the decoding thread stopped".into()))
+            }
+            Err(()) => return false,
+        }
+    }
+    if let EnvDecode::Rows { rows, packer, row } = &mut env.decode {
+        loop {
+            // The last row read finishes the image in the same frame.
+            if (rows.row() < rows.height()) && !wait && clock.over(frame_ms) {
+                return false;
+            }
+            match rows.next_row(row) {
+                Ok(true) => {
+                    clock.worked = true;
+                    if let Err(e) = packer.row(rows.row() - 1, row) {
+                        env.decode = EnvDecode::Done(Err(e));
+                        break;
+                    }
+                }
+                Ok(false) => {
+                    let EnvDecode::Rows { packer, .. } =
+                        std::mem::replace(&mut env.decode, EnvDecode::Done(Err(String::new())))
+                    else {
+                        unreachable!()
+                    };
+                    env.decode = EnvDecode::Done(Ok(packer.finish()));
+                    break;
+                }
+                Err(e) => {
+                    env.decode = EnvDecode::Done(Err(e));
+                    break;
+                }
+            }
+        }
+    }
+    true
+}
+
+/// A decoded environment into the renderer: its map added, the asset's
+/// payload naming it.
+fn put_environment(eng: &Engine, name: &str, entry: usize, env: Env) -> Result<(), String> {
+    let EnvDecode::Done(result) = env.decode else {
+        unreachable!("only finished jobs are put in place");
+    };
+    let p = result?;
+    let mut rs = eng.render.borrow_mut();
+    let handle = rs.scene.add_environment_equirect(
+        og_render::EnvironmentEquirect {
+            width: p.width,
+            height: p.height,
+            texels: p.texels,
+            size: env.size,
+        },
+        p.irradiance,
+    )?;
+    // Not in by_path: og.load.environment never answers it, and a release
+    // never brings it back.
+    rs.env
+        .maps
+        .push((format!("{name} (uncooked)"), Some(handle)));
+    let map = rs.env.maps.len() - 1;
+    drop(rs);
+    eng.assets.borrow_mut().entries[entry].payload = Payload::Environment {
+        map,
+        width: p.width,
+        height: p.height,
+        size: env.size,
+    };
+    Ok(())
+}
+
+/// `og.load.environmentInfo`.
+pub(crate) fn environment_info(eng: &Engine, index: Option<usize>) -> Result<Value, String> {
+    let a = eng.assets.borrow();
+    let e = index
+        .and_then(|i| a.entries.get(i))
+        .ok_or("not an asset handle")?;
+    match (&e.status, &e.payload) {
+        (Status::Failed(r), _) => Err(r.clone()),
+        (Status::Pending, Payload::Uncooked) => Err(format!(
+            "{} is still loading: og.load.status answers ready once it is in place",
+            e.path
+        )),
+        (
+            Status::Ready,
+            Payload::Environment {
+                map,
+                width,
+                height,
+                size,
+            },
+        ) => Ok(json!({
+            "map": super::assets::handle(*map) as f64,
+            "width": width,
+            "height": height,
+            "size": size,
+        })),
+        _ => Err(format!(
+            "{} is not an environment og.load.environmentData loaded",
+            e.path
+        )),
+    }
+}
+
 fn start(u: &mut Uncooked, bytes: Vec<u8>, header: ImageHeader) -> Image {
     let key = u.next_key;
     u.next_key += 1;
@@ -443,6 +777,7 @@ impl Clock<'_> {
 fn step(job: &mut Job, clock: &mut Clock, h: Option<&dyn Hooks>, wait: bool) -> bool {
     match &mut job.work {
         Work::Image { image, .. } => decoded(image, h, wait),
+        Work::Environment(env) => env_step(env, clock, job.frame_ms, wait),
         Work::Gltf(g) => {
             if g.error.is_some() {
                 return true;
@@ -584,6 +919,7 @@ fn apply(eng: &Engine, job: Job, recorded_failure: bool) -> bool {
                 };
             }),
             Work::Gltf(g) => put_gltf(eng, &name, job.entry, *g),
+            Work::Environment(env) => put_environment(eng, &name, job.entry, *env),
         }
     };
     match result {
@@ -674,7 +1010,7 @@ pub(crate) fn release(eng: &Engine, index: Option<usize>) -> Result<(), String> 
     }
     let Some(textures) = a.uncooked.owned.remove(&i) else {
         return Err(format!(
-            "{path} is a cooked asset: og.load.release frees what og.load.imageData and og.load.gltfData loaded (a cooked asset stays with its bundle, a streamed one with its group)"
+            "{path} is a cooked asset: og.load.release frees what og.load.imageData, og.load.gltfData and og.load.environmentData loaded (a cooked asset stays with its bundle, a streamed one with its group)"
         ));
     };
     if let Some(at) = a.uncooked.jobs.iter().position(|j| j.entry == i) {
@@ -682,6 +1018,7 @@ pub(crate) fn release(eng: &Engine, index: Option<usize>) -> Result<(), String> 
         let images: Vec<Image> = match job.work {
             Work::Image { image, .. } => vec![image],
             Work::Gltf(g) => g.images.into_iter().map(|(_, image)| image).collect(),
+            Work::Environment(_) => Vec::new(),
         };
         for image in images {
             if let Decode::Host(key) = image.decode {
@@ -698,6 +1035,21 @@ pub(crate) fn release(eng: &Engine, index: Option<usize>) -> Result<(), String> 
         Payload::Image { texture, .. } => {
             if let Some(&h) = rs.textures.get(texture) {
                 rs.scene.set_texture(h, released_texture());
+            }
+        }
+        Payload::Environment { map, .. } => {
+            if let Some(h) = rs.env.maps.get_mut(map).and_then(|m| m.1.take()) {
+                // The frame stops naming it now; og.Environment's next read
+                // finds no map there and lights by the sky.
+                if rs.scene.environment_map.is_some_and(|m| m.map == h) {
+                    rs.scene.environment_map = None;
+                }
+                if let Some(m) = &mut rs.scene.environment_map
+                    && m.blend.is_some_and(|b| b.to == h)
+                {
+                    m.blend = None;
+                }
+                rs.scene.remove_environment_map(h);
             }
         }
         Payload::Gltf { .. } => {
@@ -896,6 +1248,95 @@ mod tests {
         assert_eq!(frames(job(0.0), false), vec![1, 2, 3, 4, 5]);
         // Waited for (natively, or a replayed load at its tick): all at once.
         assert_eq!(frames(job(0.0), true), vec![5]);
+    }
+
+    /// A .hdr decoded in rows at the boundaries (the web's way): a frame
+    /// budget's worth of rows a frame and at least one, all at once when
+    /// waited for, and the result whatever the pace: the texels packed and
+    /// the irradiance of a uniform sky (its first harmonic only).
+    #[test]
+    fn an_environment_decodes_a_frame_budget_of_rows_at_a_time() {
+        let mut file = b"#?RADIANCE\n\n-Y 5 +X 10\n".to_vec();
+        // Every pixel (128, 64, 32) at exponent 129.
+        for _ in 0..50 {
+            file.extend_from_slice(&[128, 64, 32, 129]);
+        }
+        let env = || {
+            let rows = og_bundle::runtime::HdrRows::new(file.clone()).unwrap();
+            Env {
+                size: 16,
+                decode: EnvDecode::Rows {
+                    packer: Packer::new(rows.width(), rows.height(), 2.0),
+                    rows,
+                    row: Vec::new(),
+                },
+            }
+        };
+        let frames = |mut env: Env, frame_ms: f64, wait: bool| {
+            let t = std::cell::Cell::new(0.0);
+            let now = || {
+                let v = t.get();
+                t.set(v + 1.5);
+                v
+            };
+            let mut seen = Vec::new();
+            for _ in 0..10 {
+                let mut clock = Clock {
+                    now: &now,
+                    start: now(),
+                    worked: false,
+                };
+                let done = env_step(&mut env, &mut clock, frame_ms, wait);
+                seen.push(match &env.decode {
+                    EnvDecode::Rows { rows, .. } => rows.row(),
+                    _ => 5,
+                });
+                if done {
+                    break;
+                }
+            }
+            let EnvDecode::Done(Ok(p)) = env.decode else {
+                panic!("not decoded")
+            };
+            (seen, p)
+        };
+        assert_eq!(frames(env(), 2.0, false).0, vec![2, 4, 5]);
+        assert_eq!(frames(env(), 0.0, false).0, vec![1, 2, 3, 4, 5]);
+        let (seen, p) = frames(env(), 0.0, true);
+        assert_eq!(seen, vec![5]);
+        assert_eq!((p.width, p.height, p.texels.len()), (10, 5, 50));
+        // Intensity 2: (128.5, 64.5, 32.5) / 128 doubled.
+        let c = og_render::rgb9e5_decode(p.texels[0]);
+        assert!((c[0] - 2.0 * 128.5 / 128.0).abs() < 0.01, "{c:?}");
+        // A uniform radiance L has irradiance over pi L: Y_0 times
+        // 4 pi Y_0 L, and nothing in the higher bands.
+        let l = 2.0 * 64.5 / 128.0;
+        let y0 = 0.282095f32;
+        // Within the quadrature error of five rows (a few per cent).
+        let want = 4.0 * std::f32::consts::PI * y0 * l;
+        assert!(
+            (p.irradiance[0][1] - want).abs() < 0.03 * want,
+            "{:?} against {want}",
+            p.irradiance[0]
+        );
+        assert!(
+            p.irradiance[1..]
+                .iter()
+                .flatten()
+                .all(|v| v.abs() < 0.05 * want),
+            "{:?}",
+            p.irradiance
+        );
+    }
+
+    /// A pixel that is not a finite number refuses the image.
+    #[test]
+    fn a_non_finite_pixel_refuses_an_environment() {
+        let mut p = Packer::new(2, 1, 1.0);
+        let e = p
+            .row(0, &mut [1.0, 1.0, 1.0, f32::NAN, 0.0, 0.0])
+            .unwrap_err();
+        assert!(e.contains("pixel 1 of row 0"), "{e}");
     }
 
     #[test]

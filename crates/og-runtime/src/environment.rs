@@ -67,6 +67,8 @@ pub(crate) fn resolve(eng: &Engine) {
         .iter()
         .enumerate()
         .filter(|(_, (_, h))| h.is_none())
+        // Cooked loads only: an uncooked map released is never re-added.
+        .filter(|(i, (id, _))| eng.render.borrow().env.by_path.get(id) == Some(i))
         .map(|(i, (id, _))| (i, id.clone()))
         .collect();
     for (i, id) in pending {

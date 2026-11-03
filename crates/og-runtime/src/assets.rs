@@ -61,6 +61,14 @@ pub(crate) enum Payload {
     },
     /// An uncooked load not yet in place (super::uncooked).
     Uncooked,
+    /// An uncooked environment in place: its index in the render state's
+    /// environment maps (its EnvironmentMap handle's).
+    Environment {
+        map: usize,
+        width: u32,
+        height: u32,
+        size: u32,
+    },
     /// An uncooked image in place: its index in the render state's textures.
     Image {
         texture: usize,

@@ -90,6 +90,23 @@ pub fn environment_scene() -> Result<RenderScene, String> {
 /// below the horizon, baked like [`studio_map`]. Projected onto a grounded
 /// dome its checks become a flat polar grid.
 pub fn outdoor_map(size: u32) -> Result<EnvironmentMapData, String> {
+    let (w, h, rgb) = outdoor_pixels();
+    bake(
+        &Equirect {
+            width: w,
+            height: h,
+            rgb: &rgb,
+        },
+        &BakeDesc {
+            size,
+            samples: 256,
+            ..Default::default()
+        },
+    )
+}
+
+/// [`outdoor_map`]'s image: its width, height and linear RGB.
+pub fn outdoor_pixels() -> (u32, u32, Vec<f32>) {
     let (w, h) = (256u32, 128u32);
     let sun = Vec3::new(0.4, 0.55, 0.73).normalize();
     let mut rgb = Vec::with_capacity((w * h * 3) as usize);
@@ -120,18 +137,7 @@ pub fn outdoor_map(size: u32) -> Result<EnvironmentMapData, String> {
             rgb.extend_from_slice(&c.to_array());
         }
     }
-    bake(
-        &Equirect {
-            width: w,
-            height: h,
-            rgb: &rgb,
-        },
-        &BakeDesc {
-            size,
-            samples: 256,
-            ..Default::default()
-        },
-    )
+    (w, h, rgb)
 }
 
 /// [`environment_scene`] with the studio's background blurred half way
@@ -201,5 +207,42 @@ pub fn grounded_scene(grounded: bool) -> Result<RenderScene, String> {
         exposure: Exposure::Manual { ev: 0.0 },
         ..Default::default()
     };
+    Ok(scene)
+}
+
+/// [`environment_scene`] lit by [`outdoor_map`]'s image loaded uncooked:
+/// the renderer resamples and GGX-prefilters it on the GPU
+/// (`RenderScene::add_environment_equirect`), with the irradiance gathered
+/// from its rows as og.load.environmentData gathers it. With `cooked` the
+/// cook's CPU bake of the same image instead, the frame it should match.
+pub fn uncooked_scene(cooked: bool) -> Result<RenderScene, String> {
+    let mut scene = environment_scene()?;
+    let (w, h, rgb) = outdoor_pixels();
+    let map = if cooked {
+        scene.add_environment_map(outdoor_map(64)?)
+    } else {
+        let mut irradiance = og_render::EquirectIrradiance::new(w, h);
+        for (y, row) in rgb.chunks(w as usize * 3).enumerate() {
+            irradiance.add_row(y as u32, row);
+        }
+        let texels = rgb
+            .as_chunks::<3>()
+            .0
+            .iter()
+            .map(|c| og_render::rgb9e5(*c))
+            .collect();
+        scene.add_environment_equirect(
+            og_render::EnvironmentEquirect {
+                width: w,
+                height: h,
+                texels,
+                size: 64,
+            },
+            irradiance.finish(),
+        )?
+    };
+    if let Some(m) = &mut scene.environment_map {
+        m.map = map;
+    }
     Ok(scene)
 }

@@ -53,6 +53,7 @@ pub const SCENES: &[&str] = &[
     "environment-blurry",
     "environment-blend",
     "environment-grounded",
+    "environment-uncooked",
     "ao-gtao",
     "ao-ssao",
     "gi-room",
@@ -676,6 +677,12 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // onto a grounded dome (three.js GroundedSkybox).
         "environment-grounded" => |g, _| {
             g.scene = crate::ibl_scenes::grounded_scene(true)?;
+            Ok(())
+        },
+        // The environment-map scene lit by the outdoor map's image loaded
+        // uncooked and prefiltered on the GPU (og.load.environmentData).
+        "environment-uncooked" => |g, _| {
+            g.scene = crate::ibl_scenes::uncooked_scene(false)?;
             Ok(())
         },
         "ao-gtao" => |g, _| {

@@ -184,8 +184,8 @@ pub use effects::*;
 pub use environment::bake;
 pub use environment::{
     ENVIRONMENT_BLEND_STEPS, ENVIRONMENT_MAP_LEVELS, ENVIRONMENT_MAP_MAX_SIZE,
-    ENVIRONMENT_MAP_MIN_SIZE, EnvironmentBlend, EnvironmentMap, EnvironmentMapData, face_direction,
-    rgb9e5, rgb9e5_decode, sh9,
+    ENVIRONMENT_MAP_MIN_SIZE, EnvironmentBlend, EnvironmentEquirect, EnvironmentMap,
+    EnvironmentMapData, EquirectIrradiance, face_direction, rgb9e5, rgb9e5_decode, sh9,
 };
 pub use fluid3d::Fluid3d;
 pub use graph::{GraphError, GraphPlan, RenderGraph, TargetDesc};

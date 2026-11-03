@@ -24,6 +24,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 
 mod animation;
+mod hdr;
 mod media;
 mod model;
 mod scene;
@@ -31,6 +32,7 @@ mod terrain;
 mod uncooked;
 
 pub use animation::*;
+pub use hdr::{HdrRows, exr_size, hdr_size, is_exr, is_hdr};
 pub use media::*;
 pub use model::*;
 pub use scene::*;

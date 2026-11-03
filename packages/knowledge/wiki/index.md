@@ -167,7 +167,7 @@ Field units the docs and Tune use.
 
 ## Every name
 
-2372 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
+2376 entries: modules' functions, types, records, column kinds and constants, and every interface member and resource method.
 
 | Name | Kind | Page | Binding symbol |
 |---|---|---|---|
@@ -523,6 +523,8 @@ Field units the docs and Tune use.
 | [`EntityDump`](probe.md#type-EntityDump) | struct | probe | — |
 | [`EntityOperation`](probe.md#type-EntityOperation) | struct | probe | — |
 | [`EntityPrefab`](probe.md#type-EntityPrefab) | struct | probe | — |
+| [`EnvironmentDataDesc`](load.md#type-EnvironmentDataDesc) | desc struct | load | — |
+| [`EnvironmentInfo`](load.md#type-EnvironmentInfo) | struct | load | — |
 | [`EnvironmentMap`](render.md#type-EnvironmentMap) | handle | render | — |
 | [`EnvironmentMap()`](render.md#column-EnvironmentMap) | column kind | render | — |
 | [`ExpectOperation`](probe.md#type-ExpectOperation) | struct | probe | — |
@@ -1067,6 +1069,8 @@ Field units the docs and Tune use.
 | [`og.load.document`](load.md#fn-document) | function | load | `og_load_document` |
 | [`og.load.emitter`](load.md#fn-emitter) | function | load | `og_load_emitter` |
 | [`og.load.environment`](load.md#fn-environment) | function | load | `og_load_environment` |
+| [`og.load.environmentData`](load.md#fn-environmentData) | function | load | `og_load_environment_data` |
+| [`og.load.environmentInfo`](load.md#fn-environmentInfo) | function | load | `og_load_environment_info` |
 | [`og.load.error`](load.md#fn-error) | function | load | `og_load_error` |
 | [`og.load.flipbook`](load.md#fn-flipbook) | function | load | `og_load_flipbook` |
 | [`og.load.font`](load.md#fn-font) | function | load | `og_load_font` |

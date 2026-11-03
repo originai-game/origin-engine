@@ -583,7 +583,11 @@ tests in orbs and CI, and the probe's CPU description of a frame.
   prefiltered levels (`backgroundBlurriness`), a grounded dome
   (GroundedSkybox, `groundHeight`), and a blend towards a second map
   (`blendTo`, `blendWeight`, drawn in 128 steps and driven from the tick)
-  that mixes every prefiltered level and the harmonics; sky model with
+  that mixes every prefiltered level and the harmonics; uncooked `.hdr`
+  (and natively `.exr`, `RenderCapabilities.exrDecode`) loaded at run time
+  by `og.load.environmentData`, decoded off the engine thread or in
+  budgeted rows, and GGX-prefiltered on the GPU by the IBL passes (the
+  cook's CPU `bake` stays for cooked maps and tools); sky model with
   exposure; height fog, lit as a medium when volumetric; baked lightmaps
   and light volumes (below).
 - Post: bloom, tonemap (ACES, AgX or Khronos PBR Neutral), colour grading LUT (a photo

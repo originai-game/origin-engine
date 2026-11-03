@@ -18,7 +18,7 @@ module load {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7573</sub>
+<sub>`api.ogt` line 7574</sub>
 
 ## Contents
 
@@ -78,15 +78,19 @@ module load {
 | [`og.load.videoInfo`](#fn-videoInfo) | function | A loaded video's size, frames, rate, length, texture and sound. |
 | [`og.load.timeline`](#fn-timeline) | function | Load a timeline: an `.ogt` of `type timeline` (the og.timeline module's file: duration, paths and tracks of keys), cooked with its caption files imported. Loaded once per path; play it with an og.Timeline whose asset is the handle, or `timeline:play:<name>` on the command channel. |
 | [`og.load.rig2d`](#fn-rig2d) | function | Load a cooked 2D rig (an `.ogt` of `type rig2d`, written by hand or imported by the cook from DragonBones JSON) and its texture, and register it with og.skeleton2d. Loading the same path again answers the same handles. |
-| [`LoadBudget`](#type-LoadBudget) | desc struct | The limits an uncooked load (og.load.imageData, og.load.gltfData) is held to: content a player or a generator made is untrusted, so each limit is checked from the file's headers before anything is decoded, and a load over one is refused naming the limit, the value and the fix. |
+| [`LoadBudget`](#type-LoadBudget) | desc struct | The limits an uncooked load (og.load.imageData, og.load.gltfData, og.load.environmentData) is held to: content a player or a generator made is untrusted, so each limit is checked from the file's headers before anything is decoded, and a load over one is refused naming the limit, the value and the fix. |
 | [`ImageKind`](#type-ImageKind) | enum | How an uncooked image's texels are read, as a cooked texture's `kind`. |
 | [`GltfDataDesc`](#type-GltfDataDesc) | desc struct | How og.load.gltfData reads a model. |
 | [`ImageDataDesc`](#type-ImageDataDesc) | desc struct | How og.load.imageData reads an image. |
+| [`EnvironmentDataDesc`](#type-EnvironmentDataDesc) | desc struct | How og.load.environmentData reads an HDR environment. |
+| [`EnvironmentInfo`](#type-EnvironmentInfo) | struct | What a ready uncooked environment holds. |
 | [`ImageInfo`](#type-ImageInfo) | struct | What a ready uncooked image holds. |
 | [`LoadCompletion`](#type-LoadCompletion) | struct | When an uncooked load was put in place: the journal a replay applies again (og.load.completions). |
 | [`og.load.imageData`](#fn-imageData) | function | Load an image from bytes, uncooked, at run time: a PNG or JPEG a player drew, uploaded or a generator made. Its size, width and height are read from its header and checked against the budget before it is decoded. On the web the browser decodes it off the engine's thread (createImageBitmap in the engine's Worker), and no decoder is in the wasm; natively a worker thread decodes it. The handle is pending until the image is in place, then ready (og.load.imageInfo gives its texture) or failed (og.load.error says why). |
 | [`og.load.gltfData`](#fn-gltfData) | function | Load a glTF 2.0 model from bytes, uncooked, at run time: a .glb, or a .gltf whose buffers and images are data: URIs, that a player made or a generator wrote. At the call its JSON is read and its size, its triangles (every triangle primitive of every mesh) and each image's header are checked against the budget before anything is decoded. Then its images decode off the engine's thread, as og.load.imageData's do, while its primitives are converted at the tick boundaries, one at a time within LoadBudget.frameMs on the web. The handle is pending until the model is in place, then ready: world.instantiate spawns it (from a system, which cannot instantiate, insert og.Model { asset } on an entity it spawns) and og.load.gltfInfo describes it, as for a cooked glTF. Or it is failed, and og.load.error says why. |
-| [`og.load.release`](#fn-release) | function | Free an uncooked asset (og.load.imageData, og.load.gltfData): a load still pending is dropped (it never completes, so it is never journaled), and a ready one's textures and meshes are emptied under their handles, so what still names them draws nothing and nothing breaks, while their memory on the GPU and their copies on the CPU go (the probe's memory report and `dump_memory` show both). An og.Model of a released model draws nothing; a sprite or material of a released texture draws one clear texel. The handle then answers failed, naming the release. Physics shapes built from its geometries are world state and stay. Releasing again does nothing. |
+| [`og.load.environmentData`](#fn-environmentData) | function | Load an HDR environment from bytes, uncooked, at run time: an equirectangular Radiance .hdr (or OpenEXR .exr where RenderCapabilities.exrDecode is true) that a player uploaded or a generator wrote, for Environment.map as og.load.environment's cooked maps are. The game fetches the file itself (from a URL, an upload or a generator) and passes its bytes. Its size, width and height are read from its header and checked against the budget before it is decoded; the image is twice as wide as it is tall (the centre column faces +X, as three.js maps it). Natively a worker thread decodes it; on the web the .hdr decodes in rows at the tick boundaries, within LoadBudget.frameMs, never in one long stall. The diffuse irradiance (nine harmonics) is gathered as it decodes, and when the renderer first draws with it the image is resampled into a cube and GGX-prefiltered into the five levels a cooked map has (roughness 0 to 1), on the GPU by the passes the sky's own light runs (the cook's `bake` does the same on the CPU for cooked maps and for tools without a GPU). The handle is pending until the map is in place, then ready (og.load.environmentInfo gives the map) or failed (og.load.error says why); until then Environment lights the scene by the sky. |
+| [`og.load.environmentInfo`](#fn-environmentInfo) | function | A ready uncooked environment's map and sizes. |
+| [`og.load.release`](#fn-release) | function | Free an uncooked asset (og.load.imageData, og.load.gltfData, og.load.environmentData): a load still pending is dropped (it never completes, so it is never journaled), and a ready one's textures and meshes are emptied under their handles, so what still names them draws nothing and nothing breaks, while their memory on the GPU and their copies on the CPU go (the probe's memory report and `dump_memory` show both). An og.Model of a released model draws nothing; a sprite or material of a released texture draws one clear texel; an Environment that names a released map is lit by the sky. The handle then answers failed, naming the release. Physics shapes built from its geometries are world state and stay. Releasing again does nothing. |
 | [`og.load.imageInfo`](#fn-imageInfo) | function | A ready uncooked image's texture and size. |
 | [`og.load.completions`](#fn-completions) | function | The world's journal of uncooked loads put in place, oldest first: what a replay hands og.load.replayCompletions to put each in place at the same tick. og replay --record keeps it in the trace. |
 | [`og.load.replayCompletions`](#fn-replayCompletions) | function | Put this world's uncooked loads in place at the ticks a recorded run did (its og.load.completions), not when this host finishes them: a load is held back until its tick, and at its tick the engine waits for it. Call it before the first tick; og replay --compare does. A load the journal names as failed fails at its tick whatever this host made of it. |
@@ -123,7 +127,7 @@ fn bundle {
 }
 ```
 
-<sub>`api.ogt` line 7738</sub>
+<sub>`api.ogt` line 7739</sub>
 
 <a id="fn-bundleInfo"></a>
 
@@ -153,7 +157,7 @@ fn bundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 7745</sub>
+<sub>`api.ogt` line 7746</sub>
 
 <a id="fn-defaultBundle"></a>
 
@@ -181,7 +185,7 @@ fn defaultBundle {
 }
 ```
 
-<sub>`api.ogt` line 7752</sub>
+<sub>`api.ogt` line 7753</sub>
 
 <a id="fn-gltf"></a>
 
@@ -216,7 +220,7 @@ fn gltf {
 }
 ```
 
-<sub>`api.ogt` line 7758</sub>
+<sub>`api.ogt` line 7759</sub>
 
 <a id="fn-scene"></a>
 
@@ -246,7 +250,7 @@ fn scene {
 }
 ```
 
-<sub>`api.ogt` line 7767</sub>
+<sub>`api.ogt` line 7768</sub>
 
 <a id="fn-prefab"></a>
 
@@ -276,7 +280,7 @@ fn prefab {
 }
 ```
 
-<sub>`api.ogt` line 7774</sub>
+<sub>`api.ogt` line 7775</sub>
 
 <a id="fn-font"></a>
 
@@ -306,7 +310,7 @@ fn font {
 }
 ```
 
-<sub>`api.ogt` line 7794</sub>
+<sub>`api.ogt` line 7795</sub>
 
 <a id="fn-fontInfo"></a>
 
@@ -336,7 +340,7 @@ fn fontInfo {
 }
 ```
 
-<sub>`api.ogt` line 7801</sub>
+<sub>`api.ogt` line 7802</sub>
 
 <a id="fn-sound"></a>
 
@@ -369,7 +373,7 @@ fn sound {
 }
 ```
 
-<sub>`api.ogt` line 7808</sub>
+<sub>`api.ogt` line 7809</sub>
 
 <a id="fn-lut"></a>
 
@@ -399,7 +403,7 @@ fn lut {
 }
 ```
 
-<sub>`api.ogt` line 7816</sub>
+<sub>`api.ogt` line 7817</sub>
 
 <a id="fn-environment"></a>
 
@@ -429,7 +433,7 @@ fn environment {
 }
 ```
 
-<sub>`api.ogt` line 7823</sub>
+<sub>`api.ogt` line 7824</sub>
 
 <a id="fn-emitter"></a>
 
@@ -459,7 +463,7 @@ fn emitter {
 }
 ```
 
-<sub>`api.ogt` line 7830</sub>
+<sub>`api.ogt` line 7831</sub>
 
 <a id="fn-shader"></a>
 
@@ -489,7 +493,7 @@ fn shader {
 }
 ```
 
-<sub>`api.ogt` line 7837</sub>
+<sub>`api.ogt` line 7838</sub>
 
 <a id="fn-post"></a>
 
@@ -519,7 +523,7 @@ fn post {
 }
 ```
 
-<sub>`api.ogt` line 7844</sub>
+<sub>`api.ogt` line 7845</sub>
 
 <a id="fn-vector"></a>
 
@@ -549,7 +553,7 @@ fn vector {
 }
 ```
 
-<sub>`api.ogt` line 7851</sub>
+<sub>`api.ogt` line 7852</sub>
 
 <a id="fn-uiMaterial"></a>
 
@@ -579,7 +583,7 @@ fn uiMaterial {
 }
 ```
 
-<sub>`api.ogt` line 7858</sub>
+<sub>`api.ogt` line 7859</sub>
 
 <a id="fn-texture"></a>
 
@@ -612,7 +616,7 @@ fn texture {
 }
 ```
 
-<sub>`api.ogt` line 7865</sub>
+<sub>`api.ogt` line 7866</sub>
 
 <a id="fn-textureArray"></a>
 
@@ -645,7 +649,7 @@ fn textureArray {
 }
 ```
 
-<sub>`api.ogt` line 7873</sub>
+<sub>`api.ogt` line 7874</sub>
 
 <a id="fn-style"></a>
 
@@ -675,7 +679,7 @@ fn style {
 }
 ```
 
-<sub>`api.ogt` line 7881</sub>
+<sub>`api.ogt` line 7882</sub>
 
 <a id="fn-document"></a>
 
@@ -705,7 +709,7 @@ fn document {
 }
 ```
 
-<sub>`api.ogt` line 7888</sub>
+<sub>`api.ogt` line 7889</sub>
 
 <a id="fn-look"></a>
 
@@ -735,7 +739,7 @@ fn look {
 }
 ```
 
-<sub>`api.ogt` line 7895</sub>
+<sub>`api.ogt` line 7896</sub>
 
 <a id="fn-lookInfo"></a>
 
@@ -765,7 +769,7 @@ fn lookInfo {
 }
 ```
 
-<sub>`api.ogt` line 7902</sub>
+<sub>`api.ogt` line 7903</sub>
 
 <a id="fn-palette"></a>
 
@@ -795,7 +799,7 @@ fn palette {
 }
 ```
 
-<sub>`api.ogt` line 7909</sub>
+<sub>`api.ogt` line 7910</sub>
 
 <a id="fn-soundInfo"></a>
 
@@ -825,7 +829,7 @@ fn soundInfo {
 }
 ```
 
-<sub>`api.ogt` line 7916</sub>
+<sub>`api.ogt` line 7917</sub>
 
 <a id="fn-status"></a>
 
@@ -855,7 +859,7 @@ fn status {
 }
 ```
 
-<sub>`api.ogt` line 7923</sub>
+<sub>`api.ogt` line 7924</sub>
 
 <a id="fn-error"></a>
 
@@ -885,7 +889,7 @@ fn error {
 }
 ```
 
-<sub>`api.ogt` line 7930</sub>
+<sub>`api.ogt` line 7931</sub>
 
 <a id="fn-gltfInfo"></a>
 
@@ -915,7 +919,7 @@ fn gltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 7937</sub>
+<sub>`api.ogt` line 7938</sub>
 
 <a id="fn-animation"></a>
 
@@ -948,7 +952,7 @@ fn animation {
 }
 ```
 
-<sub>`api.ogt` line 7944</sub>
+<sub>`api.ogt` line 7945</sub>
 
 <a id="fn-rig"></a>
 
@@ -978,7 +982,7 @@ fn rig {
 }
 ```
 
-<sub>`api.ogt` line 7952</sub>
+<sub>`api.ogt` line 7953</sub>
 
 <a id="fn-flipbook"></a>
 
@@ -1008,7 +1012,7 @@ fn flipbook {
 }
 ```
 
-<sub>`api.ogt` line 7959</sub>
+<sub>`api.ogt` line 7960</sub>
 
 <a id="fn-tilemap"></a>
 
@@ -1038,7 +1042,7 @@ fn tilemap {
 }
 ```
 
-<sub>`api.ogt` line 7966</sub>
+<sub>`api.ogt` line 7967</sub>
 
 <a id="fn-video"></a>
 
@@ -1068,7 +1072,7 @@ fn video {
 }
 ```
 
-<sub>`api.ogt` line 7973</sub>
+<sub>`api.ogt` line 7974</sub>
 
 <a id="fn-videoInfo"></a>
 
@@ -1098,7 +1102,7 @@ fn videoInfo {
 }
 ```
 
-<sub>`api.ogt` line 7980</sub>
+<sub>`api.ogt` line 7981</sub>
 
 <a id="fn-timeline"></a>
 
@@ -1128,7 +1132,7 @@ fn timeline {
 }
 ```
 
-<sub>`api.ogt` line 7987</sub>
+<sub>`api.ogt` line 7988</sub>
 
 <a id="fn-rig2d"></a>
 
@@ -1158,7 +1162,7 @@ fn rig2d {
 }
 ```
 
-<sub>`api.ogt` line 7994</sub>
+<sub>`api.ogt` line 7995</sub>
 
 <a id="fn-imageData"></a>
 
@@ -1195,7 +1199,7 @@ fn imageData {
 }
 ```
 
-<sub>`api.ogt` line 8058</sub>
+<sub>`api.ogt` line 8080</sub>
 
 <a id="fn-gltfData"></a>
 
@@ -1235,13 +1239,80 @@ fn gltfData {
 }
 ```
 
-<sub>`api.ogt` line 8068</sub>
+<sub>`api.ogt` line 8090</sub>
+
+<a id="fn-environmentData"></a>
+
+### `og.load.environmentData`
+
+Load an HDR environment from bytes, uncooked, at run time: an equirectangular Radiance .hdr (or OpenEXR .exr where RenderCapabilities.exrDecode is true) that a player uploaded or a generator wrote, for Environment.map as og.load.environment's cooked maps are. The game fetches the file itself (from a URL, an upload or a generator) and passes its bytes. Its size, width and height are read from its header and checked against the budget before it is decoded; the image is twice as wide as it is tall (the centre column faces +X, as three.js maps it). Natively a worker thread decodes it; on the web the .hdr decodes in rows at the tick boundaries, within LoadBudget.frameMs, never in one long stall. The diffuse irradiance (nine harmonics) is gathered as it decodes, and when the renderer first draws with it the image is resampled into a cube and GGX-prefiltered into the five levels a cooked map has (roughness 0 to 1), on the GPU by the passes the sky's own light runs (the cook's `bake` does the same on the CPU for cooked maps and for tools without a GPU). The handle is pending until the map is in place, then ready (og.load.environmentInfo gives the map) or failed (og.load.error says why); until then Environment lights the scene by the sky.
+
+Completion is host input, applied at a tick boundary and journaled as og.load.imageData's is, so a replay puts it in place at the same tick; in a lockstep or rollback room it is local to each session (share the bytes with og.platform.roomSend).
+
+```ts
+og.load.environmentData(world: World, name: string, bytes: Uint8Array, desc?: EnvironmentDataDesc): Result<Asset>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world that owns the asset. |
+| `name` | `string` | no | A name for it in errors and dumps, such as `uploads/sunset.hdr`. |
+| `bytes` | `Uint8Array` | no | The file's bytes. |
+| `desc` | `EnvironmentDataDesc` | yes | Its face size, intensity and budget. |
+
+**Returns** `Result<Asset>`: The handle (pending), or why it was refused now: over the budget's bytes or textureSize, not twice as wide as tall, a size that is not a power of two from 16 to 2048, not a Radiance .hdr or OpenEXR file, or an .exr where RenderCapabilities.exrDecode is false (the reason names it: convert the image to .hdr, or cook it).
+
+Binding symbol `og_load_environment_data` · publish builds: kept
+
+```ogt
+fn environmentData {
+  doc "Load an HDR environment from bytes, uncooked, at run time: an equirectangular Radiance .hdr (or OpenEXR .exr where RenderCapabilities.exrDecode is true) that a player uploaded or a generator wrote, for Environment.map as og.load.environment's cooked maps are. The game fetches the file itself (from a URL, an upload or a generator) and passes its bytes. Its size, width and height are read from its header and checked against the budget before it is decoded; the image is twice as wide as it is tall (the centre column faces +X, as three.js maps it). Natively a worker thread decodes it; on the web the .hdr decodes in rows at the tick boundaries, within LoadBudget.frameMs, never in one long stall. The diffuse irradiance (nine harmonics) is gathered as it decodes, and when the renderer first draws with it the image is resampled into a cube and GGX-prefiltered into the five levels a cooked map has (roughness 0 to 1), on the GPU by the passes the sky's own light runs (the cook's `bake` does the same on the CPU for cooked maps and for tools without a GPU). The handle is pending until the map is in place, then ready (og.load.environmentInfo gives the map) or failed (og.load.error says why); until then Environment lights the scene by the sky."
+  doc "Completion is host input, applied at a tick boundary and journaled as og.load.imageData's is, so a replay puts it in place at the same tick; in a lockstep or rollback room it is local to each session (share the bytes with og.platform.roomSend)."
+  param world World "The world that owns the asset."
+  param name String "A name for it in errors and dumps, such as `uploads/sunset.hdr`."
+  param bytes Bytes "The file's bytes."
+  param desc EnvironmentDataDesc "Its face size, intensity and budget."
+  returns Result.Asset "The handle (pending), or why it was refused now: over the budget's bytes or textureSize, not twice as wide as tall, a size that is not a power of two from 16 to 2048, not a Radiance .hdr or OpenEXR file, or an .exr where RenderCapabilities.exrDecode is false (the reason names it: convert the image to .hdr, or cook it)."
+}
+```
+
+<sub>`api.ogt` line 8101</sub>
+
+<a id="fn-environmentInfo"></a>
+
+### `og.load.environmentInfo`
+
+A ready uncooked environment's map and sizes.
+
+```ts
+og.load.environmentInfo(world: World, asset: Asset): Result<EnvironmentInfo>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `world` | `World` | no | The world that owns the asset. |
+| `asset` | `Asset` | no | A handle og.load.environmentData answered. |
+
+**Returns** `Result<EnvironmentInfo>`: Refused while it is pending (say so), when it failed (with its reason) or for another kind of asset.
+
+Binding symbol `og_load_environment_info` · publish builds: kept
+
+```ogt
+fn environmentInfo {
+  doc "A ready uncooked environment's map and sizes."
+  param world World "The world that owns the asset."
+  param asset Asset "A handle og.load.environmentData answered."
+  returns Result.EnvironmentInfo "Refused while it is pending (say so), when it failed (with its reason) or for another kind of asset."
+}
+```
+
+<sub>`api.ogt` line 8111</sub>
 
 <a id="fn-release"></a>
 
 ### `og.load.release`
 
-Free an uncooked asset (og.load.imageData, og.load.gltfData): a load still pending is dropped (it never completes, so it is never journaled), and a ready one's textures and meshes are emptied under their handles, so what still names them draws nothing and nothing breaks, while their memory on the GPU and their copies on the CPU go (the probe's memory report and `dump_memory` show both). An og.Model of a released model draws nothing; a sprite or material of a released texture draws one clear texel. The handle then answers failed, naming the release. Physics shapes built from its geometries are world state and stay. Releasing again does nothing.
+Free an uncooked asset (og.load.imageData, og.load.gltfData, og.load.environmentData): a load still pending is dropped (it never completes, so it is never journaled), and a ready one's textures and meshes are emptied under their handles, so what still names them draws nothing and nothing breaks, while their memory on the GPU and their copies on the CPU go (the probe's memory report and `dump_memory` show both). An og.Model of a released model draws nothing; a sprite or material of a released texture draws one clear texel; an Environment that names a released map is lit by the sky. The handle then answers failed, naming the release. Physics shapes built from its geometries are world state and stay. Releasing again does nothing.
 
 ```ts
 og.load.release(world: World, asset: Asset): Result<void>
@@ -1250,7 +1321,7 @@ og.load.release(world: World, asset: Asset): Result<void>
 | Parameter | Type | Optional | Doc |
 |---|---|---|---|
 | `world` | `World` | no | The world that owns the asset. |
-| `asset` | `Asset` | no | A handle og.load.imageData or og.load.gltfData answered. |
+| `asset` | `Asset` | no | A handle og.load.imageData, og.load.gltfData or og.load.environmentData answered. |
 
 **Returns** `Result<void>`: Refused for a cooked asset, which stays with its bundle (a streamed one with its group).
 
@@ -1258,14 +1329,14 @@ Binding symbol `og_load_release` · publish builds: kept
 
 ```ogt
 fn release {
-  doc "Free an uncooked asset (og.load.imageData, og.load.gltfData): a load still pending is dropped (it never completes, so it is never journaled), and a ready one's textures and meshes are emptied under their handles, so what still names them draws nothing and nothing breaks, while their memory on the GPU and their copies on the CPU go (the probe's memory report and `dump_memory` show both). An og.Model of a released model draws nothing; a sprite or material of a released texture draws one clear texel. The handle then answers failed, naming the release. Physics shapes built from its geometries are world state and stay. Releasing again does nothing."
+  doc "Free an uncooked asset (og.load.imageData, og.load.gltfData, og.load.environmentData): a load still pending is dropped (it never completes, so it is never journaled), and a ready one's textures and meshes are emptied under their handles, so what still names them draws nothing and nothing breaks, while their memory on the GPU and their copies on the CPU go (the probe's memory report and `dump_memory` show both). An og.Model of a released model draws nothing; a sprite or material of a released texture draws one clear texel; an Environment that names a released map is lit by the sky. The handle then answers failed, naming the release. Physics shapes built from its geometries are world state and stay. Releasing again does nothing."
   param world World "The world that owns the asset."
-  param asset Asset "A handle og.load.imageData or og.load.gltfData answered."
+  param asset Asset "A handle og.load.imageData, og.load.gltfData or og.load.environmentData answered."
   returns Result.Void "Refused for a cooked asset, which stays with its bundle (a streamed one with its group)."
 }
 ```
 
-<sub>`api.ogt` line 8079</sub>
+<sub>`api.ogt` line 8118</sub>
 
 <a id="fn-imageInfo"></a>
 
@@ -1295,7 +1366,7 @@ fn imageInfo {
 }
 ```
 
-<sub>`api.ogt` line 8086</sub>
+<sub>`api.ogt` line 8125</sub>
 
 <a id="fn-completions"></a>
 
@@ -1323,7 +1394,7 @@ fn completions {
 }
 ```
 
-<sub>`api.ogt` line 8093</sub>
+<sub>`api.ogt` line 8132</sub>
 
 <a id="fn-replayCompletions"></a>
 
@@ -1353,7 +1424,7 @@ fn replayCompletions {
 }
 ```
 
-<sub>`api.ogt` line 8099</sub>
+<sub>`api.ogt` line 8138</sub>
 
 ## Components, resources and events
 
@@ -1430,7 +1501,7 @@ component Model {
 }
 ```
 
-<sub>`api.ogt` line 7692</sub>
+<sub>`api.ogt` line 7693</sub>
 
 <a id="record-PrefabLink"></a>
 
@@ -1461,7 +1532,7 @@ component PrefabLink {
 }
 ```
 
-<sub>`api.ogt` line 7781</sub>
+<sub>`api.ogt` line 7782</sub>
 
 <a id="record-AssetReady"></a>
 
@@ -1484,7 +1555,7 @@ event AssetReady {
 }
 ```
 
-<sub>`api.ogt` line 8106</sub>
+<sub>`api.ogt` line 8145</sub>
 
 <a id="record-AssetFailed"></a>
 
@@ -1509,7 +1580,7 @@ event AssetFailed {
 }
 ```
 
-<sub>`api.ogt` line 8112</sub>
+<sub>`api.ogt` line 8151</sub>
 
 ## Types
 
@@ -1525,7 +1596,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Asset "A loaded bundle, scene or glTF asset."
 ```
 
-<sub>`api.ogt` line 7579</sub>
+<sub>`api.ogt` line 7580</sub>
 
 <a id="type-Font"></a>
 
@@ -1539,7 +1610,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Font "A cooked MSDF font: its glyph table and one or more atlas pages."
 ```
 
-<sub>`api.ogt` line 7580</sub>
+<sub>`api.ogt` line 7581</sub>
 
 <a id="type-Sound"></a>
 
@@ -1553,7 +1624,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Sound "A cooked sound: QOA-encoded PCM the audio module plays."
 ```
 
-<sub>`api.ogt` line 7581</sub>
+<sub>`api.ogt` line 7582</sub>
 
 <a id="type-Style"></a>
 
@@ -1567,7 +1638,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle Style "A cooked UI style: its values, atlas, fonts, icons and sounds loaded with it, for og.ui.configure."
 ```
 
-<sub>`api.ogt` line 7582</sub>
+<sub>`api.ogt` line 7583</sub>
 
 <a id="type-TextureArray"></a>
 
@@ -1581,7 +1652,7 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle TextureArray "A cooked texture array: same-sized layers uploaded as one 2D-array texture (og.load.textureArray)."
 ```
 
-<sub>`api.ogt` line 7583</sub>
+<sub>`api.ogt` line 7584</sub>
 
 <a id="type-LoadStatus"></a>
 
@@ -1606,7 +1677,7 @@ enum LoadStatus {
 }
 ```
 
-<sub>`api.ogt` line 7620</sub>
+<sub>`api.ogt` line 7621</sub>
 
 <a id="type-GltfDesc"></a>
 
@@ -1636,7 +1707,7 @@ struct GltfDesc {
 }
 ```
 
-<sub>`api.ogt` line 7627</sub>
+<sub>`api.ogt` line 7628</sub>
 
 <a id="type-GltfInfo"></a>
 
@@ -1665,7 +1736,7 @@ struct GltfInfo {
 }
 ```
 
-<sub>`api.ogt` line 7639</sub>
+<sub>`api.ogt` line 7640</sub>
 
 <a id="type-BundleInfo"></a>
 
@@ -1688,7 +1759,7 @@ struct BundleInfo {
 }
 ```
 
-<sub>`api.ogt` line 7649</sub>
+<sub>`api.ogt` line 7650</sub>
 
 <a id="type-FontInfo"></a>
 
@@ -1721,7 +1792,7 @@ struct FontInfo {
 }
 ```
 
-<sub>`api.ogt` line 7656</sub>
+<sub>`api.ogt` line 7657</sub>
 
 <a id="type-SoundInfo"></a>
 
@@ -1752,7 +1823,7 @@ struct SoundInfo {
 }
 ```
 
-<sub>`api.ogt` line 7668</sub>
+<sub>`api.ogt` line 7669</sub>
 
 <a id="type-TextureArrayInfo"></a>
 
@@ -1783,13 +1854,13 @@ struct TextureArrayInfo {
 }
 ```
 
-<sub>`api.ogt` line 7681</sub>
+<sub>`api.ogt` line 7682</sub>
 
 <a id="type-LoadBudget"></a>
 
 ### `LoadBudget` (desc struct)
 
-The limits an uncooked load (og.load.imageData, og.load.gltfData) is held to: content a player or a generator made is untrusted, so each limit is checked from the file's headers before anything is decoded, and a load over one is refused naming the limit, the value and the fix.
+The limits an uncooked load (og.load.imageData, og.load.gltfData, og.load.environmentData) is held to: content a player or a generator made is untrusted, so each limit is checked from the file's headers before anything is decoded, and a load over one is refused naming the limit, the value and the fix.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -1802,7 +1873,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct LoadBudget {
-  doc "The limits an uncooked load (og.load.imageData, og.load.gltfData) is held to: content a player or a generator made is untrusted, so each limit is checked from the file's headers before anything is decoded, and a load over one is refused naming the limit, the value and the fix."
+  doc "The limits an uncooked load (og.load.imageData, og.load.gltfData, og.load.environmentData) is held to: content a player or a generator made is untrusted, so each limit is checked from the file's headers before anything is decoded, and a load over one is refused naming the limit, the value and the fix."
   desc true
   field bytes f64 "The most bytes the source may have." {
     default 33554432
@@ -1823,7 +1894,7 @@ struct LoadBudget {
 }
 ```
 
-<sub>`api.ogt` line 8001</sub>
+<sub>`api.ogt` line 8002</sub>
 
 <a id="type-ImageKind"></a>
 
@@ -1848,7 +1919,7 @@ enum ImageKind {
 }
 ```
 
-<sub>`api.ogt` line 8022</sub>
+<sub>`api.ogt` line 8023</sub>
 
 <a id="type-GltfDataDesc"></a>
 
@@ -1870,7 +1941,7 @@ struct GltfDataDesc {
 }
 ```
 
-<sub>`api.ogt` line 8029</sub>
+<sub>`api.ogt` line 8030</sub>
 
 <a id="type-ImageDataDesc"></a>
 
@@ -1894,7 +1965,63 @@ struct ImageDataDesc {
 }
 ```
 
-<sub>`api.ogt` line 8035</sub>
+<sub>`api.ogt` line 8036</sub>
+
+<a id="type-EnvironmentDataDesc"></a>
+
+### `EnvironmentDataDesc` (desc struct)
+
+How og.load.environmentData reads an HDR environment.
+
+A desc: every field may be omitted and takes its default; `{}` is valid.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `size` | `number` | `128` | — | — | — | The prefiltered cube's face size at its sharpest level: a power of two from 16 to 2048 (and at most LoadBudget.textureSize), as a cooked environment's `size`. |
+| `intensity` | `number` | `1` | ≥ 0 | — | — | Multiplies the image, as a cooked environment's `intensity`. |
+| `budget` | `LoadBudget` | `{}` | — | — | — | The limits it is held to: bytes, and textureSize for the image's width and height. |
+
+```ogt
+struct EnvironmentDataDesc {
+  doc "How og.load.environmentData reads an HDR environment."
+  desc true
+  field size u32 "The prefiltered cube's face size at its sharpest level: a power of two from 16 to 2048 (and at most LoadBudget.textureSize), as a cooked environment's `size`." {
+    default 128
+  }
+  field intensity f32 "Multiplies the image, as a cooked environment's `intensity`." {
+    default 1
+    min 0
+  }
+  field budget LoadBudget "The limits it is held to: bytes, and textureSize for the image's width and height."
+}
+```
+
+<sub>`api.ogt` line 8043</sub>
+
+<a id="type-EnvironmentInfo"></a>
+
+### `EnvironmentInfo` (struct)
+
+What a ready uncooked environment holds.
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
+| `map` | `EnvironmentMap` | `0` | — | — | — | The map, for Environment.map or Environment.blendTo, lit and drawn like a cooked one. |
+| `width` | `number` | `0` | — | — | — | The image's width in pixels. |
+| `height` | `number` | `0` | — | — | — | The image's height in pixels. |
+| `size` | `number` | `0` | — | — | — | The prefiltered cube's face size. |
+
+```ogt
+struct EnvironmentInfo {
+  doc "What a ready uncooked environment holds."
+  field map EnvironmentMap "The map, for Environment.map or Environment.blendTo, lit and drawn like a cooked one."
+  field width u32 "The image's width in pixels."
+  field height u32 "The image's height in pixels."
+  field size u32 "The prefiltered cube's face size."
+}
+```
+
+<sub>`api.ogt` line 8056</sub>
 
 <a id="type-ImageInfo"></a>
 
@@ -1917,7 +2044,7 @@ struct ImageInfo {
 }
 ```
 
-<sub>`api.ogt` line 8042</sub>
+<sub>`api.ogt` line 8064</sub>
 
 <a id="type-LoadCompletion"></a>
 
@@ -1942,7 +2069,7 @@ struct LoadCompletion {
 }
 ```
 
-<sub>`api.ogt` line 8049</sub>
+<sub>`api.ogt` line 8071</sub>
 
 ## Column kinds
 
@@ -1965,7 +2092,7 @@ column TextureArray {
 }
 ```
 
-<sub>`api.ogt` line 7585</sub>
+<sub>`api.ogt` line 7586</sub>
 
 ```ogt
 column Asset {
@@ -1976,7 +2103,7 @@ column Asset {
 }
 ```
 
-<sub>`api.ogt` line 7592</sub>
+<sub>`api.ogt` line 7593</sub>
 
 ```ogt
 column Sound {
@@ -1987,7 +2114,7 @@ column Sound {
 }
 ```
 
-<sub>`api.ogt` line 7599</sub>
+<sub>`api.ogt` line 7600</sub>
 
 ```ogt
 column Font {
@@ -1998,7 +2125,7 @@ column Font {
 }
 ```
 
-<sub>`api.ogt` line 7606</sub>
+<sub>`api.ogt` line 7607</sub>
 
 ```ogt
 column Style {
@@ -2009,4 +2136,4 @@ column Style {
 }
 ```
 
-<sub>`api.ogt` line 7613</sub>
+<sub>`api.ogt` line 7614</sub>

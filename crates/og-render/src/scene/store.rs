@@ -46,6 +46,7 @@ impl RenderScene {
             palette_revisions: Vec::new(),
             environment_maps: Vec::new(),
             environment_map_revisions: Vec::new(),
+            environment_equirects: Vec::new(),
             texture_arrays: Vec::new(),
             texture_array_revisions: Vec::new(),
             texture_array_filters: Vec::new(),
@@ -540,11 +541,43 @@ impl RenderScene {
         if reused {
             self.environment_maps[i] = map;
             self.environment_map_revisions[i] += 1;
+            self.environment_equirects[i] = None;
         } else {
             self.environment_maps.push(map);
             self.environment_map_revisions.push(0);
+            self.environment_equirects.push(None);
         }
         EnvironmentMapHandle::from_parts(i, generation)
+    }
+
+    /// Adds an environment map from an equirectangular image the renderer
+    /// prefilters itself, on the GPU when it uploads it (run-time loads of
+    /// uncooked `.hdr` and `.exr`), with its `irradiance` already gathered
+    /// ([`crate::EquirectIrradiance`]). [`RenderScene::environment_map_data`]
+    /// answers its size and irradiance with no texels. Refused when the
+    /// image or the size is not valid.
+    pub fn add_environment_equirect(
+        &mut self,
+        image: crate::EnvironmentEquirect,
+        irradiance: [[f32; 3]; 9],
+    ) -> Result<EnvironmentMapHandle, String> {
+        image.validate()?;
+        if irradiance.iter().flatten().any(|v| !v.is_finite()) {
+            return Err("an environment map's irradiance is not finite".into());
+        }
+        let size = image.size;
+        let handle = self.add_environment_map(crate::EnvironmentMapData {
+            size,
+            texels: Vec::new(),
+            irradiance,
+        });
+        self.environment_equirects[handle.index()] = Some(std::sync::Arc::new(image));
+        Ok(handle)
+    }
+
+    /// Slot `index`'s equirectangular image, when the renderer bakes it.
+    pub(crate) fn environment_equirect(&self, index: usize) -> Option<&crate::EnvironmentEquirect> {
+        self.environment_equirects.get(index)?.as_deref()
     }
 
     /// Removes an environment map: the renderer frees its cube before the
@@ -564,6 +597,7 @@ impl RenderScene {
             irradiance: [[0.0; 3]; 9],
         };
         self.environment_map_revisions[i] += 1;
+        self.environment_equirects[i] = None;
         self.environment_map_slots.remove(i, true);
         true
     }

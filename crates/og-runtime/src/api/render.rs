@@ -260,6 +260,7 @@ pub fn og_render_capabilities(world: u32) -> String {
                 "gpuTimestamps": b.gpu_timing_absent().is_none(),
                 "planarReflections": info.as_ref().map_or(0, |i| i.planar_reflections),
                 "world3d": og_render::WORLD_3D,
+                "exrDecode": crate::uncooked::EXR_DECODE,
             })
         })
         .map(|mut c| {
@@ -269,7 +270,7 @@ pub fn og_render_capabilities(world: u32) -> String {
             c
         })
     });
-    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "maxLights": 0, "maxShadowedLights": 0, "maxMsaaSamples": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [], "ssr": false, "reflectionProbes": 0, "renderTargetDepth": false, "maxRenderTargetSize": 0, "maxCustomPosts": 0, "volumetricFog": "raymarch", "volumetricLights": 0, "maxLightCookies": 0, "gpuTimestamps": false, "planarReflections": 0, "world3d": og_render::WORLD_3D }))
+    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "maxLights": 0, "maxShadowedLights": 0, "maxMsaaSamples": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [], "ssr": false, "reflectionProbes": 0, "renderTargetDepth": false, "maxRenderTargetSize": 0, "maxCustomPosts": 0, "volumetricFog": "raymarch", "volumetricLights": 0, "maxLightCookies": 0, "gpuTimestamps": false, "planarReflections": 0, "world3d": og_render::WORLD_3D, "exrDecode": crate::uncooked::EXR_DECODE }))
         .to_string()
 }
 

@@ -1533,6 +1533,18 @@ pub fn og_load_gltf_data(env: Env, world: u32, name: String, bytes: crate::NodeB
     <Host as LoadApi>::og_load_gltf_data(&Host, world, name, bytes, desc)
 }
 
+#[napi(js_name = "og_load_environment_data")]
+pub fn og_load_environment_data(env: Env, world: u32, name: String, bytes: crate::NodeBytes, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_environment_data(&Host, world, name, bytes, desc)
+}
+
+#[napi(js_name = "og_load_environment_info")]
+pub fn og_load_environment_info(env: Env, world: u32, asset: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_environment_info(&Host, world, asset)
+}
+
 #[napi(js_name = "og_load_release")]
 pub fn og_load_release(env: Env, world: u32, asset: f64) -> String {
     let _env = crate::EnvScope::enter(&env);

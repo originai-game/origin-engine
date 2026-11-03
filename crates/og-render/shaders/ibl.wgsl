@@ -27,6 +27,9 @@ struct Params {
 // The map a cooked environment blends towards (env[0].w its weight); the
 // source again for every other pass.
 @group(0) @binding(3) var blend_cube: texture_cube<f32>;
+// An uncooked environment's equirectangular image (fs_equirect); a
+// placeholder for every other pass.
+@group(0) @binding(4) var equirect_map: texture_2d<f32>;
 
 struct VsOut { @builtin(position) pos: vec4<f32>, @location(0) uv: vec2<f32> };
 
@@ -228,6 +231,24 @@ fn fs_probe_copy(in: VsOut) -> @location(0) vec4<f32> {
   let x_major = abs(d.x) >= max(abs(d.y), abs(d.z));
   let m = select(vec3<f32>(-d.x, d.y, d.z), vec3<f32>(d.x, d.y, -d.z), x_major);
   return vec4<f32>(textureSampleLevel(source_cube, cube_sampler, m, 0.0).rgb, 1.0);
+}
+
+// An equirectangular image into a cube face (an uncooked environment,
+// IblGenerator::bake_equirect): 2x2 samples per texel, as the cook's bake
+// resamples its image. Column u looks towards longitude (u - 0.5) 2 pi from
+// +x towards +z, rows from +y down (three.js's mapping).
+@fragment
+fn fs_equirect(in: VsOut) -> @location(0) vec4<f32> {
+  // A texel is 2 / size wide in uv: the samples sit a quarter texel off its centre.
+  let q = 0.5 / params.source_size;
+  var sum = vec3<f32>(0.0);
+  for (var i = 0u; i < 4u; i++) {
+    let o = vec2<f32>(select(-q, q, (i & 1u) == 1u), select(-q, q, (i & 2u) == 2u));
+    let d = face_dir(params.face, in.uv + o);
+    let uv = vec2<f32>(atan2(d.z, d.x) / (2.0 * PI) + 0.5, 0.5 - asin(clamp(d.y, -1.0, 1.0)) / PI);
+    sum += textureSampleLevel(equirect_map, cube_sampler, uv, 0.0).rgb;
+  }
+  return vec4<f32>(sum * 0.25, 1.0);
 }
 
 // Downsample one cube face mip from the mip above (box filter via linear sampling).

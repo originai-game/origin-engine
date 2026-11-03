@@ -13,7 +13,21 @@ impl Renderer {
             if !fresh && self.cache.environment_map_revisions[i] == revision {
                 continue;
             }
-            let gpu = if scene.environment_map_slot(i).0 {
+            let gpu = if let Some(image) = scene
+                .environment_equirect(i)
+                .filter(|_| scene.environment_map_slot(i).0)
+            {
+                // An uncooked image: prefiltered here, on the GPU.
+                image
+                    .validate()
+                    .map_err(|e| RenderError::InvalidData(format!("environment map {i}: {e}")))?;
+                let (texture, view) = self.ibl.bake_equirect(&self.device, &self.queue, image);
+                Some(GpuEnvironmentMap {
+                    _texture: texture,
+                    view,
+                    bytes: 8 * environment::EnvironmentMapData::texel_count(image.size) as u64,
+                })
+            } else if scene.environment_map_slot(i).0 {
                 let map = &scene.environment_maps()[i];
                 map.validate()
                     .map_err(|e| RenderError::InvalidData(format!("environment map {i}: {e}")))?;

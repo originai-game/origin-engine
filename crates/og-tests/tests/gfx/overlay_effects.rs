@@ -592,6 +592,30 @@ fn environment_grounded_matches_its_reference() {
     );
 }
 
+/// An environment prefiltered on the GPU at load lights and fills the
+/// background as the cook's CPU bake of the same image does.
+#[test]
+fn environment_uncooked_matches_its_reference() {
+    check("environment-uncooked");
+    let frame = |cooked: bool| {
+        let mut g = built("environment-uncooked");
+        g.scene = og_tests::ibl_scenes::uncooked_scene(cooked).expect("scene");
+        gfx::render_built(&mut g).expect("render").image
+    };
+    let (gpu, cpu) = (frame(false), frame(true));
+    let studio = gfx::render_built(&mut built("environment-map"))
+        .expect("studio")
+        .image;
+    let all = |_: u32, _: u32| true;
+    let (same, other) = (mean_diff(&gpu, &cpu, all), mean_diff(&gpu, &studio, all));
+    println!("uncooked against the cook's bake {same:.2}, against the studio {other:.1}");
+    assert!(same < 2.0, "the GPU bake matches the cook's: {same:.2}");
+    assert!(
+        other > 5.0 * same.max(0.5),
+        "it is the outdoor map: {other:.1}"
+    );
+}
+
 #[test]
 fn ao_gtao_matches_its_reference() {
     assert!(check("ao-gtao").stats.prepass_draws > 0);

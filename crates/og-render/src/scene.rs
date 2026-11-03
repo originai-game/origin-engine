@@ -70,6 +70,10 @@ pub struct RenderScene {
     palette_revisions: Vec<u64>,
     environment_maps: Vec<crate::EnvironmentMapData>,
     environment_map_revisions: Vec<u64>,
+    /// Per environment map: the equirectangular image the renderer bakes
+    /// on the GPU (`add_environment_equirect`), or `None` for a prefiltered
+    /// map.
+    environment_equirects: Vec<Option<std::sync::Arc<crate::EnvironmentEquirect>>>,
     texture_arrays: Vec<crate::TextureArrayData>,
     texture_array_revisions: Vec<u64>,
     /// How each texture array is sampled by sprites (by array index).

@@ -22,6 +22,12 @@
 // - a released asset still holding its texels and vertices → the counted
 //   heap gives back what the loads took (the GPU side: uncooked-release)
 // - a released pending load completing anyway → never journaled, failed
+// - an HDR environment over its budget, not 2:1, or of a size the cube
+//   cannot have, decoded anyway → refused at the call, naming the limit
+// - an uncooked environment not lit like a cooked map's handle, or still
+//   named by og.Environment after its release → environmentInfo gives a
+//   map og.Environment takes, and after og.load.release the frame is lit
+//   by the sky with nothing refused
 import { beforeAll, expect, test } from "bun:test";
 import { og, type World } from "@origingame/engine";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
@@ -245,4 +251,55 @@ test("og.load.release gives back the memory an uncooked image and model took, an
   expect(engine.advance(2).ok).toBe(true);
   expect(og.load.status(world, pending.value)).toBe("failed");
   expect(og.load.completions(world).map((c) => c.request)).toEqual([0, 1, 2]);
+});
+
+/** A Radiance .hdr of flat RGBE pixels (no run-length rows). */
+function hdr(width: number, height: number, pixel: (x: number, y: number) => [number, number, number, number]): Uint8Array {
+  const head = new TextEncoder().encode(`#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n-Y ${height} +X ${width}\n`);
+  const out = new Uint8Array(head.length + width * height * 4);
+  out.set(head);
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) out.set(pixel(x, y), head.length + (y * width + x) * 4);
+  return out;
+}
+
+test("an uncooked HDR environment is in place at the boundary after its call, lights like a cooked map, and its release leaves the sky", () => {
+  const made = createEngine(game);
+  if (!made.ok) throw new Error(made.reason);
+  const engine = made.value;
+  const world = engine.world as unknown as World;
+  // Natively OpenEXR reads too; the web says false here and refuses an .exr naming it.
+  expect((og.render.capabilities(world) as unknown as { exrDecode: boolean }).exrDecode).toBe(true);
+  // A sky over a ground: bright blue above the horizon, dark grey below.
+  const sky = hdr(32, 16, (_x, y) => (y < 8 ? [60, 90, 160, 129] : [40, 40, 40, 127]));
+  const refused = (bytes: Uint8Array, desc: object) => {
+    const r = og.load.environmentData(world, "uploads/sky.hdr", bytes, desc as never);
+    return r.ok ? "" : r.reason;
+  };
+  expect(refused(hdr(16, 16, () => [1, 1, 1, 128]), {})).toContain("twice as wide as it is tall");
+  expect(refused(sky, { size: 100 })).toContain("a power of two from 16 to 2048, not 100");
+  expect(refused(sky, { size: 16, budget: { textureSize: 16 } })).toContain("32x16 is over LoadBudget.textureSize (16)");
+  expect(refused(sky, { budget: { bytes: 100 } })).toContain("is over LoadBudget.bytes (100)");
+  expect(refused(image, {})).toContain("not a Radiance .hdr or OpenEXR .exr");
+  const r = og.load.environmentData(world, "uploads/sky.hdr", sky, { size: 16 });
+  if (!r.ok) throw new Error(r.reason);
+  expect(og.load.status(world, r.value)).toBe("pending");
+  expect(engine.advance(1).ok).toBe(true);
+  expect([og.load.status(world, r.value), og.load.error(world, r.value)]).toEqual(["ready", null]);
+  const info = og.load.environmentInfo(world, r.value);
+  if (!info.ok) throw new Error(info.reason);
+  expect([info.value.width, info.value.height, info.value.size]).toEqual([32, 16, 16]);
+  const env = world.resource(og.Environment);
+  if (!env.ok) throw new Error(env.reason);
+  env.value.map = info.value.map;
+  env.value.background = true;
+  expect(engine.advance(1).ok).toBe(true);
+  // Not og.load.environment's: a cooked path of the same name is a different asset.
+  expect(og.load.environment(world, "uploads/sky.hdr").ok).toBe(false);
+  expect(og.load.release(world, r.value)).toEqual({ ok: true });
+  // og.Environment still names the map: the frame is lit by the sky, nothing is refused.
+  expect(engine.advance(2).ok).toBe(true);
+  expect(og.load.status(world, r.value)).toBe("failed");
+  expect(og.load.environmentInfo(world, r.value).ok).toBe(false);
+  // The game's image (request 0) and the environment (request 1), both at the first boundary.
+  expect(og.load.completions(world)).toEqual([{ request: 0, tick: 0, ok: true }, { request: 1, tick: 0, ok: true }]);
 });

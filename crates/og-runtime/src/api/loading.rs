@@ -304,6 +304,23 @@ pub fn og_load_gltf_data(world: u32, name: String, bytes: Vec<u8>, desc: Option<
     })())
 }
 
+pub fn og_load_environment_data(
+    world: u32,
+    name: String,
+    bytes: Vec<u8>,
+    desc: Option<String>,
+) -> String {
+    result((|| {
+        let eng = engine(world)?;
+        crate::uncooked::environment_data(&eng, &name, bytes, &parse(desc.as_deref())?)
+            .map(asset_value)
+    })())
+}
+
+pub fn og_load_environment_info(world: u32, asset: f64) -> String {
+    result(engine(world).and_then(|eng| crate::uncooked::environment_info(&eng, index_of(asset))))
+}
+
 pub fn og_load_image_info(world: u32, asset: f64) -> String {
     result(engine(world).and_then(|eng| crate::uncooked::image_info(&eng, index_of(asset))))
 }

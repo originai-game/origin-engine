@@ -39,13 +39,14 @@ og-video = { path = "../og-video", default-features = false }
 # og.motion: the motion model on the renderer's device (GPU only, no `reference`).
 og-motion = { path = "../og-motion" }
 
-# og.load.imageData's decoder natively (PNG and JPEG, on a worker thread);
+# og.load.imageData's decoder natively (PNG and JPEG, on a worker thread),
+# and og.load.environmentData's OpenEXR (`exr`; RenderCapabilities.exrDecode);
 # the wasm has none: the web host's Worker decodes with createImageBitmap.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # Natively a stream decodes with rav1d on a thread of its own; the web host
 # decodes with WebCodecs (or rav1d's wasm module) beside the engine Worker.
 og-video = { path = "../og-video" }
-image = { workspace = true }
+image = { workspace = true, features = ["exr"] }
 
 [features]
 default = ["shaping", "physics2d", "physics3d"]
