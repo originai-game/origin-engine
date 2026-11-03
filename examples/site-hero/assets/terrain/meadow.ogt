@@ -1,0 +1,44 @@
+type terrain
+version 1
+---
+# The cliff-top meadow (tools/make-terrain.ts makes the maps): 160 m square,
+# a meadow at y 900 that ends in a broken cliff falling into the clouds.
+heightmap "meadow.png"
+height 580 910
+size 160 160
+control "meadow-control.png"
+heightBlend 0.2
+castShadows true
+# Meadow grass (control R).
+layer {
+  albedo "textures/grass.png"
+  tile 5
+  roughness 0.95
+  slope 0 38
+  slopeFade 8
+}
+# Grass with wildflowers along the edge (control G).
+layer {
+  albedo "textures/flowers.png"
+  tile 5
+  roughness 0.95
+  slope 0 38
+  slopeFade 8
+}
+# The cliff's rock, projected three ways, wherever it is steep (control B).
+layer {
+  albedo "textures/rock.png"
+  tile 9
+  roughness 0.9
+  triplanar true
+  slope 34 90
+  slopeFade 8
+}
+# Worn earth on the outcrop (control A).
+layer {
+  albedo "textures/dirt.png"
+  tile 3
+  roughness 1
+  slope 0 38
+  slopeFade 8
+}

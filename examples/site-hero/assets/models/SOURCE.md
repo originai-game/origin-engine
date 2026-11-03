@@ -35,3 +35,21 @@ with ImageMagick:
 - flowers.png: media 44eeeabd3ed5b658219c6b2ddad04029 (modulate 100,75,93)
 - rock.png: media 4f9bec150075126ecc7c2daab1b3353b
 - dirt.png: media df6b7b245d91d7aca389d91903d8a8e4 (modulate 100,80,100)
+
+## Sky props (meadow): replacing the procedural stand-ins
+
+Concepts: `generate_image` (gpt-image-2.5-sunburst), "Single isolated 3D game
+asset reference, three-quarter view ... Stylised fantasy in the spirit of
+Zelda Tears of the Kingdom and Genshin Impact ... warm sandstone and cool
+lilac-grey rock, sage-green grass. Original design." plus the subject. Then
+Meshy image-to-3D (meshy-6, triangle topology, remesh, textured, PBR):
+- island (hero floating island): media bf2da280e2f1cb1c69b4c08a97947409, operation skyreach-prop-island-img-1, task 01a1a0eb-8b0d-76c3-9ac9-8bd71b09827a, 40k
+- arch (ruined archway): media db86bd8925a91ed32d8158c0de78342a, operation skyreach-prop-arch-img-1, task 01a1a0eb-9355-7486-a0db-50111071f0f7, 20k
+- tower (far landmark): media 514d852c55fa15378099f19888ae2608, operation skyreach-prop-tower-img-1, task 01a1a0eb-9ffa-712e-b0dd-08f021c08b62, 12k
+- islandSmall: media 4935e84ec6bac3656937d30805efc3a8, operation skyreach-prop-islandSmall-img-1, task 01a1a0eb-a70e-769f-b056-3d2b0969b59a, 15k
+
+Results (Meshy GLBs, then gltf-transform optimize: meshopt geometry, WebP textures at 1024):
+- island.glb: media cdb7543a6f50c0bf360097a69cca13fa, 16.4 MB to 1.25 MB
+- arch.glb: media d8f3e76dc25c0a58c410125c123964e9, 14.7 MB to 0.94 MB
+- tower.glb: media 47e4acc44f93b6d81903e317f7ee8cf3, 12.3 MB to 0.61 MB
+- islandSmall.glb: media 828ef658f420e7eed8d149417fde1686, 12.8 MB to 0.66 MB
