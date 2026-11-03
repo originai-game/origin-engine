@@ -112,13 +112,13 @@ fn gaps(gap: f32, n: usize) -> f32 {
 /// its ellipsis, its longest word when it wraps, else all of it.
 fn text_widths(t: &TextContent, fonts: &dyn Metrics) -> (f32, f32) {
     let m = t.metrics(fonts);
-    let pref = widest_line(&t.text, m, t.step.size, t.tracking(), t.step.features);
+    let pref = widest_line(&t.text, m, t.step.size, t.tracking(), t.features());
     let min = if t.ellipsis {
         // It can shrink to its ellipsis.
-        m.measure_with(ellipsis_of(m), t.step.size, t.tracking(), t.step.features)
+        m.measure_with(ellipsis_of(m), t.step.size, t.tracking(), t.features())
             .min(pref)
     } else if t.wrap {
-        longest_word(&t.text, m, t.step.size, t.tracking(), t.step.features)
+        longest_word(&t.text, m, t.step.size, t.tracking(), t.features())
     } else {
         pref
     };
@@ -129,7 +129,7 @@ fn text_widths(t: &TextContent, fonts: &dyn Metrics) -> (f32, f32) {
 /// no word wider and no more lines than its limit.
 fn fits(t: &TextContent, fonts: &dyn Metrics, width: f32) -> bool {
     let m = t.metrics(fonts);
-    let (size, tr, ft) = (t.step.size, t.tracking(), t.step.features);
+    let (size, tr, ft) = (t.step.size, t.tracking(), t.features());
     if !t.wrap {
         return widest_line(&t.text, m, size, tr, ft) <= width;
     }
@@ -314,7 +314,7 @@ pub(super) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'
                     m,
                     t.step.size,
                     t.tracking(),
-                    t.step.features,
+                    t.features(),
                     t.wrap.then_some(width),
                 );
                 if t.ellipsis {

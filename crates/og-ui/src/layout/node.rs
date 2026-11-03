@@ -117,11 +117,27 @@ pub(crate) struct TextContent {
     pub fit: Vec<TypeStep>,
 }
 
+/// The OpenType features a text in `step` and `font` is set with: the
+/// step's, and in the numeric font role tabular lining figures too, so a
+/// score or a timer holds its width as it ticks (the typography audit,
+/// fix 4).
+pub(crate) fn text_features(step: &TypeStep, font: FontRole) -> crate::shape::Features {
+    match font {
+        FontRole::Mono => step.features.with(crate::shape::Features::FIGURES),
+        _ => step.features,
+    }
+}
+
 impl TextContent {
     /// The metrics of the face it is drawn in: its role's nearest its
     /// step's weight ([`crate::Fonts::for_styled`]).
     pub(crate) fn metrics<'a>(&self, fonts: &'a dyn Metrics) -> &'a FontMetrics {
         fonts.metrics_styled(self.font, self.step.weight, false, &self.text)
+    }
+
+    /// The OpenType features the text is set with ([`text_features`]).
+    pub fn features(&self) -> crate::shape::Features {
+        text_features(&self.step, self.font)
     }
 
     /// The type step's tracking, in em: the CJK tracking for text with CJK
@@ -165,7 +181,7 @@ pub(super) fn truncate_lines(lines: &mut Vec<Line>, t: &TextContent, m: &FontMet
     loop {
         let body: String = chars.iter().collect();
         let text = format!("{}{dots}", body.trim_end());
-        let w = m.measure_with(&text, size, tracking, t.step.features);
+        let w = m.measure_with(&text, size, tracking, t.features());
         if w <= width || chars.is_empty() {
             last.text = text;
             last.width = w;

@@ -52,8 +52,24 @@ impl Features {
         Ok(Features(bits))
     }
 
+    /// Tabular lining figures (`tnum lnum`): what text in the numeric font
+    /// role always sets (scores, timers, the HUD's numerals).
+    pub const FIGURES: Features = Features(1 << 2 | 1 << 3);
+
+    /// Both sets of features.
+    pub const fn with(self, other: Features) -> Features {
+        Features(self.0 | other.0)
+    }
+
     pub fn is_empty(self) -> bool {
         self.0 == 0
+    }
+
+    /// Tabular figures (`tnum`): every digit on one advance, so a timer or
+    /// a score keeps its width as it ticks. A face without the feature is
+    /// given it ([`crate::FontMetrics::run_with`]).
+    pub fn tabular(self) -> bool {
+        self.0 & (1 << 2) != 0
     }
 
     /// The tags turned on, in [`Features::TAGS`] order.

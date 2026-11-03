@@ -8,6 +8,9 @@
 //! - measuring and drawing take different paths (one shaped, one not, or
 //!   one tracked and the other not), so a small-caps label is cut or
 //!   overflows its box → `a_small_caps_line_measures_as_it_draws`
+//! - a face that cannot shape `tnum` (no file, or no feature) keeps its
+//!   proportional figures, so a timer changes width as it ticks →
+//!   `tabular_figures_hold_a_width_without_the_feature`
 
 use og_i18n::Direction;
 use og_render::{Glyph, MsdfFont, TextureHandle};
@@ -120,4 +123,83 @@ fn a_small_caps_line_measures_as_it_draws() {
             "small caps change the width"
         );
     }
+}
+
+/// A face that cannot apply `tnum` (cooked without its file, so no shaping)
+/// still sets its digits on one advance: the widest digit's, each glyph
+/// centred in it (the typography audit, fix 4). Letters keep theirs.
+#[test]
+fn tabular_figures_hold_a_width_without_the_feature() {
+    let f = font("Inter-Display.ttf");
+    let m = f.metrics.clone().with_file(None);
+    let tnum = feature(&["tnum"]);
+    let width = |s: &str, f| m.measure_with(s, 100.0, 0.0, f);
+    assert!((width("111", Features::NONE) - width("888", Features::NONE)).abs() > 10.0);
+    assert!(
+        (width("111", tnum) - width("888", tnum)).abs() < 1e-3,
+        "{} vs {}",
+        width("111", tnum),
+        width("888", tnum)
+    );
+    assert!((width("1:08", tnum) - width("8:88", tnum)).abs() < 1e-3);
+    assert!((width("Lap", tnum) - width("Lap", Features::NONE)).abs() < 1e-3);
+    let wide = ('0'..='9').map(|c| m.advance(c)).fold(0.0f32, f32::max);
+    let g = m.visual_with("1", Direction::Ltr, 0.0, tnum);
+    assert!((g[0].advance - wide).abs() < 1e-5, "{g:?}");
+    assert!(
+        (g[0].x - (wide - m.advance('1')) / 2.0).abs() < 1e-5,
+        "centred: {g:?}"
+    );
+    // Drawn with those placements, glyph by glyph.
+    let ui = UiFont {
+        handle: None,
+        metrics: m.clone(),
+    };
+    let p = pieces_with(&ui, "1:08", Direction::Ltr, 0.0, tnum);
+    assert_eq!(p[0].placements.len(), 4, "{p:?}");
+    assert!((p[0].placements[0].advance - wide).abs() < 1e-5);
+}
+
+/// Text in the numeric font role sets tabular figures by default, laid out
+/// and drawn: a HUD counter keeps its width from "111" to "888" in a face
+/// whose figures are proportional, where a body label does not.
+#[test]
+fn the_numeric_role_holds_its_width_as_it_counts() {
+    let mut f = font("Inter-Display.ttf");
+    f.metrics = f.metrics.clone().with_file(None);
+    let mut ui = Ui::new(UiDesc::default());
+    let mut fonts = Fonts {
+        body: f.clone(),
+        mono: Some(f),
+        ..Fonts::default()
+    };
+    fonts.link();
+    ui.set_fonts(fonts);
+    let width = |ui: &mut Ui, text: &str, font: FontRole| {
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.label(
+            "N",
+            text,
+            LabelDesc {
+                nowrap: true,
+                font,
+                ..LabelDesc::default()
+            },
+        );
+        ui.end();
+        ui.frame().element("N").expect("the label").width
+    };
+    let (one, eight) = (
+        width(&mut ui, "111", FontRole::Mono),
+        width(&mut ui, "888", FontRole::Mono),
+    );
+    assert!((one - eight).abs() < 0.01, "numeric: {one} vs {eight}");
+    let (one, eight) = (
+        width(&mut ui, "111", FontRole::Body),
+        width(&mut ui, "888", FontRole::Body),
+    );
+    assert!(
+        eight - one > 2.0,
+        "body stays proportional: {one} vs {eight}"
+    );
 }

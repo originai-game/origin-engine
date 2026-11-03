@@ -691,6 +691,7 @@ pub fn cook(
             s.features.join(" ")
         ));
     }
+    note.push_str(&figures_note(&face, &wanted, &s.features));
     if !missing.is_empty() {
         let list: String = missing
             .iter()
@@ -703,6 +704,41 @@ pub fn cook(
         ));
     }
     Ok((w.finish(), FontNotes { note }))
+}
+
+/// The warning for a face whose figures are proportional (the typography
+/// audit, fix 4): a score or a timer in it changes width as it ticks unless
+/// its figures are tabular. With the face's own `tnum` imported, nothing;
+/// otherwise og-ui sets the digits of the numeric role and of a `tnum`
+/// step on the widest figure's advance, each centred, which the note says.
+fn figures_note(face: &ttf_parser::Face, wanted: &[u32], features: &[String]) -> String {
+    let em = f32::from(face.units_per_em());
+    let advances: Vec<f32> = ('0'..='9')
+        .filter(|&c| wanted.binary_search(&(c as u32)).is_ok())
+        .filter_map(|c| face.glyph_index(c))
+        .filter_map(|g| face.glyph_hor_advance(g))
+        .map(|a| f32::from(a) / em)
+        .collect();
+    let (lo, hi) = advances
+        .iter()
+        .fold((f32::MAX, 0.0f32), |(lo, hi), &a| (lo.min(a), hi.max(a)));
+    if advances.len() < 2 || hi - lo < 1e-3 {
+        return String::new();
+    }
+    let tnum = ["tnum".to_string()];
+    let asked = features.iter().any(|t| t == "tnum");
+    if asked && !feature_lookups(face, &tnum).is_empty() {
+        return String::new();
+    }
+    let has = if feature_lookups(face, &tnum).is_empty() {
+        "the face has no `tnum`"
+    } else {
+        "`features tnum` is not imported"
+    };
+    format!(
+        "; warning: proportional figures ({lo:.3} to {hi:.3} em) and {has}: a numeric \
+         text in it is set on the widest figure's advance, each digit centred"
+    )
 }
 
 #[cfg(test)]
@@ -819,5 +855,32 @@ mod tests {
             }
         }
         assert!(bad.is_empty(), "seams inside the fill: {bad:?}");
+    }
+
+    /// Inter's default figures are proportional: cooked without `tnum` it
+    /// is warned about, with the face's own `tnum` it is not.
+    #[test]
+    fn proportional_figures_are_warned_without_tnum() {
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../templates/ui-kit/assets/fonts/Inter-Display.ttf"
+        );
+        let bytes = std::fs::read(path).expect("the kit's Inter");
+        let note = |features: &[&str]| {
+            let s = FontSettings {
+                charset: vec!["ascii".into()],
+                em_px: 16.0,
+                features: features.iter().map(|t| t.to_string()).collect(),
+                ..FontSettings::default()
+            };
+            cook(&bytes, &s, 2, 0).expect("cooks").1.note
+        };
+        let plain = note(&[]);
+        assert!(
+            plain.contains("proportional figures") && plain.contains("not imported"),
+            "{plain}"
+        );
+        let tnum = note(&["tnum"]);
+        assert!(!tnum.contains("proportional figures"), "{tnum}");
     }
 }

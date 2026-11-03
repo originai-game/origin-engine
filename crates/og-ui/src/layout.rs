@@ -33,6 +33,7 @@ pub use node::FontRole;
 use node::truncate_lines;
 pub(crate) use node::{
     Content, EditView, NONE, Node, Shape, Stagger, TextContent, Widget, ellipsis_of, step_tracking,
+    text_features,
 };
 
 use crate::FontMetrics;

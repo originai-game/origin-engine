@@ -49,7 +49,7 @@ impl TextKey {
             size: t.step.size.to_bits(),
             tracking: t.step.tracking_em.to_bits(),
             cjk_tracking: t.step.cjk_tracking_em.to_bits(),
-            features: t.step.features.bits(),
+            features: t.features().bits(),
             weight: t.step.weight,
             wrap: t.wrap,
             ellipsis: t.ellipsis,

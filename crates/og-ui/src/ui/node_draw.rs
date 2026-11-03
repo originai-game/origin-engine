@@ -294,7 +294,7 @@ impl Ui {
                             &line.text,
                             self.direction,
                             tc.tracking(),
-                            tc.step.features,
+                            tc.features(),
                         );
                         let baseline = m.baseline(&line.text, ly, lh, size);
                         let bounds = Rect::new(x, ly, line.width * sk, lh);
@@ -519,13 +519,15 @@ impl Ui {
                     let r = frame.resolve(&n.rect);
                     let size = step.size * n.scale;
                     let tracking = crate::layout::step_tracking(step, text);
-                    let w = m.measure_tracked(text, size, tracking);
+                    let features = crate::layout::text_features(step, *font);
+                    let w = m.measure_with(text, size, tracking, features);
                     let lh = step.line_height * n.scale;
                     let x = r.x + (r.width - w) / 2.0;
                     let ly = r.y + (r.height - lh) / 2.0;
                     let baseline = m.baseline(text, ly, lh, size);
                     let snap = |v: f32| (v * dpr).round() / dpr;
-                    let pieces = crate::text::pieces(f, text, self.direction, tracking);
+                    let pieces =
+                        crate::text::pieces_with(f, text, self.direction, tracking, features);
                     let one = pieces.len() == 1;
                     for pc in pieces {
                         let Some(handle) = pc.font else { continue };

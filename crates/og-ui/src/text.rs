@@ -421,7 +421,7 @@ impl FontMetrics {
     /// `features`: a text they shape is measured as it is drawn, glyph by
     /// shaped glyph.
     pub fn measure_with(&self, text: &str, size: f32, tracking: f32, features: Features) -> f32 {
-        if !features.is_empty() && self.shapes_features() {
+        if (!features.is_empty() && self.shapes_features()) || tabulates(text, features) {
             return self
                 .visual_with(text, Direction::Ltr, tracking, features)
                 .iter()
@@ -478,8 +478,86 @@ impl FontMetrics {
         parts.concat()
     }
 
-    /// [`FontMetrics::run`] with this font alone, its glyphs marked `font`.
+    /// [`FontMetrics::run`] with this font alone, its glyphs marked `font`;
+    /// with `tnum`, its digits on tabular advances ([`FontMetrics::tabulate`]).
     fn run_one(
+        &self,
+        text: &str,
+        rtl: bool,
+        tracking: f32,
+        first: usize,
+        font: u8,
+        features: Features,
+    ) -> Vec<VisualGlyph> {
+        let mut out = self.run_raw(text, rtl, tracking, first, font, features);
+        if tabulates(text, features) {
+            self.tabulate(text, first, tracking, features, &mut out);
+        }
+        out
+    }
+
+    /// The widest of the font's digits 0 to 9, em; `None` when its digits
+    /// are already one advance (a face whose figures are tabular, by
+    /// default or by its `tnum` as shaped) or it has none.
+    fn tabular_advance(&self, features: Features) -> Option<f32> {
+        let digits = "0123456789";
+        let shaped = self
+            .file
+            .as_ref()
+            .and_then(|f| f.shape_with(digits, false, features, &|c| self.in_atlas(c)));
+        let adv: Vec<f32> = match shaped {
+            Some(g) if g.len() == 10 => g.iter().map(|g| g.advance).collect(),
+            _ => digits
+                .chars()
+                .filter(|&c| self.own_has(c))
+                .map(|c| self.own_advance(c))
+                .collect(),
+        };
+        let (lo, hi) = adv
+            .iter()
+            .fold((f32::MAX, 0.0f32), |(lo, hi), &a| (lo.min(a), hi.max(a)));
+        (!adv.is_empty() && hi - lo > 1e-4).then_some(hi)
+    }
+
+    /// The backstop for a face without tabular figures (the typography
+    /// audit, fix 4): each digit set on the widest digit's advance, its
+    /// glyph centred in it, as a `tnum` face draws them.
+    fn tabulate(
+        &self,
+        text: &str,
+        first: usize,
+        tracking: f32,
+        features: Features,
+        glyphs: &mut [VisualGlyph],
+    ) {
+        let Some(wide) = self.tabular_advance(features) else {
+            return;
+        };
+        let chars: Vec<char> = text.chars().collect();
+        // A shaped script keeps its joins untracked (run_raw).
+        let track = if chars.iter().any(|&c| og_i18n::needs_shaping(c)) {
+            0.0
+        } else {
+            tracking
+        };
+        for g in glyphs.iter_mut() {
+            let Some(&c) = g.index.checked_sub(first).and_then(|k| chars.get(k)) else {
+                continue;
+            };
+            if !c.is_ascii_digit() || (g.ch != c && (g.ch as u32) < crate::shape::GLYPH_PUA) {
+                continue;
+            }
+            let own = if g.ch == c {
+                self.own_advance(c)
+            } else {
+                g.advance - track
+            };
+            g.x += (wide - own) / 2.0;
+            g.advance = wide + track;
+        }
+    }
+
+    fn run_raw(
         &self,
         text: &str,
         rtl: bool,
@@ -527,7 +605,7 @@ impl FontMetrics {
                 for part in [word, space] {
                     if !part.is_empty() {
                         let f = first + text[..at].chars().count();
-                        words.push(self.run_one(part, rtl, tracking, f, font, features));
+                        words.push(self.run_raw(part, rtl, tracking, f, font, features));
                         at += part.len();
                     }
                 }
@@ -661,7 +739,10 @@ pub(crate) fn drawn_line(
     tracking: f32,
     features: Features,
 ) -> (String, Vec<GlyphPlacement>) {
-    if needs_visual(line) || (!features.is_empty() && m.shapes_features()) {
+    if needs_visual(line)
+        || (!features.is_empty() && m.shapes_features())
+        || tabulates(line, features)
+    {
         FontMetrics::drawn(&m.visual_with(line, default, tracking, features))
     } else {
         (line.to_string(), Vec::new())
@@ -747,6 +828,11 @@ fn sticks(c: char) -> bool {
 /// Characters no face need draw: joiners and variation selectors.
 fn invisible(c: char) -> bool {
     matches!(c as u32, 0x200c..=0x200d | 0x2060 | 0xfe00..=0xfe0f | 0xe0100..=0xe01ef)
+}
+
+/// Whether a line's digits take the tabular backstop: `tnum` and a digit.
+fn tabulates(line: &str, features: Features) -> bool {
+    features.tabular() && line.bytes().any(|b| b.is_ascii_digit())
 }
 
 /// Whether a line needs the bidi algorithm or shaping to be drawn.
