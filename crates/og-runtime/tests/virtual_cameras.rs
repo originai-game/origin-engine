@@ -205,7 +205,7 @@ fn a_world_without_virtual_cameras_keeps_its_hash() {
 /// (`influences`) and after R6's og.TerrainScatter impostor fields and og.Model.sway,
 /// after R5 made og.Water lazy, and after og.Environment's blurriness, grounded dome
 /// and blend fields; R10 leaves it unmoved on either side).
-const PINNED_HASH: &str = "dbae7dda9d466a3d";
+const PINNED_HASH: &str = "f24d1cfa0d03b963";
 
 #[test]
 fn the_brain_picks_by_priority_then_the_later_enabled_and_a_solo_outranks_both() {

@@ -7,7 +7,7 @@ use crate::shadows::{LOCAL_SHADOW_LAYERS, PARABOLOID_SCALE, PointShadows};
 use glam::{Mat4, Vec2, Vec3, Vec4};
 
 /// The most cascades of the directional light's shadow map (the uniform's array size).
-pub(crate) const CASCADES: usize = 3;
+pub(crate) const CASCADES: usize = 4;
 /// How far the cascade splits lean towards a logarithmic distribution (0 =
 /// uniform, 1 = logarithmic).
 const SPLIT_LAMBDA: f32 = 0.8;
@@ -724,6 +724,50 @@ pub(crate) fn local_lights(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Four cascades split the shadow distance in order, the last ending at
+    /// it, each one's texels coarser than the one before (finer near
+    /// shadows than three over the same distance), and every count from 1
+    /// to [`CASCADES`] reaches the same far end.
+    #[test]
+    fn four_cascades_split_the_distance_finer_near_the_camera() {
+        let cam = Camera {
+            position: Vec3::new(0.0, 2.0, 10.0),
+            target: Vec3::new(0.0, 0.0, 0.0),
+            ..Default::default()
+        };
+        let aspect = 16.0 / 9.0;
+        let frame = camera_frame(&cam, aspect, Vec2::ZERO);
+        let to_light = Vec3::new(0.3, 1.0, 0.2).normalize();
+        let fit = |count| {
+            fit_cascades(
+                &cam,
+                &frame,
+                aspect,
+                to_light,
+                (Vec3::ZERO, 500.0),
+                150.0,
+                2048,
+                count,
+                0.0,
+                Vec3::ZERO,
+            )
+        };
+        let four = fit(4);
+        assert_eq!(four.len(), 4);
+        for pair in four.windows(2) {
+            assert!(pair[0].split_far < pair[1].split_far);
+            assert!(pair[0].normal_offset < pair[1].normal_offset);
+        }
+        let three = fit(3);
+        assert!(four[0].normal_offset < three[0].normal_offset);
+        for count in 1..=CASCADES {
+            let c = fit(count);
+            assert_eq!(c.len(), count);
+            assert_eq!(c.last().unwrap().split_far, 150.0);
+        }
+        assert_eq!(fit(CASCADES + 3).len(), CASCADES);
+    }
 
     /// The phases follow the area a scene pixel covers in the output, so
     /// an output pixel at render scale 0.5 is sampled near its centre as

@@ -79,9 +79,11 @@ const SCENES: &[(&str, u32)] = &[
     ("views-mirror", 2),
     ("views-split", 2),
     ("probe-interior", 2),
-    // More passes than the old fixed table's 18: three cascades and six
-    // cube point lights' and two spots' faces (41 shadow passes).
+    // More passes than the old fixed table's 18: three cascades, six cube
+    // point lights' and two spots' faces (41 shadow passes), and four
+    // cascades.
     ("shadows-local-8", 2),
+    ("shadows-cascades-4", 2),
 ];
 
 #[test]

@@ -93,6 +93,7 @@ pub const SCENES: &[&str] = &[
     "point-shadows-paraboloid",
     "shadows-local-8",
     "shadows-local-contact",
+    "shadows-cascades-4",
     "fxaa",
     "taa-sharp",
     "taau",
@@ -443,12 +444,20 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             Ok(())
         },
         // Eight shadowed lights (six point, two spot) and two more far
-        // behind whose shadows are left out (MAX_SHADOWED_LIGHTS, eight).
+        // behind whose shadows are left out (the default quality's eight).
         // A box and a ball on a plain floor lit by one shadowed spot: the
         // box's shadow starts at its base (no lit line), its edges soft
         // and straight (the tent PCF).
         "shadows-local-contact" => |g, _| {
             g.scene = crate::shadow_scenes::local_contact_scene(false, true);
+            Ok(())
+        },
+        // The 200 m street of pillars and kerbs under four cascades (the
+        // high preset's count): the near pillars' shadows finer than three
+        // cascades give over the same distance.
+        "shadows-cascades-4" => |g, _| {
+            g.scene = crate::scenes::cascades_200m(true);
+            g.scene.quality.shadow_cascades = 4;
             Ok(())
         },
         "shadows-local-8" => |g, _| {

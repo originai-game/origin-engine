@@ -5,8 +5,8 @@
 // frame.rs. The local lights and their clusters (bindings 7 to 9) are
 // declared after it in the lit shader only (clusters.rs).
 
-const CASCADES: u32 = 3u;
-const LOCAL_SHADOW_LAYERS: u32 = 48u;
+const CASCADES: u32 = 4u;
+const LOCAL_SHADOW_LAYERS: u32 = 96u;
 
 struct LocalLight {
   position_range: vec4<f32>,  // xyz: position, w: range

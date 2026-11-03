@@ -5685,7 +5685,7 @@ export type TaaHistory = "bilinear" | "catmullRom";
  * - `"nav"`: The navigation grids (blocked cells) and navmeshes (polygon edges), and every og.NavAgent's path.
  * - `"bounds"`: Every drawn mesh's bounds (its geometry's box at its transform).
  * - `"lod"`: Every og.Model tinted by the level of detail it draws (green the full mesh, yellow level 1, orange level 2, red level 3 and beyond), so the levels' distances read in one frame.
- * - `"cascades"`: In place of the lit image: each lit pixel coloured by the directional light's shadow cascade that covers it (red, green, blue for cascades 0, 1, 2; black beyond the last).
+ * - `"cascades"`: In place of the lit image: each lit pixel coloured by the directional light's shadow cascade that covers it (red, green, blue, yellow for cascades 0 to 3; black beyond the last).
  * - `"ao"`: In place of the lit image: the screen-space ambient occlusion term (white unoccluded), with PostEffects.ao set.
  * - `"albedo"`: In place of the lit image: the lit materials' base colour after their maps and hooks, unlit.
  * - `"iblDiffuse"`: In place of the lit image: the diffuse image-based light (Environment's map or sky) each lit material receives.
@@ -5709,7 +5709,7 @@ export interface RenderOptions {
    */
   readonly antialias?: Antialias;
   /**
-   * The side of each of the directional light's three cascade maps, in texels; smaller saves memory on phones (three 2048 maps are 64 MB).
+   * The side of each of the directional light's cascade maps (RenderSettings.shadowCascades of them), in texels; smaller saves memory on phones (three 2048 maps are 48 MB, with their depth buffer 64 MB).
    *
    * @default 2048
    * @range 256..4096
@@ -6349,7 +6349,7 @@ export interface Mesh {
 }
 
 /**
- * The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). The first one found is drawn, with three shadow cascades.
+ * The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). The first one found is drawn, with RenderSettings.shadowCascades shadow cascades (3 by default).
  * Without one, the renderer's default sun (from above and to the side, intensity 3) lights the scene.
  *
  * The value of the `DirectionalLight` component (token `og.DirectionalLight`).
@@ -6370,7 +6370,7 @@ export interface DirectionalLight {
    */
   intensity: number;
   /**
-   * Cast shadows through three cascades, as three.js Light.castShadow.
+   * Cast shadows through the cascades (RenderSettings.shadowCascades), as three.js Light.castShadow.
    *
    * @default true
    */
@@ -6391,7 +6391,7 @@ export interface DirectionalLight {
    */
   shadowSoftness: number;
   /**
-   * One shadow map over a fixed box instead of the three cascades: its half size across the light. 0 keeps the cascades. Everything outside the box is lit; the casters are drawn once, not once per cascade (three.js games that fit the light's orthographic shadow camera around the player draw this way).
+   * One shadow map over a fixed box instead of the cascades: its half size across the light. 0 keeps the cascades. Everything outside the box is lit; the casters are drawn once, not once per cascade (three.js games that fit the light's orthographic shadow camera around the player draw this way).
    *
    * @range 0..
    * @unit m (metres)
@@ -6716,12 +6716,19 @@ export interface RenderSettings {
    */
   rectShadows: boolean;
   /**
-   * At most this many point, spot and rect lights cast shadows in a frame, the brightest at the camera kept (RenderCapabilities.shadowedLights caps it); 0 casts none. The directional light's cascades are not counted.
+   * At most this many point, spot and rect lights cast shadows in a frame, the brightest at the camera kept (RenderCapabilities.shadowedLights caps it, 16); 0 casts none. The high preset keeps 16, medium 8, low 2. The directional light's cascades are not counted.
    *
    * @default 8
-   * @range 0..8
+   * @range 0..16
    */
   shadowedLights: number;
+  /**
+   * The directional light's shadow cascades, 1 to 4: more cover the same shadowDistance with finer shadows near the camera, at one more shadow pass and one more map each. The high preset draws 4, medium 3, low 2. Changing it makes the cascade maps again at the next frame.
+   *
+   * @default 3
+   * @range 1..4
+   */
+  shadowCascades: number;
   /**
    * The shadow maps at this fraction of their full side: the directional light's cascades (2048 texels by default) and the local lights' layers (512), each kept within 64 texels and the device's limit (4096 for the cascades). Changing it makes the maps again at the next frame; RenderCapabilities.shadowMapSize is the cascades' side drawn.
    *
@@ -52281,7 +52288,7 @@ export declare namespace og {
    */
   const Mesh: ComponentType<{ readonly geometry: FieldSpec<"Geometry">; readonly material: FieldSpec<"Material">; readonly castShadow: FieldSpec<"bool">; readonly receiveShadow: FieldSpec<"bool">; readonly visible: FieldSpec<"bool">; readonly flash: FieldSpec<"f32">; readonly flashColor: FieldSpec<"Color">; readonly materialLayer: FieldSpec<"i32">; readonly layers: FieldSpec<"u32"> }, Mesh>;
   /**
-   * The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). The first one found is drawn, with three shadow cascades.
+   * The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). The first one found is drawn, with RenderSettings.shadowCascades shadow cascades (3 by default).
    * Without one, the renderer's default sun (from above and to the side, intensity 3) lights the scene.
    */
   const DirectionalLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool">; readonly shadowDistance: FieldSpec<"f32">; readonly shadowSoftness: FieldSpec<"f32">; readonly shadowBox: FieldSpec<"f32">; readonly shadowFocus: FieldSpec<"f32">; readonly shadowFocusDrop: FieldSpec<"f32">; readonly shadowBias: FieldSpec<"f32">; readonly shadowNormalBias: FieldSpec<"f32">; readonly cascadeBlend: FieldSpec<"f32"> }, DirectionalLight>;
@@ -52295,7 +52302,7 @@ export declare namespace og {
   /**
    * The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping, and what the frame may cost: the quality fields (rectShadows to msaaSamples) that og.render.applyQuality sets from a graphics preset. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.
    */
-  const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly bloomRadius: FieldSpec<"f32">; readonly bloomContrast: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly adaptSpeedUp: FieldSpec<"f32">; readonly adaptSpeedDown: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly toneMapping: FieldSpec<"ToneMapping">; readonly exposure: FieldSpec<"f32">; readonly decalAtlas: FieldSpec<"Texture">; readonly lodBias: FieldSpec<"f32">; readonly bakedLighting: FieldSpec<"bool">; readonly quality: FieldSpec<"QualityPreset">; readonly rectShadows: FieldSpec<"bool">; readonly shadowedLights: FieldSpec<"u32">; readonly shadowMapScale: FieldSpec<"f32">; readonly volumetricFog: FieldSpec<"bool">; readonly softParticles: FieldSpec<"bool">; readonly screenSpaceReflections: FieldSpec<"bool">; readonly ambientOcclusion: FieldSpec<"bool">; readonly aoResolution: FieldSpec<"AoResolutionSetting">; readonly ssrStepScale: FieldSpec<"f32">; readonly volumetricStepScale: FieldSpec<"f32">; readonly msaaSamples: FieldSpec<"u32">; readonly interpolate: FieldSpec<"bool">; readonly snapDistance: FieldSpec<"f32"> }, RenderSettings>;
+  const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly bloomRadius: FieldSpec<"f32">; readonly bloomContrast: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly adaptSpeedUp: FieldSpec<"f32">; readonly adaptSpeedDown: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly toneMapping: FieldSpec<"ToneMapping">; readonly exposure: FieldSpec<"f32">; readonly decalAtlas: FieldSpec<"Texture">; readonly lodBias: FieldSpec<"f32">; readonly bakedLighting: FieldSpec<"bool">; readonly quality: FieldSpec<"QualityPreset">; readonly rectShadows: FieldSpec<"bool">; readonly shadowedLights: FieldSpec<"u32">; readonly shadowCascades: FieldSpec<"u32">; readonly shadowMapScale: FieldSpec<"f32">; readonly volumetricFog: FieldSpec<"bool">; readonly softParticles: FieldSpec<"bool">; readonly screenSpaceReflections: FieldSpec<"bool">; readonly ambientOcclusion: FieldSpec<"bool">; readonly aoResolution: FieldSpec<"AoResolutionSetting">; readonly ssrStepScale: FieldSpec<"f32">; readonly volumetricStepScale: FieldSpec<"f32">; readonly msaaSamples: FieldSpec<"u32">; readonly interpolate: FieldSpec<"bool">; readonly snapDistance: FieldSpec<"f32"> }, RenderSettings>;
   /**
    * How the renderer draws this entity between ticks while RenderSettings.interpolate is on; an entity without it is blended. Presentation only: the renderer reads it, the simulation never does.
    */
@@ -52531,7 +52538,8 @@ export declare namespace og {
      * | Field | low | medium | high |
      * |---|---|---|---|
      * | rectShadows | false | true | true |
-     * | shadowedLights | 2 | 8 | 8 |
+     * | shadowedLights | 2 | 8 | 16 |
+     * | shadowCascades | 2 | 3 | 4 |
      * | shadowMapScale | 0.5 | 1 | 2 |
      * | volumetricFog | false | true | true |
      * | softParticles | false | true | true |

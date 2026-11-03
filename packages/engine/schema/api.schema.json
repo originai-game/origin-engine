@@ -4840,7 +4840,7 @@
         },
         {
           "name": "applyQuality",
-          "doc": "Apply a graphics preset: write its row of RenderSettings' quality fields (the rest of RenderSettings keeps its values) and record it in RenderSettings.quality. The renderer reads those fields and nothing else, so what the probe and dump_world show of RenderSettings is what the next frame draws. A game calls it when the player picks a preset on its settings page (og.ui.settingsTree), and applies a saved preset itself at start. Inside a system, the system must declare RenderSettings among its writes. The rows:\n| Field | low | medium | high |\n|---|---|---|---|\n| rectShadows | false | true | true |\n| shadowedLights | 2 | 8 | 8 |\n| shadowMapScale | 0.5 | 1 | 2 |\n| volumetricFog | false | true | true |\n| softParticles | false | true | true |\n| screenSpaceReflections | false | true | true |\n| ambientOcclusion | false | true | true |\n| aoResolution | half | postEffects | full |\n| ssrStepScale | 0.5 | 1 | 2 |\n| volumetricStepScale | 0.5 | 1 | 2 |\n| msaaSamples | 1 | 4 | 4 |\nMedium is every field's default, the frame drawn before any preset. The device caps two of the rows, as RenderCapabilities says: shadowedLights by maxShadowedLights and msaaSamples by maxMsaaSamples; the fields keep the row's value.",
+          "doc": "Apply a graphics preset: write its row of RenderSettings' quality fields (the rest of RenderSettings keeps its values) and record it in RenderSettings.quality. The renderer reads those fields and nothing else, so what the probe and dump_world show of RenderSettings is what the next frame draws. A game calls it when the player picks a preset on its settings page (og.ui.settingsTree), and applies a saved preset itself at start. Inside a system, the system must declare RenderSettings among its writes. The rows:\n| Field | low | medium | high |\n|---|---|---|---|\n| rectShadows | false | true | true |\n| shadowedLights | 2 | 8 | 16 |\n| shadowCascades | 2 | 3 | 4 |\n| shadowMapScale | 0.5 | 1 | 2 |\n| volumetricFog | false | true | true |\n| softParticles | false | true | true |\n| screenSpaceReflections | false | true | true |\n| ambientOcclusion | false | true | true |\n| aoResolution | half | postEffects | full |\n| ssrStepScale | 0.5 | 1 | 2 |\n| volumetricStepScale | 0.5 | 1 | 2 |\n| msaaSamples | 1 | 4 | 4 |\nMedium is every field's default, the frame drawn before any preset. The device caps two of the rows, as RenderCapabilities says: shadowedLights by maxShadowedLights and msaaSamples by maxMsaaSamples; the fields keep the row's value.",
           "params": [
             {
               "name": "world",
@@ -25939,7 +25939,7 @@
         "nav": "The navigation grids (blocked cells) and navmeshes (polygon edges), and every og.NavAgent's path.",
         "bounds": "Every drawn mesh's bounds (its geometry's box at its transform).",
         "lod": "Every og.Model tinted by the level of detail it draws (green the full mesh, yellow level 1, orange level 2, red level 3 and beyond), so the levels' distances read in one frame.",
-        "cascades": "In place of the lit image: each lit pixel coloured by the directional light's shadow cascade that covers it (red, green, blue for cascades 0, 1, 2; black beyond the last).",
+        "cascades": "In place of the lit image: each lit pixel coloured by the directional light's shadow cascade that covers it (red, green, blue, yellow for cascades 0 to 3; black beyond the last).",
         "ao": "In place of the lit image: the screen-space ambient occlusion term (white unoccluded), with PostEffects.ao set.",
         "albedo": "In place of the lit image: the lit materials' base colour after their maps and hooks, unlit.",
         "iblDiffuse": "In place of the lit image: the diffuse image-based light (Environment's map or sky) each lit material receives.",
@@ -25964,7 +25964,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "The side of each of the directional light's three cascade maps, in texels; smaller saves memory on phones (three 2048 maps are 64 MB).",
+          "description": "The side of each of the directional light's cascade maps (RenderSettings.shadowCascades of them), in texels; smaller saves memory on phones (three 2048 maps are 48 MB, with their depth buffer 64 MB).",
           "default": 2048,
           "minimum": 256,
           "maximum": 4096
@@ -26762,7 +26762,7 @@
     "DirectionalLight": {
       "x-og-kind": "component",
       "x-og-module": "render",
-      "description": "The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). The first one found is drawn, with three shadow cascades.\nWithout one, the renderer's default sun (from above and to the side, intensity 3) lights the scene.",
+      "description": "The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). The first one found is drawn, with RenderSettings.shadowCascades shadow cascades (3 by default).\nWithout one, the renderer's default sun (from above and to the side, intensity 3) lights the scene.",
       "type": "object",
       "properties": {
         "color": {
@@ -26783,7 +26783,7 @@
         },
         "castShadow": {
           "type": "boolean",
-          "description": "Cast shadows through three cascades, as three.js Light.castShadow.",
+          "description": "Cast shadows through the cascades (RenderSettings.shadowCascades), as three.js Light.castShadow.",
           "default": true
         },
         "shadowDistance": {
@@ -26803,7 +26803,7 @@
         },
         "shadowBox": {
           "type": "number",
-          "description": "One shadow map over a fixed box instead of the three cascades: its half size across the light. 0 keeps the cascades. Everything outside the box is lit; the casters are drawn once, not once per cascade (three.js games that fit the light's orthographic shadow camera around the player draw this way).",
+          "description": "One shadow map over a fixed box instead of the cascades: its half size across the light. 0 keeps the cascades. Everything outside the box is lit; the casters are drawn once, not once per cascade (three.js games that fit the light's orthographic shadow camera around the player draw this way).",
           "default": 0,
           "minimum": 0,
           "x-og-unit": "m",
@@ -27152,10 +27152,19 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "At most this many point, spot and rect lights cast shadows in a frame, the brightest at the camera kept (RenderCapabilities.shadowedLights caps it); 0 casts none. The directional light's cascades are not counted.",
+          "description": "At most this many point, spot and rect lights cast shadows in a frame, the brightest at the camera kept (RenderCapabilities.shadowedLights caps it, 16); 0 casts none. The high preset keeps 16, medium 8, low 2. The directional light's cascades are not counted.",
           "default": 8,
           "minimum": 0,
-          "maximum": 8
+          "maximum": 16
+        },
+        "shadowCascades": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The directional light's shadow cascades, 1 to 4: more cover the same shadowDistance with finer shadows near the camera, at one more shadow pass and one more map each. The high preset draws 4, medium 3, low 2. Changing it makes the cascade maps again at the next frame.",
+          "default": 3,
+          "minimum": 1,
+          "maximum": 4
         },
         "shadowMapScale": {
           "type": "number",

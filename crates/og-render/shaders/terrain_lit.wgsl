@@ -311,12 +311,7 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   color += kd_ibl * irradiance * s.albedo + prefiltered * (f_ibl * lut.x + lut.y);
 
   if (frame.light_color.w > 0.5 && frame.light_color.w < 1.5) {
-    let c = cascade_index(p);
-    var tint = vec3<f32>(0.0);
-    if (c == 0u) { tint = vec3<f32>(1.0, 0.0, 0.0); }
-    if (c == 1u) { tint = vec3<f32>(0.0, 1.0, 0.0); }
-    if (c == 2u) { tint = vec3<f32>(0.0, 0.0, 1.0); }
-    return vec4<f32>(tint * 4.0, 1.0);
+    return vec4<f32>(cascade_tint(cascade_index(p)) * 4.0, 1.0);
   }
   return vec4<f32>(apply_fog(color, p), 1.0);
 }

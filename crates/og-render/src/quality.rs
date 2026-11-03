@@ -15,7 +15,7 @@
 //! [`RenderQuality::ssr_step_scale`] says.
 
 use crate::AoResolution;
-use crate::shadows::MAX_SHADOWED_LIGHTS;
+use crate::shadows::{DEFAULT_SHADOWED_LIGHTS, MAX_SHADOWED_LIGHTS};
 use crate::volumetric::{FROXELS, RAYMARCH_STEPS};
 
 /// The run-time quality of a frame (`RenderScene::quality`; the API's
@@ -33,6 +33,12 @@ pub struct RenderQuality {
     /// frame, the brightest at the camera kept; the renderer's
     /// [`crate::RenderInfo::shadowed_lights`] caps it (0: none).
     pub shadowed_lights: u32,
+    /// The directional light's cascades, 1 to [`crate::MAX_CASCADES`]
+    /// ([`crate::RenderInfo::shadow_cascades`] caps it): more cover the
+    /// same shadow distance with finer near shadows, one cascade pass and
+    /// one map of [`crate::RenderDesc::shadow_map_size`] each. Changing it
+    /// remakes the cascade array at the next frame. 3 by default.
+    pub shadow_cascades: u32,
     /// The shadow maps at this fraction of their full side: the
     /// directional light's cascades of [`crate::RenderDesc::shadow_map_size`]
     /// and the local lights' layers of [`crate::LOCAL_SHADOW_SIZE`], each
@@ -83,7 +89,8 @@ impl Default for RenderQuality {
     fn default() -> Self {
         RenderQuality {
             rect_shadows: true,
-            shadowed_lights: MAX_SHADOWED_LIGHTS as u32,
+            shadowed_lights: DEFAULT_SHADOWED_LIGHTS as u32,
+            shadow_cascades: 3,
             shadow_map_scale: 1.0,
             volumetric_fog: true,
             soft_particles: true,
@@ -103,14 +110,16 @@ impl Default for RenderQuality {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum QualityPreset {
     /// The cheapest frame: no rect-light shadows, two shadowed lights,
-    /// half-size shadow maps, plain fog, hard particles, no screen-space
+    /// two cascades, half-size shadow maps, plain fog, hard particles, no screen-space
     /// reflections, ambient occlusion or global illumination, one sample per pixel; and, for a
     /// game that turns one of those back on, ambient occlusion at half
     /// resolution and half the reflection and fog steps.
     Low,
     /// The full frame ([`RenderQuality::default`]).
     Medium,
-    /// The full frame refined: the shadow maps at twice their side,
+    /// The full frame refined: four cascades, every shadowed light the
+    /// renderer allows ([`MAX_SHADOWED_LIGHTS`]), the shadow maps at twice
+    /// their side,
     /// ambient occlusion at full resolution whatever the scene asks,
     /// twice the screen-space reflection steps and twice the volumetric
     /// fog's slices.
@@ -124,6 +133,7 @@ impl RenderQuality {
             QualityPreset::Low => RenderQuality {
                 rect_shadows: false,
                 shadowed_lights: 2,
+                shadow_cascades: 2,
                 shadow_map_scale: 0.5,
                 volumetric_fog: false,
                 soft_particles: false,
@@ -137,6 +147,8 @@ impl RenderQuality {
             },
             QualityPreset::Medium => RenderQuality::default(),
             QualityPreset::High => RenderQuality {
+                shadowed_lights: MAX_SHADOWED_LIGHTS as u32,
+                shadow_cascades: crate::MAX_CASCADES,
                 shadow_map_scale: 2.0,
                 ao_resolution: Some(AoResolution::Full),
                 ssr_step_scale: 2.0,
@@ -160,6 +172,7 @@ impl RenderQuality {
         RenderQuality {
             rect_shadows: self.rect_shadows && row.rect_shadows,
             shadowed_lights: self.shadowed_lights.min(row.shadowed_lights),
+            shadow_cascades: self.shadow_cascades.min(row.shadow_cascades),
             shadow_map_scale: self.shadow_map_scale.min(row.shadow_map_scale),
             volumetric_fog: self.volumetric_fog && row.volumetric_fog,
             soft_particles: self.soft_particles && row.soft_particles,
@@ -273,7 +286,18 @@ mod tests {
         assert_eq!(high.froxel_slices(), 128);
         assert_eq!(high.raymarch_steps(), 48);
         assert_eq!(high.shadow_side(2048, 4096), 4096);
+        assert_eq!(
+            (high.shadow_cascades, high.shadowed_lights),
+            (crate::MAX_CASCADES, MAX_SHADOWED_LIGHTS as u32)
+        );
         let low = RenderQuality::preset(QualityPreset::Low);
+        assert_eq!(
+            (
+                RenderQuality::default().shadow_cascades,
+                low.shadow_cascades
+            ),
+            (3, 2)
+        );
         assert_eq!(low.ao_resolution, Some(AoResolution::Half));
         assert_eq!(low.ssr_steps(32), 16);
         assert_eq!(low.ssr_steps(4), 4);

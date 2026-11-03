@@ -18,7 +18,7 @@ module shapes {
   # declarations follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7385</sub>
+<sub>`api.ogt` line 7391</sub>
 
 ## Contents
 
@@ -50,7 +50,7 @@ const Path2: Path2Class
 value Path2 Path2Class "three.js's Path (named Path2 beside og.path's 3D paths): `new og.Path2().moveTo(0, 0).lineTo(1, 0)`."
 ```
 
-<sub>`api.ogt` line 7568</sub>
+<sub>`api.ogt` line 7574</sub>
 
 <a id="value-Shape"></a>
 
@@ -66,7 +66,7 @@ const Shape: ShapeClass
 value Shape ShapeClass "three.js's Shape: `const s = new og.Shape(); s.moveTo(0, 0).lineTo(1, 0).lineTo(0, 1); s.holes.push(hole)`."
 ```
 
-<sub>`api.ogt` line 7569</sub>
+<sub>`api.ogt` line 7575</sub>
 
 ## Interfaces
 
@@ -82,7 +82,7 @@ interface PathList {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7392</sub>
+<sub>`api.ogt` line 7398</sub>
 
 <a id="member-PathList-length"></a>
 
@@ -100,7 +100,7 @@ prop length u32 "How many holes." {
 }
 ```
 
-<sub>`api.ogt` line 7394</sub>
+<sub>`api.ogt` line 7400</sub>
 
 <a id="member-PathList-push"></a>
 
@@ -129,7 +129,7 @@ fn push {
 }
 ```
 
-<sub>`api.ogt` line 7397</sub>
+<sub>`api.ogt` line 7403</sub>
 
 <a id="type-Path2"></a>
 
@@ -143,7 +143,7 @@ interface Path2 {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7405</sub>
+<sub>`api.ogt` line 7411</sub>
 
 <a id="member-Path2-moveTo"></a>
 
@@ -174,7 +174,7 @@ fn moveTo {
 }
 ```
 
-<sub>`api.ogt` line 7407</sub>
+<sub>`api.ogt` line 7413</sub>
 
 <a id="member-Path2-lineTo"></a>
 
@@ -205,7 +205,7 @@ fn lineTo {
 }
 ```
 
-<sub>`api.ogt` line 7414</sub>
+<sub>`api.ogt` line 7420</sub>
 
 <a id="member-Path2-quadraticCurveTo"></a>
 
@@ -240,7 +240,7 @@ fn quadraticCurveTo {
 }
 ```
 
-<sub>`api.ogt` line 7421</sub>
+<sub>`api.ogt` line 7427</sub>
 
 <a id="member-Path2-bezierCurveTo"></a>
 
@@ -279,7 +279,7 @@ fn bezierCurveTo {
 }
 ```
 
-<sub>`api.ogt` line 7430</sub>
+<sub>`api.ogt` line 7436</sub>
 
 <a id="member-Path2-splineThru"></a>
 
@@ -308,7 +308,7 @@ fn splineThru {
 }
 ```
 
-<sub>`api.ogt` line 7441</sub>
+<sub>`api.ogt` line 7447</sub>
 
 <a id="member-Path2-arc"></a>
 
@@ -349,7 +349,7 @@ fn arc {
 }
 ```
 
-<sub>`api.ogt` line 7447</sub>
+<sub>`api.ogt` line 7453</sub>
 
 <a id="member-Path2-absarc"></a>
 
@@ -390,7 +390,7 @@ fn absarc {
 }
 ```
 
-<sub>`api.ogt` line 7460</sub>
+<sub>`api.ogt` line 7466</sub>
 
 <a id="member-Path2-ellipse"></a>
 
@@ -437,7 +437,7 @@ fn ellipse {
 }
 ```
 
-<sub>`api.ogt` line 7473</sub>
+<sub>`api.ogt` line 7479</sub>
 
 <a id="member-Path2-absellipse"></a>
 
@@ -484,7 +484,7 @@ fn absellipse {
 }
 ```
 
-<sub>`api.ogt` line 7490</sub>
+<sub>`api.ogt` line 7496</sub>
 
 <a id="member-Path2-setFromPoints"></a>
 
@@ -513,7 +513,7 @@ fn setFromPoints {
 }
 ```
 
-<sub>`api.ogt` line 7507</sub>
+<sub>`api.ogt` line 7513</sub>
 
 <a id="member-Path2-closePath"></a>
 
@@ -537,7 +537,7 @@ fn closePath {
 }
 ```
 
-<sub>`api.ogt` line 7513</sub>
+<sub>`api.ogt` line 7519</sub>
 
 <a id="member-Path2-getPoints"></a>
 
@@ -568,7 +568,7 @@ fn getPoints {
 }
 ```
 
-<sub>`api.ogt` line 7518</sub>
+<sub>`api.ogt` line 7524</sub>
 
 <a id="type-Shape"></a>
 
@@ -585,7 +585,7 @@ interface Shape {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7528</sub>
+<sub>`api.ogt` line 7534</sub>
 
 <a id="member-Shape-holes"></a>
 
@@ -603,7 +603,7 @@ prop holes PathList "The holes: `shape.holes.push(hole)`." {
 }
 ```
 
-<sub>`api.ogt` line 7531</sub>
+<sub>`api.ogt` line 7537</sub>
 
 <a id="member-Shape-extractPoints"></a>
 
@@ -634,7 +634,7 @@ fn extractPoints {
 }
 ```
 
-<sub>`api.ogt` line 7534</sub>
+<sub>`api.ogt` line 7540</sub>
 
 <a id="type-Path2Class"></a>
 
@@ -648,7 +648,7 @@ interface Path2Class {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7544</sub>
+<sub>`api.ogt` line 7550</sub>
 
 <a id="member-Path2Class-new"></a>
 
@@ -679,7 +679,7 @@ fn new {
 }
 ```
 
-<sub>`api.ogt` line 7546</sub>
+<sub>`api.ogt` line 7552</sub>
 
 <a id="type-ShapeClass"></a>
 
@@ -693,7 +693,7 @@ interface ShapeClass {
   # members follow, each quoted below
 ```
 
-<sub>`api.ogt` line 7556</sub>
+<sub>`api.ogt` line 7562</sub>
 
 <a id="member-ShapeClass-new"></a>
 
@@ -724,4 +724,4 @@ fn new {
 }
 ```
 
-<sub>`api.ogt` line 7558</sub>
+<sub>`api.ogt` line 7564</sub>

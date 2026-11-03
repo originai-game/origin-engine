@@ -49,7 +49,10 @@ impl PointShadows {
 
 /// The most point and spot lights that cast shadows in one frame:
 /// [`crate::RenderInfo::shadowed_lights`].
-pub const MAX_SHADOWED_LIGHTS: usize = 8;
+pub const MAX_SHADOWED_LIGHTS: usize = 16;
+/// The shadowed lights a frame keeps by default ([`crate::RenderQuality`];
+/// the high preset keeps [`MAX_SHADOWED_LIGHTS`]).
+pub const DEFAULT_SHADOWED_LIGHTS: usize = 8;
 /// Layers of the local shadow array the frame uniform addresses: every
 /// shadowed light a point light with cube faces.
 pub(crate) const LOCAL_SHADOW_LAYERS: usize = MAX_SHADOWED_LIGHTS * 6;
@@ -65,16 +68,55 @@ pub(crate) fn capacity(lights: usize, mode: PointShadows) -> usize {
     lights * mode.layers()
 }
 
+/// The layers the local shadow array grows to for a frame whose shadowed
+/// lights want `wanted` layers each, of which at most `lights` are kept:
+/// the most layers any `lights` of them can take (the frame keeps the
+/// brightest at the camera, which may be any of them), rounded up to whole
+/// cube lights so one more light seldom grows it again, within `capacity`.
+/// A frame that needs no more than the array has keeps it.
+pub(crate) fn grown_layers(
+    wanted: &[usize],
+    lights: usize,
+    mode: PointShadows,
+    capacity: usize,
+) -> usize {
+    let mut most = wanted.to_vec();
+    most.sort_unstable_by(|a, b| b.cmp(a));
+    let needed: usize = most.iter().take(lights).sum();
+    needed.next_multiple_of(mode.layers()).min(capacity)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The array grows to the layers the kept lights can take: the largest
+    /// `lights` of them (the kept ones may be any), whole cube lights, never
+    /// past the capacity; a frame of spots alone grows it by spots.
+    #[test]
+    fn the_array_grows_to_what_the_kept_lights_can_take() {
+        let cube = PointShadows::Cube;
+        // Ten spots and three points, eight kept: three points' faces and
+        // five spots, 23, rounded to 24.
+        let mut wanted = vec![1; 10];
+        wanted.extend([6, 6, 6]);
+        assert_eq!(grown_layers(&wanted, 8, cube, 96), 24);
+        // Every light kept: 28, rounded to 30.
+        assert_eq!(grown_layers(&wanted, 16, cube, 96), 30);
+        assert_eq!(grown_layers(&[6; 20], 16, cube, 96), 96);
+        assert_eq!(grown_layers(&[1; 3], 16, cube, 96), 6);
+        assert_eq!(grown_layers(&[], 16, cube, 96), 0);
+        let para = PointShadows::Paraboloid;
+        assert_eq!(grown_layers(&[2, 2, 1], 2, para, 32), 4);
+        assert_eq!(grown_layers(&[2, 2, 1], 3, para, 32), 6);
+    }
 
     #[test]
     fn auto_is_cube() {
         assert_eq!(PointShadows::Auto.resolve(), PointShadows::Cube);
         assert_eq!(PointShadows::Paraboloid.resolve(), PointShadows::Paraboloid);
         assert_eq!(PointShadows::Cube.resolve(), PointShadows::Cube);
-        assert_eq!(capacity(8, PointShadows::Cube), 48);
+        assert_eq!(capacity(16, PointShadows::Cube), 96);
         assert_eq!(capacity(4, PointShadows::Paraboloid), 8);
         assert!(capacity(MAX_SHADOWED_LIGHTS, PointShadows::Cube) <= LOCAL_SHADOW_LAYERS);
     }

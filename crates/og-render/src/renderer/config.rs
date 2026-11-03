@@ -149,8 +149,8 @@ pub enum TaaHistory {
 }
 
 /// How to create a [`Renderer`]. The default is a 1280x720 renderer on the
-/// platform's primary API with an sRGB RGBA8 output, no antialiasing, three
-/// 2048² shadow cascades and BC/ASTC/ETC2 texture compression where the GPU
+/// platform's primary API with an sRGB RGBA8 output, no antialiasing, up to
+/// four 2048² shadow cascades (three drawn at the default quality) and BC/ASTC/ETC2 texture compression where the GPU
 /// has it. [`RenderDesc::mobile`] is the preset for phones.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RenderDesc {
@@ -166,7 +166,9 @@ pub struct RenderDesc {
     /// recommendation (each cascade costs `size² × 4` bytes, plus one depth
     /// buffer of the same size).
     pub shadow_map_size: u32,
-    /// Directional light cascades, 1 to 3 (3 by default; fewer cover the
+    /// The most directional light cascades a frame may draw, 1 to
+    /// [`MAX_CASCADES`] (4 by default); each frame draws its quality's
+    /// [`crate::RenderQuality::shadow_cascades`] within it (fewer cover the
     /// same distance with coarser near shadows).
     pub shadow_cascades: u32,
     /// Which compressed texture family [`RenderInfo::texture_formats`] picks.

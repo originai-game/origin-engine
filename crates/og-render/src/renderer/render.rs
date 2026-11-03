@@ -627,7 +627,7 @@ impl Renderer {
         let shelter = scene
             .surface_weather
             .as_ref()
-            .filter(|_| self.cascade_map.layers.len() as u32 > self.info.shadow_cascades)
+            .filter(|_| self.cascade_map.layers.len() as u32 > self.frame_cascades(scene))
             .and_then(|w| {
                 let (view_proj, cell) = weather::shelter_view(w, camera.position, scene.origin)?;
                 let frustum = Frustum::from_view_proj(view_proj);
@@ -657,7 +657,7 @@ impl Renderer {
             + shelter_redraw as usize
             + reflection.is_some() as usize
             + if scene.light.cast_shadows {
-                (self.info.shadow_cascades as usize).clamp(1, CASCADES)
+                self.frame_cascades(scene) as usize
             } else {
                 0
             }
@@ -1148,7 +1148,7 @@ impl Renderer {
                     bounds,
                     light.max_shadow_distance,
                     shadow_size,
-                    self.info.shadow_cascades as usize,
+                    self.frame_cascades(scene) as usize,
                     light.cascade_blend,
                     scene.origin,
                 )

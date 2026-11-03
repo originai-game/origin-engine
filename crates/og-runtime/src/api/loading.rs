@@ -112,6 +112,7 @@ pub fn og_render_apply_quality(world: u32, preset: String) -> String {
         "quality": preset,
         "rectShadows": q.rect_shadows,
         "shadowedLights": q.shadowed_lights,
+        "shadowCascades": q.shadow_cascades,
         "shadowMapScale": q.shadow_map_scale,
         "volumetricFog": q.volumetric_fog,
         "softParticles": q.soft_particles,

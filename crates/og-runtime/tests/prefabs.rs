@@ -279,7 +279,7 @@ fn hashes_are_pinned_without_prefabs_and_stable_across_a_re_cook_with_them() {
 /// e1f4faa4b95c9f64: a world without water no longer has the type, so the
 /// sea's fields leave this hash alone, then og.Environment's blurriness,
 /// grounded dome and blend fields from f075e6bd81233636).
-const BY_HAND_HASH: &str = "036ed41c052e0142";
+const BY_HAND_HASH: &str = "6d8422aaf5e31ccc";
 
 #[test]
 fn apply_back_and_revert_round_trip_in_the_text() {

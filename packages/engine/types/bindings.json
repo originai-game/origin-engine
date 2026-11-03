@@ -8457,6 +8457,11 @@
           "default": 8
         },
         {
+          "name": "shadowCascades",
+          "column": "u32",
+          "default": 3
+        },
+        {
           "name": "shadowMapScale",
           "column": "f32",
           "default": 1

@@ -65,7 +65,7 @@ module render {
     variant nav "The navigation grids (blocked cells) and navmeshes (polygon edges), and every og.NavAgent's path."
     variant bounds "Every drawn mesh's bounds (its geometry's box at its transform)."
     variant lod "Every og.Model tinted by the level of detail it draws (green the full mesh, yellow level 1, orange level 2, red level 3 and beyond), so the levels' distances read in one frame."
-    variant cascades "In place of the lit image: each lit pixel coloured by the directional light's shadow cascade that covers it (red, green, blue for cascades 0, 1, 2; black beyond the last)."
+    variant cascades "In place of the lit image: each lit pixel coloured by the directional light's shadow cascade that covers it (red, green, blue, yellow for cascades 0 to 3; black beyond the last)."
     variant ao "In place of the lit image: the screen-space ambient occlusion term (white unoccluded), with PostEffects.ao set."
     variant albedo "In place of the lit image: the lit materials' base colour after their maps and hooks, unlit."
     variant iblDiffuse "In place of the lit image: the diffuse image-based light (Environment's map or sky) each lit material receives."
@@ -79,7 +79,7 @@ module render {
     doc "How the renderer is created for a game (GameDesc.render). The host reads it once, when it attaches the renderer."
     desc true
     field antialias Antialias "The antialiasing method."
-    field shadowMapSize u32 "The side of each of the directional light's three cascade maps, in texels; smaller saves memory on phones (three 2048 maps are 64 MB)." {
+    field shadowMapSize u32 "The side of each of the directional light's cascade maps (RenderSettings.shadowCascades of them), in texels; smaller saves memory on phones (three 2048 maps are 48 MB, with their depth buffer 64 MB)." {
       default 2048
       min 256
       max 4096
@@ -345,7 +345,7 @@ module render {
   }
 
   component DirectionalLight {
-    doc "The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). The first one found is drawn, with three shadow cascades."
+    doc "The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). The first one found is drawn, with RenderSettings.shadowCascades shadow cascades (3 by default)."
     doc "Without one, the renderer's default sun (from above and to the side, intensity 3) lights the scene."
     field color Color "The light's linear colour." {
       default 1 1 1
@@ -355,7 +355,7 @@ module render {
       min 0
       tunable true
     }
-    field castShadow bool "Cast shadows through three cascades, as three.js Light.castShadow." {
+    field castShadow bool "Cast shadows through the cascades (RenderSettings.shadowCascades), as three.js Light.castShadow." {
       default true
     }
     field shadowDistance f32 "How far from the camera shadows reach; they fade over the last tenth. Smaller is sharper." {
@@ -368,7 +368,7 @@ module render {
       max 0.2
       tunable true
     }
-    field shadowBox f32 "One shadow map over a fixed box instead of the three cascades: its half size across the light. 0 keeps the cascades. Everything outside the box is lit; the casters are drawn once, not once per cascade (three.js games that fit the light's orthographic shadow camera around the player draw this way)." {
+    field shadowBox f32 "One shadow map over a fixed box instead of the cascades: its half size across the light. 0 keeps the cascades. Everything outside the box is lit; the casters are drawn once, not once per cascade (three.js games that fit the light's orthographic shadow camera around the player draw this way)." {
       min 0
       unit m
       tunable true
@@ -573,10 +573,15 @@ module render {
     field rectShadows bool "Rect lights whose castShadow is on cast their soft shadows; false draws every rect light unshadowed, each keeping its castShadow for when this is on again. The low preset turns it off: a rect light's shadow is the costliest light in the frame." {
       default true
     }
-    field shadowedLights u32 "At most this many point, spot and rect lights cast shadows in a frame, the brightest at the camera kept (RenderCapabilities.shadowedLights caps it); 0 casts none. The directional light's cascades are not counted." {
+    field shadowedLights u32 "At most this many point, spot and rect lights cast shadows in a frame, the brightest at the camera kept (RenderCapabilities.shadowedLights caps it, 16); 0 casts none. The high preset keeps 16, medium 8, low 2. The directional light's cascades are not counted." {
       default 8
       min 0
-      max 8
+      max 16
+    }
+    field shadowCascades u32 "The directional light's shadow cascades, 1 to 4: more cover the same shadowDistance with finer shadows near the camera, at one more shadow pass and one more map each. The high preset draws 4, medium 3, low 2. Changing it makes the cascade maps again at the next frame." {
+      default 3
+      min 1
+      max 4
     }
     field shadowMapScale f32 "The shadow maps at this fraction of their full side: the directional light's cascades (2048 texels by default) and the local lights' layers (512), each kept within 64 texels and the device's limit (4096 for the cascades). Changing it makes the maps again at the next frame; RenderCapabilities.shadowMapSize is the cascades' side drawn." {
       default 1
@@ -2390,7 +2395,8 @@ module render {
     doc "| Field | low | medium | high |"
     doc "|---|---|---|---|"
     doc "| rectShadows | false | true | true |"
-    doc "| shadowedLights | 2 | 8 | 8 |"
+    doc "| shadowedLights | 2 | 8 | 16 |"
+    doc "| shadowCascades | 2 | 3 | 4 |"
     doc "| shadowMapScale | 0.5 | 1 | 2 |"
     doc "| volumetricFog | false | true | true |"
     doc "| softParticles | false | true | true |"

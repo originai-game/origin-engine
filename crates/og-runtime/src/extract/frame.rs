@@ -173,6 +173,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         scene.quality = og_render::RenderQuality {
             rect_shadows: on(s, "rectShadows", full.rect_shadows),
             shadowed_lights: f(s, "shadowedLights", full.shadowed_lights as f32).max(0.0) as u32,
+            shadow_cascades: f(s, "shadowCascades", full.shadow_cascades as f32).max(1.0) as u32,
             shadow_map_scale: f(s, "shadowMapScale", full.shadow_map_scale),
             volumetric_fog: on(s, "volumetricFog", full.volumetric_fog),
             soft_particles: on(s, "softParticles", full.soft_particles),

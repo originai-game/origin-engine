@@ -67,7 +67,10 @@ fn rmse(a: &RgbaImage, b: &RgbaImage) -> f64 {
 #[test]
 fn shadows_soft_matches_its_reference() {
     let report = check("shadows-soft");
-    assert_eq!(report.stats.shadow_passes, report.info.shadow_cascades);
+    assert_eq!(
+        report.stats.shadow_passes,
+        report.info.shadow_cascades.min(3)
+    );
 }
 
 #[test]
@@ -136,7 +139,7 @@ fn shadows_crypt_matches_its_reference() {
     };
     assert_eq!(
         report.stats.shadow_passes,
-        report.info.shadow_cascades + faces
+        report.info.shadow_cascades.min(3) + faces
     );
 }
 
@@ -472,7 +475,10 @@ fn px(img: &RgbaImage, i: usize) -> &[u8] {
 #[test]
 fn shadow_flags_matches_its_reference() {
     let report = check("shadow-flags");
-    assert_eq!(report.stats.shadow_passes, report.info.shadow_cascades);
+    assert_eq!(
+        report.stats.shadow_passes,
+        report.info.shadow_cascades.min(3)
+    );
 }
 
 fn flags_scene() -> shadow_scenes::FlagsScene {
@@ -635,4 +641,35 @@ fn local_shadows_touch_their_casters() {
             "the floor beside the box is lit through the bias: {ratio:.2}"
         );
     }
+}
+
+/// Four cascades (the high preset's count) draw four passes, and over the
+/// same shadow distance the near shadows come out sharper than three's:
+/// the frame against three cascades' differs in the foreground.
+#[test]
+fn shadows_cascades_4_matches_its_reference() {
+    let report = check("shadows-cascades-4");
+    assert_eq!(report.stats.shadow_passes, 4);
+    let desc = scenes::base_desc();
+    let mut scene = scenes::cascades_200m(true);
+    scene.quality.shadow_cascades = 3;
+    let (three, _) = frame(&desc, &scene, 1);
+    scene.quality.shadow_cascades = 4;
+    let (four, stats) = frame(&desc, &scene, 1);
+    assert_eq!(stats.shadow_passes, 4);
+    let w = four.width as usize;
+    let h = four.height as usize;
+    let (mut sum, mut n) = (0.0f64, 0usize);
+    for y in h * 2 / 3..h {
+        for x in 0..w {
+            let i = (y * w + x) * 4;
+            for c in 0..3 {
+                sum += four.pixels[i + c].abs_diff(three.pixels[i + c]) as f64;
+            }
+            n += 3;
+        }
+    }
+    let near = sum / n as f64;
+    println!("four cascades against three, the foreground: {near:.2}");
+    assert!(near > 0.05, "the near cascade is finer: {near:.2}");
 }

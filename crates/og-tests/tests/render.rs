@@ -697,34 +697,55 @@ fn shadow_map_size_sets_the_shadow_resolution() {
     );
 }
 
-/// 1, 2 or 3 cascades: that many shadow passes, and the cascade debug view
-/// shows only those cascades' colours.
+/// 1 to 4 cascades: that many shadow passes, and the cascade debug view
+/// shows only those cascades' colours (red, green, blue, yellow). The
+/// renderer's count caps the frame's quality's, and the default quality
+/// draws three.
 #[test]
-fn cascade_count_is_one_to_three() {
-    for cascades in [1u32, 2, 3, 0, 9] {
+fn cascade_count_is_one_to_four() {
+    for (cascades, quality) in [
+        (1u32, 4u32),
+        (2, 4),
+        (3, 4),
+        (4, 4),
+        (0, 4),
+        (9, 4),
+        (4, 3),
+        (4, 1),
+    ] {
         let desc = RenderDesc {
             shadow_cascades: cascades,
             ..scenes::base_desc()
         };
-        let expected = cascades.clamp(1, 3);
+        let expected = cascades.clamp(1, 4).min(quality);
         let mut scene = scenes::cascades_200m(true);
+        scene.quality.shadow_cascades = quality;
         scene.debug = DebugView::Cascades;
         let (img, stats) = frame(&desc, &scene);
-        assert_eq!(stats.shadow_passes, expected, "{cascades} requested");
-        let mut seen = [0usize; 3];
+        assert_eq!(
+            stats.shadow_passes, expected,
+            "{cascades} made, {quality} asked"
+        );
+        let mut seen = [0usize; 4];
         for p in img.pixels.as_chunks::<4>().0.iter() {
-            let max = *p[..3].iter().max().expect("rgb");
-            if max > 100
-                && let Some(c) =
-                    (0..3).find(|&c| p[c] == max && (0..3).all(|o| o == c || p[o] < 60))
+            let [r, g, b, _] = p.map(|v| v > 100);
+            let c = match (r, g, b) {
+                (true, false, false) => Some(0),
+                (false, true, false) => Some(1),
+                (false, false, true) => Some(2),
+                (true, true, false) => Some(3),
+                _ => None,
+            };
+            if let Some(c) = c
+                && p[..3].iter().all(|&v| !(60..=100).contains(&v))
             {
                 seen[c] += 1;
             }
         }
-        println!("{cascades} cascades requested: pixels per cascade colour {seen:?}");
+        println!("{cascades} cascades made, {quality} asked: pixels per cascade colour {seen:?}");
         for (c, &n) in seen.iter().enumerate() {
             if (c as u32) < expected {
-                assert!(n > 5_000, "cascade {c} of {expected}: {n} pixels");
+                assert!(n > 2_000, "cascade {c} of {expected}: {n} pixels");
             } else {
                 assert!(n < 50, "cascade {c} beyond {expected}: {n} pixels");
             }

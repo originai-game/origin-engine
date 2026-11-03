@@ -79,6 +79,18 @@ fn cascade_index(p: vec3<f32>) -> u32 {
   return CASCADES;
 }
 
+// The cascades debug view's colour of cascade `c`: red, green, blue,
+// yellow; black beyond the last.
+fn cascade_tint(c: u32) -> vec3<f32> {
+  switch c {
+    case 0u: { return vec3<f32>(1.0, 0.0, 0.0); }
+    case 1u: { return vec3<f32>(0.0, 1.0, 0.0); }
+    case 2u: { return vec3<f32>(0.0, 0.0, 1.0); }
+    case 3u: { return vec3<f32>(1.0, 1.0, 0.0); }
+    default: { return vec3<f32>(0.0); }
+  }
+}
+
 // The sun's soft shadows (PCSS, `DirectionalLight::shadow_softness`): a
 // blocker search over the widest penumbra the cascade allows, then 16
 // bilinear PCF taps over the penumbra the blockers' mean depth gives

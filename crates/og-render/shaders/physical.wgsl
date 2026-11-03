@@ -551,12 +551,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
     return vec4<f32>(vec3<f32>(select(1.0, ssao, fx.ao.x > 0.5)), 1.0);
   }
   if (frame.light_color.w > 0.5) {
-    let c = cascade_index(in.world_pos);
-    var tint = vec3<f32>(0.0);
-    if (c == 0u) { tint = vec3<f32>(1.0, 0.0, 0.0); }
-    if (c == 1u) { tint = vec3<f32>(0.0, 1.0, 0.0); }
-    if (c == 2u) { tint = vec3<f32>(0.0, 0.0, 1.0); }
-    return vec4<f32>(tint * 4.0, 1.0);
+    return vec4<f32>(cascade_tint(cascade_index(in.world_pos)) * 4.0, 1.0);
   }
   return vec4<f32>(apply_fog(color, in.world_pos), alpha);
 }

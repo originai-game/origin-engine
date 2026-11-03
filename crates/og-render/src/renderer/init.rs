@@ -413,9 +413,16 @@ impl Renderer {
             mipmap_filter: wgpu::MipmapFilterMode::Nearest,
             ..Default::default()
         });
-        let cascade_map = ShadowMap::new(&device, "cascades", shadow_size, cascades);
-        // Twelve layers to begin with; a frame that needs more grows it to
-        // the full capacity (`grow_local_shadows`).
+        // The default quality's cascades; a frame that asks another count
+        // makes the array again (`fit_shelter_layer`).
+        let cascade_map = ShadowMap::new(
+            &device,
+            "cascades",
+            shadow_size,
+            cascades.min(crate::RenderQuality::default().shadow_cascades),
+        );
+        // Twelve layers to begin with; a frame that needs more grows it
+        // (`grow_local_shadows`).
         let local_map = ShadowMap::new(
             &device,
             "local shadows",

@@ -553,12 +553,12 @@ impl Renderer {
 
     /// Gives the cascade array one more layer, last, for the weather
     /// occlusion map while the scene's surface weather has shelter, and
-    /// takes it away again when it has none: a scene without it keeps the
-    /// array of `shadow_cascades` layers it had (the frame groups are made
-    /// again when it changes).
+    /// takes it away again when it has none, in front of it the frame's
+    /// cascades ([`Self::frame_cascades`]); the frame groups are made again
+    /// when the layer count changes.
     pub(crate) fn fit_shelter_layer(&mut self, scene: &RenderScene) {
         let shelter = scene.surface_weather.is_some_and(|w| w.shelter > 0.0);
-        let wanted = self.info.shadow_cascades + u32::from(shelter);
+        let wanted = self.frame_cascades(scene) + u32::from(shelter);
         if self.cascade_map.layers.len() as u32 == wanted {
             return;
         }
@@ -568,9 +568,19 @@ impl Renderer {
         self.environment = None;
     }
 
-    /// Grows the local shadow array to its full capacity when the scene's
-    /// shadowed lights could need more layers than it has (once per
-    /// renderer: the frame bind groups are made again with it).
+    /// The cascades a frame of `scene` draws: its quality's count within
+    /// the renderer's ([`crate::RenderInfo::shadow_cascades`]), at least one.
+    pub(crate) fn frame_cascades(&self, scene: &RenderScene) -> u32 {
+        scene
+            .quality
+            .shadow_cascades
+            .min(self.info.shadow_cascades)
+            .max(1)
+    }
+
+    /// Grows the local shadow array when the scene's shadowed lights could
+    /// need more layers than it has ([`shadows::grown_layers`]; the frame
+    /// bind groups are made again with it). It never shrinks.
     pub(crate) fn grow_local_shadows(&mut self, scene: &RenderScene) {
         let capacity =
             shadows::capacity(self.info.shadowed_lights as usize, self.info.point_shadows);
@@ -580,21 +590,22 @@ impl Renderer {
         if self.local_map.layers.len() >= capacity + cookies {
             return;
         }
-        // At most every shadowed light of the scene's, and the capacity.
+        // Every shadowed light of the scene's, within the frame's budget.
+        let lights = scene.quality.shadowed_lights.min(self.info.shadowed_lights) as usize;
+        let wanted: Vec<usize> = scene
+            .lights
+            .iter()
+            .filter(|l| l.cast_shadows)
+            .map(|l| match l.kind {
+                LightKind::Point => self.info.point_shadows.layers(),
+                LightKind::Spot { .. } => 1,
+                LightKind::Rect { two_sided, .. } => 1 + two_sided as usize,
+            })
+            .collect();
         let needed = if cookies > 0 {
             capacity + cookies
         } else {
-            scene
-                .lights
-                .iter()
-                .filter(|l| l.cast_shadows)
-                .map(|l| match l.kind {
-                    LightKind::Point => self.info.point_shadows.layers(),
-                    LightKind::Spot { .. } => 1,
-                    LightKind::Rect { two_sided, .. } => 1 + two_sided as usize,
-                })
-                .sum::<usize>()
-                .min(capacity)
+            shadows::grown_layers(&wanted, lights, self.info.point_shadows, capacity)
         };
         if needed <= self.local_map.layers.len() {
             return;
@@ -603,7 +614,7 @@ impl Renderer {
             &self.device,
             "local shadows",
             self.local_shadow_size,
-            if cookies > 0 { needed } else { capacity } as u32,
+            needed as u32,
         );
         self.environment = None;
     }
