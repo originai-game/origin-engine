@@ -1,0 +1,10 @@
+type project
+version 1
+---
+name "Cloak tear repro"
+id "cloak-tear-repro"
+engine "0.7.7"
+entry "src/main.ts"
+profile "3d"
+tick 60
+seed 1
